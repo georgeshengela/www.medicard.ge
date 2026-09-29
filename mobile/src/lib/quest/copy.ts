@@ -1,3 +1,4 @@
+import { appLang } from '../../i18n/locale.js';
 import { questCopy } from '@/i18n/quest/catalog.js';
 import {
   displayQuestProgress,
@@ -21,14 +22,14 @@ export type QuestWeatherContext = {
 } | null;
 
 export function useQuestLocale() {
-  return questLocaleFromTag('ka');
+  return questLocaleFromTag(appLang());
 }
 
-export function q(locale = 'ka') {
+export function q(locale: string = appLang()) {
   return questCopy(locale);
 }
 
-export function moodLine(mood: string, seed: string, locale = 'ka') {
+export function moodLine(mood: string, seed: string, locale: string = appLang()) {
   const copy = questCopy(locale);
   const variants = (copy.mood as Record<string, string[]>)[mood] || copy.mood.fresh_day;
   return pickStableVariant(variants, seed);
@@ -43,7 +44,7 @@ export function dashboardMood(dashboard: QuestDashboard | null) {
   });
 }
 
-export function questTitles(quest: QuestItem, locale = 'ka') {
+export function questTitles(quest: QuestItem, locale: string = appLang()) {
   const copy = questCopy(locale);
   const kind = questKind(quest);
   if (kind === 'hydration') return { kind, title: copy.hydroTitle, body: copy.hydroBody };
@@ -52,7 +53,7 @@ export function questTitles(quest: QuestItem, locale = 'ka') {
   return { kind, title: copy.stepsTitle, body: copy.stepsBody };
 }
 
-export function questHelper(quest: QuestItem, locale = 'ka') {
+export function questHelper(quest: QuestItem, locale: string = appLang()) {
   const copy = questCopy(locale);
   const kind = questKind(quest);
   if (quest.claimable) return copy.completed;
@@ -70,7 +71,7 @@ export function questHelper(quest: QuestItem, locale = 'ka') {
 export function movementContextLine(
   quest: QuestItem,
   extras: { now?: Date; weather?: QuestWeatherContext; loggedPain?: boolean } = {},
-  locale = 'ka',
+  locale: string = appLang(),
 ): string | null {
   const state = movementContextState({
     kind: questKind(quest),
@@ -93,13 +94,13 @@ export function movementContextLine(
 }
 
 /** Why-this-target sheet copy from the safe targetSource. */
-export function whyTargetCopy(quest: QuestItem, locale = 'ka') {
+export function whyTargetCopy(quest: QuestItem, locale: string = appLang()) {
   const copy = questCopy(locale);
   const kind = whyTargetKind(quest.targetSource ?? null) as 'personalized' | 'comeback' | 'default';
   return { title: copy.whyTarget.title, button: copy.whyTarget.button, body: copy.whyTarget[kind] };
 }
 
-export function progressLabel(quest: QuestItem, locale = 'ka') {
+export function progressLabel(quest: QuestItem, locale: string = appLang()) {
   const kind = questKind(quest);
   if (kind === 'hydration') return `${formatQuestPercent(quest.progressPercent ?? quest.progress)}%`;
   if (kind === 'medi') return quest.progress >= 1 ? '1 / 1' : '0 / 1';
@@ -107,6 +108,6 @@ export function progressLabel(quest: QuestItem, locale = 'ka') {
   return `${formatQuestNumber(shown.progress, locale)} / ${formatQuestNumber(shown.target, locale)}`;
 }
 
-export function levelRank(dashboard: QuestDashboard, locale = 'ka') {
+export function levelRank(dashboard: QuestDashboard, locale: string = appLang()) {
   return rankLabel(dashboard.profile?.rankKey, locale);
 }

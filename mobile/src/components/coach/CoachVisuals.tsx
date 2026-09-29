@@ -13,6 +13,7 @@ import type { ProgressPhoto } from '@/lib/coach';
 import { daysBetween } from '@/lib/coach';
 import { hubText } from '@/theme/hub';
 import { useIsDark, useThemeColors } from '@/theme/colors';
+import { tx } from '@/i18n/locale';
 
 /** Weight line with the goal as a dashed target and the ideal path from start to deadline. */
 export function WeightChart({ series, goal, height = 170 }: { series: { date: string; kg: number }[]; goal?: { startKg: number; targetKg: number; startedYmd: string; deadlineYmd: string } | null; height?: number }) {
@@ -39,7 +40,7 @@ export function WeightChart({ series, goal, height = 170 }: { series: { date: st
   const ink = dark ? '#5EEAD4' : '#0F766E';
   const goalInk = dark ? '#FCD34D' : '#B45309';
   return (
-    <View onLayout={onLayout} style={{ height }} accessibilityRole="image" accessibilityLabel={data.length ? `წონა: ${data[data.length - 1].kg} კგ${goal ? `, მიზანი ${goal.targetKg} კგ` : ''}` : 'წონის მონაცემი არ არის'}>
+    <View onLayout={onLayout} style={{ height }} accessibilityRole="image" accessibilityLabel={data.length ? tx(`წონა: ${data[data.length - 1].kg} კგ${goal ? `, მიზანი ${goal.targetKg} კგ` : ''}`, `Weight: ${data[data.length - 1].kg} kg${goal ? `, goal ${goal.targetKg} kg` : ''}`) : tx('წონის მონაცემი არ არის', 'No weight data')}>
       {geo && data.length ? (
         <Svg width={width} height={height}>
           {[geo.min, Math.round((geo.min + geo.max) / 2), geo.max].map((v) => (
@@ -59,7 +60,7 @@ export function WeightChart({ series, goal, height = 170 }: { series: { date: st
         </Svg>
       ) : (
         <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-          <Text style={[hubText.body, { color: c.text300 }]}>აწონვები ჯერ არ არის</Text>
+          <Text style={[hubText.body, { color: c.text300 }]}>{tx('აწონვები ჯერ არ არის', 'No weigh-ins yet')}</Text>
         </View>
       )}
     </View>
@@ -95,15 +96,15 @@ export function BeforeAfter({ before, after, height = 380 }: { before: ProgressP
         }}
         style={[st.compare, { height, backgroundColor: c.bg200 }]}
         accessibilityRole="adjustable"
-        accessibilityLabel="მანამდე და შემდეგ — გადაათრიე გამყოფი"
+        accessibilityLabel={tx('მანამდე და შემდეგ — გადაათრიე გამყოფი', 'Before and after — drag the divider')}
         accessibilityValue={{ min: 0, max: 100, now: Math.round(split * 100) }}
         accessibilityActions={[{ name: 'increment' }, { name: 'decrement' }]}
         onAccessibilityAction={(e) => setSplit((v) => Math.max(0.04, Math.min(0.96, v + (e.nativeEvent.actionName === 'increment' ? 0.1 : -0.1))))}
         {...responder.panHandlers}
       >
-        <PrivateImage path={urlOf(after)} style={StyleSheet.absoluteFill} label="შემდეგ" />
+        <PrivateImage path={urlOf(after)} style={StyleSheet.absoluteFill} label={tx('შემდეგ', 'After')} />
         <View style={[StyleSheet.absoluteFill, { width: width * split, overflow: 'hidden' }]}>
-          <PrivateImage path={urlOf(before)} style={{ width, height }} label="მანამდე" />
+          <PrivateImage path={urlOf(before)} style={{ width, height }} label={tx('მანამდე', 'Before')} />
         </View>
         <View pointerEvents="none" style={[st.divider, { left: width * split - 1.5 }]}>
           <View style={st.knob}>
@@ -111,18 +112,18 @@ export function BeforeAfter({ before, after, height = 380 }: { before: ProgressP
           </View>
         </View>
         <View pointerEvents="none" style={[st.tag, { left: 10 }]}>
-          <Text style={st.tagText}>მანამდე · {before.takenOn}</Text>
+          <Text style={st.tagText}>{tx('მანამდე', 'Before')} · {before.takenOn}</Text>
         </View>
         <View pointerEvents="none" style={[st.tag, { right: 10 }]}>
-          <Text style={st.tagText}>შემდეგ · {after.takenOn}</Text>
+          <Text style={st.tagText}>{tx('შემდეგ', 'After')} · {after.takenOn}</Text>
         </View>
       </View>
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 10 }}>
-        <Text style={[hubText.cardTitle, { color: c.text100 }]}>{days} დღე</Text>
+        <Text style={[hubText.cardTitle, { color: c.text100 }]}>{tx(`${days} დღე`, `${days} ${days === 1 ? 'day' : 'days'}`)}</Text>
         {kgDelta != null ? (
           <Text style={[hubText.cardTitle, { color: kgDelta <= 0 ? c.success : c.warning }]}>
             {kgDelta > 0 ? '+' : ''}
-            {kgDelta} კგ
+            {kgDelta} {tx('კგ', 'kg')}
           </Text>
         ) : null}
       </View>
@@ -131,10 +132,10 @@ export function BeforeAfter({ before, after, height = 380 }: { before: ProgressP
 }
 
 const TABS = [
-  { href: '/coach', label: 'დღეს', Icon: House, match: (p: string) => p === '/coach' },
-  { href: '/coach/calendar', label: 'კალენდარი', Icon: CalendarDays, match: (p: string) => p.startsWith('/coach/calendar') },
-  { href: '/coach/clients', label: 'კლიენტები', Icon: UsersRound, match: (p: string) => p.startsWith('/coach/clients') || p.startsWith('/coach/client/') },
-  { href: '/coach/profile', label: 'პროფილი', Icon: UserRound, match: (p: string) => p.startsWith('/coach/profile') },
+  { href: '/coach', label: tx('დღეს', 'Today'), Icon: House, match: (p: string) => p === '/coach' },
+  { href: '/coach/calendar', label: tx('კალენდარი', 'Calendar'), Icon: CalendarDays, match: (p: string) => p.startsWith('/coach/calendar') },
+  { href: '/coach/clients', label: tx('კლიენტები', 'Clients'), Icon: UsersRound, match: (p: string) => p.startsWith('/coach/clients') || p.startsWith('/coach/client/') },
+  { href: '/coach/profile', label: tx('პროფილი', 'Profile'), Icon: UserRound, match: (p: string) => p.startsWith('/coach/profile') },
 ] as const;
 
 /**

@@ -11,6 +11,7 @@ import { api, type PetCareKind, type PetCareRoute, type PetProduct } from '@/lib
 import { isoToDigits, parseCivilDate } from '@/lib/birthdate';
 import { kindLabel, localUtcOffsetMinutes, newPetsRequestId, petsCareErrorMessage } from '@/lib/petsCare';
 import { todayIsoLocal } from '@/lib/visitReminders';
+import { tx } from '@/i18n/locale';
 
 function digitsToIso(digits: string): string | null {
   if (!digits) return null;
@@ -66,7 +67,7 @@ export default function PetCareRecordScreen() {
 
   const save = async () => {
     if (!id || saveLock.current) return;
-    if (!kind) { setError('აირჩიე მოვლის ტიპი.'); return; }
+    if (!kind) { setError(tx('აირჩიე მოვლის ტიპი.', 'Choose a care type.')); return; }
     if (mode === 'plan') {
       goPlan();
       return;
@@ -75,7 +76,7 @@ export default function PetCareRecordScreen() {
       setError(ka.pets.administeredOn);
       return;
     }
-    if (time && !/^([01]\d|2[0-3]):[0-5]\d$/.test(time.trim())) { setError('საათი ჩაწერე ფორმატით სს:წწ, მაგალითად 09:00.'); return; }
+    if (time && !/^([01]\d|2[0-3]):[0-5]\d$/.test(time.trim())) { setError(tx('საათი ჩაწერე ფორმატით სს:წწ, მაგალითად 09:00.', 'Enter the time as HH:MM, for example 09:00.')); return; }
     saveLock.current = true;
     setSaving(true);
     setError(null);

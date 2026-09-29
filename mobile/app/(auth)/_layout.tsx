@@ -11,13 +11,14 @@ export default function AuthLayout() {
   const colors = useThemeColors();
   const dark = useIsDark();
   const segments = useSegments();
-  const brandSplash = segments.includes('welcome');
+  const brandSplash = segments.includes('welcome') || segments.includes('language');
 
   return (
     <>
       <StatusBar style={brandSplash || dark ? 'light' : 'dark'} />
       <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.surface }, ...motion }}>
         <Stack.Screen name="index" options={peerMotion} />
+        <Stack.Screen name="language" options={{ ...peerMotion, contentStyle: { backgroundColor: '#14B8A6' } }} />
         <Stack.Screen name="welcome" options={{ ...peerMotion, contentStyle: { backgroundColor: '#14B8A6' } }} />
         <Stack.Screen name="sign-in" options={peerMotion} />
         <Stack.Screen name="sign-up" options={peerMotion} />

@@ -3,9 +3,10 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>ტრენერის მოწვევა · MEDICARD</title>
+  <title data-en="Trainer invitation · MEDICARD">ტრენერის მოწვევა · MEDICARD</title>
   <meta name="robots" content="noindex" />
   <link rel="icon" href="/favicon.png" />
+  <script src="/site-i18n.js?v=1"></script>
   <link rel="stylesheet" href="/landing.css" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Georgian:wght@400;600;700&display=swap" rel="stylesheet" />
@@ -14,28 +15,30 @@
   <main class="hero" style="min-height:70vh;display:flex;align-items:center">
     <div class="wrap" style="max-width:560px">
       <p class="kicker">MEDI COACH</p>
-      <h1 style="max-width:none;font-size:32px">შენი ტრენერი გიწვევს MEDICARD-ში</h1>
-      <p class="lead">
+      <h1 style="max-width:none;font-size:32px" data-en="Your trainer is inviting you to MEDICARD">შენი ტრენერი გიწვევს MEDICARD-ში</h1>
+      <p class="lead" data-en="Workout bookings with reminders, a meal plan and your progress — in one app. Install MEDICARD, sign in and enter the code in Profile → “My trainer”. You decide what to share with your trainer.">
         ვარჯიშების ჯავშნები შეხსენებებით, კვების გეგმა და პროგრესი — ერთ აპში. დააყენე MEDICARD, შედი ანგარიშში და
         პროფილში → „ჩემი ტრენერი“ შეიყვანე კოდი. რას გაუზიარებ ტრენერს, შენ წყვეტ.
       </p>
       <p id="code" style="font-size:34px;font-weight:700;letter-spacing:6px;margin:18px 0"></p>
       <div class="hero-actions">
-        <a class="btn btn-cta" id="open-app" href="#">გახსენი MEDICARD-ში</a>
-        <a class="btn btn-ghost" href="/">საიტზე გადასვლა</a>
+        <a class="btn btn-cta" id="open-app" href="#" data-en="Open in MEDICARD">გახსენი MEDICARD-ში</a>
+        <a class="btn btn-ghost" href="/" data-en="Go to the website">საიტზე გადასვლა</a>
       </div>
-      <p class="lead" style="margin-top:18px;font-size:13px">MEDICARD უფასოა. ტრენერთან გადახდა აპის გარეთ ხდება.</p>
+      <p class="lead" style="margin-top:18px;font-size:13px" data-en="MEDICARD is free. Any payment to your trainer happens outside the app.">MEDICARD უფასოა. ტრენერთან გადახდა აპის გარეთ ხდება.</p>
     </div>
   </main>
-  <script src="/landing.js"></script>
+  <script src="/landing.js?v=17"></script>
   <script>
     (function () {
+      var T = (window.MedicardI18n || { t: function (k) { return k; } }).t;
       var match = location.pathname.match(/\/c\/([A-Za-z0-9]{6})\/?$/);
       var code = match ? match[1].toUpperCase() : '';
       var btn = document.getElementById('open-app');
       if (!code) {
         btn.href = '/';
-        btn.textContent = 'საიტზე გადასვლა';
+        btn.removeAttribute('data-en'); // site-i18n applies data-en after this script
+        btn.textContent = T('საიტზე გადასვლა', 'Go to the website');
         return;
       }
       document.getElementById('code').textContent = code;

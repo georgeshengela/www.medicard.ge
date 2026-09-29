@@ -3,6 +3,7 @@ import { formatDate, formatResetSentence } from '@/lib/format';
 import type { Usage } from '@/lib/api';
 import { useAuth } from '@/store/AuthContext';
 import { FREE_CONSUMER_RELEASE, freeConsumerUsage } from '@/lib/consumerAccess';
+import { tx } from '../i18n/locale.js';
 
 export type PlanCode = 'FREE' | 'STANDARD' | 'ULTIMATE';
 
@@ -47,10 +48,10 @@ function consumeLimitFromPackage(pkg: { monthlyAiLimit?: number; dailyAiLimit?: 
 
 export function buildPlanUsage(user: ReturnType<typeof useAuth>['user'], usage: Usage | null): PlanUsageSnapshot {
   if (FREE_CONSUMER_RELEASE) return {
-    code: 'FREE', meta: { title: 'უფასო წვდომა', detail: 'ყველა ფუნქცია ხელმისაწვდომია', accent: 'brand' },
+    code: 'FREE', meta: { title: tx('უფასო წვდომა', 'Free access'), detail: tx('ყველა ფუნქცია ხელმისაწვდომია', 'Every feature is available'), accent: 'brand' },
     usage: usage ? { ...usage, ...freeConsumerUsage(usage) } : null, limit: -1, unlimited: true, remaining: null, used: 0,
     exhausted: false, progress: 1, started: null, expires: null, expired: false,
-    quotaLabel: 'უფასო და შეუზღუდავი', resetLabel: null,
+    quotaLabel: tx('უფასო და შეუზღუდავი', 'Free and unlimited'), resetLabel: null,
   };
   const code = (user?.package?.code ?? 'FREE') as PlanCode;
   const meta = planMeta(code);

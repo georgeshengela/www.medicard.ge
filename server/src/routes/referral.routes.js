@@ -9,6 +9,7 @@ import { applyPrivateCache } from '../lib/cycleShare.js';
 import { hasVerifiedPhone } from '../lib/phoneGate.js';
 import { clientIp } from '../lib/rateLimitKey.js';
 import { claimReferral, referralAdminOverview, referralSummary } from '../lib/referral.js';
+import { t } from '../lib/i18n.js';
 
 /** Referral with Medi coins (Phase 3.4). Coins have no monetary value. */
 export const referralRouter = Router();
@@ -24,7 +25,7 @@ const claimLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   validate: false,
-  message: { error: 'ძალიან ბევრი მცდელობა. სცადე მოგვიანებით.', code: 'RATE_LIMITED' },
+  message: (req) => ({ error: t(req, 'ძალიან ბევრი მცდელობა. სცადე მოგვიანებით.', 'Too many attempts. Please try again later.'), code: 'RATE_LIMITED' }),
 });
 
 const claimSchema = z.object({
@@ -47,7 +48,7 @@ referralRouter.post(
   claimLimiter,
   asyncHandler(async (req, res) => {
     const body = claimSchema.parse(req.body ?? {});
-    const result = await claimReferral({ invitee: req.user, code: body.code, installId: body.installId, ip: clientIp(req) });
+    const result = await claimReferral({ invitee: req.user, code: body.code, installId: body.installId, ip: clientIp(req), lang: req.lang });
     if (!result.ok) return res.status(409).json({ error: result.error, code: result.code });
     return res.status(201).json(result);
   }),

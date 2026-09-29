@@ -6,8 +6,11 @@
  * `User.phone` is only ever written after an OTP check (/api/auth/phone/verify,
  * /api/auth/phone/link/verify) or by an admin, so a stored Georgian mobile number means verified.
  */
+import { t } from './i18n.js';
+
 export const PHONE_REQUIRED_CODE = 'PHONE_VERIFICATION_REQUIRED';
 export const PHONE_REQUIRED_MESSAGE = 'ამ ფუნქციისთვის ტელეფონის ნომრის დადასტურება საჭიროა.';
+export const PHONE_REQUIRED_MESSAGE_EN = 'Please verify your phone number to use this feature.';
 
 export function hasVerifiedPhone(user) {
   const digits = String(user?.phone ?? '').replace(/\D/g, '');
@@ -16,5 +19,5 @@ export function hasVerifiedPhone(user) {
 
 export function requireVerifiedPhone(req, res, next) {
   if (hasVerifiedPhone(req.user)) return next();
-  return res.status(403).json({ error: PHONE_REQUIRED_MESSAGE, code: PHONE_REQUIRED_CODE });
+  return res.status(403).json({ error: t(req, PHONE_REQUIRED_MESSAGE, PHONE_REQUIRED_MESSAGE_EN), code: PHONE_REQUIRED_CODE });
 }

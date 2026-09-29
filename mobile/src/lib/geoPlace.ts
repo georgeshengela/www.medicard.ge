@@ -1,3 +1,5 @@
+import { isEn } from '../i18n/locale.js';
+
 export type GeoComponents = {
   countryCode?: string | null;
   countryName?: string | null;
@@ -10,7 +12,24 @@ export type ResolvedPlace = {
   countryCode: string | null;
   countryKa: string | null;
   cityKa: string | null;
+  /** Server display names in the request language, when the place came from `/api/location`. */
+  countryName?: string | null;
+  cityName?: string | null;
 };
+
+/** A server display name usable in the active language (English users never get a Georgian leftover). */
+function serverName(value: string | null | undefined): string | null {
+  const text = typeof value === 'string' ? value.trim() : '';
+  if (!text) return null;
+  // A name saved in the other language (e.g. before a language switch) falls back to the catalog.
+  return looksGeorgian(text) === !isEn() ? text : null;
+}
+
+/** City for display: the server's localized name when present, else the local catalog. */
+export function placeCityDisplay(place: Pick<ResolvedPlace, 'cityKa' | 'cityName'> | null | undefined): string | null {
+  if (!place) return null;
+  return serverName(place.cityName) || cityNameDisplay(place.cityKa);
+}
 
 const COUNTRY_KA: Record<string, string> = {
   GE: 'საქართველო',
@@ -258,6 +277,80 @@ const CITY_KA: Record<string, string> = {
   jerusalem: 'იერუსალიმი',
 };
 
+/** English display names (display only; Georgian stays the stored/matching form). */
+const COUNTRY_EN: Record<string, string> = {
+  GE: 'Georgia',
+  AM: 'Armenia',
+  AZ: 'Azerbaijan',
+  TR: 'Turkey',
+  RU: 'Russia',
+  UA: 'Ukraine',
+  BY: 'Belarus',
+  MD: 'Moldova',
+  US: 'USA',
+  GB: 'United Kingdom',
+  DE: 'Germany',
+  FR: 'France',
+  IT: 'Italy',
+  ES: 'Spain',
+  PT: 'Portugal',
+  NL: 'Netherlands',
+  BE: 'Belgium',
+  CH: 'Switzerland',
+  AT: 'Austria',
+  PL: 'Poland',
+  CZ: 'Czechia',
+  HU: 'Hungary',
+  RO: 'Romania',
+  BG: 'Bulgaria',
+  GR: 'Greece',
+  CY: 'Cyprus',
+  IL: 'Israel',
+  AE: 'United Arab Emirates',
+  SA: 'Saudi Arabia',
+  QA: 'Qatar',
+  CN: 'China',
+  JP: 'Japan',
+  KR: 'South Korea',
+  IN: 'India',
+  CA: 'Canada',
+  AU: 'Australia',
+  BR: 'Brazil',
+  MX: 'Mexico',
+  SE: 'Sweden',
+  NO: 'Norway',
+  FI: 'Finland',
+  DK: 'Denmark',
+  IE: 'Ireland',
+  LT: 'Lithuania',
+  LV: 'Latvia',
+  EE: 'Estonia',
+  KZ: 'Kazakhstan',
+  UZ: 'Uzbekistan',
+  EG: 'Egypt',
+  ZA: 'South Africa',
+};
+
+/** Latin spellings whose plain title case is not the usual English name. */
+const CITY_EN_OVERRIDE: Record<string, string> = {
+  kazbegi: 'Stepantsminda',
+  liege: 'Liège',
+  'den haag': 'The Hague',
+  oostende: 'Ostend',
+  dusseldorf: 'Düsseldorf',
+  sighnaghi: 'Sighnaghi',
+};
+
+/** Georgian city name → English, from the first Latin alias of each city in CITY_KA. */
+const CITY_EN: Record<string, string> = (() => {
+  const out: Record<string, string> = {};
+  for (const [alias, ka] of Object.entries(CITY_KA)) {
+    if (looksGeorgian(alias) || out[ka]) continue;
+    out[ka] = CITY_EN_OVERRIDE[alias] || alias.replace(/(^|[\s-])([a-z])/g, (_m, sep: string, ch: string) => sep + ch.toUpperCase());
+  }
+  return out;
+})();
+
 function normKey(value: string | null | undefined): string {
   return String(value || '')
     .trim()
@@ -307,6 +400,22 @@ export function cityNameKa(raw: string | null | undefined): string | null {
   return CITY_KA[normKey(text)] || CITY_KA[foldKey(text)] || text;
 }
 
+/** City name for display in the active language (English spelling when known). */
+export function cityNameDisplay(raw: string | null | undefined): string | null {
+  const ka = cityNameKa(raw);
+  if (!ka || !isEn()) return ka;
+  return CITY_EN[ka] || ka;
+}
+
+/** Country name for display in the active language. */
+export function countryNameDisplay(code: string | null | undefined, fallback?: string | null): string | null {
+  if (!isEn()) return countryNameKa(code, fallback);
+  const iso = countryCodeOf(code);
+  if (iso && COUNTRY_EN[iso]) return COUNTRY_EN[iso];
+  if (fallback && !looksGeorgian(fallback)) return fallback.trim();
+  return iso || countryNameKa(code, fallback);
+}
+
 export function flagEmoji(countryCode: string | null | undefined): string {
   const iso = countryCodeOf(countryCode);
   if (!iso) return '';
@@ -323,8 +432,8 @@ export function resolvePlace(input: GeoComponents): ResolvedPlace {
 export function formatPlaceLine(place: ResolvedPlace | null | undefined): string {
   if (!place) return '';
   const flag = flagEmoji(place.countryCode);
-  const cityKa = cityNameKa(place.cityKa);
-  const countryKa = countryNameKa(place.countryCode, place.countryKa);
+  const cityKa = placeCityDisplay(place);
+  const countryKa = serverName(place.countryName) || countryNameDisplay(place.countryCode, place.countryKa);
   const name = [cityKa, countryKa].filter(Boolean).join(', ');
   return [flag, name].filter(Boolean).join(' ').trim();
 }

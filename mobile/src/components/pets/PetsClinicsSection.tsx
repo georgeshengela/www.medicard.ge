@@ -6,6 +6,7 @@ import { ka } from '@/i18n/ka';
 import { api, type PetClinic } from '@/lib/api';
 import { clinicOpenState } from '@/lib/petsClinicsHours';
 import { useIsDark, useThemeColors } from '@/theme/colors';
+import { tx } from '@/i18n/locale';
 
 const fallbackClinics = require('@/lib/petsClinicsFallback.json') as PetClinic[];
 
@@ -24,13 +25,13 @@ const GEO = {
 } as const;
 
 const DAYS = [
-  ['monday', 'ორშ'],
-  ['tuesday', 'სამ'],
-  ['wednesday', 'ოთხ'],
-  ['thursday', 'ხუთ'],
-  ['friday', 'პარ'],
-  ['saturday', 'შაბ'],
-  ['sunday', 'კვი'],
+  ['monday', tx('ორშ', 'Mon')],
+  ['tuesday', tx('სამ', 'Tue')],
+  ['wednesday', tx('ოთხ', 'Wed')],
+  ['thursday', tx('ხუთ', 'Thu')],
+  ['friday', tx('პარ', 'Fri')],
+  ['saturday', tx('შაბ', 'Sat')],
+  ['sunday', tx('კვი', 'Sun')],
 ] as const;
 
 function telHref(value: string) {

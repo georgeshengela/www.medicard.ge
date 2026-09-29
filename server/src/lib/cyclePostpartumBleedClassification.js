@@ -25,10 +25,20 @@ export const MENSTRUAL_PERIOD_CLASSIFICATION = 'MENSTRUAL_PERIOD';
 export const CLASSIFICATION_SOURCE_OWNER = 'OWNER';
 export const CYCLE_POSTPARTUM_BLEED_CLASSIFICATION_PATH = '/postpartum/bleed-classifications';
 
+/** English for the Georgian messages below (error middleware sends `messageEn` to English requests). */
+const MESSAGES_EN = {
+  'მხოლოდ მენსტრუაციად მონიშვნაა შესაძლებელი.': 'You can only mark this as a period.',
+  'ორსულობის რეჟიმში მონიშვნა შეუძლებელია.': 'You cannot mark bleeding in pregnancy mode.',
+  'თარიღი არასწორია.': 'The date is not valid.',
+  'სისხლდენის ეპიზოდი ვერ მოიძებნა.': 'No bleeding episode was found.',
+  'ორსულობის რეჟიმში მონიშვნის გაუქმება შეუძლებელია.': 'You cannot undo this mark in pregnancy mode.',
+};
+
 function httpError(message, status, code) {
   const err = new Error(message);
   err.status = status;
   err.code = code;
+  if (MESSAGES_EN[message]) err.messageEn = MESSAGES_EN[message];
   return err;
 }
 

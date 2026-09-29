@@ -3,6 +3,7 @@ import { AccessibilityInfo, Animated, AppState, Easing, Image, Pressable, StyleS
 import { LinearGradient } from 'expo-linear-gradient';
 import { Camera, Check, Focus, ImagePlus, Leaf, ScanLine, ShieldCheck, Sun, UtensilsCrossed } from 'lucide-react-native';
 import { useThemeColors } from '@/theme/colors';
+import { tx } from '@/i18n/locale';
 
 type Props = {
   photoUri?: string;
@@ -50,17 +51,17 @@ export function NutritionScanner({ photoUri, scanning, disabled, enabled, label 
           <ScanLine size={15} color={c.primary100} />
           <Text style={[s.brand, { color: c.primary100 }]}>{label ? 'MEDI LABEL' : 'MEDI SCAN'}</Text>
         </View>
-        <Text style={[txt, s.heading]}>{label ? (photoUri ? 'ეტიკეტი შერჩეულია' : 'გადაიღე Nutrition Facts') : photoUri ? 'შენი კერძი, უფრო გასაგებად' : 'რას მიირთმევ?'}</Text>
+        <Text style={[txt, s.heading]}>{label ? (photoUri ? tx('ეტიკეტი შერჩეულია', 'Label selected') : tx('გადაიღე Nutrition Facts', 'Snap the Nutrition Facts')) : photoUri ? tx('შენი კერძი, უფრო გასაგებად', 'Your meal, made clearer') : tx('რას მიირთმევ?', 'What are you eating?')}</Text>
         <Text style={[txt, s.subtitle, { color: c.text200 }]}>
           {label
-            ? 'ცხრილიდან მნიშვნელობებს წავიკითხავთ და ულუფაზე გადავიყვანთ.'
-            : photoUri ? 'ფოტოს მიხედვით შევაფასებთ პორციასა და საკვებ ნივთიერებებს.' : 'ერთი ფოტო — და კვების ჩანაწერის შევსება ბევრად მარტივია.'}
+            ? tx('ცხრილიდან მნიშვნელობებს წავიკითხავთ და ულუფაზე გადავიყვანთ.', 'We read the values from the panel and convert them to a serving.')
+            : photoUri ? tx('ფოტოს მიხედვით შევაფასებთ პორციასა და საკვებ ნივთიერებებს.', 'We estimate the portion and nutrients from the photo.') : tx('ერთი ფოტო — და კვების ჩანაწერის შევსება ბევრად მარტივია.', 'One photo makes logging a meal much easier.')}
         </Text>
       </View>
 
       <View style={[s.viewfinder, { height, backgroundColor: c.surface, borderColor: c.bg300 }]}>
         {photoUri ? (
-          <Image source={{ uri: photoUri }} resizeMode="contain" accessibilityLabel="შერჩეული საკვების ფოტო" style={StyleSheet.absoluteFill} />
+          <Image source={{ uri: photoUri }} resizeMode="contain" accessibilityLabel={tx('შერჩეული საკვების ფოტო', 'Selected food photo')} style={StyleSheet.absoluteFill} />
         ) : (
           <View accessible={false} importantForAccessibility="no-hide-descendants" style={s.plateScene}>
             <View style={[s.outerPlate, { borderColor: c.bg300 }]}>
@@ -86,44 +87,44 @@ export function NutritionScanner({ photoUri, scanning, disabled, enabled, label 
         <View style={[s.finderLabel, { backgroundColor: photoUri ? '#111827' : c.bg100 }]}>
           {photoUri ? <Check size={13} color="#99F6E4" /> : <Focus size={13} color={c.text200} />}
           <Text style={[txt, { fontSize: 11, color: photoUri ? '#FFFFFF' : c.text200 }]}>
-            {scanning ? 'ფოტო მუშავდება' : photoUri ? 'ფოტო შერჩეულია' : label ? 'ცხრილი მკაფიოდ და სწორად მოაქციე კადრში' : 'თეფში სრულად მოაქციე კადრში'}
+            {scanning ? tx('ფოტო მუშავდება', 'Processing photo') : photoUri ? tx('ფოტო შერჩეულია', 'Photo selected') : label ? tx('ცხრილი მკაფიოდ და სწორად მოაქციე კადრში', 'Fit the panel in the frame, sharp and straight') : tx('თეფში სრულად მოაქციე კადრში', 'Fit the whole plate in the frame')}
           </Text>
         </View>
       </View>
 
       {scanning ? (
-        <View accessibilityLiveRegion="polite" accessibilityRole="progressbar" accessibilityLabel="მიმდინარეობს ფოტოს შეფასება" style={s.status}>
-          <Text style={[txt, s.statusTitle]}>Medi აფასებს შენს კერძს</Text>
-          <Text style={[txt, s.small, { color: c.text200 }]}>პორციის შესწორებას შედეგის მიღების შემდეგ შეძლებ.</Text>
+        <View accessibilityLiveRegion="polite" accessibilityRole="progressbar" accessibilityLabel={tx('მიმდინარეობს ფოტოს შეფასება', 'Estimating the photo')} style={s.status}>
+          <Text style={[txt, s.statusTitle]}>{tx('Medi აფასებს შენს კერძს', 'Medi is estimating your meal')}</Text>
+          <Text style={[txt, s.small, { color: c.text200 }]}>{tx('პორციის შესწორებას შედეგის მიღების შემდეგ შეძლებ.', 'You can adjust the portion once the result is ready.')}</Text>
         </View>
       ) : (
         <View style={s.actions}>
-          <Pressable testID="nutrition-camera" accessibilityRole="button" accessibilityLabel={photoUri ? 'ფოტოს თავიდან გადაღება' : 'კერძის გადაღება'} disabled={actionsDisabled} onPress={onCamera} style={[s.action, { backgroundColor: photoUri ? c.bg200 : '#0F766E', opacity: actionsDisabled ? 0.45 : 1 }]}>
+          <Pressable testID="nutrition-camera" accessibilityRole="button" accessibilityLabel={photoUri ? tx('ფოტოს თავიდან გადაღება', 'Retake photo') : tx('კერძის გადაღება', 'Photograph meal')} disabled={actionsDisabled} onPress={onCamera} style={[s.action, { backgroundColor: photoUri ? c.bg200 : '#0F766E', opacity: actionsDisabled ? 0.45 : 1 }]}>
             <Camera size={20} color={photoUri ? c.text100 : '#FFFFFF'} />
-            <Text style={[txt, s.actionText, { color: photoUri ? c.text100 : '#FFFFFF' }]}>{photoUri ? 'თავიდან' : 'გადაღება'}</Text>
+            <Text style={[txt, s.actionText, { color: photoUri ? c.text100 : '#FFFFFF' }]}>{photoUri ? tx('თავიდან', 'Retake') : tx('გადაღება', 'Take photo')}</Text>
           </Pressable>
-          <Pressable testID="nutrition-gallery" accessibilityRole="button" accessibilityLabel="ფოტოს არჩევა გალერეიდან" disabled={actionsDisabled} onPress={onGallery} style={[s.action, { borderWidth: 1, borderColor: c.bg300, backgroundColor: c.surface, opacity: actionsDisabled ? 0.45 : 1 }]}>
+          <Pressable testID="nutrition-gallery" accessibilityRole="button" accessibilityLabel={tx('ფოტოს არჩევა გალერეიდან', 'Choose a photo from gallery')} disabled={actionsDisabled} onPress={onGallery} style={[s.action, { borderWidth: 1, borderColor: c.bg300, backgroundColor: c.surface, opacity: actionsDisabled ? 0.45 : 1 }]}>
             <ImagePlus size={19} color={c.text100} />
-            <Text style={[txt, s.actionText]}>გალერეა</Text>
+            <Text style={[txt, s.actionText]}>{tx('გალერეა', 'Gallery')}</Text>
           </Pressable>
         </View>
       )}
 
       {!photoUri && enabled && (
         <View style={s.tips}>
-          <Sun size={16} color={c.primary100} /><Text style={[txt, s.small, { color: c.text200, flex: 1 }]}>{label ? 'ბრტყლად, ანარეკლის გარეშე — ციფრები ხელით აღარ დაგჭირდება.' : 'კარგი განათება და ზემოდან გადაღებული კადრი შეფასებას ეხმარება.'}</Text>
+          <Sun size={16} color={c.primary100} /><Text style={[txt, s.small, { color: c.text200, flex: 1 }]}>{label ? tx('ბრტყლად, ანარეკლის გარეშე — ციფრები ხელით აღარ დაგჭირდება.', "Flat, with no glare — you won't need to type the numbers.") : tx('კარგი განათება და ზემოდან გადაღებული კადრი შეფასებას ეხმარება.', 'Good light and a shot from above help the estimate.')}</Text>
         </View>
       )}
       {!photoUri && onMore && (
-        <Pressable accessibilityRole="button" accessibilityLabel="სხვა გზები: შტრიხკოდი, ეტიკეტი, ძებნა, აღწერა" onPress={onMore} style={[s.more, { backgroundColor: c.bg200 }]}>
-          <Text style={[txt, { fontSize: 13, fontFamily: 'NotoSansGeorgian_600SemiBold' }]}>შტრიხკოდი · ეტიკეტი · ძებნა · აღწერა</Text>
+        <Pressable accessibilityRole="button" accessibilityLabel={tx('სხვა გზები: შტრიხკოდი, ეტიკეტი, ძებნა, აღწერა', 'Other ways: barcode, label, search, describe')} onPress={onMore} style={[s.more, { backgroundColor: c.bg200 }]}>
+          <Text style={[txt, { fontSize: 13, fontFamily: 'NotoSansGeorgian_600SemiBold' }]}>{tx('შტრიხკოდი · ეტიკეტი · ძებნა · აღწერა', 'Barcode · Label · Search · Describe')}</Text>
         </Pressable>
       )}
-      {!enabled && <Text style={[txt, s.small, { color: c.text200 }]}>ფოტოს შეფასება დროებით მიუწვდომელია. კვება შეგიძლია ხელით დაამატო.</Text>}
+      {!enabled && <Text style={[txt, s.small, { color: c.text200 }]}>{tx('ფოტოს შეფასება დროებით მიუწვდომელია. კვება შეგიძლია ხელით დაამატო.', "Photo estimates aren't available right now. You can add the meal manually.")}</Text>}
       {photoUri && (
         <View style={s.tips}>
           <ShieldCheck size={17} color={c.primary100} />
-          <Text style={[txt, s.privacy, { color: c.text200 }]}>მხოლოდ ეს ფოტო და აღწერა გაზიარდება OpenRouter → Google Vertex AI-სთან. ფოტო მუდმივად არ ინახება.</Text>
+          <Text style={[txt, s.privacy, { color: c.text200 }]}>{tx('მხოლოდ ეს ფოტო და აღწერა გაზიარდება OpenRouter → Google Vertex AI-სთან. ფოტო მუდმივად არ ინახება.', 'Only this photo and description are shared with OpenRouter → Google Vertex AI. The photo is not stored permanently.')}</Text>
         </View>
       )}
     </View>
@@ -132,8 +133,8 @@ export function NutritionScanner({ photoUri, scanning, disabled, enabled, label 
 
 export function NutritionScanSteps({ stage }: { stage: 0 | 1 | 2 }) {
   const c = useThemeColors();
-  return <View style={s.steps} accessibilityLabel={`ეტაპი ${stage + 1} სამიდან`}>
-    {['ფოტო', 'გადამოწმება', 'შენახვა'].map((label, index) => <View key={label} style={{ flex: 1, gap: 7 }}>
+  return <View style={s.steps} accessibilityLabel={tx(`ეტაპი ${stage + 1} სამიდან`, `Step ${stage + 1} of 3`)}>
+    {tx(['ფოტო', 'გადამოწმება', 'შენახვა'], ['Photo', 'Review', 'Save']).map((label, index) => <View key={label} style={{ flex: 1, gap: 7 }}>
       <View style={{ height: 2, borderRadius: 2, backgroundColor: index <= stage ? c.primary100 : c.bg300 }} />
       <Text style={{ fontFamily: 'NotoSansGeorgian_400Regular', color: index === stage ? c.primary100 : c.text200, fontSize: 11 }}>{String(index + 1).padStart(2, '0')}  {label}</Text>
     </View>)}

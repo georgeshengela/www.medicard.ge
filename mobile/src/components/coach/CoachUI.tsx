@@ -13,6 +13,7 @@ import { localAccountId } from '@/lib/localAccount';
 import { dayStatusColor, type DayStatus } from '@/lib/coach';
 import { HUB, hubInk, hubText, hubTint, type HubInk } from '@/theme/hub';
 import { useIsDark, useThemeColors } from '@/theme/colors';
+import { tx } from '@/i18n/locale';
 
 /** Filled CTA colour on dark (AGENTS.md: FIGMA_AUTH_DARK.primaryBg). */
 export const CTA = '#0D9488';
@@ -29,7 +30,7 @@ export function CoachHeader({ title, subtitle, right, onBack, fallback = '/(tabs
   return (
     <View style={{ paddingTop: insets.top, backgroundColor: c.bg100 }}>
       <View style={s.headerRow}>
-        <Pressable accessibilityRole="button" accessibilityLabel="უკან" hitSlop={12} onPress={back} style={[s.backBtn, { backgroundColor: c.surface }]}>
+        <Pressable accessibilityRole="button" accessibilityLabel={tx('უკან', 'Back')} hitSlop={12} onPress={back} style={[s.backBtn, { backgroundColor: c.surface }]}>
           <ArrowLeft size={20} color={c.text100} strokeWidth={2.2} />
         </Pressable>
         <View style={{ flex: 1, minWidth: 0 }}>
@@ -170,7 +171,7 @@ export function DayStrip({ days, size = 10, labels = false }: { days: { date: st
   const dark = useIsDark();
   const c = useThemeColors();
   return (
-    <View style={{ flexDirection: 'row', gap: labels ? 6 : 4, alignItems: 'flex-end' }} accessibilityRole="image" accessibilityLabel={`კვების დაცვა: ${days.filter((d) => d.status === 'ON').length} დღე გეგმაში ${days.length}-დან`}>
+    <View style={{ flexDirection: 'row', gap: labels ? 6 : 4, alignItems: 'flex-end' }} accessibilityRole="image" accessibilityLabel={tx(`კვების დაცვა: ${days.filter((d) => d.status === 'ON').length} დღე გეგმაში ${days.length}-დან`, `Nutrition plan: ${days.filter((d) => d.status === 'ON').length} of ${days.length} days on plan`)}>
       {days.map((d) => (
         <View key={d.date} style={{ alignItems: 'center', gap: 4, flex: labels ? 1 : undefined }}>
           <View style={{ width: labels ? '100%' : size, height: labels ? 26 : size, borderRadius: labels ? 8 : size / 2, backgroundColor: dayStatusColor(d.status, dark), opacity: d.status === 'NONE' ? 0.7 : 1 }} />
@@ -202,7 +203,7 @@ export function ErrorBox({ message, onRetry }: { message: string; onRetry?: () =
   return (
     <View accessibilityRole="alert" style={[s.card, { backgroundColor: c.dangerBg, gap: 10, marginTop: 16 }]}>
       <Text style={[hubText.body, { color: c.danger }]}>{message}</Text>
-      {onRetry ? <Button label="ხელახლა ცდა" kind="secondary" onPress={onRetry} /> : null}
+      {onRetry ? <Button label={tx('ხელახლა ცდა', 'Try again')} kind="secondary" onPress={onRetry} /> : null}
     </View>
   );
 }

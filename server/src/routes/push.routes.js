@@ -67,8 +67,8 @@ pushRouter.delete(
 pushRouter.get(
   '/templates',
   requireAuth,
-  asyncHandler(async (_req, res) => {
-    res.json({ templates: await listPushTemplates() });
+  asyncHandler(async (req, res) => {
+    res.json({ templates: await listPushTemplates(req.lang) });
   }),
 );
 

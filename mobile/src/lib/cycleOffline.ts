@@ -1,5 +1,6 @@
 import { Platform } from 'react-native';
 import * as SecureStore from 'expo-secure-store';
+import { tx } from '../i18n/locale.js';
 import { api, ApiError, type CycleBundle } from '@/lib/api';
 import {
   deletePreference,
@@ -711,7 +712,7 @@ export function formatCycleCachedAtKa(cachedAt: string | null, todayYmd: string)
   const yest = new Date(`${todayYmd}T12:00:00`);
   yest.setDate(yest.getDate() - 1);
   const ymd = `${yest.getFullYear()}-${String(yest.getMonth() + 1).padStart(2, '0')}-${String(yest.getDate()).padStart(2, '0')}`;
-  if (day === ymd) return 'გუშინ';
+  if (day === ymd) return tx('გუშინ', 'Yesterday');
   return day;
 }
 

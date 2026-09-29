@@ -19,6 +19,7 @@ import { localAccountId } from '@/lib/localAccount';
 import { todayIsoLocal } from '@/lib/visitReminders';
 import { useAuth } from '@/store/AuthContext';
 import { useThemeColors } from '@/theme/colors';
+import { tx } from '@/i18n/locale';
 
 function digitsToIso(digits: string): string | null {
   if (!digits) return null;
@@ -151,7 +152,7 @@ export default function PetCareCompleteScreen() {
       <PetPageScroll>
         <PetErrorText message={error} />
         <PetErrorText message={stale} />
-        {stale ? <Button variant="secondary" label="განახლებული გეგმის ნახვა" onPress={() => router.replace(`/pets/${params.id}/care`)} /> : !schedule && error ? <Button label="ხელახლა ცდა" onPress={() => void load()} /> : null}
+        {stale ? <Button variant="secondary" label={tx('განახლებული გეგმის ნახვა', 'View updated plan')} onPress={() => router.replace(`/pets/${params.id}/care`)} /> : !schedule && error ? <Button label={tx('ხელახლა ცდა', 'Try again')} onPress={() => void load()} /> : null}
         <Card>
           {schedule ? (
             <View className="mb-3 flex-row items-center gap-3">

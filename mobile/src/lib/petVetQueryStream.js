@@ -1,6 +1,7 @@
 import Constants from 'expo-constants';
 import { Platform } from 'react-native';
 import { ka } from '@/i18n/ka';
+import { appLang, tx } from '@/i18n/locale';
 import { API_BASE_URL, ApiError, ensureAiSharingConsentForRequest } from '@/lib/api';
 import { markReachable } from '@/lib/reachability';
 import { consumeSseBuffer } from '@/lib/sseParse';
@@ -9,9 +10,9 @@ import { getToken } from '@/lib/storage';
 function timezoneHeaders() {
   try {
     const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
-    return tz ? { 'X-Client-Timezone': tz } : {};
+    return tz ? { 'X-Medicard-Lang': appLang(), 'X-Client-Timezone': tz } : { 'X-Medicard-Lang': appLang() };
   } catch {
-    return {};
+    return { 'X-Medicard-Lang': appLang() };
   }
 }
 
@@ -61,7 +62,7 @@ export async function streamPetVetQuery(petId, body, { onDelta, signal } = {}) {
   try {
     const token = await getToken();
     await ensureAiSharingConsentForRequest(`/api/pets/${petId}/chat/query`, 'POST', token);
-    if (signal?.aborted) throw new ApiError('მოთხოვნა გაუქმდა.', 499);
+    if (signal?.aborted) throw new ApiError(tx('მოთხოვნა გაუქმდა.', 'Request cancelled.'), 499);
     const { fetch: expoFetch } = await import('expo/fetch');
     const response = await expoFetch(`${API_BASE_URL}/api/pets/${petId}/chat/query`, {
       method: 'POST',

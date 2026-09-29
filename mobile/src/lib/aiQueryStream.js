@@ -1,6 +1,7 @@
 import Constants from 'expo-constants';
 import { Platform } from 'react-native';
 import { ka } from '@/i18n/ka';
+import { appLang, tx } from '@/i18n/locale';
 import { API_BASE_URL, ApiError, ensureAiSharingConsentForRequest } from '@/lib/api';
 import { markReachable } from '@/lib/reachability';
 import { consumeSseBuffer } from '@/lib/sseParse';
@@ -9,9 +10,9 @@ import { getToken } from '@/lib/storage';
 function timezoneHeaders() {
   try {
     const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
-    return tz ? { 'X-Client-Timezone': tz } : {};
+    return tz ? { 'X-Medicard-Lang': appLang(), 'X-Client-Timezone': tz } : { 'X-Medicard-Lang': appLang() };
   } catch {
-    return {};
+    return { 'X-Medicard-Lang': appLang() };
   }
 }
 
@@ -63,7 +64,7 @@ export async function streamAiQuery(body, { onDelta, signal } = {}) {
   try {
     const token = await getToken();
     await ensureAiSharingConsentForRequest('/api/ai/query', 'POST', token);
-    if (signal?.aborted) throw new ApiError('მოთხოვნა გაუქმდა.', 499);
+    if (signal?.aborted) throw new ApiError(tx('მოთხოვნა გაუქმდა.', 'Request cancelled.'), 499);
     // Start the deadline after consent; give the user time to read the disclosure.
     timeout = setTimeout(() => { timedOut = true; controller.abort(); }, 180_000);
     const { fetch: expoFetch } = await import('expo/fetch');
@@ -119,9 +120,9 @@ export async function streamAiQuery(body, { onDelta, signal } = {}) {
     }
     return done;
   } catch (error) {
-    if (timedOut) throw new ApiError('პასუხის მოლოდინის დრო ამოიწურა. გთხოვ, სცადე ხელახლა.', 408);
+    if (timedOut) throw new ApiError(tx('პასუხის მოლოდინის დრო ამოიწურა. გთხოვ, სცადე ხელახლა.', 'The answer took too long. Please try again.'), 408);
     if (error instanceof ApiError) throw error;
-    if (error?.name === 'AbortError') throw new ApiError('მოთხოვნა გაუქმდა.', 499);
+    if (error?.name === 'AbortError') throw new ApiError(tx('მოთხოვნა გაუქმდა.', 'Request cancelled.'), 499);
     throw new ApiError(ka.common.networkError, 0);
   } finally {
     clearTimeout(timeout);

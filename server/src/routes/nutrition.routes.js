@@ -19,6 +19,7 @@ import { openRouterClient } from "../lib/aiEngine.js";
 import { writeAdminAudit } from "../lib/adminAudit.js";
 import { todayInTimeZone } from "../lib/cycle.js";
 import { clientTimezoneFromReq } from "../lib/cycleCivilDate.js";
+import { nutritionEnglish } from "../lib/nutritionMessages.js";
 import {
   civilDate,
   mealInput,
@@ -66,7 +67,8 @@ const estimateLimiter = rateLimit({
         error: "ძალიან ბევრი შეფასებაა მოთხოვნილი. ცოტა ხანში სცადე ხელახლა.",
       }),
 });
-r.use(requireAuth, noCache);
+// English requests: known Georgian copy (errors, reasons, labels, recipes, catalog foods) → English.
+r.use(requireAuth, noCache, nutritionEnglish);
 r.use(nutritionProgramRouter);
 r.use("/fasting", nutritionFastingRouter);
 r.use(nutritionPlusRouter);
@@ -164,7 +166,7 @@ async function runEstimate(req, request, photoBuffer) {
         messages: estimateMessages(request, bytes ? bytes.toString("base64") : null),
       },
       { timeout: 45000, maxRetries: 0 },
-    ));
+    ), req.lang);
     const estimate = parseEstimate(response.choices?.[0]?.message?.content || "");
     success = true;
     return { ...estimate, mode: request.mode, totals: totals(estimate.items), healthScore: healthScore(estimate.items) };

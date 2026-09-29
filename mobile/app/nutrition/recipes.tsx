@@ -13,6 +13,7 @@ import { APP_MODAL_OVERLAY, APP_MODAL_PROPS, Modal } from "@/components/ui/appMo
 import { NButton, NError, NLoading, NScreen } from "@/components/nutrition/ProgramUI";
 import { HubCard, HubSection } from "@/components/nutrition/NutritionUi";
 import { PortionSheet } from "@/components/nutrition/PortionSheet";
+import { tx } from '@/i18n/locale';
 
 export default function RecipesScreen() {
   const { user } = useAuth();
@@ -59,7 +60,7 @@ function Recipes() {
       void api.nutrition.foods.used([food.id]).catch(() => {});
       void syncMealsToHealth([meal]);
       void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
-      setMessage(`${food.name} ჩაიწერა · ${mealLabels[type]} · ${Math.round(item.calories)} კკალ`);
+      setMessage(tx(`${food.name} ჩაიწერა · ${mealLabels[type]} · ${Math.round(item.calories)} კკალ`, `${food.name} logged · ${mealLabels[type]} · ${Math.round(item.calories)} kcal`));
     } catch (e) {
       setError((e as Error).message);
     } finally {
@@ -77,7 +78,7 @@ function Recipes() {
   };
   const teal = hubInk("teal", dark);
   return (
-    <NScreen title="ჩემი რეცეპტები" subtitle="საკუთარი კერძები, ზუსტი პორციით" footer={<NButton label="ახალი რეცეპტი" onPress={() => router.push("/nutrition/recipe")} />}>
+    <NScreen title={tx("ჩემი რეცეპტები", "My recipes")} subtitle={tx("საკუთარი კერძები, ზუსტი პორციით", "Your own dishes, with exact portions")} footer={<NButton label={tx("ახალი რეცეპტი", "New recipe")} onPress={() => router.push("/nutrition/recipe")} />}>
       {!!error && <NError message={error} retry={() => void load()} />}
       {!!message && (
         <Text accessibilityLiveRegion="polite" style={[hubText.body, { color: c.success, textAlign: "center" }]}>
@@ -86,49 +87,49 @@ function Recipes() {
       )}
       {!recipes && !error && <NLoading />}
       {recipes && recipes.length === 0 && (
-        <HubSection first title="როგორ მუშაობს">
+        <HubSection first title={tx("როგორ მუშაობს", "How it works")}>
           <HubCard tone="spotlight">
             <ChefHat size={30} color="#8AD5C7" />
-            <Text style={[hubText.cardTitle, { color: "#FFFFFF", fontSize: 17 }]}>დედის ლობიო, შენი სალათი, კვირის სუპი</Text>
-            <Text style={[hubText.body, { color: "#B6D9D3" }]}>ჩაწერე ინგრედიენტები ერთხელ, მიუთითე რამდენ პორციას გამოდის — და შემდეგ ყოველ ჯერზე ერთი შეხებით ჩაიწერს ზუსტ კალორიას და მაკროებს.</Text>
+            <Text style={[hubText.cardTitle, { color: "#FFFFFF", fontSize: 17 }]}>{tx("დედის ლობიო, შენი სალათი, კვირის სუპი", "Mom's lobio, your salad, Sunday soup")}</Text>
+            <Text style={[hubText.body, { color: "#B6D9D3" }]}>{tx("ჩაწერე ინგრედიენტები ერთხელ, მიუთითე რამდენ პორციას გამოდის — და შემდეგ ყოველ ჯერზე ერთი შეხებით ჩაიწერს ზუსტ კალორიას და მაკროებს.", "Enter the ingredients once and how many servings it makes — then every time, one tap logs the exact calories and macros.")}</Text>
             <Pressable accessibilityRole="button" onPress={() => router.push("/nutrition/recipe")} style={[s.cta, { backgroundColor: "#0D9488" }]}>
               <Plus size={17} color="#FFFFFF" />
-              <Text style={[hubText.link, { color: "#FFFFFF" }]}>პირველი რეცეპტის შექმნა</Text>
+              <Text style={[hubText.link, { color: "#FFFFFF" }]}>{tx("პირველი რეცეპტის შექმნა", "Create your first recipe")}</Text>
             </Pressable>
           </HubCard>
         </HubSection>
       )}
       {recipes && recipes.length > 0 && (
-        <HubSection first title={`${recipes.length} რეცეპტი`}>
+        <HubSection first title={tx(`${recipes.length} რეცეპტი`, `${recipes.length} ${recipes.length === 1 ? "recipe" : "recipes"}`)}>
           <HubCard style={{ gap: 0, paddingVertical: 6 }}>
             {recipes.map((r, i) => {
               const serving = r.serving?.grams || 100;
               const kcal = Math.round((r.per100.calories * serving) / 100);
               return (
                 <View key={r.id} style={[s.row, i > 0 && { borderTopWidth: 1, borderTopColor: c.bg300 }]}>
-                  <Pressable accessibilityRole="button" accessibilityLabel={`${r.name}, რედაქტირება`} onPress={() => router.push({ pathname: "/nutrition/recipe", params: { id: r.id } })} style={s.main}>
+                  <Pressable accessibilityRole="button" accessibilityLabel={tx(`${r.name}, რედაქტირება`, `${r.name}, edit`)} onPress={() => router.push({ pathname: "/nutrition/recipe", params: { id: r.id } })} style={s.main}>
                     <View style={[s.tile, { backgroundColor: hubTint(teal, dark) }]}>
                       <ChefHat size={19} color={teal} />
                     </View>
                     <View style={{ flex: 1, minWidth: 0 }}>
                       <Text numberOfLines={1} style={[hubText.cardTitle, { color: c.text100 }]}>{r.name}</Text>
                       <Text numberOfLines={1} style={[hubText.small, { color: c.text300 }]}>
-                        {kcal} კკალ / პორცია · {r.recipe?.servings || 1} პორცია · ც {Math.round((r.per100.protein * serving) / 100)} გ
+                        {tx(`${kcal} კკალ / პორცია · ${r.recipe?.servings || 1} პორცია · ც ${Math.round((r.per100.protein * serving) / 100)} გ`, `${kcal} kcal / serving · ${r.recipe?.servings || 1} ${(r.recipe?.servings || 1) === 1 ? "serving" : "servings"} · P ${Math.round((r.per100.protein * serving) / 100)} g`)}
                       </Text>
                     </View>
                     <ChevronRight size={17} color={c.text300} />
                   </Pressable>
-                  <Pressable accessibilityRole="button" accessibilityLabel={`${r.name} — პორციის ჩაწერა`} disabled={busy} onPress={() => setPortion(r)} style={[s.log, { backgroundColor: hubTint(teal, dark) }]}>
+                  <Pressable accessibilityRole="button" accessibilityLabel={tx(`${r.name} — პორციის ჩაწერა`, `${r.name} — log a serving`)} disabled={busy} onPress={() => setPortion(r)} style={[s.log, { backgroundColor: hubTint(teal, dark) }]}>
                     <Plus size={18} color={teal} />
                   </Pressable>
-                  <Pressable accessibilityRole="button" accessibilityLabel={`${r.name} — წაშლა`} onPress={() => setRemoving(r)} style={s.icon}>
+                  <Pressable accessibilityRole="button" accessibilityLabel={tx(`${r.name} — წაშლა`, `${r.name} — delete`)} onPress={() => setRemoving(r)} style={s.icon}>
                     <Trash2 size={17} color={c.text300} />
                   </Pressable>
                 </View>
               );
             })}
           </HubCard>
-          <Text style={[hubText.caption, { color: c.text300 }]}>„+“ ერთ პორციას დღევანდელ დღიურში ჩაწერს. რეცეპტები ძებნასა და „შენახულში“ც ჩანს.</Text>
+          <Text style={[hubText.caption, { color: c.text300 }]}>{tx("„+“ ერთ პორციას დღევანდელ დღიურში ჩაწერს. რეცეპტები ძებნასა და „შენახულში“ც ჩანს.", "“+” logs one serving in today's diary. Recipes also show up in search and “Saved”.")}</Text>
         </HubSection>
       )}
       <PortionSheet food={portion} onClose={() => setPortion(null)} onAdd={(item, food) => void logServing(item, food)} />
@@ -136,10 +137,10 @@ function Recipes() {
         <View style={{ flex: 1, justifyContent: "center", padding: 24 }}>
           <View style={[StyleSheet.absoluteFill, { backgroundColor: APP_MODAL_OVERLAY }]} />
           <View accessibilityViewIsModal style={{ backgroundColor: c.surface, borderRadius: 24, padding: 24, gap: 14 }}>
-            <Text style={[hubText.cardTitle, { color: c.text100, fontSize: 18 }]}>„{removing?.name}“ წაიშალოს?</Text>
-            <Text style={[hubText.body, { color: c.text200 }]}>დღიურში უკვე ჩაწერილი კვებები არ შეიცვლება.</Text>
-            <NButton secondary label="გაუქმება" onPress={() => setRemoving(null)} />
-            <NButton label="წაშლა" onPress={() => removing && void remove(removing)} />
+            <Text style={[hubText.cardTitle, { color: c.text100, fontSize: 18 }]}>{tx(`„${removing?.name}“ წაიშალოს?`, `Delete “${removing?.name}”?`)}</Text>
+            <Text style={[hubText.body, { color: c.text200 }]}>{tx("დღიურში უკვე ჩაწერილი კვებები არ შეიცვლება.", "Meals already logged in your diary won't change.")}</Text>
+            <NButton secondary label={tx("გაუქმება", "Cancel")} onPress={() => setRemoving(null)} />
+            <NButton label={tx("წაშლა", "Delete")} onPress={() => removing && void remove(removing)} />
           </View>
         </View>
       </Modal>

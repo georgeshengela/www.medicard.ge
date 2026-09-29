@@ -1,3 +1,4 @@
+import { tx } from '@/i18n/locale';
 import React, { useCallback, useRef, useState } from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 import { useFocusEffect, useRouter } from 'expo-router';
@@ -9,7 +10,7 @@ import { useFigmaSymptoms } from '@/constants/figmaSymptomsLayout';
 import { ka } from '@/i18n/ka';
 import { localAccountId } from '@/lib/localAccount';
 import { useAuth } from '@/store/AuthContext';
-import { bodyPartById, DURATION_OPTIONS, organById } from '@/constants/symptomCatalog';
+import { bodyPartById, durationIdFromLabel, organById } from '@/constants/symptomCatalog';
 import { api } from '@/lib/api';
 import { getSymptomSession, loadSymptomHistory, type SavedSymptomSession } from '@/lib/symptomResultStorage';
 import { resetSymptomChecker, updateSymptomChecker } from '@/lib/symptomCheckerStore';
@@ -63,7 +64,7 @@ export default function SymptomHistoryScreen() {
         session = {
           recordId, createdAt: new Date().toISOString(), symptoms: input?.symptoms ?? [],
           primarySymptom: input?.primarySymptom ?? null,
-          durationId: DURATION_OPTIONS.find(d => d.labelKa === input?.durationKa)?.id ?? null,
+          durationId: durationIdFromLabel(input?.durationKa),
           painLevel: input?.painLevel ?? null, bodyPartKa: input?.bodyPartKa, organKa: input?.organKa,
           result: remote.result,
           draft: { gender: user?.gender === 'FEMALE' ? 'FEMALE' : 'MALE', method: input?.method ?? 'manual', mode: input?.mode === 'organ' ? 'organ' : 'muscle',
@@ -82,7 +83,7 @@ export default function SymptomHistoryScreen() {
       });
       router.push('/symptoms/results' as never);
     } catch {
-      if (current()) setError('შედეგი ვერ ჩაიტვირთა. სცადე ხელახლა.');
+      if (current()) setError(tx('შედეგი ვერ ჩაიტვირთა. სცადე ხელახლა.', 'Couldn’t load the result. Please try again.'));
     } finally { if (ticket === generation.current) opening.current = false; }
   };
 

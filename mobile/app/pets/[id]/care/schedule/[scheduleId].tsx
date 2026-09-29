@@ -15,6 +15,7 @@ import { reconcilePetCareReminders } from '@/lib/petCareReminders';
 import { completeLabel, kindLabel, newPetsRequestId, petsCareErrorMessage, sourceLabel } from '@/lib/petsCare';
 import { todayIsoLocal } from '@/lib/visitReminders';
 import { useThemeColors } from '@/theme/colors';
+import { tx } from '@/i18n/locale';
 
 export default function PetScheduleDetailScreen() {
   const colors = useThemeColors();
@@ -65,7 +66,7 @@ export default function PetScheduleDetailScreen() {
   };
 
   if (!schedule) {
-    return error ? <PetPageScroll><PetIntro title="გეგმა ვერ ჩაიტვირთა" body="ხელახლა სცადე, რომ შენახული დეტალები ნახო." /><PetErrorText message={error} /><Button label="ხელახლა ცდა" onPress={() => void load().catch(caught => setError(petsCareErrorMessage(caught, { ...ka.pets, offline: ka.common.networkError })))} /></PetPageScroll> : <PetLoading />;
+    return error ? <PetPageScroll><PetIntro title={tx('გეგმა ვერ ჩაიტვირთა', 'The plan couldn’t load')} body={tx('ხელახლა სცადე, რომ შენახული დეტალები ნახო.', 'Try again to see the saved details.')} /><PetErrorText message={error} /><Button label={tx('ხელახლა ცდა', 'Try again')} onPress={() => void load().catch(caught => setError(petsCareErrorMessage(caught, { ...ka.pets, offline: ka.common.networkError })))} /></PetPageScroll> : <PetLoading />;
   }
 
   return (

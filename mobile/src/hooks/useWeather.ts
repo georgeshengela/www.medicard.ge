@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { appLang } from '@/i18n/locale';
 import { useAuth } from '@/store/AuthContext';
 import { locationFromProfile } from '@/lib/userLocation';
 import { locationChangedMeaningfully } from '@/lib/weather/cache';
@@ -38,7 +39,7 @@ function applySnapshot(
 ): WeatherState {
   return {
     snapshot,
-    recommendation: getWeatherWellnessRecommendation(snapshot, ctx ?? { locale: 'ka' }),
+    recommendation: getWeatherWellnessRecommendation(snapshot, ctx ?? { locale: appLang() }),
     loading: extra.loading ?? false,
     unavailable: false,
     fromCache: extra.fromCache,
@@ -69,7 +70,7 @@ export function useWeather() {
           ...cached.snapshot,
           location: { ...cached.snapshot.location, city },
         };
-        return applySnapshot(snapshot, { loading: true, fromCache: true, stale: true }, { locale: 'ka', userKey: user?.id ?? null });
+        return applySnapshot(snapshot, { loading: true, fromCache: true, stale: true }, { locale: appLang(), userKey: user?.id ?? null });
       });
     });
     return () => {
@@ -96,7 +97,7 @@ export function useWeather() {
           loadWeatherWellnessContext({
             profile: profileRef.current,
             userKey: user?.id ?? null,
-            locale: 'ka',
+            locale: appLang(),
           }),
         ]);
         if (ticket !== seq.current) return false;

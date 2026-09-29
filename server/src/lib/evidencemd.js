@@ -1,7 +1,8 @@
 import { consentedAiFetch } from './consentedAiFetch.js';
 import OpenAI from 'openai';
 import { env } from '../config/env.js';
-import { DISCLAIMER_KA } from './prompts.js';
+import { DISCLAIMER_KA, DISCLAIMER_EN } from './prompts.js';
+import { currentAiLanguage } from './aiConsent.js';
 import { buildClinicalMessages } from './clinicalMessages.js';
 
 /**
@@ -25,11 +26,13 @@ const client = new OpenAI({
 });
 
 export class AiEngineError extends Error {
-  constructor(message, { status = 502, cause } = {}) {
+  /** `messageEn`: English copy for English requests (the error handler picks it; `message` stays Georgian). */
+  constructor(message, { status = 502, cause, messageEn } = {}) {
     super(message);
     this.name = 'AiEngineError';
     this.status = status;
     this.cause = cause;
+    if (messageEn) this.messageEn = messageEn;
   }
 }
 
@@ -84,7 +87,7 @@ export async function askEvidenceMd({
         let modelOut = env.EVIDENCEMD_MODEL;
         for await (const chunk of stream) {
           if (signal?.aborted) {
-            throw new AiEngineError('მოთხოვნა გაუქმდა.', { status: 499 });
+            throw new AiEngineError('მოთხოვნა გაუქმდა.', { status: 499, messageEn: 'The request was cancelled.' });
           }
           if (chunk?.model) modelOut = chunk.model;
           if (chunk?.usage) usage = chunk.usage;
@@ -95,7 +98,7 @@ export async function askEvidenceMd({
           onDelta(piece);
         }
         const trimmed = answer.trim();
-        if (!trimmed) throw new AiEngineError('EvidenceMD-მა ცარიელი პასუხი დააბრუნა.');
+        if (!trimmed) throw new AiEngineError('EvidenceMD-მა ცარიელი პასუხი დააბრუნა.', { messageEn: 'EvidenceMD returned an empty answer.' });
         const content = skipDisclaimer ? trimmed : ensureDisclaimer(trimmed);
         if (content.length > trimmed.length) onDelta(content.slice(trimmed.length));
         return { content, model: modelOut, usage };
@@ -117,7 +120,7 @@ export async function askEvidenceMd({
 
     const answer = completion.choices?.[0]?.message?.content?.trim();
     if (!answer) {
-      throw new AiEngineError('EvidenceMD-მა ცარიელი პასუხი დააბრუნა.');
+      throw new AiEngineError('EvidenceMD-მა ცარიელი პასუხი დააბრუნა.', { messageEn: 'EvidenceMD returned an empty answer.' });
     }
 
     const content = skipDisclaimer ? answer : ensureDisclaimer(answer);
@@ -136,6 +139,7 @@ export async function askEvidenceMd({
     if (status === 401 || status === 403) {
       throw new AiEngineError('EvidenceMD-ის ავტორიზაცია ვერ მოხერხდა. შეამოწმეთ API გასაღები.', {
         status: 502,
+        messageEn: 'The medical analysis service is not available right now. Please try again later.',
         cause: error,
       });
     }
@@ -144,23 +148,27 @@ export async function askEvidenceMd({
       console.error('[medicard] EvidenceMD credits exhausted:', error?.error?.message ?? error?.message);
       throw new AiEngineError(
         'სამედიცინო ანალიზის სერვისი დროებით მიუწვდომელია. ვმუშაობთ აღდგენაზე — სცადე მოგვიანებით.',
-        { status: 503, cause: error },
+        { status: 503, cause: error, messageEn: 'The medical analysis service is temporarily unavailable. We are working on it — please try again later.' },
       );
     }
     if (status === 429) {
       throw new AiEngineError('EvidenceMD დროებით გადატვირთულია. სცადე ერთი წუთის შემდეგ.', {
         status: 503,
+        messageEn: 'The medical analysis service is busy right now. Please try again in a minute.',
         cause: error,
       });
     }
     throw new AiEngineError('სამედიცინო ანალიზის სერვისთან დაკავშირება ვერ მოხერხდა.', {
       status: 502,
+      messageEn: 'We could not reach the medical analysis service.',
       cause: error,
     });
   }
 }
 
 /** The disclaimer is a product requirement, so we enforce it rather than trusting the model. */
-export function ensureDisclaimer(text) {
-  return text.includes('არ არის საბოლოო დიაგნოზი') ? text : `${text}\n\n---\n⚠️ ${DISCLAIMER_KA}`;
+export function ensureDisclaimer(text, lang = currentAiLanguage()) {
+  if (text.includes('არ არის საბოლოო დიაგნოზი')) return text;
+  if (lang === 'en') return /not a final diagnosis/i.test(text) ? text : `${text}\n\n---\n⚠️ ${DISCLAIMER_EN}`;
+  return `${text}\n\n---\n⚠️ ${DISCLAIMER_KA}`;
 }

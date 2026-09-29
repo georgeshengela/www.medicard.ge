@@ -10,6 +10,7 @@ import { useThemeColors } from '@/theme/colors';
 import { ApiError, api } from '@/lib/api';
 import { authErrorMessage } from '@/lib/authErrorMessage';
 import { useAuth } from '@/store/AuthContext';
+import { tx } from '@/i18n/locale';
 
 /**
  * Georgian phone sign-in. The backend currently returns a fixed development code —
@@ -114,7 +115,7 @@ export default function PhoneAuth() {
               setError(null);
             }}
             error={error}
-            hint={devCode ? `სატესტო კოდი: ${devCode}` : undefined}
+            hint={devCode ? tx(`სატესტო კოდი: ${devCode}`, `Test code: ${devCode}`) : undefined}
             keyboardType="number-pad"
             autoComplete="sms-otp"
             maxLength={4}

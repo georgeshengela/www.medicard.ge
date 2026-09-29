@@ -7,9 +7,11 @@
  */
 
 export const DISCLAIMER_KA = 'ეს არ არის საბოლოო დიაგნოზი — მიმართე ექიმს.';
+export const DISCLAIMER_EN = 'This is not a final diagnosis — please see a doctor.';
 
 /** Pet assistant only. Never reuse the human physician disclaimer. */
 export const VET_DISCLAIMER_KA = 'ეს არ არის ვეტერინარული დიაგნოზი — საჭიროების შემთხვევაში მიმართე ვეტერინარს.';
+export const VET_DISCLAIMER_EN = 'This is not a veterinary diagnosis — see a vet when needed.';
 
 /** Bump when system prompts change — tracked on every AiInteraction for A/B analysis. */
 export const PROMPT_VERSION = '1.8.1';
@@ -113,6 +115,7 @@ export function sanitizeDoctorReply(text) {
   if (!text) return text;
   let s = String(text);
   s = s.replace(/\n##\s*წყაროებ[^\n]*\n[\s\S]*$/iu, '');
+  s = s.replace(/\n##\s*(?:Sources|References)\b[^\n]*\n[\s\S]*$/iu, '');
   s = s.replace(/\[([^\]]*)\]\([^)]+\)/g, (_, label) => {
     const t = label.trim();
     if (/^\d{1,3}$/.test(t)) return '';
@@ -129,6 +132,7 @@ export function stripDoctorDisclaimer(text) {
   return String(text || '')
     .replace(/\n*-{2,}\s*\n*⚠️?\s*ეს არ არის საბოლოო დიაგნოზი[^\n]*/gu, '')
     .replace(/\n*⚠️?\s*ეს არ არის საბოლოო დიაგნოზი[^\n]*/gu, '')
+    .replace(/\n*-{2,}\s*\n*⚠️?\s*This is not a final diagnosis[^\n]*/gu, '')
     .trim();
 }
 
@@ -626,7 +630,7 @@ plainly and stop.`,
  * Wraps the structured vision output in a Georgian-language hand-off message so that
  * EvidenceMD receives an unambiguous instruction alongside the machine-generated notes.
  */
-export function buildVisionHandoff({ kind, visionNotes, patientContext }) {
+export function buildVisionHandoff({ kind, visionNotes, patientContext, lang = 'ka' }) {
   const kindLabels = {
     LAB: 'ლაბორატორიული კვლევის ამონაწერი',
     IMAGING: 'სამედიცინო გამოსახულების ვიზუალური აღწერა',
@@ -660,7 +664,9 @@ export function buildVisionHandoff({ kind, visionNotes, patientContext }) {
       : '',
     imagingLock,
     '',
-    'გააანალიზე ეს მასალა და მოამზადე დასკვნა ქართულ ენაზე, მოთხოვნილი სტრუქტურის ზუსტი დაცვით.',
+    lang === 'en'
+      ? 'Analyze this material and write the conclusion in English, following the requested structure exactly.'
+      : 'გააანალიზე ეს მასალა და მოამზადე დასკვნა ქართულ ენაზე, მოთხოვნილი სტრუქტურის ზუსტი დაცვით.',
   ]
     .filter((line) => line !== '')
     .join('\n');

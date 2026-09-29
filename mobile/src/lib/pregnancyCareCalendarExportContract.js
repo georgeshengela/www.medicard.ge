@@ -15,11 +15,12 @@ import {
   isTimedPlanInThePast,
   resolvePlannedTime,
 } from './pregnancyCareAppointmentTimeContract.js';
+import { tx } from '../i18n/locale.js';
 
 export const PREGNANCY_CARE_CALENDAR_PREF_BASE = 'medicard.pregnancy.careCalendar.v1';
 export const PREGNANCY_CARE_CALENDAR_STORE_VERSION = 1;
 
-export const CALENDAR_GENERIC_TITLE = 'Medicard — დაგეგმილი ვიზიტი';
+export const CALENDAR_GENERIC_TITLE = tx('Medicard — დაგეგმილი ვიზიტი', 'Medicard — planned visit');
 export const CALENDAR_EVENT_NOTES = 'Created from Medicard care planner.';
 
 export const CALENDAR_TITLE_MODE = Object.freeze({
@@ -132,7 +133,7 @@ export function calendarEventTitle({ titleMode, itemTitle } = {}) {
 }
 
 export function genericTitleIsPrivacySafe(title = CALENDAR_GENERIC_TITLE) {
-  return !/(ორსულ|ანატომ|სკან|სკრინინგ|GBS|გენეტიკ|ულტრაბგერ)/i.test(title);
+  return !/(ორსულ|ანატომ|სკან|სკრინინგ|GBS|გენეტიკ|ულტრაბგერ|pregnan|anatom|scan|screening|genetic|ultrasound)/i.test(title);
 }
 
 export function calendarEventNotes({ plannerNote, sources, pregnancyWeek, sourceUrls } = {}) {

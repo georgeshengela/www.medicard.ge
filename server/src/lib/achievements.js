@@ -39,9 +39,10 @@ async function withTx(options, work) {
   return db.$transaction((tx) => work(tx));
 }
 
-function httpError(message, status = 400) {
+function httpError(message, status = 400, messageEn) {
   const error = new Error(message);
   error.status = status;
+  if (messageEn) error.messageEn = messageEn;
   return error;
 }
 
@@ -414,14 +415,14 @@ export async function claimAchievement(userId, achievementId, options = {}) {
   const result = await withTx(options, async (tx) => {
     const definition = await tx.achievementDefinition.findUnique({ where: { id: achievementId } });
     if (!definition || !definition.isActive) {
-      throw httpError('მიღწევა ვერ მოიძებნა.', 404);
+      throw httpError('მიღწევა ვერ მოიძებნა.', 404, 'Achievement not found.');
     }
     assertAchievementEconomy(definition);
 
     const rows = await tx.userAchievement.findMany({ where: { userId, achievementId: definition.id }, take: 1 });
     const unlock = rows[0];
     if (!unlock) {
-      throw httpError('მიღწევა ჯერ არ არის გახსნილი.', 409);
+      throw httpError('მიღწევა ჯერ არ არის გახსნილი.', 409, 'This achievement is not unlocked yet.');
     }
 
     const before = await rewardBalance(tx, userId);

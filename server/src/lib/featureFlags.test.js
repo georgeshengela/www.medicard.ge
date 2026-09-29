@@ -73,6 +73,8 @@ describe('module hierarchy', () => {
     assert.equal(flags.cycle, true);
     const messages = await publicFeatureMessages(db);
     assert.deepEqual(Object.keys(messages).sort(), ['mediVet', 'pets']);
+    assert.equal(await featureDisabledMessage('mediVet', db, 'en'), 'Pets is paused for a moment. Your data is saved.');
+    assert.equal((await publicFeatureMessages(db, 'en')).pets, 'Pets is paused for a moment. Your data is saved.');
   });
 
   it('every parent is a real module and every key is unique', () => {

@@ -15,6 +15,7 @@ import { getNotificationPermissionGranted, requestNotificationPermission, syncNu
 import { localAccountId } from "@/lib/localAccount";
 import { MedicalSourcesLink } from "@/components/health/MedicalSourcesLink";
 import { useAuth } from "@/store/AuthContext";
+import { tx } from "@/i18n/locale";
 import { useThemeColors } from "@/theme/colors";
 import { NScreen, NText, NCard, NButton, NError, NLoading } from "@/components/nutrition/ProgramUI";
 
@@ -74,7 +75,7 @@ function Settings() {
       const owner = localAccountId();
       const saved = await api.nutrition.preferences.save(next);
       const count = await syncNutritionReminders(saved.preferences.reminders, owner);
-      setMessage(saved.preferences.reminders.enabled ? (count ? `შენახულია · ${count} შეხსენება დაიგეგმა` : "შენახულია · შეხსენებას ნებართვა სჭირდება") : "შენახულია");
+      setMessage(saved.preferences.reminders.enabled ? (count ? tx(`შენახულია · ${count} შეხსენება დაიგეგმა`, `Saved · ${count} ${count === 1 ? "reminder" : "reminders"} scheduled`) : tx("შენახულია · შეხსენებას ნებართვა სჭირდება", "Saved · reminders need permission")) : tx("შენახულია", "Saved"));
     } catch (e) {
       setError((e as Error).message);
     } finally {
@@ -87,7 +88,7 @@ function Settings() {
     const granted = permission || (await requestNotificationPermission());
     setPermission(granted);
     if (!granted) {
-      setError("შეტყობინებების ნებართვა არ არის ჩართული. ჩართე პარამეტრებში და სცადე თავიდან.");
+      setError(tx("შეტყობინებების ნებართვა არ არის ჩართული. ჩართე პარამეტრებში და სცადე თავიდან.", "Notifications aren't allowed. Turn them on in Settings and try again."));
       return;
     }
     await save({ ...prefs, reminders: { ...prefs.reminders, enabled: true } });
@@ -115,7 +116,7 @@ function Settings() {
       if (!value) {
         await disableNutritionHealthWrite();
         setHealthOn(false);
-        setHealthNote(`${healthName}-ში ახალი კვებები აღარ ჩაიწერება. უკვე ჩაწერილი იქ რჩება.`);
+        setHealthNote(tx(`${healthName}-ში ახალი კვებები აღარ ჩაიწერება. უკვე ჩაწერილი იქ რჩება.`, `New meals won't be written to ${healthName} anymore. What's already there stays.`));
         return;
       }
       // The system sheet is shown only from this switch press.
@@ -123,18 +124,18 @@ function Settings() {
       if (!result.ok) {
         setHealthNote(
           result.reason === "expo_go"
-            ? "Expo Go-ში ჯანმრთელობის აპთან კავშირი არ მუშაობს — საჭიროა აპის build."
+            ? tx("Expo Go-ში ჯანმრთელობის აპთან კავშირი არ მუშაობს — საჭიროა აპის build.", "Connecting to the health app doesn't work in Expo Go — an app build is needed.")
             : result.reason === "not_installed"
-              ? "Health Connect არ არის დაყენებული. დააყენე და სცადე თავიდან."
+              ? tx("Health Connect არ არის დაყენებული. დააყენე და სცადე თავიდან.", "Health Connect isn't installed. Install it and try again.")
               : result.reason === "denied"
-                ? `${healthName}-მა ჩაწერის ნებართვა არ მისცა. ჩართე კვების ჩაწერა ${healthName}-ის პარამეტრებში.`
-                : "კავშირი ვერ შედგა. სცადე თავიდან.",
+                ? tx(`${healthName}-მა ჩაწერის ნებართვა არ მისცა. ჩართე კვების ჩაწერა ${healthName}-ის პარამეტრებში.`, `${healthName} didn't allow writing. Turn on nutrition writing in ${healthName} settings.`)
+                : tx("კავშირი ვერ შედგა. სცადე თავიდან.", "Couldn't connect. Try again."),
         );
         return;
       }
       setHealthOn(true);
       const count = await backfillNutritionToHealth(7).catch(() => 0);
-      setHealthNote(count ? `ჩართულია · ბოლო 7 დღის ${count} კვება ჩაიწერა` : "ჩართულია · ახალი კვებები ავტომატურად ჩაიწერება");
+      setHealthNote(count ? tx(`ჩართულია · ბოლო 7 დღის ${count} კვება ჩაიწერა`, `On · ${count} ${count === 1 ? "meal" : "meals"} from the last 7 days written`) : tx("ჩართულია · ახალი კვებები ავტომატურად ჩაიწერება", "On · new meals will be written automatically"));
     } finally {
       setHealthBusy(false);
     }
@@ -165,31 +166,31 @@ function Settings() {
     </View>
   );
   return (
-    <NScreen title="კვების პარამეტრები" subtitle="ბიუჯეტი, მაკროები, შეხსენებები">
+    <NScreen title={tx("კვების პარამეტრები", "Nutrition settings")} subtitle={tx("ბიუჯეტი, მაკროები, შეხსენებები", "Budget, macros, reminders")}>
       {!!error && <NError message={error} retry={() => void load()} />}
       {!prefs ? (
         <NLoading />
       ) : (
         <>
           <NCard>
-            <NText style={{ fontFamily: "NotoSansGeorgian_600SemiBold", fontSize: 16 }}>დღის ბიუჯეტი</NText>
-            {row(<Flame size={20} color={c.primary100} />, "დამწვარი კალორია ბიუჯეტში", "ვარჯიშისა და ნაბიჯების ენერგია დღის სამიზნეს ემატება. Cal AI-ს „add burned calories“ წესი.", prefs.addBurned, (v) => void save({ ...prefs, addBurned: v }))}
-            {row(<Footprints size={20} color={c.primary100} />, "ნაბიჯების ჩათვლა", "ნაბიჯების სინქრონიდან სავარაუდო ენერგია დამწვარში ჩაითვლება.", prefs.countSteps, (v) => void save({ ...prefs, countSteps: v }))}
-            {row(<RefreshCcw size={20} color={c.primary100} />, "გუშინდელი ნაშთის გადმოტანა", "თუ გუშინ სამიზნეზე ნაკლები მიიღე, 200 კკალ-მდე დღეს გადმოგყვება. გადაჭარბება არასდროს „ივალება“.", prefs.rollover, (v) => void save({ ...prefs, rollover: v }))}
+            <NText style={{ fontFamily: "NotoSansGeorgian_600SemiBold", fontSize: 16 }}>{tx("დღის ბიუჯეტი", "Daily budget")}</NText>
+            {row(<Flame size={20} color={c.primary100} />, tx("დამწვარი კალორია ბიუჯეტში", "Burned calories in budget"), tx("ვარჯიშისა და ნაბიჯების ენერგია დღის სამიზნეს ემატება. Cal AI-ს „add burned calories“ წესი.", "Energy from exercise and steps is added to your daily target, like Cal AI's “add burned calories” rule."), prefs.addBurned, (v) => void save({ ...prefs, addBurned: v }))}
+            {row(<Footprints size={20} color={c.primary100} />, tx("ნაბიჯების ჩათვლა", "Count steps"), tx("ნაბიჯების სინქრონიდან სავარაუდო ენერგია დამწვარში ჩაითვლება.", "Estimated energy from synced steps counts as burned."), prefs.countSteps, (v) => void save({ ...prefs, countSteps: v }))}
+            {row(<RefreshCcw size={20} color={c.primary100} />, tx("გუშინდელი ნაშთის გადმოტანა", "Roll over yesterday's leftover"), tx("თუ გუშინ სამიზნეზე ნაკლები მიიღე, 200 კკალ-მდე დღეს გადმოგყვება. გადაჭარბება არასდროს „ივალება“.", "If you ate less than your target yesterday, up to 200 kcal carries over to today. Going over is never counted as debt."), prefs.rollover, (v) => void save({ ...prefs, rollover: v }))}
           </NCard>
           <NCard>
             <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
               <PieChart size={20} color={c.primary100} />
-              <NText style={{ fontFamily: "NotoSansGeorgian_600SemiBold", fontSize: 16, flex: 1 }}>მაკროების განაწილება</NText>
+              <NText style={{ fontFamily: "NotoSansGeorgian_600SemiBold", fontSize: 16, flex: 1 }}>{tx("მაკროების განაწილება", "Macro split")}</NText>
             </View>
             <NText style={{ fontSize: 12, color: c.text200, lineHeight: 18 }}>
-              დღის კალორიას გეგმა ითვლის; აქ ირჩევ, როგორ გადანაწილდეს ცილაზე, ნახშირწყლებსა და ცხიმზე.
+              {tx("დღის კალორიას გეგმა ითვლის; აქ ირჩევ, როგორ გადანაწილდეს ცილაზე, ნახშირწყლებსა და ცხიმზე.", "Your plan sets your daily calories; here you choose how they split between protein, carbs and fat.")}
             </NText>
             <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
               {MACRO_PRESETS.map((p) => {
                 const active = p.shares.protein === shares.protein && p.shares.carbs === shares.carbs && p.shares.fat === shares.fat;
                 return (
-                  <Pressable key={p.key} accessibilityRole="button" accessibilityState={{ selected: active }} accessibilityLabel={`${p.label}: ცილა ${p.shares.protein}%, ნახშირწყლები ${p.shares.carbs}%, ცხიმი ${p.shares.fat}%`} disabled={busy} onPress={() => choosePreset(p.shares, p.key)} style={{ width: "48%", flexGrow: 1, minHeight: 60, padding: 10, borderRadius: 14, borderWidth: 1.5, backgroundColor: active ? c.accent100 : c.bg200, borderColor: active ? c.primary100 : "transparent", gap: 2 }}>
+                  <Pressable key={p.key} accessibilityRole="button" accessibilityState={{ selected: active }} accessibilityLabel={tx(`${p.label}: ცილა ${p.shares.protein}%, ნახშირწყლები ${p.shares.carbs}%, ცხიმი ${p.shares.fat}%`, `${p.label}: protein ${p.shares.protein}%, carbs ${p.shares.carbs}%, fat ${p.shares.fat}%`)} disabled={busy} onPress={() => choosePreset(p.shares, p.key)} style={{ width: "48%", flexGrow: 1, minHeight: 60, padding: 10, borderRadius: 14, borderWidth: 1.5, backgroundColor: active ? c.accent100 : c.bg200, borderColor: active ? c.primary100 : "transparent", gap: 2 }}>
                     <Text style={{ fontFamily: "NotoSansGeorgian_600SemiBold", fontSize: 13, color: c.text100 }}>{p.label}</Text>
                     <Text style={{ fontFamily: "NotoSansGeorgian_400Regular", fontSize: 11, color: c.text200 }}>{p.shares.protein} / {p.shares.carbs} / {p.shares.fat} · {p.detail}</Text>
                   </Pressable>
@@ -197,23 +198,23 @@ function Settings() {
               })}
             </View>
             {([
-              ["protein", "ცილა"],
-              ["carbs", "ნახშირწყლები"],
-              ["fat", "ცხიმი"],
+              ["protein", tx("ცილა", "Protein")],
+              ["carbs", tx("ნახშირწყლები", "Carbs")],
+              ["fat", tx("ცხიმი", "Fat")],
             ] as const).map(([key, label]) => {
               const grams = calories ? macroGrams(calories, shares)[key] : null;
               return (
                 <View key={key} style={{ flexDirection: "row", alignItems: "center", gap: 10, minHeight: 44 }}>
                   <View style={{ flex: 1 }}>
                     <NText style={{ fontFamily: "NotoSansGeorgian_600SemiBold" }}>{label} · {shares[key]}%</NText>
-                    <NText style={{ fontSize: 12, color: c.text200 }}>{grams != null ? `${grams} გ დღეში` : "გრამები გეგმის შექმნის შემდეგ გამოჩნდება"}</NText>
+                    <NText style={{ fontSize: 12, color: c.text200 }}>{grams != null ? tx(`${grams} გ დღეში`, `${grams} g a day`) : tx("გრამები გეგმის შექმნის შემდეგ გამოჩნდება", "Grams appear once you create a plan")}</NText>
                   </View>
                   {key !== "fat" && (
                     <>
-                      <Pressable accessibilityRole="button" accessibilityLabel={`${label} 5%-ით ნაკლები`} disabled={busy} onPress={() => nudge(key, -5)} style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: c.bg200, alignItems: "center", justifyContent: "center" }}>
+                      <Pressable accessibilityRole="button" accessibilityLabel={tx(`${label} 5%-ით ნაკლები`, `${label} 5% less`)} disabled={busy} onPress={() => nudge(key, -5)} style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: c.bg200, alignItems: "center", justifyContent: "center" }}>
                         <Minus size={16} color={c.text100} />
                       </Pressable>
-                      <Pressable accessibilityRole="button" accessibilityLabel={`${label} 5%-ით მეტი`} disabled={busy} onPress={() => nudge(key, 5)} style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: c.bg200, alignItems: "center", justifyContent: "center" }}>
+                      <Pressable accessibilityRole="button" accessibilityLabel={tx(`${label} 5%-ით მეტი`, `${label} 5% more`)} disabled={busy} onPress={() => nudge(key, 5)} style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: c.bg200, alignItems: "center", justifyContent: "center" }}>
                         <Plus size={16} color={c.text100} />
                       </Pressable>
                     </>
@@ -222,7 +223,7 @@ function Settings() {
               );
             })}
             <NText style={{ fontSize: 11, color: c.text300, lineHeight: 17 }}>
-              {custom ? "საკუთარი განაწილება · ცხიმი ავტომატურად ავსებს 100%-ს." : "ნაგულისხმევი: 20 / 50 / 30."} რეკომენდებული დიაპაზონი (AMDR): ცილა 10–35%, ნახშირწყლები 45–65%, ცხიმი 20–35%. აპის ზღვრები უფრო ფართოა: ცილა 10–40%, ნახშირწყლები 15–65%, ცხიმი 15–50%. თირკმლის დაავადებისას ცილის რაოდენობა ექიმთან შეათანხმე.
+              {custom ? tx("საკუთარი განაწილება · ცხიმი ავტომატურად ავსებს 100%-ს.", "Custom split · fat fills up to 100% automatically.") : tx("ნაგულისხმევი: 20 / 50 / 30.", "Default: 20 / 50 / 30.")} {tx("რეკომენდებული დიაპაზონი (AMDR): ცილა 10–35%, ნახშირწყლები 45–65%, ცხიმი 20–35%. აპის ზღვრები უფრო ფართოა: ცილა 10–40%, ნახშირწყლები 15–65%, ცხიმი 15–50%. თირკმლის დაავადებისას ცილის რაოდენობა ექიმთან შეათანხმე.", "Recommended range (AMDR): protein 10–35%, carbs 45–65%, fat 20–35%. The app's limits are wider: protein 10–40%, carbs 15–65%, fat 15–50%. If you have kidney disease, agree on your protein amount with your doctor.")}
             </NText>
             <MedicalSourcesLink sourceIds={["macroRanges", "energyTarget"]} />
           </NCard>
@@ -230,33 +231,33 @@ function Settings() {
             <NCard>
               {row(
                 <HeartPulse size={20} color={c.primary100} />,
-                `${healthName}-ში ჩაწერა`,
-                `დადასტურებული კვების კალორია, ცილა, ნახშირწყლები და ცხიმი ${healthName}-ში გადავა — სხვა აპები და საათი დაინახავს.`,
+                tx(`${healthName}-ში ჩაწერა`, `Write to ${healthName}`),
+                tx(`დადასტურებული კვების კალორია, ცილა, ნახშირწყლები და ცხიმი ${healthName}-ში გადავა — სხვა აპები და საათი დაინახავს.`, `Calories, protein, carbs and fat from confirmed meals go to ${healthName} — other apps and your watch will see them.`),
                 healthOn,
                 (v) => void toggleHealth(v),
               )}
-              {healthBusy && <NText style={{ fontSize: 12, color: c.text200 }}>მიმდინარეობს…</NText>}
+              {healthBusy && <NText style={{ fontSize: 12, color: c.text200 }}>{tx("მიმდინარეობს…", "Working…")}</NText>}
               {!!healthNote && <NText accessibilityLiveRegion="polite" style={{ fontSize: 12, color: c.text200 }}>{healthNote}</NText>}
             </NCard>
           )}
           <NCard>
             <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
               <Bell size={20} color={c.primary100} />
-              <NText style={{ fontFamily: "NotoSansGeorgian_600SemiBold", fontSize: 16, flex: 1 }}>კვების შეხსენებები</NText>
-              <Switch accessibilityLabel="შეხსენებები" value={prefs.reminders.enabled} disabled={busy} onValueChange={(v) => (v ? void enableReminders() : void save({ ...prefs, reminders: { ...prefs.reminders, enabled: false } }))} trackColor={{ true: "#0D9488", false: c.bg300 }} thumbColor="#FFFFFF" />
+              <NText style={{ fontFamily: "NotoSansGeorgian_600SemiBold", fontSize: 16, flex: 1 }}>{tx("კვების შეხსენებები", "Meal reminders")}</NText>
+              <Switch accessibilityLabel={tx("შეხსენებები", "Reminders")} value={prefs.reminders.enabled} disabled={busy} onValueChange={(v) => (v ? void enableReminders() : void save({ ...prefs, reminders: { ...prefs.reminders, enabled: false } }))} trackColor={{ true: "#0D9488", false: c.bg300 }} thumbColor="#FFFFFF" />
             </View>
-            <NText style={{ fontSize: 12, color: c.text200 }}>სამი მოკლე შეხსენება ტელეფონზე. არ ამოწმებს რა ჭამე — უბრალოდ დროზე გახსენებს.</NText>
+            <NText style={{ fontSize: 12, color: c.text200 }}>{tx("სამი მოკლე შეხსენება ტელეფონზე. არ ამოწმებს რა ჭამე — უბრალოდ დროზე გახსენებს.", "Three short reminders on your phone. They don't check what you ate — they just remind you on time.")}</NText>
             {prefs.reminders.enabled && (
               <>
-                {timePicker("საუზმე", "breakfast")}
-                {timePicker("სადილი", "lunch")}
-                {timePicker("ვახშამი", "dinner")}
+                {timePicker(tx("საუზმე", "Breakfast"), "breakfast")}
+                {timePicker(tx("სადილი", "Lunch"), "lunch")}
+                {timePicker(tx("ვახშამი", "Dinner"), "dinner")}
               </>
             )}
-            {permission === false && prefs.reminders.enabled && <NText style={{ fontSize: 12, color: c.danger }}>შეტყობინებების ნებართვა გამორთულია — შეხსენებები ვერ გამოჩნდება.</NText>}
+            {permission === false && prefs.reminders.enabled && <NText style={{ fontSize: 12, color: c.danger }}>{tx("შეტყობინებების ნებართვა გამორთულია — შეხსენებები ვერ გამოჩნდება.", "Notifications are off — reminders can't appear.")}</NText>}
           </NCard>
           {!!message && <NText accessibilityLiveRegion="polite" style={{ color: c.success, fontSize: 13, textAlign: "center" }}>{message}</NText>}
-          <NButton secondary label="მიზნისა და გეგმის ნახვა" onPress={() => router.push("/nutrition/goal")} />
+          <NButton secondary label={tx("მიზნისა და გეგმის ნახვა", "See goal and plan")} onPress={() => router.push("/nutrition/goal")} />
         </>
       )}
     </NScreen>

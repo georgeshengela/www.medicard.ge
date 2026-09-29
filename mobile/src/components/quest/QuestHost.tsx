@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
+import { appLang } from '@/i18n/locale';
 import { onReturnToForeground } from '@/lib/appForeground';
 import Animated, { FadeInUp, FadeOutUp } from 'react-native-reanimated';
 import { useRouter, useSegments } from 'expo-router';
@@ -61,7 +62,7 @@ export function QuestHost() {
       if (!markQuestCelebration('completed', payload.questId, payload.completedAt || '')) return;
       void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined);
       if (onHubRef.current) return;
-      setToast(q('ka').toastDone);
+      setToast(q(appLang()).toastDone);
       if (toastTimer.current) clearTimeout(toastTimer.current);
       toastTimer.current = setTimeout(() => setToast(null), reduce ? 900 : 1800);
     });
@@ -110,7 +111,7 @@ export function QuestHost() {
         >
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel={`${toast}. ${q('ka').view}`}
+            accessibilityLabel={`${toast}. ${q(appLang()).view}`}
             onPress={() => {
               setToast(null);
               router.push('/medi-quest' as never);
@@ -148,7 +149,7 @@ export function QuestHost() {
             </View>
             <Text style={{ fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 14, lineHeight: 20, color: colors.text100 }}>{toast}</Text>
             <Text style={{ fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 14, lineHeight: 20, color: colors.primary200 }}>
-              {q('ka').view}
+              {q(appLang()).view}
             </Text>
           </Pressable>
         </Animated.View>
@@ -188,7 +189,7 @@ export function QuestHost() {
       <MediJourneyUnlockToast
         celebration={journeyUnlock}
         onDismiss={() => setJourneyUnlock(null)}
-        locale="ka"
+        locale={appLang()}
       />
     </>
   );
@@ -205,7 +206,7 @@ function AchievementToast({
   onPress: () => void;
 }) {
   const colors = useThemeColors();
-  const copy = achievementCopy('ka');
+  const copy = achievementCopy(appLang());
   const rarity = rarityColors(payload.rarity, dark);
   const title = copy.title({
     key: payload.key,

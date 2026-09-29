@@ -1,5 +1,6 @@
 import { useSyncExternalStore } from 'react';
 import { localAccountId } from '@/lib/localAccount';
+import { tx } from '../i18n/locale.js';
 
 export type AiConsentStatus = {
   version: string; accepted: boolean; decision: string | null; updatedAt: string | null;
@@ -35,7 +36,7 @@ export async function decideAiSharing(allow: boolean) {
   } catch (error) {
     if (pending?.promise !== current.promise) return;
     const updated = error && typeof error === 'object' && 'consentStatus' in error ? error.consentStatus as AiConsentStatus : null;
-    pending = { ...current, status: updated || current.status, busy: false, error: error instanceof Error ? error.message : 'არჩევანი ვერ შეინახა. სცადე ხელახლა.' }; emit();
+    pending = { ...current, status: updated || current.status, busy: false, error: error instanceof Error ? error.message : tx(tx('არჩევანი ვერ შეინახა. სცადე ხელახლა.', "Couldn't save your choice. Please try again."), "Couldn't save your choice. Please try again.") }; emit();
   }
 }
 export function useAiSharingPrompt() {

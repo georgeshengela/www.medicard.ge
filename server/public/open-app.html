@@ -3,9 +3,10 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>გახსენით მედიქარდში</title>
+  <title data-en="Open in MEDICARD">გახსენით მედიქარდში</title>
   <meta name="robots" content="noindex" />
   <link rel="icon" href="/favicon.png" />
+  <script src="/site-i18n.js?v=1"></script>
   <link rel="stylesheet" href="/landing.css" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Georgian:wght@400;600;700&display=swap" rel="stylesheet" />
@@ -14,29 +15,31 @@
   <main class="hero" style="min-height:70vh;display:flex;align-items:center">
     <div class="wrap" style="max-width:560px">
       <p class="kicker">Medicard.GE</p>
-      <h1 style="max-width:none;font-size:32px">გახსენით Medicard-ში</h1>
-      <p class="lead">
+      <h1 style="max-width:none;font-size:32px" data-en="Open in MEDICARD">გახსენით Medicard-ში</h1>
+      <p class="lead" data-en-html="Your partner’s cycle view is only available in the app. Install MEDICARD, sign in with <strong>your own</strong> account (not theirs), then tap the button.">
         პარტნიორის ციკლის ხედვა მხოლოდ აპშია. დააყენეთ Medicard, შედით <strong>თქვენი</strong> ანგარიშით
         (არა მისი), შემდეგ დააჭირეთ ღილაკს.
       </p>
       <div class="hero-actions">
-        <a class="btn btn-cta" id="open-app" href="#">გახსენით Medicard-ში</a>
-        <a class="btn btn-ghost" href="/">საიტზე დაბრუნება</a>
+        <a class="btn btn-cta" id="open-app" href="#" data-en="Open in MEDICARD">გახსენით Medicard-ში</a>
+        <a class="btn btn-ghost" href="/" data-en="Back to the website">საიტზე დაბრუნება</a>
       </div>
       <p class="lead" id="open-hint" style="margin-top:18px;font-size:14px"></p>
     </div>
   </main>
-  <script src="/landing.js"></script>
+  <script src="/landing.js?v=17"></script>
   <script>
     (function () {
+      var T = (window.MedicardI18n || { t: function (k) { return k; } }).t;
       var match = location.pathname.match(/\/share\/cycle\/([a-f0-9]{64})/i);
       var code = match ? match[1].toLowerCase() : '';
       var btn = document.getElementById('open-app');
       var hint = document.getElementById('open-hint');
       if (!code) {
         btn.href = '/';
-        btn.textContent = 'საიტზე დაბრუნება';
-        hint.textContent = 'ბმული არასრულია. სთხოვეთ პარტნიორს ხელახლა გაგზავნას.';
+        btn.removeAttribute('data-en'); // site-i18n applies data-en after this script
+        btn.textContent = T('საიტზე დაბრუნება', 'Back to the website');
+        hint.textContent = T('ბმული არასრულია. სთხოვეთ პარტნიორს ხელახლა გაგზავნას.', 'This link is incomplete. Ask your partner to send it again.');
         return;
       }
       var deep = 'medicard://share/cycle/' + code;
@@ -44,7 +47,7 @@
       btn.href = android
         ? 'intent://share/cycle/' + code + '#Intent;scheme=medicard;package=ge.medicard.app;end'
         : deep;
-      hint.textContent = 'თუ აპი არ გაიხსნა, გახსენით Medicard ხელით და ისევ დააჭირეთ ამ ღილაკს.';
+      hint.textContent = T('თუ აპი არ გაიხსნა, გახსენით Medicard ხელით და ისევ დააჭირეთ ამ ღილაკს.', 'If the app didn’t open, open MEDICARD yourself and tap this button again.');
     })();
   </script>
 </body>

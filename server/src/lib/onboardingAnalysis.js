@@ -4,6 +4,7 @@ import { env } from '../config/env.js';
 import { withOpenRouterModelFallback } from './aiEngine.js';
 import { calculateAge } from './patient.js';
 import { cycleModeForPatientAiContext } from './cycleModes.js';
+import { currentAiLanguage } from './aiConsent.js';
 
 const openrouter = env.OPENROUTER_API_KEY
   ? new OpenAI({
@@ -25,6 +26,15 @@ const SCORE_BANDS = [
   { min: 51, max: 70, label: 'Mild Risk', labelKa: 'მსუბუქი რისკი', color: '#F97316', detailKa: 'მსუბუქი გადახრები ოპტიმალური ჯანმრთელობისგან — პრევენცია და მონიტორინგი დაგეხმარება.' },
   { min: 71, max: 100, label: 'Normal', labelKa: 'ნორმალური', color: '#14B8A6', detailKa: 'ძირითადი მაჩვენებლები ნორმალურ დიაპაზონშია — გააგრძელე ჯანსაღი ჩვევები.' },
 ];
+
+/** English copy for the *Ka display fields when the reader uses English (keys stay the same for the app). */
+const SCORE_BANDS_EN = {
+  Critical: { labelKa: 'Critical', detailKa: 'You need an urgent medical consultation and a plan.' },
+  Suboptimal: { labelKa: 'Suboptimal', detailKa: 'Several measures are below the average range — changes to your daily habits are recommended.' },
+  'Mild Risk': { labelKa: 'Mild risk', detailKa: 'Mild deviations from optimal health — prevention and monitoring will help.' },
+  Normal: { labelKa: 'Normal', detailKa: 'Your main measures are in the normal range — keep up your healthy habits.' },
+};
+const bandCopy = (band, lang) => (lang === 'en' ? { ...band, ...SCORE_BANDS_EN[band.label] } : band);
 
 function bandForScore(score) {
   return SCORE_BANDS.find((b) => score >= b.min && score <= b.max) ?? SCORE_BANDS[2];
@@ -158,7 +168,7 @@ export function computeHeuristicScore(profile, user, extras = {}, metrics = []) 
  * "musclePct" is the rest, i.e. fat-free mass, not measured muscle. The weight label uses the
  * WHO adult BMI cut-offs (18.5 / 25). Estimates only; the app says so next to the numbers.
  */
-export function estimateBodyComposition(profile, age = null) {
+export function estimateBodyComposition(profile, age = null, lang = 'ka') {
   const weight = profile.weightKg ?? 70;
   const bmi =
     profile.heightCm && profile.weightKg
@@ -175,6 +185,7 @@ export function estimateBodyComposition(profile, age = null) {
   let physiqueLabelKa = 'ჯანსაღი წონის დიაპაზონი';
   if (bmi >= 25) physiqueLabelKa = 'ჭარბი წონის დიაპაზონი';
   else if (bmi < 18.5) physiqueLabelKa = 'დაბალი წონის დიაპაზონი';
+  if (lang === 'en') physiqueLabelKa = bmi >= 25 ? 'Above healthy weight range' : bmi < 18.5 ? 'Below healthy weight range' : 'Healthy weight range';
 
   return { fatPct, weightKg: Math.round(weight), musclePct, physiqueLabelKa };
 }
@@ -272,14 +283,17 @@ export async function generateOnboardingAnalysis({
   cycleMode = null,
   previousScore = null,
   model,
+  lang = currentAiLanguage(),
 }) {
   const extra = extras && typeof extras === 'object' ? extras : {};
   const heuristicScore = computeHeuristicScore(profile, user, extra, metrics);
   const bodyComposition = estimateBodyComposition(
     { ...profile, _gender: user?.gender },
     user?.birthDate ? calculateAge(user.birthDate) : null,
+    lang,
   );
-  const band = bandForScore(heuristicScore);
+  const band = bandCopy(bandForScore(heuristicScore), lang);
+  const bands = SCORE_BANDS.map((b) => bandCopy(b, lang));
   const extrasContext = { metrics, scheduledMeds, cycleMode: cycleModeForPatientAiContext(cycleMode) };
 
   const fallback = {
@@ -289,10 +303,13 @@ export async function generateOnboardingAnalysis({
     // No invented confidence and no guessed conditions: the score is a wellness summary of
     // the answers, not a diagnosis (App Review 1.4.1).
     confidence: null,
-    summaryTitleKa: `${band.labelKa} — პრევენციული ზომები რეკომენდებულია`,
-    summaryBodyKa:
-      'ანალიზი ეყრდნობა შენს პროფილს, ჩვევებს და შენახულ მაჩვენებლებს. რეკომენდებულია ცხოვრების წესის კორექცია და რეგულარული კონტროლი.',
-    scoreRanges: SCORE_BANDS.map((b) => ({
+    summaryTitleKa: lang === 'en'
+      ? `${band.labelKa} — preventive steps are recommended`
+      : `${band.labelKa} — პრევენციული ზომები რეკომენდებულია`,
+    summaryBodyKa: lang === 'en'
+      ? 'This summary is based on your profile, habits and saved measurements. Lifestyle adjustments and regular check-ups are recommended.'
+      : 'ანალიზი ეყრდნობა შენს პროფილს, ჩვევებს და შენახულ მაჩვენებლებს. რეკომენდებულია ცხოვრების წესის კორექცია და რეგულარული კონტროლი.',
+    scoreRanges: bands.map((b) => ({
       min: b.min,
       max: b.max,
       label: b.label,
@@ -334,7 +351,7 @@ export async function generateOnboardingAnalysis({
       const jsonText = raw.replace(/^```json?\s*/i, '').replace(/```\s*$/, '').trim();
       const parsed = JSON.parse(jsonText);
       const score = clampToHeuristic(parsed.score, heuristicScore);
-      const resolvedBand = bandForScore(score);
+      const resolvedBand = bandCopy(bandForScore(score), lang);
 
       return {
         score,
@@ -343,7 +360,7 @@ export async function generateOnboardingAnalysis({
         confidence: null,
         summaryTitleKa: parsed.summaryTitleKa ?? fallback.summaryTitleKa,
         summaryBodyKa: parsed.summaryBodyKa ?? fallback.summaryBodyKa,
-        scoreRanges: SCORE_BANDS.map((b, i) => ({
+        scoreRanges: bands.map((b, i) => ({
           min: b.min,
           max: b.max,
           label: b.label,

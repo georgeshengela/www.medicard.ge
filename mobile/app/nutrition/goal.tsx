@@ -26,6 +26,8 @@ import {
   MacroRails,
   useNutritionDashboard,
 } from "@/components/nutrition/ProgramUI";
+import { tx } from "@/i18n/locale";
+import { formatYmd } from "@/lib/format";
 export default function NutritionGoal() {
   const { user } = useAuth();
   return <Goal key={user?.id || "guest"} owner={user?.id || ""} />;
@@ -266,20 +268,20 @@ function Goal({ owner }: { owner: string }) {
         v.targetKg > 300
       ) {
         setError(
-          "გადაამოწმე წონა (30–300 კგ), სიმაღლე (130–220 სმ), დაბადების თარიღი და ფორმულის კოეფიციენტი.",
+          tx("გადაამოწმე წონა (30–300 კგ), სიმაღლე (130–220 სმ), დაბადების თარიღი და ფორმულის კოეფიციენტი.", "Check your weight (30–300 kg), height (130–220 cm), date of birth and formula coefficient."),
         );
         return;
       }
       setStep(1);
     } else if (step === 1) {
       if (!form.activity) {
-        setError("აირჩიე შენი ჩვეულებრივი აქტივობა.");
+        setError(tx("აირჩიე შენი ჩვეულებრივი აქტივობა.", "Choose your usual activity level."));
         return;
       }
       setStep(2);
     } else if (step === 2) {
       if (Object.values(screening).some((v) => v === null)) {
-        setError("უპასუხე სამივე კითხვას, რომ გეგმის შესაბამისობა შევამოწმოთ.");
+        setError(tx("უპასუხე სამივე კითხვას, რომ გეგმის შესაბამისობა შევამოწმოთ.", "Answer all three questions so we can check whether the plan suits you."));
         return;
       }
       void run(async () => {
@@ -310,8 +312,8 @@ function Goal({ owner }: { owner: string }) {
   };
   return (
     <NScreen
-      title="შენი კვების გეგმა"
-      subtitle={`${step + 1} / 4 · ${["მიზანი", "შენი ყოველდღიურობა", "შესაბამისობის შემოწმება", "გადაამოწმე და დაიწყე"][step]}`}
+      title={tx("შენი კვების გეგმა", "Your nutrition plan")}
+      subtitle={`${step + 1} / 4 · ${tx(["მიზანი", "შენი ყოველდღიურობა", "შესაბამისობის შემოწმება", "გადაამოწმე და დაიწყე"], ["Goal", "Your routine", "Suitability check", "Review and start"])[step]}`}
       onBack={back}
       footer={
         d && !paused ? (
@@ -319,12 +321,12 @@ function Goal({ owner }: { owner: string }) {
             disabled={busy || (step === 3 && !preview?.eligible)}
             label={
               busy
-                ? "მუშავდება…"
+                ? tx("მუშავდება…", "Working…")
                 : step === 3
-                  ? "გეგმისა და მიმდინარე წონის შენახვა"
+                  ? tx("გეგმისა და მიმდინარე წონის შენახვა", "Save plan and current weight")
                   : step === 2
-                    ? "დღის სამიზნის ნახვა"
-                    : "გაგრძელება"
+                    ? tx("დღის სამიზნის ნახვა", "See daily target")
+                    : tx("გაგრძელება", "Continue")
             }
             onPress={next}
           />
@@ -359,52 +361,50 @@ function Goal({ owner }: { owner: string }) {
                   fontFamily: "NotoSansGeorgian_600SemiBold",
                 }}
               >
-                რისკენ მიდიხარ?
+                {tx("რისკენ მიდიხარ?", "What’s your goal?")}
               </NText>
               {choices("mode", [
-                ["lose", "წონის დაკლება"],
-                ["maintain", "წონის შენარჩუნება"],
-                ["gain", "წონის მომატება"],
+                ["lose", tx("წონის დაკლება", "Lose weight")],
+                ["maintain", tx("წონის შენარჩუნება", "Maintain weight")],
+                ["gain", tx("წონის მომატება", "Gain weight")],
               ])}
-              {field("მიმდინარე წონა · კგ", "weight", true)}
+              {field(tx("მიმდინარე წონა · კგ", "Current weight · kg"), "weight", true)}
               <NText style={{ fontSize: 11, color: c.text200 }}>
-                შენახვისას ეს წონა დღევანდელ გაზომვად ჩაიწერება.{" "}
+                {tx("შენახვისას ეს წონა დღევანდელ გაზომვად ჩაიწერება.", "When you save, this weight is logged as today’s measurement.")}{" "}
                 {d.facts.current?.date
-                  ? `ბოლო გაზომვა: ${d.facts.current.date}.`
-                  : "პროფილიდან შევსებული მონაცემი გადაამოწმე."}
+                  ? tx(`ბოლო გაზომვა: ${formatYmd(d.facts.current.date, true)}.`, `Last measurement: ${formatYmd(d.facts.current.date, true)}.`)
+                  : tx("პროფილიდან შევსებული მონაცემი გადაამოწმე.", "Check the value filled in from your profile.")}
               </NText>
               {form.mode !== "maintain" && (
                 // One weight goal: the target is edited only in the weight wizard.
                 <View style={{ gap: 8, padding: 14, borderRadius: 16, backgroundColor: c.bg200 }}>
-                  <NText style={{ fontSize: 12, color: c.text200 }}>სასურველი წონა</NText>
+                  <NText style={{ fontSize: 12, color: c.text200 }}>{tx("სასურველი წონა", "Target weight")}</NText>
                   <NText style={{ fontSize: 20, fontFamily: "NotoSansGeorgian_600SemiBold" }}>
-                    {form.target ? `${form.target} კგ` : "მიზანი ჯერ არ გაქვს"}
+                    {form.target ? tx(`${form.target} კგ`, `${form.target} kg`) : tx("მიზანი ჯერ არ გაქვს", "No goal set yet")}
                   </NText>
                   <NButton
                     secondary
                     disabled={busy}
-                    label={form.target ? "მიზნის შეცვლა" : "მიზნის დასახვა"}
+                    label={form.target ? tx("მიზნის შეცვლა", "Change goal") : tx("მიზნის დასახვა", "Set a goal")}
                     onPress={() => openWeightGoalWizard(router, "/nutrition/goal")}
                   />
                 </View>
               )}
-              {field("სიმაღლე · სმ", "height", true)}
-              {field("დაბადების თარიღი · წელი-თვე-დღე", "birth")}
-              <NText>ფორმულის სქესობრივი კოეფიციენტი</NText>
+              {field(tx("სიმაღლე · სმ", "Height · cm"), "height", true)}
+              {field(tx("დაბადების თარიღი · წელი-თვე-დღე", "Date of birth · year-month-day"), "birth")}
+              <NText>{tx("ფორმულის სქესობრივი კოეფიციენტი", "Formula sex coefficient")}</NText>
               {choices("sex", [
-                ["female", "ქალი"],
-                ["male", "კაცი"],
+                ["female", tx("ქალი", "Female")],
+                ["male", tx("კაცი", "Male")],
               ])}
               <NText style={{ fontSize: 12, color: c.text200 }}>
-                ფორმულას ორი კოეფიციენტი აქვს. თუ არცერთი შეესაბამება შენს
-                მდგომარეობას, გამოიყენე დღიური და გეგმა სპეციალისტთან შეარჩიე.
-                პროფილის იდენტობა არ იცვლება.
+                {tx("ფორმულას ორი კოეფიციენტი აქვს. თუ არცერთი შეესაბამება შენს მდგომარეობას, გამოიყენე დღიური და გეგმა სპეციალისტთან შეარჩიე. პროფილის იდენტობა არ იცვლება.", "The formula has two coefficients. If neither fits your situation, use the diary and choose a plan with a specialist. Your profile identity doesn’t change.")}
               </NText>
               {d.program?.active && (
                 <NButton
                   secondary
                   disabled={busy}
-                  label="კალორიული გეგმის შეჩერება"
+                  label={tx("კალორიული გეგმის შეჩერება", "Pause calorie plan")}
                   onPress={() =>
                     void run(async () => {
                       await nutritionProgramApi.pause(d.program!.revision);
@@ -425,39 +425,38 @@ function Goal({ owner }: { owner: string }) {
                   fontFamily: "NotoSansGeorgian_600SemiBold",
                 }}
               >
-                შენს ცხოვრებას მოერგოს
+                {tx("შენს ცხოვრებას მოერგოს", "Fit it to your life")}
               </NText>
-              <NText>ჩვეულებრივი აქტივობა</NText>
+              <NText>{tx("ჩვეულებრივი აქტივობა", "Usual activity")}</NText>
               {choices("activity", [
-                ["sedentary", "უმეტესად ვზივარ"],
-                ["light", "მსუბუქად ვმოძრაობ"],
-                ["moderate", "რეგულარულად ვვარჯიშობ"],
-                ["active", "დღის დიდი ნაწილი აქტიური ვარ"],
+                ["sedentary", tx("უმეტესად ვზივარ", "Mostly sitting")],
+                ["light", tx("მსუბუქად ვმოძრაობ", "Lightly active")],
+                ["moderate", tx("რეგულარულად ვვარჯიშობ", "I exercise regularly")],
+                ["active", tx("დღის დიდი ნაწილი აქტიური ვარ", "Active most of the day")],
               ])}
               {form.mode === "lose" && (
                 <>
-                  <NText>კალორიული ცვლილების ტემპი</NText>
+                  <NText>{tx("კალორიული ცვლილების ტემპი", "Calorie change pace")}</NText>
                   {choices("pace", [
-                    ["gentle", "რბილი ცვლილება · −250 კკალ"],
-                    ["steady", "ზომიერი ცვლილება · −400 კკალ"],
+                    ["gentle", tx("რბილი ცვლილება · −250 კკალ", "Gentle change · −250 kcal")],
+                    ["steady", tx("ზომიერი ცვლილება · −400 კკალ", "Moderate change · −400 kcal")],
                   ])}
                 </>
               )}
-              <NText>კვების არჩევანი</NText>
+              <NText>{tx("კვების არჩევანი", "Eating style")}</NText>
               {choices("diet", [
-                ["balanced", "მრავალფეროვანი"],
-                ["vegetarian", "ვეგეტარიანული"],
-                ["vegan", "ვეგანური"],
+                ["balanced", tx("მრავალფეროვანი", "Varied")],
+                ["vegetarian", tx("ვეგეტარიანული", "Vegetarian")],
+                ["vegan", tx("ვეგანური", "Vegan")],
               ])}
-              <NText>გამოსარიცხი ალერგენები</NText>
+              <NText>{tx("გამოსარიცხი ალერგენები", "Allergens to exclude")}</NText>
               {!!d.facts.requiredAllergens.length && (
                 <NText style={{ fontSize: 12, color: c.text200 }}>
-                  პროფილიდან დამატებულია:{" "}
+                  {tx("პროფილიდან დამატებულია:", "Added from your profile:")}{" "}
                   {d.facts.requiredAllergens
                     .map((a) => allergenLabels[a] || a)
                     .join(", ")}
-                  . მათ ავტომატურად გამოვრიცხავთ. თუ პროფილის ჩანაწერი
-                  არასწორია, ის პროფილში შეასწორე.
+                  {tx(". მათ ავტომატურად გამოვრიცხავთ. თუ პროფილის ჩანაწერი არასწორია, ის პროფილში შეასწორე.", ". We’ll exclude them automatically. If your profile entry is wrong, fix it in your profile.")}
                 </NText>
               )}
               <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
@@ -504,11 +503,9 @@ function Goal({ owner }: { owner: string }) {
                 value={allergyClarifications}
                 onChange={setAllergyClarifications}
               />
-              {field("სხვა საკვები შეზღუდვა · სურვილისამებრ", "avoidFoods")}
+              {field(tx("სხვა საკვები შეზღუდვა · სურვილისამებრ", "Other food restrictions · optional"), "avoidFoods")}
               <NText style={{ fontSize: 12, color: c.text200 }}>
-                სხვა შეზღუდვის მითითებისას ავტომატურ რაციონს არ შევადგენთ,
-                რადგან თავისუფალი ტექსტიდან უსაფრთხო გამორიცხვას ვერ
-                ვადასტურებთ. დღის სამიზნე და დღიური დარჩება.
+                {tx("სხვა შეზღუდვის მითითებისას ავტომატურ რაციონს არ შევადგენთ, რადგან თავისუფალი ტექსტიდან უსაფრთხო გამორიცხვას ვერ ვადასტურებთ. დღის სამიზნე და დღიური დარჩება.", "If you add other restrictions, we won’t build an automatic meal plan, because we can’t safely confirm exclusions from free text. Your daily target and diary stay available.")}
               </NText>
             </>
           )}
@@ -522,22 +519,20 @@ function Goal({ owner }: { owner: string }) {
                   fontFamily: "NotoSansGeorgian_600SemiBold",
                 }}
               >
-                შენზე მორგებული ზრუნვა
+                {tx("შენზე მორგებული ზრუნვა", "Care that fits you")}
               </NText>
               <NText style={{ color: c.text200 }}>
-                რამდენიმე პასუხი გვეხმარება გავიგოთ, გამოგადგება თუ არა
-                ავტომატური გეგმა. დადებითი პასუხისას დღიური კვლავ
-                ხელმისაწვდომია.
+                {tx("რამდენიმე პასუხი გვეხმარება გავიგოთ, გამოგადგება თუ არა ავტომატური გეგმა. დადებითი პასუხისას დღიური კვლავ ხელმისაწვდომია.", "A few answers help us understand whether an automatic plan is right for you. If you answer yes, the diary is still available.")}
               </NText>
               {[
-                ["pregnancyOrBreastfeeding", "ორსულად ხარ ან ძუძუთი კვებავ?"],
+                ["pregnancyOrBreastfeeding", tx("ორსულად ხარ ან ძუძუთი კვებავ?", "Are you pregnant or breastfeeding?")],
                 [
                   "eatingDisorder",
-                  "გაქვს ან გქონია კვებითი აშლილობა, ან ახლა კვებითი ქცევის სირთულე გაწუხებს?",
+                  tx("გაქვს ან გქონია კვებითი აშლილობა, ან ახლა კვებითი ქცევის სირთულე გაწუხებს?", "Do you have or have you ever had an eating disorder, or are you struggling with your eating right now?"),
                 ],
                 [
                   "medicalDiet",
-                  "გაქვს ქრონიკული დაავადება, ექიმის მიერ დანიშნული დიეტა ან მდგომარეობა/მკურნალობა, რომელიც კვებაზე მოქმედებს?",
+                  tx("გაქვს ქრონიკული დაავადება, ექიმის მიერ დანიშნული დიეტა ან მდგომარეობა/მკურნალობა, რომელიც კვებაზე მოქმედებს?", "Do you have a chronic condition, a diet prescribed by a doctor, or a condition or treatment that affects how you eat?"),
                 ],
               ].map(([key, label]) => (
                 <NCard key={key}>
@@ -564,7 +559,7 @@ function Goal({ owner }: { owner: string }) {
                             screening[key] === v ? c.accent100 : c.bg100,
                         }}
                       >
-                        <NText>{v ? "კი" : "არა"}</NText>
+                        <NText>{v ? tx("კი", "Yes") : tx("არა", "No")}</NText>
                       </Pressable>
                     ))}
                   </View>
@@ -577,7 +572,7 @@ function Goal({ owner }: { owner: string }) {
               {preview.eligible && preview.targets ? (
                 <>
                   <NCard>
-                    <NText>შენი საწყისი დღის სამიზნე</NText>
+                    <NText>{tx("შენი საწყისი დღის სამიზნე", "Your starting daily target")}</NText>
                     <NText
                       style={{
                         fontSize: 39,
@@ -585,12 +580,11 @@ function Goal({ owner }: { owner: string }) {
                         fontFamily: "NotoSansGeorgian_700Bold",
                       }}
                     >
-                      {preview.targets.calories} <NText>კკალ</NText>
+                      {preview.targets.calories} <NText>{tx("კკალ", "kcal")}</NText>
                     </NText>
                     <MacroRails actual={preview.targets} target={null} />
                     <NText style={{ fontSize: 12, color: c.text200 }}>
-                      დაკლების/მომატების ზუსტი თარიღი გარანტირებული არ არის. ეს
-                      საწყისი შეფასებაა, არა მკაცრი დღიური ლიმიტი.
+                      {tx("დაკლების/მომატების ზუსტი თარიღი გარანტირებული არ არის. ეს საწყისი შეფასებაა, არა მკაცრი დღიური ლიმიტი.", "An exact date for losing or gaining weight isn’t guaranteed. This is a starting estimate, not a strict daily limit.")}
                     </NText>
                   </NCard>
                   <NText>{preview.explanation}</NText>
@@ -599,7 +593,7 @@ function Goal({ owner }: { owner: string }) {
                       <NText
                         style={{ fontFamily: "NotoSansGeorgian_600SemiBold" }}
                       >
-                        დღის სამიზნე მზადაა · რაციონს დაზუსტება სჭირდება
+                        {tx("დღის სამიზნე მზადაა · რაციონს დაზუსტება სჭირდება", "Daily target ready · meal plan needs more detail")}
                       </NText>
                       {preview.mealPlanning.reasons.map((reason) => (
                         <NText
@@ -610,12 +604,11 @@ function Goal({ owner }: { owner: string }) {
                         </NText>
                       ))}
                       <NText style={{ fontSize: 12 }}>
-                        შეგიძლია მიზანი შეინახო და კვება დღიურში აღრიცხო.
-                        კერძების ავტომატურ შერჩევას დაზუსტების შემდეგ ჩავრთავთ.
+                        {tx("შეგიძლია მიზანი შეინახო და კვება დღიურში აღრიცხო. კერძების ავტომატურ შერჩევას დაზუსტების შემდეგ ჩავრთავთ.", "You can save your goal and log meals in the diary. We’ll turn on automatic meal suggestions once the details are clear.")}
                       </NText>
                       <NButton
                         secondary
-                        label="კვების არჩევანის დაზუსტება"
+                        label={tx("კვების არჩევანის დაზუსტება", "Refine eating style")}
                         onPress={() => {
                           setStep(1);
                           setPreview(null);
@@ -624,8 +617,7 @@ function Goal({ owner }: { owner: string }) {
                     </NCard>
                   )}
                   <NText style={{ fontSize: 12, color: c.text200 }}>
-                    შენახვა განაახლებს აპში შენს საერთო წონის მიზანს. რაციონს
-                    შემდეგ ეტაპზე შეადგენ.
+                    {tx("შენახვა განაახლებს აპში შენს საერთო წონის მიზანს. რაციონს შემდეგ ეტაპზე შეადგენ.", "Saving updates your weight goal across the app. You’ll build your meal plan in the next step.")}
                   </NText>
                 </>
               ) : (
@@ -636,20 +628,20 @@ function Goal({ owner }: { owner: string }) {
                       fontFamily: "NotoSansGeorgian_600SemiBold",
                     }}
                   >
-                    გეგმა სპეციალისტთან შეარჩიე
+                    {tx("გეგმა სპეციალისტთან შეარჩიე", "Choose a plan with a specialist")}
                   </NText>
                   {preview.reasons.map((v) => (
                     <NText key={v}>{v}</NText>
                   ))}
                   <NButton
-                    label="კვების დღიურზე გადასვლა"
+                    label={tx("კვების დღიურზე გადასვლა", "Go to food diary")}
                     onPress={() => router.replace("/nutrition/diary")}
                   />
                 </NCard>
               )}
               <NButton
                 secondary
-                label="მეთოდი და წყაროები"
+                label={tx("მეთოდი და წყაროები", "Method and sources")}
                 onPress={() => router.push("/nutrition/method")}
               />
             </>
@@ -659,10 +651,10 @@ function Goal({ owner }: { owner: string }) {
       {paused && (
         <NCard>
           <NText>
-            გეგმა შეჩერებულია. დღიური, ჩანაწერები და წონის მიზანი შენახულია.
+            {tx("გეგმა შეჩერებულია. დღიური, ჩანაწერები და წონის მიზანი შენახულია.", "Plan paused. Your diary, entries and weight goal are saved.")}
           </NText>
           <NButton
-            label="კვებაზე დაბრუნება"
+            label={tx("კვებაზე დაბრუნება", "Back to nutrition")}
             onPress={() => router.replace("/nutrition")}
           />
         </NCard>

@@ -175,3 +175,19 @@ test('avatar photo visibility', () => {
   assert.equal(avatarVisible({ ...base, qrMatches: true }), false, 'non-trainer with a QR');
   assert.equal(avatarVisible(base), false, 'stranger');
 });
+
+test('English requests get English session labels, alerts and catalogue labels', async () => {
+  const { formatSessionTime, localizeCoachPayload } = await import('./trainer.js');
+  const at = '2026-10-01T15:00:00.000Z'; // Thu 19:00 in Tbilisi
+  assert.equal(formatSessionTime(at), 'ხუთ, 1 ოქტ · 19:00');
+  assert.equal(formatSessionTime(at, 'en'), 'Thu, 1 Oct · 19:00');
+  const [alert] = clientAlerts({ name: 'Nino', lastSession: { status: 'NO_SHOW' }, today: '2026-10-01', lang: 'en' });
+  assert.equal(alert.text, 'Nino: missed the last session');
+  const payload = { sessions: [{ startsAt: at, durationMin: 60, kind: 'CARDIO', kindLabel: 'კარდიო', label: 'x', clientName: 'კლიენტი' }], specialties: [{ key: 'yoga', label: 'იოგა / პილატესი' }] };
+  const en = localizeCoachPayload(payload, 'en');
+  assert.equal(en.sessions[0].label, 'Thu, 1 Oct · 19:00');
+  assert.equal(en.sessions[0].kindLabel, 'Cardio');
+  assert.equal(en.sessions[0].clientName, 'Client');
+  assert.equal(en.specialties[0].label, 'Yoga / Pilates');
+  assert.equal(localizeCoachPayload(payload, 'ka'), payload);
+});

@@ -5,6 +5,7 @@ import Svg, { Circle } from 'react-native-svg';
 import type { LucideIcon } from 'lucide-react-native';
 import { HUB, hubInk, hubText, hubTint, type HubInk } from '@/theme/hub';
 import { useIsDark, useThemeColors } from '@/theme/colors';
+import { tx } from '@/i18n/locale';
 
 /**
  * MEDI COACH building blocks (2026-09-28 redesign): progress ring, skeletons, segmented control,
@@ -82,7 +83,7 @@ export function Skeleton({ height, width = '100%', radius = 12, style }: { heigh
 export function SkeletonPage({ rows = 3 }: { rows?: number }) {
   const c = useThemeColors();
   return (
-    <View accessibilityLabel="იტვირთება" accessibilityRole="progressbar" style={{ gap: 12, marginTop: 16 }}>
+    <View accessibilityLabel={tx('იტვირთება', 'Loading')} accessibilityRole="progressbar" style={{ gap: 12, marginTop: 16 }}>
       <View style={[kit.card, { backgroundColor: c.surface, gap: 12 }]}>
         <View style={{ flexDirection: 'row', gap: 12, alignItems: 'center' }}>
           <Skeleton height={52} width={52} radius={26} />
@@ -237,13 +238,13 @@ export function FadeIn({ children, delay = 0, style }: { children: React.ReactNo
 export function sessionTiming(startsAt: string, durationMin: number, now = Date.now()): { phase: 'soon' | 'live' | 'past'; text: string } {
   const start = new Date(startsAt).getTime();
   const end = start + durationMin * 60000;
-  if (now >= start && now < end) return { phase: 'live', text: `მიმდინარეობს · ${Math.max(1, Math.round((end - now) / 60000))} წთ დარჩა` };
-  if (now >= end) return { phase: 'past', text: 'დასრულდა' };
+  if (now >= start && now < end) return { phase: 'live', text: tx(`მიმდინარეობს · ${Math.max(1, Math.round((end - now) / 60000))} წთ დარჩა`, `In progress · ${Math.max(1, Math.round((end - now) / 60000))} min left`) };
+  if (now >= end) return { phase: 'past', text: tx('დასრულდა', 'Finished') };
   const min = Math.round((start - now) / 60000);
-  if (min < 60) return { phase: 'soon', text: `${Math.max(1, min)} წუთში` };
+  if (min < 60) return { phase: 'soon', text: tx(`${Math.max(1, min)} წუთში`, `in ${Math.max(1, min)} min`) };
   const h = Math.floor(min / 60);
   const m = min % 60;
-  return { phase: 'soon', text: m && h < 5 ? `${h} სთ ${m} წთ-ში` : `${h} საათში` };
+  return { phase: 'soon', text: m && h < 5 ? tx(`${h} სთ ${m} წთ-ში`, `in ${h} h ${m} min`) : tx(`${h} საათში`, `in ${h} ${h === 1 ? 'hour' : 'hours'}`) };
 }
 
 export const kit = StyleSheet.create({

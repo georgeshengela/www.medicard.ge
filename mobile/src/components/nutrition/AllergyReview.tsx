@@ -7,6 +7,7 @@ import {
   type AllergyClarification,
 } from "@/lib/nutritionProgram";
 import { NCard, NText } from "./ProgramUI";
+import { tx } from '@/i18n/locale';
 
 export function AllergyReview({
   labels,
@@ -26,12 +27,11 @@ export function AllergyReview({
       <View style={{ flexDirection: "row", gap: 9, alignItems: "center" }}>
         <Leaf size={20} color={c.primary100} />
         <NText style={{ flex: 1, fontFamily: "NotoSansGeorgian_600SemiBold" }}>
-          პროფილის ალერგიები დავაზუსტოთ
+          {tx("პროფილის ალერგიები დავაზუსტოთ", "Let's clarify your profile allergies")}
         </NText>
       </View>
       <NText style={{ fontSize: 12, color: c.text200 }}>
-        პროფილში საკვების გარდა სხვა ალერგიაც შეიძლება გქონდეს. თითოეულ
-        ჩანაწერზე აირჩიე შესაბამისი პასუხი. პროფილის ჩანაწერს არ შევცვლით.
+        {tx("პროფილში საკვების გარდა სხვა ალერგიაც შეიძლება გქონდეს. თითოეულ ჩანაწერზე აირჩიე შესაბამისი პასუხი. პროფილის ჩანაწერს არ შევცვლით.", "Your profile may list allergies that aren't about food. Pick the right answer for each entry. We won't change your profile.")}
       </NText>
       {labels.map((label) => {
         const answer = value.find((v) => v.label === label);
@@ -50,9 +50,9 @@ export function AllergyReview({
             </NText>
             {(
               [
-                ["non_food", "საკვებს არ უკავშირდება"],
-                ["food", "საკვებსაც უკავშირდება"],
-                ["unsure", "ჯერ არ ვიცი"],
+                ["non_food", tx("საკვებს არ უკავშირდება", "Not related to food")],
+                ["food", tx("საკვებსაც უკავშირდება", "Related to food too")],
+                ["unsure", tx("ჯერ არ ვიცი", "I don't know yet")],
               ] as const
             ).map(([kind, text]) => (
               <Pressable
@@ -91,7 +91,7 @@ export function AllergyReview({
             {answer?.kind === "food" && (
               <>
                 <NText style={{ fontSize: 12 }}>
-                  რომელი ალერგენები შეესაბამება ამ ჩანაწერს?
+                  {tx("რომელი ალერგენები შეესაბამება ამ ჩანაწერს?", "Which allergens match this entry?")}
                 </NText>
                 <View
                   style={{ flexDirection: "row", flexWrap: "wrap", gap: 7 }}
@@ -133,9 +133,7 @@ export function AllergyReview({
                   ))}
                 </View>
                 <NText style={{ fontSize: 12, color: c.text200 }}>
-                  თუ შესაბამისი საკვები სიაში არ არის, არჩევანი ცარიელი დატოვე.
-                  ავტომატურ რაციონს ვერ შევადგენთ, მაგრამ დღის სამიზნესა და
-                  დღიურს გამოიყენებ.
+                  {tx("თუ შესაბამისი საკვები სიაში არ არის, არჩევანი ცარიელი დატოვე. ავტომატურ რაციონს ვერ შევადგენთ, მაგრამ დღის სამიზნესა და დღიურს გამოიყენებ.", "If the food isn't on the list, leave it empty. We can't build an automatic meal plan then, but you can still use your daily target and diary.")}
                 </NText>
               </>
             )}
@@ -143,8 +141,7 @@ export function AllergyReview({
         );
       })}
       <NText style={{ fontSize: 12, color: c.text200 }}>
-        თუ დარწმუნებული არ ხარ, აირჩიე „ჯერ არ ვიცი“. საკვებთან კავშირს ალერგიის
-        სახელიდან არ ვივარაუდებთ.
+        {tx("თუ დარწმუნებული არ ხარ, აირჩიე „ჯერ არ ვიცი“. საკვებთან კავშირს ალერგიის სახელიდან არ ვივარაუდებთ.", "If you're not sure, choose “I don't know yet”. We won't guess a food link from the allergy's name.")}
       </NText>
     </NCard>
   );

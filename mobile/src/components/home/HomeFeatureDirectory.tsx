@@ -29,6 +29,7 @@ import {
 } from 'lucide-react-native';
 import { useThemeColors } from '@/theme/colors';
 import { isHrefAvailable, useFeatureState } from '@/lib/featureFlags';
+import { tx } from '@/i18n/locale';
 
 type Feature = {
   title: string;
@@ -39,54 +40,54 @@ type Feature = {
 };
 export const HOME_FEATURE_GROUPS: { title: string; items: Feature[] }[] = [
   {
-    title: 'ყოველდღიური ზრუნვა',
+    title: tx('ყოველდღიური ზრუნვა', 'Everyday care'),
     items: [
-      {title:'კვების დღიური',detail:'ფოტო, შტრიხკოდი, ეტიკეტი, ძებნა და აღწერა',href:'/nutrition',icon:Utensils},
+      {title:tx('კვების დღიური', 'Food diary'),detail:tx('ფოტო, შტრიხკოდი, ეტიკეტი, ძებნა და აღწერა', 'Photo, barcode, label, search and description'),href:'/nutrition',icon:Utensils},
       {
-        title: 'წამლები და განრიგი',
-        detail: 'მიღება, შეხსენებები და კალენდარი',
+        title: tx('წამლები და განრიგი', 'Medications and schedule'),
+        detail: tx('მიღება, შეხსენებები და კალენდარი', 'Doses, reminders and calendar'),
         href: '/(tabs)/medications',
         icon: Pill,
       },
       {
-        title: 'ვიზიტები',
-        detail: 'შენი დაგეგმილი შეხვედრები',
+        title: tx('ვიზიტები', 'Visits'),
+        detail: tx('შენი დაგეგმილი შეხვედრები', 'Your planned appointments'),
         href: '/visits',
         icon: CalendarCheck,
       },
       {
-        title: 'წყალი',
-        detail: 'აღრიცხვა და დღის პროგრესი',
+        title: tx('წყალი', 'Water'),
+        detail: tx('აღრიცხვა და დღის პროგრესი', 'Logging and daily progress'),
         href: '/health-metrics/hydration',
         icon: Droplets,
       },
       {
-        title: 'ნაბიჯები',
-        detail: 'აქტიურობა და შენი მიზანი',
+        title: tx('ნაბიჯები', 'Steps'),
+        detail: tx('აქტიურობა და შენი მიზანი', 'Activity and your goal'),
         href: '/health-metrics/steps',
         icon: Footprints,
       },
       {
-        title: 'წონა და მიზანი',
-        detail: 'ჩანაწერები და ცვლილებები',
+        title: tx('წონა და მიზანი', 'Weight and goal'),
+        detail: tx('ჩანაწერები და ცვლილებები', 'Entries and changes'),
         href: '/health-metrics/weight',
         icon: Scale,
       },
     ],
   },
   {
-    title: 'ქალების სივრცე',
+    title: tx('ქალების სივრცე', "Women's space"),
     items: [
       {
-        title: 'ციკლი და ორსულობა',
-        detail: 'შენი არჩეული რეჟიმი და დღიური',
+        title: tx('ციკლი და ორსულობა', 'Cycle and pregnancy'),
+        detail: tx('შენი არჩეული რეჟიმი და დღიური', 'Your chosen mode and diary'),
         href: '/cycle',
         icon: CalendarHeart,
         female: true,
       },
       {
-        title: 'საზოგადოება',
-        detail: 'საუბარი, გამოცდილება და მხარდაჭერა',
+        title: tx('საზოგადოება', 'Community'),
+        detail: tx('საუბარი, გამოცდილება და მხარდაჭერა', 'Conversation, experience and support'),
         href: '/community',
         icon: HeartHandshake,
         female: true,
@@ -94,104 +95,104 @@ export const HOME_FEATURE_GROUPS: { title: string; items: Feature[] }[] = [
     ],
   },
   {
-    title: 'დახმარება და ანალიზი',
+    title: tx('დახმარება და ანალიზი', 'Help and analysis'),
     items: [
       {
-        title: 'მედი',
-        detail: 'მომიყევი ან მომწერე, რა გჭირდება',
+        title: tx('მედი', 'Medi'),
+        detail: tx('მომიყევი ან მომწერე, რა გჭირდება', 'Tell me or write what you need'),
         href: '/assistant',
         icon: AudioLines,
       },
       {
-        title: 'რა გაწუხებს დღეს?',
-        detail: 'სიმპტომების აღრიცხვა და AI დახმარება',
+        title: tx('რა გაწუხებს დღეს?', "What's bothering you today?"),
+        detail: tx('სიმპტომების აღრიცხვა და AI დახმარება', 'Symptom log and AI help'),
         href: '/symptoms',
         icon: Stethoscope,
       },
       {
-        title: 'ლაბორატორია',
-        detail: 'შედეგები, ნორმები და Medi-ს განმარტება',
+        title: tx('ლაბორატორია', 'Lab results'),
+        detail: tx('შედეგები, ნორმები და Medi-ს განმარტება', 'Results, ranges and Medi explanations'),
         href: '/lab',
         icon: FlaskConical,
       },
       {
-        title: 'სამედიცინო გამოსახულება',
-        detail: 'გამოსახულების AI განხილვა',
+        title: tx('სამედიცინო გამოსახულება', 'Medical imaging'),
+        detail: tx('გამოსახულების AI განხილვა', 'AI review of images'),
         href: '/module/imaging',
         icon: ScanLine,
       },
       {
-        title: 'კანის შეფასება',
-        detail: 'ფოტოს მიხედვით AI ინფორმაცია',
+        title: tx('კანის შეფასება', 'Skin check'),
+        detail: tx('ფოტოს მიხედვით AI ინფორმაცია', 'AI information from a photo'),
         href: '/module/skin',
         icon: ShieldCheck,
       },
       {
-        title: 'კანის მოვლა',
-        detail: 'მოვლის შესახებ AI დახმარება',
+        title: tx('კანის მოვლა', 'Skin care'),
+        detail: tx('მოვლის შესახებ AI დახმარება', 'AI help with care routines'),
         href: '/module/skincare',
         icon: Sparkles,
       },
       {
-        title: 'ღრმა ანალიზი',
-        detail: 'საკითხის განხილვა რამდენიმე AI პერსპექტივით',
+        title: tx('ღრმა ანალიზი', 'Deep analysis'),
+        detail: tx('საკითხის განხილვა რამდენიმე AI პერსპექტივით', 'A question reviewed from several AI perspectives'),
         href: '/assistant?mode=deep',
         icon: Users,
       },
     ],
   },
   {
-    title: 'ჩემი ბარათი და სერვისები',
+    title: tx('ჩემი ბარათი და სერვისები', 'My card and services'),
     items: [
       {
-        title: 'ჩემი ბარათი',
-        detail: 'ანალიზები, დოკუმენტები და საუბრები',
+        title: tx('ჩემი ბარათი', 'My card'),
+        detail: tx('ანალიზები, დოკუმენტები და საუბრები', 'Tests, documents and conversations'),
         href: '/(tabs)/records',
         icon: FileHeart,
       },
       {
-        title: 'ჯანმრთელობის მაჩვენებლები',
-        detail: 'გაზომვები და ცვლილებები',
+        title: tx('ჯანმრთელობის მაჩვენებლები', 'Health metrics'),
+        detail: tx('გაზომვები და ცვლილებები', 'Measurements and changes'),
         href: '/health-metrics',
         icon: Activity,
       },
       {
-        title: 'აფთიაქი',
-        detail: 'პროდუქტების მოძებნა',
+        title: tx('აფთიაქი', 'Pharmacy'),
+        detail: tx('პროდუქტების მოძებნა', 'Find products'),
         href: '/pharmacy',
         icon: ShoppingBag,
       },
       {
-        title: 'ამინდი',
-        detail: 'შენი ქალაქის პროგნოზი',
+        title: tx('ამინდი', 'Weather'),
+        detail: tx('შენი ქალაქის პროგნოზი', 'Forecast for your city'),
         href: '/weather',
         icon: CloudSun,
       },
     ],
   },
   {
-    title: 'მოძრაობა და მოტივაცია',
+    title: tx('მოძრაობა და მოტივაცია', 'Movement and motivation'),
     items: [
       {
         title: 'MEDIRUN',
-        detail: 'გაისეირნე და აღმოაჩინე ქალაქი',
+        detail: tx('გაისეირნე და აღმოაჩინე ქალაქი', 'Walk and discover the city'),
         href: '/run',
         icon: Footprints,
       },
       {
         title: 'MEDI QUEST',
-        detail: 'მისიები, მიღწევები და ჯილდოები',
+        detail: tx('მისიები, მიღწევები და ჯილდოები', 'Missions, achievements and rewards'),
         href: '/medi-quest',
         icon: Trophy,
       },
     ],
   },
   {
-    title: 'ცხოველებზე ზრუნვა',
+    title: tx('ცხოველებზე ზრუნვა', 'Pet care'),
     items: [
       {
-        title: 'ჩემი ცხოველები',
-        detail: 'მოვლა, ჩანაწერები და Medi Vet',
+        title: tx('ჩემი ცხოველები', 'My pets'),
+        detail: tx('მოვლა, ჩანაწერები და Medi Vet', 'Care, records and Medi Vet'),
         href: '/pets',
         icon: PawPrint,
       },

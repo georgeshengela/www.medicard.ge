@@ -4,6 +4,7 @@ import Svg, { Path } from 'react-native-svg';
 import Animated, { cancelAnimation, Easing, useAnimatedProps, useSharedValue, withRepeat, withTiming } from 'react-native-reanimated';
 import { useThemeColors } from '@/theme/colors';
 import type { VoicePhase } from '@/lib/assistantVoiceSession';
+import { tx } from '@/i18n/locale';
 
 const AnimatedPath = Animated.createAnimatedComponent(Path);
 function wavePath(phase: number, amplitude: number, offset: number, frequency: number) {
@@ -53,13 +54,13 @@ export function AssistantVoiceStage({ phase, metering, processing, speaking, rep
 }) {
   const C = useThemeColors(), listening = phase === 'recording', compact = useWindowDimensions().height < 760;
   const active = listening || processing || phase === 'preparing';
-  const title = listening ? 'გისმენ.' : phase === 'preparing' ? 'ერთი წამით…' : processing ? 'ვუსმენ შენს ნათქვამს…' : error ? 'კავშირი შეფერხდა' : reply || 'აქ ვარ.\nმომიყევი.';
+  const title = listening ? tx('გისმენ.', "I'm listening.") : phase === 'preparing' ? tx('ერთი წამით…', 'One moment…') : processing ? tx('ვუსმენ შენს ნათქვამს…', 'Listening to what you said…') : error ? tx('კავშირი შეფერხდა', 'Connection problem') : reply || tx('აქ ვარ.\nმომიყევი.', 'I\'m here.\nTell me.');
   return <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled" contentContainerStyle={{ flexGrow: 1, paddingHorizontal: 24, paddingTop: compact ? 12 : 30, paddingBottom: 18, alignItems: 'center', justifyContent: !userText && !hasTask ? 'center' : 'flex-start', gap: 20 }}>
     {!active && userText ? <Text numberOfLines={3} selectable style={{ alignSelf: 'flex-end', maxWidth: '90%', color: C.text200, fontSize: 12, lineHeight: 21, fontFamily: 'NotoSansGeorgian_400Regular', textAlign: 'right' }}>{userText}</Text> : null}
     <View style={{ width: '100%', maxWidth: 520, alignItems: 'center', gap: 12 }}>
       <VoiceWave compact active={listening} metering={metering} processing={processing || speaking} />
       <Text accessibilityLiveRegion="polite" selectable style={{ color: C.text100, fontSize: !reply && !error ? 30 : hasTask ? 18 : 20, lineHeight: !reply && !error ? 44 : 29, textAlign: 'center', fontFamily: 'NotoSansGeorgian_400Regular' }}>{title}</Text>
-      {!reply && !active && !error ? <Text style={{ maxWidth: 270, color: C.text200, fontSize: 13, lineHeight: 23, textAlign: 'center', fontFamily: 'NotoSansGeorgian_400Regular' }}>შენი სიტყვებით — შენზე, შენს გეგმებზე ან შენს ცხოველზე.</Text> : null}
+      {!reply && !active && !error ? <Text style={{ maxWidth: 270, color: C.text200, fontSize: 13, lineHeight: 23, textAlign: 'center', fontFamily: 'NotoSansGeorgian_400Regular' }}>{tx('შენი სიტყვებით — შენზე, შენს გეგმებზე ან შენს ცხოველზე.', 'In your own words — about you, your plans or your pet.')}</Text> : null}
     </View>
     {error || notice ? <Text accessibilityRole={error ? 'alert' : undefined} style={{ color: error ? C.danger : C.text200, fontSize: 13, lineHeight: 22, textAlign: 'center', fontFamily: 'NotoSansGeorgian_400Regular' }}>{error || notice}</Text> : null}
     {!active ? children : null}

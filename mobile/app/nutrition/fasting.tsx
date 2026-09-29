@@ -32,6 +32,7 @@ import { APP_MODAL_OVERLAY, APP_MODAL_PROPS, Modal } from "@/components/ui/appMo
 import { NButton, NError, NLoading, NScreen } from "@/components/nutrition/ProgramUI";
 import { HubCard, HubSection } from "@/components/nutrition/NutritionUi";
 import { MedicalSourcesLink } from "@/components/health/MedicalSourcesLink";
+import { tx } from "@/i18n/locale";
 
 export default function FastingScreen() {
   const { user } = useAuth();
@@ -123,7 +124,7 @@ function Fasting() {
       // Permission is requested only from this switch press.
       const granted = (await getNotificationPermissionGranted().catch(() => false)) || (await requestNotificationPermission());
       if (!granted) {
-        setError("შეტყობინებების ნებართვა გამორთულია. ჩართე ტელეფონის პარამეტრებში.");
+        setError(tx("შეტყობინებების ნებართვა გამორთულია. ჩართე ტელეფონის პარამეტრებში.", "Notifications are turned off. Turn them on in your phone’s settings."));
         return;
       }
     }
@@ -147,15 +148,15 @@ function Fasting() {
       void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
       await afterChange(null);
       if (alive.current)
-        setMessage(done.completed ? `შესანიშნავია — ${hoursLabel(done.minutes)} შიმშილი დასრულდა.` : `დასრულდა: ${hoursLabel(done.minutes)}. ყოველი მცდელობა ითვლება.`);
+        setMessage(done.completed ? tx(`შესანიშნავია — ${hoursLabel(done.minutes)} შიმშილი დასრულდა.`, `Great job — you finished a ${hoursLabel(done.minutes)} fast.`) : tx(`დასრულდა: ${hoursLabel(done.minutes)}. ყოველი მცდელობა ითვლება.`, `Ended at ${hoursLabel(done.minutes)}. Every attempt counts.`));
     });
   const askEnd = (fast: Fast) => {
     const left = fast.targetMinutes - fastElapsedMinutes(fast, now);
     if (left <= 0) return void end(fast);
     setConfirm({
-      title: "ახლა დავასრულო?",
-      message: `მიზნამდე ${hoursLabel(left)} დარჩა. შეწყვეტა სრულიად ნორმალურია — განსაკუთრებით, თუ თავს ცუდად გრძნობ.`,
-      confirm: "დასრულება",
+      title: tx("ახლა დავასრულო?", "End your fast now?"),
+      message: tx(`მიზნამდე ${hoursLabel(left)} დარჩა. შეწყვეტა სრულიად ნორმალურია — განსაკუთრებით, თუ თავს ცუდად გრძნობ.`, `${hoursLabel(left)} left to your goal. Stopping is completely okay — especially if you feel unwell.`),
+      confirm: tx("დასრულება", "End fast"),
       action: () => void end(fast),
     });
   };
@@ -173,9 +174,9 @@ function Fasting() {
     });
   const remove = (fast: Fast) =>
     setConfirm({
-      title: "ჩანაწერის წაშლა?",
-      message: "ეს შიმშილის ჩანაწერი ისტორიიდან წაიშლება.",
-      confirm: "წაშლა",
+      title: tx("ჩანაწერის წაშლა?", "Delete this entry?"),
+      message: tx("ეს შიმშილის ჩანაწერი ისტორიიდან წაიშლება.", "This fast will be removed from your history."),
+      confirm: tx("წაშლა", "Delete"),
       action: () =>
         void run(async () => {
           await api.nutrition.fasting.remove(fast.id);
@@ -196,70 +197,70 @@ function Fasting() {
   const teal = hubInk("teal", dark);
   const txt = { color: c.text100, fontFamily: "NotoSansGeorgian_400Regular" } as const;
   return (
-    <NScreen title="ინტერვალური შიმშილი" subtitle="ტაიმერი, ისტორია, სერია">
+    <NScreen title={tx("ინტერვალური შიმშილი", "Intermittent fasting")} subtitle={tx("ტაიმერი, ისტორია, სერია", "Timer, history, streak")}>
       {!!error && <NError message={error} retry={state ? undefined : () => void load()} />}
       {!state && !error && <NLoading />}
       {state && e && (e.needsScreening || rescreen) && (
         <Screening initial={state.screening} busy={busy} onSubmit={submitScreening} onCancel={rescreen ? () => setRescreen(false) : undefined} />
       )}
       {state && e && !e.needsScreening && !rescreen && e.blocked && (
-        <HubSection first title="ამ ეტაპზე ტაიმერი არ გირჩევთ">
+        <HubSection first title={tx("ამ ეტაპზე ტაიმერი არ გირჩევთ", "We don’t recommend the timer for you right now")}>
           <HubCard>
             <View style={s.row}>
               <View style={[s.tile, { backgroundColor: hubTint(hubInk("rose", dark), dark) }]}>
                 <ShieldAlert size={20} color={hubInk("rose", dark)} />
               </View>
-              <Text style={[hubText.cardTitle, { color: c.text100, flex: 1 }]}>შენი უსაფრთხოება პირველია</Text>
+              <Text style={[hubText.cardTitle, { color: c.text100, flex: 1 }]}>{tx("შენი უსაფრთხოება პირველია", "Your safety comes first")}</Text>
             </View>
             {e.reasons.map((r) => (
               <Text key={r} style={[hubText.body, { color: c.text200 }]}>{r}</Text>
             ))}
-            <Text style={[hubText.caption, { color: c.text300 }]}>კვების დღიური, წყალი და აქტივობა ჩვეულებრივ მუშაობს. თუ პასუხი შეცდომით მონიშნე, შეგიძლია გადახედო.</Text>
-            <NButton secondary label="პასუხების გადახედვა" onPress={() => setRescreen(true)} />
+            <Text style={[hubText.caption, { color: c.text300 }]}>{tx("კვების დღიური, წყალი და აქტივობა ჩვეულებრივ მუშაობს. თუ პასუხი შეცდომით მონიშნე, შეგიძლია გადახედო.", "Your food diary, water and activity work as usual. If you picked an answer by mistake, you can review it.")}</Text>
+            <NButton secondary label={tx("პასუხების გადახედვა", "Review answers")} onPress={() => setRescreen(true)} />
           </HubCard>
         </HubSection>
       )}
       {state && e && !e.needsScreening && !rescreen && !e.blocked && e.needsDoctor && !e.eligible && (
-        <HubSection first title="ექიმთან შეთანხმება">
+        <HubSection first title={tx("ექიმთან შეთანხმება", "Check with your doctor")}>
           <HubCard>
             <View style={s.row}>
               <View style={[s.tile, { backgroundColor: hubTint(hubInk("amber", dark), dark) }]}>
                 <ShieldAlert size={20} color={hubInk("amber", dark)} />
               </View>
-              <Text style={[hubText.cardTitle, { color: c.text100, flex: 1 }]}>ჯერ ექიმს ჰკითხე</Text>
+              <Text style={[hubText.cardTitle, { color: c.text100, flex: 1 }]}>{tx("ჯერ ექიმს ჰკითხე", "Ask your doctor first")}</Text>
             </View>
             {e.doctorReasons.map((r) => (
               <Text key={r} style={[hubText.body, { color: c.text200 }]}>{r}</Text>
             ))}
-            <Text style={[hubText.body, { color: c.text200 }]}>შიმშილის ფანჯარა შეიძლება წამლის დოზის ან მიღების დროის შეცვლას მოითხოვდეს. ტაიმერს ჩავრთავთ, როცა დაადასტურებ, რომ ექიმი ეთანხმება.</Text>
+            <Text style={[hubText.body, { color: c.text200 }]}>{tx("შიმშილის ფანჯარა შეიძლება წამლის დოზის ან მიღების დროის შეცვლას მოითხოვდეს. ტაიმერს ჩავრთავთ, როცა დაადასტურებ, რომ ექიმი ეთანხმება.", "A fasting window may require changing your medication dose or timing. We’ll turn on the timer once you confirm your doctor agrees.")}</Text>
             <NButton
-              label="ექიმი ეთანხმება — ჩართვა"
+              label={tx("ექიმი ეთანხმება — ჩართვა", "My doctor agrees — turn on")}
               disabled={busy || !state.screening}
               onPress={() => state.screening && void submitScreening({ eatingDisorder: state.screening.eatingDisorder, pregnancy: state.screening.pregnancy, diabetesMedication: state.screening.diabetesMedication, doctorApproved: true })}
             />
-            <NButton secondary label="პასუხების გადახედვა" onPress={() => setRescreen(true)} />
+            <NButton secondary label={tx("პასუხების გადახედვა", "Review answers")} onPress={() => setRescreen(true)} />
           </HubCard>
         </HubSection>
       )}
       {state && e?.eligible && !rescreen && (
         <>
-          <HubSection first title={active ? "შიმშილი მიმდინარეობს" : "ახალი შიმშილი"}>
+          <HubSection first title={active ? tx("შიმშილი მიმდინარეობს", "Fast in progress") : tx("ახალი შიმშილი", "New fast")}>
             <HubCard style={{ alignItems: "stretch", gap: 14 }}>
               <FastRing fast={active} now={now} targetMinutes={targetHours * 60} />
               {active ? (
                 <>
                   <View style={[s.row, { justifyContent: "space-between" }]}>
-                    <TimeStat label="დაიწყო" value={`${timeLabel(active.startedAt)}`} />
-                    <TimeStat label="მიზანი" value={hoursLabel(active.targetMinutes)} />
-                    <TimeStat label="დასრულდება" value={timeLabel(active.goalAt)} />
+                    <TimeStat label={tx("დაიწყო", "Started")} value={`${timeLabel(active.startedAt)}`} />
+                    <TimeStat label={tx("მიზანი", "Goal")} value={hoursLabel(active.targetMinutes)} />
+                    <TimeStat label={tx("დასრულდება", "Ends")} value={timeLabel(active.goalAt)} />
                   </View>
                   <Text accessibilityLiveRegion="polite" style={[hubText.body, { color: c.text200, textAlign: "center" }]}>{fastMilestone(fastProgress(active, now))}</Text>
-                  <NButton label={fastProgress(active, now) >= 1 ? "დასრულება — ჭამის დროა" : "დასრულება"} disabled={busy} onPress={() => askEnd(active)} />
-                  <NButton secondary label="დაწყების დროის შესწორება" disabled={busy} onPress={() => setEdit({ fast: active, startedAt: new Date(active.startedAt), endedAt: null })} />
+                  <NButton label={fastProgress(active, now) >= 1 ? tx("დასრულება — ჭამის დროა", "End — time to eat") : tx("დასრულება", "End fast")} disabled={busy} onPress={() => askEnd(active)} />
+                  <NButton secondary label={tx("დაწყების დროის შესწორება", "Adjust start time")} disabled={busy} onPress={() => setEdit({ fast: active, startedAt: new Date(active.startedAt), endedAt: null })} />
                 </>
               ) : (
                 <>
-                  <Text style={[hubText.caption, { color: c.text300, textAlign: "center" }]}>აირჩიე ფანჯარა: შიმშილის საათები : ჭამის საათები</Text>
+                  <Text style={[hubText.caption, { color: c.text300, textAlign: "center" }]}>{tx("აირჩიე ფანჯარა: შიმშილის საათები : ჭამის საათები", "Pick a window: fasting hours : eating hours")}</Text>
                   <View style={s.chips}>
                     {FASTING_PROTOCOLS.map((p) => {
                       const selected = targetHours === p.hours;
@@ -272,16 +273,16 @@ function Fasting() {
                     })}
                   </View>
                   <View style={[s.row, { justifyContent: "center" }]}>
-                    <Pressable accessibilityRole="button" accessibilityLabel="ერთი საათით ნაკლები" disabled={busy || targetHours <= FAST_MIN_HOURS} onPress={() => void saveSettings(targetHours - 1)} style={[s.round, { backgroundColor: c.bg200, opacity: targetHours <= FAST_MIN_HOURS ? 0.4 : 1 }]}>
+                    <Pressable accessibilityRole="button" accessibilityLabel={tx("ერთი საათით ნაკლები", "One hour less")} disabled={busy || targetHours <= FAST_MIN_HOURS} onPress={() => void saveSettings(targetHours - 1)} style={[s.round, { backgroundColor: c.bg200, opacity: targetHours <= FAST_MIN_HOURS ? 0.4 : 1 }]}>
                       <Minus size={18} color={c.text100} />
                     </Pressable>
-                    <Text style={[hubText.value, { color: c.text100, minWidth: 120, textAlign: "center" }]}>{targetHours} სთ შიმშილი</Text>
-                    <Pressable accessibilityRole="button" accessibilityLabel="ერთი საათით მეტი" disabled={busy || targetHours >= FAST_MAX_HOURS} onPress={() => void saveSettings(targetHours + 1)} style={[s.round, { backgroundColor: c.bg200, opacity: targetHours >= FAST_MAX_HOURS ? 0.4 : 1 }]}>
+                    <Text style={[hubText.value, { color: c.text100, minWidth: 120, textAlign: "center" }]}>{tx(`${targetHours} სთ შიმშილი`, `${targetHours} h fast`)}</Text>
+                    <Pressable accessibilityRole="button" accessibilityLabel={tx("ერთი საათით მეტი", "One hour more")} disabled={busy || targetHours >= FAST_MAX_HOURS} onPress={() => void saveSettings(targetHours + 1)} style={[s.round, { backgroundColor: c.bg200, opacity: targetHours >= FAST_MAX_HOURS ? 0.4 : 1 }]}>
                       <Plus size={18} color={c.text100} />
                     </Pressable>
                   </View>
-                  <NButton label={busy ? "იწყება…" : "დაწყება ახლა"} disabled={busy} onPress={() => void start()} />
-                  <NButton secondary label="უკვე დავიწყე ადრე…" disabled={busy} onPress={() => setStartPicker(true)} />
+                  <NButton label={busy ? tx("იწყება…", "Starting…") : tx("დაწყება ახლა", "Start now")} disabled={busy} onPress={() => void start()} />
+                  <NButton secondary label={tx("უკვე დავიწყე ადრე…", "I started earlier…")} disabled={busy} onPress={() => setStartPicker(true)} />
                 </>
               )}
               {!!message && (
@@ -291,49 +292,49 @@ function Fasting() {
                 </View>
               )}
               {!!message && !active && (
-                <NButton secondary label="პირველი კვების ჩაწერა" onPress={() => router.push("/nutrition/diary")} />
+                <NButton secondary label={tx("პირველი კვების ჩაწერა", "Log your first meal")} onPress={() => router.push("/nutrition/diary")} />
               )}
               <MedicalSourcesLink sourceIds={["intermittentFasting"]} />
             </HubCard>
           </HubSection>
 
-          <HubSection title="შეხსენება">
+          <HubSection title={tx("შეხსენება", "Reminder")}>
             <HubCard>
               <View style={s.row}>
                 <View style={[s.tile, { backgroundColor: hubTint(hubInk("sky", dark), dark) }]}>
                   <Bell size={20} color={hubInk("sky", dark)} />
                 </View>
                 <View style={{ flex: 1 }}>
-                  <Text style={[hubText.cardTitle, { color: c.text100 }]}>მიზნის შესრულებისას</Text>
-                  <Text style={[hubText.caption, { color: c.text200 }]}>ერთი შეტყობინება, როცა შიმშილის საათები შესრულდება.</Text>
+                  <Text style={[hubText.cardTitle, { color: c.text100 }]}>{tx("მიზნის შესრულებისას", "When you reach your goal")}</Text>
+                  <Text style={[hubText.caption, { color: c.text200 }]}>{tx("ერთი შეტყობინება, როცა შიმშილის საათები შესრულდება.", "One notification when your fasting hours are done.")}</Text>
                 </View>
-                <Switch accessibilityLabel="შეხსენება მიზნის შესრულებისას" value={!!settings?.notify} disabled={busy} onValueChange={(v) => void toggleNotify(v)} trackColor={{ true: "#0D9488", false: c.bg300 }} thumbColor="#FFFFFF" />
+                <Switch accessibilityLabel={tx("შეხსენება მიზნის შესრულებისას", "Reminder when you reach your goal")} value={!!settings?.notify} disabled={busy} onValueChange={(v) => void toggleNotify(v)} trackColor={{ true: "#0D9488", false: c.bg300 }} thumbColor="#FFFFFF" />
               </View>
             </HubCard>
           </HubSection>
 
-          <HubSection title="შენი სტატისტიკა">
+          <HubSection title={tx("შენი სტატისტიკა", "Your stats")}>
             <HubCard>
               <View style={[s.row, { alignItems: "stretch" }]}>
-                <StatTile icon={<Flame size={17} color={hubInk("amber", dark)} />} tint={hubTint(hubInk("amber", dark), dark)} value={`${state.stats.streak}`} label="დღე ზედიზედ" />
-                <StatTile icon={<Trophy size={17} color={hubInk("teal", dark)} />} tint={hubTint(teal, dark)} value={`${state.stats.week.completed}/${state.stats.week.count}`} label="ამ კვირაში" />
-                <StatTile icon={<Clock3 size={17} color={hubInk("blue", dark)} />} tint={hubTint(hubInk("blue", dark), dark)} value={hoursLabel(state.stats.week.averageMinutes)} label="საშუალო" />
+                <StatTile icon={<Flame size={17} color={hubInk("amber", dark)} />} tint={hubTint(hubInk("amber", dark), dark)} value={`${state.stats.streak}`} label={tx("დღე ზედიზედ", "Day streak")} />
+                <StatTile icon={<Trophy size={17} color={hubInk("teal", dark)} />} tint={hubTint(teal, dark)} value={`${state.stats.week.completed}/${state.stats.week.count}`} label={tx("ამ კვირაში", "This week")} />
+                <StatTile icon={<Clock3 size={17} color={hubInk("blue", dark)} />} tint={hubTint(hubInk("blue", dark), dark)} value={hoursLabel(state.stats.week.averageMinutes)} label={tx("საშუალო", "Average")} />
               </View>
               <Text style={[hubText.caption, { color: c.text300 }]}>
-                {state.stats.longestMinutes ? `ყველაზე გრძელი: ${hoursLabel(state.stats.longestMinutes)} · სულ ${state.stats.completed} შესრულებული.` : "პირველი დასრულებული შიმშილის შემდეგ აქ სტატისტიკა გამოჩნდება."} სერიაში ითვლება დღე, როცა მიზანი შესრულდა.
+                {state.stats.longestMinutes ? tx(`ყველაზე გრძელი: ${hoursLabel(state.stats.longestMinutes)} · სულ ${state.stats.completed} შესრულებული.`, `Longest: ${hoursLabel(state.stats.longestMinutes)} · ${state.stats.completed} completed in total.`) : tx("პირველი დასრულებული შიმშილის შემდეგ აქ სტატისტიკა გამოჩნდება.", "Your stats will show up here after your first completed fast.")}{tx(" სერიაში ითვლება დღე, როცა მიზანი შესრულდა.", " A day counts toward your streak when you reach your goal.")}
               </Text>
             </HubCard>
           </HubSection>
 
           {state.history.length > 0 && (
-            <HubSection title="ისტორია">
+            <HubSection title={tx("ისტორია", "History")}>
               <HubCard style={{ gap: 0, paddingVertical: 6 }}>
                 {state.history.map((f, i) => (
-                  <Pressable key={f.id} accessibilityRole="button" accessibilityLabel={`${nutritionDateLabel(localYmd(f.startedAt))}, ${hoursLabel(f.minutes)}. შესწორება`} onPress={() => setEdit({ fast: f, startedAt: new Date(f.startedAt), endedAt: new Date(f.endedAt!) })} style={[s.historyRow, i > 0 && { borderTopWidth: 1, borderTopColor: c.bg300 }]}>
+                  <Pressable key={f.id} accessibilityRole="button" accessibilityLabel={tx(`${nutritionDateLabel(localYmd(f.startedAt))}, ${hoursLabel(f.minutes)}. შესწორება`, `${nutritionDateLabel(localYmd(f.startedAt))}, ${hoursLabel(f.minutes)}. Edit`)} onPress={() => setEdit({ fast: f, startedAt: new Date(f.startedAt), endedAt: new Date(f.endedAt!) })} style={[s.historyRow, i > 0 && { borderTopWidth: 1, borderTopColor: c.bg300 }]}>
                     <View style={[s.dot, { backgroundColor: f.completed ? teal : c.bg300 }]} />
                     <View style={{ flex: 1 }}>
                       <Text style={[hubText.body, { color: c.text100 }]}>{nutritionDateLabel(localYmd(f.startedAt))} · {timeLabel(f.startedAt)}–{timeLabel(f.endedAt!)}</Text>
-                      <Text style={[hubText.small, { color: c.text300 }]}>მიზანი {hoursLabel(f.targetMinutes)}{f.completed ? " · შესრულდა" : ""}</Text>
+                      <Text style={[hubText.small, { color: c.text300 }]}>{tx("მიზანი", "Goal")} {hoursLabel(f.targetMinutes)}{f.completed ? tx(" · შესრულდა", " · Done") : ""}</Text>
                     </View>
                     <Text style={[hubText.value, { color: f.completed ? teal : c.text200 }]}>{hoursLabel(f.minutes)}</Text>
                   </Pressable>
@@ -342,13 +343,13 @@ function Fasting() {
             </HubSection>
           )}
 
-          <HubSection title="კარგი იცოდე">
+          <HubSection title={tx("კარგი იცოდე", "Good to know")}>
             <HubCard>
               {[
-                "შიმშილის დროს წყალი, უშაქრო ჩაი და შავი ყავა შეიძლება.",
-                "თავბრუსხვევის, გულის ფრიალის ან ძლიერი სისუსტისას შეწყვიტე და მიირთვი რამე.",
-                "ჭამის ფანჯარაში ჩვეულებრივად და დაბალანსებულად იკვებე — შიმშილი ნაკლებ ჭამას არ ნიშნავს.",
-                "ეს ტაიმერია, არა სამედიცინო რჩევა. ქრონიკული მდგომარეობისას ექიმს ჰკითხე.",
+                tx("შიმშილის დროს წყალი, უშაქრო ჩაი და შავი ყავა შეიძლება.", "While fasting, water, unsweetened tea and black coffee are fine."),
+                tx("თავბრუსხვევის, გულის ფრიალის ან ძლიერი სისუსტისას შეწყვიტე და მიირთვი რამე.", "If you feel dizzy, have heart palpitations or feel very weak, stop and eat something."),
+                tx("ჭამის ფანჯარაში ჩვეულებრივად და დაბალანსებულად იკვებე — შიმშილი ნაკლებ ჭამას არ ნიშნავს.", "Eat normally and in a balanced way during your eating window — fasting doesn’t mean eating less."),
+                tx("ეს ტაიმერია, არა სამედიცინო რჩევა. ქრონიკული მდგომარეობისას ექიმს ჰკითხე.", "This is a timer, not medical advice. If you have a chronic condition, ask your doctor."),
               ].map((line) => (
                 <View key={line} style={[s.row, { alignItems: "flex-start" }]}>
                   <Utensils size={14} color={c.text300} style={{ marginTop: 3 }} />
@@ -356,7 +357,7 @@ function Fasting() {
                 </View>
               ))}
               <Pressable accessibilityRole="button" onPress={() => setRescreen(true)} style={{ paddingVertical: 6 }}>
-                <Text style={[hubText.link, { color: teal }]}>უსაფრთხოების პასუხების შეცვლა</Text>
+                <Text style={[hubText.link, { color: teal }]}>{tx("უსაფრთხოების პასუხების შეცვლა", "Change your safety answers")}</Text>
               </Pressable>
             </HubCard>
           </HubSection>
@@ -371,9 +372,9 @@ function Fasting() {
           <View accessibilityViewIsModal style={{ backgroundColor: c.surface, borderRadius: 24, padding: 24, gap: 14 }}>
             <Text style={[txt, { fontSize: 19, fontFamily: "NotoSansGeorgian_700Bold" }]}>{confirm?.title}</Text>
             <Text style={[txt, { color: c.text200, lineHeight: 22 }]}>{confirm?.message}</Text>
-            <NButton secondary label="გაუქმება" onPress={() => setConfirm(null)} />
+            <NButton secondary label={tx("გაუქმება", "Cancel")} onPress={() => setConfirm(null)} />
             <NButton
-              label={confirm?.confirm || "დადასტურება"}
+              label={confirm?.confirm || tx("დადასტურება", "Confirm")}
               onPress={() => {
                 const action = confirm?.action;
                 setConfirm(null);
@@ -402,7 +403,7 @@ function FastRing({ fast, now, targetMinutes }: { fast: Fast | null; now: number
   const leftMs = fast ? Math.max(0, new Date(fast.goalAt).getTime() - now) : targetMinutes * 60000;
   const done = !!fast && progress >= 1;
   return (
-    <View accessible accessibilityLabel={fast ? `გავიდა ${clockLabelSeconds(elapsedMs)}, ${done ? "მიზანი შესრულდა" : `დარჩა ${clockLabelSeconds(leftMs)}`}` : `მიზანი ${Math.round(targetMinutes / 60)} საათი`} style={{ alignSelf: "center", width: size, height: size, alignItems: "center", justifyContent: "center" }}>
+    <View accessible accessibilityLabel={fast ? tx(`გავიდა ${clockLabelSeconds(elapsedMs)}, ${done ? "მიზანი შესრულდა" : `დარჩა ${clockLabelSeconds(leftMs)}`}`, `${clockLabelSeconds(elapsedMs)} elapsed, ${done ? "goal reached" : `${clockLabelSeconds(leftMs)} left`}`) : tx(`მიზანი ${Math.round(targetMinutes / 60)} საათი`, `Goal ${Math.round(targetMinutes / 60)} hours`)} style={{ alignSelf: "center", width: size, height: size, alignItems: "center", justifyContent: "center" }}>
       <Svg width={size} height={size} style={StyleSheet.absoluteFill}>
         <Defs>
           <LinearGradient id="fastRing" x1="0%" y1="0%" x2="100%" y2="100%">
@@ -428,15 +429,15 @@ function FastRing({ fast, now, targetMinutes }: { fast: Fast | null; now: number
       </Svg>
       {fast ? (
         <>
-          <Text style={[hubText.caption, { color: c.text300 }]}>{done ? "მიზანი შესრულდა" : "გავიდა"}</Text>
+          <Text style={[hubText.caption, { color: c.text300 }]}>{done ? tx("მიზანი შესრულდა", "Goal reached") : tx("გავიდა", "Elapsed")}</Text>
           <Text style={{ fontFamily: "NotoSansGeorgian_700Bold", fontSize: 38, lineHeight: 48, color: c.text100, fontVariant: ["tabular-nums"] }}>{clockLabelSeconds(elapsedMs)}</Text>
-          <Text style={[hubText.caption, { color: done ? hubInk("teal", dark) : c.text200 }]}>{done ? `+${clockLabelSeconds(elapsedMs - fast.targetMinutes * 60000)} ზედმეტი` : `დარჩა ${clockLabelSeconds(leftMs)}`}</Text>
+          <Text style={[hubText.caption, { color: done ? hubInk("teal", dark) : c.text200 }]}>{done ? tx(`+${clockLabelSeconds(elapsedMs - fast.targetMinutes * 60000)} ზედმეტი`, `+${clockLabelSeconds(elapsedMs - fast.targetMinutes * 60000)} extra`) : tx(`დარჩა ${clockLabelSeconds(leftMs)}`, `${clockLabelSeconds(leftMs)} left`)}</Text>
         </>
       ) : (
         <>
           <Timer size={26} color={hubInk("teal", dark)} />
-          <Text style={{ fontFamily: "NotoSansGeorgian_700Bold", fontSize: 34, lineHeight: 44, color: c.text100 }}>{Math.round(targetMinutes / 60)} სთ</Text>
-          <Text style={[hubText.caption, { color: c.text200 }]}>ჭამის ფანჯარა {24 - Math.round(targetMinutes / 60)} სთ</Text>
+          <Text style={{ fontFamily: "NotoSansGeorgian_700Bold", fontSize: 34, lineHeight: 44, color: c.text100 }}>{tx(`${Math.round(targetMinutes / 60)} სთ`, `${Math.round(targetMinutes / 60)} h`)}</Text>
+          <Text style={[hubText.caption, { color: c.text200 }]}>{tx(`ჭამის ფანჯარა ${24 - Math.round(targetMinutes / 60)} სთ`, `Eating window ${24 - Math.round(targetMinutes / 60)} h`)}</Text>
         </>
       )}
     </View>
@@ -480,24 +481,24 @@ function Screening({
     initial ? { eatingDisorder: initial.eatingDisorder, pregnancy: initial.pregnancy, diabetesMedication: initial.diabetesMedication, doctorApproved: initial.doctorApproved } : {},
   );
   const questions: [keyof FastingScreeningAnswers, string, string][] = [
-    ["eatingDisorder", "გქონია კვებითი ქცევის სირთულე?", "მაგ. ანორექსია, ბულიმია, კომპულსიური ჭამა — ახლა ან წარსულში."],
-    ["pregnancy", "ორსულად ხარ ან ძუძუთი კვებავ?", ""],
-    ["diabetesMedication", "იღებ ინსულინს ან შაქრის დამწევ წამალს?", "შიმშილისას შაქარი შეიძლება საშიშად დაეცეს."],
+    ["eatingDisorder", tx("გქონია კვებითი ქცევის სირთულე?", "Have you ever had an eating disorder?"), tx("მაგ. ანორექსია, ბულიმია, კომპულსიური ჭამა — ახლა ან წარსულში.", "E.g. anorexia, bulimia, binge eating — now or in the past.")],
+    ["pregnancy", tx("ორსულად ხარ ან ძუძუთი კვებავ?", "Are you pregnant or breastfeeding?"), ""],
+    ["diabetesMedication", tx("იღებ ინსულინს ან შაქრის დამწევ წამალს?", "Do you take insulin or glucose-lowering medication?"), tx("შიმშილისას შაქარი შეიძლება საშიშად დაეცეს.", "Your blood sugar can drop dangerously while fasting.")],
   ];
   const complete = questions.every(([k]) => typeof answers[k] === "boolean");
   const teal = hubInk("teal", dark);
   return (
-    <HubSection first title="სანამ დავიწყებთ">
+    <HubSection first title={tx("სანამ დავიწყებთ", "Before we start")}>
       <HubCard>
-        <Text style={[hubText.body, { color: c.text200 }]}>ინტერვალური შიმშილი ყველასთვის არ არის. სამ მოკლე კითხვას უპასუხე — პასუხები მხოლოდ შენს ანგარიშში ინახება და მხოლოდ ტაიმერის უსაფრთხოებისთვის გამოიყენება.</Text>
+        <Text style={[hubText.body, { color: c.text200 }]}>{tx("ინტერვალური შიმშილი ყველასთვის არ არის. სამ მოკლე კითხვას უპასუხე — პასუხები მხოლოდ შენს ანგარიშში ინახება და მხოლოდ ტაიმერის უსაფრთხოებისთვის გამოიყენება.", "Intermittent fasting isn’t for everyone. Answer three short questions — your answers are stored only in your account and used only to keep the timer safe.")}</Text>
         {questions.map(([key, question, hint]) => (
           <View key={key} style={{ gap: 8 }}>
             <Text style={[hubText.cardTitle, { color: c.text100 }]}>{question}</Text>
             {!!hint && <Text style={[hubText.caption, { color: c.text300 }]}>{hint}</Text>}
             <View style={s.row}>
               {([
-                [true, "კი"],
-                [false, "არა"],
+                [true, tx("კი", "Yes")],
+                [false, tx("არა", "No")],
               ] as const).map(([value, label]) => {
                 const selected = answers[key] === value;
                 return (
@@ -511,12 +512,12 @@ function Screening({
         ))}
         {answers.diabetesMedication === true && (
           <View style={[s.row, { paddingVertical: 4 }]}>
-            <Text style={[hubText.body, { color: c.text100, flex: 1 }]}>ექიმმა შიმშილის ფანჯარა დამიდასტურა</Text>
-            <Switch accessibilityLabel="ექიმმა შიმშილის ფანჯარა დამიდასტურა" value={!!answers.doctorApproved} onValueChange={(v) => setAnswers((a) => ({ ...a, doctorApproved: v }))} trackColor={{ true: "#0D9488", false: c.bg300 }} thumbColor="#FFFFFF" />
+            <Text style={[hubText.body, { color: c.text100, flex: 1 }]}>{tx("ექიმმა შიმშილის ფანჯარა დამიდასტურა", "My doctor has approved a fasting window")}</Text>
+            <Switch accessibilityLabel={tx("ექიმმა შიმშილის ფანჯარა დამიდასტურა", "My doctor has approved a fasting window")} value={!!answers.doctorApproved} onValueChange={(v) => setAnswers((a) => ({ ...a, doctorApproved: v }))} trackColor={{ true: "#0D9488", false: c.bg300 }} thumbColor="#FFFFFF" />
           </View>
         )}
         <NButton
-          label={busy ? "ინახება…" : "გაგრძელება"}
+          label={busy ? tx("ინახება…", "Saving…") : tx("გაგრძელება", "Continue")}
           disabled={!complete || busy}
           onPress={() =>
             onSubmit({
@@ -527,7 +528,7 @@ function Screening({
             })
           }
         />
-        {onCancel && <NButton secondary label="გაუქმება" onPress={onCancel} />}
+        {onCancel && <NButton secondary label={tx("გაუქმება", "Cancel")} onPress={onCancel} />}
       </HubCard>
     </HubSection>
   );
@@ -556,26 +557,26 @@ function StartEarlierSheet({ visible, busy, onClose, onPick }: { visible: boolea
   };
   return (
     <Modal visible={visible} {...APP_MODAL_PROPS} onRequestClose={onClose}>
-      <Pressable accessibilityRole="button" accessibilityLabel="დახურვა" onPress={onClose} style={[StyleSheet.absoluteFill, { backgroundColor: APP_MODAL_OVERLAY }]} />
+      <Pressable accessibilityRole="button" accessibilityLabel={tx("დახურვა", "Close")} onPress={onClose} style={[StyleSheet.absoluteFill, { backgroundColor: APP_MODAL_OVERLAY }]} />
       <View style={{ flex: 1, justifyContent: "flex-end" }} pointerEvents="box-none">
         <View accessibilityViewIsModal style={[s.sheet, { backgroundColor: c.surface }]}>
-          <Text style={[hubText.cardTitle, { color: c.text100, fontSize: 17 }]}>როდის შეწყვიტე ჭამა?</Text>
+          <Text style={[hubText.cardTitle, { color: c.text100, fontSize: 17 }]}>{tx("როდის შეწყვიტე ჭამა?", "When did you last eat?")}</Text>
           <View style={s.chips}>
             {[30, 60, 120, 180, 240, 360].map((m) => (
               <Pressable key={m} accessibilityRole="button" disabled={busy} onPress={() => onPick(ago(m))} style={[s.chip, { backgroundColor: c.bg200, borderColor: "transparent" }]}>
-                <Text style={[hubText.value, { color: c.text100 }]}>{m < 60 ? `${m} წთ წინ` : `${m / 60} სთ წინ`}</Text>
+                <Text style={[hubText.value, { color: c.text100 }]}>{m < 60 ? tx(`${m} წთ წინ`, `${m} min ago`) : tx(`${m / 60} სთ წინ`, `${m / 60} h ago`)}</Text>
                 <Text style={[hubText.small, { color: c.text300 }]}>{timeLabel(ago(m).toISOString())}</Text>
               </Pressable>
             ))}
           </View>
-          {Platform.OS !== "web" && <NButton secondary label="ზუსტი დრო…" onPress={other} />}
+          {Platform.OS !== "web" && <NButton secondary label={tx("ზუსტი დრო…", "Exact time…")} onPress={other} />}
           {iosTime && (
             <>
               <DateTimePicker value={iosTime} mode="time" display="spinner" is24Hour onChange={(_e, d) => d && setIosTime(d)} />
-              <NButton label={`დაწყება ${timeLabel(pastDateFromClock(iosTime).toISOString())}-დან`} disabled={busy} onPress={() => onPick(pastDateFromClock(iosTime))} />
+              <NButton label={tx(`დაწყება ${timeLabel(pastDateFromClock(iosTime).toISOString())}-დან`, `Start from ${timeLabel(pastDateFromClock(iosTime).toISOString())}`)} disabled={busy} onPress={() => onPick(pastDateFromClock(iosTime))} />
             </>
           )}
-          <NButton secondary label="დახურვა" onPress={onClose} />
+          <NButton secondary label={tx("დახურვა", "Close")} onPress={onClose} />
         </View>
       </View>
     </Modal>
@@ -621,10 +622,10 @@ function EditFastSheet({
         </View>
         <View style={s.row}>
           {[
-            [-60, "−1 სთ"],
-            [-15, "−15 წთ"],
-            [15, "+15 წთ"],
-            [60, "+1 სთ"],
+            [-60, tx("−1 სთ", "−1 h")],
+            [-15, tx("−15 წთ", "−15 min")],
+            [15, tx("+15 წთ", "+15 min")],
+            [60, tx("+1 სთ", "+1 h")],
           ].map(([m, text]) => (
             <Pressable key={String(m)} accessibilityRole="button" accessibilityLabel={`${label} ${text}`} disabled={busy} onPress={() => shift(field, m as number)} style={[s.step, { backgroundColor: c.bg200 }]}>
               <Text style={[hubText.link, { color: c.text100 }]}>{text}</Text>
@@ -636,23 +637,23 @@ function EditFastSheet({
   };
   return (
     <Modal visible {...APP_MODAL_PROPS} onRequestClose={onClose}>
-      <Pressable accessibilityRole="button" accessibilityLabel="დახურვა" onPress={onClose} style={[StyleSheet.absoluteFill, { backgroundColor: APP_MODAL_OVERLAY }]} />
+      <Pressable accessibilityRole="button" accessibilityLabel={tx("დახურვა", "Close")} onPress={onClose} style={[StyleSheet.absoluteFill, { backgroundColor: APP_MODAL_OVERLAY }]} />
       <View style={{ flex: 1, justifyContent: "flex-end" }} pointerEvents="box-none">
         <View accessibilityViewIsModal style={[s.sheet, { backgroundColor: c.surface }]}>
           <View style={s.row}>
             <History size={18} color={c.text200} />
-            <Text style={[hubText.cardTitle, { color: c.text100, fontSize: 17, flex: 1 }]}>{edit.endedAt ? "ჩანაწერის შესწორება" : "დაწყების დრო"}</Text>
+            <Text style={[hubText.cardTitle, { color: c.text100, fontSize: 17, flex: 1 }]}>{edit.endedAt ? tx("ჩანაწერის შესწორება", "Edit entry") : tx("დაწყების დრო", "Start time")}</Text>
             {edit.endedAt && (
-              <Pressable accessibilityRole="button" accessibilityLabel="ჩანაწერის წაშლა" onPress={() => onDelete(edit.fast)} style={s.round}>
+              <Pressable accessibilityRole="button" accessibilityLabel={tx("ჩანაწერის წაშლა", "Delete entry")} onPress={() => onDelete(edit.fast)} style={s.round}>
                 <Trash2 size={18} color={c.text300} />
               </Pressable>
             )}
           </View>
-          {row("დაწყება", "startedAt")}
-          {row("დასრულება", "endedAt")}
-          <Text style={[hubText.caption, { color: c.text300 }]}>ხანგრძლივობა: {minutes > 0 ? hoursLabel(minutes) : "—"}</Text>
-          {busy ? <ActivityIndicator color={c.primary200} /> : <NButton label="შენახვა" disabled={minutes <= 0} onPress={onSave} />}
-          <NButton secondary label="გაუქმება" onPress={onClose} />
+          {row(tx("დაწყება", "Start"), "startedAt")}
+          {row(tx("დასრულება", "End"), "endedAt")}
+          <Text style={[hubText.caption, { color: c.text300 }]}>{tx("ხანგრძლივობა:", "Duration:")} {minutes > 0 ? hoursLabel(minutes) : "—"}</Text>
+          {busy ? <ActivityIndicator color={c.primary200} /> : <NButton label={tx("შენახვა", "Save")} disabled={minutes <= 0} onPress={onSave} />}
+          <NButton secondary label={tx("გაუქმება", "Cancel")} onPress={onClose} />
         </View>
       </View>
     </Modal>

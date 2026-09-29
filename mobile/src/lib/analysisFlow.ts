@@ -1,3 +1,4 @@
+import { tx } from '../i18n/locale.js';
 export const ANALYSIS_CONTEXT_LIMIT = 1700; // Reserve space for the imaging region in the API's 2000 limit.
 export const CHAT_MESSAGE_LIMIT = 4000;
 export const SKINCARE_PRODUCTS_LIMIT = 1000;
@@ -15,7 +16,7 @@ export function createRequestGate() {
 export class IncompleteAnalysisError extends Error {}
 
 export function requireAnalysisText(value: unknown): string {
-  if (typeof value !== 'string' || !value.trim()) throw new IncompleteAnalysisError('პასუხი სრულად ვერ მივიღეთ. გთხოვ, სცადე ხელახლა.');
+  if (typeof value !== 'string' || !value.trim()) throw new IncompleteAnalysisError(tx('პასუხი სრულად ვერ მივიღეთ. გთხოვ, სცადე ხელახლა.', 'We didn’t get the full answer. Please try again.'));
   return value.trim();
 }
 

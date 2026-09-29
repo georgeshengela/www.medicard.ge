@@ -11,6 +11,7 @@ import {
   pricingFromOffers,
   resolveOffersForCompare,
 } from '../lib/pharmacy/crossMatch.js';
+import { t } from '../lib/i18n.js';
 
 export const pharmacyRouter = Router();
 
@@ -200,7 +201,7 @@ pharmacyRouter.get(
         offers: { include: { source: true }, orderBy: { priceGel: 'asc' } },
       },
     });
-    if (!row) return res.status(404).json({ error: 'პროდუქტი ვერ მოიძებნა.' });
+    if (!row) return res.status(404).json({ error: t(req, 'პროდუქტი ვერ მოიძებნა.', 'Product not found.') });
 
     const crossCtx = await getCrossSourceIndex();
     return res.json({ product: mapProduct(row, crossCtx, { includeOffers: true }) });

@@ -48,6 +48,7 @@ import {
   useOnboardingDevPreview,
 } from '@/lib/onboardingDevPreview';
 import { needsProfileSetup, useAuth } from '@/store/AuthContext';
+import { tx } from '@/i18n/locale';
 
 /** Product funnel: onboarding step keys only (no answers). Lazy so tests and startup never depend on it. */
 function trackOnboardingStep(kind: 'viewed' | 'completed', key: string | undefined) {
@@ -487,7 +488,7 @@ export default function AssessmentScreen() {
       stepLabel={
         !isIntro && !isComplete
           ? profileMode
-            ? `კითხვა ${visiblePosition} / ${visibleIndices.length - 2}${step.skippable ? ' · არჩევითი' : ' · აუცილებელი'}`
+            ? tx(`კითხვა ${visiblePosition} / ${visibleIndices.length - 2}${step.skippable ? ' · არჩევითი' : ' · აუცილებელი'}`, `Question ${visiblePosition} / ${visibleIndices.length - 2}${step.skippable ? ' · optional' : ' · required'}`)
             : `${ka.assessment.onboardingStep(visiblePosition + 1, visibleIndices.length + (form.primaryGoal ? 0 : 1) + ONBOARDING_TAIL_STEPS)}${step.skippable ? ' · ' + ka.assessment.optional : ''}`
           : undefined
       }
@@ -530,7 +531,7 @@ export default function AssessmentScreen() {
             style={{ paddingVertical: 12, alignItems: 'center' }}
           >
             <Text className="font-sans text-sm text-text-200">
-              დანარჩენ კითხვებს მოგვიანებით შევავსებ
+              {tx('დანარჩენ კითხვებს მოგვიანებით შევავსებ', "I'll answer the rest later")}
             </Text>
           </Pressable>
         ) : step.type === 'allergies' ? (

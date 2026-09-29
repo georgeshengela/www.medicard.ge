@@ -6,6 +6,7 @@ import * as FileSystem from 'expo-file-system/legacy';
 import { assistantRequest } from '@/lib/api';
 import { localAccountId } from '@/lib/localAccount';
 import { discardAssistantAudio } from './useAssistantVoice';
+import { tx } from '@/i18n/locale';
 
 export function useAssistantSpeech(owner: string, available: boolean, onNotice: (text: string) => void) {
   const player = useAudioPlayer(null, { updateInterval: 150 });
@@ -28,7 +29,7 @@ export function useAssistantSpeech(owner: string, available: boolean, onNotice: 
   useEffect(() => {
     const sub = player.addListener('playbackStatusUpdate', status => {
       if (status.didJustFinish) stop(true);
-      else if (status.error) { stop(); if (active()) latest.current.onNotice('ხმის დაკვრა შეფერხდა. პასუხი ტექსტად წაიკითხე.'); }
+      else if (status.error) { stop(); if (active()) latest.current.onNotice(tx('ხმის დაკვრა შეფერხდა. პასუხი ტექსტად წაიკითხე.', 'Playback stopped. You can read the reply as text.')); }
       else if (status.playing && alive.current) setPhase('speaking');
     });
     return () => sub.remove();
@@ -62,17 +63,17 @@ export function useAssistantSpeech(owner: string, available: boolean, onNotice: 
       if (!active() || id !== epoch.current) return false;
       return await new Promise<boolean>((resolve, reject) => {
         completion.current = resolve;
-        deadline.current = setTimeout(() => { stop(); if (active()) latest.current.onNotice('ხმა შეწყდა. ტექსტით ან საუბრის ღილაკით გააგრძელე.'); }, 120000);
+        deadline.current = setTimeout(() => { stop(); if (active()) latest.current.onNotice(tx('ხმა შეწყდა. ტექსტით ან საუბრის ღილაკით გააგრძელე.', 'The audio stopped. Continue by text or with the talk button.')); }, 120000);
         try { player.replace(next); player.play(); } catch (e) { reject(e); }
       });
     } catch {
-      if (active() && id === epoch.current) { stop(); latest.current.onNotice('ხმოვანი პასუხი ახლა ვერ ჩაირთო. პასუხი ტექსტად რჩება.'); }
+      if (active() && id === epoch.current) { stop(); latest.current.onNotice(tx('ხმოვანი პასუხი ახლა ვერ ჩაირთო. პასუხი ტექსტად რჩება.', "The voice reply couldn't start right now. The reply stays as text.")); }
       return false;
     }
   }
   return { phase, muted, say, stop: () => stop(), toggle: () => {
     stop();
-    if (!latest.current.available) { latest.current.onNotice('ქართული ხმოვანი პასუხი ჯერ არ არის ჩართული. საუბარი და ტექსტური პასუხები მუშაობს.'); return; }
+    if (!latest.current.available) { latest.current.onNotice(tx('ქართული ხმოვანი პასუხი ჯერ არ არის ჩართული. საუბარი და ტექსტური პასუხები მუშაობს.', "Voice replies aren't turned on yet. Talking and text replies work.")); return; }
     setMuted(!latest.current.muted);
   } };
 }

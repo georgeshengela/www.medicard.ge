@@ -11,6 +11,7 @@ import { Avatar, Button, Card, CoachHeader, ErrorBox, Loading, Screen, coachStyl
 import { StyledQr } from '@/components/coach/StyledQr';
 import { HUB, hubText } from '@/theme/hub';
 import { useThemeColors } from '@/theme/colors';
+import { tx } from '@/i18n/locale';
 
 /** The person's own QR: a trainer scans it in MEDICARD and invites them; nothing is shared without consent. */
 export default function MyQrScreen() {
@@ -30,22 +31,22 @@ export default function MyQrScreen() {
       const r = await api.identity.qr();
       if (localAccountId() === owner) setQr(r);
     } catch (e) {
-      setError(e instanceof ApiError ? e.message : 'QR ვერ ჩაიტვირთა.');
+      setError(e instanceof ApiError ? e.message : tx('QR ვერ ჩაიტვირთა.', "Couldn't load the QR code."));
     }
   }, []);
   useFocusEffect(useCallback(() => void load(), [load]));
 
   const rotate = () =>
-    Alert.alert('ახალი QR კოდი', 'ძველი კოდი (მაგ. სქრინშოტი) მაშინვე აღარ იმუშავებს. არსებულ ტრენერთან კავშირი არ იცვლება.', [
-      { text: 'გაუქმება', style: 'cancel' },
+    Alert.alert(tx('ახალი QR კოდი', 'New QR code'), tx('ძველი კოდი (მაგ. სქრინშოტი) მაშინვე აღარ იმუშავებს. არსებულ ტრენერთან კავშირი არ იცვლება.', 'The old code (for example, a screenshot) stops working right away. Your link with your current trainer stays the same.'), [
+      { text: tx('გაუქმება', 'Cancel'), style: 'cancel' },
       {
-        text: 'განახლება',
+        text: tx('განახლება', 'Renew'),
         onPress: async () => {
           setBusy(true);
           try {
             setQr(await api.identity.rotateQr());
           } catch (e) {
-            Alert.alert('ვერ განახლდა', e instanceof ApiError ? e.message : 'სცადე ხელახლა.');
+            Alert.alert(tx('ვერ განახლდა', "Couldn't renew"), e instanceof ApiError ? e.message : tx('სცადე ხელახლა.', 'Please try again.'));
           } finally {
             setBusy(false);
           }
@@ -57,7 +58,7 @@ export default function MyQrScreen() {
   const qrSize = Math.round(cardW - 72);
   return (
     <View style={{ flex: 1, backgroundColor: c.bg100 }}>
-      <CoachHeader title="ჩემი QR" subtitle="ტრენერი დაასკანერებს MEDICARD-ში" />
+      <CoachHeader title={tx('ჩემი QR', 'My QR')} subtitle={tx('ტრენერი დაასკანერებს MEDICARD-ში', 'Your trainer scans it in MEDICARD')} />
       <Screen>
         {error ? <ErrorBox message={error} onRetry={load} /> : null}
         {!qr && !error ? <Loading /> : null}
@@ -86,24 +87,24 @@ export default function MyQrScreen() {
                   </View>
                   <View>
                     <Text style={{ fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 18, color: '#FFFFFF' }}>{user?.fullName}</Text>
-                    <Text style={[hubText.caption, { color: '#99F6E4' }]}>MEDICARD პროფილი</Text>
+                    <Text style={[hubText.caption, { color: '#99F6E4' }]}>{tx('MEDICARD პროფილი', 'MEDICARD profile')}</Text>
                   </View>
                 </View>
                 <View style={{ padding: 12, backgroundColor: '#FFFFFF', borderRadius: 26 }}>
                   <StyledQr value={qr.link} size={qrSize - 24} />
                 </View>
-                <Text style={[hubText.body, { color: '#C5DADA', textAlign: 'center', paddingHorizontal: 24 }]}>აჩვენე ტრენერს — ის დაასკანერებს MEDICARD-ში და მოგიწვევს. რას გაუზიარებ, შენ ირჩევ.</Text>
+                <Text style={[hubText.body, { color: '#C5DADA', textAlign: 'center', paddingHorizontal: 24 }]}>{tx('აჩვენე ტრენერს — ის დაასკანერებს MEDICARD-ში და მოგიწვევს. რას გაუზიარებ, შენ ირჩევ.', 'Show it to your trainer — they scan it in MEDICARD and invite you. You choose what to share.')}</Text>
               </View>
             </View>
             <Card style={{ marginTop: 16, gap: 8 }}>
               <View style={coachStyles.row}>
                 <ShieldCheck size={18} color={c.primary100} />
                 <Text style={[hubText.caption, { color: c.text200, flex: 1 }]}>
-                  კოდი ტრენერს აჩვენებს მხოლოდ სახელს, ფოტოს, ასაკს და სქესს. ჯანმრთელობის მონაცემი ჩანს მხოლოდ შენი თანხმობის შემდეგ. თუ კოდი სხვასთან მოხვდა, განაახლე.
+                  {tx('კოდი ტრენერს აჩვენებს მხოლოდ სახელს, ფოტოს, ასაკს და სქესს. ჯანმრთელობის მონაცემი ჩანს მხოლოდ შენი თანხმობის შემდეგ. თუ კოდი სხვასთან მოხვდა, განაახლე.', 'The code shows a trainer only your name, photo, age and sex. Health data is visible only after you agree. If someone else got the code, renew it.')}
                 </Text>
               </View>
             </Card>
-            <Button label="კოდის განახლება" icon={RefreshCcw} kind="secondary" busy={busy} onPress={rotate} style={{ marginTop: 12 }} />
+            <Button label={tx('კოდის განახლება', 'Renew code')} icon={RefreshCcw} kind="secondary" busy={busy} onPress={rotate} style={{ marginTop: 12 }} />
           </>
         ) : null}
       </Screen>

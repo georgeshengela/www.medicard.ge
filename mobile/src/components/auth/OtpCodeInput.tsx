@@ -3,6 +3,7 @@ import { Keyboard, Platform, Text, TextInput, View } from 'react-native';
 import { KEYBOARD_DONE_ACCESSORY_ID } from '@/components/ui/KeyboardDoneAccessory';
 import { useFigmaProfileSetup, FIGMA_PROFILE_SETUP_SHADOW } from '@/constants/figmaProfileSetupLayout';
 import { useThemeColors } from '@/theme/colors';
+import { tx } from '@/i18n/locale';
 
 type Props = {
   value: string;
@@ -92,7 +93,7 @@ export function OtpCodeInput({
           autoFocus={autoFocus}
           caretHidden
           importantForAccessibility="yes"
-          accessibilityLabel="SMS კოდი"
+          accessibilityLabel={tx('SMS კოდი', 'SMS code')}
           inputAccessoryViewID={Platform.OS === 'ios' ? KEYBOARD_DONE_ACCESSORY_ID : undefined}
           style={{
             position: 'absolute',

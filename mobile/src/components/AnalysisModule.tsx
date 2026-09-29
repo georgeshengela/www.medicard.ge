@@ -1,3 +1,5 @@
+import { labRowName } from '@/lib/labNames';
+import { tx } from '@/i18n/locale';
 import React, { useCallback, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
@@ -135,9 +137,9 @@ function AnalysisModuleContent({
         const permission = await (source === 'camera' ? ImagePicker.requestCameraPermissionsAsync() : ImagePicker.requestMediaLibraryPermissionsAsync());
         if (!operation.current()) return;
         if (!permission.granted) {
-          Alert.alert('ფოტოზე წვდომა', ka.upload.permissionDenied, [
+          Alert.alert(tx('ფოტოზე წვდომა', 'Photo access'), ka.upload.permissionDenied, [
             { text: ka.common.cancel, style: 'cancel' },
-            { text: 'პარამეტრები', onPress: () => { void Linking.openSettings().catch(() => setError(ka.upload.permissionDenied)); } },
+            { text: tx('პარამეტრები', 'Settings'), onPress: () => { void Linking.openSettings().catch(() => setError(ka.upload.permissionDenied)); } },
           ]);
           return;
         }
@@ -150,7 +152,7 @@ function AnalysisModuleContent({
       const slots = isLab ? MAX_LAB_FILES - files.length : 1;
       const next: Picked[] = [];
       const issues: string[] = [];
-      if (assets.length > slots) issues.push('ერთ ჯერზე მაქსიმუმ 8 გვერდი შეგიძლია დაამატო.');
+      if (assets.length > slots) issues.push(tx('ერთ ჯერზე მაქსიმუმ 8 გვერდი შეგიძლია დაამატო.', 'You can add up to 8 pages at a time.'));
       for (const asset of assets.slice(0, slots)) {
         if (!operation.current()) return;
         try {
@@ -158,7 +160,7 @@ function AnalysisModuleContent({
           const file = isLab || kind === 'IMAGING' ? await prepareLabImage(asset) : await toUploadableImage(asset);
           if (!operation.current()) return;
           if (file.size != null && file.size > MAX_BYTES) { issues.push(ka.upload.fileTooLarge); continue; }
-          if (file.mimeType === 'application/pdf' && !allowPdf) { issues.push('ამ სექციაში ატვირთე ფოტო. PDF გამოიყენე ანალიზების სექციაში.'); continue; }
+          if (file.mimeType === 'application/pdf' && !allowPdf) { issues.push(tx('ამ სექციაში ატვირთე ფოტო. PDF გამოიყენე ანალიზების სექციაში.', 'Upload a photo here. Use PDFs in the lab results section.')); continue; }
           next.push({ uri: file.uri, name: file.name, mimeType: file.mimeType, isPdf: file.mimeType === 'application/pdf' });
         } catch { issues.push(ka.upload.prepareFailed); }
       }
@@ -560,14 +562,14 @@ function AnalysisModuleContent({
                   gap: 12,
                 }}
               >
-                {pendingExtract && !askDate ? <AuthPrimaryButton label="ანალიზის თარიღის არჩევა" onPress={() => { setDateError(null); setAskDate(true); }} /> : null}
+                {pendingExtract && !askDate ? <AuthPrimaryButton label={tx('ანალიზის თარიღის არჩევა', 'Choose the test date')} onPress={() => { setDateError(null); setAskDate(true); }} /> : null}
                 {savedMeta ? (
                   <Text style={{ fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 16, color: FIGMA_CHAT.textPrimary }}>
                     {ka.lab.savedOn(formatLabDateKa(savedMeta.date), savedMeta.count)}
                   </Text>
                 ) : result.extract?.parameters.length ? (
                   <Text style={{ fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 16, color: FIGMA_CHAT.textPrimary }}>
-                    ამოკითხული მაჩვენებლები
+                    {tx('ამოკითხული მაჩვენებლები', 'Values read from the report')}
                   </Text>
                 ) : (
                   <Text style={{ fontFamily: 'NotoSansGeorgian_400Regular', fontSize: 14, color: FIGMA_CHAT.textSecondary }}>{ka.lab.noParams}</Text>
@@ -575,7 +577,7 @@ function AnalysisModuleContent({
                 {(result.extract?.parameters ?? []).map((row) => (
                   <LabLogRow
                     key={row.key}
-                    title={`${row.nameKa || row.nameEn}  ${row.display} ${row.unit}`.trim()}
+                    title={`${labRowName(row)}  ${row.display} ${row.unit}`.trim()}
                     subtitle={row.nameEn}
                     flag={row.flag}
                     onPress={() => {
@@ -643,9 +645,9 @@ function AnalysisModuleContent({
               </View>
             ) : (
             <ChatBubbleAssistant icon={icon} timestamp={new Date().toISOString()}>
-              <View style={{ paddingVertical: 6 }}><Text style={{ fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 18, color: FIGMA_CHAT.textPrimary }}>შენი შედეგი</Text></View>
+              <View style={{ paddingVertical: 6 }}><Text style={{ fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 18, color: FIGMA_CHAT.textPrimary }}>{tx('შენი შედეგი', 'Your result')}</Text></View>
               <Markdown content={result.analysis} />
-              <AuthPrimaryButton label="შენახული ჩანაწერის ნახვა" onPress={() => router.push(`/record/${result.record.id}` as never)} />
+              <AuthPrimaryButton label={tx('შენახული ჩანაწერის ნახვა', 'View saved record')} onPress={() => router.push(`/record/${result.record.id}` as never)} />
               <Pressable
                 onPress={reset}
                 style={{
@@ -692,7 +694,7 @@ function AnalysisModuleContent({
             if (!operation.current()) return;
             setPendingExtract(null); setAskDate(false);
           } catch {
-            if (operation.current()) setDateError('თარიღი ვერ შეინახა. შედეგი შენარჩუნებულია — სცადე ხელახლა.');
+            if (operation.current()) setDateError(tx('თარიღი ვერ შეინახა. შედეგი შენარჩუნებულია — სცადე ხელახლა.', 'Couldn’t save the date. Your result is kept — please try again.'));
           } finally {
             if (operation.current()) setSavingDate(false);
             operation.finish();
@@ -749,7 +751,7 @@ function FilePreview({
               <Text style={{ fontSize: 13, fontWeight: '600', color: FIGMA_CHAT.brand }}>{ka.upload.fromGallery}</Text>
             </Pressable>
           ) : null}
-          <Pressable accessibilityRole="button" accessibilityLabel="ფოტოს წაშლა" onPress={() => onRemove(0)} style={{ minWidth: 44, minHeight: 44, alignItems: 'center', justifyContent: 'center' }}>
+          <Pressable accessibilityRole="button" accessibilityLabel={tx('ფოტოს წაშლა', 'Remove photo')} onPress={() => onRemove(0)} style={{ minWidth: 44, minHeight: 44, alignItems: 'center', justifyContent: 'center' }}>
             <X size={18} color={FIGMA_CHAT.textMuted} strokeWidth={2.4} />
           </Pressable>
         </View>

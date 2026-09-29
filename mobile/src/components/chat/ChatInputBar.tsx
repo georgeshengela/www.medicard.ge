@@ -6,6 +6,7 @@ import { useFigmaChat } from '@/constants/figmaChatLayout';
 import { ka } from '@/i18n/ka';
 import { CHAT_MESSAGE_LIMIT } from '@/lib/analysisFlow';
 import { useChatKeyboardOpen } from './ChatScreenShell';
+import { tx } from '@/i18n/locale';
 
 type Props = {
   value: string;
@@ -94,7 +95,7 @@ export function ChatInputBar({
                 borderRadius: 999,
               }}
             >
-              {onMicPress ? <Pressable accessibilityRole="button" accessibilityLabel="ხმოვანი შეტყობინება" onPress={onMicPress} style={{ padding: 10 }}>
+              {onMicPress ? <Pressable accessibilityRole="button" accessibilityLabel={tx('ხმოვანი შეტყობინება', 'Voice message')} onPress={onMicPress} style={{ padding: 10 }}>
                 <Mic size={24} color={FIGMA_CHAT.brand} strokeWidth={2} />
               </Pressable> : null}
               {onCameraPress ? <Pressable accessibilityRole="button" accessibilityLabel={ka.upload.fromCamera} onPress={onCameraPress} style={{ padding: 10 }}>
@@ -106,7 +107,7 @@ export function ChatInputBar({
 
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel={sending ? 'Medi პასუხს ამზადებს' : 'შეტყობინების გაგზავნა'}
+          accessibilityLabel={sending ? tx('Medi პასუხს ამზადებს', 'Medi is preparing a reply') : tx('შეტყობინების გაგზავნა', 'Send message')}
           accessibilityState={{ disabled: !canSend, busy: sending }}
           onPress={onSend}
           disabled={!canSend}

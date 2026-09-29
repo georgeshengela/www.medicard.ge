@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { api } from '@/lib/api';
 import { useAuth } from '@/store/AuthContext';
+import { tx } from '@/i18n/locale';
 
 /**
  * medicard://u/TOKEN and https://medicard.ge/u/TOKEN — a person's personal QR opened by the phone camera.
@@ -20,7 +21,7 @@ export default function PersonalQrLink() {
       .me()
       .then((me) => {
         if (me.trainerProfile?.status === 'VERIFIED' && token) router.replace(`/coach/scan?token=${encodeURIComponent(String(token))}` as never);
-        else router.replace(`/profile/qr?note=${encodeURIComponent('ეს MEDICARD-ის პირადი QR კოდია — მას მხოლოდ დადასტურებული ტრენერი ასკანერებს. ქვემოთ შენი QR-ია.')}` as never);
+        else router.replace(`/profile/qr?note=${encodeURIComponent(tx('ეს MEDICARD-ის პირადი QR კოდია — მას მხოლოდ დადასტურებული ტრენერი ასკანერებს. ქვემოთ შენი QR-ია.', 'This is a personal MEDICARD QR code — only a verified trainer scans it. Your own QR is below.'))}` as never);
       })
       .catch(() => router.replace('/profile/qr' as never));
   }, [router, token, user]);

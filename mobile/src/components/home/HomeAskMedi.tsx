@@ -3,6 +3,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Sparkles } from 'lucide-react-native';
 import { HomeMediOrb } from '@/components/home/HomeMediOrb';
 import { useThemeColors } from '@/theme/colors';
+import { tx } from '@/i18n/locale';
 
 /**
  * One line to Medi. Reads as an input, behaves as a door: tapping anywhere
@@ -13,17 +14,17 @@ export function HomeAskMedi({ onPress }: { onPress: () => void }) {
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel="მედი — ჰკითხე, ჩაწერე ან დაგეგმე"
+      accessibilityLabel={tx('მედი — ჰკითხე, ჩაწერე ან დაგეგმე', 'Medi — ask, log or plan')}
       onPress={onPress}
       style={[s.bar, { backgroundColor: c.surface, borderColor: c.bg300 }]}
     >
       <Sparkles size={18} color={c.primary100} strokeWidth={2} />
       <View style={{ flex: 1, minWidth: 0 }}>
         <Text numberOfLines={1} style={[s.placeholder, { color: c.text100 }]}>
-          ჰკითხე მედის
+          {tx('ჰკითხე მედის', 'Ask Medi')}
         </Text>
         <Text numberOfLines={1} style={[s.hint, { color: c.text300 }]}>
-          ხმით ან ტექსტით
+          {tx('ხმით ან ტექსტით', 'By voice or text')}
         </Text>
       </View>
       <HomeMediOrb size={46} background={c.accent100} ringColor={c.primary200} iconColor={c.primary100} />

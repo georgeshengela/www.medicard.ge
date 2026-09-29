@@ -12,6 +12,7 @@ import { useAuth } from '@/store/AuthContext';
 import { Avatar, Button, Card, CoachHeader, Screen, Section, coachStyles } from '@/components/coach/CoachUI';
 import { hubText } from '@/theme/hub';
 import { useThemeColors } from '@/theme/colors';
+import { tx } from '@/i18n/locale';
 
 /**
  * Profile picture: your own photo (private; seen by you, your trainer/clients, and — for verified
@@ -41,24 +42,24 @@ export default function AvatarScreen() {
       const res = await api.identity.uploadAvatar(file);
       setMyAvatarUrl(res.avatarUrl);
     } catch (e) {
-      Alert.alert('ფოტო ვერ აიტვირთა', e instanceof ApiError ? e.message : 'სცადე ხელახლა.');
+      Alert.alert(tx('ფოტო ვერ აიტვირთა', "Couldn't upload the photo"), e instanceof ApiError ? e.message : tx('სცადე ხელახლა.', 'Please try again.'));
     } finally {
       setBusy(null);
     }
   };
 
   const removePhoto = () =>
-    Alert.alert('ფოტოს წაშლა', 'დაბრუნდება არჩეული ილუსტრირებული ავატარი.', [
+    Alert.alert(tx('ფოტოს წაშლა', 'Remove photo'), tx('დაბრუნდება არჩეული ილუსტრირებული ავატარი.', 'Your chosen illustrated avatar will be shown again.'), [
       { text: ka.common.cancel, style: 'cancel' },
       {
-        text: 'წაშლა',
+        text: tx('წაშლა', 'Remove'),
         style: 'destructive',
         onPress: async () => {
           try {
             await api.identity.removeAvatar();
             setMyAvatarUrl(null);
           } catch (e) {
-            Alert.alert('ვერ წაიშალა', e instanceof ApiError ? e.message : 'სცადე ხელახლა.');
+            Alert.alert(tx('ვერ წაიშალა', "Couldn't remove it"), e instanceof ApiError ? e.message : tx('სცადე ხელახლა.', 'Please try again.'));
           }
         },
       },
@@ -69,9 +70,9 @@ export default function AvatarScreen() {
     try {
       await api.healthProfile.update({ extraAnswers: { avatarId: preset } });
       await refreshHealthProfile();
-      Alert.alert('შენახულია', photo ? 'ავატარი შეინახა. სანამ ფოტო გაქვს, ის ჩანს პირველ რიგში.' : 'ავატარი განახლდა.');
+      Alert.alert(tx('შენახულია', 'Saved'), photo ? tx('ავატარი შეინახა. სანამ ფოტო გაქვს, ის ჩანს პირველ რიგში.', 'Avatar saved. While you have a photo, the photo is shown first.') : tx('ავატარი განახლდა.', 'Avatar updated.'));
     } catch (e) {
-      Alert.alert('ვერ შეინახა', e instanceof ApiError ? e.message : 'სცადე ხელახლა.');
+      Alert.alert(tx('ვერ შეინახა', "Couldn't save"), e instanceof ApiError ? e.message : tx('სცადე ხელახლა.', 'Please try again.'));
     } finally {
       setBusy(null);
     }
@@ -79,27 +80,27 @@ export default function AvatarScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: c.bg100 }}>
-      <CoachHeader title="პროფილის სურათი" />
+      <CoachHeader title={tx('პროფილის სურათი', 'Profile picture')} />
       <Screen>
         <View style={{ alignItems: 'center', marginTop: 12, gap: 10 }}>
           <View style={{ borderRadius: 70, borderWidth: 4, borderColor: c.accent100 }}>
             <Avatar avatarId={isAvatarId(preset) ? preset : null} photoUrl={photo} name={user?.fullName ?? '?'} size={132} />
           </View>
-          <Text style={[hubText.caption, { color: c.text300 }]}>{photo ? 'შენი ფოტო' : 'ილუსტრირებული ავატარი'}</Text>
+          <Text style={[hubText.caption, { color: c.text300 }]}>{photo ? tx('შენი ფოტო', 'Your photo') : tx('ილუსტრირებული ავატარი', 'Illustrated avatar')}</Text>
         </View>
         <View style={[coachStyles.row, { gap: 10, marginTop: 18 }]}>
-          <Button label="კამერა" icon={Camera} style={{ flex: 1 }} busy={busy === 'camera'} onPress={() => void pick(true)} />
-          <Button label="გალერეა" icon={ImagePlus} kind="secondary" style={{ flex: 1 }} busy={busy === 'gallery'} onPress={() => void pick(false)} />
+          <Button label={tx('კამერა', 'Camera')} icon={Camera} style={{ flex: 1 }} busy={busy === 'camera'} onPress={() => void pick(true)} />
+          <Button label={tx('გალერეა', 'Gallery')} icon={ImagePlus} kind="secondary" style={{ flex: 1 }} busy={busy === 'gallery'} onPress={() => void pick(false)} />
         </View>
-        {photo ? <Button label="ფოტოს წაშლა" icon={Trash2} kind="ghost" onPress={removePhoto} style={{ marginTop: 6 }} /> : null}
+        {photo ? <Button label={tx('ფოტოს წაშლა', 'Remove photo')} icon={Trash2} kind="ghost" onPress={removePhoto} style={{ marginTop: 6 }} /> : null}
         <Card style={{ marginTop: 14 }}>
           <Text style={[hubText.caption, { color: c.text200 }]}>
-            ფოტოს ხედავ შენ და შენი ტრენერი (ან კლიენტები, თუ ტრენერი ხარ). დადასტურებული ტრენერის ფოტო ჩანს ტრენერების ძებნაში. ქალების სივრცეში ფოტო არასდროს ჩანს. სერვერზე ფოტოდან იშლება მდებარეობა და სხვა მეტამონაცემები.
+            {tx('ფოტოს ხედავ შენ და შენი ტრენერი (ან კლიენტები, თუ ტრენერი ხარ). დადასტურებული ტრენერის ფოტო ჩანს ტრენერების ძებნაში. ქალების სივრცეში ფოტო არასდროს ჩანს. სერვერზე ფოტოდან იშლება მდებარეობა და სხვა მეტამონაცემები.', "Your photo is visible to you and your trainer (or your clients, if you're a trainer). A verified trainer's photo appears in trainer search. Your photo is never shown in the women's space. The server removes location and other metadata from the photo.")}
           </Text>
         </Card>
-        <Section title="ან აირჩიე ავატარი">
+        <Section title={tx('ან აირჩიე ავატარი', 'Or choose an avatar')}>
           <AvatarCarousel value={preset} onChange={setPreset} avatarIds={avatarsForGender(user?.gender ?? null)} />
-          <Button label="ავატარის შენახვა" kind="secondary" busy={busy === 'preset'} onPress={() => void savePreset()} style={{ marginTop: 12 }} />
+          <Button label={tx('ავატარის შენახვა', 'Save avatar')} kind="secondary" busy={busy === 'preset'} onPress={() => void savePreset()} style={{ marginTop: 12 }} />
         </Section>
       </Screen>
     </View>

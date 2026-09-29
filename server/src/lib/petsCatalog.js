@@ -107,6 +107,7 @@ export const SPECIES = Object.freeze([
   {
     id: 'dog',
     labelKa: 'ძაღლი',
+    labelEn: 'Dog',
     coverage: 'limited',
     allowsMixed: true,
     breeds: DOG_BREEDS,
@@ -114,6 +115,7 @@ export const SPECIES = Object.freeze([
   {
     id: 'cat',
     labelKa: 'კატა',
+    labelEn: 'Cat',
     coverage: 'limited',
     allowsMixed: true,
     breeds: CAT_BREEDS,
@@ -121,6 +123,7 @@ export const SPECIES = Object.freeze([
   {
     id: 'bird',
     labelKa: 'ფრინველი',
+    labelEn: 'Bird',
     coverage: 'sentinels-only',
     allowsMixed: true,
     breeds: [],
@@ -128,6 +131,7 @@ export const SPECIES = Object.freeze([
   {
     id: 'rabbit',
     labelKa: 'კურდღელი',
+    labelEn: 'Rabbit',
     coverage: 'sentinels-only',
     allowsMixed: true,
     breeds: [],
@@ -135,6 +139,7 @@ export const SPECIES = Object.freeze([
   {
     id: 'rodent',
     labelKa: 'მღრღნელი',
+    labelEn: 'Rodent',
     coverage: 'sentinels-only',
     allowsMixed: true,
     breeds: [],
@@ -142,6 +147,7 @@ export const SPECIES = Object.freeze([
   {
     id: 'fish',
     labelKa: 'თევზი',
+    labelEn: 'Fish',
     coverage: 'sentinels-only',
     allowsMixed: false,
     breeds: [],
@@ -149,6 +155,7 @@ export const SPECIES = Object.freeze([
   {
     id: 'reptile',
     labelKa: 'ქვეწარმავალი',
+    labelEn: 'Reptile',
     coverage: 'sentinels-only',
     allowsMixed: false,
     breeds: [],
@@ -156,6 +163,7 @@ export const SPECIES = Object.freeze([
   {
     id: 'horse',
     labelKa: 'ცხენი',
+    labelEn: 'Horse',
     coverage: 'sentinels-only',
     allowsMixed: true,
     breeds: [],
@@ -163,6 +171,7 @@ export const SPECIES = Object.freeze([
   {
     id: 'other',
     labelKa: 'სხვა',
+    labelEn: 'Other',
     coverage: 'sentinels-only',
     allowsMixed: false,
     breeds: [],
@@ -206,7 +215,11 @@ export function searchBreeds(speciesId, query) {
   });
 }
 
-export function publicPetsCatalog() {
+/**
+ * @param {'ka'|'en'} [lang] English requests get the English species label in `labelKa` too
+ *   (the field name stays for older app builds); `labelEn` is always included.
+ */
+export function publicPetsCatalog(lang = 'ka') {
   return {
     version: PETS_CATALOG_VERSION,
     coverageNotes: {
@@ -218,7 +231,8 @@ export function publicPetsCatalog() {
     },
     species: SPECIES.map((row) => ({
       id: row.id,
-      labelKa: row.labelKa,
+      labelKa: lang === 'en' ? row.labelEn : row.labelKa,
+      labelEn: row.labelEn,
       coverage: row.coverage,
       allowsMixed: row.allowsMixed,
       breeds: row.breeds.map((rowBreed) => ({ id: rowBreed.id, label: rowBreed.label })),

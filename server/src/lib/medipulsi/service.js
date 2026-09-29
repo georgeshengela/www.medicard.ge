@@ -11,8 +11,8 @@ export const DEFAULTS={enabled:true,giftsEnabled:true,leaderboardEnabled:true,me
 export async function config(db=prisma){const row=await db.medipulsiConfig.findUnique({where:{id:'main'}});return {...DEFAULTS,...row?.data};}
 async function enabled(db){if(!(await config(db)).enabled)fail(503,'MEDIRUN დროებით შეჩერებულია.','GAME_PAUSED');}
 function initial(){return {journey:createJourney('gps'),book:emptyBook(),lastSampleTime:null};}
-export async function playerLock(tx,userId){
- await tx.medipulsiPlayer.upsert({where:{userId},create:{userId,state:initial(),handle:'მკვლევარი '+randomBytes(3).toString('hex')},update:{}});
+export async function playerLock(tx,userId,lang='ka'){
+ await tx.medipulsiPlayer.upsert({where:{userId},create:{userId,state:initial(),handle:(lang==='en'?'Explorer ':'მკვლევარი ')+randomBytes(3).toString('hex')},update:{}});
  await tx.$queryRaw`SELECT "userId" FROM "MedipulsiPlayer" WHERE "userId"=${userId} FOR UPDATE`;
  return tx.medipulsiPlayer.findUnique({where:{userId}});
 }
@@ -28,7 +28,7 @@ export async function snapshot(userId,db=prisma){
  ]);
  return {userId,state:p.state,settings:p.settings,handle:p.handle,leaderboardOptIn:p.leaderboardOptIn,revision:p.revision,session,history,claims,missions,config:cfg,mapboxToken:env.MAPBOX_PUBLIC_TOKEN};
 }
-export async function bootstrap(userId){await transaction(tx=>playerLock(tx,userId));return snapshot(userId);}
+export async function bootstrap(userId,lang='ka'){await transaction(tx=>playerLock(tx,userId,lang));return snapshot(userId);}
 export async function settings(userId,input){return transaction(async tx=>{const p=await playerLock(tx,userId);const {handle,leaderboardOptIn,...preferences}=input;await tx.medipulsiPlayer.update({where:{userId},data:{settings:{...p.settings,...preferences},...(handle!==undefined?{handle}:{}),...(leaderboardOptIn!==undefined?{leaderboardOptIn}:{}),revision:{increment:1}}});return snapshot(userId,tx);});}
 export async function selectMission(userId,missionId){return transaction(async tx=>{
  const p=await playerLock(tx,userId);if(missionId&&!await tx.medipulsiMission.findFirst({where:{id:missionId,published:true,archived:false}}))fail(404,'მისია მიუწვდომელია.');

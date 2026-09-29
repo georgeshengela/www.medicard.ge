@@ -12,6 +12,7 @@ import { communityChanged } from '../lib/communityRealtime.js';
 import { requireVerifiedPhone } from '../lib/phoneGate.js';
 import { readCommunityLaunch, writeCommunityLaunch, canJoinCommunity, communityLaunchStats, launchReadiness } from '../lib/communityLaunch.js';
 import { COMMUNITY_RULES_VERSION, id, postInput, commentInput, eligible, resolveIdentity, identityModeInput, publicContent, assignAnonymousNames, validMentionRanges, cleanImage, fail } from '../lib/community.js';
+import { t } from '../lib/i18n.js';
 export const communityRouter=Router(), adminCommunityRouter=Router();
 const r=communityRouter, a=adminCommunityRouter;
 // Broadcast only an empty invalidation after a successful committed mutation.
@@ -36,35 +37,35 @@ async function identitySnapshot(req,input,db,forceAnonymous=false){
  if(mode==='anonymous')return {mode,name:null,avatarId:null,anonymous:true};
  if(mode==='nickname')return {mode,name:req.community.alias,avatarId:null,anonymous:false};
  const profile=await originalProfile(req.user,db);
- if(!profile.name?.trim())fail(400,'პროფილში ჯერ სახელი და გვარი შეავსე.');
+ if(!profile.name?.trim())fail(400,'პროფილში ჯერ სახელი და გვარი შეავსე.','First add your full name to your profile.');
  return {mode,name:profile.name,avatarId:profile.avatarId,anonymous:false};
 }
 async function visiblePost(postId,userId,db=prisma,lock=false){
  const rows=await db.$queryRaw(Prisma.sql`SELECT p.*,m.alias FROM "CommunityPost" p JOIN "CommunityMember" m ON m."userId"=p."authorId" JOIN "User" u ON u.id=p."authorId"
  WHERE p.id=${postId} AND (p.status='PUBLISHED' OR p."authorId"=${userId}) AND NOT m.banned AND u.status='ACTIVE' AND u.gender='FEMALE'
  AND ${blocked(userId,Prisma.sql`p."authorId"`)} ${lock?Prisma.sql`FOR UPDATE OF p`:Prisma.empty}`);
- if(!rows[0])fail(404,'პოსტი აღარ არის ხელმისაწვდომი.');return rows[0];
+ if(!rows[0])fail(404,'პოსტი აღარ არის ხელმისაწვდომი.','This post is no longer available.');return rows[0];
 }
 async function notify(db,userId,actorId,postId,kind,eventKey,commentId=null,eventType=null){
  if(userId===actorId)return;
  await db.$executeRaw`INSERT INTO "CommunityNotification" (id,"userId","actorId","postId",kind,"eventKey","commentId","eventType") VALUES (${randomUUID()},${userId},${actorId},${postId},${kind},${eventKey},${commentId},${eventType}) ON CONFLICT ("eventKey") DO NOTHING`;
 }
 r.use(requireAuth,privateCache,wrap(async(req,_res,next)=>{
- if(!eligible(req.user))fail(403,'ეს სივრცე ქალებისთვისაა. გადაამოწმე ანგარიშის პროფილი.');
+ if(!eligible(req.user))fail(403,'ეს სივრცე ქალებისთვისაა. გადაამოწმე ანგარიშის პროფილი.','This space is for women. Please check your account profile.');
  req.community=await member(req.user.id);
- if(req.community?.banned)fail(403,'სივრცეზე წვდომა შეჩერებულია. მოგვწერე support@medicard.ge.');next();
+ if(req.community?.banned)fail(403,'სივრცეზე წვდომა შეჩერებულია. მოგვწერე support@medicard.ge.','Your access to this space is suspended. Write to us at support@medicard.ge.');next();
 }));
 r.get('/membership',wrap(async(req,res)=>{
  const [profile,launch]=await Promise.all([originalProfile(req.user,prisma),readCommunityLaunch()]);
  res.json({open:launch.open,canJoin:canJoinCommunity({open:launch.open,member:req.community}),member:req.community?{alias:req.community.alias,pushEnabled:req.community.pushEnabled,defaultIdentity:req.community.defaultIdentity||'nickname',profile}:null,rulesVersion:COMMUNITY_RULES_VERSION});
 }));
 r.post('/membership',write,requireVerifiedPhone,wrap(async(req,res)=>{
- if(!canJoinCommunity({open:(await readCommunityLaunch()).open,member:req.community}))fail(403,'ქალების სივრცე ჯერ არ გახსნილა. გახსნის შემდეგ აქედანვე შეძლებ შემოსვლას.');
+ if(!canJoinCommunity({open:(await readCommunityLaunch()).open,member:req.community}))fail(403,'ქალების სივრცე ჯერ არ გახსნილა. გახსნის შემდეგ აქედანვე შეძლებ შემოსვლას.','The women\'s space is not open yet. Once it opens, you can join right here.');
  const input=z.object({alias:z.string().trim().min(2).max(40),defaultIdentity:identityModeInput.optional(),rulesVersion:z.literal(COMMUNITY_RULES_VERSION)}).strict().parse(req.body);
  await prisma.$executeRaw`INSERT INTO "CommunityMember" ("userId",alias,"rulesVersion","defaultIdentity") VALUES (${req.user.id},${input.alias},${input.rulesVersion},${input.defaultIdentity||'nickname'}) ON CONFLICT ("userId") DO UPDATE SET alias=EXCLUDED.alias,"rulesVersion"=EXCLUDED."rulesVersion","defaultIdentity"=COALESCE(${input.defaultIdentity??null},"CommunityMember"."defaultIdentity")`;
  res.json({ok:true});
 }));
-r.use((req,res,next)=>req.community?next():res.status(403).json({error:'სივრცეში შესასვლელად გაეცანი წესებს.'}));
+r.use((req,res,next)=>req.community?next():res.status(403).json({error: t(req, 'სივრცეში შესასვლელად გაეცანი წესებს.', 'To enter the space, please read the rules first.')}));
 r.patch('/preferences',write,wrap(async(req,res)=>{const input=z.object({pushEnabled:z.boolean().optional(),defaultIdentity:identityModeInput.optional()}).strict().refine(v=>Object.keys(v).length>0).parse(req.body);await prisma.$executeRaw`UPDATE "CommunityMember" SET "pushEnabled"=COALESCE(${input.pushEnabled??null},"pushEnabled"),"defaultIdentity"=COALESCE(${input.defaultIdentity??null},"defaultIdentity") WHERE "userId"=${req.user.id}`;res.json({ok:true});}));
 r.get('/posts',wrap(async(req,res)=>{
  const topic=z.enum(['all','everyday','cycle','pregnancy','wellbeing']).default('all').parse(req.query.topic);
@@ -98,21 +99,21 @@ r.get('/posts/:id',wrap(async(req,res)=>{
  (SELECT count(*)::int FROM "CommunityComment" c JOIN "CommunityMember" m ON m."userId"=c."authorId" WHERE c."postId"=${p.id} AND c.status='PUBLISHED' AND NOT m.banned AND ${blocked(req.user.id,Prisma.sql`c."authorId"`)}) comments, ${reactionStats(p.id,req.user.id)}`);
  await assignAnonymousNames([p],prisma); res.json(publicContent({...p,...counts,hasImage:!!p.image},req.user.id));
 }));
-r.get('/posts/:id/image',wrap(async(req,res)=>{const p=await visiblePost(id.parse(req.params.id),req.user.id);if(!p.image)fail(404,'ფოტო ვერ მოიძებნა.');res.type('image/jpeg').send(Buffer.from(p.image));}));
-r.get('/posts/:id/photo',wrap(async(req,res)=>{const p=await visiblePost(id.parse(req.params.id),req.user.id);if(!p.image)fail(404,'ფოტო ვერ მოიძებნა.');res.json({uri:'data:image/jpeg;base64,'+Buffer.from(p.image).toString('base64')});}));
-r.delete('/posts/:id',write,wrap(async(req,res)=>{const n=await prisma.$executeRaw`DELETE FROM "CommunityPost" WHERE id=${id.parse(req.params.id)} AND "authorId"=${req.user.id}`;if(!n)fail(404,'პოსტი ვერ მოიძებნა.');res.json({ok:true});}));
+r.get('/posts/:id/image',wrap(async(req,res)=>{const p=await visiblePost(id.parse(req.params.id),req.user.id);if(!p.image)fail(404,'ფოტო ვერ მოიძებნა.','Photo not found.');res.type('image/jpeg').send(Buffer.from(p.image));}));
+r.get('/posts/:id/photo',wrap(async(req,res)=>{const p=await visiblePost(id.parse(req.params.id),req.user.id);if(!p.image)fail(404,'ფოტო ვერ მოიძებნა.','Photo not found.');res.json({uri:'data:image/jpeg;base64,'+Buffer.from(p.image).toString('base64')});}));
+r.delete('/posts/:id',write,wrap(async(req,res)=>{const n=await prisma.$executeRaw`DELETE FROM "CommunityPost" WHERE id=${id.parse(req.params.id)} AND "authorId"=${req.user.id}`;if(!n)fail(404,'პოსტი ვერ მოიძებნა.','Post not found.');res.json({ok:true});}));
 r.patch('/posts/:id',write,wrap(async(req,res)=>{
  const postId=id.parse(req.params.id),input=z.object({body:z.string().trim().min(1).max(3000),topic:z.enum(['everyday','cycle','pregnancy','wellbeing']),image:z.string().max(1500000).nullable()}).strict().parse(req.body);
  const image=await cleanImage(input.image);
  // Anonymity is immutable: an edit must never reveal an earlier anonymous author.
  const rows=await prisma.$queryRaw`UPDATE "CommunityPost" SET revision=revision+1,body=${input.body},topic=${input.topic},image=${image},status=CASE WHEN status='HIDDEN' THEN 'HIDDEN' ELSE 'PUBLISHED' END,"updatedAt"=NOW() WHERE id=${postId} AND "authorId"=${req.user.id} RETURNING status`;
- if(!rows.length)fail(404,'პოსტი ვერ მოიძებნა.');res.json({ok:true,status:rows[0].status});
+ if(!rows.length)fail(404,'პოსტი ვერ მოიძებნა.','Post not found.');res.json({ok:true,status:rows[0].status});
 }));
 r.put('/posts/:id/reaction',write,wrap(async(req,res)=>{
  const postId=id.parse(req.params.id);
  const input=z.union([z.object({emoji:z.enum(['like','love','care','haha','wow','sad','angry','dislike']).nullable()}).strict(),z.object({value:z.union([z.literal(-1),z.literal(0),z.literal(1)])}).strict()]).parse(req.body);
  const emoji='emoji' in input?input.emoji:input.value===0?null:input.value===1?'like':'dislike';
- await prisma.$transaction(async db=>{const p=await visiblePost(postId,req.user.id,db,true);if(p.status!=='PUBLISHED')fail(409,'პოსტი არ არის გამოქვეყნებული.');
+ await prisma.$transaction(async db=>{const p=await visiblePost(postId,req.user.id,db,true);if(p.status!=='PUBLISHED')fail(409,'პოსტი არ არის გამოქვეყნებული.','This post is not published.');
  if(!emoji)await db.$executeRaw`DELETE FROM "CommunityReaction" WHERE "postId"=${postId} AND "userId"=${req.user.id}`;
  else {await db.$executeRaw`INSERT INTO "CommunityReaction" ("postId","userId",value,emoji) VALUES (${postId},${req.user.id},${emoji==='dislike'?-1:1},${emoji}) ON CONFLICT ("postId","userId") DO UPDATE SET value=EXCLUDED.value,emoji=EXCLUDED.emoji`;
  await notify(db,p.authorId,req.user.id,postId,emoji==='dislike'?'dislike':'like',`${postId}:${req.user.id}:reaction:${emoji}`);}});
@@ -141,11 +142,11 @@ r.get('/posts/:id/participants',wrap(async(req,res)=>{
 r.post('/posts/:id/comments',write,requireVerifiedPhone,wrap(async(req,res)=>{
  const postId=id.parse(req.params.id),input=commentInput.parse(req.body);
  const result=await prisma.$transaction(async db=>{
-  const p=await visiblePost(postId,req.user.id,db,true);if(p.status!=='PUBLISHED')fail(409,'პოსტი არ არის გამოქვეყნებული.');
+  const p=await visiblePost(postId,req.user.id,db,true);if(p.status!=='PUBLISHED')fail(409,'პოსტი არ არის გამოქვეყნებული.','This post is not published.');
   // Replies by an anonymous post's author must not accidentally identify her.
   const identity=await identitySnapshot(req,input,db,p.authorId===req.user.id&&p.anonymous);
   const anonymous=identity.anonymous;
-  if(!validMentionRanges(input.body,input.mentions))fail(400,'მონიშვნა შეიცვალა. აირჩიე მონაწილე თავიდან.');
+  if(!validMentionRanges(input.body,input.mentions))fail(400,'მონიშვნა შეიცვალა. აირჩიე მონაწილე თავიდან.','The mention has changed. Please choose the member again.');
   const recipients=new Set();
   for(const mention of input.mentions){
    let target;
@@ -153,19 +154,19 @@ r.post('/posts/:id/comments',write,requireVerifiedPhone,wrap(async(req,res)=>{
    else if(mention.kind==='comment'){
     [target]=await db.$queryRaw(Prisma.sql`SELECT c.*,m.alias FROM "CommunityComment" c JOIN "CommunityMember" m ON m."userId"=c."authorId" JOIN "User" u ON u.id=c."authorId" WHERE c.id=${mention.targetId} AND c."postId"=${postId} AND c.status='PUBLISHED' AND NOT m.banned AND u.status='ACTIVE' AND u.gender='FEMALE' AND ${blocked(req.user.id,Prisma.sql`c."authorId"`)} FOR UPDATE OF c`);
    }
-   if(!target)fail(400,'მონიშნული მონაწილე აღარ არის ხელმისაწვდომი.');
+   if(!target)fail(400,'მონიშნული მონაწილე აღარ არის ხელმისაწვდომი.','The member you mentioned is no longer available.');
    await assignAnonymousNames([target],db);
-   if(publicContent(target,req.user.id).author!==mention.label)fail(409,'მონაწილის სახელი შეიცვალა. მონიშნე თავიდან.');
+   if(publicContent(target,req.user.id).author!==mention.label)fail(409,'მონაწილის სახელი შეიცვალა. მონიშნე თავიდან.','The member\'s name has changed. Please mention them again.');
    recipients.add(target.authorId);
   }
   let parent=null;
   if(input.parentId){
    [parent]=await db.$queryRaw(Prisma.sql`SELECT c.* FROM "CommunityComment" c JOIN "CommunityMember" m ON m."userId"=c."authorId" JOIN "User" u ON u.id=c."authorId" WHERE c.id=${input.parentId} AND c."postId"=${postId} AND c.status='PUBLISHED' AND NOT m.banned AND u.status='ACTIVE' AND u.gender='FEMALE' AND ${blocked(req.user.id,Prisma.sql`c."authorId"`)} FOR UPDATE OF c`);
-   if(!parent)fail(404,'კომენტარი აღარ არის ხელმისაწვდომი.');
+   if(!parent)fail(404,'კომენტარი აღარ არის ხელმისაწვდომი.','This comment is no longer available.');
   }
   const rows=await db.$queryRaw`INSERT INTO "CommunityComment" (id,"postId","authorId",body,anonymous,"requestId",status,"parentId",mentions,"identityMode","publicName","publicAvatarId") VALUES (${randomUUID()},${postId},${req.user.id},${input.body},${anonymous},${input.requestId},'PUBLISHED',${input.parentId||null},${JSON.stringify(input.mentions)}::jsonb,${identity.mode},${identity.name},${identity.avatarId}) ON CONFLICT ("authorId","requestId") DO UPDATE SET "requestId"=EXCLUDED."requestId" RETURNING id,status,"postId","parentId",body,mentions`;
   const row=rows[0];
-  if(row.postId!==postId||row.parentId!==(input.parentId||null)||row.body!==input.body||JSON.stringify([...row.mentions].map(m=>[m.targetId,m.kind,m.label,m.start,m.end]))!==JSON.stringify(input.mentions.map(m=>[m.targetId,m.kind,m.label,m.start,m.end])))fail(409,'განაახლე კომენტარი და სცადე თავიდან.');
+  if(row.postId!==postId||row.parentId!==(input.parentId||null)||row.body!==input.body||JSON.stringify([...row.mentions].map(m=>[m.targetId,m.kind,m.label,m.start,m.end]))!==JSON.stringify(input.mentions.map(m=>[m.targetId,m.kind,m.label,m.start,m.end])))fail(409,'განაახლე კომენტარი და სცადე თავიდან.','Refresh the comment and try again.');
   if(row.status==='PUBLISHED'){
    for(const recipient of recipients)await notify(db,recipient,req.user.id,postId,'comment',`${row.id}:mention:${recipient}`,row.id,'mention');
    if(!recipients.has(p.authorId))await notify(db,p.authorId,req.user.id,postId,'comment',`${row.id}:comment`,row.id);
@@ -178,27 +179,27 @@ r.post('/posts/:id/comments',write,requireVerifiedPhone,wrap(async(req,res)=>{
 r.put('/comments/:id/like',write,wrap(async(req,res)=>{
  const commentId=id.parse(req.params.id),{liked}=z.object({liked:z.boolean()}).strict().parse(req.body);
  await prisma.$transaction(async db=>{
-  const [row]=await db.$queryRaw`SELECT * FROM "CommunityComment" WHERE id=${commentId}`;if(!row)fail(404,'კომენტარი აღარ არის ხელმისაწვდომი.');
-  const post=await visiblePost(row.postId,req.user.id,db,true);if(post.status!=='PUBLISHED')fail(404,'პოსტი არ არის ხელმისაწვდომი.');
+  const [row]=await db.$queryRaw`SELECT * FROM "CommunityComment" WHERE id=${commentId}`;if(!row)fail(404,'კომენტარი აღარ არის ხელმისაწვდომი.','This comment is no longer available.');
+  const post=await visiblePost(row.postId,req.user.id,db,true);if(post.status!=='PUBLISHED')fail(404,'პოსტი არ არის ხელმისაწვდომი.','This post is not available.');
   const [allowed]=await db.$queryRaw(Prisma.sql`SELECT c.id FROM "CommunityComment" c JOIN "CommunityMember" m ON m."userId"=c."authorId" JOIN "User" u ON u.id=c."authorId" WHERE c.id=${commentId} AND c.status='PUBLISHED' AND NOT m.banned AND u.gender='FEMALE' AND u.status='ACTIVE' AND ${blocked(req.user.id,Prisma.sql`c."authorId"`)} FOR UPDATE OF c`);
-  if(!allowed)fail(404,'კომენტარი აღარ არის ხელმისაწვდომი.');
+  if(!allowed)fail(404,'კომენტარი აღარ არის ხელმისაწვდომი.','This comment is no longer available.');
   if(liked){await db.$executeRaw`INSERT INTO "CommunityCommentLike" ("commentId","userId") VALUES (${commentId},${req.user.id}) ON CONFLICT DO NOTHING`;await notify(db,row.authorId,req.user.id,row.postId,'like',`${commentId}:${req.user.id}:like`,commentId,'comment_like');}
   else await db.$executeRaw`DELETE FROM "CommunityCommentLike" WHERE "commentId"=${commentId} AND "userId"=${req.user.id}`;
  });res.json({ok:true});
 }));
-r.delete('/comments/:id',write,wrap(async(req,res)=>{const n=await prisma.$executeRaw`DELETE FROM "CommunityComment" WHERE id=${id.parse(req.params.id)} AND "authorId"=${req.user.id}`;if(!n)fail(404,'კომენტარი ვერ მოიძებნა.');res.json({ok:true});}));
+r.delete('/comments/:id',write,wrap(async(req,res)=>{const n=await prisma.$executeRaw`DELETE FROM "CommunityComment" WHERE id=${id.parse(req.params.id)} AND "authorId"=${req.user.id}`;if(!n)fail(404,'კომენტარი ვერ მოიძებნა.','Comment not found.');res.json({ok:true});}));
 async function target(req){
  const kind=z.enum(['posts','comments']).parse(req.params.kind), targetId=id.parse(req.params.id);
  if(kind==='posts')return {row:await visiblePost(targetId,req.user.id),kind};
  const rows=await prisma.$queryRaw`SELECT * FROM "CommunityComment" WHERE id=${targetId} AND status='PUBLISHED'`;
- if(!rows[0])fail(404,'ჩანაწერი ვერ მოიძებნა.');await visiblePost(rows[0].postId,req.user.id);
- if(!(await prisma.$queryRaw(Prisma.sql`SELECT 1 WHERE ${blocked(req.user.id,rows[0].authorId)}`)).length)fail(404,'ჩანაწერი ვერ მოიძებნა.');return {row:rows[0],kind};
+ if(!rows[0])fail(404,'ჩანაწერი ვერ მოიძებნა.','Entry not found.');await visiblePost(rows[0].postId,req.user.id);
+ if(!(await prisma.$queryRaw(Prisma.sql`SELECT 1 WHERE ${blocked(req.user.id,rows[0].authorId)}`)).length)fail(404,'ჩანაწერი ვერ მოიძებნა.','Entry not found.');return {row:rows[0],kind};
 }
 r.post('/:kind/:id/report',write,wrap(async(req,res)=>{
  const {row,kind}=await target(req),{reason}=z.object({reason:z.enum(['harassment','privacy','misinformation','spam','other'])}).strict().parse(req.body);
  await prisma.$executeRaw`INSERT INTO "CommunityReport" (id,"userId","postId","commentId",reason) VALUES (${randomUUID()},${req.user.id},${kind==='posts'?row.id:null},${kind==='comments'?row.id:null},${reason}) ON CONFLICT DO NOTHING`;res.json({ok:true});
 }));
-r.post('/:kind/:id/block',write,wrap(async(req,res)=>{const {row}=await target(req);if(row.authorId===req.user.id)fail(400,'საკუთარ თავს ვერ დაბლოკავ.');await prisma.$executeRaw`INSERT INTO "CommunityBlock" (id,"userId","blockedId") VALUES (${randomUUID()},${req.user.id},${row.authorId}) ON CONFLICT DO NOTHING`;res.json({ok:true});}));
+r.post('/:kind/:id/block',write,wrap(async(req,res)=>{const {row}=await target(req);if(row.authorId===req.user.id)fail(400,'საკუთარ თავს ვერ დაბლოკავ.','You cannot block yourself.');await prisma.$executeRaw`INSERT INTO "CommunityBlock" (id,"userId","blockedId") VALUES (${randomUUID()},${req.user.id},${row.authorId}) ON CONFLICT DO NOTHING`;res.json({ok:true});}));
 r.get('/blocks',wrap(async(req,res)=>res.json(await prisma.$queryRaw`SELECT id,"createdAt" FROM "CommunityBlock" WHERE "userId"=${req.user.id} ORDER BY "createdAt" DESC`)));
 r.delete('/blocks/:id',write,wrap(async(req,res)=>{await prisma.$executeRaw`DELETE FROM "CommunityBlock" WHERE id=${id.parse(req.params.id)} AND "userId"=${req.user.id}`;res.json({ok:true});}));
 r.get('/notifications',wrap(async(req,res)=>{
@@ -235,7 +236,7 @@ a.get('/content',wrap(async(req,res)=>{
  UNION ALL SELECT c.id,c.revision,c.body,c.anonymous,c.status,c."createdAt",FALSE AS "hasImage",'comments' AS kind,m.alias,m.banned FROM "CommunityComment" c JOIN "CommunityMember" m ON m."userId"=c."authorId" WHERE c.status=${status} ORDER BY "createdAt" ASC LIMIT 100 OFFSET ${offset}`;
  res.json(rows.map(({alias,...p})=>({...p,author:p.anonymous?'ანონიმური წევრი':alias})));
 }));
-a.get('/posts/:id/image',wrap(async(req,res)=>{const rows=await prisma.$queryRaw`SELECT image FROM "CommunityPost" WHERE id=${id.parse(req.params.id)}`;if(!rows[0]?.image)fail(404,'ფოტო ვერ მოიძებნა.');res.type('image/jpeg').send(Buffer.from(rows[0].image));}));
+a.get('/posts/:id/image',wrap(async(req,res)=>{const rows=await prisma.$queryRaw`SELECT image FROM "CommunityPost" WHERE id=${id.parse(req.params.id)}`;if(!rows[0]?.image)fail(404,'ფოტო ვერ მოიძებნა.','Photo not found.');res.type('image/jpeg').send(Buffer.from(rows[0].image));}));
 a.get('/reports',wrap(async(_req,res)=>res.json(await prisma.$queryRaw`SELECT r.id,r."postId",r."commentId",r.reason,r.resolved,r."createdAt",COALESCE(p.body,c.body) AS body,COALESCE(p.revision,c.revision) AS revision FROM "CommunityReport" r LEFT JOIN "CommunityPost" p ON p.id=r."postId" LEFT JOIN "CommunityComment" c ON c.id=r."commentId" WHERE NOT resolved ORDER BY r."createdAt" LIMIT 100`)));
 a.post('/reports/:id/resolve',manage,wrap(async(req,res)=>{await prisma.$transaction(async db=>{await db.$executeRaw`UPDATE "CommunityReport" SET resolved=TRUE WHERE id=${id.parse(req.params.id)}`;await audit(db,req,'resolve',req.params.id,'Reviewed report');});res.json({ok:true});}));
 async function audit(db,req,action,targetId,reason){await db.$executeRaw`INSERT INTO "CommunityAudit" (id,"adminId",action,"targetId",reason) VALUES (${randomUUID()},${req.admin.id},${action},${targetId},${reason})`;}
@@ -243,7 +244,7 @@ a.post('/:kind/:id/moderate',manage,wrap(async(req,res)=>{
  const kind=z.enum(['posts','comments']).parse(req.params.kind),targetId=id.parse(req.params.id),{action,reason,revision}=z.object({revision:z.number().int().min(0).optional(),action:z.enum(['approve','hide','ban','unban','delete']),reason:z.string().trim().min(3).max(500)}).strict().parse(req.body);
  const table=kind==='posts'?Prisma.sql`"CommunityPost"`:Prisma.sql`"CommunityComment"`;
  await prisma.$transaction(async db=>{
- const rows=await db.$queryRaw(Prisma.sql`SELECT * FROM ${table} WHERE id=${targetId} FOR UPDATE`),row=rows[0];if(!row)fail(404,'ჩანაწერი ვერ მოიძებნა.');
+ const rows=await db.$queryRaw(Prisma.sql`SELECT * FROM ${table} WHERE id=${targetId} FOR UPDATE`),row=rows[0];if(!row)fail(404,'ჩანაწერი ვერ მოიძებნა.','Entry not found.');
  if(['approve','hide','delete'].includes(action)&&revision!==row.revision)fail(409,'ჩანაწერი შეიცვალა. განაახლეთ სია და თავიდან შეამოწმეთ.');
  if(action==='ban'||action==='unban')await db.$executeRaw`UPDATE "CommunityMember" SET banned=${action==='ban'} WHERE "userId"=${row.authorId}`;
  else if(action==='delete'){await db.$executeRaw(Prisma.sql`DELETE FROM ${table} WHERE id=${targetId}`);}

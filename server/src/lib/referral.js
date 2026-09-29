@@ -6,6 +6,7 @@ import { sendExpoPush } from './push.js';
 import { hasVerifiedPhone } from './phoneGate.js';
 import { getLevelForXp } from './questLevels.js';
 import { maskedUserRef } from './rewardsAdmin.js';
+import { getUserLanguages, langOf } from './i18n.js';
 
 /**
  * Referral with Medi coins (Phase 3.4, 2026-09-27).
@@ -32,6 +33,18 @@ export const REFERRAL_ERRORS = {
   DEVICE_REQUIRED: 'მოწვევის კოდი აპიდან შეიყვანე.',
   INVITER_INACTIVE: 'ეს კოდი ახლა არ მოქმედებს.',
   NETWORK_USED: 'ამ ქსელიდან ამ კოდით მოწვევა უკვე დაფიქსირდა.',
+};
+
+export const REFERRAL_ERRORS_EN = {
+  CODE_NOT_FOUND: "We couldn't find that code. Check it and try again.",
+  OWN_CODE: "You can't enter your own code.",
+  ALREADY_CLAIMED: "You've already entered an invite code.",
+  TOO_LATE: `An invite code can be entered within ${CLAIM_WINDOW_DAYS} days of signing up.`,
+  CYCLE: "You invited this person — you can't enter each other's codes.",
+  DEVICE_USED: 'An invite code has already been used on this device.',
+  DEVICE_REQUIRED: 'Enter the invite code in the app.',
+  INVITER_INACTIVE: "This code isn't active right now.",
+  NETWORK_USED: 'An invite with this code was already recorded from this network.',
 };
 
 /**
@@ -115,9 +128,10 @@ export async function getOrCreateCode(userId, { db = prisma } = {}) {
   throw new Error('REFERRAL_CODE_UNAVAILABLE');
 }
 
-export async function claimReferral({ invitee, code: rawCode, installId, ip }, { db = prisma, now = new Date() } = {}) {
+export async function claimReferral({ invitee, code: rawCode, installId, ip, lang = 'ka' }, { db = prisma, now = new Date() } = {}) {
   const code = normalizeCode(rawCode);
-  const fail = (key) => ({ ok: false, code: `REFERRAL_${key}`, error: REFERRAL_ERRORS[key] });
+  const errors = langOf(lang) === 'en' ? REFERRAL_ERRORS_EN : REFERRAL_ERRORS;
+  const fail = (key) => ({ ok: false, code: `REFERRAL_${key}`, error: errors[key] });
   if (!code) return fail('CODE_NOT_FOUND');
   const [owner] = await db.$queryRaw`SELECT u.id, u.status FROM "ReferralCode" c JOIN "User" u ON u.id = c."userId" WHERE c.code = ${code}`;
   // One device per referral: a claim without a device id could dodge the unique index.
@@ -177,9 +191,10 @@ async function earn(tx, userId, side, referralId, now) {
   await syncQuestCache(tx, userId);
 }
 
-async function notify(db, send, userId, body) {
+async function notify(db, send, userId, body, lang = 'ka') {
   const tokens = (await db.pushToken.findMany({ where: { userId, active: true }, select: { token: true } })).map((t) => t.token);
-  if (tokens.length) await send(tokens, { title: `+${REFERRAL_COINS} Medi მონეტა`, body, data: { route: '/profile/invite' } }).catch(() => null);
+  const title = langOf(lang) === 'en' ? `+${REFERRAL_COINS} Medi Coins` : `+${REFERRAL_COINS} Medi მონეტა`;
+  if (tokens.length) await send(tokens, { title, body, data: { route: '/profile/invite' } }).catch(() => null);
 }
 
 let busy = false;
@@ -203,6 +218,10 @@ export async function processPendingReferrals({ db = prisma, now = new Date(), s
         OR EXISTS (SELECT 1 FROM "CycleLog" x WHERE x."userId" = r."inviteeId"))
       ORDER BY r."createdAt" LIMIT 200`;
     const monthStart = tbilisiMonthStart(now);
+    const langs = pending.length && db === prisma
+      ? await getUserLanguages(pending.flatMap((r) => [r.inviterId, r.inviteeId]))
+      : new Map();
+    const langFor = (id) => langs.get(String(id)) ?? 'ka';
     for (const referral of pending) {
       const people = await db.user.findMany({ where: { id: { in: [referral.inviterId, referral.inviteeId] } }, select: { id: true, status: true, phone: true } });
       const invitee = people.find((p) => p.id === referral.inviteeId);
@@ -221,8 +240,14 @@ export async function processPendingReferrals({ db = prisma, now = new Date(), s
       });
       if (!done) continue;
       rewarded += 1;
-      await notify(db, send, invitee.id, 'მოწვევის ბონუსი ჩაგერიცხა. მადლობა, რომ MEDICARD-ს იყენებ!');
-      if (decision.inviter) await notify(db, send, inviter.id, 'შენმა მოწვეულმა MEDICARD-ით სარგებლობა დაიწყო — ბონუსი ჩაგერიცხა.');
+      await notify(db, send, invitee.id, langFor(invitee.id) === 'en'
+        ? 'Your invite bonus has been added. Thank you for using MEDICARD!'
+        : 'მოწვევის ბონუსი ჩაგერიცხა. მადლობა, რომ MEDICARD-ს იყენებ!', langFor(invitee.id));
+      if (decision.inviter) {
+        await notify(db, send, inviter.id, langFor(inviter.id) === 'en'
+          ? 'The person you invited has started using MEDICARD — your bonus has been added.'
+          : 'შენმა მოწვეულმა MEDICARD-ით სარგებლობა დაიწყო — ბონუსი ჩაგერიცხა.', langFor(inviter.id));
+      }
     }
     return { rewarded };
   } finally {

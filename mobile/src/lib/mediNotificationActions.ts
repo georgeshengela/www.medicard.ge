@@ -5,6 +5,7 @@ import { addHydrationLog, todayYmd } from '@/lib/hydration';
 import { saveDoseLog } from '@/lib/medications.shared';
 import { markEngageOpened } from '@/lib/mediEngagePrefs';
 import { HYDRATION_DROP_ML } from '@/types/hydration';
+import { tx } from '../i18n/locale.js';
 
 export const NOTIF_CATEGORY = {
   medication: 'medi-med',
@@ -40,27 +41,27 @@ export async function registerNotificationCategories(): Promise<void> {
   if (Platform.OS === 'web') return;
   try {
     await Notifications.setNotificationCategoryAsync(NOTIF_CATEGORY.medication, [
-      { identifier: NOTIF_ACTION.take, buttonTitle: 'მივიღე ✓', options: { opensAppToForeground: false } },
-      { identifier: NOTIF_ACTION.snooze, buttonTitle: 'შემახსენე მოგვიანებით', options: { opensAppToForeground: false } },
+      { identifier: NOTIF_ACTION.take, buttonTitle: tx('მივიღე ✓', 'Taken ✓'), options: { opensAppToForeground: false } },
+      { identifier: NOTIF_ACTION.snooze, buttonTitle: tx('შემახსენე მოგვიანებით', 'Remind me later'), options: { opensAppToForeground: false } },
     ]);
     await Notifications.setNotificationCategoryAsync(NOTIF_CATEGORY.hydration, [
-      { identifier: NOTIF_ACTION.drank, buttonTitle: 'დავლიე 💧', options: { opensAppToForeground: false } },
+      { identifier: NOTIF_ACTION.drank, buttonTitle: tx('დავლიე 💧', 'Drank it 💧'), options: { opensAppToForeground: false } },
     ]);
     await Notifications.setNotificationCategoryAsync(NOTIF_CATEGORY.checkin, [
-      { identifier: NOTIF_ACTION.ok, buttonTitle: 'კარგად ვარ 💚', options: { opensAppToForeground: false } },
-      { identifier: NOTIF_ACTION.chat, buttonTitle: 'Medi-სთან საუბარი', options: { opensAppToForeground: true } },
+      { identifier: NOTIF_ACTION.ok, buttonTitle: tx('კარგად ვარ 💚', "I'm fine 💚"), options: { opensAppToForeground: false } },
+      { identifier: NOTIF_ACTION.chat, buttonTitle: tx('Medi-სთან საუბარი', 'Talk to Medi'), options: { opensAppToForeground: true } },
     ]);
     await Notifications.setNotificationCategoryAsync(NOTIF_CATEGORY.visit, [
-      { identifier: NOTIF_ACTION.open, buttonTitle: 'გახსნა', options: { opensAppToForeground: true } },
-      { identifier: NOTIF_ACTION.snooze, buttonTitle: 'შემახსენე მოგვიანებით', options: { opensAppToForeground: false } },
+      { identifier: NOTIF_ACTION.open, buttonTitle: tx('გახსნა', 'Open'), options: { opensAppToForeground: true } },
+      { identifier: NOTIF_ACTION.snooze, buttonTitle: tx('შემახსენე მოგვიანებით', 'Remind me later'), options: { opensAppToForeground: false } },
     ]);
     await Notifications.setNotificationCategoryAsync(NOTIF_CATEGORY.quota, [
-      { identifier: NOTIF_ACTION.chat, buttonTitle: 'ჰკითხე Medi-ს', options: { opensAppToForeground: true } },
+      { identifier: NOTIF_ACTION.chat, buttonTitle: tx('ჰკითხე Medi-ს', 'Ask Medi'), options: { opensAppToForeground: true } },
     ]);
     await Notifications.setNotificationCategoryAsync(NOTIF_CATEGORY.petCare, [
-      { identifier: NOTIF_ACTION.petDone, buttonTitle: 'დადასტურება', options: { opensAppToForeground: true } },
-      { identifier: NOTIF_ACTION.snooze, buttonTitle: 'გადადება', options: { opensAppToForeground: false } },
-      { identifier: NOTIF_ACTION.petSkip, buttonTitle: 'გამოტოვება', options: { opensAppToForeground: true } },
+      { identifier: NOTIF_ACTION.petDone, buttonTitle: tx('დადასტურება', 'Confirm'), options: { opensAppToForeground: true } },
+      { identifier: NOTIF_ACTION.snooze, buttonTitle: tx('გადადება', 'Snooze'), options: { opensAppToForeground: false } },
+      { identifier: NOTIF_ACTION.petSkip, buttonTitle: tx('გამოტოვება', 'Skip'), options: { opensAppToForeground: true } },
     ]);
   } catch {
     /* categories are best-effort on Expo Go */

@@ -42,6 +42,7 @@ import { useKeyboardHeight } from '@/lib/useKeyboardHeight';
 import { defaultVisitTime, todayIsoLocal } from '@/lib/visitReminders';
 import { formatCycleDateKa } from '@/components/cycle/CycleUI';
 import { useThemeColors } from '@/theme/colors';
+import { tx } from '@/i18n/locale';
 
 type Props = {
   visitId?: string;
@@ -112,7 +113,7 @@ export function VisitEditorScreen({ visitId }: Props) {
       saveUnfinishedDraft({
         kind: 'visit_draft',
         route: '/visits/editor',
-        name: name || addressText.trim() || 'ვიზიტი',
+        name: name || addressText.trim() || tx('ვიზიტი', 'Visit'),
         updatedAt: Date.now(),
       }),
     );

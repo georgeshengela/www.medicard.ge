@@ -73,3 +73,19 @@ test('pet context adds owned care and products without mixing human health',asyn
   const result=await loadAssistantContext({id:owner},['profile','cycle'],'pet',db);
   assert.deepEqual(result.pets[0].carePlans,[]);assert.deepEqual(result.pets[0].products,[]);assert.equal(result.profile,undefined);
 });
+test('English readers get English capability copy, tool labels and navigation; Georgian stays default', async () => {
+  const { assistantGroups } = await import('./assistantKnowledge.js');
+  const { assistantToolLabel } = await import('./assistantCatalog.js');
+  const { applyVetSafetyLayers } = await import('./petsVetPolicy.js');
+  for (const f of assistantFeatures('auto', 'en')) assert.ok(!/[ა-ჰ]/u.test(f.label + f.description), f.id);
+  for (const g of assistantGroups('en')) assert.ok(!/[ა-ჰ]/u.test(g.label), g.id);
+  for (const t of publicAssistantCatalog('auto', 'en')) assert.ok(!/[ა-ჰ]/u.test(t.label), t.name);
+  assert.deepEqual(assistantFeatures('human').map(f => f.label), ASSISTANT_FEATURES.filter(f => f.scopes.includes('human')).map(f => f.label));
+  assert.equal(assistantToolLabel('hydration_add'), 'წყლის მიღების ჩაწერა');
+  assert.equal(assistantToolLabel('hydration_add', 'en'), 'Log water');
+  assert.deepEqual(literalAssistantNavigation({ text: 'Open hydration', scope: 'human' }), { tool: 'open', args: { destination: 'hydration' } });
+  const vet = applyVetSafetyLayers({ text: 'Call 112 now.', classification: { emergency: true }, lang: 'en' });
+  assert.match(vet.content, /^This could be an emergency/);
+  assert.match(vet.content, /not a veterinary diagnosis/);
+  assert.ok(!/[ა-ჰ]/u.test(vet.content));
+});

@@ -1,4 +1,5 @@
 import { Alert, Linking } from 'react-native';
+import { tx } from '../i18n/locale.js';
 
 /**
  * Opens the mail composer (or just the mail app when no address is given).
@@ -10,8 +11,10 @@ export async function openEmail(address?: string): Promise<void> {
     await Linking.openURL(address ? `mailto:${address}` : 'mailto:');
   } catch {
     Alert.alert(
-      'ფოსტის აპი ვერ გაიხსნა',
-      address ? `მოგვწერე მისამართზე:\n${address}` : 'გახსენი შენი ფოსტა და შეამოწმე შემოსული წერილები.',
+      tx('ფოსტის აპი ვერ გაიხსნა', "Couldn't open your mail app"),
+      address
+        ? tx(`მოგვწერე მისამართზე:\n${address}`, `Write to us at:\n${address}`)
+        : tx('გახსენი შენი ფოსტა და შეამოწმე შემოსული წერილები.', 'Open your email and check your inbox.'),
     );
   }
 }

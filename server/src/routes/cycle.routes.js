@@ -9,6 +9,7 @@ import {
   assertShareOwner,
   buildPartnerPayload,
   denyShare,
+  shareLang,
   denyShareAuth,
   decidePartnerPeek,
   decideShareAccept,
@@ -165,6 +166,7 @@ const MUCUS = ['dry', 'sticky', 'creamy', 'watery', 'eggwhite'];
 function assertFemale(user) {
   if (user.gender !== 'FEMALE') {
     const err = new Error('ციკლის მოდული ხელმისაწვდომია მხოლოდ ქალის პროფილისთვის.');
+    err.messageEn = 'Cycle tracking is available only for female profiles.';
     err.status = 403;
     throw err;
   }
@@ -186,7 +188,7 @@ async function cycleClockForUser(userId, deviceTimezone = null) {
 
 async function bundleFor(req) {
   const clock = await cycleClockForUser(req.user.id, clientTimezoneFromReq(req));
-  return loadBundle(req.user.id, clock);
+  return loadBundle(req.user.id, clock, req.lang);
 }
 
 function parseJsonArray(value) {
@@ -249,6 +251,7 @@ async function assertOwnedTagIds(userId, ids) {
   const foreign = foreignTagIds(ids, rows.map((r) => r.id));
   if (foreign.length) {
     const err = new Error('ნიშანი ამ ანგარიშს არ ეკუთვნის.');
+    err.messageEn = 'This tag does not belong to your account.';
     err.status = 403;
     throw err;
   }
@@ -330,7 +333,7 @@ async function clearBleedDay(userId, date) {
   });
 }
 
-async function loadBundle(userId, clock = null) {
+async function loadBundle(userId, clock = null, lang = 'ka') {
   const today = clock?.today || todayInTimeZone();
   const timezone = clock?.timezone || CYCLE_TIMEZONE;
   const [profile, engineLogs, displayLogs, pregnancyLogs, customTags, dailyMetrics, activeEpisode, activePostpartum] = await Promise.all([
@@ -396,6 +399,7 @@ async function loadBundle(userId, clock = null) {
     isIrregular: profile.isIrregular,
     logs: shapedLogs,
     today,
+    lang,
   });
   const contraception = interpretContraception(
     {
@@ -404,7 +408,7 @@ async function loadBundle(userId, clock = null) {
       contraceptionStartedAt: toDateKey(profile.contraceptionStartedAt),
       mode: profile.mode,
     },
-    { todayLog: shapedLogs.find((l) => l.date === today) },
+    { todayLog: shapedLogs.find((l) => l.date === today), lang },
   );
 
   const historyStart = inferred.periodRanges?.[0]?.start;
@@ -415,10 +419,11 @@ async function loadBundle(userId, clock = null) {
       avgPeriodLength: averages.usedPeriodLength,
       fromKey: historyStart,
       toKey: lastPeriodStart,
+      lang,
     });
   }
   const predictions = applyForecastEligibilityToPredictions(
-    presentPredictions(rawPredictions, contraception),
+    presentPredictions(rawPredictions, contraception, lang),
     forecastEligibility,
   );
 
@@ -429,8 +434,10 @@ async function loadBundle(userId, clock = null) {
         avgCycleLength: averages.usedCycleLength,
         avgPeriodLength: averages.usedPeriodLength,
         today,
+        lang,
       }),
       contraception,
+      lang,
     ),
     forecastEligibility,
   );
@@ -487,6 +494,7 @@ async function loadBundle(userId, clock = null) {
     dailyMetrics,
     observationInsights: buildObservationInsights(shapedLogs, {
       predictionAvailability: contraception.predictionAvailability,
+      lang,
       phasesByDate: Object.fromEntries(
         shapedLogs.map((l) => [
           l.date,
@@ -523,6 +531,7 @@ async function loadBundle(userId, clock = null) {
       averages,
       today,
       contraception,
+      lang,
     }),
     trends: buildCycleTrends({
       profile: profileView,
@@ -538,6 +547,7 @@ async function loadBundle(userId, clock = null) {
       inferred,
       today,
       forecastEligibility,
+      lang,
     }),
     perimenopause: buildPerimenopauseContext({
       mode: profile.mode,
@@ -800,6 +810,7 @@ cycleRouter.put(
     const bundle = await bundleFor(req);
     if (!isPostpartumProfileMode(bundle.profile?.mode)) {
       const err = new Error('საწყისი თარიღი მხოლოდ მშობიარობის შემდგომ რეჟიმში იცვლება.');
+      err.messageEn = 'The start date can only be changed in postpartum mode.';
       err.status = 404;
       throw err;
     }
@@ -872,6 +883,7 @@ cycleRouter.get(
     const bundle = await bundleFor(req);
     if (!isPregnancyProfileMode(bundle.profile?.mode)) {
       const err = new Error('ორსულობის კვირის კატალოგი მხოლოდ ორსულობის რეჟიმშია.');
+      err.messageEn = 'The week-by-week guide is only available in pregnancy mode.';
       err.status = 404;
       throw err;
     }
@@ -879,6 +891,7 @@ cycleRouter.get(
     const weekDevelopment = weekDevelopmentForCompletedWeek(week);
     if (!weekDevelopment) {
       const err = new Error('კვირა არასწორია.');
+      err.messageEn = 'That week is not valid.';
       err.status = 400;
       throw err;
     }
@@ -894,12 +907,14 @@ cycleRouter.get(
     const bundle = await bundleFor(req);
     if (!isPregnancyProfileMode(bundle.profile?.mode)) {
       const err = new Error('მოვლის გეგმა მხოლოდ ორსულობის რეჟიმშია.');
+      err.messageEn = 'The care plan is only available in pregnancy mode.';
       err.status = 404;
       throw err;
     }
     const episode = await loadActivePregnancyEpisode(prisma, req.user.id);
     if (!episode || episode.status !== 'ACTIVE') {
       const err = new Error('აქტიური ორსულობის ეპიზოდი არ არის.');
+      err.messageEn = 'There is no active pregnancy.';
       err.status = 404;
       throw err;
     }
@@ -932,12 +947,14 @@ cycleRouter.put(
     const bundle = await bundleFor(req);
     if (!isPregnancyProfileMode(bundle.profile?.mode)) {
       const err = new Error('მოვლის გეგმა მხოლოდ ორსულობის რეჟიმშია.');
+      err.messageEn = 'The care plan is only available in pregnancy mode.';
       err.status = 404;
       throw err;
     }
     const episode = await loadActivePregnancyEpisode(prisma, req.user.id);
     if (!episode || episode.status !== 'ACTIVE') {
       const err = new Error('აქტიური ორსულობის ეპიზოდი არ არის.');
+      err.messageEn = 'There is no active pregnancy.';
       err.status = 404;
       throw err;
     }
@@ -980,6 +997,10 @@ cycleRouter.put(
             ? 'დროითი შეხსენება დაგეგმილ თარიღსა და დროს საჭიროებს.'
             : 'შეხსენება მხოლოდ დაგეგმილ თარიღზე ირთვება.',
         );
+        err.messageEn =
+          parsed.reminderMode === 'EXACT_TIME'
+            ? 'A timed reminder needs a planned date and time.'
+            : 'A reminder can only be turned on once a date is planned.';
         err.status = 400;
         throw err;
       }
@@ -1179,6 +1200,7 @@ cycleRouter.post(
     const parsed = z.object({ confirm: z.literal(DELETE_CYCLE_CONFIRM) }).safeParse(req.body);
     if (!parsed.success) {
       const err = new Error('ციკლის მონაცემების წასაშლელად საჭიროა დადასტურება.');
+      err.messageEn = 'Please confirm before deleting your cycle data.';
       err.status = 400;
       throw err;
     }
@@ -1526,6 +1548,7 @@ cycleRouter.get(
       logs: shaped,
       permissions: share.permissions,
       today: ownerClock.today,
+      lang: shareLang(req),
     });
     securityShareLog('peek_ok', { partner: true });
     return res.json(payload);
@@ -1579,6 +1602,7 @@ cycleRouter.put(
       const end = assertCycleDateKey(body.end, today);
       if (start > end) {
         const err = new Error('დასრულების თარიღი ვერ იქნება დაწყებაზე ადრე.');
+        err.messageEn = 'The end date cannot be before the start date.';
         err.status = 400;
         throw err;
       }
@@ -1757,11 +1781,13 @@ cycleRouter.post(
     const parsed = normalizeTagName(body.name);
     if (!parsed.ok) {
       const err = new Error(parsed.error === 'too_long' ? 'ნიშანი ძალიან გრძელია.' : 'ნიშნის სახელი ცარიელია.');
+      err.messageEn = parsed.error === 'too_long' ? 'The tag is too long.' : 'The tag name is empty.';
       err.status = 400;
       throw err;
     }
     if (body.id && !isClientUuid(body.id)) {
       const err = new Error('ნიშნის იდენტიფიკატორი არასწორია.');
+      err.messageEn = 'The tag ID is not valid.';
       err.status = 400;
       throw err;
     }
@@ -1776,6 +1802,7 @@ cycleRouter.post(
     }
     if (activeCount >= CYCLE_TAG_ACTIVE_MAX) {
       const err = new Error('აქტიური ნიშნების ლიმიტი ამოწურულია.');
+      err.messageEn = 'You have reached the limit of active tags.';
       err.status = 400;
       throw err;
     }
@@ -1783,6 +1810,7 @@ cycleRouter.post(
       const taken = await prisma.cycleCustomTag.findUnique({ where: { id: body.id } });
       if (taken && taken.userId !== req.user.id) {
         const err = new Error('ნიშანი ამ ანგარიშს არ ეკუთვნის.');
+        err.messageEn = 'This tag does not belong to your account.';
         err.status = 403;
         throw err;
       }
@@ -1821,12 +1849,14 @@ cycleRouter.patch(
     const parsed = normalizeTagName(body.name);
     if (!parsed.ok) {
       const err = new Error(parsed.error === 'too_long' ? 'ნიშანი ძალიან გრძელია.' : 'ნიშნის სახელი ცარიელია.');
+      err.messageEn = parsed.error === 'too_long' ? 'The tag is too long.' : 'The tag name is empty.';
       err.status = 400;
       throw err;
     }
     const existing = await prisma.cycleCustomTag.findFirst({ where: { id, userId: req.user.id } });
     if (!existing) {
       const err = new Error('ნიშანი ვერ მოიძებნა.');
+      err.messageEn = 'Tag not found.';
       err.status = 404;
       throw err;
     }
@@ -1840,6 +1870,7 @@ cycleRouter.patch(
     });
     if (clash) {
       const err = new Error('ასეთი ნიშანი უკვე არსებობს.');
+      err.messageEn = 'A tag with this name already exists.';
       err.status = 409;
       throw err;
     }
@@ -1867,6 +1898,7 @@ cycleRouter.delete(
     const existing = await prisma.cycleCustomTag.findFirst({ where: { id, userId: req.user.id } });
     if (!existing) {
       const err = new Error('ნიშანი ვერ მოიძებნა.');
+      err.messageEn = 'Tag not found.';
       err.status = 404;
       throw err;
     }
@@ -2002,7 +2034,7 @@ cycleRouter.post(
         }),
     });
 
-    const parsed = parseCycleInsightsJson(answer.content);
+    const parsed = parseCycleInsightsJson(answer.content, req.lang);
     const insights = parsed || {
       ...bundle.localInsights,
       source: 'local_fallback',

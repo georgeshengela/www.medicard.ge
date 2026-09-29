@@ -38,3 +38,9 @@ test('copy is informal Georgian with the real numbers', () => {
   assert.match(c.body, /8\.00 ₾ \(იყო 10\.00 ₾\)/);
   assert.match(c.body, /ნახე/);
 });
+
+test('English readers get English copy with the same numbers', () => {
+  const c = alertCopy({ medName: 'Ibuprofen', fromGel: 10, toGel: 8 }, 'en');
+  assert.equal(c.title, 'Ibuprofen is 20% cheaper');
+  assert.match(c.body, /Now 8\.00 ₾ \(was 10\.00 ₾\)/);
+});

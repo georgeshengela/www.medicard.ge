@@ -16,7 +16,8 @@ import { env } from '../../config/env.js';
 import { prisma } from '../prisma.js';
 import { isFeatureEnabled } from '../featureFlags.js';
 import { hashEmail, isDeliverableEmail, maskEmail, normalizeEmail } from './address.js';
-import { CAMPAIGN_VARS, DEFAULT_TEMPLATES, SITE_URL, mergeTemplate, renderEmail } from './templates.js';
+import { CAMPAIGN_VARS, DEFAULT_TEMPLATES, SITE_URL, emailLang, mergeTemplate, renderEmail } from './templates.js';
+import { getUserLanguage } from '../i18n.js';
 import { createResendTransport } from './transport.js';
 import { unsubscribeUrl } from './preferences.js';
 
@@ -40,11 +41,11 @@ export function emailConfig() {
 }
 
 /** Variables every template may use. Never add health data here. */
-export function commonVars({ fullName } = {}) {
+export function commonVars({ fullName, lang = 'ka' } = {}) {
   const first = String(fullName || '').trim().split(/\s+/)[0] || '';
   const generic = !first || /^medicard$/i.test(first);
   return {
-    name: generic ? 'მეგობარო' : first.slice(0, 40),
+    name: generic ? (emailLang(lang) === 'en' ? 'friend' : 'მეგობარო') : first.slice(0, 40),
     appUrl: SITE_URL,
     supportEmail: env.EMAIL_REPLY_TO || 'support@medicard.ge',
     appStoreUrl: env.APP_STORE_URL || `${SITE_URL}/#download`,
@@ -73,9 +74,9 @@ export function resetEmailCachesForTests() {
 }
 export const invalidateTemplateCache = () => { templateCache = { at: 0, rows: null }; };
 
-export async function resolveTemplate(key, { db = prisma, rows } = {}) {
+export async function resolveTemplate(key, { db = prisma, rows, lang = 'ka' } = {}) {
   const list = rows || (await loadTemplateRows({ db }));
-  return mergeTemplate(key, list.find((r) => r.key === key));
+  return mergeTemplate(key, list.find((r) => r.key === key), lang);
 }
 
 export async function listTemplates({ db = prisma } = {}) {
@@ -148,6 +149,8 @@ export async function sendEmail({
   from = null,
   replyTo = null,
   extraHeaders = null,
+  // Recipient language ('ka' | 'en'). Omitted: the stored language of `userId` (Georgian when unknown).
+  lang = undefined,
 } = {}, {
   db = prisma,
   transport = getDefaultTransport(),
@@ -156,16 +159,18 @@ export async function sendEmail({
   const email = normalizeEmail(to);
   if (!isDeliverableEmail(email)) return { status: 'skipped', reason: 'undeliverable' };
 
-  const template = await resolveTemplate(templateKey, { db });
+  const language = emailLang(lang ?? (userId && db === prisma ? await getUserLanguage(userId) : 'ka'));
+  const en = language === 'en';
+  const template = await resolveTemplate(templateKey, { db, lang: language });
   if (!template && !content) throw new Error(`Unknown email template: ${templateKey}`);
   const cat = category || template?.category || 'transactional';
 
   if (!(await featureEnabled(EMAIL_FEATURE))) {
-    if (throwOnError) throw Object.assign(new Error('ელფოსტის გაგზავნა დროებით შეჩერებულია.'), { code: 'EMAIL_DISABLED', status: 503 });
+    if (throwOnError) throw Object.assign(new Error(en ? 'Sending email is paused for now.' : 'ელფოსტის გაგზავნა დროებით შეჩერებულია.'), { code: 'EMAIL_DISABLED', status: 503 });
     return { status: 'skipped', reason: 'disabled' };
   }
   if (template && !template.enabled && !ignoreTemplateSwitch) {
-    if (throwOnError) throw Object.assign(new Error('ეს წერილი დროებით გამორთულია.'), { code: 'TEMPLATE_DISABLED', status: 503 });
+    if (throwOnError) throw Object.assign(new Error(en ? 'This email is turned off for now.' : 'ეს წერილი დროებით გამორთულია.'), { code: 'TEMPLATE_DISABLED', status: 503 });
     return { status: 'skipped', reason: 'template_disabled' };
   }
   if (!transport?.configured) {
@@ -175,8 +180,8 @@ export async function sendEmail({
 
   const toHash = hashEmail(email);
   const allowed = allowedVars || template?.vars || CAMPAIGN_VARS;
-  const unsub = cat === 'marketing' && userId ? unsubscribeUrl(userId) : '';
-  const rendered = renderEmail({ content: content || template, vars: { ...commonVars(), ...vars }, allowed, category: cat, unsubscribeUrl: unsub || previewUnsubscribeUrl });
+  const unsub = cat === 'marketing' && userId ? unsubscribeUrl(userId, { lang: language }) : '';
+  const rendered = renderEmail({ content: content || template, vars: { ...commonVars({ lang: language }), ...vars }, allowed, category: cat, unsubscribeUrl: unsub || previewUnsubscribeUrl, lang: language });
   const subject = `${subjectPrefix}${rendered.subject}`;
   const base = { userId, toHash, toMasked: maskEmail(email), templateKey, category: cat, subject: subject.slice(0, 200) };
 
@@ -221,16 +226,19 @@ export async function sendEmail({
  * Welcome email after sign-up. Fire-and-forget: returns immediately, never throws, never delays
  * the sign-up response. Once per user ever (EmailLog idempotency key welcome:<userId>).
  */
-export function queueWelcomeEmail(user, deps = {}, { schedule = setImmediate } = {}) {
+export function queueWelcomeEmail(user, deps = {}, { schedule = setImmediate, lang } = {}) {
   if (!user?.id || !isDeliverableEmail(user.email)) return false;
+  // The sign-up request's language (opts.lang / user.lang); otherwise the stored account language.
+  const language = lang ?? user.lang ?? user.language ?? undefined;
   const promise = new Promise((resolve) => {
     schedule(() => {
       sendEmail({
         to: user.email,
         templateKey: 'welcome',
-        vars: commonVars({ fullName: user.fullName }),
+        vars: commonVars({ fullName: user.fullName, lang: language }),
         userId: user.id,
         idempotencyKey: `welcome:${user.id}`,
+        lang: language,
       }, deps)
         .then((result) => {
           if (result.status === 'failed') console.warn('[email] welcome failed', result.reason);
@@ -250,16 +258,17 @@ export function queueWelcomeEmail(user, deps = {}, { schedule = setImmediate } =
  * Confirmation after the account was deleted. Call with values captured BEFORE deletion, only
  * after the deletion committed. Not linked to the (deleted) user id; never throws.
  */
-export function queueAccountDeletedEmail({ userId, email, fullName }, deps = {}, { schedule = setImmediate } = {}) {
+export function queueAccountDeletedEmail({ userId, email, fullName, lang = 'ka' }, deps = {}, { schedule = setImmediate } = {}) {
   if (!isDeliverableEmail(email)) return false;
   const promise = new Promise((resolve) => {
     schedule(() => {
       sendEmail({
         to: email,
         templateKey: 'account_deleted',
-        vars: commonVars({ fullName }),
+        vars: commonVars({ fullName, lang }),
         userId: null,
         idempotencyKey: userId ? `account_deleted:${userId}` : null,
+        lang,
       }, deps)
         .then(resolve)
         .catch((error) => {
@@ -276,7 +285,7 @@ export function queueAccountDeletedEmail({ userId, email, fullName }, deps = {},
  * Password reset code (signature unchanged for passwordReset.js). Without RESEND_API_KEY it keeps
  * the old behaviour: log the code to the console and return { id: 'dev-log' }. Failures throw.
  */
-export async function sendPasswordResetCode({ to, code, fullName }, deps = {}) {
+export async function sendPasswordResetCode({ to, code, fullName, lang = 'ka' }, deps = {}) {
   const transport = deps.transport || getDefaultTransport();
   if (!transport?.configured) {
     console.log(`[email] password reset code for ${to}: ${code}`);
@@ -285,8 +294,9 @@ export async function sendPasswordResetCode({ to, code, fullName }, deps = {}) {
   const result = await sendEmail({
     to,
     templateKey: 'password_reset',
-    vars: { ...commonVars({ fullName }), code: String(code), minutes: '10' },
+    vars: { ...commonVars({ fullName, lang }), code: String(code), minutes: '10' },
     throwOnError: true,
+    lang,
   }, { ...deps, transport });
   if (result.status === 'skipped' && result.reason === 'suppressed') {
     console.warn(`[email] password reset to suppressed address ${maskEmail(to)} not sent`);

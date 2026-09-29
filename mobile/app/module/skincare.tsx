@@ -1,3 +1,4 @@
+import { tx } from '@/i18n/locale';
 import React, { useCallback, useRef, useState } from 'react';
 import { ActivityIndicator, Keyboard, Pressable, Text, TextInput, View } from 'react-native';
 import { useFocusEffect, useRouter } from 'expo-router';
@@ -69,7 +70,7 @@ function SkincareModuleContent() {
             if (prev && new Date(prev.createdAt) > new Date(latest.createdAt)) return prev;
             const metadata = saved?.recordId === latest.id ? saved : null;
             return { recordId: latest.id, createdAt: latest.createdAt,
-              skinType: metadata?.skinType ?? 'შენახული რუტინა', concerns: metadata?.concerns ?? [],
+              skinType: metadata?.skinType ?? tx('შენახული რუტინა', 'Saved routine'), concerns: metadata?.concerns ?? [],
               products: metadata?.products, analysis: latest.aiAnalysis ?? '' };
           }
           if (!saved) return prev;

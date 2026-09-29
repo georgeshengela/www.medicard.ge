@@ -34,9 +34,19 @@ export const PREGNANCY_EPISODE_ENDED = 'ENDED';
 
 const DATE_KEY = /^\d{4}-\d{2}-\d{2}$/;
 
+/** English for the Georgian messages below (error middleware sends `messageEn` to English requests). */
+const MESSAGES_EN = {
+  'ორსულობის საცნობი თარიღი არასწორია.': 'The pregnancy reference date is not valid.',
+  'დღევანდელი თარიღი არასწორია.': 'Today\'s date is not valid.',
+  'ორსულობის საცნობი თარიღი მომავალში ვერ იქნება.': 'The pregnancy reference date cannot be in the future.',
+  'ორსულობის საცნობი თარიღი ძალიან ძველია აქტიური რეჟიმისთვის.': 'The pregnancy reference date is too far in the past for an active pregnancy.',
+  'ორსულობის რეჟიმი მხოლოდ დადასტურებით ირთვება.': 'Pregnancy mode can only be turned on after you confirm.',
+};
+
 function httpError(message, status) {
   const err = new Error(message);
   err.status = status;
+  if (MESSAGES_EN[message]) err.messageEn = MESSAGES_EN[message];
   return err;
 }
 

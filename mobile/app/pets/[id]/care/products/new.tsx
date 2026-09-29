@@ -13,6 +13,7 @@ import { api, type PetCareKind, type PetProduct } from '@/lib/api';
 import { isoToDigits } from '@/lib/birthdate';
 import { newPetsRequestId, petsCareErrorMessage } from '@/lib/petsCare';
 import { useThemeColors } from '@/theme/colors';
+import { tx } from '@/i18n/locale';
 
 function digitsToIso(digits: string): string | null {
   if (!digits) return null;
@@ -59,8 +60,8 @@ export function PetProductForm({
             loading={saving}
             onPress={() => {
               if (saving) return;
-              if (!name.trim()) { setFieldError('მიუთითე პროდუქტის სახელი.'); return; }
-              if (expires && !digitsToIso(expires)) { setFieldError('შეამოწმე ვარგისიანობის თარიღი.'); return; }
+              if (!name.trim()) { setFieldError(tx('მიუთითე პროდუქტის სახელი.', 'Enter the product name.')); return; }
+              if (expires && !digitsToIso(expires)) { setFieldError(tx('შეამოწმე ვარგისიანობის თარიღი.', 'Check the expiry date.')); return; }
               setFieldError(null);
               onSubmit({ kind, name: name.trim(), formulation: formulation.trim() || null, batchId: batchId.trim() || null, notes: notes.trim() || null, expiresOn: digitsToIso(expires) });
             }}

@@ -5,6 +5,7 @@ import { useNavigation, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CycleAtmosphere, CycleLoading, cycleNavHeader, formatCycleDateKa } from '@/components/cycle/CycleUI';
 import { ka } from '@/i18n/ka';
+import { tx } from '@/i18n/locale';
 import { ApiError, type CycleBundle } from '@/lib/api';
 import { loadCycleView } from '@/lib/cycleOffline';
 import { useAuth } from '@/store/AuthContext';
@@ -91,7 +92,7 @@ function CycleJournalContent() {
           </Pressable>
         </View> : null}
         {!error && !entries.length ? (
-          <Text style={{ color: c.muted, lineHeight: 20 }}>{query.trim() ? 'ამ ძებნით ჩანაწერი ვერ მოიძებნა.' : ka.cycle.journalEmpty}</Text>
+          <Text style={{ color: c.muted, lineHeight: 20 }}>{query.trim() ? tx('ამ ძებნით ჩანაწერი ვერ მოიძებნა.', 'No entries match this search.') : ka.cycle.journalEmpty}</Text>
         ) : (
           entries.map((log) => (
             <Pressable

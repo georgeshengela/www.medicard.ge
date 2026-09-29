@@ -23,6 +23,8 @@ const schema = z.object({
   AZURE_SPEECH_KEY: z.string().default(''),
   AZURE_SPEECH_REGION: z.string().regex(/^[a-z0-9-]*$/).default(''),
   AZURE_SPEECH_VOICE: z.enum(['ka-GE-EkaNeural', 'ka-GE-GiorgiNeural']).default('ka-GE-EkaNeural'),
+  // English Medi voice; same list as ENGLISH_SPEECH_VOICES in lib/assistantSpeech.js (not imported: it imports env).
+  AZURE_SPEECH_VOICE_EN: z.enum(['en-US-AvaNeural', 'en-US-JennyNeural', 'en-US-AndrewNeural', 'en-GB-SoniaNeural']).optional(),
 
   ANTHROPIC_API_KEY: z.string().default(''),
   ANTHROPIC_MODEL: z.string().default('claude-3-5-sonnet-latest'),

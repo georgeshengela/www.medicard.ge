@@ -12,6 +12,7 @@ import { useLab } from '@/hooks/useLab';
 import { ka } from '@/i18n/ka';
 import { formatLabDateKa, isTodayYmd } from '@/lib/labExtract';
 import { moverChangeLabel, summarizeLabMovers } from '@/lib/labMovers';
+import { labRowName } from '@/lib/labNames';
 import type { LabFlag, LabParameter } from '@/types/lab';
 import { HUB, hubInk, hubTint } from '@/theme/hub';
 import { useIsDark, useThemeColors } from '@/theme/colors';
@@ -197,7 +198,7 @@ export function HomeLabSection({ edgeInset = 16 }: { edgeInset?: number }) {
 function toSpot(row: LabParameter, values: number[], change?: string): Spotlight {
   return {
     key: row.key,
-    name: row.nameKa || row.nameEn,
+    name: labRowName(row),
     flag: row.flag,
     display: row.display,
     unit: row.unit,

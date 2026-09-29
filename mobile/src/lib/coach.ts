@@ -3,6 +3,8 @@
  * and the trainer workspace (`/coach/*`). Server: /api/trainer, docs/TRAINER.md.
  */
 
+import { isEn, tx } from '../i18n/locale.js';
+
 export type CoachScopes = { workouts: boolean; nutrition: boolean; weight: boolean; photos: boolean };
 export type CoachScope = keyof CoachScopes;
 export const COACH_SCOPES: CoachScope[] = ['workouts', 'nutrition', 'weight', 'photos'];
@@ -207,13 +209,15 @@ export function clockOf(iso: string): string {
   return `${String(t.getUTCHours()).padStart(2, '0')}:${String(t.getUTCMinutes()).padStart(2, '0')}`;
 }
 
-export const WEEKDAY_SHORT = ['კვი', 'ორშ', 'სამ', 'ოთხ', 'ხუთ', 'პარ', 'შაბ'];
-export const MONTH_SHORT = ['იან', 'თებ', 'მარ', 'აპრ', 'მაი', 'ივნ', 'ივლ', 'აგვ', 'სექ', 'ოქტ', 'ნოე', 'დეკ'];
+export const WEEKDAY_SHORT = isEn() ? ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'] : ['კვი', 'ორშ', 'სამ', 'ოთხ', 'ხუთ', 'პარ', 'შაბ'];
+export const MONTH_SHORT = isEn()
+  ? ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+  : ['იან', 'თებ', 'მარ', 'აპრ', 'მაი', 'ივნ', 'ივლ', 'აგვ', 'სექ', 'ოქტ', 'ნოე', 'დეკ'];
 
 export function dayLabel(ymd: string, today = tbilisiYmd()): string {
-  if (ymd === today) return 'დღეს';
-  if (ymd === addDaysYmd(today, 1)) return 'ხვალ';
-  if (ymd === addDaysYmd(today, -1)) return 'გუშინ';
+  if (ymd === today) return tx('დღეს', 'Today');
+  if (ymd === addDaysYmd(today, 1)) return tx('ხვალ', 'Tomorrow');
+  if (ymd === addDaysYmd(today, -1)) return tx('გუშინ', 'Yesterday');
   const d = new Date(`${ymd}T12:00:00Z`);
   return `${WEEKDAY_SHORT[d.getUTCDay()]}, ${d.getUTCDate()} ${MONTH_SHORT[d.getUTCMonth()]}`;
 }
@@ -233,19 +237,22 @@ export function hoursUntil(iso: string, now = Date.now()): number {
 /** Friendly relative time for the next session: "40 წუთში", "3 საათში", "ხვალ 19:00". */
 export function relativeStart(iso: string, now = Date.now()): string {
   const mins = Math.round((new Date(iso).getTime() - now) / 60000);
-  if (mins <= 0) return 'მიმდინარეობს';
-  if (mins < 60) return `${mins} წუთში`;
-  if (mins < 6 * 60) return `${Math.round(mins / 60)} საათში`;
+  if (mins <= 0) return tx('მიმდინარეობს', 'In progress');
+  if (mins < 60) return tx(`${mins} წუთში`, `in ${mins} min`);
+  if (mins < 6 * 60) {
+    const h = Math.round(mins / 60);
+    return tx(`${h} საათში`, `in ${h} ${h === 1 ? 'hour' : 'hours'}`);
+  }
   return `${dayLabel(tbilisiYmd(iso), tbilisiYmd(new Date(now)))} ${clockOf(iso)}`;
 }
 
 export const DAY_STATUS_LABEL: Record<DayStatus, string> = {
-  ON: 'გეგმაში',
-  OVER: 'გადააჭარბა',
-  UNDER: 'ცოტა ჭამა',
-  LOW_PROTEIN: 'ცილა აკლდა',
-  PENDING: 'მიმდინარე',
-  NONE: 'არ ჩაწერა',
+  ON: tx('გეგმაში', 'On plan'),
+  OVER: tx('გადააჭარბა', 'Over'),
+  UNDER: tx('ცოტა ჭამა', 'Under'),
+  LOW_PROTEIN: tx('ცილა აკლდა', 'Low protein'),
+  PENDING: tx('მიმდინარე', 'In progress'),
+  NONE: tx('არ ჩაწერა', 'Not logged'),
 };
 
 export function dayStatusColor(status: DayStatus, dark: boolean): string {
@@ -265,22 +272,41 @@ export function dayStatusColor(status: DayStatus, dark: boolean): string {
 }
 
 export const SESSION_STATUS_LABEL: Record<SessionStatus, string> = {
-  OPEN: 'თავისუფალი',
-  SCHEDULED: 'დაგეგმილი',
-  CANCELLED: 'გაუქმდა',
-  DONE: 'ჩატარდა',
-  NO_SHOW: 'არ მოვიდა',
+  OPEN: tx('თავისუფალი', 'Open'),
+  SCHEDULED: tx('დაგეგმილი', 'Scheduled'),
+  CANCELLED: tx('გაუქმდა', 'Cancelled'),
+  DONE: tx('ჩატარდა', 'Done'),
+  NO_SHOW: tx('არ მოვიდა', 'No-show'),
 };
 
-export const POSE_LABEL: Record<ProgressPhoto['pose'], string> = { FRONT: 'წინიდან', SIDE: 'გვერდიდან', BACK: 'ზურგიდან', OTHER: 'სხვა' };
+export const POSE_LABEL: Record<ProgressPhoto['pose'], string> = {
+  FRONT: tx('წინიდან', 'Front'),
+  SIDE: tx('გვერდიდან', 'Side'),
+  BACK: tx('ზურგიდან', 'Back'),
+  OTHER: tx('სხვა', 'Other'),
+};
 
-export const GOAL_TYPE_LABEL: Record<GoalProposal['type'], string> = { lose: 'წონის კლება', gain: 'წონის მატება', recomp: 'რეკომპოზიცია', performance: 'ფორმა და ძალა' };
+export const GOAL_TYPE_LABEL: Record<GoalProposal['type'], string> = {
+  lose: tx('წონის კლება', 'Lose weight'),
+  gain: tx('წონის მატება', 'Gain weight'),
+  recomp: tx('რეკომპოზიცია', 'Recomposition'),
+  performance: tx('ფორმა და ძალა', 'Fitness and strength'),
+};
 
 export const SCOPE_COPY: Record<CoachScope, { title: string; body: string }> = {
-  workouts: { title: 'ვარჯიშები და აქტივობა', body: 'ნაბიჯები, აქტიური წუთები, პულსი, ძილი და ვარჯიშები Apple Health / Health Connect-იდან.' },
-  nutrition: { title: 'კვება', body: 'კვების დღიური, კალორიები, მაკროები და ტრენერის გეგმის დაცვა.' },
-  weight: { title: 'წონა და მიზანი', body: 'აწონვები, წონის მიზანი და პროგრესი.' },
-  photos: { title: 'პროგრეს-ფოტოები', body: 'შენი „მანამდე / შემდეგ“ ფოტოები. ნაგულისხმევად გამორთულია.' },
+  workouts: {
+    title: tx('ვარჯიშები და აქტივობა', 'Workouts and activity'),
+    body: tx('ნაბიჯები, აქტიური წუთები, პულსი, ძილი და ვარჯიშები Apple Health / Health Connect-იდან.', 'Steps, active minutes, heart rate, sleep and workouts from Apple Health / Health Connect.'),
+  },
+  nutrition: {
+    title: tx('კვება', 'Nutrition'),
+    body: tx('კვების დღიური, კალორიები, მაკროები და ტრენერის გეგმის დაცვა.', 'Food diary, calories, macros and how well you follow the trainer’s plan.'),
+  },
+  weight: { title: tx('წონა და მიზანი', 'Weight and goal'), body: tx('აწონვები, წონის მიზანი და პროგრესი.', 'Weigh-ins, weight goal and progress.') },
+  photos: {
+    title: tx('პროგრეს-ფოტოები', 'Progress photos'),
+    body: tx('შენი „მანამდე / შემდეგ“ ფოტოები. ნაგულისხმევად გამორთულია.', 'Your before / after photos. Off by default.'),
+  },
 };
 
 /** Share of the goal covered, clamped to 0–100 (null when unknown). */
@@ -312,26 +338,26 @@ export function coachLink(code: string): string {
 }
 
 export const WORKOUT_KIND_KA: Record<string, string> = {
-  traditionalStrengthTraining: 'ძალოვანი ვარჯიში',
-  functionalStrengthTraining: 'ფუნქციური ვარჯიში',
+  traditionalStrengthTraining: tx('ძალოვანი ვარჯიში', 'Strength training'),
+  functionalStrengthTraining: tx('ფუნქციური ვარჯიში', 'Functional training'),
   highIntensityIntervalTraining: 'HIIT',
-  running: 'სირბილი',
-  walking: 'სიარული',
-  cycling: 'ველოსიპედი',
-  swimming: 'ცურვა',
-  yoga: 'იოგა',
-  pilates: 'პილატესი',
-  boxing: 'ბოქსი',
-  crossTraining: 'კროს-ტრენინგი',
-  elliptical: 'ელიფსური',
-  rowing: 'ნიჩბოსნობა',
-  coreTraining: 'კორი',
-  flexibility: 'მოქნილობა',
-  mixedCardio: 'კარდიო',
-  stairClimbing: 'კიბეები',
-  other: 'ვარჯიში',
+  running: tx('სირბილი', 'Running'),
+  walking: tx('სიარული', 'Walking'),
+  cycling: tx('ველოსიპედი', 'Cycling'),
+  swimming: tx('ცურვა', 'Swimming'),
+  yoga: tx('იოგა', 'Yoga'),
+  pilates: tx('პილატესი', 'Pilates'),
+  boxing: tx('ბოქსი', 'Boxing'),
+  crossTraining: tx('კროს-ტრენინგი', 'Cross-training'),
+  elliptical: tx('ელიფსური', 'Elliptical'),
+  rowing: tx('ნიჩბოსნობა', 'Rowing'),
+  coreTraining: tx('კორი', 'Core'),
+  flexibility: tx('მოქნილობა', 'Flexibility'),
+  mixedCardio: tx('კარდიო', 'Cardio'),
+  stairClimbing: tx('კიბეები', 'Stairs'),
+  other: tx('ვარჯიში', 'Workout'),
 };
 
 export function workoutKindLabel(kind: string): string {
-  return WORKOUT_KIND_KA[kind] || WORKOUT_KIND_KA[kind.replace(/^EXERCISE_TYPE_/, '').toLowerCase()] || 'ვარჯიში';
+  return WORKOUT_KIND_KA[kind] || WORKOUT_KIND_KA[kind.replace(/^EXERCISE_TYPE_/, '').toLowerCase()] || tx('ვარჯიში', 'Workout');
 }

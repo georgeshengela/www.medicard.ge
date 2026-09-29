@@ -2,6 +2,7 @@
  * Phase 8 — lightweight campaign eligibility (no admin CRUD imports).
  */
 import { CAMPAIGN_STATUSES, PARTNER_STATUSES } from './rewardCampaignDefs.js';
+import { t } from './i18n.js';
 
 export function isCampaignLive(campaign, now = new Date()) {
   if (!campaign || campaign.status !== CAMPAIGN_STATUSES.ACTIVE) return false;
@@ -11,9 +12,9 @@ export function isCampaignLive(campaign, now = new Date()) {
 }
 
 /** Best-effort reason when no live campaign is found for a reward. */
-export async function explainMissingLiveCampaign(db, rewardId, now = new Date()) {
+export async function explainMissingLiveCampaign(db, rewardId, now = new Date(), lang = 'ka') {
   if (typeof db.rewardCampaign?.findMany !== 'function') {
-    return { code: 'REWARD_CAMPAIGN_INACTIVE', message: 'კამპანია მიუწვდომელია.' };
+    return { code: 'REWARD_CAMPAIGN_INACTIVE', message: t(lang, 'კამპანია მიუწვდომელია.', 'This campaign is unavailable.') };
   }
   const rows = await db.rewardCampaign.findMany({
     where: { rewardDefinitionId: rewardId },
@@ -21,20 +22,20 @@ export async function explainMissingLiveCampaign(db, rewardId, now = new Date())
     orderBy: { sortOrder: 'asc' },
   });
   if (!rows.length) {
-    return { code: 'REWARD_CAMPAIGN_INACTIVE', message: 'კამპანია მიუწვდომელია.' };
+    return { code: 'REWARD_CAMPAIGN_INACTIVE', message: t(lang, 'კამპანია მიუწვდომელია.', 'This campaign is unavailable.') };
   }
   for (const c of rows) {
     if (c.partner?.status !== PARTNER_STATUSES.ACTIVE) {
-      return { code: 'REWARD_PARTNER_INACTIVE', message: 'პარტნიორი მიუწვდომელია.' };
+      return { code: 'REWARD_PARTNER_INACTIVE', message: t(lang, 'პარტნიორი მიუწვდომელია.', 'This partner is unavailable.') };
     }
     if (c.status === CAMPAIGN_STATUSES.ACTIVE && c.startsAt && new Date(c.startsAt) > now) {
-      return { code: 'REWARD_CAMPAIGN_NOT_STARTED', message: 'კამპანია ჯერ არ დაწყებულა.' };
+      return { code: 'REWARD_CAMPAIGN_NOT_STARTED', message: t(lang, 'კამპანია ჯერ არ დაწყებულა.', "This campaign hasn't started yet.") };
     }
     if (c.status === CAMPAIGN_STATUSES.ACTIVE && c.endsAt && new Date(c.endsAt) <= now) {
-      return { code: 'REWARD_CAMPAIGN_ENDED', message: 'კამპანია დასრულებულია.' };
+      return { code: 'REWARD_CAMPAIGN_ENDED', message: t(lang, 'კამპანია დასრულებულია.', 'This campaign has ended.') };
     }
   }
-  return { code: 'REWARD_CAMPAIGN_INACTIVE', message: 'კამპანია მიუწვდომელია.' };
+  return { code: 'REWARD_CAMPAIGN_INACTIVE', message: t(lang, 'კამპანია მიუწვდომელია.', 'This campaign is unavailable.') };
 }
 
 export async function findLiveCampaignForReward(db, rewardId, now = new Date()) {

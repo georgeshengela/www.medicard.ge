@@ -41,8 +41,11 @@ export function verifyUnsubscribeToken(token, { secret } = {}) {
   return crypto.timingSafeEqual(given, expected) ? id : null;
 }
 
-export function unsubscribeUrl(userId, opts) {
-  return `${SITE_URL}/unsubscribe?t=${encodeURIComponent(signUnsubscribeToken(userId, opts))}`;
+export function unsubscribeUrl(userId, opts = {}) {
+  const { lang, ...signOpts } = opts || {};
+  // `lang` is not part of the signature: it only picks the language of the result page.
+  const suffix = String(lang || '').toLowerCase().startsWith('en') ? '&lang=en' : '';
+  return `${SITE_URL}/unsubscribe?t=${encodeURIComponent(signUnsubscribeToken(userId, signOpts))}${suffix}`;
 }
 
 /** { marketingOptIn, optInAt, canReceive } for the app settings screen. */
@@ -81,38 +84,46 @@ export async function unsubscribeWithToken(token, { db = prisma, secret } = {}) 
 const PAGE_COPY = {
   ok: {
     title: 'გამოწერა გაუქმებულია',
+    titleEn: 'You have been unsubscribed',
     ka: 'მედიქარდი აღარ გამოგიგზავნის სიახლეებსა და რჩევებს ელფოსტით. სერვისული წერილები (მაგ. პაროლის აღდგენა) კვლავ მოვა. თუ გადაიფიქრებ, ჩართე აპში: პროფილი → შეტყობინებები.',
     en: 'You will no longer receive MEDICARD news and tips by email. Service emails (such as password reset codes) still arrive. You can turn it back on in the app: Profile → Notifications.',
   },
   gone: {
     title: 'ანგარიში ვერ მოიძებნა',
+    titleEn: 'Account not found',
     ka: 'ეს ანგარიში აღარ არსებობს, ამიტომ მასზე წერილები აღარ იგზავნება.',
     en: 'This account no longer exists, so no emails are sent to it.',
   },
   invalid: {
     title: 'ბმული არასწორია',
+    titleEn: 'This link is invalid',
     ka: 'ეს ბმული არასწორია ან დაზიანებულია. გამოწერის გაუქმება შეგიძლია აპშიც: პროფილი → შეტყობინებები, ან მოგვწერე support@medicard.ge.',
     en: 'This link is invalid or incomplete. You can also unsubscribe in the app (Profile → Notifications) or write to support@medicard.ge.',
   },
   error: {
     title: 'დროებითი შეფერხება',
+    titleEn: 'Temporary problem',
     ka: 'ახლა ვერ მოხერხდა. სცადე ცოტა ხანში ან მოგვწერე support@medicard.ge.',
     en: 'Something went wrong. Please try again shortly or write to support@medicard.ge.',
   },
 };
 
-/** Public, bilingual result page in the landing style (self-contained, light + dark). */
-export function unsubscribePageHtml(result) {
+/**
+ * Public result page in the landing style (self-contained, light + dark). Georgian (default) shows the
+ * Georgian text with an English line under it; `lang` 'en' shows an English-only page.
+ */
+export function unsubscribePageHtml(result, lang = 'ka') {
   const c = PAGE_COPY[result] || PAGE_COPY.invalid;
   const ok = result === 'ok';
+  const en = String(lang || '').toLowerCase().startsWith('en');
   return `<!DOCTYPE html>
-<html lang="ka">
+<html lang="${en ? 'en' : 'ka'}">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex">
 <meta name="color-scheme" content="light dark">
-<title>${c.title} — მედიქარდი</title>
+<title>${en ? `${c.titleEn} — Medicard` : `${c.title} — მედიქარდი`}</title>
 <link rel="icon" href="/favicon.png">
 <style>
   @font-face { font-family: FiraGO; src: url(/fonts/firago/FiraGO-Regular.woff2) format('woff2'); font-display: swap; }
@@ -132,13 +143,13 @@ export function unsubscribePageHtml(result) {
 </head>
 <body>
 <main>
-  <a class="brand" href="/"><img src="/icon.png" width="36" height="36" alt="">მედიქარდი</a>
+  <a class="brand" href="/"><img src="/icon.png" width="36" height="36" alt="">${en ? 'Medicard' : 'მედიქარდი'}</a>
   <div class="badge" aria-hidden="true">${ok
     ? '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>'
     : '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><line x1="12" y1="8" x2="12" y2="13"/><line x1="12" y1="16.5" x2="12" y2="16.5"/></svg>'}</div>
-  <h1>${c.title}</h1>
-  <p>${c.ka}</p>
-  <p lang="en">${c.en}</p>
+  <h1>${en ? c.titleEn : c.title}</h1>
+  ${en ? `<p>${c.en}</p>` : `<p>${c.ka}</p>
+  <p lang="en">${c.en}</p>`}
   <a class="home" href="/">medicard.ge</a>
 </main>
 </body>

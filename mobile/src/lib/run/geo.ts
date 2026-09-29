@@ -1,6 +1,7 @@
 /**
  * Pure geo + fitness math for the Run (beta) module. No React, no IO — unit-testable.
  */
+import { tx } from '../../i18n/locale.js';
 
 export type LatLng = { lat: number; lng: number };
 
@@ -133,8 +134,8 @@ export function formatPace(secPerKm: number | null): string {
 
 /** 850 მ / 1.2 კმ. */
 export function formatDistanceShort(m: number): string {
-  if (m < 1000) return `${Math.round(m)} მ`;
-  return `${(m / 1000).toFixed(m < 10_000 ? 1 : 0)} კმ`;
+  if (m < 1000) return `${Math.round(m)} ${tx('მ', 'm')}`;
+  return `${(m / 1000).toFixed(m < 10_000 ? 1 : 0)} ${tx('კმ', 'km')}`;
 }
 
 export function formatThousands(n: number): string {

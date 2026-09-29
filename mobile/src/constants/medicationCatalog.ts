@@ -1,6 +1,10 @@
+import { isEn } from '../i18n/locale.js';
+
 export type MedicationEntry = {
   inn: string;
   ka: string;
+  /** English display name when it differs from the capitalized INN (brand or plain name). */
+  en?: string;
   aliases?: readonly string[];
 };
 
@@ -27,7 +31,7 @@ export const MEDICATION_CATALOG: MedicationEntry[] = [
   { inn: 'spironolactone', ka: 'სპირონოლაქტონი', aliases: ['verospiron', 'ვეროშპირონი'] },
   { inn: 'hydrochlorothiazide', ka: 'ჰიდროქლორთიაზიდი' },
   { inn: 'clopidogrel', ka: 'კლოპიდოგრელი', aliases: ['plavix', 'პლავიქსი'] },
-  { inn: 'acetylsalicylic acid', ka: 'ასპირინი', aliases: ['aspirin', 'cardioaspirin', 'ასპირინი კარდიო'] },
+  { inn: 'acetylsalicylic acid', ka: 'ასპირინი', en: 'Aspirin', aliases: ['aspirin', 'cardioaspirin', 'ასპირინი კარდიო'] },
   { inn: 'warfarin', ka: 'ვარფარინი' },
   { inn: 'rivaroxaban', ka: 'რივაროქსაბანი', aliases: ['xarelto', 'ქსარელტო'] },
   { inn: 'apixaban', ka: 'აპიქსაბანი', aliases: ['eliquis'] },
@@ -42,7 +46,7 @@ export const MEDICATION_CATALOG: MedicationEntry[] = [
   { inn: 'sitagliptin', ka: 'სიტაგლიპტინი', aliases: ['januvia'] },
   { inn: 'semaglutide', ka: 'სემაგლუტიდი', aliases: ['ozempic', 'ozempic', 'ოზემპიკი', 'wegovy'] },
   { inn: 'amoxicillin', ka: 'ამოქსიცილინი', aliases: ['amoxil', 'ოსპამოქსი'] },
-  { inn: 'amoxicillin/clavulanate', ka: 'ამოქსიკლავი', aliases: ['augmentin', 'აუგმენტინი', 'amoxiclav'] },
+  { inn: 'amoxicillin/clavulanate', ka: 'ამოქსიკლავი', en: 'Amoxicillin/clavulanate', aliases: ['augmentin', 'აუგმენტინი', 'amoxiclav'] },
   { inn: 'azithromycin', ka: 'აზითრომიცინი', aliases: ['sumamed', 'სუმამედი'] },
   { inn: 'ciprofloxacin', ka: 'ციპროფლოქსაცინი' },
   { inn: 'levofloxacin', ka: 'ლევოფლოქსაცინი' },
@@ -81,19 +85,19 @@ export const MEDICATION_CATALOG: MedicationEntry[] = [
   { inn: 'sildenafil', ka: 'სილდენაფილი', aliases: ['viagra', 'ვიაგრა'] },
   { inn: 'estradiol', ka: 'ესტრადიოლი' },
   { inn: 'progesterone', ka: 'პროგესტერონი', aliases: ['utrogestan', 'უტროჟესტანი'] },
-  { inn: 'ferrous sulfate', ka: 'რკინა', aliases: ['sorbifer', 'სორბიფერი', 'iron'] },
+  { inn: 'ferrous sulfate', ka: 'რკინა', en: 'Iron (ferrous sulfate)', aliases: ['sorbifer', 'სორბიფერი', 'iron'] },
   { inn: 'folic acid', ka: 'ფოლიუმის მჟავა', aliases: ['folacin'] },
-  { inn: 'cholecalciferol', ka: 'ვიტამინი D3', aliases: ['vitamin d', 'ვიტამინი დ'] },
-  { inn: 'cyanocobalamin', ka: 'ვიტამინი B12', aliases: ['b12'] },
+  { inn: 'cholecalciferol', ka: 'ვიტამინი D3', en: 'Vitamin D3 (cholecalciferol)', aliases: ['vitamin d', 'ვიტამინი დ'] },
+  { inn: 'cyanocobalamin', ka: 'ვიტამინი B12', en: 'Vitamin B12 (cyanocobalamin)', aliases: ['b12'] },
   { inn: 'magnesium', ka: 'მაგნიუმი', aliases: ['magne b6', 'მაგნე'] },
-  { inn: 'potassium chloride', ka: 'კალიუმი', aliases: ['panangin', 'პანანგინი', 'asparkam'] },
+  { inn: 'potassium chloride', ka: 'კალიუმი', en: 'Potassium chloride', aliases: ['panangin', 'პანანგინი', 'asparkam'] },
   { inn: 'allopurinol', ka: 'ალოპურინოლი' },
   { inn: 'colchicine', ka: 'კოლხიცინი' },
   { inn: 'methotrexate', ka: 'მეტოტრექსატი' },
   { inn: 'tamoxifen', ka: 'ტამოქსიფენი' },
   { inn: 'letrozole', ka: 'ლეტროზოლი' },
   { inn: 'anastrozole', ka: 'ანასტროზოლი' },
-  { inn: 'isosorbide mononitrate', ka: 'იზოსორბიდი', aliases: ['monocinque'] },
+  { inn: 'isosorbide mononitrate', ka: 'იზოსორბიდი', en: 'Isosorbide mononitrate', aliases: ['monocinque'] },
   { inn: 'nitroglycerin', ka: 'ნიტროგლიცერინი' },
   { inn: 'digoxin', ka: 'დიგოქსინი' },
   { inn: 'amiodarone', ka: 'ამიოდარონი', aliases: ['cordarone'] },
@@ -113,7 +117,7 @@ export const MEDICATION_CATALOG: MedicationEntry[] = [
   { inn: 'olanzapine', ka: 'ოლანზაპინი' },
   { inn: 'risperidone', ka: 'რისპერიდონი' },
   { inn: 'loperamide', ka: 'ლოპერამიდი', aliases: ['imodium', 'იმოდიუმი'] },
-  { inn: 'diosmectite', ka: 'სმექტა', aliases: ['smecta'] },
+  { inn: 'diosmectite', ka: 'სმექტა', en: 'Smecta (diosmectite)', aliases: ['smecta'] },
   { inn: 'domperidone', ka: 'დომპერიდონი', aliases: ['motilium'] },
   { inn: 'ondansetron', ka: 'ონდანსეტრონი' },
   { inn: 'mebeverine', ka: 'მებევერინი', aliases: ['duspatalin'] },
@@ -133,11 +137,16 @@ function fold(value: string) {
 }
 
 function haystack(entry: MedicationEntry) {
-  return [entry.ka, entry.inn, ...(entry.aliases ?? [])].map(fold).filter(Boolean);
+  return [entry.ka, entry.inn, entry.en ?? '', ...(entry.aliases ?? [])].map(fold).filter(Boolean);
+}
+
+/** English name: explicit `en`, otherwise the INN with a capital first letter. */
+export function medicationEnglishLabel(entry: MedicationEntry) {
+  return entry.en ?? entry.inn.charAt(0).toUpperCase() + entry.inn.slice(1);
 }
 
 export function medicationLabel(entry: MedicationEntry) {
-  return entry.ka;
+  return isEn() ? medicationEnglishLabel(entry) : entry.ka;
 }
 
 export function findMedication(query: string) {
@@ -161,7 +170,7 @@ export function searchMedications(query: string, limit = 8): MedicationEntry[] {
     return { entry, score };
   })
     .filter((row) => row.score > 0)
-    .sort((a, b) => b.score - a.score || a.entry.ka.localeCompare(b.entry.ka, 'ka'));
+    .sort((a, b) => b.score - a.score || medicationLabel(a.entry).localeCompare(medicationLabel(b.entry), isEn() ? 'en' : 'ka'));
 
   return ranked.slice(0, limit).map((row) => row.entry);
 }

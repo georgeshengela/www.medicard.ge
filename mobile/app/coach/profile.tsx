@@ -13,6 +13,7 @@ import { useAuth } from '@/store/AuthContext';
 import { useMyAvatarUrl } from '@/lib/myAvatar';
 import { HUB, hubText } from '@/theme/hub';
 import { useThemeColors } from '@/theme/colors';
+import { tx } from '@/i18n/locale';
 
 export default function CoachProfileScreen() {
   const router = useRouter();
@@ -37,18 +38,18 @@ export default function CoachProfileScreen() {
 
   const myPhoto = useMyAvatarUrl();
   const avatarId = (healthProfile?.extraAnswers as { avatarId?: string } | undefined)?.avatarId ?? null;
-  const share = () => p?.code && void Share.share({ message: `ვარჯიშები, კვების გეგმა და პროგრესი ერთად — MEDICARD-ში. შემომიერთდი ჩემი კოდით ${p.code}: ${coachLink(p.code)}` });
+  const share = () => p?.code && void Share.share({ message: tx(`ვარჯიშები, კვების გეგმა და პროგრესი ერთად — MEDICARD-ში. შემომიერთდი ჩემი კოდით ${p.code}: ${coachLink(p.code)}`, `Workouts, meal plan and progress in one place — on MEDICARD. Join me with my code ${p.code}: ${coachLink(p.code)}`) });
   const label = (k: string) => cat?.specialties.find((s) => s.key === k)?.label ?? k;
 
   return (
-    <CoachShell title="პროფილი" subtitle="ასე გხედავენ კლიენტები">
+    <CoachShell title={tx('პროფილი', 'Profile')} subtitle={tx('ასე გხედავენ კლიენტები', 'How clients see you')}>
       <CoachGate error={error} />
       {!p && !error ? <Loading /> : null}
       {p ? (
         <>
           <FadeIn>
             <Card style={{ marginTop: 16, gap: 16, alignItems: 'center', paddingTop: 24 }}>
-              <Pressable accessibilityRole="button" accessibilityLabel="ფოტოს შეცვლა" onPress={() => router.push('/profile/avatar' as never)} style={{ alignItems: 'center' }}>
+              <Pressable accessibilityRole="button" accessibilityLabel={tx('ფოტოს შეცვლა', 'Change photo')} onPress={() => router.push('/profile/avatar' as never)} style={{ alignItems: 'center' }}>
                 <Ring value={1} size={104} stroke={3} color={p.status === 'VERIFIED' ? '#14B8A6' : '#F59E0B'}>
                   <Avatar avatarId={avatarId} photoUrl={myPhoto} name={p.displayName} size={90} verified={p.status === 'VERIFIED'} />
                 </Ring>
@@ -59,8 +60,8 @@ export default function CoachProfileScreen() {
               <View style={{ alignItems: 'center', gap: 6 }}>
                 <Text style={[hubText.sectionTitle, { color: c.text100, fontSize: 21, lineHeight: 28 }]}>{p.displayName}</Text>
                 <View style={[coachStyles.row, { gap: 6, flexWrap: 'wrap', justifyContent: 'center' }]}>
-                  <StatusPill label={p.status === 'VERIFIED' ? 'დადასტურებული ტრენერი' : 'განაცხადი განიხილება'} tone={p.status === 'VERIFIED' ? 'brand' : 'warn'} />
-                  {p.experienceYears ? <StatusPill label={`${p.experienceYears} წლის გამოცდილება`} tone="neutral" /> : null}
+                  <StatusPill label={p.status === 'VERIFIED' ? tx('დადასტურებული ტრენერი', 'Verified trainer') : tx('განაცხადი განიხილება', 'Application under review')} tone={p.status === 'VERIFIED' ? 'brand' : 'warn'} />
+                  {p.experienceYears ? <StatusPill label={tx(`${p.experienceYears} წლის გამოცდილება`, `${p.experienceYears} ${p.experienceYears === 1 ? 'year' : 'years'} of experience`)} tone="neutral" /> : null}
                 </View>
               </View>
               {p.bio ? <Text style={[hubText.body, { color: c.text200, textAlign: 'center' }]}>{p.bio}</Text> : null}
@@ -73,12 +74,12 @@ export default function CoachProfileScreen() {
                   ))}
                 </View>
               ) : null}
-              <Button label="პროფილის რედაქტირება" icon={Pencil} kind="secondary" style={{ alignSelf: 'stretch' }} onPress={() => router.push('/trainer/apply' as never)} />
+              <Button label={tx('პროფილის რედაქტირება', 'Edit profile')} icon={Pencil} kind="secondary" style={{ alignSelf: 'stretch' }} onPress={() => router.push('/trainer/apply' as never)} />
             </Card>
           </FadeIn>
 
           {p.gyms.length || p.certificates.length ? (
-            <Section title="დარბაზები და სერტიფიკატები">
+            <Section title={tx('დარბაზები და სერტიფიკატები', 'Gyms and certificates')}>
               <Card style={{ paddingVertical: 6 }}>
                 {[...p.gyms.map((g) => ({ key: g.id, icon: MapPin, ink: 'teal' as const, title: `${g.brand} · ${g.name}`, body: g.city })), ...p.certificates.map((ct) => ({ key: ct.id, icon: Award, ink: 'amber' as const, title: ct.title, body: [ct.issuer, ct.year].filter(Boolean).join(' · ') }))].map((row, i, all) => (
                   <View key={row.key} style={[coachStyles.row, { paddingVertical: 10, borderBottomWidth: i < all.length - 1 ? StyleSheet.hairlineWidth : 0, borderColor: c.bg300 }]}>
@@ -94,7 +95,7 @@ export default function CoachProfileScreen() {
           ) : null}
 
           {p.code ? (
-            <Section title="ჩემი QR და კოდი">
+            <Section title={tx('ჩემი QR და კოდი', 'My QR and code')}>
               <View style={{ backgroundColor: HUB.spotlightBg, borderRadius: HUB.cardRadius, padding: 20, gap: 12, alignItems: 'center' }}>
                 {p.link ? (
                   <View style={{ padding: 10, backgroundColor: '#FFFFFF', borderRadius: 24 }}>
@@ -103,25 +104,25 @@ export default function CoachProfileScreen() {
                 ) : null}
                 <Text selectable style={{ fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 34, letterSpacing: 10, color: '#FFFFFF' }}>{p.code}</Text>
                 <Text selectable style={[hubText.caption, { color: '#C5DADA' }]}>{p.link}</Text>
-                <Text style={[hubText.body, { color: '#C5DADA', textAlign: 'center' }]}>კლიენტი QR-ს დაასკანერებს „ჩემი ტრენერი“-დან (ან ტელეფონის კამერით), ან კოდს შეიყვანს. რას გაგიზიაროს, თავად აირჩევს.</Text>
-                <Button label="გაზიარება" icon={Share2} onPress={share} style={{ alignSelf: 'stretch' }} />
+                <Text style={[hubText.body, { color: '#C5DADA', textAlign: 'center' }]}>{tx('კლიენტი QR-ს დაასკანერებს „ჩემი ტრენერი“-დან (ან ტელეფონის კამერით), ან კოდს შეიყვანს. რას გაგიზიაროს, თავად აირჩევს.', 'A client scans the QR from “My trainer” (or with the phone camera), or enters the code. They choose what to share with you.')}</Text>
+                <Button label={tx('გაზიარება', 'Share')} icon={Share2} onPress={share} style={{ alignSelf: 'stretch' }} />
               </View>
             </Section>
           ) : null}
 
-          <Section title="კონფიდენციალობა">
+          <Section title={tx('კონფიდენციალობა', 'Privacy')}>
             <Card style={{ gap: 8 }}>
               <View style={coachStyles.row}>
                 <ShieldCheck size={18} color={c.primary100} />
                 <Text style={[hubText.body, { color: c.text200, flex: 1 }]}>
-                  კლიენტის მონაცემს ხედავ მხოლოდ მისი თანხმობით და მხოლოდ კავშირის განმავლობაში. გაზიარება კლიენტს ნებისმიერ წამს შეუძლია შეწყვიტოს. მონაცემის აპის გარეთ გადაღება/გადაგზავნა კლიენტის ნებართვის გარეშე არ შეიძლება.
+                  {tx('კლიენტის მონაცემს ხედავ მხოლოდ მისი თანხმობით და მხოლოდ კავშირის განმავლობაში. გაზიარება კლიენტს ნებისმიერ წამს შეუძლია შეწყვიტოს. მონაცემის აპის გარეთ გადაღება/გადაგზავნა კლიენტის ნებართვის გარეშე არ შეიძლება.', 'You see a client’s data only with their consent and only while you’re connected. The client can stop sharing at any moment. Capturing or forwarding their data outside the app without the client’s permission is not allowed.')}
                 </Text>
               </View>
             </Card>
           </Section>
 
-          <Section title="რეჟიმი">
-            <Button label="პირად რეჟიმზე გადასვლა" icon={ArrowLeftRight} kind="secondary" onPress={() => router.replace('/(tabs)/home' as never)} />
+          <Section title={tx('რეჟიმი', 'Mode')}>
+            <Button label={tx('პირად რეჟიმზე გადასვლა', 'Switch to personal mode')} icon={ArrowLeftRight} kind="secondary" onPress={() => router.replace('/(tabs)/home' as never)} />
           </Section>
         </>
       ) : null}

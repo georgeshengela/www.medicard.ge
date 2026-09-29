@@ -8,8 +8,24 @@ export const DRAFT_PROVENANCE = Object.freeze(['owner_instruction', 'existing_pl
 
 const FENCE_RE = /```care-draft\s*([\s\S]*?)```/i;
 
+/** English copy for draft validation errors (picked by the error handlers for English requests). */
+const FAIL_EN = Object.freeze({
+  'გეგმის წინადადება არასწორია.': 'The plan suggestion is invalid.',
+  'გეგმა ამ ცხოველს არ ეკუთვნის.': 'This plan doesn’t belong to this pet.',
+  'აირჩიე მოვლის კატეგორია.': 'Choose a care category.',
+  'სათაური ძალიან გრძელია.': 'The title is too long.',
+  'პროდუქტი ამ ცხოველს არ ეკუთვნის.': 'This product doesn’t belong to this pet.',
+  'დოზა ძალიან გრძელია.': 'The dose is too long.',
+  'დოზის ერთეული ძალიან გრძელია.': 'The dose unit is too long.',
+  'თარიღი არასწორია.': 'Invalid date.',
+  'დრო არასწორია.': 'Invalid time.',
+  'გამეორება არასწორია.': 'Invalid repeat.',
+  'გამეორების რიცხვი არასწორია.': 'Invalid repeat count.',
+});
+
 function fail(message, extra = {}) {
   const error = new Error(message);
+  if (FAIL_EN[message]) error.messageEn = FAIL_EN[message];
   error.status = 400;
   Object.assign(error, extra);
   throw error;

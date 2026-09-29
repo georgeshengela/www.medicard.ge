@@ -1,3 +1,4 @@
+import { tx } from '../i18n/locale.js';
 import { getScopedPreference, setScopedPreference, localAccountId } from '@/lib/localAccount';
 
 const KEY = 'medicard.skincare-routines';
@@ -54,7 +55,7 @@ export function splitSkincareSections(markdown: string): { title: string; body: 
     .map((chunk) => {
       const match = chunk.match(/^(#{1,3})\s+(.+?)(?:\n([\s\S]*))?$/);
       // Preserve introductory cautions before the first heading as well.
-      if (!match) return chunk.trim() ? { title: 'სანამ დაიწყებ', body: chunk.trim() } : null;
+      if (!match) return chunk.trim() ? { title: tx('სანამ დაიწყებ', 'Before you start'), body: chunk.trim() } : null;
       return { title: match[2].trim(), body: (match[3] ?? '').trim() };
     })
     .filter((section): section is { title: string; body: string } => Boolean(section?.title));

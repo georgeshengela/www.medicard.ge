@@ -6,6 +6,7 @@ import { FREE_CONSUMER_RELEASE, freeConsumerPackage } from './consumerAccess.js'
 import { serverAiEngine } from './aiEngine.js';
 import { cycleModeForPatientAiContext } from './cycleModes.js';
 import { wrapUntrustedAiBlock } from './clinicalMessages.js';
+import { t } from './i18n.js';
 
 function packageIsExpired(user) {
   return Boolean(user?.packageExpiresAt && new Date(user.packageExpiresAt).getTime() < Date.now());
@@ -45,6 +46,7 @@ function isRealCalendarDate(value) {
  */
 export const MIN_USER_AGE = 18;
 export const MIN_USER_AGE_MESSAGE = `MEDICARD-ით სარგებლობა ${MIN_USER_AGE} წლიდან შეიძლება.`;
+export const MIN_USER_AGE_MESSAGE_EN = `You must be ${MIN_USER_AGE} or older to use MEDICARD.`;
 
 /**
  * Accepts `YYYY-MM-DD` from the client and hands Prisma a UTC-midnight Date for a `@db.Date` column.
@@ -70,11 +72,11 @@ export const birthDateSchema = birthDateInputSchema.refine(
  * Age rule for edits: only a new or changed date must be 18+. Accounts created before the rule
  * keep saving unrelated fields (they re-send their stored date). Returns the message or null.
  */
-export function birthDateAgeError(nextDate, storedDate) {
+export function birthDateAgeError(nextDate, storedDate, lang = 'ka') {
   if (!(nextDate instanceof Date)) return null;
   const stored = storedDate ? new Date(storedDate) : null;
   if (stored && stored.toISOString().slice(0, 10) === nextDate.toISOString().slice(0, 10)) return null;
-  return (calculateAge(nextDate) ?? 0) >= MIN_USER_AGE ? null : MIN_USER_AGE_MESSAGE;
+  return (calculateAge(nextDate) ?? 0) >= MIN_USER_AGE ? null : t(lang, MIN_USER_AGE_MESSAGE, MIN_USER_AGE_MESSAGE_EN);
 }
 
 /**

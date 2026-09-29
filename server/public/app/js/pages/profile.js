@@ -1,5 +1,5 @@
 // MEDICARD web — Profile & settings: personal data, health profile, privacy/AI consent,
-// phone verification, email preferences, theme, sign out, account deletion.
+// phone verification, email preferences, theme, language, sign out, account deletion.
 import {
   h, mount, icon, pageHead, section, card, button, row, formModal, field, input, select, textarea, toast,
   confirmDialog, openModal, busy, fmtDate, badge, segmented, toggle, fmtNum,
@@ -7,14 +7,18 @@ import {
 import { get, patch, put, post, del } from '../api.js';
 import { session, setUser, setProfile, refreshMe, signOut, initials, applyTheme, getThemePref } from '../session.js';
 import { readAiConsent, askAiConsent } from '../aiConsent.js';
+import { t, lang, isEn, setLang, LANGUAGES } from '../i18n.js';
 
-const GENDER = { FEMALE: 'ქალი', MALE: 'კაცი', OTHER: 'სხვა' };
+const PRIVACY_URL = isEn ? '/privacy-en' : '/privacy';
+const TERMS_URL = isEn ? '/terms-en' : '/terms';
+
+const GENDER = { FEMALE: t('ქალი', 'Female'), MALE: t('კაცი', 'Male'), OTHER: t('სხვა', 'Other') };
 const BLOOD = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'];
-const ACTIVITY = { SEDENTARY: 'უმოძრაო', LIGHT: 'მსუბუქი', MODERATE: 'ზომიერი', ACTIVE: 'აქტიური', VERY_ACTIVE: 'ძალიან აქტიური' };
-const SMOKING = { NEVER: 'არასდროს', FORMER: 'ადრე ვეწეოდი', CURRENT: 'ვეწევი' };
-const ALCOHOL = { NEVER: 'არ ვსვამ', OCCASIONAL: 'იშვიათად', REGULAR: 'რეგულარულად' };
-const SLEEP = { POOR: 'ცუდი', FAIR: 'საშუალო', GOOD: 'კარგი', EXCELLENT: 'შესანიშნავი' };
-const STRESS = { LOW: 'დაბალი', MODERATE: 'ზომიერი', HIGH: 'მაღალი', VERY_HIGH: 'ძალიან მაღალი' };
+const ACTIVITY = { SEDENTARY: t('უმოძრაო', 'Sedentary'), LIGHT: t('მსუბუქი', 'Light'), MODERATE: t('ზომიერი', 'Moderate'), ACTIVE: t('აქტიური', 'Active'), VERY_ACTIVE: t('ძალიან აქტიური', 'Very active') };
+const SMOKING = { NEVER: t('არასდროს', 'Never'), FORMER: t('ადრე ვეწეოდი', 'Former smoker'), CURRENT: t('ვეწევი', 'Current smoker') };
+const ALCOHOL = { NEVER: t('არ ვსვამ', 'Don’t drink'), OCCASIONAL: t('იშვიათად', 'Occasionally'), REGULAR: t('რეგულარულად', 'Regularly') };
+const SLEEP = { POOR: t('ცუდი', 'Poor'), FAIR: t('საშუალო', 'Fair'), GOOD: t('კარგი', 'Good'), EXCELLENT: t('შესანიშნავი', 'Excellent') };
+const STRESS = { LOW: t('დაბალი', 'Low'), MODERATE: t('ზომიერი', 'Moderate'), HIGH: t('მაღალი', 'High'), VERY_HIGH: t('ძალიან მაღალი', 'Very high') };
 
 const isSyntheticEmail = (e) => String(e || '').endsWith('@phone.medicard.ge');
 const opts = (map, withEmpty = true) => [...(withEmpty ? [{ value: '', label: '—' }] : []), ...Object.entries(map).map(([value, label]) => ({ value, label }))];
@@ -27,92 +31,103 @@ export default async function profilePage(root) {
     const bmi = p.heightCm && p.weightKg ? (p.weightKg / ((p.heightCm / 100) ** 2)).toFixed(1) : null;
 
     mount(root,
-      pageHead('პროფილი', 'შენი მონაცემები, კონფიდენციალურობა და პარამეტრები. ცვლილებები აპშიც მაშინვე აისახება.'),
+      pageHead(t('პროფილი', 'Profile'), t('შენი მონაცემები, კონფიდენციალურობა და პარამეტრები. ცვლილებები აპშიც მაშინვე აისახება.', 'Your details, privacy and settings. Changes show up in the app right away.')),
       h('div', { class: 'grid grid-main' },
         h('div', null,
           card({ class: 'pad-lg hub-section' },
             h('div', { class: 'hstack', style: { gap: '18px', flexWrap: 'nowrap' } },
               h('span', { class: 'avatar lg' }, initials()),
               h('div', { style: { flex: 1, minWidth: 0 } },
-                h('h2', { style: { fontSize: '22px' } }, u.fullName || 'მომხმარებელი'),
+                h('h2', { style: { fontSize: '22px' } }, u.fullName || t('მომხმარებელი', 'User')),
                 h('div', { class: 'muted', style: { marginTop: '2px' } }, [u.phone, isSyntheticEmail(u.email) ? null : u.email].filter(Boolean).join(' · ') || '—'),
                 h('div', { class: 'hstack', style: { marginTop: '10px' } },
-                  badge(`${fmtNum(u.points || 0)} ქულა`, 'brand'),
-                  badge(`სტრიკი ${fmtNum(u.currentStreak || 0)} დღე`, 'neutral'),
-                  u.createdAt ? badge(`წევრი ${fmtDate(u.createdAt, { year: true })}-დან`, 'neutral') : null)),
-              button('რედაქტირება', { variant: 'ghost', icon: 'edit', onClick: editPersonal }))),
+                  badge(t(`${fmtNum(u.points || 0)} ქულა`, `${fmtNum(u.points || 0)} ${u.points === 1 ? 'point' : 'points'}`), 'brand'),
+                  badge(t(`სტრიკი ${fmtNum(u.currentStreak || 0)} დღე`, `${fmtNum(u.currentStreak || 0)}-day streak`), 'neutral'),
+                  u.createdAt ? badge(t(`წევრი ${fmtDate(u.createdAt, { year: true })}-დან`, `Member since ${fmtDate(u.createdAt, { year: true })}`), 'neutral') : null)),
+              button(t('რედაქტირება', 'Edit'), { variant: 'ghost', icon: 'edit', onClick: editPersonal }))),
 
-          section('პირადი მონაცემები', card(h('div', { class: 'list' },
-            row({ icon: 'user', ink: 'blue', title: 'სახელი', sub: u.fullName || '—' }),
-            row({ icon: 'heart', ink: 'rose', title: 'სქესი', sub: GENDER[u.gender] || '—' }),
-            row({ icon: 'calendar', ink: 'violet', title: 'დაბადების თარიღი', sub: u.birthDate ? `${fmtDate(u.birthDate, { year: true })}${u.age ? ` · ${u.age} წლის` : ''}` : '—' }),
-            row({ icon: 'phone', ink: 'teal', title: 'ტელეფონი', sub: u.phone || 'დაუდასტურებელი', trailing: u.phone ? badge('დადასტურებული', 'ok') : button('დადასტურება', { size: 'sm', variant: 'secondary', onClick: linkPhone }) }),
-            isSyntheticEmail(u.email) ? null : row({ icon: 'mail', ink: 'sky', title: 'ელ-ფოსტა', sub: u.email })),
-          ), { action: button('შეცვლა', { variant: 'ghost', size: 'sm', icon: 'edit', onClick: editPersonal }) }),
+          section(t('პირადი მონაცემები', 'Personal details'), card(h('div', { class: 'list' },
+            row({ icon: 'user', ink: 'blue', title: t('სახელი', 'Name'), sub: u.fullName || '—' }),
+            row({ icon: 'heart', ink: 'rose', title: t('სქესი', 'Sex'), sub: GENDER[u.gender] || '—' }),
+            row({ icon: 'calendar', ink: 'violet', title: t('დაბადების თარიღი', 'Date of birth'), sub: u.birthDate ? `${fmtDate(u.birthDate, { year: true })}${u.age ? t(` · ${u.age} წლის`, ` · ${u.age} years old`) : ''}` : '—' }),
+            row({ icon: 'phone', ink: 'teal', title: t('ტელეფონი', 'Phone'), sub: u.phone || t('დაუდასტურებელი', 'Not verified'), trailing: u.phone ? badge(t('დადასტურებული', 'Verified'), 'ok') : button(t('დადასტურება', 'Verify'), { size: 'sm', variant: 'secondary', onClick: linkPhone }) }),
+            isSyntheticEmail(u.email) ? null : row({ icon: 'mail', ink: 'sky', title: t('ელ-ფოსტა', 'Email'), sub: u.email })),
+          ), { action: button(t('შეცვლა', 'Edit'), { variant: 'ghost', size: 'sm', icon: 'edit', onClick: editPersonal }) }),
 
-          section('ჯანმრთელობის პროფილი', card(
+          section(t('ჯანმრთელობის პროფილი', 'Health profile'), card(
             h('div', { class: 'stats-row', style: { marginBottom: '16px' } },
-              statBox('სიმაღლე', p.heightCm ? `${p.heightCm}` : '—', 'სმ'),
-              statBox('წონა', p.weightKg ? `${p.weightKg}` : '—', 'კგ'),
+              statBox(t('სიმაღლე', 'Height'), p.heightCm ? `${p.heightCm}` : '—', t('სმ', 'cm')),
+              statBox(t('წონა', 'Weight'), p.weightKg ? `${p.weightKg}` : '—', t('კგ', 'kg')),
               statBox('BMI', bmi || '—', ''),
-              statBox('სისხლის ჯგუფი', p.bloodType && p.bloodType !== 'UNKNOWN' ? p.bloodType : '—', '')),
+              statBox(t('სისხლის ჯგუფი', 'Blood type'), p.bloodType && p.bloodType !== 'UNKNOWN' ? p.bloodType : '—', '')),
             h('div', { class: 'list' },
-              row({ icon: 'alert', ink: 'amber', title: 'ალერგიები', sub: list(p.allergies) }),
-              row({ icon: 'heart', ink: 'rose', title: 'ქრონიკული მდგომარეობები', sub: list(p.chronicConditions) }),
-              row({ icon: 'users', ink: 'violet', title: 'ოჯახური ისტორია', sub: list(p.familyHistory) }),
-              row({ icon: 'activity', ink: 'green', title: 'ცხოვრების წესი', sub: [ACTIVITY[p.activityLevel], p.smokingStatus && `მოწევა: ${SMOKING[p.smokingStatus]}`, p.alcoholUse && `ალკოჰოლი: ${ALCOHOL[p.alcoholUse]}`, p.sleepQuality && `ძილი: ${SLEEP[p.sleepQuality]}`].filter(Boolean).join(' · ') || '—' })),
-          ), { action: button('შეცვლა', { variant: 'ghost', size: 'sm', icon: 'edit', onClick: editHealth }) })),
+              row({ icon: 'alert', ink: 'amber', title: t('ალერგიები', 'Allergies'), sub: list(p.allergies) }),
+              row({ icon: 'heart', ink: 'rose', title: t('ქრონიკული მდგომარეობები', 'Chronic conditions'), sub: list(p.chronicConditions) }),
+              row({ icon: 'users', ink: 'violet', title: t('ოჯახური ისტორია', 'Family history'), sub: list(p.familyHistory) }),
+              row({ icon: 'activity', ink: 'green', title: t('ცხოვრების წესი', 'Lifestyle'), sub: [ACTIVITY[p.activityLevel], p.smokingStatus && `${t('მოწევა', 'Smoking')}: ${SMOKING[p.smokingStatus]}`, p.alcoholUse && `${t('ალკოჰოლი', 'Alcohol')}: ${ALCOHOL[p.alcoholUse]}`, p.sleepQuality && `${t('ძილი', 'Sleep')}: ${SLEEP[p.sleepQuality]}`].filter(Boolean).join(' · ') || '—' })),
+          ), { action: button(t('შეცვლა', 'Edit'), { variant: 'ghost', size: 'sm', icon: 'edit', onClick: editHealth }) })),
 
         h('div', null,
-          section('კონფიდენციალურობა', privacyCard()),
-          section('გარეგნობა', card(
+          section(t('კონფიდენციალურობა', 'Privacy'), privacyCard()),
+          section(t('გარეგნობა', 'Appearance'), card(
             h('div', { class: 'between' },
-              h('div', null, h('div', { class: 'card-title' }, 'თემა'), h('div', { class: 'card-sub' }, 'ღია, მუქი ან სისტემის მიხედვით')),
-              segmented([{ value: 'light', label: 'ღია' }, { value: 'dark', label: 'მუქი' }, { value: 'system', label: 'ავტო' }], getThemePref(), (v) => applyTheme(v))))),
-          section('შეტყობინებები', emailCard()),
-          section('აპი', card(h('div', { class: 'list' },
-            row({ icon: 'smartphone', ink: 'teal', title: 'MEDICARD აპი', sub: 'შეხსენებები, ნაბიჯები, MEDIRUN და ხმოვანი Medi — ტელეფონში', trailing: button('App Store', { size: 'sm', variant: 'secondary', href: 'https://apps.apple.com/app/id6812517519', external: true }) }),
-            h('a', { class: 'row row-link', href: '/privacy', target: '_blank' }, h('span', { class: 'tile ink-neutral', style: { width: '38px', height: '38px' } }, icon('shield', { size: 18 })), h('div', { class: 'row-main' }, h('div', { class: 'row-title' }, 'კონფიდენციალურობის პოლიტიკა')), icon('externalLink', { size: 16, className: 'row-chev' })),
-            h('a', { class: 'row row-link', href: '/terms', target: '_blank' }, h('span', { class: 'tile ink-neutral', style: { width: '38px', height: '38px' } }, icon('file', { size: 18 })), h('div', { class: 'row-main' }, h('div', { class: 'row-title' }, 'მომსახურების წესები')), icon('externalLink', { size: 16, className: 'row-chev' })),
-            h('a', { class: 'row row-link', href: 'mailto:support@medicard.ge' }, h('span', { class: 'tile ink-neutral', style: { width: '38px', height: '38px' } }, icon('mail', { size: 18 })), h('div', { class: 'row-main' }, h('div', { class: 'row-title' }, 'მხარდაჭერა'), h('div', { class: 'row-sub' }, 'support@medicard.ge')))))),
-          section('ანგარიში', card(
+              h('div', null, h('div', { class: 'card-title' }, t('თემა', 'Theme')), h('div', { class: 'card-sub' }, t('ღია, მუქი ან სისტემის მიხედვით', 'Light, dark or match your system'))),
+              segmented([{ value: 'light', label: t('ღია', 'Light') }, { value: 'dark', label: t('მუქი', 'Dark') }, { value: 'system', label: t('ავტო', 'Auto') }], getThemePref(), (v) => applyTheme(v))))),
+          section(t('ენა', 'Language'), languageCard()),
+          section(t('შეტყობინებები', 'Notifications'), emailCard()),
+          section(t('აპი', 'App'), card(h('div', { class: 'list' },
+            row({ icon: 'smartphone', ink: 'teal', title: t('MEDICARD აპი', 'MEDICARD app'), sub: t('შეხსენებები, ნაბიჯები, MEDIRUN და ხმოვანი Medi — ტელეფონში', 'Reminders, steps, MEDIRUN and voice Medi — on your phone'), trailing: button('App Store', { size: 'sm', variant: 'secondary', href: 'https://apps.apple.com/app/id6812517519', external: true }) }),
+            h('a', { class: 'row row-link', href: PRIVACY_URL, target: '_blank' }, h('span', { class: 'tile ink-neutral', style: { width: '38px', height: '38px' } }, icon('shield', { size: 18 })), h('div', { class: 'row-main' }, h('div', { class: 'row-title' }, t('კონფიდენციალურობის პოლიტიკა', 'Privacy policy'))), icon('externalLink', { size: 16, className: 'row-chev' })),
+            h('a', { class: 'row row-link', href: TERMS_URL, target: '_blank' }, h('span', { class: 'tile ink-neutral', style: { width: '38px', height: '38px' } }, icon('file', { size: 18 })), h('div', { class: 'row-main' }, h('div', { class: 'row-title' }, t('მომსახურების წესები', 'Terms of service'))), icon('externalLink', { size: 16, className: 'row-chev' })),
+            h('a', { class: 'row row-link', href: 'mailto:support@medicard.ge' }, h('span', { class: 'tile ink-neutral', style: { width: '38px', height: '38px' } }, icon('mail', { size: 18 })), h('div', { class: 'row-main' }, h('div', { class: 'row-title' }, t('მხარდაჭერა', 'Support')), h('div', { class: 'row-sub' }, 'support@medicard.ge')))))),
+          section(t('ანგარიში', 'Account'), card(
             h('div', { class: 'stack' },
-              button('გასვლა', { variant: 'ghost', icon: 'logout', class: 'btn-block', onClick: () => { signOut(); location.href = '/app'; } }),
-              button('ანგარიშის წაშლა', { variant: 'outline', icon: 'trash', class: 'btn-block', onClick: deleteAccount }),
-              h('p', { class: 'faint', style: { fontSize: '12.5px' } }, 'წაშლა სამუდამოა: ანგარიში და ყველა ჯანმრთელობის მონაცემი იშლება.')))))));
+              button(t('გასვლა', 'Sign out'), { variant: 'ghost', icon: 'logout', class: 'btn-block', onClick: () => { signOut(); location.href = '/app'; } }),
+              button(t('ანგარიშის წაშლა', 'Delete account'), { variant: 'outline', icon: 'trash', class: 'btn-block', onClick: deleteAccount }),
+              h('p', { class: 'faint', style: { fontSize: '12.5px' } }, t('წაშლა სამუდამოა: ანგარიში და ყველა ჯანმრთელობის მონაცემი იშლება.', 'Deletion is permanent: your account and all your health data are erased.'))))))));
   };
 
   function statBox(label, value, unit) {
     return h('div', null, h('div', { class: 'stat-label' }, label), h('div', { class: 'stat-value', style: { fontSize: '22px' } }, value, unit ? h('small', null, ` ${unit}`) : null));
   }
 
+  function languageCard() {
+    return card(
+      h('div', { class: 'between' },
+        h('div', null, h('div', { class: 'card-title' }, 'Language / ენა'), h('div', { class: 'card-sub' }, t('გვერდი ხელახლა ჩაიტვირთება არჩეულ ენაზე', 'The page reloads in the language you choose'))),
+        segmented(LANGUAGES.map((l) => ({
+          value: l.value,
+          label: h('span', { lang: l.value }, h('span', { style: { fontSize: '11px', fontWeight: 800, opacity: 0.7, marginRight: '6px' } }, l.badge), l.label),
+        })), lang, (v) => { if (v !== lang) setLang(v); })));
+  }
+
   function privacyCard() {
-    const body = h('div', { class: 'list' }, row({ icon: 'sparkles', ink: 'violet', title: 'AI-სთან გაზიარება', sub: 'იტვირთება…' }));
+    const body = h('div', { class: 'list' }, row({ icon: 'sparkles', ink: 'violet', title: t('AI-სთან გაზიარება', 'Sharing with AI'), sub: t('იტვირთება…', 'Loading…') }));
     readAiConsent(true).then((st) => {
       mount(body,
         row({
-          icon: 'sparkles', ink: 'violet', title: 'AI-სთან გაზიარება (Medi)',
-          sub: st.accepted ? `ნებადართულია${st.updatedAt ? ` · ${fmtDate(st.updatedAt, { year: true })}` : ''}` : 'არ არის ნებადართული — Medi-ს პირველად გამოყენებისას გკითხავთ',
-          trailing: button(st.accepted ? 'მართვა' : 'ნახვა', { size: 'sm', variant: 'ghost', onClick: async () => { await askAiConsent(st, { settings: true }); render(); } }),
+          icon: 'sparkles', ink: 'violet', title: t('AI-სთან გაზიარება (Medi)', 'Sharing with AI (Medi)'),
+          sub: st.accepted ? `${t('ნებადართულია', 'Allowed')}${st.updatedAt ? ` · ${fmtDate(st.updatedAt, { year: true })}` : ''}` : t('არ არის ნებადართული — Medi-ს პირველად გამოყენებისას გკითხავთ', 'Not allowed — we’ll ask the first time you use Medi'),
+          trailing: button(st.accepted ? t('მართვა', 'Manage') : t('ნახვა', 'View'), { size: 'sm', variant: 'ghost', onClick: async () => { await askAiConsent(st, { settings: true }); render(); } }),
         }),
-        row({ icon: 'shield', ink: 'teal', title: 'კონფიდენციალურობის თანხმობა', sub: session.profile?.extraAnswers?.privacyAcceptedAt ? `მიღებულია ${fmtDate(session.profile.extraAnswers.privacyAcceptedAt, { year: true })}` : 'მიღებულია' }));
-    }).catch(() => mount(body, row({ icon: 'sparkles', ink: 'violet', title: 'AI-სთან გაზიარება', sub: 'სტატუსი ვერ ჩაიტვირთა' })));
+        row({ icon: 'shield', ink: 'teal', title: t('კონფიდენციალურობის თანხმობა', 'Privacy consent'), sub: session.profile?.extraAnswers?.privacyAcceptedAt ? t(`მიღებულია ${fmtDate(session.profile.extraAnswers.privacyAcceptedAt, { year: true })}`, `Accepted ${fmtDate(session.profile.extraAnswers.privacyAcceptedAt, { year: true })}`) : t('მიღებულია', 'Accepted') }));
+    }).catch(() => mount(body, row({ icon: 'sparkles', ink: 'violet', title: t('AI-სთან გაზიარება', 'Sharing with AI'), sub: t('სტატუსი ვერ ჩაიტვირთა', 'Couldn’t load the status') })));
     return card(body);
   }
 
   function emailCard() {
     const u = session.user || {};
     if (isSyntheticEmail(u.email)) {
-      return card(h('p', { class: 'muted', style: { fontSize: '14px' } }, 'შეხსენებები და push შეტყობინებები MEDICARD აპში იმართება.'));
+      return card(h('p', { class: 'muted', style: { fontSize: '14px' } }, t('შეხსენებები და push შეტყობინებები MEDICARD აპში იმართება.', 'Reminders and push notifications are managed in the MEDICARD app.')));
     }
-    const body = h('div', null, h('p', { class: 'faint' }, 'იტვირთება…'));
+    const body = h('div', null, h('p', { class: 'faint' }, t('იტვირთება…', 'Loading…')));
     get('/api/account/email-preferences').then((pref) => {
       mount(body, h('div', { class: 'between' },
-        h('div', null, h('div', { class: 'card-title' }, 'სიახლეები ელ-ფოსტით'), h('div', { class: 'card-sub' }, 'რჩევები და სიახლეები. სერვისის წერილები მაინც მოვა.')),
+        h('div', null, h('div', { class: 'card-title' }, t('სიახლეები ელ-ფოსტით', 'News by email')), h('div', { class: 'card-sub' }, t('რჩევები და სიახლეები. სერვისის წერილები მაინც მოვა.', 'Tips and news. Service emails still arrive.'))),
         toggle(Boolean(pref.marketingOptIn), async (on) => {
-          try { await patch('/api/account/email-preferences', { marketingOptIn: on }); toast(on ? 'ჩაირთო' : 'გამოირთო'); } catch (e) { toast(e.message, 'error'); }
+          try { await patch('/api/account/email-preferences', { marketingOptIn: on }); toast(on ? t('ჩაირთო', 'Turned on') : t('გამოირთო', 'Turned off')); } catch (e) { toast(e.message, 'error'); }
         })));
-    }).catch(() => mount(body, h('p', { class: 'faint' }, 'პარამეტრები ვერ ჩაიტვირთა.')));
+    }).catch(() => mount(body, h('p', { class: 'faint' }, t('პარამეტრები ვერ ჩაიტვირთა.', 'Couldn’t load settings.'))));
     return card(body);
   }
 
@@ -120,12 +135,12 @@ export default async function profilePage(root) {
     const u = session.user || {};
     const max = new Date(); max.setFullYear(max.getFullYear() - 18);
     formModal({
-      title: 'პირადი მონაცემები',
+      title: t('პირადი მონაცემები', 'Personal details'),
       fields: [
-        field('სახელი და გვარი', input({ name: 'fullName', value: u.fullName || '', required: true, minlength: 2 })),
+        field(t('სახელი და გვარი', 'Full name'), input({ name: 'fullName', value: u.fullName || '', required: true, minlength: 2 })),
         h('div', { class: 'form-row' },
-          field('სქესი', select(opts(GENDER, false), u.gender || 'FEMALE', { name: 'gender' })),
-          field('დაბადების თარიღი', input({ name: 'birthDate', type: 'date', value: u.birthDate || '', max: max.toISOString().slice(0, 10) }))),
+          field(t('სქესი', 'Sex'), select(opts(GENDER, false), u.gender || 'FEMALE', { name: 'gender' })),
+          field(t('დაბადების თარიღი', 'Date of birth'), input({ name: 'birthDate', type: 'date', value: u.birthDate || '', max: max.toISOString().slice(0, 10) }))),
       ],
       onSubmit: async (v, close) => {
         const body = {};
@@ -136,7 +151,7 @@ export default async function profilePage(root) {
         const r = await patch('/api/auth/me', body);
         setUser(r.user);
         close();
-        toast('შენახულია');
+        toast(t('შენახულია', 'Saved'));
         render();
       },
     });
@@ -146,24 +161,24 @@ export default async function profilePage(root) {
     const p = session.profile || {};
     const tags = (name, value, placeholder) => textarea({ name, value: Array.isArray(value) ? value.join(', ') : '', placeholder, rows: 2, style: { minHeight: '64px' } });
     formModal({
-      title: 'ჯანმრთელობის პროფილი',
+      title: t('ჯანმრთელობის პროფილი', 'Health profile'),
       size: 'lg',
       fields: [
         h('div', { class: 'form-row' },
-          field('სიმაღლე (სმ)', input({ name: 'heightCm', type: 'number', min: 80, max: 250, value: p.heightCm ?? '' })),
-          field('წონა (კგ)', input({ name: 'weightKg', type: 'number', step: '0.1', min: 20, max: 300, value: p.weightKg ?? '' }))),
+          field(t('სიმაღლე (სმ)', 'Height (cm)'), input({ name: 'heightCm', type: 'number', min: 80, max: 250, value: p.heightCm ?? '' })),
+          field(t('წონა (კგ)', 'Weight (kg)'), input({ name: 'weightKg', type: 'number', step: '0.1', min: 20, max: 300, value: p.weightKg ?? '' }))),
         h('div', { class: 'form-row' },
-          field('სისხლის ჯგუფი', select([{ value: '', label: '—' }, ...BLOOD.map((b) => ({ value: b, label: b })), { value: 'UNKNOWN', label: 'არ ვიცი' }], p.bloodType || '', { name: 'bloodType' })),
-          field('აქტიურობა', select(opts(ACTIVITY), p.activityLevel || '', { name: 'activityLevel' }))),
+          field(t('სისხლის ჯგუფი', 'Blood type'), select([{ value: '', label: '—' }, ...BLOOD.map((b) => ({ value: b, label: b })), { value: 'UNKNOWN', label: t('არ ვიცი', 'I don’t know') }], p.bloodType || '', { name: 'bloodType' })),
+          field(t('აქტიურობა', 'Activity'), select(opts(ACTIVITY), p.activityLevel || '', { name: 'activityLevel' }))),
         h('div', { class: 'form-row' },
-          field('მოწევა', select(opts(SMOKING), p.smokingStatus || '', { name: 'smokingStatus' })),
-          field('ალკოჰოლი', select(opts(ALCOHOL), p.alcoholUse || '', { name: 'alcoholUse' }))),
+          field(t('მოწევა', 'Smoking'), select(opts(SMOKING), p.smokingStatus || '', { name: 'smokingStatus' })),
+          field(t('ალკოჰოლი', 'Alcohol'), select(opts(ALCOHOL), p.alcoholUse || '', { name: 'alcoholUse' }))),
         h('div', { class: 'form-row' },
-          field('ძილის ხარისხი', select(opts(SLEEP), p.sleepQuality || '', { name: 'sleepQuality' })),
-          field('სტრესი', select(opts(STRESS), p.stressLevel || '', { name: 'stressLevel' }))),
-        field('ალერგიები', tags('allergies', p.allergies, 'მძიმით გამოყავი: პენიცილინი, თხილი')),
-        field('ქრონიკული მდგომარეობები', tags('chronicConditions', p.chronicConditions, 'მაგ: ჰიპერტენზია')),
-        field('ოჯახური ისტორია', tags('familyHistory', p.familyHistory, 'მაგ: დიაბეტი (დედა)')),
+          field(t('ძილის ხარისხი', 'Sleep quality'), select(opts(SLEEP), p.sleepQuality || '', { name: 'sleepQuality' })),
+          field(t('სტრესი', 'Stress'), select(opts(STRESS), p.stressLevel || '', { name: 'stressLevel' }))),
+        field(t('ალერგიები', 'Allergies'), tags('allergies', p.allergies, t('მძიმით გამოყავი: პენიცილინი, თხილი', 'Separate with commas: penicillin, hazelnuts'))),
+        field(t('ქრონიკული მდგომარეობები', 'Chronic conditions'), tags('chronicConditions', p.chronicConditions, t('მაგ: ჰიპერტენზია', 'e.g. hypertension'))),
+        field(t('ოჯახური ისტორია', 'Family history'), tags('familyHistory', p.familyHistory, t('მაგ: დიაბეტი (დედა)', 'e.g. diabetes (mother)'))),
       ],
       onSubmit: async (v, close) => {
         const body = {};
@@ -175,7 +190,7 @@ export default async function profilePage(root) {
         setProfile(r.profile);
         if (r.user) setUser(r.user);
         close();
-        toast('ჯანმრთელობის პროფილი განახლდა');
+        toast(t('ჯანმრთელობის პროფილი განახლდა', 'Health profile updated'));
         render();
       },
     });
@@ -184,25 +199,25 @@ export default async function profilePage(root) {
   function linkPhone() {
     let phone = '';
     const m = openModal({
-      title: 'ტელეფონის დადასტურება',
+      title: t('ტელეფონის დადასტურება', 'Verify phone'),
       size: 'sm',
       body: (close) => {
         const box = h('div');
         const err = h('div', { class: 'form-error', hidden: true });
         const step1 = () => {
           const inp = input({ type: 'tel', inputmode: 'numeric', placeholder: '5XX XXX XXX', maxlength: 12 });
-          const go = button('კოდის მიღება', { class: 'btn-block' });
+          const go = button(t('კოდის მიღება', 'Get code'), { class: 'btn-block' });
           go.addEventListener('click', () => busy(go, async () => {
             err.hidden = true;
             phone = inp.value.replace(/\D/g, '').replace(/^995/, '');
             try { const r = await post('/api/auth/phone/link/start', { phone }); step2(r); } catch (e) { err.textContent = e.message; err.hidden = false; }
           }));
-          mount(box, h('div', { class: 'form' }, h('p', { class: 'muted' }, 'დადასტურებული ნომერი საჭიროა ჯილდოების მისაღებად და ქალების სივრცისთვის.'), field('ნომერი', h('div', { class: 'phone-wrap' }, h('span', null, '+995'), inp)), err, go));
+          mount(box, h('div', { class: 'form' }, h('p', { class: 'muted' }, t('დადასტურებული ნომერი საჭიროა ჯილდოების მისაღებად და ქალების სივრცისთვის.', 'A verified number is needed to redeem rewards and for the women’s space.')), field(t('ნომერი', 'Number'), h('div', { class: 'phone-wrap' }, h('span', null, '+995'), inp)), err, go));
           setTimeout(() => inp.focus(), 30);
         };
         const step2 = (r) => {
           const code = input({ inputmode: 'numeric', maxlength: 4, placeholder: '0000', value: r?.devCode || '' });
-          const go = button('დადასტურება', { class: 'btn-block' });
+          const go = button(t('დადასტურება', 'Verify'), { class: 'btn-block' });
           go.addEventListener('click', () => busy(go, async () => {
             err.hidden = true;
             try {
@@ -210,11 +225,11 @@ export default async function profilePage(root) {
               if (res.user) setUser(res.user);
               await refreshMe().catch(() => {});
               close();
-              toast('ნომერი დადასტურდა');
+              toast(t('ნომერი დადასტურდა', 'Number verified'));
               render();
             } catch (e) { err.textContent = e.message; err.hidden = false; }
           }));
-          mount(box, h('div', { class: 'form' }, h('p', { class: 'muted' }, `კოდი გაიგზავნა ნომერზე +995 ${phone}.`), field('4-ნიშნა კოდი', code), err, go));
+          mount(box, h('div', { class: 'form' }, h('p', { class: 'muted' }, t(`კოდი გაიგზავნა ნომერზე +995 ${phone}.`, `We sent a code to +995 ${phone}.`)), field(t('4-ნიშნა კოდი', '4-digit code'), code), err, go));
           setTimeout(() => code.focus(), 30);
         };
         step1();
@@ -226,21 +241,21 @@ export default async function profilePage(root) {
 
   async function deleteAccount() {
     const ok = await confirmDialog({
-      title: 'ანგარიშის წაშლა',
-      body: 'ანგარიში და ყველა მონაცემი — მედიკამენტები, ანალიზები, ჩანაწერები, ციკლი, კვება — სამუდამოდ წაიშლება. აღდგენა შეუძლებელია.',
-      confirm: 'გაგრძელება',
+      title: t('ანგარიშის წაშლა', 'Delete account'),
+      body: t('ანგარიში და ყველა მონაცემი — მედიკამენტები, ანალიზები, ჩანაწერები, ციკლი, კვება — სამუდამოდ წაიშლება. აღდგენა შეუძლებელია.', 'Your account and all your data — medications, lab results, records, cycle, nutrition — will be permanently deleted. This can’t be undone.'),
+      confirm: t('გაგრძელება', 'Continue'),
       danger: true,
     });
     if (!ok) return;
-    const word = 'წაშლა';
+    const word = t('წაშლა', 'DELETE');
     formModal({
-      title: 'დაადასტურე წაშლა',
+      title: t('დაადასტურე წაშლა', 'Confirm deletion'),
       size: 'sm',
       danger: true,
-      submit: 'სამუდამოდ წაშლა',
-      fields: [h('p', { class: 'muted' }, `დასადასტურებლად ჩაწერე სიტყვა „${word}“.`), field('დადასტურება', input({ name: 'confirm', autocomplete: 'off' }))],
+      submit: t('სამუდამოდ წაშლა', 'Delete permanently'),
+      fields: [h('p', { class: 'muted' }, t(`დასადასტურებლად ჩაწერე სიტყვა „${word}“.`, `To confirm, type the word “${word}”.`)), field(t('დადასტურება', 'Confirmation'), input({ name: 'confirm', autocomplete: 'off' }))],
       onSubmit: async (v, close) => {
-        if (v.confirm.trim() !== word) throw new Error(`ჩაწერე „${word}“.`);
+        if (v.confirm.trim() !== word) throw new Error(t(`ჩაწერე „${word}“.`, `Type “${word}”.`));
         await del('/api/auth/me');
         close();
         signOut();

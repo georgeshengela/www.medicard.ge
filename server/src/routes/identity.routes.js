@@ -8,6 +8,7 @@ import { applyPrivateCache } from '../lib/cycleShare.js';
 import { saveUpload } from '../lib/storage.js';
 import { servePrivateUpload, unlinkStoredUpload } from '../lib/privateUploads.js';
 import { avatarUrl, canViewAvatar, getAvatar, getOrCreateQr, qrLink, removeAvatar, rotateQr, setAvatar } from '../lib/identity.js';
+import { t } from '../lib/i18n.js';
 
 /** Mounted at /api/identity: /avatar (own photo), /avatars/:userId (view with a check), /qr (own personal QR). */
 export const identityRouter = Router();
@@ -17,13 +18,13 @@ identityRouter.use((_req, res, next) => {
   next();
 });
 
-const writeLimiter = rateLimit({ windowMs: 10 * 60_000, limit: 20, standardHeaders: true, legacyHeaders: false, validate: false, message: { error: 'ძალიან ბევრი მცდელობა. სცადე მოგვიანებით.', code: 'RATE_LIMITED' } });
+const writeLimiter = rateLimit({ windowMs: 10 * 60_000, limit: 20, standardHeaders: true, legacyHeaders: false, validate: false, message: (req) => ({ error: t(req, 'ძალიან ბევრი მცდელობა. სცადე მოგვიანებით.', 'Too many attempts. Please try again later.'), code: 'RATE_LIMITED' }) });
 const upload = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: 15 * 1024 * 1024, files: 1 },
   fileFilter: (_req, file, cb) => {
     const ok = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/heic', 'image/heif'].includes(String(file.mimetype || '').toLowerCase());
-    cb(ok ? null : Object.assign(new Error('ატვირთე JPEG, PNG ან WEBP ფოტო.'), { status: 400 }), ok);
+    cb(ok ? null : Object.assign(new Error('ატვირთე JPEG, PNG ან WEBP ფოტო.'), { status: 400, messageEn: 'Upload a JPEG, PNG or WEBP photo.' }), ok);
   },
 });
 
@@ -33,13 +34,13 @@ identityRouter.get('/avatar/me', asyncHandler(async (req, res) => {
 }));
 
 identityRouter.post('/avatar', writeLimiter, upload.single('file'), asyncHandler(async (req, res) => {
-  if (!req.file?.buffer?.length) return res.status(400).json({ error: 'ფოტო არ არის მიმაგრებული.' });
+  if (!req.file?.buffer?.length) return res.status(400).json({ error: t(req, 'ფოტო არ არის მიმაგრებული.', 'No photo was attached.') });
   let buffer;
   try {
     // Square crop, re-encoded: strips EXIF/GPS and bounds the size.
     buffer = await sharp(req.file.buffer, { limitInputPixels: 60_000_000, failOn: 'error' }).rotate().resize(512, 512, { fit: 'cover', position: 'attention' }).jpeg({ quality: 86, mozjpeg: true }).toBuffer();
   } catch {
-    return res.status(400).json({ error: 'ფოტო ვერ დამუშავდა. აირჩიე სხვა ფოტო.' });
+    return res.status(400).json({ error: t(req, 'ფოტო ვერ დამუშავდა. აირჩიე სხვა ფოტო.', 'We could not process this photo. Please choose another one.') });
   }
   const key = await saveUpload(buffer, 'image/jpeg');
   const { updatedAt, previousKey } = await setAvatar(req.user.id, key);
@@ -57,7 +58,7 @@ identityRouter.get('/avatars/:userId', asyncHandler(async (req, res) => {
   const targetId = String(req.params.userId);
   const row = await getAvatar(targetId);
   const allowed = row ? await canViewAvatar(req.user.id, targetId, req.query.qr ? String(req.query.qr) : null) : false;
-  if (!row || !allowed) return res.status(404).json({ error: 'ფოტო ვერ მოიძებნა.' });
+  if (!row || !allowed) return res.status(404).json({ error: t(req, 'ფოტო ვერ მოიძებნა.', 'Photo not found.') });
   req.params.filename = String(row.fileKey).split('/').pop();
   return servePrivateUpload(req, res, { findOwner: async () => ({ ok: true }) });
 }));

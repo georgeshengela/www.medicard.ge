@@ -2,6 +2,7 @@ import React from 'react';
 import { Pressable, Text, View } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import Svg, { Path } from 'react-native-svg';
+import { appLang } from '@/i18n/locale';
 import { APP_MODAL_OVERLAY, APP_MODAL_PROPS, Modal } from '@/components/ui/appModal';
 import { Button } from '@/components/ui/Button';
 import { QuestLevelHalo } from '@/components/quest/QuestLevelHalo';
@@ -22,7 +23,7 @@ export function QuestLevelUpSheet({
   rankKey,
   coins,
   xp,
-  locale = 'ka',
+  locale = appLang(),
   onClose,
 }: {
   visible: boolean;

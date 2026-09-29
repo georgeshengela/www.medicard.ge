@@ -1,6 +1,7 @@
 {
   "oats": {
     "name": "შვრია · მშრალი",
+    "nameEn": "Oats · dry",
     "fdcId": 169705,
     "per100g": {
       "protein": 16.89,
@@ -11,6 +12,7 @@
   },
   "banana": {
     "name": "ბანანი · გაფცქვნილი",
+    "nameEn": "Banana · peeled",
     "fdcId": 173944,
     "per100g": {
       "carbs": 22.84,
@@ -21,6 +23,7 @@
   },
   "apple": {
     "name": "ვაშლი · კანით",
+    "nameEn": "Apple · with skin",
     "fdcId": 171688,
     "per100g": {
       "carbs": 13.81,
@@ -31,6 +34,7 @@
   },
   "walnut": {
     "name": "ნიგოზი · გარჩეული",
+    "nameEn": "Walnuts · shelled",
     "fdcId": 170187,
     "per100g": {
       "carbs": 13.71,
@@ -41,6 +45,7 @@
   },
   "yogurt": {
     "name": "ბერძნული იოგურტი · უცხიმო",
+    "nameEn": "Greek yogurt · nonfat",
     "fdcId": 170894,
     "per100g": {
       "protein": 10.19,
@@ -51,6 +56,7 @@
   },
   "quinoa": {
     "name": "ქინოა · მოხარშული",
+    "nameEn": "Quinoa · cooked",
     "fdcId": 168917,
     "per100g": {
       "protein": 4.4,
@@ -61,6 +67,7 @@
   },
   "lentil": {
     "name": "ოსპი · მოხარშული",
+    "nameEn": "Lentils · boiled",
     "fdcId": 172421,
     "per100g": {
       "carbs": 20.13,
@@ -71,6 +78,7 @@
   },
   "chickpea": {
     "name": "მუხუდო · მოხარშული",
+    "nameEn": "Chickpeas · boiled",
     "fdcId": 173757,
     "per100g": {
       "carbs": 27.42,
@@ -81,6 +89,7 @@
   },
   "broccoli": {
     "name": "ბროკოლი · მოხარშული",
+    "nameEn": "Broccoli · boiled",
     "fdcId": 169967,
     "per100g": {
       "fat": 0.41,
@@ -91,6 +100,7 @@
   },
   "tomato": {
     "name": "პომიდორი · უმი",
+    "nameEn": "Tomato · raw",
     "fdcId": 170457,
     "per100g": {
       "carbs": 3.89,
@@ -101,6 +111,7 @@
   },
   "chicken": {
     "name": "ქათმის მკერდი · მომზადებული",
+    "nameEn": "Chicken breast · cooked",
     "fdcId": 171477,
     "per100g": {
       "fat": 3.57,
@@ -111,6 +122,7 @@
   },
   "salmon": {
     "name": "ორაგული · მომზადებული",
+    "nameEn": "Salmon · cooked",
     "fdcId": 175168,
     "per100g": {
       "fat": 12.35,
@@ -121,6 +133,7 @@
   },
   "rice": {
     "name": "ყავისფერი ბრინჯი · მოხარშული",
+    "nameEn": "Brown rice · cooked",
     "fdcId": 169704,
     "per100g": {
       "protein": 2.74,
@@ -131,6 +144,7 @@
   },
   "oil": {
     "name": "ზეითუნის ზეთი",
+    "nameEn": "Olive oil",
     "fdcId": 171413,
     "per100g": {
       "fat": 100.0,
@@ -141,6 +155,7 @@
   },
   "egg": {
     "name": "კვერცხი · მოხარშული, გარჩეული",
+    "nameEn": "Egg · boiled, peeled",
     "fdcId": 173424,
     "per100g": {
       "calories": 155.0,
@@ -151,6 +166,7 @@
   },
   "seeds": {
     "name": "გოგრის თესლი · გარჩეული",
+    "nameEn": "Pumpkin seeds · shelled",
     "fdcId": 170556,
     "per100g": {
       "carbs": 10.71,
@@ -161,6 +177,7 @@
   },
   "spinach": {
     "name": "ისპანახი · უმი",
+    "nameEn": "Spinach · raw",
     "fdcId": 168462,
     "per100g": {
       "protein": 2.86,

@@ -9,12 +9,13 @@ import {
 } from '../ui.js';
 import { get, post, del, stream, invalidate, ApiError } from '../api.js';
 import { withAiConsent } from '../aiConsent.js';
+import { t, isEn } from '../i18n.js';
 import { session, firstName } from '../session.js';
 
 const CSS_HREF = '/app/css/medi.css';
 const APP_STORE = 'https://apps.apple.com/app/id6812517519';
 const LIMIT = 4000;
-const DISCLAIMER = 'ეს არ არის დიაგნოზი — საჭიროებისას ექიმს მიმართე.';
+const DISCLAIMER = t('ეს არ არის დიაგნოზი — საჭიროებისას ექიმს მიმართე.', 'This is not a diagnosis — see a doctor when needed.');
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 function ensureCss() {
@@ -25,40 +26,42 @@ function ensureCss() {
 const MODES = {
   medi: {
     key: 'medi', label: 'Medi', api: null, sessionMode: 'ASSISTANT', icon: 'sparkles', ink: 'teal',
-    subtitle: 'შენი ასისტენტი',
-    placeholder: 'დაწერე, რით დაგეხმარო…',
-    emptyTitle: (name) => (name ? `გამარჯობა, ${name}` : 'გამარჯობა'),
-    emptyBody: 'მითხარი, რა გინდა — წამლის დამატება, წყლის ჩაწერა, ვიზიტის დაგეგმვა ან აპის რომელიმე გვერდის გახსნა. ჩანაწერს შენახვამდე ყოველთვის გადაგამოწმებინებ.',
+    subtitle: t('შენი ასისტენტი', 'Your assistant'),
+    placeholder: t('დაწერე, რით დაგეხმარო…', 'Tell me how I can help…'),
+    emptyTitle: (name) => (name ? t(`გამარჯობა, ${name}`, `Hello, ${name}`) : t('გამარჯობა', 'Hello')),
+    emptyBody: t('მითხარი, რა გინდა — წამლის დამატება, წყლის ჩაწერა, ვიზიტის დაგეგმვა ან აპის რომელიმე გვერდის გახსნა. ჩანაწერს შენახვამდე ყოველთვის გადაგამოწმებინებ.', 'Tell me what you need — add a medication, log water, plan a visit or open any page of the app. I’ll always ask you to check an entry before saving it.'),
     starters: [
-      { icon: 'droplet', ink: 'sky', text: 'დღეს 500 მლ წყალი დავლიე' },
-      { icon: 'pill', ink: 'teal', text: 'მინდა ახალი წამალი დავამატო' },
-      { icon: 'calendar', ink: 'violet', text: 'ექიმთან ვიზიტი დამიგეგმე' },
-      { icon: 'scale', ink: 'amber', text: 'მინდა 5 კილო დავიკლო' },
+      { icon: 'droplet', ink: 'sky', text: t('დღეს 500 მლ წყალი დავლიე', 'I drank 500 ml of water today') },
+      { icon: 'pill', ink: 'teal', text: t('მინდა ახალი წამალი დავამატო', 'I want to add a new medication') },
+      { icon: 'calendar', ink: 'violet', text: t('ექიმთან ვიზიტი დამიგეგმე', 'Plan a doctor visit for me') },
+      { icon: 'scale', ink: 'amber', text: t('მინდა 5 კილო დავიკლო', 'I want to lose 5 kg') },
     ],
-    thinking: 'ვამზადებ…',
+    thinking: t('ვამზადებ…', 'Preparing…'),
   },
   doctor: {
-    key: 'doctor', label: 'ექიმთან', api: 'DOCTOR', sessionMode: 'DOCTOR', icon: 'stethoscope', ink: 'blue',
-    subtitle: 'ჯანმრთელობის კითხვები და რჩევა',
-    placeholder: 'დაწერე შეტყობინება…',
-    emptyTitle: () => 'გამარჯობა, მე ვარ Medi',
-    emptyBody: 'მითხარი რა გაწუხებს — მეგობრულად და გასაგებად გიპასუხებ. ეს არ ცვლის ექიმს.',
+    key: 'doctor', label: t('ექიმთან', 'Doctor'), api: 'DOCTOR', sessionMode: 'DOCTOR', icon: 'stethoscope', ink: 'blue',
+    subtitle: t('ჯანმრთელობის კითხვები და რჩევა', 'Health questions and advice'),
+    placeholder: t('დაწერე შეტყობინება…', 'Write a message…'),
+    emptyTitle: () => t('გამარჯობა, მე ვარ Medi', 'Hello, I’m Medi'),
+    emptyBody: t('მითხარი რა გაწუხებს — მეგობრულად და გასაგებად გიპასუხებ. ეს არ ცვლის ექიმს.', 'Tell me what’s bothering you — I’ll answer in a friendly, clear way. This doesn’t replace a doctor.'),
     starters: [
-      { icon: 'brain', ink: 'violet', text: 'სამი დღეა თავი მტკივა' },
-      { icon: 'heart', ink: 'rose', text: 'მაღალი წნევა მაქვს, რა ვქნა?' },
-      { icon: 'activity', ink: 'amber', text: 'ბავშვს 38.5 ტემპერატურა აქვს' },
+      { icon: 'brain', ink: 'violet', text: t('სამი დღეა თავი მტკივა', 'I’ve had a headache for three days') },
+      { icon: 'heart', ink: 'rose', text: t('მაღალი წნევა მაქვს, რა ვქნა?', 'My blood pressure is high — what should I do?') },
+      { icon: 'activity', ink: 'amber', text: t('ბავშვს 38.5 ტემპერატურა აქვს', 'My child has a temperature of 38.5') },
     ],
-    thinking: 'Medi ფიქრობს…',
+    thinking: t('Medi ფიქრობს…', 'Medi is thinking…'),
   },
   deep: {
-    key: 'deep', label: 'ღრმა ანალიზი', api: 'CONSILIUM', sessionMode: 'CONSILIUM', icon: 'users', ink: 'violet',
-    subtitle: 'რამდენიმე სპეციალისტის ხედვა',
-    placeholder: 'აღწერე შემთხვევა დეტალურად…',
-    emptyTitle: () => 'ღრმა ანალიზი',
-    emptyBody: 'აღწერე სრული სურათი: ჩივილები, ანამნეზი, ჩატარებული კვლევები და მიმდინარე მკურნალობა. სისტემა შეარჩევს რელევანტურ სპეციალისტებს.',
-    checklist: ['რა გაწუხებს და რამდენი ხანია', 'ქრონიკული დაავადებები და ალერგიები', 'ჩატარებული ანალიზები და კვლევები', 'რას იღებ ახლა და რა სცადე'],
+    key: 'deep', label: t('ღრმა ანალიზი', 'Deep analysis'), api: 'CONSILIUM', sessionMode: 'CONSILIUM', icon: 'users', ink: 'violet',
+    subtitle: t('რამდენიმე სპეციალისტის ხედვა', 'Several specialists’ views'),
+    placeholder: t('აღწერე შემთხვევა დეტალურად…', 'Describe the case in detail…'),
+    emptyTitle: () => t('ღრმა ანალიზი', 'Deep analysis'),
+    emptyBody: t('აღწერე სრული სურათი: ჩივილები, ანამნეზი, ჩატარებული კვლევები და მიმდინარე მკურნალობა. სისტემა შეარჩევს რელევანტურ სპეციალისტებს.', 'Describe the full picture: complaints, medical history, tests done and current treatment. The system will pick the relevant specialists.'),
+    checklist: isEn
+      ? ['What’s bothering you and for how long', 'Chronic conditions and allergies', 'Tests and scans you’ve had', 'What you take now and what you’ve tried']
+      : ['რა გაწუხებს და რამდენი ხანია', 'ქრონიკული დაავადებები და ალერგიები', 'ჩატარებული ანალიზები და კვლევები', 'რას იღებ ახლა და რა სცადე'],
     starters: [],
-    thinking: 'სპეციალისტები განიხილავენ…',
+    thinking: t('სპეციალისტები განიხილავენ…', 'The specialists are reviewing…'),
   },
 };
 const MODE_KEYS = ['medi', 'doctor', 'deep'];
@@ -75,11 +78,13 @@ function modeForSession(m) { return m === 'CONSILIUM' ? 'deep' : m === 'DOCTOR' 
 function dialogIntent(text) {
   const v = text.trim().replace(/[.!?։,;]+$/g, '').trim().replace(/\s+/g, ' ').toLowerCase();
   if (['კი', 'დიახ', 'შეინახე', 'დაადასტურე', 'კი შეინახე', 'დიახ შეინახე', 'კი დაადასტურე', 'გააგრძელე', 'ვეთანხმები'].includes(v)) return 'confirm';
+  if (['yes', 'yeah', 'yep', 'save', 'confirm', 'yes save', 'yes confirm', 'continue', 'i agree', 'save it'].includes(v)) return 'confirm';
   if (['არა', 'გააუქმე', 'გაუქმება', 'არა გააუქმე', 'არ შეინახო', 'შეჩერდი'].includes(v)) return 'cancel';
+  if (['no', 'nope', 'cancel', 'no cancel', "don't save", 'stop'].includes(v)) return 'cancel';
   return 'message';
 }
 
-const FIELD_LABELS = {
+const FIELD_LABELS_KA = {
   loseKg: 'დასაკლები წონა · კგ', plannedMealId: 'რაციონის კვება', date: 'თარიღი', amountMl: 'წყალი · მლ', goalMl: 'დღიური მიზანი · მლ', targetKg: 'სასურველი წონა · კგ', startKg: 'მიმდინარე წონა · კგ',
   deadlineYmd: 'მიზნის ვადა', targetSteps: 'ნაბიჯების მიზანი', weightKg: 'წონა · კგ', heartRate: 'პულსი · წუთში',
   bloodPressureSystolic: 'ზედა წნევა', bloodPressureDiastolic: 'ქვედა წნევა', sleepHours: 'ძილი · საათი', nutritionKcal: 'დამატებული კალორიები · კკალ',
@@ -97,7 +102,7 @@ const FIELD_LABELS = {
   avgCycleLength: 'ციკლის საშუალო ხანგრძლივობა', avgPeriodLength: 'პერიოდის ხანგრძლივობა', lastPeriodStart: 'ბოლო პერიოდის დაწყება', isIrregular: 'არარეგულარული ციკლი', dueDate: 'მშობიარობის სავარაუდო თარიღი', pregnancyReferenceDate: 'ორსულობის საწყისი თარიღი', pregnancyReferenceType: 'თარიღის საფუძველი', pregnancyConfirm: 'ორსულობის რეჟიმის დადასტურება', postpartumReferenceDate: 'მშობიარობის თარიღი', postpartumConfirm: 'მშობიარობის შემდგომი რეჟიმის დადასტურება',
   destination: 'გასახსნელი ფუნქცია', mode: 'კონსულტაციის ტიპი', message: 'შეტყობინება', values: 'ცვლილებები',
 };
-const VALUE_LABELS = {
+const VALUE_LABELS_KA = {
   'care/history': 'მოვლის ისტორია', 'care/products': 'მოვლის პროდუქტები', 'care/plan': 'მოვლის დაგეგმვა', 'care/record': 'მოვლის აღრიცხვა', care: 'მოვლა', edit: 'პროფილის რედაქტირება', profile: 'პროფილი', weight: 'წონა', allergies: 'ალერგიები', conditions: 'ჯანმრთელობის ჩანაწერები',
   GP: 'ოჯახის ექიმი', DENTIST: 'სტომატოლოგი', CARDIO: 'კარდიოლოგი', GYN: 'გინეკოლოგი', NEURO: 'ნევროლოგი', ORTHO: 'ორთოპედი', THERAPIST: 'თერაპევტი', OPHTHALMO: 'ოფთალმოლოგი', DERM: 'დერმატოლოგი', PED: 'პედიატრი', OTHER: 'სხვა',
   TRACK_PERIOD: 'ციკლის აღრიცხვა', TRY_TO_CONCEIVE: 'დაორსულების მცდელობა', PREGNANCY: 'ორსულობა', PERIMENOPAUSE: 'პერიმენოპაუზა', POSTPARTUM: 'მშობიარობის შემდეგ', LMP: 'ბოლო მენსტრუაციის დაწყება', USER_SELECTED: 'ჩემ მიერ არჩეული თარიღი',
@@ -110,6 +115,40 @@ const VALUE_LABELS = {
   suspected: 'სავარაუდო', veterinarian_confirmed: 'ვეტერინარის მიერ დადასტურებული', owner_reported: 'ჩემი დაკვირვება', active: 'აქტიური', resolved: 'დასრულებული',
   kg: 'კგ', g: 'გრამი', medication: 'მედიკამენტი', food: 'საკვები', environmental: 'გარემო', other: 'სხვა',
 };
+// English copies of mobile/src/lib/assistant.ts assistantFieldLabelsEn / assistantValueLabelsEn.
+const FIELD_LABELS_EN = {
+  loseKg: 'Weight to lose · kg', plannedMealId: 'Planned meal', date: 'Date', amountMl: 'Water · ml', goalMl: 'Daily goal · ml', targetKg: 'Target weight · kg', startKg: 'Current weight · kg',
+  deadlineYmd: 'Goal date', targetSteps: 'Step goal', weightKg: 'Weight · kg', heartRate: 'Heart rate · bpm',
+  bloodPressureSystolic: 'Systolic pressure', bloodPressureDiastolic: 'Diastolic pressure', sleepHours: 'Sleep · hours', nutritionKcal: 'Added calories · kcal',
+  startDate: 'Start date', endDate: 'End date', courseDays: 'Course · days', medName: 'Medication', dosage: 'Your dose', frequency: 'Dose times', notes: 'Note', note: 'Note', name: 'Name',
+  speciesId: 'Species', breedId: 'Breed', customBreed: 'Breed name', sex: 'Sex', neutered: 'Spayed/neutered',
+  ageKind: 'Age accuracy', birthDate: 'Date of birth', approxAgeYears: 'Approximate age · years', approxAgeMonths: 'Plus · months',
+  id: 'Entry', petId: 'Pet', recordId: 'Saved result', visitId: 'Visit', medicationId: 'Medication', status: 'Status', time: 'Time · HH:mm',
+  doctorType: 'Doctor specialty', doctorFirstName: "Doctor's first name", doctorLastName: "Doctor's last name", visitDate: 'Visit date', visitTime: 'Visit time', address: 'Address',
+  action: 'Action', flow: 'Flow', symptoms: 'Symptoms', moods: 'Mood', bbt: 'Basal body temperature · °C',
+  ovulationTest: 'Ovulation test', pregnancyTest: 'Pregnancy test', sleepQuality: 'Sleep quality', stressLevel: 'Stress', energy: 'Energy', kickCount: 'Kicks today',
+  inputValue: 'Weight', inputUnit: 'Unit', recordedOn: 'Recorded on', category: 'Category', reportedStatus: 'Confirmation', reaction: 'Reaction', notedOn: 'Noticed on', reportedBasis: 'Source of information', onsetOn: 'Start date',
+  heightCm: 'Height · cm', bloodType: 'Blood type', chronicConditions: 'Chronic conditions', allergies: 'Allergies', medications: 'Medications',
+  familyHistory: 'Family history', healthGoals: 'Health goals', activityLevel: 'Activity', dietType: 'Diet', smokingStatus: 'Tobacco', alcoholUse: 'Alcohol',
+  kind: 'Care type', title: 'Name', productId: 'Product', formulation: 'Form', batchId: 'Batch number', expiresOn: 'Expiry date', dose: 'Dose', doseUnit: 'Dose unit', route: 'Route', startOn: 'Start date', dueTime: 'Time', recurrenceKind: 'Repeat', intervalCount: 'Interval', recurrenceBasis: 'Counting rule', source: 'Source of information', sourceNote: 'Source note', courseEndsOn: 'Course ends', timeMode: 'Time mode', timezone: 'Time zone', administeredOn: 'Given on', administeredTime: 'Given at',
+  avgCycleLength: 'Average cycle length', avgPeriodLength: 'Period length', lastPeriodStart: 'Last period start', isIrregular: 'Irregular cycle', dueDate: 'Estimated due date', pregnancyReferenceDate: 'Pregnancy reference date', pregnancyReferenceType: 'Date based on', pregnancyConfirm: 'Confirm pregnancy mode', postpartumReferenceDate: 'Birth date', postpartumConfirm: 'Confirm postpartum mode',
+  destination: 'Feature to open', mode: 'Consultation type', message: 'Message', values: 'Changes',
+};
+const VALUE_LABELS_EN = {
+  'care/history': 'Care history', 'care/products': 'Care products', 'care/plan': 'Care planning', 'care/record': 'Care log', care: 'Care', edit: 'Edit profile', profile: 'Profile', weight: 'Weight', allergies: 'Allergies', conditions: 'Health records',
+  GP: 'Family doctor', DENTIST: 'Dentist', CARDIO: 'Cardiologist', GYN: 'Gynecologist', NEURO: 'Neurologist', ORTHO: 'Orthopedist', THERAPIST: 'Internist', OPHTHALMO: 'Ophthalmologist', DERM: 'Dermatologist', PED: 'Pediatrician', OTHER: 'Other',
+  TRACK_PERIOD: 'Cycle tracking', TRY_TO_CONCEIVE: 'Trying to conceive', PREGNANCY: 'Pregnancy', PERIMENOPAUSE: 'Perimenopause', POSTPARTUM: 'Postpartum', LMP: 'Last period start', USER_SELECTED: 'A date I chose',
+  VACCINATION: 'Vaccination', FLEA_TICK: 'Fleas and ticks', DEWORMING: 'Deworming', MEDICATION: 'Medication', ONCE: 'Once', EVERY_N_DAYS: 'Every few days', EVERY_N_WEEKS: 'Every few weeks', EVERY_N_MONTHS: 'Every few months', DAILY_COURSE: 'Daily course', NONE: "Doesn't repeat", FIXED_CALENDAR: 'On a fixed calendar', FROM_ADMINISTRATION: 'From the last dose', VETERINARIAN: 'Veterinarian', PRODUCT_INSTRUCTIONS: 'Product instructions', USER_ENTERED: 'My own entry', DATE_BASED: 'By day', EXACT_TIME: 'At an exact time', oral: 'By mouth', topical: 'On the skin', injection: 'By injection',
+  SEDENTARY: 'Sedentary', LIGHT: 'Light', MODERATE: 'Moderate', ACTIVE: 'Active', VERY_ACTIVE: 'Very active', OMNIVORE: 'Mixed diet', VEGETARIAN: 'Vegetarian', VEGAN: 'Vegan', KETO: 'Keto', NEVER: 'Never', FORMER: 'In the past', CURRENT: 'Currently', OCCASIONAL: 'Sometimes', REGULAR: 'Regularly', poor: 'Poor', okay: 'Okay', good: 'Good', low: 'Low', high: 'High', very_low: 'Very low', very_high: 'Very high', normal: 'Normal', lb: 'Pound', mixed: 'Mixed breed',
+  true: 'Yes', false: 'No', MALE: 'Male', FEMALE: 'Female', UNKNOWN: 'Unknown', EXACT: 'Exact date', APPROXIMATE: 'Approximate age',
+  DOCTOR: 'Medi doctor', CONSILIUM: 'Deep analysis', dog: 'Dog', cat: 'Cat', unknown: 'Unknown', custom: 'Other breed',
+  start: 'Start', end: 'End', none: 'None', spotting: 'Spotting', light: 'Light', medium: 'Medium', heavy: 'Heavy',
+  positive: 'Positive', negative: 'Negative', unclear: 'Unclear', taken: 'Taken', skipped: 'Skipped',
+  suspected: 'Suspected', veterinarian_confirmed: 'Confirmed by a vet', owner_reported: 'My observation', active: 'Active', resolved: 'Resolved',
+  kg: 'kg', g: 'Grams', medication: 'Medication', food: 'Food', environmental: 'Environmental', other: 'Other',
+};
+const FIELD_LABELS = t(FIELD_LABELS_KA, FIELD_LABELS_EN);
+const VALUE_LABELS = t(VALUE_LABELS_KA, VALUE_LABELS_EN);
 const HIDDEN_ROWS = new Set(['recurrenceBasis', 'source', 'timeMode', 'timezone']);
 const HANDOFF_TOOLS = ['open', 'consult', 'pet_consult', 'pet_open', 'record_open', 'visit_open', 'medication_open', 'nutrition_goal', 'weight_goal'];
 
@@ -177,26 +216,26 @@ export default async function mediPage(root, ctx) {
   if (!UUID.test(String(st.conv.sessionId || ''))) st.conv.sessionId = null;
 
   /* ── Layout ──────────────────────────────────────────── */
-  const side = h('aside', { class: 'medi-side', 'aria-label': 'საუბრები' });
+  const side = h('aside', { class: 'medi-side', 'aria-label': t('საუბრები', 'Conversations') });
   const head = h('div', { class: 'medi-head' });
   const thread = h('div', { class: 'medi-thread' });
   const log = h('div', { class: 'medi-log', role: 'log', 'aria-live': 'polite' }, thread);
-  const jump = h('button', { class: 'medi-jump', type: 'button', hidden: true, onClick: () => scrollToEnd(true, true) }, icon('arrowDown', { size: 16 }), 'ბოლო შეტყობინება');
+  const jump = h('button', { class: 'medi-jump', type: 'button', hidden: true, onClick: () => scrollToEnd(true, true) }, icon('arrowDown', { size: 16 }), t('ბოლო შეტყობინება', 'Latest message'));
   const status = h('div', { class: 'medi-status' });
   const ta = h('textarea', {
-    rows: 1, maxlength: LIMIT, 'aria-label': 'შეტყობინება Medi-სთვის',
+    rows: 1, maxlength: LIMIT, 'aria-label': t('შეტყობინება Medi-სთვის', 'Message to Medi'),
     onInput: () => { autoGrow(); updateSend(); },
     onKeydown: (e) => {
       if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) { e.preventDefault(); submit(); }
       else if (e.key === 'Escape' && st.busy) { e.preventDefault(); stop(); }
     },
   });
-  const sendBtn = h('button', { class: 'medi-send', type: 'button', 'aria-label': 'გაგზავნა', title: 'გაგზავნა', onClick: () => (st.busy ? stop() : submit()) });
+  const sendBtn = h('button', { class: 'medi-send', type: 'button', 'aria-label': t('გაგზავნა', 'Send'), title: t('გაგზავნა', 'Send'), onClick: () => (st.busy ? stop() : submit()) });
   const counter = h('span', { class: 'medi-count', hidden: true });
   const composer = h('div', { class: 'medi-composer' }, ta, counter, sendBtn);
   const foot = h('div', { class: 'medi-foot' },
     h('span', { class: 'medi-disc' }, icon('info', { size: 14 }), DISCLAIMER),
-    h('span', { class: 'medi-keys' }, h('span', { class: 'kbd' }, 'Enter'), ' გაგზავნა · ', h('span', { class: 'kbd' }, 'Shift+Enter'), ' ახალი ხაზი'));
+    h('span', { class: 'medi-keys' }, h('span', { class: 'kbd' }, 'Enter'), t(' გაგზავნა · ', ' to send · '), h('span', { class: 'kbd' }, 'Shift+Enter'), t(' ახალი ხაზი', ' for a new line')));
   const dock = h('div', { class: 'medi-dock' }, status, composer, foot);
   const main = h('section', { class: 'medi-main' }, head, h('div', { class: 'medi-body' }, log, jump), dock);
   mount(root, h('div', { class: 'medi' }, side, main));
@@ -229,15 +268,15 @@ export default async function mediPage(root, ctx) {
     const stoppable = st.busy && Boolean(st.controller);
     mount(sendBtn, icon(stoppable ? 'stopSquare' : 'arrowUp', { size: stoppable ? 16 : 20, stroke: 2.4 }));
     sendBtn.classList.toggle('is-stop', stoppable);
-    sendBtn.setAttribute('aria-label', stoppable ? 'შეჩერება' : 'გაგზავნა');
-    sendBtn.title = stoppable ? 'შეჩერება (Esc)' : 'გაგზავნა';
+    sendBtn.setAttribute('aria-label', stoppable ? t('შეჩერება', 'Stop') : t('გაგზავნა', 'Send'));
+    sendBtn.title = stoppable ? t('შეჩერება (Esc)', 'Stop (Esc)') : t('გაგზავნა', 'Send');
     sendBtn.disabled = st.busy ? !stoppable : (!ta.value.trim() || st.loadState !== 'ready');
   }
   const mode = () => MODES[st.mode];
   function errorText(e, fallback) {
     const fields = e?.body?.fields;
     if (Array.isArray(fields) && fields.length) {
-      return fields.map((f) => { const key = String(f.field || '').split('.').pop(); return `${FIELD_LABELS[key] || 'ველი'}: ${f.message}`; }).join('\n');
+      return fields.map((f) => { const key = String(f.field || '').split('.').pop(); return `${FIELD_LABELS[key] || t('ველი', 'Field')}: ${f.message}`; }).join('\n');
     }
     return e?.message || fallback;
   }
@@ -253,7 +292,7 @@ export default async function mediPage(root, ctx) {
   /* ── Header ──────────────────────────────────────────── */
   function renderHead() {
     const m = mode();
-    const sw = h('div', { class: 'medi-modes', role: 'tablist', 'aria-label': 'Medi-ს რეჟიმი' },
+    const sw = h('div', { class: 'medi-modes', role: 'tablist', 'aria-label': t('Medi-ს რეჟიმი', 'Medi mode') },
       MODE_KEYS.map((k) => h('button', {
         type: 'button', role: 'tab', class: k === st.mode ? 'on' : '', 'aria-selected': k === st.mode ? 'true' : 'false',
         title: MODES[k].subtitle,
@@ -265,24 +304,24 @@ export default async function mediPage(root, ctx) {
         h('div', { class: 'medi-id-text' }, h('b', null, 'Medi'), h('span', null, m.subtitle))),
       sw,
       h('div', { class: 'medi-actions' },
-        iconButton('history', { title: 'საუბრები', class: 'medi-only-narrow', onClick: openHistoryModal }),
-        st.mode === 'medi' ? iconButton('compass', { title: 'რას აკეთებს Medi', onClick: openDirectory }) : null,
-        iconButton('squarePen', { title: 'ახალი საუბარი', onClick: () => openConversation(st.mode, null, { push: true }) }),
-        iconButton('shield', { title: 'AI და კონფიდენციალურობა', onClick: () => ctx.navigate('/profile') })));
+        iconButton('history', { title: t('საუბრები', 'Conversations'), class: 'medi-only-narrow', onClick: openHistoryModal }),
+        st.mode === 'medi' ? iconButton('compass', { title: t('რას აკეთებს Medi', 'What Medi can do'), onClick: openDirectory }) : null,
+        iconButton('squarePen', { title: t('ახალი საუბარი', 'New conversation'), onClick: () => openConversation(st.mode, null, { push: true }) }),
+        iconButton('shield', { title: t('AI და კონფიდენციალურობა', 'AI and privacy'), onClick: () => ctx.navigate('/profile') })));
   }
 
   /* ── Thread ──────────────────────────────────────────── */
   function renderThread() {
     clear(thread);
     if (st.loadState === 'loading') {
-      thread.append(h('div', { class: 'medi-loading' }, h('span', { class: 'typing' }, h('i'), h('i'), h('i')), 'საუბარი იტვირთება…'));
+      thread.append(h('div', { class: 'medi-loading' }, h('span', { class: 'typing' }, h('i'), h('i'), h('i')), t('საუბარი იტვირთება…', 'Loading conversation…')));
       updateSend();
       return;
     }
     if (st.loadState === 'error') {
       thread.append(h('div', { class: 'error-box medi-inline-error' }, icon('alert', { size: 20 }),
-        h('div', null, h('strong', null, 'საუბარი ვერ ჩაიტვირთა'), h('p', null, 'შეამოწმე კავშირი და სცადე ხელახლა.')),
-        button('ხელახლა', { variant: 'ghost', size: 'sm', onClick: () => loadConversation() })));
+        h('div', null, h('strong', null, t('საუბარი ვერ ჩაიტვირთა', 'Couldn’t load the conversation')), h('p', null, t('შეამოწმე კავშირი და სცადე ხელახლა.', 'Check your connection and try again.'))),
+        button(t('ხელახლა', 'Retry'), { variant: 'ghost', size: 'sm', onClick: () => loadConversation() })));
       updateSend();
       return;
     }
@@ -308,7 +347,7 @@ export default async function mediPage(root, ctx) {
       m.starters.length ? h('div', { class: 'medi-starters' }, m.starters.map((s) => h('button', {
         type: 'button', class: 'medi-starter', onClick: () => { if (!st.busy) send(s.text); },
       }, h('span', { class: `tile ink-${s.ink}`, style: { width: '34px', height: '34px' } }, icon(s.icon, { size: 17 })), h('span', null, s.text), icon('arrowRight', { size: 16, className: 'medi-starter-go' })))) : null,
-      st.mode === 'medi' ? h('button', { type: 'button', class: 'medi-link', onClick: openDirectory }, icon('compass', { size: 16 }), 'ნახე, რას აკეთებს Medi') : null);
+      st.mode === 'medi' ? h('button', { type: 'button', class: 'medi-link', onClick: openDirectory }, icon('compass', { size: 16 }), t('ნახე, რას აკეთებს Medi', 'See what Medi can do')) : null);
   }
 
   function aiAvatar() {
@@ -327,10 +366,10 @@ export default async function mediPage(root, ctx) {
     paintBody(msg);
     const tools = [];
     if (!msg.streaming && !msg.pending && msg.content && !msg.local) {
-      tools.push(iconButton('copy', { title: 'კოპირება', size: 16, class: 'medi-tool', onClick: () => copyText(msg.content) }));
+      tools.push(iconButton('copy', { title: t('კოპირება', 'Copy'), size: 16, class: 'medi-tool', onClick: () => copyText(msg.content) }));
       if (msg.interactionId) {
         tools.push(h('span', { class: 'medi-tools-sep' }));
-        for (const [rating, name, label] of [[1, 'thumbsUp', 'კარგი პასუხია'], [-1, 'thumbsDown', 'პასუხი არ მომეწონა']]) {
+        for (const [rating, name, label] of [[1, 'thumbsUp', t('კარგი პასუხია', 'Good answer')], [-1, 'thumbsDown', t('პასუხი არ მომეწონა', 'I didn’t like this answer')]]) {
           const b = iconButton(name, { title: label, size: 16, class: `medi-tool ${msg.feedbackRating === rating ? 'on' : ''}`, onClick: () => rate(index, rating) });
           if (msg.feedbackRating) b.disabled = true;
           tools.push(b);
@@ -341,8 +380,8 @@ export default async function mediPage(root, ctx) {
       aiAvatar(),
       h('div', { class: 'medi-msg-col' },
         body,
-        msg.stopped ? h('div', { class: 'medi-stopped' }, icon('info', { size: 14 }), 'შეჩერდა · ეს პასუხი არ შეინახა') : null,
-        msg.appOnly ? h('a', { class: 'btn btn-secondary btn-sm medi-app-link', href: APP_STORE, target: '_blank', rel: 'noopener' }, icon('smartphone', { size: 16 }), h('span', null, 'MEDICARD აპის გადმოწერა')) : null,
+        msg.stopped ? h('div', { class: 'medi-stopped' }, icon('info', { size: 14 }), t('შეჩერდა · ეს პასუხი არ შეინახა', 'Stopped · this answer wasn’t saved')) : null,
+        msg.appOnly ? h('a', { class: 'btn btn-secondary btn-sm medi-app-link', href: APP_STORE, target: '_blank', rel: 'noopener' }, icon('smartphone', { size: 16 }), h('span', null, t('MEDICARD აპის გადმოწერა', 'Get the MEDICARD app'))) : null,
         tools.length || msg.timestamp ? h('div', { class: 'medi-tools' }, tools, msg.timestamp && !msg.streaming && !msg.pending ? h('span', { class: 'medi-meta' }, fmtTime(msg.timestamp)) : null) : null));
   }
 
@@ -379,8 +418,8 @@ export default async function mediPage(root, ctx) {
   }
 
   async function copyText(text) {
-    try { await navigator.clipboard.writeText(text); toast('დაკოპირდა'); }
-    catch { toast('კოპირება ვერ მოხერხდა', 'error'); }
+    try { await navigator.clipboard.writeText(text); toast(t('დაკოპირდა', 'Copied')); }
+    catch { toast(t('კოპირება ვერ მოხერხდა', 'Couldn’t copy'), 'error'); }
   }
 
   async function rate(index, rating) {
@@ -390,12 +429,12 @@ export default async function mediPage(root, ctx) {
     renderThread();
     try {
       await post('/api/ai/feedback', { interactionId: msg.interactionId, rating });
-      if (same()) toast('მადლობა შეფასებისთვის');
+      if (same()) toast(t('მადლობა შეფასებისთვის', 'Thanks for your feedback'));
     } catch {
       if (!same()) return;
       msg.feedbackRating = undefined;
       renderThread();
-      toast('შეფასება ვერ შეინახა', 'error');
+      toast(t('შეფასება ვერ შეინახა', 'Couldn’t save your rating'), 'error');
     }
   }
 
@@ -405,20 +444,20 @@ export default async function mediPage(root, ctx) {
     if (st.note) {
       status.append(h('div', { class: 'medi-note' }, icon('shield', { size: 16 }),
         h('span', null, st.note),
-        h('a', { href: '/profile', 'data-link': '', class: 'link' }, 'პროფილი'),
-        iconButton('x', { title: 'დახურვა', size: 16, onClick: () => { st.note = null; renderStatus(); } })));
+        h('a', { href: '/profile', 'data-link': '', class: 'link' }, t('პროფილი', 'Profile')),
+        iconButton('x', { title: t('დახურვა', 'Close'), size: 16, onClick: () => { st.note = null; renderStatus(); } })));
     }
     if (st.error) {
       status.append(h('div', { class: 'medi-error', role: 'alert' }, icon('alert', { size: 16 }),
         h('span', null, st.error),
-        st.failed ? h('button', { type: 'button', class: 'medi-retry', onClick: () => { const f = st.failed; st.failed = null; st.error = null; renderStatus(); send(f.text, f.petId); } }, icon('refresh', { size: 14 }), 'ხელახლა') : null,
-        iconButton('x', { title: 'დახურვა', size: 16, onClick: () => { st.error = null; st.failed = null; renderStatus(); } })));
+        st.failed ? h('button', { type: 'button', class: 'medi-retry', onClick: () => { const f = st.failed; st.failed = null; st.error = null; renderStatus(); send(f.text, f.petId); } }, icon('refresh', { size: 14 }), t('ხელახლა', 'Retry')) : null,
+        iconButton('x', { title: t('დახურვა', 'Close'), size: 16, onClick: () => { st.error = null; st.failed = null; renderStatus(); } })));
     }
     if (st.mode === 'medi' && st.draft && !st.review) {
       const label = toolLabel(st.draft.tool);
       status.append(h('div', { class: 'medi-draft' }, icon('edit', { size: 15 }),
-        h('span', null, 'მიმდინარე: ', h('b', null, label), ' — უპასუხე Medi-ს კითხვას'),
-        h('button', { type: 'button', class: 'medi-retry', onClick: cancelReview }, 'გაუქმება')));
+        h('span', null, t('მიმდინარე: ', 'In progress: '), h('b', null, label), t(' — უპასუხე Medi-ს კითხვას', ' — answer Medi’s question')),
+        h('button', { type: 'button', class: 'medi-retry', onClick: cancelReview }, t('გაუქმება', 'Cancel'))));
     }
   }
 
@@ -473,7 +512,7 @@ export default async function mediPage(root, ctx) {
     } catch (e) {
       if (!same() || conv !== st.conv) return;
       if (e instanceof ApiError && e.status === 404) {
-        toast('საუბარი ვერ მოიძებნა', 'info');
+        toast(t('საუბარი ვერ მოიძებნა', 'Conversation not found'), 'info');
         openConversation(st.mode, null);
         return;
       }
@@ -507,14 +546,14 @@ export default async function mediPage(root, ctx) {
     if (st.busy || st.loadState !== 'ready') return;
     const value = String(text || '').trim();
     if (!value) return;
-    if (value.length > LIMIT) { st.error = `შეტყობინება ძალიან გრძელია (მაქს. ${LIMIT} სიმბოლო).`; renderStatus(); return; }
+    if (value.length > LIMIT) { st.error = t(t(`შეტყობინება ძალიან გრძელია (მაქს. ${LIMIT} სიმბოლო).`, `Your message is too long (max ${LIMIT} characters).`), `Your message is too long (max ${LIMIT} characters).`); renderStatus(); return; }
     st.note = null; st.error = null; st.failed = null;
     if (st.mode === 'medi') {
       const intent = dialogIntent(value);
       if (st.review && intent === 'confirm') { setComposer('', false); await confirmReview(); return; }
       if ((st.review || st.draft) && intent === 'cancel') { setComposer('', false); cancelReview(); return; }
     } else if (value.length < 2) {
-      st.error = 'შეკითხვა ძალიან მოკლეა.'; renderStatus(); return;
+      st.error = t('შეკითხვა ძალიან მოკლეა.', 'Your question is too short.'); renderStatus(); return;
     }
     renderStatus();
     st.busy = true;
@@ -525,7 +564,7 @@ export default async function mediPage(root, ctx) {
       result = await withAiConsent(() => (st.mode === 'medi' ? runPlan(value, gen, petId) : runConsult(value, gen)));
     } catch (e) {
       if (gen === generation && same()) {
-        st.error = errorText(e, 'კავშირი შეფერხდა. სცადე ხელახლა.');
+        st.error = errorText(e, t('კავშირი შეფერხდა. სცადე ხელახლა.', 'Connection problem. Please try again.'));
         st.failed = { text: value, petId };
         setComposer(value, false);
       }
@@ -536,7 +575,7 @@ export default async function mediPage(root, ctx) {
         st.stopRequested = false;
         if (result?.declined) {
           // Declining is a valid choice: nothing was sent. A quiet note, not an error.
-          st.note = 'შეტყობინება AI-ს არ გაეგზავნა. თანხმობას ნებისმიერ დროს შეცვლი პროფილში.';
+          st.note = t('შეტყობინება AI-ს არ გაეგზავნა. თანხმობას ნებისმიერ დროს შეცვლი პროფილში.', 'Your message wasn’t sent to the AI. You can change your consent in Profile at any time.');
           if (!ta.value.trim()) setComposer(value, false);
         }
         renderStatus();
@@ -576,10 +615,10 @@ export default async function mediPage(root, ctx) {
         const type = (data && typeof data === 'object' && data.type) || event;
         if (type === 'delta' && data.text) { aiMsg.content += data.text; schedulePaint(aiMsg); }
         else if (type === 'done') done = data;
-        else if (type === 'error') throw new ApiError(data?.error || 'პასუხი ვერ მივიღე. სცადე ხელახლა.', Number(data?.status) || 502, { code: 'AI_ENGINE_ERROR' });
+        else if (type === 'error') throw new ApiError(data?.error || t('პასუხი ვერ მივიღე. სცადე ხელახლა.', 'I couldn’t get an answer. Please try again.'), Number(data?.status) || 502, { code: 'AI_ENGINE_ERROR' });
       }, { signal: ctrl.signal });
       if (!live()) return {};
-      if (!done || typeof done.answer !== 'string' || !done.answer.trim()) throw new ApiError('პასუხი სრულად ვერ მივიღეთ. გთხოვ, სცადე ხელახლა.', 502);
+      if (!done || typeof done.answer !== 'string' || !done.answer.trim()) throw new ApiError(t('პასუხი სრულად ვერ მივიღეთ. გთხოვ, სცადე ხელახლა.', 'The answer didn’t arrive in full. Please try again.'), 502);
       aiMsg.content = done.answer;
       aiMsg.streaming = false;
       aiMsg.interactionId = done.interactionId;
@@ -602,9 +641,9 @@ export default async function mediPage(root, ctx) {
         return {};
       }
       if (idx >= 0) st.messages.splice(idx - 1, 2);
-      if (timedOut) throw new ApiError('პასუხის მოლოდინის დრო ამოიწურა. გთხოვ, სცადე ხელახლა.', 408);
+      if (timedOut) throw new ApiError(t('პასუხის მოლოდინის დრო ამოიწურა. გთხოვ, სცადე ხელახლა.', 'The answer took too long. Please try again.'), 408);
       if (e instanceof ApiError) throw e;
-      throw new ApiError('ინტერნეტთან კავშირი ვერ დამყარდა.', 0);
+      throw new ApiError(t('ინტერნეტთან კავშირი ვერ დამყარდა.', 'Couldn’t connect to the internet.'), 0);
     } finally {
       clearTimeout(timer);
       if (!ctrl.signal.aborted) ctrl.abort(); // release the stream if an error event ended it early
@@ -649,7 +688,7 @@ export default async function mediPage(root, ctx) {
       if (idx >= 0) st.messages.splice(idx - 1, 2);
       st.draft = currentDraft || null;
       if (ctrl.signal.aborted && st.stopRequested) { setComposer(value, false); return {}; }
-      if (timedOut) throw new ApiError('პასუხის მოლოდინის დრო ამოიწურა. გთხოვ, სცადე ხელახლა.', 408);
+      if (timedOut) throw new ApiError(t('პასუხის მოლოდინის დრო ამოიწურა. გთხოვ, სცადე ხელახლა.', 'The answer took too long. Please try again.'), 408);
       throw e;
     } finally {
       clearTimeout(timer);
@@ -684,7 +723,7 @@ export default async function mediPage(root, ctx) {
   }
   const tools = () => st.catalog?.tools || [];
   const choices = () => st.catalog?.choices || {};
-  function toolLabel(name) { return tools().find((t) => t.name === name)?.label || 'ჩანაწერი'; }
+  function toolLabel(name) { return tools().find((t) => t.name === name)?.label || t('ჩანაწერი', 'Entry'); }
   function isHandoff(name) { return tools().find((t) => t.name === name)?.kind === 'handoff' || HANDOFF_TOOLS.includes(name); }
 
   function reviewRows(action) {
@@ -694,7 +733,7 @@ export default async function mediPage(root, ctx) {
         : key === 'breedId' ? ch[`breedId:${action.args.speciesId}`]
           : key === 'productId' ? ch[`productId:${action.args.petId}`] : ch[key];
       const named = Array.isArray(list) ? list.find((o) => o.value === value)?.label : null;
-      const label = key === 'petId' ? 'ცხოველი' : key === 'medicationId' ? 'მედიკამენტი' : key === 'id' ? 'ჩანაწერი' : key === 'dueTime' ? 'დრო' : FIELD_LABELS[key] || key;
+      const label = key === 'petId' ? t('ცხოველი', 'Pet') : key === 'medicationId' ? t('მედიკამენტი', 'Medication') : key === 'id' ? t('ჩანაწერი', 'Entry') : key === 'dueTime' ? t('დრო', 'Time') : FIELD_LABELS[key] || key;
       return { key, label, value: named || display(value) };
     }).filter((r) => r.value !== '');
   }
@@ -711,17 +750,17 @@ export default async function mediPage(root, ctx) {
       const r = st.review;
       const handoff = isHandoff(r.tool);
       const rows = reviewRows(r);
-      const saveBtn = button(handoff ? 'გახსნა' : 'შენახვა', { variant: 'primary', icon: handoff ? 'arrowRight' : 'check', onClick: () => confirmReview() });
+      const saveBtn = button(handoff ? t('გახსნა', 'Open') : t('შენახვა', 'Save'), { variant: 'primary', icon: handoff ? 'arrowRight' : 'check', onClick: () => confirmReview() });
       wrap.append(h('div', { class: 'medi-review' },
         h('div', { class: 'medi-review-head' },
           h('span', { class: `tile ink-${r.tool.startsWith('pet_') ? 'amber' : 'teal'}`, style: { width: '38px', height: '38px' } }, icon(r.tool.startsWith('pet_') ? 'paw' : handoff ? 'externalLink' : 'check', { size: 18 })),
           h('div', null,
-            h('div', { class: 'medi-review-kicker' }, handoff ? 'მზადაა გასახსნელად' : 'გადაამოწმე შენახვამდე'),
+            h('div', { class: 'medi-review-kicker' }, handoff ? t('მზადაა გასახსნელად', 'Ready to open') : t('გადაამოწმე შენახვამდე', 'Check before saving')),
             h('div', { class: 'medi-review-title' }, r.label || toolLabel(r.tool)))),
         rows.length ? h('dl', { class: 'medi-review-rows' }, rows.map((row) => h('div', null, h('dt', null, row.label), h('dd', null, row.value)))) : null,
-        handoff ? null : h('p', { class: 'medi-review-hint' }, 'შესასწორებლად უბრალოდ დაწერე, რა შევცვალო — მაგ. „არა, 200 მლ“.'),
+        handoff ? null : h('p', { class: 'medi-review-hint' }, t('შესასწორებლად უბრალოდ დაწერე, რა შევცვალო — მაგ. „არა, 200 მლ“.', 'To correct it, just write what to change — e.g. “no, 200 ml”.')),
         h('div', { class: 'medi-review-actions' },
-          button('გაუქმება', { variant: 'ghost', onClick: cancelReview }),
+          button(t('გაუქმება', 'Cancel'), { variant: 'ghost', onClick: cancelReview }),
           saveBtn)));
     }
     return wrap.childNodes.length ? wrap : null;
@@ -730,7 +769,7 @@ export default async function mediPage(root, ctx) {
   function cancelReview() {
     if (st.busy) return;
     st.review = null; st.draft = null; st.suggestions = []; st.receipt = null;
-    const reply = 'კარგი, გაუქმებულია.';
+    const reply = t('კარგი, გაუქმებულია.', 'Okay, cancelled.');
     st.messages.push({ role: 'assistant', content: reply, timestamp: new Date().toISOString() });
     persist(st.conv, [{ role: 'assistant', content: reply }]);
     renderStatus();
@@ -748,7 +787,7 @@ export default async function mediPage(root, ctx) {
     renderStatus();
     renderThread();
     const handoff = isHandoff(current.tool);
-    const pending = { role: 'assistant', content: '', pending: true, label: handoff ? 'ვხსნი…' : 'ვინახავ…' };
+    const pending = { role: 'assistant', content: '', pending: true, label: handoff ? t('ვხსნი…', 'Opening…') : t('ვინახავ…', 'Saving…') };
     st.messages.push(pending);
     renderThread();
     scrollToEnd(true);
@@ -763,20 +802,20 @@ export default async function mediPage(root, ctx) {
         return;
       }
       const petName = (choices().petId || []).find((p) => p.value === current.args.petId)?.label;
-      const reply = current.tool === 'medication_add' ? `${String(current.args.medName)} დამატებულია.`
-        : current.tool === 'pet_care_plan' && petName ? `${petName}ს გეგმა შენახულია — ${String(current.args.startOn)}${current.args.dueTime ? `, ${String(current.args.dueTime)}` : ''}.`
-          : 'შენახულია.';
+      const reply = current.tool === 'medication_add' ? t(t(`${String(current.args.medName)} დამატებულია.`, `${String(current.args.medName)} added.`), `${String(current.args.medName)} added.`)
+        : current.tool === 'pet_care_plan' && petName ? t(t(`${petName}ს გეგმა შენახულია — ${String(current.args.startOn)}${current.args.dueTime ? `, ${String(current.args.dueTime)}` : ''}.`, `${petName}’s plan is saved — ${String(current.args.startOn)}${current.args.dueTime ? `, ${String(current.args.dueTime)}` : ''}.`), `${petName}’s plan is saved — ${String(current.args.startOn)}${current.args.dueTime ? `, ${String(current.args.dueTime)}` : ''}.`)
+          : t('შენახულია.', 'Saved.');
       st.messages.push({ role: 'assistant', content: reply, timestamp: new Date().toISOString() });
       persist(conv, [{ role: 'assistant', content: reply }]);
       invalidate(''); // the write went through the server's own domain endpoint: re-read everything
       st.catalog = null;
       loadCatalog();
-      toast('შენახულია');
+      toast(t('შენახულია', 'Saved'));
     } catch (e) {
       if (!live()) return;
       const idx = st.messages.indexOf(pending);
       if (idx >= 0) st.messages.splice(idx, 1);
-      st.error = errorText(e, 'მოქმედება ვერ შესრულდა.');
+      st.error = errorText(e, t('მოქმედება ვერ შესრულდა.', 'The action couldn’t be completed.'));
     } finally {
       if (gen === generation && same()) {
         st.busy = false;
@@ -801,7 +840,7 @@ export default async function mediPage(root, ctx) {
     }
     const web = webRouteFor(route);
     if (web) { ctx.navigate(web); return; }
-    const reply = 'ეს ფუნქცია MEDICARD აპშია — იქ გააგრძელე.';
+    const reply = t('ეს ფუნქცია MEDICARD აპშია — იქ გააგრძელე.', 'This feature is in the MEDICARD app — continue there.');
     st.messages.push({ role: 'assistant', content: reply, timestamp: new Date().toISOString(), local: true, appOnly: true });
   }
 
@@ -823,17 +862,17 @@ export default async function mediPage(root, ctx) {
 
   async function openDirectory() {
     const body = h('div', { class: 'medi-dir' }, h('div', { class: 'skeleton-card' }, h('div', { class: 'sk' }), h('div', { class: 'sk', style: { width: '70%' } })));
-    const m = openModal({ title: 'რას აკეთებს Medi', size: 'lg', body });
+    const m = openModal({ title: t('რას აკეთებს Medi', 'What Medi can do'), size: 'lg', body });
     try {
       await loadCatalog();
       if (!st.catalog) st.catalog = await get('/api/assistant/catalog', { scope: 'auto' });
     } catch (e) {
-      mount(body, h('div', { class: 'error-box' }, icon('alert', { size: 20 }), h('div', null, h('strong', null, 'ვერ ჩაიტვირთა'), h('p', null, e?.message || ''))));
+      mount(body, h('div', { class: 'error-box' }, icon('alert', { size: 20 }), h('div', null, h('strong', null, t('ვერ ჩაიტვირთა', 'Couldn’t load')), h('p', null, e?.message || ''))));
       return;
     }
     const c = st.catalog || {};
     const writes = (c.tools || []).filter((t) => t.kind === 'write');
-    const search = h('input', { class: 'input', type: 'search', placeholder: 'მოძებნე ფუნქცია…', 'aria-label': 'ძებნა' });
+    const search = h('input', { class: 'input', type: 'search', placeholder: t('მოძებნე ფუნქცია…', 'Search features…'), 'aria-label': t('ძებნა', 'Search') });
     const list = h('div', { class: 'medi-dir-groups' });
     const renderList = () => {
       const q = search.value.trim().toLowerCase();
@@ -841,8 +880,8 @@ export default async function mediPage(root, ctx) {
       const writeHits = writes.filter((t) => !q || `${t.label} ${t.description}`.toLowerCase().includes(q));
       if (writeHits.length) {
         list.append(h('div', { class: 'medi-dir-group' },
-          h('div', { class: 'medi-dir-title' }, icon('message', { size: 16 }), 'ჩაწერა საუბრით'),
-          h('p', { class: 'faint', style: { fontSize: '13px', margin: '0 0 10px' } }, 'აირჩიე და დაწერე დეტალები — Medi ჩანაწერს შენახვამდე გადაგამოწმებინებს.'),
+          h('div', { class: 'medi-dir-title' }, icon('message', { size: 16 }), t('ჩაწერა საუბრით', 'Log by chatting')),
+          h('p', { class: 'faint', style: { fontSize: '13px', margin: '0 0 10px' } }, t('აირჩიე და დაწერე დეტალები — Medi ჩანაწერს შენახვამდე გადაგამოწმებინებს.', 'Pick one and write the details — Medi will ask you to check the entry before saving.')),
           h('div', { class: 'chips' }, writeHits.map((t) => h('button', {
             type: 'button', class: 'chip', title: t.description,
             onClick: () => { m.close(); setComposer(`${t.label}: `); },
@@ -864,14 +903,14 @@ export default async function mediPage(root, ctx) {
                 if (consult) openConversation(consult, null, { push: true });
                 else if (web) ctx.navigate(web);
                 else {
-                  st.messages.push({ role: 'assistant', content: `„${f.label}“ MEDICARD აპშია — იქ გააგრძელე.`, timestamp: new Date().toISOString(), local: true, appOnly: true });
+                  st.messages.push({ role: 'assistant', content: t(t(`„${f.label}“ MEDICARD აპშია — იქ გააგრძელე.`, `“${f.label}” is in the MEDICARD app — continue there.`), `“${f.label}” is in the MEDICARD app — continue there.`), timestamp: new Date().toISOString(), local: true, appOnly: true });
                   renderThread(); scrollToEnd(true);
                 }
               },
-            }, h('b', null, f.label), h('span', null, f.description), !consult && !web ? h('em', { class: 'badge badge-neutral' }, 'აპში') : null);
+            }, h('b', null, f.label), h('span', null, f.description), !consult && !web ? h('em', { class: 'badge badge-neutral' }, t('აპში', 'In app')) : null);
           }))));
       }
-      if (!list.childNodes.length) list.append(h('p', { class: 'muted', style: { padding: '20px 0', textAlign: 'center' } }, 'ვერაფერი მოიძებნა.'));
+      if (!list.childNodes.length) list.append(h('p', { class: 'muted', style: { padding: '20px 0', textAlign: 'center' } }, t('ვერაფერი მოიძებნა.', 'Nothing found.')));
     };
     search.addEventListener('input', renderList);
     renderList();
@@ -900,19 +939,19 @@ export default async function mediPage(root, ctx) {
 
   function bucket(v) {
     const d = parseDate(v);
-    if (!d) return 'ადრე';
+    if (!d) return t('ადრე', 'Earlier');
     const diff = Math.round((new Date(ymd()) - new Date(ymd(d))) / 86400000);
-    if (diff <= 0) return 'დღეს';
-    if (diff === 1) return 'გუშინ';
-    if (diff < 7) return 'ბოლო 7 დღე';
-    if (diff < 30) return 'ბოლო 30 დღე';
-    return 'ადრე';
+    if (diff <= 0) return t('დღეს', 'Today');
+    if (diff === 1) return t('გუშინ', 'Yesterday');
+    if (diff < 7) return t('ბოლო 7 დღე', 'Last 7 days');
+    if (diff < 30) return t('ბოლო 30 დღე', 'Last 30 days');
+    return t('ადრე', 'Earlier');
   }
 
   function historyList(onPick) {
     const wrap = h('div', { class: 'medi-hist' });
     if (st.sessionsError && !st.sessions) {
-      wrap.append(h('div', { class: 'medi-hist-empty' }, 'ისტორია ვერ ჩაიტვირთა.', button('ხელახლა', { variant: 'ghost', size: 'sm', onClick: loadSessions })));
+      wrap.append(h('div', { class: 'medi-hist-empty' }, t('ისტორია ვერ ჩაიტვირთა.', 'Couldn’t load your history.'), button(t('ხელახლა', 'Retry'), { variant: 'ghost', size: 'sm', onClick: loadSessions })));
       return wrap;
     }
     if (!st.sessions) {
@@ -922,7 +961,7 @@ export default async function mediPage(root, ctx) {
     const q = st.filter.trim().toLowerCase();
     const items = st.sessions.filter((s) => !q || `${s.title || ''} ${s.preview || ''}`.toLowerCase().includes(q));
     if (!items.length) {
-      wrap.append(h('div', { class: 'medi-hist-empty' }, q ? 'ვერაფერი მოიძებნა.' : 'საუბრები აქ გამოჩნდება.'));
+      wrap.append(h('div', { class: 'medi-hist-empty' }, q ? t('ვერაფერი მოიძებნა.', 'Nothing found.') : t('საუბრები აქ გამოჩნდება.', 'Your conversations will appear here.')));
       return wrap;
     }
     let last = '';
@@ -932,9 +971,9 @@ export default async function mediPage(root, ctx) {
       const m = MODES[modeForSession(s.mode)];
       const active = s.id === st.conv.sessionId;
       const d = parseDate(s.updatedAt);
-      const when = d ? (bucket(s.updatedAt) === 'დღეს' ? fmtTime(d) : relDay(d) === 'გუშინ' ? 'გუშინ' : fmtDate(d, { short: true })) : '';
+      const when = d ? (bucket(s.updatedAt) === t('დღეს', 'Today') ? fmtTime(d) : relDay(d) === t('გუშინ', 'Yesterday') ? t('გუშინ', 'Yesterday') : fmtDate(d, { short: true })) : '';
       const delBtn = h('button', {
-        type: 'button', class: 'medi-hist-del', title: 'წაშლა', 'aria-label': `წაშლა: ${s.title || ''}`,
+        type: 'button', class: 'medi-hist-del', title: t('წაშლა', 'Delete'), 'aria-label': t(t(`წაშლა: ${s.title || ''}`, `Delete: ${s.title || ''}`), `Delete: ${s.title || ''}`),
         onClick: (e) => { e.stopPropagation(); removeSession(s); },
       }, icon('trash', { size: 15 }));
       wrap.append(h('div', {
@@ -944,7 +983,7 @@ export default async function mediPage(root, ctx) {
       },
       h('span', { class: `tile ink-${m.ink}`, style: { width: '30px', height: '30px' } }, icon(m.icon, { size: 15 })),
       h('div', { class: 'medi-hist-main' },
-        h('div', { class: 'medi-hist-title' }, s.title || 'საუბარი'),
+        h('div', { class: 'medi-hist-title' }, s.title || t('საუბარი', 'Conversation')),
         h('div', { class: 'medi-hist-sub' }, h('span', null, m.label), when ? h('span', null, ` · ${when}`) : null)),
       delBtn));
     }
@@ -953,11 +992,11 @@ export default async function mediPage(root, ctx) {
 
   function sideTop(onPick) {
     const search = h('input', {
-      class: 'input medi-hist-search', type: 'search', placeholder: 'ძებნა საუბრებში', value: st.filter, 'aria-label': 'ძებნა საუბრებში',
+      class: 'input medi-hist-search', type: 'search', placeholder: t('ძებნა საუბრებში', 'Search conversations'), value: st.filter, 'aria-label': t('ძებნა საუბრებში', 'Search conversations'),
       onInput: (e) => { st.filter = e.target.value; const list = e.target.closest('.medi-side, .modal-body')?.querySelector('.medi-hist'); if (list) list.replaceWith(historyList(onPick)); },
     });
     return h('div', { class: 'medi-side-top' },
-      button('ახალი საუბარი', { variant: 'primary', icon: 'plus', class: 'medi-new', onClick: () => { onPick?.(); openConversation(st.mode, null, { push: true }); } }),
+      button(t('ახალი საუბარი', 'New conversation'), { variant: 'primary', icon: 'plus', class: 'medi-new', onClick: () => { onPick?.(); openConversation(st.mode, null, { push: true }); } }),
       search);
   }
 
@@ -969,7 +1008,7 @@ export default async function mediPage(root, ctx) {
   function openHistoryModal() {
     const pick = () => histModal?.modal.close();
     const modal = openModal({
-      title: 'საუბრები', size: 'md',
+      title: t('საუბრები', 'Conversations'), size: 'md',
       body: h('div', { class: 'medi-side in-modal' }, sideTop(pick), historyList(pick)),
       onClose: () => { histModal = null; },
     });
@@ -977,18 +1016,18 @@ export default async function mediPage(root, ctx) {
   }
 
   async function removeSession(s) {
-    const ok = await confirmDialog({ title: 'საუბრის წაშლა', body: `„${s.title || 'საუბარი'}“ სამუდამოდ წაიშლება.`, confirm: 'წაშლა', danger: true });
+    const ok = await confirmDialog({ title: t('საუბრის წაშლა', 'Delete conversation'), body: t(`„${s.title || 'საუბარი'}“ სამუდამოდ წაიშლება.`, `“${s.title || 'Conversation'}” will be deleted permanently.`), confirm: t('წაშლა', 'Delete'), danger: true });
     if (!ok || !same()) return;
     try {
       await del(`/api/chats/${encodeURIComponent(s.id)}`);
       if (!same()) return;
       st.sessions = (st.sessions || []).filter((x) => x.id !== s.id);
       if (histModal) histModal.modal.el.querySelector('.medi-hist')?.replaceWith(historyList(histModal.pick));
-      toast('საუბარი წაიშალა');
+      toast(t('საუბარი წაიშალა', 'Conversation deleted'));
       if (s.id === st.conv.sessionId) openConversation(st.mode, null);
       else renderSide();
     } catch (e) {
-      toast(e?.message || 'წაშლა ვერ მოხერხდა', 'error');
+      toast(e?.message || t('წაშლა ვერ მოხერხდა', 'Couldn’t delete'), 'error');
     }
   }
 

@@ -92,3 +92,11 @@ describe('reward decision', () => {
     assert.equal(rewardDecision({ referral: { createdAt: daysAgo(REWARD_WINDOW_DAYS + 1) }, invitee, inviter, hasHealthAction: true, inviterRewardedThisMonth: 0, now }).action, 'EXPIRE');
   });
 });
+
+describe('referral errors in English', () => {
+  it('has an English message for every error code', async () => {
+    const { REFERRAL_ERRORS, REFERRAL_ERRORS_EN } = await import('./referral.js');
+    assert.deepEqual(Object.keys(REFERRAL_ERRORS_EN).sort(), Object.keys(REFERRAL_ERRORS).sort());
+    for (const text of Object.values(REFERRAL_ERRORS_EN)) assert.equal(/[ა-ჿ]/.test(text), false);
+  });
+});

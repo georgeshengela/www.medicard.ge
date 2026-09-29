@@ -3,6 +3,7 @@ import { CyclePressable as Pressable } from '@/components/cycle/CyclePressable';
 import React, { useEffect, useState } from 'react';
 import { Image, Text, useWindowDimensions, View } from 'react-native';
 import { ka } from '@/i18n/ka';
+import { tx } from '@/i18n/locale';
 import { pregnancyDevelopmentAsset } from '@/lib/pregnancyDevelopmentAssets';
 import { formatLengthCm, formatWeightGrams } from '@/lib/pregnancyWeekData.js';
 import { useCycleColors } from '@/theme/cycle';
@@ -51,9 +52,9 @@ export function PregnancySizeIllustration({
   const [failed, setFailed] = useState(false);
   const art = pregnancyDevelopmentAsset(week);
   useEffect(() => { setFailed(false); }, [art?.stage]);
-  if (!art || failed) return <View accessible accessibilityLabel="განვითარების ილუსტრაცია მიუწვდომელია"
+  if (!art || failed) return <View accessible accessibilityLabel={tx('განვითარების ილუსტრაცია მიუწვდომელია','Development illustration unavailable')}
     style={{width:size,height:size,alignItems:'center',justifyContent:'center'}}><Sprout size={40} color={c.brand}/></View>;
-  return <Image source={art.source} accessibilityLabel={`განვითარების ზოგადი ილუსტრაცია, დაახლოებით ${art.stage} კვირა. ეს არ არის შენი ბავშვის გამოსახულება.`}
+  return <Image source={art.source} accessibilityLabel={tx(`განვითარების ზოგადი ილუსტრაცია, დაახლოებით ${art.stage} კვირა. ეს არ არის შენი ბავშვის გამოსახულება.`,`General development illustration, about week ${art.stage}. This is not an image of your baby.`)}
     onError={() => setFailed(true)} resizeMode="contain" style={{width:size,height:size,alignSelf:'center'}}/>;
 }
 
@@ -71,7 +72,7 @@ export function PregnancyWeekMetrics({
   const length = pregnancyLengthText(development.lengthCm);
   const weight = pregnancyWeightText(development.weightGrams);
   const illustration = pregnancyDevelopmentAsset(development.week);
-  const comparison = illustration ? 'განვითარების ეტაპი' : null;
+  const comparison = illustration ? tx('განვითარების ეტაპი','Development stage') : null;
   const showArt = Boolean(illustration);
   const informational = development.kind === 'informational' || !showArt;
 
@@ -94,7 +95,7 @@ export function PregnancyWeekMetrics({
           </View> : null}
         </View>
       </View>
-      {illustration ? <Text style={{color:c.mutedSoft,fontSize:11,lineHeight:17,marginTop:12}}>{`ზოგადი ილუსტრაცია · დაახლოებით ${illustration.stage} კვირა. ზომები შეესაბამება არჩეულ კვირას.`}</Text> : null}
+      {illustration ? <Text style={{color:c.mutedSoft,fontSize:11,lineHeight:17,marginTop:12}}>{tx(`ზოგადი ილუსტრაცია · დაახლოებით ${illustration.stage} კვირა. ზომები შეესაბამება არჩეულ კვირას.`,`General illustration · about week ${illustration.stage}. Sizes match the selected week.`)}</Text> : null}
       {development.week === 19 && !length ? <Text style={{color:c.muted,fontSize:13,lineHeight:20,marginTop:8}}>{ka.cycle.pregnancyWeek19Length}</Text> : null}
     </View>
   );
@@ -126,7 +127,7 @@ export function PregnancyWeekMetrics({
           {ka.cycle.pregnancyWeekInformational}
         </Text>
       ) : null}
-      {illustration ? <Text style={{color:c.mutedSoft,fontSize:12,lineHeight:18,textAlign:'center',marginTop:8}}>{`ზოგადი ილუსტრაცია · დაახლოებით ${illustration.stage} კვირა. ზომები შეესაბამება არჩეულ კვირას.`}</Text> : null}
+      {illustration ? <Text style={{color:c.mutedSoft,fontSize:12,lineHeight:18,textAlign:'center',marginTop:8}}>{tx(`ზოგადი ილუსტრაცია · დაახლოებით ${illustration.stage} კვირა. ზომები შეესაბამება არჩეულ კვირას.`,`General illustration · about week ${illustration.stage}. Sizes match the selected week.`)}</Text> : null}
       {development.week === 19 && !length ? (
         <Text style={{ color: c.muted, fontSize: 13, lineHeight: 19, textAlign: 'center', marginTop: 6 }}>
           {ka.cycle.pregnancyWeek19Length}

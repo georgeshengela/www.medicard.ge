@@ -1,3 +1,5 @@
+import { tx } from '../i18n/locale.js';
+
 export type HealthScoreBand = {
   min: number;
   max: number;
@@ -13,33 +15,33 @@ export const HEALTH_SCORE_BANDS: HealthScoreBand[] = [
     min: 0,
     max: 20,
     label: 'Critical',
-    labelKa: 'კრიტიკული',
+    labelKa: tx('კრიტიკული', 'Critical'),
     color: '#F43F5E',
-    detailKa: 'საჭიროა სასწრაფოდ ექიმს მიმართო და ერთად შეადგინო გეგმა.',
+    detailKa: tx('საჭიროა სასწრაფოდ ექიმს მიმართო და ერთად შეადგინო გეგმა.', 'See a doctor urgently and make a plan together.'),
   },
   {
     min: 21,
     max: 50,
     label: 'Suboptimal',
-    labelKa: 'არაოპტიმალური',
+    labelKa: tx('არაოპტიმალური', 'Suboptimal'),
     color: '#F97316',
-    detailKa: 'რამდენიმე მაჩვენებელი ჩვეულ ნორმაზე დაბალია — ყოველდღიური ჩვევების შეცვლა დაგეხმარება.',
+    detailKa: tx('რამდენიმე მაჩვენებელი ჩვეულ ნორმაზე დაბალია — ყოველდღიური ჩვევების შეცვლა დაგეხმარება.', 'Several measures are below the usual range — changing everyday habits will help.'),
   },
   {
     min: 51,
     max: 70,
     label: 'Mild Risk',
-    labelKa: 'მსუბუქი რისკი',
+    labelKa: tx('მსუბუქი რისკი', 'Mild risk'),
     color: '#EAB308',
-    detailKa: 'მცირე გადახრები ოპტიმალური ჯანმრთელობისგან — პრევენცია და თვალყური დაგეხმარება.',
+    detailKa: tx('მცირე გადახრები ოპტიმალური ჯანმრთელობისგან — პრევენცია და თვალყური დაგეხმარება.', 'Small deviations from optimal health — prevention and keeping an eye on things will help.'),
   },
   {
     min: 71,
     max: 100,
     label: 'Normal',
-    labelKa: 'ნორმალური',
+    labelKa: tx('ნორმალური', 'Normal'),
     color: '#14B8A6',
-    detailKa: 'ძირითადი მაჩვენებლები ნორმალურ დიაპაზონშია — გააგრძელე ჯანსაღი ჩვევები.',
+    detailKa: tx('ძირითადი მაჩვენებლები ნორმალურ დიაპაზონშია — გააგრძელე ჯანსაღი ჩვევები.', 'Your main measures are in the normal range — keep up your healthy habits.'),
   },
 ];
 

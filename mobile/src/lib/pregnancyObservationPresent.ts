@@ -1,4 +1,5 @@
 import type { CyclePregnancyDayObservations } from '@/lib/api';
+import { tx } from '../i18n/locale.js';
 import { cycleChipLabel } from '@/lib/cycleLabels';
 import {
   energyLabel,
@@ -37,11 +38,11 @@ export const PREGNANCY_PAIN_TYPES = [
 ] as const;
 
 export const PREGNANCY_FLOW_OPTIONS = [
-  { id: 'none', label: 'არა' },
-  { id: 'spotting', label: 'ლაქები' },
-  { id: 'light', label: 'მსუბუქი' },
-  { id: 'medium', label: 'ზომიერი' },
-  { id: 'heavy', label: 'ძლიერი' },
+  { id: 'none', label: tx('არა', 'None') },
+  { id: 'spotting', label: tx('ლაქები', 'Spotting') },
+  { id: 'light', label: tx('მსუბუქი', 'Light') },
+  { id: 'medium', label: tx('ზომიერი', 'Medium') },
+  { id: 'heavy', label: tx('ძლიერი', 'Heavy') },
 ] as const;
 
 function bleedingBit(row: CyclePregnancyDayObservations): string | null {

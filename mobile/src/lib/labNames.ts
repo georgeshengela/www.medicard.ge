@@ -1,5 +1,6 @@
 import type { LabPanel, LabParameter } from '@/types/lab';
 import { slugLabKey } from './labKeys.ts';
+import { isEn } from '../i18n/locale.js';
 
 type LabTitle = { nameKa: string; nameEn: string };
 
@@ -158,6 +159,24 @@ export function titledLabPanel(panel: LabPanel): LabPanel {
   return { ...panel, parameters: collapseLabParameters(panel.parameters) };
 }
 
+/** Clearer English display names where the catalog nameEn is only an abbreviation (display only; nameEn data unchanged). */
+const LAB_DISPLAY_EN: Record<string, string> = {
+  rbc: 'Red blood cells (RBC)',
+  wbc: 'White blood cells (WBC)',
+  tsat: 'Transferrin saturation',
+  cholesterol: 'Total cholesterol',
+  ldl: 'LDL cholesterol',
+  hdl: 'HDL cholesterol',
+  nlr: 'Neutrophil/lymphocyte ratio',
+};
+
 export function titledLabName(param: Pick<LabParameter, 'key' | 'nameEn' | 'nameKa'>): string {
-  return resolveLabTitle(param).nameKa;
+  const title = resolveLabTitle(param);
+  if (isEn()) return LAB_DISPLAY_EN[resolveCanonicalLabKey(param)] || title.nameEn || title.nameKa;
+  return title.nameKa;
+}
+
+/** Name to show for a stored lab row in the active language. */
+export function labRowName(row: Pick<LabParameter, 'nameEn' | 'nameKa'>): string {
+  return isEn() ? row.nameEn || row.nameKa : row.nameKa || row.nameEn;
 }

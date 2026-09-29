@@ -334,6 +334,8 @@ export function buildPredictions({
   logs = [],
   /** Civil today. When given and the projected start has passed with no bleed logged, the cycle is late. */
   today = null,
+  /** Language of calendar `phaseKa` labels ('ka' default). */
+  lang = 'ka',
 }) {
   const confidence = predictionConfidence({ cycleCount, isIrregular, cycleLengths });
   if (!lastPeriodStart) {
@@ -422,6 +424,7 @@ export function buildPredictions({
     // A late cycle is stamped as one continuing cycle up to today (no invented next cycles).
     toKey: late ? today : addDays(lastPeriodStart, horizonDays),
     wrap: !late,
+    lang,
   });
 
   return {
@@ -447,6 +450,7 @@ export function stampCalendarPhases(calendar, {
   fromKey,
   toKey,
   wrap = true,
+  lang = 'ka',
 }) {
   if (!lastPeriodStart || !fromKey || !toKey) return calendar;
   const next = { ...calendar };
@@ -458,6 +462,7 @@ export function stampCalendarPhases(calendar, {
       avgPeriodLength,
       today: key,
       wrap,
+      lang,
     });
     const prev = next[key] || {};
     const loggedActual = prev.predicted === false;
@@ -598,7 +603,26 @@ export const FETAL_SIZE_KA = {
   40: { size: 'საზამთრო', note: 'სრული ვადა' },
 };
 
-export function fetalInsightForWeek(week) {
+/** Same size metaphors in English (keys match FETAL_SIZE_KA). */
+export const FETAL_SIZE_EN = {
+  4: { size: 'a poppy seed', note: 'Implantation and early development' },
+  5: { size: 'a sesame seed', note: 'The first heartbeats' },
+  6: { size: 'a lentil', note: 'The neural tube is forming' },
+  8: { size: 'a blueberry', note: 'Limb buds appear' },
+  10: { size: 'a strawberry', note: 'The main organ structures form' },
+  12: { size: 'a lime', note: 'End of the first trimester' },
+  14: { size: 'a plum', note: 'Facial muscles start to work' },
+  16: { size: 'an avocado', note: 'You may start to feel movement' },
+  18: { size: 'a bell pepper', note: 'Hearing is developing' },
+  20: { size: 'a banana', note: 'Halfway there: the anatomy scan' },
+  24: { size: 'an ear of corn', note: 'The lungs begin to mature' },
+  28: { size: 'an eggplant', note: 'The eyes open' },
+  32: { size: 'a coconut', note: 'Fat tissue builds up' },
+  36: { size: 'a head of romaine lettuce', note: 'Getting ready for birth' },
+  40: { size: 'a watermelon', note: 'Full term' },
+};
+
+export function fetalInsightForWeek(week, lang = 'ka') {
   const keys = Object.keys(FETAL_SIZE_KA)
     .map(Number)
     .sort((a, b) => a - b);
@@ -606,7 +630,8 @@ export function fetalInsightForWeek(week) {
   for (const k of keys) {
     if (k <= week) best = k;
   }
-  return { week, ...(FETAL_SIZE_KA[best] || FETAL_SIZE_KA[14]) };
+  const table = lang === 'en' ? FETAL_SIZE_EN : FETAL_SIZE_KA;
+  return { week, ...(table[best] || table[14]) };
 }
 
 export function detectCyclePhase({
@@ -620,36 +645,47 @@ export function detectCyclePhase({
    * luteal until bleeding is logged). Wrapping made a late person read "day 4 · period" with no bleed.
    */
   wrap = false,
+  /** Language of the `phaseKa` label ('ka' default; the field name stays for API compatibility). */
+  lang = 'ka',
 }) {
-  if (!lastPeriodStart) return { day: null, phase: 'unknown', phaseKa: 'უცნობი ფაზა' };
+  const en = lang === 'en';
+  if (!lastPeriodStart) return { day: null, phase: 'unknown', phaseKa: en ? 'Unknown phase' : 'უცნობი ფაზა' };
   const day = daysBetween(lastPeriodStart, today) + 1;
-  if (day < 1) return { day: null, phase: 'unknown', phaseKa: 'უცნობი ფაზა' };
+  if (day < 1) return { day: null, phase: 'unknown', phaseKa: en ? 'Unknown phase' : 'უცნობი ფაზა' };
   const cycleDay = wrap ? ((day - 1) % avgCycleLength) + 1 : day;
   // Same civil day as buildPredictions: ovulation = LMP + (length − 14) → cycle day length − 13.
   const ovulationCycleDay = avgCycleLength - 13;
   if (cycleDay <= avgPeriodLength) {
-    return { day: cycleDay, phase: 'period', phaseKa: 'მენსტრუაცია' };
+    return { day: cycleDay, phase: 'period', phaseKa: en ? 'Period' : 'მენსტრუაცია' };
   }
   if (cycleDay >= ovulationCycleDay - 5 && cycleDay <= ovulationCycleDay + 1) {
     return {
       day: cycleDay,
       phase: cycleDay === ovulationCycleDay ? 'ovulation' : 'fertile',
-      phaseKa: cycleDay === ovulationCycleDay ? 'ოვულაცია' : 'ნაყოფიერი ფანჯარა',
+      phaseKa: en
+        ? cycleDay === ovulationCycleDay
+          ? 'Ovulation'
+          : 'Fertile window'
+        : cycleDay === ovulationCycleDay
+          ? 'ოვულაცია'
+          : 'ნაყოფიერი ფანჯარა',
     };
   }
   if (cycleDay > ovulationCycleDay + 1) {
-    return { day: cycleDay, phase: 'luteal', phaseKa: 'ლუთეალური ფაზა' };
+    return { day: cycleDay, phase: 'luteal', phaseKa: en ? 'Luteal phase' : 'ლუთეალური ფაზა' };
   }
-  return { day: cycleDay, phase: 'follicular', phaseKa: 'ფოლიკულური ფაზა' };
+  return { day: cycleDay, phase: 'follicular', phaseKa: en ? 'Follicular phase' : 'ფოლიკულური ფაზა' };
 }
 
 /** Instant Flo-like tips (no AI) — shown while / as fallback to EvidenceMD. */
-export function buildLocalInsights({ profile, logs, predictions, pregnancy, averages, today, contraception }) {
+export function buildLocalInsights({ profile, logs, predictions, pregnancy, averages, today, contraception, lang = 'ka' }) {
+  const en = lang === 'en';
   const phase = detectCyclePhase({
     lastPeriodStart: toDateKey(profile.lastPeriodStart),
     avgCycleLength: averages?.usedCycleLength ?? profile.avgCycleLength,
     avgPeriodLength: averages?.usedPeriodLength ?? profile.avgPeriodLength,
     today: today || todayInTimeZone(),
+    lang,
   });
   const flags = cycleHonestyFlags({
     confidence: predictions?.confidence,
@@ -667,27 +703,35 @@ export function buildLocalInsights({ profile, logs, predictions, pregnancy, aver
     title: phase.phaseKa,
     body:
       phase.day != null
-        ? `დღეს ციკლის ${phase.day}-ე დღეა. სავარაუდო ფაზა: ${phase.phaseKa}. ეს კალენდარული შეფასებაა, არა ჰორმონის გაზომვა.`
-        : 'მონიშნე ბოლო მენსტრუაციის დასაწყისი უფრო ზუსტი პროგნოზებისთვის.',
-    action: 'გახსენი დღის აღრიცხვა',
+        ? en
+          ? `Today is day ${phase.day} of your cycle. Likely phase: ${phase.phaseKa}. This is a calendar estimate, not a hormone measurement.`
+          : `დღეს ციკლის ${phase.day}-ე დღეა. სავარაუდო ფაზა: ${phase.phaseKa}. ეს კალენდარული შეფასებაა, არა ჰორმონის გაზომვა.`
+        : en
+          ? 'Mark when your last period started for more accurate estimates.'
+          : 'მონიშნე ბოლო მენსტრუაციის დასაწყისი უფრო ზუსტი პროგნოზებისთვის.',
+    action: en ? "Open today's log" : 'გახსენი დღის აღრიცხვა',
   });
 
   if (symptoms.includes('cramps') || symptoms.includes('back_pain')) {
     cards.push({
       id: 'cramps_care',
       tone: 'care',
-      title: 'კრუნჩხვების შემსუბუქება',
-      body: 'სითბო მუცელზე, მსუბუქი გაჭიმვა და ჰიდრატაცია ხშირად ეხმარება. ძლიერი ტკივილისას მიმართე ექიმს.',
-      action: 'დალიე წყალი და დაისვენე',
+      title: en ? 'Easing cramps' : 'კრუნჩხვების შემსუბუქება',
+      body: en
+        ? 'Warmth on your belly, gentle stretching and staying hydrated often help. If the pain is severe, see a doctor.'
+        : 'სითბო მუცელზე, მსუბუქი გაჭიმვა და ჰიდრატაცია ხშირად ეხმარება. ძლიერი ტკივილისას მიმართე ექიმს.',
+      action: en ? 'Drink some water and rest' : 'დალიე წყალი და დაისვენე',
     });
   }
   if (moods.includes('anxious') || moods.includes('irritable') || moods.includes('sad')) {
     cards.push({
       id: 'mood_support',
       tone: 'mood',
-      title: 'განწყობის მხარდაჭერა',
-      body: 'მოკლე სეირნობა, სუნთქვის ვარჯიში ან საყვარელ ადამიანთან საუბარი შეუძლია დაძაბულობის შემცირებას.',
-      action: '5 წუთი სიღრმისეული სუნთქვა',
+      title: en ? 'Supporting your mood' : 'განწყობის მხარდაჭერა',
+      body: en
+        ? 'A short walk, a breathing exercise or talking with someone you love can help ease tension.'
+        : 'მოკლე სეირნობა, სუნთქვის ვარჯიში ან საყვარელ ადამიანთან საუბარი შეუძლია დაძაბულობის შემცირებას.',
+      action: en ? '5 minutes of deep breathing' : '5 წუთი სიღრმისეული სუნთქვა',
     });
   }
   if (
@@ -698,28 +742,34 @@ export function buildLocalInsights({ profile, logs, predictions, pregnancy, aver
     cards.push({
       id: 'ttc_window',
       tone: 'fertile',
-      title: 'სავარაუდო ნაყოფიერი ფანჯარა',
-      body: ttcWindowBody(predictions, flags),
-      action: 'აღრიცხე BBT ან ლორწო',
+      title: en ? 'Estimated fertile window' : 'სავარაუდო ნაყოფიერი ფანჯარა',
+      body: ttcWindowBody(predictions, flags, lang),
+      action: en ? 'Log BBT or cervical mucus' : 'აღრიცხე BBT ან ლორწო',
     });
     cards.push(
       ...buildTtcObservationCards({
         logs,
         today: today || todayInTimeZone(),
         lastPeriodStart: toDateKey(profile.lastPeriodStart),
+        lang,
       }),
     );
   }
   if (profile.mode === 'PREGNANCY' && pregnancy?.age) {
-    const source =
-      pregnancy.referenceType === 'LMP'
+    const source = en
+      ? pregnancy.referenceType === 'LMP'
+        ? 'Estimate based on your last menstrual period (LMP)'
+        : 'Estimate based on the date you chose'
+      : pregnancy.referenceType === 'LMP'
         ? 'LMP-ზე დაფუძნებული შეფასება'
         : 'არჩეულ თარიღზე დაფუძნებული შეფასება';
     cards.push({
       id: 'preg_week',
       tone: 'pregnancy',
-      title: 'ორსულობის რეჟიმი',
-      body: `კვირა ${pregnancy.age.week} + ${pregnancy.age.day} დღე. ${source}. ეს არ არის დიაგნოზი.`,
+      title: en ? 'Pregnancy mode' : 'ორსულობის რეჟიმი',
+      body: en
+        ? `Week ${pregnancy.age.week} + ${pregnancy.age.day} ${pregnancy.age.day === 1 ? 'day' : 'days'}. ${source}. This is not a diagnosis.`
+        : `კვირა ${pregnancy.age.week} + ${pregnancy.age.day} დღე. ${source}. ეს არ არის დიაგნოზი.`,
       action: null,
     });
   }
@@ -727,11 +777,14 @@ export function buildLocalInsights({ profile, logs, predictions, pregnancy, aver
     cards.push({
       id: 'next_period',
       tone: 'energy',
-      title:
-        contraception?.bleedingLabel === 'bleeding'
+      title: en
+        ? contraception?.bleedingLabel === 'bleeding'
+          ? 'Estimated next bleed'
+          : 'Estimated next period'
+        : contraception?.bleedingLabel === 'bleeding'
           ? 'სავარაუდო შემდეგი სისხლდენა'
           : 'სავარაუდო შემდეგი მენსტრუაცია',
-      body: nextPeriodEstimateBody(predictions.nextPeriodStart, flags),
+      body: nextPeriodEstimateBody(predictions.nextPeriodStart, flags, lang),
       action: null,
     });
   }
@@ -739,8 +792,13 @@ export function buildLocalInsights({ profile, logs, predictions, pregnancy, aver
   const filtered = contraceptionInsightsFilter(cards, contraception);
 
   return {
-    headline:
-      contraception?.predictionAvailability === 'LIMITED'
+    headline: en
+      ? contraception?.predictionAvailability === 'LIMITED'
+        ? 'Your logs and contraception context'
+        : phase.day != null
+          ? `Today: likely ${phase.phaseKa.toLowerCase()}`
+          : 'Tips for your cycle'
+      : contraception?.predictionAvailability === 'LIMITED'
         ? 'აღრიცხვები და კონტრაცეფციის კონტექსტი'
         : phase.day != null
           ? `დღეს: სავარაუდო ${phase.phaseKa}`
@@ -921,7 +979,8 @@ export function detectLatePeriod({
   return empty;
 }
 
-export function buildCycleAlerts({ profile, logs, predictions, inferred, today, forecastEligibility }) {
+export function buildCycleAlerts({ profile, logs, predictions, inferred, today, forecastEligibility, lang = 'ka' }) {
+  const en = lang === 'en';
   const alerts = [];
   const todayKey = today || todayInTimeZone();
   const conditions = parseConditions(profile);
@@ -935,7 +994,9 @@ export function buildCycleAlerts({ profile, logs, predictions, inferred, today, 
   if (heavyRun >= 8) {
     alerts.push({
       level: 'urgent',
-      messageKa: '8+ დღეა ძლიერი გამონადენი აღრიცხულია — მიმართე გინეკოლოგს.',
+      messageKa: en
+        ? 'You have logged heavy flow for 8 or more days. Please see a gynecologist.'
+        : '8+ დღეა ძლიერი გამონადენი აღრიცხულია — მიმართე გინეკოლოგს.',
       action: 'chat',
     });
   }
@@ -947,7 +1008,7 @@ export function buildCycleAlerts({ profile, logs, predictions, inferred, today, 
     if (lastGap > 35 || lastGap < 21) {
       alerts.push({
         level: profile.isIrregular ? 'warn' : 'info',
-        messageKa: irregularLengthAlertKa(lastGap),
+        messageKa: irregularLengthAlertKa(lastGap, lang),
         action: 'chat',
       });
     }
@@ -964,7 +1025,7 @@ export function buildCycleAlerts({ profile, logs, predictions, inferred, today, 
   if (!peri && late.status === 'late') {
     alerts.push({
       level: 'warn',
-      messageKa: latePeriodAlertKa(),
+      messageKa: latePeriodAlertKa(lang),
       action: 'chat',
       late,
     });
@@ -973,7 +1034,7 @@ export function buildCycleAlerts({ profile, logs, predictions, inferred, today, 
   if (conditions.includes('pcos')) {
     alerts.push({
       level: 'info',
-      messageKa: pcosCautionKa(),
+      messageKa: pcosCautionKa(lang),
       action: null,
     });
   }
@@ -981,8 +1042,9 @@ export function buildCycleAlerts({ profile, logs, predictions, inferred, today, 
   if (conditions.includes('endometriosis')) {
     alerts.push({
       level: 'info',
-      messageKa:
-        'ენდომეტრიოზისას ტკივილი და სიმპტომები შეიძლება ციკლის გარეთაც გამოჩნდეს — აღრიცხე ყველა დღე.',
+      messageKa: en
+        ? 'With endometriosis, pain and symptoms can appear outside your period too, so log every day.'
+        : 'ენდომეტრიოზისას ტკივილი და სიმპტომები შეიძლება ციკლის გარეთაც გამოჩნდეს — აღრიცხე ყველა დღე.',
       action: null,
     });
   }
@@ -1122,7 +1184,7 @@ export function buildCycleAiUserPrompt({ profile, logs, predictions, pregnancy, 
     .join('\n');
 }
 
-export function parseCycleInsightsJson(raw) {
+export function parseCycleInsightsJson(raw, lang = 'ka') {
   if (!raw || typeof raw !== 'string') return null;
   let text = raw.trim();
   const fence = text.match(/```(?:json)?\s*([\s\S]*?)```/i);
@@ -1140,14 +1202,14 @@ export function parseCycleInsightsJson(raw) {
         tone: ['calm', 'energy', 'care', 'fertile', 'pregnancy', 'mood'].includes(card.tone)
           ? card.tone
           : 'calm',
-        title: String(card.title || 'რჩევა').slice(0, 80),
+        title: String(card.title || (lang === 'en' ? 'Tip' : 'რჩევა')).slice(0, 80),
         body: String(card.body || '').slice(0, 400),
         action: card.action ? String(card.action).slice(0, 80) : null,
       }))
       .filter((c) => c.body);
     if (!cards.length) return null;
     return {
-      headline: String(data.headline || 'დღის რჩევები').slice(0, 100),
+      headline: String(data.headline || (lang === 'en' ? 'Tips for today' : 'დღის რჩევები')).slice(0, 100),
       phaseLabel: data.phaseLabel ? String(data.phaseLabel).slice(0, 60) : null,
       cards,
       source: 'ai',

@@ -15,6 +15,7 @@ import { formatCycleDateKa } from '@/lib/cycleCivilDateKa';
 import { completeLabel, kindLabel, newPetsRequestId, petsCareErrorKind, petsCareErrorMessage } from '@/lib/petsCare';
 import { todayIsoLocal } from '@/lib/visitReminders';
 import { useThemeColors } from '@/theme/colors';
+import { tx } from '@/i18n/locale';
 
 function OccurrenceCard({
   row,
@@ -143,8 +144,8 @@ export default function PetCareHubScreen() {
         }}
       />
       <PetPageScroll>
-        <PetIntro title="ზრუნვა, თავისი დროით." body="დაგეგმილი პროცედურა შესრულებულად მხოლოდ შენი დადასტურების შემდეგ ჩაიწერება. მიუთითე ჩატარების რეალური თარიღი." />
-        {error ? <><PetErrorText message={petsCareErrorMessage(error, { ...ka.pets, offline: ka.common.networkError })} /><Button label="განახლება" variant="secondary" onPress={() => void load()} /></> : null}
+        <PetIntro title={tx('ზრუნვა, თავისი დროით.', 'Care, right on time.')} body={tx('დაგეგმილი პროცედურა შესრულებულად მხოლოდ შენი დადასტურების შემდეგ ჩაიწერება. მიუთითე ჩატარების რეალური თარიღი.', 'A planned procedure is marked done only after you confirm it. Enter the date it actually happened.')} />
+        {error ? <><PetErrorText message={petsCareErrorMessage(error, { ...ka.pets, offline: ka.common.networkError })} /><Button label={tx('განახლება', 'Refresh')} variant="secondary" onPress={() => void load()} /></> : null}
         {overdue.length ? (
           <View className="gap-2">
             <HomeSectionTitle title={ka.pets.overdue} />

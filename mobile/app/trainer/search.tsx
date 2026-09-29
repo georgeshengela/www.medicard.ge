@@ -9,6 +9,7 @@ import type { GymBrand, TrainerCard } from '@/lib/coach';
 import { Avatar, Badge, Card, Chip, CoachHeader, EmptyNote, ErrorBox, Input, Loading, coachStyles } from '@/components/coach/CoachUI';
 import { HUB, hubText } from '@/theme/hub';
 import { useThemeColors } from '@/theme/colors';
+import { tx } from '@/i18n/locale';
 
 /** Find a verified trainer by name or by the gym you go to. */
 export default function TrainerSearchScreen() {
@@ -32,7 +33,7 @@ export default function TrainerSearchScreen() {
         setError(null);
       }
     } catch (e) {
-      setError(e instanceof ApiError ? e.message : 'ძებნა ვერ მოხერხდა.');
+      setError(e instanceof ApiError ? e.message : tx('ძებნა ვერ მოხერხდა.', 'Search failed.'));
     }
   }, []);
 
@@ -53,16 +54,16 @@ export default function TrainerSearchScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: c.bg100 }}>
-      <CoachHeader title="ტრენერის მოძებნა" fallback="/trainer" />
+      <CoachHeader title={tx('ტრენერის მოძებნა', 'Find a trainer')} fallback="/trainer" />
       <View style={{ paddingHorizontal: HUB.gutter, gap: 10 }}>
         <View>
-          <Input value={q} onChangeText={setQ} placeholder="ტრენერის სახელი ან სპეციალიზაცია" returnKeyType="search" style={{ paddingLeft: 42 }} />
+          <Input value={q} onChangeText={setQ} placeholder={tx('ტრენერის სახელი ან სპეციალიზაცია', 'Trainer name or specialty')} returnKeyType="search" style={{ paddingLeft: 42 }} />
           <Search size={18} color={c.text300} style={{ position: 'absolute', left: 14, top: 16 }} />
         </View>
         <View style={[coachStyles.row, { gap: 8 }]}>
-          <Chip label={gym ? gym.label : 'დარბაზი: ყველა'} selected={Boolean(gym)} onPress={() => setPickGym((v) => !v)} />
+          <Chip label={gym ? gym.label : tx('დარბაზი: ყველა', 'Gym: all')} selected={Boolean(gym)} onPress={() => setPickGym((v) => !v)} />
           {gym ? (
-            <Pressable accessibilityRole="button" accessibilityLabel="დარბაზის ფილტრის მოხსნა" onPress={() => setGym(null)} hitSlop={10}>
+            <Pressable accessibilityRole="button" accessibilityLabel={tx('დარბაზის ფილტრის მოხსნა', 'Clear gym filter')} onPress={() => setGym(null)} hitSlop={10}>
               <X size={18} color={c.text300} />
             </Pressable>
           ) : null}
@@ -71,7 +72,7 @@ export default function TrainerSearchScreen() {
 
       {pickGym ? (
         <View style={{ flex: 1, paddingHorizontal: HUB.gutter, paddingTop: 10 }}>
-          <Input value={gymQ} onChangeText={setGymQ} placeholder="მოძებნე დარბაზი: Oktopus, Aspria, ვაკე…" autoFocus />
+          <Input value={gymQ} onChangeText={setGymQ} placeholder={tx('მოძებნე დარბაზი: Oktopus, Aspria, ვაკე…', 'Find a gym: Oktopus, Aspria, Vake…')} autoFocus />
           <FlatList
             data={gymRows}
             keyExtractor={(g) => g.id}
@@ -104,18 +105,18 @@ export default function TrainerSearchScreen() {
           contentContainerStyle={{ paddingHorizontal: HUB.gutter, paddingTop: 14, paddingBottom: insets.bottom + 24, gap: 12 }}
           ListHeaderComponent={error ? <ErrorBox message={error} /> : trainers === null ? <Loading /> : null}
           ListEmptyComponent={
-            trainers ? <EmptyNote icon={Search} title="ტრენერი ვერ მოიძებნა" body="სცადე სხვა დარბაზი ან სახელი. შენს ტრენერს სთხოვე, დარეგისტრირდეს MEDICARD-ში — კოდით პირდაპირ დაგიკავშირდები." /> : null
+            trainers ? <EmptyNote icon={Search} title={tx('ტრენერი ვერ მოიძებნა', 'No trainers found')} body={tx('სცადე სხვა დარბაზი ან სახელი. შენს ტრენერს სთხოვე, დარეგისტრირდეს MEDICARD-ში — კოდით პირდაპირ დაგიკავშირდები.', 'Try another gym or name. Ask your trainer to sign up on MEDICARD — then you can connect directly with their code.')} /> : null
           }
           renderItem={({ item: t }) => (
-            <Card onPress={() => router.push(`/trainer/connect?trainerId=${encodeURIComponent(t.id)}` as never)} accessibilityLabel={`${t.displayName}, ტრენერი`} style={{ gap: 10 }}>
+            <Card onPress={() => router.push(`/trainer/connect?trainerId=${encodeURIComponent(t.id)}` as never)} accessibilityLabel={tx(`${t.displayName}, ტრენერი`, `${t.displayName}, trainer`)} style={{ gap: 10 }}>
               <View style={coachStyles.row}>
                 <Avatar avatarId={t.avatarId} photoUrl={t.avatarUrl} name={t.displayName} size={52} verified={t.verified} />
                 <View style={{ flex: 1, gap: 3 }}>
                   <Text style={[hubText.cardTitle, { color: c.text100, fontSize: 16 }]}>{t.displayName}</Text>
                   <Text numberOfLines={1} style={[hubText.caption, { color: c.text300 }]}>{t.gyms.map((g) => `${g.brand} ${g.name}`).join(' · ')}</Text>
                   <View style={[coachStyles.row, { gap: 6, flexWrap: 'wrap' }]}>
-                    {t.experienceYears ? <Badge label={`${t.experienceYears} წელი`} /> : null}
-                    {t.clients ? <Badge label={`${t.clients} კლიენტი MEDICARD-ში`} tone="brand" /> : null}
+                    {t.experienceYears ? <Badge label={tx(`${t.experienceYears} წელი`, `${t.experienceYears} ${t.experienceYears === 1 ? 'yr' : 'yrs'}`)} /> : null}
+                    {t.clients ? <Badge label={tx(`${t.clients} კლიენტი MEDICARD-ში`, `${t.clients} ${t.clients === 1 ? 'client' : 'clients'} on MEDICARD`)} tone="brand" /> : null}
                   </View>
                 </View>
                 <ChevronRight size={18} color={c.text300} />

@@ -11,6 +11,7 @@ import { ka } from '@/i18n/ka';
 import { bmiFromWeight } from '@/lib/bmi';
 import { loadWeightLogs, removeWeightLog, todayYmd } from '@/lib/weightGoal';
 import type { WeightLog } from '@/types/weightGoal';
+import { dateLocale } from '@/i18n/locale';
 
 export default function WeightHistoryScreen() {
   const T = useFigmaWeight();
@@ -115,7 +116,7 @@ function groupLogs(logs: WeightLog[]) {
     label:
       date === today
         ? ka.common.today
-        : new Date(`${date}T12:00:00`).toLocaleDateString('ka-GE', { weekday: 'long', month: 'short', day: 'numeric' }),
+        : new Date(`${date}T12:00:00`).toLocaleDateString(dateLocale(), { weekday: 'long', month: 'short', day: 'numeric' }),
     rows,
   }));
 }

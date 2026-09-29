@@ -3,6 +3,7 @@ import { Text, View } from 'react-native';
 import { PHYSICAL_SYMPTOMS, MOOD_OPTIONS } from '@/constants/cycle';
 import { CycleCard } from '@/components/cycle/CycleUI';
 import { ka } from '@/i18n/ka';
+import { tx } from '@/i18n/locale';
 import type { CycleBundle } from '@/lib/api';
 import { hasPmsPattern, pmsHeatmapRows } from '@/lib/cycleAnalytics';
 import { useCycleColors } from '@/theme/cycle';
@@ -52,7 +53,7 @@ export function CyclePmsHeatmap({ bundle, compact }: Props) {
           const count = byDay[day]?.count ?? 0;
           const barH = count ? Math.max(8, Math.round((count / max) * (compact ? 36 : 56))) : 4;
           return (
-            <View key={day} accessible accessibilityLabel={`${day} დღით ადრე: ${count} ჩანაწერი`} style={{ flex: 1, alignItems: 'center' }}>
+            <View key={day} accessible accessibilityLabel={tx(`${day} დღით ადრე: ${count} ჩანაწერი`, `${day} ${day === 1 ? 'day' : 'days'} before: ${count} ${count === 1 ? 'entry' : 'entries'}`)} style={{ flex: 1, alignItems: 'center' }}>
               <View
                 style={{
                   width: '100%',

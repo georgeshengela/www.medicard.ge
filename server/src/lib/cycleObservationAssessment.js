@@ -31,9 +31,17 @@ export const PERIMENOPAUSE_DAILY_ASSESSMENT_KEYS = Object.freeze([
   'fatigue',
 ]);
 
-function httpError(status, message) {
+/** English for the Georgian messages below (error middleware sends `messageEn` to English requests). */
+const MESSAGES_EN = {
+  'აღრიცხვის შეფასება არასწორია.': 'The log assessment is not valid.',
+  'უცნობი აღრიცხვა.': 'Unknown log entry.',
+};
+
+function httpError(status, message, messageEn) {
   const err = new Error(message);
   err.status = status;
+  const en = messageEn || MESSAGES_EN[message];
+  if (en) err.messageEn = en;
   return err;
 }
 
@@ -64,7 +72,7 @@ export function parseObservationAssessments(raw, { strict = false } = {}) {
     if (value == null || value === '' || value === false || value === ASSESSMENT_STATES.UNKNOWN) {
       continue;
     }
-    if (strict) throw httpError(400, `არასწორი ${key}.`);
+    if (strict) throw httpError(400, `არასწორი ${key}.`, `Invalid ${key}.`);
   }
   return out;
 }

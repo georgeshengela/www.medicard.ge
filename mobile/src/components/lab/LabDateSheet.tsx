@@ -1,3 +1,4 @@
+import { tx } from '@/i18n/locale';
 import React, { useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -132,7 +133,7 @@ export function LabDateSheet({ visible, value, onConfirm, onClose, saving = fals
           </Pressable>
           {error ? <Text accessibilityRole="alert" style={{ fontFamily: 'NotoSansGeorgian_400Regular', color: T.textPrimary, fontSize: 14, lineHeight: 21 }}>{error}</Text> : null}
           <Pressable accessibilityRole="button" disabled={saving} onPress={onClose} style={{ minHeight: 44, alignItems: 'center', justifyContent: 'center' }}>
-            <Text style={{ fontFamily: 'NotoSansGeorgian_600SemiBold', color: T.textSecondary }}>მოგვიანებით</Text>
+            <Text style={{ fontFamily: 'NotoSansGeorgian_600SemiBold', color: T.textSecondary }}>{tx('მოგვიანებით', 'Later')}</Text>
           </Pressable>
           </ScrollView>
         </View>

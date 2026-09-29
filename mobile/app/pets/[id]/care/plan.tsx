@@ -30,6 +30,7 @@ import { isoToDigits } from '@/lib/birthdate';
 import { formatCycleDateKa } from '@/lib/cycleCivilDateKa';
 import { kindLabel, newPetsRequestId, petsCareErrorMessage, summarizePlanKa } from '@/lib/petsCare';
 import { todayIsoLocal } from '@/lib/visitReminders';
+import { tx } from '@/i18n/locale';
 
 function digitsToIso(digits: string): string | null {
   if (!digits) return null;
@@ -164,7 +165,7 @@ export default function PetCarePlanScreen() {
         </>
       }
     >
-      <Text style={{ fontFamily: "NotoSansGeorgian_400Regular", fontSize: 14, lineHeight: 22 }} className="text-text-200">დაგეგმე მომავალი მოვლა. დოზა და სიხშირე მიუთითე ვეტერინარის დანიშნულების ან პროდუქტის ინსტრუქციის მიხედვით.</Text>
+      <Text style={{ fontFamily: "NotoSansGeorgian_400Regular", fontSize: 14, lineHeight: 22 }} className="text-text-200">{tx('დაგეგმე მომავალი მოვლა. დოზა და სიხშირე მიუთითე ვეტერინარის დანიშნულების ან პროდუქტის ინსტრუქციის მიხედვით.', 'Plan upcoming care. Set the dose and frequency from your vet’s prescription or the product instructions.')}</Text>
       <CareKindChips
         value={kind}
         onChange={(next) => {

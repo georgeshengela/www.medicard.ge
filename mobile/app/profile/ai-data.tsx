@@ -6,7 +6,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AiPrivacySummary } from '@/components/privacy/AiPrivacySummary';
 import { ApiError, api } from '@/lib/api';
 import type { AiConsentStatus } from '@/lib/aiSharingConsent';
-import { deviceLanguageTag, disclosureCopy, isGeorgianLocale } from '@/lib/aiDisclosureCopy';
+import { disclosureCopy } from '@/lib/aiDisclosureCopy';
+import { isEn } from '@/i18n/locale';
 import { formatRelative } from '@/lib/format';
 import { useThemeColors } from '@/theme/colors';
 
@@ -18,7 +19,7 @@ export default function AiDataProcessingScreen() {
   const [status, setStatus] = useState<AiConsentStatus | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  const english = !isGeorgianLocale(deviceLanguageTag());
+  const english = isEn();
 
   const load = useCallback(() => {
     setBusy(true);

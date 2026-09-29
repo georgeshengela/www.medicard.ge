@@ -19,6 +19,7 @@ import { localAccountId } from '@/lib/localAccount';
 import { useThemeColors } from '@/theme/colors';
 import { useAuth } from '@/store/AuthContext';
 import { consumeAssistantLaunch } from '@/lib/assistant';
+import { tx } from '@/i18n/locale';
 
 /**
  * Medi's clinical conversation ("ექიმთან საუბარი") and deep analysis ("ღრმა ანალიზი").
@@ -227,11 +228,11 @@ function MediConsultationContent({ apiMode, sessionId: initialSessionId, prefill
           }}
           showsVerticalScrollIndicator={false}
           ItemSeparatorComponent={() => <View style={{ height: FIGMA_CHAT.messageGap }} />}
-          ListEmptyComponent={historyState === 'loading' ? <View style={{ padding: 28, gap: 12, alignItems: 'center' }}><ActivityIndicator color={FIGMA_CHAT.brand} /><Text style={{ color: FIGMA_CHAT.textSecondary }}>საუბარი იტვირთება…</Text></View> : historyState === 'error' ? (
+          ListEmptyComponent={historyState === 'loading' ? <View style={{ padding: 28, gap: 12, alignItems: 'center' }}><ActivityIndicator color={FIGMA_CHAT.brand} /><Text style={{ color: FIGMA_CHAT.textSecondary }}>{tx('საუბარი იტვირთება…', 'Loading conversation…')}</Text></View> : historyState === 'error' ? (
             <View style={{ padding: 20, gap: 12 }}>
-              <Text style={{ color: colors.danger, fontFamily: 'NotoSansGeorgian_400Regular' }}>საუბარი ვერ ჩაიტვირთა. შეამოწმე კავშირი და სცადე ხელახლა.</Text>
+              <Text style={{ color: colors.danger, fontFamily: 'NotoSansGeorgian_400Regular' }}>{tx('საუბარი ვერ ჩაიტვირთა. შეამოწმე კავშირი და სცადე ხელახლა.', "Couldn't load the conversation. Check your connection and try again.")}</Text>
               <Pressable accessibilityRole="button" onPress={() => setHistoryAttempt(n => n + 1)} style={{ minHeight: 48, padding: 12, borderRadius: 14, backgroundColor: FIGMA_CHAT.brandQuaternary }}>
-                <Text style={{ color: FIGMA_CHAT.brand, textAlign: 'center', fontFamily: 'NotoSansGeorgian_600SemiBold' }}>ხელახლა ცდა</Text>
+                <Text style={{ color: FIGMA_CHAT.brand, textAlign: 'center', fontFamily: 'NotoSansGeorgian_600SemiBold' }}>{tx('ხელახლა ცდა', 'Try again')}</Text>
               </Pressable>
             </View>
           ) : <View style={{ gap: 12 }}>
@@ -274,7 +275,7 @@ function MediConsultationContent({ apiMode, sessionId: initialSessionId, prefill
                 >
                   <Text style={{ fontSize: 14, color: colors.danger, fontFamily: 'NotoSansGeorgian_400Regular', lineHeight: 21 }}>{error}</Text>
                   {failedMessage ? <Pressable accessibilityRole="button" disabled={sending} onPress={() => void send(failedMessage)} style={{ minHeight: 44, justifyContent: 'center', marginTop: 4 }}>
-                    <Text style={{ color: colors.danger, fontFamily: 'NotoSansGeorgian_700Bold' }}>ხელახლა გაგზავნა</Text>
+                    <Text style={{ color: colors.danger, fontFamily: 'NotoSansGeorgian_700Bold' }}>{tx('ხელახლა გაგზავნა', 'Resend')}</Text>
                   </Pressable> : null}
                 </View>
               ) : null}
@@ -282,8 +283,8 @@ function MediConsultationContent({ apiMode, sessionId: initialSessionId, prefill
             </View>
           }
         />
-        {scrolledUp && messages.length > 0 ? <Pressable accessibilityRole="button" accessibilityLabel="ბოლო შეტყობინებაზე გადასვლა" onPress={() => { nearBottom.current = true; setScrolledUp(false); scrollToEnd(); }} style={{ alignSelf: 'center', paddingHorizontal: 16, paddingVertical: 10, marginVertical: 4, borderRadius: 18, borderWidth: 1, borderColor: FIGMA_CHAT.brandBorderLight, backgroundColor: FIGMA_CHAT.brandQuaternary }}>
-          <Text style={{ color: FIGMA_CHAT.brand, fontFamily: 'NotoSansGeorgian_600SemiBold' }}>↓ ბოლო შეტყობინება</Text>
+        {scrolledUp && messages.length > 0 ? <Pressable accessibilityRole="button" accessibilityLabel={tx('ბოლო შეტყობინებაზე გადასვლა', 'Jump to the latest message')} onPress={() => { nearBottom.current = true; setScrolledUp(false); scrollToEnd(); }} style={{ alignSelf: 'center', paddingHorizontal: 16, paddingVertical: 10, marginVertical: 4, borderRadius: 18, borderWidth: 1, borderColor: FIGMA_CHAT.brandBorderLight, backgroundColor: FIGMA_CHAT.brandQuaternary }}>
+          <Text style={{ color: FIGMA_CHAT.brand, fontFamily: 'NotoSansGeorgian_600SemiBold' }}>{tx('↓ ბოლო შეტყობინება', '↓ Latest message')}</Text>
         </Pressable> : null}
       </ChatScreenShell>
 

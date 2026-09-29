@@ -4,6 +4,7 @@ import { ArrowUp, AudioLines, Keyboard as KeyboardIcon, Mic, Square, Volume2, Vo
 import { useThemeColors } from '@/theme/colors';
 import { ChatActionDock, useChatKeyboardOpen } from '@/components/chat/ChatScreenShell';
 import type { VoicePhase } from '@/lib/assistantVoiceSession';
+import { tx } from '@/i18n/locale';
 
 export function AssistantTalkDock(props: {
   tapMode?: boolean; voice: boolean; voiceOutput: boolean; phase: VoicePhase; duration: number; metering?: number;
@@ -44,15 +45,15 @@ export function AssistantTalkDock(props: {
     const frame = requestAnimationFrame(() => input.current?.focus());
     return () => cancelAnimationFrame(frame);
   }, [typing]);
-  const label = recording ? 'გისმენ' : preparing ? 'მიკროფონს ვამზადებ' : props.phase === 'transcribing' ? 'ვუსმენ შენს ჩანაწერს' : props.busy || (props.speechPhase === 'loading' ? 'ხმოვან პასუხს ვამზადებ' : props.speechPhase === 'speaking' ? 'Medi გპასუხობს' : props.reviewing ? 'შევინახოთ?' : 'მოუყევი Medi-ს');
-  const hint = recording ? `${Math.floor(props.duration / 1000)} / 60 წმ · ${toggleMode ? 'დასასრულებლად შეეხე' : 'გაგზავნისთვის აუშვი'}`
-    : processing ? 'ერთი წამით, დეტალებს ვამოწმებ' : props.reviewing ? 'თქვი „კი“, „არა“ ან შემისწორე დეტალი'
-      : toggleMode ? 'შეეხე დასაწყებად და კიდევ ერთხელ — დასასრულებლად' : 'დააჭირე · თქვი · აუშვი';
+  const label = recording ? tx('გისმენ', "I'm listening") : preparing ? tx('მიკროფონს ვამზადებ', 'Getting the mic ready') : props.phase === 'transcribing' ? tx('ვუსმენ შენს ჩანაწერს', 'Listening to your recording') : props.busy || (props.speechPhase === 'loading' ? tx('ხმოვან პასუხს ვამზადებ', 'Preparing the voice reply') : props.speechPhase === 'speaking' ? tx('Medi გპასუხობს', 'Medi is replying') : props.reviewing ? tx('შევინახოთ?', 'Save it?') : tx('მოუყევი Medi-ს', 'Tell Medi'));
+  const hint = recording ? `${Math.floor(props.duration / 1000)} / 60 ${tx('წმ', 's')} · ${toggleMode ? tx('დასასრულებლად შეეხე', 'Tap to finish') : tx('გაგზავნისთვის აუშვი', 'Release to send')}`
+    : processing ? tx('ერთი წამით, დეტალებს ვამოწმებ', 'One moment, checking the details') : props.reviewing ? tx('თქვი „კი“, „არა“ ან შემისწორე დეტალი', 'Say “yes”, “no” or correct a detail')
+      : toggleMode ? tx('შეეხე დასაწყებად და კიდევ ერთხელ — დასასრულებლად', 'Tap to start, tap again to finish') : tx('დააჭირე · თქვი · აუშვი', 'Hold · speak · release');
   const small = (Icon: typeof Mic, name: string, onPress: () => void, disabled = false, selected = false) => <Pressable accessibilityRole="button" accessibilityLabel={name} accessibilityState={{ disabled, selected }} disabled={disabled} onPress={onPress}
     style={{ width: 46, height: 46, borderRadius: 16, alignItems: 'center', justifyContent: 'center', backgroundColor: selected ? C.accent100 : C.bg200, opacity: disabled ? .4 : 1 }}><Icon size={21} color={C.primary100} /></Pressable>;
   if (props.formActive && keyboardOpen && props.formEditing) return <ChatActionDock><View style={{ flexDirection: 'row', gap: 10 }}>
-    <Pressable accessibilityRole="button" onPress={() => Keyboard.dismiss()} style={{ flex: 1, minHeight: 46, alignItems: 'center', justifyContent: 'center' }}><Text style={{ color: C.text200, fontFamily: 'NotoSansGeorgian_400Regular', fontSize: 13 }}>კლავიატურის დახურვა</Text></Pressable>
-    <Pressable accessibilityRole="button" disabled={processing} onPress={props.onSave} style={{ flex: 1, minHeight: 46, borderRadius: 14, backgroundColor: '#0F766E', alignItems: 'center', justifyContent: 'center', opacity: processing ? .5 : 1 }}><Text style={{ color: '#FFFFFF', fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 13 }}>{processing ? 'ვამოწმებ…' : 'შენახვა'}</Text></Pressable>
+    <Pressable accessibilityRole="button" onPress={() => Keyboard.dismiss()} style={{ flex: 1, minHeight: 46, alignItems: 'center', justifyContent: 'center' }}><Text style={{ color: C.text200, fontFamily: 'NotoSansGeorgian_400Regular', fontSize: 13 }}>{tx('კლავიატურის დახურვა', 'Hide keyboard')}</Text></Pressable>
+    <Pressable accessibilityRole="button" disabled={processing} onPress={props.onSave} style={{ flex: 1, minHeight: 46, borderRadius: 14, backgroundColor: '#0F766E', alignItems: 'center', justifyContent: 'center', opacity: processing ? .5 : 1 }}><Text style={{ color: '#FFFFFF', fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 13 }}>{processing ? tx('ვამოწმებ…', 'Checking…') : tx('შენახვა', 'Save')}</Text></Pressable>
   </View></ChatActionDock>;
   return <ChatActionDock style={props.voiceStage ? { borderTopWidth: 0, backgroundColor: C.bg100 } : undefined}><View style={{ gap: 10 }}>
     {props.voice && !keyboardOpen && !typing ? <>
@@ -61,11 +62,11 @@ export function AssistantTalkDock(props: {
         <Text style={{ color: C.text200, fontSize: 11, lineHeight: 17, textAlign: 'center', fontFamily: 'NotoSansGeorgian_400Regular' }}>{hint}</Text>
       </View>
       <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 30 }}>
-        {small(KeyboardIcon, 'ტექსტით გაგრძელება', () => { props.cancel(); setTyping(true); props.onMode(true); }, preparing || recording)}
+        {small(KeyboardIcon, tx('ტექსტით გაგრძელება', 'Continue by text'), () => { props.cancel(); setTyping(true); props.onMode(true); }, preparing || recording)}
         <View style={{ width: compact ? 78 : 118, height: compact ? 78 : 118, alignItems: 'center', justifyContent: 'center' }}>
           <Animated.View pointerEvents="none" style={{ position: 'absolute', width: compact ? 74 : 112, height: compact ? 74 : 112, borderRadius: 56, borderWidth: 1, borderColor: C.primary100, opacity: pulse.interpolate({ inputRange: [0, 1], outputRange: [.16, .32] }), transform: [{ scale: pulse.interpolate({ inputRange: [0, 1], outputRange: [1, 1.06] }) }] }} />
-          <Pressable testID="assistant-talk-button" accessibilityRole="button" accessibilityLabel={toggleMode ? (recording ? 'ჩაწერის დასრულება და გაგზავნა' : 'საუბრის დაწყება') : 'დააჭირე და გააჩერე საუბრისთვის'}
-            accessibilityHint={toggleMode ? 'შეხება იწყებს ჩაწერას, მეორე შეხება აგზავნის.' : 'აშვებისას Medi დაამუშავებს ნათქვამს. მარცხნივ გასრიალება აუქმებს.'} accessibilityState={{ disabled: locked, busy: preparing || processing }} disabled={locked}
+          <Pressable testID="assistant-talk-button" accessibilityRole="button" accessibilityLabel={toggleMode ? (recording ? tx('ჩაწერის დასრულება და გაგზავნა', 'Stop recording and send') : tx('საუბრის დაწყება', 'Start talking')) : tx('დააჭირე და გააჩერე საუბრისთვის', 'Press and hold to talk')}
+            accessibilityHint={toggleMode ? tx('შეხება იწყებს ჩაწერას, მეორე შეხება აგზავნის.', 'Tap to start recording, tap again to send.') : tx('აშვებისას Medi დაამუშავებს ნათქვამს. მარცხნივ გასრიალება აუქმებს.', 'Release and Medi processes what you said. Slide left to cancel.')} accessibilityState={{ disabled: locked, busy: preparing || processing }} disabled={locked}
             pressRetentionOffset={{ left: 90, right: 45, top: 45, bottom: 45 }}
             onPressIn={toggleMode ? undefined : event => { pressX.current = event.nativeEvent.pageX; canceled.current = false; props.start(); }}
             onPressOut={toggleMode ? undefined : () => { if (!canceled.current) props.release(); pressX.current = null; }}
@@ -76,21 +77,21 @@ export function AssistantTalkDock(props: {
             {preparing || processing ? <ActivityIndicator color="#FFFFFF" size="large" /> : recording ? <View style={{ flexDirection: 'row', gap: 4, height: 35, alignItems: 'center' }}>{[.35, .65, 1, .75, .45].map((level, index) => <View key={index} style={{ width: 5, borderRadius: 3, height: 8 + level * Math.max(8, Math.min(27, ((props.metering ?? -30) + 60) * .7)), backgroundColor: '#FFFFFF' }} />)}</View> : <Mic size={compact ? 26 : 34} strokeWidth={1.8} color="#FFFFFF" />}
           </Pressable>
         </View>
-        {recording || preparing ? small(X, 'ჩანაწერის გაუქმება', props.cancel) : props.speechPhase !== 'idle' ? small(Square, 'ხმოვანი პასუხის შეჩერება', props.stopSpeech) : small(props.muted || !props.voiceOutput ? VolumeX : Volume2, !props.voiceOutput ? 'ხმოვანი პასუხების სტატუსი' : props.muted ? 'ხმოვანი პასუხების ჩართვა' : 'ხმოვანი პასუხების გამორთვა', props.toggleSpeech)}
+        {recording || preparing ? small(X, tx('ჩანაწერის გაუქმება', 'Cancel recording'), props.cancel) : props.speechPhase !== 'idle' ? small(Square, tx('ხმოვანი პასუხის შეჩერება', 'Stop voice reply'), props.stopSpeech) : small(props.muted || !props.voiceOutput ? VolumeX : Volume2, !props.voiceOutput ? tx('ხმოვანი პასუხების სტატუსი', 'Voice replies status') : props.muted ? tx('ხმოვანი პასუხების ჩართვა', 'Turn on voice replies') : tx('ხმოვანი პასუხების გამორთვა', 'Turn off voice replies'), props.toggleSpeech)}
       </View>
     </> : <View style={{ gap: 8 }}>
       {props.voiceOutput ? <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 7, flex: 1 }}>
           {props.speechPhase === 'loading' ? <ActivityIndicator size="small" color={C.primary100} /> : <AudioLines size={16} color={C.primary100} />}
-          <Text accessibilityLiveRegion="polite" style={{ color: C.text200, fontSize: 11, fontFamily: 'NotoSansGeorgian_400Regular' }}>{props.speechPhase === 'speaking' ? 'Medi გპასუხობს' : props.speechPhase === 'loading' ? 'ხმოვან პასუხს ვამზადებ' : props.muted ? 'ხმა გამორთულია' : 'Medi ხმასაც გაგაგონებს'}</Text>
+          <Text accessibilityLiveRegion="polite" style={{ color: C.text200, fontSize: 11, fontFamily: 'NotoSansGeorgian_400Regular' }}>{props.speechPhase === 'speaking' ? tx('Medi გპასუხობს', 'Medi is replying') : props.speechPhase === 'loading' ? tx('ხმოვან პასუხს ვამზადებ', 'Preparing the voice reply') : props.muted ? tx('ხმა გამორთულია', 'Sound is off') : tx('Medi ხმასაც გაგაგონებს', 'Medi will also answer out loud')}</Text>
         </View>
-        {props.speechPhase !== 'idle' ? small(Square, 'ხმოვანი პასუხის შეჩერება', props.stopSpeech) : small(props.muted ? VolumeX : Volume2, props.muted ? 'ხმოვანი პასუხების ჩართვა' : 'ხმოვანი პასუხების გამორთვა', props.toggleSpeech)}
+        {props.speechPhase !== 'idle' ? small(Square, tx('ხმოვანი პასუხის შეჩერება', 'Stop voice reply'), props.stopSpeech) : small(props.muted ? VolumeX : Volume2, props.muted ? tx('ხმოვანი პასუხების ჩართვა', 'Turn on voice replies') : tx('ხმოვანი პასუხების გამორთვა', 'Turn off voice replies'), props.toggleSpeech)}
       </View> : null}
       <View style={{ flexDirection: 'row', gap: 8, alignItems: 'flex-end' }}>
-        {props.voice ? small(Mic, 'საუბრის ღილაკის გამოჩენა', () => { Keyboard.dismiss(); setTyping(false); props.onMode(false); }, processing) : null}
-        <TextInput onFocus={props.onTextFocus} ref={input} accessibilityLabel="შეტყობინება Medi-სთვის" value={props.text} onChangeText={props.onText} editable={!processing} multiline maxLength={4000} placeholder="რას გავაკეთებთ დღეს?" placeholderTextColor={C.text200}
+        {props.voice ? small(Mic, tx('საუბრის ღილაკის გამოჩენა', 'Show the talk button'), () => { Keyboard.dismiss(); setTyping(false); props.onMode(false); }, processing) : null}
+        <TextInput onFocus={props.onTextFocus} ref={input} accessibilityLabel={tx('შეტყობინება Medi-სთვის', 'Message to Medi')} value={props.text} onChangeText={props.onText} editable={!processing} multiline maxLength={4000} placeholder={tx('რას გავაკეთებთ დღეს?', 'What shall we do today?')} placeholderTextColor={C.text200}
           style={{ flex: 1, minHeight: 46, maxHeight: 110, padding: 12, borderRadius: 15, borderWidth: 1, borderColor: C.bg300, color: C.text100, fontSize: 14, fontFamily: 'NotoSansGeorgian_400Regular' }} />
-        <Pressable accessibilityRole="button" accessibilityLabel="შეტყობინების გაგზავნა" disabled={processing || !props.text.trim()} onPress={props.onSend} style={{ width: 46, height: 46, borderRadius: 15, backgroundColor: '#0F766E', alignItems: 'center', justifyContent: 'center', opacity: processing || !props.text.trim() ? .45 : 1 }}><ArrowUp size={22} color="#FFFFFF" /></Pressable>
+        <Pressable accessibilityRole="button" accessibilityLabel={tx('შეტყობინების გაგზავნა', 'Send message')} disabled={processing || !props.text.trim()} onPress={props.onSend} style={{ width: 46, height: 46, borderRadius: 15, backgroundColor: '#0F766E', alignItems: 'center', justifyContent: 'center', opacity: processing || !props.text.trim() ? .45 : 1 }}><ArrowUp size={22} color="#FFFFFF" /></Pressable>
       </View>
 
     </View>}

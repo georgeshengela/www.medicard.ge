@@ -7,6 +7,7 @@ import * as Haptics from "expo-haptics";
 import { APP_MODAL_PROPS, Modal } from "@/components/ui/appModal";
 import { useThemeColors } from "@/theme/colors";
 import { hubText } from "@/theme/hub";
+import { tx } from '@/i18n/locale';
 
 const BARCODE_TYPES = ["ean13", "ean8", "upc_a", "upc_e", "code128", "code39", "itf14"] as const;
 
@@ -84,11 +85,11 @@ export function BarcodeScannerModal({
           />
         ) : null}
         <View style={[s.top, { paddingTop: safe.top + 8 }]}>
-          <Pressable accessibilityRole="button" accessibilityLabel="დახურვა" onPress={onClose} style={s.round}>
+          <Pressable accessibilityRole="button" accessibilityLabel={tx("დახურვა", "Close")} onPress={onClose} style={s.round}>
             <X size={22} color="#FFFFFF" />
           </Pressable>
-          <Text style={[hubText.cardTitle, { color: "#FFFFFF", flex: 1, textAlign: "center" }]}>შტრიხკოდის სკანი</Text>
-          <Pressable accessibilityRole="button" accessibilityLabel={torch ? "ფანარის გამორთვა" : "ფანარის ჩართვა"} disabled={!granted} onPress={() => setTorch((v) => !v)} style={[s.round, { opacity: granted ? 1 : 0.4 }]}>
+          <Text style={[hubText.cardTitle, { color: "#FFFFFF", flex: 1, textAlign: "center" }]}>{tx("შტრიხკოდის სკანი", "Scan barcode")}</Text>
+          <Pressable accessibilityRole="button" accessibilityLabel={torch ? tx("ფანარის გამორთვა", "Turn off flashlight") : tx("ფანარის ჩართვა", "Turn on flashlight")} disabled={!granted} onPress={() => setTorch((v) => !v)} style={[s.round, { opacity: granted ? 1 : 0.4 }]}>
             {torch ? <FlashlightOff size={20} color="#FFFFFF" /> : <Flashlight size={20} color="#FFFFFF" />}
           </Pressable>
         </View>
@@ -99,20 +100,20 @@ export function BarcodeScannerModal({
             ))}
             {busy && <ActivityIndicator color="#5EEAD4" size="large" />}
           </View>
-          <Text style={[txt, s.hint]}>{busy ? "პროდუქტს ვეძებ…" : granted ? "მოათავსე შტრიხკოდი ჩარჩოში" : "კამერა გამორთულია — ჩართე ან აკრიფე კოდი"}</Text>
+          <Text style={[txt, s.hint]}>{busy ? tx("პროდუქტს ვეძებ…", "Looking up the product…") : granted ? tx("მოათავსე შტრიხკოდი ჩარჩოში", "Place the barcode inside the frame") : tx("კამერა გამორთულია — ჩართე ან აკრიფე კოდი", "Camera is off — turn it on or type the code")}</Text>
         </View>
         <View style={[s.bottom, { paddingBottom: Math.max(safe.bottom, 16) }]}>
           {!!error && <Text accessibilityRole="alert" style={[txt, { color: "#FCA5A5", fontSize: 13, lineHeight: 20 }]}>{error}</Text>}
           {!granted && (
             <Pressable accessibilityRole="button" onPress={() => void ask()} style={[s.primary, { backgroundColor: "#0D9488" }]}>
               <ScanBarcode size={18} color="#FFFFFF" />
-              <Text style={[hubText.link, { color: "#FFFFFF" }]}>{asked && permission && !permission.canAskAgain ? "ნებართვა პარამეტრებში ჩართე" : "კამერის ჩართვა"}</Text>
+              <Text style={[hubText.link, { color: "#FFFFFF" }]}>{asked && permission && !permission.canAskAgain ? tx("ნებართვა პარამეტრებში ჩართე", "Allow it in Settings") : tx("კამერის ჩართვა", "Turn on camera")}</Text>
             </Pressable>
           )}
           <View style={s.manualRow}>
             <TextInput
-              accessibilityLabel="შტრიხკოდის აკრეფა"
-              placeholder="ან აკრიფე ციფრები"
+              accessibilityLabel={tx("შტრიხკოდის აკრეფა", "Type barcode")}
+              placeholder={tx("ან აკრიფე ციფრები", "Or type the digits")}
               placeholderTextColor="#9CA3AF"
               value={manual}
               onChangeText={(v) => setManual(v.replace(/\D/g, "").slice(0, 14))}
@@ -121,11 +122,11 @@ export function BarcodeScannerModal({
               onSubmitEditing={submitManual}
               style={[s.input, { backgroundColor: "#1F2937", color: "#FFFFFF", borderColor: "#374151" }]}
             />
-            <Pressable accessibilityRole="button" accessibilityLabel="კოდის ძებნა" disabled={manual.length < 6 || busy} onPress={submitManual} style={[s.go, { backgroundColor: c.primary200, opacity: manual.length < 6 || busy ? 0.45 : 1 }]}>
-              <Text style={[hubText.link, { color: "#042F2E" }]}>ძებნა</Text>
+            <Pressable accessibilityRole="button" accessibilityLabel={tx("კოდის ძებნა", "Search code")} disabled={manual.length < 6 || busy} onPress={submitManual} style={[s.go, { backgroundColor: c.primary200, opacity: manual.length < 6 || busy ? 0.45 : 1 }]}>
+              <Text style={[hubText.link, { color: "#042F2E" }]}>{tx("ძებნა", "Search")}</Text>
             </Pressable>
           </View>
-          <Text style={[txt, { fontSize: 11, lineHeight: 17, color: "#9CA3AF" }]}>კამერის კადრი ტელეფონიდან არ იგზავნება. მხოლოდ კოდი მოწმდება Open Food Facts-ის ბაზაში.</Text>
+          <Text style={[txt, { fontSize: 11, lineHeight: 17, color: "#9CA3AF" }]}>{tx("კამერის კადრი ტელეფონიდან არ იგზავნება. მხოლოდ კოდი მოწმდება Open Food Facts-ის ბაზაში.", "The camera image never leaves your phone. Only the code is checked in the Open Food Facts database.")}</Text>
         </View>
       </KeyboardAvoidingView>
     </Modal>

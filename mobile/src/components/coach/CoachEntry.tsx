@@ -12,6 +12,7 @@ import { Avatar } from '@/components/coach/CoachUI';
 import { StyledQr } from '@/components/coach/StyledQr';
 import { HUB, hubText } from '@/theme/hub';
 import { useThemeColors } from '@/theme/colors';
+import { tx } from '@/i18n/locale';
 
 type State = { me: CoachMe; overview: ClientOverview | null };
 
@@ -41,14 +42,14 @@ export function HomeCoachSection() {
   if (!trainer && !state.overview?.link) return null;
   return (
     <View style={{ paddingHorizontal: HUB.gutter, marginTop: HUB.sectionGap }}>
-      <HomeSectionHeading title={trainer && !state.overview?.link ? 'ტრენერის რეჟიმი' : 'ჩემი ტრენერი'} linkLabel="გახსნა" onLink={() => router.push((trainer && !state.overview?.link ? '/coach' : '/trainer') as never)} />
+      <HomeSectionHeading title={trainer && !state.overview?.link ? tx('ტრენერის რეჟიმი', 'Trainer mode') : tx('ჩემი ტრენერი', 'My trainer')} linkLabel={tx('გახსნა', 'Open')} onLink={() => router.push((trainer && !state.overview?.link ? '/coach' : '/trainer') as never)} />
       {state.overview?.link ? (
-        <Pressable accessibilityRole="button" accessibilityLabel={next ? `შემდეგი ვარჯიში ${next.label}` : 'ჩემი ტრენერი'} onPress={() => router.push('/trainer' as never)} style={[s.card, { backgroundColor: HUB.spotlightBg }]}>
+        <Pressable accessibilityRole="button" accessibilityLabel={next ? tx(`შემდეგი ვარჯიში ${next.label}`, `Next workout ${next.label}`) : tx('ჩემი ტრენერი', 'My trainer')} onPress={() => router.push('/trainer' as never)} style={[s.card, { backgroundColor: HUB.spotlightBg }]}>
           <View style={s.tile}>
             <CalendarCheck2 size={21} color="#99F6E4" />
           </View>
           <View style={{ flex: 1, gap: 2 }}>
-            <Text style={[hubText.cardTitle, { color: '#FFFFFF', fontSize: 16 }]}>{next ? `${dayLabel(tbilisiYmd(next.startsAt))}, ${clockOf(next.startsAt)}` : 'ვარჯიში დაგეგმილი არ არის'}</Text>
+            <Text style={[hubText.cardTitle, { color: '#FFFFFF', fontSize: 16 }]}>{next ? `${dayLabel(tbilisiYmd(next.startsAt))}, ${clockOf(next.startsAt)}` : tx('ვარჯიში დაგეგმილი არ არის', 'No workout scheduled')}</Text>
             <Text style={[hubText.body, { color: '#C5DADA' }]} numberOfLines={1}>
               {next ? `${new Date(next.startsAt).getTime() - Date.now() < 6 * 3600000 ? `${relativeStart(next.startsAt)} · ` : ''}${next.kindLabel}${next.gym ? ` · ${next.gym.brand}` : ''} · ${state.overview.trainer?.displayName ?? ''}${next.clientConfirmedAt ? ' ✓' : ''}` : state.overview.trainer?.displayName ?? ''}
             </Text>
@@ -62,8 +63,8 @@ export function HomeCoachSection() {
             <Dumbbell size={21} color={c.primary100} />
           </View>
           <View style={{ flex: 1, gap: 2 }}>
-            <Text style={[hubText.cardTitle, { color: c.text100 }]}>ტრენერის სამუშაო სივრცე</Text>
-            <Text style={[hubText.caption, { color: c.text300 }]}>დღის განრიგი, კლიენტები, გეგმები</Text>
+            <Text style={[hubText.cardTitle, { color: c.text100 }]}>{tx('ტრენერის სამუშაო სივრცე', 'Trainer workspace')}</Text>
+            <Text style={[hubText.caption, { color: c.text300 }]}>{tx('დღის განრიგი, კლიენტები, გეგმები', 'Daily schedule, clients, plans')}</Text>
           </View>
           <ChevronRight size={18} color={c.text300} />
         </Pressable>
@@ -86,38 +87,38 @@ export function ProfileCoachSection() {
   const tiles: HubTile[] = [
     {
       key: 'photos',
-      title: 'ფოტო-პროგრესი',
-      detail: photos == null ? 'მანამდე / შემდეგ' : photos ? `${photos} ფოტო · შედარება` : 'პირველი ფოტო — შენი „მანამდე“',
+      title: tx('ფოტო-პროგრესი', 'Photo progress'),
+      detail: photos == null ? tx('მანამდე / შემდეგ', 'Before / after') : photos ? tx(`${photos} ფოტო · შედარება`, `${photos} ${photos === 1 ? 'photo' : 'photos'} · compare`) : tx('პირველი ფოტო — შენი „მანამდე“', 'First photo — your “before”'),
       href: '/trainer/progress',
       icon: Camera,
       ink: 'violet',
     },
     own?.status === 'PENDING'
-      ? { key: 'trainer', title: 'განაცხადი განხილვაშია', detail: '1–2 სამუშაო დღე · შეტყობინება მოგივა', href: '/trainer/apply', icon: Clock3, ink: 'amber' }
+      ? { key: 'trainer', title: tx('განაცხადი განხილვაშია', 'Application under review'), detail: tx('1–2 სამუშაო დღე · შეტყობინება მოგივა', '1–2 business days · we’ll notify you'), href: '/trainer/apply', icon: Clock3, ink: 'amber' }
       : own?.status === 'REJECTED'
-        ? { key: 'trainer', title: 'განაცხადს დაზუსტება სჭირდება', detail: 'ნახე კომენტარი და გაასწორე', href: '/trainer/apply', icon: CircleAlert, ink: 'rose' }
+        ? { key: 'trainer', title: tx('განაცხადს დაზუსტება სჭირდება', 'Your application needs changes'), detail: tx('ნახე კომენტარი და გაასწორე', 'See the comment and fix it'), href: '/trainer/apply', icon: CircleAlert, ink: 'rose' }
         : own?.status === 'VERIFIED'
-          ? { key: 'trainer', title: 'ტრენერის რეჟიმი', detail: 'დადასტურებული · კალენდარი და კლიენტები', href: '/coach', icon: BadgeCheck, ink: 'green' }
+          ? { key: 'trainer', title: tx('ტრენერის რეჟიმი', 'Trainer mode'), detail: tx('დადასტურებული · კალენდარი და კლიენტები', 'Verified · calendar and clients'), href: '/coach', icon: BadgeCheck, ink: 'green' }
           : own?.status === 'SUSPENDED'
-            ? { key: 'trainer', title: 'ტრენერის პროფილი შეჩერებულია', detail: 'დაგვიკავშირდი მხარდაჭერაში', href: '/trainer/apply', icon: CircleAlert, ink: 'rose' }
-            : { key: 'trainer', title: 'ტრენერი ხარ?', detail: 'დარეგისტრირდი — სამუშაო სივრცე უფასოდ', href: '/trainer/apply', icon: Award, ink: 'amber' },
+            ? { key: 'trainer', title: tx('ტრენერის პროფილი შეჩერებულია', 'Trainer profile suspended'), detail: tx('დაგვიკავშირდი მხარდაჭერაში', 'Contact support'), href: '/trainer/apply', icon: CircleAlert, ink: 'rose' }
+            : { key: 'trainer', title: tx('ტრენერი ხარ?', 'Are you a trainer?'), detail: tx('დარეგისტრირდი — სამუშაო სივრცე უფასოდ', 'Sign up — the workspace is free'), href: '/trainer/apply', icon: Award, ink: 'amber' },
   ];
 
   return (
     <View style={{ marginTop: HUB.sectionGap }}>
-      <HomeSectionHeading title="ფიტნესი · MEDI COACH" linkLabel="გახსნა" onLink={() => router.push('/trainer' as never)} />
+      <HomeSectionHeading title={tx('ფიტნესი · MEDI COACH', 'Fitness · MEDI COACH')} linkLabel={tx('გახსნა', 'Open')} onLink={() => router.push('/trainer' as never)} />
       <View style={[s.spot, { backgroundColor: HUB.spotlightBg }]}>
         <Dumbbell size={132} color="rgba(153,246,228,0.06)" strokeWidth={1.4} style={s.watermark} />
         {!state ? (
           <View style={{ height: 150 }} />
         ) : link?.status === 'ACTIVE' && trainer ? (
-          <Pressable accessibilityRole="button" accessibilityLabel={`ჩემი ტრენერი ${trainer.displayName}`} onPress={() => router.push('/trainer' as never)} style={{ gap: 16 }}>
+          <Pressable accessibilityRole="button" accessibilityLabel={tx(`ჩემი ტრენერი ${trainer.displayName}`, `My trainer ${trainer.displayName}`)} onPress={() => router.push('/trainer' as never)} style={{ gap: 16 }}>
             <View style={s.row}>
               <View style={s.ring}>
                 <Avatar avatarId={trainer.avatarId} photoUrl={trainer.avatarUrl} name={trainer.displayName} size={52} verified={trainer.verified} />
               </View>
               <View style={{ flex: 1, minWidth: 0 }}>
-                <Text style={s.kicker}>ჩემი ტრენერი</Text>
+                <Text style={s.kicker}>{tx('ჩემი ტრენერი', 'My trainer')}</Text>
                 <Text numberOfLines={1} style={s.name}>{trainer.displayName}</Text>
                 {trainer.gyms[0] ? <Text numberOfLines={1} style={s.muted}>{trainer.gyms[0].brand} · {trainer.gyms[0].name}</Text> : null}
               </View>
@@ -126,21 +127,21 @@ export function ProfileCoachSection() {
             <View style={s.nextBox}>
               <CalendarCheck2 size={20} color="#99F6E4" />
               <View style={{ flex: 1 }}>
-                <Text style={s.muted}>{next ? `შემდეგი ვარჯიში · ${next.kindLabel}` : 'შემდეგი ვარჯიში'}</Text>
-                <Text style={next ? s.big : [s.big, { fontSize: 16, lineHeight: 22 }]}>{next ? `${dayLabel(tbilisiYmd(next.startsAt))}, ${clockOf(next.startsAt)}` : 'ჯერ არ არის დაგეგმილი'}</Text>
+                <Text style={s.muted}>{next ? tx(`შემდეგი ვარჯიში · ${next.kindLabel}`, `Next workout · ${next.kindLabel}`) : tx('შემდეგი ვარჯიში', 'Next workout')}</Text>
+                <Text style={next ? s.big : [s.big, { fontSize: 16, lineHeight: 22 }]}>{next ? `${dayLabel(tbilisiYmd(next.startsAt))}, ${clockOf(next.startsAt)}` : tx('ჯერ არ არის დაგეგმილი', 'Not scheduled yet')}</Text>
               </View>
               {next ? (
                 <View style={s.pill}>
-                  <Text style={s.pillText}>{new Date(next.startsAt).getTime() - Date.now() < 6 * 3600000 ? relativeStart(next.startsAt) : next.clientConfirmedAt ? 'დადასტურდა' : 'დაადასტურე'}</Text>
+                  <Text style={s.pillText}>{new Date(next.startsAt).getTime() - Date.now() < 6 * 3600000 ? relativeStart(next.startsAt) : next.clientConfirmedAt ? tx('დადასტურდა', 'Confirmed') : tx('დაადასტურე', 'Confirm')}</Text>
                 </View>
               ) : null}
             </View>
             <View style={s.stats}>
-              <Stat value={String(state.overview?.stats?.done ?? 0)} label="ჩატარდა" />
+              <Stat value={String(state.overview?.stats?.done ?? 0)} label={tx('ჩატარდა', 'Done')} />
               <View style={s.divider} />
-              <Stat value={state.overview?.nutrition?.score != null ? `${state.overview.nutrition.score}%` : '—'} label="კვების გეგმა" />
+              <Stat value={state.overview?.nutrition?.score != null ? `${state.overview.nutrition.score}%` : '—'} label={tx('კვების გეგმა', 'Meal plan')} />
               <View style={s.divider} />
-              <Stat value={String(state.overview?.openSlots?.length ?? 0)} label="თავისუფ. დრო" />
+              <Stat value={String(state.overview?.openSlots?.length ?? 0)} label={tx('თავისუფ. დრო', 'Open slots')} />
             </View>
           </Pressable>
         ) : invited && trainer ? (
@@ -150,12 +151,12 @@ export function ProfileCoachSection() {
                 <Avatar avatarId={trainer.avatarId} photoUrl={trainer.avatarUrl} name={trainer.displayName} size={52} verified={trainer.verified} />
               </View>
               <View style={{ flex: 1 }}>
-                <Text style={s.kicker}>ტრენერი გიწვევს</Text>
+                <Text style={s.kicker}>{tx('ტრენერი გიწვევს', 'A trainer invited you')}</Text>
                 <Text numberOfLines={1} style={s.name}>{trainer.displayName}</Text>
-                <Text style={s.muted}>სანამ არ მიიღებ, შენს მონაცემებს ვერ ხედავს</Text>
+                <Text style={s.muted}>{tx('სანამ არ მიიღებ, შენს მონაცემებს ვერ ხედავს', 'Until you accept, they can’t see your data')}</Text>
               </View>
             </View>
-            <SpotButton label="ნახვა და მიღება" icon={ArrowUpRight} onPress={() => router.push('/trainer/connect?invite=1' as never)} primary />
+            <SpotButton label={tx('ნახვა და მიღება', 'Review and accept')} icon={ArrowUpRight} onPress={() => router.push('/trainer/connect?invite=1' as never)} primary />
           </View>
         ) : link?.status === 'REQUESTED' && trainer ? (
           <Pressable accessibilityRole="button" onPress={() => router.push('/trainer' as never)} style={s.row}>
@@ -163,26 +164,26 @@ export function ProfileCoachSection() {
               <Avatar avatarId={trainer.avatarId} photoUrl={trainer.avatarUrl} name={trainer.displayName} size={52} verified={trainer.verified} />
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={s.kicker}>მოთხოვნა გაგზავნილია</Text>
+              <Text style={s.kicker}>{tx('მოთხოვნა გაგზავნილია', 'Request sent')}</Text>
               <Text numberOfLines={1} style={s.name}>{trainer.displayName}</Text>
-              <Text style={s.muted}>დადასტურებისას შეტყობინება მოგივა</Text>
+              <Text style={s.muted}>{tx('დადასტურებისას შეტყობინება მოგივა', 'We’ll notify you when it’s confirmed')}</Text>
             </View>
           </Pressable>
         ) : (
           <View style={{ gap: 16 }}>
             <View style={[s.row, { alignItems: 'flex-start' }]}>
               <View style={{ flex: 1, gap: 6 }}>
-                <Text style={s.kicker}>ტრენერი შენს ტელეფონში</Text>
-                <Text style={s.title}>აჩვენე QR დარბაზში</Text>
-                <Text style={s.muted}>ტრენერი დაასკანერებს — ჯავშნები, კვების გეგმა და პროგრესი აქ დაგხვდება. ხედავს მხოლოდ იმას, რასაც გაუზიარებ.</Text>
+                <Text style={s.kicker}>{tx('ტრენერი შენს ტელეფონში', 'Your trainer, on your phone')}</Text>
+                <Text style={s.title}>{tx('აჩვენე QR დარბაზში', 'Show your QR at the gym')}</Text>
+                <Text style={s.muted}>{tx('ტრენერი დაასკანერებს — ჯავშნები, კვების გეგმა და პროგრესი აქ დაგხვდება. ხედავს მხოლოდ იმას, რასაც გაუზიარებ.', 'Your trainer scans it — bookings, meal plan and progress will show up here. They see only what you share.')}</Text>
               </View>
-              <Pressable accessibilityRole="button" accessibilityLabel="ჩემი QR" onPress={() => router.push('/profile/qr' as never)} style={s.qrBox}>
+              <Pressable accessibilityRole="button" accessibilityLabel={tx('ჩემი QR', 'My QR')} onPress={() => router.push('/profile/qr' as never)} style={s.qrBox}>
                 {extras.qrLink ? <StyledQr value={extras.qrLink} size={84} /> : <QrCode size={48} color="#0F766E" />}
               </Pressable>
             </View>
             <View style={[s.row, { gap: 10 }]}>
-              <SpotButton label="ჩემი QR" icon={QrCode} onPress={() => router.push('/profile/qr' as never)} primary />
-              <SpotButton label="სკანირება" icon={ScanLine} onPress={() => router.push('/trainer/scan' as never)} />
+              <SpotButton label={tx('ჩემი QR', 'My QR')} icon={QrCode} onPress={() => router.push('/profile/qr' as never)} primary />
+              <SpotButton label={tx('სკანირება', 'Scan')} icon={ScanLine} onPress={() => router.push('/trainer/scan' as never)} />
             </View>
           </View>
         )}

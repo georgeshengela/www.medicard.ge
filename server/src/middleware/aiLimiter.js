@@ -1,20 +1,27 @@
 import { getUsage, reserveAiCredit, commitAiCredit, releaseAiCredit } from '../lib/usage.js';
 import { FREE_CONSUMER_RELEASE } from '../lib/consumerAccess.js';
+import { t } from '../lib/i18n.js';
 
 export const QUOTA_EXCEEDED_MESSAGE_KA =
   'დღიური ლიმიტი ამოიწურა. განახლდება ხვალ ამავე საათზე, ან აირჩიე უფრო მაღალი გეგმა.';
 
 export const AI_RATE_LIMIT_MESSAGE_KA = 'ძალიან ბევრი AI მოთხოვნა. ცოტა ხანში სცადე.';
 
-function quotaBody(usage, { code = 'DAILY_LIMIT_REACHED', error = QUOTA_EXCEEDED_MESSAGE_KA } = {}) {
+export const QUOTA_EXCEEDED_MESSAGE_EN =
+  'You have reached your daily limit. It resets at this time tomorrow.';
+export const AI_RATE_LIMIT_MESSAGE_EN = 'Too many AI requests. Please try again in a moment.';
+const AI_BUSY_MESSAGE_KA = 'ანალიზი უკვე მიმდინარეობს. დაელოდე დასრულებას და ხელახლა სცადე.';
+const AI_BUSY_MESSAGE_EN = 'An analysis is already running. Wait for it to finish, then try again.';
+
+function quotaBody(usage, { code = 'DAILY_LIMIT_REACHED', error = QUOTA_EXCEEDED_MESSAGE_KA, lang = 'ka' } = {}) {
   if (FREE_CONSUMER_RELEASE || code === 'AI_BUSY' || code === 'RATE_LIMITED') return { error, code, usage };
   return {
     error,
     code,
     upsell: {
-      title: 'განაახლე გეგმა',
-      body: 'სტანდარტი — 50 AI / დღე · ულტიმატი — შეუზღუდავი.',
-      cta: 'გეგმის არჩევა',
+      title: t(lang, 'განაახლე გეგმა', 'Upgrade your plan'),
+      body: t(lang, 'სტანდარტი — 50 AI / დღე · ულტიმატი — შეუზღუდავი.', 'Standard — 50 AI / day · Ultimate — unlimited.'),
+      cta: t(lang, 'გეგმის არჩევა', 'Choose a plan'),
     },
     usage,
   };
@@ -30,15 +37,19 @@ export async function enforceAiQuota(req, res, next) {
     const quota = await getUsage(req.user.id);
 
     if (quota.exceeded) {
-      return res.status(429).json(quotaBody(quota));
+      return res.status(429).json(quotaBody(quota, { lang: req.lang, error: t(req, QUOTA_EXCEEDED_MESSAGE_KA, QUOTA_EXCEEDED_MESSAGE_EN) }));
     }
 
     const reservation = await reserveAiCredit(req.user.id);
     if (!reservation.ok) {
       const status = reservation.reason === 'RATE_LIMITED' ? 429 : 429;
-      const error = reservation.reason === 'RATE_LIMITED' ? AI_RATE_LIMIT_MESSAGE_KA : reservation.reason === 'AI_BUSY' ? 'ანალიზი უკვე მიმდინარეობს. დაელოდე დასრულებას და ხელახლა სცადე.' : QUOTA_EXCEEDED_MESSAGE_KA;
+      const error = reservation.reason === 'RATE_LIMITED'
+        ? t(req, AI_RATE_LIMIT_MESSAGE_KA, AI_RATE_LIMIT_MESSAGE_EN)
+        : reservation.reason === 'AI_BUSY'
+          ? t(req, AI_BUSY_MESSAGE_KA, AI_BUSY_MESSAGE_EN)
+          : t(req, QUOTA_EXCEEDED_MESSAGE_KA, QUOTA_EXCEEDED_MESSAGE_EN);
       return res.status(status).json(
-        quotaBody(reservation.usage, { code: reservation.reason || 'DAILY_LIMIT_REACHED', error }),
+        quotaBody(reservation.usage, { code: reservation.reason || 'DAILY_LIMIT_REACHED', error, lang: req.lang }),
       );
     }
 

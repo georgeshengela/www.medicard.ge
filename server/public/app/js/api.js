@@ -1,4 +1,5 @@
 // MEDICARD web — API client. Same /api the mobile app uses, same Bearer JWT.
+import { lang, t } from './i18n.js';
 const TOKEN_KEY = 'medicard.web.token';
 const listeners = new Set();
 
@@ -36,6 +37,7 @@ function headers(extra = {}, withJson = true) {
     Accept: 'application/json',
     'X-Medicard-Platform': 'web',
     'X-Medicard-App-Version': 'web',
+    'X-Medicard-Lang': lang,
     ...extra,
   };
   const tz = timezone();
@@ -92,8 +94,8 @@ export async function request(path, opts = {}) {
     });
   } catch (err) {
     clearTimeout(timer);
-    if (err?.name === 'AbortError') throw new ApiError('სერვერი დიდხანს არ პასუხობს. სცადე ხელახლა.', 0);
-    throw new ApiError('ინტერნეტთან კავშირი ვერ დამყარდა.', 0);
+    if (err?.name === 'AbortError') throw new ApiError(t('სერვერი დიდხანს არ პასუხობს. სცადე ხელახლა.', 'The server is taking too long. Please try again.'), 0);
+    throw new ApiError(t('ინტერნეტთან კავშირი ვერ დამყარდა.', 'Couldn’t connect to the internet.'), 0);
   }
   clearTimeout(timer);
 
@@ -110,9 +112,9 @@ export async function request(path, opts = {}) {
       setToken(null);
     }
     const msg = body?.error || body?.message || (res.status === 429
-      ? 'ძალიან ბევრი მოთხოვნაა. სცადე ცოტა ხანში.'
-      : res.status >= 500 ? 'სერვერზე შეცდომაა. სცადე ხელახლა.' : 'მოთხოვნა ვერ შესრულდა.');
-    throw new ApiError(typeof msg === 'string' ? msg : 'მოთხოვნა ვერ შესრულდა.', res.status, body);
+      ? t('ძალიან ბევრი მოთხოვნაა. სცადე ცოტა ხანში.', 'Too many requests. Please try again in a moment.')
+      : res.status >= 500 ? t('სერვერზე შეცდომაა. სცადე ხელახლა.', 'Something went wrong on our side. Please try again.') : t('მოთხოვნა ვერ შესრულდა.', 'The request didn’t go through.'));
+    throw new ApiError(typeof msg === 'string' ? msg : t('მოთხოვნა ვერ შესრულდა.', 'The request didn’t go through.'), res.status, body);
   }
 
   if (method === 'GET') cache.set(url, { data: body, at: Date.now() });
@@ -160,7 +162,7 @@ export async function stream(path, body, onEvent, opts = {}) {
     let data = {};
     try { data = await res.json(); } catch { /* not json */ }
     if (res.status === 401 && token) setToken(null);
-    throw new ApiError(data.error || 'პასუხი ვერ მივიღე. სცადე ხელახლა.', res.status, data);
+    throw new ApiError(data.error || t('პასუხი ვერ მივიღე. სცადე ხელახლა.', 'No answer came back. Please try again.'), res.status, data);
   }
   const ctype = res.headers.get('content-type') || '';
   if (!ctype.includes('event-stream')) {

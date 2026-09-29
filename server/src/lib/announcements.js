@@ -210,7 +210,7 @@ const EVENT_COLUMN = { view: 'seenAt', click: 'clickedAt', dismiss: 'dismissedAt
 /** First view / first tap / dismissal. Idempotent: later repeats keep the first timestamp. */
 export async function recordReceipt(announcementId, userId, type, { db = prisma } = {}) {
   const column = EVENT_COLUMN[type];
-  if (!column) throw httpError('უცნობი მოვლენა.');
+  if (!column) throw Object.assign(httpError('უცნობი მოვლენა.'), { messageEn: 'Unknown event.' });
   await ensureAnnouncementTables(db);
   const exists = await db.$queryRawUnsafe(`SELECT 1 FROM "Announcement" WHERE "id" = $1 AND "status" = 'PUBLISHED'`, announcementId);
   if (!exists.length) return false;

@@ -2,27 +2,28 @@ import React from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { Check, ChevronRight, Heart, MessageCircle, Reply, ThumbsDown } from 'lucide-react-native';
 import { useThemeColors } from '@/theme/colors';
+import { tx } from '@/i18n/locale';
 
 const kinds = {
-  mention: { icon: Reply, title: 'კომენტარში მოგნიშნეს', detail: 'ნახე, რომელ საუბარში გელოდებიან' },
-  like: { icon: Heart, title: 'შენს პოსტს გამოეხმაურნენ', detail: 'ახალი რეაქცია შენს საუბარში' },
-  dislike: { icon: ThumbsDown, title: 'შენს პოსტზე განსხვავებული აზრია', detail: 'ნახე გამოხმაურება' },
-  comment: { icon: MessageCircle, title: 'შენს პოსტზე ახალი კომენტარია', detail: 'შემოუერთდი საუბარს' },
-  reply: { icon: Reply, title: 'შენს კომენტარს უპასუხეს', detail: 'გააგრძელე დისკუსია' },
-  comment_like: { icon: Heart, title: 'შენი კომენტარი მოიწონეს', detail: 'შენს სიტყვებს გამოეხმაურნენ' },
-  approved: { icon: Check, title: 'შენი ჩანაწერი გამოქვეყნდა', detail: 'ნახე საუბარი' },
+  mention: { icon: Reply, title: tx('კომენტარში მოგნიშნეს', 'You were mentioned in a comment'), detail: tx('ნახე, რომელ საუბარში გელოდებიან', 'See which conversation is waiting for you') },
+  like: { icon: Heart, title: tx('შენს პოსტს გამოეხმაურნენ', 'Someone responded to your post'), detail: tx('ახალი რეაქცია შენს საუბარში', 'A new reaction in your conversation') },
+  dislike: { icon: ThumbsDown, title: tx('შენს პოსტზე განსხვავებული აზრია', 'Someone sees your post differently'), detail: tx('ნახე გამოხმაურება', 'See the response') },
+  comment: { icon: MessageCircle, title: tx('შენს პოსტზე ახალი კომენტარია', 'New comment on your post'), detail: tx('შემოუერთდი საუბარს', 'Join the conversation') },
+  reply: { icon: Reply, title: tx('შენს კომენტარს უპასუხეს', 'Someone replied to your comment'), detail: tx('გააგრძელე დისკუსია', 'Continue the discussion') },
+  comment_like: { icon: Heart, title: tx('შენი კომენტარი მოიწონეს', 'Someone liked your comment'), detail: tx('შენს სიტყვებს გამოეხმაურნენ', 'Your words resonated') },
+  approved: { icon: Check, title: tx('შენი ჩანაწერი გამოქვეყნდა', 'Your post was published'), detail: tx('ნახე საუბარი', 'See the conversation') },
 };
 function timeLabel(value:string) {
   const date=new Date(value), minutes=Math.max(0,Math.floor((Date.now()-date.getTime())/60000));
-  if(minutes<1)return 'ახლახან';
-  if(minutes<60)return `${minutes} წთ წინ`;
-  if(minutes<1440)return `${Math.floor(minutes/60)} სთ წინ`;
+  if(minutes<1)return tx('ახლახან', 'Just now');
+  if(minutes<60)return tx(`${minutes} წთ წინ`, `${minutes} min ago`);
+  if(minutes<1440)return tx(`${Math.floor(minutes/60)} სთ წინ`, `${Math.floor(minutes/60)} h ago`);
   return `${date.getDate()}.${String(date.getMonth()+1).padStart(2,'0')} · ${String(date.getHours()).padStart(2,'0')}:${String(date.getMinutes()).padStart(2,'0')}`;
 }
 export function CommunityNotice({item,onPress,disabled}:{item:{kind:string;readAt:string|null;createdAt:string};onPress:()=>void;disabled:boolean}) {
  const c=useThemeColors(), unread=!item.readAt;
  const copy=kinds[item.kind as keyof typeof kinds]||kinds.comment, Icon=copy.icon;
- return <Pressable accessibilityRole="button" accessibilityLabel={`${unread?'წაუკითხავი. ':''}${copy.title}. ${timeLabel(item.createdAt)}`} disabled={disabled} onPress={onPress} style={{flexDirection:'row',alignItems:'center',gap:12,paddingHorizontal:18,paddingVertical:15,backgroundColor:unread?c.accent100:'transparent',opacity:disabled?0.6:1}}>
+ return <Pressable accessibilityRole="button" accessibilityLabel={tx(`${unread?'წაუკითხავი. ':''}${copy.title}. ${timeLabel(item.createdAt)}`, `${unread?'Unread. ':''}${copy.title}. ${timeLabel(item.createdAt)}`)} disabled={disabled} onPress={onPress} style={{flexDirection:'row',alignItems:'center',gap:12,paddingHorizontal:18,paddingVertical:15,backgroundColor:unread?c.accent100:'transparent',opacity:disabled?0.6:1}}>
    <View style={{width:44,height:44,borderRadius:22,backgroundColor:unread?c.surface:c.bg200,alignItems:'center',justifyContent:'center'}}><Icon size={21} strokeWidth={1.6} color={unread?c.primary100:c.text200}/></View>
    <View style={{flex:1,gap:3}}>
      <Text style={{fontFamily:unread?'NotoSansGeorgian_600SemiBold':'NotoSansGeorgian_400Regular',fontSize:13,lineHeight:20,color:c.text100}}>{copy.title}</Text>

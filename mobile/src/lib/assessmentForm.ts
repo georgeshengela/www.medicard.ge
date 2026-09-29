@@ -5,6 +5,7 @@ import {
   birthDateIso,
   parseBirthDate,
 } from '@/components/assessment/DateWheelPicker';
+import { tx } from '../i18n/locale.js';
 
 export type AssessmentFormState = {
   confirmedSteps?: string[];
@@ -113,7 +114,7 @@ export function displayWeightForUnit(
       unitLabel: 'lbs',
     };
   }
-  return { value: String(Math.round(weightKg * 10) / 10), unitLabel: 'კგ' };
+  return { value: String(Math.round(weightKg * 10) / 10), unitLabel: tx('კგ', 'kg') };
 }
 
 export function computeBmi(heightCm: number, weightKg: number): number | null {

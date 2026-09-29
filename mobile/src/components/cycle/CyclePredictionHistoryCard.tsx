@@ -3,6 +3,7 @@ import React, { useEffect, useState } from 'react';
 import { Text, View } from 'react-native';
 import { CycleSection } from '@/components/cycle/CycleUI';
 import { ka } from '@/i18n/ka';
+import { tx } from '@/i18n/locale';
 import { api, type CyclePredictionHistory, type CyclePredictionHistoryEpisode } from '@/lib/api';
 import {
   aggregateTypicalDays,
@@ -231,7 +232,7 @@ export function CyclePredictionHistoryCard({ refreshKey = '', currentEstimateAct
             {open[0] ? (
               <View style={{ paddingBottom: 10, marginBottom: completed.length ? 2 : 0 }}>
                 <Text style={{ color: c.mutedSoft, fontSize: 11, fontFamily: 'NotoSansGeorgian_500Medium' }}>
-                  {currentEstimateActive ? ka.cycle.predictionHistoryOpen : 'წინა რეჟიმში შენახული შეფასება — ახლა არააქტიურია'}
+                  {currentEstimateActive ? ka.cycle.predictionHistoryOpen : tx('წინა რეჟიმში შენახული შეფასება — ახლა არააქტიურია', 'Estimate saved in a previous mode — not active now')}
                 </Text>
                 <Text style={{ color: c.ink, fontSize: 13, lineHeight: 20, marginTop: 4 }}>
                   {formatHistoryDateKa(open[0].lastPredictedStart || '')}

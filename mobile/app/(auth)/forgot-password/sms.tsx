@@ -17,6 +17,7 @@ import { isPasswordStrongEnough, scorePassword } from '@/lib/passwordStrength';
 import { displayGeorgianMobile, isGeorgianMobile, toE164Georgian } from '@/lib/phoneFormat';
 import { useAuth } from '@/store/AuthContext';
 import { useThemeColors } from '@/theme/colors';
+import { tx } from '@/i18n/locale';
 
 type Step = 'phone' | 'code' | 'password';
 type Problem = { kind: 'not-found' | 'phone-login' | 'other'; message: string } | null;
@@ -113,7 +114,7 @@ export default function ForgotPasswordSms() {
       } catch (err) {
         const message = authErrorMessage(err);
         // A wrong or expired code sends the person back to the code step, password kept.
-        if (/კოდი/.test(message)) {
+        if (/კოდი|code/i.test(message)) {
           setCode('');
           setCodeKey((k) => k + 1);
           setCodeError(message);
@@ -135,11 +136,11 @@ export default function ForgotPasswordSms() {
 
   const footer =
     step === 'phone' ? (
-      <AuthPrimaryButton label="კოდის გაგზავნა" loading={busy} disabled={!phoneValid} onPress={() => void sendCode()} />
+      <AuthPrimaryButton label={tx('კოდის გაგზავნა', 'Send code')} loading={busy} disabled={!phoneValid} onPress={() => void sendCode()} />
     ) : step === 'code' ? (
-      <AuthPrimaryButton label="გაგრძელება" disabled={code.length !== 4} onPress={() => setStep('password')} />
+      <AuthPrimaryButton label={tx('გაგრძელება', 'Continue')} disabled={code.length !== 4} onPress={() => setStep('password')} />
     ) : (
-      <AuthPrimaryButton label="პაროლის შეცვლა და შესვლა" loading={busy} disabled={!canReset} onPress={() => void reset()} />
+      <AuthPrimaryButton label={tx('პაროლის შეცვლა და შესვლა', 'Change password and sign in')} loading={busy} disabled={!canReset} onPress={() => void reset()} />
     );
 
   return (
@@ -147,13 +148,13 @@ export default function ForgotPasswordSms() {
       <StepHeader
         step={stepIndex}
         onBack={back}
-        title={step === 'phone' ? 'აღდგენა SMS-ით' : step === 'code' ? 'შეიყვანე კოდი' : 'ახალი პაროლი'}
+        title={step === 'phone' ? tx('აღდგენა SMS-ით', 'Reset by SMS') : step === 'code' ? tx('შეიყვანე კოდი', 'Enter the code') : tx('ახალი პაროლი', 'New password')}
         subtitle={
           step === 'phone'
-            ? 'ჩაწერე ანგარიშზე მიბმული ნომერი — 4-ციფრიან კოდს SMS-ით გამოგიგზავნით.'
+            ? tx('ჩაწერე ანგარიშზე მიბმული ნომერი — 4-ციფრიან კოდს SMS-ით გამოგიგზავნით.', "Enter the number linked to your account — we'll text you a 4-digit code.")
             : step === 'code'
               ? undefined
-              : 'მოიფიქრე ახალი პაროლი. შეცვლის შემდეგ პირდაპირ შეხვალ ანგარიშში.'
+              : tx('მოიფიქრე ახალი პაროლი. შეცვლის შემდეგ პირდაპირ შეხვალ ანგარიშში.', "Choose a new password. Once it's changed, you'll be signed in right away.")
         }
       />
 
@@ -166,7 +167,7 @@ export default function ForgotPasswordSms() {
               setLocal(next);
               setProblem(null);
             }}
-            hint={problem ? undefined : 'მხოლოდ საქართველოს მობილური ნომერი'}
+            hint={problem ? undefined : tx('მხოლოდ საქართველოს მობილური ნომერი', 'Georgian mobile numbers only')}
             autoFocus
             returnKeyType="send"
             onSubmitEditing={() => phoneValid && void sendCode()}
@@ -183,19 +184,19 @@ export default function ForgotPasswordSms() {
           </View>
           {devCode ? (
             <Text style={{ marginTop: 12, textAlign: 'center', fontFamily: 'NotoSansGeorgian_400Regular', fontSize: 13, color: colors.text300 }}>
-              სატესტო კოდი: {devCode}
+              {tx('სატესტო კოდი: ', 'Test code: ')}{devCode}
             </Text>
           ) : null}
           <View style={{ marginTop: 28, alignItems: 'center' }}>
             {resendIn > 0 ? (
               <Text style={{ fontFamily: 'NotoSansGeorgian_400Regular', fontSize: 14, color: colors.text300 }}>
-                ხელახლა გაგზავნა შეგიძლია {Math.floor(resendIn / 60)}:{String(resendIn % 60).padStart(2, '0')}-ში
+                {tx('ხელახლა გაგზავნა შეგიძლია ', 'You can resend in ')}{Math.floor(resendIn / 60)}:{String(resendIn % 60).padStart(2, '0')}{tx('-ში', '')}
               </Text>
             ) : (
               <Pressable accessibilityRole="button" onPress={() => void sendCode(true)} disabled={busy} hitSlop={8} style={{ paddingVertical: 6 }}>
                 <Text style={{ fontFamily: 'NotoSansGeorgian_400Regular', fontSize: 14, color: colors.text200 }}>
-                  კოდი არ მოვიდა?{' '}
-                  <Text style={{ fontFamily: 'NotoSansGeorgian_600SemiBold', color: colors.primary200 }}>ხელახლა გაგზავნა</Text>
+                  {tx('კოდი არ მოვიდა?', "Didn't get a code?")}{' '}
+                  <Text style={{ fontFamily: 'NotoSansGeorgian_600SemiBold', color: colors.primary200 }}>{tx('ხელახლა გაგზავნა', 'Resend')}</Text>
                 </Text>
               </Pressable>
             )}
@@ -257,7 +258,7 @@ function StepHeader({ step, title, subtitle, onBack }: { step: number; title: st
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 16, marginBottom: 20 }}>
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel="უკან"
+          accessibilityLabel={tx('უკან', 'Back')}
           onPress={onBack}
           hitSlop={12}
           style={{ width: 40, height: 40, borderRadius: 12, alignItems: 'center', justifyContent: 'center', marginLeft: -4 }}
@@ -266,7 +267,7 @@ function StepHeader({ step, title, subtitle, onBack }: { step: number; title: st
         </Pressable>
         <View
           accessibilityRole="progressbar"
-          accessibilityLabel={`ნაბიჯი ${step + 1} / ${STEPS.length}`}
+          accessibilityLabel={tx(`ნაბიჯი ${step + 1} / ${STEPS.length}`, `Step ${step + 1} / ${STEPS.length}`)}
           style={{ flex: 1, flexDirection: 'row', gap: 6 }}
         >
           {STEPS.map((_, index) => (
@@ -305,11 +306,11 @@ function SentToCard({ pretty, onChange }: { pretty: string; onChange: () => void
         <MessageSquareText size={20} color={colors.primary200} strokeWidth={2.1} />
       </View>
       <View style={{ flex: 1 }}>
-        <Text style={{ fontFamily: 'NotoSansGeorgian_400Regular', fontSize: 13, lineHeight: 18, color: colors.text200 }}>კოდი გამოვაგზავნეთ ნომერზე</Text>
+        <Text style={{ fontFamily: 'NotoSansGeorgian_400Regular', fontSize: 13, lineHeight: 18, color: colors.text200 }}>{tx('კოდი გამოვაგზავნეთ ნომერზე', 'We sent a code to')}</Text>
         <Text style={{ fontFamily: 'NotoSansGeorgian_600SemiBold', fontSize: 16, lineHeight: 22, color: colors.text100, letterSpacing: 0.3 }}>{pretty}</Text>
       </View>
       <Pressable accessibilityRole="button" onPress={onChange} hitSlop={8} style={{ paddingVertical: 6, paddingHorizontal: 4 }}>
-        <Text style={{ fontFamily: 'NotoSansGeorgian_600SemiBold', fontSize: 14, color: colors.primary200 }}>შეცვლა</Text>
+        <Text style={{ fontFamily: 'NotoSansGeorgian_600SemiBold', fontSize: 14, color: colors.primary200 }}>{tx('შეცვლა', 'Change')}</Text>
       </Pressable>
     </View>
   );
@@ -328,9 +329,9 @@ function ProblemCard({
   const colors = useThemeColors();
   const action =
     problem.kind === 'not-found' && onEmail
-      ? { label: 'აღდგენა ელ-ფოსტით', icon: Mail, onPress: onEmail }
+      ? { label: tx('აღდგენა ელ-ფოსტით', 'Reset by email'), icon: Mail, onPress: onEmail }
       : problem.kind === 'phone-login' && onPhoneLogin
-        ? { label: 'შესვლა SMS კოდით', icon: Smartphone, onPress: onPhoneLogin }
+        ? { label: tx('შესვლა SMS კოდით', 'Sign in with an SMS code'), icon: Smartphone, onPress: onPhoneLogin }
         : null;
   return (
     <View

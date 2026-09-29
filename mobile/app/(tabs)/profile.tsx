@@ -22,6 +22,7 @@ import { Button } from '@/components/ui/Button';
 import { DateField } from '@/components/ui/DateField';
 import { GenderSelect } from '@/components/ui/GenderSelect';
 import { ThemeSelect } from '@/components/ui/ThemeSelect';
+import { LanguageSelect } from '@/components/ui/LanguageSelect';
 import { DefaultHomePrompt } from '@/components/home/DefaultHomePrompt';
 import { HomeLandingSelect } from '@/components/home/HomeLandingSelect';
 import { HomeSectionHeading } from '@/components/home/HomeSectionHeading';
@@ -63,6 +64,8 @@ import { isFeatureOn, useFeatureState } from '@/lib/featureFlags';
 import { rewardsApi } from '@/lib/quest/rewardsApi';
 import { rewardsCopy } from '@/i18n/quest/rewards.js';
 import { openEmail } from '@/lib/openEmail';
+import { appLang, tx } from '@/i18n/locale';
+import { allergyDisplayLabel } from '@/constants/allergyCatalog';
 
 const GENDER_LABELS: Record<Gender, string> = {
   MALE: ka.auth.genderMale,
@@ -90,7 +93,7 @@ export default function Profile() {
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [deleteBusy, setDeleteBusy] = useState(false);
   const [profileAccent, setProfileAccent] = useState(false);
-  const rewards = rewardsCopy('ka');
+  const rewards = rewardsCopy(appLang());
 
   useFocusEffect(
     useCallback(() => {
@@ -174,7 +177,7 @@ export default function Profile() {
   const smoking = healthProfile?.smokingStatus != null ? optionLabel('smokingStatus', healthProfile.smokingStatus) : null;
   const allergyLabels = (healthProfile?.allergies ?? [])
     .filter((item) => item && item !== 'none')
-    .map((item) => optionLabel('chronicConditions', item));
+    .map((item) => allergyDisplayLabel(item));
   const conditionLabels = (healthProfile?.chronicConditions ?? [])
     .filter((item) => item && item !== 'none')
     .map((item) => optionLabel('chronicConditions', item));
@@ -218,7 +221,7 @@ export default function Profile() {
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
             <Pressable
               accessibilityRole="button"
-              accessibilityLabel="პროფილის სურათის შეცვლა"
+              accessibilityLabel={tx('პროფილის სურათის შეცვლა', 'Change profile picture')}
               onPress={() => router.push('/profile/avatar' as never)}
               style={{
                 width: 72,
@@ -230,7 +233,7 @@ export default function Profile() {
             >
               <View style={{ flex: 1, borderRadius: 33, overflow: 'hidden', backgroundColor: colors.accent100, alignItems: 'center', justifyContent: 'center' }}>
                 {myPhoto && brokenPhoto !== myPhoto ? (
-                  <PrivateImage path={myPhoto} label="პროფილის ფოტო" style={{ width: 66, height: 66, borderRadius: 33 }} onFail={() => setBrokenPhoto(myPhoto)} />
+                  <PrivateImage path={myPhoto} label={tx('პროფილის ფოტო', 'Profile photo')} style={{ width: 66, height: 66, borderRadius: 33 }} onFail={() => setBrokenPhoto(myPhoto)} />
                 ) : avatarSource ? (
                   <Image source={avatarSource} resizeMode="contain" style={{ width: 66, height: 66, borderRadius: 33 }} />
                 ) : (
@@ -258,7 +261,7 @@ export default function Profile() {
             </View>
             <Pressable
               accessibilityRole="button"
-              accessibilityLabel="ჩემი QR კოდი"
+              accessibilityLabel={tx('ჩემი QR კოდი', 'My QR code')}
               onPress={() => router.push('/profile/qr' as never)}
               style={{ width: 44, height: 44, borderRadius: 14, backgroundColor: colors.accent100, alignItems: 'center', justifyContent: 'center' }}
             >
@@ -295,7 +298,7 @@ export default function Profile() {
       {/* Pets */}
       {isFeatureOn('pets', features) ? (
         <View style={s.section}>
-          <HomeSectionHeading title="ჩემი ცხოველები" linkLabel="ყველას ნახვა" onLink={() => router.push('/pets')} />
+          <HomeSectionHeading title={tx('ჩემი ცხოველები', 'My pets')} linkLabel={tx('ყველას ნახვა', 'See all')} onLink={() => router.push('/pets')} />
           <ProfilePetsSection hideTitle />
         </View>
       ) : null}
@@ -353,6 +356,10 @@ export default function Profile() {
             <Text style={[hubText.caption, { color: colors.text200 }]}>{ka.profile.appearance}</Text>
             <ThemeSelect />
           </View>
+          <View style={[s.card, { backgroundColor: colors.surface, gap: 10 }]}>
+            <Text style={[hubText.caption, { color: colors.text200 }]}>{ka.profile.language}</Text>
+            <LanguageSelect />
+          </View>
           {user?.gender === 'FEMALE' ? (
             <View style={[s.card, { backgroundColor: colors.surface, gap: 10 }]}>
               <Text style={[hubText.caption, { color: colors.text200 }]}>{ka.profile.homeLandingTitle}</Text>
@@ -368,14 +375,14 @@ export default function Profile() {
               onPress={() => void openNotificationSettings()}
             />
             <ProfileMenuRow icon={Link2} ink="sky" label={ka.profile.permissions} onPress={() => router.push('/profile/permissions')} />
-            <ProfileMenuRow icon={ShieldCheck} ink="teal" label="AI და კონფიდენციალურობა" onPress={() => router.push('/profile/ai-data')} isLast />
+            <ProfileMenuRow icon={ShieldCheck} ink="teal" label={tx('AI და კონფიდენციალურობა', 'AI and privacy')} onPress={() => router.push('/profile/ai-data')} isLast />
           </View>
         </View>
       </View>
 
       {/* App */}
       <View style={s.section}>
-        <HomeSectionHeading title="აპლიკაცია" />
+        <HomeSectionHeading title={tx('აპლიკაცია', 'App')} />
         <View style={[s.list, { backgroundColor: colors.surface }]}>
           <ProfileMenuRow icon={Gift} ink="amber" label={ka.referral.profileRow} onPress={() => router.push('/profile/invite' as never)} />
           <ProfileMenuRow icon={Lock} ink="neutral" label={ka.profile.privacyPolicy} onPress={() => router.push('/profile/privacy')} />

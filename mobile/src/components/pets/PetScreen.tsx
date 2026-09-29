@@ -8,6 +8,7 @@ import { PetPanel as Card, PetText } from './PetUi';
 import { FIGMA_AUTH_SHADOW, useFigmaAuth } from '@/constants/figmaAuthLayout';
 import { ka } from '@/i18n/ka';
 import { useIsDark, useThemeColors } from '@/theme/colors';
+import { tx } from '@/i18n/locale';
 
 function usePetKeyboard() {
   const [open, setOpen] = useState(false);
@@ -81,7 +82,7 @@ export function PetFormScroll({
           }}
         >
           <View style={{ flex: 1, minWidth: 0, gap: 8 }}>{footer}</View>
-          {keyboard.open ? <Pressable accessibilityRole="button" accessibilityLabel="კლავიატურის დამალვა" onPress={Keyboard.dismiss} style={{ width: 48, height: 52, borderRadius: 17, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.surfaceRaised }}><KeyboardIcon size={22} color={colors.primary100} /></Pressable> : null}
+          {keyboard.open ? <Pressable accessibilityRole="button" accessibilityLabel={tx('კლავიატურის დამალვა', 'Hide keyboard')} onPress={Keyboard.dismiss} style={{ width: 48, height: 52, borderRadius: 17, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.surfaceRaised }}><KeyboardIcon size={22} color={colors.primary100} /></Pressable> : null}
         </View>
       ) : null}
     </View>

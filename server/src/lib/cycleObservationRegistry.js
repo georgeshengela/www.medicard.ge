@@ -968,9 +968,19 @@ export function engineInputKeys() {
     .map((item) => item.key);
 }
 
+/** English for the Georgian validation messages below (error middleware sends `messageEn` to English requests). */
+const MESSAGES_EN = {
+  'უცნობი აღრიცხვა.': 'Unknown log entry.',
+  'აღრიცხვები არასწორია.': 'The log entries are not valid.',
+  'აღრიცხვა არასწორია.': 'The log entry is not valid.',
+};
+
 function httpError(status, message) {
   const err = new Error(message);
   err.status = status;
+  const invalidField = /^არასწორი (.+)\.$/.exec(message);
+  const en = MESSAGES_EN[message] || (invalidField ? `Invalid ${invalidField[1]}.` : null);
+  if (en) err.messageEn = en;
   return err;
 }
 

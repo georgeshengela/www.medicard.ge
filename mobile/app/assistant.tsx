@@ -20,6 +20,7 @@ import { MediConsultation } from '@/components/chat/MediConsultation';
 import { MediHeader } from '@/components/assistant/MediHeader';
 import { apiModeFor, legacyChatRouteToMedi, mediModeFromParam, mediRoute } from '@/lib/mediModes';
 import { assistantDisplay, assistantFieldLabels, stageAssistantLaunch, type AssistantAction, type AssistantChoices, type AssistantNative, type AssistantPlan, type AssistantReview, type AssistantTool, type AssistantFeature, type AssistantGroup } from '@/lib/assistant';
+import { tx } from '@/i18n/locale';
 
 type Turn = { role: 'user' | 'assistant'; content: string };
 /** One Medi (2026-09-27): the only Medi screen. ?mode=doctor|deep opens the consultation modes in place. */
@@ -36,7 +37,7 @@ export default function AssistantScreen() {
     return <MediConsultation apiMode={apiMode} sessionId={sessionId} prefill={typeof params.prefill === 'string' ? params.prefill : undefined}
       header={() => <MediHeader subtitle={ka.chat.mediModeSubtitles[mode]} mode={mode} onMode={next => router.replace(mediRoute({ mode: next }) as never)}
         onBack={() => (router.canGoBack() ? router.back() : router.replace('/(tabs)/home' as never))}
-        right={<Pressable accessibilityRole="button" accessibilityLabel="AI და კონფიდენციალურობა" onPress={() => router.push('/profile/ai-data' as never)} style={{ width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center' }}><SlidersHorizontal size={21} color={theme.text200} /></Pressable>} />} />;
+        right={<Pressable accessibilityRole="button" accessibilityLabel={tx('AI და კონფიდენციალურობა', 'AI and privacy')} onPress={() => router.push('/profile/ai-data' as never)} style={{ width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center' }}><SlidersHorizontal size={21} color={theme.text200} /></Pressable>} />} />;
   }
   return <AssistantSession key={`${user.id}:${sessionId ?? 'new'}`} owner={user.id} sessionId={sessionId} />;
 }
@@ -95,28 +96,28 @@ function AssistantSession({ owner, sessionId }: { owner: string; sessionId?: str
       const list = key === 'id' ? (current.tool.startsWith('visit_') ? choices.visitId : choices.medicationId)
         : choices[key === 'breedId' ? 'breedId:' + current.args.speciesId : key];
       const name = list?.find(option => option.value === value)?.label;
-      return { key, label: (key === 'petId' ? 'ცხოველი' : key === 'medicationId' ? 'მედიკამენტი' : key === 'id' ? 'ჩანაწერი' : key === 'dueTime' ? 'დრო' : assistantFieldLabels[key]) || key,
+      return { key, label: (key === 'petId' ? tx('ცხოველი', 'Pet') : key === 'medicationId' ? tx('მედიკამენტი', 'Medication') : key === 'id' ? tx('ჩანაწერი', 'Entry') : key === 'dueTime' ? tx('დრო', 'Time') : assistantFieldLabels[key]) || key,
         value: name || assistantDisplay(value) };
     });
   }
   const reviewSpeech = (current: AssistantReview) => {
     const a = current.args;
-    const name = choices.petId?.find(p => p.value === a.petId)?.label || 'ცხოველი';
+    const name = choices.petId?.find(p => p.value === a.petId)?.label || tx('ცხოველი', 'Pet');
     if (current.tool === 'pet_care_plan') {
       const recurrence = a.recurrenceKind !== 'ONCE' ? assistantDisplay(a.recurrenceKind) + (a.intervalCount ? ': ' + String(a.intervalCount) : '') + '. ' + assistantDisplay(a.recurrenceBasis) + '. ' : '';
-      return name + ' · ' + String(a.title) + '. ' + String(a.startOn) + (a.dueTime ? ', ' + String(a.dueTime) + ' საათზე' : '') + '. ' + recurrence + (a.courseEndsOn ? 'ბოლო დღე: ' + String(a.courseEndsOn) + '. ' : '') + (a.dose ? 'დოზა: ' + String(a.dose) + ' ' + String(a.doseUnit || '') + '. ' : '') + (a.kind === 'VACCINATION' ? 'პირადი გეგმაა, კლინიკის ჯავშანი არ კეთდება. ' : '') + 'შევინახო?';
+      return name + ' · ' + String(a.title) + '. ' + String(a.startOn) + (a.dueTime ? ', ' + String(a.dueTime) + tx(' საათზე', '') : '') + '. ' + recurrence + (a.courseEndsOn ? tx('ბოლო დღე: ', 'Last day: ') + String(a.courseEndsOn) + '. ' : '') + (a.dose ? tx('დოზა: ', 'Dose: ') + String(a.dose) + ' ' + String(a.doseUnit || '') + '. ' : '') + (a.kind === 'VACCINATION' ? tx('პირადი გეგმაა, კლინიკის ჯავშანი არ კეთდება. ', 'This is a personal plan; no clinic booking is made. ') : '') + tx('შევინახო?', 'Shall I save it?');
     }
-    if (current.tool === 'hydration_add') return String(a.date) + ' · ' + String(a.amountMl) + ' მლ წყალი. ჩავწერო?';
-    if (current.tool === 'open') return (choices.destination?.find(p => p.value === a.destination)?.label || current.label) + ' — გავხსნა?';
+    if (current.tool === 'hydration_add') return String(a.date) + ' · ' + String(a.amountMl) + tx(' მლ წყალი. ჩავწერო?', ' ml of water. Shall I log it?');
+    if (current.tool === 'open') return (choices.destination?.find(p => p.value === a.destination)?.label || current.label) + tx(' — გავხსნა?', ' — shall I open it?');
     return spokenAssistantReview(current.label, reviewRows(current), isHandoff(current.tool));
   };
   const errorText = (e: unknown, fallback: string) => e instanceof ApiError && e.fields?.length
-    ? e.fields.map(field => { const key = field.field.split('.').pop() || ''; return assistantFieldError(key, field.message, assistantFieldLabels[key] || 'ველი'); }).join('\n')
+    ? e.fields.map(field => { const key = field.field.split('.').pop() || ''; return assistantFieldError(key, field.message, assistantFieldLabels[key] || tx('ველი', 'Field')); }).join('\n')
     : e instanceof Error ? e.message : fallback;
   const isHandoff = (name: string) => tools.find(t => t.name === name)?.kind === 'handoff' || ['open', 'consult', 'pet_consult', 'pet_open', 'record_open', 'visit_open', 'medication_open'].includes(name);
   function cancelReview() {
     speech.stop(); setReview(null); setDraft(null); setManual(false); setReceipt(null); setFocusFields(undefined); setSuggestions([]);
-    const reply = 'კარგი, გაუქმებულია.';
+    const reply = tx('კარგი, გაუქმებულია.', 'OK, cancelled.');
     setHistory(h => [...h, { role: 'assistant', content: reply }].slice(-12) as Turn[]); void speech.say(reply); persist([{ role: 'assistant', content: reply }]);
   }
   useFocusEffect(useCallback(() => {
@@ -151,7 +152,7 @@ function AssistantSession({ owner, sessionId }: { owner: string; sessionId?: str
     if (!current || working.current || capture.isBusy() || !valid()) return;
     retryPlan.current = null;
     speech.stop();
-    const n = ++generation.current; working.current = true; setBusy(isHandoff(current.tool) ? 'ვხსნი…' : 'ვინახავ…'); setError(null);
+    const n = ++generation.current; working.current = true; setBusy(isHandoff(current.tool) ? tx('ვხსნი…', 'Opening…') : tx('ვინახავ…', 'Saving…')); setError(null);
     try {
       const result = await assistantRequest<{ status: string; native?: AssistantNative; operationId: string }>('execute', owner, { token: current.token, confirmed: true });
       if (!valid(n)) return;
@@ -167,11 +168,11 @@ function AssistantSession({ owner, sessionId }: { owner: string; sessionId?: str
         }
       } else {
         const petName = choices.petId?.find(p => p.value === current.args.petId)?.label;
-        const reply = current.tool === 'medication_add' ? `${String(current.args.medName)} დამატებულია.` : current.tool === 'pet_care_plan' && petName ? `${petName}ს გეგმა შენახულია — ${String(current.args.startOn)}${current.args.dueTime ? ', ' + String(current.args.dueTime) : ''}.` : 'შენახულია.';
+        const reply = current.tool === 'medication_add' ? tx(`${String(current.args.medName)} დამატებულია.`, `${String(current.args.medName)} added.`) : current.tool === 'pet_care_plan' && petName ? tx(`${petName}ს გეგმა შენახულია — ${String(current.args.startOn)}${current.args.dueTime ? ', ' + String(current.args.dueTime) : ''}.`, `${petName}'s plan is saved — ${String(current.args.startOn)}${current.args.dueTime ? ', ' + String(current.args.dueTime) : ''}.`) : tx('შენახულია.', 'Saved.');
         setHistory(h => [...h, { role: 'assistant', content: reply }].slice(-12) as Turn[]); void speech.say(reply); persist([{ role: 'assistant', content: reply }]);
-        void afterSaved(current, n).catch(() => { if (valid(n)) setNotice('ჩანაწერი შენახულია. მონაცემების ან შეხსენებების განახლებისთვის შესაბამისი გვერდი გახსენი.'); });
+        void afterSaved(current, n).catch(() => { if (valid(n)) setNotice(tx('ჩანაწერი შენახულია. მონაცემების ან შეხსენებების განახლებისთვის შესაბამისი გვერდი გახსენი.', 'Entry saved. Open the matching page to refresh its data or reminders.')); });
       }
-    } catch (e) { if (valid(n)) setError(e instanceof Error ? e.message : 'მოქმედება ვერ შესრულდა.'); }
+    } catch (e) { if (valid(n)) setError(e instanceof Error ? e.message : tx('მოქმედება ვერ შესრულდა.', "That action didn't go through.")); }
     finally { working.current = false; if (alive.current) setBusy(null); }
   }
   async function send(message = text, fromVoice = false, petId?: string) {
@@ -183,7 +184,7 @@ function AssistantSession({ owner, sessionId }: { owner: string; sessionId?: str
     if (review && intent === 'confirm') { setText(''); await confirm(); return; }
     if ((review || draft) && intent === 'cancel') { setText(''); cancelReview(); return; }
     if (!fromVoice) setVoiceMode(false);
-    const n = ++generation.current; working.current = true; setBusy('ვამზადებ…'); setReceipt(null); setHistoryOpen(false); setError(null);
+    const n = ++generation.current; working.current = true; setBusy(tx('ვამზადებ…', 'Preparing…')); setReceipt(null); setHistoryOpen(false); setError(null);
     // Editing language invalidates the previous preview before the next request.
     const currentDraft = review ? { tool: review.tool, args: review.args } : draft;
     setReview(null); setText(''); Keyboard.dismiss();
@@ -200,10 +201,10 @@ function AssistantSession({ owner, sessionId }: { owner: string; sessionId?: str
       setDraft(currentDraft); if (!fromVoice) setText(value);
       if (e instanceof ApiError && e.code === 'AI_CONSENT_DECLINED') {
         // Declining sharing is a valid choice, not a network failure or a retryable send.
-        const reply = 'მოთხოვნა AI-ს არ გაეგზავნა. შეგიძლია აპის სხვა ფუნქციებით გააგრძელო. არჩევანს პროფილში, „კონფიდენციალობა და მონაცემებში“ შეცვლი.';
+        const reply = tx('მოთხოვნა AI-ს არ გაეგზავნა. შეგიძლია აპის სხვა ფუნქციებით გააგრძელო. არჩევანს პროფილში, „კონფიდენციალობა და მონაცემებში“ შეცვლი.', 'Your request was not sent to AI. You can keep using the rest of the app. You can change this choice in Profile, under “Privacy and data”.');
         setHistory(h => [...h, { role: 'assistant', content: reply }].slice(-12) as Turn[]);
       } else {
-        retryPlan.current = { value, fromVoice, petId }; setError(errorText(e, 'კავშირი შეფერხდა.')); assistantHaptic('error');
+        retryPlan.current = { value, fromVoice, petId }; setError(errorText(e, tx('კავშირი შეფერხდა.', 'Connection problem.'))); assistantHaptic('error');
       }
     } }
     finally { working.current = false; if (alive.current) setBusy(null); }
@@ -211,12 +212,12 @@ function AssistantSession({ owner, sessionId }: { owner: string; sessionId?: str
   async function openFeature(feature: AssistantFeature) {
     if (working.current || capture.isBusy() || !valid()) return;
     speech.stop(); Keyboard.dismiss();
-    const n = ++generation.current; working.current = true; setBusy('ვხსნი…'); setError(null);
+    const n = ++generation.current; working.current = true; setBusy(tx('ვხსნი…', 'Opening…')); setError(null);
     let ready: AssistantReview | null = null;
     try {
       const result = await assistantRequest<{review: AssistantReview}>('prepare', owner, { scope, action: { tool: 'open', args: { destination: feature.id } } });
       if (valid(n)) ready = result.review;
-    } catch (e) { if (valid(n)) setError(errorText(e, 'გვერდი ვერ გაიხსნა.')); }
+    } catch (e) { if (valid(n)) setError(errorText(e, tx('გვერდი ვერ გაიხსნა.', "Couldn't open the page."))); }
     finally { working.current = false; if (alive.current) setBusy(null); }
     if (ready && valid(n)) { setPicker(false); await confirm(ready); }
   }
@@ -230,11 +231,11 @@ function AssistantSession({ owner, sessionId }: { owner: string; sessionId?: str
     retryPlan.current = null;
     speech.stop();
     let ready: AssistantReview | null = null;
-    const n = ++generation.current; working.current = true; setBusy('ვამოწმებ…'); setError(null);
+    const n = ++generation.current; working.current = true; setBusy(tx('ვამოწმებ…', 'Checking…')); setError(null);
     try {
       const result = await assistantRequest<{ review: AssistantReview }>('prepare', owner, { scope, action: draft });
       if (valid(n)) { ready = result.review; setReview(ready); setManual(false); Keyboard.dismiss(); if (!save) void speech.say(reviewSpeech(ready)); }
-    } catch (e) { if (valid(n)) setError(errorText(e, 'ველები გადაამოწმე.')); }
+    } catch (e) { if (valid(n)) setError(errorText(e, tx('ველები გადაამოწმე.', 'Please check the fields.'))); }
     finally { working.current = false; if (alive.current) setBusy(null); }
     if (save && ready && valid(n)) await confirm(ready);
   }
@@ -252,42 +253,42 @@ function AssistantSession({ owner, sessionId }: { owner: string; sessionId?: str
   const resetConversation = () => { if (working.current || capture.isBusy()) return; speech.stop(); generation.current++; conversation.current = undefined; if (sessionId) router.replace('/assistant' as never); setHistory([]); setReview(null); setDraft(null); setReceipt(null); setText(''); setManual(false); setMenu(false); setError(null); setNotice(null); setHistoryOpen(false); setVoiceMode(true); };
   const goBack = () => { if (picker) setPicker(false); else if (manual) setManual(false); else if (menu || historyOpen) { setMenu(false); setHistoryOpen(false); } else if (router.canGoBack()) router.back(); else router.replace('/(tabs)/home' as never); };
   const header = <MediHeader subtitle={ka.chat.mediModeSubtitles.medi} mode="medi" onMode={next => { if (next !== 'medi') router.replace(mediRoute({ mode: next }) as never); }} onBack={goBack}
-    right={<Pressable accessibilityRole="button" accessibilityLabel="საუბრის პარამეტრები" accessibilityState={{ expanded: menu }} disabled={!!busy || capture.phase !== 'idle'} onPress={() => { speech.stop(); Keyboard.dismiss(); setMenu(!menu); }} style={{ width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center', backgroundColor: menu ? C.bg200 : 'transparent' }}><Ellipsis size={23} color={C.text200} /></Pressable>} />;
+    right={<Pressable accessibilityRole="button" accessibilityLabel={tx('საუბრის პარამეტრები', 'Conversation options')} accessibilityState={{ expanded: menu }} disabled={!!busy || capture.phase !== 'idle'} onPress={() => { speech.stop(); Keyboard.dismiss(); setMenu(!menu); }} style={{ width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center', backgroundColor: menu ? C.bg200 : 'transparent' }}><Ellipsis size={23} color={C.text200} /></Pressable>} />;
   return <ChatScreenShell style={{ backgroundColor: C.bg100 }} header={header}
     footer={picker || menu || historyOpen ? undefined : <AssistantTalkDock voice={voice} voiceOutput={voiceOutput} phase={capture.phase} duration={capture.duration} metering={capture.metering}
       speechPhase={speech.phase} muted={speech.muted} busy={busy} reviewing={!!review} text={text} onText={setText} onSend={() => void send()} tapMode={tapMode}
       voiceStage={voiceMode && !manual} formActive={!!draft && manual} formEditing={formEditing} onTextFocus={() => setFormEditing(false)} onSave={() => void prepare(true)} onMode={typing => { setVoiceMode(!typing); if (!typing) setManual(false); }}
       start={capture.start} release={capture.release} cancel={capture.cancel} stopSpeech={speech.stop} toggleSpeech={speech.toggle} />}>
     {menu ? <ChatFormScroll contentContainerStyle={{ padding: 24, gap: 14 }}>
-      <Text style={{ color: C.text100, fontSize: 22, fontFamily: 'NotoSansGeorgian_700Bold', marginBottom: 8 }}>შენი საუბარი</Text>
-      {button('საუბრის გაგრძელება', () => setMenu(false), true)}
-      {history.length ? button('საუბრის ისტორია', () => { setMenu(false); setHistoryOpen(true); }) : null}
-      {button('რას აკეთებს Medi', () => { setMenu(false); showDirectory(); })}
-      {button(tapMode ? 'ჩაწერა: ერთი შეხებით' : 'ჩაწერა: დაჭერით და აშვებით', () => setTapMode(!tapMode))}
-      <Text style={quiet}>{tapMode ? 'შეხება იწყებს ჩაწერას. მეორე შეხება აგზავნის.' : 'გეჭიროს საუბრისას. აშვებისას შენი ნათქვამი იგზავნება.'} Medi გისმენს მხოლოდ ჩაწერისას. ჩანაწერის შენახვამდე გეკითხება.</Text>
-      {history.length || draft || review ? button('ახალი საუბარი', resetConversation) : null}
+      <Text style={{ color: C.text100, fontSize: 22, fontFamily: 'NotoSansGeorgian_700Bold', marginBottom: 8 }}>{tx('შენი საუბარი', 'Your conversation')}</Text>
+      {button(tx('საუბრის გაგრძელება', 'Continue conversation'), () => setMenu(false), true)}
+      {history.length ? button(tx('საუბრის ისტორია', 'Conversation history'), () => { setMenu(false); setHistoryOpen(true); }) : null}
+      {button(tx('რას აკეთებს Medi', 'What Medi can do'), () => { setMenu(false); showDirectory(); })}
+      {button(tapMode ? tx('ჩაწერა: ერთი შეხებით', 'Recording: tap') : tx('ჩაწერა: დაჭერით და აშვებით', 'Recording: hold and release'), () => setTapMode(!tapMode))}
+      <Text style={quiet}>{tapMode ? tx('შეხება იწყებს ჩაწერას. მეორე შეხება აგზავნის.', 'Tap to start recording. Tap again to send.') : tx('გეჭიროს საუბრისას. აშვებისას შენი ნათქვამი იგზავნება.', 'Hold while you speak. Release to send what you said.')} {tx('Medi გისმენს მხოლოდ ჩაწერისას. ჩანაწერის შენახვამდე გეკითხება.', 'Medi only listens while recording and asks you before saving anything.')}</Text>
+      {history.length || draft || review ? button(tx('ახალი საუბარი', 'New conversation'), resetConversation) : null}
     </ChatFormScroll> : historyOpen ? <ChatFormScroll contentContainerStyle={{ padding: 20, gap: 16 }}>
       {history.map((turn, i) => <View key={i} style={{ alignSelf: turn.role === 'user' ? 'flex-end' : 'stretch', maxWidth: '95%', padding: 16, borderRadius: 20, backgroundColor: turn.role === 'user' ? C.bg200 : C.surface }}><Text selectable style={{ color: C.text100, fontSize: 14, lineHeight: 24, fontFamily: 'NotoSansGeorgian_400Regular' }}>{turn.content}</Text></View>)}
-      {button('საუბრის გაგრძელება', () => setHistoryOpen(false))}
+      {button(tx('საუბრის გაგრძელება', 'Continue conversation'), () => setHistoryOpen(false))}
     </ChatFormScroll> : picker ? <AssistantDirectory tools={tools} features={features} groups={groups} busy={!!busy} error={error} onClose={() => { Keyboard.dismiss(); setPicker(false); }} onTool={chooseTool} onFeature={feature => void openFeature(feature)} /> : manual && draft && activeTool ? <ChatFormScroll ref={scroll} contentContainerStyle={{ padding: 20, paddingBottom: 24, gap: 18 }}>
       <Text style={{ color: C.text100, fontSize: 20, lineHeight: 30, fontFamily: 'NotoSansGeorgian_700Bold' }}>{activeTool.label}</Text>
       {error ? <Text accessibilityRole="alert" style={{ ...quiet, color: C.danger }}>{error}</Text> : null}
       <AssistantForm onFieldFocus={() => { speech.stop(); setFormEditing(true); }} key={draft.tool} schema={activeTool.parameters} values={draft.args} focusFields={focusFields} choices={{ ...choices, id: draft.tool.startsWith('visit_') ? choices.visitId : choices.medicationId }} disabled={!!busy || capture.phase !== 'idle'} onChange={args => { speech.stop(); setError(null); setDraft({ ...draft, args }); }} />
-      {button('გადამოწმება', () => void prepare(), true)}
-      {button('ხმით გაგრძელება', () => { Keyboard.dismiss(); setManual(false); setVoiceMode(true); })}
+      {button(tx('გადამოწმება', 'Review'), () => void prepare(), true)}
+      {button(tx('ხმით გაგრძელება', 'Continue by voice'), () => { Keyboard.dismiss(); setManual(false); setVoiceMode(true); })}
     </ChatFormScroll> : <AssistantVoiceStage phase={capture.phase} metering={capture.metering} processing={!!busy || capture.phase === 'transcribing'} speaking={speech.phase === 'speaking'}
       reply={review ? reviewSpeech(review) : lastReply} userText={lastUser} error={error} notice={notice} hasTask={!!task}>
-      {error && !review && retryPlan.current ? <View style={{ width: '100%', gap: 8 }}>{button('ხელახლა ცდა', () => { const pending = retryPlan.current; if (pending) void send(pending.value, pending.fromVoice, pending.petId); }, true)}</View> : null}
+      {error && !review && retryPlan.current ? <View style={{ width: '100%', gap: 8 }}>{button(tx('ხელახლა ცდა', 'Try again'), () => { const pending = retryPlan.current; if (pending) void send(pending.value, pending.fromVoice, pending.petId); }, true)}</View> : null}
       {suggestions.length ? <View style={{ width: '100%', gap: 10, flexDirection: suggestions.length <= 2 ? 'row' : 'column' }}>{suggestions.map((option, i) => <View key={i} style={suggestions.length <= 2 ? { flex: 1 } : undefined}>{button(option.label, () => void send(option.text, voiceMode, option.petId))}</View>)}</View> : null}
       {review ? <View style={{ width: '100%', borderRadius: 22, padding: 16, backgroundColor: C.surface, borderWidth: 1, borderColor: C.bg300, gap: 12 }}>
-        <View style={{ flexDirection: 'row', gap: 7, alignItems: 'center' }}>{review.tool.startsWith('pet_') ? <PawPrint size={16} color={C.primary100} /> : <Check size={16} color={C.primary100} />}<Text style={quiet}>{isHandoff(review.tool) ? 'მზადაა გასახსნელად' : 'გადაამოწმე შენახვამდე'}</Text></View>
-        <Pressable accessibilityRole="button" accessibilityState={{ expanded: detailsOpen }} onPress={() => setDetailsOpen(!detailsOpen)} style={{ minHeight: 44, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}><Text style={quiet}>ჩანაწერის დეტალები</Text><ChevronDown size={17} color={C.text200} /></Pressable>
+        <View style={{ flexDirection: 'row', gap: 7, alignItems: 'center' }}>{review.tool.startsWith('pet_') ? <PawPrint size={16} color={C.primary100} /> : <Check size={16} color={C.primary100} />}<Text style={quiet}>{isHandoff(review.tool) ? tx('მზადაა გასახსნელად', 'Ready to open') : tx('გადაამოწმე შენახვამდე', 'Check before saving')}</Text></View>
+        <Pressable accessibilityRole="button" accessibilityState={{ expanded: detailsOpen }} onPress={() => setDetailsOpen(!detailsOpen)} style={{ minHeight: 44, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}><Text style={quiet}>{tx('ჩანაწერის დეტალები', 'Entry details')}</Text><ChevronDown size={17} color={C.text200} /></Pressable>
         {detailsOpen ? visibleRows.map(row => <View key={row.key} style={{ gap: 2 }}><Text style={{ ...quiet, fontSize: 11 }}>{row.label}</Text><Text selectable style={{ color: C.text100, fontSize: 14, lineHeight: 22, fontFamily: 'NotoSansGeorgian_400Regular' }}>{row.value}</Text></View>) : null}
-        <View style={{ flexDirection: 'row', gap: 8 }}><View style={{ flex: 1 }}>{button('გაუქმება', cancelReview)}</View><View style={{ flex: 1 }}>{button(isHandoff(review.tool) ? 'გახსნა' : 'შენახვა', () => void confirm(), true)}</View></View>
-        {button('შესწორება', () => { speech.stop(); setDraft({ tool: review.tool, args: review.args }); setFocusFields(undefined); setReview(null); setManual(true); })}
+        <View style={{ flexDirection: 'row', gap: 8 }}><View style={{ flex: 1 }}>{button(tx('გაუქმება', 'Cancel'), cancelReview)}</View><View style={{ flex: 1 }}>{button(isHandoff(review.tool) ? tx('გახსნა', 'Open') : tx('შენახვა', 'Save'), () => void confirm(), true)}</View></View>
+        {button(tx('შესწორება', 'Edit'), () => { speech.stop(); setDraft({ tool: review.tool, args: review.args }); setFocusFields(undefined); setReview(null); setManual(true); })}
       </View> : draft ? <View style={{ width: '100%', flexDirection: 'row', gap: 8 }}>
-        <Pressable accessibilityRole="button" disabled={!!busy || capture.phase !== 'idle'} onPress={() => { speech.stop(); setManual(true); }} style={{ flex: 1, minHeight: 44, alignItems: 'center', justifyContent: 'center' }}><Text style={quiet}>ხელით შევსება</Text></Pressable>
-        <Pressable accessibilityRole="button" disabled={!!busy} onPress={cancelReview} style={{ flex: 1, minHeight: 44, alignItems: 'center', justifyContent: 'center' }}><Text style={quiet}>გაუქმება</Text></Pressable>
+        <Pressable accessibilityRole="button" disabled={!!busy || capture.phase !== 'idle'} onPress={() => { speech.stop(); setManual(true); }} style={{ flex: 1, minHeight: 44, alignItems: 'center', justifyContent: 'center' }}><Text style={quiet}>{tx('ხელით შევსება', 'Fill in manually')}</Text></Pressable>
+        <Pressable accessibilityRole="button" disabled={!!busy} onPress={cancelReview} style={{ flex: 1, minHeight: 44, alignItems: 'center', justifyContent: 'center' }}><Text style={quiet}>{tx('გაუქმება', 'Cancel')}</Text></Pressable>
       </View> : null}
     </AssistantVoiceStage>}
   </ChatScreenShell>;

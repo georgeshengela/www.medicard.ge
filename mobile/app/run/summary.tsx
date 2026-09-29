@@ -10,6 +10,7 @@ import { ka } from '@/i18n/ka';
 import { cancelRun, useRunSession } from '@/lib/run/store';
 import { useThemeColors } from '@/theme/colors';
 import { usePulse } from '@/lib/medipulsi/client';
+import { tx } from '@/i18n/locale';
 
 export default function RunSummaryScreen() {
   const router = useRouter();
@@ -38,12 +39,12 @@ export default function RunSummaryScreen() {
       {celebrate ? <StepsGoalConfetti /> : null}
       <RunFinishedView
         summary={summary}
-        title={summary.targetMeters===0?'გასეირნება დასრულდა':ka.run.summaryTitle}
+        title={summary.targetMeters===0?tx('გასეირნება დასრულდა', 'Walk finished'):ka.run.summaryTitle}
         footer={
           <View style={{ gap: 10 }}>
-            <View style={{ flexDirection: 'row', gap: 9, alignItems: 'center', marginBottom: 4 }}><CloudUpload size={18} color={colors.primary100} /><Copy muted size={11} style={{ flex: 1 }}>{pulse.pending > 0 ? 'შენახულია ტელეფონში · ანგარიშზე გაგზავნას ელოდება' : 'გასეირნების ჩანაწერი შენახულია'}</Copy></View>
-            <Action label="MEDIRUN-ში დაბრუნება" icon={ArrowUpRight} onPress={() => leave('/run')} />
-            <Action secondary label="MEDICARD-ის მთავარი" icon={Home} onPress={() => leave('/(tabs)/home')} />
+            <View style={{ flexDirection: 'row', gap: 9, alignItems: 'center', marginBottom: 4 }}><CloudUpload size={18} color={colors.primary100} /><Copy muted size={11} style={{ flex: 1 }}>{pulse.pending > 0 ? tx('შენახულია ტელეფონში · ანგარიშზე გაგზავნას ელოდება', 'Saved on your phone · waiting to sync to your account') : tx('გასეირნების ჩანაწერი შენახულია', 'Walk record saved')}</Copy></View>
+            <Action label={tx('MEDIRUN-ში დაბრუნება', 'Back to MEDIRUN')} icon={ArrowUpRight} onPress={() => leave('/run')} />
+            <Action secondary label={tx('MEDICARD-ის მთავარი', 'MEDICARD home')} icon={Home} onPress={() => leave('/(tabs)/home')} />
           </View>
         }
       />

@@ -10,6 +10,7 @@ import { loadPetCareReminderPrefs, savePetCareReminderPrefs } from '@/lib/petCar
 import { petCareUiStatus, reconcilePetCareReminders } from '@/lib/petCareReminders';
 import { petsCareErrorMessage } from '@/lib/petsCare';
 import { useThemeColors } from '@/theme/colors';
+import { dateLocale } from '@/i18n/locale';
 
 function SwitchRow({
   title,
@@ -163,7 +164,7 @@ export function PetCareReminderCard({
       <SwitchRow title={ka.pets.reminderFollowUp} value={followUp} onValueChange={(value) => void saveFollowUp(value)} />
       {nextAlertAt ? (
         <Text className="text-sm text-text-200">
-          {ka.pets.reminderNextLocal}: {new Date(nextAlertAt).toLocaleString('ka-GE')}
+          {ka.pets.reminderNextLocal}: {new Date(nextAlertAt).toLocaleString(dateLocale())}
         </Text>
       ) : null}
       {!permissionGranted ? (

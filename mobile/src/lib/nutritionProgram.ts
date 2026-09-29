@@ -1,4 +1,5 @@
 import { nutritionProgramRequest as request } from "./api";
+import { isEn, tx } from "../i18n/locale.js";
 import type { FoodItem, Meal } from "./nutrition";
 import type { WeightGoal, WeightLog } from "@/types/weightGoal";
 export type NutritionTotals = {
@@ -17,10 +18,10 @@ export type NutritionTargets = NutritionTotals & {
 export type MacroShares = { protein: number; carbs: number; fat: number };
 export type MacroPreference = MacroShares & { mode: "auto" | "custom" };
 export const MACRO_PRESETS: { key: string; label: string; detail: string; shares: MacroShares }[] = [
-  { key: "balanced", label: "ბალანსი", detail: "გეგმის ნაგულისხმევი", shares: { protein: 20, carbs: 50, fat: 30 } },
-  { key: "highProtein", label: "მეტი ცილა", detail: "ძალოვანი ვარჯიში, გაჯერება", shares: { protein: 30, carbs: 40, fat: 30 } },
-  { key: "lowerCarb", label: "ნაკლები ნახშირწყალი", detail: "ზომიერად დაბალი", shares: { protein: 30, carbs: 25, fat: 45 } },
-  { key: "endurance", label: "გამძლეობა", detail: "სირბილი, ველოსიპედი", shares: { protein: 20, carbs: 55, fat: 25 } },
+  { key: "balanced", label: tx("ბალანსი", "Balanced"), detail: tx("გეგმის ნაგულისხმევი", "Plan default"), shares: { protein: 20, carbs: 50, fat: 30 } },
+  { key: "highProtein", label: tx("მეტი ცილა", "More protein"), detail: tx("ძალოვანი ვარჯიში, გაჯერება", "Strength training, fullness"), shares: { protein: 30, carbs: 40, fat: 30 } },
+  { key: "lowerCarb", label: tx("ნაკლები ნახშირწყალი", "Fewer carbs"), detail: tx("ზომიერად დაბალი", "Moderately low"), shares: { protein: 30, carbs: 25, fat: 45 } },
+  { key: "endurance", label: tx("გამძლეობა", "Endurance"), detail: tx("სირბილი, ველოსიპედი", "Running, cycling"), shares: { protein: 20, carbs: 55, fat: 25 } },
 ];
 export const MACRO_BOUNDS: Record<keyof MacroShares, [number, number]> = { protein: [10, 40], carbs: [15, 65], fat: [15, 50] };
 /** Grams for a calorie target and a split: 4 kcal per gram of protein and carbs, 9 for fat. */
@@ -210,11 +211,12 @@ export type NutritionPreview = {
   explanation: string;
   mealPlanning?: MealPlanningAvailability;
 };
+const EN_MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 // Explicit Georgian labels also work on runtimes without ka-GE Intl data.
 export function nutritionDateLabel(date: string, weekday = false) {
   const d = new Date(date + "T12:00:00");
   if (weekday)
-    return ["კვი", "ორშ", "სამ", "ოთხ", "ხუთ", "პარ", "შაბ"][d.getDay()];
+    return (isEn() ? ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"] : ["კვი", "ორშ", "სამ", "ოთხ", "ხუთ", "პარ", "შაბ"])[d.getDay()];
   const months = [
     "იანვარი",
     "თებერვალი",
@@ -229,23 +231,24 @@ export function nutritionDateLabel(date: string, weekday = false) {
     "ნოემბერი",
     "დეკემბერი",
   ];
+  if (isEn()) return `${d.getDate()} ${EN_MONTHS[d.getMonth()]}`;
   return `${d.getDate()} ${months[d.getMonth()]}`;
 }
 export const allergenLabels: Record<string, string> = {
-  milk: "რძე",
-  eggs: "კვერცხი",
-  fish: "თევზი",
-  shellfish: "კიბოსნაირები",
-  nuts: "თხილეული",
-  peanuts: "მიწის თხილი",
-  soy: "სოია",
-  gluten: "გლუტენი",
-  sesame: "სეზამი",
-  celery: "ნიახური",
-  mustard: "მდოგვი",
-  sulphites: "სულფიტები",
-  lupin: "ლუპინი",
-  molluscs: "მოლუსკები",
+  milk: tx("რძე", "Milk"),
+  eggs: tx("კვერცხი", "Eggs"),
+  fish: tx("თევზი", "Fish"),
+  shellfish: tx("კიბოსნაირები", "Crustaceans"),
+  nuts: tx("თხილეული", "Tree nuts"),
+  peanuts: tx("მიწის თხილი", "Peanuts"),
+  soy: tx("სოია", "Soy"),
+  gluten: tx("გლუტენი", "Gluten"),
+  sesame: tx("სეზამი", "Sesame"),
+  celery: tx("ნიახური", "Celery"),
+  mustard: tx("მდოგვი", "Mustard"),
+  sulphites: tx("სულფიტები", "Sulphites"),
+  lupin: tx("ლუპინი", "Lupin"),
+  molluscs: tx("მოლუსკები", "Molluscs"),
 };
 export const nutritionProgramApi = {
   dashboard: () => request<NutritionDashboard>("/program/dashboard"),

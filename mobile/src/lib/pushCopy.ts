@@ -2,6 +2,7 @@ import { api } from '@/lib/api';
 import { ENGAGE_FALLBACKS } from '@/lib/mediEngageCopy';
 import { redactCyclePushLog } from '@/lib/cycleNotificationContract.js';
 import { getToken } from '@/lib/storage';
+import { isEn, tx } from '../i18n/locale.js';
 
 export type PushTemplate = {
   key: string;
@@ -12,7 +13,7 @@ export type PushTemplate = {
   placeholders: string[];
 };
 
-const FALLBACKS: Record<string, { title: string; body: string }> = {
+const FALLBACKS_KA: Record<string, { title: string; body: string }> = {
   medication: {
     title: '{name}-ის დროა 💊',
     body: 'არ დაგავიწყდეს შენი {name} {dosage} 🤍 Medi შეგახსენებს, რომ საკუთარ თავზე ზრუნვის დროა.',
@@ -119,7 +120,118 @@ const FALLBACKS: Record<string, { title: string; body: string }> = {
   },
 };
 
+const FALLBACKS_EN: Record<string, { title: string; body: string }> = {
+  medication: {
+    title: 'Time for {name} 💊',
+    body: "Don't forget your {name} {dosage} 🤍 Medi is here to remind you it's time to look after yourself.",
+  },
+  'med-refill': {
+    title: 'Running low on {name}? 👀',
+    body: "It might be time to check your {name} supply. Take a look so you have it when you need it 💚",
+  },
+  'cycle-period-soon': {
+    title: 'Your period may be coming soon 🌸',
+    body: 'Based on your cycle, your period is expected in about {days} days. This is an estimate — Medi is just reminding you 💗',
+  },
+  'cycle-period-start': {
+    title: 'It may start today 🌷',
+    body: "By Medi's estimate, your period will probably start today. If it doesn't, that's okay — cycles don't always follow the calendar exactly 🤍",
+  },
+  'cycle-ovulation': {
+    title: 'Estimated ovulation is coming up ✨',
+    body: "By the calendar, your estimated ovulation day is getting close. This is an estimate — cycles don't always follow the calendar exactly 🤍",
+  },
+  'cycle-fertile': {
+    title: 'Estimated fertile window 🌱',
+    body: 'Your estimated fertile window may be starting. This is a calendar estimate — the forecast can change 🤍',
+  },
+  'cycle-pms': {
+    title: 'PMS may be on its way 🌙',
+    body: 'If you feel a little different today, your cycle suggests PMS may be coming up. Listen to your body 🤍',
+  },
+  'cycle-opk': {
+    title: 'Time for your OPK test 🧪',
+    body: "If you're using ovulation tests this cycle, don't forget today's OPK 💗",
+  },
+  'cycle-bbt': {
+    title: 'Good morning ☀️ BBT?',
+    body: "Before you get up and start your day, don't forget to take your basal temperature 🌡️",
+  },
+  'cycle-log': {
+    title: 'How are you today? 💚',
+    body: 'A minute for Medi? Note how your day went — symptoms, mood and whatever matters to you.',
+  },
+  'cycle-tip': {
+    title: 'From Medi, for you 💚',
+    body: 'I have a small tip for you today. Stop by when you have a moment ✨',
+  },
+  'cycle-masked': {
+    title: 'A reminder from Medi',
+    body: 'Stop by when you have a moment 💚',
+  },
+  'pregnancy-care-plan': {
+    title: 'Reminder',
+    body: 'Just a reminder: you planned {item} {when}.',
+  },
+  'pregnancy-care-masked': {
+    title: 'A reminder from Medi',
+    body: 'Your planned care reminder',
+  },
+  'pet-care': {
+    title: '{pet} · {item}',
+    body: 'A care task is planned for today. Open the app to confirm it.',
+  },
+  'pet-care-masked': {
+    title: 'A reminder from Medi',
+    body: 'Your planned care reminder',
+  },
+  visit: {
+    title: "Don't forget your visit 🩺",
+    body: 'You have a visit with {doctor} today at {time}{place}. All set? Medi is just reminding you 💚',
+  },
+  steps: {
+    title: "You're close to your goal 👟",
+    body: 'You have {steps} steps so far today. A short walk will bring you even closer to your goal 💚',
+  },
+  'nutrition-breakfast': {
+    title: 'Logged breakfast? 🍳',
+    body: "One photo or a couple of words — and your day's balance is in your hands. Medi 💚",
+  },
+  'nutrition-lunch': {
+    title: 'Lunchtime 🥗',
+    body: "What are you having? Snap it, type it or just tell me — I'll do the counting.",
+  },
+  'fasting-goal': {
+    title: '{hours} hours done ⏱️',
+    body: 'You reached your fasting goal. End the timer when you start eating — slowly and calmly 💚',
+  },
+  'nutrition-dinner': {
+    title: 'Dinner and your day in review 🌙',
+    body: 'Finish the day with one entry — your streak and progress are on your side 💚',
+  },
+  weight: {
+    title: 'Log your weight? ⚖️',
+    body: 'If you wanted to log your weight today, you can do it in Medi — last entry: {kg} kg. No pressure 🤍',
+  },
+  'admin-push': {
+    title: "It's me, Medi 💚",
+    body: 'I have a little news for you.',
+  },
+  'quota-reset': {
+    title: 'Medi is back with you ✨',
+    body: 'Your AI limit has reset — you have {limit} questions today. Ask anything 💬',
+  },
+  'quota-reset-lock': {
+    title: '24 hours have passed 💚',
+    body: 'You can talk to Medi again — {limit} questions are waiting. Shall we start?',
+  },
+};
+
+const FALLBACKS: Record<string, { title: string; body: string }> = tx(FALLBACKS_KA, FALLBACKS_EN);
+
 let cache: Record<string, PushTemplate> | null = null;
+
+const hasGeorgian = (text: string | undefined) => /[\u10A0-\u10FF]/.test(String(text ?? ''));
 
 function isBlank(value: string | number | undefined | null): boolean {
   return value == null || String(value).trim() === '';
@@ -139,6 +251,16 @@ export function tidyPushCopy(text: string): string {
     .replace(/(\S)([—–])/g, '$1 $2')
     .replace(/\s+([.,;:!?])/g, '$1')
     .replace(/\s{2,}/g, ' ')
+    // English templates: the same clean-up when a value is missing, plus singular units.
+    .replace(/\bTime for (?=[^\p{L}\p{N}\s]|$)/u, 'Time for your medication ')
+    .replace(/\bforget your (?=[^\p{L}\p{N}\s])/u, 'forget your medication ')
+    .replace(/\blow on\?/, 'low on your medication?')
+    .replace(/\bwith today\b/, 'with your doctor today')
+    .replace(/ at(?=[.,!?]| [—–])/, '')
+    .replace(/\bYou have steps so far today\./, 'Your steps are adding up today.')
+    .replace(/ ?— last entry: kg\.?/, '.')
+    .replace(/\bmorning, (?=[^\p{L}\p{N}\s]|$)/u, 'morning ')
+    .replace(/\b1 (day|hour|question)s\b/g, '1 $1')
     .trim();
 }
 
@@ -186,8 +308,13 @@ export function applyPushCopy(
   key: string,
   vars: Record<string, string | number | undefined> = {},
 ): { title: string; body: string } {
-  const row = cache?.[key];
-  const fallback = FALLBACKS[key] ?? ENGAGE_FALLBACKS[key] ?? { title: 'მე ვარ, Medi 💚', body: 'შენთვის პატარა შენიშვნა მაქვს.' };
+  const cached = cache?.[key];
+  // Admin-edited templates are Georgian; English users keep the English fallback copy.
+  const row = cached && isEn() && (hasGeorgian(cached.title) || hasGeorgian(cached.body)) ? undefined : cached;
+  const fallback = FALLBACKS[key] ?? ENGAGE_FALLBACKS[key] ?? {
+    title: tx('მე ვარ, Medi 💚', "It's me, Medi 💚"),
+    body: tx('შენთვის პატარა შენიშვნა მაქვს.', 'I have a small note for you.'),
+  };
   return {
     title: interpolatePushCopy(row?.title ?? fallback.title, vars),
     body: interpolatePushCopy(row?.body ?? fallback.body, vars),
@@ -196,17 +323,17 @@ export function applyPushCopy(
 
 export function previewPushCopy(key: string): { title: string; body: string } {
   return applyPushCopy(key, {
-    name: 'ასპირინი',
-    firstName: 'ნინო',
-    dosage: '1 ტაბლეტი',
+    name: tx('ასპირინი', 'Aspirin'),
+    firstName: tx('ნინო', 'Nino'),
+    dosage: tx('1 ტაბლეტი', '1 tablet'),
     days: 2,
-    doctor: 'თერაპევტი',
+    doctor: tx('თერაპევტი', 'your internist'),
     time: '14:30',
-    place: ' — კლინიკა',
+    place: tx(' — კლინიკა', ' — clinic'),
     steps: '6,200',
     kg: 70,
-    item: 'ანატომიის ულტრაბგერა',
-    when: 'ხვალ',
+    item: tx('ანატომიის ულტრაბგერა', 'the anatomy scan'),
+    when: tx('ხვალ', 'tomorrow'),
   });
 }
 

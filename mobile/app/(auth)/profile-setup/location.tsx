@@ -11,6 +11,7 @@ import { markPrimerAsked, primerCopy } from '@/lib/permissionPrimer';
 import { useOnboardingDevPreview, onboardingScreenBlocked, onboardingStepHref } from '@/lib/onboardingDevPreview';
 import { useAuth } from '@/store/AuthContext';
 import { localAccountId } from '@/lib/localAccount';
+import { tx } from '@/i18n/locale';
 
 /** Location permission — after notifications, before analyzing. */
 export default function ProfileSetupLocationScreen() {
@@ -57,7 +58,7 @@ export default function ProfileSetupLocationScreen() {
       }
       goAnalyzing();
     } catch {
-      if (alive.current && owner === localAccountId()) setError('არჩევანი ვერ შეინახა. შეამოწმე ინტერნეტი და ხელახლა სცადე.');
+      if (alive.current && owner === localAccountId()) setError(tx('არჩევანი ვერ შეინახა. შეამოწმე ინტერნეტი და ხელახლა სცადე.', "Couldn't save your choice. Check your internet connection and try again."));
     } finally {
       lock.current = false;
       if (alive.current && owner === localAccountId()) setBusy(false);

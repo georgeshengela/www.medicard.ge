@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { tx } from '@/i18n/locale';
 import { useAuth } from '@/store/AuthContext';
 import { localAccountId } from '@/lib/localAccount';
 import { companionApi, type CompanionCosmetic, type CompanionOverview } from '@/lib/companion/api';
@@ -70,7 +71,7 @@ export function useQuestJourney(enabled: boolean) {
       await writeCompanionCache(next, ownerId);
       if (localAccountId() === ownerId) requestCompanionRefresh();
     } catch {
-      if (mounted.current && localAccountId() === ownerId) setEquipError('სტილი ვერ შეინახა. შეამოწმე კავშირი და ხელახლა აირჩიე.');
+      if (mounted.current && localAccountId() === ownerId) setEquipError(tx('სტილი ვერ შეინახა. შეამოწმე კავშირი და ხელახლა აირჩიე.', 'Couldn’t save your style. Check your connection and choose again.'));
     } finally {
       if (mounted.current && localAccountId() === ownerId) { busy.current = false; setBusyKey(null); }
     }

@@ -1,4 +1,4 @@
-import { consentedAiFetch } from './consentedAiFetch.js';
+import { AI_LANGUAGE_HEADER, consentedAiFetch } from './consentedAiFetch.js';
 import OpenAI from 'openai';
 import { env } from '../config/env.js';
 import { withOpenRouterModelFallback } from './aiEngine.js';
@@ -114,6 +114,8 @@ const openrouter = env.OPENROUTER_API_KEY
       defaultHeaders: {
         'HTTP-Referer': 'https://medicard.ge',
         'X-Title': 'Medicard.GE',
+        // Catalog keys only — never the reader-language directive.
+        [AI_LANGUAGE_HEADER]: 'off',
       },
     })
   : null;
@@ -154,7 +156,7 @@ function parseMaps(raw) {
 
 async function askOpenRouter(unknowns, model) {
   if (!openrouter) {
-    throw new AiEngineError('სახელების შემოწმების სერვისი არ არის კონფიგურირებული.', { status: 503 });
+    throw new AiEngineError('სახელების შემოწმების სერვისი არ არის კონფიგურირებული.', { status: 503, messageEn: 'The test-name check service is not available right now.' });
   }
   const catalogLines = Object.entries(CATALOG)
     .map(([key, title]) => `${key} | ${title.nameKa} | ${title.nameEn}`)

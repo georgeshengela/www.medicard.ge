@@ -42,6 +42,7 @@ import type {
   PetWeightWrite,
 } from '@/lib/api';
 import { todayIsoLocal } from '@/lib/visitReminders';
+import { tx } from '@/i18n/locale';
 
 function digitsToIso(digits: string): string | null {
   if (!digits) return null;
@@ -342,7 +343,7 @@ export function PetConditionForm({
       setFieldError(ka.pets.conditionResolvedOn);
       return;
     }
-    if (onsetOn && resolvedOn && resolvedOn < onsetOn) { setFieldError('დასრულების თარიღი დაწყებამდე ვერ იქნება.'); return; }
+    if (onsetOn && resolvedOn && resolvedOn < onsetOn) { setFieldError(tx('დასრულების თარიღი დაწყებამდე ვერ იქნება.', 'The end date can’t be before the start date.')); return; }
     setFieldError(null);
     onSubmit({
       name: name.trim(),

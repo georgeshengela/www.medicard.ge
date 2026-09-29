@@ -15,6 +15,8 @@ import {
   ChevronDown,
 } from "lucide-react-native";
 import { useAuth } from "@/store/AuthContext";
+import { tx } from "@/i18n/locale";
+import { formatYmd } from "@/lib/format";
 import { useThemeColors } from "@/theme/colors";
 import { localDay, shiftDay, mealLabels, foodTotals } from "@/lib/nutrition";
 import {
@@ -126,8 +128,8 @@ function Plan() {
   const icons = { breakfast: Sunrise, lunch: Sun, dinner: Moon, snack: Apple };
   return (
     <NScreen
-      title={shopping ? "საყიდლების სია" : "ჩემი რაციონი"}
-      subtitle="7 დღე · მოქნილი კერძები · შენი არჩევანი"
+      title={shopping ? tx("საყიდლების სია", "Shopping list") : tx("ჩემი რაციონი", "My meal plan")}
+      subtitle={tx("7 დღე · მოქნილი კერძები · შენი არჩევანი", "7 days · flexible dishes · your choice")}
       onBack={shopping ? () => setShopping(false) : undefined}
     >
       {!!(error || dashboardError) && (
@@ -147,11 +149,12 @@ function Plan() {
       {shopping ? (
         <>
           <NCard>
-            <NText>მთელი არჩეული კვირის ინგრედიენტები</NText>
+            <NText>{tx("მთელი არჩეული კვირის ინგრედიენტები", "Ingredients for the whole selected week")}</NText>
             <NText style={{ color: c.text200, fontSize: 12 }}>
-              რაოდენობა ეხება სახელში მითითებულ მდგომარეობას: მოხარშული, მზა ან
-              მშრალი. შეამოწმე, რა გაქვს უკვე სახლში; ეს უმი შესაძენი წონის
-              კონვერტაცია არ არის.
+              {tx(
+                "რაოდენობა ეხება სახელში მითითებულ მდგომარეობას: მოხარშული, მზა ან მშრალი. შეამოწმე, რა გაქვს უკვე სახლში; ეს უმი შესაძენი წონის კონვერტაცია არ არის.",
+                "Amounts refer to the state in the name: cooked, ready-made or dry. Check what you already have at home; this is not converted to raw weight for buying.",
+              )}
             </NText>
           </NCard>
           {week?.shopping.map((item) => (
@@ -167,13 +170,13 @@ function Plan() {
             >
               <NText style={{ flex: 1 }}>{item.name}</NText>
               <NText style={{ fontFamily: "NotoSansGeorgian_600SemiBold" }}>
-                {item.grams} გ
+                {item.grams} {tx("გ", "g")}
               </NText>
             </View>
           ))}
           <NButton
             secondary
-            label="რაციონის ნახვა"
+            label={tx("რაციონის ნახვა", "View meal plan")}
             onPress={() => setShopping(false)}
           />
         </>
@@ -183,24 +186,26 @@ function Plan() {
             <NCard>
               <NText style={{ fontFamily: "NotoSansGeorgian_600SemiBold" }}>
                 {d.targets
-                  ? "რაციონისთვის კვების არჩევანი დააზუსტე"
-                  : "ჯერ დღის მიზანი შეარჩიე"}
+                  ? tx("რაციონისთვის კვების არჩევანი დააზუსტე", "Set your food preferences for the plan")
+                  : tx("ჯერ დღის მიზანი შეარჩიე", "First choose a daily goal")}
               </NText>
               <NText style={{ color: c.text200 }}>
                 {d.mealPlanning?.reasons.join(" ") ||
                   d.reasons[0] ||
-                  "რაციონი შენს საჭიროებას, არჩევანსა და ალერგენებს მოერგება."}
+                  tx("რაციონი შენს საჭიროებას, არჩევანსა და ალერგენებს მოერგება.", "Your plan adapts to your needs, preferences and allergens.")}
               </NText>
               <NButton
                 label={
-                  d.targets ? "კვების არჩევანის დაზუსტება" : "გეგმის შერჩევა"
+                  d.targets ? tx("კვების არჩევანის დაზუსტება", "Set food preferences") : tx("გეგმის შერჩევა", "Choose a plan")
                 }
                 onPress={() => router.push("/nutrition/goal")}
               />
               {d.targets && (
                 <NText style={{ fontSize: 12, color: c.text200 }}>
-                  დღის სამიზნე შენახულია. კვების დღიურში ჩაწერა შეგიძლია
-                  გააგრძელო.
+                  {tx(
+                    "დღის სამიზნე შენახულია. კვების დღიურში ჩაწერა შეგიძლია გააგრძელო.",
+                    "Your daily target is saved. You can keep logging in your food diary.",
+                  )}
                 </NText>
               )}
             </NCard>
@@ -208,7 +213,7 @@ function Plan() {
           <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
             <Pressable
               accessibilityRole="button"
-              accessibilityLabel="წინა კვირა"
+              accessibilityLabel={tx("წინა კვირა", "Previous week")}
               disabled={busy || from <= shiftDay(localDay(), -83)}
               onPress={() => changeWeek(-7)}
               style={{ padding: 10 }}
@@ -216,11 +221,11 @@ function Plan() {
               <ChevronLeft size={22} color={c.text100} />
             </Pressable>
             <NText style={{ flex: 1, textAlign: "center", fontSize: 13 }}>
-              {from} — {shiftDay(from, 6)}
+              {formatYmd(from)} — {formatYmd(shiftDay(from, 6))}
             </NText>
             <Pressable
               accessibilityRole="button"
-              accessibilityLabel="შემდეგი კვირა"
+              accessibilityLabel={tx("შემდეგი კვირა", "Next week")}
               disabled={busy || from >= shiftDay(localDay(), 21)}
               onPress={() => changeWeek(7)}
               style={{ padding: 10 }}
@@ -239,7 +244,7 @@ function Plan() {
                 disabled={busy}
                 accessibilityRole="button"
                 accessibilityState={{ selected: day === v }}
-                accessibilityLabel={v}
+                accessibilityLabel={formatYmd(v, true)}
                 onPress={() => {
                   setDay(v);
                   setOpened(null);
@@ -289,12 +294,12 @@ function Plan() {
                     fontFamily: "NotoSansGeorgian_600SemiBold",
                   }}
                 >
-                  დღის მენიუ
+                  {tx("დღის მენიუ", "Day menu")}
                 </NText>
                 <Pressable
                   onPress={() => setShopping(true)}
                   accessibilityRole="button"
-                  accessibilityLabel="საყიდლების სია"
+                  accessibilityLabel={tx("საყიდლების სია", "Shopping list")}
                   style={{ padding: 10 }}
                 >
                   <ShoppingBasket color={c.primary100} size={22} />
@@ -302,17 +307,18 @@ function Plan() {
               </View>
               <NCard>
                 <NText style={{ fontFamily: "NotoSansGeorgian_600SemiBold" }}>
-                  {foodTotals(meals.flatMap((m) => m.data.items)).calories} კკალ
-                  · დაგეგმილი
+                  {foodTotals(meals.flatMap((m) => m.data.items)).calories}{" "}
+                  {tx("კკალ · დაგეგმილი", "kcal · planned")}
                 </NText>
                 <MacroRails
                   actual={foodTotals(meals.flatMap((m) => m.data.items))}
                   target={d?.targets || null}
                 />
                 <NText style={{ fontSize: 11, color: c.text200 }}>
-                  გეგმაში არსებული საკვები მიღებულად არ ითვლება. კერძების
-                  მაკროები შეიძლება სამიზნისგან განსხვავდებოდეს — შეცვლისას
-                  ჯამიც განახლდება.
+                  {tx(
+                    "გეგმაში არსებული საკვები მიღებულად არ ითვლება. კერძების მაკროები შეიძლება სამიზნისგან განსხვავდებოდეს — შეცვლისას ჯამიც განახლდება.",
+                    "Planned food doesn't count as eaten. Dish macros may differ from your target — the total updates when you swap.",
+                  )}
                 </NText>
               </NCard>
               {meals.map((m) => {
@@ -351,7 +357,7 @@ function Plan() {
                         <View style={{ flex: 1 }}>
                           <NText style={{ fontSize: 12, color: c.text200 }}>
                             {mealLabels[m.type]}
-                            {m.eaten ? " · აღრიცხულია" : ""}
+                            {m.eaten ? tx(" · აღრიცხულია", " · logged") : ""}
                           </NText>
                           <NText
                             style={{
@@ -375,11 +381,11 @@ function Plan() {
                         }}
                       >
                         <NText style={{ fontSize: 13 }}>
-                          {m.data.totals.calories} კკალ
+                          {m.data.totals.calories} {tx("კკალ", "kcal")}
                         </NText>
                         <Clock color={c.text200} size={13} />
                         <NText style={{ fontSize: 12, color: c.text200 }}>
-                          {m.data.minutes} წუთი
+                          {m.data.minutes} {tx("წუთი", "min")}
                         </NText>
                       </View>
                     </Pressable>
@@ -395,7 +401,7 @@ function Plan() {
                               {v.name}
                             </NText>
                             <NText style={{ fontSize: 13 }}>
-                              {Math.round(v.grams)} გ
+                              {Math.round(v.grams)} {tx("გ", "g")}
                             </NText>
                           </View>
                         ))}
@@ -403,11 +409,11 @@ function Plan() {
                           {m.data.instructions}
                         </NText>
                         <NText style={{ fontSize: 11, color: c.text200 }}>
-                          ალერგენები:{" "}
+                          {tx("ალერგენები:", "Allergens:")}{" "}
                           {m.data.allergens
                             .map((k) => allergenLabels[k] || k)
-                            .join(", ") || "კატალოგში მონიშნული არ არის"}{" "}
-                          · შეფუთვაც შეამოწმე.
+                            .join(", ") || tx("კატალოგში მონიშნული არ არის", "none marked in the catalog")}{" "}
+                          {tx("· შეფუთვაც შეამოწმე.", "· check the packaging too.")}
                         </NText>
                         <NText
                           style={{
@@ -421,7 +427,7 @@ function Plan() {
                         {m.eaten ? (
                           <NButton
                             secondary
-                            label="პორციის შესწორება დღიურში"
+                            label={tx("პორციის შესწორება დღიურში", "Adjust portion in diary")}
                             onPress={() => router.push("/nutrition/diary")}
                           />
                         ) : mealValid(m) ? (
@@ -430,15 +436,15 @@ function Plan() {
                               disabled={busy || m.date > localDay()}
                               label={
                                 m.date > localDay()
-                                  ? "ჯერ მომავალი კვებაა"
-                                  : "მივირთვი · დღიურში დამატება"
+                                  ? tx("ჯერ მომავალი კვებაა", "This meal is still ahead")
+                                  : tx("მივირთვი · დღიურში დამატება", "I ate it · add to diary")
                               }
                               onPress={() =>
                                 void run(async () => {
                                   await nutritionProgramApi.eat(m.id);
                                   if (!alive.current) return;
                                   setNotice(
-                                    "კვება დღიურში ჩაიწერა. რეალური პორცია იქ შეგიძლია შეასწორო.",
+                                    tx("კვება დღიურში ჩაიწერა. რეალური პორცია იქ შეგიძლია შეასწორო.", "Meal added to your diary. You can adjust the actual portion there."),
                                   );
                                   await load();
                                   void loadDashboard();
@@ -446,13 +452,15 @@ function Plan() {
                               }
                             />
                             <NText style={{ fontSize: 11, color: c.text200 }}>
-                              თუ იგივე კვება უკვე ფოტოთი ან ხელით ჩაწერე, მეორედ
-                              აღარ დაამატო.
+                              {tx(
+                                "თუ იგივე კვება უკვე ფოტოთი ან ხელით ჩაწერე, მეორედ აღარ დაამატო.",
+                                "If you already logged this meal by photo or by hand, don't add it again.",
+                              )}
                             </NText>
                             <NButton
                               secondary
                               disabled={busy}
-                              label="სხვა კერძის არჩევა"
+                              label={tx("სხვა კერძის არჩევა", "Choose another dish")}
                               onPress={() =>
                                 void run(async () => {
                                   const result =
@@ -470,20 +478,22 @@ function Plan() {
                           </>
                         ) : (
                           <NText style={{ color: c.text200 }}>
-                            ეს კერძი ძველი გეგმისაა. ახალი რეკომენდაციისთვის
-                            განაახლე რაციონი.
+                            {tx(
+                              "ეს კერძი ძველი გეგმისაა. ახალი რეკომენდაციისთვის განაახლე რაციონი.",
+                              "This dish is from an old plan. Refresh your plan for new suggestions.",
+                            )}
                           </NText>
                         )}
                         {alternatives?.id === m.id && (
                           <View style={{ gap: 8 }}>
-                            <NText>შესაბამისი ალტერნატივები</NText>
+                            <NText>{tx("შესაბამისი ალტერნატივები", "Matching alternatives")}</NText>
                             {alternatives.recipes.length ? (
                               alternatives.recipes.map((recipe) => (
                                 <NButton
                                   key={recipe.id}
                                   secondary
                                   disabled={busy}
-                                  label={`${recipe.title} · ${recipe.totals.calories} კკალ`}
+                                  label={tx(`${recipe.title} · ${recipe.totals.calories} კკალ`, `${recipe.title} · ${recipe.totals.calories} kcal`)}
                                   onPress={() =>
                                     void run(async () => {
                                       await nutritionProgramApi.swap(
@@ -499,7 +509,7 @@ function Plan() {
                               ))
                             ) : (
                               <NText>
-                                ამ შეზღუდვებით სხვა კერძი ჯერ არ არის.
+                                {tx("ამ შეზღუდვებით სხვა კერძი ჯერ არ არის.", "No other dishes fit these restrictions yet.")}
                               </NText>
                             )}
                           </View>
@@ -523,11 +533,13 @@ function Plan() {
                   fontFamily: "NotoSansGeorgian_600SemiBold",
                 }}
               >
-                კვირა წინასწარ დაგეგმე
+                {tx("კვირა წინასწარ დაგეგმე", "Plan your week ahead")}
               </NText>
               <NText style={{ textAlign: "center", color: c.text200 }}>
-                ოთხი კვება დღეში, შესაცვლელი კერძები და ინგრედიენტების ერთიანი
-                სია.
+                {tx(
+                  "ოთხი კვება დღეში, შესაცვლელი კერძები და ინგრედიენტების ერთიანი სია.",
+                  "Four meals a day, swappable dishes and one ingredient list.",
+                )}
               </NText>
             </NCard>
           )}
@@ -536,10 +548,10 @@ function Plan() {
               disabled={busy || loading}
               label={
                 busy
-                  ? "მუშავდება…"
+                  ? tx("მუშავდება…", "Working…")
                   : week?.meals.length
-                    ? "კვირის განახლება · მიღებული კვება დარჩება"
-                    : "7 დღის რაციონის შექმნა"
+                    ? tx("კვირის განახლება · მიღებული კვება დარჩება", "Refresh week · eaten meals stay")
+                    : tx("7 დღის რაციონის შექმნა", "Create a 7-day plan")
               }
               onPress={() =>
                 void run(async () => {
@@ -561,7 +573,7 @@ function Plan() {
           )}
           <NButton
             secondary
-            label="კვების დღიური"
+            label={tx("კვების დღიური", "Food diary")}
             onPress={() => router.push("/nutrition/diary")}
           />
         </>

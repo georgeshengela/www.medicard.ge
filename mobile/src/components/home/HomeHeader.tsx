@@ -9,6 +9,7 @@ import { useMyAvatarUrl } from '@/lib/myAvatar';
 import { useWeather } from '@/hooks/useWeather';
 import { greeting } from '@/lib/format';
 import { useIsDark, useThemeColors } from '@/theme/colors';
+import { tx } from '@/i18n/locale';
 
 type Props = {
   firstName: string;
@@ -43,8 +44,8 @@ export function HomeHeader({ firstName, initial, avatarId, streak, dateLabel }: 
               accessibilityRole="button"
               accessibilityLabel={
                 snapshot
-                  ? `ამინდი: ${Math.round(snapshot.current.temperatureC)} გრადუსი, ${snapshot.location.city}`
-                  : 'ამინდი'
+                  ? tx(`ამინდი: ${Math.round(snapshot.current.temperatureC)} გრადუსი, ${snapshot.location.city}`, `Weather: ${Math.round(snapshot.current.temperatureC)} degrees, ${snapshot.location.city}`)
+                  : tx('ამინდი', 'Weather')
               }
               onPress={() => router.push('/weather' as never)}
               style={[s.pill, { backgroundColor: dark ? '#152638' : '#EDF5FB' }]}
@@ -67,7 +68,7 @@ export function HomeHeader({ firstName, initial, avatarId, streak, dateLabel }: 
           {streak > 0 ? (
             <Pressable
               accessibilityRole="button"
-              accessibilityLabel={`${streak} დღიანი სერია`}
+              accessibilityLabel={tx(`${streak} დღიანი სერია`, `${streak}-day streak`)}
               onPress={() => router.push('/profile/streak' as never)}
               style={[s.pill, { backgroundColor: dark ? '#3B2A0A' : '#FDF1DC' }]}
             >
@@ -90,12 +91,12 @@ export function HomeHeader({ firstName, initial, avatarId, streak, dateLabel }: 
 
       <Pressable
         accessibilityRole="button"
-        accessibilityLabel="ჩემი პროფილი"
+        accessibilityLabel={tx('ჩემი პროფილი', 'My profile')}
         onPress={() => router.push('/(tabs)/profile' as never)}
         style={[s.avatar, { backgroundColor: c.accent100 }]}
       >
         {myPhoto && brokenPhoto !== myPhoto ? (
-          <PrivateImage path={myPhoto} label="ჩემი პროფილი" style={{ width: 48, height: 48, borderRadius: 24 }} onFail={() => setBrokenPhoto(myPhoto)} />
+          <PrivateImage path={myPhoto} label={tx('ჩემი პროფილი', 'My profile')} style={{ width: 48, height: 48, borderRadius: 24 }} onFail={() => setBrokenPhoto(myPhoto)} />
         ) : isAvatarId(avatarId) ? (
           <Image source={AVATAR_SOURCES[avatarId]} style={{ width: 48, height: 48, borderRadius: 24 }} />
         ) : (

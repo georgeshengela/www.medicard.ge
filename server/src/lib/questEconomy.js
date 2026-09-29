@@ -86,6 +86,7 @@ export function validateHydrationGoalMl(goalMl) {
   const goal = Math.floor(Number(goalMl));
   if (!Number.isFinite(goal) || goal < QUEST_ECONOMY.hydrationGoalMlMin || goal > QUEST_ECONOMY.hydrationGoalMlMax) {
     const error = new Error('არასწორი ჰიდრატაციის მიზანი.');
+    error.messageEn = 'Invalid hydration goal.';
     error.status = 400;
     error.code = 'HYDRATION_GOAL_RANGE';
     throw error;

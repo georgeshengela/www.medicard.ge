@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Linking, Pressable, Text, View } from 'react-native';
 import { ExternalLink } from 'lucide-react-native';
 import { sourcesFor, type MedicalSourceId } from '@/constants/medicalSources';
-import { deviceLanguageTag, isGeorgianLocale } from '@/lib/aiDisclosureCopy';
+import { isEn } from '@/i18n/locale';
 import { useThemeColors } from '@/theme/colors';
 
 type Props = {
@@ -16,7 +16,7 @@ type Props = {
  */
 export function MedicalSourcesLink({ sourceIds, align = 'left' }: Props) {
   const [open, setOpen] = useState(false);
-  const georgian = isGeorgianLocale(deviceLanguageTag());
+  const georgian = !isEn();
   const colors = useThemeColors();
   const sources = sourcesFor(sourceIds);
   if (!sources.length) return null;

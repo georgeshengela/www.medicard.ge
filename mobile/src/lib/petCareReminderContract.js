@@ -5,6 +5,8 @@
  * JavaScript does not run continuously; horizon is finite and replenished on lifecycle events.
  */
 
+import { tx } from '../i18n/locale.js';
+
 export const PET_CARE_REMINDER_TYPE = 'pet_care';
 export const PET_CARE_REMINDER_FAMILY = 'petCareReminder';
 export const PET_CARE_REMINDER_MEANING = 'USER_SCHEDULED_CARE';
@@ -593,22 +595,22 @@ export function permissionDeniedMeansActiveReminders() {
 
 export function petCareMaskedCopy() {
   return {
-    title: 'Medi-სგან შეხსენება',
-    body: 'შენი დაგეგმილი მოვლის შეხსენება',
+    title: tx('Medi-სგან შეხსენება', 'Reminder from Medi'),
+    body: tx('შენი დაგეგმილი მოვლის შეხსენება', 'Your scheduled care reminder'),
   };
 }
 
 export function petCareCopy({ petName, title, kind, masked }) {
   if (masked) return petCareMaskedCopy();
-  const name = String(petName || '').trim() || 'ცხოველი';
-  const care = String(title || '').trim() || 'მოვლა';
+  const name = String(petName || '').trim() || tx('ცხოველი', 'Your pet');
+  const care = String(title || '').trim() || tx('მოვლა', 'Care');
   if (kind === 'MEDICATION' || kind === 'FLEA_TICK' || kind === 'DEWORMING') {
-    return { title: `${name} · ${care}`, body: 'მიღების დროა. გახსენი და დაადასტურე, თუ მიეცი.' };
+    return { title: `${name} · ${care}`, body: tx('მიღების დროა. გახსენი და დაადასტურე, თუ მიეცი.', 'Time for a dose. Open to confirm once you’ve given it.') };
   }
   if (kind === 'VACCINATION') {
-    return { title: `${name} · ${care}`, body: 'დაგეგმილი აცრის დღეა. გახსენი და დაადასტურე, თუ გაკეთდა.' };
+    return { title: `${name} · ${care}`, body: tx('დაგეგმილი აცრის დღეა. გახსენი და დაადასტურე, თუ გაკეთდა.', 'Vaccination is planned for today. Open to confirm once it’s done.') };
   }
-  return { title: `${name} · ${care}`, body: 'დაგეგმილი მოვლის დღეა. გახსენი და დაადასტურე.' };
+  return { title: `${name} · ${care}`, body: tx('დაგეგმილი მოვლის დღეა. გახსენი და დაადასტურე.', 'Care is planned for today. Open to confirm.') };
 }
 
 export function revalidatePetCareReminder(candidate, live = {}) {

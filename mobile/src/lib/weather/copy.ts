@@ -1,3 +1,4 @@
+import { appLang } from '../../i18n/locale.js';
 import type { AirQualityBand, WeatherCategory, WeatherCondition, WeatherLang } from './types.ts';
 
 type Flavor = 'default' | 'pain' | 'steps_low' | 'steps_done' | 'hydration';
@@ -447,7 +448,7 @@ export function pickWeatherCopyKeys(input: {
   };
 }
 
-export function weatherCopyText(key: string, locale: WeatherLang = 'ka'): string {
+export function weatherCopyText(key: string, locale: WeatherLang = appLang()): string {
   const match = key.match(/^weather\.(title|body)\.([a-z0-9_]+)\.(\d+)$/);
   if (!match) return '';
   const [, part, bucket, indexRaw] = match;
@@ -458,7 +459,7 @@ export function weatherCopyText(key: string, locale: WeatherLang = 'ka'): string
   return part === 'title' ? row.title : row.body;
 }
 
-export function weatherConditionLabel(condition: WeatherCondition, locale: WeatherLang = 'ka'): string {
+export function weatherConditionLabel(condition: WeatherCondition, locale: WeatherLang = appLang()): string {
   return CONDITION[locale][condition] ?? CONDITION.ka[condition];
 }
 

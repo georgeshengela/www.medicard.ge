@@ -23,6 +23,7 @@ import { SYNTHETIC_EMAIL_DOMAIN, hashEmail, isDeliverableEmail, maskEmail } from
 import { CAMPAIGN_VARS, renderEmail } from './templates.js';
 import { EMAIL_FEATURE, commonVars, getDefaultTransport, suppressedHashes } from './mailer.js';
 import { unsubscribeUrl } from './preferences.js';
+import { getUserLanguages } from '../i18n.js';
 
 export const EMAIL_SEGMENTS = Object.freeze([
   'ALL_OPTED_IN',
@@ -88,14 +89,20 @@ export function campaignContent(c) {
   return { subject: c.subject, preheader: c.preheader || '', heading: c.heading || '', body: c.body || '', ctaLabel: c.ctaLabel || '', ctaUrl: c.ctaUrl || '' };
 }
 
+/**
+ * The admin's campaign text is sent as written; the layout (footer, unsubscribe, generic name) and
+ * the unsubscribe page follow the recipient's language (`recipient.lang`, default Georgian).
+ */
 export function renderCampaignFor(campaign, recipient) {
-  const unsub = unsubscribeUrl(recipient.id);
+  const lang = recipient.lang === 'en' ? 'en' : 'ka';
+  const unsub = unsubscribeUrl(recipient.id, { lang });
   const rendered = renderEmail({
     content: campaignContent(campaign),
-    vars: commonVars({ fullName: recipient.fullName }),
+    vars: commonVars({ fullName: recipient.fullName, lang }),
     allowed: CAMPAIGN_VARS,
     category: 'marketing',
     unsubscribeUrl: unsub,
+    lang,
   });
   return { ...rendered, unsub };
 }
@@ -151,6 +158,7 @@ export async function runEmailCampaign(campaign, {
   batchSize = BATCH_SIZE,
   pauseMs = BATCH_PAUSE_MS,
   now = () => new Date(),
+  languages = (ids) => (db === prisma ? getUserLanguages(ids) : Promise.resolve(new Map())),
 } = {}) {
   const progress = campaignProgress(campaign);
   if (!progress) return { skipped: 'no_progress' };
@@ -183,7 +191,8 @@ export async function runEmailCampaign(campaign, {
     const candidates = eligible.filter((r) => !blocked.has(r.toHash));
     skipped += rows.length - candidates.length;
 
-    const rendered = new Map(candidates.map((r) => [r.id, renderCampaignFor(campaign, r)]));
+    const langs = candidates.length ? await languages(candidates.map((r) => r.id)).catch(() => new Map()) : new Map();
+    const rendered = new Map(candidates.map((r) => [r.id, renderCampaignFor(campaign, { ...r, lang: langs.get(String(r.id)) })]));
     const claimed = candidates.length
       ? await db.emailLog.createManyAndReturn({
         data: candidates.map((r) => ({

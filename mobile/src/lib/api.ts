@@ -2,6 +2,7 @@ import Constants from 'expo-constants';
 import * as FileSystem from 'expo-file-system/legacy';
 import { Platform } from 'react-native';
 import { ka } from '@/i18n/ka';
+import { appLang, tx } from '@/i18n/locale';
 import { forgetAiConsent, hasFreshAiConsent, rememberAiConsent } from '@/lib/aiSharingRoutes.js';
 import { formatRateLimitMessage, publicApiErrorMessage } from './rateLimitCopy.js';
 import { getToken } from './storage';
@@ -33,14 +34,18 @@ function resolveBaseUrl(): string {
 export const API_BASE_URL = resolveBaseUrl();
 
 /** IANA zone for Cycle "today". Historical YYYY-MM-DD rows are never rewritten. */
+/** Timezone + app language: the server answers errors, AI text, pushes and emails in that language. */
 function clientTimezoneHeaders(): Record<string, string> {
+  const lang = { 'X-Medicard-Lang': appLang() };
   try {
     const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
-    return tz ? { 'X-Client-Timezone': tz } : {};
+    return tz ? { ...lang, 'X-Client-Timezone': tz } : lang;
   } catch {
-    return {};
+    return lang;
   }
 }
+
+export { clientTimezoneHeaders as clientContextHeaders };
 
 export type Usage = {
   date: string;
@@ -126,6 +131,9 @@ export type UserLocationSnapshot = {
   countryCode: string | null;
   countryKa: string | null;
   cityKa: string | null;
+  /** Display names in the request language (from `/api/location` responses only; not stored). */
+  countryName?: string | null;
+  cityName?: string | null;
   lat: number | null;
   lng: number | null;
   accuracy: number | null;
@@ -1921,13 +1929,13 @@ type RequestOptions = {
 export async function assistantRequest<T>(path: 'catalog' | 'state' | 'plan' | 'prepare' | 'execute' | 'transcribe' | 'speak', owner: string,
   body?: unknown, scope: 'human' | 'pet' | 'auto' = 'human'): Promise<T> {
   const { localAccountId } = await import('@/lib/localAccount');
-  if (owner !== localAccountId()) throw new ApiError('ანგარიში შეიცვალა.', 401);
+  if (owner !== localAccountId()) throw new ApiError(tx('ანგარიში შეიცვალა.', 'You switched accounts.'), 401);
   const token = await getToken();
-  if (!token || owner !== localAccountId()) throw new ApiError('გთხოვ, შეხვიდე ანგარიშში.', 401);
+  if (!token || owner !== localAccountId()) throw new ApiError(tx('გთხოვ, შეხვიდე ანგარიშში.', 'Please sign in.'), 401);
   const result = await request<T>(`/api/assistant/${path}${path === 'catalog' ? `?scope=${scope}` : ''}`, {
     token, method: path === 'catalog' || path === 'state' ? 'GET' : 'POST', body, timeoutMs: 120000,
   });
-  if (owner !== localAccountId()) throw new ApiError('ანგარიში შეიცვალა.', 401);
+  if (owner !== localAccountId()) throw new ApiError(tx('ანგარიში შეიცვალა.', 'You switched accounts.'), 401);
   return result;
 }
 
@@ -1936,11 +1944,11 @@ export async function ensureAiSharingConsentForRequest(path: string, method = 'P
   if (!settings && !isAiSharingRequest(path, method)) return;
   const { localAccountId } = await import('@/lib/localAccount');
   const owner = localAccountId(), token = suppliedToken !== undefined ? suppliedToken : await getToken();
-  if (!owner || !token) throw new ApiError('გთხოვ, შეხვიდე ანგარიშში.', 401);
+  if (!owner || !token) throw new ApiError(tx('გთხოვ, შეხვიდე ანგარიშში.', 'Please sign in.'), 401);
   // Already answered in this session: ask nothing and send nothing extra. The server re-checks every call.
   if (!settings && hasFreshAiConsent(owner)) return;
   const status = await request<import('@/lib/aiSharingConsent').AiConsentStatus>('/api/ai-consent', { token, timeoutMs: 15_000 });
-  if (owner !== localAccountId()) throw new ApiError('ანგარიში შეიცვალა.', 401);
+  if (owner !== localAccountId()) throw new ApiError(tx('ანგარიში შეიცვალა.', 'You switched accounts.'), 401);
   rememberAiConsent(owner, status);
   if (needsAiConsentPrompt(status, settings)) {
     const accepted = await requestAiSharingPrompt(owner, status, async (decision, version) => {
@@ -1952,14 +1960,14 @@ export async function ensureAiSharingConsentForRequest(path: string, method = 'P
       catch (error) {
         if (error instanceof ApiError && error.status === 409) {
           const consentStatus = await request<import('@/lib/aiSharingConsent').AiConsentStatus>('/api/ai-consent', { token, timeoutMs: 15_000 });
-          throw Object.assign(new Error('გაზიარების პირობები განახლდა. წაიკითხე ახალი ტექსტი და ხელახლა აირჩიე.'), { consentStatus });
+          throw Object.assign(new Error(tx('გაზიარების პირობები განახლდა. წაიკითხე ახალი ტექსტი და ხელახლა აირჩიე.', 'The sharing terms were updated. Read the new text and choose again.')), { consentStatus });
         }
         throw error;
       }
     }, settings);
-    if (!accepted && !settings) throw new ApiError('AI დამუშავების ნებართვა საჭიროა. არჩევანს პროფილში, „კონფიდენციალობა და მონაცემებში“ შეცვლი.', 403, { code: 'AI_CONSENT_DECLINED' });
+    if (!accepted && !settings) throw new ApiError(tx('AI დამუშავების ნებართვა საჭიროა. არჩევანს პროფილში, „კონფიდენციალობა და მონაცემებში“ შეცვლი.', 'This needs your permission for AI processing. You can change your choice in Profile, under “Privacy and data”.'), 403, { code: 'AI_CONSENT_DECLINED' });
   }
-  if (owner !== localAccountId() || token !== await getToken()) throw new ApiError('ანგარიში შეიცვალა.', 401);
+  if (owner !== localAccountId() || token !== await getToken()) throw new ApiError(tx('ანგარიში შეიცვალა.', 'You switched accounts.'), 401);
 }
 
 const TRIP_REPORT_GAP_MS = 5 * 60_000;
@@ -2162,18 +2170,18 @@ type AuthResponse = { token: string; user: User; usage: Usage };
 export async function nutritionProgramRequest<T>(path:string, method:'GET'|'POST'|'PUT'='GET', body?:unknown):Promise<T> {
   const {localAccountId}=await import('@/lib/localAccount');
   const owner=localAccountId(),token=await getToken();
-  if(!owner || !token || owner!==localAccountId()) throw new ApiError('შედი ანგარიშში.',401);
+  if(!owner || !token || owner!==localAccountId()) throw new ApiError(tx('შედი ანგარიშში.', 'Please sign in.'),401);
   const result=await request<T>('/api/nutrition'+path,{method,body,token,timeoutMs:30000});
-  if(owner!==localAccountId()) throw new ApiError('ანგარიში შეიცვალა.',401);
+  if(owner!==localAccountId()) throw new ApiError(tx('ანგარიში შეიცვალა.', 'You switched accounts.'),401);
   return result;
 }
 
 export async function communityRequest<T = any>(path: string, method: 'GET'|'POST'|'PUT'|'PATCH'|'DELETE' = 'GET', body?: unknown): Promise<T> {
   const { localAccountId } = await import('@/lib/localAccount');
   const owner = localAccountId(), token = await getToken();
-  if (!owner || !token || owner !== localAccountId()) throw new ApiError('შედი ანგარიშში.', 401);
+  if (!owner || !token || owner !== localAccountId()) throw new ApiError(tx('შედი ანგარიშში.', 'Please sign in.'), 401);
   const result = await request<T>('/api/community' + path, { method, body, token, timeoutMs: 30000 });
-  if (owner !== localAccountId()) throw new ApiError('ანგარიში შეიცვალა.', 401);
+  if (owner !== localAccountId()) throw new ApiError(tx('ანგარიში შეიცვალა.', 'You switched accounts.'), 401);
   return result;
 }
 
@@ -2210,7 +2218,7 @@ export const api = {
       if(!file) result=await request<import('./nutrition').FoodEstimate>('/api/nutrition/estimate',{method:'POST',body:{...fields,previous:options.previous||[]},timeoutMs:60000});
       else if(Platform.OS!=='web') result=await uploadNativeMultipart<import('./nutrition').FoodEstimate>('/api/nutrition/estimate',file,'photo',fields);
       else { const formData=new FormData(); await appendUploadFile(formData,'photo',file); for(const [k,v] of Object.entries(fields)) formData.append(k,v); result=await request<import('./nutrition').FoodEstimate>('/api/nutrition/estimate',{method:'POST',formData,timeoutMs:60000}); }
-      if(owner!==localAccountId())throw new ApiError('ანგარიში შეიცვალა.',401);
+      if(owner!==localAccountId())throw new ApiError(tx('ანგარიში შეიცვალა.', 'You switched accounts.'),401);
       return result;
     },
     quickLog: (input:{description:string; mealType?:import('./nutrition').Meal['type']; date?:string; id?:string; source?:'text'|'voice'}) =>

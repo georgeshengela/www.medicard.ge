@@ -4,6 +4,7 @@ import {buildRunMapHtml} from '@/lib/run/mapHtml';
 import {peekMapboxToken,resolveMapboxToken} from '@/lib/run/mapbox';
 import type {RunMapHandle,RunMapProps} from '@/lib/run/mapTypes';
 import {useIsDark,useThemeColors} from '@/theme/colors';
+import { tx } from '@/i18n/locale';
 export type {RunMapHandle,RunMapMessage} from '@/lib/run/mapTypes';
 
 export const RunMap=forwardRef<RunMapHandle,RunMapProps>(function RunMap(props,ref){
@@ -16,7 +17,7 @@ export const RunMap=forwardRef<RunMapHandle,RunMapProps>(function RunMap(props,r
  useEffect(()=>{const receive=(event:MessageEvent)=>{if(event.source!==frame.current?.contentWindow||event.data?.channel!==channel.current)return;const data=event.data.data;if(data?.type==='ready'){setReady(true);callbacks.current.onReady?.();}if(data?.type==='follow')callbacks.current.onFollowChange?.(data.value===true);if(data?.type==='error'){setError(data.message);callbacks.current.onError?.(data.message);}};window.addEventListener('message',receive);return()=>window.removeEventListener('message',receive);},[]);
  useEffect(()=>{if(ready)frame.current?.contentWindow?.postMessage({channel:channel.current,message:{type:'theme',dark:props.mapDark??dark}},'*');},[props.mapDark,dark,ready]);
  return <View style={[{position:'absolute',inset:0,backgroundColor:colors.bg100},props.style]}>
-  {html?<iframe ref={frame} title="MEDIRUN რუკა" srcDoc={html} sandbox="allow-scripts allow-same-origin" style={{height:'100%',width:'100%',border:0}}/>:null}
-  {(!ready||error)?<View pointerEvents="none" style={{position:'absolute',inset:0,alignItems:'center',justifyContent:'center',gap:12}}>{!error?<ActivityIndicator color="#14B8A6"/>:null}<Text style={{color:colors.text200}}>{error||'რუკა იტვირთება…'}</Text></View>:null}
+  {html?<iframe ref={frame} title={tx('MEDIRUN რუკა', 'MEDIRUN map')} srcDoc={html} sandbox="allow-scripts allow-same-origin" style={{height:'100%',width:'100%',border:0}}/>:null}
+  {(!ready||error)?<View pointerEvents="none" style={{position:'absolute',inset:0,alignItems:'center',justifyContent:'center',gap:12}}>{!error?<ActivityIndicator color="#14B8A6"/>:null}<Text style={{color:colors.text200}}>{error||tx('რუკა იტვირთება…', 'Loading map…')}</Text></View>:null}
  </View>;
 });

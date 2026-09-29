@@ -14,6 +14,7 @@ import { ApiError, api } from '@/lib/api';
 import { useAuth } from '@/store/AuthContext';
 import { useThemeColors } from '@/theme/colors';
 import { HUB, hubText } from '@/theme/hub';
+import { tx } from '@/i18n/locale';
 
 export default function MedicationInteractionScreen() {
   const c = useThemeColors();
@@ -88,7 +89,7 @@ export default function MedicationInteractionScreen() {
               <Markdown content={review} />
             </MedsCard>
             <Text style={[hubText.small, { color: c.text300, marginTop: 10 }]}>
-              მიმოხილვა AI-ით (Medi) არის შექმნილი შენი წამლების სიიდან — შეიძლება რამე გამოტოვოს და ეს დიაგნოზი ან დანიშნულება არ არის. წამლის შეცვლამდე ჰკითხე ექიმს ან ფარმაცევტს.
+              {tx('მიმოხილვა AI-ით (Medi) არის შექმნილი შენი წამლების სიიდან — შეიძლება რამე გამოტოვოს და ეს დიაგნოზი ან დანიშნულება არ არის. წამლის შეცვლამდე ჰკითხე ექიმს ან ფარმაცევტს.', 'This review was made by AI (Medi) from your medication list — it may miss something, and it is not a diagnosis or a prescription. Ask your doctor or pharmacist before changing any medication.')}
             </Text>
             <MedicalSourcesLink sourceIds={['medicationInteractions']} />
           </View>

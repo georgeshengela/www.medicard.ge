@@ -10,8 +10,12 @@ import { Avatar, Badge, Button, Card, Chip, CoachForm, Field, Input, Loading, Se
 import { FadeIn, KpiTile, StatusPill, sessionTiming } from '@/components/coach/CoachKit';
 import { hubText } from '@/theme/hub';
 import { useThemeColors } from '@/theme/colors';
+import { dateLocale, tx } from '@/i18n/locale';
 
-const QUICK = ['ბექ სქვოთი', 'ჟიმი წოლით', 'მკვდარი წევა', 'ჟიმი ზემოთ', 'აზიდვა', 'ლანჯი', 'რუმინული წევა', 'ქვედა ბლოკი', 'პლანკა', 'კარდიო'];
+const QUICK = tx(
+  ['ბექ სქვოთი', 'ჟიმი წოლით', 'მკვდარი წევა', 'ჟიმი ზემოთ', 'აზიდვა', 'ლანჯი', 'რუმინული წევა', 'ქვედა ბლოკი', 'პლანკა', 'კარდიო'],
+  ['Back squat', 'Bench press', 'Deadlift', 'Overhead press', 'Pull-up', 'Lunge', 'Romanian deadlift', 'Seated cable row', 'Plank', 'Cardio'],
+);
 type Row = { name: string; sets: string; reps: string; kg: string };
 const toRow = (e: Exercise): Row => ({ name: e.name, sets: e.sets != null ? String(e.sets) : '', reps: e.reps != null ? String(e.reps) : '', kg: e.kg != null ? String(e.kg) : '' });
 const num = (v: string) => (v.trim() === '' ? null : Number(v.replace(',', '.')));
@@ -39,7 +43,7 @@ export default function CoachSessionScreen() {
       setNote(res.session.trainerNote);
       setNewDay(tbilisiYmd(res.session.startsAt));
     } catch (e) {
-      setError(e instanceof ApiError ? e.message : 'ჩატვირთვა ვერ მოხერხდა.');
+      setError(e instanceof ApiError ? e.message : tx('ჩატვირთვა ვერ მოხერხდა.', 'Couldn’t load.'));
     }
   }, [id]);
   useFocusEffect(useCallback(() => void load(), [load]));
@@ -57,26 +61,26 @@ export default function CoachSessionScreen() {
       const res = await api.coach.completeSession(s.id, { status, exercises, trainerNote: note.trim() });
       setS({ ...res.session, workout: s.workout });
       void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined);
-      if (status === 'DONE') Alert.alert('შენახულია', 'კლიენტი ნახავს ვარჯიშის შედეგს და შეფასებას დატოვებს.');
+      if (status === 'DONE') Alert.alert(tx('შენახულია', 'Saved'), tx('კლიენტი ნახავს ვარჯიშის შედეგს და შეფასებას დატოვებს.', 'Your client will see the workout results and can leave a rating.'));
     } catch (e) {
-      Alert.alert('ვერ შეინახა', e instanceof ApiError ? e.message : 'სცადე ხელახლა.');
+      Alert.alert(tx('ვერ შეინახა', 'Couldn’t save'), e instanceof ApiError ? e.message : tx('სცადე ხელახლა.', 'Please try again.'));
     } finally {
       setBusy(null);
     }
   };
 
   const cancel = () =>
-    Alert.alert('ვარჯიშის გაუქმება', s?.clientName ? `${s.clientName}-ს შეტყობინება მიუვა.` : 'სლოტი წაიშლება.', [
-      { text: 'არა', style: 'cancel' },
+    Alert.alert(tx('ვარჯიშის გაუქმება', 'Cancel workout'), s?.clientName ? tx(`${s.clientName}-ს შეტყობინება მიუვა.`, `${s.clientName} will be notified.`) : tx('სლოტი წაიშლება.', 'The slot will be removed.'), [
+      { text: tx('არა', 'No'), style: 'cancel' },
       {
-        text: 'გაუქმება',
+        text: tx('გაუქმება', 'Cancel'),
         style: 'destructive',
         onPress: async () => {
           try {
             await api.coach.cancelSession(String(id));
             router.back();
           } catch (e) {
-            Alert.alert('ვერ მოხერხდა', e instanceof ApiError ? e.message : 'სცადე ხელახლა.');
+            Alert.alert(tx('ვერ მოხერხდა', 'Something went wrong'), e instanceof ApiError ? e.message : tx('სცადე ხელახლა.', 'Please try again.'));
           }
         },
       },
@@ -90,7 +94,7 @@ export default function CoachSessionScreen() {
       setS(res.session);
       setMoving(false);
     } catch (e) {
-      Alert.alert('ვერ გადაიტანა', e instanceof ApiError ? e.message : 'სცადე ხელახლა.');
+      Alert.alert(tx('ვერ გადაიტანა', 'Couldn’t reschedule'), e instanceof ApiError ? e.message : tx('სცადე ხელახლა.', 'Please try again.'));
     } finally {
       setBusy(null);
     }
@@ -105,26 +109,26 @@ export default function CoachSessionScreen() {
 
   return (
     <CoachForm
-      title={s?.clientName ?? (s?.status === 'OPEN' ? 'თავისუფალი სლოტი' : 'ვარჯიში')}
-      subtitle={s ? `${dayLabel(tbilisiYmd(s.startsAt))} · ${clockOf(s.startsAt)} · ${s.durationMin} წთ` : undefined}
+      title={s?.clientName ?? (s?.status === 'OPEN' ? tx('თავისუფალი სლოტი', 'Open slot') : tx('ვარჯიში', 'Workout'))}
+      subtitle={s ? `${dayLabel(tbilisiYmd(s.startsAt))} · ${clockOf(s.startsAt)} · ${s.durationMin} ${tx('წთ', 'min')}` : undefined}
       fallback="/coach/calendar"
       footer={
         canLog ? (
           <View style={[coachStyles.row, { gap: 10 }]}>
-            <Button label={s?.status === 'DONE' ? 'განახლება' : 'ჩატარდა'} icon={CheckCircle2} style={{ flex: 1.4 }} busy={busy === 'DONE'} onPress={() => void complete('DONE')} />
-            <Button label="არ მოვიდა" icon={UserX} kind="secondary" style={{ flex: 1 }} busy={busy === 'NO_SHOW'} onPress={() => void complete('NO_SHOW')} />
+            <Button label={s?.status === 'DONE' ? tx('განახლება', 'Update') : tx('ჩატარდა', 'Done')} icon={CheckCircle2} style={{ flex: 1.4 }} busy={busy === 'DONE'} onPress={() => void complete('DONE')} />
+            <Button label={tx('არ მოვიდა', 'No-show')} icon={UserX} kind="secondary" style={{ flex: 1 }} busy={busy === 'NO_SHOW'} onPress={() => void complete('NO_SHOW')} />
           </View>
         ) : canChange ? (
           moving ? (
-            <Button label="გადატანა" busy={busy === 'move'} disabled={!newTime} onPress={() => void move()} />
+            <Button label={tx('გადატანა', 'Reschedule')} busy={busy === 'move'} disabled={!newTime} onPress={() => void move()} />
           ) : (
             <View style={[coachStyles.row, { gap: 10 }]}>
-              <Button label="გადატანა" kind="secondary" style={{ flex: 1 }} onPress={() => setMoving(true)} />
-              <Button label="გაუქმება" kind="danger" style={{ flex: 1 }} onPress={cancel} />
+              <Button label={tx('გადატანა', 'Reschedule')} kind="secondary" style={{ flex: 1 }} onPress={() => setMoving(true)} />
+              <Button label={tx('გაუქმება', 'Cancel')} kind="danger" style={{ flex: 1 }} onPress={cancel} />
             </View>
           )
         ) : (
-          <Button label="უკან" kind="secondary" onPress={() => router.back()} />
+          <Button label={tx('უკან', 'Back')} kind="secondary" onPress={() => router.back()} />
         )
       }
     >
@@ -136,7 +140,7 @@ export default function CoachSessionScreen() {
             <Card style={{ marginTop: 8, gap: 14 }}>
               <View style={coachStyles.rowBetween}>
                 <StatusPill
-                  label={s.status === 'SCHEDULED' ? (s.clientConfirmedAt ? 'კლიენტმა დაადასტურა' : 'დასტურს ელოდება') : SESSION_STATUS_LABEL[s.status]}
+                  label={s.status === 'SCHEDULED' ? (s.clientConfirmedAt ? tx('კლიენტმა დაადასტურა', 'Client confirmed') : tx('დასტურს ელოდება', 'Awaiting confirmation')) : SESSION_STATUS_LABEL[s.status]}
                   tone={s.status === 'DONE' || (s.status === 'SCHEDULED' && s.clientConfirmedAt) ? 'ok' : s.status === 'CANCELLED' || s.status === 'NO_SHOW' ? 'bad' : s.status === 'OPEN' ? 'brand' : 'neutral'}
                 />
                 {s.status === 'SCHEDULED' ? <Text style={[hubText.caption, { color: c.text300 }]}>{sessionTiming(s.startsAt, s.durationMin).text}</Text> : null}
@@ -148,7 +152,7 @@ export default function CoachSessionScreen() {
                 </View>
                 <View style={{ width: 1, alignSelf: 'stretch', backgroundColor: c.bg300 }} />
                 <View style={{ flex: 1, gap: 4 }}>
-                  <Text style={[hubText.cardTitle, { color: c.text100 }]}>{s.kindLabel} · {s.durationMin} წთ</Text>
+                  <Text style={[hubText.cardTitle, { color: c.text100 }]}>{s.kindLabel} · {s.durationMin} {tx('წთ', 'min')}</Text>
                   {s.gym ? (
                     <View style={[coachStyles.row, { gap: 5 }]}>
                       <MapPin size={13} color={c.text300} />
@@ -158,11 +162,11 @@ export default function CoachSessionScreen() {
                 </View>
               </View>
               {s.clientId ? (
-                <Pressable accessibilityRole="button" accessibilityLabel={`${s.clientName}-ის ბარათი`} onPress={() => router.push(`/coach/client/${s.clientId}` as never)} className="active:opacity-80" style={[coachStyles.row, { backgroundColor: c.bg200, borderRadius: 16, padding: 10 }]}>
+                <Pressable accessibilityRole="button" accessibilityLabel={tx(`${s.clientName}-ის ბარათი`, `${s.clientName}’s card`)} onPress={() => router.push(`/coach/client/${s.clientId}` as never)} className="active:opacity-80" style={[coachStyles.row, { backgroundColor: c.bg200, borderRadius: 16, padding: 10 }]}>
                   <Avatar avatarId={s.clientAvatarId} photoUrl={s.clientAvatarUrl} name={s.clientName ?? '?'} size={40} />
                   <Text numberOfLines={1} style={[hubText.cardTitle, { color: c.text100, flex: 1 }]}>{s.clientName}</Text>
                   {s.clientRating ? (
-                    <View style={[coachStyles.row, { gap: 2 }]} accessibilityLabel={`შეფასება ${s.clientRating} 5-დან`}>
+                    <View style={[coachStyles.row, { gap: 2 }]} accessibilityLabel={tx(`შეფასება ${s.clientRating} 5-დან`, `Rating ${s.clientRating} out of 5`)}>
                       {Array.from({ length: 5 }).map((_, i) => (
                         <Star key={i} size={14} color="#F59E0B" fill={i < (s.clientRating ?? 0) ? '#F59E0B' : 'transparent'} />
                       ))}
@@ -172,58 +176,58 @@ export default function CoachSessionScreen() {
                 </Pressable>
               ) : null}
               {s.note ? <Text style={[hubText.body, { color: c.text200 }]}>„{s.note}“</Text> : null}
-              {s.status === 'CANCELLED' && s.cancelReason ? <Text style={[hubText.caption, { color: c.danger }]}>მიზეზი: {s.cancelReason}{s.lateCancel ? ' · ბოლო წუთის გაუქმება' : ''}</Text> : null}
+              {s.status === 'CANCELLED' && s.cancelReason ? <Text style={[hubText.caption, { color: c.danger }]}>{tx('მიზეზი:', 'Reason:')} {s.cancelReason}{s.lateCancel ? tx(' · ბოლო წუთის გაუქმება', ' · last-minute cancellation') : ''}</Text> : null}
             </Card>
           </FadeIn>
 
           {s.workout ? (
-            <Section title={`კლიენტის საათიდან · ${workoutKindLabel(s.workout.kind)}`}>
+            <Section title={tx(`კლიენტის საათიდან · ${workoutKindLabel(s.workout.kind)}`, `From the client’s watch · ${workoutKindLabel(s.workout.kind)}`)}>
               <View style={{ flexDirection: 'row', gap: 8 }}>
-                <KpiTile icon={Timer} ink="teal" value={`${s.workout.durationMin}`} label="წუთი" />
-                <KpiTile icon={Flame} ink="amber" value={s.workout.kcal != null ? String(s.workout.kcal) : '—'} label="კკალ" />
-                <KpiTile icon={HeartPulse} ink="rose" value={s.workout.avgHeartRate != null ? String(s.workout.avgHeartRate) : '—'} label="საშ. პულსი" />
+                <KpiTile icon={Timer} ink="teal" value={`${s.workout.durationMin}`} label={tx('წუთი', 'min')} />
+                <KpiTile icon={Flame} ink="amber" value={s.workout.kcal != null ? String(s.workout.kcal) : '—'} label={tx('კკალ', 'kcal')} />
+                <KpiTile icon={HeartPulse} ink="rose" value={s.workout.avgHeartRate != null ? String(s.workout.avgHeartRate) : '—'} label={tx('საშ. პულსი', 'Avg HR')} />
               </View>
             </Section>
           ) : null}
 
           {moving && canChange ? (
             <>
-              <Field label="ახალი დღე">
+              <Field label={tx('ახალი დღე', 'New day')}>
                 <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
                   {days.map((d) => (
                     <Chip key={d} label={dayLabel(d, today)} selected={newDay === d} onPress={() => { setNewDay(d); setNewTime(''); }} />
                   ))}
                 </ScrollView>
               </Field>
-              <Field label="ახალი დრო">
+              <Field label={tx('ახალი დრო', 'New time')}>
                 <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
                   {times.map((t) => (
                     <Chip key={t} label={t} selected={newTime === t} onPress={() => setNewTime(t)} />
                   ))}
                 </View>
               </Field>
-              <Text style={[hubText.small, { color: c.text300, marginTop: 8 }]}>კლიენტს ახალი დროის შეტყობინება მიუვა და ხელახლა დაადასტურებს.</Text>
+              <Text style={[hubText.small, { color: c.text300, marginTop: 8 }]}>{tx('კლიენტს ახალი დროის შეტყობინება მიუვა და ხელახლა დაადასტურებს.', 'Your client will be notified of the new time and confirm again.')}</Text>
             </>
           ) : null}
 
           {canLog ? (
             <>
-              <Section title={volume ? `სავარჯიშოები · ${Math.round(volume).toLocaleString('ka-GE')} კგ მოცულობა` : 'სავარჯიშოები'}>
+              <Section title={volume ? tx(`სავარჯიშოები · ${Math.round(volume).toLocaleString(dateLocale())} კგ მოცულობა`, `Exercises · ${Math.round(volume).toLocaleString(dateLocale())} kg volume`) : tx('სავარჯიშოები', 'Exercises')}>
                 {rows.map((r, i) => (
                   <Card key={i} style={{ marginBottom: 8, gap: 8, paddingVertical: 12 }}>
                     <View style={[coachStyles.row, { gap: 8 }]}>
                       <View style={{ width: 28, height: 28, borderRadius: 14, backgroundColor: c.accent100, alignItems: 'center', justifyContent: 'center' }}>
                         <Text style={{ fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 12, color: c.primary100 }}>{i + 1}</Text>
                       </View>
-                      <Input inset style={{ flex: 1, minHeight: 44 }} value={r.name} onChangeText={(t) => setRows((x) => x.map((y, j) => (j === i ? { ...y, name: t } : y)))} placeholder="სავარჯიშო" />
-                      <Pressable accessibilityRole="button" accessibilityLabel="სავარჯიშოს წაშლა" hitSlop={10} onPress={() => setRows((x) => x.filter((_, j) => j !== i))} style={{ width: 40, height: 40, alignItems: 'center', justifyContent: 'center' }}>
+                      <Input inset style={{ flex: 1, minHeight: 44 }} value={r.name} onChangeText={(t) => setRows((x) => x.map((y, j) => (j === i ? { ...y, name: t } : y)))} placeholder={tx('სავარჯიშო', 'Exercise')} />
+                      <Pressable accessibilityRole="button" accessibilityLabel={tx('სავარჯიშოს წაშლა', 'Remove exercise')} hitSlop={10} onPress={() => setRows((x) => x.filter((_, j) => j !== i))} style={{ width: 40, height: 40, alignItems: 'center', justifyContent: 'center' }}>
                         <Trash2 size={18} color={c.text300} />
                       </Pressable>
                     </View>
                     <View style={[coachStyles.row, { gap: 8 }]}>
                       {(['sets', 'reps', 'kg'] as const).map((k) => (
                         <View key={k} style={{ flex: 1 }}>
-                          <Text style={[hubText.small, { color: c.text300, marginBottom: 2 }]}>{k === 'sets' ? 'სეტი' : k === 'reps' ? 'გამეორება' : 'კგ'}</Text>
+                          <Text style={[hubText.small, { color: c.text300, marginBottom: 2 }]}>{k === 'sets' ? tx('სეტი', 'Sets') : k === 'reps' ? tx('გამეორება', 'Reps') : tx('კგ', 'kg')}</Text>
                           <Input inset style={{ minHeight: 44, textAlign: 'center' }} keyboardType="decimal-pad" value={r[k]} onChangeText={(t) => setRows((x) => x.map((y, j) => (j === i ? { ...y, [k]: t.replace(/[^\d.,]/g, '').slice(0, 6) } : y)))} placeholder="—" />
                         </View>
                       ))}
@@ -235,10 +239,10 @@ export default function CoachSessionScreen() {
                     <Chip key={q} label={`+ ${q}`} onPress={() => setRows((x) => [...x, { name: q, sets: '3', reps: '10', kg: '' }])} />
                   ))}
                 </View>
-                <Button label="სხვა სავარჯიშო" icon={Plus} kind="ghost" onPress={() => setRows((x) => [...x, { name: '', sets: '', reps: '', kg: '' }])} />
+                <Button label={tx('სხვა სავარჯიშო', 'Another exercise')} icon={Plus} kind="ghost" onPress={() => setRows((x) => [...x, { name: '', sets: '', reps: '', kg: '' }])} />
               </Section>
-              <Field label="შენიშვნა კლიენტს">
-                <Input value={note} onChangeText={setNote} multiline maxLength={1000} placeholder="რა გამოუვიდა კარგად, რაზე იმუშაოს შემდეგ ჯერზე" />
+              <Field label={tx('შენიშვნა კლიენტს', 'Note to client')}>
+                <Input value={note} onChangeText={setNote} multiline maxLength={1000} placeholder={tx('რა გამოუვიდა კარგად, რაზე იმუშაოს შემდეგ ჯერზე', 'What went well, what to work on next time')} />
               </Field>
               <View style={{ height: 12 }} />
             </>

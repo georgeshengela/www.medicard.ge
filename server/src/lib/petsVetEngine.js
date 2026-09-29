@@ -6,6 +6,7 @@ import {
   resolveOpenRouterModel,
 } from './aiEngine.js';
 import { AiEngineError } from './evidencemd.js';
+import { currentAiLanguage } from './aiConsent.js';
 import { SYSTEM_PROMPTS } from './prompts.js';
 import { wrapUntrustedBlock } from './petsAiContext.js';
 import { applyVetSafetyLayers, classifyVetTurn } from './petsVetPolicy.js';
@@ -73,16 +74,18 @@ export function vetUnavailableWithoutOpenRouter() {
     status: 503,
     code: 'OPENROUTER_UNAVAILABLE',
     error: 'Medi Vet ამჟამად მიუწვდომელია. სცადე მოგვიანებით.',
+    errorEn: 'Medi Vet is unavailable right now. Please try again later.',
   };
 }
 
-export function unsupportedSpeciesPolicyAnswer({ speciesId, routing }) {
+export function unsupportedSpeciesPolicyAnswer({ speciesId, routing, lang = 'ka' }) {
   const classification = classifyVetTurn({ text: '', speciesId });
   const layered = applyVetSafetyLayers({
     text: '',
     classification: { ...classification, unsupportedSpecies: true },
     retrieved: [],
     speciesId,
+    lang,
   });
   return {
     content: layered.content,
@@ -112,14 +115,15 @@ export async function askVetAi({
     throw new AiEngineError('VET routing refused EvidenceMD.', { status: 500 });
   }
 
+  const lang = currentAiLanguage();
   const speciesFlags = classifyVetTurn({ text: userMessage, speciesId });
   if (speciesFlags.unsupportedSpecies) {
-    return unsupportedSpeciesPolicyAnswer({ speciesId, routing });
+    return unsupportedSpeciesPolicyAnswer({ speciesId, routing, lang });
   }
 
   const missing = vetUnavailableWithoutOpenRouter();
   if (missing) {
-    throw new AiEngineError(missing.error, { status: missing.status });
+    throw new AiEngineError(missing.error, { status: missing.status, messageEn: missing.errorEn });
   }
 
   const retrieved = retrievePetVetReferences({ speciesId, query: userMessage });
@@ -144,6 +148,7 @@ export async function askVetAi({
         classification,
         retrieved,
         speciesId,
+        lang,
       });
       return {
         ...result,
@@ -161,5 +166,5 @@ export async function askVetAi({
       if (error?.status === 499) throw error;
     }
   }
-  throw lastError ?? new AiEngineError('Medi Vet-თან დაკავშირება ვერ მოხერხდა.', { status: 502 });
+  throw lastError ?? new AiEngineError('Medi Vet-თან დაკავშირება ვერ მოხერხდა.', { status: 502, messageEn: 'We couldn’t reach Medi Vet.' });
 }

@@ -23,6 +23,9 @@ export function cycleHonestyFlags({
 }
 
 const MONTHS_KA = ['იანვარი', 'თებერვალი', 'მარტი', 'აპრილი', 'მაისი', 'ივნისი', 'ივლისი', 'აგვისტო', 'სექტემბერი', 'ოქტომბერი', 'ნოემბერი', 'დეკემბერი'];
+const MONTHS_EN = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+
+const isEn = (lang) => lang === 'en';
 
 /** '2026-10-10' → '10 ოქტომბერი 2026' (user-facing copy never shows ISO keys). */
 export function formatDateKa(key) {
@@ -31,38 +34,70 @@ export function formatDateKa(key) {
   return `${Number(m[3])} ${MONTHS_KA[Number(m[2]) - 1]} ${m[1]}`;
 }
 
-export function nextPeriodEstimateBody(date, flags) {
-  if (!date) return 'სავარაუდო შემდეგი მენსტრუაციის თარიღი ჯერ არ არის.';
-  date = formatDateKa(date);
+/** '2026-10-10' → '10 October 2026' (English counterpart of formatDateKa). */
+export function formatDateEn(key) {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(key ?? ''));
+  if (!m) return key ?? '—';
+  return `${Number(m[3])} ${MONTHS_EN[Number(m[2]) - 1]} ${m[1]}`;
+}
+
+/** Date key → user-facing date in the person's language ('ka' default). */
+export function formatCycleDate(key, lang = 'ka') {
+  return isEn(lang) ? formatDateEn(key) : formatDateKa(key);
+}
+
+export function nextPeriodEstimateBody(date, flags, lang = 'ka') {
+  const en = isEn(lang);
+  if (!date) {
+    return en ? 'There is no estimated next period date yet.' : 'სავარაუდო შემდეგი მენსტრუაციის თარიღი ჯერ არ არის.';
+  }
+  date = formatCycleDate(date, lang);
   if (flags.cautious) {
-    return `სავარაუდო თარიღი დაახლოებით ${date}. ბოლო ციკლები იცვლება ან შეფასება ნაკლებად საიმედოა — თარიღი შეიძლება შეიცვალოს.`;
+    return en
+      ? `Estimated date: around ${date}. Your recent cycles vary or the estimate is less reliable, so the date may change.`
+      : `სავარაუდო თარიღი დაახლოებით ${date}. ბოლო ციკლები იცვლება ან შეფასება ნაკლებად საიმედოა — თარიღი შეიძლება შეიცვალოს.`;
   }
   if (flags.confidence === 'medium') {
-    return `სავარაუდო თარიღი დაახლოებით ${date}. დრო შეიძლება ოდნავ გადაიწიოს.`;
+    return en
+      ? `Estimated date: around ${date}. The timing may shift a little.`
+      : `სავარაუდო თარიღი დაახლოებით ${date}. დრო შეიძლება ოდნავ გადაიწიოს.`;
   }
-  return `სავარაუდო თარიღი დაახლოებით ${date} — ბოლო ციკლების მიხედვით.`;
+  return en
+    ? `Estimated date: around ${date}, based on your recent cycles.`
+    : `სავარაუდო თარიღი დაახლოებით ${date} — ბოლო ციკლების მიხედვით.`;
 }
 
-export function ttcWindowBody(predictions, flags) {
-  const start = predictions?.fertileWindow?.start ? formatDateKa(predictions.fertileWindow.start) : '—';
-  const end = predictions?.fertileWindow?.end ? formatDateKa(predictions.fertileWindow.end) : '—';
-  const ovulation = predictions?.ovulationDate ? formatDateKa(predictions.ovulationDate) : '—';
+export function ttcWindowBody(predictions, flags, lang = 'ka') {
+  const en = isEn(lang);
+  const start = predictions?.fertileWindow?.start ? formatCycleDate(predictions.fertileWindow.start, lang) : '—';
+  const end = predictions?.fertileWindow?.end ? formatCycleDate(predictions.fertileWindow.end, lang) : '—';
+  const ovulation = predictions?.ovulationDate ? formatCycleDate(predictions.ovulationDate, lang) : '—';
   if (flags.pcos || flags.cautious) {
-    return `სავარაუდო ნაყოფიერი ფანჯარა დაახლოებით ${start} – ${end}. ოვულაციის შეფასება (${ovulation}) ნაკლებად საიმედოა. ეს არ ადასტურებს ოვულაციას და არ არის კონტრაცეფცია.`;
+    return en
+      ? `Estimated fertile window: around ${start} – ${end}. The ovulation estimate (${ovulation}) is less reliable. This does not confirm ovulation and is not contraception.`
+      : `სავარაუდო ნაყოფიერი ფანჯარა დაახლოებით ${start} – ${end}. ოვულაციის შეფასება (${ovulation}) ნაკლებად საიმედოა. ეს არ ადასტურებს ოვულაციას და არ არის კონტრაცეფცია.`;
   }
-  return `სავარაუდო ნაყოფიერი ფანჯარა დაახლოებით ${start} – ${end}. სავარაუდო ოვულაცია: ${ovulation}. ეს კალენდარული შეფასებაა, არა დადგენილი ნაყოფიერება.`;
+  return en
+    ? `Estimated fertile window: around ${start} – ${end}. Likely ovulation: ${ovulation}. This is a calendar estimate, not confirmed fertility.`
+    : `სავარაუდო ნაყოფიერი ფანჯარა დაახლოებით ${start} – ${end}. სავარაუდო ოვულაცია: ${ovulation}. ეს კალენდარული შეფასებაა, არა დადგენილი ნაყოფიერება.`;
 }
 
-export function latePeriodAlertKa() {
-  return 'მენსტრუაცია ბოლო პატერნზე გვიანია. ეს შეფასებაა, არა დიაგნოზი. თუ გაწუხებს, მიმართე ექიმს.';
+export function latePeriodAlertKa(lang = 'ka') {
+  return isEn(lang)
+    ? 'Your period is late compared with your recent pattern. This is an estimate, not a diagnosis. If you are worried, see a doctor.'
+    : 'მენსტრუაცია ბოლო პატერნზე გვიანია. ეს შეფასებაა, არა დიაგნოზი. თუ გაწუხებს, მიმართე ექიმს.';
 }
 
-export function irregularLengthAlertKa(lastGap) {
-  return `ბოლო აღრიცხული ციკლი ${lastGap} დღეა. ხშირი დიაპაზონი 21–35 დღეა — ეს არ არის დიაგნოზი.`;
+export function irregularLengthAlertKa(lastGap, lang = 'ka') {
+  return isEn(lang)
+    ? `Your last logged cycle was ${lastGap} ${lastGap === 1 ? 'day' : 'days'}. A common range is 21–35 days. This is not a diagnosis.`
+    : `ბოლო აღრიცხული ციკლი ${lastGap} დღეა. ხშირი დიაპაზონი 21–35 დღეა — ეს არ არის დიაგნოზი.`;
 }
 
-export function pcosCautionKa() {
-  return 'შენ მიუთითე PCOS — სავარაუდო ოვულაცია და ნაყოფიერი ფანჯარა ნაკლებად საიმედოა. Medicard არ არის კონტრაცეფციის მეთოდი.';
+export function pcosCautionKa(lang = 'ka') {
+  return isEn(lang)
+    ? 'You told us you have PCOS, so estimated ovulation and the fertile window are less reliable. Medicard is not a method of contraception.'
+    : 'შენ მიუთითე PCOS — სავარაუდო ოვულაცია და ნაყოფიერი ფანჯარა ნაკლებად საიმედოა. Medicard არ არის კონტრაცეფციის მეთოდი.';
 }
 
 export function ttcReminderTone(flags) {

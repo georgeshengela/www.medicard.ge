@@ -11,6 +11,7 @@ import { CycleTtcJournalSection } from '@/components/cycle/CycleTtcJournalSectio
 import { CyclePregnancyJournalSection } from '@/components/cycle/CyclePregnancyJournalSection';
 import { CycleActionRow, CycleActionPanel, CycleSection } from '@/components/cycle/CycleUI';
 import { ka } from '@/i18n/ka';
+import { tx } from '@/i18n/locale';
 import type { CycleBundle, CyclePregnancyPayload, CyclePostpartumPayload, CycleTtcPayload } from '@/lib/api';
 import { cycleHistoryPresentation } from '@/lib/cycleHistoryCopy';
 import { cycleModeCapabilities } from '@/lib/cycleModes';
@@ -126,8 +127,8 @@ export function CycleJournalPane({
       <CycleActionPanel>
         <CycleActionRow
           icon={BookOpen}
-          title="პირადი დღიური"
-          subtitle="შენი შენიშვნები და ჩანაწერების ძებნა"
+          title={tx('პირადი დღიური', 'Private journal')}
+          subtitle={tx('შენი შენიშვნები და ჩანაწერების ძებნა', 'Your notes and entry search')}
           color={c.brand}
           onPress={() => router.push('/cycle/journal' as never)}
           last

@@ -3,6 +3,7 @@
 import { h, mount, icon, button, empty, skeleton, errorBox, fmtDate } from '../ui.js';
 import { get, post, ApiError } from '../api.js';
 import { featureOn } from '../session.js';
+import { t } from '../i18n.js';
 
 const CSS = '/app/css/news.css';
 function ensureCss() {
@@ -158,7 +159,7 @@ function newsCard(item, onDismiss) {
   const img = src ? h('img', { class: 'news-img', src, alt: '', loading: 'lazy', onError: () => { img.remove(); tileSlot.hidden = false; } }) : null;
   const tileSlot = h('span', { class: `tile ink-${tone} news-tile`, hidden: Boolean(src) }, icon('megaphone', { size: 20 }));
 
-  const el = h('article', { class: 'card news-card hover', role: 'link', tabindex: '0', 'aria-label': `${item.badge || 'სიახლე'}. ${item.title}`,
+  const el = h('article', { class: 'card news-card hover', role: 'link', tabindex: '0', 'aria-label': `${item.badge || t('სიახლე', 'News')}. ${item.title}`,
     onClick: (e) => { if (!e.target.closest('button,a')) openDetails(); },
     onKeydown: (e) => { if (e.key === 'Enter' && e.target === el) openDetails(); } },
   img,
@@ -166,12 +167,12 @@ function newsCard(item, onDismiss) {
     h('div', { class: 'news-head' },
       tileSlot,
       h('div', { class: 'news-text' },
-        h('span', { class: `news-badge ink-${tone}` }, item.badge || 'სიახლე'),
+        h('span', { class: `news-badge ink-${tone}` }, item.badge || t('სიახლე', 'News')),
         h('h3', { class: 'news-title' }, item.title),
         item.body ? h('p', { class: 'news-sub' }, item.body) : null)),
     h('button', { type: 'button', class: `news-cta ink-${tone}`, onClick: (e) => { e.stopPropagation(); if (cta) openCta(item, cta); else openDetails(); } },
-      h('span', null, cta ? cta.label : 'დეტალურად'), icon(cta?.external ? 'externalLink' : 'arrowRight', { size: 16 }))),
-  item.dismissible ? h('button', { type: 'button', class: `news-close ${src ? 'on-image' : ''}`, 'aria-label': 'სიახლის დამალვა', title: 'დამალვა', onClick: (e) => { e.stopPropagation(); onDismiss(); } }, icon('x', { size: 16 })) : null);
+      h('span', null, cta ? cta.label : t('დეტალურად', 'Details')), icon(cta?.external ? 'externalLink' : 'arrowRight', { size: 16 }))),
+  item.dismissible ? h('button', { type: 'button', class: `news-close ${src ? 'on-image' : ''}`, 'aria-label': t('სიახლის დამალვა', 'Hide this news'), title: t('დამალვა', 'Hide'), onClick: (e) => { e.stopPropagation(); onDismiss(); } }, icon('x', { size: 16 })) : null);
 
   // First sighting counts as a view, like the app's card mount.
   if ('IntersectionObserver' in window) {
@@ -192,7 +193,7 @@ export default async function newsPage(root, ctx) {
   const peek = listCache.list?.find((a) => a.id === id) || null;
   const body = h('div', { class: 'news-page' });
   mount(root,
-    h('a', { class: 'back', href: '/', 'data-link': '' }, icon('chevronLeft', { size: 16 }), 'მთავარი'),
+    h('a', { class: 'back', href: '/', 'data-link': '' }, icon('chevronLeft', { size: 16 }), t('მთავარი', 'Home')),
     body);
 
   if (peek) render(peek);
@@ -208,26 +209,26 @@ export default async function newsPage(root, ctx) {
 
   function gone(isGone) {
     mount(body, h('div', { class: 'card' }, empty(
-      isGone ? 'ეს სიახლე აღარ არის აქტიური' : 'სიახლე ვერ ჩაიტვირთა',
-      isGone ? 'ღონისძიება დასრულდა ან სიახლე მოიხსნა.' : 'შეამოწმე ინტერნეტი და სცადე ხელახლა.',
-      button('მთავარზე დაბრუნება', { href: '/' }))));
+      isGone ? t('ეს სიახლე აღარ არის აქტიური', 'This news is no longer active') : t('სიახლე ვერ ჩაიტვირთა', 'Couldn’t load this news'),
+      isGone ? t('ღონისძიება დასრულდა ან სიახლე მოიხსნა.', 'The event has ended or the news was taken down.') : t('შეამოწმე ინტერნეტი და სცადე ხელახლა.', 'Check your connection and try again.'),
+      button(t('მთავარზე დაბრუნება', 'Back to Home'), { href: '/' }))));
   }
 
   function render(card) {
-    ctx.setTitle?.(card.title || 'სიახლე');
+    ctx.setTitle?.(card.title || t('სიახლე', 'News'));
     const tone = toneOf(card.tone);
     const src = imageSrc(card.image);
     const cta = usableCta(card);
     const dates = [
       card.publishedAt ? fmtDate(card.publishedAt, { year: true }) : '',
-      card.endsAt ? `აქტიურია ${fmtDate(card.endsAt, { year: true })}-მდე` : '',
+      card.endsAt ? t(`აქტიურია ${fmtDate(card.endsAt, { year: true })}-მდე`, `Active until ${fmtDate(card.endsAt, { year: true })}`) : '',
     ].filter(Boolean).join(' · ');
     const img = src ? h('img', { class: 'news-hero', src, alt: '', onError: () => img.remove() }) : null;
     mount(body,
       h('article', { class: 'card pad-lg news-detail' },
         img,
         h('div', { class: 'stack', style: { gap: '10px' } },
-          h('span', { class: `news-badge ink-${tone}` }, card.badge || 'სიახლე'),
+          h('span', { class: `news-badge ink-${tone}` }, card.badge || t('სიახლე', 'News')),
           h('h1', { class: 'news-detail-title' }, card.title),
           dates ? h('div', { class: 'faint', style: { fontSize: '13px' } }, dates) : null),
         card.details && card.body ? h('p', { class: 'news-lead' }, card.body) : null,

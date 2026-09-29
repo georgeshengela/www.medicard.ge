@@ -10,4 +10,22 @@ export const giftWrite=z.object({title:text(100).min(2),description:text(1000),l
 export const configWrite=z.object({revision:z.number().int().min(0),data:z.object({enabled:z.boolean(),giftsEnabled:z.boolean(),leaderboardEnabled:z.boolean(),message:text(300)}).strict()}).strict();
 export const reviewWrite=z.object({excluded:z.boolean(),reason:text(500).min(5)}).strict();
 export const claimWrite=z.object({status:z.enum(['APPROVED','FULFILLED','REJECTED']),reason:text(500).min(5)}).strict();
-export function fail(status,message,code='MEDIPULSI_ERROR'){throw Object.assign(new Error(message),{status,code});}
+// English for the Georgian messages in service.js; middleware/error.js shows it to English requests.
+const MESSAGES_EN=Object.freeze({
+ 'MEDIRUN დროებით შეჩერებულია.':'MEDIRUN is paused for a moment.',
+ 'მისია მიუწვდომელია.':'This mission is unavailable.',
+ 'სესია ვერ მოიძებნა.':'Session not found.',
+ 'ეს სესია დასრულებულია.':'This session has ended.',
+ 'გააგრძელე ან დაასრულე არსებული სესია.':'Continue or finish your current session.',
+ 'სესია დასრულებულია.':'The session has ended.',
+ 'სესია აღარ არის აქტიური.':'The session is no longer active.',
+ 'გამეორებული პაკეტის მონაცემები განსხვავდება.':'The repeated batch has different data.',
+ 'სესია პაუზაზეა ან დასრულებულია.':'The session is paused or has ended.',
+ 'პაკეტების რიგი არ ემთხვევა.':'The batch order does not match.',
+ 'საჩუქრები დროებით შეჩერებულია.':'Gifts are paused for a moment.',
+ 'საჭიროა ახალი და ზუსტი GPS სიგნალი.':'A fresh, accurate GPS signal is needed.',
+ 'სესიის შემოწმება მიმდინარეობს.':'This session is being reviewed.',
+ 'საჩუქარი ამ მდებარეობაზე მიუწვდომელია.':'This gift is not available at this location.',
+ 'საჩუქრის მარაგი ამოიწურა.':'This gift is out of stock.',
+});
+export function fail(status,message,code='MEDIPULSI_ERROR'){throw Object.assign(new Error(message),{status,code},MESSAGES_EN[message]?{messageEn:MESSAGES_EN[message]}:{});}

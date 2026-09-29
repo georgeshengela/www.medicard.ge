@@ -11,6 +11,7 @@ import { getRunState } from '@/lib/run/store';
 import { useThemeColors } from '@/theme/colors';
 import { useAuth } from '@/store/AuthContext';
 import { usePrefersReducedMotion } from '@/hooks/usePrefersReducedMotion';
+import { tx } from '@/i18n/locale';
 
 export const TAB_BAR_HEIGHT = 64;
 export const TAB_BAR_SIDE = 20;
@@ -253,7 +254,7 @@ function TabButton({
       }}
     >
       <tab.Icon size={20} color={color} strokeWidth={focused ? 2.3 : 1.8} />
-      <Text numberOfLines={1} style={{ color, fontFamily: 'NotoSansGeorgian_500Medium', fontSize: 9, marginTop: 4 }}>{tab.name === 'medications' ? 'წამლები' : tab.name === 'records' ? 'ბარათი' : tab.title}</Text>
+      <Text numberOfLines={1} style={{ color, fontFamily: 'NotoSansGeorgian_500Medium', fontSize: 9, marginTop: 4 }}>{tab.name === 'medications' ? tx('წამლები', 'Meds') : tab.name === 'records' ? tx('ბარათი', 'Card') : tab.title}</Text>
     </TouchableOpacity>
   );
 }

@@ -1,4 +1,5 @@
 import { Alert, Platform } from 'react-native';
+import { tx } from '../i18n/locale.js';
 
 /** Yes/no confirmation that also works on web (react-native-web's Alert is a no-op). */
 export function confirmAction(title: string, message: string, confirmLabel: string, destructive = false): Promise<boolean> {
@@ -7,7 +8,7 @@ export function confirmAction(title: string, message: string, confirmLabel: stri
   }
   return new Promise((resolve) => {
     Alert.alert(title, message, [
-      { text: 'არა', style: 'cancel', onPress: () => resolve(false) },
+      { text: tx('არა', 'No'), style: 'cancel', onPress: () => resolve(false) },
       { text: confirmLabel, style: destructive ? 'destructive' : 'default', onPress: () => resolve(true) },
     ], { cancelable: true, onDismiss: () => resolve(false) });
   });

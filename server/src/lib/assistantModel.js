@@ -1,10 +1,10 @@
 import { askOpenRouterPrepared, hasOpenRouter, OPENROUTER_MODELS } from './aiEngine.js';
 
-const failure = () => Object.assign(new Error('პასუხის მიღება შეფერხდა. შენი ნათქვამი შენარჩუნებულია — სცადე ხელახლა.'), { status: 502, code: 'ASSISTANT_RESPONSE_FAILED' });
+const failure = () => Object.assign(new Error('პასუხის მიღება შეფერხდა. შენი ნათქვამი შენარჩუნებულია — სცადე ხელახლა.'), { status: 502, code: 'ASSISTANT_RESPONSE_FAILED', messageEn: 'The reply was delayed. What you said is kept — please try again.' });
 
 /** Read-only planning/transcription retries only. Never repair truncated facts or execute here. */
 export async function assistantJson(messages, schema, { maxTokens = 3200, ask = askOpenRouterPrepared, timeoutMs = 25000 } = {}) {
-  if (ask === askOpenRouterPrepared && !hasOpenRouter()) throw Object.assign(new Error('Medi-ს კავშირი ჯერ არ არის გამართული. შეგიძლია ტექსტით ან ხელით გააგრძელო.'), { status: 503 });
+  if (ask === askOpenRouterPrepared && !hasOpenRouter()) throw Object.assign(new Error('Medi-ს კავშირი ჯერ არ არის გამართული. შეგიძლია ტექსტით ან ხელით გააგრძელო.'), { status: 503, messageEn: 'Medi isn’t connected yet. You can continue by typing or by hand.' });
   for (let attempt = 0; attempt < 2; attempt++) {
     let response;
     const signal = AbortSignal.timeout(timeoutMs);

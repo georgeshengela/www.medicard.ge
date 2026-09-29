@@ -1,4 +1,5 @@
 import { ka } from '@/i18n/ka';
+import { isEn, tx } from '@/i18n/locale';
 
 const KA_MONTHS = [
   'იანვარი',
@@ -15,14 +16,40 @@ const KA_MONTHS = [
   'დეკემბერი',
 ];
 
-export function formatDate(iso: string): string {
-  const date = new Date(iso);
-  return `${date.getDate()} ${KA_MONTHS[date.getMonth()]}, ${date.getFullYear()}`;
+const EN_MONTHS = [
+  'January',
+  'February',
+  'March',
+  'April',
+  'May',
+  'June',
+  'July',
+  'August',
+  'September',
+  'October',
+  'November',
+  'December',
+];
+
+function monthName(index: number): string {
+  return (isEn() ? EN_MONTHS : KA_MONTHS)[index];
 }
 
-/** Home header — `9 სექტემბერი 2026`. Avoids RN `ka-GE` locale dropping the day. */
+export function formatDate(iso: string): string {
+  const date = new Date(iso);
+  return `${date.getDate()} ${monthName(date.getMonth())}, ${date.getFullYear()}`;
+}
+
+/** Home header — `9 სექტემბერი 2026` / `9 September 2026`. Avoids RN `ka-GE` locale dropping the day. */
 export function formatDayMonthYearKa(date = new Date()): string {
-  return `${date.getDate()} ${KA_MONTHS[date.getMonth()]} ${date.getFullYear()}`;
+  return `${date.getDate()} ${monthName(date.getMonth())} ${date.getFullYear()}`;
+}
+
+/** `YYYY-MM-DD` → `5 ოქტომბერი` / `5 October` (add the year with `withYear`). Unparseable input comes back unchanged. */
+export function formatYmd(ymd: string, withYear = false): string {
+  const [y, m, d] = String(ymd).slice(0, 10).split('-').map(Number);
+  if (!y || !m || !d || m > 12) return ymd;
+  return withYear ? `${d} ${monthName(m - 1)} ${y}` : `${d} ${monthName(m - 1)}`;
 }
 
 export function formatDateTime(iso: string): string {
@@ -35,15 +62,15 @@ export function formatRelative(iso: string): string {
   const diffMs = Date.now() - new Date(iso).getTime();
   const minutes = Math.floor(diffMs / 60_000);
 
-  if (minutes < 1) return 'ახლახან';
-  if (minutes < 60) return `${minutes} წუთის წინ`;
+  if (minutes < 1) return tx('ახლახან', 'just now');
+  if (minutes < 60) return tx(`${minutes} წუთის წინ`, `${minutes} min ago`);
 
   const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `${hours} საათის წინ`;
+  if (hours < 24) return tx(`${hours} საათის წინ`, hours === 1 ? '1 hour ago' : `${hours} hours ago`);
 
   const days = Math.floor(hours / 24);
-  if (days === 1) return 'გუშინ';
-  if (days < 7) return `${days} დღის წინ`;
+  if (days === 1) return tx('გუშინ', 'yesterday');
+  if (days < 7) return tx(`${days} დღის წინ`, `${days} days ago`);
 
   return formatDate(iso);
 }
@@ -58,13 +85,13 @@ export function formatCountdown(ms: number): string {
   const minutes = totalMinutes % 60;
 
   if (days >= 2) {
-    if (hours === 0) return `${days} დღეში`;
-    return `${days} დღე ${hours} სთ-ში`;
+    if (hours === 0) return tx(`${days} დღეში`, `in ${days} days`);
+    return tx(`${days} დღე ${hours} სთ-ში`, `in ${days} d ${hours} h`);
   }
-  if (hours === 0 && days === 0) return `${minutes} წუთში`;
+  if (hours === 0 && days === 0) return tx(`${minutes} წუთში`, `in ${minutes} min`);
   const totalHours = Math.floor(totalMinutes / 60);
-  if (minutes === 0) return `${totalHours} საათში`;
-  return `${totalHours} სთ ${minutes} წთ-ში`;
+  if (minutes === 0) return tx(`${totalHours} საათში`, totalHours === 1 ? 'in 1 hour' : `in ${totalHours} hours`);
+  return tx(`${totalHours} სთ ${minutes} წთ-ში`, `in ${totalHours} h ${minutes} min`);
 }
 
 /** Live reset clock — `23:59:05` for a 24h window; days only if 48h+. */
@@ -75,7 +102,7 @@ export function formatResetClock(ms: number): string {
     const hours = Math.floor((total % 86_400) / 3600);
     const minutes = Math.floor((total % 3600) / 60);
     const seconds = total % 60;
-    return `${days} დღე ${pad(hours)}:${pad(minutes)}:${pad(seconds)}`;
+    return `${days} ${tx('დღე', 'd')} ${pad(hours)}:${pad(minutes)}:${pad(seconds)}`;
   }
   const hours = Math.floor(total / 3600);
   const minutes = Math.floor((total % 3600) / 60);
@@ -100,9 +127,12 @@ export function formatResetSentence(iso: string): string {
   const time = `${pad(reset.getHours())}:${pad(reset.getMinutes())}`;
   const today = localYmd(new Date());
   const resetDay = localYmd(reset);
-  if (resetDay === today) return `განახლდება დღეს, ${time}-ზე`;
-  if (resetDay === nextYmd(today)) return `განახლდება ხვალ, ${time}-ზე`;
-  return `განახლდება ${reset.getDate()} ${KA_MONTHS[reset.getMonth()]}, ${time}-ზე`;
+  if (resetDay === today) return tx(`განახლდება დღეს, ${time}-ზე`, `Resets today at ${time}`);
+  if (resetDay === nextYmd(today)) return tx(`განახლდება ხვალ, ${time}-ზე`, `Resets tomorrow at ${time}`);
+  return tx(
+    `განახლდება ${reset.getDate()} ${KA_MONTHS[reset.getMonth()]}, ${time}-ზე`,
+    `Resets on ${reset.getDate()} ${EN_MONTHS[reset.getMonth()]} at ${time}`,
+  );
 }
 
 export function greeting(): string {

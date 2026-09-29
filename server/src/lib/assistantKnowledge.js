@@ -78,8 +78,93 @@ export const ASSISTANT_FEATURES = Object.freeze([
   feature('terms', 'გამოყენების პირობები', '/profile/terms', 'account', 'მომსახურების პირობები.', ['human', 'pet']),
   feature('streak', 'აქტიურობის სერია', '/profile/streak', 'activity', 'შენი აქტიური დღეები და სერია.'),
 ]);
+/** English copy for the capability directory (Georgian above stays the default and the planner's guide). */
+const GROUPS_EN = Object.freeze({
+  daily: 'Daily health', treatment: 'Medications and visits', cycle: 'Cycle and pregnancy', analysis: 'Consultation and analysis',
+  activity: 'Movement and rewards', pets: 'My pets', account: 'Profile and settings',
+});
+const FEATURES_EN = Object.freeze({
+  home: ['Home', 'Your day at a glance and the app’s features.'],
+  metrics: ['Health metrics', 'Log a measured weight, pulse, blood pressure, sleep or calories.'],
+  hydration: ['Hydration', 'Water tracking, today’s progress and your daily goal.'],
+  hydration_history: ['Water history', 'See your saved water entries.'],
+  hydration_calendar: ['Water calendar', 'Hydration overview by day.'],
+  hydration_log: ['Log a drink', 'Choose a drink, a container and the amount.'],
+  weight: ['Weight', 'Measurements and weight change.'],
+  weight_history: ['Weight history', 'Saved measurements by date.'],
+  nutrition: ['Nutrition and goal', 'Today’s calories, macronutrients and your saved food diary. Food you didn’t log is unknown.'],
+  nutrition_diary: ['Log food', 'Photo, barcode, label, search, saved foods or a spoken description; check and correct the portion. Use the nutrition_log action to record food you describe.'],
+  nutrition_goal: ['Nutrition plan', 'Your overall weight goal, the details it needs, a safety check and a daily target. Use the nutrition_goal action to carry over a specific goal.'],
+  nutrition_plan: ['My meal plan', '7 days of meals, alternatives and a shopping list. Only the “I ate it” button or nutrition_eat writes a meal to the diary.'],
+  nutrition_progress: ['Nutrition progress', 'Logged calories and weight change, with incomplete days marked separately.'],
+  weight_goal: ['Add a weight goal', 'Your desired weight and goal milestones.'],
+  weight_progress: ['Weight goal progress', 'Progress and management of your current goal.'],
+  steps: ['Steps', 'Step sync with your phone’s permission; Medi never makes up steps.'],
+  steps_history: ['Steps history', 'Saved activity by day.'],
+  steps_goal: ['Steps goal', 'Your daily goal and deadline.'],
+  steps_progress: ['Steps goal progress', 'See and manage your current goal.'],
+  week: ['Your week with Medi', 'A weekly summary of water, steps, weight, sleep and medication intake.'],
+  weather: ['Weather', 'Weather for your saved location; you confirm any new location yourself.'],
+  medications: ['Medications', 'Reminders, dose tracking and managing your current medications.'],
+  medication_add: ['Add a medication in detail', 'Fill in non-daily, as-needed and other complex schedules here. You enter the dose.'],
+  medication_reminders: ['Medication reminders', 'Reminder times and modes.'],
+  medication_calendar: ['Intake calendar', 'Your medication intake calendar.'],
+  medication_interactions: ['Medication interactions', 'Open it and tap the button to start an AI review of your current medications; this is not a prescription.'],
+  visits: ['Doctor visits', 'Your personal visit calendar; it doesn’t make a real clinic booking.'],
+  visit_editor: ['Add a visit in detail', 'Specialist, place, date and reminders.'],
+  cycle: ['Cycle', 'The cycle home screen and unlocking its privacy lock.'],
+  cycle_log: ['Quick cycle log', 'Daily observations and symptoms.'],
+  cycle_journal: ['Cycle journal', 'Saved entries and history.'],
+  cycle_trends: ['Cycle trends', 'Trends based on your saved observations, not a diagnosis.'],
+  cycle_summary: ['Cycle report', 'Summary, export and sharing — your choice.'],
+  cycle_settings: ['Cycle modes', 'Period tracking, trying to conceive, pregnancy, perimenopause and postpartum modes.'],
+  pregnancy: ['Pregnancy', 'Overview of your current pregnancy mode; turning the mode on needs your confirmation.'],
+  pregnancy_timeline: ['Pregnancy weeks', 'Overview of pregnancy stages.'],
+  pregnancy_care: ['Pregnancy care plan', 'Manage visits, care milestones and reminders.'],
+  doctor: ['Medi doctor', 'The consultation chat. Use consult to pass on a specific complaint.'],
+  consilium: ['Deep analysis (consilium)', 'A joint AI review by specialists. Pass the complaint on with the consult action.'],
+  symptoms: ['What’s bothering you today?', 'Choose symptoms, use the body map and follow the assessment steps.'],
+  symptoms_history: ['Symptom history', 'See earlier assessments.'],
+  lab: ['Scan lab results', 'Upload a lab document or take a photo; you choose the file yourself.'],
+  imaging: ['Medical imaging', 'Choose a medical image for the existing analysis flow.'],
+  skin: ['Skin analysis', 'Add a skin photo for an AI review.'],
+  skincare: ['Skincare', 'Your personal skincare flow, with a photo if you choose.'],
+  lab_history: ['Lab values', 'Values from your saved lab tests and how they changed.'],
+  records: ['My card', 'Saved tests and consultations; open a specific result.'],
+  pharmacy: ['Pharmacy', 'Search the catalog and current offers; Medi doesn’t make purchases.'],
+  run: ['MEDIRUN', 'GPS walks, discoveries and progress. You can play anywhere; missions are in Tbilisi for now. Starting and claiming a prize need a real action.'],
+  quest: ['MEDI QUEST', 'Missions and progress. Rewards follow the app’s rules and aren’t given out on a voice request.'],
+  quest_achievements: ['Achievements', 'Your achievement collection.'],
+  quest_history: ['Mission history', 'Completed missions and progress.'],
+  quest_wallet: ['Rewards wallet', 'Your current points and coin balance.'],
+  quest_rewards: ['Choose a reward', 'Available offers; redeeming and confirming happen on the reward page.'],
+  quest_mine: ['My rewards', 'Rewards you’ve received and their terms.'],
+  pets: ['My pets', 'Pet profiles, weight, care and Medi Vet.'],
+  pet_add: ['Add a pet in detail', 'Pet creation steps and choosing a photo.'],
+  profile: ['My profile', 'Personal details and settings. Changing the theme, signing out and deleting your account are done here by you.'],
+  health_profile: ['Health profile', 'Your health details; you can fill them in with Medi via profile_update.'],
+  settings: ['App settings', 'Theme and account settings. Medi doesn’t change your password or delete your account.'],
+  permissions: ['Permissions', 'Camera, location and health permissions — only when you tap. Microphone permission is requested from Medi’s talk button.'],
+  notifications: ['Notifications', 'Notification settings.'],
+  ai_sharing: ['AI data sharing', 'In your profile, choose AI data sharing to see or change your permission.'],
+  ai_settings: ['AI and privacy', 'Your permission to share data with AI, the recipients and withdrawing it.'],
+  privacy: ['Privacy', 'How your data is used and contact details.'],
+  terms: ['Terms of use', 'Terms of service.'],
+  streak: ['Activity streak', 'Your active days and streak.'],
+});
+function localizeFeature(f, lang) {
+  if (lang !== 'en' || !FEATURES_EN[f.id]) return f;
+  const [label, description] = FEATURES_EN[f.id];
+  return { ...f, label, description };
+}
+/** Capability groups in the reading language. */
+export function assistantGroups(lang = 'ka') {
+  return lang === 'en' ? ASSISTANT_GROUPS.map(g => ({ ...g, label: GROUPS_EN[g.id] || g.label })) : ASSISTANT_GROUPS;
+}
 export const ASSISTANT_DESTINATIONS = Object.freeze(Object.fromEntries(ASSISTANT_FEATURES.map(f => [f.id, f.route])));
-export function assistantFeatures(scope) { return ASSISTANT_FEATURES.filter(f => scope === 'auto' || f.scopes.includes(scope)); }
+export function assistantFeatures(scope, lang = 'ka') {
+  return ASSISTANT_FEATURES.filter(f => scope === 'auto' || f.scopes.includes(scope)).map(f => localizeFeature(f, lang));
+}
 export function assistantDestinationAllowed(id, scope) { return assistantFeatures(scope).some(f => f.id === id); }
 export function assistantToolGroup(name) {
   if (name.startsWith('pet_')) return 'pets';
@@ -98,7 +183,13 @@ export function literalAssistantNavigation({ text, scope, draft }) {
   if (draft) return null;
   const value = text.trim().toLocaleLowerCase().replace(/[.!]+$/u, '').trim();
   const match = value.match(/^(?:გახსენი|მაჩვენე|გამიხსენი) (.+)$/u) || value.match(/^(.+) (?:გამიხსენი|გახსენი|მაჩვენე)$/u);
-  if (!match) return null;
-  const found = assistantFeatures(scope).find(f => f.label.toLocaleLowerCase() === match[1]);
+  if (match) {
+    const found = assistantFeatures(scope).find(f => f.label.toLocaleLowerCase() === match[1]);
+    return found ? { tool: 'open', args: { destination: found.id } } : null;
+  }
+  // English: "open weight", "show me my pets".
+  const en = value.match(/^(?:open|show(?: me)?) (?:the )?(.+)$/);
+  if (!en) return null;
+  const found = assistantFeatures(scope, 'en').find(f => f.label.toLocaleLowerCase() === en[1]);
   return found ? { tool: 'open', args: { destination: found.id } } : null;
 }

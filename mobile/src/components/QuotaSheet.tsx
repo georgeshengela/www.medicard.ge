@@ -11,6 +11,7 @@ import { formatResetSentence } from '@/lib/format';
 import { usePlanUsage } from '@/lib/planUsage';
 import { useIsDark } from '@/theme/colors';
 import { FREE_CONSUMER_RELEASE } from '@/lib/consumerAccess';
+import { tx } from '@/i18n/locale';
 
 function useResetClock(resetsInMs: number | undefined, resetAt: string | null | undefined, visible: boolean) {
   const [remaining, setRemaining] = useState(() => Math.max(0, resetsInMs ?? 0));
@@ -106,7 +107,7 @@ export function QuotaSheet({
                     textAlign: 'center',
                   }}
                 >
-                  {FREE_CONSUMER_RELEASE ? 'ცოტა ხანში სცადე' : ka.usage.exhaustedTitle}
+                  {FREE_CONSUMER_RELEASE ? tx('ცოტა ხანში სცადე', 'Try again in a moment') : ka.usage.exhaustedTitle}
                 </Text>
                 {!plan.unlimited ? (
                   <Text
@@ -130,7 +131,7 @@ export function QuotaSheet({
                     textAlign: 'center',
                   }}
                 >
-                  {FREE_CONSUMER_RELEASE ? 'მოთხოვნა ახლა ვერ შესრულდა. წვდომა უფასოა — დახურე ფანჯარა და ხელახლა სცადე.' : plan.usage?.resetAt ? formatResetSentence(plan.usage.resetAt) : ka.usage.exhaustedBody}
+                  {FREE_CONSUMER_RELEASE ? tx('მოთხოვნა ახლა ვერ შესრულდა. წვდომა უფასოა — დახურე ფანჯარა და ხელახლა სცადე.', "The request didn't go through right now. Access is free — close this window and try again.") : plan.usage?.resetAt ? formatResetSentence(plan.usage.resetAt) : ka.usage.exhaustedBody}
                 </Text>
               </View>
             </View>

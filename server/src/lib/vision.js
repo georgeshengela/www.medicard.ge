@@ -1,4 +1,4 @@
-import { consentedAiFetch } from './consentedAiFetch.js';
+import { AI_LANGUAGE_HEADER, consentedAiFetch } from './consentedAiFetch.js';
 import { assertVisionCompletion } from './visionCompletion.js';
 import Anthropic from '@anthropic-ai/sdk';
 import OpenAI from 'openai';
@@ -51,7 +51,7 @@ export const SUPPORTED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp', '
 export async function describeImages({ images, kind, patientContext, model }) {
   const list = (images ?? []).filter((row) => row?.buffer?.length);
   if (!list.length) {
-    throw new AiEngineError('ფოტო არ არის ატვირთული.', { status: 400 });
+    throw new AiEngineError('ფოტო არ არის ატვირთული.', { status: 400, messageEn: 'No photo was uploaded.' });
   }
   if (list.length === 1) {
     return describeImage({
@@ -141,7 +141,7 @@ export async function describeImage({ buffer, mimeType, kind, patientContext, mo
   if (!openrouter && !anthropic && !openai) {
     throw new AiEngineError(
       'გამოსახულების ანალიზის სერვისი არ არის კონფიგურირებული. დაამატეთ OPENROUTER_API_KEY.',
-      { status: 503 },
+      { status: 503, messageEn: 'The image analysis service is not available right now.' },
     );
   }
 
@@ -197,6 +197,7 @@ export async function describeImage({ buffer, mimeType, kind, patientContext, mo
 
   throw new AiEngineError('გამოსახულების ანალიზი ვერ შესრულდა. სცადე სხვა ფოტო ან მოგვიანებით.', {
     status: 502,
+    messageEn: 'The image analysis didn’t work. Try another photo or try again later.',
     cause: new Error(errors.join(' | ')),
   });
 }
@@ -256,6 +257,8 @@ async function describeWithOpenAiCompatible({
         ]
       : [];
 
+  // Vision output is extraction notes (lab names stay Georgian for parsing), not the reader's answer:
+  // no reply-language directive here; the clinical write-up that follows is in the reader's language.
   const response = await client.chat.completions.create({
     model,
     max_tokens: maxTokens,
@@ -266,7 +269,7 @@ async function describeWithOpenAiCompatible({
         content: [{ type: 'text', text: prompt }, ...imageParts],
       },
     ],
-  });
+  }, { headers: { [AI_LANGUAGE_HEADER]: 'off' } });
 
   assertVisionCompletion(response, provider);
   const notes = response.choices?.[0]?.message?.content?.trim();

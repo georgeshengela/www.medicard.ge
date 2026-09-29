@@ -37,6 +37,7 @@ import { loadWeightLogs, saveWeightGoal } from '@/lib/weightGoal';
 import { Avatar, Badge, Button, CTA, Card, Chip, CoachHeader, DayStrip, ErrorBox, IconTile, Loading, Screen, Section, Stat, coachStyles } from '@/components/coach/CoachUI';
 import { HUB, hubText } from '@/theme/hub';
 import { useThemeColors } from '@/theme/colors';
+import { tx } from '@/i18n/locale';
 
 export default function MyTrainerScreen() {
   const router = useRouter();
@@ -58,7 +59,7 @@ export default function MyTrainerScreen() {
       setError(null);
       if (o.link?.status === 'ACTIVE' && o.link.scopes.workouts) void syncCoachWorkouts();
     } catch (e) {
-      if (localAccountId() === owner) setError(e instanceof ApiError ? e.message : 'ჩატვირთვა ვერ მოხერხდა. შეამოწმე ინტერნეტი.');
+      if (localAccountId() === owner) setError(e instanceof ApiError ? e.message : tx('ჩატვირთვა ვერ მოხერხდა. შეამოწმე ინტერნეტი.', 'Couldn’t load. Check your internet connection.'));
     }
   }, []);
 
@@ -74,7 +75,7 @@ export default function MyTrainerScreen() {
       await fn();
       await load();
     } catch (e) {
-      Alert.alert('ვერ მოხერხდა', e instanceof ApiError ? e.message : 'სცადე ხელახლა.');
+      Alert.alert(tx('ვერ მოხერხდა', 'Something went wrong'), e instanceof ApiError ? e.message : tx('სცადე ხელახლა.', 'Please try again.'));
     } finally {
       setBusy(null);
     }
@@ -107,16 +108,16 @@ export default function MyTrainerScreen() {
 
   const cancelSession = (s: CoachSession) => {
     const late = new Date(s.startsAt).getTime() - Date.now() < 12 * 3600000;
-    Alert.alert('ვარჯიშის გაუქმება', late ? 'ვარჯიშამდე 12 საათზე ნაკლებია — ტრენერი ამას ბოლო წუთის გაუქმებად ნახავს.' : `${s.label} — ტრენერს შეტყობინება მიუვა.`, [
-      { text: 'არა', style: 'cancel' },
-      { text: 'გაუქმება', style: 'destructive', onPress: () => void act(`cancel-${s.id}`, () => api.coach.cancel(s.id)) },
+    Alert.alert(tx('ვარჯიშის გაუქმება', 'Cancel workout'), late ? tx('ვარჯიშამდე 12 საათზე ნაკლებია — ტრენერი ამას ბოლო წუთის გაუქმებად ნახავს.', 'The workout is less than 12 hours away — your trainer will see this as a last-minute cancellation.') : tx(`${s.label} — ტრენერს შეტყობინება მიუვა.`, `${s.label} — your trainer will be notified.`), [
+      { text: tx('არა', 'No'), style: 'cancel' },
+      { text: tx('გაუქმება', 'Cancel'), style: 'destructive', onPress: () => void act(`cancel-${s.id}`, () => api.coach.cancel(s.id)) },
     ]);
   };
 
   const book = (s: CoachSession) => {
-    Alert.alert('დაჯავშნა', `${s.label} · ${s.kindLabel}${s.gym ? ` · ${s.gym.brand}` : ''}`, [
-      { text: 'არა', style: 'cancel' },
-      { text: 'დაჯავშნა', onPress: () => void act(`book-${s.id}`, () => api.coach.book(s.id)) },
+    Alert.alert(tx('დაჯავშნა', 'Book'), `${s.label} · ${s.kindLabel}${s.gym ? ` · ${s.gym.brand}` : ''}`, [
+      { text: tx('არა', 'No'), style: 'cancel' },
+      { text: tx('დაჯავშნა', 'Book'), onPress: () => void act(`book-${s.id}`, () => api.coach.book(s.id)) },
     ]);
   };
 
@@ -127,7 +128,7 @@ export default function MyTrainerScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: c.bg100 }}>
-      <CoachHeader title="ჩემი ტრენერი" subtitle="MEDI COACH" />
+      <CoachHeader title={tx('ჩემი ტრენერი', 'My trainer')} subtitle="MEDI COACH" />
       <Screen refreshControl={<RefreshControl refreshing={refreshing} onRefresh={async () => { setRefreshing(true); await load(); setRefreshing(false); }} tintColor={c.primary200} />}>
         {error ? <ErrorBox message={error} onRetry={load} /> : null}
         {!ov && !error ? <Loading /> : null}
@@ -136,14 +137,14 @@ export default function MyTrainerScreen() {
           <>
             <View style={{ backgroundColor: HUB.spotlightBg, borderRadius: HUB.cardRadius, padding: 22, marginTop: 8, gap: 14 }}>
               <IconTile icon={Dumbbell} ink="teal" />
-              <Text style={{ fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 24, lineHeight: 32, color: '#FFFFFF' }}>შენი ტრენერი დარბაზს გარეთაც შენთანაა</Text>
+              <Text style={{ fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 24, lineHeight: 32, color: '#FFFFFF' }}>{tx('შენი ტრენერი დარბაზს გარეთაც შენთანაა', 'Your trainer, with you outside the gym too')}</Text>
               <Text style={[hubText.body, { color: '#C5DADA', fontSize: 14, lineHeight: 22 }]}>
-                ტრენერი ჯავშნებს პირდაპირ აქ გინიშნავს, შეხსენებები თავად მოგივა, კვების გეგმას გიდგენს და ხედავს, როგორ მიდიხარ — მხოლოდ იმას, რასაც შენ გაუზიარებ.
+                {tx('ტრენერი ჯავშნებს პირდაპირ აქ გინიშნავს, შეხსენებები თავად მოგივა, კვების გეგმას გიდგენს და ხედავს, როგორ მიდიხარ — მხოლოდ იმას, რასაც შენ გაუზიარებ.', 'Your trainer books sessions right here, reminders come on their own, they build your meal plan and see how you’re doing — only what you choose to share.')}
               </Text>
               {[
-                ['ჯავშნები და შეხსენებები — ვარჯიშს აღარ გამოტოვებ', CalendarCheck2],
-                ['კვების გეგმა და დღიური კონტროლი', UtensilsCrossed],
-                ['ვარჯიშები ტელეფონიდან, წონა და ფოტო-პროგრესი', Target],
+                [tx('ჯავშნები და შეხსენებები — ვარჯიშს აღარ გამოტოვებ', 'Bookings and reminders — never miss a workout'), CalendarCheck2],
+                [tx('კვების გეგმა და დღიური კონტროლი', 'Meal plan and daily check-ins'), UtensilsCrossed],
+                [tx('ვარჯიშები ტელეფონიდან, წონა და ფოტო-პროგრესი', 'Workouts from your phone, weight and photo progress'), Target],
               ].map(([t, I]) => {
                 const Icon = I as typeof Target;
                 return (
@@ -153,34 +154,34 @@ export default function MyTrainerScreen() {
                   </View>
                 );
               })}
-              <Button label="აჩვენე შენი QR ტრენერს" icon={QrCode} onPress={() => router.push('/profile/qr' as never)} />
-              <Button label="ტრენერის QR-ის სკანირება" icon={ScanLine} kind="secondary" onPress={() => router.push('/trainer/scan' as never)} />
+              <Button label={tx('აჩვენე შენი QR ტრენერს', 'Show your QR to a trainer')} icon={QrCode} onPress={() => router.push('/profile/qr' as never)} />
+              <Button label={tx('ტრენერის QR-ის სკანირება', 'Scan trainer QR')} icon={ScanLine} kind="secondary" onPress={() => router.push('/trainer/scan' as never)} />
               <View style={[coachStyles.row, { gap: 8 }]}>
-                <Button label="კოდით" icon={KeyRound} kind="ghost" style={{ flex: 1 }} onPress={() => router.push('/trainer/connect' as never)} />
-                <Button label="ძებნა" icon={Search} kind="ghost" style={{ flex: 1 }} onPress={() => router.push('/trainer/search' as never)} />
+                <Button label={tx('კოდით', 'By code')} icon={KeyRound} kind="ghost" style={{ flex: 1 }} onPress={() => router.push('/trainer/connect' as never)} />
+                <Button label={tx('ძებნა', 'Search')} icon={Search} kind="ghost" style={{ flex: 1 }} onPress={() => router.push('/trainer/search' as never)} />
               </View>
             </View>
           </>
         ) : null}
 
         {link?.status === 'REQUESTED' && link.initiator === 'TRAINER' && trainer ? (
-          <Section title="ტრენერი გიწვევს">
+          <Section title={tx('ტრენერი გიწვევს', 'A trainer invited you')}>
             <View style={{ backgroundColor: HUB.spotlightBg, borderRadius: HUB.cardRadius, padding: HUB.cardPad, gap: 14 }}>
               <View style={coachStyles.row}>
                 <Avatar avatarId={trainer.avatarId} photoUrl={trainer.avatarUrl} name={trainer.displayName} size={56} verified={trainer.verified} />
                 <View style={{ flex: 1, gap: 2 }}>
                   <Text style={[hubText.cardTitle, { color: '#FFFFFF', fontSize: 17 }]}>{trainer.displayName}</Text>
-                  <Text numberOfLines={2} style={[hubText.caption, { color: '#C5DADA' }]}>{trainer.gyms.map((g) => `${g.brand} ${g.name}`).join(' · ') || 'დადასტურებული ტრენერი'}</Text>
+                  <Text numberOfLines={2} style={[hubText.caption, { color: '#C5DADA' }]}>{trainer.gyms.map((g) => `${g.brand} ${g.name}`).join(' · ') || tx('დადასტურებული ტრენერი', 'Verified trainer')}</Text>
                 </View>
               </View>
-              <Text style={[hubText.body, { color: '#FFFFFF' }]}>შენი QR დაასკანერა და გთავაზობს ერთად ვარჯიშს. სანამ არ მიიღებ, შენს მონაცემებს ვერ ხედავს.</Text>
-              <Button label="ნახვა და მიღება" onPress={() => router.push('/trainer/connect?invite=1' as never)} />
+              <Text style={[hubText.body, { color: '#FFFFFF' }]}>{tx('შენი QR დაასკანერა და გთავაზობს ერთად ვარჯიშს. სანამ არ მიიღებ, შენს მონაცემებს ვერ ხედავს.', 'They scanned your QR and offer to train together. Until you accept, they can’t see your data.')}</Text>
+              <Button label={tx('ნახვა და მიღება', 'Review and accept')} onPress={() => router.push('/trainer/connect?invite=1' as never)} />
               <Button
-                label="უარი"
+                label={tx('უარი', 'Decline')}
                 kind="secondary"
                 busy={busy === 'unlink'}
                 onPress={async () => {
-                  if (await confirmAction('მოწვევაზე უარი', `${trainer.displayName} ვერ ნახავს შენს მონაცემებს. მოგვიანებით თავად შეგიძლია დაუკავშირდე.`, 'უარი', true)) void act('unlink', () => api.coach.unlink());
+                  if (await confirmAction(tx('მოწვევაზე უარი', 'Decline invite'), tx(`${trainer.displayName} ვერ ნახავს შენს მონაცემებს. მოგვიანებით თავად შეგიძლია დაუკავშირდე.`, `${trainer.displayName} won’t see your data. You can connect with them yourself later.`), tx('უარი', 'Decline'), true)) void act('unlink', () => api.coach.unlink());
                 }}
               />
             </View>
@@ -188,23 +189,23 @@ export default function MyTrainerScreen() {
         ) : null}
 
         {link?.status === 'REQUESTED' && link.initiator !== 'TRAINER' && trainer ? (
-          <Section title="მოთხოვნა გაგზავნილია">
+          <Section title={tx('მოთხოვნა გაგზავნილია', 'Request sent')}>
             <Card style={{ gap: 12 }}>
               <View style={coachStyles.row}>
                 <Avatar avatarId={trainer.avatarId} photoUrl={trainer.avatarUrl} name={trainer.displayName} verified />
                 <View style={{ flex: 1 }}>
                   <Text style={[hubText.cardTitle, { color: c.text100 }]}>{trainer.displayName}</Text>
-                  <Text style={[hubText.caption, { color: c.text300 }]}>ტრენერი ნახავს შენს მოთხოვნას და დაგიდასტურებს.</Text>
+                  <Text style={[hubText.caption, { color: c.text300 }]}>{tx('ტრენერი ნახავს შენს მოთხოვნას და დაგიდასტურებს.', 'The trainer will see your request and confirm it.')}</Text>
                 </View>
               </View>
-              <Button label="მოთხოვნის გაუქმება" kind="secondary" busy={busy === 'unlink'} onPress={() => void act('unlink', () => api.coach.unlink())} />
+              <Button label={tx('მოთხოვნის გაუქმება', 'Cancel request')} kind="secondary" busy={busy === 'unlink'} onPress={() => void act('unlink', () => api.coach.unlink())} />
             </Card>
           </Section>
         ) : null}
 
         {link?.status === 'ACTIVE' && trainer ? (
           <>
-            <Card style={{ marginTop: 8, gap: 12 }} onPress={() => router.push('/trainer/sharing' as never)} accessibilityLabel={`${trainer.displayName}, ტრენერი. გაზიარების პარამეტრები`}>
+            <Card style={{ marginTop: 8, gap: 12 }} onPress={() => router.push('/trainer/sharing' as never)} accessibilityLabel={tx(`${trainer.displayName}, ტრენერი. გაზიარების პარამეტრები`, `${trainer.displayName}, trainer. Sharing settings`)}>
               <View style={coachStyles.row}>
                 <Avatar avatarId={trainer.avatarId} photoUrl={trainer.avatarUrl} name={trainer.displayName} size={56} verified={trainer.verified} />
                 <View style={{ flex: 1, gap: 2 }}>
@@ -217,39 +218,39 @@ export default function MyTrainerScreen() {
                   ) : null}
                   <View style={[coachStyles.row, { gap: 6, marginTop: 4 }]}>
                     <ShieldCheck size={13} color={c.primary100} />
-                    <Text style={[hubText.small, { color: c.primary100 }]}>რას ხედავს ტრენერი →</Text>
+                    <Text style={[hubText.small, { color: c.primary100 }]}>{tx('რას ხედავს ტრენერი →', 'What your trainer sees →')}</Text>
                   </View>
                 </View>
               </View>
               <View style={[coachStyles.row, { gap: 8 }]}>
-                <Stat label="ჩატარდა" value={String(ov?.stats?.done ?? 0)} />
-                <Stat label="გამოტოვა" value={String(ov?.stats?.noShow ?? 0)} />
-                <Stat label="კვების დაცვა" value={ov?.nutrition?.score != null ? `${ov.nutrition.score}%` : '—'} />
+                <Stat label={tx('ჩატარდა', 'Done')} value={String(ov?.stats?.done ?? 0)} />
+                <Stat label={tx('გამოტოვა', 'Missed')} value={String(ov?.stats?.noShow ?? 0)} />
+                <Stat label={tx('კვების დაცვა', 'Plan adherence')} value={ov?.nutrition?.score != null ? `${ov.nutrition.score}%` : '—'} />
               </View>
             </Card>
 
             {link.proposedGoal ? (
-              <Section title="ტრენერი მიზანს გთავაზობს">
+              <Section title={tx('ტრენერი მიზანს გთავაზობს', 'Your trainer proposes a goal')}>
                 <Card style={{ gap: 12 }}>
                   <View style={coachStyles.row}>
                     <IconTile icon={Target} ink="amber" />
                     <View style={{ flex: 1 }}>
                       <Text style={[hubText.cardTitle, { color: c.text100 }]}>
-                        {GOAL_TYPE_LABEL[link.proposedGoal.type]}: {link.proposedGoal.targetKg} კგ
+                        {GOAL_TYPE_LABEL[link.proposedGoal.type]}: {link.proposedGoal.targetKg} {tx('კგ', 'kg')}
                       </Text>
-                      <Text style={[hubText.caption, { color: c.text300 }]}>ვადა: {dayLabel(link.proposedGoal.deadlineYmd)} {link.proposedGoal.deadlineYmd.slice(0, 4)}</Text>
+                      <Text style={[hubText.caption, { color: c.text300 }]}>{tx('ვადა:', 'By:')} {dayLabel(link.proposedGoal.deadlineYmd)} {link.proposedGoal.deadlineYmd.slice(0, 4)}</Text>
                     </View>
                   </View>
                   {link.proposedGoal.note ? <Text style={[hubText.body, { color: c.text200 }]}>„{link.proposedGoal.note}“</Text> : null}
                   <View style={[coachStyles.row, { gap: 10 }]}>
-                    <Button label="მიღება" style={{ flex: 1 }} busy={busy === 'goal'} onPress={() => void acceptGoal()} />
-                    <Button label="არა" kind="secondary" style={{ flex: 1 }} onPress={() => void act('goal-no', () => api.coach.answerGoal('dismissed'))} />
+                    <Button label={tx('მიღება', 'Accept')} style={{ flex: 1 }} busy={busy === 'goal'} onPress={() => void acceptGoal()} />
+                    <Button label={tx('არა', 'No')} kind="secondary" style={{ flex: 1 }} onPress={() => void act('goal-no', () => api.coach.answerGoal('dismissed'))} />
                   </View>
                 </Card>
               </Section>
             ) : null}
 
-            <Section title="შემდეგი ვარჯიში" link={ov?.upcoming?.length ? 'ყველა' : undefined} onLink={() => router.push('/trainer/sessions' as never)}>
+            <Section title={tx('შემდეგი ვარჯიში', 'Next workout')} link={ov?.upcoming?.length ? tx('ყველა', 'All') : undefined} onLink={() => router.push('/trainer/sessions' as never)}>
               {next ? (
                 <View style={{ backgroundColor: HUB.spotlightBg, borderRadius: HUB.cardRadius, padding: HUB.cardPad, gap: 12 }}>
                   <View style={coachStyles.rowBetween}>
@@ -259,30 +260,31 @@ export default function MyTrainerScreen() {
                     </View>
                   </View>
                   <Text style={[hubText.body, { color: '#C5DADA', fontSize: 14 }]}>
-                    {dayLabel(tbilisiYmd(next.startsAt))} · {next.kindLabel} · {next.durationMin} წთ{next.gym ? ` · ${next.gym.brand} ${next.gym.name}` : ''}
+                    {dayLabel(tbilisiYmd(next.startsAt))} · {next.kindLabel} · {next.durationMin} {tx('წთ', 'min')}
+                    {next.gym ? ` · ${next.gym.brand} ${next.gym.name}` : ''}
                   </Text>
                   {next.note ? <Text style={[hubText.body, { color: '#FFFFFF' }]}>„{next.note}“</Text> : null}
                   <View style={[coachStyles.row, { gap: 10 }]}>
                     {next.clientConfirmedAt ? (
                       <View style={[coachStyles.row, { gap: 6, flex: 1 }]}>
                         <BadgeCheck size={18} color="#99F6E4" />
-                        <Text style={[hubText.link, { color: '#99F6E4' }]}>დადასტურებულია</Text>
+                        <Text style={[hubText.link, { color: '#99F6E4' }]}>{tx('დადასტურებულია', 'Confirmed')}</Text>
                       </View>
                     ) : (
-                      <Button label="მოვალ ✓" style={{ flex: 1 }} busy={busy === `c-${next.id}`} onPress={() => void act(`c-${next.id}`, () => api.coach.confirm(next.id))} />
+                      <Button label={tx('მოვალ ✓', 'I’ll be there ✓')} style={{ flex: 1 }} busy={busy === `c-${next.id}`} onPress={() => void act(`c-${next.id}`, () => api.coach.confirm(next.id))} />
                     )}
-                    <Button label="გაუქმება" kind="secondary" style={{ flex: 1 }} onPress={() => cancelSession(next)} />
+                    <Button label={tx('გაუქმება', 'Cancel')} kind="secondary" style={{ flex: 1 }} onPress={() => cancelSession(next)} />
                   </View>
                 </View>
               ) : (
                 <Card>
-                  <Text style={[hubText.body, { color: c.text200 }]}>დაგეგმილი ვარჯიში ჯერ არ გაქვს. ტრენერი ჩაგწერს, ან აირჩიე თავისუფალი დრო ქვემოთ.</Text>
+                  <Text style={[hubText.body, { color: c.text200 }]}>{tx('დაგეგმილი ვარჯიში ჯერ არ გაქვს. ტრენერი ჩაგწერს, ან აირჩიე თავისუფალი დრო ქვემოთ.', 'No workout scheduled yet. Your trainer will book you, or pick an open time below.')}</Text>
                 </Card>
               )}
             </Section>
 
             {ov?.openSlots?.length ? (
-              <Section title="თავისუფალი დრო ტრენერთან">
+              <Section title={tx('თავისუფალი დრო ტრენერთან', 'Open times with your trainer')}>
                 <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
                   {ov.openSlots.slice(0, 12).map((s) => (
                     <Chip key={s.id} label={`${dayLabel(tbilisiYmd(s.startsAt))} ${clockOf(s.startsAt)}`} onPress={() => book(s)} />
@@ -291,14 +293,15 @@ export default function MyTrainerScreen() {
               </Section>
             ) : null}
 
-            <Section title="კვების გეგმა" link={ov?.plan ? 'გახსნა' : undefined} onLink={() => router.push('/trainer/plan' as never)}>
+            <Section title={tx('კვების გეგმა', 'Meal plan')} link={ov?.plan ? tx('გახსნა', 'Open') : undefined} onLink={() => router.push('/trainer/plan' as never)}>
               {ov?.plan ? (
-                <Card style={{ gap: 12 }} onPress={() => router.push('/trainer/plan' as never)} accessibilityLabel="კვების გეგმის გახსნა">
+                <Card style={{ gap: 12 }} onPress={() => router.push('/trainer/plan' as never)} accessibilityLabel={tx('კვების გეგმის გახსნა', 'Open meal plan')}>
                   <View style={coachStyles.rowBetween}>
                     <View style={{ flex: 1 }}>
                       <Text style={[hubText.cardTitle, { color: c.text100 }]}>{ov.plan.title}</Text>
                       <Text style={[hubText.caption, { color: c.text300 }]}>
-                        {ov.plan.targets.calories} კკალ{ov.plan.targets.protein ? ` · ცილა ${ov.plan.targets.protein} გ` : ''}
+                        {ov.plan.targets.calories} {tx('კკალ', 'kcal')}
+                        {ov.plan.targets.protein ? tx(` · ცილა ${ov.plan.targets.protein} გ`, ` · protein ${ov.plan.targets.protein} g`) : ''}
                       </Text>
                     </View>
                     <ChevronRight size={18} color={c.text300} />
@@ -306,14 +309,14 @@ export default function MyTrainerScreen() {
                   {ov.nutrition?.days ? <DayStrip days={ov.nutrition.days} labels /> : null}
                   {ov.nutrition?.days?.length ? (
                     <Text style={[hubText.small, { color: c.text300 }]}>
-                      დღეს: {DAY_STATUS_LABEL[ov.nutrition.days[ov.nutrition.days.length - 1].status]} · {ov.nutrition.days[ov.nutrition.days.length - 1].calories} / {ov.plan.targets.calories} კკალ
+                      {tx('დღეს:', 'Today:')} {DAY_STATUS_LABEL[ov.nutrition.days[ov.nutrition.days.length - 1].status]} · {ov.nutrition.days[ov.nutrition.days.length - 1].calories} / {ov.plan.targets.calories} {tx('კკალ', 'kcal')}
                     </Text>
                   ) : null}
                 </Card>
               ) : (
                 <Card>
                   <Text style={[hubText.body, { color: c.text200 }]}>
-                    {link.scopes.nutrition ? 'ტრენერს კვების გეგმა ჯერ არ გამოუგზავნია.' : 'კვება ტრენერს არ უზიარებ — გეგმისთვის ჩართე „კვება“ გაზიარებაში.'}
+                    {link.scopes.nutrition ? tx('ტრენერს კვების გეგმა ჯერ არ გამოუგზავნია.', 'Your trainer hasn’t sent a meal plan yet.') : tx('კვება ტრენერს არ უზიარებ — გეგმისთვის ჩართე „კვება“ გაზიარებაში.', 'You’re not sharing nutrition with your trainer — turn on “Nutrition” in sharing to get a plan.')}
                   </Text>
                 </Card>
               )}
@@ -322,12 +325,12 @@ export default function MyTrainerScreen() {
         ) : null}
 
         {ov ? (
-          <Section title="პროგრესი">
+          <Section title={tx('პროგრესი', 'Progress')}>
             <Card style={{ gap: 0, paddingVertical: 6 }}>
               {[
-                { label: 'ფოტო-პროგრესი: მანამდე / შემდეგ', icon: Camera, href: '/trainer/progress' },
-                { label: 'წონა და მიზანი', icon: Target, href: '/health-metrics/weight' },
-                ...(link?.status === 'ACTIVE' ? [{ label: 'ვარჯიშების ისტორია', icon: Dumbbell, href: '/trainer/sessions' }] : []),
+                { label: tx('ფოტო-პროგრესი: მანამდე / შემდეგ', 'Photo progress: before / after'), icon: Camera, href: '/trainer/progress' },
+                { label: tx('წონა და მიზანი', 'Weight and goal'), icon: Target, href: '/health-metrics/weight' },
+                ...(link?.status === 'ACTIVE' ? [{ label: tx('ვარჯიშების ისტორია', 'Workout history'), icon: Dumbbell, href: '/trainer/sessions' }] : []),
               ].map((row, i, arr) => (
                 <Card key={row.href} onPress={() => router.push(row.href as never)} style={{ paddingHorizontal: 0, paddingVertical: 12, borderBottomWidth: i < arr.length - 1 ? 0.5 : 0, borderColor: c.bg300, borderRadius: 0 }}>
                   <View style={coachStyles.row}>
@@ -342,25 +345,25 @@ export default function MyTrainerScreen() {
         ) : null}
 
         {ov ? (
-          <Section title={own?.status === 'PENDING' ? 'შენი ტრენერის განაცხადი' : own?.status === 'VERIFIED' ? 'ტრენერის რეჟიმი' : 'ტრენერი ხარ?'}>
+          <Section title={own?.status === 'PENDING' ? tx('შენი ტრენერის განაცხადი', 'Your trainer application') : own?.status === 'VERIFIED' ? tx('ტრენერის რეჟიმი', 'Trainer mode') : tx('ტრენერი ხარ?', 'Are you a trainer?')}>
             <Card style={{ gap: 12 }} onPress={() => router.push((own?.status === 'VERIFIED' ? '/coach' : '/trainer/apply') as never)}>
               <View style={coachStyles.row}>
                 <IconTile icon={Award} ink="violet" />
                 <View style={{ flex: 1, gap: 2 }}>
                   <Text style={[hubText.cardTitle, { color: c.text100 }]}>
-                    {own?.status === 'VERIFIED' ? 'ტრენერის რეჟიმის გახსნა' : own?.status === 'PENDING' ? 'განაცხადი განხილვაშია' : own?.status === 'REJECTED' ? 'განაცხადს დაზუსტება სჭირდება' : own ? 'ტრენერის განაცხადი' : 'დარეგისტრირდი როგორც ტრენერი'}
+                    {own?.status === 'VERIFIED' ? tx('ტრენერის რეჟიმის გახსნა', 'Open trainer mode') : own?.status === 'PENDING' ? tx('განაცხადი განხილვაშია', 'Application under review') : own?.status === 'REJECTED' ? tx('განაცხადს დაზუსტება სჭირდება', 'Your application needs changes') : own ? tx('ტრენერის განაცხადი', 'Trainer application') : tx('დარეგისტრირდი როგორც ტრენერი', 'Sign up as a trainer')}
                   </Text>
                   <Text style={[hubText.caption, { color: c.text300 }]}>
                     {own?.status === 'VERIFIED'
-                      ? 'კალენდარი, კლიენტები, კვების გეგმები'
+                      ? tx('კალენდარი, კლიენტები, კვების გეგმები', 'Calendar, clients, meal plans')
                       : own?.status === 'PENDING'
-                        ? 'განაცხადი განიხილება — დადასტურებისას შეტყობინება მოგივა'
+                        ? tx('განაცხადი განიხილება — დადასტურებისას შეტყობინება მოგივა', 'Application under review — we’ll notify you once verified')
                         : own?.status === 'REJECTED'
-                          ? 'განაცხადს დაზუსტება სჭირდება'
-                          : 'კალენდარი, კლიენტების მართვა და მათი პროგრესი ერთ ადგილას'}
+                          ? tx('განაცხადს დაზუსტება სჭირდება', 'Your application needs changes')
+                          : tx('კალენდარი, კლიენტების მართვა და მათი პროგრესი ერთ ადგილას', 'Calendar, client management and their progress in one place')}
                   </Text>
                 </View>
-                {own ? <Badge label={own.status === 'VERIFIED' ? 'დადასტურებული' : own.status === 'PENDING' ? 'განიხილება' : own.status === 'REJECTED' ? 'დასაზუსტებელი' : 'შეჩერებული'} tone={own.status === 'VERIFIED' ? 'ok' : own.status === 'PENDING' ? 'warn' : 'bad'} /> : <ChevronRight size={18} color={c.text300} />}
+                {own ? <Badge label={own.status === 'VERIFIED' ? tx('დადასტურებული', 'Verified') : own.status === 'PENDING' ? tx('განიხილება', 'In review') : own.status === 'REJECTED' ? tx('დასაზუსტებელი', 'Needs changes') : tx('შეჩერებული', 'Suspended')} tone={own.status === 'VERIFIED' ? 'ok' : own.status === 'PENDING' ? 'warn' : 'bad'} /> : <ChevronRight size={18} color={c.text300} />}
               </View>
             </Card>
           </Section>
@@ -368,7 +371,7 @@ export default function MyTrainerScreen() {
         {ov ? <View style={{ height: 8 }} /> : null}
         {ov && link?.status === 'ACTIVE' ? (
           <Text style={[hubText.small, { color: c.text300, textAlign: 'center', marginTop: 18 }]}>
-            {ov.link?.trainerViewedAt ? `ტრენერმა ბოლოს ნახა ${dayLabel(tbilisiYmd(ov.link.trainerViewedAt))} ${clockOf(ov.link.trainerViewedAt)}` : 'ტრენერს შენი მონაცემები ჯერ არ უნახავს'}
+            {ov.link?.trainerViewedAt ? tx(`ტრენერმა ბოლოს ნახა ${dayLabel(tbilisiYmd(ov.link.trainerViewedAt))} ${clockOf(ov.link.trainerViewedAt)}`, `Your trainer last viewed ${dayLabel(tbilisiYmd(ov.link.trainerViewedAt))} ${clockOf(ov.link.trainerViewedAt)}`) : tx('ტრენერს შენი მონაცემები ჯერ არ უნახავს', 'Your trainer hasn’t viewed your data yet')}
           </Text>
         ) : null}
       </Screen>

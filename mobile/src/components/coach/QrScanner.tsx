@@ -8,6 +8,7 @@ import { Flashlight, FlashlightOff, QrCode, X } from 'lucide-react-native';
 import { hubText } from '@/theme/hub';
 import Animated, { useAnimatedStyle } from 'react-native-reanimated';
 import { useKeyboardPad } from '@/components/ui/KeyboardFormShell';
+import { tx } from '@/i18n/locale';
 
 /**
  * Full-screen QR viewfinder. The camera frame never leaves the phone — only the decoded text is used.
@@ -51,13 +52,13 @@ export function QrScanner({ title, hint, busy, error, onScan, footer }: { title:
       ) : null}
       <View style={[s.top, { paddingTop: safe.top + 8 }]}>
         {primer ? <View style={s.round0} /> : (
-          <Pressable accessibilityRole="button" accessibilityLabel="დახურვა" onPress={() => (router.canGoBack() ? router.back() : router.replace('/' as never))} style={s.round}>
+          <Pressable accessibilityRole="button" accessibilityLabel={tx('დახურვა', 'Close')} onPress={() => (router.canGoBack() ? router.back() : router.replace('/' as never))} style={s.round}>
             <X size={22} color="#FFFFFF" />
           </Pressable>
         )}
         <Text style={[hubText.cardTitle, { color: '#FFFFFF', flex: 1, textAlign: 'center' }]}>{title}</Text>
         {granted ? (
-          <Pressable accessibilityRole="button" accessibilityLabel={torch ? 'ფანარის გამორთვა' : 'ფანარის ჩართვა'} onPress={() => setTorch((v) => !v)} style={s.round}>
+          <Pressable accessibilityRole="button" accessibilityLabel={torch ? tx('ფანარის გამორთვა', 'Turn off flashlight') : tx('ფანარის ჩართვა', 'Turn on flashlight')} onPress={() => setTorch((v) => !v)} style={s.round}>
             {torch ? <FlashlightOff size={20} color="#FFFFFF" /> : <Flashlight size={20} color="#FFFFFF" />}
           </Pressable>
         ) : <View style={s.round0} />}
@@ -69,7 +70,13 @@ export function QrScanner({ title, hint, busy, error, onScan, footer }: { title:
           ))}
           {busy ? <ActivityIndicator color="#5EEAD4" size="large" /> : null}
         </View>
-        <Text style={s.hint}>{busy ? 'ვამოწმებ…' : granted ? hint : primer ? 'QR კოდის წასაკითხად კამერა გჭირდება. კადრი ტელეფონს არ ტოვებს — მხოლოდ კოდის ტექსტი გამოიყენება.' : 'კამერა გამორთულია — ჩართე პარამეტრებში ან ჩასვი ბმული'}</Text>
+        <Text style={s.hint}>{busy
+            ? tx('ვამოწმებ…', 'Checking…')
+            : granted
+              ? hint
+              : primer
+                ? tx('QR კოდის წასაკითხად კამერა გჭირდება. კადრი ტელეფონს არ ტოვებს — მხოლოდ კოდის ტექსტი გამოიყენება.', 'To read the QR code, the camera is needed. The image never leaves your phone — only the code’s text is used.')
+                : tx('კამერა გამორთულია — ჩართე პარამეტრებში ან ჩასვი ბმული', 'Camera is off — turn it on in Settings or paste a link')}</Text>
       </View>
       <Animated.View style={[s.bottom, bottomStyle]}>
         {error ? <Text accessibilityRole="alert" style={[s.hint, { color: '#FCA5A5', textAlign: 'left' }]}>{error}</Text> : null}
@@ -88,14 +95,14 @@ export function QrScanner({ title, hint, busy, error, onScan, footer }: { title:
             style={s.primary}
           >
             <QrCode size={18} color="#FFFFFF" />
-            <Text style={[hubText.link, { color: '#FFFFFF' }]}>{blocked ? 'პარამეტრების გახსნა' : 'გაგრძელება'}</Text>
+            <Text style={[hubText.link, { color: '#FFFFFF' }]}>{blocked ? tx('პარამეტრების გახსნა', 'Open Settings') : tx('გაგრძელება', 'Continue')}</Text>
           </Pressable>
         ) : null}
         {primer ? null : (
         <View style={s.manualRow}>
           <TextInput
-            accessibilityLabel="ბმულის ან კოდის ჩასმა"
-            placeholder="ან ჩასვი ბმული / კოდი"
+            accessibilityLabel={tx('ბმულის ან კოდის ჩასმა', 'Paste a link or code')}
+            placeholder={tx('ან ჩასვი ბმული / კოდი', 'Or paste a link / code')}
             placeholderTextColor="#9CA3AF"
             value={manual}
             onChangeText={setManual}
@@ -105,7 +112,7 @@ export function QrScanner({ title, hint, busy, error, onScan, footer }: { title:
             onSubmitEditing={() => handle(manual.trim())}
             style={s.input}
           />
-          <Pressable accessibilityRole="button" accessibilityLabel="შემოწმება" disabled={!manual.trim() || busy} onPress={() => handle(manual.trim())} style={[s.go, { opacity: !manual.trim() || busy ? 0.45 : 1 }]}>
+          <Pressable accessibilityRole="button" accessibilityLabel={tx('შემოწმება', 'Check')} disabled={!manual.trim() || busy} onPress={() => handle(manual.trim())} style={[s.go, { opacity: !manual.trim() || busy ? 0.45 : 1 }]}>
             <Text style={[hubText.link, { color: '#FFFFFF' }]}>OK</Text>
           </Pressable>
         </View>

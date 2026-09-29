@@ -3,6 +3,7 @@ import { Platform, Pressable, Text, TextInput, View, type TextInputProps } from 
 import { Eye, EyeOff, type LucideIcon } from 'lucide-react-native';
 import { FIGMA_AUTH_SHADOW, useFigmaAuth } from '@/constants/figmaAuthLayout';
 import { useThemeColors } from '@/theme/colors';
+import { tx } from '@/i18n/locale';
 
 type Props = TextInputProps & {
   label?: string;
@@ -101,7 +102,7 @@ export const Input = forwardRef<TextInput, Props>(function Input(
         {secure ? (
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel={revealed ? 'პაროლის დამალვა' : 'პაროლის ჩვენება'}
+            accessibilityLabel={revealed ? tx('პაროლის დამალვა', 'Hide password') : tx('პაროლის ჩვენება', 'Show password')}
             hitSlop={10}
             onPress={() => setRevealed((value) => !value)}
           >

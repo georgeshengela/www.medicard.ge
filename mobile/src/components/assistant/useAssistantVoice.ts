@@ -7,6 +7,7 @@ import * as Haptics from 'expo-haptics';
 import { assistantRequest, ensureAiSharingConsentForRequest } from '@/lib/api';
 import { localAccountId } from '@/lib/localAccount';
 import { createVoiceCapture, type VoicePhase } from '@/lib/assistantVoiceSession';
+import { tx } from '@/i18n/locale';
 
 export function assistantHaptic(kind: 'start' | 'stop' | 'success' | 'error') {
   if (Platform.OS === 'web') return;
@@ -64,7 +65,7 @@ export function useAssistantVoice(options: {
       await ensureAiSharingConsentForRequest('/api/assistant/transcribe');
       if (!current()) return;
       const permission = await AudioModule.requestRecordingPermissionsAsync();
-      if (!permission.granted) throw new Error('მიკროფონის ნებართვა არ არის ჩართული. შეგიძლია ტექსტით გააგრძელო.');
+      if (!permission.granted) throw new Error(tx('მიკროფონის ნებართვა არ არის ჩართული. შეგიძლია ტექსტით გააგრძელო.', "Microphone access isn't on. You can continue by text."));
       if (!current()) return;
       await setAudioModeAsync({ allowsRecording: true, playsInSilentMode: true, shouldPlayInBackground: false });
       if (!current()) return;
@@ -78,7 +79,7 @@ export function useAssistantVoice(options: {
     },
     discard: discardAssistantAudio,
     transcribe: async (uri, current) => {
-      if (peakDb.current !== null && peakDb.current < -55) throw new Error('ხმა ვერ გავიგე. სცადე მიკროფონთან უფრო ახლოს ან ტექსტით გააგრძელე.');
+      if (peakDb.current !== null && peakDb.current < -55) throw new Error(tx('ხმა ვერ გავიგე. სცადე მიკროფონთან უფრო ახლოს ან ტექსტით გააგრძელე.', "I couldn't hear you. Try closer to the mic or continue by text."));
       let data: string, format: string;
       if (Platform.OS === 'web') {
         const blob = await (await fetch(uri)).blob();
@@ -87,7 +88,7 @@ export function useAssistantVoice(options: {
       } else {
         format = 'm4a'; data = await FileSystem.readAsStringAsync(uri, { encoding: FileSystem.EncodingType.Base64 });
       }
-      if (data.length > 1750000) throw new Error('ჩანაწერი დიდია. სცადე უფრო მოკლე წინადადება.');
+      if (data.length > 1750000) throw new Error(tx('ჩანაწერი დიდია. სცადე უფრო მოკლე წინადადება.', 'The recording is too long. Try a shorter sentence.'));
       if (!current()) return '';
       return (await assistantRequest<{ text: string }>('transcribe', options.owner, { data, format })).text;
     },

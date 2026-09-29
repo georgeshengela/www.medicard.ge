@@ -8,14 +8,18 @@ import {
 import { get, post, put, ApiError, invalidate } from '../api.js';
 import { ring } from '../charts.js';
 import { refreshMe, featureOn } from '../session.js';
+import { t, isEn } from '../i18n.js';
 
 const CSS = '/app/css/quest.css';
 function ensureCss() {
   if (!document.querySelector(`link[href="${CSS}"]`)) document.head.append(h('link', { rel: 'stylesheet', href: CSS }));
 }
 
-/* ── Copy (mobile/src/i18n/quest/*.js, ka) ─────────────── */
-const RANKS = {
+/* ── Copy (mobile/src/i18n/quest/*.js, ka + en) ─────────── */
+const RANKS = isEn ? {
+  LEVEL_1_4: 'Newcomer', LEVEL_5_9: 'In motion', LEVEL_10_14: 'In rhythm', LEVEL_15_19: 'Strong rhythm',
+  LEVEL_20_29: 'A habit', LEVEL_30_39: 'Steady path', LEVEL_40_49: 'Rhythm master', LEVEL_50_PLUS: 'Medi legend',
+} : {
   LEVEL_1_4: 'დამწყები', LEVEL_5_9: 'მოძრაობაში', LEVEL_10_14: 'რიტმში', LEVEL_15_19: 'ძლიერი რიტმი',
   LEVEL_20_29: 'ჩვევა', LEVEL_30_39: 'დარწმუნებული გზა', LEVEL_40_49: 'რიტმის ოსტატი', LEVEL_50_PLUS: 'Medi ლეგენდა',
 };
@@ -32,13 +36,23 @@ function rankKeyFromLevel(level) {
 }
 const rankLabel = (key) => RANKS[key] || RANKS.LEVEL_1_4;
 
-const Q = {
+const Q = isEn ? {
+  completed: 'Mission complete', claimed: 'Reward claimed', expired: 'Expired',
+  stepsTitle: 'A short walk', stepsBody: 'At your own pace.', stepsZero: 'Start with one small step.',
+  stepsNear: 'A little more and this mission is done.', hydroTitle: 'Water balance', hydroBody: 'Reach your goal, nothing extra.',
+  mediTitle: 'Check in with Medi', mediBody: 'One real conversation with Medi is enough.', weeklySteps: 'Weekly steps',
+} : {
   completed: 'მისია შესრულდა', claimed: 'ჯილდო მიღებულია', expired: 'ვადა ამოიწურა',
   stepsTitle: 'მოკლე გასეირნება', stepsBody: 'ნელი ნაბიჯებით, შენი ტემპით.', stepsZero: 'დავიწყოთ პირველი პატარა ნაბიჯით.',
   stepsNear: 'ცოტაც — და მისია მზადაა.', hydroTitle: 'წყლის ბალანსი', hydroBody: 'დალიე შენი დღიური მიზანი, ზედმეტის გარეშე.',
   mediTitle: 'ესაუბრე Medi-ს', mediBody: 'დღეს ერთი ნამდვილი საუბარი საკმარისია.', weeklySteps: 'კვირის ნაბიჯები',
 };
-const WHY = {
+const WHY = isEn ? {
+  title: 'Why this goal?',
+  personalized: 'This goal is based on your recent days of activity — a little more movement, without extra pressure.',
+  comeback: 'Today’s goal is lighter — what matters is easing back into rhythm.',
+  default: 'I’m still getting to know your usual rhythm. In a few days the goal becomes more personal.',
+} : {
   title: 'რატომ ეს მიზანი?',
   personalized: 'ეს მიზანი შენს ბოლო დღეების აქტივობას ეყრდნობა — ოდნავ მეტი მოძრაობა, ზედმეტი ზეწოლის გარეშე.',
   comeback: 'დღეს უფრო მსუბუქი მიზანია — მთავარია მშვიდად დაბრუნდე რიტმში.',
@@ -113,7 +127,25 @@ function applyClaim(dash, result) {
 }
 
 /* Achievements copy (i18n/quest/achievements.js). */
-const ACH = {
+const enNum = (n) => Number(n || 0).toLocaleString('en-US');
+const ACH = isEn ? {
+  rarity: { COMMON: 'Common', UNCOMMON: 'Uncommon', RARE: 'Rare', EPIC: 'Epic', LEGENDARY: 'Legendary' },
+  categories: { PROGRESSION: 'Progress', STREAK: 'Streak', MOVEMENT: 'Movement', HYDRATION: 'Hydration', MEDI: 'Medi', WEEKLY: 'Weekly missions', LEVEL: 'Levels', COINS: 'Medi Coins', SPECIAL: 'Special' },
+  fixedTitles: { FIRST_QUEST: 'First mission', FIRST_CLAIM: 'First reward', FIRST_WEEKLY: 'First week', COMEBACK: 'The comeback', EARLY_BIRD: 'Early bird', NIGHT_OWL: 'Night owl' },
+  fixedBodies: {
+    FIRST_QUEST: 'Complete your very first mission.', FIRST_CLAIM: 'Claim your very first reward.', FIRST_WEEKLY: 'Complete a weekly mission for the first time.',
+    COMEBACK: 'Come back after a break — that counts too.', EARLY_BIRD: 'Complete a mission before 8 in the morning.', NIGHT_OWL: 'Complete a mission after 10 in the evening.',
+  },
+  familyTitles: {
+    QUESTS: (n) => `${n} missions`, STREAK: (n) => `${n}-day streak`, MOVE: (n) => `Movement · ${n}`, HYDRATE: (n) => `Hydration · ${n}`,
+    MEDI: (n) => `Medi · ${n}`, WEEKLY: (n) => `Weekly · ${n}`, LEVEL: (n) => `Level ${n}`, COINS_EARNED: (n) => `${enNum(n)} Medi Coins`,
+  },
+  familyBodies: {
+    QUESTS: (n) => `Complete ${n} missions in total.`, STREAK: (n) => `Keep your streak alive for ${n} days.`, MOVE: (n) => `Complete ${n} movement missions.`,
+    HYDRATE: (n) => `Complete ${n} hydration missions.`, MEDI: (n) => `Complete ${n} Medi missions.`, WEEKLY: (n) => `Complete ${n} weekly missions.`,
+    LEVEL: (n) => `Reach level ${n}.`, COINS_EARNED: (n) => `Earn ${enNum(n)} Medi Coins in total.`,
+  },
+} : {
   rarity: { COMMON: 'ჩვეულებრივი', UNCOMMON: 'იშვიათი', RARE: 'ძვირფასი', EPIC: 'ეპიკური', LEGENDARY: 'ლეგენდარული' },
   categories: { PROGRESSION: 'პროგრესი', STREAK: 'სერია', MOVEMENT: 'მოძრაობა', HYDRATION: 'წყალი', MEDI: 'Medi', WEEKLY: 'კვირის მისიები', LEVEL: 'დონეები', COINS: 'Medi Coins', SPECIAL: 'განსაკუთრებული' },
   fixedTitles: { FIRST_QUEST: 'პირველი მისია', FIRST_CLAIM: 'პირველი ჯილდო', FIRST_WEEKLY: 'პირველი კვირა', COMEBACK: 'დაბრუნება', EARLY_BIRD: 'დილის ჩიტი', NIGHT_OWL: 'ღამის ბუ' },
@@ -136,16 +168,16 @@ function familyOf(key) {
   return m ? { family: m[1], threshold: Number(m[2]) } : { family: String(key || ''), threshold: null };
 }
 function achTitle(item) {
-  if (!item || (!item.key && item.secret)) return 'საიდუმლო მიღწევა';
+  if (!item || (!item.key && item.secret)) return t('საიდუმლო მიღწევა', 'Secret achievement');
   if (ACH.fixedTitles[item.key]) return ACH.fixedTitles[item.key];
   const p = familyOf(item.key), fn = ACH.familyTitles[p.family];
-  return fn ? fn(item.threshold ?? p.threshold ?? 0) : String(item.key || 'საიდუმლო მიღწევა');
+  return fn ? fn(item.threshold ?? p.threshold ?? 0) : String(item.key || t('საიდუმლო მიღწევა', 'Secret achievement'));
 }
 function achBody(item) {
-  if (!item || (!item.key && item.secret)) return 'გაიხსნება მოულოდნელად.';
+  if (!item || (!item.key && item.secret)) return t('გაიხსნება მოულოდნელად.', 'It reveals itself when you least expect it.');
   if (ACH.fixedBodies[item.key]) return ACH.fixedBodies[item.key];
   const p = familyOf(item.key), fn = ACH.familyBodies[p.family];
-  return fn ? fn(item.threshold ?? p.threshold ?? 0) : 'გაიხსნება მოულოდნელად.';
+  return fn ? fn(item.threshold ?? p.threshold ?? 0) : t('გაიხსნება მოულოდნელად.', 'It reveals itself when you least expect it.');
 }
 function sortAchievements(items) {
   const state = (r) => (r.claimable ? 0 : r.unlocked ? 1 : r.secret && !r.unlocked ? 3 : 2);
@@ -169,52 +201,77 @@ function groupAchievements(items) {
 const RARITY_INK = { COMMON: 'teal', UNCOMMON: 'sky', RARE: 'blue', EPIC: 'violet', LEGENDARY: 'amber' };
 
 /* Rewards copy (i18n/quest/rewards.js). */
-const REWARD_TITLES = {
+const REWARD_TITLES = isEn ? {
+  'reward.mediTheme7d.title': 'Medi Quest style — 7 days', 'reward.mediProfileStyle30d.title': 'Profile accent — 30 days',
+  'reward.mediPremiumDay.title': '1 day Premium', 'reward.mediPremium3d.title': '3 days Premium', 'reward.partnerTest10.title': 'Partner test',
+} : {
   'reward.mediTheme7d.title': 'Medi Quest სტილი — 7 დღე', 'reward.mediProfileStyle30d.title': 'პროფილის აქცენტი — 30 დღე',
   'reward.mediPremiumDay.title': '1 დღე Premium', 'reward.mediPremium3d.title': '3 დღე Premium', 'reward.partnerTest10.title': 'Partner test',
 };
-const REWARD_DESCRIPTIONS = {
+const REWARD_DESCRIPTIONS = isEn ? {
+  'reward.mediTheme7d.description': 'A gold accent on the Medi Quest hub for 7 days. Cosmetic only — XP and Coins don’t change.',
+  'reward.mediProfileStyle30d.description': 'A gold frame around your profile avatar for 30 days. Cosmetic only — no gameplay advantage.',
+  'reward.mediPremiumDay.description': '1 day of Medicard Premium.', 'reward.mediPremium3d.description': '3 days of Medicard Premium.',
+  'reward.partnerTest10.description': 'DEV/QA architecture test.',
+} : {
   'reward.mediTheme7d.description': 'ოქროსფერი აქცენტი Medi Quest ჰაბზე 7 დღით. მხოლოდ კოსმეტიკა — XP/Coins არ იცვლება.',
   'reward.mediProfileStyle30d.description': 'ოქროსფერი ჩარჩო პროფილის ავატარზე 30 დღით. მხოლოდ კოსმეტიკა — თამაშის უპირატესობა არ აქვს.',
   'reward.mediPremiumDay.description': '1 დღე Medicard Premium.', 'reward.mediPremium3d.description': '3 დღე Medicard Premium.',
   'reward.partnerTest10.description': 'DEV/QA არქიტექტურის ტესტი.',
 };
-const REWARD_TERMS = {
+const REWARD_TERMS = isEn ? {
+  'reward.mediTheme7d.terms': 'Loyalty points — not money. Once every 14 days. Changes only the look of the Medi Quest hub. The style ends when it expires. Coins are not refunded.',
+  'reward.mediProfileStyle30d.terms': 'Cosmetic, on the profile avatar only. One active accent at a time. Doesn’t change XP, Coins or quests.',
+  'reward.mediPremiumDay.terms': 'Only when a Premium entitlement system exists.', 'reward.mediPremium3d.terms': 'Only when a Premium entitlement system exists.',
+  'reward.partnerTest10.terms': 'Not a real partner offer.',
+} : {
   'reward.mediTheme7d.terms': 'ლოიალობის ქულები — არა ფული. 14 დღეში ერთხელ. იცვლის მხოლოდ Medi Quest ჰაბის ვიზუალს. ვადის გასვლის შემდეგ სტილი ქრება. Coins არ ბრუნდება.',
   'reward.mediProfileStyle30d.terms': 'კოსმეტიკა მხოლოდ პროფილის ავატარზე. ერთდროულად ერთი აქტიური აქცენტი. არ ცვლის XP, Coins ან ქვესტებს.',
   'reward.mediPremiumDay.terms': 'მხოლოდ როცა Premium უფლების სისტემა არსებობს.', 'reward.mediPremium3d.terms': 'მხოლოდ როცა Premium უფლების სისტემა არსებობს.',
   'reward.partnerTest10.terms': 'არ არის რეალური პარტნიორის შეთავაზება.',
 };
-const REWARD_ERRORS = {
+const REWARD_ERRORS = isEn ? {
+  REWARD_NOT_FOUND: 'Reward not found.', REWARD_NOT_ACTIVE: 'Reward unavailable.', REWARD_NOT_STARTED: 'This reward hasn’t started yet.',
+  REWARD_ENDED: 'This reward has ended.', REWARD_OUT_OF_STOCK: 'Out of stock.', REWARD_INSUFFICIENT_COINS: 'Not enough Medi Coins.',
+  REWARD_USER_LIMIT: 'Limit reached.', REWARD_PERIOD_LIMIT: 'Limit for this period reached.', REWARD_ALREADY_REDEEMED: 'Already redeemed.',
+  REWARD_CODE_UNAVAILABLE: 'Code unavailable.', REWARD_ENTITLEMENT_UNAVAILABLE: 'Entitlement unavailable.', REWARD_REDEMPTION_CONFLICT: 'Redemption conflict. Try again.',
+} : {
   REWARD_NOT_FOUND: 'ჯილდო ვერ მოიძებნა.', REWARD_NOT_ACTIVE: 'ჯილდო მიუწვდომელია.', REWARD_NOT_STARTED: 'ჯილდო ჯერ არ დაწყებულა.',
   REWARD_ENDED: 'ჯილდოს ვადა ამოიწურა.', REWARD_OUT_OF_STOCK: 'მარაგი ამოწურულია.', REWARD_INSUFFICIENT_COINS: 'არასაკმარისი Medi Coins.',
   REWARD_USER_LIMIT: 'ლიმიტი ამოწურულია.', REWARD_PERIOD_LIMIT: 'პერიოდის ლიმიტი ამოწურულია.', REWARD_ALREADY_REDEEMED: 'უკვე გაცვლილია.',
   REWARD_CODE_UNAVAILABLE: 'კოდი მიუწვდომელია.', REWARD_ENTITLEMENT_UNAVAILABLE: 'უფლება მიუწვდომელია.', REWARD_REDEMPTION_CONFLICT: 'გაცვლა კონფლიქტშია. ხელახლა სცადე.',
 };
-const rewardTitle = (r) => REWARD_TITLES[r?.titleKey] || r?.partnerDisplay?.displayName || r?.titleKey || 'ჯილდო';
+const rewardTitle = (r) => REWARD_TITLES[r?.titleKey] || r?.partnerDisplay?.displayName || r?.titleKey || t('ჯილდო', 'Reward');
 const rewardDesc = (r) => REWARD_DESCRIPTIONS[r?.descriptionKey] || '';
 const rewardTerms = (r) => (r?.termsKey ? REWARD_TERMS[r.termsKey] || '' : '');
 function rewardError(code) {
-  if (!code) return 'მიუწვდომელი';
-  return REWARD_ERRORS[code] || REWARD_ERRORS[`REWARD_${code}`] || 'მიუწვდომელი';
+  if (!code) return t('მიუწვდომელი', 'Unavailable');
+  return REWARD_ERRORS[code] || REWARD_ERRORS[`REWARD_${code}`] || t('მიუწვდომელი', 'Unavailable');
 }
 function newIdempotencyKey() {
   const rand = Math.random().toString(36).slice(2, 10);
   return `rw-${Date.now().toString(36)}-${rand}`;
 }
-const LEDGER = {
+const LEDGER = isEn ? {
+  QUEST: 'Mission', ACHIEVEMENT: 'Achievement', REWARD_REDEMPTION: 'Medi reward', SYSTEM: 'System adjustment',
+  ADMIN_ADJUSTMENT: 'Admin adjustment', HUNT: 'Medi Hunt', REFERRAL: 'Invite bonus',
+} : {
   QUEST: 'მისია', ACHIEVEMENT: 'მიღწევა', REWARD_REDEMPTION: 'Medi ჯილდო', SYSTEM: 'სისტემური კორექტირება',
   ADMIN_ADJUSTMENT: 'ადმინისტრაციული კორექტირება', HUNT: 'Medi Hunt', REFERRAL: 'მოწვევის ბონუსი',
 };
-const ledgerLabel = (t) => LEDGER[String(t || '')] || 'ბალანსის კორექტირება';
+const ledgerLabel = (type) => LEDGER[String(type || '')] || t('ბალანსის კორექტირება', 'Balance adjustment');
 const LEDGER_ICON = { QUEST: 'target', ACHIEVEMENT: 'award', REWARD_REDEMPTION: 'gift', REFERRAL: 'users', HUNT: 'mapPin' };
 
 /* Journey copy (lib/companion/copy.ts, cosmeticNames.ts, cosmeticVisuals.ts). */
-const CHAPTERS = { 1: 'პირველი გზა', 2: 'მშვიდი რიტმი', 3: 'უფრო შორს', 4: 'ღრმა კვალი', 5: 'გრძელი ჰორიზონტი' };
-const MILESTONES = ['პირველი ნაბიჯი', 'მსუბუქი სუნთქვა', 'პატარა შუქი', 'სტაბილური დღე', 'თავი I — დასაწყისი', 'რბილი ტემპი', 'ახალი ჩრდილი', 'შუა გზა', 'უფრო მკაფიო', 'თავი II — რიტმი', 'შორი ხედი', 'მშვიდი ძალა', 'ღია ცა', 'ღრმა ფერი', 'თავი III — სიმაღლე', 'გრძელი სუნთქვა', 'თბილი კვალი', 'მყარი ნაბიჯი', 'შორი სინათლე', 'თავი IV — სიღრმე', 'მშვიდი ჰორიზონტი', 'უფრო ახლოს', 'რბილი შუქი', 'გრძელი ხედი', 'თავი V — ჰორიზონტი'];
-const COSMETIC_NAMES = ['მისალმების პოზა', 'მწვანე კუთხე', 'თეალი ქინძისთავი', 'თბილი ოქრო', 'განთიადი', 'ფოკუსის პოზა', 'რბილი ნათურა', 'მინის ვიზორი', 'რბილი ცა', 'თეალი ოთახი', 'სიამაყის პოზა', 'მინი თარო', 'რბილი შარფი', 'კორალი', 'ქალაქის ღამე', 'დასვენების პოზა', 'ჩარჩო', 'ორბიტა', 'იისფერი', 'ბაღის შუქი', 'ბეჯი', 'ფანჯარა', 'ცნობისმოყვარეობა', 'მინტი', 'ბინდის ჰორიზონტი'];
+const CHAPTERS = isEn ? { 1: 'First path', 2: 'Quiet rhythm', 3: 'Farther on', 4: 'Deeper trail', 5: 'Long horizon' } : { 1: 'პირველი გზა', 2: 'მშვიდი რიტმი', 3: 'უფრო შორს', 4: 'ღრმა კვალი', 5: 'გრძელი ჰორიზონტი' };
+const MILESTONES = isEn ? ['First step', 'Easy breath', 'Small light', 'Steady day', 'Chapter I — beginning', 'Soft pace', 'New shade', 'Mid trail', 'Clearer now', 'Chapter II — rhythm', 'Wider view', 'Quiet strength', 'Open sky', 'Deep color', 'Chapter III — rise', 'Long breath', 'Warm trail', 'Firm step', 'Distant glow', 'Chapter IV — depth', 'Calm horizon', 'Closer still', 'Soft glow', 'Long view', 'Chapter V — horizon'] : ['პირველი ნაბიჯი', 'მსუბუქი სუნთქვა', 'პატარა შუქი', 'სტაბილური დღე', 'თავი I — დასაწყისი', 'რბილი ტემპი', 'ახალი ჩრდილი', 'შუა გზა', 'უფრო მკაფიო', 'თავი II — რიტმი', 'შორი ხედი', 'მშვიდი ძალა', 'ღია ცა', 'ღრმა ფერი', 'თავი III — სიმაღლე', 'გრძელი სუნთქვა', 'თბილი კვალი', 'მყარი ნაბიჯი', 'შორი სინათლე', 'თავი IV — სიღრმე', 'მშვიდი ჰორიზონტი', 'უფრო ახლოს', 'რბილი შუქი', 'გრძელი ხედი', 'თავი V — ჰორიზონტი'];
+const COSMETIC_NAMES = isEn ? ['Hello wave', 'Quiet plant', 'Teal pin', 'Warm gold', 'Dawn wash', 'Steady focus', 'Soft lamp', 'Glass visor', 'Soft sky', 'Teal room', 'Quiet pride', 'Mini shelf', 'Soft wrap', 'Coral glow', 'City night', 'Rest pose', 'Framed note', 'Orbit ring', 'Violet hush', 'Garden light', 'Trail badge', 'Window light', 'Curious tilt', 'Mint edge', 'Summit dusk'] : ['მისალმების პოზა', 'მწვანე კუთხე', 'თეალი ქინძისთავი', 'თბილი ოქრო', 'განთიადი', 'ფოკუსის პოზა', 'რბილი ნათურა', 'მინის ვიზორი', 'რბილი ცა', 'თეალი ოთახი', 'სიამაყის პოზა', 'მინი თარო', 'რბილი შარფი', 'კორალი', 'ქალაქის ღამე', 'დასვენების პოზა', 'ჩარჩო', 'ორბიტა', 'იისფერი', 'ბაღის შუქი', 'ბეჯი', 'ფანჯარა', 'ცნობისმოყვარეობა', 'მინტი', 'ბინდის ჰორიზონტი'];
 const VISUAL = [null, 'pose.wave', 'decor.plant', 'accessory.pin', 'accent.gold', 'bg.dawn', 'pose.focused', 'decor.lamp', 'accessory.visor', 'accent.soft_blue', 'bg.teal_room', 'pose.proud', 'decor.shelf', 'accessory.scarf', 'accent.coral', 'bg.city_night', 'pose.resting', 'decor.frame', 'accessory.orbit', 'accent.violet', 'bg.garden_light', 'accessory.badge', 'decor.window', 'pose.curious', 'accent.mint', 'bg.summit_dusk'];
-const SYMBOL_NAMES = {
+const SYMBOL_NAMES = isEn ? {
+  'pose.wave': 'First wave', 'pose.focused': 'Focus', 'pose.proud': 'Crown', 'pose.resting': 'Moon', 'pose.curious': 'Explorer',
+  'accessory.pin': 'My flag', 'accessory.visor': 'Horizon', 'accessory.scarf': 'Ribbon', 'accessory.orbit': 'Orbit', 'accessory.badge': 'Trail mark',
+  'bg.teal_room': 'Teal calm',
+} : {
   'pose.wave': 'პირველი ტალღა', 'pose.focused': 'ფოკუსი', 'pose.proud': 'გვირგვინი', 'pose.resting': 'მთვარე', 'pose.curious': 'აღმომჩენი',
   'accessory.pin': 'ჩემი დროშა', 'accessory.visor': 'ჰორიზონტი', 'accessory.scarf': 'ლენტი', 'accessory.orbit': 'ორბიტა', 'accessory.badge': 'გზის ნიშანი',
   'bg.teal_room': 'თეალის სიმშვიდე',
@@ -243,11 +300,11 @@ function milestoneTitle(titleKey) {
 function cosmeticTitle(item) {
   const vk = visualKey(item.key);
   if (vk && SYMBOL_NAMES[vk]) return SYMBOL_NAMES[vk];
-  if (item.key === 'COSMETIC_DEFAULT_ACCENT') return 'თეალი ბირთვი';
-  if (item.key === 'COSMETIC_DEFAULT_BACKGROUND') return 'მშვიდი ნეივი';
+  if (item.key === 'COSMETIC_DEFAULT_ACCENT') return t('თეალი ბირთვი', 'Teal core');
+  if (item.key === 'COSMETIC_DEFAULT_BACKGROUND') return t('მშვიდი ნეივი', 'Calm navy');
   const m = String(item.key || item.titleKey || '').match(/milestone_(\d{2})/i);
   const i = m ? Number(m[1]) - 1 : -1;
-  return i >= 0 && i < COSMETIC_NAMES.length ? COSMETIC_NAMES[i] : 'კოლექციის ნივთი';
+  return i >= 0 && i < COSMETIC_NAMES.length ? COSMETIC_NAMES[i] : t('კოლექციის ნივთი', 'Collection item');
 }
 
 /** journeyPresentation — thresholds describe completed missions (daily = 1, weekly = 3), from the server. */
@@ -310,12 +367,12 @@ export function offerPhoneVerification(reason) {
   return new Promise((resolve) => {
     let handedOff = false;
     openModal({
-      title: 'საჭიროა ტელეფონის დადასტურება',
+      title: t('საჭიროა ტელეფონის დადასტურება', 'Phone verification needed'),
       size: 'sm',
-      body: h('p', { class: 'muted' }, reason || 'ამ ფუნქციისთვის ერთხელ დაადასტურე ტელეფონის ნომერი — ეს ყალბი ანგარიშებისგან იცავს.'),
+      body: h('p', { class: 'muted' }, reason || t('ამ ფუნქციისთვის ერთხელ დაადასტურე ტელეფონის ნომერი — ეს ყალბი ანგარიშებისგან იცავს.', 'Verify your phone number once to use this. It protects against fake accounts.')),
       footer: (close) => [
-        button('გაუქმება', { variant: 'ghost', onClick: () => close() }),
-        button('დადასტურება', { onClick: () => { handedOff = true; close(); verifyPhone().then(resolve); } }),
+        button(t('გაუქმება', 'Cancel'), { variant: 'ghost', onClick: () => close() }),
+        button(t('დადასტურება', 'Verify'), { onClick: () => { handedOff = true; close(); verifyPhone().then(resolve); } }),
       ],
       onClose: () => { if (!handedOff) resolve(false); },
     });
@@ -328,48 +385,48 @@ export function verifyPhone() {
     let done = false;
     let phone = '';
     const err = h('div', { class: 'form-error', hidden: true });
-    const showErr = (e) => { err.textContent = e?.message || 'ვერ შესრულდა. სცადე ხელახლა.'; err.hidden = false; };
+    const showErr = (e) => { err.textContent = e?.message || t('ვერ შესრულდა. სცადე ხელახლა.', 'That didn’t work. Please try again.'); err.hidden = false; };
     const phoneInput = input({ type: 'tel', inputmode: 'numeric', autocomplete: 'tel-national', placeholder: '5XX XXX XXX', maxlength: 12 });
     const codeInput = input({ type: 'text', inputmode: 'numeric', autocomplete: 'one-time-code', placeholder: '····', maxlength: 4, class: 'input q-otp' });
     const body = h('div', { class: 'stack' });
     const stepPhone = () => mount(body,
-      h('p', { class: 'muted' }, 'ქალების სივრცესა და ჯილდოებზე ყალბი ანგარიშებისგან დასაცავად ერთხელ დაადასტურე ნომერი. SMS-ით მოგივა 4-ნიშნა კოდი.'),
-      field('ტელეფონის ნომერი', h('div', { class: 'phone-wrap' }, h('span', null, '+995'), phoneInput)), err);
+      h('p', { class: 'muted' }, t('ქალების სივრცესა და ჯილდოებზე ყალბი ანგარიშებისგან დასაცავად ერთხელ დაადასტურე ნომერი. SMS-ით მოგივა 4-ნიშნა კოდი.', 'Verify your number once to protect the women’s space and rewards from fake accounts. We’ll text you a 4-digit code.')),
+      field(t('ტელეფონის ნომერი', 'Phone number'), h('div', { class: 'phone-wrap' }, h('span', null, '+995'), phoneInput)), err);
     const stepCode = (res) => mount(body,
-      h('p', { class: 'muted' }, `4-ნიშნა კოდი გაიგზავნა ნომერზე +995 ${phone.replace(/(\d{3})(\d{3})(\d{3})/, '$1 $2 $3')}.`),
-      res?.devCode ? h('p', { class: 'faint' }, `სატესტო კოდი: ${res.devCode}`) : null,
-      field('SMS კოდი', codeInput), err);
+      h('p', { class: 'muted' }, t(`4-ნიშნა კოდი გაიგზავნა ნომერზე +995 ${phone.replace(/(\d{3})(\d{3})(\d{3})/, '$1 $2 $3')}.`, `We sent a 4-digit code to +995 ${phone.replace(/(\d{3})(\d{3})(\d{3})/, '$1 $2 $3')}.`)),
+      res?.devCode ? h('p', { class: 'faint' }, t(`სატესტო კოდი: ${res.devCode}`, `Test code: ${res.devCode}`)) : null,
+      field(t('SMS კოდი', 'SMS code'), codeInput), err);
     stepPhone();
     let step = 'phone';
     openModal({
-      title: 'დაადასტურე ტელეფონი',
+      title: t('დაადასტურე ტელეფონი', 'Verify your phone'),
       size: 'sm',
       body,
       footer: (close) => {
-        const next = button('კოდის გაგზავნა');
+        const next = button(t('კოდის გაგზავნა', 'Send code'));
         next.addEventListener('click', () => busy(next, async () => {
           err.hidden = true;
           try {
             if (step === 'phone') {
               phone = normPhone(phoneInput.value);
-              if (!/^5\d{8}$/.test(phone)) throw new Error('ტელეფონის ნომერი უნდა იყოს ფორმატში 5XX XXX XXX');
+              if (!/^5\d{8}$/.test(phone)) throw new Error(t('ტელეფონის ნომერი უნდა იყოს ფორმატში 5XX XXX XXX', 'Enter the number as 5XX XXX XXX'));
               const res = await post('/api/auth/phone/link/start', { phone });
               step = 'code';
               stepCode(res);
-              next.querySelector('span').textContent = 'დადასტურება';
+              next.querySelector('span').textContent = t('დადასტურება', 'Verify');
               setTimeout(() => codeInput.focus(), 30);
             } else {
               const code = codeInput.value.replace(/\D/g, '');
-              if (code.length !== 4) throw new Error('კოდი უნდა შედგებოდეს 4 ციფრისგან');
+              if (code.length !== 4) throw new Error(t('კოდი უნდა შედგებოდეს 4 ციფრისგან', 'The code has 4 digits'));
               await post('/api/auth/phone/link/verify', { phone, code });
               done = true;
               await refreshMe().catch(() => {});
-              toast('ტელეფონი დადასტურდა');
+              toast(t('ტელეფონი დადასტურდა', 'Phone verified'));
               close();
             }
           } catch (e) { showErr(e); }
         }));
-        return [button('გაუქმება', { variant: 'ghost', onClick: () => close() }), next];
+        return [button(t('გაუქმება', 'Cancel'), { variant: 'ghost', onClick: () => close() }), next];
       },
       onClose: () => resolve(done),
     });
@@ -388,7 +445,7 @@ export default async function questPage(root, ctx) {
   const notice = h('div');
   const body = h('div', { class: 'q-body' });
   const tabs = segmented([
-    { value: 'missions', label: 'მისიები' }, { value: 'progress', label: 'პროგრესი' }, { value: 'rewards', label: 'ჯილდოები' },
+    { value: 'missions', label: t('მისიები', 'Missions') }, { value: 'progress', label: t('პროგრესი', 'Progress') }, { value: 'rewards', label: t('ჯილდოები', 'Rewards') },
   ], tab, (v) => { tab = v; setTab(v); renderTab(); });
   tabs.classList.add('q-tabs');
 
@@ -396,9 +453,9 @@ export default async function questPage(root, ctx) {
     h('header', { class: 'page-head' },
       h('div', { class: 'page-head-text' },
         h('h1', null, 'MEDI ', h('span', { class: 'q-brand' }, 'QUEST')),
-        h('p', null, 'პატარა ნაბიჯები. შენი დიდი პროგრესი.')),
+        h('p', null, t('პატარა ნაბიჯები. შენი დიდი პროგრესი.', 'Small steps. Your big progress.'))),
       h('div', { class: 'page-head-actions' },
-        button('როგორ მუშაობს?', { variant: 'ghost', icon: 'info', onClick: () => guide() }))),
+        button(t('როგორ მუშაობს?', 'How it works'), { variant: 'ghost', icon: 'info', onClick: () => guide() }))),
     hero, notice, tabs, body);
 
   mount(hero, h('div', { class: 'card spotlight q-hero' }, skeleton(3)));
@@ -426,8 +483,8 @@ export default async function questPage(root, ctx) {
     const p = dash?.profile;
     const unavailable = Boolean(dash?.unavailable || (dash && !p));
     if (unavailable) {
-      mount(hero, h('div', { class: 'card pad-lg' }, empty('მისიები დროებით მიუწვდომელია', 'სცადე გვერდის განახლება. შენი დაგროვილი მონაცემები ანგარიშზე რჩება.',
-        button('ხელახლა ცდა', { onClick: () => loadDash() }))));
+      mount(hero, h('div', { class: 'card pad-lg' }, empty(t('მისიები დროებით მიუწვდომელია', 'Missions are temporarily unavailable'), t('სცადე გვერდის განახლება. შენი დაგროვილი მონაცემები ანგარიშზე რჩება.', 'Try refreshing the page. Everything you’ve earned stays on your account.'),
+        button(t('ხელახლა ცდა', 'Try again'), { onClick: () => loadDash() }))));
       mount(body, '');
       mount(notice, '');
       tabs.hidden = true;
@@ -440,18 +497,18 @@ export default async function questPage(root, ctx) {
     const done = Math.min(total, Math.max(0, Number(sum.dailyCompleted) || 0));
     mount(hero, h('div', { class: 'card spotlight q-hero' },
       h('div', { class: 'q-hero-level' },
-        ring({ value: lr.percent, max: 100, size: 112, stroke: 10, color: '#5eead4', track: 'rgba(255,255,255,.12)', label: String(p.level), sub: 'დონე', labelScale: 0.3 }),
+        ring({ value: lr.percent, max: 100, size: 112, stroke: 10, color: '#5eead4', track: 'rgba(255,255,255,.12)', label: String(p.level), sub: t('დონე', 'Level'), labelScale: 0.3 }),
         h('div', { class: 'q-hero-rank' },
-          h('div', { class: 'q-eyebrow' }, 'შენი რანგი'),
+          h('div', { class: 'q-eyebrow' }, t('შენი რანგი', 'Your rank')),
           h('div', { class: 'q-rank' }, rankLabel(p.rankKey || rankKeyFromLevel(p.level))),
-          h('div', { class: 'muted' }, `${fmtNum(p.totalXp)} XP დაგროვილია`),
-          h('div', { class: 'q-next' }, lr.remaining != null ? `შემდეგ დონემდე ${fmtNum(lr.remaining)} XP` : 'უმაღლესი დონე მიღწეულია'))),
+          h('div', { class: 'muted' }, t(`${fmtNum(p.totalXp)} XP დაგროვილია`, `${fmtNum(p.totalXp)} XP earned`)),
+          h('div', { class: 'q-next' }, lr.remaining != null ? t(`შემდეგ დონემდე ${fmtNum(lr.remaining)} XP`, `${fmtNum(lr.remaining)} XP to next level`) : t('უმაღლესი დონე მიღწეულია', 'Top level reached')))),
       h('div', { class: 'q-hero-stats' },
-        heroStat('coins', fmtNum(p.coinBalance), 'Medi Coins', 'ჯილდოებისთვის', () => selectTab('rewards')),
-        heroStat('flame', `${fmtNum(p.currentStreak)} დღე`, 'სერია', `საუკეთესო ${fmtNum(p.longestStreak)} დღე`),
-        heroStat('target', `${done} / ${total}`, 'დღის მისიები', total && done >= total ? 'დღეს ყველაფერი შესრულებულია' : 'შესრულდა'))));
+        heroStat('coins', fmtNum(p.coinBalance), 'Medi Coins', t('ჯილდოებისთვის', 'For rewards'), () => selectTab('rewards')),
+        heroStat('flame', t(`${fmtNum(p.currentStreak)} დღე`, `${fmtNum(p.currentStreak)} ${Number(p.currentStreak) === 1 ? 'day' : 'days'}`), t('სერია', 'Streak'), t(`საუკეთესო ${fmtNum(p.longestStreak)} დღე`, `Best: ${fmtNum(p.longestStreak)} ${Number(p.longestStreak) === 1 ? 'day' : 'days'}`)),
+        heroStat('target', `${done} / ${total}`, t('დღის მისიები', 'Daily missions'), total && done >= total ? t('დღეს ყველაფერი შესრულებულია', 'Everything is done for today') : t('შესრულდა', 'done')))));
     mount(notice, sum.unclaimedRewards > 0
-      ? h('div', { class: 'q-notice' }, icon('gift', { size: 18 }), h('span', null, `${sum.unclaimedRewards} მისიის ჯილდო მზადაა — მიიღე ბარათიდან ქვემოთ.`))
+      ? h('div', { class: 'q-notice' }, icon('gift', { size: 18 }), h('span', null, t(`${sum.unclaimedRewards} მისიის ჯილდო მზადაა — მიიღე ბარათიდან ქვემოთ.`, `${sum.unclaimedRewards} mission ${sum.unclaimedRewards === 1 ? 'reward is' : 'rewards are'} ready — claim below.`)))
       : '');
   }
 
@@ -486,15 +543,15 @@ export default async function questPage(root, ctx) {
     const errSlot = h('div');
     let action = null;
     if (claimable) {
-      const b = button('ჯილდოს მიღება', { icon: 'gift', size: 'sm' });
+      const b = button(t('ჯილდოს მიღება', 'Claim reward'), { icon: 'gift', size: 'sm' });
       b.addEventListener('click', () => busy(b, () => claim(q, errSlot)));
       action = b;
     } else if (active && q.progressType === 'STEPS') {
-      action = button('ნაბიჯების ნახვა', { variant: 'ghost', size: 'sm', href: '/health' });
+      action = button(t('ნაბიჯების ნახვა', 'View steps'), { variant: 'ghost', size: 'sm', href: '/health' });
     } else if (active && q.progressType === 'HYDRATION_GOAL_PERCENT') {
-      action = button('წყლის ჩაწერა', { variant: 'ghost', size: 'sm', href: '/health' });
+      action = button(t('წყლის ჩაწერა', 'Log water'), { variant: 'ghost', size: 'sm', href: '/health' });
     } else if (active && kind === 'medi' && featureOn('medi')) {
-      action = button('გახსენი Medi', { variant: 'ghost', size: 'sm', href: '/medi' });
+      action = button(t('გახსენი Medi', 'Open Medi'), { variant: 'ghost', size: 'sm', href: '/medi' });
     }
     const why = active && kind !== 'hydration' && kind !== 'medi' && q.targetSource
       ? h('button', { type: 'button', class: 'text-btn q-why', onClick: () => whyTarget(q) }, WHY.title) : null;
@@ -502,7 +559,7 @@ export default async function questPage(root, ctx) {
       h('div', { class: 'q-mission-top' },
         claimed ? h('span', { class: 'tile ink-green', style: { width: '44px', height: '44px' } }, icon('check', { size: 21 })) : tile(look.icon, look.ink, 44),
         h('div', { class: 'q-mission-main' },
-          h('div', { class: 'q-mission-title' }, questTitle(q), weekly ? badge('კვირა', 'warn') : null),
+          h('div', { class: 'q-mission-title' }, questTitle(q), weekly ? badge(t('კვირა', 'Weekly'), 'warn') : null),
           h('div', { class: 'q-mission-sub' }, questHelper(q))),
         h('div', { class: 'q-rewards' },
           h('span', { class: 'q-pill coin' }, icon('coins', { size: 13 }), `+${fmtNum(q.rewardCoins)}`),
@@ -523,13 +580,13 @@ export default async function questPage(root, ctx) {
       const result = await post(`/api/quests/${encodeURIComponent(q.id)}/claim`);
       if (!alive || !result?.ok) throw new Error('claim_failed');
       setDash(applyClaim(dash, result));
-      if (result.claimed) toast(`+${fmtNum(result.reward.coinsAwarded)} მონეტა · +${fmtNum(result.reward.xpAwarded)} XP`);
+      if (result.claimed) toast(t(`+${fmtNum(result.reward.coinsAwarded)} მონეტა · +${fmtNum(result.reward.xpAwarded)} XP`, `+${fmtNum(result.reward.coinsAwarded)} coins · +${fmtNum(result.reward.xpAwarded)} XP`));
       if (result.profile?.leveledUp) levelUp(result.profile.currentLevel, result.reward);
       invalidate('/api/medi-companion');
       invalidate('/api/achievements');
       renderTab();
     } catch {
-      mount(errSlot, h('div', { class: 'form-error' }, 'ჯილდოს მიღება ვერ დადასტურდა. სცადე ხელახლა — ერთი მისიის ჯილდო მხოლოდ ერთხელ ირიცხება.'));
+      mount(errSlot, h('div', { class: 'form-error' }, t('ჯილდოს მიღება ვერ დადასტურდა. სცადე ხელახლა — ერთი მისიის ჯილდო მხოლოდ ერთხელ ირიცხება.', 'We couldn’t confirm the reward. Try again — each mission reward is only credited once.')));
     } finally { claimLocks.delete(lock); }
   }
 
@@ -540,31 +597,31 @@ export default async function questPage(root, ctx) {
     const setupSteps = ![...daily, ...weekly].some((q) => q.progressType === 'STEPS');
     const setupWater = !daily.some((q) => q.progressType === 'HYDRATION_GOAL_PERCENT');
     const left = h('div', { class: 'stack', style: { gap: '28px' } },
-      section('დღის მისიები', h('div', { class: 'stack' },
+      section(t('დღის მისიები', 'Daily missions'), h('div', { class: 'stack' },
         daily.length
-          ? h('div', { class: 'card q-daybar' }, h('div', { class: 'between' }, h('span', { class: 'muted' }, 'დღეს'), h('b', { class: 'num' }, `${sum.dailyCompleted || 0} / ${sum.dailyTotal || 0} შესრულდა`)),
+          ? h('div', { class: 'card q-daybar' }, h('div', { class: 'between' }, h('span', { class: 'muted' }, t('დღეს', 'Today')), h('b', { class: 'num' }, t(`${sum.dailyCompleted || 0} / ${sum.dailyTotal || 0} შესრულდა`, `${sum.dailyCompleted || 0} / ${sum.dailyTotal || 0} done`))),
             progress(sum.dailyTotal ? ((sum.dailyCompleted || 0) / sum.dailyTotal) * 100 : 0, 100))
-          : h('div', { class: 'card' }, empty('დღიური მისიები ჯერ არ არის', 'შეამოწმე აქტივობისა და ჰიდრატაციის პარამეტრები.')),
+          : h('div', { class: 'card' }, empty(t('დღიური მისიები ჯერ არ არის', 'No daily missions yet'), t('შეამოწმე აქტივობისა და ჰიდრატაციის პარამეტრები.', 'Check your activity and hydration settings.'))),
         daily.map((q) => missionCard(q)))),
-      weekly.length ? section('კვირის გამოწვევა', h('div', { class: 'stack' }, h('div', { class: 'faint q-meta' }, 'ორშაბათი — კვირა'), weekly.map((q) => missionCard(q, true)))) : null);
+      weekly.length ? section(t('კვირის გამოწვევა', 'Weekly challenge'), h('div', { class: 'stack' }, h('div', { class: 'faint q-meta' }, t('ორშაბათი — კვირა', 'Monday — Sunday')), weekly.map((q) => missionCard(q, true)))) : null);
 
     const setup = [];
     if (setupSteps) setup.push(h('div', { class: 'row' }, tile('footprints', 'teal', 38),
-      h('div', { class: 'row-main' }, h('div', { class: 'row-title' }, 'ნაბიჯები დაუკავშირე'),
-        h('div', { class: 'row-sub' }, 'ნაბიჯები ჯანმრთელობის აპიდან სინქრონდება. ამისთვის გამოიყენე MEDICARD აპი.')),
-      h('a', { class: 'link', href: 'https://apps.apple.com/app/id6812517519', target: '_blank', rel: 'noopener' }, 'აპი', icon('externalLink', { size: 14 }))));
+      h('div', { class: 'row-main' }, h('div', { class: 'row-title' }, t('ნაბიჯები დაუკავშირე', 'Connect your steps')),
+        h('div', { class: 'row-sub' }, t('ნაბიჯები ჯანმრთელობის აპიდან სინქრონდება. ამისთვის გამოიყენე MEDICARD აპი.', 'Steps sync from your phone’s health app. Use the MEDICARD app for this.'))),
+      h('a', { class: 'link', href: 'https://apps.apple.com/app/id6812517519', target: '_blank', rel: 'noopener' }, t('აპი', 'App'), icon('externalLink', { size: 14 }))));
     if (setupWater) setup.push(h('a', { class: 'row row-link', href: '/health', 'data-link': '' }, tile('droplet', 'sky', 38),
-      h('div', { class: 'row-main' }, h('div', { class: 'row-title' }, 'წყლის მიზანი დააყენე'), h('div', { class: 'row-sub' }, 'შენი დღიური მიზანი ჰიდრატაციის მისიას გახსნის.')),
+      h('div', { class: 'row-main' }, h('div', { class: 'row-title' }, t('წყლის მიზანი დააყენე', 'Set a water goal')), h('div', { class: 'row-sub' }, t('შენი დღიური მიზანი ჰიდრატაციის მისიას გახსნის.', 'Your daily goal unlocks the hydration mission.'))),
       icon('chevronRight', { size: 18, className: 'row-chev' })));
     setup.push(h('button', { type: 'button', class: 'row row-link', onClick: () => selectTab('progress') }, tile('trophy', 'amber', 38),
-      h('div', { class: 'row-main' }, h('div', { class: 'row-title' }, 'ნახე, როგორ ვითარდები'), h('div', { class: 'row-sub' }, 'ეტაპები და კოლექცია — შენი შესრულებული მისიებიდან.')),
+      h('div', { class: 'row-main' }, h('div', { class: 'row-title' }, t('ნახე, როგორ ვითარდები', 'See how you’re growing')), h('div', { class: 'row-sub' }, t('ეტაპები და კოლექცია — შენი შესრულებული მისიებიდან.', 'Milestones and collection, from the missions you’ve completed.'))),
       icon('chevronRight', { size: 18, className: 'row-chev' })));
 
     const achSlot = h('div', null, skeleton(2));
     const right = h('div', { class: 'stack', style: { gap: '28px' } },
-      featureOn('referralRewards') ? section('მოიწვიე მეგობარი', referralCard()) : null,
-      section('მიღწევები', achSlot, { action: h('button', { type: 'button', class: 'link text-btn', onClick: () => selectTab('progress') }, 'ყველა', icon('chevronRight', { size: 16 })) }),
-      section('დაიწყე აქედან', h('div', { class: 'card' }, h('div', { class: 'list' }, setup))));
+      featureOn('referralRewards') ? section(t('მოიწვიე მეგობარი', 'Invite a friend'), referralCard()) : null,
+      section(t('მიღწევები', 'Achievements'), achSlot, { action: h('button', { type: 'button', class: 'link text-btn', onClick: () => selectTab('progress') }, t('ყველა', 'View all'), icon('chevronRight', { size: 16 })) }),
+      section(t('დაიწყე აქედან', 'Start here'), h('div', { class: 'card' }, h('div', { class: 'list' }, setup))));
     mount(body, h('div', { class: 'grid grid-main q-grid' }, left, right));
     loadAchievementsPreview(achSlot);
   }
@@ -574,7 +631,7 @@ export default async function questPage(root, ctx) {
       const data = await get('/api/achievements');
       if (!alive) return;
       const items = data?.items || [];
-      if (data?.unavailable || !items.length) { mount(slot, h('div', { class: 'card' }, empty('მიღწევები აქ გამოჩნდება.'))); return; }
+      if (data?.unavailable || !items.length) { mount(slot, h('div', { class: 'card' }, empty(t('მიღწევები აქ გამოჩნდება.', 'Your achievements will appear here.')))); return; }
       const claimable = items.filter((r) => r.claimable);
       const unlocked = items.filter((r) => r.unlocked && !r.claimable).sort((a, b) => String(b.unlockedAt || '').localeCompare(String(a.unlockedAt || '')));
       const nearest = items.filter((r) => !r.unlocked && !r.secret).sort((a, b) => (Number(b.progressPercent) || 0) - (Number(a.progressPercent) || 0));
@@ -582,8 +639,8 @@ export default async function questPage(root, ctx) {
       const s = data.summary || {};
       mount(slot, h('div', { class: 'card' },
         h('div', { class: 'between', style: { marginBottom: '14px' } },
-          h('span', { class: 'muted' }, `${fmtNum(s.unlocked || 0)} / ${fmtNum(s.total || items.length)} გახსნილია`),
-          s.claimable ? badge(`${s.claimable} ჯილდო გელოდება`, 'brand') : null),
+          h('span', { class: 'muted' }, t(`${fmtNum(s.unlocked || 0)} / ${fmtNum(s.total || items.length)} გახსნილია`, `${fmtNum(s.unlocked || 0)} / ${fmtNum(s.total || items.length)} unlocked`)),
+          s.claimable ? badge(t(`${s.claimable} ჯილდო გელოდება`, `${s.claimable} ${s.claimable === 1 ? 'reward' : 'rewards'} waiting`), 'brand') : null),
         h('div', { class: 'q-medals' }, preview.map((a) => medal(a, true)))));
     } catch (e) {
       mount(slot, errorBox(e, () => loadAchievementsPreview(slot)));
@@ -603,22 +660,22 @@ export default async function questPage(root, ctx) {
       !compact && locked && !a.secret && a.threshold ? h('div', { class: 'q-medal-prog' }, progress(pct(a.progressPercent), 100, { ink }),
         h('span', { class: 'faint num' }, `${fmtNum(a.progress ?? 0)} / ${fmtNum(a.threshold)}`)) : null,
       !compact && a.claimable ? (() => {
-        const b = button('მიღება', { size: 'sm', icon: 'gift' });
+        const b = button(t('მიღება', 'Claim'), { size: 'sm', icon: 'gift' });
         b.addEventListener('click', () => busy(b, async () => {
           try {
             const r = await post(`/api/achievements/${encodeURIComponent(a.id)}/claim`);
-            toast(r.claimed ? `+${fmtNum(r.reward?.coinsAwarded)} მონეტა · +${fmtNum(r.reward?.xpAwarded)} XP` : 'ჯილდო უკვე მიღებულია', r.claimed ? 'ok' : 'info');
+            toast(r.claimed ? t(`+${fmtNum(r.reward?.coinsAwarded)} მონეტა · +${fmtNum(r.reward?.xpAwarded)} XP`, `+${fmtNum(r.reward?.coinsAwarded)} coins · +${fmtNum(r.reward?.xpAwarded)} XP`) : t('ჯილდო უკვე მიღებულია', 'Reward already claimed'), r.claimed ? 'ok' : 'info');
             if (r.profile && dash?.profile) {
               setDash({ ...dash, profile: { ...dash.profile, coinBalance: r.profile.coinBalance, totalXp: r.profile.totalXp,
                 level: r.profile.currentLevel, rankKey: r.profile.rankKey || rankKeyFromLevel(r.profile.currentLevel), levelProgress: r.profile.levelProgress } });
               if (r.profile.leveledUp) levelUp(r.profile.currentLevel, r.reward);
             }
             onClaimed?.();
-          } catch (e) { toast(e?.message || 'ჯილდოს მიღება ვერ მოხერხდა.', 'error'); }
+          } catch (e) { toast(e?.message || t('ჯილდოს მიღება ვერ მოხერხდა.', 'Couldn’t claim the reward.'), 'error'); }
         }));
         return b;
       })() : null,
-      !compact && a.claimed ? h('div', { class: 'q-medal-state' }, icon('check', { size: 14 }), 'მიღებულია') : null);
+      !compact && a.claimed ? h('div', { class: 'q-medal-state' }, icon('check', { size: 14 }), t('მიღებულია', 'Claimed')) : null);
     el.title = achBody(a);
     return el;
   }
@@ -630,18 +687,18 @@ export default async function questPage(root, ctx) {
     const histSlot = h('div', null, skeleton(3));
     const p = dash.profile;
     const left = h('div', { class: 'stack', style: { gap: '28px' } },
-      section('შენი პირადი გზა', journeySlot),
-      section('ჩემი მიღწევები', achSlot));
+      section(t('შენი პირადი გზა', 'Your personal journey'), journeySlot),
+      section(t('ჩემი მიღწევები', 'My achievements'), achSlot));
     const right = h('div', { class: 'stack', style: { gap: '28px' } },
-      section('შენი სერია', h('div', { class: 'card' },
+      section(t('შენი სერია', 'Your streak'), h('div', { class: 'card' },
         h('div', { class: 'hstack' }, tile('flame', 'amber', 42), h('div', null,
-          h('div', { class: 'q-big' }, `${fmtNum(p.currentStreak)} დღე`),
-          h('div', { class: 'muted' }, `საუკეთესო ${fmtNum(p.longestStreak)} დღე`))),
-        h('p', { class: 'faint', style: { marginTop: '12px', fontSize: '13px' } }, 'ყოველ დღე ერთი დღიური მისიის შესრულება მაინც აგრძელებს სერიას.'))),
-      section('როგორ ითვლება', h('div', { class: 'grid grid-2 q-units' },
-        h('div', { class: 'card' }, h('div', { class: 'q-unit' }, '+1'), h('div', { class: 'muted' }, 'დღიური მისიის შესრულება')),
-        h('div', { class: 'card' }, h('div', { class: 'q-unit' }, '+3'), h('div', { class: 'muted' }, 'კვირის მისიის შესრულება')))),
-      section('მისიების ისტორია', histSlot));
+          h('div', { class: 'q-big' }, t(`${fmtNum(p.currentStreak)} დღე`, `${fmtNum(p.currentStreak)} ${Number(p.currentStreak) === 1 ? 'day' : 'days'}`)),
+          h('div', { class: 'muted' }, t(`საუკეთესო ${fmtNum(p.longestStreak)} დღე`, `Best: ${fmtNum(p.longestStreak)} ${Number(p.longestStreak) === 1 ? 'day' : 'days'}`)))),
+        h('p', { class: 'faint', style: { marginTop: '12px', fontSize: '13px' } }, t('ყოველ დღე ერთი დღიური მისიის შესრულება მაინც აგრძელებს სერიას.', 'Completing at least one daily mission each day keeps your streak going.')))),
+      section(t('როგორ ითვლება', 'How it counts'), h('div', { class: 'grid grid-2 q-units' },
+        h('div', { class: 'card' }, h('div', { class: 'q-unit' }, '+1'), h('div', { class: 'muted' }, t('დღიური მისიის შესრულება', 'Daily mission completed'))),
+        h('div', { class: 'card' }, h('div', { class: 'q-unit' }, '+3'), h('div', { class: 'muted' }, t('კვირის მისიის შესრულება', 'Weekly mission completed'))))),
+      section(t('მისიების ისტორია', 'Mission history'), histSlot));
     mount(body, h('div', { class: 'grid grid-main q-grid' }, left, right));
     loadJourney(journeySlot);
     loadAchievements(achSlot);
@@ -653,7 +710,7 @@ export default async function questPage(root, ctx) {
       const ov = await get('/api/medi-companion', { reducedMotion: 1 });
       if (!alive) return;
       const j = ov?.journey;
-      if (!j) { mount(slot, h('div', { class: 'card' }, empty('პროგრესი ვერ ჩაიტვირთა', 'მისიების შესრულება შეგიძლია გააგრძელო. შენი პროგრესი ანგარიშზე ინახება.'))); return; }
+      if (!j) { mount(slot, h('div', { class: 'card' }, empty(t('პროგრესი ვერ ჩაიტვირთა', 'Couldn’t load your progress'), t('მისიების შესრულება შეგიძლია გააგრძელო. შენი პროგრესი ანგარიშზე ინახება.', 'You can keep doing missions. Your progress is saved on your account.')))); return; }
       const info = journeyInfo(j);
       const chapters = [...new Set(info.milestones.map((m) => m.chapterKey))];
       let chapter = chapters.includes(j.chapterKey) ? j.chapterKey : chapters[0];
@@ -666,27 +723,27 @@ export default async function questPage(root, ctx) {
             h('span', { class: 'q-ms-dot' }, icon(m.unlocked ? 'check' : isNext ? 'target' : 'lock', { size: 15 })),
             h('div', { class: 'q-ms-main' },
               h('div', { class: 'q-ms-title' }, milestoneTitle(m.titleKey)),
-              h('div', { class: 'q-ms-sub' }, `${fmtNum(m.at)} ქულა · ${m.unlocked ? 'გახსნილია' : isNext ? 'შენი შემდეგი ეტაპი' : 'გასახსნელია'}`),
-              m.cosmeticKey ? h('div', { class: 'q-ms-gift' }, icon('gift', { size: 12 }), 'კოლექციის ნივთი') : null));
+              h('div', { class: 'q-ms-sub' }, t(`${fmtNum(m.at)} ქულა · ${m.unlocked ? 'გახსნილია' : isNext ? 'შენი შემდეგი ეტაპი' : 'გასახსნელია'}`, `${fmtNum(m.at)} ${Number(m.at) === 1 ? 'point' : 'points'} · ${m.unlocked ? 'Unlocked' : isNext ? 'Your next milestone' : 'Still ahead'}`)),
+              m.cosmeticKey ? h('div', { class: 'q-ms-gift' }, icon('gift', { size: 12 }), t('კოლექციის ნივთი', 'Collection item')) : null));
         })));
       drawTimeline();
       mount(slot, h('div', { class: 'stack' },
         h('div', { class: 'card q-journey' },
           h('div', { class: 'hstack', style: { gap: '18px', flexWrap: 'nowrap' } }, emblem(ov.equipment),
             h('div', { style: { minWidth: 0 } },
-              h('div', { class: 'faint', style: { fontSize: '12.5px' } }, 'შენი პირადი გზა'),
+              h('div', { class: 'faint', style: { fontSize: '12.5px' } }, t('შენი პირადი გზა', 'Your personal journey')),
               h('div', { class: 'q-big' }, chapterTitle(j.chapterKey)),
-              h('div', { class: 'muted', style: { fontSize: '13px' } }, `${info.unlocked} / ${info.milestones.length} ეტაპი გახსნილია`))),
-          h('div', { class: 'q-units-line' }, h('b', { class: 'num' }, fmtNum(j.units)), h('span', { class: 'muted' }, 'პროგრესის ქულა')),
+              h('div', { class: 'muted', style: { fontSize: '13px' } }, t(`${info.unlocked} / ${info.milestones.length} ეტაპი გახსნილია`, `${info.unlocked} / ${info.milestones.length} milestones unlocked`)))),
+          h('div', { class: 'q-units-line' }, h('b', { class: 'num' }, fmtNum(j.units)), h('span', { class: 'muted' }, t('პროგრესის ქულა', 'progress points'))),
           progress(info.percent, 100),
           h('div', { class: 'muted', style: { fontSize: '13px' } }, info.next
-            ? `შემდეგი: ${milestoneTitle(info.next.titleKey)} · დარჩა ${fmtNum(info.remaining)} ქულა`
-            : 'ყველა ეტაპი გახსნილია. შენი მისიები და მიღწევები გრძელდება.'),
-          h('p', { class: 'faint', style: { fontSize: '12.5px' } }, 'ქულა ავტომატურად ემატება შესრულებისას. XP და მონეტები ცალკე ჯილდოა — მისიის ბარათიდან მიიღე.')),
+            ? t(`შემდეგი: ${milestoneTitle(info.next.titleKey)} · დარჩა ${fmtNum(info.remaining)} ქულა`, `Next: ${milestoneTitle(info.next.titleKey)} · ${fmtNum(info.remaining)} ${Number(info.remaining) === 1 ? 'point' : 'points'} to go`)
+            : t('ყველა ეტაპი გახსნილია. შენი მისიები და მიღწევები გრძელდება.', 'Every milestone is unlocked. Your missions and achievements keep going.')),
+          h('p', { class: 'faint', style: { fontSize: '12.5px' } }, t('ქულა ავტომატურად ემატება შესრულებისას. XP და მონეტები ცალკე ჯილდოა — მისიის ბარათიდან მიიღე.', 'Points are added automatically when you complete a mission. XP and coins are a separate reward — claim them from the mission card.'))),
         chapters.length > 1 ? h('div', { class: 'chips' }, chapters.map((key, i) => {
           const c = h('button', { type: 'button', class: `chip ${key === chapter ? 'on' : ''}`, onClick: () => {
             chapter = key; c.parentNode.querySelectorAll('.chip').forEach((x) => x.classList.remove('on')); c.classList.add('on'); drawTimeline();
-          } }, `თავი ${i + 1}`);
+          } }, t(`თავი ${i + 1}`, `Chapter ${i + 1}`));
           return c;
         })) : null,
         timeline));
@@ -699,14 +756,14 @@ export default async function questPage(root, ctx) {
     try {
       const data = await get('/api/achievements');
       if (!alive) return;
-      if (data?.unavailable || !(data?.items || []).length) { mount(slot, h('div', { class: 'card' }, empty('მიღწევები აქ გამოჩნდება.'))); return; }
+      if (data?.unavailable || !(data?.items || []).length) { mount(slot, h('div', { class: 'card' }, empty(t('მიღწევები აქ გამოჩნდება.', 'Your achievements will appear here.')))); return; }
       const s = data.summary || {};
       const total = Math.max(0, Number(s.total) || 0);
       const unlocked = Math.min(total, Math.max(0, Number(s.unlocked) || 0));
       mount(slot, h('div', { class: 'stack', style: { gap: '18px' } },
         h('div', { class: 'card' },
-          h('div', { class: 'between' }, h('span', null, h('b', { class: 'num' }, `${unlocked} / ${total}`), h('span', { class: 'muted' }, ' გახსნილია')),
-            s.claimable ? badge(`${s.claimable} ჯილდო გელოდება`, 'brand') : null),
+          h('div', { class: 'between' }, h('span', null, h('b', { class: 'num' }, `${unlocked} / ${total}`), h('span', { class: 'muted' }, t(' გახსნილია', ' unlocked'))),
+            s.claimable ? badge(t(`${s.claimable} ჯილდო გელოდება`, `${s.claimable} ${s.claimable === 1 ? 'reward' : 'rewards'} waiting`), 'brand') : null),
           h('div', { style: { marginTop: '10px' } }, progress(total ? (unlocked / total) * 100 : 0, 100, { ink: 'amber' }))),
         groupAchievements(data.items).map((g) => h('div', { class: 'stack' },
           h('div', { class: 'q-cat' }, ACH.categories[g.category] || g.category),
@@ -722,7 +779,7 @@ export default async function questPage(root, ctx) {
       if (!alive) return;
       const listEl = list || h('div', { class: 'list' });
       for (const q of res?.items || []) {
-        const st = q.status === 'CLAIMED' ? badge('მიღებულია', 'ok') : q.status === 'COMPLETED' ? badge('შესრულდა', 'brand') : badge('ვადა ამოიწურა', 'neutral');
+        const st = q.status === 'CLAIMED' ? badge(t('მიღებულია', 'Claimed'), 'ok') : q.status === 'COMPLETED' ? badge(t('შესრულდა', 'Done'), 'brand') : badge(t('ვადა ამოიწურა', 'Expired'), 'neutral');
         const look = KIND_LOOK[questKind(q)] || KIND_LOOK.movement;
         listEl.appendChild(h('div', { class: 'row' }, tile(look.icon, q.status === 'EXPIRED' ? 'neutral' : look.ink, 36),
           h('div', { class: 'row-main' }, h('div', { class: 'row-title' }, questTitle(q)),
@@ -730,19 +787,19 @@ export default async function questPage(root, ctx) {
           h('div', { class: 'row-trail' }, st)));
       }
       if (!list) {
-        if (!listEl.children.length) { mount(slot, h('div', { class: 'card' }, empty('შესრულებული მისიები აქ გამოჩნდება.'))); return; }
+        if (!listEl.children.length) { mount(slot, h('div', { class: 'card' }, empty(t('შესრულებული მისიები აქ გამოჩნდება.', 'Your completed missions will appear here.')))); return; }
         const more = h('div');
         mount(slot, h('div', { class: 'card' }, listEl, more));
         slot._more = more;
       }
       const more = slot._more;
       if (more) mount(more, res?.nextCursor ? (() => {
-        const b = button('კიდევ', { variant: 'ghost', size: 'sm' });
+        const b = button(t('კიდევ', 'More'), { variant: 'ghost', size: 'sm' });
         b.addEventListener('click', () => busy(b, () => loadHistory(slot, res.nextCursor, listEl)));
         return h('div', { style: { textAlign: 'center', paddingTop: '8px' } }, b);
       })() : '');
     } catch (e) {
-      if (list) toast(e?.message || 'ვერ ჩაიტვირთა', 'error');
+      if (list) toast(e?.message || t('ვერ ჩაიტვირთა', 'Couldn’t load'), 'error');
       else mount(slot, errorBox(e, () => loadHistory(slot)));
     }
   }
@@ -754,15 +811,15 @@ export default async function questPage(root, ctx) {
     const walletSlot = h('div', null, skeleton(4));
     const collSlot = h('div', null, skeleton(3));
     const left = h('div', { class: 'stack', style: { gap: '28px' } },
-      section('ჯილდოების მაღაზია', storeSlot),
-      section('ჩემი ჯილდოები', mineSlot));
+      section(t('ჯილდოების მაღაზია', 'Rewards store'), storeSlot),
+      section(t('ჩემი ჯილდოები', 'My rewards'), mineSlot));
     const right = h('div', { class: 'stack', style: { gap: '28px' } },
-      section('ბალანსი', walletSlot));
+      section(t('ბალანსი', 'Balance'), walletSlot));
     mount(body, h('div', { class: 'stack', style: { gap: '28px' } },
       h('div', { class: 'grid grid-main q-grid' }, left, right),
-      section('ჩემი კოლექცია', collSlot)));
+      section(t('ჩემი კოლექცია', 'My collection'), collSlot)));
     const reloadStore = () => {
-      if (!featureOn('rewardsStore')) { mount(storeSlot, h('div', { class: 'card' }, empty('ჯილდოების მაღაზია დროებით შეჩერებულია', 'მონეტები ბალანსზე რჩება. მალე ისევ ჩაირთვება.'))); return; }
+      if (!featureOn('rewardsStore')) { mount(storeSlot, h('div', { class: 'card' }, empty(t('ჯილდოების მაღაზია დროებით შეჩერებულია', 'The rewards store is paused for now'), t('მონეტები ბალანსზე რჩება. მალე ისევ ჩაირთვება.', 'Your coins stay in your balance. It will be back soon.')))); return; }
       loadStore(storeSlot, reloadAll);
     };
     const reloadAll = () => { reloadStore(); loadMine(mineSlot); loadWallet(walletSlot); };
@@ -781,21 +838,21 @@ export default async function questPage(root, ctx) {
       const tx = w?.transactions || [];
       mount(slot, h('div', { class: 'stack' },
         h('div', { class: 'card q-wallet' },
-          h('div', { class: 'hstack' }, tile('coins', 'amber', 42), h('span', { class: 'muted' }, 'ხელმისაწვდომი ბალანსი')),
+          h('div', { class: 'hstack' }, tile('coins', 'amber', 42), h('span', { class: 'muted' }, t('ხელმისაწვდომი ბალანსი', 'Available balance'))),
           h('div', { class: 'q-balance num' }, fmtNum(dash?.profile?.coinBalance ?? w?.balance?.coins ?? 0), h('small', null, ' Medi Coins')),
           h('div', { class: 'grid grid-2', style: { gap: '10px' } },
-            h('div', { class: 'q-mini' }, h('span', { class: 'faint' }, 'სულ მიღებული'), h('b', { class: 'num' }, fmtNum(w?.totalEarned?.coins ?? 0))),
-            h('div', { class: 'q-mini' }, h('span', { class: 'faint' }, 'დახარჯული'), h('b', { class: 'num' }, fmtNum(w?.totalSpent?.coins ?? 0)))),
-          h('p', { class: 'faint', style: { fontSize: '12.5px' } }, 'Medi Coins ფული არ არის და ფულად არ იცვლება.')),
+            h('div', { class: 'q-mini' }, h('span', { class: 'faint' }, t('სულ მიღებული', 'Total earned')), h('b', { class: 'num' }, fmtNum(w?.totalEarned?.coins ?? 0))),
+            h('div', { class: 'q-mini' }, h('span', { class: 'faint' }, t('დახარჯული', 'Spent')), h('b', { class: 'num' }, fmtNum(w?.totalSpent?.coins ?? 0)))),
+          h('p', { class: 'faint', style: { fontSize: '12.5px' } }, t('Medi Coins ფული არ არის და ფულად არ იცვლება.', 'Medi Coins are not money and can’t be exchanged for money.'))),
         h('div', { class: 'card' },
-          h('div', { class: 'card-title', style: { marginBottom: '6px' } }, 'ბალანსის ისტორია'),
-          tx.length ? h('div', { class: 'list' }, tx.slice(0, 30).map((t) => {
-            const amt = Number(t.amount) || 0;
-            const isCoin = t.currency === 'COIN';
-            return h('div', { class: 'row' }, tile(LEDGER_ICON[t.sourceType] || 'wallet', amt < 0 ? 'rose' : isCoin ? 'amber' : 'violet', 34),
-              h('div', { class: 'row-main' }, h('div', { class: 'row-title' }, ledgerLabel(t.sourceType)), h('div', { class: 'row-sub' }, fmtDateTime(t.createdAt))),
+          h('div', { class: 'card-title', style: { marginBottom: '6px' } }, t('ბალანსის ისტორია', 'Balance history')),
+          tx.length ? h('div', { class: 'list' }, tx.slice(0, 30).map((row) => {
+            const amt = Number(row.amount) || 0;
+            const isCoin = row.currency === 'COIN';
+            return h('div', { class: 'row' }, tile(LEDGER_ICON[row.sourceType] || 'wallet', amt < 0 ? 'rose' : isCoin ? 'amber' : 'violet', 34),
+              h('div', { class: 'row-main' }, h('div', { class: 'row-title' }, ledgerLabel(row.sourceType)), h('div', { class: 'row-sub' }, fmtDateTime(row.createdAt))),
               h('div', { class: `row-trail num q-amt ${amt < 0 ? 'neg' : 'pos'}` }, `${amt > 0 ? '+' : ''}${fmtNum(amt)} ${isCoin ? '' : 'XP'}`.trim()));
-          })) : empty('Medi Coins გამოჩნდება, როცა ჯილდოს მიიღებ.'))));
+          })) : empty(t('Medi Coins გამოჩნდება, როცა ჯილდოს მიიღებ.', 'Your Medi Coins will appear here when you claim rewards.')))));
     } catch (e) {
       mount(slot, errorBox(e, () => loadWallet(slot)));
     }
@@ -808,11 +865,11 @@ export default async function questPage(root, ctx) {
       const featured = cat?.featured || [];
       const available = (cat?.available || []).filter((r) => !featured.some((f) => f.id === r.id));
       const balance = cat?.balance?.coins ?? dash?.profile?.coinBalance ?? 0;
-      if (!featured.length && !available.length) { mount(slot, h('div', { class: 'card' }, empty('ჯილდოები მალე გამოჩნდება.', 'გამოიყენე Medi Coins Medicard-ის სარგებელზე.'))); return; }
+      if (!featured.length && !available.length) { mount(slot, h('div', { class: 'card' }, empty(t('ჯილდოები მალე გამოჩნდება.', 'Rewards will appear soon.'), t('გამოიყენე Medi Coins Medicard-ის სარგებელზე.', 'Use Medi Coins for Medicard benefits.')))); return; }
       mount(slot, h('div', { class: 'stack' },
-        featured.length ? h('div', { class: 'q-cat' }, 'რჩეული') : null,
+        featured.length ? h('div', { class: 'q-cat' }, t('რჩეული', 'Featured')) : null,
         featured.length ? h('div', { class: 'grid grid-2' }, featured.map((r) => rewardCard(r, balance, onRedeemed, true))) : null,
-        available.length && featured.length ? h('div', { class: 'q-cat' }, 'ხელმისაწვდომი') : null,
+        available.length && featured.length ? h('div', { class: 'q-cat' }, t('ხელმისაწვდომი', 'Available')) : null,
         available.length ? h('div', { class: 'grid grid-2' }, available.map((r) => rewardCard(r, balance, onRedeemed))) : null));
     } catch (e) {
       mount(slot, errorBox(e, () => loadStore(slot, onRedeemed)));
@@ -824,11 +881,11 @@ export default async function questPage(root, ctx) {
     const short = Math.max(0, Math.floor(Number(r.coinCost) || 0) - Math.floor(Number(balance) || 0));
     return h('button', { type: 'button', class: `card hover q-reward ${featured ? 'featured' : ''}`, onClick: () => rewardDetail(r, balance, onRedeemed) },
       h('div', { class: 'between' }, tile(r.partnerDisplay ? 'gift' : 'sparkles', featured ? 'amber' : 'teal', 42),
-        out ? badge('მარაგი ამოწურულია', 'neutral') : r.userEligibility?.canRedeem ? badge('ხელმისაწვდომი', 'ok') : short > 0 ? badge(`კიდევ ${fmtNum(short)}`, 'warn') : badge('მიუწვდომელი', 'neutral')),
+        out ? badge(t('მარაგი ამოწურულია', 'Out of stock'), 'neutral') : r.userEligibility?.canRedeem ? badge(t('ხელმისაწვდომი', 'Available'), 'ok') : short > 0 ? badge(t(`კიდევ ${fmtNum(short)}`, `${fmtNum(short)} more`), 'warn') : badge(t('მიუწვდომელი', 'Unavailable'), 'neutral')),
       h('div', { class: 'q-reward-title' }, rewardTitle(r)),
-      r.partnerDisplay?.displayName ? h('div', { class: 'faint', style: { fontSize: '12.5px' } }, `პარტნიორი · ${r.partnerDisplay.displayName}`) : null,
+      r.partnerDisplay?.displayName ? h('div', { class: 'faint', style: { fontSize: '12.5px' } }, t(`პარტნიორი · ${r.partnerDisplay.displayName}`, `Partner · ${r.partnerDisplay.displayName}`)) : null,
       rewardDesc(r) ? h('div', { class: 'q-reward-sub' }, rewardDesc(r)) : null,
-      h('div', { class: 'q-reward-foot' }, coin(r.coinCost), h('span', { class: 'link' }, 'ნახვა', icon('chevronRight', { size: 16 }))));
+      h('div', { class: 'q-reward-foot' }, coin(r.coinCost), h('span', { class: 'link' }, t('ნახვა', 'View'), icon('chevronRight', { size: 16 }))));
   }
 
   function rewardDetail(r, balance, onRedeemed) {
@@ -841,30 +898,30 @@ export default async function questPage(root, ctx) {
       title: rewardTitle(r),
       size: 'md',
       body: h('div', { class: 'stack', style: { gap: '16px' } },
-        rewardDesc(r) ? h('div', null, h('div', { class: 'field-label' }, 'რას მიიღებ'), h('p', { class: 'muted', style: { marginTop: '6px' } }, rewardDesc(r))) : null,
+        rewardDesc(r) ? h('div', null, h('div', { class: 'field-label' }, t('რას მიიღებ', 'What you get')), h('p', { class: 'muted', style: { marginTop: '6px' } }, rewardDesc(r))) : null,
         h('div', { class: 'grid grid-2', style: { gap: '10px' } },
-          h('div', { class: 'q-mini' }, h('span', { class: 'faint' }, 'ღირებულება'), h('b', null, coin(r.coinCost))),
-          h('div', { class: 'q-mini' }, h('span', { class: 'faint' }, 'შენ გაქვს'), h('b', null, coin(balance)))),
+          h('div', { class: 'q-mini' }, h('span', { class: 'faint' }, t('ღირებულება', 'Cost')), h('b', null, coin(r.coinCost))),
+          h('div', { class: 'q-mini' }, h('span', { class: 'faint' }, t('შენ გაქვს', 'You have')), h('b', null, coin(balance)))),
         r.entitlementDurationDays || r.redemptionExpiryDays ? h('div', { class: 'muted', style: { fontSize: '13.5px' } },
-          `მოქმედების ვადა: ${fmtNum(r.entitlementDurationDays || r.redemptionExpiryDays)} დღე`) : null,
-        r.validUntil ? h('div', { class: 'muted', style: { fontSize: '13.5px' } }, `შეთავაზება მოქმედებს ${fmtDate(r.validUntil, { year: true })}-მდე`) : null,
-        rewardTerms(r) ? h('div', null, h('div', { class: 'field-label' }, 'პირობები'), h('p', { class: 'faint', style: { marginTop: '6px', fontSize: '13px' } }, rewardTerms(r))) : null,
+          t(`მოქმედების ვადა: ${fmtNum(r.entitlementDurationDays || r.redemptionExpiryDays)} დღე`, `Valid for: ${fmtNum(r.entitlementDurationDays || r.redemptionExpiryDays)} ${Number(r.entitlementDurationDays || r.redemptionExpiryDays) === 1 ? 'day' : 'days'}`)) : null,
+        r.validUntil ? h('div', { class: 'muted', style: { fontSize: '13.5px' } }, t(`შეთავაზება მოქმედებს ${fmtDate(r.validUntil, { year: true })}-მდე`, `Offer valid until ${fmtDate(r.validUntil, { year: true })}`)) : null,
+        rewardTerms(r) ? h('div', null, h('div', { class: 'field-label' }, t('პირობები', 'Terms')), h('p', { class: 'faint', style: { marginTop: '6px', fontSize: '13px' } }, rewardTerms(r))) : null,
         !canRedeem ? h('div', { class: 'q-notice warn' }, icon('info', { size: 16 }), h('span', null,
-          r.inventoryState === 'OUT_OF_STOCK' ? 'მარაგი ამოწურულია' : short > 0 ? `კიდევ ${fmtNum(short)} Medi Coins დაგჭირდება.` : rewardError(r.userEligibility?.reasonCode))) : null,
+          r.inventoryState === 'OUT_OF_STOCK' ? t('მარაგი ამოწურულია', 'Out of stock') : short > 0 ? t(`კიდევ ${fmtNum(short)} Medi Coins დაგჭირდება.`, `You need ${fmtNum(short)} more Medi Coins.`) : rewardError(r.userEligibility?.reasonCode))) : null,
         err),
       footer: (close) => {
-        const redeem = button('გაცვლა', { icon: 'gift', disabled: !canRedeem });
+        const redeem = button(t('გაცვლა', 'Redeem'), { icon: 'gift', disabled: !canRedeem });
         redeem.addEventListener('click', () => {
           // Second step: confirm with the balance before and after.
           openModal({
-            title: 'გავცვალო?',
+            title: t('გავცვალო?', 'Redeem?'),
             size: 'sm',
             body: h('div', { class: 'stack' },
-              h('p', { class: 'muted' }, `გაცვლა ${fmtNum(r.coinCost)} Medi Coins-ზე?`),
-              h('div', { class: 'between' }, h('span', { class: 'faint' }, 'ამჟამინდელი ბალანსი'), coin(balance)),
-              h('div', { class: 'between' }, h('span', { class: 'faint' }, 'შემდეგ'), coin(after))),
+              h('p', { class: 'muted' }, t(`გაცვლა ${fmtNum(r.coinCost)} Medi Coins-ზე?`, `Redeem for ${fmtNum(r.coinCost)} Medi Coins?`)),
+              h('div', { class: 'between' }, h('span', { class: 'faint' }, t('ამჟამინდელი ბალანსი', 'Current balance')), coin(balance)),
+              h('div', { class: 'between' }, h('span', { class: 'faint' }, t('შემდეგ', 'After')), coin(after))),
             footer: (close2) => {
-              const yes = button('გაცვლა');
+              const yes = button(t('გაცვლა', 'Redeem'));
               yes.addEventListener('click', () => busy(yes, async () => {
                 err.hidden = true;
                 try {
@@ -887,11 +944,11 @@ export default async function questPage(root, ctx) {
                   err.hidden = false;
                 }
               }));
-              return [button('გაუქმება', { variant: 'ghost', onClick: () => close2() }), yes];
+              return [button(t('გაუქმება', 'Cancel'), { variant: 'ghost', onClick: () => close2() }), yes];
             },
           });
         });
-        return [button('დახურვა', { variant: 'ghost', onClick: () => close() }), redeem];
+        return [button(t('დახურვა', 'Close'), { variant: 'ghost', onClick: () => close() }), redeem];
       },
     });
     return m;
@@ -903,19 +960,19 @@ export default async function questPage(root, ctx) {
     let shown = false;
     const codeEl = h('span', { class: 'q-code num' }, red.codeMasked || '••••');
     openModal({
-      title: 'ჯილდო გაიცვალა',
+      title: t('ჯილდო გაიცვალა', 'Reward redeemed'),
       size: 'sm',
       body: h('div', { class: 'stack', style: { gap: '14px', textAlign: 'center', alignItems: 'center' } },
         h('span', { class: 'tile ink-amber', style: { width: '64px', height: '64px' } }, icon('gift', { size: 30 })),
         h('div', { class: 'q-reward-title' }, rewardTitle(red.reward || r)),
-        res?.wallet ? h('div', { class: 'muted' }, 'ახალი ბალანსი: ', coin(res.wallet.currentBalance)) : null,
+        res?.wallet ? h('div', { class: 'muted' }, t('ახალი ბალანსი: ', 'New balance: '), coin(res.wallet.currentBalance)) : null,
         code ? h('div', { class: 'q-codebox' }, codeEl,
           h('div', { class: 'hstack', style: { justifyContent: 'center' } },
-            button('კოდის ჩვენება', { variant: 'ghost', size: 'sm', icon: 'eye', onClick: (e) => { shown = !shown; codeEl.textContent = shown ? code : (red.codeMasked || '••••'); e.currentTarget.querySelector('span:last-child').textContent = shown ? 'დამალვა' : 'კოდის ჩვენება'; } }),
-            button('კოდის კოპირება', { variant: 'ghost', size: 'sm', icon: 'copy', onClick: () => { navigator.clipboard?.writeText(code).then(() => toast('კოდი დაკოპირდა'), () => {}); } }))) : null,
-        red.expiresAt ? h('div', { class: 'faint', style: { fontSize: '13px' } }, `ვადა: ${fmtDate(red.expiresAt, { year: true })}`) : null,
-        (res?.entitlement || red.entitlement)?.endsAt ? h('div', { class: 'faint', style: { fontSize: '13px' } }, `აქტიურია ${fmtDate((res.entitlement || red.entitlement).endsAt, { year: true })}-მდე`) : null),
-      footer: (close) => [button('გასაგებია', { onClick: () => close() })],
+            button(t('კოდის ჩვენება', 'Reveal code'), { variant: 'ghost', size: 'sm', icon: 'eye', onClick: (e) => { shown = !shown; codeEl.textContent = shown ? code : (red.codeMasked || '••••'); e.currentTarget.querySelector('span:last-child').textContent = shown ? t('დამალვა', 'Hide') : t('კოდის ჩვენება', 'Reveal code'); } }),
+            button(t('კოდის კოპირება', 'Copy code'), { variant: 'ghost', size: 'sm', icon: 'copy', onClick: () => { navigator.clipboard?.writeText(code).then(() => toast(t('კოდი დაკოპირდა', 'Code copied')), () => {}); } }))) : null,
+        red.expiresAt ? h('div', { class: 'faint', style: { fontSize: '13px' } }, t(`ვადა: ${fmtDate(red.expiresAt, { year: true })}`, `Expires: ${fmtDate(red.expiresAt, { year: true })}`)) : null,
+        (res?.entitlement || red.entitlement)?.endsAt ? h('div', { class: 'faint', style: { fontSize: '13px' } }, t(`აქტიურია ${fmtDate((res.entitlement || red.entitlement).endsAt, { year: true })}-მდე`, `Active until ${fmtDate((res.entitlement || red.entitlement).endsAt, { year: true })}`)) : null),
+      footer: (close) => [button(t('გასაგებია', 'Got it'), { onClick: () => close() })],
     });
   }
 
@@ -923,14 +980,14 @@ export default async function questPage(root, ctx) {
     try {
       const mine = await get('/api/rewards/redemptions');
       if (!alive) return;
-      const groups = [['აქტიური', mine?.active || [], 'გაცემული', 'ok'], ['გამოყენებული', mine?.used || [], 'გამოყენებული', 'neutral'], ['ვადაგასული', mine?.expired || [], 'ვადაგასული', 'neutral']];
-      if (!groups.some(([, list]) => list.length)) { mount(slot, h('div', { class: 'card' }, empty('ჯერ არც ერთი გაცვლა არ გაქვს.'))); return; }
+      const groups = [[t('აქტიური', 'Active'), mine?.active || [], t('გაცემული', 'Issued'), 'ok'], [t('გამოყენებული', 'Used'), mine?.used || [], t('გამოყენებული', 'Used'), 'neutral'], [t('ვადაგასული', 'Expired'), mine?.expired || [], t('ვადაგასული', 'Expired'), 'neutral']];
+      if (!groups.some(([, list]) => list.length)) { mount(slot, h('div', { class: 'card' }, empty(t('ჯერ არც ერთი გაცვლა არ გაქვს.', 'No redemptions yet.')))); return; }
       mount(slot, h('div', { class: 'card' }, groups.filter(([, list]) => list.length).map(([title, list, status, tone]) => h('div', { class: 'q-mine-group' },
         h('div', { class: 'q-cat' }, title),
         h('div', { class: 'list' }, list.map((it) => h('div', { class: 'row' }, tile('gift', tone === 'ok' ? 'amber' : 'neutral', 36),
           h('div', { class: 'row-main' },
-            h('div', { class: 'row-title' }, it.reward ? rewardTitle(it.reward) : 'ჯილდო'),
-            h('div', { class: 'row-sub' }, [status, fmtDate(it.redeemedAt, { year: true }), it.expiresAt ? `ვადა ${fmtDate(it.expiresAt, { year: true })}` : ''].filter(Boolean).join(' · ')),
+            h('div', { class: 'row-title' }, it.reward ? rewardTitle(it.reward) : t('ჯილდო', 'Reward')),
+            h('div', { class: 'row-sub' }, [status, fmtDate(it.redeemedAt, { year: true }), it.expiresAt ? t(`ვადა ${fmtDate(it.expiresAt, { year: true })}`, `Expires ${fmtDate(it.expiresAt, { year: true })}`) : ''].filter(Boolean).join(' · ')),
             it.code || it.codeMasked ? h('div', { class: 'q-code-sm num' }, it.codeMasked || '••••') : null),
           h('div', { class: 'row-trail' }, coin(it.coinCost)))))))));
     } catch (e) {
@@ -944,7 +1001,7 @@ export default async function questPage(root, ctx) {
       if (!alive) return;
       let equipment = { accent: null, accessory: null, background: null, decoration: null, ...(ov?.equipment || {}) };
       const collection = questCollection(ov);
-      const SLOTS = [{ value: 'accent', label: 'ფერი' }, { value: 'background', label: 'ფონი' }, { value: 'accessory', label: 'სიმბოლო' }, { value: 'decoration', label: 'დეკორი' }];
+      const SLOTS = [{ value: 'accent', label: t('ფერი', 'Color') }, { value: 'background', label: t('ფონი', 'Background') }, { value: 'accessory', label: t('სიმბოლო', 'Symbol') }, { value: 'decoration', label: t('დეკორი', 'Decor') }];
       let current = 'accent';
       let busyKey = null;
       const grid = h('div');
@@ -959,7 +1016,7 @@ export default async function questPage(root, ctx) {
           const ms = (ov.journey?.milestones || []).find((m) => m.cosmeticKey === item.key);
           let action;
           if (item.unlocked) {
-            action = button(removable ? 'მოხსნა' : equipped ? 'არჩეულია' : 'არჩევა', { variant: 'secondary', size: 'sm', disabled: (equipped && !removable) || Boolean(busyKey) });
+            action = button(removable ? t('მოხსნა', 'Remove') : equipped ? t('არჩეულია', 'Selected') : t('არჩევა', 'Select'), { variant: 'secondary', size: 'sm', disabled: (equipped && !removable) || Boolean(busyKey) });
             action.addEventListener('click', () => busy(action, async () => {
               busyKey = item.key;
               mount(errEl, '');
@@ -968,27 +1025,27 @@ export default async function questPage(root, ctx) {
                 equipment = { ...equipment, ...(res?.equipment || {}) };
                 drawSeal(); draw();
               } catch {
-                mount(errEl, h('div', { class: 'form-error' }, 'სტილი ვერ შეინახა. შეამოწმე კავშირი და ხელახლა აირჩიე.'));
+                mount(errEl, h('div', { class: 'form-error' }, t('სტილი ვერ შეინახა. შეამოწმე კავშირი და ხელახლა აირჩიე.', 'Couldn’t save the style. Check your connection and choose again.')));
               } finally { busyKey = null; }
             }));
           } else {
-            action = h('div', { class: 'faint q-locked' }, icon('lock', { size: 14 }), 'გააგრძელე მისიები');
+            action = h('div', { class: 'faint q-locked' }, icon('lock', { size: 14 }), t('გააგრძელე მისიები', 'Keep doing missions'));
           }
           return h('div', { class: `card q-coll ${equipped ? 'on' : ''} ${item.unlocked ? '' : 'locked'}` },
             emblem({ ...equipment, [current]: item.key }, 62),
             h('div', { class: 'q-coll-title' }, cosmeticTitle(item)),
-            h('div', { class: 'faint', style: { fontSize: '12px' } }, equipped ? 'არჩეულია' : item.unlocked ? 'გახსნილია' : ms ? `გაიხსნება ${fmtNum(ms.at)} ქულაზე` : 'ჯერ გასახსნელია'),
+            h('div', { class: 'faint', style: { fontSize: '12px' } }, equipped ? t('არჩეულია', 'Selected') : item.unlocked ? t('გახსნილია', 'Unlocked') : ms ? t(`გაიხსნება ${fmtNum(ms.at)} ქულაზე`, `Unlocks at ${fmtNum(ms.at)} ${Number(ms.at) === 1 ? 'point' : 'points'}`) : t('ჯერ გასახსნელია', 'Still locked')),
             h('div', { style: { marginTop: 'auto' } }, action));
-        })) : h('div', { class: 'card' }, empty('ამ კატეგორიაში ნივთები ჯერ არ არის.')));
+        })) : h('div', { class: 'card' }, empty(t('ამ კატეგორიაში ნივთები ჯერ არ არის.', 'No items in this category yet.'))));
       };
       drawSeal(); draw();
       const unlockedCount = collection.filter((i) => i.unlocked).length;
       mount(slot, h('div', { class: 'stack' },
         h('div', { class: 'card q-coll-head' }, seal,
           h('div', { style: { flex: 1, minWidth: 0 } },
-            h('div', { class: 'card-title' }, 'შენი პროგრესის ნიშანი'),
-            h('div', { class: 'muted', style: { fontSize: '13.5px' } }, 'ეტაპებზე გახსნილი ფერით, ფონითა და სიმბოლოებით გააფორმე.'),
-            h('div', { class: 'faint', style: { fontSize: '12.5px', marginTop: '6px' } }, `${unlockedCount} / ${collection.length} გახსნილია · სტილი ცვლის მხოლოდ ვიზუალს — ქულები და ჯილდოები იგივე რჩება.`))),
+            h('div', { class: 'card-title' }, t('შენი პროგრესის ნიშანი', 'Your progress seal')),
+            h('div', { class: 'muted', style: { fontSize: '13.5px' } }, t('ეტაპებზე გახსნილი ფერით, ფონითა და სიმბოლოებით გააფორმე.', 'Style it with the colors, backgrounds and symbols you unlock at milestones.')),
+            h('div', { class: 'faint', style: { fontSize: '12.5px', marginTop: '6px' } }, t(`${unlockedCount} / ${collection.length} გახსნილია · სტილი ცვლის მხოლოდ ვიზუალს — ქულები და ჯილდოები იგივე რჩება.`, `${unlockedCount} / ${collection.length} unlocked · Style only changes the look — points and rewards stay the same.`)))),
         segmented(SLOTS, current, (v) => { current = v; draw(); }),
         errEl, grid));
     } catch (e) {
@@ -999,12 +1056,20 @@ export default async function questPage(root, ctx) {
   function whyTarget(q) {
     const kind = q.targetSource === 'PERSONALIZED' ? 'personalized' : q.targetSource === 'COMEBACK' ? 'comeback' : 'default';
     openModal({ title: WHY.title, size: 'sm',
-      body: h('div', { class: 'stack' }, h('b', { class: 'q-brand' }, `${fmtNum(q.target)} ნაბიჯი`), h('p', { class: 'muted' }, WHY[kind])),
-      footer: (close) => [button('გასაგებია', { onClick: () => close() })] });
+      body: h('div', { class: 'stack' }, h('b', { class: 'q-brand' }, t(`${fmtNum(q.target)} ნაბიჯი`, `${fmtNum(q.target)} steps`)), h('p', { class: 'muted' }, WHY[kind])),
+      footer: (close) => [button(t('გასაგებია', 'Got it'), { onClick: () => close() })] });
   }
 
   function guide() {
-    const QUESTIONS = [
+    const QUESTIONS = isEn ? [
+      ['What’s the difference between XP and coins?', 'XP is experience and raises your level. Medi Coins are used in the rewards store. You get both when you claim a mission or achievement reward. Spending coins never lowers your XP or level; coins are not money.'],
+      ['How are progress points counted?', 'Each completed daily mission gives you 1 progress point, and a weekly mission gives 3. Points are counted automatically when you complete a mission, even before you claim the reward. Progress points unlock new milestones and collection items. Achievements don’t add to these points. They are not a step count or distance walked.'],
+      ['How does the streak work?', 'If you complete at least one daily mission, the day counts toward your streak. Active days in a row grow the streak. A missed day ends the current streak; your best streak, earned XP and rewards stay. Just opening the app doesn’t grow the streak.'],
+      ['When do missions refresh?', 'Daily missions change when a new day starts, weekly missions on Monday. Time follows your account’s time zone. You can claim a completed mission’s reward later; an unfinished mission moves to history once it expires.'],
+      ['Where do steps and water progress come from?', 'Steps sync through a connection to your phone’s health app — use the MEDICARD app on your phone for this. The water mission needs a daily hydration goal and logged water. Progress is counted by the system; you can’t mark a mission done by hand on this page.'],
+      ['How is the Medi mission completed?', 'Open Medi and talk to it. The mission is completed after a successful conversation. Talking to Medi is free. Sharing data with AI needs your consent.'],
+      ['Why did my goal change?', 'A new movement goal can adapt to your recent activity. “Why this goal?” on the mission card shows the exact reason. The goal of a mission that’s already assigned stays fixed. Play at your own pace — XP and level are not a health assessment.'],
+    ] : [
       ['რა განსხვავებაა XP-სა და მონეტებს შორის?', 'XP გამოცდილებაა და შენს დონეს ზრდის. Medi Coins ჯილდოების მაღაზიაში გამოიყენება. ორივეს იღებ მისიის ან მიღწევის ჯილდოს მიღებისას. მონეტების დახარჯვა XP-სა და დონეს არ ამცირებს; მონეტები ფული არ არის.'],
       ['როგორ ვითვლით პროგრესის ქულებს?', 'ყოველი შესრულებული დღიური მისია გაძლევს 1 პროგრესის ქულას, კვირის მისია — 3-ს. ქულები ავტომატურად ითვლება შესრულებისას, ჯილდოს მიღებამდეც. პროგრესის ქულებით ახალ ეტაპებსა და კოლექციის ნივთებს ხსნი. მიღწევები ამ ქულებს არ ამატებს. ეს არ არის ნაბიჯების რაოდენობა ან გავლილი კილომეტრები.'],
       ['როგორ მუშაობს სერია?', 'ერთ დღიურ მისიას მაინც თუ შეასრულებ, დღე სერიაში ჩაითვლება. ზედიზედ აქტიური დღეები სერიას ზრდის. გამოტოვებული დღე მიმდინარე სერიას წყვეტს; შენი საუკეთესო სერია, მიღებული XP და ჯილდოები რჩება. მხოლოდ აპის გახსნა ამ სერიას არ ზრდის.'],
@@ -1015,29 +1080,29 @@ export default async function questPage(root, ctx) {
     ];
     const tzName = dash?.daily?.timezone || dash?.profile?.timezone;
     openModal({
-      title: 'როგორ მუშაობს?',
+      title: t('როგორ მუშაობს?', 'How it works'),
       size: 'md',
       body: h('div', { class: 'stack', style: { gap: '14px' } },
-        h('div', { class: 'card q-steps' }, ['აირჩიე დღიური ან კვირის მისია.', 'შეასრულე — პროგრესი ავტომატურად განახლდება.', 'დააჭირე „ჯილდოს მიღება“ და მიიღე XP + მონეტები.']
-          .map((t, i) => h('div', { class: 'hstack', style: { flexWrap: 'nowrap', alignItems: 'flex-start' } }, h('b', { class: 'q-brand' }, `0${i + 1}`), h('span', null, t)))),
-        QUESTIONS.map(([t, b]) => h('details', { class: 'q-faq' }, h('summary', null, t, icon('chevronDown', { size: 16 })), h('p', { class: 'muted' }, b))),
-        tzName ? h('p', { class: 'faint', style: { fontSize: '12.5px' } }, `შენი დროის სარტყელი: ${tzName}`) : null),
-      footer: (close) => [button('გასაგებია', { onClick: () => close() })],
+        h('div', { class: 'card q-steps' }, [t('აირჩიე დღიური ან კვირის მისია.', 'Pick a daily or weekly mission.'), t('შეასრულე — პროგრესი ავტომატურად განახლდება.', 'Complete it — progress updates automatically.'), t('დააჭირე „ჯილდოს მიღება“ და მიიღე XP + მონეტები.', 'Tap “Claim reward” to get XP + coins.')]
+          .map((line, i) => h('div', { class: 'hstack', style: { flexWrap: 'nowrap', alignItems: 'flex-start' } }, h('b', { class: 'q-brand' }, `0${i + 1}`), h('span', null, line)))),
+        QUESTIONS.map(([q, b]) => h('details', { class: 'q-faq' }, h('summary', null, q, icon('chevronDown', { size: 16 })), h('p', { class: 'muted' }, b))),
+        tzName ? h('p', { class: 'faint', style: { fontSize: '12.5px' } }, t(`შენი დროის სარტყელი: ${tzName}`, `Your time zone: ${tzName}`)) : null),
+      footer: (close) => [button(t('გასაგებია', 'Got it'), { onClick: () => close() })],
     });
   }
 
   function levelUp(level, reward) {
     openModal({
-      title: 'ახალი დონე',
+      title: t('ახალი დონე', 'New level'),
       size: 'sm',
       body: h('div', { class: 'stack', style: { alignItems: 'center', textAlign: 'center', gap: '12px' } },
-        ring({ value: 100, max: 100, size: 120, stroke: 10, label: String(level), sub: 'დონე', labelScale: 0.3 }),
+        ring({ value: 100, max: 100, size: 120, stroke: 10, label: String(level), sub: t('დონე', 'Level'), labelScale: 0.3 }),
         h('div', { class: 'q-rank' }, rankLabel(rankKeyFromLevel(level))),
-        h('p', { class: 'muted' }, 'ახალი დონე. ლამაზად მივდივართ 😄'),
+        h('p', { class: 'muted' }, t('ახალი დონე. ლამაზად მივდივართ 😄', 'New level. Beautifully done 😄')),
         reward ? h('div', { class: 'hstack', style: { justifyContent: 'center' } },
           h('span', { class: 'q-pill coin' }, icon('coins', { size: 13 }), `+${fmtNum(reward.coinsAwarded)}`),
           h('span', { class: 'q-pill xp' }, `+${fmtNum(reward.xpAwarded)} XP`)) : null),
-      footer: (close) => [button('გაგრძელება', { onClick: () => close() })],
+      footer: (close) => [button(t('გაგრძელება', 'Continue'), { onClick: () => close() })],
     });
   }
 
@@ -1055,7 +1120,12 @@ function referralCard() {
   const draw = async () => {
     try {
       const d = await get('/api/referrals/me');
-      const steps = [
+      const steps = isEn ? [
+        'Your friend installs MEDICARD and signs up',
+        'Within 14 days of signing up, they enter your code',
+        'They verify their phone and make a first entry — a medication, lab result, visit, meal or cycle log',
+        `You each get ${fmtNum(d?.coinsPerSide ?? 100)} Medi Coins`,
+      ] : [
         'მეგობარი აყენებს MEDICARD-ს და რეგისტრირდება',
         'რეგისტრაციიდან 14 დღეში შეჰყავს შენი კოდი',
         'ადასტურებს ტელეფონს და აკეთებს პირველ ჩანაწერს — წამალი, ანალიზი, ვიზიტი, კვება ან ციკლი',
@@ -1063,41 +1133,41 @@ function referralCard() {
       ];
       const parts = [
         h('div', { class: 'hstack', style: { flexWrap: 'nowrap' } }, tile('gift', 'amber', 42),
-          h('div', null, h('div', { class: 'card-title' }, 'მოიწვიე ოჯახის წევრი'),
-            h('div', { class: 'muted', style: { fontSize: '13px' } }, `პირველი ჩანაწერის შემდეგ ორივე მიიღებთ ${fmtNum(d?.coinsPerSide ?? 100)} Medi მონეტას.`))),
+          h('div', null, h('div', { class: 'card-title' }, t('მოიწვიე ოჯახის წევრი', 'Invite a family member')),
+            h('div', { class: 'muted', style: { fontSize: '13px' } }, t(`პირველი ჩანაწერის შემდეგ ორივე მიიღებთ ${fmtNum(d?.coinsPerSide ?? 100)} Medi მონეტას.`, `After their first entry, you each get ${fmtNum(d?.coinsPerSide ?? 100)} Medi Coins.`)))),
       ];
       if (d?.phoneRequired) {
-        parts.push(h('div', { class: 'q-notice' }, icon('smartphone', { size: 16 }), h('span', null, 'კოდის მისაღებად დაადასტურე ტელეფონი. ასე ვიცავთ მოწვევებს ყალბი ანგარიშებისგან.')),
-          button('ტელეფონის დადასტურება', { variant: 'secondary', icon: 'smartphone', onClick: async () => { if (await verifyPhone()) { invalidate('/api/referrals'); draw(); } } }));
+        parts.push(h('div', { class: 'q-notice' }, icon('smartphone', { size: 16 }), h('span', null, t('კოდის მისაღებად დაადასტურე ტელეფონი. ასე ვიცავთ მოწვევებს ყალბი ანგარიშებისგან.', 'Verify your phone to get your code. This protects invites from fake accounts.'))),
+          button(t('ტელეფონის დადასტურება', 'Verify phone'), { variant: 'secondary', icon: 'smartphone', onClick: async () => { if (await verifyPhone()) { invalidate('/api/referrals'); draw(); } } }));
       }
       if (d?.code) {
-        const shareText = `შემოდი MEDICARD-ში — წამლები, ანალიზები და ჯანმრთელობა ერთ აპში. რეგისტრაციის შემდეგ შეიყვანე ჩემი კოდი ${d.code} და ორივე მივიღებთ ${d.coinsPerSide} Medi მონეტას.\n${d.link || ''}`;
+        const shareText = t(`შემოდი MEDICARD-ში — წამლები, ანალიზები და ჯანმრთელობა ერთ აპში. რეგისტრაციის შემდეგ შეიყვანე ჩემი კოდი ${d.code} და ორივე მივიღებთ ${d.coinsPerSide} Medi მონეტას.\n${d.link || ''}`, `Join me on MEDICARD — medications, lab results and health in one app. After you sign up, enter my code ${d.code} and we’ll both get ${d.coinsPerSide} Medi Coins.\n${d.link || ''}`);
         parts.push(
-          h('div', { class: 'q-invite-code' }, h('span', { class: 'faint' }, 'შენი კოდი'), h('b', { class: 'num', 'aria-label': `შენი კოდი: ${d.code.split('').join(' ')}` }, d.code)),
+          h('div', { class: 'q-invite-code' }, h('span', { class: 'faint' }, t('შენი კოდი', 'Your code')), h('b', { class: 'num', 'aria-label': t(`შენი კოდი: ${d.code.split('').join(' ')}`, `Your code: ${d.code.split('').join(' ')}`) }, d.code)),
           h('div', { class: 'hstack' },
-            button('კოდის გაზიარება', { icon: 'share', onClick: async () => {
+            button(t('კოდის გაზიარება', 'Share code'), { icon: 'share', onClick: async () => {
               try {
                 if (navigator.share) await navigator.share({ text: shareText });
-                else { await navigator.clipboard.writeText(shareText); toast('ბმული მზადაა გასაზიარებლად'); }
+                else { await navigator.clipboard.writeText(shareText); toast(t('ბმული მზადაა გასაზიარებლად', 'Link copied — ready to share')); }
               } catch { /* dismissed */ }
             } }),
-            button('კოპირება', { variant: 'ghost', icon: 'copy', onClick: () => navigator.clipboard?.writeText(d.link || d.code).then(() => toast('დაკოპირდა'), () => {}) })),
+            button(t('კოპირება', 'Copy'), { variant: 'ghost', icon: 'copy', onClick: () => navigator.clipboard?.writeText(d.link || d.code).then(() => toast(t('დაკოპირდა', 'Copied')), () => {}) })),
           h('div', { class: 'grid grid-3 q-invite-stats' },
-            h('div', { class: 'q-mini' }, h('b', { class: 'num' }, fmtNum(d.invited)), h('span', { class: 'faint' }, 'მოწვეული')),
-            h('div', { class: 'q-mini' }, h('b', { class: 'num' }, fmtNum(d.pending)), h('span', { class: 'faint' }, 'ელოდება')),
-            h('div', { class: 'q-mini' }, h('b', { class: 'num' }, fmtNum(d.coinsEarned)), h('span', { class: 'faint' }, 'მიღებული მონეტა'))),
-          h('div', { class: 'faint', style: { fontSize: '12.5px' } }, `ამ თვეში კიდევ ${fmtNum(d.monthRemaining)} ბონუსი შეგიძლია მიიღო (მაქს. ${fmtNum(d.monthlyCap)}).`));
+            h('div', { class: 'q-mini' }, h('b', { class: 'num' }, fmtNum(d.invited)), h('span', { class: 'faint' }, t('მოწვეული', 'Invited'))),
+            h('div', { class: 'q-mini' }, h('b', { class: 'num' }, fmtNum(d.pending)), h('span', { class: 'faint' }, t('ელოდება', 'Pending'))),
+            h('div', { class: 'q-mini' }, h('b', { class: 'num' }, fmtNum(d.coinsEarned)), h('span', { class: 'faint' }, t('მიღებული მონეტა', 'Coins earned')))),
+          h('div', { class: 'faint', style: { fontSize: '12.5px' } }, t(`ამ თვეში კიდევ ${fmtNum(d.monthRemaining)} ბონუსი შეგიძლია მიიღო (მაქს. ${fmtNum(d.monthlyCap)}).`, `You can get ${fmtNum(d.monthRemaining)} more ${Number(d.monthRemaining) === 1 ? 'bonus' : 'bonuses'} this month (max ${fmtNum(d.monthlyCap)}).`)));
       }
-      parts.push(h('details', { class: 'q-faq' }, h('summary', null, 'როგორ მუშაობს', icon('chevronDown', { size: 16 })),
+      parts.push(h('details', { class: 'q-faq' }, h('summary', null, t('როგორ მუშაობს', 'How it works'), icon('chevronDown', { size: 16 })),
         h('ol', { class: 'q-steps-list' }, steps.map((s) => h('li', null, s))),
-        h('p', { class: 'faint', style: { fontSize: '12.5px' } }, 'Medi მონეტებს ფულადი ღირებულება არ აქვს.')));
+        h('p', { class: 'faint', style: { fontSize: '12.5px' } }, t('Medi მონეტებს ფულადი ღირებულება არ აქვს.', 'Medi Coins have no cash value.'))));
       if (d?.invitedBy) {
         parts.push(h('p', { class: 'muted', style: { fontSize: '13px' } }, d.invitedBy.status === 'REWARDED'
-          ? 'მოწვევის ბონუსი უკვე მიღებული გაქვს.'
-          : 'მოწვევის კოდი შეყვანილია. ბონუსს მიიღებ ტელეფონის დადასტურებისა და პირველი ჩანაწერის შემდეგ.'));
+          ? t('მოწვევის ბონუსი უკვე მიღებული გაქვს.', 'You’ve already received your invite bonus.')
+          : t('მოწვევის კოდი შეყვანილია. ბონუსს მიიღებ ტელეფონის დადასტურებისა და პირველი ჩანაწერის შემდეგ.', 'Invite code entered. You’ll get the bonus after you verify your phone and make your first entry.')));
       } else if (d?.canClaim) {
         // Claiming a friend's code is tied to one device, so it stays in the phone app.
-        parts.push(h('p', { class: 'faint', style: { fontSize: '12.5px' } }, 'მეგობრის კოდი გაქვს? შეიყვანე MEDICARD აპში: პროფილი → მოიწვიე მეგობარი.'));
+        parts.push(h('p', { class: 'faint', style: { fontSize: '12.5px' } }, t('მეგობრის კოდი გაქვს? შეიყვანე MEDICARD აპში: პროფილი → მოიწვიე მეგობარი.', 'Have a friend’s code? Enter it in the MEDICARD app: Profile → Invite a friend.')));
       }
       mount(slot, h('div', { class: 'stack' }, parts));
     } catch (e) {
@@ -1117,7 +1187,7 @@ export function homeCard() {
       const d = await get('/api/quests', tz() ? { timezone: tz() } : undefined);
       const p = d?.profile;
       if (!p) {
-        mount(el, empty('მისიები დროებით მიუწვდომელია', 'შენი დაგროვილი მონაცემები ანგარიშზე რჩება.'));
+        mount(el, empty(t('მისიები დროებით მიუწვდომელია', 'Missions are temporarily unavailable'), t('შენი დაგროვილი მონაცემები ანგარიშზე რჩება.', 'Everything you’ve earned stays on your account.')));
         return;
       }
       const lr = levelRing(p);
@@ -1128,9 +1198,9 @@ export function homeCard() {
           ring({ value: lr.percent, max: 100, size: 64, stroke: 7, label: String(p.level), labelScale: 0.34 }),
           h('div', { class: 'q-home-rank' },
             h('div', { class: 'card-title' }, rankLabel(p.rankKey || rankKeyFromLevel(p.level))),
-            h('div', { class: 'faint', style: { fontSize: '12.5px' } }, lr.remaining != null ? `შემდეგ დონემდე ${fmtNum(lr.remaining)} XP` : 'უმაღლესი დონე მიღწეულია')),
-          h('div', { class: 'q-home-coins' }, coin(p.coinBalance), h('span', { class: 'faint' }, `${fmtNum(p.currentStreak)} დღე სერია`))),
-        ready ? h('div', { class: 'q-notice' }, icon('gift', { size: 16 }), h('span', null, 'ჯილდო მზადაა — მიიღე Medi Quest-ში.')) : null,
+            h('div', { class: 'faint', style: { fontSize: '12.5px' } }, lr.remaining != null ? t(`შემდეგ დონემდე ${fmtNum(lr.remaining)} XP`, `${fmtNum(lr.remaining)} XP to next level`) : t('უმაღლესი დონე მიღწეულია', 'Top level reached'))),
+          h('div', { class: 'q-home-coins' }, coin(p.coinBalance), h('span', { class: 'faint' }, t(`${fmtNum(p.currentStreak)} დღე სერია`, `${fmtNum(p.currentStreak)}-day streak`)))),
+        ready ? h('div', { class: 'q-notice' }, icon('gift', { size: 16 }), h('span', null, t('ჯილდო მზადაა — მიიღე Medi Quest-ში.', 'A reward is ready — claim it in Medi Quest.'))) : null,
         daily.length ? h('div', { class: 'q-home-list' }, daily.map((q) => {
           const look = KIND_LOOK[questKind(q)] || KIND_LOOK.movement;
           const claimed = q.status === 'CLAIMED';
@@ -1138,10 +1208,10 @@ export function homeCard() {
             claimed ? h('span', { class: 'tile ink-green', style: { width: '34px', height: '34px' } }, icon('check', { size: 16 })) : tile(look.icon, look.ink, 34),
             h('div', { class: 'q-home-main' },
               h('div', { class: 'between' }, h('span', { class: 'q-home-title' }, questTitle(q)),
-                q.claimable ? badge('ჯილდო მზადაა', 'brand') : h('span', { class: 'faint num', style: { fontSize: '12.5px' } }, claimed ? 'მიღებულია' : progressLabel(q))),
+                q.claimable ? badge(t('ჯილდო მზადაა', 'Reward ready'), 'brand') : h('span', { class: 'faint num', style: { fontSize: '12.5px' } }, claimed ? t('მიღებულია', 'Claimed') : progressLabel(q))),
               claimed ? null : progress(pct(q.progressPercent), 100, { ink: q.claimable ? 'green' : look.ink })));
-        })) : h('p', { class: 'muted', style: { fontSize: '13.5px' } }, 'დღეს Medi ჯერ არ მოამზადა მისიები.'),
-        h('a', { class: 'link q-home-link', href: '/quest', 'data-link': '' }, 'გახსენი Medi Quest', icon('chevronRight', { size: 16 })));
+        })) : h('p', { class: 'muted', style: { fontSize: '13.5px' } }, t('დღეს Medi ჯერ არ მოამზადა მისიები.', 'Medi hasn’t prepared missions yet today.')),
+        h('a', { class: 'link q-home-link', href: '/quest', 'data-link': '' }, t('გახსენი Medi Quest', 'Open Medi Quest'), icon('chevronRight', { size: 16 })));
     } catch (e) {
       mount(el, errorBox(e, () => { const next = homeCard(); el.replaceWith(next); }));
     }

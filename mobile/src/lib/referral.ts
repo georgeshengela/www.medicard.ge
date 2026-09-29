@@ -1,4 +1,5 @@
 import { getPreference, setPreference } from './storage';
+import { tx } from '../i18n/locale.js';
 
 /** Referral (Phase 3.4). Mirrors server/src/lib/referral.js code rules. */
 export const REFERRAL_CODE_ALPHABET = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
@@ -40,5 +41,8 @@ export type ReferralSummary = {
 };
 
 export function referralShareMessage(code: string, link: string, coins: number): string {
-  return `შემოდი MEDICARD-ში — წამლები, ანალიზები და ჯანმრთელობა ერთ აპში. რეგისტრაციის შემდეგ შეიყვანე ჩემი კოდი ${code} და ორივე მივიღებთ ${coins} Medi მონეტას.\n${link}`;
+  return tx(
+    `შემოდი MEDICARD-ში — წამლები, ანალიზები და ჯანმრთელობა ერთ აპში. რეგისტრაციის შემდეგ შეიყვანე ჩემი კოდი ${code} და ორივე მივიღებთ ${coins} Medi მონეტას.\n${link}`,
+    `Join me on MEDICARD — medications, lab results and your health in one app. After you sign up, enter my code ${code} and we both get ${coins} Medi Coins.\n${link}`,
+  );
 }

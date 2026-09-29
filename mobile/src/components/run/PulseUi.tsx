@@ -6,6 +6,7 @@ import {APP_MODAL_PROPS,APP_MODAL_OVERLAY, Modal } from '@/components/ui/appModa
 import {HomeSectionHeading} from '@/components/home/HomeSectionHeading';
 import {useIsDark,useThemeColors} from '@/theme/colors';
 import {HUB,hubInk,hubTint,type HubInk} from '@/theme/hub';
+import { tx } from '@/i18n/locale';
 export const BOLD='NotoSansGeorgian_700Bold',SEMIBOLD='NotoSansGeorgian_600SemiBold',REGULAR='NotoSansGeorgian_400Regular';
 /** MEDIRUN brand teal and its filled-CTA shade. */
 export const RUN_TEAL='#14B8A6',RUN_CTA='#0D9488';
@@ -50,13 +51,13 @@ export function Sheet({title,visible,onClose,children,keyboardAware=false,footer
  const close=()=>{if(keyboardAware)Keyboard.dismiss();onClose();};
  return <Modal {...APP_MODAL_PROPS} visible={visible} onRequestClose={close}>
   <View style={{flex:1}}>
-   <Pressable accessibilityLabel="დახურვა" onPress={close} style={{position:'absolute',inset:0,backgroundColor:APP_MODAL_OVERLAY}}/>
+   <Pressable accessibilityLabel={tx('დახურვა', 'Close')} onPress={close} style={{position:'absolute',inset:0,backgroundColor:APP_MODAL_OVERLAY}}/>
    {/* Android's native Modal already uses adjustResize; only iOS needs an extra keyboard inset. */}
    <KeyboardAvoidingView enabled={keyboardAware&&Platform.OS==='ios'} behavior="padding" keyboardVerticalOffset={0} pointerEvents="box-none" style={{flex:1}}>
     <View pointerEvents="box-none" style={{flex:1,justifyContent:'flex-end',paddingTop:insets.top+12}}>
      <View accessibilityViewIsModal style={{flexShrink:1,backgroundColor:c.bg100,maxHeight:keyboardOpen?'100%':'88%',borderTopLeftRadius:30,borderTopRightRadius:30,paddingBottom:keyboardOpen?10:Math.max(18,insets.bottom)}}>
       <View style={{width:34,height:4,backgroundColor:c.bg300,borderRadius:5,alignSelf:'center',marginTop:10,flexShrink:0}}/>
-      <View style={{paddingHorizontal:HUB.gutter,paddingVertical:keyboardOpen?10:16,flexDirection:'row',alignItems:'center',gap:10,flexShrink:0}}><Copy size={20} bold style={{flex:1}}>{title}</Copy>{keyboardOpen?<IconButton label="კლავიატურის დამალვა" icon={ChevronDown} onPress={()=>Keyboard.dismiss()}/>:null}<IconButton label="დახურვა" icon={X} onPress={close}/></View>
+      <View style={{paddingHorizontal:HUB.gutter,paddingVertical:keyboardOpen?10:16,flexDirection:'row',alignItems:'center',gap:10,flexShrink:0}}><Copy size={20} bold style={{flex:1}}>{title}</Copy>{keyboardOpen?<IconButton label={tx('კლავიატურის დამალვა', 'Hide keyboard')} icon={ChevronDown} onPress={()=>Keyboard.dismiss()}/>:null}<IconButton label={tx('დახურვა', 'Close')} icon={X} onPress={close}/></View>
       <ScrollView style={{flexShrink:1}} keyboardShouldPersistTaps="handled" keyboardDismissMode={Platform.OS==='ios'?'interactive':'on-drag'} automaticallyAdjustKeyboardInsets={false} contentContainerStyle={{paddingHorizontal:HUB.gutter,paddingBottom:footer?14:20,gap:14}}>{children}</ScrollView>
       {footer?<View style={{paddingHorizontal:HUB.gutter,paddingTop:12,borderTopWidth:1,borderColor:c.bg300,flexShrink:0}}>{footer}</View>:null}
      </View>

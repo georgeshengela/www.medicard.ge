@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { prisma } from '../lib/prisma.js';
 import { requireAuth } from '../middleware/auth.js';
 import { asyncHandler } from '../middleware/error.js';
+import { t } from '../lib/i18n.js';
 
 export const medicationsRouter = Router();
 
@@ -73,7 +74,7 @@ medicationsRouter.patch(
       where: { id, userId: req.user.id },
       data,
     });
-    if (count === 0) return res.status(404).json({ error: 'მედიკამენტი ვერ მოიძებნა.' });
+    if (count === 0) return res.status(404).json({ error: t(req, 'მედიკამენტი ვერ მოიძებნა.', 'Medication not found.') });
 
     const medication = await prisma.medicationSchedule.findUnique({ where: { id } });
     return res.json({ medication });
@@ -86,7 +87,7 @@ medicationsRouter.delete(
     const { id } = idParam.parse(req.params);
     const { count } = await prisma.medicationSchedule.deleteMany({ where: { id, userId: req.user.id } });
 
-    if (count === 0) return res.status(404).json({ error: 'მედიკამენტი ვერ მოიძებნა.' });
+    if (count === 0) return res.status(404).json({ error: t(req, 'მედიკამენტი ვერ მოიძებნა.', 'Medication not found.') });
     return res.json({ deleted: true });
   }),
 );

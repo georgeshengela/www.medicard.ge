@@ -18,6 +18,7 @@ import Svg, {
 } from "react-native-svg";
 import { Beef, Droplet, Leaf, Wheat } from "lucide-react-native";
 import { useIsDark, useThemeColors } from "@/theme/colors";
+import { tx } from "@/i18n/locale";
 import {
   nutritionDateLabel,
   type NutritionDay,
@@ -116,7 +117,7 @@ export function EnergyRing({
     <Reveal>
       <View
         accessible
-        accessibilityLabel={`${Math.round(value)} აღრიცხული კკალ${target ? `, დღის სამიზნე ${target} კკალ` : ", დღის სამიზნე ჯერ არჩეული არ არის"}`}
+        accessibilityLabel={tx(`${Math.round(value)} აღრიცხული კკალ${target ? `, დღის სამიზნე ${target} კკალ` : ", დღის სამიზნე ჯერ არჩეული არ არის"}`, `${Math.round(value)} kcal logged${target ? `, daily target ${target} kcal` : ", no daily target chosen yet"}`)}
         style={{
           width: "100%",
           maxWidth: 300,
@@ -186,7 +187,7 @@ export function EnergyRing({
         >
           <Leaf size={19} color={ink} strokeWidth={1.7} />
           <Label style={{ fontSize: 11, marginTop: 2 }}>
-            აღრიცხული ენერგია
+            {tx("აღრიცხული ენერგია", "Energy logged")}
           </Label>
           <Label
             style={{
@@ -200,7 +201,7 @@ export function EnergyRing({
           >
             {Math.round(value).toLocaleString("en-US")}
           </Label>
-          <Label style={{ fontSize: 11, lineHeight: 17 }}>კილოკალორია</Label>
+          <Label style={{ fontSize: 11, lineHeight: 17 }}>{tx("კილოკალორია", "kilocalories")}</Label>
         </View>
         <View
           style={{
@@ -232,8 +233,8 @@ export function EnergyRing({
             />
             <Label style={{ fontSize: 10, lineHeight: 16 }}>
               {target
-                ? `${target} კკალ · დღის სამიზნე`
-                : "შენი რიტმი, შენი ბალანსი"}
+                ? tx(`${target} კკალ · დღის სამიზნე`, `${target} kcal · daily target`)
+                : tx("შენი რიტმი, შენი ბალანსი", "Your rhythm, your balance")}
             </Label>
           </View>
         </View>
@@ -255,7 +256,7 @@ export function MacroRails({
     ? ["#80C6B6", "#B6A6D5", "#D3B38A"]
     : ["#267F70", "#7D66A5", "#996B37"];
   const icons = [Beef, Wheat, Droplet],
-    names = ["ცილა", "ნახშირწყალი", "ცხიმი"];
+    names = tx(["ცილა", "ნახშირწყალი", "ცხიმი"], ["Protein", "Carbs", "Fat"]);
   return (
     <View style={{ flexDirection: "row", paddingVertical: 9 }}>
       {(["protein", "carbs", "fat"] as const).map((key, i) => {
@@ -267,7 +268,7 @@ export function MacroRails({
           <View
             key={key}
             accessible
-            accessibilityLabel={`${names[i]}: ${Math.round(actual[key])} გრამი${goal ? `, სამიზნე ${goal} გრამი` : ""}`}
+            accessibilityLabel={tx(`${names[i]}: ${Math.round(actual[key])} გრამი${goal ? `, სამიზნე ${goal} გრამი` : ""}`, `${names[i]}: ${Math.round(actual[key])} grams${goal ? `, target ${goal} grams` : ""}`)}
             style={{
               flex: 1,
               alignItems: "center",
@@ -321,11 +322,11 @@ export function MacroRails({
               }}
             >
               {Math.round(actual[key])}
-              <Label style={{ fontSize: 10 }}> გ</Label>
+              <Label style={{ fontSize: 10 }}>{tx(" გ", " g")}</Label>
             </Label>
             {!!target && (
               <Label style={{ fontSize: 9, lineHeight: 15 }}>
-                {goal} გ სამიზნე
+                {tx(`${goal} გ სამიზნე`, `${goal} g target`)}
               </Label>
             )}
           </View>
@@ -368,19 +369,19 @@ export function IntakeWeekChart({ days }: { days: NutritionDay[] }) {
             }}
           >
             {current.recorded ? Math.round(current.totals.calories) : "—"}
-            <Label> კკალ</Label>
+            <Label>{tx(" კკალ", " kcal")}</Label>
           </Label>
         </View>
         <View style={{ alignItems: "flex-end", paddingBottom: 6, gap: 4 }}>
           <Label style={{ fontSize: 10 }}>
             {current.recorded
-              ? `${current.mealCount} კვება აღრიცხული`
-              : "ჩანაწერი არ არის"}
+              ? tx(`${current.mealCount} კვება აღრიცხული`, `${current.mealCount} ${current.mealCount === 1 ? "meal" : "meals"} logged`)
+              : tx("ჩანაწერი არ არის", "No entries")}
           </Label>
           <Label style={{ fontSize: 10 }}>
             {current.target
-              ? `${current.target.calories} კკალ სამიზნე`
-              : "სამიზნე არ იყო არჩეული"}
+              ? tx(`${current.target.calories} კკალ სამიზნე`, `${current.target.calories} kcal target`)
+              : tx("სამიზნე არ იყო არჩეული", "No target was set")}
           </Label>
         </View>
       </View>
@@ -417,7 +418,7 @@ export function IntakeWeekChart({ days }: { days: NutritionDay[] }) {
                   key={d.date}
                   accessibilityRole="button"
                   accessibilityState={{ selected: active }}
-                  accessibilityLabel={`${nutritionDateLabel(d.date)}: ${d.recorded ? d.totals.calories + " აღრიცხული კკალ" : "ჩანაწერი არ არის"}${d.target ? ", სამიზნე " + d.target.calories : ""}`}
+                  accessibilityLabel={tx(`${nutritionDateLabel(d.date)}: ${d.recorded ? d.totals.calories + " აღრიცხული კკალ" : "ჩანაწერი არ არის"}${d.target ? ", სამიზნე " + d.target.calories : ""}`, `${nutritionDateLabel(d.date)}: ${d.recorded ? d.totals.calories + " kcal logged" : "no entries"}${d.target ? ", target " + d.target.calories : ""}`)}
                   onPress={() => setSelected(d.date)}
                   style={{
                     flex: 1,
@@ -509,7 +510,7 @@ export function IntakeWeekChart({ days }: { days: NutritionDay[] }) {
               backgroundColor: ink,
             }}
           />
-          <Label style={{ fontSize: 10 }}>აღრიცხული</Label>
+          <Label style={{ fontSize: 10 }}>{tx("აღრიცხული", "Logged")}</Label>
         </View>
         <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
           <View
@@ -520,7 +521,7 @@ export function IntakeWeekChart({ days }: { days: NutritionDay[] }) {
               borderStyle: "dashed",
             }}
           />
-          <Label style={{ fontSize: 10 }}>იმ დღის სამიზნე</Label>
+          <Label style={{ fontSize: 10 }}>{tx("იმ დღის სამიზნე", "That day's target")}</Label>
         </View>
       </View>
     </View>
@@ -549,7 +550,7 @@ export function WeightChart({
           }}
         >
           {lastPoint?.weightKg ?? "—"}
-          <Label> კგ</Label>
+          <Label>{tx(" კგ", " kg")}</Label>
         </Label>
         <Svg width="100%" height={70} viewBox="0 0 300 70">
           <Line
@@ -562,7 +563,7 @@ export function WeightChart({
           />
           {lastPoint && <Circle cx={150} cy={46} r={5} fill={ink} />}
         </Svg>
-        <Label>ტენდენცია გამოჩნდება, როცა მინიმუმ ორი გაზომვა გექნება.</Label>
+        <Label>{tx("ტენდენცია გამოჩნდება, როცა მინიმუმ ორი გაზომვა გექნება.", "A trend appears once you have at least two measurements.")}</Label>
       </View>
     );
   const min =
@@ -588,7 +589,7 @@ export function WeightChart({
         }}
       >
         <View>
-          <Label>ბოლო გაზომვა</Label>
+          <Label>{tx("ბოლო გაზომვა", "Latest measurement")}</Label>
           <Label
             style={{
               fontSize: 32,
@@ -599,7 +600,7 @@ export function WeightChart({
             }}
           >
             {lastPoint!.weightKg}
-            <Label> კგ</Label>
+            <Label>{tx(" კგ", " kg")}</Label>
           </Label>
         </View>
         <View
@@ -612,10 +613,10 @@ export function WeightChart({
         >
           <Label style={{ color: c.text100, fontFamily: bold }}>
             {delta > 0 ? "+" : ""}
-            {delta} კგ
+            {delta} {tx("კგ", "kg")}
           </Label>
           <Label style={{ fontSize: 9, lineHeight: 15 }}>
-            პერიოდის ცვლილება
+            {tx("პერიოდის ცვლილება", "Change over period")}
           </Label>
         </View>
       </View>
@@ -624,7 +625,7 @@ export function WeightChart({
           accessible
           accessibilityRole="image"
           accessibilityLabel={points
-            .map((p) => `${p.date}: ${p.weightKg} კგ`)
+            .map((p) => `${p.date}: ${p.weightKg} ${tx("კგ", "kg")}`)
             .join(", ")}
         >
           <Svg height={178} width="100%" viewBox="0 0 316 178">

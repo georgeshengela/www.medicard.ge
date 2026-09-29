@@ -1,15 +1,16 @@
+import { appLang } from '../../i18n/locale.js';
 import type { HealthProfile } from '@/lib/api';
 import { getCachedTodaySteps } from '@/lib/healthDataSync';
 import { dayTotalMl, loadHydrationGoalMl, loadHydrationLogs, todayYmd } from '@/lib/hydration';
 import { daysBetween, loadStepsGoal } from '@/lib/stepsGoal';
-import { cityNameKa } from '@/lib/geoPlace';
+import { placeCityDisplay } from '@/lib/geoPlace';
 import { locationFromProfile } from '@/lib/userLocation';
 import type { WeatherLang, WeatherWellnessContext } from './types.ts';
 
 export function weatherCityFromProfile(profile: HealthProfile | null | undefined): string | null {
   const loc = locationFromProfile(profile);
   if (!loc?.enabled) return null;
-  return cityNameKa(loc.cityKa) || loc.cityKa || null;
+  return placeCityDisplay(loc) || loc.cityKa || null;
 }
 
 export function weatherCoordsFromProfile(
@@ -48,7 +49,7 @@ export async function loadWeatherWellnessContext(input: {
     hydrationMl: dayTotalMl(logs, todayYmd()),
     hydrationGoalMl: hydrationGoal,
     loggedPain: Boolean(input.loggedPain),
-    locale: input.locale ?? 'ka',
+    locale: input.locale ?? appLang(),
     userKey: input.userKey ?? null,
   };
 }

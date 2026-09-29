@@ -22,6 +22,7 @@ import {PulsePanels,type PulsePanel} from './PulsePanels';
 import {Action,Bar,Card,Copy,IconButton,RUN_CTA,Section,Tile,useRunInk} from './PulseUi';
 import {DiscoveryArtwork,MediRunLogo,PulseGlyph} from './PulseIdentity';
 import {RouteThumb,WeekBars} from './RunVisuals';
+import { tx } from '@/i18n/locale';
 
 export const MISSION_ICONS={trees:Trees,landmark:Landmark,waves:Waves,mountain:Mountain,bridge:Compass,flower:Trees};
 
@@ -33,7 +34,7 @@ function suggestMission(missions:Mission[],book:ReturnType<typeof usePulse>['boo
  const started=open.find(m=>missionProgress(book,m).meters>0);
  return {m:started||open[0],d:null as number|null};
 }
-const away=(m:number)=>m<1000?`${Math.round(m/10)*10} მ`:`${(m/1000).toFixed(m<10000?1:0)} კმ`;
+const away=(m:number)=>m<1000?tx(`${Math.round(m/10)*10} მ`, `${Math.round(m/10)*10} m`):tx(`${(m/1000).toFixed(m<10000?1:0)} კმ`, `${(m/1000).toFixed(m<10000?1:0)} km`);
 
 export default function PulseHub(){
  const router=useRouter(),c=useThemeColors(),ink=useRunInk(),insets=useSafeAreaInsets(),{healthProfile}=useAuth(),pulse=usePulse();
@@ -62,91 +63,91 @@ export default function PulseHub(){
  const leave=()=>router.canGoBack()?router.back():router.replace('/(tabs)/home' as never);
  const choose=(id:string)=>{if(busy)return;setBusy(true);void getPulseClient().selectMission(id).catch(e=>setError((e as Error).message)).finally(()=>setBusy(false));};
  const recordTiles=[
-  records.longest&&{id:records.longest.id,icon:Route,value:formatKm(records.longest.distanceM,2),unit:'კმ',label:'ყველაზე გრძელი'},
-  records.fastest&&{id:records.fastest.id,icon:Gauge,value:formatPace(records.fastest.paceSecPerKm),unit:'/კმ',label:'საუკეთესო ტემპი'},
-  records.longestTime&&{id:records.longestTime.id,icon:Timer,value:formatClock(records.longestTime.movingMs),unit:'',label:'ყველაზე ხანგრძლივი'},
+  records.longest&&{id:records.longest.id,icon:Route,value:formatKm(records.longest.distanceM,2),unit:tx('კმ', 'km'),label:tx('ყველაზე გრძელი', 'Longest')},
+  records.fastest&&{id:records.fastest.id,icon:Gauge,value:formatPace(records.fastest.paceSecPerKm),unit:tx('/კმ', '/km'),label:tx('საუკეთესო ტემპი', 'Best pace')},
+  records.longestTime&&{id:records.longestTime.id,icon:Timer,value:formatClock(records.longestTime.movingMs),unit:'',label:tx('ყველაზე ხანგრძლივი', 'Longest duration')},
  ].filter(Boolean) as {id:string;icon:typeof Route;value:string;unit:string;label:string}[];
  const shown=allWalks?history:history.slice(0,3);
 
  return <View style={{flex:1,backgroundColor:c.bg100}}><ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{paddingTop:insets.top+12,paddingBottom:insets.bottom+32,paddingHorizontal:HUB.gutter,gap:HUB.sectionGap}}>
   <View style={{flexDirection:'row',alignItems:'center',gap:12}}>
-   <IconButton label="MEDICARD-ში დაბრუნება" icon={ArrowLeft} onPress={leave}/>
-   <View style={{flex:1}}><MediRunLogo/><Copy muted size={11}>{dayMoment()} · შენი ქალაქის პულსი</Copy></View>
-   <IconButton label="პარამეტრები" icon={Settings2} onPress={()=>setPanel('settings')}/>
+   <IconButton label={tx('MEDICARD-ში დაბრუნება', 'Back to MEDICARD')} icon={ArrowLeft} onPress={leave}/>
+   <View style={{flex:1}}><MediRunLogo/><Copy muted size={11}>{dayMoment()} {tx('· შენი ქალაქის პულსი', '· your city’s pulse')}</Copy></View>
+   <IconButton label={tx('პარამეტრები', 'Settings')} icon={Settings2} onPress={()=>setPanel('settings')}/>
   </View>
 
   {/* The page's one spotlight. */}
   <View style={{backgroundColor:HUB.spotlightBg,borderRadius:HUB.cardRadius,overflow:'hidden'}}>
    <View style={{paddingHorizontal:HUB.cardPad+2,paddingTop:HUB.cardPad+2,gap:8}}>
     <View style={{flexDirection:'row',alignItems:'center',gap:8}}>
-     {streak>0?<View style={{flexDirection:'row',alignItems:'center',gap:5,backgroundColor:'rgba(251,191,36,0.14)',borderRadius:10,paddingHorizontal:9,paddingVertical:3}}><Flame size={13} color="#FCD34D" fill="#FCD34D"/><Copy bold size={11} style={{color:'#FDE68A'}}>{streak} დღე ზედიზედ</Copy></View>
-      :<View style={{flexDirection:'row',alignItems:'center',gap:7}}><View style={{width:6,height:6,borderRadius:3,backgroundColor:'#2DD4BF'}}/><Copy bold size={11} style={{color:'#99F6E4'}}>შენი ტემპით · ნებისმიერ ქალაქში</Copy></View>}
+     {streak>0?<View style={{flexDirection:'row',alignItems:'center',gap:5,backgroundColor:'rgba(251,191,36,0.14)',borderRadius:10,paddingHorizontal:9,paddingVertical:3}}><Flame size={13} color="#FCD34D" fill="#FCD34D"/><Copy bold size={11} style={{color:'#FDE68A'}}>{streak} {tx('დღე ზედიზედ', 'day streak')}</Copy></View>
+      :<View style={{flexDirection:'row',alignItems:'center',gap:7}}><View style={{width:6,height:6,borderRadius:3,backgroundColor:'#2DD4BF'}}/><Copy bold size={11} style={{color:'#99F6E4'}}>{tx('შენი ტემპით · ნებისმიერ ქალაქში', 'At your pace · in any city')}</Copy></View>}
     </View>
-    <Copy bold size={27} style={{lineHeight:38,color:'#fff'}}>{streak>1?'რიტმს ნუ დაკარგავ.\nგზა გელოდება.':'გარეთ ახალი\nამბავი იწყება.'}</Copy>
-    <Copy size={13} style={{color:'#C5DADA'}}>{weekKm>0?`ამ კვირაში უკვე ${weekKm.toFixed(1)} კმ გაიარე.`:'გადადგი პირველი ნაბიჯი. დანარჩენს გზად აღმოაჩენ.'}</Copy>
+    <Copy bold size={27} style={{lineHeight:38,color:'#fff'}}>{streak>1?tx('რიტმს ნუ დაკარგავ.\nგზა გელოდება.','Keep the rhythm.\nYour path is waiting.'):tx('გარეთ ახალი\nამბავი იწყება.','A new story\nstarts outside.')}</Copy>
+    <Copy size={13} style={{color:'#C5DADA'}}>{weekKm>0?tx(`ამ კვირაში უკვე ${weekKm.toFixed(1)} კმ გაიარე.`, `You’ve already walked ${weekKm.toFixed(1)} km this week.`):tx('გადადგი პირველი ნაბიჯი. დანარჩენს გზად აღმოაჩენ.', 'Take the first step. You’ll discover the rest along the way.')}</Copy>
    </View>
    <View style={{marginTop:6}}><DiscoveryArtwork tone="spotlight" height={150}/></View>
    <View style={{padding:HUB.cardPad,paddingTop:4,gap:8}}>
-    {active?<Pressable accessibilityRole="button" accessibilityLabel={`აქტიური მისია ${active.name}, ${missionPercent(pulse.book,active)} პროცენტი`} onPress={()=>setPanel('missions')} style={{flexDirection:'row',alignItems:'center',gap:10,paddingHorizontal:12,paddingVertical:9,borderRadius:14,backgroundColor:'rgba(255,255,255,0.07)'}}>
-     <Compass size={15} color="#99F6E4"/><Copy bold size={12} numberOfLines={1} style={{flex:1,color:'#fff'}}>მისია · {active.name}</Copy><Copy bold size={12} style={{color:'#99F6E4'}}>{missionPercent(pulse.book,active)}%</Copy>
+    {active?<Pressable accessibilityRole="button" accessibilityLabel={tx(`აქტიური მისია ${active.name}, ${missionPercent(pulse.book,active)} პროცენტი`, `Active mission ${active.name}, ${missionPercent(pulse.book,active)} percent`)} onPress={()=>setPanel('missions')} style={{flexDirection:'row',alignItems:'center',gap:10,paddingHorizontal:12,paddingVertical:9,borderRadius:14,backgroundColor:'rgba(255,255,255,0.07)'}}>
+     <Compass size={15} color="#99F6E4"/><Copy bold size={12} numberOfLines={1} style={{flex:1,color:'#fff'}}>{tx('მისია ·', 'Mission ·')} {active.name}</Copy><Copy bold size={12} style={{color:'#99F6E4'}}>{missionPercent(pulse.book,active)}%</Copy>
     </Pressable>:null}
-    <Pressable accessibilityRole="button" accessibilityLabel="დავიწყოთ აღმოჩენა — თავისუფალი გასეირნება" onPress={()=>start()} style={{minHeight:58,borderRadius:18,backgroundColor:RUN_CTA,paddingHorizontal:14,flexDirection:'row',alignItems:'center',gap:12}}>
+    <Pressable accessibilityRole="button" accessibilityLabel={tx('დავიწყოთ აღმოჩენა — თავისუფალი გასეირნება', 'Start exploring — free walk')} onPress={()=>start()} style={{minHeight:58,borderRadius:18,backgroundColor:RUN_CTA,paddingHorizontal:14,flexDirection:'row',alignItems:'center',gap:12}}>
      <View style={{width:34,height:34,borderRadius:12,backgroundColor:'rgba(255,255,255,0.16)',alignItems:'center',justifyContent:'center'}}><Play fill="#fff" color="#fff" size={15}/></View>
-     <Copy bold size={15} style={{flex:1,color:'#fff'}}>დავიწყოთ აღმოჩენა</Copy><ArrowUpRight color="#CCFBF1" size={22}/>
+     <Copy bold size={15} style={{flex:1,color:'#fff'}}>{tx('დავიწყოთ აღმოჩენა', 'Start exploring')}</Copy><ArrowUpRight color="#CCFBF1" size={22}/>
     </Pressable>
-    <Pressable accessibilityRole="button" onPress={()=>setTargetSheet(true)} style={{minHeight:44,flexDirection:'row',alignItems:'center',justifyContent:'center',gap:8}}><Target size={16} color="#99F6E4"/><Copy bold size={12} style={{color:'#fff'}}>ან ივარჯიშე მიზნით</Copy><ChevronRight size={14} color="#99F6E4"/></Pressable>
+    <Pressable accessibilityRole="button" onPress={()=>setTargetSheet(true)} style={{minHeight:44,flexDirection:'row',alignItems:'center',justifyContent:'center',gap:8}}><Target size={16} color="#99F6E4"/><Copy bold size={12} style={{color:'#fff'}}>{tx('ან ივარჯიშე მიზნით', 'or train with a goal')}</Copy><ChevronRight size={14} color="#99F6E4"/></Pressable>
    </View>
   </View>
 
-  {error&&!pulse.snapshot?<Card><Copy muted>{error}</Copy><Action secondary label="კავშირის განახლება" onPress={()=>{setError('');void getPulseClient().refresh().catch(e=>setError(e.message));}}/></Card>:null}
+  {error&&!pulse.snapshot?<Card><Copy muted>{error}</Copy><Action secondary label={tx('კავშირის განახლება', 'Reconnect')} onPress={()=>{setError('');void getPulseClient().refresh().catch(e=>setError(e.message));}}/></Card>:null}
 
-  <Section title="ეს კვირა" link="ისტორია" onLink={()=>setPanel('collection')}>
+  <Section title={tx('ეს კვირა', 'This week')} link={tx('ისტორია', 'History')} onLink={()=>setPanel('collection')}>
    <Card style={{gap:18}}>
     <View style={{flexDirection:'row',alignItems:'flex-end',gap:12}}>
-     <View style={{flex:1}}><View style={{flexDirection:'row',alignItems:'baseline',gap:6}}><Copy bold size={34} style={{lineHeight:42,letterSpacing:-1,fontVariant:['tabular-nums']}}>{weekKm.toFixed(1)}</Copy><Copy bold size={14} style={{color:c.primary100}}>კმ</Copy></View><Copy muted size={12}>{weekWalks?`${weekWalks} აქტიური დღე ბოლო 7 დღეში`:'ამ კვირაში ჯერ არ გაგისეირნია'}</Copy></View>
+     <View style={{flex:1}}><View style={{flexDirection:'row',alignItems:'baseline',gap:6}}><Copy bold size={34} style={{lineHeight:42,letterSpacing:-1,fontVariant:['tabular-nums']}}>{weekKm.toFixed(1)}</Copy><Copy bold size={14} style={{color:c.primary100}}>{tx('კმ', 'km')}</Copy></View><Copy muted size={12}>{weekWalks?tx(`${weekWalks} აქტიური დღე ბოლო 7 დღეში`, `${weekWalks} active ${weekWalks===1?'day':'days'} in the last 7 days`):tx('ამ კვირაში ჯერ არ გაგისეირნია', 'No walks this week yet')}</Copy></View>
     </View>
     <WeekBars days={week}/>
     <View style={{flexDirection:'row',borderTopWidth:1,borderColor:c.bg200,paddingTop:14}}>
-     {[{value:lifetimeKm.toFixed(1),label:'სულ კმ'},{value:String(walks.length),label:'გასეირნება'},{value:`${stamps}/${missionCount}`,label:'შტამპი'}].map((s,i)=><View key={s.label} style={{flex:1,alignItems:'center',borderLeftWidth:i?1:0,borderColor:c.bg200}}><Copy bold size={17} style={{fontVariant:['tabular-nums']}}>{s.value}</Copy><Copy muted size={11}>{s.label}</Copy></View>)}
+     {[{value:lifetimeKm.toFixed(1),label:tx('სულ კმ', 'Total km')},{value:String(walks.length),label:tx('გასეირნება', 'Walks')},{value:`${stamps}/${missionCount}`,label:tx('შტამპი', 'Stamps')}].map((s,i)=><View key={s.label} style={{flex:1,alignItems:'center',borderLeftWidth:i?1:0,borderColor:c.bg200}}><Copy bold size={17} style={{fontVariant:['tabular-nums']}}>{s.value}</Copy><Copy muted size={11}>{s.label}</Copy></View>)}
     </View>
    </Card>
   </Section>
 
-  {recordTiles.length?<Section title="შენი რეკორდები">
+  {recordTiles.length?<Section title={tx('შენი რეკორდები', 'Your records')}>
    <View style={{flexDirection:'row',gap:10}}>{recordTiles.map(r=><Pressable key={r.label} accessibilityRole="button" accessibilityLabel={`${r.label}: ${r.value} ${r.unit}`} onPress={()=>router.push(`/run/${r.id}` as never)} style={{flex:1}}>
     <Card style={{padding:14,gap:10,minHeight:128}}><Tile icon={r.icon} size={36}/><View style={{gap:1}}><View style={{flexDirection:'row',alignItems:'baseline',gap:3}}><Copy bold size={18} numberOfLines={1} style={{fontVariant:['tabular-nums'],flexShrink:1}}>{r.value}</Copy>{r.unit?<Copy bold size={10} style={{color:c.primary100}}>{r.unit}</Copy>:null}</View><Copy muted size={11} numberOfLines={2}>{r.label}</Copy></View></Card>
    </Pressable>)}</View>
   </Section>:null}
 
-  <Section title="თბილისის პასპორტი" link="ყველა მისია" onLink={()=>setPanel('missions')}>
+  <Section title={tx('თბილისის პასპორტი', 'Tbilisi passport')} link={tx('ყველა მისია', 'All missions')} onLink={()=>setPanel('missions')}>
    <Card style={{gap:16}}>
     <View style={{flexDirection:'row',alignItems:'center',gap:14}}>
-     <View style={{flex:1,gap:4}}><Copy bold size={16}>ქალაქი სავსეა ისტორიებით</Copy><Copy muted size={12}>პარკები, ტბები და ნაცნობი ადგილები ახალი თვალით.</Copy></View>
+     <View style={{flex:1,gap:4}}><Copy bold size={16}>{tx('ქალაქი სავსეა ისტორიებით', 'The city is full of stories')}</Copy><Copy muted size={12}>{tx('პარკები, ტბები და ნაცნობი ადგილები ახალი თვალით.', 'Parks, lakes and familiar places through new eyes.')}</Copy></View>
      <View style={{width:62,height:70,borderWidth:1.5,borderStyle:'dashed',borderColor:ink,borderRadius:18,alignItems:'center',justifyContent:'center',transform:[{rotate:'7deg'}]}}><Copy bold size={18} style={{color:ink,lineHeight:24}}>{stamps}</Copy><Copy size={10} muted>/ {missionCount}</Copy></View>
     </View>
-    <Bar value={stamps/missionCount*100} label="თბილისის პასპორტის შტამპები"/>
+    <Bar value={stamps/missionCount*100} label={tx('თბილისის პასპორტის შტამპები', 'Tbilisi passport stamps')}/>
     {next?<View style={{flexDirection:'row',alignItems:'center',gap:12,borderTopWidth:1,borderColor:c.bg200,paddingTop:14}}>
      <Tile icon={MISSION_ICONS[next.m.icon]||MapPin}/>
-     <View style={{flex:1,minWidth:0}}><Copy muted size={11}>{next.d!=null?'შენთან ყველაზე ახლოს':'შემდეგი აღმოჩენა'}</Copy><Copy bold size={14} numberOfLines={1}>{next.m.name}</Copy><Copy muted size={11}>{next.m.meters} მ ზონაში{next.d!=null?` · ${away(next.d)} შენგან`:''}</Copy></View>
-     <Pressable accessibilityRole="button" accessibilityLabel={`მისიის არჩევა: ${next.m.name}`} disabled={busy} onPress={()=>choose(next.m.id)} style={{minHeight:40,paddingHorizontal:14,borderRadius:14,backgroundColor:c.accent100,justifyContent:'center',opacity:busy?.6:1}}><Copy bold size={12} style={{color:c.primary100}}>არჩევა</Copy></Pressable>
+     <View style={{flex:1,minWidth:0}}><Copy muted size={11}>{next.d!=null?tx('შენთან ყველაზე ახლოს', 'Closest to you'):tx('შემდეგი აღმოჩენა', 'Next find')}</Copy><Copy bold size={14} numberOfLines={1}>{next.m.name}</Copy><Copy muted size={11}>{next.m.meters} {tx('მ ზონაში', 'm zone')}{next.d!=null?tx(` · ${away(next.d)} შენგან`, ` · ${away(next.d)} away`):''}</Copy></View>
+     <Pressable accessibilityRole="button" accessibilityLabel={tx(`მისიის არჩევა: ${next.m.name}`, `Choose mission: ${next.m.name}`)} disabled={busy} onPress={()=>choose(next.m.id)} style={{minHeight:40,paddingHorizontal:14,borderRadius:14,backgroundColor:c.accent100,justifyContent:'center',opacity:busy?.6:1}}><Copy bold size={12} style={{color:c.primary100}}>{tx('არჩევა', 'Choose')}</Copy></Pressable>
     </View>:null}
    </Card>
   </Section>
 
-  <View style={{flexDirection:'row',gap:12}}>{[{id:'collection' as const,label:'კოლექცია',detail:`${pulse.snapshot?.claims.length||0} საჩუქარი · ${stamps} შტამპი`,icon:Gift,ink:'amber' as const},{id:'leaderboard' as const,label:'ლიდერბორდი',detail:pulse.snapshot?.leaderboardOptIn?'შენ სიაში ხარ':'ერთად უფრო შორს',icon:Trophy,ink:'violet' as const}].map(item=><Pressable key={item.id} accessibilityRole="button" accessibilityLabel={`${item.label}. ${item.detail}`} onPress={()=>setPanel(item.id)} style={{flex:1}}>
+  <View style={{flexDirection:'row',gap:12}}>{[{id:'collection' as const,label:tx('კოლექცია', 'Collection'),detail:tx(`${pulse.snapshot?.claims.length||0} საჩუქარი · ${stamps} შტამპი`, `${pulse.snapshot?.claims.length||0} ${(pulse.snapshot?.claims.length||0)===1?'gift':'gifts'} · ${stamps} ${stamps===1?'stamp':'stamps'}`),icon:Gift,ink:'amber' as const},{id:'leaderboard' as const,label:tx('ლიდერბორდი', 'Leaderboard'),detail:pulse.snapshot?.leaderboardOptIn?tx('შენ სიაში ხარ', 'You’re on the list'):tx('ერთად უფრო შორს', 'Further together'),icon:Trophy,ink:'violet' as const}].map(item=><Pressable key={item.id} accessibilityRole="button" accessibilityLabel={`${item.label}. ${item.detail}`} onPress={()=>setPanel(item.id)} style={{flex:1}}>
    <Card style={{minHeight:128,gap:10}}><View style={{flexDirection:'row',justifyContent:'space-between'}}><Tile icon={item.icon} ink={item.ink}/><ArrowUpRight size={17} color={c.text300}/></View><View><Copy bold size={15}>{item.label}</Copy><Copy muted size={11}>{item.detail}</Copy></View></Card>
   </Pressable>)}</View>
 
-  {history.length?<Section title="ბოლო გასეირნებები" link={history.length>3?(allWalks?'ნაკლები':`ყველა · ${history.length}`):undefined} onLink={()=>setAllWalks(v=>!v)}>
-   <Card style={{paddingVertical:6,gap:0}}>{shown.map((run,i)=><Pressable key={run.id} accessibilityRole="button" accessibilityLabel={`${formatKm(run.distanceM,2)} კილომეტრი, ${formatRunDate(run.startedAt)}`} onPress={()=>router.push(`/run/${run.id}` as never)} style={{flexDirection:'row',alignItems:'center',gap:14,paddingVertical:12,borderTopWidth:i?1:0,borderColor:c.bg200}}>
+  {history.length?<Section title={tx('ბოლო გასეირნებები', 'Recent walks')} link={history.length>3?(allWalks?tx('ნაკლები', 'Less'):tx(`ყველა · ${history.length}`, `All · ${history.length}`)):undefined} onLink={()=>setAllWalks(v=>!v)}>
+   <Card style={{paddingVertical:6,gap:0}}>{shown.map((run,i)=><Pressable key={run.id} accessibilityRole="button" accessibilityLabel={tx(`${formatKm(run.distanceM,2)} კილომეტრი, ${formatRunDate(run.startedAt)}`, `${formatKm(run.distanceM,2)} kilometers, ${formatRunDate(run.startedAt)}`)} onPress={()=>router.push(`/run/${run.id}` as never)} style={{flexDirection:'row',alignItems:'center',gap:14,paddingVertical:12,borderTopWidth:i?1:0,borderColor:c.bg200}}>
     <RouteThumb segments={run.segments?.length?run.segments:[run.path]}/>
-    <View style={{flex:1,minWidth:0}}><Copy bold size={15} style={{fontVariant:['tabular-nums']}}>{formatKm(run.distanceM,2)} კმ</Copy><Copy muted size={11} numberOfLines={1}>{formatRunDate(run.startedAt)} · {Math.max(1,Math.round(run.movingMs/60000))} წთ · {formatPace(run.paceSecPerKm)} /კმ</Copy></View>
+    <View style={{flex:1,minWidth:0}}><Copy bold size={15} style={{fontVariant:['tabular-nums']}}>{formatKm(run.distanceM,2)} {tx('კმ', 'km')}</Copy><Copy muted size={11} numberOfLines={1}>{formatRunDate(run.startedAt)} · {Math.max(1,Math.round(run.movingMs/60000))} {tx('წთ ·', 'min ·')} {formatPace(run.paceSecPerKm)} {tx('/კმ', '/km')}</Copy></View>
     <ChevronRight color={c.text300} size={17}/>
    </Pressable>)}</Card>
   </Section>:null}
 
-  <Pressable accessibilityRole="button" accessibilityLabel="აღმოჩენის პულსის მოსმენა" onPress={()=>void testPulse()}><Card style={{flexDirection:'row',alignItems:'center',gap:14}}><PulseGlyph size={42}/><View style={{flex:1,gap:2}}><Copy bold size={14}>ჯერ იგრძნობ. მერე დაინახავ.</Copy><Copy muted size={12}>მოუსმინე, როგორ გიხმობს საჩუქარი</Copy></View><Volume2 size={19} color={c.primary100}/></Card></Pressable>
+  <Pressable accessibilityRole="button" accessibilityLabel={tx('აღმოჩენის პულსის მოსმენა', 'Listen to the discovery pulse')} onPress={()=>void testPulse()}><Card style={{flexDirection:'row',alignItems:'center',gap:14}}><PulseGlyph size={42}/><View style={{flex:1,gap:2}}><Copy bold size={14}>{tx('ჯერ იგრძნობ. მერე დაინახავ.', 'First you feel it. Then you see it.')}</Copy><Copy muted size={12}>{tx('მოუსმინე, როგორ გიხმობს საჩუქარი', 'Hear how a gift calls to you')}</Copy></View><Volume2 size={19} color={c.primary100}/></Card></Pressable>
 
-  <Pressable accessibilityRole="button" onPress={()=>setPanel('help')} style={{minHeight:44,marginTop:-12,flexDirection:'row',alignItems:'center',justifyContent:'center',gap:9}}><BookOpen size={16} color={c.text200}/><Copy muted size={12}>როგორ მუშაობს MEDIRUN?</Copy><ChevronRight size={15} color={c.text300}/></Pressable>
+  <Pressable accessibilityRole="button" onPress={()=>setPanel('help')} style={{minHeight:44,marginTop:-12,flexDirection:'row',alignItems:'center',justifyContent:'center',gap:9}}><BookOpen size={16} color={c.text200}/><Copy muted size={12}>{tx('როგორ მუშაობს MEDIRUN?', 'How does MEDIRUN work?')}</Copy><ChevronRight size={15} color={c.text300}/></Pressable>
  </ScrollView><RunTargetSheet visible={targetSheet} onClose={()=>setTargetSheet(false)} onConfirm={start} weightKg={healthProfile?.weightKg} heightCm={healthProfile?.heightCm}/><PulsePanels panel={panel} onClose={()=>setPanel(null)} onTestPulse={()=>void testPulse()}/></View>;
 }

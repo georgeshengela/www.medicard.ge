@@ -14,6 +14,7 @@ import { findUserByPhone, phoneTakenPayload } from '../lib/phoneUsers.js';
 import { normalizeSmsDestination } from '../lib/sms.js';
 import { requireAuth, signToken } from '../middleware/auth.js';
 import { asyncHandler } from '../middleware/error.js';
+import { t } from '../lib/i18n.js';
 import { claimDailyCheckIn } from '../lib/checkIn.js';
 import { recordAppActivityFromRequest } from '../lib/appActivity.js';
 import { deleteUserAccount } from '../lib/deleteUser.js';
@@ -71,7 +72,7 @@ authRouter.post(
     const settings = await getAppSettings();
     if (!settings.allowRegistrations) {
       return res.status(403).json({
-        error: 'რეგისტრაცია დროებით გამორთულია. სცადე მოგვიანებით.',
+        error: t(req, 'რეგისტრაცია დროებით გამორთულია. სცადე მოგვიანებით.', 'Sign-up is paused for now. Please try again later.'),
         code: 'REGISTRATIONS_CLOSED',
       });
     }
@@ -80,7 +81,7 @@ authRouter.post(
 
     const existing = await prisma.user.findUnique({ where: { email: data.email } });
     if (existing) {
-      return res.status(409).json({ error: 'ამ ელ-ფოსტით მომხმარებელი უკვე რეგისტრირებულია.' });
+      return res.status(409).json({ error: t(req, 'ამ ელ-ფოსტით მომხმარებელი უკვე რეგისტრირებულია.', 'An account with this email already exists.') });
     }
 
     const packageId = await ensureFreePackageId();
@@ -113,14 +114,14 @@ authRouter.post(
       const fields = Array.isArray(target) ? target : target ? [target] : [];
       const hit = (name) => fields.some((field) => String(field).includes(name));
       if (err?.code === 'P2002' && hit('phone')) {
-        return res.status(409).json(phoneTakenPayload());
+        return res.status(409).json(phoneTakenPayload(req.lang));
       }
       if (err?.code === 'P2002' && hit('email')) {
-        return res.status(409).json({ error: 'ამ ელ-ფოსტით მომხმარებელი უკვე რეგისტრირებულია.' });
+        return res.status(409).json({ error: t(req, 'ამ ელ-ფოსტით მომხმარებელი უკვე რეგისტრირებულია.', 'An account with this email already exists.') });
       }
       if (err?.code === 'REGISTER_UNCONFIRMED') {
         return res.status(500).json({
-          error: 'ანგარიში ვერ შეიქმნა. სცადე ხელახლა.',
+          error: t(req, 'ანგარიში ვერ შეიქმნა. სცადე ხელახლა.', 'We could not create your account. Please try again.'),
           code: 'REGISTER_UNCONFIRMED',
         });
       }
@@ -136,13 +137,13 @@ authRouter.post(
     }
     if (!confirmed?.id) {
       return res.status(500).json({
-        error: 'ანგარიში ვერ შეიქმნა. სცადე ხელახლა.',
+        error: t(req, 'ანგარიში ვერ შეიქმნა. სცადე ხელახლა.', 'We could not create your account. Please try again.'),
         code: 'REGISTER_UNCONFIRMED',
       });
     }
 
     // Fire-and-forget (setImmediate): never delays or fails the sign-up; once per user ever.
-    queueWelcomeEmail(confirmed);
+    queueWelcomeEmail(confirmed, {}, { lang: req.lang });
 
     return res.status(201).json({
       token: signToken(confirmed),
@@ -164,12 +165,12 @@ authRouter.post(
     const valid = found ? await bcrypt.compare(data.password, found.passwordHash) : false;
 
     if (!found || !valid) {
-      return res.status(401).json({ error: 'ელ-ფოსტა ან პაროლი არასწორია.' });
+      return res.status(401).json({ error: t(req, 'ელ-ფოსტა ან პაროლი არასწორია.', 'The email or password is incorrect.') });
     }
 
     if (found.status === 'BLOCKED') {
       return res.status(403).json({
-        error: 'შენი ანგარიში დაბლოკილია. დაგვიკავშირდი მხარდაჭერას.',
+        error: t(req, 'შენი ანგარიში დაბლოკილია. დაგვიკავშირდი მხარდაჭერას.', 'Your account is blocked. Please contact support.'),
         code: 'ACCOUNT_BLOCKED',
       });
     }
@@ -198,7 +199,7 @@ authRouter.post(
   forgotPasswordLimiter,
   asyncHandler(async (req, res) => {
     const { email } = forgotPasswordSchema.parse(req.body);
-    const result = await requestPasswordReset(email);
+    const result = await requestPasswordReset(email, req.lang);
     if (result.code === 'EMAIL_NOT_FOUND') {
       return res.status(404).json({ error: result.message, code: result.code });
     }
@@ -222,14 +223,22 @@ const smsResetSchema = z
   })
   .refine((d) => d.password === d.confirmPassword, { message: 'პაროლები არ ემთხვევა', path: ['confirmPassword'] });
 
-const PHONE_NOT_FOUND = {
-  error: 'ამ ნომრით ანგარიში ვერ მოიძებნა. თუ ანგარიშს ელ-ფოსტით ქმნიდი და ნომერი არ დაგიმატებია, აღადგინე ელ-ფოსტით.',
+const phoneNotFound = (req) => ({
+  error: t(
+    req,
+    'ამ ნომრით ანგარიში ვერ მოიძებნა. თუ ანგარიშს ელ-ფოსტით ქმნიდი და ნომერი არ დაგიმატებია, აღადგინე ელ-ფოსტით.',
+    'No account uses this number. If you signed up with email and never added a number, reset your password by email.',
+  ),
   code: 'PHONE_NOT_FOUND',
-};
-const PHONE_LOGIN_ACCOUNT = {
-  error: 'ეს ანგარიში ტელეფონის ნომრით შედის და პაროლი არ აქვს. შედი SMS კოდით.',
+});
+const phoneLoginAccount = (req) => ({
+  error: t(
+    req,
+    'ეს ანგარიში ტელეფონის ნომრით შედის და პაროლი არ აქვს. შედი SMS კოდით.',
+    'This account signs in with a phone number and has no password. Sign in with an SMS code.',
+  ),
   code: 'PHONE_LOGIN_ACCOUNT',
-};
+});
 const isPhoneOnlyAccount = (user) => String(user?.email || '').endsWith('@phone.medicard.ge');
 
 authRouter.post(
@@ -238,12 +247,12 @@ authRouter.post(
   asyncHandler(async (req, res) => {
     const { phone } = smsResetStartSchema.parse(req.body);
     const user = await findUserByPhone(phone);
-    if (!user) return res.status(404).json(PHONE_NOT_FOUND);
-    if (isPhoneOnlyAccount(user)) return res.status(409).json(PHONE_LOGIN_ACCOUNT);
+    if (!user) return res.status(404).json(phoneNotFound(req));
+    if (isPhoneOnlyAccount(user)) return res.status(409).json(phoneLoginAccount(req));
     if (user.status === 'BLOCKED') {
-      return res.json({ sent: true, message: 'თუ ნომერი ანგარიშზეა მიბმული, კოდს მიიღებ რამდენიმე წამში.' });
+      return res.json({ sent: true, message: t(req, 'თუ ნომერი ანგარიშზეა მიბმული, კოდს მიიღებ რამდენიმე წამში.', 'If this number is linked to an account, you will get a code in a few seconds.') });
     }
-    const result = await requestPhoneOtp({ phone, purpose: 'RESET', userId: user.id });
+    const result = await requestPhoneOtp({ phone, purpose: 'RESET', userId: user.id, lang: req.lang });
     if (!result.ok) return res.status(result.status || 400).json({ error: result.error });
     const { reference: _reference, ...publicResult } = result;
     return res.json(publicResult);
@@ -256,15 +265,15 @@ authRouter.post(
     const data = smsResetSchema.parse(req.body);
     const user = await findUserByPhone(data.phone);
     if (!user || isPhoneOnlyAccount(user)) {
-      return res.status(400).json({ error: 'კოდი არასწორია ან ვადა გაუვიდა.' });
+      return res.status(400).json({ error: t(req, 'კოდი არასწორია ან ვადა გაუვიდა.', 'The code is incorrect or has expired.') });
     }
-    const check = await verifyPhoneOtp({ phone: data.phone, code: data.code, purpose: 'RESET' });
+    const check = await verifyPhoneOtp({ phone: data.phone, code: data.code, purpose: 'RESET', lang: req.lang });
     if (!check.ok) return res.status(check.status || 400).json({ error: check.error });
     if (check.userId && check.userId !== user.id) {
-      return res.status(400).json({ error: 'კოდი არასწორია ან ვადა გაუვიდა.' });
+      return res.status(400).json({ error: t(req, 'კოდი არასწორია ან ვადა გაუვიდა.', 'The code is incorrect or has expired.') });
     }
     if (user.status === 'BLOCKED') {
-      return res.status(403).json({ error: 'შენი ანგარიში დაბლოკილია. დაგვიკავშირდი მხარდაჭერას.', code: 'ACCOUNT_BLOCKED' });
+      return res.status(403).json({ error: t(req, 'შენი ანგარიში დაბლოკილია. დაგვიკავშირდი მხარდაჭერას.', 'Your account is blocked. Please contact support.'), code: 'ACCOUNT_BLOCKED' });
     }
     const updated = await prisma.$transaction(async (tx) => {
       const next = await tx.user.update({
@@ -290,13 +299,14 @@ authRouter.post(
       email: data.email,
       code: data.code,
       password: data.password,
+      lang: req.lang,
     });
 
     if (!result.ok) {
       return res.status(result.status).json({ error: result.error });
     }
 
-    return res.json({ ok: true, message: 'პაროლი წარმატებით შეიცვალა. შეგიძლია შეხვიდე ანგარიშში.' });
+    return res.json({ ok: true, message: t(req, 'პაროლი წარმატებით შეიცვალა. შეგიძლია შეხვიდე ანგარიშში.', 'Your password has been changed. You can sign in now.') });
   }),
 );
 
@@ -322,7 +332,7 @@ authRouter.post(
   '/phone/start',
   asyncHandler(async (req, res) => {
     const { phone } = phoneStartSchema.parse(req.body);
-    const result = await requestPhoneOtp({ phone, purpose: 'AUTH' });
+    const result = await requestPhoneOtp({ phone, purpose: 'AUTH', lang: req.lang });
     if (!result.ok) {
       return res.status(result.status ?? 400).json({ error: result.error });
     }
@@ -341,7 +351,7 @@ authRouter.post(
   asyncHandler(async (req, res) => {
     const { phone, code, fullName, gender, birthDate } = phoneVerifySchema.parse(req.body);
 
-    const verified = await verifyPhoneOtp({ phone, code, purpose: 'AUTH' });
+    const verified = await verifyPhoneOtp({ phone, code, purpose: 'AUTH', lang: req.lang });
     if (!verified.ok) {
       return res.status(verified.status ?? 400).json({ error: verified.error });
     }
@@ -367,14 +377,14 @@ authRouter.post(
         user = await loadUserBundle(created.id);
         // Phone sign-ups carry a synthetic @phone.medicard.ge login, so this is a no-op today;
         // it starts working if phone sign-up ever collects a real address.
-        queueWelcomeEmail(user);
+        queueWelcomeEmail(user, {}, { lang: req.lang });
       } catch (err) {
         if (err?.code === 'P2002') {
           const existing = await findUserByPhone(phone);
           if (existing) {
             user = await loadUserBundle(existing.id);
           } else {
-            return res.status(409).json(phoneTakenPayload());
+            return res.status(409).json(phoneTakenPayload(req.lang));
           }
         } else {
           throw err;
@@ -384,7 +394,7 @@ authRouter.post(
 
     if (user.status === 'BLOCKED') {
       return res.status(403).json({
-        error: 'შენი ანგარიში დაბლოკილია. დაგვიკავშირდი მხარდაჭერას.',
+        error: t(req, 'შენი ანგარიში დაბლოკილია. დაგვიკავშირდი მხარდაჭერას.', 'Your account is blocked. Please contact support.'),
         code: 'ACCOUNT_BLOCKED',
       });
     }
@@ -406,10 +416,10 @@ authRouter.post(
 
     const taken = await findUserByPhone(phone, { excludeUserId: req.user.id });
     if (taken) {
-      return res.status(409).json(phoneTakenPayload());
+      return res.status(409).json(phoneTakenPayload(req.lang));
     }
 
-    const result = await requestPhoneOtp({ phone, purpose: 'LINK', userId: req.user.id });
+    const result = await requestPhoneOtp({ phone, purpose: 'LINK', userId: req.user.id, lang: req.lang });
     if (!result.ok) {
       return res.status(result.status ?? 400).json({ error: result.error });
     }
@@ -429,14 +439,14 @@ authRouter.post(
   asyncHandler(async (req, res) => {
     const { phone, code } = phoneLinkVerifySchema.parse(req.body);
 
-    const verified = await verifyPhoneOtp({ phone, code, purpose: 'LINK' });
+    const verified = await verifyPhoneOtp({ phone, code, purpose: 'LINK', lang: req.lang });
     if (!verified.ok) {
       return res.status(verified.status ?? 400).json({ error: verified.error });
     }
 
     const taken = await findUserByPhone(phone, { excludeUserId: req.user.id });
     if (taken) {
-      return res.status(409).json(phoneTakenPayload());
+      return res.status(409).json(phoneTakenPayload(req.lang));
     }
 
     let user;
@@ -448,7 +458,7 @@ authRouter.post(
       });
     } catch (err) {
       if (err?.code === 'P2002' && err?.meta?.target?.includes?.('phone')) {
-        return res.status(409).json(phoneTakenPayload());
+        return res.status(409).json(phoneTakenPayload(req.lang));
       }
       throw err;
     }
@@ -516,7 +526,7 @@ authRouter.patch(
   requireAuth,
   asyncHandler(async (req, res) => {
     const data = updateProfileSchema.parse(req.body);
-    const ageError = birthDateAgeError(data.birthDate, req.user.birthDate);
+    const ageError = birthDateAgeError(data.birthDate, req.user.birthDate, req.lang);
     if (ageError) return res.status(400).json({ error: ageError, code: 'MIN_AGE' });
 
     const user = await prisma.user.update({
@@ -535,11 +545,11 @@ authRouter.delete(
   asyncHandler(async (req, res) => {
     // Captured before deletion; the confirmation goes out only after the deletion committed.
     const recipient = { userId: req.user.id, email: req.user.email, fullName: req.user.fullName };
-    const result = await deleteUserAccount(req.user.id);
+    const result = await deleteUserAccount(req.user.id, req.lang);
     if (!result.ok) {
       return res.status(result.status).json({ error: result.error });
     }
-    queueAccountDeletedEmail(recipient);
+    queueAccountDeletedEmail({ ...recipient, lang: result.deleted?.language ?? req.lang });
     return res.json({ ok: true });
   }),
 );

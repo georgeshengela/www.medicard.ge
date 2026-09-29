@@ -22,6 +22,7 @@ export function normalizeStepCapability({ status, source } = {}) {
   const nextSource = STEP_CAPABILITY_SOURCES.includes(source) ? source : 'UNKNOWN';
   if (!nextStatus) {
     const error = new Error('არასწორი ნაბიჯების სტატუსი.');
+    error.messageEn = 'Invalid step tracking status.';
     error.status = 400;
     error.code = 'STEP_CAPABILITY_INVALID';
     throw error;

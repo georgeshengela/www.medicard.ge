@@ -60,7 +60,7 @@ export async function getOrCreateQr(userId, db = prisma) {
     const [again] = await db.$queryRaw`SELECT token FROM "UserQr" WHERE "userId" = ${userId}`;
     if (again) return again.token;
   }
-  throw Object.assign(new Error('QR კოდი ვერ შეიქმნა.'), { status: 503 });
+  throw Object.assign(new Error('QR კოდი ვერ შეიქმნა.'), { status: 503, messageEn: 'The QR code could not be created.' });
 }
 
 /** New token; any printed/screenshotted old code stops working at once. */

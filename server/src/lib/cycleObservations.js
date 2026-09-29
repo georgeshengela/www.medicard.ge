@@ -55,9 +55,21 @@ export function isClientUuid(id) {
   return typeof id === 'string' && UUID_RE.test(id.trim());
 }
 
-function httpError(status, message) {
+/** English for the Georgian messages below (error middleware sends `messageEn` to English requests). */
+const MESSAGES_EN = {
+  'ტკივილის ჩანაწერი არასწორია.': 'The pain entry is not valid.',
+  'ტკივილის ჩანაწერების ლიმიტი გადაჭარბებულია.': 'Too many pain entries.',
+  'ტკივილის ტიპი ან სიმძიმე არასწორია.': 'The pain type or severity is not valid.',
+  'ნიშნები არასწორია.': 'The tags are not valid.',
+  'ნიშნის იდენტიფიკატორი არასწორია.': 'The tag ID is not valid.',
+  'დღიურ ნიშნების ლიმიტი გადაჭარბებულია.': 'Too many tags for one day.',
+};
+
+function httpError(status, message, messageEn) {
   const err = new Error(message);
   err.status = status;
+  const en = messageEn || MESSAGES_EN[message];
+  if (en) err.messageEn = en;
   return err;
 }
 
@@ -68,7 +80,7 @@ function inSet(value, allowed) {
 export function parseEnumOrNull(value, allowed, { strict = false, field = 'value' } = {}) {
   if (value == null || value === '') return null;
   if (inSet(value, allowed)) return value;
-  if (strict) throw httpError(400, `არასწორი ${field}.`);
+  if (strict) throw httpError(400, `არასწორი ${field}.`, `Invalid ${field}.`);
   return null;
 }
 
@@ -132,7 +144,7 @@ export function parseCycleNote(raw, { strict = false } = {}) {
   const notes = String(raw).trim();
   if (!notes) return null;
   if (notes.length > CYCLE_NOTE_MAX) {
-    if (strict) throw httpError(400, `ჩანაწერი მაქსიმუმ ${CYCLE_NOTE_MAX} სიმბოლოა.`);
+    if (strict) throw httpError(400, `ჩანაწერი მაქსიმუმ ${CYCLE_NOTE_MAX} სიმბოლოა.`, `A note can be at most ${CYCLE_NOTE_MAX} characters.`);
     return notes.slice(0, CYCLE_NOTE_MAX);
   }
   return notes;
@@ -258,6 +270,7 @@ function hasHeadache(log) {
  */
 export function buildObservationInsights(logs = [], options = {}) {
   const limited = options.predictionAvailability === 'LIMITED';
+  const en = options.lang === 'en';
   const sampleDays = logs.length;
   const severityCounts = { mild: 0, moderate: 0, severe: 0 };
   const typeCounts = {};
@@ -286,7 +299,9 @@ export function buildObservationInsights(logs = [], options = {}) {
         sampleDays: highStressDays.length,
         numerator: withHeadache,
         denominator: highStressDays.length,
-        textKa: `თავის ტკივილი აღირიცხა ${withHeadache} დღეს ${highStressDays.length}-დან, სადაც მაღალი სტრესიც იყო აღრიცხული.`,
+        textKa: en
+          ? `Headache was logged on ${withHeadache} of ${highStressDays.length} days when you also logged high stress.`
+          : `თავის ტკივილი აღირიცხა ${withHeadache} დღეს ${highStressDays.length}-დან, სადაც მაღალი სტრესიც იყო აღრიცხული.`,
       });
     }
   }
@@ -302,7 +317,9 @@ export function buildObservationInsights(logs = [], options = {}) {
         sampleDays: poorSleepDays.length,
         numerator: withFatigue,
         denominator: poorSleepDays.length,
-        textKa: `დაღლილობა აღირიცხა ${withFatigue} დღეს ${poorSleepDays.length}-დან, სადაც ძილი ცუდად იყო აღრიცხული.`,
+        textKa: en
+          ? `Fatigue was logged on ${withFatigue} of ${poorSleepDays.length} days when you also logged poor sleep.`
+          : `დაღლილობა აღირიცხა ${withFatigue} დღეს ${poorSleepDays.length}-დან, სადაც ძილი ცუდად იყო აღრიცხული.`,
       });
     }
   }

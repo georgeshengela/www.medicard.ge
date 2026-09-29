@@ -44,6 +44,74 @@ function recipe(
     }),
   };
 }
+/**
+ * English title and instructions of the built-in recipes, by recipe id. Kept outside the recipe data
+ * (stored as strict JSON in "NutritionRecipe"); English responses swap the Georgian text for these
+ * while it is unchanged (admin-edited recipes keep their own text).
+ */
+export const NUTRITION_RECIPES_EN = Object.freeze({
+  "oat-banana": {
+    title: "Oats with banana and seeds",
+    instructions: "Cook the oats in water. Add sliced banana and the seeds. The oat weight is for dry oats.",
+  },
+  "quinoa-apple": {
+    title: "Warm quinoa bowl with apple",
+    instructions: "Stir chopped apple and the seeds into cooked quinoa. Add cinnamon if you like.",
+  },
+  "yogurt-oat": {
+    title: "Yogurt with oats and banana",
+    instructions: "Soak the oats in the yogurt in the fridge. Add the banana just before eating. Use unsweetened yogurt.",
+  },
+  "egg-quinoa": {
+    title: "Egg with quinoa and tomato",
+    instructions: "Add ready quinoa and a washed tomato to the boiled egg. Drizzle with the listed oil.",
+  },
+  "lentil-bowl": {
+    title: "Lentil and rice bowl",
+    instructions: "Mix boiled lentils and rice with the tomato. Drizzle with oil. Legume and rice weights are for the cooked product.",
+  },
+  "chickpea-quinoa": {
+    title: "Chickpeas with quinoa and greens",
+    instructions: "Add boiled chickpeas and quinoa to washed spinach. Drizzle with oil and mix well.",
+  },
+  "chicken-rice": {
+    title: "Chicken with rice and broccoli",
+    instructions: "Cook the chicken through. Serve with boiled rice and broccoli and drizzle with oil. Weights are for the cooked product.",
+  },
+  "salmon-quinoa": {
+    title: "Salmon with quinoa and broccoli",
+    instructions: "Bake the fish until cooked through. Serve with boiled quinoa and broccoli. Cooked weight is listed.",
+  },
+  "lentil-salad": {
+    title: "Warm lentil salad",
+    instructions: "Add washed vegetables and oil to boiled lentils and quinoa. Stir in spices if you like.",
+  },
+  "chickpea-rice": {
+    title: "Chickpeas and broccoli",
+    instructions: "Mix the broccoli into boiled chickpeas and rice. Add the listed oil at the end.",
+  },
+  "chicken-salad": {
+    title: "Light chicken bowl",
+    instructions: "Chop fully cooked chicken and mix with quinoa and washed vegetables. Drizzle with oil.",
+  },
+  "eggs-lentil": {
+    title: "Lentils with egg",
+    instructions: "Add a chopped boiled egg and tomato to boiled lentils. Drizzle with oil.",
+  },
+  "apple-seeds": {
+    title: "Apple and pumpkin seeds",
+    instructions: "Wash and slice the apple. Eat it with shelled pumpkin seeds.",
+  },
+  "banana-walnut": {
+    title: "Banana and walnuts",
+    instructions: "Slice the banana and add shelled walnuts. Weights are for the edible part.",
+  },
+  "yogurt-apple": {
+    title: "Yogurt with apple",
+    instructions: "Mix a washed, chopped apple into unsweetened yogurt.",
+  },
+});
+
 export const defaultNutritionRecipes = [
   recipe(
     "oat-banana",

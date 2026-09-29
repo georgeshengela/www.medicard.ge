@@ -28,6 +28,7 @@ import { HUB, hubInk, hubText, hubTint, type HubInk } from '@/theme/hub';
 import { useAccountQuery } from '@/hooks/useAccountQuery';
 import { accountKey, FRESH, queryClient } from '@/lib/queryClient';
 import { useIsDark, useThemeColors } from '@/theme/colors';
+import { tx } from '@/i18n/locale';
 
 const RECORDS_KEY = ['records', 'list'] as const;
 /** Under 'records' so a write to /api/records (or `invalidate('records')`) refreshes the whole tab. */
@@ -50,10 +51,10 @@ const TYPE_LOOK: Record<string, { icon: LucideIcon; ink: HubInk }> = {
 };
 
 const ADD_TILES: HubTile[] = [
-  { key: 'lab', title: ka.records.addLab, detail: 'ფოტო ან PDF — ნორმებით', href: '/lab/analyze', icon: FlaskConical, ink: 'blue' },
-  { key: 'imaging', title: ka.records.addImaging, detail: 'რენტგენი, ექო, MRI', href: '/module/imaging', icon: ScanLine, ink: 'sky' },
-  { key: 'skin', title: 'კანი', detail: 'ფოტოს შეფასება', href: '/module/skin', icon: ScanFace, ink: 'rose' },
-  { key: 'symptoms', title: 'სიმპტომები', detail: 'აღწერე, რა გაწუხებს', href: '/symptoms', icon: Stethoscope, ink: 'teal' },
+  { key: 'lab', title: ka.records.addLab, detail: tx('ფოტო ან PDF — ნორმებით', 'Photo or PDF — with reference ranges'), href: '/lab/analyze', icon: FlaskConical, ink: 'blue' },
+  { key: 'imaging', title: ka.records.addImaging, detail: tx('რენტგენი, ექო, MRI', 'X-ray, ultrasound, MRI'), href: '/module/imaging', icon: ScanLine, ink: 'sky' },
+  { key: 'skin', title: tx('კანი', 'Skin'), detail: tx('ფოტოს შეფასება', 'Photo check'), href: '/module/skin', icon: ScanFace, ink: 'rose' },
+  { key: 'symptoms', title: tx('სიმპტომები', 'Symptoms'), detail: tx('აღწერე, რა გაწუხებს', 'Describe what bothers you'), href: '/symptoms', icon: Stethoscope, ink: 'teal' },
 ];
 
 /** "ჩემი ბარათი" — lab results, saved analyses and every conversation with Medi, in the Home hub language. */
@@ -168,7 +169,7 @@ export default function Records() {
           <>
             {records.length > 0 ? (
               <View style={s.section}>
-                <HomeSectionHeading title="ანალიზები და დასკვნები" />
+                <HomeSectionHeading title={tx('ანალიზები და დასკვნები', 'Tests and reports')} />
                 <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginHorizontal: -HUB.gutter, marginBottom: 12 }} contentContainerStyle={{ paddingHorizontal: HUB.gutter, gap: 8 }}>
                   {FILTERS.map((option) => {
                     const selected = filter === option;
@@ -188,7 +189,7 @@ export default function Records() {
                 </ScrollView>
                 <View style={[s.card, { backgroundColor: c.surface }]}>
                   {visible.length === 0 ? (
-                    <Text style={[hubText.body, { color: c.text200, paddingVertical: 16 }]}>ამ ტიპის ჩანაწერი ჯერ არ გაქვს.</Text>
+                    <Text style={[hubText.body, { color: c.text200, paddingVertical: 16 }]}>{tx('ამ ტიპის ჩანაწერი ჯერ არ გაქვს.', "You don't have entries of this type yet.")}</Text>
                   ) : (
                     visible.map((record, index) => {
                       const look = TYPE_LOOK[record.type] ?? { icon: FileText, ink: 'neutral' as HubInk };
@@ -241,7 +242,7 @@ export default function Records() {
         )}
 
         <View style={s.section}>
-          <HomeSectionHeading title="დამატება" />
+          <HomeSectionHeading title={tx('დამატება', 'Add')} />
           <HubTileGrid tiles={ADD_TILES} />
         </View>
       </ScrollView>

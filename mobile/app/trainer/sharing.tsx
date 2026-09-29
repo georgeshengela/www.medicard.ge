@@ -10,6 +10,7 @@ import { disableCoachWorkouts, enableCoachWorkouts, isCoachWorkoutsEnabled, sync
 import { Button, Card, CoachHeader, ErrorBox, IconTile, Loading, Screen, Section, Toggle, coachStyles } from '@/components/coach/CoachUI';
 import { hubText } from '@/theme/hub';
 import { useThemeColors } from '@/theme/colors';
+import { tx } from '@/i18n/locale';
 
 /** What the trainer can see, changed instantly; workouts from Health; end the connection. */
 export default function TrainerSharingScreen() {
@@ -29,7 +30,7 @@ export default function TrainerSharingScreen() {
       setOv(o);
       setHealthOn(h);
     } catch (e) {
-      setError(e instanceof ApiError ? e.message : 'ჩატვირთვა ვერ მოხერხდა.');
+      setError(e instanceof ApiError ? e.message : tx('ჩატვირთვა ვერ მოხერხდა.', 'Couldn’t load.'));
     }
   }, []);
   useFocusEffect(useCallback(() => void load(), [load]));
@@ -41,7 +42,7 @@ export default function TrainerSharingScreen() {
       setOv(await api.coach.setScopes({ [k]: v }));
       if (k === 'workouts' && v) void syncCoachWorkouts({ force: true });
     } catch (e) {
-      Alert.alert('ვერ შეინახა', e instanceof ApiError ? e.message : 'სცადე ხელახლა.');
+      Alert.alert(tx('ვერ შეინახა', 'Couldn’t save'), e instanceof ApiError ? e.message : tx('სცადე ხელახლა.', 'Please try again.'));
       void load();
     }
   };
@@ -58,12 +59,12 @@ export default function TrainerSharingScreen() {
       if (r.ok) setHealthOn(true);
       else
         Alert.alert(
-          `${health} ვერ დაუკავშირდა`,
+          tx(`${health} ვერ დაუკავშირდა`, `Couldn’t connect to ${health}`),
           r.reason === 'denied'
-            ? `ნებართვა არ მოგვეცა. ჩართე ვარჯიშების წაკითხვა ${health}-ის პარამეტრებში.`
+            ? tx(`ნებართვა არ მოგვეცა. ჩართე ვარჯიშების წაკითხვა ${health}-ის პარამეტრებში.`, `Permission wasn’t granted. Turn on workout reading in ${health} settings.`)
             : r.reason === 'expo_go'
-              ? 'ეს ფუნქცია მხოლოდ აპის სრულ ვერსიაში მუშაობს.'
-              : 'ამ მოწყობილობაზე ვარჯიშების წაკითხვა ვერ მოხერხდა.',
+              ? tx('ეს ფუნქცია მხოლოდ აპის სრულ ვერსიაში მუშაობს.', 'This only works in the full version of the app.')
+              : tx('ამ მოწყობილობაზე ვარჯიშების წაკითხვა ვერ მოხერხდა.', 'Couldn’t read workouts on this device.'),
         );
     } finally {
       setBusy(null);
@@ -71,10 +72,10 @@ export default function TrainerSharingScreen() {
   };
 
   const end = () => {
-    Alert.alert('ტრენერთან კავშირის დასრულება', 'ტრენერი მაშინვე ვეღარ ნახავს შენს მონაცემებს, მომავალი ვარჯიშები გაუქმდება. ისტორია შენთან დარჩება.', [
-      { text: 'არა', style: 'cancel' },
+    Alert.alert(tx('ტრენერთან კავშირის დასრულება', 'End connection with trainer'), tx('ტრენერი მაშინვე ვეღარ ნახავს შენს მონაცემებს, მომავალი ვარჯიშები გაუქმდება. ისტორია შენთან დარჩება.', 'Your trainer immediately loses access to your data, and upcoming workouts are cancelled. Your history stays with you.'), [
+      { text: tx('არა', 'No'), style: 'cancel' },
       {
-        text: 'დასრულება',
+        text: tx('დასრულება', 'End'),
         style: 'destructive',
         onPress: async () => {
           try {
@@ -82,7 +83,7 @@ export default function TrainerSharingScreen() {
             invalidateCoachEntry();
             router.replace('/trainer' as never);
           } catch (e) {
-            Alert.alert('ვერ მოხერხდა', e instanceof ApiError ? e.message : 'სცადე ხელახლა.');
+            Alert.alert(tx('ვერ მოხერხდა', 'Something went wrong'), e instanceof ApiError ? e.message : tx('სცადე ხელახლა.', 'Please try again.'));
           }
         },
       },
@@ -92,7 +93,7 @@ export default function TrainerSharingScreen() {
   const link = ov?.link;
   return (
     <View style={{ flex: 1, backgroundColor: c.bg100 }}>
-      <CoachHeader title="გაზიარება ტრენერთან" subtitle={ov?.trainer?.displayName} fallback="/trainer" />
+      <CoachHeader title={tx('გაზიარება ტრენერთან', 'Sharing with trainer')} subtitle={ov?.trainer?.displayName} fallback="/trainer" />
       <Screen>
         {error ? <ErrorBox message={error} onRetry={load} /> : null}
         {!ov && !error ? <Loading /> : null}
@@ -102,40 +103,40 @@ export default function TrainerSharingScreen() {
               <View style={coachStyles.row}>
                 <IconTile icon={Lock} ink="teal" />
                 <Text style={[hubText.body, { color: c.text200, flex: 1 }]}>
-                  ცვლილება მაშინვე მოქმედებს. გამორთული კატეგორია ტრენერისთვის ქრება — ისტორიის ჩათვლით.
+                  {tx('ცვლილება მაშინვე მოქმედებს. გამორთული კატეგორია ტრენერისთვის ქრება — ისტორიის ჩათვლით.', 'Changes take effect immediately. A category you turn off disappears for the trainer — history included.')}
                 </Text>
               </View>
               <Text style={[hubText.small, { color: c.text300 }]}>
-                {link.trainerViewedAt ? `ტრენერმა ბოლოს ნახა: ${dayLabel(tbilisiYmd(link.trainerViewedAt))} ${clockOf(link.trainerViewedAt)}` : 'ტრენერს შენი მონაცემები ჯერ არ უნახავს.'}
+                {link.trainerViewedAt ? tx(`ტრენერმა ბოლოს ნახა: ${dayLabel(tbilisiYmd(link.trainerViewedAt))} ${clockOf(link.trainerViewedAt)}`, `Your trainer last viewed: ${dayLabel(tbilisiYmd(link.trainerViewedAt))} ${clockOf(link.trainerViewedAt)}`) : tx('ტრენერს შენი მონაცემები ჯერ არ უნახავს.', 'Your trainer hasn’t viewed your data yet.')}
               </Text>
             </Card>
-            <Section title="ტრენერი ხედავს">
+            <Section title={tx('ტრენერი ხედავს', 'Your trainer sees')}>
               <Card style={{ paddingVertical: 6 }}>
-                <Toggle title="ვარჯიშების განრიგი" body="ჯავშნები ორივე მხარეს ჩანს — ეს კავშირის საფუძველია." value disabled onChange={() => undefined} />
+                <Toggle title={tx('ვარჯიშების განრიგი', 'Session schedule')} body={tx('ჯავშნები ორივე მხარეს ჩანს — ეს კავშირის საფუძველია.', 'Bookings are visible to both of you — that’s the basis of the connection.')} value disabled onChange={() => undefined} />
                 {COACH_SCOPES.map((k) => (
                   <Toggle key={k} title={SCOPE_COPY[k].title} body={SCOPE_COPY[k].body} value={link.scopes[k]} onChange={(v) => void setScope(k, v)} disabled={link.status !== 'ACTIVE'} />
                 ))}
               </Card>
-              <Text style={[hubText.small, { color: c.text300, marginTop: 8 }]}>არასოდეს ჩანს: სამედიცინო ჩანაწერები, ანალიზები, წამლები, ციკლი, Medi-სთან საუბრები.</Text>
+              <Text style={[hubText.small, { color: c.text300, marginTop: 8 }]}>{tx('არასოდეს ჩანს: სამედიცინო ჩანაწერები, ანალიზები, წამლები, ციკლი, Medi-სთან საუბრები.', 'Never visible: medical records, lab results, medications, your cycle, conversations with Medi.')}</Text>
             </Section>
             {health && link.scopes.workouts ? (
-              <Section title={`ვარჯიშები ${health}-იდან`}>
+              <Section title={tx(`ვარჯიშები ${health}-იდან`, `Workouts from ${health}`)}>
                 <Card style={{ gap: 6 }}>
                   <View style={coachStyles.row}>
                     <IconTile icon={Activity} ink="green" />
                     <Text style={[hubText.body, { color: c.text200, flex: 1 }]}>
-                      საათით ან ტელეფონით ჩაწერილი ვარჯიშები (ხანგრძლივობა, კალორია, პულსი) ავტომატურად მიებმება ტრენერთან ვარჯიშს.
+                      {tx('საათით ან ტელეფონით ჩაწერილი ვარჯიშები (ხანგრძლივობა, კალორია, პულსი) ავტომატურად მიებმება ტრენერთან ვარჯიშს.', 'Workouts recorded on your watch or phone (duration, calories, heart rate) are automatically matched to your sessions with the trainer.')}
                     </Text>
                   </View>
-                  <Toggle title="ვარჯიშების წაკითხვა" value={healthOn} disabled={busy === 'health'} onChange={(v) => void toggleHealth(v)} />
+                  <Toggle title={tx('ვარჯიშების წაკითხვა', 'Read workouts')} value={healthOn} disabled={busy === 'health'} onChange={(v) => void toggleHealth(v)} />
                 </Card>
               </Section>
             ) : null}
-            <Section title="კავშირი">
-              <Button label="ტრენერთან კავშირის დასრულება" kind="danger" icon={Unlink} onPress={end} />
+            <Section title={tx('კავშირი', 'Connection')}>
+              <Button label={tx('ტრენერთან კავშირის დასრულება', 'End connection with trainer')} kind="danger" icon={Unlink} onPress={end} />
               {ov?.trainer ? (
                 <Button
-                  label="შეტყობინება დარღვევაზე / დაბლოკვა"
+                  label={tx('შეტყობინება დარღვევაზე / დაბლოკვა', 'Report / block')}
                   kind="ghost"
                   style={{ marginTop: 8 }}
                   onPress={() => router.push({ pathname: '/trainer/report', params: { id: ov.trainer!.id, name: ov.trainer!.displayName, role: 'trainer' } } as never)}
@@ -144,7 +145,7 @@ export default function TrainerSharingScreen() {
             </Section>
           </>
         ) : ov ? (
-          <Text style={[hubText.body, { color: c.text200, marginTop: 20 }]}>ტრენერთან კავშირი არ გაქვს.</Text>
+          <Text style={[hubText.body, { color: c.text200, marginTop: 20 }]}>{tx('ტრენერთან კავშირი არ გაქვს.', 'You’re not connected with a trainer.')}</Text>
         ) : null}
       </Screen>
     </View>

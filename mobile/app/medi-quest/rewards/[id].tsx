@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Pressable, ScrollView, Share, Text, View } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import { appLang, dateLocale } from '@/i18n/locale';
 import { isPhoneRequiredError, offerPhoneVerification } from '@/lib/phoneGate';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ArrowLeft, Gift } from 'lucide-react-native';
@@ -42,7 +43,7 @@ export default function RewardDetailScreen() {
   const colors = useThemeColors();
   const dark = useIsDark();
   const offline = useOffline();
-  const copy = rewardsCopy('ka');
+  const copy = rewardsCopy(appLang());
   const [reward, setReward] = useState<StoreReward | null>(null);
   const [loading, setLoading] = useState(true);
   const [confirm, setConfirm] = useState(false);
@@ -152,7 +153,7 @@ export default function RewardDetailScreen() {
         return;
       }
       const code = err instanceof ApiError && err.code ? err.code : 'REWARD_REDEMPTION_CONFLICT';
-      setError(rewardErrorMessage(code, 'ka'));
+      setError(rewardErrorMessage(code, appLang()));
       void trackQuestEvent('reward_redeem_failed', `${reward.key}:${code}`);
       idemRef.current = newIdempotencyKey();
     } finally {
@@ -175,12 +176,12 @@ export default function RewardDetailScreen() {
         <Pressable onPress={() => router.back()} style={{ width: 44, height: 44, justifyContent: 'center' }}>
           <ArrowLeft size={22} color={colors.text100} />
         </Pressable>
-        <QuestMediLine text={rewardErrorMessage('REWARD_NOT_FOUND', 'ka')} />
+        <QuestMediLine text={rewardErrorMessage('REWARD_NOT_FOUND', appLang())} />
       </View>
     );
   }
 
-  const title = rewardTitle(reward.titleKey, 'ka');
+  const title = rewardTitle(reward.titleKey, appLang());
   const after = Math.max(0, balance - reward.coinCost);
 
   return (
@@ -225,22 +226,22 @@ export default function RewardDetailScreen() {
             {title}
           </Text>
           <Text style={{ fontFamily: 'NotoSansGeorgian_500Medium', fontSize: 15, lineHeight: 22, color: colors.text200 }}>
-            {rewardDescription(reward.descriptionKey, 'ka')}
+            {rewardDescription(reward.descriptionKey, appLang())}
           </Text>
           <Text style={{ fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 16, color: colors.primary100 }}>
-            {copy.costLabel}: {formatQuestNumber(reward.coinCost, 'ka')} Medi Coins
+            {copy.costLabel}: {formatQuestNumber(reward.coinCost, appLang())} Medi Coins
           </Text>
           <Text style={{ fontFamily: 'NotoSansGeorgian_500Medium', fontSize: 14, color: colors.text300 }}>
-            {copy.youHave}: {formatQuestNumber(balance, 'ka')}
+            {copy.youHave}: {formatQuestNumber(balance, appLang())}
           </Text>
           {shortfall > 0 ? (
             <Text style={{ fontFamily: 'NotoSansGeorgian_500Medium', fontSize: 14, color: colors.text300 }}>
-              {copy.needMore(formatQuestNumber(shortfall, 'ka'))}
+              {copy.needMore(formatQuestNumber(shortfall, appLang()))}
             </Text>
           ) : null}
         </View>
 
-        <Block title={copy.whatYouGet} body={rewardDescription(reward.descriptionKey, 'ka')} colors={colors} dark={dark} />
+        <Block title={copy.whatYouGet} body={rewardDescription(reward.descriptionKey, appLang())} colors={colors} dark={dark} />
         {reward.entitlementDurationDays ? (
           <Block title={copy.validity} body={copy.days(reward.entitlementDurationDays)} colors={colors} dark={dark} />
         ) : null}
@@ -248,7 +249,7 @@ export default function RewardDetailScreen() {
           <Block title={copy.partner} body={reward.partnerDisplay.displayName} colors={colors} dark={dark} />
         ) : null}
         {reward.termsKey ? (
-          <Block title={copy.terms} body={rewardTerms(reward.termsKey, 'ka')} colors={colors} dark={dark} />
+          <Block title={copy.terms} body={rewardTerms(reward.termsKey, appLang())} colors={colors} dark={dark} />
         ) : null}
 
         {error ? (
@@ -273,7 +274,7 @@ export default function RewardDetailScreen() {
           label={copy.redeem}
           onPress={() => setConfirm(true)}
           disabled={!redeemable || busy}
-          accessibilityLabel={`${copy.redeem} ${title} ${formatQuestNumber(reward.coinCost, 'ka')} Medi Coins`}
+          accessibilityLabel={`${copy.redeem} ${title} ${formatQuestNumber(reward.coinCost, appLang())} Medi Coins`}
         />
         {offline ? (
           <Text style={{ marginTop: 8, textAlign: 'center', fontFamily: 'NotoSansGeorgian_500Medium', fontSize: 12, color: colors.text300 }}>
@@ -297,13 +298,13 @@ export default function RewardDetailScreen() {
           >
             <Text style={{ fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 18, color: colors.text100 }}>{copy.confirmTitle}</Text>
             <Text style={{ fontFamily: 'NotoSansGeorgian_500Medium', fontSize: 15, color: colors.text200 }}>
-              {copy.confirmBody(formatQuestNumber(reward.coinCost, 'ka'))}
+              {copy.confirmBody(formatQuestNumber(reward.coinCost, appLang()))}
             </Text>
             <Text style={{ fontFamily: 'NotoSansGeorgian_500Medium', fontSize: 14, color: colors.text300 }}>
-              {copy.balanceNow}: {formatQuestNumber(balance, 'ka')}
+              {copy.balanceNow}: {formatQuestNumber(balance, appLang())}
             </Text>
             <Text style={{ fontFamily: 'NotoSansGeorgian_500Medium', fontSize: 14, color: colors.text300 }}>
-              {copy.balanceAfter}: {formatQuestNumber(after, 'ka')}
+              {copy.balanceAfter}: {formatQuestNumber(after, appLang())}
             </Text>
             <View style={{ flexDirection: 'row', gap: 10, marginTop: 8 }}>
               <View style={{ flex: 1 }}>
@@ -335,7 +336,7 @@ export default function RewardDetailScreen() {
               <Text style={{ fontFamily: 'NotoSansGeorgian_500Medium', fontSize: 14, color: colors.text300 }}>{copy.coinsLabel}</Text>
               <QuestAnimatedNumber
                 value={success?.wallet.currentBalance ?? balance}
-                locale="ka"
+                locale={appLang()}
                 style={{ fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 28, color: colors.text100 }}
               />
             </View>
@@ -364,7 +365,7 @@ export default function RewardDetailScreen() {
                 </Pressable>
                 {success.redemption.expiresAt ? (
                   <Text style={{ fontFamily: 'NotoSansGeorgian_500Medium', fontSize: 13, color: colors.text300 }}>
-                    {copy.expires}: {new Date(success.redemption.expiresAt).toLocaleDateString('ka-GE')}
+                    {copy.expires}: {new Date(success.redemption.expiresAt).toLocaleDateString(dateLocale())}
                   </Text>
                 ) : null}
               </View>
@@ -372,7 +373,7 @@ export default function RewardDetailScreen() {
             {success?.entitlement ? (
               <Text style={{ fontFamily: 'NotoSansGeorgian_500Medium', fontSize: 14, color: colors.text200 }}>
                 {success.entitlement.entitlementKey} · {copy.expires}{' '}
-                {new Date(success.entitlement.endsAt).toLocaleDateString('ka-GE')}
+                {new Date(success.entitlement.endsAt).toLocaleDateString(dateLocale())}
               </Text>
             ) : null}
             <Button

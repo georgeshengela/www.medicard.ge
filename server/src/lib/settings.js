@@ -2,6 +2,15 @@ import { prisma } from './prisma.js';
 import { getMobileAppVersion } from './mobileAppVersion.js';
 import { parseAppVersion } from './appVersion.js';
 import { consumerPurchasesEnabled } from './consumerPurchases.js';
+import { isEnglish } from './i18n.js';
+
+/** Admin-typed maintenance text is Georgian; English requests read this instead. */
+export const MAINTENANCE_MESSAGE_EN = 'MEDICARD is being updated. Please try again in a little while.';
+
+/** Maintenance text for a request / language ('ka' keeps the admin's message). */
+export function maintenanceMessageFor(settings, lang = 'ka') {
+  return isEnglish(lang) ? MAINTENANCE_MESSAGE_EN : settings?.maintenanceMessage;
+}
 
 const DEFAULTS = {
   id: 'default',
@@ -97,10 +106,10 @@ async function loadAppSettings() {
   return row;
 }
 
-export function publicAppSettings(settings) {
+export function publicAppSettings(settings, lang = 'ka') {
   return {
     maintenanceMode: settings.maintenanceMode,
-    maintenanceMessage: settings.maintenanceMessage,
+    maintenanceMessage: maintenanceMessageFor(settings, lang),
     minAppVersion: settings.minAppVersion,
     forceUpdate: settings.forceUpdate,
     allowRegistrations: settings.allowRegistrations,

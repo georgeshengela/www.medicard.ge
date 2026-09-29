@@ -7,6 +7,7 @@ import { AUTH_KEYBOARD_OPEN_PX, authFooterBottomPad } from '@/lib/authChrome';
 import { useKeyboardMetrics } from '@/lib/useKeyboardHeight';
 import { useThemeColors } from '@/theme/colors';
 import { openEmail } from '@/lib/openEmail';
+import { tx } from '@/i18n/locale';
 
 type Props = {
   alias: string;
@@ -58,15 +59,15 @@ export function CommunityJoinForm({ alias, onAliasChange, accepted, onAcceptedCh
       >
         <Pressable accessible={false} onPress={Keyboard.dismiss} style={{ gap: 10 }}>
           {!compact && <View style={{ width: 52, height: 52, borderRadius: 18, backgroundColor: c.accent100, alignItems: 'center', justifyContent: 'center' }}><ShieldCheck size={26} color={c.primary100} /></View>}
-          <Text style={{ fontFamily: 'NotoSansGeorgian_600SemiBold', fontSize: compact ? 19 : 24, lineHeight: compact ? 28 : 34, color: c.text100 }}>სივრცე, სადაც მოგისმენენ</Text>
-          {!compact && <Text style={copy}>აირჩიე მეტსახელი. ანონიმურ პოსტებზე ის სხვა წევრებს არ გამოუჩნდება.</Text>}
+          <Text style={{ fontFamily: 'NotoSansGeorgian_600SemiBold', fontSize: compact ? 19 : 24, lineHeight: compact ? 28 : 34, color: c.text100 }}>{tx('სივრცე, სადაც მოგისმენენ', 'A space where you’re heard')}</Text>
+          {!compact && <Text style={copy}>{tx('აირჩიე მეტსახელი. ანონიმურ პოსტებზე ის სხვა წევრებს არ გამოუჩნდება.', 'Choose a nickname. Other members won’t see it on anonymous posts.')}</Text>}
         </Pressable>
 
         <View style={{ gap: 8 }}>
-          <Text style={{ ...copy, color: c.text100, fontFamily: 'NotoSansGeorgian_600SemiBold' }}>შენი საჯარო მეტსახელი</Text>
+          <Text style={{ ...copy, color: c.text100, fontFamily: 'NotoSansGeorgian_600SemiBold' }}>{tx('შენი საჯარო მეტსახელი', 'Your public nickname')}</Text>
           <TextInput
-            accessibilityLabel="საჯარო მეტსახელი"
-            placeholder="როგორ მოგმართოთ?"
+            accessibilityLabel={tx('საჯარო მეტსახელი', 'Public nickname')}
+            placeholder={tx('როგორ მოგმართოთ?', 'What should we call you?')}
             placeholderTextColor={c.text200}
             value={alias}
             onChangeText={onAliasChange}
@@ -82,28 +83,28 @@ export function CommunityJoinForm({ alias, onAliasChange, accepted, onAcceptedCh
         </View>
 
         <View style={{ flexDirection: 'row', gap: 12, alignItems: 'center' }}>
-          <Switch accessibilityLabel="ვეთანხმები სივრცის წესებს" value={accepted} disabled={busy} onValueChange={onAcceptedChange} trackColor={{ true: '#0D9488', false: c.bg300 }} />
-          <Text style={{ ...copy, flex: 1, color: c.text100 }}>გავეცანი წესებს და ანონიმურობის პირობებს</Text>
+          <Switch accessibilityLabel={tx('ვეთანხმები სივრცის წესებს', 'I agree to the space rules')} value={accepted} disabled={busy} onValueChange={onAcceptedChange} trackColor={{ true: '#0D9488', false: c.bg300 }} />
+          <Text style={{ ...copy, flex: 1, color: c.text100 }}>{tx('გავეცანი წესებს და ანონიმურობის პირობებს', 'I’ve read the rules and anonymity terms')}</Text>
         </View>
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel="სივრცის წესები და ანონიმურობა"
+          accessibilityLabel={tx('სივრცის წესები და ანონიმურობა', 'Space rules and anonymity')}
           accessibilityState={{ expanded: rulesExpanded && !compact }}
           onPress={() => { Keyboard.dismiss(); setFocused(false); setRulesExpanded(compact || !rulesExpanded); }}
           style={{ minHeight: 44, flexDirection: 'row', alignItems: 'center', gap: 8 }}
         >
           <ShieldCheck size={18} color={c.primary100} />
-          <Text style={{ ...copy, flex: 1, color: c.primary100 }}>სივრცის წესები და ანონიმურობა</Text>
+          <Text style={{ ...copy, flex: 1, color: c.primary100 }}>{tx('სივრცის წესები და ანონიმურობა', 'Space rules and anonymity')}</Text>
           {rulesExpanded && !compact ? <ChevronUp size={18} color={c.primary100} /> : <ChevronDown size={18} color={c.primary100} />}
         </Pressable>
         {rulesExpanded && !compact && <Text style={copy}>{rules}</Text>}
-        {!compact && <Pressable accessibilityRole="link" onPress={() => void openEmail('support@medicard.ge')} style={{ minHeight: 44, justifyContent: 'center' }}><Text style={copy}>დახმარება · support@medicard.ge</Text></Pressable>}
+        {!compact && <Pressable accessibilityRole="link" onPress={() => void openEmail('support@medicard.ge')} style={{ minHeight: 44, justifyContent: 'center' }}><Text style={copy}>{tx('დახმარება · support@medicard.ge', 'Help · support@medicard.ge')}</Text></Pressable>}
       </ScrollView>
 
       <Animated.View style={[{ paddingHorizontal: 22, paddingTop: 12, borderTopWidth: 1, borderColor: c.bg300, backgroundColor: c.surface }, footerStyle]}>
-        <Pressable accessibilityRole="button" accessibilityLabel="შემოუერთდი სივრცეს" accessibilityState={{ disabled, busy }} disabled={disabled} onPress={submit} style={{ minHeight: 50, borderRadius: 16, paddingHorizontal: 16, paddingVertical: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, backgroundColor: '#0F766E', opacity: disabled ? 0.5 : 1 }}>
+        <Pressable accessibilityRole="button" accessibilityLabel={tx('შემოუერთდი სივრცეს', 'Join the space')} accessibilityState={{ disabled, busy }} disabled={disabled} onPress={submit} style={{ minHeight: 50, borderRadius: 16, paddingHorizontal: 16, paddingVertical: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, backgroundColor: '#0F766E', opacity: disabled ? 0.5 : 1 }}>
           {busy ? <ActivityIndicator color="#FFFFFF" /> : <Users size={20} color="#FFFFFF" />}
-          <Text style={{ fontFamily: 'NotoSansGeorgian_600SemiBold', fontSize: 14, color: '#FFFFFF' }}>შემოუერთდი სივრცეს</Text>
+          <Text style={{ fontFamily: 'NotoSansGeorgian_600SemiBold', fontSize: 14, color: '#FFFFFF' }}>{tx('შემოუერთდი სივრცეს', 'Join the space')}</Text>
         </Pressable>
       </Animated.View>
     </View>

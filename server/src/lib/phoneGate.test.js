@@ -21,3 +21,10 @@ test('the middleware answers 403 with a machine-readable code, or passes through
   requireVerifiedPhone({ user: { phone: '+995555000000' } }, res, () => { passed = true; });
   assert.equal(passed, true);
 });
+
+test('English requests get the English phone-verification message', () => {
+  let body;
+  requireVerifiedPhone({ user: { phone: null }, lang: 'en' }, { status() { return this; }, json(b) { body = b; return this; } }, () => {});
+  assert.equal(body.code, PHONE_REQUIRED_CODE);
+  assert.equal(body.error, 'Please verify your phone number to use this feature.');
+});

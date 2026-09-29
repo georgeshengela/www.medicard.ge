@@ -1,4 +1,5 @@
 import type {LatLng} from './geo';
+import {tx} from '../../i18n/locale.js';
 export const RUN_MAP_HTML_REV=11;
 
 /** Only Mapbox rendering lives here. Auth, GPS, game logic and every control are native. */
@@ -16,7 +17,7 @@ export function buildRunMapHtml(opts:{token:string;center:LatLng;dark:boolean;ch
  (function(){
  var channel=${json(opts.channel||'native-map')},center=${json([opts.center.lng,opts.center.lat])},dark=${json(opts.dark)};
  function post(data){try{if(window.ReactNativeWebView)window.ReactNativeWebView.postMessage(JSON.stringify(data));else if(window.parent!==window)window.parent.postMessage({channel:channel,data:data},'*');}catch(e){}}
- if(typeof mapboxgl==='undefined'){post({type:'error',message:'რუკის ჩატვირთვა ვერ მოხერხდა. შეამოწმე ინტერნეტი.'});return;}
+ if(typeof mapboxgl==='undefined'){post({type:'error',message:${json(tx('რუკის ჩატვირთვა ვერ მოხერხდა. შეამოწმე ინტერნეტი.','The map couldn’t load. Check your internet connection.'))}});return;}
  mapboxgl.accessToken=${json(opts.token)};
  var map=new mapboxgl.Map({container:'map',style:'mapbox://styles/mapbox/standard',center:center,zoom:17.5,pitch:52,bearing:0,attributionControl:false,config:{basemap:{lightPreset:dark?'night':'day',showPointOfInterestLabels:false}}});
  map.addControl(new mapboxgl.AttributionControl({compact:true}));
@@ -70,7 +71,7 @@ export function buildRunMapHtml(opts:{token:string;center:LatLng;dark:boolean;ch
  window.addEventListener('message',function(event){if(event.source===window.parent&&event.data&&event.data.channel===channel)window.__run(event.data.message);});
  map.on('style.load',function(){layers();if(!ready){ready=true;post({type:'ready'});queue.forEach(handle);queue=[];}});
  ['dragstart','rotatestart','zoomstart'].forEach(function(event){map.on(event,function(e){if(e.originalEvent){following=false;post({type:'follow',value:false});}});});
- map.on('error',function(e){var text=String(e.error&&e.error.message||'');if(/token|401|403|Unauthorized/.test(text))post({type:'error',message:'რუკის წვდომა ვერ დადასტურდა.'});});
+ map.on('error',function(e){var text=String(e.error&&e.error.message||'');if(/token|401|403|Unauthorized/.test(text))post({type:'error',message:${json(tx('რუკის წვდომა ვერ დადასტურდა.','Map access couldn’t be verified.'))}});});
  window.addEventListener('pagehide',function(){if(raf)cancelAnimationFrame(raf);map.remove();});
  })();</script></body></html>`;
 }

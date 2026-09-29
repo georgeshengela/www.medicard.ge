@@ -1,11 +1,12 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Text, type TextProps } from 'react-native';
+import { appLang } from '@/i18n/locale';
 import { usePrefersReducedMotion } from '@/hooks/usePrefersReducedMotion';
 import { formatQuestNumber } from '@/lib/quest/logic.js';
 
 export function QuestAnimatedNumber({
   value,
-  locale = 'ka',
+  locale = appLang(),
   duration = 700,
   ...rest
 }: TextProps & { value: number; locale?: string; duration?: number }) {

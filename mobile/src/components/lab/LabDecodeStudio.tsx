@@ -1,3 +1,4 @@
+import { tx } from '@/i18n/locale';
 import React, { useEffect } from 'react';
 import { Image, Pressable, Text, TextInput, View } from 'react-native';
 import { ChatActionDock } from '@/components/chat/ChatScreenShell';
@@ -212,8 +213,8 @@ function EmptyHero() {
     <View style={{ width: 48, height: 48, borderRadius: 16, backgroundColor: C.brandQuaternary, alignItems: 'center', justifyContent: 'center' }}><FileText size={24} color={C.brand} /></View>
     <Text style={{ fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 20, lineHeight: 28, color: C.textPrimary }}>{ka.lab.studioEmpty}</Text>
     <Text style={{ fontFamily: 'NotoSansGeorgian_400Regular', fontSize: 14, lineHeight: 21, color: C.textSecondary }}>{ka.modules.lab.uploadHint}</Text>
-    <Text style={{ fontFamily: 'NotoSansGeorgian_500Medium', fontSize: 12, lineHeight: 19, color: C.textSecondary }}>01 ატვირთე · 02 გადაამოწმე · 03 მიიღე განმარტება</Text>
-    <Text style={{ fontFamily: 'NotoSansGeorgian_400Regular', fontSize: 12, lineHeight: 18, color: C.textMuted }}>ერთად ატვირთე ერთი თარიღის ანალიზები · მაქსიმუმ 8 ფაილი · თითოეული 12 მბ-მდე</Text>
+    <Text style={{ fontFamily: 'NotoSansGeorgian_500Medium', fontSize: 12, lineHeight: 19, color: C.textSecondary }}>{tx('01 ატვირთე · 02 გადაამოწმე · 03 მიიღე განმარტება', '01 Upload · 02 Check · 03 Get an explanation')}</Text>
+    <Text style={{ fontFamily: 'NotoSansGeorgian_400Regular', fontSize: 12, lineHeight: 18, color: C.textMuted }}>{tx('ერთად ატვირთე ერთი თარიღის ანალიზები · მაქსიმუმ 8 ფაილი · თითოეული 12 მბ-მდე', 'Upload results from one date together · up to 8 files · 12 MB each')}</Text>
   </View>;
 }
 
@@ -353,7 +354,7 @@ function PhotoRail({
               {!busy ? (
                 <Pressable
                   accessibilityRole="button"
-                  accessibilityLabel={`გვერდი ${index + 1} — წაშლა`}
+                  accessibilityLabel={tx(`გვერდი ${index + 1} — წაშლა`, `Remove page ${index + 1}`)}
                   onPress={() => onRemove(index)}
                   hitSlop={8}
                   style={{

@@ -5,6 +5,7 @@ import { APP_MODAL_OVERLAY, APP_MODAL_PROPS, Modal } from '@/components/ui/appMo
 import { useFigmaSteps } from '@/constants/figmaStepsLayout';
 import { ka } from '@/i18n/ka';
 import { GoalCloseX } from '@/components/health/steps-goal/StepsGoalIcons';
+import { dateLocale } from '@/i18n/locale';
 
 type Item = { key: string; label: string };
 
@@ -102,7 +103,7 @@ export function upcomingDeadlineItems(count = 60): Item[] {
     const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
     items.push({
       key,
-      label: d.toLocaleDateString('ka-GE', { weekday: 'short', day: 'numeric', month: 'long' }),
+      label: d.toLocaleDateString(dateLocale(), { weekday: 'short', day: 'numeric', month: 'long' }),
     });
   }
   return items;
@@ -117,7 +118,7 @@ export function reminderTimeItems(): Item[] {
       d.setHours(hour, minute, 0, 0);
       items.push({
         key,
-        label: d.toLocaleTimeString('ka-GE', { hour: 'numeric', minute: '2-digit' }),
+        label: d.toLocaleTimeString(dateLocale(), { hour: 'numeric', minute: '2-digit' }),
       });
     }
   }

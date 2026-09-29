@@ -1,4 +1,5 @@
 import { useIsDark } from '@/theme/colors';
+import { tx } from '../i18n/locale.js';
 
 /** Figma 11405:99213 — Medication Tracker design tokens. */
 export const FIGMA_MEDS = {
@@ -63,9 +64,9 @@ export const FIGMA_MEDS = {
     '#111827',
   ] as const,
   popularCategories: [
-    { key: 'diabetes', label: 'დიაბეტი' },
-    { key: 'heart', label: ' გული' },
-    { key: 'pain', label: 'ტკივილი' },
+    { key: 'diabetes', label: tx('დიაბეტი', 'Diabetes') },
+    { key: 'heart', label: tx(' გული', ' Heart') },
+    { key: 'pain', label: tx('ტკივილი', 'Pain') },
   ] as const,
 } as const;
 
@@ -108,12 +109,12 @@ export function useFigmaMeds() {
 }
 
 export const MED_POPULAR_CHIPS = [
-  { query: 'ibuprofen', labelKa: 'იბუპროფენი' },
-  { query: 'amoxicillin', labelKa: 'ამოქსიცილინი' },
-  { query: 'atorvastatin', labelKa: 'ატორვასტატინი' },
+  { query: 'ibuprofen', labelKa: tx('იბუპროფენი', 'Ibuprofen') },
+  { query: 'amoxicillin', labelKa: tx('ამოქსიცილინი', 'Amoxicillin') },
+  { query: 'atorvastatin', labelKa: tx('ატორვასტატინი', 'Atorvastatin') },
 ] as const;
 
-export const MED_DAY_LETTERS = ['ო', 'ს', 'ო', 'ხ', 'პ', 'შ', 'კ'] as const;
+export const MED_DAY_LETTERS = tx(['ო', 'ს', 'ო', 'ხ', 'პ', 'შ', 'კ'] as const, ['M', 'T', 'W', 'T', 'F', 'S', 'S'] as const);
 
 export const ALL_PILL_SHAPES = [
   'long',

@@ -5,6 +5,7 @@ import { useFigmaAssessmentIntro } from '@/constants/figmaAssessmentIntro';
 import type { AssessmentFormState } from '@/lib/assessmentForm';
 import { ACTIVE_ASSESSMENT_STEPS } from '@/constants/assessmentSteps';
 import { ka } from '@/i18n/ka';
+import { tx } from '@/i18n/locale';
 
 /** Assessment phase complete — transition to personal info (Figma stepper state). */
 export function AssessmentCompleteContent({
@@ -16,39 +17,39 @@ export function AssessmentCompleteContent({
 }) {
   const confirmed = new Set(form.confirmedSteps ?? []);
   const rows = [
-    { type: 'legal-name', label: 'სახელი', value: form.legalName },
+    { type: 'legal-name', label: tx('სახელი', 'Name'), value: form.legalName },
     {
       type: 'weight',
-      label: 'წონა',
-      value: confirmed.has('weight') ? `${form.weightKg} კგ` : '',
+      label: tx('წონა', 'Weight'),
+      value: confirmed.has('weight') ? `${form.weightKg} ${tx('კგ', 'kg')}` : '',
     },
     {
       type: 'height',
-      label: 'სიმაღლე',
-      value: confirmed.has('height') ? `${form.heightCm} სმ` : '',
+      label: tx('სიმაღლე', 'Height'),
+      value: confirmed.has('height') ? `${form.heightCm} ${tx('სმ', 'cm')}` : '',
     },
-    { type: 'blood-type', label: 'სისხლის ჯგუფი', value: form.bloodType },
+    { type: 'blood-type', label: tx('სისხლის ჯგუფი', 'Blood type'), value: form.bloodType },
     {
       type: 'medications-gate',
-      label: 'მედიკამენტები',
+      label: tx('მედიკამენტები', 'Medications'),
       value:
         form.takesMedications === false
-          ? 'არ ვიღებ'
+          ? tx('არ ვიღებ', "I don't take any")
           : form.medications.join(', '),
     },
     {
       type: 'allergies',
-      label: 'ალერგიები',
+      label: tx('ალერგიები', 'Allergies'),
       value:
         form.allergies.join(', ') ||
-        (confirmed.has('allergies') ? 'არ მაქვს' : ''),
+        (confirmed.has('allergies') ? tx('არ მაქვს', "I don't have any") : ''),
     },
     {
       type: 'conditions-gate',
-      label: 'ქრონიკული მდგომარეობები',
+      label: tx('ქრონიკული მდგომარეობები', 'Chronic conditions'),
       value:
         form.hasConditions === false
-          ? 'არ მაქვს'
+          ? tx('არ მაქვს', "I don't have any")
           : form.chronicConditions.join(', '),
     },
   ];
@@ -90,13 +91,13 @@ export function AssessmentCompleteContent({
             marginBottom: 8,
           }}
         >
-          გადაამოწმე შენი პასუხები
+          {tx('გადაამოწმე შენი პასუხები', 'Check your answers')}
         </Text>
         {rows.map((row) => (
           <Pressable
             key={row.type}
             accessibilityRole="button"
-            accessibilityLabel={`${row.label}: ${row.value || 'არ არის მითითებული'}. შეცვლა`}
+            accessibilityLabel={`${row.label}: ${row.value || tx('არ არის მითითებული', 'Not provided')}. ${tx('შეცვლა', 'Edit')}`}
             onPress={() =>
               onEdit(
                 ACTIVE_ASSESSMENT_STEPS.findIndex(
@@ -132,7 +133,7 @@ export function AssessmentCompleteContent({
                   color: FIGMA_ASSESSMENT_INTRO.titleColor,
                 }}
               >
-                {row.value || 'არ არის მითითებული'}
+                {row.value || tx('არ არის მითითებული', 'Not provided')}
               </Text>
             </View>
             <Text
@@ -142,7 +143,7 @@ export function AssessmentCompleteContent({
                 color: FIGMA_ASSESSMENT_INTRO.brandTeal,
               }}
             >
-              შეცვლა
+              {tx('შეცვლა', 'Edit')}
             </Text>
           </Pressable>
         ))}

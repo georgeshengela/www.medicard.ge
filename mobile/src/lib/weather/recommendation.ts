@@ -1,3 +1,4 @@
+import { appLang } from '../../i18n/locale.js';
 import { airQualityIsHeavy } from './airQuality.ts';
 import { isStormCondition, isWetCondition } from './conditions.ts';
 import { pickWeatherCopyKeys } from './copy.ts';
@@ -197,7 +198,7 @@ export function getWeatherWellnessRecommendation(
   const keys = pickWeatherCopyKeys({
     category,
     flavor,
-    locale: context.locale ?? 'ka',
+    locale: context.locale ?? appLang(),
     seed: `${localYmdFromIso(weather.updatedAt) || zonedParts(now, weather.location.timezone).ymd}|${category}|${flavor}|${context.userKey || 'anon'}`,
   });
 

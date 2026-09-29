@@ -50,3 +50,27 @@ test('EvidenceMD also checks consent before transport', async () => {
   const guarded=consentedAiFetch('evidencemd',{account:()=>null,check:async()=>{throw Object.assign(Error('no account'),{code:'AI_CONSENT_REQUIRED'});},transport:()=>assert.fail('must not send')});
   await assert.rejects(()=>guarded('https://evidencemd.ai/api/v1/chat/completions',{method:'POST',body:'{}'}),{code:'AI_CONSENT_REQUIRED'});
 });
+test('English readers get the response-language directive as the last system instruction; Georgian and opt-out do not', async () => {
+  const bodies = [];
+  const guarded = (language) => consentedAiFetch('openrouter', { account: () => 'A', check: async () => {}, language, transport: async (_url, init) => { bodies.push({ body: JSON.parse(init.body), headers: init.headers }); return new Response('{}'); } });
+  const payload = { model: 'google/gemini-3.8-flash', messages: [{ role: 'system', content: 'static' }, { role: 'system', content: 'clock' }, { role: 'user', content: 'hi' }] };
+  const url = 'https://openrouter.ai/api/v1/chat/completions';
+  await guarded(async () => 'en')(url, { method: 'POST', body: JSON.stringify(payload) });
+  await guarded(async () => 'ka')(url, { method: 'POST', body: JSON.stringify(payload) });
+  await guarded(async () => 'en')(url, { method: 'POST', body: JSON.stringify(payload), headers: { 'x-medicard-ai-language': 'off' } });
+  const [en, ka, off] = bodies;
+  assert.equal(en.body.messages.length, 4);
+  assert.equal(en.body.messages[2].role, 'system');
+  assert.match(en.body.messages[2].content, /RESPONSE LANGUAGE: English/);
+  assert.equal(en.body.messages[0].content, 'static');
+  assert.deepEqual(ka.body.messages, payload.messages);
+  assert.deepEqual(off.body.messages, payload.messages);
+  assert.equal(off.headers.get('x-medicard-ai-language'), null);
+});
+test('the AI context carries the reading language', async () => {
+  const { currentAiLanguage, setAiLanguage } = await import('./aiConsent.js');
+  assert.equal(await withAiAccount('A', async () => currentAiLanguage(), 'en'), 'en');
+  assert.equal(await withAiAccount('A', async () => { setAiLanguage('en'); return currentAiLanguage(); }), 'en');
+  assert.equal(await withAiAccount('A', async () => currentAiLanguage()), 'ka');
+  assert.equal(currentAiLanguage(), 'ka');
+});

@@ -1,3 +1,4 @@
+import { tx } from '@/i18n/locale';
 import React, { useCallback, useRef, useState } from 'react';
 import { Image, KeyboardAvoidingView, Platform, Pressable, ScrollView, Switch, Text, TextInput, View } from 'react-native';
 import { useFocusEffect, useRouter } from 'expo-router';
@@ -179,7 +180,7 @@ export default function SymptomDetailsScreen() {
             }}
           >
             <Text style={{ flex: 1, fontSize: 14, lineHeight: 20, fontWeight: '600', color: T.textPrimary }}>
-              ჩემი ჯანმრთელობის პროფილის გათვალისწინება
+              {tx('ჩემი ჯანმრთელობის პროფილის გათვალისწინება', 'Consider my health profile')}
             </Text>
             <Switch
               value={state.shareToNightingale}

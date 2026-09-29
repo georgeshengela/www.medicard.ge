@@ -7,6 +7,7 @@
  */
 
 import { isCivilDateKey } from './pregnancyCareCatalog.js';
+import { tx } from '../i18n/locale.js';
 
 export const PLANNED_PLACE_MAX = 160;
 export const PLANNED_PLACE_FIELD = 'plannedPlace';
@@ -76,14 +77,14 @@ export function normalizePlannedPlace(value) {
   if (value === undefined) return undefined;
   if (value === null) return null;
   if (typeof value !== 'string') {
-    const err = new Error('ვიზიტის ადგილი არასწორია.');
+    const err = new Error(tx('ვიზიტის ადგილი არასწორია.', 'The visit place is not valid.'));
     err.status = 400;
     throw err;
   }
   const collapsed = value.replace(/\s+/g, ' ').trim();
   if (!collapsed) return null;
   if (unicodeLength(collapsed) > PLANNED_PLACE_MAX) {
-    const err = new Error('ადგილი ძალიან გრძელია.');
+    const err = new Error(tx('ადგილი ძალიან გრძელია.', 'The place name is too long.'));
     err.status = 400;
     throw err;
   }

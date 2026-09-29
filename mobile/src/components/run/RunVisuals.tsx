@@ -8,6 +8,7 @@ import { routeThumbPath, splitDurations, type DayBucket } from '@/lib/run/insigh
 import { useIsDark, useThemeColors } from '@/theme/colors';
 import { hubInk, hubTint, HUB } from '@/theme/hub';
 import { Copy, RUN_TEAL } from './PulseUi';
+import { tx } from '@/i18n/locale';
 
 /** The walk's own shape in a tinted tile — falls back to the route icon. */
 export function RouteThumb({ segments, size = HUB.tile + 10 }: { segments: LatLng[][]; size?: number }) {
@@ -26,7 +27,7 @@ export function WeekBars({ days, height: full = 86 }: { days: DayBucket[]; heigh
   const c = useThemeColors(), dark = useIsDark(), ink = hubInk('teal', dark);
   const height = days.some(d => d.meters > 0) ? full : 28;
   const max = Math.max(1000, ...days.map(d => d.meters));
-  return <View accessible accessibilityLabel={days.map(d => `${d.label} ${(d.meters / 1000).toFixed(1)} კმ`).join(', ')} style={{ flexDirection: 'row', alignItems: 'flex-end', gap: 8 }}>
+  return <View accessible accessibilityLabel={days.map(d => tx(`${d.label} ${(d.meters / 1000).toFixed(1)} კმ`, `${d.label} ${(d.meters / 1000).toFixed(1)} km`)).join(', ')} style={{ flexDirection: 'row', alignItems: 'flex-end', gap: 8 }}>
     {days.map(day => {
       const h = day.meters > 0 ? Math.max(6, (day.meters / max) * height) : 4;
       return <View key={day.key} style={{ flex: 1, alignItems: 'center', gap: 7 }}>
@@ -50,7 +51,7 @@ export function SplitBars({ splits }: { splits: number[] }) {
     {rows.map(row => {
       const best = row.ms != null && row.ms === fastest && known.length > 1;
       return <View key={row.km} style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-        <Copy size={12} bold style={{ width: 34, color: c.text200 }}>{row.km} კმ</Copy>
+        <Copy size={12} bold style={{ width: 34, color: c.text200 }}>{row.km} {tx('კმ', 'km')}</Copy>
         <View style={{ flex: 1, height: 10, borderRadius: 6, backgroundColor: c.bg200, overflow: 'hidden' }}>
           {row.ms != null ? <View style={{ height: 10, borderRadius: 6, width: `${Math.max(12, (fastest / row.ms) * 100)}%`, backgroundColor: best ? RUN_TEAL : c.bg300 }} /> : null}
         </View>

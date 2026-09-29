@@ -10,6 +10,7 @@ import { api, type CatalogProductSummary, type DrugCategoryInfo } from '@/lib/ap
 import { catalogProductMeta } from '@/lib/medicationCatalogNav';
 import { useIsDark, useThemeColors } from '@/theme/colors';
 import { HUB, hubInk, hubText } from '@/theme/hub';
+import { tx } from '@/i18n/locale';
 
 function paramStr(value: string | string[] | undefined) {
   if (Array.isArray(value)) return value[0] ?? '';
@@ -57,7 +58,7 @@ export default function MedicationSearchScreen() {
     void load();
   }, [load]);
 
-  const chips = useMemo(() => [{ slug: null as string | null, nameKa: 'ყველა' }, ...categories], [categories]);
+  const chips = useMemo(() => [{ slug: null as string | null, nameKa: tx('ყველა', 'All') }, ...categories], [categories]);
 
   const openProduct = (product: CatalogProductSummary) => {
     router.push(`/pharmacy/product/${product.id}` as never);

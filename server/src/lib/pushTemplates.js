@@ -1,5 +1,6 @@
 import { prisma } from './prisma.js';
-import { PUSH_ENGAGE_TEMPLATE_DEFAULTS } from './pushEngageTemplates.js';
+import { PUSH_ENGAGE_TEMPLATE_DEFAULTS, PUSH_ENGAGE_TEMPLATE_EN } from './pushEngageTemplates.js';
+import { langOf } from './i18n.js';
 
 export const PUSH_TEMPLATE_DEFAULTS = [
   {
@@ -203,6 +204,117 @@ export const PUSH_TEMPLATE_DEFAULTS = [
   ...PUSH_ENGAGE_TEMPLATE_DEFAULTS,
 ];
 
+/**
+ * English copy per template key, served to English accounts. Admin overrides (PushTemplate rows) are
+ * written in Georgian, so English readers always get these code defaults.
+ */
+export const PUSH_TEMPLATE_EN = {
+  medication: {
+    title: 'Time for {name} 💊',
+    body: "Don't forget your {name} {dosage} 🤍 Medi is here to remind you it's time to look after yourself.",
+  },
+  'med-refill': {
+    title: 'Running low on {name}? 👀',
+    body: 'It might be time to check your {name} supply. Take a look so you have it when you need it 💚',
+  },
+  'cycle-period-soon': {
+    title: 'Your estimated period is coming up 🌸',
+    body: 'Based on your cycle, your period is expected in about {days} days. This is an estimate — Medi is just reminding you 💗',
+  },
+  'cycle-period-start': {
+    title: 'It may start today 🌷',
+    body: "By Medi's estimate, your period may start today. If it doesn't, that's okay — cycles don't always follow the calendar exactly 🤍",
+  },
+  'cycle-ovulation': {
+    title: 'Estimated ovulation is coming up ✨',
+    body: "Based on the calendar, your estimated ovulation day is getting close. This is an estimate — cycles don't always follow the calendar exactly 🤍",
+  },
+  'cycle-fertile': {
+    title: 'Estimated fertile window 🌱',
+    body: 'Your estimated fertile window may be starting. This is a calendar estimate — the forecast may change 🤍',
+  },
+  'cycle-pms': {
+    title: 'PMS may be on its way 🌙',
+    body: 'If you feel a bit different today, your cycle suggests the PMS phase may be getting close. Listen to your body 🤍',
+  },
+  'cycle-opk': {
+    title: 'Time for your OPK test 🧪',
+    body: "If you're using ovulation tests this cycle, don't forget today's OPK 💗",
+  },
+  'cycle-bbt': {
+    title: 'Good morning ☀️ BBT?',
+    body: "Before you get up and start the day, don't forget to take your basal body temperature 🌡️",
+  },
+  'cycle-log': {
+    title: 'How are you today? 💚',
+    body: 'One minute for Medi? Note how your day went — symptoms, mood and whatever matters to you.',
+  },
+  'cycle-tip': {
+    title: 'From Medi, for you 💚',
+    body: 'I have a small tip for you today. Stop by when you have a moment ✨',
+  },
+  'cycle-masked': {
+    title: 'A reminder from Medi',
+    body: 'Stop by when you have a moment 💚',
+  },
+  'pregnancy-care-plan': {
+    title: 'Reminder',
+    body: 'A reminder: you planned {item} {when}.',
+  },
+  'pet-care': {
+    title: '{pet} · {item}',
+    body: 'A planned care day. Open to confirm.',
+  },
+  'pet-care-masked': {
+    title: 'A reminder from Medi',
+    body: 'Your planned care reminder',
+  },
+  'pregnancy-care-masked': {
+    title: 'A reminder from Medi',
+    body: 'Your planned care reminder',
+  },
+  visit: {
+    title: "Don't forget your visit 🩺",
+    body: 'You have a visit today at {time} — {doctor}{place}. All set? Medi is just reminding you 💚',
+  },
+  steps: {
+    title: "You're close to your goal 👟",
+    body: "You've already walked {steps} steps today. A short walk and you'll be even closer to your goal 💚",
+  },
+  weight: {
+    title: 'Log your weight? ⚖️',
+    body: 'If you wanted to record your weight today, you can do it in Medi — last entry: {kg} kg. No pressure 🤍',
+  },
+  'admin-push': {
+    title: "It's me, Medi 💚",
+    body: 'I have a little news for you.',
+  },
+  'quota-reset': {
+    title: 'Medi is back with you ✨',
+    body: 'Your AI limit has been renewed — you have {limit} questions today. Ask anything 💬',
+  },
+  'quota-reset-lock': {
+    title: '24 hours have passed 💚',
+    body: 'You can talk to Medi again — {limit} questions are waiting. Shall we start?',
+  },
+  ...PUSH_ENGAGE_TEMPLATE_EN,
+};
+
+/** English title/body for a template key, or null when none exists. */
+export function pushTemplateEnglish(key) {
+  return PUSH_TEMPLATE_EN[key] ?? null;
+}
+
+/**
+ * The template in the reader's language. Georgian returns it unchanged; English swaps title/body for
+ * the English code default (keeps the Georgian row when a key has no English copy).
+ */
+export function localizePushTemplate(template, lang = 'ka') {
+  if (!template || langOf(lang) !== 'en') return template;
+  const en = pushTemplateEnglish(template.key);
+  return en ? { ...template, title: en.title, body: en.body } : template;
+}
+
 export const PUSH_TEMPLATE_GROUP_LABELS = {
   med: 'მედიკამენტები',
   cycle: 'ციკლი',
@@ -240,6 +352,7 @@ export function tidyPushCopy(text) {
     .replace(/\s*[·•]\s*(?=[.,]|$)/g, '')
     .replace(/\s+—\s*(?=[.,]|$)/g, '')
     .replace(/\s*—\s*ბოლო მონაცემი:\s*კგ\.?/g, '')
+    .replace(/\s*—\s*last entry:\s*kg\.?/g, '')
     .replace(/უკვე\s+ნაბიჯი გაქვს/g, 'ნაბიჯები უკვე გროვდება')
     .replace(/(\S)([—–])/g, '$1 $2')
     .replace(/\s+([.,;:!?])/g, '$1')
@@ -365,8 +478,9 @@ export async function ensurePushTemplateTables() {
   tablesReady = true;
 }
 
-export async function listPushTemplates() {
+export async function listPushTemplates(lang = 'ka') {
   await ensurePushTemplateTables();
+  const english = langOf(lang) === 'en';
   let overrides = [];
   try {
     overrides = await prisma.$queryRaw`SELECT key, title, body, "updatedAt" FROM "PushTemplate"`;
@@ -377,6 +491,11 @@ export async function listPushTemplates() {
   return PUSH_TEMPLATE_DEFAULTS.map((def) => {
     const custom = byKey.get(def.key);
     const resolved = resolvePushTemplateCopy(def, custom);
+    const en = english ? pushTemplateEnglish(def.key) : null;
+    if (en) {
+      // Admin overrides are Georgian: English readers get the English code default.
+      return { ...def, title: en.title, body: en.body, custom: false, safetyOverride: false, updatedAt: null };
+    }
     return {
       ...def,
       title: resolved.title,

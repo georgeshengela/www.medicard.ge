@@ -4,6 +4,7 @@ import { loadAppState, saveAppState } from '../lib/appState.js';
 import { requireAuth } from '../middleware/auth.js';
 import { asyncHandler } from '../middleware/error.js';
 import { getEmailPreferences, setEmailMarketingOptIn } from '../lib/email/preferences.js';
+import { t } from '../lib/i18n.js';
 
 export const accountRouter = Router();
 
@@ -48,7 +49,7 @@ accountRouter.get(
   asyncHandler(async (req, res) => {
     res.set('Cache-Control', 'no-store');
     const prefs = await getEmailPreferences(req.user.id);
-    if (!prefs) return res.status(404).json({ error: 'მომხმარებელი ვერ მოიძებნა.' });
+    if (!prefs) return res.status(404).json({ error: t(req, 'მომხმარებელი ვერ მოიძებნა.', 'Account not found.') });
     return res.json(prefs);
   }),
 );
@@ -60,9 +61,9 @@ accountRouter.patch(
   asyncHandler(async (req, res) => {
     const { marketingOptIn } = emailPrefsSchema.parse(req.body ?? {});
     const current = await getEmailPreferences(req.user.id);
-    if (!current) return res.status(404).json({ error: 'მომხმარებელი ვერ მოიძებნა.' });
+    if (!current) return res.status(404).json({ error: t(req, 'მომხმარებელი ვერ მოიძებნა.', 'Account not found.') });
     if (marketingOptIn && !current.canReceive) {
-      return res.status(400).json({ error: 'ანგარიშზე ელფოსტა არ არის მითითებული.', code: 'NO_EMAIL' });
+      return res.status(400).json({ error: t(req, 'ანგარიშზე ელფოსტა არ არის მითითებული.', 'There is no email address on your account.'), code: 'NO_EMAIL' });
     }
     return res.json(await setEmailMarketingOptIn(req.user.id, marketingOptIn));
   }),

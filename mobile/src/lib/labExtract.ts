@@ -1,3 +1,4 @@
+import { isEn } from '../i18n/locale.js';
 import type { LabExtract, LabFlag, LabParameter } from '@/types/lab';
 import { slugLabKey } from './labKeys.ts';
 import { titledLabParam } from './labNames.ts';
@@ -235,6 +236,7 @@ export function formatLabDateKa(ymd: string): string {
   const [y, m, d] = ymd.split('-').map(Number);
   if (!y || !m || !d) return ymd;
   const months = ['იანვარი', 'თებერვალი', 'მარტი', 'აპრილი', 'მაისი', 'ივნისი', 'ივლისი', 'აგვისტო', 'სექტემბერი', 'ოქტომბერი', 'ნოემბერი', 'დეკემბერი'];
+  if (isEn() && months[m - 1]) return `${d} ${['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'][m - 1]} ${y}`;
   return months[m - 1] ? `${d} ${months[m - 1]} ${y}` : ymd;
 }
 

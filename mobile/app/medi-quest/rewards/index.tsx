@@ -4,6 +4,7 @@ import Animated, { FadeInDown } from 'react-native-reanimated';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ArrowLeft, ChevronRight, Gift, Sparkles } from 'lucide-react-native';
+import { appLang } from '@/i18n/locale';
 import { Bone } from '@/components/ui/Skeleton';
 import { QuestAnimatedNumber } from '@/components/quest/QuestAnimatedNumber';
 import { QuestCoinMark } from '@/components/quest/QuestIcon';
@@ -38,7 +39,7 @@ export default function RewardsStoreScreen() {
   const dark = useIsDark();
   const offline = useOffline();
   const reduce = usePrefersReducedMotion();
-  const copy = rewardsCopy('ka');
+  const copy = rewardsCopy(appLang());
   const [refreshing, setRefreshing] = useState(false);
   const [liveCoins, setLiveCoins] = useState<number | null>(() => getMediCoinBalanceHint());
   const devScenario = isQuestDevEnabled() ? getQuestDevScenario() : 'LIVE';
@@ -165,7 +166,7 @@ export default function RewardsStoreScreen() {
             ) : (
               <QuestAnimatedNumber
                 value={balance}
-                locale="ka"
+                locale={appLang()}
                 style={{
                   fontFamily: 'NotoSansGeorgian_700Bold',
                   fontSize: 36,
@@ -285,9 +286,9 @@ function RewardCard({
 }) {
   const shortfall = coinsShortfall(reward.coinCost, balance);
   const redeemable = canShowRedeem(reward, { offline });
-  const title = rewardTitle(reward.titleKey, 'ka');
-  const desc = rewardDescription(reward.descriptionKey, 'ka');
-  const a11y = `${title}, ${formatQuestNumber(reward.coinCost, 'ka')} Medi Coins, ${
+  const title = rewardTitle(reward.titleKey, appLang());
+  const desc = rewardDescription(reward.descriptionKey, appLang());
+  const a11y = `${title}, ${formatQuestNumber(reward.coinCost, appLang())} Medi Coins, ${
     reward.inventoryState === 'OUT_OF_STOCK' ? copy.outOfStock : redeemable ? copy.view : copy.unavailable
   }`;
 
@@ -342,19 +343,19 @@ function RewardCard({
           </Text>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 4, flexWrap: 'wrap' }}>
             <Text style={{ fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 13, color: colors.primary100 }}>
-              {formatQuestNumber(reward.coinCost, 'ka')} Medi Coins
+              {formatQuestNumber(reward.coinCost, appLang())} Medi Coins
             </Text>
             {reward.inventoryState === 'OUT_OF_STOCK' ? (
               <Text style={{ fontFamily: 'NotoSansGeorgian_500Medium', fontSize: 12, color: colors.text300 }}>{copy.outOfStock}</Text>
             ) : shortfall > 0 ? (
               <Text style={{ fontFamily: 'NotoSansGeorgian_500Medium', fontSize: 12, color: colors.text300 }}>
-                {copy.needMore(formatQuestNumber(shortfall, 'ka'))}
+                {copy.needMore(formatQuestNumber(shortfall, appLang()))}
               </Text>
             ) : null}
           </View>
           {!redeemable && reward.userEligibility?.reasonCode && reward.userEligibility.reasonCode !== 'REWARD_INSUFFICIENT_COINS' ? (
             <Text style={{ fontFamily: 'NotoSansGeorgian_500Medium', fontSize: 12, color: colors.text300 }}>
-              {rewardErrorMessage(reward.userEligibility.reasonCode, 'ka')}
+              {rewardErrorMessage(reward.userEligibility.reasonCode, appLang())}
             </Text>
           ) : null}
         </View>

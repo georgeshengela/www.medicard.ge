@@ -6,6 +6,7 @@ import { useFigmaSteps } from '@/constants/figmaStepsLayout';
 import { formatStepsCount } from '@/lib/stepsMetrics.shared';
 import { ka } from '@/i18n/ka';
 import type { StepsGoalRecord } from '@/types/stepsGoal';
+import { dateLocale } from '@/i18n/locale';
 
 type Props = {
   goal: number;
@@ -119,7 +120,7 @@ export function StepsReachedGoalsList({ records }: { records: StepsGoalRecord[] 
           <Text style={{ fontFamily: 'NotoSansGeorgian_400Regular', fontSize: 13, lineHeight: 18, color: FIGMA_STEPS.textSecondary }}>
             {ka.stepsGoal.reachedLine(
               formatStepsCount(row.targetSteps),
-              new Date(`${row.completedYmd}T12:00:00`).toLocaleDateString('ka-GE', {
+              new Date(`${row.completedYmd}T12:00:00`).toLocaleDateString(dateLocale(), {
                 day: 'numeric',
                 month: 'long',
                 year: 'numeric',

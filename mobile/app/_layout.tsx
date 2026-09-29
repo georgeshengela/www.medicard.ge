@@ -3,6 +3,7 @@ import '@/lib/bootGuard';
 
 import React, { useEffect, useRef, useState } from 'react';
 import { LogBox, Pressable, Settings, Text, View, useColorScheme } from 'react-native';
+import { tx } from '@/i18n/locale';
 
 // Expo SDK 57 treats sound: 'default' as a missing custom file in the native client.
 // The repeating LogBox toast covers Home chrome; ignore only that known message.
@@ -114,7 +115,7 @@ function AuthGate({ children }: { children: React.ReactNode }) {
         if (status.client.blockedByForceUpdate) {
           setGate({
             kind: 'update',
-            message: `განაახლე აპლიკაცია ვერსიამდე ${status.settings.minAppVersion} ან უფრო ახალამდე.`,
+            message: tx(`განაახლე აპლიკაცია ვერსიამდე ${status.settings.minAppVersion} ან უფრო ახალამდე.`, `Update the app to version ${status.settings.minAppVersion} or later.`),
           });
           return;
         }
@@ -193,10 +194,10 @@ function AuthGate({ children }: { children: React.ReactNode }) {
     return <View style={{ flex: 1, justifyContent: 'center', backgroundColor: colors.bg100, padding: 28 }}>
       <View style={{ width: '100%', maxWidth: 400, alignSelf: 'center', gap: 16 }}>
         <WifiOff size={30} color={colors.text200} />
-        <Text accessibilityRole="header" style={{ fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 21, color: colors.text100 }}>კავშირი შეფერხდა</Text>
+        <Text accessibilityRole="header" style={{ fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 21, color: colors.text100 }}>{tx('კავშირი შეფერხდა', 'Connection problem')}</Text>
         <Text accessibilityRole="alert" style={{ fontFamily: 'NotoSansGeorgian_400Regular', fontSize: 14, lineHeight: 23, color: colors.text200 }}>{sessionRestoreError}</Text>
-        <Text style={{ fontFamily: 'NotoSansGeorgian_400Regular', fontSize: 13, lineHeight: 21, color: colors.text200 }}>შესვლის მონაცემები შენახულია. კავშირის აღდგენის შემდეგ ხელახლა სცადე — პაროლის თავიდან შეყვანა საჭირო არ არის.</Text>
-        <Button label="ხელახლა ცდა" style={{ backgroundColor: '#0F766E' }} loading={restoringSession} onPress={() => void refresh()} />
+        <Text style={{ fontFamily: 'NotoSansGeorgian_400Regular', fontSize: 13, lineHeight: 21, color: colors.text200 }}>{tx('შესვლის მონაცემები შენახულია. კავშირის აღდგენის შემდეგ ხელახლა სცადე — პაროლის თავიდან შეყვანა საჭირო არ არის.', "Your sign-in is saved. Try again once you're back online — you won't need to enter your password again.")}</Text>
+        <Button label={tx('ხელახლა ცდა', 'Try again')} style={{ backgroundColor: '#0F766E' }} loading={restoringSession} onPress={() => void refresh()} />
       </View>
     </View>;
   }
@@ -205,7 +206,7 @@ function AuthGate({ children }: { children: React.ReactNode }) {
     return (
       <View className="flex-1 items-center justify-center bg-bg-100 px-8">
         <Text className="text-center font-sans-bold text-2xl text-text-100">
-          {gate.kind === 'maintenance' ? 'განახლება მიმდინარეობს' : 'საჭიროა განახლება'}
+          {gate.kind === 'maintenance' ? tx('განახლება მიმდინარეობს', 'Update in progress') : tx('საჭიროა განახლება', 'Update required')}
         </Text>
         <Text className="mt-3 text-center font-sans text-base leading-6 text-text-200">{gate.message}</Text>
       </View>
@@ -428,7 +429,7 @@ function AppShell() {
               <Stack.Screen name="symptoms" options={{ headerShown: false }} />
               <Stack.Screen name="pharmacy" options={{ headerShown: false }} />
               <Stack.Screen name="run" options={{ headerShown: false }} />
-              <Stack.Screen name="record/[id]" options={{ headerBackTitle: 'უკან' }} />
+              <Stack.Screen name="record/[id]" options={{ headerBackTitle: tx('უკან', 'Back') }} />
               <Stack.Screen name="news/[id]" options={{ headerShown: false }} />
             </Stack>
             {user ? <ModuleGate /> : null}
@@ -470,17 +471,17 @@ export function ErrorBoundary({ error, retry }: ErrorBoundaryProps) {
     <View style={{ flex: 1, justifyContent: 'center', padding: 28, backgroundColor: dark ? '#030712' : '#FFFFFF' }}>
       <View style={{ width: '100%', maxWidth: 400, alignSelf: 'center', gap: 14 }}>
         <Text accessibilityRole="header" style={{ fontSize: 21, fontWeight: '700', color: dark ? '#FFFFFF' : '#111827' }}>
-          რაღაც ვერ ჩაიტვირთა
+          {tx('რაღაც ვერ ჩაიტვირთა', "Something didn't load")}
         </Text>
         <Text style={{ fontSize: 14, lineHeight: 22, color: dark ? '#D1D5DB' : '#4B5563' }}>
-          შენი მონაცემები უსაფრთხოდაა. სცადე თავიდან — თუ ისევ განმეორდა, დახურე და ხელახლა გახსენი აპი.
+          {tx('შენი მონაცემები უსაფრთხოდაა. სცადე თავიდან — თუ ისევ განმეორდა, დახურე და ხელახლა გახსენი აპი.', 'Your data is safe. Try again — if it happens again, close and reopen the app.')}
         </Text>
         <Pressable
           accessibilityRole="button"
           onPress={() => void retry()}
           style={{ marginTop: 6, height: 50, borderRadius: 14, alignItems: 'center', justifyContent: 'center', backgroundColor: '#0F766E' }}
         >
-          <Text style={{ fontSize: 16, fontWeight: '700', color: '#FFFFFF' }}>თავიდან ცდა</Text>
+          <Text style={{ fontSize: 16, fontWeight: '700', color: '#FFFFFF' }}>{tx('თავიდან ცდა', 'Try again')}</Text>
         </Pressable>
       </View>
     </View>

@@ -7,6 +7,7 @@ import { IconButton } from '@/components/run/PulseUi';
 import { ka } from '@/i18n/ka';
 import { getRunById, type RunSummary } from '@/lib/run/history';
 import { useThemeColors } from '@/theme/colors';
+import { tx } from '@/i18n/locale';
 
 export default function RunHistoryDetailScreen() {
   const router = useRouter();
@@ -34,7 +35,7 @@ export default function RunHistoryDetailScreen() {
     <View style={{ flex: 1, backgroundColor: colors.bg100 }}>
       <RunFinishedView
         summary={run}
-        title="შენი გასეირნება"
+        title={tx('შენი გასეირნება', 'Your walk')}
         headerLeft={
           <IconButton label={ka.common.back} icon={ArrowLeft} onPress={() => router.back()} />
         }

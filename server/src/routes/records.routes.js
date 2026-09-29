@@ -4,6 +4,7 @@ import { prisma } from '../lib/prisma.js';
 import { unlinkStoredUpload } from '../lib/privateUploads.js';
 import { requireAuth } from '../middleware/auth.js';
 import { asyncHandler } from '../middleware/error.js';
+import { t } from '../lib/i18n.js';
 
 export const recordsRouter = Router();
 
@@ -38,7 +39,7 @@ recordsRouter.get(
     const { id } = z.object({ id: z.string().uuid() }).parse(req.params);
     const record = await prisma.medicalRecord.findFirst({ where: { id, userId: req.user.id } });
 
-    if (!record) return res.status(404).json({ error: 'ჩანაწერი ვერ მოიძებნა.' });
+    if (!record) return res.status(404).json({ error: t(req, 'ჩანაწერი ვერ მოიძებნა.', 'Record not found.') });
     return res.json({ record });
   }),
 );
@@ -51,10 +52,10 @@ recordsRouter.delete(
       where: { id, userId: req.user.id },
       select: { imageUrl: true },
     });
-    if (!record) return res.status(404).json({ error: 'ჩანაწერი ვერ მოიძებნა.' });
+    if (!record) return res.status(404).json({ error: t(req, 'ჩანაწერი ვერ მოიძებნა.', 'Record not found.') });
 
     const { count } = await prisma.medicalRecord.deleteMany({ where: { id, userId: req.user.id } });
-    if (count === 0) return res.status(404).json({ error: 'ჩანაწერი ვერ მოიძებნა.' });
+    if (count === 0) return res.status(404).json({ error: t(req, 'ჩანაწერი ვერ მოიძებნა.', 'Record not found.') });
     await unlinkStoredUpload(record.imageUrl);
     return res.json({ deleted: true });
   }),

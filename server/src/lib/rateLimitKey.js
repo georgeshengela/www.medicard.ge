@@ -14,6 +14,7 @@
  */
 
 import { createHash } from 'node:crypto';
+import { t } from './i18n.js';
 
 export function clientIp(req) {
   const raw = req.ip || req.socket?.remoteAddress || '';
@@ -51,10 +52,14 @@ export function isAuthWriteRequest(req) {
   return AUTH_WRITE_RE.test(path);
 }
 
-export function rateLimitPublicMessage(retryAfterSeconds = 60) {
+export function rateLimitPublicMessage(retryAfterSeconds = 60, lang = 'ka') {
   const seconds = Math.max(1, Math.min(3600, Number(retryAfterSeconds) || 60));
   return {
-    error: `ძალიან ბევრი მოთხოვნა. დაელოდე ${seconds} წამს.`,
+    error: t(
+      lang,
+      `ძალიან ბევრი მოთხოვნა. დაელოდე ${seconds} წამს.`,
+      `Too many requests. Please wait ${seconds} ${seconds === 1 ? 'second' : 'seconds'}.`,
+    ),
     code: 'RATE_LIMITED',
     retryAfterSeconds: seconds,
   };
@@ -73,7 +78,7 @@ export function attachRateLimitHandler(limiterName) {
     const seconds = retryAfterSecondsFrom(req, options.windowMs);
     res.setHeader('Retry-After', String(seconds));
     res.setHeader('X-Medicard-Limiter', String(limiterName || 'api'));
-    res.status(options.statusCode || 429).json(rateLimitPublicMessage(seconds));
+    res.status(options.statusCode || 429).json(rateLimitPublicMessage(seconds, req.lang));
   };
 }
 

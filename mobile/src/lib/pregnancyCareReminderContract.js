@@ -15,6 +15,7 @@ import {
   maskedCopyIsSafe,
 } from './cycleNotificationContract.js';
 import { isCivilDateKey, isRenderableCareItem, pregnancyCareItemById } from './pregnancyCareCatalog.js';
+import { tx } from '../i18n/locale.js';
 import {
   clockToMinutes,
   formatClockTime,
@@ -301,35 +302,35 @@ export function pregnancyCareReminderRoute(careItemId) {
 }
 
 export function pregnancyCareReminderCopy({ offset, itemTitle, reminderMode } = {}) {
-  const item = String(itemTitle || '').trim() || 'მოვლის პუნქტი';
+  const item = String(itemTitle || '').trim() || tx('მოვლის პუნქტი', 'care item');
   if (canonicalizeReminderMode(reminderMode) === REMINDER_MODE.EXACT_TIME) {
     return {
-      title: 'შეხსენება',
-      body: `შეგახსენებ: შენ დაგეგმე ${item}.`,
+      title: tx('შეხსენება', 'Reminder'),
+      body: tx(`შეგახსენებ: შენ დაგეგმე ${item}.`, `Reminder: you planned ${item}.`),
     };
   }
   if (Number(offset) === 0) {
     return {
-      title: 'შეხსენება',
-      body: `შეგახსენებ: შენ დაგეგმე ${item} დღეს.`,
+      title: tx('შეხსენება', 'Reminder'),
+      body: tx(`შეგახსენებ: შენ დაგეგმე ${item} დღეს.`, `Reminder: you planned ${item} for today.`),
     };
   }
   if (Number(offset) === 1) {
     return {
-      title: 'შეხსენება',
-      body: `შეგახსენებ: შენ დაგეგმე ${item} ხვალ.`,
+      title: tx('შეხსენება', 'Reminder'),
+      body: tx(`შეგახსენებ: შენ დაგეგმე ${item} ხვალ.`, `Reminder: you planned ${item} for tomorrow.`),
     };
   }
   return {
-    title: 'შეხსენება',
-    body: `შეგახსენებ: შენ დაგეგმე ${item} — დაგეგმილ თარიღამდე ${offset} დღით ადრე.`,
+    title: tx('შეხსენება', 'Reminder'),
+    body: tx(`შეგახსენებ: შენ დაგეგმე ${item} — დაგეგმილ თარიღამდე ${offset} დღით ადრე.`, `Reminder: you planned ${item} — ${offset} ${Number(offset) === 1 ? 'day' : 'days'} before the planned date.`),
   };
 }
 
 export function pregnancyCareMaskedCopy() {
   return {
-    title: 'Medi-სგან შეხსენება',
-    body: 'შენი დაგეგმილი მოვლის შეხსენება',
+    title: tx('Medi-სგან შეხსენება', 'A reminder from Medi'),
+    body: tx('შენი დაგეგმილი მოვლის შეხსენება', 'A reminder for something you planned'),
   };
 }
 

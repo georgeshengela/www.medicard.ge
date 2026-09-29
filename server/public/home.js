@@ -4,6 +4,10 @@
   'use strict';
 
   var reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var I18N = window.MedicardI18n || { isEn: false, t: function (k) { return k; } };
+  var T = I18N.t;
+  // English copy for each moment sits next to the Georgian as data-en-moment-*
+  function moment(b, k) { return (I18N.isEn && b.getAttribute('data-en-moment-' + k)) || b.dataset[k]; }
   var day = document.getElementById('day');
   var dial = document.getElementById('dial');
   var stops = Array.prototype.slice.call(dial.querySelectorAll('.stop'));
@@ -104,9 +108,9 @@
     panel.classList.remove('is-swap');
     void panel.offsetWidth;
     panel.classList.add('is-swap');
-    panelLabel.textContent = b.dataset.label + ' · ' + b.dataset.time;
-    panelTitle.textContent = b.dataset.title;
-    panelText.textContent = b.dataset.text;
+    panelLabel.textContent = moment(b, 'label') + ' · ' + b.dataset.time;
+    panelTitle.textContent = moment(b, 'title');
+    panelText.textContent = moment(b, 'text');
     if (clockTime) {
       clockTime.classList.remove('is-tick');
       void clockTime.offsetWidth;
@@ -183,28 +187,28 @@
   /* ───── Medi demo conversation ───── */
   var CHATS = {
     medi: {
-      label: 'Medi · მოქმედებები',
+      label: T('Medi · მოქმედებები', 'Medi · Actions'),
       turns: [
-        { me: 'დღეს დილის წამალი დავლიე?' },
-        { medi: 'კი, 08:05-ზე მონიშნე. შემდეგი მიღება 20:00-ზეა.', chip: 'შეხსენება 20:00' },
-        { me: 'ჩაწერე ორი ჭიქა წყალი.' },
-        { medi: 'ჩავწერე 500 მლ. დღის მიზნამდე 1 ლიტრი დაგრჩა.' }
+        { me: T('დღეს დილის წამალი დავლიე?', 'Did I take my morning meds today?') },
+        { medi: T('კი, 08:05-ზე მონიშნე. შემდეგი მიღება 20:00-ზეა.', 'Yes, you marked it at 08:05. Your next dose is at 20:00.'), chip: T('შეხსენება 20:00', 'Reminder 20:00') },
+        { me: T('ჩაწერე ორი ჭიქა წყალი.', 'Log two glasses of water.') },
+        { medi: T('ჩავწერე 500 მლ. დღის მიზნამდე 1 ლიტრი დაგრჩა.', 'Logged 500 ml. You’re 1 liter away from today’s goal.') }
       ]
     },
     doctor: {
-      label: 'ექიმთან · კითხვა ჯანმრთელობაზე',
+      label: T('ექიმთან · კითხვა ჯანმრთელობაზე', 'Doctor · Health questions'),
       turns: [
-        { me: 'ბოლო დღეებში საღამოობით თავი მტკივა.' },
-        { medi: 'ამ დღეებში წყალი მიზანზე ნაკლები დალიე და ძილი 6 საათზე ნაკლები იყო — ორივე შეიძლება იყოს ტკივილის მიზეზი.' },
-        { medi: 'თუ ტკივილი უეცრად ძლიერდება, ან მხედველობა, მეტყველება ან ძალა გეცვლება, დაუყოვნებლივ დარეკე 112-ზე.', chip: 'კითხვები ექიმისთვის' }
+        { me: T('ბოლო დღეებში საღამოობით თავი მტკივა.', 'I’ve had headaches in the evenings lately.') },
+        { medi: T('ამ დღეებში წყალი მიზანზე ნაკლები დალიე და ძილი 6 საათზე ნაკლები იყო — ორივე შეიძლება იყოს ტკივილის მიზეზი.', 'On those days you drank less water than your goal and slept under 6 hours — either could be behind the pain.') },
+        { medi: T('თუ ტკივილი უეცრად ძლიერდება, ან მხედველობა, მეტყველება ან ძალა გეცვლება, დაუყოვნებლივ დარეკე 112-ზე.', 'If the pain suddenly gets worse, or your vision, speech or strength changes, call 112 right away.'), chip: T('კითხვები ექიმისთვის', 'Questions for your doctor') }
       ]
     },
     deep: {
-      label: 'ღრმა ანალიზი · დოკუმენტები',
+      label: T('ღრმა ანალიზი · დოკუმენტები', 'Deep analysis · Documents'),
       turns: [
-        { me: 'სისხლის ანალიზის ფურცელი ავტვირთე.' },
-        { medi: 'ამოვიკითხე 18 მაჩვენებელი. ჰემოგლობინი ნორმაშია, ფერიტინი ნორმის ქვედა ზღვართანაა.' },
-        { medi: 'ეს დიაგნოზი არ არის. მოგიმზადე სამი კითხვა ექიმთან განსახილველად.', chip: 'ანალიზი შენახულია' }
+        { me: T('სისხლის ანალიზის ფურცელი ავტვირთე.', 'I uploaded my blood test results.') },
+        { medi: T('ამოვიკითხე 18 მაჩვენებელი. ჰემოგლობინი ნორმაშია, ფერიტინი ნორმის ქვედა ზღვართანაა.', 'I read 18 values. Hemoglobin is in range; ferritin is near the lower limit.') },
+        { medi: T('ეს დიაგნოზი არ არის. მოგიმზადე სამი კითხვა ექიმთან განსახილველად.', 'This isn’t a diagnosis. I’ve prepared three questions to discuss with your doctor.'), chip: T('ანალიზი შენახულია', 'Result saved') }
       ]
     }
   };

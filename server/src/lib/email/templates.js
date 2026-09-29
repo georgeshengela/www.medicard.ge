@@ -14,6 +14,11 @@ export const SITE_URL = 'https://medicard.ge';
 export const LOGO_URL = `${SITE_URL}/icon.png`;
 export const PRIVACY_URL = `${SITE_URL}/privacy`;
 export const BRAND = Object.freeze({ wordmark: 'მედიქარდი', tagline: 'ჯიბის სამედიცინო ასისტენტი', teal: '#0D9488', tealLight: '#14B8A6', dark: '#030712' });
+export const BRAND_EN = Object.freeze({ ...BRAND, wordmark: 'Medicard', tagline: 'Your pocket medical assistant' });
+export const PRIVACY_URL_EN = `${PRIVACY_URL}?lang=en`;
+
+/** 'en' only for an explicit English language; everything else is Georgian (the default). */
+export const emailLang = (lang) => (String(lang || '').toLowerCase().startsWith('en') ? 'en' : 'ka');
 
 export const COMMON_VARS = Object.freeze(['name', 'appUrl', 'supportEmail']);
 
@@ -71,6 +76,51 @@ export const DEFAULT_TEMPLATES = Object.freeze({
       'შენი ანგარიში და მასთან დაკავშირებული მონაცემები წაიშალა, როგორც მოითხოვე. ეს წერილი მხოლოდ დადასტურებაა — პასუხი საჭირო არ არის.',
       'თუ ანგარიში შენ არ წაგიშლია, დაუყოვნებლივ მოგვწერე: [{{supportEmail}}](mailto:{{supportEmail}}).',
       'მადლობა, რომ ჩვენთან იყავი. ნებისმიერ დროს შეგიძლია დაბრუნდე.',
+    ].join('\n\n'),
+    ctaLabel: '',
+    ctaUrl: '',
+  },
+});
+
+/**
+ * English content for the code defaults (same variables). Admin overrides (EmailTemplate rows) are
+ * Georgian only, so English recipients always get these.
+ */
+export const DEFAULT_TEMPLATES_EN = Object.freeze({
+  welcome: {
+    subject: 'Welcome to Medicard',
+    preheader: 'Three simple steps so Medicard can help you from day one.',
+    heading: 'Hello, {{name}}!',
+    body: [
+      'Thanks for joining us. Medicard is your pocket medical assistant — medications, nutrition and pharmacy prices in one place.',
+      '**Start with these three:**',
+      "- **Add your first medication** — Medi will remind you when it's time to take it.\n- **Log your meals** — with a photo, a search or just a description.\n- **Check pharmacy prices** — find your medicine at the best price.",
+      "Don't have the app on your phone yet? Download it: [App Store]({{appStoreUrl}}) · [Google Play]({{playStoreUrl}})",
+      'Have a question? Just reply to this email or write to us at [{{supportEmail}}](mailto:{{supportEmail}}).',
+    ].join('\n\n'),
+    ctaLabel: 'Open Medicard',
+    ctaUrl: '{{appUrl}}',
+  },
+  password_reset: {
+    subject: 'Medicard — password reset code',
+    preheader: 'Your code is valid for {{minutes}} minutes.',
+    heading: 'Hello, {{name}}!',
+    body: [
+      'Enter this code in the Medicard app to reset your password. The code is valid for **{{minutes}} minutes**.',
+      '{{code}}',
+      "If you didn't ask to reset your password, just ignore this email — your account is safe.",
+    ].join('\n\n'),
+    ctaLabel: '',
+    ctaUrl: '',
+  },
+  account_deleted: {
+    subject: 'Your Medicard account has been deleted',
+    preheader: 'Your account and its related data have been deleted.',
+    heading: 'Goodbye, {{name}}',
+    body: [
+      'Your account and its related data have been deleted, as you requested. This email is only a confirmation — no reply is needed.',
+      "If you didn't delete your account, write to us right away: [{{supportEmail}}](mailto:{{supportEmail}}).",
+      'Thank you for being with us. You can come back anytime.',
     ].join('\n\n'),
     ctaLabel: '',
     ctaUrl: '',
@@ -183,11 +233,15 @@ function markdownToText(src, vars, allowed) {
   }).join('\n\n');
 }
 
-/** Resolved template = code default + non-null override fields. */
-export function mergeTemplate(key, row) {
+/**
+ * Resolved template = code default + non-null override fields. English (`lang` 'en'): the English code
+ * default — admin overrides are Georgian, so they are not applied; the on/off switch still is.
+ */
+export function mergeTemplate(key, row, lang = 'ka') {
   const base = DEFAULT_TEMPLATES[key];
   if (!base) return null;
   const merged = { ...base, enabled: row ? row.enabled !== false : true, overridden: false, updatedAt: row?.updatedAt || null, updatedBy: row?.updatedBy || null };
+  if (emailLang(lang) === 'en' && DEFAULT_TEMPLATES_EN[key]) return { ...merged, ...DEFAULT_TEMPLATES_EN[key], lang: 'en' };
   if (row) {
     for (const f of TEMPLATE_FIELDS) {
       if (row[f] != null) {
@@ -208,13 +262,13 @@ const STYLES = {
   li: 'margin:0 0 8px;',
 };
 
-function codeBox(code) {
+function codeBox(code, label = 'ერთჯერადი კოდი') {
   const digits = escapeHtml(code);
   return `<table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin:8px 0 24px;">
   <tr><td align="center">
     <table role="presentation" cellspacing="0" cellpadding="0" class="mc-code" style="background:#f0fdfa;border:2px dashed #14B8A6;border-radius:16px;">
       <tr><td style="padding:18px 32px;text-align:center;">
-        <div style="font-family:${FONT};font-size:12px;font-weight:700;letter-spacing:0.08em;color:#0D9488;margin:0 0 8px;">ერთჯერადი კოდი</div>
+        <div style="font-family:${FONT};font-size:12px;font-weight:700;letter-spacing:0.08em;color:#0D9488;margin:0 0 8px;">${escapeHtml(label)}</div>
         <div class="mc-code-digits" style="font-family:'Courier New',Courier,monospace;font-size:34px;font-weight:700;letter-spacing:0.3em;color:#0f172a;padding-left:0.3em;">${digits}</div>
       </td></tr>
     </table>
@@ -226,7 +280,10 @@ function codeBox(code) {
  * Renders a full message.
  * @returns {{ subject: string, preheader: string, html: string, text: string }}
  */
-export function renderEmail({ content, vars = {}, allowed = CAMPAIGN_VARS, category = 'transactional', unsubscribeUrl = '' }) {
+export function renderEmail({ content, vars = {}, allowed = CAMPAIGN_VARS, category = 'transactional', unsubscribeUrl = '', lang = 'ka' }) {
+  const en = emailLang(lang) === 'en';
+  const brand = en ? BRAND_EN : BRAND;
+  const privacyUrl = en ? PRIVACY_URL_EN : PRIVACY_URL;
   const v = { ...vars };
   const subject = fillText(content.subject, v, allowed).replace(/\s+/g, ' ').trim().slice(0, 200);
   const preheader = fillText(content.preheader, v, allowed).replace(/\s+/g, ' ').trim();
@@ -238,7 +295,7 @@ export function renderEmail({ content, vars = {}, allowed = CAMPAIGN_VARS, categ
   const support = String(v.supportEmail || 'support@medicard.ge');
 
   let bodyHtml = fillHtml(markdownToHtml(content.body, STYLES), v, allowed);
-  bodyHtml = bodyHtml.split(CODE_TOKEN).join(codeBox(allowed.includes('code') ? v.code ?? '' : ''));
+  bodyHtml = bodyHtml.split(CODE_TOKEN).join(codeBox(allowed.includes('code') ? v.code ?? '' : '', en ? 'One-time code' : undefined));
 
   const cta = ctaLabel && ctaUrl
     ? `<table role="presentation" cellspacing="0" cellpadding="0" style="margin:8px 0 8px;"><tr><td style="border-radius:12px;background:#0D9488;">
@@ -246,17 +303,21 @@ export function renderEmail({ content, vars = {}, allowed = CAMPAIGN_VARS, categ
       </td></tr></table>`
     : '';
 
-  const MARKETING_NOTE = 'ეს წერილი მიიღე, რადგან აპში ჩართე „სიახლეები და რჩევები ელფოსტით“.';
-  const SERVICE_NOTE = 'ეს სერვისული წერილია შენი მედიქარდის ანგარიშის შესახებ.';
-  const unsubLinks = unsub
-    ? ` <a href="${escapeHtml(unsub)}" style="color:#64748b;text-decoration:underline;">გამოწერის გაუქმება</a> · <a href="${escapeHtml(unsub)}" style="color:#64748b;text-decoration:underline;" lang="en">Unsubscribe</a>`
-    : '';
+  const MARKETING_NOTE = en
+    ? 'You are receiving this email because you turned on “News and tips by email” in the app.'
+    : 'ეს წერილი მიიღე, რადგან აპში ჩართე „სიახლეები და რჩევები ელფოსტით“.';
+  const SERVICE_NOTE = en ? 'This is a service email about your Medicard account.' : 'ეს სერვისული წერილია შენი მედიქარდის ანგარიშის შესახებ.';
+  const unsubLinks = !unsub ? '' : en
+    ? ` <a href="${escapeHtml(unsub)}" style="color:#64748b;text-decoration:underline;">Unsubscribe</a>`
+    : ` <a href="${escapeHtml(unsub)}" style="color:#64748b;text-decoration:underline;">გამოწერის გაუქმება</a> · <a href="${escapeHtml(unsub)}" style="color:#64748b;text-decoration:underline;" lang="en">Unsubscribe</a>`;
   // 'support' = an admin's answer from #/support: no marketing or account footer, just who wrote.
-  const SUPPORT_NOTE = 'ეს არის მედიქარდის მხარდაჭერის პასუხი შენს წერილზე. უბრალოდ უპასუხე ამ წერილს.';
+  const SUPPORT_NOTE = en
+    ? 'This is Medicard support replying to your email. Just reply to this email.'
+    : 'ეს არის მედიქარდის მხარდაჭერის პასუხი შენს წერილზე. უბრალოდ უპასუხე ამ წერილს.';
   const footerNoteHtml = marketing ? `${escapeHtml(MARKETING_NOTE)}${unsubLinks}` : escapeHtml(category === 'support' ? SUPPORT_NOTE : SERVICE_NOTE);
 
   const html = `<!DOCTYPE html>
-<html lang="ka" xmlns="http://www.w3.org/1999/xhtml">
+<html lang="${en ? 'en' : 'ka'}" xmlns="http://www.w3.org/1999/xhtml">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -290,8 +351,8 @@ export function renderEmail({ content, vars = {}, allowed = CAMPAIGN_VARS, categ
         <table role="presentation" cellspacing="0" cellpadding="0"><tr>
           <td style="vertical-align:middle;"><img src="${LOGO_URL}" width="40" height="40" alt="" style="display:block;border:0;border-radius:10px;"></td>
           <td style="vertical-align:middle;padding-left:10px;">
-            <div class="mc-word" style="font-family:${FONT};font-size:18px;font-weight:700;line-height:22px;color:#0f172a;">${BRAND.wordmark}</div>
-            <div class="mc-tag" style="font-family:${FONT};font-size:12px;line-height:16px;color:#64748b;">${BRAND.tagline}</div>
+            <div class="mc-word" style="font-family:${FONT};font-size:18px;font-weight:700;line-height:22px;color:#0f172a;">${brand.wordmark}</div>
+            <div class="mc-tag" style="font-family:${FONT};font-size:12px;line-height:16px;color:#64748b;">${brand.tagline}</div>
           </td>
         </tr></table>
       </td></tr>
@@ -302,8 +363,8 @@ export function renderEmail({ content, vars = {}, allowed = CAMPAIGN_VARS, categ
       </td></tr>
       <tr><td class="mc-pad mc-foot" style="padding:20px 16px 0;font-family:${FONT};font-size:12px;line-height:19px;color:#64748b;text-align:center;">
         <p style="margin:0 0 6px;">${footerNoteHtml}</p>
-        <p style="margin:0 0 6px;"><a href="mailto:${escapeHtml(support)}" style="color:#64748b;text-decoration:underline;">${escapeHtml(support)}</a> · <a href="${PRIVACY_URL}" style="color:#64748b;text-decoration:underline;">კონფიდენციალურობა</a> · <a href="${SITE_URL}" style="color:#64748b;text-decoration:underline;">medicard.ge</a></p>
-        <p style="margin:0;">© ${BRAND.wordmark} · ${BRAND.tagline}</p>
+        <p style="margin:0 0 6px;"><a href="mailto:${escapeHtml(support)}" style="color:#64748b;text-decoration:underline;">${escapeHtml(support)}</a> · <a href="${privacyUrl}" style="color:#64748b;text-decoration:underline;">${en ? 'Privacy' : 'კონფიდენციალურობა'}</a> · <a href="${SITE_URL}" style="color:#64748b;text-decoration:underline;">medicard.ge</a></p>
+        <p style="margin:0;">© ${brand.wordmark} · ${brand.tagline}</p>
       </td></tr>
     </table>
   </td></tr>
@@ -316,11 +377,11 @@ export function renderEmail({ content, vars = {}, allowed = CAMPAIGN_VARS, categ
     markdownToText(content.body, v, allowed),
     ctaLabel && ctaUrl ? `${ctaLabel}: ${ctaUrl}` : '',
     '—',
-    `${BRAND.wordmark} · ${BRAND.tagline}`,
-    `${support} · ${PRIVACY_URL}`,
+    `${brand.wordmark} · ${brand.tagline}`,
+    `${support} · ${privacyUrl}`,
     marketing
-      ? `ეს წერილი მიიღე, რადგან აპში ჩართე „სიახლეები და რჩევები ელფოსტით“.${unsub ? `\nგამოწერის გაუქმება / Unsubscribe: ${unsub}` : ''}`
-      : category === 'support' ? SUPPORT_NOTE : 'ეს სერვისული წერილია შენი მედიქარდის ანგარიშის შესახებ.',
+      ? `${MARKETING_NOTE}${unsub ? `\n${en ? 'Unsubscribe' : 'გამოწერის გაუქმება / Unsubscribe'}: ${unsub}` : ''}`
+      : category === 'support' ? SUPPORT_NOTE : SERVICE_NOTE,
   ].filter(Boolean);
 
   return { subject, preheader, html, text: textParts.join('\n\n') };

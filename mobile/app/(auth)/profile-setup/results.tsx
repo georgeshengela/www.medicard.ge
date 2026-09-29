@@ -34,6 +34,7 @@ import { finishOnboarding } from '@/lib/profileSetupFlow';
 import { useAuth } from '@/store/AuthContext';
 import { analysisFromProfile, type OnboardingScoreRange } from '@/types/onboardingAnalysis';
 import { welcomeTopInset } from '@/constants/figmaWelcomeLayout';
+import { dateLocale, tx } from '@/i18n/locale';
 
 function SectionHeader({ title }: { title: string }) {
   const FIGMA_ASSESSMENT_RESULT = useFigmaAssessmentResult();
@@ -166,7 +167,7 @@ export default function ProfileSetupResultsScreen() {
   const avatarId = normalizeAvatarForGender(typeof extra.avatarId === 'string' ? extra.avatarId : null, user.gender);
   const avatarSource = isAvatarId(avatarId) ? AVATAR_SOURCES[avatarId] : AVATAR_SOURCES['avatar-1'];
   const bc = analysis.bodyComposition;
-  const dateLabel = new Date(analysis.analyzedAt ?? Date.now()).toLocaleDateString('ka-GE', {
+  const dateLabel = new Date(analysis.analyzedAt ?? Date.now()).toLocaleDateString(dateLocale(), {
     month: 'short',
     day: 'numeric',
     year: 'numeric',
@@ -341,7 +342,7 @@ export default function ProfileSetupResultsScreen() {
               );
             })}
             <Text style={{ fontFamily: 'NotoSansGeorgian_400Regular', fontSize: 12, lineHeight: 18, color: FIGMA_ASSESSMENT_RESULT.labelColor }}>
-              ქულა MEDICARD-ის საკუთარი შეჯამებაა შენი პასუხებიდან (BMI, ძილი, აქტივობა, წნევა, ჩვევები) — ეს კლინიკური დიაგნოზი არ არის.
+              {tx('ქულა MEDICARD-ის საკუთარი შეჯამებაა შენი პასუხებიდან (BMI, ძილი, აქტივობა, წნევა, ჩვევები) — ეს კლინიკური დიაგნოზი არ არის.', "The score is MEDICARD's own summary of your answers (BMI, sleep, activity, blood pressure, habits) — it is not a clinical diagnosis.")}
             </Text>
             <MedicalSourcesLink sourceIds={['bmi', 'sleepAdults', 'bloodPressure', 'physicalActivity']} />
           </View>
@@ -444,7 +445,7 @@ export default function ProfileSetupResultsScreen() {
                 ))}
               </View>
               <Text style={{ paddingHorizontal: 16, paddingBottom: 14, fontFamily: 'NotoSansGeorgian_400Regular', fontSize: 12, lineHeight: 18, color: FIGMA_ASSESSMENT_RESULT.labelColor }}>
-                ცხიმის პროცენტი BMI-დან, ასაკიდან და სქესიდან Deurenberg-ის ფორმულით არის შეფასებული; ცხიმისგან თავისუფალი მასა დანარჩენი წილია. ეს შეფასებაა, არა გაზომილი სხეულის შემადგენლობა.
+                {tx('ცხიმის პროცენტი BMI-დან, ასაკიდან და სქესიდან Deurenberg-ის ფორმულით არის შეფასებული; ცხიმისგან თავისუფალი მასა დანარჩენი წილია. ეს შეფასებაა, არა გაზომილი სხეულის შემადგენლობა.', 'Body fat percentage is estimated from BMI, age and sex with the Deurenberg formula; fat-free mass is the rest. This is an estimate, not a measured body composition.')}
               </Text>
             </View>
             <MedicalSourcesLink sourceIds={['bodyFatDeurenberg', 'bmi']} />

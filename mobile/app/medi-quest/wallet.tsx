@@ -4,6 +4,7 @@ import Animated, { FadeInDown } from 'react-native-reanimated';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ArrowLeft, Gift, Target, TrendingUp } from 'lucide-react-native';
+import { appLang, dateLocale } from '@/i18n/locale';
 import { Bone } from '@/components/ui/Skeleton';
 import { QuestAnimatedNumber } from '@/components/quest/QuestAnimatedNumber';
 import { QuestCoinMark } from '@/components/quest/QuestIcon';
@@ -27,8 +28,8 @@ export default function QuestWalletScreen() {
   const colors = useThemeColors();
   const dark = useIsDark();
   const reduce = usePrefersReducedMotion();
-  const copy = q('ka');
-  const rewards = rewardsCopy('ka');
+  const copy = q(appLang());
+  const rewards = rewardsCopy(appLang());
   const [data, setData] = useState<WalletData | null>(null);
   const [loading, setLoading] = useState(true);
   const [liveCoins, setLiveCoins] = useState<number | null>(() => getMediCoinBalanceHint());
@@ -149,7 +150,7 @@ export default function QuestWalletScreen() {
             ) : (
               <QuestAnimatedNumber
                 value={displayBalance}
-                locale="ka"
+                locale={appLang()}
                 duration={900}
                 numberOfLines={1}
                 adjustsFontSizeToFit
@@ -178,7 +179,7 @@ export default function QuestWalletScreen() {
             >
               <TrendingUp size={13} color={colors.primary100} strokeWidth={2.4} />
               <Text style={{ fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 12, lineHeight: 16, color: colors.primary100 }}>
-                {copy.earned}: {formatQuestNumber(data?.totalEarned.coins || 0, 'ka')}
+                {copy.earned}: {formatQuestNumber(data?.totalEarned.coins || 0, appLang())}
               </Text>
             </View>
           </View>
@@ -274,7 +275,7 @@ export default function QuestWalletScreen() {
                       {sourceLabel(row.sourceType)}
                     </Text>
                     <Text style={{ fontFamily: 'NotoSansGeorgian_500Medium', fontSize: 12, lineHeight: 16, color: colors.text300, marginTop: 2 }}>
-                      {new Date(row.createdAt).toLocaleDateString('ka-GE', { day: 'numeric', month: 'short' })}
+                      {new Date(row.createdAt).toLocaleDateString(dateLocale(), { day: 'numeric', month: 'short' })}
                     </Text>
                   </View>
                   <View
@@ -291,7 +292,7 @@ export default function QuestWalletScreen() {
                     <QuestCoinMark size={12} color={positive ? coinInk : colors.text300} />
                     <Text style={{ fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 13, lineHeight: 18, color: positive ? coinInk : colors.text200 }}>
                       {positive ? '+' : ''}
-                      {formatQuestNumber(row.amount, 'ka')}
+                      {formatQuestNumber(row.amount, appLang())}
                     </Text>
                   </View>
                 </Animated.View>

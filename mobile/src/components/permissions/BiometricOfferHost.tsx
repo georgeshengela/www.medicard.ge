@@ -16,6 +16,7 @@ import { getScopedPreference, localAccountId, setScopedPreference } from '@/lib/
 import { patchProfileExtra, setBiometricEnabled } from '@/lib/profileSetupFlow';
 import { useAuth } from '@/store/AuthContext';
 import { useThemeColors } from '@/theme/colors';
+import { tx } from '@/i18n/locale';
 
 const LAUNCHES_KEY = 'medicard.launches.v1';
 let countedThisProcess = false;
@@ -113,7 +114,7 @@ function BiometricOffer({ owner }: { owner: string }) {
             <Text style={{ fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 16, color: '#FFFFFF' }}>{ka.profileSetup.faceIdEnable}</Text>
           </Pressable>
           <Pressable accessibilityRole="button" disabled={busy} onPress={() => void decline()} style={{ minHeight: 44, justifyContent: 'center' }}>
-            <Text style={{ fontFamily: 'NotoSansGeorgian_600SemiBold', fontSize: 15, color: c.text200 }}>ახლა არა</Text>
+            <Text style={{ fontFamily: 'NotoSansGeorgian_600SemiBold', fontSize: 15, color: c.text200 }}>{tx('ახლა არა', 'Not now')}</Text>
           </Pressable>
         </View>
       </View>

@@ -29,9 +29,9 @@ appRouter.get(
     });
 
     res.json({
-      settings: publicAppSettings(settings),
+      settings: publicAppSettings(settings, req.lang),
       features: await publicFeatureFlags(),
-      featureMessages: await publicFeatureMessages(),
+      featureMessages: await publicFeatureMessages(undefined, req.lang),
       packages: FREE_CONSUMER_RELEASE ? [freeConsumerPackage()] : packages.map(publicPackage),
       accessMode: FREE_CONSUMER_RELEASE ? 'free' : 'paid',
       mapboxToken: mapboxPublicToken(),

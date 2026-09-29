@@ -4,6 +4,7 @@ import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ArrowLeft } from 'lucide-react-native';
 import { useThemeColors } from '@/theme/colors';
+import { tx } from '@/i18n/locale';
 
 export function ProfileScreenHeader({
   title,
@@ -45,7 +46,7 @@ export function ProfileScreenHeader({
       >
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel="უკან"
+          accessibilityLabel={tx('უკან', 'Back')}
           hitSlop={12}
           onPress={goBack}
           style={{

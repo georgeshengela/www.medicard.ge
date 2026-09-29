@@ -10,8 +10,11 @@ import { Avatar, Button, Card, IconTile, Loading, Section, coachStyles } from '@
 import { FadeIn, StatusPill, haptic } from '@/components/coach/CoachKit';
 import { hubText } from '@/theme/hub';
 import { useIsDark, useThemeColors } from '@/theme/colors';
+import { isEn, tx } from '@/i18n/locale';
 
-const MONTH_LONG = ['იანვარი', 'თებერვალი', 'მარტი', 'აპრილი', 'მაისი', 'ივნისი', 'ივლისი', 'აგვისტო', 'სექტემბერი', 'ოქტომბერი', 'ნოემბერი', 'დეკემბერი'];
+const MONTH_LONG = isEn()
+  ? ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
+  : ['იანვარი', 'თებერვალი', 'მარტი', 'აპრილი', 'მაისი', 'ივნისი', 'ივლისი', 'აგვისტო', 'სექტემბერი', 'ოქტომბერი', 'ნოემბერი', 'დეკემბერი'];
 
 export default function CoachCalendarScreen() {
   const router = useRouter();
@@ -78,10 +81,10 @@ export default function CoachCalendarScreen() {
 
   return (
     <CoachShell
-      title="კალენდარი"
-      subtitle={`${d0.getUTCDate()} ${MONTH_SHORT[d0.getUTCMonth()]} – ${d6.getUTCDate()} ${MONTH_SHORT[d6.getUTCMonth()]}${sessions ? ` · ${weekCount} ვარჯიში` : ''}`}
+      title={tx('კალენდარი', 'Calendar')}
+      subtitle={`${d0.getUTCDate()} ${MONTH_SHORT[d0.getUTCMonth()]} – ${d6.getUTCDate()} ${MONTH_SHORT[d6.getUTCMonth()]}${sessions ? tx(` · ${weekCount} ვარჯიში`, ` · ${weekCount} ${weekCount === 1 ? 'workout' : 'workouts'}`) : ''}`}
       right={
-        <Pressable accessibilityRole="button" accessibilityLabel="ვარჯიშის დანიშვნა" onPress={() => router.push(`/coach/session-new?date=${day}` as never)} style={st.addBtn}>
+        <Pressable accessibilityRole="button" accessibilityLabel={tx('ვარჯიშის დანიშვნა', 'Schedule a workout')} onPress={() => router.push(`/coach/session-new?date=${day}` as never)} style={st.addBtn}>
           <CalendarPlus size={22} color="#FFFFFF" />
         </Pressable>
       }
@@ -89,12 +92,12 @@ export default function CoachCalendarScreen() {
       <CoachGate error={error} />
       <Card style={{ marginTop: 16, paddingHorizontal: 10, paddingVertical: 12 }}>
         <View style={[coachStyles.rowBetween, { paddingHorizontal: 6 }]}>
-          <Pressable accessibilityRole="button" accessibilityLabel="წინა კვირა" onPress={() => shift(-1)} hitSlop={8} style={[st.navBtn, { backgroundColor: c.bg200 }]}>
+          <Pressable accessibilityRole="button" accessibilityLabel={tx('წინა კვირა', 'Previous week')} onPress={() => shift(-1)} hitSlop={8} style={[st.navBtn, { backgroundColor: c.bg200 }]}>
             <ChevronLeft size={20} color={c.text100} />
           </Pressable>
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel={anchor !== today ? 'დღევანდელ კვირაზე დაბრუნება' : monthTitle}
+            accessibilityLabel={anchor !== today ? tx('დღევანდელ კვირაზე დაბრუნება', 'Back to this week') : monthTitle}
             disabled={anchor === today}
             onPress={() => {
               haptic.tap();
@@ -105,9 +108,9 @@ export default function CoachCalendarScreen() {
             style={{ alignItems: 'center', minHeight: 40, justifyContent: 'center' }}
           >
             <Text style={[hubText.cardTitle, { color: c.text100 }]}>{monthTitle}</Text>
-            {anchor !== today ? <Text style={[hubText.small, { color: c.primary200, fontFamily: 'NotoSansGeorgian_600SemiBold' }]}>დღევანდელ კვირაზე</Text> : null}
+            {anchor !== today ? <Text style={[hubText.small, { color: c.primary200, fontFamily: 'NotoSansGeorgian_600SemiBold' }]}>{tx('დღევანდელ კვირაზე', 'This week')}</Text> : null}
           </Pressable>
-          <Pressable accessibilityRole="button" accessibilityLabel="შემდეგი კვირა" onPress={() => shift(1)} hitSlop={8} style={[st.navBtn, { backgroundColor: c.bg200 }]}>
+          <Pressable accessibilityRole="button" accessibilityLabel={tx('შემდეგი კვირა', 'Next week')} onPress={() => shift(1)} hitSlop={8} style={[st.navBtn, { backgroundColor: c.bg200 }]}>
             <ChevronRight size={20} color={c.text100} />
           </Pressable>
         </View>
@@ -122,7 +125,7 @@ export default function CoachCalendarScreen() {
                 key={d}
                 accessibilityRole="button"
                 accessibilityState={{ selected: isSel }}
-                accessibilityLabel={`${WEEKDAY_SHORT[date.getUTCDay()]} ${date.getUTCDate()}, ${items.length} ვარჯიში`}
+                accessibilityLabel={tx(`${WEEKDAY_SHORT[date.getUTCDay()]} ${date.getUTCDate()}, ${items.length} ვარჯიში`, `${WEEKDAY_SHORT[date.getUTCDay()]} ${date.getUTCDate()}, ${items.length} ${items.length === 1 ? 'workout' : 'workouts'}`)}
                 onPress={() => {
                   if (!isSel) haptic.tap();
                   setDay(d);
@@ -142,16 +145,16 @@ export default function CoachCalendarScreen() {
         </View>
       </Card>
 
-      <Section title={day === today ? 'დღეს' : `${WEEKDAY_SHORT[selected.getUTCDay()]}, ${selected.getUTCDate()} ${MONTH_SHORT[selected.getUTCMonth()]}`} link={list.length && day >= today ? 'დამატება' : undefined} onLink={() => router.push(`/coach/session-new?date=${day}` as never)}>
+      <Section title={day === today ? tx('დღეს', 'Today') : `${WEEKDAY_SHORT[selected.getUTCDay()]}, ${selected.getUTCDate()} ${MONTH_SHORT[selected.getUTCMonth()]}`} link={list.length && day >= today ? tx('დამატება', 'Add') : undefined} onLink={() => router.push(`/coach/session-new?date=${day}` as never)}>
         {!sessions && !error ? <Loading rows={2} /> : null}
         {sessions && !list.length ? (
           <Card style={{ gap: 12, alignItems: 'center', paddingVertical: 24 }}>
             <IconTile icon={CalendarRange} ink="neutral" size={48} />
-            <Text style={[hubText.cardTitle, { color: c.text100 }]}>{day < today ? 'ამ დღეს ვარჯიში არ ყოფილა' : 'თავისუფალი დღე'}</Text>
+            <Text style={[hubText.cardTitle, { color: c.text100 }]}>{day < today ? tx('ამ დღეს ვარჯიში არ ყოფილა', 'No workouts this day') : tx('თავისუფალი დღე', 'Free day')}</Text>
             {day >= today ? (
               <>
-                <Text style={[hubText.body, { color: c.text300, textAlign: 'center' }]}>დანიშნე ვარჯიში ან გახსენი სლოტი, რომელსაც კლიენტი თავად დაჯავშნის.</Text>
-                <Button label="დანიშვნა ამ დღეს" icon={CalendarPlus} style={{ alignSelf: 'stretch' }} onPress={() => router.push(`/coach/session-new?date=${day}` as never)} />
+                <Text style={[hubText.body, { color: c.text300, textAlign: 'center' }]}>{tx('დანიშნე ვარჯიში ან გახსენი სლოტი, რომელსაც კლიენტი თავად დაჯავშნის.', 'Schedule a workout or open a slot that a client can book themselves.')}</Text>
+                <Button label={tx('დანიშვნა ამ დღეს', 'Schedule on this day')} icon={CalendarPlus} style={{ alignSelf: 'stretch' }} onPress={() => router.push(`/coach/session-new?date=${day}` as never)} />
               </>
             ) : null}
           </Card>
@@ -162,29 +165,29 @@ export default function CoachCalendarScreen() {
             const stripe = cancelled ? c.bg300 : s.status === 'DONE' ? c.success : s.status === 'NO_SHOW' ? c.danger : s.clientId ? '#14B8A6' : dark ? '#6B7280' : '#9CA3AF';
             return (
               <FadeIn key={s.id} delay={Math.min(i, 5) * 40}>
-                <Card onPress={() => router.push(`/coach/session/${s.id}` as never)} style={{ flexDirection: 'row', padding: 0, overflow: 'hidden', opacity: cancelled ? 0.7 : 1 }} accessibilityLabel={`${clockOf(s.startsAt)}, ${s.clientName ?? 'თავისუფალი სლოტი'}, ${SESSION_STATUS_LABEL[s.status]}`}>
+                <Card onPress={() => router.push(`/coach/session/${s.id}` as never)} style={{ flexDirection: 'row', padding: 0, overflow: 'hidden', opacity: cancelled ? 0.7 : 1 }} accessibilityLabel={`${clockOf(s.startsAt)}, ${s.clientName ?? tx('თავისუფალი სლოტი', 'Open slot')}, ${SESSION_STATUS_LABEL[s.status]}`}>
                   <View style={{ width: 5, backgroundColor: stripe }} />
                   <View style={[coachStyles.row, { flex: 1, padding: 14, gap: 12 }]}>
                     <View style={{ width: 50 }}>
                       <Text style={[st.time, { color: c.text100 }]}>{clockOf(s.startsAt)}</Text>
-                      <Text style={[hubText.small, { color: c.text300 }]}>{s.durationMin} წთ</Text>
+                      <Text style={[hubText.small, { color: c.text300 }]}>{s.durationMin} {tx('წთ', 'min')}</Text>
                     </View>
                     {s.clientId ? <Avatar avatarId={s.clientAvatarId} photoUrl={s.clientAvatarUrl} name={s.clientName ?? '?'} size={40} /> : null}
                     <View style={{ flex: 1, minWidth: 0, gap: 3 }}>
-                      <Text numberOfLines={1} style={[hubText.cardTitle, { color: cancelled ? c.text300 : c.text100, textDecorationLine: cancelled ? 'line-through' : 'none' }]}>{s.clientName ?? 'თავისუფალი სლოტი'}</Text>
+                      <Text numberOfLines={1} style={[hubText.cardTitle, { color: cancelled ? c.text300 : c.text100, textDecorationLine: cancelled ? 'line-through' : 'none' }]}>{s.clientName ?? tx('თავისუფალი სლოტი', 'Open slot')}</Text>
                       <View style={[coachStyles.row, { gap: 5 }]}>
                         {s.gym ? <MapPin size={12} color={c.text300} /> : null}
                         <Text numberOfLines={1} style={[hubText.caption, { color: c.text300, flex: 1 }]}>
                           {s.kindLabel}
                           {s.gym ? ` · ${s.gym.brand}` : ''}
                         </Text>
-                        {s.seriesId && s.seriesId !== 'slot' ? <Repeat size={12} color={c.text300} accessibilityLabel="ყოველკვირეული" /> : null}
+                        {s.seriesId && s.seriesId !== 'slot' ? <Repeat size={12} color={c.text300} accessibilityLabel={tx('ყოველკვირეული', 'Weekly')} /> : null}
                       </View>
                     </View>
                     {s.status === 'SCHEDULED' && s.clientConfirmedAt ? (
-                      <CheckCircle2 size={20} color={c.success} accessibilityLabel="დადასტურებულია" />
+                      <CheckCircle2 size={20} color={c.success} accessibilityLabel={tx('დადასტურებულია', 'Confirmed')} />
                     ) : (
-                      <StatusPill label={cancelled && s.lateCancel ? 'გვიან გაუქმდა' : SESSION_STATUS_LABEL[s.status]} tone={s.status === 'DONE' ? 'ok' : s.status === 'OPEN' ? 'brand' : s.status === 'SCHEDULED' ? 'neutral' : 'bad'} />
+                      <StatusPill label={cancelled && s.lateCancel ? tx('გვიან გაუქმდა', 'Late cancel') : SESSION_STATUS_LABEL[s.status]} tone={s.status === 'DONE' ? 'ok' : s.status === 'OPEN' ? 'brand' : s.status === 'SCHEDULED' ? 'neutral' : 'bad'} />
                     )}
                   </View>
                 </Card>

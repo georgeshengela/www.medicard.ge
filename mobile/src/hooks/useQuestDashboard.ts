@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { tx } from '@/i18n/locale';
 import { useAuth } from '@/store/AuthContext';
 import { localAccountId } from '@/lib/localAccount';
 import { questApi, type QuestClaimResult, type QuestDashboard } from '@/lib/quest/api';
@@ -102,7 +103,7 @@ export function useQuestDashboard() {
       invalidateMediCoinBalance({ coins: result.profile.coinBalance });
       return result;
     } catch {
-      if (mounted.current && localAccountId() === ownerId) setClaimError({ id, message: 'ჯილდოს მიღება ვერ დადასტურდა. სცადე ხელახლა — ერთი მისიის ჯილდო მხოლოდ ერთხელ ირიცხება.' });
+      if (mounted.current && localAccountId() === ownerId) setClaimError({ id, message: tx('ჯილდოს მიღება ვერ დადასტურდა. სცადე ხელახლა — ერთი მისიის ჯილდო მხოლოდ ერთხელ ირიცხება.', 'We couldn’t confirm your reward. Try again — each mission’s reward is credited only once.') });
       return null;
     } finally { endClaimLock(claimLocks, lock); }
   }, [ownerId]);

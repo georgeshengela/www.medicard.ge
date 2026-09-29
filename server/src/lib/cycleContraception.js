@@ -49,6 +49,9 @@ const TTC_INCONSISTENT = new Set([
 ]);
 
 const LIMITED_PHASE_KA = 'კალენდარული ფაზა ამ მეთოდისას ნაკლებად მნიშვნელოვანია';
+const LIMITED_PHASE_EN = 'The calendar phase matters less with this method';
+
+const limitedPhaseLabel = (lang) => (lang === 'en' ? LIMITED_PHASE_EN : LIMITED_PHASE_KA);
 
 export function isContraceptionMethod(value) {
   return METHOD_SET.has(value);
@@ -78,7 +81,7 @@ export function predictionAvailabilityFor(method) {
   return 'NORMAL';
 }
 
-export function interpretContraception(profile = {}, { todayLog = null } = {}) {
+export function interpretContraception(profile = {}, { todayLog = null, lang = 'ka' } = {}) {
   const method = normalizeContraceptionMethod(profile.contraceptionMethod);
   const startedAt =
     typeof profile.contraceptionStartedAt === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(profile.contraceptionStartedAt)
@@ -107,7 +110,7 @@ export function interpretContraception(profile = {}, { todayLog = null } = {}) {
       showFertileWindow: !limited,
       showPhaseAsBiological: !limited,
       emphasizeFertility: availability === 'NORMAL',
-      phaseLabelOverride: limited ? LIMITED_PHASE_KA : null,
+      phaseLabelOverride: limited ? limitedPhaseLabel(lang) : null,
       loggedBleedKeepsPeriod: loggedBleed,
       famNotCertified: method === 'FERTILITY_AWARENESS',
       showContextCard: limited || caution,
@@ -117,7 +120,7 @@ export function interpretContraception(profile = {}, { todayLog = null } = {}) {
 }
 
 /** Strip fertility emphasis from a predictions calendar. Engine output is not mutated. */
-export function presentPredictions(predictions, contraception) {
+export function presentPredictions(predictions, contraception, lang = 'ka') {
   if (!predictions) return predictions;
   const presented = {
     ...predictions,
@@ -125,7 +128,7 @@ export function presentPredictions(predictions, contraception) {
   };
   if (contraception?.predictionAvailability !== 'LIMITED') return presented;
 
-  const override = contraception.presentation?.phaseLabelOverride || LIMITED_PHASE_KA;
+  const override = contraception.presentation?.phaseLabelOverride || limitedPhaseLabel(lang);
   for (const [key, mark] of Object.entries(presented.calendar)) {
     if (!mark || typeof mark !== 'object') continue;
     const copy = { ...mark };
@@ -145,8 +148,8 @@ export function presentPredictions(predictions, contraception) {
   return presented;
 }
 
-export function presentTodayPhase(todayPhase, contraception) {
-  if (!todayPhase) return { day: null, phase: 'unknown', phaseKa: 'უცნობი ფაზა' };
+export function presentTodayPhase(todayPhase, contraception, lang = 'ka') {
+  if (!todayPhase) return { day: null, phase: 'unknown', phaseKa: lang === 'en' ? 'Unknown phase' : 'უცნობი ფაზა' };
   if (contraception?.predictionAvailability !== 'LIMITED') return todayPhase;
   if (todayPhase.phase === 'period' || contraception.presentation?.loggedBleedKeepsPeriod) {
     return todayPhase;
@@ -154,7 +157,7 @@ export function presentTodayPhase(todayPhase, contraception) {
   return {
     day: todayPhase.day,
     phase: 'unknown',
-    phaseKa: contraception.presentation?.phaseLabelOverride || LIMITED_PHASE_KA,
+    phaseKa: contraception.presentation?.phaseLabelOverride || limitedPhaseLabel(lang),
   };
 }
 

@@ -15,6 +15,7 @@ import { labFlagCounts, labParamMatches, type LabFlagFilter } from '@/lib/labFil
 import { summarizeLabMovers } from '@/lib/labMovers';
 import { labMediPrompt } from '@/lib/labMediPrompt';
 import { formatLabDateKa, isTodayYmd } from '@/lib/labExtract';
+import { labRowName } from '@/lib/labNames';
 
 export default function LabHubScreen() {
   const T = useFigmaLab();
@@ -187,7 +188,7 @@ export default function LabHubScreen() {
           ? watchRows.map((row) => (
               <LabLogRow
                 key={`${row.panelId}-${row.key}-${row.date}`}
-                title={`${row.nameKa || row.nameEn}  ${row.display} ${row.unit}`.trim()}
+                title={`${labRowName(row)}  ${row.display} ${row.unit}`.trim()}
                 subtitle={isTodayYmd(row.date) ? ka.common.today : formatLabDateKa(row.date)}
                 flag={row.flag}
                 onPress={() => router.push(`/lab/param/${encodeURIComponent(row.key)}` as never)}

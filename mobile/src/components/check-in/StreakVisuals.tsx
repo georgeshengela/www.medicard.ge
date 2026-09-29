@@ -12,8 +12,9 @@ import {
 } from '@/components/check-in/StreakAssets';
 import { FIGMA_STREAK, useFigmaStreak } from '@/constants/figmaStreakLayout';
 import type { CheckInDayStatus } from '@/lib/api';
+import { isEn } from '@/i18n/locale';
 
-const WEEKDAYS = ['ორშ', 'სამ', 'ოთხ', 'ხუთ', 'პარ', 'შაბ', 'კვი'] as const;
+const WEEKDAYS = isEn() ? ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'] : ['ორშ', 'სამ', 'ოთხ', 'ხუთ', 'პარ', 'შაბ', 'კვი'];
 
 export function StreakFlameHero({ weekStreak }: { weekStreak: number }) {
   const FIGMA = useFigmaStreak();

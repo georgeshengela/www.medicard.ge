@@ -5,6 +5,7 @@ import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ArrowLeft, Trophy } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
+import { appLang } from '@/i18n/locale';
 import { Button } from '@/components/ui/Button';
 import { Bone } from '@/components/ui/Skeleton';
 import { QuestAchievementBadge, rarityColors } from '@/components/quest/QuestAchievementBadge';
@@ -31,8 +32,8 @@ export default function QuestAchievementsScreen() {
   const dark = useIsDark();
   const reduce = usePrefersReducedMotion();
   const offline = useOffline();
-  const questText = q('ka');
-  const copy = achievementCopy('ka');
+  const questText = q(appLang());
+  const copy = achievementCopy(appLang());
   const { overview, loading, error, stale, refresh, claim } = useAchievements();
   const [refreshing, setRefreshing] = useState(false);
   const [claimingId, setClaimingId] = useState<string | null>(null);
@@ -270,7 +271,7 @@ function AchievementRow({
 }) {
   const colors = useThemeColors();
   const dark = useIsDark();
-  const copy = achievementCopy('ka');
+  const copy = achievementCopy(appLang());
   const rarity = rarityColors(item.rarity, dark);
   const lockedSecret = item.secret && !item.unlocked;
   const showProgress = !item.unlocked && !lockedSecret && item.threshold != null && item.threshold > 1;
@@ -333,7 +334,7 @@ function AchievementRow({
         <View style={{ marginTop: 12, gap: 6 }}>
           <QuestProgressBar percent={item.progressPercent ?? 0} height={QUEST.barDaily} />
           <Text style={{ fontFamily: 'NotoSansGeorgian_600SemiBold', fontSize: 11, lineHeight: 15, color: colors.text300 }}>
-            {copy.progressOf(formatQuestNumber(item.progress ?? 0, 'ka'), formatQuestNumber(item.threshold ?? 0, 'ka'))}
+            {copy.progressOf(formatQuestNumber(item.progress ?? 0, appLang()), formatQuestNumber(item.threshold ?? 0, appLang()))}
           </Text>
         </View>
       ) : null}

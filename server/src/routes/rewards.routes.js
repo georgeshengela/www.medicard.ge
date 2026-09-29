@@ -13,6 +13,7 @@ import {
   listStoreRewards,
   redeemReward,
 } from '../lib/rewards.js';
+import { t } from '../lib/i18n.js';
 
 export const rewardsRouter = Router();
 rewardsRouter.use(requireAuth);
@@ -27,7 +28,7 @@ const redeemLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   validate: false,
-  message: { error: 'ძალიან ბევრი მოთხოვნა.', code: 'REWARD_REDEMPTION_CONFLICT' },
+  message: (req) => ({ error: t(req, 'ძალიან ბევრი მოთხოვნა.', 'Too many requests.'), code: 'REWARD_REDEMPTION_CONFLICT' }),
 });
 
 const idParam = z.object({
@@ -84,6 +85,7 @@ rewardsRouter.post(
     const body = redeemBody.parse(req.body || {});
     const result = await redeemReward(req.user.id, id, {
       idempotencyKey: body.idempotencyKey,
+      lang: req.lang,
     });
     res.json({ ok: true, ...result });
   }),

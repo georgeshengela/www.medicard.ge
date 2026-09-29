@@ -269,6 +269,19 @@ p { margin: 0; }
 .icon-btn:hover { background: var(--bg2); color: var(--text); }
 .card .icon-btn:hover { background: var(--bg); }
 
+/* Language switch in the top bar: ქა | EN, the active one filled. */
+.lang-pill {
+  display: inline-flex; align-items: center; gap: 2px; height: 34px; padding: 3px; margin-right: 4px;
+  border: 1px solid var(--line); border-radius: 999px; background: var(--bg2); cursor: pointer; font: inherit;
+}
+.lang-pill span {
+  min-width: 30px; height: 26px; padding: 0 6px; border-radius: 999px; display: grid; place-items: center;
+  font-size: 12px; font-weight: 700; letter-spacing: .02em; color: var(--text2); transition: background .2s, color .2s;
+}
+.lang-pill span.on { background: var(--surface, #fff); color: var(--text); box-shadow: 0 1px 2px rgba(0,0,0,.08); }
+.lang-pill:hover span:not(.on) { color: var(--text); }
+.lang-pill:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
+
 .badge { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; font-weight: 600; padding: 3px 9px; border-radius: 999px; white-space: nowrap; }
 .badge-neutral { background: var(--bg); color: var(--text2); }
 .badge-brand { background: color-mix(in srgb, var(--brand) 12%, transparent); color: var(--brand-ink); }

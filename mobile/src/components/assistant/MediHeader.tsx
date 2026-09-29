@@ -5,6 +5,7 @@ import { ChevronLeft } from 'lucide-react-native';
 import { MediModeSwitch } from '@/components/assistant/MediModeSwitch';
 import type { MediMode } from '@/lib/mediModes';
 import { useThemeColors } from '@/theme/colors';
+import { tx } from '@/i18n/locale';
 
 /** One header for every Medi mode, so switching modes does not change the chrome. */
 export function MediHeader({
@@ -21,7 +22,7 @@ export function MediHeader({
   return (
     <View style={{ paddingTop: insets.top, backgroundColor: c.bg100 }}>
       <View style={{ height: 62, paddingHorizontal: 16, flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-        <Pressable accessibilityRole="button" accessibilityLabel="უკან დაბრუნება" onPress={onBack} style={{ width: 44, height: 44, alignItems: 'center', justifyContent: 'center', borderRadius: 22 }}>
+        <Pressable accessibilityRole="button" accessibilityLabel={tx('უკან დაბრუნება', 'Go back')} onPress={onBack} style={{ width: 44, height: 44, alignItems: 'center', justifyContent: 'center', borderRadius: 22 }}>
           <ChevronLeft size={24} color={c.text100} />
         </Pressable>
         <View style={{ flex: 1, gap: 2 }}>

@@ -1,3 +1,4 @@
+import { tx } from '../i18n/locale.js';
 import * as Location from 'expo-location';
 import { api, type HealthProfile, type UserLocationSnapshot } from '@/lib/api';
 import { formatPlaceLine, resolvePlace } from '@/lib/geoPlace';
@@ -23,6 +24,8 @@ export function locationFromProfile(profile: HealthProfile | null | undefined): 
     countryCode: typeof loc.countryCode === 'string' ? loc.countryCode : null,
     countryKa: typeof loc.countryKa === 'string' ? loc.countryKa : null,
     cityKa: typeof loc.cityKa === 'string' ? loc.cityKa : null,
+    ...(typeof loc.countryName === 'string' ? { countryName: loc.countryName } : {}),
+    ...(typeof loc.cityName === 'string' ? { cityName: loc.cityName } : {}),
     lat: typeof loc.lat === 'number' && Number.isFinite(loc.lat) ? loc.lat : null,
     lng: typeof loc.lng === 'number' && Number.isFinite(loc.lng) ? loc.lng : null,
     accuracy: typeof loc.accuracy === 'number' ? loc.accuracy : null,
@@ -52,6 +55,14 @@ export function livingPlaceLine(profile: HealthProfile | null | undefined): stri
   const loc = locationFromProfile(profile);
   return loc?.enabled ? formatPlaceLine(loc) : '';
 }
+/** Keeps the response's localized place names on the in-memory profile (display only). */
+function withPlaceNames(profile: HealthProfile, snapshot: UserLocationSnapshot | null | undefined): HealthProfile {
+  const loc = (profile.extraAnswers as Record<string, unknown> | undefined)?.location;
+  if (!snapshot || !loc || typeof loc !== 'object' || (!snapshot.cityName && !snapshot.countryName)) return profile;
+  const same = (loc as Record<string, unknown>).cityKa === snapshot.cityKa && (loc as Record<string, unknown>).countryCode === snapshot.countryCode;
+  if (!same) return profile;
+  return { ...profile, extraAnswers: { ...profile.extraAnswers, location: { ...loc, countryName: snapshot.countryName ?? null, cityName: snapshot.cityName ?? null } } };
+}
 export function applyLocationToProfile(profile: HealthProfile, snapshot: UserLocationSnapshot): HealthProfile {
   return { ...profile, extraAnswers: { ...profile.extraAnswers, locationPrompted: snapshot.prompted, location: snapshot } };
 }
@@ -71,11 +82,11 @@ export async function requestLocationPermission(): Promise<LocationPermissionSta
   return mapPermission((await Location.requestForegroundPermissionsAsync()).status);
 }
 function assertOwner(owner: string | null) {
-  if (!owner || owner !== localAccountId()) throw new Error('ანგარიში შეიცვალა. თავიდან სცადე.');
+  if (!owner || owner !== localAccountId()) throw new Error(tx('ანგარიში შეიცვალა. თავიდან სცადე.', 'Your account changed. Please try again.'));
 }
 async function bounded<T>(work: Promise<T>, ms: number): Promise<T> {
   let timer: ReturnType<typeof setTimeout>;
-  try { return await Promise.race([work, new Promise<T>((_, reject) => { timer = setTimeout(() => reject(new Error('მდებარეობის განსაზღვრას მეტი დრო დასჭირდა. ხელახლა სცადე.')), ms); })]); }
+  try { return await Promise.race([work, new Promise<T>((_, reject) => { timer = setTimeout(() => reject(new Error(tx('მდებარეობის განსაზღვრას მეტი დრო დასჭირდა. ხელახლა სცადე.', 'Finding your location took too long. Please try again.'))), ms); })]); }
   finally { clearTimeout(timer!); }
 }
 async function waitForLiveCoords(): Promise<LocationFixSample> {
@@ -88,7 +99,7 @@ async function waitForLiveCoords(): Promise<LocationFixSample> {
       if (fix && (!c || !Number.isFinite(c.latitude) || !Number.isFinite(c.longitude) || Math.abs(c.latitude) > 90 || Math.abs(c.longitude) > 180 || !isFreshLocationTimestamp(fix.timestamp) || fix.timestamp < started - 5000)) return;
       settled = true; clearTimeout(timer); subscription?.remove();
       if (fix && c) resolve({ lat: c.latitude, lng: c.longitude, accuracy: c.accuracy, fixAt: fix.timestamp });
-      else reject(new Error('მდებარეობა ვერ განვსაზღვრეთ. შეამოწმე GPS და ხელახლა სცადე.'));
+      else reject(new Error(tx('მდებარეობა ვერ განვსაზღვრეთ. შეამოწმე GPS და ხელახლა სცადე.', 'We couldn’t find your location. Check GPS and try again.')));
     };
     const timer = setTimeout(() => finish(), 15000);
     Location.watchPositionAsync({ accuracy: Location.Accuracy.Balanced, distanceInterval: 0, timeInterval: 1000, mayShowUserSettingsDialog: true }, finish)
@@ -101,7 +112,7 @@ async function saveLocation(owner: string | null, token: string | null, body: Pa
   const result = await api.location.ping(body, token);
   assertOwner(owner);
   markLocationPromptedLocal(owner);
-  if (result.profile && profileListener?.owner === owner) profileListener.fn(result.profile);
+  if (result.profile && profileListener?.owner === owner) profileListener.fn(withPlaceNames(result.profile, result.location));
   const { clearWeatherCache } = await import('@/lib/weather/cache');
   if (owner === localAccountId()) await clearWeatherCache(owner).catch(() => undefined);
   return result;
@@ -122,7 +133,7 @@ export async function grantUserLocation(): Promise<{ granted: boolean; hasFix: b
     if (row) place = resolvePlace({ countryCode: row.isoCountryCode, countryName: row.country, city: row.city || row.subregion || row.district || row.region, region: row.region });
   } catch { /* The server can resolve the same fresh coordinates. */ }
   const result = await saveLocation(owner, token, { ...coords, place, enabled: true, prompted: true, source: 'grant' });
-  if (!hasResolvedLocation(result.location)) throw new Error('ქალაქი ვერ მოიძებნა. შეამოწმე ინტერნეტი და ხელახლა სცადე.');
+  if (!hasResolvedLocation(result.location)) throw new Error(tx('ქალაქი ვერ მოიძებნა. შეამოწმე ინტერნეტი და ხელახლა სცადე.', 'Couldn’t find your city. Check your internet connection and try again.'));
   return { granted: true, hasFix: true, snapshot: result.location, profile: result.profile };
 }
 export async function persistLocationConsent(input: { enabled: boolean; prompted?: boolean; source: 'grant' | 'skip' | 'revoke' }): Promise<UserLocationSnapshot> {

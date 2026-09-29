@@ -14,12 +14,14 @@ export function requireVetMessage(value) {
   const text = String(value || '').trim();
   if (text.length < VET_MESSAGE_MIN) {
     const error = new Error('შეკითხვა ძალიან მოკლეა.');
+    error.messageEn = 'Your question is too short.';
     error.status = 400;
     error.code = 'UNSUPPORTED_INPUT';
     throw error;
   }
   if (text.length > VET_MESSAGE_MAX) {
     const error = new Error('შეკითხვა ძალიან გრძელია.');
+    error.messageEn = 'Your question is too long.';
     error.status = 400;
     error.code = 'UNSUPPORTED_INPUT';
     throw error;
@@ -31,6 +33,7 @@ export function requireClientRequestId(value) {
   const id = normalizeClientRequestId(value);
   if (!id) {
     const error = new Error('მოთხოვნის იდენტიფიკატორი სავალდებულოა.');
+    error.messageEn = 'A request ID is required.';
     error.status = 400;
     error.code = 'UNSUPPORTED_INPUT';
     throw error;
@@ -44,11 +47,14 @@ export function buildSessionTitle(message) {
   return compact.length <= VET_TITLE_MAX ? compact : `${compact.slice(0, VET_TITLE_MAX - 1)}…`;
 }
 
-export function publicChatSession(row) {
+/** Stored sentinel title of an empty session (kept Georgian in the database; shown in the reader's language). */
+export const NEW_SESSION_TITLE_KA = 'ახალი საუბარი';
+
+export function publicChatSession(row, lang = 'ka') {
   return {
     id: row.id,
     petId: row.petId,
-    title: row.title,
+    title: lang === 'en' && row.title === NEW_SESSION_TITLE_KA ? 'New conversation' : row.title,
     createdAt: row.createdAt instanceof Date ? row.createdAt.toISOString() : row.createdAt,
     updatedAt: row.updatedAt instanceof Date ? row.updatedAt.toISOString() : row.updatedAt,
   };
@@ -74,6 +80,7 @@ export function rejectClientConversationPayload(body) {
   if (!body || typeof body !== 'object') return;
   if (Array.isArray(body.messages) || Array.isArray(body.history) || body.role || body.system) {
     const error = new Error('საუბრის ისტორიას სერვერი აკონტროლებს.');
+    error.messageEn = 'The server manages the conversation history.';
     error.status = 400;
     error.code = 'UNSUPPORTED_INPUT';
     throw error;

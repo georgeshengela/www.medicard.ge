@@ -1,4 +1,5 @@
 import type { CycleInsightCard } from '@/lib/api';
+import { tx } from '../i18n/locale.js';
 
 export type CycleInsightActionKind =
   | 'open_log'
@@ -34,13 +35,13 @@ export function resolveInsightAction(card: CycleInsightCard): CycleInsightAction
     return {
       kind: 'open_log',
       steps: [
-        'გახსენით დღის აღრიცხვის ეკრანი.',
-        'მონიშნე გამონადენის სიძლიერე (თუ არის).',
-        'დაამატე სიმპტომები და განწყობა — რაც უკეთესია მონაცემი, მით ზუსტი პროგნოზი.',
-        'დააჭირე „შენახვა“.',
+        tx('გახსენით დღის აღრიცხვის ეკრანი.', 'Open the daily log screen.'),
+        tx('მონიშნე გამონადენის სიძლიერე (თუ არის).', 'Mark your flow (if any).'),
+        tx('დაამატე სიმპტომები და განწყობა — რაც უკეთესია მონაცემი, მით ზუსტი პროგნოზი.', 'Add symptoms and mood — the better the data, the more accurate the estimate.'),
+        tx('დააჭირე „შენახვა“.', 'Tap “Save”.'),
       ],
-      manualLabel: action || 'გახსენი აღრიცხვა',
-      autoLabel: 'გახსენი და შეავსე შენიშვნა',
+      manualLabel: action || tx('გახსენი აღრიცხვა', 'Open log'),
+      autoLabel: tx('გახსენი და შეავსე შენიშვნა', 'Open with a note'),
       route: {
         pathname: '/cycle/log',
         params: { prefillNote: card.action || card.title },
@@ -48,33 +49,33 @@ export function resolveInsightAction(card: CycleInsightCard): CycleInsightAction
     };
   }
 
-  if (containsAny(blob, ['bbt', 'ლორწო', 'ტემპერატურ'])) {
+  if (containsAny(blob, ['bbt', 'ლორწო', 'ტემპერატურ', 'mucus', 'temperature'])) {
     return {
       kind: 'open_log_bbt',
       steps: [
-        'გახსენით აღრიცხვა → „დეტალები“ ჩანართი.',
-        'შეიყვანე ბაზალური ტემპერატურა (BBT) ან cervical mucus.',
-        'სურვილისამებრ დაამატე შენიშვნა.',
-        'შეინახე — ეს ზუსტობას ზრდის TTC რეჟიმში.',
+        tx('გახსენით აღრიცხვა → „დეტალები“ ჩანართი.', 'Open the log → “Details” tab.'),
+        tx('შეიყვანე ბაზალური ტემპერატურა (BBT) ან cervical mucus.', 'Enter your basal body temperature (BBT) or cervical mucus.'),
+        tx('სურვილისამებრ დაამატე შენიშვნა.', 'Add a note if you like.'),
+        tx('შეინახე — ეს ზუსტობას ზრდის TTC რეჟიმში.', 'Save — this improves accuracy in TTC mode.'),
       ],
-      manualLabel: action || 'აღრიცხე BBT / ლორწო',
-      autoLabel: 'გახსენი BBT ველით',
+      manualLabel: action || tx('აღრიცხე BBT / ლორწო', 'Log BBT / mucus'),
+      autoLabel: tx('გახსენი BBT ველით', 'Open with BBT field'),
       route: {
         pathname: '/cycle/log',
-        params: { tab: 'more', prefillNote: card.action || 'BBT / ლორწო' },
+        params: { tab: 'more', prefillNote: card.action || tx('BBT / ლორწო', 'BBT / mucus') },
       },
     };
   }
 
-  if (card.tone === 'pregnancy' || containsAny(blob, ['ორსულ', 'ჩეკლისტ', 'პრენატალ'])) {
+  if (card.tone === 'pregnancy' || containsAny(blob, ['ორსულ', 'ჩეკლისტ', 'პრენატალ', 'checklist', 'prenatal'])) {
     return {
       kind: 'open_pregnancy',
       steps: [
-        'გახსენით ორსულობის ეკრანი.',
-        'გადაამოწმეთ კვირის რჩევები და ჩეკლისტი.',
-        'მონიშნე დღევანდელი ნაბიჯები (ვიტამინი, წყალი, დასვენება).',
+        tx('გახსენით ორსულობის ეკრანი.', 'Open the pregnancy screen.'),
+        tx('გადაამოწმეთ კვირის რჩევები და ჩეკლისტი.', 'Check this week’s tips and checklist.'),
+        tx('მონიშნე დღევანდელი ნაბიჯები (ვიტამინი, წყალი, დასვენება).', 'Check off today’s steps (vitamins, water, rest).'),
       ],
-      manualLabel: action || 'გახსენი ორსულობის ჩეკლისტი',
+      manualLabel: action || tx('გახსენი ორსულობის ჩეკლისტი', 'Open pregnancy checklist'),
       route: { pathname: '/cycle/pregnancy' },
     };
   }
@@ -83,28 +84,28 @@ export function resolveInsightAction(card: CycleInsightCard): CycleInsightAction
     return {
       kind: 'open_settings',
       steps: [
-        'გახსენით ციკლის პარამეტრები.',
-        'განაახლე „ბოლო მენსტრუაციის დასაწყისი“.',
-        'შეინახე — პროგნოზები განახლდება.',
+        tx('გახსენით ციკლის პარამეტრები.', 'Open cycle settings.'),
+        tx('განაახლე „ბოლო მენსტრუაციის დასაწყისი“.', 'Update “Start of last period”.'),
+        tx('შეინახე — პროგნოზები განახლდება.', 'Save — estimates will update.'),
       ],
-      manualLabel: 'პარამეტრების გახსნა',
+      manualLabel: tx('პარამეტრების გახსნა', 'Open settings'),
       route: { pathname: '/cycle/settings' },
     };
   }
 
-  if (containsAny(blob, ['წყალი', 'ჰიდრატ', 'დაისვენ', 'დასვენ'])) {
+  if (containsAny(blob, ['წყალი', 'ჰიდრატ', 'დაისვენ', 'დასვენ', 'water', 'hydrat'])) {
     return {
       kind: 'reminder',
       steps: [
-        'დალიე 1–2 ჭიქა წყალი ნელა.',
-        'დაჯექით ან დაემხეთ ზურგით 10–15 წუთით.',
-        'თბილი პაკი მუცელზე დაგეხმარება კრუნჩხვებისას.',
+        tx('დალიე 1–2 ჭიქა წყალი ნელა.', 'Slowly drink 1–2 glasses of water.'),
+        tx('დაჯექით ან დაემხეთ ზურგით 10–15 წუთით.', 'Sit or lie on your back for 10–15 minutes.'),
+        tx('თბილი პაკი მუცელზე დაგეხმარება კრუნჩხვებისას.', 'A warm pack on your belly can help with cramps.'),
       ],
-      manualLabel: action || 'გავაკეთო ახლა',
-      autoLabel: '30 წუთში შემაგონე',
+      manualLabel: action || tx('გავაკეთო ახლა', 'Do it now'),
+      autoLabel: tx('30 წუთში შემაგონე', 'Remind me in 30 min'),
       autoMinutes: 30,
-      reminderTitle: 'Medicard · ციკლი',
-      reminderBody: action || 'დროა წყალი და მოკლე დასვენება.',
+      reminderTitle: tx('Medicard · ციკლი', 'Medicard · Cycle'),
+      reminderBody: action || tx('დროა წყალი და მოკლე დასვენება.', 'Time for some water and a short rest.'),
     };
   }
 
@@ -112,16 +113,16 @@ export function resolveInsightAction(card: CycleInsightCard): CycleInsightAction
     return {
       kind: 'reminder',
       steps: [
-        'დაჯექით კომფორტულად, ფეხები იატაკზე.',
-        '4 წამი შეიყვანე ჰაერი ცხვირით.',
-        '4 წამი გააჩერეთ.',
-        '6 წამში ნელა ამოაგონოთ — გაიმეორე 5-ჯერ.',
+        tx('დაჯექით კომფორტულად, ფეხები იატაკზე.', 'Sit comfortably with your feet on the floor.'),
+        tx('4 წამი შეიყვანე ჰაერი ცხვირით.', 'Breathe in through your nose for 4 seconds.'),
+        tx('4 წამი გააჩერეთ.', 'Hold for 4 seconds.'),
+        tx('6 წამში ნელა ამოაგონოთ — გაიმეორე 5-ჯერ.', 'Breathe out slowly for 6 seconds — repeat 5 times.'),
       ],
-      manualLabel: action || '5 წუთი სუნთქვა',
-      autoLabel: '5 წუთში შემაგონე',
+      manualLabel: action || tx('5 წუთი სუნთქვა', '5 min breathing'),
+      autoLabel: tx('5 წუთში შემაგონე', 'Remind me in 5 min'),
       autoMinutes: 5,
-      reminderTitle: 'Medicard · სუნთქვა',
-      reminderBody: '5 წუთი სიღრმისეული სუნთქვა — დაიწყე ახლა.',
+      reminderTitle: tx('Medicard · სუნთქვა', 'Medicard · Breathing'),
+      reminderBody: tx('5 წუთი სიღრმისეული სუნთქვა — დაიწყე ახლა.', '5 minutes of deep breathing — start now.'),
     };
   }
 
@@ -129,15 +130,15 @@ export function resolveInsightAction(card: CycleInsightCard): CycleInsightAction
     return {
       kind: 'reminder',
       steps: [
-        'გაუშვი 10–15 წუთიანი მსუბუქი სეირნობა.',
-        'შეეცადეთ თანაბერი ტემპი, ღრმა სუნთქვა.',
-        'დაბრუნების შემდეგ დააკვირდით განწყობას.',
+        tx('გაუშვი 10–15 წუთიანი მსუბუქი სეირნობა.', 'Take a light 10–15 minute walk.'),
+        tx('შეეცადეთ თანაბერი ტემპი, ღრმა სუნთქვა.', 'Keep an even pace and breathe deeply.'),
+        tx('დაბრუნების შემდეგ დააკვირდით განწყობას.', 'When you’re back, notice how you feel.'),
       ],
-      manualLabel: action || 'მოკლე სეირნობა',
-      autoLabel: '15 წუთში შემაგონე',
+      manualLabel: action || tx('მოკლე სეირნობა', 'Short walk'),
+      autoLabel: tx('15 წუთში შემაგონე', 'Remind me in 15 min'),
       autoMinutes: 15,
-      reminderTitle: 'Medicard · სეირნობა',
-      reminderBody: 'დროა მოკლე სეირნობისთვის.',
+      reminderTitle: tx('Medicard · სეირნობა', 'Medicard · Walk'),
+      reminderBody: tx('დროა მოკლე სეირნობისთვის.', 'Time for a short walk.'),
     };
   }
 
@@ -145,20 +146,20 @@ export function resolveInsightAction(card: CycleInsightCard): CycleInsightAction
     return {
       kind: 'open_chat',
       steps: [
-        'გახსენი საუბარი Medi-სთან.',
-        'გაუზიარე Medi-ს შენი სიმპტომები და კონტექსტი.',
-        'მიიღე რჩევა და დააზუსტე კითხვები. ეს არ ცვლის ექიმს.',
+        tx('გახსენი საუბარი Medi-სთან.', 'Open a chat with Medi.'),
+        tx('გაუზიარე Medi-ს შენი სიმპტომები და კონტექსტი.', 'Tell Medi about your symptoms and context.'),
+        tx('მიიღე რჩევა და დააზუსტე კითხვები. ეს არ ცვლის ექიმს.', 'Get tips and ask follow-up questions. This does not replace a doctor.'),
       ],
       manualLabel: action,
-      autoLabel: 'ჰკითხე Medi-ს',
-      chatPrefill: `ციკლის რჩევის შესახებ: „${card.title}“. ${card.body} რა გირჩევ?`,
+      autoLabel: tx('ჰკითხე Medi-ს', 'Ask Medi'),
+      chatPrefill: tx(`ციკლის რჩევის შესახებ: „${card.title}“. ${card.body} რა გირჩევ?`, `About a cycle tip: “${card.title}”. ${card.body} What do you suggest?`),
     };
   }
 
   return {
     kind: 'info_only',
     steps: [card.body],
-    manualLabel: 'გასაგებია',
+    manualLabel: tx('გასაგებია', 'Got it'),
   };
 }
 

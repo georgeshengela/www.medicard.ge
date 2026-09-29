@@ -14,6 +14,7 @@ import { applyPushCopy } from '@/lib/pushCopy';
 import { getCachedTodaySteps } from '@/lib/healthDataSync';
 import { archiveReachedStepsGoal } from '@/lib/stepsGoalHistory';
 import type { StepsGoal, StepsGoalProgress } from '@/types/stepsGoal';
+import { dateLocale } from '../i18n/locale.js';
 
 const STORAGE_KEY = 'medicard.steps.goal.v1';
 /** Legacy pending +3 points queue — cleared on flush, no longer awarded. */
@@ -57,7 +58,7 @@ export function defaultDeadlineYmd(): string {
 }
 
 export function formatDeadlineKa(deadlineYmd: string): string {
-  return new Date(`${deadlineYmd}T12:00:00`).toLocaleDateString('ka-GE', {
+  return new Date(`${deadlineYmd}T12:00:00`).toLocaleDateString(dateLocale(), {
     day: 'numeric',
     month: 'long',
     year: 'numeric',
@@ -67,7 +68,7 @@ export function formatDeadlineKa(deadlineYmd: string): string {
 export function formatReminderTime(hour: number, minute: number): string {
   const d = new Date();
   d.setHours(hour, minute, 0, 0);
-  return d.toLocaleTimeString('ka-GE', { hour: 'numeric', minute: '2-digit' });
+  return d.toLocaleTimeString(dateLocale(), { hour: 'numeric', minute: '2-digit' });
 }
 
 export function reminderDaysLabel(days: number[]): string {
@@ -166,7 +167,7 @@ export async function syncStepsGoalReminders(goal: StepsGoal): Promise<void> {
 
   const todaySteps = await getCachedTodaySteps();
   const copy = applyPushCopy('steps', {
-    steps: todaySteps != null ? todaySteps.toLocaleString('ka-GE') : '',
+    steps: todaySteps != null ? todaySteps.toLocaleString(dateLocale()) : '',
   });
   for (const day of goal.reminderDays) {
     const identifier = `${NOTIF_PREFIX.steps}${goal.id}:${day}`;

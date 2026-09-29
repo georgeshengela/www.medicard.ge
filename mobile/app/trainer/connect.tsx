@@ -9,6 +9,7 @@ import { COACH_SCOPES, SCOPE_COPY, normalizeCoachCode, type CoachScopes, type Tr
 import { Avatar, Badge, Button, Card, Chip, CoachForm, Field, Input, Loading, Section, Toggle, coachStyles } from '@/components/coach/CoachUI';
 import { hubText } from '@/theme/hub';
 import { useThemeColors } from '@/theme/colors';
+import { tx } from '@/i18n/locale';
 
 /**
  * Connect to a trainer: by code (trainer's invitation → active at once) or from search (request).
@@ -32,7 +33,7 @@ export default function ConnectTrainerScreen() {
   const lookup = async (raw: string) => {
     const normalized = normalizeCoachCode(raw);
     if (!normalized) {
-      setError('კოდი 6 სიმბოლოა (ასოები და ციფრები).');
+      setError(tx('კოდი 6 სიმბოლოა (ასოები და ციფრები).', 'The code is 6 characters (letters and digits).'));
       return;
     }
     setLoading(true);
@@ -45,7 +46,7 @@ export default function ConnectTrainerScreen() {
       setConsentVersion(res.consentVersion);
     } catch (e) {
       setTrainer(null);
-      setError(e instanceof ApiError ? e.message : 'ტრენერი ვერ მოიძებნა.');
+      setError(e instanceof ApiError ? e.message : tx('ტრენერი ვერ მოიძებნა.', 'Trainer not found.'));
     } finally {
       setLoading(false);
     }
@@ -59,9 +60,9 @@ export default function ConnectTrainerScreen() {
         .then((ov) => {
           setTrainer(ov.trainer ?? null);
           setConsentVersion(ov.consentVersion ?? '');
-          if (!ov.link || ov.link.initiator !== 'TRAINER' || ov.link.status !== 'REQUESTED') setError('მოწვევა ვერ მოიძებნა ან უკვე დადასტურებულია.');
+          if (!ov.link || ov.link.initiator !== 'TRAINER' || ov.link.status !== 'REQUESTED') setError(tx('მოწვევა ვერ მოიძებნა ან უკვე დადასტურებულია.', 'Invite not found or already accepted.'));
         })
-        .catch(() => setError('მოწვევა ვერ ჩაიტვირთა.'))
+        .catch(() => setError(tx('მოწვევა ვერ ჩაიტვირთა.', 'Couldn’t load the invite.')))
         .finally(() => setLoading(false));
     } else if (params.trainerId) {
       setLoading(true);
@@ -71,7 +72,7 @@ export default function ConnectTrainerScreen() {
           setTrainer(res.trainer);
           setConsentVersion(res.consentVersion);
         })
-        .catch(() => setError('ტრენერი ვერ ჩაიტვირთა.'))
+        .catch(() => setError(tx('ტრენერი ვერ ჩაიტვირთა.', 'Couldn’t load the trainer.')))
         .finally(() => setLoading(false));
     } else if (normalizeCoachCode(params.code)) {
       void lookup(String(params.code));
@@ -88,7 +89,7 @@ export default function ConnectTrainerScreen() {
       invalidateCoachEntry();
       router.replace('/trainer' as never);
     } catch (e) {
-      Alert.alert('ვერ დაკავშირდა', e instanceof ApiError ? e.message : 'სცადე ხელახლა.');
+      Alert.alert(tx('ვერ დაკავშირდა', 'Couldn’t connect'), e instanceof ApiError ? e.message : tx('სცადე ხელახლა.', 'Please try again.'));
     } finally {
       setBusy(false);
     }
@@ -96,28 +97,28 @@ export default function ConnectTrainerScreen() {
 
   return (
     <CoachForm
-      title={viaInvite ? 'ტრენერის მოწვევა' : viaSearch ? 'მოთხოვნა ტრენერთან' : 'ტრენერთან დაკავშირება'}
+      title={viaInvite ? tx('ტრენერის მოწვევა', 'Trainer invite') : viaSearch ? tx('მოთხოვნა ტრენერთან', 'Request a trainer') : tx('ტრენერთან დაკავშირება', 'Connect with a trainer')}
       fallback="/trainer"
       footer={
         trainer ? (
           <>
-            <Button label={viaSearch ? 'მოთხოვნის გაგზავნა' : viaInvite ? 'თანხმობა და მოწვევის მიღება' : 'თანხმობა და დაკავშირება'} busy={busy} onPress={() => void submit()} />
-            <Text style={[hubText.small, { color: c.text300, textAlign: 'center' }]}>გაზიარებას ნებისმიერ დროს შეცვლი ან შეწყვეტ „ჩემი ტრენერი“-დან.</Text>
+            <Button label={viaSearch ? tx('მოთხოვნის გაგზავნა', 'Send request') : viaInvite ? tx('თანხმობა და მოწვევის მიღება', 'Agree and accept invite') : tx('თანხმობა და დაკავშირება', 'Agree and connect')} busy={busy} onPress={() => void submit()} />
+            <Text style={[hubText.small, { color: c.text300, textAlign: 'center' }]}>{tx('გაზიარებას ნებისმიერ დროს შეცვლი ან შეწყვეტ „ჩემი ტრენერი“-დან.', 'You can change or stop sharing any time from “My trainer”.')}</Text>
           </>
         ) : (
-          <Button label="ტრენერის ნახვა" busy={loading} disabled={!normalizeCoachCode(code)} onPress={() => void lookup(code)} />
+          <Button label={tx('ტრენერის ნახვა', 'View trainer')} busy={loading} disabled={!normalizeCoachCode(code)} onPress={() => void lookup(code)} />
         )
       }
     >
       {!viaSearch && !viaInvite && !trainer ? (
-        <Field label="ტრენერის კოდი" hint="კოდს ტრენერი გაგიზიარებს — ის ჩანს მის ტრენერის პროფილში.">
+        <Field label={tx('ტრენერის კოდი', 'Trainer code')} hint={tx('კოდს ტრენერი გაგიზიარებს — ის ჩანს მის ტრენერის პროფილში.', 'Your trainer shares the code — it’s on their trainer profile.')}>
           <Input
             value={code}
             onChangeText={(t) => setCode(t.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6))}
             autoCapitalize="characters"
             autoCorrect={false}
             autoFocus
-            placeholder="მაგ. K7M2QX"
+            placeholder={tx('მაგ. K7M2QX', 'e.g. K7M2QX')}
             maxLength={6}
             returnKeyType="go"
             onSubmitEditing={() => void lookup(code)}
@@ -136,8 +137,8 @@ export default function ConnectTrainerScreen() {
               <View style={{ flex: 1, gap: 3 }}>
                 <Text style={[hubText.cardTitle, { color: c.text100, fontSize: 18 }]}>{trainer.displayName}</Text>
                 <View style={[coachStyles.row, { gap: 6, flexWrap: 'wrap' }]}>
-                  {trainer.verified ? <Badge label="დადასტურებული ტრენერი" tone="brand" /> : null}
-                  {trainer.experienceYears ? <Badge label={`${trainer.experienceYears} წლის გამოცდილება`} /> : null}
+                  {trainer.verified ? <Badge label={tx('დადასტურებული ტრენერი', 'Verified trainer')} tone="brand" /> : null}
+                  {trainer.experienceYears ? <Badge label={tx(`${trainer.experienceYears} წლის გამოცდილება`, `${trainer.experienceYears} ${trainer.experienceYears === 1 ? 'year' : 'years'} of experience`)} /> : null}
                 </View>
               </View>
             </View>
@@ -169,29 +170,29 @@ export default function ConnectTrainerScreen() {
             ))}
           </Card>
 
-          <Section title="რას დაინახავს ტრენერი">
+          <Section title={tx('რას დაინახავს ტრენერი', 'What the trainer will see')}>
             <Card style={{ paddingVertical: 8 }}>
               <View style={[coachStyles.row, { paddingVertical: 10 }]}>
                 <Lock size={16} color={c.primary100} />
                 <Text style={[hubText.caption, { color: c.text200, flex: 1 }]}>
-                  ტრენერი ყოველთვის ხედავს: შენს სახელს, ფოტოს, ასაკს, სქესს, სიმაღლეს და ვარჯიშების განრიგს. ქვემოთ აირჩიე, კიდევ რა გაუზიარო — ყველაფერი გამორთულია, სანამ შენ არ ჩართავ. ჯანმრთელობის მონაცემი განსაკუთრებული კატეგორიაა: გაზიარება ნებაყოფლობითია და ნებისმიერ დროს შეწყდება.
+                  {tx('ტრენერი ყოველთვის ხედავს: შენს სახელს, ფოტოს, ასაკს, სქესს, სიმაღლეს და ვარჯიშების განრიგს. ქვემოთ აირჩიე, კიდევ რა გაუზიარო — ყველაფერი გამორთულია, სანამ შენ არ ჩართავ. ჯანმრთელობის მონაცემი განსაკუთრებული კატეგორიაა: გაზიარება ნებაყოფლობითია და ნებისმიერ დროს შეწყდება.', 'A trainer always sees: your name, photo, age, sex, height and your session schedule. Below, choose what else to share — everything is off until you turn it on. Health data is a special category: sharing is voluntary and can be stopped at any time.')}
                 </Text>
               </View>
               {COACH_SCOPES.map((k) => (
                 <Toggle key={k} title={SCOPE_COPY[k].title} body={SCOPE_COPY[k].body} value={scopes[k]} onChange={(v) => setScopes((p) => ({ ...p, [k]: v }))} />
               ))}
             </Card>
-            <Text style={[hubText.small, { color: c.text300, marginTop: 8 }]}>ტრენერი ვერ ხედავს: სამედიცინო ჩანაწერებს, ანალიზებს, წამლებს, ციკლს, Medi-სთან საუბრებს. ტრენერები დამოუკიდებელი პროფესიონალები არიან; MEDICARD მათ სერტიფიკატებს ამოწმებს.</Text>
+            <Text style={[hubText.small, { color: c.text300, marginTop: 8 }]}>{tx('ტრენერი ვერ ხედავს: სამედიცინო ჩანაწერებს, ანალიზებს, წამლებს, ციკლს, Medi-სთან საუბრებს. ტრენერები დამოუკიდებელი პროფესიონალები არიან; MEDICARD მათ სერტიფიკატებს ამოწმებს.', 'A trainer can’t see: medical records, lab results, medications, your cycle, or your conversations with Medi. Trainers are independent professionals; MEDICARD checks their certificates.')}</Text>
           </Section>
           <Button
-            label="შეტყობინება დარღვევაზე"
+            label={tx('შეტყობინება დარღვევაზე', 'Report a problem')}
             kind="ghost"
             onPress={() => router.push({ pathname: '/trainer/report', params: { id: trainer.id, name: trainer.displayName, role: 'trainer' } } as never)}
           />
 
           {viaSearch ? (
-            <Field label="მოკლე მესიჯი ტრენერს (არასავალდებულო)">
-              <Input value={note} onChangeText={setNote} multiline maxLength={300} placeholder="მაგ. მინდა 5 კგ-ის დაკლება და ძალის მომატება" />
+            <Field label={tx('მოკლე მესიჯი ტრენერს (არასავალდებულო)', 'Short message to the trainer (optional)')}>
+              <Input value={note} onChangeText={setNote} multiline maxLength={300} placeholder={tx('მაგ. მინდა 5 კგ-ის დაკლება და ძალის მომატება', 'e.g. I want to lose 5 kg and get stronger')} />
             </Field>
           ) : null}
         </>

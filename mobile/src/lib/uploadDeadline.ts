@@ -1,3 +1,4 @@
+import { tx } from '../i18n/locale.js';
 export class UploadTimeoutError extends Error {}
 
 /** Cancel the native transfer too, instead of only hiding its spinner. */
@@ -8,7 +9,7 @@ export async function uploadWithDeadline<T>(task: { uploadAsync: () => Promise<T
       task.uploadAsync(),
       new Promise<never>((_, reject) => {
         timeout = setTimeout(() => {
-          reject(new UploadTimeoutError('ატვირთვის მოლოდინის დრო ამოიწურა. გთხოვ, სცადე ხელახლა.'));
+          reject(new UploadTimeoutError(tx('ატვირთვის მოლოდინის დრო ამოიწურა. გთხოვ, სცადე ხელახლა.', 'The upload took too long. Please try again.')));
           void task.cancelAsync().catch(() => undefined);
         }, timeoutMs);
       }),

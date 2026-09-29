@@ -66,7 +66,7 @@ describe('Cycle presentation files do not scatter mode enums', () => {
 
   it('FLOW_OPTIONS spotting chip is Georgian product copy, enum unchanged', () => {
     const src = readFileSync(join(mobileRoot, 'src/constants/cycle.ts'), 'utf8');
-    assert.match(src, /id: 'spotting', label: 'ლაქები'/);
+    assert.match(src, /id: 'spotting', label: (?:tx\()?'ლაქები'/);
     assert.equal(src.includes('მსუბუქი (spotting)'), false);
   });
 });

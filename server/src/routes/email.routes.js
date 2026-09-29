@@ -14,6 +14,7 @@ import { asyncHandler } from '../middleware/error.js';
 import { requireAdmin } from '../middleware/adminAuth.js';
 import { writeAdminAudit } from '../lib/adminAudit.js';
 import { clientIp } from '../lib/rateLimitKey.js';
+import { parseLang } from '../lib/i18n.js';
 import { isFeatureEnabled } from '../lib/featureFlags.js';
 import { inboundHealth, isMissingSupportTable } from '../lib/support/inbound.js';
 import {
@@ -86,6 +87,11 @@ const unsubscribeLimiter = rateLimit({
   keyGenerator: (req) => clientIp(req),
 });
 
+/** Page language: ?lang=en, else a browser that prefers English; Georgian otherwise. */
+function unsubscribeLang(req) {
+  return parseLang(req.query?.lang) ?? parseLang(String(req.headers?.['accept-language'] || '').split(',')[0]) ?? 'ka';
+}
+
 unsubscribeRouter.get('/unsubscribe', unsubscribeLimiter, async (req, res) => {
   res.set('Cache-Control', 'no-store');
   res.set('Referrer-Policy', 'no-referrer');
@@ -94,7 +100,7 @@ unsubscribeRouter.get('/unsubscribe', unsubscribeLimiter, async (req, res) => {
     console.warn('[email] unsubscribe failed', error?.message);
     result = 'error';
   }
-  res.status(result === 'invalid' ? 400 : result === 'error' ? 503 : 200).type('html').send(unsubscribePageHtml(result));
+  res.status(result === 'invalid' ? 400 : result === 'error' ? 503 : 200).type('html').send(unsubscribePageHtml(result, unsubscribeLang(req)));
 });
 
 /** RFC 8058 one-click: mail clients POST "List-Unsubscribe=One-Click" to the same URL. */

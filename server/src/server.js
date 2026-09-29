@@ -40,6 +40,7 @@ import { adminFunnelRouter, funnelRouter } from './routes/funnel.routes.js';
 import { adminCapacityRouter } from './routes/capacity.routes.js';
 import { adminErrorsRouter } from './routes/errors.routes.js';
 import { errorMonitorEnabled, recordFatalError, startErrorPurge, stopErrorPurge } from './lib/errorMonitor.js';
+import { langMiddleware, t } from './lib/i18n.js';
 import { capacityMiddleware, startCapacityMonitor, stopCapacityMonitor } from './lib/capacity.js';
 import { adminDirectorRouter, directorRouter } from './routes/director.routes.js';
 import { startDirectorWorkers } from './lib/director/supportAgent.js';
@@ -117,6 +118,8 @@ const serveLanding = Boolean(PUBLIC_DIST);
 
 app.set('trust proxy', 1);
 app.use(capacityMiddleware);
+// req.lang ('ka' | 'en') from X-Medicard-Lang — errors, AI text and pushes follow it.
+app.use(langMiddleware);
 app.use(
   helmet({
     crossOriginResourcePolicy: { policy: 'cross-origin' },
@@ -186,17 +189,31 @@ app.use(
 
 app.use('/uploads', denyLegacyPublicUploads);
 
-app.get('/privacy', (_req, res) => {
+// Legal pages: Georgian (prevails) + English translation; ?lang=en|ka picks the matching page.
+const legalLang = (req) => String(req.query.lang || '').slice(0, 2).toLowerCase();
+
+app.get('/privacy', (req, res) => {
+  if (legalLang(req) === 'en') return res.redirect(302, '/privacy-en?lang=en');
   res.set('Cache-Control', 'public, max-age=3600');
   if (PUBLIC_DIST) return res.sendFile(path.join(PUBLIC_DIST, 'privacy.html'));
   res.type('html').send(PRIVACY_HTML);
 });
 
-app.get('/terms', (_req, res) => {
+app.get('/terms', (req, res) => {
+  if (legalLang(req) === 'en') return res.redirect(302, '/terms-en?lang=en');
   res.set('Cache-Control', 'public, max-age=3600');
   if (PUBLIC_DIST) return res.sendFile(path.join(PUBLIC_DIST, 'terms.html'));
   res.type('html').send(TERMS_HTML);
 });
+
+for (const [route, file, ka] of [['/privacy-en', 'privacy-en.html', '/privacy'], ['/terms-en', 'terms-en.html', '/terms']]) {
+  app.get([route, `${route}/`], (req, res) => {
+    if (legalLang(req) === 'ka') return res.redirect(302, `${ka}?lang=ka`);
+    if (!PUBLIC_DIST) return res.redirect(302, ka);
+    res.set('Cache-Control', 'public, max-age=3600');
+    res.sendFile(path.join(PUBLIC_DIST, file));
+  });
+}
 
 // Google Play account-deletion page (bilingual ka/en). Public, no auth.
 app.get(['/delete-account', '/delete-account/', '/en/delete-account'], (_req, res, next) => {
@@ -337,11 +354,11 @@ app.use('/api/admin/qa', adminQaRouter);
 
 // The MEDIRUN web page is hidden for now (owner, 2026-09-29): browsers go to the front page.
 // The app's MEDIRUN is native (/run) and does not load this page. MEDIPULSI_WEB=on shows it again.
-app.get(['/medipulsi', '/medipulsi/', '/medipulsi/index.html'], (_req,res) => {
+app.get(['/medipulsi', '/medipulsi/', '/medipulsi/index.html'], (req,res) => {
   if (process.env.MEDIPULSI_WEB !== 'on') return res.redirect(302, '/');
   const file=path.resolve(__dirname,'../public/medipulsi/index.html');
   res.set('Cache-Control','no-store');
-  if(!existsSync(file))return res.status(503).send('MEDIPULSI მზადდება.');
+  if(!existsSync(file))return res.status(503).send(t(req, 'MEDIPULSI მზადდება.', 'MEDIRUN is getting ready.'));
   return res.sendFile(file);
 });
 

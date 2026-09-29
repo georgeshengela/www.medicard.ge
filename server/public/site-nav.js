@@ -8,6 +8,8 @@
   if (!header) return;
 
   var APP_STORE = 'https://apps.apple.com/app/id6812517519';
+  var I18N = window.MedicardI18n || { lang: 'ka', t: function (ka) { return ka; }, set: function () {} };
+  var T = I18N.t;
   var path = location.pathname.replace(/\/+$/, '') || '/';
   var onHome = path === '/' || path === '/index.html';
 
@@ -31,27 +33,27 @@
 
   var CALC = {
     cycle: [
-      ['ovulation', 'ოვულაცია', 'ნაყოფიერი ფანჯარა'],
-      ['period', 'მენსტრუაცია', 'შემდეგი პერიოდი'],
-      ['cycle', 'ციკლი', 'დღევანდელი ფაზა'],
-      ['pregnancy-test', 'ორსულობის ტესტი', 'როდის გაიკეთო'],
-      ['implantation', 'იმპლანტაცია', '6–10 დღიანი ფანჯარა']
+      ['ovulation', T('ოვულაცია', 'Ovulation'), T('ნაყოფიერი ფანჯარა', 'Fertile window')],
+      ['period', T('მენსტრუაცია', 'Period'), T('შემდეგი პერიოდი', 'Next period')],
+      ['cycle', T('ციკლი', 'Cycle'), T('დღევანდელი ფაზა', 'Today\u2019s phase')],
+      ['pregnancy-test', T('ორსულობის ტესტი', 'Pregnancy test'), T('როდის გაიკეთო', 'When to test')],
+      ['implantation', T('იმპლანტაცია', 'Implantation'), T('6–10 დღიანი ფანჯარა', 'The 6–10 day window')]
     ],
     pregnancy: [
-      ['due-date', 'მშობიარობის თარიღი', 'ბოლო პერიოდით'],
-      ['weeks-to-months', 'კვირები თვეებში', 'თვე და ტრიმესტრი'],
-      ['ivf', 'IVF და FET', 'ემბრიონის ასაკით'],
-      ['ultrasound', 'ულტრაბგერა', 'სკანის თარიღით'],
-      ['hcg', 'hCG', 'გაორმაგების დრო']
+      ['due-date', T('მშობიარობის თარიღი', 'Due date'), T('ბოლო პერიოდით', 'From your last period')],
+      ['weeks-to-months', T('კვირები თვეებში', 'Weeks to months'), T('თვე და ტრიმესტრი', 'Month and trimester')],
+      ['ivf', T('IVF და FET', 'IVF and FET'), T('ემბრიონის ასაკით', 'By embryo age')],
+      ['ultrasound', T('ულტრაბგერა', 'Ultrasound'), T('სკანის თარიღით', 'From your scan date')],
+      ['hcg', 'hCG', T('გაორმაგების დრო', 'Doubling time')]
     ]
   };
 
   var ITEMS = [
-    { key: 'home', href: '/', label: 'მთავარი', hint: 'დღე მედიქარდთან', icon: 'home' },
-    { key: 'about', href: '/about', label: 'ჩვენ შესახებ', hint: 'ვინ ვართ და რისი გვჯერა', icon: 'about' },
-    { key: 'calculators', href: '/calculators', label: 'კალკულატორები', hint: 'ციკლი და ორსულობა — 10 უფასო', icon: 'calc', mega: true },
-    { key: 'faq', href: onHome ? '#faq' : '/#faq', label: 'კითხვები', hint: 'ხშირი კითხვები', icon: 'faq' },
-    { key: 'contact', href: '/contact', label: 'კონტაქტი', hint: 'მოგვწერე', icon: 'mail' }
+    { key: 'home', href: '/', label: T('მთავარი', 'Home'), hint: T('დღე მედიქარდთან', 'A day with MEDICARD'), icon: 'home' },
+    { key: 'about', href: '/about', label: T('ჩვენ შესახებ', 'About'), hint: T('ვინ ვართ და რისი გვჯერა', 'Who we are and what we believe'), icon: 'about' },
+    { key: 'calculators', href: '/calculators', label: T('კალკულატორები', 'Calculators'), hint: T('ციკლი და ორსულობა — 10 უფასო', 'Cycle and pregnancy — 10 free tools'), icon: 'calc', mega: true },
+    { key: 'faq', href: onHome ? '#faq' : '/#faq', label: T('კითხვები', 'FAQ'), hint: T('ხშირი კითხვები', 'Frequently asked questions'), icon: 'faq' },
+    { key: 'contact', href: '/contact', label: T('კონტაქტი', 'Contact'), hint: T('მოგვწერე', 'Write to us'), icon: 'mail' }
   ];
 
   var current =
@@ -72,11 +74,11 @@
   }
 
   var mega =
-    '<div class="tb-mega" id="tb-mega" role="region" aria-label="კალკულატორები">' +
+    '<div class="tb-mega" id="tb-mega" role="region" aria-label="' + esc(T('კალკულატორები', 'Calculators')) + '">' +
       '<div class="tb-mega-grid">' +
-        calcColumn('ციკლი', 'cycle', CALC.cycle) +
-        calcColumn('ორსულობა', 'baby', CALC.pregnancy) +
-        '<a class="tb-mega-all" href="/calculators"><b>ყველა კალკულატორი</b><span>გამოთვლა რჩება შენს ბრაუზერში — სერვერზე არაფერი იგზავნება.</span>' + ICON.arrow + '</a>' +
+        calcColumn(T('ციკლი', 'Cycle'), 'cycle', CALC.cycle) +
+        calcColumn(T('ორსულობა', 'Pregnancy'), 'baby', CALC.pregnancy) +
+        '<a class="tb-mega-all" href="/calculators"><b>' + esc(T('ყველა კალკულატორი', 'All calculators')) + '</b><span>' + esc(T('გამოთვლა რჩება შენს ბრაუზერში — სერვერზე არაფერი იგზავნება.', 'Everything is calculated in your browser — nothing is sent to a server.')) + '</span>' + ICON.arrow + '</a>' +
       '</div>' +
     '</div>';
 
@@ -99,24 +101,45 @@
   var signedIn = false;
   try { signedIn = Boolean(localStorage.getItem('medicard.web.token')); } catch (e) { signedIn = false; }
 
+  // Language switch: each option names itself, the active one is pressed.
+  function langSwitch(extra) {
+    return '<div class="tb-lang' + (extra || '') + '" role="group" aria-label="' + esc(T('ენა', 'Language')) + '" data-active="' + I18N.lang + '">' +
+      '<span class="tb-lang-glide" aria-hidden="true"></span>' +
+      '<button type="button" data-lang="ka" lang="ka" aria-pressed="' + (I18N.lang === 'ka') + '" title="ქართული">ქა</button>' +
+      '<button type="button" data-lang="en" lang="en" aria-pressed="' + (I18N.lang === 'en') + '" title="English">EN</button>' +
+    '</div>';
+  }
+
   header.innerHTML =
     '<div class="tb-bar">' +
-      '<a class="tb-brand" href="/" aria-label="მედიქარდი, მთავარი გვერდი"><img src="/icon.png" width="32" height="32" alt="" /><span>მედიქარდი</span></a>' +
-      '<nav class="tb-links" aria-label="მთავარი მენიუ"><span class="tb-glide" aria-hidden="true"></span>' + links + '</nav>' +
-      '<a class="tb-login" href="/app">' + ICON.user + '<span>' + (signedIn ? 'ჩემი ანგარიში' : 'შესვლა') + '</span></a>' +
-      '<button class="tb-burger" type="button" aria-expanded="false" aria-controls="tb-sheet"><span class="tb-sr">მენიუ</span><i></i><i></i><i></i></button>' +
+      '<a class="tb-brand" href="/" aria-label="' + esc(T('მედიქარდი, მთავარი გვერდი', 'MEDICARD, home')) + '"><img src="/icon.png" width="32" height="32" alt="" /><span>' + esc(T('მედიქარდი', 'MEDICARD')) + '</span></a>' +
+      '<nav class="tb-links" aria-label="' + esc(T('მთავარი მენიუ', 'Main menu')) + '"><span class="tb-glide" aria-hidden="true"></span>' + links + '</nav>' +
+      langSwitch() +
+      '<a class="tb-login" href="/app">' + ICON.user + '<span>' + esc(signedIn ? T('ჩემი ანგარიში', 'My account') : T('შესვლა', 'Sign in')) + '</span></a>' +
+      '<button class="tb-burger" type="button" aria-expanded="false" aria-controls="tb-sheet"><span class="tb-sr">' + esc(T('მენიუ', 'Menu')) + '</span><i></i><i></i><i></i></button>' +
     '</div>' +
-    '<div class="tb-sheet" id="tb-sheet" aria-label="მენიუ">' +
+    '<div class="tb-sheet" id="tb-sheet" aria-label="' + esc(T('მენიუ', 'Menu')) + '">' +
       '<ul class="tb-sheet-list">' + sheetItems + '</ul>' +
       '<div class="tb-sheet-foot">' +
         '<a class="store-badge is-official" href="' + APP_STORE + '"><img src="/icons/app-store-badge.svg" alt="Download on the App Store" width="144" height="48" /></a>' +
         '<span class="store-badge is-soon" aria-label="Google Play — Coming soon"><img src="/icons/google-play.svg" alt="" width="24" height="24" /><span><small>Coming soon</small><b>Google Play</b></span></span>' +
-        '<a class="tb-sheet-login" href="/app">' + ICON.user + '<span>' + (signedIn ? 'ჩემი ანგარიში' : 'შესვლა ვებ-ვერსიაში') + '</span>' + ICON.arrow + '</a>' +
+        '<a class="tb-sheet-login" href="/app">' + ICON.user + '<span>' + esc(signedIn ? T('ჩემი ანგარიში', 'My account') : T('შესვლა ვებ-ვერსიაში', 'Sign in on the web')) + '</span>' + ICON.arrow + '</a>' +
+        langSwitch(' tb-lang-sheet') +
         '<a class="tb-sheet-mail" href="mailto:support@medicard.ge">support@medicard.ge</a>' +
       '</div>' +
     '</div>';
 
   if (header.hasAttribute('data-offset')) document.body.classList.add('tb-offset');
+
+  /* ───── Language ───── */
+  Array.prototype.forEach.call(header.querySelectorAll('.tb-lang button'), function (b) {
+    b.addEventListener('click', function () {
+      var next = b.getAttribute('data-lang');
+      if (next === I18N.lang) return;
+      Array.prototype.forEach.call(header.querySelectorAll('.tb-lang'), function (g) { g.setAttribute('data-active', next); });
+      setTimeout(function () { I18N.set(next); }, 180);
+    });
+  });
 
   /* ───── iPhone: download goes straight to the App Store ───── */
   var isApple = /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
@@ -186,7 +209,7 @@
     document.documentElement.classList.toggle('tb-lock', open);
     burger.setAttribute('aria-expanded', String(open));
     var label = burger.querySelector('.tb-sr');
-    if (label) label.textContent = open ? 'მენიუს დახურვა' : 'მენიუ';
+    if (label) label.textContent = open ? T('მენიუს დახურვა', 'Close menu') : T('მენიუ', 'Menu');
   }
   burger.addEventListener('click', function () { setSheet(!header.classList.contains('is-open')); });
   header.querySelector('.tb-sheet').addEventListener('click', function (e) { if (e.target.closest('a')) setSheet(false); });

@@ -5,19 +5,20 @@ import {localAccountId} from '@/lib/localAccount';
 import {rememberMapboxToken} from '@/lib/run/mapbox';
 import {PulseSessionClient} from './sessionClient';
 import {allowedApi} from '@/components/medipulsi/bridgePolicy';
+import {appLang,tx} from '../../i18n/locale.js';
 
 let account:string|null=null,client:PulseSessionClient|null=null,timer:ReturnType<typeof setInterval>|null=null;
 const uuid=()=>globalThis.crypto?.randomUUID?.()||'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g,c=>{const n=Math.floor(Math.random()*16);return(c==='x'?n:(n&3)|8).toString(16);});
 export async function pulseApi<T>(path:string,method='GET',body?:unknown,owner=localAccountId()):Promise<T>{
- if(!owner||localAccountId()!==owner)throw new Error('შედი MEDICARD ანგარიშში.');
- if(!allowedApi(path,method))throw new Error('მოთხოვნა დაუშვებელია.');
+ if(!owner||localAccountId()!==owner)throw new Error(tx('შედი MEDICARD ანგარიშში.','Sign in to your MEDICARD account.'));
+ if(!allowedApi(path,method))throw new Error(tx('მოთხოვნა დაუშვებელია.','This request isn’t allowed.'));
  guardRequest(method,'/api/medipulsi'+path);
- const token=await getToken();if(!token||localAccountId()!==owner)throw new Error('ანგარიში შეიცვალა.');
+ const token=await getToken();if(!token||localAccountId()!==owner)throw new Error(tx('ანგარიში შეიცვალა.','The account changed.'));
  const abort=new AbortController(),timeout=setTimeout(()=>abort.abort(),15000);
  try{
-  const response=await fetch(API_BASE_URL+'/api/medipulsi'+path,{method,headers:{Authorization:`Bearer ${token}`,'Content-Type':'application/json'},body:body===undefined?undefined:JSON.stringify(body),signal:abort.signal});
-  const data=await response.json();if(localAccountId()!==owner)throw new Error('ანგარიში შეიცვალა.');
-  if(!response.ok)throw Object.assign(new Error(response.status===404?'MEDIRUN-ის თამაშის სერვისი ამ სერვერზე ჯერ არ განახლებულა.':data.error||'კავშირი ვერ მოხერხდა.'),{status:response.status,code:data.code});
+  const response=await fetch(API_BASE_URL+'/api/medipulsi'+path,{method,headers:{Authorization:`Bearer ${token}`,'Content-Type':'application/json','X-Medicard-Lang':appLang()},body:body===undefined?undefined:JSON.stringify(body),signal:abort.signal});
+  const data=await response.json();if(localAccountId()!==owner)throw new Error(tx('ანგარიში შეიცვალა.','The account changed.'));
+  if(!response.ok)throw Object.assign(new Error(response.status===404?tx('MEDIRUN-ის თამაშის სერვისი ამ სერვერზე ჯერ არ განახლებულა.','The MEDIRUN game service isn’t updated on this server yet.'):data.error||tx('კავშირი ვერ მოხერხდა.','Couldn’t connect.')),{status:response.status,code:data.code});
   if(data.mapboxToken)rememberMapboxToken(data.mapboxToken);return data;
  }finally{clearTimeout(timeout);}
 }

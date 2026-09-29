@@ -16,18 +16,19 @@ import {
 import { APP_MODAL_OVERLAY, APP_MODAL_PROPS, Modal } from "@/components/ui/appModal";
 import { useIsDark, useThemeColors } from "@/theme/colors";
 import { HUB, hubInk, hubText, hubTint, type HubInk } from "@/theme/hub";
+import { tx } from '@/i18n/locale';
 
 export type LogMethod = "camera" | "gallery" | "barcode" | "label" | "describe" | "search" | "saved" | "manual";
 type Entry = { key: LogMethod; title: string; detail: string; icon: LucideIcon; ink: HubInk; ai?: boolean };
 const ENTRIES: Entry[] = [
-  { key: "camera", title: "გადაიღე კერძი", detail: "Medi ამოიცნობს და დაითვლის", icon: Camera, ink: "teal", ai: true },
-  { key: "gallery", title: "ფოტო გალერეიდან", detail: "უკვე გადაღებული კერძი", icon: ImagePlus, ink: "teal", ai: true },
-  { key: "barcode", title: "შტრიხკოდი", detail: "შეფუთული პროდუქტი ერთ წამში", icon: ScanBarcode, ink: "blue" },
-  { key: "label", title: "ეტიკეტის სკანი", detail: "Nutrition Facts ცხრილი ფოტოდან", icon: ScanText, ink: "violet", ai: true },
-  { key: "describe", title: "აღწერე ან თქვი", detail: "„ორი ხინკალი და სალათი“", icon: Sparkles, ink: "amber", ai: true },
-  { key: "search", title: "საკვების ძებნა", detail: "ქართული კერძები და პროდუქტები", icon: Search, ink: "green" },
-  { key: "saved", title: "შენახული და ბოლო", detail: "ხშირი კერძები ერთი შეხებით", icon: Bookmark, ink: "rose" },
-  { key: "manual", title: "ხელით შეყვანა", detail: "სახელი, გრამი და მნიშვნელობები", icon: KeyboardIcon, ink: "neutral" },
+  { key: "camera", title: tx("გადაიღე კერძი", "Snap a meal"), detail: tx("Medi ამოიცნობს და დაითვლის", "Medi recognizes and counts it"), icon: Camera, ink: "teal", ai: true },
+  { key: "gallery", title: tx("ფოტო გალერეიდან", "Photo from gallery"), detail: tx("უკვე გადაღებული კერძი", "A meal you already photographed"), icon: ImagePlus, ink: "teal", ai: true },
+  { key: "barcode", title: tx("შტრიხკოდი", "Barcode"), detail: tx("შეფუთული პროდუქტი ერთ წამში", "Packaged food in a second"), icon: ScanBarcode, ink: "blue" },
+  { key: "label", title: tx("ეტიკეტის სკანი", "Scan a label"), detail: tx("Nutrition Facts ცხრილი ფოტოდან", "Nutrition Facts panel from a photo"), icon: ScanText, ink: "violet", ai: true },
+  { key: "describe", title: tx("აღწერე ან თქვი", "Describe or say it"), detail: tx("„ორი ხინკალი და სალათი“", "“Two khinkali and a salad”"), icon: Sparkles, ink: "amber", ai: true },
+  { key: "search", title: tx("საკვების ძებნა", "Search foods"), detail: tx("ქართული კერძები და პროდუქტები", "Georgian dishes and products"), icon: Search, ink: "green" },
+  { key: "saved", title: tx("შენახული და ბოლო", "Saved and recent"), detail: tx("ხშირი კერძები ერთი შეხებით", "Frequent meals in one tap"), icon: Bookmark, ink: "rose" },
+  { key: "manual", title: tx("ხელით შეყვანა", "Enter manually"), detail: tx("სახელი, გრამი და მნიშვნელობები", "Name, grams and values"), icon: KeyboardIcon, ink: "neutral" },
 ];
 
 /** The "+" menu: every way to get food into the diary, AI ways marked as such. */
@@ -47,13 +48,13 @@ export function LogMethodSheet({
   const safe = useSafeAreaInsets();
   return (
     <Modal visible={visible} {...APP_MODAL_PROPS} onRequestClose={onClose}>
-      <Pressable accessibilityRole="button" accessibilityLabel="დახურვა" onPress={onClose} style={[StyleSheet.absoluteFill, { backgroundColor: APP_MODAL_OVERLAY }]} />
+      <Pressable accessibilityRole="button" accessibilityLabel={tx("დახურვა", "Close")} onPress={onClose} style={[StyleSheet.absoluteFill, { backgroundColor: APP_MODAL_OVERLAY }]} />
       <View style={{ flex: 1, justifyContent: "flex-end" }} pointerEvents="box-none">
         <View accessibilityViewIsModal style={[s.sheet, { backgroundColor: c.surface, paddingBottom: Math.max(safe.bottom, 16) }]}>
           <View style={[s.grip, { backgroundColor: c.bg300 }]} />
           <View style={s.head}>
-            <Text style={[hubText.cardTitle, { color: c.text100, fontSize: 17 }]}>როგორ ჩავწეროთ?</Text>
-            <Pressable accessibilityRole="button" accessibilityLabel="დახურვა" onPress={onClose} style={s.close}>
+            <Text style={[hubText.cardTitle, { color: c.text100, fontSize: 17 }]}>{tx("როგორ ჩავწეროთ?", "How do you want to log it?")}</Text>
+            <Pressable accessibilityRole="button" accessibilityLabel={tx("დახურვა", "Close")} onPress={onClose} style={s.close}>
               <X size={20} color={c.text200} />
             </Pressable>
           </View>
@@ -81,7 +82,7 @@ export function LogMethodSheet({
             })}
           </View>
           <Text style={[hubText.small, { color: c.text300, textAlign: "center" }]}>
-            {aiEnabled ? "AI შეფასება მიახლოებითია — შენახვამდე გადაამოწმებ." : "AI შეფასება დროებით გამორთულია. შტრიხკოდი, ძებნა და ხელით შეყვანა მუშაობს."}
+            {aiEnabled ? tx("AI შეფასება მიახლოებითია — შენახვამდე გადაამოწმებ.", "AI estimates are approximate — you check them before saving.") : tx("AI შეფასება დროებით გამორთულია. შტრიხკოდი, ძებნა და ხელით შეყვანა მუშაობს.", "AI estimates are paused for now. Barcode, search and manual entry still work.")}
           </Text>
         </View>
       </View>

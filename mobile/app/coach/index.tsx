@@ -27,9 +27,14 @@ import { Avatar, Button, Card, IconTile, Loading, Section, coachStyles } from '@
 import { FadeIn, KpiTile, QuickAction, Ring, StatusPill, haptic, sessionTiming } from '@/components/coach/CoachKit';
 import { hubText } from '@/theme/hub';
 import { useIsDark, useThemeColors } from '@/theme/colors';
+import { isEn, tx } from '@/i18n/locale';
 
-const WEEKDAY_LONG = ['კვირა', 'ორშაბათი', 'სამშაბათი', 'ოთხშაბათი', 'ხუთშაბათი', 'პარასკევი', 'შაბათი'];
-const MONTH_LONG = ['იანვარი', 'თებერვალი', 'მარტი', 'აპრილი', 'მაისი', 'ივნისი', 'ივლისი', 'აგვისტო', 'სექტემბერი', 'ოქტომბერი', 'ნოემბერი', 'დეკემბერი'];
+const WEEKDAY_LONG = isEn()
+  ? ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
+  : ['კვირა', 'ორშაბათი', 'სამშაბათი', 'ოთხშაბათი', 'ხუთშაბათი', 'პარასკევი', 'შაბათი'];
+const MONTH_LONG = isEn()
+  ? ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
+  : ['იანვარი', 'თებერვალი', 'მარტი', 'აპრილი', 'მაისი', 'ივნისი', 'ივლისი', 'აგვისტო', 'სექტემბერი', 'ოქტომბერი', 'ნოემბერი', 'დეკემბერი'];
 
 /** Re-render every 30 s so countdowns and the "now" line stay true while the screen is open. */
 function useNow(ms = 30000) {
@@ -70,16 +75,16 @@ export default function CoachTodayScreen() {
       if (accept) haptic.success();
       await load();
     } catch (e) {
-      Alert.alert('ვერ მოხერხდა', e instanceof ApiError ? e.message : 'სცადე ხელახლა.');
+      Alert.alert(tx('ვერ მოხერხდა', 'Something went wrong'), e instanceof ApiError ? e.message : tx('სცადე ხელახლა.', 'Please try again.'));
     }
   };
   const confirmDecline = (linkId: string, name: string) =>
-    Alert.alert('მოთხოვნის უარყოფა', `${name}-ს მოთხოვნა უარყოფილი იქნება.`, [
-      { text: 'არა', style: 'cancel' },
-      { text: 'უარყოფა', style: 'destructive', onPress: () => void answer(linkId, false) },
+    Alert.alert(tx('მოთხოვნის უარყოფა', 'Decline request'), tx(`${name}-ს მოთხოვნა უარყოფილი იქნება.`, `${name}’s request will be declined.`), [
+      { text: tx('არა', 'No'), style: 'cancel' },
+      { text: tx('უარყოფა', 'Decline'), style: 'destructive', onPress: () => void answer(linkId, false) },
     ]);
 
-  const invite = () => code && void Share.share({ message: `ვარჯიშები, კვების გეგმა და პროგრესი ერთად — MEDICARD-ში. შემომიერთდი ჩემი კოდით ${code}: ${coachLink(code)}` });
+  const invite = () => code && void Share.share({ message: tx(`ვარჯიშები, კვების გეგმა და პროგრესი ერთად — MEDICARD-ში. შემომიერთდი ჩემი კოდით ${code}: ${coachLink(code)}`, `Workouts, meal plan and progress in one place — on MEDICARD. Join me with my code ${code}: ${coachLink(code)}`) });
 
   const t = new Date(now + 4 * 3600000);
   const dateLine = `${WEEKDAY_LONG[t.getUTCDay()]}, ${t.getUTCDate()} ${MONTH_LONG[t.getUTCMonth()]}`;
@@ -92,8 +97,8 @@ export default function CoachTodayScreen() {
 
   return (
     <CoachShell
-      title={data ? `გამარჯობა, ${data.trainer.displayName.split(' ')[0]}` : 'დღეს'}
-      subtitle={booked.length ? `${dateLine} · დღეს ${booked.length} ვარჯიში` : dateLine}
+      title={data ? tx(`გამარჯობა, ${data.trainer.displayName.split(' ')[0]}`, `Hi, ${data.trainer.displayName.split(' ')[0]}`) : tx('დღეს', 'Today')}
+      subtitle={booked.length ? tx(`${dateLine} · დღეს ${booked.length} ვარჯიში`, `${dateLine} · ${booked.length} ${booked.length === 1 ? 'workout' : 'workouts'} today`) : dateLine}
       refreshing={refreshing}
       onRefresh={async () => {
         setRefreshing(true);
@@ -110,21 +115,21 @@ export default function CoachTodayScreen() {
           </FadeIn>
 
           <FadeIn delay={60} style={{ flexDirection: 'row', marginTop: 20 }}>
-            <QuickAction icon={CalendarPlus} label="დანიშვნა" primary onPress={() => router.push('/coach/session-new' as never)} />
-            <QuickAction icon={ScanLine} label="QR სკანი" onPress={() => router.push('/coach/scan' as never)} />
-            <QuickAction icon={UsersRound} label="კლიენტები" badge={data.requests.length} onPress={() => router.replace('/coach/clients' as never)} />
-            <QuickAction icon={Share2} label="მოწვევა" onPress={invite} />
+            <QuickAction icon={CalendarPlus} label={tx('დანიშვნა', 'Schedule')} primary onPress={() => router.push('/coach/session-new' as never)} />
+            <QuickAction icon={ScanLine} label={tx('QR სკანი', 'Scan QR')} onPress={() => router.push('/coach/scan' as never)} />
+            <QuickAction icon={UsersRound} label={tx('კლიენტები', 'Clients')} badge={data.requests.length} onPress={() => router.replace('/coach/clients' as never)} />
+            <QuickAction icon={Share2} label={tx('მოწვევა', 'Invite')} onPress={invite} />
           </FadeIn>
 
           {data.requests.length ? (
-            <Section title={`ახალი მოთხოვნები · ${data.requests.length}`}>
+            <Section title={tx(`ახალი მოთხოვნები · ${data.requests.length}`, `New requests · ${data.requests.length}`)}>
               {data.requests.map((r) => (
                 <Card key={r.linkId} style={{ gap: 12, marginBottom: 10 }}>
                   <View style={coachStyles.row}>
                     <Avatar avatarId={r.avatarId} photoUrl={r.avatarUrl} name={r.name} size={48} />
                     <View style={{ flex: 1 }}>
                       <Text style={[hubText.cardTitle, { color: c.text100 }]}>{r.name}</Text>
-                      <Text style={[hubText.caption, { color: c.text300 }]}>{[r.age ? `${r.age} წ.` : null, r.gender === 'FEMALE' ? 'ქალი' : r.gender === 'MALE' ? 'კაცი' : null].filter(Boolean).join(' · ') || 'ახალი კლიენტი'}</Text>
+                      <Text style={[hubText.caption, { color: c.text300 }]}>{[r.age ? tx(`${r.age} წ.`, `${r.age} y`) : null, r.gender === 'FEMALE' ? tx('ქალი', 'Female') : r.gender === 'MALE' ? tx('კაცი', 'Male') : null].filter(Boolean).join(' · ') || tx('ახალი კლიენტი', 'New client')}</Text>
                     </View>
                   </View>
                   {r.note ? (
@@ -133,15 +138,15 @@ export default function CoachTodayScreen() {
                     </View>
                   ) : null}
                   <View style={[coachStyles.row, { gap: 10 }]}>
-                    <Button label="მიღება" icon={Check} style={{ flex: 1, minHeight: 48 }} onPress={() => void answer(r.linkId, true)} />
-                    <Button label="უარი" icon={X} kind="secondary" style={{ flex: 1, minHeight: 48 }} onPress={() => confirmDecline(r.linkId, r.name)} />
+                    <Button label={tx('მიღება', 'Accept')} icon={Check} style={{ flex: 1, minHeight: 48 }} onPress={() => void answer(r.linkId, true)} />
+                    <Button label={tx('უარი', 'Decline')} icon={X} kind="secondary" style={{ flex: 1, minHeight: 48 }} onPress={() => confirmDecline(r.linkId, r.name)} />
                   </View>
                 </Card>
               ))}
             </Section>
           ) : null}
 
-          <Section title="დღის განრიგი" link="კალენდარი" onLink={() => router.replace('/coach/calendar' as never)}>
+          <Section title={tx('დღის განრიგი', 'Today’s schedule')} link={tx('კალენდარი', 'Calendar')} onLink={() => router.replace('/coach/calendar' as never)}>
             {live.length ? (
               <Card style={{ paddingVertical: 8 }}>
                 <View style={[coachStyles.row, { paddingVertical: 8 }]}>
@@ -151,9 +156,9 @@ export default function CoachTodayScreen() {
                     </Text>
                   </Ring>
                   <View style={{ flex: 1 }}>
-                    <Text style={[hubText.cardTitle, { color: c.text100 }]}>{booked.length ? `${booked.length} ვარჯიში დღეს` : 'დღეს მხოლოდ თავისუფალი სლოტებია'}</Text>
+                    <Text style={[hubText.cardTitle, { color: c.text100 }]}>{booked.length ? tx(`${booked.length} ვარჯიში დღეს`, `${booked.length} ${booked.length === 1 ? 'workout' : 'workouts'} today`) : tx('დღეს მხოლოდ თავისუფალი სლოტებია', 'Only open slots today')}</Text>
                     <Text style={[hubText.caption, { color: toLog.length ? c.warning : c.text300 }]}>
-                      {toLog.length ? `${toLog.length} ჩასაწერია — მონიშნე, ჩატარდა თუ არა` : doneToday ? `${doneToday} უკვე ჩატარდა` : 'ყველაფერი წინ არის'}
+                      {toLog.length ? tx(`${toLog.length} ჩასაწერია — მონიშნე, ჩატარდა თუ არა`, `${toLog.length} to log — mark whether it happened`) : doneToday ? tx(`${doneToday} უკვე ჩატარდა`, `${doneToday} done already`) : tx('ყველაფერი წინ არის', 'Everything’s still ahead')}
                     </Text>
                   </View>
                 </View>
@@ -162,25 +167,25 @@ export default function CoachTodayScreen() {
             ) : (
               <Card style={{ gap: 12, alignItems: 'center', paddingVertical: 26 }}>
                 <IconTile icon={CalendarDays} ink="teal" size={52} />
-                <Text style={[hubText.cardTitle, { color: c.text100 }]}>დღეს ვარჯიში არ გაქვს</Text>
-                <Text style={[hubText.body, { color: c.text300, textAlign: 'center' }]}>დანიშნე კლიენტთან ან გახსენი თავისუფალი სლოტი — კლიენტი თავად დაჯავშნის.</Text>
-                <Button label="ვარჯიშის დანიშვნა" icon={CalendarPlus} style={{ alignSelf: 'stretch' }} onPress={() => router.push('/coach/session-new' as never)} />
+                <Text style={[hubText.cardTitle, { color: c.text100 }]}>{tx('დღეს ვარჯიში არ გაქვს', 'No workouts today')}</Text>
+                <Text style={[hubText.body, { color: c.text300, textAlign: 'center' }]}>{tx('დანიშნე კლიენტთან ან გახსენი თავისუფალი სლოტი — კლიენტი თავად დაჯავშნის.', 'Schedule one with a client or open a slot — the client books it themselves.')}</Text>
+                <Button label={tx('ვარჯიშის დანიშვნა', 'Schedule a workout')} icon={CalendarPlus} style={{ alignSelf: 'stretch' }} onPress={() => router.push('/coach/session-new' as never)} />
               </Card>
             )}
           </Section>
 
-          <Section title="შენი რიცხვები">
+          <Section title={tx('შენი რიცხვები', 'Your numbers')}>
             <View style={{ flexDirection: 'row', gap: 10 }}>
-              <KpiTile icon={UsersRound} ink="teal" value={String(data.stats.clients)} label="აქტიური კლიენტი" onPress={() => router.replace('/coach/clients' as never)} />
-              <KpiTile icon={CalendarDays} ink="blue" value={String(data.stats.weekSessions)} label="ვარჯიში ამ კვირაში" onPress={() => router.replace('/coach/calendar' as never)} />
+              <KpiTile icon={UsersRound} ink="teal" value={String(data.stats.clients)} label={tx('აქტიური კლიენტი', 'Active clients')} onPress={() => router.replace('/coach/clients' as never)} />
+              <KpiTile icon={CalendarDays} ink="blue" value={String(data.stats.weekSessions)} label={tx('ვარჯიში ამ კვირაში', 'Workouts this week')} onPress={() => router.replace('/coach/calendar' as never)} />
             </View>
             <View style={{ flexDirection: 'row', gap: 10, marginTop: 10 }}>
-              <KpiTile icon={CheckCircle2} ink="green" value={String(data.stats.done30)} label="ჩატარდა" hint="ბოლო 30 დღე" />
-              <KpiTile icon={Target} ink="amber" value={attended ? `${Math.round((data.stats.done30 / attended) * 100)}%` : '—'} label="დასწრება" hint={attended ? `${data.stats.noShow30} გამოცდენა` : 'ჯერ მონაცემი არ არის'} />
+              <KpiTile icon={CheckCircle2} ink="green" value={String(data.stats.done30)} label={tx('ჩატარდა', 'Done')} hint={tx('ბოლო 30 დღე', 'Last 30 days')} />
+              <KpiTile icon={Target} ink="amber" value={attended ? `${Math.round((data.stats.done30 / attended) * 100)}%` : '—'} label={tx('დასწრება', 'Attendance')} hint={attended ? tx(`${data.stats.noShow30} გამოცდენა`, `${data.stats.noShow30} ${data.stats.noShow30 === 1 ? 'no-show' : 'no-shows'}`) : tx('ჯერ მონაცემი არ არის', 'No data yet')} />
             </View>
           </Section>
 
-          <Section title="ყურადღება" link={data.alerts.length ? 'ყველა კლიენტი' : undefined} onLink={() => router.replace('/coach/clients' as never)}>
+          <Section title={tx('ყურადღება', 'Attention')} link={data.alerts.length ? tx('ყველა კლიენტი', 'All clients') : undefined} onLink={() => router.replace('/coach/clients' as never)}>
             {data.alerts.length ? (
               <Card style={{ paddingVertical: 6 }}>
                 {data.alerts.slice(0, 8).map((a, i) => (
@@ -201,24 +206,24 @@ export default function CoachTodayScreen() {
               <Card style={[coachStyles.row, { gap: 12 }]}>
                 <IconTile icon={Sparkles} ink="green" size={38} />
                 <Text style={[hubText.body, { color: c.text200, flex: 1 }]}>
-                  {data.stats.clients ? 'ყველაფერი რიგზეა — ახალი სიგნალი არ არის.' : 'როცა კლიენტები შემოგიერთდებიან, აქ დაინახავ, ვინ გადაუხვია კვებას, ვინ არ აწონილა ან ვინ გამოტოვა ვარჯიში.'}
+                  {data.stats.clients ? tx('ყველაფერი რიგზეა — ახალი სიგნალი არ არის.', 'All good — no new signals.') : tx('როცა კლიენტები შემოგიერთდებიან, აქ დაინახავ, ვინ გადაუხვია კვებას, ვინ არ აწონილა ან ვინ გამოტოვა ვარჯიში.', 'Once clients join, you’ll see here who went off their meal plan, who hasn’t weighed in or who missed a workout.')}
                 </Text>
               </Card>
             )}
           </Section>
 
           {!data.stats.clients && code ? (
-            <Section title="პირველი კლიენტი">
+            <Section title={tx('პირველი კლიენტი', 'Your first client')}>
               <Card style={{ gap: 12 }}>
                 <View style={coachStyles.row}>
                   <IconTile icon={UserPlus} ink="teal" />
                   <View style={{ flex: 1 }}>
-                    <Text style={[hubText.cardTitle, { color: c.text100 }]}>შენი კოდი: {code}</Text>
-                    <Text style={[hubText.caption, { color: c.text300 }]}>ან დაასკანერე კლიენტის QR — მოწვევა მაშინვე მიუვა და თანხმობას თავად მოგცემს.</Text>
+                    <Text style={[hubText.cardTitle, { color: c.text100 }]}>{tx('შენი კოდი:', 'Your code:')} {code}</Text>
+                    <Text style={[hubText.caption, { color: c.text300 }]}>{tx('ან დაასკანერე კლიენტის QR — მოწვევა მაშინვე მიუვა და თანხმობას თავად მოგცემს.', 'Or scan the client’s QR — they get the invite right away and give consent themselves.')}</Text>
                   </View>
                 </View>
-                <Button label="კლიენტის QR-ის სკანირება" icon={ScanLine} onPress={() => router.push('/coach/scan' as never)} />
-                <Button label="კოდის გაზიარება" icon={Share2} kind="secondary" onPress={invite} />
+                <Button label={tx('კლიენტის QR-ის სკანირება', 'Scan client QR')} icon={ScanLine} onPress={() => router.push('/coach/scan' as never)} />
+                <Button label={tx('კოდის გაზიარება', 'Share code')} icon={Share2} kind="secondary" onPress={invite} />
               </Card>
             </Section>
           ) : null}
@@ -234,11 +239,11 @@ function NextUp({ session, now, toLog, onOpen, onBook }: { session: CoachSession
   const dark = useIsDark();
   if (!session) {
     return (
-      <Card style={{ marginTop: 16, flexDirection: 'row', alignItems: 'center', gap: 14 }} onPress={onBook} accessibilityLabel="ვარჯიშის დანიშვნა">
+      <Card style={{ marginTop: 16, flexDirection: 'row', alignItems: 'center', gap: 14 }} onPress={onBook} accessibilityLabel={tx('ვარჯიშის დანიშვნა', 'Schedule a workout')}>
         <IconTile icon={Clock3} ink="teal" size={48} />
         <View style={{ flex: 1, gap: 2 }}>
-          <Text style={[hubText.cardTitle, { color: c.text100 }]}>{toLog ? 'დღის ვარჯიშები დასრულდა' : 'დღეს მეტი ვარჯიში არ გაქვს'}</Text>
-          <Text style={[hubText.caption, { color: c.text300 }]}>{toLog ? `ჩაწერე შედეგები — ${toLog} ვარჯიში ელოდება` : 'დანიშნე შემდეგი ვარჯიში'}</Text>
+          <Text style={[hubText.cardTitle, { color: c.text100 }]}>{toLog ? tx('დღის ვარჯიშები დასრულდა', 'Today’s workouts are over') : tx('დღეს მეტი ვარჯიში არ გაქვს', 'No more workouts today')}</Text>
+          <Text style={[hubText.caption, { color: c.text300 }]}>{toLog ? tx(`ჩაწერე შედეგები — ${toLog} ვარჯიში ელოდება`, `Log results — ${toLog} ${toLog === 1 ? 'workout is' : 'workouts are'} waiting`) : tx('დანიშნე შემდეგი ვარჯიში', 'Schedule the next workout')}</Text>
         </View>
         <ChevronRight size={18} color={c.text300} />
       </Card>
@@ -248,15 +253,15 @@ function NextUp({ session, now, toLog, onOpen, onBook }: { session: CoachSession
   const liveNow = timing.phase === 'live';
   const progress = liveNow ? (now - new Date(session.startsAt).getTime()) / (session.durationMin * 60000) : 0;
   return (
-    <Card style={{ marginTop: 16, gap: 14 }} onPress={() => onOpen(session.id)} accessibilityLabel={`შემდეგი ვარჯიში ${clockOf(session.startsAt)}, ${session.clientName ?? ''}`}>
+    <Card style={{ marginTop: 16, gap: 14 }} onPress={() => onOpen(session.id)} accessibilityLabel={tx(`შემდეგი ვარჯიში ${clockOf(session.startsAt)}, ${session.clientName ?? ''}`, `Next workout ${clockOf(session.startsAt)}, ${session.clientName ?? ''}`)}>
       <View style={coachStyles.rowBetween}>
-        <StatusPill label={liveNow ? 'ახლა მიმდინარეობს' : 'შემდეგი ვარჯიში'} tone={liveNow ? 'live' : 'brand'} />
+        <StatusPill label={liveNow ? tx('ახლა მიმდინარეობს', 'Happening now') : tx('შემდეგი ვარჯიში', 'Next workout')} tone={liveNow ? 'live' : 'brand'} />
         <Text style={[hubText.caption, { color: liveNow ? c.success : c.text300, fontFamily: 'NotoSansGeorgian_600SemiBold' }]}>{timing.text}</Text>
       </View>
       <View style={[coachStyles.row, { gap: 14 }]}>
         <View>
           <Text style={[st.bigTime, { color: c.text100 }]}>{clockOf(session.startsAt)}</Text>
-          <Text style={[hubText.caption, { color: c.text300 }]}>{session.durationMin} წუთი</Text>
+          <Text style={[hubText.caption, { color: c.text300 }]}>{session.durationMin} {tx('წუთი', 'min')}</Text>
         </View>
         <View style={{ width: StyleSheet.hairlineWidth, alignSelf: 'stretch', backgroundColor: c.bg300 }} />
         <Avatar avatarId={session.clientAvatarId} photoUrl={session.clientAvatarUrl} name={session.clientName ?? '?'} size={46} />
@@ -279,7 +284,7 @@ function NextUp({ session, now, toLog, onOpen, onBook }: { session: CoachSession
         ) : null}
         <View style={[st.meta, { backgroundColor: session.clientConfirmedAt ? c.successBg : c.bg200 }]}>
           {session.clientConfirmedAt ? <CheckCircle2 size={13} color={c.success} /> : <Clock3 size={13} color={c.text200} />}
-          <Text style={[hubText.small, { color: session.clientConfirmedAt ? c.success : c.text200 }]}>{session.clientConfirmedAt ? 'კლიენტმა დაადასტურა' : 'დასტურს ელოდება'}</Text>
+          <Text style={[hubText.small, { color: session.clientConfirmedAt ? c.success : c.text200 }]}>{session.clientConfirmedAt ? tx('კლიენტმა დაადასტურა', 'Client confirmed') : tx('დასტურს ელოდება', 'Awaiting confirmation')}</Text>
         </View>
       </View>
     </Card>
@@ -303,7 +308,7 @@ function Timeline({ sessions, now, onOpen }: { sessions: CoachSession[]; now: nu
       <Pressable
         key={s.id}
         accessibilityRole="button"
-        accessibilityLabel={`${clockOf(s.startsAt)} ${s.clientName ?? 'თავისუფალი სლოტი'}`}
+        accessibilityLabel={`${clockOf(s.startsAt)} ${s.clientName ?? tx('თავისუფალი სლოტი', 'Open slot')}`}
         onPress={() => onOpen(s.id)}
         className="active:opacity-70"
         style={[coachStyles.row, { minHeight: 60, paddingVertical: 6 }]}
@@ -316,14 +321,14 @@ function Timeline({ sessions, now, onOpen }: { sessions: CoachSession[]; now: nu
         </View>
         {s.clientId ? <Avatar avatarId={s.clientAvatarId} photoUrl={s.clientAvatarUrl} name={s.clientName ?? '?'} size={36} /> : null}
         <View style={{ flex: 1, minWidth: 0, gap: 1 }}>
-          <Text numberOfLines={1} style={[hubText.cardTitle, { color: past && !running ? c.text200 : c.text100 }]}>{s.clientName ?? 'თავისუფალი სლოტი'}</Text>
+          <Text numberOfLines={1} style={[hubText.cardTitle, { color: past && !running ? c.text200 : c.text100 }]}>{s.clientName ?? tx('თავისუფალი სლოტი', 'Open slot')}</Text>
           <Text numberOfLines={1} style={[hubText.caption, { color: c.text300 }]}>
-            {s.durationMin} წთ · {s.kindLabel}
+            {s.durationMin} {tx('წთ', 'min')} · {s.kindLabel}
             {s.gym ? ` · ${s.gym.brand}` : ''}
           </Text>
         </View>
         {pending ? (
-          <StatusPill label="ჩასაწერი" tone="warn" />
+          <StatusPill label={tx('ჩასაწერი', 'To log')} tone="warn" />
         ) : s.status === 'SCHEDULED' ? (
           s.clientConfirmedAt ? <CheckCircle2 size={20} color={c.success} /> : null
         ) : (
@@ -340,7 +345,7 @@ function NowLine({ now }: { now: number }) {
   const t = new Date(now + 4 * 3600000);
   const label = `${String(t.getUTCHours()).padStart(2, '0')}:${String(t.getUTCMinutes()).padStart(2, '0')}`;
   return (
-    <View accessibilityLabel={`ახლა ${label}`} style={[coachStyles.row, { gap: 8, marginVertical: 2 }]}>
+    <View accessibilityLabel={tx(`ახლა ${label}`, `Now ${label}`)} style={[coachStyles.row, { gap: 8, marginVertical: 2 }]}>
       <View style={{ backgroundColor: '#EF4444', borderRadius: 8, paddingHorizontal: 6, paddingVertical: 1 }}>
         <Text style={{ color: '#FFFFFF', fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 11 }}>{label}</Text>
       </View>

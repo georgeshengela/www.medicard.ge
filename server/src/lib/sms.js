@@ -75,6 +75,7 @@ export async function sendSms({
   userId = null,
   adminId = null,
   urgent = true,
+  lang = 'ka',
 }) {
   const dest = normalizeSmsDestination(destination);
   const sender = env.SMS_OFFICE_SENDER || 'MEDICARD';
@@ -84,7 +85,10 @@ export async function sendSms({
     const cap = await otpCapReached(dest);
     if (cap) {
       notifySmsCap(cap);
-      return { ok: false, reference: ref, message: 'SMS კოდების დღიური ლიმიტი ამოიწურა. სცადე მოგვიანებით ან დაგვიკავშირდი.', capped: cap };
+      const message = String(lang).startsWith('en')
+        ? "Today's SMS code limit has been reached. Try again later or contact us."
+        : 'SMS კოდების დღიური ლიმიტი ამოიწურა. სცადე მოგვიანებით ან დაგვიკავშირდი.';
+      return { ok: false, reference: ref, message, capped: cap };
     }
   }
 
@@ -181,6 +185,8 @@ export async function getSmsBalance() {
   };
 }
 
-export function buildOtpMessage(code) {
+/** OTP text. English stays GSM-7 (plain ASCII) so it fits one SMS segment. */
+export function buildOtpMessage(code, lang = 'ka') {
+  if (String(lang).startsWith('en')) return `Medicard: your verification code is ${code}. Valid for 10 minutes.`;
   return `Medicard: შენი დამადასტურებელი კოდია ${code}. ვადა 10 წუთი.`;
 }

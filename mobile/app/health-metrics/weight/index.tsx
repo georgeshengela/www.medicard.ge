@@ -48,6 +48,7 @@ import { useNutritionDashboard } from '@/components/nutrition/ProgramUI';
 import { nutritionDateLabel } from '@/lib/nutritionProgram';
 import type { CachedWeightAdvice } from '@/lib/weightGoal';
 import type { WeightGoal, WeightLog } from '@/types/weightGoal';
+import { tx } from '@/i18n/locale';
 
 export default function WeightHubScreen() {
   const T = useFigmaWeight();
@@ -233,12 +234,12 @@ export default function WeightHubScreen() {
               T={T}
             />
             <StatRow icon={<BarChart3 size={24} color={T.brand} strokeWidth={2} />} title={ka.weight.average} value={avg != null ? String(avg) : '—'} label={ka.weight.kg} T={T} />
-            <Pressable accessibilityRole="button" accessibilityLabel="კვების გეგმის ნახვა" onPress={() => router.push('/nutrition')}>
+            <Pressable accessibilityRole="button" accessibilityLabel={tx('კვების გეგმის ნახვა', 'View meal plan')} onPress={() => router.push('/nutrition')}>
               <StatRow
                 icon={<Flame size={24} color={T.brand} strokeWidth={2} />}
-                title="დღის კვების სამიზნე"
+                title={tx('დღის კვების სამიზნე', 'Daily nutrition target')}
                 value={nutrition?.targets ? String(nutrition.targets.calories) : '—'}
-                label={nutrition?.targets ? 'კკალ · კვების გეგმა' : nutrition?.needsReview ? 'გეგმა გადაამოწმე' : 'გეგმის ნახვა'}
+                label={nutrition?.targets ? tx('კკალ · კვების გეგმა', 'kcal · meal plan') : nutrition?.needsReview ? tx('გეგმა გადაამოწმე', 'Review your plan') : tx('გეგმის ნახვა', 'View plan')}
                 T={T}
                 last
               />

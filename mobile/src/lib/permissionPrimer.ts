@@ -5,10 +5,10 @@
  * have one button, worded "Continue"/"Next" (never "Allow"), and that button must
  * always go on to the system sheet. No "Not now", "Later", "Skip", close button or
  * tap-outside dismissal before the request. The person says yes or no in the
- * system sheet itself. Review devices are English, so English copy is shipped too.
+ * system sheet itself. The copy follows the app language (Georgian / English).
  */
 import { Platform } from 'react-native';
-import { deviceLanguageTag, isGeorgianLocale } from '@/lib/aiDisclosureCopy';
+import { appLang, type AppLang } from '../i18n/locale.js';
 import { getPreference, setPreference } from '@/lib/storage';
 
 export type PrimerKind = 'notifications' | 'health' | 'location';
@@ -51,8 +51,8 @@ const EN: Record<PrimerKind, PrimerCopy> = {
   },
 };
 
-export function primerCopy(kind: PrimerKind, locale = deviceLanguageTag()): PrimerCopy {
-  const copy = (isGeorgianLocale(locale) ? KA : EN)[kind];
+export function primerCopy(kind: PrimerKind, lang: AppLang = appLang()): PrimerCopy {
+  const copy = (lang === 'en' ? EN : KA)[kind];
   if (kind !== 'health' || Platform.OS !== 'android') return copy;
   // Same wording, Android's store: Health Connect instead of Apple Health / the Health app.
   return {
@@ -64,12 +64,12 @@ export function primerCopy(kind: PrimerKind, locale = deviceLanguageTag()): Prim
 }
 
 /** After a denial the system sheet is done; the person may close our screen now. */
-export function primerCloseLabel(locale = deviceLanguageTag()): string {
-  return isGeorgianLocale(locale) ? 'დახურვა' : 'Close';
+export function primerCloseLabel(lang: AppLang = appLang()): string {
+  return lang === 'en' ? 'Close' : 'დახურვა';
 }
 
-export function primerSettingsLabel(locale = deviceLanguageTag()): string {
-  return isGeorgianLocale(locale) ? 'პარამეტრების გახსნა' : 'Open Settings';
+export function primerSettingsLabel(lang: AppLang = appLang()): string {
+  return lang === 'en' ? 'Open Settings' : 'პარამეტრების გახსნა';
 }
 
 const askedKey = (kind: PrimerKind) => `permissionPrimer.asked.${kind}`;

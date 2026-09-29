@@ -25,6 +25,7 @@ import {
   formatCycleDateKa,
 } from '@/components/cycle/CycleUI';
 import { ka } from '@/i18n/ka';
+import { tx } from '@/i18n/locale';
 import { api, ApiError, type CycleBundle, type CycleCondition, type CycleContraceptionMethod, type CycleMode } from '@/lib/api';
 import { CycleTtcConflictSheet } from '@/components/cycle/CycleTtcConflictSheet';
 import { cacheCycleBundle, destroyCycleOfflineAccount, loadCycleView, peekCyclePendingCount } from '@/lib/cycleOffline';
@@ -1240,7 +1241,7 @@ function Stepper({
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
         <Pressable
           onPress={() => onChange(Math.max(min, value - 1))}
-          accessibilityLabel={`${label} — შემცირება`}
+          accessibilityLabel={tx(`${label} — შემცირება`, `${label} — decrease`)}
           disabled={value <= min}
           style={{
             width: 44,
@@ -1266,7 +1267,7 @@ function Stepper({
         </Text>
         <Pressable
           onPress={() => onChange(Math.min(max, value + 1))}
-          accessibilityLabel={`${label} — გაზრდა`}
+          accessibilityLabel={tx(`${label} — გაზრდა`, `${label} — increase`)}
           disabled={value >= max}
           style={{
             width: 44,

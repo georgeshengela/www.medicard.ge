@@ -12,6 +12,7 @@ import { ApiError, api } from '@/lib/api';
 import { authErrorMessage } from '@/lib/authErrorMessage';
 import { useThemeColors } from '@/theme/colors';
 import { openEmail } from '@/lib/openEmail';
+import { tx } from '@/i18n/locale';
 
 export default function ForgotPasswordEmail() {
   const router = useRouter();
@@ -81,7 +82,7 @@ export default function ForgotPasswordEmail() {
           style={{ marginTop: 4, paddingVertical: 8, alignItems: 'center' }}
         >
           <Text style={{ fontFamily: 'NotoSansGeorgian_600SemiBold', fontSize: 14, color: colors.primary200 }}>
-            ახალი ანგარიშის შექმნა
+            {tx('ახალი ანგარიშის შექმნა', 'Create a new account')}
           </Text>
         </Pressable>
       ) : null}

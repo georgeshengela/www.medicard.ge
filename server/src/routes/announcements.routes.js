@@ -25,6 +25,7 @@ import {
   setArchived,
   updateAnnouncement,
 } from '../lib/announcements.js';
+import { t } from '../lib/i18n.js';
 
 export const announcementsRouter = Router();
 export const adminAnnouncementsRouter = Router();
@@ -38,7 +39,7 @@ const noStore = (_req, res, next) => {
 
 announcementsRouter.get('/image/:id', asyncHandler(async (req, res) => {
   const image = await readImage(req.params.id);
-  if (!image) return res.status(404).json({ error: 'სურათი ვერ მოიძებნა.' });
+  if (!image) return res.status(404).json({ error: t(req, 'სურათი ვერ მოიძებნა.', 'Image not found.') });
   res.set('Content-Type', image.mime);
   res.set('Cache-Control', 'public, max-age=31536000, immutable');
   res.set('X-Content-Type-Options', 'nosniff');
@@ -52,7 +53,7 @@ const eventLimiter = rateLimit({
   legacyHeaders: false,
   validate: false,
   keyGenerator: (req) => `announcement:${req.user?.id || 'anon'}`,
-  message: { error: 'ძალიან ბევრი მოთხოვნა.', code: 'RATE_LIMITED' },
+  message: (req) => ({ error: t(req, 'ძალიან ბევრი მოთხოვნა.', 'Too many requests.'), code: 'RATE_LIMITED' }),
 });
 
 announcementsRouter.get('/', requireAuth, noStore, asyncHandler(async (req, res) => {
@@ -65,7 +66,7 @@ announcementsRouter.get('/', requireAuth, noStore, asyncHandler(async (req, res)
 announcementsRouter.get('/:id', requireAuth, noStore, asyncHandler(async (req, res) => {
   const { platform } = clientMetaFromRequest(req);
   const card = await publishedCard(String(req.params.id), req.user, { platform });
-  if (!card) return res.status(404).json({ error: 'ეს სიახლე აღარ არის აქტიური.', code: 'ANNOUNCEMENT_GONE' });
+  if (!card) return res.status(404).json({ error: t(req, 'ეს სიახლე აღარ არის აქტიური.', 'This news item is no longer available.'), code: 'ANNOUNCEMENT_GONE' });
   return res.json({ announcement: card });
 }));
 

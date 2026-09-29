@@ -194,3 +194,19 @@ describe('partner payload estimates', () => {
     assert.equal(later.period.inPeriodEstimated, true);
   });
 });
+
+describe('cycle copy in English', () => {
+  it('uses English phase, dates and alerts when lang is en; Georgian stays default', async () => {
+    const { detectCyclePhase } = await import('./cycle.js');
+    const { formatCycleDate } = await import('./cycleHonesty.js');
+    assert.equal(formatCycleDate('2026-10-10', 'en'), '10 October 2026');
+    assert.equal(formatCycleDate('2026-10-10'), '10 ოქტომბერი 2026');
+    const en = detectCyclePhase({ lastPeriodStart: '2026-09-01', today: '2026-09-02', lang: 'en' });
+    assert.equal(en.phaseKa, 'Period');
+    assert.equal(detectCyclePhase({ lastPeriodStart: '2026-09-01', today: '2026-09-02' }).phaseKa, 'მენსტრუაცია');
+    assert.match(latePeriodAlertKa('en'), /not a diagnosis/);
+    const body = nextPeriodEstimateBody('2026-10-10', cycleHonestyFlags({ confidence: 'high' }), 'en');
+    assert.match(body, /around 10 October 2026/);
+    assert.doesNotMatch(body, /\d{4}-\d{2}-\d{2}/);
+  });
+});

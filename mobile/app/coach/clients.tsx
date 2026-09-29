@@ -10,6 +10,7 @@ import { Avatar, Button, Card, EmptyNote, Input, Loading, coachStyles } from '@/
 import { FadeIn, Ring, Segmented, StatusPill, haptic, scoreColor } from '@/components/coach/CoachKit';
 import { hubText } from '@/theme/hub';
 import { useIsDark, useThemeColors } from '@/theme/colors';
+import { tx } from '@/i18n/locale';
 
 type Filter = 'all' | 'attention' | 'waiting';
 
@@ -56,31 +57,31 @@ export default function CoachClientsScreen() {
     return needle ? base.filter((x) => x.name.toLowerCase().includes(needle)) : base;
   }, [clients, attention, filter, q]);
 
-  const invite = () => code && void Share.share({ message: `ვარჯიშები, კვების გეგმა და პროგრესი ერთად — MEDICARD-ში. შემომიერთდი ჩემი კოდით ${code}: ${coachLink(code)}` });
+  const invite = () => code && void Share.share({ message: tx(`ვარჯიშები, კვების გეგმა და პროგრესი ერთად — MEDICARD-ში. შემომიერთდი ჩემი კოდით ${code}: ${coachLink(code)}`, `Workouts, meal plan and progress in one place — on MEDICARD. Join me with my code ${code}: ${coachLink(code)}`) });
   const answer = async (id: string, accept: boolean) => {
     try {
       await api.coach.answerRequest(id, accept);
       if (accept) haptic.success();
       await load();
     } catch (e) {
-      Alert.alert('ვერ მოხერხდა', e instanceof ApiError ? e.message : 'სცადე ხელახლა.');
+      Alert.alert(tx('ვერ მოხერხდა', 'Something went wrong'), e instanceof ApiError ? e.message : tx('სცადე ხელახლა.', 'Please try again.'));
     }
   };
   const decline = (id: string, name: string) =>
-    Alert.alert('მოთხოვნის უარყოფა', `${name}-ს მოთხოვნა უარყოფილი იქნება.`, [
-      { text: 'არა', style: 'cancel' },
-      { text: 'უარყოფა', style: 'destructive', onPress: () => void answer(id, false) },
+    Alert.alert(tx('მოთხოვნის უარყოფა', 'Decline request'), tx(`${name}-ს მოთხოვნა უარყოფილი იქნება.`, `${name}’s request will be declined.`), [
+      { text: tx('არა', 'No'), style: 'cancel' },
+      { text: tx('უარყოფა', 'Decline'), style: 'destructive', onPress: () => void answer(id, false) },
     ]);
   const cancelInvite = (id: string, name: string) =>
-    Alert.alert('მოწვევის გაუქმება', `${name} მოწვევას ვეღარ მიიღებს.`, [
-      { text: 'არა', style: 'cancel' },
-      { text: 'გაუქმება', style: 'destructive', onPress: () => void api.coach.cancelInvite(id).then(load).catch((e) => Alert.alert('ვერ მოხერხდა', e instanceof ApiError ? e.message : 'სცადე ხელახლა.')) },
+    Alert.alert(tx('მოწვევის გაუქმება', 'Cancel invite'), tx(`${name} მოწვევას ვეღარ მიიღებს.`, `${name} won’t be able to accept the invite.`), [
+      { text: tx('არა', 'No'), style: 'cancel' },
+      { text: tx('გაუქმება', 'Cancel invite'), style: 'destructive', onPress: () => void api.coach.cancelInvite(id).then(load).catch((e) => Alert.alert(tx('ვერ მოხერხდა', 'Something went wrong'), e instanceof ApiError ? e.message : tx('სცადე ხელახლა.', 'Please try again.'))) },
     ]);
 
   return (
     <CoachShell
-      title="კლიენტები"
-      subtitle={clients ? `${clients.length} აქტიური${waiting ? ` · ${waiting} ელოდება` : ''}` : undefined}
+      title={tx('კლიენტები', 'Clients')}
+      subtitle={clients ? tx(`${clients.length} აქტიური${waiting ? ` · ${waiting} ელოდება` : ''}`, `${clients.length} active${waiting ? ` · ${waiting} waiting` : ''}`) : undefined}
       refreshing={refreshing}
       onRefresh={async () => {
         setRefreshing(true);
@@ -90,11 +91,11 @@ export default function CoachClientsScreen() {
       right={
         <View style={{ flexDirection: 'row', gap: 8 }}>
           {code ? (
-            <Pressable accessibilityRole="button" accessibilityLabel="კოდის გაზიარება" onPress={invite} style={[st.headBtn, { backgroundColor: c.surface }]}>
+            <Pressable accessibilityRole="button" accessibilityLabel={tx('კოდის გაზიარება', 'Share code')} onPress={invite} style={[st.headBtn, { backgroundColor: c.surface }]}>
               <Share2 size={20} color={c.text100} />
             </Pressable>
           ) : null}
-          <Pressable accessibilityRole="button" accessibilityLabel="კლიენტის QR-ის სკანირება" onPress={() => router.push('/coach/scan' as never)} style={[st.headBtn, { backgroundColor: '#0D9488' }]}>
+          <Pressable accessibilityRole="button" accessibilityLabel={tx('კლიენტის QR-ის სკანირება', 'Scan client QR')} onPress={() => router.push('/coach/scan' as never)} style={[st.headBtn, { backgroundColor: '#0D9488' }]}>
             <ScanLine size={22} color="#FFFFFF" />
           </Pressable>
         </View>
@@ -109,14 +110,14 @@ export default function CoachClientsScreen() {
             value={filter}
             onChange={setFilter}
             options={[
-              { key: 'all', label: 'ყველა', count: clients.length || undefined },
-              { key: 'attention', label: 'ყურადღება', count: attention.length || undefined },
-              { key: 'waiting', label: 'ელოდება', count: waiting || undefined },
+              { key: 'all', label: tx('ყველა', 'All'), count: clients.length || undefined },
+              { key: 'attention', label: tx('ყურადღება', 'Attention'), count: attention.length || undefined },
+              { key: 'waiting', label: tx('ელოდება', 'Waiting'), count: waiting || undefined },
             ]}
           />
           {filter !== 'waiting' && clients.length > 3 ? (
             <View style={{ marginTop: 12 }}>
-              <Input value={q} onChangeText={setQ} placeholder="სახელით ძებნა" returnKeyType="search" style={{ paddingLeft: 44 }} />
+              <Input value={q} onChangeText={setQ} placeholder={tx('სახელით ძებნა', 'Search by name')} returnKeyType="search" style={{ paddingLeft: 44 }} />
               <Search size={18} color={c.text300} style={{ position: 'absolute', left: 15, top: 16 }} />
             </View>
           ) : null}
@@ -129,13 +130,13 @@ export default function CoachClientsScreen() {
                     <Avatar avatarId={r.avatarId} photoUrl={r.avatarUrl} name={r.name} size={48} />
                     <View style={{ flex: 1, gap: 4 }}>
                       <Text style={[hubText.cardTitle, { color: c.text100 }]}>{r.name}</Text>
-                      <StatusPill label="გთხოვს ტრენერობას" tone="brand" />
+                      <StatusPill label={tx('გთხოვს ტრენერობას', 'Wants you as trainer')} tone="brand" />
                     </View>
                   </View>
                   {r.note ? <Text style={[hubText.body, { color: c.text200 }]}>„{r.note}“</Text> : null}
                   <View style={[coachStyles.row, { gap: 10 }]}>
-                    <Button label="მიღება" icon={Check} style={{ flex: 1, minHeight: 48 }} onPress={() => void answer(r.linkId, true)} />
-                    <Button label="უარი" icon={X} kind="secondary" style={{ flex: 1, minHeight: 48 }} onPress={() => decline(r.linkId, r.name)} />
+                    <Button label={tx('მიღება', 'Accept')} icon={Check} style={{ flex: 1, minHeight: 48 }} onPress={() => void answer(r.linkId, true)} />
+                    <Button label={tx('უარი', 'Decline')} icon={X} kind="secondary" style={{ flex: 1, minHeight: 48 }} onPress={() => decline(r.linkId, r.name)} />
                   </View>
                 </Card>
               ))}
@@ -144,16 +145,16 @@ export default function CoachClientsScreen() {
                   <Avatar avatarId={r.avatarId} photoUrl={r.avatarUrl} name={r.name} size={44} />
                   <View style={{ flex: 1, gap: 4 }}>
                     <Text style={[hubText.cardTitle, { color: c.text100 }]} numberOfLines={1}>{r.name}</Text>
-                    <StatusPill label="მოწვეულია · დასტურს ელოდება" tone="neutral" />
+                    <StatusPill label={tx('მოწვეულია · დასტურს ელოდება', 'Invited · awaiting reply')} tone="neutral" />
                   </View>
-                  <Pressable accessibilityRole="button" accessibilityLabel={`${r.name}-ის მოწვევის გაუქმება`} onPress={() => cancelInvite(r.id, r.name)} hitSlop={8} style={[st.iconBtn, { backgroundColor: c.bg200 }]}>
+                  <Pressable accessibilityRole="button" accessibilityLabel={tx(`${r.name}-ის მოწვევის გაუქმება`, `Cancel invite for ${r.name}`)} onPress={() => cancelInvite(r.id, r.name)} hitSlop={8} style={[st.iconBtn, { backgroundColor: c.bg200 }]}>
                     <X size={18} color={c.text200} />
                   </Pressable>
                 </Card>
               ))}
               {!waiting ? (
                 <Card>
-                  <EmptyNote icon={UsersRound} title="მოლოდინში არავინაა" body="როცა კლიენტი მოგწერს ან შენს მოწვევას ჯერ არ უპასუხებს, აქ გამოჩნდება." />
+                  <EmptyNote icon={UsersRound} title={tx('მოლოდინში არავინაა', 'No one waiting')} body={tx('როცა კლიენტი მოგწერს ან შენს მოწვევას ჯერ არ უპასუხებს, აქ გამოჩნდება.', 'When a client sends a request, or hasn’t answered your invite yet, they’ll show up here.')} />
                 </Card>
               ) : null}
             </View>
@@ -167,13 +168,13 @@ export default function CoachClientsScreen() {
               {!shown.length ? (
                 clients.length ? (
                   <Card>
-                    <EmptyNote icon={filter === 'attention' ? Check : Search} title={filter === 'attention' ? 'ყურადღება არავის სჭირდება' : 'ვერ მოიძებნა'} body={filter === 'attention' ? 'ყველა კლიენტი გეგმაშია — კარგი ნამუშევარია.' : 'სცადე სხვა სახელი.'} />
+                    <EmptyNote icon={filter === 'attention' ? Check : Search} title={filter === 'attention' ? tx('ყურადღება არავის სჭირდება', 'No one needs attention') : tx('ვერ მოიძებნა', 'No results')} body={filter === 'attention' ? tx('ყველა კლიენტი გეგმაშია — კარგი ნამუშევარია.', 'All clients are on plan — great work.') : tx('სცადე სხვა სახელი.', 'Try another name.')} />
                   </Card>
                 ) : (
                   <Card style={{ gap: 12 }}>
-                    <EmptyNote icon={UsersRound} title="კლიენტები ჯერ არ გყავს" body="დარბაზში დაასკანერე კლიენტის QR (მის აპში: პროფილი → ჩემი QR) — მოწვევა მაშინვე მიუვა. ან გაუზიარე შენი კოდი." />
-                    <Button label="კლიენტის QR-ის სკანირება" icon={ScanLine} onPress={() => router.push('/coach/scan' as never)} />
-                    {code ? <Button label={`კოდის გაზიარება · ${code}`} icon={Share2} kind="secondary" onPress={invite} /> : null}
+                    <EmptyNote icon={UsersRound} title={tx('კლიენტები ჯერ არ გყავს', 'No clients yet')} body={tx('დარბაზში დაასკანერე კლიენტის QR (მის აპში: პროფილი → ჩემი QR) — მოწვევა მაშინვე მიუვა. ან გაუზიარე შენი კოდი.', 'At the gym, scan the client’s QR (in their app: Profile → My QR) — they get the invite right away. Or share your code.')} />
+                    <Button label={tx('კლიენტის QR-ის სკანირება', 'Scan client QR')} icon={ScanLine} onPress={() => router.push('/coach/scan' as never)} />
+                    {code ? <Button label={tx(`კოდის გაზიარება · ${code}`, `Share code · ${code}`)} icon={Share2} kind="secondary" onPress={invite} /> : null}
                   </Card>
                 )
               ) : null}
@@ -191,7 +192,7 @@ const ClientRow = React.memo(function ClientRow({ client: x, onPress }: { client
   const score = weekScore(x);
   const warn = x.alerts.find((a) => a.tone === 'warn');
   return (
-    <Card onPress={onPress} style={{ gap: 12 }} accessibilityLabel={`${x.name}${score != null ? `, კვების დაცვა ${score}%` : ''}${warn ? ', სჭირდება ყურადღება' : ''}`}>
+    <Card onPress={onPress} style={{ gap: 12 }} accessibilityLabel={tx(`${x.name}${score != null ? `, კვების დაცვა ${score}%` : ''}${warn ? ', სჭირდება ყურადღება' : ''}`, `${x.name}${score != null ? `, meal plan adherence ${score}%` : ''}${warn ? ', needs attention' : ''}`)}>
       <View style={coachStyles.row}>
         <Ring value={score == null ? null : score / 100} size={60} stroke={4} color={scoreColor(score, dark)}>
           <Avatar avatarId={x.avatarId} photoUrl={x.avatarUrl} name={x.name} size={46} />
@@ -200,13 +201,13 @@ const ClientRow = React.memo(function ClientRow({ client: x, onPress }: { client
           <Text numberOfLines={1} style={[hubText.cardTitle, { color: c.text100, fontSize: 16 }]}>{x.name}</Text>
           <View style={[coachStyles.row, { gap: 6 }]}>
             <CalendarClock size={13} color={x.nextSession ? c.primary200 : c.text300} />
-            <Text numberOfLines={1} style={[hubText.caption, { color: x.nextSession ? c.text200 : c.text300 }]}>{x.nextSession ? relativeStart(x.nextSession) : 'ვარჯიში არ არის დაგეგმილი'}</Text>
+            <Text numberOfLines={1} style={[hubText.caption, { color: x.nextSession ? c.text200 : c.text300 }]}>{x.nextSession ? relativeStart(x.nextSession) : tx('ვარჯიში არ არის დაგეგმილი', 'No workout scheduled')}</Text>
           </View>
         </View>
         {score != null ? (
           <View style={{ alignItems: 'flex-end' }}>
             <Text style={[st.score, { color: scoreColor(score, dark) }]}>{score}%</Text>
-            <Text style={[hubText.small, { color: c.text300 }]}>7 დღე</Text>
+            <Text style={[hubText.small, { color: c.text300 }]}>{tx('7 დღე', '7 days')}</Text>
           </View>
         ) : (
           <ChevronRight size={18} color={c.text300} />
@@ -219,7 +220,7 @@ const ClientRow = React.memo(function ClientRow({ client: x, onPress }: { client
               <Flame size={13} color={c.text200} />
               <Text style={[hubText.small, { color: c.text100, fontFamily: 'NotoSansGeorgian_600SemiBold' }]}>
                 {x.kcalToday.eaten}
-                {x.kcalToday.target ? ` / ${x.kcalToday.target}` : ''} კკალ
+                {x.kcalToday.target ? ` / ${x.kcalToday.target}` : ''} {tx('კკალ', 'kcal')}
               </Text>
             </View>
           ) : null}
@@ -228,13 +229,13 @@ const ClientRow = React.memo(function ClientRow({ client: x, onPress }: { client
               <Scale size={13} color={c.text200} />
               <Text style={[hubText.small, { color: c.text100, fontFamily: 'NotoSansGeorgian_600SemiBold' }]}>
                 {x.weight.currentKg}
-                {x.weight.goalKg ? ` → ${x.weight.goalKg}` : ''} კგ
+                {x.weight.goalKg ? ` → ${x.weight.goalKg}` : ''} {tx('კგ', 'kg')}
               </Text>
             </View>
           ) : null}
           {x.weight?.percent != null ? (
             <View style={{ flex: 1, minWidth: 90, gap: 4 }}>
-              <Text style={[hubText.small, { color: c.text300 }]}>მიზანი {x.weight.percent}%</Text>
+              <Text style={[hubText.small, { color: c.text300 }]}>{tx('მიზანი', 'Goal')} {x.weight.percent}%</Text>
               <View style={{ height: 6, borderRadius: 3, backgroundColor: c.bg200 }}>
                 <View style={{ height: 6, borderRadius: 3, width: `${Math.max(3, Math.min(100, x.weight.percent))}%`, backgroundColor: '#14B8A6' }} />
               </View>

@@ -9,6 +9,7 @@ import type {
   StepsInsights,
   StepsMetricsBundle,
 } from '@/types/stepsMetrics';
+import { dateLocale } from '../i18n/locale.js';
 
 function ymd(d: Date): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
@@ -25,11 +26,11 @@ function isSameDay(a: Date, b: Date): boolean {
 }
 
 function formatTimeKa(iso: string): string {
-  return new Date(iso).toLocaleTimeString('ka-GE', { hour: 'numeric', minute: '2-digit' });
+  return new Date(iso).toLocaleTimeString(dateLocale(), { hour: 'numeric', minute: '2-digit' });
 }
 
 function formatDateKa(iso: string): string {
-  return new Date(iso).toLocaleDateString('ka-GE', { month: 'long', day: 'numeric' });
+  return new Date(iso).toLocaleDateString(dateLocale(), { month: 'long', day: 'numeric' });
 }
 
 function formatDayTitle(d: Date, today: Date): string {
@@ -37,7 +38,7 @@ function formatDayTitle(d: Date, today: Date): string {
   const yesterday = new Date(today);
   yesterday.setDate(today.getDate() - 1);
   if (isSameDay(d, yesterday)) return ka.steps.yesterday;
-  return d.toLocaleDateString('ka-GE', { weekday: 'long', month: 'long', day: 'numeric' });
+  return d.toLocaleDateString(dateLocale(), { weekday: 'long', month: 'long', day: 'numeric' });
 }
 
 function sumSamples(samples: StepSample[]): number {
@@ -93,7 +94,7 @@ function buildDailyBars(samples: StepSample[], days: number): StepsChartBar[] {
     d.setDate(today.getDate() - i);
     const key = ymd(d);
     bars.push({
-      label: d.toLocaleDateString('ka-GE', { weekday: 'narrow' }),
+      label: d.toLocaleDateString(dateLocale(), { weekday: 'narrow' }),
       value: totals.get(key) ?? 0,
     });
   }
@@ -122,7 +123,7 @@ function buildYearlyBars(samples: StepSample[]): StepsChartBar[] {
     monthTotals[new Date(`${day}T12:00:00`).getMonth()] += count;
   });
   return monthTotals.map((value, i) => ({
-    label: new Date(2024, i, 1).toLocaleDateString('ka-GE', { month: 'narrow' }),
+    label: new Date(2024, i, 1).toLocaleDateString(dateLocale(), { month: 'narrow' }),
     value,
   }));
 }
@@ -246,7 +247,7 @@ export function buildStepsBundle(
 }
 
 export function formatStepsCount(value: number): string {
-  return Math.round(value).toLocaleString('ka-GE');
+  return Math.round(value).toLocaleString(dateLocale());
 }
 
 export function formatStepLogTime(iso: string): string {
@@ -265,7 +266,7 @@ export function filterHistoryByMonth(groups: StepsDayGroup[], year: number, mont
 }
 
 export function monthLabelKa(year: number, month: number): string {
-  return new Date(year, month, 1).toLocaleDateString('ka-GE', { month: 'long', year: 'numeric' });
+  return new Date(year, month, 1).toLocaleDateString(dateLocale(), { month: 'long', year: 'numeric' });
 }
 
 export function samplesLookbackDays(period: StepChartPeriod): number {

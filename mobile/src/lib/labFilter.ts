@@ -1,4 +1,5 @@
 import type { LabFlag, LabParameter } from '@/types/lab';
+import { appLang, isEn } from '../i18n/locale.js';
 
 export type LabFlagFilter = 'all' | 'watch' | 'H' | 'L' | 'N';
 export type LabSort = 'new' | 'old' | 'name' | 'value';
@@ -59,7 +60,8 @@ export function sortLabRows<T extends { nameKa: string; nameEn: string; value: n
   const copy = [...rows];
   if (sort === 'old') return copy.reverse();
   if (sort === 'name') {
-    return copy.sort((a, b) => (a.nameKa || a.nameEn).localeCompare(b.nameKa || b.nameEn, 'ka'));
+    const name = (row: T) => (isEn() ? row.nameEn || row.nameKa : row.nameKa || row.nameEn);
+    return copy.sort((a, b) => name(a).localeCompare(name(b), appLang()));
   }
   if (sort === 'value') return copy.sort((a, b) => b.value - a.value);
   return copy;

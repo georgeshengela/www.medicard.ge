@@ -1,11 +1,15 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { formatCycleDateKa } from './cycleCivilDateKa.js';
+import { formatCycleCivilDate, formatCycleDateKa } from './cycleCivilDateKa.js';
 
 describe('formatCycleDateKa', () => {
   it('speaks a civil date in Georgian without shifting the calendar day', () => {
     assert.equal(formatCycleDateKa('2026-09-10'), '10 სექტემბერი 2026');
     assert.equal(formatCycleDateKa('2026-01-01'), '1 იანვარი 2026');
+  });
+
+  it('speaks a civil date in English when asked', () => {
+    assert.equal(formatCycleCivilDate('2026-03-12', 'en'), '12 March 2026');
   });
 
   it('leaves non-civil strings unchanged', () => {

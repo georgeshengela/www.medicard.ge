@@ -10,6 +10,7 @@ import { useMyAvatarUrl } from '@/lib/myAvatar';
 import { ApiError } from '@/lib/api';
 import { HUB, hubInk, hubText, hubTint } from '@/theme/hub';
 import { useIsDark, useThemeColors } from '@/theme/colors';
+import { tx } from '@/i18n/locale';
 
 /**
  * The trainer workspace frame, in the Home hub language: a quiet header on the page canvas (mode switch,
@@ -32,21 +33,21 @@ export function CoachShell({ title, subtitle, right, children, refreshing, onRef
             <Pressable
               accessibilityRole="tab"
               accessibilityState={{ selected: false }}
-              accessibilityLabel="პირად რეჟიმზე გადასვლა"
+              accessibilityLabel={tx('პირად რეჟიმზე გადასვლა', 'Switch to personal mode')}
               onPress={() => router.replace('/(tabs)/home' as never)}
               hitSlop={6}
               style={{ paddingHorizontal: 12, minHeight: 30, borderRadius: 15, justifyContent: 'center' }}
             >
-              <Text style={[hubText.caption, { color: c.text200, fontFamily: 'NotoSansGeorgian_500Medium' }]}>პირადი</Text>
+              <Text style={[hubText.caption, { color: c.text200, fontFamily: 'NotoSansGeorgian_500Medium' }]}>{tx('პირადი', 'Personal')}</Text>
             </Pressable>
             <View accessibilityRole="tab" accessibilityState={{ selected: true }} style={{ flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 12, minHeight: 30, borderRadius: 15, backgroundColor: hubTint(ink, dark) }}>
               <Dumbbell size={13} color={ink} strokeWidth={2.2} />
-              <Text style={[hubText.caption, { color: ink, fontFamily: 'NotoSansGeorgian_600SemiBold' }]}>ტრენერი</Text>
+              <Text style={[hubText.caption, { color: ink, fontFamily: 'NotoSansGeorgian_600SemiBold' }]}>{tx('ტრენერი', 'Trainer')}</Text>
             </View>
           </View>
           {right ?? (myPhoto ? (
-            <Pressable accessibilityRole="button" accessibilityLabel="ჩემი ტრენერის პროფილი" onPress={() => router.replace('/coach/profile' as never)}>
-              <PrivateImage path={myPhoto} label="ჩემი ფოტო" style={{ width: 44, height: 44, borderRadius: 22 }} />
+            <Pressable accessibilityRole="button" accessibilityLabel={tx('ჩემი ტრენერის პროფილი', 'My trainer profile')} onPress={() => router.replace('/coach/profile' as never)}>
+              <PrivateImage path={myPhoto} label={tx('ჩემი ფოტო', 'My photo')} style={{ width: 44, height: 44, borderRadius: 22 }} />
             </Pressable>
           ) : null)}
         </View>
@@ -77,12 +78,12 @@ export function CoachGate({ error }: { error: ApiError | Error | null }) {
   if (code === 'TRAINER_REQUIRED' || code === 'TRAINER_NOT_VERIFIED') {
     return (
       <Card style={{ marginTop: 16, gap: 10 }}>
-        <Text style={[hubText.cardTitle, { color: c.text100 }]}>{code === 'TRAINER_REQUIRED' ? 'ტრენერის პროფილი არ გაქვს' : 'პროფილი ჯერ დადასტურებული არ არის'}</Text>
+        <Text style={[hubText.cardTitle, { color: c.text100 }]}>{code === 'TRAINER_REQUIRED' ? tx('ტრენერის პროფილი არ გაქვს', 'You don’t have a trainer profile') : tx('პროფილი ჯერ დადასტურებული არ არის', 'Your profile isn’t verified yet')}</Text>
         <Text style={[hubText.body, { color: c.text200 }]}>{error?.message}</Text>
-        <Button label="ტრენერის განაცხადი" onPress={() => router.replace('/trainer/apply' as never)} />
+        <Button label={tx('ტრენერის განაცხადი', 'Trainer application')} onPress={() => router.replace('/trainer/apply' as never)} />
       </Card>
     );
   }
-  return error ? <ErrorBox message={error.message || 'ჩატვირთვა ვერ მოხერხდა.'} /> : null;
+  return error ? <ErrorBox message={error.message || tx('ჩატვირთვა ვერ მოხერხდა.', 'Couldn’t load.')} /> : null;
 }
 

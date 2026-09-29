@@ -4,6 +4,7 @@ import { requireAuth } from '../middleware/auth.js';
 import { asyncHandler } from '../middleware/error.js';
 import { awardStepsGoalPoints, claimDailyCheckIn, getCheckInState } from '../lib/checkIn.js';
 import { recordAppActivityFromRequest } from '../lib/appActivity.js';
+import { t } from '../lib/i18n.js';
 
 export const checkInRouter = Router();
 
@@ -12,7 +13,7 @@ checkInRouter.get(
   requireAuth,
   asyncHandler(async (req, res) => {
     const checkIn = await getCheckInState(req.user.id);
-    if (!checkIn) return res.status(404).json({ error: 'მომხმარებელი ვერ მოიძებნა.' });
+    if (!checkIn) return res.status(404).json({ error: t(req, 'მომხმარებელი ვერ მოიძებნა.', 'Account not found.') });
     res.json({ checkIn });
   }),
 );

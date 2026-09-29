@@ -345,3 +345,44 @@ export const PUSH_ENGAGE_TEMPLATE_DEFAULTS = [
     "sample": {}
   }
 ];
+
+/** English copy for the engage templates (served to English accounts; Georgian above stays the default). */
+export const PUSH_ENGAGE_TEMPLATE_EN = {
+  "engage-checkin-morning": { "title": "Good morning ☀️", "body": "How did you sleep? How are you starting the day? 💚" },
+  "engage-checkin-mid": { "title": "How are you? 👀", "body": "I haven't seen you yet today. Is everything okay? 💚" },
+  "engage-checkin-evening": { "title": "The day is almost over 🌙", "body": "Before we say goodbye to today — how did your day go?" },
+  "engage-streak-week": { "title": "7 days together 💚", "body": "You've been keeping an eye on your health for 7 days in a row. What a streak ✨" },
+  "engage-streak-continue": { "title": "Keep it going today? 👀", "body": "You've logged something every day for the last 6 days. One small entry and the streak continues 💚" },
+  "engage-weekly": { "title": "Your week is ready 📊", "body": "A lot happened this week. Medi has put together a short summary for you 💚" },
+  "engage-insight": { "title": "I noticed something 👀", "body": "I spotted something interesting in your recent data. Want to look at it together?" },
+  "engage-insight-steps": { "title": "I noticed a small change 💚", "body": "Your average steps went up this week. That's a good direction 👏" },
+  "engage-insight-cycle": { "title": "I noticed something in your cycle 🌸", "body": "A repeating pattern shows up across your last few cycles. Want to see it?" },
+  "engage-achieve-steps": { "title": "A small win 🎉", "body": "You've already walked {steps} steps this week. You may not have counted, but Medi did 😄" },
+  "engage-achieve-month": { "title": "One month together 💚", "body": "Medi has been helping you look after your health for a month now. I'm glad you're here." },
+  "engage-achieve-meds": { "title": "It was a good week ✨", "body": "You didn't miss a single planned medication dose this week. 💚" },
+  "engage-hydration": { "title": "Did we forget water? 💧", "body": "Even a small sip counts 😄 Have some water and let's keep going." },
+  "engage-hydration-low": { "title": "Medi's water patrol is here 🚨💧", "body": "We're a little short on water today. Start with one glass? 😄" },
+  "engage-steps-quiet": { "title": "It's been a quiet day 👀", "body": "If you feel up to it, how about a short walk? Even 10 minutes is a great start 💚" },
+  "engage-sleep": { "title": "Bedtime is getting close 🌙", "body": "Shall we put the phone aside for a while? Medi will still be here tomorrow 💚" },
+  "engage-sleep-log": { "title": "Wrap up the day here? 🌙", "body": "How was your day? Before bed you can note how you feel in 30 seconds." },
+  "engage-reengage-2": { "title": "How are you? 💚", "body": "You haven't stopped by for two days. Just checking — is everything okay?" },
+  "engage-reengage-5": { "title": "Medi is here 👋", "body": "We haven't talked in a while. Whenever you feel like it, your health story is waiting here." },
+  "engage-reengage-14": { "title": "I haven't seen you in a while 👀", "body": "No guilt trip 😄 Just a reminder — Medi is still here whenever you need me. 💚" },
+  "engage-reengage-30": { "title": "Start fresh? 🌱", "body": "It's been a long break, and that's completely normal. If you like, let's start today with one small entry." },
+  "engage-feature": { "title": "Medi learned something new 👀", "body": "I can now summarize your week's data too. Want me to show you? 💚" },
+  "engage-morning": { "title": "Good morning, {firstName} ☀️", "body": "A new day has started. How are you today? 💚" },
+  "engage-morning-wish": { "title": "Good morning ☀️", "body": "I'm not asking for anything today — I just wanted to wish you a good day 💚" },
+  "engage-birthday": { "title": "Happy birthday! 🎂💚", "body": "No health stats today 😄 Just have a wonderful day. — Medi" },
+  "engage-question": { "title": "I have a question 👀", "body": "One small detail is missing from your health profile. Fill it in in 10 seconds?" },
+  "engage-chat": { "title": "I was thinking about yesterday 💚", "body": "How are you today? Is the thing we talked about yesterday any better?" },
+  "engage-masked": { "title": "A reminder from Medi", "body": "Stop by when you have a moment 💚" },
+  "engage-unfinished": { "title": "One thing is left 👀", "body": "We didn't finish {task}. Let's pick it up when you have time 💚" },
+  "engage-unfinished-med": { "title": "One thing is left 👀", "body": "We didn't finish adding your medication. Let's pick it up when you have time 💚" },
+  "engage-visit-followup": { "title": "How did the visit go? 💚", "body": "When you have a moment, tell Medi how it went and whether you got any new recommendations." },
+  "engage-insight-meds": { "title": "I noticed something 💚", "body": "A few doses were missed in the last few days. If you like, we can adjust the reminder times to fit your routine." },
+  "engage-quest-near-complete": { "title": "Almost there 💚", "body": "If you feel like it, a little movement will be enough." },
+  "engage-quest-weather-window": { "title": "Looks like a nice time for a walk ☀️", "body": "If you feel like going outside, {windowStart}–{windowEnd} looks like a good window." },
+  "engage-quest-comeback": { "title": "Let's keep it easy today 💚", "body": "No records needed — let's just get back into the rhythm." },
+  "engage-quest-morning-plan": { "title": "Your small plan for the day is ready", "body": "I fitted today's Medi Quest to your rhythm — it's there whenever you want it." },
+  "engage-quest-weekly-progress": { "title": "Your weekly mission is going well 💚", "body": "You're close to this week's goal — just a little left." }
+};

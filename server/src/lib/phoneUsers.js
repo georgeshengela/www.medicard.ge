@@ -1,5 +1,6 @@
 import { prisma } from './prisma.js';
 import { normalizeSmsDestination } from './sms.js';
+import { t } from './i18n.js';
 
 export const PHONE_TAKEN_CODE = 'PHONE_TAKEN';
 export const PHONE_TAKEN_ERROR =
@@ -20,6 +21,8 @@ export async function findUserByPhone(phone, { excludeUserId } = {}) {
   });
 }
 
-export function phoneTakenPayload() {
-  return { error: PHONE_TAKEN_ERROR, code: PHONE_TAKEN_CODE };
+export const PHONE_TAKEN_ERROR_EN = 'This number is already linked to another account.';
+
+export function phoneTakenPayload(lang = 'ka') {
+  return { error: t(lang, PHONE_TAKEN_ERROR, PHONE_TAKEN_ERROR_EN), code: PHONE_TAKEN_CODE };
 }

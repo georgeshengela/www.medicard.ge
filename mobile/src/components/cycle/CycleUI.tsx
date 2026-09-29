@@ -1,5 +1,6 @@
 import { CyclePressable as Pressable } from '@/components/cycle/CyclePressable';
 import React, { useState } from 'react';
+import { tx } from '@/i18n/locale';
 import { CycleObservationIcon } from './CycleObservationIcon';
 import {
   ActivityIndicator,
@@ -248,7 +249,7 @@ function CycleTileGrid({
             }}
           >
             <Text style={{ color: c.brand, fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 14 }}>
-              {expanded ? 'ნაკლები' : `+${hidden} მეტი`}
+              {expanded ? tx('ნაკლები', 'Less') : tx(`+${hidden} მეტი`, `+${hidden} more`)}
             </Text>
           </Pressable>
         </View>
@@ -393,8 +394,8 @@ export function CycleScalePicker({
           paddingHorizontal: 6,
         }}
       >
-        <Text style={{ color: c.muted, fontSize: 11, fontWeight: '600' }}>დაბალი</Text>
-        <Text style={{ color: c.muted, fontSize: 11, fontWeight: '600' }}>მაღალი</Text>
+        <Text style={{ color: c.muted, fontSize: 11, fontWeight: '600' }}>{tx('დაბალი', 'Low')}</Text>
+        <Text style={{ color: c.muted, fontSize: 11, fontWeight: '600' }}>{tx('მაღალი', 'High')}</Text>
       </View>
     </View>
   );
@@ -524,7 +525,7 @@ export function CycleFab({
   compact?: boolean;
 }) {
   const c = useCycleColors();
-  const text = label || 'აღრიცხვა';
+  const text = label || tx('აღრიცხვა', 'Log');
   return (
     <View style={{ alignSelf: 'flex-end' }}>
       <Pressable

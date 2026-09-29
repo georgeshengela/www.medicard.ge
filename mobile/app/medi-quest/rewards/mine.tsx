@@ -3,6 +3,7 @@ import { Pressable, ScrollView, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ArrowLeft, ChevronRight } from 'lucide-react-native';
+import { appLang, dateLocale } from '@/i18n/locale';
 import { Bone } from '@/components/ui/Skeleton';
 import { QuestMediLine } from '@/components/quest/QuestMediLine';
 import { useIsDark, useThemeColors } from '@/theme/colors';
@@ -21,7 +22,7 @@ export default function MyRewardsScreen() {
   const insets = useSafeAreaInsets();
   const colors = useThemeColors();
   const dark = useIsDark();
-  const copy = rewardsCopy('ka');
+  const copy = rewardsCopy(appLang());
   const devScenario = isQuestDevEnabled() ? getQuestDevScenario() : 'LIVE';
   const devActive = devScenario !== 'LIVE';
   // Redeems write /api/rewards, which invalidates this key; SHORT covers expiry on its own.
@@ -96,7 +97,7 @@ function Group({
     <View style={{ gap: 8 }}>
       <Text style={{ fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 16, color: colors.text100 }}>{title}</Text>
       {items.map((item) => {
-        const name = item.reward ? rewardTitle(item.reward.titleKey, 'ka') : copy.title;
+        const name = item.reward ? rewardTitle(item.reward.titleKey, appLang()) : copy.title;
         return (
           <View
             key={item.id}
@@ -118,8 +119,8 @@ function Group({
               <Text style={{ fontFamily: 'NotoSansGeorgian_500Medium', fontSize: 12, color: colors.text300, marginTop: 4 }}>
                 {statusLabel}
                 {' · '}
-                {new Date(item.redeemedAt).toLocaleDateString('ka-GE')}
-                {item.expiresAt ? ` · ${copy.expires} ${new Date(item.expiresAt).toLocaleDateString('ka-GE')}` : ''}
+                {new Date(item.redeemedAt).toLocaleDateString(dateLocale())}
+                {item.expiresAt ? ` · ${copy.expires} ${new Date(item.expiresAt).toLocaleDateString(dateLocale())}` : ''}
               </Text>
               {item.code ? (
                 <Text style={{ marginTop: 6, fontFamily: 'NotoSansGeorgian_600SemiBold', fontSize: 13, color: colors.primary100 }}>

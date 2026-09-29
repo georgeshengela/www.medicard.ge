@@ -7,6 +7,7 @@ import {
   DOCTOR_SUMMARY_COPY,
   DOCTOR_SUMMARY_LOCALES,
 } from '../i18n/cycle/doctorSummary.js';
+import { appLang } from '../i18n/locale.js';
 
 const INTL_TAG = {
   ka: 'ka-GE',
@@ -15,13 +16,14 @@ const INTL_TAG = {
   ru: 'ru-RU',
 };
 
+/** An explicit tag wins; no / unknown tag follows the app language (ka / en). */
 export function resolveDoctorSummaryLocale(tag) {
   const raw = String(tag || '').toLowerCase();
   if (raw.startsWith('ka')) return 'ka';
   if (raw.startsWith('fr')) return 'fr';
   if (raw.startsWith('ru')) return 'ru';
   if (raw.startsWith('en')) return 'en';
-  return 'ka';
+  return appLang();
 }
 
 export function doctorSummaryCopy(locale) {
@@ -226,7 +228,7 @@ function postpartumContextHtml(summary, loc, copy) {
     <p>${escDoctorHtml(copy.postpartumCurrentNote)}</p>`;
 }
 
-export function buildCycleReportHtmlFromSummary(summary, locale = 'ka') {
+export function buildCycleReportHtmlFromSummary(summary, locale) {
   const loc = resolveDoctorSummaryLocale(locale);
   const copy = doctorSummaryCopy(loc);
   const m = summary?.menstrualHistory;

@@ -1,3 +1,4 @@
+import { dateLocale } from '@/i18n/locale';
 import React, { useId, useMemo, useRef, useState } from 'react';
 import { LayoutChangeEvent, Pressable, Text, View } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
@@ -433,7 +434,7 @@ function axisLabels(points: Point[], win: Win): string[] {
 function shortDate(ymd: string): string {
   const [y, m, d] = ymd.split('-').map(Number);
   if (!y || !m || !d) return ymd;
-  return new Date(y, m - 1, d).toLocaleDateString('ka-GE', { day: 'numeric', month: 'short' });
+  return new Date(y, m - 1, d).toLocaleDateString(dateLocale(), { day: 'numeric', month: 'short' });
 }
 
 function fmt(n: number): string {

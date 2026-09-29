@@ -5,6 +5,7 @@ import { Input } from '@/components/ui/Input';
 import { useIsDark, useThemeColors } from '@/theme/colors';
 import { Bone } from '@/components/ui/Skeleton';
 import { useStackMotion } from '@/hooks/useStackMotion';
+import { tx } from '@/i18n/locale';
 
 export const PET_FONT = { regular: 'NotoSansGeorgian_400Regular', medium: 'NotoSansGeorgian_500Medium', bold: 'NotoSansGeorgian_700Bold' };
 export function PetInput(props: React.ComponentProps<typeof Input>) {
@@ -34,9 +35,9 @@ export function PetAction({ title, body, icon: Icon, onPress, compact = false }:
   const c = useThemeColors();
   return <PetPanel onPress={onPress} style={{ flex: compact ? 1 : undefined }}><View style={{ gap: 12, flexDirection: compact ? 'column' : 'row', alignItems: compact ? 'flex-start' : 'center' }}><View style={{ width: 42, height: 42, borderRadius: 15, backgroundColor: c.accent100, alignItems: 'center', justifyContent: 'center' }}><Icon size={22} color={c.primary100} /></View><View style={{ flex: compact ? undefined : 1, gap: 4 }}><PetText bold>{title}</PetText><PetText size={12} muted>{body}</PetText></View>{compact ? null : <ChevronRight size={17} color={c.text300} />}</View></PetPanel>;
 }
-export function PetLoading() { const c = useThemeColors(); return <View style={{ flex: 1, padding: 16, gap: 18, backgroundColor: c.bg100 }} accessibilityLabel="იტვირთება"><Bone height={150} radius={24} /><Bone height={92} radius={24} /><Bone height={92} radius={24} /></View>; }
+export function PetLoading() { const c = useThemeColors(); return <View style={{ flex: 1, padding: 16, gap: 18, backgroundColor: c.bg100 }} accessibilityLabel={tx('იტვირთება', 'Loading')}><Bone height={150} radius={24} /><Bone height={92} radius={24} /><Bone height={92} radius={24} /></View>; }
 export function usePetStackOptions() {
   const motion = useStackMotion();
   const c = useThemeColors();
-  return { ...motion, headerBackTitle: 'უკან', headerTitleStyle: { fontFamily: PET_FONT.bold, fontSize: 16 }, headerStyle: { backgroundColor: c.bg100 }, headerTintColor: c.text100, headerShadowVisible: false, contentStyle: { backgroundColor: c.bg100 } };
+  return { ...motion, headerBackTitle: tx('უკან', 'Back'), headerTitleStyle: { fontFamily: PET_FONT.bold, fontSize: 16 }, headerStyle: { backgroundColor: c.bg100 }, headerTintColor: c.text100, headerShadowVisible: false, contentStyle: { backgroundColor: c.bg100 } };
 }

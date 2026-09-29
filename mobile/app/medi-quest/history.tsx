@@ -4,6 +4,7 @@ import Animated, { FadeInDown } from 'react-native-reanimated';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ArrowLeft, Clock3 } from 'lucide-react-native';
+import { appLang, dateLocale } from '@/i18n/locale';
 import { Button } from '@/components/ui/Button';
 import { ListRowsSkeleton } from '@/components/ui/Skeleton';
 import { QuestIcon } from '@/components/quest/QuestIcon';
@@ -24,7 +25,7 @@ function ymd(date: Date) {
 function formatHistoryDay(key: string) {
   const [year, month, day] = key.split('-').map(Number);
   if (!year || !month || !day) return key;
-  return new Date(year, month - 1, day).toLocaleDateString('ka-GE', {
+  return new Date(year, month - 1, day).toLocaleDateString(dateLocale(), {
     weekday: 'short',
     day: 'numeric',
     month: 'short',
@@ -37,7 +38,7 @@ export default function QuestHistoryScreen() {
   const colors = useThemeColors();
   const dark = useIsDark();
   const reduce = usePrefersReducedMotion();
-  const copy = q('ka');
+  const copy = q(appLang());
   const [items, setItems] = useState<QuestItem[]>([]);
   const [cursor, setCursor] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -133,7 +134,7 @@ export default function QuestHistoryScreen() {
                 <View style={{ flex: 1, height: 1, backgroundColor: colors.bg300 }} />
               </View>
               {rows.map((quest) => {
-                const titles = questTitles(quest, 'ka');
+                const titles = questTitles(quest, appLang());
                 const expired = quest.status === 'EXPIRED';
                 const claimed = quest.status === 'CLAIMED';
                 const kind = questKind(quest) === 'weekly' ? 'weekly' : questKind(quest);
@@ -182,7 +183,7 @@ export default function QuestHistoryScreen() {
                         </View>
                         {!expired ? (
                           <View style={{ marginTop: 8 }}>
-                            <QuestReward xp={quest.rewardXp} coins={quest.rewardCoins} locale="ka" muted={!claimed} size="sm" />
+                            <QuestReward xp={quest.rewardXp} coins={quest.rewardCoins} locale={appLang()} muted={!claimed} size="sm" />
                           </View>
                         ) : null}
                       </View>

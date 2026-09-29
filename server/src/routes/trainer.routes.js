@@ -17,14 +17,19 @@ import { groupByBrand, gymsByIds, listGyms, proposeGym, gymPublic } from '../lib
 import {
   CONSENT_VERSION,
   MEAL_SLOTS,
+  MEAL_SLOTS_EN,
   SESSION_KINDS,
+  SESSION_KINDS_EN,
   SPECIALTIES,
+  SPECIALTIES_EN,
+  TRAINER_STATUS_EN,
   TRAINER_STATUS_KA,
   applySchema,
   cancelSchema,
   certificateMetaSchema,
   coachError,
   completeSchema,
+  localizeCoachPayload,
   goalProposalSchema,
   linkSchema,
   mealPlanSchema,
@@ -43,6 +48,7 @@ import { notifyCoach } from '../lib/trainerPush.js';
 import { parseQrToken } from '../lib/identity.js';
 import { listReports as listCoachReports, openReportCount, reportCoach, resolveReport } from '../lib/coachSafety.js';
 import { notifyOwner } from '../lib/director/service.js';
+import { isEnglish, t } from '../lib/i18n.js';
 
 /**
  * MEDI COACH (2026-09-28): gyms, trainer applications, consented client links, sessions, meal plans,
@@ -50,8 +56,13 @@ import { notifyOwner } from '../lib/director/service.js';
  */
 export const trainerRouter = Router();
 trainerRouter.use(requireAuth);
-trainerRouter.use((_req, res, next) => {
+trainerRouter.use((req, res, next) => {
   applyPrivateCache(res);
+  // English requests: session labels, catalogue labels and fallbacks in English (lib/trainer.js).
+  if (isEnglish(req)) {
+    const json = res.json.bind(res);
+    res.json = (body) => json(localizeCoachPayload(body, 'en'));
+  }
   next();
 });
 
@@ -61,7 +72,7 @@ const writeLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   validate: false,
-  message: { error: 'ძალიან ბევრი მოთხოვნა. სცადე ცოტა ხანში.', code: 'RATE_LIMITED' },
+  message: (req) => ({ error: t(req, 'ძალიან ბევრი მოთხოვნა. სცადე ცოტა ხანში.', 'Too many requests. Please try again in a moment.'), code: 'RATE_LIMITED' }),
 });
 trainerRouter.use((req, res, next) => (req.method === 'GET' ? next() : writeLimiter(req, res, next)));
 
@@ -71,7 +82,7 @@ const upload = multer({
   limits: { fileSize: 15 * 1024 * 1024, files: 1 },
   fileFilter: (_req, file, cb) => {
     if (!IMAGE_TYPES.has(String(file.mimetype || '').toLowerCase())) {
-      cb(Object.assign(new Error('ატვირთე JPEG, PNG ან WEBP ფოტო.'), { status: 400 }));
+      cb(Object.assign(new Error('ატვირთე JPEG, PNG ან WEBP ფოტო.'), { status: 400, messageEn: 'Upload a JPEG, PNG or WEBP photo.' }));
       return;
     }
     cb(null, true);
@@ -80,7 +91,7 @@ const upload = multer({
 
 /** Re-encode to JPEG: strips EXIF/GPS, fixes orientation, bounds the size. */
 async function cleanPhoto(file, maxEdge) {
-  if (!file?.buffer?.length) throw coachError(400, 'ფოტო არ არის მიმაგრებული.');
+  if (!file?.buffer?.length) throw coachError(400, 'ფოტო არ არის მიმაგრებული.', null, 'No photo was attached.');
   try {
     return await sharp(file.buffer, { limitInputPixels: 60_000_000, failOn: 'error' })
       .rotate()
@@ -88,7 +99,7 @@ async function cleanPhoto(file, maxEdge) {
       .jpeg({ quality: 84, mozjpeg: true })
       .toBuffer();
   } catch {
-    throw coachError(400, 'ფოტო ვერ დამუშავდა. აირჩიე სხვა ფოტო (JPEG ან PNG).');
+    throw coachError(400, 'ფოტო ვერ დამუშავდა. აირჩიე სხვა ფოტო (JPEG ან PNG).', null, 'We could not process this photo. Please choose another one (JPEG or PNG).');
   }
 }
 
@@ -99,12 +110,13 @@ const requireVerifiedTrainer = asyncHandler(async (req, _res, next) => {
 
 // ——— catalogues ———
 
-trainerRouter.get('/catalog', (_req, res) => {
+trainerRouter.get('/catalog', (req, res) => {
+  const en = isEnglish(req);
   res.json({
-    specialties: Object.entries(SPECIALTIES).map(([key, label]) => ({ key, label })),
-    sessionKinds: Object.entries(SESSION_KINDS).map(([key, label]) => ({ key, label })),
-    mealSlots: Object.entries(MEAL_SLOTS).map(([key, label]) => ({ key, label })),
-    statuses: TRAINER_STATUS_KA,
+    specialties: Object.entries(en ? SPECIALTIES_EN : SPECIALTIES).map(([key, label]) => ({ key, label })),
+    sessionKinds: Object.entries(en ? SESSION_KINDS_EN : SESSION_KINDS).map(([key, label]) => ({ key, label })),
+    mealSlots: Object.entries(en ? MEAL_SLOTS_EN : MEAL_SLOTS).map(([key, label]) => ({ key, label })),
+    statuses: en ? TRAINER_STATUS_EN : TRAINER_STATUS_KA,
     consentVersion: CONSENT_VERSION,
   });
 });
@@ -133,8 +145,8 @@ trainerRouter.get('/me', asyncHandler(async (req, res) => {
 
 trainerRouter.post('/apply', requireVerifiedPhone, asyncHandler(async (req, res) => {
   const age = calculateAge(req.user.birthDate);
-  if (age == null) throw coachError(400, 'ტრენერის განაცხადისთვის პროფილში დაბადების თარიღი მიუთითე.', 'BIRTHDATE_REQUIRED');
-  if (age < MIN_USER_AGE) throw coachError(403, 'ტრენერის პროფილი მხოლოდ 18+ წლისთვისაა.', 'AGE_RESTRICTED');
+  if (age == null) throw coachError(400, 'ტრენერის განაცხადისთვის პროფილში დაბადების თარიღი მიუთითე.', 'BIRTHDATE_REQUIRED', 'To apply as a trainer, add your date of birth to your profile.');
+  if (age < MIN_USER_AGE) throw coachError(403, 'ტრენერის პროფილი მხოლოდ 18+ წლისთვისაა.', 'AGE_RESTRICTED', 'Trainer profiles are for people aged 18 and over.');
   const body = applySchema.parse(req.body ?? {});
   const row = await store.applyTrainer(req.user, body);
   res.status(201).json({ trainerProfile: store.ownTrainerProfile(row, await gymsByIds(row.gymIds)) });
@@ -143,7 +155,7 @@ trainerRouter.post('/apply', requireVerifiedPhone, asyncHandler(async (req, res)
 trainerRouter.post('/certificates', upload.single('file'), asyncHandler(async (req, res) => {
   const meta = certificateMetaSchema.parse(req.body ?? {});
   const profile = await store.getTrainerProfile(req.user.id);
-  if (!profile) throw coachError(404, 'ჯერ შეავსე ტრენერის განაცხადი.');
+  if (!profile) throw coachError(404, 'ჯერ შეავსე ტრენერის განაცხადი.', null, 'Please fill in the trainer application first.');
   const key = await saveUpload(await cleanPhoto(req.file, 2200), 'image/jpeg');
   try {
     const { profile: row, certificate } = await store.addCertificate(req.user.id, meta, key);
@@ -163,7 +175,7 @@ trainerRouter.delete('/certificates/:id', asyncHandler(async (req, res) => {
 trainerRouter.get('/certificates/:id/file', asyncHandler(async (req, res) => {
   const profile = await store.getTrainerProfile(req.user.id);
   const cert = (profile?.certificates || []).find((c) => c.id === req.params.id);
-  if (!cert) throw coachError(404, 'ფაილი ვერ მოიძებნა.');
+  if (!cert) throw coachError(404, 'ფაილი ვერ მოიძებნა.', null, 'File not found.');
   const filename = String(cert?.fileKey || '').split('/').pop();
   req.params.filename = filename;
   return servePrivateUpload(req, res, { findOwner: async () => (cert ? { ok: true } : null) });
@@ -177,14 +189,14 @@ trainerRouter.get('/search', asyncHandler(async (req, res) => {
 
 trainerRouter.get('/card/:id', asyncHandler(async (req, res) => {
   const [row] = await prisma.$queryRaw`SELECT * FROM "TrainerProfile" WHERE "userId" = ${String(req.params.id)} AND status = 'VERIFIED'`;
-  if (!row) throw coachError(404, 'ტრენერი ვერ მოიძებნა.', 'TRAINER_NOT_FOUND');
+  if (!row) throw coachError(404, 'ტრენერი ვერ მოიძებნა.', 'TRAINER_NOT_FOUND', 'Trainer not found.');
   const [card] = await store.trainerCards([row]);
   res.json({ trainer: card, consentVersion: CONSENT_VERSION });
 }));
 
 trainerRouter.get('/code/:code', asyncHandler(async (req, res) => {
   const row = await store.trainerByCode(req.params.code);
-  if (!row) throw coachError(404, 'ასეთი კოდით დადასტურებული ტრენერი ვერ მოიძებნა.', 'TRAINER_NOT_FOUND');
+  if (!row) throw coachError(404, 'ასეთი კოდით დადასტურებული ტრენერი ვერ მოიძებნა.', 'TRAINER_NOT_FOUND', 'No verified trainer has this code.');
   const [card] = await store.trainerCards([row]);
   res.json({ trainer: card, consentVersion: CONSENT_VERSION });
 }));
@@ -210,7 +222,7 @@ trainerRouter.patch('/link', asyncHandler(async (req, res) => {
 
 trainerRouter.delete('/link', asyncHandler(async (req, res) => {
   const link = await store.openLinkForClient(req.user.id);
-  if (!link) throw coachError(404, 'ტრენერთან კავშირი არ გაქვს.');
+  if (!link) throw coachError(404, 'ტრენერთან კავშირი არ გაქვს.', null, 'You are not connected to a trainer.');
   await store.endLink({ linkId: link.id, by: 'CLIENT', actorId: req.user.id });
   res.json({ ok: true });
 }));
@@ -227,12 +239,18 @@ trainerRouter.post('/report', asyncHandler(async (req, res) => {
 trainerRouter.post('/link/goal', asyncHandler(async (req, res) => {
   const { decision } = z.object({ decision: z.enum(['accepted', 'dismissed']) }).parse(req.body ?? {});
   const link = await store.openLinkForClient(req.user.id);
-  if (!link?.proposedGoal) throw coachError(404, 'შემოთავაზებული მიზანი არ არის.');
+  if (!link?.proposedGoal) throw coachError(404, 'შემოთავაზებული მიზანი არ არის.', null, 'There is no proposed goal.');
   // The app saves an accepted goal through the normal weight-goal flow (appState sync); here the proposal is cleared.
   await store.clearGoalProposal(req.user.id);
   const trainer = await store.getTrainerProfile(link.trainerId);
   if (decision === 'accepted') {
-    void notifyCoach(link.trainerId, { title: 'მიზანი დადასტურდა 🎯', body: `${(await store.peopleByIds([req.user.id])).get(req.user.id)?.name ?? 'კლიენტმა'} შენი შემოთავაზებული მიზანი მიიღო.`, route: `/coach/client/${req.user.id}` });
+    const clientName = (await store.peopleByIds([req.user.id])).get(req.user.id)?.name;
+    void notifyCoach(link.trainerId, {
+      title: 'მიზანი დადასტურდა 🎯',
+      body: `${clientName ?? 'კლიენტმა'} შენი შემოთავაზებული მიზანი მიიღო.`,
+      route: `/coach/client/${req.user.id}`,
+      en: { title: 'Goal accepted 🎯', body: `${clientName ?? 'Your client'} accepted the goal you proposed.` },
+    });
   }
   res.json({ ok: true, decision, trainerName: trainer?.displayName ?? null });
 }));
@@ -243,7 +261,7 @@ trainerRouter.get('/overview', asyncHandler(async (req, res) => {
 
 trainerRouter.get('/session/:id', asyncHandler(async (req, res) => {
   const s = await store.getSession(String(req.params.id));
-  if (!s || s.clientId !== req.user.id) throw coachError(404, 'ვარჯიში ვერ მოიძებნა.');
+  if (!s || s.clientId !== req.user.id) throw coachError(404, 'ვარჯიში ვერ მოიძებნა.', null, 'Session not found.');
   const [session] = await store.decorateSessions([s]);
   const workouts = await store.listWorkouts(req.user.id, new Date(new Date(s.startsAt).getTime() - 3600000), new Date(new Date(s.startsAt).getTime() + (s.durationMin + 60) * 60000));
   res.json({ session: { ...session, workout: store.matchWorkout(s, workouts) } });
@@ -296,7 +314,7 @@ trainerRouter.delete('/photos/:id', asyncHandler(async (req, res) => {
 
 async function servePhoto(req, res) {
   const photo = await store.photoViewer(req.user.id, String(req.params.id));
-  if (!photo) throw coachError(404, 'ფოტო ვერ მოიძებნა.');
+  if (!photo) throw coachError(404, 'ფოტო ვერ მოიძებნა.', null, 'Photo not found.');
   req.params.filename = String(photo?.fileKey || 'x').split('/').pop();
   return servePrivateUpload(req, res, { findOwner: async () => (photo ? { ok: true } : null) });
 }
@@ -318,34 +336,34 @@ const coach = Router();
 trainerRouter.use('/coach', coach);
 
 coach.get('/today', requireVerifiedTrainer, asyncHandler(async (req, res) => {
-  res.json(await store.coachToday(req.user.id));
+  res.json(await store.coachToday(req.user.id, undefined, req.lang));
 }));
 
 coach.get('/clients', requireVerifiedTrainer, asyncHandler(async (req, res) => {
-  res.json(await store.coachClients(req.user.id));
+  res.json(await store.coachClients(req.user.id, undefined, req.lang));
 }));
 
-const scanLimiter = rateLimit({ windowMs: 10 * 60_000, limit: 60, standardHeaders: true, legacyHeaders: false, validate: false, message: { error: 'ძალიან ბევრი სკანირება. სცადე ცოტა ხანში.', code: 'RATE_LIMITED' } });
+const scanLimiter = rateLimit({ windowMs: 10 * 60_000, limit: 60, standardHeaders: true, legacyHeaders: false, validate: false, message: (req) => ({ error: t(req, 'ძალიან ბევრი სკანირება. სცადე ცოტა ხანში.', 'Too many scans. Please try again in a moment.'), code: 'RATE_LIMITED' }) });
 const tokenSchema = z.object({ token: z.string().trim().min(1).max(300), note: z.string().trim().max(300).optional().default('') });
 
 // Trainer scanned a person's personal QR: identity preview only (no health data).
 coach.post('/scan', scanLimiter, requireVerifiedTrainer, asyncHandler(async (req, res) => {
   const { token: raw } = tokenSchema.parse(req.body ?? {});
   const token = parseQrToken(raw);
-  if (!token) throw coachError(400, 'ეს MEDICARD-ის პროფილის QR კოდი არ არის.', 'QR_INVALID');
+  if (!token) throw coachError(400, 'ეს MEDICARD-ის პროფილის QR კოდი არ არის.', 'QR_INVALID', 'This is not a MEDICARD profile QR code.');
   res.json(await store.scanPreview(req.user.id, token));
 }));
 
 coach.post('/invite', scanLimiter, requireVerifiedTrainer, asyncHandler(async (req, res) => {
   const { token: raw, note } = tokenSchema.parse(req.body ?? {});
   const token = parseQrToken(raw);
-  if (!token) throw coachError(400, 'ეს MEDICARD-ის პროფილის QR კოდი არ არის.', 'QR_INVALID');
+  if (!token) throw coachError(400, 'ეს MEDICARD-ის პროფილის QR კოდი არ არის.', 'QR_INVALID', 'This is not a MEDICARD profile QR code.');
   res.status(201).json(await store.inviteByQr(req.user.id, token, note));
 }));
 
 coach.delete('/invites/:clientId', requireVerifiedTrainer, asyncHandler(async (req, res) => {
   const [link] = await prisma.$queryRaw`SELECT id FROM "TrainerLink" WHERE "trainerId" = ${req.user.id} AND "clientId" = ${String(req.params.clientId)} AND status = 'REQUESTED' AND initiator = 'TRAINER'`;
-  if (!link) throw coachError(404, 'მოწვევა ვერ მოიძებნა.');
+  if (!link) throw coachError(404, 'მოწვევა ვერ მოიძებნა.', null, 'Invitation not found.');
   await store.endLink({ linkId: link.id, by: 'TRAINER', actorId: req.user.id });
   res.json({ ok: true });
 }));
@@ -379,7 +397,7 @@ coach.post('/clients/:clientId/plan', requireVerifiedTrainer, asyncHandler(async
 coach.get('/sessions', requireVerifiedTrainer, asyncHandler(async (req, res) => {
   const from = req.query.from ? new Date(String(req.query.from)) : tbilisiDayStart(tbilisiYmd());
   const to = req.query.to ? new Date(String(req.query.to)) : new Date(from.getTime() + 7 * 86400000);
-  if (Number.isNaN(from.getTime()) || Number.isNaN(to.getTime()) || to - from > 62 * 86400000 || to <= from) throw coachError(400, 'არასწორი პერიოდი.');
+  if (Number.isNaN(from.getTime()) || Number.isNaN(to.getTime()) || to - from > 62 * 86400000 || to <= from) throw coachError(400, 'არასწორი პერიოდი.', null, 'Invalid period.');
   const rows = await store.listSessions({ trainerId: req.user.id, from, to });
   res.json({ sessions: await store.decorateSessions(rows), gyms: (await gymsByIds(req.trainer.gymIds)).size ? [...(await gymsByIds(req.trainer.gymIds)).values()].map(gymPublic) : [] });
 }));
@@ -392,7 +410,7 @@ coach.post('/sessions', requireVerifiedTrainer, asyncHandler(async (req, res) =>
 
 coach.get('/sessions/:id', requireVerifiedTrainer, asyncHandler(async (req, res) => {
   const s = await store.getSession(String(req.params.id));
-  if (!s || s.trainerId !== req.user.id) throw coachError(404, 'ვარჯიში ვერ მოიძებნა.');
+  if (!s || s.trainerId !== req.user.id) throw coachError(404, 'ვარჯიში ვერ მოიძებნა.', null, 'Session not found.');
   const [session] = await store.decorateSessions([s]);
   let workout = null;
   if (s.clientId) {
@@ -455,7 +473,7 @@ adminTrainerRouter.post('/reports/:id/resolve', manage, asyncHandler(async (req,
 
 adminTrainerRouter.post('/:userId/review', manage, asyncHandler(async (req, res) => {
   const { action, note } = z.object({ action: z.enum(['approve', 'reject', 'suspend', 'restore']), note: z.string().trim().max(500).optional().default('') }).parse(req.body ?? {});
-  if (action === 'reject' && !note) throw coachError(400, 'უარის მიზეზი მიუთითე — ტრენერი მას ნახავს.');
+  if (action === 'reject' && !note) throw coachError(400, 'უარის მიზეზი მიუთითე — ტრენერი მას ნახავს.', null, 'Add a reason for the rejection — the trainer will see it.');
   const before = await store.getTrainerProfile(String(req.params.userId));
   const row = await store.adminReviewTrainer({ userId: String(req.params.userId), action, note, admin: req.admin });
   await writeAdminAudit({ admin: req.admin, action: `TRAINER_${action.toUpperCase()}`, targetType: 'TrainerProfile', targetId: row.userId, previousValue: { status: before?.status }, newValue: { status: row.status, note } });

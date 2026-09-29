@@ -8,6 +8,7 @@ import {
   type FeatureKey,
   type FeatureState,
 } from '@/lib/featureRoutes';
+import { isEn, tx } from '../i18n/locale.js';
 
 export { featureForHref, featureForPath, type FeatureKey, type FeatureState } from '@/lib/featureRoutes';
 
@@ -27,22 +28,23 @@ let hydrated = false;
 
 /** Title on the paused-module screen. */
 export const FEATURE_LABELS: Record<FeatureKey, string> = {
-  cycle: 'ციკლი',
-  nutrition: 'კვება',
-  nutritionAi: 'კვების AI',
+  cycle: tx('ციკლი', 'Cycle'),
+  nutrition: tx('კვება', 'Nutrition'),
+  nutritionAi: tx('კვების AI', 'Nutrition AI'),
   medi: 'Medi',
-  pets: 'ჩემი ცხოველები',
+  pets: tx('ჩემი ცხოველები', 'My pets'),
   mediVet: 'Medi Vet',
   medirun: 'MEDIRUN',
   quest: 'MEDI QUEST',
-  rewardsStore: 'ჯილდოები',
+  rewardsStore: tx('ჯილდოები', 'Rewards'),
   coach: 'MEDI COACH',
-  community: 'ქალების სივრცე',
-  pharmacy: 'აფთიაქი',
-  news: 'სიახლეები',
+  community: tx('ქალების სივრცე', "Women's space"),
+  pharmacy: tx('აფთიაქი', 'Pharmacy'),
+  news: tx('სიახლეები', 'News'),
 };
 
-const DEFAULT_MESSAGE = 'ეს ფუნქცია დროებით შეჩერებულია. შენი მონაცემები შენახულია.';
+const DEFAULT_MESSAGE = tx('ეს ფუნქცია დროებით შეჩერებულია. შენი მონაცემები შენახულია.', 'This feature is paused for now. Your data is safe.');
+const hasGeorgian = (text: string) => /[\u10A0-\u10FF]/.test(text);
 
 function emit() {
   listeners.forEach((listener) => listener());
@@ -57,7 +59,10 @@ export function isFeatureOn(key: FeatureKey | string, from: FeatureState = state
 }
 
 export function featureMessage(key: FeatureKey | string, from: FeatureState = state): string {
-  return from.messages[key] || DEFAULT_MESSAGE;
+  const message = from.messages[key];
+  // Admin messages are written in Georgian only; English users get the default instead.
+  if (!message || (isEn() && hasGeorgian(message))) return DEFAULT_MESSAGE;
+  return message;
 }
 
 export function isHrefAvailable(href: string, from: FeatureState = state): boolean {

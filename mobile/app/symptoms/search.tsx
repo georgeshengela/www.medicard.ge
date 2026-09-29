@@ -1,3 +1,4 @@
+import { tx } from '@/i18n/locale';
 import React, { useCallback, useMemo, useRef, useState } from 'react';
 import { KeyboardAvoidingView, Platform, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { useFocusEffect, useRouter } from 'expo-router';
@@ -45,7 +46,7 @@ export default function SymptomSearchScreen() {
   const score = Math.min(92, 28 + state.symptoms.length * 12 + (typed && !alreadyAdded ? 12 : 0));
 
   const commitTyped = () => {
-    if (typed && !addSymptom(typed)) { setInputError('ერთ შემოწმებაში მაქსიმუმ 16 სიმპტომი შეგიძლია დაამატო.'); return false; }
+    if (typed && !addSymptom(typed)) { setInputError(tx('ერთ შემოწმებაში მაქსიმუმ 16 სიმპტომი შეგიძლია დაამატო.', 'You can add up to 16 symptoms in one check.')); return false; }
     setInputError(null);
     setQuery('');
     return true;

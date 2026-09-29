@@ -27,6 +27,8 @@ import {
   verifySvixSignature,
   verifyUnsubscribeToken,
   isSendableRecipient,
+  unsubscribePageHtml,
+  unsubscribeUrl,
 } from './email/index.js';
 import { ALLOWED_USER_COLUMNS, emailStatements } from '../../scripts/install-email.mjs';
 
@@ -490,5 +492,39 @@ describe('email install script', () => {
     const schema = read('../../prisma/schema.prisma');
     for (const model of ['EmailTemplate', 'EmailLog', 'EmailSuppression', 'EmailCampaign']) assert.match(schema, new RegExp(`^model ${model} \\{`, 'm'));
     assert.match(schema, /emailMarketingOptIn\s+Boolean\s+@default\(false\) @ignore/);
+  });
+});
+
+/* ───────── English (ka stays the default) ───────── */
+describe('email language', () => {
+  it('English recipients get the English default even when an admin override exists', () => {
+    const row = { key: 'welcome', subject: 'ადმინის სათაური', enabled: true };
+    assert.equal(mergeTemplate('welcome', row).subject, 'ადმინის სათაური');
+    const en = mergeTemplate('welcome', row, 'en');
+    assert.equal(en.subject, 'Welcome to Medicard');
+    assert.equal(mergeTemplate('welcome', { key: 'welcome', enabled: false }, 'en').enabled, false);
+  });
+
+  it('renders the layout, code box and footer in English', () => {
+    const tpl = mergeTemplate('password_reset', null, 'en');
+    const out = renderEmail({ content: tpl, vars: { name: 'Nino', code: '482913', minutes: '10' }, allowed: tpl.vars, lang: 'en' });
+    assert.match(out.html, /<html lang="en"/);
+    assert.match(out.html, /One-time code/);
+    assert.match(out.html, /This is a service email about your Medicard account\./);
+    assert.equal(/[ა-ჿ]/.test(out.html + out.text), false);
+    const ka = renderEmail({ content: mergeTemplate('password_reset', null), vars: { code: '1' }, allowed: tpl.vars });
+    assert.match(ka.html, /<html lang="ka"/);
+  });
+
+  it('sends a password reset in English and links the English unsubscribe page', async () => {
+    const transport = fakeTransport();
+    await sendPasswordResetCode({ to: 'en@example.com', code: '654321', fullName: '', lang: 'en' }, deps(fakeDb(), transport));
+    const msg = transport.calls.at(-1).msg;
+    assert.equal(msg.subject, 'Medicard — password reset code');
+    assert.match(msg.text, /Hello, friend!/);
+    assert.match(unsubscribeUrl('user-1', { lang: 'en' }), /&lang=en$/);
+    assert.equal(verifyUnsubscribeToken(new URL(unsubscribeUrl('user-1', { lang: 'en' })).searchParams.get('t')), 'user-1');
+    assert.match(unsubscribePageHtml('ok', 'en'), /<html lang="en">[\s\S]*You have been unsubscribed/);
+    assert.match(unsubscribePageHtml('ok'), /<html lang="ka">/);
   });
 });

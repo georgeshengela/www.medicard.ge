@@ -27,6 +27,7 @@ import {
 } from '@/lib/notificationPermission.js';
 import { resolvePermissionsPageToggle } from '@/lib/pushOptIn';
 import { getPreference, setPreference } from '@/lib/storage';
+import { dateLocale, tx } from '../i18n/locale.js';
 
 export const MED_CHANNEL_ID = 'medication-reminders';
 export const CYCLE_CHANNEL_ID = 'cycle-reminders';
@@ -156,14 +157,14 @@ export async function getNotificationPermissionGranted(): Promise<boolean> {
 async function ensureAndroidChannels(): Promise<void> {
   if (Platform.OS !== 'android') return;
   await Notifications.setNotificationChannelAsync(MED_CHANNEL_ID, {
-    name: 'მედიკამენტების შეხსენებები',
+    name: tx('მედიკამენტების შეხსენებები', 'Medication reminders'),
     importance: Notifications.AndroidImportance.HIGH,
     vibrationPattern: [0, 250, 250, 250],
     lightColor: '#14B8A6',
     sound: 'default',
   });
   await Notifications.setNotificationChannelAsync(CYCLE_CHANNEL_ID, {
-    name: 'ციკლის შეხსენებები',
+    name: tx('ციკლის შეხსენებები', 'Cycle reminders'),
     importance: Notifications.AndroidImportance.DEFAULT,
     vibrationPattern: [0, 180, 120, 180],
     lightColor: '#E91E63',
@@ -177,35 +178,35 @@ async function ensureAndroidChannels(): Promise<void> {
     sound: 'default',
   });
   await Notifications.setNotificationChannelAsync(PUSH_CHANNEL_ID, {
-    name: 'Medicard შეტყობინებები',
+    name: tx('Medicard შეტყობინებები', 'Medicard notifications'),
     importance: Notifications.AndroidImportance.HIGH,
     vibrationPattern: [0, 220, 120, 220],
     lightColor: '#14B8A6',
     sound: 'default',
   });
   await Notifications.setNotificationChannelAsync(STEPS_CHANNEL_ID, {
-    name: 'ნაბიჯების შეხსენებები',
+    name: tx('ნაბიჯების შეხსენებები', 'Step reminders'),
     importance: Notifications.AndroidImportance.DEFAULT,
     vibrationPattern: [0, 180, 120, 180],
     lightColor: '#14B8A6',
     sound: 'default',
   });
   await Notifications.setNotificationChannelAsync(NUTRITION_CHANNEL_ID, {
-    name: 'კვების შეხსენებები',
+    name: tx('კვების შეხსენებები', 'Nutrition reminders'),
     importance: Notifications.AndroidImportance.DEFAULT,
     vibrationPattern: [0, 180, 120, 180],
     lightColor: '#14B8A6',
     sound: 'default',
   });
   await Notifications.setNotificationChannelAsync(WEIGHT_CHANNEL_ID, {
-    name: 'წონის შეხსენებები',
+    name: tx('წონის შეხსენებები', 'Weight reminders'),
     importance: Notifications.AndroidImportance.DEFAULT,
     vibrationPattern: [0, 180, 120, 180],
     lightColor: '#14B8A6',
     sound: 'default',
   });
   await Notifications.setNotificationChannelAsync(VISIT_CHANNEL_ID, {
-    name: 'ექიმთან ვიზიტის შეხსენებები',
+    name: tx('ექიმთან ვიზიტის შეხსენებები', 'Doctor visit reminders'),
     importance: Notifications.AndroidImportance.HIGH,
     vibrationPattern: [0, 220, 120, 220],
     lightColor: '#14B8A6',
@@ -219,7 +220,7 @@ async function ensureAndroidChannels(): Promise<void> {
     sound: 'default',
   });
   await Notifications.setNotificationChannelAsync(PET_CARE_CHANNEL_ID, {
-    name: 'ცხოველის მოვლის შეხსენებები',
+    name: tx('ცხოველის მოვლის შეხსენებები', 'Pet care reminders'),
     importance: Notifications.AndroidImportance.HIGH,
     vibrationPattern: [0, 220, 120, 220],
     lightColor: '#14B8A6',
@@ -705,7 +706,7 @@ function describeTrigger(trigger: ExpoNotificationTypes.NotificationTrigger | nu
   }
   if (row.date) {
     const date = row.date instanceof Date ? row.date : new Date(String(row.date));
-    return Number.isNaN(date.getTime()) ? 'date' : `date ${date.toLocaleString('ka-GE')}`;
+    return Number.isNaN(date.getTime()) ? 'date' : `date ${date.toLocaleString(dateLocale())}`;
   }
   if (row.seconds != null) return `in ${row.seconds}s`;
   return String(row.type ?? 'unknown');

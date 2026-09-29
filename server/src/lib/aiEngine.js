@@ -1,4 +1,4 @@
-import { consentedAiFetch } from './consentedAiFetch.js';
+import { AI_LANGUAGE_HEADER, consentedAiFetch } from './consentedAiFetch.js';
 import OpenAI from 'openai';
 import { env } from '../config/env.js';
 import { looksLikeBrokenDoctorReply } from './prompts.js';
@@ -119,7 +119,7 @@ export async function withOpenRouterModelFallback(primary, run) {
       console.warn('[medicard] openrouter model failed', model, error?.message ?? error);
     }
   }
-  throw lastError ?? new AiEngineError('სამედიცინო ანალიზის სერვისთან დაკავშირება ვერ მოხერხდა.', { status: 502 });
+  throw lastError ?? new AiEngineError('სამედიცინო ანალიზის სერვისთან დაკავშირება ვერ მოხერხდა.', { status: 502, messageEn: 'We could not reach the medical analysis service.' });
 }
 
 export function publicAiEngineCatalog() {
@@ -184,7 +184,7 @@ export function extractStreamDelta(chunk) {
 function finishAnswer(answer, { skipDisclaimer, onDelta }) {
   const trimmed = String(answer ?? '').trim();
   if (!trimmed) {
-    throw Object.assign(new AiEngineError('AI-მა ცარიელი პასუხი დააბრუნა.'), { code: 'AI_EMPTY_RESPONSE' });
+    throw Object.assign(new AiEngineError('AI-მა ცარიელი პასუხი დააბრუნა.', { messageEn: 'The AI returned an empty answer.' }), { code: 'AI_EMPTY_RESPONSE' });
   }
   const content = skipDisclaimer ? trimmed : ensureDisclaimer(trimmed);
   if (onDelta && content.length > trimmed.length) {
@@ -199,24 +199,27 @@ function mapOpenRouterError(error) {
   if (status === 401 || status === 403) {
     throw new AiEngineError('OpenRouter ავტორიზაცია ვერ მოხერხდა. შეამოწმეთ API გასაღები.', {
       status: 502,
+      messageEn: 'The AI service is not available right now. Please try again later.',
       cause: error,
     });
   }
   if (status === 402) {
     throw new AiEngineError(
       'AI სერვისი დროებით მიუწვდომელია. ვმუშაობთ აღდგენაზე — სცადე მოგვიანებით.',
-      { status: 503, cause: error },
+      { status: 503, cause: error, messageEn: 'The AI service is temporarily unavailable. We are working on it — please try again later.' },
     );
   }
   if (status === 429) {
     throw new AiEngineError('AI დროებით გადატვირთულია. სცადე ერთი წუთის შემდეგ.', {
       status: 503,
+      messageEn: 'The AI is busy right now. Please try again in a minute.',
       cause: error,
     });
   }
   throw new AiEngineError('სამედიცინო ანალიზის სერვისთან დაკავშირება ვერ მოხერხდა.', {
     status: 502,
     cause: error,
+    messageEn: 'We could not reach the medical analysis service.',
   });
 }
 
@@ -241,6 +244,7 @@ export async function askOpenRouterPrepared({
   responseFormat,
   reasoningEffort,
   reasoningExclude,
+  languageDirective = true,
 }) {
   if (typeof globalThis.__medicardAskOpenRouterPrepared === 'function') {
     return globalThis.__medicardAskOpenRouterPrepared({
@@ -254,14 +258,17 @@ export async function askOpenRouterPrepared({
       responseFormat,
       reasoningEffort,
       reasoningExclude,
+      languageDirective,
     });
   }
   if (!openrouter) {
-    throw new AiEngineError('OpenRouter არ არის კონფიგურირებული.', { status: 503 });
+    throw new AiEngineError('OpenRouter არ არის კონფიგურირებული.', { status: 503, messageEn: 'The AI service is not set up yet.' });
   }
   try {
     const stream = typeof onDelta === 'function';
-    const extra = signal ? { signal } : undefined;
+    // languageDirective:false = verbatim/data output (transcripts); the reply-language line is not added.
+    const headers = languageDirective === false ? { [AI_LANGUAGE_HEADER]: 'off' } : undefined;
+    const extra = signal || headers ? { ...(signal ? { signal } : {}), ...(headers ? { headers } : {}) } : undefined;
     const payload = buildOpenRouterChatPayload({
       model,
       messages,
@@ -287,7 +294,7 @@ export async function askOpenRouterPrepared({
       const answer = extractChatContent(completion);
       const reasoning = extractChatReasoning(completion);
       if (!answer && !reasoning) {
-        throw Object.assign(new AiEngineError('AI-მა ცარიელი პასუხი დააბრუნა.'), { code: 'AI_EMPTY_RESPONSE' });
+        throw Object.assign(new AiEngineError('AI-მა ცარიელი პასუხი დააბრუნა.', { messageEn: 'The AI returned an empty answer.' }), { code: 'AI_EMPTY_RESPONSE' });
       }
       return {
         content: answer ? finishAnswer(answer, { skipDisclaimer, onDelta }) : '',
@@ -304,7 +311,7 @@ export async function askOpenRouterPrepared({
     let modelOut = model;
     for await (const chunk of completion) {
       if (signal?.aborted) {
-        throw new AiEngineError('მოთხოვნა გაუქმდა.', { status: 499 });
+        throw new AiEngineError('მოთხოვნა გაუქმდა.', { status: 499, messageEn: 'The request was cancelled.' });
       }
       if (chunk?.model) modelOut = chunk.model;
       if (chunk?.usage) usage = chunk.usage;
@@ -400,7 +407,7 @@ export async function askAi({
         looksLikeBrokenDoctorReply(result.content)
       ) {
         console.warn('[medicard] discarding broken Georgian reply from', model);
-        lastError = new AiEngineError('AI-მ გაუგებარი ქართული დააბრუნა.', { status: 502 });
+        lastError = new AiEngineError('AI-მ გაუგებარი ქართული დააბრუნა.', { status: 502, messageEn: 'The AI returned an unclear answer. Please try again.' });
         continue;
       }
       return { ...result, engine: 'openrouter', engineId: engine.id };
@@ -416,7 +423,7 @@ export async function askAi({
     return { ...result, engine: 'evidencemd', engineId: engine.id, fallback: true };
   } catch {
     if (lastError) throw lastError;
-    throw new AiEngineError('სამედიცინო ანალიზის სერვისთან დაკავშირება ვერ მოხერხდა.', { status: 502 });
+    throw new AiEngineError('სამედიცინო ანალიზის სერვისთან დაკავშირება ვერ მოხერხდა.', { status: 502, messageEn: 'We could not reach the medical analysis service.' });
   }
 }
 

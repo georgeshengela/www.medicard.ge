@@ -2,6 +2,7 @@ import React from 'react';
 import { Pressable, Text, View } from 'react-native';
 import Animated, { FadeIn, FadeInDown, LinearTransition } from 'react-native-reanimated';
 import { Check, Clock3, MessageCircle, Sparkles } from 'lucide-react-native';
+import { appLang } from '@/i18n/locale';
 import { QuestClaimButton } from '@/components/quest/QuestClaimButton';
 import { QuestIcon } from '@/components/quest/QuestIcon';
 import { QuestMediLine } from '@/components/quest/QuestMediLine';
@@ -21,7 +22,7 @@ import { progressLabel, q, questHelper, questTitles } from '@/lib/quest/copy';
  */
 export function QuestCard({
   quest,
-  locale = 'ka',
+  locale = appLang(),
   contextHint,
   contextIsWindow,
   whyTargetLabel,

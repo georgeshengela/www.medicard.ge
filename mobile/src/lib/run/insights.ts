@@ -3,11 +3,12 @@
  * and route thumbnails. No React, no IO — unit-testable.
  */
 import type { LatLng } from './geo';
+import { tx } from '../../i18n/locale.js';
 
 export type WalkLike = { startedAt: string; meters: number; seconds?: number };
 export type RecordRun = { id: string; startedAt: string; distanceM: number; movingMs: number; paceSecPerKm: number | null };
 
-const WEEKDAYS = ['კვ', 'ორ', 'სამ', 'ოთხ', 'ხუთ', 'პარ', 'შაბ'];
+const WEEKDAYS = tx(['კვ', 'ორ', 'სამ', 'ოთხ', 'ხუთ', 'პარ', 'შაბ'], ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa']);
 const DAY_MS = 86_400_000;
 
 function dayKey(date: Date): string {
@@ -145,9 +146,9 @@ export function routeThumbPath(segments: LatLng[][], width: number, height: numb
 /** Georgian greeting line for the hub, by local hour. */
 export function dayMoment(now = new Date()): string {
   const h = now.getHours();
-  if (h < 5) return 'ღამის სიმშვიდე';
-  if (h < 12) return 'დილის სიახლე';
-  if (h < 17) return 'დღის რიტმი';
-  if (h < 21) return 'საღამოს გასეირნება';
-  return 'ღამის სიმშვიდე';
+  if (h < 5) return tx('ღამის სიმშვიდე', 'Quiet night');
+  if (h < 12) return tx('დილის სიახლე', 'Fresh morning');
+  if (h < 17) return tx('დღის რიტმი', 'Daytime rhythm');
+  if (h < 21) return tx('საღამოს გასეირნება', 'Evening walk');
+  return tx('ღამის სიმშვიდე', 'Quiet night');
 }

@@ -1,3 +1,5 @@
+import { tx } from "../i18n/locale.js";
+
 export type Fast = {
   id: string;
   startedAt: string;
@@ -40,11 +42,11 @@ export type FastingState = {
 };
 /** Daily eating windows only, 10–20 hours; the server enforces the same bounds. */
 export const FASTING_PROTOCOLS = [
-  { key: "12:12", hours: 12, label: "12:12", detail: "დასაწყისისთვის — ღამე და ცოტა მეტი" },
-  { key: "14:10", hours: 14, label: "14:10", detail: "რბილი ნაბიჯი წინ" },
-  { key: "16:8", hours: 16, label: "16:8", detail: "ყველაზე გავრცელებული" },
-  { key: "18:6", hours: 18, label: "18:6", detail: "გამოცდილთათვის" },
-  { key: "20:4", hours: 20, label: "20:4", detail: "მაქსიმუმი აპში" },
+  { key: "12:12", hours: 12, label: "12:12", detail: tx("დასაწყისისთვის — ღამე და ცოტა მეტი", "For starters — the night and a bit more") },
+  { key: "14:10", hours: 14, label: "14:10", detail: tx("რბილი ნაბიჯი წინ", "A gentle step up") },
+  { key: "16:8", hours: 16, label: "16:8", detail: tx("ყველაზე გავრცელებული", "The most common") },
+  { key: "18:6", hours: 18, label: "18:6", detail: tx("გამოცდილთათვის", "For experienced fasters") },
+  { key: "20:4", hours: 20, label: "20:4", detail: tx("მაქსიმუმი აპში", "The longest in the app") },
 ] as const;
 export const FAST_MIN_HOURS = 10;
 export const FAST_MAX_HOURS = 20;
@@ -70,7 +72,7 @@ export function clockLabelSeconds(ms: number) {
 export function hoursLabel(minutes: number | null | undefined) {
   if (minutes == null) return "—";
   const h = Math.floor(minutes / 60), m = minutes % 60;
-  return m ? `${h} სთ ${m} წთ` : `${h} სთ`;
+  return m ? tx(`${h} სთ ${m} წთ`, `${h} h ${m} min`) : tx(`${h} სთ`, `${h} h`);
 }
 export function timeLabel(iso: string) {
   const d = new Date(iso);
@@ -78,11 +80,11 @@ export function timeLabel(iso: string) {
 }
 /** Plain-language milestones by share of the goal; no physiological claims about the hours. */
 export function fastMilestone(progress: number) {
-  if (progress >= 1) return "მიზანი შესრულებულია — დაასრულე, როცა მზად იქნები.";
-  if (progress >= 0.75) return "ბოლო მეოთხედია. წყალი და უშაქრო ჩაი დაგეხმარება.";
-  if (progress >= 0.5) return "ნახევარზე მეტი გავლილია.";
-  if (progress >= 0.25) return "კარგად მიდიხარ. თუ თავს ცუდად გრძნობ, შეწყვიტე — ეს ნორმალურია.";
-  return "დაწყებულია. წყალი, უშაქრო ჩაი და ყავა შეიძლება.";
+  if (progress >= 1) return tx("მიზანი შესრულებულია — დაასრულე, როცა მზად იქნები.", "Goal reached — end your fast whenever you’re ready.");
+  if (progress >= 0.75) return tx("ბოლო მეოთხედია. წყალი და უშაქრო ჩაი დაგეხმარება.", "Last quarter. Water and unsweetened tea will help.");
+  if (progress >= 0.5) return tx("ნახევარზე მეტი გავლილია.", "More than halfway there.");
+  if (progress >= 0.25) return tx("კარგად მიდიხარ. თუ თავს ცუდად გრძნობ, შეწყვიტე — ეს ნორმალურია.", "You’re doing well. If you feel unwell, stop — that’s completely okay.");
+  return tx("დაწყებულია. წყალი, უშაქრო ჩაი და ყავა შეიძლება.", "You’ve started. Water, unsweetened tea and coffee are fine.");
 }
 /** Protocol key for a target length: a preset when it matches, otherwise custom. */
 export function protocolFor(hours: number) {

@@ -6,6 +6,7 @@ import { pickerSelectionTick } from '@/components/assessment/pickerHaptics';
 import { useAssessment } from '@/constants/assessmentLayout';
 import {
   MAX_ALLERGIES,
+  allergyDisplayLabel,
   allergyLabel,
   commonAllergies,
   hasAllergy,
@@ -120,7 +121,7 @@ export function AllergyPicker({ value, onChange }: Props) {
       >
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
           {value.map((name) => (
-            <Chip key={name} label={name} selected onPress={() => remove(name)} />
+            <Chip key={name} label={allergyDisplayLabel(name)} selected onPress={() => remove(name)} />
           ))}
           {!atCap ? (
             <TextInput

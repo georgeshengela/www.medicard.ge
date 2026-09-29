@@ -14,11 +14,13 @@ export function isValidCycleDateKey(key) {
 export function assertCycleDateKey(key, today = todayInTimeZone()) {
   if (!isValidCycleDateKey(key)) {
     const err = new Error('თარიღი არასწორია.');
+    err.messageEn = 'The date is not valid.';
     err.status = 400;
     throw err;
   }
   if (key > today) {
     const err = new Error('მომავალი თარიღის აღრიცხვა შეუძლებელია.');
+    err.messageEn = 'You cannot log a date in the future.';
     err.status = 400;
     throw err;
   }
@@ -102,11 +104,13 @@ export function planFillRange(start, end, logs = [], flow = DEFAULT_BLEED_FLOW) 
   const span = eachDateKey(start, end);
   if (span.length === 0) {
     const err = new Error('თარიღები არასწორია.');
+    err.messageEn = 'The dates are not valid.';
     err.status = 400;
     throw err;
   }
   if (span.length > MAX_PERIOD_SPAN_DAYS) {
     const err = new Error('მენსტრუაციის დიაპაზონი ძალიან გრძელია.');
+    err.messageEn = 'That period range is too long.';
     err.status = 400;
     throw err;
   }

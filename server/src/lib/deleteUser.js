@@ -2,6 +2,7 @@ import { prisma } from './prisma.js';
 import { revokeCycleShares } from './cycleLifecycle.js';
 import { unlinkStoredUpload } from './privateUploads.js';
 import { coachFilesOf } from './trainerStore.js';
+import { getUserLanguage, t } from './i18n.js';
 
 export const SMS_LOG_REDACTED_CONTENT = '[redacted]';
 
@@ -14,7 +15,7 @@ export function smsLogAccountDeletePatch() {
  * Permanently remove a user and orphaned rows that are not FK-cascaded.
  * Keeps SmsLog rows but clears userId and redacts content for audit trail.
  */
-export async function deleteUserAccount(userId) {
+export async function deleteUserAccount(userId, lang = 'ka') {
   const user = await prisma.user.findUnique({
     where: { id: userId },
     select: {
@@ -29,8 +30,11 @@ export async function deleteUserAccount(userId) {
   });
 
   if (!user) {
-    return { ok: false, status: 404, error: 'მომხმარებელი ვერ მოიძებნა.' };
+    return { ok: false, status: 404, error: t(lang, 'მომხმარებელი ვერ მოიძებნა.', 'User not found.') };
   }
+
+  // Read before the row goes: the account-deleted email is written in the person's language.
+  const language = await getUserLanguage(userId);
 
   await revokeCycleShares(prisma, userId);
 
@@ -78,6 +82,7 @@ export async function deleteUserAccount(userId) {
       id: user.id,
       fullName: user.fullName,
       email: user.email,
+      language,
       counts: user._count,
     },
   };

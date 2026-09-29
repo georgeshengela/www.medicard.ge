@@ -115,7 +115,7 @@ export function parseEstimate(text) {
       new Error(
         "შეფასება ვერ დასრულდა. სცადე უფრო ნათელი ფოტო, ზუსტი აღწერა ან დაამატე ხელით.",
       ),
-      { status: 502 },
+      { status: 502, messageEn: "The estimate couldn’t be finished. Try a clearer photo, a more exact description, or add it by hand." },
     );
   }
 }

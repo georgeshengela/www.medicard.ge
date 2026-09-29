@@ -11,6 +11,7 @@ import { api, type Pet, type PetCareEvent } from '@/lib/api';
 import { formatCycleDateKa } from '@/lib/cycleCivilDateKa';
 import { kindLabel, petsCareErrorKind, petsCareErrorMessage } from '@/lib/petsCare';
 import { useThemeColors } from '@/theme/colors';
+import { tx } from '@/i18n/locale';
 
 export default function PetCareEventScreen() {
   const colors = useThemeColors();
@@ -63,7 +64,7 @@ export default function PetCareEventScreen() {
     ]);
   };
 
-  if (!event) return error ? <PetPageScroll><PetIntro title="ჩანაწერი ვერ ჩაიტვირთა" body="ხელახლა სცადე. შენი ისტორია არ წაშლილა." /><PetErrorText message={error} /><Button label="ხელახლა ცდა" onPress={() => void load().catch(caught => setError(petsCareErrorMessage(caught, { ...ka.pets, offline: ka.common.networkError })))} /></PetPageScroll> : <PetLoading />;
+  if (!event) return error ? <PetPageScroll><PetIntro title={tx('ჩანაწერი ვერ ჩაიტვირთა', 'The record couldn’t load')} body={tx('ხელახლა სცადე. შენი ისტორია არ წაშლილა.', 'Try again. Your history hasn’t been deleted.')} /><PetErrorText message={error} /><Button label={tx('ხელახლა ცდა', 'Try again')} onPress={() => void load().catch(caught => setError(petsCareErrorMessage(caught, { ...ka.pets, offline: ka.common.networkError })))} /></PetPageScroll> : <PetLoading />;
 
   return (
     <>

@@ -1,4 +1,5 @@
 import { ka } from '@/i18n/ka';
+import { tx } from '../i18n/locale.js';
 
 /**
  * Birth date entry.
@@ -11,7 +12,10 @@ import { ka } from '@/i18n/ka';
 const MAX_AGE = 120;
 /** Same rule as the server (server/src/lib/patient.js MIN_USER_AGE): accounts are 18+. */
 export const MIN_USER_AGE = 18;
-export const MIN_USER_AGE_MESSAGE = `MEDICARD-ით სარგებლობა ${MIN_USER_AGE} წლიდან შეიძლება.`;
+export const MIN_USER_AGE_MESSAGE = tx(
+  `MEDICARD-ით სარგებლობა ${MIN_USER_AGE} წლიდან შეიძლება.`,
+  `You must be at least ${MIN_USER_AGE} to use MEDICARD.`,
+);
 
 export function toDigits(value: string): string {
   return value.replace(/\D/g, '').slice(0, 8);

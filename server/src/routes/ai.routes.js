@@ -1,4 +1,5 @@
-import { requireAiConsent } from '../lib/aiConsent.js';
+import { bindAiLanguage, currentAiLanguage, requireAiConsent } from '../lib/aiConsent.js';
+import { t } from '../lib/i18n.js';
 import { Router } from 'express';
 import { FREE_CONSUMER_RELEASE } from '../lib/consumerAccess.js';
 import multer from 'multer';
@@ -26,6 +27,7 @@ import { QuestSignal, refreshQuestProgressForUser } from '../lib/quest.js';
 export const aiRouter = Router();
 
 aiRouter.use(requireAuth);
+aiRouter.use(bindAiLanguage);
 aiRouter.use((req, res, next) => req.method === 'POST' && req.path !== '/feedback' ? requireAiConsent(req, res, next) : next());
 
 aiRouter.get(
@@ -70,7 +72,7 @@ function acceptLabUpload(req, file, cb) {
     'image/heif',
   ]);
   if (!allowed.has(mime) && !allowed.has(file.mimetype)) {
-    cb(new AiEngineError('დაშვებულია მხოლოდ JPG, PNG, WEBP ან PDF ფაილი.', { status: 400 }));
+    cb(new AiEngineError('დაშვებულია მხოლოდ JPG, PNG, WEBP ან PDF ფაილი.', { status: 400, messageEn: 'Only JPG, PNG, WEBP or PDF files are allowed.' }));
     return;
   }
   file.mimetype = mime;
@@ -103,7 +105,7 @@ function formatLabTable(parameters) {
  * ──────────────────────────────────────────────────────────────── */
 
 const querySchema = z.object({
-  message: z.string().trim().min(2, 'შეკითხვა ძალიან მოკლეა').max(4000),
+  message: z.string().trim().min(2, { error: () => t(currentAiLanguage(), 'შეკითხვა ძალიან მოკლეა', 'Your question is too short') }).max(4000),
   mode: z.enum(['DOCTOR', 'CONSILIUM']).default('DOCTOR'),
   sessionId: z.string().uuid().optional(),
   context: z.string().trim().max(4000).optional(),
@@ -163,7 +165,7 @@ aiRouter.post(
       : null;
 
     if (sessionId && !session) {
-      return res.status(404).json({ error: 'საუბარი ვერ მოიძებნა.' });
+      return res.status(404).json({ error: t(req, 'საუბარი ვერ მოიძებნა.', 'Conversation not found.') });
     }
 
     const history = Array.isArray(session?.messages) ? session.messages : [];
@@ -244,7 +246,7 @@ aiRouter.post(
         const status = error instanceof AiEngineError ? error.status : error?.status;
         writeSse(res, {
           type: 'error',
-          error: error?.message || 'სამედიცინო ანალიზის სერვისთან დაკავშირება ვერ მოხერხდა.',
+          error: t(req, error?.message, error?.messageEn || error?.message) || t(req, 'სამედიცინო ანალიზის სერვისთან დაკავშირება ვერ მოხერხდა.', 'We could not reach the medical analysis service.'),
           status: status && status >= 400 && status < 600 ? status : 502,
         });
         res.end();
@@ -308,7 +310,7 @@ aiRouter.post(
   upload.single('file'),
   asyncHandler(async (req, res) => {
     if (!req.file) {
-      return res.status(400).json({ error: 'ფაილი არ არის ატვირთული.' });
+      return res.status(400).json({ error: t(req, 'ფაილი არ არის ატვირთული.', 'No file was uploaded.') });
     }
 
     const { kind, context } = analyzeSchema.parse(req.body);
@@ -317,12 +319,12 @@ aiRouter.post(
     const isPdf = mimetype === 'application/pdf';
     if (mimetype === 'image/heic') {
       return res.status(400).json({
-        error: 'iPhone-ის HEIC ფოტო ვერ წავიკითხეთ. ატვირთე სურათი თავიდან JPEG ან PNG ფორმატში.',
+        error: t(req, 'iPhone-ის HEIC ფოტო ვერ წავიკითხეთ. ატვირთე სურათი თავიდან JPEG ან PNG ფორმატში.', 'We could not read the iPhone HEIC photo. Please upload it again as JPEG or PNG.'),
       });
     }
 
     if (isPdf && kind !== 'LAB') {
-      return res.status(400).json({ error: 'PDF ფორმატი მხოლოდ ანალიზების გასაშიფრადაა დაშვებული.' });
+      return res.status(400).json({ error: t(req, 'PDF ფორმატი მხოლოდ ანალიზების გასაშიფრადაა დაშვებული.', 'PDF files are only accepted for lab results.') });
     }
 
     let visionNotes;
@@ -332,7 +334,7 @@ aiRouter.post(
       const { text, pages } = await extractPdfText(buffer);
       if (text.length < 24) {
         return res.status(422).json({
-          error: 'PDF-დან ტექსტის ამოკითხვა ვერ მოხერხდა. სცადე დოკუმენტის ფოტოს ატვირთვა.',
+          error: t(req, 'PDF-დან ტექსტის ამოკითხვა ვერ მოხერხდა. სცადე დოკუმენტის ფოტოს ატვირთვა.', 'We could not read text from the PDF. Try uploading a photo of the document.'),
         });
       }
       visionNotes = `[PDF, ${pages} გვერდი]\n\n${text}`;
@@ -367,7 +369,7 @@ aiRouter.post(
       const analysis = await runTrackedAi({
         userId: req.user.id,
         mode: kind,
-        userPrompt: buildVisionHandoff({ kind, visionNotes, patientContext: context }),
+        userPrompt: buildVisionHandoff({ kind, visionNotes, patientContext: context, lang: req.lang }),
         visionProvider: extractor.provider,
         visionModel: extractor.model,
         fn: () =>
@@ -376,7 +378,7 @@ aiRouter.post(
             mode: kind,
             context: patientAiContext,
             messages: [
-              { role: 'user', content: buildVisionHandoff({ kind, visionNotes, patientContext: context }) },
+              { role: 'user', content: buildVisionHandoff({ kind, visionNotes, patientContext: context, lang: req.lang }) },
             ],
           }),
       });
@@ -447,7 +449,7 @@ aiRouter.post(
   asyncHandler(async (req, res) => {
     const files = req.files ?? [];
     if (!files.length) {
-      return res.status(400).json({ error: 'ფაილი არ არის ატვირთული.' });
+      return res.status(400).json({ error: t(req, 'ფაილი არ არის ატვირთული.', 'No file was uploaded.') });
     }
 
     const { context, recordId } = extractLabSchema.parse(req.body ?? {});
@@ -463,7 +465,7 @@ aiRouter.post(
         const { text, pages } = await extractPdfText(file.buffer);
         if (text.length < 24) {
           return res.status(422).json({
-            error: 'PDF-დან ტექსტის ამოკითხვა ვერ მოხერხდა. სცადე დოკუმენტის ფოტოს ატვირთვა.',
+            error: t(req, 'PDF-დან ტექსტის ამოკითხვა ვერ მოხერხდა. სცადე დოკუმენტის ფოტოს ატვირთვა.', 'We could not read text from the PDF. Try uploading a photo of the document.'),
           });
         }
         pdfNotes.push(`[PDF, ${pages} გვერდი]\n\n${text}`);
@@ -473,7 +475,7 @@ aiRouter.post(
       const mimeType = sniffImageMime(file.buffer, declared);
       if (mimeType === 'image/heic') {
         return res.status(400).json({
-          error: 'iPhone-ის HEIC ფოტო ვერ წავიკითხეთ. ატვირთე სურათი თავიდან JPEG ან PNG ფორმატში.',
+          error: t(req, 'iPhone-ის HEIC ფოტო ვერ წავიკითხეთ. ატვირთე სურათი თავიდან JPEG ან PNG ფორმატში.', 'We could not read the iPhone HEIC photo. Please upload it again as JPEG or PNG.'),
         });
       }
       images.push({ buffer: file.buffer, mimeType });
@@ -518,13 +520,13 @@ aiRouter.post(
 
     if (req.labAppend) {
       if (!recordId) {
-        return res.status(400).json({ error: 'ჩანაწერი ვერ მოიძებნა.' });
+        return res.status(400).json({ error: t(req, 'ჩანაწერი ვერ მოიძებნა.', 'Record not found.') });
       }
       const existing = await prisma.medicalRecord.findFirst({
         where: { id: recordId, userId: req.user.id, type: 'LAB' },
       });
       if (!existing) {
-        return res.status(404).json({ error: 'ჩანაწერი ვერ მოიძებნა.' });
+        return res.status(404).json({ error: t(req, 'ჩანაწერი ვერ მოიძებნა.', 'Record not found.') });
       }
       visionNotes = [existing.aiAnalysis, visionNotes].filter(Boolean).join('\n\n--- PAGE ---\n\n');
       const labExtract = extractLabFromText(visionNotes);
@@ -629,14 +631,14 @@ aiRouter.post(
     const analysis = await runTrackedAi({
       userId: req.user.id,
       mode: 'LAB',
-      userPrompt: buildVisionHandoff({ kind: 'LAB', visionNotes, patientContext: body.context }),
+      userPrompt: buildVisionHandoff({ kind: 'LAB', visionNotes, patientContext: body.context, lang: req.lang }),
       fn: () =>
         askAi({
           user: req.user,
           mode: 'LAB',
           context: patientAiContext,
           messages: [
-            { role: 'user', content: buildVisionHandoff({ kind: 'LAB', visionNotes, patientContext: body.context }) },
+            { role: 'user', content: buildVisionHandoff({ kind: 'LAB', visionNotes, patientContext: body.context, lang: req.lang }) },
           ],
         }),
     });
@@ -702,7 +704,7 @@ aiRouter.post(
 
     const result = aligned.extra;
     if (!result) {
-      return res.status(500).json({ error: 'სახელების შემოწმება ვერ დასრულდა.' });
+      return res.status(500).json({ error: t(req, 'სახელების შემოწმება ვერ დასრულდა.', 'We could not finish checking the test names.') });
     }
     const usage = result.engine === 'openrouter' ? await req.consumeAiCredit() : req.usage;
     return res.json({
@@ -762,7 +764,7 @@ aiRouter.post(
 
     const result = advice.extra;
     if (!result) {
-      return res.status(500).json({ error: 'წონის რჩევა ვერ დასრულდა.' });
+      return res.status(500).json({ error: t(req, 'წონის რჩევა ვერ დასრულდა.', 'We could not finish your weight advice.') });
     }
     const usage = await req.consumeAiCredit();
     return res.json({
@@ -780,7 +782,7 @@ aiRouter.post(
 
 const skincareSchema = z.object({
   skinType: z.string().trim().min(2).max(60),
-  concerns: z.array(z.string().trim().min(1).max(60)).min(1, 'აირჩიე მინიმუმ ერთი პრობლემა').max(10),
+  concerns: z.array(z.string().trim().min(1).max(60)).min(1, { error: () => t(currentAiLanguage(), 'აირჩიე მინიმუმ ერთი პრობლემა', 'Choose at least one concern') }).max(10),
   age: z.coerce.number().int().min(10).max(100).optional(),
   currentProducts: z.string().trim().max(1000).optional(),
 });
@@ -851,7 +853,7 @@ aiRouter.post(
     });
 
     if (medications.length === 0) {
-      return res.status(400).json({ error: 'აქტიური მედიკამენტი არ არის დამატებული.' });
+      return res.status(400).json({ error: t(req, 'აქტიური მედიკამენტი არ არის დამატებული.', 'You have no active medications added.') });
     }
 
     const list = medications
@@ -885,7 +887,7 @@ aiRouter.post(
 const symptomCheckSchema = z.object({
   includeHealthProfile: z.boolean().default(false),
   primarySymptom: z.string().trim().min(1).max(80).optional(),
-  symptoms: z.array(z.string().trim().min(1).max(80)).min(1, 'აირჩიე მინიმუმ ერთი სიმპტომი').max(16),
+  symptoms: z.array(z.string().trim().min(1).max(80)).min(1, { error: () => t(currentAiLanguage(), 'აირჩიე მინიმუმ ერთი სიმპტომი', 'Choose at least one symptom') }).max(16),
   method: z.enum(['manual', 'anatomy']).optional(),
   mode: z.enum(['muscle', 'organ', 'search']).optional(),
   bodyPartId: z.string().trim().max(40).optional(),
@@ -929,6 +931,7 @@ aiRouter.post(
           symptoms: data.symptoms,
           bodyPartKa: data.bodyPartKa,
           notes: data.notes,
+          lang: req.lang,
         });
         return {
           content: JSON.stringify({ result, input: data }),
@@ -942,7 +945,7 @@ aiRouter.post(
     const result = payload.result ?? payload;
     const { record, usage } = await req.settleAiOperation(() => prisma.$transaction(async tx => {
       const record = await tx.medicalRecord.create({
-        data: { userId: req.user.id, type: 'SYMPTOM', aiAnalysis: formatSymptomRecordKa(result, data) },
+        data: { userId: req.user.id, type: 'SYMPTOM', aiAnalysis: formatSymptomRecordKa(result, data, req.lang) },
       });
       await tx.aiInteraction.update({ where: { id: answer.interactionId }, data: { medicalRecordId: record.id } });
       const usage = await commitAiCredit(req.user.id, tx);
@@ -964,19 +967,19 @@ aiRouter.get(
     const record = await prisma.medicalRecord.findFirst({
       where: { id: recordId, userId: req.user.id, type: 'SYMPTOM' },
     });
-    if (!record) return res.status(404).json({ error: 'ჩანაწერი ვერ მოიძებნა.' });
+    if (!record) return res.status(404).json({ error: t(req, 'ჩანაწერი ვერ მოიძებნა.', 'Record not found.') });
 
     const interaction = await prisma.aiInteraction.findFirst({
       where: { medicalRecordId: recordId, userId: req.user.id, mode: 'SYMPTOM_CHECKER' },
       orderBy: { createdAt: 'desc' },
     });
-    if (!interaction?.assistantReply) return res.status(404).json({ error: 'შედეგი ვერ მოიძებნა.' });
+    if (!interaction?.assistantReply) return res.status(404).json({ error: t(req, 'შედეგი ვერ მოიძებნა.', 'Result not found.') });
 
     let parsed;
     try {
       parsed = JSON.parse(interaction.assistantReply);
     } catch {
-      return res.status(404).json({ error: 'შედეგის ფორმატი არასწორია.' });
+      return res.status(404).json({ error: t(req, 'შედეგის ფორმატი არასწორია.', 'The result format is invalid.') });
     }
 
     const result = parsed.result ?? parsed;
@@ -999,7 +1002,7 @@ aiRouter.post(
       where: { id: body.interactionId, userId: req.user.id },
     });
     if (!interaction) {
-      return res.status(404).json({ error: 'AI ურთიერთობა ვერ მოიძებნა.' });
+      return res.status(404).json({ error: t(req, 'AI ურთიერთობა ვერ მოიძებნა.', 'AI interaction not found.') });
     }
 
     const feedback = await prisma.aiFeedback.upsert({

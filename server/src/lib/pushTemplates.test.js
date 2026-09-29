@@ -2,7 +2,9 @@ import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   PUSH_TEMPLATE_DEFAULTS,
+  PUSH_TEMPLATE_EN,
   applyPushTemplate,
+  localizePushTemplate,
   fertilityPushCopyUnsafe,
   interpolatePushCopy,
   resolvePushTemplateCopy,
@@ -193,5 +195,29 @@ describe('fertility push template safety overlay', () => {
     const redacted = redactCyclePushLog({ key: 'cycle-ovulation', title: ov.title, body: ov.body });
     assert.equal(redacted.title, '[cycle-redacted]');
     assert.equal(maskedCopyIsSafe(redacted.title, redacted.body), true);
+  });
+});
+
+describe('push templates in English', () => {
+  it('has English copy for every template and keeps the same placeholders', () => {
+    for (const def of PUSH_TEMPLATE_DEFAULTS) {
+      const en = PUSH_TEMPLATE_EN[def.key];
+      assert.ok(en, def.key);
+      assert.equal(/[ა-ჿ]/.test(`${en.title} ${en.body}`), false, def.key);
+      const vars = (text) => [...String(text).matchAll(/\{([a-zA-Z0-9_]+)\}/g)].map((m) => m[1]).sort().join(',');
+      assert.equal(vars(`${en.title} ${en.body}`), vars(`${def.title} ${def.body}`), def.key);
+    }
+  });
+
+  it('localizes for English readers only and keeps fertility and masked copy safe', () => {
+    const med = templateByKey(PUSH_TEMPLATE_DEFAULTS, 'medication');
+    assert.equal(localizePushTemplate(med, 'ka'), med);
+    assert.match(applyPushTemplate(localizePushTemplate(med, 'en'), { name: 'Vitamin D' }).title, /Vitamin D/);
+    for (const key of ['cycle-ovulation', 'cycle-fertile']) {
+      assert.match(`${PUSH_TEMPLATE_EN[key].title} ${PUSH_TEMPLATE_EN[key].body}`, /estimate/i);
+    }
+    const masked = PUSH_TEMPLATE_EN['cycle-masked'];
+    assert.equal(/period|ovulat|fertile|PMS|pregnan|medic/i.test(`${masked.title} ${masked.body}`), false);
+    assert.equal(maskedCopyIsSafe(masked.title, masked.body), true);
   });
 });

@@ -1,4 +1,5 @@
 import type { MedicationConfig, MedicationDoseLog, PillShape } from '@/types/medications';
+import { tx } from '../i18n/locale.js';
 
 export function parseMedicationConfig(raw: unknown): MedicationConfig {
   if (!raw || typeof raw !== 'object') return {};
@@ -16,16 +17,22 @@ export function formatFrequencyTimes(times: string[]): string {
   return [...new Set(times)].sort().join(', ');
 }
 
-export const DAY_LABELS_KA = ['ორშ', 'სამ', 'ოთხ', 'ხუთ', 'პარ', 'შაბ', 'კვ'] as const;
-export const DAY_LABELS_FULL_KA = [
-  'ორშაბათი',
-  'სამშაბათი',
-  'ოთხშაბათი',
-  'ხუთშაბათი',
-  'პარასკევი',
-  'შაბათი',
-  'კვირა',
-] as const;
+export const DAY_LABELS_KA: readonly string[] = tx(
+  ['ორშ', 'სამ', 'ოთხ', 'ხუთ', 'პარ', 'შაბ', 'კვ'],
+  ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+);
+export const DAY_LABELS_FULL_KA: readonly string[] = tx(
+  [
+    'ორშაბათი',
+    'სამშაბათი',
+    'ოთხშაბათი',
+    'ხუთშაბათი',
+    'პარასკევი',
+    'შაბათი',
+    'კვირა',
+  ],
+  ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'],
+);
 
 export function daysSummaryKa(days: number[] | undefined): string {
   if (!days?.length) return '';
@@ -155,7 +162,7 @@ export function formatDateDisplay(iso: string): string {
   return `${d}  /  ${mo}  /  ${y}`;
 }
 
-export const DAY_LETTERS = ['ო', 'ს', 'ო', 'ხ', 'პ', 'შ', 'კ'] as const;
+export const DAY_LETTERS: readonly string[] = tx(['ო', 'ს', 'ო', 'ხ', 'პ', 'შ', 'კ'], ['M', 'T', 'W', 'T', 'F', 'S', 'S']);
 
 export function todayYmd(): string {
   const d = new Date();

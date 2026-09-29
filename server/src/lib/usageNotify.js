@@ -1,6 +1,7 @@
 import { prisma } from './prisma.js';
 import { sendExpoPush } from './push.js';
-import { applyPushTemplate, logPushEvent, templateByKey } from './pushTemplates.js';
+import { applyPushTemplate, localizePushTemplate, logPushEvent, templateByKey } from './pushTemplates.js';
+import { getUserLanguage } from './i18n.js';
 import { getRealtimeIo } from './adminRealtime.js';
 import { userSocketRoom } from './socketAuth.js';
 import { markQuotaNotified, syncWindow, ensureQuotaNotifyColumn } from './usage.js';
@@ -70,9 +71,9 @@ export async function processQuotaReset(userId, now = new Date()) {
   return sent;
 }
 
-export function quotaResetCopy(kind, limit) {
+export function quotaResetCopy(kind, limit, lang = 'ka') {
   const key = kind === 'lock' ? 'quota-reset-lock' : 'quota-reset';
-  const template = templateByKey([], key) ?? {
+  const template = localizePushTemplate(templateByKey([], key), lang) ?? {
     title: 'Medi ისევ შენთანაა ✨',
     body: 'შენი AI ლიმიტი განახლდა — დღეს {limit} შეკითხვა გაქვს. ჰკითხე რაც გინდა 💬',
   };
@@ -84,7 +85,7 @@ export async function notifyQuotaReset(userId, { limit, remaining, resetKind, re
     where: { userId, active: true },
     select: { token: true },
   });
-  const copy = quotaResetCopy(resetKind, limit);
+  const copy = quotaResetCopy(resetKind, limit, tokens.length ? await getUserLanguage(userId) : 'ka');
   const data = {
     type: 'quota_reset',
     family: 'quotaReset',

@@ -5,6 +5,7 @@ import { Clock, Package, Syringe } from 'lucide-react-native';
 import { PetIntro } from '@/components/pets/PetUi';
 import { PetListRow, PetPageScroll } from '@/components/pets/PetScreen';
 import { ka } from '@/i18n/ka';
+import { tx } from '@/i18n/locale';
 
 export default function PetCareAddScreen() {
   const router = useRouter();
@@ -12,7 +13,7 @@ export default function PetCareAddScreen() {
 
   return (
     <PetPageScroll>
-      <PetIntro title="რას ვამატებთ დღეს?" body="აირჩიე მომავალი გეგმა, უკვე ჩატარებული პროცედურა ან პროდუქტი, რომელსაც იყენებ." />
+      <PetIntro title={tx('რას ვამატებთ დღეს?', 'What are we adding today?')} body={tx('აირჩიე მომავალი გეგმა, უკვე ჩატარებული პროცედურა ან პროდუქტი, რომელსაც იყენებ.', 'Choose an upcoming plan, a procedure that’s already done, or a product you use.')} />
 
       <PetListRow
         icon={Syringe}

@@ -10,6 +10,7 @@ import { clientIp } from '../lib/rateLimitKey.js';
 import { loadAppActivityRows } from '../lib/appActivity.js';
 import { getRetentionAnalytics } from '../lib/adminAnalytics.js';
 import { batchSchema, ingestFunnelEvents, loadFunnelReport } from '../lib/funnel.js';
+import { t } from '../lib/i18n.js';
 
 /**
  * Product funnel ingest. Auth is optional so install/source and onboarding views work before
@@ -25,7 +26,7 @@ const ingestLimiter = rateLimit({
   legacyHeaders: false,
   validate: false,
   keyGenerator: (req) => clientIp(req),
-  message: { error: 'ძალიან ბევრი მოთხოვნა.', code: 'RATE_LIMITED' },
+  message: (req) => ({ error: t(req, 'ძალიან ბევრი მოთხოვნა.', 'Too many requests.'), code: 'RATE_LIMITED' }),
 });
 
 /** User id from a Bearer token, or null. Never rejects: analytics must not break the app. */
@@ -50,7 +51,7 @@ funnelRouter.post(
   asyncHandler(async (req, res) => {
     res.set('Cache-Control', 'no-store');
     const parsed = batchSchema.safeParse(req.body ?? {});
-    if (!parsed.success) return res.status(400).json({ error: 'არასწორი მოთხოვნა.', code: 'FUNNEL_INVALID' });
+    if (!parsed.success) return res.status(400).json({ error: t(req, 'არასწორი მოთხოვნა.', 'Invalid request.'), code: 'FUNNEL_INVALID' });
     const userId = await optionalUserId(req);
     const result = await ingestFunnelEvents({
       userId,

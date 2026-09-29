@@ -11,6 +11,7 @@ import { useHydration } from '@/hooks/useHydration';
 import { ka } from '@/i18n/ka';
 import { formatMl, todayYmd } from '@/lib/hydration';
 import type { HydrationLog } from '@/types/hydration';
+import { dateLocale } from '@/i18n/locale';
 
 export default function HydrationHistoryScreen() {
   const T = useFigmaHydration();
@@ -104,7 +105,7 @@ function groupLogs(logs: HydrationLog[]) {
     label:
       date === today
         ? ka.common.today
-        : new Date(`${date}T12:00:00`).toLocaleDateString('ka-GE', { month: 'short', day: 'numeric', year: 'numeric' }),
+        : new Date(`${date}T12:00:00`).toLocaleDateString(dateLocale(), { month: 'short', day: 'numeric', year: 'numeric' }),
     rows,
   }));
 }

@@ -10,6 +10,7 @@ import { ka } from '@/i18n/ka';
 import { api, type PetProduct } from '@/lib/api';
 import { petsCareErrorMessage } from '@/lib/petsCare';
 import { useThemeColors } from '@/theme/colors';
+import { tx } from '@/i18n/locale';
 
 export default function PetProductEditScreen() {
   const colors = useThemeColors();
@@ -52,7 +53,7 @@ export default function PetProductEditScreen() {
 
   if (!ready) return <PetLoading />;
 
-  if (!product) return <PetPageScroll><PetIntro title="პროდუქტი ვერ ჩაიტვირთა" body="თავიდან სცადე შენახული ინფორმაციის გახსნა." /><PetErrorText message={error} /><Button label="ხელახლა ცდა" onPress={() => setRetry(value => value + 1)} /></PetPageScroll>;
+  if (!product) return <PetPageScroll><PetIntro title={tx('პროდუქტი ვერ ჩაიტვირთა', 'The product couldn’t load')} body={tx('თავიდან სცადე შენახული ინფორმაციის გახსნა.', 'Try opening the saved information again.')} /><PetErrorText message={error} /><Button label={tx('ხელახლა ცდა', 'Try again')} onPress={() => setRetry(value => value + 1)} /></PetPageScroll>;
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.bg100 }}>

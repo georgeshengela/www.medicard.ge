@@ -3,6 +3,7 @@ import { Pressable, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ChevronLeft, SlidersHorizontal, type LucideIcon } from 'lucide-react-native';
 import { useFigmaChat } from '@/constants/figmaChatLayout';
+import { tx } from '@/i18n/locale';
 
 type Props = {
   title: string; subtitle?: string; icon: LucideIcon; remainingLabel?: string;
@@ -14,7 +15,7 @@ export function ChatTopNav({ title, subtitle, icon: Icon, remainingLabel, modelB
   const insets = useSafeAreaInsets();
   return <View style={{ paddingTop: insets.top, backgroundColor: C.white, borderBottomWidth: 1, borderBottomColor: C.border }}>
     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 12, paddingVertical: 10 }}>
-      {onBack ? <Pressable accessibilityRole="button" accessibilityLabel="უკან დაბრუნება" onPress={onBack}
+      {onBack ? <Pressable accessibilityRole="button" accessibilityLabel={tx('უკან დაბრუნება', 'Go back')} onPress={onBack}
         style={{ width: 44, height: 44, alignItems: 'center', justifyContent: 'center', borderRadius: 16 }}>
         <ChevronLeft size={24} color={C.textPrimary} />
       </Pressable> : null}

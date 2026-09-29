@@ -8,6 +8,7 @@ import { CycleAtmosphere, CyclePrimaryButton, formatCycleDateKa } from './CycleU
 import { cycleDatePickable } from '@/lib/cycleExperience';
 import type { CycleContraceptionMethod } from '@/lib/api';
 import { ka } from '@/i18n/ka';
+import { tx } from '@/i18n/locale';
 import { useCycleColors } from '@/theme/cycle';
 
 type Props = {
@@ -50,7 +51,7 @@ export function CycleOnboarding({visible,saving,userName,error,onSave,onBack,onC
      onPress={()=>step==='contraception'?setStep('date'):onBack?.()} style={{width:44,height:44,borderRadius:16,alignItems:'center',justifyContent:'center',backgroundColor:c.card}}>
      <ChevronLeft size={22} color={c.ink}/>
     </Pressable>
-    <Text style={{flex:1,color:c.muted,fontSize:12,fontFamily:'NotoSansGeorgian_600SemiBold'}}>შენი ციკლის სივრცე</Text>
+    <Text style={{flex:1,color:c.muted,fontSize:12,fontFamily:'NotoSansGeorgian_600SemiBold'}}>{tx('შენი ციკლის სივრცე','Your cycle space')}</Text>
     <Text style={{color:c.brand,fontSize:12,fontFamily:'NotoSansGeorgian_700Bold'}}>{step==='date'?'01':'02'} / 02</Text>
    </View>
    <View style={{flexDirection:'row',gap:8,marginHorizontal:20,marginTop:16}}>{[0,1].map(i=><View key={i} style={{flex:1,height:3,borderRadius:3,backgroundColor:i===0||step==='contraception'?c.brand:c.gaugeTrack}}/>)}</View>
@@ -58,25 +59,25 @@ export function CycleOnboarding({visible,saving,userName,error,onSave,onBack,onC
     <View style={{width:56,height:56,borderRadius:20,backgroundColor:c.accentSoft,alignItems:'center',justifyContent:'center',marginBottom:16}}>
      <CalendarHeart size={27} color={c.brand}/>
     </View>
-    <Text style={{color:c.muted,fontSize:13,fontFamily:'NotoSansGeorgian_500Medium'}}>{name?name+', ეს შენი სივრცეა':'ეს შენი სივრცეა'}</Text>
+    <Text style={{color:c.muted,fontSize:13,fontFamily:'NotoSansGeorgian_500Medium'}}>{name?name+tx(', ეს შენი სივრცეა',', this is your space'):tx('ეს შენი სივრცეა','This is your space')}</Text>
     <Text accessibilityRole="header" style={{color:c.ink,fontSize:28,lineHeight:38,fontFamily:'NotoSansGeorgian_600SemiBold',marginTop:6}}>
-     {step==='date'?'შენი რიტმი.\nშენი უკეთ გაგება.':ka.cycle.contraceptionAsk}
+     {step==='date'?tx('შენი რიტმი.\nშენი უკეთ გაგება.','Your rhythm.\nKnowing yourself better.'):ka.cycle.contraceptionAsk}
     </Text>
     <Text style={{color:c.muted,fontSize:14,lineHeight:22,fontFamily:'NotoSansGeorgian_400Regular',marginTop:10,marginBottom:20}}>
-     {step==='date'?'მონიშნე ბოლო მენსტრუაციის პირველი დღე. ყოველდღიური ჩანაწერები დაგეხმარება შენი ციკლისა და შეგრძნებების უკეთ დანახვაში.':ka.cycle.contraceptionLead}
+     {step==='date'?tx('მონიშნე ბოლო მენსტრუაციის პირველი დღე. ყოველდღიური ჩანაწერები დაგეხმარება შენი ციკლისა და შეგრძნებების უკეთ დანახვაში.','Mark the first day of your last period. Daily entries help you see your cycle and how you feel more clearly.'):ka.cycle.contraceptionLead}
     </Text>
     {step==='date'?<>
      <CycleCalendar year={cursor.y} month={cursor.m} marks={date?{[date]:{period:true}}:{}} selected={date||null}
       onSelect={iso=>{if(cycleDatePickable(iso))setDate(iso);}} onPrev={()=>move(-1)} onNext={()=>move(1)} canSelect={cycleDatePickable}/>
      <View style={{padding:14,borderRadius:16,backgroundColor:c.card,borderWidth:1,borderColor:date?c.period:c.border,marginTop:16}}>
-      <Text style={{color:c.muted,fontSize:11,fontFamily:'NotoSansGeorgian_500Medium'}}>ბოლო მენსტრუაციის პირველი დღე</Text>
-      <Text style={{color:c.ink,fontSize:15,lineHeight:22,fontFamily:'NotoSansGeorgian_700Bold',marginTop:4}}>{date?formatCycleDateKa(date):'აირჩიე კალენდარში'}</Text>
+      <Text style={{color:c.muted,fontSize:11,fontFamily:'NotoSansGeorgian_500Medium'}}>{tx('ბოლო მენსტრუაციის პირველი დღე','First day of your last period')}</Text>
+      <Text style={{color:c.ink,fontSize:15,lineHeight:22,fontFamily:'NotoSansGeorgian_700Bold',marginTop:4}}>{date?formatCycleDateKa(date):tx('აირჩიე კალენდარში','Pick it in the calendar')}</Text>
      </View>
-     <Pressable onPress={onChooseMode} disabled={saving} accessibilityRole="button" accessibilityLabel="სხვა რეჟიმის არჩევა"
+     <Pressable onPress={onChooseMode} disabled={saving} accessibilityRole="button" accessibilityLabel={tx('სხვა რეჟიმის არჩევა','Choose another mode')}
       style={{flexDirection:'row',gap:12,paddingVertical:18,alignItems:'center'}}>
       <SlidersHorizontal size={20} color={c.lavender}/>
-      <View style={{flex:1}}><Text style={{color:c.ink,fontSize:13,fontFamily:'NotoSansGeorgian_600SemiBold'}}>სხვა ეტაპზე ხარ?</Text>
-       <Text style={{color:c.muted,fontSize:12,lineHeight:19,marginTop:3}}>ორსულობა, მშობიარობის შემდგომი პერიოდი ან სხვა რეჟიმი</Text></View>
+      <View style={{flex:1}}><Text style={{color:c.ink,fontSize:13,fontFamily:'NotoSansGeorgian_600SemiBold'}}>{tx('სხვა ეტაპზე ხარ?','In a different stage?')}</Text>
+       <Text style={{color:c.muted,fontSize:12,lineHeight:19,marginTop:3}}>{tx('ორსულობა, მშობიარობის შემდგომი პერიოდი ან სხვა რეჟიმი','Pregnancy, after giving birth, or another mode')}</Text></View>
      </Pressable>
     </>:<View style={{gap:8}}>
      {(Object.keys(ka.cycle.contraceptionMethod) as CycleContraceptionMethod[]).map(id=><Pressable key={id} onPress={()=>setMethod(id)}
@@ -90,7 +91,7 @@ export function CycleOnboarding({visible,saving,userName,error,onSave,onBack,onC
    </ScrollView>
    <View style={{paddingHorizontal:20,paddingTop:12,paddingBottom:Math.max(insets.bottom,12),borderTopWidth:1,borderColor:c.border,backgroundColor:c.card}}>
     {error||localError?<Text accessibilityRole="alert" style={{color:c.danger,fontSize:12,lineHeight:18,marginBottom:10}}>{error||localError}</Text>:null}
-    <CyclePrimaryButton label={step==='date'?'გაგრძელება':'ჩემი სივრცის გახსნა'} onPress={()=>void(step==='date'?advance():finish())} loading={saving} disabled={step==='date'&&!date}/>
+    <CyclePrimaryButton label={step==='date'?tx('გაგრძელება','Continue'):tx('ჩემი სივრცის გახსნა','Open my space')} onPress={()=>void(step==='date'?advance():finish())} loading={saving} disabled={step==='date'&&!date}/>
     {step==='contraception'?<Pressable accessibilityRole="button" disabled={saving} onPress={()=>void finish(true)} style={{minHeight:44,alignItems:'center',justifyContent:'center'}}><Text style={{color:c.muted,fontSize:12}}>{ka.cycle.contraceptionSkip}</Text></Pressable>:null}
    </View>
   </View>

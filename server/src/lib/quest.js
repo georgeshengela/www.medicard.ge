@@ -99,9 +99,20 @@ async function resolveClock(userId, options = {}) {
   return resolveQuestClock(options.now || new Date(), timezone);
 }
 
+/** English for the Georgian messages below; middleware/error.js shows it to English requests. */
+const MESSAGES_EN = Object.freeze({
+  'არასწორი დროის სარტყელი.': 'Invalid time zone.',
+  'ქვესტი ვერ მოიძებნა.': 'Mission not found.',
+  'ქვესტის პროგრესს სერვერი ანგარიშობს.': 'Mission progress is counted by the server.',
+  'ქვესტის ვადა ამოიწურა.': 'This mission has expired.',
+  'ქვესტის დასრულება შეუძლებელია.': 'This mission cannot be completed.',
+  'ქვესტი ჯერ არ დასრულებულა.': 'This mission is not complete yet.',
+});
+
 function httpError(message, status = 400) {
   const error = new Error(message);
   error.status = status;
+  if (MESSAGES_EN[message]) error.messageEn = MESSAGES_EN[message];
   return error;
 }
 

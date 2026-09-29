@@ -1,3 +1,5 @@
+import { langOf } from './i18n.js';
+
 const COUNTRY_KA = {
   GE: 'საქართველო',
   AM: 'სომხეთი',
@@ -289,6 +291,86 @@ export function resolveNominatimAddress(address = {}) {
     cityNameKa(address.suburb) ||
     cityNameKa(address.county);
   return { countryCode, countryKa, cityKa };
+}
+
+// ——— English names (X-Medicard-Lang: en). Stored values stay Georgian (countryKa / cityKa). ———
+
+/** English spellings where the first matching key above is not the usual English name. */
+const CITY_EN_OVERRIDE = {
+  'სტეფანწმინდა': 'Stepantsminda',
+  'ლიეჟი': 'Liège',
+  'ოსტენდე': 'Ostend',
+  'ჰააგა': 'The Hague',
+  'მიუნხენი': 'Munich',
+  'კელნი': 'Cologne',
+  'დიუსელდორფი': 'Düsseldorf',
+  'ციურიხი': 'Zurich',
+  'ჟენევა': 'Geneva',
+  'კიევი': 'Kyiv',
+  'კოპენჰაგენი': 'Copenhagen',
+  'ნიუ-იორკი': 'New York',
+  'ლოს-ანჯელესი': 'Los Angeles',
+  'თელ-ავივი': 'Tel Aviv',
+  'მონრეალი': 'Montreal',
+};
+
+/** Georgian national romanisation without apostrophes (Zestaponi, Tskaltubo) for names not in CITY_KA. */
+const ROMAN = {
+  'ა': 'a', 'ბ': 'b', 'გ': 'g', 'დ': 'd', 'ე': 'e', 'ვ': 'v', 'ზ': 'z', 'თ': 't', 'ი': 'i', 'კ': 'k',
+  'ლ': 'l', 'მ': 'm', 'ნ': 'n', 'ო': 'o', 'პ': 'p', 'ჟ': 'zh', 'რ': 'r', 'ს': 's', 'ტ': 't', 'უ': 'u',
+  'ფ': 'p', 'ქ': 'k', 'ღ': 'gh', 'ყ': 'q', 'შ': 'sh', 'ჩ': 'ch', 'ც': 'ts', 'ძ': 'dz', 'წ': 'ts', 'ჭ': 'ch',
+  'ხ': 'kh', 'ჯ': 'j', 'ჰ': 'h',
+};
+
+function titleCase(value) {
+  return String(value).replace(/(^|[\s-])(\p{L})/gu, (_, sep, ch) => sep + ch.toUpperCase());
+}
+
+export function romanizeGeorgian(value) {
+  return titleCase(Array.from(String(value || '')).map((ch) => ROMAN[ch] ?? ch).join(''));
+}
+
+let cityEnByKa = null;
+function cityEnMap() {
+  if (!cityEnByKa) {
+    cityEnByKa = new Map();
+    for (const [key, ka] of Object.entries(CITY_KA)) if (!cityEnByKa.has(ka)) cityEnByKa.set(ka, titleCase(key));
+    for (const [ka, en] of Object.entries(CITY_EN_OVERRIDE)) cityEnByKa.set(ka, en);
+  }
+  return cityEnByKa;
+}
+
+/** City in its usual English spelling ("თბილისი" → "Tbilisi"); Latin input is returned as is. */
+export function cityNameEn(raw) {
+  const text = String(raw || '').trim();
+  if (!text) return null;
+  if (!looksGeorgian(text)) {
+    const ka = cityNameKa(text);
+    return (ka && cityEnMap().get(ka)) || text;
+  }
+  return cityEnMap().get(text) || romanizeGeorgian(text);
+}
+
+/** Country in English from its ISO code (or the stored Georgian name). */
+export function countryNameEn(code, fallback) {
+  const iso = countryCodeOf(code) || countryCodeOf(fallback);
+  if (iso) {
+    try {
+      const name = new Intl.DisplayNames(['en'], { type: 'region' }).of(iso);
+      if (name && name !== iso) return name;
+    } catch {
+      /* unknown region code */
+    }
+  }
+  if (fallback && !looksGeorgian(fallback)) return String(fallback).trim();
+  return iso || (fallback ? romanizeGeorgian(String(fallback).trim()) : null);
+}
+
+/** Display names for a place in the request language: { countryName, cityName }. */
+export function localizedPlaceNames(place, lang = 'ka') {
+  const { countryCode = null, countryKa = null, cityKa = null } = place || {};
+  if (langOf(lang) === 'en') return { countryName: countryNameEn(countryCode, countryKa), cityName: cityNameEn(cityKa) };
+  return { countryName: countryKa ?? null, cityName: cityKa ?? null };
 }
 
 export function metersBetween(a, b) {

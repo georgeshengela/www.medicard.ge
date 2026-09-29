@@ -28,10 +28,20 @@ export const POSTPARTUM_PRESENTATION_KEYS = Object.freeze([
 
 const BLEED_FLOWS = Object.freeze(['spotting', 'light', 'medium', 'heavy']);
 
+/** English for the Georgian messages below (error middleware sends `messageEn` to English requests). */
+const MESSAGES_EN = {
+  'საწყისი თარიღი არასწორია.': 'The start date is not valid.',
+  'დღევანდელი თარიღი არასწორია.': 'Today\'s date is not valid.',
+  'საწყისი თარიღი მომავალში არ შეიძლება.': 'The start date cannot be in the future.',
+  'მშობიარობის შემდგომი რეჟიმი მხოლოდ დადასტურებით ირთვება.': 'Postpartum mode can only be turned on after you confirm.',
+  'აქტიური მშობიარობის შემდგომი ეპიზოდი არ არის.': 'There is no active postpartum period.',
+};
+
 function httpError(message, status, code) {
   const err = new Error(message);
   err.status = status;
   err.code = code;
+  if (MESSAGES_EN[message]) err.messageEn = MESSAGES_EN[message];
   return err;
 }
 

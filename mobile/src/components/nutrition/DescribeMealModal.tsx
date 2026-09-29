@@ -6,8 +6,9 @@ import { APP_MODAL_OVERLAY, APP_MODAL_PROPS, Modal } from "@/components/ui/appMo
 import { useAssistantVoice } from "@/components/assistant/useAssistantVoice";
 import { useThemeColors } from "@/theme/colors";
 import { hubText } from "@/theme/hub";
+import { tx } from '@/i18n/locale';
 
-const EXAMPLES = ["ორი ხინკალი და კიტრი-პომიდვრის სალათი", "ერთი ხაჭაპური და ჭიქა მაწონი", "შვრიის ფაფა ბანანით და ყავა რძით"];
+const EXAMPLES = tx(["ორი ხინკალი და კიტრი-პომიდვრის სალათი", "ერთი ხაჭაპური და ჭიქა მაწონი", "შვრიის ფაფა ბანანით და ყავა რძით"], ["Two khinkali and a cucumber-tomato salad", "One khachapuri and a glass of matsoni", "Oatmeal with banana and coffee with milk"]);
 
 /**
  * Describe a meal in words. Text is typed or dictated with the same
@@ -79,7 +80,7 @@ export function DescribeMealModal({
   const txt = { color: c.text100, fontFamily: "NotoSansGeorgian_400Regular" };
   return (
     <Modal visible={visible} {...APP_MODAL_PROPS} onRequestClose={onClose}>
-      <Pressable accessibilityRole="button" accessibilityLabel="დახურვა" onPress={onClose} style={[StyleSheet.absoluteFill, { backgroundColor: APP_MODAL_OVERLAY }]} />
+      <Pressable accessibilityRole="button" accessibilityLabel={tx("დახურვა", "Close")} onPress={onClose} style={[StyleSheet.absoluteFill, { backgroundColor: APP_MODAL_OVERLAY }]} />
       <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={{ flex: 1, justifyContent: "flex-end" }} pointerEvents="box-none">
         <View accessibilityViewIsModal style={[s.sheet, { backgroundColor: c.surface, paddingBottom: keyboard ? 12 : Math.max(safe.bottom, 16) }]}>
           <View style={s.head}>
@@ -87,15 +88,15 @@ export function DescribeMealModal({
               <Sparkles size={15} color={c.primary100} />
               <Text style={[hubText.small, { color: c.primary100, fontFamily: "NotoSansGeorgian_600SemiBold" }]}>MEDI</Text>
             </View>
-            <Text style={[hubText.cardTitle, { color: c.text100, fontSize: 17, flex: 1 }]}>რა მიირთვი?</Text>
-            <Pressable accessibilityRole="button" accessibilityLabel="დახურვა" onPress={onClose} style={s.iconButton}>
+            <Text style={[hubText.cardTitle, { color: c.text100, fontSize: 17, flex: 1 }]}>{tx("რა მიირთვი?", "What did you eat?")}</Text>
+            <Pressable accessibilityRole="button" accessibilityLabel={tx("დახურვა", "Close")} onPress={onClose} style={s.iconButton}>
               <X size={20} color={c.text200} />
             </Pressable>
           </View>
           <TextInput
             ref={input}
-            accessibilityLabel="კვების აღწერა"
-            placeholder="მაგ. ორი ხინკალი და სალათი"
+            accessibilityLabel={tx("კვების აღწერა", "Meal description")}
+            placeholder={tx("მაგ. ორი ხინკალი და სალათი", "e.g. two khinkali and a salad")}
             placeholderTextColor={c.text300}
             value={text}
             onChangeText={(v) => {
@@ -123,28 +124,28 @@ export function DescribeMealModal({
           <View style={s.actions}>
             <Pressable
               accessibilityRole="button"
-              accessibilityLabel={recording ? "ჩაწერა მიმდინარეობს — აუშვი დასასრულებლად" : "დააჭირე და ილაპარაკე"}
-              accessibilityHint="გააჩერე ღილაკი ლაპარაკის დროს"
+              accessibilityLabel={recording ? tx("ჩაწერა მიმდინარეობს — აუშვი დასასრულებლად", "Recording — release to finish") : tx("დააჭირე და ილაპარაკე", "Press and speak")}
+              accessibilityHint={tx("გააჩერე ღილაკი ლაპარაკის დროს", "Hold the button while you speak")}
               disabled={busy || transcribing}
               onPressIn={capture.start}
               onPressOut={capture.release}
               style={[s.mic, { backgroundColor: recording ? "#DC2626" : c.bg200, opacity: busy || transcribing ? 0.5 : 1 }]}
             >
               {transcribing ? <ActivityIndicator color={c.primary200} /> : <Mic size={22} color={recording ? "#FFFFFF" : c.text100} />}
-              <Text style={[hubText.link, { color: recording ? "#FFFFFF" : c.text100 }]}>{recording ? "ვისმენ…" : transcribing ? "ვამუშავებ" : "თქვი"}</Text>
+              <Text style={[hubText.link, { color: recording ? "#FFFFFF" : c.text100 }]}>{recording ? tx("ვისმენ…", "Listening…") : transcribing ? tx("ვამუშავებ", "Processing") : tx("თქვი", "Speak")}</Text>
             </Pressable>
             <Pressable
               accessibilityRole="button"
-              accessibilityLabel="შეფასება"
+              accessibilityLabel={tx("შეფასება", "Estimate")}
               disabled={busy || text.trim().length < 3}
               onPress={submit}
               style={[s.send, { backgroundColor: "#0F766E", opacity: busy || text.trim().length < 3 ? 0.45 : 1 }]}
             >
               {busy ? <ActivityIndicator color="#FFFFFF" /> : <Send size={18} color="#FFFFFF" />}
-              <Text style={[hubText.link, { color: "#FFFFFF", fontSize: 14 }]}>{busy ? "ვითვლი…" : "დათვალე"}</Text>
+              <Text style={[hubText.link, { color: "#FFFFFF", fontSize: 14 }]}>{busy ? tx("ვითვლი…", "Counting…") : tx("დათვალე", "Count it")}</Text>
             </Pressable>
           </View>
-          <Text style={[hubText.small, { color: c.text300 }]}>ტექსტი (და ხმა, თუ იყენებ) OpenRouter-ის გავლით Google Vertex AI-ს გადაეცემა. შედეგს შენახვამდე გადაამოწმებ.</Text>
+          <Text style={[hubText.small, { color: c.text300 }]}>{tx("ტექსტი (და ხმა, თუ იყენებ) OpenRouter-ის გავლით Google Vertex AI-ს გადაეცემა. შედეგს შენახვამდე გადაამოწმებ.", "Your text (and voice, if you use it) is sent to Google Vertex AI through OpenRouter. You check the result before saving.")}</Text>
         </View>
       </KeyboardAvoidingView>
     </Modal>

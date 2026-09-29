@@ -8,6 +8,7 @@
 import rateLimit from 'express-rate-limit';
 import { RATE_LIMIT_VALIDATE } from './rateLimitKey.js';
 import { loopNotifier } from './loopGuard.js';
+import { t } from './i18n.js';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -19,10 +20,14 @@ export const AI_DAILY_CAPS = Object.freeze({
   assistantSpeak: 500,
 });
 
-export function aiDailyCapMessage(retryAfterSeconds) {
+export function aiDailyCapMessage(retryAfterSeconds, lang = 'ka') {
   const hours = Math.max(1, Math.ceil(Number(retryAfterSeconds || 0) / 3600));
   return {
-    error: `დღევანდელი ლიმიტი ამოიწურა. ისევ სცადე დაახლოებით ${hours} საათში.`,
+    error: t(
+      lang,
+      `დღევანდელი ლიმიტი ამოიწურა. ისევ სცადე დაახლოებით ${hours} საათში.`,
+      `You have reached today's limit. Try again in about ${hours} ${hours === 1 ? 'hour' : 'hours'}.`,
+    ),
     code: 'AI_DAILY_CAP',
     retryAfterSeconds: Math.max(1, Math.floor(Number(retryAfterSeconds) || 0)),
   };
@@ -43,7 +48,7 @@ export function aiDailyCap(name, { limit = AI_DAILY_CAPS[name], windowMs = DAY_M
       if (req.rateLimit?.used === limit + 1) loopNotifier.aiCapHit(req, name, limit);
       res.setHeader('Retry-After', String(Math.max(1, seconds)));
       res.setHeader('X-Medicard-Limiter', `ai-day:${name}`);
-      res.status(429).json(aiDailyCapMessage(seconds));
+      res.status(429).json(aiDailyCapMessage(seconds, req.lang));
     },
   });
 }

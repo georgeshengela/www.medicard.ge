@@ -3,10 +3,11 @@ import { env } from '../config/env.js';
 import { prisma } from '../lib/prisma.js';
 import { publicConsumerPackage } from '../lib/packages.js';
 import { FREE_CONSUMER_RELEASE } from '../lib/consumerAccess.js';
-import { getAppSettings } from '../lib/settings.js';
+import { getAppSettings, maintenanceMessageFor } from '../lib/settings.js';
 import { toDateOnly, calculateAge } from '../lib/patient.js';
 import { serverAiEngine } from '../lib/aiEngine.js';
 import { withAiAccount } from '../lib/aiConsent.js';
+import { rememberUserLanguage, t } from '../lib/i18n.js';
 
 export function signToken(user) {
   const id = typeof user?.id === 'string' ? user.id.trim() : '';
@@ -45,18 +46,18 @@ export async function requireAuth(req, res, next) {
   const token = header.startsWith('Bearer ') ? header.slice(7).trim() : null;
 
   if (!token) {
-    return res.status(401).json({ error: 'ავტორიზაცია საჭიროა. შედი ანგარიშში.' });
+    return res.status(401).json({ error: t(req, 'ავტორიზაცია საჭიროა. შედი ანგარიშში.', 'Please sign in to continue.') });
   }
 
   try {
     const payload = jwt.verify(token, env.JWT_SECRET);
     if (payload.role === 'admin') {
-      return res.status(403).json({ error: 'ადმინისტრატორის ტოკენი ამ ენდპოინტზე არ მოქმედებს.' });
+      return res.status(403).json({ error: t(req, 'ადმინისტრატორის ტოკენი ამ ენდპოინტზე არ მოქმედებს.', 'An admin token does not work on this endpoint.') });
     }
 
     const userId = typeof payload.sub === 'string' ? payload.sub : String(payload.sub ?? '');
     if (!userId || userId === 'undefined' || userId === 'null') {
-      return res.status(401).json({ error: 'მომხმარებელი ვერ მოიძებნა. ხელახლა შედი ანგარიშში.' });
+      return res.status(401).json({ error: t(req, 'მომხმარებელი ვერ მოიძებნა. ხელახლა შედი ანგარიშში.', 'Account not found. Please sign in again.') });
     }
 
     let user = await prisma.user.findUnique({
@@ -73,25 +74,28 @@ export async function requireAuth(req, res, next) {
     }
 
     if (!user) {
-      return res.status(401).json({ error: 'მომხმარებელი ვერ მოიძებნა. ხელახლა შედი ანგარიშში.' });
+      return res.status(401).json({ error: t(req, 'მომხმარებელი ვერ მოიძებნა. ხელახლა შედი ანგარიშში.', 'Account not found. Please sign in again.') });
     }
+
+    if (req.langExplicit) rememberUserLanguage(user.id, req.lang);
 
     if (user.status === 'BLOCKED') {
       return res.status(403).json({
-        error: 'შენი ანგარიში დაბლოკილია. დაგვიკავშირდი მხარდაჭერას.',
+        error: t(req, 'შენი ანგარიში დაბლოკილია. დაგვიკავშირდი მხარდაჭერას.', 'Your account is blocked. Please contact support.'),
         code: 'ACCOUNT_BLOCKED',
       });
     }
 
     req.user = user;
-    return withAiAccount(user.id, () => next());
+    // Bind the reading language (ka | en) for AI code deep in the stack.
+    return withAiAccount(user.id, () => next(), req.lang);
   } catch (error) {
     if (!['TokenExpiredError', 'JsonWebTokenError', 'NotBeforeError'].includes(error?.name)) return next(error);
     const expired = error?.name === 'TokenExpiredError';
     return res.status(401).json({
       error: expired
-        ? 'სესიის ვადა ამოიწურა. ხელახლა შედი ანგარიშში.'
-        : 'ავტორიზაციის ტოკენი არასწორია.',
+        ? t(req, 'სესიის ვადა ამოიწურა. ხელახლა შედი ანგარიშში.', 'Your session has expired. Please sign in again.')
+        : t(req, 'ავტორიზაციის ტოკენი არასწორია.', 'The sign-in token is not valid.'),
       code: expired ? 'TOKEN_EXPIRED' : 'TOKEN_INVALID',
     });
   }
@@ -107,12 +111,13 @@ export async function enforceAppAvailability(req, res, next) {
 
     const settings = await getAppSettings();
     if (settings.maintenanceMode) {
+      const maintenanceMessage = maintenanceMessageFor(settings, req.lang);
       return res.status(503).json({
-        error: settings.maintenanceMessage,
+        error: maintenanceMessage,
         code: 'MAINTENANCE',
         settings: {
           maintenanceMode: true,
-          maintenanceMessage: settings.maintenanceMessage,
+          maintenanceMessage,
         },
       });
     }

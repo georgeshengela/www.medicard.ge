@@ -10,6 +10,7 @@ import { formatDayMonthYearKa } from '@/lib/format';
 import { peekAnnouncement } from '@/hooks/useAnnouncements';
 import { HUB, hubInk, hubText, hubTint } from '@/theme/hub';
 import { useIsDark, useThemeColors } from '@/theme/colors';
+import { tx } from '@/i18n/locale';
 
 /** Full news card: picture, title, details and the one button. Opens from Home or a push `route`. */
 export default function NewsDetail() {
@@ -55,14 +56,14 @@ export default function NewsDetail() {
       <View style={[s.header, { paddingTop: insets.top + 8 }]}>
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel="უკან"
+          accessibilityLabel={tx('უკან', 'Back')}
           onPress={back}
           style={[s.back, { backgroundColor: c.surface }]}
         >
           <ArrowLeft size={22} color={c.text100} />
         </Pressable>
         <Text accessibilityRole="header" style={[hubText.sectionTitle, { color: c.text100, flex: 1 }]} numberOfLines={1}>
-          სიახლე
+          {tx('სიახლე', 'News')}
         </Text>
       </View>
 
@@ -76,12 +77,12 @@ export default function NewsDetail() {
             <Megaphone size={22} color={ink} strokeWidth={1.8} />
           </View>
           <Text style={[hubText.cardTitle, { color: c.text100, textAlign: 'center', fontSize: 17 }]}>
-            {state === 'gone' ? 'ეს სიახლე აღარ არის აქტიური' : 'სიახლე ვერ ჩაიტვირთა'}
+            {state === 'gone' ? tx('ეს სიახლე აღარ არის აქტიური', 'This news item is no longer active') : tx('სიახლე ვერ ჩაიტვირთა', "Couldn't load this news item")}
           </Text>
           <Text style={[hubText.body, { color: c.text200, textAlign: 'center' }]}>
-            {state === 'gone' ? 'ღონისძიება დასრულდა ან სიახლე მოიხსნა.' : 'შეამოწმე ინტერნეტი და სცადე ხელახლა.'}
+            {state === 'gone' ? tx('ღონისძიება დასრულდა ან სიახლე მოიხსნა.', 'The event has ended or the item was removed.') : tx('შეამოწმე ინტერნეტი და სცადე ხელახლა.', 'Check your internet connection and try again.')}
           </Text>
-          <Button label="მთავარზე დაბრუნება" onPress={() => router.replace('/(tabs)/home')} />
+          <Button label={tx('მთავარზე დაბრუნება', 'Back to Home')} onPress={() => router.replace('/(tabs)/home')} />
         </View>
       ) : (
         <>
@@ -108,7 +109,7 @@ export default function NewsDetail() {
             <View style={{ gap: 10 }}>
               <View style={[s.badge, { backgroundColor: hubTint(ink, dark) }]}>
                 <Text style={[hubText.caption, { color: ink, fontFamily: 'NotoSansGeorgian_600SemiBold' }]}>
-                  {card.badge || 'სიახლე'}
+                  {card.badge || tx('სიახლე', 'News')}
                 </Text>
               </View>
               <Text accessibilityRole="header" style={[s.title, { color: c.text100 }]}>
@@ -118,7 +119,7 @@ export default function NewsDetail() {
                 <Text style={[hubText.caption, { color: c.text300 }]}>
                   {[
                     card.publishedAt ? formatDayMonthYearKa(new Date(card.publishedAt)) : '',
-                    card.endsAt ? `აქტიურია ${formatDayMonthYearKa(new Date(card.endsAt))}-მდე` : '',
+                    card.endsAt ? tx(`აქტიურია ${formatDayMonthYearKa(new Date(card.endsAt))}-მდე`, `Active until ${formatDayMonthYearKa(new Date(card.endsAt))}`) : '',
                   ]
                     .filter(Boolean)
                     .join(' · ')}

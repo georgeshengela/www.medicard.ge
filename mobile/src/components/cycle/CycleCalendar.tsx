@@ -14,6 +14,7 @@ import {
 } from '@/lib/cyclePresentation.js';
 import { MONTHS_KA, WEEKDAYS_KA } from '@/constants/cycle';
 import { ka } from '@/i18n/ka';
+import { tx } from '@/i18n/locale';
 import { cycleHexAlpha, cycleShadow, useCycleColors } from '@/theme/cycle';
 
 function dateKey(y: number, m: number, d: number) {
@@ -89,7 +90,7 @@ export function CycleCalendar({ year, month, marks, selected, onSelect, onPrev, 
           marginBottom: 14,
         }}
       >
-        <NavBtn onPress={onPrev} c={c} label="წინა თვე">
+        <NavBtn onPress={onPrev} c={c} label={tx('წინა თვე', 'Previous month')}>
           <ChevronLeft size={22} color={c.brand} strokeWidth={2.4} />
         </NavBtn>
         <Text
@@ -104,7 +105,7 @@ export function CycleCalendar({ year, month, marks, selected, onSelect, onPrev, 
         >
           {MONTHS_KA[month]} {year}
         </Text>
-        <NavBtn onPress={onNext} c={c} label="შემდეგი თვე">
+        <NavBtn onPress={onNext} c={c} label={tx('შემდეგი თვე', 'Next month')}>
           <ChevronRight size={22} color={c.brand} strokeWidth={2.4} />
         </NavBtn>
       </View>

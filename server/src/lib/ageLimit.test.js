@@ -36,3 +36,8 @@ test('edits: a stored under-18 date does not block unrelated saves, a new one is
   assert.equal(birthDateAgeError(minor, new Date(`${yearsAgo(40)}T00:00:00.000Z`)), MIN_USER_AGE_MESSAGE);
   assert.equal(birthDateAgeError(adult, null), null);
 });
+
+test('the 18+ message is English for English requests', () => {
+  const minor = new Date(`${yearsAgo(15)}T00:00:00.000Z`);
+  assert.equal(birthDateAgeError(minor, null, 'en'), 'You must be 18 or older to use MEDICARD.');
+});

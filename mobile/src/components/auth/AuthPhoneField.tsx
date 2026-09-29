@@ -5,6 +5,7 @@ import Svg, { Rect } from 'react-native-svg';
 import { FIGMA_AUTH_SHADOW, useFigmaAuth } from '@/constants/figmaAuthLayout';
 import { formatGeorgianMobile, georgianLocalDigits, isGeorgianMobile } from '@/lib/phoneFormat';
 import { useThemeColors } from '@/theme/colors';
+import { tx } from '@/i18n/locale';
 
 type Props = {
   label?: string;
@@ -91,7 +92,7 @@ export const AuthPhoneField = forwardRef<TextInput, Props>(function AuthPhoneFie
           textContentType="telephoneNumber"
           autoComplete="tel"
           maxLength={16}
-          accessibilityLabel={`${label ?? 'ტელეფონის ნომერი'}, +995`}
+          accessibilityLabel={`${label ?? tx('ტელეფონის ნომერი', 'Phone number')}, +995`}
           onFocus={() => setFocused(true)}
           onBlur={() => setFocused(false)}
           style={{

@@ -29,6 +29,22 @@ export const DEFAULT_SHARE_PERMISSIONS = Object.freeze({
 
 export const SHARE_AUTH_ERROR = 'ავტორიზაცია საჭიროა. შედი ანგარიშში.';
 export const SHARE_DENY_ERROR = 'ბმული ვერ მოიძებნა';
+export const SHARE_AUTH_ERROR_EN = 'Please sign in to your account.';
+export const SHARE_DENY_ERROR_EN = 'Link not found';
+
+/**
+ * Language of a share response: the app header / ?lang= (req.lang) when given, otherwise the
+ * browser's Accept-Language (a partner may open the link outside the app). Georgian by default.
+ */
+export function shareLang(req) {
+  if (!req) return 'ka';
+  if (req.langExplicit && (req.lang === 'en' || req.lang === 'ka')) return req.lang;
+  const first = String(req.headers?.['accept-language'] || '')
+    .split(',')[0]
+    .trim()
+    .toLowerCase();
+  return /^en\b/.test(first) ? 'en' : 'ka';
+}
 
 const PERM_KEYS = ['period', 'cyclePhase', 'fertileWindow', 'symptoms'];
 
@@ -146,12 +162,12 @@ export function applyPrivateCache(res) {
 /** Same body for every post-auth denial. Do not vary by reason. */
 export function denyShare(res, status = 404) {
   applyPrivateCache(res);
-  return res.status(status).json({ error: SHARE_DENY_ERROR });
+  return res.status(status).json({ error: shareLang(res.req) === 'en' ? SHARE_DENY_ERROR_EN : SHARE_DENY_ERROR });
 }
 
 export function denyShareAuth(res) {
   applyPrivateCache(res);
-  return res.status(401).json({ error: SHARE_AUTH_ERROR });
+  return res.status(401).json({ error: shareLang(res.req) === 'en' ? SHARE_AUTH_ERROR_EN : SHARE_AUTH_ERROR });
 }
 
 export function securityShareLog(event, meta = {}) {
@@ -183,7 +199,7 @@ export function ownerShareView(share, plaintextToken = null) {
   };
 }
 
-export function buildPartnerPayload({ profile, logs, permissions, today = todayInTimeZone() }) {
+export function buildPartnerPayload({ profile, logs, permissions, today = todayInTimeZone(), lang = 'ka' }) {
   const allowed = normalizeSharePermissions(permissions);
   const inferred = inferCycleStats(logs, profile.avgCycleLength, profile.avgPeriodLength);
   const averages = resolveForecastAverages(profile, inferred);
@@ -207,6 +223,7 @@ export function buildPartnerPayload({ profile, logs, permissions, today = todayI
     avgCycleLength: averages.usedCycleLength,
     avgPeriodLength: averages.usedPeriodLength,
     today,
+    lang,
   });
 
   const payload = {

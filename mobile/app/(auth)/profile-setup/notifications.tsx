@@ -12,6 +12,7 @@ import { patchProfileExtra } from '@/lib/profileSetupFlow';
 import { useOnboardingDevPreview, onboardingScreenBlocked, onboardingStepHref } from '@/lib/onboardingDevPreview';
 import { useAuth } from '@/store/AuthContext';
 import { useFigmaProfileSetup } from '@/constants/figmaProfileSetupLayout';
+import { tx } from '@/i18n/locale';
 
 /** Enable notifications — Figma 8845:312878 */
 export default function ProfileSetupNotificationsScreen() {
@@ -127,7 +128,7 @@ export default function ProfileSetupNotificationsScreen() {
                 {ka.profileSetup.notificationsPreviewAction}
               </Text>
             </View>
-            <Text style={{ fontFamily: 'NotoSansGeorgian_400Regular', fontSize: 10, color: '#6B7280' }}>30წთ</Text>
+            <Text style={{ fontFamily: 'NotoSansGeorgian_400Regular', fontSize: 10, color: '#6B7280' }}>{tx('30წთ', '30 min')}</Text>
           </View>
         </View>
       </View>

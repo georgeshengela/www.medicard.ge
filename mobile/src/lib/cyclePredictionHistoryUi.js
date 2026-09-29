@@ -3,6 +3,8 @@
  * Does not change forecast math, snapshot identity, or recompute aggregates.
  */
 
+import { isEn } from '../i18n/locale.js';
+
 export const PREDICTION_HISTORY_VISIBLE_LIMIT = 6;
 export const AGGREGATE_MIN_COMPLETED = 3;
 
@@ -21,15 +23,34 @@ const MONTHS_KA = [
   'დეკემბერი',
 ];
 
+const MONTHS_EN = [
+  'January',
+  'February',
+  'March',
+  'April',
+  'May',
+  'June',
+  'July',
+  'August',
+  'September',
+  'October',
+  'November',
+  'December',
+];
+
+function months() {
+  return isEn() ? MONTHS_EN : MONTHS_KA;
+}
+
 export function formatHistoryDateKa(ymd) {
   if (typeof ymd !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(ymd)) return ymd || '';
   const [, m, d] = ymd.split('-');
-  return `${Number(d)} ${MONTHS_KA[Number(m) - 1]}`;
+  return `${Number(d)} ${months()[Number(m) - 1]}`;
 }
 
 export function formatHistoryMonthKa(ymd) {
   if (typeof ymd !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(ymd)) return '';
-  const month = MONTHS_KA[Number(ymd.slice(5, 7)) - 1];
+  const month = months()[Number(ymd.slice(5, 7)) - 1];
   return month || '';
 }
 

@@ -8,6 +8,7 @@ import { useHideTabChromeWhile } from '@/components/navigation/tabChrome';
 import { FEATURE_LABELS, featureForPath, featureMessage, isFeatureOn, useFeatureState } from '@/lib/featureFlags';
 import { HUB, hubInk, hubText, hubTint } from '@/theme/hub';
 import { useIsDark, useThemeColors } from '@/theme/colors';
+import { tx } from '@/i18n/locale';
 
 /**
  * Covers a screen whose module an admin paused (admin „მოდულები“). Entries are already hidden
@@ -40,13 +41,13 @@ export function ModuleGate() {
           <PauseCircle size={24} color={ink} strokeWidth={1.8} />
         </View>
         <Text accessibilityRole="header" style={[hubText.cardTitle, { color: c.text100, fontSize: 18, lineHeight: 26 }]}>
-          {FEATURE_LABELS[key]} დროებით შეჩერებულია
+          {tx(`${FEATURE_LABELS[key]} დროებით შეჩერებულია`, `${FEATURE_LABELS[key]} is paused for now`)}
         </Text>
         <Text accessibilityRole="alert" style={[hubText.body, { color: c.text200, fontSize: 14, lineHeight: 22 }]}>
           {featureMessage(key, flags)}
         </Text>
-        <Button label="მთავარზე დაბრუნება" onPress={() => router.replace('/(tabs)/home')} />
-        {router.canGoBack() ? <Button label="უკან" variant="secondary" onPress={leave} /> : null}
+        <Button label={tx('მთავარზე დაბრუნება', 'Back to Home')} onPress={() => router.replace('/(tabs)/home')} />
+        {router.canGoBack() ? <Button label={tx('უკან', 'Back')} variant="secondary" onPress={leave} /> : null}
       </View>
     </View>
   );

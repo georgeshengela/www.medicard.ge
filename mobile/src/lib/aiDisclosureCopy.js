@@ -1,6 +1,11 @@
-/** Pick Georgian or English AI-disclosure copy. App Review devices are English. */
+/**
+ * Pick Georgian or English AI-disclosure copy, following the app language by default.
+ * The Georgian manifest stays the legal record: the consent version is set on the server from it,
+ * so the English half never changes the version or re-prompts anyone.
+ */
 
 import bundled from '../config/aiDisclosure.json' with { type: 'json' };
+import { dateLocale } from '../i18n/locale.js';
 
 const KA_HEADINGS = {
   recipients: 'მონაცემების მიმღებები',
@@ -20,7 +25,7 @@ export function deviceLanguageTag() {
   }
 }
 
-export function disclosureCopy(manifest, locale = deviceLanguageTag()) {
+export function disclosureCopy(manifest, locale = dateLocale()) {
   const english = manifest?.en || bundled.en;
   if (english && !isGeorgianLocale(locale)) {
     return {

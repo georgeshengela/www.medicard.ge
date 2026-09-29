@@ -40,9 +40,25 @@ import {
 
 export const CYCLE_PREGNANCY_CARE_PLAN_HTTP_PATH = '/pregnancy/care-plan';
 
-function httpError(message, status) {
+/** English for the Georgian messages below (error middleware sends `messageEn` to English requests). */
+const MESSAGES_EN = {
+  'ეს მოვლის პუნქტი არ არსებობს.': 'This care item does not exist.',
+  'მდგომარეობა არასწორია.': 'The status is not valid.',
+  'დაგეგმილი თარიღი არასწორია.': 'The planned date is not valid.',
+  'დაგეგმილი დრო არასწორია.': 'The planned time is not valid.',
+  'ვიზიტის ადგილი არასწორია.': 'The visit location is not valid.',
+  'დასრულების თარიღი არასწორია.': 'The completion date is not valid.',
+  'შენიშვნა არასწორია.': 'The note is not valid.',
+  'შენიშვნა ძალიან გრძელია.': 'The note is too long.',
+  'შეხსენების დრო არასწორია.': 'The reminder time is not valid.',
+  'შეხსენების რეჟიმი არასწორია.': 'The reminder mode is not valid.',
+};
+
+function httpError(message, status, messageEn) {
   const err = new Error(message);
   err.status = status;
+  const en = messageEn || MESSAGES_EN[message];
+  if (en) err.messageEn = en;
   return err;
 }
 
@@ -300,7 +316,7 @@ export function validateCarePlanWrite(body = {}, { today, careItemId } = {}) {
     try {
       plannedPlace = normalizePlannedPlace(plannedPlace);
     } catch (err) {
-      throw httpError(err.message || 'ვიზიტის ადგილი არასწორია.', err.status || 400);
+      throw httpError(err.message || 'ვიზიტის ადგილი არასწორია.', err.status || 400, err.messageEn);
     }
   }
   if (plannedDate === null) plannedPlace = null;

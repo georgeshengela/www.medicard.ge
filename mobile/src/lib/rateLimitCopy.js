@@ -1,5 +1,7 @@
 'use strict';
 
+const { tx } = require('../i18n/locale.js');
+
 function parseRetryAfterSeconds(retryRaw, payload) {
   const fromPayload = Number(payload?.retryAfterSeconds);
   if (Number.isFinite(fromPayload) && fromPayload >= 0) return Math.floor(fromPayload);
@@ -14,9 +16,9 @@ function parseRetryAfterSeconds(retryRaw, payload) {
 function formatRateLimitMessage(seconds, fallback) {
   const wait = Math.max(1, Math.min(3600, Number(seconds) || 0));
   if (!Number.isFinite(Number(seconds)) || Number(seconds) <= 0) {
-    return fallback || 'ძალიან ბევრი მოთხოვნა. დაელოდე ერთ წუთს.';
+    return fallback || tx('ძალიან ბევრი მოთხოვნა. დაელოდე ერთ წუთს.', 'Too many requests. Please wait a minute.');
   }
-  return `ძალიან ბევრი მოთხოვნა. დაელოდე ${wait} წამს.`;
+  return tx(`ძალიან ბევრი მოთხოვნა. დაელოდე ${wait} წამს.`, `Too many requests. Please wait ${wait} ${wait === 1 ? 'second' : 'seconds'}.`);
 }
 
 function publicApiErrorMessage(status, payload, retryRaw, fallback) {
@@ -27,7 +29,7 @@ function publicApiErrorMessage(status, payload, retryRaw, fallback) {
   if (status !== 429) return serverError;
   const seconds = parseRetryAfterSeconds(retryRaw, payload);
   if (seconds == null) {
-    if (typeof serverError === 'string' && /წამს|წუთ/.test(serverError)) return serverError;
+    if (typeof serverError === 'string' && /წამს|წუთ|second|minute/i.test(serverError)) return serverError;
     return formatRateLimitMessage(60, serverError);
   }
   return formatRateLimitMessage(seconds, serverError);

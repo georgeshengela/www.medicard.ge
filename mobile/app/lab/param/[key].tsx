@@ -1,3 +1,4 @@
+import { tx } from '@/i18n/locale';
 import React, { useMemo, useState } from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
@@ -146,7 +147,7 @@ export default function LabParamScreen() {
                 ) : null}
                 {badge ? (
                   <Text style={{ fontFamily: 'NotoSansGeorgian_400Regular', fontSize: 12, lineHeight: 18, color: T.textMuted }}>
-                    ნიშანი ლაბორატორიის ფურცელზე დაბეჭდილ ნიშანს ან საცნობარო დიაპაზონს ეფუძნება, არა აპის საკუთარ ნორმებს.
+                    {tx('ნიშანი ლაბორატორიის ფურცელზე დაბეჭდილ ნიშანს ან საცნობარო დიაპაზონს ეფუძნება, არა აპის საკუთარ ნორმებს.', 'The flag is based on the mark or reference range printed on the lab report, not on the app’s own ranges.')}
                   </Text>
                 ) : null}
                 <MedicalSourcesLink sourceIds={['labResults']} />

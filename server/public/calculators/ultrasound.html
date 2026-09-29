@@ -3,15 +3,19 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>ულტრაბგერითი თარიღი — მედიქარდი</title>
-  <meta name="description" content="გამოთვალე მშობიარობის თარიღი ულტრაბგერის თარიღით და სკანზე მითითებული კვირებით. Medicard.GE." />
+  <script src="/site-i18n.js?v=1"></script>
+  <title data-en="Ultrasound due date — MEDICARD">ულტრაბგერითი თარიღი — მედიქარდი</title>
+  <meta name="description" content="გამოთვალე მშობიარობის თარიღი ულტრაბგერის თარიღით და სკანზე მითითებული კვირებით. Medicard.GE." data-en-content="Estimate your due date from the ultrasound date and the weeks given at the scan. Medicard.GE." />
   <link rel="canonical" href="https://medicard.ge/calculators/ultrasound" />
+  <link rel="alternate" hreflang="ka" href="https://medicard.ge/calculators/ultrasound" />
+  <link rel="alternate" hreflang="en" href="https://medicard.ge/calculators/ultrasound?lang=en" />
+  <link rel="alternate" hreflang="x-default" href="https://medicard.ge/calculators/ultrasound" />
   <meta name="theme-color" content="#E8F5F2" />
   <meta property="og:type" content="website" />
-  <meta property="og:locale" content="ka_GE" />
+  <meta property="og:locale" content="ka_GE" data-en-content="en_US" />
   <meta property="og:url" content="https://medicard.ge/calculators/ultrasound" />
-  <meta property="og:title" content="ულტრაბგერითი თარიღი — მედიქარდი" />
-  <meta property="og:description" content="გამოთვალე მშობიარობის თარიღი ულტრაბგერის თარიღით და სკანზე მითითებული კვირებით. Medicard.GE." />
+  <meta property="og:title" content="ულტრაბგერითი თარიღი — მედიქარდი" data-en-content="Ultrasound due date — MEDICARD" />
+  <meta property="og:description" content="გამოთვალე მშობიარობის თარიღი ულტრაბგერის თარიღით და სკანზე მითითებული კვირებით. Medicard.GE." data-en-content="Estimate your due date from the ultrasound date and the weeks given at the scan. Medicard.GE." />
   <meta property="og:image" content="https://medicard.ge/screens/home.png" />
   <meta name="twitter:card" content="summary_large_image" />
   <link rel="icon" href="/favicon.png" />
@@ -19,51 +23,51 @@
   <link rel="preload" href="/fonts/firago/FiraGO-Regular.woff2" as="font" type="font/woff2" crossorigin />
   <link rel="stylesheet" href="/landing.css?v=39" />
   <link rel="stylesheet" href="/calculators.css?v=2" />
-  <link rel="stylesheet" href="/site-nav.css?v=7" />
+  <link rel="stylesheet" href="/site-nav.css?v=8" />
   <link rel="stylesheet" href="/site-refresh.css?v=2" />
 </head>
 <body class="site-refresh">
   <header class="tb" id="topbar"></header>
-  <script src="/site-nav.js?v=8"></script>
+  <script src="/site-nav.js?v=7"></script>
   <main>
     <section class="calc-hero band-dark">
       <div class="wrap">
-        <p class="calc-crumb"><a href="/">მთავარი</a> / <a href="/calculators">კალკულატორები</a> / ულტრაბგერითი თარიღი</p>
-        <p class="kicker">ორსულობა</p>
-        <h1>ულტრაბგერითი თარიღი</h1>
-        <p class="lead">სკანის დღეს ნაყოფის ასაკი უკვე დათვლილია. ვადა = სკანის თარიღი + (280 − იმ დღის დღეები). პირველი ტრიმესტრის CRL ყველაზე საიმედოა.</p>
-        <div class="chips"><span class="chip">ACOG 280 დღე</span><span class="chip">პირველი ტრიმესტრი</span><span class="chip">ბრაუზერში რჩება</span></div>
+        <p class="calc-crumb" data-en-html="<a href='/'>Home</a> / <a href='/calculators'>Calculators</a> / Ultrasound due date"><a href="/">მთავარი</a> / <a href="/calculators" data-en="Calculators">კალკულატორები</a> / ულტრაბგერითი თარიღი</p>
+        <p class="kicker" data-en="Pregnancy">ორსულობა</p>
+        <h1 data-en="Ultrasound due date">ულტრაბგერითი თარიღი</h1>
+        <p class="lead" data-en="On the day of the scan, the baby's age has already been measured. Due date = scan date + (280 − gestational age in days on that day). A first-trimester CRL is the most reliable.">სკანის დღეს ნაყოფის ასაკი უკვე დათვლილია. ვადა = სკანის თარიღი + (280 − იმ დღის დღეები). პირველი ტრიმესტრის CRL ყველაზე საიმედოა.</p>
+        <div class="chips"><span class="chip" data-en="ACOG 280 days">ACOG 280 დღე</span><span class="chip" data-en="First trimester">პირველი ტრიმესტრი</span><span class="chip" data-en="Stays in your browser">ბრაუზერში რჩება</span></div>
       </div>
     </section>
     <section class="calc-stage band-paper">
       <div class="wrap calc-layout">
         <form class="calc-card" data-calc="ultrasound" novalidate autocomplete="off">
-          <h2>გამოთვლა</h2>
+          <h2 data-en="Calculate">გამოთვლა</h2>
           <div class="calc-field">
-          <label for="scan">სკანის თარიღი</label>
+          <label for="scan" data-en="Scan date">სკანის თარიღი</label>
           <input id="scan" name="scan" type="date" required />
         </div>
         <div class="calc-field">
-          <span class="lbl">კვირა სკანზე</span>
+          <span class="lbl" data-en="Weeks at the scan">კვირა სკანზე</span>
           <div class="calc-stepper">
-            <button type="button" data-step="-1" aria-label="შემცირება">−</button>
+            <button type="button" data-step="-1" aria-label="შემცირება" data-en-aria-label="Decrease">−</button>
             <input id="weeks" name="weeks" type="number" min="4" max="42" value="8" required />
-            <button type="button" data-step="1" aria-label="გაზრდა">+</button>
+            <button type="button" data-step="1" aria-label="გაზრდა" data-en-aria-label="Increase">+</button>
           </div>
         </div>
         <div class="calc-field">
-          <span class="lbl">დღე სკანზე</span>
+          <span class="lbl" data-en="Days at the scan">დღე სკანზე</span>
           <div class="calc-stepper">
-            <button type="button" data-step="-1" aria-label="შემცირება">−</button>
+            <button type="button" data-step="-1" aria-label="შემცირება" data-en-aria-label="Decrease">−</button>
             <input id="days" name="days" type="number" min="0" max="6" value="0" required />
-            <button type="button" data-step="1" aria-label="გაზრდა">+</button>
+            <button type="button" data-step="1" aria-label="გაზრდა" data-en-aria-label="Increase">+</button>
           </div>
         </div>
         <div class="calc-actions">
-          <button class="btn btn-cta" type="submit">გამოთვლა</button>
-          <button class="btn btn-ghost" type="button" data-reset>თავიდან</button>
+          <button class="btn btn-cta" type="submit" data-en="Calculate">გამოთვლა</button>
+          <button class="btn btn-ghost" type="button" data-reset data-en="Start over">თავიდან</button>
         </div>
-        <p class="calc-note">შედეგი არის ორიენტირი. არ ცვლის ექიმს, ულტრაბგერას ან ლაბორატორიას.</p>
+        <p class="calc-note" data-en="The result is an estimate. It doesn't replace a doctor, an ultrasound or lab tests.">შედეგი არის ორიენტირი. არ ცვლის ექიმს, ულტრაბგერას ან ლაბორატორიას.</p>
         </form>
         <div class="calc-result" data-result></div>
       </div>
@@ -71,33 +75,33 @@
     <section class="calc-article band-paper">
       <div class="wrap">
         
-        <h2>რატომ ცვლის სკანი თარიღს</h2>
-        <p>პირველ ტრიმესტრში ნაყოფის სიგრძე (CRL) ყველაზე ზუსტად აჩვენებს ასაკს. თუ სკანის ასაკი LMP-ისგან მეტად განსხვავდება, ექიმი ხშირად სკანს ანიჭებს უპირატესობას.</p>
-        <p>ამ კალკულატორში შეიყვან სკანის თარიღს და იმ დღის კვირებს/დღეებს. ვადა = 40 კვირა ამ წერტილიდან.</p>
-        <p>22 კვირის შემდეგ დათარიღება ნაკლებად ზუსტია. ერთხელ დადგენილი EDD ჩვეულებრივ აღარ იცვლება ყოველ სკანზე.</p>
-        <h2>სხვა კალკულატორები</h2>
-        <div class="calc-related"><a href="/calculators/due-date"><small>კალკულატორი</small><b>მშობიარობის თარიღი</b></a><a href="/calculators/weeks-to-months"><small>კალკულატორი</small><b>კვირები თვეებში</b></a><a href="/calculators/ivf"><small>კალკულატორი</small><b>IVF და FET თარიღი</b></a></div>
+        <h2 data-en="Why a scan changes the date">რატომ ცვლის სკანი თარიღს</h2>
+        <p data-en="In the first trimester, the baby's crown–rump length (CRL) shows gestational age most accurately. If the scan age differs a lot from the LMP date, doctors often go with the scan.">პირველ ტრიმესტრში ნაყოფის სიგრძე (CRL) ყველაზე ზუსტად აჩვენებს ასაკს. თუ სკანის ასაკი LMP-ისგან მეტად განსხვავდება, ექიმი ხშირად სკანს ანიჭებს უპირატესობას.</p>
+        <p data-en="In this calculator, you enter the scan date and the weeks/days measured on that day. Due date = 40 weeks counted from that point.">ამ კალკულატორში შეიყვან სკანის თარიღს და იმ დღის კვირებს/დღეებს. ვადა = 40 კვირა ამ წერტილიდან.</p>
+        <p data-en="Dating after 22 weeks is less accurate. Once set, the due date (EDD) usually isn't changed at every scan.">22 კვირის შემდეგ დათარიღება ნაკლებად ზუსტია. ერთხელ დადგენილი EDD ჩვეულებრივ აღარ იცვლება ყოველ სკანზე.</p>
+        <h2 data-en="More calculators">სხვა კალკულატორები</h2>
+        <div class="calc-related"><a href="/calculators/due-date"><small data-en="Calculator">კალკულატორი</small><b data-en="Due date calculator">მშობიარობის თარიღი</b></a><a href="/calculators/weeks-to-months"><small data-en="Calculator">კალკულატორი</small><b data-en="Weeks to months">კვირები თვეებში</b></a><a href="/calculators/ivf"><small data-en="Calculator">კალკულატორი</small><b data-en="IVF and FET due date">IVF და FET თარიღი</b></a></div>
       </div>
     </section>
   </main>
   <footer class="sf-foot">
     <div class="wrap">
-      <p class="disclaimer" id="disclaimer"><strong>ეს არ არის დიაგნოზი.</strong> კალკულატორები, Medi და აპის ანალიზები ეხმარება გაგებაში, მაგრამ არ ცვლის ექიმის კონსულტაციას, დანიშნულებას ან სასწრაფო დახმარებას. ციკლის პროგნოზი არ არის კონტრაცეფცია. თუ მდგომარეობა მძიმეა — მიმართე სპეციალისტს ან დარეკე 112-ზე.</p>
+      <p class="disclaimer" id="disclaimer" data-en-html="<strong>This is not a diagnosis.</strong> The calculators, Medi and the app's analyses help you understand, but they don't replace a doctor's consultation, a prescription or emergency care. A cycle forecast is not contraception. If it's serious, see a specialist or call 112."><strong>ეს არ არის დიაგნოზი.</strong> კალკულატორები, Medi და აპის ანალიზები ეხმარება გაგებაში, მაგრამ არ ცვლის ექიმის კონსულტაციას, დანიშნულებას ან სასწრაფო დახმარებას. ციკლის პროგნოზი არ არის კონტრაცეფცია. თუ მდგომარეობა მძიმეა — მიმართე სპეციალისტს ან დარეკე 112-ზე.</p>
       <div class="sf-row">
-        <a class="sf-brand" href="/"><img src="/icon.png" width="28" height="28" alt="" /><span>მედიქარდი</span></a>
-        <nav class="sf-links" aria-label="საიტის ბმულები">
-          <a href="/about">ჩვენ შესახებ</a>
-          <a href="/contact">კონტაქტი</a>
-          <a href="/privacy">კონფიდენციალურობა</a>
-          <a href="/terms">წესები</a>
-          <a href="/delete-account">ანგარიშის წაშლა</a>
-          <a href="/calculators" aria-current="page">კალკულატორები</a>
+        <a class="sf-brand" href="/"><img src="/icon.png" width="28" height="28" alt="" /><span data-en="MEDICARD">მედიქარდი</span></a>
+        <nav class="sf-links" aria-label="საიტის ბმულები" data-en-aria-label="Site links">
+          <a href="/about" data-en="About">ჩვენ შესახებ</a>
+          <a href="/contact" data-en="Contact">კონტაქტი</a>
+          <a href="/privacy" data-en="Privacy">კონფიდენციალურობა</a>
+          <a href="/terms" data-en="Terms">წესები</a>
+          <a href="/delete-account" data-en="Delete account">ანგარიშის წაშლა</a>
+          <a href="/calculators" aria-current="page" data-en="Calculators">კალკულატორები</a>
         </nav>
         <p class="sf-copy">© <span id="y">2026</span> Medicard.GE</p>
       </div>
     </div>
   </footer>
-  <script src="/landing.js?v=16"></script>
-  <script type="module" src="/calculators.js?v=2"></script>
+  <script src="/landing.js?v=17"></script>
+  <script type="module" src="/calculators.js?v=3"></script>
 </body>
 </html>

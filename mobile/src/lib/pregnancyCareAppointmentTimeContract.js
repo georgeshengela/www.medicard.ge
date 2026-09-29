@@ -8,6 +8,7 @@
  */
 
 import { isCivilDateKey } from './pregnancyCareCatalog.js';
+import { tx } from '../i18n/locale.js';
 
 export const PLANNED_TIME_PATTERN = /^([01]\d|2[0-3]):[0-5]\d$/;
 export const CALENDAR_TIMED_EVENT_TECHNICAL_DURATION_MINUTES = 30;
@@ -87,7 +88,7 @@ export function addMinutesToClock(time, minutes) {
 export function rejectMalformedPlannedTime(value) {
   if (value == null || value === '') return null;
   if (!isClockTime(value)) {
-    const err = new Error('დაგეგმილი დრო არასწორია.');
+    const err = new Error(tx('დაგეგმილი დრო არასწორია.', 'The planned time is not valid.'));
     err.status = 400;
     throw err;
   }

@@ -14,6 +14,7 @@ import {
 import { engageDestination } from './notificationPlan.ts';
 import { engageSignalHash, newDecisionId } from './mediNotificationRevalidate.ts';
 import { pickBestQuestSmartCandidate } from './quest/questSmartEngage.js';
+import { dateLocale } from '../i18n/locale.js';
 
 export type EngageSentRow = { key: string; family: string; at: number; ymd: string };
 
@@ -422,7 +423,7 @@ export function evaluateEngageBrain(snap: EngageSnapshot): { accepted: EngageCan
       key: 'engage-insight-steps',
       family: 'insight',
       fireAt: scheduleAt(now, prefs, 12, 20, openedToday ? 1 : 0),
-      vars: { steps: snap.weekSteps.toLocaleString('ka-GE') },
+      vars: { steps: snap.weekSteps.toLocaleString(dateLocale()) },
       route: engageDestination('insight', { insight: 'steps' }),
       reasons: [`week steps ${snap.weekSteps} ≥ 15% above previous week`, 'real signal only'],
     });
@@ -453,7 +454,7 @@ export function evaluateEngageBrain(snap: EngageSnapshot): { accepted: EngageCan
       key: 'engage-achieve-steps',
       family: 'achievement',
       fireAt: scheduleAt(now, prefs, 18, 10, 0),
-      vars: { steps: snap.weekSteps.toLocaleString('ka-GE') },
+      vars: { steps: snap.weekSteps.toLocaleString(dateLocale()) },
       route: engageDestination('achievement', { insight: 'steps' }),
       reasons: ['50k steps this week', 'once per achievement'],
     });
@@ -503,7 +504,7 @@ export function evaluateEngageBrain(snap: EngageSnapshot): { accepted: EngageCan
       key: 'engage-steps-quiet',
       family: 'stepsQuiet',
       fireAt: scheduleAt(now, prefs, 18, 0, 0),
-      vars: { steps: snap.todaySteps.toLocaleString('ka-GE') },
+      vars: { steps: snap.todaySteps.toLocaleString(dateLocale()) },
       route: engageDestination('stepsQuiet'),
       reasons: [`today steps ${snap.todaySteps} below usual`, 'no pain logged'],
     });

@@ -34,6 +34,7 @@ import { cycleHistoryPresentation } from '@/lib/cycleHistoryCopy';
 import { buildCycleReportHtmlFromSummary } from '@/lib/cycleReport';
 import { useAuth } from '@/store/AuthContext';
 import { useCycleColors } from '@/theme/cycle';
+import { appLang } from '@/i18n/locale';
 
 export default function CycleSummary() {
   const { user } = useAuth();
@@ -49,7 +50,7 @@ export default function CycleSummary() {
   const [includeFertility, setIncludeFertility] = useState(false);
   const [includeSexual, setIncludeSexual] = useState(false);
   const [includeNotes, setIncludeNotes] = useState(false);
-  const [reportLocale, setReportLocale] = useState<'ka' | 'en' | 'fr' | 'ru'>('ka');
+  const [reportLocale, setReportLocale] = useState<'ka' | 'en' | 'fr' | 'ru'>(appLang());
   const copy = doctorSummaryCopy(reportLocale);
   const reportTitleFont = reportLocale === 'ka' ? 'NotoSansGeorgian_700Bold' : undefined;
   const localeNames: Record<string, string> = {
@@ -95,13 +96,13 @@ export default function CycleSummary() {
   const fmt = (iso: string | null | undefined) =>
     iso && /^\d{4}-\d{2}-\d{2}$/.test(iso) ? formatDoctorCivilDate(iso, reportLocale) : '—';
 
-  const chatCopy = doctorSummaryCopy('ka');
+  const chatCopy = doctorSummaryCopy(appLang());
   const chatContext = s?.menstrualHistory?.episodes?.length
     ? [
         `${chatCopy.historyDisclaimer}`,
         ...s.menstrualHistory.episodes.map(
           (e) =>
-            `${formatDoctorCivilDate(e.start, 'ka')} – ${formatDoctorCivilDate(e.end, 'ka')} (${chatCopy.days(e.durationDays)})`,
+            `${formatDoctorCivilDate(e.start, appLang())} – ${formatDoctorCivilDate(e.end, appLang())} (${chatCopy.days(e.durationDays)})`,
         ),
       ].join('\n')
     : chatCopy.historyDisclaimer;

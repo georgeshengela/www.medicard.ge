@@ -1,6 +1,7 @@
 import { allergyEnglishLabel } from '../constants/allergyCatalog.ts';
 import { conditionEnglishLabel } from '../constants/conditionCatalog.ts';
 import { PASSPORT_COPY, type PassportLocale } from '../i18n/healthPassport.ts';
+import { appLang } from '../i18n/locale.js';
 
 /**
  * Health passport (Phase 3.3, 2026-09-27): one printable page a person can hand to a doctor.
@@ -71,7 +72,7 @@ export function bodyOf(html: string): string {
   return match ? match[1] : html;
 }
 
-export function buildHealthPassportHtml(data: PassportData, locale: PassportLocale = 'ka'): string {
+export function buildHealthPassportHtml(data: PassportData, locale: PassportLocale = appLang()): string {
   const t = PASSPORT_COPY[locale];
   const p = data.person;
   const age = ageOn(p.birthDate, data.generatedOn);

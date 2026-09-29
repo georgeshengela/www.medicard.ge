@@ -7,6 +7,7 @@ import {
   type HealthMetricSnapshot,
   type HealthMetricsBundle,
 } from '@/types/healthMetrics';
+import { dateLocale } from '../i18n/locale.js';
 
 export function last7DayLabels(): string[] {
   const labels: string[] = [];
@@ -15,7 +16,7 @@ export function last7DayLabels(): string[] {
     const d = new Date(today);
     d.setDate(today.getDate() - i);
     labels.push(
-      d.toLocaleDateString('ka-GE', { weekday: 'short' }).slice(0, 2),
+      d.toLocaleDateString(dateLocale(), { weekday: 'short' }).slice(0, 2),
     );
   }
   return labels;
@@ -63,7 +64,7 @@ export function updatedLabelFromDate(date: string | null): string {
   const today = new Date();
   const ymd = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
   if (date === ymd) return ka.healthMetrics.today;
-  return new Date(`${date}T12:00:00`).toLocaleDateString('ka-GE', { month: 'short', day: 'numeric' });
+  return new Date(`${date}T12:00:00`).toLocaleDateString(dateLocale(), { month: 'short', day: 'numeric' });
 }
 
 function weightStatusKg(value: number, heightCm: number | null | undefined): string {
@@ -236,5 +237,5 @@ export function formatMetricValue(metric: HealthMetricSnapshot): string {
   if (metric.key === 'sleep') return metric.value.toFixed(1);
   if (metric.key === 'weight') return metric.value.toFixed(1);
   if (metric.key === 'heartRate') return metric.value.toFixed(1);
-  return Math.round(metric.value).toLocaleString('ka-GE');
+  return Math.round(metric.value).toLocaleString(dateLocale());
 }

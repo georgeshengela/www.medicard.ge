@@ -3,6 +3,14 @@ import { z } from 'zod';
 import { requireAuth } from '../middleware/auth.js';
 import { asyncHandler } from '../middleware/error.js';
 import { getUserLocationSnapshot, upsertUserLocation } from '../lib/userLocation.js';
+import { t } from '../lib/i18n.js';
+import { localizedPlaceNames } from '../lib/geoPlace.js';
+
+/** Adds display names in the request language; the stored Georgian fields stay as they are. */
+function withPlaceNames(result, lang) {
+  if (!result?.location) return result;
+  return { ...result, location: { ...result.location, ...localizedPlaceNames(result.location, lang) } };
+}
 
 export const locationRouter = Router();
 
@@ -27,7 +35,7 @@ locationRouter.get(
   requireAuth,
   asyncHandler(async (req, res) => {
     const result = await getUserLocationSnapshot(req.user.id);
-    res.json({ ok: true, ...result });
+    res.json({ ok: true, ...withPlaceNames(result, req.lang) });
   }),
 );
 
@@ -37,9 +45,9 @@ locationRouter.post(
   asyncHandler(async (req, res) => {
     const body = pingSchema.parse(req.body ?? {});
     if ((body.lat == null) !== (body.lng == null)) {
-      return res.status(400).json({ error: 'lat და lng ერთად უნდა გაიგზავნოს.' });
+      return res.status(400).json({ error: t(req, 'lat და lng ერთად უნდა გაიგზავნოს.', 'lat and lng must be sent together.') });
     }
     const result = await upsertUserLocation(req.user.id, body);
-    res.json({ ok: true, ...result });
+    res.json({ ok: true, ...withPlaceNames(result, req.lang) });
   }),
 );

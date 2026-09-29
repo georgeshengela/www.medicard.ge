@@ -1,3 +1,4 @@
+import { appLang } from '../../i18n/locale.js';
 import { JOURNEY_COSMETIC_NAMES } from './cosmeticNames';
 
 type Locale = 'ka' | 'en' | 'fr' | 'ru';
@@ -351,7 +352,7 @@ function cosmeticKey(i: number) {
   return `cosmetic_milestone_${String(i).padStart(2, '0')}`;
 }
 
-export function companionCopy(locale = 'ka') {
+export function companionCopy(locale: string = appLang()) {
   return {
     title: pick(UI.title, locale),
     subtitle: pick(UI.subtitle, locale),
@@ -417,13 +418,13 @@ export function companionCopy(locale = 'ka') {
   };
 }
 
-export function companionMessage(messageKey: string | null | undefined, locale = 'ka'): string {
+export function companionMessage(messageKey: string | null | undefined, locale: string = appLang()): string {
   if (!messageKey) return pick(MESSAGES.COMPANION_CALM, locale);
   const hit = MESSAGES[messageKey];
   return hit ? pick(hit, locale) : pick(MESSAGES.COMPANION_CALM, locale);
 }
 
-export function companionChapterTitle(chapterKey: string | null | undefined, locale = 'ka'): string {
+export function companionChapterTitle(chapterKey: string | null | undefined, locale: string = appLang()): string {
   if (!chapterKey) return '';
   const mapKey = `companion.journey.chapter.${chapterKey.replace('CHAPTER_', '')}`;
   const hit = CHAPTERS[mapKey] || CHAPTERS[`companion.journey.chapter.${chapterKey}`];
@@ -438,7 +439,7 @@ export function companionChapterTitle(chapterKey: string | null | undefined, loc
   return chapterKey;
 }
 
-export function companionMilestoneTitle(titleKey: string | null | undefined, locale = 'ka'): string {
+export function companionMilestoneTitle(titleKey: string | null | undefined, locale: string = appLang()): string {
   if (!titleKey) return '';
   const m = titleKey.match(/milestone_(\d{2})/i) || titleKey.match(/MILESTONE_(\d{2})/i);
   if (m) {
@@ -448,7 +449,7 @@ export function companionMilestoneTitle(titleKey: string | null | undefined, loc
   return titleKey;
 }
 
-export function companionMilestoneBody(descriptionKey: string | null | undefined, locale = 'ka'): string {
+export function companionMilestoneBody(descriptionKey: string | null | undefined, locale: string = appLang()): string {
   if (!descriptionKey) return '';
   const m = descriptionKey.match(/milestone_(\d{2})/i) || descriptionKey.match(/MILESTONE_(\d{2})/i);
   if (m) {
@@ -458,7 +459,7 @@ export function companionMilestoneBody(descriptionKey: string | null | undefined
   return '';
 }
 
-export function companionCosmeticTitle(titleKey: string | null | undefined, locale = 'ka'): string {
+export function companionCosmeticTitle(titleKey: string | null | undefined, locale: string = appLang()): string {
   if (!titleKey) return '';
   const def = COSMETIC_DEFAULT[titleKey];
   if (def) return pick(def.title, locale);
@@ -472,7 +473,7 @@ export function companionCosmeticTitle(titleKey: string | null | undefined, loca
   return companionMilestoneTitle(titleKey, locale) || titleKey;
 }
 
-export function companionCosmeticBody(descriptionKey: string | null | undefined, locale = 'ka'): string {
+export function companionCosmeticBody(descriptionKey: string | null | undefined, locale: string = appLang()): string {
   if (!descriptionKey) return '';
   const def = COSMETIC_DEFAULT[descriptionKey];
   if (def) return pick(def.description, locale);
@@ -486,7 +487,7 @@ export function companionCosmeticBody(descriptionKey: string | null | undefined,
   return companionMilestoneBody(descriptionKey, locale);
 }
 
-export function companionSlotLabel(slot: string, locale = 'ka'): string {
+export function companionSlotLabel(slot: string, locale: string = appLang()): string {
   const copy = companionCopy(locale);
   if (slot === 'accent') return copy.slotAccent;
   if (slot === 'accessory') return copy.slotAccessory;
@@ -495,7 +496,7 @@ export function companionSlotLabel(slot: string, locale = 'ka'): string {
   return slot;
 }
 
-export function companionStageLabel(stage: string | null | undefined, locale = 'ka'): string {
+export function companionStageLabel(stage: string | null | undefined, locale: string = appLang()): string {
   const n = stage?.match(/STAGE_(\d+)/)?.[1] || '1';
   return `${companionCopy(locale).stage} ${n}`;
 }

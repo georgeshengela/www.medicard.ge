@@ -203,10 +203,11 @@ function RoutineSection({ title, body }: { title: string; body: string }) {
 }
 
 function iconForSection(title: string): LucideIcon {
-  if (title.includes('დილ')) return Sun;
-  if (title.includes('საღამ')) return Moon;
-  if (title.includes('კვირ')) return Sparkles;
-  if (title.includes('მოერიდ') || title.includes('არათავს')) return ShieldAlert;
+  const lower = title.toLowerCase();
+  if (title.includes('დილ') || lower.includes('morning')) return Sun;
+  if (title.includes('საღამ') || lower.includes('evening') || lower.includes('night')) return Moon;
+  if (title.includes('კვირ') || lower.includes('week')) return Sparkles;
+  if (title.includes('მოერიდ') || title.includes('არათავს') || lower.includes('avoid') || lower.includes('incompatib')) return ShieldAlert;
   return Droplets;
 }
 

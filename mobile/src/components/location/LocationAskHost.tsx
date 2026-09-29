@@ -1,3 +1,4 @@
+import { tx } from '@/i18n/locale';
 import React, { useEffect, useRef, useState } from 'react';
 import { useSegments } from 'expo-router';
 import * as Haptics from 'expo-haptics';
@@ -44,11 +45,11 @@ function LocationAskForAccount({ owner }: { owner: string }) {
       const result = await grantUserLocation();
       void markPrimerAsked('location');
       if (!current()) return;
-      if (!result.granted) { setDenied(true); setError('ლოკაციის ნებართვა გამორთულია. შეგიძლია პარამეტრებიდან ჩართო ან მოგვიანებით დაუბრუნდე.'); return; }
+      if (!result.granted) { setDenied(true); setError(tx('ლოკაციის ნებართვა გამორთულია. შეგიძლია პარამეტრებიდან ჩართო ან მოგვიანებით დაუბრუნდე.', 'Location access is off. You can turn it on in Settings or come back to this later.')); return; }
       setHealthProfile(result.profile ?? applyLocationToProfile(healthProfile, result.snapshot));
       setDismissed(true);
       void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined);
-    } catch (caught) { if (current()) setError(caught instanceof Error ? caught.message : 'ქალაქი ვერ შეინახა. ხელახლა სცადე.'); }
+    } catch (caught) { if (current()) setError(caught instanceof Error ? caught.message : tx('ქალაქი ვერ შეინახა. ხელახლა სცადე.', 'Couldn’t save your city. Please try again.')); }
     finally { lock.current = false; if (current()) setBusy(false); }
   };
   const skip = () => { if (lock.current) return; setDismissed(true); void postponeLocation(owner); };

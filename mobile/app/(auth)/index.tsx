@@ -4,13 +4,14 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MedicardLogoMark } from '@/components/ui/MedicardLogoMark';
+import { hasChosenLanguage } from '@/i18n/locale';
 
 const FILL_MS = 1600;
 const PERCENT_SIZE = 56;
 const PERCENT_LINE = 76;
 const LOGO = 52;
 
-/** Water-fill progress, then welcome. */
+/** Water-fill progress, then the language picker (first launch) or welcome. */
 export default function AuthSplash() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
@@ -34,7 +35,7 @@ export default function AuthSplash() {
 
     const done = setTimeout(() => {
       clearInterval(tick);
-      if (!cancelled) router.replace('/(auth)/welcome');
+      if (!cancelled) router.replace(hasChosenLanguage() ? '/(auth)/welcome' : '/(auth)/language');
     }, FILL_MS);
 
     return () => {

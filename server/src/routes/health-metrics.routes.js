@@ -8,6 +8,7 @@ import { asyncHandler } from '../middleware/error.js';
 import { QuestSignal, refreshQuestProgressForUser, validateHydrationGoalMl } from '../lib/quest.js';
 import { applyHydrationEvents, mergeHydrationSnapshot } from '../lib/hydrationSync.js';
 import { normalizeStepCapability } from '../lib/stepCapability.js';
+import { t } from '../lib/i18n.js';
 
 export const healthMetricsRouter = Router();
 
@@ -110,7 +111,7 @@ const syncLimit = rateLimit({
   standardHeaders: 'draft-7',
   legacyHeaders: false,
   validate: RATE_LIMIT_VALIDATE,
-  message: { error: 'ძალიან ხშირი სინქრონიზაცია — ცოტა ხანში ისევ ვცდით.' },
+  message: (req) => ({ error: t(req, 'ძალიან ხშირი სინქრონიზაცია — ცოტა ხანში ისევ ვცდით.', 'Syncing too often — we will try again shortly.') }),
 });
 
 const HEALTH_FIELDS = ['steps', 'weightKg', 'bloodPressureSystolic', 'bloodPressureDiastolic', 'heartRate', 'sleepHours', 'nutritionKcal', 'hydrationMl', 'activeMinutes', 'distanceKm'];

@@ -4,6 +4,7 @@ import { useRouter } from "expo-router";
 import { CalendarCheck2, Ruler, TrendingDown, TrendingUp } from "lucide-react-native";
 import { MedicalSourcesLink } from "@/components/health/MedicalSourcesLink";
 import { useAuth } from "@/store/AuthContext";
+import { tx } from "@/i18n/locale";
 import { useThemeColors } from "@/theme/colors";
 import { nutritionDateLabel } from "@/lib/nutritionProgram";
 import {
@@ -37,8 +38,8 @@ function Progress() {
   const earlier = d?.measurements.find((m) => m.date !== latest?.date);
   return (
     <NScreen
-      title="შენი პროგრესი"
-      subtitle="პატარა ნაბიჯები, თვალსაჩინო ცვლილება"
+      title={tx("შენი პროგრესი", "Your progress")}
+      subtitle={tx("პატარა ნაბიჯები, თვალსაჩინო ცვლილება", "Small steps, visible change")}
     >
       {!!error && <NError message={error} retry={() => void load()} />}
       {loading && !d && <NLoading />}
@@ -47,20 +48,20 @@ function Progress() {
           <NCard>
             <View style={{ flexDirection: "row", alignItems: "center", gap: 9 }}>
               <CalendarCheck2 size={18} color={c.primary100} />
-              <NText style={{ fontSize: 18, fontFamily: "NotoSansGeorgian_600SemiBold", flex: 1 }}>კვირის შეჯამება</NText>
+              <NText style={{ fontSize: 18, fontFamily: "NotoSansGeorgian_600SemiBold", flex: 1 }}>{tx("კვირის შეჯამება", "Weekly summary")}</NText>
             </View>
             <View style={{ flexDirection: "row", gap: 8 }}>
-              {stat(`${d.week.recordedDays}/7`, "დღე ჩანაწერით")}
-              {stat(d.week.targetDays ? `${d.week.onTargetDays}/${d.week.targetDays}` : "—", "დღე ბიუჯეტში")}
-              {stat(d.week.averageCalories != null ? String(d.week.averageCalories) : "—", "კკალ საშუალოდ")}
+              {stat(`${d.week.recordedDays}/7`, tx("დღე ჩანაწერით", "days logged"))}
+              {stat(d.week.targetDays ? `${d.week.onTargetDays}/${d.week.targetDays}` : "—", tx("დღე ბიუჯეტში", "days on budget"))}
+              {stat(d.week.averageCalories != null ? String(d.week.averageCalories) : "—", tx("კკალ საშუალოდ", "kcal on average"))}
             </View>
             <View style={{ flexDirection: "row", gap: 8 }}>
-              {stat(d.week.averageProtein != null ? `${d.week.averageProtein} გ` : "—", "ცილა საშუალოდ")}
-              {stat(d.week.balanceCalories != null ? `${d.week.balanceCalories > 0 ? "+" : ""}${d.week.balanceCalories}` : "—", "ბალანსი სამიზნესთან, კკალ")}
-              {stat(`${d.streak.current}`, "დღე ზედიზედ")}
+              {stat(d.week.averageProtein != null ? `${d.week.averageProtein} ${tx("გ", "g")}` : "—", tx("ცილა საშუალოდ", "protein on average"))}
+              {stat(d.week.balanceCalories != null ? `${d.week.balanceCalories > 0 ? "+" : ""}${d.week.balanceCalories}` : "—", tx("ბალანსი სამიზნესთან, კკალ", "balance vs target, kcal"))}
+              {stat(`${d.streak.current}`, tx("დღე ზედიზედ", "days in a row"))}
             </View>
             <NText style={{ fontSize: 11, color: c.text200 }}>
-              „ბიუჯეტში“ ნიშნავს დღის სამიზნის 60–105%-ს — ეს MEDICARD-ის საკუთარი ორიენტირია. მხოლოდ ჩაწერილი დღეები ითვლება.
+              {tx("„ბიუჯეტში“ ნიშნავს დღის სამიზნის 60–105%-ს — ეს MEDICARD-ის საკუთარი ორიენტირია. მხოლოდ ჩაწერილი დღეები ითვლება.", "“On budget” means 60–105% of your daily target — this is MEDICARD’s own guide. Only logged days count.")}
             </NText>
             <MedicalSourcesLink sourceIds={["energyTarget"]} />
           </NCard>
@@ -71,23 +72,21 @@ function Progress() {
                 fontFamily: "NotoSansGeorgian_600SemiBold",
               }}
             >
-              კვების ბოლო 7 დღე
+              {tx("კვების ბოლო 7 დღე", "Last 7 days of eating")}
             </NText>
             <NText style={{ fontSize: 13, color: c.text200 }}>
-              {recorded.length} დღე ჩანაწერით ·{" "}
+              {tx(`${recorded.length} დღე ჩანაწერით`, `${recorded.length} ${recorded.length === 1 ? "day" : "days"} logged`)} ·{" "}
               {recorded.length
                 ? Math.round(
                     recorded.reduce((s, v) => s + v.totals.calories, 0) /
                       recorded.length,
                   )
                 : "—"}{" "}
-              კკალ საშუალოდ
+              {tx("კკალ საშუალოდ", "kcal on average")}
             </NText>
             <IntakeWeekChart days={d.days} />
             <NText style={{ fontSize: 11, color: c.text200 }}>
-              შეეხე დღეს დეტალებისთვის. ტირე ნიშნავს, რომ ჩანაწერი არ არის.
-              საშუალო მხოლოდ აღრიცხულ დღეებს ითვლის; არასრული დღიური სრულ
-              მიღებას არ ასახავს.
+              {tx("შეეხე დღეს დეტალებისთვის. ტირე ნიშნავს, რომ ჩანაწერი არ არის. საშუალო მხოლოდ აღრიცხულ დღეებს ითვლის; არასრული დღიური სრულ მიღებას არ ასახავს.", "Tap a day for details. A dash means no entries. The average counts only logged days; an incomplete diary doesn’t show your full intake.")}
             </NText>
           </NCard>
           <NCard>
@@ -97,7 +96,7 @@ function Progress() {
                 fontFamily: "NotoSansGeorgian_600SemiBold",
               }}
             >
-              წონის ცვლილება
+              {tx("წონის ცვლილება", "Weight change")}
             </NText>
             <WeightChart points={d.facts.weightHistory} />
             {projection && projection.target != null && projection.current != null && (
@@ -105,49 +104,48 @@ function Progress() {
                 <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
                   {projection.direction === "up" ? <TrendingUp size={17} color={c.primary100} /> : <TrendingDown size={17} color={c.primary100} />}
                   <NText style={{ fontFamily: "NotoSansGeorgian_600SemiBold", flex: 1 }}>
-                    {projection.direction === "reached" ? "მიზანი მიღწეულია" : `მიზნამდე ${Math.abs(projection.remainingKg || 0)} კგ`}
+                    {projection.direction === "reached" ? tx("მიზანი მიღწეულია", "Goal reached") : tx(`მიზნამდე ${Math.abs(projection.remainingKg || 0)} კგ`, `${Math.abs(projection.remainingKg || 0)} kg to go`)}
                   </NText>
                 </View>
                 <NText style={{ fontSize: 13, color: c.text200, lineHeight: 20 }}>
                   {projection.trendKgPerWeek != null
-                    ? `ბოლო კვირების ტემპი: ${projection.trendKgPerWeek > 0 ? "+" : ""}${projection.trendKgPerWeek} კგ/კვირა. `
-                    : "ტემპის დასათვლელად კვირაზე მეტი ინტერვალით მინიმუმ სამი გაზომვა სჭირდება. "}
+                    ? tx(`ბოლო კვირების ტემპი: ${projection.trendKgPerWeek > 0 ? "+" : ""}${projection.trendKgPerWeek} კგ/კვირა. `, `Recent pace: ${projection.trendKgPerWeek > 0 ? "+" : ""}${projection.trendKgPerWeek} kg/week. `)
+                    : tx("ტემპის დასათვლელად კვირაზე მეტი ინტერვალით მინიმუმ სამი გაზომვა სჭირდება. ", "Working out a pace needs at least three measurements spread over more than a week. ")}
                   {projection.trendEta
-                    ? `ამ ტემპით მიზანს დაახლოებით ${nutritionDateLabel(projection.trendEta)}-ს მიაღწევ.`
+                    ? tx(`ამ ტემპით მიზანს დაახლოებით ${nutritionDateLabel(projection.trendEta)}-ს მიაღწევ.`, `At this pace you’ll reach your goal around ${nutritionDateLabel(projection.trendEta)}.`)
                     : projection.planEta
-                      ? `გეგმის ტემპით ორიენტირი ${nutritionDateLabel(projection.planEta)}-ია.`
+                      ? tx(`გეგმის ტემპით ორიენტირი ${nutritionDateLabel(projection.planEta)}-ია.`, `At the plan’s pace: around ${nutritionDateLabel(projection.planEta)}.`)
                       : projection.trendKgPerWeek != null && projection.direction !== "reached"
-                        ? "ტენდენცია ჯერ მიზნის მიმართულებით არ მიდის — ეს ნორმალურია, გადაამოწმე გეგმა 2–4 კვირაში."
+                        ? tx("ტენდენცია ჯერ მიზნის მიმართულებით არ მიდის — ეს ნორმალურია, გადაამოწმე გეგმა 2–4 კვირაში.", "The trend isn’t heading toward your goal yet — that’s normal; review your plan in 2–4 weeks.")
                         : ""}
                 </NText>
-                <NText style={{ fontSize: 11, color: c.text300 }}>პროგნოზი ორიენტირია, არა დაპირება. წონა კვირის განმავლობაშიც მერყეობს.</NText>
+                <NText style={{ fontSize: 11, color: c.text300 }}>{tx("პროგნოზი ორიენტირია, არა დაპირება. წონა კვირის განმავლობაშიც მერყეობს.", "The forecast is a guide, not a promise. Weight shifts even within a week.")}</NText>
                 <MedicalSourcesLink sourceIds={["bodyWeightPlanner", "weightPace"]} />
               </View>
             )}
             <NText style={{ fontSize: 12, color: c.text200 }}>
-              ბოლო 28 გაზომვა. დღის რყევა ბუნებრივია — ყურადღება მიაქციე
-              ხანგრძლივ ტენდენციას.
+              {tx("ბოლო 28 გაზომვა. დღის რყევა ბუნებრივია — ყურადღება მიაქციე ხანგრძლივ ტენდენციას.", "Last 28 measurements. Daily swings are natural — watch the long-term trend.")}
             </NText>
             <NButton
-              label="წონის დამატება"
+              label={tx("წონის დამატება", "Add weight")}
               onPress={() => r.push("/health-metrics/weight")}
             />
           </NCard>
           <NCard>
             <View style={{ flexDirection: "row", alignItems: "center", gap: 9 }}>
               <Ruler size={18} color={c.primary100} />
-              <NText style={{ fontSize: 18, fontFamily: "NotoSansGeorgian_600SemiBold", flex: 1 }}>სხეულის ზომები</NText>
+              <NText style={{ fontSize: 18, fontFamily: "NotoSansGeorgian_600SemiBold", flex: 1 }}>{tx("სხეულის ზომები", "Body measurements")}</NText>
             </View>
             {latest ? (
               <View style={{ gap: 4 }}>
-                <NText style={{ fontSize: 12, color: c.text200 }}>ბოლო ჩანაწერი · {nutritionDateLabel(latest.date)}{earlier ? ` · წინა ${nutritionDateLabel(earlier.date)}` : ""}</NText>
+                <NText style={{ fontSize: 12, color: c.text200 }}>{tx("ბოლო ჩანაწერი", "Latest entry")} · {nutritionDateLabel(latest.date)}{earlier ? tx(` · წინა ${nutritionDateLabel(earlier.date)}`, ` · previous ${nutritionDateLabel(earlier.date)}`) : ""}</NText>
                 {(
                   [
-                    ["waistCm", "წელი"],
-                    ["hipsCm", "თეძო"],
-                    ["chestCm", "მკერდი"],
-                    ["armCm", "მკლავი"],
-                    ["thighCm", "ბარძაყი"],
+                    ["waistCm", tx("წელი", "Waist")],
+                    ["hipsCm", tx("თეძო", "Hips")],
+                    ["chestCm", tx("მკერდი", "Chest")],
+                    ["armCm", tx("მკლავი", "Arm")],
+                    ["thighCm", tx("ბარძაყი", "Thigh")],
                   ] as const
                 )
                   .filter(([key]) => latest[key] != null)
@@ -157,29 +155,27 @@ function Progress() {
                       <View key={key} style={{ flexDirection: "row", justifyContent: "space-between" }}>
                         <NText>{label}</NText>
                         <NText style={{ fontFamily: "NotoSansGeorgian_600SemiBold" }}>
-                          {latest[key]} სმ{diff != null && diff !== 0 ? ` (${diff > 0 ? "+" : ""}${diff})` : ""}
+                          {latest[key]} {tx("სმ", "cm")}{diff != null && diff !== 0 ? ` (${diff > 0 ? "+" : ""}${diff})` : ""}
                         </NText>
                       </View>
                     );
                   })}
               </View>
             ) : (
-              <NText style={{ color: c.text200 }}>წელი, თეძო და მკერდი ხშირად სასწორზე ადრე იცვლება. ერთი ჩანაწერი კვირაში საკმარისია.</NText>
+              <NText style={{ color: c.text200 }}>{tx("წელი, თეძო და მკერდი ხშირად სასწორზე ადრე იცვლება. ერთი ჩანაწერი კვირაში საკმარისია.", "Waist, hips and chest often change before the scale does. One entry a week is enough.")}</NText>
             )}
-            <NButton secondary label={latest ? "ზომების განახლება" : "ზომების დამატება"} onPress={() => r.push("/nutrition/measurements")} />
+            <NButton secondary label={latest ? tx("ზომების განახლება", "Update measurements") : tx("ზომების დამატება", "Add measurements")} onPress={() => r.push("/nutrition/measurements")} />
           </NCard>
           <NCard>
             <NText style={{ fontFamily: "NotoSansGeorgian_600SemiBold" }}>
-              თანმიმდევრულობა სრულყოფილებაზე წინ
+              {tx("თანმიმდევრულობა სრულყოფილებაზე წინ", "Consistency over perfection")}
             </NText>
             <NText style={{ color: c.text200 }}>
-              ერთი დღის გადაცდენა ვალს არ ქმნის. არ არის საჭირო კვების
-              გამოტოვება ან ვარჯიშით „ანაზღაურება“. გეგმა გადაამოწმე 2–4
-              კვირაში, ან თუ მდგომარეობა შეიცვალა.
+              {tx("ერთი დღის გადაცდენა ვალს არ ქმნის. არ არის საჭირო კვების გამოტოვება ან ვარჯიშით „ანაზღაურება“. გეგმა გადაამოწმე 2–4 კვირაში, ან თუ მდგომარეობა შეიცვალა.", "One day over is no debt. There’s no need to skip meals or “make up for it” with exercise. Review your plan in 2–4 weeks, or sooner if things change.")}
             </NText>
             <NButton
               secondary
-              label="მიზნისა და გეგმის ნახვა"
+              label={tx("მიზნისა და გეგმის ნახვა", "See goal and plan")}
               onPress={() => r.push("/nutrition/goal")}
             />
           </NCard>

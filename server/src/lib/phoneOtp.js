@@ -6,6 +6,7 @@ import { isQaOtpEnabled, matchesQaPhoneOtp } from './qaOtp.js';
 import { isAppReviewPhone, matchesAppReviewOtp } from './appReviewPhone.js';
 import { evaluateOtpRow, unusedUnexpiredOtpWhere } from './otpContract.js';
 import { buildOtpMessage, normalizeSmsDestination, sendSms } from './sms.js';
+import { t } from './i18n.js';
 
 const CODE_TTL_MS = 10 * 60 * 1000;
 const RESEND_COOLDOWN_MS = 60 * 1000;
@@ -29,11 +30,14 @@ function displayPhone(phone) {
 }
 
 /** Send a 4-digit OTP to a Georgian mobile number. */
-export async function requestPhoneOtp({ phone, purpose = 'AUTH', userId = null }) {
+export async function requestPhoneOtp({ phone, purpose = 'AUTH', userId = null, lang = 'ka' }) {
   const normalized = normalizeSmsDestination(phone);
   if (!/^9955\d{8}$/.test(normalized)) {
-    return { ok: false, status: 400, error: 'მობილური ნომერი უნდა იყოს ფორმატში +995 5XX XXX XXX.' };
+    return { ok: false, status: 400, error: t(lang, 'მობილური ნომერი უნდა იყოს ფორმატში +995 5XX XXX XXX.', 'Enter a mobile number in the format +995 5XX XXX XXX.') };
   }
+  const sentMessage = t(lang, `დამადასტურებელი კოდი გამოგზავნილია ნომერზე +${normalized}.`, `We sent a verification code to +${normalized}.`);
+  const smsFailed = t(lang, 'SMS გაგზავნა ვერ მოხერხდა.', "We couldn't send the SMS.");
+  const devUnsent = t(lang, 'SMS გაუგზავნელია (dev). გამოიყენეთ devCode.', 'SMS not sent (dev). Use devCode.');
 
   // App Review cannot receive Georgian SMS; its number takes the fixed review code instead.
   if (isAppReviewPhone(normalized)) {
@@ -42,7 +46,7 @@ export async function requestPhoneOtp({ phone, purpose = 'AUTH', userId = null }
       sent: true,
       phone: `+${normalized}`,
       masked: displayPhone(normalized),
-      message: `დამადასტურებელი კოდი გამოგზავნილია ნომერზე +${normalized}.`,
+      message: sentMessage,
       reference: 'app-review',
     };
   }
@@ -63,7 +67,7 @@ export async function requestPhoneOtp({ phone, purpose = 'AUTH', userId = null }
       sent: true,
       phone: `+${normalized}`,
       masked: displayPhone(normalized),
-      message: 'კოდი უკვე გამოგზავნილია. სცადე ხელახლა ერთი წუთის შემდეგ.',
+      message: t(lang, 'კოდი უკვე გამოგზავნილია. სცადე ხელახლა ერთი წუთის შემდეგ.', 'A code has already been sent. Try again in a minute.'),
       cooldownSec: Math.ceil((RESEND_COOLDOWN_MS - (Date.now() - recent.createdAt.getTime())) / 1000),
     };
   }
@@ -94,18 +98,19 @@ export async function requestPhoneOtp({ phone, purpose = 'AUTH', userId = null }
     sent: true,
     phone: `+${normalized}`,
     masked: displayPhone(normalized),
-    message: `დამადასტურებელი კოდი გამოგზავნილია ნომერზე +${normalized}.`,
+    message: sentMessage,
     reference,
   };
 
   try {
     const sms = await sendSms({
       destination: normalized,
-      content: buildOtpMessage(code),
+      content: buildOtpMessage(code, lang),
       purpose: 'OTP',
       reference,
       userId,
       urgent: true,
+      lang,
     });
 
     if (!sms.ok && sms.capped) {
@@ -113,23 +118,23 @@ export async function requestPhoneOtp({ phone, purpose = 'AUTH', userId = null }
     }
 
     if (!sms.ok && env.NODE_ENV === 'production' && !(await isQaOtpEnabled())) {
-      return { ok: false, status: 502, error: sms.message || 'SMS გაგზავნა ვერ მოხერხდა.' };
+      return { ok: false, status: 502, error: sms.message || smsFailed };
     }
 
     if (env.NODE_ENV !== 'production') {
       result.devCode = code;
       if (!sms.ok) {
-        result.message = 'SMS გაუგზავნელია (dev). გამოიყენეთ devCode.';
+        result.message = devUnsent;
       }
     }
   } catch (err) {
     console.error('[phone-otp] SMS failed:', err?.message ?? err);
     if (env.NODE_ENV === 'production' && !(await isQaOtpEnabled())) {
-      return { ok: false, status: 502, error: 'SMS გაგზავნა ვერ მოხერხდა.' };
+      return { ok: false, status: 502, error: smsFailed };
     }
     if (env.NODE_ENV !== 'production') {
       result.devCode = code;
-      result.message = 'SMS გაუგზავნელია (dev). გამოიყენეთ devCode.';
+      result.message = devUnsent;
     }
   }
 
@@ -137,12 +142,12 @@ export async function requestPhoneOtp({ phone, purpose = 'AUTH', userId = null }
 }
 
 /** Verify OTP — returns { ok, error?, status? } */
-export async function verifyPhoneOtp({ phone, code, purpose = 'AUTH' }) {
+export async function verifyPhoneOtp({ phone, code, purpose = 'AUTH', lang = 'ka' }) {
   const normalized = normalizeSmsDestination(phone);
   const trimmed = String(code ?? '').trim();
 
   if (!/^\d{4}$/.test(trimmed)) {
-    return { ok: false, status: 400, error: 'კოდი უნდა შედგებოდეს 4 ციფრისგან.' };
+    return { ok: false, status: 400, error: t(lang, 'კოდი უნდა შედგებოდეს 4 ციფრისგან.', 'The code must be 4 digits.') };
   }
 
   if (matchesAppReviewOtp(normalized, trimmed)) {
@@ -168,7 +173,7 @@ export async function verifyPhoneOtp({ phone, code, purpose = 'AUTH' }) {
     orderBy: { createdAt: 'desc' },
   });
 
-  const gate = evaluateOtpRow(row);
+  const gate = evaluateOtpRow(row, new Date(), lang);
   if (!gate.ok) {
     return { ok: false, status: gate.status, error: gate.error };
   }
@@ -179,7 +184,7 @@ export async function verifyPhoneOtp({ phone, code, purpose = 'AUTH' }) {
       where: { id: row.id },
       data: { attempts: { increment: 1 } },
     });
-    return { ok: false, status: 400, error: 'კოდი არასწორია.' };
+    return { ok: false, status: 400, error: t(lang, 'კოდი არასწორია.', 'The code is wrong.') };
   }
 
   await prisma.phoneVerification.update({

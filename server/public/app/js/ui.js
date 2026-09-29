@@ -1,4 +1,5 @@
 // MEDICARD web — DOM toolkit and shared components (hub design language).
+import { t, locale } from './i18n.js';
 import { icon } from './icons.js';
 
 export { icon };
@@ -43,11 +44,20 @@ function append(el, children) {
 export function clear(el) { while (el.firstChild) el.removeChild(el.firstChild); return el; }
 export function mount(el, ...children) { clear(el); append(el, children); return el; }
 
-/* ── Formatting (Georgian) ─────────────────────────────── */
-export const KA_MONTHS = ['იანვარი', 'თებერვალი', 'მარტი', 'აპრილი', 'მაისი', 'ივნისი', 'ივლისი', 'აგვისტო', 'სექტემბერი', 'ოქტომბერი', 'ნოემბერი', 'დეკემბერი'];
-export const KA_MONTHS_SHORT = ['იან', 'თებ', 'მარ', 'აპრ', 'მაი', 'ივნ', 'ივლ', 'აგვ', 'სექ', 'ოქტ', 'ნოე', 'დეკ'];
-export const KA_DAYS = ['კვირა', 'ორშაბათი', 'სამშაბათი', 'ოთხშაბათი', 'ხუთშაბათი', 'პარასკევი', 'შაბათი'];
-export const KA_DAYS_SHORT = ['კვ', 'ორ', 'სმ', 'ოთ', 'ხთ', 'პრ', 'შბ'];
+/* ── Formatting (active language; names kept KA_* for existing imports) ── */
+export const KA_MONTHS = t(
+  ['იანვარი', 'თებერვალი', 'მარტი', 'აპრილი', 'მაისი', 'ივნისი', 'ივლისი', 'აგვისტო', 'სექტემბერი', 'ოქტომბერი', 'ნოემბერი', 'დეკემბერი'],
+  ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'],
+);
+export const KA_MONTHS_SHORT = t(
+  ['იან', 'თებ', 'მარ', 'აპრ', 'მაი', 'ივნ', 'ივლ', 'აგვ', 'სექ', 'ოქტ', 'ნოე', 'დეკ'],
+  ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
+);
+export const KA_DAYS = t(
+  ['კვირა', 'ორშაბათი', 'სამშაბათი', 'ოთხშაბათი', 'ხუთშაბათი', 'პარასკევი', 'შაბათი'],
+  ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'],
+);
+export const KA_DAYS_SHORT = t(['კვ', 'ორ', 'სმ', 'ოთ', 'ხთ', 'პრ', 'შბ'], ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa']);
 
 export function parseDate(v) {
   if (!v) return null;
@@ -83,23 +93,23 @@ export function relDay(v) {
   const d = parseDate(v);
   if (!d) return '';
   const diff = Math.round((new Date(ymd(d)) - new Date(ymd())) / 86400000);
-  if (diff === 0) return 'დღეს';
-  if (diff === -1) return 'გუშინ';
-  if (diff === 1) return 'ხვალ';
+  if (diff === 0) return t('დღეს', 'Today');
+  if (diff === -1) return t('გუშინ', 'Yesterday');
+  if (diff === 1) return t('ხვალ', 'Tomorrow');
   return fmtDate(d);
 }
 
 export function fmtNum(n, digits = 0) {
   if (n === null || n === undefined || Number.isNaN(Number(n))) return '—';
-  return Number(n).toLocaleString('ka-GE', { maximumFractionDigits: digits, minimumFractionDigits: 0 }).replace(/ /g, ' ');
+  return Number(n).toLocaleString(locale, { maximumFractionDigits: digits, minimumFractionDigits: 0 }).replace(/ /g, ' ');
 }
 
 export function greeting() {
   const hr = new Date().getHours();
-  if (hr < 5) return 'ღამე მშვიდობისა';
-  if (hr < 12) return 'დილა მშვიდობისა';
-  if (hr < 18) return 'შუადღე მშვიდობისა';
-  return 'საღამო მშვიდობისა';
+  if (hr < 5) return t('ღამე მშვიდობისა', 'Good night');
+  if (hr < 12) return t('დილა მშვიდობისა', 'Good morning');
+  if (hr < 18) return t('შუადღე მშვიდობისა', 'Good afternoon');
+  return t('საღამო მშვიდობისა', 'Good evening');
 }
 
 /* ── Building blocks ───────────────────────────────────── */
@@ -202,8 +212,8 @@ export function skeletonGrid(n = 4) {
 export function errorBox(err, retry) {
   return h('div', { class: 'error-box' },
     icon('alert', { size: 20 }),
-    h('div', null, h('strong', null, 'ვერ ჩაიტვირთა'), h('p', null, err?.message || String(err || ''))),
-    retry ? button('ხელახლა', { variant: 'ghost', size: 'sm', onClick: retry }) : null);
+    h('div', null, h('strong', null, t('ვერ ჩაიტვირთა', 'Couldn’t load')), h('p', null, err?.message || String(err || ''))),
+    retry ? button(t('ხელახლა', 'Retry'), { variant: 'ghost', size: 'sm', onClick: retry }) : null);
 }
 
 export function progress(value, max = 100, opts = {}) {
@@ -300,7 +310,7 @@ export function openModal(opts) {
   const dialog = h('div', { class: `modal modal-${opts.size || 'md'}`, role: 'dialog', 'aria-modal': 'true', 'aria-label': opts.title || '' },
     opts.title ? h('div', { class: 'modal-head' },
       h('h2', null, opts.title),
-      opts.dismissable === false ? null : iconButton('x', { title: 'დახურვა', onClick: () => close() })) : null,
+      opts.dismissable === false ? null : iconButton('x', { title: t('დახურვა', 'Close'), onClick: () => close() })) : null,
     h('div', { class: 'modal-body' }, body),
     footer ? h('div', { class: 'modal-foot' }, footer) : null);
   const scrim = h('div', { class: 'modal-scrim', onClick: () => { if (opts.dismissable !== false) close(); } });
@@ -317,7 +327,7 @@ export function openModal(opts) {
 }
 
 /** confirmDialog({ title, body, confirm: 'წაშლა', danger: true }) → Promise<boolean> */
-export function confirmDialog({ title, body, confirm = 'დადასტურება', cancel = 'გაუქმება', danger = false }) {
+export function confirmDialog({ title, body, confirm = t('დადასტურება', 'Confirm'), cancel = t('გაუქმება', 'Cancel'), danger = false }) {
   return new Promise((resolve) => {
     let result = false;
     openModal({
@@ -334,7 +344,7 @@ export function confirmDialog({ title, body, confirm = 'დადასტურ
 }
 
 /** Form modal: fields render inside a <form>; onSubmit(values, close) may throw to show an error. */
-export function formModal({ title, fields, submit = 'შენახვა', onSubmit, size = 'md', danger }) {
+export function formModal({ title, fields, submit = t('შენახვა', 'Save'), onSubmit, size = 'md', danger }) {
   let form;
   const err = h('div', { class: 'form-error', hidden: true });
   const m = openModal({
@@ -348,14 +358,14 @@ export function formModal({ title, fields, submit = 'შენახვა', onS
         try {
           await busy(btn || h('button'), () => onSubmit(formData(form), close, form));
         } catch (e2) {
-          err.textContent = e2?.message || 'ვერ შეინახა.';
+          err.textContent = e2?.message || t('ვერ შეინახა.', 'Couldn’t save.');
           err.hidden = false;
         }
       } }, typeof fields === 'function' ? fields() : fields, err, h('button', { type: 'submit', hidden: true }));
       return form;
     },
     footer: (close) => [
-      button('გაუქმება', { variant: 'ghost', onClick: () => close() }),
+      button(t('გაუქმება', 'Cancel'), { variant: 'ghost', onClick: () => close() }),
       button(submit, { variant: danger ? 'danger' : 'primary', onClick: () => form.requestSubmit() }),
     ],
   });

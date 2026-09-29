@@ -1,7 +1,10 @@
 /**
  * Georgian copy for pregnancy week catalog keys.
  * Medical numbers stay in pregnancyWeekData.js. Do not put sentences in the dataset.
+ * English tables follow the app language (`isEn()`); the Georgian exports stay for callers/tests.
  */
+
+import { isEn } from '../i18n/locale.js';
 
 export const PREGNANCY_COMPARISON_KA = Object.freeze({
   poppy_seed: 'ყაყაჩოს თესლი',
@@ -73,14 +76,83 @@ export const PREGNANCY_FACT_KA = Object.freeze({
   term_window: 'სრული ვადის ფანჯარა იწყება. განვითარება ინდივიდუალურია.',
 });
 
+export const PREGNANCY_COMPARISON_EN = Object.freeze({
+  poppy_seed: 'poppy seed',
+  sesame: 'sesame seed',
+  blueberry: 'blueberry',
+  raspberry: 'raspberry',
+  strawberry: 'strawberry',
+  lime: 'lime',
+  lemon: 'lemon',
+  kiwi: 'kiwi',
+  avocado: 'avocado',
+  pear: 'pear',
+  mango: 'mango',
+  banana: 'banana',
+  eggplant: 'eggplant',
+  coconut: 'coconut',
+  pineapple: 'pineapple',
+  watermelon: 'watermelon',
+});
+
+export const PREGNANCY_COMPARISON_LINE_EN = Object.freeze({
+  poppy_seed: 'About the size of a poppy seed',
+  sesame: 'About the size of a sesame seed',
+  blueberry: 'About the size of a blueberry',
+  raspberry: 'About the size of a raspberry',
+  strawberry: 'About the size of a strawberry',
+  lime: 'About the size of a lime',
+  lemon: 'About the size of a lemon',
+  kiwi: 'About the size of a kiwi',
+  avocado: 'About the size of an avocado',
+  pear: 'About the size of a pear',
+  mango: 'About the size of a mango',
+  banana: 'About the size of a banana',
+  eggplant: 'About the size of an eggplant',
+  coconut: 'About the size of a coconut',
+  pineapple: 'About the size of a pineapple',
+  watermelon: 'About the size of a watermelon',
+});
+
+export const PREGNANCY_FACT_EN = Object.freeze({
+  informational_dating:
+    'Pregnancy weeks are counted from a reference date. This is not ultrasound dating.',
+  microscopic_scale: 'At this stage development is microscopic, and size comparisons are not reliable yet.',
+  neural_fold_forming: 'The neural tube is forming.',
+  heart_tube_forming: 'The heart tube is forming.',
+  limb_buds_appearing: 'Limb buds are appearing.',
+  body_shape_forming: 'The basic body shape is forming.',
+  limb_structures_forming: 'Early limb structures are forming.',
+  facial_features_forming: 'Facial structures are forming.',
+  fingers_forming: 'Fingers are forming.',
+  major_organs_forming: 'The major organs are forming.',
+  fetal_period_begins: 'The shift from the embryonic period to the fetal period is beginning.',
+  organs_in_place: 'The major organs are in place and keep growing.',
+  ossification_beginning: 'Bones are starting to harden.',
+  skin_thin: 'The skin is still thin.',
+  movement_developing: 'Movement is developing. This does not mean you will necessarily feel it.',
+  ears_in_position: 'The ears are moving closer to their usual position.',
+  lung_airways_branching: 'The airways in the lungs are branching.',
+  vernix_forming: 'A protective skin coating (vernix) is forming.',
+  hearing_structures_present: 'Hearing structures are forming. This does not mean the baby can necessarily hear you.',
+  hair_appearing: 'Hair is starting to appear.',
+  skin_less_transparent: 'The skin is becoming less transparent.',
+  lungs_continuing: 'The lungs keep developing.',
+  eyes_can_open: 'The eyelids may open.',
+  fat_accumulating: 'A layer of fat is building up.',
+  bones_hardening: 'Bones are hardening.',
+  lungs_maturing: 'The lungs keep maturing.',
+  term_window: 'The full-term window begins. Development is individual.',
+});
+
 export function pregnancyComparisonName(key) {
-  return PREGNANCY_COMPARISON_KA[key] || null;
+  return (isEn() ? PREGNANCY_COMPARISON_EN : PREGNANCY_COMPARISON_KA)[key] || null;
 }
 
 export function pregnancyComparisonLine(key) {
-  return PREGNANCY_COMPARISON_LINE_KA[key] || null;
+  return (isEn() ? PREGNANCY_COMPARISON_LINE_EN : PREGNANCY_COMPARISON_LINE_KA)[key] || null;
 }
 
 export function pregnancyFactText(key) {
-  return PREGNANCY_FACT_KA[key] || null;
+  return (isEn() ? PREGNANCY_FACT_EN : PREGNANCY_FACT_KA)[key] || null;
 }

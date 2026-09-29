@@ -13,7 +13,9 @@ import {
 } from '@/components/profile/ProfileSetupButtons';
 import { MedicardLogoMark } from '@/components/ui/MedicardLogoMark';
 import { PRIVACY_POLICY_KA } from '@/constants/privacyPolicyKa';
+import { PRIVACY_POLICY_EN } from '@/constants/privacyPolicyEn';
 import { ka } from '@/i18n/ka';
+import { isEn, tx } from '@/i18n/locale';
 import { patchProfileExtra } from '@/lib/profileSetupFlow';
 import { useOnboardingDevPreview, onboardingScreenBlocked, onboardingStepHref } from '@/lib/onboardingDevPreview';
 import { useAuth } from '@/store/AuthContext';
@@ -28,7 +30,7 @@ export default function ProfileSetupPrivacyScreen() {
   const preview = useOnboardingDevPreview();
   const { ready, user, healthProfile, setHealthProfile } = useAuth();
   const [busy, setBusy] = useState(false);
-  const policy = PRIVACY_POLICY_KA;
+  const policy = isEn() ? PRIVACY_POLICY_EN : PRIVACY_POLICY_KA;
 
   if (!ready) {
     return (
@@ -62,7 +64,7 @@ export default function ProfileSetupPrivacyScreen() {
   };
 
   const decline = () => {
-    Alert.alert(ka.profileSetup.privacyTitle, 'აპის გამოყენების გასაგრძელებლად საჭიროა პოლიტიკის დათანხმება.', [
+    Alert.alert(ka.profileSetup.privacyTitle, tx('აპის გამოყენების გასაგრძელებლად საჭიროა პოლიტიკის დათანხმება.', 'To keep using the app, you need to accept the policy.'), [
       { text: ka.common.cancel, style: 'cancel' },
     ]);
   };

@@ -64,23 +64,24 @@ import { HUB, hubText } from '@/theme/hub';
 import { ka } from '@/i18n/ka';
 import { clearPendingReferralCode, readPendingReferralCode } from '@/lib/referral';
 import { HYDRATION_DROP_ML } from '@/types/hydration';
+import { tx } from '@/i18n/locale';
 
 /** Four AI check-ups, one per question a person actually has. */
 const CHECKUP_TILES: HubTile[] = [
-  { key: 'symptoms', title: 'სიმპტომები', detail: 'აღწერე, რა და სად გაწუხებს', href: '/symptoms', icon: Stethoscope, ink: 'teal' },
-  { key: 'lab', title: 'ლაბორატორია', detail: 'ატვირთე ან ნახე შედეგები', href: '/lab', icon: FlaskConical, ink: 'blue' },
-  { key: 'imaging', title: 'გამოსახულება', detail: 'რენტგენი, ექო, MRI', href: '/module/imaging', icon: ScanLine, ink: 'sky' },
-  { key: 'skin', title: 'კანი', detail: 'ფოტოს შეფასება და მოვლა', href: '/module/skin', icon: ScanFace, ink: 'rose' },
+  { key: 'symptoms', title: tx('სიმპტომები', 'Symptoms'), detail: tx('აღწერე, რა და სად გაწუხებს', 'Describe what bothers you and where'), href: '/symptoms', icon: Stethoscope, ink: 'teal' },
+  { key: 'lab', title: tx('ლაბორატორია', 'Lab results'), detail: tx('ატვირთე ან ნახე შედეგები', 'Upload or view results'), href: '/lab', icon: FlaskConical, ink: 'blue' },
+  { key: 'imaging', title: tx('გამოსახულება', 'Imaging'), detail: tx('რენტგენი, ექო, MRI', 'X-ray, ultrasound, MRI'), href: '/module/imaging', icon: ScanLine, ink: 'sky' },
+  { key: 'skin', title: tx('კანი', 'Skin'), detail: tx('ფოტოს შეფასება და მოვლა', 'Photo check and care'), href: '/module/skin', icon: ScanFace, ink: 'rose' },
 ];
 
 /** Everything else a person manages here, one tile each, no duplicates of the blocks above. */
 const SERVICE_TILES: HubTile[] = [
-  { key: 'visits', title: 'ვიზიტები', detail: 'დაგეგმილი შეხვედრები', href: '/visits', icon: CalendarCheck, ink: 'teal' },
-  { key: 'weight', title: 'წონა და მიზანი', detail: 'ჩანაწერები და პროგრესი', href: '/health-metrics/weight', icon: Scale, ink: 'violet' },
-  { key: 'pets', title: 'ჩემი ცხოველები', detail: 'მოვლა და Medi Vet', href: '/pets', icon: PawPrint, ink: 'green' },
-  { key: 'pharmacy', title: 'აფთიაქი', detail: 'პროდუქტების მოძებნა', href: '/pharmacy', icon: ShoppingBag, ink: 'sky' },
-  { key: 'metrics', title: 'მაჩვენებლები', detail: 'ყველა გაზომვა ერთად', href: '/health-metrics', icon: Activity, ink: 'blue' },
-  { key: 'quest', title: 'MEDI QUEST', detail: 'მისიები, პროგრესი და ჯილდოები', href: '/medi-quest', icon: Trophy, ink: 'amber' },
+  { key: 'visits', title: tx('ვიზიტები', 'Visits'), detail: tx('დაგეგმილი შეხვედრები', 'Planned appointments'), href: '/visits', icon: CalendarCheck, ink: 'teal' },
+  { key: 'weight', title: tx('წონა და მიზანი', 'Weight and goal'), detail: tx('ჩანაწერები და პროგრესი', 'Entries and progress'), href: '/health-metrics/weight', icon: Scale, ink: 'violet' },
+  { key: 'pets', title: tx('ჩემი ცხოველები', 'My pets'), detail: tx('მოვლა და Medi Vet', 'Care and Medi Vet'), href: '/pets', icon: PawPrint, ink: 'green' },
+  { key: 'pharmacy', title: tx('აფთიაქი', 'Pharmacy'), detail: tx('პროდუქტების მოძებნა', 'Find products'), href: '/pharmacy', icon: ShoppingBag, ink: 'sky' },
+  { key: 'metrics', title: tx('მაჩვენებლები', 'Metrics'), detail: tx('ყველა გაზომვა ერთად', 'All measurements in one place'), href: '/health-metrics', icon: Activity, ink: 'blue' },
+  { key: 'quest', title: 'MEDI QUEST', detail: tx('მისიები, პროგრესი და ჯილდოები', 'Missions, progress and rewards'), href: '/medi-quest', icon: Trophy, ink: 'amber' },
 ];
 
 /** "4 200" — Hermes has no ka-GE grouping, so group by hand. */
@@ -199,34 +200,34 @@ export default function Home() {
     {
       key: 'steps',
       progress: stepsGoal > 0 ? stepsTotal / stepsGoal : 0,
-      label: 'ნაბიჯი',
-      value: steps.loading && !steps.bundle ? '…' : steps.bundle ? `${groupDigits(stepsTotal)} ნაბიჯი` : 'ნაბიჯები',
-      hint: stepsGoal > 0 ? `მიზანი ${groupDigits(stepsGoal)}` : 'დააკავშირე მოწყობილობა',
+      label: tx('ნაბიჯი', 'Steps'),
+      value: steps.loading && !steps.bundle ? '…' : steps.bundle ? tx(`${groupDigits(stepsTotal)} ნაბიჯი`, `${groupDigits(stepsTotal)} ${stepsTotal === 1 ? 'step' : 'steps'}`) : tx('ნაბიჯები', 'Steps'),
+      hint: stepsGoal > 0 ? tx(`მიზანი ${groupDigits(stepsGoal)}`, `Goal ${groupDigits(stepsGoal)}`) : tx('დააკავშირე მოწყობილობა', 'Connect a device'),
       onPress: () => open('/health-metrics/steps'),
     },
     {
       key: 'water',
       progress: hydration.progress,
-      label: 'წყალი',
-      value: hydration.loading ? '…' : `${liters(hydration.todayMl)} / ${liters(hydration.goalMl)} ლ`,
-      hint: hydration.loading ? undefined : hydration.remainingMl > 0 ? `დარჩა ${liters(hydration.remainingMl)} ლ` : 'მიზანი შესრულდა',
+      label: tx('წყალი', 'Water'),
+      value: hydration.loading ? '…' : `${liters(hydration.todayMl)} / ${liters(hydration.goalMl)} ${tx('ლ', 'L')}`,
+      hint: hydration.loading ? undefined : hydration.remainingMl > 0 ? tx(`დარჩა ${liters(hydration.remainingMl)} ლ`, `${liters(hydration.remainingMl)} L to go`) : tx('მიზანი შესრულდა', 'Goal reached'),
       onPress: () => open('/health-metrics/hydration'),
       onQuickAdd: addGlass,
-      quickAddLabel: `წყლის დამატება, ${HYDRATION_DROP_ML} მლ`,
+      quickAddLabel: tx(`წყლის დამატება, ${HYDRATION_DROP_ML} მლ`, `Add water, ${HYDRATION_DROP_ML} ml`),
     },
   ];
   if (doses.total > 0) {
     rings.push({
       key: 'meds',
       progress: doses.taken / doses.total,
-      label: 'წამლები',
-      value: `${doses.taken} / ${doses.total} მიღებული`,
-      hint: doses.pending[0] ? `შემდეგი ${doses.pending[0].time}` : 'ყველა მიღებულია',
+      label: tx('წამლები', 'Medications'),
+      value: tx(`${doses.taken} / ${doses.total} მიღებული`, `${doses.taken} / ${doses.total} taken`),
+      hint: doses.pending[0] ? tx(`შემდეგი ${doses.pending[0].time}`, `Next ${doses.pending[0].time}`) : tx('ყველა მიღებულია', 'All taken'),
       onPress: () => open('/(tabs)/medications'),
     });
   }
 
-  const heading = (title: string, href?: string, linkLabel = 'ყველას ნახვა') => (
+  const heading = (title: string, href?: string, linkLabel = tx('ყველას ნახვა', 'See all')) => (
     <HomeSectionHeading title={title} linkLabel={href ? linkLabel : undefined} onLink={href ? () => open(href) : undefined} />
   );
 
@@ -244,7 +245,7 @@ export default function Home() {
     ),
     hero: (
       <View style={[s.section, { marginTop: 22 }]}>
-        {heading('შენი დღე', '/health-metrics', 'ყველა მაჩვენებელი')}
+        {heading(tx('შენი დღე', 'Your day'), '/health-metrics', tx('ყველა მაჩვენებელი', 'All metrics'))}
         <HomeDayRings rings={rings} />
         <MedicalSourcesLink sourceIds={['dailySteps', 'waterIntake']} />
       </View>
@@ -258,13 +259,13 @@ export default function Home() {
     coach: <HomeCoachSection />,
     cycle: (
       <View style={s.section}>
-        {heading('ქალის ჯანმრთელობა', '/cycle', 'ციკლის ნახვა')}
+        {heading(tx('ქალის ჯანმრთელობა', "Women's health"), '/cycle', tx('ციკლის ნახვა', 'View cycle'))}
         <HomeCyclePreviewCard onPress={() => open('/cycle')} />
         {communityEntry ? <HubLinkRow
           icon={HeartHandshake}
           ink="rose"
-          title="ქალების სივრცე"
-          detail="ჰკითხე, გაუზიარე და იპოვე მხარდაჭერა"
+          title={tx('ქალების სივრცე', "Women's space")}
+          detail={tx('ჰკითხე, გაუზიარე და იპოვე მხარდაჭერა', 'Ask, share and find support')}
           href="/community"
           style={{ marginTop: 10 }}
         /> : null}
@@ -273,19 +274,19 @@ export default function Home() {
     news: <HomeNewsSection items={news.items} onDismiss={news.dismiss} />,
     nutrition: (
       <View style={s.section}>
-        {heading('კვება', '/nutrition', 'ყველა')}
+        {heading(tx('კვება', 'Nutrition'), '/nutrition', tx('ყველა', 'All'))}
         <HomeNutritionCard />
       </View>
     ),
     checkup: (
       <View style={s.section}>
-        {heading('შემოწმება AI-სთან')}
+        {heading(tx('შემოწმება AI-სთან', 'Check with AI'))}
         <HubTileGrid tiles={CHECKUP_TILES} />
         <View style={{ marginTop: 12 }}>
           <HubFeatureCard
             tone="spotlight"
             stackLead
-            accessibilityLabel="ღრმა ანალიზი Medi-სთან — დაწყება"
+            accessibilityLabel={tx('ღრმა ანალიზი Medi-სთან — დაწყება', 'Start a deep analysis with Medi')}
             lead={
               <View accessible={false} importantForAccessibility="no-hide-descendants" style={s.consiliumLead}>
                 {[Brain, ScanSearch, MessagesSquare].map((Icon, index) => (
@@ -295,10 +296,10 @@ export default function Home() {
                 ))}
               </View>
             }
-            title="ღრმა ანალიზი"
-            body="ერთი კითხვა — რამდენიმე სამედიცინო მიმართულების AI პასუხი და საერთო შეჯამება."
-            cta="დაიწყე განხილვა"
-            note="AI განხილვაა, არა ექიმების კონსულტაცია."
+            title={tx('ღრმა ანალიზი', 'Deep analysis')}
+            body={tx('ერთი კითხვა — რამდენიმე სამედიცინო მიმართულების AI პასუხი და საერთო შეჯამება.', 'One question — AI answers from several medical specialties and a shared summary.')}
+            cta={tx('დაიწყე განხილვა', 'Start review')}
+            note={tx('AI განხილვაა, არა ექიმების კონსულტაცია.', 'This is an AI review, not a consultation with doctors.')}
             onPress={() => open(mediRoute({ mode: 'deep' }))}
           />
         </View>
@@ -318,7 +319,7 @@ export default function Home() {
     ) : null,
     services: (
       <View style={s.section}>
-        {heading('სერვისები', '/explore', 'ყველა ფუნქცია')}
+        {heading(tx('სერვისები', 'Services'), '/explore', tx('ყველა ფუნქცია', 'All features'))}
         <HubTileGrid tiles={serviceTiles} />
       </View>
     ),
@@ -349,7 +350,7 @@ export default function Home() {
             accessibilityRole="alert"
             style={[s.caption, { paddingHorizontal: 20, color: c.danger, paddingTop: insets.top }]}
           >
-            განახლება ვერ დასრულდა. ხელახლა ჩამოწიე გვერდი.
+            {tx('განახლება ვერ დასრულდა. ხელახლა ჩამოწიე გვერდი.', "Couldn't refresh. Pull down to try again.")}
           </Text>
         ) : null}
         {buildHomeSectionOrder({

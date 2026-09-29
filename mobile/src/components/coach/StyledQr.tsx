@@ -3,6 +3,7 @@ import { View } from 'react-native';
 import Svg, { Defs, LinearGradient, Rect, Stop } from 'react-native-svg';
 import qrcode from 'qrcode-generator';
 import { MedicardLogoMark } from '@/components/ui/MedicardLogoMark';
+import { tx } from '@/i18n/locale';
 
 /**
  * MEDICARD-styled QR: rounded-square modules, rounded corner markers with a teal eye, and the logo in
@@ -44,7 +45,7 @@ export function StyledQr({ value, size = 240, ink = '#0F1A1C', eye = '#0D9488', 
   );
   const logo = logoCells * cell;
   return (
-    <View style={{ width: size, height: size }} accessibilityRole="image" accessibilityLabel="QR კოდი">
+    <View style={{ width: size, height: size }} accessibilityRole="image" accessibilityLabel={tx('QR კოდი', 'QR code')}>
       <Svg width={size} height={size}>
         <Defs>
           <LinearGradient id="eye" x1="0" y1="0" x2="1" y2="1">

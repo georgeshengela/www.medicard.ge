@@ -3,9 +3,10 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>MEDICARD პროფილის QR</title>
+  <title data-en="MEDICARD profile QR">MEDICARD პროფილის QR</title>
   <meta name="robots" content="noindex" />
   <link rel="icon" href="/favicon.png" />
+  <script src="/site-i18n.js?v=1"></script>
   <link rel="stylesheet" href="/landing.css" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Georgian:wght@400;600;700&display=swap" rel="stylesheet" />
@@ -14,18 +15,18 @@
   <main class="hero" style="min-height:70vh;display:flex;align-items:center">
     <div class="wrap" style="max-width:560px">
       <p class="kicker">MEDICARD</p>
-      <h1 style="max-width:none;font-size:30px">ეს MEDICARD-ის პირადი QR კოდია</h1>
-      <p class="lead">
+      <h1 style="max-width:none;font-size:30px" data-en="This is a personal MEDICARD QR code">ეს MEDICARD-ის პირადი QR კოდია</h1>
+      <p class="lead" data-en="A fitness trainer scans this code in the MEDICARD app to invite you as a client. You choose in the app what to share. Nothing is shown in a browser with this code.">
         ფიტნეს ტრენერი ამ კოდს MEDICARD-ის აპიდან ასკანერებს და კლიენტად მოგიწვევს. რას გაუზიარებ, აპში შენ თავად ირჩევ.
         ბრაუზერში ამ კოდით არაფერი ჩანს.
       </p>
       <div class="hero-actions">
-        <a class="btn btn-cta" id="open-app" href="#">გახსენი MEDICARD-ში</a>
-        <a class="btn btn-ghost" href="/">საიტზე გადასვლა</a>
+        <a class="btn btn-cta" id="open-app" href="#" data-en="Open in MEDICARD">გახსენი MEDICARD-ში</a>
+        <a class="btn btn-ghost" href="/" data-en="Go to the website">საიტზე გადასვლა</a>
       </div>
     </div>
   </main>
-  <script src="/landing.js"></script>
+  <script src="/landing.js?v=17"></script>
   <script>
     (function () {
       var match = location.pathname.match(/\/u\/([A-Za-z0-9_-]{16,40})\/?$/);

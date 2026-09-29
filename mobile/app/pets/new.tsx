@@ -7,6 +7,7 @@ import { ApiError, api } from '@/lib/api';
 import { clearPetsDraft, loadPetsDraft, savePetsDraft } from '@/lib/petsDraft';
 import { localAccountId } from '@/lib/localAccount';
 import { useAuth } from '@/store/AuthContext';
+import { tx } from '@/i18n/locale';
 
 export default function NewPetScreen() { const { user } = useAuth(); return user ? <NewPetForm key={user.id} owner={user.id} /> : <PetLoading />; }
 function NewPetForm({ owner }: { owner: string }) {
@@ -38,10 +39,10 @@ function NewPetForm({ owner }: { owner: string }) {
       if (photo) { try { await api.pets.uploadPhoto(pet.id, photo); } catch { photoFailed = true; } }
       if (!current()) return;
       router.replace(`/pets/${pet.id}`);
-      if (photoFailed) Alert.alert('პროფილი შენახულია', 'ფოტო ვერ აიტვირთა. პროფილის რედაქტირებიდან შეგიძლია ხელახლა დაამატო.');
+      if (photoFailed) Alert.alert(tx('პროფილი შენახულია', 'Profile saved'), tx('ფოტო ვერ აიტვირთა. პროფილის რედაქტირებიდან შეგიძლია ხელახლა დაამატო.', 'The photo couldn’t upload. You can add it again from profile editing.'));
     } catch (caught) {
-      if (current()) setError(caught instanceof ApiError ? caught.message : 'შენახვა ვერ მოხერხდა. შეამოწმე ინტერნეტი და სცადე ხელახლა.');
+      if (current()) setError(caught instanceof ApiError ? caught.message : tx('შენახვა ვერ მოხერხდა. შეამოწმე ინტერნეტი და სცადე ხელახლა.', 'Couldn’t save. Check your internet and try again.'));
     } finally { lock.current = false; if (current()) setSubmitting(false); }
   };
-  return initial ? <PetForm wizard initial={initial} submitting={submitting} error={error} submitLabel="პროფილის შექმნა" onChange={onChange} onSubmit={onSubmit} /> : <PetLoading />;
+  return initial ? <PetForm wizard initial={initial} submitting={submitting} error={error} submitLabel={tx('პროფილის შექმნა', 'Create profile')} onChange={onChange} onSubmit={onSubmit} /> : <PetLoading />;
 }

@@ -8,6 +8,7 @@ import { SESSION_STATUS_LABEL, clockOf, dayLabel, tbilisiYmd, type ClientOvervie
 import { Badge, Button, Card, CoachHeader, EmptyNote, ErrorBox, Loading, Screen, Section, coachStyles } from '@/components/coach/CoachUI';
 import { hubText } from '@/theme/hub';
 import { useThemeColors } from '@/theme/colors';
+import { tx } from '@/i18n/locale';
 
 function SessionRow({ s, onPress, action }: { s: CoachSession; onPress?: () => void; action?: React.ReactNode }) {
   const c = useThemeColors();
@@ -17,14 +18,14 @@ function SessionRow({ s, onPress, action }: { s: CoachSession; onPress?: () => v
       <View style={coachStyles.row}>
         <View style={{ width: 56, alignItems: 'center' }}>
           <Text style={{ fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 18, color: c.text100 }}>{clockOf(s.startsAt)}</Text>
-          <Text style={[hubText.small, { color: c.text300 }]}>{s.durationMin} წთ</Text>
+          <Text style={[hubText.small, { color: c.text300 }]}>{s.durationMin} {tx('წთ', 'min')}</Text>
         </View>
         <View style={{ flex: 1, gap: 3 }}>
           <Text style={[hubText.cardTitle, { color: c.text100 }]}>
             {dayLabel(tbilisiYmd(s.startsAt))} · {s.kindLabel}
           </Text>
           {s.gym ? <Text numberOfLines={1} style={[hubText.caption, { color: c.text300 }]}>{s.gym.brand} · {s.gym.name}</Text> : null}
-          <Badge label={s.status === 'SCHEDULED' && s.clientConfirmedAt ? 'დადასტურებული' : SESSION_STATUS_LABEL[s.status]} tone={tone} />
+          <Badge label={s.status === 'SCHEDULED' && s.clientConfirmedAt ? tx('დადასტურებული', 'Confirmed') : SESSION_STATUS_LABEL[s.status]} tone={tone} />
         </View>
         {onPress ? <ChevronRight size={18} color={c.text300} /> : null}
       </View>
@@ -46,7 +47,7 @@ export default function ClientSessionsScreen() {
       const o = await api.coach.overview();
       if (localAccountId() === owner) setOv(o);
     } catch (e) {
-      setError(e instanceof ApiError ? e.message : 'ჩატვირთვა ვერ მოხერხდა.');
+      setError(e instanceof ApiError ? e.message : tx('ჩატვირთვა ვერ მოხერხდა.', 'Couldn’t load.'));
     }
   }, []);
   useFocusEffect(useCallback(() => void load(), [load]));
@@ -57,7 +58,7 @@ export default function ClientSessionsScreen() {
       await fn();
       await load();
     } catch (e) {
-      Alert.alert('ვერ მოხერხდა', e instanceof ApiError ? e.message : 'სცადე ხელახლა.');
+      Alert.alert(tx('ვერ მოხერხდა', 'Something went wrong'), e instanceof ApiError ? e.message : tx('სცადე ხელახლა.', 'Please try again.'));
     } finally {
       setBusy(null);
     }
@@ -67,13 +68,13 @@ export default function ClientSessionsScreen() {
   const cancelled = (ov?.upcoming ?? []).filter((s) => s.status === 'CANCELLED');
   return (
     <View style={{ flex: 1, backgroundColor: c.bg100 }}>
-      <CoachHeader title="ვარჯიშები" subtitle={ov?.trainer?.displayName} fallback="/trainer" />
+      <CoachHeader title={tx('ვარჯიშები', 'Workouts')} subtitle={ov?.trainer?.displayName} fallback="/trainer" />
       <Screen>
         {error ? <ErrorBox message={error} onRetry={load} /> : null}
         {!ov && !error ? <Loading /> : null}
         {ov ? (
           <>
-            <Section title="მომავალი" style={{ marginTop: 8 }}>
+            <Section title={tx('მომავალი', 'Upcoming')} style={{ marginTop: 8 }}>
               {upcoming.length ? (
                 upcoming.map((s) => (
                   <SessionRow
@@ -81,15 +82,15 @@ export default function ClientSessionsScreen() {
                     s={s}
                     action={
                       <View style={[coachStyles.row, { gap: 10 }]}>
-                        {!s.clientConfirmedAt ? <Button label="მოვალ ✓" style={{ flex: 1, minHeight: 44 }} busy={busy === `c${s.id}`} onPress={() => void run(`c${s.id}`, () => api.coach.confirm(s.id))} /> : null}
+                        {!s.clientConfirmedAt ? <Button label={tx('მოვალ ✓', 'I’ll be there ✓')} style={{ flex: 1, minHeight: 44 }} busy={busy === `c${s.id}`} onPress={() => void run(`c${s.id}`, () => api.coach.confirm(s.id))} /> : null}
                         <Button
-                          label="გაუქმება"
+                          label={tx('გაუქმება', 'Cancel')}
                           kind="secondary"
                           style={{ flex: 1, minHeight: 44 }}
                           onPress={() =>
-                            Alert.alert('ვარჯიშის გაუქმება', s.label, [
-                              { text: 'არა', style: 'cancel' },
-                              { text: 'გაუქმება', style: 'destructive', onPress: () => void run(`x${s.id}`, () => api.coach.cancel(s.id)) },
+                            Alert.alert(tx('ვარჯიშის გაუქმება', 'Cancel workout'), s.label, [
+                              { text: tx('არა', 'No'), style: 'cancel' },
+                              { text: tx('გაუქმება', 'Cancel'), style: 'destructive', onPress: () => void run(`x${s.id}`, () => api.coach.cancel(s.id)) },
                             ])
                           }
                         />
@@ -99,19 +100,19 @@ export default function ClientSessionsScreen() {
                 ))
               ) : (
                 <Card>
-                  <EmptyNote icon={CalendarClock} title="დაგეგმილი ვარჯიში არ არის" body="როცა ტრენერი ჩაგწერს, აქ გამოჩნდება და შეხსენება 24 და 1 საათით ადრე მოგივა." />
+                  <EmptyNote icon={CalendarClock} title={tx('დაგეგმილი ვარჯიში არ არის', 'No workouts scheduled')} body={tx('როცა ტრენერი ჩაგწერს, აქ გამოჩნდება და შეხსენება 24 და 1 საათით ადრე მოგივა.', 'When your trainer books you, it shows up here and you get reminders 24 hours and 1 hour before.')} />
                 </Card>
               )}
             </Section>
             {ov.past?.length ? (
-              <Section title="ჩატარებული">
+              <Section title={tx('ჩატარებული', 'Completed')}>
                 {ov.past.map((s) => (
                   <SessionRow key={s.id} s={s} onPress={() => router.push(`/trainer/session/${s.id}` as never)} />
                 ))}
               </Section>
             ) : null}
             {cancelled.length ? (
-              <Section title="გაუქმებული">
+              <Section title={tx('გაუქმებული', 'Cancelled')}>
                 {cancelled.map((s) => (
                   <SessionRow key={s.id} s={s} />
                 ))}

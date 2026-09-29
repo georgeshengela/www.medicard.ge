@@ -12,6 +12,7 @@ import { get, post, put, del } from '../api.js';
 import { barChart, ring } from '../charts.js';
 import { withAiConsent } from '../aiConsent.js';
 import { featureOn, isFemale } from '../session.js';
+import { t, isEn, plural } from '../i18n.js';
 
 const CSS_HREF = '/app/css/cycle.css';
 const APP_STORE = 'https://apps.apple.com/app/id6812517519';
@@ -23,66 +24,66 @@ function ensureCss() {
 
 /* ── Catalogs (mobile/src/constants/cycle.ts, i18n ka.cycle) ─────────────────── */
 const FLOWS = [
-  { id: 'none', label: 'არა' }, { id: 'spotting', label: 'ლაქები' }, { id: 'light', label: 'მსუბუქი' },
-  { id: 'medium', label: 'ზომიერი' }, { id: 'heavy', label: 'ძლიერი' },
+  { id: 'none', label: t('არა', 'None') }, { id: 'spotting', label: t('ლაქები', 'Spotting') }, { id: 'light', label: t('მსუბუქი', 'Light') },
+  { id: 'medium', label: t('ზომიერი', 'Medium') }, { id: 'heavy', label: t('ძლიერი', 'Heavy') },
 ];
 const SYMPTOMS = [
-  ['cramps', 'კრუნჩხვები'], ['headache', 'თავის ტკივილი'], ['bloating', 'შებერილობა'], ['fatigue', 'დაღლილობა'],
-  ['back_pain', 'წელის ტკივილი'], ['breast_tenderness', 'მკერდის მგრძნობელობა'], ['acne', 'აკნე'], ['nausea', 'გულისრევა'],
-  ['cravings', 'საკვების ლტოლვა'], ['insomnia', 'უძილობა'], ['migraine', 'მიგრენი'], ['dizziness', 'თავბრუსხვევა'],
-  ['pelvic_pain', 'მენჯის ტკივილი'], ['ovulation_pain', 'ოვულაციის ტკივილი'],
-  ['breast_swelling', 'მკერდის შეშუპება'], ['vomiting', 'ღებინება'], ['heartburn', 'გულძმარვა'], ['oversleep', 'ძილიანობა'],
-  ['appetite_up', 'მადის მატება'], ['appetite_down', 'მადის კლება'], ['hot_flashes', 'ცხელი ტალღები'], ['night_sweats', 'ღამის ოფლიანობა'],
-  ['chills', 'შეცივება'], ['sweating', 'ოფლიანობა'], ['constipation', 'ყაბზობა'], ['diarrhea', 'დიარეა'], ['gas', 'გაზები'],
-  ['joint_pain', 'სახსრების ტკივილი'], ['muscle_pain', 'კუნთების ტკივილი'], ['leg_cramps', 'ფეხის კრუნჩხვები'], ['swelling', 'შეშუპება'],
-  ['water_retention', 'წყლის შეკავება'], ['dry_skin', 'მშრალი კანი'], ['oily_skin', 'ცხიმიანი კანი'], ['itchy_skin', 'ქავილი'],
-  ['hair_loss', 'თმის ცვენა'], ['sensitive_smell', 'სუნის მგრძნობელობა'], ['tinnitus', 'ყურებში ხმაური'], ['palpitations', 'გულისცემა'],
-  ['short_breath', 'სუნთქვის სიმძიმე'], ['frequent_urination', 'ხშირი შარდვა'], ['uti_feel', 'შარდის დისკომფორტი'],
-  ['vaginal_dryness', 'საშოს სიმშრალე'], ['discharge', 'გამონადენი'], ['itching_vulva', 'ქავილი (გენიტალური)'], ['fever', 'ცხელება'],
-  ['cold_symptoms', 'გაციების სიმპტომები'],
+  ['cramps', t('კრუნჩხვები', 'Cramps')], ['headache', t('თავის ტკივილი', 'Headache')], ['bloating', t('შებერილობა', 'Bloating')], ['fatigue', t('დაღლილობა', 'Fatigue')],
+  ['back_pain', t('წელის ტკივილი', 'Lower back pain')], ['breast_tenderness', t('მკერდის მგრძნობელობა', 'Tender breasts')], ['acne', t('აკნე', 'Acne')], ['nausea', t('გულისრევა', 'Nausea')],
+  ['cravings', t('საკვების ლტოლვა', 'Cravings')], ['insomnia', t('უძილობა', 'Insomnia')], ['migraine', t('მიგრენი', 'Migraine')], ['dizziness', t('თავბრუსხვევა', 'Dizziness')],
+  ['pelvic_pain', t('მენჯის ტკივილი', 'Pelvic pain')], ['ovulation_pain', t('ოვულაციის ტკივილი', 'Ovulation pain')],
+  ['breast_swelling', t('მკერდის შეშუპება', 'Breast swelling')], ['vomiting', t('ღებინება', 'Vomiting')], ['heartburn', t('გულძმარვა', 'Heartburn')], ['oversleep', t('ძილიანობა', 'Sleepiness')],
+  ['appetite_up', t('მადის მატება', 'More appetite')], ['appetite_down', t('მადის კლება', 'Less appetite')], ['hot_flashes', t('ცხელი ტალღები', 'Hot flashes')], ['night_sweats', t('ღამის ოფლიანობა', 'Night sweats')],
+  ['chills', t('შეცივება', 'Chills')], ['sweating', t('ოფლიანობა', 'Sweating')], ['constipation', t('ყაბზობა', 'Constipation')], ['diarrhea', t('დიარეა', 'Diarrhea')], ['gas', t('გაზები', 'Gas')],
+  ['joint_pain', t('სახსრების ტკივილი', 'Joint pain')], ['muscle_pain', t('კუნთების ტკივილი', 'Muscle pain')], ['leg_cramps', t('ფეხის კრუნჩხვები', 'Leg cramps')], ['swelling', t('შეშუპება', 'Swelling')],
+  ['water_retention', t('წყლის შეკავება', 'Water retention')], ['dry_skin', t('მშრალი კანი', 'Dry skin')], ['oily_skin', t('ცხიმიანი კანი', 'Oily skin')], ['itchy_skin', t('ქავილი', 'Itchy skin')],
+  ['hair_loss', t('თმის ცვენა', 'Hair loss')], ['sensitive_smell', t('სუნის მგრძნობელობა', 'Sensitive to smells')], ['tinnitus', t('ყურებში ხმაური', 'Ringing in ears')], ['palpitations', t('გულისცემა', 'Palpitations')],
+  ['short_breath', t('სუნთქვის სიმძიმე', 'Short of breath')], ['frequent_urination', t('ხშირი შარდვა', 'Frequent urination')], ['uti_feel', t('შარდის დისკომფორტი', 'Urinary discomfort')],
+  ['vaginal_dryness', t('საშოს სიმშრალე', 'Vaginal dryness')], ['discharge', t('გამონადენი', 'Discharge')], ['itching_vulva', t('ქავილი (გენიტალური)', 'Genital itching')], ['fever', t('ცხელება', 'Fever')],
+  ['cold_symptoms', t('გაციების სიმპტომები', 'Cold symptoms')],
 ].map(([id, label]) => ({ id, label }));
 const SYMPTOMS_VISIBLE = 14;
 const MOODS = [
-  ['energetic', 'ენერგიული'], ['calm', 'მშვიდი'], ['happy', 'ბედნიერი'], ['confident', 'თავდაჯერებული'], ['sensitive', 'მგრძნობიარე'],
-  ['anxious', 'შფოთვა'], ['irritable', 'გაღიზიანება'], ['angry', 'გაბრაზებული'], ['sad', 'სევდიანი'], ['tearful', 'ცრემლიანი'],
-  ['mood_swings', 'განწყობის ცვლა'], ['focused', 'კონცენტრირებული'], ['unfocused', 'გაფანტული'], ['tired_mood', 'დაღლილი'],
-  ['apathetic', 'აპათიური'], ['stressed', 'სტრესი'], ['romantic', 'რომანტიკული'], ['lonely', 'მარტოობა'],
+  ['energetic', t('ენერგიული', 'Energetic')], ['calm', t('მშვიდი', 'Calm')], ['happy', t('ბედნიერი', 'Happy')], ['confident', t('თავდაჯერებული', 'Confident')], ['sensitive', t('მგრძნობიარე', 'Sensitive')],
+  ['anxious', t('შფოთვა', 'Anxious')], ['irritable', t('გაღიზიანება', 'Irritable')], ['angry', t('გაბრაზებული', 'Angry')], ['sad', t('სევდიანი', 'Sad')], ['tearful', t('ცრემლიანი', 'Tearful')],
+  ['mood_swings', t('განწყობის ცვლა', 'Mood swings')], ['focused', t('კონცენტრირებული', 'Focused')], ['unfocused', t('გაფანტული', 'Distracted')], ['tired_mood', t('დაღლილი', 'Tired')],
+  ['apathetic', t('აპათიური', 'Apathetic')], ['stressed', t('სტრესი', 'Stressed')], ['romantic', t('რომანტიკული', 'Romantic')], ['lonely', t('მარტოობა', 'Lonely')],
 ].map(([id, label]) => ({ id, label }));
 /** Flo's "Sex and sex drive". Any activity chip = yes; „არ მქონია“ = no; nothing = not answered. */
 const SEX_ACTIVITY = [
-  ['protected', 'დაცული სექსი'], ['unprotected', 'დაუცველი სექსი'], ['oral_sex', 'ორალური'], ['anal_sex', 'ანალური'],
-  ['sensual_touch', 'სენსუალური შეხება'], ['masturbation', 'მასტურბაცია'], ['sex_toys', 'სათამაშოები'], ['orgasm', 'ორგაზმი'],
-  ['pain_sex', 'ტკივილი სექსისას'],
+  ['protected', t('დაცული სექსი', 'Protected sex')], ['unprotected', t('დაუცველი სექსი', 'Unprotected sex')], ['oral_sex', t('ორალური', 'Oral')], ['anal_sex', t('ანალური', 'Anal')],
+  ['sensual_touch', t('სენსუალური შეხება', 'Sensual touch')], ['masturbation', t('მასტურბაცია', 'Masturbation')], ['sex_toys', t('სათამაშოები', 'Sex toys')], ['orgasm', t('ორგაზმი', 'Orgasm')],
+  ['pain_sex', t('ტკივილი სექსისას', 'Pain during sex')],
 ].map(([id, label]) => ({ id, label }));
-const SEX_DRIVE = [{ id: 'high_drive', label: 'მაღალი' }, { id: 'neutral_drive', label: 'ჩვეულებრივი' }, { id: 'low_drive', label: 'დაბალი' }];
+const SEX_DRIVE = [{ id: 'high_drive', label: t('მაღალი', 'High') }, { id: 'neutral_drive', label: t('ჩვეულებრივი', 'Neutral') }, { id: 'low_drive', label: t('დაბალი', 'Low') }];
 const SEX_ACTIVITY_IDS = new Set(SEX_ACTIVITY.map((o) => o.id));
 const SEX_IDS = new Set([...SEX_ACTIVITY, ...SEX_DRIVE].map((o) => o.id));
 const MUCUS = [
-  { id: 'dry', label: 'მშრალი' }, { id: 'sticky', label: 'წებოვანი' }, { id: 'creamy', label: 'კრემისებრი' },
-  { id: 'watery', label: 'წყლიანი' }, { id: 'eggwhite', label: 'კვერცხის ცილისებრი' },
+  { id: 'dry', label: t('მშრალი', 'Dry') }, { id: 'sticky', label: t('წებოვანი', 'Sticky') }, { id: 'creamy', label: t('კრემისებრი', 'Creamy') },
+  { id: 'watery', label: t('წყლიანი', 'Watery') }, { id: 'eggwhite', label: t('კვერცხის ცილისებრი', 'Egg white') },
 ];
-const TESTS = [{ id: 'negative', label: 'უარყოფითი' }, { id: 'positive', label: 'დადებითი' }, { id: 'unclear', label: 'გაურკვეველი' }];
+const TESTS = [{ id: 'negative', label: t('უარყოფითი', 'Negative') }, { id: 'positive', label: t('დადებითი', 'Positive') }, { id: 'unclear', label: t('გაურკვეველი', 'Unclear') }];
 const PAIN_TYPES = [
-  { id: 'cramps', label: 'კრუნჩხვები' }, { id: 'pelvic', label: 'მენჯის ტკივილი' }, { id: 'lower_back', label: 'წელის ტკივილი' },
-  { id: 'headache', label: 'თავის ტკივილი' }, { id: 'breast', label: 'მკერდის ტკივილი' }, { id: 'ovulation_side', label: 'ცალმხრივი ტკივილი' },
-  { id: 'other', label: 'სხვა' },
+  { id: 'cramps', label: t('კრუნჩხვები', 'Cramps') }, { id: 'pelvic', label: t('მენჯის ტკივილი', 'Pelvic pain') }, { id: 'lower_back', label: t('წელის ტკივილი', 'Lower back pain') },
+  { id: 'headache', label: t('თავის ტკივილი', 'Headache') }, { id: 'breast', label: t('მკერდის ტკივილი', 'Breast pain') }, { id: 'ovulation_side', label: t('ცალმხრივი ტკივილი', 'One-sided pain') },
+  { id: 'other', label: t('სხვა', 'Other') },
 ];
-const PAIN_SEVERITY = [{ id: 'mild', label: 'მსუბუქი' }, { id: 'moderate', label: 'ზომიერი' }, { id: 'severe', label: 'ძლიერი' }];
+const PAIN_SEVERITY = [{ id: 'mild', label: t('მსუბუქი', 'Mild') }, { id: 'moderate', label: t('ზომიერი', 'Moderate') }, { id: 'severe', label: t('ძლიერი', 'Severe') }];
 const LIFESTYLE = [
-  { key: 'sleepQuality', label: 'ძილი', options: [['poor', 'ცუდი'], ['okay', 'საშუალო'], ['good', 'კარგი']] },
-  { key: 'stressLevel', label: 'სტრესი', options: [['low', 'დაბალი'], ['medium', 'საშუალო'], ['high', 'მაღალი']] },
-  { key: 'exerciseLevel', label: 'აქტივობა', options: [['none', 'არა'], ['light', 'მსუბუქი'], ['moderate', 'ზომიერი'], ['intense', 'ინტენსიური']] },
-  { key: 'caffeine', label: 'კოფეინი', options: [['none', 'არა'], ['low', 'ცოტა'], ['moderate', 'საშუალო'], ['high', 'ბევრი']] },
-  { key: 'alcohol', label: 'ალკოჰოლი', options: [['none', 'არა'], ['light', 'ცოტა'], ['moderate', 'საშუალო'], ['heavy', 'ბევრი']] },
+  { key: 'sleepQuality', label: t('ძილი', 'Sleep'), options: [['poor', t('ცუდი', 'Poor')], ['okay', t('საშუალო', 'Okay')], ['good', t('კარგი', 'Good')]] },
+  { key: 'stressLevel', label: t('სტრესი', 'Stress'), options: [['low', t('დაბალი', 'Low')], ['medium', t('საშუალო', 'Medium')], ['high', t('მაღალი', 'High')]] },
+  { key: 'exerciseLevel', label: t('აქტივობა', 'Exercise'), options: [['none', t('არა', 'None')], ['light', t('მსუბუქი', 'Light')], ['moderate', t('ზომიერი', 'Moderate')], ['intense', t('ინტენსიური', 'Intense')]] },
+  { key: 'caffeine', label: t('კოფეინი', 'Caffeine'), options: [['none', t('არა', 'None')], ['low', t('ცოტა', 'A little')], ['moderate', t('საშუალო', 'Moderate')], ['high', t('ბევრი', 'A lot')]] },
+  { key: 'alcohol', label: t('ალკოჰოლი', 'Alcohol'), options: [['none', t('არა', 'None')], ['light', t('ცოტა', 'A little')], ['moderate', t('საშუალო', 'Moderate')], ['heavy', t('ბევრი', 'A lot')]] },
 ].map((g) => ({ ...g, options: g.options.map(([id, label]) => ({ id, label })) }));
 const ENERGY = [
-  { id: 'very_low', label: 'ძალიან დაბალი' }, { id: 'low', label: 'დაბალი' }, { id: 'normal', label: 'ჩვეულებრივი' },
-  { id: 'high', label: 'მაღალი' }, { id: 'very_high', label: 'ძალიან მაღალი' },
+  { id: 'very_low', label: t('ძალიან დაბალი', 'Very low') }, { id: 'low', label: t('დაბალი', 'Low') }, { id: 'normal', label: t('ჩვეულებრივი', 'Normal') },
+  { id: 'high', label: t('მაღალი', 'High') }, { id: 'very_high', label: t('ძალიან მაღალი', 'Very high') },
 ];
-const WEEKDAYS = ['ორშ', 'სამ', 'ოთხ', 'ხუთ', 'პარ', 'შაბ', 'კვი'];
+const WEEKDAYS = t(['ორშ', 'სამ', 'ოთხ', 'ხუთ', 'პარ', 'შაბ', 'კვი'], ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']);
 const MODE_LABEL = {
-  TRACK_PERIOD: 'ციკლის თვალყური', TRY_TO_CONCEIVE: 'ორსულობის მცდელობა', PREGNANCY: 'ორსულობის რეჟიმი',
-  PERIMENOPAUSE: 'პერიმენოპაუზის თვალყური', POSTPARTUM: 'მშობიარობის შემდეგ',
+  TRACK_PERIOD: t('ციკლის თვალყური', 'Track my cycle'), TRY_TO_CONCEIVE: t('ორსულობის მცდელობა', 'Trying to conceive'), PREGNANCY: t('ორსულობის რეჟიმი', 'Pregnancy mode'),
+  PERIMENOPAUSE: t('პერიმენოპაუზის თვალყური', 'Perimenopause tracking'), POSTPARTUM: t('მშობიარობის შემდეგ', 'Postpartum'),
 };
 /** cycleModeCapabilityMatrix.js — the subset the web presents. */
 const CAPS = {
@@ -97,31 +98,31 @@ const LABEL = Object.fromEntries([...FLOWS, ...SYMPTOMS, ...MOODS, ...SEX_ACTIVI
 /** cycleAdvice.ts DAILY_TIPS — soft, non-medical wording; three a day, rotating with the cycle day. */
 const DAILY_TIPS = {
   period: [
-    ['care', 'სითბო ამშვიდებს', 'თბილი საფენი მუცელზე ან თბილი შხაპი კრუნჩხვისას ბევრს ეხმარება.'],
-    ['care', 'რკინით მდიდარი საკვები', 'ლობიო, ისპანახი, წითელი ხორცი ან თხილი რკინის მარაგის შენარჩუნებაში გეხმარება.'],
-    ['energy', 'მსუბუქი მოძრაობა', 'ნელი სეირნობა ან გაწელვა ზოგს ტკივილს უმსუბუქებს — მოუსმინე სხეულს.'],
-    ['calm', 'წყალი და თბილი ჩაი', 'საკმარისი სითხე შებერილობას ამცირებს, თბილი ჩაი კი სიმშვიდეს გმატებს.'],
-    ['calm', 'დასვენება ნორმალურია', 'ენერგია დაბალია? დღეს ადრე დაძინება კარგი არჩევანია.'],
+    ['care', t('სითბო ამშვიდებს', 'Warmth soothes'), t('თბილი საფენი მუცელზე ან თბილი შხაპი კრუნჩხვისას ბევრს ეხმარება.', 'A warm pad on your belly or a warm shower helps many people with cramps.')],
+    ['care', t('რკინით მდიდარი საკვები', 'Iron-rich foods'), t('ლობიო, ისპანახი, წითელი ხორცი ან თხილი რკინის მარაგის შენარჩუნებაში გეხმარება.', 'Beans, spinach, red meat or nuts help keep your iron up.')],
+    ['energy', t('მსუბუქი მოძრაობა', 'Gentle movement'), t('ნელი სეირნობა ან გაწელვა ზოგს ტკივილს უმსუბუქებს — მოუსმინე სხეულს.', 'A slow walk or stretching eases pain for some people — listen to your body.')],
+    ['calm', t('წყალი და თბილი ჩაი', 'Water and warm tea'), t('საკმარისი სითხე შებერილობას ამცირებს, თბილი ჩაი კი სიმშვიდეს გმატებს.', 'Enough fluids ease bloating, and warm tea adds a little calm.')],
+    ['calm', t('დასვენება ნორმალურია', 'Resting is normal'), t('ენერგია დაბალია? დღეს ადრე დაძინება კარგი არჩევანია.', 'Low on energy? Going to bed early tonight is a good choice.')],
   ],
   follicular: [
-    ['energy', 'ენერგიის დღეები', 'ენერგია ხშირად იზრდება — კარგი დროა აქტიური ვარჯიშისთვის ან ახალი გეგმისთვის.'],
-    ['care', 'ცილა და ბოსტნეული', 'ცილა, ბოსტნეული და მთლიანი მარცვლეული ენერგიას დღის განმავლობაში სტაბილურად ინარჩუნებს.'],
-    ['mood', 'ფოკუსის დრო', 'ამ დღეებში კონცენტრაცია ხშირად უფრო ადვილია — რთული საქმეები ახლა დაგეგმე.'],
-    ['energy', 'სცადე რამე ახალი', 'ახალი ვარჯიში, რეცეპტი ან ჰობი — ბევრი ქალი ამ ფაზაში უფრო ცნობისმოყვარედ გრძნობს თავს.'],
-    ['calm', 'ძილის რიტმი', 'ერთსა და იმავე დროს დაძინება მთელი ციკლის განმავლობაში ენერგიას აწონასწორებს.'],
+    ['energy', t('ენერგიის დღეები', 'Energy days'), t('ენერგია ხშირად იზრდება — კარგი დროა აქტიური ვარჯიშისთვის ან ახალი გეგმისთვის.', 'Energy often rises — a good time for an active workout or a new plan.')],
+    ['care', t('ცილა და ბოსტნეული', 'Protein and veggies'), t('ცილა, ბოსტნეული და მთლიანი მარცვლეული ენერგიას დღის განმავლობაში სტაბილურად ინარჩუნებს.', 'Protein, vegetables and whole grains keep your energy steady through the day.')],
+    ['mood', t('ფოკუსის დრო', 'Focus time'), t('ამ დღეებში კონცენტრაცია ხშირად უფრო ადვილია — რთული საქმეები ახლა დაგეგმე.', 'Focusing is often easier these days — plan harder tasks now.')],
+    ['energy', t('სცადე რამე ახალი', 'Try something new'), t('ახალი ვარჯიში, რეცეპტი ან ჰობი — ბევრი ქალი ამ ფაზაში უფრო ცნობისმოყვარედ გრძნობს თავს.', 'A new workout, recipe or hobby — many women feel more curious in this phase.')],
+    ['calm', t('ძილის რიტმი', 'Sleep rhythm'), t('ერთსა და იმავე დროს დაძინება მთელი ციკლის განმავლობაში ენერგიას აწონასწორებს.', 'Going to bed at the same time throughout your cycle helps balance your energy.')],
   ],
   fertile: [
-    ['energy', 'აქტიური დღეები', 'ბევრი ქალი ამ დღეებში ყველაზე ენერგიულად და თავდაჯერებულად გრძნობს თავს.'],
-    ['calm', 'საკმარისი წყალი', 'დღეში 6–8 ჭიქა სითხე ენერგიასა და კონცენტრაციას ეხმარება.'],
-    ['care', 'სხეულის ნიშნები', 'გამონადენის ცვლილებები ამ დღეებში ჩვეულებრივია — შეგიძლია აღრიცხო და პატერნს დაინახავ.'],
-    ['mood', 'სოციალური დღეები', 'ურთიერთობები ახლა ხშირად უფრო მარტივია — კარგი დროა შეხვედრებისთვის.'],
+    ['energy', t('აქტიური დღეები', 'Active days'), t('ბევრი ქალი ამ დღეებში ყველაზე ენერგიულად და თავდაჯერებულად გრძნობს თავს.', 'Many women feel their most energetic and confident these days.')],
+    ['calm', t('საკმარისი წყალი', 'Enough water'), t('დღეში 6–8 ჭიქა სითხე ენერგიასა და კონცენტრაციას ეხმარება.', '6–8 glasses of fluids a day help your energy and focus.')],
+    ['care', t('სხეულის ნიშნები', 'Body signs'), t('გამონადენის ცვლილებები ამ დღეებში ჩვეულებრივია — შეგიძლია აღრიცხო და პატერნს დაინახავ.', 'Changes in discharge are common these days — log them and you’ll see your pattern.')],
+    ['mood', t('სოციალური დღეები', 'Social days'), t('ურთიერთობები ახლა ხშირად უფრო მარტივია — კარგი დროა შეხვედრებისთვის.', 'Connecting with people often feels easier now — a good time to meet up.')],
   ],
   luteal: [
-    ['care', 'მაგნიუმით მდიდარი საკვები', 'მწვანე ფოთლოვანი, თხილეული და მუქი შოკოლადი მაგნიუმს შეიცავს — ზოგს PMS-ის შემსუბუქებაში ეხმარება.'],
-    ['calm', 'ძილი უფრო მნიშვნელოვანია', 'ამ ფაზაში ძილი შეიძლება გაუარესდეს — ეკრანები დაძინებამდე ერთი საათით ადრე გამორთე.'],
-    ['care', 'ნაკლები მარილი და კოფეინი', 'შებერილობისა და მკერდის მგრძნობელობისას მარილისა და კოფეინის შემცირება ზოგს ეხმარება.'],
-    ['energy', 'ნაზი მოძრაობა', 'იოგა, პილატესი ან სეირნობა განწყობასაც აუმჯობესებს და შებერილობასაც ამცირებს.'],
-    ['mood', 'იყავი შენთვის კეთილი', 'განწყობის რყევა ამ დღეებში ხშირია — დაგეგმე პატარა სასიამოვნო რამ საკუთარი თავისთვის.'],
+    ['care', t('მაგნიუმით მდიდარი საკვები', 'Magnesium-rich foods'), t('მწვანე ფოთლოვანი, თხილეული და მუქი შოკოლადი მაგნიუმს შეიცავს — ზოგს PMS-ის შემსუბუქებაში ეხმარება.', 'Leafy greens, nuts and dark chocolate contain magnesium — it helps some people with PMS.')],
+    ['calm', t('ძილი უფრო მნიშვნელოვანია', 'Sleep matters more'), t('ამ ფაზაში ძილი შეიძლება გაუარესდეს — ეკრანები დაძინებამდე ერთი საათით ადრე გამორთე.', 'Sleep can get worse in this phase — turn off screens an hour before bed.')],
+    ['care', t('ნაკლები მარილი და კოფეინი', 'Less salt and caffeine'), t('შებერილობისა და მკერდის მგრძნობელობისას მარილისა და კოფეინის შემცირება ზოგს ეხმარება.', 'With bloating or breast tenderness, cutting back on salt and caffeine helps some people.')],
+    ['energy', t('ნაზი მოძრაობა', 'Gentle movement'), t('იოგა, პილატესი ან სეირნობა განწყობასაც აუმჯობესებს და შებერილობასაც ამცირებს.', 'Yoga, Pilates or a walk can lift your mood and ease bloating.')],
+    ['mood', t('იყავი შენთვის კეთილი', 'Be kind to yourself'), t('განწყობის რყევა ამ დღეებში ხშირია — დაგეგმე პატარა სასიამოვნო რამ საკუთარი თავისთვის.', 'Mood swings are common these days — plan something small and nice for yourself.')],
   ],
 };
 const TIP_ICON = { care: 'heart', energy: 'zap', fertile: 'flower', calm: 'moon', mood: 'sparkles', pregnancy: 'heart' };
@@ -161,19 +162,19 @@ function logHasFacts(l) {
 
 /* ── Derived presentation (CycleHero + cycleHonesty + cycleContraception) ─── */
 function displayPhaseLabel(phase, phaseKa, loggedPeriod) {
-  if (!phase || phase === 'unknown') return phaseKa || 'უცნობი ფაზა';
-  if (phase === 'period') return loggedPeriod ? 'მენსტრუაცია' : 'სავარაუდო მენსტრუაცია';
-  return `სავარაუდო ${phaseKa}`;
+  if (!phase || phase === 'unknown') return phaseKa || t('უცნობი ფაზა', 'Unknown phase');
+  if (phase === 'period') return loggedPeriod ? t('მენსტრუაცია', 'Period') : t('სავარაუდო მენსტრუაცია', 'Estimated period');
+  return t(`სავარაუდო ${phaseKa}`, `Estimated ${String(phaseKa).toLowerCase()}`);
 }
 
 function confidenceCopy(b) {
   const confidence = b.predictions?.confidence;
   const conditions = (b.profile?.conditions || []).map(String);
-  if (b.profile?.isIrregular) return 'შენი ციკლები იცვლება, ამიტომ თარიღი შეიძლება გადაიწიოს';
-  if (confidence !== 'high' && confidence !== 'medium') return 'ჯერ ვსწავლობთ შენს რიტმს';
-  if (conditions.includes('pcos')) return 'ჯერ ვსწავლობთ შენს რიტმს';
-  if (confidence === 'medium') return 'რამდენიმე ციკლის მიხედვით · თარიღი შეიძლება გადაიწიოს';
-  return 'ბოლო ციკლების მიხედვით';
+  if (b.profile?.isIrregular) return t('შენი ციკლები იცვლება, ამიტომ თარიღი შეიძლება გადაიწიოს', 'Your cycles vary, so the date may shift');
+  if (confidence !== 'high' && confidence !== 'medium') return t('ჯერ ვსწავლობთ შენს რიტმს', 'Still learning your rhythm');
+  if (conditions.includes('pcos')) return t('ჯერ ვსწავლობთ შენს რიტმს', 'Still learning your rhythm');
+  if (confidence === 'medium') return t('რამდენიმე ციკლის მიხედვით · თარიღი შეიძლება გადაიწიოს', 'Based on a few cycles · the date may shift');
+  return t('ბოლო ციკლების მიხედვით', 'Based on your recent cycles');
 }
 
 function derive(b) {
@@ -192,7 +193,7 @@ function derive(b) {
   const periodLen = b.averages?.usedPeriodLength ?? b.profile?.avgPeriodLength ?? 5;
   const day = b.cycleDay ?? null;
   const phase = b.phase || 'unknown';
-  const phaseKa = b.phaseKa || 'უცნობი ფაზა';
+  const phaseKa = b.phaseKa || t('უცნობი ფაზა', 'Unknown phase');
   // Perimenopause: a precise next date only when the server says the recent history supports it.
   const next = caps.peri && b.perimenopause?.forecast?.showPreciseNextPeriod === false ? null : b.predictions?.nextPeriodStart || null;
   const cal = b.predictions?.calendar || {};
@@ -202,19 +203,22 @@ function derive(b) {
   const conditions = (b.profile?.conditions || []).map(String);
   const needsOnboarding = !['PREGNANCY', 'POSTPARTUM', 'PERIMENOPAUSE'].includes(mode) && !b.profile?.lastPeriodStart;
 
-  const phaseHint = hideLengthChrome ? 'ციკლის ახალი ისტორია გროვდება' : displayPhaseLabel(phase, phaseKa, onPeriod);
+  const phaseHint = hideLengthChrome ? t('ციკლის ახალი ისტორია გროვდება', 'Building your new cycle history') : displayPhaseLabel(phase, phaseKa, onPeriod);
 
   let statusLine = null;
-  if (onPeriod) statusLine = uncertain ? 'დღეს აღრიცხული სისხლდენა' : 'ახლა აღრიცხული მენსტრუაციაა';
+  if (onPeriod) statusLine = uncertain ? t('დღეს აღრიცხული სისხლდენა', 'Bleeding logged today') : t('ახლა აღრიცხული მენსტრუაციაა', 'Period logged right now');
   else if (caps.pregnancy) {
     const age = b.pregnancy?.age;
-    statusLine = b.pregnancy?.reviewRequired ? 'საცნობი თარიღი გადასახედია — კვირის შეფასება არ გამოჩნდება.'
-      : age ? `${age.week} კვირა + ${age.day} დღე` : 'ორსულობის რეჟიმი';
+    statusLine = b.pregnancy?.reviewRequired ? t('საცნობი თარიღი გადასახედია — კვირის შეფასება არ გამოჩნდება.', 'Your reference date needs a review — the week estimate won’t show.')
+      : age ? t(`${age.week} კვირა + ${age.day} დღე`, `${plural(age.week, 'week')} + ${plural(age.day, 'day')}`) : t('ორსულობის რეჟიმი', 'Pregnancy mode');
   } else if (!hidePredicted) {
-    if (predictedToday) statusLine = 'დღეს სავარაუდო მენსტრუაციის დღეა — მენსტრუაცია ჯერ არ არის აღრიცხული';
+    if (predictedToday) statusLine = t('დღეს სავარაუდო მენსტრუაციის დღეა — მენსტრუაცია ჯერ არ არის აღრიცხული', 'Today is an estimated period day — no period logged yet');
     else if (next && caps.forecast && inDays != null && inDays >= 0) {
-      if (inDays === 0) statusLine = 'დღეს სავარაუდო მენსტრუაციის დღეა — მენსტრუაცია ჯერ არ არის აღრიცხული';
-      else {
+      if (inDays === 0) statusLine = t('დღეს სავარაუდო მენსტრუაციის დღეა — მენსტრუაცია ჯერ არ არის აღრიცხული', 'Today is an estimated period day — no period logged yet');
+      else if (isEn) {
+        const what = uncertain ? 'Bleeding' : 'Period';
+        statusLine = inDays === 1 ? `${what} likely tomorrow` : `${what} likely in ${inDays} days`;
+      } else {
         const what = uncertain ? 'სისხლდენა' : 'მენსტრუაცია';
         statusLine = inDays === 1 ? `${what} სავარაუდოდ ხვალ` : `${what} სავარაუდოდ ${inDays} დღეში`;
       }
@@ -224,10 +228,10 @@ function derive(b) {
   /** One number in the ring: bleeding day → „დღეს“ → countdown („სავარაუდოდ“) → cycle day. */
   let center;
   if (!hideLengthChrome) {
-    if (onPeriod) center = { top: uncertain ? 'სისხლდენის დღე' : 'მენსტრუაციის დღე', value: day != null ? String(day) : '—', bottom: null, tone: 'period' };
-    else if (predictedToday || (forecastOn && inDays === 0)) center = { top: 'სავარაუდოდ', value: 'დღეს', bottom: 'სავარაუდო მენსტრუაცია', tone: 'period', word: true };
-    else if (forecastOn && inDays > 0) center = { top: uncertain ? 'სისხლდენამდე' : 'მენსტრუაციამდე', value: String(inDays), bottom: 'დღე · სავარაუდოდ' };
-    else if (forecastOn && inDays < 0 && day != null) center = { top: 'ციკლის დღე', value: String(day), bottom: `სავარაუდო თარიღიდან ${-inDays} დღე` };
+    if (onPeriod) center = { top: uncertain ? t('სისხლდენის დღე', 'Bleeding day') : t('მენსტრუაციის დღე', 'Period day'), value: day != null ? String(day) : '—', bottom: null, tone: 'period' };
+    else if (predictedToday || (forecastOn && inDays === 0)) center = { top: t('სავარაუდოდ', 'Likely'), value: t('დღეს', 'Today'), bottom: t('სავარაუდო მენსტრუაცია', 'Estimated period'), tone: 'period', word: true };
+    else if (forecastOn && inDays > 0) center = { top: uncertain ? t('სისხლდენამდე', 'Until bleeding') : t('მენსტრუაციამდე', 'Until period'), value: String(inDays), bottom: t('დღე · სავარაუდოდ', inDays === 1 ? 'day · estimated' : 'days · estimated') };
+    else if (forecastOn && inDays < 0 && day != null) center = { top: t('ციკლის დღე', 'Cycle day'), value: String(day), bottom: t(`სავარაუდო თარიღიდან ${-inDays} დღე`, `${plural(-inDays, 'day')} past the estimate`) };
   }
 
   const cycleStart = day != null && day > 0 ? addKey(today, -(day - 1)) : null;
@@ -242,7 +246,7 @@ function derive(b) {
     ? (b.logs || []).filter((l) => isBleed(l.flow)).map((l) => daysBetween(cycleStart, l.date) + 1).filter((d) => d >= 1 && d <= Math.max(cycleLen, day ?? 0))
     : [];
   const startLeads = !onPeriod && (!forecastOn || predictedToday || (inDays != null && inDays <= 3));
-  const startLabel = uncertain ? 'სისხლდენა დაიწყო' : 'მენსტრუაცია დაიწყო';
+  const startLabel = uncertain ? t('სისხლდენა დაიწყო', 'Bleeding started') : t('მენსტრუაცია დაიწყო', 'Period started');
   const showPredicted = caps.fertile && forecastAllowed; // calendar overlays follow the app (index.tsx showPredicted)
 
   return {
@@ -331,7 +335,7 @@ function dial(opts) {
     : opts.phase === 'fertile' || opts.phase === 'ovulation' ? '--cy-fertile-fill'
       : opts.phase === 'luteal' ? '--cy-luteal' : opts.phase === 'follicular' ? '--cy-follicular' : '--cy-muted-soft';
 
-  const root = svg('svg', { viewBox: `0 0 ${VB} ${VB}`, role: 'img', 'aria-label': opts.label || 'ციკლის რგოლი', class: opts.animate ? 'cy-dial-anim' : null });
+  const root = svg('svg', { viewBox: `0 0 ${VB} ${VB}`, role: 'img', 'aria-label': opts.label || t('ციკლის რგოლი', 'Cycle ring'), class: opts.animate ? 'cy-dial-anim' : null });
   const defs = svg('defs');
   const grad = svg('radialGradient', { id: `${id}g`, cx: '50%', cy: '50%', r: '50%' });
   [[0, 0.18], [0.75, 0.04], [1, 0]].forEach(([o, a]) => grad.appendChild(svg('stop', { offset: o, style: `stop-color:var(${glowVar});stop-opacity:${a}` })));
@@ -390,8 +394,8 @@ function dial(opts) {
   const botEl = h('div', { class: 'cy-dial-bottom' });
   const setCenter = (c) => {
     const value = c?.value ?? (opts.hideLength ? '—' : day != null ? String(day) : '—');
-    const top = c ? c.top : 'ციკლის დღე';
-    const bottom = c ? c.bottom : opts.hideLength ? null : `${length}-დან`;
+    const top = c ? c.top : t('ციკლის დღე', 'Cycle day');
+    const bottom = c ? c.bottom : opts.hideLength ? null : t(`${length}-დან`, `of ${length}`);
     topEl.textContent = top || '';
     topEl.hidden = !top;
     valEl.textContent = value;
@@ -440,9 +444,9 @@ function describeDayFn(b, v) {
     const [, mm, dd] = date.split('-').map(Number);
     const mark = b.predictions?.calendar?.[date];
     const logged = (b.logs || []).some((l) => l.date === date && isBleed(l.flow));
-    const phaseText = logged ? 'მენსტრუაცია · აღრიცხული'
-      : !v.hidePredicted && mark?.phaseKa && mark.phase !== 'unknown' ? `სავარაუდოდ ${mark.phaseKa.toLowerCase()}` : null;
-    return { top: date === v.today ? 'დღეს' : `${dd} ${KA_MONTHS[mm - 1]}`, value: String(d), bottom: phaseText ?? 'ციკლის დღე', tone: logged ? 'period' : 'ink' };
+    const phaseText = logged ? t('მენსტრუაცია · აღრიცხული', 'Period · logged')
+      : !v.hidePredicted && mark?.phaseKa && mark.phase !== 'unknown' ? t(`სავარაუდოდ ${mark.phaseKa.toLowerCase()}`, `Likely ${mark.phaseKa.toLowerCase()}`) : null;
+    return { top: date === v.today ? t('დღეს', 'Today') : `${dd} ${KA_MONTHS[mm - 1]}`, value: String(d), bottom: phaseText ?? t('ციკლის დღე', 'Cycle day'), tone: logged ? 'period' : 'ink' };
   };
 }
 
@@ -458,13 +462,13 @@ function dialFor(b, v, extra = {}) {
     phase: v.phase,
     periodActive: v.onPeriod,
     describeDay: v.hideLengthChrome ? null : describeDayFn(b, v),
-    label: [v.day != null ? `ციკლის დღე ${v.day}` : null, v.phaseHint, v.statusLine].filter(Boolean).join('. '),
+    label: [v.day != null ? t(`ციკლის დღე ${v.day}`, `Cycle day ${v.day}`) : null, v.phaseHint, v.statusLine].filter(Boolean).join('. '),
     ...extra,
   });
 }
 
 function predBadge(date) {
-  return h('span', { class: 'cy-pred', title: 'სავარაუდო თარიღი' }, h('i', { class: 'cy-pred-dot' }), `სავარაუდო · ${fmtDate(date)}`);
+  return h('span', { class: 'cy-pred', title: t('სავარაუდო თარიღი', 'Estimated date') }, h('i', { class: 'cy-pred-dot' }), t(`სავარაუდო · ${fmtDate(date)}`, `Estimated · ${fmtDate(date)}`));
 }
 
 /* ── Page ────────────────────────────────────────────────────────────────── */
@@ -481,7 +485,7 @@ export default async function cyclePage(root, ctx = {}) {
   };
 
   if (!isFemale()) {
-    mount(root, pageHead('ციკლი'), empty('ეს მოდული ხელმისაწვდომია ქალის პროფილისთვის.', 'პროფილში მიუთითე სქესი', button('პროფილი', { href: '/profile', variant: 'ghost' })));
+    mount(root, pageHead(t('ციკლი', 'Cycle')), empty(t('ეს მოდული ხელმისაწვდომია ქალის პროფილისთვის.', 'This module is available for female profiles.'), t('პროფილში მიუთითე სქესი', 'Set your sex in your profile'), button(t('პროფილი', 'Profile'), { href: '/profile', variant: 'ghost' })));
     return () => root.classList.remove('cy');
   }
 
@@ -492,16 +496,16 @@ export default async function cyclePage(root, ctx = {}) {
   };
 
   const load = async () => {
-    mount(root, pageHead('ციკლი', 'პროგნოზები, სიმპტომები და განწყობა'),
+    mount(root, pageHead(t('ციკლი', 'Cycle'), t('პროგნოზები, სიმპტომები და განწყობა', 'Predictions, symptoms and mood')),
       h('div', { class: 'cy-layout' }, h('div', { class: 'cy-col' }, skeleton(6)), h('div', { class: 'cy-col' }, skeleton(8))));
     try {
       const b = await get('/api/cycle');
       state.bundle = b;
-      const t = cycleToday(b).split('-').map(Number);
-      state.cursor = { y: t[0], m: t[1] - 1 };
+      const tk = cycleToday(b).split('-').map(Number);
+      state.cursor = { y: tk[0], m: tk[1] - 1 };
       render();
     } catch (e) {
-      mount(root, pageHead('ციკლი'), errorBox(e, load));
+      mount(root, pageHead(t('ციკლი', 'Cycle')), errorBox(e, load));
     }
   };
 
@@ -513,9 +517,9 @@ export default async function cyclePage(root, ctx = {}) {
       try {
         const b = await put('/api/cycle/period', { action: 'start', date, flow: 'medium' });
         setBundle(b);
-        toast('მენსტრუაცია დაფიქსირდა — დღეს პირველი დღეა', 'ok', {
+        toast(t('მენსტრუაცია დაფიქსირდა — დღეს პირველი დღეა', 'Period logged — today is day 1'), 'ok', {
           ms: 8000,
-          action: { label: 'გაუქმება', onClick: () => undoStart(date) },
+          action: { label: t('გაუქმება', 'Undo'), onClick: () => undoStart(date) },
         });
       } catch (e) { toast(e.message, 'error'); }
     });
@@ -524,11 +528,11 @@ export default async function cyclePage(root, ctx = {}) {
     try {
       // "end" on the first day clears that one-day period again (server planEndPeriod).
       setBundle(await put('/api/cycle/period', { action: 'end', date }));
-      toast('გაუქმდა', 'info');
+      toast(t('გაუქმდა', 'Undone'), 'info');
     } catch (e) { toast(e.message, 'error'); }
   };
   const endPeriod = async () => {
-    const ok = await confirmDialog({ title: 'მენსტრუაციის დასრულება', body: 'დღევანდელი გამონადენი წაიშლება. გამოტოვებული დღეები არ შეივსება.', confirm: 'მენსტრუაციის დასრულება' });
+    const ok = await confirmDialog({ title: t('მენსტრუაციის დასრულება', 'End period'), body: t('დღევანდელი გამონადენი წაიშლება. გამოტოვებული დღეები არ შეივსება.', 'Today’s flow will be removed. Missed days won’t be filled in.'), confirm: t('მენსტრუაციის დასრულება', 'End period') });
     if (!ok) return;
     try { setBundle(await put('/api/cycle/period', { action: 'end', date: derive(state.bundle).today })); } catch (e) { toast(e.message, 'error'); }
   };
@@ -544,9 +548,9 @@ export default async function cyclePage(root, ctx = {}) {
       try {
         const res = await put(`/api/cycle/logs/${v.today}`, { sexualActivity: true });
         setBundle(res.bundle);
-        toast('სექსი აღირიცხა — დღეს. მხოლოდ შენ ხედავ.', 'ok', {
+        toast(t('სექსი აღირიცხა — დღეს. მხოლოდ შენ ხედავ.', 'Sex logged — today. Only you can see this.'), 'ok', {
           ms: 8000,
-          action: { label: 'გაუქმება', onClick: async () => {
+          action: { label: t('გაუქმება', 'Undo'), onClick: async () => {
             try { setBundle((await put(`/api/cycle/logs/${v.today}`, { sexualActivity: before })).bundle); } catch (e) { toast(e.message, 'error'); }
           } },
         });
@@ -563,9 +567,9 @@ export default async function cyclePage(root, ctx = {}) {
     const b = state.bundle;
     const v = derive(b);
     const subtitle = headerSubtitle(b, v);
-    const head = pageHead('ციკლი', subtitle,
-      button('აღრიცხვა', { icon: 'plus', variant: 'ghost', onClick: () => openDayLog(v.today) }),
-      iconButton('settings', { title: 'ციკლის პარამეტრები', onClick: openSettings }));
+    const head = pageHead(t('ციკლი', 'Cycle'), subtitle,
+      button(t('აღრიცხვა', 'Log'), { icon: 'plus', variant: 'ghost', onClick: () => openDayLog(v.today) }),
+      iconButton('settings', { title: t('ციკლის პარამეტრები', 'Cycle settings'), onClick: openSettings }));
 
     if (v.needsOnboarding) {
       mount(root, head, onboardingCard(b, setBundle));
@@ -584,20 +588,20 @@ export default async function cyclePage(root, ctx = {}) {
     else if (v.caps.postpartum) left.push(section(null, postpartumCard(b, v, () => openDayLog(v.today))));
     else left.push(section(null, heroCard(b, v)));
 
-    if (v.caps.peri) left.push(section('პერიმენოპაუზის თვალყური', periCard(b)));
-    if (v.caps.ttc) left.push(section(null, modeNote('info','ციკლის პროგნოზები სავარაუდოა. LH ტესტი, ტემპერატურა და ლორწო შენი აღრიცხვაა. ნაყოფიერების ჩანაწერებს დღის აღრიცხვაში იპოვი.')));
+    if (v.caps.peri) left.push(section(t('პერიმენოპაუზის თვალყური', 'Perimenopause tracking'), periCard(b)));
+    if (v.caps.ttc) left.push(section(null, modeNote('info',t('ციკლის პროგნოზები სავარაუდოა. LH ტესტი, ტემპერატურა და ლორწო შენი აღრიცხვაა. ნაყოფიერების ჩანაწერებს დღის აღრიცხვაში იპოვი.', 'Cycle predictions are estimates. LH tests, temperature and mucus are your own logs. You’ll find fertility logs in the day log.'))));
     if (b.contraception?.presentation?.showContextCard) {
-      left.push(section(null, modeNote('shield', 'კონტრაცეფციის მეთოდის გამო პროგნოზები შეზღუდულია — ყველაზე ზუსტი შენი აღრიცხვებია. Medicard არ არის კონტრაცეფციის მეთოდი.')));
+      left.push(section(null, modeNote('shield', t('კონტრაცეფციის მეთოდის გამო პროგნოზები შეზღუდულია — ყველაზე ზუსტი შენი აღრიცხვებია. Medicard არ არის კონტრაცეფციის მეთოდი.', 'Because of your contraception method, predictions are limited — your own logs are the most accurate. Medicard is not a method of contraception.'))));
     }
 
-    left.push(section('დღეს', todayCard(b, v, () => openDayLog(v.today))));
-    if (!v.caps.pregnancy && !v.caps.postpartum) left.push(section('ჩემი ციკლი', statsCard(b)));
+    left.push(section(t('დღეს', 'Today'), todayCard(b, v, () => openDayLog(v.today))));
+    if (!v.caps.pregnancy && !v.caps.postpartum) left.push(section(t('ჩემი ციკლი', 'My cycle'), statsCard(b)));
 
-    right.push(section('კალენდარი', calendarCard(b, v), {
-      action: state.editing ? null : button('თარიღების შესწორება', { size: 'sm', variant: 'ghost', icon: 'edit', onClick: () => { state.editing = true; state.pending = { add: new Set(), remove: new Set() }; render(); } }),
+    right.push(section(t('კალენდარი', 'Calendar'), calendarCard(b, v), {
+      action: state.editing ? null : button(t('თარიღების შესწორება', 'Edit dates'), { size: 'sm', variant: 'ghost', icon: 'edit', onClick: () => { state.editing = true; state.pending = { add: new Set(), remove: new Set() }; render(); } }),
     }));
-    if (!v.caps.pregnancy) right.push(section('ციკლების ისტორია', historyCard(b)));
-    right.push(section('დღის რჩევები', tipsBlock(b, v, render)));
+    if (!v.caps.pregnancy) right.push(section(t('ციკლების ისტორია', 'Cycle history'), historyCard(b)));
+    right.push(section(t('დღის რჩევები', 'Tips for today'), tipsBlock(b, v, render)));
 
     mount(root, head, h('div', { class: 'cy-layout' }, h('div', { class: 'cy-col' }, left), h('div', { class: 'cy-col' }, right)));
     state.firstPaint = false;
@@ -605,7 +609,7 @@ export default async function cyclePage(root, ctx = {}) {
 
   function heroCard(b, v) {
     const actions = [];
-    const logBtn = (primary) => button(v.onPeriod ? 'დღევანდელი გამონადენი' : 'დღის აღრიცხვა', {
+    const logBtn = (primary) => button(v.onPeriod ? t('დღევანდელი გამონადენი', 'Today’s flow') : t('დღის აღრიცხვა', 'Log today'), {
       icon: v.onPeriod ? 'droplet' : 'plus', variant: primary ? 'rose' : 'ghost', class: primary ? '' : 'cy-soft-btn', onClick: () => openDayLog(v.today),
     });
     const startBtn = (primary) => {
@@ -616,14 +620,14 @@ export default async function cyclePage(root, ctx = {}) {
     const sexLogged = v.todayLog?.sexualActivity === true || (v.todayLog?.symptoms || []).some((id) => SEX_ACTIVITY_IDS.has(id));
     const sexBtn = h('button', {
       type: 'button', class: `cy-sex-btn${sexLogged ? ' on' : ''}`,
-      title: sexLogged ? 'სექსი დღეს აღრიცხულია — დეტალების გახსნა' : 'სექსის აღრიცხვა დღეს — ერთი შეხებით',
-      'aria-label': sexLogged ? 'სექსი დღეს აღრიცხულია — დეტალების გახსნა' : 'სექსის აღრიცხვა დღეს — ერთი შეხებით',
-    }, icon(sexLogged ? 'check' : 'heart', { size: 16 }), 'სექსი');
+      title: sexLogged ? t('სექსი დღეს აღრიცხულია — დეტალების გახსნა', 'Sex logged today — open details') : t('სექსის აღრიცხვა დღეს — ერთი შეხებით', 'Log sex today — one tap'),
+      'aria-label': sexLogged ? t('სექსი დღეს აღრიცხულია — დეტალების გახსნა', 'Sex logged today — open details') : t('სექსის აღრიცხვა დღეს — ერთი შეხებით', 'Log sex today — one tap'),
+    }, icon(sexLogged ? 'check' : 'heart', { size: 16 }), t('სექსი', 'Sex'));
     sexBtn.addEventListener('click', () => logSexNow(sexBtn));
 
     const canStart = v.caps.forecast || v.caps.fertile; // not in pregnancy / postpartum
     if (v.onPeriod) {
-      actions.push(logBtn(true), h('div', { class: 'cy-actions-row' }, button('მენსტრუაციის დასრულება', { variant: 'ghost', class: 'cy-soft-btn', onClick: endPeriod }), sexBtn));
+      actions.push(logBtn(true), h('div', { class: 'cy-actions-row' }, button(t('მენსტრუაციის დასრულება', 'End period'), { variant: 'ghost', class: 'cy-soft-btn', onClick: endPeriod }), sexBtn));
     } else if (v.startLeads && canStart) {
       actions.push(startBtn(true), h('div', { class: 'cy-actions-row' }, logBtn(false), sexBtn));
     } else {
@@ -635,21 +639,21 @@ export default async function cyclePage(root, ctx = {}) {
       const to = addKey(v.cycleStart, v.fertileDays.to - 1);
       const cautious = b.predictions?.confidence === 'low' || b.profile?.isIrregular || v.pcos;
       openModal({
-        title: 'სავარაუდო ნაყოფიერი დღეები',
+        title: t('სავარაუდო ნაყოფიერი დღეები', 'Estimated fertile days'),
         size: 'sm',
         body: h('div', { class: 'stack' },
           h('strong', null, `${fmtDate(from)} – ${fmtDate(to)}`),
           h('p', { class: 'muted' }, cautious
-            ? 'ეს დღე შეიძლება ნაყოფიერ ფანჯარაში იყოს. პროგნოზის სანდოობა დაბალია. Medicard არ არის კონტრაცეფციის მეთოდი.'
-            : v.caps.ttc ? 'სავარაუდო ნაყოფიერი ფანჯარა — TTC რეჟიმში ეს დღეები ხშირად უფრო ყურადღებადია. ეს არ ადასტურებს ოვულაციას.'
-              : 'ამ დღეებში სავარაუდო ნაყოფიერი ფანჯარაა — კალენდარული შეფასებაა, არა დადგენილი ნაყოფიერება. Medicard არ არის კონტრაცეფციის მეთოდი.')),
+            ? t('ეს დღე შეიძლება ნაყოფიერ ფანჯარაში იყოს. პროგნოზის სანდოობა დაბალია. Medicard არ არის კონტრაცეფციის მეთოდი.', 'These days may be in your fertile window. Prediction confidence is low. Medicard is not a method of contraception.')
+            : v.caps.ttc ? t('სავარაუდო ნაყოფიერი ფანჯარა — TTC რეჟიმში ეს დღეები ხშირად უფრო ყურადღებადია. ეს არ ადასტურებს ოვულაციას.', 'Estimated fertile window — in TTC mode these days often get more attention. This does not confirm ovulation.')
+              : t('ამ დღეებში სავარაუდო ნაყოფიერი ფანჯარაა — კალენდარული შეფასებაა, არა დადგენილი ნაყოფიერება. Medicard არ არის კონტრაცეფციის მეთოდი.', 'These days are your estimated fertile window — a calendar estimate, not confirmed fertility. Medicard is not a method of contraception.'))),
       });
     } : null;
 
     const explainPhase = () => openModal({
-      title: 'როგორ ითვლება?',
+      title: t('როგორ ითვლება?', 'How is this calculated?'),
       size: 'sm',
-      body: h('p', { class: 'muted' }, 'შენ აღრიცხავ მენსტრუაციის დაწყებას. Medicard ბოლო ციკლების საშუალო ხანგრძლივობით აფასებს შემდეგ თარიღებს. რაც მეტ ციკლს აღრიცხავ, მით უფრო ზუსტდება შეფასება. ეს ყოველთვის შეფასებაა და შეიძლება გადაიწიოს.'),
+      body: h('p', { class: 'muted' }, t('შენ აღრიცხავ მენსტრუაციის დაწყებას. Medicard ბოლო ციკლების საშუალო ხანგრძლივობით აფასებს შემდეგ თარიღებს. რაც მეტ ციკლს აღრიცხავ, მით უფრო ზუსტდება შეფასება. ეს ყოველთვის შეფასებაა და შეიძლება გადაიწიოს.', 'You log when your period starts. Medicard estimates the next dates from the average length of your recent cycles. The more cycles you log, the better the estimate gets. It is always an estimate and may shift.')),
     });
 
     const glowDot = v.onPeriod || v.phase === 'period' ? 'var(--cy-period)' : v.phase === 'fertile' || v.phase === 'ovulation' ? 'var(--cy-fertile-fill)'
@@ -657,12 +661,12 @@ export default async function cyclePage(root, ctx = {}) {
 
     const cycleLenRound = Math.round(v.cycleLen) || 28;
     const underLine = v.center && v.day != null
-      ? h('div', { class: 'cy-status' }, v.day > cycleLenRound ? `ჩვეულებრივ ციკლი ${cycleLenRound} დღეა` : `ციკლის ${v.day}-ე დღე · ${cycleLenRound}-დან`)
-      : h('div', { class: `cy-status${v.statusLine ? ' strong' : ''}` }, v.statusLine || (v.hideLengthChrome ? 'ციკლის პროგნოზისთვის ჯერ საკმარისი ახალი ისტორია არ არის.' : 'ვსწავლობთ შენს რიტმს — აღრიცხე შემდეგი მენსტრუაცია'));
+      ? h('div', { class: 'cy-status' }, v.day > cycleLenRound ? t(`ჩვეულებრივ ციკლი ${cycleLenRound} დღეა`, `Your cycle is usually ${cycleLenRound} days`) : t(`ციკლის ${v.day}-ე დღე · ${cycleLenRound}-დან`, `Cycle day ${v.day} · of ${cycleLenRound}`))
+      : h('div', { class: `cy-status${v.statusLine ? ' strong' : ''}` }, v.statusLine || (v.hideLengthChrome ? t('ციკლის პროგნოზისთვის ჯერ საკმარისი ახალი ისტორია არ არის.', 'There isn’t enough recent history yet for a cycle forecast.') : t('ვსწავლობთ შენს რიტმს — აღრიცხე შემდეგი მენსტრუაცია', 'Learning your rhythm — log your next period')));
 
     return card({ class: 'cy-hero' },
       dialFor(b, v, { animate: state.firstPaint, onFertile: explainFertile }),
-      h('button', { type: 'button', class: `cy-phase-pill${v.onPeriod ? ' period' : ''}`, onClick: v.hideLengthChrome ? null : explainPhase, title: 'როგორ ითვლება?' },
+      h('button', { type: 'button', class: `cy-phase-pill${v.onPeriod ? ' period' : ''}`, onClick: v.hideLengthChrome ? null : explainPhase, title: t('როგორ ითვლება?', 'How is this calculated?') },
         h('i', { style: { background: glowDot } }), v.phaseHint, v.hideLengthChrome ? null : icon('info', { size: 14 })),
       underLine,
       v.forecastOn || (v.caps.forecast && !v.hidePredicted)
@@ -670,13 +674,13 @@ export default async function cyclePage(root, ctx = {}) {
         : null,
       !v.hideLengthChrome && (v.fertileDays || v.cycleStart)
         ? h('div', { class: 'cy-dial-legend', 'aria-hidden': 'true' },
-          h('span', null, h('i', { class: 'cy-dot period' }), 'მენსტრუაცია'),
-          h('span', null, h('i', { class: 'cy-dot follicular' }), 'ფოლიკულური'),
-          v.fertileDays ? h('span', null, h('i', { class: 'cy-dot fertile' }), 'ნაყოფიერი') : null,
-          v.fertileDays ? h('span', null, h('i', { class: 'cy-dot luteal' }), 'ლუთეალური') : null)
+          h('span', null, h('i', { class: 'cy-dot period' }), t('მენსტრუაცია', 'Period')),
+          h('span', null, h('i', { class: 'cy-dot follicular' }), t('ფოლიკულური', 'Follicular')),
+          v.fertileDays ? h('span', null, h('i', { class: 'cy-dot fertile' }), t('ნაყოფიერი', 'Fertile')) : null,
+          v.fertileDays ? h('span', null, h('i', { class: 'cy-dot luteal' }), t('ლუთეალური', 'Luteal')) : null)
         : null,
-      !v.hideLengthChrome ? h('div', { class: 'cy-hint' }, 'მიიტანე კურსორი რგოლზე — ნახე ნებისმიერი დღე') : null,
-      v.pcos && v.fertilityVisible ? h('div', { class: 'cy-caution' }, 'შენ მიუთითე PCOS — სავარაუდო ოვულაცია ნაკლებად საიმედოა. ეს არ არის კონტრაცეფციის რჩევა.') : null,
+      !v.hideLengthChrome ? h('div', { class: 'cy-hint' }, t('მიიტანე კურსორი რგოლზე — ნახე ნებისმიერი დღე', 'Move your cursor along the ring to see any day')) : null,
+      v.pcos && v.fertilityVisible ? h('div', { class: 'cy-caution' }, t('შენ მიუთითე PCOS — სავარაუდო ოვულაცია ნაკლებად საიმედოა. ეს არ არის კონტრაცეფციის რჩევა.', 'You noted PCOS — estimated ovulation is less reliable. This is not contraception advice.')) : null,
       h('div', { class: 'cy-actions' }, actions));
   }
 
@@ -707,12 +711,12 @@ export default async function cyclePage(root, ctx = {}) {
       if (editing && remove.has(key)) cls.push('remove');
       const aria = [
         `${d} ${KA_MONTHS[m]}`,
-        key === v.today ? 'დღეს' : null,
-        L.loggedPeriod ? (v.caps.postpartum ? 'სისხლდენა' : 'მენსტრუაცია') : null,
-        L.spotting ? 'ლაქები' : null,
-        L.predictedPeriod ? 'სავარაუდო მენსტრუაცია' : null,
-        L.ovulation ? 'სავარაუდო ოვულაცია' : L.fertile ? 'სავარაუდო ნაყოფიერი' : null,
-        L.symptomDot ? 'აღრიცხული' : null,
+        key === v.today ? t('დღეს', 'Today') : null,
+        L.loggedPeriod ? (v.caps.postpartum ? t('სისხლდენა', 'Bleeding') : t('მენსტრუაცია', 'Period')) : null,
+        L.spotting ? t('ლაქები', 'Spotting') : null,
+        L.predictedPeriod ? t('სავარაუდო მენსტრუაცია', 'Estimated period') : null,
+        L.ovulation ? t('სავარაუდო ოვულაცია', 'Estimated ovulation') : L.fertile ? t('სავარაუდო ნაყოფიერი', 'Estimated fertile') : null,
+        L.symptomDot ? t('აღრიცხული', 'Logged') : null,
       ].filter(Boolean).join(', ');
       cells.push(h('button', {
         type: 'button', class: cls.join(' '), 'aria-label': aria, disabled: editing && future,
@@ -731,42 +735,42 @@ export default async function cyclePage(root, ctx = {}) {
       state.cursor = { y: n.getFullYear(), m: n.getMonth() };
       render();
     };
-    const t = v.today.split('-').map(Number);
-    const onTodayMonth = t[0] === y && t[1] - 1 === m;
+    const tt = v.today.split('-').map(Number);
+    const onTodayMonth = tt[0] === y && tt[1] - 1 === m;
 
     const changes = add.size + remove.size;
-    const saveBtn = button(changes ? `შენახვა · ${changes} ცვლილება` : 'ცვლილება არ არის', { size: 'sm', variant: 'rose', disabled: !changes });
+    const saveBtn = button(changes ? t(`შენახვა · ${changes} ცვლილება`, `Save · ${plural(changes, 'change')}`) : t('ცვლილება არ არის', 'No changes'), { size: 'sm', variant: 'rose', disabled: !changes });
     saveBtn.addEventListener('click', () => busy(saveBtn, async () => {
       try {
         const nb = await put('/api/cycle/period/days', { add: [...add], remove: [...remove] });
         state.editing = false;
         state.pending = { add: new Set(), remove: new Set() };
         setBundle(nb);
-        toast('მენსტრუაციის თარიღები განახლდა');
+        toast(t('მენსტრუაციის თარიღები განახლდა', 'Period dates updated'));
       } catch (e) { toast(e.message, 'error'); }
     }));
 
     return card(
       h('div', { class: 'cy-cal-head' },
-        iconButton('chevronLeft', { title: 'წინა თვე', onClick: () => shift(-1) }),
+        iconButton('chevronLeft', { title: t('წინა თვე', 'Previous month'), onClick: () => shift(-1) }),
         h('h3', null, `${KA_MONTHS[m]} ${y}`),
-        onTodayMonth ? null : button('დღეს', { size: 'sm', variant: 'ghost', onClick: () => { state.cursor = { y: t[0], m: t[1] - 1 }; render(); } }),
-        iconButton('chevronRight', { title: 'შემდეგი თვე', onClick: () => shift(1) })),
+        onTodayMonth ? null : button(t('დღეს', 'Today'), { size: 'sm', variant: 'ghost', onClick: () => { state.cursor = { y: tt[0], m: tt[1] - 1 }; render(); } }),
+        iconButton('chevronRight', { title: t('შემდეგი თვე', 'Next month'), onClick: () => shift(1) })),
       h('div', { class: `cy-cal${editing ? ' editing' : ''}` }, cells),
       editing
         ? h('div', { class: 'cy-edit-bar' },
-          h('span', { style: { flex: '1 1 240px' } }, 'მონიშნე დღეები, როცა მენსტრუაცია გქონდა, ან მოხსენი მონიშვნა. წყვეტილი წრე სავარაუდო დღეებს აჩვენებს.'),
+          h('span', { style: { flex: '1 1 240px' } }, t('მონიშნე დღეები, როცა მენსტრუაცია გქონდა, ან მოხსენი მონიშვნა. წყვეტილი წრე სავარაუდო დღეებს აჩვენებს.', 'Click the days you had your period, or click again to unmark. A dashed circle shows estimated days.')),
           h('div', { class: 'hstack' },
-            button('გაუქმება', { size: 'sm', variant: 'ghost', onClick: () => { state.editing = false; state.pending = { add: new Set(), remove: new Set() }; render(); } }),
+            button(t('გაუქმება', 'Cancel'), { size: 'sm', variant: 'ghost', onClick: () => { state.editing = false; state.pending = { add: new Set(), remove: new Set() }; render(); } }),
             saveBtn))
         : null,
       h('div', { class: 'cy-legend' },
-        h('span', null, h('i', { class: 'cy-lg logged' }), v.caps.postpartum ? 'სისხლდენა' : 'მენსტრუაცია'),
-        v.showPredicted ? h('span', null, h('i', { class: 'cy-lg expected' }), 'სავარაუდო მენსტრუაცია') : null,
-        v.showPredicted && v.fertilityVisible ? h('span', null, h('i', { class: 'cy-lg fertile' }), 'სავარაუდო ნაყოფიერი') : null,
-        v.showPredicted && v.fertilityVisible ? h('span', null, h('i', { class: 'cy-lg ovulation' }), 'სავარაუდო ოვულაცია') : null,
-        h('span', null, h('i', { class: 'cy-lg sym' }), 'აღრიცხული')),
-      v.showPredicted ? h('p', { class: 'disclaimer' }, icon('info', { size: 14 }), 'შეფასება ბოლო ციკლების მიხედვით — თარიღები შეიძლება შეიცვალოს.') : null);
+        h('span', null, h('i', { class: 'cy-lg logged' }), v.caps.postpartum ? t('სისხლდენა', 'Bleeding') : t('მენსტრუაცია', 'Period')),
+        v.showPredicted ? h('span', null, h('i', { class: 'cy-lg expected' }), t('სავარაუდო მენსტრუაცია', 'Estimated period')) : null,
+        v.showPredicted && v.fertilityVisible ? h('span', null, h('i', { class: 'cy-lg fertile' }), t('სავარაუდო ნაყოფიერი', 'Estimated fertile')) : null,
+        v.showPredicted && v.fertilityVisible ? h('span', null, h('i', { class: 'cy-lg ovulation' }), t('სავარაუდო ოვულაცია', 'Estimated ovulation')) : null,
+        h('span', null, h('i', { class: 'cy-lg sym' }), t('აღრიცხული', 'Logged'))),
+      v.showPredicted ? h('p', { class: 'disclaimer' }, icon('info', { size: 14 }), t('შეფასება ბოლო ციკლების მიხედვით — თარიღები შეიძლება შეიცვალოს.', 'Estimated from your recent cycles — dates may change.')) : null);
   }
 
   await load();
@@ -776,25 +780,25 @@ export default async function cyclePage(root, ctx = {}) {
 function headerSubtitle(b, v) {
   if (v.caps.pregnancy) {
     const age = b.pregnancy?.age;
-    return age ? `${age.week} კვირა + ${age.day} დღე` : 'ორსულობის რეჟიმი';
+    return age ? t(`${age.week} კვირა + ${age.day} დღე`, `${plural(age.week, 'week')} + ${plural(age.day, 'day')}`) : t('ორსულობის რეჟიმი', 'Pregnancy mode');
   }
-  if (v.caps.peri) return 'პერიმენოპაუზის რეჟიმი';
+  if (v.caps.peri) return t('პერიმენოპაუზის რეჟიმი', 'Perimenopause mode');
   if (v.caps.postpartum) {
     const e = b.postpartum?.elapsed;
-    return e ? `${e.week} კვირა + ${e.day} დღე` : 'მშობიარობის შემდგომი თვალყური';
+    return e ? t(`${e.week} კვირა + ${e.day} დღე`, `${plural(e.week, 'week')} + ${plural(e.day, 'day')}`) : t('მშობიარობის შემდგომი თვალყური', 'Postpartum tracking');
   }
-  if (v.hideLengthChrome) return 'ციკლის ახალი ისტორია გროვდება';
-  if (v.day != null) return `ციკლის დღე ${v.day} · ${v.phaseHint}`;
-  return 'ვსწავლობთ შენს რიტმს — აღრიცხე შემდეგი მენსტრუაცია';
+  if (v.hideLengthChrome) return t('ციკლის ახალი ისტორია გროვდება', 'Building your new cycle history');
+  if (v.day != null) return t(`ციკლის დღე ${v.day} · ${v.phaseHint}`, `Cycle day ${v.day} · ${v.phaseHint}`);
+  return t('ვსწავლობთ შენს რიტმს — აღრიცხე შემდეგი მენსტრუაცია', 'Learning your rhythm — log your next period');
 }
 
 function modeNote(ic, text) {
   return h('div', { class: 'cy-mode-note' }, icon(ic, { size: 18 }), h('div', null, text));
 }
 
-function appHint(text = 'ამ რეჟიმის დეტალური ინსტრუმენტები MEDICARD აპშია.') {
+function appHint(text = t('ამ რეჟიმის დეტალური ინსტრუმენტები MEDICARD აპშია.', 'The detailed tools for this mode are in the MEDICARD app.')) {
   return h('div', { class: 'cy-mode-note' }, icon('smartphone', { size: 18 }),
-    h('div', null, text, ' ', h('a', { href: APP_STORE, target: '_blank', rel: 'noopener', class: 'link' }, 'ამისთვის გამოიყენე MEDICARD აპი')));
+    h('div', null, text, ' ', h('a', { href: APP_STORE, target: '_blank', rel: 'noopener', class: 'link' }, t('ამისთვის გამოიყენე MEDICARD აპი', 'Use the MEDICARD app for this'))));
 }
 
 /* ── Onboarding (no last period yet) ─────────────────────────────────────── */
@@ -802,11 +806,11 @@ function onboardingCard(b, onBundle) {
   const today = cycleToday(b);
   const dateInput = input({ type: 'date', max: today, min: addKey(today, -180), value: '', required: true, name: 'date' });
   const err = h('div', { class: 'form-error', hidden: true });
-  const save = button('შენახვა', { variant: 'rose' });
+  const save = button(t('შენახვა', 'Save'), { variant: 'rose' });
   save.addEventListener('click', () => busy(save, async () => {
     err.hidden = true;
     const date = dateInput.value;
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) { err.textContent = 'აირჩიე თარიღი'; err.hidden = false; return; }
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) { err.textContent = t('აირჩიე თარიღი', 'Choose a date'); err.hidden = false; return; }
     try {
       const nb = await post('/api/cycle/last-period', { date });
       if (nb?.profile && nb.predictions) onBundle(nb);
@@ -816,12 +820,12 @@ function onboardingCard(b, onBundle) {
   return card({ class: 'pad-lg', style: { maxWidth: '560px' } },
     h('div', { class: 'stack', style: { gap: '16px' } },
       h('span', { class: 'tile ink-rose', style: { width: '52px', height: '52px' } }, icon('flower', { size: 26 })),
-      h('h2', { style: { fontSize: '22px' } }, 'როდის დაიწყო ბოლო მენსტრუაცია?'),
-      h('p', { class: 'muted' }, 'პირველი დღე საკმარისია. შემდეგ თარიღებს შენი ჩანაწერებით დავაზუსტებთ — ეს ყოველთვის შეფასებაა და შეიძლება გადაიწიოს.'),
-      field('ბოლო მენსტრუაციის დასაწყისი', dateInput),
+      h('h2', { style: { fontSize: '22px' } }, t('როდის დაიწყო ბოლო მენსტრუაცია?', 'When did your last period start?')),
+      h('p', { class: 'muted' }, t('პირველი დღე საკმარისია. შემდეგ თარიღებს შენი ჩანაწერებით დავაზუსტებთ — ეს ყოველთვის შეფასებაა და შეიძლება გადაიწიოს.', 'The first day is enough. We’ll refine the next dates with your logs — it is always an estimate and may shift.')),
+      field(t('ბოლო მენსტრუაციის დასაწყისი', 'Start of your last period'), dateInput),
       err,
       h('div', { class: 'hstack' }, save),
-      appHint('ორსულობის, მშობიარობის შემდგომი და პერიმენოპაუზის რეჟიმების ჩართვა აპის ციკლის პარამეტრებშია.')));
+      appHint(t('ორსულობის, მშობიარობის შემდგომი და პერიმენოპაუზის რეჟიმების ჩართვა აპის ციკლის პარამეტრებშია.', 'Pregnancy, postpartum and perimenopause modes are turned on in the app’s cycle settings.'))));
 }
 
 /* ── Mode cards ──────────────────────────────────────────────────────────── */
@@ -829,68 +833,68 @@ function pregnancyCard(b, v, onLog) {
   const p = b.pregnancy || {};
   const age = p.reviewRequired ? null : p.age;
   return card({ class: 'cy-hero' },
-    age ? ring({ value: age.dayOfPregnancy, max: 280, size: 200, stroke: 16, color: 'var(--cy-luteal)', label: `${age.week}`, sub: 'კვირა · სავარაუდოდ' })
+    age ? ring({ value: age.dayOfPregnancy, max: 280, size: 200, stroke: 16, color: 'var(--cy-luteal)', label: `${age.week}`, sub: t('კვირა · სავარაუდოდ', age.week === 1 ? 'week · estimated' : 'weeks · estimated') })
       : h('span', { class: 'tile ink-violet', style: { width: '64px', height: '64px' } }, icon('heart', { size: 30 })),
-    h('div', { class: 'cy-status strong' }, age ? `${age.week} კვირა + ${age.day} დღე` : p.reviewRequired ? 'საცნობი თარიღი გადასახედია — კვირის შეფასება არ გამოჩნდება.' : 'ორსულობის რეჟიმი'),
-    age?.trimester ? h('div', { class: 'cy-status' }, `${age.trimester} ტრიმესტრი`) : null,
-    p.dueDate ? h('div', { class: 'cy-badges' }, h('span', { class: 'cy-pred' }, `სავარაუდო მშობიარობის თარიღი · ${fmtDate(p.dueDate, { year: true })}`)) : null,
-    h('div', { class: 'cy-caution' }, 'კვირა და სავარაუდო თარიღი LMP-ზე / არჩეულ თარიღზეა დაფუძნებული. ეს არ არის ულტრაბგერის დათარიღება და არ არის დიაგნოზი.'),
-    h('div', { class: 'cy-actions' }, button('დღის აღრიცხვა', { icon: 'plus', variant: 'rose', onClick: onLog }), appHint('კვირის ვიზუალი, მოვლის გეგმა და ორსულობის ჩანაწერები MEDICARD აპშია.')));
+    h('div', { class: 'cy-status strong' }, age ? t(`${age.week} კვირა + ${age.day} დღე`, `${plural(age.week, 'week')} + ${plural(age.day, 'day')}`) : p.reviewRequired ? t('საცნობი თარიღი გადასახედია — კვირის შეფასება არ გამოჩნდება.', 'Your reference date needs a review — the week estimate won’t show.') : t('ორსულობის რეჟიმი', 'Pregnancy mode')),
+    age?.trimester ? h('div', { class: 'cy-status' }, t(`${age.trimester} ტრიმესტრი`, `Trimester ${age.trimester}`)) : null,
+    p.dueDate ? h('div', { class: 'cy-badges' }, h('span', { class: 'cy-pred' }, t(`სავარაუდო მშობიარობის თარიღი · ${fmtDate(p.dueDate, { year: true })}`, `Estimated due date · ${fmtDate(p.dueDate, { year: true })}`))) : null,
+    h('div', { class: 'cy-caution' }, t('კვირა და სავარაუდო თარიღი LMP-ზე / არჩეულ თარიღზეა დაფუძნებული. ეს არ არის ულტრაბგერის დათარიღება და არ არის დიაგნოზი.', 'The week and estimated date are based on your LMP / chosen date. This is not ultrasound dating and not a diagnosis.')),
+    h('div', { class: 'cy-actions' }, button(t('დღის აღრიცხვა', 'Log today'), { icon: 'plus', variant: 'rose', onClick: onLog }), appHint(t('კვირის ვიზუალი, მოვლის გეგმა და ორსულობის ჩანაწერები MEDICARD აპშია.', 'Week-by-week visuals, the care plan and pregnancy notes are in the MEDICARD app.'))));
 }
 
 function postpartumCard(b, v, onLog) {
   const e = b.postpartum?.elapsed;
   return card({ class: 'cy-hero' },
     h('span', { class: 'tile ink-violet', style: { width: '64px', height: '64px' } }, icon('heart', { size: 30 })),
-    h('div', { class: 'cy-status strong' }, e ? `${e.week} კვირა + ${e.day} დღე` : 'საწყისი თარიღი არ არის მითითებული.'),
-    e ? h('div', { class: 'cy-status' }, 'შენს მითითებულ თარიღიდან. არ არის გამოჯანმრთელების პროგრესი.') : null,
-    h('div', { class: 'cy-caution' }, 'ეს თვალყურის რეჟიმია, რომელსაც შენ ირჩევ. არ არის გამოჯანმრთელების დიაგნოზი.'),
-    h('div', { class: 'cy-actions' }, button('დღის აღრიცხვა', { icon: 'plus', variant: 'rose', onClick: onLog }), appHint('სისხლდენის კლასიფიკაცია და საწყისი თარიღის შეცვლა MEDICARD აპშია.')));
+    h('div', { class: 'cy-status strong' }, e ? t(`${e.week} კვირა + ${e.day} დღე`, `${plural(e.week, 'week')} + ${plural(e.day, 'day')}`) : t('საწყისი თარიღი არ არის მითითებული.', 'No start date set.')),
+    e ? h('div', { class: 'cy-status' }, t('შენს მითითებულ თარიღიდან. არ არის გამოჯანმრთელების პროგრესი.', 'Since the date you set. This is not recovery progress.')) : null,
+    h('div', { class: 'cy-caution' }, t('ეს თვალყურის რეჟიმია, რომელსაც შენ ირჩევ. არ არის გამოჯანმრთელების დიაგნოზი.', 'This is a tracking mode you choose. It is not a recovery diagnosis.')),
+    h('div', { class: 'cy-actions' }, button(t('დღის აღრიცხვა', 'Log today'), { icon: 'plus', variant: 'rose', onClick: onLog }), appHint(t('სისხლდენის კლასიფიკაცია და საწყისი თარიღის შეცვლა MEDICARD აპშია.', 'Bleeding classification and changing the start date are in the MEDICARD app.'))));
 }
 
 function periCard(b) {
   const p = b.perimenopause;
-  if (!p) return card(h('p', { class: 'muted' }, 'ეს თვალყურის რეჟიმია, რომელსაც შენ ირჩევ. ეს არ არის პერიმენოპაუზის ან მენოპაუზის დიაგნოზი.'));
+  if (!p) return card(h('p', { class: 'muted' }, t('ეს თვალყურის რეჟიმია, რომელსაც შენ ირჩევ. ეს არ არის პერიმენოპაუზის ან მენოპაუზის დიაგნოზი.', 'This is a tracking mode you choose. It is not a diagnosis of perimenopause or menopause.')));
   const vs = p.variabilitySummary || {};
   const st = (label, val) => h('div', { class: 'cy-stat' }, h('div', { class: 'cy-stat-label' }, label),
-    h('div', { class: 'cy-stat-value' }, h('b', null, val != null ? String(val) : '—'), val != null ? h('small', null, 'დღე') : null));
+    h('div', { class: 'cy-stat-value' }, h('b', null, val != null ? String(val) : '—'), val != null ? h('small', null, t('დღე', val === 1 ? 'day' : 'days')) : null));
   return card(
-    h('div', { class: 'cy-stats' }, st('უმოკლესი ინტერვალი', vs.shortestDays), st('უგრძესი ინტერვალი', vs.longestDays), st('ბოლო ინტერვალი', vs.recentIntervalDays)),
-    vs.intervalCount != null ? h('p', { class: 'faint', style: { fontSize: '12px', marginTop: '10px' } }, `${vs.intervalCount} აღრიცხული ინტერვალის მიხედვით`) : null,
-    p.lastRecordedBleeding ? h('p', { class: 'muted', style: { fontSize: '13.5px', marginTop: '10px' } }, `ბოლო აღრიცხული სისხლდენა: ${fmtDate(p.lastRecordedBleeding.date)}`) : null,
+    h('div', { class: 'cy-stats' }, st(t('უმოკლესი ინტერვალი', 'Shortest interval'), vs.shortestDays), st(t('უგრძესი ინტერვალი', 'Longest interval'), vs.longestDays), st(t('ბოლო ინტერვალი', 'Latest interval'), vs.recentIntervalDays)),
+    vs.intervalCount != null ? h('p', { class: 'faint', style: { fontSize: '12px', marginTop: '10px' } }, t(`${vs.intervalCount} აღრიცხული ინტერვალის მიხედვით`, `Based on ${plural(vs.intervalCount, 'logged interval')}`)) : null,
+    p.lastRecordedBleeding ? h('p', { class: 'muted', style: { fontSize: '13.5px', marginTop: '10px' } }, t(`ბოლო აღრიცხული სისხლდენა: ${fmtDate(p.lastRecordedBleeding.date)}`, `Last logged bleeding: ${fmtDate(p.lastRecordedBleeding.date)}`)) : null,
     (p.recentBleedingEpisodes || []).length ? h('div', { class: 'list', style: { marginTop: '8px' } },
-      p.recentBleedingEpisodes.slice(-4).reverse().map((ep) => row({ icon: 'droplet', ink: 'rose', title: `${fmtDate(ep.start)} – ${fmtDate(ep.end)}`, sub: ep.durationDays ? `${ep.durationDays} დღე` : null }))) : null,
-    h('p', { class: 'disclaimer' }, icon('info', { size: 14 }), 'ეს თვალყურის რეჟიმია, რომელსაც შენ ირჩევ. ეს არ არის პერიმენოპაუზის ან მენოპაუზის დიაგნოზი.'));
+      p.recentBleedingEpisodes.slice(-4).reverse().map((ep) => row({ icon: 'droplet', ink: 'rose', title: `${fmtDate(ep.start)} – ${fmtDate(ep.end)}`, sub: ep.durationDays ? t(`${ep.durationDays} დღე`, plural(ep.durationDays, 'day')) : null }))) : null,
+    h('p', { class: 'disclaimer' }, icon('info', { size: 14 }), t('ეს თვალყურის რეჟიმია, რომელსაც შენ ირჩევ. ეს არ არის პერიმენოპაუზის ან მენოპაუზის დიაგნოზი.', 'This is a tracking mode you choose. It is not a diagnosis of perimenopause or menopause.')));
 }
 
 /* ── Today / stats / history ─────────────────────────────────────────────── */
 function logFacts(l, { uncertain } = {}) {
   const out = [];
   if (!l) return out;
-  if (isBleed(l.flow)) out.push(h('span', { class: 'cy-fact period' }, icon('droplet', { size: 13 }), `${uncertain ? 'სისხლდენა' : 'გამონადენი'}: ${LABEL[l.flow]}`));
-  else if (l.flow === 'spotting') out.push(h('span', { class: 'cy-fact period' }, 'ლაქები'));
+  if (isBleed(l.flow)) out.push(h('span', { class: 'cy-fact period' }, icon('droplet', { size: 13 }), `${uncertain ? t('სისხლდენა', 'Bleeding') : t('გამონადენი', 'Flow')}: ${LABEL[l.flow]}`));
+  else if (l.flow === 'spotting') out.push(h('span', { class: 'cy-fact period' }, t('ლაქები', 'Spotting')));
   const sym = (l.symptoms || []).filter((id) => !SEX_IDS.has(id) && LABEL[id]);
   sym.slice(0, 6).forEach((id) => out.push(h('span', { class: 'cy-fact' }, LABEL[id])));
   if (sym.length > 6) out.push(h('span', { class: 'cy-fact' }, `+${sym.length - 6}`));
-  (l.painEntries || []).forEach((p) => out.push(h('span', { class: 'cy-fact' }, `${PAIN_TYPES.find((x) => x.id === p.type)?.label || 'ტკივილი'} · ${PAIN_SEVERITY.find((x) => x.id === p.severity)?.label || ''}`)));
+  (l.painEntries || []).forEach((p) => out.push(h('span', { class: 'cy-fact' }, `${PAIN_TYPES.find((x) => x.id === p.type)?.label || t('ტკივილი', 'Pain')} · ${PAIN_SEVERITY.find((x) => x.id === p.severity)?.label || ''}`)));
   (l.moods || []).slice(0, 4).forEach((id) => out.push(h('span', { class: 'cy-fact' }, LABEL[id] || id)));
   const energy = l.energy || l.observations?.energy;
-  if (energy) out.push(h('span', { class: 'cy-fact' }, `ენერგია: ${ENERGY.find((e) => e.id === energy)?.label || energy}`));
-  if (l.sexualActivity === true || (l.symptoms || []).some((id) => SEX_ACTIVITY_IDS.has(id))) out.push(h('span', { class: 'cy-fact private' }, icon('lock', { size: 12 }), 'სექსი'));
+  if (energy) out.push(h('span', { class: 'cy-fact' }, `${t('ენერგია', 'Energy')}: ${ENERGY.find((e) => e.id === energy)?.label || energy}`));
+  if (l.sexualActivity === true || (l.symptoms || []).some((id) => SEX_ACTIVITY_IDS.has(id))) out.push(h('span', { class: 'cy-fact private' }, icon('lock', { size: 12 }), t('სექსი', 'Sex')));
   if (l.bbt != null) out.push(h('span', { class: 'cy-fact' }, `BBT ${String(l.bbt).replace('.', ',')} °C`));
-  if (l.cervicalMucus) out.push(h('span', { class: 'cy-fact' }, `ლორწო: ${LABEL[l.cervicalMucus] || ''}`));
-  if (l.ovulationTest) out.push(h('span', { class: 'cy-fact' }, `ოვულაციის ტესტი: ${TESTS.find((t) => t.id === l.ovulationTest)?.label}`));
-  if (l.pregnancyTest) out.push(h('span', { class: 'cy-fact' }, `ორსულობის ტესტი: ${TESTS.find((t) => t.id === l.pregnancyTest)?.label}`));
-  if (l.notes) out.push(h('span', { class: 'cy-fact' }, icon('edit', { size: 12 }), 'ჩანაწერი'));
+  if (l.cervicalMucus) out.push(h('span', { class: 'cy-fact' }, `${t('ლორწო', 'Mucus')}: ${LABEL[l.cervicalMucus] || ''}`));
+  if (l.ovulationTest) out.push(h('span', { class: 'cy-fact' }, `${t('ოვულაციის ტესტი', 'Ovulation test')}: ${TESTS.find((x) => x.id === l.ovulationTest)?.label}`));
+  if (l.pregnancyTest) out.push(h('span', { class: 'cy-fact' }, `${t('ორსულობის ტესტი', 'Pregnancy test')}: ${TESTS.find((x) => x.id === l.pregnancyTest)?.label}`));
+  if (l.notes) out.push(h('span', { class: 'cy-fact' }, icon('edit', { size: 12 }), t('ჩანაწერი', 'Note')));
   return out;
 }
 
 function todayCard(b, v, onLog) {
   const facts = logFacts(v.todayLog, { uncertain: v.uncertain });
   return card(
-    facts.length ? h('div', { class: 'cy-facts' }, facts) : h('p', { class: 'muted' }, 'დღეს ჯერ არაფერი არ არის აღრიცხული — დაამატე გამონადენი, სიმპტომები ან განწყობა.'),
+    facts.length ? h('div', { class: 'cy-facts' }, facts) : h('p', { class: 'muted' }, t('დღეს ჯერ არაფერი არ არის აღრიცხული — დაამატე გამონადენი, სიმპტომები ან განწყობა.', 'Nothing logged today yet — add flow, symptoms or mood.')),
     h('div', { class: 'hstack', style: { marginTop: '14px' } },
-      button(facts.length ? 'რედაქტირება' : 'დღის აღრიცხვა', { size: 'sm', variant: 'ghost', icon: facts.length ? 'edit' : 'plus', onClick: onLog })));
+      button(facts.length ? t('რედაქტირება', 'Edit') : t('დღის აღრიცხვა', 'Log today'), { size: 'sm', variant: 'ghost', icon: facts.length ? 'edit' : 'plus', onClick: onLog })));
 }
 
 /** CycleStatsCard: typical adult ranges shown as reference, never as a diagnosis (cycle 21–35, bleeding 2–7). */
@@ -902,25 +906,25 @@ function statsCard(b) {
   const variation = lengths.length >= 2 ? Math.max(...lengths) - Math.min(...lengths) : null;
   const inferred = avg.source === 'inferred' && (avg.cycleCount ?? 0) >= 2;
   const rangeTone = (val, lo, hi) => (val == null ? 'unknown' : val < lo ? 'shorter' : val > hi ? 'longer' : 'typical');
-  const tone = (t) => {
-    if (t === 'unknown') return h('div', { class: 'cy-tone none' }, 'საჭიროა 2+ ციკლი');
-    const label = { typical: 'ტიპური', longer: 'ტიპურზე გრძელი', shorter: 'ტიპურზე მოკლე', variable: 'ცვალებადი' }[t];
-    return h('div', { class: `cy-tone ${t === 'typical' ? 'ok' : 'off'}` }, h('i'), label);
+  const tone = (tn) => {
+    if (tn === 'unknown') return h('div', { class: 'cy-tone none' }, t('საჭიროა 2+ ციკლი', 'Needs 2+ cycles'));
+    const label = { typical: t('ტიპური', 'Typical'), longer: t('ტიპურზე გრძელი', 'Longer than typical'), shorter: t('ტიპურზე მოკლე', 'Shorter than typical'), variable: t('ცვალებადი', 'Variable') }[tn];
+    return h('div', { class: `cy-tone ${tn === 'typical' ? 'ok' : 'off'}` }, h('i'), label);
   };
   const tiles = [
-    { label: 'ციკლი', value: cycle, tone: rangeTone(cycle, 21, 35), hint: 'ტიპური: 21–35 დღე' },
-    { label: 'პერიოდი', value: period, tone: rangeTone(period, 2, 7), hint: 'ტიპური: 2–7 დღე' },
-    { label: 'რყევა', value: variation, tone: variation == null ? 'unknown' : variation <= 7 ? 'typical' : 'variable', hint: 'ყველაზე გრძელ და მოკლე ციკლს შორის' },
+    { label: t('ციკლი', 'Cycle'), value: cycle, tone: rangeTone(cycle, 21, 35), hint: t('ტიპური: 21–35 დღე', 'Typical: 21–35 days') },
+    { label: t('პერიოდი', 'Period'), value: period, tone: rangeTone(period, 2, 7), hint: t('ტიპური: 2–7 დღე', 'Typical: 2–7 days') },
+    { label: t('რყევა', 'Variation'), value: variation, tone: variation == null ? 'unknown' : variation <= 7 ? 'typical' : 'variable', hint: t('ყველაზე გრძელ და მოკლე ციკლს შორის', 'Between your longest and shortest cycle') },
   ];
   return card(
-    h('div', { class: 'cy-stats' }, tiles.map((t) => h('div', { class: 'cy-stat' },
-      h('div', { class: 'cy-stat-label' }, t.label),
-      h('div', { class: 'cy-stat-value' }, h('b', null, t.value != null ? String(t.value) : '—'), t.value != null ? h('small', null, 'დღე') : null),
-      tone(t.tone),
-      h('div', { class: 'cy-stat-hint' }, t.hint)))),
+    h('div', { class: 'cy-stats' }, tiles.map((tl) => h('div', { class: 'cy-stat' },
+      h('div', { class: 'cy-stat-label' }, tl.label),
+      h('div', { class: 'cy-stat-value' }, h('b', null, tl.value != null ? String(tl.value) : '—'), tl.value != null ? h('small', null, t('დღე', tl.value === 1 ? 'day' : 'days')) : null),
+      tone(tl.tone),
+      h('div', { class: 'cy-stat-hint' }, tl.hint)))),
     h('p', { class: 'faint', style: { fontSize: '12px', marginTop: '12px' } },
-      inferred ? `ბოლო ${avg.cycleCount} ციკლის მიხედვით` : 'შენი მითითებით — 2 ციკლის შემდეგ შენი მონაცემებით დავითვლით'),
-    h('p', { class: 'disclaimer', style: { marginTop: '8px' } }, icon('info', { size: 14 }), 'ტიპური დიაპაზონი საორიენტაციოა და არა დიაგნოზი. თუ რამე გაწუხებს, მიმართე ექიმს.'));
+      inferred ? t(`ბოლო ${avg.cycleCount} ციკლის მიხედვით`, `Based on your last ${plural(avg.cycleCount, 'cycle')}`) : t('შენი მითითებით — 2 ციკლის შემდეგ შენი მონაცემებით დავითვლით', 'From your settings — after 2 cycles we’ll use your own data')),
+    h('p', { class: 'disclaimer', style: { marginTop: '8px' } }, icon('info', { size: 14 }), t('ტიპური დიაპაზონი საორიენტაციოა და არა დიაგნოზი. თუ რამე გაწუხებს, მიმართე ექიმს.', 'Typical ranges are for reference, not a diagnosis. If something worries you, see a doctor.')));
 }
 
 function historyCard(b) {
@@ -933,28 +937,28 @@ function historyCard(b) {
     lengths.length
       ? h('div', null,
         h('div', { class: 'between', style: { marginBottom: '8px' } },
-          h('div', { class: 'card-sub' }, 'ციკლის ხანგრძლივობა (დღე)'),
-          h('div', { class: 'legend' }, h('span', null, h('i', { style: { background: 'var(--cy-luteal)' } }), 'ციკლი'))),
+          h('div', { class: 'card-sub' }, t('ციკლის ხანგრძლივობა (დღე)', 'Cycle length (days)')),
+          h('div', { class: 'legend' }, h('span', null, h('i', { style: { background: 'var(--cy-luteal)' } }), t('ციკლი', 'Cycle')))),
         barChart({
           labels: lengths.map((x) => shortDate(x.start)),
-          tipLabels: lengths.map((x) => `${fmtDate(x.start)}-დან`),
+          tipLabels: lengths.map((x) => t(`${fmtDate(x.start)}-დან`, `From ${fmtDate(x.start)}`)),
           values: lengths.map((x) => x.length),
           color: 'var(--cy-luteal)',
-          unit: 'დღე',
+          unit: t('დღე', 'days'),
           goal: avgLen || undefined,
-          goalLabel: avgLen ? `საშუალო ${avgLen}` : undefined,
+          goalLabel: avgLen ? t(`საშუალო ${avgLen}`, `Average ${avgLen}`) : undefined,
           height: 200,
           fmt: (n) => String(Math.round(n)),
         }))
-      : empty('ისტორია ჯერ მცირეა', 'ციკლების ხანგრძლივობა გამოჩნდება, როცა ორ მენსტრუაციას მაინც აღრიცხავ.'),
-    h('div', { class: 'hub-section-head', style: { marginTop: '18px', marginBottom: '4px' } }, h('h2', { style: { fontSize: '15px' } }, 'მენსტრუაციის ისტორია')),
+      : empty(t('ისტორია ჯერ მცირეა', 'Not much history yet'), t('ციკლების ხანგრძლივობა გამოჩნდება, როცა ორ მენსტრუაციას მაინც აღრიცხავ.', 'Cycle lengths will show once you log at least two periods.')),
+    h('div', { class: 'hub-section-head', style: { marginTop: '18px', marginBottom: '4px' } }, h('h2', { style: { fontSize: '15px' } }, t('მენსტრუაციის ისტორია', 'Period history'))),
     ranges.length
       ? h('div', { class: 'list cy-period-list' }, ranges.map((r) => row({
         icon: 'droplet', ink: 'rose',
         title: r.start === r.end ? fmtDate(r.start) : `${fmtDate(r.start)} – ${fmtDate(r.end)}`,
-        sub: `${r.lengthDays} აღრიცხული დღე`,
+        sub: t(`${r.lengthDays} აღრიცხული დღე`, plural(r.lengthDays, 'logged day')),
       })))
-      : h('p', { class: 'muted', style: { fontSize: '13.5px' } }, 'ჯერ არ არის აღრიცხული მენსტრუაცია.'));
+      : h('p', { class: 'muted', style: { fontSize: '13.5px' } }, t('ჯერ არ არის აღრიცხული მენსტრუაცია.', 'No periods logged yet.')));
 }
 
 /* ── Tips (CycleInsightsPanel variant="tips") ────────────────────────────── */
@@ -962,13 +966,13 @@ function tipsBlock(b, v, rerender) {
   const ai = b.profile?.aiInsights;
   const aiCards = ai && ai.source === 'ai' && Array.isArray(ai.cards) ? ai.cards : null;
   const local = b.localInsights?.cards || [];
-  const insightCards = (aiCards || local).slice(0, 3).map((c) => ({ ...c, src: aiCards ? 'Medi' : 'შენი ჩანაწერებით' }));
-  const tips = v.caps.pregnancy || v.caps.postpartum || v.caps.peri ? [] : dailyTips(v.phase, v.day).map((t) => ({ ...t, src: 'დღის რჩევა' }));
+  const insightCards = (aiCards || local).slice(0, 3).map((c) => ({ ...c, src: aiCards ? 'Medi' : t('შენი ჩანაწერებით', 'From your logs') }));
+  const tips = v.caps.pregnancy || v.caps.postpartum || v.caps.peri ? [] : dailyTips(v.phase, v.day).map((tp) => ({ ...tp, src: t('დღის რჩევა', 'Daily tip') }));
   const all = [...insightCards, ...tips];
   const headline = (aiCards ? ai.headline : b.localInsights?.headline) || null;
 
   const aiAllowed = featureOn('medi') && v.mode !== 'POSTPARTUM';
-  const refresh = aiAllowed ? button(aiCards ? 'Medi-ს რჩევების განახლება' : 'პერსონალური რჩევა Medi-სგან', { size: 'sm', variant: 'ghost', icon: 'sparkles' }) : null;
+  const refresh = aiAllowed ? button(aiCards ? t('Medi-ს რჩევების განახლება', 'Refresh Medi’s tips') : t('პერსონალური რჩევა Medi-სგან', 'Personal tips from Medi'), { size: 'sm', variant: 'ghost', icon: 'sparkles' }) : null;
   refresh?.addEventListener('click', () => busy(refresh, async () => {
     try {
       // POST /api/cycle/insights only reads/computes (the app lists it in READ_ONLY_WRITES); it sends cycle
@@ -991,8 +995,8 @@ function tipsBlock(b, v, rerender) {
         h('h4', null, c.title),
         h('p', null, c.body),
         c.action ? h('div', { class: 'cy-tip-act' }, c.action) : null)))
-      : card(h('p', { class: 'muted' }, 'რჩევები გამოჩნდება, როცა ციკლის რამდენიმე დღეს აღრიცხავ.')),
-    h('p', { class: 'disclaimer', style: { marginTop: '4px' } }, icon('info', { size: 14 }), 'Medi-ს რჩევები ზოგადი ინფორმაციაა შენი ფაზისა და ჩანაწერების მიხედვით — არა დიაგნოზი.'));
+      : card(h('p', { class: 'muted' }, t('რჩევები გამოჩნდება, როცა ციკლის რამდენიმე დღეს აღრიცხავ.', 'Tips will appear once you log a few days of your cycle.'))),
+    h('p', { class: 'disclaimer', style: { marginTop: '4px' } }, icon('info', { size: 14 }), t('Medi-ს რჩევები ზოგადი ინფორმაციაა შენი ფაზისა და ჩანაწერების მიხედვით — არა დიაგნოზი.', 'Medi’s tips are general information based on your phase and logs — not a diagnosis.')));
 }
 
 /* ── Day modal: details + log form (CycleQuickLogSheet / CycleLogTabs) ───── */
@@ -1024,7 +1028,7 @@ function formFromLog(l) {
 function payloadFromForm(f) {
   const raw = f.bbt.trim().replace(',', '.');
   const bbt = raw ? Number(raw) : null;
-  if (raw && (!Number.isFinite(bbt) || bbt < 34 || bbt > 42)) throw new Error('BBT უნდა იყოს 34–42 °C შორის.');
+  if (raw && (!Number.isFinite(bbt) || bbt < 34 || bbt > 42)) throw new Error(t('BBT უნდა იყოს 34–42 °C შორის.', 'BBT must be between 34 and 42 °C.'));
   return {
     flow: f.flow,
     // Activity tags only when the answer is "yes"; sex drive is its own answer and is always kept.
@@ -1061,14 +1065,14 @@ function openDayModal(b, date, { only, onBundle }) {
   const initial = JSON.stringify(payloadFromForm(f));
   let showAllSymptoms = f.symptoms.some((id) => SYMPTOMS.findIndex((s) => s.id === id) >= SYMPTOMS_VISIBLE);
 
-  const title = only === 'sex' ? 'სექსი და ლიბიდო' : `${fmtDate(date)}${date === v.today ? ' · დღეს' : ''}`;
+  const title = only === 'sex' ? t('სექსი და ლიბიდო', 'Sex and sex drive') : `${fmtDate(date)}${date === v.today ? t(' · დღეს', ' · Today') : ''}`;
   const infoBits = [];
-  if (mark.cycleDay) infoBits.push(`ციკლის ${mark.cycleDay}-ე დღე`);
-  if (L.loggedPeriod) infoBits.push(v.uncertain || v.caps.postpartum ? 'სისხლდენა · აღრიცხული' : 'მენსტრუაცია · აღრიცხული');
-  else if (L.predictedPeriod) infoBits.push('სავარაუდო მენსტრუაცია');
-  else if (L.ovulation) infoBits.push('სავარაუდო ოვულაცია');
-  else if (L.fertile) infoBits.push('სავარაუდო ნაყოფიერი');
-  else if (v.showPredicted && mark.phaseKa && mark.phase && mark.phase !== 'unknown') infoBits.push(`სავარაუდოდ ${mark.phaseKa.toLowerCase()}`);
+  if (mark.cycleDay) infoBits.push(t(`ციკლის ${mark.cycleDay}-ე დღე`, `Cycle day ${mark.cycleDay}`));
+  if (L.loggedPeriod) infoBits.push(v.uncertain || v.caps.postpartum ? t('სისხლდენა · აღრიცხული', 'Bleeding · logged') : t('მენსტრუაცია · აღრიცხული', 'Period · logged'));
+  else if (L.predictedPeriod) infoBits.push(t('სავარაუდო მენსტრუაცია', 'Estimated period'));
+  else if (L.ovulation) infoBits.push(t('სავარაუდო ოვულაცია', 'Estimated ovulation'));
+  else if (L.fertile) infoBits.push(t('სავარაუდო ნაყოფიერი', 'Estimated fertile'));
+  else if (v.showPredicted && mark.phaseKa && mark.phase && mark.phase !== 'unknown') infoBits.push(t(`სავარაუდოდ ${mark.phaseKa.toLowerCase()}`, `Likely ${mark.phaseKa.toLowerCase()}`));
 
   const bodyEl = h('div', { class: 'cy-log' });
   const err = h('div', { class: 'form-error', hidden: true });
@@ -1085,11 +1089,11 @@ function openDayModal(b, date, { only, onBundle }) {
     const drive = f.sexTags.find((id) => SEX_DRIVE.some((d) => d.id === id)) || null;
     const driveTags = drive ? [drive] : [];
     return h('div', { class: 'cy-log-sec' },
-      only === 'sex' ? null : h('h4', null, icon('heart', { size: 15 }), 'სექსი და ლიბიდო'),
-      h('div', { class: 'cy-private' }, icon('lock', { size: 12 }), 'მხოლოდ შენ ხედავ — პარტნიორსა და Medi-ს არ ეგზავნება'),
-      h('div', { class: 'cy-sub-label' }, 'სექსი'),
+      only === 'sex' ? null : h('h4', null, icon('heart', { size: 15 }), t('სექსი და ლიბიდო', 'Sex and sex drive')),
+      h('div', { class: 'cy-private' }, icon('lock', { size: 12 }), t('მხოლოდ შენ ხედავ — პარტნიორსა და Medi-ს არ ეგზავნება', 'Only you can see this — never sent to a partner or Medi')),
+      h('div', { class: 'cy-sub-label' }, t('სექსი', 'Sex')),
       h('div', { class: 'chips' },
-        chip('არ მქონია', f.sexual === false, () => {
+        chip(t('არ მქონია', 'Didn’t have sex'), f.sexual === false, () => {
           if (f.sexual === false) f.sexual = null; else { f.sexual = false; f.sexTags = driveTags; }
           paint();
         }),
@@ -1099,7 +1103,7 @@ function openDayModal(b, date, { only, onBundle }) {
           f.sexTags = [...next, ...driveTags];
           paint();
         }))),
-      h('div', { class: 'cy-sub-label' }, 'ლიბიდო'),
+      h('div', { class: 'cy-sub-label' }, t('ლიბიდო', 'Sex drive')),
       h('div', { class: 'chips', role: 'radiogroup' }, SEX_DRIVE.map((o) => chip(o.label, drive === o.id, () => {
         f.sexTags = [...activity, ...(drive === o.id ? [] : [o.id])];
         paint();
@@ -1108,7 +1112,7 @@ function openDayModal(b, date, { only, onBundle }) {
 
   const painSection = () => {
     const has = (id) => f.painEntries.find((p) => p.type === id);
-    return sec('ტკივილი', 'აღრიცხვაა, არა დიაგნოზი. თუ ტკივილი ძლიერი, უეცარი ან გაწუხებს — მიმართე ექიმს.',
+    return sec(t('ტკივილი', 'Pain'), t('აღრიცხვაა, არა დიაგნოზი. თუ ტკივილი ძლიერი, უეცარი ან გაწუხებს — მიმართე ექიმს.', 'This is a log, not a diagnosis. If the pain is severe, sudden or worries you — see a doctor.'),
       h('div', { class: 'chips' }, PAIN_TYPES.map((o) => chip(o.label, Boolean(has(o.id)), () => {
         if (has(o.id)) f.painEntries = f.painEntries.filter((p) => p.type !== o.id);
         else if (f.painEntries.length < 7) f.painEntries = [...f.painEntries, { type: o.id, severity: 'moderate' }];
@@ -1123,36 +1127,36 @@ function openDayModal(b, date, { only, onBundle }) {
   function paint() {
     const visibleSymptoms = showAllSymptoms ? SYMPTOMS : SYMPTOMS.filter((s, i) => i < SYMPTOMS_VISIBLE || f.symptoms.includes(s.id));
     const parts = [];
-    if (infoBits.length && only !== 'sex') parts.push(h('div', { class: 'cy-mode-note' }, icon('calendar', { size: 18 }), h('div', null, infoBits.join(' · '), L.predictedPeriod || L.fertile || L.ovulation ? h('div', { class: 'faint', style: { fontSize: '12px', marginTop: '2px' } }, 'შეფასება ბოლო ციკლების მიხედვით — არა დადგენილი თარიღი.') : null)));
+    if (infoBits.length && only !== 'sex') parts.push(h('div', { class: 'cy-mode-note' }, icon('calendar', { size: 18 }), h('div', null, infoBits.join(' · '), L.predictedPeriod || L.fertile || L.ovulation ? h('div', { class: 'faint', style: { fontSize: '12px', marginTop: '2px' } }, t('შეფასება ბოლო ციკლების მიხედვით — არა დადგენილი თარიღი.', 'Estimated from your recent cycles — not a confirmed date.')) : null)));
     if (future) {
-      parts.push(h('p', { class: 'muted' }, 'მომავალ დღეს ვერ აღრიცხავ. ამ დღის ინფორმაცია სავარაუდოა და შეიძლება შეიცვალოს.'));
+      parts.push(h('p', { class: 'muted' }, t('მომავალ დღეს ვერ აღრიცხავ. ამ დღის ინფორმაცია სავარაუდოა და შეიძლება შეიცვალოს.', 'You can’t log a future day. What’s shown for this day is an estimate and may change.')));
       mount(bodyEl, parts);
       return;
     }
     if (only === 'sex') {
       parts.push(sexSection());
     } else {
-      parts.push(sec(v.uncertain || v.caps.postpartum ? 'სისხლდენა' : 'გამონადენი', 'აირჩიე ერთი ვარიანტი', single(FLOWS, 'flow')));
+      parts.push(sec(v.uncertain || v.caps.postpartum ? t('სისხლდენა', 'Bleeding') : t('გამონადენი', 'Flow'), t('აირჩიე ერთი ვარიანტი', 'Choose one'), single(FLOWS, 'flow')));
       parts.push(sexSection());
-      parts.push(sec('სიმპტომები', 'შეგიძლია რამდენიმე მონიშნო', multi(visibleSymptoms, 'symptoms'),
+      parts.push(sec(t('სიმპტომები', 'Symptoms'), t('შეგიძლია რამდენიმე მონიშნო', 'You can pick several'), multi(visibleSymptoms, 'symptoms'),
         h('button', { type: 'button', class: 'link', style: { marginTop: '10px', background: 'none', border: 0, padding: 0, cursor: 'pointer', font: 'inherit', fontSize: '13px' }, onClick: () => { showAllSymptoms = !showAllSymptoms; paint(); } },
-          showAllSymptoms ? 'ნაკლების ჩვენება' : `ყველა სიმპტომი (${SYMPTOMS.length})`)));
-      parts.push(sec('განწყობა', 'როგორ გრძნობ თავს დღეს?', multi(MOODS, 'moods')));
-      parts.push(sec('ენერგია', 'დღის საერთო დონე. დაღლილობა ცალკე სიმპტომია.', single(ENERGY, 'energy')));
+          showAllSymptoms ? t('ნაკლების ჩვენება', 'Show less') : t(`ყველა სიმპტომი (${SYMPTOMS.length})`, `All symptoms (${SYMPTOMS.length})`))));
+      parts.push(sec(t('განწყობა', 'Mood'), t('როგორ გრძნობ თავს დღეს?', 'How do you feel today?'), multi(MOODS, 'moods')));
+      parts.push(sec(t('ენერგია', 'Energy'), t('დღის საერთო დონე. დაღლილობა ცალკე სიმპტომია.', 'Your overall level today. Fatigue is a separate symptom.'), single(ENERGY, 'energy')));
       parts.push(painSection());
-      parts.push(sec('ცხოვრების წესი', 'სუბიექტური აღრიცხვა.', h('div', { class: 'cy-life' },
+      parts.push(sec(t('ცხოვრების წესი', 'Lifestyle'), t('სუბიექტური აღრიცხვა.', 'How it felt to you.'), h('div', { class: 'cy-life' },
         LIFESTYLE.map((g) => [h('div', { class: 'cy-life-label' }, g.label), single(g.options, g.key)]))));
       if (fertilityShown) {
-        const bbt = input({ type: 'text', inputmode: 'decimal', placeholder: 'მაგ. 36,6', value: f.bbt, style: { maxWidth: '160px' }, onInput: (e) => { f.bbt = e.target.value; } });
-        parts.push(sec('ნაყოფიერების ჩანაწერები', 'ეს შენი დაკვირვებაა. Medicard ნაყოფიერებას ან ორსულობას არ ადასტურებს.',
-          field('ბაზალური ტემპერატურა (°C)', bbt),
-          h('div', { class: 'cy-sub-label' }, 'ცერვიკალური ლორწო'), single(MUCUS, 'mucus', { teal: true }),
-          h('div', { class: 'cy-sub-label' }, 'ოვულაციის ტესტი'), single(TESTS, 'ovulationTest', { teal: true }),
-          h('div', { class: 'cy-sub-label' }, 'ორსულობის ტესტი'), single(TESTS, 'pregnancyTest', { teal: true })));
+        const bbt = input({ type: 'text', inputmode: 'decimal', placeholder: t('მაგ. 36,6', 'e.g. 36.6'), value: f.bbt, style: { maxWidth: '160px' }, onInput: (e) => { f.bbt = e.target.value; } });
+        parts.push(sec(t('ნაყოფიერების ჩანაწერები', 'Fertility logs'), t('ეს შენი დაკვირვებაა. Medicard ნაყოფიერებას ან ორსულობას არ ადასტურებს.', 'These are your own observations. Medicard does not confirm fertility or pregnancy.'),
+          field(t('ბაზალური ტემპერატურა (°C)', 'Basal body temperature (°C)'), bbt),
+          h('div', { class: 'cy-sub-label' }, t('ცერვიკალური ლორწო', 'Cervical mucus')), single(MUCUS, 'mucus', { teal: true }),
+          h('div', { class: 'cy-sub-label' }, t('ოვულაციის ტესტი', 'Ovulation test')), single(TESTS, 'ovulationTest', { teal: true }),
+          h('div', { class: 'cy-sub-label' }, t('ორსულობის ტესტი', 'Pregnancy test')), single(TESTS, 'pregnancyTest', { teal: true })));
       }
-      const notes = h('textarea', { class: 'input textarea', maxlength: 2000, placeholder: 'როგორ გაიარა დღემ…', onInput: (e) => { f.notes = e.target.value; } });
+      const notes = h('textarea', { class: 'input textarea', maxlength: 2000, placeholder: t('როგორ გაიარა დღემ…', 'How did your day go…'), onInput: (e) => { f.notes = e.target.value; } });
       notes.value = f.notes;
-      parts.push(sec('ჩანაწერი', 'არასავალდებულო. დღიური რჩება ამ ანგარიშზე და პარტნიორს არ ეგზავნება.', notes));
+      parts.push(sec(t('ჩანაწერი', 'Note'), t('არასავალდებულო. დღიური რჩება ამ ანგარიშზე და პარტნიორს არ ეგზავნება.', 'Optional. Your diary stays on this account and is never sent to a partner.'), notes));
     }
     parts.push(err);
     const scroll = bodyEl.closest('.modal-body')?.scrollTop;
@@ -1167,8 +1171,8 @@ function openDayModal(b, date, { only, onBundle }) {
     size: only === 'sex' ? 'md' : 'lg',
     body: bodyEl,
     footer: (close) => {
-      if (future) return [button('დახურვა', { variant: 'ghost', onClick: () => close() })];
-      const save = button('შენახვა', { variant: 'rose' });
+      if (future) return [button(t('დახურვა', 'Close'), { variant: 'ghost', onClick: () => close() })];
+      const save = button(t('შენახვა', 'Save'), { variant: 'rose' });
       save.addEventListener('click', () => busy(save, async () => {
         err.hidden = true;
         try {
@@ -1177,21 +1181,21 @@ function openDayModal(b, date, { only, onBundle }) {
           const res = await put(`/api/cycle/logs/${date}`, only === 'sex' ? { sexualActivity: payload.sexualActivity, symptoms: payload.symptoms } : payload);
           onBundle(res.bundle);
           close();
-          toast('შენახულია');
-        } catch (e) { err.textContent = e.message || 'ვერ შეინახა.'; err.hidden = false; }
+          toast(t('შენახულია', 'Saved'));
+        } catch (e) { err.textContent = e.message || t('ვერ შეინახა.', 'Couldn’t save.'); err.hidden = false; }
       }));
       const out = [];
       if (log && only !== 'sex') {
-        const rm = button('დღის წაშლა', { variant: 'ghost', icon: 'trash' });
+        const rm = button(t('დღის წაშლა', 'Delete day'), { variant: 'ghost', icon: 'trash' });
         rm.style.marginRight = 'auto';
         rm.addEventListener('click', async () => {
-          const ok = await confirmDialog({ title: 'ჩანაწერის წაშლა', body: `${fmtDate(date)}-ის ყველა ჩანაწერი წაიშლება.`, confirm: 'წაშლა', danger: true });
+          const ok = await confirmDialog({ title: t('ჩანაწერის წაშლა', 'Delete log'), body: t(`${fmtDate(date)}-ის ყველა ჩანაწერი წაიშლება.`, `Everything logged for ${fmtDate(date)} will be deleted.`), confirm: t('წაშლა', 'Delete'), danger: true });
           if (!ok) return;
-          try { onBundle(await del(`/api/cycle/logs/${date}`)); close(); toast('ჩანაწერი წაიშალა'); } catch (e) { toast(e.message, 'error'); }
+          try { onBundle(await del(`/api/cycle/logs/${date}`)); close(); toast(t('ჩანაწერი წაიშალა', 'Log deleted')); } catch (e) { toast(e.message, 'error'); }
         });
         out.push(rm);
       }
-      out.push(button('გაუქმება', { variant: 'ghost', onClick: () => close() }), save);
+      out.push(button(t('გაუქმება', 'Cancel'), { variant: 'ghost', onClick: () => close() }), save);
       return out;
     },
   });
@@ -1204,29 +1208,29 @@ function openSettingsModal(b, onBundle) {
   const p = b.profile || {};
   const mode = p.mode || 'TRACK_PERIOD';
   const canSwitch = mode === 'TRACK_PERIOD' || mode === 'TRY_TO_CONCEIVE';
-  const range = (a, z) => Array.from({ length: z - a + 1 }, (_, i) => ({ value: a + i, label: `${a + i} დღე` }));
+  const range = (a, z) => Array.from({ length: z - a + 1 }, (_, i) => ({ value: a + i, label: t(`${a + i} დღე`, `${a + i} days`) }));
   const conds = (p.conditions || []).map(String);
   const check = (name, label, checked) => h('label', { class: 'hstack', style: { gap: '10px', cursor: 'pointer', fontSize: '14px' } },
     h('input', { type: 'checkbox', name, checked }), label);
   const m = formModal({
-    title: 'ციკლის პარამეტრები',
+    title: t('ციკლის პარამეტრები', 'Cycle settings'),
     size: 'md',
     fields: () => h('div', { class: 'stack', style: { gap: '16px' } },
-      canSwitch ? field('რეჟიმი', select([
+      canSwitch ? field(t('რეჟიმი', 'Mode'), select([
         { value: 'TRACK_PERIOD', label: MODE_LABEL.TRACK_PERIOD },
         { value: 'TRY_TO_CONCEIVE', label: MODE_LABEL.TRY_TO_CONCEIVE },
-      ], mode, { name: 'mode' }), mode === 'TRY_TO_CONCEIVE' ? 'სავარაუდო ნაყოფიერი დღეები კალენდარული შეფასებაა. აპი ორსულობას არ ჰპირდება.' : null)
-        : field('რეჟიმი', input({ value: MODE_LABEL[mode] || mode, disabled: true }), 'ამ რეჟიმის შეცვლა MEDICARD აპშია.'),
+      ], mode, { name: 'mode' }), mode === 'TRY_TO_CONCEIVE' ? t('სავარაუდო ნაყოფიერი დღეები კალენდარული შეფასებაა. აპი ორსულობას არ ჰპირდება.', 'Estimated fertile days are a calendar estimate. The app makes no promise about pregnancy.') : null)
+        : field(t('რეჟიმი', 'Mode'), input({ value: MODE_LABEL[mode] || mode, disabled: true }), t('ამ რეჟიმის შეცვლა MEDICARD აპშია.', 'You can change this mode in the MEDICARD app.')),
       h('div', { class: 'grid grid-2' },
-        field('საშუალო ციკლი', select(range(21, 45), p.avgCycleLength || 28, { name: 'avgCycleLength' })),
-        field('საშუალო მენსტრუაცია', select(range(2, 10), p.avgPeriodLength || 5, { name: 'avgPeriodLength' }))),
-      h('p', { class: 'faint', style: { fontSize: '12.5px' } }, 'გამოიყენება მხოლოდ საწყისად — შემდეგ შენი ჩანაწერებით ზუსტდება.'),
-      check('isIrregular', 'არარეგულარული ციკლი', Boolean(p.isIrregular)),
+        field(t('საშუალო ციკლი', 'Average cycle'), select(range(21, 45), p.avgCycleLength || 28, { name: 'avgCycleLength' })),
+        field(t('საშუალო მენსტრუაცია', 'Average period'), select(range(2, 10), p.avgPeriodLength || 5, { name: 'avgPeriodLength' }))),
+      h('p', { class: 'faint', style: { fontSize: '12.5px' } }, t('გამოიყენება მხოლოდ საწყისად — შემდეგ შენი ჩანაწერებით ზუსტდება.', 'Used only as a starting point — your logs refine it over time.')),
+      check('isIrregular', t('არარეგულარული ციკლი', 'Irregular cycle'), Boolean(p.isIrregular)),
       h('div', { class: 'stack', style: { gap: '8px' } },
-        h('div', { class: 'field-label' }, 'ჯანმრთელობა (სურვილისამებრ)'),
+        h('div', { class: 'field-label' }, t('ჯანმრთელობა (სურვილისამებრ)', 'Health (optional)')),
         check('cond_pcos', 'PCOS', conds.includes('pcos')),
-        check('cond_endometriosis', 'ენდომეტრიოზი', conds.includes('endometriosis'))),
-      appHint('შეხსენებები, პარტნიორის გაზიარება, კონტრაცეფცია და ორსულობის / მშობიარობის შემდგომი / პერიმენოპაუზის რეჟიმები MEDICARD აპის ციკლის პარამეტრებშია.')),
+        check('cond_endometriosis', t('ენდომეტრიოზი', 'Endometriosis'), conds.includes('endometriosis'))),
+      appHint(t('შეხსენებები, პარტნიორის გაზიარება, კონტრაცეფცია და ორსულობის / მშობიარობის შემდგომი / პერიმენოპაუზის რეჟიმები MEDICARD აპის ციკლის პარამეტრებშია.', 'Reminders, partner sharing, contraception and the pregnancy / postpartum / perimenopause modes are in the MEDICARD app’s cycle settings.'))),
     onSubmit: async (vals, close) => {
       const conditions = [...conds.filter((c) => c !== 'pcos' && c !== 'endometriosis')];
       if (vals.cond_pcos) conditions.push('pcos');
@@ -1242,7 +1246,7 @@ function openSettingsModal(b, onBundle) {
       if (nb?.profile && nb.predictions) onBundle(nb);
       else onBundle(await get('/api/cycle'));
       close();
-      toast('პარამეტრები შენახულია');
+      toast(t('პარამეტრები შენახულია', 'Settings saved'));
     },
   });
   m.el.classList.add('cy');
@@ -1271,28 +1275,28 @@ export function homeCard() {
 
 function homeContent(b) {
   const v = derive(b);
-  const open = button('გახსნა', { href: '/cycle', size: 'sm', variant: 'ghost', icon: 'arrowRight' });
+  const open = button(t('გახსნა', 'Open'), { href: '/cycle', size: 'sm', variant: 'ghost', icon: 'arrowRight' });
   if (v.needsOnboarding) {
     return h('div', { class: 'cy-home' },
       h('span', { class: 'tile ink-rose', style: { width: '52px', height: '52px' } }, icon('flower', { size: 24 })),
       h('div', { class: 'cy-home-main' },
-        h('h3', null, 'მონიშნე ბოლო მენსტრუაცია'),
-        h('p', null, 'პროგნოზები და ფაზები გამოჩნდება — ყოველთვის როგორც შეფასება.'),
-        h('div', null, button('დაწყება', { href: '/cycle', size: 'sm', variant: 'rose' }))));
+        h('h3', null, t('მონიშნე ბოლო მენსტრუაცია', 'Mark your last period')),
+        h('p', null, t('პროგნოზები და ფაზები გამოჩნდება — ყოველთვის როგორც შეფასება.', 'Predictions and phases will appear — always as estimates.')),
+        h('div', null, button(t('დაწყება', 'Start'), { href: '/cycle', size: 'sm', variant: 'rose' }))));
   }
   if (v.caps.pregnancy || v.caps.postpartum) {
     const age = v.caps.pregnancy && !b.pregnancy?.reviewRequired ? b.pregnancy?.age : null;
     const e = v.caps.postpartum ? b.postpartum?.elapsed : null;
     return h('div', { class: 'cy-home' },
-      age ? ring({ value: age.dayOfPregnancy, max: 280, size: 96, stroke: 10, color: 'var(--cy-luteal)', label: `${age.week}`, sub: 'კვირა' })
+      age ? ring({ value: age.dayOfPregnancy, max: 280, size: 96, stroke: 10, color: 'var(--cy-luteal)', label: `${age.week}`, sub: t('კვირა', age.week === 1 ? 'week' : 'weeks') })
         : h('span', { class: 'tile ink-violet', style: { width: '52px', height: '52px' } }, icon('heart', { size: 24 })),
       h('div', { class: 'cy-home-main' },
-        h('h3', null, v.caps.pregnancy ? 'ორსულობის რეჟიმი' : 'მშობიარობის შემდგომი თვალყური'),
-        h('p', null, age ? `${age.week} კვირა + ${age.day} დღე · სავარაუდოდ` : e ? `${e.week} კვირა + ${e.day} დღე` : 'დღის აღრიცხვა ერთ ადგილას.'),
+        h('h3', null, v.caps.pregnancy ? t('ორსულობის რეჟიმი', 'Pregnancy mode') : t('მშობიარობის შემდგომი თვალყური', 'Postpartum tracking')),
+        h('p', null, age ? `${t(`${age.week} კვირა + ${age.day} დღე`, `${plural(age.week, 'week')} + ${plural(age.day, 'day')}`)}${t(' · სავარაუდოდ', ' · estimated')}` : e ? t(`${e.week} კვირა + ${e.day} დღე`, `${plural(e.week, 'week')} + ${plural(e.day, 'day')}`) : t('დღის აღრიცხვა ერთ ადგილას.', 'Your daily log in one place.')),
         h('div', null, open)));
   }
   const cycleLenRound = Math.round(v.cycleLen) || 28;
-  const line = v.statusLine || (v.day != null && !v.hideLengthChrome ? `ციკლის ${v.day}-ე დღე · ${cycleLenRound}-დან` : 'ვსწავლობთ შენს რიტმს — აღრიცხე შემდეგი მენსტრუაცია');
+  const line = v.statusLine || (v.day != null && !v.hideLengthChrome ? t(`ციკლის ${v.day}-ე დღე · ${cycleLenRound}-დან`, `Cycle day ${v.day} · of ${cycleLenRound}`) : t('ვსწავლობთ შენს რიტმს — აღრიცხე შემდეგი მენსტრუაცია', 'Learning your rhythm — log your next period'));
   return h('div', { class: 'cy-home' },
     dialFor(b, v, { compact: true, describeDay: null }),
     h('div', { class: 'cy-home-main' },

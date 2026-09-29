@@ -27,6 +27,7 @@ import { usePlanUsage } from '@/lib/planUsage';
 import { useAuth } from '@/store/AuthContext';
 import { consumeAssistantLaunch } from '@/lib/assistant';
 import { useThemeColors } from '@/theme/colors';
+import { tx } from '@/i18n/locale';
 
 const DISCLOSURE_KEY = 'medicard.pets.vetDisclosure.v1';
 
@@ -274,7 +275,7 @@ function PetVetChat({ petId, owner }: { petId: string; owner: string }) {
                 {pet?.name || titledProfile.subtitle}
               </Text>
             </View>
-            <Pressable accessibilityRole="button" accessibilityLabel="Medi Vet — როგორ მუშაობს" onPress={() => setDisclosure(true)} style={{ minWidth: 44, minHeight: 44, alignItems: "center", justifyContent: "center" }}><Info size={21} color={colors.primary100} /></Pressable>
+            <Pressable accessibilityRole="button" accessibilityLabel={tx('Medi Vet — როგორ მუშაობს', 'Medi Vet — how it works')} onPress={() => setDisclosure(true)} style={{ minWidth: 44, minHeight: 44, alignItems: "center", justifyContent: "center" }}><Info size={21} color={colors.primary100} /></Pressable>
           </View>
         }
         footer={
@@ -310,9 +311,9 @@ function PetVetChat({ petId, owner }: { petId: string; owner: string }) {
           ItemSeparatorComponent={() => <View style={{ height: FIGMA_CHAT.messageGap }} />}
           ListEmptyComponent={
             <View style={{ gap: FIGMA_CHAT.messageGap }}>
-<PetIntro icon={Stethoscope} eyebrow="MEDI VET · AI" title={pet?.name ? `${pet.name} — უკეთ გავიცნოთ.` : "მისთვისაც აქ ვართ."} body="მოვლა, შენახული ჩანაწერები და შეკითხვები შენს ცხოველზე. აღწერე, რისი გაგება გინდა." />
-              <Card><PetText bold>აქ საუბარი შენს ცხოველს ეხება</PetText><PetText size={13} muted>{ka.pets.vetDisclaimer}</PetText></Card>
-              {!loaded && !error ? <PetText muted>ისტორია იტვირთება…</PetText> : null}
+<PetIntro icon={Stethoscope} eyebrow="MEDI VET · AI" title={pet?.name ? tx(`${pet.name} — უკეთ გავიცნოთ.`, `${pet.name} — let’s get to know them.`) : tx('მისთვისაც აქ ვართ.', 'We’re here for them too.')} body={tx('მოვლა, შენახული ჩანაწერები და შეკითხვები შენს ცხოველზე. აღწერე, რისი გაგება გინდა.', 'Care, saved records and questions about your pet. Describe what you’d like to know.')} />
+              <Card><PetText bold>{tx('აქ საუბარი შენს ცხოველს ეხება', 'This conversation is about your pet')}</PetText><PetText size={13} muted>{ka.pets.vetDisclaimer}</PetText></Card>
+              {!loaded && !error ? <PetText muted>{tx('ისტორია იტვირთება…', 'Loading history…')}</PetText> : null}
               {loaded && titledProfile.suggestions.map((suggestion) => (
                 <ChatSuggestionChip key={suggestion} label={suggestion} onPress={() => void send(suggestion)} />
               ))}
@@ -356,7 +357,7 @@ function PetVetChat({ petId, owner }: { petId: string; owner: string }) {
           ListFooterComponent={
             <View style={{ gap: FIGMA_CHAT.messageGap, paddingTop: messages.length ? FIGMA_CHAT.messageGap : 0 }}>
               {error ? <PetErrorText message={error} /> : null}
-              {!loaded && error ? <Button variant="secondary" label="ისტორიის ხელახლა ჩატვირთვა" onPress={() => setReload(value => value + 1)} /> : null}
+              {!loaded && error ? <Button variant="secondary" label={tx('ისტორიის ხელახლა ჩატვირთვა', 'Reload history')} onPress={() => setReload(value => value + 1)} /> : null}
               {messages.length > 0 ? (
                 <Text style={{ fontSize: 12, color: colors.text300 }}>{ka.pets.vetDisclaimer}</Text>
               ) : null}

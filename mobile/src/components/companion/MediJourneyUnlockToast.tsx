@@ -4,6 +4,7 @@ import Animated, { FadeInUp, FadeOutUp } from 'react-native-reanimated';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MapPin } from 'lucide-react-native';
+import { appLang } from '@/i18n/locale';
 import { companionCopy } from '@/lib/companion/copy';
 import { usePrefersReducedMotion } from '@/hooks/usePrefersReducedMotion';
 import { QUEST } from '@/theme/questTokens';
@@ -21,7 +22,7 @@ type Props = {
 };
 
 /** Aggregated Journey unlock toast — never stacks sequential modals. */
-export function MediJourneyUnlockToast({ celebration, onDismiss, locale = 'ka' }: Props) {
+export function MediJourneyUnlockToast({ celebration, onDismiss, locale = appLang() }: Props) {
   const colors = useThemeColors();
   const dark = useIsDark();
   const reduce = usePrefersReducedMotion();

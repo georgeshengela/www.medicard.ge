@@ -2,6 +2,7 @@ import { addDaysYmd, dayTotalMl, loadHydrationGoalMl, loadHydrationLogs, todayYm
 import { getCachedHealthBundle } from '@/lib/healthDataSync';
 import { loadDoseLogs } from '@/lib/medications.shared';
 import { loadWeightLogs } from '@/lib/weightGoal';
+import { tx } from '../i18n/locale.js';
 
 export type WeekReport = {
   endYmd: string;
@@ -48,15 +49,15 @@ export async function buildWeekReport(end = todayYmd()): Promise<WeekReport> {
   }).length;
   const taken = doses.filter((row) => thisWeek.includes(row.date) && row.status === 'taken').length;
   const skipped = doses.filter((row) => thisWeek.includes(row.date) && row.status === 'skipped').length;
-  let insight = 'ამ კვირაში მონაცემები ნელ-ნელა გროვდება. Medi აქაა, როცა კიდევ რამეს ჩაინიშნავ 💚';
+  let insight = tx('ამ კვირაში მონაცემები ნელ-ნელა გროვდება. Medi აქაა, როცა კიდევ რამეს ჩაინიშნავ 💚', 'Your data is slowly building up this week. Medi is here whenever you log something else 💚');
   if (total > 0 && prev > 0 && total >= Math.round(prev * 1.15)) {
-    insight = 'ნაბიჯები ამ კვირაში გაიზარდა. ეს პატარა, მაგრამ ნამდვილი ცვლილებაა — კარგი მიმართულებაა 👏';
+    insight = tx('ნაბიჯები ამ კვირაში გაიზარდა. ეს პატარა, მაგრამ ნამდვილი ცვლილებაა — კარგი მიმართულებაა 👏', 'Your steps went up this week. A small but real change — a good direction 👏');
   } else if (daysHit >= 4) {
-    insight = 'წყალი ამ კვირაში ხშირად მიზანთან იყო. სხეული ამას გრძნობს 💧';
+    insight = tx('წყალი ამ კვირაში ხშირად მიზანთან იყო. სხეული ამას გრძნობს 💧', 'You often reached your water goal this week. Your body notices 💧');
   } else if (taken >= 5 && skipped === 0) {
-    insight = 'მედიკამენტების კვირა სუფთა გამოვიდა. ასეთი სიმშვიდე იშვიათია და ღირს 💚';
+    insight = tx('მედიკამენტების კვირა სუფთა გამოვიდა. ასეთი სიმშვიდე იშვიათია და ღირს 💚', 'A clean week for your medications. That kind of calm is rare and worth it 💚');
   } else if (loggedDays >= 5) {
-    insight = 'ხუთი დღე ჩანაწერებით — ეს უკვე რიტუალია, არა იძულება. მიხარია, რომ ერთად ვართ.';
+    insight = tx('ხუთი დღე ჩანაწერებით — ეს უკვე რიტუალია, არა იძულება. მიხარია, რომ ერთად ვართ.', "Five days with entries — that's a ritual now, not a chore. I'm glad we're doing this together.");
   }
   return {
     endYmd: end,

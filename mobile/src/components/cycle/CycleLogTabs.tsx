@@ -38,6 +38,7 @@ import {
   PREGNANCY_DAILY_ASSESSMENT_KEYS,
 } from '@/lib/cycleObservationAssessment';
 import { ka } from '@/i18n/ka';
+import { tx } from '@/i18n/locale';
 import { cycleShadow, useCycleColors } from '@/theme/cycle';
 
 type TabId = 'flow' | 'feel' | 'more';
@@ -342,9 +343,9 @@ export function CycleLogTabs({
               <>
                 <TextInput
                   value={symQuery}
-                  accessibilityLabel="სიმპტომების ძებნა"
+                  accessibilityLabel={tx('სიმპტომების ძებნა', 'Search symptoms')}
                   onChangeText={setSymQuery}
-                  placeholder="ძებნა…"
+                  placeholder={tx('ძებნა…', 'Search…')}
                   placeholderTextColor={c.mutedSoft}
                   style={{
                     backgroundColor: c.card,

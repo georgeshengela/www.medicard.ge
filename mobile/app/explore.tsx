@@ -11,6 +11,7 @@ import { useThemeColors } from '@/theme/colors';
 import { useAuth } from '@/store/AuthContext';
 import { useCommunityEntry } from '@/lib/communityAccess';
 import { isHrefAvailable, useFeatureState } from '@/lib/featureFlags';
+import { tx } from '@/i18n/locale';
 
 export default function Explore() {
   const c = useThemeColors(),
@@ -39,7 +40,7 @@ export default function Explore() {
       >
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel="უკან"
+          accessibilityLabel={tx('უკან', 'Back')}
           onPress={() =>
             router.canGoBack() ? router.back() : router.replace('/(tabs)/home')
           }
@@ -63,7 +64,7 @@ export default function Explore() {
             color: c.text100,
           }}
         >
-          ყველა შესაძლებლობა
+          {tx('ყველა შესაძლებლობა', 'Everything you can do')}
         </Text>
       </View>
       <ScrollView
@@ -85,8 +86,7 @@ export default function Explore() {
             marginBottom: 26,
           }}
         >
-          აირჩიე, რაში გჭირდება დახმარება. შენი ჩანაწერები და საყვარელი
-          ფუნქციები ერთ სივრცეშია.
+          {tx('აირჩიე, რაში გჭირდება დახმარება. შენი ჩანაწერები და საყვარელი ფუნქციები ერთ სივრცეშია.', 'Choose what you need help with. Your records and favorite features are all in one place.')}
         </Text>
         <ScrollView
           horizontal
@@ -117,7 +117,7 @@ export default function Explore() {
                     color: selected === label ? c.primary100 : c.text200,
                   }}
                 >
-                  {label ?? 'ყველა'}
+                  {label ?? tx('ყველა', 'All')}
                 </Text>
               </Pressable>
             ),

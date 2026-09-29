@@ -1,4 +1,5 @@
 import {getPulseClient,resetPulseClient} from '@/lib/medipulsi/client';
+import {tx} from '../../i18n/locale.js';
 import { useSyncExternalStore } from 'react';
 import { AppState, type AppStateStatus } from 'react-native';
 import * as Location from 'expo-location';
@@ -429,7 +430,7 @@ export async function finishRun(): Promise<RunSummary | null> {
   set({ phase: 'finished', movingMs, elapsedMs, summary });
   if (!wasSimulation && (summary.distanceM >= 50 || summary.movingMs >= 60_000)) {
     const owner=generation;
-    void saveRunSummary(summary).catch(()=>{if(owner===generation)set({syncError:'სესიის დეტალები ტელეფონში ვერ შეინახა. გადაამოწმე თავისუფალი ადგილი.'});});
+    void saveRunSummary(summary).catch(()=>{if(owner===generation)set({syncError:tx('სესიის დეტალები ტელეფონში ვერ შეინახა. გადაამოწმე თავისუფალი ადგილი.','Couldn’t save the session details on your phone. Check your free storage.')});});
   }
   return summary;
 }
@@ -800,7 +801,7 @@ function setSimMode(mode: SimMode): void {
   if (mode === 'off') {
     set({ simulating: false, simMode: 'off' });
     if(state.phase==='running')pauseRun();
-    set({syncError:'დემო დასრულდა. GPS სესიისთვის დააჭირე გაგრძელებას.'});
+    set({syncError:tx('დემო დასრულდა. GPS სესიისთვის დააჭირე გაგრძელებას.','Demo finished. Tap Continue for a GPS session.')});
     return;
   }
   watchSub?.remove();

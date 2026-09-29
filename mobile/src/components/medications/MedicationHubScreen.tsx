@@ -28,6 +28,7 @@ import {
 import { getPreference, setPreference } from '@/lib/storage';
 import { useIsDark, useThemeColors } from '@/theme/colors';
 import { HUB, hubInk, hubText } from '@/theme/hub';
+import { tx } from '@/i18n/locale';
 
 const ONBOARDING_KEY = 'medicard.meds.onboardingDone';
 const TODAY_PREVIEW = 4;
@@ -281,9 +282,9 @@ async function apiToggle(med: Medication, reload: () => void) {
 }
 
 const MED_POPULAR_CHIPS = [
-  { query: 'ibuprofen', labelKa: 'იბუპროფენი' },
-  { query: 'amoxicillin', labelKa: 'ამოქსიცილინი' },
-  { query: 'atorvastatin', labelKa: 'ატორვასტატინი' },
+  { query: 'ibuprofen', labelKa: tx('იბუპროფენი', 'Ibuprofen') },
+  { query: 'amoxicillin', labelKa: tx('ამოქსიცილინი', 'Amoxicillin') },
+  { query: 'atorvastatin', labelKa: tx('ატორვასტატინი', 'Atorvastatin') },
 ] as const;
 
 /** The spotlight's lead: a ring that fills as today's doses get taken. */

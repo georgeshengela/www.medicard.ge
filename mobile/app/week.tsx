@@ -9,6 +9,7 @@ import { markEngageSeen } from '@/lib/mediEngagePrefs';
 import { buildWeekReport, type WeekReport } from '@/lib/mediWeekReport';
 import { useFigmaHealthMetrics } from '@/constants/figmaHealthMetricsLayout';
 import { useThemeColors } from '@/theme/colors';
+import { dateLocale, tx } from '@/i18n/locale';
 
 function StatCard({
   icon: Icon,
@@ -109,7 +110,7 @@ export default function WeekWithMediScreen() {
             <StatCard
               icon={Footprints}
               label={ka.weekMedi.steps}
-              value={report ? report.steps.total.toLocaleString('ka-GE') : '—'}
+              value={report ? report.steps.total.toLocaleString(dateLocale()) : '—'}
               hint={
                 report?.steps.deltaPct != null
                   ? ka.weekMedi.stepsDelta(report.steps.deltaPct)
@@ -119,7 +120,7 @@ export default function WeekWithMediScreen() {
             <StatCard
               icon={Droplets}
               label={ka.weekMedi.water}
-              value={report ? `${Math.round(report.hydration.avgMl / 10) / 100} ლ` : '—'}
+              value={report ? `${Math.round(report.hydration.avgMl / 10) / 100} ${tx('ლ', 'L')}` : '—'}
               hint={report ? ka.weekMedi.waterHit(report.hydration.daysHit) : undefined}
             />
             <StatCard
@@ -143,7 +144,7 @@ export default function WeekWithMediScreen() {
             <StatCard
               icon={Moon}
               label={ka.weekMedi.sleep}
-              value={report?.sleepAvg != null ? `${report.sleepAvg} სთ` : ka.weekMedi.none}
+              value={report?.sleepAvg != null ? `${report.sleepAvg} ${tx('სთ', 'h')}` : ka.weekMedi.none}
             />
           </View>
         </View>

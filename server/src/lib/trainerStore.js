@@ -23,6 +23,7 @@ import {
   expandSeries,
   findConflict,
   formatClock,
+  formatSessionTime,
   goalProgress,
   isLateCancel,
   linkAllows,
@@ -63,11 +64,13 @@ export async function getTrainerProfile(userId, db = prisma) {
 
 export async function requireTrainer(userId, { verified = true } = {}, db = prisma) {
   const profile = await getTrainerProfile(userId, db);
-  if (!profile) throw coachError(403, 'ეს განყოფილება მხოლოდ ტრენერებისთვისაა.', 'TRAINER_REQUIRED');
+  if (!profile) throw coachError(403, 'ეს განყოფილება მხოლოდ ტრენერებისთვისაა.', 'TRAINER_REQUIRED', 'This section is for trainers only.');
   if (verified && profile.status !== 'VERIFIED') {
     throw coachError(403, profile.status === 'PENDING'
       ? 'შენი ტრენერის პროფილი ჯერ განიხილება. დადასტურების შემდეგ შეძლებ კლიენტებთან მუშაობას.'
-      : 'ტრენერის პროფილი არ არის აქტიური.', 'TRAINER_NOT_VERIFIED');
+      : 'ტრენერის პროფილი არ არის აქტიური.', 'TRAINER_NOT_VERIFIED', profile.status === 'PENDING'
+      ? 'Your trainer profile is still under review. Once it is verified, you can work with clients.'
+      : 'Your trainer profile is not active.');
   }
   return profile;
 }
@@ -78,7 +81,7 @@ async function uniqueCode(db) {
     const [taken] = await db.$queryRaw`SELECT 1 AS x FROM "TrainerProfile" WHERE code = ${code}`;
     if (!taken) return code;
   }
-  throw coachError(503, 'კოდი ვერ შეიქმნა. სცადე ხელახლა.');
+  throw coachError(503, 'კოდი ვერ შეიქმნა. სცადე ხელახლა.', null, 'We could not create a code. Please try again.');
 }
 
 /** Create or update the application. Editing a rejected/pending profile re-submits it for review. */
@@ -88,7 +91,7 @@ export async function applyTrainer(user, body, db = prisma) {
     const g = gyms.get(id);
     return g && (g.status === 'ACTIVE' || (g.status === 'PROPOSED' && g.proposedBy === user.id));
   });
-  if (!gymIds.length) throw coachError(400, 'აირჩიე მინიმუმ ერთი დარბაზი სიიდან.');
+  if (!gymIds.length) throw coachError(400, 'აირჩიე მინიმუმ ერთი დარბაზი სიიდან.', null, 'Choose at least one gym from the list.');
   const existing = await getTrainerProfile(user.id, db);
   const instagram = cleanInstagram(body.instagram);
   if (!existing) {
@@ -100,7 +103,7 @@ export async function applyTrainer(user, body, db = prisma) {
       RETURNING *`;
     return row;
   }
-  if (existing.status === 'SUSPENDED') throw coachError(403, 'ტრენერის პროფილი შეჩერებულია. დაუკავშირდი მხარდაჭერას.');
+  if (existing.status === 'SUSPENDED') throw coachError(403, 'ტრენერის პროფილი შეჩერებულია. დაუკავშირდი მხარდაჭერას.', null, 'Your trainer profile is suspended. Please contact support.');
   const resubmit = existing.status === 'REJECTED';
   const [row] = await db.$queryRaw`UPDATE "TrainerProfile" SET
       "displayName" = ${body.displayName}, bio = ${body.bio || null}, specialties = ${JSON.stringify(body.specialties)}::jsonb,
@@ -114,9 +117,9 @@ export async function applyTrainer(user, body, db = prisma) {
 
 export async function addCertificate(userId, meta, fileKey, db = prisma) {
   const profile = await getTrainerProfile(userId, db);
-  if (!profile) throw coachError(404, 'ჯერ შეავსე ტრენერის განაცხადი.');
+  if (!profile) throw coachError(404, 'ჯერ შეავსე ტრენერის განაცხადი.', null, 'Please fill in the trainer application first.');
   const certs = asArray(profile.certificates);
-  if (certs.length >= 8) throw coachError(400, 'მაქსიმუმ 8 სერტიფიკატი.');
+  if (certs.length >= 8) throw coachError(400, 'მაქსიმუმ 8 სერტიფიკატი.', null, 'You can add up to 8 certificates.');
   const cert = { id: randomUUID(), title: meta.title, issuer: meta.issuer || '', year: meta.year ?? null, fileKey, addedAt: new Date().toISOString() };
   const [row] = await db.$queryRaw`UPDATE "TrainerProfile" SET certificates = ${JSON.stringify([...certs, cert])}::jsonb, "updatedAt" = CURRENT_TIMESTAMP
     WHERE "userId" = ${userId} RETURNING *`;
@@ -125,10 +128,10 @@ export async function addCertificate(userId, meta, fileKey, db = prisma) {
 
 export async function removeCertificate(userId, certId, db = prisma) {
   const profile = await getTrainerProfile(userId, db);
-  if (!profile) throw coachError(404, 'პროფილი ვერ მოიძებნა.');
+  if (!profile) throw coachError(404, 'პროფილი ვერ მოიძებნა.', null, 'Profile not found.');
   const certs = asArray(profile.certificates);
   const removed = certs.find((c) => c.id === certId);
-  if (!removed) throw coachError(404, 'სერტიფიკატი ვერ მოიძებნა.');
+  if (!removed) throw coachError(404, 'სერტიფიკატი ვერ მოიძებნა.', null, 'Certificate not found.');
   const [row] = await db.$queryRaw`UPDATE "TrainerProfile" SET certificates = ${JSON.stringify(certs.filter((c) => c.id !== certId))}::jsonb, "updatedAt" = CURRENT_TIMESTAMP
     WHERE "userId" = ${userId} RETURNING *`;
   return { profile: row, removed };
@@ -210,8 +213,8 @@ export async function activeLink(trainerId, clientId, db = prisma) {
 /** Throws unless the trainer has an ACTIVE link with the client (and the scope, when given). */
 export async function requireClientAccess(trainerId, clientId, scope = null, db = prisma) {
   const link = await activeLink(trainerId, clientId, db);
-  if (!link) throw coachError(404, 'ეს კლიენტი შენთან აღარ არის დაკავშირებული.', 'LINK_NOT_ACTIVE');
-  if (scope && !linkAllows(link, scope)) throw coachError(403, 'კლიენტს ეს მონაცემი არ გაუზიარებია.', 'SCOPE_NOT_SHARED');
+  if (!link) throw coachError(404, 'ეს კლიენტი შენთან აღარ არის დაკავშირებული.', 'LINK_NOT_ACTIVE', 'This client is no longer connected to you.');
+  if (scope && !linkAllows(link, scope)) throw coachError(403, 'კლიენტს ეს მონაცემი არ გაუზიარებია.', 'SCOPE_NOT_SHARED', 'This client has not shared this data.');
   return link;
 }
 
@@ -220,10 +223,10 @@ export async function requireClientAccess(trainerId, clientId, scope = null, db 
  * becomes ACTIVE at once; a request from search waits for the trainer (REQUESTED).
  */
 export async function createLink(client, body, db = prisma) {
-  if (body.consentVersion !== CONSENT_VERSION) throw coachError(409, 'თანხმობის ტექსტი განახლდა. გადახედე და დაადასტურე ხელახლა.', 'CONSENT_OUTDATED');
+  if (body.consentVersion !== CONSENT_VERSION) throw coachError(409, 'თანხმობის ტექსტი განახლდა. გადახედე და დაადასტურე ხელახლა.', 'CONSENT_OUTDATED', 'The consent text has been updated. Please review it and confirm again.');
   const trainer = body.code ? await trainerByCode(body.code, db) : (await db.$queryRaw`SELECT * FROM "TrainerProfile" WHERE "userId" = ${body.trainerId} AND status = 'VERIFIED'`)[0];
-  if (!trainer) throw coachError(404, 'ასეთი დადასტურებული ტრენერი ვერ მოიძებნა. შეამოწმე კოდი.', 'TRAINER_NOT_FOUND');
-  if (trainer.userId === client.id) throw coachError(400, 'საკუთარ თავს კლიენტად ვერ დაამატებ.', 'OWN_TRAINER');
+  if (!trainer) throw coachError(404, 'ასეთი დადასტურებული ტრენერი ვერ მოიძებნა. შეამოწმე კოდი.', 'TRAINER_NOT_FOUND', 'No verified trainer was found. Please check the code.');
+  if (trainer.userId === client.id) throw coachError(400, 'საკუთარ თავს კლიენტად ვერ დაამატებ.', 'OWN_TRAINER', 'You cannot add yourself as a client.');
   const open = await openLinkForClient(client.id, db);
   if (open) {
     // The trainer already invited this person by QR: entering the trainer's code is the acceptance.
@@ -231,7 +234,7 @@ export async function createLink(client, body, db = prisma) {
       return { link: await acceptInvite(client, { scopes: body.scopes, consentVersion: body.consentVersion }, db), trainer, created: true };
     }
     if (open.trainerId === trainer.userId) return { link: open, trainer, created: false };
-    throw coachError(409, 'უკვე გყავს ტრენერი. ახალთან დასაკავშირებლად ჯერ დაასრულე მიმდინარე.', 'ALREADY_LINKED');
+    throw coachError(409, 'უკვე გყავს ტრენერი. ახალთან დასაკავშირებლად ჯერ დაასრულე მიმდინარე.', 'ALREADY_LINKED', 'You already have a trainer. To connect with a new one, end the current connection first.');
   }
   const status = body.code ? 'ACTIVE' : 'REQUESTED';
   const scopes = normalizeScopes(body.scopes, DEFAULT_SCOPES);
@@ -241,14 +244,16 @@ export async function createLink(client, body, db = prisma) {
     RETURNING *`;
   const [who] = [...(await peopleByIds([client.id], db)).values()];
   void notifyCoach(trainer.userId, status === 'ACTIVE'
-    ? { title: 'ახალი კლიენტი', body: `${who?.name ?? 'კლიენტი'} შემოგიერთდა MEDICARD-ში.`, route: `/coach/client/${client.id}` }
-    : { title: 'ახალი მოთხოვნა', body: `${who?.name ?? 'ვიღაცას'} სურს შენთან ვარჯიში.`, route: '/coach/clients' }, db);
+    ? { title: 'ახალი კლიენტი', body: `${who?.name ?? 'კლიენტი'} შემოგიერთდა MEDICARD-ში.`, route: `/coach/client/${client.id}`,
+      en: { title: 'New client', body: `${who?.name ?? 'A client'} joined you on MEDICARD.` } }
+    : { title: 'ახალი მოთხოვნა', body: `${who?.name ?? 'ვიღაცას'} სურს შენთან ვარჯიში.`, route: '/coach/clients',
+      en: { title: 'New request', body: `${who?.name ?? 'Someone'} wants to train with you.` } }, db);
   return { link, trainer, created: true };
 }
 
 export async function updateScopes(clientId, scopes, db = prisma) {
   const open = await openLinkForClient(clientId, db);
-  if (!open) throw coachError(404, 'ტრენერთან კავშირი არ გაქვს.');
+  if (!open) throw coachError(404, 'ტრენერთან კავშირი არ გაქვს.', null, 'You are not connected to a trainer.');
   const next = normalizeScopes(scopes, normalizeScopes(open.scopes));
   const [row] = await db.$queryRaw`UPDATE "TrainerLink" SET scopes = ${JSON.stringify(next)}::jsonb, "consentVersion" = ${CONSENT_VERSION}, "updatedAt" = CURRENT_TIMESTAMP
     WHERE id = ${open.id} RETURNING *`;
@@ -260,7 +265,7 @@ export async function endLink({ linkId, by, actorId }, db = prisma) {
   const [link] = await db.$queryRaw`UPDATE "TrainerLink" SET status = CASE WHEN status = 'REQUESTED' AND ${by} = 'TRAINER' THEN 'DECLINED' ELSE 'ENDED' END,
       "endedAt" = CURRENT_TIMESTAMP, "endedBy" = ${by}, "updatedAt" = CURRENT_TIMESTAMP
     WHERE id = ${linkId} AND status IN ('REQUESTED', 'ACTIVE') AND (${actorId} = "trainerId" OR ${actorId} = "clientId") RETURNING *`;
-  if (!link) throw coachError(404, 'კავშირი ვერ მოიძებნა.');
+  if (!link) throw coachError(404, 'კავშირი ვერ მოიძებნა.', null, 'Connection not found.');
   await db.$executeRaw`UPDATE "TrainerSession" SET status = 'CANCELLED', "cancelledBy" = ${by}, "cancelReason" = 'კავშირი დასრულდა', "updatedAt" = CURRENT_TIMESTAMP
     WHERE "trainerId" = ${link.trainerId} AND "clientId" = ${link.clientId} AND status = 'SCHEDULED' AND "startsAt" > now()`;
   await db.$executeRaw`UPDATE "TrainerMealPlan" SET active = false, "updatedAt" = CURRENT_TIMESTAMP WHERE "trainerId" = ${link.trainerId} AND "clientId" = ${link.clientId} AND active`;
@@ -271,9 +276,10 @@ export async function answerRequest(trainerId, linkId, accept, db = prisma) {
   if (!accept) return endLink({ linkId, by: 'TRAINER', actorId: trainerId }, db);
   const [link] = await db.$queryRaw`UPDATE "TrainerLink" SET status = 'ACTIVE', "acceptedAt" = CURRENT_TIMESTAMP, "updatedAt" = CURRENT_TIMESTAMP
     WHERE id = ${linkId} AND "trainerId" = ${trainerId} AND status = 'REQUESTED' AND initiator = 'CLIENT' RETURNING *`;
-  if (!link) throw coachError(404, 'მოთხოვნა ვერ მოიძებნა.');
+  if (!link) throw coachError(404, 'მოთხოვნა ვერ მოიძებნა.', null, 'Request not found.');
   const trainer = await getTrainerProfile(trainerId, db);
-  void notifyCoach(link.clientId, { title: 'ტრენერმა დაგიდასტურა', body: `${trainer?.displayName ?? 'ტრენერი'} ახლა შენი ტრენერია.`, route: '/trainer' }, db);
+  void notifyCoach(link.clientId, { title: 'ტრენერმა დაგიდასტურა', body: `${trainer?.displayName ?? 'ტრენერი'} ახლა შენი ტრენერია.`, route: '/trainer',
+    en: { title: 'Your trainer accepted', body: `${trainer?.displayName ?? 'Your trainer'} is now your trainer.` } }, db);
   return link;
 }
 
@@ -282,7 +288,8 @@ export async function proposeGoal(trainerId, clientId, goal, db = prisma) {
   const proposal = { ...goal, proposedAt: new Date().toISOString() };
   await db.$executeRaw`UPDATE "TrainerLink" SET "proposedGoal" = ${JSON.stringify(proposal)}::jsonb, "updatedAt" = CURRENT_TIMESTAMP WHERE id = ${link.id}`;
   const trainer = await getTrainerProfile(trainerId, db);
-  void notifyCoach(clientId, { title: 'ახალი მიზანი', body: `${trainer?.displayName ?? 'ტრენერმა'} მიზანი შემოგთავაზა. ნახე და დაადასტურე.`, route: '/trainer' }, db);
+  void notifyCoach(clientId, { title: 'ახალი მიზანი', body: `${trainer?.displayName ?? 'ტრენერმა'} მიზანი შემოგთავაზა. ნახე და დაადასტურე.`, route: '/trainer',
+    en: { title: 'New goal', body: `${trainer?.displayName ?? 'Your trainer'} proposed a goal. Take a look and confirm it.` } }, db);
   return proposal;
 }
 
@@ -295,10 +302,10 @@ export async function clearGoalProposal(clientId, db = prisma) {
 /** What a verified trainer sees after scanning: identity only (no health data) and the link state. */
 export async function scanPreview(trainerId, token, db = prisma) {
   const userId = await userByQr(token, db);
-  if (!userId) throw coachError(404, 'QR კოდი ვერ მოიძებნა ან განახლებულია. სთხოვე ადამიანს, გახსნას თავისი QR ხელახლა.', 'QR_NOT_FOUND');
-  if (userId === trainerId) throw coachError(400, 'ეს შენი საკუთარი QR კოდია.', 'OWN_QR');
+  if (!userId) throw coachError(404, 'QR კოდი ვერ მოიძებნა ან განახლებულია. სთხოვე ადამიანს, გახსნას თავისი QR ხელახლა.', 'QR_NOT_FOUND', 'This QR code was not found or has been renewed. Ask the person to open their QR code again.');
+  if (userId === trainerId) throw coachError(400, 'ეს შენი საკუთარი QR კოდია.', 'OWN_QR', 'This is your own QR code.');
   const person = (await peopleByIds([userId], db)).get(userId);
-  if (!person || person.status !== 'ACTIVE') throw coachError(404, 'ანგარიში არ არის აქტიური.', 'QR_NOT_FOUND');
+  if (!person || person.status !== 'ACTIVE') throw coachError(404, 'ანგარიში არ არის აქტიური.', 'QR_NOT_FOUND', 'This account is not active.');
   const open = await openLinkForClient(userId, db);
   const mine = open && open.trainerId === trainerId ? open : null;
   return {
@@ -319,8 +326,8 @@ export async function scanPreview(trainerId, token, db = prisma) {
 /** Trainer invites the scanned person; nothing is shared until they accept in their app. */
 export async function inviteByQr(trainerId, token, note = '', db = prisma) {
   const preview = await scanPreview(trainerId, token, db);
-  if (preview.hasOtherTrainer) throw coachError(409, 'ამ ადამიანს უკვე ჰყავს სხვა ტრენერი.', 'ALREADY_LINKED');
-  if (preview.link?.status === 'ACTIVE') throw coachError(409, 'უკვე შენი კლიენტია.', 'ALREADY_CLIENT');
+  if (preview.hasOtherTrainer) throw coachError(409, 'ამ ადამიანს უკვე ჰყავს სხვა ტრენერი.', 'ALREADY_LINKED', 'This person already has another trainer.');
+  if (preview.link?.status === 'ACTIVE') throw coachError(409, 'უკვე შენი კლიენტია.', 'ALREADY_CLIENT', 'Already your client.');
   if (preview.link?.status === 'REQUESTED' && preview.link.initiator === 'CLIENT') {
     await answerRequest(trainerId, preview.link.id, true, db);
     return { status: 'ACTIVE', userId: preview.user.id };
@@ -330,19 +337,21 @@ export async function inviteByQr(trainerId, token, note = '', db = prisma) {
   await db.$queryRaw`INSERT INTO "TrainerLink" (id, "trainerId", "clientId", status, initiator, scopes, "clientNote")
     VALUES (${randomUUID()}, ${trainerId}, ${preview.user.id}, 'REQUESTED', 'TRAINER', ${JSON.stringify(DEFAULT_SCOPES)}::jsonb, ${note || null})`;
   const trainer = await getTrainerProfile(trainerId, db);
-  void notifyCoach(preview.user.id, { title: 'ტრენერი გიწვევს', body: `${trainer?.displayName ?? 'ტრენერი'} გთავაზობს ერთად ვარჯიშს. ნახე და გადაწყვიტე, რას გაუზიარებ.`, route: '/trainer' }, db);
+  void notifyCoach(preview.user.id, { title: 'ტრენერი გიწვევს', body: `${trainer?.displayName ?? 'ტრენერი'} გთავაზობს ერთად ვარჯიშს. ნახე და გადაწყვიტე, რას გაუზიარებ.`, route: '/trainer',
+    en: { title: 'A trainer invited you', body: `${trainer?.displayName ?? 'A trainer'} would like to train with you. Take a look and decide what to share.` } }, db);
   return { status: 'REQUESTED', userId: preview.user.id };
 }
 
 /** Client accepts a trainer's QR invitation with explicit scopes (consent). */
 export async function acceptInvite(client, { scopes, consentVersion }, db = prisma) {
-  if (consentVersion !== CONSENT_VERSION) throw coachError(409, 'თანხმობის ტექსტი განახლდა. გადახედე და დაადასტურე ხელახლა.', 'CONSENT_OUTDATED');
+  if (consentVersion !== CONSENT_VERSION) throw coachError(409, 'თანხმობის ტექსტი განახლდა. გადახედე და დაადასტურე ხელახლა.', 'CONSENT_OUTDATED', 'The consent text has been updated. Please review it and confirm again.');
   const open = await openLinkForClient(client.id, db);
-  if (!open || open.status !== 'REQUESTED' || open.initiator !== 'TRAINER') throw coachError(404, 'მოწვევა ვერ მოიძებნა.', 'INVITE_NOT_FOUND');
+  if (!open || open.status !== 'REQUESTED' || open.initiator !== 'TRAINER') throw coachError(404, 'მოწვევა ვერ მოიძებნა.', 'INVITE_NOT_FOUND', 'Invitation not found.');
   const [link] = await db.$queryRaw`UPDATE "TrainerLink" SET status = 'ACTIVE', scopes = ${JSON.stringify(normalizeScopes(scopes, DEFAULT_SCOPES))}::jsonb,
       "consentVersion" = ${CONSENT_VERSION}, "acceptedAt" = CURRENT_TIMESTAMP, "updatedAt" = CURRENT_TIMESTAMP WHERE id = ${open.id} RETURNING *`;
   const [who] = [...(await peopleByIds([client.id], db)).values()];
-  void notifyCoach(link.trainerId, { title: 'მოწვევა მიიღეს ✅', body: `${who?.name ?? 'კლიენტი'} შემოგიერთდა.`, route: `/coach/client/${client.id}` }, db);
+  void notifyCoach(link.trainerId, { title: 'მოწვევა მიიღეს ✅', body: `${who?.name ?? 'კლიენტი'} შემოგიერთდა.`, route: `/coach/client/${client.id}`,
+    en: { title: 'Invitation accepted ✅', body: `${who?.name ?? 'Your client'} joined you.` } }, db);
   return link;
 }
 
@@ -357,14 +366,14 @@ export async function createSessions(trainerId, body, db = prisma) {
   if (body.clientId) await requireClientAccess(trainerId, body.clientId, null, db);
   if (body.gymId) {
     const gyms = await gymsByIds([body.gymId], db);
-    if (!gyms.get(body.gymId)) throw coachError(400, 'დარბაზი ვერ მოიძებნა.');
+    if (!gyms.get(body.gymId)) throw coachError(400, 'დარბაზი ვერ მოიძებნა.', null, 'Gym not found.');
   }
   const times = expandSeries(body.startsAt, body.repeatWeeks);
-  if (times[0].getTime() < Date.now() - 15 * 60000) throw coachError(400, 'წარსულ დროზე ვარჯიშს ვერ დანიშნავ.');
+  if (times[0].getTime() < Date.now() - 15 * 60000) throw coachError(400, 'წარსულ დროზე ვარჯიშს ვერ დანიშნავ.', null, 'You cannot schedule a session in the past.');
   const existing = await liveSessionsAround(trainerId, times[0], new Date(times.at(-1).getTime() + DAY), db);
   for (const t of times) {
     const clash = findConflict(existing, t, body.durationMin);
-    if (clash) throw coachError(409, `ამ დროს უკვე გაქვს ვარჯიში (${formatClock(clash.startsAt)}).`, 'SESSION_CONFLICT');
+    if (clash) throw coachError(409, `ამ დროს უკვე გაქვს ვარჯიში (${formatClock(clash.startsAt)}).`, 'SESSION_CONFLICT', `You already have a session at this time (${formatClock(clash.startsAt)}).`);
   }
   const seriesId = times.length > 1 ? randomUUID() : null;
   const status = body.clientId ? 'SCHEDULED' : 'OPEN';
@@ -384,6 +393,10 @@ export async function createSessions(trainerId, body, db = prisma) {
       title: 'ვარჯიში ჩაგენიშნა',
       body: `${trainer?.displayName ?? 'ტრენერმა'}: ${first.label}${created.length > 1 ? ` და კიდევ ${created.length - 1} კვირა` : ''}`,
       route: '/trainer/sessions',
+      en: {
+        title: 'Session booked for you',
+        body: `${trainer?.displayName ?? 'Your trainer'}: ${formatSessionTime(created[0].startsAt, 'en')}${created.length > 1 ? ` and ${created.length - 1} more ${created.length - 1 === 1 ? 'week' : 'weeks'}` : ''}`,
+      },
     }, db);
   }
   return created;
@@ -414,15 +427,15 @@ export async function decorateSessions(rows, db = prisma) {
 
 export async function patchSession(trainerId, id, patch, db = prisma) {
   const s = await getSession(id, db);
-  if (!s || s.trainerId !== trainerId) throw coachError(404, 'ვარჯიში ვერ მოიძებნა.');
-  if (!['SCHEDULED', 'OPEN'].includes(s.status)) throw coachError(409, 'დასრულებულ ან გაუქმებულ ვარჯიშს ვერ შეცვლი.');
+  if (!s || s.trainerId !== trainerId) throw coachError(404, 'ვარჯიში ვერ მოიძებნა.', null, 'Session not found.');
+  if (!['SCHEDULED', 'OPEN'].includes(s.status)) throw coachError(409, 'დასრულებულ ან გაუქმებულ ვარჯიშს ვერ შეცვლი.', null, 'You cannot change a finished or cancelled session.');
   const startsAt = patch.startsAt ?? s.startsAt;
   const durationMin = patch.durationMin ?? s.durationMin;
   const moved = patch.startsAt && new Date(patch.startsAt).getTime() !== new Date(s.startsAt).getTime();
   if (moved || patch.durationMin) {
     const existing = await liveSessionsAround(trainerId, new Date(startsAt), new Date(new Date(startsAt).getTime() + DAY), db);
     const clash = findConflict(existing, startsAt, durationMin, s.id);
-    if (clash) throw coachError(409, `ამ დროს უკვე გაქვს ვარჯიში (${formatClock(clash.startsAt)}).`, 'SESSION_CONFLICT');
+    if (clash) throw coachError(409, `ამ დროს უკვე გაქვს ვარჯიში (${formatClock(clash.startsAt)}).`, 'SESSION_CONFLICT', `You already have a session at this time (${formatClock(clash.startsAt)}).`);
   }
   const [row] = await db.$queryRaw`UPDATE "TrainerSession" SET "startsAt" = ${new Date(startsAt)}, "durationMin" = ${durationMin},
       "gymId" = ${patch.gymId !== undefined ? patch.gymId : s.gymId}, kind = ${patch.kind ?? s.kind}, note = ${patch.note ?? s.note},
@@ -432,7 +445,8 @@ export async function patchSession(trainerId, id, patch, db = prisma) {
       "updatedAt" = CURRENT_TIMESTAMP
     WHERE id = ${id} RETURNING *`;
   if (moved && row.clientId) {
-    void notifyCoach(row.clientId, { title: 'ვარჯიში გადაიტანეს', body: `ახალი დრო: ${sessionPublic(row).label}`, route: '/trainer/sessions' }, db);
+    void notifyCoach(row.clientId, { title: 'ვარჯიში გადაიტანეს', body: `ახალი დრო: ${sessionPublic(row).label}`, route: '/trainer/sessions',
+      en: { title: 'Session moved', body: `New time: ${formatSessionTime(row.startsAt, 'en')}` } }, db);
   }
   return row;
 }
@@ -440,8 +454,8 @@ export async function patchSession(trainerId, id, patch, db = prisma) {
 export async function cancelSession({ id, actorId, by, reason }, db = prisma) {
   const s = await getSession(id, db);
   const allowed = s && (by === 'TRAINER' ? s.trainerId === actorId : s.clientId === actorId);
-  if (!allowed) throw coachError(404, 'ვარჯიში ვერ მოიძებნა.');
-  if (!['SCHEDULED', 'OPEN'].includes(s.status)) throw coachError(409, 'ეს ვარჯიში უკვე დასრულებული ან გაუქმებულია.');
+  if (!allowed) throw coachError(404, 'ვარჯიში ვერ მოიძებნა.', null, 'Session not found.');
+  if (!['SCHEDULED', 'OPEN'].includes(s.status)) throw coachError(409, 'ეს ვარჯიში უკვე დასრულებული ან გაუქმებულია.', null, 'This session is already finished or cancelled.');
   const late = by === 'CLIENT' && isLateCancel(s.startsAt);
   // A client cancelling an open-slot booking hands the slot back to the trainer.
   const reopen = by === 'CLIENT' && s.seriesId === 'slot';
@@ -450,24 +464,28 @@ export async function cancelSession({ id, actorId, by, reason }, db = prisma) {
     : await db.$queryRaw`UPDATE "TrainerSession" SET status = 'CANCELLED', "cancelledBy" = ${by}, "cancelReason" = ${reason || null}, "lateCancel" = ${late}, "updatedAt" = CURRENT_TIMESTAMP
       WHERE id = ${id} RETURNING *`;
   const label = sessionPublic(s).label;
+  const labelEn = formatSessionTime(s.startsAt, 'en');
   if (by === 'TRAINER' && s.clientId) {
-    void notifyCoach(s.clientId, { title: 'ვარჯიში გაუქმდა', body: `${label}${reason ? ` — ${reason}` : ''}`, route: '/trainer/sessions' }, db);
+    void notifyCoach(s.clientId, { title: 'ვარჯიში გაუქმდა', body: `${label}${reason ? ` — ${reason}` : ''}`, route: '/trainer/sessions',
+      en: { title: 'Session cancelled', body: `${labelEn}${reason ? ` — ${reason}` : ''}` } }, db);
   } else if (by === 'CLIENT') {
     const [who] = [...(await peopleByIds([actorId], db)).values()];
-    void notifyCoach(s.trainerId, { title: late ? 'ბოლო წუთის გაუქმება' : 'ვარჯიში გაუქმდა', body: `${who?.name ?? 'კლიენტი'}: ${label}${reason ? ` — ${reason}` : ''}`, route: '/coach/calendar' }, db);
+    void notifyCoach(s.trainerId, { title: late ? 'ბოლო წუთის გაუქმება' : 'ვარჯიში გაუქმდა', body: `${who?.name ?? 'კლიენტი'}: ${label}${reason ? ` — ${reason}` : ''}`, route: '/coach/calendar',
+      en: { title: late ? 'Last-minute cancellation' : 'Session cancelled', body: `${who?.name ?? 'Your client'}: ${labelEn}${reason ? ` — ${reason}` : ''}` } }, db);
   }
   return row;
 }
 
 export async function completeSession(trainerId, id, body, db = prisma) {
   const s = await getSession(id, db);
-  if (!s || s.trainerId !== trainerId || !s.clientId) throw coachError(404, 'ვარჯიში ვერ მოიძებნა.');
-  if (!['SCHEDULED', 'DONE', 'NO_SHOW'].includes(s.status)) throw coachError(409, 'გაუქმებულ ვარჯიშს ვერ დაასრულებ.');
-  if (new Date(s.startsAt).getTime() > Date.now() + 15 * 60000) throw coachError(409, 'ვარჯიში ჯერ არ დაწყებულა.');
+  if (!s || s.trainerId !== trainerId || !s.clientId) throw coachError(404, 'ვარჯიში ვერ მოიძებნა.', null, 'Session not found.');
+  if (!['SCHEDULED', 'DONE', 'NO_SHOW'].includes(s.status)) throw coachError(409, 'გაუქმებულ ვარჯიშს ვერ დაასრულებ.', null, 'You cannot complete a cancelled session.');
+  if (new Date(s.startsAt).getTime() > Date.now() + 15 * 60000) throw coachError(409, 'ვარჯიში ჯერ არ დაწყებულა.', null, 'This session has not started yet.');
   const [row] = await db.$queryRaw`UPDATE "TrainerSession" SET status = ${body.status}, exercises = ${JSON.stringify(body.exercises)}::jsonb,
       "trainerNote" = ${body.trainerNote || null}, "updatedAt" = CURRENT_TIMESTAMP WHERE id = ${id} RETURNING *`;
   if (body.status === 'DONE' && s.status !== 'DONE') {
-    void notifyCoach(s.clientId, { title: 'ვარჯიში დასრულდა 💪', body: 'ტრენერმა ვარჯიშის შედეგები ჩაწერა. ნახე დეტალები.', route: `/trainer/session/${id}` }, db);
+    void notifyCoach(s.clientId, { title: 'ვარჯიში დასრულდა 💪', body: 'ტრენერმა ვარჯიშის შედეგები ჩაწერა. ნახე დეტალები.', route: `/trainer/session/${id}`,
+      en: { title: 'Session complete 💪', body: 'Your trainer recorded the session results. Take a look at the details.' } }, db);
   }
   return row;
 }
@@ -475,27 +493,28 @@ export async function completeSession(trainerId, id, body, db = prisma) {
 export async function confirmSession(clientId, id, db = prisma) {
   const [row] = await db.$queryRaw`UPDATE "TrainerSession" SET "clientConfirmedAt" = CURRENT_TIMESTAMP, "updatedAt" = CURRENT_TIMESTAMP
     WHERE id = ${id} AND "clientId" = ${clientId} AND status = 'SCHEDULED' RETURNING *`;
-  if (!row) throw coachError(404, 'ვარჯიში ვერ მოიძებნა.');
+  if (!row) throw coachError(404, 'ვარჯიში ვერ მოიძებნა.', null, 'Session not found.');
   return row;
 }
 
 /** Client takes one of their trainer's open slots. Atomic: two clients cannot take the same slot. */
 export async function bookSlot(clientId, id, db = prisma) {
   const link = await openLinkForClient(clientId, db);
-  if (!link || link.status !== 'ACTIVE') throw coachError(403, 'ჯავშნისთვის ტრენერთან აქტიური კავშირი გჭირდება.');
+  if (!link || link.status !== 'ACTIVE') throw coachError(403, 'ჯავშნისთვის ტრენერთან აქტიური კავშირი გჭირდება.', null, 'To book, you need an active connection with a trainer.');
   const [row] = await db.$queryRaw`UPDATE "TrainerSession" SET status = 'SCHEDULED', "clientId" = ${clientId}, "clientConfirmedAt" = CURRENT_TIMESTAMP,
       "seriesId" = 'slot', "updatedAt" = CURRENT_TIMESTAMP
     WHERE id = ${id} AND "trainerId" = ${link.trainerId} AND status = 'OPEN' AND "clientId" IS NULL AND "startsAt" > now() RETURNING *`;
-  if (!row) throw coachError(409, 'ეს დრო უკვე დაკავებულია. აირჩიე სხვა.', 'SLOT_TAKEN');
+  if (!row) throw coachError(409, 'ეს დრო უკვე დაკავებულია. აირჩიე სხვა.', 'SLOT_TAKEN', 'This time is already taken. Please choose another.');
   const [who] = [...(await peopleByIds([clientId], db)).values()];
-  void notifyCoach(link.trainerId, { title: 'ახალი ჯავშანი', body: `${who?.name ?? 'კლიენტმა'} დაჯავშნა ${sessionPublic(row).label}`, route: '/coach/calendar' }, db);
+  void notifyCoach(link.trainerId, { title: 'ახალი ჯავშანი', body: `${who?.name ?? 'კლიენტმა'} დაჯავშნა ${sessionPublic(row).label}`, route: '/coach/calendar',
+    en: { title: 'New booking', body: `${who?.name ?? 'A client'} booked ${formatSessionTime(row.startsAt, 'en')}` } }, db);
   return row;
 }
 
 export async function rateSession(clientId, id, rating, db = prisma) {
   const [row] = await db.$queryRaw`UPDATE "TrainerSession" SET "clientRating" = ${rating}, "updatedAt" = CURRENT_TIMESTAMP
     WHERE id = ${id} AND "clientId" = ${clientId} AND status = 'DONE' RETURNING *`;
-  if (!row) throw coachError(404, 'ვარჯიში ვერ მოიძებნა.');
+  if (!row) throw coachError(404, 'ვარჯიში ვერ მოიძებნა.', null, 'Session not found.');
   return row;
 }
 
@@ -511,7 +530,8 @@ export async function createMealPlan(trainerId, clientId, body, db = prisma) {
     return created;
   });
   const trainer = await getTrainerProfile(trainerId, db);
-  void notifyCoach(clientId, { title: 'კვების ახალი გეგმა', body: `${trainer?.displayName ?? 'ტრენერმა'} კვების გეგმა გამოგიგზავნა.`, route: '/trainer/plan' }, db);
+  void notifyCoach(clientId, { title: 'კვების ახალი გეგმა', body: `${trainer?.displayName ?? 'ტრენერმა'} კვების გეგმა გამოგიგზავნა.`, route: '/trainer/plan',
+    en: { title: 'New meal plan', body: `${trainer?.displayName ?? 'Your trainer'} sent you a meal plan.` } }, db);
   return row;
 }
 
@@ -642,7 +662,7 @@ export async function listPhotos(userId, db = prisma) {
 
 export async function deletePhoto(userId, id, db = prisma) {
   const [row] = await db.$queryRaw`DELETE FROM "ProgressPhoto" WHERE id = ${id} AND "userId" = ${userId} RETURNING "fileKey"`;
-  if (!row) throw coachError(404, 'ფოტო ვერ მოიძებნა.');
+  if (!row) throw coachError(404, 'ფოტო ვერ მოიძებნა.', null, 'Photo not found.');
   return row;
 }
 
@@ -704,7 +724,7 @@ export async function coachClientDashboard(trainerId, clientId, db = prisma) {
 }
 
 /** Client list with at-a-glance chips, plus pending requests. */
-export async function coachClients(trainerId, db = prisma) {
+export async function coachClients(trainerId, db = prisma, lang = 'ka') {
   const links = await db.$queryRaw`SELECT * FROM "TrainerLink" WHERE "trainerId" = ${trainerId} AND status IN ('ACTIVE', 'REQUESTED') ORDER BY "acceptedAt" DESC NULLS FIRST, "createdAt" DESC`;
   const ids = links.map((l) => l.clientId);
   const people = await peopleByIds(ids, db);
@@ -736,27 +756,27 @@ export async function coachClients(trainerId, db = prisma) {
       week = n.days.map((d) => ({ date: d.date, status: d.status }));
       const t = n.days.at(-1);
       kcalToday = { eaten: t.calories, target: plan?.targets?.calories ?? null };
-      alerts.push(...clientAlerts({ name: p?.name ?? 'კლიენტი', nutritionDays: n.days, lastMealYmd: n.lastMealYmd, today }));
+      alerts.push(...clientAlerts({ name: p?.name ?? 'კლიენტი', nutritionDays: n.days, lastMealYmd: n.lastMealYmd, today, lang }));
     }
     if (scopes.weight) {
       const w = await weightData(l.clientId, db);
       weight = { currentKg: w.currentKg, goalKg: w.goal?.targetKg ?? null, percent: w.progress?.percent ?? null };
-      alerts.push(...clientAlerts({ name: p?.name ?? 'კლიენტი', lastWeighYmd: w.lastWeighYmd, goal: w.goal, currentKg: w.currentKg, today }));
+      alerts.push(...clientAlerts({ name: p?.name ?? 'კლიენტი', lastWeighYmd: w.lastWeighYmd, goal: w.goal, currentKg: w.currentKg, today, lang }));
     }
     const [last] = await db.$queryRaw`SELECT status FROM "TrainerSession" WHERE "trainerId" = ${trainerId} AND "clientId" = ${l.clientId} AND "startsAt" < now() AND status IN ('DONE', 'NO_SHOW') ORDER BY "startsAt" DESC LIMIT 1`;
-    alerts.push(...clientAlerts({ name: p?.name ?? 'კლიენტი', lastSession: last, today }));
+    alerts.push(...clientAlerts({ name: p?.name ?? 'კლიენტი', lastSession: last, today, lang }));
     clients.push({ ...base, since: l.acceptedAt, scopes, week, kcalToday, weight, nextSession: next.get(l.clientId) ?? null, alerts });
   }
   return { clients, requests, invited };
 }
 
-export async function coachToday(trainerId, db = prisma) {
+export async function coachToday(trainerId, db = prisma, lang = 'ka') {
   const today = tbilisiYmd();
   const from = tbilisiDayStart(today);
   const to = new Date(from.getTime() + DAY);
   const [sessions, roster, profile] = await Promise.all([
     listSessions({ trainerId, from, to }, db),
-    coachClients(trainerId, db),
+    coachClients(trainerId, db, lang),
     getTrainerProfile(trainerId, db),
   ]);
   const weekTo = new Date(from.getTime() + 7 * DAY);
@@ -849,18 +869,21 @@ export async function adminTrainerList({ status = 'PENDING' } = {}, db = prisma)
 
 export async function adminReviewTrainer({ userId, action, note, admin }, db = prisma) {
   const next = { approve: 'VERIFIED', reject: 'REJECTED', suspend: 'SUSPENDED', restore: 'VERIFIED' }[action];
-  if (!next) throw coachError(400, 'უცნობი მოქმედება.');
+  if (!next) throw coachError(400, 'უცნობი მოქმედება.', null, 'Unknown action.');
   const [row] = await db.$queryRaw`UPDATE "TrainerProfile" SET status = ${next}, "reviewNote" = ${note || null}, "reviewedBy" = ${admin.email || admin.id},
       "reviewedAt" = CURRENT_TIMESTAMP, "updatedAt" = CURRENT_TIMESTAMP WHERE "userId" = ${userId} RETURNING *`;
-  if (!row) throw coachError(404, 'ტრენერი ვერ მოიძებნა.');
+  if (!row) throw coachError(404, 'ტრენერი ვერ მოიძებნა.', null, 'Trainer not found.');
   if (next === 'SUSPENDED') {
     const links = await db.$queryRaw`SELECT id FROM "TrainerLink" WHERE "trainerId" = ${userId} AND status IN ('ACTIVE', 'REQUESTED')`;
     for (const l of links) await endLink({ linkId: l.id, by: 'ADMIN', actorId: userId }, db);
   }
   const copy = {
-    VERIFIED: { title: 'ტრენერის პროფილი დადასტურდა ✅', body: 'გახსენი ტრენერის რეჟიმი და მოიწვიე პირველი კლიენტი.', route: '/coach' },
-    REJECTED: { title: 'ტრენერის განაცხადი', body: 'განაცხადს დაზუსტება სჭირდება. ნახე კომენტარი.', route: '/trainer/apply' },
-    SUSPENDED: { title: 'ტრენერის პროფილი შეჩერდა', body: 'დეტალებისთვის დაუკავშირდი მხარდაჭერას.', route: '/trainer/apply' },
+    VERIFIED: { title: 'ტრენერის პროფილი დადასტურდა ✅', body: 'გახსენი ტრენერის რეჟიმი და მოიწვიე პირველი კლიენტი.', route: '/coach',
+      en: { title: 'Trainer profile verified ✅', body: 'Open trainer mode and invite your first client.' } },
+    REJECTED: { title: 'ტრენერის განაცხადი', body: 'განაცხადს დაზუსტება სჭირდება. ნახე კომენტარი.', route: '/trainer/apply',
+      en: { title: 'Trainer application', body: 'Your application needs a few changes. See the comment.' } },
+    SUSPENDED: { title: 'ტრენერის პროფილი შეჩერდა', body: 'დეტალებისთვის დაუკავშირდი მხარდაჭერას.', route: '/trainer/apply',
+      en: { title: 'Trainer profile suspended', body: 'Please contact support for details.' } },
   }[next];
   void notifyCoach(userId, copy, db);
   return row;
@@ -877,7 +900,7 @@ export async function adminSetGym(id, patch, db = prisma) {
       status = coalesce(${patch.status ?? null}, status), brand = coalesce(${patch.brand ?? null}, brand), name = coalesce(${patch.name ?? null}, name),
       city = coalesce(${patch.city ?? null}, city), address = coalesce(${patch.address ?? null}, address), "brandKa" = coalesce(${patch.brandKa ?? null}, "brandKa"),
       "updatedAt" = CURRENT_TIMESTAMP WHERE id = ${id} RETURNING *`;
-  if (!row) throw coachError(404, 'დარბაზი ვერ მოიძებნა.');
+  if (!row) throw coachError(404, 'დარბაზი ვერ მოიძებნა.', null, 'Gym not found.');
   return row;
 }
 

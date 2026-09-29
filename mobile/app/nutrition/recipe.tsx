@@ -4,6 +4,7 @@ import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import * as Haptics from "expo-haptics";
 import { Bookmark, ChefHat, Minus, PenLine, Plus, Search, Sparkles, X } from "lucide-react-native";
 import { api } from "@/lib/api";
+import { tx } from "@/i18n/locale";
 import {
   foodFields,
   foodTotals,
@@ -110,7 +111,7 @@ function RecipeEditor({ owner, recipeId }: { owner: string; recipeId: string }) 
     setSheetError("");
     try {
       const result = await api.nutrition.estimate(null, { mode: "text", description: text });
-      if (!result.foodDetected || !result.items.length) throw new Error("ინგრედიენტები ვერ ამოვიცანი. ჩამოწერე რაოდენობებით, მაგ. „500 გ ქათამი, 200 გ ბრინჯი“.");
+      if (!result.foodDetected || !result.items.length) throw new Error(tx("ინგრედიენტები ვერ ამოვიცანი. ჩამოწერე რაოდენობებით, მაგ. „500 გ ქათამი, 200 გ ბრინჯი“.", "I couldn't recognize the ingredients. List them with amounts, e.g. \"500 g chicken, 200 g rice\"."));
       add(result.items);
       if (!name.trim() && result.dishName) setName(result.dishName);
       setSheet(null);
@@ -133,8 +134,8 @@ function RecipeEditor({ owner, recipeId }: { owner: string; recipeId: string }) 
   };
   const save = async () => {
     if (busy) return;
-    if (!name.trim()) return setError("მიუთითე რეცეპტის სახელი.");
-    if (!items.length) return setError("დაამატე მინიმუმ ერთი ინგრედიენტი.");
+    if (!name.trim()) return setError(tx("მიუთითე რეცეპტის სახელი.", "Enter a recipe name."));
+    if (!items.length) return setError(tx("დაამატე მინიმუმ ერთი ინგრედიენტი.", "Add at least one ingredient."));
     setBusy(true);
     setError("");
     try {
@@ -157,26 +158,26 @@ function RecipeEditor({ owner, recipeId }: { owner: string; recipeId: string }) 
   const inputStyle = [s.input, { backgroundColor: c.bg200, color: c.text100, borderColor: c.bg300 }];
   return (
     <NScreen
-      title={recipeId ? "რეცეპტის რედაქტირება" : "ახალი რეცეპტი"}
-      subtitle="ინგრედიენტები → პორციები → ერთი შეხებით ჩაწერა"
+      title={recipeId ? tx("რეცეპტის რედაქტირება", "Edit recipe") : tx("ახალი რეცეპტი", "New recipe")}
+      subtitle={tx("ინგრედიენტები → პორციები → ერთი შეხებით ჩაწერა", "Ingredients → servings → one-tap logging")}
       onBack={back}
-      footer={<NButton label={busy ? "ინახება…" : "რეცეპტის შენახვა"} disabled={busy || loading || !items.length || !name.trim()} onPress={() => void save()} />}
+      footer={<NButton label={busy ? tx("ინახება…", "Saving…") : tx("რეცეპტის შენახვა", "Save recipe")} disabled={busy || loading || !items.length || !name.trim()} onPress={() => void save()} />}
     >
       {loading ? (
         <NLoading />
       ) : (
         <>
           {!!error && <NError message={error} />}
-          <HubSection first title="რეცეპტი">
+          <HubSection first title={tx("რეცეპტი", "Recipe")}>
             <HubCard>
-              <TextInput accessibilityLabel="რეცეპტის სახელი" placeholder="მაგ. ჩაქაფული, ქათმის სუპი" placeholderTextColor={c.text300} value={name} onChangeText={setName} maxLength={120} style={[inputStyle, { fontSize: 17, fontFamily: "NotoSansGeorgian_600SemiBold" }]} />
+              <TextInput accessibilityLabel={tx("რეცეპტის სახელი", "Recipe name")} placeholder={tx("მაგ. ჩაქაფული, ქათმის სუპი", "e.g. chakapuli, chicken soup")} placeholderTextColor={c.text300} value={name} onChangeText={setName} maxLength={120} style={[inputStyle, { fontSize: 17, fontFamily: "NotoSansGeorgian_600SemiBold" }]} />
               <View style={s.row}>
-                <Text style={[hubText.body, { color: c.text200, flex: 1 }]}>რამდენ პორციას გამოდის?</Text>
-                <Pressable accessibilityRole="button" accessibilityLabel="ნაკლები პორცია" disabled={servings <= 1} onPress={() => setServings((n) => Math.max(1, n - 1))} style={[s.round, { backgroundColor: c.bg200, opacity: servings <= 1 ? 0.4 : 1 }]}>
+                <Text style={[hubText.body, { color: c.text200, flex: 1 }]}>{tx("რამდენ პორციას გამოდის?", "How many servings does it make?")}</Text>
+                <Pressable accessibilityRole="button" accessibilityLabel={tx("ნაკლები პორცია", "Fewer servings")} disabled={servings <= 1} onPress={() => setServings((n) => Math.max(1, n - 1))} style={[s.round, { backgroundColor: c.bg200, opacity: servings <= 1 ? 0.4 : 1 }]}>
                   <Minus size={17} color={c.text100} />
                 </Pressable>
                 <Text accessibilityLiveRegion="polite" style={[hubText.value, { color: c.text100, minWidth: 32, textAlign: "center", fontSize: 18 }]}>{servings}</Text>
-                <Pressable accessibilityRole="button" accessibilityLabel="მეტი პორცია" disabled={servings >= 50} onPress={() => setServings((n) => Math.min(50, n + 1))} style={[s.round, { backgroundColor: c.bg200, opacity: servings >= 50 ? 0.4 : 1 }]}>
+                <Pressable accessibilityRole="button" accessibilityLabel={tx("მეტი პორცია", "More servings")} disabled={servings >= 50} onPress={() => setServings((n) => Math.min(50, n + 1))} style={[s.round, { backgroundColor: c.bg200, opacity: servings >= 50 ? 0.4 : 1 }]}>
                   <Plus size={17} color={c.text100} />
                 </Pressable>
               </View>
@@ -184,43 +185,46 @@ function RecipeEditor({ owner, recipeId }: { owner: string; recipeId: string }) 
           </HubSection>
 
           {items.length > 0 && (
-            <HubSection title="ერთი პორცია">
+            <HubSection title={tx("ერთი პორცია", "One serving")}>
               <HubCard tone="spotlight">
                 <View style={s.row}>
                   <Text style={{ fontFamily: "NotoSansGeorgian_700Bold", fontSize: 34, lineHeight: 42, color: "#FFFFFF", flex: 1 }}>
                     {Math.round(total.calories / servings)}
-                    <Text style={{ fontSize: 14, fontFamily: "NotoSansGeorgian_400Regular", color: "#B6D9D3" }}> კკალ · {Math.round(grams / servings)} გ</Text>
+                    <Text style={{ fontSize: 14, fontFamily: "NotoSansGeorgian_400Regular", color: "#B6D9D3" }}>{tx(" კკალ", " kcal")} · {Math.round(grams / servings)} {tx("გ", "g")}</Text>
                   </Text>
                   <ScoreBadge score={score} />
                 </View>
                 <MacroLine protein={per(total.protein)} carbs={per(total.carbs)} fat={per(total.fat)} color="#D1E7E3" />
                 <Text style={[hubText.caption, { color: "#B6D9D3" }]}>
-                  მთლიანი: {total.calories} კკალ · {Math.round(grams)} გ · {items.length} ინგრედიენტი
+                  {tx(
+                    `მთლიანი: ${total.calories} კკალ · ${Math.round(grams)} გ · ${items.length} ინგრედიენტი`,
+                    `Total: ${total.calories} kcal · ${Math.round(grams)} g · ${items.length} ${items.length === 1 ? "ingredient" : "ingredients"}`,
+                  )}
                 </Text>
               </HubCard>
               {score != null && <MedicalSourcesLink sourceIds={["mealQuality"]} />}
             </HubSection>
           )}
 
-          <HubSection title="ინგრედიენტები">
+          <HubSection title={tx("ინგრედიენტები", "Ingredients")}>
             {items.length === 0 && (
               <HubCard>
                 <View style={[s.row, { justifyContent: "center" }]}>
                   <ChefHat size={30} color={teal} />
                 </View>
-                <Text style={[hubText.body, { color: c.text200, textAlign: "center" }]}>დაამატე ყველაფერი, რაც ქვაბში ჩადის — წონა მოუმზადებელი სახით. ზეთსაც ნუ დაივიწყებ.</Text>
+                <Text style={[hubText.body, { color: c.text200, textAlign: "center" }]}>{tx("დაამატე ყველაფერი, რაც ქვაბში ჩადის — წონა მოუმზადებელი სახით. ზეთსაც ნუ დაივიწყებ.", "Add everything that goes into the pot — weights uncooked. Don't forget the oil.")}</Text>
               </HubCard>
             )}
             {items.map((item, index) => (
               <HubCard key={index} style={{ gap: 8 }}>
                 <View style={s.row}>
                   <Text numberOfLines={2} style={[hubText.cardTitle, { color: c.text100, flex: 1 }]}>{item.name}</Text>
-                  <Pressable accessibilityRole="button" accessibilityLabel="ინგრედიენტის ამოშლა" onPress={() => setItems((list) => list.filter((_, n) => n !== index))} style={s.round}>
+                  <Pressable accessibilityRole="button" accessibilityLabel={tx("ინგრედიენტის ამოშლა", "Remove ingredient")} onPress={() => setItems((list) => list.filter((_, n) => n !== index))} style={s.round}>
                     <X size={17} color={c.text200} />
                   </Pressable>
                 </View>
                 <Text style={[hubText.value, { color: c.text100 }]}>
-                  {Math.round(item.calories)} კკალ <Text style={[hubText.caption, { color: c.text300 }]}>· {item.grams} გ</Text>
+                  {Math.round(item.calories)} {tx("კკალ", "kcal")} <Text style={[hubText.caption, { color: c.text300 }]}>· {item.grams} {tx("გ", "g")}</Text>
                 </Text>
                 <MacroLine protein={item.protein} carbs={item.carbs} fat={item.fat} />
                 <View style={s.row}>
@@ -238,14 +242,14 @@ function RecipeEditor({ owner, recipeId }: { owner: string; recipeId: string }) 
             ))}
             <View style={s.addGrid}>
               {[
-                ["search", "ძებნა", Search],
-                ["saved", "შენახული", Bookmark],
-                ["describe", "ჩამოწერე", Sparkles],
-                ["manual", "ხელით", PenLine],
+                ["search", tx("ძებნა", "Search"), Search],
+                ["saved", tx("შენახული", "Saved"), Bookmark],
+                ["describe", tx("ჩამოწერე", "Describe"), Sparkles],
+                ["manual", tx("ხელით", "Manual"), PenLine],
               ].map(([key, label, Icon]) => {
                 const I = Icon as typeof Search;
                 return (
-                  <Pressable key={key as string} accessibilityRole="button" accessibilityLabel={`ინგრედიენტის დამატება: ${label}`} disabled={items.length >= 40} onPress={() => { setSheetError(""); setSheet(key as Sheet); }} style={[s.add, { backgroundColor: c.surface }]}>
+                  <Pressable key={key as string} accessibilityRole="button" accessibilityLabel={tx(`ინგრედიენტის დამატება: ${label}`, `Add ingredient: ${label}`)} disabled={items.length >= 40} onPress={() => { setSheetError(""); setSheet(key as Sheet); }} style={[s.add, { backgroundColor: c.surface }]}>
                     <View style={[s.tile, { backgroundColor: hubTint(teal, dark) }]}>
                       <I size={18} color={teal} />
                     </View>
@@ -255,27 +259,27 @@ function RecipeEditor({ owner, recipeId }: { owner: string; recipeId: string }) 
               })}
             </View>
           </HubSection>
-          <Text style={[hubText.caption, { color: c.text300 }]}>რეცეპტი შენახულ საკვებში ჩნდება — დღიურში „შენახულიდან“ ან ძებნით ჩაწერ, პორციის არჩევით.</Text>
+          <Text style={[hubText.caption, { color: c.text300 }]}>{tx("რეცეპტი შენახულ საკვებში ჩნდება — დღიურში „შენახულიდან“ ან ძებნით ჩაწერ, პორციის არჩევით.", "The recipe appears in your saved foods — log it in the diary from Saved or by search, choosing a portion.")}</Text>
         </>
       )}
 
       <FoodSearchModal visible={sheet === "search" || sheet === "saved"} initialTab={sheet === "saved" ? "recent" : "search"} onClose={() => setSheet(null)} onPick={onPick} />
       <DescribeMealModal visible={sheet === "describe"} owner={owner} busy={busy} error={sheetError} onClose={() => setSheet(null)} onSubmit={(text) => void describe(text)} />
       <Modal visible={sheet === "manual"} {...APP_MODAL_PROPS} onRequestClose={() => setSheet(null)}>
-        <Pressable accessibilityRole="button" accessibilityLabel="დახურვა" onPress={() => setSheet(null)} style={[StyleSheet.absoluteFill, { backgroundColor: APP_MODAL_OVERLAY }]} />
+        <Pressable accessibilityRole="button" accessibilityLabel={tx("დახურვა", "Close")} onPress={() => setSheet(null)} style={[StyleSheet.absoluteFill, { backgroundColor: APP_MODAL_OVERLAY }]} />
         <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={{ flex: 1, justifyContent: "flex-end" }} pointerEvents="box-none">
           <View accessibilityViewIsModal style={[s.sheet, { backgroundColor: c.surface }]}>
-            <Text style={[hubText.cardTitle, { color: c.text100, fontSize: 17 }]}>ინგრედიენტი ხელით</Text>
-            <Text style={[hubText.caption, { color: c.text300 }]}>მთლიანი რაოდენობის მნიშვნელობები (არა 100 გრამის).</Text>
-            <TextInput accessibilityLabel="სახელი" placeholder="სახელი" placeholderTextColor={c.text300} value={manual.name} onChangeText={(v) => setManual({ ...manual, name: v })} maxLength={120} style={inputStyle} />
+            <Text style={[hubText.cardTitle, { color: c.text100, fontSize: 17 }]}>{tx("ინგრედიენტი ხელით", "Add ingredient manually")}</Text>
+            <Text style={[hubText.caption, { color: c.text300 }]}>{tx("მთლიანი რაოდენობის მნიშვნელობები (არა 100 გრამის).", "Values for the whole amount (not per 100 g).")}</Text>
+            <TextInput accessibilityLabel={tx("სახელი", "Name")} placeholder={tx("სახელი", "Name")} placeholderTextColor={c.text300} value={manual.name} onChangeText={(v) => setManual({ ...manual, name: v })} maxLength={120} style={inputStyle} />
             <View style={s.fieldGrid}>
               {(
                 [
-                  ["grams", "გრამი"],
-                  ["calories", "კკალ"],
-                  ["protein", "ცილა გ"],
-                  ["carbs", "ნახშ. გ"],
-                  ["fat", "ცხიმი გ"],
+                  ["grams", tx("გრამი", "Grams")],
+                  ["calories", tx("კკალ", "kcal")],
+                  ["protein", tx("ცილა გ", "Protein g")],
+                  ["carbs", tx("ნახშ. გ", "Carbs g")],
+                  ["fat", tx("ცხიმი გ", "Fat g")],
                 ] as const
               ).map(([key, label]) => (
                 <View key={key} style={{ width: "31%", flexGrow: 1, gap: 4 }}>
@@ -285,8 +289,8 @@ function RecipeEditor({ owner, recipeId }: { owner: string; recipeId: string }) 
               ))}
             </View>
             {!!sheetError && <Text accessibilityRole="alert" style={[hubText.body, { color: c.danger }]}>{sheetError}</Text>}
-            <NButton label="დამატება" onPress={addManual} />
-            <NButton secondary label="გაუქმება" onPress={() => setSheet(null)} />
+            <NButton label={tx("დამატება", "Add")} onPress={addManual} />
+            <NButton secondary label={tx("გაუქმება", "Cancel")} onPress={() => setSheet(null)} />
           </View>
         </KeyboardAvoidingView>
       </Modal>
@@ -294,11 +298,11 @@ function RecipeEditor({ owner, recipeId }: { owner: string; recipeId: string }) 
         <View style={{ flex: 1, justifyContent: "center", padding: 24 }}>
           <View style={[StyleSheet.absoluteFill, { backgroundColor: APP_MODAL_OVERLAY }]} />
           <View accessibilityViewIsModal style={{ backgroundColor: c.surface, borderRadius: 24, padding: 24, gap: 14 }}>
-            <Text style={[hubText.cardTitle, { color: c.text100, fontSize: 18 }]}>გამოსვლა შენახვის გარეშე?</Text>
-            <Text style={[hubText.body, { color: c.text200 }]}>რეცეპტის ცვლილებები დაიკარგება.</Text>
-            <NButton secondary label="დარჩენა" onPress={() => setLeave(false)} />
+            <Text style={[hubText.cardTitle, { color: c.text100, fontSize: 18 }]}>{tx("გამოსვლა შენახვის გარეშე?", "Leave without saving?")}</Text>
+            <Text style={[hubText.body, { color: c.text200 }]}>{tx("რეცეპტის ცვლილებები დაიკარგება.", "Your recipe changes will be lost.")}</Text>
+            <NButton secondary label={tx("დარჩენა", "Stay")} onPress={() => setLeave(false)} />
             <NButton
-              label="გამოსვლა"
+              label={tx("გამოსვლა", "Leave")}
               onPress={() => {
                 setLeave(false);
                 if (router.canGoBack()) router.back();
@@ -324,8 +328,8 @@ function GramsField({ grams, onGrams }: { grams: number; onGrams: (g: number) =>
   };
   return (
     <View style={[s.gramsBox, { backgroundColor: c.bg200 }]}>
-      <TextInput accessibilityLabel="წონა გრამებში" value={text} onChangeText={setText} onEndEditing={commit} onBlur={commit} keyboardType="decimal-pad" maxLength={7} style={[s.gramsInput, { color: c.text100 }]} />
-      <Text style={[hubText.caption, { color: c.text300 }]}>გ</Text>
+      <TextInput accessibilityLabel={tx("წონა გრამებში", "Weight in grams")} value={text} onChangeText={setText} onEndEditing={commit} onBlur={commit} keyboardType="decimal-pad" maxLength={7} style={[s.gramsInput, { color: c.text100 }]} />
+      <Text style={[hubText.caption, { color: c.text300 }]}>{tx("გ", "g")}</Text>
     </View>
   );
 }

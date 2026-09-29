@@ -14,10 +14,11 @@ import { formatRunDate } from '@/lib/run/presentation';
 import { loadRunHistory, type RunSummary } from '@/lib/run/history';
 import { useThemeColors } from '@/theme/colors';
 import { HUB } from '@/theme/hub';
+import { tx } from '@/i18n/locale';
 
 type Props = { summary: RunSummary; title: string; headerLeft?: ReactNode; footer?: ReactNode };
 
-const RECORD_COPY: Record<RecordKind, string> = { distance: 'ყველაზე გრძელი გასეირნება', pace: 'საუკეთესო ტემპი', time: 'ყველაზე ხანგრძლივი' };
+const RECORD_COPY: Record<RecordKind, string> = { distance: tx('ყველაზე გრძელი გასეირნება', 'Longest walk'), pace: tx('საუკეთესო ტემპი', 'Best pace'), time: tx('ყველაზე ხანგრძლივი', 'Longest duration') };
 
 export function RunFinishedView({ summary, title, headerLeft, footer }: Props) {
   const c = useThemeColors(), insets = useSafeAreaInsets();
@@ -49,57 +50,57 @@ export function RunFinishedView({ summary, title, headerLeft, footer }: Props) {
   const share = () => {
     const lines = [
       `MEDIRUN · ${formatRunDate(summary.startedAt)}`,
-      `${formatKm(summary.distanceM)} კმ · ${formatClock(summary.movingMs)} · ${formatPace(summary.paceSecPerKm)} /კმ`,
+      tx(`${formatKm(summary.distanceM)} კმ · ${formatClock(summary.movingMs)} · ${formatPace(summary.paceSecPerKm)} /კმ`, `${formatKm(summary.distanceM)} km · ${formatClock(summary.movingMs)} · ${formatPace(summary.paceSecPerKm)} /km`),
       records.length ? `🏅 ${records.map(r => RECORD_COPY[r]).join(', ')}` : '',
-      'ყოველი გზა შენი ისტორიაა — medicard.ge',
+      tx('ყოველი გზა შენი ისტორიაა — medicard.ge', 'Every path is your story — medicard.ge'),
     ].filter(Boolean);
     void Share.share({ message: lines.join('\n') }).catch(() => {});
   };
 
   const stats = [
-    { icon: Timer, value: formatClock(summary.movingMs), label: 'აქტიური დრო' },
-    { icon: Gauge, value: formatPace(summary.paceSecPerKm), label: 'ტემპი · წთ/კმ' },
-    { icon: Zap, value: avgKmh > 0 ? avgKmh.toFixed(1) : '–', label: 'საშ. სიჩქარე · კმ/სთ' },
-    { icon: Footprints, value: formatThousands(summary.steps), label: 'სავარაუდო ნაბიჯები' },
-    { icon: Flame, value: String(summary.calories), label: 'სავარაუდო კკალ' },
-    { icon: Flag, value: formatClock(summary.elapsedMs), label: 'სულ, პაუზების ჩათვლით' },
+    { icon: Timer, value: formatClock(summary.movingMs), label: tx('აქტიური დრო', 'Active time') },
+    { icon: Gauge, value: formatPace(summary.paceSecPerKm), label: tx('ტემპი · წთ/კმ', 'Pace · min/km') },
+    { icon: Zap, value: avgKmh > 0 ? avgKmh.toFixed(1) : '–', label: tx('საშ. სიჩქარე · კმ/სთ', 'Avg speed · km/h') },
+    { icon: Footprints, value: formatThousands(summary.steps), label: tx('სავარაუდო ნაბიჯები', 'Estimated steps') },
+    { icon: Flame, value: String(summary.calories), label: tx('სავარაუდო კკალ', 'Estimated kcal') },
+    { icon: Flag, value: formatClock(summary.elapsedMs), label: tx('სულ, პაუზების ჩათვლით', 'Total, incl. pauses') },
   ];
 
   return <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingTop: insets.top + 14, paddingBottom: Math.max(24, insets.bottom + 12), paddingHorizontal: HUB.gutter, gap: HUB.sectionGap - 4 }}>
     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
       {headerLeft}
-      <View style={{ flex: 1, gap: 2 }}><MediRunLogo size={23} /><Copy muted size={11}>ყოველი გზა შენი ისტორიაა</Copy></View>
-      <Pressable accessibilityRole="button" accessibilityLabel="გაზიარება" onPress={share} hitSlop={4} style={{ width: 44, height: 44, borderRadius: 16, backgroundColor: c.surface, alignItems: 'center', justifyContent: 'center' }}><Share2 size={19} color={c.primary100} /></Pressable>
+      <View style={{ flex: 1, gap: 2 }}><MediRunLogo size={23} /><Copy muted size={11}>{tx('ყოველი გზა შენი ისტორიაა', 'Every path is your story')}</Copy></View>
+      <Pressable accessibilityRole="button" accessibilityLabel={tx('გაზიარება', 'Share')} onPress={share} hitSlop={4} style={{ width: 44, height: 44, borderRadius: 16, backgroundColor: c.surface, alignItems: 'center', justifyContent: 'center' }}><Share2 size={19} color={c.primary100} /></Pressable>
     </View>
 
-    <View style={{ gap: 4 }}><Copy bold size={25} style={{ lineHeight: 35 }}>{title}</Copy><Copy muted size={12}>{formatRunDate(summary.startedAt)} · {summary.targetMeters === 0 ? 'თავისუფალი გასეირნება' : targetLabel(summary.target)}</Copy></View>
+    <View style={{ gap: 4 }}><Copy bold size={25} style={{ lineHeight: 35 }}>{title}</Copy><Copy muted size={12}>{formatRunDate(summary.startedAt)} · {summary.targetMeters === 0 ? tx('თავისუფალი გასეირნება', 'Free walk') : targetLabel(summary.target)}</Copy></View>
 
     {records.length ? <View style={{ backgroundColor: HUB.spotlightBg, borderRadius: HUB.cardRadius, padding: HUB.cardPad, flexDirection: 'row', alignItems: 'center', gap: 14 }}>
       <View style={{ width: 46, height: 46, borderRadius: 23, backgroundColor: 'rgba(251,191,36,0.16)', alignItems: 'center', justifyContent: 'center' }}><Award size={24} color="#FCD34D" /></View>
-      <View style={{ flex: 1 }}><Copy bold size={15} style={{ color: '#fff' }}>ახალი პირადი რეკორდი!</Copy><Copy size={12} style={{ color: '#C5DADA' }}>{records.map(r => RECORD_COPY[r]).join(' · ')}</Copy></View>
+      <View style={{ flex: 1 }}><Copy bold size={15} style={{ color: '#fff' }}>{tx('ახალი პირადი რეკორდი!', 'New personal record!')}</Copy><Copy size={12} style={{ color: '#C5DADA' }}>{records.map(r => RECORD_COPY[r]).join(' · ')}</Copy></View>
     </View> : null}
 
     <Card style={{ padding: 0, overflow: 'hidden', gap: 0 }}>
       <View style={{ padding: 20, paddingBottom: 16, gap: 2 }}>
-        <Copy size={12} muted>შენი გავლილი გზა</Copy>
-        <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 9 }}><Copy bold size={48} style={{ lineHeight: 62, letterSpacing: -1.5, fontVariant: ['tabular-nums'], flexShrink: 1 }}>{formatKm(summary.distanceM)}</Copy><Copy bold size={17} style={{ color: c.primary100 }}>კმ</Copy></View>
+        <Copy size={12} muted>{tx('შენი გავლილი გზა', 'Your path')}</Copy>
+        <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 9 }}><Copy bold size={48} style={{ lineHeight: 62, letterSpacing: -1.5, fontVariant: ['tabular-nums'], flexShrink: 1 }}>{formatKm(summary.distanceM)}</Copy><Copy bold size={17} style={{ color: c.primary100 }}>{tx('კმ', 'km')}</Copy></View>
       </View>
       <View style={{ height: 250, backgroundColor: c.bg200 }}>
-        {mapCenter ? <RunMap ref={map} center={mapCenter} onReady={() => setMapReady(true)} /> : <View style={{ flex: 1, padding: 24, alignItems: 'center', justifyContent: 'center', gap: 12 }}><MapPin size={28} color={c.primary100} /><Copy muted size={12}>ამ ჩანაწერს მარშრუტი არ ახლავს</Copy></View>}
+        {mapCenter ? <RunMap ref={map} center={mapCenter} onReady={() => setMapReady(true)} /> : <View style={{ flex: 1, padding: 24, alignItems: 'center', justifyContent: 'center', gap: 12 }}><MapPin size={28} color={c.primary100} /><Copy muted size={12}>{tx('ამ ჩანაწერს მარშრუტი არ ახლავს', 'This record has no route')}</Copy></View>}
       </View>
     </Card>
 
-    <Section title="გასეირნება რიცხვებში"><View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10 }}>
+    <Section title={tx('გასეირნება რიცხვებში', 'Your walk in numbers')}><View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10 }}>
       {stats.map(stat => <Card key={stat.label} style={{ flexBasis: '46%', flexGrow: 1, padding: 15, gap: 8 }}><Tile icon={stat.icon} size={34} /><View><Copy bold size={21} style={{ lineHeight: 29, fontVariant: ['tabular-nums'] }}>{stat.value}</Copy><Copy size={11} muted>{stat.label}</Copy></View></Card>)}
     </View></Section>
 
-    {summary.splits?.some(s => s >= 0) ? <Section title="კილომეტრები"><Card><SplitBars splits={summary.splits} /><Copy muted size={11}>თითოეული სრული კილომეტრის ტემპი (წთ/კმ). ფერადი — ყველაზე სწრაფი.</Copy></Card></Section> : null}
+    {summary.splits?.some(s => s >= 0) ? <Section title={tx('კილომეტრები', 'Kilometers')}><Card><SplitBars splits={summary.splits} /><Copy muted size={11}>{tx('თითოეული სრული კილომეტრის ტემპი (წთ/კმ). ფერადი — ყველაზე სწრაფი.', 'Pace for each full kilometer (min/km). Colored — the fastest.')}</Copy></Card></Section> : null}
 
-    {summary.targetMeters > 0 ? <Card style={{ gap: 12 }}><View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}><Tile icon={Flag} ink={summary.completedTarget ? 'green' : 'teal'} /><View style={{ flex: 1 }}><Copy bold size={14}>{summary.completedTarget ? 'მიზანი შესრულებულია' : 'ყოველი ნაბიჯი წინსვლაა'}</Copy><Copy muted size={12}>{targetLabel(summary.target)}</Copy></View><Copy bold size={22} style={{ color: c.primary100 }}>{pct}%</Copy></View><Bar value={pct} color={summary.completedTarget ? c.success : RUN_TEAL} label="ვარჯიშის მიზანი" /></Card> : null}
+    {summary.targetMeters > 0 ? <Card style={{ gap: 12 }}><View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}><Tile icon={Flag} ink={summary.completedTarget ? 'green' : 'teal'} /><View style={{ flex: 1 }}><Copy bold size={14}>{summary.completedTarget ? tx('მიზანი შესრულებულია', 'Goal reached') : tx('ყოველი ნაბიჯი წინსვლაა', 'Every step is progress')}</Copy><Copy muted size={12}>{targetLabel(summary.target)}</Copy></View><Copy bold size={22} style={{ color: c.primary100 }}>{pct}%</Copy></View><Bar value={pct} color={summary.completedTarget ? c.success : RUN_TEAL} label={tx('ვარჯიშის მიზანი', 'Workout goal')} /></Card> : null}
 
-    {summary.pin ? <View style={{ flexDirection: 'row', alignItems: 'center', gap: 9 }}><MapPin size={17} color={c.primary100} /><Copy muted size={12} style={{ flex: 1 }}>{summary.reachedPin ? 'დანიშნულების ადგილს მიაღწიე' : 'დანიშნულების ადგილამდე ამ სესიაში ვერ მიხვედი'}</Copy></View> : null}
+    {summary.pin ? <View style={{ flexDirection: 'row', alignItems: 'center', gap: 9 }}><MapPin size={17} color={c.primary100} /><Copy muted size={12} style={{ flex: 1 }}>{summary.reachedPin ? tx('დანიშნულების ადგილს მიაღწიე', 'You reached the destination') : tx('დანიშნულების ადგილამდე ამ სესიაში ვერ მიხვედი', 'You didn’t reach the destination this session')}</Copy></View> : null}
     <View style={{ marginTop: -8 }}>
-      <Copy muted size={11}>ნაბიჯები და კალორია შეფასებითია. შეინარჩუნე შენთვის კომფორტული ტემპი.</Copy>
+      <Copy muted size={11}>{tx('ნაბიჯები და კალორია შეფასებითია. შეინარჩუნე შენთვის კომფორტული ტემპი.', 'Steps and calories are estimates. Keep a pace that feels comfortable for you.')}</Copy>
       <MedicalSourcesLink sourceIds={['activityMet']} />
     </View>
     {footer}

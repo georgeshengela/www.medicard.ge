@@ -22,6 +22,7 @@ import {
   nutritionProgramApi,
   type NutritionDashboard,
 } from "@/lib/nutritionProgram";
+import { tx } from '@/i18n/locale';
 export function NText({ style, ...props }: TextProps) {
   const c = useThemeColors();
   return (
@@ -184,7 +185,7 @@ export function NScreen({
       >
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel="უკან"
+          accessibilityLabel={tx("უკან", "Back")}
           onPress={
             onBack ||
             (() =>
@@ -290,7 +291,7 @@ export function NError({
       <NText accessibilityRole="alert" style={{ color: c.danger }}>
         {message}
       </NText>
-      {retry && <NButton label="ხელახლა ცდა" onPress={retry} secondary />}
+      {retry && <NButton label={tx("ხელახლა ცდა", "Try again")} onPress={retry} secondary />}
     </NCard>
   );
 }
@@ -298,7 +299,7 @@ export function NLoading() {
   const c = useThemeColors();
   return (
     <ActivityIndicator
-      accessibilityLabel="იტვირთება"
+      accessibilityLabel={tx("იტვირთება", "Loading")}
       color={c.primary100}
       style={{ padding: 30 }}
     />

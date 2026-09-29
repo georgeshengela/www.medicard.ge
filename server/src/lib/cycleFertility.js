@@ -1,3 +1,5 @@
+import { formatDateEn } from './cycleHonesty.js';
+
 /**
  * TTC fertility observations. Does not change period / ovulation / fertile-window math.
  * Test results stay user-logged; they never become confirmed ovulation or pregnancy.
@@ -9,6 +11,12 @@ export const CYCLE_TEST_RESULT_KA = {
   negative: 'უარყოფითი',
   positive: 'დადებითი',
   unclear: 'გაურკვეველი',
+};
+
+export const CYCLE_TEST_RESULT_EN = {
+  negative: 'negative',
+  positive: 'positive',
+  unclear: 'unclear',
 };
 
 export const CYCLE_FERTILITY_AI_RULES = [
@@ -46,6 +54,12 @@ export function normalizeCycleTestResult(value) {
 export function formatCycleTestKa(value) {
   if (!isCycleTestResult(value)) return null;
   return CYCLE_TEST_RESULT_KA[value];
+}
+
+/** Test result label in the person's language ('ka' default). */
+export function formatCycleTest(value, lang = 'ka') {
+  if (!isCycleTestResult(value)) return null;
+  return lang === 'en' ? CYCLE_TEST_RESULT_EN[value] : CYCLE_TEST_RESULT_KA[value];
 }
 
 export function fertilityObservationBits(log) {
@@ -91,15 +105,18 @@ export function countBbtThisCycle(logs = [], lastPeriodStart) {
   ).length;
 }
 
-export function buildTtcObservationCards({ logs = [], today, lastPeriodStart } = {}) {
+export function buildTtcObservationCards({ logs = [], today, lastPeriodStart, lang = 'ka' } = {}) {
+  const en = lang === 'en';
   const cards = [];
   const todayLog = logs.find((l) => l.date === today);
   if (isCycleTestResult(todayLog?.ovulationTest)) {
     cards.push({
       id: 'ttc_opk_logged',
       tone: 'fertile',
-      title: 'აღრიცხული ოვულაციის ტესტი',
-      body: `დღეს აღრიცხე ${CYCLE_TEST_RESULT_KA[todayLog.ovulationTest]} ოვულაციის ტესტი. ეს ტესტის შედეგია, არა დადგენილი ოვულაცია.`,
+      title: en ? 'Ovulation test logged' : 'აღრიცხული ოვულაციის ტესტი',
+      body: en
+        ? `Today you logged a ${CYCLE_TEST_RESULT_EN[todayLog.ovulationTest]} ovulation test. This is a test result, not confirmed ovulation.`
+        : `დღეს აღრიცხე ${CYCLE_TEST_RESULT_KA[todayLog.ovulationTest]} ოვულაციის ტესტი. ეს ტესტის შედეგია, არა დადგენილი ოვულაცია.`,
       action: null,
     });
   }
@@ -110,8 +127,10 @@ export function buildTtcObservationCards({ logs = [], today, lastPeriodStart } =
     cards.push({
       id: 'ttc_opk_recent',
       tone: 'fertile',
-      title: 'აღრიცხული დადებითი OPK',
-      body: `დადებითი ოვულაციის ტესტი აღრიცხე ${recentPositive.date}-ზე. ეს არ ადასტურებს, რომ ოვულაცია მოხდა.`,
+      title: en ? 'Positive OPK logged' : 'აღრიცხული დადებითი OPK',
+      body: en
+        ? `You logged a positive ovulation test on ${formatDateEn(recentPositive.date)}. This does not confirm that ovulation happened.`
+        : `დადებითი ოვულაციის ტესტი აღრიცხე ${recentPositive.date}-ზე. ეს არ ადასტურებს, რომ ოვულაცია მოხდა.`,
       action: null,
     });
   }
@@ -120,8 +139,10 @@ export function buildTtcObservationCards({ logs = [], today, lastPeriodStart } =
     cards.push({
       id: 'ttc_bbt_count',
       tone: 'calm',
-      title: 'აღრიცხული BBT',
-      body: `ამ ციკლში BBT აღრიცხულია ${bbtDays} დღეს. ტემპერატურა დაკვირვებაა, არა ოვულაციის დადასტურება.`,
+      title: en ? 'BBT logged' : 'აღრიცხული BBT',
+      body: en
+        ? `You have logged BBT on ${bbtDays} ${bbtDays === 1 ? 'day' : 'days'} this cycle. Temperature is an observation, not confirmation of ovulation.`
+        : `ამ ციკლში BBT აღრიცხულია ${bbtDays} დღეს. ტემპერატურა დაკვირვებაა, არა ოვულაციის დადასტურება.`,
       action: null,
     });
   }
@@ -134,8 +155,10 @@ export function buildTtcObservationCards({ logs = [], today, lastPeriodStart } =
     cards.push({
       id: 'ttc_mucus_logged',
       tone: 'calm',
-      title: 'აღრიცხული ლორწო',
-      body: `გუშინ აღრიცხე კვერცხის ცილისებრი ცერვიკალური ლორწო. ეს შენი დაკვირვებაა, არა დადგენილი ნაყოფიერება.`,
+      title: en ? 'Cervical mucus logged' : 'აღრიცხული ლორწო',
+      body: en
+        ? 'Yesterday you logged egg-white cervical mucus. This is your observation, not confirmed fertility.'
+        : `გუშინ აღრიცხე კვერცხის ცილისებრი ცერვიკალური ლორწო. ეს შენი დაკვირვებაა, არა დადგენილი ნაყოფიერება.`,
       action: null,
     });
   }
@@ -143,14 +166,19 @@ export function buildTtcObservationCards({ logs = [], today, lastPeriodStart } =
     cards.push({
       id: 'ttc_preg_logged',
       tone: 'pregnancy',
-      title: 'აღრიცხული ორსულობის ტესტი',
-      body:
-        todayLog.pregnancyTest === 'positive'
+      title: en ? 'Pregnancy test logged' : 'აღრიცხული ორსულობის ტესტი',
+      body: en
+        ? todayLog.pregnancyTest === 'positive'
+          ? 'You logged a positive pregnancy test. Medicard does not confirm a pregnancy from this.'
+          : todayLog.pregnancyTest === 'negative'
+            ? 'You logged a negative pregnancy test. This is one result, not a final answer.'
+            : 'You logged an unclear pregnancy test. It is neither positive nor negative.'
+        : todayLog.pregnancyTest === 'positive'
           ? 'აღრიცხე დადებითი ორსულობის ტესტი. Medicard ამით ორსულობას არ ადასტურებს.'
           : todayLog.pregnancyTest === 'negative'
             ? 'აღრიცხე უარყოფითი ორსულობის ტესტი. ეს ერთი შედეგია, არა საბოლოო დასკვნა.'
             : 'აღრიცხე გაურკვეველი ორსულობის ტესტი. ეს არც დადებითია და არც უარყოფითი.',
-      action: todayLog.pregnancyTest === 'positive' ? 'ორსულობის რეჟიმის განხილვა' : null,
+      action: todayLog.pregnancyTest === 'positive' ? (en ? 'Consider pregnancy mode' : 'ორსულობის რეჟიმის განხილვა') : null,
     });
   }
   return cards.slice(0, 3);

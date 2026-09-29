@@ -1,3 +1,4 @@
+import { tx } from '../i18n/locale.js';
 export type VoicePhase = 'idle' | 'preparing' | 'recording' | 'transcribing';
 type CaptureDependencies = {
   prepare: (current: () => boolean) => Promise<void>;
@@ -26,7 +27,7 @@ export function createVoiceCapture(d: CaptureDependencies) {
   const current = (id: number) => epoch === id && d.active();
   const reportError = (error: unknown, fallback: string) => {
     if (error && typeof error === 'object' && 'code' in error && error.code === 'AI_CONSENT_DECLINED') {
-      d.onNotice('AI დამუშავება გამორთულია. არჩევანს პროფილში, „კონფიდენციალობა და მონაცემებში“ შეცვლი.');
+      d.onNotice(tx('AI დამუშავება გამორთულია. არჩევანს პროფილში, „კონფიდენციალობა და მონაცემებში“ შეცვლი.', 'AI processing is off. You can change your choice in Profile, under “Privacy and data”.'));
     } else d.onError(error instanceof Error ? error.message : fallback);
   };
   async function finish(submit: boolean) {
@@ -39,14 +40,14 @@ export function createVoiceCapture(d: CaptureDependencies) {
       uri = await d.stop();
       if (submit && current(id)) {
         d.feedback('stop');
-        if (duration < 450) d.onNotice('ცოტა ხანს გააჩერე ღილაკი და თქვი შენი სათქმელი.');
+        if (duration < 450) d.onNotice(tx('ცოტა ხანს გააჩერე ღილაკი და თქვი შენი სათქმელი.', 'Hold the button a little longer and say what you want.'));
         else if (uri) {
           text = await d.transcribe(uri, () => current(id));
-          if (!text.trim() && current(id)) d.onNotice('ხმა მკაფიოდ ვერ გავიგე. სცადე თავიდან ან ჩაწერე ტექსტი.');
+          if (!text.trim() && current(id)) d.onNotice(tx('ხმა მკაფიოდ ვერ გავიგე. სცადე თავიდან ან ჩაწერე ტექსტი.', "I couldn't hear that clearly. Try again or type it instead."));
         }
       }
     } catch (error) {
-      if (submit && current(id)) reportError(error, 'ხმა ვერ დამუშავდა.');
+      if (submit && current(id)) reportError(error, tx('ხმა ვერ დამუშავდა.', "Couldn't process your voice."));
     } finally {
       await d.discard(uri).catch(() => undefined);
       change('idle');
@@ -63,14 +64,14 @@ export function createVoiceCapture(d: CaptureDependencies) {
         await d.prepare(() => current(id) && held);
         if (!current(id) || !held) {
           await d.discard(await d.stop().catch(() => null));
-          if (current(id)) d.onNotice('საუბრის დასაწყებად ღილაკს ხელახლა დააჭირე და გააჩერე.');
+          if (current(id)) d.onNotice(tx('საუბრის დასაწყებად ღილაკს ხელახლა დააჭირე და გააჩერე.', 'To start talking, press and hold the button again.'));
           return;
         }
         d.feedback('start'); d.record(); started = now(); change('recording');
         timer = setTimeout(() => { void finish(true); }, d.maxMs ?? 60000);
       } catch (error) {
         await d.discard(await d.stop().catch(() => null)).catch(() => undefined);
-        if (current(id)) reportError(error, 'მიკროფონი ვერ ჩაირთო.');
+        if (current(id)) reportError(error, tx('მიკროფონი ვერ ჩაირთო.', "Couldn't turn on the microphone."));
       } finally {
         if (getPhase() === 'preparing') change('idle');
       }

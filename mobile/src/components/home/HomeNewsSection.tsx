@@ -7,6 +7,7 @@ import { announcementImageUri, openAnnouncementCta, trackAnnouncement, usableCta
 import { HomeSectionHeading } from '@/components/home/HomeSectionHeading';
 import { HUB, hubInk, hubText, hubTint } from '@/theme/hub';
 import { useIsDark, useThemeColors } from '@/theme/colors';
+import { tx } from '@/i18n/locale';
 
 const PEEK = 28;
 const GAP = 12;
@@ -27,7 +28,7 @@ export function HomeNewsSection({ items, onDismiss }: { items: Announcement[]; o
 
   return (
     <View style={s.section} onLayout={(e: LayoutChangeEvent) => setWidth(e.nativeEvent.layout.width - HUB.gutter * 2)}>
-      <HomeSectionHeading title="სიახლეები" />
+      <HomeSectionHeading title={tx('სიახლეები', 'News')} />
       {width ? (
         many ? (
           <>
@@ -77,8 +78,8 @@ function NewsCard({ item, width, onDismiss }: { item: Announcement; width: numbe
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={`${item.badge || 'სიახლე'}. ${item.title}. ${item.body}`}
-      accessibilityHint="სიახლის დეტალური გვერდი"
+      accessibilityLabel={`${item.badge || tx('სიახლე', 'News')}. ${item.title}. ${item.body}`}
+      accessibilityHint={tx('სიახლის დეტალური გვერდი', 'News details page')}
       onPress={openDetails}
       style={[s.card, { width, backgroundColor: c.surface }]}
     >
@@ -101,7 +102,7 @@ function NewsCard({ item, width, onDismiss }: { item: Announcement; width: numbe
           <View style={{ flex: 1, minWidth: 0, gap: 6, paddingRight: !showImage && item.dismissible ? 26 : 0 }}>
             <View style={[s.badge, { backgroundColor: hubTint(ink, dark) }]}>
               <Text style={[hubText.small, s.badgeText, { color: ink }]} numberOfLines={1}>
-                {item.badge || 'სიახლე'}
+                {item.badge || tx('სიახლე', 'News')}
               </Text>
             </View>
             <Text style={[hubText.cardTitle, { color: c.text100, fontSize: 16, lineHeight: 23 }]}>{item.title}</Text>
@@ -114,12 +115,12 @@ function NewsCard({ item, width, onDismiss }: { item: Announcement; width: numbe
         </View>
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel={cta ? cta.label : 'დეტალურად'}
+          accessibilityLabel={cta ? cta.label : tx('დეტალურად', 'Details')}
           onPress={cta ? () => openAnnouncementCta(router, item) : openDetails}
           style={[s.ctaRow, { borderColor: c.bg300 }]}
         >
           <Text style={[hubText.link, { color: ink, flex: 1 }]} numberOfLines={1}>
-            {cta ? cta.label : 'დეტალურად'}
+            {cta ? cta.label : tx('დეტალურად', 'Details')}
           </Text>
           <ArrowUpRight size={18} color={ink} />
         </Pressable>
@@ -127,7 +128,7 @@ function NewsCard({ item, width, onDismiss }: { item: Announcement; width: numbe
       {item.dismissible ? (
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel="სიახლის დამალვა"
+          accessibilityLabel={tx('სიახლის დამალვა', 'Hide this news')}
           hitSlop={8}
           onPress={() => onDismiss(item.id)}
           style={[s.close, showImage ? s.closeOnImage : null]}

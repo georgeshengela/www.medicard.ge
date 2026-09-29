@@ -1,6 +1,7 @@
 import React from 'react';
 import { Text, View } from 'react-native';
 import { Zap } from 'lucide-react-native';
+import { appLang } from '@/i18n/locale';
 import { QuestCoinMark } from '@/components/quest/QuestIcon';
 import { formatQuestNumber } from '@/lib/quest/logic.js';
 import { q } from '@/lib/quest/copy';
@@ -18,7 +19,7 @@ type Props = {
 };
 
 /** XP + Medi Coins as two soft pills: XP in brand wash, coins in warm amber. */
-export function QuestReward({ xp, coins, locale = 'ka', muted, variant = 'pill', size = 'sm' }: Props) {
+export function QuestReward({ xp, coins, locale = appLang(), muted, variant = 'pill', size = 'sm' }: Props) {
   const copy = q(locale);
   const colors = useThemeColors();
   const dark = useIsDark();

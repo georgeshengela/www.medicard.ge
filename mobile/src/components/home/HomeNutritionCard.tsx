@@ -10,6 +10,7 @@ import { MetricCardSkeleton } from '@/components/ui/Skeleton';
 import { usePrefersReducedMotion } from '@/hooks/usePrefersReducedMotion';
 import { useIsDark, useThemeColors } from '@/theme/colors';
 import { HUB, hubInk, hubText, hubTint, type HubInk } from '@/theme/hub';
+import { tx } from '@/i18n/locale';
 
 const AnimatedCircle = Animated.createAnimatedComponent(Circle);
 const RING = 96;
@@ -65,7 +66,7 @@ function MacroChip({ macro }: { macro: Macro }) {
       </View>
       <Text numberOfLines={1} style={[hubText.value, { color: c.text100, fontSize: 14, lineHeight: 20 }]}>
         {Math.round(macro.value)}
-        <Text style={[hubText.small, { color: c.text300 }]}>{macro.target ? ` / ${Math.round(macro.target)} გ` : ' გ'}</Text>
+        <Text style={[hubText.small, { color: c.text300 }]}>{macro.target ? tx(` / ${Math.round(macro.target)} გ`, ` / ${Math.round(macro.target)} g`) : tx(' გ', ' g')}</Text>
       </Text>
       {macro.target ? (
         <View style={[s.macroTrack, { backgroundColor: c.bg300 }]}>
@@ -99,26 +100,26 @@ export function HomeNutritionCard() {
   const progress = target ? Math.min(1, eaten / target) : logged ? 1 : 0;
 
   const macros: Macro[] = [
-    { key: 'protein', label: 'ცილა', icon: Beef, ink: 'rose', value: data?.today.protein ?? 0, target: data?.targets?.protein ?? null },
-    { key: 'carbs', label: 'ნახშ.', icon: Wheat, ink: 'amber', value: data?.today.carbs ?? 0, target: data?.targets?.carbs ?? null },
-    { key: 'fat', label: 'ცხიმი', icon: Droplet, ink: 'sky', value: data?.today.fat ?? 0, target: data?.targets?.fat ?? null },
+    { key: 'protein', label: tx('ცილა', 'Protein'), icon: Beef, ink: 'rose', value: data?.today.protein ?? 0, target: data?.targets?.protein ?? null },
+    { key: 'carbs', label: tx('ნახშ.', 'Carbs'), icon: Wheat, ink: 'amber', value: data?.today.carbs ?? 0, target: data?.targets?.carbs ?? null },
+    { key: 'fat', label: tx('ცხიმი', 'Fat'), icon: Droplet, ink: 'sky', value: data?.today.fat ?? 0, target: data?.targets?.fat ?? null },
   ];
   const headline = logged
     ? target
       ? over
-        ? `${groupDigits(-remaining!)} კკალ ბიუჯეტზე მეტი`
-        : `${groupDigits(remaining!)} კკალ კიდევ შეგიძლია`
-      : `${groupDigits(eaten)} კკალ დღეს`
-    : 'დღეს ჯერ არაფერი ჩაწერილა';
+        ? tx(`${groupDigits(-remaining!)} კკალ ბიუჯეტზე მეტი`, `${groupDigits(-remaining!)} kcal over budget`)
+        : tx(`${groupDigits(remaining!)} კკალ კიდევ შეგიძლია`, `${groupDigits(remaining!)} kcal left`)
+      : tx(`${groupDigits(eaten)} კკალ დღეს`, `${groupDigits(eaten)} kcal today`)
+    : tx('დღეს ჯერ არაფერი ჩაწერილა', 'Nothing logged today yet');
   const caption = logged
     ? target
-      ? `${groupDigits(eaten)} / ${groupDigits(target)} კკალ · ${data!.mealCount} კვება`
-      : `${data!.mealCount} კვება · ჰაბში მიზანს აირჩევ და ბიუჯეტიც გამოჩნდება`
-    : 'გადაიღე კერძი — Medi კალორიებსა და შემადგენლობას დაითვლის.';
+      ? tx(`${groupDigits(eaten)} / ${groupDigits(target)} კკალ · ${data!.mealCount} კვება`, `${groupDigits(eaten)} / ${groupDigits(target)} kcal · ${data!.mealCount} ${data!.mealCount === 1 ? 'meal' : 'meals'}`)
+      : tx(`${data!.mealCount} კვება · ჰაბში მიზანს აირჩევ და ბიუჯეტიც გამოჩნდება`, `${data!.mealCount} ${data!.mealCount === 1 ? 'meal' : 'meals'} · pick a goal in the hub to see your budget`)
+    : tx('გადაიღე კერძი — Medi კალორიებსა და შემადგენლობას დაითვლის.', 'Snap a meal — Medi counts the calories and nutrients.');
 
   return (
     <View style={[s.card, { backgroundColor: c.surface }]}>
-      <Pressable accessibilityRole="button" accessibilityLabel={`${headline}. კვების დღიურის გახსნა`} onPress={() => router.push('/nutrition/diary' as never)} style={s.top}>
+      <Pressable accessibilityRole="button" accessibilityLabel={tx(`${headline}. კვების დღიურის გახსნა`, `${headline}. Open food diary`)} onPress={() => router.push('/nutrition/diary' as never)} style={s.top}>
         <View style={{ width: RING, height: RING, alignItems: 'center', justifyContent: 'center' }}>
           <EnergyRing progress={progress} color={logged ? energyInk : c.bg300} track={c.bg200} reduceMotion={reduceMotion} />
           <View style={StyleSheet.absoluteFill} pointerEvents="none">
@@ -129,7 +130,7 @@ export function HomeNutritionCard() {
                     {groupDigits(target != null && remaining != null ? Math.abs(remaining) : eaten)}
                   </Text>
                   <Text style={[hubText.small, { color: c.text300, fontSize: 10, lineHeight: 13 }]}>
-                    {target != null ? (over ? 'ზევით' : 'დარჩა') : 'კკალ'}
+                    {target != null ? (over ? tx('ზევით', 'over') : tx('დარჩა', 'left')) : tx('კკალ', 'kcal')}
                   </Text>
                 </>
               ) : (
@@ -160,21 +161,21 @@ export function HomeNutritionCard() {
       <View style={s.actions}>
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel="გადაიღე კერძი — კამერა იხსნება და Medi კალორიებს დაითვლის"
+          accessibilityLabel={tx('გადაიღე კერძი — კამერა იხსნება და Medi კალორიებს დაითვლის', 'Snap a meal — the camera opens and Medi counts the calories')}
           onPress={() => router.push({ pathname: '/nutrition/diary', params: { method: 'camera' } } as never)}
           style={[s.primary, { backgroundColor: dark ? '#0D9488' : '#0F766E' }]}
         >
           <Camera size={20} color="#FFFFFF" strokeWidth={2} />
-          <Text style={[hubText.link, { color: '#FFFFFF', fontSize: 14 }]}>გადაიღე კერძი</Text>
+          <Text style={[hubText.link, { color: '#FFFFFF', fontSize: 14 }]}>{tx('გადაიღე კერძი', 'Snap a meal')}</Text>
         </Pressable>
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel="კვების ჰაბი — დღიური, მიზანი, რაციონი და პროგრესი"
+          accessibilityLabel={tx('კვების ჰაბი — დღიური, მიზანი, რაციონი და პროგრესი', 'Nutrition hub — diary, goal, meal plan and progress')}
           onPress={() => router.push('/nutrition' as never)}
           style={[s.secondary, { backgroundColor: c.bg200 }]}
         >
           <BookOpen size={19} color={c.text100} strokeWidth={1.9} />
-          <Text style={[hubText.link, { color: c.text100 }]}>კვების ჰაბი</Text>
+          <Text style={[hubText.link, { color: c.text100 }]}>{tx('კვების ჰაბი', 'Nutrition hub')}</Text>
         </Pressable>
       </View>
     </View>

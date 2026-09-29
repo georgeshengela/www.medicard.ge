@@ -14,6 +14,8 @@
  * Other species have no verified breed catalog — only sentinels.
  */
 
+import { tx } from '../i18n/locale.js';
+
 export const PETS_CATALOG_VERSION = 'pets-species-v1';
 
 export const BREED_SENTINELS = Object.freeze({
@@ -106,63 +108,63 @@ const CAT_BREEDS = [
 export const SPECIES = Object.freeze([
   {
     id: 'dog',
-    labelKa: 'ძაღლი',
+    labelKa: tx('ძაღლი', 'Dog'),
     coverage: 'limited',
     allowsMixed: true,
     breeds: DOG_BREEDS,
   },
   {
     id: 'cat',
-    labelKa: 'კატა',
+    labelKa: tx('კატა', 'Cat'),
     coverage: 'limited',
     allowsMixed: true,
     breeds: CAT_BREEDS,
   },
   {
     id: 'bird',
-    labelKa: 'ფრინველი',
+    labelKa: tx('ფრინველი', 'Bird'),
     coverage: 'sentinels-only',
     allowsMixed: true,
     breeds: [],
   },
   {
     id: 'rabbit',
-    labelKa: 'კურდღელი',
+    labelKa: tx('კურდღელი', 'Rabbit'),
     coverage: 'sentinels-only',
     allowsMixed: true,
     breeds: [],
   },
   {
     id: 'rodent',
-    labelKa: 'მღრღნელი',
+    labelKa: tx('მღრღნელი', 'Rodent'),
     coverage: 'sentinels-only',
     allowsMixed: true,
     breeds: [],
   },
   {
     id: 'fish',
-    labelKa: 'თევზი',
+    labelKa: tx('თევზი', 'Fish'),
     coverage: 'sentinels-only',
     allowsMixed: false,
     breeds: [],
   },
   {
     id: 'reptile',
-    labelKa: 'ქვეწარმავალი',
+    labelKa: tx('ქვეწარმავალი', 'Reptile'),
     coverage: 'sentinels-only',
     allowsMixed: false,
     breeds: [],
   },
   {
     id: 'horse',
-    labelKa: 'ცხენი',
+    labelKa: tx('ცხენი', 'Horse'),
     coverage: 'sentinels-only',
     allowsMixed: true,
     breeds: [],
   },
   {
     id: 'other',
-    labelKa: 'სხვა',
+    labelKa: tx('სხვა', 'Other'),
     coverage: 'sentinels-only',
     allowsMixed: false,
     breeds: [],

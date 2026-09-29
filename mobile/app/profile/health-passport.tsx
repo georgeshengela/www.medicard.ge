@@ -17,6 +17,7 @@ import { localAccountId } from '@/lib/localAccount';
 import { useAuth } from '@/store/AuthContext';
 import { HUB, hubText } from '@/theme/hub';
 import { useThemeColors } from '@/theme/colors';
+import { appLang, tx } from '@/i18n/locale';
 
 const todayYmd = () => {
   const d = new Date();
@@ -35,7 +36,7 @@ export default function HealthPassportScreen() {
   const { user, healthProfile } = useAuth();
   const { panels } = useLab();
   const female = user?.gender === 'FEMALE';
-  const [locale, setLocale] = useState<PassportLocale>('ka');
+  const [locale, setLocale] = useState<PassportLocale>(appLang());
   const [includeCycle, setIncludeCycle] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -114,7 +115,7 @@ export default function HealthPassportScreen() {
   return (
     <View style={{ flex: 1, backgroundColor: c.bg100, paddingTop: insets.top }}>
       <View style={{ height: 56, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 8 }}>
-        <Pressable accessibilityRole="button" accessibilityLabel="უკან დაბრუნება" onPress={() => (router.canGoBack() ? router.back() : router.replace('/(tabs)/profile' as never))} style={{ width: 44, height: 44, alignItems: 'center', justifyContent: 'center' }}>
+        <Pressable accessibilityRole="button" accessibilityLabel={tx('უკან დაბრუნება', 'Go back')} onPress={() => (router.canGoBack() ? router.back() : router.replace('/(tabs)/profile' as never))} style={{ width: 44, height: 44, alignItems: 'center', justifyContent: 'center' }}>
           <ChevronLeft size={24} color={c.text100} />
         </Pressable>
       </View>

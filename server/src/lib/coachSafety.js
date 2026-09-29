@@ -69,20 +69,20 @@ export async function isBlocked(clientId, trainerId, db = prisma) {
 
 /** A client who ended or declined a trainer (or blocked them) is not invited by that trainer again. */
 export async function assertTrainerMayInvite(trainerId, clientId, db = prisma) {
-  if (await isBlocked(clientId, trainerId, db)) throw coachError(403, 'ამ ადამიანთან დაკავშირება შეუძლებელია.', 'BLOCKED');
+  if (await isBlocked(clientId, trainerId, db)) throw coachError(403, 'ამ ადამიანთან დაკავშირება შეუძლებელია.', 'BLOCKED', 'You cannot connect with this person.');
   const [last] = await db.$queryRaw`SELECT status, "endedBy" FROM "TrainerLink" WHERE "trainerId" = ${trainerId} AND "clientId" = ${clientId}
     ORDER BY "createdAt" DESC LIMIT 1`;
   if (last && last.status === 'ENDED' && last.endedBy === 'CLIENT') {
-    throw coachError(403, 'ამ ადამიანმა კავშირი დაასრულა. ხელახლა დაკავშირება მხოლოდ მისი ინიციატივით შეიძლება — მას შეუძლია შენი კოდით დაგიკავშირდეს.', 'CLIENT_ENDED');
+    throw coachError(403, 'ამ ადამიანმა კავშირი დაასრულა. ხელახლა დაკავშირება მხოლოდ მისი ინიციატივით შეიძლება — მას შეუძლია შენი კოდით დაგიკავშირდეს.', 'CLIENT_ENDED', 'This person ended the connection. Only they can reconnect — they can use your code to connect with you.');
   }
 }
 
 export async function reportCoach(reporter, input, { endLink, notify } = {}, db = prisma) {
   await ensureTables(db);
   const body = reportSchema.parse(input);
-  if (body.subjectId === reporter.id) throw coachError(400, 'საკუთარ თავზე შეტყობინება შეუძლებელია.');
+  if (body.subjectId === reporter.id) throw coachError(400, 'საკუთარ თავზე შეტყობინება შეუძლებელია.', null, 'You cannot report yourself.');
   const role = await relationRole(reporter.id, body.subjectId, db);
-  if (!role) throw coachError(404, 'ეს ადამიანი ვერ მოიძებნა.', 'SUBJECT_NOT_FOUND');
+  if (!role) throw coachError(404, 'ეს ადამიანი ვერ მოიძებნა.', 'SUBJECT_NOT_FOUND', 'This person was not found.');
   const id = randomUUID();
   await db.$executeRaw`INSERT INTO "CoachReport" ("id", "reporterId", "reporterRole", "subjectId", "reason", "details", "blocked")
     VALUES (${id}, ${reporter.id}, ${role}, ${body.subjectId}, ${body.reason}, ${body.details}, ${body.block})`;

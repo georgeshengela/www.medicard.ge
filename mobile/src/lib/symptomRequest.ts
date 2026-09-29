@@ -1,3 +1,4 @@
+import { tx } from '../i18n/locale.js';
 import { bodyPartById, DURATION_OPTIONS, organById } from '@/constants/symptomCatalog';
 import type { SymptomCheckerState } from './symptomCheckerStore';
 import type { SymptomCheckPayload } from '@/types/symptoms';
@@ -15,6 +16,6 @@ export function buildSymptomRequest(input: SymptomCheckerState): SymptomCheckPay
     bodyPartId: part?.id, bodyPartKa: part?.labelKa, organId: organ?.id, organKa: organ?.labelKa,
     durationKa: DURATION_OPTIONS.find(d => d.id === input.durationId)?.labelKa,
     painLevel: input.painLevel ?? undefined,
-    notes: [input.pastConditions.trim() && `წარსული დაავადებები: ${input.pastConditions.trim().slice(0, 800)}`, input.notes.trim().slice(0, 300)].filter(Boolean).join('\n') || undefined,
+    notes: [input.pastConditions.trim() && tx(`წარსული დაავადებები: ${input.pastConditions.trim().slice(0, 800)}`, `Past conditions: ${input.pastConditions.trim().slice(0, 800)}`), input.notes.trim().slice(0, 300)].filter(Boolean).join('\n') || undefined,
   };
 }

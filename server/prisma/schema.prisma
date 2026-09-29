@@ -62,6 +62,8 @@ model User {
   /// client never selects these columns and User queries keep working before the release installs them.
   emailMarketingOptIn   Boolean   @default(false) @ignore
   emailMarketingOptInAt DateTime? @ignore
+  /// App language ('ka' | 'en') for server-sent pushes/emails (prisma/20260929-language.sql). @ignore: raw SQL only (src/lib/i18n.js).
+  language         String?   @ignore
   emailLogs        EmailLog[]
   records          MedicalRecord[]
   checkIns         DailyCheckIn[]

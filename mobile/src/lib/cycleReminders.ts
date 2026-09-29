@@ -8,7 +8,8 @@ import {
 } from '@/lib/notifications';
 import type { CycleReminderPrefs } from '@/lib/cycleReminderPrefs';
 import { cycleHonestyFlags } from '@/lib/cycleHonesty';
-import { applyPushCopy } from '@/lib/pushCopy';
+import { applyPushCopy, interpolatePushCopy } from '@/lib/pushCopy';
+import { isEn } from '../i18n/locale.js';
 import { bumpOutOfQuiet } from '@/lib/mediEngageModel';
 import { loadEngagePrefs } from '@/lib/mediEngagePrefs';
 import {
@@ -18,6 +19,61 @@ import {
   pickCycleScheduleSet,
   revalidateCycleCandidate,
 } from '@/lib/cycleNotificationContract.js';
+
+/**
+ * English reminder copy for English users. Admin push templates and the pushCopy fallbacks are
+ * Georgian; same honesty as the Georgian (estimates stay "likely" / "estimated").
+ */
+const EN_CYCLE_COPY: Record<string, { title: string; body: string }> = {
+  'cycle-period-soon': {
+    title: 'Your estimated period is coming up 🌸',
+    body: 'Based on your cycle, your period is likely in {days}. This is an estimate — Medi is just reminding you 💗',
+  },
+  'cycle-period-start': {
+    title: 'It might start today 🌷',
+    body: 'By Medi’s estimate, your period is likely to start today. If it doesn’t, that’s okay — cycles don’t always follow the calendar exactly 🤍',
+  },
+  'cycle-ovulation': {
+    title: 'Estimated ovulation is coming up ✨',
+    body: 'Based on the calendar, your estimated ovulation day is getting close. This is an estimate — cycles don’t always follow the calendar exactly 🤍',
+  },
+  'cycle-fertile': {
+    title: 'Estimated fertile window 🌱',
+    body: 'Your estimated fertile window may be starting. This is a calendar estimate — the prediction can change 🤍',
+  },
+  'cycle-pms': {
+    title: 'PMS may be coming up 🌙',
+    body: 'If you feel a little different today, your cycle suggests PMS may be coming up. Listen to your body 🤍',
+  },
+  'cycle-opk': {
+    title: 'Time for your OPK test 🧪',
+    body: 'If you’re using ovulation tests this cycle, don’t forget today’s OPK 💗',
+  },
+  'cycle-bbt': {
+    title: 'Good morning ☀️ BBT?',
+    body: 'Before you get up and start your day, remember to take your basal temperature 🌡️',
+  },
+  'cycle-log': {
+    title: 'How are you today? 💚',
+    body: 'A minute for Medi? Note how your day went — symptoms, mood and whatever matters to you.',
+  },
+  'cycle-masked': {
+    title: 'A reminder from Medi',
+    body: 'Stop by when you have a moment 💚',
+  },
+};
+
+function reminderCopy(key: string, vars: Record<string, string | undefined>): { title: string; body: string } {
+  const en = isEn() ? EN_CYCLE_COPY[key] : undefined;
+  if (!en) return applyPushCopy(key, vars);
+  return { title: interpolatePushCopy(en.title, vars), body: interpolatePushCopy(en.body, vars) };
+}
+
+function periodDaysVar(days: number, cautious: boolean): string {
+  if (!isEn()) return cautious ? `დაახლოებით ${days}` : String(days);
+  const unit = days === 1 ? 'day' : 'days';
+  return cautious ? `about ${days} ${unit}` : `${days} ${unit}`;
+}
 
 function reminderDate(ymd: string, quietStart: string, quietEnd: string): Date {
   const { y, m, d } = parseDateKey(ymd);
@@ -87,9 +143,9 @@ export async function syncCycleReminders(
     if (date.getTime() <= Date.now()) continue;
     const vars =
       candidate.type === 'period_soon'
-        ? { days: flags.cautious ? `დაახლოებით ${prefs.periodDaysBefore}` : String(prefs.periodDaysBefore) }
+        ? { days: periodDaysVar(Number(prefs.periodDaysBefore), Boolean(flags.cautious)) }
         : {};
-    const copy = applyPushCopy(candidate.templateKey, vars);
+    const copy = reminderCopy(candidate.templateKey, vars);
     const ok = await scheduleCycleDateNotification({
       identifier: `${candidate.type}:${candidate.eventDate}`,
       title: copy.title,

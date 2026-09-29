@@ -14,6 +14,7 @@ import { disclosureCopy } from '@/lib/aiDisclosureCopy';
 import { patchProfileExtra } from '@/lib/profileSetupFlow';
 import { onboardingScreenBlocked, onboardingStepHref, useOnboardingDevPreview } from '@/lib/onboardingDevPreview';
 import { useAuth } from '@/store/AuthContext';
+import { tx } from '@/i18n/locale';
 
 /** Explicit AI permission — after notifications, before any onboarding analysis. */
 export default function ProfileSetupAiPrivacyScreen() {
@@ -56,7 +57,7 @@ export default function ProfileSetupAiPrivacyScreen() {
         setHealthProfile(updated);
         goNext();
       } catch (err) {
-        setError(err instanceof ApiError ? err.message : err instanceof Error ? err.message : 'არჩევანი ვერ შეინახა.');
+        setError(err instanceof ApiError ? err.message : err instanceof Error ? err.message : tx('არჩევანი ვერ შეინახა.', "Couldn't save your choice."));
       } finally {
         setBusy(false);
       }

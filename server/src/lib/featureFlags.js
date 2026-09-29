@@ -11,6 +11,7 @@
  *     module's entries and screens altogether.
  */
 import { prisma } from './prisma.js';
+import { isEnglish } from './i18n.js';
 
 /**
  * `group`: module = a whole product area, ai = one AI feature, system = background
@@ -24,6 +25,7 @@ export const FEATURES = Object.freeze([
     label: 'ციკლი და ორსულობა',
     description: 'ციკლის კალენდარი, სიმპტომები, ორსულობის კვირები, მშობიარობის შემდგომი პერიოდი და პერიმენოპაუზა. ახალი ჩანაწერი ვერ ემატება; ახალ ვერსიაში მოდული საერთოდ იმალება.',
     defaultMessage: 'ციკლის მოდული დროებით შეჩერებულია. შენი ჩანაწერები შენახულია.',
+    defaultMessageEn: 'Cycle tracking is paused for a moment. Your entries are saved.',
   },
   {
     key: 'nutrition',
@@ -31,6 +33,7 @@ export const FEATURES = Object.freeze([
     label: 'კვების დღიური',
     description: 'კვების დღიური, პროგრამა, რეცეპტები, მარხვის ტაიმერი და გაზომვები. ახალი ჩანაწერი ვერ ემატება.',
     defaultMessage: 'კვების დღიური დროებით შეჩერებულია. შენი ჩანაწერები შენახულია.',
+    defaultMessageEn: 'The food diary is paused for a moment. Your entries are saved.',
   },
   {
     key: 'nutritionAi',
@@ -39,6 +42,7 @@ export const FEATURES = Object.freeze([
     label: 'კვების AI შეფასება',
     description: 'ფოტოდან, ეტიკეტიდან და აღწერიდან კალორიის შეფასება. ხელით აღრიცხვა და ძებნა რჩება.',
     defaultMessage: 'AI შეფასება დროებით გამორთულია — კვება ხელით ან ძებნით დაამატე.',
+    defaultMessageEn: 'AI estimates are off for now — add food by hand or with search.',
   },
   {
     key: 'medi',
@@ -46,6 +50,7 @@ export const FEATURES = Object.freeze([
     label: 'Medi (AI ასისტენტი)',
     description: 'Medi-ს საუბარი, ექიმთან რეჟიმი, ღრმა ანალიზი, სიმპტომები, ლაბორატორია, კანი და გამოსახულებები.',
     defaultMessage: 'Medi დროებით მიუწვდომელია. ცოტა ხანში ისევ ჩაირთვება.',
+    defaultMessageEn: 'Medi is unavailable for a moment. It will be back shortly.',
   },
   {
     key: 'pets',
@@ -53,6 +58,7 @@ export const FEATURES = Object.freeze([
     label: 'ჩემი ცხოველები',
     description: 'ცხოველების პროფილები, მოვლა, წონა, ალერგიები და Medi Vet. ცვლილებები ჩერდება.',
     defaultMessage: 'ცხოველების მოდული დროებით შეჩერებულია. შენი მონაცემები შენახულია.',
+    defaultMessageEn: 'Pets is paused for a moment. Your data is saved.',
   },
   {
     key: 'mediVet',
@@ -61,6 +67,7 @@ export const FEATURES = Object.freeze([
     label: 'Medi Vet (ცხოველების AI)',
     description: 'ცხოველების AI საუბარი. ცხოველების პროფილები და მოვლა მუშაობას აგრძელებს.',
     defaultMessage: 'Medi Vet დროებით მიუწვდომელია.',
+    defaultMessageEn: 'Medi Vet is unavailable for a moment.',
   },
   {
     key: 'medirun',
@@ -68,6 +75,7 @@ export const FEATURES = Object.freeze([
     label: 'MEDIRUN',
     description: 'გასეირნება-აღმოჩენის თამაში რუკაზე. ყურადღება: გამორთვის მომენტში დაწყებული სირბილი ვეღარ შეინახება.',
     defaultMessage: 'MEDIRUN დროებით შეჩერებულია. ცოტა ხანში დავბრუნდებით.',
+    defaultMessageEn: 'MEDIRUN is paused for a moment. We will be back shortly.',
   },
   {
     key: 'quest',
@@ -75,6 +83,7 @@ export const FEATURES = Object.freeze([
     label: 'MEDI QUEST',
     description: 'მისიები, პროგრესი, Medi Coins-ის აღება და ჯილდოები. მისიების დასრულება და coin-ის აღება ჩერდება.',
     defaultMessage: 'MEDI QUEST დროებით შეჩერებულია. შენი coin-ები და პროგრესი შენახულია.',
+    defaultMessageEn: 'MEDI QUEST is paused for a moment. Your coins and progress are saved.',
   },
   {
     key: 'rewardsStore',
@@ -83,6 +92,7 @@ export const FEATURES = Object.freeze([
     label: 'ჯილდოების გაცვლა',
     description: 'Medi Coins-ის ჯილდოებზე გაცვლა. ქულების დაგროვება გრძელდება.',
     defaultMessage: 'ჯილდოების გაცვლა დროებით შეჩერებულია. შენი Medi Coins შენახულია.',
+    defaultMessageEn: 'Reward redemption is paused for a moment. Your Medi Coins are saved.',
   },
   {
     key: 'coach',
@@ -90,6 +100,7 @@ export const FEATURES = Object.freeze([
     label: 'MEDI COACH (ფიტნეს ტრენერები)',
     description: 'ტრენერის განაცხადი, კლიენტის დაკავშირება, ვარჯიშების დანიშვნა, კვების გეგმა და პროგრეს-ფოტოები. ნახვა რჩება, ცვლილებები ჩერდება.',
     defaultMessage: 'ტრენერის ფუნქცია დროებით შეჩერებულია. შენი მონაცემები შენახულია.',
+    defaultMessageEn: 'MEDI COACH is paused for a moment. Your data is saved.',
   },
   {
     key: 'community',
@@ -97,6 +108,7 @@ export const FEATURES = Object.freeze([
     label: 'ქალების სივრცე',
     description: 'პოსტები, კომენტარები და გაწევრიანება. გაშვების ცალკე ფლაგი (ქალების სივრცე → გაშვება) უცვლელია.',
     defaultMessage: 'ქალების სივრცე დროებით შეჩერებულია.',
+    defaultMessageEn: "The women's space is paused for a moment.",
   },
   {
     key: 'pharmacy',
@@ -104,6 +116,7 @@ export const FEATURES = Object.freeze([
     label: 'აფთიაქი',
     description: 'ფასების ძებნა და ფასის დაკლების შეტყობინებები. ძველ ვერსიებში ძებნა ჩანს — იბლოკება მხოლოდ ახალი შეტყობინების დაყენება.',
     defaultMessage: 'აფთიაქის ძებნა დროებით შეჩერებულია.',
+    defaultMessageEn: 'Pharmacy search is paused for a moment.',
   },
   {
     key: 'news',
@@ -111,6 +124,7 @@ export const FEATURES = Object.freeze([
     label: 'სიახლეები მთავარ გვერდზე',
     description: 'ადმინიდან გამოქვეყნებული სიახლის ბარათები. გამორთვისას ყველა ბარათი ერთბაშად იმალება; თავად სიახლეები არ იშლება.',
     defaultMessage: 'სიახლეები დროებით დამალულია.',
+    defaultMessageEn: 'News is hidden for a moment.',
   },
   {
     key: 'referralRewards',
@@ -118,6 +132,7 @@ export const FEATURES = Object.freeze([
     label: 'მოწვევის ჯილდოები',
     description: 'მეგობრის მოწვევისთვის 100 coin-ის ავტომატური დარიცხვა. კოდის შეყვანა გრძელდება, დარიცხვა ჩაირთვება ხელახლა ჩართვისას.',
     defaultMessage: 'მოწვევის ჯილდოები დროებით შეჩერებულია.',
+    defaultMessageEn: 'Invite rewards are paused for a moment.',
   },
   {
     key: 'email',
@@ -125,6 +140,7 @@ export const FEATURES = Object.freeze([
     label: 'ელფოსტა (ყველა წერილი)',
     description: 'ყველა გამავალი წერილი: მისალმება, პაროლის აღდგენა, ანგარიშის წაშლა და კამპანიები. გამორთვისას პაროლის აღდგენა შეცდომას აჩვენებს.',
     defaultMessage: 'ელფოსტის გაგზავნა დროებით შეჩერებულია.',
+    defaultMessageEn: 'Sending email is paused for a moment.',
   },
 ]);
 
@@ -171,8 +187,19 @@ function blockingKey(rows, key) {
   return parent && !ownState(rows, parent) ? parent : null;
 }
 
-function messageFor(rows, key) {
+const GEORGIAN_LETTER = /[ა-ჿ]/;
+const FALLBACK_MESSAGE_EN = 'This feature is paused for a moment. Please try again later.';
+
+/**
+ * Admin-typed messages are Georgian. English requests get the feature's English default,
+ * unless the admin wrote the message without Georgian letters (then it is shown as typed).
+ */
+function messageFor(rows, key, lang = 'ka') {
   const row = rows.find((r) => r.key === key);
+  if (isEnglish(lang)) {
+    if (row?.message && !GEORGIAN_LETTER.test(row.message)) return row.message;
+    return BY_KEY.get(key)?.defaultMessageEn || FALLBACK_MESSAGE_EN;
+  }
   return row?.message || BY_KEY.get(key)?.defaultMessage || 'ფუნქცია დროებით მიუწვდომელია.';
 }
 
@@ -200,13 +227,13 @@ export async function publicFeatureFlags(db = prisma) {
   return Object.fromEntries(FEATURES.map((f) => [f.key, blockingKey(rows, f.key) == null]));
 }
 
-/** { cycle: '…' } — the user-facing text for each paused key only. */
-export async function publicFeatureMessages(db = prisma) {
+/** { cycle: '…' } — the user-facing text for each paused key only, in `lang` ('ka' | 'en'). */
+export async function publicFeatureMessages(db = prisma, lang = 'ka') {
   const rows = await readRows(db);
   const out = {};
   for (const f of FEATURES) {
     const blocker = blockingKey(rows, f.key);
-    if (blocker) out[f.key] = messageFor(rows, blocker);
+    if (blocker) out[f.key] = messageFor(rows, blocker, lang);
   }
   return out;
 }
@@ -218,9 +245,9 @@ export async function isFeatureEnabled(key, db = prisma) {
 }
 
 /** The admin's message for a paused key — its own, or its parent's when the parent is the cause. */
-export async function featureDisabledMessage(key, db = prisma) {
+export async function featureDisabledMessage(key, db = prisma, lang = 'ka') {
   const rows = await readRows(db);
-  return messageFor(rows, blockingKey(rows, key) || key);
+  return messageFor(rows, blockingKey(rows, key) || key, lang);
 }
 
 export async function setFeatureFlag(key, { enabled, message }, { admin, db = prisma } = {}) {
@@ -250,7 +277,7 @@ export function requireFeature(key, { match } = {}) {
     if (match && !match(req)) return next();
     try {
       if (await isFeatureEnabled(key)) return next();
-      return res.status(503).json({ error: await featureDisabledMessage(key), code: 'FEATURE_DISABLED', feature: key });
+      return res.status(503).json({ error: await featureDisabledMessage(key, prisma, req.lang), code: 'FEATURE_DISABLED', feature: key });
     } catch {
       return next();
     }

@@ -5,13 +5,14 @@ import { buildVisitReminderDates, doctorDisplayName } from '@/lib/visitReminders
 import { doctorTypeLabel, normalizeReminderConfig } from '@/constants/visits';
 import { NOTIF_PREFIX, VISIT_CHANNEL_ID, getNotificationPermissionGranted } from '@/lib/notifications';
 import { applyPushCopy } from '@/lib/pushCopy';
+import { tx } from '../i18n/locale.js';
 
 export { VISIT_CHANNEL_ID };
 
 async function ensureVisitChannel() {
   if (Platform.OS !== 'android') return;
   await Notifications.setNotificationChannelAsync(VISIT_CHANNEL_ID, {
-    name: 'ექიმთან ვიზიტის შეხსენებები',
+    name: tx('ექიმთან ვიზიტის შეხსენებები', 'Doctor visit reminders'),
     importance: Notifications.AndroidImportance.HIGH,
     vibrationPattern: [0, 220, 120, 220],
     lightColor: '#14B8A6',

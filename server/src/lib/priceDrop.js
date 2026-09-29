@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { withJobLease } from './jobLease.js';
 import { prisma } from './prisma.js';
 import { sendExpoPush } from './push.js';
+import { getUserLanguages, langOf } from './i18n.js';
 
 /**
  * Price-drop alerts (Phase 3.2, 2026-09-27).
@@ -34,8 +35,14 @@ export function dropPercent(fromGel, toGel) {
   return Math.round((1 - toGel / fromGel) * 100);
 }
 
-export function alertCopy({ medName, fromGel, toGel }) {
+export function alertCopy({ medName, fromGel, toGel }, lang = 'ka') {
   const pct = dropPercent(fromGel, toGel);
+  if (langOf(lang) === 'en') {
+    return {
+      title: `${medName} is ${pct}% cheaper`,
+      body: `Now ${toGel.toFixed(2)} ₾ (was ${fromGel.toFixed(2)} ₾). See where it's cheapest.`,
+    };
+  }
   return {
     title: `${medName} გაიაფდა ${pct}%-ით`,
     body: `ახლა ${toGel.toFixed(2)} ₾ (იყო ${fromGel.toFixed(2)} ₾). ნახე, სადაა ყველაზე იაფი.`,
@@ -100,6 +107,7 @@ export async function dispatchPriceDropAlerts({ now = new Date(), db = prisma, s
     const plan = planDispatch(pending, new Set(sentToday.map((r) => r.userId)), new Map(products.map((p) => [p.id, p.bestPriceGel])));
     if (plan.skip.length) await db.$executeRaw`UPDATE "PriceDropAlert" SET state = 'SKIPPED' WHERE id = ANY(${plan.skip})`;
     let sent = 0;
+    const langs = plan.send.length && db === prisma ? await getUserLanguages(plan.send.map((row) => row.userId)) : new Map();
     for (const row of plan.send) {
       const tokens = (await db.pushToken.findMany({ where: { userId: row.userId, active: true }, select: { token: true } })).map((t) => t.token);
       if (!tokens.length) {
@@ -107,7 +115,7 @@ export async function dispatchPriceDropAlerts({ now = new Date(), db = prisma, s
         continue;
       }
       try {
-        const copy = alertCopy(row);
+        const copy = alertCopy(row, langs.get(String(row.userId)) ?? 'ka');
         await send(tokens, { ...copy, data: { type: 'price_drop', route: `/pharmacy/product/${row.productId}` } });
         await db.$executeRaw`UPDATE "PriceDropAlert" SET state = 'SENT', "sentAt" = NOW() WHERE id = ${row.id}`;
         sent += 1;

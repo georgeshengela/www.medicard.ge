@@ -1,15 +1,16 @@
 import type { CycleBundle, CyclePhaseKind } from '@/lib/api';
+import { tx } from '../i18n/locale.js';
 
 export type { CyclePhaseKind };
 
 /** Display labels only — values come from the server bundle. */
 export const CYCLE_PHASE_KA: Record<CyclePhaseKind, string> = {
-  period: 'მენსტრუაცია',
-  follicular: 'ფოლიკულური ფაზა',
-  fertile: 'ნაყოფიერი ფანჯარა',
-  ovulation: 'ოვულაცია',
-  luteal: 'ლუთეალური ფაზა',
-  unknown: 'უცნობი ფაზა',
+  period: tx('მენსტრუაცია', 'Period'),
+  follicular: tx('ფოლიკულური ფაზა', 'Follicular phase'),
+  fertile: tx('ნაყოფიერი ფანჯარა', 'Fertile window'),
+  ovulation: tx('ოვულაცია', 'Ovulation'),
+  luteal: tx('ლუთეალური ფაზა', 'Luteal phase'),
+  unknown: tx('უცნობი ფაზა', 'Unknown phase'),
 };
 
 export type CyclePhaseInfo = {

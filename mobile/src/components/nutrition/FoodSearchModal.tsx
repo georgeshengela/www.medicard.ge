@@ -8,6 +8,7 @@ import { foodTotals, mealLabels, type FoodItem, type Meal, type SavedFood } from
 import { nutritionDateLabel } from "@/lib/nutritionProgram";
 import { useThemeColors } from "@/theme/colors";
 import { hubText } from "@/theme/hub";
+import { tx } from "@/i18n/locale";
 import { PortionSheet } from "./PortionSheet";
 
 type Tab = "search" | "recent" | "saved";
@@ -135,22 +136,22 @@ export function FoodSearchModal({
     <Pressable
       key={(food.id || food.barcode || food.name) + index}
       accessibilityRole="button"
-      accessibilityLabel={`${food.name} · პორციის არჩევა`}
+      accessibilityLabel={tx(`${food.name} · პორციის არჩევა`, `${food.name} · choose portion`)}
       onPress={() => setPortion(food)}
       style={[s.row, { backgroundColor: c.surface }]}
     >
       <View style={{ flex: 1, gap: 2 }}>
         <Text numberOfLines={1} style={[txt, { fontFamily: "NotoSansGeorgian_600SemiBold", fontSize: 15 }]}>{food.name}</Text>
         <Text numberOfLines={1} style={[hubText.small, { color: c.text200 }]}>
-          {Math.round(food.per100.calories)} კკალ / 100 გ · ც {food.per100.protein} · ნ {food.per100.carbs} · ცხ {food.per100.fat}
+          {tx(`${Math.round(food.per100.calories)} კკალ / 100 გ · ც ${food.per100.protein} · ნ ${food.per100.carbs} · ცხ ${food.per100.fat}`, `${Math.round(food.per100.calories)} kcal / 100 g · P ${food.per100.protein} · C ${food.per100.carbs} · F ${food.per100.fat}`)}
           {food.brand ? ` · ${food.brand}` : ""}
-          {food.kind === "catalog" && food.quality === "estimate" ? " · შეფასება" : ""}
-          {food.source === "recipe" ? ` · რეცეპტი, ${Math.round((food.per100.calories * (food.serving?.grams || 100)) / 100)} კკალ/პორცია` : ""}
+          {food.kind === "catalog" && food.quality === "estimate" ? tx(" · შეფასება", " · estimate") : ""}
+          {food.source === "recipe" ? tx(` · რეცეპტი, ${Math.round((food.per100.calories * (food.serving?.grams || 100)) / 100)} კკალ/პორცია`, ` · recipe, ${Math.round((food.per100.calories * (food.serving?.grams || 100)) / 100)} kcal/serving`) : ""}
         </Text>
       </View>
       {food.favorite ? <BookmarkCheck size={18} color={c.primary100} /> : null}
       {showDelete ? (
-        <Pressable accessibilityRole="button" accessibilityLabel="შენახულის წაშლა" onPress={() => void removeSaved(food)} style={s.iconButton}>
+        <Pressable accessibilityRole="button" accessibilityLabel={tx("შენახულის წაშლა", "Remove saved food")} onPress={() => void removeSaved(food)} style={s.iconButton}>
           <Trash2 size={18} color={c.text200} />
         </Pressable>
       ) : (
@@ -164,14 +165,14 @@ export function FoodSearchModal({
       <Pressable
         key={meal.id}
         accessibilityRole="button"
-        accessibilityLabel="ამ კვების გამეორება"
+        accessibilityLabel={tx("ამ კვების გამეორება", "Repeat this meal")}
         onPress={() => onPick({ items: meal.items.map((i) => ({ ...i })), source: "saved", foodIds: [], title: meal.title })}
         style={[s.row, { backgroundColor: c.surface }]}
       >
         <View style={{ flex: 1, gap: 2 }}>
           <Text numberOfLines={1} style={[txt, { fontFamily: "NotoSansGeorgian_600SemiBold", fontSize: 15 }]}>{meal.title || meal.items.map((i) => i.name).join(" · ")}</Text>
           <Text numberOfLines={1} style={[hubText.small, { color: c.text200 }]}>
-            {nutritionDateLabel(meal.date)} · {mealLabels[meal.type]} · {t.calories} კკალ · {meal.items.length} საკვები
+            {nutritionDateLabel(meal.date)} · {mealLabels[meal.type]} · {t.calories} {tx("კკალ", "kcal")} · {tx(`${meal.items.length} საკვები`, `${meal.items.length} ${meal.items.length === 1 ? "food" : "foods"}`)}
           </Text>
         </View>
         <Copy size={18} color={c.primary100} />
@@ -189,17 +190,17 @@ export function FoodSearchModal({
     <Modal visible={visible} {...APP_MODAL_PROPS} transparent={false} onRequestClose={onClose}>
       <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={{ flex: 1, backgroundColor: c.bg100, paddingTop: safe.top }}>
         <View style={s.head}>
-          <Pressable accessibilityRole="button" accessibilityLabel="დახურვა" onPress={onClose} style={s.iconButton}>
+          <Pressable accessibilityRole="button" accessibilityLabel={tx("დახურვა", "Close")} onPress={onClose} style={s.iconButton}>
             <X size={22} color={c.text100} />
           </Pressable>
-          <Text style={[hubText.cardTitle, { color: c.text100, fontSize: 18, flex: 1 }]}>საკვების არჩევა</Text>
+          <Text style={[hubText.cardTitle, { color: c.text100, fontSize: 18, flex: 1 }]}>{tx("საკვების არჩევა", "Choose food")}</Text>
         </View>
         <View style={s.tabs}>
           {(
             [
-              ["search", "ძებნა", Search],
-              ["recent", "ბოლო", Clock3],
-              ["saved", "შენახული", Bookmark],
+              ["search", tx("ძებნა", "Search"), Search],
+              ["recent", tx("ბოლო", "Recent"), Clock3],
+              ["saved", tx("შენახული", "Saved"), Bookmark],
             ] as const
           ).map(([key, label, Icon]) => (
             <Pressable key={key} accessibilityRole="tab" accessibilityState={{ selected: tab === key }} onPress={() => setTab(key)} style={[s.tab, { backgroundColor: tab === key ? c.accent100 : c.bg200 }]}>
@@ -213,8 +214,8 @@ export function FoodSearchModal({
             <Search size={18} color={c.text300} />
             <TextInput
               ref={input}
-              accessibilityLabel="საკვების ძებნა"
-              placeholder="ხაჭაპური, მაწონი, banana…"
+              accessibilityLabel={tx("საკვების ძებნა", "Search foods")}
+              placeholder={tx("ხაჭაპური, მაწონი, banana…", "Khachapuri, matsoni, banana…")}
               placeholderTextColor={c.text300}
               value={query}
               onChangeText={setQuery}
@@ -223,7 +224,7 @@ export function FoodSearchModal({
               style={[s.input, { color: c.text100 }]}
             />
             {!!query && (
-              <Pressable accessibilityRole="button" accessibilityLabel="გასუფთავება" onPress={() => setQuery("")} style={s.iconButton}>
+              <Pressable accessibilityRole="button" accessibilityLabel={tx("გასუფთავება", "Clear")} onPress={() => setQuery("")} style={s.iconButton}>
                 <X size={18} color={c.text300} />
               </Pressable>
             )}
@@ -232,26 +233,26 @@ export function FoodSearchModal({
         <ScrollView keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag" contentContainerStyle={{ padding: 20, paddingTop: 8, gap: 18, paddingBottom: keyboard ? 12 : Math.max(safe.bottom, 20) }}>
           {!!error && <Text accessibilityRole="alert" style={[txt, { color: c.danger }]}>{error}</Text>}
           {loading && <ActivityIndicator color={c.primary200} />}
-          {tab === "search" && !results && !loading && empty(query.trim().length < 2 ? "დაწერე მინიმუმ ორი ასო. ქართული კერძები, ბრენდები და შენი შენახული საკვები ერთ სიაშია." : "")}
+          {tab === "search" && !results && !loading && empty(query.trim().length < 2 ? tx("დაწერე მინიმუმ ორი ასო. ქართული კერძები, ბრენდები და შენი შენახული საკვები ერთ სიაშია.", "Type at least two letters. Georgian dishes, brands and your saved foods are all in one list.") : "")}
           {tab === "search" && results && (
             <>
-              {results.saved.length > 0 && section("შენი შენახული", results.saved.map((f, i) => foodRow(f, i)))}
-              {results.catalog.length > 0 && section("ქართული და საერთაშორისო კერძები", results.catalog.map((f, i) => foodRow(f, i)))}
-              {results.products.length > 0 && section("პროდუქტები · Open Food Facts / USDA", results.products.map((f, i) => foodRow(f, i)))}
-              {!loading && !results.saved.length && !results.catalog.length && !results.products.length && empty("ვერ ვიპოვე. სცადე სხვა სახელი, გადაიღე ეტიკეტი ან შეიყვანე ხელით — შემდეგ ჯერზე შენახულებში იქნება.")}
+              {results.saved.length > 0 && section(tx("შენი შენახული", "Your saved foods"), results.saved.map((f, i) => foodRow(f, i)))}
+              {results.catalog.length > 0 && section(tx("ქართული და საერთაშორისო კერძები", "Georgian and international dishes"), results.catalog.map((f, i) => foodRow(f, i)))}
+              {results.products.length > 0 && section(tx("პროდუქტები · Open Food Facts / USDA", "Products · Open Food Facts / USDA"), results.products.map((f, i) => foodRow(f, i)))}
+              {!loading && !results.saved.length && !results.catalog.length && !results.products.length && empty(tx("ვერ ვიპოვე. სცადე სხვა სახელი, გადაიღე ეტიკეტი ან შეიყვანე ხელით — შემდეგ ჯერზე შენახულებში იქნება.", "Nothing found. Try another name, snap the label or enter it by hand — next time it will be in your saved foods."))}
             </>
           )}
           {tab === "recent" && recent && (
             <>
-              {recent.meals.length > 0 && section("ბოლო კვებები · ერთი შეხებით გამეორება", recent.meals.map(mealRow))}
-              {recent.foods.length > 0 && section("ბოლოს გამოყენებული საკვები", recent.foods.map((f, i) => foodRow(f, i)))}
-              {!recent.meals.length && !recent.foods.length && !loading && empty("ჯერ ჩანაწერები არ გაქვს. პირველი კვების შემდეგ აქ გამეორება ერთი შეხებით იქნება.")}
+              {recent.meals.length > 0 && section(tx("ბოლო კვებები · ერთი შეხებით გამეორება", "Recent meals · repeat in one tap"), recent.meals.map(mealRow))}
+              {recent.foods.length > 0 && section(tx("ბოლოს გამოყენებული საკვები", "Recently used foods"), recent.foods.map((f, i) => foodRow(f, i)))}
+              {!recent.meals.length && !recent.foods.length && !loading && empty(tx("ჯერ ჩანაწერები არ გაქვს. პირველი კვების შემდეგ აქ გამეორება ერთი შეხებით იქნება.", "No entries yet. After your first meal, you can repeat it here in one tap."))}
             </>
           )}
           {tab === "saved" && saved && (
             <>
-              {saved.length > 0 && section("რჩეული და საკუთარი საკვები", saved.map((f, i) => foodRow(f, i, true)))}
-              {!saved.length && !loading && empty("შენახული საკვები ჯერ არ არის. შედეგის ეკრანზე „შენახვა“ ან ძებნაში სანიშნე — და აქ გამოჩნდება.")}
+              {saved.length > 0 && section(tx("რჩეული და საკუთარი საკვები", "Favorites and your own foods"), saved.map((f, i) => foodRow(f, i, true)))}
+              {!saved.length && !loading && empty(tx("შენახული საკვები ჯერ არ არის. შედეგის ეკრანზე „შენახვა“ ან ძებნაში სანიშნე — და აქ გამოჩნდება.", "No saved foods yet. Tap “Save” on the result screen or bookmark one in search, and it will appear here."))}
             </>
           )}
         </ScrollView>

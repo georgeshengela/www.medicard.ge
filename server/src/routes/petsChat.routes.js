@@ -1,4 +1,5 @@
-import { requireAiConsent } from '../lib/aiConsent.js';
+import { bindAiLanguage, currentAiLanguage, requireAiConsent } from '../lib/aiConsent.js';
+import { t } from '../lib/i18n.js';
 import { Router } from 'express';
 import { z } from 'zod';
 import { prisma } from '../lib/prisma.js';
@@ -77,8 +78,8 @@ async function releaseReservedCredit(req) {
   }
 }
 
-const petParam = z.object({ petId: z.string().uuid('არასწორი იდენტიფიკატორი') });
-const sessionParam = petParam.extend({ sessionId: z.string().uuid('არასწორი იდენტიფიკატორი') });
+const petParam = z.object({ petId: z.string().uuid({ error: () => t(currentAiLanguage(), 'არასწორი იდენტიფიკატორი', 'Invalid ID') }) });
+const sessionParam = petParam.extend({ sessionId: z.string().uuid({ error: () => t(currentAiLanguage(), 'არასწორი იდენტიფიკატორი', 'Invalid ID') }) });
 
 const querySchema = z.object({
   message: z.string(),
@@ -100,7 +101,7 @@ function sendSchemaError(res, error) {
 }
 
 function sendValidation(res, error) {
-  if (error.status === 400) return res.status(400).json({ error: error.message, code: error.code || 'UNSUPPORTED_INPUT' });
+  if (error.status === 400) return res.status(400).json({ error: t(res.req, error.message, error.messageEn || error.message), code: error.code || 'UNSUPPORTED_INPUT' });
   throw error;
 }
 
@@ -139,6 +140,7 @@ function logVetOp(fields) {
 }
 
 export const petsChatRouter = Router();
+petsChatRouter.use(bindAiLanguage);
 
 petsChatRouter.get(
   '/:petId/chats',
@@ -151,7 +153,7 @@ petsChatRouter.get(
         orderBy: { updatedAt: 'desc' },
         take: 30,
       });
-      return res.json({ schemaReady: true, chatSchemaReady: true, sessions: sessions.map(publicChatSession) });
+      return res.json({ schemaReady: true, chatSchemaReady: true, sessions: sessions.map((row) => publicChatSession(row, req.lang)) });
     } catch (error) {
       return sendSchemaError(res, error);
     }
@@ -167,7 +169,7 @@ petsChatRouter.post(
       const session = await prisma.petChatSession.create({
         data: { userId: req.user.id, petId: pet.id, title: 'ახალი საუბარი' },
       });
-      return res.status(201).json({ schemaReady: true, chatSchemaReady: true, session: publicChatSession(session) });
+      return res.status(201).json({ schemaReady: true, chatSchemaReady: true, session: publicChatSession(session, req.lang) });
     } catch (error) {
       return sendSchemaError(res, error);
     }
@@ -182,8 +184,8 @@ petsChatRouter.get(
     const { sessionId } = sessionParam.parse(req.params);
     try {
       const session = await findOwnedSession(req.user.id, pet.id, sessionId);
-      if (!session) return res.status(404).json({ error: 'საუბარი ვერ მოიძებნა.' });
-      return res.json({ schemaReady: true, chatSchemaReady: true, session: publicChatSession(session) });
+      if (!session) return res.status(404).json({ error: t(req, 'საუბარი ვერ მოიძებნა.', 'Conversation not found.') });
+      return res.json({ schemaReady: true, chatSchemaReady: true, session: publicChatSession(session, req.lang) });
     } catch (error) {
       return sendSchemaError(res, error);
     }
@@ -201,7 +203,7 @@ petsChatRouter.get(
     const limit = Number.isFinite(limitRaw) && limitRaw > 0 ? Math.min(Math.floor(limitRaw), VET_HISTORY_PAGE_MAX) : VET_HISTORY_PAGE;
     try {
       const session = await findOwnedSession(req.user.id, pet.id, sessionId);
-      if (!session) return res.status(404).json({ error: 'საუბარი ვერ მოიძებნა.' });
+      if (!session) return res.status(404).json({ error: t(req, 'საუბარი ვერ მოიძებნა.', 'Conversation not found.') });
       const rows = await prisma.petChatMessage.findMany({
         where: {
           sessionId: session.id,
@@ -231,7 +233,7 @@ petsChatRouter.delete(
     const { sessionId } = sessionParam.parse(req.params);
     try {
       const session = await findOwnedSession(req.user.id, pet.id, sessionId);
-      if (!session) return res.status(404).json({ error: 'საუბარი ვერ მოიძებნა.' });
+      if (!session) return res.status(404).json({ error: t(req, 'საუბარი ვერ მოიძებნა.', 'Conversation not found.') });
       await prisma.petChatMessage.deleteMany({ where: { sessionId: session.id, userId: req.user.id, petId: pet.id } });
       await prisma.petChatSession.delete({ where: { id: session.id } });
       return res.json({ schemaReady: true, chatSchemaReady: true, deleted: true });
@@ -282,7 +284,7 @@ petsChatRouter.post(
         ? await findOwnedSession(req.user.id, pet.id, parsed.sessionId)
         : null;
       if (parsed.sessionId && !session) {
-        return res.status(404).json({ error: 'საუბარი ვერ მოიძებნა.' });
+        return res.status(404).json({ error: t(req, 'საუბარი ვერ მოიძებნა.', 'Conversation not found.') });
       }
 
       const replay = await prisma.petChatMessage.findFirst({
@@ -291,7 +293,7 @@ petsChatRouter.post(
       });
       if (replay) {
         if (parsed.sessionId && replay.sessionId !== parsed.sessionId) {
-          return res.status(409).json({ error: 'იგივე მოთხოვნა სხვა საუბარშია.', code: 'VET_IDEMPOTENCY_CONFLICT' });
+          return res.status(409).json({ error: t(req, 'იგივე მოთხოვნა სხვა საუბარშია.', 'The same request is in another conversation.'), code: 'VET_IDEMPOTENCY_CONFLICT' });
         }
         session = session || (await findOwnedSession(req.user.id, pet.id, replay.sessionId));
         const assistant = await prisma.petChatMessage.findFirst({
@@ -323,7 +325,7 @@ petsChatRouter.post(
         },
       });
       if (inFlight >= VET_CONCURRENT_PER_PET) {
-        return res.status(429).json({ error: 'წინა პასუხი ჯერ მიმდინარეობს.', code: 'CONCURRENT_LIMIT' });
+        return res.status(429).json({ error: t(req, 'წინა პასუხი ჯერ მიმდინარეობს.', 'The previous reply is still in progress.'), code: 'CONCURRENT_LIMIT' });
       }
 
       if (!session) {
@@ -391,6 +393,7 @@ petsChatRouter.post(
         .catch((error) => {
           if (error?.code === 'P2002') {
             const conflict = new Error('წინა პასუხი ჯერ მიმდინარეობს.');
+            conflict.messageEn = 'The previous reply is still in progress.';
             conflict.status = 429;
             conflict.code = 'CONCURRENT_LIMIT';
             throw conflict;
@@ -508,7 +511,7 @@ petsChatRouter.post(
           const status = error instanceof AiEngineError ? error.status : error?.status;
           writeSse(res, {
             type: 'error',
-            error: error?.message || 'Medi Vet-თან დაკავშირება ვერ მოხერხდა.',
+            error: t(req, error?.message, error?.messageEn || error?.message) || t(req, 'Medi Vet-თან დაკავშირება ვერ მოხერხდა.', 'We couldn’t reach Medi Vet.'),
             status: status && status >= 400 && status < 600 ? status : 502,
             code: cancelled ? 'CANCELLED' : 'PROVIDER_UNAVAILABLE',
           });
@@ -564,7 +567,7 @@ petsChatRouter.post(
         const status = error instanceof AiEngineError ? error.status : error?.status || 502;
         logVetOp({ requestId: clientRequestId, petId: pet.id, userId: req.user.id, status: cancelled ? 'CANCELLED' : 'FAILED' });
         return res.status(status >= 400 && status < 600 ? status : 502).json({
-          error: error?.message || 'Medi Vet-თან დაკავშირება ვერ მოხერხდა.',
+          error: t(req, error?.message, error?.messageEn || error?.message) || t(req, 'Medi Vet-თან დაკავშირება ვერ მოხერხდა.', 'We couldn’t reach Medi Vet.'),
           code: cancelled ? 'CANCELLED' : 'PROVIDER_UNAVAILABLE',
           chatSchemaReady: true,
         });

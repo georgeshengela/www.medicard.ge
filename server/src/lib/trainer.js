@@ -3,6 +3,7 @@
  * trainer alerts (2026-09-28). No database access here; see trainerStore.js. docs/TRAINER.md.
  */
 import { z } from 'zod';
+import { isEnglish } from './i18n.js';
 
 export const CONSENT_VERSION = 'coach-2026-09-28b';
 
@@ -45,12 +46,49 @@ export const TRAINER_STATUS_KA = Object.freeze({
   SUSPENDED: 'შეჩერებული',
 });
 
+// English labels for English requests (X-Medicard-Lang: en). The Georgian maps above stay the default.
+export const SPECIALTIES_EN = Object.freeze({
+  weight_loss: 'Weight loss',
+  muscle: 'Muscle gain',
+  strength: 'Strength',
+  functional: 'Functional training',
+  crossfit: 'CrossFit',
+  cardio: 'Cardio / endurance',
+  mobility: 'Flexibility and mobility',
+  rehab: 'Rehab and post-injury',
+  boxing: 'Boxing / combat sports',
+  yoga: 'Yoga / Pilates',
+  women: "Women's fitness",
+  seniors: 'Older adults',
+  nutrition: 'Nutrition planning',
+  sport: 'Sports preparation',
+});
+
+export const SESSION_KINDS_EN = Object.freeze({
+  STRENGTH: 'Strength',
+  CARDIO: 'Cardio',
+  HIIT: 'HIIT',
+  FUNCTIONAL: 'Functional',
+  MOBILITY: 'Mobility',
+  ASSESSMENT: 'Assessment / measurements',
+  ONLINE: 'Online',
+});
+
+export const TRAINER_STATUS_EN = Object.freeze({
+  PENDING: 'Under review',
+  VERIFIED: 'Verified',
+  REJECTED: 'Rejected',
+  SUSPENDED: 'Suspended',
+});
+
 export const LATE_CANCEL_HOURS = 12;
 export const MAX_REPEAT_WEEKS = 12;
 export const TBILISI_OFFSET_MS = 4 * 3600000; // UTC+4, no DST
 const DAY = 86400000;
 
-export const coachError = (status, message, code) => Object.assign(new Error(message), { status, ...(code ? { code } : {}) });
+/** `messageEn` is what English requests read (middleware/error.js); the Georgian message stays the default. */
+export const coachError = (status, message, code, messageEn) =>
+  Object.assign(new Error(message), { status, ...(code ? { code } : {}), ...(messageEn ? { messageEn } : {}) });
 
 // ——— scopes ———
 
@@ -81,12 +119,16 @@ export function tbilisiDayStart(ymd) {
 const WEEKDAYS = ['კვი', 'ორშ', 'სამ', 'ოთხ', 'ხუთ', 'პარ', 'შაბ'];
 const MONTHS = ['იან', 'თებ', 'მარ', 'აპრ', 'მაი', 'ივნ', 'ივლ', 'აგვ', 'სექ', 'ოქტ', 'ნოე', 'დეკ'];
 
-/** "ხუთ, 2 ოქტ · 19:00" in Tbilisi time. */
-export function formatSessionTime(date) {
+const WEEKDAYS_EN = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+const MONTHS_EN = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+/** "ხუთ, 2 ოქტ · 19:00" (English: "Thu, 2 Oct · 19:00") in Tbilisi time. */
+export function formatSessionTime(date, lang = 'ka') {
   const t = new Date(new Date(date).getTime() + TBILISI_OFFSET_MS);
   const hh = String(t.getUTCHours()).padStart(2, '0');
   const mm = String(t.getUTCMinutes()).padStart(2, '0');
-  return `${WEEKDAYS[t.getUTCDay()]}, ${t.getUTCDate()} ${MONTHS[t.getUTCMonth()]} · ${hh}:${mm}`;
+  const en = isEnglish(lang);
+  return `${(en ? WEEKDAYS_EN : WEEKDAYS)[t.getUTCDay()]}, ${t.getUTCDate()} ${(en ? MONTHS_EN : MONTHS)[t.getUTCMonth()]} · ${hh}:${mm}`;
 }
 
 export function formatClock(date) {
@@ -205,31 +247,44 @@ export function expectedWeight(goal, ymd) {
  * Short, actionable alerts for the trainer's "today" screen. Input is one client's already-scoped
  * summary; categories the client did not share are simply absent.
  */
-export function clientAlerts({ name, nutritionDays, lastWeighYmd, lastMealYmd, lastSession, goal, currentKg, today }) {
+export function clientAlerts({ name, nutritionDays, lastWeighYmd, lastMealYmd, lastSession, goal, currentKg, today, lang = 'ka' }) {
   const out = [];
+  const en = isEnglish(lang);
+  if (en && name === CLIENT_FALLBACK_KA) name = 'Client';
+  const days = (n) => `${n} ${n === 1 ? 'day' : 'days'}`;
   if (nutritionDays?.length) {
     const over = trailingRun(nutritionDays, (d) => d.status === 'OVER');
-    if (over >= 2) out.push({ kind: 'OVER_STREAK', tone: 'warn', text: `${name}: ${over} დღე ზედიზედ გადააჭარბა კალორიებს` });
+    if (over >= 2) out.push({ kind: 'OVER_STREAK', tone: 'warn', text: en ? `${name}: over the calorie target ${days(over)} in a row` : `${name}: ${over} დღე ზედიზედ გადააჭარბა კალორიებს` });
     const under = trailingRun(nutritionDays, (d) => d.status === 'UNDER');
-    if (under >= 3) out.push({ kind: 'UNDER_STREAK', tone: 'warn', text: `${name}: ${under} დღეა ძალიან ცოტას ჭამს` });
+    if (under >= 3) out.push({ kind: 'UNDER_STREAK', tone: 'warn', text: en ? `${name}: eating far too little for ${days(under)}` : `${name}: ${under} დღეა ძალიან ცოტას ჭამს` });
     const onRun = trailingRun(nutritionDays, (d) => d.status === 'ON');
-    if (onRun >= 5) out.push({ kind: 'ON_STREAK', tone: 'good', text: `${name}: ${onRun} დღე ზედიზედ გეგმაშია 🔥` });
+    if (onRun >= 5) out.push({ kind: 'ON_STREAK', tone: 'good', text: en ? `${name}: on plan ${days(onRun)} in a row 🔥` : `${name}: ${onRun} დღე ზედიზედ გეგმაშია 🔥` });
   }
   if (lastMealYmd !== undefined) {
     const gap = lastMealYmd ? Math.round((Date.parse(today) - Date.parse(lastMealYmd)) / DAY) : null;
-    if (gap == null || gap >= 3) out.push({ kind: 'NO_FOOD_LOG', tone: 'info', text: gap == null ? `${name}: კვებას ჯერ არ იწერს` : `${name}: ${gap} დღეა კვება არ ჩაუწერია` });
+    if (gap == null || gap >= 3) {
+      const text = en
+        ? (gap == null ? `${name}: has not logged any food yet` : `${name}: no food logged for ${days(gap)}`)
+        : (gap == null ? `${name}: კვებას ჯერ არ იწერს` : `${name}: ${gap} დღეა კვება არ ჩაუწერია`);
+      out.push({ kind: 'NO_FOOD_LOG', tone: 'info', text });
+    }
   }
   if (lastWeighYmd !== undefined) {
     const gap = lastWeighYmd ? Math.round((Date.parse(today) - Date.parse(lastWeighYmd)) / DAY) : null;
-    if (gap == null || gap >= 7) out.push({ kind: 'NO_WEIGH_IN', tone: 'info', text: gap == null ? `${name}: წონა ჯერ არ ჩაუწერია` : `${name}: ${gap} დღეა არ აწონილა` });
+    if (gap == null || gap >= 7) {
+      const text = en
+        ? (gap == null ? `${name}: has not logged weight yet` : `${name}: no weigh-in for ${days(gap)}`)
+        : (gap == null ? `${name}: წონა ჯერ არ ჩაუწერია` : `${name}: ${gap} დღეა არ აწონილა`);
+      out.push({ kind: 'NO_WEIGH_IN', tone: 'info', text });
+    }
   }
-  if (lastSession?.status === 'NO_SHOW') out.push({ kind: 'NO_SHOW', tone: 'warn', text: `${name}: ბოლო ვარჯიშზე არ მოვიდა` });
+  if (lastSession?.status === 'NO_SHOW') out.push({ kind: 'NO_SHOW', tone: 'warn', text: en ? `${name}: missed the last session` : `${name}: ბოლო ვარჯიშზე არ მოვიდა` });
   if (goal && Number.isFinite(currentKg)) {
     const expected = expectedWeight(goal, today);
     if (expected != null) {
       const behind = goal.targetKg < goal.startKg ? currentKg - expected : expected - currentKg;
-      if (behind >= 1.5) out.push({ kind: 'BEHIND_GOAL', tone: 'warn', text: `${name}: მიზანს ${Math.round(behind * 10) / 10} კგ-ით ჩამორჩება` });
-      else if (behind <= -1) out.push({ kind: 'AHEAD_GOAL', tone: 'good', text: `${name}: მიზანს უსწრებს` });
+      if (behind >= 1.5) out.push({ kind: 'BEHIND_GOAL', tone: 'warn', text: en ? `${name}: ${Math.round(behind * 10) / 10} kg behind the goal` : `${name}: მიზანს ${Math.round(behind * 10) / 10} კგ-ით ჩამორჩება` });
+      else if (behind <= -1) out.push({ kind: 'AHEAD_GOAL', tone: 'good', text: en ? `${name}: ahead of the goal` : `${name}: მიზანს უსწრებს` });
     }
   }
   return out;
@@ -314,6 +369,7 @@ const mealItemSchema = z.object({
 });
 
 export const MEAL_SLOTS = Object.freeze({ breakfast: 'საუზმე', snack1: 'წახემსება', lunch: 'სადილი', snack2: 'მეორე წახემსება', dinner: 'ვახშამი', preworkout: 'ვარჯიშამდე', postworkout: 'ვარჯიშის შემდეგ' });
+export const MEAL_SLOTS_EN = Object.freeze({ breakfast: 'Breakfast', snack1: 'Snack', lunch: 'Lunch', snack2: 'Second snack', dinner: 'Dinner', preworkout: 'Pre-workout', postworkout: 'Post-workout' });
 
 export const mealPlanSchema = z.object({
   title: text(80).min(2),
@@ -374,7 +430,7 @@ export function ageFrom(birthDate, now = new Date()) {
   return age >= 0 ? age : null;
 }
 
-export function sessionPublic(s, { gyms = new Map(), people = new Map() } = {}) {
+export function sessionPublic(s, { gyms = new Map(), people = new Map(), lang = 'ka' } = {}) {
   const gym = s.gymId ? gyms.get(s.gymId) : null;
   const person = s.clientId ? people.get(s.clientId) : null;
   return {
@@ -387,7 +443,7 @@ export function sessionPublic(s, { gyms = new Map(), people = new Map() } = {}) 
     startsAt: new Date(s.startsAt).toISOString(),
     durationMin: s.durationMin,
     kind: s.kind,
-    kindLabel: SESSION_KINDS[s.kind] || s.kind,
+    kindLabel: (isEnglish(lang) ? SESSION_KINDS_EN : SESSION_KINDS)[s.kind] || s.kind,
     note: s.note || '',
     status: s.status,
     gym: gym ? { id: gym.id, brand: gym.brand, name: gym.name, city: gym.city } : null,
@@ -399,6 +455,36 @@ export function sessionPublic(s, { gyms = new Map(), people = new Map() } = {}) 
     exercises: Array.isArray(s.exercises) ? s.exercises : [],
     trainerNote: s.trainerNote || '',
     clientRating: s.clientRating ?? null,
-    label: formatSessionTime(s.startsAt),
+    label: formatSessionTime(s.startsAt, lang),
   };
+}
+
+const CLIENT_FALLBACK_KA = 'კლიენტი';
+const ENDED_REASON_KA = 'კავშირი დასრულდა'; // written by trainerStore.endLink
+const LABEL_MAPS = [[SPECIALTIES, SPECIALTIES_EN], [SESSION_KINDS, SESSION_KINDS_EN], [MEAL_SLOTS, MEAL_SLOTS_EN]];
+
+/**
+ * English copy of a MEDI COACH response: session labels and kinds, `{ key, label }` catalogue entries
+ * and the nameless-client fallback. Gym names and cities are data (the city filter matches them) and stay. Georgian requests get the value back unchanged; never mutates.
+ */
+export function localizeCoachPayload(value, lang = 'ka') {
+  if (!isEnglish(lang)) return value;
+  const walk = (v) => {
+    if (Array.isArray(v)) return v.map(walk);
+    if (!v || typeof v !== 'object') return v;
+    const proto = Object.getPrototypeOf(v);
+    if (proto !== Object.prototype && proto !== null) return v; // Date, Buffer, Decimal …: as is
+    const out = {};
+    for (const [k, inner] of Object.entries(v)) out[k] = walk(inner);
+    if (typeof out.startsAt === 'string' && typeof out.label === 'string' && 'durationMin' in out && 'kind' in out) {
+      out.label = formatSessionTime(out.startsAt, 'en');
+      if (typeof out.kindLabel === 'string') out.kindLabel = SESSION_KINDS_EN[out.kind] || out.kindLabel;
+    } else if (typeof out.key === 'string' && typeof out.label === 'string') {
+      for (const [ka, en] of LABEL_MAPS) if (ka[out.key] === out.label && en[out.key]) out.label = en[out.key];
+    }
+    for (const field of ['name', 'clientName']) if (out[field] === CLIENT_FALLBACK_KA) out[field] = 'Client';
+    if (out.cancelReason === ENDED_REASON_KA) out.cancelReason = 'The connection ended';
+    return out;
+  };
+  return walk(value);
 }

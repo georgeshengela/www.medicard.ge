@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { prisma } from '../lib/prisma.js';
 import { requireAuth } from '../middleware/auth.js';
 import { asyncHandler } from '../middleware/error.js';
+import { t } from '../lib/i18n.js';
 
 export const visitsRouter = Router();
 
@@ -106,7 +107,7 @@ visitsRouter.patch(
         notes: data.notes === undefined ? undefined : data.notes ?? null,
       },
     });
-    if (count === 0) return res.status(404).json({ error: 'ვიზიტი ვერ მოიძებნა.' });
+    if (count === 0) return res.status(404).json({ error: t(req, 'ვიზიტი ვერ მოიძებნა.', 'Visit not found.') });
 
     const visit = await prisma.doctorVisit.findUnique({ where: { id } });
     return res.json({ visit });
@@ -118,7 +119,7 @@ visitsRouter.delete(
   asyncHandler(async (req, res) => {
     const { id } = idParam.parse(req.params);
     const { count } = await prisma.doctorVisit.deleteMany({ where: { id, userId: req.user.id } });
-    if (count === 0) return res.status(404).json({ error: 'ვიზიტი ვერ მოიძებნა.' });
+    if (count === 0) return res.status(404).json({ error: t(req, 'ვიზიტი ვერ მოიძებნა.', 'Visit not found.') });
     return res.json({ deleted: true });
   }),
 );

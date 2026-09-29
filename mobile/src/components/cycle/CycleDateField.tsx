@@ -5,6 +5,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CalendarDays, Check, ChevronDown, ChevronLeft, ChevronRight, X } from 'lucide-react-native';
 import { APP_MODAL_PROPS, Modal } from '@/components/ui/appModal';
 import { ka } from '@/i18n/ka';
+import { tx } from '@/i18n/locale';
 import {
   digitsToYmd,
   formatBirthDateInput,
@@ -455,13 +456,13 @@ function CycleCalendarModal({
           </View>
 
           <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 12 }}>
-            <NavBtn c={c} label="წინა თვე" onPress={() => !yearPicker && shiftMonth(-1)}>
+            <NavBtn c={c} label={tx('წინა თვე', 'Previous month')} onPress={() => !yearPicker && shiftMonth(-1)}>
               <ChevronLeft size={18} color={c.ink} strokeWidth={2.2} />
             </NavBtn>
             <Pressable
               onPress={() => setYearPicker((v) => !v)}
               accessibilityRole="button"
-              accessibilityLabel="წლის არჩევა"
+              accessibilityLabel={tx('წლის არჩევა', 'Choose year')}
               accessibilityState={{ expanded: yearPicker }}
               style={{
                 flex: 1,
@@ -481,7 +482,7 @@ function CycleCalendarModal({
               </Text>
               <ChevronDown size={16} color={c.brand} style={{ marginLeft: 6 }} />
             </Pressable>
-            <NavBtn c={c} label="შემდეგი თვე" onPress={() => !yearPicker && shiftMonth(1)}>
+            <NavBtn c={c} label={tx('შემდეგი თვე', 'Next month')} onPress={() => !yearPicker && shiftMonth(1)}>
               <ChevronRight size={18} color={c.ink} strokeWidth={2.2} />
             </NavBtn>
           </View>

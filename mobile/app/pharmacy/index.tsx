@@ -11,6 +11,7 @@ import { api, type CatalogProductSummary, type DrugCategoryInfo } from '@/lib/ap
 import { formatRelative } from '@/lib/format';
 import { useThemeColors } from '@/theme/colors';
 import { pharmPx } from '@/constants/pharmacyVisuals';
+import { dateLocale } from '@/i18n/locale';
 
 export default function PharmacyIndexScreen() {
   const router = useRouter();
@@ -117,7 +118,7 @@ export default function PharmacyIndexScreen() {
             }}
           >
             <Text style={{ fontSize: pharmPx(11), fontWeight: '700', color: colors.text200 }}>
-              {totalProducts.toLocaleString('ka-GE')}
+              {totalProducts.toLocaleString(dateLocale())}
             </Text>
           </View>
         ) : null}

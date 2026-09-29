@@ -30,10 +30,35 @@ function dbOf(options = {}) {
   return options.db || prisma;
 }
 
+/** English for the Georgian messages below; middleware/error.js shows it to English requests. */
+const MESSAGES_EN = Object.freeze({
+  'ჯილდო ვერ მოიძებნა.': 'Reward not found.',
+  'ჯილდო მიუწვდომელია.': 'This reward is unavailable.',
+  'ჯილდო დროებით შეჩერებულია.': 'This reward is paused for now.',
+  'ჯილდოს ვადა ამოიწურა.': 'This reward has expired.',
+  'ჯილდო ჯერ არ დაწყებულა.': "This reward hasn't started yet.",
+  'პრემიუმ უფლება მიუწვდომელია.': 'This premium access is unavailable.',
+  'უფლების გაცემა შეუძლებელია.': 'This access cannot be granted.',
+  'ლიმიტი ამოწურულია.': 'You have reached the limit.',
+  'პერიოდის ლიმიტი ამოწურულია.': 'You have reached the limit for this period.',
+  'აქტიური უფლება უკვე გაქვს.': 'You already have active access.',
+  'გაცვლა ვერ მოიძებნა.': 'Redemption not found.',
+  'idempotencyKey სავალდებულოა.': 'idempotencyKey is required.',
+  'პარტნიორი მიუწვდომელია.': 'This partner is unavailable.',
+  'კამპანიის ლიმიტი ამოწურულია.': 'This campaign has reached its limit.',
+  'მარაგი ამოწურულია.': 'Out of stock.',
+  'არასაკმარისი Medi Coins.': 'Not enough Medi Coins.',
+  'კოდი მიუწვდომელია.': 'No code is available.',
+  'გაცვლა უკვე შესრულდა.': 'This redemption is already done.',
+  'გაცვლა კონფლიქტშია.': 'This redemption conflicts with another one.',
+  'გაცვლა კონფლიქტშია. ხელახლა სცადე.': 'This redemption conflicts with another one. Please try again.',
+});
+
 function httpError(message, status = 400, code = null) {
   const error = new Error(message);
   error.status = status;
   if (code) error.code = code;
+  if (MESSAGES_EN[message]) error.messageEn = MESSAGES_EN[message];
   return error;
 }
 
@@ -644,7 +669,7 @@ export async function redeemReward(userId, rewardId, options = {}) {
       if (campaignCount > 0) {
         liveCampaign = await findLiveCampaignForReward(tx, reward.id, now);
         if (!liveCampaign) {
-          const why = await explainMissingLiveCampaign(tx, reward.id, now);
+          const why = await explainMissingLiveCampaign(tx, reward.id, now, options.lang);
           throw httpError(why.message, 409, why.code);
         }
         if (liveCampaign.maxRedemptions != null) {

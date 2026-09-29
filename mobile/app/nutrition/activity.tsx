@@ -9,18 +9,19 @@ import { useAuth } from "@/store/AuthContext";
 import { useThemeColors } from "@/theme/colors";
 import { NScreen, NText, NCard, NButton, NError, NLoading } from "@/components/nutrition/ProgramUI";
 import { MedicalSourcesLink } from "@/components/health/MedicalSourcesLink";
+import { tx } from '@/i18n/locale';
 
 const KINDS: { key: string; label: string }[] = [
-  { key: "walk", label: "სიარული" },
-  { key: "run", label: "სირბილი" },
-  { key: "cycle", label: "ველოსიპედი" },
-  { key: "strength", label: "ძალოვანი" },
-  { key: "swim", label: "ცურვა" },
-  { key: "yoga", label: "იოგა" },
+  { key: "walk", label: tx("სიარული", "Walking") },
+  { key: "run", label: tx("სირბილი", "Running") },
+  { key: "cycle", label: tx("ველოსიპედი", "Cycling") },
+  { key: "strength", label: tx("ძალოვანი", "Strength") },
+  { key: "swim", label: tx("ცურვა", "Swimming") },
+  { key: "yoga", label: tx("იოგა", "Yoga") },
   { key: "hiit", label: "HIIT" },
-  { key: "sport", label: "სპორტი" },
-  { key: "dance", label: "ცეკვა" },
-  { key: "other", label: "სხვა" },
+  { key: "sport", label: tx("სპორტი", "Sports") },
+  { key: "dance", label: tx("ცეკვა", "Dance") },
+  { key: "other", label: tx("სხვა", "Other") },
 ];
 const MINUTES = [15, 30, 45, 60, 90];
 
@@ -73,11 +74,11 @@ function Activity() {
     const mins = Number(minutes);
     const own = kcal.trim() ? Number(kcal) : null;
     if (!Number.isInteger(mins) || mins < 1 || mins > 600) {
-      setError("წუთები 1-დან 600-მდე უნდა იყოს.");
+      setError(tx("წუთები 1-დან 600-მდე უნდა იყოს.", "Minutes must be between 1 and 600."));
       return;
     }
     if (own != null && (!Number.isInteger(own) || own < 0 || own > 5000)) {
-      setError("კალორია მთელი რიცხვი უნდა იყოს, 5000-მდე.");
+      setError(tx("კალორია მთელი რიცხვი უნდა იყოს, 5000-მდე.", "Calories must be a whole number up to 5000."));
       return;
     }
     Keyboard.dismiss();
@@ -86,7 +87,7 @@ function Activity() {
     setMessage("");
     try {
       const result = await api.nutrition.activities.save({ id: newUuid(), date: today, kind, minutes: mins, kcal: own, note: note.trim() });
-      setMessage(result.estimated ? `ჩაიწერა · ≈${result.activity.kcal} კკალ (MET შეფასება)` : `ჩაიწერა · ${result.activity.kcal} კკალ`);
+      setMessage(result.estimated ? tx(`ჩაიწერა · ≈${result.activity.kcal} კკალ (MET შეფასება)`, `Logged · ≈${result.activity.kcal} kcal (MET estimate)`) : tx(`ჩაიწერა · ${result.activity.kcal} კკალ`, `Logged · ${result.activity.kcal} kcal`));
       setKcal("");
       setNote("");
       await load();
@@ -116,44 +117,44 @@ function Activity() {
   );
   const input = { backgroundColor: c.bg200, color: c.text100, borderColor: c.bg300, borderWidth: 1, borderRadius: 14, padding: 12, fontSize: 16, minHeight: 48, fontFamily: "NotoSansGeorgian_400Regular" } as const;
   return (
-    <NScreen title="ვარჯიში და ენერგია" subtitle="დამწვარი კალორია შენი არჩევანით ბიუჯეტში ჩაითვლება" footer={<NButton label={busy ? "ინახება…" : "დღეს ჩაწერა"} disabled={busy} onPress={() => void save()} />}>
+    <NScreen title={tx("ვარჯიში და ენერგია", "Exercise and energy")} subtitle={tx("დამწვარი კალორია შენი არჩევანით ბიუჯეტში ჩაითვლება", "Burned calories count toward your budget if you choose")} footer={<NButton label={busy ? tx("ინახება…", "Saving…") : tx("დღეს ჩაწერა", "Log for today")} disabled={busy} onPress={() => void save()} />}>
       {!!error && <NError message={error} />}
       <NCard>
         <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
           <Flame size={20} color={c.primary100} />
-          <NText style={{ fontFamily: "NotoSansGeorgian_600SemiBold", flex: 1 }}>დღეს · {nutritionDateLabel(today)}</NText>
-          <NText style={{ fontFamily: "NotoSansGeorgian_600SemiBold", fontSize: 18 }}>{todayKcal} კკალ</NText>
+          <NText style={{ fontFamily: "NotoSansGeorgian_600SemiBold", flex: 1 }}>{tx("დღეს", "Today")} · {nutritionDateLabel(today)}</NText>
+          <NText style={{ fontFamily: "NotoSansGeorgian_600SemiBold", fontSize: 18 }}>{todayKcal} {tx("კკალ", "kcal")}</NText>
         </View>
-        <NText style={{ fontSize: 12, color: c.text200 }}>ნაბიჯების ენერგია ავტომატურად ითვლება ჯანმრთელობის სინქრონიდან. ბიუჯეტში დამატება პარამეტრებში ირთვება.</NText>
+        <NText style={{ fontSize: 12, color: c.text200 }}>{tx("ნაბიჯების ენერგია ავტომატურად ითვლება ჯანმრთელობის სინქრონიდან. ბიუჯეტში დამატება პარამეტრებში ირთვება.", "Energy from steps is counted automatically from health sync. Adding it to your budget is turned on in settings.")}</NText>
         <MedicalSourcesLink sourceIds={["activityMet"]} />
       </NCard>
       <NCard>
-        <NText style={{ fontFamily: "NotoSansGeorgian_600SemiBold" }}>რა გააკეთე?</NText>
+        <NText style={{ fontFamily: "NotoSansGeorgian_600SemiBold" }}>{tx("რა გააკეთე?", "What did you do?")}</NText>
         <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>{KINDS.map((k) => chip(kind === k.key, k.label, () => setKind(k.key)))}</View>
-        <NText style={{ fontFamily: "NotoSansGeorgian_600SemiBold" }}>რამდენი წუთი?</NText>
+        <NText style={{ fontFamily: "NotoSansGeorgian_600SemiBold" }}>{tx("რამდენი წუთი?", "How many minutes?")}</NText>
         <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, alignItems: "center" }}>
-          {MINUTES.map((m) => chip(minutes === String(m), `${m} წთ`, () => setMinutes(String(m))))}
-          <TextInput accessibilityLabel="წუთები" value={minutes} onChangeText={(v) => setMinutes(v.replace(/\D/g, "").slice(0, 3))} keyboardType="number-pad" style={[input, { width: 84, textAlign: "center" }]} />
+          {MINUTES.map((m) => chip(minutes === String(m), tx(`${m} წთ`, `${m} min`), () => setMinutes(String(m))))}
+          <TextInput accessibilityLabel={tx("წუთები", "Minutes")} value={minutes} onChangeText={(v) => setMinutes(v.replace(/\D/g, "").slice(0, 3))} keyboardType="number-pad" style={[input, { width: 84, textAlign: "center" }]} />
         </View>
-        <NText style={{ fontSize: 12, color: c.text200 }}>თუ საათი ან აპი ზუსტ კალორიას გაჩვენებს, ჩაწერე აქ; თუ არა — MET ფორმულით შევაფასებთ.</NText>
-        <TextInput accessibilityLabel="დამწვარი კალორია (არასავალდებულო)" placeholder="კკალ · არასავალდებულო" placeholderTextColor={c.text300} value={kcal} onChangeText={(v) => setKcal(v.replace(/\D/g, "").slice(0, 4))} keyboardType="number-pad" style={input} />
-        <TextInput accessibilityLabel="შენიშვნა" placeholder="შენიშვნა, მაგ. სწრაფი სიარული პარკში" placeholderTextColor={c.text300} value={note} onChangeText={setNote} maxLength={200} style={input} />
+        <NText style={{ fontSize: 12, color: c.text200 }}>{tx("თუ საათი ან აპი ზუსტ კალორიას გაჩვენებს, ჩაწერე აქ; თუ არა — MET ფორმულით შევაფასებთ.", "If your watch or an app shows exact calories, enter them here; if not, we'll estimate with the MET formula.")}</NText>
+        <TextInput accessibilityLabel={tx("დამწვარი კალორია (არასავალდებულო)", "Calories burned (optional)")} placeholder={tx("კკალ · არასავალდებულო", "kcal · optional")} placeholderTextColor={c.text300} value={kcal} onChangeText={(v) => setKcal(v.replace(/\D/g, "").slice(0, 4))} keyboardType="number-pad" style={input} />
+        <TextInput accessibilityLabel={tx("შენიშვნა", "Note")} placeholder={tx("შენიშვნა, მაგ. სწრაფი სიარული პარკში", "Note, e.g. brisk walk in the park")} placeholderTextColor={c.text300} value={note} onChangeText={setNote} maxLength={200} style={input} />
         {!!message && <NText accessibilityLiveRegion="polite" style={{ color: c.success, fontSize: 13 }}>{message}</NText>}
       </NCard>
       {loading && !rows.length ? (
         <NLoading />
       ) : (
         <NCard>
-          <NText style={{ fontFamily: "NotoSansGeorgian_600SemiBold" }}>ბოლო 14 დღე</NText>
-          {rows.length === 0 && <NText style={{ color: c.text200 }}>ჯერ ვარჯიში არ ჩაგიწერია.</NText>}
+          <NText style={{ fontFamily: "NotoSansGeorgian_600SemiBold" }}>{tx("ბოლო 14 დღე", "Last 14 days")}</NText>
+          {rows.length === 0 && <NText style={{ color: c.text200 }}>{tx("ჯერ ვარჯიში არ ჩაგიწერია.", "You haven't logged any exercise yet.")}</NText>}
           {rows.map((row) => (
             <View key={row.id} style={{ flexDirection: "row", alignItems: "center", gap: 10, paddingVertical: 6 }}>
               <Footprints size={17} color={c.text200} />
               <View style={{ flex: 1 }}>
-                <NText>{labels[row.kind]?.label || row.kind} · {row.minutes} წთ · {row.kcal} კკალ</NText>
+                <NText>{labels[row.kind]?.label || row.kind} · {row.minutes} {tx("წთ", "min")} · {row.kcal} {tx("კკალ", "kcal")}</NText>
                 <NText style={{ fontSize: 12, color: c.text200 }}>{nutritionDateLabel(row.date)}{row.note ? ` · ${row.note}` : ""}</NText>
               </View>
-              <Pressable accessibilityRole="button" accessibilityLabel="ჩანაწერის წაშლა" disabled={busy} onPress={() => void remove(row.id)} style={{ width: 40, height: 40, alignItems: "center", justifyContent: "center" }}>
+              <Pressable accessibilityRole="button" accessibilityLabel={tx("ჩანაწერის წაშლა", "Delete entry")} disabled={busy} onPress={() => void remove(row.id)} style={{ width: 40, height: 40, alignItems: "center", justifyContent: "center" }}>
                 <Trash2 size={17} color={c.text200} />
               </Pressable>
             </View>

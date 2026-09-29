@@ -3,15 +3,19 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <title>მედიქარდი — ჯანმრთელობა დღის ყოველ საათში</title>
-  <meta name="description" content="MEDICARD — ქართული ჯანმრთელობის აპი, უკვე App Store-ში (Android — მალე). Medi, მედიკამენტები, კვება, ანალიზები, ციკლი, MEDIRUN და ცხოველების მოვლა. ყველა ფუნქცია უფასოა." />
+  <title data-en="MEDICARD — Health at every hour of the day">მედიქარდი — ჯანმრთელობა დღის ყოველ საათში</title>
+  <meta name="description" content="MEDICARD — ქართული ჯანმრთელობის აპი, უკვე App Store-ში (Android — მალე). Medi, მედიკამენტები, კვება, ანალიზები, ციკლი, MEDIRUN და ცხოველების მოვლა. ყველა ფუნქცია უფასოა." data-en-content="MEDICARD — a health app made in Georgia, now on the App Store (Android coming soon). Medi, medications, nutrition, lab results, cycle, MEDIRUN and pet care. Every feature is free." />
   <link rel="canonical" href="https://medicard.ge/" />
+  <link rel="alternate" hreflang="ka" href="https://medicard.ge/" />
+  <link rel="alternate" hreflang="en" href="https://medicard.ge/?lang=en" />
+  <link rel="alternate" hreflang="x-default" href="https://medicard.ge/" />
+  <script src="/site-i18n.js?v=1"></script>
   <meta name="theme-color" content="#E8F5F2" />
   <meta property="og:type" content="website" />
   <meta property="og:locale" content="ka_GE" />
   <meta property="og:url" content="https://medicard.ge/" />
-  <meta property="og:title" content="მედიქარდი — ჯანმრთელობა დღის ყოველ საათში" />
-  <meta property="og:description" content="ქართული ჯანმრთელობის აპი: Medi, მედიკამენტები, კვება, ანალიზები, ციკლი და მოძრაობა ერთ ტელეფონში. უფასოდ." />
+  <meta property="og:title" content="მედიქარდი — ჯანმრთელობა დღის ყოველ საათში" data-en-content="MEDICARD — Health at every hour of the day" />
+  <meta property="og:description" content="ქართული ჯანმრთელობის აპი: Medi, მედიკამენტები, კვება, ანალიზები, ციკლი და მოძრაობა ერთ ტელეფონში. უფასოდ." data-en-content="A health app made in Georgia: Medi, medications, nutrition, lab results, cycle and movement on one phone. Free." />
   <meta property="og:image" content="https://medicard.ge/screens/home.png" />
   <meta name="twitter:card" content="summary_large_image" />
   <link rel="icon" href="/favicon.png" />
@@ -19,19 +23,19 @@
   <link rel="preload" href="/fonts/firago/FiraGO-Regular.woff2" as="font" type="font/woff2" crossorigin />
   <link rel="preload" href="/fonts/firago/FiraGO-Bold.woff2" as="font" type="font/woff2" crossorigin />
   <link rel="modulepreload" href="/vendor/three/three.module.min.js" />
-  <link rel="stylesheet" href="/site-nav.css?v=7" />
+  <link rel="stylesheet" href="/site-nav.css?v=8" />
   <link rel="stylesheet" href="/home.css?v=14" />
   <script type="importmap">{ "imports": { "three": "/vendor/three/three.module.min.js" } }</script>
 </head>
 <body>
-  <a class="skip" href="#main">გადადი შინაარსზე</a>
+  <a class="skip" href="#main" data-en="Skip to content">გადადი შინაარსზე</a>
 
   <header class="tb" id="topbar"></header>
-  <script src="/site-nav.js?v=8"></script>
+  <script src="/site-nav.js?v=7"></script>
 
   <main id="main">
     <!-- A day with MEDICARD: one screen, a vertical clock that moves the 3D phone through the day -->
-    <section class="day" id="day" data-tone="light" aria-label="დღე მედიქარდთან">
+    <section class="day" id="day" data-tone="light" aria-label="დღე მედიქარდთან" data-en-aria-label="A day with MEDICARD">
       <div class="stage" aria-hidden="true">
         <div class="sky"></div>
         <div class="sun"></div>
@@ -45,81 +49,87 @@
       <div class="day-ui">
         <div class="hero-copy">
           <h1 class="hero-title">
-            <span class="line"><span>ჯანმრთელობა</span></span>
-            <span class="line"><span>დღის ყოველ</span></span>
-            <span class="line"><span>საათში.</span></span>
+            <span class="line"><span data-en="Health at">ჯანმრთელობა</span></span>
+            <span class="line"><span data-en="every hour">დღის ყოველ</span></span>
+            <span class="line"><span data-en="of the day.">საათში.</span></span>
           </h1>
-          <p class="hero-lead">MEDICARD ქართული ჯანმრთელობის აპია. Medi, მედიკამენტები, კვება, ანალიზები, ციკლი და მოძრაობა — ერთ ტელეფონში და ყველაფერი უფასოდ.</p>
+          <p class="hero-lead" data-en="MEDICARD is a health app made in Georgia. Medi, medications, nutrition, lab results, cycle and movement — on one phone, and all of it free.">MEDICARD ქართული ჯანმრთელობის აპია. Medi, მედიკამენტები, კვება, ანალიზები, ციკლი და მოძრაობა — ერთ ტელეფონში და ყველაფერი უფასოდ.</p>
           <div class="hero-actions">
             <a class="store-badge is-official" href="https://apps.apple.com/app/id6812517519"><img src="/icons/app-store-badge.svg" alt="Download on the App Store" width="162" height="54" /></a>
-            <a class="btn btn-quiet" href="#medi">გაიცანი Medi</a>
+            <a class="btn btn-quiet" href="#medi" data-en="Meet Medi">გაიცანი Medi</a>
           </div>
         </div>
 
         <div class="dial-wrap">
-          <p class="dial-hint" id="dial-hint">აირჩიე დრო</p>
+          <p class="dial-hint" id="dial-hint" data-en="Pick a time">აირჩიე დრო</p>
           <div class="dial" id="dial" role="tablist" aria-orientation="vertical" aria-labelledby="dial-hint">
             <span class="dial-track" aria-hidden="true"><i class="dial-fill"></i><i class="dial-bead"></i></span>
-          <button class="stop" type="button" role="tab" id="stop-0" aria-selected="true" aria-controls="moment-panel" tabindex="0" data-key="home" data-time="08:40" data-label="დილა" data-title="დღე ერთი შეხედვით." data-text="ნაბიჯები, წყალი, წამლები და ციკლი — ერთ ეკრანზე, როგორც კი აპს გახსნი.">
+          <button class="stop" type="button" role="tab" id="stop-0" aria-selected="true" aria-controls="moment-panel" tabindex="0" data-key="home" data-en-moment-label="Morning" data-en-moment-title="Your day at a glance." data-en-moment-text="Steps, water, meds and cycle — on one screen, the moment you open the app." data-time="08:40" data-label="დილა" data-title="დღე ერთი შეხედვით." data-text="ნაბიჯები, წყალი, წამლები და ციკლი — ერთ ეკრანზე, როგორც კი აპს გახსნი.">
             <span class="stop-dot" aria-hidden="true"></span>
             <time>08:40</time>
-            <span class="stop-name">მთავარი</span>
+            <span class="stop-name" data-en="Home">მთავარი</span>
           </button>
-          <button class="stop" type="button" role="tab" id="stop-1" aria-selected="false" aria-controls="moment-panel" tabindex="-1" data-key="meds" data-time="11:00" data-label="დილა" data-title="წამალი დროზე, ყოველდღე." data-text="შეხსენება ზუსტ დროს მოდის, მიღებას ერთი შეხებით მონიშნავ, სტატისტიკა კი გაჩვენებს, რამდენად რეგულარული ხარ.">
+          <button class="stop" type="button" role="tab" id="stop-1" aria-selected="false" aria-controls="moment-panel" tabindex="-1" data-key="meds" data-en-moment-label="Morning" data-en-moment-title="Meds on time, every day." data-en-moment-text="The reminder arrives right on time, you mark the dose with one tap, and your stats show how consistent you are." data-time="11:00" data-label="დილა" data-title="წამალი დროზე, ყოველდღე." data-text="შეხსენება ზუსტ დროს მოდის, მიღებას ერთი შეხებით მონიშნავ, სტატისტიკა კი გაჩვენებს, რამდენად რეგულარული ხარ.">
             <span class="stop-dot" aria-hidden="true"></span>
             <time>11:00</time>
-            <span class="stop-name">წამლები</span>
+            <span class="stop-name" data-en="Meds">წამლები</span>
           </button>
-          <button class="stop" type="button" role="tab" id="stop-2" aria-selected="false" aria-controls="moment-panel" tabindex="-1" data-key="nutrition" data-time="13:40" data-label="შუადღე" data-title="გადაუღე თეფშს." data-text="ფოტოდან Medi კალორიებსა და მაკროებს შეაფასებს — შენ ასწორებ და ინახავ.">
+          <button class="stop" type="button" role="tab" id="stop-2" aria-selected="false" aria-controls="moment-panel" tabindex="-1" data-key="nutrition" data-en-moment-label="Afternoon" data-en-moment-title="Snap your plate." data-en-moment-text="Medi estimates calories and macros from the photo — you adjust it and save." data-time="13:40" data-label="შუადღე" data-title="გადაუღე თეფშს." data-text="ფოტოდან Medi კალორიებსა და მაკროებს შეაფასებს — შენ ასწორებ და ინახავ.">
             <span class="stop-dot" aria-hidden="true"></span>
             <time>13:40</time>
-            <span class="stop-name">კვება</span>
+            <span class="stop-name" data-en="Nutrition">კვება</span>
           </button>
-          <button class="stop" type="button" role="tab" id="stop-3" aria-selected="false" aria-controls="moment-panel" tabindex="-1" data-key="quest" data-time="18:10" data-label="საღამო" data-title="მისიები, რომლებიც გამოძრავებს." data-text="ნაბიჯები, წყალი და მიღებები დღის მისიებად იქცევა — ჯილდოებით და სერიით.">
+          <button class="stop" type="button" role="tab" id="stop-3" aria-selected="false" aria-controls="moment-panel" tabindex="-1" data-key="quest" data-en-moment-label="Evening" data-en-moment-title="Missions that get you moving." data-en-moment-text="Steps, water and doses turn into daily missions — with rewards and streaks." data-time="18:10" data-label="საღამო" data-title="მისიები, რომლებიც გამოძრავებს." data-text="ნაბიჯები, წყალი და მიღებები დღის მისიებად იქცევა — ჯილდოებით და სერიით.">
             <span class="stop-dot" aria-hidden="true"></span>
             <time>18:10</time>
             <span class="stop-name">MEDI QUEST</span>
           </button>
-          <button class="stop" type="button" role="tab" id="stop-4" aria-selected="false" aria-controls="moment-panel" tabindex="-1" data-key="lab-dark" data-time="21:00" data-label="საღამო" data-title="ანალიზი, გასაგებ ენაზე." data-text="ციფრები და ნორმები ქართულად აიხსნება. დიაგნოზს არ გისვამს — გაგებაში გეხმარება.">
+          <button class="stop" type="button" role="tab" id="stop-4" aria-selected="false" aria-controls="moment-panel" tabindex="-1" data-key="lab-dark" data-en-moment-label="Evening" data-en-moment-title="Lab results in plain language." data-en-moment-text="Numbers and reference ranges, explained so they make sense. It doesn’t diagnose you — it helps you understand." data-time="21:00" data-label="საღამო" data-title="ანალიზი, გასაგებ ენაზე." data-text="ციფრები და ნორმები ქართულად აიხსნება. დიაგნოზს არ გისვამს — გაგებაში გეხმარება.">
             <span class="stop-dot" aria-hidden="true"></span>
             <time>21:00</time>
-            <span class="stop-name">ანალიზები</span>
+            <span class="stop-name" data-en="Lab results">ანალიზები</span>
           </button>
-          <button class="stop" type="button" role="tab" id="stop-5" aria-selected="false" aria-controls="moment-panel" tabindex="-1" data-key="cycle-dark" data-time="22:30" data-label="ღამე" data-title="ორი წამი შენთვის." data-text="ციკლის რგოლი, სწრაფი აღრიცხვა და პროგნოზი, რომელიც ყოველთვის სავარაუდოდ მოინიშნება.">
+          <button class="stop" type="button" role="tab" id="stop-5" aria-selected="false" aria-controls="moment-panel" tabindex="-1" data-key="cycle-dark" data-en-moment-label="Night" data-en-moment-title="Two seconds for you." data-en-moment-text="A cycle ring, quick logging and predictions that are always marked as estimates." data-time="22:30" data-label="ღამე" data-title="ორი წამი შენთვის." data-text="ციკლის რგოლი, სწრაფი აღრიცხვა და პროგნოზი, რომელიც ყოველთვის სავარაუდოდ მოინიშნება.">
             <span class="stop-dot" aria-hidden="true"></span>
             <time>22:30</time>
-            <span class="stop-name">ციკლი</span>
+            <span class="stop-name" data-en="Cycle">ციკლი</span>
           </button>
           </div>
           <div class="moment-panel" id="moment-panel" role="tabpanel" aria-labelledby="stop-0" aria-live="polite">
-            <p class="moment-label" id="moment-label">დილა · 08:40</p>
-            <h2 id="moment-title">დღე ერთი შეხედვით.</h2>
-            <p id="moment-text">ნაბიჯები, წყალი, წამლები და ციკლი — ერთ ეკრანზე, როგორც კი აპს გახსნი.</p>
+            <p class="moment-label" id="moment-label" data-en="Morning · 08:40">დილა · 08:40</p>
+            <h2 id="moment-title" data-en="Your day at a glance.">დღე ერთი შეხედვით.</h2>
+            <p id="moment-text" data-en="Steps, water, meds and cycle — on one screen, the moment you open the app.">ნაბიჯები, წყალი, წამლები და ციკლი — ერთ ეკრანზე, როგორც კი აპს გახსნი.</p>
           </div>
         </div>
       </div>
 
-      <a class="scroll-cue" href="#medi" aria-label="ქვემოთ გადასვლა"><span></span></a>
+      <a class="scroll-cue" href="#medi" aria-label="ქვემოთ გადასვლა" data-en-aria-label="Scroll down"><span></span></a>
     </section>
 
     <!-- Medi -->
     <section class="medi" id="medi" data-tone="dark">
       <div class="wrap medi-grid">
         <div class="medi-copy">
-          <h2 class="display">Medi გპასუხობს შენი ჩანაწერებით.</h2>
-          <p class="medi-lead">Medi ხედავს შენს პროფილს, ბოლო ორი კვირის მაჩვენებლებს, მედიკამენტებს და ციკლს — თუ ამის ნებას მისცემ. ლაპარაკობს ქართულად, ხმითაც.</p>
-          <div class="modes" role="tablist" aria-label="Medi-ს რეჟიმები">
-            <button type="button" role="tab" id="tab-medi" aria-selected="true" aria-controls="chat" data-mode="medi">
+          <h2 class="display" data-en="Medi answers with your own records.">Medi გპასუხობს შენი ჩანაწერებით.</h2>
+          <p class="medi-lead" data-en="Medi sees your profile, the last two weeks of metrics, your medications and your cycle — if you allow it. It talks with you — by voice too.">Medi ხედავს შენს პროფილს, ბოლო ორი კვირის მაჩვენებლებს, მედიკამენტებს და ციკლს — თუ ამის ნებას მისცემ. ლაპარაკობს ქართულად, ხმითაც.</p>
+          <div class="modes" role="tablist" aria-label="Medi-ს რეჟიმები" data-en-aria-label="Medi modes">
+            <button type="button" role="tab" id="tab-medi" aria-selected="true" aria-controls="chat" data-mode="medi" data-en-html="
+              <b>Medi</b><span>Reminders, logs, actions</span>
+            ">
               <b>Medi</b><span>შეხსენება, ჩანაწერი, მოქმედება</span>
             </button>
-            <button type="button" role="tab" id="tab-doctor" aria-selected="false" aria-controls="chat" data-mode="doctor" tabindex="-1">
+            <button type="button" role="tab" id="tab-doctor" aria-selected="false" aria-controls="chat" data-mode="doctor" tabindex="-1" data-en-html="
+              <b>Doctor</b><span>Health questions</span>
+            ">
               <b>ექიმთან</b><span>კითხვა ჯანმრთელობაზე</span>
             </button>
-            <button type="button" role="tab" id="tab-deep" aria-selected="false" aria-controls="chat" data-mode="deep" tabindex="-1">
+            <button type="button" role="tab" id="tab-deep" aria-selected="false" aria-controls="chat" data-mode="deep" tabindex="-1" data-en-html="
+              <b>Deep analysis</b><span>Lab results and documents</span>
+            ">
               <b>ღრმა ანალიზი</b><span>ანალიზები და დოკუმენტები</span>
             </button>
           </div>
-          <p class="medi-note">Medi ინფორმაციას გაძლევს — არა დიაგნოზს და არა რეცეპტს. სასწრაფო შემთხვევაში დარეკე 112-ზე.</p>
+          <p class="medi-note" data-en="Medi gives you information — not a diagnosis and not a prescription. In an emergency, call 112.">Medi ინფორმაციას გაძლევს — არა დიაგნოზს და არა რეცეპტს. სასწრაფო შემთხვევაში დარეკე 112-ზე.</p>
         </div>
 
         <div class="chat-shell">
@@ -137,32 +147,32 @@
     <!-- Spaces -->
     <section class="spaces" id="spaces" data-tone="light">
       <div class="wrap">
-        <h2 class="display spaces-title">ექვსი სივრცე.<br />ერთი აპი.</h2>
+        <h2 class="display spaces-title" data-en-html="Six spaces.<br />One app.">ექვსი სივრცე.<br />ერთი აპი.</h2>
         <div class="spaces-grid">
           <ul class="space-list" id="space-list">
             <li><button type="button" class="space is-on" data-screen="home" aria-pressed="true">
-              <span class="space-name">ყოველდღე</span>
-              <span class="space-desc">კვების დღიური, მედიკამენტები, ვიზიტები, ნაბიჯები, წყალი, წონა.</span>
+              <span class="space-name" data-en="Every day">ყოველდღე</span>
+              <span class="space-desc" data-en="Food diary, medications, visits, steps, water, weight.">კვების დღიური, მედიკამენტები, ვიზიტები, ნაბიჯები, წყალი, წონა.</span>
             </button></li>
             <li><button type="button" class="space" data-screen="cycle" aria-pressed="false">
-              <span class="space-name">ქალების სივრცე</span>
-              <span class="space-desc">ციკლი, ორსულობა და პირადი დღიური, რომელიც შენ გეკუთვნის.</span>
+              <span class="space-name" data-en="Women’s space">ქალების სივრცე</span>
+              <span class="space-desc" data-en="Cycle, pregnancy and a private journal that belongs to you.">ციკლი, ორსულობა და პირადი დღიური, რომელიც შენ გეკუთვნის.</span>
             </button></li>
             <li><button type="button" class="space" data-screen="medi" aria-pressed="false">
               <span class="space-name">Medi</span>
-              <span class="space-desc">სიმპტომები, ანალიზები, რენტგენი და კანი — სამ რეჟიმში.</span>
+              <span class="space-desc" data-en="Symptoms, lab results, X-rays and skin — in three modes.">სიმპტომები, ანალიზები, რენტგენი და კანი — სამ რეჟიმში.</span>
             </button></li>
             <li><button type="button" class="space" data-screen="lab" aria-pressed="false">
-              <span class="space-name">ჩემი ბარათი</span>
-              <span class="space-desc">დოკუმენტები, საუბრები Medi-სთან, აფთიაქის ფასები და პროფილი.</span>
+              <span class="space-name" data-en="My card">ჩემი ბარათი</span>
+              <span class="space-desc" data-en="Documents, conversations with Medi, pharmacy prices and your profile.">დოკუმენტები, საუბრები Medi-სთან, აფთიაქის ფასები და პროფილი.</span>
             </button></li>
             <li><button type="button" class="space" data-screen="quest" aria-pressed="false">
-              <span class="space-name">მოძრაობა</span>
-              <span class="space-desc">MEDIRUN, MEDI QUEST-ის მისიები და ყოველდღიური სერია.</span>
+              <span class="space-name" data-en="Movement">მოძრაობა</span>
+              <span class="space-desc" data-en="MEDIRUN, MEDI QUEST missions and a daily streak.">MEDIRUN, MEDI QUEST-ის მისიები და ყოველდღიური სერია.</span>
             </button></li>
             <li><button type="button" class="space" data-screen="pets" aria-pressed="false">
-              <span class="space-name">ცხოველები</span>
-              <span class="space-desc">წონა, მოვლის შეხსენებები და Medi Vet — ადამიანის Medi-სგან ცალკე.</span>
+              <span class="space-name" data-en="Pets">ცხოველები</span>
+              <span class="space-desc" data-en="Weight, care reminders and Medi Vet — kept separate from your own Medi.">წონა, მოვლის შეხსენებები და Medi Vet — ადამიანის Medi-სგან ცალკე.</span>
             </button></li>
           </ul>
           <div class="space-preview" aria-hidden="true">
@@ -177,19 +187,19 @@
     <!-- Promise -->
     <section class="promise" id="free" data-tone="dark">
       <div class="wrap">
-        <p class="promise-line display">ყველა ფუნქცია უფასოა.<br />გამოწერა არ არსებობს.</p>
+        <p class="promise-line display" data-en-html="Every feature is free.<br />There is no subscription.">ყველა ფუნქცია უფასოა.<br />გამოწერა არ არსებობს.</p>
         <div class="promise-facts">
           <div>
-            <h3>შენი მონაცემები შენთანაა</h3>
-            <p>ჩანაწერები შენს ანგარიშზე ინახება. ტრენერს, პარტნიორს ან AI-ს მხოლოდ ის ეგზავნება, რაზეც თანხმობას მისცემ, და თანხმობის გაუქმება ერთ შეხებაშია.</p>
+            <h3 data-en="Your data stays yours">შენი მონაცემები შენთანაა</h3>
+            <p data-en="Your records are stored in your account. A trainer, partner or AI receives only what you consent to, and withdrawing consent takes one tap.">ჩანაწერები შენს ანგარიშზე ინახება. ტრენერს, პარტნიორს ან AI-ს მხოლოდ ის ეგზავნება, რაზეც თანხმობას მისცემ, და თანხმობის გაუქმება ერთ შეხებაშია.</p>
           </div>
           <div>
-            <h3>ქართულად, საქართველოსთვის</h3>
-            <p>ინტერფეისი, Medi და ანალიზის განმარტებები ქართულადაა. მუქი და ღია თემა. iPhone-ზე უკვე ხელმისაწვდომია, Android-ზე — მალე.</p>
+            <h3 data-en="Built for Georgia">ქართულად, საქართველოსთვის</h3>
+            <p data-en="The interface, Medi and lab explanations are in Georgian and English. Dark and light themes. Available on iPhone now, Android coming soon.">ინტერფეისი, Medi და ანალიზის განმარტებები ქართულად და ინგლისურადაა. მუქი და ღია თემა. iPhone-ზე უკვე ხელმისაწვდომია, Android-ზე — მალე.</p>
           </div>
           <div>
-            <h3>ექიმს არ ცვლის</h3>
-            <p>MEDICARD გაგებაში გეხმარება. დიაგნოზს, დანიშნულებას და სასწრაფო დახმარებას ექიმი და 112 გაძლევს.</p>
+            <h3 data-en="It doesn’t replace your doctor">ექიმს არ ცვლის</h3>
+            <p data-en="MEDICARD helps you understand. Diagnosis, treatment and emergency care come from your doctor and 112.">MEDICARD გაგებაში გეხმარება. დიაგნოზს, დანიშნულებას და სასწრაფო დახმარებას ექიმი და 112 გაძლევს.</p>
           </div>
         </div>
       </div>
@@ -197,43 +207,43 @@
 
     <section class="faq-band" id="faq" data-tone="light">
       <div class="wrap faq-grid">
-        <h2 class="display">ხშირი კითხვები</h2>
+        <h2 class="display" data-en="Frequently asked questions">ხშირი კითხვები</h2>
         <div class="faq">
           <details open>
-            <summary>შეიძლება საიტიდან შესვლა?</summary>
-            <p>არა. მედიქარდი არის მობილური აპი. ეს საიტი მხოლოდ პროდუქტს აცნობს. ანგარიში, ჩატი და ციკლი მხოლოდ ტელეფონზეა.</p>
+            <summary data-en="Can I sign in on the website?">შეიძლება საიტიდან შესვლა?</summary>
+            <p data-en-html="Yes. Sign in at <a href='/app'>medicard.ge/app</a> with the same account as in the app — Medi, medications, lab results, nutrition, cycle and more are all there. A few things need the phone: step sync, reminders, voice and the barcode scanner.">კი. <a href="/app">medicard.ge/app</a>-ზე შედი იმავე ანგარიშით, რაც აპში გაქვს — Medi, მედიკამენტები, ანალიზები, კვება, ციკლი და სხვა ყველაფერი იქაა. ზოგიერთს მაინც ტელეფონი სჭირდება: ნაბიჯების სინქრონიზაციას, შეხსენებებს, ხმას და ბარკოდის სკანერს.</p>
           </details>
           <details>
-            <summary>რა არის Medi?</summary>
-            <p>აპის პირადი AI. ხედავს შენს პროფილს და ბოლო მეტრიკებს. პასუხი არის ინფორმაცია — არა დიაგნოზი და არა რეცეპტი.</p>
+            <summary data-en="What is Medi?">რა არის Medi?</summary>
+            <p data-en="The app’s personal AI. It sees your profile and recent metrics. Its answers are information — not a diagnosis and not a prescription.">აპის პირადი AI. ხედავს შენს პროფილს და ბოლო მეტრიკებს. პასუხი არის ინფორმაცია — არა დიაგნოზი და არა რეცეპტი.</p>
           </details>
           <details>
-            <summary>Medi ცვლის ექიმს?</summary>
-            <p>არა. Medi ეხმარება გაგებაში. დიაგნოზი, რეცეპტი და სასწრაფო — ექიმი ან 112.</p>
+            <summary data-en="Does Medi replace a doctor?">Medi ცვლის ექიმს?</summary>
+            <p data-en="No. Medi helps you understand. For a diagnosis, a prescription or an emergency — a doctor or 112.">არა. Medi ეხმარება გაგებაში. დიაგნოზი, რეცეპტი და სასწრაფო — ექიმი ან 112.</p>
           </details>
           <details>
-            <summary>ციკლი ვისთვის არის?</summary>
-            <p>ქალის ანგარიშზე. პროგნოზი სერვერიდან მოდის. პარტნიორი ხედავს მხოლოდ იმას, რასაც შენ დაუშვებ. OPK, BBT და ტესტები პარტნიორთან არ იგზავნება.</p>
+            <summary data-en="Who is the cycle tracker for?">ციკლი ვისთვის არის?</summary>
+            <p data-en="It’s on women’s accounts. Predictions come from our server. A partner sees only what you allow. OPK, BBT and test results are never shared with a partner.">ქალის ანგარიშზე. პროგნოზი სერვერიდან მოდის. პარტნიორი ხედავს მხოლოდ იმას, რასაც შენ დაუშვებ. OPK, BBT და ტესტები პარტნიორთან არ იგზავნება.</p>
           </details>
           <details>
-            <summary>რა ენაზეა აპი?</summary>
-            <p>ინტერფეისი, Medi და დასკვნები ქართულადაა. საქართველოსთვისაა შექმნილი.</p>
+            <summary data-en="What language is the app in?">რა ენაზეა აპი?</summary>
+            <p data-en="Georgian and English — the interface, Medi and its explanations work in both. It’s built for Georgia.">ქართულად და ინგლისურად — ინტერფეისიც, Medi-ც და დასკვნებიც ორივე ენაზე მუშაობს. საქართველოსთვისაა შექმნილი.</p>
           </details>
           <details>
-            <summary>აპის გამოყენება ფასიანია?</summary>
-            <p>ყველა ფუნქცია უფასოა. კომერციული დღიური ან თვიური კვოტა არ მოქმედებს. უსაფრთხოებისთვის შესაძლებელია მოთხოვნების სიხშირის დროებითი შეზღუდვა.</p>
+            <summary data-en="Does the app cost anything?">აპის გამოყენება ფასიანია?</summary>
+            <p data-en="Every feature is free. There are no commercial daily or monthly quotas. For security, request rates may be limited temporarily.">ყველა ფუნქცია უფასოა. კომერციული დღიური ან თვიური კვოტა არ მოქმედებს. უსაფრთხოებისთვის შესაძლებელია მოთხოვნების სიხშირის დროებითი შეზღუდვა.</p>
           </details>
           <details>
-            <summary>კვების დღიური დიეტას ნიშნავს?</summary>
-            <p>არა. ფოტო იძლევა შეფასებას, რომელსაც შენ ასწორებ და მერე ინახავ. კალორია და მაკროები პორციაზეა. აპი დიეტას არ გინიშნავს.</p>
+            <summary data-en="Does the food diary mean a diet?">კვების დღიური დიეტას ნიშნავს?</summary>
+            <p data-en="No. A photo gives an estimate that you adjust and then save. Calories and macros are per portion. The app doesn’t put you on a diet.">არა. ფოტო იძლევა შეფასებას, რომელსაც შენ ასწორებ და მერე ინახავ. კალორია და მაკროები პორციაზეა. აპი დიეტას არ გინიშნავს.</p>
           </details>
           <details>
-            <summary>ცხოველის ასისტენტი იგივე Medi არის?</summary>
-            <p>არა. Medi Vet ცალკე საუბარია შენი ცხოველის ჩანაწერებით. ადამიანის ჯანმრთელობის ჩატს არ ერევა.</p>
+            <summary data-en="Is the pet assistant the same Medi?">ცხოველის ასისტენტი იგივე Medi არის?</summary>
+            <p data-en="No. Medi Vet is a separate conversation that uses your pet’s records. It never mixes with your own health chat.">არა. Medi Vet ცალკე საუბარია შენი ცხოველის ჩანაწერებით. ადამიანის ჯანმრთელობის ჩატს არ ერევა.</p>
           </details>
           <details>
-            <summary>როგორ ვშლი ანგარიშს?</summary>
-            <p>აპში: პროფილი → ანგარიშის წაშლა. ან support@medicard.ge. პოლიტიკა: medicard.ge/privacy</p>
+            <summary data-en="How do I delete my account?">როგორ ვშლი ანგარიშს?</summary>
+            <p data-en="In the app: Profile → Delete account. Or email support@medicard.ge. Policy: medicard.ge/privacy">აპში: პროფილი → ანგარიშის წაშლა. ან support@medicard.ge. პოლიტიკა: medicard.ge/privacy</p>
           </details>
         </div>
       </div>
@@ -242,16 +252,16 @@
     <section class="dawn" id="download" data-tone="light">
       <div class="wrap dawn-grid">
         <div class="dawn-copy">
-          <h2 class="display">ხვალინდელი დილა MEDICARD-ით დაიწყე.</h2>
-          <p>MEDICARD უკვე App Store-შია. დაასკანერე კოდი iPhone-ის კამერით და გადმოწერე. Android-ის ვერსია მალე გამოვა.</p>
+          <h2 class="display" data-en="Start tomorrow morning with MEDICARD.">ხვალინდელი დილა MEDICARD-ით დაიწყე.</h2>
+          <p data-en="MEDICARD is on the App Store now. Scan the code with your iPhone camera to download it. The Android version is coming soon.">MEDICARD უკვე App Store-შია. დაასკანერე კოდი iPhone-ის კამერით და გადმოწერე. Android-ის ვერსია მალე გამოვა.</p>
           <div class="stores">
             <a class="store-badge is-official" href="https://apps.apple.com/app/id6812517519"><img src="/icons/app-store-badge.svg" alt="Download on the App Store" width="162" height="54" /></a>
             <span class="store-badge is-soon" aria-label="Google Play — Coming soon"><img src="/icons/google-play.svg" alt="" width="24" height="24" /><span><small>Coming soon</small><b>Google Play</b></span></span>
           </div>
-          <a class="dawn-mail" href="mailto:support@medicard.ge">კითხვა გაქვს? მოგვწერე: support@medicard.ge</a>
+          <a class="dawn-mail" href="mailto:support@medicard.ge" data-en="Have a question? Write to us: support@medicard.ge">კითხვა გაქვს? მოგვწერე: support@medicard.ge</a>
         </div>
         <a class="qr-card" href="https://apps.apple.com/app/id6812517519" data-app-store>
-          <img src="/app-store-qr.svg" alt="QR კოდი: MEDICARD App Store-ში" width="200" height="200" />
+          <img src="/app-store-qr.svg" alt="QR კოდი: MEDICARD App Store-ში" data-en-alt="QR code: MEDICARD on the App Store" width="200" height="200" />
           <span><img src="/icons/app-store.svg" alt="" width="18" height="18" />App Store</span>
         </a>
       </div>
@@ -260,23 +270,23 @@
 
   <footer class="foot" data-tone="light">
     <div class="wrap">
-      <p class="disclaimer" id="disclaimer"><strong>ეს არ არის დიაგნოზი.</strong> Medi და აპის ანალიზები ეხმარება გაგებაში, მაგრამ არ ცვლის ექიმის კონსულტაციას, დანიშნულებას ან სასწრაფო დახმარებას. თუ მდგომარეობა მძიმეა — მიმართე სპეციალისტს ან დარეკე 112-ზე.</p>
+      <p class="disclaimer" data-en-html="<strong>This is not a diagnosis.</strong> Medi and the app’s analyses help you understand, but they don’t replace a doctor’s consultation, treatment or emergency care. If you feel seriously unwell, see a specialist or call 112." id="disclaimer"><strong>ეს არ არის დიაგნოზი.</strong> Medi და აპის ანალიზები ეხმარება გაგებაში, მაგრამ არ ცვლის ექიმის კონსულტაციას, დანიშნულებას ან სასწრაფო დახმარებას. თუ მდგომარეობა მძიმეა — მიმართე სპეციალისტს ან დარეკე 112-ზე.</p>
       <div class="foot-row">
-        <a class="foot-brand" href="/"><img src="/icon.png" width="28" height="28" alt="" /><span>მედიქარდი</span></a>
-        <nav class="foot-links" aria-label="საიტის ბმულები">
-          <a href="/about">ჩვენ შესახებ</a>
-          <a href="/contact">კონტაქტი</a>
-          <a href="/privacy">კონფიდენციალურობა</a>
-          <a href="/terms">წესები</a>
-          <a href="/delete-account">ანგარიშის წაშლა</a>
-          <a href="/calculators">კალკულატორები</a>
+        <a class="foot-brand" href="/"><img src="/icon.png" width="28" height="28" alt="" /><span data-en="MEDICARD">მედიქარდი</span></a>
+        <nav class="foot-links" aria-label="საიტის ბმულები" data-en-aria-label="Site links">
+          <a href="/about" data-en="About">ჩვენ შესახებ</a>
+          <a href="/contact" data-en="Contact">კონტაქტი</a>
+          <a href="/privacy" data-en="Privacy">კონფიდენციალურობა</a>
+          <a href="/terms" data-en="Terms">წესები</a>
+          <a href="/delete-account" data-en="Delete account">ანგარიშის წაშლა</a>
+          <a href="/calculators" data-en="Calculators">კალკულატორები</a>
         </nav>
         <p class="foot-copy">© <span id="y">2026</span> Medicard.GE</p>
       </div>
     </div>
   </footer>
 
-  <script src="/home.js?v=4" defer></script>
+  <script src="/home.js?v=5" defer></script>
   <script type="module" src="/home-scene.js?v=12"></script>
 </body>
 </html>

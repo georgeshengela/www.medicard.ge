@@ -7,6 +7,7 @@ import { foodTotals, localDay, mealLabels, shiftDay, type Meal } from "@/lib/nut
 import { nutritionDateLabel } from "@/lib/nutritionProgram";
 import { useIsDark, useThemeColors } from "@/theme/colors";
 import { hubInk, hubText, hubTint } from "@/theme/hub";
+import { tx } from '@/i18n/locale';
 
 /**
  * Copy one meal or a whole day to another date (never the future). A single
@@ -46,30 +47,30 @@ export function CopyMealsSheet({
   const chip = (selected: boolean) => [s.chip, { backgroundColor: selected ? hubTint(teal, dark) : c.bg200, borderColor: selected ? teal : "transparent" }];
   return (
     <Modal visible {...APP_MODAL_PROPS} onRequestClose={onClose}>
-      <Pressable accessibilityRole="button" accessibilityLabel="დახურვა" onPress={onClose} style={[StyleSheet.absoluteFill, { backgroundColor: APP_MODAL_OVERLAY }]} />
+      <Pressable accessibilityRole="button" accessibilityLabel={tx("დახურვა", "Close")} onPress={onClose} style={[StyleSheet.absoluteFill, { backgroundColor: APP_MODAL_OVERLAY }]} />
       <View style={{ flex: 1, justifyContent: "flex-end" }} pointerEvents="box-none">
         <View accessibilityViewIsModal style={[s.sheet, { backgroundColor: c.surface, paddingBottom: Math.max(safe.bottom, 16) + 8 }]}>
           <View style={s.row}>
             <Copy size={19} color={teal} />
-            <Text style={[hubText.cardTitle, { color: c.text100, fontSize: 17, flex: 1 }]}>{single ? "კვების კოპირება" : "მთელი დღის კოპირება"}</Text>
+            <Text style={[hubText.cardTitle, { color: c.text100, fontSize: 17, flex: 1 }]}>{single ? tx("კვების კოპირება", "Copy meal") : tx("მთელი დღის კოპირება", "Copy whole day")}</Text>
           </View>
           <Text numberOfLines={2} style={[hubText.body, { color: c.text200 }]}>
-            {single ? meals[0].title || meals[0].items.map((i) => i.name).join(", ") : `${nutritionDateLabel(source)} · ${meals.length} კვება`} · {t.calories} კკალ
+            {single ? meals[0].title || meals[0].items.map((i) => i.name).join(", ") : tx(`${nutritionDateLabel(source)} · ${meals.length} კვება`, `${nutritionDateLabel(source)} · ${meals.length} ${meals.length === 1 ? "meal" : "meals"}`)} · {t.calories} {tx("კკალ", "kcal")}
           </Text>
-          <Text style={[hubText.small, { color: c.text300 }]}>რომელ დღეს?</Text>
+          <Text style={[hubText.small, { color: c.text300 }]}>{tx("რომელ დღეს?", "Which day?")}</Text>
           <View style={s.wrap}>
             {days.map((d, i) => (
               <Pressable key={d} accessibilityRole="button" accessibilityState={{ selected: date === d }} onPress={() => setDate(d)} style={chip(date === d)}>
-                <Text style={[hubText.link, { color: date === d ? teal : c.text100 }]}>{i === 0 ? "დღეს" : i === 1 ? "გუშინ" : nutritionDateLabel(d)}</Text>
+                <Text style={[hubText.link, { color: date === d ? teal : c.text100 }]}>{i === 0 ? tx("დღეს", "Today") : i === 1 ? tx("გუშინ", "Yesterday") : nutritionDateLabel(d)}</Text>
               </Pressable>
             ))}
           </View>
           {single && (
             <>
-              <Text style={[hubText.small, { color: c.text300 }]}>კვების ტიპი</Text>
+              <Text style={[hubText.small, { color: c.text300 }]}>{tx("კვების ტიპი", "Meal type")}</Text>
               <View style={s.wrap}>
                 <Pressable accessibilityRole="button" accessibilityState={{ selected: type === null }} onPress={() => setType(null)} style={chip(type === null)}>
-                  <Text style={[hubText.link, { color: type === null ? teal : c.text100 }]}>იგივე ({mealLabels[meals[0].type]})</Text>
+                  <Text style={[hubText.link, { color: type === null ? teal : c.text100 }]}>{tx("იგივე", "Same")} ({mealLabels[meals[0].type]})</Text>
                 </Pressable>
                 {(Object.keys(mealLabels) as Meal["type"][])
                   .filter((k) => k !== meals[0].type)
@@ -83,10 +84,10 @@ export function CopyMealsSheet({
           )}
           {!!error && <Text accessibilityRole="alert" style={[hubText.body, { color: c.danger }]}>{error}</Text>}
           <Pressable accessibilityRole="button" disabled={busy} onPress={() => onCopy(date, type || undefined)} style={[s.primary, { opacity: busy ? 0.6 : 1 }]}>
-            {busy ? <ActivityIndicator color="#FFFFFF" /> : <Text style={[hubText.link, { color: "#FFFFFF", fontSize: 15 }]}>{date === today ? "დღევანდელში დამატება" : `${nutritionDateLabel(date)}-ში დამატება`}</Text>}
+            {busy ? <ActivityIndicator color="#FFFFFF" /> : <Text style={[hubText.link, { color: "#FFFFFF", fontSize: 15 }]}>{date === today ? tx("დღევანდელში დამატება", "Add to today") : tx(`${nutritionDateLabel(date)}-ში დამატება`, `Add to ${nutritionDateLabel(date)}`)}</Text>}
           </Pressable>
           <Pressable accessibilityRole="button" onPress={onClose} style={[s.secondary, { backgroundColor: c.bg200 }]}>
-            <Text style={[hubText.link, { color: c.text100 }]}>გაუქმება</Text>
+            <Text style={[hubText.link, { color: c.text100 }]}>{tx("გაუქმება", "Cancel")}</Text>
           </Pressable>
         </View>
       </View>

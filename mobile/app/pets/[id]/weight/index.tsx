@@ -17,6 +17,7 @@ import { api, type Pet, type PetWeightLog } from '@/lib/api';
 import { formatCycleDateKa } from '@/lib/cycleCivilDateKa';
 import { formatPetWeight, petWeightDeltaPercent } from '@/lib/petsHealth';
 import { useThemeColors } from '@/theme/colors';
+import { tx } from '@/i18n/locale';
 
 export default function PetWeightHistoryScreen() {
   const colors = useThemeColors();
@@ -61,7 +62,7 @@ export default function PetWeightHistoryScreen() {
     <>
       <Stack.Screen options={{ title: pet ? `${ka.pets.weightTitle} · ${pet.name}` : ka.pets.weightTitle }} />
       <PetPageScroll>
-        <PetIntro title="პატარა ცვლილებებიც ჩანს." body="ჩაწერე რეალური გაზომვები. წონის ცვლილება ვეტერინართან ერთად შეაფასე." icon={Scale} />
+        <PetIntro title={tx('პატარა ცვლილებებიც ჩანს.', 'Even small changes show.')} body={tx('ჩაწერე რეალური გაზომვები. წონის ცვლილება ვეტერინართან ერთად შეაფასე.', 'Log real measurements. Review weight changes together with your vet.')} icon={Scale} />
         {latest ? (
           <Card>
             <View className="flex-row items-center">

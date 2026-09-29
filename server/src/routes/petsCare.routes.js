@@ -571,7 +571,7 @@ petsCareRouter.patch(
       }
       let patch;
       try {
-        patch = normalizeReminderPatch(req.body || {});
+        patch = normalizeReminderPatch(req.body || {}, req.lang);
       } catch (error) {
         return sendValidation(res, error);
       }
@@ -602,7 +602,7 @@ petsCareRouter.post(
       }
       let data;
       try {
-        data = sanitizeReminderTelemetry(req.body || {});
+        data = sanitizeReminderTelemetry(req.body || {}, req.lang);
       } catch (error) {
         return sendValidation(res, error);
       }

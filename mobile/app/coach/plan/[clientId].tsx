@@ -7,15 +7,16 @@ import type { ClientDashboard, MealPlan } from '@/lib/coach';
 import { Button, Card, Chip, CoachForm, Field, Input, Loading, Section, coachStyles } from '@/components/coach/CoachUI';
 import { hubText } from '@/theme/hub';
 import { useThemeColors } from '@/theme/colors';
+import { tx } from '@/i18n/locale';
 
 const SLOTS: { key: string; label: string; time: string }[] = [
-  { key: 'breakfast', label: 'საუზმე', time: '08:30' },
-  { key: 'snack1', label: 'წახემსება', time: '11:30' },
-  { key: 'lunch', label: 'სადილი', time: '14:00' },
-  { key: 'preworkout', label: 'ვარჯიშამდე', time: '17:30' },
-  { key: 'postworkout', label: 'ვარჯიშის შემდეგ', time: '20:00' },
-  { key: 'snack2', label: 'მეორე წახემსება', time: '17:00' },
-  { key: 'dinner', label: 'ვახშამი', time: '20:30' },
+  { key: 'breakfast', label: tx('საუზმე', 'Breakfast'), time: '08:30' },
+  { key: 'snack1', label: tx('წახემსება', 'Snack'), time: '11:30' },
+  { key: 'lunch', label: tx('სადილი', 'Lunch'), time: '14:00' },
+  { key: 'preworkout', label: tx('ვარჯიშამდე', 'Pre-workout'), time: '17:30' },
+  { key: 'postworkout', label: tx('ვარჯიშის შემდეგ', 'Post-workout'), time: '20:00' },
+  { key: 'snack2', label: tx('მეორე წახემსება', 'Second snack'), time: '17:00' },
+  { key: 'dinner', label: tx('ვახშამი', 'Dinner'), time: '20:30' },
 ];
 type Item = { name: string; grams: string; calories: string };
 type Meal = { slot: string; time: string; items: Item[] };
@@ -51,7 +52,7 @@ export default function CoachPlanEditor() {
           setMeals(p.meals.map((m) => ({ slot: m.slot, time: m.time ?? '', items: m.items.map((i) => ({ name: i.name, grams: i.grams ? String(i.grams) : '', calories: i.calories ? String(i.calories) : '' })) })));
           setNote(p.note);
         } else {
-          setTitle('ჩემი გეგმა');
+          setTitle(tx('ჩემი გეგმა', 'My plan'));
           setMeals([
             { slot: 'breakfast', time: '08:30', items: [] },
             { slot: 'lunch', time: '14:00', items: [] },
@@ -59,16 +60,16 @@ export default function CoachPlanEditor() {
           ]);
         }
       })
-      .catch((e) => Alert.alert('ვერ ჩაიტვირთა', e instanceof ApiError ? e.message : 'სცადე ხელახლა.'));
+      .catch((e) => Alert.alert(tx('ვერ ჩაიტვირთა', 'Couldn’t load'), e instanceof ApiError ? e.message : tx('სცადე ხელახლა.', 'Please try again.')));
   }, [clientId]);
 
   const kg = d?.weight?.currentKg ?? null;
   // Rough presets from body weight (kcal/kg): a starting point the trainer adjusts, not a prescription.
   const presets = kg
     ? [
-        { label: 'კლება', kcal: Math.round((kg * 26) / 50) * 50, protein: Math.round(kg * 2) },
-        { label: 'შენარჩუნება', kcal: Math.round((kg * 31) / 50) * 50, protein: Math.round(kg * 1.8) },
-        { label: 'მატება', kcal: Math.round((kg * 36) / 50) * 50, protein: Math.round(kg * 1.8) },
+        { label: tx('კლება', 'Lose'), kcal: Math.round((kg * 26) / 50) * 50, protein: Math.round(kg * 2) },
+        { label: tx('შენარჩუნება', 'Maintain'), kcal: Math.round((kg * 31) / 50) * 50, protein: Math.round(kg * 1.8) },
+        { label: tx('მატება', 'Gain'), kcal: Math.round((kg * 36) / 50) * 50, protein: Math.round(kg * 1.8) },
       ]
     : [];
   const planned = useMemo(() => meals.reduce((s, m) => s + m.items.reduce((t, i) => t + (n(i.calories) ?? 0), 0), 0), [meals]);
@@ -80,13 +81,13 @@ export default function CoachPlanEditor() {
     const f = Math.round((p.kcal * 0.27) / 9);
     setFat(String(f));
     setCarbs(String(Math.max(0, Math.round((p.kcal - p.protein * 4 - f * 9) / 4))));
-    if (!title || title === 'ჩემი გეგმა') setTitle(`${p.label} · ${p.kcal} კკალ`);
+    if (!title || title === tx('ჩემი გეგმა', 'My plan')) setTitle(`${p.label} · ${p.kcal} ${tx('კკალ', 'kcal')}`);
   };
 
   const save = async () => {
     const cal = n(kcal);
-    if (!cal || cal < 800 || cal > 6000) return Alert.alert('კალორია', 'დღიური კალორია 800–6000 უნდა იყოს.');
-    if (title.trim().length < 2) return Alert.alert('სათაური', 'დაარქვი გეგმას სახელი.');
+    if (!cal || cal < 800 || cal > 6000) return Alert.alert(tx('კალორია', 'Calories'), tx('დღიური კალორია 800–6000 უნდა იყოს.', 'Daily calories must be between 800 and 6000.'));
+    if (title.trim().length < 2) return Alert.alert(tx('სათაური', 'Title'), tx('დაარქვი გეგმას სახელი.', 'Give the plan a name.'));
     setBusy(true);
     try {
       const body: { title: string; targets: MealPlan['targets']; meals: MealPlan['meals']; note: string } = {
@@ -96,9 +97,9 @@ export default function CoachPlanEditor() {
         note: note.trim(),
       };
       await api.coach.savePlan(String(clientId), body);
-      Alert.alert('გეგმა გაიგზავნა', `${d?.client.firstName ?? 'კლიენტს'} შეტყობინება მიუვა. დაცვას „კვება“ ტაბზე ნახავ.`, [{ text: 'კარგი', onPress: () => router.back() }]);
+      Alert.alert(tx('გეგმა გაიგზავნა', 'Plan sent'), tx(`${d?.client.firstName ?? 'კლიენტს'} შეტყობინება მიუვა. დაცვას „კვება“ ტაბზე ნახავ.`, `${d?.client.firstName ?? 'Your client'} will get a notification. You’ll see adherence on the Nutrition tab.`), [{ text: tx('კარგი', 'OK'), onPress: () => router.back() }]);
     } catch (e) {
-      Alert.alert('ვერ შეინახა', e instanceof ApiError ? e.message : 'სცადე ხელახლა.');
+      Alert.alert(tx('ვერ შეინახა', 'Couldn’t save'), e instanceof ApiError ? e.message : tx('სცადე ხელახლა.', 'Please try again.'));
     } finally {
       setBusy(false);
     }
@@ -107,15 +108,15 @@ export default function CoachPlanEditor() {
   const setItem = (mi: number, ii: number, patch: Partial<Item>) => setMeals((list) => list.map((m, i) => (i === mi ? { ...m, items: m.items.map((it, j) => (j === ii ? { ...it, ...patch } : it)) } : m)));
 
   return (
-    <CoachForm title="კვების გეგმა" subtitle={d?.client.name} fallback="/coach/clients" footer={<Button label={d?.plan ? 'ახალი ვერსიის გაგზავნა' : 'გეგმის გაგზავნა'} busy={busy} onPress={() => void save()} />}>
+    <CoachForm title={tx('კვების გეგმა', 'Meal plan')} subtitle={d?.client.name} fallback="/coach/clients" footer={<Button label={d?.plan ? tx('ახალი ვერსიის გაგზავნა', 'Send new version') : tx('გეგმის გაგზავნა', 'Send plan')} busy={busy} onPress={() => void save()} />}>
       {!d ? <Loading /> : null}
       {d ? (
         <>
-          <Field label="სათაური">
-            <Input value={title} onChangeText={setTitle} maxLength={80} placeholder="მაგ. ჭრის ფაზა · 1900 კკალ" />
+          <Field label={tx('სათაური', 'Title')}>
+            <Input value={title} onChangeText={setTitle} maxLength={80} placeholder={tx('მაგ. ჭრის ფაზა · 1900 კკალ', 'e.g. Cutting phase · 1900 kcal')} />
           </Field>
           {presets.length ? (
-            <Field label={`სწრაფი დაწყება (${kg} კგ-ზე)`} hint="საწყისი მიახლოება წონიდან — მორგება შენზეა.">
+            <Field label={tx(`სწრაფი დაწყება (${kg} კგ-ზე)`, `Quick start (for ${kg} kg)`)} hint={tx('საწყისი მიახლოება წონიდან — მორგება შენზეა.', 'A rough starting point from body weight — adjust it yourself.')}>
               <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
                 {presets.map((p) => (
                   <Chip key={p.label} label={`${p.label} · ${p.kcal}`} onPress={() => applyPreset(p)} />
@@ -125,10 +126,10 @@ export default function CoachPlanEditor() {
           ) : null}
           <View style={[coachStyles.row, { gap: 8 }]}>
             {[
-              ['კკალ', kcal, setKcal],
-              ['ცილა, გ', protein, setProtein],
-              ['ნახშ., გ', carbs, setCarbs],
-              ['ცხიმი, გ', fat, setFat],
+              [tx('კკალ', 'kcal'), kcal, setKcal],
+              [tx('ცილა, გ', 'Protein, g'), protein, setProtein],
+              [tx('ნახშ., გ', 'Carbs, g'), carbs, setCarbs],
+              [tx('ცხიმი, გ', 'Fat, g'), fat, setFat],
             ].map(([label, value, set]) => (
               <View key={label as string} style={{ flex: 1 }}>
                 <Field label={label as string}>
@@ -148,9 +149,9 @@ export default function CoachPlanEditor() {
               </View>
               <View style={[coachStyles.row, { gap: 12, flexWrap: 'wrap' }]}>
                 {[
-                  ['ცილა', (n(protein) ?? 0) * 4, '#14B8A6'],
-                  ['ნახშირწყალი', (n(carbs) ?? 0) * 4, '#F59E0B'],
-                  ['ცხიმი', (n(fat) ?? 0) * 9, '#8B5CF6'],
+                  [tx('ცილა', 'Protein'), (n(protein) ?? 0) * 4, '#14B8A6'],
+                  [tx('ნახშირწყალი', 'Carbs'), (n(carbs) ?? 0) * 4, '#F59E0B'],
+                  [tx('ცხიმი', 'Fat'), (n(fat) ?? 0) * 9, '#8B5CF6'],
                 ].map(([label, v, color]) => (
                   <View key={label as string} style={[coachStyles.row, { gap: 5 }]}>
                     <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: color as string }} />
@@ -160,33 +161,34 @@ export default function CoachPlanEditor() {
               </View>
               {n(kcal) ? (
                 <Text style={[hubText.small, { color: Math.abs(macroKcal - (n(kcal) ?? 0)) > 150 ? c.warning : c.success }]}>
-                  მაკროებიდან {Math.round(macroKcal)} კკალ{Math.abs(macroKcal - (n(kcal) ?? 0)) > 150 ? ' — დღიურ კალორიას არ ემთხვევა' : ' — ემთხვევა დღიურ კალორიას'}
+                  {tx('მაკროებიდან', 'From macros:')} {Math.round(macroKcal)} {tx('კკალ', 'kcal')}
+                  {Math.abs(macroKcal - (n(kcal) ?? 0)) > 150 ? tx(' — დღიურ კალორიას არ ემთხვევა', ' — doesn’t match daily calories') : tx(' — ემთხვევა დღიურ კალორიას', ' — matches daily calories')}
                 </Text>
               ) : null}
             </View>
           ) : null}
 
-          <Section title={planned ? `მენიუ · ${Math.round(planned)} კკალ` : 'მენიუ'} style={{ marginTop: 22 }}>
+          <Section title={planned ? tx(`მენიუ · ${Math.round(planned)} კკალ`, `Menu · ${Math.round(planned)} kcal`) : tx('მენიუ', 'Menu')} style={{ marginTop: 22 }}>
             {meals.map((m, mi) => (
               <Card key={`${m.slot}${mi}`} style={{ marginBottom: 10, gap: 8 }}>
                 <View style={coachStyles.row}>
                   <Text style={[hubText.cardTitle, { color: c.text100, flex: 1 }]}>{SLOTS.find((s) => s.key === m.slot)?.label ?? m.slot}</Text>
                   <Input inset style={{ width: 80, minHeight: 40, textAlign: 'center' }} value={m.time} onChangeText={(t) => setMeals((list) => list.map((x, i) => (i === mi ? { ...x, time: t.replace(/[^\d:]/g, '').slice(0, 5) } : x)))} placeholder="08:30" keyboardType="numbers-and-punctuation" />
-                  <Pressable accessibilityRole="button" accessibilityLabel="კვების წაშლა" hitSlop={10} onPress={() => setMeals((list) => list.filter((_, i) => i !== mi))} style={{ width: 40, height: 40, alignItems: 'center', justifyContent: 'center' }}>
+                  <Pressable accessibilityRole="button" accessibilityLabel={tx('კვების წაშლა', 'Remove meal')} hitSlop={10} onPress={() => setMeals((list) => list.filter((_, i) => i !== mi))} style={{ width: 40, height: 40, alignItems: 'center', justifyContent: 'center' }}>
                     <X size={18} color={c.text300} />
                   </Pressable>
                 </View>
                 {m.items.map((it, ii) => (
                   <View key={ii} style={[coachStyles.row, { gap: 6 }]}>
-                    <Input inset style={{ flex: 2.2, minHeight: 42 }} value={it.name} onChangeText={(t) => setItem(mi, ii, { name: t })} placeholder="პროდუქტი" />
-                    <Input inset style={{ flex: 1, minHeight: 42, textAlign: 'center', paddingHorizontal: 4 }} keyboardType="number-pad" value={it.grams} onChangeText={(t) => setItem(mi, ii, { grams: t.replace(/\D/g, '').slice(0, 4) })} placeholder="გ" />
-                    <Input inset style={{ flex: 1, minHeight: 42, textAlign: 'center', paddingHorizontal: 4 }} keyboardType="number-pad" value={it.calories} onChangeText={(t) => setItem(mi, ii, { calories: t.replace(/\D/g, '').slice(0, 4) })} placeholder="კკალ" />
-                    <Pressable accessibilityRole="button" accessibilityLabel="წაშლა" hitSlop={8} onPress={() => setMeals((list) => list.map((x, i) => (i === mi ? { ...x, items: x.items.filter((_, j) => j !== ii) } : x)))}>
+                    <Input inset style={{ flex: 2.2, minHeight: 42 }} value={it.name} onChangeText={(t) => setItem(mi, ii, { name: t })} placeholder={tx('პროდუქტი', 'Food')} />
+                    <Input inset style={{ flex: 1, minHeight: 42, textAlign: 'center', paddingHorizontal: 4 }} keyboardType="number-pad" value={it.grams} onChangeText={(t) => setItem(mi, ii, { grams: t.replace(/\D/g, '').slice(0, 4) })} placeholder={tx('გ', 'g')} />
+                    <Input inset style={{ flex: 1, minHeight: 42, textAlign: 'center', paddingHorizontal: 4 }} keyboardType="number-pad" value={it.calories} onChangeText={(t) => setItem(mi, ii, { calories: t.replace(/\D/g, '').slice(0, 4) })} placeholder={tx('კკალ', 'kcal')} />
+                    <Pressable accessibilityRole="button" accessibilityLabel={tx('წაშლა', 'Remove')} hitSlop={8} onPress={() => setMeals((list) => list.map((x, i) => (i === mi ? { ...x, items: x.items.filter((_, j) => j !== ii) } : x)))}>
                       <Trash2 size={16} color={c.text300} />
                     </Pressable>
                   </View>
                 ))}
-                <Button label="პროდუქტის დამატება" icon={Plus} kind="ghost" style={{ minHeight: 40 }} onPress={() => setMeals((list) => list.map((x, i) => (i === mi ? { ...x, items: [...x.items, { name: '', grams: '', calories: '' }] } : x)))} />
+                <Button label={tx('პროდუქტის დამატება', 'Add food')} icon={Plus} kind="ghost" style={{ minHeight: 40 }} onPress={() => setMeals((list) => list.map((x, i) => (i === mi ? { ...x, items: [...x.items, { name: '', grams: '', calories: '' }] } : x)))} />
               </Card>
             ))}
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
@@ -196,11 +198,11 @@ export default function CoachPlanEditor() {
             </View>
           </Section>
 
-          <Field label="რჩევა კლიენტს">
-            <Input value={note} onChangeText={setNote} multiline maxLength={1000} placeholder="მაგ. ყოველ კვებაში ცილა, 2.5 ლ წყალი, შაქრიანი სასმელი — არა" />
+          <Field label={tx('რჩევა კლიენტს', 'Advice for client')}>
+            <Input value={note} onChangeText={setNote} multiline maxLength={1000} placeholder={tx('მაგ. ყოველ კვებაში ცილა, 2.5 ლ წყალი, შაქრიანი სასმელი — არა', 'e.g. Protein at every meal, 2.5 l of water, no sugary drinks')} />
           </Field>
           <Text style={[hubText.small, { color: c.text300, marginTop: 10 }]}>
-            გეგმა კლიენტის პირად კვების პროგრამას არ ცვლის. სამედიცინო მდგომარეობისას (დიაბეტი, თირკმელი, ორსულობა, კვების დარღვევა) კლიენტმა ექიმთანაც უნდა შეათანხმოს.
+            {tx('გეგმა კლიენტის პირად კვების პროგრამას არ ცვლის. სამედიცინო მდგომარეობისას (დიაბეტი, თირკმელი, ორსულობა, კვების დარღვევა) კლიენტმა ექიმთანაც უნდა შეათანხმოს.', 'The plan doesn’t replace the client’s own nutrition program. With a medical condition (diabetes, kidney disease, pregnancy, an eating disorder), the client should also agree it with their doctor.')}
           </Text>
           <View style={{ height: 12 }} />
         </>

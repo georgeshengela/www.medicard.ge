@@ -5,10 +5,12 @@
  * without opening a single component, and gives us a single seam for adding a
  * second locale later.
  */
+import { appLang } from './locale.js';
+import { en } from './en.ts';
 import { PREGNANCY_CARE_COPY_KA } from './cycle/pregnancyCare.js';
 import { PREGNANCY_TIMELINE_COPY_KA } from './cycle/pregnancyTimeline.js';
 
-export const ka = {
+const kaStrings = {
   app: {
     name: 'Medicard.GE',
     brandWordmark: 'მედიქარდი',
@@ -3418,6 +3420,7 @@ export const ka = {
   },
 
   profile: {
+    language: 'ენა',
     title: 'პროფილი',
     account: 'ანგარიში',
     memberSince: 'რეგისტრირებულია',
@@ -3764,3 +3767,27 @@ export const ka = {
 
 } as const;
 
+type Widen<T> = T extends string
+  ? string
+  : T extends number
+    ? number
+    : T extends boolean
+      ? boolean
+      : T extends (...args: infer A) => infer R
+        ? (...args: A) => Widen<R>
+        : T extends readonly (infer U)[]
+          ? readonly Widen<U>[]
+          : T extends object
+            ? { readonly [K in keyof T]: Widen<T[K]> }
+            : T;
+
+/** Shape every locale must fill (Georgian literals widened to string). */
+export type Strings = Widen<typeof kaStrings>;
+
+export const kaDictionary = kaStrings;
+
+/**
+ * Active-language strings. Named `ka` for history: every screen imports it, and it resolves to the
+ * English dictionary when the person chose English (see `./locale.js`).
+ */
+export const ka: typeof kaStrings = (appLang() === 'en' ? (en as unknown) : kaStrings) as typeof kaStrings;

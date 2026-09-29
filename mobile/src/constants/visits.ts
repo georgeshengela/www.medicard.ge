@@ -1,4 +1,5 @@
 import { ka } from '@/i18n/ka';
+import { tx } from '../i18n/locale.js';
 import type { VisitReminderConfig } from '@/lib/api';
 
 export type DoctorTypeCode =
@@ -49,17 +50,17 @@ export const VISIT_TIME_SLOTS = Array.from({ length: 48 }, (_, i) => {
 export const VISIT_TIME_GROUPS = [
   {
     key: 'morning',
-    label: 'დილა',
+    label: tx('დილა', 'Morning'),
     slots: VISIT_TIME_SLOTS.filter((_, i) => i >= 16 && i <= 23),
   },
   {
     key: 'afternoon',
-    label: 'შუადღე',
+    label: tx('შუადღე', 'Afternoon'),
     slots: VISIT_TIME_SLOTS.filter((_, i) => i >= 24 && i <= 35),
   },
   {
     key: 'evening',
-    label: 'საღამო',
+    label: tx('საღამო', 'Evening'),
     slots: VISIT_TIME_SLOTS.filter((_, i) => i >= 36 && i <= 43),
   },
 ] as const;

@@ -10,6 +10,7 @@ import rateLimit from 'express-rate-limit';
 import { aiDailyCap } from '../lib/aiDailyCap.js';
 import { attachRateLimitHandler, RATE_LIMIT_VALIDATE } from '../lib/rateLimitKey.js';
 import { asyncHandler } from '../middleware/error.js';
+import { t } from '../lib/i18n.js';
 
 export const healthProfileRouter = Router();
 
@@ -82,7 +83,7 @@ healthProfileRouter.put(
   asyncHandler(async (req, res) => {
     const data = patchHealthProfileSchema.parse(req.body);
     const { gender, birthDate, ...profileFields } = data;
-    const ageError = birthDateAgeError(birthDate, req.user.birthDate);
+    const ageError = birthDateAgeError(birthDate, req.user.birthDate, req.lang);
     if (ageError) return res.status(400).json({ error: ageError, code: 'MIN_AGE' });
 
     if (gender !== undefined || birthDate !== undefined) {
@@ -127,7 +128,7 @@ healthProfileRouter.post(
   asyncHandler(async (req, res) => {
     const profile = await loadProfile(req.user.id);
     if (!profile) {
-      return res.status(404).json({ error: 'პროფილი ვერ მოიძებნა' });
+      return res.status(404).json({ error: t(req, 'პროფილი ვერ მოიძებნა', 'Profile not found') });
     }
 
     const user = await prisma.user.findUnique({
@@ -189,7 +190,7 @@ healthProfileRouter.post(
   '/complete',
   asyncHandler(async (req, res) => {
     const data = completeSchema.parse(req.body);
-    const ageError = birthDateAgeError(data.birthDate, req.user.birthDate);
+    const ageError = birthDateAgeError(data.birthDate, req.user.birthDate, req.lang);
     if (ageError) return res.status(400).json({ error: ageError, code: 'MIN_AGE' });
 
     await prisma.user.update({

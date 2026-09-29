@@ -1,3 +1,5 @@
+import { labRowName } from '@/lib/labNames';
+import { dateLocale } from '@/i18n/locale';
 import React, { useMemo, useState } from 'react';
 import { ActivityIndicator, Alert, Pressable, ScrollView, Text, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
@@ -42,7 +44,7 @@ export default function LabDateScreen() {
         panel.parameters.map((param) => ({
           ...param,
           panelId: panel.id,
-          time: new Date(panel.createdAt).toLocaleTimeString('ka-GE', { hour: '2-digit', minute: '2-digit' }),
+          time: new Date(panel.createdAt).toLocaleTimeString(dateLocale(), { hour: '2-digit', minute: '2-digit' }),
         })),
       ),
     [panels],
@@ -167,7 +169,7 @@ export default function LabDateScreen() {
         {rows.map((row) => (
           <LabLogRow
             key={`${row.panelId}-${row.key}`}
-            title={`${row.nameKa || row.nameEn}  ${row.display} ${row.unit}`.trim()}
+            title={`${labRowName(row)}  ${row.display} ${row.unit}`.trim()}
             subtitle={row.time}
             flag={row.flag}
             onPress={() => router.push(`/lab/param/${encodeURIComponent(row.key)}` as never)}

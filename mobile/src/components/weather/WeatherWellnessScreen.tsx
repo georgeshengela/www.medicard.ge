@@ -9,6 +9,7 @@ import { airBandColor, weatherMood } from '@/components/weather/weatherMood';
 import { MedicalSourcesLink } from '@/components/health/MedicalSourcesLink';
 import { useWeather } from '@/hooks/useWeather';
 import { ka } from '@/i18n/ka';
+import { appLang } from '@/i18n/locale';
 import {
   WEATHER_UI,
   logWeatherEvent,
@@ -21,7 +22,7 @@ import {
 import { localHourFromIso as hourOf } from '@/lib/weather/time';
 import { useIsDark, useThemeColors } from '@/theme/colors';
 
-const ui = WEATHER_UI.ka;
+const ui = WEATHER_UI[appLang()];
 
 export function WeatherWellnessScreen() {
   const router = useRouter();
@@ -114,10 +115,10 @@ export function WeatherWellnessScreen() {
                 </Text>
               </View>
               <Text style={{ fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 18, lineHeight: 26, color: colors.text100 }}>
-                {weatherCopyText(recommendation.titleKey, 'ka')}
+                {weatherCopyText(recommendation.titleKey, appLang())}
               </Text>
               <Text style={{ fontFamily: 'NotoSansGeorgian_500Medium', fontSize: 14.5, lineHeight: 21, color: colors.text200 }}>
-                {weatherCopyText(recommendation.bodyKey, 'ka')}
+                {weatherCopyText(recommendation.bodyKey, appLang())}
               </Text>
               {recommendation.bestOutdoorWindow ? (
                 <View
@@ -215,11 +216,11 @@ export function WeatherWellnessScreen() {
                     }}
                   >
                     <Text style={{ width: 52, fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 13.5, color: colors.text100 }}>
-                      {weekdayShort(day.date, 'ka')}
+                      {weekdayShort(day.date, appLang())}
                     </Text>
                     <Meteocon slug={meteoconSlugFor(day.condition, true)} size={36} />
                     <Text style={{ flex: 1, fontFamily: 'NotoSansGeorgian_500Medium', fontSize: 13, color: colors.text300 }} numberOfLines={1}>
-                      {weatherConditionLabel(day.condition, 'ka')}
+                      {weatherConditionLabel(day.condition, appLang())}
                     </Text>
                     <Text style={{ fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 14, color: colors.text100 }}>
                       {Math.round(day.maxC)}°
@@ -262,7 +263,7 @@ function Hero({ snapshot }: { snapshot: NonNullable<ReturnType<typeof useWeather
         {Math.round(snapshot.current.temperatureC)}°
       </Text>
       <Text style={{ fontFamily: 'NotoSansGeorgian_500Medium', fontSize: 15, color: colors.text200, textAlign: 'center' }}>
-        {weatherConditionLabel(snapshot.current.condition, 'ka')}
+        {weatherConditionLabel(snapshot.current.condition, appLang())}
         {'  ·  '}
         {ui.feelsLike(snapshot.current.feelsLikeC)}
       </Text>

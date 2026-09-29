@@ -1,3 +1,4 @@
+import { tx } from '@/i18n/locale';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 
 import { Animated, Easing, Text, View } from 'react-native';
@@ -114,7 +115,7 @@ export default function SymptomAnalyzingScreen() {
           result: res.result,
 
         }, owner).catch(() => {
-          if (current()) updateSymptomChecker({ lastError: 'შედეგი მზადაა, თუმცა ამ მოწყობილობაზე ისტორიის შენახვა ვერ მოხერხდა.' });
+          if (current()) updateSymptomChecker({ lastError: tx('შედეგი მზადაა, თუმცა ამ მოწყობილობაზე ისტორიის შენახვა ვერ მოხერხდა.', 'Your result is ready, but we couldn’t save it to history on this device.') });
         });
 
         if (current()) router.replace('/symptoms/results?ready=1' as never);

@@ -37,7 +37,7 @@ export const postInput = z.object({ body:z.string().trim().min(1).max(3000), top
 export const mentionInput=z.object({targetId:id,kind:z.enum(['post','comment']),label:z.string().min(1).max(100),start:z.number().int().min(0),end:z.number().int().min(1)}).strict();
 export const commentInput = z.object({ body:z.string().min(1).max(1500).refine(v=>!!v.trim()), anonymous:z.boolean().optional(), identityMode:identityModeInput.optional(), requestId:id, parentId:id.nullable().optional(),mentions:z.array(mentionInput).max(10).default([]) }).strict();
 export function validMentionRanges(body,mentions){let end=0;for(const m of [...mentions].sort((a,b)=>a.start-b.start)){if(m.start<end||m.end>body.length||body.slice(m.start,m.end)!=='@'+m.label)return false;end=m.end;}return true;}
-export function fail(status,message) { throw Object.assign(new Error(message),{status}); }
+export function fail(status,message,messageEn) { throw Object.assign(new Error(message),messageEn?{status,messageEn}:{status}); }
 export function eligible(user) { return user?.gender === 'FEMALE' && user?.status === 'ACTIVE'; }
 export function publicAuthor(row){return row.anonymous?row.anonymousAlias||anonymousName(row.postId||row.id,row.authorId):row.publicName||row.alias;}
 export function resolveIdentity(input,member,forceAnonymous=false){
@@ -55,15 +55,15 @@ export function publicContent(row, viewer) {
 }
 export async function cleanImage(encoded) {
  if(!encoded)return null;
- if(!/^[A-Za-z0-9+/]+={0,2}$/.test(encoded)) fail(400,'ფოტოს ფორმატი არასწორია.');
+ if(!/^[A-Za-z0-9+/]+={0,2}$/.test(encoded)) fail(400,'ფოტოს ფორმატი არასწორია.','The photo format is not valid.');
  const bytes=Buffer.from(encoded,'base64');
- if(bytes.length>1050000)fail(400,'ფოტოს ზომა ძალიან დიდია.');
+ if(bytes.length>1050000)fail(400,'ფოტოს ზომა ძალიან დიდია.','The photo is too large.');
  try {
   const img=sharp(bytes,{limitInputPixels:20000000,animated:false,failOn:'error'});
   const meta=await img.metadata();
-  if(!['jpeg','png','webp'].includes(meta.format)|| (meta.pages||1)>1)fail(400,'აირჩიე JPEG, PNG ან WebP ფოტო.');
+  if(!['jpeg','png','webp'].includes(meta.format)|| (meta.pages||1)>1)fail(400,'აირჩიე JPEG, PNG ან WebP ფოტო.','Choose a JPEG, PNG or WebP photo.');
   // Re-encoding intentionally strips all EXIF, GPS, filename and embedded metadata.
   return await img.rotate().resize(1200,1200,{fit:'inside',withoutEnlargement:true}).jpeg({quality:80}).toBuffer();
- }catch(e){if(e.status)throw e;fail(400,'ფოტო ვერ დამუშავდა. აირჩიე სხვა ფოტო.');}
+ }catch(e){if(e.status)throw e;fail(400,'ფოტო ვერ დამუშავდა. აირჩიე სხვა ფოტო.','We could not process this photo. Please choose another one.');}
 }
 export const notificationText={mention:'კომენტარში მოგნიშნეს.',like:'შენს პოსტზე ახალი რეაქციაა.',dislike:'შენს პოსტზე ახალი განსხვავებული აზრია.',comment:'შენს პოსტზე ახალი კომენტარია.',approved:'შენი ჩანაწერი გამოქვეყნდა.',reply:'შენს კომენტარს უპასუხეს.',comment_like:'შენი კომენტარი მოიწონეს.'};

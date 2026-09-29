@@ -13,6 +13,7 @@ import { referralShareMessage, type ReferralSummary } from '@/lib/referral';
 import { HUB, hubText } from '@/theme/hub';
 import { useThemeColors } from '@/theme/colors';
 import { KeyRound } from 'lucide-react-native';
+import { tx } from '@/i18n/locale';
 
 /** Referral hub (Phase 3.4): share your code, see progress, enter a friend's code once. */
 export default function InviteScreen() {
@@ -62,7 +63,7 @@ export default function InviteScreen() {
       <View style={{ height: 56, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 8 }}>
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel="უკან დაბრუნება"
+          accessibilityLabel={tx('უკან დაბრუნება', 'Go back')}
           onPress={() => (router.canGoBack() ? router.back() : router.replace('/(tabs)/profile' as never))}
           style={{ width: 44, height: 44, alignItems: 'center', justifyContent: 'center' }}
         >

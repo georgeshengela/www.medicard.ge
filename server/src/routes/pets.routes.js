@@ -19,10 +19,13 @@ import { petsHealthRouter } from './petsHealth.routes.js';
 import { petsCareRouter } from './petsCare.routes.js';
 import { petsChatRouter } from './petsChat.routes.js';
 import { getPetsClinicsDirectory } from '../lib/petsClinics.js';
+import { petsEnglishErrors } from '../lib/petsMessages.js';
 
 export const petsRouter = Router();
 
 petsRouter.use(requireAuth);
+// English requests: Georgian `error` strings from every Pets sub-router (health, care, chat) → English.
+petsRouter.use(petsEnglishErrors);
 
 const idParam = z.object({ petId: z.string().uuid('არასწორი იდენტიფიკატორი') });
 
@@ -104,8 +107,8 @@ async function findOwnedActivePet(userId, petId) {
 
 petsRouter.get(
   '/catalog',
-  asyncHandler(async (_req, res) => {
-    return res.json(publicPetsCatalog());
+  asyncHandler(async (req, res) => {
+    return res.json(publicPetsCatalog(req.lang));
   }),
 );
 

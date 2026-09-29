@@ -18,20 +18,21 @@ import { healthScoreLabel } from "@/lib/nutrition";
 import type { LogMethod } from "./LogMethodSheet";
 import { useIsDark, useThemeColors } from "@/theme/colors";
 import { HUB, hubInk, hubText, hubTint, type HubInk } from "@/theme/hub";
+import { tx } from '@/i18n/locale';
 
 type Tile = { method: LogMethod; title: string; hint: string; icon: LucideIcon; ink: HubInk };
 /** The four ways a first-time user should see first; the rest live behind "more". */
 export const PRIMARY_LOG_TILES: Tile[] = [
-  { method: "camera", title: "გადაიღე", hint: "კერძის ფოტო", icon: Camera, ink: "teal" },
-  { method: "barcode", title: "შტრიხკოდი", hint: "შეფუთული პროდუქტი", icon: ScanBarcode, ink: "blue" },
-  { method: "describe", title: "თქვი", hint: "ან ჩაწერე სიტყვებით", icon: Mic, ink: "amber" },
-  { method: "search", title: "მოძებნე", hint: "კერძები და პროდუქტები", icon: Search, ink: "green" },
+  { method: "camera", title: tx("გადაიღე", "Snap"), hint: tx("კერძის ფოტო", "Photo of a meal"), icon: Camera, ink: "teal" },
+  { method: "barcode", title: tx("შტრიხკოდი", "Barcode"), hint: tx("შეფუთული პროდუქტი", "Packaged food"), icon: ScanBarcode, ink: "blue" },
+  { method: "describe", title: tx("თქვი", "Describe"), hint: tx("ან ჩაწერე სიტყვებით", "Say it or type it"), icon: Mic, ink: "amber" },
+  { method: "search", title: tx("მოძებნე", "Search"), hint: tx("კერძები და პროდუქტები", "Dishes and products"), icon: Search, ink: "green" },
 ];
 export const SECONDARY_LOG_TILES: Tile[] = [
-  { method: "gallery", title: "გალერეა", hint: "უკვე გადაღებული ფოტო", icon: ImagePlus, ink: "teal" },
-  { method: "label", title: "ეტიკეტი", hint: "Nutrition Facts ცხრილი", icon: ScanText, ink: "violet" },
-  { method: "saved", title: "შენახული", hint: "ბოლო და რჩეული კერძები", icon: Bookmark, ink: "rose" },
-  { method: "manual", title: "ხელით", hint: "სახელი, გრამი, კკალ", icon: KeyboardIcon, ink: "neutral" },
+  { method: "gallery", title: tx("გალერეა", "Gallery"), hint: tx("უკვე გადაღებული ფოტო", "A photo you already took"), icon: ImagePlus, ink: "teal" },
+  { method: "label", title: tx("ეტიკეტი", "Label"), hint: tx("Nutrition Facts ცხრილი", "Nutrition Facts panel"), icon: ScanText, ink: "violet" },
+  { method: "saved", title: tx("შენახული", "Saved"), hint: tx("ბოლო და რჩეული კერძები", "Recent and favorite meals"), icon: Bookmark, ink: "rose" },
+  { method: "manual", title: tx("ხელით", "Manual"), hint: tx("სახელი, გრამი, კკალ", "Name, grams, kcal"), icon: KeyboardIcon, ink: "neutral" },
 ];
 
 /**
@@ -76,7 +77,7 @@ export function ScoreBadge({ score, size = "md" }: { score: number | null | unde
   if (score == null) return null;
   const ink = score >= 8 ? hubInk("green", dark) : score >= 5 ? hubInk("amber", dark) : hubInk("rose", dark);
   return (
-    <View accessibilityLabel={`კერძის ბალანსი ${score} ათიდან, ${healthScoreLabel(score)}`} style={[s.badge, { backgroundColor: hubTint(ink, dark), paddingVertical: size === "sm" ? 3 : 5 }]}>
+    <View accessibilityLabel={tx(`კერძის ბალანსი ${score} ათიდან, ${healthScoreLabel(score)}`, `Meal balance ${score} out of 10, ${healthScoreLabel(score)}`)} style={[s.badge, { backgroundColor: hubTint(ink, dark), paddingVertical: size === "sm" ? 3 : 5 }]}>
       <Flame size={size === "sm" ? 11 : 13} color={ink} strokeWidth={2.4} />
       <Text style={[hubText.small, { color: ink, fontFamily: "NotoSansGeorgian_600SemiBold", fontSize: size === "sm" ? 11 : 12 }]}>
         {score}/10{size === "sm" ? "" : ` · ${healthScoreLabel(score)}`}
@@ -90,7 +91,7 @@ export function MacroLine({ protein, carbs, fat, color }: { protein: number; car
   const c = useThemeColors();
   return (
     <Text numberOfLines={1} style={[hubText.small, { color: color || c.text200 }]}>
-      ცილა {Math.round(protein)} · ნახშ. {Math.round(carbs)} · ცხიმი {Math.round(fat)} გ
+      {tx(`ცილა ${Math.round(protein)} · ნახშ. ${Math.round(carbs)} · ცხიმი ${Math.round(fat)} გ`, `Protein ${Math.round(protein)} · Carbs ${Math.round(carbs)} · Fat ${Math.round(fat)} g`)}
     </Text>
   );
 }

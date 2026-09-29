@@ -24,7 +24,7 @@ export const SYMPTOM_RESPONSE_FORMAT = {
 /** Never turn an unavailable or malformed medical analysis into a synthetic diagnosis. */
 export function parseSymptomResult(raw, finishReason) {
   if (finishReason === 'length') {
-    throw Object.assign(new Error('ანალიზის პასუხი ბოლომდე ვერ მიღებულა. გთხოვ, სცადო ხელახლა.'), { status: 502, statusCode: 502, code: 'AI_RESPONSE_TRUNCATED' });
+    throw Object.assign(new Error('ანალიზის პასუხი ბოლომდე ვერ მიღებულა. გთხოვ, სცადო ხელახლა.'), { status: 502, statusCode: 502, code: 'AI_RESPONSE_TRUNCATED', messageEn: 'The analysis reply didn’t come through in full. Please try again.' });
   }
   try {
     const clean = String(raw || '').replace(/^```(?:json)?\s*/i, '').replace(/```\s*$/, '').trim();
@@ -39,6 +39,6 @@ export function parseSymptomResult(raw, finishReason) {
     });
     return result;
   } catch {
-    throw Object.assign(new Error('ანალიზის პასუხი ვერ დამუშავდა. გთხოვ, სცადო ხელახლა.'), { status: 502, statusCode: 502, code: 'AI_INVALID_RESPONSE' });
+    throw Object.assign(new Error('ანალიზის პასუხი ვერ დამუშავდა. გთხოვ, სცადო ხელახლა.'), { status: 502, statusCode: 502, code: 'AI_INVALID_RESPONSE', messageEn: 'The analysis reply couldn’t be processed. Please try again.' });
   }
 }

@@ -1,5 +1,6 @@
 (() => {
   const root = document.documentElement;
+  const T = (window.MedicardI18n || { t: (ka) => ka }).t;
   const THEME_KEY = "medicard.landing.theme";
   const year = document.getElementById("y");
   if (year) year.textContent = String(new Date().getFullYear());
@@ -23,8 +24,8 @@
     document.querySelectorAll(".theme-btn").forEach((btn) => {
       const toLight = next === "dark";
       btn.setAttribute("aria-pressed", toLight ? "true" : "false");
-      btn.setAttribute("aria-label", toLight ? "გადართე ღია თემაზე" : "გადართე მუქ თემაზე");
-      btn.title = toLight ? "ღია თემა" : "მუქი თემა";
+      btn.setAttribute("aria-label", toLight ? T("გადართე ღია თემაზე", "Switch to light theme") : T("გადართე მუქ თემაზე", "Switch to dark theme"));
+      btn.title = toLight ? T("ღია თემა", "Light theme") : T("მუქი თემა", "Dark theme");
     });
     if (persist) {
       try {

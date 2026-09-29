@@ -6,6 +6,14 @@ import { deleteObject, getObject, objectStorageConfigured } from './objectStorag
 import { UPLOAD_DIR } from './storage.js';
 import { prisma } from './prisma.js';
 import { applyPrivateCache } from './cycleShare.js';
+import { isEnglish, t } from './i18n.js';
+
+/** English for the Georgian errors below (English requests only). */
+const ERRORS_EN = Object.freeze({
+  'ფაილის იდენტიფიკატორი არასწორია.': 'Invalid file identifier.',
+  'ავტორიზაცია საჭიროა. შედი ანგარიშში.': 'Please sign in to continue.',
+  'ფაილი ვერ მოიძებნა.': 'File not found.',
+});
 
 /** UUID + allowed extension written by saveUpload. */
 export const PRIVATE_UPLOAD_FILENAME_RE =
@@ -82,10 +90,10 @@ export function applyPrivateFileHeaders(res, { filename, mime }) {
 }
 
 /** Legacy public mount — never serves bytes. UUID is not authorization. */
-export function denyLegacyPublicUploads(_req, res) {
+export function denyLegacyPublicUploads(req, res) {
   applyPrivateCache(res);
   res.setHeader('X-Content-Type-Options', 'nosniff');
-  return res.status(401).json({ error: 'ავტორიზაცია საჭიროა.' });
+  return res.status(401).json({ error: t(req, 'ავტორიზაცია საჭიროა.', 'Please sign in to continue.') });
 }
 
 export async function findOwnedMedicalUpload(userId, filename, db = prisma) {
@@ -158,9 +166,9 @@ export async function servePrivateUpload(req, res, options = {}) {
   if (!result.ok) {
     applyPrivateCache(res);
     res.setHeader('X-Content-Type-Options', 'nosniff');
-    const body = { error: result.error };
+    const body = { error: isEnglish(req) ? ERRORS_EN[result.error] ?? result.error : result.error };
     if (JSON.stringify(body).includes(':/') || JSON.stringify(body).toLowerCase().includes('uploads\\')) {
-      return res.status(result.status).json({ error: 'ფაილი ვერ მოიძებნა.' });
+      return res.status(result.status).json({ error: t(req, 'ფაილი ვერ მოიძებნა.', 'File not found.') });
     }
     return res.status(result.status).json(body);
   }
@@ -181,7 +189,7 @@ export async function servePrivateUpload(req, res, options = {}) {
     if (!existsSync(result.abs)) {
       applyPrivateCache(res);
       res.setHeader('X-Content-Type-Options', 'nosniff');
-      return res.status(404).json({ error: 'ფაილი ვერ მოიძებნა.' });
+      return res.status(404).json({ error: t(req, 'ფაილი ვერ მოიძებნა.', 'File not found.') });
     }
   }
   applyPrivateFileHeaders(res, { filename: result.filename, mime: result.mime });
@@ -189,7 +197,7 @@ export async function servePrivateUpload(req, res, options = {}) {
     if (!err) return;
     if (!res.headersSent) {
       applyPrivateCache(res);
-      res.status(404).json({ error: 'ფაილი ვერ მოიძებნა.' });
+      res.status(404).json({ error: t(req, 'ფაილი ვერ მოიძებნა.', 'File not found.') });
     }
   });
 }

@@ -1,3 +1,4 @@
+import { tx } from "../i18n/locale.js";
 export type FoodItem = {
   name: string;
   grams: number;
@@ -69,21 +70,21 @@ export type SavedFood = {
   recipe?: { servings: number; items: FoodItem[]; totalGrams?: number } | null;
 };
 export const mealLabels = {
-  breakfast: "საუზმე",
-  lunch: "სადილი",
-  dinner: "ვახშამი",
-  snack: "წახემსება",
+  breakfast: tx("საუზმე", "Breakfast"),
+  lunch: tx("სადილი", "Lunch"),
+  dinner: tx("ვახშამი", "Dinner"),
+  snack: tx("წახემსება", "Snacks"),
 };
 export const sourceLabels: Record<MealSource, string> = {
-  manual: "ხელით დამატებული",
-  photo: "ფოტოდან შეფასებული",
-  plan: "რაციონის მიხედვით",
-  text: "აღწერიდან შეფასებული",
-  voice: "ხმით ჩაწერილი",
-  label: "ეტიკეტიდან",
-  barcode: "შტრიხკოდით",
-  search: "ბაზიდან",
-  saved: "შენახულიდან",
+  manual: tx("ხელით დამატებული", "Added manually"),
+  photo: tx("ფოტოდან შეფასებული", "Estimated from photo"),
+  plan: tx("რაციონის მიხედვით", "From your meal plan"),
+  text: tx("აღწერიდან შეფასებული", "Estimated from description"),
+  voice: tx("ხმით ჩაწერილი", "Logged by voice"),
+  label: tx("ეტიკეტიდან", "From label"),
+  barcode: tx("შტრიხკოდით", "By barcode"),
+  search: tx("ბაზიდან", "From food database"),
+  saved: tx("შენახულიდან", "From saved"),
 };
 export function localDay(date = new Date()) {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
@@ -174,7 +175,7 @@ export function healthScore(items: FoodItem[]): number | null {
 }
 export function healthScoreLabel(score: number | null | undefined) {
   if (score == null) return "";
-  return score >= 8 ? "დაბალანსებული" : score >= 5 ? "საშუალო" : "მძიმე კერძი";
+  return score >= 8 ? tx("დაბალანსებული", "Balanced") : score >= 5 ? tx("საშუალო", "Moderate") : tx("მძიმე კერძი", "Heavy meal");
 }
 export function newUuid() {
   return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (c) => {
@@ -250,12 +251,12 @@ export function itemFromFields(fields: FoodFields): { item: FoodItem | null; err
   const required: (keyof FoodFields)[] = ["grams", "calories", "protein", "carbs", "fat"];
   const bad = required.some((k) => !fields[k].trim() || !Number.isFinite(number(k)) || number(k) < 0 || number(k) > 10000);
   if (!item.name || item.name.length > 120 || bad || item.grams <= 0)
-    return { item: null, error: "შეავსე სახელი და ყველა რიცხვი. უცნობი მონაცემის ნაცვლად ვარაუდი არ შეინახო." };
+    return { item: null, error: tx("შეავსე სახელი და ყველა რიცხვი. უცნობი მონაცემის ნაცვლად ვარაუდი არ შეინახო.", "Fill in the name and every number. Don't save a guess in place of an unknown value.") };
   for (const key of ["fiber", "sugar", "sodium"] as const) {
     const raw = fields[key].trim();
     if (!raw) continue;
     const value = number(key);
-    if (!Number.isFinite(value) || value < 0 || value > 100000) return { item: null, error: "ბოჭკო, შაქარი და ნატრიუმი დადებითი რიცხვები უნდა იყოს." };
+    if (!Number.isFinite(value) || value < 0 || value > 100000) return { item: null, error: tx("ბოჭკო, შაქარი და ნატრიუმი დადებითი რიცხვები უნდა იყოს.", "Fiber, sugar and sodium must be positive numbers.") };
     item[key] = value;
   }
   return { item, error: "" };

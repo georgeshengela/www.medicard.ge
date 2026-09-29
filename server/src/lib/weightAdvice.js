@@ -37,7 +37,7 @@ function parseAdvice(raw) {
 
 export async function adviseWeight({ weightKg, heightCm, bmi, category, targetKg, patientContext, model }) {
   if (!openrouter) {
-    throw new AiEngineError('Medi-ს სერვისი არ არის კონფიგურირებული.', { status: 503 });
+    throw new AiEngineError('Medi-ს სერვისი არ არის კონფიგურირებული.', { status: 503, messageEn: 'Medi isn’t set up yet.' });
   }
 
   const facts = [
@@ -87,6 +87,6 @@ export async function adviseWeight({ weightKg, heightCm, bmi, category, targetKg
       };
     });
   } catch {
-    throw new AiEngineError('Medi-მ რჩევა ვერ შეადგინა. სცადე ხელახლა.', { status: 502 });
+    throw new AiEngineError('Medi-მ რჩევა ვერ შეადგინა. სცადე ხელახლა.', { status: 502, messageEn: 'Medi couldn’t put together advice. Please try again.' });
   }
 }

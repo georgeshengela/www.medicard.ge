@@ -8,13 +8,14 @@ import { nutritionDateLabel, type BodyMeasurement } from "@/lib/nutritionProgram
 import { useAuth } from "@/store/AuthContext";
 import { useThemeColors } from "@/theme/colors";
 import { NScreen, NText, NCard, NButton, NError, NLoading } from "@/components/nutrition/ProgramUI";
+import { tx } from '@/i18n/locale';
 
 const FIELDS: { key: keyof Omit<BodyMeasurement, "date">; label: string }[] = [
-  { key: "waistCm", label: "წელი" },
-  { key: "hipsCm", label: "თეძო" },
-  { key: "chestCm", label: "მკერდი" },
-  { key: "armCm", label: "მკლავი" },
-  { key: "thighCm", label: "ბარძაყი" },
+  { key: "waistCm", label: tx("წელი", "Waist") },
+  { key: "hipsCm", label: tx("თეძო", "Hips") },
+  { key: "chestCm", label: tx("მკერდი", "Chest") },
+  { key: "armCm", label: tx("მკლავი", "Arm") },
+  { key: "thighCm", label: tx("ბარძაყი", "Thigh") },
 ];
 
 export default function MeasurementsScreen() {
@@ -62,13 +63,13 @@ function Measurements() {
       }
       const value = Number(raw);
       if (!Number.isFinite(value) || value < 10 || value > 250) {
-        setError(`${f.label}: ჩაწერე სანტიმეტრებში (10–250).`);
+        setError(tx(`${f.label}: ჩაწერე სანტიმეტრებში (10–250).`, `${f.label}: enter it in centimeters (10–250).`));
         return;
       }
       body[f.key] = Math.round(value * 10) / 10;
     }
     if (!Object.values(body).some((v) => v != null)) {
-      setError("მიუთითე მინიმუმ ერთი ზომა.");
+      setError(tx("მიუთითე მინიმუმ ერთი ზომა.", "Enter at least one measurement."));
       return;
     }
     Keyboard.dismiss();
@@ -77,7 +78,7 @@ function Measurements() {
     setMessage("");
     try {
       await api.nutrition.measurements.save(today, body as Omit<BodyMeasurement, "date">);
-      setMessage("ზომები შენახულია");
+      setMessage(tx("ზომები შენახულია", "Measurements saved"));
       await load();
     } catch (e) {
       setError((e as Error).message);
@@ -103,22 +104,22 @@ function Measurements() {
     const before = previous?.[key];
     if (now == null || before == null) return "";
     const d = Math.round((now - before) * 10) / 10;
-    return d === 0 ? " · უცვლელი" : ` · ${d > 0 ? "+" : ""}${d} სმ`;
+    return d === 0 ? tx(" · უცვლელი", " · no change") : ` · ${d > 0 ? "+" : ""}${d} ${tx("სმ", "cm")}`;
   };
   return (
-    <NScreen title="სხეულის ზომები" subtitle="სანტიმეტრები ხშირად სასწორზე ადრე იცვლება" footer={<NButton label={busy ? "ინახება…" : "დღეს შენახვა"} disabled={busy} onPress={() => void save()} />}>
+    <NScreen title={tx("სხეულის ზომები", "Body measurements")} subtitle={tx("სანტიმეტრები ხშირად სასწორზე ადრე იცვლება", "Centimeters often change before the scale does")} footer={<NButton label={busy ? tx("ინახება…", "Saving…") : tx("დღეს შენახვა", "Save for today")} disabled={busy} onPress={() => void save()} />}>
       {!!error && <NError message={error} />}
       <NCard>
         <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
           <Ruler size={20} color={c.primary100} />
-          <NText style={{ fontFamily: "NotoSansGeorgian_600SemiBold" }}>დღეს · {nutritionDateLabel(today)}</NText>
+          <NText style={{ fontFamily: "NotoSansGeorgian_600SemiBold" }}>{tx("დღეს", "Today")} · {nutritionDateLabel(today)}</NText>
         </View>
         {FIELDS.map((f) => (
           <View key={f.key} style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
             <NText style={{ flex: 1 }}>{f.label}{delta(f.key)}</NText>
             <TextInput
-              accessibilityLabel={`${f.label} სანტიმეტრებში`}
-              placeholder="სმ"
+              accessibilityLabel={tx(`${f.label} სანტიმეტრებში`, `${f.label} in centimeters`)}
+              placeholder={tx("სმ", "cm")}
               placeholderTextColor={c.text300}
               value={fields[f.key] || ""}
               onChangeText={(v) => setFields({ ...fields, [f.key]: v.replace(/[^\d.,]/g, "").slice(0, 6) })}
@@ -127,15 +128,15 @@ function Measurements() {
             />
           </View>
         ))}
-        <NText style={{ fontSize: 12, color: c.text200 }}>ზომე ერთსა და იმავე დროს, მაგ. დილით. ერთი ჩანაწერი დღეში — ახალი ძველს ცვლის.</NText>
+        <NText style={{ fontSize: 12, color: c.text200 }}>{tx("ზომე ერთსა და იმავე დროს, მაგ. დილით. ერთი ჩანაწერი დღეში — ახალი ძველს ცვლის.", "Measure at the same time each day, e.g. in the morning. One entry per day — a new one replaces the old.")}</NText>
         {!!message && <NText accessibilityLiveRegion="polite" style={{ color: c.success, fontSize: 13 }}>{message}</NText>}
       </NCard>
       {!rows ? (
         <NLoading />
       ) : (
         <NCard>
-          <NText style={{ fontFamily: "NotoSansGeorgian_600SemiBold" }}>ისტორია</NText>
-          {rows.length === 0 && <NText style={{ color: c.text200 }}>ჯერ ზომები არ გაქვს ჩაწერილი.</NText>}
+          <NText style={{ fontFamily: "NotoSansGeorgian_600SemiBold" }}>{tx("ისტორია", "History")}</NText>
+          {rows.length === 0 && <NText style={{ color: c.text200 }}>{tx("ჯერ ზომები არ გაქვს ჩაწერილი.", "You haven't logged any measurements yet.")}</NText>}
           {rows.map((m) => (
             <View key={m.date} style={{ flexDirection: "row", alignItems: "center", gap: 10, paddingVertical: 6 }}>
               <View style={{ flex: 1 }}>
@@ -144,7 +145,7 @@ function Measurements() {
                   {FIELDS.filter((f) => m[f.key] != null).map((f) => `${f.label} ${m[f.key]}`).join(" · ")}
                 </NText>
               </View>
-              <Pressable accessibilityRole="button" accessibilityLabel="ჩანაწერის წაშლა" disabled={busy} onPress={() => void remove(m.date)} style={{ width: 40, height: 40, alignItems: "center", justifyContent: "center" }}>
+              <Pressable accessibilityRole="button" accessibilityLabel={tx("ჩანაწერის წაშლა", "Delete entry")} disabled={busy} onPress={() => void remove(m.date)} style={{ width: 40, height: 40, alignItems: "center", justifyContent: "center" }}>
                 <Trash2 size={17} color={c.text200} />
               </Pressable>
             </View>

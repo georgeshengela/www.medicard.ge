@@ -1,6 +1,7 @@
 import { Platform } from 'react-native';
 import { Notifications } from '@/lib/expoNotifications';
 import { ka } from '@/i18n/ka';
+import { dateLocale, tx } from '../i18n/locale.js';
 import { applyPushCopy } from '@/lib/pushCopy';
 import {
   cancelNotificationsByPrefix,
@@ -45,7 +46,7 @@ const DRAFT_KEY = 'medicard.weight.goal.draft.v1';
 const LOGS_KEY = 'medicard.weight.logs.v1';
 
 export function formatDeadlineKa(deadlineYmd: string): string {
-  return new Date(`${deadlineYmd}T12:00:00`).toLocaleDateString('ka-GE', {
+  return new Date(`${deadlineYmd}T12:00:00`).toLocaleDateString(dateLocale(), {
     day: 'numeric',
     month: 'short',
     year: 'numeric',
@@ -53,7 +54,7 @@ export function formatDeadlineKa(deadlineYmd: string): string {
 }
 
 export function formatDeadlineKaLong(deadlineYmd: string): string {
-  return new Date(`${deadlineYmd}T12:00:00`).toLocaleDateString('ka-GE', {
+  return new Date(`${deadlineYmd}T12:00:00`).toLocaleDateString(dateLocale(), {
     day: 'numeric',
     month: 'long',
     year: 'numeric',
@@ -63,7 +64,7 @@ export function formatDeadlineKaLong(deadlineYmd: string): string {
 export function formatReminderTime(hour: number, minute: number): string {
   const d = new Date();
   d.setHours(hour, minute, 0, 0);
-  return d.toLocaleTimeString('ka-GE', { hour: 'numeric', minute: '2-digit' });
+  return d.toLocaleTimeString(dateLocale(), { hour: 'numeric', minute: '2-digit' });
 }
 
 export function reminderDaysLabel(days: number[]): string {
@@ -161,7 +162,7 @@ async function ensureWeightAccountScope() {
   const snapshot = await loadSessionSnapshot();
   if (snapshot?.user?.id) setLocalAccountId(snapshot.user.id);
   if (!localAccountId()) {
-    throw new Error('ანგარიში ვერ მოიძებნა. ხელახლა შედი ანგარიშში.');
+    throw new Error(tx('ანგარიში ვერ მოიძებნა. ხელახლა შედი ანგარიშში.', "We couldn't find your account. Please sign in again."));
   }
 }
 

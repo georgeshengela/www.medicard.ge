@@ -1,4 +1,6 @@
 import { z } from 'zod';
+import { currentAiLanguage } from './aiConsent.js';
+import { t } from './i18n.js';
 import { ASSISTANT_DESTINATIONS, assistantDestinationAllowed, assistantFeatures, assistantToolGroup } from './assistantKnowledge.js';
 export { ASSISTANT_DESTINATIONS } from './assistantKnowledge.js';
 import { medicationCourseEnd } from './assistantFlow.js';
@@ -11,7 +13,7 @@ const id = z.string().uuid();
 export const dateKey = z.string().regex(/^\d{4}-\d{2}-\d{2}$/).refine(value => {
   const d = new Date(`${value}T12:00:00Z`);
   return Number.isFinite(d.getTime()) && d.toISOString().slice(0, 10) === value;
-}, 'თარიღი არასწორია');
+}, { error: () => t(currentAiLanguage(), 'თარიღი არასწორია', 'Invalid date') });
 const time = z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/);
 const list = z.array(text(120)).max(40);
 const fields = shape => z.object(shape).strict();
@@ -106,25 +108,43 @@ add('cycle_settings', 'ციკლის რეჟიმის განახ�
   postpartumReferenceDate: dateKey.optional(), postpartumConfirm: z.literal(true).optional(),
 }), '/api/cycle/profile', 'Mode changes require explicit user request and dates; never infer pregnancy from symptoms. Show confirmation fields and dates.', 'PUT');
 export const ASSISTANT_CATALOG = Object.freeze(catalog);
-export function publicAssistantCatalog(scope) {
-  return Object.values(catalog).filter(t => scope === 'auto' || t.domain === scope || t.domain === 'navigation').map(({ name, label, description, schema, domain }) => ({
+/** English review/catalog labels (the Georgian `label` stays the default and is what the planner sees). */
+const TOOL_LABELS_EN = Object.freeze({
+  open: 'Open a feature', record_open: 'Open a saved result', medication_open: 'Open medication details', visit_open: 'Open visit details',
+  consult: 'Start a consultation', pet_consult: 'Talk to Medi Vet', hydration_add: 'Log water', hydration_goal: 'Water goal',
+  metric_record: 'Log a reading', nutrition_goal: 'Choose a nutrition goal', nutrition_eat: 'Log a planned meal', nutrition_log: 'Log food from a description',
+  weight_goal: 'Add a weight goal', steps_goal: 'Steps goal', profile_update: 'Update health profile', medication_add: 'Medication reminder',
+  medication_update: 'Update medication', medication_stop: 'Pause reminders', dose_record: 'Log a dose', visit_add: 'Visit entry',
+  visit_update: 'Update visit', visit_cancel: 'Cancel visit entry', period_record: 'Log period', cycle_record: 'Quick cycle log',
+  pregnancy_record: 'Pregnancy entry', pet_add: 'Add a pet', pet_update: 'Update pet profile', pet_weight: 'Log pet weight',
+  pet_allergy: 'Log pet allergy', pet_condition: 'Pet health entry', pet_product: 'Pet care product', pet_care_plan: 'Pet care plan',
+  pet_care_record: 'Log pet care', pet_open: 'Open pet page', cycle_settings: 'Update cycle mode',
+});
+/** Tool label in the reading language (review cards, catalog). */
+export function assistantToolLabel(name, lang = 'ka') {
+  const tool = catalog[name];
+  if (!tool) return name;
+  return t(lang, tool.label, TOOL_LABELS_EN[name] || tool.label);
+}
+export function publicAssistantCatalog(scope, lang = 'ka') {
+  return Object.values(catalog).filter(t => scope === 'auto' || t.domain === scope || t.domain === 'navigation').map(({ name, description, schema, domain }) => ({
     domain,
-    name, label, description, group: assistantToolGroup(name), kind: name === 'nutrition_goal' || name === 'weight_goal' || name === 'open' || name === 'consult' || name.endsWith('_open') || name === 'pet_consult' ? 'handoff' : 'write',
+    name, label: assistantToolLabel(name, lang), description, group: assistantToolGroup(name), kind: name === 'nutrition_goal' || name === 'weight_goal' || name === 'open' || name === 'consult' || name.endsWith('_open') || name === 'pet_consult' ? 'handoff' : 'write',
     parameters: name === 'open' ? { ...z.toJSONSchema(schema, { unrepresentable: 'any' }), properties: { destination: { type: 'string', enum: assistantFeatures(scope).map(f => f.id) } } } : z.toJSONSchema(schema, { unrepresentable: 'any' }),
   }));
 }
 export function validateAssistantAction(action, scope) {
   const outer = fields({ tool: text(60), args: z.record(z.string(), z.unknown()) }).parse(action);
   const tool = catalog[outer.tool];
-  if (!tool || (tool.domain !== scope && tool.domain !== 'navigation')) throw Object.assign(new Error('მოქმედება ამ საუბარში მიუწვდომელია.'), { status: 400 });
+  if (!tool || (tool.domain !== scope && tool.domain !== 'navigation')) throw Object.assign(new Error('მოქმედება ამ საუბარში მიუწვდომელია.'), { status: 400, messageEn: 'This action is not available in this conversation.' });
   const args = tool.schema.parse(outer.args);
-  if (outer.tool === 'open' && !assistantDestinationAllowed(args.destination, scope)) throw Object.assign(new Error('ამ რეჟიმში გვერდი მიუწვდომელია.'), { status: 400 });
+  if (outer.tool === 'open' && !assistantDestinationAllowed(args.destination, scope)) throw Object.assign(new Error('ამ რეჟიმში გვერდი მიუწვდომელია.'), { status: 400, messageEn: 'This page is not available here.' });
   if (outer.tool === 'medication_add') {
-    if ((args.courseDays || args.endDate) && !args.startDate) throw new z.ZodError([{ code: 'custom', path: ['startDate'], message: 'აირჩიე კურსის დაწყების დღე' }]);
-    if (args.endDate && args.endDate < args.startDate) throw new z.ZodError([{ code: 'custom', path: ['endDate'], message: 'დასრულება დაწყებაზე ადრე ვერ იქნება' }]);
+    if ((args.courseDays || args.endDate) && !args.startDate) throw new z.ZodError([{ code: 'custom', path: ['startDate'], message: t(currentAiLanguage(), 'აირჩიე კურსის დაწყების დღე', 'Choose the day the course starts') }]);
+    if (args.endDate && args.endDate < args.startDate) throw new z.ZodError([{ code: 'custom', path: ['endDate'], message: t(currentAiLanguage(), 'დასრულება დაწყებაზე ადრე ვერ იქნება', 'The end can’t be before the start') }]);
     if (args.courseDays) {
       const endDate = medicationCourseEnd(args.startDate, args.courseDays);
-      if (args.endDate && args.endDate !== endDate) throw new z.ZodError([{ code: 'custom', path: ['endDate'], message: 'კურსის ხანგრძლივობა და დასრულების დღე ერთმანეთს არ ემთხვევა' }]);
+      if (args.endDate && args.endDate !== endDate) throw new z.ZodError([{ code: 'custom', path: ['endDate'], message: t(currentAiLanguage(), 'კურსის ხანგრძლივობა და დასრულების დღე ერთმანეთს არ ემთხვევა', 'The course length and end day don’t match') }]);
       args.endDate = endDate;
     }
     args.frequency = [...new Set(args.frequency)].sort();

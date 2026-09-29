@@ -10,6 +10,7 @@ import { donut } from '../charts.js';
 import { withAiConsent } from '../aiConsent.js';
 import { openLabUpload, dropzone, checkFile } from './lab.js';
 import { featureOn } from '../session.js';
+import { t, isEn } from '../i18n.js';
 
 function ensureCss() {
   // lab.css styles the shared upload modal (dropzone, progress, result).
@@ -18,8 +19,10 @@ function ensureCss() {
   }
 }
 
-const DISCLAIMER = 'ეს არ არის დიაგნოზი — საჭიროებისას ექიმს მიმართე.';
-const TYPE_LABEL = {
+const DISCLAIMER = t('ეს არ არის დიაგნოზი — საჭიროებისას ექიმს მიმართე.', 'This is not a diagnosis — see a doctor when needed.');
+const TYPE_LABEL = isEn ? {
+  LAB: 'Lab tests', XRAY: 'X-ray', CT_MRI: 'CT / MRI', SKIN: 'Skin', SKINCARE: 'Skincare', PRESCRIPTION: 'Prescription', SYMPTOM: 'Symptoms',
+} : {
   LAB: 'ანალიზები', XRAY: 'რენტგენი', CT_MRI: 'CT / MRI', SKIN: 'კანი', SKINCARE: 'კანის მოვლა', PRESCRIPTION: 'რეცეპტი', SYMPTOM: 'სიმპტომები',
 };
 const TYPE_LOOK = {
@@ -32,7 +35,7 @@ const TYPE_LOOK = {
   PRESCRIPTION: { icon: 'pill', ink: 'amber', color: 'var(--c6)' },
 };
 const FILTERS = ['ALL', 'LAB', 'CT_MRI', 'SKIN', 'SKINCARE', 'SYMPTOM'];
-const MEDI_MODE = { ASSISTANT: { label: 'Medi', ink: 'sky' }, DOCTOR: { label: 'ექიმთან', ink: 'teal' }, CONSILIUM: { label: 'ღრმა ანალიზი', ink: 'violet' } };
+const MEDI_MODE = { ASSISTANT: { label: 'Medi', ink: 'sky' }, DOCTOR: { label: t('ექიმთან', 'Doctor'), ink: 'teal' }, CONSILIUM: { label: t('ღრმა ანალიზი', 'Deep analysis'), ink: 'violet' } };
 const look = (t) => TYPE_LOOK[t] || { icon: 'file', ink: 'neutral', color: 'var(--text3)' };
 const typeLabel = (t) => TYPE_LABEL[t] || t;
 
@@ -53,12 +56,12 @@ const IMAGING_REGIONS = [
 
 const KINDS = {
   IMAGING: {
-    title: 'ატვირთე სნიმარის ფოტო', hint: 'გადაუღე ეკრანს ან ფირს კარგ განათებაზე, ბრჭყვიალის გარეშე',
-    contextLabel: 'დამატებითი ინფორმაცია', placeholder: 'მაგ. ტკივილი მარცხენა ბარძაყში, ოპერაციის შემდეგ', regions: true,
+    title: t('ატვირთე სნიმარის ფოტო', 'Upload a photo of your scan'), hint: t('გადაუღე ეკრანს ან ფირს კარგ განათებაზე, ბრჭყვიალის გარეშე', 'Photograph the screen or film in good light, without glare'),
+    contextLabel: t('დამატებითი ინფორმაცია', 'Additional information'), placeholder: t('მაგ. ტკივილი მარცხენა ბარძაყში, ოპერაციის შემდეგ', 'e.g. pain in the left thigh, after surgery'), regions: true,
   },
   SKIN: {
-    title: 'გადაუღე ფოტო კანის უბანს', hint: 'გადაიღე დღის განათებაზე, 10-15 სმ მანძილიდან, მკვეთრად',
-    contextLabel: 'რამდენი ხანია და როგორ იცვლება?', placeholder: 'მაგ. ხალი ორი თვეა გამუქდა და ოდნავ გაიზარდა',
+    title: t('გადაუღე ფოტო კანის უბანს', 'Take a photo of the skin area'), hint: t('გადაიღე დღის განათებაზე, 10-15 სმ მანძილიდან, მკვეთრად', 'Shoot in daylight, 10–15 cm away, in sharp focus'),
+    contextLabel: t('რამდენი ხანია და როგორ იცვლება?', 'How long has it been there and how is it changing?'), placeholder: t('მაგ. ხალი ორი თვეა გამუქდა და ოდნავ გაიზარდა', 'e.g. a mole got darker over two months and grew slightly'),
   },
 };
 
@@ -81,11 +84,11 @@ const isPdf = (stored) => /\.pdf$/i.test(String(stored || '').split('?')[0]);
 
 async function openPrivateFile(stored) {
   const url = fileUrl(stored);
-  if (!url) { toast('ფაილი ვერ მოიძებნა.', 'error'); return; }
+  if (!url) { toast(t('ფაილი ვერ მოიძებნა.', 'File not found.'), 'error'); return; }
   // Open the tab synchronously (popup blockers), then point it at the blob once it is ready.
   const win = window.open('', '_blank');
   const blob = await authedBlobUrl(url).catch(() => null);
-  if (!blob) { win?.close(); toast('ფაილი ვერ ჩაიტვირთა. შესაძლოა სერვერზე აღარ ინახება.', 'error'); return; }
+  if (!blob) { win?.close(); toast(t('ფაილი ვერ ჩაიტვირთა. შესაძლოა სერვერზე აღარ ინახება.', 'Couldn’t load the file. It may no longer be stored on the server.'), 'error'); return; }
   if (win) win.location.href = blob; else window.location.assign(blob);
 }
 
@@ -114,8 +117,8 @@ function openImageUpload(kind, { navigate, onSaved }) {
     if (objectUrl) URL.revokeObjectURL(objectUrl);
     objectUrl = URL.createObjectURL(f);
     mount(preview, h('img', { src: objectUrl, alt: '' }),
-      h('div', { class: 'row-main' }, h('div', { class: 'row-title' }, f.name), h('div', { class: 'row-sub' }, `${Math.max(1, Math.round(f.size / 1024))} კბ`)),
-      iconButton('x', { title: 'მოშორება', onClick: () => { file = null; preview.hidden = true; } }));
+      h('div', { class: 'row-main' }, h('div', { class: 'row-title' }, f.name), h('div', { class: 'row-sub' }, `${Math.max(1, Math.round(f.size / 1024))} ${t('კბ', 'KB')}`)),
+      iconButton('x', { title: t('მოშორება', 'Remove'), onClick: () => { file = null; preview.hidden = true; } }));
     preview.hidden = false;
   };
 
@@ -125,18 +128,18 @@ function openImageUpload(kind, { navigate, onSaved }) {
       e.currentTarget.parentElement.querySelectorAll('.chip').forEach((c) => c.classList.remove('on'));
       e.currentTarget.classList.add('on');
     },
-  }, r.ka))) : null;
+  }, isEn ? r.en.charAt(0).toUpperCase() + r.en.slice(1) : r.ka))) : null;
 
   mount(body,
-    dropzone({ multiple: false, accept: 'image/jpeg,image/png,image/webp', hint: `${cfg.hint} · JPG, PNG, WEBP · 12 მბ-მდე`, onFiles: setFile }),
+    dropzone({ multiple: false, accept: 'image/jpeg,image/png,image/webp', hint: t(`${cfg.hint} · JPG, PNG, WEBP · 12 მბ-მდე`, `${cfg.hint} · JPG, PNG, WEBP · up to 12 MB`), onFiles: setFile }),
     preview,
-    regionChips ? h('div', { class: 'field' }, h('span', { class: 'field-label' }, 'რომელი ნაწილია გადაღებული?'), regionChips) : null,
-    field(cfg.contextLabel, ctxInput, 'არასავალდებულო'),
+    regionChips ? h('div', { class: 'field' }, h('span', { class: 'field-label' }, t('რომელი ნაწილია გადაღებული?', 'Which part of the body is shown?')), regionChips) : null,
+    field(cfg.contextLabel, ctxInput, t('არასავალდებულო', 'Optional')),
     stage, err);
 
   const run = async () => {
-    if (!file) { showErr('ჯერ აირჩიე ფაილი'); return; }
-    if (cfg.regions && !region) { showErr('აირჩიე სხეულის არე. ბარძაყი და გულმკერდი ერთმანეთს არ უნდა ერეოდეს.'); return; }
+    if (!file) { showErr(t('ჯერ აირჩიე ფაილი', 'Choose a file first')); return; }
+    if (cfg.regions && !region) { showErr(t('აირჩიე სხეულის არე. ბარძაყი და გულმკერდი ერთმანეთს არ უნდა ერეოდეს.', 'Choose the body area, so a thigh isn’t mistaken for a chest.')); return; }
     showErr('');
     const regionContext = region
       ? `AUTHORITATIVE BODY REGION (stated by the patient; do not override with chest/spine unless landmarks clearly contradict): ${region.en} (${region.ka}).`
@@ -144,7 +147,7 @@ function openImageUpload(kind, { navigate, onSaved }) {
     const context = [regionContext, ctxInput.value.trim()].filter(Boolean).join('\n');
     const out = await withAiConsent(async () => {
       stage.hidden = false;
-      mount(stage, h('span', { class: 'lab-spinner' }), h('span', null, 'გამოსახულება მუშავდება…'));
+      mount(stage, h('span', { class: 'lab-spinner' }), h('span', null, t('გამოსახულება მუშავდება…', 'Processing the image…')));
       const fd = new FormData();
       fd.append('file', file, file.name);
       fd.append('kind', kind);
@@ -156,8 +159,8 @@ function openImageUpload(kind, { navigate, onSaved }) {
     invalidate('/api/records');
     onSaved?.();
     mount(body,
-      h('div', { class: 'lab-saved' }, tile('check', 'green', 40), h('div', null, h('div', { class: 'card-title' }, 'დასკვნა შენახულია ჩემს ბარათში'), h('div', { class: 'card-sub' }, fmtDateTime(out.record?.createdAt || new Date())))),
-      analysis ? h('div', { class: 'lab-analysis' }, markdown(analysis)) : h('p', { class: 'muted' }, 'Medi-მ დასკვნა ვერ დაასრულა. სცადე ხელახლა.'),
+      h('div', { class: 'lab-saved' }, tile('check', 'green', 40), h('div', null, h('div', { class: 'card-title' }, t('დასკვნა შენახულია ჩემს ბარათში', 'Review saved to My card')), h('div', { class: 'card-sub' }, fmtDateTime(out.record?.createdAt || new Date())))),
+      analysis ? h('div', { class: 'lab-analysis' }, markdown(analysis)) : h('p', { class: 'muted' }, t('Medi-მ დასკვნა ვერ დაასრულა. სცადე ხელახლა.', 'Medi couldn’t finish the review. Please try again.')),
       h('p', { class: 'disclaimer', style: { marginTop: 0 } }, icon('info', { size: 15 }), DISCLAIMER));
     submitBtn.hidden = true;
     if (out.record?.id) { openBtn.hidden = false; openBtn.dataset.id = out.record.id; }
@@ -169,10 +172,10 @@ function openImageUpload(kind, { navigate, onSaved }) {
     body,
     onClose: () => { if (objectUrl) URL.revokeObjectURL(objectUrl); },
     footer: (close) => {
-      submitBtn = button('გაანალიზე', { icon: 'sparkles', onClick: () => busy(submitBtn, async () => { try { await run(); } catch (e) { showErr(e.message); } }) });
-      openBtn = button('შენახული ჩანაწერის ნახვა', { variant: 'secondary', onClick: () => { close(); navigate(`/records/${openBtn.dataset.id}`); } });
+      submitBtn = button(t('გაანალიზე', 'Analyze'), { icon: 'sparkles', onClick: () => busy(submitBtn, async () => { try { await run(); } catch (e) { showErr(e.message); } }) });
+      openBtn = button(t('შენახული ჩანაწერის ნახვა', 'View saved record'), { variant: 'secondary', onClick: () => { close(); navigate(`/records/${openBtn.dataset.id}`); } });
       openBtn.hidden = true;
-      return [button('დახურვა', { variant: 'ghost', onClick: () => close() }), submitBtn, openBtn];
+      return [button(t('დახურვა', 'Close'), { variant: 'ghost', onClick: () => close() }), submitBtn, openBtn];
     },
   });
 }
@@ -181,22 +184,22 @@ function openUploadChooser({ navigate, onSaved }) {
   const opt = (ic, ink, title, sub, fn) => h('button', { type: 'button', class: 'rec-choice', onClick: fn }, tile(ic, ink, 44),
     h('div', { class: 'row-main' }, h('div', { class: 'row-title' }, title), h('div', { class: 'row-sub' }, sub)), icon('chevronRight', { size: 18, className: 'row-chev' }));
   const m = openModal({
-    title: 'ატვირთვა',
+    title: t('ატვირთვა', 'Upload'),
     size: 'sm',
     body: h('div', { class: 'stack', style: { gap: '8px' } },
-      h('p', { class: 'muted', style: { fontSize: '14px', marginBottom: '6px' } }, 'ატვირთე ანალიზი ან სნიმარი და დასკვნა აქ შეინახება.'),
-      opt('flask', 'blue', 'ანალიზი', 'ფოტო ან PDF — ნორმებით', () => { m.close(); openLabUpload({ navigate, onSaved }); }),
-      opt('scanLine', 'sky', 'სნიმარი', 'რენტგენი, ექო, MRI', () => { m.close(); openImageUpload('IMAGING', { navigate, onSaved }); }),
-      opt('scanFace', 'rose', 'კანი', 'ფოტოს შეფასება', () => { m.close(); openImageUpload('SKIN', { navigate, onSaved }); })),
+      h('p', { class: 'muted', style: { fontSize: '14px', marginBottom: '6px' } }, t('ატვირთე ანალიზი ან სნიმარი და დასკვნა აქ შეინახება.', 'Upload a lab test or a scan and the review is saved here.')),
+      opt('flask', 'blue', t('ანალიზი', 'Lab test'), t('ფოტო ან PDF — ნორმებით', 'Photo or PDF — with reference ranges'), () => { m.close(); openLabUpload({ navigate, onSaved }); }),
+      opt('scanLine', 'sky', t('სნიმარი', 'Scan'), t('რენტგენი, ექო, MRI', 'X-ray, ultrasound, MRI'), () => { m.close(); openImageUpload('IMAGING', { navigate, onSaved }); }),
+      opt('scanFace', 'rose', t('კანი', 'Skin'), t('ფოტოს შეფასება', 'Photo check'), () => { m.close(); openImageUpload('SKIN', { navigate, onSaved }); })),
   });
 }
 
 /* ── List page ────────────────────────────────────────── */
 async function listPage(root, ctx) {
   const state = { records: [], total: 0, chats: [], filter: 'ALL', query: '', lab: null };
-  const uploadBtn = button('ატვირთვა', { icon: 'upload', onClick: () => openUploadChooser({ navigate: ctx.navigate, onSaved: () => refresh().catch(() => {}) }) });
+  const uploadBtn = button(t('ატვირთვა', 'Upload'), { icon: 'upload', onClick: () => openUploadChooser({ navigate: ctx.navigate, onSaved: () => refresh().catch(() => {}) }) });
   const body = h('div');
-  mount(root, pageHead('ჩემი ბარათი', 'ანალიზები, დასკვნები და საუბრები Medi-სთან ერთ ადგილას', uploadBtn), body);
+  mount(root, pageHead(t('ჩემი ბარათი', 'My card'), t('ანალიზები, დასკვნები და საუბრები Medi-სთან ერთ ადგილას', 'Lab tests, reviews and Medi conversations in one place'), uploadBtn), body);
 
   mount(body, h('div', { class: 'stack', style: { gap: '16px' } },
     h('div', { class: 'stats-row' }, [0, 1, 2, 3].map(() => skeleton(2))),
@@ -227,9 +230,9 @@ async function listPage(root, ctx) {
       mount(body,
         card({ class: 'spotlight hero-card pad-lg rec-hero' },
           tile('file', 'teal', 48),
-          h('h2', { style: { fontSize: '22px', marginTop: '14px' } }, 'ჩანაწერები ჯერ არ გაქვს'),
-          h('p', { class: 'muted', style: { marginTop: '6px', maxWidth: '52ch' } }, 'ატვირთე ანალიზი ან სნიმარი და დასკვნა აქ შეინახება. Medi-სთან საუბრებიც აქ გამოჩნდება.'),
-          h('div', { class: 'hstack', style: { marginTop: '18px' } }, button('ატვირთვა', { variant: 'light', icon: 'upload', onClick: () => openUploadChooser({ navigate: ctx.navigate, onSaved: () => refresh().catch(() => {}) }) }))),
+          h('h2', { style: { fontSize: '22px', marginTop: '14px' } }, t('ჩანაწერები ჯერ არ გაქვს', 'No records yet')),
+          h('p', { class: 'muted', style: { marginTop: '6px', maxWidth: '52ch' } }, t('ატვირთე ანალიზი ან სნიმარი და დასკვნა აქ შეინახება. Medi-სთან საუბრებიც აქ გამოჩნდება.', 'Upload a lab test or a scan and the review is saved here. Your Medi conversations show up here too.')),
+          h('div', { class: 'hstack', style: { marginTop: '18px' } }, button(t('ატვირთვა', 'Upload'), { variant: 'light', icon: 'upload', onClick: () => openUploadChooser({ navigate: ctx.navigate, onSaved: () => refresh().catch(() => {}) }) }))),
         addSection());
       return;
     }
@@ -241,42 +244,42 @@ async function listPage(root, ctx) {
     const parts = Object.entries(counts).map(([t, v]) => ({ name: typeLabel(t), value: v, color: look(t).color }));
     const overview = card({ class: 'rec-overview' },
       h('div', { class: 'rec-donut' }, donut({ parts: parts.length ? parts : [{ name: '', value: 1, color: 'var(--track)' }], size: 132, stroke: 14,
-        center: [h('strong', { style: { fontSize: '26px' } }, String(state.total)), h('span', null, 'ჩანაწერი')] })),
+        center: [h('strong', { style: { fontSize: '26px' } }, String(state.total)), h('span', null, t('ჩანაწერი', 'records'))] })),
       h('div', { class: 'rec-overview-stats' },
         h('div', { class: 'rec-legend' }, parts.length ? parts.map((p) => h('div', { class: 'rec-legend-row' }, h('i', { style: { background: p.color } }), h('span', null, p.name), h('b', { class: 'num' }, String(p.value))))
-          : h('span', { class: 'faint', style: { fontSize: '13.5px' } }, 'დასკვნები ჯერ არ არის')),
+          : h('span', { class: 'faint', style: { fontSize: '13.5px' } }, t('დასკვნები ჯერ არ არის', 'No reviews yet'))),
         h('div', { class: 'rec-kpis' },
-          kpi('messageText', 'sky', 'საუბრები Medi-სთან', String(chats.length)),
-          kpi('clock', 'violet', 'ბოლო განახლება', lastAt ? relDay(lastAt) : '—'))));
+          kpi('messageText', 'sky', t('საუბრები Medi-სთან', 'Medi conversations'), String(chats.length)),
+          kpi('clock', 'violet', t('ბოლო განახლება', 'Last updated'), lastAt ? relDay(lastAt) : '—'))));
 
     const labCard = state.lab ? h('a', { class: 'card hover rec-lab', href: '/lab', 'data-link': '' },
       tile('flask', 'blue', 42),
       h('div', { class: 'row-main' },
-        h('div', { class: 'card-title' }, 'ლაბორატორია'),
-        h('div', { class: 'card-sub' }, `ბოლო კვლევა ${relDay(state.lab.latest.date)} · ${state.lab.latest.parameters.length} მაჩვენებელი`)),
-      (() => { const off = state.lab.latest.parameters.filter((p) => p.flag === 'H' || p.flag === 'L').length; return off ? badge(`${off} საყურადღებო`, 'danger') : badge('ნორმაში', 'ok'); })(),
+        h('div', { class: 'card-title' }, t('ლაბორატორია', 'Lab tests')),
+        h('div', { class: 'card-sub' }, t(`ბოლო კვლევა ${relDay(state.lab.latest.date)} · ${state.lab.latest.parameters.length} მაჩვენებელი`, `Latest test ${relDay(state.lab.latest.date)} · ${state.lab.latest.parameters.length} ${state.lab.latest.parameters.length === 1 ? 'value' : 'values'}`))),
+      (() => { const off = state.lab.latest.parameters.filter((p) => p.flag === 'H' || p.flag === 'L').length; return off ? badge(t(`${off} საყურადღებო`, `${off} to watch`), 'danger') : badge(t('ნორმაში', 'In range'), 'ok'); })(),
       icon('chevronRight', { size: 18, className: 'row-chev' })) : h('a', { class: 'card hover rec-lab', href: '/lab', 'data-link': '' },
       tile('flask', 'blue', 42),
-      h('div', { class: 'row-main' }, h('div', { class: 'card-title' }, 'ლაბორატორია'), h('div', { class: 'card-sub' }, 'მაჩვენებლები ნორმებით და გრაფიკებით')),
+      h('div', { class: 'row-main' }, h('div', { class: 'card-title' }, t('ლაბორატორია', 'Lab tests')), h('div', { class: 'card-sub' }, t('მაჩვენებლები ნორმებით და გრაფიკებით', 'Values with reference ranges and charts'))),
       icon('chevronRight', { size: 18, className: 'row-chev' }));
 
-    const search = input({ type: 'search', placeholder: 'ძიება ჩანაწერებში…', value: state.query, 'aria-label': 'ძიება ჩანაწერებში' });
+    const search = input({ type: 'search', placeholder: t('ძიება ჩანაწერებში…', 'Search records…'), value: state.query, 'aria-label': t('ძიება ჩანაწერებში', 'Search records') });
     search.addEventListener('input', debounce(() => { state.query = search.value; paintList(); }, 150));
 
-    const chatsCard = chats.length ? section('საუბრები', card({ class: 'flush' }, h('div', { class: 'list rec-list' }, chats.slice(0, 30).map((c) => {
+    const chatsCard = chats.length ? section(t('საუბრები', 'Conversations'), card({ class: 'flush' }, h('div', { class: 'list rec-list' }, chats.slice(0, 30).map((c) => {
       const mode = MEDI_MODE[c.mode] || MEDI_MODE.ASSISTANT;
       return recRow({
-        ic: 'messageText', ink: mode.ink, title: c.title || 'საუბარი Medi-სთან',
+        ic: 'messageText', ink: mode.ink, title: c.title || t('საუბარი Medi-სთან', 'Conversation with Medi'),
         meta: `${mode.label} · ${relDay(c.updatedAt)}`, body: c.preview,
         href: `/medi?session=${encodeURIComponent(c.id)}`,
         onDelete: async (rowEl) => {
-          const ok = await confirmDialog({ title: 'საუბრის წაშლა', body: 'ნამდვილად გინდა საუბრის წაშლა?', confirm: 'წაშლა', danger: true });
+          const ok = await confirmDialog({ title: t('საუბრის წაშლა', 'Delete conversation'), body: t('ნამდვილად გინდა საუბრის წაშლა?', 'Delete this conversation?'), confirm: t('წაშლა', 'Delete'), danger: true });
           if (!ok) return;
           try {
             await del(`/api/chats/${c.id}`);
             state.chats = state.chats.filter((x) => x.id !== c.id);
             rowEl.remove();
-            toast('საუბარი წაიშალა');
+            toast(t('საუბარი წაიშალა', 'Conversation deleted'));
             if (!state.chats.length && !state.records.length) render();
           } catch (e) { toast(e.message, 'error'); }
         },
@@ -286,7 +289,7 @@ async function listPage(root, ctx) {
     mount(body,
       h('div', { class: 'grid grid-main rec-top' }, overview, h('div', { class: 'stack', style: { gap: '16px' } }, labCard, featureOn('medi') ? mediHint() : null)),
       h('div', { class: 'grid grid-main' },
-        h('div', null, section('ანალიზები და დასკვნები', h('div', { class: 'stack', style: { gap: '12px' } },
+        h('div', null, section(t('ანალიზები და დასკვნები', 'Lab tests and reviews'), h('div', { class: 'stack', style: { gap: '12px' } },
           h('div', { class: 'rec-tools' }, search, chipsHost), listHost))),
         h('div', null, chatsCard, addSection())),
       h('p', { class: 'disclaimer' }, icon('info', { size: 15 }), DISCLAIMER));
@@ -297,46 +300,46 @@ async function listPage(root, ctx) {
   const paintChips = (counts) => mount(chipsHost, FILTERS.filter((f) => f === 'ALL' || counts[f] || state.filter === f).map((f) => h('button', {
     type: 'button', class: `chip ${state.filter === f ? 'on' : ''}`, 'aria-pressed': state.filter === f ? 'true' : 'false',
     onClick: () => { state.filter = f; paintChips(counts); paintList(); },
-  }, f === 'ALL' ? 'ყველა' : typeLabel(f), h('span', { class: 'lab-chip-n' }, String(f === 'ALL' ? state.records.length : counts[f] || 0)))));
+  }, f === 'ALL' ? t('ყველა', 'All') : typeLabel(f), h('span', { class: 'lab-chip-n' }, String(f === 'ALL' ? state.records.length : counts[f] || 0)))));
 
   const paintList = () => {
     const q = state.query.trim().toLowerCase();
     const rows = state.records.filter((r) => (state.filter === 'ALL' || r.type === state.filter)
       && (!q || `${typeLabel(r.type)} ${r.aiAnalysis || ''}`.toLowerCase().includes(q)));
     if (!state.records.length) {
-      mount(listHost, card(empty('დასკვნები ჯერ არ გაქვს', 'ატვირთე ანალიზი ან სნიმარი და დასკვნა აქ შეინახება.')));
+      mount(listHost, card(empty(t('დასკვნები ჯერ არ გაქვს', 'You don’t have any reviews yet'), t('ატვირთე ანალიზი ან სნიმარი და დასკვნა აქ შეინახება.', 'Upload a lab test or a scan and the review is saved here.'))));
       return;
     }
     mount(listHost, card({ class: 'flush' }, rows.length ? h('div', { class: 'list rec-list' }, rows.map((r) => {
       const l = look(r.type);
       return recRow({
         ic: l.icon, ink: l.ink, title: typeLabel(r.type), meta: fmtDateTime(r.createdAt), body: plainSummary(r.aiAnalysis),
-        attach: r.imageUrl ? (isPdf(r.imageUrl) ? 'PDF' : 'ფოტო') : null,
+        attach: r.imageUrl ? (isPdf(r.imageUrl) ? 'PDF' : t('ფოტო', 'Photo')) : null,
         href: `/records/${r.id}`,
         onDelete: async (rowEl) => {
-          const ok = await confirmDialog({ title: 'ჩანაწერის წაშლა', body: 'ნამდვილად გინდა ამ ჩანაწერის წაშლა? ეს ვერ დაბრუნდება.', confirm: 'წაშლა', danger: true });
+          const ok = await confirmDialog({ title: t('ჩანაწერის წაშლა', 'Delete record'), body: t('ნამდვილად გინდა ამ ჩანაწერის წაშლა? ეს ვერ დაბრუნდება.', 'Delete this record? This can’t be undone.'), confirm: t('წაშლა', 'Delete'), danger: true });
           if (!ok) return;
           try {
             await del(`/api/records/${r.id}`);
             state.records = state.records.filter((x) => x.id !== r.id);
             state.total = Math.max(0, state.total - 1);
             rowEl.remove();
-            toast('ჩანაწერი წაიშალა');
+            toast(t('ჩანაწერი წაიშალა', 'Record deleted'));
             render();
           } catch (e) { toast(e.message, 'error'); }
         },
       });
-    })) : h('p', { class: 'faint', style: { padding: '22px 20px', fontSize: '14px' } }, q ? 'ვერაფერი მოიძებნა.' : 'ამ ტიპის ჩანაწერი ჯერ არ გაქვს.')));
+    })) : h('p', { class: 'faint', style: { padding: '22px 20px', fontSize: '14px' } }, q ? t('ვერაფერი მოიძებნა.', 'Nothing found.') : t('ამ ტიპის ჩანაწერი ჯერ არ გაქვს.', 'You don’t have records of this type yet.'))));
   };
 
   function addSection() {
-    const t = (ic, ink, title, sub, onClick, href) => h(href ? 'a' : 'button', { class: 'card hover rec-add', type: href ? undefined : 'button', href, 'data-link': href ? '' : undefined, onClick },
+    const addTile = (ic, ink, title, sub, onClick, href) => h(href ? 'a' : 'button', { class: 'card hover rec-add', type: href ? undefined : 'button', href, 'data-link': href ? '' : undefined, onClick },
       tile(ic, ink, 40), h('div', null, h('div', { class: 'card-title' }, title), h('div', { class: 'card-sub' }, sub)));
-    return section('დამატება', h('div', { class: 'rec-add-grid' },
-      t('flask', 'blue', 'ანალიზი', 'ფოტო ან PDF — ნორმებით', () => openLabUpload({ navigate: ctx.navigate, onSaved: () => refresh().catch(() => {}) })),
-      t('scanLine', 'sky', 'სნიმარი', 'რენტგენი, ექო, MRI', () => openImageUpload('IMAGING', { navigate: ctx.navigate, onSaved: () => refresh().catch(() => {}) })),
-      t('scanFace', 'rose', 'კანი', 'ფოტოს შეფასება', () => openImageUpload('SKIN', { navigate: ctx.navigate, onSaved: () => refresh().catch(() => {}) })),
-      featureOn('medi') ? t('sparkles', 'teal', 'ჰკითხე Medi-ს', 'აღწერე, რა გაწუხებს', null, '/medi') : null));
+    return section(t('დამატება', 'Add'), h('div', { class: 'rec-add-grid' },
+      addTile('flask', 'blue', t('ანალიზი', 'Lab test'), t('ფოტო ან PDF — ნორმებით', 'Photo or PDF — with reference ranges'), () => openLabUpload({ navigate: ctx.navigate, onSaved: () => refresh().catch(() => {}) })),
+      addTile('scanLine', 'sky', t('სნიმარი', 'Scan'), t('რენტგენი, ექო, MRI', 'X-ray, ultrasound, MRI'), () => openImageUpload('IMAGING', { navigate: ctx.navigate, onSaved: () => refresh().catch(() => {}) })),
+      addTile('scanFace', 'rose', t('კანი', 'Skin'), t('ფოტოს შეფასება', 'Photo check'), () => openImageUpload('SKIN', { navigate: ctx.navigate, onSaved: () => refresh().catch(() => {}) })),
+      featureOn('medi') ? addTile('sparkles', 'teal', t('ჰკითხე Medi-ს', 'Ask Medi'), t('აღწერე, რა გაწუხებს', 'Describe what’s bothering you'), null, '/medi') : null));
   }
 
   try { await refresh(); } catch (e) { mount(body, errorBox(e, () => listPage(root, ctx))); }
@@ -345,7 +348,7 @@ async function listPage(root, ctx) {
 function mediHint() {
   return h('a', { class: 'card hover rec-lab', href: '/medi', 'data-link': '' },
     tile('sparkles', 'teal', 42),
-    h('div', { class: 'row-main' }, h('div', { class: 'card-title' }, 'Medi'), h('div', { class: 'card-sub' }, 'საუბრები ავტომატურად ინახება ამ ბარათში')),
+    h('div', { class: 'row-main' }, h('div', { class: 'card-title' }, 'Medi'), h('div', { class: 'card-sub' }, t('საუბრები ავტომატურად ინახება ამ ბარათში', 'Conversations are saved to this card automatically'))),
     icon('chevronRight', { size: 18, className: 'row-chev' }));
 }
 
@@ -363,14 +366,14 @@ function recRow({ ic, ink, title, meta, body, attach, href, onDelete }) {
         h('div', { class: 'rec-row-top' }, h('span', { class: 'row-title' }, title), attach ? badge(attach, 'neutral') : null),
         h('div', { class: 'faint', style: { fontSize: '12.5px', marginTop: '1px' } }, meta),
         body ? h('div', { class: 'rec-row-body' }, body) : null)),
-    iconButton('trash', { title: 'წაშლა', size: 17, class: 'rec-del', onClick: () => onDelete(el) }));
+    iconButton('trash', { title: t('წაშლა', 'Delete'), size: 17, class: 'rec-del', onClick: () => onDelete(el) }));
   return el;
 }
 
 /* ── Detail page ──────────────────────────────────────── */
 async function detailPage(root, ctx) {
   const { id } = ctx.params;
-  const back = h('a', { class: 'back', href: '/records', 'data-link': '' }, icon('chevronLeft', { size: 16 }), 'ჩემი ბარათი');
+  const back = h('a', { class: 'back', href: '/records', 'data-link': '' }, icon('chevronLeft', { size: 16 }), t('ჩემი ბარათი', 'My card'));
   const host = h('div');
   mount(root, back, host);
   mount(host, h('div', { class: 'grid grid-main', style: { marginTop: '24px' } }, skeleton(8), skeleton(4)));
@@ -379,20 +382,20 @@ async function detailPage(root, ctx) {
     ({ record } = await get(`/api/records/${encodeURIComponent(id)}`));
   } catch (e) {
     mount(host, h('div', { style: { marginTop: '24px' } }, e.status === 404 || e.status === 400
-      ? card(empty('ჩანაწერი ვერ მოიძებნა', 'შესაძლოა უკვე წაშლილია.', button('ჩემს ბარათზე დაბრუნება', { href: '/records', variant: 'secondary' })))
+      ? card(empty(t('ჩანაწერი ვერ მოიძებნა', 'Record not found'), t('შესაძლოა უკვე წაშლილია.', 'It may have been deleted already.'), button(t('ჩემს ბარათზე დაბრუნება', 'Back to My card'), { href: '/records', variant: 'secondary' })))
       : errorBox(e, () => detailPage(root, ctx))));
     return;
   }
   const l = look(record.type);
   ctx.setTitle(typeLabel(record.type));
-  const delBtn = button('წაშლა', { variant: 'ghost', icon: 'trash', onClick: async () => {
-    const ok = await confirmDialog({ title: 'ჩანაწერის წაშლა', body: 'ნამდვილად გინდა ამ ჩანაწერის წაშლა? ეს ვერ დაბრუნდება.', confirm: 'წაშლა', danger: true });
+  const delBtn = button(t('წაშლა', 'Delete'), { variant: 'ghost', icon: 'trash', onClick: async () => {
+    const ok = await confirmDialog({ title: t('ჩანაწერის წაშლა', 'Delete record'), body: t('ნამდვილად გინდა ამ ჩანაწერის წაშლა? ეს ვერ დაბრუნდება.', 'Delete this record? This can’t be undone.'), confirm: t('წაშლა', 'Delete'), danger: true });
     if (!ok) return;
     await busy(delBtn, async () => {
       try {
         await del(`/api/records/${record.id}`);
         invalidate('/api/records');
-        toast('ჩანაწერი წაიშალა');
+        toast(t('ჩანაწერი წაიშალა', 'Record deleted'));
         ctx.navigate('/records', { replace: true });
       } catch (e) { toast(e.message, 'error'); }
     });
@@ -404,12 +407,12 @@ async function detailPage(root, ctx) {
       h('div', { class: 'hstack', style: { gap: '14px', flexWrap: 'nowrap' } }, tile(l.icon, l.ink, 52),
         h('div', null, h('h1', null, typeLabel(record.type)), h('p', null, fmtDateTime(record.createdAt)))),
       h('div', { class: 'page-head-actions' },
-        record.type === 'LAB' ? button('ლაბორატორია', { variant: 'secondary', icon: 'activity', href: '/lab' }) : null,
+        record.type === 'LAB' ? button(t('ლაბორატორია', 'Lab tests'), { variant: 'secondary', icon: 'activity', href: '/lab' }) : null,
         delBtn)),
     h('div', { class: `grid ${fileSide ? 'grid-main' : ''}` },
       card({ class: 'pad-lg rec-analysis' },
         h('div', { class: 'hstack', style: { marginBottom: '14px' } }, badge(typeLabel(record.type), 'brand'), h('span', { class: 'faint', style: { fontSize: '13px' } }, relDay(record.createdAt))),
-        record.aiAnalysis?.trim() ? markdown(record.aiAnalysis) : h('p', { class: 'muted' }, 'დასკვნის ტექსტი არ არის.')),
+        record.aiAnalysis?.trim() ? markdown(record.aiAnalysis) : h('p', { class: 'muted' }, t('დასკვნის ტექსტი არ არის.', 'There’s no review text.'))),
       fileSide),
     h('p', { class: 'disclaimer' }, icon('info', { size: 15 }), DISCLAIMER));
 }
@@ -417,20 +420,20 @@ async function detailPage(root, ctx) {
 function filePreview(stored) {
   const pdf = isPdf(stored);
   const frame = h('div', { class: 'rec-file-frame' });
-  const openBtn = button(pdf ? 'PDF-ის გახსნა' : 'სრულ ზომაზე გახსნა', { variant: 'secondary', icon: 'externalLink', class: 'btn-block', onClick: () => openPrivateFile(stored) });
+  const openBtn = button(pdf ? t('PDF-ის გახსნა', 'Open PDF') : t('სრულ ზომაზე გახსნა', 'Open full size'), { variant: 'secondary', icon: 'externalLink', class: 'btn-block', onClick: () => openPrivateFile(stored) });
   if (pdf) {
-    mount(frame, h('div', { class: 'rec-file-pdf' }, tile('file', 'rose', 56), h('div', { class: 'card-title' }, 'PDF დოკუმენტი'), h('div', { class: 'card-sub' }, 'გაიხსნება ახალ ჩანართში')));
+    mount(frame, h('div', { class: 'rec-file-pdf' }, tile('file', 'rose', 56), h('div', { class: 'card-title' }, t('PDF დოკუმენტი', 'PDF document')), h('div', { class: 'card-sub' }, t('გაიხსნება ახალ ჩანართში', 'Opens in a new tab'))));
   } else {
     mount(frame, h('div', { class: 'sk', style: { height: '100%', borderRadius: '16px' } }));
     const url = fileUrl(stored);
     (url ? authedBlobUrl(url) : Promise.resolve(null)).then((blob) => {
-      if (!blob) { mount(frame, h('div', { class: 'rec-file-pdf' }, tile('image', 'neutral', 48), h('div', { class: 'card-sub' }, 'ფოტო ვერ ჩაიტვირთა'))); return; }
-      const img = h('img', { src: blob, alt: 'ატვირთული ფოტო', onClick: () => openPrivateFile(stored) });
-      img.addEventListener('error', () => mount(frame, h('div', { class: 'rec-file-pdf' }, tile('image', 'neutral', 48), h('div', { class: 'card-sub' }, 'ფოტო ვერ ჩაიტვირთა'))));
+      if (!blob) { mount(frame, h('div', { class: 'rec-file-pdf' }, tile('image', 'neutral', 48), h('div', { class: 'card-sub' }, t('ფოტო ვერ ჩაიტვირთა', 'Couldn’t load the photo')))); return; }
+      const img = h('img', { src: blob, alt: t('ატვირთული ფოტო', 'Uploaded photo'), onClick: () => openPrivateFile(stored) });
+      img.addEventListener('error', () => mount(frame, h('div', { class: 'rec-file-pdf' }, tile('image', 'neutral', 48), h('div', { class: 'card-sub' }, t('ფოტო ვერ ჩაიტვირთა', 'Couldn’t load the photo')))));
       mount(frame, img);
-    }).catch(() => mount(frame, h('div', { class: 'rec-file-pdf' }, tile('image', 'neutral', 48), h('div', { class: 'card-sub' }, 'ფოტო ვერ ჩაიტვირთა'))));
+    }).catch(() => mount(frame, h('div', { class: 'rec-file-pdf' }, tile('image', 'neutral', 48), h('div', { class: 'card-sub' }, t('ფოტო ვერ ჩაიტვირთა', 'Couldn’t load the photo')))));
   }
-  return h('aside', { class: 'rec-file' }, section('ატვირთული ფაილი', card({ class: 'stack', style: { gap: '12px' } }, frame, openBtn)));
+  return h('aside', { class: 'rec-file' }, section(t('ატვირთული ფაილი', 'Uploaded file'), card({ class: 'stack', style: { gap: '12px' } }, frame, openBtn)));
 }
 
 export default async function recordsPage(root, ctx) {

@@ -232,7 +232,7 @@ async function upsertUserLocationUnlocked(userId, input = {}) {
     hasCoords = false;
   }
   if (source === 'grant' && !hasCoords) {
-    throw Object.assign(new Error('მდებარეობის ახალი მონაცემი ვერ მივიღეთ. ხელახლა სცადე.'), { status: 400, code: 'LOCATION_FIX_REQUIRED' });
+    throw Object.assign(new Error('მდებარეობის ახალი მონაცემი ვერ მივიღეთ. ხელახლა სცადე.'), { status: 400, code: 'LOCATION_FIX_REQUIRED', messageEn: 'We did not get a fresh location. Please try again.' });
   }
 
   const prompted = input.prompted === true || current.prompted || hasCoords || input.enabled === true;

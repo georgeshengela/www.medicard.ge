@@ -1,3 +1,5 @@
+import { isEn } from '../i18n/locale.js';
+
 export type ConditionEntry = {
   id: string;
   ka: string;
@@ -96,18 +98,19 @@ function fold(value: string) {
 }
 
 function haystack(entry: ConditionEntry) {
-  return [entry.ka, entry.id, ...(entry.aliases ?? [])].map(fold).filter(Boolean);
+  return [entry.ka, entry.en, entry.id, ...(entry.aliases ?? [])].map(fold).filter(Boolean);
 }
 
+/** Label in the app language (English users pick and store English labels). */
 export function conditionLabel(entry: ConditionEntry) {
-  return entry.ka;
+  return isEn() ? entry.en : entry.ka;
 }
 
 export function resolveConditionLabel(value: string) {
   const folded = fold(value);
   if (!folded) return value;
   const found = CONDITION_CATALOG.find((entry) => haystack(entry).includes(folded));
-  return found?.ka ?? value;
+  return found ? conditionLabel(found) : value;
 }
 
 export function searchConditions(query: string, limit = 8): ConditionEntry[] {
@@ -125,7 +128,7 @@ export function searchConditions(query: string, limit = 8): ConditionEntry[] {
     return { entry, score };
   })
     .filter((row) => row.score > 0)
-    .sort((a, b) => b.score - a.score || a.entry.ka.localeCompare(b.entry.ka, 'ka'));
+    .sort((a, b) => b.score - a.score || conditionLabel(a.entry).localeCompare(conditionLabel(b.entry), isEn() ? 'en' : 'ka'));
 
   return ranked.slice(0, limit).map((row) => row.entry);
 }

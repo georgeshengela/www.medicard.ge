@@ -31,6 +31,7 @@ import { MOOD_OPTIONS, MUCUS_OPTIONS, PHYSICAL_SYMPTOMS } from '@/constants/cycl
 import { recentObservationKeys } from '@/lib/cycleObservationRegistry';
 import { PAIN_MANAGED_SYMPTOM_IDS } from '@/lib/cycleObservations';
 import { ka } from '@/i18n/ka';
+import { tx } from '@/i18n/locale';
 import { EMPTY_CYCLE_LOG, formFromCycleLog, isBleedFlow, persistCycleLog } from '@/lib/cycleLogSave';
 import { applySymptomChipToggle } from '@/lib/cycleObservationAssessment';
 import { loadCycleView, type CycleView } from '@/lib/cycleOffline';
@@ -180,7 +181,7 @@ export function CycleQuickLogSheet({
                   >
                     {saveError || ka.common.loading}
                   </Text>
-                  {saveError ? <CyclePrimaryButton label="ხელახლა ცდა" onPress={() => setLoadAttempt(n => n + 1)}/> : null}
+                  {saveError ? <CyclePrimaryButton label={tx('ხელახლა ცდა', 'Try again')} onPress={() => setLoadAttempt(n => n + 1)}/> : null}
                 </View>
               ) : (
               <>

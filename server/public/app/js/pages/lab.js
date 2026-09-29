@@ -11,6 +11,7 @@ import { get, put, request, invalidate } from '../api.js';
 import { sparkline } from '../charts.js';
 import { withAiConsent } from '../aiConsent.js';
 import { featureOn } from '../session.js';
+import { t, isEn } from '../i18n.js';
 
 const CSS = '/app/css/lab.css';
 function ensureCss() {
@@ -21,21 +22,21 @@ export const MEDI_PREFILL_KEY = 'medicard.web.mediPrefill';
 const MAX_FILES = 8;
 const MAX_BYTES = 12 * 1024 * 1024;
 const ACCEPT = 'image/jpeg,image/png,image/webp,application/pdf';
-const DISCLAIMER = 'ეს არ არის დიაგნოზი — საჭიროებისას ექიმს მიმართე.';
-const FLAG_NOTE = 'ნიშანი ლაბორატორიის ფურცელზე დაბეჭდილ ნიშანს ან საცნობარო დიაპაზონს ეფუძნება, არა აპის საკუთარ ნორმებს.';
+const DISCLAIMER = t('ეს არ არის დიაგნოზი — საჭიროებისას ექიმს მიმართე.', 'This is not a diagnosis — see a doctor when needed.');
+const FLAG_NOTE = t('ნიშანი ლაბორატორიის ფურცელზე დაბეჭდილ ნიშანს ან საცნობარო დიაპაზონს ეფუძნება, არა აპის საკუთარ ნორმებს.', 'The flag is based on the mark or reference range printed on the lab sheet, not on the app’s own ranges.');
 
 const FLAG = {
-  H: { label: 'მაღალი', tone: 'danger' },
-  L: { label: 'დაბალი', tone: 'danger' },
-  N: { label: 'ნორმა', tone: 'ok' },
-  U: { label: 'უცნობი', tone: 'neutral' },
+  H: { label: t('მაღალი', 'High'), tone: 'danger' },
+  L: { label: t('დაბალი', 'Low'), tone: 'danger' },
+  N: { label: t('ნორმა', 'Normal'), tone: 'ok' },
+  U: { label: t('უცნობი', 'Unknown'), tone: 'neutral' },
 };
-const FLAG_PROMPT = { H: 'მაღალი', L: 'დაბალი', U: 'შეუფასებელი', N: 'ნორმაში' };
+const FLAG_PROMPT = isEn ? { H: 'high', L: 'low', U: 'not assessed', N: 'in range' } : { H: 'მაღალი', L: 'დაბალი', U: 'შეუფასებელი', N: 'ნორმაში' };
 const isOff = (f) => f === 'H' || f === 'L';
 
 /* ── Data helpers ─────────────────────────────────────── */
 const keyOf = (p) => String(p.key || p.nameEn || p.nameKa || '').trim().toLowerCase();
-const nameOf = (p) => p.nameKa || p.nameEn || p.key;
+const nameOf = (p) => (isEn ? p.nameEn || p.nameKa : p.nameKa || p.nameEn) || p.key;
 
 export function formatNorm(p) {
   const u = p.unit ? ` ${p.unit}` : '';
@@ -50,7 +51,7 @@ function num(n) {
   return Number.isInteger(n) ? String(n) : n.toFixed(Math.abs(n) >= 10 ? 1 : 2).replace(/\.?0+$/, '');
 }
 
-function labDate(d) { return d === ymd() ? 'დღეს' : fmtDate(d, { year: true }); }
+function labDate(d) { return d === ymd() ? t('დღეს', 'Today') : fmtDate(d, { year: true }); }
 
 function sortPanels(panels) {
   return [...(panels || [])].filter((p) => p && p.date && Array.isArray(p.parameters))
@@ -103,10 +104,15 @@ function mediPrompt(panels) {
   const rank = (f) => (isOff(f) ? 0 : f === 'U' ? 1 : 2);
   const sorted = [...rows].sort((a, b) => rank(a.flag) - rank(b.flag));
   const shown = sorted.slice(0, 25);
-  const range = (p) => (p.refLow != null && p.refHigh != null ? ` (ნორმა ${p.refLow}–${p.refHigh})` : p.refHigh != null ? ` (ნორმა ≤${p.refHigh})` : p.refLow != null ? ` (ნორმა ≥${p.refLow})` : '');
+  const word = t('ნორმა', 'range');
+  const range = (p) => (p.refLow != null && p.refHigh != null ? ` (${word} ${p.refLow}–${p.refHigh})` : p.refHigh != null ? ` (${word} ≤${p.refHigh})` : p.refLow != null ? ` (${word} ≥${p.refLow})` : '');
   const lines = shown.map((p) => `• ${nameOf(p)}: ${p.display}${p.unit ? ` ${p.unit}` : ''}${range(p)} — ${FLAG_PROMPT[p.flag] || FLAG_PROMPT.U}`);
-  const more = rows.length > shown.length ? `\n…და კიდევ ${rows.length - shown.length} მაჩვენებელი.` : '';
-  return `გამიანალიზე ჩემი ლაბორატორიული შედეგები (${latest}).\n${lines.join('\n')}${more}\nრას ნიშნავს ეს ჩემთვის და რა უნდა ვკითხო ექიმს?`;
+  const left = rows.length - shown.length;
+  const more = left > 0 ? t(`\n…და კიდევ ${left} მაჩვენებელი.`, `\n…and ${left} more ${left === 1 ? 'value' : 'values'}.`) : '';
+  return t(
+    `გამიანალიზე ჩემი ლაბორატორიული შედეგები (${latest}).\n${lines.join('\n')}${more}\nრას ნიშნავს ეს ჩემთვის და რა უნდა ვკითხო ექიმს?`,
+    `Please go over my lab results (${latest}).\n${lines.join('\n')}${more}\nWhat does this mean for me, and what should I ask my doctor?`,
+  );
 }
 
 function askMedi(panels, navigate) {
@@ -152,14 +158,14 @@ function trendChart(points, { unit = '', height = 260 } = {}, observers) {
     const t1 = parseDate(points[n - 1].date).getTime();
     const x = (i) => (n <= 1 || t1 === t0 ? pad.l + iw / 2 : pad.l + ((parseDate(points[i].date).getTime() - t0) / (t1 - t0)) * iw);
     const y = (v) => pad.t + ih - ((v - lo) / (hi - lo || 1)) * ih;
-    const svg = s('svg', { width: W, height: H, viewBox: `0 0 ${W} ${H}`, role: 'img', 'aria-label': 'ტენდენციის გრაფიკი' });
+    const svg = s('svg', { width: W, height: H, viewBox: `0 0 ${W} ${H}`, role: 'img', 'aria-label': t('ტენდენციის გრაფიკი', 'Trend chart') });
 
     for (let k = 0; k <= 4; k++) {
       const v = lo + ((hi - lo) / 4) * k;
       svg.appendChild(s('line', { x1: pad.l, x2: W - pad.r, y1: y(v), y2: y(v), class: 'grid' }));
-      const t = s('text', { x: pad.l - 8, y: y(v) + 4, class: 'axis', 'text-anchor': 'end' });
-      t.textContent = num(v);
-      svg.appendChild(t);
+      const label = s('text', { x: pad.l - 8, y: y(v) + 4, class: 'axis', 'text-anchor': 'end' });
+      label.textContent = num(v);
+      svg.appendChild(label);
     }
     // Reference band (printed on the sheet) — both bounds = soft band, one bound = dashed line.
     if (refLow != null && refHigh != null) {
@@ -168,9 +174,9 @@ function trendChart(points, { unit = '', height = 260 } = {}, observers) {
     } else if (refLow != null || refHigh != null) {
       const v = refLow ?? refHigh;
       svg.appendChild(s('line', { x1: pad.l, x2: W - pad.r, y1: y(v), y2: y(v), class: 'goal' }));
-      const t = s('text', { x: W - pad.r, y: y(v) - 6, class: 'goal-label', 'text-anchor': 'end' });
-      t.textContent = refLow != null ? `ნორმა ≥ ${v}` : `ნორმა ≤ ${v}`;
-      svg.appendChild(t);
+      const label = s('text', { x: W - pad.r, y: y(v) - 6, class: 'goal-label', 'text-anchor': 'end' });
+      label.textContent = refLow != null ? t(`ნორმა ≥ ${v}`, `Range ≥ ${v}`) : t(`ნორმა ≤ ${v}`, `Range ≤ ${v}`);
+      svg.appendChild(label);
     }
     // X labels: first, last and a few in between (no overlap).
     const every = Math.max(1, Math.ceil(n / Math.max(2, Math.floor(iw / 78))));
@@ -178,9 +184,9 @@ function trendChart(points, { unit = '', height = 260 } = {}, observers) {
       if (i % every !== 0 && i !== n - 1) return;
       if (i !== n - 1 && n > 1 && x(n - 1) - x(i) < 60) return;
       const d = parseDate(p.date);
-      const t = s('text', { x: x(i), y: H - 8, class: 'axis', 'text-anchor': n === 1 ? 'middle' : i === 0 ? 'start' : i === n - 1 ? 'end' : 'middle' });
-      t.textContent = `${d.getDate()} ${KA_MONTHS_SHORT[d.getMonth()]}${d.getFullYear() !== new Date().getFullYear() ? ` ${String(d.getFullYear()).slice(2)}` : ''}`;
-      svg.appendChild(t);
+      const label = s('text', { x: x(i), y: H - 8, class: 'axis', 'text-anchor': n === 1 ? 'middle' : i === 0 ? 'start' : i === n - 1 ? 'end' : 'middle' });
+      label.textContent = `${d.getDate()} ${KA_MONTHS_SHORT[d.getMonth()]}${d.getFullYear() !== new Date().getFullYear() ? ` ${String(d.getFullYear()).slice(2)}` : ''}`;
+      svg.appendChild(label);
     });
     const pts = points.map((p, i) => [x(i), y(p.param.value)]);
     if (pts.length > 1) {
@@ -233,7 +239,7 @@ function trendChart(points, { unit = '', height = 260 } = {}, observers) {
 }
 
 /* ── Upload (shared with „ჩემი ბარათი“) ─────────────────── */
-function fileSize(b) { return b > 1024 * 1024 ? `${(b / 1024 / 1024).toFixed(1)} მბ` : `${Math.max(1, Math.round(b / 1024))} კბ`; }
+function fileSize(b) { return b > 1024 * 1024 ? `${(b / 1024 / 1024).toFixed(1)} ${t('მბ', 'MB')}` : `${Math.max(1, Math.round(b / 1024))} ${t('კბ', 'KB')}`; }
 
 export function dropzone({ multiple, accept, hint, onFiles }) {
   const inp = h('input', { type: 'file', accept, multiple, hidden: true, onChange: () => { onFiles([...inp.files]); inp.value = ''; } });
@@ -246,7 +252,7 @@ export function dropzone({ multiple, accept, hint, onFiles }) {
     onDrop: (e) => { e.preventDefault(); zone.classList.remove('over'); onFiles([...(e.dataTransfer?.files || [])]); },
   },
   h('div', { class: 'lab-drop-art' }, icon('upload', { size: 24 })),
-  h('div', { class: 'lab-drop-title' }, 'ჩააგდე ფაილი აქ ან აირჩიე'),
+  h('div', { class: 'lab-drop-title' }, t('ჩააგდე ფაილი აქ ან აირჩიე', 'Drop a file here or choose one')),
   h('div', { class: 'faint', style: { fontSize: '13px', marginTop: '4px' } }, hint),
   inp);
   return zone;
@@ -254,9 +260,9 @@ export function dropzone({ multiple, accept, hint, onFiles }) {
 
 export function checkFile(f, { pdf = true } = {}) {
   const okType = /^image\/(jpeg|png|webp)$/.test(f.type) || (pdf && f.type === 'application/pdf');
-  if (/heic|heif/i.test(f.type) || /\.hei[cf]$/i.test(f.name)) return 'iPhone-ის HEIC ფოტო ვერ წავიკითხეთ. ატვირთე სურათი JPEG ან PNG ფორმატში.';
-  if (!okType) return pdf ? 'დაშვებულია მხოლოდ JPG, PNG, WEBP ან PDF ფაილი.' : 'დაშვებულია მხოლოდ JPG, PNG ან WEBP სურათი.';
-  if (f.size > MAX_BYTES) return 'ფაილი ძალიან დიდია. მაქსიმალური ზომაა 12 მეგაბაიტი.';
+  if (/heic|heif/i.test(f.type) || /\.hei[cf]$/i.test(f.name)) return t('iPhone-ის HEIC ფოტო ვერ წავიკითხეთ. ატვირთე სურათი JPEG ან PNG ფორმატში.', 'We couldn’t read the iPhone HEIC photo. Upload the image as JPEG or PNG.');
+  if (!okType) return pdf ? t('დაშვებულია მხოლოდ JPG, PNG, WEBP ან PDF ფაილი.', 'Only JPG, PNG, WEBP or PDF files are allowed.') : t('დაშვებულია მხოლოდ JPG, PNG ან WEBP სურათი.', 'Only JPG, PNG or WEBP images are allowed.');
+  if (f.size > MAX_BYTES) return t('ფაილი ძალიან დიდია. მაქსიმალური ზომაა 12 მეგაბაიტი.', 'The file is too large. The maximum size is 12 MB.');
   return null;
 }
 
@@ -270,7 +276,7 @@ export function openLabUpload({ onSaved, navigate } = {}) {
   let batch = null; // resume a partly read batch like the app (same files + context)
   const err = h('div', { class: 'form-error', hidden: true });
   const list = h('div', { class: 'lab-files' });
-  const ctx = textarea({ placeholder: 'მაგ. ასაკი, სქესი, ჩივილები, მიმდინარე მკურნალობა', maxlength: 2000, rows: 3 });
+  const ctx = textarea({ placeholder: t('მაგ. ასაკი, სქესი, ჩივილები, მიმდინარე მკურნალობა', 'e.g. age, sex, symptoms, current treatment'), maxlength: 2000, rows: 3 });
   const stage = h('div', { class: 'lab-stage', hidden: true });
   const body = h('div', { class: 'stack', style: { gap: '16px' } });
   let submitBtn;
@@ -280,15 +286,15 @@ export function openLabUpload({ onSaved, navigate } = {}) {
     clear(list);
     files.forEach((f, i) => list.appendChild(h('div', { class: 'lab-file' },
       tile(f.type === 'application/pdf' ? 'file' : 'image', 'blue', 34),
-      h('div', { class: 'row-main' }, h('div', { class: 'row-title' }, f.name), h('div', { class: 'row-sub' }, `${f.type === 'application/pdf' ? 'PDF' : 'სურათი'} · ${fileSize(f.size)}`)),
-      running ? h('span', { class: 'faint', style: { fontSize: '12.5px' } }, batch && i < batch.next ? 'მზადაა' : 'რიგშია')
-        : iconButton('x', { title: 'მოშორება', size: 18, onClick: () => { files.splice(i, 1); batch = null; renderFiles(); } }))));
+      h('div', { class: 'row-main' }, h('div', { class: 'row-title' }, f.name), h('div', { class: 'row-sub' }, `${f.type === 'application/pdf' ? 'PDF' : t('სურათი', 'Image')} · ${fileSize(f.size)}`)),
+      running ? h('span', { class: 'faint', style: { fontSize: '12.5px' } }, batch && i < batch.next ? t('მზადაა', 'Done') : t('რიგშია', 'Queued'))
+        : iconButton('x', { title: t('მოშორება', 'Remove'), size: 18, onClick: () => { files.splice(i, 1); batch = null; renderFiles(); } }))));
     list.hidden = !files.length;
   };
   const addFiles = (picked) => {
     showErr('');
     for (const f of picked) {
-      if (files.length >= MAX_FILES) { showErr(`ერთ კვლევაში მაქსიმუმ ${MAX_FILES} გვერდია.`); break; }
+      if (files.length >= MAX_FILES) { showErr(t(`ერთ კვლევაში მაქსიმუმ ${MAX_FILES} გვერდია.`, `A single test can have up to ${MAX_FILES} pages.`)); break; }
       const bad = checkFile(f);
       if (bad) { showErr(bad); continue; }
       files.push(f);
@@ -298,10 +304,10 @@ export function openLabUpload({ onSaved, navigate } = {}) {
   };
 
   const pickView = () => mount(body,
-    h('p', { class: 'muted', style: { fontSize: '14px' } }, 'შეგიძლია რამდენიმე გვერდი ერთად — ყველა ციფრი და ნორმა კარგად უნდა იკითხებოდეს.'),
-    dropzone({ multiple: true, accept: ACCEPT, hint: 'JPG, PNG, WEBP ან PDF · 12 მბ-მდე · 8 გვერდამდე', onFiles: addFiles }),
+    h('p', { class: 'muted', style: { fontSize: '14px' } }, t('შეგიძლია რამდენიმე გვერდი ერთად — ყველა ციფრი და ნორმა კარგად უნდა იკითხებოდეს.', 'You can add several pages at once — every number and range should be clearly readable.')),
+    dropzone({ multiple: true, accept: ACCEPT, hint: t('JPG, PNG, WEBP ან PDF · 12 მბ-მდე · 8 გვერდამდე', 'JPG, PNG, WEBP or PDF · up to 12 MB · up to 8 pages'), onFiles: addFiles }),
     list,
-    field('დამატებითი ინფორმაცია', ctx, 'არასავალდებულო'),
+    field(t('დამატებითი ინფორმაცია', 'Additional information'), ctx, t('არასავალდებულო', 'Optional')),
     stage,
     err);
 
@@ -309,8 +315,8 @@ export function openLabUpload({ onSaved, navigate } = {}) {
     const params = res.extract?.parameters || [];
     const off = params.filter((p) => isOff(p.flag)).length;
     let analysisBox = h('div', { class: 'lab-analysis' },
-      h('p', { class: 'muted', style: { fontSize: '14px' } }, 'ეს ერთი კვლევაა. Medi ერთხელ ახსნის ყველა მაჩვენებელს.'));
-    const explainBtn = button('გაანალიზე Medi-სთან', { icon: 'sparkles', onClick: async () => {
+      h('p', { class: 'muted', style: { fontSize: '14px' } }, t('ეს ერთი კვლევაა. Medi ერთხელ ახსნის ყველა მაჩვენებელს.', 'This is one test. Medi will explain all of its values at once.')));
+    const explainBtn = button(t('გაანალიზე Medi-სთან', 'Analyze with Medi'), { icon: 'sparkles', onClick: async () => {
       showErr('');
       await busy(explainBtn, async () => {
         try {
@@ -327,8 +333,8 @@ export function openLabUpload({ onSaved, navigate } = {}) {
     mount(body,
       h('div', { class: 'lab-saved' }, tile('check', 'green', 40),
         h('div', null,
-          h('div', { class: 'card-title' }, params.length ? `შენახულია ${labDate(res.date)} · ${params.length} მაჩვენებელი` : 'ფურცელი შენახულია'),
-          h('div', { class: 'card-sub' }, params.length ? (off ? `${off} მაჩვენებელი ნორმის გარეთაა` : 'ყველა ამოკითხული მაჩვენებელი ნორმაშია') : 'მაჩვენებლები ვერ ამოვიკითხეთ — სცადე უფრო მკვეთრი ფოტო.'))),
+          h('div', { class: 'card-title' }, params.length ? t(`შენახულია ${labDate(res.date)} · ${params.length} მაჩვენებელი`, `Saved ${labDate(res.date)} · ${params.length} ${params.length === 1 ? 'value' : 'values'}`) : t('ფურცელი შენახულია', 'Sheet saved')),
+          h('div', { class: 'card-sub' }, params.length ? (off ? t(`${off} მაჩვენებელი ნორმის გარეთაა`, `${off} ${off === 1 ? 'value is' : 'values are'} out of range`) : t('ყველა ამოკითხული მაჩვენებელი ნორმაშია', 'All values read are in range')) : t('მაჩვენებლები ვერ ამოვიკითხეთ — სცადე უფრო მკვეთრი ფოტო.', 'We couldn’t read any values — try a sharper photo.')))),
       params.length ? h('div', { class: 'lab-mini-table' }, params.slice(0, 40).map((p) => h('div', { class: 'lab-mini-row' },
         h('span', { class: 'lab-mini-name' }, nameOf(p)),
         h('span', { class: 'num' }, `${p.display} ${p.unit || ''}`.trim()),
@@ -340,7 +346,7 @@ export function openLabUpload({ onSaved, navigate } = {}) {
   };
 
   const run = async () => {
-    if (!files.length) { showErr('ჯერ აირჩიე ფაილი'); return; }
+    if (!files.length) { showErr(t('ჯერ აირჩიე ფაილი', 'Choose a file first')); return; }
     showErr('');
     const context = ctx.value.trim();
     const signature = JSON.stringify([files.map((f) => `${f.name}|${f.size}|${f.lastModified}`), context]);
@@ -350,7 +356,7 @@ export function openLabUpload({ onSaved, navigate } = {}) {
       renderFiles();
       stage.hidden = false;
       for (let i = batch.next; i < files.length; i += 1) {
-        mount(stage, h('span', { class: 'lab-spinner' }), h('span', null, files.length > 1 ? `ვკითხულობთ გვერდს ${i + 1} / ${files.length}` : 'ვკითხულობთ სურათს…'));
+        mount(stage, h('span', { class: 'lab-spinner' }), h('span', null, files.length > 1 ? t(`ვკითხულობთ გვერდს ${i + 1} / ${files.length}`, `Reading page ${i + 1} / ${files.length}`) : t('ვკითხულობთ სურათს…', 'Reading the image…')));
         const fd = new FormData();
         fd.append('files', files[i], files[i].name);
         if (context) fd.append('context', context);
@@ -380,14 +386,14 @@ export function openLabUpload({ onSaved, navigate } = {}) {
   pickView();
   renderFiles();
   openModal({
-    title: 'ატვირთე ანალიზის ფოტოები ან PDF',
+    title: t('ატვირთე ანალიზის ფოტოები ან PDF', 'Upload lab test photos or a PDF'),
     size: 'md',
     body,
     footer: (close) => {
-      submitBtn = button('წაიკითხე და შეინახე', { icon: 'sparkles', onClick: () => busy(submitBtn, async () => { try { await run(); } catch (e) { showErr(e.message); } }) });
-      doneBtn = button('ლაბორატორიაში ნახვა', { variant: 'secondary', onClick: () => { close(); if (navigate && location.pathname !== '/app/lab') navigate('/lab'); } });
+      submitBtn = button(t('წაიკითხე და შეინახე', 'Read and save'), { icon: 'sparkles', onClick: () => busy(submitBtn, async () => { try { await run(); } catch (e) { showErr(e.message); } }) });
+      doneBtn = button(t('ლაბორატორიაში ნახვა', 'View in Lab tests'), { variant: 'secondary', onClick: () => { close(); if (navigate && location.pathname !== '/app/lab') navigate('/lab'); } });
       doneBtn.hidden = true;
-      return [button('დახურვა', { variant: 'ghost', onClick: () => close() }), submitBtn, doneBtn];
+      return [button(t('დახურვა', 'Close'), { variant: 'ghost', onClick: () => close() }), submitBtn, doneBtn];
     },
   });
 }
@@ -396,7 +402,7 @@ export function openLabUpload({ onSaved, navigate } = {}) {
 async function explainPanel(panel, context) {
   const parameters = panel.parameters.slice(0, 80).map((p) => ({
     key: String(p.key || keyOf(p)).slice(0, 80),
-    nameKa: String(nameOf(p) || p.key).slice(0, 160),
+    nameKa: String(p.nameKa || p.nameEn || p.key).slice(0, 160),
     nameEn: String(p.nameEn || '').slice(0, 160),
     display: String(p.display || num(p.value)).slice(0, 40) || '—',
     unit: String(p.unit || '').slice(0, 40),
@@ -418,7 +424,7 @@ async function explainPanel(panel, context) {
   }));
   if (!res || res.declined) return null;
   const analysis = String(res.analysis || '').trim();
-  if (!analysis) throw new Error('Medi-მ დასკვნა ვერ დაასრულა. სცადე ხელახლა.');
+  if (!analysis) throw new Error(t('Medi-მ დასკვნა ვერ დაასრულა. სცადე ხელახლა.', 'Medi couldn’t finish the review. Please try again.'));
   // Server merge keeps an existing write-up and fills an empty one — same as the app's push.
   await put('/api/account/app-state', {
     labPanels: [{ id: panel.id, date: panel.date, createdAt: panel.createdAt || `${panel.date}T00:00:00.000Z`, recordIds: panel.recordIds || [], analysis, parameters: panel.parameters }],
@@ -433,9 +439,9 @@ export default async function labPage(root, ctx) {
   const observers = [];
   const state = { panels: [], series: new Map(), selected: null, period: 'all', query: '', flag: 'all' };
 
-  const uploadBtn = button('ატვირთვა', { icon: 'upload', onClick: () => openLabUpload({ onSaved: () => reload(true), navigate: ctx.navigate }) });
+  const uploadBtn = button(t('ატვირთვა', 'Upload'), { icon: 'upload', onClick: () => openLabUpload({ onSaved: () => reload(true), navigate: ctx.navigate }) });
   const body = h('div');
-  mount(root, pageHead('ანალიზები', 'ანალიზების მაჩვენებლები თარიღებით, ნორმებით და ტენდენციებით', uploadBtn), body);
+  mount(root, pageHead(t('ანალიზები', 'Lab tests'), t('ანალიზების მაჩვენებლები თარიღებით, ნორმებით და ტენდენციებით', 'Lab values by date, with reference ranges and trends'), uploadBtn), body);
 
   const reload = async (silent) => {
     if (!silent) mount(body, h('div', { class: 'stack' }, h('div', { class: 'stats-row' }, [0, 1, 2, 3].map(() => skeleton(2))), h('div', { class: 'lab-layout' }, skeleton(6), skeleton(8))));
@@ -462,8 +468,8 @@ export default async function labPage(root, ctx) {
     observers.splice(0).forEach((o) => o.disconnect());
     const { panels, series } = state;
     if (!panels.length) {
-      mount(body, card({ class: 'pad-lg' }, empty('ჯერ ანალიზი არ არის', 'ატვირთე ლაბორატორიის ფოტო ან PDF — მაჩვენებლები აქ შეინახება თარიღით, ნორმებით და გრაფიკებით.',
-        button('ანალიზის ატვირთვა', { icon: 'upload', onClick: () => openLabUpload({ onSaved: () => reload(), navigate: ctx.navigate }) }))),
+      mount(body, card({ class: 'pad-lg' }, empty(t('ჯერ ანალიზი არ არის', 'No lab tests yet'), t('ატვირთე ლაბორატორიის ფოტო ან PDF — მაჩვენებლები აქ შეინახება თარიღით, ნორმებით და გრაფიკებით.', 'Upload a photo or PDF of your lab results — the values are saved here with dates, reference ranges and charts.'),
+        button(t('ანალიზის ატვირთვა', 'Upload a lab test'), { icon: 'upload', onClick: () => openLabUpload({ onSaved: () => reload(), navigate: ctx.navigate }) }))),
       h('p', { class: 'disclaimer' }, icon('info', { size: 15 }), DISCLAIMER));
       return;
     }
@@ -471,16 +477,16 @@ export default async function labPage(root, ctx) {
     const offLatest = latest.parameters.filter((p) => isOff(p.flag)).length;
 
     const stats = h('div', { class: 'stats-row' },
-      statCard('flask', 'blue', 'კვლევები', String(panels.length), `${fmtDate(panels[panels.length - 1].date, { year: true })}-დან`),
-      statCard('activity', 'teal', 'მაჩვენებლები', String(series.size), 'სხვადასხვა სახეობა'),
-      statCard('alert', offLatest ? 'rose' : 'green', 'საყურადღებო', String(offLatest), offLatest ? 'ბოლო კვლევაში' : 'ბოლო კვლევაში ყველა ნორმაშია', offLatest ? 'danger' : ''),
-      statCard('calendar', 'violet', 'ბოლო კვლევა', relDay(latest.date), `${latest.parameters.length} მაჩვენებელი`));
+      statCard('flask', 'blue', t('კვლევები', 'Tests'), String(panels.length), t(`${fmtDate(panels[panels.length - 1].date, { year: true })}-დან`, `Since ${fmtDate(panels[panels.length - 1].date, { year: true })}`)),
+      statCard('activity', 'teal', t('მაჩვენებლები', 'Values'), String(series.size), t('სხვადასხვა სახეობა', 'Different types')),
+      statCard('alert', offLatest ? 'rose' : 'green', t('საყურადღებო', 'To watch'), String(offLatest), offLatest ? t('ბოლო კვლევაში', 'In the latest test') : t('ბოლო კვლევაში ყველა ნორმაშია', 'All in range in the latest test'), offLatest ? 'danger' : ''),
+      statCard('calendar', 'violet', t('ბოლო კვლევა', 'Latest test'), relDay(latest.date), t(`${latest.parameters.length} მაჩვენებელი`, `${latest.parameters.length} ${latest.parameters.length === 1 ? 'value' : 'values'}`)));
 
     const mediCard = !featureOn('medi') ? null : h('button', { class: 'card hover lab-medi', type: 'button', onClick: () => askMedi(panels, ctx.navigate) },
       tile('message', 'teal', 42),
       h('div', { class: 'row-main' },
-        h('div', { class: 'card-title' }, 'ჰკითხე Medi-ს შედეგებზე'),
-        h('div', { class: 'card-sub' }, 'ბოლო შედეგებს კითხვად მოვამზადებ — გაგზავნამდე ნახავ და შეცვლი.')),
+        h('div', { class: 'card-title' }, t('ჰკითხე Medi-ს შედეგებზე', 'Ask Medi about your results')),
+        h('div', { class: 'card-sub' }, t('ბოლო შედეგებს კითხვად მოვამზადებ — გაგზავნამდე ნახავ და შეცვლი.', 'I’ll turn your latest results into a question — you can review and edit it before sending.'))),
       icon('chevronRight', { size: 18, className: 'row-chev' }));
 
     const chartHost = h('div');
@@ -490,7 +496,7 @@ export default async function labPage(root, ctx) {
       h('aside', { class: 'lab-side' }, listHost));
 
     const mv = movers(series);
-    const moversSec = mv.length ? section('რა შეიცვალა', h('div', { class: 'grid grid-3' }, mv.map((m) =>
+    const moversSec = mv.length ? section(t('რა შეიცვალა', 'What changed'), h('div', { class: 'grid grid-3' }, mv.map((m) =>
       h('button', { type: 'button', class: 'card hover lab-mover', onClick: () => select(m.s.key) },
         h('div', { class: 'between' }, h('div', { class: 'card-title lab-ellipsis' }, m.s.name), badge(m.change, isOff(m.last.flag) ? 'danger' : m.up ? 'brand' : 'neutral')),
         h('div', { class: 'lab-mover-vals' },
@@ -498,14 +504,14 @@ export default async function labPage(root, ctx) {
           h('strong', { class: 'num' }, m.last.display), h('span', { class: 'faint' }, m.s.unit || '')),
         spark(m.s.points.slice(-8).map((p) => p.param.value), isOff(m.last.flag) ? 'var(--danger)' : 'var(--brand-2)'))))) : null;
 
-    const datesSec = section('კვლევები თარიღებით', card({ class: 'flush' }, h('div', { class: 'list lab-dates' }, panels.map((p) => {
+    const datesSec = section(t('კვლევები თარიღებით', 'Tests by date'), card({ class: 'flush' }, h('div', { class: 'list lab-dates' }, panels.map((p) => {
       const off = p.parameters.filter((x) => isOff(x.flag)).length;
       return h('button', { type: 'button', class: 'row row-link', onClick: () => openDate(p) },
         tile('flask', off ? 'rose' : 'blue', 38),
         h('div', { class: 'row-main' },
           h('div', { class: 'row-title' }, labDate(p.date)),
-          h('div', { class: 'row-sub' }, off ? `${p.parameters.length} მაჩვენებელი · ${off} ყურადღება` : `${p.parameters.length} მაჩვენებელი`)),
-        h('div', { class: 'row-trail' }, p.analysis ? badge('Medi-ს დასკვნა', 'brand') : null, icon('chevronRight', { size: 18, className: 'row-chev' })));
+          h('div', { class: 'row-sub' }, off ? t(`${p.parameters.length} მაჩვენებელი · ${off} ყურადღება`, `${p.parameters.length} values · ${off} to watch`) : t(`${p.parameters.length} მაჩვენებელი`, `${p.parameters.length} ${p.parameters.length === 1 ? 'value' : 'values'}`))),
+        h('div', { class: 'row-trail' }, p.analysis ? badge(t('Medi-ს დასკვნა', 'Medi’s review'), 'brand') : null, icon('chevronRight', { size: 18, className: 'row-chev' })));
     }))));
 
     mount(body,
@@ -532,7 +538,7 @@ export default async function labPage(root, ctx) {
 
   const renderChart = (host) => {
     const s = state.series.get(state.selected);
-    if (!s) { mount(host, card(empty('აირჩიე მაჩვენებელი', 'სიიდან აირჩიე მაჩვენებელი და აქ მისი ცვლილება გამოჩნდება.'))); return; }
+    if (!s) { mount(host, card(empty(t('აირჩიე მაჩვენებელი', 'Choose a value'), t('სიიდან აირჩიე მაჩვენებელი და აქ მისი ცვლილება გამოჩნდება.', 'Pick a value from the list to see how it changes here.')))); return; }
     const latest = s.latest.param;
     const prev = s.points.length > 1 ? s.points[s.points.length - 2].param : null;
     const norm = formatNorm(latest);
@@ -545,12 +551,12 @@ export default async function labPage(root, ctx) {
       const list = s.points.filter((p) => p.date >= cutoff);
       mount(chartBox, list.length
         ? trendChart(list, { unit: s.unit }, observers)
-        : h('div', { class: 'lab-chart-empty' }, 'ამ პერიოდში შედეგი არ არის.'));
+        : h('div', { class: 'lab-chart-empty' }, t('ამ პერიოდში შედეგი არ არის.', 'No results in this period.')));
     };
     const legend = h('div', { class: 'legend' },
-      latest.refLow != null && latest.refHigh != null ? h('span', null, h('i', { class: 'lab-legend-band' }), 'ფურცლის ნორმა') : null,
-      h('span', null, h('i', { style: { background: 'var(--brand-2)' } }), 'შენი შედეგი'),
-      h('span', null, h('i', { style: { background: 'var(--danger)', borderRadius: '50%' } }), 'ნორმის გარეთ'));
+      latest.refLow != null && latest.refHigh != null ? h('span', null, h('i', { class: 'lab-legend-band' }), t('ფურცლის ნორმა', 'Sheet range')) : null,
+      h('span', null, h('i', { style: { background: 'var(--brand-2)' } }), t('შენი შედეგი', 'Your result')),
+      h('span', null, h('i', { style: { background: 'var(--danger)', borderRadius: '50%' } }), t('ნორმის გარეთ', 'Out of range')));
 
     mount(host, h('div', { class: 'stack', style: { gap: '16px' } },
       card({ class: 'pad-lg lab-chart-card' },
@@ -558,24 +564,24 @@ export default async function labPage(root, ctx) {
           h('div', { style: { minWidth: 0 } },
             h('h2', { class: 'lab-param-title' }, s.name),
             s.nameEn && s.nameEn !== s.name ? h('div', { class: 'faint', style: { fontSize: '13.5px', marginTop: '2px' } }, s.nameEn) : null),
-          segmented([{ value: '6m', label: '6 თვე' }, { value: '1y', label: '1 წელი' }, { value: 'all', label: 'ყველა' }], state.period, (v) => { state.period = v; paintChart(); })),
+          segmented([{ value: '6m', label: t('6 თვე', '6 months') }, { value: '1y', label: t('1 წელი', '1 year') }, { value: 'all', label: t('ყველა', 'All') }], state.period, (v) => { state.period = v; paintChart(); })),
         h('div', { class: 'lab-latest' },
           h('div', { class: 'lab-latest-val' }, h('strong', { class: 'num' }, latest.display || num(latest.value)), latest.unit ? h('span', null, latest.unit) : null),
           flagBadge(latest.flag),
           delta != null ? h('span', { class: `lab-delta ${delta === 0 ? '' : isOff(latest.flag) ? 'bad' : 'good'}` },
             icon(delta > 0 ? 'arrowUp' : delta < 0 ? 'arrowDown' : 'minus', { size: 14 }),
-            `${delta > 0 ? '+' : ''}${num(delta)}${latest.unit ? ` ${latest.unit}` : ''} წინა კვლევასთან`) : null),
+            t(`${delta > 0 ? '+' : ''}${num(delta)}${latest.unit ? ` ${latest.unit}` : ''} წინა კვლევასთან`, `${delta > 0 ? '+' : ''}${num(delta)}${latest.unit ? ` ${latest.unit}` : ''} vs. previous test`)) : null),
         chartBox,
         legend,
-        s.points.length < 2 ? h('p', { class: 'faint', style: { fontSize: '13px', marginTop: '10px' } }, 'კიდევ ერთი ანალიზი საკმარისია ტენდენციისთვის.') : null),
+        s.points.length < 2 ? h('p', { class: 'faint', style: { fontSize: '13px', marginTop: '10px' } }, t('კიდევ ერთი ანალიზი საკმარისია ტენდენციისთვის.', 'One more test is enough to show a trend.')) : null),
       h('div', { class: 'grid grid-2' },
-        card(h('div', { class: 'card-title', style: { marginBottom: '10px' } }, 'ბოლო შედეგი'),
+        card(h('div', { class: 'card-title', style: { marginBottom: '10px' } }, t('ბოლო შედეგი', 'Latest result')),
           h('div', { class: 'lab-meta' },
-            metaRow('კვლევის თარიღი', fmtDate(s.latest.date, { year: true })),
-            norm ? metaRow('ფურცლის ნორმა', norm) : metaRow('ფურცლის ნორმა', 'არ არის მითითებული'),
-            metaRow('გაზომვები', String(s.points.length))),
+            metaRow(t('კვლევის თარიღი', 'Test date'), fmtDate(s.latest.date, { year: true })),
+            norm ? metaRow(t('ფურცლის ნორმა', 'Sheet range'), norm) : metaRow(t('ფურცლის ნორმა', 'Sheet range'), t('არ არის მითითებული', 'Not given')),
+            metaRow(t('გაზომვები', 'Results'), String(s.points.length))),
           h('p', { class: 'faint', style: { fontSize: '12px', marginTop: '10px', lineHeight: 1.5 } }, FLAG_NOTE)),
-        card(h('div', { class: 'card-title', style: { marginBottom: '6px' } }, 'ისტორია თარიღებით'),
+        card(h('div', { class: 'card-title', style: { marginBottom: '6px' } }, t('ისტორია თარიღებით', 'History by date')),
           h('div', { class: 'list lab-hist' }, [...s.points].reverse().map((p) => h('button', { type: 'button', class: 'row row-link', onClick: () => { const panel = state.panels.find((x) => x.date === p.date); if (panel) openDate(panel); } },
             h('div', { class: 'row-main' }, h('div', { class: 'row-title' }, fmtDate(p.date, { year: true })), h('div', { class: 'row-sub num' }, `${p.param.display} ${p.param.unit || ''}`.trim())),
             flagBadge(p.param.flag))))))));
@@ -591,18 +597,18 @@ export default async function labPage(root, ctx) {
       if (counts[f] != null && f !== 'U') counts[f] += 1;
       return s;
     });
-    const search = input({ type: 'search', placeholder: 'მაჩვენებლის ძიება…', value: state.query, 'aria-label': 'მაჩვენებლის ძიება' });
+    const search = input({ type: 'search', placeholder: t('მაჩვენებლის ძიება…', 'Search values…'), value: state.query, 'aria-label': t('მაჩვენებლის ძიება', 'Search values') });
     const chips = h('div', { class: 'chips' });
     const listEl = h('div', { class: 'list lab-params' });
     const paintChips = () => mount(chips, [
-      ['all', 'ყველა'], ['watch', 'საყურადღებო'], ['H', 'მაღალი'], ['L', 'დაბალი'], ['N', 'ნორმა'],
+      ['all', t('ყველა', 'All')], ['watch', t('საყურადღებო', 'To watch')], ['H', t('მაღალი', 'High')], ['L', t('დაბალი', 'Low')], ['N', t('ნორმა', 'Normal')],
     ].filter(([k]) => k === 'all' || counts[k] > 0).map(([k, label]) => h('button', {
       type: 'button', class: `chip ${state.flag === k ? 'on' : ''}`, 'aria-pressed': state.flag === k ? 'true' : 'false',
       onClick: () => { state.flag = k; paintChips(); paintRows(); },
     }, label, h('span', { class: 'lab-chip-n' }, String(counts[k])))));
     const paintRows = () => {
       const q = state.query.trim().toLowerCase();
-      const flagWords = { H: 'მაღალი high', L: 'დაბალი low', N: 'ნორმა normal', U: 'უცნობი' };
+      const flagWords = { H: 'მაღალი high', L: 'დაბალი low', N: 'ნორმა normal', U: 'უცნობი unknown' };
       const shown = rows.filter((s) => {
         const f = s.latest.param.flag;
         if (state.flag === 'watch' && !isOff(f)) return false;
@@ -616,15 +622,15 @@ export default async function labPage(root, ctx) {
           h('span', { class: `lab-flag-dot f-${p.flag}` }),
           h('div', { class: 'row-main' },
             h('div', { class: 'row-title' }, s.name),
-            h('div', { class: 'row-sub' }, `${relDay(s.latest.date)}${s.points.length > 1 ? ` · ${s.points.length} გაზომვა` : ''}`)),
+            h('div', { class: 'row-sub' }, `${relDay(s.latest.date)}${s.points.length > 1 ? t(` · ${s.points.length} გაზომვა`, ` · ${s.points.length} results`) : ''}`)),
           h('div', { class: 'lab-param-val' }, h('strong', { class: 'num' }, p.display || num(p.value)), h('span', null, p.unit || '')));
-      }) : h('p', { class: 'faint', style: { padding: '18px 8px', fontSize: '14px' } }, state.flag === 'watch' && !counts.watch ? 'საყურადღებო მაჩვენებელი არ არის — ყველა ნორმაშია' : 'ამ ფილტრში მაჩვენებელი არ არის'));
+      }) : h('p', { class: 'faint', style: { padding: '18px 8px', fontSize: '14px' } }, state.flag === 'watch' && !counts.watch ? t('საყურადღებო მაჩვენებელი არ არის — ყველა ნორმაშია', 'Nothing to watch — everything is in range') : t('ამ ფილტრში მაჩვენებელი არ არის', 'No values in this filter')));
     };
     search.addEventListener('input', debounce(() => { state.query = search.value; paintRows(); }, 150));
     paintChips();
     paintRows();
     mount(host, card({ class: 'lab-side-card' },
-      h('div', { class: 'between', style: { marginBottom: '12px' } }, h('div', { class: 'card-title' }, 'მაჩვენებლები'), h('span', { class: 'faint', style: { fontSize: '13px' } }, `${counts.all} სულ`)),
+      h('div', { class: 'between', style: { marginBottom: '12px' } }, h('div', { class: 'card-title' }, t('მაჩვენებლები', 'Values')), h('span', { class: 'faint', style: { fontSize: '13px' } }, t(`${counts.all} სულ`, `${counts.all} total`))),
       search, h('div', { style: { height: '10px' } }), chips, h('div', { style: { height: '8px' } }), listEl));
   };
 
@@ -636,8 +642,8 @@ export default async function labPage(root, ctx) {
     const err = h('div', { class: 'form-error', hidden: true });
     const analysisHost = h('div', { class: 'lab-analysis' });
     const paintAnalysis = () => {
-      if (panel.analysis?.trim()) { mount(analysisHost, h('div', { class: 'lab-analysis-head' }, tile('sparkles', 'teal', 32), h('strong', null, 'Medi-ს დასკვნა')), markdown(panel.analysis)); return; }
-      const btn = button('გაანალიზე Medi-სთან', { icon: 'sparkles', onClick: () => busy(btn, async () => {
+      if (panel.analysis?.trim()) { mount(analysisHost, h('div', { class: 'lab-analysis-head' }, tile('sparkles', 'teal', 32), h('strong', null, t('Medi-ს დასკვნა', 'Medi’s review'))), markdown(panel.analysis)); return; }
+      const btn = button(t('გაანალიზე Medi-სთან', 'Analyze with Medi'), { icon: 'sparkles', onClick: () => busy(btn, async () => {
         err.hidden = true;
         try {
           const text = await explainPanel(panel);
@@ -647,7 +653,7 @@ export default async function labPage(root, ctx) {
           reload(true);
         } catch (e) { err.textContent = e.message; err.hidden = false; }
       }) });
-      mount(analysisHost, h('p', { class: 'muted', style: { fontSize: '14px', marginBottom: '12px' } }, 'ეს ერთი კვლევაა. Medi ერთხელ ახსნის ყველა მაჩვენებელს.'), btn, err);
+      mount(analysisHost, h('p', { class: 'muted', style: { fontSize: '14px', marginBottom: '12px' } }, t('ეს ერთი კვლევაა. Medi ერთხელ ახსნის ყველა მაჩვენებელს.', 'This is one test. Medi will explain all of its values at once.')), btn, err);
     };
     const paintTable = () => {
       const ql = q.trim().toLowerCase();
@@ -657,14 +663,14 @@ export default async function labPage(root, ctx) {
         return `${nameOf(p)} ${p.nameEn || ''} ${p.key}`.toLowerCase().includes(ql);
       });
       mount(tableHost, rows.length ? h('div', { class: 'table-wrap' }, h('table', { class: 'table lab-table' },
-        h('thead', null, h('tr', null, h('th', null, 'მაჩვენებელი'), h('th', null, 'შედეგი'), h('th', { class: 'lab-hide-sm' }, 'ნორმა'), h('th', null, ''))),
+        h('thead', null, h('tr', null, h('th', null, t('მაჩვენებელი', 'Value')), h('th', null, t('შედეგი', 'Result')), h('th', { class: 'lab-hide-sm' }, t('ნორმა', 'Normal')), h('th', null, ''))),
         h('tbody', null, rows.map((p) => h('tr', { class: 'lab-tr', tabindex: '0', onClick: () => { m.close(); select(keyOf(p)); }, onKeydown: (e) => { if (e.key === 'Enter') { m.close(); select(keyOf(p)); } } },
           h('td', null, h('div', { style: { fontWeight: 600 } }, nameOf(p)), p.nameEn && p.nameEn !== nameOf(p) ? h('div', { class: 'faint', style: { fontSize: '12px' } }, p.nameEn) : null),
           h('td', { class: 'num', style: { whiteSpace: 'nowrap' } }, h('strong', null, p.display || num(p.value)), ` ${p.unit || ''}`),
           h('td', { class: 'lab-hide-sm faint num', style: { whiteSpace: 'nowrap' } }, formatNorm(p) || '—'),
-          h('td', { style: { textAlign: 'right' } }, flagBadge(p.flag))))))) : h('p', { class: 'faint', style: { padding: '14px 4px' } }, 'ამ ფილტრში მაჩვენებელი არ არის'));
+          h('td', { style: { textAlign: 'right' } }, flagBadge(p.flag))))))) : h('p', { class: 'faint', style: { padding: '14px 4px' } }, t('ამ ფილტრში მაჩვენებელი არ არის', 'No values in this filter')));
     };
-    const search = input({ type: 'search', placeholder: 'მაჩვენებლის ძიება…', 'aria-label': 'მაჩვენებლის ძიება' });
+    const search = input({ type: 'search', placeholder: t('მაჩვენებლის ძიება…', 'Search values…'), 'aria-label': t('მაჩვენებლის ძიება', 'Search values') });
     search.addEventListener('input', debounce(() => { q = search.value; paintTable(); }, 120));
     paintAnalysis();
     paintTable();
@@ -672,12 +678,12 @@ export default async function labPage(root, ctx) {
       title: labDate(panel.date),
       size: 'lg',
       body: h('div', { class: 'stack', style: { gap: '16px' } },
-        h('p', { class: 'muted', style: { fontSize: '14px' } }, off ? `${panel.parameters.length} მაჩვენებელი · ${off} ნორმის გარეთ. დააჭირე მაჩვენებელს, რომ ნახო როგორ იცვლება.` : `${panel.parameters.length} მაჩვენებელი. დააჭირე მაჩვენებელს, რომ ნახო როგორ იცვლება.`),
+        h('p', { class: 'muted', style: { fontSize: '14px' } }, off ? t(`${panel.parameters.length} მაჩვენებელი · ${off} ნორმის გარეთ. დააჭირე მაჩვენებელს, რომ ნახო როგორ იცვლება.`, `${panel.parameters.length} values · ${off} out of range. Click a value to see how it changes.`) : t(`${panel.parameters.length} მაჩვენებელი. დააჭირე მაჩვენებელს, რომ ნახო როგორ იცვლება.`, `${panel.parameters.length} values. Click a value to see how it changes.`)),
         analysisHost,
         h('div', { class: 'lab-modal-filters' }, search,
-          segmented([{ value: 'all', label: 'ყველა' }, { value: 'watch', label: `საყურადღებო · ${off}` }], flag, (v) => { flag = v; paintTable(); })),
+          segmented([{ value: 'all', label: t('ყველა', 'All') }, { value: 'watch', label: t(`საყურადღებო · ${off}`, `To watch · ${off}`) }], flag, (v) => { flag = v; paintTable(); })),
         tableHost,
-        panel.recordIds?.[0] ? h('a', { class: 'link', href: `/records/${panel.recordIds[0]}`, 'data-link': '', onClick: () => m.close() }, 'ორიგინალი ფურცელი ჩემს ბარათში', icon('chevronRight', { size: 16 })) : null,
+        panel.recordIds?.[0] ? h('a', { class: 'link', href: `/records/${panel.recordIds[0]}`, 'data-link': '', onClick: () => m.close() }, t('ორიგინალი ფურცელი ჩემს ბარათში', 'Original sheet in My card'), icon('chevronRight', { size: 16 })) : null,
         h('p', { class: 'disclaimer', style: { marginTop: 0 } }, icon('info', { size: 15 }), DISCLAIMER)),
     });
   };

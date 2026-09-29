@@ -8,6 +8,36 @@ import {
   ymdParts,
 } from "./calculators-engine.js";
 
+const I18N = window.MedicardI18n || { lang: "ka", t: (k) => k };
+const T = I18N.t;
+const EN = I18N.lang === "en";
+const EN_MONTHS = [
+  "January",
+  "February",
+  "March",
+  "April",
+  "May",
+  "June",
+  "July",
+  "August",
+  "September",
+  "October",
+  "November",
+  "December",
+];
+const EN_WEEKDAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+const MONTHS = EN ? EN_MONTHS : KA_MONTHS;
+const DOWS = EN ? ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"] : KA_WEEKDAYS_MON_SHORT;
+
+function dateParts(ymd) {
+  if (!EN) return formatKaParts(ymd);
+  const { y, m, d } = ymdParts(ymd);
+  return {
+    weekday: EN_WEEKDAYS[new Date(Date.UTC(y, m - 1, d)).getUTCDay()],
+    date: `${d} ${EN_MONTHS[m - 1]} ${y}`,
+  };
+}
+
 const YEAR_MIN = 1990;
 const YEAR_MAX = 2035;
 
@@ -32,14 +62,14 @@ function syncLabel(wrap) {
   const date = wrap.querySelector("[data-date]");
   if (!input || !weekday || !date) return;
   if (isYmd(input.value)) {
-    const parts = formatKaParts(input.value);
+    const parts = dateParts(input.value);
     weekday.textContent = parts.weekday;
     date.textContent = parts.date;
     wrap.classList.add("has-value");
     wrap.classList.remove("is-invalid");
   } else {
-    weekday.textContent = "თარიღი";
-    date.textContent = "აირჩიე კალენდრიდან";
+    weekday.textContent = T("თარიღი", "Date");
+    date.textContent = T("აირჩიე კალენდრიდან", "Pick from the calendar");
     wrap.classList.remove("has-value");
   }
 }
@@ -79,15 +109,15 @@ function render(wrap) {
   const body = wrap.querySelector("[data-cal-body]");
   if (mode === "months") {
     title.textContent = String(y);
-    body.innerHTML = `<div class="mc-cal-months">${KA_MONTHS.map(
+    body.innerHTML = `<div class="mc-cal-months">${MONTHS.map(
       (name, i) =>
         `<button type="button" data-pick-month="${i + 1}" class="${m === i + 1 ? "is-on" : ""}">${name}</button>`,
     ).join("")}</div>`;
     return;
   }
-  title.textContent = `${KA_MONTHS[m - 1]} ${y}`;
+  title.textContent = `${MONTHS[m - 1]} ${y}`;
   const cells = calendarMonthCells(y, m);
-  body.innerHTML = `<div class="mc-cal-dows" aria-hidden="true">${KA_WEEKDAYS_MON_SHORT.map(
+  body.innerHTML = `<div class="mc-cal-dows" aria-hidden="true">${DOWS.map(
     (d, i) => `<span class="${i >= 5 ? "is-end" : ""}">${d}</span>`,
   ).join("")}</div>
     <div class="mc-cal-days">${cells
@@ -128,21 +158,21 @@ export function mountDateCalendars(root) {
       "beforeend",
       `<button type="button" class="mc-date-btn" aria-haspopup="dialog" aria-expanded="false">
         <span>
-          <small data-weekday>თარიღი</small>
-          <b data-date>აირჩიე კალენდრიდან</b>
+          <small data-weekday>${T("თარიღი", "Date")}</small>
+          <b data-date>${T("აირჩიე კალენდრიდან", "Pick from the calendar")}</b>
         </span>
         <span class="ic ic-calendar" aria-hidden="true"></span>
       </button>
-      <div class="mc-cal" hidden role="dialog" aria-label="კალენდარი">
+      <div class="mc-cal" hidden role="dialog" aria-label="${T("კალენდარი", "Calendar")}">
         <div class="mc-cal-head">
-          <button type="button" class="mc-cal-nav" data-nav="-1" aria-label="წინა">‹</button>
+          <button type="button" class="mc-cal-nav" data-nav="-1" aria-label="${T("წინა", "Previous")}">‹</button>
           <button type="button" class="mc-cal-title" data-cal-title></button>
-          <button type="button" class="mc-cal-nav" data-nav="1" aria-label="შემდეგი">›</button>
+          <button type="button" class="mc-cal-nav" data-nav="1" aria-label="${T("შემდეგი", "Next")}">›</button>
         </div>
         <div data-cal-body></div>
         <div class="mc-cal-foot">
-          <button type="button" data-today>დღეს</button>
-          <button type="button" data-close>დახურვა</button>
+          <button type="button" data-today>${T("დღეს", "Today")}</button>
+          <button type="button" data-close>${T("დახურვა", "Close")}</button>
         </div>
       </div>`,
     );

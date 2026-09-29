@@ -5,7 +5,8 @@ import { prisma } from './prisma.js';
 import { ASSISTANT_CATALOG, ASSISTANT_DESTINATIONS, assistantEndpoint, validateAssistantAction } from './assistantCatalog.js';
 import { saveAppState } from './appState.js';
 
-export function assistantError(message, status = 400, code = 'ASSISTANT_ACTION_INVALID') { return Object.assign(new Error(message), { status, code }); }
+/** `messageEn`: English copy picked by the error handler for English requests. */
+export function assistantError(message, status = 400, code = 'ASSISTANT_ACTION_INVALID', messageEn) { return Object.assign(new Error(message), { status, code, ...(messageEn ? { messageEn } : {}) }); }
 export function signAssistantPlan(userId, action, scope, today) {
   const validated = validateAssistantAction(action, scope);
   return { id: randomUUID(), scope, today, ...validated };
@@ -17,7 +18,7 @@ export function verifyAssistantPlan(userId, token) {
   try {
     const p = jwt.verify(token, env.JWT_SECRET, { audience: 'medi-assistant-action', issuer: 'medicard', algorithms: ['HS256'], subject: userId });
     return { id: p.id, today: p.today, scope: p.scope, ...validateAssistantAction({ tool: p.tool, args: p.args }, p.scope) };
-  } catch { throw assistantError('მოქმედების ვადა ამოიწურა. თავიდან გადაამოწმე შევსებული ინფორმაცია.', 409, 'ASSISTANT_PLAN_EXPIRED'); }
+  } catch { throw assistantError('მოქმედების ვადა ამოიწურა. თავიდან გადაამოწმე შევსებული ინფორმაცია.', 409, 'ASSISTANT_PLAN_EXPIRED', 'This action has expired. Please check the details again.'); }
 }
 export function operationBody(plan) {
   const a = plan.args;
@@ -48,26 +49,26 @@ export function nativeAction(plan) {
 }
 export async function assertAssistantActionContext(userId, plan, db = prisma) {
   const a = plan.args;
-  if (plan.tool === 'nutrition_goal' && a.targetKg != null && a.loseKg != null) throw assistantError('აირჩიე სასურველი წონა ან დასაკლები კილოგრამები.');
-  if (plan.tool === 'nutrition_eat' && !(await db.$queryRaw`SELECT id FROM "NutritionPlannedMeal" WHERE id=${a.plannedMealId} AND "userId"=${userId}`).length) throw assistantError('კვება ვერ მოიძებნა.',404);
+  if (plan.tool === 'nutrition_goal' && a.targetKg != null && a.loseKg != null) throw assistantError('აირჩიე სასურველი წონა ან დასაკლები კილოგრამები.', 400, undefined, 'Choose either a target weight or how many kilograms to lose.');
+  if (plan.tool === 'nutrition_eat' && !(await db.$queryRaw`SELECT id FROM "NutritionPlannedMeal" WHERE id=${a.plannedMealId} AND "userId"=${userId}`).length) throw assistantError('კვება ვერ მოიძებნა.', 404, undefined, 'Meal not found.');
   // Check ownership before preview AND execution; a signed ID is not an authorization grant.
   const reference = plan.tool === 'record_open' ? ['medicalRecord', a.recordId]
     : plan.tool.startsWith('medication_') && a.id ? ['medicationSchedule', a.id]
     : a.medicationId ? ['medicationSchedule', a.medicationId]
     : plan.tool.startsWith('visit_') && a.id ? ['doctorVisit', a.id]
     : a.visitId ? ['doctorVisit', a.visitId] : null;
-  if (reference && !await db[reference[0]].findFirst({ where: { id: reference[1], userId }, select: { id: true } })) throw assistantError('ჩანაწერი ვერ მოიძებნა.', 404);
-  if (a.petId && !await db.pet.findFirst({ where: { id: a.petId, userId, archivedAt: null }, select: { id: true } })) throw assistantError('ცხოველი ვერ მოიძებნა.', 404);
+  if (reference && !await db[reference[0]].findFirst({ where: { id: reference[1], userId }, select: { id: true } })) throw assistantError('ჩანაწერი ვერ მოიძებნა.', 404, undefined, 'Record not found.');
+  if (a.petId && !await db.pet.findFirst({ where: { id: a.petId, userId, archivedAt: null }, select: { id: true } })) throw assistantError('ცხოველი ვერ მოიძებნა.', 404, undefined, 'Pet not found.');
   if (['cycle_record', 'period_record', 'pregnancy_record', 'cycle_settings'].includes(plan.tool)) {
     const p = await db.cycleProfile.findUnique({ where: { userId } });
-    if (p?.privacyEnabled) throw assistantError('ციკლი დაცულია. ჩანაწერი ციკლის გვერდიდან დაამატე.', 403, 'CYCLE_LOCKED');
-    if (plan.tool === 'pregnancy_record' && p?.mode !== 'PREGNANCY') throw assistantError('ჯერ ორსულობის რეჟიმი შეამოწმე ციკლის გვერდზე.');
+    if (p?.privacyEnabled) throw assistantError('ციკლი დაცულია. ჩანაწერი ციკლის გვერდიდან დაამატე.', 403, 'CYCLE_LOCKED', 'Your cycle is locked. Add the entry from the cycle page.');
+    if (plan.tool === 'pregnancy_record' && p?.mode !== 'PREGNANCY') throw assistantError('ჯერ ორსულობის რეჟიმი შეამოწმე ციკლის გვერდზე.', 400, undefined, 'First check pregnancy mode on the cycle page.');
   }
-  if (a.deadlineYmd && a.deadlineYmd <= plan.today) throw assistantError('მიზნის ვადა დღევანდელ დღეზე გვიან უნდა იყოს.');
-  if (a.date && a.date > plan.today) throw assistantError('შესრულებულ მოქმედებას მომავალ თარიღზე ვერ ჩაწერ.');
+  if (a.deadlineYmd && a.deadlineYmd <= plan.today) throw assistantError('მიზნის ვადა დღევანდელ დღეზე გვიან უნდა იყოს.', 400, undefined, 'The goal deadline must be after today.');
+  if (a.date && a.date > plan.today) throw assistantError('შესრულებულ მოქმედებას მომავალ თარიღზე ვერ ჩაწერ.', 400, undefined, 'You can’t log something you’ve done on a future date.');
 }
 /** The destination is from source code, never from the model, Host header or a URL supplied by the client. */
-export async function dispatchAssistantOperation(plan, { userId, authorization, timezone, fetchImpl = fetch }) {
+export async function dispatchAssistantOperation(plan, { userId, authorization, timezone, lang = 'ka', fetchImpl = fetch }) {
   if (plan.tool === 'weight_goal' || plan.tool === 'steps_goal') {
     const common = { id: plan.id, startedYmd: plan.today, deadlineYmd: plan.args.deadlineYmd, updatedAt: new Date().toISOString(),
       reminderEnabled: false, reminderDays: [], reminderHour: 9, reminderMinute: 0 };
@@ -80,15 +81,15 @@ export async function dispatchAssistantOperation(plan, { userId, authorization, 
     return;
   }
   const path = assistantEndpoint(plan);
-  if (!path || !path.startsWith('/api/') || path.includes('..')) throw assistantError('მოქმედება მიუწვდომელია.');
+  if (!path || !path.startsWith('/api/') || path.includes('..')) throw assistantError('მოქმედება მიუწვდომელია.', 400, undefined, 'This action isn’t available.');
   const response = await fetchImpl(`http://127.0.0.1:${env.PORT}${path}`, {
     method: ASSISTANT_CATALOG[plan.tool].method, redirect: 'error', signal: AbortSignal.timeout(45000),
-    headers: { Authorization: authorization, 'Content-Type': 'application/json', 'X-Client-Timezone': timezone || 'UTC' },
+    headers: { Authorization: authorization, 'Content-Type': 'application/json', 'X-Client-Timezone': timezone || 'UTC', 'X-Medicard-Lang': lang === 'en' ? 'en' : 'ka' },
     body: JSON.stringify(operationBody(plan)),
   });
   if (!response.ok) {
     const body = await response.json().catch(() => ({}));
-    throw assistantError(typeof body.error === 'string' ? body.error : 'ჩანაწერი ვერ შეინახა.', response.status, response.status >= 500 ? 'ASSISTANT_UNCERTAIN' : 'ASSISTANT_REJECTED');
+    throw assistantError(typeof body.error === 'string' ? body.error : 'ჩანაწერი ვერ შეინახა.', response.status, response.status >= 500 ? 'ASSISTANT_UNCERTAIN' : 'ASSISTANT_REJECTED', typeof body.error === 'string' ? body.error : 'The entry couldn’t be saved.');
   }
   await response.arrayBuffer();
 }
@@ -107,19 +108,19 @@ export async function executeAssistantPlan(plan, options, db = prisma, dispatch 
   let inserted;
   try {
     inserted = await db.$executeRaw`INSERT INTO "AssistantOperation" ("id", "userId", "tool", "payloadHash", "status") VALUES (${plan.id}::uuid, ${userId}, ${plan.tool}, ${hash}, 'RUNNING') ON CONFLICT ("id") DO NOTHING`;
-  } catch { throw assistantError('ასისტენტის შენახვის სერვისი ჯერ მზად არ არის. სხვა ფუნქციები ჩვეულებრივ მუშაობს.', 503, 'ASSISTANT_STORAGE_UNAVAILABLE'); }
+  } catch { throw assistantError('ასისტენტის შენახვის სერვისი ჯერ მზად არ არის. სხვა ფუნქციები ჩვეულებრივ მუშაობს.', 503, 'ASSISTANT_STORAGE_UNAVAILABLE', 'The assistant’s saving service isn’t ready yet. Everything else works as usual.'); }
   if (!inserted) {
     const [existing] = await db.$queryRaw`SELECT "status", "payloadHash" FROM "AssistantOperation" WHERE "id" = ${plan.id}::uuid AND "userId" = ${userId}`;
-    if (!existing || existing.payloadHash !== hash) throw assistantError('მოქმედების იდენტიფიკატორი არ ემთხვევა.', 409);
+    if (!existing || existing.payloadHash !== hash) throw assistantError('მოქმედების იდენტიფიკატორი არ ემთხვევა.', 409, undefined, 'The action ID doesn’t match.');
     if (existing.status === 'DONE') return { status: 'saved', replayed: true, operationId: plan.id };
-    throw assistantError('ამ მოთხოვნის შედეგი გადასამოწმებელია. გახსენი შესაბამისი ჩანაწერები, სანამ თავიდან დაამატებ.', 409, 'ASSISTANT_UNCERTAIN');
+    throw assistantError('ამ მოთხოვნის შედეგი გადასამოწმებელია. გახსენი შესაბამისი ჩანაწერები, სანამ თავიდან დაამატებ.', 409, 'ASSISTANT_UNCERTAIN', 'The result of this request needs checking. Open the related entries before adding it again.');
   }
   try {
     await dispatch(plan, options);
   } catch (error) {
     const state = error.code === 'ASSISTANT_REJECTED' ? 'REJECTED' : 'UNCERTAIN';
     await db.$executeRaw`UPDATE "AssistantOperation" SET "status" = ${state}, "updatedAt" = NOW() WHERE "id" = ${plan.id}::uuid AND "userId" = ${userId}`;
-    if (state === 'UNCERTAIN') throw assistantError('კავშირი შენახვის დროს შეფერხდა. შედეგი ჩანაწერებში შეამოწმე; მოთხოვნა ავტომატურად აღარ განმეორდება.', 409, 'ASSISTANT_UNCERTAIN');
+    if (state === 'UNCERTAIN') throw assistantError('კავშირი შენახვის დროს შეფერხდა. შედეგი ჩანაწერებში შეამოწმე; მოთხოვნა ავტომატურად აღარ განმეორდება.', 409, 'ASSISTANT_UNCERTAIN', 'The connection dropped while saving. Check your entries; the request won’t be repeated automatically.');
     throw error;
   }
   await db.$executeRaw`UPDATE "AssistantOperation" SET "status" = 'DONE', "updatedAt" = NOW() WHERE "id" = ${plan.id}::uuid AND "userId" = ${userId}`;
