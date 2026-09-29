@@ -1,3 +1,4 @@
+import { rateLimit } from 'express-rate-limit';
 import { Router } from 'express';
 import { z } from 'zod';
 import { prisma } from '../lib/prisma.js';
@@ -96,12 +97,32 @@ function publicDaily(row) {
   };
 }
 
+/**
+ * 2026-09-29 incident: every sync emitted `health:metrics`, every open health screen answered it by
+ * re-reading the device and syncing again → a feedback loop (3 000+ requests/min from one phone, CPU 94%).
+ * A per-user limit caps any client bug; events and Quest recomputes fire only when a value really changed.
+ */
+const syncLimit = rateLimit({
+  windowMs: 60_000,
+  limit: 30,
+  keyGenerator: (req) => req.user?.id || req.ip,
+  standardHeaders: 'draft-7',
+  legacyHeaders: false,
+  message: { error: 'ძალიან ხშირი სინქრონიზაცია — ცოტა ხანში ისევ ვცდით.' },
+});
+
+const HEALTH_FIELDS = ['steps', 'weightKg', 'bloodPressureSystolic', 'bloodPressureDiastolic', 'heartRate', 'sleepHours', 'nutritionKcal', 'hydrationMl', 'activeMinutes', 'distanceKm'];
+const sameValue = (a, b) => (a ?? null) === (b ?? null) || (a != null && b != null && Number(a) === Number(b));
+
 healthMetricsRouter.post(
   '/sync',
+  syncLimit,
   asyncHandler(async (req, res) => {
     const { daily, stepLogs, hydrationEvents } = syncSchema.parse(req.body);
     const userId = req.user.id;
     const now = new Date();
+    let changedSteps = false;
+    let changedHydration = false;
 
     let dailyUpserted = 0;
     for (const row of daily) {
@@ -110,6 +131,13 @@ healthMetricsRouter.post(
         where: { userId_date: { userId, date } },
       });
       const merged = mergeDaily(existing, metrics);
+      const changed = HEALTH_FIELDS.filter((field) => !sameValue(merged[field], existing?.[field]));
+      if (!existing || changed.length) {
+        if (changed.includes('hydrationMl')) changedHydration = true;
+        if (changed.some((field) => field !== 'hydrationMl')) changedSteps = true;
+      } else {
+        continue; // Identical re-sync: nothing to write, nothing to announce.
+      }
 
       await prisma.healthMetricDaily.upsert({
         where: { userId_date: { userId, date } },
@@ -155,6 +183,8 @@ healthMetricsRouter.post(
           where: { userId_date: { userId, date } },
         });
         const mergedSteps = Math.max(steps, existing?.steps ?? 0);
+        if (existing && existing.steps === mergedSteps) continue;
+        changedSteps = true;
 
         await prisma.healthMetricDaily.upsert({
           where: { userId_date: { userId, date } },
@@ -170,6 +200,8 @@ healthMetricsRouter.post(
         const existing = await prisma.healthMetricDaily.findUnique({
           where: { userId_date: { userId, date } },
         });
+        if (existing?.hydrationMl === total) continue;
+        changedHydration = true;
         await prisma.healthMetricDaily.upsert({
           where: { userId_date: { userId, date } },
           create: { userId, date, hydrationMl: total, syncedAt: now, source: 'merged' },
@@ -179,8 +211,8 @@ healthMetricsRouter.post(
       }
     }
 
-    const touchedSteps = daily.some((row) => row.steps != null) || stepLogs.length > 0;
-    const touchedHydration = daily.some((row) => row.hydrationMl != null) || hydrationEvents.length > 0;
+    const touchedSteps = changedSteps;
+    const touchedHydration = changedHydration;
     if (touchedSteps) {
       await refreshQuestProgressForUser(userId, QuestSignal.STEPS_CHANGED);
     }

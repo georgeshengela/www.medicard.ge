@@ -79,12 +79,34 @@ export function notifyOpsActivity(row) {
 let brainFlushTimer = null;
 let brainPending = { decisions: 0, outcomes: 0 };
 
+/** Per-user coalescing: at most one `health:metrics` every 3 s (one trailing event carries the merged flags). */
+const HEALTH_EMIT_GAP_MS = 3000;
+const healthEmits = new Map();
+
 export function emitUserHealthMetrics(userId, payload = {}) {
   if (!io || !userId) return false;
-  io.to(userSocketRoom(userId)).emit('health:metrics', {
-    at: new Date().toISOString(),
-    ...payload,
-  });
+  const now = Date.now();
+  const slot = healthEmits.get(userId) || { last: 0, timer: null, pending: null };
+  const send = (flags) => {
+    slot.last = Date.now();
+    io?.to(userSocketRoom(userId)).emit('health:metrics', { at: new Date().toISOString(), ...flags });
+  };
+  if (now - slot.last >= HEALTH_EMIT_GAP_MS && !slot.timer) {
+    send(payload);
+  } else {
+    slot.pending = { steps: Boolean(slot.pending?.steps || payload.steps), hydration: Boolean(slot.pending?.hydration || payload.hydration) };
+    if (!slot.timer) {
+      slot.timer = setTimeout(() => {
+        slot.timer = null;
+        const flags = slot.pending;
+        slot.pending = null;
+        if (flags) send(flags);
+        if (!slot.timer && Date.now() - slot.last > 60_000) healthEmits.delete(userId);
+      }, Math.max(0, HEALTH_EMIT_GAP_MS - (now - slot.last)));
+      slot.timer.unref?.();
+    }
+  }
+  healthEmits.set(userId, slot);
   return true;
 }
 

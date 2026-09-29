@@ -110,7 +110,10 @@ export async function connectQuestSocket() {
     usageResetListeners.forEach((fn) => fn(payload || {}));
   });
   socket.on('health:metrics', () => {
-    void import('@/lib/healthDataSync').then(({ requestHealthRefresh }) => requestHealthRefresh());
+    // Ignore the echo of this device's own sync (it already has the data); refreshes are coalesced.
+    void import('@/lib/healthDataSync').then(({ isOwnHealthEcho, requestHealthRefresh }) => {
+      if (!isOwnHealthEcho()) requestHealthRefresh();
+    });
   });
 }
 

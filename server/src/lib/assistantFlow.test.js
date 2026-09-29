@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { literalAssistantAction, assistantContextSelection, assistantGuidance, medicationCourseEnd } from './assistantFlow.js';
+import { literalAssistantAction, assistantContextSelection, assistantDefaultDomains, assistantGuidance, medicationCourseEnd } from './assistantFlow.js';
 import { validateAssistantAction, publicAssistantCatalog } from './assistantCatalog.js';
 test('literal medication captures only name; never dose or timing', () => {
   for (const text of ['წამალი იბუპროფენი დამიმატე', 'დამიმატე წამალი იბუპროფენი.']) assert.deepEqual(literalAssistantAction({scope:'human',text}), {tool:'medication_add',args:{medName:'იბუპროფენი'}});
@@ -31,4 +31,9 @@ test('course preserves explicit duration, uses inclusive end and rejects conflic
   assert.throws(()=>validateAssistantAction({...base,args:{...base.args,startDate:'2026-09-21',endDate:'2026-10-05'}},'human'));
   assert.equal(medicationCourseEnd('2028-02-28',3),'2028-03-01');
   assert.equal(medicationCourseEnd('2026-12-31',1),'2026-12-31');
+});
+
+test('unnamed requests use a fixed small context instead of a model call', () => {
+  assert.deepEqual(assistantDefaultDomains({ text: 'როგორ ხარ?' }), ['profile', 'metrics', 'goals', 'medications', 'visits']);
+  assert.deepEqual(assistantDefaultDomains({ text: 'ჩემი ანალიზის შედეგი' }), ['records', 'consultations', 'profile', 'medications']);
 });

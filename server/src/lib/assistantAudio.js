@@ -66,7 +66,7 @@ function transcribeMessages(data, format, retry) {
  * Dedicated STT path. Planner JSON/reasoning rules stay on assistantJson.
  * Same disclosed Google Vertex model via OpenRouter — no new recipient.
  */
-export async function transcribeAssistantAudio({ data, format, ask = askOpenRouterPrepared, timeoutMs = 25000 } = {}) {
+export async function transcribeAssistantAudio({ data, format, ask = askOpenRouterPrepared, timeoutMs = 20000 } = {}) {
   for (let attempt = 0; attempt < 2; attempt++) {
     const signal = AbortSignal.timeout(timeoutMs);
     let response;

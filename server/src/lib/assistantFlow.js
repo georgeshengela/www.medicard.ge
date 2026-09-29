@@ -41,6 +41,17 @@ export function assistantContextSelection({ scope, text, draft }) {
   return domains.size ? [...domains] : null;
 }
 
+/**
+ * When the rules above cannot name a domain, use a fixed, small context instead of an extra model call
+ * (that call added 2–4 s to every such voice turn). History questions get records + consultations.
+ */
+export function assistantDefaultDomains({ text = '' } = {}) {
+  if (/ანალიზ|დიაგნოზ|შედეგ|ისტორია|ადრე|წინათ|ყველაფერი|ყველა მონაცემ/u.test(text)) {
+    return ['records', 'consultations', 'profile', 'medications'];
+  }
+  return ['profile', 'metrics', 'goals', 'medications', 'visits'];
+}
+
 export function medicationCourseEnd(startDate, days) {
   const date = new Date(`${startDate}T12:00:00Z`);
   date.setUTCDate(date.getUTCDate() + days - 1); // The first treatment day counts as day one.

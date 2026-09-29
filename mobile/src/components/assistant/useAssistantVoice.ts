@@ -28,9 +28,31 @@ export function useAssistantVoice(options: {
   const latest = useRef(options); latest.current = options;
   const alive = useRef(true), focused = useRef(true), peakDb = useRef<number | null>(null);
   const [phase, setPhase] = useState<VoicePhase>('idle');
-  const recorder = useAudioRecorder({ ...RecordingPresets.HIGH_QUALITY, numberOfChannels: 1, bitRate: 64000, isMeteringEnabled: true });
+  // Speech-grade audio: 16 kHz mono AAC at 32 kbps is plenty for transcription and uploads ~4× faster.
+  const recorder = useAudioRecorder({ ...RecordingPresets.HIGH_QUALITY, sampleRate: 16000, numberOfChannels: 1, bitRate: 32000, isMeteringEnabled: true });
   const audio = useAudioRecorderState(recorder, 100);
   useEffect(() => { if (audio.isRecording && typeof audio.metering === 'number') peakDb.current = Math.max(peakDb.current ?? -160, audio.metering); }, [audio.isRecording, audio.metering]);
+  /**
+   * End of speech: once the person has spoken and then stays quiet ~1.6 s, send automatically — no more
+   * waiting for a release or a second tap. The threshold adapts to the room's noise floor.
+   */
+  const vad = useRef({ floor: 0, spoke: false, lastLoud: 0, since: 0, sent: false });
+  useEffect(() => {
+    const v = vad.current;
+    if (!audio.isRecording) { v.since = 0; return; }
+    const now = Date.now();
+    if (!v.since) Object.assign(v, { floor: 0, spoke: false, lastLoud: now, since: now, sent: false });
+    const level = typeof audio.metering === 'number' ? audio.metering : -160;
+    if (level > -120) v.floor = Math.min(v.floor, level); // quietest moment ≈ the room's noise floor
+    if (now - v.since < 500) return;
+    const speechAt = Math.max(-45, Math.min(-25, v.floor + 15));
+    if (level >= speechAt) { v.spoke = true; v.lastLoud = now; return; }
+    if (v.spoke && !v.sent && now - v.lastLoud > 1600 && now - v.since > 1200) {
+      v.sent = true;
+      void capture.release();
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- metering ticks drive this
+  }, [audio.isRecording, audio.metering]);
   const capture = useMemo(() => createVoiceCapture({
     active: () => alive.current && focused.current && localAccountId() === options.owner && (Platform.OS === 'web' || AppState.currentState === 'active'),
     onPhase: p => { if (alive.current) setPhase(p); },

@@ -127,9 +127,35 @@ export function subscribeHealthRefresh(listener: () => void) {
   };
 }
 
+/**
+ * Coalesced: bursts of refresh requests (socket events, several screens) become one broadcast.
+ * 2026-09-29 incident: uncoalesced refresh + re-sync on every socket echo looped at 3 000+ req/min.
+ */
+let refreshTimer: ReturnType<typeof setTimeout> | null = null;
+let lastRefreshAt = 0;
+const REFRESH_GAP_MS = 1500;
+
 export function requestHealthRefresh() {
   pullCache = null;
-  healthRefreshListeners.forEach((listener) => listener());
+  const wait = REFRESH_GAP_MS - (Date.now() - lastRefreshAt);
+  if (wait <= 0 && !refreshTimer) {
+    lastRefreshAt = Date.now();
+    healthRefreshListeners.forEach((listener) => listener());
+    return;
+  }
+  if (refreshTimer) return;
+  refreshTimer = setTimeout(() => {
+    refreshTimer = null;
+    lastRefreshAt = Date.now();
+    pullCache = null;
+    healthRefreshListeners.forEach((listener) => listener());
+  }, Math.max(0, wait));
+}
+
+/** Our own sync makes the server announce `health:metrics`; that echo must not trigger another read+sync. */
+let lastLocalPushAt = 0;
+export function isOwnHealthEcho(now = Date.now()): boolean {
+  return now - lastLocalPushAt < 5000;
 }
 
 export async function pullStoredHealth(
@@ -205,13 +231,27 @@ export async function pullStoredHealth(
   return promise;
 }
 
+let lastPushSignature = '';
+let lastPushAt = 0;
+let nativePushTimer: ReturnType<typeof setTimeout> | null = null;
+let nativePending: HealthMetricsSyncPayload | null = null;
+let lastNativePushAt = 0;
+const NATIVE_PUSH_GAP_MS = 20_000;
+
 export async function pushHealthToServer(payload: HealthMetricsSyncPayload): Promise<void> {
   const token = await getToken();
   if (!token) return;
   if (!payload.daily.length && !payload.stepLogs.length && !payload.hydrationEvents?.length) return;
+  // The same device read pushed again (another screen, a refresh) changes nothing on the server.
+  const signature = JSON.stringify(payload);
+  if (signature === lastPushSignature && Date.now() - lastPushAt < 10 * 60_000) return;
 
   try {
+    lastLocalPushAt = Date.now();
     await api.healthMetrics.sync(payload);
+    lastLocalPushAt = Date.now();
+    lastPushSignature = signature;
+    lastPushAt = Date.now();
     await cacheLocalHealthSync(payload);
     void import('@/lib/quest/cache').then(({ requestQuestRefresh }) => requestQuestRefresh());
   } catch {
@@ -224,5 +264,20 @@ export async function syncNativeHealthToServer(
   stepSamples: import('@/types/stepsMetrics').StepSample[],
 ): Promise<void> {
   const payload = buildSyncPayloadFromNative(raw, stepSamples);
-  await pushHealthToServer(payload);
+  // Device reads happen on every focus/refresh of several screens: push at most once per 20 s (latest wins).
+  const wait = NATIVE_PUSH_GAP_MS - (Date.now() - lastNativePushAt);
+  if (wait <= 0 && !nativePushTimer) {
+    lastNativePushAt = Date.now();
+    await pushHealthToServer(payload);
+    return;
+  }
+  nativePending = payload;
+  if (nativePushTimer) return;
+  nativePushTimer = setTimeout(() => {
+    nativePushTimer = null;
+    const next = nativePending;
+    nativePending = null;
+    lastNativePushAt = Date.now();
+    if (next) void pushHealthToServer(next);
+  }, Math.max(0, wait));
 }
