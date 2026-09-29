@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <title>მედიქარდი — ჯანმრთელობა დღის ყოველ საათში</title>
-  <meta name="description" content="MEDICARD — ქართული ჯანმრთელობის აპი iOS-ისა და Android-ისთვის. Medi, მედიკამენტები, კვება, ანალიზები, ციკლი, MEDIRUN და ცხოველების მოვლა. ყველა ფუნქცია უფასოა." />
+  <meta name="description" content="MEDICARD — ქართული ჯანმრთელობის აპი, უკვე App Store-ში (Android — მალე). Medi, მედიკამენტები, კვება, ანალიზები, ციკლი, MEDIRUN და ცხოველების მოვლა. ყველა ფუნქცია უფასოა." />
   <link rel="canonical" href="https://medicard.ge/" />
   <meta name="theme-color" content="#E8F5F2" />
   <meta property="og:type" content="website" />
@@ -19,7 +19,7 @@
   <link rel="preload" href="/fonts/firago/FiraGO-Regular.woff2" as="font" type="font/woff2" crossorigin />
   <link rel="preload" href="/fonts/firago/FiraGO-Bold.woff2" as="font" type="font/woff2" crossorigin />
   <link rel="modulepreload" href="/vendor/three/three.module.min.js" />
-  <link rel="stylesheet" href="/home.css?v=1" />
+  <link rel="stylesheet" href="/home.css?v=3" />
   <script type="importmap">{ "imports": { "three": "/vendor/three/three.module.min.js" } }</script>
 </head>
 <body>
@@ -38,7 +38,7 @@
       <a href="/calculators">კალკულატორები</a>
       <a href="/medipulsi/">MEDIPULSI</a>
     </nav>
-    <a class="nav-cta" href="#download">ჩამოტვირთვა</a>
+    <a class="nav-cta" href="#download" data-download>ჩამოტვირთვა</a>
     <button class="nav-menu" id="nav-menu" type="button" aria-expanded="false" aria-controls="nav-links">
       <span class="sr">მენიუ</span><i></i><i></i>
     </button>
@@ -52,25 +52,25 @@
         <div class="sun"></div>
         <canvas id="scene"></canvas>
         <figure class="poster">
-          <img src="/screens/v2/home.webp?v=3" alt="" width="660" height="1434" />
+          <img src="/screens/v3/home.webp?v=1" alt="" width="880" height="1912" />
         </figure>
         <div class="clock">
-          <span class="clock-time" id="clock-time">06:40</span>
+          <span class="clock-time" id="clock-time">08:40</span>
           <span class="clock-label" id="clock-label">დილა</span>
         </div>
       </div>
 
       <ol class="rail" id="rail" aria-label="დღის მომენტები">
-        <li><a href="#day" data-i="0"><span>06:40</span></a></li>
-        <li><a href="#m-water" data-i="1"><span>09:00</span></a></li>
-        <li><a href="#m-run" data-i="2"><span>13:20</span></a></li>
-        <li><a href="#m-body" data-i="3"><span>18:10</span></a></li>
+        <li><a href="#day" data-i="0"><span>08:40</span></a></li>
+        <li><a href="#m-meds" data-i="1"><span>11:00</span></a></li>
+        <li><a href="#m-food" data-i="2"><span>13:40</span></a></li>
+        <li><a href="#m-quest" data-i="3"><span>18:10</span></a></li>
         <li><a href="#m-lab" data-i="4"><span>21:00</span></a></li>
         <li><a href="#m-cycle" data-i="5"><span>22:30</span></a></li>
       </ol>
 
       <div class="moments">
-        <div class="moment moment-hero" data-key="home" data-time="06:40" data-label="დილა">
+        <div class="moment moment-hero" data-key="home" data-time="08:40" data-label="დილა">
           <div class="hero-copy">
             <h1 class="hero-title">
               <span class="line"><span>ჯანმრთელობა</span></span>
@@ -79,40 +79,40 @@
             </h1>
             <p class="hero-lead">MEDICARD ქართული ჯანმრთელობის აპია. Medi, მედიკამენტები, კვება, ანალიზები, ციკლი და მოძრაობა — ერთ ტელეფონში და ყველაფერი უფასოდ.</p>
             <div class="hero-actions">
-              <a class="btn btn-solid" href="#download">აპის ჩამოტვირთვა</a>
-              <a class="btn btn-quiet" href="#m-water">ნახე, როგორ გადის დღე</a>
+              <a class="btn btn-solid" href="#download" data-download>აპის ჩამოტვირთვა</a>
+              <a class="btn btn-quiet" href="#m-meds">ნახე, როგორ გადის დღე</a>
             </div>
           </div>
         </div>
 
-        <article class="moment" id="m-water" data-key="hydration" data-time="09:00" data-label="დილა">
-          <p class="m-time">09:00</p>
-          <h2>ჭიქა ჭიქაზე, მიზნამდე.</h2>
-          <p>დღის მიზანი, დარჩენილი მილილიტრები და შეხსენება, როცა დაგავიწყდება. ერთი შეხება — და ჭიქა ჩაწერილია.</p>
+        <article class="moment" id="m-meds" data-key="meds" data-time="11:00" data-label="დილა">
+          <p class="m-time">11:00</p>
+          <h2>წამალი დროზე, ყოველდღე.</h2>
+          <p>შეხსენება ზუსტ დროს მოდის, მიღებას ერთი შეხებით მონიშნავ, სტატისტიკა კი გაჩვენებს, რამდენად რეგულარული ხარ.</p>
         </article>
 
-        <article class="moment" id="m-run" data-key="run" data-time="13:20" data-label="შუადღე">
-          <p class="m-time">13:20</p>
-          <h2>შუადღის სეირნობა ქალაქის აღმოჩენად იქცევა.</h2>
-          <p>MEDIRUN ნაბიჯებს თამაშად აქცევს: შენი მარშრუტი, შტამპები და ქალაქის ისტორიები — ნებისმიერ ქალაქში.</p>
+        <article class="moment" id="m-food" data-key="nutrition" data-time="13:40" data-label="შუადღე">
+          <p class="m-time">13:40</p>
+          <h2>გადაუღე თეფშს.</h2>
+          <p>ფოტოდან Medi კალორიებსა და მაკროებს შეაფასებს — შენ ასწორებ და ინახავ. დღის ბალანსი ყოველთვის თვალწინაა.</p>
         </article>
 
-        <article class="moment" id="m-body" data-key="symptoms" data-time="18:10" data-label="საღამო">
+        <article class="moment" id="m-quest" data-key="quest" data-time="18:10" data-label="საღამო">
           <p class="m-time">18:10</p>
-          <h2>აჩვენე, სად გტკივა.</h2>
-          <p>შეეხე სხეულის რუკას, აღწერე შეგრძნება და Medi დაგეხმარება გაიგო, რა ჰკითხო ექიმს.</p>
+          <h2>მისიები, რომლებიც გამოძრავებს.</h2>
+          <p>MEDI QUEST ნაბიჯებს, წყალს და მიღებებს დღის მისიებად აქცევს — ჯილდოებით, სერიით და Medi Coins-ით.</p>
         </article>
 
-        <article class="moment" id="m-lab" data-key="analysis" data-time="21:00" data-label="საღამო">
+        <article class="moment" id="m-lab" data-key="lab-dark" data-time="21:00" data-label="საღამო">
           <p class="m-time">21:00</p>
           <h2>ანალიზის ფურცელი, გასაგებ ენაზე.</h2>
-          <p>გადაუღე ან ატვირთე PDF — ციფრები და ნორმები ქართულად აიხსნება. დიაგნოზს არ გისვამს, გაგებაში გეხმარება.</p>
+          <p>გადაუღე ან ატვირთე PDF — ციფრები და ნორმები ქართულად აიხსნება, დინამიკა კი გრაფიკზე ჩანს. დიაგნოზს არ გისვამს, გაგებაში გეხმარება.</p>
         </article>
 
-        <article class="moment" id="m-cycle" data-key="cycle" data-time="22:30" data-label="ღამე">
+        <article class="moment" id="m-cycle" data-key="cycle-dark" data-time="22:30" data-label="ღამე">
           <p class="m-time">22:30</p>
           <h2>დღის ბოლოს — ორი წამი შენთვის.</h2>
-          <p>ციკლის სწრაფი აღრიცხვა: გამონადენი, ტკივილი, განწყობა. პროგნოზი სავარაუდოა და ასეც წერია.</p>
+          <p>ციკლის რგოლი, სწრაფი აღრიცხვა და პროგნოზი, რომელიც ყოველთვის გეუბნება, რომ სავარაუდოა.</p>
         </article>
       </div>
     </section>
@@ -163,15 +163,15 @@
               <span class="space-name">ქალების სივრცე</span>
               <span class="space-desc">ციკლი, ორსულობა და პირადი დღიური, რომელიც შენ გეკუთვნის.</span>
             </button></li>
-            <li><button type="button" class="space" data-screen="analysis" aria-pressed="false">
+            <li><button type="button" class="space" data-screen="medi" aria-pressed="false">
               <span class="space-name">Medi</span>
               <span class="space-desc">სიმპტომები, ანალიზები, რენტგენი და კანი — სამ რეჟიმში.</span>
             </button></li>
-            <li><button type="button" class="space" data-screen="symptoms" aria-pressed="false">
+            <li><button type="button" class="space" data-screen="lab" aria-pressed="false">
               <span class="space-name">ჩემი ბარათი</span>
               <span class="space-desc">დოკუმენტები, საუბრები Medi-სთან, აფთიაქის ფასები და პროფილი.</span>
             </button></li>
-            <li><button type="button" class="space" data-screen="run" aria-pressed="false">
+            <li><button type="button" class="space" data-screen="quest" aria-pressed="false">
               <span class="space-name">მოძრაობა</span>
               <span class="space-desc">MEDIRUN, MEDI QUEST-ის მისიები და ყოველდღიური სერია.</span>
             </button></li>
@@ -182,13 +182,7 @@
           </ul>
           <div class="space-preview" aria-hidden="true">
             <div class="mini-phone" id="mini-phone">
-              <img src="/screens/v2/home.webp?v=3" alt="" width="660" height="1434" loading="lazy" id="mini-screen" />
-              <div class="mini-pets" id="mini-pets">
-                <span class="mini-pets-icon"></span>
-                <b>ჩემი ცხოველები</b>
-                <span>ბობი · 12.4 კგ</span>
-                <em>ვაქცინა 3 დღეში</em>
-              </div>
+              <img src="/screens/v3/home.webp?v=1" alt="" width="880" height="1912" loading="lazy" id="mini-screen" />
             </div>
           </div>
         </div>
@@ -206,7 +200,7 @@
           </div>
           <div>
             <h3>ქართულად, საქართველოსთვის</h3>
-            <p>ინტერფეისი, Medi და ანალიზის განმარტებები ქართულადაა. მუქი და ღია თემა, iOS და Android.</p>
+            <p>ინტერფეისი, Medi და ანალიზის განმარტებები ქართულადაა. მუქი და ღია თემა. iPhone-ზე უკვე ხელმისაწვდომია, Android-ზე — მალე.</p>
           </div>
           <div>
             <h3>ექიმს არ ცვლის</h3>
@@ -264,17 +258,17 @@
       <div class="wrap dawn-grid">
         <div class="dawn-copy">
           <h2 class="display">ხვალინდელი დილა MEDICARD-ით დაიწყე.</h2>
-          <p>აპი iOS-ისა და Android-ისთვისაა. საიტზე ანგარიში არ იხსნება — დაასკანერე კოდი ტელეფონით.</p>
+          <p>MEDICARD უკვე App Store-შია. დაასკანერე კოდი iPhone-ის კამერით და გადმოწერე. Android-ის ვერსია მალე გამოვა.</p>
           <div class="stores">
-            <span class="store"><img src="/icons/app-store.svg" alt="" width="26" height="26" /><span><small>მალე</small><b>App Store</b></span></span>
-            <span class="store"><img src="/icons/google-play.svg" alt="" width="26" height="26" /><span><small>მალე</small><b>Google Play</b></span></span>
+            <a class="store" href="https://apps.apple.com/app/id6812517519" data-app-store><img src="/icons/app-store.svg" alt="" width="26" height="26" /><span><small>ჩამოტვირთე</small><b>App Store</b></span></a>
+            <span class="store store-soon" aria-label="Google Play — Coming soon"><img src="/icons/google-play.svg" alt="" width="26" height="26" /><span><small>Coming soon</small><b>Google Play</b></span></span>
           </div>
           <a class="dawn-mail" href="mailto:support@medicard.ge">კითხვა გაქვს? მოგვწერე: support@medicard.ge</a>
         </div>
-        <div class="qr-card">
-          <img src="/qr.svg" alt="QR კოდი: medicard.ge" width="168" height="168" />
-          <span>medicard.ge</span>
-        </div>
+        <a class="qr-card" href="https://apps.apple.com/app/id6812517519" data-app-store>
+          <img src="/app-store-qr.svg" alt="QR კოდი: MEDICARD App Store-ში" width="200" height="200" />
+          <span><img src="/icons/app-store.svg" alt="" width="18" height="18" />App Store</span>
+        </a>
       </div>
     </section>
   </main>
@@ -295,7 +289,7 @@
     </div>
   </footer>
 
-  <script src="/home.js?v=1" defer></script>
-  <script type="module" src="/home-scene.js?v=1"></script>
+  <script src="/home.js?v=2" defer></script>
+  <script type="module" src="/home-scene.js?v=4"></script>
 </body>
 </html>

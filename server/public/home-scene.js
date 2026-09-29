@@ -107,14 +107,74 @@ function start() {
   const blank = new THREE.DataTexture(new Uint8Array([238, 245, 244, 255]), 1, 1);
   blank.needsUpdate = true;
   const textures = S.keys.map(() => blank);
+
+  // Each screen gets a real iOS status bar showing that moment's time, plus the Dynamic Island.
+  function statusBar(g, w, time, dark) {
+    const u = w / 440; // screenshots are 440 pt wide
+    const ink = dark ? '#FFFFFF' : '#0B1215';
+    g.fillStyle = ink;
+    g.font = `600 ${17 * u}px FiraGO, -apple-system, sans-serif`;
+    g.textAlign = 'center';
+    g.textBaseline = 'middle';
+    g.fillText(time, 72 * u, 32 * u);
+    // Dynamic Island
+    g.fillStyle = '#000';
+    const iw = 126 * u, ih = 37 * u, ix = (w - iw) / 2, iy = 11 * u;
+    g.beginPath();
+    g.roundRect(ix, iy, iw, ih, ih / 2);
+    g.fill();
+    // Signal
+    g.fillStyle = ink;
+    for (let b = 0; b < 4; b++) {
+      const bh = (4 + b * 2.4) * u;
+      g.beginPath();
+      g.roundRect((326 + b * 5) * u, 37 * u - bh, 3.2 * u, bh, 0.8 * u);
+      g.fill();
+    }
+    // Wi-Fi
+    g.strokeStyle = ink;
+    g.lineWidth = 2.1 * u;
+    g.lineCap = 'round';
+    for (let r = 0; r < 3; r++) {
+      g.beginPath();
+      g.arc(357 * u, 38 * u, (3 + r * 3.6) * u, -Math.PI * 0.75, -Math.PI * 0.25);
+      g.stroke();
+    }
+    // Battery
+    g.lineWidth = 1.1 * u;
+    g.globalAlpha = 0.45;
+    g.beginPath();
+    g.roundRect(373 * u, 26.5 * u, 25 * u, 12 * u, 3.6 * u);
+    g.stroke();
+    g.globalAlpha = 1;
+    g.beginPath();
+    g.roundRect(375 * u, 28.5 * u, 18 * u, 8 * u, 2 * u);
+    g.fill();
+    g.globalAlpha = 0.45;
+    g.beginPath();
+    g.roundRect(399.5 * u, 30.5 * u, 1.6 * u, 4 * u, 0.8 * u);
+    g.fill();
+    g.globalAlpha = 1;
+  }
+
+  const fontsReady = document.fonts ? document.fonts.ready : Promise.resolve();
   S.keys.forEach((k, i) => {
-    loader.load(`/screens/v2/${k}.webp?v=3`, (tex) => {
+    const img = new Image();
+    img.decoding = 'async';
+    img.src = `/screens/v3/${k}.webp?v=1`;
+    Promise.all([img.decode(), fontsReady]).then(() => {
+      const c = document.createElement('canvas');
+      c.width = img.naturalWidth;
+      c.height = img.naturalHeight;
+      const g = c.getContext('2d');
+      g.drawImage(img, 0, 0);
+      statusBar(g, c.width, S.times[i], /-dark$/.test(k));
+      const tex = new THREE.CanvasTexture(c);
       tex.colorSpace = THREE.SRGBColorSpace;
       tex.anisotropy = Math.min(8, maxAniso);
-      tex.generateMipmaps = true;
       tex.minFilter = THREE.LinearMipmapLinearFilter;
       textures[i] = tex;
-    });
+    }).catch(() => {});
   });
 
   const screenMat = new THREE.ShaderMaterial({
@@ -140,16 +200,23 @@ function start() {
       varying vec2 vUv;
       void main() {
         // The new screen scans in from the top, led by a thin teal line
-        float edge = 1.0 - uMix * 1.08;
-        float k = smoothstep(edge, edge + 0.015, vUv.y);
-        vec4 a = texture2D(uA, vUv);
-        vec4 b = texture2D(uB, vUv);
-        vec3 col = mix(a.rgb, b.rgb, k);
-        float line = exp(-pow((vUv.y - edge) * 90.0, 2.0)) * step(0.001, uMix) * step(uMix, 0.999);
-        col = mix(col, vec3(0.08, 0.72, 0.65), line * 0.85);
-        // Soft diagonal reflection that moves as the phone turns
+        float scanning = step(0.001, uMix) * step(uMix, 0.999);
+        float edge = 1.04 - uMix * 1.08;
+        float k = smoothstep(edge - 0.004, edge + 0.004, vUv.y);
+        // The outgoing screen drifts up and dims; the incoming one settles into place
+        vec4 a = texture2D(uA, vUv + vec2(0.0, -uMix * 0.025));
+        vec4 b = texture2D(uB, vUv + vec2(0.0, (1.0 - uMix) * 0.035));
+        vec3 col = mix(a.rgb * (1.0 - 0.18 * uMix), b.rgb, k);
+        float dist = vUv.y - edge;
+        float line = exp(-pow(dist * 160.0, 2.0));
+        float trail = smoothstep(0.0, 0.08, dist) * (1.0 - smoothstep(0.08, 0.22, dist));
+        vec3 teal = vec3(0.08, 0.72, 0.65);
+        col = mix(col, teal, scanning * (line * 0.9 + trail * 0.08));
+        // Glass: a soft diagonal reflection that follows the phone's turn, and a faint edge vignette
         float d = vUv.x * 0.8 + vUv.y * 0.6 - uSheen;
-        col += vec3(1.0) * 0.07 * exp(-d * d * 18.0);
+        col += vec3(1.0) * 0.06 * exp(-d * d * 14.0);
+        vec2 q = vUv * 2.0 - 1.0;
+        col *= 1.0 - 0.06 * pow(max(abs(q.x), abs(q.y)), 6.0);
         gl_FragColor = vec4(col * uDim, 1.0);
         #include <colorspace_fragment>
       }`,
@@ -158,8 +225,27 @@ function start() {
   screen.position.z = DEPTH / 2 + BEVEL + 0.002;
   phone.add(screen);
 
+  // Light the screen throws around the phone — faint by day, a soft teal spill at night
+  const spillTex = (() => {
+    const c = document.createElement('canvas');
+    c.width = c.height = 256;
+    const g = c.getContext('2d');
+    const grd = g.createRadialGradient(128, 128, 0, 128, 128, 128);
+    grd.addColorStop(0, 'rgba(94,234,212,0.55)');
+    grd.addColorStop(0.45, 'rgba(20,184,166,0.18)');
+    grd.addColorStop(1, 'rgba(20,184,166,0)');
+    g.fillStyle = grd;
+    g.fillRect(0, 0, 256, 256);
+    const t = new THREE.CanvasTexture(c);
+    t.colorSpace = THREE.SRGBColorSpace;
+    return t;
+  })();
+  const spill = new THREE.Sprite(new THREE.SpriteMaterial({ map: spillTex, transparent: true, depthWrite: false, opacity: 0.2 }));
+  spill.scale.set(5.4, 7.2, 1);
+  spill.position.z = -0.6;
+
   const rig = new THREE.Group();
-  rig.add(phone);
+  rig.add(spill, phone);
   scene.add(rig);
 
   /* ───── 24-hour pulse ring ───── */
@@ -351,8 +437,8 @@ function start() {
     const viewW = viewH * camera.aspect;
     if (camera.aspect < 0.85) {
       // Phone: phone up top, words below
-      const s = Math.min(1, (viewH * 0.36) / BH);
-      layout = { x: 0, y: viewH * 0.21, s };
+      const s = Math.min(1, (viewH * 0.3) / BH);
+      layout = { x: 0, y: viewH * 0.235, s };
     } else {
       const s = Math.min(1.08, (viewH * 0.62) / BH);
       layout = { x: Math.min(viewW * 0.22, 3.2), y: 0.1, s };
@@ -364,37 +450,54 @@ function start() {
   /* ───── Loop ───── */
   const clock = new THREE.Clock();
   const t0 = performance.now();
-  const smoothPtr = { x: 0, y: 0 };
-  let tDisplay = S.t;
+  // Critically damped springs: scroll and pointer settle without lag or wobble
+  const scroll = { x: S.t, v: 0 };
+  const ptrX = { x: 0, v: 0 };
+  const ptrY = { x: 0, v: 0 };
+  function spring(s, target, dt, w) {
+    const a = -2 * w * s.v - w * w * (s.x - target);
+    s.v += a * dt;
+    s.x += s.v * dt;
+  }
+  const easeOut = (k) => 1 - Math.pow(1 - k, 4);
   let shown = false;
 
   function frame() {
     requestAnimationFrame(frame);
+    const dt = Math.min(clock.getDelta(), 1 / 30);
     if (!S.visible || document.hidden) return;
-    const time = clock.getElapsedTime();
-    const intro = reduced ? 1 : smooth(Math.min(1, (performance.now() - t0) / 1800));
+    const time = clock.elapsedTime;
+    const intro = reduced ? 1 : easeOut(Math.min(1, (performance.now() - t0) / 2200));
 
-    // Ease the scroll value so trackpad steps feel continuous
-    tDisplay += (S.t - tDisplay) * (reduced ? 1 : 0.12);
-    const t = tDisplay;
+    if (reduced) scroll.x = S.t;
+    else spring(scroll, S.t, dt, 7.5);
+    spring(ptrX, reduced ? 0 : S.pointer.x, dt, 3.2);
+    spring(ptrY, reduced ? 0 : S.pointer.y, dt, 3.2);
+    const t = Math.max(0, Math.min(POSE.length - 1, scroll.x));
     const i0 = Math.min(Math.floor(t), POSE.length - 1);
     const i1 = Math.min(i0 + 1, POSE.length - 1);
     const f = t - i0;
     const k = smooth(f);
-
-    smoothPtr.x += (S.pointer.x - smoothPtr.x) * 0.05;
-    smoothPtr.y += (S.pointer.y - smoothPtr.y) * 0.05;
+    const arc = Math.sin(f * Math.PI); // 0 at a moment, 1 halfway to the next
     const idle = reduced ? 0 : 1;
 
     const p0 = POSE[i0], p1 = POSE[i1];
-    phone.rotation.y = lerp(p0.ry, p1.ry, k) + Math.sin(time * 0.5) * 0.04 * idle + smoothPtr.x * 0.16 + (1 - intro) * -1.1;
-    phone.rotation.x = lerp(p0.rx, p1.rx, k) + smoothPtr.y * 0.07;
-    phone.rotation.z = lerp(p0.rz, p1.rz, k);
-    phone.position.y = Math.sin(time * 0.8) * 0.05 * idle - (1 - intro) * 1.4;
-    phone.position.z = -Math.sin(f * Math.PI) * 0.5;
+    const dir = Math.sign(p1.ry - p0.ry) || 1;
+    // Between moments the phone turns a little past its next pose, drifts back and lifts, then settles
+    phone.rotation.y = lerp(p0.ry, p1.ry, k) + dir * arc * 0.22 + Math.sin(time * 0.45) * 0.035 * idle + ptrX.x * 0.18 + (1 - intro) * -1.3;
+    phone.rotation.x = lerp(p0.rx, p1.rx, k) - arc * 0.05 + ptrY.x * 0.08 + (1 - intro) * 0.35;
+    phone.rotation.z = lerp(p0.rz, p1.rz, k) - dir * arc * 0.03;
+    phone.position.y = Math.sin(time * 0.7) * 0.045 * idle + arc * 0.1 - (1 - intro) * 1.6;
+    phone.position.z = -arc * 0.7 - (1 - intro) * 1.5;
 
     rig.position.set(layout.x, layout.y, 0);
     rig.scale.setScalar(layout.s);
+
+    // A slow push-in over the day, with a hint of parallax from the pointer
+    camera.position.set(ptrX.x * 0.25, -ptrY.x * 0.15, 13.4 - t * 0.1);
+    camera.lookAt(layout.x * 0.15, 0, 0);
+
+    spill.material.opacity = lerp(0.14, 0.6, S.night) * intro;
 
     // Screen: scan to the next moment's screen during the middle of the transition
     const m = smooth(Math.min(1, Math.max(0, (f - 0.3) / 0.4)));
@@ -414,14 +517,14 @@ function start() {
     ringMat.uniforms.uNight.value = S.night;
     halo.scale.setScalar(0.55 + 0.35 * beat);
     bead.visible = ringMat.uniforms.uDraw.value > 0.98;
-    ringGroup.rotation.y = smoothPtr.x * 0.06;
+    ringGroup.rotation.y = ptrX.x * 0.06;
     tickMat.color.set(S.night > 0.5 ? 0xd1d5db : 0x0b2b2e);
     tickMat.opacity = lerp(0.35, 0.45, S.night);
     momentTickMat.color.set(S.night > 0.5 ? 0x5eead4 : 0x0d9488);
 
     dustMat.uniforms.uTime.value = time;
     dustMat.uniforms.uNight.value = S.night;
-    dust.rotation.y = time * 0.01 * idle + smoothPtr.x * 0.05;
+    dust.rotation.y = time * 0.01 * idle + ptrX.x * 0.05;
 
     titanium.envMapIntensity = lerp(1.2, 0.7, S.night);
     renderer.toneMappingExposure = lerp(1.05, 0.95, S.night);

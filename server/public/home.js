@@ -17,7 +17,7 @@
   var year = document.getElementById('y');
   if (year) year.textContent = String(new Date().getFullYear());
 
-  var SCREEN = function (key) { return '/screens/v2/' + key + '.webp?v=3'; };
+  var SCREEN = function (key) { return '/screens/v3/' + key + '.webp?v=1'; };
 
   /* Sky for each moment: 06:40 dawn → 22:30 night */
   var SKY = [
@@ -34,6 +34,7 @@
     night: 0,
     n: moments.length,
     keys: moments.map(function (m) { return m.dataset.key; }),
+    times: moments.map(function (m) { return m.dataset.time; }),
     hours: moments.map(function (m) {
       var p = (m.dataset.time || '0:0').split(':');
       return Number(p[0]) + Number(p[1]) / 60;
@@ -138,6 +139,13 @@
 
   // Preload the day's screens for the poster fallback
   state.keys.forEach(function (key) { var im = new Image(); im.src = SCREEN(key); });
+
+  /* ───── On an iPhone/iPad the download buttons open the App Store directly ───── */
+  var APP_STORE = 'https://apps.apple.com/app/id6812517519';
+  var isApple = /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  if (isApple) {
+    Array.prototype.forEach.call(document.querySelectorAll('[data-download]'), function (a) { a.href = APP_STORE; });
+  }
 
   /* ───── Mobile menu ───── */
   var menuBtn = document.getElementById('nav-menu');
@@ -286,8 +294,7 @@
       s.setAttribute('aria-pressed', String(on));
     });
     var key = btn.dataset.screen;
-    mini.classList.toggle('is-pets', key === 'pets');
-    if (key !== 'pets') miniScreen.src = SCREEN(key);
+    miniScreen.src = SCREEN(key);
   }
   spaces.forEach(function (btn) {
     btn.addEventListener('click', function () { showSpace(btn); });
