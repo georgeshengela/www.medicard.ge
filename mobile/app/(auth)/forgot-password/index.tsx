@@ -27,8 +27,7 @@ export default function ForgotPasswordIndex() {
           iconBg="#FDF2F8"
           iconColor="#DB2777"
           label={ka.auth.forgotPasswordViaSms}
-          onPress={() => Alert.alert(ka.auth.forgotPasswordViaSms, ka.auth.forgotPasswordComingSoon)}
-          disabled
+          onPress={() => router.push('/(auth)/forgot-password/sms')}
         />
         <AuthMethodCard
           icon={KeyRound}

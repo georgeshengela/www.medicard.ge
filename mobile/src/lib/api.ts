@@ -2356,6 +2356,16 @@ export const api = {
         timeoutMs: 20_000,
       }),
 
+    passwordSmsStart: (phone: string) =>
+      request<{ sent: boolean; phone?: string; masked?: string; message: string; devCode?: string; cooldownSec?: number }>(
+        '/api/auth/password/sms/start',
+        { method: 'POST', body: { phone }, token: null, timeoutMs: 20_000 },
+      ),
+
+    /** Verifies the SMS code, sets the new password and returns a signed-in session. */
+    passwordSmsReset: (body: { phone: string; code: string; password: string; confirmPassword: string }) =>
+      request<AuthResponse>('/api/auth/password/sms/reset', { method: 'POST', body, token: null, timeoutMs: 20_000 }),
+
     passwordReset: (body: { email: string; code: string; password: string; confirmPassword: string }) =>
       request<{ ok: boolean; message: string }>('/api/auth/password/reset', {
         method: 'POST',

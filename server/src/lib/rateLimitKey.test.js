@@ -63,3 +63,11 @@ describe('rateLimitKey', () => {
     assert.equal(rateLimitPublicMessage(12).code, 'RATE_LIMITED');
   });
 });
+
+describe('SMS password reset is an auth write', async () => {
+  const { isAuthWriteRequest: isWrite } = await import('./rateLimitKey.js');
+  it('counts both SMS reset steps against the per-IP auth-write limit', () => {
+    assert.equal(isWrite({ method: 'POST', originalUrl: '/api/auth/password/sms/start' }), true);
+    assert.equal(isWrite({ method: 'POST', originalUrl: '/api/auth/password/sms/reset' }), true);
+  });
+});

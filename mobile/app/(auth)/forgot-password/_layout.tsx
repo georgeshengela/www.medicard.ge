@@ -14,6 +14,7 @@ export default function ForgotPasswordLayout() {
       <Stack.Screen name="sent" />
       <Stack.Screen name="verify" />
       <Stack.Screen name="reset" />
+      <Stack.Screen name="sms" />
     </Stack>
   );
 }

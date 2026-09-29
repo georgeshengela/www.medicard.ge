@@ -42,7 +42,7 @@ export function authWriteKey(req) {
 }
 
 const AUTH_WRITE_RE =
-  /^\/api\/auth\/(register|login|password\/forgot|password\/reset|phone\/start|phone\/verify|phone\/link\/start|phone\/link\/verify)\/?$/i;
+  /^\/api\/auth\/(register|login|password\/forgot|password\/reset|password\/sms\/start|password\/sms\/reset|phone\/start|phone\/verify|phone\/link\/start|phone\/link\/verify)\/?$/i;
 
 export function isAuthWriteRequest(req) {
   const method = String(req.method || 'GET').toUpperCase();

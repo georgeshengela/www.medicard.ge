@@ -42,6 +42,8 @@ type AuthState = {
   signIn: (email: string, password: string) => Promise<void>;
   signUp: (input: SignUpInput) => Promise<void>;
   signInWithPhone: (phone: string, code: string, fullName?: string) => Promise<void>;
+  /** SMS password reset: sets the new password and signs in. */
+  resetPasswordWithSms: (input: { phone: string; code: string; password: string; confirmPassword: string }) => Promise<void>;
   signOut: () => Promise<void>;
   deleteAccount: () => Promise<void>;
   /** Re-reads the session (/auth/me). `maxAgeMs`: skip when the last answer is younger (screen focus). */
@@ -310,6 +312,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       pendingDailyBonus,
       consumeDailyBonus,
       signIn: async (email, password) => adopt(await api.auth.login({ email, password })),
+      resetPasswordWithSms: async (input) => adopt(await api.auth.passwordSmsReset(input)),
       signUp: async (input) => {
         try {
           await adopt(await api.auth.register(input));

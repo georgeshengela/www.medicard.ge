@@ -206,6 +206,82 @@ authRouter.post(
   }),
 );
 
+/**
+ * Password reset by SMS (2026-09-29): for accounts that have a verified phone on file.
+ * The code proves ownership of the number, so a successful reset signs the person in directly
+ * (they may not remember which email the account uses). Purpose RESET keeps these codes apart
+ * from sign-in codes. Phone-only accounts have no password — they are sent to SMS sign-in.
+ */
+const smsResetStartSchema = z.object({ phone: georgianPhone });
+const smsResetSchema = z
+  .object({
+    phone: georgianPhone,
+    code: z.string().trim().regex(/^\d{4}$/, 'კოდი უნდა შედგებოდეს 4 ციფრისგან'),
+    password: z.string().min(8, 'პაროლი უნდა შეიცავდეს მინიმუმ 8 სიმბოლოს').max(128),
+    confirmPassword: z.string().min(8).max(128),
+  })
+  .refine((d) => d.password === d.confirmPassword, { message: 'პაროლები არ ემთხვევა', path: ['confirmPassword'] });
+
+const PHONE_NOT_FOUND = {
+  error: 'ამ ნომრით ანგარიში ვერ მოიძებნა. თუ ანგარიშს ელ-ფოსტით ქმნიდი და ნომერი არ დაგიმატებია, აღადგინე ელ-ფოსტით.',
+  code: 'PHONE_NOT_FOUND',
+};
+const PHONE_LOGIN_ACCOUNT = {
+  error: 'ეს ანგარიში ტელეფონის ნომრით შედის და პაროლი არ აქვს. შედი SMS კოდით.',
+  code: 'PHONE_LOGIN_ACCOUNT',
+};
+const isPhoneOnlyAccount = (user) => String(user?.email || '').endsWith('@phone.medicard.ge');
+
+authRouter.post(
+  '/password/sms/start',
+  forgotPasswordLimiter,
+  asyncHandler(async (req, res) => {
+    const { phone } = smsResetStartSchema.parse(req.body);
+    const user = await findUserByPhone(phone);
+    if (!user) return res.status(404).json(PHONE_NOT_FOUND);
+    if (isPhoneOnlyAccount(user)) return res.status(409).json(PHONE_LOGIN_ACCOUNT);
+    if (user.status === 'BLOCKED') {
+      return res.json({ sent: true, message: 'თუ ნომერი ანგარიშზეა მიბმული, კოდს მიიღებ რამდენიმე წამში.' });
+    }
+    const result = await requestPhoneOtp({ phone, purpose: 'RESET', userId: user.id });
+    if (!result.ok) return res.status(result.status || 400).json({ error: result.error });
+    const { reference: _reference, ...publicResult } = result;
+    return res.json(publicResult);
+  }),
+);
+
+authRouter.post(
+  '/password/sms/reset',
+  asyncHandler(async (req, res) => {
+    const data = smsResetSchema.parse(req.body);
+    const user = await findUserByPhone(data.phone);
+    if (!user || isPhoneOnlyAccount(user)) {
+      return res.status(400).json({ error: 'კოდი არასწორია ან ვადა გაუვიდა.' });
+    }
+    const check = await verifyPhoneOtp({ phone: data.phone, code: data.code, purpose: 'RESET' });
+    if (!check.ok) return res.status(check.status || 400).json({ error: check.error });
+    if (check.userId && check.userId !== user.id) {
+      return res.status(400).json({ error: 'კოდი არასწორია ან ვადა გაუვიდა.' });
+    }
+    if (user.status === 'BLOCKED') {
+      return res.status(403).json({ error: 'შენი ანგარიში დაბლოკილია. დაგვიკავშირდი მხარდაჭერას.', code: 'ACCOUNT_BLOCKED' });
+    }
+    const updated = await prisma.$transaction(async (tx) => {
+      const next = await tx.user.update({
+        where: { id: user.id },
+        data: { passwordHash: await bcrypt.hash(data.password, 12) },
+      });
+      await tx.passwordReset.updateMany({ where: { userId: user.id, usedAt: null }, data: { usedAt: new Date() } });
+      return next;
+    });
+    return res.json({
+      token: signToken(updated),
+      user: publicUser(updated),
+      usage: await getUsageSafe(updated.id),
+    });
+  }),
+);
+
 authRouter.post(
   '/password/reset',
   asyncHandler(async (req, res) => {
