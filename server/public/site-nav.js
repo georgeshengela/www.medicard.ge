@@ -96,7 +96,6 @@
     return '<li style="--i:' + i + '"><a href="' + it.href + '"' + cur + '><span class="tb-tile">' + ICON[it.icon] + '</span><span class="tb-sheet-text"><b>' + esc(it.label) + '</b><small>' + esc(it.hint) + '</small></span>' + ICON.arrow + '</a></li>';
   }).join('');
 
-  var downloadHref = onHome ? '#download' : '/#download';
   // The web app (/app) keeps its token in localStorage under this key.
   var signedIn = false;
   try { signedIn = Boolean(localStorage.getItem('medicard.web.token')); } catch (e) { signedIn = false; }
@@ -106,7 +105,6 @@
       '<a class="tb-brand" href="/" aria-label="მედიქარდი, მთავარი გვერდი"><img src="/icon.png" width="32" height="32" alt="" /><span>მედიქარდი</span></a>' +
       '<nav class="tb-links" aria-label="მთავარი მენიუ"><span class="tb-glide" aria-hidden="true"></span>' + links + '</nav>' +
       '<a class="tb-login" href="/app">' + ICON.user + '<span>' + (signedIn ? 'ჩემი ანგარიში' : 'შესვლა') + '</span></a>' +
-      '<a class="tb-cta" href="' + downloadHref + '" data-download>' + ICON.download + '<span>ჩამოტვირთვა</span></a>' +
       '<button class="tb-burger" type="button" aria-expanded="false" aria-controls="tb-sheet"><span class="tb-sr">მენიუ</span><i></i><i></i><i></i></button>' +
     '</div>' +
     '<div class="tb-sheet" id="tb-sheet" aria-label="მენიუ">' +

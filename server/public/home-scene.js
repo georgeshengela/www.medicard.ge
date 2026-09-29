@@ -244,8 +244,28 @@ function start() {
   spill.scale.set(5.4, 7.2, 1);
   spill.position.z = -0.6;
 
+  // Soft contact shadow on an imagined floor; it widens and fades as the phone lifts
+  const floorTex = (() => {
+    const c = document.createElement('canvas');
+    c.width = c.height = 256;
+    const g = c.getContext('2d');
+    const grd = g.createRadialGradient(128, 128, 0, 128, 128, 128);
+    grd.addColorStop(0, 'rgba(11,43,46,0.42)');
+    grd.addColorStop(0.5, 'rgba(11,43,46,0.14)');
+    grd.addColorStop(1, 'rgba(11,43,46,0)');
+    g.fillStyle = grd;
+    g.fillRect(0, 0, 256, 256);
+    return new THREE.CanvasTexture(c);
+  })();
+  const floor = new THREE.Mesh(
+    new THREE.PlaneGeometry(2.6, 0.9),
+    new THREE.MeshBasicMaterial({ map: floorTex, transparent: true, depthWrite: false }),
+  );
+  floor.rotation.x = -Math.PI / 2;
+  floor.position.set(0.05, -BH / 2 - 0.55, 0.1);
+
   const rig = new THREE.Group();
-  rig.add(spill, phone);
+  rig.add(spill, floor, phone);
   scene.add(rig);
 
   /* ───── 24-hour pulse ring ───── */
@@ -437,15 +457,15 @@ function start() {
     const viewW = viewH * camera.aspect;
     if (window.innerWidth <= 860) {
       // Phone screens: the phone sits left of the dial in the top part of the section
-      const s = Math.min(1, (viewH * 0.6) / BH);
-      layout = { x: -viewW * 0.2, y: viewH * 0.03, s };
+      const s = Math.min(1, (viewH * 0.38) / BH);
+      layout = { x: -viewW * 0.19, y: viewH * 0.06, s };
     } else {
       // Desktop: between the headline (left) and the dial (right)
-      const s = Math.min(1.05, (viewH * 0.6) / BH);
-      layout = { x: viewW * 0.075, y: 0, s };
+      const s = Math.min(0.95, (viewH * 0.5) / BH);
+      layout = { x: viewW * 0.06, y: 0.12, s };
     }
     // Keep the ring clear of the dial text on wide layouts
-    ringGroup.scale.setScalar(window.innerWidth <= 860 ? 0.9 : 0.8);
+    ringGroup.scale.setScalar(window.innerWidth <= 860 ? 0.9 : 0.78);
   }
   new ResizeObserver(resize).observe(canvas);
   resize();
@@ -501,6 +521,9 @@ function start() {
     camera.lookAt(layout.x * 0.15, 0, 0);
 
     spill.material.opacity = lerp(0.14, 0.6, S.night) * intro;
+    const lift = phone.position.y + 1.6 * (1 - intro);
+    floor.material.opacity = lerp(1, 0.25, S.night) * intro * (1 - Math.min(0.5, Math.abs(lift) * 0.8));
+    floor.scale.setScalar(1 + Math.max(0, lift) * 0.35);
 
     // Screen: scan to the next moment's screen during the middle of the transition
     const m = smooth(Math.min(1, Math.max(0, (f - 0.3) / 0.4)));

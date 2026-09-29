@@ -81,17 +81,17 @@ h1, h2, h3, p { margin: 0; }
 
 /* Static phone shown until WebGL is ready (and kept when it is not available) */
 .poster {
-  position: absolute; margin: 0; left: 58%; top: 52%;
-  width: min(280px, 22vw); aspect-ratio: 880 / 1912; transform: translate(-50%, -50%) rotate(-4deg);
+  position: absolute; margin: 0; left: 57%; top: 52%;
+  width: min(240px, 18vw); aspect-ratio: 880 / 1912; transform: translate(-50%, -50%) rotate(-4deg);
   border-radius: 44px; padding: 10px; background: #1b2426;
   box-shadow: 0 40px 80px -30px rgba(3, 7, 18, .45), inset 0 0 0 2px #56676a;
   transition: opacity .8s var(--ease);
 }
 .poster img { width: 100%; height: 100%; object-fit: cover; border-radius: 34px; }
-.day.is-3d .poster { opacity: 0; }
+.day.is-3d .poster { opacity: 0; visibility: hidden; transition: opacity .4s, visibility 0s .4s; }
 
 .clock {
-  position: absolute; z-index: -1; left: 58%; bottom: 3vh; transform: translateX(-50%);
+  position: absolute; z-index: -1; left: 57%; bottom: 3vh; transform: translateX(-50%);
   color: var(--day-ink); pointer-events: none;
 }
 .clock-time {
@@ -105,7 +105,7 @@ h1, h2, h3, p { margin: 0; }
   position: relative; z-index: 1;
   width: min(100% - 2 * var(--gutter), var(--max)); margin-inline: auto;
   min-height: inherit;
-  display: grid; grid-template-columns: minmax(0, 1fr) minmax(220px, 30%) 300px; align-items: center;
+  display: grid; grid-template-columns: minmax(0, 1fr) minmax(240px, 32%) 300px; column-gap: clamp(24px, 3vw, 56px); align-items: center;
   padding: 110px 0 80px;
   pointer-events: none;
 }
@@ -113,7 +113,7 @@ h1, h2, h3, p { margin: 0; }
 .hero-copy { grid-column: 1; max-width: 36rem; }
 .hero-title {
   font-family: var(--display); font-weight: 800;
-  font-size: clamp(44px, 5.4vw, 86px); line-height: 1; letter-spacing: -.04em;
+  font-size: clamp(40px, 4.5vw, 74px); line-height: 1; letter-spacing: -.04em;
   margin-bottom: 26px;
 }
 .hero-title .line { display: block; overflow: hidden; padding-bottom: .06em; }
@@ -122,11 +122,23 @@ h1, h2, h3, p { margin: 0; }
 .hero-title .line:nth-child(3) > span { animation-delay: .24s; }
 @keyframes rise { to { transform: none; } }
 .hero-lead { font-size: clamp(17px, 1.35vw, 20px); line-height: 1.6; color: var(--day-ink-2); max-width: 31rem; opacity: 0; animation: fade .9s .5s var(--ease) forwards; }
-.hero-actions { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 32px; opacity: 0; animation: fade .9s .65s var(--ease) forwards; }
+.hero-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin-top: 32px; opacity: 0; animation: fade .9s .65s var(--ease) forwards; }
 @keyframes fade { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
 
 /* The dial: a vertical day with a pulse bead that travels between hours */
-.dial-wrap { grid-column: 3; opacity: 0; animation: fade .9s .8s var(--ease) forwards; }
+.dial-wrap {
+  grid-column: 3; opacity: 0; animation: fade .9s .8s var(--ease) forwards;
+  padding: 22px 16px 22px 10px; border-radius: 30px;
+  background: color-mix(in srgb, #FFFFFF 40%, transparent);
+  border: 1px solid color-mix(in srgb, #FFFFFF 70%, transparent);
+  -webkit-backdrop-filter: blur(22px) saturate(1.4); backdrop-filter: blur(22px) saturate(1.4);
+  box-shadow: 0 40px 80px -50px rgba(11, 43, 46, .45), inset 0 1px 0 rgba(255, 255, 255, .6);
+  transition: background-color .6s var(--ease), border-color .6s var(--ease);
+}
+.day[data-tone="dark"] .dial-wrap {
+  background: rgba(255, 255, 255, .045); border-color: rgba(255, 255, 255, .1);
+  box-shadow: 0 40px 80px -40px rgba(0, 0, 0, .6), inset 0 1px 0 rgba(255, 255, 255, .06);
+}
 .dial-hint { padding-left: 34px; margin-bottom: 10px; font-size: 13px; font-weight: 600; color: var(--day-ink-2); }
 .dial { position: relative; display: grid; gap: 2px; padding-left: 34px; }
 .dial-track {
@@ -166,7 +178,7 @@ h1, h2, h3, p { margin: 0; }
 }
 .stop-name { font-size: 14px; font-weight: 600; opacity: .45; transition: opacity .3s; }
 .stop:hover time, .stop:hover .stop-name { opacity: .85; }
-.stop[aria-selected="true"] { background: color-mix(in srgb, #FFFFFF 42%, transparent); }
+.stop[aria-selected="true"] { background: #FFFFFF; box-shadow: 0 12px 24px -18px rgba(11, 43, 46, .5); }
 .day[data-tone="dark"] .stop[aria-selected="true"] { background: rgba(255, 255, 255, .07); }
 .stop[aria-selected="true"] time { opacity: 1; font-size: 32px; }
 .stop[aria-selected="true"] .stop-name { opacity: .9; }
@@ -179,7 +191,7 @@ h1, h2, h3, p { margin: 0; }
 .dial.is-paused .stop[aria-selected="true"]::after { animation-play-state: paused; }
 @keyframes dwell { to { transform: scaleX(1); } }
 
-.moment-panel { margin-top: 22px; padding-left: 34px; min-height: 150px; }
+.moment-panel { margin-top: 18px; padding: 18px 0 0 34px; min-height: 150px; border-top: 1px solid color-mix(in srgb, var(--day-ink) 10%, transparent); }
 .moment-panel.is-swap > * { animation: fade .55s var(--ease) both; }
 .moment-panel.is-swap > :nth-child(2) { animation-delay: .05s; }
 .moment-panel.is-swap > :nth-child(3) { animation-delay: .1s; }
@@ -372,9 +384,12 @@ h1, h2, h3, p { margin: 0; }
   body { font-size: 16px; }
   .day { min-height: 0; }
   #scene { bottom: auto; height: 60svh; }
-  .poster { left: 30%; top: 30svh; width: min(150px, 38vw); }
+  .poster { left: 30%; top: 31svh; width: min(120px, 32vw); border-radius: 30px; padding: 7px; }
   .clock { display: none; }
   .day-ui { grid-template-columns: 1fr; padding: 84px 0 44px; }
+  .dial-wrap { padding: 0; border: 0; background: none; box-shadow: none; -webkit-backdrop-filter: none; backdrop-filter: none; }
+  .day[data-tone="dark"] .dial-wrap { background: none; box-shadow: none; }
+  .moment-panel { border-top: 0; padding-top: 0; }
   .dial-wrap { grid-column: 1; grid-row: 1; display: grid; grid-template-columns: 1fr 46%; min-height: calc(60svh - 84px); align-items: center; }
   .dial-hint { display: none; }
   .dial { grid-column: 2; padding-left: 26px; }
@@ -392,6 +407,7 @@ h1, h2, h3, p { margin: 0; }
   .hero-lead { font-size: 17px; }
   .hero-actions { margin-top: 22px; }
   .hero-actions .btn { flex: 1 1 auto; }
+  .hero-actions .store-badge { flex: 0 0 auto; }
   .scroll-cue { display: none; }
 
   .medi-grid, .spaces-grid, .faq-grid, .dawn-grid { grid-template-columns: 1fr; }
