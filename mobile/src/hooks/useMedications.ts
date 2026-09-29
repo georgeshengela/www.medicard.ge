@@ -1,93 +1,77 @@
-import { useCallback, useEffect, useState } from 'react';
-import { onReturnToForeground } from '@/lib/appForeground';
+import { useCallback, useState } from 'react';
 import { localAccountId } from '@/lib/localAccount';
-import { useFocusEffect } from 'expo-router';
 import { api, type Medication, type ScheduledDose } from '@/lib/api';
 import { syncMedicationReminders } from '@/lib/notifications';
 import { loadDoseLogs } from '@/lib/medications.shared';
 import type { MedicationDoseLog } from '@/types/medications';
+import { useAccountQuery } from '@/hooks/useAccountQuery';
+import { accountKey, FRESH, invalidate, queryClient } from '@/lib/queryClient';
 
 type MedsSnapshot = {
-  response: Awaited<ReturnType<typeof api.medications.list>>;
+  medications: Medication[];
+  schedule: ScheduledDose[];
   logs: MedicationDoseLog[];
-  scheduled: number;
+  scheduled: number | null;
 };
 
-/**
- * Up to 7 screens use this hook and stay mounted in the stack. Focus / foreground loads that start
- * while another instance is already loading share its request (and its reminder reschedule)
- * instead of each firing their own. Explicit loads (after a change, pull-to-refresh) never share.
- */
-let sharedLoad: { owner: string; promise: Promise<MedsSnapshot> } | null = null;
+const MEDS_KEY = ['medications'] as const;
 
-function fetchMeds(owner: string): Promise<MedsSnapshot> {
-  return (async () => {
-    const [response, logs] = await Promise.all([api.medications.list(), loadDoseLogs()]);
-    const scheduled = owner === localAccountId() ? await syncMedicationReminders(response.schedule, response.medications, owner) : 0;
-    return { response, logs, scheduled };
-  })();
+/** One request (and one reminder reschedule) for every screen that shows medications. */
+async function fetchMeds(): Promise<MedsSnapshot> {
+  const owner = localAccountId();
+  const [response, logs] = await Promise.all([api.medications.list(), loadDoseLogs()]);
+  const scheduled =
+    owner && owner === localAccountId()
+      ? await syncMedicationReminders(response.schedule, response.medications, owner)
+      : null;
+  return { medications: response.medications, schedule: response.schedule, logs, scheduled };
 }
 
-function loadMeds(owner: string, share: boolean): Promise<MedsSnapshot> {
-  if (share && sharedLoad?.owner === owner) return sharedLoad.promise;
-  const promise = fetchMeds(owner);
-  const entry = { owner, promise };
-  sharedLoad = entry;
-  void promise.catch(() => undefined).finally(() => {
-    if (sharedLoad === entry) sharedLoad = null;
-  });
-  return promise;
+/** After adding / editing / deleting a medication anywhere: refresh every screen that shows them. */
+export function invalidateMedications() {
+  return invalidate(...MEDS_KEY);
 }
+
+const EMPTY_MEDS: Medication[] = [];
+const EMPTY_SCHEDULE: ScheduledDose[] = [];
+const EMPTY_LOGS: MedicationDoseLog[] = [];
 
 export function useMedications() {
-  const [medications, setMedications] = useState<Medication[]>([]);
-  const [schedule, setSchedule] = useState<ScheduledDose[]>([]);
-  const [doseLogs, setDoseLogs] = useState<MedicationDoseLog[]>([]);
-  const [reminderCount, setReminderCount] = useState<number | null>(null);
+  const query = useAccountQuery<MedsSnapshot>({ key: [...MEDS_KEY], fetch: fetchMeds, staleTime: FRESH.SHORT });
   const [refreshing, setRefreshing] = useState(false);
-  const [loading, setLoading] = useState(true);
 
-  const load = useCallback(async (opts: { share?: boolean } = {}) => {
-    const owner = localAccountId();
-    if (!owner) return;
-    try {
-      const { response, logs, scheduled } = await loadMeds(owner, Boolean(opts.share));
-      if (owner !== localAccountId()) return;
-      setMedications(response.medications);
-      setSchedule(response.schedule);
-      setDoseLogs(logs);
-      setReminderCount(scheduled);
-    } catch {
-      /* pull-to-refresh is retry */
-    } finally {
-      setLoading(false);
-    }
+  // Dose logs live on the device; keep the cached copy in step when a screen records a dose.
+  const setDoseLogs = useCallback((next: MedicationDoseLog[] | ((prev: MedicationDoseLog[]) => MedicationDoseLog[])) => {
+    queryClient.setQueryData<MedsSnapshot>(accountKey(...MEDS_KEY), (old) => {
+      if (!old) return old;
+      const logs = typeof next === 'function' ? next(old.logs) : next;
+      return { ...old, logs };
+    });
   }, []);
 
-  useFocusEffect(
-    useCallback(() => {
-      void load({ share: true });
-    }, [load]),
-  );
-
-  useEffect(() => {
-    return onReturnToForeground(() => void load({ share: true }));
-  }, [load]);
+  /** Explicit reload (after a change on this screen): always goes to the server. */
+  const { refetch } = query;
+  const load = useCallback(async () => {
+    await refetch();
+  }, [refetch]);
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    await load();
-    setRefreshing(false);
-  }, [load]);
+    try {
+      await refetch();
+    } finally {
+      setRefreshing(false);
+    }
+  }, [refetch]);
 
   return {
-    medications,
-    schedule,
-    doseLogs,
+    medications: query.data?.medications ?? EMPTY_MEDS,
+    schedule: query.data?.schedule ?? EMPTY_SCHEDULE,
+    doseLogs: query.data?.logs ?? EMPTY_LOGS,
     setDoseLogs,
-    reminderCount,
+    reminderCount: query.data?.scheduled ?? null,
     refreshing,
-    loading,
+    loading: query.isPending && query.fetchStatus !== 'idle',
     load,
     onRefresh,
   };

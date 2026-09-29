@@ -1,9 +1,10 @@
-import React, { useCallback, useState } from 'react';
+import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { useFocusEffect, useRouter } from 'expo-router';
+import { useRouter } from 'expo-router';
 import { ArrowUpRight, Award, BadgeCheck, CalendarCheck2, Camera, ChevronRight, CircleAlert, Clock3, Dumbbell, QrCode, ScanLine } from 'lucide-react-native';
 import { api } from '@/lib/api';
-import { localAccountId } from '@/lib/localAccount';
+import { useAccountQuery } from '@/hooks/useAccountQuery';
+import { FRESH, invalidate } from '@/lib/queryClient';
 import { clockOf, dayLabel, relativeStart, tbilisiYmd, type ClientOverview, type CoachMe } from '@/lib/coach';
 import { HomeSectionHeading } from '@/components/home/HomeSectionHeading';
 import { HubTileGrid, type HubTile } from '@/components/home/HubTiles';
@@ -12,38 +13,21 @@ import { StyledQr } from '@/components/coach/StyledQr';
 import { HUB, hubText } from '@/theme/hub';
 import { useThemeColors } from '@/theme/colors';
 
-type State = { me: CoachMe; overview: ClientOverview | null; at: number; owner: string };
-let cache: State | null = null;
+type State = { me: CoachMe; overview: ClientOverview | null };
 
-/** Light, account-scoped read of the coach state for Home and Profile (cached 60 s). */
-function useCoachState() {
-  const [state, setState] = useState<State | null>(() => (cache && cache.owner === localAccountId() ? cache : null));
-  useFocusEffect(
-    useCallback(() => {
-      const owner = localAccountId();
-      if (!owner) return;
-      if (cache && cache.owner === owner && Date.now() - cache.at < 60_000) {
-        setState(cache);
-        return;
-      }
-      let alive = true;
-      void (async () => {
-        try {
-          const me = await api.coach.me();
-          const overview = me.clientLink?.status === 'ACTIVE' ? await api.coach.overview() : null;
-          if (!alive || localAccountId() !== owner) return;
-          cache = { me, overview, at: Date.now(), owner };
-          setState(cache);
-        } catch {
-          /* the section simply stays hidden (e.g. feature paused or offline) */
-        }
-      })();
-      return () => {
-        alive = false;
-      };
-    }, []),
-  );
-  return state && state.owner === localAccountId() ? state : null;
+/** Light, account-scoped read of the coach state for Home and Profile (cached app-wide, fresh 5 min). */
+function useCoachState(): State | null {
+  const query = useAccountQuery<State>({
+    key: ['coach', 'state'],
+    staleTime: FRESH.LONG,
+    fetch: async () => {
+      const me = await api.coach.me();
+      const overview = me.clientLink?.status === 'ACTIVE' ? await api.coach.overview() : null;
+      return { me, overview };
+    },
+  });
+  // A failed read keeps the section hidden (e.g. feature paused or offline).
+  return query.data ?? null;
 }
 
 /** Home: shows only for people with a trainer (next session) or verified trainers (workspace shortcut). */
@@ -230,32 +214,23 @@ function SpotButton({ label, icon: Icon, onPress, primary }: { label: string; ic
 
 /** Photo count and (when not linked) the person's own QR for the card preview. */
 function useCoachExtras(wantQr: boolean) {
-  const [photos, setPhotos] = useState<number | null>(null);
-  const [qrLink, setQrLink] = useState<string | null>(null);
-  useFocusEffect(
-    useCallback(() => {
-      const owner = localAccountId();
-      let alive = true;
-      void api.coach
-        .photos()
-        .then((r) => alive && localAccountId() === owner && setPhotos(r.photos.length))
-        .catch(() => undefined);
-      if (wantQr)
-        void api.identity
-          .qr()
-          .then((r) => alive && localAccountId() === owner && setQrLink(r.link))
-          .catch(() => undefined);
-      return () => {
-        alive = false;
-      };
-    }, [wantQr]),
-  );
-  return { photos, qrLink };
+  const photos = useAccountQuery<number>({
+    key: ['coach', 'photos'],
+    staleTime: FRESH.LONG,
+    fetch: async () => (await api.coach.photos()).photos.length,
+  });
+  const qr = useAccountQuery<string>({
+    key: ['identity', 'qr'],
+    staleTime: FRESH.LONG,
+    enabled: wantQr,
+    fetch: async () => (await api.identity.qr()).link,
+  });
+  return { photos: photos.data ?? null, qrLink: wantQr ? (qr.data ?? null) : null };
 }
 
 /** Forget the cached state (e.g. after linking, so Home refreshes at once). */
 export function invalidateCoachEntry() {
-  cache = null;
+  void invalidate('coach');
 }
 
 const s = StyleSheet.create({

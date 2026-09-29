@@ -29,6 +29,8 @@ import {
   suppressCycleLengthChrome,
 } from '@/lib/cycleForecastEligibility';
 import { useAuth } from '@/store/AuthContext';
+import { useAccountQuery } from '@/hooks/useAccountQuery';
+import { FRESH } from '@/lib/queryClient';
 
 const RING = 88;
 const STROKE = 8;
@@ -200,55 +202,38 @@ export function HomeCyclePreviewCard({ onPress }: Props) {
   const theme = useThemeColors();
   const roseFill = c.accentSoft;
   const roseLine = c.border;
-  const [bundle, setBundle] = useState<CycleBundle | null>(null);
-  const [offline, setOffline] = useState(false);
-  const [privacyLocked, setPrivacyLocked] = useState(false);
-  const [ready, setReady] = useState(false);
-  const today = cycleToday(bundle, todayKey());
-
+  // The privacy lock is a local switch: re-read on every focus so turning it on hides Home at once.
+  const [privacyLocked, setPrivacyLocked] = useState<boolean | null>(null);
   useFocusEffect(
     useCallback(() => {
       let alive = true;
-      setReady(false);
-      setBundle(null);
-      if (!user?.id) {
-        setPrivacyLocked(false);
-        setReady(true);
-        return () => {
-          alive = false;
-        };
-      }
       void isCyclePrivacyLockEnabled()
         .then((locked) => {
-          if (!alive) return locked;
-          setPrivacyLocked(locked);
-          if (locked) {
-            setBundle(null);
-            setOffline(false);
-            return true;
-          }
-          return false;
-        })
-        .then((locked) => {
-          if (!alive || locked) return null;
-          return loadCycleView(user.id);
-        })
-        .then((view) => {
-          if (!alive || !view) return;
-          setBundle(view.display);
-          setOffline(view.reachable === false);
+          if (alive) setPrivacyLocked(locked);
         })
         .catch(() => {
-          if (alive) setBundle(null);
-        })
-        .finally(() => {
-          if (alive) setReady(true);
+          if (alive) setPrivacyLocked(false);
         });
       return () => {
         alive = false;
       };
-    }, [user?.id]),
+    }, []),
   );
+  // Cached cycle view (shared with the cycle screens' key); cycle writes invalidate it.
+  const view = useAccountQuery<{ bundle: CycleBundle; offline: boolean }>({
+    key: ['cycle', 'view'],
+    staleTime: FRESH.SHORT,
+    enabled: Boolean(user?.id) && privacyLocked === false,
+    fetch: async () => {
+      const loaded = await loadCycleView(user!.id);
+      return { bundle: loaded.display, offline: loaded.reachable === false };
+    },
+  });
+  const bundle: CycleBundle | null = privacyLocked === false ? (view.data?.bundle ?? null) : null;
+  const offline = privacyLocked === false && Boolean(view.data?.offline);
+  const ready =
+    !user?.id || privacyLocked === true || (privacyLocked === false && (view.data !== undefined || view.isError));
+  const today = cycleToday(bundle, todayKey());
 
   const cycleLen = bundle ? usedCycleLength(bundle) : 28;
   const hideLengthChrome = suppressCycleLengthChrome(bundle);

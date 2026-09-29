@@ -1,45 +1,59 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { useFocusEffect } from 'expo-router';
+import { useCallback, useEffect, useState } from 'react';
+import { keepPreviousData } from '@tanstack/react-query';
 import { subscribeHealthRefresh } from '@/lib/healthDataSync';
 import { isHealthPullCancelled } from '@/lib/healthPullCache.js';
 import { fetchStepsMetrics } from '@/lib/stepsMetrics';
+import { useAccountQuery } from '@/hooks/useAccountQuery';
+import { accountKey, FRESH, queryClient } from '@/lib/queryClient';
 import type { StepChartPeriod, StepsMetricsBundle } from '@/types/stepsMetrics';
 
+const stepsKey = (period: StepChartPeriod) => ['health', 'steps', period];
+
+/**
+ * Steps are LIVE: every visit shows the last count at once and re-reads the device + server in
+ * the background, so the number moves from 400 to 1 000 while you look at it. A device health
+ * change (`requestHealthRefresh`) forces a fresh read for every period on screen.
+ */
 export function useStepsMetrics(initialPeriod: StepChartPeriod = '1d') {
-  const [period, setPeriod] = useState<StepChartPeriod>(initialPeriod);
-  const [bundle, setBundle] = useState<StepsMetricsBundle | null>(null);
-  const [loading, setLoading] = useState(true);
-  const periodRef = useRef(period);
-  periodRef.current = period;
-  const bundleRef = useRef(bundle);
-  bundleRef.current = bundle;
-  const pullGenRef = useRef(0);
+  const [period, setPeriodState] = useState<StepChartPeriod>(initialPeriod);
+  const query = useAccountQuery<StepsMetricsBundle>({
+    key: stepsKey(period),
+    fetch: () => fetchStepsMetrics(period),
+    staleTime: FRESH.LIVE,
+    placeholderData: keepPreviousData,
+  });
 
   const refresh = useCallback(async (nextPeriod?: StepChartPeriod, opts?: { force?: boolean }) => {
-    const gen = ++pullGenRef.current;
-    const p = nextPeriod ?? periodRef.current;
-    if (!bundleRef.current) setLoading(true);
+    const p = nextPeriod ?? period;
+    if (nextPeriod) setPeriodState(nextPeriod);
     try {
-      const data = await fetchStepsMetrics(p, opts);
-      if (gen !== pullGenRef.current) return;
-      setBundle(data);
-      if (nextPeriod) setPeriod(nextPeriod);
+      await queryClient.fetchQuery({
+        queryKey: accountKey(...stepsKey(p)),
+        queryFn: () => fetchStepsMetrics(p, opts),
+        staleTime: 0,
+      });
     } catch (err) {
       if (isHealthPullCancelled(err)) return;
-    } finally {
-      if (gen === pullGenRef.current) setLoading(false);
     }
-  }, []);
-
-  useFocusEffect(
-    useCallback(() => {
-      void refresh();
-    }, [refresh]),
-  );
+  }, [period]);
 
   useEffect(() => subscribeHealthRefresh(() => {
-    void refresh(undefined, { force: true });
-  }), [refresh]);
+    void queryClient
+      .fetchQuery({
+        queryKey: accountKey(...stepsKey(period)),
+        queryFn: () => fetchStepsMetrics(period, { force: true }),
+        staleTime: 0,
+      })
+      .catch(() => undefined);
+  }), [period]);
 
-  return { bundle, loading, period, setPeriod, refresh };
+  const setPeriod = useCallback((next: StepChartPeriod) => setPeriodState(next), []);
+
+  return {
+    bundle: query.data ?? null,
+    loading: !query.data && query.fetchStatus !== 'idle',
+    period,
+    setPeriod,
+    refresh,
+  };
 }

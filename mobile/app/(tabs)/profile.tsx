@@ -94,7 +94,7 @@ export default function Profile() {
   useFocusEffect(
     useCallback(() => {
       void (async () => {
-        await refresh();
+        await refresh({ maxAgeMs: 60_000 });
         setNotificationsOn(await isNotificationsEnabled());
         try {
           const ents = await rewardsApi.entitlements();

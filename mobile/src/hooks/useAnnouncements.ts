@@ -1,11 +1,12 @@
-import { useCallback, useState } from 'react';
-import { useFocusEffect } from 'expo-router';
+import { useCallback, useMemo, useState } from 'react';
 import { api, type Announcement } from '@/lib/api';
 import { trackAnnouncement } from '@/lib/announcements';
 import { useFeature } from '@/lib/featureFlags';
 import { localAccountId } from '@/lib/localAccount';
+import { useAccountQuery } from '@/hooks/useAccountQuery';
+import { FRESH } from '@/lib/queryClient';
 
-/** Last answer per account, so returning to Home paints the cards at once. */
+/** Last answer per account, for the detail screen (`peekAnnouncement`). */
 const cache = new Map<string, Announcement[]>();
 const dismissed = new Set<string>();
 
@@ -14,44 +15,40 @@ export function peekAnnouncement(id: string): Announcement | null {
   return (owner && cache.get(owner)?.find((a) => a.id === id)) || null;
 }
 
-/** Live Home news cards for the signed-in person; refreshed every time Home gains focus. */
+/** Live Home news cards for the signed-in person (cached app-wide, fresh 5 min). */
 export function useAnnouncements() {
   const on = useFeature('news');
-  const [items, setItems] = useState<Announcement[]>(() => {
-    const owner = localAccountId();
-    return (owner && cache.get(owner)) || [];
+  const [hidden, setHidden] = useState(0);
+  const query = useAccountQuery<Announcement[]>({
+    key: ['announcements', 'home'],
+    staleTime: FRESH.LONG,
+    enabled: on,
+    fetch: async () => {
+      const owner = localAccountId();
+      const { announcements } = await api.announcements.list('home');
+      const list = announcements || [];
+      if (owner && owner === localAccountId()) cache.set(owner, list);
+      return list;
+    },
   });
 
-  const load = useCallback(async () => {
-    const owner = localAccountId();
-    if (!owner) return;
-    try {
-      const { announcements } = await api.announcements.list('home');
-      if (owner !== localAccountId()) return;
-      const list = (announcements || []).filter((a) => !dismissed.has(a.id));
-      cache.set(owner, list);
-      setItems(list);
-    } catch {
-      /* Home renders without news; next focus retries */
-    }
-  }, []);
-
-  useFocusEffect(
-    useCallback(() => {
-      if (on) void load();
-    }, [on, load]),
+  const items = useMemo(
+    () => (query.data ?? []).filter((a) => !dismissed.has(a.id)),
+    // `hidden` re-filters after a dismiss.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [query.data, hidden],
   );
 
   const dismiss = useCallback((id: string) => {
     dismissed.add(id);
-    const owner = localAccountId();
-    setItems((prev) => {
-      const next = prev.filter((a) => a.id !== id);
-      if (owner) cache.set(owner, next);
-      return next;
-    });
+    setHidden((n) => n + 1);
     trackAnnouncement(id, 'dismiss');
   }, []);
 
-  return { items: on ? items : [], dismiss, reload: load };
+  const { refetch } = query;
+  const reload = useCallback(async () => {
+    await refetch();
+  }, [refetch]);
+
+  return { items: on ? items : [], dismiss, reload };
 }

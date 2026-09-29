@@ -139,7 +139,8 @@ export default function Home() {
   useFocusEffect(
     useCallback(() => {
       let active = true;
-      void refresh().catch(() => {});
+      // Session (/auth/me) at most once a minute on focus; pull-to-refresh always re-reads.
+      void refresh({ maxAgeMs: 60_000 }).catch(() => {});
       if (female)
         void getCyclePromptSeen()
           .then((seen) => {

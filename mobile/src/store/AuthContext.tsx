@@ -44,7 +44,8 @@ type AuthState = {
   signInWithPhone: (phone: string, code: string, fullName?: string) => Promise<void>;
   signOut: () => Promise<void>;
   deleteAccount: () => Promise<void>;
-  refresh: () => Promise<void>;
+  /** Re-reads the session (/auth/me). `maxAgeMs`: skip when the last answer is younger (screen focus). */
+  refresh: (opts?: { maxAgeMs?: number }) => Promise<void>;
   refreshHealthProfile: () => Promise<HealthProfile | null>;
   setUser: (user: User) => void;
   setHealthProfile: (profile: HealthProfile | null) => void;
@@ -107,6 +108,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setPendingDailyBonus(null);
   }, []);
 
+  const lastMeAt = useRef(0);
   const hydrate = useCallback(() => {
     if (restoreInFlight.current) return restoreInFlight.current;
     const task = (async () => {
@@ -127,6 +129,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         try {
           const me = await api.auth.me(token);
           if (await getToken() !== token) return;
+          lastMeAt.current = Date.now();
           setSessionRestoreError(null);
           setLocalAccountId(me.user.id);
           // Keep the same object when nothing changed, so effects keyed on [user] (quest socket,
@@ -160,6 +163,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     void task.finally(() => { if (restoreInFlight.current === task) restoreInFlight.current = null; });
     return task;
   }, [applyVisualSession, resetSession]);
+
+  const refreshSession = useCallback(
+    (opts?: { maxAgeMs?: number }) => {
+      if (opts?.maxAgeMs && Date.now() - lastMeAt.current < opts.maxAgeMs) return Promise.resolve();
+      return hydrate();
+    },
+    [hydrate],
+  );
 
   useEffect(() => {
     hydrate().finally(() => setReady(true));
@@ -366,7 +377,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         await clearSessionSnapshot();
         resetSession();
       },
-      refresh: hydrate,
+      refresh: refreshSession,
       refreshHealthProfile,
       setUser,
       setHealthProfile,
@@ -388,6 +399,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       consumeDailyBonus,
       adopt,
       hydrate,
+      refreshSession,
       refreshHealthProfile,
       resetSession,
     ],

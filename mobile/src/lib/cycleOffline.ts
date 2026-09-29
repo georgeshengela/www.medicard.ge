@@ -455,12 +455,15 @@ export async function enqueueCycleOp(
   operation: CycleOfflineOperation,
   payload: Record<string, unknown>,
 ): Promise<CycleOfflineAccount> {
-  return withAccountWrite(async () => {
+  const result = await withAccountWrite(async () => {
     let account = await loadCycleAccount(userId);
     account = enqueueMutation(account, createMutation(userId, operation, payload));
     await saveCycleAccount(userId, account);
     return account;
   });
+  // A cycle change (even offline) must refresh Home's cached cycle card too.
+  void import('@/lib/queryClient').then(({ invalidate }) => invalidate('cycle')).catch(() => undefined);
+  return result;
 }
 
 async function afterEnqueue(userId: string): Promise<PersistResult> {

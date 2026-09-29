@@ -16,6 +16,8 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { ArrowLeft, ArrowUpRight } from "lucide-react-native";
 import { useThemeColors } from "@/theme/colors";
 import { useAuth } from "@/store/AuthContext";
+import { useAccountQuery } from "@/hooks/useAccountQuery";
+import { FRESH } from "@/lib/queryClient";
 import {
   nutritionProgramApi,
   type NutritionDashboard,
@@ -256,48 +258,24 @@ export function NScreen({
     </KeyboardAvoidingView>
   );
 }
+/** Cached app-wide (Home card, hub, plan, goal, progress, weight share one answer); meal writes invalidate it. */
 export function useNutritionDashboard() {
-  const { user } = useAuth();
-  const [data, setData] = useState<NutritionDashboard | null>(null),
-    [error, setError] = useState(""),
-    [loading, setLoading] = useState(true);
-  useEffect(() => {
-    setData(null);
-  }, [user?.id]);
-  const seq = useRef(0),
-    alive = useRef(true);
-  useEffect(() => {
-    alive.current = true;
-    return () => {
-      alive.current = false;
-      seq.current++;
-    };
-  }, []);
+  const query = useAccountQuery<NutritionDashboard>({
+    key: ["nutrition", "dashboard"],
+    fetch: () => nutritionProgramApi.dashboard(),
+    staleTime: FRESH.SHORT,
+  });
+  const { refetch } = query;
   const load = useCallback(async () => {
-    const n = ++seq.current;
-    setLoading(true);
-    setError("");
-    try {
-      const d = await nutritionProgramApi.dashboard();
-      if (alive.current && n === seq.current) setData(d);
-    } catch (e) {
-      if (alive.current && n === seq.current) {
-        setData(null);
-        setError((e as Error).message);
-      }
-    } finally {
-      if (alive.current && n === seq.current) setLoading(false);
-    }
-  }, [user?.id]);
-  useFocusEffect(
-    useCallback(() => {
-      void load();
-      return () => {
-        seq.current++;
-      };
-    }, [load]),
-  );
-  return { data, error, loading, load };
+    await refetch();
+  }, [refetch]);
+  return {
+    data: query.data ?? null,
+    // A failed background refresh keeps the last numbers on screen; the error shows only with nothing to show.
+    error: !query.data && query.error ? (query.error as Error).message : "",
+    loading: query.isPending && query.fetchStatus !== "idle",
+    load,
+  };
 }
 export function NError({
   message,

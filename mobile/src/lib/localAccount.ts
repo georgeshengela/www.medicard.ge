@@ -12,11 +12,20 @@ const LEGACY_UNSCOPED = [
 ] as const;
 
 let accountId: string | null = null;
+const accountListeners = new Set<(next: string | null, previous: string | null) => void>();
 
 export function setLocalAccountId(userId: string | null) {
   const next = userId && userId.length > 0 ? userId : null;
-  if (next !== accountId) resetSymptomChecker();
+  const previous = accountId;
+  if (next !== previous) resetSymptomChecker();
   accountId = next;
+  if (next !== previous) accountListeners.forEach((fn) => { try { fn(next, previous); } catch { /* ignore */ } });
+}
+
+/** Runs when the signed-in account changes (sign-in, sign-out, switch). */
+export function onLocalAccountChange(fn: (next: string | null, previous: string | null) => void): () => void {
+  accountListeners.add(fn);
+  return () => accountListeners.delete(fn);
 }
 
 export function localAccountId(): string | null {

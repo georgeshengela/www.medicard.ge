@@ -1,5 +1,6 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import { useFocusEffect } from 'expo-router';
+import { useCallback, useEffect, useMemo } from 'react';
+import { useAccountQuery } from '@/hooks/useAccountQuery';
+import { accountKey, FRESH, queryClient } from '@/lib/queryClient';
 import { useAuth } from '@/store/AuthContext';
 import { api } from '@/lib/api';
 import { pullStoredHealth, subscribeHealthRefresh } from '@/lib/healthDataSync';
@@ -20,53 +21,60 @@ import {
 } from '@/lib/hydration';
 import type { HydrationLog } from '@/types/hydration';
 
+type HydrationData = { logs: HydrationLog[]; goalMl: number; serverByDate: Record<string, number> };
+const HYDRATION_KEY = ['health', 'hydration'] as const;
+
+async function fetchHydration(): Promise<HydrationData> {
+  const [logs, localGoal, stored, remoteGoal] = await Promise.all([
+    loadHydrationLogs(),
+    loadHydrationGoalMl(),
+    pullStoredHealth(defaultSyncFromDate(), defaultSyncToDate()).catch(() => null),
+    api.healthMetrics.hydrationGoalGet().catch(() => null),
+  ]);
+  const serverByDate: Record<string, number> = {};
+  for (const row of stored?.daily ?? []) {
+    if (row.hydrationMl == null) continue;
+    serverByDate[row.date] = Math.max(0, Math.round(Number(row.hydrationMl) || 0));
+  }
+  let goalMl = localGoal;
+  if (remoteGoal?.goalMl != null && Number(remoteGoal.goalMl) >= 500) {
+    goalMl = Math.round(Number(remoteGoal.goalMl));
+    if (goalMl !== localGoal) await saveHydrationGoalMl(goalMl);
+  }
+  return { logs, goalMl, serverByDate };
+}
+
+const EMPTY_LOGS: HydrationLog[] = [];
+const EMPTY_SERVER: Record<string, number> = {};
+
+/** Water is LIVE: the last total shows at once and re-reads on every visit and health change. */
 export function useHydration() {
   const { user } = useAuth();
-  const [logs, setLogs] = useState<HydrationLog[]>([]);
-  const [goalMl, setGoalMl] = useState(2000);
-  const [serverByDate, setServerByDate] = useState<Record<string, number>>({});
-  const [loading, setLoading] = useState(true);
-
+  const query = useAccountQuery<HydrationData>({
+    key: [...HYDRATION_KEY],
+    fetch: fetchHydration,
+    staleTime: FRESH.LIVE,
+    enabled: Boolean(user?.id),
+  });
+  const { refetch } = query;
   const refresh = useCallback(async () => {
-    if (!user?.id) {
-      setLogs([]);
-      setServerByDate({});
-      setLoading(false);
-      return;
-    }
-    const [nextLogs, localGoal, stored, remoteGoal] = await Promise.all([
-      loadHydrationLogs(),
-      loadHydrationGoalMl(),
-      pullStoredHealth(defaultSyncFromDate(), defaultSyncToDate()).catch(() => null),
-      api.healthMetrics.hydrationGoalGet().catch(() => null),
-    ]);
-    if (stored) {
-      const nextServer: Record<string, number> = {};
-      for (const row of stored.daily) {
-        if (row.hydrationMl == null) continue;
-        nextServer[row.date] = Math.max(0, Math.round(Number(row.hydrationMl) || 0));
-      }
-      setServerByDate(nextServer);
-    }
-    let nextGoal = localGoal;
-    if (remoteGoal?.goalMl != null && Number(remoteGoal.goalMl) >= 500) {
-      nextGoal = Math.round(Number(remoteGoal.goalMl));
-      if (nextGoal !== localGoal) await saveHydrationGoalMl(nextGoal);
-    }
-    setLogs(nextLogs);
-    setGoalMl(nextGoal);
-    setLoading(false);
-  }, [user?.id]);
-
-  useFocusEffect(
-    useCallback(() => {
-      void refresh();
-    }, [refresh]),
-  );
+    await refetch();
+  }, [refetch]);
 
   useEffect(() => subscribeHealthRefresh(() => {
-    void refresh();
-  }), [refresh]);
+    void queryClient.invalidateQueries({ queryKey: accountKey(...HYDRATION_KEY) });
+  }), []);
+
+  const logs = query.data?.logs ?? EMPTY_LOGS;
+  const goalMl = query.data?.goalMl ?? 2000;
+  const serverByDate = query.data?.serverByDate ?? EMPTY_SERVER;
+  const loading = Boolean(user?.id) && !query.data && query.fetchStatus !== 'idle';
+
+  const patch = useCallback((next: Partial<HydrationData>) => {
+    queryClient.setQueryData<HydrationData>(accountKey(...HYDRATION_KEY), (old) =>
+      old ? { ...old, ...next } : { logs: EMPTY_LOGS, goalMl: 2000, serverByDate: EMPTY_SERVER, ...next },
+    );
+  }, []);
 
   const today = todayYmd();
   const todayMl = mergeDayHydrationMl(dayTotalMl(logs, today), serverByDate[today]);
@@ -102,20 +110,20 @@ export function useHydration() {
 
   const addLog = useCallback(async (input: Omit<HydrationLog, 'id' | 'at'> & { at?: string }) => {
     const next = await addHydrationLog(input);
-    setLogs(next);
+    patch({ logs: next });
     return next[0];
-  }, []);
+  }, [patch]);
 
   const deleteLog = useCallback(async (id: string) => {
-    setLogs(await removeHydrationLog(id));
-  }, []);
+    patch({ logs: await removeHydrationLog(id) });
+  }, [patch]);
 
   const setGoal = useCallback(async (ml: number) => {
     await saveHydrationGoalMl(ml);
-    setGoalMl(ml);
+    patch({ goalMl: ml });
     void import('@/lib/quest/api').then(({ questApi }) => questApi.hydrationGoalPut(ml).catch(() => undefined));
     void import('@/lib/quest/cache').then(({ requestQuestRefresh }) => requestQuestRefresh());
-  }, []);
+  }, [patch]);
 
   return { ...snapshot, loading, refresh, addLog, deleteLog, setGoal, lastWeekTotals };
 }

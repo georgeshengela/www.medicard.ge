@@ -10,6 +10,7 @@ import { withAuthConnectionRetry } from './authConnection';
 import { markReachable, markUnreachable } from './reachability';
 import { noteFeatureDisabled } from './featureFlags';
 import { createRequestBreaker, type BreakerTrip } from './requestBreaker';
+import { invalidateAfterWrite } from './queryInvalidation';
 /**
  * Resolves the API base URL.
  *
@@ -2029,7 +2030,9 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
 
       markReachable();
       const text = await response.text();
-      return parseJsonBody<T>(response.status, text, response.headers.get('Retry-After'));
+      const parsed = parseJsonBody<T>(response.status, text, response.headers.get('Retry-After'));
+      invalidateAfterWrite(method, path);
+      return parsed;
     };
     const replayOnce = options.retryAuthConnection || method === 'GET' || method === 'HEAD';
     return await (replayOnce
@@ -2135,7 +2138,9 @@ async function uploadNativeMultipart<T>(
       parameters,
     });
     const result = await uploadWithDeadline(task);
-    return parseJsonBody<T>(result.status, result.body, headerLookup(result.headers, 'Retry-After'));
+    const parsed = parseJsonBody<T>(result.status, result.body, headerLookup(result.headers, 'Retry-After'));
+    invalidateAfterWrite('POST', path);
+    return parsed;
   } catch (error) {
     if (error instanceof UploadTimeoutError) throw new ApiError(error.message, 408);
     if (error instanceof ApiError) throw error;
