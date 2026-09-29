@@ -57,22 +57,26 @@
 
 /* ── Hero dial ──────────────────────────────────────── */
 .cy-hero { display: flex; flex-direction: column; align-items: center; padding: 24px 22px 22px; }
-.cy-dial { position: relative; width: 100%; max-width: 300px; aspect-ratio: 1; margin: 0 auto; touch-action: pan-y; }
-.cy-dial.compact { width: 136px; max-width: 136px; flex: none; margin: 0; }
+.cy-dial { position: relative; width: 100%; max-width: 300px; aspect-ratio: 1; margin: 0 auto; touch-action: pan-y; container-type: inline-size; }
+/* Centre text is sized in cqw so a smaller dial (phones) scales it with the ring; px caps = the 300 px design. */
+.cy-dial.compact { width: 212px; max-width: 212px; flex: none; margin: 0; }
 .cy-dial svg { display: block; width: 100%; height: 100%; overflow: visible; }
 .cy-dial-center {
   position: absolute; inset: 0 20%; display: flex; flex-direction: column; align-items: center; justify-content: center;
   text-align: center; pointer-events: none; gap: 2px;
 }
-.cy-dial-top { font-size: 13px; line-height: 18px; color: var(--cy-muted); font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
-.cy-dial-value { font-size: 64px; line-height: 1.1; font-weight: 700; letter-spacing: -1.5px; color: var(--text); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.cy-dial-top { font-size: min(13px, 4.33cqw); line-height: 1.38; color: var(--cy-muted); font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+.cy-dial-value { font-size: min(58px, 19.3cqw); line-height: 1.05; font-weight: 700; letter-spacing: -1.5px; color: var(--text); font-variant-numeric: tabular-nums; white-space: nowrap; }
 .cy-dial-value.period { color: var(--cy-period); }
-.cy-dial-value.word { font-size: 44px; }
-.cy-dial-bottom { font-size: 12px; line-height: 17px; color: var(--cy-muted-soft); font-weight: 500; }
-.cy-dial.compact .cy-dial-top { font-size: 10.5px; line-height: 14px; }
-.cy-dial.compact .cy-dial-value { font-size: 30px; letter-spacing: -.8px; }
-.cy-dial.compact .cy-dial-value.word { font-size: 20px; }
-.cy-dial.compact .cy-dial-bottom { font-size: 10px; line-height: 13px; }
+.cy-dial-value.word { font-size: min(38px, 12.7cqw); }
+.cy-dial-bottom { font-size: min(11.5px, 3.83cqw); line-height: 1.39; color: var(--cy-muted-soft); font-weight: 500; white-space: normal; text-wrap: balance; max-width: min(124px, 41.3cqw); }
+/* Home card dial: three short lines inside the ring, each on one line, evenly spaced. */
+.cy-dial.compact .cy-dial-center { inset: 0 20%; gap: 2px; }
+.cy-dial.compact .cy-dial-top { font-size: 10.5px; line-height: 13px; }
+.cy-dial.compact .cy-dial-value { font-size: 38px; line-height: 1; letter-spacing: -1px; }
+.cy-dial.compact .cy-dial-value.word { font-size: 24px; line-height: 1.1; }
+/* Long bottom lines („სავარაუდო თარიღიდან 12 დღე“) wrap into two balanced, narrower lines that follow the circle. */
+.cy-dial.compact .cy-dial-bottom { font-size: 10px; line-height: 13px; white-space: normal; text-wrap: balance; max-width: 96px; }
 
 .cy-tick { stroke: var(--cy-ink); stroke-opacity: .16; stroke-width: 1.1; stroke-linecap: round; }
 .cy-tick.long { stroke-opacity: .35; stroke-width: 1.6; }
@@ -235,4 +239,13 @@
 .cy-home-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 6px; }
 .cy-home-main h3 { font-size: 16px; font-weight: 700; line-height: 1.35; }
 .cy-home-main p { font-size: 13.5px; color: var(--text2); line-height: 1.5; }
-@media (max-width: 420px) { .cy-home { gap: 12px; } .cy-dial.compact { width: 112px; max-width: 112px; } }
+/* Narrow card (phone, or a slim Home column): dial on top, text below — never shrink the dial. */
+.card.cy:has(> .cy-home) { container-type: inline-size; }
+@container (max-width: 400px) {
+  .cy-home { flex-direction: column; align-items: stretch; gap: 14px; }
+  .cy-home > .cy-dial.compact { align-self: center; }
+}
+@media (max-width: 420px) {
+  .cy-home { flex-direction: column; align-items: stretch; gap: 14px; }
+  .cy-home > .cy-dial.compact { align-self: center; }
+}
