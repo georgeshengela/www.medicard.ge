@@ -29,7 +29,7 @@ test('empty provider content retries, but a slow provider is bounded without rep
  await assert.rejects(assistantJson([],schema,{timeoutMs:15,ask:({signal})=>new Promise((resolve,reject)=>{
   slowCalls++;const timer=setTimeout(resolve,100);signal.addEventListener('abort',()=>{clearTimeout(timer);reject(new Error('aborted'));},{once:true});
  })}),error=>error.status===504&&error.code==='ASSISTANT_RESPONSE_TIMEOUT');
- assert.equal(slowCalls,1);
+ assert.equal(slowCalls,2); // planning is read-only: a stalled call is sent once more, never a third time
 });
 test('hidden reasoning is never treated as a visible response',()=>{
  assert.equal(extractChatContent({choices:[{message:{content:null,reasoning:'private'}}]}),'');

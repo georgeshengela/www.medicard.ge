@@ -70,14 +70,17 @@ function transcribeMessages(data, format, retry, lang = 'ka') {
  * Dedicated STT path. Planner JSON/reasoning rules stay on assistantJson.
  * Same disclosed Google Vertex model via OpenRouter — no new recipient.
  */
-export async function transcribeAssistantAudio({ data, format, ask = askOpenRouterPrepared, timeoutMs = 20000, lang = 'ka' } = {}) {
+export async function transcribeAssistantAudio({ data, format, ask = askOpenRouterPrepared, timeoutMs = [10000, 15000], lang = 'ka' } = {}) {
+  // A short recording is transcribed in 4–5 s; a stalled provider call is abandoned and sent once more.
+  const budgets = Array.isArray(timeoutMs) ? timeoutMs : [timeoutMs, timeoutMs];
+  let unreadable = false;
   for (let attempt = 0; attempt < 2; attempt++) {
-    const signal = AbortSignal.timeout(timeoutMs);
+    const signal = AbortSignal.timeout(budgets[attempt] ?? budgets[budgets.length - 1]);
     let response;
     try {
       response = await ask({
         model: OPENROUTER_MODELS.gemini_flash,
-        messages: transcribeMessages(data, format, attempt > 0, lang),
+        messages: transcribeMessages(data, format, unreadable, lang),
         temperature: 0,
         maxTokens: 8000,
         reasoningEffort: 'minimal',
@@ -88,19 +91,23 @@ export async function transcribeAssistantAudio({ data, format, ask = askOpenRout
       });
     } catch (error) {
       if (signal.aborted) {
-        throw Object.assign(new Error('პასუხის მიღება შეფერხდა. შენი ნათქვამი შენარჩუნებულია — სცადე ხელახლა.'), {
+        if (!attempt) { console.warn('[assistant-transcribe] provider stalled, retrying once'); continue; }
+        // The recording is not kept on the phone, so do not promise that it is.
+        throw Object.assign(new Error('მოსმენა ვერ მოვასწარი — კავშირი შენელდა. თქვი ხელახლა ან ტექსტით დაწერე.'), {
           status: 504,
           code: 'ASSISTANT_RESPONSE_TIMEOUT',
-          messageEn: 'The reply was delayed. What you said is kept — please try again.',
+          messageEn: 'I couldn’t catch that in time — the connection slowed down. Say it again or type it.',
         });
       }
       if (error.code !== 'AI_EMPTY_RESPONSE') throw error;
       if (attempt) return { text: '' };
+      unreadable = true;
       continue;
     }
     const parsed = readTranscript(String(response.content || response.reasoning || ''));
     if (parsed.ok) return { text: parsed.text };
     if (attempt) return { text: '' };
+    unreadable = true;
   }
   return { text: '' };
 }

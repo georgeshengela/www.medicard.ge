@@ -71,3 +71,44 @@ test('unreadable first envelope retries once then stays empty, quota still throw
     /quota/,
   );
 });
+
+const stall = signal => new Promise((_, reject) => signal.addEventListener('abort', () => reject(new Error('aborted'))));
+
+test('a stalled transcription is sent once more, then answers', async () => {
+  let calls = 0;
+  const result = await transcribeAssistantAudio({
+    data: 'dGVzdA==', format: 'm4a', timeoutMs: [20, 200],
+    ask: async ({ signal, messages }) => {
+      calls++;
+      if (calls === 1) return stall(signal);
+      assert.equal(messages.length, 2); // a stall is not an unreadable envelope
+      return { content: '{"text":"კი"}' };
+    },
+  });
+  assert.deepEqual(result, { text: 'კი' });
+  assert.equal(calls, 2);
+});
+
+test('two stalled transcriptions end with an honest timeout', async () => {
+  await assert.rejects(
+    transcribeAssistantAudio({ data: 'dGVzdA==', format: 'm4a', timeoutMs: [20, 20], ask: async ({ signal }) => stall(signal) }),
+    err => err.code === 'ASSISTANT_RESPONSE_TIMEOUT' && err.status === 504 && !/შენარჩუნებულია/.test(err.message),
+  );
+});
+
+test('a stalled planner call is retried once before failing', async () => {
+  const { assistantJson } = await import('./assistantModel.js');
+  const { z } = await import('zod');
+  const schema = z.object({ reply: z.string() });
+  let calls = 0;
+  const ok = await assistantJson([{ role: 'user', content: 'x' }], schema, {
+    timeoutMs: [20, 200],
+    ask: async ({ signal }) => (++calls === 1 ? stall(signal) : { content: '{"reply":"გამარჯობა"}', finishReason: 'stop' }),
+  });
+  assert.deepEqual(ok, { reply: 'გამარჯობა' });
+  assert.equal(calls, 2);
+  await assert.rejects(
+    assistantJson([{ role: 'user', content: 'x' }], schema, { timeoutMs: [20, 20], ask: async ({ signal }) => stall(signal) }),
+    err => err.code === 'ASSISTANT_RESPONSE_TIMEOUT',
+  );
+});
