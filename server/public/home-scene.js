@@ -379,6 +379,80 @@ function start() {
   ringGroup.position.y = -0.85;
   rig.add(ringGroup);
 
+  /* ───── Props: one real object per moment, floating in front of the phone ─────
+     Photoreal models made for the page (brand/landing3d): water in the morning, the pill pack at
+     11:00, lunch, running shoe, the evening lab tube, tea at night. Left of the phone, clear of the heartbeat. */
+  const PROPS = [
+    { id: 'water', size: 1.75, rx: 0.12, rz: -0.14 },
+    { id: 'pills', size: 1.55, rx: 0.9, rz: 0.2 },
+    { id: 'bowl', size: 1.55, rx: 0.62, rz: 0.06 },
+    { id: 'sneaker', size: 1.75, rx: 0.2, rz: 0.1 },
+    { id: 'tube', size: 1.6, rx: 0.1, rz: -0.32 },
+    { id: 'tea', size: 1.3, rx: 0.4, rz: 0.08, ry: -0.6 },
+  ];
+  const propAnchor = new THREE.Group();
+  propAnchor.position.set(-BW * 0.66, -BH * 0.2, 1.1);
+  rig.add(propAnchor);
+
+  const propShadow = new THREE.Mesh(
+    new THREE.PlaneGeometry(1.5, 0.6),
+    new THREE.MeshBasicMaterial({ map: floorTex, transparent: true, depthWrite: false, opacity: 0 }),
+  );
+  propShadow.rotation.x = -Math.PI / 2;
+  propShadow.position.set(-BW * 0.66, -BH / 2 - 0.55, 1.1);
+  rig.add(propShadow);
+
+  const props = PROPS.map((p) => {
+    const holder = new THREE.Group(); // entrance + pointer
+    const tilt = new THREE.Group(); // fixed presentation angle towards the camera
+    const spin = new THREE.Group(); // slow turntable around the object's own up axis
+    tilt.rotation.set(p.rx || 0, 0, p.rz || 0);
+    holder.add(tilt);
+    tilt.add(spin);
+    holder.visible = false;
+    propAnchor.add(holder);
+    return { ...p, holder, spin, ready: false };
+  });
+
+  const gltf = Promise.all([
+    import('/vendor/three/GLTFLoader.js'),
+    import('/vendor/three/meshopt_decoder.module.js'),
+  ]).then(([{ GLTFLoader }, { MeshoptDecoder }]) => {
+    const l = new GLTFLoader();
+    l.setMeshoptDecoder(MeshoptDecoder);
+    return l;
+  });
+
+  function loadProp(p) {
+    if (p.loading) return;
+    p.loading = true;
+    gltf.then((l) => l.loadAsync(`/models/${p.id}.glb?v=1`)).then((g) => {
+      const obj = g.scene;
+      obj.traverse((o) => {
+        if (!o.isMesh) return;
+        o.material.envMapIntensity = 1.1;
+        if (o.material.map) o.material.map.anisotropy = Math.min(8, maxAniso);
+      });
+      // Centre on its bounding box and scale the longest side to p.size
+      const box = new THREE.Box3().setFromObject(obj);
+      const size = box.getSize(new THREE.Vector3());
+      const centre = box.getCenter(new THREE.Vector3());
+      const s = p.size / Math.max(size.x, size.y, size.z);
+      obj.scale.setScalar(s);
+      obj.position.copy(centre).multiplyScalar(-s);
+      p.spin.add(obj);
+      p.ready = true;
+    }).catch(() => {});
+  }
+  // The first moment's prop straight away, the rest once the page has settled
+  loadProp(props[Math.max(0, Math.min(props.length - 1, Math.round(S.t)))]);
+  // Phones fetch each model only when its moment comes near (the frame loop asks for them)
+  const loadRest = () => props.forEach(loadProp);
+  if (!coarse) {
+    if ('requestIdleCallback' in window) requestIdleCallback(loadRest, { timeout: 2500 });
+    else setTimeout(loadRest, 1200);
+  }
+
   /* ───── Particles: dust by day, stars by night ───── */
   const COUNT = coarse ? 260 : 620;
   const pts = new Float32Array(COUNT * 3);
@@ -560,6 +634,32 @@ function start() {
     tickMat.color.set(S.night > 0.5 ? 0xd1d5db : 0x0b2b2e);
     tickMat.opacity = lerp(0.35, 0.45, S.night);
     momentTickMat.color.set(S.night > 0.5 ? 0x5eead4 : 0x0d9488);
+
+    // Props: the outgoing one sinks and turns away in the first half, the next one rises in the second
+    loadProp(props[i1]);
+    let shadowAmt = 0;
+    props.forEach((p, i) => {
+      let k = 0;
+      if (i === i0) k = i0 === i1 ? 1 : 1 - smooth(Math.min(1, f / 0.5));
+      else if (i === i1) k = smooth(Math.max(0, (f - 0.5) / 0.5));
+      k *= intro;
+      p.holder.visible = p.ready && k > 0.001;
+      if (!p.holder.visible) return;
+      const e = easeOut(k);
+      p.holder.scale.setScalar(0.55 + 0.45 * e);
+      p.holder.position.set(0, -(1 - e) * 0.9 + Math.sin(time * 0.9 + i) * 0.05 * idle, -(1 - e) * 0.6);
+      p.holder.rotation.set(ptrY.x * 0.1, ptrX.x * 0.3, 0);
+      p.spin.rotation.y = (p.ry || 0) + Math.sin(time * 0.35 + i) * 0.6 * idle + (1 - e) * 1.8;
+      p.holder.traverse((o) => {
+        if (o.isMesh) {
+          o.material.transparent = k < 0.999;
+          o.material.opacity = k;
+          o.material.envMapIntensity = lerp(1.1, 0.55, S.night);
+        }
+      });
+      shadowAmt = Math.max(shadowAmt, k);
+    });
+    propShadow.material.opacity = shadowAmt * lerp(0.9, 0.2, S.night);
 
     dustMat.uniforms.uTime.value = time;
     dustMat.uniforms.uNight.value = S.night;
