@@ -1,0 +1,1165 @@
+[
+ {
+  "template": "existing",
+  "image": "launch-feed.jpg",
+  "ai": true,
+  "caption": "✨ MEDICARD AI უკვე App Store-შია! ✨\n\nწლების განმავლობაში ჯანმრთელობა გაფანტული გვქონდა: ანალიზის ფურცელი უჯრაში, წამლის შეხსენება ერთ აპში, კვება მეორეში, ციკლი მესამეში… და თითქმის ყველა ინგლისურად.\n\nდღეს ეს მთავრდება 🇬🇪\n\n🤖 Medi — ჰკითხე ტექსტით ან ხმით\n💊 წამლის შეხსენებები\n🔬 ანალიზები გასაგებ ენაზე\n🥗 კვება ფოტოთი და ბარკოდით\n🌸 ციკლის დღიური\n🏃 MEDIRUN — გადი გარეთ და აღმოაჩინე შენი ქალაქი\n\n🔒 შენს ჯანმრთელობის მონაცემებს არასდროს ვყიდით.\n🆓 ყველა ფუნქცია უფასოა.\n\nMedi არ ცვლის ექიმს — საჭიროებისას მიმართე სპეციალისტს.\n\n📲 ლინკი ბიოში · უფასოდ App Store-ში\n\n#MEDICARD #Medi #ჯანმრთელობა #საქართველო",
+  "slot": "d01-feed",
+  "kind": "POST",
+  "networks": [
+   "facebook",
+   "instagram"
+  ],
+  "date": "2026-10-01",
+  "time": "10:00",
+  "pillar": "launch",
+  "firstComment": "📲 iPhone: https://apps.apple.com/app/id6812517519\n💻 ვებ-ვერსია: https://medicard.ge/app\n🤖 Android — სულ მალე"
+ },
+ {
+  "template": "existing",
+  "image": "launch-story.jpg",
+  "ai": true,
+  "slot": "d01-story",
+  "kind": "STORY",
+  "networks": [
+   "facebook",
+   "instagram"
+  ],
+  "date": "2026-10-01",
+  "time": "19:30",
+  "pillar": "launch"
+ },
+ {
+  "image": "launch-wide.jpg",
+  "ai": true,
+  "text": "Today we're launching MEDICARD AI on the App Store.\n\nHealth apps are built for big languages. Georgia has 3.7 million people and, until today, no health app that speaks its language.\n\nMEDICARD brings everyday care into one place, in Georgian and English:\n• Medi, an AI assistant you can talk or type to\n• Medication reminders and plain-language lab explanations\n• Nutrition logging from a photo, barcode or voice\n• Cycle tracking, pet care (Medi Vet) and training with a coach (MEDI COACH)\n• MEDIRUN, a game that gets you outside to explore your city on foot\n\nFree, and private by design: we never sell health data.\n\nLink in the first comment.\n\n#HealthTech #AI #DigitalHealth #Georgia #Startup",
+  "slot": "d01-linkedin",
+  "kind": "POST",
+  "networks": [
+   "linkedin"
+  ],
+  "date": "2026-10-01",
+  "time": "09:30",
+  "pillar": "launch",
+  "firstComment": "📲 iPhone: https://apps.apple.com/app/id6812517519\n💻 Web: https://medicard.ge/app"
+ },
+ {
+  "template": "screen",
+  "screen": "v3/medi.webp",
+  "kicker": "Medi",
+  "headline": "ჰკითხე. ხმითაც.",
+  "sub": "Medi იცნობს შენს პროფილს, წამლებს და ბოლო ორი კვირის მაჩვენებლებს — თუ შენ ნებას დართავ.",
+  "bullets": [
+   "ჩაწერს წამალს ან ვიზიტს",
+   "აგიხსნის ანალიზს",
+   "დაგეგმავს კვებას"
+  ],
+  "caption": "გაიცანი Medi 💚\n\nMedi შენი ჯიბის სამედიცინო ასისტენტია. მას შეგიძლია ჰკითხო ტექსტით ან უბრალოდ ხმით:\n\n🗣 „ხვალ 9-ზე ომეგა-3 ჩამიწერე“\n🗣 „ჩემი ჰემოგლობინი ნორმაშია?“\n🗣 „რა ვჭამო ვახშმად, რომ კალორიებში დავრჩე?“\n\nMedi ხედავს მხოლოდ იმას, რასაც შენ დართავ ნებას, და არასდროს ცვლის ექიმს.\n\nრას ჰკითხავდი პირველად? დაგვიწერე კომენტარში 👇\n\n📲 ლინკი ბიოში · უფასოდ App Store-ში\n\n#MEDICARD #Medi #ჯანმრთელობა #საქართველო",
+  "slot": "d02-feed",
+  "kind": "POST",
+  "networks": [
+   "facebook",
+   "instagram"
+  ],
+  "date": "2026-10-02",
+  "time": "10:00",
+  "pillar": "feature",
+  "firstComment": "📲 iPhone: https://apps.apple.com/app/id6812517519\n💻 ვებ-ვერსია: https://medicard.ge/app\n🤖 Android — სულ მალე",
+  "image": "d02-feed.jpg"
+ },
+ {
+  "template": "story-screen",
+  "screen": "v3/medi.webp",
+  "headline": "რას ჰკითხავდი Medi-ს?",
+  "sub": "მოგვწერე — საუკეთესო კითხვებს პასუხს აქ გავცემთ 💬",
+  "slot": "d02-story",
+  "kind": "STORY",
+  "networks": [
+   "facebook",
+   "instagram"
+  ],
+  "date": "2026-10-02",
+  "time": "19:30",
+  "pillar": "feature",
+  "image": "d02-story.jpg"
+ },
+ {
+  "template": "existing",
+  "image": "launch-square.jpg",
+  "ai": true,
+  "caption": "ერთი აპი ხუთის ნაცვლად 📱\n\nწამლები, ანალიზები, კვება, ციკლი, ნაბიჯები და წყალი — ყველაფერი ერთ ადგილას, ქართულად.\n\nშენახე ეს პოსტი და გაუზიარე მას, ვისაც ხუთი სხვადასხვა აპი უდევს ტელეფონში 😉\n\n📲 ლინკი ბიოში · უფასოდ App Store-ში\n\n#MEDICARD #Medi #ჯანმრთელობა #საქართველო",
+  "slot": "d03-feed",
+  "kind": "POST",
+  "networks": [
+   "facebook",
+   "instagram"
+  ],
+  "date": "2026-10-03",
+  "time": "11:00",
+  "pillar": "feature",
+  "firstComment": "📲 iPhone: https://apps.apple.com/app/id6812517519\n💻 ვებ-ვერსია: https://medicard.ge/app\n🤖 Android — სულ მალე"
+ },
+ {
+  "template": "story-photo",
+  "photo": "../launch/photos/story.png",
+  "ai": true,
+  "kicker": "MEDIRUN",
+  "headline": "გადი გარეთ.",
+  "sub": "ქალაქი ყოველ ნაბიჯზე ახალ საჩუქარს მალავს 🎁",
+  "slot": "d03-story",
+  "kind": "STORY",
+  "networks": [
+   "facebook",
+   "instagram"
+  ],
+  "date": "2026-10-03",
+  "time": "19:30",
+  "pillar": "feature",
+  "image": "d03-story.jpg"
+ },
+ {
+  "template": "tip",
+  "icon": "💧",
+  "kicker": "რჩევა",
+  "headline": "წყალი: რამდენი გჭირდება?",
+  "bullets": [
+   "საჭიროება ინდივიდუალურია — წონაზე, სიცხეზე და აქტივობაზე დამოკიდებული",
+   "წყურვილი და ღია ფერის შარდი კარგი ორიენტირია",
+   "ვარჯიშისა და სიცხის დროს დალიე მეტი"
+  ],
+  "footnote": "ზოგადი ინფორმაციაა და არ ცვლის ექიმის რჩევას.",
+  "caption": "რამდენი წყალი უნდა დავლიოთ დღეში? 💧\n\n„8 ჭიქა“ მხოლოდ მითია: საჭიროება ყველასთვის განსხვავებულია და დამოკიდებულია წონაზე, ამინდსა და აქტივობაზე.\n\nMEDICARD-ში წყლის მიზანს შენზე მორგებულად დაისახავ და ერთი შეხებით ჩაწერ ყოველ ჭიქას.\n\nზოგადი ინფორმაციაა და არ ცვლის ექიმის რჩევას.\n\n📲 ლინკი ბიოში · უფასოდ App Store-ში\n\n#MEDICARD #Medi #ჯანმრთელობა #საქართველო",
+  "slot": "d04-feed",
+  "kind": "POST",
+  "networks": [
+   "facebook",
+   "instagram"
+  ],
+  "date": "2026-10-04",
+  "time": "11:00",
+  "pillar": "tip",
+  "firstComment": "📲 iPhone: https://apps.apple.com/app/id6812517519\n💻 ვებ-ვერსია: https://medicard.ge/app\n🤖 Android — სულ მალე",
+  "image": "d04-feed.jpg"
+ },
+ {
+  "template": "story-screen",
+  "screen": "v2/hydration.webp",
+  "headline": "დღეს რამდენი ჭიქა დალიე? 💧",
+  "sub": "ჩაწერე ერთი შეხებით — MEDICARD დაგითვლის",
+  "slot": "d04-story",
+  "kind": "STORY",
+  "networks": [
+   "facebook",
+   "instagram"
+  ],
+  "date": "2026-10-04",
+  "time": "19:30",
+  "pillar": "tip",
+  "image": "d04-story.jpg"
+ },
+ {
+  "template": "photo",
+  "photo": "meds",
+  "ai": true,
+  "kicker": "მედიკამენტები",
+  "headline": "არცერთი დოზა აღარ გამოგრჩება",
+  "sub": "შეხსენება ზუსტ დროს — და ერთი შეხებით „დავლიე“.",
+  "caption": "დაგავიწყდა დღეს წამლის დალევა? 💊\n\nMEDICARD-ში წამალს ერთხელ ჩაწერ, შემდეგ კი აპი ზუსტ დროს შეგახსენებს. „დავლიე“ ერთი შეხებით აღინიშნება და ისტორიაც ინახება.\n\n💊 დოზები და განრიგი\n⏰ შეხსენებები\n📈 როგორ იცავ განრიგს\n\nმშობლებისთვისაც იდეალურია 💚\n\n📲 ლინკი ბიოში · უფასოდ App Store-ში\n\n#MEDICARD #Medi #ჯანმრთელობა #საქართველო",
+  "slot": "d05-feed",
+  "kind": "POST",
+  "networks": [
+   "facebook",
+   "instagram"
+  ],
+  "date": "2026-10-05",
+  "time": "10:00",
+  "pillar": "feature",
+  "firstComment": "📲 iPhone: https://apps.apple.com/app/id6812517519\n💻 ვებ-ვერსია: https://medicard.ge/app\n🤖 Android — სულ მალე",
+  "image": "d05-feed.jpg"
+ },
+ {
+  "template": "story-screen",
+  "screen": "v3/meds.webp",
+  "headline": "წამალი დროზე 💊",
+  "sub": "დააყენე შეხსენება 30 წამში",
+  "slot": "d05-story",
+  "kind": "STORY",
+  "networks": [
+   "facebook",
+   "instagram"
+  ],
+  "date": "2026-10-05",
+  "time": "19:30",
+  "pillar": "feature",
+  "image": "d05-story.jpg"
+ },
+ {
+  "template": "photo",
+  "photo": "lab",
+  "ai": true,
+  "kicker": "ანალიზები",
+  "headline": "ანალიზი — გასაგებ ენაზე",
+  "sub": "ატვირთე ფურცელი. MEDICARD აგიხსნის, რას ნიშნავს თითოეული მაჩვენებელი.",
+  "caption": "ანალიზის ფურცელი ისევ უჯრაში გიდევს? 🔬\n\nგადაუღე ფოტო ან ატვირთე PDF, MEDICARD კი:\n✅ მაჩვენებლებს ამოიკითხავს\n✅ გასაგებ ენაზე აგიხსნის\n✅ დროში ცვლილებას გრაფიკზე გაჩვენებს\n\nეს დიაგნოზი არ არის — ექიმთან საუბარს უკეთ მოამზადებს.\n\n📲 ლინკი ბიოში · უფასოდ App Store-ში\n\n#MEDICARD #Medi #ჯანმრთელობა #საქართველო",
+  "slot": "d06-feed",
+  "kind": "POST",
+  "networks": [
+   "facebook",
+   "instagram"
+  ],
+  "date": "2026-10-06",
+  "time": "10:00",
+  "pillar": "feature",
+  "firstComment": "📲 iPhone: https://apps.apple.com/app/id6812517519\n💻 ვებ-ვერსია: https://medicard.ge/app\n🤖 Android — სულ მალე",
+  "image": "d06-feed.jpg"
+ },
+ {
+  "template": "story-screen",
+  "screen": "v3/lab.webp",
+  "headline": "რა არის ALT? 🤔",
+  "sub": "ატვირთე ანალიზი და MEDICARD აგიხსნის",
+  "slot": "d06-story",
+  "kind": "STORY",
+  "networks": [
+   "facebook",
+   "instagram"
+  ],
+  "date": "2026-10-06",
+  "time": "19:30",
+  "pillar": "feature",
+  "image": "d06-story.jpg"
+ },
+ {
+  "template": "li-text",
+  "headline": "Why we built a health app for a small language",
+  "text": "Most health apps treat language as a translation task.\n\nFor a Georgian speaker, that means a lab report you can't read, reminders in English and advice that ignores local food, pharmacies and doctors.\n\nSo we started from the other end:\n• Georgian first, English second\n• Lab results explained in plain language\n• Local pharmacy prices and Georgian foods in the nutrition catalog\n• One app instead of five\n\nSmall-language markets are not small problems. They are underserved ones.\n\nWhat would you build first for your language?\n\n#HealthTech #LocalizationMatters #DigitalHealth #Georgia",
+  "slot": "d06-linkedin",
+  "kind": "POST",
+  "networks": [
+   "linkedin"
+  ],
+  "date": "2026-10-06",
+  "time": "09:30",
+  "pillar": "feature",
+  "firstComment": "📲 iPhone: https://apps.apple.com/app/id6812517519\n💻 Web: https://medicard.ge/app",
+  "image": "d06-linkedin.jpg"
+ },
+ {
+  "template": "photo",
+  "photo": "walk",
+  "ai": true,
+  "kicker": "MEDIRUN",
+  "headline": "მსოფლიოს სხვა ტრეკერი არ სჭირდება",
+  "sub": "მას სჭირდება მიზეზი, რომ გარეთ გავიდეს.",
+  "caption": "ფეხით სიარული ყველაზე მარტივი „წამალია“ 🏃\n\nMEDIRUN-ში შენი ქალაქი თამაშად იქცევა: დადიხარ, აღმოაჩენ ახალ ადგილებს და პოულობ საჩუქრებს.\n\nსცადე დღეს: 20 წუთიანი გასეირნება და პირველი საჩუქარი 🎁\n\n📲 ლინკი ბიოში · უფასოდ App Store-ში\n\n#MEDICARD #Medi #ჯანმრთელობა #საქართველო #MEDIRUN",
+  "slot": "d07-feed",
+  "kind": "POST",
+  "networks": [
+   "facebook",
+   "instagram"
+  ],
+  "date": "2026-10-07",
+  "time": "10:00",
+  "pillar": "move",
+  "firstComment": "📲 iPhone: https://apps.apple.com/app/id6812517519\n💻 ვებ-ვერსია: https://medicard.ge/app\n🤖 Android — სულ მალე",
+  "image": "d07-feed.jpg"
+ },
+ {
+  "template": "story-photo",
+  "photo": "walk",
+  "ai": true,
+  "kicker": "MEDIRUN",
+  "headline": "20 წუთი გარეთ",
+  "sub": "დღევანდელი მისია — იპოვე პირველი საჩუქარი 🎁",
+  "slot": "d07-story",
+  "kind": "STORY",
+  "networks": [
+   "facebook",
+   "instagram"
+  ],
+  "date": "2026-10-07",
+  "time": "19:30",
+  "pillar": "move",
+  "image": "d07-story.jpg"
+ },
+ {
+  "template": "tip",
+  "icon": "🔬",
+  "kicker": "რჩევა",
+  "headline": "ანალიზის ფურცელი: 3 რამ, რაც უნდა იცოდე",
+  "bullets": [
+   "ნორმის ზღვარი ლაბორატორიების მიხედვით განსხვავდება",
+   "ერთი მაჩვენებლის მცირე გადახრა ხშირად არაფერს ნიშნავს",
+   "მთავარია დინამიკა — შეადარე წინა ანალიზებს"
+  ],
+  "footnote": "შედეგი ყოველთვის ექიმთან განიხილე.",
+  "caption": "ანალიზის ფურცელზე წითელი ციფრი დაინახე? 😰 ჯერ ნუ ღელავ.\n\n1️⃣ ნორმის ზღვარი ლაბორატორიების მიხედვით განსხვავდება.\n2️⃣ ერთი მაჩვენებლის მცირე გადახრა ხშირად დროებითია.\n3️⃣ ყველაზე მნიშვნელოვანი დინამიკაა — როგორ იცვლება დროში.\n\nMEDICARD ყველა ანალიზს ერთ ისტორიაში ინახავს და გრაფიკზე გაჩვენებს.\n\nშედეგი ყოველთვის ექიმთან განიხილე.\n\n📲 ლინკი ბიოში · უფასოდ App Store-ში\n\n#MEDICARD #Medi #ჯანმრთელობა #საქართველო",
+  "slot": "d08-feed",
+  "kind": "POST",
+  "networks": [
+   "facebook",
+   "instagram"
+  ],
+  "date": "2026-10-08",
+  "time": "10:00",
+  "pillar": "tip",
+  "firstComment": "📲 iPhone: https://apps.apple.com/app/id6812517519\n💻 ვებ-ვერსია: https://medicard.ge/app\n🤖 Android — სულ მალე",
+  "image": "d08-feed.jpg"
+ },
+ {
+  "template": "story-screen",
+  "screen": "v3/lab-dark.webp",
+  "headline": "ნორმა ყველგან ერთნაირია?",
+  "sub": "არა — ზღვარი ლაბორატორიების მიხედვით განსხვავდება",
+  "slot": "d08-story",
+  "kind": "STORY",
+  "networks": [
+   "facebook",
+   "instagram"
+  ],
+  "date": "2026-10-08",
+  "time": "19:30",
+  "pillar": "tip",
+  "image": "d08-story.jpg"
+ },
+ {
+  "template": "li-text",
+  "headline": "AI in health: helpful only if it is honest",
+  "text": "Our AI assistant, Medi, is designed around three rules:\n\n1. It only sees what the person allows. Consent comes before any data leaves the phone.\n2. It never diagnoses. It explains, organises and helps prepare for a doctor.\n3. It never sells data. Health data is not a business model.\n\nWe think trust is the product. Everything else is features.\n\n#AI #HealthTech #Privacy #ResponsibleAI",
+  "slot": "d08-linkedin",
+  "kind": "POST",
+  "networks": [
+   "linkedin"
+  ],
+  "date": "2026-10-08",
+  "time": "09:30",
+  "pillar": "tip",
+  "firstComment": "📲 iPhone: https://apps.apple.com/app/id6812517519\n💻 Web: https://medicard.ge/app",
+  "image": "d08-linkedin.jpg"
+ },
+ {
+  "template": "screen",
+  "screen": "v3/nutrition.webp",
+  "kicker": "კვება",
+  "headline": "გადაუღე თეფშს — კალორიები წამებში",
+  "sub": "ფოტო, ბარკოდი, ხმა ან ძებნა — კვების ჩაწერის 8 გზა.",
+  "bullets": [
+   "ქართული კერძების კატალოგი",
+   "ცილა, ნახშირწყლები, ცხიმი",
+   "შენზე მორგებული დღიური ბიუჯეტი"
+  ],
+  "caption": "კალორიების დათვლა აღარ არის მოსაწყენი 🥗\n\n📸 გადაუღე თეფშს\n🏷 დაასკანერე ბარკოდი\n🗣 უბრალოდ თქვი, რა ჭამე\n\nMEDICARD შეაფასებს კალორიებსა და მაკროებს — შენახვამდე კი ყოველთვის შეგიძლია შეასწორო.\n\nლობიო თუ ხაჭაპური? 😄 ქართული კერძებიც იცის.\n\n📲 ლინკი ბიოში · უფასოდ App Store-ში\n\n#MEDICARD #Medi #ჯანმრთელობა #საქართველო",
+  "slot": "d09-feed",
+  "kind": "POST",
+  "networks": [
+   "facebook",
+   "instagram"
+  ],
+  "date": "2026-10-09",
+  "time": "10:00",
+  "pillar": "feature",
+  "firstComment": "📲 iPhone: https://apps.apple.com/app/id6812517519\n💻 ვებ-ვერსია: https://medicard.ge/app\n🤖 Android — სულ მალე",
+  "image": "d09-feed.jpg"
+ },
+ {
+  "template": "story-screen",
+  "screen": "v3/nutrition.webp",
+  "headline": "ლობიო თუ ხაჭაპური? 😄",
+  "sub": "MEDICARD ქართულ კერძებსაც იცნობს",
+  "slot": "d09-story",
+  "kind": "STORY",
+  "networks": [
+   "facebook",
+   "instagram"
+  ],
+  "date": "2026-10-09",
+  "time": "19:30",
+  "pillar": "feature",
+  "image": "d09-story.jpg"
+ },
+ {
+  "template": "screen",
+  "screen": "v3/cycle.webp",
+  "kicker": "ციკლი",
+  "headline": "შენი ციკლი — ქართულად",
+  "sub": "პროგნოზი, ნაყოფიერი დღეები, სიმპტომები და დღიური — ერთ ადგილას.",
+  "bullets": [
+   "მარტივი ჩაწერა",
+   "დღის რჩევები",
+   "შეხსენებები"
+  ],
+  "caption": "სწორედ ის, რასაც აქამდე ინგლისურენოვან აპებში ეძებდი 🌸\n\nMEDICARD-ის ციკლის დღიური:\n🌸 პროგნოზი და ნაყოფიერი დღეები\n📝 სიმპტომები, განწყობა, დღიური\n🔔 შეხსენებები\n🔒 მონაცემები მხოლოდ შენ გეკუთვნის\n\nპროგნოზი სავარაუდოა და არ არის კონტრაცეფციის მეთოდი.\n\n📲 ლინკი ბიოში · უფასოდ App Store-ში\n\n#MEDICARD #Medi #ჯანმრთელობა #საქართველო",
+  "slot": "d10-feed",
+  "kind": "POST",
+  "networks": [
+   "facebook",
+   "instagram"
+  ],
+  "date": "2026-10-10",
+  "time": "11:00",
+  "pillar": "feature",
+  "firstComment": "📲 iPhone: https://apps.apple.com/app/id6812517519\n💻 ვებ-ვერსია: https://medicard.ge/app\n🤖 Android — სულ მალე",
+  "image": "d10-feed.jpg"
+ },
+ {
+  "template": "story-screen",
+  "screen": "v3/cycle-dark.webp",
+  "headline": "ციკლი, რომელიც გესმის 🌸",
+  "sub": "პროგნოზი, დღიური, შეხსენებები",
+  "slot": "d10-story",
+  "kind": "STORY",
+  "networks": [
+   "facebook",
+   "instagram"
+  ],
+  "date": "2026-10-10",
+  "time": "19:30",
+  "pillar": "feature",
+  "image": "d10-story.jpg"
+ },
+ {
+  "template": "tip",
+  "icon": "😴",
+  "kicker": "რჩევა",
+  "headline": "ძილი: მარტივი ჩვევები უკეთესი ღამისთვის",
+  "bullets": [
+   "დაიძინე და გაიღვიძე ყოველდღე ერთსა და იმავე დროს",
+   "ძილამდე ერთი საათით ადრე გვერდზე გადადე ეკრანი",
+   "საღამოს მოერიდე ყავას და მძიმე ვახშამს"
+  ],
+  "footnote": "ზრდასრულს ღამით, როგორც წესი, 7–9 საათი ძილი სჭირდება.",
+  "caption": "კარგი დღე წინა ღამით იწყება 😴\n\n🕙 ერთი და იგივე დრო დაძინებისა და გაღვიძებისთვის\n📵 ეკრანი — ძილამდე ერთი საათით ადრე გვერდზე\n☕ საღამოს — ყავის გარეშე\n\nზრდასრულს ღამით, როგორც წესი, 7–9 საათი ძილი სჭირდება.\n\nშენ რამდენს იძინებ? 👇\n\n📲 ლინკი ბიოში · უფასოდ App Store-ში\n\n#MEDICARD #Medi #ჯანმრთელობა #საქართველო",
+  "slot": "d11-feed",
+  "kind": "POST",
+  "networks": [
+   "facebook",
+   "instagram"
+  ],
+  "date": "2026-10-11",
+  "time": "11:00",
+  "pillar": "tip",
+  "firstComment": "📲 iPhone: https://apps.apple.com/app/id6812517519\n💻 ვებ-ვერსია: https://medicard.ge/app\n🤖 Android — სულ მალე",
+  "image": "d11-feed.jpg"
+ },
+ {
+  "template": "story-tip",
+  "icon": "😴",
+  "headline": "რამდენს იძინებ ღამით?",
+  "sub": "მოგვწერე 👇 · ზრდასრულს ჩვეულებრივ 7–9 სთ სჭირდება",
+  "slot": "d11-story",
+  "kind": "STORY",
+  "networks": [
+   "facebook",
+   "instagram"
+  ],
+  "date": "2026-10-11",
+  "time": "19:30",
+  "pillar": "tip",
+  "image": "d11-story.jpg"
+ },
+ {
+  "template": "photo",
+  "photo": "dog",
+  "ai": true,
+  "kicker": "Medi Vet",
+  "headline": "ოთხფეხა მეგობარიც ოჯახის წევრია",
+  "sub": "ვაქცინები, წონა, შეხსენებები და Medi Vet — ერთ ადგილას.",
+  "caption": "შენი ძაღლის ან კატის ჯანმრთელობაც მნიშვნელოვანია 🐾\n\n💉 ვაქცინებისა და პარაზიტების დამუშავების შეხსენებები\n⚖️ წონის ისტორია\n🩺 Medi Vet — კითხვებზე პასუხი 24/7\n\nMedi Vet არ ცვლის ვეტერინარს — გადაუდებელ შემთხვევაში დაუკავშირდი კლინიკას.\n\n📲 ლინკი ბიოში · უფასოდ App Store-ში\n\n#MEDICARD #Medi #ჯანმრთელობა #საქართველო",
+  "slot": "d12-feed",
+  "kind": "POST",
+  "networks": [
+   "facebook",
+   "instagram"
+  ],
+  "date": "2026-10-12",
+  "time": "10:00",
+  "pillar": "feature",
+  "firstComment": "📲 iPhone: https://apps.apple.com/app/id6812517519\n💻 ვებ-ვერსია: https://medicard.ge/app\n🤖 Android — სულ მალე",
+  "image": "d12-feed.jpg"
+ },
+ {
+  "template": "story-screen",
+  "screen": "v3/pets.webp",
+  "headline": "შენი ოთხფეხა მეგობარი 🐾",
+  "sub": "ვაქცინები და შეხსენებები MEDICARD-ში",
+  "slot": "d12-story",
+  "kind": "STORY",
+  "networks": [
+   "facebook",
+   "instagram"
+  ],
+  "date": "2026-10-12",
+  "time": "19:30",
+  "pillar": "feature",
+  "image": "d12-story.jpg"
+ },
+ {
+  "template": "statement",
+  "kicker": "კონფიდენციალურობა",
+  "headline": "შენს მონაცემებს არ ვყიდით. არასდროს.",
+  "sub": "AI-ს არაფერი მიეწოდება შენი ნებართვის გარეშე. თანხმობას ნებისმიერ დროს გააუქმებ.",
+  "caption": "ჯანმრთელობის მონაცემები ყველაზე პირადია 🔒\n\nამიტომ MEDICARD-ში:\n✅ მონაცემებს არ ვყიდით და რეკლამისთვის არ ვიყენებთ\n✅ AI-ს არაფერი მიეწოდება შენი თანხმობის გარეშე\n✅ თანხმობას ნებისმიერ დროს გააუქმებ\n✅ ანგარიშს და მონაცემებს ერთი ღილაკით წაშლი\n\nსრული პოლიტიკა: medicard.ge/privacy\n\n📲 ლინკი ბიოში · უფასოდ App Store-ში\n\n#MEDICARD #Medi #ჯანმრთელობა #საქართველო",
+  "slot": "d13-feed",
+  "kind": "POST",
+  "networks": [
+   "facebook",
+   "instagram"
+  ],
+  "date": "2026-10-13",
+  "time": "10:00",
+  "pillar": "trust",
+  "firstComment": "📲 iPhone: https://apps.apple.com/app/id6812517519\n💻 ვებ-ვერსია: https://medicard.ge/app\n🤖 Android — სულ მალე",
+  "image": "d13-feed.jpg"
+ },
+ {
+  "template": "story-statement",
+  "headline": "არ ვყიდით. არასდროს. 🔒",
+  "sub": "შენი ჯანმრთელობის მონაცემები მხოლოდ შენია",
+  "slot": "d13-story",
+  "kind": "STORY",
+  "networks": [
+   "facebook",
+   "instagram"
+  ],
+  "date": "2026-10-13",
+  "time": "19:30",
+  "pillar": "trust",
+  "image": "d13-story.jpg"
+ },
+ {
+  "template": "li-text",
+  "headline": "Privacy by design",
+  "text": "A health app can't ask for trust. It has to earn it.\n\nAt MEDICARD:\n• We never sell or advertise with health data\n• AI features only run after an explicit, revocable consent that names every recipient\n• People can delete their account and data in one tap\n• Accounts are 18+ only\n\nIt costs us some shortcuts. It is worth it.\n\n#Privacy #HealthTech #GDPR #Trust",
+  "slot": "d13-linkedin",
+  "kind": "POST",
+  "networks": [
+   "linkedin"
+  ],
+  "date": "2026-10-13",
+  "time": "09:30",
+  "pillar": "trust",
+  "firstComment": "📲 iPhone: https://apps.apple.com/app/id6812517519\n💻 Web: https://medicard.ge/app",
+  "image": "d13-linkedin.jpg"
+ },
+ {
+  "template": "screen",
+  "screen": "v3/quest.webp",
+  "kicker": "Medi Quest",
+  "headline": "ჯანსაღი ჩვევა — თამაშით",
+  "sub": "ყოველდღიური მისიები, სერიები და Medi Coins.",
+  "bullets": [
+   "დალიე წყალი",
+   "გაიარე ნაბიჯები",
+   "დალიე წამალი დროზე"
+  ],
+  "caption": "ჩვევის შექმნა ძნელია. თამაშით — უფრო ადვილი 🏆\n\nMedi Quest-ში ყოველდღიური მისიები გელოდება: წყალი, ნაბიჯები, წამალი დროზე. ყოველ შესრულებულზე — Medi Coins და ახალი დონე.\n\nრამდენ დღიან სერიას მიაღწევ? 🔥\n\n📲 ლინკი ბიოში · უფასოდ App Store-ში\n\n#MEDICARD #Medi #ჯანმრთელობა #საქართველო",
+  "slot": "d14-feed",
+  "kind": "POST",
+  "networks": [
+   "facebook",
+   "instagram"
+  ],
+  "date": "2026-10-14",
+  "time": "10:00",
+  "pillar": "feature",
+  "firstComment": "📲 iPhone: https://apps.apple.com/app/id6812517519\n💻 ვებ-ვერსია: https://medicard.ge/app\n🤖 Android — სულ მალე",
+  "image": "d14-feed.jpg"
+ },
+ {
+  "template": "story-screen",
+  "screen": "v3/quest.webp",
+  "headline": "დღევანდელი მისია 🏆",
+  "sub": "შეასრულე და მიიღე Medi Coins",
+  "slot": "d14-story",
+  "kind": "STORY",
+  "networks": [
+   "facebook",
+   "instagram"
+  ],
+  "date": "2026-10-14",
+  "time": "19:30",
+  "pillar": "feature",
+  "image": "d14-story.jpg"
+ },
+ {
+  "template": "question",
+  "kicker": "შენი აზრი",
+  "headline": "რა გიჭირს ყველაზე მეტად?",
+  "bullets": [
+   "A — წამლის დროზე დალევა",
+   "B — ანალიზების გაგება",
+   "C — ჯანსაღი კვება",
+   "D — მოძრაობა"
+  ],
+  "caption": "გულწრფელად: რა გიჭირს ყველაზე მეტად? 🤔\n\nA — წამლის დროზე დალევა 💊\nB — ანალიზების გაგება 🔬\nC — ჯანსაღი კვება 🥗\nD — მოძრაობა 🏃\n\nდაწერე ასო კომენტარში — შენს პასუხებზე დაყრდნობით ვაუმჯობესებთ MEDICARD-ს 💚\n\n📲 ლინკი ბიოში · უფასოდ App Store-ში\n\n#MEDICARD #Medi #ჯანმრთელობა #საქართველო",
+  "slot": "d15-feed",
+  "kind": "POST",
+  "networks": [
+   "facebook",
+   "instagram"
+  ],
+  "date": "2026-10-15",
+  "time": "10:00",
+  "pillar": "engage",
+  "firstComment": "📲 iPhone: https://apps.apple.com/app/id6812517519\n💻 ვებ-ვერსია: https://medicard.ge/app\n🤖 Android — სულ მალე",
+  "image": "d15-feed.jpg"
+ },
+ {
+  "template": "story-question",
+  "headline": "რა გიჭირს ყველაზე მეტად?",
+  "bullets": [
+   "💊 წამლები",
+   "🔬 ანალიზები",
+   "🥗 კვება",
+   "🏃 მოძრაობა"
+  ],
+  "sub": "მოგვწერე პასუხი 💬",
+  "slot": "d15-story",
+  "kind": "STORY",
+  "networks": [
+   "facebook",
+   "instagram"
+  ],
+  "date": "2026-10-15",
+  "time": "19:30",
+  "pillar": "engage",
+  "image": "d15-story.jpg"
+ },
+ {
+  "template": "li-text",
+  "headline": "The world doesn't need another tracker",
+  "text": "The world doesn't need another tracker. It needs a reason to go outside.\n\nThat is the idea behind MEDIRUN, the part of MEDICARD we are most excited about.\n\nInstead of counting steps, you explore your city: every walk reveals new places and small rewards along the way.\n\nNo language barrier. No gym membership. Just a reason to move.\n\nWhat gets you out of the house?\n\n#MEDIRUN #HealthTech #Gamification #ActiveLiving",
+  "slot": "d15-linkedin",
+  "kind": "POST",
+  "networks": [
+   "linkedin"
+  ],
+  "date": "2026-10-15",
+  "time": "09:30",
+  "pillar": "engage",
+  "firstComment": "📲 iPhone: https://apps.apple.com/app/id6812517519\n💻 Web: https://medicard.ge/app",
+  "image": "d15-linkedin.jpg"
+ },
+ {
+  "template": "photo",
+  "photo": "coach",
+  "ai": true,
+  "kicker": "MEDI COACH",
+  "headline": "შენი ტრენერი — შენს ტელეფონში",
+  "sub": "ვარჯიშის განრიგი, კვების გეგმა და პროგრესი. გაუზიარე მხოლოდ იმას, რასაც შენ აირჩევ.",
+  "caption": "ტრენერთან მუშაობ? 🏋️\n\nMEDI COACH-ით ტრენერი ხედავს შენს ვარჯიშებს, კვებასა და პროგრესს, მაგრამ მხოლოდ იმას, რასაც შენ დაუშვებ. წვდომას ნებისმიერ დროს შეწყვეტ.\n\nტრენერი ხარ? შემოგვიერთდი MEDICARD-ში 💪\n\n📲 ლინკი ბიოში · უფასოდ App Store-ში\n\n#MEDICARD #Medi #ჯანმრთელობა #საქართველო",
+  "slot": "d16-feed",
+  "kind": "POST",
+  "networks": [
+   "facebook",
+   "instagram"
+  ],
+  "date": "2026-10-16",
+  "time": "10:00",
+  "pillar": "feature",
+  "firstComment": "📲 iPhone: https://apps.apple.com/app/id6812517519\n💻 ვებ-ვერსია: https://medicard.ge/app\n🤖 Android — სულ მალე",
+  "image": "d16-feed.jpg"
+ },
+ {
+  "template": "story-photo",
+  "photo": "coach",
+  "ai": true,
+  "kicker": "MEDI COACH",
+  "headline": "ტრენერი ხარ? 💪",
+  "sub": "მართე კლიენტები MEDICARD-ში",
+  "slot": "d16-story",
+  "kind": "STORY",
+  "networks": [
+   "facebook",
+   "instagram"
+  ],
+  "date": "2026-10-16",
+  "time": "19:30",
+  "pillar": "feature",
+  "image": "d16-story.jpg"
+ },
+ {
+  "template": "screen",
+  "screen": "v2/run.webp",
+  "kicker": "MEDIRUN · შაბათ-კვირა",
+  "headline": "ამ შაბათ-კვირას — 5 000 ნაბიჯი ახალ ქუჩებზე",
+  "sub": "გაიარე ქუჩა, სადაც აქამდე არასდროს ყოფილხარ.",
+  "bullets": [
+   "აირჩიე ახალი მარშრუტი",
+   "იპოვე საჩუქრები",
+   "გააზიარე შენი რუკა"
+  ],
+  "caption": "შაბათ-კვირის გამოწვევა 🏃\n\n5 000 ნაბიჯი ისეთ ქუჩებზე, სადაც აქამდე არ ყოფილხარ. MEDIRUN ყოველ ახალ მონაკვეთს რუკაზე ფერად აღნიშნავს.\n\nშედეგი გვაჩვენე სთორიში და მოგვნიშნე 📍\n\n📲 ლინკი ბიოში · უფასოდ App Store-ში\n\n#MEDICARD #Medi #ჯანმრთელობა #საქართველო #MEDIRUN",
+  "slot": "d17-feed",
+  "kind": "POST",
+  "networks": [
+   "facebook",
+   "instagram"
+  ],
+  "date": "2026-10-17",
+  "time": "11:00",
+  "pillar": "move",
+  "firstComment": "📲 iPhone: https://apps.apple.com/app/id6812517519\n💻 ვებ-ვერსია: https://medicard.ge/app\n🤖 Android — სულ მალე",
+  "image": "d17-feed.jpg"
+ },
+ {
+  "template": "story-screen",
+  "screen": "v2/run.webp",
+  "headline": "შაბათ-კვირის გამოწვევა 🏃",
+  "sub": "5 000 ნაბიჯი ახალ ქუჩებზე",
+  "slot": "d17-story",
+  "kind": "STORY",
+  "networks": [
+   "facebook",
+   "instagram"
+  ],
+  "date": "2026-10-17",
+  "time": "19:30",
+  "pillar": "move",
+  "image": "d17-story.jpg"
+ },
+ {
+  "template": "tip",
+  "icon": "👟",
+  "kicker": "რჩევა",
+  "headline": "რამდენი ნაბიჯი გჭირდება დღეში?",
+  "bullets": [
+   "კვლევებით, დღეში დაახლოებით 7 000 ნაბიჯიც კი დიდ სარგებელს იძლევა",
+   "ყოველი დამატებითი 1 000 ნაბიჯი ითვლება",
+   "მიზანი ნელ-ნელა გაზარდე"
+  ],
+  "footnote": "ზოგადი ინფორმაციაა — ჯანმრთელობის პრობლემების შემთხვევაში ექიმს გაესაუბრე.",
+  "caption": "10 000 ნაბიჯი აუცილებელია? 👟\n\nკვლევები აჩვენებს, რომ დღეში დაახლოებით 7 000 ნაბიჯიც კი ჯანმრთელობისთვის დიდ სარგებელს იძლევა, და ყოველი დამატებითი ათასი ითვლება.\n\nMEDICARD ნაბიჯებს Apple Health-იდან ავტომატურად დაითვლის და მიზანს ნელ-ნელა გაზრდის.\n\nდღეს რამდენი გაიარე? 👇\n\n📲 ლინკი ბიოში · უფასოდ App Store-ში\n\n#MEDICARD #Medi #ჯანმრთელობა #საქართველო",
+  "slot": "d18-feed",
+  "kind": "POST",
+  "networks": [
+   "facebook",
+   "instagram"
+  ],
+  "date": "2026-10-18",
+  "time": "11:00",
+  "pillar": "tip",
+  "firstComment": "📲 iPhone: https://apps.apple.com/app/id6812517519\n💻 ვებ-ვერსია: https://medicard.ge/app\n🤖 Android — სულ მალე",
+  "image": "d18-feed.jpg"
+ },
+ {
+  "template": "story-tip",
+  "icon": "👟",
+  "headline": "დღეს რამდენი ნაბიჯი?",
+  "sub": "~7 000 ნაბიჯიც დიდ სარგებელს იძლევა",
+  "slot": "d18-story",
+  "kind": "STORY",
+  "networks": [
+   "facebook",
+   "instagram"
+  ],
+  "date": "2026-10-18",
+  "time": "19:30",
+  "pillar": "tip",
+  "image": "d18-story.jpg"
+ },
+ {
+  "template": "statement",
+  "kicker": "ჯანმრთელობის პასპორტი",
+  "headline": "ყველაფერი ერთ PDF-ში — ექიმისთვის",
+  "sub": "სისხლის ჯგუფი, ალერგიები, დაავადებები, წამლები. ქართულად ან ინგლისურად.",
+  "caption": "ექიმთან ვიზიტისას ყველაფერი გახსოვს? 📋\n\nMEDICARD ჯანმრთელობის პასპორტს ერთი შეხებით შექმნის: სისხლის ჯგუფი, ალერგიები, დაავადებები და წამლები ერთ PDF-ში.\n\n🇬🇪 ქართულად ან 🇬🇧 ინგლისურად — საზღვარგარეთ მოგზაურობისასაც გამოგადგება.\n\n📲 ლინკი ბიოში · უფასოდ App Store-ში\n\n#MEDICARD #Medi #ჯანმრთელობა #საქართველო",
+  "slot": "d19-feed",
+  "kind": "POST",
+  "networks": [
+   "facebook",
+   "instagram"
+  ],
+  "date": "2026-10-19",
+  "time": "10:00",
+  "pillar": "feature",
+  "firstComment": "📲 iPhone: https://apps.apple.com/app/id6812517519\n💻 ვებ-ვერსია: https://medicard.ge/app\n🤖 Android — სულ მალე",
+  "image": "d19-feed.jpg"
+ },
+ {
+  "template": "story-statement",
+  "headline": "ჯანმრთელობის პასპორტი 📋",
+  "sub": "ერთი PDF — ქართულად ან ინგლისურად",
+  "slot": "d19-story",
+  "kind": "STORY",
+  "networks": [
+   "facebook",
+   "instagram"
+  ],
+  "date": "2026-10-19",
+  "time": "19:30",
+  "pillar": "feature",
+  "image": "d19-story.jpg"
+ },
+ {
+  "template": "statement",
+  "kicker": "აფთიაქები",
+  "headline": "იპოვე წამალი უკეთეს ფასად",
+  "sub": "შეადარე ფასები სხვადასხვა ქართულ აფთიაქში — პირდაპირ აპიდან.",
+  "caption": "ერთი და იგივე წამალი, სხვადასხვა ფასი 💸\n\nMEDICARD ფასებს რამდენიმე ქართულ აფთიაქში ერთად გაჩვენებს, ფასის ვარდნისას კი შეგატყობინებს.\n\nფასები აფთიაქის საიტებიდან მოდის და შეიძლება შეიცვალოს — ყიდვამდე გადაამოწმე აფთიაქში.\n\n📲 ლინკი ბიოში · უფასოდ App Store-ში\n\n#MEDICARD #Medi #ჯანმრთელობა #საქართველო",
+  "slot": "d20-feed",
+  "kind": "POST",
+  "networks": [
+   "facebook",
+   "instagram"
+  ],
+  "date": "2026-10-20",
+  "time": "10:00",
+  "pillar": "feature",
+  "firstComment": "📲 iPhone: https://apps.apple.com/app/id6812517519\n💻 ვებ-ვერსია: https://medicard.ge/app\n🤖 Android — სულ მალე",
+  "image": "d20-feed.jpg"
+ },
+ {
+  "template": "story-statement",
+  "headline": "იგივე წამალი — სხვა ფასი 💸",
+  "sub": "შეადარე ფასები MEDICARD-ში",
+  "slot": "d20-story",
+  "kind": "STORY",
+  "networks": [
+   "facebook",
+   "instagram"
+  ],
+  "date": "2026-10-20",
+  "time": "19:30",
+  "pillar": "feature",
+  "image": "d20-story.jpg"
+ },
+ {
+  "template": "li-text",
+  "headline": "One app instead of five",
+  "text": "Unpopular opinion: people do not need more health apps. They need fewer.\n\nA typical person managing their health juggles a reminder app, a food tracker, a cycle app, a step counter and a folder of lab results.\n\nEach one is fine. Together they are exhausting, and none of them talk to each other.\n\nMEDICARD puts them in one place, with one assistant that can see the whole picture (with consent).\n\nAgree or disagree?\n\n#HealthTech #ProductDesign #DigitalHealth",
+  "slot": "d20-linkedin",
+  "kind": "POST",
+  "networks": [
+   "linkedin"
+  ],
+  "date": "2026-10-20",
+  "time": "09:30",
+  "pillar": "feature",
+  "firstComment": "📲 iPhone: https://apps.apple.com/app/id6812517519\n💻 Web: https://medicard.ge/app",
+  "image": "d20-linkedin.jpg"
+ },
+ {
+  "template": "photo",
+  "photo": "laptop",
+  "ai": true,
+  "kicker": "ვებ-ვერსია",
+  "headline": "MEDICARD — კომპიუტერიდანაც",
+  "sub": "medicard.ge/app — იგივე ანგარიში, დიდი ეკრანი, გრაფიკები.",
+  "caption": "დიდ ეკრანზე უფრო მოსახერხებელია? 💻\n\nMEDICARD-ის ვებ-ვერსიაში იგივე ანგარიშით შედიხარ: წამლები, ანალიზები, კვება, ციკლი და Medi — კომპიუტერიდან, დიდ გრაფიკებთან ერთად.\n\n👉 medicard.ge/app\n\n📲 ლინკი ბიოში · უფასოდ App Store-ში\n\n#MEDICARD #Medi #ჯანმრთელობა #საქართველო",
+  "slot": "d21-feed",
+  "kind": "POST",
+  "networks": [
+   "facebook",
+   "instagram"
+  ],
+  "date": "2026-10-21",
+  "time": "10:00",
+  "pillar": "feature",
+  "firstComment": "📲 iPhone: https://apps.apple.com/app/id6812517519\n💻 ვებ-ვერსია: https://medicard.ge/app\n🤖 Android — სულ მალე",
+  "image": "d21-feed.jpg"
+ },
+ {
+  "template": "story-photo",
+  "photo": "laptop",
+  "ai": true,
+  "kicker": "ვებ-ვერსია",
+  "headline": "კომპიუტერიდანაც 💻",
+  "sub": "medicard.ge/app",
+  "slot": "d21-story",
+  "kind": "STORY",
+  "networks": [
+   "facebook",
+   "instagram"
+  ],
+  "date": "2026-10-21",
+  "time": "19:30",
+  "pillar": "feature",
+  "image": "d21-story.jpg"
+ },
+ {
+  "template": "statement",
+  "kicker": "რატომ MEDICARD",
+  "headline": "ჯანმრთელობა, რომელიც ქართულად გესმის",
+  "sub": "ანალიზის ფურცელი უჯრაში, შეხსენება ერთ აპში, ციკლი მეორეში, კვება მესამეში… ამიტომ შევქმენით MEDICARD.",
+  "caption": "რატომ შევქმენით MEDICARD? 💚\n\nანალიზის ფურცელი უჯრაში ინახებოდა, წამლის შეხსენება ერთ აპში იყო, ციკლი — მეორეში, კვების დღიური — მესამეში. თითქმის ყველა ინგლისურად.\n\nგვინდოდა ერთი ადგილი, სადაც ყოველდღიური ზრუნვა მარტივია, გასაგებია და ქართულია.\n\nეს მხოლოდ დასაწყისია. რა გინდა, რომ დავამატოთ? 👇\n\n📲 ლინკი ბიოში · უფასოდ App Store-ში\n\n#MEDICARD #Medi #ჯანმრთელობა #საქართველო",
+  "slot": "d22-feed",
+  "kind": "POST",
+  "networks": [
+   "facebook",
+   "instagram"
+  ],
+  "date": "2026-10-22",
+  "time": "10:00",
+  "pillar": "story",
+  "firstComment": "📲 iPhone: https://apps.apple.com/app/id6812517519\n💻 ვებ-ვერსია: https://medicard.ge/app\n🤖 Android — სულ მალე",
+  "image": "d22-feed.jpg"
+ },
+ {
+  "template": "story-statement",
+  "headline": "რატომ MEDICARD? 💚",
+  "sub": "რომ ჯანმრთელობა ქართულად გესმოდეს",
+  "slot": "d22-story",
+  "kind": "STORY",
+  "networks": [
+   "facebook",
+   "instagram"
+  ],
+  "date": "2026-10-22",
+  "time": "19:30",
+  "pillar": "story",
+  "image": "d22-story.jpg"
+ },
+ {
+  "template": "li-text",
+  "headline": "Built for Georgia",
+  "text": "People deserve to understand their health in their own language.\n\nNot a translated menu. Georgian food in the nutrition catalog, Georgian pharmacies in price comparison, and an assistant that answers in Georgian.\n\nWe are building MEDICARD for small-language markets first. Georgia is where we start.\n\n#HealthTech #Georgia #Startup #Localization",
+  "slot": "d22-linkedin",
+  "kind": "POST",
+  "networks": [
+   "linkedin"
+  ],
+  "date": "2026-10-22",
+  "time": "09:30",
+  "pillar": "story",
+  "firstComment": "📲 iPhone: https://apps.apple.com/app/id6812517519\n💻 Web: https://medicard.ge/app",
+  "image": "d22-linkedin.jpg"
+ },
+ {
+  "template": "photo",
+  "photo": "family",
+  "ai": true,
+  "kicker": "ოჯახი",
+  "headline": "იზრუნე მათზე, ვინც შენზე ზრუნავდა",
+  "sub": "დაეხმარე მშობლებს: წამლები, ვიზიტები და შეხსენებები ერთ აპში.",
+  "caption": "მშობლებს წამლების დათვლა უჭირთ? 💚\n\nდაუყენე MEDICARD, ერთად ჩაწერეთ წამლები და ვიზიტები, შეხსენებები კი დანარჩენს თვითონ იზამს.\n\nმონიშნე ის, ვისაც ეს გამოადგება 👇\n\n📲 ლინკი ბიოში · უფასოდ App Store-ში\n\n#MEDICARD #Medi #ჯანმრთელობა #საქართველო",
+  "slot": "d23-feed",
+  "kind": "POST",
+  "networks": [
+   "facebook",
+   "instagram"
+  ],
+  "date": "2026-10-23",
+  "time": "10:00",
+  "pillar": "feature",
+  "firstComment": "📲 iPhone: https://apps.apple.com/app/id6812517519\n💻 ვებ-ვერსია: https://medicard.ge/app\n🤖 Android — სულ მალე",
+  "image": "d23-feed.jpg"
+ },
+ {
+  "template": "story-photo",
+  "photo": "family",
+  "ai": true,
+  "kicker": "ოჯახი",
+  "headline": "დაეხმარე მშობლებს 💚",
+  "sub": "წამლები და შეხსენებები — ერთ აპში",
+  "slot": "d23-story",
+  "kind": "STORY",
+  "networks": [
+   "facebook",
+   "instagram"
+  ],
+  "date": "2026-10-23",
+  "time": "19:30",
+  "pillar": "feature",
+  "image": "d23-story.jpg"
+ },
+ {
+  "template": "photo",
+  "photo": "../launch/photos/story.png",
+  "ai": true,
+  "kicker": "MEDIRUN",
+  "headline": "შაბათის დილა — საუკეთესო დრო გასასეირნებლად",
+  "sub": "ყოველი ახალი ქუჩა რუკაზე ფერს იძენს.",
+  "caption": "შაბათის დილა — საუკეთესო დრო გასასეირნებლად ☀️\n\nMEDIRUN-ში ყოველი ახალი ქუჩა რუკაზე ფერს იძენს. ამ შაბათ-კვირას შენი ქალაქის ახალ კუთხეს აღმოაჩენ?\n\n📲 ლინკი ბიოში · უფასოდ App Store-ში\n\n#MEDICARD #Medi #ჯანმრთელობა #საქართველო #MEDIRUN",
+  "slot": "d24-feed",
+  "kind": "POST",
+  "networks": [
+   "facebook",
+   "instagram"
+  ],
+  "date": "2026-10-24",
+  "time": "11:00",
+  "pillar": "move",
+  "firstComment": "📲 iPhone: https://apps.apple.com/app/id6812517519\n💻 ვებ-ვერსია: https://medicard.ge/app\n🤖 Android — სულ მალე",
+  "image": "d24-feed.jpg"
+ },
+ {
+  "template": "story-photo",
+  "photo": "../launch/photos/story.png",
+  "ai": true,
+  "kicker": "MEDIRUN",
+  "headline": "შაბათის დილა ☀️",
+  "sub": "გადი გარეთ და აღმოაჩინე შენი ქალაქი",
+  "slot": "d24-story",
+  "kind": "STORY",
+  "networks": [
+   "facebook",
+   "instagram"
+  ],
+  "date": "2026-10-24",
+  "time": "19:30",
+  "pillar": "move",
+  "image": "d24-story.jpg"
+ },
+ {
+  "template": "tip",
+  "icon": "🌿",
+  "kicker": "რჩევა",
+  "headline": "სტრესი: 3 წუთიანი პაუზა",
+  "bullets": [
+   "ჩაისუნთქე ნელა, 4 წამი",
+   "ამოისუნთქე კიდევ უფრო ნელა, 6 წამი",
+   "გაიმეორე 3 წუთის განმავლობაში"
+  ],
+  "footnote": "თუ სტრესი ან შფოთვა ხშირია, სპეციალისტს მიმართე.",
+  "caption": "დაძაბული დღე გაქვს? 🌿\n\nსცადე 3 წუთიანი სუნთქვა:\n1️⃣ ნელა ჩაისუნთქე — 4 წამი\n2️⃣ კიდევ უფრო ნელა ამოისუნთქე — 6 წამი\n3️⃣ გაიმეორე 3 წუთის განმავლობაში\n\nხანგრძლივი ამოსუნთქვა სხეულს დამშვიდებაში ეხმარება.\n\nთუ სტრესი ან შფოთვა ხშირია, სპეციალისტს მიმართე 💚\n\n📲 ლინკი ბიოში · უფასოდ App Store-ში\n\n#MEDICARD #Medi #ჯანმრთელობა #საქართველო",
+  "slot": "d25-feed",
+  "kind": "POST",
+  "networks": [
+   "facebook",
+   "instagram"
+  ],
+  "date": "2026-10-25",
+  "time": "11:00",
+  "pillar": "tip",
+  "firstComment": "📲 iPhone: https://apps.apple.com/app/id6812517519\n💻 ვებ-ვერსია: https://medicard.ge/app\n🤖 Android — სულ მალე",
+  "image": "d25-feed.jpg"
+ },
+ {
+  "template": "story-tip",
+  "icon": "🌿",
+  "headline": "3 წუთი შენთვის",
+  "sub": "4 წამი ჩასუნთქვა · 6 წამი ამოსუნთქვა",
+  "slot": "d25-story",
+  "kind": "STORY",
+  "networks": [
+   "facebook",
+   "instagram"
+  ],
+  "date": "2026-10-25",
+  "time": "19:30",
+  "pillar": "tip",
+  "image": "d25-story.jpg"
+ },
+ {
+  "template": "screen",
+  "screen": "v3/lab-dark.webp",
+  "kicker": "ანალიზები",
+  "headline": "შენი ანალიზების ისტორია — ერთ გრაფიკზე",
+  "sub": "ყოველი მაჩვენებლის დინამიკა დროში, განმარტებით.",
+  "bullets": [
+   "ფოტოდან ან PDF-იდან",
+   "გრაფიკი დროში",
+   "Medi-სთან განხილვა"
+  ],
+  "caption": "შენი ჰემოგლობინი როგორ შეიცვალა ბოლო ერთ წელიწადში? 📈\n\nMEDICARD ყველა ანალიზს ერთ ისტორიაში ინახავს: ყოველ მაჩვენებელს დროში, გრაფიკზე ნახავ და Medi-სთან განიხილავ.\n\nშედეგი ყოველთვის ექიმთან განიხილე.\n\n📲 ლინკი ბიოში · უფასოდ App Store-ში\n\n#MEDICARD #Medi #ჯანმრთელობა #საქართველო",
+  "slot": "d26-feed",
+  "kind": "POST",
+  "networks": [
+   "facebook",
+   "instagram"
+  ],
+  "date": "2026-10-26",
+  "time": "10:00",
+  "pillar": "feature",
+  "firstComment": "📲 iPhone: https://apps.apple.com/app/id6812517519\n💻 ვებ-ვერსია: https://medicard.ge/app\n🤖 Android — სულ მალე",
+  "image": "d26-feed.jpg"
+ },
+ {
+  "template": "story-screen",
+  "screen": "v3/lab-dark.webp",
+  "headline": "ანალიზები — გრაფიკზე 📈",
+  "sub": "დინამიკა დროში, ერთ ადგილას",
+  "slot": "d26-story",
+  "kind": "STORY",
+  "networks": [
+   "facebook",
+   "instagram"
+  ],
+  "date": "2026-10-26",
+  "time": "19:30",
+  "pillar": "feature",
+  "image": "d26-story.jpg"
+ },
+ {
+  "template": "statement",
+  "kicker": "ახალი",
+  "headline": "MEDICARD ახლა ინგლისურადაც",
+  "sub": "ქართული ან ინგლისური — აირჩიე ენა დაწყებისას ან პროფილში.",
+  "caption": "MEDICARD ახლა ორ ენაზეა 🇬🇪 🇬🇧\n\nენას აირჩევ პირველივე ეკრანზე ან პროფილში, ნებისმიერ დროს. Medi-ც შენს არჩეულ ენაზე გიპასუხებს.\n\nგაუზიარე უცხოელ მეგობარს, რომელიც საქართველოში ცხოვრობს 💚\n\n📲 ლინკი ბიოში · უფასოდ App Store-ში\n\n#MEDICARD #Medi #ჯანმრთელობა #საქართველო",
+  "slot": "d27-feed",
+  "kind": "POST",
+  "networks": [
+   "facebook",
+   "instagram"
+  ],
+  "date": "2026-10-27",
+  "time": "10:00",
+  "pillar": "feature",
+  "firstComment": "📲 iPhone: https://apps.apple.com/app/id6812517519\n💻 ვებ-ვერსია: https://medicard.ge/app\n🤖 Android — სულ მალე",
+  "image": "d27-feed.jpg"
+ },
+ {
+  "template": "story-statement",
+  "headline": "ქართულად · English",
+  "sub": "აირჩიე ენა დაწყებისას",
+  "slot": "d27-story",
+  "kind": "STORY",
+  "networks": [
+   "facebook",
+   "instagram"
+  ],
+  "date": "2026-10-27",
+  "time": "19:30",
+  "pillar": "feature",
+  "image": "d27-story.jpg"
+ },
+ {
+  "template": "li-text",
+  "headline": "Now in English",
+  "text": "MEDICARD now works in Georgian and English, including the AI assistant, reminders and emails.\n\nFor the many foreigners who live and work in Georgia, that means one app for everyday health, with local pharmacies and local food.\n\nKnow someone who should try it? Link in the first comment.\n\n#HealthTech #Georgia #Expats #DigitalHealth",
+  "slot": "d27-linkedin",
+  "kind": "POST",
+  "networks": [
+   "linkedin"
+  ],
+  "date": "2026-10-27",
+  "time": "09:30",
+  "pillar": "feature",
+  "firstComment": "📲 iPhone: https://apps.apple.com/app/id6812517519\n💻 Web: https://medicard.ge/app",
+  "image": "d27-linkedin.jpg"
+ },
+ {
+  "template": "statement",
+  "kicker": "4 კვირა MEDICARD-თან",
+  "headline": "დიდი მადლობა, რომ ჩვენთან ხარ 💚",
+  "sub": "ეს მხოლოდ დასაწყისია. Android — სულ მალე.",
+  "caption": "4 კვირა გავიდა MEDICARD-ის გაშვებიდან 💚\n\nმადლობა ყველას, ვინც სცადა, მოგვწერა, გაგვიზიარა და შეცდომებზე მიგვითითა. ყოველ თქვენს შეტყობინებას ვკითხულობთ.\n\nშემდეგი ნაბიჯი? Android და კიდევ ბევრი სიახლე. გამოგვყევი! 🚀\n\n📲 ლინკი ბიოში · უფასოდ App Store-ში\n\n#MEDICARD #Medi #ჯანმრთელობა #საქართველო",
+  "slot": "d28-feed",
+  "kind": "POST",
+  "networks": [
+   "facebook",
+   "instagram"
+  ],
+  "date": "2026-10-28",
+  "time": "10:00",
+  "pillar": "launch",
+  "firstComment": "📲 iPhone: https://apps.apple.com/app/id6812517519\n💻 ვებ-ვერსია: https://medicard.ge/app\n🤖 Android — სულ მალე",
+  "image": "d28-feed.jpg"
+ },
+ {
+  "template": "story-statement",
+  "headline": "მადლობა 💚",
+  "sub": "ეს მხოლოდ დასაწყისია 🚀",
+  "slot": "d28-story",
+  "kind": "STORY",
+  "networks": [
+   "facebook",
+   "instagram"
+  ],
+  "date": "2026-10-28",
+  "time": "19:30",
+  "pillar": "launch",
+  "image": "d28-story.jpg"
+ }
+]
