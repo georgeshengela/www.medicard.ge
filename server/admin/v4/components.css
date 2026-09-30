@@ -560,3 +560,74 @@ html body .v3-user-page .s-insights h3 .icon { width: 16px; height: 16px; color:
 .sx-quote-toggle:hover, .sx-quote-toggle[aria-expanded="true"] { border-color: var(--s-line-strong); color: var(--s-ink); }
 .sx-quoted { justify-self: stretch; padding-left: 12px; border-left: 3px solid var(--s-line); color: var(--s-muted); font-size: 12.5px; }
 .sx-frame[hidden], .sx-textwrap[hidden], .sx-quoted[hidden], .sx-snip-menu[hidden] { display: none !important; }
+
+/* ─────────────── Social campaign (#/social, v4/modules/social.js) ─────────────── */
+.s-nets { display: inline-flex; gap: 3px; vertical-align: middle; }
+.s-net {
+  display: inline-grid; place-items: center; min-width: 20px; height: 18px; padding: 0 4px; box-sizing: border-box;
+  border-radius: 5px; font-size: 10.5px; font-weight: 700; line-height: 1; color: #fff; letter-spacing: 0;
+}
+.s-net.is-facebook { background: #1877F2; }
+.s-net.is-instagram { background: linear-gradient(45deg, #F58529, #DD2A7B 55%, #8134AF); }
+.s-net.is-linkedin { background: #0A66C2; }
+.s-link { padding: 0; border: 0; background: none; font: inherit; color: inherit; cursor: pointer; text-align: left; }
+.s-link:hover b, .s-link:focus-visible b { color: var(--s-accent); text-decoration: underline; }
+
+.s-cal-head { align-items: center; }
+.s-cal-nav { display: flex; gap: 6px; flex: none; }
+.s-cal { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 6px; }
+.s-cal-wd { padding: 0 4px 2px; font-size: 11.5px; font-weight: 600; color: var(--s-muted); text-transform: uppercase; }
+.s-cal-day {
+  display: flex; flex-direction: column; gap: 4px; min-width: 0; min-height: 112px; padding: 6px;
+  border: 1px solid var(--s-line-soft); border-radius: var(--s-radius-sm); background: var(--s-surface);
+}
+.s-cal-day.is-out { background: transparent; border-style: dashed; opacity: .45; }
+.s-cal-day.is-today { border-color: var(--s-accent); box-shadow: inset 0 0 0 1px var(--s-accent); }
+.s-cal-num { font-size: 12.5px; font-weight: 650; color: var(--s-ink); font-variant-numeric: tabular-nums; }
+.s-cal-num em { display: none; margin-left: 6px; font-style: normal; font-weight: 500; color: var(--s-muted); }
+.s-cal-day.is-today .s-cal-num { color: var(--s-accent-ink); }
+.s-cal-item {
+  display: grid; gap: 3px; width: 100%; min-width: 0; padding: 5px 6px; box-sizing: border-box;
+  border: 1px solid var(--s-line); border-left: 3px solid var(--s-line-strong); border-radius: 6px;
+  background: var(--s-sunken); color: var(--s-text); font: inherit; text-align: left; cursor: pointer;
+}
+.s-cal-item:hover, .s-cal-item:focus-visible { background: var(--s-hover); border-color: var(--s-line-strong); }
+.s-cal-item.is-scheduled { border-left-color: var(--s-info); }
+.s-cal-item.is-published { border-left-color: var(--s-ok); }
+.s-cal-item.is-failed { border-left-color: var(--s-bad); background: var(--s-bad-soft); }
+.s-cal-item.is-canceled { opacity: .55; text-decoration: line-through; }
+.s-cal-row { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; font-size: 11.5px; font-variant-numeric: tabular-nums; }
+.s-cal-row b { color: var(--s-ink); font-weight: 650; }
+.s-cal-kind { font-size: 10px; font-weight: 700; letter-spacing: .02em; color: var(--s-muted); }
+.s-cal-title { font-size: 12px; line-height: 1.35; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow-wrap: anywhere; }
+@media (max-width: 900px) {
+  .s-cal { grid-template-columns: minmax(0, 1fr); }
+  .s-cal-wd, .s-cal-day.is-out, .s-cal-day.is-empty { display: none; }
+  .s-cal-day { min-height: 0; }
+  .s-cal-num em { display: inline; }
+}
+
+.s-social-thumb {
+  position: relative; display: inline-grid; place-items: center; overflow: hidden; flex: none;
+  border-radius: 8px; background: var(--s-sunken); color: var(--s-muted); vertical-align: middle;
+}
+.s-social-thumb img { width: 100%; height: 100%; object-fit: cover; }
+.s-social-more { position: absolute; right: 2px; bottom: 2px; padding: 0 4px; border-radius: 4px; background: rgba(0,0,0,.6); color: #fff; font-size: 10px; font-style: normal; font-weight: 600; }
+.s-social-drawer { gap: 16px; }
+.s-social-h { margin: 0 0 8px; font-size: 12px; font-weight: 650; color: var(--s-muted); text-transform: uppercase; letter-spacing: .03em; }
+.s-social-facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 0; margin: 0; border: 1px solid var(--s-line); border-radius: var(--s-radius-sm); overflow: hidden; }
+.s-social-facts > div { padding: 10px 12px; border-bottom: 1px solid var(--s-line-soft); border-right: 1px solid var(--s-line-soft); }
+.s-social-facts dt { font-size: 11.5px; color: var(--s-muted); }
+.s-social-facts dd { margin: 2px 0 0; font-size: 13px; font-weight: 600; color: var(--s-ink); overflow-wrap: anywhere; }
+.s-social-media { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 8px; }
+.s-social-media a, .s-social-media video { display: block; border-radius: var(--s-radius-sm); overflow: hidden; background: var(--s-sunken); border: 1px solid var(--s-line-soft); }
+.s-social-media img, .s-social-media video { display: block; width: 100%; max-height: 360px; object-fit: contain; }
+.s-social-caption { padding: 12px 14px; border: 1px solid var(--s-line); border-radius: var(--s-radius-sm); background: var(--s-sunken); color: var(--s-text); font-size: 13.5px; line-height: 1.6; white-space: pre-wrap; overflow-wrap: anywhere; }
+.s-social-timeline { list-style: none; margin: 0; padding: 0 0 0 14px; border-left: 2px solid var(--s-line); display: grid; gap: 12px; }
+.s-social-timeline li { position: relative; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; font-size: 12.5px; }
+.s-social-timeline li::before { content: ""; position: absolute; left: -20px; top: 6px; width: 8px; height: 8px; border-radius: 99px; background: var(--s-line-strong); }
+.s-social-timeline time { color: var(--s-muted); font-variant-numeric: tabular-nums; }
+.s-social-timeline p { flex-basis: 100%; margin: 0; color: var(--s-text); overflow-wrap: anywhere; }
+.s-social .s-toolbar { min-width: 0; }
+.s-social .s-segment { max-width: 100%; overflow-x: auto; scrollbar-width: none; }
+.s-social > * { min-width: 0; }

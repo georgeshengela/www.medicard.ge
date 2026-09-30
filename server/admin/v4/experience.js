@@ -48,6 +48,8 @@
   const NAV_KEYS = {
     overview: 'o', users: 'u', push: 'p', 'poster-studio': 'i', nutrition: 'n', community: 'c', medipulsi: 'm',
     health: 'h', ai: 'd', rewards: 'r', orders: 'e', sms: 'x', pharmacy: 'f', quality: 'q', testing: 't', audit: 'a', settings: 's', quests: 'k', features: 'l', funnel: 'v', email: 'j', support: 'b', trainers: 'w', capacity: 'z', news: 'y', errors: 'g',
+    // Every letter is taken; digits work the same way (physical Digit keys, any layout).
+    social: '1',
   };
   const SUBPAGES = [
     ['push', 'brain', 'გადაწყვეტილებები', 'Brain decisions'],
@@ -789,8 +791,8 @@
 
   // Physical keys (e.code) so shortcuts also work on the Georgian keyboard layout.
   function letterOf(e) {
-    const m = /^Key([A-Z])$/.exec(e.code || '');
-    return m ? m[1].toLowerCase() : String(e.key || '').toLowerCase();
+    const m = /^(?:Key([A-Z])|Digit([0-9]))$/.exec(e.code || '');
+    return m ? (m[1] || m[2]).toLowerCase() : String(e.key || '').toLowerCase();
   }
 
   function onKey(e) {
