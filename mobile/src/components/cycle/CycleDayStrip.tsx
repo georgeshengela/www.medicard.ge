@@ -8,6 +8,7 @@ import {
   type NativeScrollEvent,
   type NativeSyntheticEvent} from 'react-native';
 import * as Haptics from 'expo-haptics';
+import { Heart } from 'lucide-react-native';
 import type { CycleDayMark } from '@/lib/api';
 import { WEEKDAYS_KA } from '@/constants/cycle';
 import { ka } from '@/i18n/ka';
@@ -218,6 +219,7 @@ export function CycleDayStrip({
             layers.ovulation ? ka.cycle.legendOvulation : null,
             layers.spotting ? ka.cycle.legendSpotting : null,
             layers.symptomDot ? ka.cycle.legendLogged : null,
+            mark.hasSex ? ka.cycle.a11ySex : null,
           ]
             .filter(Boolean)
             .join(', ');
@@ -296,12 +298,13 @@ export function CycleDayStrip({
                 </View>
               </View>
               {/* Only logged things get a dot under the date; estimates are carried by the circle itself. */}
-              <View style={{ height: 8, marginTop: 3, alignItems: 'center', justifyContent: 'center' }}>
+              <View style={{ height: 8, marginTop: 3, flexDirection: 'row', gap: 3, alignItems: 'center', justifyContent: 'center' }}>
                 {visual.semanticIndicator === 'spottingDot' ? (
                   <View style={{ width: 5, height: 5, borderRadius: 3, backgroundColor: c.period }} />
                 ) : layers.symptomDot ? (
                   <View style={{ width: 4, height: 4, borderRadius: 2, backgroundColor: c.mutedSoft }} />
                 ) : null}
+                {mark.hasSex ? <Heart size={9} color={c.rose} fill={c.rose} strokeWidth={0} /> : null}
               </View>
             </Pressable>
           );

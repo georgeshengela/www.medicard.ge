@@ -1,7 +1,9 @@
 import React from 'react';
 import { Text, View } from 'react-native';
+import { Heart } from 'lucide-react-native';
 import { MedicalSourcesLink } from '@/components/health/MedicalSourcesLink';
 import { ka } from '@/i18n/ka';
+import { tx } from '@/i18n/locale';
 import { useCycleColors } from '@/theme/cycle';
 
 /**
@@ -49,6 +51,16 @@ export function CycleCalendarLegend({
       </View>
     ),
     label: ka.cycle.legendLogged,
+  });
+  items.push({
+    key: 'sex',
+    glyph: (
+      <View style={{ alignItems: 'center' }}>
+        <Text style={{ color: c.ink, fontSize: 10, lineHeight: 12, fontFamily: 'NotoSansGeorgian_700Bold' }}>7</Text>
+        <Heart size={8} color={c.rose} fill={c.rose} strokeWidth={0} style={{ marginTop: 1 }} />
+      </View>
+    ),
+    label: tx('სექსი', 'Sex'),
   });
 
   return (

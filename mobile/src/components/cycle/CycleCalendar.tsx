@@ -2,7 +2,7 @@ import { CyclePressable as Pressable } from '@/components/cycle/CyclePressable';
 import React, { useMemo } from 'react';
 import { Text, View } from 'react-native';
 import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated';
-import { ChevronLeft, ChevronRight } from 'lucide-react-native';
+import { ChevronLeft, ChevronRight, Heart } from 'lucide-react-native';
 import type { CycleDayMark } from '@/lib/api';
 import { fertilityA11yBits } from '@/lib/cycleFertility';
 import { usePrefersReducedMotion } from '@/hooks/usePrefersReducedMotion';
@@ -192,7 +192,7 @@ export function CycleCalendar({ year, month, marks, selected, onSelect, onPrev, 
                 onSelect(cell.key);
               }}
               accessibilityRole="button"
-              accessibilityLabel={a11yExtra ? `${a11y}, ${a11yExtra}` : a11y}
+              accessibilityLabel={[a11y, a11yExtra, mark.hasSex && !(showPredicted && showFertility) ? ka.cycle.a11ySex : ''].filter(Boolean).join(', ')}
               accessibilityState={{ selected: isSelected, disabled: blocked }}
               style={{
                 width: '14.2857%',
@@ -247,13 +247,15 @@ export function CycleCalendar({ year, month, marks, selected, onSelect, onPrev, 
                 </View>
               </Animated.View>
 
-              {/* Only logged things get a dot; estimates are carried by the circle (dashed = period, blue = fertile). */}
-              <View style={{ height: 8, marginTop: 1, alignItems: 'center', justifyContent: 'center' }}>
+              {/* Only logged things get a mark; estimates are carried by the circle (dashed = period, blue = fertile).
+                  A small rose heart = sex was logged that day (any activity). */}
+              <View style={{ height: 8, marginTop: 1, flexDirection: 'row', gap: 3, alignItems: 'center', justifyContent: 'center' }}>
                 {visual.semanticIndicator === 'spottingDot' ? (
                   <View style={{ width: 5, height: 5, borderRadius: 3, backgroundColor: c.period }} />
                 ) : layers.symptomDot ? (
                   <View style={{ width: 4, height: 4, borderRadius: 2, backgroundColor: c.mutedSoft }} />
                 ) : null}
+                {mark.hasSex ? <Heart size={9} color={c.rose} fill={c.rose} strokeWidth={0} /> : null}
               </View>
             </Pressable>
           );
