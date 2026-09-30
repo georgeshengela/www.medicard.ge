@@ -2877,7 +2877,7 @@ function pharmSyncPreview() {
             <strong class="mono">12.40 ₾</strong>
           </div>
           <div class="pharm-preview-row">
-            <span>ავერსი</span>
+            <span>ჯიპისი</span>
             <strong class="mono">14.90 ₾</strong>
           </div>
           <div class="pharm-preview-row">
@@ -2907,7 +2907,6 @@ async function renderPharmacy() {
 
   const sources = [
     { id: 'PHARMADEPOT', label: 'ფარმადეპო', tone: 'teal' },
-    { id: 'AVERSI', label: 'ავერსი', tone: '' },
     { id: 'PSP', label: 'PSP', tone: '' },
     { id: 'GPC', label: 'ჯიპისი', tone: '' },
   ];
@@ -2965,16 +2964,15 @@ async function renderPharmacy() {
             <div class="pharm-sync-form">
               <div class="field"><span>წყარო</span>
                 <select id="pharm-source">
-                  <option value="ALL">ყველა (Pharmadepot + Aversi + PSP)</option>
+                  <option value="ALL">ყველა (PSP + Pharmadepot + GPC)</option>
                   <option value="PHARMADEPOT">Pharmadepot</option>
-                  <option value="AVERSI">Aversi shop</option>
                   <option value="PSP">PSP</option>
                   <option value="GPC">GPC</option>
                 </select>
               </div>
               <div class="field"><span>მაქს. გვერდები</span><input id="pharm-pages" type="number" min="1" max="500" placeholder="ცარიელი = სრული კატალოგი" /></div>
               <button class="btn primary" id="pharm-sync" ${running ? 'disabled' : ''}>${icon('activity')} ${running ? 'სინქრონიზაცია მიმდინარეობს…' : 'სინქის გაშვება'}</button>
-              <p class="pharm-sync-note">Pharmadepot ~3300 SKU · 30–90 წთ. Aversi/PSP შეიძლება bot-დაცვით დაბლოკილი იყოს.</p>
+              <p class="pharm-sync-note">PSP ~5300 · Pharmadepot ~3300 · GPC ~3300 SKU · სრული სინქი ~30 წთ.</p>
               <div class="pharm-sync-meta">
                 <div><span>ბოლო ALL</span><strong class="mono">${syncMeta.ALL ? fmtDateShort(syncMeta.ALL.finishedAt) : '—'}</strong></div>
                 <div><span>ჩატვირთული</span><strong class="mono">${syncMeta.ALL?.itemsFetched?.toLocaleString('ka-GE') ?? '—'}</strong></div>

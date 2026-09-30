@@ -5,12 +5,6 @@ export const SOURCES = {
     baseUrl: 'https://pharmadepot.ge',
     logoUrl: 'https://pharmadepot.ge/icons/favicon.ico',
   },
-  AVERSI: {
-    id: 'AVERSI',
-    nameKa: 'ავერსი',
-    baseUrl: 'https://www.aversi.ge',
-    logoUrl: 'https://www.aversi.ge/favicon.ico',
-  },
   PSP: {
     id: 'PSP',
     nameKa: 'PSP',
@@ -25,8 +19,13 @@ export const SOURCES = {
   },
 };
 
-/** Display/compare order everywhere (API sourcePrices, admin). */
-export const SOURCE_ORDER = ['PSP', 'PHARMADEPOT', 'GPC', 'AVERSI'];
+/**
+ * Display/compare order everywhere (API sourcePrices, admin). Aversi was removed on
+ * 2026-09-30 (owner decision): every aversi.ge host sits behind a Cloudflare challenge and
+ * the Playwright crawl never ran on Render, so its prices were weeks old. No source is
+ * better than a wrong one.
+ */
+export const SOURCE_ORDER = ['PSP', 'PHARMADEPOT', 'GPC'];
 
 /**
  * An offer not re-confirmed by a sync for this long is shown as unconfirmed

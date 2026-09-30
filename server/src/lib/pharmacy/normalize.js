@@ -172,6 +172,11 @@ export function extractQuantityCount(raw) {
   if (m) return m[1];
   const tabCount = String(raw || '').match(/(?:^|[\s-])(\d+)\s*ტაბლ/i);
   if (tabCount) return tabCount[1];
+  // "3 ამპულა", "6 სუპოზიტორია", "14 კაფსულა" (PSP spelling): QTY_RE's Latin-only \b never
+  // matches after a Georgian word, so these counts were lost and the same pack at
+  // Pharmadepot ("#3") no longer shared a signature.
+  const geoUnit = String(raw || '').match(/(?:^|[\s.])(\d+)\s*(?:ამპულ|სუპოზიტ|სანთ|კაფსულ|ფლაკონ|პაკეტ|საშე|ცალ)/i);
+  if (geoUnit) return geoUnit[1];
   const hashTab = String(raw || '').match(/#\s*(\d+)\s*ტ/i);
   if (hashTab) return hashTab[1];
   return null;
@@ -346,6 +351,33 @@ export function buildLooseMatchSignature(raw, geoLatinMap = geoLatinCache) {
   if (!brand || !strength) return '';
 
   return [brand, mods.join('+'), strength, qty ? `q${qty}` : ''].filter(Boolean).join('|');
+}
+
+function signatureParts(sig) {
+  const parts = String(sig || '').split('|').filter(Boolean);
+  const out = { brand: parts[0] || '', strength: null, qty: null, mods: [] };
+  for (const p of parts.slice(1)) {
+    if (/^q\d+$/.test(p)) out.qty = p;
+    else if (/^[\d.+]+$/.test(p)) out.strength = p;
+    else out.mods.push(p);
+  }
+  out.mods = out.mods.join('+');
+  return out;
+}
+
+/**
+ * Two signatures may describe the same product only if strength, modifiers (forte, plus, MR…)
+ * and — when both know it — pack count agree. Fuzzy (Jaccard) matching alone scored
+ * "Zetor Plus 10+10 #30" 0.75 against "Zetor 10 #30" and merged two different drugs.
+ */
+export function signaturesCompatible(a, b) {
+  const pa = signatureParts(a);
+  const pb = signatureParts(b);
+  if (!pa.brand || !pb.brand) return false;
+  if (pa.strength !== pb.strength) return false;
+  if (pa.mods !== pb.mods) return false;
+  if (pa.qty && pb.qty && pa.qty !== pb.qty) return false;
+  return true;
 }
 
 export function buildNormalizedKey(raw, geoLatinMap = geoLatinCache) {

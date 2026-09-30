@@ -40,7 +40,6 @@ export function categoryVisual(slug: string): CategoryVisual {
 
 export const PHARMACY_SOURCES = [
   { id: 'PHARMADEPOT', label: tx('ფარმადეპო', 'PharmaDepot'), color: '#14B8A6', logoUrl: 'https://pharmadepot.ge/icons/favicon.ico' },
-  { id: 'AVERSI', label: tx('ავერსი', 'Aversi'), color: '#5C6BC0', logoUrl: 'https://www.aversi.ge/favicon.ico' },
   { id: 'PSP', label: 'PSP', color: '#EF5350', logoUrl: 'https://psp.ge/favicon.ico' },
   { id: 'GPC', label: tx('ჯიპისი', 'GPC'), color: '#F59E0B', logoUrl: 'https://gpc.ge/favicon.ico' },
 ] as const;

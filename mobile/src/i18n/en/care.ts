@@ -294,8 +294,8 @@ export const enCare: Pick<Strings, 'upload' | 'records' | 'chats' | 'meds' | 'ph
 
   pharmacy: {
     title: 'Price comparison',
-    heroSubtitle: '4 pharmacies · one search · the best price',
-    subtitle: 'Find the lowest price for a medication across all four pharmacies',
+    heroSubtitle: '3 pharmacies · one search · the best price',
+    subtitle: 'Find the lowest price for a medication across all three pharmacies',
     statProducts: 'Products',
     statCompared: 'Compared',
     statSources: 'Pharmacies',
@@ -303,7 +303,7 @@ export const enCare: Pick<Strings, 'upload' | 'records' | 'chats' | 'meds' | 'ph
     noPrice: 'N/A',
     lowest: 'Lowest price',
     bestOffer: 'Best offer',
-    compareHint: 'Compare prices at all four pharmacies and pick the lowest',
+    compareHint: 'Compare prices at all three pharmacies and pick the lowest',
     pharmacyCol: 'Pharmacy',
     priceCol: 'Price',
     priceDiff: (gel: string) => `+${gel} ₾`,

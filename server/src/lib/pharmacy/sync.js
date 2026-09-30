@@ -3,8 +3,8 @@ import { prisma } from '../prisma.js';
 import { ensureDrugCategories, ensurePharmacySources } from './categories.js';
 import { upsertOfferFromListing, recomputeAllPricing, recomputeProductPricing, invalidateMatchGeoCache } from './match.js';
 import { invalidateCrossSourceIndex } from './crossMatch.js';
+import { SOURCES, isOfferStale } from './constants.js';
 import { fetchPharmadepotProducts, fetchGpcProducts } from './sources/pharmadepot.js';
-import { fetchAversiProducts, closeAversiBrowser } from './sources/aversi.js';
 import { fetchPspProducts, closePspBrowser } from './sources/psp.js';
 
 // Render's outbound network occasionally fails to route IPv6 (AAAA) addresses,
@@ -14,12 +14,11 @@ dns.setDefaultResultOrder('ipv4first');
 
 const FETCHERS = {
   PHARMADEPOT: fetchPharmadepotProducts,
-  AVERSI: fetchAversiProducts,
   PSP: fetchPspProducts,
   GPC: fetchGpcProducts,
 };
 
-const ALL_SOURCES = ['PSP', 'PHARMADEPOT', 'GPC', 'AVERSI'];
+const ALL_SOURCES = ['PSP', 'PHARMADEPOT', 'GPC'];
 
 /**
  * A full crawl lists every product the pharmacy sells right now, so an offer it did not
@@ -140,7 +139,6 @@ export async function syncPharmacySource(source, opts = {}) {
     });
     throw err;
   } finally {
-    if (source === 'AVERSI') await closeAversiBrowser();
     if (source === 'PSP') await closePspBrowser();
   }
 }
@@ -227,7 +225,7 @@ async function getPharmacyInsights() {
         bestPriceGel: true,
         bestSourceId: true,
         offerCount: true,
-        offers: { select: { priceGel: true, sourceId: true } },
+        offers: { select: { priceGel: true, sourceId: true, inStock: true, syncedAt: true } },
         bestSource: { select: { nameKa: true } },
       },
       take: 180,
@@ -237,17 +235,21 @@ async function getPharmacyInsights() {
 
   const topDeals = dealCandidates
     .map((product) => {
-      const prices = product.offers.map((o) => o.priceGel).filter((p) => p > 0);
-      if (prices.length < 2) return null;
-      const min = Math.min(...prices);
-      const max = Math.max(...prices);
+      // Same rule as the app: only confirmed, in-stock offers of active pharmacies compare.
+      const live = product.offers.filter(
+        (o) => o.priceGel > 0 && o.inStock && SOURCES[o.sourceId] && !isOfferStale(o.syncedAt),
+      );
+      if (new Set(live.map((o) => o.sourceId)).size < 2) return null;
+      const cheapest = live.reduce((a, b) => (b.priceGel < a.priceGel ? b : a));
+      const min = cheapest.priceGel;
+      const max = Math.max(...live.map((o) => o.priceGel));
       if (max <= min) return null;
       return {
         id: product.id,
         name: product.name,
-        bestPriceGel: product.bestPriceGel ?? min,
-        bestSource: product.bestSource?.nameKa ?? product.bestSourceId ?? '—',
-        offerCount: product.offerCount,
+        bestPriceGel: min,
+        bestSource: SOURCES[cheapest.sourceId]?.nameKa ?? cheapest.sourceId,
+        offerCount: new Set(live.map((o) => o.sourceId)).size,
         maxPriceGel: max,
         saveGel: Math.round((max - min) * 100) / 100,
         savePct: Math.round(((max - min) / max) * 100),

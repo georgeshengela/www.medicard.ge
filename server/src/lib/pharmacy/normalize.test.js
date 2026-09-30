@@ -32,3 +32,19 @@ test('names without a qualifier keep their previous signature', () => {
   assert.equal(psp, 'bisogamma|10|q30');
   assert.equal(pd, psp);
 });
+
+test('"Plus" and a different strength never count as the same product', async () => {
+  const { signaturesCompatible } = await import('./normalize.js');
+  const [plus, plain] = signatures(['ზეტორი პლუსი ტაბლეტი 10მგ+10მგ #30', 'ზეტორი - Zetor 10მგ 30ტაბლეტი']);
+  assert.equal(signaturesCompatible(plus, plain), false);
+  assert.equal(signaturesCompatible('zetor|10|q30', 'zetor|20|q30'), false);
+  assert.equal(signaturesCompatible('zetor|10|q30', 'zetor|10'), true);
+});
+
+test('Georgian unit words carry the pack count ("3 ამპულა" = "#3")', () => {
+  const [psp, pd] = signatures([
+    'ლოქსიდოლი - Loxidol 15მგ/1.5მლ 3 ამპულა',
+    'ლოქსიდოლი ხსნარი საინექციო 15მგ/1.5მლ ამპულა #3',
+  ]);
+  assert.equal(psp, pd);
+});

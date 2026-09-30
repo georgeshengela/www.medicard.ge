@@ -3,7 +3,7 @@ import { buildGeoLatinMap, buildLooseMatchSignature } from '../src/lib/pharmacy/
 import { recomputeProductPricing } from '../src/lib/pharmacy/match.js';
 import { invalidateCrossSourceIndex } from '../src/lib/pharmacy/crossMatch.js';
 
-const SOURCE_PRIORITY = ['PHARMADEPOT', 'GPC', 'AVERSI', 'PSP'];
+const SOURCE_PRIORITY = ['PHARMADEPOT', 'GPC', 'PSP'];
 
 function pickCanonical(products) {
   return [...products].sort((a, b) => {

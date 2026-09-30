@@ -9,7 +9,6 @@
 
   const SOURCES = [
     { id: 'PHARMADEPOT', label: 'ფარმადეპო' },
-    { id: 'AVERSI', label: 'ავერსი' },
     { id: 'PSP', label: 'PSP' },
     { id: 'GPC', label: 'ჯიპისი' },
   ];
@@ -387,9 +386,8 @@
                 <label class="v3-pharmacy-field">
                   <span>წყარო</span>
                   <select id="pharm-source">
-                    <option value="ALL">ყველა (PSP + ფარმადეპო + ჯიპისი + ავერსი)</option>
+                    <option value="ALL">ყველა (PSP + ფარმადეპო + ჯიპისი)</option>
                     <option value="PHARMADEPOT">ფარმადეპო</option>
-                    <option value="AVERSI">ავერსი</option>
                     <option value="PSP">PSP</option>
                     <option value="GPC">ჯიპისი</option>
                   </select>
@@ -401,7 +399,7 @@
                 <button type="button" class="btn primary" id="pharm-sync" ${running ? 'disabled' : ''}>
                   ${ico('activity')} ${running ? 'სინქრონიზაცია მიმდინარეობს…' : 'სინქის გაშვება'}
                 </button>
-                <p class="v3-pharmacy-note">ფარმადეპო ~3300 SKU · 30–90 წთ. ავერსი/PSP შეიძლება bot-დაცვით დაბლოკილი იყოს.</p>
+                <p class="v3-pharmacy-note">PSP ~5300 · ფარმადეპო ~3300 · ჯიპისი ~3300 SKU · სრული სინქი ~30 წთ.</p>
                 <div class="v3-pharmacy-sync-meta">
                   <div><span>ბოლო ALL</span><strong>${syncMeta.ALL ? esc(shortDate(syncMeta.ALL.finishedAt)) : '—'}</strong></div>
                   <div><span>ჩატვირთული</span><strong>${syncMeta.ALL?.itemsFetched != null ? fmt(syncMeta.ALL.itemsFetched) : '—'}</strong></div>

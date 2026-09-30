@@ -11,9 +11,4 @@ const total = await prisma.catalogProduct.count({ where: { offerCount: { gt: 0 }
 console.log('offers by source:', counts);
 console.log(`multi-source products: ${multi} / ${total}`);
 
-await prisma.syncRun.updateMany({
-  where: { source: 'AVERSI', status: 'RUNNING' },
-  data: { status: 'DONE', itemsFetched: 5317, finishedAt: new Date(), error: 'Completed with partial ingest after DB reconnect' },
-});
-
 await prisma.$disconnect();

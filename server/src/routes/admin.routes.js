@@ -1020,7 +1020,7 @@ adminRouter.post(
   asyncHandler(async (req, res) => {
     const body = z
       .object({
-        source: z.enum(['ALL', 'PHARMADEPOT', 'AVERSI', 'PSP', 'GPC']).default('ALL'),
+        source: z.enum(['ALL', 'PHARMADEPOT', 'PSP', 'GPC']).default('ALL'),
         maxPages: z.number().int().min(1).max(500).optional(),
       })
       .parse(req.body ?? {});
