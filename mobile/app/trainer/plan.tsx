@@ -8,6 +8,7 @@ import { DAY_STATUS_LABEL, dayLabel, dayStatusColor, type ClientOverview } from 
 import { Button, Card, CoachHeader, DayStrip, EmptyNote, ErrorBox, Loading, Screen, Section, Stat, coachStyles } from '@/components/coach/CoachUI';
 import { hubText } from '@/theme/hub';
 import { useIsDark, useThemeColors } from '@/theme/colors';
+import { EMPTY_ART } from '@/constants/appArt';
 import { tx } from '@/i18n/locale';
 
 const SLOT_KA: Record<string, string> = { breakfast: tx('საუზმე', 'Breakfast'), snack1: tx('წახემსება', 'Snack'), lunch: tx('სადილი', 'Lunch'), snack2: tx('მეორე წახემსება', 'Second snack'), dinner: tx('ვახშამი', 'Dinner'), preworkout: tx('ვარჯიშამდე', 'Pre-workout'), postworkout: tx('ვარჯიშის შემდეგ', 'Post-workout') };
@@ -43,7 +44,7 @@ export default function ClientPlanScreen() {
         {!ov && !error ? <Loading /> : null}
         {ov && !plan ? (
           <Card style={{ marginTop: 8 }}>
-            <EmptyNote icon={UtensilsCrossed} title={tx('გეგმა ჯერ არ არის', 'No plan yet')} body={tx('როცა ტრენერი კვების გეგმას გამოგიგზავნის, აქ გამოჩნდება და შეტყობინება მოგივა.', 'When your trainer sends a meal plan, it will show up here and you’ll get a notification.')} />
+            <EmptyNote icon={UtensilsCrossed} art={EMPTY_ART.diary} title={tx('გეგმა ჯერ არ არის', 'No plan yet')} body={tx('როცა ტრენერი კვების გეგმას გამოგიგზავნის, აქ გამოჩნდება და შეტყობინება მოგივა.', 'When your trainer sends a meal plan, it will show up here and you’ll get a notification.')} />
           </Card>
         ) : null}
         {plan ? (

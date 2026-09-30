@@ -10,6 +10,7 @@ import { Avatar, Button, Card, EmptyNote, Input, Loading, coachStyles } from '@/
 import { FadeIn, Ring, Segmented, StatusPill, haptic, scoreColor } from '@/components/coach/CoachKit';
 import { hubText } from '@/theme/hub';
 import { useIsDark, useThemeColors } from '@/theme/colors';
+import { EMPTY_ART } from '@/constants/appArt';
 import { tx } from '@/i18n/locale';
 
 type Filter = 'all' | 'attention' | 'waiting';
@@ -154,7 +155,7 @@ export default function CoachClientsScreen() {
               ))}
               {!waiting ? (
                 <Card>
-                  <EmptyNote icon={UsersRound} title={tx('მოლოდინში არავინაა', 'No one waiting')} body={tx('როცა კლიენტი მოგწერს ან შენს მოწვევას ჯერ არ უპასუხებს, აქ გამოჩნდება.', 'When a client sends a request, or hasn’t answered your invite yet, they’ll show up here.')} />
+                  <EmptyNote icon={UsersRound} art={EMPTY_ART.coach} title={tx('მოლოდინში არავინაა', 'No one waiting')} body={tx('როცა კლიენტი მოგწერს ან შენს მოწვევას ჯერ არ უპასუხებს, აქ გამოჩნდება.', 'When a client sends a request, or hasn’t answered your invite yet, they’ll show up here.')} />
                 </Card>
               ) : null}
             </View>
@@ -168,11 +169,11 @@ export default function CoachClientsScreen() {
               {!shown.length ? (
                 clients.length ? (
                   <Card>
-                    <EmptyNote icon={filter === 'attention' ? Check : Search} title={filter === 'attention' ? tx('ყურადღება არავის სჭირდება', 'No one needs attention') : tx('ვერ მოიძებნა', 'No results')} body={filter === 'attention' ? tx('ყველა კლიენტი გეგმაშია — კარგი ნამუშევარია.', 'All clients are on plan — great work.') : tx('სცადე სხვა სახელი.', 'Try another name.')} />
+                    <EmptyNote icon={filter === 'attention' ? Check : Search} art={filter === 'attention' ? undefined : EMPTY_ART.search} title={filter === 'attention' ? tx('ყურადღება არავის სჭირდება', 'No one needs attention') : tx('ვერ მოიძებნა', 'No results')} body={filter === 'attention' ? tx('ყველა კლიენტი გეგმაშია — კარგი ნამუშევარია.', 'All clients are on plan — great work.') : tx('სცადე სხვა სახელი.', 'Try another name.')} />
                   </Card>
                 ) : (
                   <Card style={{ gap: 12 }}>
-                    <EmptyNote icon={UsersRound} title={tx('კლიენტები ჯერ არ გყავს', 'No clients yet')} body={tx('დარბაზში დაასკანერე კლიენტის QR (მის აპში: პროფილი → ჩემი QR) — მოწვევა მაშინვე მიუვა. ან გაუზიარე შენი კოდი.', 'At the gym, scan the client’s QR (in their app: Profile → My QR) — they get the invite right away. Or share your code.')} />
+                    <EmptyNote icon={UsersRound} art={EMPTY_ART.coach} title={tx('კლიენტები ჯერ არ გყავს', 'No clients yet')} body={tx('დარბაზში დაასკანერე კლიენტის QR (მის აპში: პროფილი → ჩემი QR) — მოწვევა მაშინვე მიუვა. ან გაუზიარე შენი კოდი.', 'At the gym, scan the client’s QR (in their app: Profile → My QR) — they get the invite right away. Or share your code.')} />
                     <Button label={tx('კლიენტის QR-ის სკანირება', 'Scan client QR')} icon={ScanLine} onPress={() => router.push('/coach/scan' as never)} />
                     {code ? <Button label={tx(`კოდის გაზიარება · ${code}`, `Share code · ${code}`)} icon={Share2} kind="secondary" onPress={invite} /> : null}
                   </Card>

@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { Image, Pressable, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { useRouter } from 'expo-router';
-import { CloudSun, Flame } from 'lucide-react-native';
+import { CloudSun } from 'lucide-react-native';
+import { RUN_ICON } from '@/components/run/runArt';
 import { Meteocon, meteoconSlugFor } from '@/components/weather/Meteocon';
 import { AVATAR_SOURCES, isAvatarId } from '@/constants/avatarAssets';
 import { PrivateImage } from '@/components/coach/CoachUI';
@@ -72,7 +73,7 @@ export function HomeHeader({ firstName, initial, avatarId, streak, dateLabel }: 
               onPress={() => router.push('/profile/streak' as never)}
               style={[s.pill, { backgroundColor: dark ? '#3B2A0A' : '#FDF1DC' }]}
             >
-              <Flame size={15} color={dark ? '#FBBF24' : '#B45309'} fill={dark ? '#FBBF24' : '#B45309'} strokeWidth={0} />
+              <Image source={RUN_ICON.streak} resizeMode="contain" accessibilityIgnoresInvertColors accessible={false} style={{ width: 18, height: 18 }} />
               <Text style={[s.pillText, { color: dark ? '#FDE68A' : '#92400E' }]}>{streak}</Text>
             </Pressable>
           ) : null}

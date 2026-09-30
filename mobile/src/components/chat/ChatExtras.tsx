@@ -1,5 +1,6 @@
 import React from 'react';
-import { Pressable, Text, View } from 'react-native';
+import { Image, Pressable, Text, View } from 'react-native';
+import { QUEST_ART } from '@/constants/appArt';
 import { useFigmaChat } from '@/constants/figmaChatLayout';
 
 export function ChatSuggestionChip({ label, onPress }: { label: string; onPress: () => void }) {
@@ -46,6 +47,13 @@ export function ChatEmptyHero({ title, body }: { title: string; body: string }) 
   const FIGMA_CHAT = useFigmaChat();
   return (
     <View style={{ gap: 8, paddingVertical: 8 }}>
+      <Image
+        source={QUEST_ART.medi}
+        resizeMode="contain"
+        accessible={false}
+        accessibilityIgnoresInvertColors
+        style={{ width: 96, height: 96 }}
+      />
       <Text style={{ fontSize: 16, lineHeight: 22, fontWeight: '700', color: FIGMA_CHAT.textPrimary }}>{title}</Text>
       <Text style={{ fontSize: 14, lineHeight: 20, color: FIGMA_CHAT.textSecondary }}>{body}</Text>
     </View>

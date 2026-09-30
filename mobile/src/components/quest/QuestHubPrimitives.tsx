@@ -1,5 +1,5 @@
 import React from 'react';
-import { ActivityIndicator, Pressable, StyleSheet, Text, View, type ViewStyle } from 'react-native';
+import { ActivityIndicator, Image, Pressable, StyleSheet, Text, View, type ImageSourcePropType, type ViewStyle } from 'react-native';
 import { ArrowUpRight, ChevronRight } from 'lucide-react-native';
 import { useIsDark, useThemeColors } from '@/theme/colors';
 
@@ -21,10 +21,10 @@ export function QButton({ label, onPress, secondary, disabled, busy, icon }: { l
 export function QHeading({ title, meta }: { title: string; meta?: string }) {
   return <View style={styles.between}><QText size={18} bold>{title}</QText>{meta ? <QText size={12} muted>{meta}</QText> : null}</View>;
 }
-export function QLink({ title, body, icon, onPress, external }: { title: string; body: string; icon: React.ReactNode; onPress: () => void; external?: boolean }) {
+export function QLink({ title, body, icon, art, onPress, external }: { title: string; body: string; icon?: React.ReactNode; /** 3D artwork for the well; wins over `icon`. */ art?: ImageSourcePropType; onPress: () => void; external?: boolean }) {
   const c = useThemeColors();
   return <Pressable accessibilityRole="button" onPress={onPress} className="active:opacity-75" style={[styles.link, { backgroundColor: c.surface, borderColor: c.bg300 }]}>
-    <View style={[styles.well, { backgroundColor: c.bg100 }]}>{icon}</View>
+    <View style={[styles.well, { backgroundColor: c.bg100 }]}>{art ? <Image source={art} resizeMode="contain" accessibilityIgnoresInvertColors accessible={false} style={styles.wellArt} /> : icon}</View>
     <View style={{ flex: 1, gap: 2 }}><QText bold>{title}</QText><QText size={12} muted>{body}</QText></View>
     {external ? <ArrowUpRight size={18} color={c.text300} /> : <ChevronRight size={18} color={c.text300} />}
   </Pressable>;
@@ -42,5 +42,6 @@ const styles = StyleSheet.create({
   between: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 },
   link: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 16, minHeight: 84, borderWidth: 1, borderRadius: 22 },
   well: { width: 42, height: 42, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
+  wellArt: { width: 34, height: 34 },
   notice: { borderRadius: 16, paddingHorizontal: 16, paddingVertical: 12, gap: 2 },
 });

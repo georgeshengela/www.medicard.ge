@@ -5,7 +5,8 @@ import { Stack, useFocusEffect, useLocalSearchParams, useRouter } from 'expo-rou
 import { History, Plus } from 'lucide-react-native';
 import { PetButton as Button } from '@/components/pets/PetUi';
 import { EmptyState } from '@/components/EmptyState';
-import { careKindIcon } from '@/components/pets/PetCareChips';
+import { PETS_ART } from '@/constants/appArt';
+import { careKindArt } from '@/components/pets/PetCareChips';
 import { PetListRow, PetPageScroll } from '@/components/pets/PetScreen';
 import { ka } from '@/i18n/ka';
 import { api, type PetCareEvent } from '@/lib/api';
@@ -72,14 +73,14 @@ export default function PetCareHistoryScreen() {
       />
       <PetPageScroll>
         {!items.length ? (
-          <EmptyState icon={History} title={ka.pets.careEmpty} body={ka.pets.careHistoryEmptyBody}>
+          <EmptyState art={PETS_ART.care_vaccine} title={ka.pets.careEmpty} body={ka.pets.careHistoryEmptyBody}>
             <Button icon={Plus} label={ka.pets.recordAdmin} onPress={() => router.push(`/pets/${id}/care/record`)} />
           </EmptyState>
         ) : null}
         {items.map((row) => (
           <PetListRow
             key={row.id}
-            icon={careKindIcon(row.kind)}
+            art={careKindArt(row.kind)}
             title={row.titleSnapshot}
             subtitle={[
               kindLabel(row.kind, ka.pets),

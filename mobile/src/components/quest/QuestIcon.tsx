@@ -1,12 +1,26 @@
 import React from 'react';
-import { View } from 'react-native';
-import { Check, Droplets, Footprints, MessageCircle, Target } from 'lucide-react-native';
+import { Image, View, type ImageSourcePropType, type ImageStyle, type StyleProp } from 'react-native';
+import { Check } from 'lucide-react-native';
 import { QUEST, type QuestAccentKind } from '@/theme/questTokens';
 import { useIsDark, useThemeColors } from '@/theme/colors';
+import { COIN_ART, missionArt } from './questArt';
+
+/** Generated 3D artwork, square, decorative (screen readers use the parent's label). */
+export function QuestArt({ source, size, style }: { source: ImageSourcePropType; size: number; style?: StyleProp<ImageStyle> }) {
+  return (
+    <Image
+      source={source}
+      resizeMode="contain"
+      accessibilityIgnoresInvertColors
+      accessible={false}
+      style={[{ width: size, height: size }, style]}
+    />
+  );
+}
 
 /**
- * Category well. Teal family only; `done` flips to a solid success disc with a
- * white check so a finished row reads instantly in a list.
+ * Category well with the mission's 3D artwork. Teal family tint; `ready` uses
+ * the brand disc, `done` keeps the art with a small green check in the corner.
  */
 export function QuestIcon({
   kind,
@@ -22,60 +36,52 @@ export function QuestIcon({
 }) {
   const colors = useThemeColors();
   const dark = useIsDark();
-  const Icon = done
-    ? Check
-    : kind === 'hydration'
-      ? Droplets
-      : kind === 'medi'
-        ? MessageCircle
-        : kind === 'weekly'
-          ? Target
-          : Footprints;
-  const solid = done || ready;
-  const bg = done ? colors.success : ready ? QUEST.accent[kind] : dark ? QUEST.wash.dark : QUEST.wash.light;
-  const ink = solid ? '#FFFFFF' : dark ? colors.primary100 : QUEST.accent[kind];
-  const glyph = Math.round(size * 0.475);
+  const bg = ready && !done ? QUEST.accent[kind] : dark ? QUEST.wash.dark : QUEST.wash.light;
+  const mark = Math.round(size * 0.42);
   return (
-    <View
-      style={{
-        width: size,
-        height: size,
-        borderRadius: Math.round(size * 0.3),
-        alignItems: 'center',
-        justifyContent: 'center',
-        backgroundColor: bg,
-      }}
-    >
-      <Icon size={glyph} color={ink} strokeWidth={done ? 2.8 : 2.2} />
+    <View style={{ width: size, height: size }}>
+      <View
+        style={{
+          width: size,
+          height: size,
+          borderRadius: Math.round(size * 0.3),
+          alignItems: 'center',
+          justifyContent: 'center',
+          backgroundColor: bg,
+        }}
+      >
+        <QuestArt source={missionArt(kind)} size={Math.round(size * 0.8)} />
+      </View>
+      {done ? (
+        <View
+          style={{
+            position: 'absolute',
+            right: -3,
+            bottom: -3,
+            width: mark,
+            height: mark,
+            borderRadius: 999,
+            alignItems: 'center',
+            justifyContent: 'center',
+            backgroundColor: colors.success,
+            borderWidth: 2,
+            borderColor: dark ? colors.surface : '#FFFFFF',
+          }}
+        >
+          <Check size={Math.round(mark * 0.56)} color="#FFFFFF" strokeWidth={3.4} />
+        </View>
+      ) : null}
     </View>
   );
 }
 
-/** Medi Coin — ring with a solid center dot. */
+/**
+ * Medi Coin — the 3D coin artwork. `color` / `filled` are kept for API
+ * compatibility; `color` only dims the coin when it is a muted tone.
+ */
 export function QuestCoinMark({ size = 16, color, filled }: { size?: number; color?: string; filled?: boolean }) {
   const colors = useThemeColors();
-  const stroke = color || colors.primary200;
-  return (
-    <View
-      style={{
-        width: size,
-        height: size,
-        borderRadius: size / 2,
-        borderWidth: Math.max(1.4, size * 0.1),
-        borderColor: stroke,
-        backgroundColor: filled ? stroke : 'transparent',
-        alignItems: 'center',
-        justifyContent: 'center',
-      }}
-    >
-      <View
-        style={{
-          width: size * 0.34,
-          height: size * 0.34,
-          borderRadius: size,
-          backgroundColor: filled ? '#FFFFFF' : stroke,
-        }}
-      />
-    </View>
-  );
+  void filled;
+  const muted = color != null && color === colors.text300;
+  return <QuestArt source={COIN_ART} size={size} style={muted ? { opacity: 0.55 } : undefined} />;
 }

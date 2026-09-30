@@ -1,6 +1,6 @@
 import React from 'react';
 import { Pressable, View } from 'react-native';
-import { ArrowUpRight, Coins, Flag, Gift } from 'lucide-react-native';
+import { ArrowUpRight, Flag, Gift } from 'lucide-react-native';
 import type { QuestDashboard } from '@/lib/quest/api';
 import { useIsDark, useThemeColors } from '@/theme/colors';
 import { HomeSectionTitle } from '@/components/home/HomeSectionTitle';
@@ -9,6 +9,7 @@ import { QuestProgressBar } from './QuestProgressBar';
 import { levelRingProgress } from '@/lib/quest/logic.js';
 import { tx } from '@/i18n/locale';
 import { QCard, QText } from './QuestHubPrimitives';
+import { QuestCoinMark } from './QuestIcon';
 import { Bone } from '@/components/ui/Skeleton';
 
 export function QuestProfileCard({ dashboard, loading, error, stale, onOpen, onRetry, edgeInset = 16, hideTitle = false }: { dashboard: QuestDashboard | null; loading: boolean; error: boolean; stale: boolean; onOpen: () => void; onRetry: () => void; edgeInset?: number; hideTitle?: boolean }) {
@@ -25,7 +26,7 @@ export function QuestProfileCard({ dashboard, loading, error, stale, onOpen, onR
         <ArrowUpRight size={20} color={ink} />
       </View>
       {profile ? <>
-        <View style={{ flexDirection: 'row', justifyContent: 'space-between', gap: 10 }}><QText size={12} muted>{total ? tx(`დღეს ${done} / ${total} მისია შესრულდა`, `${done} / ${total} missions done today`) : tx('შენი მისიები ერთ სივრცეში', 'All your missions in one place')}</QText><View style={{ flexDirection: 'row', gap: 5, alignItems: 'center' }}><Coins size={15} color={c.warning} /><QText size={13} bold>{profile.coinBalance.toLocaleString()}</QText></View></View>
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', gap: 10 }}><QText size={12} muted>{total ? tx(`დღეს ${done} / ${total} მისია შესრულდა`, `${done} / ${total} missions done today`) : tx('შენი მისიები ერთ სივრცეში', 'All your missions in one place')}</QText><View style={{ flexDirection: 'row', gap: 5, alignItems: 'center' }}><QuestCoinMark size={15} /><QText size={13} bold>{profile.coinBalance.toLocaleString()}</QText></View></View>
         <QuestProgressBar percent={total ? done / total * 100 : 0} height={6} />
       </> : null}
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>

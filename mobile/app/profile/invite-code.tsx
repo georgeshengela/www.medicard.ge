@@ -3,6 +3,7 @@ import { Text, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { ProfileSetupShell } from '@/components/profile/ProfileSetupShell';
 import { Input } from '@/components/ui/Input';
+import { REFERRAL_ART } from '@/constants/appArt';
 import { ka } from '@/i18n/ka';
 import { ApiError, api } from '@/lib/api';
 import { authErrorMessage } from '@/lib/authErrorMessage';
@@ -67,6 +68,7 @@ export default function InviteCodeScreen() {
       onBack={leave}
       loading={busy}
       showStepper={false}
+      heroArt={REFERRAL_ART.hero}
       canBack
       primaryDisabled={!done && code.replace(/[^A-Za-z0-9]/g, '').length < 6}
     >

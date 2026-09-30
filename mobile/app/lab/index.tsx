@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { Pressable, ScrollView, Text, View } from 'react-native';
+import { Image, Pressable, ScrollView, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { FlaskConical, MessageCircle, Plus } from 'lucide-react-native';
@@ -10,6 +10,7 @@ import { LabLogRow } from '@/components/lab/LabLogRow';
 import { LabMoversCard } from '@/components/lab/LabMoversCard';
 import { useFigmaLab } from '@/constants/figmaLabLayout';
 import { useLab } from '@/hooks/useLab';
+import { EMPTY_ART } from '@/constants/appArt';
 import { ka } from '@/i18n/ka';
 import { labFlagCounts, labParamMatches, type LabFlagFilter } from '@/lib/labFilter';
 import { summarizeLabMovers } from '@/lib/labMovers';
@@ -170,7 +171,13 @@ export default function LabHubScreen() {
               gap: 10,
             }}
           >
-            <FlaskConical size={28} color={T.brand} />
+            <Image
+              source={EMPTY_ART.lab}
+              resizeMode="contain"
+              accessible={false}
+              accessibilityIgnoresInvertColors
+              style={{ width: 96, height: 96 }}
+            />
             <Text style={{ fontFamily: 'NotoSansGeorgian_600SemiBold', fontSize: 16, color: T.textPrimary, textAlign: 'center' }}>
               {ka.lab.emptyTitle}
             </Text>

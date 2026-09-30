@@ -1,12 +1,13 @@
 import React, { useCallback, useRef, useState } from 'react';
 import { Text, View } from 'react-native';
 import { useFocusEffect, useRouter } from 'expo-router';
-import { AlertTriangle, ChevronRight, Syringe } from 'lucide-react-native';
+import { AlertTriangle, ChevronRight } from 'lucide-react-native';
 import { localAccountId } from '@/lib/localAccount';
 import { Bone } from '@/components/ui/Skeleton';
 import { PetPanel as Card } from '@/components/pets/PetUi';
 import { HomeSectionTitle } from '@/components/home/HomeSectionTitle';
-import { careKindIcon } from '@/components/pets/PetCareChips';
+import { careKindArt } from '@/components/pets/PetCareChips';
+import { PETS_ART } from '@/constants/appArt';
 import { PetIconWell } from '@/components/pets/PetScreen';
 import { ka } from '@/i18n/ka';
 import { ApiError, api, type Pet, type PetCareOccurrence } from '@/lib/api';
@@ -79,7 +80,7 @@ export function PetCareSummary({ pet }: { pet: Pet }) {
 
   const next = overdue[0] || due[0] || upcoming[0];
   const empty = !next;
-  const Icon = next ? careKindIcon(next.kind) : Syringe;
+  const art = next ? careKindArt(next.kind) : PETS_ART.care_vaccine;
   const headline = overdue.length
     ? `${ka.pets.overdue} · ${kindLabel(overdue[0].kind, ka.pets)}`
     : due.length
@@ -93,7 +94,7 @@ export function PetCareSummary({ pet }: { pet: Pet }) {
       <HomeSectionTitle title={ka.pets.careTitle} />
       <Card onPress={() => router.push(empty ? `/pets/${pet.id}/care/add` : `/pets/${pet.id}/care`)}>
         <View className="flex-row items-center">
-          <PetIconWell icon={empty ? Syringe : Icon} />
+          <PetIconWell art={art} />
           <View className="flex-1 px-3">
             <Text
               className="text-base font-semibold"

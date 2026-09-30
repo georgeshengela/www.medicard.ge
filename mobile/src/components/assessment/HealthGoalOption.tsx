@@ -1,5 +1,5 @@
 import React from 'react';
-import { Text, TouchableOpacity, View } from 'react-native';
+import { Image, Text, TouchableOpacity, View, type ImageSourcePropType } from 'react-native';
 import { Check } from 'lucide-react-native';
 import { FIGMA_ASSESSMENT_SHADOW } from '@/constants/figmaAssessmentIntro';
 import { useAssessment } from '@/constants/assessmentLayout';
@@ -11,10 +11,12 @@ type Props = {
   selected: boolean;
   onPress: () => void;
   icon: React.ComponentType<{ size?: number; color?: string; strokeWidth?: number }>;
+  /** Optional 3D artwork shown at 52px instead of the icon. */
+  art?: ImageSourcePropType;
 };
 
 /** Figma List Item — health goal row (9217:164462). */
-export function HealthGoalOption({ title, selected, onPress, icon: Icon }: Props) {
+export function HealthGoalOption({ title, selected, onPress, icon: Icon, art }: Props) {
   const ASSESSMENT = useAssessment();
   return (
     <TouchableOpacity accessibilityRole="checkbox" accessibilityState={{ checked: selected }} activeOpacity={0.88} onPress={onPress}>
@@ -32,7 +34,17 @@ export function HealthGoalOption({ title, selected, onPress, icon: Icon }: Props
           ...FIGMA_ASSESSMENT_SHADOW,
         }}
       >
-        <Icon size={24} color={ASSESSMENT.textPrimary} strokeWidth={2} />
+        {art ? (
+          <Image
+            source={art}
+            resizeMode="contain"
+            accessible={false}
+            accessibilityIgnoresInvertColors
+            style={{ width: 52, height: 52, marginVertical: -8 }}
+          />
+        ) : (
+          <Icon size={24} color={ASSESSMENT.textPrimary} strokeWidth={2} />
+        )}
         <Text
           style={{
             flex: 1,

@@ -4,7 +4,7 @@ import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { PetIntro, PetLoading } from '@/components/pets/PetUi';
 import { PetButton as Button } from '@/components/pets/PetUi';
 import { PetPanel as Card } from '@/components/pets/PetUi';
-import { careKindIcon } from '@/components/pets/PetCareChips';
+import { careKindArt } from '@/components/pets/PetCareChips';
 import { PetErrorText, PetFactRow, PetIconWell, PetPageScroll } from '@/components/pets/PetScreen';
 import { ka } from '@/i18n/ka';
 import { api, type Pet, type PetCareEvent } from '@/lib/api';
@@ -73,7 +73,7 @@ export default function PetCareEventScreen() {
         <PetErrorText message={error} />
         <Card>
           <View className="mb-3 flex-row items-center gap-3">
-            <PetIconWell icon={careKindIcon(event.kind)} />
+            <PetIconWell art={careKindArt(event.kind)} />
             <Text className="flex-1 text-base font-semibold text-text-100" style={{ fontFamily: 'NotoSansGeorgian_600SemiBold' }}>
               {event.titleSnapshot}
             </Text>

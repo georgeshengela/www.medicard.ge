@@ -1,5 +1,5 @@
 import React from 'react';
-import { ActivityIndicator, Pressable, StyleSheet, Text, View, type StyleProp, type ViewStyle } from 'react-native';
+import { ActivityIndicator, Image, Pressable, StyleSheet, Text, View, type ImageSourcePropType, type StyleProp, type ViewStyle } from 'react-native';
 import Svg, { Circle } from 'react-native-svg';
 import { Check, Clock, X, type LucideIcon } from 'lucide-react-native';
 import { ka } from '@/i18n/ka';
@@ -349,12 +349,15 @@ export function MedsInfoRow({
 export function MedsEmptyState({
   icon,
   ink = 'teal',
+  art,
   title,
   body,
   children,
 }: {
   icon: LucideIcon;
   ink?: HubInk;
+  /** 3D artwork shown at 110px instead of the icon tile. */
+  art?: ImageSourcePropType;
   title: string;
   body?: string;
   children?: React.ReactNode;
@@ -362,7 +365,17 @@ export function MedsEmptyState({
   const c = useThemeColors();
   return (
     <View style={s.empty}>
-      <MedsIconTile icon={icon} ink={ink} size={84} iconSize={40} style={{ borderRadius: 26 }} />
+      {art ? (
+        <Image
+          source={art}
+          resizeMode="contain"
+          accessible={false}
+          accessibilityIgnoresInvertColors
+          style={{ width: 110, height: 110 }}
+        />
+      ) : (
+        <MedsIconTile icon={icon} ink={ink} size={84} iconSize={40} style={{ borderRadius: 26 }} />
+      )}
       <View style={{ gap: 8, alignItems: 'center' }}>
         <Text style={{ fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 22, lineHeight: 29, color: c.text100, textAlign: 'center' }}>
           {title}

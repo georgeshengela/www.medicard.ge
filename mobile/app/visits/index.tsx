@@ -7,6 +7,7 @@ import { Disclaimer } from '@/components/Disclaimer';
 import { EmptyState } from '@/components/EmptyState';
 import { ListRowsSkeleton } from '@/components/ui/Skeleton';
 import { VisitCard } from '@/components/visits/VisitCard';
+import { EMPTY_ART } from '@/constants/appArt';
 import { ka } from '@/i18n/ka';
 import { api, type DoctorVisit } from '@/lib/api';
 import { isVisitPast, visitDateTimeMs } from '@/lib/visitReminders';
@@ -96,7 +97,7 @@ export default function VisitsScreen() {
         {!ready ? (
           <ListRowsSkeleton rows={4} padded={false} />
         ) : visits.length === 0 ? (
-          <EmptyState icon={CalendarCheck} title={ka.visits.empty} body={ka.visits.emptyHint}>
+          <EmptyState icon={CalendarCheck} art={EMPTY_ART.visits} title={ka.visits.empty} body={ka.visits.emptyHint}>
             <Button label={ka.visits.addTitle} icon={Plus} size="lg" onPress={openCreate} />
           </EmptyState>
         ) : (

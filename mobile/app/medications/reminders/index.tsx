@@ -20,6 +20,7 @@ import { ListRowsSkeleton } from '@/components/ui/Skeleton';
 import { MONTHS_KA } from '@/constants/cycle';
 import { useMedicationImages } from '@/hooks/useMedicationImages';
 import { useMedications } from '@/hooks/useMedications';
+import { EMPTY_ART } from '@/constants/appArt';
 import { ka } from '@/i18n/ka';
 import {
   DAY_LETTERS,
@@ -228,6 +229,7 @@ export default function MedicationRemindersScreen() {
             <View style={{ paddingTop: 24 }}>
               <MedsEmptyState
                 icon={Pill}
+                art={EMPTY_ART.meds}
                 title={isToday ? ka.meds.scheduleEmptyTitle : ka.meds.scheduleEmptyTitleOther}
                 body={ka.meds.scheduleEmptyBody}
               >

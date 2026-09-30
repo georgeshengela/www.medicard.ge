@@ -8,6 +8,7 @@ import { SESSION_STATUS_LABEL, clockOf, dayLabel, tbilisiYmd, type ClientOvervie
 import { Badge, Button, Card, CoachHeader, EmptyNote, ErrorBox, Loading, Screen, Section, coachStyles } from '@/components/coach/CoachUI';
 import { hubText } from '@/theme/hub';
 import { useThemeColors } from '@/theme/colors';
+import { EMPTY_ART } from '@/constants/appArt';
 import { tx } from '@/i18n/locale';
 
 function SessionRow({ s, onPress, action }: { s: CoachSession; onPress?: () => void; action?: React.ReactNode }) {
@@ -100,7 +101,7 @@ export default function ClientSessionsScreen() {
                 ))
               ) : (
                 <Card>
-                  <EmptyNote icon={CalendarClock} title={tx('დაგეგმილი ვარჯიში არ არის', 'No workouts scheduled')} body={tx('როცა ტრენერი ჩაგწერს, აქ გამოჩნდება და შეხსენება 24 და 1 საათით ადრე მოგივა.', 'When your trainer books you, it shows up here and you get reminders 24 hours and 1 hour before.')} />
+                  <EmptyNote icon={CalendarClock} art={EMPTY_ART.coach} title={tx('დაგეგმილი ვარჯიში არ არის', 'No workouts scheduled')} body={tx('როცა ტრენერი ჩაგწერს, აქ გამოჩნდება და შეხსენება 24 და 1 საათით ადრე მოგივა.', 'When your trainer books you, it shows up here and you get reminders 24 hours and 1 hour before.')} />
                 </Card>
               )}
             </Section>

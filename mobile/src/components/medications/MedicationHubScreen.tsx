@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Pressable, RefreshControl, ScrollView, StyleSheet, Switch, Text, TextInput, View } from 'react-native';
+import { Image, Pressable, RefreshControl, ScrollView, StyleSheet, Switch, Text, TextInput, View } from 'react-native';
 import { Stack, useRouter } from 'expo-router';
 import { CalendarDays, ChevronRight, Crown, FlaskConical, Pill, Plus, Search } from 'lucide-react-native';
 import { HomeSectionHeading } from '@/components/home/HomeSectionHeading';
@@ -12,6 +12,7 @@ import { useTabBarInset } from '@/components/navigation/FloatingTabBar';
 import { MedsHubSkeleton } from '@/components/ui/Skeleton';
 import { useMedicationImages } from '@/hooks/useMedicationImages';
 import { useMedications } from '@/hooks/useMedications';
+import { EMPTY_ART } from '@/constants/appArt';
 import { ka } from '@/i18n/ka';
 import { api, type CatalogProductSummary, type Medication } from '@/lib/api';
 import { computeTodayDoses } from '@/lib/home/todayDoses';
@@ -253,6 +254,13 @@ export function MedicationHubScreen({ showOnboarding }: Props) {
           {heading(ka.meds.myMedications, activeMeds.length > 0 ? '/medications/reminders' : undefined)}
           {activeMeds.length === 0 ? (
             <MedsCard style={{ gap: 12 }}>
+              <Image
+                source={EMPTY_ART.meds}
+                resizeMode="contain"
+                accessible={false}
+                accessibilityIgnoresInvertColors
+                style={{ width: 96, height: 96, alignSelf: 'center' }}
+              />
               <Text style={[hubText.body, { color: c.text200 }]}>{ka.meds.emptyHint}</Text>
               <MedsButton label={ka.meds.addMedicationCta} icon={Plus} tone="tonal" onPress={openAdd} />
             </MedsCard>

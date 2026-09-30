@@ -2,10 +2,11 @@ import { PetLoading } from '@/components/pets/PetUi';
 import React, { useCallback, useState } from 'react';
 import { Pressable, View } from 'react-native';
 import { Stack, useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
-import { Package, Plus } from 'lucide-react-native';
+import { Plus } from 'lucide-react-native';
 import { PetButton as Button } from '@/components/pets/PetUi';
 import { EmptyState } from '@/components/EmptyState';
-import { careKindIcon } from '@/components/pets/PetCareChips';
+import { PETS_ART } from '@/constants/appArt';
+import { careKindArt } from '@/components/pets/PetCareChips';
 import { PetListRow, PetPageScroll } from '@/components/pets/PetScreen';
 import { ka } from '@/i18n/ka';
 import { api, type PetProduct } from '@/lib/api';
@@ -59,14 +60,14 @@ export default function PetProductsScreen() {
       />
       <PetPageScroll>
         {!items.length ? (
-          <EmptyState icon={Package} title={ka.pets.productsEmpty} body={ka.pets.expiresHint}>
+          <EmptyState art={PETS_ART.products} title={ka.pets.productsEmpty} body={ka.pets.expiresHint}>
             <Button icon={Plus} label={ka.pets.productAdd} onPress={goNew} />
           </EmptyState>
         ) : null}
         {items.map((row) => (
           <PetListRow
             key={row.id}
-            icon={careKindIcon(row.kind)}
+            art={careKindArt(row.kind)}
             title={row.name}
             subtitle={[kindLabel(row.kind, ka.pets), row.expiresOn].filter(Boolean).join(' · ')}
             onPress={() => router.push(`/pets/${id}/care/products/${row.id}`)}

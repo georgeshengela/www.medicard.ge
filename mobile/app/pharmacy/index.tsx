@@ -6,6 +6,7 @@ import { CategoryGrid } from '@/components/pharmacy/CategoryGrid';
 import { PharmacyBrowseHeader } from '@/components/pharmacy/PharmacyBrowseHeader';
 import { PharmacyProductCard } from '@/components/pharmacy/PharmacyProductCard';
 import { EmptyState } from '@/components/EmptyState';
+import { EMPTY_ART } from '@/constants/appArt';
 import { ka } from '@/i18n/ka';
 import { api, type CatalogProductSummary, type DrugCategoryInfo } from '@/lib/api';
 import { formatRelative } from '@/lib/format';
@@ -125,7 +126,10 @@ export default function PharmacyIndexScreen() {
       </View>
 
       {products.length === 0 ? (
-        <EmptyState icon={Layers3} title={ka.pharmacy.emptySearch} body={ka.pharmacy.emptySearchHint} />
+        <EmptyState
+          icon={Layers3}
+          art={debouncedQuery ? EMPTY_ART.search : EMPTY_ART.pharmacy}
+          title={ka.pharmacy.emptySearch} body={ka.pharmacy.emptySearchHint} />
       ) : (
         products.map((p) => <PharmacyProductCard key={p.id} product={p} onPress={() => openProduct(p.id)} />)
       )}

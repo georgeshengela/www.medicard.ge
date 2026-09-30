@@ -5,7 +5,9 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { appLang, dateLocale } from '@/i18n/locale';
 import { isPhoneRequiredError, offerPhoneVerification } from '@/lib/phoneGate';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { ArrowLeft, Gift } from 'lucide-react-native';
+import { ArrowLeft } from 'lucide-react-native';
+import { QuestArt } from '@/components/quest/QuestIcon';
+import { rewardArt } from '@/components/quest/questArt';
 import { Button } from '@/components/ui/Button';
 import { Bone } from '@/components/ui/Skeleton';
 import { QuestAnimatedNumber } from '@/components/quest/QuestAnimatedNumber';
@@ -212,15 +214,15 @@ export default function RewardDetailScreen() {
         >
           <View
             style={{
-              width: 48,
-              height: 48,
-              borderRadius: 14,
+              width: 72,
+              height: 72,
+              borderRadius: 20,
               alignItems: 'center',
               justifyContent: 'center',
               backgroundColor: dark ? QUEST.wash.dark : QUEST.wash.light,
             }}
           >
-            <Gift size={22} color={colors.primary200} strokeWidth={2.2} />
+            <QuestArt source={rewardArt(reward)} size={60} />
           </View>
           <Text style={{ fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 22, lineHeight: 28, color: colors.text100 }}>
             {title}

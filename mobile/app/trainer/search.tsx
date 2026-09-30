@@ -9,6 +9,7 @@ import type { GymBrand, TrainerCard } from '@/lib/coach';
 import { Avatar, Badge, Card, Chip, CoachHeader, EmptyNote, ErrorBox, Input, Loading, coachStyles } from '@/components/coach/CoachUI';
 import { HUB, hubText } from '@/theme/hub';
 import { useThemeColors } from '@/theme/colors';
+import { EMPTY_ART } from '@/constants/appArt';
 import { tx } from '@/i18n/locale';
 
 /** Find a verified trainer by name or by the gym you go to. */
@@ -105,7 +106,7 @@ export default function TrainerSearchScreen() {
           contentContainerStyle={{ paddingHorizontal: HUB.gutter, paddingTop: 14, paddingBottom: insets.bottom + 24, gap: 12 }}
           ListHeaderComponent={error ? <ErrorBox message={error} /> : trainers === null ? <Loading /> : null}
           ListEmptyComponent={
-            trainers ? <EmptyNote icon={Search} title={tx('ტრენერი ვერ მოიძებნა', 'No trainers found')} body={tx('სცადე სხვა დარბაზი ან სახელი. შენს ტრენერს სთხოვე, დარეგისტრირდეს MEDICARD-ში — კოდით პირდაპირ დაუკავშირდები.', 'Try another gym or name. Ask your trainer to sign up on MEDICARD — then you can connect directly with their code.')} /> : null
+            trainers ? <EmptyNote icon={Search} art={EMPTY_ART.search} title={tx('ტრენერი ვერ მოიძებნა', 'No trainers found')} body={tx('სცადე სხვა დარბაზი ან სახელი. შენს ტრენერს სთხოვე, დარეგისტრირდეს MEDICARD-ში — კოდით პირდაპირ დაუკავშირდები.', 'Try another gym or name. Ask your trainer to sign up on MEDICARD — then you can connect directly with their code.')} /> : null
           }
           renderItem={({ item: t }) => (
             <Card onPress={() => router.push(`/trainer/connect?trainerId=${encodeURIComponent(t.id)}` as never)} accessibilityLabel={tx(`${t.displayName}, ტრენერი`, `${t.displayName}, trainer`)} style={{ gap: 10 }}>

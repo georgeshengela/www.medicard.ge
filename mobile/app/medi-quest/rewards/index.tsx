@@ -3,11 +3,12 @@ import { Pressable, RefreshControl, ScrollView, Text, View } from 'react-native'
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { ArrowLeft, ChevronRight, Gift, Sparkles } from 'lucide-react-native';
+import { ArrowLeft, ChevronRight } from 'lucide-react-native';
 import { appLang, tx } from '@/i18n/locale';
 import { Bone } from '@/components/ui/Skeleton';
 import { QuestAnimatedNumber } from '@/components/quest/QuestAnimatedNumber';
-import { QuestCoinMark } from '@/components/quest/QuestIcon';
+import { QuestArt, QuestCoinMark } from '@/components/quest/QuestIcon';
+import { rewardArt } from '@/components/quest/questArt';
 import { QuestMediLine } from '@/components/quest/QuestMediLine';
 import { useOffline } from '@/hooks/useOffline';
 import { usePrefersReducedMotion } from '@/hooks/usePrefersReducedMotion';
@@ -323,11 +324,7 @@ function RewardCard({
             backgroundColor: dark ? QUEST.wash.dark : QUEST.wash.light,
           }}
         >
-          {reward.featured ? (
-            <Sparkles size={QUEST.glyph} color={colors.primary200} strokeWidth={2.2} />
-          ) : (
-            <Gift size={QUEST.glyph} color={colors.primary200} strokeWidth={2.2} />
-          )}
+          <QuestArt source={rewardArt(reward)} size={Math.round(QUEST.icon * 0.8)} />
         </View>
         <View style={{ flex: 1, minWidth: 0, gap: 4 }}>
           <Text numberOfLines={2} style={{ fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 15, lineHeight: 20, color: colors.text100 }}>

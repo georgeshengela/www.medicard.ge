@@ -1,14 +1,16 @@
 import React from 'react';
-import { Image, Text, View } from 'react-native';
+import { Image, Text, View, type ImageSourcePropType } from 'react-native';
 import type { LucideIcon } from 'lucide-react-native';
 import { useFigmaChat } from '@/constants/figmaChatLayout';
 
 type AiProps = {
   icon: LucideIcon;
   size?: 'md' | 'lg';
+  /** 3D artwork rendered inside the avatar circle instead of the icon. */
+  art?: ImageSourcePropType;
 };
 
-export function ChatAiAvatar({ icon: Icon, size = 'md' }: AiProps) {
+export function ChatAiAvatar({ icon: Icon, size = 'md', art }: AiProps) {
   const FIGMA_CHAT = useFigmaChat();
   const box = size === 'lg' ? 48 : 40;
   const iconSize = size === 'lg' ? FIGMA_CHAT.navIconSize : FIGMA_CHAT.bubbleIconSize;
@@ -26,7 +28,17 @@ export function ChatAiAvatar({ icon: Icon, size = 'md' }: AiProps) {
         justifyContent: 'center',
       }}
     >
-      <Icon size={iconSize} color={FIGMA_CHAT.brand} strokeWidth={2} />
+      {art ? (
+        <Image
+          source={art}
+          resizeMode="contain"
+          accessible={false}
+          accessibilityIgnoresInvertColors
+          style={{ width: box - 6, height: box - 6 }}
+        />
+      ) : (
+        <Icon size={iconSize} color={FIGMA_CHAT.brand} strokeWidth={2} />
+      )}
     </View>
   );
 }

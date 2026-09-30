@@ -15,6 +15,7 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 import { useFigmaChat } from '@/constants/figmaChatLayout';
+import { EMPTY_ART } from '@/constants/appArt';
 import { ka } from '@/i18n/ka';
 import { useThemeColors, useIsDark } from '@/theme/colors';
 
@@ -210,7 +211,7 @@ function ReadyHeader({ count }: { count: number }) {
 function EmptyHero() {
   const C = useFigmaChat();
   return <View style={{ padding: 20, gap: 12 }}>
-    <View style={{ width: 48, height: 48, borderRadius: 16, backgroundColor: C.brandQuaternary, alignItems: 'center', justifyContent: 'center' }}><FileText size={24} color={C.brand} /></View>
+    <Image source={EMPTY_ART.records} resizeMode="contain" accessible={false} accessibilityIgnoresInvertColors style={{ width: 80, height: 80 }} />
     <Text style={{ fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 20, lineHeight: 28, color: C.textPrimary }}>{ka.lab.studioEmpty}</Text>
     <Text style={{ fontFamily: 'NotoSansGeorgian_400Regular', fontSize: 14, lineHeight: 21, color: C.textSecondary }}>{ka.modules.lab.uploadHint}</Text>
     <Text style={{ fontFamily: 'NotoSansGeorgian_500Medium', fontSize: 12, lineHeight: 19, color: C.textSecondary }}>{tx('01 ატვირთე · 02 გადაამოწმე · 03 მიიღე განმარტება', '01 Upload · 02 Check · 03 Get an explanation')}</Text>

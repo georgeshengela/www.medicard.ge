@@ -5,6 +5,7 @@ import { Stack, useFocusEffect, useLocalSearchParams, useRouter } from 'expo-rou
 import { ShieldAlert } from 'lucide-react-native';
 import { PetButton as Button } from '@/components/pets/PetUi';
 import { EmptyState } from '@/components/EmptyState';
+import { PETS_ART } from '@/constants/appArt';
 import { PetHealthStatus } from '@/components/pets/PetHealthStatus';
 import { allergyCategoryIcon } from '@/components/pets/PetHealthForms';
 import { PetListRow, PetPageScroll } from '@/components/pets/PetScreen';
@@ -55,7 +56,7 @@ export default function PetAllergiesScreen() {
       <Stack.Screen options={{ title: pet ? `${ka.pets.allergiesTitle} · ${pet.name}` : ka.pets.allergiesTitle }} />
       <PetPageScroll>
         {items.length === 0 ? (
-          <EmptyState icon={ShieldAlert} title={ka.pets.allergiesEmpty} body={ka.pets.allergiesEmptyBody} />
+          <EmptyState art={PETS_ART.allergy} title={ka.pets.allergiesEmpty} body={ka.pets.allergiesEmptyBody} />
         ) : (
           items.map((row) => (
             <PetListRow

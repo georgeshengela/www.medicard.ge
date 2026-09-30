@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Pressable, ScrollView, Text, View } from 'react-native';
+import { Pressable, ScrollView, Text, View, type ImageSourcePropType } from 'react-native';
 import {
   BookOpen,
   Bug,
@@ -19,6 +19,7 @@ import {
   type LucideIcon,
 } from 'lucide-react-native';
 import { SelectField } from '@/components/ui/SelectField';
+import { PETS_ART } from '@/constants/appArt';
 import { PetChipRow, PetFilterChip, PetSectionLabel, PetSheet } from '@/components/pets/PetScreen';
 import { ka } from '@/i18n/ka';
 import { CARE_KINDS, kindLabel } from '@/lib/petsCare';
@@ -52,6 +53,21 @@ export function careKindIcon(kind: PetCareKind | null | undefined): LucideIcon {
       return Pill;
     default:
       return HeartPulse;
+  }
+}
+
+export function careKindArt(kind: PetCareKind | null | undefined): ImageSourcePropType {
+  switch (kind) {
+    case 'VACCINATION':
+      return PETS_ART.care_vaccine;
+    case 'FLEA_TICK':
+      return PETS_ART.care_flea;
+    case 'DEWORMING':
+      return PETS_ART.care_deworm;
+    case 'MEDICATION':
+      return PETS_ART.care_med;
+    default:
+      return PETS_ART.care_other;
   }
 }
 

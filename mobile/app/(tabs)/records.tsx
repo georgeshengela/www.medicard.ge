@@ -1,5 +1,5 @@
 import React, { useCallback, useMemo, useState } from 'react';
-import { Alert, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Alert, Image, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Stack, useRouter } from 'expo-router';
 import {
   ChevronRight,
@@ -19,6 +19,7 @@ import { HomeSectionHeading } from '@/components/home/HomeSectionHeading';
 import { HubFeatureCard } from '@/components/home/HubFeatureCard';
 import { HubTileGrid, type HubTile } from '@/components/home/HubTiles';
 import { RecordsPageSkeleton } from '@/components/ui/Skeleton';
+import { EMPTY_ART } from '@/constants/appArt';
 import { ka } from '@/i18n/ka';
 import { api, type ChatSummary, type MedicalRecord } from '@/lib/api';
 import { formatRelative } from '@/lib/format';
@@ -159,6 +160,15 @@ export default function Records() {
             <HubFeatureCard
               tone="spotlight"
               icon={FileText}
+              lead={
+                <Image
+                  source={EMPTY_ART.records}
+                  resizeMode="contain"
+                  accessible={false}
+                  accessibilityIgnoresInvertColors
+                  style={{ width: 56, height: 56, marginTop: -6 }}
+                />
+              }
               title={ka.records.empty}
               body={ka.records.emptyHint}
               cta={ka.records.addCta}

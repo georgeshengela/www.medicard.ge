@@ -1,5 +1,6 @@
 import React from 'react';
 import {
+  Image,
   Keyboard,
   KeyboardAvoidingView,
   Platform,
@@ -7,6 +8,7 @@ import {
   ScrollView,
   Text,
   View,
+  type ImageSourcePropType,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ChevronLeft } from 'lucide-react-native';
@@ -32,6 +34,8 @@ type Props = {
   phaseCompletedThrough?: number;
   showStepper?: boolean;
   showLogo?: boolean;
+  /** Decorative 3D artwork shown centered above the title (replaces the logo slot). */
+  heroArt?: ImageSourcePropType;
   centerContent?: boolean;
   /** Rendered above the primary CTA (Figma phone field block). */
   footerSlot?: React.ReactNode;
@@ -55,6 +59,7 @@ export function ProfileSetupShell({
   phaseCompletedThrough = 0,
   showStepper = true,
   showLogo = false,
+  heroArt,
   centerContent = false,
   footerSlot,
   primaryTone = 'step',
@@ -113,14 +118,24 @@ export function ProfileSetupShell({
         keyboardDismissMode="on-drag"
         showsVerticalScrollIndicator={false}
       >
-        {showLogo ? (
+        {heroArt ? (
+          <View style={{ alignItems: 'center', paddingTop: 16 }}>
+            <Image
+              source={heroArt}
+              resizeMode="contain"
+              accessible={false}
+              accessibilityIgnoresInvertColors
+              style={{ width: 140, height: 140 }}
+            />
+          </View>
+        ) : showLogo ? (
           <View style={{ alignItems: 'center', paddingTop: 24, paddingBottom: 8 }}>
             <MedicardLogoMark size={64} />
           </View>
         ) : null}
 
         <Pressable onPress={Keyboard.dismiss} accessible={false}>
-          <View style={{ paddingHorizontal: 16, paddingTop: showLogo ? 0 : 16, paddingBottom: 8 }}>
+          <View style={{ paddingHorizontal: 16, paddingTop: showLogo || heroArt ? 0 : 16, paddingBottom: 8 }}>
             <Text
               style={{
                 fontFamily: 'NotoSansGeorgian_700Bold',

@@ -6,6 +6,7 @@ import { Scale } from 'lucide-react-native';
 import { PetButton as Button } from '@/components/pets/PetUi';
 import { PetPanel as Card } from '@/components/pets/PetUi';
 import { EmptyState } from '@/components/EmptyState';
+import { PETS_ART } from '@/constants/appArt';
 import { HomeSectionTitle } from '@/components/home/HomeSectionTitle';
 import { PetHealthStatus } from '@/components/pets/PetHealthStatus';
 import { PetListRow, PetPageScroll } from '@/components/pets/PetScreen';
@@ -66,7 +67,7 @@ export default function PetWeightHistoryScreen() {
         {latest ? (
           <Card>
             <View className="flex-row items-center">
-              <PetIconWell icon={Scale} size={56} />
+              <PetIconWell art={PETS_ART.weight} size={56} />
               <View className="flex-1 pl-4">
                 <Text className="text-sm font-semibold text-text-200">{ka.pets.current}</Text>
                 <Text className="mt-1 text-3xl font-bold text-text-100" style={{ fontFamily: 'NotoSansGeorgian_700Bold' }}>
@@ -77,7 +78,7 @@ export default function PetWeightHistoryScreen() {
             </View>
           </Card>
         ) : (
-          <EmptyState icon={Scale} title={ka.pets.weightEmpty} body={ka.pets.weightEmptyBody} />
+          <EmptyState art={PETS_ART.weight} title={ka.pets.weightEmpty} body={ka.pets.weightEmptyBody} />
         )}
         {items.length ? (
           <View>

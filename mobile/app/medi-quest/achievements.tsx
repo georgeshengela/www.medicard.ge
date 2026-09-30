@@ -3,7 +3,9 @@ import { Pressable, RefreshControl, ScrollView, Text, View } from 'react-native'
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { ArrowLeft, Trophy } from 'lucide-react-native';
+import { ArrowLeft } from 'lucide-react-native';
+import { QuestArt } from '@/components/quest/QuestIcon';
+import { QUEST_TROPHY_ART } from '@/components/quest/questArt';
 import * as Haptics from 'expo-haptics';
 import { appLang } from '@/i18n/locale';
 import { Button } from '@/components/ui/Button';
@@ -131,7 +133,7 @@ export default function QuestAchievementsScreen() {
                 backgroundColor: dark ? QUEST.wash.dark : QUEST.wash.light,
               }}
             >
-              <Trophy size={26} color={colors.primary200} strokeWidth={2.2} />
+              <QuestArt source={QUEST_TROPHY_ART} size={48} />
             </View>
             <Text
               style={{
@@ -174,7 +176,7 @@ export default function QuestAchievementsScreen() {
                     backgroundColor: dark ? QUEST.wash.dark : QUEST.wash.light,
                   }}
                 >
-                  <Trophy size={26} color={colors.primary200} strokeWidth={2.2} />
+                  <QuestArt source={QUEST_TROPHY_ART} size={44} />
                 </View>
                 <View style={{ flex: 1, minWidth: 0 }}>
                   <Text style={{ fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 20, lineHeight: 26, letterSpacing: -0.3, color: colors.text100 }}>

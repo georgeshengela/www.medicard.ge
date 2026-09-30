@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, Image, Platform, Pressable, ScrollView, StyleSheet, Switch, Text, TextInput, View, type ViewStyle } from 'react-native';
+import { ActivityIndicator, Image, Platform, Pressable, ScrollView, StyleSheet, Switch, Text, TextInput, View, type ImageSourcePropType, type ViewStyle } from 'react-native';
 import { KeyboardFormShell } from '@/components/ui/KeyboardFormShell';
 import { SkeletonPage, haptic } from '@/components/coach/CoachKit';
 import { useRouter } from 'expo-router';
@@ -208,11 +208,32 @@ export function ErrorBox({ message, onRetry }: { message: string; onRetry?: () =
   );
 }
 
-export function EmptyNote({ title, body, icon: Icon }: { title: string; body?: string; icon?: LucideIcon }) {
+export function EmptyNote({
+  title,
+  body,
+  icon: Icon,
+  art,
+}: {
+  title: string;
+  body?: string;
+  icon?: LucideIcon;
+  /** 3D artwork shown at 110px instead of the icon tile. */
+  art?: ImageSourcePropType;
+}) {
   const c = useThemeColors();
   return (
     <View style={{ alignItems: 'center', gap: 8, paddingVertical: 18, paddingHorizontal: 10 }}>
-      {Icon ? <IconTile icon={Icon} ink="neutral" /> : null}
+      {art ? (
+        <Image
+          source={art}
+          resizeMode="contain"
+          accessible={false}
+          accessibilityIgnoresInvertColors
+          style={{ width: 110, height: 110 }}
+        />
+      ) : Icon ? (
+        <IconTile icon={Icon} ink="neutral" />
+      ) : null}
       <Text style={[hubText.cardTitle, { color: c.text100, textAlign: 'center' }]}>{title}</Text>
       {body ? <Text style={[hubText.body, { color: c.text200, textAlign: 'center' }]}>{body}</Text> : null}
     </View>

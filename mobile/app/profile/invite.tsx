@@ -1,10 +1,11 @@
 import React, { useCallback, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, Share, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Image, Pressable, ScrollView, Share, StyleSheet, Text, View } from 'react-native';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { ChevronLeft, Share2 } from 'lucide-react-native';
+import { ChevronLeft } from 'lucide-react-native';
 import { HomeSectionHeading } from '@/components/home/HomeSectionHeading';
 import { ProfileMenuRow } from '@/components/profile/ProfileMenuRow';
+import { COIN_ART, REFERRAL_ART } from '@/constants/appArt';
 import { ka } from '@/i18n/ka';
 import { api } from '@/lib/api';
 import { trackFunnel } from '@/lib/funnel';
@@ -51,9 +52,14 @@ export default function InviteScreen() {
       .catch(() => undefined);
   };
 
-  const stat = (value: number, label: string) => (
+  const stat = (value: number, label: string, coin = false) => (
     <View style={[s.stat, { backgroundColor: c.bg200 }]}>
-      <Text style={{ fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 22, color: c.text100 }}>{value}</Text>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+        {coin ? (
+          <Image source={COIN_ART} resizeMode="contain" accessible={false} accessibilityIgnoresInvertColors style={{ width: 20, height: 20 }} />
+        ) : null}
+        <Text style={{ fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 22, color: c.text100 }}>{value}</Text>
+      </View>
       <Text style={[hubText.caption, { color: c.text200, textAlign: 'center' }]}>{label}</Text>
     </View>
   );
@@ -92,19 +98,29 @@ export default function InviteScreen() {
         ) : null}
 
         {data?.code ? (
+          <Image
+            source={REFERRAL_ART.hero}
+            resizeMode="contain"
+            accessible={false}
+            accessibilityIgnoresInvertColors
+            style={{ width: 180, height: 180, alignSelf: 'center', marginBottom: -HUB.sectionGap + 8 }}
+          />
+        ) : null}
+
+        {data?.code ? (
           <View style={[s.card, { backgroundColor: c.surface, alignItems: 'center' }]}>
             <Text style={[hubText.caption, { color: c.text200 }]}>{ka.referral.yourCode}</Text>
             <Text selectable accessibilityLabel={`${ka.referral.yourCode}: ${data.code.split('').join(' ')}`} style={{ fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 34, letterSpacing: 6, color: c.text100, marginVertical: 6 }}>
               {data.code}
             </Text>
             <Pressable accessibilityRole="button" onPress={share} style={[s.cta, { alignSelf: 'stretch' }]}>
-              <Share2 size={18} color="#FFFFFF" />
+              <Image source={REFERRAL_ART.share} resizeMode="contain" accessible={false} accessibilityIgnoresInvertColors style={{ width: 22, height: 22 }} />
               <Text style={s.ctaText}>{ka.referral.share}</Text>
             </Pressable>
             <View style={{ flexDirection: 'row', gap: 8, alignSelf: 'stretch', marginTop: 10 }}>
               {stat(data.invited, ka.referral.statInvited)}
               {stat(data.pending, ka.referral.statPending)}
-              {stat(data.coinsEarned, ka.referral.statCoins)}
+              {stat(data.coinsEarned, ka.referral.statCoins, true)}
             </View>
             <Text style={[hubText.caption, { color: c.text300, textAlign: 'center', marginTop: 6 }]}>
               {ka.referral.monthLeft(data.monthRemaining, data.monthlyCap)}

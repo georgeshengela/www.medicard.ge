@@ -1,8 +1,8 @@
 import React from 'react';
 import { Text, View } from 'react-native';
-import { Zap } from 'lucide-react-native';
 import { appLang } from '@/i18n/locale';
-import { QuestCoinMark } from '@/components/quest/QuestIcon';
+import { QuestArt, QuestCoinMark } from '@/components/quest/QuestIcon';
+import { QUEST_XP_ART } from '@/components/quest/questArt';
 import { formatQuestNumber } from '@/lib/quest/logic.js';
 import { q } from '@/lib/quest/copy';
 import { QUEST } from '@/theme/questTokens';
@@ -62,7 +62,7 @@ export function QuestReward({ xp, coins, locale = appLang(), muted, variant = 'p
           backgroundColor: xpBg,
         }}
       >
-        <Zap size={fontSize} color={xpInk} strokeWidth={2.4} fill={xpInk} />
+        <QuestArt source={QUEST_XP_ART} size={fontSize} />
         <Text style={{ fontFamily: 'NotoSansGeorgian_700Bold', fontSize, lineHeight: fontSize + 6, color: xpInk }}>
           +{formatQuestNumber(xp, locale)} {copy.xp}
         </Text>

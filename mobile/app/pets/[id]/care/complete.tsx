@@ -6,7 +6,7 @@ import { Check } from 'lucide-react-native';
 import { PetButton as Button } from '@/components/pets/PetUi';
 import { PetPanel as Card } from '@/components/pets/PetUi';
 import { PetDateField as DateField } from '@/components/pets/PetDateField';
-import { careKindIcon } from '@/components/pets/PetCareChips';
+import { careKindArt } from '@/components/pets/PetCareChips';
 import { PetErrorText, PetFactRow, PetIconWell, PetPageScroll } from '@/components/pets/PetScreen';
 import { ka } from '@/i18n/ka';
 import { ApiError, api, type Pet, type PetCareSchedule } from '@/lib/api';
@@ -156,7 +156,7 @@ export default function PetCareCompleteScreen() {
         <Card>
           {schedule ? (
             <View className="mb-3 flex-row items-center gap-3">
-              <PetIconWell icon={careKindIcon(schedule.kind)} />
+              <PetIconWell art={careKindArt(schedule.kind)} />
               <Text className="flex-1 text-base font-semibold text-text-100" style={{ fontFamily: 'NotoSansGeorgian_600SemiBold' }}>
                 {schedule.title || kindLabel(schedule.kind, ka.pets)}
               </Text>

@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Keyboard, KeyboardAvoidingView, Platform, Pressable, ScrollView, Text, View } from 'react-native';
+import { Image, Keyboard, KeyboardAvoidingView, Platform, Pressable, ScrollView, Text, View, type ImageSourcePropType } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Check, ChevronRight, Keyboard as KeyboardIcon, X, type LucideIcon } from 'lucide-react-native';
 import { usePetFormKeyboard } from './usePetFormKeyboard';
@@ -141,14 +141,27 @@ export function PetSectionLabel({ label }: { label: string }) {
 
 export function PetIconWell({
   icon: Icon,
+  art,
   size = 44,
 }: {
-  icon: LucideIcon;
+  icon?: LucideIcon;
+  /** 3D artwork rendered at the well's size instead of the tinted icon tile. */
+  art?: ImageSourcePropType;
   size?: number;
 }) {
   const colors = useThemeColors();
   const dark = useIsDark();
   const iconSize = size >= 56 ? 26 : 22;
+  if (art) {
+    return (
+      <Image
+        source={art}
+        resizeMode="contain"
+        accessibilityIgnoresInvertColors
+        style={{ width: size, height: size }}
+      />
+    );
+  }
   return (
     <View
       style={{
@@ -160,7 +173,7 @@ export function PetIconWell({
         justifyContent: 'center',
       }}
     >
-      <Icon size={iconSize} color={dark ? colors.primary100 : colors.primary200} strokeWidth={2} />
+      {Icon ? <Icon size={iconSize} color={dark ? colors.primary100 : colors.primary200} strokeWidth={2} /> : null}
     </View>
   );
 }
@@ -171,19 +184,22 @@ export function PetListRow({
   onPress,
   tone = 'default',
   icon,
+  art,
 }: {
   title: string;
   subtitle?: string;
   onPress: () => void;
   tone?: 'default' | 'muted';
   icon?: LucideIcon;
+  art?: ImageSourcePropType;
 }) {
+  const leading = Boolean(icon || art);
   const colors = useThemeColors();
   return (
     <Card onPress={onPress}>
       <View className="flex-row items-center">
-        {icon ? <PetIconWell icon={icon} /> : null}
-        <View className={icon ? 'flex-1 px-3' : 'flex-1 pr-3'}>
+        {leading ? <PetIconWell icon={icon} art={art} /> : null}
+        <View className={leading ? 'flex-1 px-3' : 'flex-1 pr-3'}>
           <Text
             className="text-base font-semibold"
             style={{
@@ -257,12 +273,15 @@ export function PetFilterChip({
   selected,
   onPress,
   icon: Icon,
+  art,
   fill = false,
 }: {
   label: string;
   selected: boolean;
   onPress: () => void;
   icon?: LucideIcon;
+  /** 3D artwork (32px) shown instead of the icon. */
+  art?: ImageSourcePropType;
   fill?: boolean;
 }) {
   const colors = useThemeColors();
@@ -291,7 +310,9 @@ export function PetFilterChip({
         maxWidth: '100%',
       }}
     >
-      {Icon ? (
+      {art ? (
+        <Image source={art} resizeMode="contain" accessibilityIgnoresInvertColors style={{ width: 32, height: 32 }} />
+      ) : Icon ? (
         <Icon
           size={24}
           color={selected ? (dark ? colors.primary100 : colors.primary200) : colors.text100}

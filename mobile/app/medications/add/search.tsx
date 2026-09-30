@@ -5,6 +5,7 @@ import { ChevronRight, Crown, PackageOpen, Plus, Search, X } from 'lucide-react-
 import { MedicationPillIcon } from '@/components/medications/MedicationPillIcon';
 import { MedsButton, MedsChip, MedsEmptyState } from '@/components/medications/MedsHubUI';
 import { ListRowsSkeleton } from '@/components/ui/Skeleton';
+import { EMPTY_ART } from '@/constants/appArt';
 import { ka } from '@/i18n/ka';
 import { api, type CatalogProductSummary, type DrugCategoryInfo } from '@/lib/api';
 import { catalogProductMeta } from '@/lib/medicationCatalogNav';
@@ -109,7 +110,7 @@ export default function MedicationSearchScreen() {
           </View>
         ) : products.length === 0 ? (
           <View style={{ paddingTop: 24 }}>
-            <MedsEmptyState icon={PackageOpen} ink="sky" title={ka.meds.searchNotFound} body={ka.meds.searchNotFoundHint}>
+            <MedsEmptyState icon={PackageOpen} ink="sky" art={EMPTY_ART.search} title={ka.meds.searchNotFound} body={ka.meds.searchNotFoundHint}>
               {query.trim().length >= 2 ? (
                 <MedsButton
                   label={`${ka.meds.addCustom}: ${query.trim()}`}

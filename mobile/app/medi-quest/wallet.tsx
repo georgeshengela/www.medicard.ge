@@ -3,11 +3,12 @@ import { Pressable, ScrollView, Text, View } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { ArrowLeft, Gift, Target, TrendingUp } from 'lucide-react-native';
+import { ArrowLeft, TrendingUp } from 'lucide-react-native';
 import { appLang, dateLocale } from '@/i18n/locale';
 import { Bone } from '@/components/ui/Skeleton';
 import { QuestAnimatedNumber } from '@/components/quest/QuestAnimatedNumber';
-import { QuestCoinMark } from '@/components/quest/QuestIcon';
+import { QuestArt, QuestCoinMark } from '@/components/quest/QuestIcon';
+import { QUEST_GIFT_ART, ledgerArt } from '@/components/quest/questArt';
 import { QuestMediLine } from '@/components/quest/QuestMediLine';
 import { usePrefersReducedMotion } from '@/hooks/usePrefersReducedMotion';
 import { useIsDark, useThemeColors } from '@/theme/colors';
@@ -212,7 +213,7 @@ export default function QuestWalletScreen() {
               backgroundColor: dark ? QUEST.wash.dark : QUEST.wash.light,
             }}
           >
-            <Gift size={18} color={colors.primary200} strokeWidth={2.2} />
+            <QuestArt source={QUEST_GIFT_ART} size={32} />
           </View>
           <Text style={{ flex: 1, fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 15, color: colors.text100 }}>
             {rewards.useCoins}
@@ -268,7 +269,7 @@ export default function QuestWalletScreen() {
                       backgroundColor: dark ? QUEST.wash.dark : QUEST.wash.light,
                     }}
                   >
-                    <Target size={18} color={dark ? colors.primary100 : QUEST.accent.movement} strokeWidth={2.2} />
+                    <QuestArt source={ledgerArt(row.sourceType)} size={32} />
                   </View>
                   <View style={{ flex: 1, minWidth: 0 }}>
                     <Text numberOfLines={1} style={{ fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 15, lineHeight: 20, color: colors.text100 }}>

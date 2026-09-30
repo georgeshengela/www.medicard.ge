@@ -4,6 +4,7 @@ import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { Search } from 'lucide-react-native';
 import { PharmacyProductCard } from '@/components/pharmacy/PharmacyProductCard';
 import { EmptyState } from '@/components/EmptyState';
+import { EMPTY_ART } from '@/constants/appArt';
 import { ka } from '@/i18n/ka';
 import { api, type CatalogProductSummary } from '@/lib/api';
 import { useThemeColors } from '@/theme/colors';
@@ -64,7 +65,7 @@ export default function PharmacyCategoryScreen() {
       </View>
 
       {products.length === 0 ? (
-        <EmptyState icon={Search} title={ka.pharmacy.emptySearch} body={ka.pharmacy.emptySearchHint} />
+        <EmptyState icon={Search} art={EMPTY_ART.pharmacy} title={ka.pharmacy.emptySearch} body={ka.pharmacy.emptySearchHint} />
       ) : (
         products.map((p) => (
           <PharmacyProductCard

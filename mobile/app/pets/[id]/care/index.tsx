@@ -5,8 +5,9 @@ import { AlertTriangle, ChevronRight, History, Package, Plus, Syringe } from 'lu
 import { PetButton as Button } from '@/components/pets/PetUi';
 import { PetPanel as Card } from '@/components/pets/PetUi';
 import { EmptyState } from '@/components/EmptyState';
+import { PETS_ART } from '@/constants/appArt';
 import { HomeSectionTitle } from '@/components/home/HomeSectionTitle';
-import { careKindIcon } from '@/components/pets/PetCareChips';
+import { careKindArt } from '@/components/pets/PetCareChips';
 import { PetIntro, PetLoading } from '@/components/pets/PetUi';
 import { PetErrorText, PetIconWell, PetListRow, PetPageScroll } from '@/components/pets/PetScreen';
 import { ka } from '@/i18n/ka';
@@ -38,7 +39,7 @@ function OccurrenceCard({
     <View>
       <Card onPress={() => router.push(`/pets/${petId}/care/schedule/${row.scheduleId}`)}>
         <View className="flex-row items-center">
-          <PetIconWell icon={careKindIcon(row.kind)} />
+          <PetIconWell art={careKindArt(row.kind)} />
           <View className="flex-1 px-3">
             <Text className="text-base font-semibold text-text-100" style={{ fontFamily: 'NotoSansGeorgian_600SemiBold' }}>
               {row.title || kindLabel(row.kind, ka.pets)}
@@ -193,7 +194,7 @@ export default function PetCareHubScreen() {
         ) : null}
 
         {empty ? (
-          <EmptyState icon={Syringe} title={ka.pets.careEmpty} body={ka.pets.careEmptyBody}>
+          <EmptyState art={PETS_ART.care_vaccine} title={ka.pets.careEmpty} body={ka.pets.careEmptyBody}>
             <Button icon={Plus} label={ka.pets.careAdd} onPress={goAdd} />
           </EmptyState>
         ) : (

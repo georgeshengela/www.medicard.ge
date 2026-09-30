@@ -38,6 +38,7 @@ import {
   X,
 } from "lucide-react-native";
 import { api } from "@/lib/api";
+import { EMPTY_ART } from "@/constants/appArt";
 import { dateLocale, tx } from "@/i18n/locale";
 import { IMAGE_PICKER_OPTIONS } from "@/lib/imageUpload";
 import { prepareNutritionImage } from "@/lib/nutritionImage";
@@ -639,7 +640,13 @@ function NutritionScreen({ owner }: { owner: string }) {
             {meals.length === 0 && !error && (
               <View style={[s.card, { backgroundColor: c.surface, gap: 14 }]}>
                 <View style={{ alignItems: "center", gap: 6, paddingTop: 6 }}>
-                  <Sparkles size={34} color={c.primary100} />
+                  <Image
+                    source={EMPTY_ART.diary}
+                    resizeMode="contain"
+                    accessible={false}
+                    accessibilityIgnoresInvertColors
+                    style={{ width: 110, height: 110 }}
+                  />
                   <Text style={[txt, { fontSize: 19, fontFamily: "NotoSansGeorgian_600SemiBold" }]}>{day === localDay() ? tx("რას მიირთმევ დღეს?", "What are you eating today?") : tx("ამ დღეს ჩანაწერი არ არის", "Nothing logged this day")}</Text>
                   <Text style={[txt, { textAlign: "center", color: c.text200, lineHeight: 21, fontSize: 13 }]}>
                     {tx("აირჩიე ერთი გზა. Medi დაითვლის, შენ გადაამოწმებ და შეინახავ.", "Pick one way. Medi does the math, you review and save.")}

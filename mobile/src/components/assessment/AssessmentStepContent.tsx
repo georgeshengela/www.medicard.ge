@@ -37,6 +37,7 @@ import { AllergyPicker } from '@/components/assessment/AllergyPicker';
 import { ConditionPicker } from '@/components/assessment/ConditionPicker';
 import { MedicationPicker } from '@/components/assessment/MedicationPicker';
 import { useAssessment } from '@/constants/assessmentLayout';
+import { GOAL_ART } from '@/constants/appArt';
 import { primaryGoalOptions, type AssessmentStep, type PrimaryGoal } from '@/constants/assessmentSteps';
 import {
   ILLUSTRATION_SOURCES,
@@ -62,6 +63,13 @@ const PRIMARY_GOAL_ICONS: Record<PrimaryGoal, typeof Pill> = {
   nutrition: Salad,
   cycle: CalendarHeart,
   general: HeartPulse,
+};
+
+const PRIMARY_GOAL_ART: Record<PrimaryGoal, ImageSourcePropType> = {
+  medications: GOAL_ART.meds,
+  nutrition: GOAL_ART.nutrition,
+  cycle: GOAL_ART.cycle,
+  general: GOAL_ART.general,
 };
 
 /** A period start has to be a real day in the last ~100 days (cycle API rejects future dates). */
@@ -447,6 +455,7 @@ export function AssessmentStepContent({ step, form, onChange, onAutoAdvance }: P
               title={ka.assessment.primaryGoals[key]}
               selected={form.primaryGoal === key}
               icon={PRIMARY_GOAL_ICONS[key]}
+              art={PRIMARY_GOAL_ART[key]}
               onPress={() => onChange({ primaryGoal: key })}
             />
           ))}

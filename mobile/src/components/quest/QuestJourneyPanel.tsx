@@ -1,7 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { Pressable, ScrollView, View } from 'react-native';
 import Svg, { Circle, Path } from 'react-native-svg';
-import { Award, BadgeCheck, Check, Compass, Crown, Flag, Focus, Gift, Glasses, Lamp, Leaf, Library, Lock, Moon, Orbit, Palette, PanelsTopLeft, Ribbon, Telescope, Waves } from 'lucide-react-native';
+import { Check, Flag, Gift, Lock, Palette } from 'lucide-react-native';
+import { QuestArt } from './QuestIcon';
+import { decorationArt, symbolArt } from './questArt';
 import type { CompanionCosmetic, CompanionEquipment, CompanionOverview } from '@/lib/companion/api';
 import { appLang, tx } from '@/i18n/locale';
 import { companionChapterTitle, companionCosmeticTitle, companionMilestoneTitle } from '@/lib/companion/copy';
@@ -12,10 +14,6 @@ import { QButton, QCard, QHeading, QNotice, QText } from './QuestHubPrimitives';
 import { useIsDark, useThemeColors } from '@/theme/colors';
 
 const EMPTY: CompanionEquipment = { accent: null, accessory: null, background: null, decoration: null };
-const SYMBOLS: Record<string, typeof Compass> = {
-  'pose.wave': Waves, 'pose.focused': Focus, 'pose.proud': Crown, 'pose.resting': Moon, 'pose.curious': Telescope,
-  'accessory.pin': Flag, 'accessory.visor': Glasses, 'accessory.scarf': Ribbon, 'accessory.orbit': Orbit, 'accessory.badge': BadgeCheck,
-};
 const SYMBOL_NAMES: Record<string, string> = {
   'pose.wave': tx('პირველი ტალღა', 'First wave'), 'pose.focused': tx('ფოკუსი', 'Focus'), 'pose.proud': tx('გვირგვინი', 'Crown'), 'pose.resting': tx('მთვარე', 'Moon'), 'pose.curious': tx('აღმომჩენი', 'Explorer'),
   'accessory.pin': tx('ჩემი დროშა', 'My flag'), 'accessory.visor': tx('ჰორიზონტი', 'Horizon'), 'accessory.scarf': tx('ლენტი', 'Ribbon'), 'accessory.orbit': tx('ორბიტა', 'Orbit'), 'accessory.badge': tx('გზის ნიშანი', 'Path badge'),
@@ -31,17 +29,15 @@ export function QuestEmblem({ equipment = EMPTY, size = 84 }: { equipment?: Comp
   const bg = visualKeyForCosmetic(equipment.background) ?? '';
   const fill = bg.includes('dawn') ? (dark ? '#292524' : '#FFFBEB') : bg.includes('garden') ? (dark ? '#142C23' : '#F0FDF4') : bg.includes('city') ? (dark ? '#172554' : '#EFF6FF') : bg.includes('summit') ? (dark ? '#2E1065' : '#F5F3FF') : bg.includes('teal_room') ? (dark ? '#042F2E' : '#CCFBF1') : c.surfaceRaised;
   const accessory = visualKeyForCosmetic(equipment.accessory) ?? '';
-  const Mark = SYMBOLS[accessory] ?? Compass;
   const decor = visualKeyForCosmetic(equipment.decoration) ?? '';
-  const Decoration = decor.includes('plant') ? Leaf : decor.includes('lamp') ? Lamp : decor.includes('frame') ? Award : decor.includes('window') ? PanelsTopLeft : decor.includes('shelf') ? Library : Gift;
   return <View accessible={false} style={{ width: size, height: size, alignItems: 'center', justifyContent: 'center' }}>
     <Svg width={size} height={size} viewBox="0 0 100 100" style={{ position: 'absolute' }}>
       <Circle cx="50" cy="50" r="46" fill={fill} stroke={ink} strokeWidth="1" strokeDasharray="2 6" />
       <Circle cx="50" cy="50" r="35" fill={c.surface} stroke={ink} strokeWidth="1.5" />
       <Path d="M50 4 L53 11 L50 18 L47 11 Z M50 82 L53 89 L50 96 L47 89 Z" fill={ink} />
     </Svg>
-    <View style={{ zIndex: 1 }}><Mark size={size * .35} color={ink} strokeWidth={1.6} /></View>
-    {equipment.decoration ? <View style={{ position: 'absolute', bottom: 1, right: 0, padding: 5, backgroundColor: c.surface, borderRadius: 12, borderColor: c.bg300, borderWidth: 1 }}><Decoration size={size * .18} color={ink} /></View> : null}
+    <View style={{ zIndex: 1 }}><QuestArt source={symbolArt(accessory)} size={Math.round(size * .56)} /></View>
+    {equipment.decoration ? <View style={{ position: 'absolute', bottom: 1, right: 0, padding: 3, backgroundColor: c.surface, borderRadius: 12, borderColor: c.bg300, borderWidth: 1 }}><QuestArt source={decorationArt(decor)} size={Math.round(size * .24)} /></View> : null}
   </View>;
 }
 

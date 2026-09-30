@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Text, View } from 'react-native';
+import { Text, View, type ImageSourcePropType } from 'react-native';
 import { CheckCheck } from 'lucide-react-native';
 import { useFigmaChat } from '@/constants/figmaChatLayout';
 import { formatChatTime } from '@/lib/chatUiConfig';
@@ -42,19 +42,21 @@ export function ChatBubbleUser({ content, timestamp, userInitials, userAvatarUri
 
 type AssistantProps = {
   icon: React.ComponentProps<typeof ChatAiAvatar>['icon'];
+  /** Optional 3D artwork shown inside the avatar circle instead of the icon. */
+  avatarArt?: ImageSourcePropType;
   timestamp?: string;
   streaming?: boolean;
   children: React.ReactNode;
   footer?: React.ReactNode;
 };
 
-export function ChatBubbleAssistant({ icon, timestamp, streaming, children, footer }: AssistantProps) {
+export function ChatBubbleAssistant({ icon, avatarArt, timestamp, streaming, children, footer }: AssistantProps) {
   const FIGMA_CHAT = useFigmaChat();
   const time = !streaming && timestamp ? formatChatTime(timestamp) : '';
 
   return (
     <View style={{ flexDirection: 'row', gap: 8, alignItems: 'flex-start' }}>
-      <ChatAiAvatar icon={icon} size="md" />
+      <ChatAiAvatar icon={icon} art={avatarArt} size="md" />
       <View style={{ flex: 1, minWidth: 0 }}>
         <View
           style={{

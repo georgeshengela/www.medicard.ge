@@ -1,19 +1,8 @@
 import React from 'react';
 import { View } from 'react-native';
-import {
-  Award,
-  CalendarCheck2,
-  Check,
-  Droplets,
-  Flame,
-  Footprints,
-  HelpCircle,
-  MessageCircle,
-  Star,
-  Trophy,
-  Undo2,
-} from 'lucide-react-native';
-import { QuestCoinMark } from '@/components/quest/QuestIcon';
+import { Check } from 'lucide-react-native';
+import { QuestArt } from '@/components/quest/QuestIcon';
+import { achievementArt } from '@/components/quest/questArt';
 import type { AchievementItem } from '@/lib/quest/achievements';
 import { QUEST, type QuestRarity } from '@/theme/questTokens';
 import { useIsDark, useThemeColors } from '@/theme/colors';
@@ -26,31 +15,6 @@ export function rarityColors(rarity: string, dark: boolean) {
   };
 }
 
-function glyphFor(item: Pick<AchievementItem, 'key' | 'category' | 'secret' | 'unlocked'>, size: number, color: string) {
-  if (item.secret && !item.unlocked) return <HelpCircle size={size} color={color} strokeWidth={2.2} />;
-  if (item.key === 'COMEBACK') return <Undo2 size={size} color={color} strokeWidth={2.4} />;
-  switch (item.category) {
-    case 'STREAK':
-      return <Flame size={size} color={color} strokeWidth={2.2} />;
-    case 'MOVEMENT':
-      return <Footprints size={size} color={color} strokeWidth={2.2} />;
-    case 'HYDRATION':
-      return <Droplets size={size} color={color} strokeWidth={2.2} />;
-    case 'MEDI':
-      return <MessageCircle size={size} color={color} strokeWidth={2.2} />;
-    case 'WEEKLY':
-      return <CalendarCheck2 size={size} color={color} strokeWidth={2.2} />;
-    case 'LEVEL':
-      return <Star size={size} color={color} strokeWidth={2.2} />;
-    case 'COINS':
-      return <QuestCoinMark size={size} color={color} />;
-    case 'SPECIAL':
-      return <Award size={size} color={color} strokeWidth={2.2} />;
-    default:
-      return <Trophy size={size} color={color} strokeWidth={2.2} />;
-  }
-}
-
 type Props = {
   item: Pick<AchievementItem, 'key' | 'category' | 'rarity' | 'secret' | 'unlocked' | 'claimed'>;
   size?: number;
@@ -60,17 +24,16 @@ type Props = {
 
 /**
  * Rarity medallion — the single visual anchor of the Achievements system.
- * Unlocked: rarity fill + rarity ink. Locked: quiet neutral well.
- * Locked secret: dashed border with a "?" glyph.
+ * Unlocked: rarity fill + full-colour 3D art. Locked: quiet neutral well, dimmed art.
+ * Locked secret: dashed border with the mystery-box art.
  */
 export function QuestAchievementBadge({ item, size = 48, showClaimedMark = true }: Props) {
   const colors = useThemeColors();
   const dark = useIsDark();
   const rarity = rarityColors(item.rarity, dark);
   const lockedSecret = item.secret && !item.unlocked;
-  const glyphSize = Math.round(size * 0.44);
+  const artSize = Math.round(size * 0.72);
 
-  const ink = item.unlocked ? rarity.ink : colors.text300;
   const fill = item.unlocked ? rarity.fill : dark ? colors.surfaceRaised : colors.bg200;
 
   return (
@@ -89,7 +52,7 @@ export function QuestAchievementBadge({ item, size = 48, showClaimedMark = true 
           opacity: !item.unlocked && !lockedSecret ? 0.9 : 1,
         }}
       >
-        {glyphFor(item, glyphSize, ink)}
+        <QuestArt source={achievementArt(item)} size={artSize} style={item.unlocked ? undefined : { opacity: lockedSecret ? 0.7 : 0.4 }} />
       </View>
       {showClaimedMark && item.claimed ? (
         <View

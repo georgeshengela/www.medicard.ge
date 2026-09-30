@@ -5,6 +5,7 @@ import { Stack, useFocusEffect, useLocalSearchParams, useRouter } from 'expo-rou
 import { Stethoscope } from 'lucide-react-native';
 import { PetButton as Button } from '@/components/pets/PetUi';
 import { EmptyState } from '@/components/EmptyState';
+import { PETS_ART } from '@/constants/appArt';
 import { HomeSectionTitle } from '@/components/home/HomeSectionTitle';
 import { PetHealthStatus } from '@/components/pets/PetHealthStatus';
 import { PetListRow, PetPageScroll } from '@/components/pets/PetScreen';
@@ -64,7 +65,7 @@ export default function PetConditionsScreen() {
       <Stack.Screen options={{ title: pet ? `${ka.pets.conditionsTitle} · ${pet.name}` : ka.pets.conditionsTitle }} />
       <PetPageScroll>
         {items.length === 0 ? (
-          <EmptyState icon={Stethoscope} title={ka.pets.conditionsEmpty} body={ka.pets.conditionsEmptyBody} />
+          <EmptyState art={PETS_ART.condition} title={ka.pets.conditionsEmpty} body={ka.pets.conditionsEmptyBody} />
         ) : (
           <>
             {active.map((row) => (
@@ -74,7 +75,7 @@ export default function PetConditionsScreen() {
                 subtitle={[statusLabel(row.status), basisLabel(row.reportedBasis), row.onsetOn ? formatCycleDateKa(row.onsetOn) : null]
                   .filter(Boolean)
                   .join(' · ')}
-                icon={Stethoscope}
+                art={PETS_ART.condition}
                 onPress={() => router.push(`/pets/${id}/conditions/${row.id}`)}
               />
             ))}
@@ -86,7 +87,7 @@ export default function PetConditionsScreen() {
                 subtitle={[ka.pets.conditionResolved, basisLabel(row.reportedBasis), row.resolvedOn ? formatCycleDateKa(row.resolvedOn) : null]
                   .filter(Boolean)
                   .join(' · ')}
-                icon={Stethoscope}
+                art={PETS_ART.condition}
                 onPress={() => router.push(`/pets/${id}/conditions/${row.id}`)}
               />
             ))}

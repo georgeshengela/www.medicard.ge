@@ -1,12 +1,13 @@
 import { tx } from '@/i18n/locale';
 import React, { useCallback, useRef, useState } from 'react';
-import { Pressable, ScrollView, Text, View } from 'react-native';
+import { Image, Pressable, ScrollView, Text, View } from 'react-native';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ChevronRight } from 'lucide-react-native';
 import { SymptomNavHeader } from '@/components/symptoms/SymptomNavHeader';
 import { ListRowsSkeleton } from '@/components/ui/Skeleton';
 import { useFigmaSymptoms } from '@/constants/figmaSymptomsLayout';
+import { EMPTY_ART } from '@/constants/appArt';
 import { ka } from '@/i18n/ka';
 import { localAccountId } from '@/lib/localAccount';
 import { useAuth } from '@/store/AuthContext';
@@ -96,7 +97,14 @@ export default function SymptomHistoryScreen() {
           <ListRowsSkeleton rows={5} />
         </View>
       ) : items.length === 0 ? (
-        <View style={{ flex: 1, padding: 24, justifyContent: 'center' }}>
+        <View style={{ flex: 1, padding: 24, justifyContent: 'center', alignItems: 'center' }}>
+          <Image
+            source={EMPTY_ART.symptoms}
+            resizeMode="contain"
+            accessible={false}
+            accessibilityIgnoresInvertColors
+            style={{ width: 110, height: 110, marginBottom: 12 }}
+          />
           <Text style={{ fontSize: 16, lineHeight: 26, color: T.textSecondary, textAlign: 'center' }}>{ka.symptoms.historyEmpty}</Text>
         </View>
       ) : (

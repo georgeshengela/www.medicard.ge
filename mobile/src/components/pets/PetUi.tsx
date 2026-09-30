@@ -1,5 +1,5 @@
 import React from 'react';
-import { ActivityIndicator, Pressable, Text, View, type ViewProps } from 'react-native';
+import { ActivityIndicator, Image, Pressable, Text, View, type ImageSourcePropType, type ViewProps } from 'react-native';
 import { ChevronRight, PawPrint, type LucideIcon } from 'lucide-react-native';
 import { Input } from '@/components/ui/Input';
 import { useIsDark, useThemeColors } from '@/theme/colors';
@@ -31,9 +31,9 @@ export function PetIntro({ title, body, eyebrow, icon: Icon = PawPrint }: { titl
   const c = useThemeColors();
   return <View style={{ gap: 8, paddingVertical: 4 }}><View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}><Icon size={16} color={c.primary200} /><PetText size={11} bold color={c.primary100}>{eyebrow ?? 'MEDICARD · PETS'}</PetText></View><PetText size={26} bold>{title}</PetText><PetText size={14} muted>{body}</PetText></View>;
 }
-export function PetAction({ title, body, icon: Icon, onPress, compact = false }: { title: string; body: string; icon: LucideIcon; onPress: () => void; compact?: boolean }) {
+export function PetAction({ title, body, icon: Icon, art, onPress, compact = false }: { title: string; body: string; icon: LucideIcon; art?: ImageSourcePropType; onPress: () => void; compact?: boolean }) {
   const c = useThemeColors();
-  return <PetPanel onPress={onPress} style={{ flex: compact ? 1 : undefined }}><View style={{ gap: 12, flexDirection: compact ? 'column' : 'row', alignItems: compact ? 'flex-start' : 'center' }}><View style={{ width: 42, height: 42, borderRadius: 15, backgroundColor: c.accent100, alignItems: 'center', justifyContent: 'center' }}><Icon size={22} color={c.primary100} /></View><View style={{ flex: compact ? undefined : 1, gap: 4 }}><PetText bold>{title}</PetText><PetText size={12} muted>{body}</PetText></View>{compact ? null : <ChevronRight size={17} color={c.text300} />}</View></PetPanel>;
+  return <PetPanel onPress={onPress} style={{ flex: compact ? 1 : undefined }}><View style={{ gap: 12, flexDirection: compact ? 'column' : 'row', alignItems: compact ? 'flex-start' : 'center' }}>{art ? <Image source={art} resizeMode="contain" accessibilityIgnoresInvertColors style={{ width: 46, height: 46 }} /> : <View style={{ width: 42, height: 42, borderRadius: 15, backgroundColor: c.accent100, alignItems: 'center', justifyContent: 'center' }}><Icon size={22} color={c.primary100} /></View>}<View style={{ flex: compact ? undefined : 1, gap: 4 }}><PetText bold>{title}</PetText><PetText size={12} muted>{body}</PetText></View>{compact ? null : <ChevronRight size={17} color={c.text300} />}</View></PetPanel>;
 }
 export function PetLoading() { const c = useThemeColors(); return <View style={{ flex: 1, padding: 16, gap: 18, backgroundColor: c.bg100 }} accessibilityLabel={tx('იტვირთება', 'Loading')}><Bone height={150} radius={24} /><Bone height={92} radius={24} /><Bone height={92} radius={24} /></View>; }
 export function usePetStackOptions() {
