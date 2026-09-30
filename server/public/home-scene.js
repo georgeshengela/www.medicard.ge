@@ -390,6 +390,13 @@ function start() {
     { id: 'tube', size: 1.6, rx: 0.1, rz: -0.32 },
     { id: 'tea', size: 1.3, rx: 0.4, rz: 0.08, ry: -0.6 },
   ];
+  // Their own studio light: a warm key from the upper left and a cool teal rim from behind
+  const propKey = new THREE.DirectionalLight(0xfff0dc, 2.4);
+  propKey.position.set(-7, 6, 5);
+  const propRim = new THREE.DirectionalLight(0xa7f3e4, 2.2);
+  propRim.position.set(6, 2.5, -7);
+  scene.add(propKey, propRim);
+
   const propAnchor = new THREE.Group();
   propAnchor.position.set(-BW * 0.66, -BH * 0.2, 1.1);
   rig.add(propAnchor);
@@ -426,12 +433,19 @@ function start() {
   function loadProp(p) {
     if (p.loading) return;
     p.loading = true;
-    gltf.then((l) => l.loadAsync(`/models/${p.id}.glb?v=1`)).then((g) => {
+    gltf.then((l) => l.loadAsync(`/models/${p.id}.glb?v=2`)).then((g) => {
       const obj = g.scene;
       obj.traverse((o) => {
         if (!o.isMesh) return;
-        o.material.envMapIntensity = 1.1;
-        if (o.material.map) o.material.map.anisotropy = Math.min(8, maxAniso);
+        const m = o.material;
+        if (m.map) m.map.anisotropy = Math.min(8, maxAniso);
+        // Generated albedo comes out pale and the tone mapper flattens it further: restore colour and contrast
+        m.onBeforeCompile = (sh) => {
+          sh.fragmentShader = sh.fragmentShader.replace('#include <map_fragment>', `#include <map_fragment>
+            float lum = dot(diffuseColor.rgb, vec3(0.2126, 0.7152, 0.0722));
+            diffuseColor.rgb = max(mix(vec3(lum), diffuseColor.rgb, 1.45), 0.0);
+            diffuseColor.rgb = pow(diffuseColor.rgb, vec3(1.12));`);
+        };
       });
       // Centre on its bounding box and scale the longest side to p.size
       const box = new THREE.Box3().setFromObject(obj);
@@ -654,12 +668,14 @@ function start() {
         if (o.isMesh) {
           o.material.transparent = k < 0.999;
           o.material.opacity = k;
-          o.material.envMapIntensity = lerp(1.1, 0.55, S.night);
+          o.material.envMapIntensity = lerp(0.6, 0.35, S.night);
         }
       });
       shadowAmt = Math.max(shadowAmt, k);
     });
     propShadow.material.opacity = shadowAmt * lerp(0.9, 0.2, S.night);
+    propKey.intensity = shadowAmt * lerp(2.4, 0.7, S.night);
+    propRim.intensity = shadowAmt * lerp(2.2, 3.2, S.night);
 
     dustMat.uniforms.uTime.value = time;
     dustMat.uniforms.uNight.value = S.night;
