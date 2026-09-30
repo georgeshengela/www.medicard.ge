@@ -2,7 +2,7 @@ import '../global.css';
 import '@/lib/bootGuard';
 
 import React, { useEffect, useRef, useState } from 'react';
-import { LogBox, Pressable, Settings, Text, View, useColorScheme } from 'react-native';
+import { LogBox, Settings, Text, View } from 'react-native';
 import { tx } from '@/i18n/locale';
 
 // Expo SDK 57 treats sound: 'default' as a missing custom file in the native client.
@@ -17,6 +17,7 @@ LogBox.ignoreLogs([
 ]);
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { Stack, useGlobalSearchParams, useRouter, useSegments, type ErrorBoundaryProps } from 'expo-router';
+import { MaintenanceScreen } from '@/components/ui/MaintenanceScreen';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { QueryClientProvider } from '@tanstack/react-query';
@@ -456,7 +457,6 @@ function AppShell() {
  * alive, so without this a crash leaves a frozen screen (or the splash) with no way out.
  */
 export function ErrorBoundary({ error, retry }: ErrorBoundaryProps) {
-  const dark = useColorScheme() === 'dark';
   useEffect(() => {
     SplashScreen.hideAsync().catch(() => undefined);
     console.error('[Medicard] screen error:', error);
@@ -467,25 +467,7 @@ export function ErrorBoundary({ error, retry }: ErrorBoundaryProps) {
       /* diagnostics only */
     }
   }, [error]);
-  return (
-    <View style={{ flex: 1, justifyContent: 'center', padding: 28, backgroundColor: dark ? '#030712' : '#FFFFFF' }}>
-      <View style={{ width: '100%', maxWidth: 400, alignSelf: 'center', gap: 14 }}>
-        <Text accessibilityRole="header" style={{ fontSize: 21, fontWeight: '700', color: dark ? '#FFFFFF' : '#111827' }}>
-          {tx('რაღაც ვერ ჩაიტვირთა', "Something didn't load")}
-        </Text>
-        <Text style={{ fontSize: 14, lineHeight: 22, color: dark ? '#D1D5DB' : '#4B5563' }}>
-          {tx('შენი მონაცემები უსაფრთხოდაა. სცადე თავიდან — თუ ისევ განმეორდა, დახურე და ხელახლა გახსენი აპი.', 'Your data is safe. Try again — if it happens again, close and reopen the app.')}
-        </Text>
-        <Pressable
-          accessibilityRole="button"
-          onPress={() => void retry()}
-          style={{ marginTop: 6, height: 50, borderRadius: 14, alignItems: 'center', justifyContent: 'center', backgroundColor: '#0F766E' }}
-        >
-          <Text style={{ fontSize: 16, fontWeight: '700', color: '#FFFFFF' }}>{tx('თავიდან ცდა', 'Try again')}</Text>
-        </Pressable>
-      </View>
-    </View>
-  );
+  return <MaintenanceScreen onRetry={() => void retry()} />;
 }
 
 export default function RootLayout() {
