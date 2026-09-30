@@ -19,8 +19,25 @@ STORY_TIME = '19:30'
 LI_TIME = '09:30'
 
 
+LINKS = (
+    '📲 ჩამოტვირთე უფასოდ iPhone-ზე:',
+    APP,
+    '🌐 საიტი და ვებ-ვერსია: https://medicard.ge',
+    '🤖 Android — სულ მალე',
+)
+LINKS_EN = '📲 Download free on iPhone: ' + APP + '\n🌐 Website & web app: https://medicard.ge'
+
+
 def cap(*lines, tags=TAGS):
-    return '\n'.join(lines + ('', '📲 ლინკი ბიოში · უფასოდ App Store-ში', '', tags))
+    return '\n'.join(lines + ('',) + LINKS + ('', tags))
+
+
+def with_links_en(text):
+    """LinkedIn: the links go in the post itself, right before the hashtags."""
+    blocks = text.split('\n\n')
+    if blocks and blocks[-1].startswith('#'):
+        return '\n\n'.join(blocks[:-1] + [LINKS_EN, blocks[-1]])
+    return text + '\n\n' + LINKS_EN
 
 
 DAYS = [
@@ -58,8 +75,6 @@ DAYS = [
              '• MEDIRUN, a game that gets you outside to explore your city on foot',
              '',
              "Free, and private by design: we never sell health data.",
-             '',
-             'Link in the first comment.',
              '',
              '#HealthTech #AI #DigitalHealth #Georgia #Startup']))),
 
@@ -510,7 +525,7 @@ DAYS = [
              '',
              'For the many foreigners who live and work in Georgia, that means one app for everyday health, with local pharmacies and local food.',
              '',
-             'Know someone who should try it? Link in the first comment.',
+             'Know someone who should try it?',
              '',
              '#HealthTech #Georgia #Expats #DigitalHealth']))),
 
@@ -549,6 +564,7 @@ def build():
         items.append(story)
         if 'linkedin' in day:
             li = dict(day['linkedin'])
+            li['text'] = with_links_en(li['text'])
             li.update(slot=f'd{n:02d}-linkedin', kind='POST', networks=['linkedin'], date=str(date), time=LI_TIME,
                       pillar=day['pillar'], firstComment=f'📲 iPhone: {APP}\n💻 Web: https://medicard.ge/app')
             li.setdefault('image', f'd{n:02d}-linkedin.jpg')
