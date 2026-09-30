@@ -23,7 +23,7 @@
   <link rel="preload" href="/fonts/firago/FiraGO-ExtraBold.woff2" as="font" type="font/woff2" crossorigin />
   <link rel="stylesheet" href="/site-nav.css?v=8" />
   <link rel="stylesheet" href="/home.css?v=4" />
-  <link rel="stylesheet" href="/pages.css?v=1" />
+  <link rel="stylesheet" href="/pages.css?v=2" />
 </head>
 <body>
   <a class="skip" href="#main" data-en="Skip to content">გადადი შინაარსზე</a>
@@ -50,22 +50,22 @@
         <div>
           <h2 class="display" data-en="What’s it about?">რაზე გვწერ?</h2>
           <div class="ct-topics" id="topics">
-            <button type="button" class="ct-topic" aria-pressed="true" data-topic="დახმარება აპში">
+            <button type="button" class="ct-topic" aria-pressed="true" data-topic="app">
               <span class="ab-ic" aria-hidden="true"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="2.5" width="12" height="19" rx="3"/><path d="M11 18.5h2"/></svg></span>
               <b data-en="Help with the app">დახმარება აპში</b>
               <span data-en="Your account, signing in, a bug or a feature you can’t find.">ანგარიში, შესვლა, შეცდომა ან ფუნქცია, რომელიც ვერ იპოვე.</span>
             </button>
-            <button type="button" class="ct-topic" aria-pressed="false" data-topic="მონაცემები და კონფიდენციალურობა">
+            <button type="button" class="ct-topic" aria-pressed="false" data-topic="privacy">
               <span class="ab-ic" aria-hidden="true"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 5 6v5c0 4.5 3 8.3 7 10 4-1.7 7-5.5 7-10V6Z"/><path d="m9 12 2 2 4-4"/></svg></span>
               <b data-en="Data and privacy">მონაცემები და კონფიდენციალურობა</b>
               <span data-en="A copy of your data, corrections or deletion, consents.">მონაცემების ასლი, შესწორება ან წაშლა, თანხმობები.</span>
             </button>
-            <button type="button" class="ct-topic" aria-pressed="false" data-topic="პარტნიორობა">
+            <button type="button" class="ct-topic" aria-pressed="false" data-topic="partnership">
               <span class="ab-ic" aria-hidden="true"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m11 17 2 2a1.4 1.4 0 0 0 2-2"/><path d="m14 14 2.5 2.5a1.4 1.4 0 0 0 2-2l-3.9-3.9a2 2 0 0 0-2.8 0l-.9.9a1.4 1.4 0 0 1-2-2l2.8-2.8a4.2 4.2 0 0 1 5.3-.5l.4.2 2.6-.9"/><path d="m21 3-.9 7-1.6 1.6"/><path d="m3 3 .9 7 6.6 6.6a1.4 1.4 0 0 0 2-2"/><path d="M3 4h8"/></svg></span>
               <b data-en="Partnerships">პარტნიორობა</b>
               <span data-en="Clinics, pharmacies, fitness clubs and press.">კლინიკები, აფთიაქები, ფიტნეს-კლუბები და პრესა.</span>
             </button>
-            <button type="button" class="ct-topic" aria-pressed="false" data-topic="ტრენერისთვის (MEDI COACH)">
+            <button type="button" class="ct-topic" aria-pressed="false" data-topic="coach">
               <span class="ab-ic" aria-hidden="true"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6.5 6.5v11"/><path d="M17.5 6.5v11"/><path d="M3 9v6"/><path d="M21 9v6"/><path d="M6.5 12h11"/></svg></span>
               <b data-en="For trainers">ტრენერებისთვის</b>
               <span data-en="MEDI COACH — verification and your workspace.">MEDI COACH — ვერიფიკაცია და სამუშაო სივრცე.</span>
@@ -80,25 +80,40 @@
         <form class="ct-form" id="compose" novalidate>
           <div class="ct-field">
             <label for="ct-name" data-en="Name">სახელი</label>
-            <input id="ct-name" name="name" autocomplete="name" placeholder="მაგ. ნინო" data-en-placeholder="e.g. Nino" />
+            <input id="ct-name" name="name" autocomplete="name" maxlength="100" required placeholder="მაგ. ნინო" data-en-placeholder="e.g. Nino" />
+          </div>
+          <div class="ct-field">
+            <label for="ct-email" data-en="Your email">შენი ელფოსტა</label>
+            <input id="ct-email" name="email" type="email" inputmode="email" autocomplete="email" maxlength="254" required placeholder="name@example.com" />
+          </div>
+          <div class="ct-hp" aria-hidden="true">
+            <label for="ct-website">Website</label>
+            <input id="ct-website" name="website" tabindex="-1" autocomplete="off" />
           </div>
           <div class="ct-field">
             <label for="ct-topic" data-en="Topic">თემა</label>
             <select id="ct-topic" name="topic">
-              <option value="დახმარება აპში" data-en="Help with the app">დახმარება აპში</option>
-              <option value="მონაცემები და კონფიდენციალურობა" data-en="Data and privacy">მონაცემები და კონფიდენციალურობა</option>
-              <option value="პარტნიორობა" data-en="Partnerships">პარტნიორობა</option>
-              <option value="ტრენერისთვის (MEDI COACH)" data-en="For trainers (MEDI COACH)">ტრენერისთვის (MEDI COACH)</option>
-              <option value="სხვა" data-en="Other">სხვა</option>
+              <option value="app" data-en="Help with the app">დახმარება აპში</option>
+              <option value="privacy" data-en="Data and privacy">მონაცემები და კონფიდენციალურობა</option>
+              <option value="partnership" data-en="Partnerships">პარტნიორობა</option>
+              <option value="coach" data-en="For trainers (MEDI COACH)">ტრენერისთვის (MEDI COACH)</option>
+              <option value="other" data-en="Other">სხვა</option>
             </select>
           </div>
           <div class="ct-field">
             <label for="ct-message" data-en="Message">წერილი</label>
-            <textarea id="ct-message" name="message" placeholder="მოგვიყევი მოკლედ — რა მოხდა ან რა გაინტერესებს." data-en-placeholder="Tell us briefly what happened or what you’d like to know."></textarea>
+            <textarea id="ct-message" name="message" maxlength="5000" required placeholder="მოგვიყევი მოკლედ — რა მოხდა ან რა გაინტერესებს." data-en-placeholder="Tell us briefly what happened or what you’d like to know."></textarea>
           </div>
-          <button class="btn btn-solid ct-send" type="submit" data-en="Open in your email app">გახსენი ელფოსტაში</button>
-          <p class="ct-hint" data-en="This form sends nothing to our server — your email app opens with the message ready. Please don’t include health details in your email.">ეს ფორმა ჩვენს სერვერზე არაფერს აგზავნის — გაიხსნება შენი ელფოსტის აპი მზა წერილით. ჯანმრთელობის დეტალები წერილში ნუ ჩაწერ.</p>
+          <p class="ct-error" id="ct-error" role="alert" hidden></p>
+          <button class="btn btn-solid ct-send" type="submit" id="ct-send" data-en="Send message">გაგზავნა</button>
+          <p class="ct-hint" data-en="The message goes to support@medicard.ge and we reply to the email above. Please don’t include health details.">წერილი მოდის support@medicard.ge-ზე და პასუხს ზემოთ მითითებულ ელფოსტაზე მიიღებ. ჯანმრთელობის დეტალები ნუ ჩაწერ.</p>
         </form>
+        <div class="ct-form ct-sent" id="ct-sent" hidden tabindex="-1">
+          <span class="ab-ic" aria-hidden="true"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 5 5L20 7"/></svg></span>
+          <h2 class="display" data-en="Message sent">წერილი გაიგზავნა</h2>
+          <p data-en="Thank you! We’ll reply to your email, usually within one working day.">მადლობა! პასუხს შენს ელფოსტაზე მიიღებ, ჩვეულებრივ ერთ სამუშაო დღეში.</p>
+          <button type="button" class="btn ct-again" id="ct-again" data-en="Write another">ახალი წერილი</button>
+        </div>
       </div>
     </section>
 
@@ -178,14 +193,67 @@
       });
       select.addEventListener('change', function () { pick(select.value); });
 
-      document.getElementById('compose').addEventListener('submit', function (e) {
+      // Sends to /api/contact → a thread in admin #/support (support@medicard.ge inbox).
+      var form = document.getElementById('compose');
+      var sent = document.getElementById('ct-sent');
+      var sendBtn = document.getElementById('ct-send');
+      var errorBox = document.getElementById('ct-error');
+      var EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+      function showError(text, field) {
+        errorBox.textContent = text;
+        errorBox.hidden = !text;
+        if (field) field.focus();
+      }
+      form.addEventListener('submit', function (e) {
         e.preventDefault();
-        var name = document.getElementById('ct-name').value.trim();
-        var message = document.getElementById('ct-message').value.trim();
-        var subject = 'MEDICARD — ' + select.options[select.selectedIndex].text;
-        var body = (message || '') + (name ? '\n\n— ' + name : '');
-        location.href = 'mailto:' + EMAIL + '?subject=' + encodeURIComponent(subject) + '&body=' + encodeURIComponent(body);
-        say(T('იხსნება ელფოსტის აპი', 'Opening your email app'));
+        var nameEl = document.getElementById('ct-name');
+        var emailEl = document.getElementById('ct-email');
+        var messageEl = document.getElementById('ct-message');
+        var payload = {
+          topic: select.value,
+          name: nameEl.value.trim(),
+          email: emailEl.value.trim(),
+          message: messageEl.value.trim(),
+          website: document.getElementById('ct-website').value,
+        };
+        if (!payload.name) return showError(T('ჩაწერე სახელი.', 'Please enter your name.'), nameEl);
+        if (!EMAIL_RE.test(payload.email)) return showError(T('ჩაწერე სწორი ელფოსტა, რომ გიპასუხოთ.', 'Please enter a valid email so we can reply.'), emailEl);
+        if (payload.message.length < 5) return showError(T('დაწერე წერილი.', 'Please write your message.'), messageEl);
+        showError('');
+        sendBtn.disabled = true;
+        sendBtn.textContent = T('იგზავნება…', 'Sending…');
+        fetch('/api/contact', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'X-Medicard-Lang': document.documentElement.lang === 'en' ? 'en' : 'ka' },
+          body: JSON.stringify(payload),
+        })
+          .then(function (res) {
+            return res.json().catch(function () { return {}; }).then(function (data) {
+              if (!res.ok) throw new Error(data.error || T('წერილი ვერ გაიგზავნა. სცადე თავიდან.', 'The message could not be sent. Please try again.'));
+            });
+          })
+          .then(function () {
+            form.reset();
+            pick(select.value);
+            form.hidden = true;
+            sent.hidden = false;
+            sent.focus();
+          })
+          .catch(function (err) {
+            var offline = err instanceof TypeError;
+            showError(offline
+              ? T('კავშირი ვერ დამყარდა. სცადე თავიდან ან მოგვწერე ' + EMAIL + '.', 'Could not connect. Try again or email ' + EMAIL + '.')
+              : err.message);
+          })
+          .then(function () {
+            sendBtn.disabled = false;
+            sendBtn.textContent = T('გაგზავნა', 'Send message');
+          });
+      });
+      document.getElementById('ct-again').addEventListener('click', function () {
+        sent.hidden = true;
+        form.hidden = false;
+        document.getElementById('ct-message').focus();
       });
     })();
   </script>

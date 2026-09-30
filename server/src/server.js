@@ -45,6 +45,7 @@ import { capacityMiddleware, startCapacityMonitor, stopCapacityMonitor } from '.
 import { adminDirectorRouter, directorRouter } from './routes/director.routes.js';
 import { startDirectorWorkers } from './lib/director/supportAgent.js';
 import { adminEmailRouter, emailWebhookRouter, unsubscribeRouter } from './routes/email.routes.js';
+import { contactRouter } from './routes/contact.routes.js';
 import { startEmailWorkers } from './lib/email/campaigns.js';
 import { adminSupportRouter } from './routes/support.routes.js';
 import { startSupportWorkers } from './lib/support/inbound.js';
@@ -334,6 +335,7 @@ app.use('/api/admin/trainers', adminTrainerRouter);
 app.use('/api/identity', identityRouter);
 app.use('/api/admin/referrals', adminReferralRouter);
 app.use('/api/funnel', funnelRouter);
+app.use('/api/contact', contactRouter);
 app.use('/api/admin/funnel', adminFunnelRouter);
 app.use('/api/admin/capacity', adminCapacityRouter);
 app.use('/api/admin/errors', adminErrorsRouter);

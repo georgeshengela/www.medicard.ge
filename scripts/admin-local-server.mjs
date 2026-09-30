@@ -12,5 +12,7 @@ process.env.COMMUNITY_ENABLED = 'false';
 process.env.PRICE_DROP_ALERTS = 'false';
 process.env.REFERRAL_REWARDS_DISABLED = 'true';
 process.env.PUSH_CAMPAIGNS_DISABLED = 'true';
+process.env.EMAIL_WORKERS_DISABLED = 'true';
+process.env.SUPPORT_WORKERS_DISABLED = 'true';
 if (process.env.NODE_ENV === 'production') process.env.NODE_ENV = 'development';
 await import('../server/src/server.js');

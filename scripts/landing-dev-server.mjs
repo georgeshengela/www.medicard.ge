@@ -1,5 +1,8 @@
 // Local preview of server/public with the same clean URLs as production (server/src/server.js):
 //   node scripts/landing-dev-server.mjs [port]   → http://localhost:4374/
+// /api/* is forwarded to [apiBase] / LANDING_API (default https://medicard.ge; e.g.
+// http://localhost:4390 for scripts/admin-local-server.mjs) so forms such as /contact work.
+//   node scripts/landing-dev-server.mjs 4375 http://localhost:4390
 import http from 'node:http';
 import { createReadStream, existsSync, statSync } from 'node:fs';
 import path from 'node:path';
@@ -27,7 +30,29 @@ function resolve(urlPath) {
   return file;
 }
 
+const API = (process.argv[3] || process.env.LANDING_API || 'https://medicard.ge').replace(/\/+$/, '');
+
+async function proxyApi(req, res) {
+  const chunks = [];
+  for await (const c of req) chunks.push(c);
+  const headers = {};
+  for (const h of ['content-type', 'accept', 'authorization', 'x-medicard-lang']) if (req.headers[h]) headers[h] = req.headers[h];
+  try {
+    const upstream = await fetch(API + req.url, {
+      method: req.method,
+      headers,
+      body: ['GET', 'HEAD'].includes(req.method) ? undefined : Buffer.concat(chunks),
+    });
+    res.writeHead(upstream.status, { 'Content-Type': upstream.headers.get('content-type') || 'application/json' });
+    res.end(Buffer.from(await upstream.arrayBuffer()));
+  } catch (error) {
+    res.writeHead(502, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ error: `API proxy: ${error.message}` }));
+  }
+}
+
 http.createServer((req, res) => {
+  if (req.url.startsWith('/api/')) return void proxyApi(req, res);
   const rel = resolve(new URL(req.url, 'http://x').pathname);
   const full = path.join(ROOT, rel);
   if (!full.startsWith(ROOT) || !existsSync(full) || statSync(full).isDirectory()) {

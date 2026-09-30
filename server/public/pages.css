@@ -141,6 +141,15 @@
 .ct-field input:focus, .ct-field select:focus, .ct-field textarea:focus { outline: none; border-color: var(--teal); background: #fff; }
 .ct-hint { color: var(--ink-2); font-size: 14px; margin-top: 12px; }
 .ct-send { width: 100%; border: 0; cursor: pointer; }
+.ct-send:disabled { opacity: .6; cursor: progress; }
+.ct-hp { position: absolute; left: -10000px; width: 1px; height: 1px; overflow: hidden; }
+.ct-error { margin: 0 0 14px; padding: 12px 14px; border-radius: 14px; background: #FDECEE; color: #9F1D2F; font-size: 15px; line-height: 1.45; }
+.ct-form[hidden], .ct-error[hidden] { display: none; }
+.ct-sent { display: grid; gap: 12px; justify-items: start; align-content: start; outline: none; }
+.ct-sent .ab-ic { margin: 0; width: 52px; height: 52px; }
+.ct-sent h2 { margin: 4px 0 0; }
+.ct-sent p { margin: 0; color: var(--ink-2); font-size: 16px; line-height: 1.55; }
+.ct-again { margin-top: 8px; border: 1px solid var(--line, rgba(11, 43, 46, .15)); background: transparent; cursor: pointer; }
 
 .ct-links { background: #fff; padding: clamp(64px, 8vw, 100px) 0; }
 .ct-links-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
