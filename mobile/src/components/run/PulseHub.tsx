@@ -1,5 +1,6 @@
 import React,{useCallback,useMemo,useState} from 'react';
-import {Pressable,ScrollView,View} from 'react-native';
+import {Image,Pressable,ScrollView,View} from 'react-native';
+import Svg,{Defs,LinearGradient,Rect,Stop} from 'react-native-svg';
 import {useFocusEffect,useRouter} from 'expo-router';
 import * as Location from 'expo-location';
 import {ArrowLeft,ArrowUpRight,BookOpen,ChevronRight,Compass,Flame,Gauge,Gift,Landmark,MapPin,Mountain,Play,Route,Settings2,Target,Timer,Trees,Trophy,Volume2,Waves} from 'lucide-react-native';
@@ -19,8 +20,9 @@ import {useHeartbeat} from '@/lib/medipulsi/useHeartbeat';
 import {EMPTY_SIGNAL} from '@/lib/medipulsi/types';
 import {RunTargetSheet} from './RunTargetSheet';
 import {PulsePanels,type PulsePanel} from './PulsePanels';
-import {Action,Bar,Card,Copy,IconButton,RUN_CTA,Section,Tile,useRunInk} from './PulseUi';
-import {DiscoveryArtwork,MediRunLogo,PulseGlyph} from './PulseIdentity';
+import {Action,ArtTile,Bar,Card,Copy,IconButton,RUN_CTA,Section,useRunInk} from './PulseUi';
+import {MISSION_ART,RUN_GIFT,RUN_HERO,RUN_ICON} from './runArt';
+import {MediRunLogo,PulseGlyph} from './PulseIdentity';
 import {RouteThumb,WeekBars} from './RunVisuals';
 import { tx } from '@/i18n/locale';
 
@@ -63,10 +65,10 @@ export default function PulseHub(){
  const leave=()=>router.canGoBack()?router.back():router.replace('/(tabs)/home' as never);
  const choose=(id:string)=>{if(busy)return;setBusy(true);void getPulseClient().selectMission(id).catch(e=>setError((e as Error).message)).finally(()=>setBusy(false));};
  const recordTiles=[
-  records.longest&&{id:records.longest.id,icon:Route,value:formatKm(records.longest.distanceM,2),unit:tx('კმ', 'km'),label:tx('ყველაზე გრძელი', 'Longest')},
-  records.fastest&&{id:records.fastest.id,icon:Gauge,value:formatPace(records.fastest.paceSecPerKm),unit:tx('/კმ', '/km'),label:tx('საუკეთესო ტემპი', 'Best pace')},
-  records.longestTime&&{id:records.longestTime.id,icon:Timer,value:formatClock(records.longestTime.movingMs),unit:'',label:tx('ყველაზე ხანგრძლივი', 'Longest duration')},
- ].filter(Boolean) as {id:string;icon:typeof Route;value:string;unit:string;label:string}[];
+  records.longest&&{id:records.longest.id,art:RUN_ICON.route,value:formatKm(records.longest.distanceM,2),unit:tx('კმ', 'km'),label:tx('ყველაზე გრძელი', 'Longest')},
+  records.fastest&&{id:records.fastest.id,art:RUN_ICON.pace,value:formatPace(records.fastest.paceSecPerKm),unit:tx('/კმ', '/km'),label:tx('საუკეთესო ტემპი', 'Best pace')},
+  records.longestTime&&{id:records.longestTime.id,art:RUN_ICON.timer,value:formatClock(records.longestTime.movingMs),unit:'',label:tx('ყველაზე ხანგრძლივი', 'Longest duration')},
+ ].filter(Boolean) as {id:string;art:typeof RUN_HERO;value:string;unit:string;label:string}[];
  const shown=allWalks?history:history.slice(0,3);
 
  return <View style={{flex:1,backgroundColor:c.bg100}}><ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{paddingTop:insets.top+12,paddingBottom:insets.bottom+32,paddingHorizontal:HUB.gutter,gap:HUB.sectionGap}}>
@@ -86,7 +88,11 @@ export default function PulseHub(){
     <Copy bold size={27} style={{lineHeight:38,color:'#fff'}}>{streak>1?tx('რიტმს ნუ დაკარგავ.\nგზა გელოდება.','Keep the rhythm.\nYour path is waiting.'):tx('გარეთ ახალი\nამბავი იწყება.','A new story\nstarts outside.')}</Copy>
     <Copy size={13} style={{color:'#C5DADA'}}>{weekKm>0?tx(`ამ კვირაში უკვე ${weekKm.toFixed(1)} კმ გაიარე.`, `You’ve already walked ${weekKm.toFixed(1)} km this week.`):tx('გადადგი პირველი ნაბიჯი. დანარჩენს გზად აღმოაჩენ.', 'Take the first step. You’ll discover the rest along the way.')}</Copy>
    </View>
-   <View style={{marginTop:6}}><DiscoveryArtwork tone="spotlight" height={150}/></View>
+   <View style={{marginTop:6,height:176}}>
+    <Image source={RUN_HERO} accessibilityIgnoresInvertColors resizeMode="cover" style={{width:'100%',height:'100%'}}/>
+    {/* Melt the illustration into the card above and below. */}
+    <Svg pointerEvents="none" style={{position:'absolute',inset:0}} width="100%" height="100%" preserveAspectRatio="none" viewBox="0 0 10 10"><Defs><LinearGradient id="heroFade" x1="0" y1="0" x2="0" y2="1"><Stop offset="0" stopColor={HUB.spotlightBg} stopOpacity="1"/><Stop offset=".22" stopColor={HUB.spotlightBg} stopOpacity="0"/><Stop offset=".78" stopColor={HUB.spotlightBg} stopOpacity="0"/><Stop offset="1" stopColor={HUB.spotlightBg} stopOpacity="1"/></LinearGradient></Defs><Rect x="0" y="0" width="10" height="10" fill="url(#heroFade)"/></Svg>
+   </View>
    <View style={{padding:HUB.cardPad,paddingTop:4,gap:8}}>
     {active?<Pressable accessibilityRole="button" accessibilityLabel={tx(`აქტიური მისია ${active.name}, ${missionPercent(pulse.book,active)} პროცენტი`, `Active mission ${active.name}, ${missionPercent(pulse.book,active)} percent`)} onPress={()=>setPanel('missions')} style={{flexDirection:'row',alignItems:'center',gap:10,paddingHorizontal:12,paddingVertical:9,borderRadius:14,backgroundColor:'rgba(255,255,255,0.07)'}}>
      <Compass size={15} color="#99F6E4"/><Copy bold size={12} numberOfLines={1} style={{flex:1,color:'#fff'}}>{tx('მისია ·', 'Mission ·')} {active.name}</Copy><Copy bold size={12} style={{color:'#99F6E4'}}>{missionPercent(pulse.book,active)}%</Copy>
@@ -115,7 +121,7 @@ export default function PulseHub(){
 
   {recordTiles.length?<Section title={tx('შენი რეკორდები', 'Your records')}>
    <View style={{flexDirection:'row',gap:10}}>{recordTiles.map(r=><Pressable key={r.label} accessibilityRole="button" accessibilityLabel={`${r.label}: ${r.value} ${r.unit}`} onPress={()=>router.push(`/run/${r.id}` as never)} style={{flex:1}}>
-    <Card style={{padding:14,gap:10,minHeight:128}}><Tile icon={r.icon} size={36}/><View style={{gap:1}}><View style={{flexDirection:'row',alignItems:'baseline',gap:3}}><Copy bold size={18} numberOfLines={1} style={{fontVariant:['tabular-nums'],flexShrink:1}}>{r.value}</Copy>{r.unit?<Copy bold size={10} style={{color:c.primary100}}>{r.unit}</Copy>:null}</View><Copy muted size={11} numberOfLines={2}>{r.label}</Copy></View></Card>
+    <Card style={{padding:14,gap:10,minHeight:128}}><ArtTile source={r.art} size={44}/><View style={{gap:1}}><View style={{flexDirection:'row',alignItems:'baseline',gap:3}}><Copy bold size={18} numberOfLines={1} style={{fontVariant:['tabular-nums'],flexShrink:1}}>{r.value}</Copy>{r.unit?<Copy bold size={10} style={{color:c.primary100}}>{r.unit}</Copy>:null}</View><Copy muted size={11} numberOfLines={2}>{r.label}</Copy></View></Card>
    </Pressable>)}</View>
   </Section>:null}
 
@@ -123,19 +129,19 @@ export default function PulseHub(){
    <Card style={{gap:16}}>
     <View style={{flexDirection:'row',alignItems:'center',gap:14}}>
      <View style={{flex:1,gap:4}}><Copy bold size={16}>{tx('ქალაქი სავსეა ისტორიებით', 'The city is full of stories')}</Copy><Copy muted size={12}>{tx('პარკები, ტბები და ნაცნობი ადგილები ახალი თვალით.', 'Parks, lakes and familiar places through new eyes.')}</Copy></View>
-     <View style={{width:62,height:70,borderWidth:1.5,borderStyle:'dashed',borderColor:ink,borderRadius:18,alignItems:'center',justifyContent:'center',transform:[{rotate:'7deg'}]}}><Copy bold size={18} style={{color:ink,lineHeight:24}}>{stamps}</Copy><Copy size={10} muted>/ {missionCount}</Copy></View>
+     <View style={{width:84,height:84,alignItems:'center',justifyContent:'center'}}><Image source={RUN_ICON.passport} accessibilityIgnoresInvertColors resizeMode="contain" style={{width:84,height:84,transform:[{rotate:'-6deg'}]}}/><View style={{position:'absolute',right:-4,bottom:2,minWidth:44,paddingHorizontal:8,paddingVertical:3,borderRadius:12,backgroundColor:c.surface,borderWidth:1.5,borderColor:ink,alignItems:'center'}}><Copy bold size={12} style={{color:ink,fontVariant:['tabular-nums']}}>{stamps}/{missionCount}</Copy></View></View>
     </View>
     <Bar value={stamps/missionCount*100} label={tx('თბილისის პასპორტის შტამპები', 'Tbilisi passport stamps')}/>
     {next?<View style={{flexDirection:'row',alignItems:'center',gap:12,borderTopWidth:1,borderColor:c.bg200,paddingTop:14}}>
-     <Tile icon={MISSION_ICONS[next.m.icon]||MapPin}/>
+     <ArtTile source={MISSION_ART[next.m.id]||RUN_ICON.flag} size={58}/>
      <View style={{flex:1,minWidth:0}}><Copy muted size={11}>{next.d!=null?tx('შენთან ყველაზე ახლოს', 'Closest to you'):tx('შემდეგი აღმოჩენა', 'Next find')}</Copy><Copy bold size={14} numberOfLines={1}>{next.m.name}</Copy><Copy muted size={11}>{next.m.meters} {tx('მ ზონაში', 'm zone')}{next.d!=null?tx(` · ${away(next.d)} შენგან`, ` · ${away(next.d)} away`):''}</Copy></View>
      <Pressable accessibilityRole="button" accessibilityLabel={tx(`მისიის არჩევა: ${next.m.name}`, `Choose mission: ${next.m.name}`)} disabled={busy} onPress={()=>choose(next.m.id)} style={{minHeight:40,paddingHorizontal:14,borderRadius:14,backgroundColor:c.accent100,justifyContent:'center',opacity:busy?.6:1}}><Copy bold size={12} style={{color:c.primary100}}>{tx('არჩევა', 'Choose')}</Copy></Pressable>
     </View>:null}
    </Card>
   </Section>
 
-  <View style={{flexDirection:'row',gap:12}}>{[{id:'collection' as const,label:tx('კოლექცია', 'Collection'),detail:tx(`${pulse.snapshot?.claims.length||0} საჩუქარი · ${stamps} შტამპი`, `${pulse.snapshot?.claims.length||0} ${(pulse.snapshot?.claims.length||0)===1?'gift':'gifts'} · ${stamps} ${stamps===1?'stamp':'stamps'}`),icon:Gift,ink:'amber' as const},{id:'leaderboard' as const,label:tx('ლიდერბორდი', 'Leaderboard'),detail:pulse.snapshot?.leaderboardOptIn?tx('შენ სიაში ხარ', 'You’re on the list'):tx('ერთად უფრო შორს', 'Further together'),icon:Trophy,ink:'violet' as const}].map(item=><Pressable key={item.id} accessibilityRole="button" accessibilityLabel={`${item.label}. ${item.detail}`} onPress={()=>setPanel(item.id)} style={{flex:1}}>
-   <Card style={{minHeight:128,gap:10}}><View style={{flexDirection:'row',justifyContent:'space-between'}}><Tile icon={item.icon} ink={item.ink}/><ArrowUpRight size={17} color={c.text300}/></View><View><Copy bold size={15}>{item.label}</Copy><Copy muted size={11}>{item.detail}</Copy></View></Card>
+  <View style={{flexDirection:'row',gap:12}}>{[{id:'collection' as const,label:tx('კოლექცია', 'Collection'),detail:tx(`${pulse.snapshot?.claims.length||0} საჩუქარი · ${stamps} შტამპი`, `${pulse.snapshot?.claims.length||0} ${(pulse.snapshot?.claims.length||0)===1?'gift':'gifts'} · ${stamps} ${stamps===1?'stamp':'stamps'}`),art:RUN_GIFT,ink:'amber' as const},{id:'leaderboard' as const,label:tx('ლიდერბორდი', 'Leaderboard'),detail:pulse.snapshot?.leaderboardOptIn?tx('შენ სიაში ხარ', 'You’re on the list'):tx('ერთად უფრო შორს', 'Further together'),art:RUN_ICON.trophy,ink:'violet' as const}].map(item=><Pressable key={item.id} accessibilityRole="button" accessibilityLabel={`${item.label}. ${item.detail}`} onPress={()=>setPanel(item.id)} style={{flex:1}}>
+   <Card style={{minHeight:128,gap:10}}><View style={{flexDirection:'row',justifyContent:'space-between'}}><ArtTile source={item.art} ink={item.ink} size={52}/><ArrowUpRight size={17} color={c.text300}/></View><View><Copy bold size={15}>{item.label}</Copy><Copy muted size={11}>{item.detail}</Copy></View></Card>
   </Pressable>)}</View>
 
   {history.length?<Section title={tx('ბოლო გასეირნებები', 'Recent walks')} link={history.length>3?(allWalks?tx('ნაკლები', 'Less'):tx(`ყველა · ${history.length}`, `All · ${history.length}`)):undefined} onLink={()=>setAllWalks(v=>!v)}>

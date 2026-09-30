@@ -1,5 +1,5 @@
 import React,{useEffect,useState} from 'react';
-import {ActivityIndicator,Keyboard,KeyboardAvoidingView,Platform,Pressable,ScrollView,Text,View,type TextStyle,type ViewStyle} from 'react-native';
+import {ActivityIndicator,Image,Keyboard,KeyboardAvoidingView,Platform,Pressable,ScrollView,Text,View,type ImageSourcePropType,type TextStyle,type ViewStyle} from 'react-native';
 import {ChevronDown,X,type LucideIcon} from 'lucide-react-native';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {APP_MODAL_PROPS,APP_MODAL_OVERLAY, Modal } from '@/components/ui/appModal';
@@ -23,6 +23,9 @@ export function Section({title,link,onLink,children,style}:{title:string;link?:s
 
 /** 42px icon tile tinted with its ink. */
 export function Tile({icon:Icon,ink='teal',size=HUB.tile}:{icon:LucideIcon;ink?:HubInk;size?:number}){const dark=useIsDark(),hex=hubInk(ink,dark);return <View style={{width:size,height:size,borderRadius:HUB.tileRadius,backgroundColor:hubTint(hex,dark),alignItems:'center',justifyContent:'center'}}><Icon size={Math.round(size*.5)} color={hex} strokeWidth={1.9}/></View>;}
+
+/** Tile holding a generated 3D artwork instead of a line icon (MEDIRUN art, runArt.ts). */
+export function ArtTile({source,size=HUB.tile,ink='teal',bare=false}:{source:ImageSourcePropType;size?:number;ink?:HubInk;bare?:boolean}){const dark=useIsDark(),hex=hubInk(ink,dark);return <View style={{width:size,height:size,borderRadius:HUB.tileRadius,backgroundColor:bare?'transparent':hubTint(hex,dark),alignItems:'center',justifyContent:'center'}}><Image source={source} accessibilityIgnoresInvertColors resizeMode="contain" style={{width:size*1.08,height:size*1.08}}/></View>;}
 
 export function useRunInk(ink:HubInk='teal'){return hubInk(ink,useIsDark());}
 

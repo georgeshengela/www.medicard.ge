@@ -7,7 +7,8 @@ import {distance} from '@/lib/medipulsi/core/engine';
 import type {PulseSettings} from '@/lib/medipulsi/types';
 import {useThemeColors} from '@/theme/colors';
 import {useTheme} from '@/store/ThemeContext';
-import {Action,Bar,Card,Copy,RUN_CTA,Segmented,Sheet,Tile,useRunInk} from './PulseUi';
+import {Action,ArtTile,Bar,Card,Copy,RUN_CTA,Segmented,Sheet,Tile,useRunInk} from './PulseUi';
+import {MISSION_ART} from './runArt';
 import {PulseCollection} from './PulseCollection';
 import {PulseNicknameField} from './PulseNicknameField';
 import { tx } from '@/i18n/locale';
@@ -40,7 +41,7 @@ function MissionCard({m,view,busy,onSelect}:{m:Mission;view:View_;busy:boolean;o
  const km=view.journey.accuracy<=25?distance(view.journey.position,m.center)/1000:null;
  return <Card style={selected?{borderWidth:1.5,borderColor:'#14B8A6'}:undefined}>
   <Pressable accessibilityRole="button" accessibilityState={{expanded:open}} accessibilityLabel={tx(`${m.name}, ${percent} პროცენტი`, `${m.name}, ${percent} percent`)} onPress={()=>setOpen(v=>!v)} style={{flexDirection:'row',alignItems:'center',gap:12}}>
-   <Tile icon={done?Check:Icon} ink={done?'green':'teal'}/>
+   {MISSION_ART[m.id]?<View><ArtTile source={MISSION_ART[m.id]} ink={done?'green':'teal'} size={60}/>{done?<View style={{position:'absolute',right:-4,bottom:-4,width:22,height:22,borderRadius:11,backgroundColor:c.success,borderWidth:2,borderColor:c.surface,alignItems:'center',justifyContent:'center'}}><Check size={12} color="#fff" strokeWidth={3}/></View>:null}</View>:<Tile icon={done?Check:Icon} ink={done?'green':'teal'}/>}
    <View style={{flex:1,minWidth:0}}><Copy bold size={15} numberOfLines={1}>{m.name}</Copy><Copy muted size={11}>{m.meters} {tx('მ · მინ.', 'm · min.')} {Math.ceil(m.seconds/60)} {tx('წთ', 'min')}{km!=null?tx(` · ${km<1?Math.round(km*1000)+' მ':km.toFixed(1)+' კმ'} შენგან`, ` · ${km<1?Math.round(km*1000)+' m':km.toFixed(1)+' km'} away`):''}</Copy></View>
    {selected?<View style={{paddingHorizontal:8,paddingVertical:3,borderRadius:8,backgroundColor:c.accent100}}><Copy bold size={10} style={{color:c.primary100}}>{tx('აქტიური', 'Active')}</Copy></View>:done?<Copy bold size={11} style={{color:c.success}}>{tx('შენია', 'Yours')}</Copy>:<Copy bold size={12} style={{color:percent?ink:c.text300}}>{percent}%</Copy>}
    {open?<ChevronUp size={18} color={c.text300}/>:<ChevronDown size={18} color={c.text300}/>}
