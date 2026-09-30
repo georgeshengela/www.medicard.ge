@@ -1,0 +1,386 @@
+[
+{
+"slot": "d01-feed",
+"date": "2026-10-01T10:00:00+04:00",
+"info": "{\"autoPublish\": true, \"draft\": false, \"descendants\": [], \"hasNotReadNotes\": false, \"shortener\": false, \"smartLinkData\": {\"ids\": []}, \"media\": [\"https://medicard.ge/press/launch-feed.jpg\"], \"mediaAltText\": [], \"publicationDate\": {\"dateTime\": \"2026-10-01T10:00:00\", \"timezone\": \"Asia/Tbilisi\"}, \"text\": \"✨ MEDICARD AI უკვე App Store-შია! ✨\\n\\nწლების განმავლობაში ჯანმრთელობა გაფანტული გვქონდა: ანალიზის ფურცელი უჯრაში, წამლის შეხსენება ერთ აპში, კვება მეორეში, ციკლი მესამეში… და თითქმის ყველა ინგლისურად.\\n\\nდღეს ეს მთავრდება 🇬🇪\\n\\n🤖 Medi — ჰკითხე ტექსტით ან ხმით\\n💊 წამლის შეხსენებები\\n🔬 ანალიზები გასაგებ ენაზე\\n🥗 კვება ფოტოთი და ბარკოდით\\n🌸 ციკლის დღიური\\n🏃 MEDIRUN — გადი გარეთ და აღმოაჩინე შენი ქალაქი\\n\\n🔒 შენი ჯანმრთელობის მონაცემებს არასდროს ვყიდით.\\n🆓 ყველა ფუნქცია უფასოა.\\n\\nMedi არ ცვლის ექიმს — საჭიროებისას მიმართე სპეციალისტს.\\n\\n📲 ლინკი ბიოში · უფასოდ App Store-ში\\n\\n#MEDICARD #Medi #ჯანმრთელობა #საქართველო\", \"firstCommentText\": \"📲 iPhone: https://apps.apple.com/app/id6812517519\\n💻 ვებ-ვერსია: https://medicard.ge/app\\n🤖 Android — სულ მალე\", \"providers\": [{\"network\": \"facebook\"}, {\"network\": \"instagram\"}], \"facebookData\": {\"type\": \"POST\"}, \"instagramData\": {\"type\": \"POST\", \"isAiGenerated\": true}}",
+"url": "https://medicard.ge/press/launch-feed.jpg"
+},
+{
+"slot": "d01-story",
+"date": "2026-10-01T19:30:00+04:00",
+"info": "{\"autoPublish\": true, \"draft\": false, \"descendants\": [], \"hasNotReadNotes\": false, \"shortener\": false, \"smartLinkData\": {\"ids\": []}, \"media\": [\"https://medicard.ge/press/launch-story.jpg\"], \"mediaAltText\": [], \"publicationDate\": {\"dateTime\": \"2026-10-01T19:30:00\", \"timezone\": \"Asia/Tbilisi\"}, \"providers\": [{\"network\": \"facebook\"}, {\"network\": \"instagram\"}], \"facebookData\": {\"type\": \"STORY\"}, \"instagramData\": {\"type\": \"STORY\", \"isAiGenerated\": true}}",
+"url": "https://medicard.ge/press/launch-story.jpg"
+},
+{
+"slot": "d01-linkedin",
+"date": "2026-10-01T09:30:00+04:00",
+"info": "{\"autoPublish\": true, \"draft\": false, \"descendants\": [], \"hasNotReadNotes\": false, \"shortener\": false, \"smartLinkData\": {\"ids\": []}, \"media\": [\"https://medicard.ge/press/launch-wide.jpg\"], \"mediaAltText\": [], \"publicationDate\": {\"dateTime\": \"2026-10-01T09:30:00\", \"timezone\": \"Asia/Tbilisi\"}, \"text\": \"Today we're launching MEDICARD AI on the App Store.\\n\\nHealth apps are built for big languages. Georgia has 3.7 million people and, until today, no health app that speaks its language.\\n\\nMEDICARD brings everyday care into one place, in Georgian and English:\\n• Medi, an AI assistant you can talk or type to\\n• Medication reminders and plain-language lab explanations\\n• Nutrition logging from a photo, barcode or voice\\n• Cycle tracking, pet care (Medi Vet) and training with a coach (MEDI COACH)\\n• MEDIRUN, a game that gets you outside to explore your city on foot\\n\\nFree, and private by design: we never sell health data.\\n\\nLink in the first comment.\\n\\n#HealthTech #AI #DigitalHealth #Georgia #Startup\", \"firstCommentText\": \"📲 iPhone: https://apps.apple.com/app/id6812517519\\n💻 Web: https://medicard.ge/app\", \"providers\": [{\"network\": \"linkedin\"}], \"linkedinData\": {\"type\": \"post\", \"previewIncluded\": true, \"publishImagesAsPDF\": false}}",
+"url": "https://medicard.ge/press/launch-wide.jpg"
+},
+{
+"slot": "d02-feed",
+"date": "2026-10-02T10:00:00+04:00",
+"info": "{\"autoPublish\": true, \"draft\": false, \"descendants\": [], \"hasNotReadNotes\": false, \"shortener\": false, \"smartLinkData\": {\"ids\": []}, \"media\": [\"https://medicard.ge/press/campaign/d02-feed.jpg\"], \"mediaAltText\": [], \"publicationDate\": {\"dateTime\": \"2026-10-02T10:00:00\", \"timezone\": \"Asia/Tbilisi\"}, \"text\": \"გაიცანი Medi 💚\\n\\nMedi შენი ჯიბის სამედიცინო ასისტენტია. მას შეგიძლია ჰკითხო ტექსტით ან უბრალოდ ხმით:\\n\\n🗣 „ხვალ 9-ზე ომეგა-3 ჩამიწერე“\\n🗣 „ჩემი ჰემოგლობინი ნორმაშია?“\\n🗣 „რა ვჭამო ვახშმად, რომ კალორიებში დავრჩე?“\\n\\nMedi ხედავს მხოლოდ იმას, რასაც შენ დართავ ნებას, და არასდროს ცვლის ექიმს.\\n\\nრას ჰკითხავდი პირველად? დაგვიწერე კომენტარში 👇\\n\\n📲 ლინკი ბიოში · უფასოდ App Store-ში\\n\\n#MEDICARD #Medi #ჯანმრთელობა #საქართველო\", \"firstCommentText\": \"📲 iPhone: https://apps.apple.com/app/id6812517519\\n💻 ვებ-ვერსია: https://medicard.ge/app\\n🤖 Android — სულ მალე\", \"providers\": [{\"network\": \"facebook\"}, {\"network\": \"instagram\"}], \"facebookData\": {\"type\": \"POST\"}, \"instagramData\": {\"type\": \"POST\", \"isAiGenerated\": false}}",
+"url": "https://medicard.ge/press/campaign/d02-feed.jpg"
+},
+{
+"slot": "d02-story",
+"date": "2026-10-02T19:30:00+04:00",
+"info": "{\"autoPublish\": true, \"draft\": false, \"descendants\": [], \"hasNotReadNotes\": false, \"shortener\": false, \"smartLinkData\": {\"ids\": []}, \"media\": [\"https://medicard.ge/press/campaign/d02-story.jpg\"], \"mediaAltText\": [], \"publicationDate\": {\"dateTime\": \"2026-10-02T19:30:00\", \"timezone\": \"Asia/Tbilisi\"}, \"providers\": [{\"network\": \"facebook\"}, {\"network\": \"instagram\"}], \"facebookData\": {\"type\": \"STORY\"}, \"instagramData\": {\"type\": \"STORY\", \"isAiGenerated\": false}}",
+"url": "https://medicard.ge/press/campaign/d02-story.jpg"
+},
+{
+"slot": "d03-feed",
+"date": "2026-10-03T11:00:00+04:00",
+"info": "{\"autoPublish\": true, \"draft\": false, \"descendants\": [], \"hasNotReadNotes\": false, \"shortener\": false, \"smartLinkData\": {\"ids\": []}, \"media\": [\"https://medicard.ge/press/launch-square.jpg\"], \"mediaAltText\": [], \"publicationDate\": {\"dateTime\": \"2026-10-03T11:00:00\", \"timezone\": \"Asia/Tbilisi\"}, \"text\": \"ერთი აპი ხუთის ნაცვლად 📱\\n\\nწამლები, ანალიზები, კვება, ციკლი, ნაბიჯები და წყალი — ყველაფერი ერთ ადგილას, ქართულად.\\n\\nშენახე ეს პოსტი და გაუზიარე მას, ვისაც ხუთი სხვადასხვა აპი უდევს ტელეფონში 😉\\n\\n📲 ლინკი ბიოში · უფასოდ App Store-ში\\n\\n#MEDICARD #Medi #ჯანმრთელობა #საქართველო\", \"firstCommentText\": \"📲 iPhone: https://apps.apple.com/app/id6812517519\\n💻 ვებ-ვერსია: https://medicard.ge/app\\n🤖 Android — სულ მალე\", \"providers\": [{\"network\": \"facebook\"}, {\"network\": \"instagram\"}], \"facebookData\": {\"type\": \"POST\"}, \"instagramData\": {\"type\": \"POST\", \"isAiGenerated\": true}}",
+"url": "https://medicard.ge/press/launch-square.jpg"
+},
+{
+"slot": "d03-story",
+"date": "2026-10-03T19:30:00+04:00",
+"info": "{\"autoPublish\": true, \"draft\": false, \"descendants\": [], \"hasNotReadNotes\": false, \"shortener\": false, \"smartLinkData\": {\"ids\": []}, \"media\": [\"https://medicard.ge/press/campaign/d03-story.jpg\"], \"mediaAltText\": [], \"publicationDate\": {\"dateTime\": \"2026-10-03T19:30:00\", \"timezone\": \"Asia/Tbilisi\"}, \"providers\": [{\"network\": \"facebook\"}, {\"network\": \"instagram\"}], \"facebookData\": {\"type\": \"STORY\"}, \"instagramData\": {\"type\": \"STORY\", \"isAiGenerated\": true}}",
+"url": "https://medicard.ge/press/campaign/d03-story.jpg"
+},
+{
+"slot": "d04-feed",
+"date": "2026-10-04T11:00:00+04:00",
+"info": "{\"autoPublish\": true, \"draft\": false, \"descendants\": [], \"hasNotReadNotes\": false, \"shortener\": false, \"smartLinkData\": {\"ids\": []}, \"media\": [\"https://medicard.ge/press/campaign/d04-feed.jpg\"], \"mediaAltText\": [], \"publicationDate\": {\"dateTime\": \"2026-10-04T11:00:00\", \"timezone\": \"Asia/Tbilisi\"}, \"text\": \"რამდენი წყალი უნდა დავლიოთ დღეში? 💧\\n\\n„8 ჭიქა“ მხოლოდ მითია: საჭიროება ყველასთვის განსხვავებულია და დამოკიდებულია წონაზე, ამინდსა და აქტივობაზე.\\n\\nMEDICARD-ში წყლის მიზანს შენზე მორგებულად დაისახავ და ერთი შეხებით ჩაწერ ყოველ ჭიქას.\\n\\nზოგადი ინფორმაციაა და არ ცვლის ექიმის რჩევას.\\n\\n📲 ლინკი ბიოში · უფასოდ App Store-ში\\n\\n#MEDICARD #Medi #ჯანმრთელობა #საქართველო\", \"firstCommentText\": \"📲 iPhone: https://apps.apple.com/app/id6812517519\\n💻 ვებ-ვერსია: https://medicard.ge/app\\n🤖 Android — სულ მალე\", \"providers\": [{\"network\": \"facebook\"}, {\"network\": \"instagram\"}], \"facebookData\": {\"type\": \"POST\"}, \"instagramData\": {\"type\": \"POST\", \"isAiGenerated\": false}}",
+"url": "https://medicard.ge/press/campaign/d04-feed.jpg"
+},
+{
+"slot": "d04-story",
+"date": "2026-10-04T19:30:00+04:00",
+"info": "{\"autoPublish\": true, \"draft\": false, \"descendants\": [], \"hasNotReadNotes\": false, \"shortener\": false, \"smartLinkData\": {\"ids\": []}, \"media\": [\"https://medicard.ge/press/campaign/d04-story.jpg\"], \"mediaAltText\": [], \"publicationDate\": {\"dateTime\": \"2026-10-04T19:30:00\", \"timezone\": \"Asia/Tbilisi\"}, \"providers\": [{\"network\": \"facebook\"}, {\"network\": \"instagram\"}], \"facebookData\": {\"type\": \"STORY\"}, \"instagramData\": {\"type\": \"STORY\", \"isAiGenerated\": false}}",
+"url": "https://medicard.ge/press/campaign/d04-story.jpg"
+},
+{
+"slot": "d05-feed",
+"date": "2026-10-05T10:00:00+04:00",
+"info": "{\"autoPublish\": true, \"draft\": false, \"descendants\": [], \"hasNotReadNotes\": false, \"shortener\": false, \"smartLinkData\": {\"ids\": []}, \"media\": [\"https://medicard.ge/press/campaign/d05-feed.jpg\"], \"mediaAltText\": [], \"publicationDate\": {\"dateTime\": \"2026-10-05T10:00:00\", \"timezone\": \"Asia/Tbilisi\"}, \"text\": \"დაგავიწყდა დღეს წამლის დალევა? 💊\\n\\nMEDICARD-ში წამალს ერთხელ ჩაწერ, შემდეგ კი აპი ზუსტ დროს შეგახსენებს. „დავლიე“ ერთი შეხებით აღინიშნება და ისტორიაც ინახება.\\n\\n💊 დოზები და განრიგი\\n⏰ შეხსენებები\\n📈 როგორ იცავ განრიგს\\n\\nმშობლებისთვისაც იდეალურია 💚\\n\\n📲 ლინკი ბიოში · უფასოდ App Store-ში\\n\\n#MEDICARD #Medi #ჯანმრთელობა #საქართველო\", \"firstCommentText\": \"📲 iPhone: https://apps.apple.com/app/id6812517519\\n💻 ვებ-ვერსია: https://medicard.ge/app\\n🤖 Android — სულ მალე\", \"providers\": [{\"network\": \"facebook\"}, {\"network\": \"instagram\"}], \"facebookData\": {\"type\": \"POST\"}, \"instagramData\": {\"type\": \"POST\", \"isAiGenerated\": true}}",
+"url": "https://medicard.ge/press/campaign/d05-feed.jpg"
+},
+{
+"slot": "d05-story",
+"date": "2026-10-05T19:30:00+04:00",
+"info": "{\"autoPublish\": true, \"draft\": false, \"descendants\": [], \"hasNotReadNotes\": false, \"shortener\": false, \"smartLinkData\": {\"ids\": []}, \"media\": [\"https://medicard.ge/press/campaign/d05-story.jpg\"], \"mediaAltText\": [], \"publicationDate\": {\"dateTime\": \"2026-10-05T19:30:00\", \"timezone\": \"Asia/Tbilisi\"}, \"providers\": [{\"network\": \"facebook\"}, {\"network\": \"instagram\"}], \"facebookData\": {\"type\": \"STORY\"}, \"instagramData\": {\"type\": \"STORY\", \"isAiGenerated\": false}}",
+"url": "https://medicard.ge/press/campaign/d05-story.jpg"
+},
+{
+"slot": "d06-feed",
+"date": "2026-10-06T10:00:00+04:00",
+"info": "{\"autoPublish\": true, \"draft\": false, \"descendants\": [], \"hasNotReadNotes\": false, \"shortener\": false, \"smartLinkData\": {\"ids\": []}, \"media\": [\"https://medicard.ge/press/campaign/d06-feed.jpg\"], \"mediaAltText\": [], \"publicationDate\": {\"dateTime\": \"2026-10-06T10:00:00\", \"timezone\": \"Asia/Tbilisi\"}, \"text\": \"ანალიზის ფურცელი ისევ უჯრაში გიდევს? 🔬\\n\\nგადაუღე ფოტო ან ატვირთე PDF, MEDICARD კი:\\n✅ მაჩვენებლებს ამოიკითხავს\\n✅ გასაგებ ენაზე აგიხსნის\\n✅ დროში ცვლილებას გრაფიკზე გაჩვენებს\\n\\nეს დიაგნოზი არ არის — ექიმთან საუბარს უკეთ მოამზადებს.\\n\\n📲 ლინკი ბიოში · უფასოდ App Store-ში\\n\\n#MEDICARD #Medi #ჯანმრთელობა #საქართველო\", \"firstCommentText\": \"📲 iPhone: https://apps.apple.com/app/id6812517519\\n💻 ვებ-ვერსია: https://medicard.ge/app\\n🤖 Android — სულ მალე\", \"providers\": [{\"network\": \"facebook\"}, {\"network\": \"instagram\"}], \"facebookData\": {\"type\": \"POST\"}, \"instagramData\": {\"type\": \"POST\", \"isAiGenerated\": true}}",
+"url": "https://medicard.ge/press/campaign/d06-feed.jpg"
+},
+{
+"slot": "d06-story",
+"date": "2026-10-06T19:30:00+04:00",
+"info": "{\"autoPublish\": true, \"draft\": false, \"descendants\": [], \"hasNotReadNotes\": false, \"shortener\": false, \"smartLinkData\": {\"ids\": []}, \"media\": [\"https://medicard.ge/press/campaign/d06-story.jpg\"], \"mediaAltText\": [], \"publicationDate\": {\"dateTime\": \"2026-10-06T19:30:00\", \"timezone\": \"Asia/Tbilisi\"}, \"providers\": [{\"network\": \"facebook\"}, {\"network\": \"instagram\"}], \"facebookData\": {\"type\": \"STORY\"}, \"instagramData\": {\"type\": \"STORY\", \"isAiGenerated\": false}}",
+"url": "https://medicard.ge/press/campaign/d06-story.jpg"
+},
+{
+"slot": "d06-linkedin",
+"date": "2026-10-06T09:30:00+04:00",
+"info": "{\"autoPublish\": true, \"draft\": false, \"descendants\": [], \"hasNotReadNotes\": false, \"shortener\": false, \"smartLinkData\": {\"ids\": []}, \"media\": [\"https://medicard.ge/press/campaign/d06-linkedin.jpg\"], \"mediaAltText\": [], \"publicationDate\": {\"dateTime\": \"2026-10-06T09:30:00\", \"timezone\": \"Asia/Tbilisi\"}, \"text\": \"Most health apps treat language as a translation task.\\n\\nFor a Georgian speaker, that means a lab report you can't read, reminders in English and advice that ignores local food, pharmacies and doctors.\\n\\nSo we started from the other end:\\n• Georgian first, English second\\n• Lab results explained in plain language\\n• Local pharmacy prices and Georgian foods in the nutrition catalog\\n• One app instead of five\\n\\nSmall-language markets are not small problems. They are underserved ones.\\n\\nWhat would you build first for your language?\\n\\n#HealthTech #LocalizationMatters #DigitalHealth #Georgia\", \"firstCommentText\": \"📲 iPhone: https://apps.apple.com/app/id6812517519\\n💻 Web: https://medicard.ge/app\", \"providers\": [{\"network\": \"linkedin\"}], \"linkedinData\": {\"type\": \"post\", \"previewIncluded\": true, \"publishImagesAsPDF\": false}}",
+"url": "https://medicard.ge/press/campaign/d06-linkedin.jpg"
+},
+{
+"slot": "d07-feed",
+"date": "2026-10-07T10:00:00+04:00",
+"info": "{\"autoPublish\": true, \"draft\": false, \"descendants\": [], \"hasNotReadNotes\": false, \"shortener\": false, \"smartLinkData\": {\"ids\": []}, \"media\": [\"https://medicard.ge/press/campaign/d07-feed.jpg\"], \"mediaAltText\": [], \"publicationDate\": {\"dateTime\": \"2026-10-07T10:00:00\", \"timezone\": \"Asia/Tbilisi\"}, \"text\": \"ფეხით სიარული ყველაზე მარტივი „წამალია“ 🏃\\n\\nMEDIRUN-ში შენი ქალაქი თამაშად იქცევა: დადიხარ, აღმოაჩენ ახალ ადგილებს და პოულობ საჩუქრებს.\\n\\nსცადე დღეს: 20 წუთიანი გასეირნება და პირველი საჩუქარი 🎁\\n\\n📲 ლინკი ბიოში · უფასოდ App Store-ში\\n\\n#MEDICARD #Medi #ჯანმრთელობა #საქართველო #MEDIRUN\", \"firstCommentText\": \"📲 iPhone: https://apps.apple.com/app/id6812517519\\n💻 ვებ-ვერსია: https://medicard.ge/app\\n🤖 Android — სულ მალე\", \"providers\": [{\"network\": \"facebook\"}, {\"network\": \"instagram\"}], \"facebookData\": {\"type\": \"POST\"}, \"instagramData\": {\"type\": \"POST\", \"isAiGenerated\": true}}",
+"url": "https://medicard.ge/press/campaign/d07-feed.jpg"
+},
+{
+"slot": "d07-story",
+"date": "2026-10-07T19:30:00+04:00",
+"info": "{\"autoPublish\": true, \"draft\": false, \"descendants\": [], \"hasNotReadNotes\": false, \"shortener\": false, \"smartLinkData\": {\"ids\": []}, \"media\": [\"https://medicard.ge/press/campaign/d07-story.jpg\"], \"mediaAltText\": [], \"publicationDate\": {\"dateTime\": \"2026-10-07T19:30:00\", \"timezone\": \"Asia/Tbilisi\"}, \"providers\": [{\"network\": \"facebook\"}, {\"network\": \"instagram\"}], \"facebookData\": {\"type\": \"STORY\"}, \"instagramData\": {\"type\": \"STORY\", \"isAiGenerated\": true}}",
+"url": "https://medicard.ge/press/campaign/d07-story.jpg"
+},
+{
+"slot": "d08-feed",
+"date": "2026-10-08T10:00:00+04:00",
+"info": "{\"autoPublish\": true, \"draft\": false, \"descendants\": [], \"hasNotReadNotes\": false, \"shortener\": false, \"smartLinkData\": {\"ids\": []}, \"media\": [\"https://medicard.ge/press/campaign/d08-feed.jpg\"], \"mediaAltText\": [], \"publicationDate\": {\"dateTime\": \"2026-10-08T10:00:00\", \"timezone\": \"Asia/Tbilisi\"}, \"text\": \"ანალიზის ფურცელზე წითელი ციფრი დაინახე? 😰 ჯერ ნუ ღელავ.\\n\\n1️⃣ ნორმის ზღვარი ლაბორატორიების მიხედვით განსხვავდება.\\n2️⃣ ერთი მაჩვენებლის მცირე გადახრა ხშირად დროებითია.\\n3️⃣ ყველაზე მნიშვნელოვანი დინამიკაა — როგორ იცვლება დროში.\\n\\nMEDICARD ყველა ანალიზს ერთ ისტორიაში ინახავს და გრაფიკზე გაჩვენებს.\\n\\nშედეგი ყოველთვის ექიმთან განიხილე.\\n\\n📲 ლინკი ბიოში · უფასოდ App Store-ში\\n\\n#MEDICARD #Medi #ჯანმრთელობა #საქართველო\", \"firstCommentText\": \"📲 iPhone: https://apps.apple.com/app/id6812517519\\n💻 ვებ-ვერსია: https://medicard.ge/app\\n🤖 Android — სულ მალე\", \"providers\": [{\"network\": \"facebook\"}, {\"network\": \"instagram\"}], \"facebookData\": {\"type\": \"POST\"}, \"instagramData\": {\"type\": \"POST\", \"isAiGenerated\": false}}",
+"url": "https://medicard.ge/press/campaign/d08-feed.jpg"
+},
+{
+"slot": "d08-story",
+"date": "2026-10-08T19:30:00+04:00",
+"info": "{\"autoPublish\": true, \"draft\": false, \"descendants\": [], \"hasNotReadNotes\": false, \"shortener\": false, \"smartLinkData\": {\"ids\": []}, \"media\": [\"https://medicard.ge/press/campaign/d08-story.jpg\"], \"mediaAltText\": [], \"publicationDate\": {\"dateTime\": \"2026-10-08T19:30:00\", \"timezone\": \"Asia/Tbilisi\"}, \"providers\": [{\"network\": \"facebook\"}, {\"network\": \"instagram\"}], \"facebookData\": {\"type\": \"STORY\"}, \"instagramData\": {\"type\": \"STORY\", \"isAiGenerated\": false}}",
+"url": "https://medicard.ge/press/campaign/d08-story.jpg"
+},
+{
+"slot": "d08-linkedin",
+"date": "2026-10-08T09:30:00+04:00",
+"info": "{\"autoPublish\": true, \"draft\": false, \"descendants\": [], \"hasNotReadNotes\": false, \"shortener\": false, \"smartLinkData\": {\"ids\": []}, \"media\": [\"https://medicard.ge/press/campaign/d08-linkedin.jpg\"], \"mediaAltText\": [], \"publicationDate\": {\"dateTime\": \"2026-10-08T09:30:00\", \"timezone\": \"Asia/Tbilisi\"}, \"text\": \"Our AI assistant, Medi, is designed around three rules:\\n\\n1. It only sees what the person allows. Consent comes before any data leaves the phone.\\n2. It never diagnoses. It explains, organises and helps prepare for a doctor.\\n3. It never sells data. Health data is not a business model.\\n\\nWe think trust is the product. Everything else is features.\\n\\n#AI #HealthTech #Privacy #ResponsibleAI\", \"firstCommentText\": \"📲 iPhone: https://apps.apple.com/app/id6812517519\\n💻 Web: https://medicard.ge/app\", \"providers\": [{\"network\": \"linkedin\"}], \"linkedinData\": {\"type\": \"post\", \"previewIncluded\": true, \"publishImagesAsPDF\": false}}",
+"url": "https://medicard.ge/press/campaign/d08-linkedin.jpg"
+},
+{
+"slot": "d09-feed",
+"date": "2026-10-09T10:00:00+04:00",
+"info": "{\"autoPublish\": true, \"draft\": false, \"descendants\": [], \"hasNotReadNotes\": false, \"shortener\": false, \"smartLinkData\": {\"ids\": []}, \"media\": [\"https://medicard.ge/press/campaign/d09-feed.jpg\"], \"mediaAltText\": [], \"publicationDate\": {\"dateTime\": \"2026-10-09T10:00:00\", \"timezone\": \"Asia/Tbilisi\"}, \"text\": \"კალორიების დათვლა აღარ არის მოსაწყენი 🥗\\n\\n📸 გადაუღე თეფშს\\n🏷 დაასკანერე ბარკოდი\\n🗣 უბრალოდ თქვი, რა ჭამე\\n\\nMEDICARD შეაფასებს კალორიებსა და მაკროებს — შენახვამდე კი ყოველთვის შეგიძლია შეასწორო.\\n\\nლობიო თუ ხაჭაპური? 😄 ქართული კერძებიც იცის.\\n\\n📲 ლინკი ბიოში · უფასოდ App Store-ში\\n\\n#MEDICARD #Medi #ჯანმრთელობა #საქართველო\", \"firstCommentText\": \"📲 iPhone: https://apps.apple.com/app/id6812517519\\n💻 ვებ-ვერსია: https://medicard.ge/app\\n🤖 Android — სულ მალე\", \"providers\": [{\"network\": \"facebook\"}, {\"network\": \"instagram\"}], \"facebookData\": {\"type\": \"POST\"}, \"instagramData\": {\"type\": \"POST\", \"isAiGenerated\": false}}",
+"url": "https://medicard.ge/press/campaign/d09-feed.jpg"
+},
+{
+"slot": "d09-story",
+"date": "2026-10-09T19:30:00+04:00",
+"info": "{\"autoPublish\": true, \"draft\": false, \"descendants\": [], \"hasNotReadNotes\": false, \"shortener\": false, \"smartLinkData\": {\"ids\": []}, \"media\": [\"https://medicard.ge/press/campaign/d09-story.jpg\"], \"mediaAltText\": [], \"publicationDate\": {\"dateTime\": \"2026-10-09T19:30:00\", \"timezone\": \"Asia/Tbilisi\"}, \"providers\": [{\"network\": \"facebook\"}, {\"network\": \"instagram\"}], \"facebookData\": {\"type\": \"STORY\"}, \"instagramData\": {\"type\": \"STORY\", \"isAiGenerated\": false}}",
+"url": "https://medicard.ge/press/campaign/d09-story.jpg"
+},
+{
+"slot": "d10-feed",
+"date": "2026-10-10T11:00:00+04:00",
+"info": "{\"autoPublish\": true, \"draft\": false, \"descendants\": [], \"hasNotReadNotes\": false, \"shortener\": false, \"smartLinkData\": {\"ids\": []}, \"media\": [\"https://medicard.ge/press/campaign/d10-feed.jpg\"], \"mediaAltText\": [], \"publicationDate\": {\"dateTime\": \"2026-10-10T11:00:00\", \"timezone\": \"Asia/Tbilisi\"}, \"text\": \"სწორედ ის, რასაც აქამდე ინგლისურენოვან აპებში ეძებდი 🌸\\n\\nMEDICARD-ის ციკლის დღიური:\\n🌸 პროგნოზი და ნაყოფიერი დღეები\\n📝 სიმპტომები, განწყობა, დღიური\\n🔔 შეხსენებები\\n🔒 მონაცემები მხოლოდ შენ გეკუთვნის\\n\\nპროგნოზი სავარაუდოა და არ არის კონტრაცეფციის მეთოდი.\\n\\n📲 ლინკი ბიოში · უფასოდ App Store-ში\\n\\n#MEDICARD #Medi #ჯანმრთელობა #საქართველო\", \"firstCommentText\": \"📲 iPhone: https://apps.apple.com/app/id6812517519\\n💻 ვებ-ვერსია: https://medicard.ge/app\\n🤖 Android — სულ მალე\", \"providers\": [{\"network\": \"facebook\"}, {\"network\": \"instagram\"}], \"facebookData\": {\"type\": \"POST\"}, \"instagramData\": {\"type\": \"POST\", \"isAiGenerated\": false}}",
+"url": "https://medicard.ge/press/campaign/d10-feed.jpg"
+},
+{
+"slot": "d10-story",
+"date": "2026-10-10T19:30:00+04:00",
+"info": "{\"autoPublish\": true, \"draft\": false, \"descendants\": [], \"hasNotReadNotes\": false, \"shortener\": false, \"smartLinkData\": {\"ids\": []}, \"media\": [\"https://medicard.ge/press/campaign/d10-story.jpg\"], \"mediaAltText\": [], \"publicationDate\": {\"dateTime\": \"2026-10-10T19:30:00\", \"timezone\": \"Asia/Tbilisi\"}, \"providers\": [{\"network\": \"facebook\"}, {\"network\": \"instagram\"}], \"facebookData\": {\"type\": \"STORY\"}, \"instagramData\": {\"type\": \"STORY\", \"isAiGenerated\": false}}",
+"url": "https://medicard.ge/press/campaign/d10-story.jpg"
+},
+{
+"slot": "d11-feed",
+"date": "2026-10-11T11:00:00+04:00",
+"info": "{\"autoPublish\": true, \"draft\": false, \"descendants\": [], \"hasNotReadNotes\": false, \"shortener\": false, \"smartLinkData\": {\"ids\": []}, \"media\": [\"https://medicard.ge/press/campaign/d11-feed.jpg\"], \"mediaAltText\": [], \"publicationDate\": {\"dateTime\": \"2026-10-11T11:00:00\", \"timezone\": \"Asia/Tbilisi\"}, \"text\": \"კარგი დღე წინა ღამით იწყება 😴\\n\\n🕙 ერთი და იგივე დრო დაძინებისა და გაღვიძებისთვის\\n📵 ეკრანი — ძილამდე ერთი საათით ადრე გვერდზე\\n☕ საღამოს — ყავის გარეშე\\n\\nზრდასრულს ღამით, როგორც წესი, 7–9 საათი ძილი სჭირდება.\\n\\nშენ რამდენს იძინებ? 👇\\n\\n📲 ლინკი ბიოში · უფასოდ App Store-ში\\n\\n#MEDICARD #Medi #ჯანმრთელობა #საქართველო\", \"firstCommentText\": \"📲 iPhone: https://apps.apple.com/app/id6812517519\\n💻 ვებ-ვერსია: https://medicard.ge/app\\n🤖 Android — სულ მალე\", \"providers\": [{\"network\": \"facebook\"}, {\"network\": \"instagram\"}], \"facebookData\": {\"type\": \"POST\"}, \"instagramData\": {\"type\": \"POST\", \"isAiGenerated\": false}}",
+"url": "https://medicard.ge/press/campaign/d11-feed.jpg"
+},
+{
+"slot": "d11-story",
+"date": "2026-10-11T19:30:00+04:00",
+"info": "{\"autoPublish\": true, \"draft\": false, \"descendants\": [], \"hasNotReadNotes\": false, \"shortener\": false, \"smartLinkData\": {\"ids\": []}, \"media\": [\"https://medicard.ge/press/campaign/d11-story.jpg\"], \"mediaAltText\": [], \"publicationDate\": {\"dateTime\": \"2026-10-11T19:30:00\", \"timezone\": \"Asia/Tbilisi\"}, \"providers\": [{\"network\": \"facebook\"}, {\"network\": \"instagram\"}], \"facebookData\": {\"type\": \"STORY\"}, \"instagramData\": {\"type\": \"STORY\", \"isAiGenerated\": false}}",
+"url": "https://medicard.ge/press/campaign/d11-story.jpg"
+},
+{
+"slot": "d12-feed",
+"date": "2026-10-12T10:00:00+04:00",
+"info": "{\"autoPublish\": true, \"draft\": false, \"descendants\": [], \"hasNotReadNotes\": false, \"shortener\": false, \"smartLinkData\": {\"ids\": []}, \"media\": [\"https://medicard.ge/press/campaign/d12-feed.jpg\"], \"mediaAltText\": [], \"publicationDate\": {\"dateTime\": \"2026-10-12T10:00:00\", \"timezone\": \"Asia/Tbilisi\"}, \"text\": \"შენი ძაღლის ან კატის ჯანმრთელობაც მნიშვნელოვანია 🐾\\n\\n💉 ვაქცინებისა და პარაზიტების დამუშავების შეხსენებები\\n⚖️ წონის ისტორია\\n🩺 Medi Vet — კითხვებზე პასუხი 24/7\\n\\nMedi Vet არ ცვლის ვეტერინარს — გადაუდებელ შემთხვევაში დაუკავშირდი კლინიკას.\\n\\n📲 ლინკი ბიოში · უფასოდ App Store-ში\\n\\n#MEDICARD #Medi #ჯანმრთელობა #საქართველო\", \"firstCommentText\": \"📲 iPhone: https://apps.apple.com/app/id6812517519\\n💻 ვებ-ვერსია: https://medicard.ge/app\\n🤖 Android — სულ მალე\", \"providers\": [{\"network\": \"facebook\"}, {\"network\": \"instagram\"}], \"facebookData\": {\"type\": \"POST\"}, \"instagramData\": {\"type\": \"POST\", \"isAiGenerated\": true}}",
+"url": "https://medicard.ge/press/campaign/d12-feed.jpg"
+},
+{
+"slot": "d12-story",
+"date": "2026-10-12T19:30:00+04:00",
+"info": "{\"autoPublish\": true, \"draft\": false, \"descendants\": [], \"hasNotReadNotes\": false, \"shortener\": false, \"smartLinkData\": {\"ids\": []}, \"media\": [\"https://medicard.ge/press/campaign/d12-story.jpg\"], \"mediaAltText\": [], \"publicationDate\": {\"dateTime\": \"2026-10-12T19:30:00\", \"timezone\": \"Asia/Tbilisi\"}, \"providers\": [{\"network\": \"facebook\"}, {\"network\": \"instagram\"}], \"facebookData\": {\"type\": \"STORY\"}, \"instagramData\": {\"type\": \"STORY\", \"isAiGenerated\": false}}",
+"url": "https://medicard.ge/press/campaign/d12-story.jpg"
+},
+{
+"slot": "d13-feed",
+"date": "2026-10-13T10:00:00+04:00",
+"info": "{\"autoPublish\": true, \"draft\": false, \"descendants\": [], \"hasNotReadNotes\": false, \"shortener\": false, \"smartLinkData\": {\"ids\": []}, \"media\": [\"https://medicard.ge/press/campaign/d13-feed.jpg\"], \"mediaAltText\": [], \"publicationDate\": {\"dateTime\": \"2026-10-13T10:00:00\", \"timezone\": \"Asia/Tbilisi\"}, \"text\": \"ჯანმრთელობის მონაცემები ყველაზე პირადია 🔒\\n\\nამიტომ MEDICARD-ში:\\n✅ მონაცემებს არ ვყიდით და რეკლამისთვის არ ვიყენებთ\\n✅ AI-ს არაფერი მიეწოდება შენი თანხმობის გარეშე\\n✅ თანხმობას ნებისმიერ დროს გააუქმებ\\n✅ ანგარიშს და მონაცემებს ერთი ღილაკით წაშლი\\n\\nსრული პოლიტიკა: medicard.ge/privacy\\n\\n📲 ლინკი ბიოში · უფასოდ App Store-ში\\n\\n#MEDICARD #Medi #ჯანმრთელობა #საქართველო\", \"firstCommentText\": \"📲 iPhone: https://apps.apple.com/app/id6812517519\\n💻 ვებ-ვერსია: https://medicard.ge/app\\n🤖 Android — სულ მალე\", \"providers\": [{\"network\": \"facebook\"}, {\"network\": \"instagram\"}], \"facebookData\": {\"type\": \"POST\"}, \"instagramData\": {\"type\": \"POST\", \"isAiGenerated\": false}}",
+"url": "https://medicard.ge/press/campaign/d13-feed.jpg"
+},
+{
+"slot": "d13-story",
+"date": "2026-10-13T19:30:00+04:00",
+"info": "{\"autoPublish\": true, \"draft\": false, \"descendants\": [], \"hasNotReadNotes\": false, \"shortener\": false, \"smartLinkData\": {\"ids\": []}, \"media\": [\"https://medicard.ge/press/campaign/d13-story.jpg\"], \"mediaAltText\": [], \"publicationDate\": {\"dateTime\": \"2026-10-13T19:30:00\", \"timezone\": \"Asia/Tbilisi\"}, \"providers\": [{\"network\": \"facebook\"}, {\"network\": \"instagram\"}], \"facebookData\": {\"type\": \"STORY\"}, \"instagramData\": {\"type\": \"STORY\", \"isAiGenerated\": false}}",
+"url": "https://medicard.ge/press/campaign/d13-story.jpg"
+},
+{
+"slot": "d13-linkedin",
+"date": "2026-10-13T09:30:00+04:00",
+"info": "{\"autoPublish\": true, \"draft\": false, \"descendants\": [], \"hasNotReadNotes\": false, \"shortener\": false, \"smartLinkData\": {\"ids\": []}, \"media\": [\"https://medicard.ge/press/campaign/d13-linkedin.jpg\"], \"mediaAltText\": [], \"publicationDate\": {\"dateTime\": \"2026-10-13T09:30:00\", \"timezone\": \"Asia/Tbilisi\"}, \"text\": \"A health app can't ask for trust. It has to earn it.\\n\\nAt MEDICARD:\\n• We never sell or advertise with health data\\n• AI features only run after an explicit, revocable consent that names every recipient\\n• People can delete their account and data in one tap\\n• Accounts are 18+ only\\n\\nIt costs us some shortcuts. It is worth it.\\n\\n#Privacy #HealthTech #GDPR #Trust\", \"firstCommentText\": \"📲 iPhone: https://apps.apple.com/app/id6812517519\\n💻 Web: https://medicard.ge/app\", \"providers\": [{\"network\": \"linkedin\"}], \"linkedinData\": {\"type\": \"post\", \"previewIncluded\": true, \"publishImagesAsPDF\": false}}",
+"url": "https://medicard.ge/press/campaign/d13-linkedin.jpg"
+},
+{
+"slot": "d14-feed",
+"date": "2026-10-14T10:00:00+04:00",
+"info": "{\"autoPublish\": true, \"draft\": false, \"descendants\": [], \"hasNotReadNotes\": false, \"shortener\": false, \"smartLinkData\": {\"ids\": []}, \"media\": [\"https://medicard.ge/press/campaign/d14-feed.jpg\"], \"mediaAltText\": [], \"publicationDate\": {\"dateTime\": \"2026-10-14T10:00:00\", \"timezone\": \"Asia/Tbilisi\"}, \"text\": \"ჩვევის შექმნა ძნელია. თამაშით — უფრო ადვილი 🏆\\n\\nMedi Quest-ში ყოველდღიური მისიები გელოდება: წყალი, ნაბიჯები, წამალი დროზე. ყოველ შესრულებულზე — Medi Coins და ახალი დონე.\\n\\nრამდენ დღიან სერიას მიაღწევ? 🔥\\n\\n📲 ლინკი ბიოში · უფასოდ App Store-ში\\n\\n#MEDICARD #Medi #ჯანმრთელობა #საქართველო\", \"firstCommentText\": \"📲 iPhone: https://apps.apple.com/app/id6812517519\\n💻 ვებ-ვერსია: https://medicard.ge/app\\n🤖 Android — სულ მალე\", \"providers\": [{\"network\": \"facebook\"}, {\"network\": \"instagram\"}], \"facebookData\": {\"type\": \"POST\"}, \"instagramData\": {\"type\": \"POST\", \"isAiGenerated\": false}}",
+"url": "https://medicard.ge/press/campaign/d14-feed.jpg"
+},
+{
+"slot": "d14-story",
+"date": "2026-10-14T19:30:00+04:00",
+"info": "{\"autoPublish\": true, \"draft\": false, \"descendants\": [], \"hasNotReadNotes\": false, \"shortener\": false, \"smartLinkData\": {\"ids\": []}, \"media\": [\"https://medicard.ge/press/campaign/d14-story.jpg\"], \"mediaAltText\": [], \"publicationDate\": {\"dateTime\": \"2026-10-14T19:30:00\", \"timezone\": \"Asia/Tbilisi\"}, \"providers\": [{\"network\": \"facebook\"}, {\"network\": \"instagram\"}], \"facebookData\": {\"type\": \"STORY\"}, \"instagramData\": {\"type\": \"STORY\", \"isAiGenerated\": false}}",
+"url": "https://medicard.ge/press/campaign/d14-story.jpg"
+},
+{
+"slot": "d15-feed",
+"date": "2026-10-15T10:00:00+04:00",
+"info": "{\"autoPublish\": true, \"draft\": false, \"descendants\": [], \"hasNotReadNotes\": false, \"shortener\": false, \"smartLinkData\": {\"ids\": []}, \"media\": [\"https://medicard.ge/press/campaign/d15-feed.jpg\"], \"mediaAltText\": [], \"publicationDate\": {\"dateTime\": \"2026-10-15T10:00:00\", \"timezone\": \"Asia/Tbilisi\"}, \"text\": \"გულწრფელად: რა გიჭირს ყველაზე მეტად? 🤔\\n\\nA — წამლის დროზე დალევა 💊\\nB — ანალიზების გაგება 🔬\\nC — ჯანსაღი კვება 🥗\\nD — მოძრაობა 🏃\\n\\nდაწერე ასო კომენტარში — შენს პასუხებზე დაყრდნობით ვაუმჯობესებთ MEDICARD-ს 💚\\n\\n📲 ლინკი ბიოში · უფასოდ App Store-ში\\n\\n#MEDICARD #Medi #ჯანმრთელობა #საქართველო\", \"firstCommentText\": \"📲 iPhone: https://apps.apple.com/app/id6812517519\\n💻 ვებ-ვერსია: https://medicard.ge/app\\n🤖 Android — სულ მალე\", \"providers\": [{\"network\": \"facebook\"}, {\"network\": \"instagram\"}], \"facebookData\": {\"type\": \"POST\"}, \"instagramData\": {\"type\": \"POST\", \"isAiGenerated\": false}}",
+"url": "https://medicard.ge/press/campaign/d15-feed.jpg"
+},
+{
+"slot": "d15-story",
+"date": "2026-10-15T19:30:00+04:00",
+"info": "{\"autoPublish\": true, \"draft\": false, \"descendants\": [], \"hasNotReadNotes\": false, \"shortener\": false, \"smartLinkData\": {\"ids\": []}, \"media\": [\"https://medicard.ge/press/campaign/d15-story.jpg\"], \"mediaAltText\": [], \"publicationDate\": {\"dateTime\": \"2026-10-15T19:30:00\", \"timezone\": \"Asia/Tbilisi\"}, \"providers\": [{\"network\": \"facebook\"}, {\"network\": \"instagram\"}], \"facebookData\": {\"type\": \"STORY\"}, \"instagramData\": {\"type\": \"STORY\", \"isAiGenerated\": false}}",
+"url": "https://medicard.ge/press/campaign/d15-story.jpg"
+},
+{
+"slot": "d15-linkedin",
+"date": "2026-10-15T09:30:00+04:00",
+"info": "{\"autoPublish\": true, \"draft\": false, \"descendants\": [], \"hasNotReadNotes\": false, \"shortener\": false, \"smartLinkData\": {\"ids\": []}, \"media\": [\"https://medicard.ge/press/campaign/d15-linkedin.jpg\"], \"mediaAltText\": [], \"publicationDate\": {\"dateTime\": \"2026-10-15T09:30:00\", \"timezone\": \"Asia/Tbilisi\"}, \"text\": \"The world doesn't need another tracker. It needs a reason to go outside.\\n\\nThat is the idea behind MEDIRUN, the part of MEDICARD we are most excited about.\\n\\nInstead of counting steps, you explore your city: every walk reveals new places and small rewards along the way.\\n\\nNo language barrier. No gym membership. Just a reason to move.\\n\\nWhat gets you out of the house?\\n\\n#MEDIRUN #HealthTech #Gamification #ActiveLiving\", \"firstCommentText\": \"📲 iPhone: https://apps.apple.com/app/id6812517519\\n💻 Web: https://medicard.ge/app\", \"providers\": [{\"network\": \"linkedin\"}], \"linkedinData\": {\"type\": \"post\", \"previewIncluded\": true, \"publishImagesAsPDF\": false}}",
+"url": "https://medicard.ge/press/campaign/d15-linkedin.jpg"
+},
+{
+"slot": "d16-feed",
+"date": "2026-10-16T10:00:00+04:00",
+"info": "{\"autoPublish\": true, \"draft\": false, \"descendants\": [], \"hasNotReadNotes\": false, \"shortener\": false, \"smartLinkData\": {\"ids\": []}, \"media\": [\"https://medicard.ge/press/campaign/d16-feed.jpg\"], \"mediaAltText\": [], \"publicationDate\": {\"dateTime\": \"2026-10-16T10:00:00\", \"timezone\": \"Asia/Tbilisi\"}, \"text\": \"ტრენერთან მუშაობ? 🏋️\\n\\nMEDI COACH-ით ტრენერი ხედავს შენს ვარჯიშებს, კვებასა და პროგრესს, მაგრამ მხოლოდ იმას, რასაც შენ დაუშვებ. წვდომას ნებისმიერ დროს შეწყვეტ.\\n\\nტრენერი ხარ? შემოგვიერთდი MEDICARD-ში 💪\\n\\n📲 ლინკი ბიოში · უფასოდ App Store-ში\\n\\n#MEDICARD #Medi #ჯანმრთელობა #საქართველო\", \"firstCommentText\": \"📲 iPhone: https://apps.apple.com/app/id6812517519\\n💻 ვებ-ვერსია: https://medicard.ge/app\\n🤖 Android — სულ მალე\", \"providers\": [{\"network\": \"facebook\"}, {\"network\": \"instagram\"}], \"facebookData\": {\"type\": \"POST\"}, \"instagramData\": {\"type\": \"POST\", \"isAiGenerated\": true}}",
+"url": "https://medicard.ge/press/campaign/d16-feed.jpg"
+},
+{
+"slot": "d16-story",
+"date": "2026-10-16T19:30:00+04:00",
+"info": "{\"autoPublish\": true, \"draft\": false, \"descendants\": [], \"hasNotReadNotes\": false, \"shortener\": false, \"smartLinkData\": {\"ids\": []}, \"media\": [\"https://medicard.ge/press/campaign/d16-story.jpg\"], \"mediaAltText\": [], \"publicationDate\": {\"dateTime\": \"2026-10-16T19:30:00\", \"timezone\": \"Asia/Tbilisi\"}, \"providers\": [{\"network\": \"facebook\"}, {\"network\": \"instagram\"}], \"facebookData\": {\"type\": \"STORY\"}, \"instagramData\": {\"type\": \"STORY\", \"isAiGenerated\": true}}",
+"url": "https://medicard.ge/press/campaign/d16-story.jpg"
+},
+{
+"slot": "d17-feed",
+"date": "2026-10-17T11:00:00+04:00",
+"info": "{\"autoPublish\": true, \"draft\": false, \"descendants\": [], \"hasNotReadNotes\": false, \"shortener\": false, \"smartLinkData\": {\"ids\": []}, \"media\": [\"https://medicard.ge/press/campaign/d17-feed.jpg\"], \"mediaAltText\": [], \"publicationDate\": {\"dateTime\": \"2026-10-17T11:00:00\", \"timezone\": \"Asia/Tbilisi\"}, \"text\": \"შაბათ-კვირის გამოწვევა 🏃\\n\\n5 000 ნაბიჯი ისეთ ქუჩებზე, სადაც აქამდე არ ყოფილხარ. MEDIRUN ყოველ ახალ მონაკვეთს რუკაზე ფერად აღნიშნავს.\\n\\nშედეგი გვაჩვენე სთორიში და მოგვნიშნე 📍\\n\\n📲 ლინკი ბიოში · უფასოდ App Store-ში\\n\\n#MEDICARD #Medi #ჯანმრთელობა #საქართველო #MEDIRUN\", \"firstCommentText\": \"📲 iPhone: https://apps.apple.com/app/id6812517519\\n💻 ვებ-ვერსია: https://medicard.ge/app\\n🤖 Android — სულ მალე\", \"providers\": [{\"network\": \"facebook\"}, {\"network\": \"instagram\"}], \"facebookData\": {\"type\": \"POST\"}, \"instagramData\": {\"type\": \"POST\", \"isAiGenerated\": false}}",
+"url": "https://medicard.ge/press/campaign/d17-feed.jpg"
+},
+{
+"slot": "d17-story",
+"date": "2026-10-17T19:30:00+04:00",
+"info": "{\"autoPublish\": true, \"draft\": false, \"descendants\": [], \"hasNotReadNotes\": false, \"shortener\": false, \"smartLinkData\": {\"ids\": []}, \"media\": [\"https://medicard.ge/press/campaign/d17-story.jpg\"], \"mediaAltText\": [], \"publicationDate\": {\"dateTime\": \"2026-10-17T19:30:00\", \"timezone\": \"Asia/Tbilisi\"}, \"providers\": [{\"network\": \"facebook\"}, {\"network\": \"instagram\"}], \"facebookData\": {\"type\": \"STORY\"}, \"instagramData\": {\"type\": \"STORY\", \"isAiGenerated\": false}}",
+"url": "https://medicard.ge/press/campaign/d17-story.jpg"
+},
+{
+"slot": "d18-feed",
+"date": "2026-10-18T11:00:00+04:00",
+"info": "{\"autoPublish\": true, \"draft\": false, \"descendants\": [], \"hasNotReadNotes\": false, \"shortener\": false, \"smartLinkData\": {\"ids\": []}, \"media\": [\"https://medicard.ge/press/campaign/d18-feed.jpg\"], \"mediaAltText\": [], \"publicationDate\": {\"dateTime\": \"2026-10-18T11:00:00\", \"timezone\": \"Asia/Tbilisi\"}, \"text\": \"10 000 ნაბიჯი აუცილებელია? 👟\\n\\nკვლევები აჩვენებს, რომ დღეში დაახლოებით 7 000 ნაბიჯიც კი ჯანმრთელობისთვის დიდ სარგებელს იძლევა, და ყოველი დამატებითი ათასი ითვლება.\\n\\nMEDICARD ნაბიჯებს Apple Health-იდან ავტომატურად დაითვლის და მიზანს ნელ-ნელა გაზრდის.\\n\\nდღეს რამდენი გაიარე? 👇\\n\\n📲 ლინკი ბიოში · უფასოდ App Store-ში\\n\\n#MEDICARD #Medi #ჯანმრთელობა #საქართველო\", \"firstCommentText\": \"📲 iPhone: https://apps.apple.com/app/id6812517519\\n💻 ვებ-ვერსია: https://medicard.ge/app\\n🤖 Android — სულ მალე\", \"providers\": [{\"network\": \"facebook\"}, {\"network\": \"instagram\"}], \"facebookData\": {\"type\": \"POST\"}, \"instagramData\": {\"type\": \"POST\", \"isAiGenerated\": false}}",
+"url": "https://medicard.ge/press/campaign/d18-feed.jpg"
+},
+{
+"slot": "d18-story",
+"date": "2026-10-18T19:30:00+04:00",
+"info": "{\"autoPublish\": true, \"draft\": false, \"descendants\": [], \"hasNotReadNotes\": false, \"shortener\": false, \"smartLinkData\": {\"ids\": []}, \"media\": [\"https://medicard.ge/press/campaign/d18-story.jpg\"], \"mediaAltText\": [], \"publicationDate\": {\"dateTime\": \"2026-10-18T19:30:00\", \"timezone\": \"Asia/Tbilisi\"}, \"providers\": [{\"network\": \"facebook\"}, {\"network\": \"instagram\"}], \"facebookData\": {\"type\": \"STORY\"}, \"instagramData\": {\"type\": \"STORY\", \"isAiGenerated\": false}}",
+"url": "https://medicard.ge/press/campaign/d18-story.jpg"
+},
+{
+"slot": "d19-feed",
+"date": "2026-10-19T10:00:00+04:00",
+"info": "{\"autoPublish\": true, \"draft\": false, \"descendants\": [], \"hasNotReadNotes\": false, \"shortener\": false, \"smartLinkData\": {\"ids\": []}, \"media\": [\"https://medicard.ge/press/campaign/d19-feed.jpg\"], \"mediaAltText\": [], \"publicationDate\": {\"dateTime\": \"2026-10-19T10:00:00\", \"timezone\": \"Asia/Tbilisi\"}, \"text\": \"ექიმთან ვიზიტისას ყველაფერი გახსოვს? 📋\\n\\nMEDICARD ჯანმრთელობის პასპორტს ერთი შეხებით შექმნის: სისხლის ჯგუფი, ალერგიები, დაავადებები და წამლები ერთ PDF-ში.\\n\\n🇬🇪 ქართულად ან 🇬🇧 ინგლისურად — საზღვარგარეთ მოგზაურობისასაც გამოგადგება.\\n\\n📲 ლინკი ბიოში · უფასოდ App Store-ში\\n\\n#MEDICARD #Medi #ჯანმრთელობა #საქართველო\", \"firstCommentText\": \"📲 iPhone: https://apps.apple.com/app/id6812517519\\n💻 ვებ-ვერსია: https://medicard.ge/app\\n🤖 Android — სულ მალე\", \"providers\": [{\"network\": \"facebook\"}, {\"network\": \"instagram\"}], \"facebookData\": {\"type\": \"POST\"}, \"instagramData\": {\"type\": \"POST\", \"isAiGenerated\": false}}",
+"url": "https://medicard.ge/press/campaign/d19-feed.jpg"
+},
+{
+"slot": "d19-story",
+"date": "2026-10-19T19:30:00+04:00",
+"info": "{\"autoPublish\": true, \"draft\": false, \"descendants\": [], \"hasNotReadNotes\": false, \"shortener\": false, \"smartLinkData\": {\"ids\": []}, \"media\": [\"https://medicard.ge/press/campaign/d19-story.jpg\"], \"mediaAltText\": [], \"publicationDate\": {\"dateTime\": \"2026-10-19T19:30:00\", \"timezone\": \"Asia/Tbilisi\"}, \"providers\": [{\"network\": \"facebook\"}, {\"network\": \"instagram\"}], \"facebookData\": {\"type\": \"STORY\"}, \"instagramData\": {\"type\": \"STORY\", \"isAiGenerated\": false}}",
+"url": "https://medicard.ge/press/campaign/d19-story.jpg"
+},
+{
+"slot": "d20-feed",
+"date": "2026-10-20T10:00:00+04:00",
+"info": "{\"autoPublish\": true, \"draft\": false, \"descendants\": [], \"hasNotReadNotes\": false, \"shortener\": false, \"smartLinkData\": {\"ids\": []}, \"media\": [\"https://medicard.ge/press/campaign/d20-feed.jpg\"], \"mediaAltText\": [], \"publicationDate\": {\"dateTime\": \"2026-10-20T10:00:00\", \"timezone\": \"Asia/Tbilisi\"}, \"text\": \"ერთი და იგივე წამალი, სხვადასხვა ფასი 💸\\n\\nMEDICARD ფასებს რამდენიმე ქართულ აფთიაქში ერთად გაჩვენებს, ფასის ვარდნისას კი შეგატყობინებს.\\n\\nფასები აფთიაქის საიტებიდან მოდის და შეიძლება შეიცვალოს — ყიდვამდე გადაამოწმე აფთიაქში.\\n\\n📲 ლინკი ბიოში · უფასოდ App Store-ში\\n\\n#MEDICARD #Medi #ჯანმრთელობა #საქართველო\", \"firstCommentText\": \"📲 iPhone: https://apps.apple.com/app/id6812517519\\n💻 ვებ-ვერსია: https://medicard.ge/app\\n🤖 Android — სულ მალე\", \"providers\": [{\"network\": \"facebook\"}, {\"network\": \"instagram\"}], \"facebookData\": {\"type\": \"POST\"}, \"instagramData\": {\"type\": \"POST\", \"isAiGenerated\": false}}",
+"url": "https://medicard.ge/press/campaign/d20-feed.jpg"
+},
+{
+"slot": "d20-story",
+"date": "2026-10-20T19:30:00+04:00",
+"info": "{\"autoPublish\": true, \"draft\": false, \"descendants\": [], \"hasNotReadNotes\": false, \"shortener\": false, \"smartLinkData\": {\"ids\": []}, \"media\": [\"https://medicard.ge/press/campaign/d20-story.jpg\"], \"mediaAltText\": [], \"publicationDate\": {\"dateTime\": \"2026-10-20T19:30:00\", \"timezone\": \"Asia/Tbilisi\"}, \"providers\": [{\"network\": \"facebook\"}, {\"network\": \"instagram\"}], \"facebookData\": {\"type\": \"STORY\"}, \"instagramData\": {\"type\": \"STORY\", \"isAiGenerated\": false}}",
+"url": "https://medicard.ge/press/campaign/d20-story.jpg"
+},
+{
+"slot": "d20-linkedin",
+"date": "2026-10-20T09:30:00+04:00",
+"info": "{\"autoPublish\": true, \"draft\": false, \"descendants\": [], \"hasNotReadNotes\": false, \"shortener\": false, \"smartLinkData\": {\"ids\": []}, \"media\": [\"https://medicard.ge/press/campaign/d20-linkedin.jpg\"], \"mediaAltText\": [], \"publicationDate\": {\"dateTime\": \"2026-10-20T09:30:00\", \"timezone\": \"Asia/Tbilisi\"}, \"text\": \"Unpopular opinion: people do not need more health apps. They need fewer.\\n\\nA typical person managing their health juggles a reminder app, a food tracker, a cycle app, a step counter and a folder of lab results.\\n\\nEach one is fine. Together they are exhausting, and none of them talk to each other.\\n\\nMEDICARD puts them in one place, with one assistant that can see the whole picture (with consent).\\n\\nAgree or disagree?\\n\\n#HealthTech #ProductDesign #DigitalHealth\", \"firstCommentText\": \"📲 iPhone: https://apps.apple.com/app/id6812517519\\n💻 Web: https://medicard.ge/app\", \"providers\": [{\"network\": \"linkedin\"}], \"linkedinData\": {\"type\": \"post\", \"previewIncluded\": true, \"publishImagesAsPDF\": false}}",
+"url": "https://medicard.ge/press/campaign/d20-linkedin.jpg"
+},
+{
+"slot": "d21-feed",
+"date": "2026-10-21T10:00:00+04:00",
+"info": "{\"autoPublish\": true, \"draft\": false, \"descendants\": [], \"hasNotReadNotes\": false, \"shortener\": false, \"smartLinkData\": {\"ids\": []}, \"media\": [\"https://medicard.ge/press/campaign/d21-feed.jpg\"], \"mediaAltText\": [], \"publicationDate\": {\"dateTime\": \"2026-10-21T10:00:00\", \"timezone\": \"Asia/Tbilisi\"}, \"text\": \"დიდ ეკრანზე უფრო მოსახერხებელია? 💻\\n\\nMEDICARD-ის ვებ-ვერსიაში იგივე ანგარიშით შედიხარ: წამლები, ანალიზები, კვება, ციკლი და Medi — კომპიუტერიდან, დიდ გრაფიკებთან ერთად.\\n\\n👉 medicard.ge/app\\n\\n📲 ლინკი ბიოში · უფასოდ App Store-ში\\n\\n#MEDICARD #Medi #ჯანმრთელობა #საქართველო\", \"firstCommentText\": \"📲 iPhone: https://apps.apple.com/app/id6812517519\\n💻 ვებ-ვერსია: https://medicard.ge/app\\n🤖 Android — სულ მალე\", \"providers\": [{\"network\": \"facebook\"}, {\"network\": \"instagram\"}], \"facebookData\": {\"type\": \"POST\"}, \"instagramData\": {\"type\": \"POST\", \"isAiGenerated\": true}}",
+"url": "https://medicard.ge/press/campaign/d21-feed.jpg"
+},
+{
+"slot": "d21-story",
+"date": "2026-10-21T19:30:00+04:00",
+"info": "{\"autoPublish\": true, \"draft\": false, \"descendants\": [], \"hasNotReadNotes\": false, \"shortener\": false, \"smartLinkData\": {\"ids\": []}, \"media\": [\"https://medicard.ge/press/campaign/d21-story.jpg\"], \"mediaAltText\": [], \"publicationDate\": {\"dateTime\": \"2026-10-21T19:30:00\", \"timezone\": \"Asia/Tbilisi\"}, \"providers\": [{\"network\": \"facebook\"}, {\"network\": \"instagram\"}], \"facebookData\": {\"type\": \"STORY\"}, \"instagramData\": {\"type\": \"STORY\", \"isAiGenerated\": true}}",
+"url": "https://medicard.ge/press/campaign/d21-story.jpg"
+},
+{
+"slot": "d22-feed",
+"date": "2026-10-22T10:00:00+04:00",
+"info": "{\"autoPublish\": true, \"draft\": false, \"descendants\": [], \"hasNotReadNotes\": false, \"shortener\": false, \"smartLinkData\": {\"ids\": []}, \"media\": [\"https://medicard.ge/press/campaign/d22-feed.jpg\"], \"mediaAltText\": [], \"publicationDate\": {\"dateTime\": \"2026-10-22T10:00:00\", \"timezone\": \"Asia/Tbilisi\"}, \"text\": \"რატომ შევქმენით MEDICARD? 💚\\n\\nანალიზის ფურცელი უჯრაში ინახებოდა, წამლის შეხსენება ერთ აპში იყო, ციკლი — მეორეში, კვების დღიური — მესამეში. თითქმის ყველა ინგლისურად.\\n\\nგვინდოდა ერთი ადგილი, სადაც ყოველდღიური ზრუნვა მარტივია, გასაგებია და ქართულია.\\n\\nეს მხოლოდ დასაწყისია. რა გინდა, რომ დავამატოთ? 👇\\n\\n📲 ლინკი ბიოში · უფასოდ App Store-ში\\n\\n#MEDICARD #Medi #ჯანმრთელობა #საქართველო\", \"firstCommentText\": \"📲 iPhone: https://apps.apple.com/app/id6812517519\\n💻 ვებ-ვერსია: https://medicard.ge/app\\n🤖 Android — სულ მალე\", \"providers\": [{\"network\": \"facebook\"}, {\"network\": \"instagram\"}], \"facebookData\": {\"type\": \"POST\"}, \"instagramData\": {\"type\": \"POST\", \"isAiGenerated\": false}}",
+"url": "https://medicard.ge/press/campaign/d22-feed.jpg"
+},
+{
+"slot": "d22-story",
+"date": "2026-10-22T19:30:00+04:00",
+"info": "{\"autoPublish\": true, \"draft\": false, \"descendants\": [], \"hasNotReadNotes\": false, \"shortener\": false, \"smartLinkData\": {\"ids\": []}, \"media\": [\"https://medicard.ge/press/campaign/d22-story.jpg\"], \"mediaAltText\": [], \"publicationDate\": {\"dateTime\": \"2026-10-22T19:30:00\", \"timezone\": \"Asia/Tbilisi\"}, \"providers\": [{\"network\": \"facebook\"}, {\"network\": \"instagram\"}], \"facebookData\": {\"type\": \"STORY\"}, \"instagramData\": {\"type\": \"STORY\", \"isAiGenerated\": false}}",
+"url": "https://medicard.ge/press/campaign/d22-story.jpg"
+},
+{
+"slot": "d22-linkedin",
+"date": "2026-10-22T09:30:00+04:00",
+"info": "{\"autoPublish\": true, \"draft\": false, \"descendants\": [], \"hasNotReadNotes\": false, \"shortener\": false, \"smartLinkData\": {\"ids\": []}, \"media\": [\"https://medicard.ge/press/campaign/d22-linkedin.jpg\"], \"mediaAltText\": [], \"publicationDate\": {\"dateTime\": \"2026-10-22T09:30:00\", \"timezone\": \"Asia/Tbilisi\"}, \"text\": \"People deserve to understand their health in their own language.\\n\\nNot a translated menu. Georgian food in the nutrition catalog, Georgian pharmacies in price comparison, and an assistant that answers in Georgian.\\n\\nWe are building MEDICARD for small-language markets first. Georgia is where we start.\\n\\n#HealthTech #Georgia #Startup #Localization\", \"firstCommentText\": \"📲 iPhone: https://apps.apple.com/app/id6812517519\\n💻 Web: https://medicard.ge/app\", \"providers\": [{\"network\": \"linkedin\"}], \"linkedinData\": {\"type\": \"post\", \"previewIncluded\": true, \"publishImagesAsPDF\": false}}",
+"url": "https://medicard.ge/press/campaign/d22-linkedin.jpg"
+},
+{
+"slot": "d23-feed",
+"date": "2026-10-23T10:00:00+04:00",
+"info": "{\"autoPublish\": true, \"draft\": false, \"descendants\": [], \"hasNotReadNotes\": false, \"shortener\": false, \"smartLinkData\": {\"ids\": []}, \"media\": [\"https://medicard.ge/press/campaign/d23-feed.jpg\"], \"mediaAltText\": [], \"publicationDate\": {\"dateTime\": \"2026-10-23T10:00:00\", \"timezone\": \"Asia/Tbilisi\"}, \"text\": \"მშობლებს წამლების დათვლა უჭირთ? 💚\\n\\nდაუყენე MEDICARD, ერთად ჩაწერეთ წამლები და ვიზიტები, შეხსენებები კი დანარჩენს თვითონ იზამს.\\n\\nმონიშნე ის, ვისაც ეს გამოადგება 👇\\n\\n📲 ლინკი ბიოში · უფასოდ App Store-ში\\n\\n#MEDICARD #Medi #ჯანმრთელობა #საქართველო\", \"firstCommentText\": \"📲 iPhone: https://apps.apple.com/app/id6812517519\\n💻 ვებ-ვერსია: https://medicard.ge/app\\n🤖 Android — სულ მალე\", \"providers\": [{\"network\": \"facebook\"}, {\"network\": \"instagram\"}], \"facebookData\": {\"type\": \"POST\"}, \"instagramData\": {\"type\": \"POST\", \"isAiGenerated\": true}}",
+"url": "https://medicard.ge/press/campaign/d23-feed.jpg"
+},
+{
+"slot": "d23-story",
+"date": "2026-10-23T19:30:00+04:00",
+"info": "{\"autoPublish\": true, \"draft\": false, \"descendants\": [], \"hasNotReadNotes\": false, \"shortener\": false, \"smartLinkData\": {\"ids\": []}, \"media\": [\"https://medicard.ge/press/campaign/d23-story.jpg\"], \"mediaAltText\": [], \"publicationDate\": {\"dateTime\": \"2026-10-23T19:30:00\", \"timezone\": \"Asia/Tbilisi\"}, \"providers\": [{\"network\": \"facebook\"}, {\"network\": \"instagram\"}], \"facebookData\": {\"type\": \"STORY\"}, \"instagramData\": {\"type\": \"STORY\", \"isAiGenerated\": true}}",
+"url": "https://medicard.ge/press/campaign/d23-story.jpg"
+},
+{
+"slot": "d24-feed",
+"date": "2026-10-24T11:00:00+04:00",
+"info": "{\"autoPublish\": true, \"draft\": false, \"descendants\": [], \"hasNotReadNotes\": false, \"shortener\": false, \"smartLinkData\": {\"ids\": []}, \"media\": [\"https://medicard.ge/press/campaign/d24-feed.jpg\"], \"mediaAltText\": [], \"publicationDate\": {\"dateTime\": \"2026-10-24T11:00:00\", \"timezone\": \"Asia/Tbilisi\"}, \"text\": \"შაბათის დილა — საუკეთესო დრო გასასეირნებლად ☀️\\n\\nMEDIRUN-ში ყოველი ახალი ქუჩა რუკაზე ფერს იძენს. ამ შაბათ-კვირას შენი ქალაქის ახალ კუთხეს აღმოაჩენ?\\n\\n📲 ლინკი ბიოში · უფასოდ App Store-ში\\n\\n#MEDICARD #Medi #ჯანმრთელობა #საქართველო #MEDIRUN\", \"firstCommentText\": \"📲 iPhone: https://apps.apple.com/app/id6812517519\\n💻 ვებ-ვერსია: https://medicard.ge/app\\n🤖 Android — სულ მალე\", \"providers\": [{\"network\": \"facebook\"}, {\"network\": \"instagram\"}], \"facebookData\": {\"type\": \"POST\"}, \"instagramData\": {\"type\": \"POST\", \"isAiGenerated\": true}}",
+"url": "https://medicard.ge/press/campaign/d24-feed.jpg"
+},
+{
+"slot": "d24-story",
+"date": "2026-10-24T19:30:00+04:00",
+"info": "{\"autoPublish\": true, \"draft\": false, \"descendants\": [], \"hasNotReadNotes\": false, \"shortener\": false, \"smartLinkData\": {\"ids\": []}, \"media\": [\"https://medicard.ge/press/campaign/d24-story.jpg\"], \"mediaAltText\": [], \"publicationDate\": {\"dateTime\": \"2026-10-24T19:30:00\", \"timezone\": \"Asia/Tbilisi\"}, \"providers\": [{\"network\": \"facebook\"}, {\"network\": \"instagram\"}], \"facebookData\": {\"type\": \"STORY\"}, \"instagramData\": {\"type\": \"STORY\", \"isAiGenerated\": true}}",
+"url": "https://medicard.ge/press/campaign/d24-story.jpg"
+},
+{
+"slot": "d25-feed",
+"date": "2026-10-25T11:00:00+04:00",
+"info": "{\"autoPublish\": true, \"draft\": false, \"descendants\": [], \"hasNotReadNotes\": false, \"shortener\": false, \"smartLinkData\": {\"ids\": []}, \"media\": [\"https://medicard.ge/press/campaign/d25-feed.jpg\"], \"mediaAltText\": [], \"publicationDate\": {\"dateTime\": \"2026-10-25T11:00:00\", \"timezone\": \"Asia/Tbilisi\"}, \"text\": \"დაძაბული დღე გაქვს? 🌿\\n\\nსცადე 3 წუთიანი სუნთქვა:\\n1️⃣ ნელა ჩაისუნთქე — 4 წამი\\n2️⃣ კიდევ უფრო ნელა ამოისუნთქე — 6 წამი\\n3️⃣ გაიმეორე 3 წუთის განმავლობაში\\n\\nხანგრძლივი ამოსუნთქვა სხეულს დამშვიდებაში ეხმარება.\\n\\nთუ სტრესი ან შფოთვა ხშირია, სპეციალისტს მიმართე 💚\\n\\n📲 ლინკი ბიოში · უფასოდ App Store-ში\\n\\n#MEDICARD #Medi #ჯანმრთელობა #საქართველო\", \"firstCommentText\": \"📲 iPhone: https://apps.apple.com/app/id6812517519\\n💻 ვებ-ვერსია: https://medicard.ge/app\\n🤖 Android — სულ მალე\", \"providers\": [{\"network\": \"facebook\"}, {\"network\": \"instagram\"}], \"facebookData\": {\"type\": \"POST\"}, \"instagramData\": {\"type\": \"POST\", \"isAiGenerated\": false}}",
+"url": "https://medicard.ge/press/campaign/d25-feed.jpg"
+},
+{
+"slot": "d25-story",
+"date": "2026-10-25T19:30:00+04:00",
+"info": "{\"autoPublish\": true, \"draft\": false, \"descendants\": [], \"hasNotReadNotes\": false, \"shortener\": false, \"smartLinkData\": {\"ids\": []}, \"media\": [\"https://medicard.ge/press/campaign/d25-story.jpg\"], \"mediaAltText\": [], \"publicationDate\": {\"dateTime\": \"2026-10-25T19:30:00\", \"timezone\": \"Asia/Tbilisi\"}, \"providers\": [{\"network\": \"facebook\"}, {\"network\": \"instagram\"}], \"facebookData\": {\"type\": \"STORY\"}, \"instagramData\": {\"type\": \"STORY\", \"isAiGenerated\": false}}",
+"url": "https://medicard.ge/press/campaign/d25-story.jpg"
+},
+{
+"slot": "d26-feed",
+"date": "2026-10-26T10:00:00+04:00",
+"info": "{\"autoPublish\": true, \"draft\": false, \"descendants\": [], \"hasNotReadNotes\": false, \"shortener\": false, \"smartLinkData\": {\"ids\": []}, \"media\": [\"https://medicard.ge/press/campaign/d26-feed.jpg\"], \"mediaAltText\": [], \"publicationDate\": {\"dateTime\": \"2026-10-26T10:00:00\", \"timezone\": \"Asia/Tbilisi\"}, \"text\": \"შენი ჰემოგლობინი როგორ შეიცვალა ბოლო ერთ წელიწადში? 📈\\n\\nMEDICARD ყველა ანალიზს ერთ ისტორიაში ინახავს: ყოველ მაჩვენებელს დროში, გრაფიკზე ნახავ და Medi-სთან განიხილავ.\\n\\nშედეგი ყოველთვის ექიმთან განიხილე.\\n\\n📲 ლინკი ბიოში · უფასოდ App Store-ში\\n\\n#MEDICARD #Medi #ჯანმრთელობა #საქართველო\", \"firstCommentText\": \"📲 iPhone: https://apps.apple.com/app/id6812517519\\n💻 ვებ-ვერსია: https://medicard.ge/app\\n🤖 Android — სულ მალე\", \"providers\": [{\"network\": \"facebook\"}, {\"network\": \"instagram\"}], \"facebookData\": {\"type\": \"POST\"}, \"instagramData\": {\"type\": \"POST\", \"isAiGenerated\": false}}",
+"url": "https://medicard.ge/press/campaign/d26-feed.jpg"
+},
+{
+"slot": "d26-story",
+"date": "2026-10-26T19:30:00+04:00",
+"info": "{\"autoPublish\": true, \"draft\": false, \"descendants\": [], \"hasNotReadNotes\": false, \"shortener\": false, \"smartLinkData\": {\"ids\": []}, \"media\": [\"https://medicard.ge/press/campaign/d26-story.jpg\"], \"mediaAltText\": [], \"publicationDate\": {\"dateTime\": \"2026-10-26T19:30:00\", \"timezone\": \"Asia/Tbilisi\"}, \"providers\": [{\"network\": \"facebook\"}, {\"network\": \"instagram\"}], \"facebookData\": {\"type\": \"STORY\"}, \"instagramData\": {\"type\": \"STORY\", \"isAiGenerated\": false}}",
+"url": "https://medicard.ge/press/campaign/d26-story.jpg"
+},
+{
+"slot": "d27-feed",
+"date": "2026-10-27T10:00:00+04:00",
+"info": "{\"autoPublish\": true, \"draft\": false, \"descendants\": [], \"hasNotReadNotes\": false, \"shortener\": false, \"smartLinkData\": {\"ids\": []}, \"media\": [\"https://medicard.ge/press/campaign/d27-feed.jpg\"], \"mediaAltText\": [], \"publicationDate\": {\"dateTime\": \"2026-10-27T10:00:00\", \"timezone\": \"Asia/Tbilisi\"}, \"text\": \"MEDICARD ახლა ორ ენაზეა 🇬🇪 🇬🇧\\n\\nენას აირჩევ პირველივე ეკრანზე ან პროფილში, ნებისმიერ დროს. Medi-ც შენს არჩეულ ენაზე გიპასუხებს.\\n\\nგაუზიარე უცხოელ მეგობარს, რომელიც საქართველოში ცხოვრობს 💚\\n\\n📲 ლინკი ბიოში · უფასოდ App Store-ში\\n\\n#MEDICARD #Medi #ჯანმრთელობა #საქართველო\", \"firstCommentText\": \"📲 iPhone: https://apps.apple.com/app/id6812517519\\n💻 ვებ-ვერსია: https://medicard.ge/app\\n🤖 Android — სულ მალე\", \"providers\": [{\"network\": \"facebook\"}, {\"network\": \"instagram\"}], \"facebookData\": {\"type\": \"POST\"}, \"instagramData\": {\"type\": \"POST\", \"isAiGenerated\": false}}",
+"url": "https://medicard.ge/press/campaign/d27-feed.jpg"
+},
+{
+"slot": "d27-story",
+"date": "2026-10-27T19:30:00+04:00",
+"info": "{\"autoPublish\": true, \"draft\": false, \"descendants\": [], \"hasNotReadNotes\": false, \"shortener\": false, \"smartLinkData\": {\"ids\": []}, \"media\": [\"https://medicard.ge/press/campaign/d27-story.jpg\"], \"mediaAltText\": [], \"publicationDate\": {\"dateTime\": \"2026-10-27T19:30:00\", \"timezone\": \"Asia/Tbilisi\"}, \"providers\": [{\"network\": \"facebook\"}, {\"network\": \"instagram\"}], \"facebookData\": {\"type\": \"STORY\"}, \"instagramData\": {\"type\": \"STORY\", \"isAiGenerated\": false}}",
+"url": "https://medicard.ge/press/campaign/d27-story.jpg"
+},
+{
+"slot": "d27-linkedin",
+"date": "2026-10-27T09:30:00+04:00",
+"info": "{\"autoPublish\": true, \"draft\": false, \"descendants\": [], \"hasNotReadNotes\": false, \"shortener\": false, \"smartLinkData\": {\"ids\": []}, \"media\": [\"https://medicard.ge/press/campaign/d27-linkedin.jpg\"], \"mediaAltText\": [], \"publicationDate\": {\"dateTime\": \"2026-10-27T09:30:00\", \"timezone\": \"Asia/Tbilisi\"}, \"text\": \"MEDICARD now works in Georgian and English, including the AI assistant, reminders and emails.\\n\\nFor the many foreigners who live and work in Georgia, that means one app for everyday health, with local pharmacies and local food.\\n\\nKnow someone who should try it? Link in the first comment.\\n\\n#HealthTech #Georgia #Expats #DigitalHealth\", \"firstCommentText\": \"📲 iPhone: https://apps.apple.com/app/id6812517519\\n💻 Web: https://medicard.ge/app\", \"providers\": [{\"network\": \"linkedin\"}], \"linkedinData\": {\"type\": \"post\", \"previewIncluded\": true, \"publishImagesAsPDF\": false}}",
+"url": "https://medicard.ge/press/campaign/d27-linkedin.jpg"
+},
+{
+"slot": "d28-feed",
+"date": "2026-10-28T10:00:00+04:00",
+"info": "{\"autoPublish\": true, \"draft\": false, \"descendants\": [], \"hasNotReadNotes\": false, \"shortener\": false, \"smartLinkData\": {\"ids\": []}, \"media\": [\"https://medicard.ge/press/campaign/d28-feed.jpg\"], \"mediaAltText\": [], \"publicationDate\": {\"dateTime\": \"2026-10-28T10:00:00\", \"timezone\": \"Asia/Tbilisi\"}, \"text\": \"4 კვირა გავიდა MEDICARD-ის გაშვებიდან 💚\\n\\nმადლობა ყველას, ვინც სცადა, მოგვწერა, გაგვიზიარა და შეცდომებზე მიგვითითა. ყოველ თქვენს შეტყობინებას ვკითხულობთ.\\n\\nშემდეგი ნაბიჯი? Android და კიდევ ბევრი სიახლე. გამოგვყევი! 🚀\\n\\n📲 ლინკი ბიოში · უფასოდ App Store-ში\\n\\n#MEDICARD #Medi #ჯანმრთელობა #საქართველო\", \"firstCommentText\": \"📲 iPhone: https://apps.apple.com/app/id6812517519\\n💻 ვებ-ვერსია: https://medicard.ge/app\\n🤖 Android — სულ მალე\", \"providers\": [{\"network\": \"facebook\"}, {\"network\": \"instagram\"}], \"facebookData\": {\"type\": \"POST\"}, \"instagramData\": {\"type\": \"POST\", \"isAiGenerated\": false}}",
+"url": "https://medicard.ge/press/campaign/d28-feed.jpg"
+},
+{
+"slot": "d28-story",
+"date": "2026-10-28T19:30:00+04:00",
+"info": "{\"autoPublish\": true, \"draft\": false, \"descendants\": [], \"hasNotReadNotes\": false, \"shortener\": false, \"smartLinkData\": {\"ids\": []}, \"media\": [\"https://medicard.ge/press/campaign/d28-story.jpg\"], \"mediaAltText\": [], \"publicationDate\": {\"dateTime\": \"2026-10-28T19:30:00\", \"timezone\": \"Asia/Tbilisi\"}, \"providers\": [{\"network\": \"facebook\"}, {\"network\": \"instagram\"}], \"facebookData\": {\"type\": \"STORY\"}, \"instagramData\": {\"type\": \"STORY\", \"isAiGenerated\": false}}",
+"url": "https://medicard.ge/press/campaign/d28-story.jpg"
+}
+]

@@ -3,7 +3,7 @@
   "template": "existing",
   "image": "launch-feed.jpg",
   "ai": true,
-  "caption": "✨ MEDICARD AI უკვე App Store-შია! ✨\n\nწლების განმავლობაში ჯანმრთელობა გაფანტული გვქონდა: ანალიზის ფურცელი უჯრაში, წამლის შეხსენება ერთ აპში, კვება მეორეში, ციკლი მესამეში… და თითქმის ყველა ინგლისურად.\n\nდღეს ეს მთავრდება 🇬🇪\n\n🤖 Medi — ჰკითხე ტექსტით ან ხმით\n💊 წამლის შეხსენებები\n🔬 ანალიზები გასაგებ ენაზე\n🥗 კვება ფოტოთი და ბარკოდით\n🌸 ციკლის დღიური\n🏃 MEDIRUN — გადი გარეთ და აღმოაჩინე შენი ქალაქი\n\n🔒 შენს ჯანმრთელობის მონაცემებს არასდროს ვყიდით.\n🆓 ყველა ფუნქცია უფასოა.\n\nMedi არ ცვლის ექიმს — საჭიროებისას მიმართე სპეციალისტს.\n\n📲 ლინკი ბიოში · უფასოდ App Store-ში\n\n#MEDICARD #Medi #ჯანმრთელობა #საქართველო",
+  "caption": "✨ MEDICARD AI უკვე App Store-შია! ✨\n\nწლების განმავლობაში ჯანმრთელობა გაფანტული გვქონდა: ანალიზის ფურცელი უჯრაში, წამლის შეხსენება ერთ აპში, კვება მეორეში, ციკლი მესამეში… და თითქმის ყველა ინგლისურად.\n\nდღეს ეს მთავრდება 🇬🇪\n\n🤖 Medi — ჰკითხე ტექსტით ან ხმით\n💊 წამლის შეხსენებები\n🔬 ანალიზები გასაგებ ენაზე\n🥗 კვება ფოტოთი და ბარკოდით\n🌸 ციკლის დღიური\n🏃 MEDIRUN — გადი გარეთ და აღმოაჩინე შენი ქალაქი\n\n🔒 შენი ჯანმრთელობის მონაცემებს არასდროს ვყიდით.\n🆓 ყველა ფუნქცია უფასოა.\n\nMedi არ ცვლის ექიმს — საჭიროებისას მიმართე სპეციალისტს.\n\n📲 ლინკი ბიოში · უფასოდ App Store-ში\n\n#MEDICARD #Medi #ჯანმრთელობა #საქართველო",
   "slot": "d01-feed",
   "kind": "POST",
   "networks": [
@@ -325,7 +325,7 @@
  {
   "template": "li-text",
   "headline": "AI in health: helpful only if it is honest",
-  "text": "Our AI assistant, Medi, is designed around three rules:\n\n1. It only sees what the person allows. Consent comes before any data leaves the phone.\n2. It never diagnoses. It explains, organises and helps prepare for a doctor.\n3. It never sells data. Health data is not a business model.\n\nWe think trust is the product. Everything else is features.\n\n#AI #HealthTech #Privacy #ResponsibleAI",
+  "text": "Our AI assistant, Medi, is designed around three rules:\n\n1. It only sees what the person allows. Consent comes before any data leaves the phone.\n2. It never diagnoses. It explains, organizes and helps prepare for a doctor.\n3. It never sells data. Health data is not a business model.\n\nWe think trust is the product. Everything else is features.\n\n#AI #HealthTech #Privacy #ResponsibleAI",
   "slot": "d08-linkedin",
   "kind": "POST",
   "networks": [
