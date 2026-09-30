@@ -15,8 +15,6 @@ import { t } from '../lib/i18n.js';
 
 export const pharmacyRouter = Router();
 
-const SOURCE_ORDER = ['PHARMADEPOT', 'AVERSI', 'PSP'];
-
 function publicSource(src) {
   if (!src) return null;
   return {
@@ -69,15 +67,18 @@ function mapProduct(row, crossCtx, { includeOffers = false } = {}) {
     category: row.category
       ? { id: row.category.id, slug: row.category.slug, nameKa: row.category.nameKa }
       : null,
-    bestPriceGel: pricing.bestPriceGel ?? row.bestPriceGel,
+    // Only a recently confirmed, in-stock offer can be "the best price".
+    bestPriceGel: mergedOffers.length ? pricing.bestPriceGel : row.bestPriceGel,
     bestSource: publicSource(
       row.bestSource && pricing.bestSourceId === row.bestSourceId
         ? row.bestSource
         : pricing.bestSourceId
           ? { id: pricing.bestSourceId, ...SOURCES[pricing.bestSourceId] }
-          : row.bestSource,
+          : mergedOffers.length
+            ? null
+            : row.bestSource,
     ),
-    offerCount: pricing.offerCount || row.offerCount,
+    offerCount: mergedOffers.length ? pricing.offerCount : row.offerCount,
     savingsPercent: pricing.savingsPercent,
     sourcePrices,
     lastSyncedAt: row.lastSyncedAt,

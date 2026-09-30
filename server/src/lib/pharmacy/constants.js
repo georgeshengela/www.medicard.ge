@@ -17,7 +17,28 @@ export const SOURCES = {
     baseUrl: 'https://psp.ge',
     logoUrl: 'https://psp.ge/favicon.ico',
   },
+  GPC: {
+    id: 'GPC',
+    nameKa: 'ჯიპისი',
+    baseUrl: 'https://gpc.ge',
+    logoUrl: 'https://gpc.ge/favicon.ico',
+  },
 };
+
+/** Display/compare order everywhere (API sourcePrices, admin). */
+export const SOURCE_ORDER = ['PSP', 'PHARMADEPOT', 'GPC', 'AVERSI'];
+
+/**
+ * An offer not re-confirmed by a sync for this long is shown as unconfirmed
+ * („დაუდასტურებელი“) and never counts as the best price.
+ */
+export const OFFER_STALE_MS = 3 * 24 * 60 * 60 * 1000;
+
+export function isOfferStale(syncedAt, now = Date.now()) {
+  if (!syncedAt) return true;
+  const t = new Date(syncedAt).getTime();
+  return !Number.isFinite(t) || now - t > OFFER_STALE_MS;
+}
 
 export const PHARMADEPOT_MEDICATION_CATEGORY = '111843';
 

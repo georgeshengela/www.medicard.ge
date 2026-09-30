@@ -1,12 +1,19 @@
 import * as cheerio from 'cheerio';
-import { FETCH_HEADERS, PHARMADEPOT_MEDICATION_CATEGORY, SOURCES } from '../constants.js';
-import {
-  fetchPharmadepotSubcategoryList,
-  mapPharmadepotSubcategoryName,
-} from './pharmadepotCategories.js';
-import { getCategoryIdBySlug } from '../categories.js';
+import { FETCH_HEADERS, SOURCES } from '../constants.js';
 
-const BASE = SOURCES.PHARMADEPOT.baseUrl;
+/**
+ * Pharmadepot and GPC run the same storefront (same markup, `?product=ID` links). One crawler
+ * serves both. The whole medication category is walked page by page: the site ignores `page`
+ * once a `subCategory` filter is present, so the old per-subcategory crawl only ever saw the
+ * first 24 products of each subcategory (~540 of ~3 300). The default order is not stable
+ * between pages (a 2026-09-30 crawl saw 2 408 of 3 296); `sort=price_asc` is (3 294 of 3 296).
+ */
+export const PHARMADEPOT_PLATFORM = {
+  PHARMADEPOT: { sourceId: 'PHARMADEPOT', base: SOURCES.PHARMADEPOT.baseUrl, medicationCategory: '111843' },
+  GPC: { sourceId: 'GPC', base: SOURCES.GPC.baseUrl, medicationCategory: '26' },
+};
+
+const PER_PAGE = 100;
 
 function sleep(ms) {
   return new Promise((r) => setTimeout(r, ms));
@@ -15,7 +22,7 @@ function sleep(ms) {
 async function fetchHtml(url, attempt = 1) {
   try {
     const res = await fetch(url, { headers: FETCH_HEADERS, redirect: 'follow', signal: AbortSignal.timeout(30_000) });
-    if (!res.ok) throw new Error(`Pharmadepot HTTP ${res.status} for ${url}`);
+    if (!res.ok) throw new Error(`HTTP ${res.status} for ${url}`);
     return res.text();
   } catch (err) {
     if (attempt >= 3) throw err;
@@ -24,8 +31,9 @@ async function fetchHtml(url, attempt = 1) {
   }
 }
 
-/** Parse product cards from a Pharmadepot category/listing page. */
-export function parsePharmadepotListingHtml(html, categoryId = null) {
+/** Parse product cards from a Pharmadepot/GPC category or search page. */
+export function parsePharmadepotListingHtml(html, categoryId = null, platform = PHARMADEPOT_PLATFORM.PHARMADEPOT) {
+  const { sourceId, base } = platform;
   const $ = cheerio.load(html);
   const products = [];
   const seen = new Set();
@@ -38,32 +46,35 @@ export function parsePharmadepotListingHtml(html, categoryId = null) {
     if (seen.has(sourceProductId)) return;
     seen.add(sourceProductId);
 
-    const card = $(el).closest('.flex.flex-col').length
-      ? $(el).closest('.flex.flex-col')
-      : $(el).parent().parent();
+    // The whole card (image, name, prices) sits inside the product link.
+    const card = $(el);
 
     const rawName =
-      $(el).find('img[alt]').first().attr('alt') ||
+      card.find('img[alt]').first().attr('alt') ||
       card.find('.line-clamp-2').first().text().trim() ||
       card.find('.text-16').first().text().trim();
 
     if (!rawName || rawName.length < 3) return;
 
-    const priceText =
-      card.find('[itemprop][content]').attr('content') ||
-      card.find('[content]').filter((__, n) => /^\d/.test($(n).attr('content') || '')).first().attr('content') ||
-      card.text().match(/([\d.]+)\s*₾/)?.[1];
+    // A card can carry several money values: a green „კალათის ფასდაკლება -7.28₾“ badge, the
+    // shelf price and a struck-through old price. The shelf price is the bold one; never take
+    // the first `[content]` blindly (that read Trimecor at GPC as 7.28 instead of 41.22).
+    const numericContent = (n) => /^\d/.test($(n).attr('content') || '');
+    const priceNode =
+      card.find('.font-semibold [content]').filter((__, n) => numericContent(n)).first().get(0) ||
+      card
+        .find('[content]')
+        .filter((__, n) => numericContent(n) && !/ფასდაკლება/.test($(n).closest('.min-h-30').text()))
+        .last()
+        .get(0);
+    const priceText = priceNode ? $(priceNode).attr('content') : null;
 
     const priceGel = priceText ? parseFloat(String(priceText).replace(',', '.')) : null;
     if (!priceGel || Number.isNaN(priceGel)) return;
 
-    const oldPriceMatch = card.text().match(/([\d.]+)\s*₾/g);
-    let oldPriceGel = null;
-    if (oldPriceMatch && oldPriceMatch.length > 1) {
-      const nums = oldPriceMatch.map((s) => parseFloat(s.replace('₾', '').trim()));
-      const max = Math.max(...nums);
-      if (max > priceGel) oldPriceGel = max;
-    }
+    const oldText = card.find('.line-through, .text-oldprice').first().text();
+    const oldValue = parseFloat((oldText.match(/[\d.]+/) || [])[0]);
+    const oldPriceGel = Number.isFinite(oldValue) && oldValue > priceGel ? oldValue : null;
 
     const img =
       card.find('img[src*="cdn.pharmadepot"]').attr('src') ||
@@ -71,7 +82,7 @@ export function parsePharmadepotListingHtml(html, categoryId = null) {
       null;
 
     const country = card.find('.text-black70').first().text().trim() || null;
-    const sourceUrl = href.startsWith('http') ? href : `${BASE}${href.startsWith('/') ? '' : '/'}${href}`;
+    const sourceUrl = href.startsWith('http') ? href : `${base}${href.startsWith('/') ? '' : '/'}${href}`;
 
     let discountPercent = null;
     if (oldPriceGel && oldPriceGel > priceGel) {
@@ -79,12 +90,14 @@ export function parsePharmadepotListingHtml(html, categoryId = null) {
     }
 
     products.push({
-      sourceId: 'PHARMADEPOT',
+      sourceId,
       sourceProductId,
-      rawName,
+      rawName: rawName.replace(/\s+/g, ' ').trim(),
       priceGel,
       oldPriceGel,
       discountPercent,
+      // The storefront lists only products that can be ordered; anything missing from a full
+      // crawl is marked out of stock by the sync.
       inStock: true,
       imageUrl: img,
       sourceUrl,
@@ -96,93 +109,54 @@ export function parsePharmadepotListingHtml(html, categoryId = null) {
   return products;
 }
 
-function totalPagesFromHtml(html) {
-  const productLinks = (html.match(/product=\d+/g) || []).length;
-  const perPage = productLinks > 0 ? productLinks : 24;
-
-  const totalMatch =
-    html.match(/მოძებნილია\s+(\d+)\s+პროდუქტ/i) ||
-    html.match(/\((\d+)\s*შედეგი\)/);
-  if (!totalMatch) return 1;
-
-  const total = parseInt(totalMatch[1], 10);
-  return Math.max(1, Math.ceil(total / perPage));
+export function totalFromListingHtml(html) {
+  const m = html.match(/მოძებნილია\s+(\d+)\s+პროდუქტ/i) || html.match(/\((\d+)\s*შედეგი\)/);
+  return m ? parseInt(m[1], 10) : null;
 }
 
-/**
- * Fetch medications from Pharmadepot (all subcategories when categoryId not passed).
- * @param {{ maxPages?: number, categoryId?: string, subCategoryId?: number, onProgress?: (n:number)=>void }} opts
- */
-export async function fetchPharmadepotProducts(opts = {}) {
-  const { maxPages = 999, categoryId = null, subCategoryId = null, onProgress } = opts;
+async function fetchPlatformProducts(platform, opts = {}) {
+  const { maxPages = 999, onProgress } = opts;
+  const listUrl = (page) =>
+    `${platform.base}/ka/category/medication?category=${platform.medicationCategory}&pageLimit=${PER_PAGE}&sort=price_asc${page > 1 ? `&page=${page}` : ''}`;
 
-  if (subCategoryId || categoryId) {
-    return fetchPharmadepotCategoryPages({ maxPages, categoryId, subCategoryId, onProgress });
-  }
+  const firstHtml = await fetchHtml(listUrl(1));
+  const total = totalFromListingHtml(firstHtml);
+  if (!total) throw new Error(`${platform.sourceId}: product count not found on the medication page`);
+  const pages = Math.min(Math.ceil(total / PER_PAGE), maxPages);
 
-  const subs = await fetchPharmadepotSubcategoryList();
-  const slugCache = new Map();
   const all = [];
   const seen = new Set();
-
-  for (const sub of subs) {
-    let resolvedCategoryId = null;
-    const slug = mapPharmadepotSubcategoryName(sub.name);
-    if (slug) {
-      if (slugCache.has(slug)) resolvedCategoryId = slugCache.get(slug);
-      else {
-        resolvedCategoryId = await getCategoryIdBySlug(slug);
-        slugCache.set(slug, resolvedCategoryId);
-      }
-    }
-
-    const batch = await fetchPharmadepotCategoryPages({
-      maxPages,
-      categoryId: resolvedCategoryId,
-      subCategoryId: sub.id,
-    });
-
-    for (const p of batch) {
-      if (seen.has(p.sourceProductId)) continue;
-      seen.add(p.sourceProductId);
-      all.push(p);
-      onProgress?.(all.length);
-    }
-  }
-
-  return all;
-}
-
-async function fetchPharmadepotCategoryPages({ maxPages, categoryId, subCategoryId, onProgress }) {
-  const all = [];
-  const seen = new Set();
-
-  const subParam = subCategoryId ? `&subCategory=${subCategoryId}` : '';
-  const firstUrl = `${BASE}/ka/category/medication?category=${PHARMADEPOT_MEDICATION_CATEGORY}${subParam}`;
-  const firstHtml = await fetchHtml(firstUrl);
-  const pages = Math.min(totalPagesFromHtml(firstHtml), maxPages);
-
+  let emptyPages = 0;
   for (let page = 1; page <= pages; page += 1) {
-    const url =
-      page === 1
-        ? firstUrl
-        : `${BASE}/ka/category/medication?category=${PHARMADEPOT_MEDICATION_CATEGORY}${subParam}&page=${page}`;
-    const html = page === 1 ? firstHtml : await fetchHtml(url);
-    const batch = parsePharmadepotListingHtml(html, categoryId);
+    const html = page === 1 ? firstHtml : await fetchHtml(listUrl(page));
+    const batch = parsePharmadepotListingHtml(html, null, platform);
+    let added = 0;
     for (const p of batch) {
       if (seen.has(p.sourceProductId)) continue;
       seen.add(p.sourceProductId);
       all.push(p);
+      added += 1;
     }
+    emptyPages = added ? 0 : emptyPages + 1;
+    if (emptyPages >= 3) break;
     onProgress?.(all.length);
-    if (page < pages) await sleep(400);
+    if (page < pages) await sleep(300);
   }
 
+  console.log(`[${platform.sourceId.toLowerCase()}] ${all.length} of ${total} listed products`);
   return all;
+}
+
+export function fetchPharmadepotProducts(opts = {}) {
+  return fetchPlatformProducts(PHARMADEPOT_PLATFORM.PHARMADEPOT, opts);
+}
+
+export function fetchGpcProducts(opts = {}) {
+  return fetchPlatformProducts(PHARMADEPOT_PLATFORM.GPC, opts);
 }
 
 export async function searchPharmadepot(query, categoryId = null) {
-  const url = `${BASE}/ka/search?q=${encodeURIComponent(query)}`;
-  const html = await fetchHtml(url);
-  return parsePharmadepotListingHtml(html, categoryId);
+  const platform = PHARMADEPOT_PLATFORM.PHARMADEPOT;
+  const html = await fetchHtml(`${platform.base}/ka/search?q=${encodeURIComponent(query)}`);
+  return parsePharmadepotListingHtml(html, categoryId, platform);
 }

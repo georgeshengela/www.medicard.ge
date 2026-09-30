@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/Button';
 import { pharmPx } from '@/constants/pharmacyVisuals';
 import { ka } from '@/i18n/ka';
 import type { PharmacySourcePrice } from '@/lib/api';
+import { formatRelative } from '@/lib/format';
 import { buildCompareSlots, compareStats, isBestSlot, sourceColor } from '@/lib/pharmacyCompare';
 import { useThemeColors } from '@/theme/colors';
 
@@ -103,15 +104,33 @@ export function PharmacyComparePanel({ prices, bestPrice }: Props) {
                       <Text className="text-[15px] font-bold text-text-100">{slot.nameKa}</Text>
                       {isBest ? <PharmacyBestPriceBadge accent={accent} size="sm" /> : null}
                     </View>
-                    <Text className="mt-0.5 text-[12px] text-text-300">
-                      {hasPrice ? (slot.inStock ? ka.pharmacy.inStock : ka.pharmacy.outOfStock) : ka.pharmacy.noPrice}
-                    </Text>
+                    {hasPrice ? (
+                      <Text className="mt-0.5 text-[12px]" style={{ color: colors.text300 }}>
+                        <Text
+                          style={{
+                            fontWeight: '700',
+                            color: slot.stale ? colors.warning : slot.inStock ? colors.success : colors.danger,
+                          }}
+                        >
+                          {slot.stale ? ka.pharmacy.unconfirmed : slot.inStock ? ka.pharmacy.inStock : ka.pharmacy.notInStock}
+                        </Text>
+                        {slot.syncedAt ? ` · ${ka.pharmacy.updated(formatRelative(slot.syncedAt))}` : ''}
+                      </Text>
+                    ) : (
+                      <Text className="mt-0.5 text-[12px] text-text-300">{ka.pharmacy.noPrice}</Text>
+                    )}
                   </View>
 
                   <View style={{ alignItems: 'flex-end', minWidth: pharmPx(80) }}>
                     {hasPrice ? (
                       <>
-                        <Text style={{ fontSize: pharmPx(18), fontWeight: '800', color: isBest ? accent : colors.text100 }}>
+                        <Text
+                          style={{
+                            fontSize: pharmPx(18),
+                            fontWeight: '800',
+                            color: isBest ? accent : slot.stale || !slot.inStock ? colors.text300 : colors.text100,
+                          }}
+                        >
                           {slot.priceGel!.toFixed(2)} ₾
                         </Text>
                         {!isBest && slot.priceDiffGel != null && slot.priceDiffGel > 0 ? (

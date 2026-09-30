@@ -10,7 +10,7 @@ import {
   similarityScore,
   slugify,
 } from './normalize.js';
-import { MATCH_THRESHOLD } from './constants.js';
+import { MATCH_THRESHOLD, OFFER_STALE_MS } from './constants.js';
 import { inferCategorySlug } from './categoryKeywords.js';
 import { getCategoryIdBySlug } from './categories.js';
 
@@ -325,10 +325,15 @@ export async function upsertOfferFromListing(listing) {
 }
 
 export async function recomputeProductPricing(productId) {
-  const offers = await prisma.pharmacyOffer.findMany({
+  const inStock = await prisma.pharmacyOffer.findMany({
     where: { catalogProductId: productId, inStock: true },
     orderBy: { priceGel: 'asc' },
   });
+  // The stored best price prefers offers a sync confirmed recently; a product whose every
+  // offer is old keeps its last known price (the API labels those as unconfirmed).
+  const freshSince = Date.now() - OFFER_STALE_MS;
+  const fresh = inStock.filter((o) => new Date(o.syncedAt).getTime() >= freshSince);
+  const offers = fresh.length ? fresh : inStock;
 
   const count = offers.length;
   if (!count) {

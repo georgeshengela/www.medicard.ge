@@ -11,6 +11,7 @@
     { id: 'PHARMADEPOT', label: 'ფარმადეპო' },
     { id: 'AVERSI', label: 'ავერსი' },
     { id: 'PSP', label: 'PSP' },
+    { id: 'GPC', label: 'ჯიპისი' },
   ];
 
   let pollTimer = null;
@@ -386,10 +387,11 @@
                 <label class="v3-pharmacy-field">
                   <span>წყარო</span>
                   <select id="pharm-source">
-                    <option value="ALL">ყველა (ფარმადეპო + ავერსი + PSP)</option>
+                    <option value="ALL">ყველა (PSP + ფარმადეპო + ჯიპისი + ავერსი)</option>
                     <option value="PHARMADEPOT">ფარმადეპო</option>
                     <option value="AVERSI">ავერსი</option>
                     <option value="PSP">PSP</option>
+                    <option value="GPC">ჯიპისი</option>
                   </select>
                 </label>
                 <label class="v3-pharmacy-field">

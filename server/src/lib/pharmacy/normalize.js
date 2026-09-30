@@ -17,6 +17,28 @@ const QTY_RE = /(?:#|№)?\s*(\d+)\s*(?:ტ(?:აბ(?:l)?)?|tablet|კაფ|ca
 
 const MODIFIERS = ['forte', 'plus', 'express', 'extra', 'duo', 'es', 'max', 'rapid'];
 
+/**
+ * Release-form qualifiers written in Latin capitals after the brand ("Trimecor MR",
+ * "Glucophage XR"). PSP writes "ტრიმეკორი MR - Trimecor MR", Pharmadepot/GPC write
+ * "ტრიმეკორი MR ტაბლეტი": the qualifier is part of the identity (MR ≠ plain), but it
+ * must not be glued into the brand ("trimecormr") or break the Georgian↔Latin pair,
+ * so it becomes a modifier token instead.
+ */
+const RELEASE_QUALIFIERS = ['mr', 'sr', 'xr', 'xl', 'cr', 'lp'];
+const RELEASE_QUALIFIER_SET = new Set(RELEASE_QUALIFIERS);
+const QUALIFIER_GAP_SRC = '(?:\\s+(?:MR|SR|XR|XL|CR|LP))?';
+
+function stripReleaseQualifiers(phrase) {
+  return String(phrase || '')
+    .split(/\s+/)
+    .filter((w) => w && !RELEASE_QUALIFIER_SET.has(w.toLowerCase()))
+    .join(' ');
+}
+
+function releaseQualifiers(lowerName) {
+  return RELEASE_QUALIFIERS.filter((q) => new RegExp(`(?:^|[^\\p{L}\\p{N}])${q}(?![\\p{L}\\p{N}])`, 'u').test(lowerName));
+}
+
 /** Georgian spellings of the same modifiers — a Latin-named source writes "Forte", a
  * Georgian-only one writes "ფორტე", and without this the two signatures diverge on
  * this token alone even when the brand and strength already agree. */
@@ -193,7 +215,7 @@ function canonicalizePhrase(phrase) {
 export function buildGeoLatinMap(names) {
   const map = new Map();
   const geoFirst = new RegExp(
-    `([\\u10a0-\\u10ff][\\u10a0-\\u10ff\\s®+-]{2,40}?${VARIANT_GAP_SRC})\\s*-\\s*(${LATIN_PHRASE_SRC}${VARIANT_GAP_SRC})`,
+    `([\\u10a0-\\u10ff][\\u10a0-\\u10ff\\s®+-]{2,40}?${VARIANT_GAP_SRC})${QUALIFIER_GAP_SRC}\\s*-\\s*(${LATIN_PHRASE_SRC}${VARIANT_GAP_SRC})`,
   );
   const latinFirst = new RegExp(
     `(${LATIN_PHRASE_SRC}${VARIANT_GAP_SRC})\\s*-\\s*([\\u10a0-\\u10ff][\\u10a0-\\u10ff\\s®+-]{2,40}?${VARIANT_GAP_SRC})(?=\\s|$)`,
@@ -206,7 +228,7 @@ export function buildGeoLatinMap(names) {
     const latPart = m ? m[2] : rev ? rev[1] : null;
     if (!geoPart || !latPart) continue;
 
-    const latCanon = canonicalizePhrase(latPart);
+    const latCanon = canonicalizePhrase(stripReleaseQualifiers(latPart));
     if (latCanon.length < 4) continue;
 
     // Register ONLY the first word of the Georgian phrase — never the second.
@@ -254,7 +276,10 @@ export function setGeoLatinMap(map) {
 function canonicalBrand(raw, geoLatinMap = geoLatinCache) {
   const cleaned = cleanRawName(raw);
   const dashLatin = cleaned.match(new RegExp(`\\s-\\s*(${LATIN_PHRASE_SRC}${VARIANT_GAP_SRC})`));
-  if (dashLatin) return canonicalizePhrase(dashLatin[1]);
+  if (dashLatin) {
+    const brand = canonicalizePhrase(stripReleaseQualifiers(dashLatin[1]));
+    if (brand) return brand;
+  }
 
   const inlineLatin = cleaned.match(/\b([A-Z][a-z]{3,})\b/);
   if (inlineLatin) return inlineLatin[1].toLowerCase();
@@ -297,11 +322,12 @@ function extractModifiers(raw) {
   // Also check the Georgian spelling — a Latin-named source writes "Forte" and
   // a Georgian-only one writes "ფორტე" for the exact same product, and without
   // this only one side of the pair gets the modifier token.
-  return MODIFIERS.filter((m) => {
+  const mods = MODIFIERS.filter((m) => {
     if (new RegExp(`\\b${m}\\b`).test(lower)) return true;
     const aliases = MODIFIER_ALIASES_GEO[m];
     return aliases?.some((geo) => cleaned.includes(geo));
-  }).sort();
+  });
+  return [...mods, ...releaseQualifiers(lower)].sort();
 }
 
 /** Cross-pharmacy identity key (brand + strength + pack). Form wording differs by source. */

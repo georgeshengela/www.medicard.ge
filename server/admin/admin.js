@@ -2909,6 +2909,7 @@ async function renderPharmacy() {
     { id: 'PHARMADEPOT', label: 'ფარმადეპო', tone: 'teal' },
     { id: 'AVERSI', label: 'ავერსი', tone: '' },
     { id: 'PSP', label: 'PSP', tone: '' },
+    { id: 'GPC', label: 'ჯიპისი', tone: '' },
   ];
 
   const comparedPct = catalog.products
@@ -2968,6 +2969,7 @@ async function renderPharmacy() {
                   <option value="PHARMADEPOT">Pharmadepot</option>
                   <option value="AVERSI">Aversi shop</option>
                   <option value="PSP">PSP</option>
+                  <option value="GPC">GPC</option>
                 </select>
               </div>
               <div class="field"><span>მაქს. გვერდები</span><input id="pharm-pages" type="number" min="1" max="500" placeholder="ცარიელი = სრული კატალოგი" /></div>

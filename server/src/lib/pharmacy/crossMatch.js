@@ -1,8 +1,6 @@
 import { prisma } from '../prisma.js';
 import { buildGeoLatinMap, buildLooseMatchSignature } from './normalize.js';
-import { SOURCES } from './constants.js';
-
-const SOURCE_ORDER = ['PHARMADEPOT', 'AVERSI', 'PSP'];
+import { SOURCES, SOURCE_ORDER, isOfferStale } from './constants.js';
 const CACHE_MS = 5 * 60 * 1000;
 
 let cache = { expires: 0, geoMap: null, index: null };
@@ -26,6 +24,7 @@ export async function getCrossSourceIndex() {
           sourceUrl: true,
           imageUrl: true,
           rawName: true,
+          syncedAt: true,
         },
       },
     },
@@ -50,12 +49,24 @@ export async function getCrossSourceIndex() {
 
     for (const offer of row.offers) {
       const cur = bucket[offer.sourceId];
-      if (!cur || offer.priceGel < cur.priceGel) bucket[offer.sourceId] = offer;
+      if (!cur || preferOffer(offer, cur)) bucket[offer.sourceId] = offer;
     }
   }
 
   cache = { expires: Date.now() + CACHE_MS, geoMap, index };
   return cache;
+}
+
+/**
+ * Recently confirmed beats stale, then in stock beats out of stock, then the cheaper wins.
+ * (A fresh "out of stock" is the truth; an old "in stock" is only a guess.)
+ */
+function preferOffer(a, b) {
+  const rank = (o) => (isOfferStale(o.syncedAt) ? 0 : 2) + (o.inStock === false ? 0 : 1);
+  const ra = rank(a);
+  const rb = rank(b);
+  if (ra !== rb) return ra > rb;
+  return a.priceGel < b.priceGel;
 }
 
 export function invalidateCrossSourceIndex() {
@@ -72,7 +83,7 @@ export function resolveOffersForCompare(row, crossIndex, geoMap) {
   for (const sourceId of SOURCE_ORDER) {
     const d = direct[sourceId];
     const c = cross[sourceId];
-    if (d && c) merged[sourceId] = d.priceGel <= c.priceGel ? d : c;
+    if (d && c) merged[sourceId] = preferOffer(c, d) ? c : d;
     else merged[sourceId] = d || c || null;
   }
 
@@ -81,7 +92,7 @@ export function resolveOffersForCompare(row, crossIndex, geoMap) {
 
 export function buildSourcePricesFromOffers(offers, bestSourceId = null) {
   const byId = Object.fromEntries(offers.map((o) => [o.sourceId, o]));
-  const priced = offers.map((o) => o.priceGel).filter((p) => p > 0);
+  const priced = offers.filter(isComparable).map((o) => o.priceGel);
   const minPrice = priced.length ? Math.min(...priced) : null;
   let bestId = bestSourceId;
 
@@ -93,7 +104,8 @@ export function buildSourcePricesFromOffers(offers, bestSourceId = null) {
     const offer = byId[sourceId];
     const meta = SOURCES[sourceId];
     const priceGel = offer?.priceGel ?? null;
-    const isBest = bestId === sourceId && offer != null;
+    const stale = offer ? isOfferStale(offer.syncedAt) : false;
+    const isBest = bestId === sourceId && offer != null && !stale;
 
     return {
       sourceId,
@@ -102,18 +114,25 @@ export function buildSourcePricesFromOffers(offers, bestSourceId = null) {
       priceGel,
       oldPriceGel: offer?.oldPriceGel ?? null,
       inStock: offer?.inStock ?? false,
+      // Not re-confirmed by the pharmacy's site recently: shown, but never "cheapest".
+      stale,
+      syncedAt: offer?.syncedAt ?? null,
       isBest,
       sourceUrl: offer?.sourceUrl ?? null,
       priceDiffGel:
-        priceGel != null && minPrice != null && !isBest && priceGel > minPrice
+        priceGel != null && minPrice != null && !isBest && !stale && priceGel > minPrice
           ? Math.round((priceGel - minPrice) * 100) / 100
           : null,
     };
   });
 }
 
+function isComparable(offer) {
+  return offer.priceGel > 0 && offer.inStock !== false && !isOfferStale(offer.syncedAt);
+}
+
 export function pricingFromOffers(offers) {
-  const priced = offers.filter((o) => o.priceGel > 0).sort((a, b) => a.priceGel - b.priceGel);
+  const priced = offers.filter(isComparable).sort((a, b) => a.priceGel - b.priceGel);
   if (!priced.length) {
     return { bestPriceGel: null, bestSourceId: null, offerCount: 0, savingsPercent: null };
   }

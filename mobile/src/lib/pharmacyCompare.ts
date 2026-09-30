@@ -29,12 +29,15 @@ export function buildCompareSlots(prices: PharmacySourcePrice[]): PharmacySource
 }
 
 export function isBestSlot(slot: PharmacySourcePrice, bestPrice: number | null) {
+  if (slot.stale || !slot.inStock) return false;
   return slot.isBest || (bestPrice != null && slot.priceGel === bestPrice);
 }
 
 export function compareStats(slots: PharmacySourcePrice[], bestPrice: number | null) {
   const available = slots.filter((s) => s.priceGel != null);
-  const maxPrice = available.length ? Math.max(...available.map((s) => s.priceGel!)) : null;
+  // Savings only between offers that are confirmed and orderable right now.
+  const comparable = available.filter((s) => s.inStock && !s.stale);
+  const maxPrice = comparable.length ? Math.max(...comparable.map((s) => s.priceGel!)) : null;
   const savingsGel = maxPrice != null && bestPrice != null && maxPrice > bestPrice ? maxPrice - bestPrice : null;
   return { available, maxPrice, savingsGel };
 }

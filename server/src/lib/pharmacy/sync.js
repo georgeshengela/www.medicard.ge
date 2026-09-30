@@ -3,7 +3,7 @@ import { prisma } from '../prisma.js';
 import { ensureDrugCategories, ensurePharmacySources } from './categories.js';
 import { upsertOfferFromListing, recomputeAllPricing, recomputeProductPricing, invalidateMatchGeoCache } from './match.js';
 import { invalidateCrossSourceIndex } from './crossMatch.js';
-import { fetchPharmadepotProducts } from './sources/pharmadepot.js';
+import { fetchPharmadepotProducts, fetchGpcProducts } from './sources/pharmadepot.js';
 import { fetchAversiProducts, closeAversiBrowser } from './sources/aversi.js';
 import { fetchPspProducts, closePspBrowser } from './sources/psp.js';
 
@@ -16,7 +16,38 @@ const FETCHERS = {
   PHARMADEPOT: fetchPharmadepotProducts,
   AVERSI: fetchAversiProducts,
   PSP: fetchPspProducts,
+  GPC: fetchGpcProducts,
 };
+
+const ALL_SOURCES = ['PSP', 'PHARMADEPOT', 'GPC', 'AVERSI'];
+
+/**
+ * A full crawl lists every product the pharmacy sells right now, so an offer it did not
+ * re-confirm is no longer orderable there. Only trusted when the crawl looks complete
+ * (≥ 60 % of what the source had in stock before), so a half-broken crawl never wipes stock.
+ */
+async function markUnlistedOutOfStock(source, runStartedAt, fetchedCount) {
+  const inStockBefore = await prisma.pharmacyOffer.count({ where: { sourceId: source, inStock: true } });
+  if (fetchedCount < 50 || fetchedCount < inStockBefore * 0.6) {
+    if (inStockBefore) {
+      console.warn(`[pharmacy-sync] ${source}: crawl looks partial (${fetchedCount} vs ${inStockBefore} in stock) — stock left unchanged`);
+    }
+    return 0;
+  }
+  const gone = await prisma.pharmacyOffer.findMany({
+    where: { sourceId: source, inStock: true, syncedAt: { lt: runStartedAt } },
+    select: { id: true, catalogProductId: true },
+  });
+  if (!gone.length) return 0;
+  await prisma.pharmacyOffer.updateMany({
+    where: { id: { in: gone.map((o) => o.id) } },
+    data: { inStock: false },
+  });
+  for (const productId of new Set(gone.map((o) => o.catalogProductId))) {
+    await recomputeProductPricing(productId);
+  }
+  return gone.length;
+}
 
 async function startSyncRun(source) {
   return prisma.syncRun.create({
@@ -86,6 +117,7 @@ export async function syncPharmacySource(source, opts = {}) {
       },
     });
     const result = await ingestListings(listings);
+    result.markedOutOfStock = await markUnlistedOutOfStock(source, run.startedAt, result.count);
     invalidateCrossSourceIndex();
     invalidateMatchGeoCache();
     const status = result.skipped > 0 && result.count === 0 ? 'FAILED' : 'DONE';
@@ -97,7 +129,7 @@ export async function syncPharmacySource(source, opts = {}) {
         : null;
     await finishSyncRun(run.id, { status, itemsFetched: result.count, error });
     console.log(
-      `[pharmacy-sync] ${source} done — ${result.count} offers, ${result.products} products${result.skipped ? `, ${result.skipped} skipped` : ''}`,
+      `[pharmacy-sync] ${source} done — ${result.count} offers, ${result.products} products${result.skipped ? `, ${result.skipped} skipped` : ''}${result.markedOutOfStock ? `, ${result.markedOutOfStock} no longer listed` : ''}`,
     );
     return result;
   } catch (err) {
@@ -121,7 +153,7 @@ export async function syncAllPharmacySources(opts = {}) {
   // map used to cross-match the same drug across sources. Running it first means
   // Pharmadepot's and Aversi's Georgian-only names can resolve to that same brand
   // instead of falling back to the raw (case-inflected) Georgian word as their key.
-  const sources = opts.sources || ['PSP', 'PHARMADEPOT', 'AVERSI'];
+  const sources = opts.sources || ALL_SOURCES;
   let total = 0;
   const errors = [];
 
@@ -150,7 +182,7 @@ export async function syncAllPharmacySources(opts = {}) {
 }
 
 export async function getSyncMeta() {
-  const sources = ['PHARMADEPOT', 'AVERSI', 'PSP', 'ALL'];
+  const sources = [...ALL_SOURCES, 'ALL'];
   const meta = {};
   for (const source of sources) {
     const last = await prisma.syncRun.findFirst({
@@ -245,7 +277,7 @@ export async function getPharmacyAdminStats() {
   ]);
 
   const sourceStatus = {};
-  for (const source of ['PHARMADEPOT', 'AVERSI', 'PSP']) {
+  for (const source of ALL_SOURCES) {
     const last = await prisma.syncRun.findFirst({
       where: { source },
       orderBy: { startedAt: 'desc' },

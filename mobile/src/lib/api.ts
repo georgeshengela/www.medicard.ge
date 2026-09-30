@@ -694,6 +694,9 @@ export type PharmacySourcePrice = {
   priceGel: number | null;
   oldPriceGel: number | null;
   inStock: boolean;
+  /** Not re-confirmed by the pharmacy's site in the last 3 days: never the "best" price. */
+  stale?: boolean;
+  syncedAt?: string | null;
   isBest: boolean;
   sourceUrl: string | null;
   priceDiffGel?: number | null;
