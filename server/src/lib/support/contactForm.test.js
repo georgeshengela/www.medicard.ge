@@ -21,7 +21,7 @@ function fakeDb() {
   return db;
 }
 
-const valid = { topic: 'app', name: 'ნინო', email: 'Nino@Example.com', message: 'შესვლა ვერ მოვახერხე.', website: '' };
+const valid = { topic: 'app', name: 'ნინო', email: 'Nino@Gmail.com', message: 'შესვლა ვერ მოვახერხე.', website: '' };
 
 test('a form message becomes an unread support thread with the visitor as counterpart', async () => {
   const db = fakeDb();
@@ -30,7 +30,7 @@ test('a form message becomes an unread support thread with the visitor as counte
   assert.equal(result.ok, true);
   assert.equal(db.threads.length, 1);
   const [thread] = db.threads;
-  assert.equal(thread.counterpartEmail, 'nino@example.com');
+  assert.equal(thread.counterpartEmail, 'nino@gmail.com');
   assert.equal(thread.counterpartName, 'ნინო');
   assert.equal(thread.mailbox, 'support@medicard.ge');
   assert.equal(thread.unread, true);
@@ -57,6 +57,9 @@ test('honeypot submissions store nothing; bad or own-domain addresses are refuse
   assert.deepEqual(await submitContactForm(contactSchema.parse({ ...valid, website: 'http://spam' }), { db, kick: null }), { ok: true, spam: true });
   assert.equal((await submitContactForm(contactSchema.parse({ ...valid, email: 'not-an-email' }), { db, kick: null })).code, 'CONTACT_EMAIL');
   assert.equal((await submitContactForm(contactSchema.parse({ ...valid, email: 'x@medicard.ge' }), { db, kick: null })).code, 'CONTACT_EMAIL');
+  // Resend refuses reserved test domains (the 2026-09-30 "Invalid `to` field" autopilot failure).
+  assert.equal((await submitContactForm(contactSchema.parse({ ...valid, email: 'a@example.com' }), { db, kick: null })).code, 'CONTACT_EMAIL');
+  assert.equal((await submitContactForm(contactSchema.parse({ ...valid, email: 'a@shop.test' }), { db, kick: null })).code, 'CONTACT_EMAIL');
   assert.equal(db.threads.length, 0);
 });
 

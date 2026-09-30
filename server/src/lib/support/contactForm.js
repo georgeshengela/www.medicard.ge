@@ -10,7 +10,7 @@
 import { randomUUID } from 'node:crypto';
 import { z } from 'zod';
 import { prisma } from '../prisma.js';
-import { isDeliverableEmail, normalizeEmail } from '../email/address.js';
+import { isDeliverableEmail, isReservedTestDomain, normalizeEmail } from '../email/address.js';
 import { findThread, kickSupportInbound, linkUserId, threadAfterInbound } from './inbound.js';
 import { isOwnDomain, subjectKey } from './threading.js';
 
@@ -46,7 +46,7 @@ export async function submitContactForm(input, { db = prisma, now = new Date(), 
   const { topic, name, message, website } = input;
   if (website) return { ok: true, spam: true }; // answer like a success; store nothing
   const email = normalizeEmail(input.email);
-  if (!isDeliverableEmail(email) || isOwnDomain(email)) return { ok: false, code: 'CONTACT_EMAIL' };
+  if (!isDeliverableEmail(email) || isOwnDomain(email) || isReservedTestDomain(email)) return { ok: false, code: 'CONTACT_EMAIL' };
 
   const subject = contactSubject(topic, name);
   const key = subjectKey(subject);

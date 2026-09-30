@@ -15,6 +15,15 @@ export function isDeliverableEmail(value) {
   return !email.endsWith(`@${SYNTHETIC_EMAIL_DOMAIN}`);
 }
 
+/**
+ * RFC 2606 / 6761 names that never receive mail (example.com, *.test, *.invalid, *.localhost).
+ * Resend rejects them with validation_error, so the contact form refuses them up front.
+ */
+export function isReservedTestDomain(value) {
+  const domain = normalizeEmail(value).split('@')[1] || '';
+  return /(^|\.)example\.(com|net|org)$/.test(domain) || /\.(test|invalid|localhost|example)$/.test(domain);
+}
+
 /** sha256 of the lowercased address — the only form stored in EmailLog / EmailSuppression. */
 export function hashEmail(value) {
   return crypto.createHash('sha256').update(normalizeEmail(value), 'utf8').digest('hex');
