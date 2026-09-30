@@ -112,3 +112,11 @@ test('a stalled planner call is retried once before failing', async () => {
     err => err.code === 'ASSISTANT_RESPONSE_TIMEOUT',
   );
 });
+
+test('transcription wait grows with the recording, so a long message is not cut off', async () => {
+  const { transcribeBudget } = await import('./assistantAudio.js');
+  assert.deepEqual(transcribeBudget(8000, 'm4a'), [10450, 15450]); // ~1.5 s phrase
+  const minute = transcribeBudget(Math.round((60 * 4000) / 0.75), 'm4a');
+  assert.ok(minute[0] >= 27000 && minute[1] >= 32000);
+  assert.deepEqual(transcribeBudget(10_000_000, 'wav'), [28000, 33000]); // capped at 60 s of speech
+});

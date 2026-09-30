@@ -70,8 +70,20 @@ function transcribeMessages(data, format, retry, lang = 'ka') {
  * Dedicated STT path. Planner JSON/reasoning rules stay on assistantJson.
  * Same disclosed Google Vertex model via OpenRouter — no new recipient.
  */
-export async function transcribeAssistantAudio({ data, format, ask = askOpenRouterPrepared, timeoutMs = [10000, 15000], lang = 'ka' } = {}) {
+/**
+ * Wait budget for transcription, scaled by recording length (up to 60 s of speech).
+ * Speech-grade AAC/Opus is ~4 KB/s, PCM WAV 32 KB/s; base64 adds a third.
+ * Short phrases: 10 s then 15 s. A full minute: ~28 s then ~33 s.
+ */
+export function transcribeBudget(base64Length, format) {
+  const seconds = Math.min(60, (base64Length * 0.75) / (format === 'wav' ? 32000 : 4000));
+  const first = Math.round(10000 + seconds * 300);
+  return [first, first + 5000];
+}
+
+export async function transcribeAssistantAudio({ data, format, ask = askOpenRouterPrepared, timeoutMs, lang = 'ka' } = {}) {
   // A short recording is transcribed in 4–5 s; a stalled provider call is abandoned and sent once more.
+  timeoutMs ??= transcribeBudget(String(data || '').length, format);
   const budgets = Array.isArray(timeoutMs) ? timeoutMs : [timeoutMs, timeoutMs];
   let unreadable = false;
   for (let attempt = 0; attempt < 2; attempt++) {
