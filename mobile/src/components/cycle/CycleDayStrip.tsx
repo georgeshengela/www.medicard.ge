@@ -219,7 +219,7 @@ export function CycleDayStrip({
             layers.ovulation ? ka.cycle.legendOvulation : null,
             layers.spotting ? ka.cycle.legendSpotting : null,
             layers.symptomDot ? ka.cycle.legendLogged : null,
-            mark.hasSex ? ka.cycle.a11ySex : null,
+            mark?.hasSex ? ka.cycle.a11ySex : null,
           ]
             .filter(Boolean)
             .join(', ');
@@ -304,7 +304,7 @@ export function CycleDayStrip({
                 ) : layers.symptomDot ? (
                   <View style={{ width: 4, height: 4, borderRadius: 2, backgroundColor: c.mutedSoft }} />
                 ) : null}
-                {mark.hasSex ? <Heart size={9} color={c.rose} fill={c.rose} strokeWidth={0} /> : null}
+                {mark?.hasSex ? <Heart size={9} color={c.rose} fill={c.rose} strokeWidth={0} /> : null}
               </View>
             </Pressable>
           );
