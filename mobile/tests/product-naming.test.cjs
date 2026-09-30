@@ -7,7 +7,11 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 const root = path.join(__dirname, '..');
-const ALLOWED_BARE_RUN = new Set([path.join('src', 'components', 'run', 'PulseIdentity.tsx')]);
+// Owner decision 2026-09-30 (final): the bottom tab's center button reads RUN.
+const ALLOWED_BARE_RUN = new Set([
+  path.join('src', 'components', 'run', 'PulseIdentity.tsx'),
+  path.join('src', 'components', 'navigation', 'FloatingTabBar.tsx'),
+]);
 
 function files(dir, out = []) {
   for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {

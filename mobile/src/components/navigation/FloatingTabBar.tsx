@@ -220,7 +220,7 @@ export function FloatingTabBar({ visible = true }: { visible?: boolean }) {
             shadowRadius: 10,
           }}
         >
-          <Footprints size={22} color="#FFFFFF" strokeWidth={2.2} /><Text numberOfLines={1} style={{ color: '#FFFFFF', fontSize: 8, fontWeight: '700', marginTop: 1 }}>MEDIRUN</Text>
+          <Footprints size={22} color="#FFFFFF" strokeWidth={2.2} /><Text numberOfLines={1} style={{ color: '#FFFFFF', fontSize: 8, fontWeight: '700', marginTop: 1 }}>RUN</Text>
         </TouchableOpacity>
       </View>
     </Animated.View>
