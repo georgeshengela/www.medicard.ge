@@ -1,7 +1,8 @@
 import type { Gender } from '@/lib/api';
 
 /**
- * Onboarding phase 2 — avatar illustrations (Figma 8845:308989, selected state).
+ * Profile avatars — 3D portraits generated with fal.ai nano-banana-pro (2026-09-30),
+ * 384 px, circle-masked on a pastel tile. IDs and the gender split are unchanged so saved choices keep working.
  */
 export const AVATAR_IDS = [
   'avatar-1',
