@@ -76,7 +76,7 @@ export default function AiDataProcessingScreen() {
     : status?.decision
       ? english
         ? 'Nothing is sent to third-party AI. Allow it below when you want Medi, analysis and voice features.'
-        : 'გარე AI-ს არაფერი ეგზავნება. ნებართვა ქვემოთ ჩართე, როცა მედი, ანალიზი ან ხმოვანი ფუნქციები დაგჭირდება.'
+        : 'გარე AI-ს არაფერი ეგზავნება. ნებართვა ქვემოთ ჩართე, როცა Medi, ანალიზი ან ხმოვანი ფუნქციები დაგჭირდება.'
       : copy?.intro;
   const updatedLine = status?.updatedAt
     ? english
@@ -99,7 +99,7 @@ export default function AiDataProcessingScreen() {
           accessibilityRole="header"
           style={{ flex: 1, color: colors.text100, fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 18 }}
         >
-          {copy?.screenTitle ?? (english ? 'AI & Privacy' : 'AI და კონფიდენციალურობა')}
+          {copy?.screenTitle ?? (english ? 'AI and privacy' : 'AI და კონფიდენციალურობა')}
         </Text>
       </View>
       {status == null && busy ? (

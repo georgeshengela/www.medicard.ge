@@ -68,7 +68,7 @@ export function HomeHeader({ firstName, initial, avatarId, streak, dateLabel }: 
           {streak > 0 ? (
             <Pressable
               accessibilityRole="button"
-              accessibilityLabel={tx(`${streak} დღიანი სერია`, `${streak}-day streak`)}
+              accessibilityLabel={tx(`${streak}-დღიანი სერია`, `${streak}-day streak`)}
               onPress={() => router.push('/profile/streak' as never)}
               style={[s.pill, { backgroundColor: dark ? '#3B2A0A' : '#FDF1DC' }]}
             >

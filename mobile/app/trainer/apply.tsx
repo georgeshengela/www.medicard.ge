@@ -17,7 +17,7 @@ import { HUB, hubText } from '@/theme/hub';
 import { useThemeColors } from '@/theme/colors';
 import { isEn, tx } from '@/i18n/locale';
 
-const STEPS = [tx('შენ შესახებ', 'About you'), tx('სპეციალიზაცია და დარბაზი', 'Specialties and gym'), tx('სერტიფიკატები', 'Certificates')];
+const STEPS = [tx('შენს შესახებ', 'About you'), tx('სპეციალიზაცია და დარბაზი', 'Specialties and gym'), tx('სერტიფიკატები', 'Certificates')];
 type StagedCert = { key: string; title: string; issuer: string; year: string; file: UploadableImage };
 
 /**

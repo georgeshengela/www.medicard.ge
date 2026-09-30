@@ -97,7 +97,7 @@ export default function CoachPlanEditor() {
         note: note.trim(),
       };
       await api.coach.savePlan(String(clientId), body);
-      Alert.alert(tx('გეგმა გაიგზავნა', 'Plan sent'), tx(`${d?.client.firstName ?? 'კლიენტს'} შეტყობინება მიუვა. დაცვას „კვება“ ტაბზე ნახავ.`, `${d?.client.firstName ?? 'Your client'} will get a notification. You’ll see adherence on the Nutrition tab.`), [{ text: tx('კარგი', 'OK'), onPress: () => router.back() }]);
+      Alert.alert(tx('გეგმა გაიგზავნა', 'Plan sent'), tx(`${d?.client.firstName ? `${d.client.firstName}-ს` : 'კლიენტს'} შეტყობინება მიუვა. დაცვას „კვება“ ტაბზე ნახავ.`, `${d?.client.firstName ?? 'Your client'} will get a notification. You’ll see adherence on the Nutrition tab.`), [{ text: tx('კარგი', 'OK'), onPress: () => router.back() }]);
     } catch (e) {
       Alert.alert(tx('ვერ შეინახა', 'Couldn’t save'), e instanceof ApiError ? e.message : tx('სცადე ხელახლა.', 'Please try again.'));
     } finally {

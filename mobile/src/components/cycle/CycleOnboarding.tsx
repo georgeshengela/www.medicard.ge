@@ -76,7 +76,7 @@ export function CycleOnboarding({visible,saving,userName,error,onSave,onBack,onC
      <Pressable onPress={onChooseMode} disabled={saving} accessibilityRole="button" accessibilityLabel={tx('სხვა რეჟიმის არჩევა','Choose another mode')}
       style={{flexDirection:'row',gap:12,paddingVertical:18,alignItems:'center'}}>
       <SlidersHorizontal size={20} color={c.lavender}/>
-      <View style={{flex:1}}><Text style={{color:c.ink,fontSize:13,fontFamily:'NotoSansGeorgian_600SemiBold'}}>{tx('სხვა ეტაპზე ხარ?','In a different stage?')}</Text>
+      <View style={{flex:1}}><Text style={{color:c.ink,fontSize:13,fontFamily:'NotoSansGeorgian_600SemiBold'}}>{tx('სხვა ეტაპზე ხარ?','At a different stage?')}</Text>
        <Text style={{color:c.muted,fontSize:12,lineHeight:19,marginTop:3}}>{tx('ორსულობა, მშობიარობის შემდგომი პერიოდი ან სხვა რეჟიმი','Pregnancy, after giving birth, or another mode')}</Text></View>
      </Pressable>
     </>:<View style={{gap:8}}>

@@ -73,7 +73,7 @@ export default function NewSessionScreen() {
         tx('დაინიშნა', 'Scheduled'),
         openSlot
           ? tx(`${res.sessions.length} თავისუფალი სლოტი გამოქვეყნდა — შენი კლიენტები დაჯავშნიან.`, `${res.sessions.length} open ${res.sessions.length === 1 ? 'slot' : 'slots'} published — your clients can book them.`)
-          : tx(`${who?.name ?? 'კლიენტს'} შეტყობინება მიუვა. შეხსენება — 24 და 1 საათით ადრე.`, `${who?.name ?? 'Your client'} will get a notification. Reminders go out 24 hours and 1 hour before.`),
+          : tx(`${who?.name ? `${who.name}-ს` : 'კლიენტს'} შეტყობინება მიუვა. შეხსენება — 24 და 1 საათით ადრე.`, `${who?.name ?? 'Your client'} will get a notification. Reminders go out 24 hours and 1 hour before.`),
         [{ text: tx('კარგი', 'OK'), onPress: () => router.back() }],
       );
     } catch (e) {

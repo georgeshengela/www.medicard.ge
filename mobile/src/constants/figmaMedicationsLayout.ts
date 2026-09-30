@@ -65,7 +65,7 @@ export const FIGMA_MEDS = {
   ] as const,
   popularCategories: [
     { key: 'diabetes', label: tx('დიაბეტი', 'Diabetes') },
-    { key: 'heart', label: tx(' გული', ' Heart') },
+    { key: 'heart', label: tx('გული', 'Heart') },
     { key: 'pain', label: tx('ტკივილი', 'Pain') },
   ] as const,
 } as const;

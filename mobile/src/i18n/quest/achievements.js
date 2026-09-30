@@ -138,7 +138,7 @@ const FAMILY_TITLES = {
     MEDI: (n) => `Medi · ${n}`,
     WEEKLY: (n) => `კვირა · ${n}`,
     LEVEL: (n) => `დონე ${n}`,
-    COINS_EARNED: (n) => `${n.toLocaleString('ka-GE')} Medi Coin`,
+    COINS_EARNED: (n) => `${n.toLocaleString('ka-GE')} Medi Coins`,
   },
   en: {
     QUESTS: (n) => `${n} missions`,
@@ -181,7 +181,7 @@ const FAMILY_DESCRIPTIONS = {
     MEDI: (n) => `შეასრულე ${n} Medi მისია.`,
     WEEKLY: (n) => `შეასრულე ${n} კვირის მისია.`,
     LEVEL: (n) => `მიაღწიე ${n} დონეს.`,
-    COINS_EARNED: (n) => `დააგროვე სულ ${n.toLocaleString('ka-GE')} Medi Coin.`,
+    COINS_EARNED: (n) => `დააგროვე სულ ${n.toLocaleString('ka-GE')} Medi Coins.`,
   },
   en: {
     QUESTS: (n) => `Complete ${n} missions in total.`,

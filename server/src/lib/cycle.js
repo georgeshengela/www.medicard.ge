@@ -731,7 +731,7 @@ export function buildLocalInsights({ profile, logs, predictions, pregnancy, aver
       body: en
         ? 'A short walk, a breathing exercise or talking with someone you love can help ease tension.'
         : 'მოკლე სეირნობა, სუნთქვის ვარჯიში ან საყვარელ ადამიანთან საუბარი შეუძლია დაძაბულობის შემცირებას.',
-      action: en ? '5 minutes of deep breathing' : '5 წუთი სიღრმისეული სუნთქვა',
+      action: en ? '5 minutes of deep breathing' : '5 წუთი ღრმა სუნთქვა',
     });
   }
   if (

@@ -148,7 +148,7 @@ function Fasting() {
       void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
       await afterChange(null);
       if (alive.current)
-        setMessage(done.completed ? tx(`შესანიშნავია — ${hoursLabel(done.minutes)} შიმშილი დასრულდა.`, `Great job — you finished a ${hoursLabel(done.minutes)} fast.`) : tx(`დასრულდა: ${hoursLabel(done.minutes)}. ყოველი მცდელობა ითვლება.`, `Ended at ${hoursLabel(done.minutes)}. Every attempt counts.`));
+        setMessage(done.completed ? tx(`შესანიშნავია — ${hoursLabel(done.minutes)} შიმშილი დასრულდა.`, `Great job — you finished a ${hoursLabel(done.minutes)} fast.`) : tx(`დასრულდა: ${hoursLabel(done.minutes)}. ყოველი მცდელობა ითვლება.`, `Ended after ${hoursLabel(done.minutes)}. Every attempt counts.`));
     });
   const askEnd = (fast: Fast) => {
     const left = fast.targetMinutes - fastElapsedMinutes(fast, now);
@@ -204,7 +204,7 @@ function Fasting() {
         <Screening initial={state.screening} busy={busy} onSubmit={submitScreening} onCancel={rescreen ? () => setRescreen(false) : undefined} />
       )}
       {state && e && !e.needsScreening && !rescreen && e.blocked && (
-        <HubSection first title={tx("ამ ეტაპზე ტაიმერი არ გირჩევთ", "We don’t recommend the timer for you right now")}>
+        <HubSection first title={tx("ამ ეტაპზე ტაიმერს არ გირჩევთ", "We don’t recommend the timer for you right now")}>
           <HubCard>
             <View style={s.row}>
               <View style={[s.tile, { backgroundColor: hubTint(hubInk("rose", dark), dark) }]}>

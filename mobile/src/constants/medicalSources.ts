@@ -120,7 +120,7 @@ export const medicalSources = {
     description:
       'A normal resting heart rate for adults is 60 to 100 beats per minute. MEDICARD labels 60–100 bpm as normal, below 60 as low and above 100 as high. Athletes and some medicines can lower the resting rate.',
     descriptionKa:
-      'ზრდასრულის ნორმალური მოსვენების პულსი წუთში 60–100 დარტყმაა. MEDICARD 60–100-ს ნორმად აჩვენებს, 60-ზე ნაკლებს — დაბლად, 100-ზე მეტს — მაღლად. სპორტსმენებში და ზოგი წამლის მიღებისას მოსვენების პულსი შეიძლება უფრო დაბალი იყოს.',
+      'ზრდასრულის ნორმალური მოსვენების პულსი წუთში 60–100 დარტყმაა. MEDICARD 60–100-ს ნორმად აჩვენებს, 60-ზე ნაკლებს — დაბალად, 100-ზე მეტს — მაღალად. სპორტსმენებში და ზოგი წამლის მიღებისას მოსვენების პულსი შეიძლება უფრო დაბალი იყოს.',
     url: 'https://www.heart.org/en/health-topics/high-blood-pressure/the-facts-about-high-blood-pressure/all-about-heart-rate-pulse',
   },
   sleepAdults: {
@@ -195,7 +195,7 @@ export const medicalSources = {
     title: 'Healthy diet — fact sheet',
     titleKa: 'ჯანსაღი კვება — ფაქტების ფურცელი',
     description:
-      'WHO advises keeping free sugars below 10% of energy and total fat below 30%, eating less than 5 g of salt a day, and plenty of fibre-rich foods. MEDICARD’s 1–10 meal score is its own heuristic loosely based on these principles, not a WHO score: it rewards protein share and fibre and lowers the score when fat is over 45% of the meal’s calories, sugar over 15%, energy density over 2.5 kcal per gram or sodium over 1.2 mg per kcal. It is not a medical judgement.',
+      'WHO advises keeping free sugars below 10% of energy and total fat below 30%, eating less than 5 g of salt a day, and plenty of fiber-rich foods. MEDICARD’s 1–10 meal score is its own heuristic loosely based on these principles, not a WHO score: it rewards protein share and fiber and lowers the score when fat is over 45% of the meal’s calories, sugar over 15%, energy density over 2.5 kcal per gram or sodium over 1.2 mg per kcal. It is not a medical judgment.',
     descriptionKa:
       'WHO გირჩევს, თავისუფალი შაქარი ენერგიის 10%-ზე ნაკლები იყოს, მთლიანი ცხიმი — 30%-ზე ნაკლები, მარილი — დღეში 5 გ-ზე ნაკლები, და ბევრი ბოჭკოვანი საკვები. MEDICARD-ის 1–10 ქულა კერძისთვის საკუთარი მიახლოებითი წესია, ამ პრინციპებზე თავისუფლად დაფუძნებული, და არა WHO-ს ქულა: ქულას ზრდის ცილის წილი და ბოჭკო, ამცირებს — ცხიმი კერძის კალორიის 45%-ზე მეტი, შაქარი 15%-ზე მეტი, ენერგიის სიმკვრივე 2.5 კკალ/გ-ზე მეტი ან ნატრიუმი 1.2 მგ/კკალ-ზე მეტი. ეს სამედიცინო შეფასება არ არის.',
     url: 'https://www.who.int/news-room/fact-sheets/detail/healthy-diet',
@@ -217,7 +217,7 @@ export const medicalSources = {
     title: 'Research on intermittent fasting shows health benefits',
     titleKa: 'ინტერვალური შიმშილის კვლევები (NIA)',
     description:
-      'NIA summarises research on intermittent fasting and time-restricted eating; evidence in people is still limited and fasting is not right for everyone. MEDICARD offers only daily fasting windows of 10–20 hours (12:12 to 20:4), does not offer the timer under 18, in pregnancy or breastfeeding or with an eating-disorder history, and asks for your doctor’s confirmation if you take glucose-lowering medicine. It makes no claims about ketosis or autophagy.',
+      'NIA summarizes research on intermittent fasting and time-restricted eating; evidence in people is still limited and fasting is not right for everyone. MEDICARD offers only daily fasting windows of 10–20 hours (12:12 to 20:4), does not offer the timer under 18, in pregnancy or breastfeeding or with an eating-disorder history, and asks for your doctor’s confirmation if you take glucose-lowering medicine. It makes no claims about ketosis or autophagy.',
     descriptionKa:
       'NIA აჯამებს ინტერვალური შიმშილისა და დროში შეზღუდული კვების კვლევებს; ადამიანებზე მტკიცებულება ჯერ შეზღუდულია და შიმშილი ყველასთვის არ არის. MEDICARD მხოლოდ დღიურ 10–20-საათიან ფანჯრებს გთავაზობს (12:12-დან 20:4-მდე), ტაიმერს არ გთავაზობს 18 წლამდე, ორსულობისა და ძუძუთი კვებისას ან კვებითი აშლილობის ისტორიისას, ხოლო გლუკოზის დამწევი წამლის მიღებისას ექიმის დადასტურებას ითხოვს. კეტოზისა და აუტოფაგიის შესახებ მტკიცებებს არ აკეთებს.',
     url: 'https://www.nia.nih.gov/news/research-intermittent-fasting-shows-health-benefits',
@@ -239,7 +239,7 @@ export const medicalSources = {
     title: 'Daily steps and all-cause mortality: a meta-analysis of 15 international cohorts',
     titleKa: 'დღიური ნაბიჯები და სიკვდილობა: 15 კოჰორტის მეტა-ანალიზი',
     description:
-      'In this meta-analysis more daily steps were linked with lower risk of death, with the benefit levelling off at about 6,000–8,000 steps a day for adults 60 and older and 8,000–10,000 for younger adults. MEDICARD’s default goal is 10,000 steps a day and you can change it. The status compares today with your goal (100%, 75%, 40%). Distance assumes 0.762 m per step, which is an estimate.',
+      'In this meta-analysis more daily steps were linked with lower risk of death, with the benefit leveling off at about 6,000–8,000 steps a day for adults 60 and older and 8,000–10,000 for younger adults. MEDICARD’s default goal is 10,000 steps a day and you can change it. The status compares today with your goal (100%, 75%, 40%). Distance assumes 0.762 m per step, which is an estimate.',
     descriptionKa:
       'ამ მეტა-ანალიზში მეტი დღიური ნაბიჯი სიკვდილის დაბალ რისკთან იყო დაკავშირებული; სარგებელი 60+ ასაკში დაახლოებით 6,000–8,000 ნაბიჯზე სტაბილდებოდა, ახალგაზრდებში — 8,000–10,000-ზე. MEDICARD-ის ნაგულისხმევი მიზანი დღეში 10,000 ნაბიჯია და შეგიძლია შეცვალო. სტატუსი დღევანდელს შენს მიზანს ადარებს (100%, 75%, 40%). მანძილი ითვლება 0.762 მ ნაბიჯზე — ეს მიახლოებაა.',
     url: 'https://pubmed.ncbi.nlm.nih.gov/35247352/',
@@ -296,7 +296,7 @@ export const medicalSources = {
     description:
       'WHO UV index categories: 0–2 low, 3–5 moderate, 6–7 high, 8–10 very high and 11 or more extreme; sun protection is advised from 3. MEDICARD prefers outdoor windows with UV 2 or lower and marks 6–7 as high and 8 or more as very high.',
     descriptionKa:
-      'WHO-ს UV ინდექსის კატეგორიები: 0–2 დაბალი, 3–5 ზომიერი, 6–7 მაღალი, 8–10 ძალიან მაღალი, 11 და მეტი უკიდურესი; მზისგან დაცვა 3-დან არის რეკომენდებული. MEDICARD გარეთ ყოფნისთვის UV 2-ს ან ნაკლებს ამჯობინებს, 6–7-ს მაღლად, 8-ს და მეტს ძალიან მაღლად აჩვენებს.',
+      'WHO-ს UV ინდექსის კატეგორიები: 0–2 დაბალი, 3–5 ზომიერი, 6–7 მაღალი, 8–10 ძალიან მაღალი, 11 და მეტი უკიდურესი; მზისგან დაცვა 3-დან არის რეკომენდებული. MEDICARD გარეთ ყოფნისთვის UV 2-ს ან ნაკლებს ამჯობინებს, 6–7-ს მაღალად, 8-ს და მეტს ძალიან მაღალად აჩვენებს.',
     url: 'https://www.who.int/news-room/questions-and-answers/item/radiation-the-ultraviolet-(uv)-index',
   },
 } as const satisfies Record<string, MedicalSource>;

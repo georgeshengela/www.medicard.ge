@@ -214,7 +214,7 @@ function EmptyHero() {
     <Text style={{ fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 20, lineHeight: 28, color: C.textPrimary }}>{ka.lab.studioEmpty}</Text>
     <Text style={{ fontFamily: 'NotoSansGeorgian_400Regular', fontSize: 14, lineHeight: 21, color: C.textSecondary }}>{ka.modules.lab.uploadHint}</Text>
     <Text style={{ fontFamily: 'NotoSansGeorgian_500Medium', fontSize: 12, lineHeight: 19, color: C.textSecondary }}>{tx('01 ატვირთე · 02 გადაამოწმე · 03 მიიღე განმარტება', '01 Upload · 02 Check · 03 Get an explanation')}</Text>
-    <Text style={{ fontFamily: 'NotoSansGeorgian_400Regular', fontSize: 12, lineHeight: 18, color: C.textMuted }}>{tx('ერთად ატვირთე ერთი თარიღის ანალიზები · მაქსიმუმ 8 ფაილი · თითოეული 12 მბ-მდე', 'Upload results from one date together · up to 8 files · 12 MB each')}</Text>
+    <Text style={{ fontFamily: 'NotoSansGeorgian_400Regular', fontSize: 12, lineHeight: 18, color: C.textMuted }}>{tx('ერთად ატვირთე ერთი თარიღის ანალიზები · მაქსიმუმ 8 ფაილი · თითოეული 12 მბ-მდე', 'Upload results from one date together · up to 8 files · up to 12 MB each')}</Text>
   </View>;
 }
 

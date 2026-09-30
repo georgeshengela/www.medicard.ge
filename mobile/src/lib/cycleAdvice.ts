@@ -21,7 +21,7 @@ type AdviceCtx = {
  */
 const DAILY_TIPS: Record<string, { tone: string; title: string; body: string }[]> = {
   period: [
-    { tone: 'care', title: tx('სითბო ამშვიდებს', 'Warmth soothes'), body: tx('თბილი საფენი მუცელზე ან თბილი შხაპი კრუნჩხვისას ბევრს ეხმარება.', 'A warm pad on your belly or a warm shower helps many people with cramps.') },
+    { tone: 'care', title: tx('სითბო ამშვიდებს', 'Warmth soothes'), body: tx('თბილი კომპრესი მუცელზე ან თბილი შხაპი კრუნჩხვისას ბევრს ეხმარება.', 'A warm pad on your belly or a warm shower helps many people with cramps.') },
     { tone: 'care', title: tx('რკინით მდიდარი საკვები', 'Iron-rich foods'), body: tx('ლობიო, ისპანახი, წითელი ხორცი ან თხილი რკინის მარაგის შენარჩუნებაში გეხმარება.', 'Beans, spinach, red meat or nuts help keep your iron up.') },
     { tone: 'energy', title: tx('მსუბუქი მოძრაობა', 'Gentle movement'), body: tx('ნელი სეირნობა ან გაწელვა ზოგს ტკივილს უმსუბუქებს — მოუსმინე სხეულს.', 'A slow walk or stretching eases pain for some people — listen to your body.') },
     { tone: 'calm', title: tx('წყალი და თბილი ჩაი', 'Water and warm tea'), body: tx('საკმარისი სითხე შებერილობას ამცირებს, თბილი ჩაი კი სიმშვიდეს გმატებს.', 'Enough fluids ease bloating, and warm tea adds a little calm.') },
@@ -41,7 +41,7 @@ const DAILY_TIPS: Record<string, { tone: string; title: string; body: string }[]
     { tone: 'mood', title: tx('სოციალური დღეები', 'Social days'), body: tx('ურთიერთობები ახლა ხშირად უფრო მარტივია — კარგი დროა შეხვედრებისთვის.', 'Connecting with people often feels easier now — a good time to meet up.') },
   ],
   luteal: [
-    { tone: 'care', title: tx('მაგნიუმით მდიდარი საკვები', 'Magnesium-rich foods'), body: tx('მწვანე ფოთლოვანი, თხილეული და მუქი შოკოლადი მაგნიუმს შეიცავს — ზოგს PMS-ის შემსუბუქებაში ეხმარება.', 'Leafy greens, nuts and dark chocolate contain magnesium — it helps some people with PMS.') },
+    { tone: 'care', title: tx('მაგნიუმით მდიდარი საკვები', 'Magnesium-rich foods'), body: tx('მწვანე ფოთლოვანი ბოსტნეული, თხილეული და მუქი შოკოლადი მაგნიუმს შეიცავს — ზოგს PMS-ის შემსუბუქებაში ეხმარება.', 'Leafy greens, nuts and dark chocolate contain magnesium — it helps some people with PMS.') },
     { tone: 'calm', title: tx('ძილი უფრო მნიშვნელოვანია', 'Sleep matters more'), body: tx('ამ ფაზაში ძილი შეიძლება გაუარესდეს — ეკრანები დაძინებამდე ერთი საათით ადრე გამორთე.', 'Sleep can get worse in this phase — turn off screens an hour before bed.') },
     { tone: 'care', title: tx('ნაკლები მარილი და კოფეინი', 'Less salt and caffeine'), body: tx('შებერილობისა და მკერდის მგრძნობელობისას მარილისა და კოფეინის შემცირება ზოგს ეხმარება.', 'With bloating or breast tenderness, cutting back on salt and caffeine helps some people.') },
     { tone: 'energy', title: tx('ნაზი მოძრაობა', 'Gentle movement'), body: tx('იოგა, პილატესი ან სეირნობა განწყობასაც აუმჯობესებს და შებერილობასაც ამცირებს.', 'Yoga, Pilates or a walk can lift your mood and ease bloating.') },
@@ -107,7 +107,7 @@ export function buildCycleAdvice({
       tone: 'calm',
       title: ka.cycle.adviceLutealTitle,
       body: ka.cycle.adviceLutealBody(dayBit),
-      action: tx('5 წუთი სიღრმისეული სუნთქვა', '5 min deep breathing'),
+      action: tx('5 წუთი ღრმა სუნთქვა', '5 min deep breathing'),
     });
   } else {
     cards.push({
@@ -155,7 +155,7 @@ export function buildCycleAdvice({
       tone: 'mood',
       title: ka.cycle.adviceMoodTitle,
       body: ka.cycle.adviceMoodBody,
-      action: tx('5 წუთი სიღრმისეული სუნთქვა', '5 min deep breathing'),
+      action: tx('5 წუთი ღრმა სუნთქვა', '5 min deep breathing'),
     });
   }
   if (conditions.includes('pcos')) {

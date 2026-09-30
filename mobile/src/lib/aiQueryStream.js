@@ -64,7 +64,7 @@ export async function streamAiQuery(body, { onDelta, signal } = {}) {
   try {
     const token = await getToken();
     await ensureAiSharingConsentForRequest('/api/ai/query', 'POST', token);
-    if (signal?.aborted) throw new ApiError(tx('მოთხოვნა გაუქმდა.', 'Request cancelled.'), 499);
+    if (signal?.aborted) throw new ApiError(tx('მოთხოვნა გაუქმდა.', 'Request canceled.'), 499);
     // Start the deadline after consent; give the user time to read the disclosure.
     timeout = setTimeout(() => { timedOut = true; controller.abort(); }, 180_000);
     const { fetch: expoFetch } = await import('expo/fetch');
@@ -122,7 +122,7 @@ export async function streamAiQuery(body, { onDelta, signal } = {}) {
   } catch (error) {
     if (timedOut) throw new ApiError(tx('პასუხის მოლოდინის დრო ამოიწურა. გთხოვ, სცადე ხელახლა.', 'The answer took too long. Please try again.'), 408);
     if (error instanceof ApiError) throw error;
-    if (error?.name === 'AbortError') throw new ApiError(tx('მოთხოვნა გაუქმდა.', 'Request cancelled.'), 499);
+    if (error?.name === 'AbortError') throw new ApiError(tx('მოთხოვნა გაუქმდა.', 'Request canceled.'), 499);
     throw new ApiError(ka.common.networkError, 0);
   } finally {
     clearTimeout(timeout);

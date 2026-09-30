@@ -62,7 +62,7 @@ export async function streamPetVetQuery(petId, body, { onDelta, signal } = {}) {
   try {
     const token = await getToken();
     await ensureAiSharingConsentForRequest(`/api/pets/${petId}/chat/query`, 'POST', token);
-    if (signal?.aborted) throw new ApiError(tx('მოთხოვნა გაუქმდა.', 'Request cancelled.'), 499);
+    if (signal?.aborted) throw new ApiError(tx('მოთხოვნა გაუქმდა.', 'Request canceled.'), 499);
     const { fetch: expoFetch } = await import('expo/fetch');
     const response = await expoFetch(`${API_BASE_URL}/api/pets/${petId}/chat/query`, {
       method: 'POST',

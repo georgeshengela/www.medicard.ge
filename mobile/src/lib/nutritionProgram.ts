@@ -246,9 +246,9 @@ export const allergenLabels: Record<string, string> = {
   sesame: tx("სეზამი", "Sesame"),
   celery: tx("ნიახური", "Celery"),
   mustard: tx("მდოგვი", "Mustard"),
-  sulphites: tx("სულფიტები", "Sulphites"),
+  sulphites: tx("სულფიტები", "Sulfites"),
   lupin: tx("ლუპინი", "Lupin"),
-  molluscs: tx("მოლუსკები", "Molluscs"),
+  molluscs: tx("მოლუსკები", "Mollusks"),
 };
 export const nutritionProgramApi = {
   dashboard: () => request<NutritionDashboard>("/program/dashboard"),

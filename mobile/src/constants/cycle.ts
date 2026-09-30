@@ -51,8 +51,8 @@ export const PHYSICAL_SYMPTOMS: CycleChip[] = [
   { id: 'hair_loss', label: tx('თმის ცვენა', 'Hair loss') },
   { id: 'sensitive_smell', label: tx('სუნის მგრძნობელობა', 'Sensitive to smells') },
   { id: 'tinnitus', label: tx('ყურებში ხმაური', 'Ringing in ears') },
-  { id: 'palpitations', label: tx('გულისცემა', 'Palpitations') },
-  { id: 'short_breath', label: tx('სუნთქვის სიმძიმე', 'Short of breath') },
+  { id: 'palpitations', label: tx('გულის ფრიალი', 'Palpitations') },
+  { id: 'short_breath', label: tx('სუნთქვის სიმძიმე', 'Shortness of breath') },
   { id: 'frequent_urination', label: tx('ხშირი შარდვა', 'Frequent urination') },
   { id: 'uti_feel', label: tx('შარდის დისკომფორტი', 'Urinary discomfort') },
   { id: 'vaginal_dryness', label: tx('საშოს სიმშრალე', 'Vaginal dryness') },
@@ -101,7 +101,7 @@ export const SEX_ACTIVITY_OPTIONS: CycleChip[] = [
 /** Sex drive — one answer, independent of whether anything happened. */
 export const SEX_DRIVE_OPTIONS: CycleChip[] = [
   { id: 'high_drive', label: tx('მაღალი', 'High') },
-  { id: 'neutral_drive', label: tx('ჩვეულებრივი', 'Neutral') },
+  { id: 'neutral_drive', label: tx('ჩვეულებრივი', 'Usual') },
   { id: 'low_drive', label: tx('დაბალი', 'Low') },
 ];
 

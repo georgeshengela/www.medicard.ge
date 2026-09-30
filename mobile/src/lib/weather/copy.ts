@@ -30,7 +30,7 @@ const CONDITION: Record<WeatherLang, Record<WeatherCondition, string>> = {
     heavy_rain: 'Heavy rain',
     snow: 'Snow',
     heavy_snow: 'Heavy snow',
-    storm: 'Storm',
+    storm: 'Thunderstorm',
   },
   fr: {
     clear: 'Ensoleillé',
@@ -615,7 +615,7 @@ export const WEATHER_UI: Record<WeatherLang, {
     today: 'Today',
     detailTitle: 'Weather & Medi',
     airQuality: 'Air quality',
-    air: (band) => `Air ${AIR_BAND.en[band].toLowerCase()}`,
+    air: (band) => `Air: ${AIR_BAND.en[band].toLowerCase()}`,
     airHint: (band) => AIR_HINT.en[band],
     airIndex: 'EAQI',
     pm25: 'PM2.5',

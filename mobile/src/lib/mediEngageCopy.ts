@@ -3,7 +3,7 @@ import { tx } from '../i18n/locale.js';
 const ENGAGE_FALLBACKS_KA: Record<string, { title: string; body: string }> = {
   "engage-checkin-morning": {
     "title": "დილა მშვიდობისა ☀️",
-    "body": "როგორ გეძინა? დღეს როგორ იწყებ დღეს? 💚"
+    "body": "როგორ გეძინა? როგორ იწყებ დღეს? 💚"
   },
   "engage-checkin-mid": {
     "title": "როგორ ხარ? 👀",

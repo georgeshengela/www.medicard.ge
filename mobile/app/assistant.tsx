@@ -168,7 +168,7 @@ function AssistantSession({ owner, sessionId }: { owner: string; sessionId?: str
         }
       } else {
         const petName = choices.petId?.find(p => p.value === current.args.petId)?.label;
-        const reply = current.tool === 'medication_add' ? tx(`${String(current.args.medName)} დამატებულია.`, `${String(current.args.medName)} added.`) : current.tool === 'pet_care_plan' && petName ? tx(`${petName}ს გეგმა შენახულია — ${String(current.args.startOn)}${current.args.dueTime ? ', ' + String(current.args.dueTime) : ''}.`, `${petName}'s plan is saved — ${String(current.args.startOn)}${current.args.dueTime ? ', ' + String(current.args.dueTime) : ''}.`) : tx('შენახულია.', 'Saved.');
+        const reply = current.tool === 'medication_add' ? tx(`${String(current.args.medName)} დამატებულია.`, `${String(current.args.medName)} added.`) : current.tool === 'pet_care_plan' && petName ? tx(`${petName}-ის გეგმა შენახულია — ${String(current.args.startOn)}${current.args.dueTime ? ', ' + String(current.args.dueTime) : ''}.`, `${petName}'s plan is saved — ${String(current.args.startOn)}${current.args.dueTime ? ', ' + String(current.args.dueTime) : ''}.`) : tx('შენახულია.', 'Saved.');
         setHistory(h => [...h, { role: 'assistant', content: reply }].slice(-12) as Turn[]); void speech.say(reply); persist([{ role: 'assistant', content: reply }]);
         void afterSaved(current, n).catch(() => { if (valid(n)) setNotice(tx('ჩანაწერი შენახულია. მონაცემების ან შეხსენებების განახლებისთვის შესაბამისი გვერდი გახსენი.', 'Entry saved. Open the matching page to refresh its data or reminders.')); });
       }
@@ -201,7 +201,7 @@ function AssistantSession({ owner, sessionId }: { owner: string; sessionId?: str
       setDraft(currentDraft); if (!fromVoice) setText(value);
       if (e instanceof ApiError && e.code === 'AI_CONSENT_DECLINED') {
         // Declining sharing is a valid choice, not a network failure or a retryable send.
-        const reply = tx('მოთხოვნა AI-ს არ გაეგზავნა. შეგიძლია აპის სხვა ფუნქციებით გააგრძელო. არჩევანს პროფილში, „კონფიდენციალობა და მონაცემებში“ შეცვლი.', 'Your request was not sent to AI. You can keep using the rest of the app. You can change this choice in Profile, under “Privacy and data”.');
+        const reply = tx('მოთხოვნა AI-ს არ გაეგზავნა. შეგიძლია აპის სხვა ფუნქციებით გააგრძელო. არჩევანს პროფილში, „AI და კონფიდენციალურობაში“ შეცვლი.', 'Your request was not sent to AI. You can keep using the rest of the app. You can change this choice in Profile, under “AI and privacy”.');
         setHistory(h => [...h, { role: 'assistant', content: reply }].slice(-12) as Turn[]);
       } else {
         retryPlan.current = { value, fromVoice, petId }; setError(errorText(e, tx('კავშირი შეფერხდა.', 'Connection problem.'))); assistantHaptic('error');

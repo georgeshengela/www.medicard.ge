@@ -730,7 +730,7 @@ export const enHealth: Pick<Strings, 'healthMetrics' | 'lab' | 'hydration' | 'st
     },
     pharmacy: {
       title: 'Price comparison',
-      subtitle: 'Pharmadepot · Aversi · PSP — where it costs less',
+      subtitle: 'Pharmadepot · GPC · PSP — where it costs less',
     },
     cycle: {
       title: 'Cycle and health',

@@ -98,7 +98,7 @@ const LABEL = Object.fromEntries([...FLOWS, ...SYMPTOMS, ...MOODS, ...SEX_ACTIVI
 /** cycleAdvice.ts DAILY_TIPS — soft, non-medical wording; three a day, rotating with the cycle day. */
 const DAILY_TIPS = {
   period: [
-    ['care', t('სითბო ამშვიდებს', 'Warmth soothes'), t('თბილი საფენი მუცელზე ან თბილი შხაპი კრუნჩხვისას ბევრს ეხმარება.', 'A warm pad on your belly or a warm shower helps many people with cramps.')],
+    ['care', t('სითბო ამშვიდებს', 'Warmth soothes'), t('თბილი კომპრესი მუცელზე ან თბილი შხაპი კრუნჩხვისას ბევრს ეხმარება.', 'A warm pad on your belly or a warm shower helps many people with cramps.')],
     ['care', t('რკინით მდიდარი საკვები', 'Iron-rich foods'), t('ლობიო, ისპანახი, წითელი ხორცი ან თხილი რკინის მარაგის შენარჩუნებაში გეხმარება.', 'Beans, spinach, red meat or nuts help keep your iron up.')],
     ['energy', t('მსუბუქი მოძრაობა', 'Gentle movement'), t('ნელი სეირნობა ან გაწელვა ზოგს ტკივილს უმსუბუქებს — მოუსმინე სხეულს.', 'A slow walk or stretching eases pain for some people — listen to your body.')],
     ['calm', t('წყალი და თბილი ჩაი', 'Water and warm tea'), t('საკმარისი სითხე შებერილობას ამცირებს, თბილი ჩაი კი სიმშვიდეს გმატებს.', 'Enough fluids ease bloating, and warm tea adds a little calm.')],
@@ -118,7 +118,7 @@ const DAILY_TIPS = {
     ['mood', t('სოციალური დღეები', 'Social days'), t('ურთიერთობები ახლა ხშირად უფრო მარტივია — კარგი დროა შეხვედრებისთვის.', 'Connecting with people often feels easier now — a good time to meet up.')],
   ],
   luteal: [
-    ['care', t('მაგნიუმით მდიდარი საკვები', 'Magnesium-rich foods'), t('მწვანე ფოთლოვანი, თხილეული და მუქი შოკოლადი მაგნიუმს შეიცავს — ზოგს PMS-ის შემსუბუქებაში ეხმარება.', 'Leafy greens, nuts and dark chocolate contain magnesium — it helps some people with PMS.')],
+    ['care', t('მაგნიუმით მდიდარი საკვები', 'Magnesium-rich foods'), t('მწვანე ფოთლოვანი ბოსტნეული, თხილეული და მუქი შოკოლადი მაგნიუმს შეიცავს — ზოგს PMS-ის შემსუბუქებაში ეხმარება.', 'Leafy greens, nuts and dark chocolate contain magnesium — it helps some people with PMS.')],
     ['calm', t('ძილი უფრო მნიშვნელოვანია', 'Sleep matters more'), t('ამ ფაზაში ძილი შეიძლება გაუარესდეს — ეკრანები დაძინებამდე ერთი საათით ადრე გამორთე.', 'Sleep can get worse in this phase — turn off screens an hour before bed.')],
     ['care', t('ნაკლები მარილი და კოფეინი', 'Less salt and caffeine'), t('შებერილობისა და მკერდის მგრძნობელობისას მარილისა და კოფეინის შემცირება ზოგს ეხმარება.', 'With bloating or breast tenderness, cutting back on salt and caffeine helps some people.')],
     ['energy', t('ნაზი მოძრაობა', 'Gentle movement'), t('იოგა, პილატესი ან სეირნობა განწყობასაც აუმჯობესებს და შებერილობასაც ამცირებს.', 'Yoga, Pilates or a walk can lift your mood and ease bloating.')],

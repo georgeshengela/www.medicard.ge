@@ -14,14 +14,14 @@ export function HomeAskMedi({ onPress }: { onPress: () => void }) {
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={tx('მედი — ჰკითხე, ჩაწერე ან დაგეგმე', 'Medi — ask, log or plan')}
+      accessibilityLabel={tx('Medi — ჰკითხე, ჩაწერე ან დაგეგმე', 'Medi — ask, log or plan')}
       onPress={onPress}
       style={[s.bar, { backgroundColor: c.surface, borderColor: c.bg300 }]}
     >
       <Sparkles size={18} color={c.primary100} strokeWidth={2} />
       <View style={{ flex: 1, minWidth: 0 }}>
         <Text numberOfLines={1} style={[s.placeholder, { color: c.text100 }]}>
-          {tx('ჰკითხე მედის', 'Ask Medi')}
+          {tx('ჰკითხე Medi-ს', 'Ask Medi')}
         </Text>
         <Text numberOfLines={1} style={[s.hint, { color: c.text300 }]}>
           {tx('ხმით ან ტექსტით', 'By voice or text')}

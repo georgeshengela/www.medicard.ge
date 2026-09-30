@@ -173,7 +173,7 @@ function Hub() {
                 tone="spotlight"
                 icon={Target}
                 title={d.needsReview ? tx("გეგმა შენთან ერთად იცვლება", "Your plan changes with you") : tx("შენი მიზანი, შენი ტემპით", "Your goal, your pace")}
-                body={d.needsReview ? d.reasons.join(" ") : tx("დაკლება, შენარჩუნება თუ მომატება — დღის ბიუჯეტი, მაკროები და 7 დღის რაციონი ერთ გეგმაში.", "Lose, maintain or gain — a daily budget, macros and a 7-day meal plan in one plan.")}
+                body={d.needsReview ? d.reasons.join(" ") : tx("დაკლება, შენარჩუნება თუ მომატება — დღის ბიუჯეტი, მაკროები და 7 დღის რაციონი ერთ გეგმაში.", "Lose, maintain or gain — a daily budget, macros and a 7-day meal plan, all in one plan.")}
                 cta={d.program ? tx("გეგმის გადამოწმება", "Review plan") : tx("ჩემი გეგმის შექმნა", "Create my plan")}
                 onPress={() => router.push("/nutrition/goal")}
                 note={tx("ეს ორიენტირია, არა ექიმის დანიშნულება.", "This is a guide, not a doctor's prescription.")}

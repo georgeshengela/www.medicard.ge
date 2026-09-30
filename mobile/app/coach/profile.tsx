@@ -110,7 +110,7 @@ export default function CoachProfileScreen() {
             </Section>
           ) : null}
 
-          <Section title={tx('კონფიდენციალობა', 'Privacy')}>
+          <Section title={tx('კონფიდენციალურობა', 'Privacy')}>
             <Card style={{ gap: 8 }}>
               <View style={coachStyles.row}>
                 <ShieldCheck size={18} color={c.primary100} />

@@ -79,7 +79,7 @@ export default function CoachTodayScreen() {
     }
   };
   const confirmDecline = (linkId: string, name: string) =>
-    Alert.alert(tx('მოთხოვნის უარყოფა', 'Decline request'), tx(`${name}-ს მოთხოვნა უარყოფილი იქნება.`, `${name}’s request will be declined.`), [
+    Alert.alert(tx('მოთხოვნის უარყოფა', 'Decline request'), tx(`${name}-ის მოთხოვნა უარყოფილი იქნება.`, `${name}’s request will be declined.`), [
       { text: tx('არა', 'No'), style: 'cancel' },
       { text: tx('უარყოფა', 'Decline'), style: 'destructive', onPress: () => void answer(linkId, false) },
     ]);

@@ -80,7 +80,7 @@ export const HOME_FEATURE_GROUPS: { title: string; items: Feature[] }[] = [
     items: [
       {
         title: tx('ციკლი და ორსულობა', 'Cycle and pregnancy'),
-        detail: tx('შენი არჩეული რეჟიმი და დღიური', 'Your chosen mode and diary'),
+        detail: tx('შენი არჩეული რეჟიმი და დღიური', 'Your chosen mode and journal'),
         href: '/cycle',
         icon: CalendarHeart,
         female: true,
@@ -98,7 +98,7 @@ export const HOME_FEATURE_GROUPS: { title: string; items: Feature[] }[] = [
     title: tx('დახმარება და ანალიზი', 'Help and analysis'),
     items: [
       {
-        title: tx('მედი', 'Medi'),
+        title: tx('Medi', 'Medi'),
         detail: tx('მომიყევი ან მომწერე, რა გჭირდება', 'Tell me or write what you need'),
         href: '/assistant',
         icon: AudioLines,

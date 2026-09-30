@@ -174,7 +174,7 @@ function Settings() {
         <>
           <NCard>
             <NText style={{ fontFamily: "NotoSansGeorgian_600SemiBold", fontSize: 16 }}>{tx("დღის ბიუჯეტი", "Daily budget")}</NText>
-            {row(<Flame size={20} color={c.primary100} />, tx("დამწვარი კალორია ბიუჯეტში", "Burned calories in budget"), tx("ვარჯიშისა და ნაბიჯების ენერგია დღის სამიზნეს ემატება. Cal AI-ს „add burned calories“ წესი.", "Energy from exercise and steps is added to your daily target, like Cal AI's “add burned calories” rule."), prefs.addBurned, (v) => void save({ ...prefs, addBurned: v }))}
+            {row(<Flame size={20} color={c.primary100} />, tx("დამწვარი კალორია ბიუჯეტში", "Burned calories in budget"), tx("ვარჯიშისა და ნაბიჯების ენერგია დღის სამიზნეს ემატება.", "Energy from exercise and steps is added to your daily target."), prefs.addBurned, (v) => void save({ ...prefs, addBurned: v }))}
             {row(<Footprints size={20} color={c.primary100} />, tx("ნაბიჯების ჩათვლა", "Count steps"), tx("ნაბიჯების სინქრონიდან სავარაუდო ენერგია დამწვარში ჩაითვლება.", "Estimated energy from synced steps counts as burned."), prefs.countSteps, (v) => void save({ ...prefs, countSteps: v }))}
             {row(<RefreshCcw size={20} color={c.primary100} />, tx("გუშინდელი ნაშთის გადმოტანა", "Roll over yesterday's leftover"), tx("თუ გუშინ სამიზნეზე ნაკლები მიიღე, 200 კკალ-მდე დღეს გადმოგყვება. გადაჭარბება არასდროს „ივალება“.", "If you ate less than your target yesterday, up to 200 kcal carries over to today. Going over is never counted as debt."), prefs.rollover, (v) => void save({ ...prefs, rollover: v }))}
           </NCard>

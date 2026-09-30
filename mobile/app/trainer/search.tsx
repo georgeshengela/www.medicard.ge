@@ -105,7 +105,7 @@ export default function TrainerSearchScreen() {
           contentContainerStyle={{ paddingHorizontal: HUB.gutter, paddingTop: 14, paddingBottom: insets.bottom + 24, gap: 12 }}
           ListHeaderComponent={error ? <ErrorBox message={error} /> : trainers === null ? <Loading /> : null}
           ListEmptyComponent={
-            trainers ? <EmptyNote icon={Search} title={tx('ტრენერი ვერ მოიძებნა', 'No trainers found')} body={tx('სცადე სხვა დარბაზი ან სახელი. შენს ტრენერს სთხოვე, დარეგისტრირდეს MEDICARD-ში — კოდით პირდაპირ დაგიკავშირდები.', 'Try another gym or name. Ask your trainer to sign up on MEDICARD — then you can connect directly with their code.')} /> : null
+            trainers ? <EmptyNote icon={Search} title={tx('ტრენერი ვერ მოიძებნა', 'No trainers found')} body={tx('სცადე სხვა დარბაზი ან სახელი. შენს ტრენერს სთხოვე, დარეგისტრირდეს MEDICARD-ში — კოდით პირდაპირ დაუკავშირდები.', 'Try another gym or name. Ask your trainer to sign up on MEDICARD — then you can connect directly with their code.')} /> : null
           }
           renderItem={({ item: t }) => (
             <Card onPress={() => router.push(`/trainer/connect?trainerId=${encodeURIComponent(t.id)}` as never)} accessibilityLabel={tx(`${t.displayName}, ტრენერი`, `${t.displayName}, trainer`)} style={{ gap: 10 }}>

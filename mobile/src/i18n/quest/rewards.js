@@ -6,7 +6,7 @@
 const REWARD_TITLES = {
   'reward.mediTheme7d.title': {
     ka: 'Medi Quest სტილი — 7 დღე',
-    en: 'Medi Quest Style — 7 days',
+    en: 'Medi Quest style — 7 days',
     fr: 'Style Medi Quest — 7 jours',
     ru: 'Стиль Medi Quest — 7 дней',
   },
@@ -51,13 +51,13 @@ const REWARD_DESCRIPTIONS = {
   },
   'reward.mediPremiumDay.description': {
     ka: '1 დღე Medicard Premium.',
-    en: '1 day of MediCard Premium access.',
+    en: '1 day of Medicard Premium access.',
     fr: '1 jour d’accès MediCard Premium.',
     ru: '1 день доступа MediCard Premium.',
   },
   'reward.mediPremium3d.description': {
     ka: '3 დღე Medicard Premium.',
-    en: '3 days of MediCard Premium access.',
+    en: '3 days of Medicard Premium access.',
     fr: '3 jours d’accès MediCard Premium.',
     ru: '3 дня доступа MediCard Premium.',
   },
@@ -96,7 +96,7 @@ const REWARD_TERMS = {
   },
   'reward.partnerTest10.terms': {
     ka: 'არ არის რეალური პარტნიორის შეთავაზება.',
-    en: 'Not a real partner commercial offer.',
+    en: 'Not a real partner offer.',
     fr: 'Pas une offre partenaire réelle.',
     ru: 'Не реальное партнёрское предложение.',
   },
@@ -147,7 +147,7 @@ const STORE = {
   },
   en: {
     title: 'Rewards',
-    tagline: 'Use Medi Coins for MediCard benefits.',
+    tagline: 'Use Medi Coins for Medicard benefits.',
     featured: 'Featured',
     available: 'Available',
     myRewards: 'My rewards',
@@ -170,11 +170,11 @@ const STORE = {
     whatYouGet: 'What you receive',
     terms: 'Terms',
     validity: 'Validity',
-    days: (n) => `${n} days`,
+    days: (n) => `${n} ${n === 1 ? 'day' : 'days'}`,
     partner: 'Partner',
     offlineRedeem: 'Redeeming requires a connection.',
     emptyStore: 'Rewards will appear soon.',
-    loadFailed: 'Could not load rewards. Pull to retry.',
+    loadFailed: 'Could not load rewards. Try again.',
     emptyMine: 'No redemptions yet.',
     active: 'Active',
     used: 'Used',

@@ -100,7 +100,7 @@ const FALLBACKS_KA: Record<string, { title: string; body: string }> = {
   },
   'nutrition-dinner': {
     title: 'ვახშამი და დღის შეჯამება 🌙',
-    body: 'დაასრულე დღე ერთი ჩანაწერით — streak-ი და პროგრესი შენს მხარესაა 💚',
+    body: 'დაასრულე დღე ერთი ჩანაწერით — სერია და პროგრესი შენს მხარესაა 💚',
   },
   weight: {
     title: 'წონის ჩანაწერი? ⚖️',

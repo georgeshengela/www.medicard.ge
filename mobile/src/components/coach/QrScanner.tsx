@@ -75,7 +75,7 @@ export function QrScanner({ title, hint, busy, error, onScan, footer }: { title:
             : granted
               ? hint
               : primer
-                ? tx('QR კოდის წასაკითხად კამერა გჭირდება. კადრი ტელეფონს არ ტოვებს — მხოლოდ კოდის ტექსტი გამოიყენება.', 'To read the QR code, the camera is needed. The image never leaves your phone — only the code’s text is used.')
+                ? tx('QR კოდის წასაკითხად კამერა გჭირდება. კადრი ტელეფონს არ ტოვებს — მხოლოდ კოდის ტექსტი გამოიყენება.', 'You need the camera to read the QR code. The image never leaves your phone — only the code’s text is used.')
                 : tx('კამერა გამორთულია — ჩართე პარამეტრებში ან ჩასვი ბმული', 'Camera is off — turn it on in Settings or paste a link')}</Text>
       </View>
       <Animated.View style={[s.bottom, bottomStyle]}>

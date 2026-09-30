@@ -4,7 +4,7 @@ import Animated, { FadeInDown } from 'react-native-reanimated';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ArrowLeft, ChevronRight, Gift, Sparkles } from 'lucide-react-native';
-import { appLang } from '@/i18n/locale';
+import { appLang, tx } from '@/i18n/locale';
 import { Bone } from '@/components/ui/Skeleton';
 import { QuestAnimatedNumber } from '@/components/quest/QuestAnimatedNumber';
 import { QuestCoinMark } from '@/components/quest/QuestIcon';
@@ -101,7 +101,7 @@ export default function RewardsStoreScreen() {
       <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 8, paddingVertical: 4 }}>
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel="Back"
+          accessibilityLabel={tx('უკან', 'Back')}
           hitSlop={8}
           onPress={() => router.back()}
           style={{ width: 44, height: 44, alignItems: 'center', justifyContent: 'center' }}

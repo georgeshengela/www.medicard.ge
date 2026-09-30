@@ -21,7 +21,7 @@ const UI = {
   level: { ka: 'დონე', en: 'Level', fr: 'Niveau', ru: 'Уровень' },
   todaysQuest: {
     ka: 'დღევანდელი მისია',
-    en: "Today's Quest",
+    en: "Today's mission",
     fr: 'Quête du jour',
     ru: 'Квест сегодня',
   },
@@ -101,7 +101,7 @@ const UI = {
     ru: 'Тихий старт — продолжай путь',
   },
   journeyComplete: {
-    ka: 'ვერსია 1 მოგზაურობა დასრულებულია — კარგი ადგილია შესაჩერებლად',
+    ka: 'მოგზაურობის თავი დასრულებულია — კარგი ადგილია შესაჩერებლად',
     en: 'Journey chapter complete — a good place to pause',
     fr: 'Chapitre du voyage terminé — belle pause',
     ru: 'Глава пути завершена — хорошая пауза',
@@ -409,7 +409,7 @@ export function companionCopy(locale: string = appLang()) {
       pick(
         {
           ka: `${n} მისია დარჩა შემდეგ გაჩერებამდე`,
-          en: `${n} missions to the next stop`,
+          en: `${n} ${n === 1 ? 'mission' : 'missions'} to the next stop`,
           fr: `${n} missions jusqu’au prochain arrêt`,
           ru: `${n} миссий до следующей остановки`,
         },

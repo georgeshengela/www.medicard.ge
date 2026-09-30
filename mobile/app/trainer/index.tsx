@@ -137,7 +137,7 @@ export default function MyTrainerScreen() {
           <>
             <View style={{ backgroundColor: HUB.spotlightBg, borderRadius: HUB.cardRadius, padding: 22, marginTop: 8, gap: 14 }}>
               <IconTile icon={Dumbbell} ink="teal" />
-              <Text style={{ fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 24, lineHeight: 32, color: '#FFFFFF' }}>{tx('შენი ტრენერი დარბაზს გარეთაც შენთანაა', 'Your trainer, with you outside the gym too')}</Text>
+              <Text style={{ fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 24, lineHeight: 32, color: '#FFFFFF' }}>{tx('შენი ტრენერი დარბაზის გარეთაც შენთანაა', 'Your trainer, with you outside the gym too')}</Text>
               <Text style={[hubText.body, { color: '#C5DADA', fontSize: 14, lineHeight: 22 }]}>
                 {tx('ტრენერი ჯავშნებს პირდაპირ აქ გინიშნავს, შეხსენებები თავად მოგივა, კვების გეგმას გიდგენს და ხედავს, როგორ მიდიხარ — მხოლოდ იმას, რასაც შენ გაუზიარებ.', 'Your trainer books sessions right here, reminders come on their own, they build your meal plan and see how you’re doing — only what you choose to share.')}
               </Text>
