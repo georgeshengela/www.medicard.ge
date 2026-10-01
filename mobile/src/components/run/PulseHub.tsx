@@ -24,6 +24,7 @@ import {Action,ArtTile,Bar,Card,Copy,IconButton,RUN_CTA,Section,useRunInk} from 
 import {MISSION_ART,RUN_GIFT,RUN_HERO,RUN_ICON} from './runArt';
 import {MediRunLogo,PulseGlyph} from './PulseIdentity';
 import {RouteThumb,WeekBars} from './RunVisuals';
+import {PulseTerritory} from './PulseTerritory';
 import { tx } from '@/i18n/locale';
 
 export const MISSION_ICONS={trees:Trees,landmark:Landmark,waves:Waves,mountain:Mountain,bridge:Compass,flower:Trees};
@@ -118,6 +119,8 @@ export default function PulseHub(){
     </View>
    </Card>
   </Section>
+
+  <PulseTerritory totalKm={lifetimeKm} walks={walks.length}/>
 
   {recordTiles.length?<Section title={tx('შენი რეკორდები', 'Your records')}>
    <View style={{flexDirection:'row',gap:10}}>{recordTiles.map(r=><Pressable key={r.label} accessibilityRole="button" accessibilityLabel={`${r.label}: ${r.value} ${r.unit}`} onPress={()=>router.push(`/run/${r.id}` as never)} style={{flex:1}}>
