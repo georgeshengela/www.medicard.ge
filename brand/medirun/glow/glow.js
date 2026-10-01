@@ -114,7 +114,17 @@ document.querySelectorAll('#segPace button').forEach((b) => (b.onclick = () => {
 document.querySelectorAll('#segCam button').forEach((b) => (b.onclick = () => { state.cam = b.dataset.v; state.manual = false; syncChrome(); }));
 document.querySelectorAll('#segTilt button').forEach((b) => (b.onclick = () => { document.body.classList.toggle('flat', b.dataset.v === 'off'); syncChrome(); }));
 document.querySelectorAll('#segHero button').forEach((b) => (b.onclick = () => { state.hero = b.dataset.v; glow.setHero(state.hero); syncChrome(); }));
-['dragstart', 'rotatestart', 'pitchstart', 'zoomstart'].forEach((ev) => map.on(ev, (e) => { if (e.originalEvent) { setCloseUp(false); state.manual = true; syncChrome(); } }));
+function release() { setCloseUp(false); state.manual = true; syncChrome(); }
+['dragstart', 'rotatestart', 'pitchstart', 'zoomstart'].forEach((ev) => map.on(ev, (e) => { if (e.originalEvent) release(); }));
+// never move the camera under a finger: Mapbox cancels a pinch or drag on every programmatic camera move
+let touching = 0;
+const box = map.getCanvasContainer();
+box.addEventListener('touchstart', (e) => { touching = e.touches.length; if (touching > 1) release(); }, { passive: true });
+box.addEventListener('touchend', (e) => { touching = e.touches.length; }, { passive: true });
+box.addEventListener('touchcancel', (e) => { touching = e.touches.length; }, { passive: true });
+box.addEventListener('mousedown', () => { touching = 1; });
+addEventListener('mouseup', () => { touching = 0; });
+box.addEventListener('wheel', release, { passive: true });
 // Tap the runner for a close-up (same as the app); tap again or anywhere else to go back.
 function setCloseUp(on) { state.closeUp = on; state.orbit = map.getBearing(); glow.setHeroView(on); if (on) { state.manual = false; if (state.cam === 'orbit') state.cam = 'close'; } }
 map.on('click', (e) => { if (glow.runnerHit(e.point.x, e.point.y)) setCloseUp(!state.closeUp); else if (state.closeUp) setCloseUp(false); });
@@ -160,7 +170,7 @@ function tick(now) {
   emit(now);
 
   const r = glow.runner();
-  if (!state.manual && r) {
+  if (!state.manual && r && !touching) {
     let goal, zoom, pitch, bearing;
     if (state.cam !== 'orbit') {
       const cam = CAMS[state.cam] || CAMS.close;
