@@ -1,5 +1,7 @@
 // MEDIRUN painted territory: shapes from GET /api/medipulsi/territory and the formatting the share card uses.
-export type TerritoryArea={id:string;name:string;countryCode:string|null;areaKm2:number;paintedKm2:number;percent:number};
+/** Minimal city map: `grid` rows of '0' outside, '1' inside, '2'-'9' painted (brighter = more); outline in grid units. */
+export type TerritoryMap={cols:number;rows:number;cellM:number;grid:string[];outline:[number,number][][]};
+export type TerritoryArea={id:string;name:string;countryCode:string|null;areaKm2:number;paintedKm2:number;percent:number;map?:TerritoryMap|null};
 export type Territory={paintedKm2:number;world:{percent:number};cities:TerritoryArea[];countries:TerritoryArea[];pending:boolean};
 
 /** Never rounds a real walk down to 0 — small shares keep two significant digits (0.00072 %). */
