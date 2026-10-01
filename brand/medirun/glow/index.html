@@ -4,73 +4,160 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,viewport-fit=cover">
 <title>MEDIRUN Glow</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Georgian:wght@400;600;700&display=swap" rel="stylesheet">
 <link href="https://api.mapbox.com/mapbox-gl-js/v3.8.0/mapbox-gl.css" rel="stylesheet">
 <script src="https://api.mapbox.com/mapbox-gl-js/v3.8.0/mapbox-gl.js"></script>
+<script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.169.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.169.0/examples/jsm/"}}</script>
 <style>
-  :root { --mint: #5EEAD4; --ink: #E6F4F1; --glass: rgba(9, 14, 24, .62); }
-  html, body { margin: 0; height: 100%; background: #0B111C; color: var(--ink); font-family: "FiraGO", "Noto Sans Georgian", system-ui, sans-serif; overflow: hidden; }
+  /* App dark theme tokens (mobile/src/theme/colors.ts darkColors, PulseUi.tsx). */
+  :root { --bg100: #030712; --bg200: #1F2937; --bg300: #374151; --surface: #111827; --text100: #FFFFFF; --text200: #D1D5DB; --text300: #6B7280;
+          --primary100: #99F6E4; --accent100: #042F2E; --teal: #14B8A6; --cta: #0D9488; --danger: #F43F5E; --warm: #FCD34D;
+          --float: 0 6px 14px rgba(3, 7, 18, .16); }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; height: 100%; background: var(--bg100); color: var(--text100); font-family: "Noto Sans Georgian", system-ui, sans-serif; overflow: hidden; }
   #map { position: fixed; inset: 0; }
-  .mapboxgl-ctrl-logo, .mapboxgl-ctrl-attrib { opacity: .35; }
+  .mapboxgl-ctrl-logo, .mapboxgl-ctrl-attrib { opacity: .3; }
+  .mapboxgl-ctrl-bottom-left, .mapboxgl-ctrl-bottom-right { bottom: 230px; }
+  svg.i { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; flex-shrink: 0; }
 
-  /* Miniature look: blur the far and near band, keep the middle sharp. */
-  .tilt { position: fixed; left: 0; right: 0; pointer-events: none; -webkit-backdrop-filter: blur(5px); backdrop-filter: blur(5px); transition: opacity .6s; }
-  .tilt.top { top: 0; height: 36%; -webkit-mask-image: linear-gradient(#000 0 30%, transparent); mask-image: linear-gradient(#000 0 30%, transparent); }
-  .tilt.bottom { bottom: 0; height: 26%; -webkit-mask-image: linear-gradient(transparent, #000 75%); mask-image: linear-gradient(transparent, #000 75%); }
+  /* Miniature look (prototype setting): the far band is blurred. */
+  .tilt { position: fixed; left: 0; right: 0; pointer-events: none; -webkit-backdrop-filter: blur(4px); backdrop-filter: blur(4px); transition: opacity .6s; }
+  .tilt.top { top: 0; height: 30%; -webkit-mask-image: linear-gradient(#000 0 25%, transparent); mask-image: linear-gradient(#000 0 25%, transparent); }
   body.flat .tilt { opacity: 0; }
-  .vignette { position: fixed; inset: 0; pointer-events: none; background: radial-gradient(120% 90% at 50% 55%, transparent 55%, rgba(4, 7, 13, .7)); }
+  .vignette { position: fixed; inset: 0; pointer-events: none; background: radial-gradient(130% 95% at 50% 45%, transparent 60%, rgba(3, 7, 18, .55)); }
 
-  .brand { position: fixed; top: max(16px, env(safe-area-inset-top)); left: 16px; pointer-events: none; }
-  .brand b { display: block; font-weight: 800; letter-spacing: .14em; font-size: 15px; color: var(--mint); text-shadow: 0 0 14px rgba(45, 212, 191, .7); }
-  .brand span { font-size: 12px; opacity: .7; }
-  .fps { position: fixed; bottom: 4px; right: 8px; font: 11px ui-monospace, monospace; opacity: .5; }
+  /* ---- app chrome, mirrored from PulseActive.tsx ---- */
+  .top { position: fixed; top: calc(env(safe-area-inset-top) + 8px); left: 14px; right: 14px; display: flex; flex-direction: column; gap: 8px; pointer-events: none; }
+  .top > * { pointer-events: auto; }
+  .row { display: flex; align-items: center; gap: 8px; }
+  .icon-btn { width: 44px; height: 44px; border-radius: 16px; border: 0; background: var(--surface); color: var(--text100); display: grid; place-items: center; box-shadow: var(--float); cursor: pointer; padding: 0; flex-shrink: 0; }
+  .icon-btn.active { background: var(--accent100); color: var(--primary100); }
+  .status-card { flex: 1; min-width: 0; background: var(--surface); border-radius: 18px; padding: 7px 14px; box-shadow: var(--float); }
+  .status-card .line { display: flex; align-items: center; justify-content: space-between; }
+  .logo { font-weight: 700; font-size: 16px; line-height: 21px; letter-spacing: -1.1px; }
+  .logo b { color: var(--teal); display: inline-block; transform: skewX(-10deg); margin-left: 1px; font-weight: 700; }
+  .gps { display: flex; align-items: flex-end; gap: 5px; }
+  .gps i { width: 3px; border-radius: 2px; background: var(--teal); display: block; }
+  .gps .dot { width: 7px; height: 7px; border-radius: 4px; margin-left: 4px; background: var(--text300); align-self: center; }
+  .gps .dot.on { background: var(--teal); } .gps .dot.paused { background: #F59E0B; }
+  .status { font-size: 10px; line-height: 15px; color: var(--text200); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .pills { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .pill { display: flex; align-items: center; gap: 7px; background: var(--surface); border-radius: 16px; padding: 8px 12px; box-shadow: 0 4px 10px rgba(3, 7, 18, .14); font-size: 11px; font-weight: 700; line-height: 17px; }
+  .pill svg.i { width: 13px; height: 13px; }
+  .pill .sep { width: 1px; height: 12px; background: var(--bg300); }
+  .pill.mission svg { color: var(--primary100); } .pill.mission .pct { color: var(--primary100); }
+  /* NEW: lit-buildings indicator — the only addition to the app screen. */
+  .pill.lit svg { color: var(--warm); filter: drop-shadow(0 0 4px rgba(252, 211, 77, .7)); }
+  .pill.lit .num { color: var(--warm); font-variant-numeric: tabular-nums; display: inline-block; }
+  .pill.lit .lbl { color: var(--text200); font-weight: 400; }
+  .pill.lit.pop .num { animation: pop .4s ease-out; }
+  @keyframes pop { 0% { transform: scale(1.35); text-shadow: 0 0 10px rgba(252, 211, 77, .9); } 100% { transform: scale(1); } }
 
-  .hud { position: fixed; left: 16px; right: 16px; bottom: max(16px, env(safe-area-inset-bottom)); display: flex; flex-direction: column; gap: 10px; align-items: center; }
-  .stats { display: flex; gap: 10px; }
-  .stat { background: var(--glass); -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px); border: 1px solid rgba(94, 234, 212, .18); border-radius: 16px; padding: 8px 14px; min-width: 92px; text-align: center; }
-  .stat b { display: block; font-size: 20px; font-weight: 700; font-variant-numeric: tabular-nums; }
-  .stat span { font-size: 11px; opacity: .7; }
-  .stat.warm b { color: #FFD08A; text-shadow: 0 0 12px rgba(255, 170, 80, .55); }
-  .stat.cool b { color: var(--mint); text-shadow: 0 0 12px rgba(45, 212, 191, .55); }
-  .bar { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
-  button { font: inherit; font-size: 13px; color: var(--ink); background: var(--glass); -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px); border: 1px solid rgba(230, 244, 241, .14); border-radius: 999px; padding: 9px 14px; cursor: pointer; }
-  button.primary { background: #0D9488; border-color: #2DD4BF; font-weight: 700; padding: 10px 22px; box-shadow: 0 0 24px rgba(45, 212, 191, .45); }
-  button[aria-pressed="true"] { border-color: var(--mint); color: var(--mint); }
-  .chips { position: fixed; top: max(14px, env(safe-area-inset-top)); right: 12px; display: flex; flex-direction: column; gap: 6px; align-items: flex-end; }
-  .chips button { font-size: 11px; padding: 6px 11px; }
-  .stat.pop b { animation: pop .35s ease-out; }
-  @keyframes pop { 0% { transform: scale(1.18); } 100% { transform: scale(1); } }
-  .bar button:not(.primary) { min-width: 44px; }
-  .loading { position: fixed; inset: 0; display: grid; place-items: center; pointer-events: none; font-size: 13px; opacity: .8; transition: opacity .8s; }
+  .side { position: fixed; right: 14px; display: flex; flex-direction: column; align-items: flex-end; gap: 9px; }
+  .dock { position: fixed; left: 14px; right: 14px; bottom: max(12px, env(safe-area-inset-bottom)); }
+  .card { background: var(--surface); border-radius: 26px; padding: 16px; display: flex; flex-direction: column; gap: 14px; box-shadow: var(--float); }
+  .stats { display: flex; align-items: flex-end; }
+  .stats .lbl { font-size: 10px; line-height: 15px; color: var(--text200); }
+  .stats .big { font-weight: 700; font-size: 34px; line-height: 42px; letter-spacing: -1px; font-variant-numeric: tabular-nums; }
+  .stats .mid { font-weight: 700; font-size: 21px; line-height: 30px; font-variant-numeric: tabular-nums; }
+  .bar { height: 5px; border-radius: 5px; background: var(--bg200); overflow: hidden; }
+  .bar > i { display: block; height: 100%; width: 0; background: var(--teal); border-radius: 5px; }
+  .goal { display: flex; justify-content: space-between; font-size: 10px; line-height: 15px; color: var(--text200); }
+  .goal b { color: var(--primary100); }
+  .actions { display: flex; gap: 10px; align-items: center; }
+  .action { flex: 1; min-height: 52px; border: 0; border-radius: 18px; background: var(--cta); color: #fff; font: 700 14px/22px "Noto Sans Georgian", sans-serif; display: flex; align-items: center; justify-content: center; gap: 10px; cursor: pointer; padding: 12px 16px; }
+  .action.secondary { background: var(--bg200); color: var(--text100); } .action.secondary svg { color: var(--primary100); }
+  .flag { width: 52px; height: 52px; border-radius: 18px; border: 0; background: var(--bg200); color: var(--danger); display: grid; place-items: center; cursor: pointer; flex-shrink: 0; }
+  .flag[hidden] { display: none; }
+
+  .sheet-back { position: fixed; inset: 0; background: rgba(3, 7, 18, .55); opacity: 0; pointer-events: none; transition: opacity .25s; }
+  .sheet { position: fixed; left: 0; right: 0; bottom: 0; background: var(--bg100); border-radius: 30px 30px 0 0; padding: 10px 20px max(18px, env(safe-area-inset-bottom)); transform: translateY(105%); transition: transform .3s cubic-bezier(.2, .8, .2, 1); display: flex; flex-direction: column; gap: 14px; max-height: 88%; overflow: auto; }
+  .sheet.open { transform: none; } .sheet-back.open { opacity: 1; pointer-events: auto; }
+  .sheet .handle { width: 34px; height: 4px; border-radius: 5px; background: var(--bg300); align-self: center; flex-shrink: 0; }
+  .sheet h3 { margin: 0; font-size: 20px; line-height: 31px; flex: 1; }
+  .sheet .head { display: flex; align-items: center; gap: 10px; }
+  .seg { display: flex; gap: 4px; padding: 4px; border-radius: 16px; background: var(--bg200); margin-top: 6px; }
+  .seg button { flex: 1; min-height: 40px; border: 0; border-radius: 12px; background: transparent; color: var(--text200); font: 700 12px "Noto Sans Georgian", sans-serif; cursor: pointer; }
+  .seg button.on { background: var(--surface); color: var(--text100); }
+  .muted { color: var(--text200); font-size: 13px; line-height: 20px; margin: 0; }
+  .note { font-size: 11px; color: var(--text300); }
+
+  .loading { position: fixed; inset: 0; display: grid; place-items: center; pointer-events: none; font-size: 13px; color: var(--text200); transition: opacity .8s; }
   .loading.done { opacity: 0; }
-
-  .runner { width: 64px; height: 64px; pointer-events: none; }
-  .runner canvas { width: 64px; height: 64px; display: block; }
-  .runner::after { content: ""; position: absolute; left: 50%; bottom: -6px; width: 46px; height: 16px; transform: translateX(-50%); border-radius: 50%; background: radial-gradient(closest-side, rgba(94, 234, 212, .75), transparent); filter: blur(2px); }
+  .fps { position: fixed; left: 6px; bottom: 2px; font: 10px ui-monospace, monospace; color: var(--text300); pointer-events: none; }
+  .runner2d { width: 64px; height: 64px; pointer-events: none; }
+  .runner2d canvas { width: 64px; height: 64px; display: block; }
 </style>
 </head>
 <body>
 <div id="map"></div>
 <div class="tilt top"></div>
-<div class="tilt bottom"></div>
 <div class="vignette"></div>
-<div class="brand"><b>MEDIRUN</b><span>ძველი თბილისი · პროტოტიპი</span></div>
-<div class="fps" id="fps"></div>
 <div class="loading" id="loading">ქალაქი იტვირთება…</div>
-<div class="hud">
-  <div class="stats">
-    <div class="stat cool"><b id="km">0.00</b><span>კმ</span></div>
-    <div class="stat warm"><b id="lit">0</b><span>აინთო შენობა</span></div>
+
+<div class="top">
+  <div class="row">
+    <button class="icon-btn" aria-label="უკან"><svg class="i" viewBox="0 0 24 24"><path d="m12 19-7-7 7-7"/><path d="M19 12H5"/></svg></button>
+    <div class="status-card">
+      <div class="line">
+        <div class="logo">MEDI<b>RUN</b></div>
+        <div class="gps" aria-label="GPS ზუსტია"><i style="height:5px"></i><i style="height:8px"></i><i style="height:11px"></i><span class="dot" id="dot"></span></div>
+      </div>
+      <div class="status" id="status">დღეს სად მიგიყვანს გზა?</div>
+    </div>
+    <button class="icon-btn" id="menuBtn" aria-label="მენიუ"><svg class="i" viewBox="0 0 24 24"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg></button>
   </div>
-  <div class="bar">
-    <button id="restart" aria-label="თავიდან">↺</button>
-    <button class="primary" id="play">▶ სირბილი</button>
-    <button id="speed" aria-label="სიჩქარე">×6</button>
+  <div class="pills">
+    <div class="pill mission"><svg class="i" viewBox="0 0 24 24"><path d="m16.24 7.76-1.804 5.411a2 2 0 0 1-1.265 1.265L7.76 16.24l1.804-5.411a2 2 0 0 1 1.265-1.265z"/><circle cx="12" cy="12" r="10"/></svg><span>ძველი ქალაქის ამბები</span><span class="sep"></span><span class="pct">34%</span></div>
+    <div class="pill lit" id="litPill" aria-label="ანთებული შენობები"><svg class="i" viewBox="0 0 24 24"><path d="M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18Z"/><path d="M6 12H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h2"/><path d="M18 9h2a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-2"/><path d="M10 6h4"/><path d="M10 10h4"/><path d="M10 14h4"/><path d="M10 18h4"/></svg><span class="num" id="lit">0</span><span class="lbl">ანთია</span></div>
   </div>
 </div>
-<div class="chips">
-  <button id="cam" aria-pressed="true">მიყოლა</button>
-  <button id="tilt" aria-pressed="true">მინიატურა</button>
+
+<div class="side" id="side">
+  <button class="icon-btn active" id="locate" aria-label="ჩემს მდებარეობაზე დაბრუნება"><svg class="i" viewBox="0 0 24 24"><line x1="2" x2="5" y1="12" y2="12"/><line x1="19" x2="22" y1="12" y2="12"/><line x1="12" x2="12" y1="2" y2="5"/><line x1="12" x2="12" y1="19" y2="22"/><circle cx="12" cy="12" r="7"/><circle cx="12" cy="12" r="3"/></svg></button>
 </div>
+
+<div class="dock" id="dock">
+  <div class="card">
+    <div class="stats">
+      <div style="flex:1.25"><div class="lbl">მანძილი</div><div class="big" id="dist">0 მ</div></div>
+      <div style="flex:1"><div class="lbl">აქტიური დრო</div><div class="mid" id="time">00:00</div></div>
+      <div style="flex:.8;text-align:right"><div class="lbl">ტემპი</div><div class="mid" id="pace">–</div></div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:6px">
+      <div class="bar"><i id="goalBar"></i></div>
+      <div class="goal"><span>ძველი თბილისის წრე</span><b id="goalLeft"></b></div>
+    </div>
+    <div class="actions">
+      <button class="action" id="play"><svg class="i" viewBox="0 0 24 24"><polygon points="6 3 20 12 6 21 6 3"/></svg><span>დავიწყოთ აღმოჩენა</span></button>
+      <button class="flag" id="flag" aria-label="სესიის დასრულება" hidden><svg class="i" viewBox="0 0 24 24"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" x2="4" y1="22" y2="15"/></svg></button>
+    </div>
+  </div>
+</div>
+
+<div class="sheet-back" id="sheetBack"></div>
+<div class="sheet" id="menu">
+  <div class="handle"></div>
+  <div class="head"><h3>პროტოტიპის პარამეტრები</h3><button class="icon-btn" data-close aria-label="დახურვა"><svg class="i" viewBox="0 0 24 24"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button></div>
+  <p class="muted">ეს მენიუ მხოლოდ ტესტისთვისაა. აპში აქ ჩვეულებრივი MEDIRUN მენიუ დარჩება.</p>
+  <div><div class="note">სიმულაციის სიჩქარე</div><div class="seg" id="segSpeed"><button data-v="1">×1</button><button data-v="3">×3</button><button data-v="8">×8</button><button data-v="20">×20</button></div></div>
+  <div><div class="note">კამერა</div><div class="seg" id="segCam"><button data-v="close">ახლოდან</button><button data-v="far">შორიდან</button><button data-v="orbit">ზემოდან</button></div></div>
+  <div><div class="note">მინიატურის ეფექტი</div><div class="seg" id="segTilt"><button data-v="on">ჩართული</button><button data-v="off">გამორთული</button></div></div>
+  <div><div class="note">პერსონაჟი</div><div class="seg" id="segHero"><button data-v="3d">3D</button><button data-v="2d">ნეონის ფიგურა</button></div></div>
+  <button class="action secondary" id="restart"><svg class="i" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg><span>თავიდან დაწყება</span></button>
+</div>
+<div class="sheet" id="finish">
+  <div class="handle"></div>
+  <div class="head"><h3>დავასრულოთ გასეირნება?</h3><button class="icon-btn" data-close aria-label="დახურვა"><svg class="i" viewBox="0 0 24 24"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button></div>
+  <div class="card" style="box-shadow:none">
+    <div class="stats" id="finishStats"></div>
+    <p class="muted">გავლილი გზა, მისიის პროგრესი და აღმოჩენები შენარჩუნდება. ანთებული ქუჩები შენს რუკაზე დარჩება.</p>
+    <button class="action" id="finishSave"><svg class="i" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg><span>დასრულება და შენახვა</span></button>
+    <button class="action secondary" data-close><span>ჯერ პაუზაზე დარჩეს</span></button>
+  </div>
+</div>
+<div class="fps" id="fps"></div>
 <script type="module" src="glow.js"></script>
 </body>
 </html>
