@@ -1,0 +1,65 @@
+node_modules/
+.env
+.env.*
+!.env.example
+
+# Expo
+.expo/
+dist/
+web-build/
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+*.orig.*
+
+# Native
+android/
+ios/
+
+
+# Server
+server/uploads/
+server/generated/
+
+# Historical QA screenshots / dumps (admin #/cycleqa)
+/qa/*
+!/qa/.gitkeep
+/docs/*
+!/docs/.gitkeep
+!/docs/APP-REVIEW-2026-09-22.md
+!/docs/APP-REVIEW-REPLY-2026-09-22.md
+
+# Generated verification artefacts
+mobile/screenshots/
+mobile/.expo-export-check/
+mobile/.expo-tmp-check/
+mobile/store/_qa-*/
+server/scripts/_v25-shots/
+server/scripts/_v26-shots/
+qa-artifacts/
+tmp/
+
+# Scraping / debug probes (local only)
+tmp-*.js
+tmp-*.json
+pd-*.js
+mobile/assets/Untitled-1.txt
+server/*-test.html
+mobile/design-references/
+
+# Editors / OS
+.DS_Store
+Thumbs.db
+*.log
+*.rar
+npm-debug.log*
+yarn-error.log*
+
+# EAS build archive only (.easignore replaces .gitignore for uploads): marketing/brand
+# sources and local tooling are not part of the app and pushed the archive over 2 GB.
+brand/
+game-studio/
+.claude/
+/index.html
