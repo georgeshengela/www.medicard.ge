@@ -22,7 +22,7 @@ import {
 import { USER_CEILING_PER_MIN, isCeilingExempt, loopNotifier } from './lib/loopGuard.js';
 import { denyLegacyPublicUploads } from './lib/privateUploads.js';
 import { shutdownOcr } from './lib/ocr.js';
-import { errorHandler, notFound } from './middleware/error.js';
+import { errorHandler, notFound, isHiddenPath } from './middleware/error.js';
 import { enforceAppAvailability } from './middleware/auth.js';
 import { nutritionRouter, adminNutritionRouter } from './routes/nutrition.routes.js';
 import { authRouter } from './routes/auth.routes.js';
@@ -442,6 +442,8 @@ if (serveLanding) {
     ) {
       return next();
     }
+    // Scanners probe /.git/index, /.env…: a plain 404 at once, not the 30 KB home page with 200.
+    if (isHiddenPath(p)) return res.status(404).type('text/plain').send('Not found');
     res.set('Cache-Control', 'no-store');
     res.sendFile(path.join(PUBLIC_DIST, 'index.html'), (err) => (err ? next(err) : undefined));
   });

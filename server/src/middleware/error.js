@@ -51,12 +51,30 @@ function fieldMessage(req, message) {
   return FIELD_MESSAGES_EN[message] || 'This field is not valid.';
 }
 
+/** A path segment starting with a dot (/.git, /.env, /x/.htaccess); /.well-known stays reachable. */
+export function isHiddenPath(path) {
+  return /(^|\/)\.(?!well-known(\/|$))/.test(String(path || ''));
+}
+
 export function notFound(req, res) {
   res.status(404).json({ error: t(req, 'მოთხოვნილი მისამართი ვერ მოიძებნა.', 'The requested address was not found.'), path: req.originalUrl });
 }
 
+/**
+ * The visitor closed the connection mid-response (scanner bots, lost signal): nothing failed on our side.
+ * `send`/`sendFile` reports it as ECONNABORTED "Request aborted"; an outbound axios timeout shares the code
+ * but not the message, so it still counts as a real error.
+ */
+export function isClientAbort(error, req) {
+  return (error?.code === 'ECONNABORTED' && error?.message === 'Request aborted') || req?.socket?.destroyed === true;
+}
+
 // eslint-disable-next-line no-unused-vars -- Express identifies error handlers by arity.
 export function errorHandler(error, req, res, next) {
+  if (isClientAbort(error, req)) {
+    if (!res.headersSent && !res.destroyed) res.end();
+    return;
+  }
   if (res.headersSent) {
     console.error('[medicard] Unhandled error after response started:', error?.message || error);
     return;
