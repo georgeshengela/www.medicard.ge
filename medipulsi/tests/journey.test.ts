@@ -59,3 +59,17 @@ test('saved coverage and gifts restore, invalid intervals and cross-mode progres
 });
 test('demo settings constrain speed, accuracy, range and acceleration',()=>{const c=validConfig({speed:900,rate:100,accuracy:900,revealRadius:500,pulseRadius:1});assert.equal(c.speed,14);assert.equal(c.rate,10);assert.equal(c.accuracy,6);assert.ok(c.revealRadius<c.pulseRadius);});
 test('reloading retains the session coverage baseline and rejects an impossible baseline',()=>{const s=createJourney();s.covered[PLAYABLE[0].id]=[[0,1]];s.sessionStartCoverage=PLAYABLE[0].length/2;const restored=loadJourney(JSON.stringify(s),'demo');assert.equal(restored.sessionStartCoverage,s.sessionStartCoverage);s.sessionStartCoverage=1e9;assert.equal(loadJourney(JSON.stringify(s),'demo').sessionStartCoverage,PLAYABLE[0].length);});
+test('in a car the marker keeps moving, nothing counts, and walking resumes after a calm stretch',()=>{
+ const t0=Date.now()-120000;let t=t0,lng=44.8,s=acceptFix(createJourney('gps'),{position:[lng,41.7],accuracy:5,timestamp:t,speed:0},.72,t);
+ const step=(mps:number,gps:number|null=mps)=>{t+=1000;lng+=mps/83100;const before=s;s=acceptFix(s,{position:[lng,41.7],accuracy:5,timestamp:t,speed:gps},.72,t);return before;};
+ for(let i=0;i<20;i++){const before=step(15);assert.notDeepEqual(s.position,before.position);}
+ assert.equal(s.status,'vehicle');assert.equal(s.meters,0);assert.ok(s.speed>50);assert.deepEqual(s.position,[lng,41.7]);assert.ok(s.vehicle);
+ for(const mps of [6,4,2,0,0,0])step(mps);
+ assert.equal(s.meters,0,'slowing for a light never counts');assert.equal(s.status,'vehicle');
+ step(14);assert.equal(s.vehicle!.calm,0,'driving off again restarts the calm stretch');
+ for(let i=0;i<14;i++)step(2.2);
+ assert.equal(s.meters,0);assert.equal(s.status,'vehicle');
+ step(2.2);assert.equal(s.vehicle,null);assert.equal(s.meters,0);assert.notEqual(s.status,'vehicle');
+ for(let i=0;i<5;i++)step(2.2);
+ assert.ok(s.meters>10&&s.meters<12,`walking counts again (${s.meters})`);assert.equal(s.maxSpeed<10,true);
+});

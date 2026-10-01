@@ -1,4 +1,5 @@
 import {getPulseClient,resetPulseClient} from '@/lib/medipulsi/client';
+import {VEHICLE_MPS} from '@/lib/medipulsi/core/journey';
 import {tx} from '../../i18n/locale.js';
 import { useSyncExternalStore } from 'react';
 import { AppState, type AppStateStatus } from 'react-native';
@@ -64,6 +65,8 @@ export type RunState = {
   speedKmh: number;
   /** Sustained vehicle-like speed detected — warn the runner. */
   transportWarning: boolean;
+  /** Still in vehicle mode but slow or stopped — counting resumes after a short stretch on foot. */
+  transportResuming: boolean;
   /** Run was auto-cancelled because the user appears to be in a vehicle. */
   transportCancelled: boolean;
 };
@@ -108,6 +111,7 @@ const initial: RunState = {
   summary: null,
   speedKmh: 0,
   transportWarning: false,
+  transportResuming: false,
   transportCancelled: false,
 };
 
@@ -133,7 +137,7 @@ export function isActiveRunPhase(phase: RunPhase): phase is 'running' | 'paused'
 }
 
 /** One-shot event hooks for haptics / banners in the UI layer. */
-type RunEvent = 'pin_reached' | 'target_completed' | 'transport_warning' | 'transport_cancelled' | 'km_split';
+type RunEvent = 'pin_reached' | 'target_completed' | 'transport_warning' | 'transport_resumed' | 'transport_cancelled' | 'km_split';
 const eventListeners = new Set<(e: RunEvent) => void>();
 export function onRunEvent(fn: (e: RunEvent) => void): () => void {
   eventListeners.add(fn);
@@ -386,7 +390,7 @@ export function pauseRun(): void {
   segmentStartedAt = null;
   generation++;watchSub?.remove();watchSub=null;headingSub?.remove();headingSub=null;compassLive=false;lastFixAt=0;
   if(!state.simulating)getPulseClient().stop();
-  set({ phase: 'paused', movingMs: movingAccumMs, speedKmh:0 });
+  set({ phase: 'paused', movingMs: movingAccumMs, speedKmh:0, transportWarning:false, transportResuming:false });
   void flushPersist();
 }
 
@@ -674,7 +678,9 @@ function ingestFix(fix: Fix) {
     }
     const reached=Boolean(state.pin && added>0 && haversineM(point,state.pin)<=PIN_RADIUS_M);
     const complete=state.targetMeters>0 && journey.meters>=state.targetMeters;
-    set({current:point,accuracyM:fix.accuracy,headingDeg:compassLive?state.headingDeg:(fix.heading??journey.heading),distanceM:journey.meters,speedKmh:journey.speed,path,segments,reachedPin:state.reachedPin||reached,completedTarget:state.completedTarget||complete,transportWarning:journey.status==='vehicle'});
+    set({current:point,accuracyM:fix.accuracy,headingDeg:compassLive?state.headingDeg:(fix.heading??journey.heading),distanceM:journey.meters,speedKmh:journey.speed,path,segments,reachedPin:state.reachedPin||reached,completedTarget:state.completedTarget||complete,transportWarning:Boolean(journey.vehicle),transportResuming:Boolean(journey.vehicle)&&journey.speed<VEHICLE_MPS*3.6});
+    if(journey.vehicle&&!before.vehicle)emit('transport_warning');
+    else if(before.vehicle&&!journey.vehicle)emit('transport_resumed');
     if(reached&&!isReachedEmitted){isReachedEmitted=true;emit('pin_reached');}
     if(complete&&!isCompletedEmitted){isCompletedEmitted=true;emit('target_completed');}
     lastFixAt=journey.lastFix??0;return;

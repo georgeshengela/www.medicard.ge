@@ -173,6 +173,8 @@ export function nearestEdge(p) { let best = null; const sx = Math.cos(p[1] * Mat
     if (!best || d < best.distance)
         best = { edge: e, t, point, distance: d };
 } return best; }
+/** Faster than any runner (25 km/h) means a vehicle; counting resumes after this many seconds of moving at a human pace. */
+export const VEHICLE_MPS = 7, VEHICLE_RESUME_S = 15;
 /** Only quality, fresh, plausible fixes count. A gap never paints a shortcut. */
 export function acceptFix(input, fix, stride = .72, now = Date.now()) {
     if (!fix.position.every(Number.isFinite) || Math.abs(fix.position[0]) > 180 || Math.abs(fix.position[1]) > 90 || !Number.isFinite(fix.accuracy) || fix.accuracy < 0 || !Number.isFinite(fix.timestamp) || fix.timestamp > now + 5000 || fix.timestamp < now - 15000 || (input.lastFix !== null && fix.timestamp <= input.lastFix))
@@ -182,12 +184,24 @@ export function acceptFix(input, fix, stride = .72, now = Date.now()) {
     const match = nearestEdge(fix.position), onPath = match.distance <= Math.min(18, Math.max(8, fix.accuracy));
     const base = { ...input, covered: { ...input.covered }, accuracy: fix.accuracy, status: onPath ? 'tracking' : 'off-path' };
     if (!input.lastRaw || input.lastFix === null || fix.timestamp - input.lastFix > 15000) {
-        return { ...base, position: onPath ? match.point : fix.position, lastRaw: fix.position, lastFix: fix.timestamp, match: onPath ? { edge: match.edge.id, t: match.t } : null, speed: 0 };
+        return { ...base, ...(input.vehicle ? { status: 'vehicle' } : {}), position: onPath ? match.point : fix.position, lastRaw: fix.position, lastFix: fix.timestamp, match: onPath ? { edge: match.edge.id, t: match.t } : null, speed: 0 };
     }
     const seconds = (fix.timestamp - input.lastFix) / 1000, rawDistance = distance(input.lastRaw, fix.position), speed = rawDistance / seconds;
-    if (speed > 7 || (fix.speed !== null && fix.speed > 7))
-        return { ...base, lastFix: fix.timestamp, lastRaw: fix.position, match: null, speed: 0, rejected: input.rejected + 1, status: 'vehicle' };
-    if (rawDistance < Math.max(2, Math.min(6, fix.accuracy * .25)))
+    const still = rawDistance < Math.max(2, Math.min(6, fix.accuracy * .25));
+    // In a vehicle the marker keeps following GPS and the live speed stays real, but nothing counts:
+    // not the drive, not slowing down for a light. Counting resumes after a stretch at a human pace.
+    const follow = { position: fix.position, heading: still ? input.heading : heading(input.lastRaw, fix.position), lastFix: fix.timestamp, lastRaw: fix.position, match: null };
+    if (speed > VEHICLE_MPS || (fix.speed !== null && fix.speed > VEHICLE_MPS))
+        return { ...base, ...follow, speed: Math.max(speed, fix.speed ?? 0) * 3.6, rejected: input.rejected + 1, status: 'vehicle', vehicle: { calm: 0 } };
+    if (input.vehicle) {
+        if (still)
+            return { ...base, speed: 0, status: 'vehicle' };
+        const calm = input.vehicle.calm + Math.min(seconds, 3);
+        if (calm < VEHICLE_RESUME_S)
+            return { ...base, ...follow, speed: speed * 3.6, status: 'vehicle', vehicle: { calm } };
+        return { ...base, ...follow, position: onPath ? match.point : fix.position, match: onPath ? { edge: match.edge.id, t: match.t } : null, speed: speed * 3.6, vehicle: null };
+    }
+    if (still)
         return { ...base, speed: 0, status: 'stationary' };
     let meters = rawDistance;
     const s = { ...base, position: onPath ? match.point : fix.position, heading: heading(input.position, onPath ? match.point : fix.position), lastFix: fix.timestamp, lastRaw: fix.position, match: onPath ? { edge: match.edge.id, t: match.t } : null };

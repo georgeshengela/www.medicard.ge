@@ -49,6 +49,8 @@ export default function PulseActive(){
    if(hapticRef.current)void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy).then(()=>new Promise(r=>setTimeout(r,140))).then(()=>Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy)).catch(()=>{});
    return;
   }
+  if(event==='transport_warning'){if(hapticRef.current)void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning).catch(()=>{});return;}
+  if(event==='transport_resumed'){setNotice({text:tx('ათვლა განახლდა — გააგრძელე!', 'Counting again — keep going!'),tone:'success'});return;}
   if(event==='target_completed'||event==='pin_reached'){setNotice({text:event==='target_completed'?tx('მიზანი შესრულებულია! შეგიძლია გააგრძელო აღმოჩენა.', 'Goal reached! You can keep exploring.'):tx('დანიშნულების ადგილს მიაღწიე!', 'You’ve reached your destination!'),tone:'success'});void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(()=>{});}
  }),[]);
  const leave=()=>{if(active){if(running)pauseRun();setFinish(true);}else{cancelRun();router.replace('/run' as never);}};
@@ -65,9 +67,9 @@ export default function PulseActive(){
  const openPanel=(value:PulsePanel)=>{setMenu(false);setPanel(value);};
  const gpsGood=run.accuracyM!=null&&run.accuracyM<=25;
  const remaining=run.targetMeters>0?Math.max(0,run.targetMeters-run.distanceM):0;
- const status=running?(gpsGood?tx('შენი გზა ფერადდება', 'Your path is filling with color'):tx('ზუსტ GPS-ს ველოდებით', 'Waiting for accurate GPS')):run.phase==='paused'?tx('პაუზა · შენი გზა შენახულია', 'Paused · your path is saved'):tx('დღეს სად მიგიყვანს გზა?', 'Where will your path take you today?');
+ const status=running?(run.transportWarning?tx('ტრანსპორტი · პროგრესი პაუზაზეა', 'Vehicle · progress on hold'):gpsGood?tx('შენი გზა ფერადდება', 'Your path is filling with color'):tx('ზუსტ GPS-ს ველოდებით', 'Waiting for accurate GPS')):run.phase==='paused'?tx('პაუზა · შენი გზა შენახულია', 'Paused · your path is saved'):tx('დღეს სად მიგიყვანს გზა?', 'Where will your path take you today?');
  // System messages outrank transient toasts.
- const banner:Notice|null=run.syncError?{text:run.syncError,tone:'warn',sticky:true}:mapError?{text:mapError,tone:'warn',sticky:true}:run.error==='location'?{text:tx('GPS შეწყდა. შეამოწმე მდებარეობის წვდომა და გააგრძელე.', 'GPS stopped. Check location access and continue.'),tone:'warn',sticky:true}:run.transportWarning?{text:tx('მაღალი სიჩქარე — ეს მოძრაობა პროგრესში არ ითვლება.', 'High speed — this movement doesn’t count toward progress.'),tone:'warn',sticky:true}:notice;
+ const banner:Notice|null=run.syncError?{text:run.syncError,tone:'warn',sticky:true}:mapError?{text:mapError,tone:'warn',sticky:true}:run.error==='location'?{text:tx('GPS შეწყდა. შეამოწმე მდებარეობის წვდომა და გააგრძელე.', 'GPS stopped. Check location access and continue.'),tone:'warn',sticky:true}:run.transportWarning?{text:run.transportResuming?tx('სიჩქარე დაიკლო · ათვლა გაგრძელდება, როცა რამდენიმე წამს ფეხით იმოძრავებ.', 'Speed dropped · counting resumes after a few seconds on foot.'):tx(`მაღალი სიჩქარე (${Math.round(run.speedKmh)} კმ/სთ) · ტრანსპორტში პროგრესი არ ითვლება. სიჩქარე რომ დაიკლებს, ათვლა თავისით გაგრძელდება.`, `High speed (${Math.round(run.speedKmh)} km/h) · progress doesn’t count in a vehicle. It resumes on its own once you slow down.`),tone:'warn',sticky:true}:notice;
  const bannerColor=banner?.tone==='success'?RUN_TEAL:banner?.tone==='warn'?'#F59E0B':c.primary100;
  return <View style={{flex:1,backgroundColor:c.bg100}}>
   {center?<RunMap ref={map} center={center} mapDark={mapDark} onReady={()=>setReady(true)} onFollowChange={setFollowing} onError={setMapError}/>:<View style={{flex:1,alignItems:'center',justifyContent:'center',padding:30,gap:18}}>
