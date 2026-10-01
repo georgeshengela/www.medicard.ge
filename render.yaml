@@ -117,7 +117,7 @@ services:
     plan: starter
     region: frankfurt
     branch: main
-    schedule: "0 */6 * * *"
+    schedule: "0 2 * * *" # 06:00 Tbilisi — owner rule: never during the day
     buildCommand: npm --prefix server ci --include=dev && npm --prefix server run prisma:generate && npx --prefix server playwright install chromium
     startCommand: node server/scripts/sync-pharmacy-prices.js --source=all && node server/scripts/backfill-pharmacy-categories-from-pd.js
     envVars:

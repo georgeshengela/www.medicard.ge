@@ -2,13 +2,30 @@ import { prisma } from '../prisma.js';
 import { acquireJobLease } from '../jobLease.js';
 import { syncAllPharmacySources, isSyncRunning, cleanupStaleRuns } from './sync.js';
 
-const DEFAULT_INTERVAL_HOURS = 6;
 const CHECK_MS = 15 * 60 * 1000;
 const STARTUP_DELAY_MS = 2 * 60 * 1000;
+// Owner rule (2026-10-01): the scrape loads the web process for ~20 minutes, so it runs once a day
+// at 06:00 Tbilisi time, while almost everyone is asleep — never during the day.
+const TBILISI_UTC_OFFSET_H = 4; // Georgia has no daylight saving time
+const DEFAULT_SYNC_HOUR = 6;
+const WINDOW_HOURS = 3; // a restart or a busy lease at 06:00 still gets a run before 09:00
 
-function intervalMs() {
-  const hours = Number(process.env.PHARMACY_SYNC_CRON_HOURS);
-  return (Number.isFinite(hours) && hours > 0 ? hours : DEFAULT_INTERVAL_HOURS) * 60 * 60 * 1000;
+function syncHour(env = process.env) {
+  const hour = Number(env.PHARMACY_SYNC_HOUR);
+  return Number.isInteger(hour) && hour >= 0 && hour <= 23 ? hour : DEFAULT_SYNC_HOUR;
+}
+
+/**
+ * True once per Tbilisi day: inside [hour, hour + WINDOW_HOURS) local time and no automatic or
+ * manual run has started since today's slot opened. Outside the window it is always false.
+ */
+export function pharmacySyncDue(now, lastStartedAt, hour = DEFAULT_SYNC_HOUR) {
+  const local = new Date(now.getTime() + TBILISI_UTC_OFFSET_H * 3600_000);
+  const slotOpen = Date.UTC(local.getUTCFullYear(), local.getUTCMonth(), local.getUTCDate(), hour)
+    - TBILISI_UTC_OFFSET_H * 3600_000;
+  const t = now.getTime();
+  if (t < slotOpen || t >= slotOpen + WINDOW_HOURS * 3600_000) return false;
+  return !lastStartedAt || new Date(lastStartedAt).getTime() < slotOpen;
 }
 
 let timer = null;
@@ -30,9 +47,8 @@ async function tick() {
     await cleanupStaleRuns();
     if (await isSyncRunning()) return;
     const last = await lastFinishedAllRun();
-    const due = !last || Date.now() - new Date(last.startedAt).getTime() >= intervalMs();
-    if (!due) return;
-    console.log('[pharmacy-scheduler] interval elapsed — starting automatic sync…');
+    if (!pharmacySyncDue(new Date(), last?.startedAt, syncHour())) return;
+    console.log('[pharmacy-scheduler] daily slot (Tbilisi morning) — starting automatic sync…');
     await syncAllPharmacySources();
   } catch (err) {
     console.error('[pharmacy-scheduler] automatic sync failed:', err?.message || err);

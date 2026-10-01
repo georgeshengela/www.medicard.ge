@@ -155,6 +155,25 @@ describe('pharmacy scrape in the web process', async () => {
   });
 });
 
+describe('pharmacy sync runs once a day at 06:00 Tbilisi', async () => {
+  const { pharmacySyncDue } = await import('./pharmacy/scheduler.js');
+  // 06:00 Tbilisi = 02:00 UTC.
+  const at = (iso) => new Date(iso);
+  it('never runs during the day or night outside the morning slot', () => {
+    assert.equal(pharmacySyncDue(at('2026-10-02T14:40:00Z'), null), false); // 18:40 Tbilisi
+    assert.equal(pharmacySyncDue(at('2026-10-02T01:59:00Z'), null), false); // 05:59
+    assert.equal(pharmacySyncDue(at('2026-10-02T05:00:00Z'), null), false); // 09:00
+  });
+  it('runs once inside the slot', () => {
+    assert.equal(pharmacySyncDue(at('2026-10-02T02:00:00Z'), at('2026-10-01T02:01:00Z')), true);
+    assert.equal(pharmacySyncDue(at('2026-10-02T04:30:00Z'), at('2026-10-01T14:19:00Z')), true);
+    assert.equal(pharmacySyncDue(at('2026-10-02T02:30:00Z'), at('2026-10-02T02:01:00Z')), false);
+  });
+  it('honours another hour', () => {
+    assert.equal(pharmacySyncDue(at('2026-10-02T01:10:00Z'), null, 5), true); // 05:10 Tbilisi
+  });
+});
+
 describe('owner notices never leave a test run', async () => {
   it('notifyOwner is a no-op under node --test (2026-09-29: a cap test sent real Telegram notices)', async () => {
     const { notifyOwner } = await import('./director/service.js');
