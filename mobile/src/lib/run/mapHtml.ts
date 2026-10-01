@@ -1,7 +1,7 @@
 import type {LatLng} from './geo';
 import {tx} from '../../i18n/locale.js';
 import {MAP_FLAG,MAP_GIFT,MAP_PUCK} from './mapArt.js';
-export const RUN_MAP_HTML_REV=16;
+export const RUN_MAP_HTML_REV=17;
 /** MEDIRUN Glow engine + runner models, served with CORS by medicard.ge (built by brand/medirun/glow/engine/build.mjs). */
 export const GLOW_BASE='https://medicard.ge/medirun/glow/';
 
@@ -72,7 +72,8 @@ export function buildRunMapHtml(opts:{token:string;center:LatLng;dark:boolean;ch
  // Follow the runner every frame (smooth) while following; any drag hands the camera to the person.
  function frame(t){
   var dt=lastT?Math.min(.1,(t-lastT)/1000):0;lastT=t;
-  if(following&&ready){
+  // never move the camera under a finger: Mapbox cancels a pinch or drag on every programmatic camera move
+  if(following&&ready&&!touching){
    var r=glow?glow.runner():null,target=r?[r.lng,r.lat]:position,hd=r&&r.heading!=null?r.heading:heading;
    var zoom=threeD?18.2:17.4,pitch=threeD?60:0,bearing=rotate&&hd!=null?hd-(threeD?20:0):(rotate?map.getBearing():0);
    // close-up: low and near, from the front while moving (the face is visible), slowly circling while standing
@@ -114,7 +115,15 @@ export function buildRunMapHtml(opts:{token:string;center:LatLng;dark:boolean;ch
  map.on('style.load',function(){layers();startGlow();if(!ready){ready=true;post({type:'ready'});queue.forEach(handle);queue=[];raf=requestAnimationFrame(frame);setTimeout(maybeHint,4000);}});
  // Tap the runner for a close-up; tap again (or anywhere else) to go back.
  map.on('click',function(e){if(!glow)return;if(glow.runnerHit(e.point.x,e.point.y))setCloseUp(!closeUp);else if(closeUp)setCloseUp(false);});
- ['dragstart','rotatestart','zoomstart','pitchstart'].forEach(function(event){map.on(event,function(e){if(e.originalEvent){if(closeUp)setCloseUp(false);if(following){following=false;post({type:'follow',value:false});}}});});
+ function release(){if(closeUp)setCloseUp(false);if(following){following=false;post({type:'follow',value:false});}}
+ ['dragstart','rotatestart','zoomstart','pitchstart'].forEach(function(event){map.on(event,function(e){if(e.originalEvent)release();});});
+ var touching=0,box=map.getCanvasContainer();
+ box.addEventListener('touchstart',function(e){touching=e.touches.length;if(touching>1)release();},{passive:true});
+ box.addEventListener('touchend',function(e){touching=e.touches.length;},{passive:true});
+ box.addEventListener('touchcancel',function(e){touching=e.touches.length;},{passive:true});
+ box.addEventListener('mousedown',function(){touching=1;});
+ window.addEventListener('mouseup',function(){touching=0;});
+ box.addEventListener('wheel',release,{passive:true});
  map.on('error',function(e){var text=String(e.error&&e.error.message||'');if(/token|401|403|Unauthorized/.test(text))post({type:'error',message:${json(tx('რუკის წვდომა ვერ დადასტურდა.','Map access couldn’t be verified.'))}});});
  window.addEventListener('pagehide',function(){if(raf)cancelAnimationFrame(raf);if(glow)glow.dispose();map.remove();});
  })();</script></body></html>`;
