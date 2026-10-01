@@ -78,6 +78,15 @@ export const FEATURES = Object.freeze([
     defaultMessageEn: 'MEDIRUN is paused for a moment. We will be back shortly.',
   },
   {
+    key: 'medirunAutopilot',
+    group: 'system',
+    parent: 'medirun',
+    label: 'MEDIRUN ავტოპილოტი („გაანათე თბილისი“)',
+    description: 'კამპანიის საჩუქრების ავტომატური დაყრა: სამუშაო დღეებში მცირე ყუთები, შაბათ-კვირას უკეთესი, შაბათის წვიმა და 31 დეკემბრის დიდი საჩუქარი. გამორთვისას ახალი ყუთები აღარ ჩნდება; უკვე დაყრილი რჩება.',
+    defaultMessage: 'კამპანიის საჩუქრები დროებით შეჩერებულია.',
+    defaultMessageEn: 'Campaign gifts are paused for a moment.',
+  },
+  {
     key: 'quest',
     group: 'module',
     label: 'MEDI QUEST',

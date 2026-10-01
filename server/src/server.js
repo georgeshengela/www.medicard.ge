@@ -84,6 +84,7 @@ import { PRIVACY_HTML, TERMS_HTML } from './lib/legalPages.js';
 import { attachAdminRealtime } from './lib/adminRealtime.js';
 import { startQuotaResetSweeper, stopQuotaResetSweeper } from './lib/usageNotify.js';
 import { startPharmacySyncScheduler, stopPharmacySyncScheduler } from './lib/pharmacy/scheduler.js';
+import { startMedirunAutopilot } from './lib/medipulsi/autopilot.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
@@ -471,6 +472,8 @@ const server = app.listen(env.PORT, '0.0.0.0', () => {
 attachAdminRealtime(server);
 startQuotaResetSweeper();
 if (env.NODE_ENV === 'production') startPharmacySyncScheduler();
+// „გაანათე თბილისი“ gift autopilot (owner OK 2026-10-01). Pause: admin მოდულები → MEDIRUN ავტოპილოტი; MEDIRUN_AUTOPILOT=off stops it here.
+if (env.NODE_ENV === 'production' && process.env.MEDIRUN_AUTOPILOT !== 'off') startMedirunAutopilot();
 // Production only: local servers point at the main DB and must not write samples or alert the owner.
 if (env.NODE_ENV === 'production' && process.env.CAPACITY_MONITOR !== 'off') startCapacityMonitor();
 // Error monitoring retention (30 days, daily under a lease); recording itself is production-only too.
