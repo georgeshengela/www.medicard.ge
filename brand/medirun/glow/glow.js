@@ -25,6 +25,12 @@ const PATH = [];
     const [ax, ay] = raw[i - 1], [bx, by] = raw[i], len = Math.hypot(bx - ax, by - ay), steps = Math.max(1, Math.ceil(len / 2));
     for (let k = 1; k <= steps; k++) { acc += len / steps; PATH.push({ x: ax + ((bx - ax) * k) / steps, y: ay + ((by - ay) * k) / steps, s: acc }); }
   }
+  // A person cuts corners: round the routing service's crosswalk jogs (prototype only — the app draws real GPS).
+  for (let pass = 0; pass < 4; pass++) {
+    const src = PATH.map((p) => [p.x, p.y]);
+    for (let i = 3; i < PATH.length - 3; i++) { let sx = 0, sy = 0; for (let k = -3; k <= 3; k++) { sx += src[i + k][0]; sy += src[i + k][1]; } PATH[i].x = sx / 7; PATH[i].y = sy / 7; }
+  }
+  for (let i = 1; i < PATH.length; i++) PATH[i].s = PATH[i - 1].s + Math.hypot(PATH[i].x - PATH[i - 1].x, PATH[i].y - PATH[i - 1].y);
 }
 const L = PATH[PATH.length - 1].s;
 function sample(s) {
@@ -120,14 +126,16 @@ function framePadding() {
 }
 
 // ---------- the simulated run: a GPS-like fix twice a second ----------
-let last = performance.now(), frames = 0, fpsAt = last, fixAt = 0, trailAt = 0;
+let last = performance.now(), frames = 0, fpsAt = last, fixAt = 0;
 function emit(nowMs) {
   const at = sample(state.head), ahead = sample(state.head + 4);
   const heading = (Math.atan2(ahead.x - at.x, ahead.y - at.y) * 180) / Math.PI;
   const [lng, lat] = toLL(at.x, at.y);
-  if (nowMs - fixAt > 500 || !fixAt) { fixAt = nowMs; glow.setRunner(lng, lat, heading); }
-  if (state.head > 0 && nowMs - trailAt > 300) {
-    trailAt = nowMs;
+  // like the app: every GPS fix moves the runner and extends the trail to that same point
+  if (nowMs - fixAt < 400 && fixAt) return;
+  fixAt = nowMs;
+  glow.setRunner(lng, lat, heading);
+  if (state.head > 0) {
     const coords = [];
     for (let i = 0; i <= at.i; i += 3) coords.push(toLL(PATH[i].x, PATH[i].y));
     coords.push([lng, lat]);

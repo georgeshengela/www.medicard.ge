@@ -614,24 +614,47 @@ export function createGlow({ mapboxgl, map, token, assetBase = '', hero = 'm', o
   }
 
   // ---------- the current trail ----------
-  const trail = { raw: [], length: 0, meshes: [], dirty: false, lastBuild: 0, lampNext: 12, lampCount: 0, sampled: 0 };
+  const trail = { raw: [], path: null, total: 0, end: null, head: 0, meshes: [], dirty: false, lastBuild: 0, lampNext: 12, lampCount: 0, sampled: 0 };
   const RIBBONS = [[16, 0.25, M.warm, 3], [7, 0.3, M.aura, 4], [1.1, 0.4, M.core, 5], [1.1, 0.4, M.xray, 12]];
-  function smoothPath(pts) {
+  // A centripetal Catmull-Rom curve through the GPS points, sampled every ~2 m. Unlike moving-average
+  // smoothing, a new point only reshapes the last segment, so the drawn line never shifts under the runner.
+  function smoothPath(raw) {
+    const pts = [];
+    for (const q of raw) { const l = pts[pts.length - 1]; if (!l || Math.hypot(q[0] - l[0], q[1] - l[1]) > 1.5) pts.push(q); }
+    const lastRaw = raw[raw.length - 1];
+    if (pts.length && pts[pts.length - 1] !== lastRaw) pts.push(lastRaw);
     const out = [pts[0]];
-    let carry = 0;
-    for (let i = 1; i < pts.length; i++) {
-      const [ax, ay] = pts[i - 1], [bx, by] = pts[i], len = Math.hypot(bx - ax, by - ay);
-      let d = 2 - carry;
-      for (; d <= len; d += 2) out.push([ax + ((bx - ax) * d) / len, ay + ((by - ay) * d) / len]);
-      carry = len - (d - 2);
+    for (let i = 0; i < pts.length - 1; i++) {
+      const p0 = pts[Math.max(0, i - 1)], p1 = pts[i], p2 = pts[i + 1], p3 = pts[Math.min(pts.length - 1, i + 2)];
+      const d = (a, b) => Math.sqrt(Math.hypot(b[0] - a[0], b[1] - a[1])) + 1e-4;
+      const t1 = d(p0, p1), t2 = t1 + d(p1, p2), t3 = t2 + d(p2, p3);
+      const n = Math.max(1, Math.ceil(Math.hypot(p2[0] - p1[0], p2[1] - p1[1]) / 2));
+      for (let k = 1; k <= n; k++) {
+        const t = t1 + ((t2 - t1) * k) / n, r = [0, 1].map((c) => {
+          const a1 = ((t1 - t) * p0[c] + t * p1[c]) / t1;
+          const a2 = ((t2 - t) * p1[c] + (t - t1) * p2[c]) / (t2 - t1);
+          const a3 = ((t3 - t) * p2[c] + (t - t2) * p3[c]) / (t3 - t2);
+          const b1 = ((t2 - t) * a1 + t * a2) / t2;
+          const b2 = ((t3 - t) * a2 + (t - t1) * a3) / (t3 - t1);
+          return ((t2 - t) * b1 + (t - t1) * b2) / (t2 - t1);
+        });
+        out.push(r);
+      }
     }
-    if (pts.length > 1) out.push(pts[pts.length - 1]);
-    let p = out;
-    for (let pass = 0; pass < 3; pass++) p = p.map((q, i) => { if (i < 2 || i > p.length - 3) return q; let sx = 0, sy = 0; for (let k = -2; k <= 2; k++) { sx += p[i + k][0]; sy += p[i + k][1]; } return [sx / 5, sy / 5]; });
     const res = [];
     let acc = 0;
-    p.forEach((q, i) => { if (i) acc += Math.hypot(q[0] - p[i - 1][0], q[1] - p[i - 1][1]); res.push({ x: q[0], y: q[1], s: acc }); });
+    out.forEach((q, i) => { if (i) acc += Math.hypot(q[0] - out[i - 1][0], q[1] - out[i - 1][1]); res.push({ x: q[0], y: q[1], s: acc }); });
     return res;
+  }
+  // Moving average over ±w metres (index aligned, ends pinned); keeps each point's original along-distance.
+  function rounded(path, w) {
+    const n = path.length, k = Math.max(1, Math.round(w / 2)), sx = new Float64Array(n + 1), sy = new Float64Array(n + 1);
+    for (let i = 0; i < n; i++) { sx[i + 1] = sx[i] + path[i].x; sy[i + 1] = sy[i] + path[i].y; }
+    return path.map((p, i) => {
+      const r = Math.min(k, i, n - 1 - i);
+      if (r < 1) return p;
+      return { x: (sx[i + r + 1] - sx[i - r]) / (2 * r + 1), y: (sy[i + r + 1] - sy[i - r]) / (2 * r + 1), s: p.s };
+    });
   }
   function sampleAt(path, s) {
     let lo = 0, hi = path.length - 1;
@@ -643,14 +666,15 @@ export function createGlow({ mapboxgl, map, token, assetBase = '', hero = 'm', o
   function buildRibbons() {
     trail.meshes.forEach((m) => { scene.remove(m); m.geometry.dispose(); });
     trail.meshes = [];
-    if (trail.raw.length < 2) { U.uHead.value = 0; return; }
+    if (trail.raw.length < 2) { trail.total = 0; trail.end = null; trail.head = 0; U.uHead.value = 0; return; }
     const path = smoothPath(trail.raw), n = path.length;
-    U.uHead.value = path[n - 1].s;
+    trail.total = path[n - 1].s; trail.end = path[n - 1];
     for (const [halfW, z, mat, order] of RIBBONS) {
       const pos = new Float32Array(n * 6), along = new Float32Array(n * 2), across = new Float32Array(n * 2), idx = [];
       const win = Math.max(2, halfW * 1.3);
-      path.forEach((p, i) => {
-        const a = sampleAt(path, p.s - win), b = sampleAt(path, p.s + win);
+      const line = halfW > 3 ? rounded(path, halfW * 1.6) : path;   // wide glows round the corners so they never fold
+      line.forEach((p, i) => {
+        const a = sampleAt(line, p.s - win), b = sampleAt(line, p.s + win);
         const len = Math.hypot(b.x - a.x, b.y - a.y) || 1, nx = -(b.y - a.y) / len, ny = (b.x - a.x) / len;
         pos.set([p.x + nx * halfW, p.y + ny * halfW, z, p.x - nx * halfW, p.y - ny * halfW, z], i * 6);
         along[i * 2] = along[i * 2 + 1] = p.s; across[i * 2] = -1; across[i * 2 + 1] = 1;
@@ -675,13 +699,7 @@ export function createGlow({ mapboxgl, map, token, assetBase = '', hero = 'm', o
     geo.setAttribute('aH', new THREE.BufferAttribute(hgt, 1));
     geo.setIndex(idx);
     const m = new THREE.Mesh(geo, M.curtain); m.renderOrder = 6; m.frustumCulled = false; scene.add(m); trail.meshes.push(m);
-    // lamps every 26 m of trail
-    while (trail.lampNext < U.uHead.value - 2 && trail.lampCount < MAX_LAMPS) {
-      const p = sampleAt(path, trail.lampNext), q = sampleAt(path, trail.lampNext + 2), len = Math.hypot(q.x - p.x, q.y - p.y) || 1;
-      const side = trail.lampCount % 2 ? 1 : -1, x = p.x - ((q.y - p.y) / len) * 3.6 * side, y = p.y + ((q.x - p.x) / len) * 3.6 * side;
-      addLamp(x, y, now());
-      trail.lampNext += 26;
-    }
+    trail.path = path;
   }
 
   // Lamps: preallocated, filled as the trail grows.
@@ -719,7 +737,7 @@ export function createGlow({ mapboxgl, map, token, assetBase = '', hero = 'm', o
   function setTrail(coords) {
     const pts = (coords || []).map((c) => toLocal(c[0], c[1]));
     const restart = pts.length < trail.raw.length || (trail.raw.length && pts.length && Math.hypot(pts[0][0] - trail.raw[0][0], pts[0][1] - trail.raw[0][1]) > 1);
-    if (restart) { trail.raw = []; trail.sampled = 0; clearLamps(); litKeys.clear(); walkedTrail.clear(); litDirty = true; }
+    if (restart) { trail.raw = []; trail.sampled = 0; trail.head = 0; clearLamps(); litKeys.clear(); walkedTrail.clear(); litDirty = true; }
     const from = Math.max(1, trail.raw.length);
     trail.raw = pts;
     if (pts.length === 1) { addWalked(walkedTrail, pts[0][0], pts[0][1]); lightAroundTrail(pts[0][0], pts[0][1]); }
@@ -877,7 +895,7 @@ export function createGlow({ mapboxgl, map, token, assetBase = '', hero = 'm', o
       const cv = map.getCanvas(), far = map.unproject([cv.clientWidth / 2, cv.clientHeight * 0.18]), fl = toLocal(far.lng, far.lat);
       streamTiles(cl[0], cl[1], clamp(Math.hypot(fl[0] - cl[0], fl[1] - cl[1]) * 1.15, MIN_RADIUS, MAX_RADIUS));
     }
-    if (trail.dirty && nowMs - trail.lastBuild > 250) { trail.dirty = false; trail.lastBuild = nowMs; buildRibbons(); }
+    if (trail.dirty && nowMs - trail.lastBuild > 90) { trail.dirty = false; trail.lastBuild = nowMs; buildRibbons(); }
     const p0 = map.project(c), p1 = map.project(toLngLat(cl[0] + 1, cl[1]));
     U.uPxM.value = Math.max(0.2, Math.hypot(p1.x - p0.x, p1.y - p0.y));
 
@@ -908,6 +926,21 @@ export function createGlow({ mapboxgl, map, token, assetBase = '', hero = 'm', o
       }
     } else { runner.root.visible = false; ring.visible = false; }
 
+    // The light reaches exactly the runner every frame: the geometry runs to the latest fix and the shader
+    // cuts it at the runner's gliding position, so the trail grows smoothly instead of in steps.
+    if (trail.end) {
+      const behind = runner.pos && runner.visible ? Math.hypot(runner.pos[0] - trail.end.x, runner.pos[1] - trail.end.y) : 0;
+      const want = clamp(trail.total - (behind < 40 ? behind : 0), 0, trail.total);
+      trail.head = Math.max(trail.head, want);
+      U.uHead.value = trail.head;
+      // a street lamp every 26 m, switched on as the runner reaches it
+      while (trail.path && trail.lampNext < trail.head && trail.lampCount < MAX_LAMPS) {
+        const p = sampleAt(trail.path, trail.lampNext), q = sampleAt(trail.path, trail.lampNext + 2), len = Math.hypot(q.x - p.x, q.y - p.y) || 1;
+        const side = trail.lampCount % 2 ? 1 : -1;
+        addLamp(p.x - ((q.y - p.y) / len) * 3.6 * side, p.y + ((q.x - p.x) / len) * 3.6 * side, now());
+        trail.lampNext += 26;
+      }
+    }
     if (litDirty && litKeys.size !== lastLit) { litDirty = false; lastLit = litKeys.size; if (onLit) onLit(lastLit); }
     raf = requestAnimationFrame(tick);
   }
