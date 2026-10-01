@@ -366,6 +366,9 @@ export function createGlow({ mapboxgl, map, token, assetBase = '', hero = 'm', o
   scene.add(new THREE.HemisphereLight(0x9fb6e0, 0x3a2717, 1.6));
   const moonLight = new THREE.DirectionalLight(0xc9dcff, 1.8); moonLight.position.set(-45, 55, 72); scene.add(moonLight);
   const warmLight = new THREE.PointLight(0xffa860, 0, 60, 1.2); scene.add(warmLight);
+  // A soft light from the camera's side so the runner's face and outfit read clearly (stronger in the close-up).
+  const faceLight = new THREE.DirectionalLight(0xe6f2ff, 0.5); scene.add(faceLight);
+  let heroView = false;
   const now = () => U.uTime.value;
 
   // ---------- spatial index of lightable things (buildings, trees) and of walked points ----------
@@ -944,10 +947,14 @@ export function createGlow({ mapboxgl, map, token, assetBase = '', hero = 'm', o
       runner.activity = activity;
       const [x, y] = runner.pos;
       runner.root.position.set(x, y, 0.3); runner.root.rotation.z = runner.angle;
-      const want = clamp(44 / (U.uPxM.value * 1.75), 2.2, 6);
-      runner.scale += (want - runner.scale) * Math.min(1, dt * 4); runner.root.scale.setScalar(runner.scale);
+      // on the map the runner keeps a readable size; in the close-up it fills about a third of the screen
+      const want = heroView ? clamp((map.getCanvas().clientHeight * 0.3) / (U.uPxM.value * 1.75), 1.4, 6) : clamp(44 / (U.uPxM.value * 1.75), 2.2, 6);
+      runner.scale += (want - runner.scale) * Math.min(1, dt * 3); runner.root.scale.setScalar(runner.scale);
       runner.root.visible = runner.visible;
-      ring.visible = runner.visible; ring.position.set(x, y, 0.33);
+      ring.visible = runner.visible; ring.position.set(x, y, 0.33); ring.scale.setScalar(runner.scale * 6.3);
+      const toCam = camera.position.clone().sub(runner.root.position); toCam.z = Math.max(toCam.z, toCam.length() * 0.35);
+      faceLight.target = runner.root; faceLight.position.copy(runner.root.position).add(toCam.normalize().multiplyScalar(10));
+      faceLight.intensity += ((heroView ? 1.7 : 0.5) - faceLight.intensity) * Math.min(1, dt * 3);
       const moving = activity === 'run' || activity === 'walk';
       U.uRun.value += ((moving ? 1 : 0) - U.uRun.value) * Math.min(1, dt * 3);
       warmLight.position.set(x + 4, y - 3, 6); warmLight.intensity = 30 * U.uRun.value;
@@ -985,6 +992,23 @@ export function createGlow({ mapboxgl, map, token, assetBase = '', hero = 'm', o
     setTrail, setPaint, setRunner, setActivity,
     setHero(key) { if (key !== 'm' && key !== 'f') return; heroKey = key; loadHero(key); for (const k of Object.keys(heroes)) if (heroes[k].holder) heroes[k].holder.visible = k === key; },
     setRunnerVisible(v) { runner.visible = Boolean(v); },
+    /** Close-up of the runner: bigger character and a light on the face (the host moves the camera). */
+    setHeroView(on) { heroView = Boolean(on); },
+    /** Where the runner is on screen (CSS px): feet, head and the hit box; null when hidden. */
+    runnerScreen() {
+      if (!runner.pos || !runner.visible || !renderer) return null;
+      const cv = map.getCanvas(), w = cv.clientWidth, h = cv.clientHeight;
+      const at = (z) => { const v = new THREE.Vector4(runner.pos[0], runner.pos[1], z, 1).applyMatrix4(P); return v.w > 0 ? { x: ((v.x / v.w + 1) / 2) * w, y: ((1 - v.y / v.w) / 2) * h } : null; };
+      const feet = at(0.3), head = at(0.3 + 1.75 * runner.scale);
+      if (!feet || !head) return null;
+      return { x: feet.x, y: feet.y, headX: head.x, headY: head.y, height: Math.hypot(feet.x - head.x, feet.y - head.y) };
+    },
+    runnerHit(px, py) {
+      const s = this.runnerScreen();
+      if (!s) return false;
+      const mx = (s.x + s.headX) / 2, my = (s.y + s.headY) / 2, r = Math.max(34, s.height * 0.6);
+      return Math.abs(px - mx) < Math.max(34, s.height * 0.4) && Math.abs(py - my) < r;
+    },
     onHeroReady(cb) { heroReadyCb = cb; if (heroes[heroKey]?.holder) cb(heroKey); },
     runner() { if (!runner.pos) return null; const ll = toLngLat(runner.pos[0], runner.pos[1]); return { lng: ll.lng, lat: ll.lat, heading: runner.heading == null ? null : ((Math.atan2(Math.sin(runner.heading), -Math.cos(runner.heading)) * 180) / Math.PI + 360) % 360, speed: runner.speed, activity: runner.activity }; },
     litCount: () => litKeys.size,

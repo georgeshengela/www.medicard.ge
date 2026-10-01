@@ -55,7 +55,7 @@ map.addLayer({ id: 'route-ahead', type: 'line', source: 'route', layout: { 'line
 const state = {
   // pace = how fast the simulated person moves (m/s); mul only fast-forwards time (?speed=, for tests)
   head: 0, running: false, finished: false, pace: Number(params.get('pace') ?? 1.4), mul: Number(params.get('speed')) || 1, active: 0, cam: params.get('cam') || 'close',
-  manual: false, hero: params.get('hero') === 'f' ? 'f' : 'm', lit: 0,
+  manual: false, hero: params.get('hero') === 'f' ? 'f' : 'm', lit: 0, closeUp: false, orbit: 0,
 };
 const glow = createGlow({
   mapboxgl, map, token: TOKEN, assetBase: 'assets/', hero: state.hero,
@@ -108,16 +108,23 @@ $('finishSave').onclick = () => { closeSheets(); state.finished = true; state.ru
 $('menuBtn').onclick = () => { syncChrome(); openSheet('menu'); };
 $('sheetBack').onclick = closeSheets;
 document.querySelectorAll('[data-close]').forEach((b) => (b.onclick = closeSheets));
-$('locate').onclick = () => { state.manual = false; if (state.cam === 'orbit' && !state.finished) state.cam = 'close'; syncChrome(); };
+$('locate').onclick = () => { setCloseUp(false); state.manual = false; if (state.cam === 'orbit' && !state.finished) state.cam = 'close'; syncChrome(); };
 $('restart').onclick = () => { closeSheets(); restart(); };
 document.querySelectorAll('#segPace button').forEach((b) => (b.onclick = () => { state.pace = Number(b.dataset.v); syncChrome(); }));
 document.querySelectorAll('#segCam button').forEach((b) => (b.onclick = () => { state.cam = b.dataset.v; state.manual = false; syncChrome(); }));
 document.querySelectorAll('#segTilt button').forEach((b) => (b.onclick = () => { document.body.classList.toggle('flat', b.dataset.v === 'off'); syncChrome(); }));
 document.querySelectorAll('#segHero button').forEach((b) => (b.onclick = () => { state.hero = b.dataset.v; glow.setHero(state.hero); syncChrome(); }));
-['dragstart', 'rotatestart', 'pitchstart', 'zoomstart'].forEach((ev) => map.on(ev, (e) => { if (e.originalEvent) { state.manual = true; syncChrome(); } }));
+['dragstart', 'rotatestart', 'pitchstart', 'zoomstart'].forEach((ev) => map.on(ev, (e) => { if (e.originalEvent) { setCloseUp(false); state.manual = true; syncChrome(); } }));
+// Tap the runner for a close-up (same as the app); tap again or anywhere else to go back.
+function setCloseUp(on) { state.closeUp = on; state.orbit = map.getBearing(); glow.setHeroView(on); if (on) { state.manual = false; if (state.cam === 'orbit') state.cam = 'close'; } }
+map.on('click', (e) => { if (glow.runnerHit(e.point.x, e.point.y)) setCloseUp(!state.closeUp); else if (state.closeUp) setCloseUp(false); });
 
 let overviewZoom = 15.5;
 { const cam = map.cameraForBounds(bounds, { padding: narrow ? 30 : 90, pitch: 55 }); if (cam && cam.zoom) overviewZoom = cam.zoom + (narrow ? 0.45 : 0); }
+function closePadding() {          // close-up: feet low in the free area so the whole body is in view
+  const p = framePadding(), free = Math.max(0, innerHeight - p.bottom - (document.querySelector('.top').getBoundingClientRect().bottom + 8));
+  return { ...p, top: innerHeight - p.bottom - free * 0.4 };
+}
 function framePadding() {
   const top = document.querySelector('.top').getBoundingClientRect().bottom + 8, dock = $('dock').getBoundingClientRect().top;
   $('side').style.bottom = innerHeight - dock + 12 + 'px';
@@ -158,6 +165,11 @@ function tick(now) {
     if (state.cam !== 'orbit') {
       const cam = CAMS[state.cam] || CAMS.close;
       goal = [r.lng, r.lat]; zoom = cam.zoom; pitch = cam.pitch; bearing = (r.heading ?? map.getBearing()) + cam.skew;
+      if (state.closeUp) {
+        const moving = r.activity === 'run' || r.activity === 'walk';
+        state.orbit = moving && r.heading != null ? r.heading + 155 : state.orbit + dt * 9;
+        zoom = 21.2; pitch = 60; bearing = state.orbit;
+      }
     } else {
       const c = bounds.getCenter();
       goal = [c.lng, c.lat]; zoom = overviewZoom; pitch = 55; bearing = map.getBearing() + dt * 4;
@@ -168,7 +180,7 @@ function tick(now) {
       zoom: map.getZoom() + (zoom - map.getZoom()) * k,
       pitch: map.getPitch() + (pitch - map.getPitch()) * k,
       bearing: lerpAngle(map.getBearing(), bearing, state.cam !== 'orbit' ? kb : 1),
-      padding: framePadding(),
+      padding: state.closeUp ? closePadding() : framePadding(),
     });
   }
 

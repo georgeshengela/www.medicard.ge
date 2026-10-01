@@ -1,7 +1,7 @@
 import type {LatLng} from './geo';
 import {tx} from '../../i18n/locale.js';
 import {MAP_FLAG,MAP_GIFT,MAP_PUCK} from './mapArt.js';
-export const RUN_MAP_HTML_REV=15;
+export const RUN_MAP_HTML_REV=16;
 /** MEDIRUN Glow engine + runner models, served with CORS by medicard.ge (built by brand/medirun/glow/engine/build.mjs). */
 export const GLOW_BASE='https://medicard.ge/medirun/glow/';
 
@@ -26,6 +26,8 @@ export function buildRunMapHtml(opts:{token:string;center:LatLng;dark:boolean;ch
  .gift{width:64px;height:64px;filter:drop-shadow(0 8px 10px #03071266);animation:giftFloat 2.6s ease-in-out infinite}
  @keyframes giftFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-7px)}}
  @media (prefers-reduced-motion:reduce){.gift{animation:none}}
+ .hint{position:absolute;left:0;top:0;transform:translate(-50%,-100%);padding:7px 12px;border-radius:14px;background:rgba(17,24,39,.92);color:#fff;font:600 12px/16px system-ui,sans-serif;white-space:nowrap;pointer-events:none;opacity:0;transition:opacity .4s;box-shadow:0 6px 14px rgba(3,7,18,.35)}
+ .hint.on{opacity:1}.hint b{color:#5EEAD4}
  </style></head><body><div id="map"></div><script>
  (function(){
  var PUCK_ART=${json(MAP_PUCK)},FLAG_ART=${json(MAP_FLAG)},GIFT_ART=${json(MAP_GIFT)},GLOW_BASE=${json(base)};
@@ -36,7 +38,8 @@ export function buildRunMapHtml(opts:{token:string;center:LatLng;dark:boolean;ch
  var G=window.MedirunGlow||null;
  var map=new mapboxgl.Map({container:'map',style:G?G.glowStyle():'mapbox://styles/mapbox/dark-v11',center:center,zoom:17.5,pitch:55,bearing:0,attributionControl:false,projection:'mercator',antialias:true,maxPitch:75,fadeDuration:0});
  map.addControl(new mapboxgl.AttributionControl({compact:true}));
- var following=true,rotate=true,threeD=true,ready=false,queue=[],glow=null,goal=null,gift=null,puck=null,position=center,heading=null,showRunner=true,hero='m',raf=0,lastT=0;
+ var following=true,rotate=true,threeD=true,ready=false,queue=[],glow=null,goal=null,gift=null,puck=null,position=center,heading=null,showRunner=true,hero='m',raf=0,lastT=0,closeUp=false,orbit=0,hintUntil=0;
+ var HINT=${json(tx('შეეხე <b>მორბენალს</b> და ნახე ახლოდან','Tap <b>your runner</b> for a close-up'))};
  var pad={top:130,bottom:240,left:0,right:0};
  var retained={route:null,trail:null,paint:null,mission:null};
  var reduced=window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -72,11 +75,19 @@ export function buildRunMapHtml(opts:{token:string;center:LatLng;dark:boolean;ch
   if(following&&ready){
    var r=glow?glow.runner():null,target=r?[r.lng,r.lat]:position,hd=r&&r.heading!=null?r.heading:heading;
    var zoom=threeD?18.2:17.4,pitch=threeD?60:0,bearing=rotate&&hd!=null?hd-(threeD?20:0):(rotate?map.getBearing():0);
+   // close-up: low and near, from the front while moving (the face is visible), slowly circling while standing
+   var view=pad;
+   if(closeUp){zoom=21.2;pitch=60;var moving=r&&(r.activity==='run'||r.activity==='walk');orbit=moving&&hd!=null?hd+155:(orbit||map.getBearing())+dt*9;bearing=orbit;
+    var free=Math.max(0,map.getCanvas().clientHeight-pad.top-pad.bottom);view={top:pad.top+free*0.6,bottom:pad.bottom,left:0,right:0};}   // feet low, the whole body in view
    var k=reduced?1:1-Math.exp(-dt*2.4),kb=reduced?1:1-Math.exp(-dt*1.3),c=map.getCenter();
-   map.jumpTo({center:[c.lng+(target[0]-c.lng)*k,c.lat+(target[1]-c.lat)*k],zoom:map.getZoom()+(zoom-map.getZoom())*k,pitch:map.getPitch()+(pitch-map.getPitch())*k,bearing:lerpAngle(map.getBearing(),bearing,kb),padding:pad});
+   map.jumpTo({center:[c.lng+(target[0]-c.lng)*k,c.lat+(target[1]-c.lat)*k],zoom:map.getZoom()+(zoom-map.getZoom())*k,pitch:map.getPitch()+(pitch-map.getPitch())*k,bearing:lerpAngle(map.getBearing(),bearing,kb),padding:view});
   }
+  if(hint){var sc=glow&&hintUntil>t?glow.runnerScreen():null;if(sc){hint.style.left=sc.headX+'px';hint.style.top=(sc.headY-10)+'px';hint.classList.add('on');}else hint.classList.remove('on');}
   raf=requestAnimationFrame(frame);
  }
+ function setCloseUp(on){closeUp=on;orbit=map.getBearing();if(glow)glow.setHeroView(on);hintUntil=0;if(on&&!following){following=true;post({type:'follow',value:true});}}
+ var hint=null;
+ function maybeHint(){if(!glow||!showRunner)return;var n=0;try{n=Number(localStorage.getItem('medirun.heroHint')||0);}catch(e){}if(n>=3)return;try{localStorage.setItem('medirun.heroHint',String(n+1));}catch(e){}hint=document.createElement('div');hint.className='hint';hint.innerHTML=HINT;document.body.appendChild(hint);hintUntil=performance.now()+6000;}
  function circle(c,r){var points=[];for(var i=0;i<=64;i++){var angle=i/64*Math.PI*2;points.push([c[0]+Math.cos(angle)*r/(111195*Math.cos(c[1]*Math.PI/180)),c[1]+Math.sin(angle)*r/111195]);}return {type:'Feature',properties:{},geometry:{type:'Polygon',coordinates:[points]}};}
  function fit(bottom,paintOnly,top){var coords=paintOnly?[]:(retained.route&&retained.route.geometry&&retained.route.geometry.coordinates)||[];if(!paintOnly&&!coords.length&&retained.trail&&retained.trail.geometry)coords=retained.trail.geometry.coordinates;if(!coords.length&&retained.paint)coords=retained.paint.features.reduce(function(all,f){return all.concat(f.geometry.coordinates);},[]);if(!coords.length){following=true;return;}var bounds=new mapboxgl.LngLatBounds(coords[0],coords[0]);coords.forEach(function(p){bounds.extend(p);});following=false;post({type:'follow',value:false});map.fitBounds(bounds,{padding:{top:typeof top==='number'?top:120,bottom:bottom||230,left:45,right:45},maxZoom:17,pitch:threeD?45:0,duration:reduced?0:900});}
  function handle(m){switch(m.type){
@@ -91,7 +102,7 @@ export function buildRunMapHtml(opts:{token:string;center:LatLng;dark:boolean;ch
   case 'mission':setData('mission',m.center?circle(m.center,m.radius||100):empty());break;
   case 'gift':if(gift)gift.remove();gift=null;if(m.position){var box=document.createElement('div');box.className='gift';box.innerHTML='<img alt="" src="'+GIFT_ART+'">';gift=new mapboxgl.Marker({element:box,anchor:'bottom'}).setLngLat(m.position).addTo(map);}break;
   case 'options':rotate=m.rotate;threeD=m.threeD;break;
-  case 'follow':following=true;post({type:'follow',value:true});break;
+  case 'follow':following=true;if(closeUp)setCloseUp(false);post({type:'follow',value:true});break;
   case 'fit':fit(m.bottom,m.paintOnly,m.top);break;
   case 'reached':if(goal)goal.getElement().classList.add('reached');break;
   case 'activity':if(glow)glow.setActivity(m.value);break;
@@ -100,8 +111,10 @@ export function buildRunMapHtml(opts:{token:string;center:LatLng;dark:boolean;ch
  }}
  window.__run=function(m){if(!ready)queue.push(m);else handle(m);};
  window.addEventListener('message',function(event){if(event.source===window.parent&&event.data&&event.data.channel===channel)window.__run(event.data.message);});
- map.on('style.load',function(){layers();startGlow();if(!ready){ready=true;post({type:'ready'});queue.forEach(handle);queue=[];raf=requestAnimationFrame(frame);}});
- ['dragstart','rotatestart','zoomstart','pitchstart'].forEach(function(event){map.on(event,function(e){if(e.originalEvent&&following){following=false;post({type:'follow',value:false});}});});
+ map.on('style.load',function(){layers();startGlow();if(!ready){ready=true;post({type:'ready'});queue.forEach(handle);queue=[];raf=requestAnimationFrame(frame);setTimeout(maybeHint,4000);}});
+ // Tap the runner for a close-up; tap again (or anywhere else) to go back.
+ map.on('click',function(e){if(!glow)return;if(glow.runnerHit(e.point.x,e.point.y))setCloseUp(!closeUp);else if(closeUp)setCloseUp(false);});
+ ['dragstart','rotatestart','zoomstart','pitchstart'].forEach(function(event){map.on(event,function(e){if(e.originalEvent){if(closeUp)setCloseUp(false);if(following){following=false;post({type:'follow',value:false});}}});});
  map.on('error',function(e){var text=String(e.error&&e.error.message||'');if(/token|401|403|Unauthorized/.test(text))post({type:'error',message:${json(tx('რუკის წვდომა ვერ დადასტურდა.','Map access couldn’t be verified.'))}});});
  window.addEventListener('pagehide',function(){if(raf)cancelAnimationFrame(raf);if(glow)glow.dispose();map.remove();});
  })();</script></body></html>`;
