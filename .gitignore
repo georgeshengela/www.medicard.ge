@@ -56,3 +56,6 @@ Thumbs.db
 *.rar
 npm-debug.log*
 yarn-error.log*
+
+# Store build artifacts (uploaded by hand to Play Console)
+*.aab
