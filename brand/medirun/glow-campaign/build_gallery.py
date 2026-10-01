@@ -38,13 +38,14 @@ def card(it):
     r = it['record']; t = r['scheduledAt'][11:16]; manual = it['info'] is None
     imgs = ''.join(f'<a href="{e(u.rsplit("/", 1)[-1])}" target="_blank" rel="noopener"><img loading="lazy" src="{e(u.rsplit("/", 1)[-1])}" alt=""></a>' for u in r['mediaUrls'])
     nets = ' · '.join(NET[n] for n in r['networks'])
-    cap = f'<pre>{e(r["text"])}</pre><button type="button" class="copy">ტექსტის დაკოპირება</button>' if r['text'] and not manual else ''
-    note = f'<p class="note">{e(r["notes"])}</p>' if manual else ''
+    story = r['kind'] == 'STORY' and not manual
+    cap = f'<pre>{e(r["text"])}</pre><button type="button" class="copy">ტექსტის დაკოპირება</button>' if r['text'] and not manual and not story else ''
+    note = f'<p class="note">{e(r["notes"])}</p>' if manual else (f'<p class="note">{e(r["text"].replace("სთორი: ", "", 1))}</p>' if story else '')
     tag = '<span class="tag live">ცოცხლად, ხელით</span>' if manual else f'<span class="tag">{e(KIND.get(r["kind"], r["kind"]))}</span>'
     return f'''<article class="item{' manual' if manual else ''}">
   <header><b>{t}</b>{tag}<span class="nets">{e(nets)}</span></header>
   {f'<div class="media{" many" if len(r["mediaUrls"]) > 1 else ""}">{imgs}</div>' if imgs else ''}
-  <h3>{e(r["title"])}</h3>{note}{cap}
+  {'' if story else f'<h3>{e(r["title"])}</h3>'}{note}{cap}
 </article>'''
 
 calendar = '\n'.join(f'<section class="day"><h2>{e(label)}</h2><div class="grid">{"".join(card(i) for i in its)}</div></section>' for label, its in days)

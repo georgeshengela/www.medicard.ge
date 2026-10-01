@@ -188,16 +188,40 @@ linkedin('g-li-december', '2026-12-02', img('f11-december'), with_links_en(
     'A prize that only shows up for people who have walked their own city. That is the whole idea of MEDIRUN.\n\n'
     '#MEDIRUN #MEDICARD #Tbilisi #Gamification'))
 
+# Stories carry no caption; admin #/social still shows what each one says.
+PARKS = ['rike', 'vake', 'lisi', 'april9'] * 3
+RIDDLES = {'rike': ['პარკი მტკვრის პირას, საიდანაც საბაგირო ციხისკენ ადის.', 'მშვიდობის ხიდის ბოლოს, მარცხენა ნაპირზე.'],
+           'vake': ['დიდი პარკი ჭავჭავაძის გამზირის ბოლოს, სადაც კიბე ტყისკენ ადის.', 'ქვედა ნაწილში, დიდ მრგვალ შადრევანთან.'],
+           'lisi': ['ტბა ქალაქის ჩრდილო-დასავლეთით, რომლის გარშემოც შაბათობით დარბიან.', 'ნაპირის ბილიკზე, მთავარი შესასვლელის მხარეს.'],
+           'april9': ['ბაღი რუსთაველზე, რომელიც თარიღის სახელს ატარებს.', 'რუსთაველის გამზირის გასწვრივ, ხეების ჩრდილში.']}
+def story_caption(name):
+    fixed = {'s01-teaser': 'სთორი: „რაღაც აინთება.“ 03.10', 's02-teaser': 'სთორი: „თბილისი ჩაბნელდა. ხვალიდან შენ გაანათებ.“',
+             's03-launch': 'სთორი: „საჩუქრები უკვე ქალაქშია.“', 's04-weekday': 'სთორი: ორშაბათი–პარასკევი, მცირე ყუთები 08:30-სა და 18:00-ზე',
+             's05-weekend': 'სთორი: შაბათ-კვირა, უფრო დიდი ყუთები 10:30-სა და 17:30-ზე; შაბათს, 16:00-ზე — საჩუქრების წვიმა',
+             's08-levels': 'სთორი: დონეები — 0,1% · 0,25% · 0,5% · 1%', 's10-how': 'სთორი: როგორ ვიპოვო — 3 ნაბიჯი',
+             's09-iphone-tomorrow': 'სთორი: „ხვალ, 12:00“ — წითელი iPhone 18 Pro Max', 's09-iphone-today': 'სთორი: „დღეს, 12:00“ — წითელი iPhone 18 Pro Max',
+             's09-iphone-soon': 'სთორი: „30 წუთში“ — წითელი iPhone 18 Pro Max'}
+    if name in fixed:
+        return fixed[name]
+    if name.startswith('s07-tomorrow-'):
+        return 'სთორი: „ხვალ, 16:00“ — საჩუქრების წვიმა ერთ პარკში'
+    if name.startswith('s06-hint-'):
+        n, h = int(name[9:11]), int(name[-1])
+        return f'სთორი: შაბათის წვიმის მინიშნება {h} · {RIDDLES[PARKS[n - 1]][h - 1]}'
+    return 'სთორი'
+
+
 # ── build payloads ────────────────────────────────────────────────────────────────────────────
 out = []
 for p in sorted(POSTS, key=lambda x: (x['date'], x['time'])):
     when = f"{p['date']}T{p['time']}:00"
     networks = ['linkedin'] if p['net'] == 'li' else ['facebook', 'instagram']
     title = (p['text'].split('\n')[0] if p['text'] else '')[:140]
-    if p['kind'] == 'STORY' and not p.get('manual'):
-        title = 'სთორი · ' + p['media'][0].rsplit('/', 1)[-1][:-4]
+    story_text = story_caption(p['media'][0].rsplit('/', 1)[-1][:-4]) if p['kind'] == 'STORY' and not p.get('manual') else ''
+    if story_text:
+        title = story_text.split(' · ')[0][:140]
     record = {'campaign': CAMPAIGN, 'slot': p['slot'], 'networks': networks, 'kind': p['kind'], 'pillar': 'MEDIRUN',
-              'title': title or p['slot'], 'text': p['text'], 'textEn': None, 'mediaUrls': p['media'],
+              'title': title or p['slot'], 'text': p['text'] or story_text, 'textEn': None, 'mediaUrls': p['media'],
               'scheduledAt': f'{when}+04:00', 'status': 'PLANNED' if p.get('manual') else 'SCHEDULED',
               'notes': p.get('notes') or 'MEDIRUN · გაანათე თბილისი · Metricool: ავტომატური გამოქვეყნება · სურათები AI-ით შექმნილი (Instagram-ზე მონიშნული)'}
     info = None
