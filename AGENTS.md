@@ -212,6 +212,15 @@ token (`https://medicard.ge/u/TOKEN`), never the user id; a trainer's scan retur
 was verified with a decoder (round dots failed) — keep modules ≥ 0.47 cell and logo ≤ 20 %. Codes stay as a
 fallback until the owner says otherwise.
 
+## MEDIRUN „გაანათე თბილისი“ campaign (2026-10-01, 3 Oct – 31 Dec 2026)
+
+Owner-requested city gift hunt (this is the MEDIRUN event allowed under the freeze). Owner logic: Monday–Friday a few small boxes, weekends better ones, Saturdays 16:00 a coin rain in one park (park revealed by riddle stories at 15:00/15:30), from 7 Nov "lantern" boxes for players with ≥0.25% of Tbilisi lit, and 31 Dec 12:00 one red iPhone 18 Pro Max visible only to players with ≥1% of Tbilisi lit. Keep it cheap, few boxes, deep inside parks on public footpaths (never roads, yards, water, church grounds, schools). No physical box is ever left in the street; no random draw anywhere (Georgian promo-lottery permit risk); no merch for now (owner said not yet).
+- Config `server/src/data/medirun-campaign.json`; spots `server/src/data/medirun-spots-tbilisi.json` (OSM footway nodes inside public parks, with district and `depthM`). Plan is pure and deterministic: `server/src/lib/medipulsi/autopilot.js` `planDay(date)` (tests `autopilot.test.js`). Gift ids `glow-YYYY-MM-DD-…`.
+- `MedipulsiGiftRule` (raw SQL, created lazily, `giftRules.js`) sits beside `MedipulsiGift`: `coins` are paid into `RewardLedger` (sourceType `MEDIRUN`, `claim:<id>`) inside the claim transaction; `minPercent`+`areaId` hide a box in `nearby()` and refuse `claim()` (`GIFT_LOCKED`) below the lit share. The share uses the same math as the territory card (`cityShare`), so the eligibility page and the gate never disagree. Never change the admin gift editor or the `MedipulsiGift` Prisma model for this.
+- `GET /api/medipulsi/grand` (`grand.js`) feeds the app's `/run/grand` eligibility screen and the hub card (`GrandPrizeScreen.tsx`, `GrandPrizeCard.tsx`).
+- Drops: `node server/scripts/medirun-drops.mjs plan|apply|status|spots|drop|grand|clear` (main DB except `plan`/`spots`). The in-process autopilot (`startMedirunAutopilot`) is written but NOT started from server.js — enabling automatic production writes needs the owner's explicit OK.
+- Rules page `server/public/medirun/rules.html` (App Store 5.3: Apple is not a sponsor). Posters `brand/medirun/glow-campaign/` (posters.html → render.py → build_gallery.py → `server/public/press/medirun-glow/index.html`), calendar `social.py` → Metricool + admin #/social (campaign `medirun-glow-2026`, MEDIRUN band and filter in `v4/modules/social.js`).
+
 ## Retired district competition (2026-09-19)
 
 The owner removed the district walking competition completely. Do not recreate its screens, sync, admin module, or database tables. MEDIRUN / MEDIPULSI remains the worldwide exploration game, accessible from Home; its duplicate Profile block is removed. Shared health totals and Pets remain independent.

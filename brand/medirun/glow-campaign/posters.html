@@ -1,0 +1,468 @@
+<!doctype html>
+<html lang="ka">
+<head>
+<meta charset="utf-8">
+<title>MEDIRUN · გაანათე თბილისი — posters</title>
+<!--
+  One template for every campaign visual. render.py opens ?p=<id>&<params> and screenshots / prints it.
+  Dates, Saturday riddles and level numbers live in CONFIG below and must match server/src/data/medirun-campaign.json.
+  Owner rules: every poster and story shows "App Store · medicard.ge"; product name is always MEDIRUN; copy addresses the reader as შენ.
+-->
+<style>
+@font-face{font-family:FiraGO;src:url(../fonts/FiraGO-Regular.woff2);font-weight:400}
+@font-face{font-family:FiraGO;src:url(../fonts/FiraGO-Medium.woff2);font-weight:500}
+@font-face{font-family:FiraGO;src:url(../fonts/FiraGO-SemiBold.woff2);font-weight:600}
+@font-face{font-family:FiraGO;src:url(../fonts/FiraGO-Bold.woff2);font-weight:700}
+@font-face{font-family:FiraGO;src:url(../fonts/FiraGO-ExtraBold.woff2);font-weight:800}
+:root{--ink:#030712;--navy:#071427;--mint:#14B8A6;--mint2:#5EEAD4;--mint3:#99F6E4;--gold:#F59E0B;--gold2:#FCD34D;--red:#F43F5E;--red2:#FDA4AF;--mute:#94A3B8;--dim:#64748B}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{background:var(--ink)}
+body{font-family:FiraGO,sans-serif;color:#fff;-webkit-font-smoothing:antialiased}
+.cv{position:relative;overflow:hidden;background:radial-gradient(900px 700px at 50% 55%,rgba(20,184,166,.26),rgba(20,184,166,0) 70%),radial-gradient(700px 500px at 85% 8%,rgba(245,158,11,.10),transparent 70%),linear-gradient(180deg,#071427 0%,#030712 100%)}
+.cv.red{background:radial-gradient(800px 700px at 50% 40%,rgba(244,63,94,.30),rgba(244,63,94,0) 70%),radial-gradient(700px 500px at 85% 8%,rgba(245,158,11,.10),transparent 70%),linear-gradient(180deg,#140713 0%,#030712 100%)}
+.cv.rings::after{content:"";position:absolute;inset:0;background:repeating-radial-gradient(circle at 50% 50%,rgba(94,234,212,.055) 0 2px,transparent 2px 90px);pointer-events:none}
+.feed{width:1080px;height:1350px}.story{width:1080px;height:1920px}
+.abs{position:absolute}
+.brand{font-weight:800;letter-spacing:-1px;white-space:nowrap}.brand b{color:var(--mint);font-style:italic}
+.top{position:absolute;display:flex;justify-content:space-between;align-items:center;z-index:5}
+.chip{border:2px solid rgba(94,234,212,.5);border-radius:999px;font-weight:700;color:var(--mint3);background:rgba(3,7,18,.55);white-space:nowrap}
+.chip.gold{border-color:rgba(252,211,77,.6);color:var(--gold2)}
+.chip.red{border-color:rgba(253,164,175,.65);color:var(--red2)}
+.eyebrow{font-weight:700;color:var(--mint2);letter-spacing:.5px}
+.eyebrow.gold{color:var(--gold2)}.eyebrow.red{color:var(--red2)}
+h1{font-weight:800;letter-spacing:-1.5px;line-height:1.04}
+.sub{color:#CBD5E1;font-weight:400;line-height:1.35}
+.foot{position:absolute;display:flex;justify-content:space-between;color:#7C8BA1;font-weight:600;z-index:5}
+.glow-mint{filter:drop-shadow(0 0 30px rgba(45,212,191,.55)) drop-shadow(0 30px 40px rgba(0,0,0,.5))}
+.glow-gold{filter:drop-shadow(0 0 40px rgba(251,191,36,.55)) drop-shadow(0 30px 40px rgba(0,0,0,.5))}
+.pulse{position:absolute;border-radius:50%;border:3px solid rgba(94,234,212,.55);transform:translate(-50%,-50%)}
+.pulse.gold{border-color:rgba(252,211,77,.55)}.pulse.red{border-color:rgba(253,164,175,.55)}
+.fade-b{position:absolute;left:0;right:0;background:linear-gradient(180deg,rgba(3,7,18,0) 0%,rgba(3,7,18,.85) 55%,#030712 100%)}
+.fade-t{position:absolute;left:0;right:0;top:0;background:linear-gradient(0deg,rgba(3,7,18,0) 0%,rgba(3,7,18,.7) 60%,rgba(3,7,18,.9) 100%)}
+.cover{position:absolute;object-fit:cover}
+.steps{display:flex;flex-direction:column}
+.step{display:flex;align-items:center}
+.step .n{font-weight:800;color:var(--mint2)}
+.step h3{font-weight:800;letter-spacing:-.5px}
+.step p{color:#CBD5E1;line-height:1.35}
+.row{display:flex;gap:28px;align-items:flex-start;border-radius:30px;background:rgba(15,23,42,.72);border:2px solid rgba(94,234,212,.22)}
+.row.gold{border-color:rgba(252,211,77,.5)}.row.red{border-color:rgba(253,164,175,.55);background:linear-gradient(135deg,rgba(136,19,55,.45),rgba(15,23,42,.85))}
+.row .when{flex:none;font-weight:800;color:var(--mint3);line-height:1.15}
+.row.gold .when{color:var(--gold2)}.row.red .when{color:var(--red2)}
+.row p{color:#E2E8F0;line-height:1.32}
+.ladder{display:flex;flex-direction:column}
+.lv{display:grid;grid-template-columns:auto 1fr;gap:6px 26px;align-items:center;border-radius:28px;background:rgba(15,23,42,.72);border:2px solid rgba(94,234,212,.2)}
+.lv .pc{grid-row:span 2;font-weight:800;color:var(--mint3);text-align:right;font-variant-numeric:tabular-nums}
+.lv b{font-weight:800}
+.lv span{color:#CBD5E1;line-height:1.3}
+.lv.peak{border-color:rgba(253,164,175,.6);background:linear-gradient(135deg,rgba(136,19,55,.5),rgba(15,23,42,.85))}
+.lv.peak .pc{color:var(--red2)}
+.grid{position:absolute;display:grid;gap:10px}
+.pill{display:inline-flex;align-items:center;gap:14px;border-radius:999px;font-weight:700;white-space:nowrap}
+.pill.goldfill{background:linear-gradient(90deg,#F59E0B,#FCD34D);color:#1C1206}
+.pill.redfill{background:linear-gradient(90deg,#E11D48,#FB7185);color:#fff}
+.pill.mintfill{background:var(--mint);color:#022C29}
+.rule{display:flex;gap:22px;align-items:flex-start}
+.rule i{flex:none;display:grid;place-items:center;border-radius:50%;background:rgba(20,184,166,.18);color:var(--mint2);font-style:normal;font-weight:800}
+.rule p{color:#E2E8F0;line-height:1.32}
+.qr{background:#fff;border-radius:18px;display:grid;place-items:center}
+.qr svg{display:block;width:100%;height:100%}
+.ring{position:absolute;border-radius:50%;display:grid;place-items:center;text-align:center}
+.print{position:relative;overflow:hidden}
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script src="assets/qrcode.js"></script>
+<script>
+// ---------- campaign data (keep in sync with server/src/data/medirun-campaign.json) ----------
+const Q = new URLSearchParams(location.search);
+const CONFIG = {
+  name: 'გაანათე თბილისი',
+  dates: '3 ოქტომბერი – 31 დეკემბერი',
+  teaserDate: '03.10',
+  android: Q.get('android') === '1', // re-render with --android once Google Play is live
+  qrUrl: 'https://medicard.ge/?utm_source=print&utm_medium=poster&utm_campaign=medirun_glow',
+  grand: { day: '31 დეკემბერი', time: '12:00', prize: 'წითელი iPhone 18 Pro Max' },
+  levels: [
+    ['0,1%', 'ნაპერწკალი', 'პირველი ნიშანი: ქალაქი უკვე შენი წყალობით ანათებს.'],
+    ['0,25%', 'ფარანი', 'ნოემბრიდან შაბათობით ფარნის ყუთებს დაინახავ — თითოში 300 Medi Coins.'],
+    ['0,5%', 'ჩირაღდანი', 'შუქურამდე ნახევარი გზაღა დაგრჩა.'],
+    ['1%', 'შუქურა', '31 დეკემბერს წითელ iPhone 18 Pro Max-ს დაინახავ.'],
+  ],
+  // Saturday 16:00 rain. Riddles reveal the park at 15:00 and 15:30 in stories.
+  saturdays: [
+    { date: '2026-10-10', day: '10 ოქტომბერი', label: 'შაბათს, 10 ოქტომბერს', park: 'rike' },
+    { date: '2026-10-17', day: '17 ოქტომბერი', label: 'შაბათს, 17 ოქტომბერს', park: 'vake' },
+    { date: '2026-10-24', day: '24 ოქტომბერი', label: 'შაბათს, 24 ოქტომბერს', park: 'lisi' },
+    { date: '2026-10-31', day: '31 ოქტომბერი', label: 'შაბათს, 31 ოქტომბერს', park: 'april9' },
+    { date: '2026-11-07', day: '7 ნოემბერი', label: 'შაბათს, 7 ნოემბერს', park: 'vake', lantern: true },
+    { date: '2026-11-14', day: '14 ნოემბერი', label: 'შაბათს, 14 ნოემბერს', park: 'rike', lantern: true },
+    { date: '2026-11-21', day: '21 ნოემბერი', label: 'შაბათს, 21 ნოემბერს', park: 'lisi', lantern: true },
+    { date: '2026-11-28', day: '28 ნოემბერი', label: 'შაბათს, 28 ნოემბერს', park: 'april9', lantern: true },
+    { date: '2026-12-05', day: '5 დეკემბერი', label: 'შაბათს, 5 დეკემბერს', park: 'vake', lantern: true },
+    { date: '2026-12-12', day: '12 დეკემბერი', label: 'შაბათს, 12 დეკემბერს', park: 'rike', lantern: true },
+    { date: '2026-12-19', day: '19 დეკემბერი', label: 'შაბათს, 19 დეკემბერს', park: 'lisi', lantern: true },
+    { date: '2026-12-26', day: '26 დეკემბერი', label: 'შაბათს, 26 დეკემბერს', park: 'april9', lantern: true },
+  ],
+  riddles: {
+    rike: ['პარკი მტკვრის პირას, საიდანაც საბაგირო ციხისკენ ადის.', 'მშვიდობის ხიდის ბოლოს, მარცხენა ნაპირზე.'],
+    vake: ['დიდი პარკი ჭავჭავაძის გამზირის ბოლოს, სადაც კიბე ტყისკენ ადის.', 'ქვედა ნაწილში, დიდ მრგვალ შადრევანთან.'],
+    lisi: ['ტბა ქალაქის ჩრდილო-დასავლეთით, რომლის გარშემოც შაბათობით დარბიან.', 'ნაპირის ბილიკზე, მთავარი შესასვლელის მხარეს.'],
+    april9: ['ბაღი რუსთაველზე, რომელიც თარიღის სახელს ატარებს.', 'რუსთაველის გამზირის გასწვრივ, ხეების ჩრდილში.'],
+  },
+  weeks: [
+    { n: 1, dates: '3–11 ოქტომბერი', chapter: 'oldtown', title: 'ძველი ქალაქის ამბები', sub: 'ამ კვირაში მეტი ყუთი მოედნებთან, ხიდებთან და აბანოებთან.', sat: 0 },
+    { n: 2, dates: '12–18 ოქტომბერი', chapter: 'green', title: 'მწვანე თბილისი', sub: 'ამ კვირაში მეტი ყუთი ბაღებსა და პარკებში.', sat: 1 },
+    { n: 3, dates: '19–25 ოქტომბერი', chapter: 'horizon', title: 'წყალი და ჰორიზონტი', sub: 'ამ კვირაში მეტი ყუთი ტბებთან და ქალაქის გადასახედებთან.', sat: 2 },
+    { n: 4, dates: '26 ოქტომბერი – 1 ნოემბერი', chapter: 'culture', title: 'ქალაქის ხელწერა', sub: 'ამ კვირაში მეტი ყუთი სამებასთან, ბოტანიკურ ბაღთან და რუსთაველზე.', sat: 3 },
+  ],
+  november: [['2–8', 'გლდანი, ნაძალადევი'], ['9–15', 'დიდუბე, ჩუღურეთი, საბურთალო'], ['16–22', 'ისანი, სამგორი'], ['23–29', 'ვაკე, მთაწმინდა, კრწანისი']],
+};
+const CH = {
+  oldtown: ['freedom','orbeliani','gabriadze','peace','rike','metekhi','abanotubani','gudiashvili'],
+  green: ['vake','mziuri','vera','dedaena','april9','mushtaidi','kikvidze','dighomi'],
+  horizon: ['turtle','lisi','mtatsminda','mother','chronicle'],
+  culture: ['sameba','botanical','opera'],
+};
+const G = n => `../gen/${n}_cut.png`;
+const stores = () => CONFIG.android ? 'App Store · Google Play · medicard.ge' : 'App Store · medicard.ge';
+const satIdx = () => Math.max(0, Math.min(CONFIG.saturdays.length - 1, +(Q.get('s') || 0)));
+
+// ---------- helpers ----------
+function qrSvg(text, dark = '#030712') {
+  const q = qrcode(0, 'M'); q.addData(text); q.make();
+  const n = q.getModuleCount(), m = 2; let d = '';
+  for (let r = 0; r < n; r++) for (let c = 0; c < n; c++) if (q.isDark(r, c)) d += `M${c + m} ${r + m}h1v1h-1z`;
+  return `<svg viewBox="0 0 ${n + 2 * m} ${n + 2 * m}" shape-rendering="crispEdges"><path fill="${dark}" d="${d}"/></svg>`;
+}
+function rings(x, y, sizes, tone = '') { return sizes.map((s, i) => `<div class="pulse ${tone}" style="left:${x}px;top:${y}px;width:${s}px;height:${s}px;opacity:${(1 - i / sizes.length) * .9}"></div>`).join(''); }
+const header = (pad, chip, cls = '', size = 40) => `<div class="top" style="top:${pad}px;left:${pad + 10}px;right:${pad + 10}px"><div class="brand" style="font-size:${size}px">MEDI<b>RUN</b></div>${chip ? `<div class="chip ${cls}" style="font-size:${size * .7}px;padding:${size * .3}px ${size * .65}px">${chip}</div>` : ''}</div>`;
+// photos fade into the canvas through their own alpha, so no overlay seam shows against the gradient background
+const MASK = '-webkit-mask-image:linear-gradient(180deg,#000 50%,transparent 97%)';
+const MASK_UP = '-webkit-mask-image:linear-gradient(0deg,#000 60%,transparent 100%)';
+const foot = (pad, size = 26, bottom = 52) => `<div class="foot" style="left:${pad}px;right:${pad}px;bottom:${bottom}px;font-size:${size}px"><span>MEDICARD აპში · უფასოდ</span><span>${stores()}</span></div>`;
+
+// ---------- posters ----------
+const P = {};
+const STEPS = [
+  ['01', 'ui_puck', 'ჩართე MEDIRUN', 'გახსენი MEDICARD და დაიწყე სიარული ან სირბილი.'],
+  ['02', 'ui_i_pulse', 'იგრძენი პულსი', 'საჩუქართან მიახლოებისას ტელეფონი გულისცემასავით აკანკალდება. რაც უფრო ახლოს ხარ, მით უფრო ჩქარა.'],
+  ['03', 'ui_gift_open', 'გახსენი ყუთი', 'ადგილზე ჩართე კამერა, იპოვე ყუთი და შეეხე. Medi Coins ავტომატურად ჩაირიცხება.'],
+];
+const RULES = [
+  'ყუთები მხოლოდ საჯარო ბილიკებზეა — არასოდეს გზაზე, ეზოში ან დახურულ ტერიტორიაზე.',
+  'ქუჩის გადაკვეთისას ეკრანს ნუ უყურებ — პულსს ხელში იგრძნობ.',
+  'საღამოს ყუთები მხოლოდ განათებულ ადგილებშია.',
+  'სხვებს ნუ უბიძგებ: შაბათის წვიმაში ყუთები ბევრს ეყოფა.',
+  'დიდ საჩუქარს აპში ნაჩვენები კოდითა და პირადობის მოწმობით გადმოგცემთ.',
+];
+
+// F00 teaser
+P['f00-teaser'] = { kind: 'feed', html: () => `
+  <img class="cover" src="assets/city.jpg" style="left:0;top:0;width:1080px;height:1350px;object-position:66% 50%;filter:brightness(.32) saturate(.5)">
+  <div class="abs" style="inset:0;background:radial-gradient(460px 460px at 50% 46%,rgba(45,212,191,.18),transparent 70%)"></div>
+  <div class="abs" style="left:0;right:0;top:390px;text-align:center">
+    <h1 style="font-size:124px">რაღაც<br>აინთება.</h1>
+    <div style="margin-top:50px;font-size:150px;font-weight:800;color:transparent;-webkit-text-stroke:3px var(--mint2);letter-spacing:4px;text-shadow:0 0 40px rgba(45,212,191,.5)">${CONFIG.teaserDate}</div>
+  </div>
+  <div class="abs brand" style="left:0;right:0;top:80px;text-align:center;font-size:44px;opacity:.9">MEDI<b>RUN</b></div>
+  ${foot(80)}` };
+
+// F01 key visual
+P['f01-key'] = { kind: 'feed', html: () => `
+  <img class="cover" src="assets/city.jpg" style="left:0;top:0;width:1080px;height:900px;object-position:62% 50%;${MASK}">
+  <div class="fade-t" style="height:260px"></div>
+  ${rings(600, 470, [180, 300, 430, 560])}
+  <img class="abs glow-mint" src="${G('ui_gift')}" style="left:480px;top:330px;width:250px;transform:rotate(-6deg)">
+  ${header(70, CONFIG.name)}
+  <div class="abs" style="left:80px;right:80px;bottom:130px">
+    <div class="eyebrow" style="font-size:31px;margin-bottom:18px">${CONFIG.dates} · მთელ თბილისში</div>
+    <h1 style="font-size:92px">ქალაქში საჩუქრებია დამალული.</h1>
+    <p class="sub" style="font-size:34px;margin-top:24px">ჩართე MEDIRUN და გაისეირნე. საჩუქართან ტელეფონს გული აუჩქარდება.</p>
+  </div>${foot(80)}` };
+
+// F02 how it works
+P['f02-how'] = { kind: 'feed', cls: 'rings', html: () => `${header(70, CONFIG.name)}
+  <div class="abs" style="left:80px;right:80px;top:190px"><div class="eyebrow" style="font-size:30px">3 ნაბიჯი</div><h1 style="font-size:96px;margin-top:10px">როგორ ვიპოვო?</h1></div>
+  <div class="steps abs" style="left:70px;right:80px;top:420px;gap:34px">${STEPS.map(([n, ic, t, p]) => `
+    <div class="step" style="gap:34px"><img class="glow-mint" src="${G(ic)}" style="width:210px;flex:none">
+      <div><div class="n" style="font-size:28px">${n}</div><h3 style="font-size:54px;margin:4px 0 10px">${t}</h3><p style="font-size:30px">${p}</p></div></div>`).join('')}
+  </div>${foot(80)}` };
+
+// F03 weekly rhythm
+const RHYTHM = [
+  ['', 'ორშაბათი–<br>პარასკევი', 'მცირე ყუთები 08:30-სა და 18:00-ზე: 10–50 Medi Coins.'],
+  ['', 'შაბათი–<br>კვირა', 'უფრო დიდი ყუთები 10:30-სა და 17:30-ზე: 30–100 Medi Coins.'],
+  ['gold', 'შაბათს,<br>16:00', 'საჩუქრების წვიმა ერთ პარკში. რომელში — საათით ადრე გეტყვით.'],
+  ['red', '31<br>დეკემბერი', `${CONFIG.grand.prize} — მხოლოდ შუქურებისთვის.`],
+];
+P['f03-week'] = { kind: 'feed', html: () => `${header(70, 'კვირის რიტმი')}
+  <div class="abs" style="left:80px;right:80px;top:180px"><div class="eyebrow" style="font-size:30px">${CONFIG.dates}</div><h1 style="font-size:88px;margin-top:10px">როდის რას იპოვი?</h1></div>
+  <div class="abs steps" style="left:60px;right:60px;top:410px;gap:18px">${RHYTHM.map(([tone, when, text]) => `
+    <div class="row ${tone}" style="padding:26px 30px"><div class="when" style="font-size:31px;width:230px">${when}</div><p style="font-size:30px">${text}</p></div>`).join('')}
+  </div>
+  <p class="abs sub" style="left:80px;right:80px;bottom:120px;font-size:28px">ყუთები პარკების სიღრმეშია — ცოტა ძებნა მოგიწევს.</p>
+  ${foot(80)}` };
+
+// F04 levels
+P['f04-levels'] = { kind: 'feed', cls: 'rings', html: () => `${header(70, 'დონეები')}
+  <div class="abs" style="left:80px;right:80px;top:180px"><div class="eyebrow" style="font-size:30px">ყოველი ახალი ქუჩა შენს თბილისს ანათებს</div><h1 style="font-size:96px;margin-top:10px">გაანათე თბილისის 1%.</h1></div>
+  <div class="abs ladder" style="left:60px;right:60px;top:440px;gap:16px">${CONFIG.levels.map(([pc, name, text], i) => `
+    <div class="lv ${i === 3 ? 'peak' : ''}" style="padding:20px 28px"><div class="pc" style="font-size:44px;width:150px">${pc}</div><b style="font-size:36px">${name}</b><span style="font-size:26px">${text}</span></div>`).join('')}
+  </div>
+  <p class="abs sub" style="left:80px;right:80px;bottom:120px;font-size:27px">1% ≈ 50 კმ ახალი ქუჩა. ერთსა და იმავე გზას მეორედ არ ვითვლით.</p>
+  ${foot(80)}` };
+
+// F05 grand prize (?c=countdown text)
+P['f05-iphone'] = { kind: 'feed', cls: 'red', html: () => { const c = Q.get('c'); return `
+  ${rings(540, 470, [260, 400, 560, 720], 'red')}
+  <div class="ring" style="left:330px;top:260px;width:420px;height:420px;border:14px solid rgba(253,164,175,.85);box-shadow:0 0 70px rgba(244,63,94,.65),inset 0 0 60px rgba(244,63,94,.35)">
+    <div><div style="font-size:170px;font-weight:800;letter-spacing:-6px;line-height:1;color:#fff;text-shadow:0 0 40px rgba(244,63,94,.8)">1%</div><div style="font-size:30px;font-weight:700;color:var(--red2);margin-top:6px">თბილისის</div></div>
+  </div>
+  ${header(70, CONFIG.grand.day, 'red')}
+  <div class="abs" style="left:80px;right:80px;bottom:130px">
+    <div class="eyebrow red" style="font-size:32px;margin-bottom:14px">${CONFIG.grand.day} · ${CONFIG.grand.time}</div>
+    <h1 style="font-size:88px">${CONFIG.grand.prize}</h1>
+    <p class="sub" style="font-size:31px;margin-top:20px">ქალაქში ერთი ყუთი დაიმალება. მას მხოლოდ ის დაინახავს, ვინც თბილისის 1%-ს გაანათებს. ვინც პირველი გახსნის, ის წაიღებს.</p>
+    ${c ? `<div class="pill redfill" style="font-size:30px;padding:14px 28px;margin-top:24px">${c}</div>` : ''}
+  </div>${foot(80)}`; } };
+
+// F06-F09 October weeks
+const satPill = (i, cls = 'goldfill', size = 27) => `<div class="pill ${cls}" style="font-size:${size}px;padding:13px 24px">★ ${CONFIG.saturdays[i].label}, 16:00 — საჩუქრების წვიმა</div>`;
+for (const w of CONFIG.weeks) {
+  P[`f0${5 + w.n}-week${w.n}`] = { kind: 'feed', html: () => { const ids = CH[w.chapter], cols = ids.length > 5 ? 4 : 3, cell = ids.length > 5 ? 230 : ids.length > 3 ? 290 : 330; return `
+    ${header(70, `კვირა ${w.n}`)}
+    <div class="abs" style="left:60px;right:60px;top:160px;height:560px;display:flex;align-items:center;justify-content:center">
+      <div style="display:grid;grid-template-columns:repeat(${cols},${cell}px);grid-auto-rows:${cell}px;gap:${ids.length > 5 ? 4 : 10}px 4px;justify-content:center">${ids.map(i => `<img src="${G('ui_m_' + i)}" style="width:${cell}px;height:${cell}px;transform:scale(1.22);filter:drop-shadow(0 12px 16px rgba(0,0,0,.5))">`).join('')}</div>
+    </div>
+    <div class="abs" style="left:80px;right:80px;bottom:120px">
+      <div class="eyebrow" style="font-size:30px;margin-bottom:12px">${w.dates}</div>
+      <h1 style="font-size:86px">${w.title}</h1>
+      <p class="sub" style="font-size:31px;margin-top:16px">${w.sub}</p>
+      <div style="margin-top:24px">${satPill(w.sat)}</div>
+    </div>${foot(80)}`; } };
+}
+
+// F10 November
+P['f10-november'] = { kind: 'feed', html: () => `
+  <img class="cover" src="assets/city.jpg" style="left:0;top:0;width:1080px;height:640px;object-position:20% 60%;filter:brightness(.7);${MASK}">
+  ${header(70, 'ნოემბერი')}
+  <div class="abs" style="left:80px;right:80px;top:430px"><div class="eyebrow" style="font-size:30px">ყოველ კვირას სხვა უბნები</div><h1 style="font-size:100px;margin-top:10px">უბნების თვე</h1></div>
+  <div class="abs steps" style="left:60px;right:60px;top:690px;gap:14px">${CONFIG.november.map(([d, names]) => `
+    <div class="row" style="padding:20px 28px;align-items:center"><div class="when" style="font-size:30px;width:150px">${d}</div><p style="font-size:31px;font-weight:600">${names}</p></div>`).join('')}
+  </div>
+  <p class="abs sub" style="left:80px;right:80px;bottom:120px;font-size:28px">შაბათობით ჩნდება ფარნის ყუთებიც — მათ მხოლოდ ის დაინახავს, ვისაც თბილისის 0,25% აქვს განათებული.</p>
+  ${foot(80)}` };
+
+// F11 December
+P['f11-december'] = { kind: 'feed', cls: 'red', html: () => `
+  <img class="cover" src="assets/city.jpg" style="left:0;top:0;width:1080px;height:760px;object-position:45% 50%;filter:brightness(.8) saturate(.9);${MASK}">
+  <div class="fade-t" style="height:220px"></div>
+  ${header(70, 'დეკემბერი', 'red')}
+  <div class="abs" style="left:80px;right:80px;bottom:130px">
+    <div class="eyebrow red" style="font-size:31px;margin-bottom:14px">31 დეკემბერი · 12:00</div>
+    <h1 style="font-size:104px">შუქურების თვე</h1>
+    <p class="sub" style="font-size:31px;margin-top:20px">ახალი წლის წინა დღეს ქალაქში ${CONFIG.grand.prize} დაიმალება. მას მხოლოდ ის დაინახავს, ვინც თბილისის 1%-ს გაანათებს. შენი პროცენტი MEDIRUN-ში ჩანს.</p>
+  </div>${foot(80)}` };
+
+// F12 partner call
+P['f12-partner'] = { kind: 'feed', cls: 'rings', html: () => `${header(70, 'პარტნიორებისთვის')}
+  <div class="abs" style="left:50%;top:190px;width:440px;height:440px;transform:translateX(-50%);border-radius:50%;background:radial-gradient(circle at 50% 45%,#0F2A2E,#071427);border:10px solid var(--mint);box-shadow:0 0 60px rgba(45,212,191,.5);display:grid;place-items:center;text-align:center">
+    <div><img src="${G('ui_gift')}" style="width:200px"><div class="brand" style="font-size:44px;margin-top:4px">MEDI<b>RUN</b></div><div style="font-size:24px;font-weight:700;color:var(--mint3);margin-top:4px">საჩუქრის წერტილი</div></div></div>
+  <div class="abs" style="left:80px;right:80px;bottom:130px">
+    <h1 style="font-size:84px">შენი კარი — საჩუქრის წერტილი.</h1>
+    <p class="sub" style="font-size:31px;margin-top:20px">კაფე, სპორტდარბაზი, მაღაზია ან აფთიაქი გაქვს? MEDIRUN-ის მოთამაშეები საჩუქრისთვის პირდაპირ შენს კართან მოვლენ.</p>
+    <div class="pill mintfill" style="font-size:28px;padding:14px 26px;margin-top:24px">მოგვწერე: support@medicard.ge</div>
+  </div>${foot(80)}` };
+
+// F13 street safety
+P['f13-safety'] = { kind: 'feed', cls: 'rings', html: () => `${header(70, CONFIG.name)}
+  <div class="abs" style="left:80px;right:80px;top:190px"><div class="eyebrow" style="font-size:30px">თამაშის წესები ქუჩაში</div><h1 style="font-size:88px;margin-top:10px">ითამაშე<br>ფრთხილად.</h1></div>
+  <div class="abs steps" style="left:80px;right:80px;top:520px;gap:28px">${RULES.map((r, i) => `<div class="rule"><i style="width:62px;height:62px;font-size:28px">${i + 1}</i><p style="font-size:32px;padding-top:8px">${r}</p></div>`).join('')}</div>
+  ${foot(80)}` };
+
+// F14 Saturday rain announcement (?s=index)
+P['f14-saturday'] = { kind: 'feed', html: () => { const s = CONFIG.saturdays[satIdx()]; return `
+  <div class="abs" style="inset:0;background:radial-gradient(700px 600px at 50% 38%,rgba(245,158,11,.24),transparent 70%)"></div>
+  ${rings(540, 450, [260, 400, 560, 720], 'gold')}
+  <img class="abs glow-gold" src="${G('q_secret')}" style="left:50%;top:230px;width:440px;transform:translateX(-50%)">
+  ${header(70, 'შაბათის წვიმა', 'gold')}
+  <div class="abs" style="left:80px;right:80px;bottom:130px">
+    <div class="eyebrow gold" style="font-size:32px;margin-bottom:14px">${s.label}, 16:00</div>
+    <h1 style="font-size:88px">საჩუქრების წვიმა ერთ პარკში.</h1>
+    <p class="sub" style="font-size:31px;margin-top:20px">რომელ პარკში — 15:00-ზე გეტყვით სთორიში, გამოცანით. ყუთებში 50 და 100 Medi Coins-ია.${s.lantern ? ' ფარნის ყუთებს კი მხოლოდ ის დაინახავს, ვისაც თბილისის 0,25% აქვს განათებული.' : ''}</p>
+  </div>${foot(80)}`; } };
+
+// ---------- stories 1080x1920 ----------
+P['s01-teaser'] = { kind: 'story', html: () => `
+  <img class="cover" src="assets/city.jpg" style="left:0;top:0;width:1080px;height:1920px;object-position:66% 50%;filter:brightness(.32) saturate(.5)">
+  <div class="abs" style="inset:0;background:radial-gradient(500px 500px at 50% 46%,rgba(45,212,191,.18),transparent 70%)"></div>
+  <div class="abs" style="left:0;right:0;top:680px;text-align:center">
+    <h1 style="font-size:124px">რაღაც<br>აინთება.</h1>
+    <div style="margin-top:60px;font-size:160px;font-weight:800;color:transparent;-webkit-text-stroke:3px var(--mint2);letter-spacing:4px;text-shadow:0 0 40px rgba(45,212,191,.5)">${CONFIG.teaserDate}</div>
+  </div>
+  <div class="abs brand" style="left:0;right:0;top:150px;text-align:center;font-size:48px;opacity:.9">MEDI<b>RUN</b></div>
+  ${foot(90, 30, 120)}` };
+
+P['s02-teaser'] = { kind: 'story', html: () => `
+  <img class="cover" src="assets/city.jpg" style="left:0;top:640px;width:1080px;height:1120px;object-position:64% 50%;-webkit-mask-image:linear-gradient(180deg,transparent 0%,#000 30%,#000 78%,transparent 100%)">
+  ${header(110, CONFIG.name, '', 44)}
+  <div class="abs" style="left:90px;right:90px;top:300px">
+    <h1 style="font-size:116px">თბილისი<br>ჩაბნელდა.</h1>
+    <p class="sub" style="font-size:46px;margin-top:34px;color:#E2E8F0">ხვალიდან შენ გაანათებ.</p>
+  </div>${foot(90, 30, 120)}` };
+
+P['s03-launch'] = { kind: 'story', html: () => `
+  <img class="cover" src="../gen/runner_gold.png" style="left:0;top:0;width:1080px;height:1920px">
+  <div class="fade-t" style="height:420px"></div><div class="fade-b" style="top:1150px;height:770px"></div>
+  ${header(110, 'დაიწყო', '', 44)}
+  <div class="abs" style="left:90px;right:90px;bottom:240px">
+    <h1 style="font-size:110px">საჩუქრები უკვე ქალაქშია.</h1>
+    <p class="sub" style="font-size:42px;margin-top:28px;color:#E2E8F0">ჩართე MEDIRUN და იგრძენი პულსი.</p>
+  </div>${foot(90, 30, 120)}` };
+
+const rhythmStory = (chip, days, times, text, art) => `${header(110, chip, '', 44)}
+  ${rings(540, 720, [340, 520, 720, 900])}
+  <img class="abs glow-mint" src="${G(art)}" style="left:50%;top:500px;width:440px;transform:translateX(-50%) rotate(-5deg)">
+  <div class="abs" style="left:90px;right:90px;bottom:260px">
+    <div class="eyebrow" style="font-size:38px">${days}</div>
+    <h1 style="font-size:130px;margin-top:10px">${times}</h1>
+    <p class="sub" style="font-size:38px;margin-top:30px">${text}</p>
+  </div>${foot(90, 30, 120)}`;
+P['s04-weekday'] = { kind: 'story', cls: 'rings', html: () => rhythmStory('ამ კვირას', 'ორშაბათი–პარასკევი', '08:30 · 18:00', 'მცირე ყუთები პარკების სიღრმეში. საღამოს — მხოლოდ განათებულ ადგილებში.', 'ui_gift') };
+P['s05-weekend'] = { kind: 'story', cls: 'rings', html: () => rhythmStory('შაბათ-კვირა', 'დღეს და ხვალ', '10:30 · 17:30', 'უფრო დიდი ყუთები. დღეს, 16:00-ზე — საჩუქრების წვიმა ერთ პარკში.', 'ui_coin') };
+
+P['s06-hint'] = { kind: 'story', html: () => { const s = CONFIG.saturdays[satIdx()], h = Q.get('h') === '2' ? 1 : 0; return `
+  <div class="abs" style="inset:0;background:radial-gradient(800px 700px at 50% 38%,rgba(245,158,11,.28),transparent 70%)"></div>
+  ${rings(540, 700, [320, 500, 700, 900], 'gold')}
+  <img class="abs glow-gold" src="${G('q_secret')}" style="left:50%;top:450px;width:500px;transform:translateX(-50%)">
+  ${header(110, 'შაბათის წვიმა', 'gold', 44)}
+  <div class="abs" style="left:90px;right:90px;bottom:260px">
+    <div class="eyebrow gold" style="font-size:38px">16:00-მდე ${h ? '30' : '60'} წუთი დარჩა</div>
+    <h1 style="font-size:92px;margin-top:14px">მინიშნება ${h + 1}</h1>
+    <p style="font-size:58px;font-weight:700;line-height:1.22;margin-top:18px">${CONFIG.riddles[s.park][h]}</p>
+    <p class="sub" style="font-size:34px;margin-top:30px">${h ? 'ყუთები 16:00-ზე გამოჩნდება. ჩართე MEDIRUN.' : '30 წუთში — მეორე მინიშნება.'}</p>
+  </div>${foot(90, 30, 120)}`; } };
+
+P['s07-tomorrow'] = { kind: 'story', html: () => { const s = CONFIG.saturdays[satIdx()]; return `
+  <div class="abs" style="inset:0;background:radial-gradient(800px 700px at 50% 38%,rgba(245,158,11,.24),transparent 70%)"></div>
+  ${rings(540, 700, [320, 500, 700, 900], 'gold')}
+  <img class="abs glow-gold" src="${G('ui_gift')}" style="left:50%;top:480px;width:440px;transform:translateX(-50%) rotate(4deg)">
+  ${header(110, 'ხვალ', 'gold', 44)}
+  <div class="abs" style="left:90px;right:90px;bottom:260px">
+    <div class="eyebrow gold" style="font-size:38px">შაბათი, ${s.day}</div>
+    <h1 style="font-size:120px;margin-top:10px">ხვალ, 16:00</h1>
+    <p class="sub" style="font-size:40px;margin-top:26px">საჩუქრების წვიმა ერთ პარკში. მინიშნება 15:00-ზე, აქვე.</p>
+  </div>${foot(90, 30, 120)}`; } };
+
+P['s08-levels'] = { kind: 'story', cls: 'rings', html: () => `${header(110, 'დონეები', '', 44)}
+  <div class="abs" style="left:90px;right:90px;top:280px"><h1 style="font-size:96px">თბილისის რამდენი პროცენტი გაქვს განათებული?</h1></div>
+  <div class="abs ladder" style="left:70px;right:70px;top:820px;gap:18px">${CONFIG.levels.map(([pc, name], i) => `
+    <div class="lv ${i === 3 ? 'peak' : ''}" style="padding:22px 30px;grid-template-columns:auto 1fr"><div class="pc" style="font-size:52px;width:170px;grid-row:auto">${pc}</div><b style="font-size:44px">${name}</b></div>`).join('')}
+  </div>
+  <p class="abs sub" style="left:90px;right:90px;bottom:240px;font-size:38px">შენი პროცენტი: MEDIRUN → დიდი საჩუქარი. შუქურას 31 დეკემბერს წითელი iPhone ელოდება.</p>
+  ${foot(90, 30, 120)}` };
+
+P['s09-iphone'] = { kind: 'story', cls: 'red', html: () => { const t = { tomorrow: 'ხვალ, 12:00', today: 'დღეს, 12:00', soon: '30 წუთში' }[Q.get('t')] || '31 დეკემბერი, 12:00'; return `
+  ${rings(540, 760, [300, 470, 660, 860], 'red')}
+  <div class="ring" style="left:315px;top:535px;width:450px;height:450px;border:16px solid rgba(253,164,175,.85);box-shadow:0 0 80px rgba(244,63,94,.65),inset 0 0 60px rgba(244,63,94,.35)">
+    <div><div style="font-size:190px;font-weight:800;letter-spacing:-6px;line-height:1;text-shadow:0 0 40px rgba(244,63,94,.8)">1%</div><div style="font-size:34px;font-weight:700;color:var(--red2);margin-top:6px">თბილისის</div></div>
+  </div>
+  ${header(110, 'დიდი საჩუქარი', 'red', 44)}
+  <div class="abs" style="left:90px;right:90px;top:250px"><h1 style="font-size:120px;color:#fff">${t}</h1></div>
+  <div class="abs" style="left:90px;right:90px;bottom:250px">
+    <h1 style="font-size:84px">${CONFIG.grand.prize}</h1>
+    <p class="sub" style="font-size:38px;margin-top:24px">მხოლოდ შუქურებისთვის — მათთვის, ვისაც თბილისის 1% აქვს განათებული. ჩართე MEDIRUN.</p>
+  </div>${foot(90, 30, 120)}`; } };
+
+P['s10-how'] = { kind: 'story', cls: 'rings', html: () => `${header(110, CONFIG.name, '', 44)}
+  <div class="abs" style="left:90px;right:90px;top:260px"><h1 style="font-size:110px">როგორ ვიპოვო?</h1></div>
+  <div class="steps abs" style="left:80px;right:90px;top:560px;gap:60px">${STEPS.map(([n, ic, t, p]) => `
+    <div class="step" style="gap:40px"><img class="glow-mint" src="${G(ic)}" style="width:250px;flex:none">
+      <div><div class="n" style="font-size:34px">${n}</div><h3 style="font-size:62px;margin:6px 0 12px">${t}</h3><p style="font-size:36px">${p}</p></div></div>`).join('')}
+  </div>${foot(90, 30, 120)}` };
+
+// ---------- print (CSS px at 96 dpi; render.py prints them at the mm size) ----------
+const MM = 96 / 25.4;
+const page = (wmm, hmm) => ({ w: Math.round(wmm * MM), h: Math.round(hmm * MM), wmm, hmm });
+P['pa3-key'] = { kind: 'print', size: page(303, 426), html: () => `
+  <img class="cover" src="assets/city.jpg" style="left:0;top:0;width:100%;height:66%;object-position:62% 50%;${MASK}">
+  <div class="fade-t" style="height:220px"></div>
+  ${rings(640, 470, [170, 290, 420, 550])}
+  <img class="abs glow-mint" src="${G('ui_gift')}" style="left:525px;top:345px;width:230px;transform:rotate(-6deg)">
+  ${header(75, CONFIG.name, '', 46)}
+  <div class="abs" style="left:85px;right:85px;bottom:430px">
+    <div class="eyebrow" style="font-size:34px;margin-bottom:18px">${CONFIG.dates} · მთელ თბილისში</div>
+    <h1 style="font-size:104px">ქალაქში საჩუქრებია დამალული.</h1>
+  </div>
+  <p class="abs sub" style="left:85px;width:640px;bottom:170px;font-size:36px">ჩართე MEDIRUN და გაისეირნე. საჩუქართან ტელეფონს გული აუჩქარდება.</p>
+  <div class="abs" style="right:85px;bottom:130px;text-align:center"><div class="qr" style="width:250px;height:250px;padding:10px">${qrSvg(CONFIG.qrUrl)}</div><div style="font-size:24px;font-weight:700;color:var(--mint3);margin-top:12px">დაასკანერე</div></div>
+  ${foot(85, 28, 70)}` };
+
+P['pa3-teaser'] = { kind: 'print', size: page(303, 426), html: () => `
+  <img class="cover" src="assets/city.jpg" style="left:0;top:0;width:100%;height:100%;object-position:66% 50%;filter:brightness(.3) saturate(.5)">
+  <div class="abs" style="inset:0;background:radial-gradient(520px 520px at 50% 42%,rgba(45,212,191,.2),transparent 70%)"></div>
+  <div class="abs" style="left:0;right:0;top:330px;text-align:center">
+    <h1 style="font-size:132px">რაღაც<br>აინთება.</h1>
+    <div style="margin-top:50px;font-size:170px;font-weight:800;color:transparent;-webkit-text-stroke:3px var(--mint2);letter-spacing:4px">${CONFIG.teaserDate}</div>
+  </div>
+  <div class="abs" style="left:50%;bottom:150px;transform:translateX(-50%);text-align:center"><div class="qr" style="width:220px;height:220px;padding:10px;margin:0 auto">${qrSvg(CONFIG.qrUrl)}</div><div class="brand" style="font-size:40px;margin-top:22px">MEDI<b>RUN</b></div></div>
+  ${foot(85, 26, 60)}` };
+
+P['pa5-tent'] = { kind: 'print', cls: 'rings', size: page(154, 216), html: () => `
+  ${header(40, 'საჩუქრის წერტილი', '', 26)}
+  ${rings(291, 215, [140, 220, 300])}
+  <img class="abs glow-mint" src="${G('ui_gift')}" style="left:50%;top:130px;width:170px;transform:translateX(-50%)">
+  <div class="abs" style="left:44px;right:44px;top:320px">
+    <h1 style="font-size:44px">აქ MEDIRUN-ის საჩუქარია დამალული.</h1>
+    <div class="steps" style="gap:12px;margin-top:22px">${STEPS.map(([n, , t]) => `<div class="rule"><i style="width:34px;height:34px;font-size:16px">${+n}</i><p style="font-size:22px;padding-top:4px"><b>${t}</b></p></div>`).join('')}</div>
+  </div>
+  <div class="abs" style="right:44px;bottom:46px"><div class="qr" style="width:140px;height:140px;padding:6px">${qrSvg(CONFIG.qrUrl)}</div></div>
+  <div class="abs" style="left:44px;bottom:50px;font-size:17px;color:var(--mute);line-height:1.5">${CONFIG.name}<br>${CONFIG.dates}<br><b style="color:#CBD5E1">${stores()}</b></div>` };
+
+P['pst-sticker'] = { kind: 'print', size: page(156, 156), round: true, html: () => `
+  <div class="abs" style="inset:0;border-radius:50%;background:radial-gradient(circle at 50% 42%,#0F2A2E,#071427 70%);"></div>
+  <div class="abs" style="inset:22px;border-radius:50%;border:9px solid var(--mint);box-shadow:0 0 30px rgba(45,212,191,.6)"></div>
+  <img class="abs" src="${G('ui_gift')}" style="left:50%;top:80px;width:220px;transform:translateX(-50%)">
+  <div class="abs" style="left:0;right:0;top:300px;text-align:center"><div class="brand" style="font-size:58px">MEDI<b>RUN</b></div><div style="font-size:28px;font-weight:700;color:var(--mint3);margin-top:6px">საჩუქრის წერტილი</div><div style="font-size:19px;color:var(--mute);margin-top:10px">${CONFIG.name} · medicard.ge</div></div>` };
+
+P['pa4-partner'] = { kind: 'print', cls: 'rings', size: page(210, 297), html: () => `
+  ${header(48, 'პარტნიორებისთვის', '', 30)}
+  <div class="abs" style="left:56px;right:56px;top:118px">
+    <h1 style="font-size:50px">გახდი MEDIRUN-ის საჩუქრის წერტილი.</h1>
+    <p class="sub" style="font-size:18px;margin-top:12px">MEDIRUN თამაშია MEDICARD-ის აპში: ადამიანი დადის ან დარბის, ქალაქი რუკაზე ინთება, საჩუქართან მიახლოებისას კი ტელეფონი გულისცემასავით კანკალებს. 3 ოქტომბრიდან 31 დეკემბრამდე თბილისში ვატარებთ კამპანიას „${CONFIG.name}“.</p>
+  </div>
+  <div class="abs" style="left:56px;right:56px;top:340px;display:grid;grid-template-columns:1fr 1fr;gap:16px">
+    ${[
+      ['რას იღებ', ['მოთამაშეები საჩუქრისთვის პირდაპირ შენს კართან მოდიან.', 'შენი სახელი საჩუქრის სათაურშია აპში.', 'მოხსენიება ჩვენს პოსტებსა და სთორიებში.', 'ვიტრინის სტიკერი და მაგიდის ბარათი უფასოდ.', 'კამპანიის ბოლოს ზუსტ რიცხვს გეტყვით: რამდენმა გახსნა შენი ყუთი.']],
+      ['რას გასცემ', ['თვეში 30–100 მცირე საჩუქარს: ყავას, ფასდაკლებას ან დღიურ აბონემენტს — შენი არჩევანით.', 'სურვილისამებრ: ერთ დიდ საჩუქარს შაბათის წვიმისთვის, შენი ლოგოთი ჩვენს პოსტერზე.', 'ფულს არ ვითხოვთ.']],
+      ['როგორ მუშაობს', ['ვირტუალურ ყუთს შენი კარის კოორდინატებზე ვდებთ.', 'მოთამაშე ყუთს კამერით პოულობს და აპში კოდს იღებს.', 'მოლარე კოდს ამოწმებს და საჩუქარს გადასცემს.', 'ქუჩაში არაფერი რჩება — ყუთი მხოლოდ აპშია.']],
+      ['ვის ვეძებთ', ['კაფეებს, სმუზისა და წვენის ბარებს', 'სპორტდარბაზებს, იოგისა და ცეკვის სტუდიებს', 'სპორტისა და ველოსიპედის მაღაზიებს', 'აფთიაქებს, წიგნის მაღაზიებს, კინოთეატრებს', 'ჯანსაღი კვების კაფეებს — ყველა უბანში']],
+    ].map(([t, items]) => `<div class="row" style="display:block;padding:16px 20px;border-radius:20px"><h3 style="font-size:22px;color:var(--mint3);margin-bottom:6px">${t}</h3>${items.map(x => `<p style="font-size:15.5px;line-height:1.3;margin:5px 0;padding-left:16px;position:relative"><span style="position:absolute;left:0;color:var(--mint2)">•</span>${x}</p>`).join('')}</div>`).join('')}
+  </div>
+  <div class="abs" style="left:56px;right:56px;bottom:44px;display:flex;justify-content:space-between;align-items:flex-end">
+    <div><div style="font-size:15px;color:var(--mute)">დაგვიკავშირდი</div><div style="font-size:26px;font-weight:800;margin-top:4px">support@medicard.ge</div><div style="font-size:16px;color:var(--mute);margin-top:6px">medicard.ge · ${CONFIG.dates}</div></div>
+    <div class="qr" style="width:118px;height:118px;padding:5px;border-radius:12px">${qrSvg(CONFIG.qrUrl)}</div>
+  </div>` };
+
+// ---------- mount ----------
+const id = Q.get('p') || 'f01-key';
+const def = P[id];
+window.POSTERS = Object.keys(P);
+window.SATURDAYS = CONFIG.saturdays.length;
+if (def) {
+  const el = document.createElement('div');
+  if (def.kind === 'print') { el.className = `cv print ${def.cls || ''}`; el.style.width = def.size.w + 'px'; el.style.height = def.size.h + 'px'; if (def.round) el.style.background = 'transparent'; }
+  else el.className = `cv ${def.kind} ${def.cls || ''}`;
+  // never break a Latin word from its Georgian case ending (MEDIRUN-ის, Max-ს, Coins-ია)
+  el.innerHTML = def.html().replace(/([A-Za-z0-9]+)-([ა-ჿ]+)/g, '<span style="white-space:nowrap">$1-$2</span>');
+  document.getElementById('root').appendChild(el);
+  for (const t of el.querySelectorAll('[data-fit]')) { let f = parseFloat(t.style.fontSize); while (t.scrollWidth > t.clientWidth + 1 && f > 40) t.style.fontSize = (f -= 2) + 'px'; }
+  window.SIZE = def.kind === 'print' ? def.size : def.kind === 'story' ? { w: 1080, h: 1920 } : { w: 1080, h: 1350 };
+  window.KIND = def.kind;
+}
+window.ready = Promise.all([document.fonts.ready, ...[...document.images].map(i => i.decode().catch(() => null))]).then(() => true);
+</script>
+</body>
+</html>

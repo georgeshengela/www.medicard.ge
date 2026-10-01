@@ -1,0 +1,6507 @@
+[
+ {
+  "slot": "g-teaser",
+  "date": "2026-10-02T17:00:00+04:00",
+  "info": {
+   "autoPublish": true,
+   "draft": false,
+   "descendants": [],
+   "hasNotReadNotes": false,
+   "shortener": false,
+   "smartLinkData": {
+    "ids": []
+   },
+   "media": [
+    "https://medicard.ge/press/medirun-glow/f00-teaser.jpg"
+   ],
+   "mediaAltText": [],
+   "publicationDate": {
+    "dateTime": "2026-10-02T17:00:00",
+    "timezone": "Asia/Tbilisi"
+   },
+   "providers": [
+    {
+     "network": "facebook"
+    },
+    {
+     "network": "instagram"
+    }
+   ],
+   "text": "რაღაც აინთება. ✨\n\nხვალ, 3 ოქტომბერს, თბილისში ახალი თამაში იწყება.\n\nჩამოტვირთე MEDICARD დღესვე, რომ ხვალ პირველებს შორის იყო. 👇\n\n📲 ჩამოტვირთე უფასოდ iPhone-ზე:\nhttps://apps.apple.com/app/id6812517519\n🌐 საიტი და ვებ-ვერსია: https://medicard.ge\n🤖 Android — სულ მალე\n\n#გაანათეთბილისი #MEDIRUN #MEDICARD #თბილისი #საქართველო",
+   "firstCommentText": "📲 iPhone: https://apps.apple.com/app/id6812517519\n💻 ვებ-ვერსია: https://medicard.ge/app\n🤖 Android — სულ მალე",
+   "facebookData": {
+    "type": "POST"
+   },
+   "instagramData": {
+    "type": "POST",
+    "isAiGenerated": true
+   }
+  },
+  "record": {
+   "campaign": "medirun-glow-2026",
+   "slot": "g-teaser",
+   "networks": [
+    "facebook",
+    "instagram"
+   ],
+   "kind": "POST",
+   "pillar": "MEDIRUN",
+   "title": "რაღაც აინთება. ✨",
+   "text": "რაღაც აინთება. ✨\n\nხვალ, 3 ოქტომბერს, თბილისში ახალი თამაში იწყება.\n\nჩამოტვირთე MEDICARD დღესვე, რომ ხვალ პირველებს შორის იყო. 👇\n\n📲 ჩამოტვირთე უფასოდ iPhone-ზე:\nhttps://apps.apple.com/app/id6812517519\n🌐 საიტი და ვებ-ვერსია: https://medicard.ge\n🤖 Android — სულ მალე\n\n#გაანათეთბილისი #MEDIRUN #MEDICARD #თბილისი #საქართველო",
+   "textEn": null,
+   "mediaUrls": [
+    "https://medicard.ge/press/medirun-glow/f00-teaser.jpg"
+   ],
+   "scheduledAt": "2026-10-02T17:00:00+04:00",
+   "status": "SCHEDULED",
+   "notes": "MEDIRUN · გაანათე თბილისი · Metricool: ავტომატური გამოქვეყნება · სურათები AI-ით შექმნილი (Instagram-ზე მონიშნული)"
+  }
+ },
+ {
+  "slot": "g-teaser-s1",
+  "date": "2026-10-02T18:30:00+04:00",
+  "info": {
+   "autoPublish": true,
+   "draft": false,
+   "descendants": [],
+   "hasNotReadNotes": false,
+   "shortener": false,
+   "smartLinkData": {
+    "ids": []
+   },
+   "media": [
+    "https://medicard.ge/press/medirun-glow/s01-teaser.jpg"
+   ],
+   "mediaAltText": [],
+   "publicationDate": {
+    "dateTime": "2026-10-02T18:30:00",
+    "timezone": "Asia/Tbilisi"
+   },
+   "providers": [
+    {
+     "network": "facebook"
+    },
+    {
+     "network": "instagram"
+    }
+   ],
+   "facebookData": {
+    "type": "STORY"
+   },
+   "instagramData": {
+    "type": "STORY",
+    "isAiGenerated": true
+   }
+  },
+  "record": {
+   "campaign": "medirun-glow-2026",
+   "slot": "g-teaser-s1",
+   "networks": [
+    "facebook",
+    "instagram"
+   ],
+   "kind": "STORY",
+   "pillar": "MEDIRUN",
+   "title": "სთორი · s01-teaser",
+   "text": "",
+   "textEn": null,
+   "mediaUrls": [
+    "https://medicard.ge/press/medirun-glow/s01-teaser.jpg"
+   ],
+   "scheduledAt": "2026-10-02T18:30:00+04:00",
+   "status": "SCHEDULED",
+   "notes": "MEDIRUN · გაანათე თბილისი · Metricool: ავტომატური გამოქვეყნება · სურათები AI-ით შექმნილი (Instagram-ზე მონიშნული)"
+  }
+ },
+ {
+  "slot": "g-teaser-s2",
+  "date": "2026-10-02T21:30:00+04:00",
+  "info": {
+   "autoPublish": true,
+   "draft": false,
+   "descendants": [],
+   "hasNotReadNotes": false,
+   "shortener": false,
+   "smartLinkData": {
+    "ids": []
+   },
+   "media": [
+    "https://medicard.ge/press/medirun-glow/s02-teaser.jpg"
+   ],
+   "mediaAltText": [],
+   "publicationDate": {
+    "dateTime": "2026-10-02T21:30:00",
+    "timezone": "Asia/Tbilisi"
+   },
+   "providers": [
+    {
+     "network": "facebook"
+    },
+    {
+     "network": "instagram"
+    }
+   ],
+   "facebookData": {
+    "type": "STORY"
+   },
+   "instagramData": {
+    "type": "STORY",
+    "isAiGenerated": true
+   }
+  },
+  "record": {
+   "campaign": "medirun-glow-2026",
+   "slot": "g-teaser-s2",
+   "networks": [
+    "facebook",
+    "instagram"
+   ],
+   "kind": "STORY",
+   "pillar": "MEDIRUN",
+   "title": "სთორი · s02-teaser",
+   "text": "",
+   "textEn": null,
+   "mediaUrls": [
+    "https://medicard.ge/press/medirun-glow/s02-teaser.jpg"
+   ],
+   "scheduledAt": "2026-10-02T21:30:00+04:00",
+   "status": "SCHEDULED",
+   "notes": "MEDIRUN · გაანათე თბილისი · Metricool: ავტომატური გამოქვეყნება · სურათები AI-ით შექმნილი (Instagram-ზე მონიშნული)"
+  }
+ },
+ {
+  "slot": "g-launch-s",
+  "date": "2026-10-03T08:30:00+04:00",
+  "info": {
+   "autoPublish": true,
+   "draft": false,
+   "descendants": [],
+   "hasNotReadNotes": false,
+   "shortener": false,
+   "smartLinkData": {
+    "ids": []
+   },
+   "media": [
+    "https://medicard.ge/press/medirun-glow/s03-launch.jpg"
+   ],
+   "mediaAltText": [],
+   "publicationDate": {
+    "dateTime": "2026-10-03T08:30:00",
+    "timezone": "Asia/Tbilisi"
+   },
+   "providers": [
+    {
+     "network": "facebook"
+    },
+    {
+     "network": "instagram"
+    }
+   ],
+   "facebookData": {
+    "type": "STORY"
+   },
+   "instagramData": {
+    "type": "STORY",
+    "isAiGenerated": true
+   }
+  },
+  "record": {
+   "campaign": "medirun-glow-2026",
+   "slot": "g-launch-s",
+   "networks": [
+    "facebook",
+    "instagram"
+   ],
+   "kind": "STORY",
+   "pillar": "MEDIRUN",
+   "title": "სთორი · s03-launch",
+   "text": "",
+   "textEn": null,
+   "mediaUrls": [
+    "https://medicard.ge/press/medirun-glow/s03-launch.jpg"
+   ],
+   "scheduledAt": "2026-10-03T08:30:00+04:00",
+   "status": "SCHEDULED",
+   "notes": "MEDIRUN · გაანათე თბილისი · Metricool: ავტომატური გამოქვეყნება · სურათები AI-ით შექმნილი (Instagram-ზე მონიშნული)"
+  }
+ },
+ {
+  "slot": "g-launch",
+  "date": "2026-10-03T12:00:00+04:00",
+  "info": {
+   "autoPublish": true,
+   "draft": false,
+   "descendants": [],
+   "hasNotReadNotes": false,
+   "shortener": false,
+   "smartLinkData": {
+    "ids": []
+   },
+   "media": [
+    "https://medicard.ge/press/medirun-glow/f01-key.jpg",
+    "https://medicard.ge/press/medirun-glow/f02-how.jpg",
+    "https://medicard.ge/press/medirun-glow/f03-week.jpg",
+    "https://medicard.ge/press/medirun-glow/f04-levels.jpg",
+    "https://medicard.ge/press/medirun-glow/f13-safety.jpg"
+   ],
+   "mediaAltText": [],
+   "publicationDate": {
+    "dateTime": "2026-10-03T12:00:00",
+    "timezone": "Asia/Tbilisi"
+   },
+   "providers": [
+    {
+     "network": "facebook"
+    },
+    {
+     "network": "instagram"
+    }
+   ],
+   "text": "დაიწყო. 🌃\n\nთბილისში საჩუქრები დაიმალა. ჩართე MEDIRUN, გაისეირნე და იგრძენი, როგორ აჩქარდება ტელეფონის გული, როცა ყუთს მიუახლოვდები.\n\n📅 ორშაბათი–პარასკევი: მცირე ყუთები, 08:30-სა და 18:00-ზე\n🎁 შაბათი–კვირა: უფრო დიდი ყუთები, 10:30-სა და 17:30-ზე\n🌧 შაბათს, 16:00-ზე: საჩუქრების წვიმა ერთ პარკში\n🔴 31 დეკემბერს: წითელი iPhone 18 Pro Max შუქურებისთვის\n\nყუთებში Medi Coins-ია: ავტომატურად ჩაირიცხება და ჯილდოებზე გადაცვლი.\n\nგადაფურცლე და ნახე, როგორ ითამაშო 👉\n\n📲 ჩამოტვირთე უფასოდ iPhone-ზე:\nhttps://apps.apple.com/app/id6812517519\n🌐 საიტი და ვებ-ვერსია: https://medicard.ge\n🤖 Android — სულ მალე\n\n#გაანათეთბილისი #MEDIRUN #MEDICARD #თბილისი #საქართველო",
+   "firstCommentText": "📲 iPhone: https://apps.apple.com/app/id6812517519\n💻 ვებ-ვერსია: https://medicard.ge/app\n🤖 Android — სულ მალე",
+   "facebookData": {
+    "type": "POST"
+   },
+   "instagramData": {
+    "type": "POST",
+    "isAiGenerated": true
+   }
+  },
+  "record": {
+   "campaign": "medirun-glow-2026",
+   "slot": "g-launch",
+   "networks": [
+    "facebook",
+    "instagram"
+   ],
+   "kind": "CAROUSEL",
+   "pillar": "MEDIRUN",
+   "title": "დაიწყო. 🌃",
+   "text": "დაიწყო. 🌃\n\nთბილისში საჩუქრები დაიმალა. ჩართე MEDIRUN, გაისეირნე და იგრძენი, როგორ აჩქარდება ტელეფონის გული, როცა ყუთს მიუახლოვდები.\n\n📅 ორშაბათი–პარასკევი: მცირე ყუთები, 08:30-სა და 18:00-ზე\n🎁 შაბათი–კვირა: უფრო დიდი ყუთები, 10:30-სა და 17:30-ზე\n🌧 შაბათს, 16:00-ზე: საჩუქრების წვიმა ერთ პარკში\n🔴 31 დეკემბერს: წითელი iPhone 18 Pro Max შუქურებისთვის\n\nყუთებში Medi Coins-ია: ავტომატურად ჩაირიცხება და ჯილდოებზე გადაცვლი.\n\nგადაფურცლე და ნახე, როგორ ითამაშო 👉\n\n📲 ჩამოტვირთე უფასოდ iPhone-ზე:\nhttps://apps.apple.com/app/id6812517519\n🌐 საიტი და ვებ-ვერსია: https://medicard.ge\n🤖 Android — სულ მალე\n\n#გაანათეთბილისი #MEDIRUN #MEDICARD #თბილისი #საქართველო",
+   "textEn": null,
+   "mediaUrls": [
+    "https://medicard.ge/press/medirun-glow/f01-key.jpg",
+    "https://medicard.ge/press/medirun-glow/f02-how.jpg",
+    "https://medicard.ge/press/medirun-glow/f03-week.jpg",
+    "https://medicard.ge/press/medirun-glow/f04-levels.jpg",
+    "https://medicard.ge/press/medirun-glow/f13-safety.jpg"
+   ],
+   "scheduledAt": "2026-10-03T12:00:00+04:00",
+   "status": "SCHEDULED",
+   "notes": "MEDIRUN · გაანათე თბილისი · Metricool: ავტომატური გამოქვეყნება · სურათები AI-ით შექმნილი (Instagram-ზე მონიშნული)"
+  }
+ },
+ {
+  "slot": "g-launch-how",
+  "date": "2026-10-03T18:00:00+04:00",
+  "info": {
+   "autoPublish": true,
+   "draft": false,
+   "descendants": [],
+   "hasNotReadNotes": false,
+   "shortener": false,
+   "smartLinkData": {
+    "ids": []
+   },
+   "media": [
+    "https://medicard.ge/press/medirun-glow/s10-how.jpg"
+   ],
+   "mediaAltText": [],
+   "publicationDate": {
+    "dateTime": "2026-10-03T18:00:00",
+    "timezone": "Asia/Tbilisi"
+   },
+   "providers": [
+    {
+     "network": "facebook"
+    },
+    {
+     "network": "instagram"
+    }
+   ],
+   "facebookData": {
+    "type": "STORY"
+   },
+   "instagramData": {
+    "type": "STORY",
+    "isAiGenerated": true
+   }
+  },
+  "record": {
+   "campaign": "medirun-glow-2026",
+   "slot": "g-launch-how",
+   "networks": [
+    "facebook",
+    "instagram"
+   ],
+   "kind": "STORY",
+   "pillar": "MEDIRUN",
+   "title": "სთორი · s10-how",
+   "text": "",
+   "textEn": null,
+   "mediaUrls": [
+    "https://medicard.ge/press/medirun-glow/s10-how.jpg"
+   ],
+   "scheduledAt": "2026-10-03T18:00:00+04:00",
+   "status": "SCHEDULED",
+   "notes": "MEDIRUN · გაანათე თბილისი · Metricool: ავტომატური გამოქვეყნება · სურათები AI-ით შექმნილი (Instagram-ზე მონიშნული)"
+  }
+ },
+ {
+  "slot": "g-iphone",
+  "date": "2026-10-04T13:00:00+04:00",
+  "info": {
+   "autoPublish": true,
+   "draft": false,
+   "descendants": [],
+   "hasNotReadNotes": false,
+   "shortener": false,
+   "smartLinkData": {
+    "ids": []
+   },
+   "media": [
+    "https://medicard.ge/press/medirun-glow/f05-iphone.jpg"
+   ],
+   "mediaAltText": [],
+   "publicationDate": {
+    "dateTime": "2026-10-04T13:00:00",
+    "timezone": "Asia/Tbilisi"
+   },
+   "providers": [
+    {
+     "network": "facebook"
+    },
+    {
+     "network": "instagram"
+    }
+   ],
+   "text": "31 დეკემბერი, 12:00. 🔴\n\nახალი წლის წინა დღეს თბილისში ერთი ყუთი დაიმალება — მასში წითელი iPhone 18 Pro Max იქნება.\n\nამ ყუთს ყველა ვერ დაინახავს. ის მხოლოდ მათ გამოუჩნდებათ, ვინც MEDIRUN-ში თბილისის 1%-ს გაანათებს — ეს დაახლოებით 50 კილომეტრი ახალი ქუჩაა.\n\nდრო 31 დეკემბრამდე გაქვს. ვინც ყუთს პირველი გახსნის, iPhone-ს ის წაიღებს.\n\nდღესვე დაიწყე 👟\n\n📲 ჩამოტვირთე უფასოდ iPhone-ზე:\nhttps://apps.apple.com/app/id6812517519\n🌐 საიტი და ვებ-ვერსია: https://medicard.ge\n🤖 Android — სულ მალე\n\n#გაანათეთბილისი #MEDIRUN #MEDICARD #თბილისი #საქართველო",
+   "firstCommentText": "📲 iPhone: https://apps.apple.com/app/id6812517519\n💻 ვებ-ვერსია: https://medicard.ge/app\n🤖 Android — სულ მალე",
+   "facebookData": {
+    "type": "POST"
+   },
+   "instagramData": {
+    "type": "POST",
+    "isAiGenerated": true
+   }
+  },
+  "record": {
+   "campaign": "medirun-glow-2026",
+   "slot": "g-iphone",
+   "networks": [
+    "facebook",
+    "instagram"
+   ],
+   "kind": "POST",
+   "pillar": "MEDIRUN",
+   "title": "31 დეკემბერი, 12:00. 🔴",
+   "text": "31 დეკემბერი, 12:00. 🔴\n\nახალი წლის წინა დღეს თბილისში ერთი ყუთი დაიმალება — მასში წითელი iPhone 18 Pro Max იქნება.\n\nამ ყუთს ყველა ვერ დაინახავს. ის მხოლოდ მათ გამოუჩნდებათ, ვინც MEDIRUN-ში თბილისის 1%-ს გაანათებს — ეს დაახლოებით 50 კილომეტრი ახალი ქუჩაა.\n\nდრო 31 დეკემბრამდე გაქვს. ვინც ყუთს პირველი გახსნის, iPhone-ს ის წაიღებს.\n\nდღესვე დაიწყე 👟\n\n📲 ჩამოტვირთე უფასოდ iPhone-ზე:\nhttps://apps.apple.com/app/id6812517519\n🌐 საიტი და ვებ-ვერსია: https://medicard.ge\n🤖 Android — სულ მალე\n\n#გაანათეთბილისი #MEDIRUN #MEDICARD #თბილისი #საქართველო",
+   "textEn": null,
+   "mediaUrls": [
+    "https://medicard.ge/press/medirun-glow/f05-iphone.jpg"
+   ],
+   "scheduledAt": "2026-10-04T13:00:00+04:00",
+   "status": "SCHEDULED",
+   "notes": "MEDIRUN · გაანათე თბილისი · Metricool: ავტომატური გამოქვეყნება · სურათები AI-ით შექმნილი (Instagram-ზე მონიშნული)"
+  }
+ },
+ {
+  "slot": "g-weekday-10-05",
+  "date": "2026-10-05T08:15:00+04:00",
+  "info": {
+   "autoPublish": true,
+   "draft": false,
+   "descendants": [],
+   "hasNotReadNotes": false,
+   "shortener": false,
+   "smartLinkData": {
+    "ids": []
+   },
+   "media": [
+    "https://medicard.ge/press/medirun-glow/s04-weekday.jpg"
+   ],
+   "mediaAltText": [],
+   "publicationDate": {
+    "dateTime": "2026-10-05T08:15:00",
+    "timezone": "Asia/Tbilisi"
+   },
+   "providers": [
+    {
+     "network": "facebook"
+    },
+    {
+     "network": "instagram"
+    }
+   ],
+   "facebookData": {
+    "type": "STORY"
+   },
+   "instagramData": {
+    "type": "STORY",
+    "isAiGenerated": true
+   }
+  },
+  "record": {
+   "campaign": "medirun-glow-2026",
+   "slot": "g-weekday-10-05",
+   "networks": [
+    "facebook",
+    "instagram"
+   ],
+   "kind": "STORY",
+   "pillar": "MEDIRUN",
+   "title": "სთორი · s04-weekday",
+   "text": "",
+   "textEn": null,
+   "mediaUrls": [
+    "https://medicard.ge/press/medirun-glow/s04-weekday.jpg"
+   ],
+   "scheduledAt": "2026-10-05T08:15:00+04:00",
+   "status": "SCHEDULED",
+   "notes": "MEDIRUN · გაანათე თბილისი · Metricool: ავტომატური გამოქვეყნება · სურათები AI-ით შექმნილი (Instagram-ზე მონიშნული)"
+  }
+ },
+ {
+  "slot": "g-week1",
+  "date": "2026-10-06T13:00:00+04:00",
+  "info": {
+   "autoPublish": true,
+   "draft": false,
+   "descendants": [],
+   "hasNotReadNotes": false,
+   "shortener": false,
+   "smartLinkData": {
+    "ids": []
+   },
+   "media": [
+    "https://medicard.ge/press/medirun-glow/f06-week1.jpg"
+   ],
+   "mediaAltText": [],
+   "publicationDate": {
+    "dateTime": "2026-10-06T13:00:00",
+    "timezone": "Asia/Tbilisi"
+   },
+   "providers": [
+    {
+     "network": "facebook"
+    },
+    {
+     "network": "instagram"
+    }
+   ],
+   "text": "🏛 კვირა 1 — ძველი ქალაქის ამბები\n\n3–11 ოქტომბერს მეტი ყუთი ძველ თბილისშია: მოედნებთან, ხიდებთან და აბანოებთან.\n\nყუთები საჯარო ბილიკებზეა, ოღონდ პარკების სიღრმეში — ცოტა ძებნა მოგიწევს. 😉\n\n⭐ შაბათს, 10 ოქტომბერს, 16:00-ზე — საჩუქრების წვიმა. რომელ პარკში — იმ დღეს, 15:00-ზე გეტყვით.\n\n📲 ჩამოტვირთე უფასოდ iPhone-ზე:\nhttps://apps.apple.com/app/id6812517519\n🌐 საიტი და ვებ-ვერსია: https://medicard.ge\n🤖 Android — სულ მალე\n\n#გაანათეთბილისი #MEDIRUN #MEDICARD #თბილისი #საქართველო",
+   "firstCommentText": "📲 iPhone: https://apps.apple.com/app/id6812517519\n💻 ვებ-ვერსია: https://medicard.ge/app\n🤖 Android — სულ მალე",
+   "facebookData": {
+    "type": "POST"
+   },
+   "instagramData": {
+    "type": "POST",
+    "isAiGenerated": true
+   }
+  },
+  "record": {
+   "campaign": "medirun-glow-2026",
+   "slot": "g-week1",
+   "networks": [
+    "facebook",
+    "instagram"
+   ],
+   "kind": "POST",
+   "pillar": "MEDIRUN",
+   "title": "🏛 კვირა 1 — ძველი ქალაქის ამბები",
+   "text": "🏛 კვირა 1 — ძველი ქალაქის ამბები\n\n3–11 ოქტომბერს მეტი ყუთი ძველ თბილისშია: მოედნებთან, ხიდებთან და აბანოებთან.\n\nყუთები საჯარო ბილიკებზეა, ოღონდ პარკების სიღრმეში — ცოტა ძებნა მოგიწევს. 😉\n\n⭐ შაბათს, 10 ოქტომბერს, 16:00-ზე — საჩუქრების წვიმა. რომელ პარკში — იმ დღეს, 15:00-ზე გეტყვით.\n\n📲 ჩამოტვირთე უფასოდ iPhone-ზე:\nhttps://apps.apple.com/app/id6812517519\n🌐 საიტი და ვებ-ვერსია: https://medicard.ge\n🤖 Android — სულ მალე\n\n#გაანათეთბილისი #MEDIRUN #MEDICARD #თბილისი #საქართველო",
+   "textEn": null,
+   "mediaUrls": [
+    "https://medicard.ge/press/medirun-glow/f06-week1.jpg"
+   ],
+   "scheduledAt": "2026-10-06T13:00:00+04:00",
+   "status": "SCHEDULED",
+   "notes": "MEDIRUN · გაანათე თბილისი · Metricool: ავტომატური გამოქვეყნება · სურათები AI-ით შექმნილი (Instagram-ზე მონიშნული)"
+  }
+ },
+ {
+  "slot": "g-li-launch",
+  "date": "2026-10-07T09:30:00+04:00",
+  "info": {
+   "autoPublish": true,
+   "draft": false,
+   "descendants": [],
+   "hasNotReadNotes": false,
+   "shortener": false,
+   "smartLinkData": {
+    "ids": []
+   },
+   "media": [
+    "https://medicard.ge/press/medirun-glow/f01-key.jpg"
+   ],
+   "mediaAltText": [],
+   "publicationDate": {
+    "dateTime": "2026-10-07T09:30:00",
+    "timezone": "Asia/Tbilisi"
+   },
+   "providers": [
+    {
+     "network": "linkedin"
+    }
+   ],
+   "text": "We turned Tbilisi into a game.\n\nMEDIRUN is the walking game inside MEDICARD. Streets light up on your map as you walk, and when you get close to a hidden gift, your phone starts beating like a heart.\n\nFrom 3 October to 31 December the city is the playing field:\n• Monday to Friday, a few small boxes hidden deep inside parks\n• Weekends, bigger ones\n• Saturdays at 16:00, a gift rain in one park, revealed an hour earlier with a riddle\n• 31 December, one red iPhone 18 Pro Max, visible only to players who have lit 1% of Tbilisi (about 50 km of new streets)\n\nThe world doesn't need another tracker. It needs a reason to go outside.\n\n📲 Download free on iPhone: https://apps.apple.com/app/id6812517519\n🌐 Website & web app: https://medicard.ge\n\n#MEDIRUN #MEDICARD #Tbilisi #Georgia #HealthTech",
+   "linkedinData": {
+    "type": "post",
+    "previewIncluded": true,
+    "publishImagesAsPDF": false
+   }
+  },
+  "record": {
+   "campaign": "medirun-glow-2026",
+   "slot": "g-li-launch",
+   "networks": [
+    "linkedin"
+   ],
+   "kind": "POST",
+   "pillar": "MEDIRUN",
+   "title": "We turned Tbilisi into a game.",
+   "text": "We turned Tbilisi into a game.\n\nMEDIRUN is the walking game inside MEDICARD. Streets light up on your map as you walk, and when you get close to a hidden gift, your phone starts beating like a heart.\n\nFrom 3 October to 31 December the city is the playing field:\n• Monday to Friday, a few small boxes hidden deep inside parks\n• Weekends, bigger ones\n• Saturdays at 16:00, a gift rain in one park, revealed an hour earlier with a riddle\n• 31 December, one red iPhone 18 Pro Max, visible only to players who have lit 1% of Tbilisi (about 50 km of new streets)\n\nThe world doesn't need another tracker. It needs a reason to go outside.\n\n📲 Download free on iPhone: https://apps.apple.com/app/id6812517519\n🌐 Website & web app: https://medicard.ge\n\n#MEDIRUN #MEDICARD #Tbilisi #Georgia #HealthTech",
+   "textEn": null,
+   "mediaUrls": [
+    "https://medicard.ge/press/medirun-glow/f01-key.jpg"
+   ],
+   "scheduledAt": "2026-10-07T09:30:00+04:00",
+   "status": "SCHEDULED",
+   "notes": "MEDIRUN · გაანათე თბილისი · Metricool: ავტომატური გამოქვეყნება · სურათები AI-ით შექმნილი (Instagram-ზე მონიშნული)"
+  }
+ },
+ {
+  "slot": "g-partners",
+  "date": "2026-10-07T13:00:00+04:00",
+  "info": {
+   "autoPublish": true,
+   "draft": false,
+   "descendants": [],
+   "hasNotReadNotes": false,
+   "shortener": false,
+   "smartLinkData": {
+    "ids": []
+   },
+   "media": [
+    "https://medicard.ge/press/medirun-glow/f12-partner.jpg"
+   ],
+   "mediaAltText": [],
+   "publicationDate": {
+    "dateTime": "2026-10-07T13:00:00",
+    "timezone": "Asia/Tbilisi"
+   },
+   "providers": [
+    {
+     "network": "facebook"
+    },
+    {
+     "network": "instagram"
+    }
+   ],
+   "text": "გაქვს კაფე, სპორტდარბაზი, მაღაზია ან აფთიაქი თბილისში? ☕️\n\nMEDIRUN-ის მოთამაშეები ქალაქში დამალულ საჩუქრებს ეძებენ. გახდი საჩუქრის წერტილი: შენს კართან ვირტუალურ ყუთს დავდებთ და მოთამაშეები პირდაპირ შენთან მოვლენ.\n\nშენგან — რამდენიმე ათეული მცირე საჩუქარი. ჩვენგან — სტუმრები, მოხსენიებები და ზუსტი რიცხვი, რამდენმა გახსნა შენი ყუთი. ფულს არ ვითხოვთ.\n\nმოგვწერე: support@medicard.ge\n\n📲 ჩამოტვირთე უფასოდ iPhone-ზე:\nhttps://apps.apple.com/app/id6812517519\n🌐 საიტი და ვებ-ვერსია: https://medicard.ge\n🤖 Android — სულ მალე\n\n#გაანათეთბილისი #MEDIRUN #MEDICARD #თბილისი #საქართველო",
+   "firstCommentText": "📲 iPhone: https://apps.apple.com/app/id6812517519\n💻 ვებ-ვერსია: https://medicard.ge/app\n🤖 Android — სულ მალე",
+   "facebookData": {
+    "type": "POST"
+   },
+   "instagramData": {
+    "type": "POST",
+    "isAiGenerated": true
+   }
+  },
+  "record": {
+   "campaign": "medirun-glow-2026",
+   "slot": "g-partners",
+   "networks": [
+    "facebook",
+    "instagram"
+   ],
+   "kind": "POST",
+   "pillar": "MEDIRUN",
+   "title": "გაქვს კაფე, სპორტდარბაზი, მაღაზია ან აფთიაქი თბილისში? ☕️",
+   "text": "გაქვს კაფე, სპორტდარბაზი, მაღაზია ან აფთიაქი თბილისში? ☕️\n\nMEDIRUN-ის მოთამაშეები ქალაქში დამალულ საჩუქრებს ეძებენ. გახდი საჩუქრის წერტილი: შენს კართან ვირტუალურ ყუთს დავდებთ და მოთამაშეები პირდაპირ შენთან მოვლენ.\n\nშენგან — რამდენიმე ათეული მცირე საჩუქარი. ჩვენგან — სტუმრები, მოხსენიებები და ზუსტი რიცხვი, რამდენმა გახსნა შენი ყუთი. ფულს არ ვითხოვთ.\n\nმოგვწერე: support@medicard.ge\n\n📲 ჩამოტვირთე უფასოდ iPhone-ზე:\nhttps://apps.apple.com/app/id6812517519\n🌐 საიტი და ვებ-ვერსია: https://medicard.ge\n🤖 Android — სულ მალე\n\n#გაანათეთბილისი #MEDIRUN #MEDICARD #თბილისი #საქართველო",
+   "textEn": null,
+   "mediaUrls": [
+    "https://medicard.ge/press/medirun-glow/f12-partner.jpg"
+   ],
+   "scheduledAt": "2026-10-07T13:00:00+04:00",
+   "status": "SCHEDULED",
+   "notes": "MEDIRUN · გაანათე თბილისი · Metricool: ავტომატური გამოქვეყნება · სურათები AI-ით შექმნილი (Instagram-ზე მონიშნული)"
+  }
+ },
+ {
+  "slot": "g-sat-01",
+  "date": "2026-10-09T13:00:00+04:00",
+  "info": {
+   "autoPublish": true,
+   "draft": false,
+   "descendants": [],
+   "hasNotReadNotes": false,
+   "shortener": false,
+   "smartLinkData": {
+    "ids": []
+   },
+   "media": [
+    "https://medicard.ge/press/medirun-glow/f14-saturday-01.jpg"
+   ],
+   "mediaAltText": [],
+   "publicationDate": {
+    "dateTime": "2026-10-09T13:00:00",
+    "timezone": "Asia/Tbilisi"
+   },
+   "providers": [
+    {
+     "network": "facebook"
+    },
+    {
+     "network": "instagram"
+    }
+   ],
+   "text": "🌧 შაბათის წვიმა — 10 ოქტომბერი, 16:00\n\nხვალ ერთ თბილისურ პარკში საჩუქრების წვიმა მოვა: ყუთებში 50 და 100 Medi Coins იქნება.\n\nრომელ პარკში? 15:00-ზე სთორიში გამოცანას გამოვაქვეყნებთ, 15:30-ზე — მეორე მინიშნებას.\n\nჩართე შეტყობინებები, რომ მინიშნება არ გამოგრჩეს. 🔔\n\n📲 ჩამოტვირთე უფასოდ iPhone-ზე:\nhttps://apps.apple.com/app/id6812517519\n🌐 საიტი და ვებ-ვერსია: https://medicard.ge\n🤖 Android — სულ მალე\n\n#გაანათეთბილისი #MEDIRUN #MEDICARD #თბილისი #საქართველო",
+   "firstCommentText": "📲 iPhone: https://apps.apple.com/app/id6812517519\n💻 ვებ-ვერსია: https://medicard.ge/app\n🤖 Android — სულ მალე",
+   "facebookData": {
+    "type": "POST"
+   },
+   "instagramData": {
+    "type": "POST",
+    "isAiGenerated": true
+   }
+  },
+  "record": {
+   "campaign": "medirun-glow-2026",
+   "slot": "g-sat-01",
+   "networks": [
+    "facebook",
+    "instagram"
+   ],
+   "kind": "POST",
+   "pillar": "MEDIRUN",
+   "title": "🌧 შაბათის წვიმა — 10 ოქტომბერი, 16:00",
+   "text": "🌧 შაბათის წვიმა — 10 ოქტომბერი, 16:00\n\nხვალ ერთ თბილისურ პარკში საჩუქრების წვიმა მოვა: ყუთებში 50 და 100 Medi Coins იქნება.\n\nრომელ პარკში? 15:00-ზე სთორიში გამოცანას გამოვაქვეყნებთ, 15:30-ზე — მეორე მინიშნებას.\n\nჩართე შეტყობინებები, რომ მინიშნება არ გამოგრჩეს. 🔔\n\n📲 ჩამოტვირთე უფასოდ iPhone-ზე:\nhttps://apps.apple.com/app/id6812517519\n🌐 საიტი და ვებ-ვერსია: https://medicard.ge\n🤖 Android — სულ მალე\n\n#გაანათეთბილისი #MEDIRUN #MEDICARD #თბილისი #საქართველო",
+   "textEn": null,
+   "mediaUrls": [
+    "https://medicard.ge/press/medirun-glow/f14-saturday-01.jpg"
+   ],
+   "scheduledAt": "2026-10-09T13:00:00+04:00",
+   "status": "SCHEDULED",
+   "notes": "MEDIRUN · გაანათე თბილისი · Metricool: ავტომატური გამოქვეყნება · სურათები AI-ით შექმნილი (Instagram-ზე მონიშნული)"
+  }
+ },
+ {
+  "slot": "g-sat-01-tomorrow",
+  "date": "2026-10-09T21:00:00+04:00",
+  "info": {
+   "autoPublish": true,
+   "draft": false,
+   "descendants": [],
+   "hasNotReadNotes": false,
+   "shortener": false,
+   "smartLinkData": {
+    "ids": []
+   },
+   "media": [
+    "https://medicard.ge/press/medirun-glow/s07-tomorrow-01.jpg"
+   ],
+   "mediaAltText": [],
+   "publicationDate": {
+    "dateTime": "2026-10-09T21:00:00",
+    "timezone": "Asia/Tbilisi"
+   },
+   "providers": [
+    {
+     "network": "facebook"
+    },
+    {
+     "network": "instagram"
+    }
+   ],
+   "facebookData": {
+    "type": "STORY"
+   },
+   "instagramData": {
+    "type": "STORY",
+    "isAiGenerated": true
+   }
+  },
+  "record": {
+   "campaign": "medirun-glow-2026",
+   "slot": "g-sat-01-tomorrow",
+   "networks": [
+    "facebook",
+    "instagram"
+   ],
+   "kind": "STORY",
+   "pillar": "MEDIRUN",
+   "title": "სთორი · s07-tomorrow-01",
+   "text": "",
+   "textEn": null,
+   "mediaUrls": [
+    "https://medicard.ge/press/medirun-glow/s07-tomorrow-01.jpg"
+   ],
+   "scheduledAt": "2026-10-09T21:00:00+04:00",
+   "status": "SCHEDULED",
+   "notes": "MEDIRUN · გაანათე თბილისი · Metricool: ავტომატური გამოქვეყნება · სურათები AI-ით შექმნილი (Instagram-ზე მონიშნული)"
+  }
+ },
+ {
+  "slot": "g-sat-01-weekend",
+  "date": "2026-10-10T09:30:00+04:00",
+  "info": {
+   "autoPublish": true,
+   "draft": false,
+   "descendants": [],
+   "hasNotReadNotes": false,
+   "shortener": false,
+   "smartLinkData": {
+    "ids": []
+   },
+   "media": [
+    "https://medicard.ge/press/medirun-glow/s05-weekend.jpg"
+   ],
+   "mediaAltText": [],
+   "publicationDate": {
+    "dateTime": "2026-10-10T09:30:00",
+    "timezone": "Asia/Tbilisi"
+   },
+   "providers": [
+    {
+     "network": "facebook"
+    },
+    {
+     "network": "instagram"
+    }
+   ],
+   "facebookData": {
+    "type": "STORY"
+   },
+   "instagramData": {
+    "type": "STORY",
+    "isAiGenerated": true
+   }
+  },
+  "record": {
+   "campaign": "medirun-glow-2026",
+   "slot": "g-sat-01-weekend",
+   "networks": [
+    "facebook",
+    "instagram"
+   ],
+   "kind": "STORY",
+   "pillar": "MEDIRUN",
+   "title": "სთორი · s05-weekend",
+   "text": "",
+   "textEn": null,
+   "mediaUrls": [
+    "https://medicard.ge/press/medirun-glow/s05-weekend.jpg"
+   ],
+   "scheduledAt": "2026-10-10T09:30:00+04:00",
+   "status": "SCHEDULED",
+   "notes": "MEDIRUN · გაანათე თბილისი · Metricool: ავტომატური გამოქვეყნება · სურათები AI-ით შექმნილი (Instagram-ზე მონიშნული)"
+  }
+ },
+ {
+  "slot": "g-sat-01-hint1",
+  "date": "2026-10-10T15:00:00+04:00",
+  "info": {
+   "autoPublish": true,
+   "draft": false,
+   "descendants": [],
+   "hasNotReadNotes": false,
+   "shortener": false,
+   "smartLinkData": {
+    "ids": []
+   },
+   "media": [
+    "https://medicard.ge/press/medirun-glow/s06-hint-01-1.jpg"
+   ],
+   "mediaAltText": [],
+   "publicationDate": {
+    "dateTime": "2026-10-10T15:00:00",
+    "timezone": "Asia/Tbilisi"
+   },
+   "providers": [
+    {
+     "network": "facebook"
+    },
+    {
+     "network": "instagram"
+    }
+   ],
+   "facebookData": {
+    "type": "STORY"
+   },
+   "instagramData": {
+    "type": "STORY",
+    "isAiGenerated": true
+   }
+  },
+  "record": {
+   "campaign": "medirun-glow-2026",
+   "slot": "g-sat-01-hint1",
+   "networks": [
+    "facebook",
+    "instagram"
+   ],
+   "kind": "STORY",
+   "pillar": "MEDIRUN",
+   "title": "სთორი · s06-hint-01-1",
+   "text": "",
+   "textEn": null,
+   "mediaUrls": [
+    "https://medicard.ge/press/medirun-glow/s06-hint-01-1.jpg"
+   ],
+   "scheduledAt": "2026-10-10T15:00:00+04:00",
+   "status": "SCHEDULED",
+   "notes": "MEDIRUN · გაანათე თბილისი · Metricool: ავტომატური გამოქვეყნება · სურათები AI-ით შექმნილი (Instagram-ზე მონიშნული)"
+  }
+ },
+ {
+  "slot": "g-sat-01-hint2",
+  "date": "2026-10-10T15:30:00+04:00",
+  "info": {
+   "autoPublish": true,
+   "draft": false,
+   "descendants": [],
+   "hasNotReadNotes": false,
+   "shortener": false,
+   "smartLinkData": {
+    "ids": []
+   },
+   "media": [
+    "https://medicard.ge/press/medirun-glow/s06-hint-01-2.jpg"
+   ],
+   "mediaAltText": [],
+   "publicationDate": {
+    "dateTime": "2026-10-10T15:30:00",
+    "timezone": "Asia/Tbilisi"
+   },
+   "providers": [
+    {
+     "network": "facebook"
+    },
+    {
+     "network": "instagram"
+    }
+   ],
+   "facebookData": {
+    "type": "STORY"
+   },
+   "instagramData": {
+    "type": "STORY",
+    "isAiGenerated": true
+   }
+  },
+  "record": {
+   "campaign": "medirun-glow-2026",
+   "slot": "g-sat-01-hint2",
+   "networks": [
+    "facebook",
+    "instagram"
+   ],
+   "kind": "STORY",
+   "pillar": "MEDIRUN",
+   "title": "სთორი · s06-hint-01-2",
+   "text": "",
+   "textEn": null,
+   "mediaUrls": [
+    "https://medicard.ge/press/medirun-glow/s06-hint-01-2.jpg"
+   ],
+   "scheduledAt": "2026-10-10T15:30:00+04:00",
+   "status": "SCHEDULED",
+   "notes": "MEDIRUN · გაანათე თბილისი · Metricool: ავტომატური გამოქვეყნება · სურათები AI-ით შექმნილი (Instagram-ზე მონიშნული)"
+  }
+ },
+ {
+  "slot": "g-sat-01-winners",
+  "date": "2026-10-10T18:30:00+04:00",
+  "info": null,
+  "record": {
+   "campaign": "medirun-glow-2026",
+   "slot": "g-sat-01-winners",
+   "networks": [
+    "facebook",
+    "instagram"
+   ],
+   "kind": "STORY",
+   "pillar": "MEDIRUN",
+   "title": "შაბათის წვიმის მპოვნელები — 10 ოქტომბერი (ცოცხლად)",
+   "text": "შაბათის წვიმის მპოვნელები — 10 ოქტომბერი (ცოცხლად)",
+   "textEn": null,
+   "mediaUrls": [],
+   "scheduledAt": "2026-10-10T18:30:00+04:00",
+   "status": "PLANNED",
+   "notes": "ხელით: მხოლოდ რეალური რიცხვები ადმინიდან (MEDIRUN → ჯილდოები); სახელი/ფოტო მხოლოდ თანხმობით."
+  }
+ },
+ {
+  "slot": "g-weekday-10-12",
+  "date": "2026-10-12T08:15:00+04:00",
+  "info": {
+   "autoPublish": true,
+   "draft": false,
+   "descendants": [],
+   "hasNotReadNotes": false,
+   "shortener": false,
+   "smartLinkData": {
+    "ids": []
+   },
+   "media": [
+    "https://medicard.ge/press/medirun-glow/s04-weekday.jpg"
+   ],
+   "mediaAltText": [],
+   "publicationDate": {
+    "dateTime": "2026-10-12T08:15:00",
+    "timezone": "Asia/Tbilisi"
+   },
+   "providers": [
+    {
+     "network": "facebook"
+    },
+    {
+     "network": "instagram"
+    }
+   ],
+   "facebookData": {
+    "type": "STORY"
+   },
+   "instagramData": {
+    "type": "STORY",
+    "isAiGenerated": true
+   }
+  },
+  "record": {
+   "campaign": "medirun-glow-2026",
+   "slot": "g-weekday-10-12",
+   "networks": [
+    "facebook",
+    "instagram"
+   ],
+   "kind": "STORY",
+   "pillar": "MEDIRUN",
+   "title": "სთორი · s04-weekday",
+   "text": "",
+   "textEn": null,
+   "mediaUrls": [
+    "https://medicard.ge/press/medirun-glow/s04-weekday.jpg"
+   ],
+   "scheduledAt": "2026-10-12T08:15:00+04:00",
+   "status": "SCHEDULED",
+   "notes": "MEDIRUN · გაანათე თბილისი · Metricool: ავტომატური გამოქვეყნება · სურათები AI-ით შექმნილი (Instagram-ზე მონიშნული)"
+  }
+ },
+ {
+  "slot": "g-week2",
+  "date": "2026-10-12T13:00:00+04:00",
+  "info": {
+   "autoPublish": true,
+   "draft": false,
+   "descendants": [],
+   "hasNotReadNotes": false,
+   "shortener": false,
+   "smartLinkData": {
+    "ids": []
+   },
+   "media": [
+    "https://medicard.ge/press/medirun-glow/f07-week2.jpg"
+   ],
+   "mediaAltText": [],
+   "publicationDate": {
+    "dateTime": "2026-10-12T13:00:00",
+    "timezone": "Asia/Tbilisi"
+   },
+   "providers": [
+    {
+     "network": "facebook"
+    },
+    {
+     "network": "instagram"
+    }
+   ],
+   "text": "🌳 კვირა 2 — მწვანე თბილისი\n\n12–18 ოქტომბერს მეტი ყუთი ბაღებსა და პარკებშია: ვაკიდან დიღმის ტყე-პარკამდე.\n\nყუთები საჯარო ბილიკებზეა, ოღონდ პარკების სიღრმეში — ცოტა ძებნა მოგიწევს. 😉\n\n⭐ შაბათს, 17 ოქტომბერს, 16:00-ზე — საჩუქრების წვიმა. რომელ პარკში — იმ დღეს, 15:00-ზე გეტყვით.\n\n📲 ჩამოტვირთე უფასოდ iPhone-ზე:\nhttps://apps.apple.com/app/id6812517519\n🌐 საიტი და ვებ-ვერსია: https://medicard.ge\n🤖 Android — სულ მალე\n\n#გაანათეთბილისი #MEDIRUN #MEDICARD #თბილისი #საქართველო",
+   "firstCommentText": "📲 iPhone: https://apps.apple.com/app/id6812517519\n💻 ვებ-ვერსია: https://medicard.ge/app\n🤖 Android — სულ მალე",
+   "facebookData": {
+    "type": "POST"
+   },
+   "instagramData": {
+    "type": "POST",
+    "isAiGenerated": true
+   }
+  },
+  "record": {
+   "campaign": "medirun-glow-2026",
+   "slot": "g-week2",
+   "networks": [
+    "facebook",
+    "instagram"
+   ],
+   "kind": "POST",
+   "pillar": "MEDIRUN",
+   "title": "🌳 კვირა 2 — მწვანე თბილისი",
+   "text": "🌳 კვირა 2 — მწვანე თბილისი\n\n12–18 ოქტომბერს მეტი ყუთი ბაღებსა და პარკებშია: ვაკიდან დიღმის ტყე-პარკამდე.\n\nყუთები საჯარო ბილიკებზეა, ოღონდ პარკების სიღრმეში — ცოტა ძებნა მოგიწევს. 😉\n\n⭐ შაბათს, 17 ოქტომბერს, 16:00-ზე — საჩუქრების წვიმა. რომელ პარკში — იმ დღეს, 15:00-ზე გეტყვით.\n\n📲 ჩამოტვირთე უფასოდ iPhone-ზე:\nhttps://apps.apple.com/app/id6812517519\n🌐 საიტი და ვებ-ვერსია: https://medicard.ge\n🤖 Android — სულ მალე\n\n#გაანათეთბილისი #MEDIRUN #MEDICARD #თბილისი #საქართველო",
+   "textEn": null,
+   "mediaUrls": [
+    "https://medicard.ge/press/medirun-glow/f07-week2.jpg"
+   ],
+   "scheduledAt": "2026-10-12T13:00:00+04:00",
+   "status": "SCHEDULED",
+   "notes": "MEDIRUN · გაანათე თბილისი · Metricool: ავტომატური გამოქვეყნება · სურათები AI-ით შექმნილი (Instagram-ზე მონიშნული)"
+  }
+ },
+ {
+  "slot": "g-li-partners",
+  "date": "2026-10-14T09:30:00+04:00",
+  "info": {
+   "autoPublish": true,
+   "draft": false,
+   "descendants": [],
+   "hasNotReadNotes": false,
+   "shortener": false,
+   "smartLinkData": {
+    "ids": []
+   },
+   "media": [
+    "https://medicard.ge/press/medirun-glow/f12-partner.jpg"
+   ],
+   "mediaAltText": [],
+   "publicationDate": {
+    "dateTime": "2026-10-14T09:30:00",
+    "timezone": "Asia/Tbilisi"
+   },
+   "providers": [
+    {
+     "network": "linkedin"
+    }
+   ],
+   "text": "Tbilisi businesses: want walkers at your door?\n\nDuring “Light up Tbilisi” (3 October – 31 December), MEDIRUN players walk the city looking for hidden gift boxes. A café, gym, shop or pharmacy can become a gift point: we place a virtual box at your door and players come to you.\n\nYou give a few dozen small gifts (a coffee, a discount, a day pass). We bring visitors, mention you in our posts and tell you exactly how many people opened your box. No fees.\n\nWrite to support@medicard.ge\n\n📲 Download free on iPhone: https://apps.apple.com/app/id6812517519\n🌐 Website & web app: https://medicard.ge\n\n#MEDIRUN #Tbilisi #LocalBusiness #Georgia",
+   "linkedinData": {
+    "type": "post",
+    "previewIncluded": true,
+    "publishImagesAsPDF": false
+   }
+  },
+  "record": {
+   "campaign": "medirun-glow-2026",
+   "slot": "g-li-partners",
+   "networks": [
+    "linkedin"
+   ],
+   "kind": "POST",
+   "pillar": "MEDIRUN",
+   "title": "Tbilisi businesses: want walkers at your door?",
+   "text": "Tbilisi businesses: want walkers at your door?\n\nDuring “Light up Tbilisi” (3 October – 31 December), MEDIRUN players walk the city looking for hidden gift boxes. A café, gym, shop or pharmacy can become a gift point: we place a virtual box at your door and players come to you.\n\nYou give a few dozen small gifts (a coffee, a discount, a day pass). We bring visitors, mention you in our posts and tell you exactly how many people opened your box. No fees.\n\nWrite to support@medicard.ge\n\n📲 Download free on iPhone: https://apps.apple.com/app/id6812517519\n🌐 Website & web app: https://medicard.ge\n\n#MEDIRUN #Tbilisi #LocalBusiness #Georgia",
+   "textEn": null,
+   "mediaUrls": [
+    "https://medicard.ge/press/medirun-glow/f12-partner.jpg"
+   ],
+   "scheduledAt": "2026-10-14T09:30:00+04:00",
+   "status": "SCHEDULED",
+   "notes": "MEDIRUN · გაანათე თბილისი · Metricool: ავტომატური გამოქვეყნება · სურათები AI-ით შექმნილი (Instagram-ზე მონიშნული)"
+  }
+ },
+ {
+  "slot": "g-levels-1",
+  "date": "2026-10-14T13:00:00+04:00",
+  "info": {
+   "autoPublish": true,
+   "draft": false,
+   "descendants": [],
+   "hasNotReadNotes": false,
+   "shortener": false,
+   "smartLinkData": {
+    "ids": []
+   },
+   "media": [
+    "https://medicard.ge/press/medirun-glow/f04-levels.jpg"
+   ],
+   "mediaAltText": [],
+   "publicationDate": {
+    "dateTime": "2026-10-14T13:00:00",
+    "timezone": "Asia/Tbilisi"
+   },
+   "providers": [
+    {
+     "network": "facebook"
+    },
+    {
+     "network": "instagram"
+    }
+   ],
+   "text": "რამდენი პროცენტით ანათებს შენი თბილისი? 💡\n\nMEDIRUN-ში ყოველი ახალი ქუჩა შენს რუკაზე ინთება. რაც მეტ ახალ ქუჩას გაივლი, მით უფრო მაღალი იქნება შენი დონე:\n\n✨ 0,1% — ნაპერწკალი\n🏮 0,25% — ფარანი: ნოემბრიდან შაბათის ფარნის ყუთებს დაინახავ\n🔥 0,5% — ჩირაღდანი\n⭐ 1% — შუქურა: 31 დეკემბერს წითელ iPhone 18 Pro Max-ს დაინახავ\n\n1% დაახლოებით 50 კილომეტრი ახალი ქუჩაა. ერთსა და იმავე გზას მეორედ არ ვითვლით.\n\nშენი პროცენტი MEDIRUN-ში ჩანს. 👣\n\n📲 ჩამოტვირთე უფასოდ iPhone-ზე:\nhttps://apps.apple.com/app/id6812517519\n🌐 საიტი და ვებ-ვერსია: https://medicard.ge\n🤖 Android — სულ მალე\n\n#გაანათეთბილისი #MEDIRUN #MEDICARD #თბილისი #საქართველო",
+   "firstCommentText": "📲 iPhone: https://apps.apple.com/app/id6812517519\n💻 ვებ-ვერსია: https://medicard.ge/app\n🤖 Android — სულ მალე",
+   "facebookData": {
+    "type": "POST"
+   },
+   "instagramData": {
+    "type": "POST",
+    "isAiGenerated": true
+   }
+  },
+  "record": {
+   "campaign": "medirun-glow-2026",
+   "slot": "g-levels-1",
+   "networks": [
+    "facebook",
+    "instagram"
+   ],
+   "kind": "POST",
+   "pillar": "MEDIRUN",
+   "title": "რამდენი პროცენტით ანათებს შენი თბილისი? 💡",
+   "text": "რამდენი პროცენტით ანათებს შენი თბილისი? 💡\n\nMEDIRUN-ში ყოველი ახალი ქუჩა შენს რუკაზე ინთება. რაც მეტ ახალ ქუჩას გაივლი, მით უფრო მაღალი იქნება შენი დონე:\n\n✨ 0,1% — ნაპერწკალი\n🏮 0,25% — ფარანი: ნოემბრიდან შაბათის ფარნის ყუთებს დაინახავ\n🔥 0,5% — ჩირაღდანი\n⭐ 1% — შუქურა: 31 დეკემბერს წითელ iPhone 18 Pro Max-ს დაინახავ\n\n1% დაახლოებით 50 კილომეტრი ახალი ქუჩაა. ერთსა და იმავე გზას მეორედ არ ვითვლით.\n\nშენი პროცენტი MEDIRUN-ში ჩანს. 👣\n\n📲 ჩამოტვირთე უფასოდ iPhone-ზე:\nhttps://apps.apple.com/app/id6812517519\n🌐 საიტი და ვებ-ვერსია: https://medicard.ge\n🤖 Android — სულ მალე\n\n#გაანათეთბილისი #MEDIRUN #MEDICARD #თბილისი #საქართველო",
+   "textEn": null,
+   "mediaUrls": [
+    "https://medicard.ge/press/medirun-glow/f04-levels.jpg"
+   ],
+   "scheduledAt": "2026-10-14T13:00:00+04:00",
+   "status": "SCHEDULED",
+   "notes": "MEDIRUN · გაანათე თბილისი · Metricool: ავტომატური გამოქვეყნება · სურათები AI-ით შექმნილი (Instagram-ზე მონიშნული)"
+  }
+ },
+ {
+  "slot": "g-levels-s-10-14",
+  "date": "2026-10-14T20:30:00+04:00",
+  "info": {
+   "autoPublish": true,
+   "draft": false,
+   "descendants": [],
+   "hasNotReadNotes": false,
+   "shortener": false,
+   "smartLinkData": {
+    "ids": []
+   },
+   "media": [
+    "https://medicard.ge/press/medirun-glow/s08-levels.jpg"
+   ],
+   "mediaAltText": [],
+   "publicationDate": {
+    "dateTime": "2026-10-14T20:30:00",
+    "timezone": "Asia/Tbilisi"
+   },
+   "providers": [
+    {
+     "network": "facebook"
+    },
+    {
+     "network": "instagram"
+    }
+   ],
+   "facebookData": {
+    "type": "STORY"
+   },
+   "instagramData": {
+    "type": "STORY",
+    "isAiGenerated": true
+   }
+  },
+  "record": {
+   "campaign": "medirun-glow-2026",
+   "slot": "g-levels-s-10-14",
+   "networks": [
+    "facebook",
+    "instagram"
+   ],
+   "kind": "STORY",
+   "pillar": "MEDIRUN",
+   "title": "სთორი · s08-levels",
+   "text": "",
+   "textEn": null,
+   "mediaUrls": [
+    "https://medicard.ge/press/medirun-glow/s08-levels.jpg"
+   ],
+   "scheduledAt": "2026-10-14T20:30:00+04:00",
+   "status": "SCHEDULED",
+   "notes": "MEDIRUN · გაანათე თბილისი · Metricool: ავტომატური გამოქვეყნება · სურათები AI-ით შექმნილი (Instagram-ზე მონიშნული)"
+  }
+ },
+ {
+  "slot": "g-sat-02",
+  "date": "2026-10-16T13:00:00+04:00",
+  "info": {
+   "autoPublish": true,
+   "draft": false,
+   "descendants": [],
+   "hasNotReadNotes": false,
+   "shortener": false,
+   "smartLinkData": {
+    "ids": []
+   },
+   "media": [
+    "https://medicard.ge/press/medirun-glow/f14-saturday-02.jpg"
+   ],
+   "mediaAltText": [],
+   "publicationDate": {
+    "dateTime": "2026-10-16T13:00:00",
+    "timezone": "Asia/Tbilisi"
+   },
+   "providers": [
+    {
+     "network": "facebook"
+    },
+    {
+     "network": "instagram"
+    }
+   ],
+   "text": "🌧 შაბათის წვიმა — 17 ოქტომბერი, 16:00\n\nხვალ ერთ თბილისურ პარკში საჩუქრების წვიმა მოვა: ყუთებში 50 და 100 Medi Coins იქნება.\n\nრომელ პარკში? 15:00-ზე სთორიში გამოცანას გამოვაქვეყნებთ, 15:30-ზე — მეორე მინიშნებას.\n\nჩართე შეტყობინებები, რომ მინიშნება არ გამოგრჩეს. 🔔\n\n📲 ჩამოტვირთე უფასოდ iPhone-ზე:\nhttps://apps.apple.com/app/id6812517519\n🌐 საიტი და ვებ-ვერსია: https://medicard.ge\n🤖 Android — სულ მალე\n\n#გაანათეთბილისი #MEDIRUN #MEDICARD #თბილისი #საქართველო",
+   "firstCommentText": "📲 iPhone: https://apps.apple.com/app/id6812517519\n💻 ვებ-ვერსია: https://medicard.ge/app\n🤖 Android — სულ მალე",
+   "facebookData": {
+    "type": "POST"
+   },
+   "instagramData": {
+    "type": "POST",
+    "isAiGenerated": true
+   }
+  },
+  "record": {
+   "campaign": "medirun-glow-2026",
+   "slot": "g-sat-02",
+   "networks": [
+    "facebook",
+    "instagram"
+   ],
+   "kind": "POST",
+   "pillar": "MEDIRUN",
+   "title": "🌧 შაბათის წვიმა — 17 ოქტომბერი, 16:00",
+   "text": "🌧 შაბათის წვიმა — 17 ოქტომბერი, 16:00\n\nხვალ ერთ თბილისურ პარკში საჩუქრების წვიმა მოვა: ყუთებში 50 და 100 Medi Coins იქნება.\n\nრომელ პარკში? 15:00-ზე სთორიში გამოცანას გამოვაქვეყნებთ, 15:30-ზე — მეორე მინიშნებას.\n\nჩართე შეტყობინებები, რომ მინიშნება არ გამოგრჩეს. 🔔\n\n📲 ჩამოტვირთე უფასოდ iPhone-ზე:\nhttps://apps.apple.com/app/id6812517519\n🌐 საიტი და ვებ-ვერსია: https://medicard.ge\n🤖 Android — სულ მალე\n\n#გაანათეთბილისი #MEDIRUN #MEDICARD #თბილისი #საქართველო",
+   "textEn": null,
+   "mediaUrls": [
+    "https://medicard.ge/press/medirun-glow/f14-saturday-02.jpg"
+   ],
+   "scheduledAt": "2026-10-16T13:00:00+04:00",
+   "status": "SCHEDULED",
+   "notes": "MEDIRUN · გაანათე თბილისი · Metricool: ავტომატური გამოქვეყნება · სურათები AI-ით შექმნილი (Instagram-ზე მონიშნული)"
+  }
+ },
+ {
+  "slot": "g-sat-02-tomorrow",
+  "date": "2026-10-16T21:00:00+04:00",
+  "info": {
+   "autoPublish": true,
+   "draft": false,
+   "descendants": [],
+   "hasNotReadNotes": false,
+   "shortener": false,
+   "smartLinkData": {
+    "ids": []
+   },
+   "media": [
+    "https://medicard.ge/press/medirun-glow/s07-tomorrow-02.jpg"
+   ],
+   "mediaAltText": [],
+   "publicationDate": {
+    "dateTime": "2026-10-16T21:00:00",
+    "timezone": "Asia/Tbilisi"
+   },
+   "providers": [
+    {
+     "network": "facebook"
+    },
+    {
+     "network": "instagram"
+    }
+   ],
+   "facebookData": {
+    "type": "STORY"
+   },
+   "instagramData": {
+    "type": "STORY",
+    "isAiGenerated": true
+   }
+  },
+  "record": {
+   "campaign": "medirun-glow-2026",
+   "slot": "g-sat-02-tomorrow",
+   "networks": [
+    "facebook",
+    "instagram"
+   ],
+   "kind": "STORY",
+   "pillar": "MEDIRUN",
+   "title": "სთორი · s07-tomorrow-02",
+   "text": "",
+   "textEn": null,
+   "mediaUrls": [
+    "https://medicard.ge/press/medirun-glow/s07-tomorrow-02.jpg"
+   ],
+   "scheduledAt": "2026-10-16T21:00:00+04:00",
+   "status": "SCHEDULED",
+   "notes": "MEDIRUN · გაანათე თბილისი · Metricool: ავტომატური გამოქვეყნება · სურათები AI-ით შექმნილი (Instagram-ზე მონიშნული)"
+  }
+ },
+ {
+  "slot": "g-sat-02-weekend",
+  "date": "2026-10-17T09:30:00+04:00",
+  "info": {
+   "autoPublish": true,
+   "draft": false,
+   "descendants": [],
+   "hasNotReadNotes": false,
+   "shortener": false,
+   "smartLinkData": {
+    "ids": []
+   },
+   "media": [
+    "https://medicard.ge/press/medirun-glow/s05-weekend.jpg"
+   ],
+   "mediaAltText": [],
+   "publicationDate": {
+    "dateTime": "2026-10-17T09:30:00",
+    "timezone": "Asia/Tbilisi"
+   },
+   "providers": [
+    {
+     "network": "facebook"
+    },
+    {
+     "network": "instagram"
+    }
+   ],
+   "facebookData": {
+    "type": "STORY"
+   },
+   "instagramData": {
+    "type": "STORY",
+    "isAiGenerated": true
+   }
+  },
+  "record": {
+   "campaign": "medirun-glow-2026",
+   "slot": "g-sat-02-weekend",
+   "networks": [
+    "facebook",
+    "instagram"
+   ],
+   "kind": "STORY",
+   "pillar": "MEDIRUN",
+   "title": "სთორი · s05-weekend",
+   "text": "",
+   "textEn": null,
+   "mediaUrls": [
+    "https://medicard.ge/press/medirun-glow/s05-weekend.jpg"
+   ],
+   "scheduledAt": "2026-10-17T09:30:00+04:00",
+   "status": "SCHEDULED",
+   "notes": "MEDIRUN · გაანათე თბილისი · Metricool: ავტომატური გამოქვეყნება · სურათები AI-ით შექმნილი (Instagram-ზე მონიშნული)"
+  }
+ },
+ {
+  "slot": "g-sat-02-hint1",
+  "date": "2026-10-17T15:00:00+04:00",
+  "info": {
+   "autoPublish": true,
+   "draft": false,
+   "descendants": [],
+   "hasNotReadNotes": false,
+   "shortener": false,
+   "smartLinkData": {
+    "ids": []
+   },
+   "media": [
+    "https://medicard.ge/press/medirun-glow/s06-hint-02-1.jpg"
+   ],
+   "mediaAltText": [],
+   "publicationDate": {
+    "dateTime": "2026-10-17T15:00:00",
+    "timezone": "Asia/Tbilisi"
+   },
+   "providers": [
+    {
+     "network": "facebook"
+    },
+    {
+     "network": "instagram"
+    }
+   ],
+   "facebookData": {
+    "type": "STORY"
+   },
+   "instagramData": {
+    "type": "STORY",
+    "isAiGenerated": true
+   }
+  },
+  "record": {
+   "campaign": "medirun-glow-2026",
+   "slot": "g-sat-02-hint1",
+   "networks": [
+    "facebook",
+    "instagram"
+   ],
+   "kind": "STORY",
+   "pillar": "MEDIRUN",
+   "title": "სთორი · s06-hint-02-1",
+   "text": "",
+   "textEn": null,
+   "mediaUrls": [
+    "https://medicard.ge/press/medirun-glow/s06-hint-02-1.jpg"
+   ],
+   "scheduledAt": "2026-10-17T15:00:00+04:00",
+   "status": "SCHEDULED",
+   "notes": "MEDIRUN · გაანათე თბილისი · Metricool: ავტომატური გამოქვეყნება · სურათები AI-ით შექმნილი (Instagram-ზე მონიშნული)"
+  }
+ },
+ {
+  "slot": "g-sat-02-hint2",
+  "date": "2026-10-17T15:30:00+04:00",
+  "info": {
+   "autoPublish": true,
+   "draft": false,
+   "descendants": [],
+   "hasNotReadNotes": false,
+   "shortener": false,
+   "smartLinkData": {
+    "ids": []
+   },
+   "media": [
+    "https://medicard.ge/press/medirun-glow/s06-hint-02-2.jpg"
+   ],
+   "mediaAltText": [],
+   "publicationDate": {
+    "dateTime": "2026-10-17T15:30:00",
+    "timezone": "Asia/Tbilisi"
+   },
+   "providers": [
+    {
+     "network": "facebook"
+    },
+    {
+     "network": "instagram"
+    }
+   ],
+   "facebookData": {
+    "type": "STORY"
+   },
+   "instagramData": {
+    "type": "STORY",
+    "isAiGenerated": true
+   }
+  },
+  "record": {
+   "campaign": "medirun-glow-2026",
+   "slot": "g-sat-02-hint2",
+   "networks": [
+    "facebook",
+    "instagram"
+   ],
+   "kind": "STORY",
+   "pillar": "MEDIRUN",
+   "title": "სთორი · s06-hint-02-2",
+   "text": "",
+   "textEn": null,
+   "mediaUrls": [
+    "https://medicard.ge/press/medirun-glow/s06-hint-02-2.jpg"
+   ],
+   "scheduledAt": "2026-10-17T15:30:00+04:00",
+   "status": "SCHEDULED",
+   "notes": "MEDIRUN · გაანათე თბილისი · Metricool: ავტომატური გამოქვეყნება · სურათები AI-ით შექმნილი (Instagram-ზე მონიშნული)"
+  }
+ },
+ {
+  "slot": "g-sat-02-winners",
+  "date": "2026-10-17T18:30:00+04:00",
+  "info": null,
+  "record": {
+   "campaign": "medirun-glow-2026",
+   "slot": "g-sat-02-winners",
+   "networks": [
+    "facebook",
+    "instagram"
+   ],
+   "kind": "STORY",
+   "pillar": "MEDIRUN",
+   "title": "შაბათის წვიმის მპოვნელები — 17 ოქტომბერი (ცოცხლად)",
+   "text": "შაბათის წვიმის მპოვნელები — 17 ოქტომბერი (ცოცხლად)",
+   "textEn": null,
+   "mediaUrls": [],
+   "scheduledAt": "2026-10-17T18:30:00+04:00",
+   "status": "PLANNED",
+   "notes": "ხელით: მხოლოდ რეალური რიცხვები ადმინიდან (MEDIRUN → ჯილდოები); სახელი/ფოტო მხოლოდ თანხმობით."
+  }
+ },
+ {
+  "slot": "g-weekday-10-19",
+  "date": "2026-10-19T08:15:00+04:00",
+  "info": {
+   "autoPublish": true,
+   "draft": false,
+   "descendants": [],
+   "hasNotReadNotes": false,
+   "shortener": false,
+   "smartLinkData": {
+    "ids": []
+   },
+   "media": [
+    "https://medicard.ge/press/medirun-glow/s04-weekday.jpg"
+   ],
+   "mediaAltText": [],
+   "publicationDate": {
+    "dateTime": "2026-10-19T08:15:00",
+    "timezone": "Asia/Tbilisi"
+   },
+   "providers": [
+    {
+     "network": "facebook"
+    },
+    {
+     "network": "instagram"
+    }
+   ],
+   "facebookData": {
+    "type": "STORY"
+   },
+   "instagramData": {
+    "type": "STORY",
+    "isAiGenerated": true
+   }
+  },
+  "record": {
+   "campaign": "medirun-glow-2026",
+   "slot": "g-weekday-10-19",
+   "networks": [
+    "facebook",
+    "instagram"
+   ],
+   "kind": "STORY",
+   "pillar": "MEDIRUN",
+   "title": "სთორი · s04-weekday",
+   "text": "",
+   "textEn": null,
+   "mediaUrls": [
+    "https://medicard.ge/press/medirun-glow/s04-weekday.jpg"
+   ],
+   "scheduledAt": "2026-10-19T08:15:00+04:00",
+   "status": "SCHEDULED",
+   "notes": "MEDIRUN · გაანათე თბილისი · Metricool: ავტომატური გამოქვეყნება · სურათები AI-ით შექმნილი (Instagram-ზე მონიშნული)"
+  }
+ },
+ {
+  "slot": "g-week3",
+  "date": "2026-10-19T13:00:00+04:00",
+  "info": {
+   "autoPublish": true,
+   "draft": false,
+   "descendants": [],
+   "hasNotReadNotes": false,
+   "shortener": false,
+   "smartLinkData": {
+    "ids": []
+   },
+   "media": [
+    "https://medicard.ge/press/medirun-glow/f08-week3.jpg"
+   ],
+   "mediaAltText": [],
+   "publicationDate": {
+    "dateTime": "2026-10-19T13:00:00",
+    "timezone": "Asia/Tbilisi"
+   },
+   "providers": [
+    {
+     "network": "facebook"
+    },
+    {
+     "network": "instagram"
+    }
+   ],
+   "text": "🌊 კვირა 3 — წყალი და ჰორიზონტი\n\n19–25 ოქტომბერს მეტი ყუთი ტბებთან და ქალაქის გადასახედებთანაა: კუს ტბა, ლისი, მთაწმინდა, საქართველოს მატიანე.\n\nყუთები საჯარო ბილიკებზეა, ოღონდ პარკების სიღრმეში — ცოტა ძებნა მოგიწევს. 😉\n\n⭐ შაბათს, 24 ოქტომბერს, 16:00-ზე — საჩუქრების წვიმა. რომელ პარკში — იმ დღეს, 15:00-ზე გეტყვით.\n\n📲 ჩამოტვირთე უფასოდ iPhone-ზე:\nhttps://apps.apple.com/app/id6812517519\n🌐 საიტი და ვებ-ვერსია: https://medicard.ge\n🤖 Android — სულ მალე\n\n#გაანათეთბილისი #MEDIRUN #MEDICARD #თბილისი #საქართველო",
+   "firstCommentText": "📲 iPhone: https://apps.apple.com/app/id6812517519\n💻 ვებ-ვერსია: https://medicard.ge/app\n🤖 Android — სულ მალე",
+   "facebookData": {
+    "type": "POST"
+   },
+   "instagramData": {
+    "type": "POST",
+    "isAiGenerated": true
+   }
+  },
+  "record": {
+   "campaign": "medirun-glow-2026",
+   "slot": "g-week3",
+   "networks": [
+    "facebook",
+    "instagram"
+   ],
+   "kind": "POST",
+   "pillar": "MEDIRUN",
+   "title": "🌊 კვირა 3 — წყალი და ჰორიზონტი",
+   "text": "🌊 კვირა 3 — წყალი და ჰორიზონტი\n\n19–25 ოქტომბერს მეტი ყუთი ტბებთან და ქალაქის გადასახედებთანაა: კუს ტბა, ლისი, მთაწმინდა, საქართველოს მატიანე.\n\nყუთები საჯარო ბილიკებზეა, ოღონდ პარკების სიღრმეში — ცოტა ძებნა მოგიწევს. 😉\n\n⭐ შაბათს, 24 ოქტომბერს, 16:00-ზე — საჩუქრების წვიმა. რომელ პარკში — იმ დღეს, 15:00-ზე გეტყვით.\n\n📲 ჩამოტვირთე უფასოდ iPhone-ზე:\nhttps://apps.apple.com/app/id6812517519\n🌐 საიტი და ვებ-ვერსია: https://medicard.ge\n🤖 Android — სულ მალე\n\n#გაანათეთბილისი #MEDIRUN #MEDICARD #თბილისი #საქართველო",
+   "textEn": null,
+   "mediaUrls": [
+    "https://medicard.ge/press/medirun-glow/f08-week3.jpg"
+   ],
+   "scheduledAt": "2026-10-19T13:00:00+04:00",
+   "status": "SCHEDULED",
+   "notes": "MEDIRUN · გაანათე თბილისი · Metricool: ავტომატური გამოქვეყნება · სურათები AI-ით შექმნილი (Instagram-ზე მონიშნული)"
+  }
+ },
+ {
+  "slot": "g-safety",
+  "date": "2026-10-21T13:00:00+04:00",
+  "info": {
+   "autoPublish": true,
+   "draft": false,
+   "descendants": [],
+   "hasNotReadNotes": false,
+   "shortener": false,
+   "smartLinkData": {
+    "ids": []
+   },
+   "media": [
+    "https://medicard.ge/press/medirun-glow/f13-safety.jpg"
+   ],
+   "mediaAltText": [],
+   "publicationDate": {
+    "dateTime": "2026-10-21T13:00:00",
+    "timezone": "Asia/Tbilisi"
+   },
+   "providers": [
+    {
+     "network": "facebook"
+    },
+    {
+     "network": "instagram"
+    }
+   ],
+   "text": "ქალაქში ფრთხილად ითამაშე. 🙏\n\n• ყუთები მხოლოდ საჯარო ბილიკებზეა — არასოდეს გზაზე, ეზოში ან დახურულ ტერიტორიაზე.\n• ქუჩის გადაკვეთისას ეკრანს ნუ უყურებ — პულსს ხელში იგრძნობ.\n• საღამოს ყუთები მხოლოდ განათებულ ადგილებშია.\n• სხვებს ნუ უბიძგებ: შაბათის წვიმაში ყუთები ბევრს ეყოფა.\n• დიდ საჩუქარს აპში ნაჩვენები კოდითა და პირადობის მოწმობით გადმოგცემთ.\n\n📲 ჩამოტვირთე უფასოდ iPhone-ზე:\nhttps://apps.apple.com/app/id6812517519\n🌐 საიტი და ვებ-ვერსია: https://medicard.ge\n🤖 Android — სულ მალე\n\n#გაანათეთბილისი #MEDIRUN #MEDICARD #თბილისი #საქართველო",
+   "firstCommentText": "📲 iPhone: https://apps.apple.com/app/id6812517519\n💻 ვებ-ვერსია: https://medicard.ge/app\n🤖 Android — სულ მალე",
+   "facebookData": {
+    "type": "POST"
+   },
+   "instagramData": {
+    "type": "POST",
+    "isAiGenerated": true
+   }
+  },
+  "record": {
+   "campaign": "medirun-glow-2026",
+   "slot": "g-safety",
+   "networks": [
+    "facebook",
+    "instagram"
+   ],
+   "kind": "POST",
+   "pillar": "MEDIRUN",
+   "title": "ქალაქში ფრთხილად ითამაშე. 🙏",
+   "text": "ქალაქში ფრთხილად ითამაშე. 🙏\n\n• ყუთები მხოლოდ საჯარო ბილიკებზეა — არასოდეს გზაზე, ეზოში ან დახურულ ტერიტორიაზე.\n• ქუჩის გადაკვეთისას ეკრანს ნუ უყურებ — პულსს ხელში იგრძნობ.\n• საღამოს ყუთები მხოლოდ განათებულ ადგილებშია.\n• სხვებს ნუ უბიძგებ: შაბათის წვიმაში ყუთები ბევრს ეყოფა.\n• დიდ საჩუქარს აპში ნაჩვენები კოდითა და პირადობის მოწმობით გადმოგცემთ.\n\n📲 ჩამოტვირთე უფასოდ iPhone-ზე:\nhttps://apps.apple.com/app/id6812517519\n🌐 საიტი და ვებ-ვერსია: https://medicard.ge\n🤖 Android — სულ მალე\n\n#გაანათეთბილისი #MEDIRUN #MEDICARD #თბილისი #საქართველო",
+   "textEn": null,
+   "mediaUrls": [
+    "https://medicard.ge/press/medirun-glow/f13-safety.jpg"
+   ],
+   "scheduledAt": "2026-10-21T13:00:00+04:00",
+   "status": "SCHEDULED",
+   "notes": "MEDIRUN · გაანათე თბილისი · Metricool: ავტომატური გამოქვეყნება · სურათები AI-ით შექმნილი (Instagram-ზე მონიშნული)"
+  }
+ },
+ {
+  "slot": "g-sat-03",
+  "date": "2026-10-23T13:00:00+04:00",
+  "info": {
+   "autoPublish": true,
+   "draft": false,
+   "descendants": [],
+   "hasNotReadNotes": false,
+   "shortener": false,
+   "smartLinkData": {
+    "ids": []
+   },
+   "media": [
+    "https://medicard.ge/press/medirun-glow/f14-saturday-03.jpg"
+   ],
+   "mediaAltText": [],
+   "publicationDate": {
+    "dateTime": "2026-10-23T13:00:00",
+    "timezone": "Asia/Tbilisi"
+   },
+   "providers": [
+    {
+     "network": "facebook"
+    },
+    {
+     "network": "instagram"
+    }
+   ],
+   "text": "🌧 შაბათის წვიმა — 24 ოქტომბერი, 16:00\n\nხვალ ერთ თბილისურ პარკში საჩუქრების წვიმა მოვა: ყუთებში 50 და 100 Medi Coins იქნება.\n\nრომელ პარკში? 15:00-ზე სთორიში გამოცანას გამოვაქვეყნებთ, 15:30-ზე — მეორე მინიშნებას.\n\nჩართე შეტყობინებები, რომ მინიშნება არ გამოგრჩეს. 🔔\n\n📲 ჩამოტვირთე უფასოდ iPhone-ზე:\nhttps://apps.apple.com/app/id6812517519\n🌐 საიტი და ვებ-ვერსია: https://medicard.ge\n🤖 Android — სულ მალე\n\n#გაანათეთბილისი #MEDIRUN #MEDICARD #თბილისი #საქართველო",
+   "firstCommentText": "📲 iPhone: https://apps.apple.com/app/id6812517519\n💻 ვებ-ვერსია: https://medicard.ge/app\n🤖 Android — სულ მალე",
+   "facebookData": {
+    "type": "POST"
+   },
+   "instagramData": {
+    "type": "POST",
+    "isAiGenerated": true
+   }
+  },
+  "record": {
+   "campaign": "medirun-glow-2026",
+   "slot": "g-sat-03",
+   "networks": [
+    "facebook",
+    "instagram"
+   ],
+   "kind": "POST",
+   "pillar": "MEDIRUN",
+   "title": "🌧 შაბათის წვიმა — 24 ოქტომბერი, 16:00",
+   "text": "🌧 შაბათის წვიმა — 24 ოქტომბერი, 16:00\n\nხვალ ერთ თბილისურ პარკში საჩუქრების წვიმა მოვა: ყუთებში 50 და 100 Medi Coins იქნება.\n\nრომელ პარკში? 15:00-ზე სთორიში გამოცანას გამოვაქვეყნებთ, 15:30-ზე — მეორე მინიშნებას.\n\nჩართე შეტყობინებები, რომ მინიშნება არ გამოგრჩეს. 🔔\n\n📲 ჩამოტვირთე უფასოდ iPhone-ზე:\nhttps://apps.apple.com/app/id6812517519\n🌐 საიტი და ვებ-ვერსია: https://medicard.ge\n🤖 Android — სულ მალე\n\n#გაანათეთბილისი #MEDIRUN #MEDICARD #თბილისი #საქართველო",
+   "textEn": null,
+   "mediaUrls": [
+    "https://medicard.ge/press/medirun-glow/f14-saturday-03.jpg"
+   ],
+   "scheduledAt": "2026-10-23T13:00:00+04:00",
+   "status": "SCHEDULED",
+   "notes": "MEDIRUN · გაანათე თბილისი · Metricool: ავტომატური გამოქვეყნება · სურათები AI-ით შექმნილი (Instagram-ზე მონიშნული)"
+  }
+ },
+ {
+  "slot": "g-sat-03-tomorrow",
+  "date": "2026-10-23T21:00:00+04:00",
+  "info": {
+   "autoPublish": true,
+   "draft": false,
+   "descendants": [],
+   "hasNotReadNotes": false,
+   "shortener": false,
+   "smartLinkData": {
+    "ids": []
+   },
+   "media": [
+    "https://medicard.ge/press/medirun-glow/s07-tomorrow-03.jpg"
+   ],
+   "mediaAltText": [],
+   "publicationDate": {
+    "dateTime": "2026-10-23T21:00:00",
+    "timezone": "Asia/Tbilisi"
+   },
+   "providers": [
+    {
+     "network": "facebook"
+    },
+    {
+     "network": "instagram"
+    }
+   ],
+   "facebookData": {
+    "type": "STORY"
+   },
+   "instagramData": {
+    "type": "STORY",
+    "isAiGenerated": true
+   }
+  },
+  "record": {
+   "campaign": "medirun-glow-2026",
+   "slot": "g-sat-03-tomorrow",
+   "networks": [
+    "facebook",
+    "instagram"
+   ],
+   "kind": "STORY",
+   "pillar": "MEDIRUN",
+   "title": "სთორი · s07-tomorrow-03",
+   "text": "",
+   "textEn": null,
+   "mediaUrls": [
+    "https://medicard.ge/press/medirun-glow/s07-tomorrow-03.jpg"
+   ],
+   "scheduledAt": "2026-10-23T21:00:00+04:00",
+   "status": "SCHEDULED",
+   "notes": "MEDIRUN · გაანათე თბილისი · Metricool: ავტომატური გამოქვეყნება · სურათები AI-ით შექმნილი (Instagram-ზე მონიშნული)"
+  }
+ },
+ {
+  "slot": "g-sat-03-weekend",
+  "date": "2026-10-24T09:30:00+04:00",
+  "info": {
+   "autoPublish": true,
+   "draft": false,
+   "descendants": [],
+   "hasNotReadNotes": false,
+   "shortener": false,
+   "smartLinkData": {
+    "ids": []
+   },
+   "media": [
+    "https://medicard.ge/press/medirun-glow/s05-weekend.jpg"
+   ],
+   "mediaAltText": [],
+   "publicationDate": {
+    "dateTime": "2026-10-24T09:30:00",
+    "timezone": "Asia/Tbilisi"
+   },
+   "providers": [
+    {
+     "network": "facebook"
+    },
+    {
+     "network": "instagram"
+    }
+   ],
+   "facebookData": {
+    "type": "STORY"
+   },
+   "instagramData": {
+    "type": "STORY",
+    "isAiGenerated": true
+   }
+  },
+  "record": {
+   "campaign": "medirun-glow-2026",
+   "slot": "g-sat-03-weekend",
+   "networks": [
+    "facebook",
+    "instagram"
+   ],
+   "kind": "STORY",
+   "pillar": "MEDIRUN",
+   "title": "სთორი · s05-weekend",
+   "text": "",
+   "textEn": null,
+   "mediaUrls": [
+    "https://medicard.ge/press/medirun-glow/s05-weekend.jpg"
+   ],
+   "scheduledAt": "2026-10-24T09:30:00+04:00",
+   "status": "SCHEDULED",
+   "notes": "MEDIRUN · გაანათე თბილისი · Metricool: ავტომატური გამოქვეყნება · სურათები AI-ით შექმნილი (Instagram-ზე მონიშნული)"
+  }
+ },
+ {
+  "slot": "g-sat-03-hint1",
+  "date": "2026-10-24T15:00:00+04:00",
+  "info": {
+   "autoPublish": true,
+   "draft": false,
+   "descendants": [],
+   "hasNotReadNotes": false,
+   "shortener": false,
+   "smartLinkData": {
+    "ids": []
+   },
+   "media": [
+    "https://medicard.ge/press/medirun-glow/s06-hint-03-1.jpg"
+   ],
+   "mediaAltText": [],
+   "publicationDate": {
+    "dateTime": "2026-10-24T15:00:00",
+    "timezone": "Asia/Tbilisi"
+   },
+   "providers": [
+    {
+     "network": "facebook"
+    },
+    {
+     "network": "instagram"
+    }
+   ],
+   "facebookData": {
+    "type": "STORY"
+   },
+   "instagramData": {
+    "type": "STORY",
+    "isAiGenerated": true
+   }
+  },
+  "record": {
+   "campaign": "medirun-glow-2026",
+   "slot": "g-sat-03-hint1",
+   "networks": [
+    "facebook",
+    "instagram"
+   ],
+   "kind": "STORY",
+   "pillar": "MEDIRUN",
+   "title": "სთორი · s06-hint-03-1",
+   "text": "",
+   "textEn": null,
+   "mediaUrls": [
+    "https://medicard.ge/press/medirun-glow/s06-hint-03-1.jpg"
+   ],
+   "scheduledAt": "2026-10-24T15:00:00+04:00",
+   "status": "SCHEDULED",
+   "notes": "MEDIRUN · გაანათე თბილისი · Metricool: ავტომატური გამოქვეყნება · სურათები AI-ით შექმნილი (Instagram-ზე მონიშნული)"
+  }
+ },
+ {
+  "slot": "g-sat-03-hint2",
+  "date": "2026-10-24T15:30:00+04:00",
+  "info": {
+   "autoPublish": true,
+   "draft": false,
+   "descendants": [],
+   "hasNotReadNotes": false,
+   "shortener": false,
+   "smartLinkData": {
+    "ids": []
+   },
+   "media": [
+    "https://medicard.ge/press/medirun-glow/s06-hint-03-2.jpg"
+   ],
+   "mediaAltText": [],
+   "publicationDate": {
+    "dateTime": "2026-10-24T15:30:00",
+    "timezone": "Asia/Tbilisi"
+   },
+   "providers": [
+    {
+     "network": "facebook"
+    },
+    {
+     "network": "instagram"
+    }
+   ],
+   "facebookData": {
+    "type": "STORY"
+   },
+   "instagramData": {
+    "type": "STORY",
+    "isAiGenerated": true
+   }
+  },
+  "record": {
+   "campaign": "medirun-glow-2026",
+   "slot": "g-sat-03-hint2",
+   "networks": [
+    "facebook",
+    "instagram"
+   ],
+   "kind": "STORY",
+   "pillar": "MEDIRUN",
+   "title": "სთორი · s06-hint-03-2",
+   "text": "",
+   "textEn": null,
+   "mediaUrls": [
+    "https://medicard.ge/press/medirun-glow/s06-hint-03-2.jpg"
+   ],
+   "scheduledAt": "2026-10-24T15:30:00+04:00",
+   "status": "SCHEDULED",
+   "notes": "MEDIRUN · გაანათე თბილისი · Metricool: ავტომატური გამოქვეყნება · სურათები AI-ით შექმნილი (Instagram-ზე მონიშნული)"
+  }
+ },
+ {
+  "slot": "g-sat-03-winners",
+  "date": "2026-10-24T18:30:00+04:00",
+  "info": null,
+  "record": {
+   "campaign": "medirun-glow-2026",
+   "slot": "g-sat-03-winners",
+   "networks": [
+    "facebook",
+    "instagram"
+   ],
+   "kind": "STORY",
+   "pillar": "MEDIRUN",
+   "title": "შაბათის წვიმის მპოვნელები — 24 ოქტომბერი (ცოცხლად)",
+   "text": "შაბათის წვიმის მპოვნელები — 24 ოქტომბერი (ცოცხლად)",
+   "textEn": null,
+   "mediaUrls": [],
+   "scheduledAt": "2026-10-24T18:30:00+04:00",
+   "status": "PLANNED",
+   "notes": "ხელით: მხოლოდ რეალური რიცხვები ადმინიდან (MEDIRUN → ჯილდოები); სახელი/ფოტო მხოლოდ თანხმობით."
+  }
+ },
+ {
+  "slot": "g-weekday-10-26",
+  "date": "2026-10-26T08:15:00+04:00",
+  "info": {
+   "autoPublish": true,
+   "draft": false,
+   "descendants": [],
+   "hasNotReadNotes": false,
+   "shortener": false,
+   "smartLinkData": {
+    "ids": []
+   },
+   "media": [
+    "https://medicard.ge/press/medirun-glow/s04-weekday.jpg"
+   ],
+   "mediaAltText": [],
+   "publicationDate": {
+    "dateTime": "2026-10-26T08:15:00",
+    "timezone": "Asia/Tbilisi"
+   },
+   "providers": [
+    {
+     "network": "facebook"
+    },
+    {
+     "network": "instagram"
+    }
+   ],
+   "facebookData": {
+    "type": "STORY"
+   },
+   "instagramData": {
+    "type": "STORY",
+    "isAiGenerated": true
+   }
+  },
+  "record": {
+   "campaign": "medirun-glow-2026",
+   "slot": "g-weekday-10-26",
+   "networks": [
+    "facebook",
+    "instagram"
+   ],
+   "kind": "STORY",
+   "pillar": "MEDIRUN",
+   "title": "სთორი · s04-weekday",
+   "text": "",
+   "textEn": null,
+   "mediaUrls": [
+    "https://medicard.ge/press/medirun-glow/s04-weekday.jpg"
+   ],
+   "scheduledAt": "2026-10-26T08:15:00+04:00",
+   "status": "SCHEDULED",
+   "notes": "MEDIRUN · გაანათე თბილისი · Metricool: ავტომატური გამოქვეყნება · სურათები AI-ით შექმნილი (Instagram-ზე მონიშნული)"
+  }
+ },
+ {
+  "slot": "g-week4",
+  "date": "2026-10-26T13:00:00+04:00",
+  "info": {
+   "autoPublish": true,
+   "draft": false,
+   "descendants": [],
+   "hasNotReadNotes": false,
+   "shortener": false,
+   "smartLinkData": {
+    "ids": []
+   },
+   "media": [
+    "https://medicard.ge/press/medirun-glow/f09-week4.jpg"
+   ],
+   "mediaAltText": [],
+   "publicationDate": {
+    "dateTime": "2026-10-26T13:00:00",
+    "timezone": "Asia/Tbilisi"
+   },
+   "providers": [
+    {
+     "network": "facebook"
+    },
+    {
+     "network": "instagram"
+    }
+   ],
+   "text": "🎭 კვირა 4 — ქალაქის ხელწერა\n\n26 ოქტომბრიდან 1 ნოემბრამდე მეტი ყუთი სამებასთან, ბოტანიკურ ბაღთან და რუსთაველზეა.\n\nყუთები საჯარო ბილიკებზეა, ოღონდ პარკების სიღრმეში — ცოტა ძებნა მოგიწევს. 😉\n\n⭐ შაბათს, 31 ოქტომბერს, 16:00-ზე — საჩუქრების წვიმა. რომელ პარკში — იმ დღეს, 15:00-ზე გეტყვით.\n\n📲 ჩამოტვირთე უფასოდ iPhone-ზე:\nhttps://apps.apple.com/app/id6812517519\n🌐 საიტი და ვებ-ვერსია: https://medicard.ge\n🤖 Android — სულ მალე\n\n#გაანათეთბილისი #MEDIRUN #MEDICARD #თბილისი #საქართველო",
+   "firstCommentText": "📲 iPhone: https://apps.apple.com/app/id6812517519\n💻 ვებ-ვერსია: https://medicard.ge/app\n🤖 Android — სულ მალე",
+   "facebookData": {
+    "type": "POST"
+   },
+   "instagramData": {
+    "type": "POST",
+    "isAiGenerated": true
+   }
+  },
+  "record": {
+   "campaign": "medirun-glow-2026",
+   "slot": "g-week4",
+   "networks": [
+    "facebook",
+    "instagram"
+   ],
+   "kind": "POST",
+   "pillar": "MEDIRUN",
+   "title": "🎭 კვირა 4 — ქალაქის ხელწერა",
+   "text": "🎭 კვირა 4 — ქალაქის ხელწერა\n\n26 ოქტომბრიდან 1 ნოემბრამდე მეტი ყუთი სამებასთან, ბოტანიკურ ბაღთან და რუსთაველზეა.\n\nყუთები საჯარო ბილიკებზეა, ოღონდ პარკების სიღრმეში — ცოტა ძებნა მოგიწევს. 😉\n\n⭐ შაბათს, 31 ოქტომბერს, 16:00-ზე — საჩუქრების წვიმა. რომელ პარკში — იმ დღეს, 15:00-ზე გეტყვით.\n\n📲 ჩამოტვირთე უფასოდ iPhone-ზე:\nhttps://apps.apple.com/app/id6812517519\n🌐 საიტი და ვებ-ვერსია: https://medicard.ge\n🤖 Android — სულ მალე\n\n#გაანათეთბილისი #MEDIRUN #MEDICARD #თბილისი #საქართველო",
+   "textEn": null,
+   "mediaUrls": [
+    "https://medicard.ge/press/medirun-glow/f09-week4.jpg"
+   ],
+   "scheduledAt": "2026-10-26T13:00:00+04:00",
+   "status": "SCHEDULED",
+   "notes": "MEDIRUN · გაანათე თბილისი · Metricool: ავტომატური გამოქვეყნება · სურათები AI-ით შექმნილი (Instagram-ზე მონიშნული)"
+  }
+ },
+ {
+  "slot": "g-how-1",
+  "date": "2026-10-28T13:00:00+04:00",
+  "info": {
+   "autoPublish": true,
+   "draft": false,
+   "descendants": [],
+   "hasNotReadNotes": false,
+   "shortener": false,
+   "smartLinkData": {
+    "ids": []
+   },
+   "media": [
+    "https://medicard.ge/press/medirun-glow/f02-how.jpg"
+   ],
+   "mediaAltText": [],
+   "publicationDate": {
+    "dateTime": "2026-10-28T13:00:00",
+    "timezone": "Asia/Tbilisi"
+   },
+   "providers": [
+    {
+     "network": "facebook"
+    },
+    {
+     "network": "instagram"
+    }
+   ],
+   "text": "ახალი ხარ? აი, როგორ იპოვი თბილისში დამალულ საჩუქარს 👇\n\n1️⃣ გახსენი MEDICARD და ჩართე MEDIRUN — იარე ან ირბინე.\n2️⃣ საჩუქართან მიახლოებისას ტელეფონი გულისცემასავით აკანკალდება. რაც უფრო ახლოს ხარ, მით უფრო ჩქარა.\n3️⃣ ადგილზე ჩართე კამერა, იპოვე ყუთი და შეეხე — Medi Coins ავტომატურად ჩაირიცხება.\n\nმონაწილეობა უფასოა.\n\n📲 ჩამოტვირთე უფასოდ iPhone-ზე:\nhttps://apps.apple.com/app/id6812517519\n🌐 საიტი და ვებ-ვერსია: https://medicard.ge\n🤖 Android — სულ მალე\n\n#გაანათეთბილისი #MEDIRUN #MEDICARD #თბილისი #საქართველო",
+   "firstCommentText": "📲 iPhone: https://apps.apple.com/app/id6812517519\n💻 ვებ-ვერსია: https://medicard.ge/app\n🤖 Android — სულ მალე",
+   "facebookData": {
+    "type": "POST"
+   },
+   "instagramData": {
+    "type": "POST",
+    "isAiGenerated": true
+   }
+  },
+  "record": {
+   "campaign": "medirun-glow-2026",
+   "slot": "g-how-1",
+   "networks": [
+    "facebook",
+    "instagram"
+   ],
+   "kind": "POST",
+   "pillar": "MEDIRUN",
+   "title": "ახალი ხარ? აი, როგორ იპოვი თბილისში დამალულ საჩუქარს 👇",
+   "text": "ახალი ხარ? აი, როგორ იპოვი თბილისში დამალულ საჩუქარს 👇\n\n1️⃣ გახსენი MEDICARD და ჩართე MEDIRUN — იარე ან ირბინე.\n2️⃣ საჩუქართან მიახლოებისას ტელეფონი გულისცემასავით აკანკალდება. რაც უფრო ახლოს ხარ, მით უფრო ჩქარა.\n3️⃣ ადგილზე ჩართე კამერა, იპოვე ყუთი და შეეხე — Medi Coins ავტომატურად ჩაირიცხება.\n\nმონაწილეობა უფასოა.\n\n📲 ჩამოტვირთე უფასოდ iPhone-ზე:\nhttps://apps.apple.com/app/id6812517519\n🌐 საიტი და ვებ-ვერსია: https://medicard.ge\n🤖 Android — სულ მალე\n\n#გაანათეთბილისი #MEDIRUN #MEDICARD #თბილისი #საქართველო",
+   "textEn": null,
+   "mediaUrls": [
+    "https://medicard.ge/press/medirun-glow/f02-how.jpg"
+   ],
+   "scheduledAt": "2026-10-28T13:00:00+04:00",
+   "status": "SCHEDULED",
+   "notes": "MEDIRUN · გაანათე თბილისი · Metricool: ავტომატური გამოქვეყნება · სურათები AI-ით შექმნილი (Instagram-ზე მონიშნული)"
+  }
+ },
+ {
+  "slot": "g-levels-s-10-28",
+  "date": "2026-10-28T20:30:00+04:00",
+  "info": {
+   "autoPublish": true,
+   "draft": false,
+   "descendants": [],
+   "hasNotReadNotes": false,
+   "shortener": false,
+   "smartLinkData": {
+    "ids": []
+   },
+   "media": [
+    "https://medicard.ge/press/medirun-glow/s08-levels.jpg"
+   ],
+   "mediaAltText": [],
+   "publicationDate": {
+    "dateTime": "2026-10-28T20:30:00",
+    "timezone": "Asia/Tbilisi"
+   },
+   "providers": [
+    {
+     "network": "facebook"
+    },
+    {
+     "network": "instagram"
+    }
+   ],
+   "facebookData": {
+    "type": "STORY"
+   },
+   "instagramData": {
+    "type": "STORY",
+    "isAiGenerated": true
+   }
+  },
+  "record": {
+   "campaign": "medirun-glow-2026",
+   "slot": "g-levels-s-10-28",
+   "networks": [
+    "facebook",
+    "instagram"
+   ],
+   "kind": "STORY",
+   "pillar": "MEDIRUN",
+   "title": "სთორი · s08-levels",
+   "text": "",
+   "textEn": null,
+   "mediaUrls": [
+    "https://medicard.ge/press/medirun-glow/s08-levels.jpg"
+   ],
+   "scheduledAt": "2026-10-28T20:30:00+04:00",
+   "status": "SCHEDULED",
+   "notes": "MEDIRUN · გაანათე თბილისი · Metricool: ავტომატური გამოქვეყნება · სურათები AI-ით შექმნილი (Instagram-ზე მონიშნული)"
+  }
+ },
+ {
+  "slot": "g-sat-04",
+  "date": "2026-10-30T13:00:00+04:00",
+  "info": {
+   "autoPublish": true,
+   "draft": false,
+   "descendants": [],
+   "hasNotReadNotes": false,
+   "shortener": false,
+   "smartLinkData": {
+    "ids": []
+   },
+   "media": [
+    "https://medicard.ge/press/medirun-glow/f14-saturday-04.jpg"
+   ],
+   "mediaAltText": [],
+   "publicationDate": {
+    "dateTime": "2026-10-30T13:00:00",
+    "timezone": "Asia/Tbilisi"
+   },
+   "providers": [
+    {
+     "network": "facebook"
+    },
+    {
+     "network": "instagram"
+    }
+   ],
+   "text": "🌧 შაბათის წვიმა — 31 ოქტომბერი, 16:00\n\nხვალ ერთ თბილისურ პარკში საჩუქრების წვიმა მოვა: ყუთებში 50 და 100 Medi Coins იქნება.\n\nრომელ პარკში? 15:00-ზე სთორიში გამოცანას გამოვაქვეყნებთ, 15:30-ზე — მეორე მინიშნებას.\n\nჩართე შეტყობინებები, რომ მინიშნება არ გამოგრჩეს. 🔔\n\n📲 ჩამოტვირთე უფასოდ iPhone-ზე:\nhttps://apps.apple.com/app/id6812517519\n🌐 საიტი და ვებ-ვერსია: https://medicard.ge\n🤖 Android — სულ მალე\n\n#გაანათეთბილისი #MEDIRUN #MEDICARD #თბილისი #საქართველო",
+   "firstCommentText": "📲 iPhone: https://apps.apple.com/app/id6812517519\n💻 ვებ-ვერსია: https://medicard.ge/app\n🤖 Android — სულ მალე",
+   "facebookData": {
+    "type": "POST"
+   },
+   "instagramData": {
+    "type": "POST",
+    "isAiGenerated": true
+   }
+  },
+  "record": {
+   "campaign": "medirun-glow-2026",
+   "slot": "g-sat-04",
+   "networks": [
+    "facebook",
+    "instagram"
+   ],
+   "kind": "POST",
+   "pillar": "MEDIRUN",
+   "title": "🌧 შაბათის წვიმა — 31 ოქტომბერი, 16:00",
+   "text": "🌧 შაბათის წვიმა — 31 ოქტომბერი, 16:00\n\nხვალ ერთ თბილისურ პარკში საჩუქრების წვიმა მოვა: ყუთებში 50 და 100 Medi Coins იქნება.\n\nრომელ პარკში? 15:00-ზე სთორიში გამოცანას გამოვაქვეყნებთ, 15:30-ზე — მეორე მინიშნებას.\n\nჩართე შეტყობინებები, რომ მინიშნება არ გამოგრჩეს. 🔔\n\n📲 ჩამოტვირთე უფასოდ iPhone-ზე:\nhttps://apps.apple.com/app/id6812517519\n🌐 საიტი და ვებ-ვერსია: https://medicard.ge\n🤖 Android — სულ მალე\n\n#გაანათეთბილისი #MEDIRUN #MEDICARD #თბილისი #საქართველო",
+   "textEn": null,
+   "mediaUrls": [
+    "https://medicard.ge/press/medirun-glow/f14-saturday-04.jpg"
+   ],
+   "scheduledAt": "2026-10-30T13:00:00+04:00",
+   "status": "SCHEDULED",
+   "notes": "MEDIRUN · გაანათე თბილისი · Metricool: ავტომატური გამოქვეყნება · სურათები AI-ით შექმნილი (Instagram-ზე მონიშნული)"
+  }
+ },
+ {
+  "slot": "g-sat-04-tomorrow",
+  "date": "2026-10-30T21:00:00+04:00",
+  "info": {
+   "autoPublish": true,
+   "draft": false,
+   "descendants": [],
+   "hasNotReadNotes": false,
+   "shortener": false,
+   "smartLinkData": {
+    "ids": []
+   },
+   "media": [
+    "https://medicard.ge/press/medirun-glow/s07-tomorrow-04.jpg"
+   ],
+   "mediaAltText": [],
+   "publicationDate": {
+    "dateTime": "2026-10-30T21:00:00",
+    "timezone": "Asia/Tbilisi"
+   },
+   "providers": [
+    {
+     "network": "facebook"
+    },
+    {
+     "network": "instagram"
+    }
+   ],
+   "facebookData": {
+    "type": "STORY"
+   },
+   "instagramData": {
+    "type": "STORY",
+    "isAiGenerated": true
+   }
+  },
+  "record": {
+   "campaign": "medirun-glow-2026",
+   "slot": "g-sat-04-tomorrow",
+   "networks": [
+    "facebook",
+    "instagram"
+   ],
+   "kind": "STORY",
+   "pillar": "MEDIRUN",
+   "title": "სთორი · s07-tomorrow-04",
+   "text": "",
+   "textEn": null,
+   "mediaUrls": [
+    "https://medicard.ge/press/medirun-glow/s07-tomorrow-04.jpg"
+   ],
+   "scheduledAt": "2026-10-30T21:00:00+04:00",
+   "status": "SCHEDULED",
+   "notes": "MEDIRUN · გაანათე თბილისი · Metricool: ავტომატური გამოქვეყნება · სურათები AI-ით შექმნილი (Instagram-ზე მონიშნული)"
+  }
+ },
+ {
+  "slot": "g-sat-04-weekend",
+  "date": "2026-10-31T09:30:00+04:00",
+  "info": {
+   "autoPublish": true,
+   "draft": false,
+   "descendants": [],
+   "hasNotReadNotes": false,
+   "shortener": false,
+   "smartLinkData": {
+    "ids": []
+   },
+   "media": [
+    "https://medicard.ge/press/medirun-glow/s05-weekend.jpg"
+   ],
+   "mediaAltText": [],
+   "publicationDate": {
+    "dateTime": "2026-10-31T09:30:00",
+    "timezone": "Asia/Tbilisi"
+   },
+   "providers": [
+    {
+     "network": "facebook"
+    },
+    {
+     "network": "instagram"
+    }
+   ],
+   "facebookData": {
+    "type": "STORY"
+   },
+   "instagramData": {
+    "type": "STORY",
+    "isAiGenerated": true
+   }
+  },
+  "record": {
+   "campaign": "medirun-glow-2026",
+   "slot": "g-sat-04-weekend",
+   "networks": [
+    "facebook",
+    "instagram"
+   ],
+   "kind": "STORY",
+   "pillar": "MEDIRUN",
+   "title": "სთორი · s05-weekend",
+   "text": "",
+   "textEn": null,
+   "mediaUrls": [
+    "https://medicard.ge/press/medirun-glow/s05-weekend.jpg"
+   ],
+   "scheduledAt": "2026-10-31T09:30:00+04:00",
+   "status": "SCHEDULED",
+   "notes": "MEDIRUN · გაანათე თბილისი · Metricool: ავტომატური გამოქვეყნება · სურათები AI-ით შექმნილი (Instagram-ზე მონიშნული)"
+  }
+ },
+ {
+  "slot": "g-sat-04-hint1",
+  "date": "2026-10-31T15:00:00+04:00",
+  "info": {
+   "autoPublish": true,
+   "draft": false,
+   "descendants": [],
+   "hasNotReadNotes": false,
+   "shortener": false,
+   "smartLinkData": {
+    "ids": []
+   },
+   "media": [
+    "https://medicard.ge/press/medirun-glow/s06-hint-04-1.jpg"
+   ],
+   "mediaAltText": [],
+   "publicationDate": {
+    "dateTime": "2026-10-31T15:00:00",
+    "timezone": "Asia/Tbilisi"
+   },
+   "providers": [
+    {
+     "network": "facebook"
+    },
+    {
+     "network": "instagram"
+    }
+   ],
+   "facebookData": {
+    "type": "STORY"
+   },
+   "instagramData": {
+    "type": "STORY",
+    "isAiGenerated": true
+   }
+  },
+  "record": {
+   "campaign": "medirun-glow-2026",
+   "slot": "g-sat-04-hint1",
+   "networks": [
+    "facebook",
+    "instagram"
+   ],
+   "kind": "STORY",
+   "pillar": "MEDIRUN",
+   "title": "სთორი · s06-hint-04-1",
+   "text": "",
+   "textEn": null,
+   "mediaUrls": [
+    "https://medicard.ge/press/medirun-glow/s06-hint-04-1.jpg"
+   ],
+   "scheduledAt": "2026-10-31T15:00:00+04:00",
+   "status": "SCHEDULED",
+   "notes": "MEDIRUN · გაანათე თბილისი · Metricool: ავტომატური გამოქვეყნება · სურათები AI-ით შექმნილი (Instagram-ზე მონიშნული)"
+  }
+ },
+ {
+  "slot": "g-sat-04-hint2",
+  "date": "2026-10-31T15:30:00+04:00",
+  "info": {
+   "autoPublish": true,
+   "draft": false,
+   "descendants": [],
+   "hasNotReadNotes": false,
+   "shortener": false,
+   "smartLinkData": {
+    "ids": []
+   },
+   "media": [
+    "https://medicard.ge/press/medirun-glow/s06-hint-04-2.jpg"
+   ],
+   "mediaAltText": [],
+   "publicationDate": {
+    "dateTime": "2026-10-31T15:30:00",
+    "timezone": "Asia/Tbilisi"
+   },
+   "providers": [
+    {
+     "network": "facebook"
+    },
+    {
+     "network": "instagram"
+    }
+   ],
+   "facebookData": {
+    "type": "STORY"
+   },
+   "instagramData": {
+    "type": "STORY",
+    "isAiGenerated": true
+   }
+  },
+  "record": {
+   "campaign": "medirun-glow-2026",
+   "slot": "g-sat-04-hint2",
+   "networks": [
+    "facebook",
+    "instagram"
+   ],
+   "kind": "STORY",
+   "pillar": "MEDIRUN",
+   "title": "სთორი · s06-hint-04-2",
+   "text": "",
+   "textEn": null,
+   "mediaUrls": [
+    "https://medicard.ge/press/medirun-glow/s06-hint-04-2.jpg"
+   ],
+   "scheduledAt": "2026-10-31T15:30:00+04:00",
+   "status": "SCHEDULED",
+   "notes": "MEDIRUN · გაანათე თბილისი · Metricool: ავტომატური გამოქვეყნება · სურათები AI-ით შექმნილი (Instagram-ზე მონიშნული)"
+  }
+ },
+ {
+  "slot": "g-sat-04-winners",
+  "date": "2026-10-31T18:30:00+04:00",
+  "info": null,
+  "record": {
+   "campaign": "medirun-glow-2026",
+   "slot": "g-sat-04-winners",
+   "networks": [
+    "facebook",
+    "instagram"
+   ],
+   "kind": "STORY",
+   "pillar": "MEDIRUN",
+   "title": "შაბათის წვიმის მპოვნელები — 31 ოქტომბერი (ცოცხლად)",
+   "text": "შაბათის წვიმის მპოვნელები — 31 ოქტომბერი (ცოცხლად)",
+   "textEn": null,
+   "mediaUrls": [],
+   "scheduledAt": "2026-10-31T18:30:00+04:00",
+   "status": "PLANNED",
+   "notes": "ხელით: მხოლოდ რეალური რიცხვები ადმინიდან (MEDIRUN → ჯილდოები); სახელი/ფოტო მხოლოდ თანხმობით."
+  }
+ },
+ {
+  "slot": "g-weekday-11-02",
+  "date": "2026-11-02T08:15:00+04:00",
+  "info": {
+   "autoPublish": true,
+   "draft": false,
+   "descendants": [],
+   "hasNotReadNotes": false,
+   "shortener": false,
+   "smartLinkData": {
+    "ids": []
+   },
+   "media": [
+    "https://medicard.ge/press/medirun-glow/s04-weekday.jpg"
+   ],
+   "mediaAltText": [],
+   "publicationDate": {
+    "dateTime": "2026-11-02T08:15:00",
+    "timezone": "Asia/Tbilisi"
+   },
+   "providers": [
+    {
+     "network": "facebook"
+    },
+    {
+     "network": "instagram"
+    }
+   ],
+   "facebookData": {
+    "type": "STORY"
+   },
+   "instagramData": {
+    "type": "STORY",
+    "isAiGenerated": true
+   }
+  },
+  "record": {
+   "campaign": "medirun-glow-2026",
+   "slot": "g-weekday-11-02",
+   "networks": [
+    "facebook",
+    "instagram"
+   ],
+   "kind": "STORY",
+   "pillar": "MEDIRUN",
+   "title": "სთორი · s04-weekday",
+   "text": "",
+   "textEn": null,
+   "mediaUrls": [
+    "https://medicard.ge/press/medirun-glow/s04-weekday.jpg"
+   ],
+   "scheduledAt": "2026-11-02T08:15:00+04:00",
+   "status": "SCHEDULED",
+   "notes": "MEDIRUN · გაანათე თბილისი · Metricool: ავტომატური გამოქვეყნება · სურათები AI-ით შექმნილი (Instagram-ზე მონიშნული)"
+  }
+ },
+ {
+  "slot": "g-november",
+  "date": "2026-11-02T13:00:00+04:00",
+  "info": {
+   "autoPublish": true,
+   "draft": false,
+   "descendants": [],
+   "hasNotReadNotes": false,
+   "shortener": false,
+   "smartLinkData": {
+    "ids": []
+   },
+   "media": [
+    "https://medicard.ge/press/medirun-glow/f10-november.jpg"
+   ],
+   "mediaAltText": [],
+   "publicationDate": {
+    "dateTime": "2026-11-02T13:00:00",
+    "timezone": "Asia/Tbilisi"
+   },
+   "providers": [
+    {
+     "network": "facebook"
+    },
+    {
+     "network": "instagram"
+    }
+   ],
+   "text": "🗺 ნოემბერი — უბნების თვე\n\nყოველ კვირას მეტი ყუთი სხვა უბნებში:\n\n2–8 · გლდანი, ნაძალადევი\n9–15 · დიდუბე, ჩუღურეთი, საბურთალო\n16–22 · ისანი, სამგორი\n23–29 · ვაკე, მთაწმინდა, კრწანისი\n\n🏮 და კიდევ ერთი სიახლე: შაბათობით ფარნის ყუთები — თითოში 300 Medi Coins. მათ მხოლოდ ის დაინახავს, ვისაც თბილისის 0,25% აქვს განათებული.\n\nშენი უბანი რომელია? 👇\n\n📲 ჩამოტვირთე უფასოდ iPhone-ზე:\nhttps://apps.apple.com/app/id6812517519\n🌐 საიტი და ვებ-ვერსია: https://medicard.ge\n🤖 Android — სულ მალე\n\n#გაანათეთბილისი #MEDIRUN #MEDICARD #თბილისი #საქართველო",
+   "firstCommentText": "📲 iPhone: https://apps.apple.com/app/id6812517519\n💻 ვებ-ვერსია: https://medicard.ge/app\n🤖 Android — სულ მალე",
+   "facebookData": {
+    "type": "POST"
+   },
+   "instagramData": {
+    "type": "POST",
+    "isAiGenerated": true
+   }
+  },
+  "record": {
+   "campaign": "medirun-glow-2026",
+   "slot": "g-november",
+   "networks": [
+    "facebook",
+    "instagram"
+   ],
+   "kind": "POST",
+   "pillar": "MEDIRUN",
+   "title": "🗺 ნოემბერი — უბნების თვე",
+   "text": "🗺 ნოემბერი — უბნების თვე\n\nყოველ კვირას მეტი ყუთი სხვა უბნებში:\n\n2–8 · გლდანი, ნაძალადევი\n9–15 · დიდუბე, ჩუღურეთი, საბურთალო\n16–22 · ისანი, სამგორი\n23–29 · ვაკე, მთაწმინდა, კრწანისი\n\n🏮 და კიდევ ერთი სიახლე: შაბათობით ფარნის ყუთები — თითოში 300 Medi Coins. მათ მხოლოდ ის დაინახავს, ვისაც თბილისის 0,25% აქვს განათებული.\n\nშენი უბანი რომელია? 👇\n\n📲 ჩამოტვირთე უფასოდ iPhone-ზე:\nhttps://apps.apple.com/app/id6812517519\n🌐 საიტი და ვებ-ვერსია: https://medicard.ge\n🤖 Android — სულ მალე\n\n#გაანათეთბილისი #MEDIRUN #MEDICARD #თბილისი #საქართველო",
+   "textEn": null,
+   "mediaUrls": [
+    "https://medicard.ge/press/medirun-glow/f10-november.jpg"
+   ],
+   "scheduledAt": "2026-11-02T13:00:00+04:00",
+   "status": "SCHEDULED",
+   "notes": "MEDIRUN · გაანათე თბილისი · Metricool: ავტომატური გამოქვეყნება · სურათები AI-ით შექმნილი (Instagram-ზე მონიშნული)"
+  }
+ },
+ {
+  "slot": "g-levels-s-11-04",
+  "date": "2026-11-04T20:30:00+04:00",
+  "info": {
+   "autoPublish": true,
+   "draft": false,
+   "descendants": [],
+   "hasNotReadNotes": false,
+   "shortener": false,
+   "smartLinkData": {
+    "ids": []
+   },
+   "media": [
+    "https://medicard.ge/press/medirun-glow/s08-levels.jpg"
+   ],
+   "mediaAltText": [],
+   "publicationDate": {
+    "dateTime": "2026-11-04T20:30:00",
+    "timezone": "Asia/Tbilisi"
+   },
+   "providers": [
+    {
+     "network": "facebook"
+    },
+    {
+     "network": "instagram"
+    }
+   ],
+   "facebookData": {
+    "type": "STORY"
+   },
+   "instagramData": {
+    "type": "STORY",
+    "isAiGenerated": true
+   }
+  },
+  "record": {
+   "campaign": "medirun-glow-2026",
+   "slot": "g-levels-s-11-04",
+   "networks": [
+    "facebook",
+    "instagram"
+   ],
+   "kind": "STORY",
+   "pillar": "MEDIRUN",
+   "title": "სთორი · s08-levels",
+   "text": "",
+   "textEn": null,
+   "mediaUrls": [
+    "https://medicard.ge/press/medirun-glow/s08-levels.jpg"
+   ],
+   "scheduledAt": "2026-11-04T20:30:00+04:00",
+   "status": "SCHEDULED",
+   "notes": "MEDIRUN · გაანათე თბილისი · Metricool: ავტომატური გამოქვეყნება · სურათები AI-ით შექმნილი (Instagram-ზე მონიშნული)"
+  }
+ },
+ {
+  "slot": "g-sat-05",
+  "date": "2026-11-06T13:00:00+04:00",
+  "info": {
+   "autoPublish": true,
+   "draft": false,
+   "descendants": [],
+   "hasNotReadNotes": false,
+   "shortener": false,
+   "smartLinkData": {
+    "ids": []
+   },
+   "media": [
+    "https://medicard.ge/press/medirun-glow/f14-saturday-05.jpg"
+   ],
+   "mediaAltText": [],
+   "publicationDate": {
+    "dateTime": "2026-11-06T13:00:00",
+    "timezone": "Asia/Tbilisi"
+   },
+   "providers": [
+    {
+     "network": "facebook"
+    },
+    {
+     "network": "instagram"
+    }
+   ],
+   "text": "🌧 შაბათის წვიმა — 7 ნოემბერი, 16:00\n\nხვალ ერთ თბილისურ პარკში საჩუქრების წვიმა მოვა: ყუთებში 50 და 100 Medi Coins იქნება.\n\nრომელ პარკში? 15:00-ზე სთორიში გამოცანას გამოვაქვეყნებთ, 15:30-ზე — მეორე მინიშნებას.\n\n🏮 შაბათობით ფარნის ყუთებიც ჩნდება — თითოში 300 Medi Coins. მათ მხოლოდ ის დაინახავს, ვისაც თბილისის 0,25% აქვს განათებული.\n\nჩართე შეტყობინებები, რომ მინიშნება არ გამოგრჩეს. 🔔\n\n📲 ჩამოტვირთე უფასოდ iPhone-ზე:\nhttps://apps.apple.com/app/id6812517519\n🌐 საიტი და ვებ-ვერსია: https://medicard.ge\n🤖 Android — სულ მალე\n\n#გაანათეთბილისი #MEDIRUN #MEDICARD #თბილისი #საქართველო",
+   "firstCommentText": "📲 iPhone: https://apps.apple.com/app/id6812517519\n💻 ვებ-ვერსია: https://medicard.ge/app\n🤖 Android — სულ მალე",
+   "facebookData": {
+    "type": "POST"
+   },
+   "instagramData": {
+    "type": "POST",
+    "isAiGenerated": true
+   }
+  },
+  "record": {
+   "campaign": "medirun-glow-2026",
+   "slot": "g-sat-05",
+   "networks": [
+    "facebook",
+    "instagram"
+   ],
+   "kind": "POST",
+   "pillar": "MEDIRUN",
+   "title": "🌧 შაბათის წვიმა — 7 ნოემბერი, 16:00",
+   "text": "🌧 შაბათის წვიმა — 7 ნოემბერი, 16:00\n\nხვალ ერთ თბილისურ პარკში საჩუქრების წვიმა მოვა: ყუთებში 50 და 100 Medi Coins იქნება.\n\nრომელ პარკში? 15:00-ზე სთორიში გამოცანას გამოვაქვეყნებთ, 15:30-ზე — მეორე მინიშნებას.\n\n🏮 შაბათობით ფარნის ყუთებიც ჩნდება — თითოში 300 Medi Coins. მათ მხოლოდ ის დაინახავს, ვისაც თბილისის 0,25% აქვს განათებული.\n\nჩართე შეტყობინებები, რომ მინიშნება არ გამოგრჩეს. 🔔\n\n📲 ჩამოტვირთე უფასოდ iPhone-ზე:\nhttps://apps.apple.com/app/id6812517519\n🌐 საიტი და ვებ-ვერსია: https://medicard.ge\n🤖 Android — სულ მალე\n\n#გაანათეთბილისი #MEDIRUN #MEDICARD #თბილისი #საქართველო",
+   "textEn": null,
+   "mediaUrls": [
+    "https://medicard.ge/press/medirun-glow/f14-saturday-05.jpg"
+   ],
+   "scheduledAt": "2026-11-06T13:00:00+04:00",
+   "status": "SCHEDULED",
+   "notes": "MEDIRUN · გაანათე თბილისი · Metricool: ავტომატური გამოქვეყნება · სურათები AI-ით შექმნილი (Instagram-ზე მონიშნული)"
+  }
+ },
+ {
+  "slot": "g-sat-05-tomorrow",
+  "date": "2026-11-06T21:00:00+04:00",
+  "info": {
+   "autoPublish": true,
+   "draft": false,
+   "descendants": [],
+   "hasNotReadNotes": false,
+   "shortener": false,
+   "smartLinkData": {
+    "ids": []
+   },
+   "media": [
+    "https://medicard.ge/press/medirun-glow/s07-tomorrow-05.jpg"
+   ],
+   "mediaAltText": [],
+   "publicationDate": {
+    "dateTime": "2026-11-06T21:00:00",
+    "timezone": "Asia/Tbilisi"
+   },
+   "providers": [
+    {
+     "network": "facebook"
+    },
+    {
+     "network": "instagram"
+    }
+   ],
+   "facebookData": {
+    "type": "STORY"
+   },
+   "instagramData": {
+    "type": "STORY",
+    "isAiGenerated": true
+   }
+  },
+  "record": {
+   "campaign": "medirun-glow-2026",
+   "slot": "g-sat-05-tomorrow",
+   "networks": [
+    "facebook",
+    "instagram"
+   ],
+   "kind": "STORY",
+   "pillar": "MEDIRUN",
+   "title": "სთორი · s07-tomorrow-05",
+   "text": "",
+   "textEn": null,
+   "mediaUrls": [
+    "https://medicard.ge/press/medirun-glow/s07-tomorrow-05.jpg"
+   ],
+   "scheduledAt": "2026-11-06T21:00:00+04:00",
+   "status": "SCHEDULED",
+   "notes": "MEDIRUN · გაანათე თბილისი · Metricool: ავტომატური გამოქვეყნება · სურათები AI-ით შექმნილი (Instagram-ზე მონიშნული)"
+  }
+ },
+ {
+  "slot": "g-sat-05-weekend",
+  "date": "2026-11-07T09:30:00+04:00",
+  "info": {
+   "autoPublish": true,
+   "draft": false,
+   "descendants": [],
+   "hasNotReadNotes": false,
+   "shortener": false,
+   "smartLinkData": {
+    "ids": []
+   },
+   "media": [
+    "https://medicard.ge/press/medirun-glow/s05-weekend.jpg"
+   ],
+   "mediaAltText": [],
+   "publicationDate": {
+    "dateTime": "2026-11-07T09:30:00",
+    "timezone": "Asia/Tbilisi"
+   },
+   "providers": [
+    {
+     "network": "facebook"
+    },
+    {
+     "network": "instagram"
+    }
+   ],
+   "facebookData": {
+    "type": "STORY"
+   },
+   "instagramData": {
+    "type": "STORY",
+    "isAiGenerated": true
+   }
+  },
+  "record": {
+   "campaign": "medirun-glow-2026",
+   "slot": "g-sat-05-weekend",
+   "networks": [
+    "facebook",
+    "instagram"
+   ],
+   "kind": "STORY",
+   "pillar": "MEDIRUN",
+   "title": "სთორი · s05-weekend",
+   "text": "",
+   "textEn": null,
+   "mediaUrls": [
+    "https://medicard.ge/press/medirun-glow/s05-weekend.jpg"
+   ],
+   "scheduledAt": "2026-11-07T09:30:00+04:00",
+   "status": "SCHEDULED",
+   "notes": "MEDIRUN · გაანათე თბილისი · Metricool: ავტომატური გამოქვეყნება · სურათები AI-ით შექმნილი (Instagram-ზე მონიშნული)"
+  }
+ },
+ {
+  "slot": "g-sat-05-hint1",
+  "date": "2026-11-07T15:00:00+04:00",
+  "info": {
+   "autoPublish": true,
+   "draft": false,
+   "descendants": [],
+   "hasNotReadNotes": false,
+   "shortener": false,
+   "smartLinkData": {
+    "ids": []
+   },
+   "media": [
+    "https://medicard.ge/press/medirun-glow/s06-hint-05-1.jpg"
+   ],
+   "mediaAltText": [],
+   "publicationDate": {
+    "dateTime": "2026-11-07T15:00:00",
+    "timezone": "Asia/Tbilisi"
+   },
+   "providers": [
+    {
+     "network": "facebook"
+    },
+    {
+     "network": "instagram"
+    }
+   ],
+   "facebookData": {
+    "type": "STORY"
+   },
+   "instagramData": {
+    "type": "STORY",
+    "isAiGenerated": true
+   }
+  },
+  "record": {
+   "campaign": "medirun-glow-2026",
+   "slot": "g-sat-05-hint1",
+   "networks": [
+    "facebook",
+    "instagram"
+   ],
+   "kind": "STORY",
+   "pillar": "MEDIRUN",
+   "title": "სთორი · s06-hint-05-1",
+   "text": "",
+   "textEn": null,
+   "mediaUrls": [
+    "https://medicard.ge/press/medirun-glow/s06-hint-05-1.jpg"
+   ],
+   "scheduledAt": "2026-11-07T15:00:00+04:00",
+   "status": "SCHEDULED",
+   "notes": "MEDIRUN · გაანათე თბილისი · Metricool: ავტომატური გამოქვეყნება · სურათები AI-ით შექმნილი (Instagram-ზე მონიშნული)"
+  }
+ },
+ {
+  "slot": "g-sat-05-hint2",
+  "date": "2026-11-07T15:30:00+04:00",
+  "info": {
+   "autoPublish": true,
+   "draft": false,
+   "descendants": [],
+   "hasNotReadNotes": false,
+   "shortener": false,
+   "smartLinkData": {
+    "ids": []
+   },
+   "media": [
+    "https://medicard.ge/press/medirun-glow/s06-hint-05-2.jpg"
+   ],
+   "mediaAltText": [],
+   "publicationDate": {
+    "dateTime": "2026-11-07T15:30:00",
+    "timezone": "Asia/Tbilisi"
+   },
+   "providers": [
+    {
+     "network": "facebook"
+    },
+    {
+     "network": "instagram"
+    }
+   ],
+   "facebookData": {
+    "type": "STORY"
+   },
+   "instagramData": {
+    "type": "STORY",
+    "isAiGenerated": true
+   }
+  },
+  "record": {
+   "campaign": "medirun-glow-2026",
+   "slot": "g-sat-05-hint2",
+   "networks": [
+    "facebook",
+    "instagram"
+   ],
+   "kind": "STORY",
+   "pillar": "MEDIRUN",
+   "title": "სთორი · s06-hint-05-2",
+   "text": "",
+   "textEn": null,
+   "mediaUrls": [
+    "https://medicard.ge/press/medirun-glow/s06-hint-05-2.jpg"
+   ],
+   "scheduledAt": "2026-11-07T15:30:00+04:00",
+   "status": "SCHEDULED",
+   "notes": "MEDIRUN · გაანათე თბილისი · Metricool: ავტომატური გამოქვეყნება · სურათები AI-ით შექმნილი (Instagram-ზე მონიშნული)"
+  }
+ },
+ {
+  "slot": "g-sat-05-winners",
+  "date": "2026-11-07T18:30:00+04:00",
+  "info": null,
+  "record": {
+   "campaign": "medirun-glow-2026",
+   "slot": "g-sat-05-winners",
+   "networks": [
+    "facebook",
+    "instagram"
+   ],
+   "kind": "STORY",
+   "pillar": "MEDIRUN",
+   "title": "შაბათის წვიმის მპოვნელები — 7 ნოემბერი (ცოცხლად)",
+   "text": "შაბათის წვიმის მპოვნელები — 7 ნოემბერი (ცოცხლად)",
+   "textEn": null,
+   "mediaUrls": [],
+   "scheduledAt": "2026-11-07T18:30:00+04:00",
+   "status": "PLANNED",
+   "notes": "ხელით: მხოლოდ რეალური რიცხვები ადმინიდან (MEDIRUN → ჯილდოები); სახელი/ფოტო მხოლოდ თანხმობით."
+  }
+ },
+ {
+  "slot": "g-weekday-11-09",
+  "date": "2026-11-09T08:15:00+04:00",
+  "info": {
+   "autoPublish": true,
+   "draft": false,
+   "descendants": [],
+   "hasNotReadNotes": false,
+   "shortener": false,
+   "smartLinkData": {
+    "ids": []
+   },
+   "media": [
+    "https://medicard.ge/press/medirun-glow/s04-weekday.jpg"
+   ],
+   "mediaAltText": [],
+   "publicationDate": {
+    "dateTime": "2026-11-09T08:15:00",
+    "timezone": "Asia/Tbilisi"
+   },
+   "providers": [
+    {
+     "network": "facebook"
+    },
+    {
+     "network": "instagram"
+    }
+   ],
+   "facebookData": {
+    "type": "STORY"
+   },
+   "instagramData": {
+    "type": "STORY",
+    "isAiGenerated": true
+   }
+  },
+  "record": {
+   "campaign": "medirun-glow-2026",
+   "slot": "g-weekday-11-09",
+   "networks": [
+    "facebook",
+    "instagram"
+   ],
+   "kind": "STORY",
+   "pillar": "MEDIRUN",
+   "title": "სთორი · s04-weekday",
+   "text": "",
+   "textEn": null,
+   "mediaUrls": [
+    "https://medicard.ge/press/medirun-glow/s04-weekday.jpg"
+   ],
+   "scheduledAt": "2026-11-09T08:15:00+04:00",
+   "status": "SCHEDULED",
+   "notes": "MEDIRUN · გაანათე თბილისი · Metricool: ავტომატური გამოქვეყნება · სურათები AI-ით შექმნილი (Instagram-ზე მონიშნული)"
+  }
+ },
+ {
+  "slot": "g-iphone-52",
+  "date": "2026-11-09T13:00:00+04:00",
+  "info": {
+   "autoPublish": true,
+   "draft": false,
+   "descendants": [],
+   "hasNotReadNotes": false,
+   "shortener": false,
+   "smartLinkData": {
+    "ids": []
+   },
+   "media": [
+    "https://medicard.ge/press/medirun-glow/f05-iphone-52.jpg"
+   ],
+   "mediaAltText": [],
+   "publicationDate": {
+    "dateTime": "2026-11-09T13:00:00",
+    "timezone": "Asia/Tbilisi"
+   },
+   "providers": [
+    {
+     "network": "facebook"
+    },
+    {
+     "network": "instagram"
+    }
+   ],
+   "text": "🔴 31 დეკემბრამდე 52 დღე დარჩა.\n\nწითელ iPhone 18 Pro Max-ს მხოლოდ ის დაინახავს, ვინც MEDIRUN-ში თბილისის 1%-ს გაანათებს. ეს დაახლოებით 50 კილომეტრი ახალი ქუჩაა.\n\nვინც ყუთს პირველი გახსნის, iPhone-ს ის წაიღებს.\n\nშენ რამდენ პროცენტზე ხარ? შენი პროცენტი MEDIRUN-ში ჩანს. 👣\n\n📲 ჩამოტვირთე უფასოდ iPhone-ზე:\nhttps://apps.apple.com/app/id6812517519\n🌐 საიტი და ვებ-ვერსია: https://medicard.ge\n🤖 Android — სულ მალე\n\n#გაანათეთბილისი #MEDIRUN #MEDICARD #თბილისი #საქართველო",
+   "firstCommentText": "📲 iPhone: https://apps.apple.com/app/id6812517519\n💻 ვებ-ვერსია: https://medicard.ge/app\n🤖 Android — სულ მალე",
+   "facebookData": {
+    "type": "POST"
+   },
+   "instagramData": {
+    "type": "POST",
+    "isAiGenerated": true
+   }
+  },
+  "record": {
+   "campaign": "medirun-glow-2026",
+   "slot": "g-iphone-52",
+   "networks": [
+    "facebook",
+    "instagram"
+   ],
+   "kind": "POST",
+   "pillar": "MEDIRUN",
+   "title": "🔴 31 დეკემბრამდე 52 დღე დარჩა.",
+   "text": "🔴 31 დეკემბრამდე 52 დღე დარჩა.\n\nწითელ iPhone 18 Pro Max-ს მხოლოდ ის დაინახავს, ვინც MEDIRUN-ში თბილისის 1%-ს გაანათებს. ეს დაახლოებით 50 კილომეტრი ახალი ქუჩაა.\n\nვინც ყუთს პირველი გახსნის, iPhone-ს ის წაიღებს.\n\nშენ რამდენ პროცენტზე ხარ? შენი პროცენტი MEDIRUN-ში ჩანს. 👣\n\n📲 ჩამოტვირთე უფასოდ iPhone-ზე:\nhttps://apps.apple.com/app/id6812517519\n🌐 საიტი და ვებ-ვერსია: https://medicard.ge\n🤖 Android — სულ მალე\n\n#გაანათეთბილისი #MEDIRUN #MEDICARD #თბილისი #საქართველო",
+   "textEn": null,
+   "mediaUrls": [
+    "https://medicard.ge/press/medirun-glow/f05-iphone-52.jpg"
+   ],
+   "scheduledAt": "2026-11-09T13:00:00+04:00",
+   "status": "SCHEDULED",
+   "notes": "MEDIRUN · გაანათე თბილისი · Metricool: ავტომატური გამოქვეყნება · სურათები AI-ით შექმნილი (Instagram-ზე მონიშნული)"
+  }
+ },
+ {
+  "slot": "g-rhythm",
+  "date": "2026-11-11T13:00:00+04:00",
+  "info": {
+   "autoPublish": true,
+   "draft": false,
+   "descendants": [],
+   "hasNotReadNotes": false,
+   "shortener": false,
+   "smartLinkData": {
+    "ids": []
+   },
+   "media": [
+    "https://medicard.ge/press/medirun-glow/f03-week.jpg"
+   ],
+   "mediaAltText": [],
+   "publicationDate": {
+    "dateTime": "2026-11-11T13:00:00",
+    "timezone": "Asia/Tbilisi"
+   },
+   "providers": [
+    {
+     "network": "facebook"
+    },
+    {
+     "network": "instagram"
+    }
+   ],
+   "text": "კვირის რიტმი ⏰\n\n📅 ორშაბათი–პარასკევი: მცირე ყუთები, 08:30-სა და 18:00-ზე\n🎁 შაბათი–კვირა: უფრო დიდი ყუთები, 10:30-სა და 17:30-ზე\n🌧 შაბათს, 16:00-ზე: საჩუქრების წვიმა ერთ პარკში\n🔴 31 დეკემბერს: წითელი iPhone 18 Pro Max შუქურებისთვის\n\nყუთები პარკების სიღრმეშია — ცოტა ძებნა მოგიწევს.\n\n📲 ჩამოტვირთე უფასოდ iPhone-ზე:\nhttps://apps.apple.com/app/id6812517519\n🌐 საიტი და ვებ-ვერსია: https://medicard.ge\n🤖 Android — სულ მალე\n\n#გაანათეთბილისი #MEDIRUN #MEDICARD #თბილისი #საქართველო",
+   "firstCommentText": "📲 iPhone: https://apps.apple.com/app/id6812517519\n💻 ვებ-ვერსია: https://medicard.ge/app\n🤖 Android — სულ მალე",
+   "facebookData": {
+    "type": "POST"
+   },
+   "instagramData": {
+    "type": "POST",
+    "isAiGenerated": true
+   }
+  },
+  "record": {
+   "campaign": "medirun-glow-2026",
+   "slot": "g-rhythm",
+   "networks": [
+    "facebook",
+    "instagram"
+   ],
+   "kind": "POST",
+   "pillar": "MEDIRUN",
+   "title": "კვირის რიტმი ⏰",
+   "text": "კვირის რიტმი ⏰\n\n📅 ორშაბათი–პარასკევი: მცირე ყუთები, 08:30-სა და 18:00-ზე\n🎁 შაბათი–კვირა: უფრო დიდი ყუთები, 10:30-სა და 17:30-ზე\n🌧 შაბათს, 16:00-ზე: საჩუქრების წვიმა ერთ პარკში\n🔴 31 დეკემბერს: წითელი iPhone 18 Pro Max შუქურებისთვის\n\nყუთები პარკების სიღრმეშია — ცოტა ძებნა მოგიწევს.\n\n📲 ჩამოტვირთე უფასოდ iPhone-ზე:\nhttps://apps.apple.com/app/id6812517519\n🌐 საიტი და ვებ-ვერსია: https://medicard.ge\n🤖 Android — სულ მალე\n\n#გაანათეთბილისი #MEDIRUN #MEDICARD #თბილისი #საქართველო",
+   "textEn": null,
+   "mediaUrls": [
+    "https://medicard.ge/press/medirun-glow/f03-week.jpg"
+   ],
+   "scheduledAt": "2026-11-11T13:00:00+04:00",
+   "status": "SCHEDULED",
+   "notes": "MEDIRUN · გაანათე თბილისი · Metricool: ავტომატური გამოქვეყნება · სურათები AI-ით შექმნილი (Instagram-ზე მონიშნული)"
+  }
+ },
+ {
+  "slot": "g-sat-06",
+  "date": "2026-11-13T13:00:00+04:00",
+  "info": {
+   "autoPublish": true,
+   "draft": false,
+   "descendants": [],
+   "hasNotReadNotes": false,
+   "shortener": false,
+   "smartLinkData": {
+    "ids": []
+   },
+   "media": [
+    "https://medicard.ge/press/medirun-glow/f14-saturday-06.jpg"
+   ],
+   "mediaAltText": [],
+   "publicationDate": {
+    "dateTime": "2026-11-13T13:00:00",
+    "timezone": "Asia/Tbilisi"
+   },
+   "providers": [
+    {
+     "network": "facebook"
+    },
+    {
+     "network": "instagram"
+    }
+   ],
+   "text": "🌧 შაბათის წვიმა — 14 ნოემბერი, 16:00\n\nხვალ ერთ თბილისურ პარკში საჩუქრების წვიმა მოვა: ყუთებში 50 და 100 Medi Coins იქნება.\n\nრომელ პარკში? 15:00-ზე სთორიში გამოცანას გამოვაქვეყნებთ, 15:30-ზე — მეორე მინიშნებას.\n\n🏮 შაბათობით ფარნის ყუთებიც ჩნდება — თითოში 300 Medi Coins. მათ მხოლოდ ის დაინახავს, ვისაც თბილისის 0,25% აქვს განათებული.\n\nჩართე შეტყობინებები, რომ მინიშნება არ გამოგრჩეს. 🔔\n\n📲 ჩამოტვირთე უფასოდ iPhone-ზე:\nhttps://apps.apple.com/app/id6812517519\n🌐 საიტი და ვებ-ვერსია: https://medicard.ge\n🤖 Android — სულ მალე\n\n#გაანათეთბილისი #MEDIRUN #MEDICARD #თბილისი #საქართველო",
+   "firstCommentText": "📲 iPhone: https://apps.apple.com/app/id6812517519\n💻 ვებ-ვერსია: https://medicard.ge/app\n🤖 Android — სულ მალე",
+   "facebookData": {
+    "type": "POST"
+   },
+   "instagramData": {
+    "type": "POST",
+    "isAiGenerated": true
+   }
+  },
+  "record": {
+   "campaign": "medirun-glow-2026",
+   "slot": "g-sat-06",
+   "networks": [
+    "facebook",
+    "instagram"
+   ],
+   "kind": "POST",
+   "pillar": "MEDIRUN",
+   "title": "🌧 შაბათის წვიმა — 14 ნოემბერი, 16:00",
+   "text": "🌧 შაბათის წვიმა — 14 ნოემბერი, 16:00\n\nხვალ ერთ თბილისურ პარკში საჩუქრების წვიმა მოვა: ყუთებში 50 და 100 Medi Coins იქნება.\n\nრომელ პარკში? 15:00-ზე სთორიში გამოცანას გამოვაქვეყნებთ, 15:30-ზე — მეორე მინიშნებას.\n\n🏮 შაბათობით ფარნის ყუთებიც ჩნდება — თითოში 300 Medi Coins. მათ მხოლოდ ის დაინახავს, ვისაც თბილისის 0,25% აქვს განათებული.\n\nჩართე შეტყობინებები, რომ მინიშნება არ გამოგრჩეს. 🔔\n\n📲 ჩამოტვირთე უფასოდ iPhone-ზე:\nhttps://apps.apple.com/app/id6812517519\n🌐 საიტი და ვებ-ვერსია: https://medicard.ge\n🤖 Android — სულ მალე\n\n#გაანათეთბილისი #MEDIRUN #MEDICARD #თბილისი #საქართველო",
+   "textEn": null,
+   "mediaUrls": [
+    "https://medicard.ge/press/medirun-glow/f14-saturday-06.jpg"
+   ],
+   "scheduledAt": "2026-11-13T13:00:00+04:00",
+   "status": "SCHEDULED",
+   "notes": "MEDIRUN · გაანათე თბილისი · Metricool: ავტომატური გამოქვეყნება · სურათები AI-ით შექმნილი (Instagram-ზე მონიშნული)"
+  }
+ },
+ {
+  "slot": "g-sat-06-tomorrow",
+  "date": "2026-11-13T21:00:00+04:00",
+  "info": {
+   "autoPublish": true,
+   "draft": false,
+   "descendants": [],
+   "hasNotReadNotes": false,
+   "shortener": false,
+   "smartLinkData": {
+    "ids": []
+   },
+   "media": [
+    "https://medicard.ge/press/medirun-glow/s07-tomorrow-06.jpg"
+   ],
+   "mediaAltText": [],
+   "publicationDate": {
+    "dateTime": "2026-11-13T21:00:00",
+    "timezone": "Asia/Tbilisi"
+   },
+   "providers": [
+    {
+     "network": "facebook"
+    },
+    {
+     "network": "instagram"
+    }
+   ],
+   "facebookData": {
+    "type": "STORY"
+   },
+   "instagramData": {
+    "type": "STORY",
+    "isAiGenerated": true
+   }
+  },
+  "record": {
+   "campaign": "medirun-glow-2026",
+   "slot": "g-sat-06-tomorrow",
+   "networks": [
+    "facebook",
+    "instagram"
+   ],
+   "kind": "STORY",
+   "pillar": "MEDIRUN",
+   "title": "სთორი · s07-tomorrow-06",
+   "text": "",
+   "textEn": null,
+   "mediaUrls": [
+    "https://medicard.ge/press/medirun-glow/s07-tomorrow-06.jpg"
+   ],
+   "scheduledAt": "2026-11-13T21:00:00+04:00",
+   "status": "SCHEDULED",
+   "notes": "MEDIRUN · გაანათე თბილისი · Metricool: ავტომატური გამოქვეყნება · სურათები AI-ით შექმნილი (Instagram-ზე მონიშნული)"
+  }
+ },
+ {
+  "slot": "g-sat-06-weekend",
+  "date": "2026-11-14T09:30:00+04:00",
+  "info": {
+   "autoPublish": true,
+   "draft": false,
+   "descendants": [],
+   "hasNotReadNotes": false,
+   "shortener": false,
+   "smartLinkData": {
+    "ids": []
+   },
+   "media": [
+    "https://medicard.ge/press/medirun-glow/s05-weekend.jpg"
+   ],
+   "mediaAltText": [],
+   "publicationDate": {
+    "dateTime": "2026-11-14T09:30:00",
+    "timezone": "Asia/Tbilisi"
+   },
+   "providers": [
+    {
+     "network": "facebook"
+    },
+    {
+     "network": "instagram"
+    }
+   ],
+   "facebookData": {
+    "type": "STORY"
+   },
+   "instagramData": {
+    "type": "STORY",
+    "isAiGenerated": true
+   }
+  },
+  "record": {
+   "campaign": "medirun-glow-2026",
+   "slot": "g-sat-06-weekend",
+   "networks": [
+    "facebook",
+    "instagram"
+   ],
+   "kind": "STORY",
+   "pillar": "MEDIRUN",
+   "title": "სთორი · s05-weekend",
+   "text": "",
+   "textEn": null,
+   "mediaUrls": [
+    "https://medicard.ge/press/medirun-glow/s05-weekend.jpg"
+   ],
+   "scheduledAt": "2026-11-14T09:30:00+04:00",
+   "status": "SCHEDULED",
+   "notes": "MEDIRUN · გაანათე თბილისი · Metricool: ავტომატური გამოქვეყნება · სურათები AI-ით შექმნილი (Instagram-ზე მონიშნული)"
+  }
+ },
+ {
+  "slot": "g-sat-06-hint1",
+  "date": "2026-11-14T15:00:00+04:00",
+  "info": {
+   "autoPublish": true,
+   "draft": false,
+   "descendants": [],
+   "hasNotReadNotes": false,
+   "shortener": false,
+   "smartLinkData": {
+    "ids": []
+   },
+   "media": [
+    "https://medicard.ge/press/medirun-glow/s06-hint-06-1.jpg"
+   ],
+   "mediaAltText": [],
+   "publicationDate": {
+    "dateTime": "2026-11-14T15:00:00",
+    "timezone": "Asia/Tbilisi"
+   },
+   "providers": [
+    {
+     "network": "facebook"
+    },
+    {
+     "network": "instagram"
+    }
+   ],
+   "facebookData": {
+    "type": "STORY"
+   },
+   "instagramData": {
+    "type": "STORY",
+    "isAiGenerated": true
+   }
+  },
+  "record": {
+   "campaign": "medirun-glow-2026",
+   "slot": "g-sat-06-hint1",
+   "networks": [
+    "facebook",
+    "instagram"
+   ],
+   "kind": "STORY",
+   "pillar": "MEDIRUN",
+   "title": "სთორი · s06-hint-06-1",
+   "text": "",
+   "textEn": null,
+   "mediaUrls": [
+    "https://medicard.ge/press/medirun-glow/s06-hint-06-1.jpg"
+   ],
+   "scheduledAt": "2026-11-14T15:00:00+04:00",
+   "status": "SCHEDULED",
+   "notes": "MEDIRUN · გაანათე თბილისი · Metricool: ავტომატური გამოქვეყნება · სურათები AI-ით შექმნილი (Instagram-ზე მონიშნული)"
+  }
+ },
+ {
+  "slot": "g-sat-06-hint2",
+  "date": "2026-11-14T15:30:00+04:00",
+  "info": {
+   "autoPublish": true,
+   "draft": false,
+   "descendants": [],
+   "hasNotReadNotes": false,
+   "shortener": false,
+   "smartLinkData": {
+    "ids": []
+   },
+   "media": [
+    "https://medicard.ge/press/medirun-glow/s06-hint-06-2.jpg"
+   ],
+   "mediaAltText": [],
+   "publicationDate": {
+    "dateTime": "2026-11-14T15:30:00",
+    "timezone": "Asia/Tbilisi"
+   },
+   "providers": [
+    {
+     "network": "facebook"
+    },
+    {
+     "network": "instagram"
+    }
+   ],
+   "facebookData": {
+    "type": "STORY"
+   },
+   "instagramData": {
+    "type": "STORY",
+    "isAiGenerated": true
+   }
+  },
+  "record": {
+   "campaign": "medirun-glow-2026",
+   "slot": "g-sat-06-hint2",
+   "networks": [
+    "facebook",
+    "instagram"
+   ],
+   "kind": "STORY",
+   "pillar": "MEDIRUN",
+   "title": "სთორი · s06-hint-06-2",
+   "text": "",
+   "textEn": null,
+   "mediaUrls": [
+    "https://medicard.ge/press/medirun-glow/s06-hint-06-2.jpg"
+   ],
+   "scheduledAt": "2026-11-14T15:30:00+04:00",
+   "status": "SCHEDULED",
+   "notes": "MEDIRUN · გაანათე თბილისი · Metricool: ავტომატური გამოქვეყნება · სურათები AI-ით შექმნილი (Instagram-ზე მონიშნული)"
+  }
+ },
+ {
+  "slot": "g-sat-06-winners",
+  "date": "2026-11-14T18:30:00+04:00",
+  "info": null,
+  "record": {
+   "campaign": "medirun-glow-2026",
+   "slot": "g-sat-06-winners",
+   "networks": [
+    "facebook",
+    "instagram"
+   ],
+   "kind": "STORY",
+   "pillar": "MEDIRUN",
+   "title": "შაბათის წვიმის მპოვნელები — 14 ნოემბერი (ცოცხლად)",
+   "text": "შაბათის წვიმის მპოვნელები — 14 ნოემბერი (ცოცხლად)",
+   "textEn": null,
+   "mediaUrls": [],
+   "scheduledAt": "2026-11-14T18:30:00+04:00",
+   "status": "PLANNED",
+   "notes": "ხელით: მხოლოდ რეალური რიცხვები ადმინიდან (MEDIRUN → ჯილდოები); სახელი/ფოტო მხოლოდ თანხმობით."
+  }
+ },
+ {
+  "slot": "g-weekday-11-16",
+  "date": "2026-11-16T08:15:00+04:00",
+  "info": {
+   "autoPublish": true,
+   "draft": false,
+   "descendants": [],
+   "hasNotReadNotes": false,
+   "shortener": false,
+   "smartLinkData": {
+    "ids": []
+   },
+   "media": [
+    "https://medicard.ge/press/medirun-glow/s04-weekday.jpg"
+   ],
+   "mediaAltText": [],
+   "publicationDate": {
+    "dateTime": "2026-11-16T08:15:00",
+    "timezone": "Asia/Tbilisi"
+   },
+   "providers": [
+    {
+     "network": "facebook"
+    },
+    {
+     "network": "instagram"
+    }
+   ],
+   "facebookData": {
+    "type": "STORY"
+   },
+   "instagramData": {
+    "type": "STORY",
+    "isAiGenerated": true
+   }
+  },
+  "record": {
+   "campaign": "medirun-glow-2026",
+   "slot": "g-weekday-11-16",
+   "networks": [
+    "facebook",
+    "instagram"
+   ],
+   "kind": "STORY",
+   "pillar": "MEDIRUN",
+   "title": "სთორი · s04-weekday",
+   "text": "",
+   "textEn": null,
+   "mediaUrls": [
+    "https://medicard.ge/press/medirun-glow/s04-weekday.jpg"
+   ],
+   "scheduledAt": "2026-11-16T08:15:00+04:00",
+   "status": "SCHEDULED",
+   "notes": "MEDIRUN · გაანათე თბილისი · Metricool: ავტომატური გამოქვეყნება · სურათები AI-ით შექმნილი (Instagram-ზე მონიშნული)"
+  }
+ },
+ {
+  "slot": "g-levels-2",
+  "date": "2026-11-18T13:00:00+04:00",
+  "info": {
+   "autoPublish": true,
+   "draft": false,
+   "descendants": [],
+   "hasNotReadNotes": false,
+   "shortener": false,
+   "smartLinkData": {
+    "ids": []
+   },
+   "media": [
+    "https://medicard.ge/press/medirun-glow/f04-levels.jpg"
+   ],
+   "mediaAltText": [],
+   "publicationDate": {
+    "dateTime": "2026-11-18T13:00:00",
+    "timezone": "Asia/Tbilisi"
+   },
+   "providers": [
+    {
+     "network": "facebook"
+    },
+    {
+     "network": "instagram"
+    }
+   ],
+   "text": "შენი თბილისი რომელ დონეზეა? 🏮\n\nMEDIRUN-ში ყოველი ახალი ქუჩა შენს რუკაზე ინთება. რაც მეტ ახალ ქუჩას გაივლი, მით უფრო მაღალი იქნება შენი დონე:\n\n✨ 0,1% — ნაპერწკალი\n🏮 0,25% — ფარანი: ნოემბრიდან შაბათის ფარნის ყუთებს დაინახავ\n🔥 0,5% — ჩირაღდანი\n⭐ 1% — შუქურა: 31 დეკემბერს წითელ iPhone 18 Pro Max-ს დაინახავ\n\n1% დაახლოებით 50 კილომეტრი ახალი ქუჩაა. ერთსა და იმავე გზას მეორედ არ ვითვლით.\n\nშენი პროცენტი MEDIRUN-ში ჩანს. 👣\n\n📲 ჩამოტვირთე უფასოდ iPhone-ზე:\nhttps://apps.apple.com/app/id6812517519\n🌐 საიტი და ვებ-ვერსია: https://medicard.ge\n🤖 Android — სულ მალე\n\n#გაანათეთბილისი #MEDIRUN #MEDICARD #თბილისი #საქართველო",
+   "firstCommentText": "📲 iPhone: https://apps.apple.com/app/id6812517519\n💻 ვებ-ვერსია: https://medicard.ge/app\n🤖 Android — სულ მალე",
+   "facebookData": {
+    "type": "POST"
+   },
+   "instagramData": {
+    "type": "POST",
+    "isAiGenerated": true
+   }
+  },
+  "record": {
+   "campaign": "medirun-glow-2026",
+   "slot": "g-levels-2",
+   "networks": [
+    "facebook",
+    "instagram"
+   ],
+   "kind": "POST",
+   "pillar": "MEDIRUN",
+   "title": "შენი თბილისი რომელ დონეზეა? 🏮",
+   "text": "შენი თბილისი რომელ დონეზეა? 🏮\n\nMEDIRUN-ში ყოველი ახალი ქუჩა შენს რუკაზე ინთება. რაც მეტ ახალ ქუჩას გაივლი, მით უფრო მაღალი იქნება შენი დონე:\n\n✨ 0,1% — ნაპერწკალი\n🏮 0,25% — ფარანი: ნოემბრიდან შაბათის ფარნის ყუთებს დაინახავ\n🔥 0,5% — ჩირაღდანი\n⭐ 1% — შუქურა: 31 დეკემბერს წითელ iPhone 18 Pro Max-ს დაინახავ\n\n1% დაახლოებით 50 კილომეტრი ახალი ქუჩაა. ერთსა და იმავე გზას მეორედ არ ვითვლით.\n\nშენი პროცენტი MEDIRUN-ში ჩანს. 👣\n\n📲 ჩამოტვირთე უფასოდ iPhone-ზე:\nhttps://apps.apple.com/app/id6812517519\n🌐 საიტი და ვებ-ვერსია: https://medicard.ge\n🤖 Android — სულ მალე\n\n#გაანათეთბილისი #MEDIRUN #MEDICARD #თბილისი #საქართველო",
+   "textEn": null,
+   "mediaUrls": [
+    "https://medicard.ge/press/medirun-glow/f04-levels.jpg"
+   ],
+   "scheduledAt": "2026-11-18T13:00:00+04:00",
+   "status": "SCHEDULED",
+   "notes": "MEDIRUN · გაანათე თბილისი · Metricool: ავტომატური გამოქვეყნება · სურათები AI-ით შექმნილი (Instagram-ზე მონიშნული)"
+  }
+ },
+ {
+  "slot": "g-levels-s-11-18",
+  "date": "2026-11-18T20:30:00+04:00",
+  "info": {
+   "autoPublish": true,
+   "draft": false,
+   "descendants": [],
+   "hasNotReadNotes": false,
+   "shortener": false,
+   "smartLinkData": {
+    "ids": []
+   },
+   "media": [
+    "https://medicard.ge/press/medirun-glow/s08-levels.jpg"
+   ],
+   "mediaAltText": [],
+   "publicationDate": {
+    "dateTime": "2026-11-18T20:30:00",
+    "timezone": "Asia/Tbilisi"
+   },
+   "providers": [
+    {
+     "network": "facebook"
+    },
+    {
+     "network": "instagram"
+    }
+   ],
+   "facebookData": {
+    "type": "STORY"
+   },
+   "instagramData": {
+    "type": "STORY",
+    "isAiGenerated": true
+   }
+  },
+  "record": {
+   "campaign": "medirun-glow-2026",
+   "slot": "g-levels-s-11-18",
+   "networks": [
+    "facebook",
+    "instagram"
+   ],
+   "kind": "STORY",
+   "pillar": "MEDIRUN",
+   "title": "სთორი · s08-levels",
+   "text": "",
+   "textEn": null,
+   "mediaUrls": [
+    "https://medicard.ge/press/medirun-glow/s08-levels.jpg"
+   ],
+   "scheduledAt": "2026-11-18T20:30:00+04:00",
+   "status": "SCHEDULED",
+   "notes": "MEDIRUN · გაანათე თბილისი · Metricool: ავტომატური გამოქვეყნება · სურათები AI-ით შექმნილი (Instagram-ზე მონიშნული)"
+  }
+ },
+ {
+  "slot": "g-sat-07",
+  "date": "2026-11-20T13:00:00+04:00",
+  "info": {
+   "autoPublish": true,
+   "draft": false,
+   "descendants": [],
+   "hasNotReadNotes": false,
+   "shortener": false,
+   "smartLinkData": {
+    "ids": []
+   },
+   "media": [
+    "https://medicard.ge/press/medirun-glow/f14-saturday-07.jpg"
+   ],
+   "mediaAltText": [],
+   "publicationDate": {
+    "dateTime": "2026-11-20T13:00:00",
+    "timezone": "Asia/Tbilisi"
+   },
+   "providers": [
+    {
+     "network": "facebook"
+    },
+    {
+     "network": "instagram"
+    }
+   ],
+   "text": "🌧 შაბათის წვიმა — 21 ნოემბერი, 16:00\n\nხვალ ერთ თბილისურ პარკში საჩუქრების წვიმა მოვა: ყუთებში 50 და 100 Medi Coins იქნება.\n\nრომელ პარკში? 15:00-ზე სთორიში გამოცანას გამოვაქვეყნებთ, 15:30-ზე — მეორე მინიშნებას.\n\n🏮 შაბათობით ფარნის ყუთებიც ჩნდება — თითოში 300 Medi Coins. მათ მხოლოდ ის დაინახავს, ვისაც თბილისის 0,25% აქვს განათებული.\n\nჩართე შეტყობინებები, რომ მინიშნება არ გამოგრჩეს. 🔔\n\n📲 ჩამოტვირთე უფასოდ iPhone-ზე:\nhttps://apps.apple.com/app/id6812517519\n🌐 საიტი და ვებ-ვერსია: https://medicard.ge\n🤖 Android — სულ მალე\n\n#გაანათეთბილისი #MEDIRUN #MEDICARD #თბილისი #საქართველო",
+   "firstCommentText": "📲 iPhone: https://apps.apple.com/app/id6812517519\n💻 ვებ-ვერსია: https://medicard.ge/app\n🤖 Android — სულ მალე",
+   "facebookData": {
+    "type": "POST"
+   },
+   "instagramData": {
+    "type": "POST",
+    "isAiGenerated": true
+   }
+  },
+  "record": {
+   "campaign": "medirun-glow-2026",
+   "slot": "g-sat-07",
+   "networks": [
+    "facebook",
+    "instagram"
+   ],
+   "kind": "POST",
+   "pillar": "MEDIRUN",
+   "title": "🌧 შაბათის წვიმა — 21 ნოემბერი, 16:00",
+   "text": "🌧 შაბათის წვიმა — 21 ნოემბერი, 16:00\n\nხვალ ერთ თბილისურ პარკში საჩუქრების წვიმა მოვა: ყუთებში 50 და 100 Medi Coins იქნება.\n\nრომელ პარკში? 15:00-ზე სთორიში გამოცანას გამოვაქვეყნებთ, 15:30-ზე — მეორე მინიშნებას.\n\n🏮 შაბათობით ფარნის ყუთებიც ჩნდება — თითოში 300 Medi Coins. მათ მხოლოდ ის დაინახავს, ვისაც თბილისის 0,25% აქვს განათებული.\n\nჩართე შეტყობინებები, რომ მინიშნება არ გამოგრჩეს. 🔔\n\n📲 ჩამოტვირთე უფასოდ iPhone-ზე:\nhttps://apps.apple.com/app/id6812517519\n🌐 საიტი და ვებ-ვერსია: https://medicard.ge\n🤖 Android — სულ მალე\n\n#გაანათეთბილისი #MEDIRUN #MEDICARD #თბილისი #საქართველო",
+   "textEn": null,
+   "mediaUrls": [
+    "https://medicard.ge/press/medirun-glow/f14-saturday-07.jpg"
+   ],
+   "scheduledAt": "2026-11-20T13:00:00+04:00",
+   "status": "SCHEDULED",
+   "notes": "MEDIRUN · გაანათე თბილისი · Metricool: ავტომატური გამოქვეყნება · სურათები AI-ით შექმნილი (Instagram-ზე მონიშნული)"
+  }
+ },
+ {
+  "slot": "g-sat-07-tomorrow",
+  "date": "2026-11-20T21:00:00+04:00",
+  "info": {
+   "autoPublish": true,
+   "draft": false,
+   "descendants": [],
+   "hasNotReadNotes": false,
+   "shortener": false,
+   "smartLinkData": {
+    "ids": []
+   },
+   "media": [
+    "https://medicard.ge/press/medirun-glow/s07-tomorrow-07.jpg"
+   ],
+   "mediaAltText": [],
+   "publicationDate": {
+    "dateTime": "2026-11-20T21:00:00",
+    "timezone": "Asia/Tbilisi"
+   },
+   "providers": [
+    {
+     "network": "facebook"
+    },
+    {
+     "network": "instagram"
+    }
+   ],
+   "facebookData": {
+    "type": "STORY"
+   },
+   "instagramData": {
+    "type": "STORY",
+    "isAiGenerated": true
+   }
+  },
+  "record": {
+   "campaign": "medirun-glow-2026",
+   "slot": "g-sat-07-tomorrow",
+   "networks": [
+    "facebook",
+    "instagram"
+   ],
+   "kind": "STORY",
+   "pillar": "MEDIRUN",
+   "title": "სთორი · s07-tomorrow-07",
+   "text": "",
+   "textEn": null,
+   "mediaUrls": [
+    "https://medicard.ge/press/medirun-glow/s07-tomorrow-07.jpg"
+   ],
+   "scheduledAt": "2026-11-20T21:00:00+04:00",
+   "status": "SCHEDULED",
+   "notes": "MEDIRUN · გაანათე თბილისი · Metricool: ავტომატური გამოქვეყნება · სურათები AI-ით შექმნილი (Instagram-ზე მონიშნული)"
+  }
+ },
+ {
+  "slot": "g-sat-07-weekend",
+  "date": "2026-11-21T09:30:00+04:00",
+  "info": {
+   "autoPublish": true,
+   "draft": false,
+   "descendants": [],
+   "hasNotReadNotes": false,
+   "shortener": false,
+   "smartLinkData": {
+    "ids": []
+   },
+   "media": [
+    "https://medicard.ge/press/medirun-glow/s05-weekend.jpg"
+   ],
+   "mediaAltText": [],
+   "publicationDate": {
+    "dateTime": "2026-11-21T09:30:00",
+    "timezone": "Asia/Tbilisi"
+   },
+   "providers": [
+    {
+     "network": "facebook"
+    },
+    {
+     "network": "instagram"
+    }
+   ],
+   "facebookData": {
+    "type": "STORY"
+   },
+   "instagramData": {
+    "type": "STORY",
+    "isAiGenerated": true
+   }
+  },
+  "record": {
+   "campaign": "medirun-glow-2026",
+   "slot": "g-sat-07-weekend",
+   "networks": [
+    "facebook",
+    "instagram"
+   ],
+   "kind": "STORY",
+   "pillar": "MEDIRUN",
+   "title": "სთორი · s05-weekend",
+   "text": "",
+   "textEn": null,
+   "mediaUrls": [
+    "https://medicard.ge/press/medirun-glow/s05-weekend.jpg"
+   ],
+   "scheduledAt": "2026-11-21T09:30:00+04:00",
+   "status": "SCHEDULED",
+   "notes": "MEDIRUN · გაანათე თბილისი · Metricool: ავტომატური გამოქვეყნება · სურათები AI-ით შექმნილი (Instagram-ზე მონიშნული)"
+  }
+ },
+ {
+  "slot": "g-sat-07-hint1",
+  "date": "2026-11-21T15:00:00+04:00",
+  "info": {
+   "autoPublish": true,
+   "draft": false,
+   "descendants": [],
+   "hasNotReadNotes": false,
+   "shortener": false,
+   "smartLinkData": {
+    "ids": []
+   },
+   "media": [
+    "https://medicard.ge/press/medirun-glow/s06-hint-07-1.jpg"
+   ],
+   "mediaAltText": [],
+   "publicationDate": {
+    "dateTime": "2026-11-21T15:00:00",
+    "timezone": "Asia/Tbilisi"
+   },
+   "providers": [
+    {
+     "network": "facebook"
+    },
+    {
+     "network": "instagram"
+    }
+   ],
+   "facebookData": {
+    "type": "STORY"
+   },
+   "instagramData": {
+    "type": "STORY",
+    "isAiGenerated": true
+   }
+  },
+  "record": {
+   "campaign": "medirun-glow-2026",
+   "slot": "g-sat-07-hint1",
+   "networks": [
+    "facebook",
+    "instagram"
+   ],
+   "kind": "STORY",
+   "pillar": "MEDIRUN",
+   "title": "სთორი · s06-hint-07-1",
+   "text": "",
+   "textEn": null,
+   "mediaUrls": [
+    "https://medicard.ge/press/medirun-glow/s06-hint-07-1.jpg"
+   ],
+   "scheduledAt": "2026-11-21T15:00:00+04:00",
+   "status": "SCHEDULED",
+   "notes": "MEDIRUN · გაანათე თბილისი · Metricool: ავტომატური გამოქვეყნება · სურათები AI-ით შექმნილი (Instagram-ზე მონიშნული)"
+  }
+ },
+ {
+  "slot": "g-sat-07-hint2",
+  "date": "2026-11-21T15:30:00+04:00",
+  "info": {
+   "autoPublish": true,
+   "draft": false,
+   "descendants": [],
+   "hasNotReadNotes": false,
+   "shortener": false,
+   "smartLinkData": {
+    "ids": []
+   },
+   "media": [
+    "https://medicard.ge/press/medirun-glow/s06-hint-07-2.jpg"
+   ],
+   "mediaAltText": [],
+   "publicationDate": {
+    "dateTime": "2026-11-21T15:30:00",
+    "timezone": "Asia/Tbilisi"
+   },
+   "providers": [
+    {
+     "network": "facebook"
+    },
+    {
+     "network": "instagram"
+    }
+   ],
+   "facebookData": {
+    "type": "STORY"
+   },
+   "instagramData": {
+    "type": "STORY",
+    "isAiGenerated": true
+   }
+  },
+  "record": {
+   "campaign": "medirun-glow-2026",
+   "slot": "g-sat-07-hint2",
+   "networks": [
+    "facebook",
+    "instagram"
+   ],
+   "kind": "STORY",
+   "pillar": "MEDIRUN",
+   "title": "სთორი · s06-hint-07-2",
+   "text": "",
+   "textEn": null,
+   "mediaUrls": [
+    "https://medicard.ge/press/medirun-glow/s06-hint-07-2.jpg"
+   ],
+   "scheduledAt": "2026-11-21T15:30:00+04:00",
+   "status": "SCHEDULED",
+   "notes": "MEDIRUN · გაანათე თბილისი · Metricool: ავტომატური გამოქვეყნება · სურათები AI-ით შექმნილი (Instagram-ზე მონიშნული)"
+  }
+ },
+ {
+  "slot": "g-sat-07-winners",
+  "date": "2026-11-21T18:30:00+04:00",
+  "info": null,
+  "record": {
+   "campaign": "medirun-glow-2026",
+   "slot": "g-sat-07-winners",
+   "networks": [
+    "facebook",
+    "instagram"
+   ],
+   "kind": "STORY",
+   "pillar": "MEDIRUN",
+   "title": "შაბათის წვიმის მპოვნელები — 21 ნოემბერი (ცოცხლად)",
+   "text": "შაბათის წვიმის მპოვნელები — 21 ნოემბერი (ცოცხლად)",
+   "textEn": null,
+   "mediaUrls": [],
+   "scheduledAt": "2026-11-21T18:30:00+04:00",
+   "status": "PLANNED",
+   "notes": "ხელით: მხოლოდ რეალური რიცხვები ადმინიდან (MEDIRUN → ჯილდოები); სახელი/ფოტო მხოლოდ თანხმობით."
+  }
+ },
+ {
+  "slot": "g-weekday-11-23",
+  "date": "2026-11-23T08:15:00+04:00",
+  "info": {
+   "autoPublish": true,
+   "draft": false,
+   "descendants": [],
+   "hasNotReadNotes": false,
+   "shortener": false,
+   "smartLinkData": {
+    "ids": []
+   },
+   "media": [
+    "https://medicard.ge/press/medirun-glow/s04-weekday.jpg"
+   ],
+   "mediaAltText": [],
+   "publicationDate": {
+    "dateTime": "2026-11-23T08:15:00",
+    "timezone": "Asia/Tbilisi"
+   },
+   "providers": [
+    {
+     "network": "facebook"
+    },
+    {
+     "network": "instagram"
+    }
+   ],
+   "facebookData": {
+    "type": "STORY"
+   },
+   "instagramData": {
+    "type": "STORY",
+    "isAiGenerated": true
+   }
+  },
+  "record": {
+   "campaign": "medirun-glow-2026",
+   "slot": "g-weekday-11-23",
+   "networks": [
+    "facebook",
+    "instagram"
+   ],
+   "kind": "STORY",
+   "pillar": "MEDIRUN",
+   "title": "სთორი · s04-weekday",
+   "text": "",
+   "textEn": null,
+   "mediaUrls": [
+    "https://medicard.ge/press/medirun-glow/s04-weekday.jpg"
+   ],
+   "scheduledAt": "2026-11-23T08:15:00+04:00",
+   "status": "SCHEDULED",
+   "notes": "MEDIRUN · გაანათე თბილისი · Metricool: ავტომატური გამოქვეყნება · სურათები AI-ით შექმნილი (Instagram-ზე მონიშნული)"
+  }
+ },
+ {
+  "slot": "g-how-2",
+  "date": "2026-11-25T13:00:00+04:00",
+  "info": {
+   "autoPublish": true,
+   "draft": false,
+   "descendants": [],
+   "hasNotReadNotes": false,
+   "shortener": false,
+   "smartLinkData": {
+    "ids": []
+   },
+   "media": [
+    "https://medicard.ge/press/medirun-glow/f02-how.jpg"
+   ],
+   "mediaAltText": [],
+   "publicationDate": {
+    "dateTime": "2026-11-25T13:00:00",
+    "timezone": "Asia/Tbilisi"
+   },
+   "providers": [
+    {
+     "network": "facebook"
+    },
+    {
+     "network": "instagram"
+    }
+   ],
+   "text": "ახალი ხარ? აი, როგორ იპოვი თბილისში დამალულ საჩუქარს 👇\n\n1️⃣ გახსენი MEDICARD და ჩართე MEDIRUN — იარე ან ირბინე.\n2️⃣ საჩუქართან მიახლოებისას ტელეფონი გულისცემასავით აკანკალდება. რაც უფრო ახლოს ხარ, მით უფრო ჩქარა.\n3️⃣ ადგილზე ჩართე კამერა, იპოვე ყუთი და შეეხე — Medi Coins ავტომატურად ჩაირიცხება.\n\nმონაწილეობა უფასოა.\n\n📲 ჩამოტვირთე უფასოდ iPhone-ზე:\nhttps://apps.apple.com/app/id6812517519\n🌐 საიტი და ვებ-ვერსია: https://medicard.ge\n🤖 Android — სულ მალე\n\n#გაანათეთბილისი #MEDIRUN #MEDICARD #თბილისი #საქართველო",
+   "firstCommentText": "📲 iPhone: https://apps.apple.com/app/id6812517519\n💻 ვებ-ვერსია: https://medicard.ge/app\n🤖 Android — სულ მალე",
+   "facebookData": {
+    "type": "POST"
+   },
+   "instagramData": {
+    "type": "POST",
+    "isAiGenerated": true
+   }
+  },
+  "record": {
+   "campaign": "medirun-glow-2026",
+   "slot": "g-how-2",
+   "networks": [
+    "facebook",
+    "instagram"
+   ],
+   "kind": "POST",
+   "pillar": "MEDIRUN",
+   "title": "ახალი ხარ? აი, როგორ იპოვი თბილისში დამალულ საჩუქარს 👇",
+   "text": "ახალი ხარ? აი, როგორ იპოვი თბილისში დამალულ საჩუქარს 👇\n\n1️⃣ გახსენი MEDICARD და ჩართე MEDIRUN — იარე ან ირბინე.\n2️⃣ საჩუქართან მიახლოებისას ტელეფონი გულისცემასავით აკანკალდება. რაც უფრო ახლოს ხარ, მით უფრო ჩქარა.\n3️⃣ ადგილზე ჩართე კამერა, იპოვე ყუთი და შეეხე — Medi Coins ავტომატურად ჩაირიცხება.\n\nმონაწილეობა უფასოა.\n\n📲 ჩამოტვირთე უფასოდ iPhone-ზე:\nhttps://apps.apple.com/app/id6812517519\n🌐 საიტი და ვებ-ვერსია: https://medicard.ge\n🤖 Android — სულ მალე\n\n#გაანათეთბილისი #MEDIRUN #MEDICARD #თბილისი #საქართველო",
+   "textEn": null,
+   "mediaUrls": [
+    "https://medicard.ge/press/medirun-glow/f02-how.jpg"
+   ],
+   "scheduledAt": "2026-11-25T13:00:00+04:00",
+   "status": "SCHEDULED",
+   "notes": "MEDIRUN · გაანათე თბილისი · Metricool: ავტომატური გამოქვეყნება · სურათები AI-ით შექმნილი (Instagram-ზე მონიშნული)"
+  }
+ },
+ {
+  "slot": "g-sat-08",
+  "date": "2026-11-27T13:00:00+04:00",
+  "info": {
+   "autoPublish": true,
+   "draft": false,
+   "descendants": [],
+   "hasNotReadNotes": false,
+   "shortener": false,
+   "smartLinkData": {
+    "ids": []
+   },
+   "media": [
+    "https://medicard.ge/press/medirun-glow/f14-saturday-08.jpg"
+   ],
+   "mediaAltText": [],
+   "publicationDate": {
+    "dateTime": "2026-11-27T13:00:00",
+    "timezone": "Asia/Tbilisi"
+   },
+   "providers": [
+    {
+     "network": "facebook"
+    },
+    {
+     "network": "instagram"
+    }
+   ],
+   "text": "🌧 შაბათის წვიმა — 28 ნოემბერი, 16:00\n\nხვალ ერთ თბილისურ პარკში საჩუქრების წვიმა მოვა: ყუთებში 50 და 100 Medi Coins იქნება.\n\nრომელ პარკში? 15:00-ზე სთორიში გამოცანას გამოვაქვეყნებთ, 15:30-ზე — მეორე მინიშნებას.\n\n🏮 შაბათობით ფარნის ყუთებიც ჩნდება — თითოში 300 Medi Coins. მათ მხოლოდ ის დაინახავს, ვისაც თბილისის 0,25% აქვს განათებული.\n\nჩართე შეტყობინებები, რომ მინიშნება არ გამოგრჩეს. 🔔\n\n📲 ჩამოტვირთე უფასოდ iPhone-ზე:\nhttps://apps.apple.com/app/id6812517519\n🌐 საიტი და ვებ-ვერსია: https://medicard.ge\n🤖 Android — სულ მალე\n\n#გაანათეთბილისი #MEDIRUN #MEDICARD #თბილისი #საქართველო",
+   "firstCommentText": "📲 iPhone: https://apps.apple.com/app/id6812517519\n💻 ვებ-ვერსია: https://medicard.ge/app\n🤖 Android — სულ მალე",
+   "facebookData": {
+    "type": "POST"
+   },
+   "instagramData": {
+    "type": "POST",
+    "isAiGenerated": true
+   }
+  },
+  "record": {
+   "campaign": "medirun-glow-2026",
+   "slot": "g-sat-08",
+   "networks": [
+    "facebook",
+    "instagram"
+   ],
+   "kind": "POST",
+   "pillar": "MEDIRUN",
+   "title": "🌧 შაბათის წვიმა — 28 ნოემბერი, 16:00",
+   "text": "🌧 შაბათის წვიმა — 28 ნოემბერი, 16:00\n\nხვალ ერთ თბილისურ პარკში საჩუქრების წვიმა მოვა: ყუთებში 50 და 100 Medi Coins იქნება.\n\nრომელ პარკში? 15:00-ზე სთორიში გამოცანას გამოვაქვეყნებთ, 15:30-ზე — მეორე მინიშნებას.\n\n🏮 შაბათობით ფარნის ყუთებიც ჩნდება — თითოში 300 Medi Coins. მათ მხოლოდ ის დაინახავს, ვისაც თბილისის 0,25% აქვს განათებული.\n\nჩართე შეტყობინებები, რომ მინიშნება არ გამოგრჩეს. 🔔\n\n📲 ჩამოტვირთე უფასოდ iPhone-ზე:\nhttps://apps.apple.com/app/id6812517519\n🌐 საიტი და ვებ-ვერსია: https://medicard.ge\n🤖 Android — სულ მალე\n\n#გაანათეთბილისი #MEDIRUN #MEDICARD #თბილისი #საქართველო",
+   "textEn": null,
+   "mediaUrls": [
+    "https://medicard.ge/press/medirun-glow/f14-saturday-08.jpg"
+   ],
+   "scheduledAt": "2026-11-27T13:00:00+04:00",
+   "status": "SCHEDULED",
+   "notes": "MEDIRUN · გაანათე თბილისი · Metricool: ავტომატური გამოქვეყნება · სურათები AI-ით შექმნილი (Instagram-ზე მონიშნული)"
+  }
+ },
+ {
+  "slot": "g-sat-08-tomorrow",
+  "date": "2026-11-27T21:00:00+04:00",
+  "info": {
+   "autoPublish": true,
+   "draft": false,
+   "descendants": [],
+   "hasNotReadNotes": false,
+   "shortener": false,
+   "smartLinkData": {
+    "ids": []
+   },
+   "media": [
+    "https://medicard.ge/press/medirun-glow/s07-tomorrow-08.jpg"
+   ],
+   "mediaAltText": [],
+   "publicationDate": {
+    "dateTime": "2026-11-27T21:00:00",
+    "timezone": "Asia/Tbilisi"
+   },
+   "providers": [
+    {
+     "network": "facebook"
+    },
+    {
+     "network": "instagram"
+    }
+   ],
+   "facebookData": {
+    "type": "STORY"
+   },
+   "instagramData": {
+    "type": "STORY",
+    "isAiGenerated": true
+   }
+  },
+  "record": {
+   "campaign": "medirun-glow-2026",
+   "slot": "g-sat-08-tomorrow",
+   "networks": [
+    "facebook",
+    "instagram"
+   ],
+   "kind": "STORY",
+   "pillar": "MEDIRUN",
+   "title": "სთორი · s07-tomorrow-08",
+   "text": "",
+   "textEn": null,
+   "mediaUrls": [
+    "https://medicard.ge/press/medirun-glow/s07-tomorrow-08.jpg"
+   ],
+   "scheduledAt": "2026-11-27T21:00:00+04:00",
+   "status": "SCHEDULED",
+   "notes": "MEDIRUN · გაანათე თბილისი · Metricool: ავტომატური გამოქვეყნება · სურათები AI-ით შექმნილი (Instagram-ზე მონიშნული)"
+  }
+ },
+ {
+  "slot": "g-sat-08-weekend",
+  "date": "2026-11-28T09:30:00+04:00",
+  "info": {
+   "autoPublish": true,
+   "draft": false,
+   "descendants": [],
+   "hasNotReadNotes": false,
+   "shortener": false,
+   "smartLinkData": {
+    "ids": []
+   },
+   "media": [
+    "https://medicard.ge/press/medirun-glow/s05-weekend.jpg"
+   ],
+   "mediaAltText": [],
+   "publicationDate": {
+    "dateTime": "2026-11-28T09:30:00",
+    "timezone": "Asia/Tbilisi"
+   },
+   "providers": [
+    {
+     "network": "facebook"
+    },
+    {
+     "network": "instagram"
+    }
+   ],
+   "facebookData": {
+    "type": "STORY"
+   },
+   "instagramData": {
+    "type": "STORY",
+    "isAiGenerated": true
+   }
+  },
+  "record": {
+   "campaign": "medirun-glow-2026",
+   "slot": "g-sat-08-weekend",
+   "networks": [
+    "facebook",
+    "instagram"
+   ],
+   "kind": "STORY",
+   "pillar": "MEDIRUN",
+   "title": "სთორი · s05-weekend",
+   "text": "",
+   "textEn": null,
+   "mediaUrls": [
+    "https://medicard.ge/press/medirun-glow/s05-weekend.jpg"
+   ],
+   "scheduledAt": "2026-11-28T09:30:00+04:00",
+   "status": "SCHEDULED",
+   "notes": "MEDIRUN · გაანათე თბილისი · Metricool: ავტომატური გამოქვეყნება · სურათები AI-ით შექმნილი (Instagram-ზე მონიშნული)"
+  }
+ },
+ {
+  "slot": "g-sat-08-hint1",
+  "date": "2026-11-28T15:00:00+04:00",
+  "info": {
+   "autoPublish": true,
+   "draft": false,
+   "descendants": [],
+   "hasNotReadNotes": false,
+   "shortener": false,
+   "smartLinkData": {
+    "ids": []
+   },
+   "media": [
+    "https://medicard.ge/press/medirun-glow/s06-hint-08-1.jpg"
+   ],
+   "mediaAltText": [],
+   "publicationDate": {
+    "dateTime": "2026-11-28T15:00:00",
+    "timezone": "Asia/Tbilisi"
+   },
+   "providers": [
+    {
+     "network": "facebook"
+    },
+    {
+     "network": "instagram"
+    }
+   ],
+   "facebookData": {
+    "type": "STORY"
+   },
+   "instagramData": {
+    "type": "STORY",
+    "isAiGenerated": true
+   }
+  },
+  "record": {
+   "campaign": "medirun-glow-2026",
+   "slot": "g-sat-08-hint1",
+   "networks": [
+    "facebook",
+    "instagram"
+   ],
+   "kind": "STORY",
+   "pillar": "MEDIRUN",
+   "title": "სთორი · s06-hint-08-1",
+   "text": "",
+   "textEn": null,
+   "mediaUrls": [
+    "https://medicard.ge/press/medirun-glow/s06-hint-08-1.jpg"
+   ],
+   "scheduledAt": "2026-11-28T15:00:00+04:00",
+   "status": "SCHEDULED",
+   "notes": "MEDIRUN · გაანათე თბილისი · Metricool: ავტომატური გამოქვეყნება · სურათები AI-ით შექმნილი (Instagram-ზე მონიშნული)"
+  }
+ },
+ {
+  "slot": "g-sat-08-hint2",
+  "date": "2026-11-28T15:30:00+04:00",
+  "info": {
+   "autoPublish": true,
+   "draft": false,
+   "descendants": [],
+   "hasNotReadNotes": false,
+   "shortener": false,
+   "smartLinkData": {
+    "ids": []
+   },
+   "media": [
+    "https://medicard.ge/press/medirun-glow/s06-hint-08-2.jpg"
+   ],
+   "mediaAltText": [],
+   "publicationDate": {
+    "dateTime": "2026-11-28T15:30:00",
+    "timezone": "Asia/Tbilisi"
+   },
+   "providers": [
+    {
+     "network": "facebook"
+    },
+    {
+     "network": "instagram"
+    }
+   ],
+   "facebookData": {
+    "type": "STORY"
+   },
+   "instagramData": {
+    "type": "STORY",
+    "isAiGenerated": true
+   }
+  },
+  "record": {
+   "campaign": "medirun-glow-2026",
+   "slot": "g-sat-08-hint2",
+   "networks": [
+    "facebook",
+    "instagram"
+   ],
+   "kind": "STORY",
+   "pillar": "MEDIRUN",
+   "title": "სთორი · s06-hint-08-2",
+   "text": "",
+   "textEn": null,
+   "mediaUrls": [
+    "https://medicard.ge/press/medirun-glow/s06-hint-08-2.jpg"
+   ],
+   "scheduledAt": "2026-11-28T15:30:00+04:00",
+   "status": "SCHEDULED",
+   "notes": "MEDIRUN · გაანათე თბილისი · Metricool: ავტომატური გამოქვეყნება · სურათები AI-ით შექმნილი (Instagram-ზე მონიშნული)"
+  }
+ },
+ {
+  "slot": "g-sat-08-winners",
+  "date": "2026-11-28T18:30:00+04:00",
+  "info": null,
+  "record": {
+   "campaign": "medirun-glow-2026",
+   "slot": "g-sat-08-winners",
+   "networks": [
+    "facebook",
+    "instagram"
+   ],
+   "kind": "STORY",
+   "pillar": "MEDIRUN",
+   "title": "შაბათის წვიმის მპოვნელები — 28 ნოემბერი (ცოცხლად)",
+   "text": "შაბათის წვიმის მპოვნელები — 28 ნოემბერი (ცოცხლად)",
+   "textEn": null,
+   "mediaUrls": [],
+   "scheduledAt": "2026-11-28T18:30:00+04:00",
+   "status": "PLANNED",
+   "notes": "ხელით: მხოლოდ რეალური რიცხვები ადმინიდან (MEDIRUN → ჯილდოები); სახელი/ფოტო მხოლოდ თანხმობით."
+  }
+ },
+ {
+  "slot": "g-weekday-11-30",
+  "date": "2026-11-30T08:15:00+04:00",
+  "info": {
+   "autoPublish": true,
+   "draft": false,
+   "descendants": [],
+   "hasNotReadNotes": false,
+   "shortener": false,
+   "smartLinkData": {
+    "ids": []
+   },
+   "media": [
+    "https://medicard.ge/press/medirun-glow/s04-weekday.jpg"
+   ],
+   "mediaAltText": [],
+   "publicationDate": {
+    "dateTime": "2026-11-30T08:15:00",
+    "timezone": "Asia/Tbilisi"
+   },
+   "providers": [
+    {
+     "network": "facebook"
+    },
+    {
+     "network": "instagram"
+    }
+   ],
+   "facebookData": {
+    "type": "STORY"
+   },
+   "instagramData": {
+    "type": "STORY",
+    "isAiGenerated": true
+   }
+  },
+  "record": {
+   "campaign": "medirun-glow-2026",
+   "slot": "g-weekday-11-30",
+   "networks": [
+    "facebook",
+    "instagram"
+   ],
+   "kind": "STORY",
+   "pillar": "MEDIRUN",
+   "title": "სთორი · s04-weekday",
+   "text": "",
+   "textEn": null,
+   "mediaUrls": [
+    "https://medicard.ge/press/medirun-glow/s04-weekday.jpg"
+   ],
+   "scheduledAt": "2026-11-30T08:15:00+04:00",
+   "status": "SCHEDULED",
+   "notes": "MEDIRUN · გაანათე თბილისი · Metricool: ავტომატური გამოქვეყნება · სურათები AI-ით შექმნილი (Instagram-ზე მონიშნული)"
+  }
+ },
+ {
+  "slot": "g-december",
+  "date": "2026-12-01T13:00:00+04:00",
+  "info": {
+   "autoPublish": true,
+   "draft": false,
+   "descendants": [],
+   "hasNotReadNotes": false,
+   "shortener": false,
+   "smartLinkData": {
+    "ids": []
+   },
+   "media": [
+    "https://medicard.ge/press/medirun-glow/f11-december.jpg"
+   ],
+   "mediaAltText": [],
+   "publicationDate": {
+    "dateTime": "2026-12-01T13:00:00",
+    "timezone": "Asia/Tbilisi"
+   },
+   "providers": [
+    {
+     "network": "facebook"
+    },
+    {
+     "network": "instagram"
+    }
+   ],
+   "text": "🔴 დეკემბერი — შუქურების თვე\n\n31 დეკემბერს, 12:00-ზე თბილისში წითელი iPhone 18 Pro Max დაიმალება. მას მხოლოდ შუქურები დაინახავენ — ისინი, ვისაც თბილისის 1% აქვს განათებული.\n\n30 დღე დარჩა. შენი პროცენტი MEDIRUN-ში ჩანს. ✨\n\n📲 ჩამოტვირთე უფასოდ iPhone-ზე:\nhttps://apps.apple.com/app/id6812517519\n🌐 საიტი და ვებ-ვერსია: https://medicard.ge\n🤖 Android — სულ მალე\n\n#გაანათეთბილისი #MEDIRUN #MEDICARD #თბილისი #საქართველო",
+   "firstCommentText": "📲 iPhone: https://apps.apple.com/app/id6812517519\n💻 ვებ-ვერსია: https://medicard.ge/app\n🤖 Android — სულ მალე",
+   "facebookData": {
+    "type": "POST"
+   },
+   "instagramData": {
+    "type": "POST",
+    "isAiGenerated": true
+   }
+  },
+  "record": {
+   "campaign": "medirun-glow-2026",
+   "slot": "g-december",
+   "networks": [
+    "facebook",
+    "instagram"
+   ],
+   "kind": "POST",
+   "pillar": "MEDIRUN",
+   "title": "🔴 დეკემბერი — შუქურების თვე",
+   "text": "🔴 დეკემბერი — შუქურების თვე\n\n31 დეკემბერს, 12:00-ზე თბილისში წითელი iPhone 18 Pro Max დაიმალება. მას მხოლოდ შუქურები დაინახავენ — ისინი, ვისაც თბილისის 1% აქვს განათებული.\n\n30 დღე დარჩა. შენი პროცენტი MEDIRUN-ში ჩანს. ✨\n\n📲 ჩამოტვირთე უფასოდ iPhone-ზე:\nhttps://apps.apple.com/app/id6812517519\n🌐 საიტი და ვებ-ვერსია: https://medicard.ge\n🤖 Android — სულ მალე\n\n#გაანათეთბილისი #MEDIRUN #MEDICARD #თბილისი #საქართველო",
+   "textEn": null,
+   "mediaUrls": [
+    "https://medicard.ge/press/medirun-glow/f11-december.jpg"
+   ],
+   "scheduledAt": "2026-12-01T13:00:00+04:00",
+   "status": "SCHEDULED",
+   "notes": "MEDIRUN · გაანათე თბილისი · Metricool: ავტომატური გამოქვეყნება · სურათები AI-ით შექმნილი (Instagram-ზე მონიშნული)"
+  }
+ },
+ {
+  "slot": "g-li-december",
+  "date": "2026-12-02T09:30:00+04:00",
+  "info": {
+   "autoPublish": true,
+   "draft": false,
+   "descendants": [],
+   "hasNotReadNotes": false,
+   "shortener": false,
+   "smartLinkData": {
+    "ids": []
+   },
+   "media": [
+    "https://medicard.ge/press/medirun-glow/f11-december.jpg"
+   ],
+   "mediaAltText": [],
+   "publicationDate": {
+    "dateTime": "2026-12-02T09:30:00",
+    "timezone": "Asia/Tbilisi"
+   },
+   "providers": [
+    {
+     "network": "linkedin"
+    }
+   ],
+   "text": "The 1% challenge: 29 days left.\n\nOn 31 December at 12:00 one red iPhone 18 Pro Max will be hidden somewhere in Tbilisi. Only MEDIRUN players who have lit 1% of the city can see it: about 50 km of streets they had never walked before.\n\nA prize that only shows up for people who have walked their own city. That is the whole idea of MEDIRUN.\n\n📲 Download free on iPhone: https://apps.apple.com/app/id6812517519\n🌐 Website & web app: https://medicard.ge\n\n#MEDIRUN #MEDICARD #Tbilisi #Gamification",
+   "linkedinData": {
+    "type": "post",
+    "previewIncluded": true,
+    "publishImagesAsPDF": false
+   }
+  },
+  "record": {
+   "campaign": "medirun-glow-2026",
+   "slot": "g-li-december",
+   "networks": [
+    "linkedin"
+   ],
+   "kind": "POST",
+   "pillar": "MEDIRUN",
+   "title": "The 1% challenge: 29 days left.",
+   "text": "The 1% challenge: 29 days left.\n\nOn 31 December at 12:00 one red iPhone 18 Pro Max will be hidden somewhere in Tbilisi. Only MEDIRUN players who have lit 1% of the city can see it: about 50 km of streets they had never walked before.\n\nA prize that only shows up for people who have walked their own city. That is the whole idea of MEDIRUN.\n\n📲 Download free on iPhone: https://apps.apple.com/app/id6812517519\n🌐 Website & web app: https://medicard.ge\n\n#MEDIRUN #MEDICARD #Tbilisi #Gamification",
+   "textEn": null,
+   "mediaUrls": [
+    "https://medicard.ge/press/medirun-glow/f11-december.jpg"
+   ],
+   "scheduledAt": "2026-12-02T09:30:00+04:00",
+   "status": "SCHEDULED",
+   "notes": "MEDIRUN · გაანათე თბილისი · Metricool: ავტომატური გამოქვეყნება · სურათები AI-ით შექმნილი (Instagram-ზე მონიშნული)"
+  }
+ },
+ {
+  "slot": "g-levels-s-12-02",
+  "date": "2026-12-02T20:30:00+04:00",
+  "info": {
+   "autoPublish": true,
+   "draft": false,
+   "descendants": [],
+   "hasNotReadNotes": false,
+   "shortener": false,
+   "smartLinkData": {
+    "ids": []
+   },
+   "media": [
+    "https://medicard.ge/press/medirun-glow/s08-levels.jpg"
+   ],
+   "mediaAltText": [],
+   "publicationDate": {
+    "dateTime": "2026-12-02T20:30:00",
+    "timezone": "Asia/Tbilisi"
+   },
+   "providers": [
+    {
+     "network": "facebook"
+    },
+    {
+     "network": "instagram"
+    }
+   ],
+   "facebookData": {
+    "type": "STORY"
+   },
+   "instagramData": {
+    "type": "STORY",
+    "isAiGenerated": true
+   }
+  },
+  "record": {
+   "campaign": "medirun-glow-2026",
+   "slot": "g-levels-s-12-02",
+   "networks": [
+    "facebook",
+    "instagram"
+   ],
+   "kind": "STORY",
+   "pillar": "MEDIRUN",
+   "title": "სთორი · s08-levels",
+   "text": "",
+   "textEn": null,
+   "mediaUrls": [
+    "https://medicard.ge/press/medirun-glow/s08-levels.jpg"
+   ],
+   "scheduledAt": "2026-12-02T20:30:00+04:00",
+   "status": "SCHEDULED",
+   "notes": "MEDIRUN · გაანათე თბილისი · Metricool: ავტომატური გამოქვეყნება · სურათები AI-ით შექმნილი (Instagram-ზე მონიშნული)"
+  }
+ },
+ {
+  "slot": "g-sat-09",
+  "date": "2026-12-04T13:00:00+04:00",
+  "info": {
+   "autoPublish": true,
+   "draft": false,
+   "descendants": [],
+   "hasNotReadNotes": false,
+   "shortener": false,
+   "smartLinkData": {
+    "ids": []
+   },
+   "media": [
+    "https://medicard.ge/press/medirun-glow/f14-saturday-09.jpg"
+   ],
+   "mediaAltText": [],
+   "publicationDate": {
+    "dateTime": "2026-12-04T13:00:00",
+    "timezone": "Asia/Tbilisi"
+   },
+   "providers": [
+    {
+     "network": "facebook"
+    },
+    {
+     "network": "instagram"
+    }
+   ],
+   "text": "🌧 შაბათის წვიმა — 5 დეკემბერი, 16:00\n\nხვალ ერთ თბილისურ პარკში საჩუქრების წვიმა მოვა: ყუთებში 50 და 100 Medi Coins იქნება.\n\nრომელ პარკში? 15:00-ზე სთორიში გამოცანას გამოვაქვეყნებთ, 15:30-ზე — მეორე მინიშნებას.\n\n🏮 შაბათობით ფარნის ყუთებიც ჩნდება — თითოში 300 Medi Coins. მათ მხოლოდ ის დაინახავს, ვისაც თბილისის 0,25% აქვს განათებული.\n\nჩართე შეტყობინებები, რომ მინიშნება არ გამოგრჩეს. 🔔\n\n📲 ჩამოტვირთე უფასოდ iPhone-ზე:\nhttps://apps.apple.com/app/id6812517519\n🌐 საიტი და ვებ-ვერსია: https://medicard.ge\n🤖 Android — სულ მალე\n\n#გაანათეთბილისი #MEDIRUN #MEDICARD #თბილისი #საქართველო",
+   "firstCommentText": "📲 iPhone: https://apps.apple.com/app/id6812517519\n💻 ვებ-ვერსია: https://medicard.ge/app\n🤖 Android — სულ მალე",
+   "facebookData": {
+    "type": "POST"
+   },
+   "instagramData": {
+    "type": "POST",
+    "isAiGenerated": true
+   }
+  },
+  "record": {
+   "campaign": "medirun-glow-2026",
+   "slot": "g-sat-09",
+   "networks": [
+    "facebook",
+    "instagram"
+   ],
+   "kind": "POST",
+   "pillar": "MEDIRUN",
+   "title": "🌧 შაბათის წვიმა — 5 დეკემბერი, 16:00",
+   "text": "🌧 შაბათის წვიმა — 5 დეკემბერი, 16:00\n\nხვალ ერთ თბილისურ პარკში საჩუქრების წვიმა მოვა: ყუთებში 50 და 100 Medi Coins იქნება.\n\nრომელ პარკში? 15:00-ზე სთორიში გამოცანას გამოვაქვეყნებთ, 15:30-ზე — მეორე მინიშნებას.\n\n🏮 შაბათობით ფარნის ყუთებიც ჩნდება — თითოში 300 Medi Coins. მათ მხოლოდ ის დაინახავს, ვისაც თბილისის 0,25% აქვს განათებული.\n\nჩართე შეტყობინებები, რომ მინიშნება არ გამოგრჩეს. 🔔\n\n📲 ჩამოტვირთე უფასოდ iPhone-ზე:\nhttps://apps.apple.com/app/id6812517519\n🌐 საიტი და ვებ-ვერსია: https://medicard.ge\n🤖 Android — სულ მალე\n\n#გაანათეთბილისი #MEDIRUN #MEDICARD #თბილისი #საქართველო",
+   "textEn": null,
+   "mediaUrls": [
+    "https://medicard.ge/press/medirun-glow/f14-saturday-09.jpg"
+   ],
+   "scheduledAt": "2026-12-04T13:00:00+04:00",
+   "status": "SCHEDULED",
+   "notes": "MEDIRUN · გაანათე თბილისი · Metricool: ავტომატური გამოქვეყნება · სურათები AI-ით შექმნილი (Instagram-ზე მონიშნული)"
+  }
+ },
+ {
+  "slot": "g-sat-09-tomorrow",
+  "date": "2026-12-04T21:00:00+04:00",
+  "info": {
+   "autoPublish": true,
+   "draft": false,
+   "descendants": [],
+   "hasNotReadNotes": false,
+   "shortener": false,
+   "smartLinkData": {
+    "ids": []
+   },
+   "media": [
+    "https://medicard.ge/press/medirun-glow/s07-tomorrow-09.jpg"
+   ],
+   "mediaAltText": [],
+   "publicationDate": {
+    "dateTime": "2026-12-04T21:00:00",
+    "timezone": "Asia/Tbilisi"
+   },
+   "providers": [
+    {
+     "network": "facebook"
+    },
+    {
+     "network": "instagram"
+    }
+   ],
+   "facebookData": {
+    "type": "STORY"
+   },
+   "instagramData": {
+    "type": "STORY",
+    "isAiGenerated": true
+   }
+  },
+  "record": {
+   "campaign": "medirun-glow-2026",
+   "slot": "g-sat-09-tomorrow",
+   "networks": [
+    "facebook",
+    "instagram"
+   ],
+   "kind": "STORY",
+   "pillar": "MEDIRUN",
+   "title": "სთორი · s07-tomorrow-09",
+   "text": "",
+   "textEn": null,
+   "mediaUrls": [
+    "https://medicard.ge/press/medirun-glow/s07-tomorrow-09.jpg"
+   ],
+   "scheduledAt": "2026-12-04T21:00:00+04:00",
+   "status": "SCHEDULED",
+   "notes": "MEDIRUN · გაანათე თბილისი · Metricool: ავტომატური გამოქვეყნება · სურათები AI-ით შექმნილი (Instagram-ზე მონიშნული)"
+  }
+ },
+ {
+  "slot": "g-sat-09-weekend",
+  "date": "2026-12-05T09:30:00+04:00",
+  "info": {
+   "autoPublish": true,
+   "draft": false,
+   "descendants": [],
+   "hasNotReadNotes": false,
+   "shortener": false,
+   "smartLinkData": {
+    "ids": []
+   },
+   "media": [
+    "https://medicard.ge/press/medirun-glow/s05-weekend.jpg"
+   ],
+   "mediaAltText": [],
+   "publicationDate": {
+    "dateTime": "2026-12-05T09:30:00",
+    "timezone": "Asia/Tbilisi"
+   },
+   "providers": [
+    {
+     "network": "facebook"
+    },
+    {
+     "network": "instagram"
+    }
+   ],
+   "facebookData": {
+    "type": "STORY"
+   },
+   "instagramData": {
+    "type": "STORY",
+    "isAiGenerated": true
+   }
+  },
+  "record": {
+   "campaign": "medirun-glow-2026",
+   "slot": "g-sat-09-weekend",
+   "networks": [
+    "facebook",
+    "instagram"
+   ],
+   "kind": "STORY",
+   "pillar": "MEDIRUN",
+   "title": "სთორი · s05-weekend",
+   "text": "",
+   "textEn": null,
+   "mediaUrls": [
+    "https://medicard.ge/press/medirun-glow/s05-weekend.jpg"
+   ],
+   "scheduledAt": "2026-12-05T09:30:00+04:00",
+   "status": "SCHEDULED",
+   "notes": "MEDIRUN · გაანათე თბილისი · Metricool: ავტომატური გამოქვეყნება · სურათები AI-ით შექმნილი (Instagram-ზე მონიშნული)"
+  }
+ },
+ {
+  "slot": "g-sat-09-hint1",
+  "date": "2026-12-05T15:00:00+04:00",
+  "info": {
+   "autoPublish": true,
+   "draft": false,
+   "descendants": [],
+   "hasNotReadNotes": false,
+   "shortener": false,
+   "smartLinkData": {
+    "ids": []
+   },
+   "media": [
+    "https://medicard.ge/press/medirun-glow/s06-hint-09-1.jpg"
+   ],
+   "mediaAltText": [],
+   "publicationDate": {
+    "dateTime": "2026-12-05T15:00:00",
+    "timezone": "Asia/Tbilisi"
+   },
+   "providers": [
+    {
+     "network": "facebook"
+    },
+    {
+     "network": "instagram"
+    }
+   ],
+   "facebookData": {
+    "type": "STORY"
+   },
+   "instagramData": {
+    "type": "STORY",
+    "isAiGenerated": true
+   }
+  },
+  "record": {
+   "campaign": "medirun-glow-2026",
+   "slot": "g-sat-09-hint1",
+   "networks": [
+    "facebook",
+    "instagram"
+   ],
+   "kind": "STORY",
+   "pillar": "MEDIRUN",
+   "title": "სთორი · s06-hint-09-1",
+   "text": "",
+   "textEn": null,
+   "mediaUrls": [
+    "https://medicard.ge/press/medirun-glow/s06-hint-09-1.jpg"
+   ],
+   "scheduledAt": "2026-12-05T15:00:00+04:00",
+   "status": "SCHEDULED",
+   "notes": "MEDIRUN · გაანათე თბილისი · Metricool: ავტომატური გამოქვეყნება · სურათები AI-ით შექმნილი (Instagram-ზე მონიშნული)"
+  }
+ },
+ {
+  "slot": "g-sat-09-hint2",
+  "date": "2026-12-05T15:30:00+04:00",
+  "info": {
+   "autoPublish": true,
+   "draft": false,
+   "descendants": [],
+   "hasNotReadNotes": false,
+   "shortener": false,
+   "smartLinkData": {
+    "ids": []
+   },
+   "media": [
+    "https://medicard.ge/press/medirun-glow/s06-hint-09-2.jpg"
+   ],
+   "mediaAltText": [],
+   "publicationDate": {
+    "dateTime": "2026-12-05T15:30:00",
+    "timezone": "Asia/Tbilisi"
+   },
+   "providers": [
+    {
+     "network": "facebook"
+    },
+    {
+     "network": "instagram"
+    }
+   ],
+   "facebookData": {
+    "type": "STORY"
+   },
+   "instagramData": {
+    "type": "STORY",
+    "isAiGenerated": true
+   }
+  },
+  "record": {
+   "campaign": "medirun-glow-2026",
+   "slot": "g-sat-09-hint2",
+   "networks": [
+    "facebook",
+    "instagram"
+   ],
+   "kind": "STORY",
+   "pillar": "MEDIRUN",
+   "title": "სთორი · s06-hint-09-2",
+   "text": "",
+   "textEn": null,
+   "mediaUrls": [
+    "https://medicard.ge/press/medirun-glow/s06-hint-09-2.jpg"
+   ],
+   "scheduledAt": "2026-12-05T15:30:00+04:00",
+   "status": "SCHEDULED",
+   "notes": "MEDIRUN · გაანათე თბილისი · Metricool: ავტომატური გამოქვეყნება · სურათები AI-ით შექმნილი (Instagram-ზე მონიშნული)"
+  }
+ },
+ {
+  "slot": "g-sat-09-winners",
+  "date": "2026-12-05T18:30:00+04:00",
+  "info": null,
+  "record": {
+   "campaign": "medirun-glow-2026",
+   "slot": "g-sat-09-winners",
+   "networks": [
+    "facebook",
+    "instagram"
+   ],
+   "kind": "STORY",
+   "pillar": "MEDIRUN",
+   "title": "შაბათის წვიმის მპოვნელები — 5 დეკემბერი (ცოცხლად)",
+   "text": "შაბათის წვიმის მპოვნელები — 5 დეკემბერი (ცოცხლად)",
+   "textEn": null,
+   "mediaUrls": [],
+   "scheduledAt": "2026-12-05T18:30:00+04:00",
+   "status": "PLANNED",
+   "notes": "ხელით: მხოლოდ რეალური რიცხვები ადმინიდან (MEDIRUN → ჯილდოები); სახელი/ფოტო მხოლოდ თანხმობით."
+  }
+ },
+ {
+  "slot": "g-weekday-12-07",
+  "date": "2026-12-07T08:15:00+04:00",
+  "info": {
+   "autoPublish": true,
+   "draft": false,
+   "descendants": [],
+   "hasNotReadNotes": false,
+   "shortener": false,
+   "smartLinkData": {
+    "ids": []
+   },
+   "media": [
+    "https://medicard.ge/press/medirun-glow/s04-weekday.jpg"
+   ],
+   "mediaAltText": [],
+   "publicationDate": {
+    "dateTime": "2026-12-07T08:15:00",
+    "timezone": "Asia/Tbilisi"
+   },
+   "providers": [
+    {
+     "network": "facebook"
+    },
+    {
+     "network": "instagram"
+    }
+   ],
+   "facebookData": {
+    "type": "STORY"
+   },
+   "instagramData": {
+    "type": "STORY",
+    "isAiGenerated": true
+   }
+  },
+  "record": {
+   "campaign": "medirun-glow-2026",
+   "slot": "g-weekday-12-07",
+   "networks": [
+    "facebook",
+    "instagram"
+   ],
+   "kind": "STORY",
+   "pillar": "MEDIRUN",
+   "title": "სთორი · s04-weekday",
+   "text": "",
+   "textEn": null,
+   "mediaUrls": [
+    "https://medicard.ge/press/medirun-glow/s04-weekday.jpg"
+   ],
+   "scheduledAt": "2026-12-07T08:15:00+04:00",
+   "status": "SCHEDULED",
+   "notes": "MEDIRUN · გაანათე თბილისი · Metricool: ავტომატური გამოქვეყნება · სურათები AI-ით შექმნილი (Instagram-ზე მონიშნული)"
+  }
+ },
+ {
+  "slot": "g-iphone-22",
+  "date": "2026-12-09T13:00:00+04:00",
+  "info": {
+   "autoPublish": true,
+   "draft": false,
+   "descendants": [],
+   "hasNotReadNotes": false,
+   "shortener": false,
+   "smartLinkData": {
+    "ids": []
+   },
+   "media": [
+    "https://medicard.ge/press/medirun-glow/f05-iphone-22.jpg"
+   ],
+   "mediaAltText": [],
+   "publicationDate": {
+    "dateTime": "2026-12-09T13:00:00",
+    "timezone": "Asia/Tbilisi"
+   },
+   "providers": [
+    {
+     "network": "facebook"
+    },
+    {
+     "network": "instagram"
+    }
+   ],
+   "text": "🔴 31 დეკემბრამდე 22 დღე დარჩა.\n\nწითელ iPhone 18 Pro Max-ს მხოლოდ ის დაინახავს, ვინც MEDIRUN-ში თბილისის 1%-ს გაანათებს. ეს დაახლოებით 50 კილომეტრი ახალი ქუჩაა.\n\nვინც ყუთს პირველი გახსნის, iPhone-ს ის წაიღებს.\n\nშენ რამდენ პროცენტზე ხარ? შენი პროცენტი MEDIRUN-ში ჩანს. 👣\n\n📲 ჩამოტვირთე უფასოდ iPhone-ზე:\nhttps://apps.apple.com/app/id6812517519\n🌐 საიტი და ვებ-ვერსია: https://medicard.ge\n🤖 Android — სულ მალე\n\n#გაანათეთბილისი #MEDIRUN #MEDICARD #თბილისი #საქართველო",
+   "firstCommentText": "📲 iPhone: https://apps.apple.com/app/id6812517519\n💻 ვებ-ვერსია: https://medicard.ge/app\n🤖 Android — სულ მალე",
+   "facebookData": {
+    "type": "POST"
+   },
+   "instagramData": {
+    "type": "POST",
+    "isAiGenerated": true
+   }
+  },
+  "record": {
+   "campaign": "medirun-glow-2026",
+   "slot": "g-iphone-22",
+   "networks": [
+    "facebook",
+    "instagram"
+   ],
+   "kind": "POST",
+   "pillar": "MEDIRUN",
+   "title": "🔴 31 დეკემბრამდე 22 დღე დარჩა.",
+   "text": "🔴 31 დეკემბრამდე 22 დღე დარჩა.\n\nწითელ iPhone 18 Pro Max-ს მხოლოდ ის დაინახავს, ვინც MEDIRUN-ში თბილისის 1%-ს გაანათებს. ეს დაახლოებით 50 კილომეტრი ახალი ქუჩაა.\n\nვინც ყუთს პირველი გახსნის, iPhone-ს ის წაიღებს.\n\nშენ რამდენ პროცენტზე ხარ? შენი პროცენტი MEDIRUN-ში ჩანს. 👣\n\n📲 ჩამოტვირთე უფასოდ iPhone-ზე:\nhttps://apps.apple.com/app/id6812517519\n🌐 საიტი და ვებ-ვერსია: https://medicard.ge\n🤖 Android — სულ მალე\n\n#გაანათეთბილისი #MEDIRUN #MEDICARD #თბილისი #საქართველო",
+   "textEn": null,
+   "mediaUrls": [
+    "https://medicard.ge/press/medirun-glow/f05-iphone-22.jpg"
+   ],
+   "scheduledAt": "2026-12-09T13:00:00+04:00",
+   "status": "SCHEDULED",
+   "notes": "MEDIRUN · გაანათე თბილისი · Metricool: ავტომატური გამოქვეყნება · სურათები AI-ით შექმნილი (Instagram-ზე მონიშნული)"
+  }
+ },
+ {
+  "slot": "g-sat-10",
+  "date": "2026-12-11T13:00:00+04:00",
+  "info": {
+   "autoPublish": true,
+   "draft": false,
+   "descendants": [],
+   "hasNotReadNotes": false,
+   "shortener": false,
+   "smartLinkData": {
+    "ids": []
+   },
+   "media": [
+    "https://medicard.ge/press/medirun-glow/f14-saturday-10.jpg"
+   ],
+   "mediaAltText": [],
+   "publicationDate": {
+    "dateTime": "2026-12-11T13:00:00",
+    "timezone": "Asia/Tbilisi"
+   },
+   "providers": [
+    {
+     "network": "facebook"
+    },
+    {
+     "network": "instagram"
+    }
+   ],
+   "text": "🌧 შაბათის წვიმა — 12 დეკემბერი, 16:00\n\nხვალ ერთ თბილისურ პარკში საჩუქრების წვიმა მოვა: ყუთებში 50 და 100 Medi Coins იქნება.\n\nრომელ პარკში? 15:00-ზე სთორიში გამოცანას გამოვაქვეყნებთ, 15:30-ზე — მეორე მინიშნებას.\n\n🏮 შაბათობით ფარნის ყუთებიც ჩნდება — თითოში 300 Medi Coins. მათ მხოლოდ ის დაინახავს, ვისაც თბილისის 0,25% აქვს განათებული.\n\nჩართე შეტყობინებები, რომ მინიშნება არ გამოგრჩეს. 🔔\n\n📲 ჩამოტვირთე უფასოდ iPhone-ზე:\nhttps://apps.apple.com/app/id6812517519\n🌐 საიტი და ვებ-ვერსია: https://medicard.ge\n🤖 Android — სულ მალე\n\n#გაანათეთბილისი #MEDIRUN #MEDICARD #თბილისი #საქართველო",
+   "firstCommentText": "📲 iPhone: https://apps.apple.com/app/id6812517519\n💻 ვებ-ვერსია: https://medicard.ge/app\n🤖 Android — სულ მალე",
+   "facebookData": {
+    "type": "POST"
+   },
+   "instagramData": {
+    "type": "POST",
+    "isAiGenerated": true
+   }
+  },
+  "record": {
+   "campaign": "medirun-glow-2026",
+   "slot": "g-sat-10",
+   "networks": [
+    "facebook",
+    "instagram"
+   ],
+   "kind": "POST",
+   "pillar": "MEDIRUN",
+   "title": "🌧 შაბათის წვიმა — 12 დეკემბერი, 16:00",
+   "text": "🌧 შაბათის წვიმა — 12 დეკემბერი, 16:00\n\nხვალ ერთ თბილისურ პარკში საჩუქრების წვიმა მოვა: ყუთებში 50 და 100 Medi Coins იქნება.\n\nრომელ პარკში? 15:00-ზე სთორიში გამოცანას გამოვაქვეყნებთ, 15:30-ზე — მეორე მინიშნებას.\n\n🏮 შაბათობით ფარნის ყუთებიც ჩნდება — თითოში 300 Medi Coins. მათ მხოლოდ ის დაინახავს, ვისაც თბილისის 0,25% აქვს განათებული.\n\nჩართე შეტყობინებები, რომ მინიშნება არ გამოგრჩეს. 🔔\n\n📲 ჩამოტვირთე უფასოდ iPhone-ზე:\nhttps://apps.apple.com/app/id6812517519\n🌐 საიტი და ვებ-ვერსია: https://medicard.ge\n🤖 Android — სულ მალე\n\n#გაანათეთბილისი #MEDIRUN #MEDICARD #თბილისი #საქართველო",
+   "textEn": null,
+   "mediaUrls": [
+    "https://medicard.ge/press/medirun-glow/f14-saturday-10.jpg"
+   ],
+   "scheduledAt": "2026-12-11T13:00:00+04:00",
+   "status": "SCHEDULED",
+   "notes": "MEDIRUN · გაანათე თბილისი · Metricool: ავტომატური გამოქვეყნება · სურათები AI-ით შექმნილი (Instagram-ზე მონიშნული)"
+  }
+ },
+ {
+  "slot": "g-sat-10-tomorrow",
+  "date": "2026-12-11T21:00:00+04:00",
+  "info": {
+   "autoPublish": true,
+   "draft": false,
+   "descendants": [],
+   "hasNotReadNotes": false,
+   "shortener": false,
+   "smartLinkData": {
+    "ids": []
+   },
+   "media": [
+    "https://medicard.ge/press/medirun-glow/s07-tomorrow-10.jpg"
+   ],
+   "mediaAltText": [],
+   "publicationDate": {
+    "dateTime": "2026-12-11T21:00:00",
+    "timezone": "Asia/Tbilisi"
+   },
+   "providers": [
+    {
+     "network": "facebook"
+    },
+    {
+     "network": "instagram"
+    }
+   ],
+   "facebookData": {
+    "type": "STORY"
+   },
+   "instagramData": {
+    "type": "STORY",
+    "isAiGenerated": true
+   }
+  },
+  "record": {
+   "campaign": "medirun-glow-2026",
+   "slot": "g-sat-10-tomorrow",
+   "networks": [
+    "facebook",
+    "instagram"
+   ],
+   "kind": "STORY",
+   "pillar": "MEDIRUN",
+   "title": "სთორი · s07-tomorrow-10",
+   "text": "",
+   "textEn": null,
+   "mediaUrls": [
+    "https://medicard.ge/press/medirun-glow/s07-tomorrow-10.jpg"
+   ],
+   "scheduledAt": "2026-12-11T21:00:00+04:00",
+   "status": "SCHEDULED",
+   "notes": "MEDIRUN · გაანათე თბილისი · Metricool: ავტომატური გამოქვეყნება · სურათები AI-ით შექმნილი (Instagram-ზე მონიშნული)"
+  }
+ },
+ {
+  "slot": "g-sat-10-weekend",
+  "date": "2026-12-12T09:30:00+04:00",
+  "info": {
+   "autoPublish": true,
+   "draft": false,
+   "descendants": [],
+   "hasNotReadNotes": false,
+   "shortener": false,
+   "smartLinkData": {
+    "ids": []
+   },
+   "media": [
+    "https://medicard.ge/press/medirun-glow/s05-weekend.jpg"
+   ],
+   "mediaAltText": [],
+   "publicationDate": {
+    "dateTime": "2026-12-12T09:30:00",
+    "timezone": "Asia/Tbilisi"
+   },
+   "providers": [
+    {
+     "network": "facebook"
+    },
+    {
+     "network": "instagram"
+    }
+   ],
+   "facebookData": {
+    "type": "STORY"
+   },
+   "instagramData": {
+    "type": "STORY",
+    "isAiGenerated": true
+   }
+  },
+  "record": {
+   "campaign": "medirun-glow-2026",
+   "slot": "g-sat-10-weekend",
+   "networks": [
+    "facebook",
+    "instagram"
+   ],
+   "kind": "STORY",
+   "pillar": "MEDIRUN",
+   "title": "სთორი · s05-weekend",
+   "text": "",
+   "textEn": null,
+   "mediaUrls": [
+    "https://medicard.ge/press/medirun-glow/s05-weekend.jpg"
+   ],
+   "scheduledAt": "2026-12-12T09:30:00+04:00",
+   "status": "SCHEDULED",
+   "notes": "MEDIRUN · გაანათე თბილისი · Metricool: ავტომატური გამოქვეყნება · სურათები AI-ით შექმნილი (Instagram-ზე მონიშნული)"
+  }
+ },
+ {
+  "slot": "g-sat-10-hint1",
+  "date": "2026-12-12T15:00:00+04:00",
+  "info": {
+   "autoPublish": true,
+   "draft": false,
+   "descendants": [],
+   "hasNotReadNotes": false,
+   "shortener": false,
+   "smartLinkData": {
+    "ids": []
+   },
+   "media": [
+    "https://medicard.ge/press/medirun-glow/s06-hint-10-1.jpg"
+   ],
+   "mediaAltText": [],
+   "publicationDate": {
+    "dateTime": "2026-12-12T15:00:00",
+    "timezone": "Asia/Tbilisi"
+   },
+   "providers": [
+    {
+     "network": "facebook"
+    },
+    {
+     "network": "instagram"
+    }
+   ],
+   "facebookData": {
+    "type": "STORY"
+   },
+   "instagramData": {
+    "type": "STORY",
+    "isAiGenerated": true
+   }
+  },
+  "record": {
+   "campaign": "medirun-glow-2026",
+   "slot": "g-sat-10-hint1",
+   "networks": [
+    "facebook",
+    "instagram"
+   ],
+   "kind": "STORY",
+   "pillar": "MEDIRUN",
+   "title": "სთორი · s06-hint-10-1",
+   "text": "",
+   "textEn": null,
+   "mediaUrls": [
+    "https://medicard.ge/press/medirun-glow/s06-hint-10-1.jpg"
+   ],
+   "scheduledAt": "2026-12-12T15:00:00+04:00",
+   "status": "SCHEDULED",
+   "notes": "MEDIRUN · გაანათე თბილისი · Metricool: ავტომატური გამოქვეყნება · სურათები AI-ით შექმნილი (Instagram-ზე მონიშნული)"
+  }
+ },
+ {
+  "slot": "g-sat-10-hint2",
+  "date": "2026-12-12T15:30:00+04:00",
+  "info": {
+   "autoPublish": true,
+   "draft": false,
+   "descendants": [],
+   "hasNotReadNotes": false,
+   "shortener": false,
+   "smartLinkData": {
+    "ids": []
+   },
+   "media": [
+    "https://medicard.ge/press/medirun-glow/s06-hint-10-2.jpg"
+   ],
+   "mediaAltText": [],
+   "publicationDate": {
+    "dateTime": "2026-12-12T15:30:00",
+    "timezone": "Asia/Tbilisi"
+   },
+   "providers": [
+    {
+     "network": "facebook"
+    },
+    {
+     "network": "instagram"
+    }
+   ],
+   "facebookData": {
+    "type": "STORY"
+   },
+   "instagramData": {
+    "type": "STORY",
+    "isAiGenerated": true
+   }
+  },
+  "record": {
+   "campaign": "medirun-glow-2026",
+   "slot": "g-sat-10-hint2",
+   "networks": [
+    "facebook",
+    "instagram"
+   ],
+   "kind": "STORY",
+   "pillar": "MEDIRUN",
+   "title": "სთორი · s06-hint-10-2",
+   "text": "",
+   "textEn": null,
+   "mediaUrls": [
+    "https://medicard.ge/press/medirun-glow/s06-hint-10-2.jpg"
+   ],
+   "scheduledAt": "2026-12-12T15:30:00+04:00",
+   "status": "SCHEDULED",
+   "notes": "MEDIRUN · გაანათე თბილისი · Metricool: ავტომატური გამოქვეყნება · სურათები AI-ით შექმნილი (Instagram-ზე მონიშნული)"
+  }
+ },
+ {
+  "slot": "g-sat-10-winners",
+  "date": "2026-12-12T18:30:00+04:00",
+  "info": null,
+  "record": {
+   "campaign": "medirun-glow-2026",
+   "slot": "g-sat-10-winners",
+   "networks": [
+    "facebook",
+    "instagram"
+   ],
+   "kind": "STORY",
+   "pillar": "MEDIRUN",
+   "title": "შაბათის წვიმის მპოვნელები — 12 დეკემბერი (ცოცხლად)",
+   "text": "შაბათის წვიმის მპოვნელები — 12 დეკემბერი (ცოცხლად)",
+   "textEn": null,
+   "mediaUrls": [],
+   "scheduledAt": "2026-12-12T18:30:00+04:00",
+   "status": "PLANNED",
+   "notes": "ხელით: მხოლოდ რეალური რიცხვები ადმინიდან (MEDIRUN → ჯილდოები); სახელი/ფოტო მხოლოდ თანხმობით."
+  }
+ },
+ {
+  "slot": "g-weekday-12-14",
+  "date": "2026-12-14T08:15:00+04:00",
+  "info": {
+   "autoPublish": true,
+   "draft": false,
+   "descendants": [],
+   "hasNotReadNotes": false,
+   "shortener": false,
+   "smartLinkData": {
+    "ids": []
+   },
+   "media": [
+    "https://medicard.ge/press/medirun-glow/s04-weekday.jpg"
+   ],
+   "mediaAltText": [],
+   "publicationDate": {
+    "dateTime": "2026-12-14T08:15:00",
+    "timezone": "Asia/Tbilisi"
+   },
+   "providers": [
+    {
+     "network": "facebook"
+    },
+    {
+     "network": "instagram"
+    }
+   ],
+   "facebookData": {
+    "type": "STORY"
+   },
+   "instagramData": {
+    "type": "STORY",
+    "isAiGenerated": true
+   }
+  },
+  "record": {
+   "campaign": "medirun-glow-2026",
+   "slot": "g-weekday-12-14",
+   "networks": [
+    "facebook",
+    "instagram"
+   ],
+   "kind": "STORY",
+   "pillar": "MEDIRUN",
+   "title": "სთორი · s04-weekday",
+   "text": "",
+   "textEn": null,
+   "mediaUrls": [
+    "https://medicard.ge/press/medirun-glow/s04-weekday.jpg"
+   ],
+   "scheduledAt": "2026-12-14T08:15:00+04:00",
+   "status": "SCHEDULED",
+   "notes": "MEDIRUN · გაანათე თბილისი · Metricool: ავტომატური გამოქვეყნება · სურათები AI-ით შექმნილი (Instagram-ზე მონიშნული)"
+  }
+ },
+ {
+  "slot": "g-levels-3",
+  "date": "2026-12-16T13:00:00+04:00",
+  "info": {
+   "autoPublish": true,
+   "draft": false,
+   "descendants": [],
+   "hasNotReadNotes": false,
+   "shortener": false,
+   "smartLinkData": {
+    "ids": []
+   },
+   "media": [
+    "https://medicard.ge/press/medirun-glow/f04-levels.jpg"
+   ],
+   "mediaAltText": [],
+   "publicationDate": {
+    "dateTime": "2026-12-16T13:00:00",
+    "timezone": "Asia/Tbilisi"
+   },
+   "providers": [
+    {
+     "network": "facebook"
+    },
+    {
+     "network": "instagram"
+    }
+   ],
+   "text": "15 დღე დარჩა. შენი თბილისი რამდენი პროცენტით ანათებს? ⭐\n\nMEDIRUN-ში ყოველი ახალი ქუჩა შენს რუკაზე ინთება. რაც მეტ ახალ ქუჩას გაივლი, მით უფრო მაღალი იქნება შენი დონე:\n\n✨ 0,1% — ნაპერწკალი\n🏮 0,25% — ფარანი: ნოემბრიდან შაბათის ფარნის ყუთებს დაინახავ\n🔥 0,5% — ჩირაღდანი\n⭐ 1% — შუქურა: 31 დეკემბერს წითელ iPhone 18 Pro Max-ს დაინახავ\n\n1% დაახლოებით 50 კილომეტრი ახალი ქუჩაა. ერთსა და იმავე გზას მეორედ არ ვითვლით.\n\nშენი პროცენტი MEDIRUN-ში ჩანს. 👣\n\n📲 ჩამოტვირთე უფასოდ iPhone-ზე:\nhttps://apps.apple.com/app/id6812517519\n🌐 საიტი და ვებ-ვერსია: https://medicard.ge\n🤖 Android — სულ მალე\n\n#გაანათეთბილისი #MEDIRUN #MEDICARD #თბილისი #საქართველო",
+   "firstCommentText": "📲 iPhone: https://apps.apple.com/app/id6812517519\n💻 ვებ-ვერსია: https://medicard.ge/app\n🤖 Android — სულ მალე",
+   "facebookData": {
+    "type": "POST"
+   },
+   "instagramData": {
+    "type": "POST",
+    "isAiGenerated": true
+   }
+  },
+  "record": {
+   "campaign": "medirun-glow-2026",
+   "slot": "g-levels-3",
+   "networks": [
+    "facebook",
+    "instagram"
+   ],
+   "kind": "POST",
+   "pillar": "MEDIRUN",
+   "title": "15 დღე დარჩა. შენი თბილისი რამდენი პროცენტით ანათებს? ⭐",
+   "text": "15 დღე დარჩა. შენი თბილისი რამდენი პროცენტით ანათებს? ⭐\n\nMEDIRUN-ში ყოველი ახალი ქუჩა შენს რუკაზე ინთება. რაც მეტ ახალ ქუჩას გაივლი, მით უფრო მაღალი იქნება შენი დონე:\n\n✨ 0,1% — ნაპერწკალი\n🏮 0,25% — ფარანი: ნოემბრიდან შაბათის ფარნის ყუთებს დაინახავ\n🔥 0,5% — ჩირაღდანი\n⭐ 1% — შუქურა: 31 დეკემბერს წითელ iPhone 18 Pro Max-ს დაინახავ\n\n1% დაახლოებით 50 კილომეტრი ახალი ქუჩაა. ერთსა და იმავე გზას მეორედ არ ვითვლით.\n\nშენი პროცენტი MEDIRUN-ში ჩანს. 👣\n\n📲 ჩამოტვირთე უფასოდ iPhone-ზე:\nhttps://apps.apple.com/app/id6812517519\n🌐 საიტი და ვებ-ვერსია: https://medicard.ge\n🤖 Android — სულ მალე\n\n#გაანათეთბილისი #MEDIRUN #MEDICARD #თბილისი #საქართველო",
+   "textEn": null,
+   "mediaUrls": [
+    "https://medicard.ge/press/medirun-glow/f04-levels.jpg"
+   ],
+   "scheduledAt": "2026-12-16T13:00:00+04:00",
+   "status": "SCHEDULED",
+   "notes": "MEDIRUN · გაანათე თბილისი · Metricool: ავტომატური გამოქვეყნება · სურათები AI-ით შექმნილი (Instagram-ზე მონიშნული)"
+  }
+ },
+ {
+  "slot": "g-levels-s-12-16",
+  "date": "2026-12-16T20:30:00+04:00",
+  "info": {
+   "autoPublish": true,
+   "draft": false,
+   "descendants": [],
+   "hasNotReadNotes": false,
+   "shortener": false,
+   "smartLinkData": {
+    "ids": []
+   },
+   "media": [
+    "https://medicard.ge/press/medirun-glow/s08-levels.jpg"
+   ],
+   "mediaAltText": [],
+   "publicationDate": {
+    "dateTime": "2026-12-16T20:30:00",
+    "timezone": "Asia/Tbilisi"
+   },
+   "providers": [
+    {
+     "network": "facebook"
+    },
+    {
+     "network": "instagram"
+    }
+   ],
+   "facebookData": {
+    "type": "STORY"
+   },
+   "instagramData": {
+    "type": "STORY",
+    "isAiGenerated": true
+   }
+  },
+  "record": {
+   "campaign": "medirun-glow-2026",
+   "slot": "g-levels-s-12-16",
+   "networks": [
+    "facebook",
+    "instagram"
+   ],
+   "kind": "STORY",
+   "pillar": "MEDIRUN",
+   "title": "სთორი · s08-levels",
+   "text": "",
+   "textEn": null,
+   "mediaUrls": [
+    "https://medicard.ge/press/medirun-glow/s08-levels.jpg"
+   ],
+   "scheduledAt": "2026-12-16T20:30:00+04:00",
+   "status": "SCHEDULED",
+   "notes": "MEDIRUN · გაანათე თბილისი · Metricool: ავტომატური გამოქვეყნება · სურათები AI-ით შექმნილი (Instagram-ზე მონიშნული)"
+  }
+ },
+ {
+  "slot": "g-sat-11",
+  "date": "2026-12-18T13:00:00+04:00",
+  "info": {
+   "autoPublish": true,
+   "draft": false,
+   "descendants": [],
+   "hasNotReadNotes": false,
+   "shortener": false,
+   "smartLinkData": {
+    "ids": []
+   },
+   "media": [
+    "https://medicard.ge/press/medirun-glow/f14-saturday-11.jpg"
+   ],
+   "mediaAltText": [],
+   "publicationDate": {
+    "dateTime": "2026-12-18T13:00:00",
+    "timezone": "Asia/Tbilisi"
+   },
+   "providers": [
+    {
+     "network": "facebook"
+    },
+    {
+     "network": "instagram"
+    }
+   ],
+   "text": "🌧 შაბათის წვიმა — 19 დეკემბერი, 16:00\n\nხვალ ერთ თბილისურ პარკში საჩუქრების წვიმა მოვა: ყუთებში 50 და 100 Medi Coins იქნება.\n\nრომელ პარკში? 15:00-ზე სთორიში გამოცანას გამოვაქვეყნებთ, 15:30-ზე — მეორე მინიშნებას.\n\n🏮 შაბათობით ფარნის ყუთებიც ჩნდება — თითოში 300 Medi Coins. მათ მხოლოდ ის დაინახავს, ვისაც თბილისის 0,25% აქვს განათებული.\n\nჩართე შეტყობინებები, რომ მინიშნება არ გამოგრჩეს. 🔔\n\n📲 ჩამოტვირთე უფასოდ iPhone-ზე:\nhttps://apps.apple.com/app/id6812517519\n🌐 საიტი და ვებ-ვერსია: https://medicard.ge\n🤖 Android — სულ მალე\n\n#გაანათეთბილისი #MEDIRUN #MEDICARD #თბილისი #საქართველო",
+   "firstCommentText": "📲 iPhone: https://apps.apple.com/app/id6812517519\n💻 ვებ-ვერსია: https://medicard.ge/app\n🤖 Android — სულ მალე",
+   "facebookData": {
+    "type": "POST"
+   },
+   "instagramData": {
+    "type": "POST",
+    "isAiGenerated": true
+   }
+  },
+  "record": {
+   "campaign": "medirun-glow-2026",
+   "slot": "g-sat-11",
+   "networks": [
+    "facebook",
+    "instagram"
+   ],
+   "kind": "POST",
+   "pillar": "MEDIRUN",
+   "title": "🌧 შაბათის წვიმა — 19 დეკემბერი, 16:00",
+   "text": "🌧 შაბათის წვიმა — 19 დეკემბერი, 16:00\n\nხვალ ერთ თბილისურ პარკში საჩუქრების წვიმა მოვა: ყუთებში 50 და 100 Medi Coins იქნება.\n\nრომელ პარკში? 15:00-ზე სთორიში გამოცანას გამოვაქვეყნებთ, 15:30-ზე — მეორე მინიშნებას.\n\n🏮 შაბათობით ფარნის ყუთებიც ჩნდება — თითოში 300 Medi Coins. მათ მხოლოდ ის დაინახავს, ვისაც თბილისის 0,25% აქვს განათებული.\n\nჩართე შეტყობინებები, რომ მინიშნება არ გამოგრჩეს. 🔔\n\n📲 ჩამოტვირთე უფასოდ iPhone-ზე:\nhttps://apps.apple.com/app/id6812517519\n🌐 საიტი და ვებ-ვერსია: https://medicard.ge\n🤖 Android — სულ მალე\n\n#გაანათეთბილისი #MEDIRUN #MEDICARD #თბილისი #საქართველო",
+   "textEn": null,
+   "mediaUrls": [
+    "https://medicard.ge/press/medirun-glow/f14-saturday-11.jpg"
+   ],
+   "scheduledAt": "2026-12-18T13:00:00+04:00",
+   "status": "SCHEDULED",
+   "notes": "MEDIRUN · გაანათე თბილისი · Metricool: ავტომატური გამოქვეყნება · სურათები AI-ით შექმნილი (Instagram-ზე მონიშნული)"
+  }
+ },
+ {
+  "slot": "g-sat-11-tomorrow",
+  "date": "2026-12-18T21:00:00+04:00",
+  "info": {
+   "autoPublish": true,
+   "draft": false,
+   "descendants": [],
+   "hasNotReadNotes": false,
+   "shortener": false,
+   "smartLinkData": {
+    "ids": []
+   },
+   "media": [
+    "https://medicard.ge/press/medirun-glow/s07-tomorrow-11.jpg"
+   ],
+   "mediaAltText": [],
+   "publicationDate": {
+    "dateTime": "2026-12-18T21:00:00",
+    "timezone": "Asia/Tbilisi"
+   },
+   "providers": [
+    {
+     "network": "facebook"
+    },
+    {
+     "network": "instagram"
+    }
+   ],
+   "facebookData": {
+    "type": "STORY"
+   },
+   "instagramData": {
+    "type": "STORY",
+    "isAiGenerated": true
+   }
+  },
+  "record": {
+   "campaign": "medirun-glow-2026",
+   "slot": "g-sat-11-tomorrow",
+   "networks": [
+    "facebook",
+    "instagram"
+   ],
+   "kind": "STORY",
+   "pillar": "MEDIRUN",
+   "title": "სთორი · s07-tomorrow-11",
+   "text": "",
+   "textEn": null,
+   "mediaUrls": [
+    "https://medicard.ge/press/medirun-glow/s07-tomorrow-11.jpg"
+   ],
+   "scheduledAt": "2026-12-18T21:00:00+04:00",
+   "status": "SCHEDULED",
+   "notes": "MEDIRUN · გაანათე თბილისი · Metricool: ავტომატური გამოქვეყნება · სურათები AI-ით შექმნილი (Instagram-ზე მონიშნული)"
+  }
+ },
+ {
+  "slot": "g-sat-11-weekend",
+  "date": "2026-12-19T09:30:00+04:00",
+  "info": {
+   "autoPublish": true,
+   "draft": false,
+   "descendants": [],
+   "hasNotReadNotes": false,
+   "shortener": false,
+   "smartLinkData": {
+    "ids": []
+   },
+   "media": [
+    "https://medicard.ge/press/medirun-glow/s05-weekend.jpg"
+   ],
+   "mediaAltText": [],
+   "publicationDate": {
+    "dateTime": "2026-12-19T09:30:00",
+    "timezone": "Asia/Tbilisi"
+   },
+   "providers": [
+    {
+     "network": "facebook"
+    },
+    {
+     "network": "instagram"
+    }
+   ],
+   "facebookData": {
+    "type": "STORY"
+   },
+   "instagramData": {
+    "type": "STORY",
+    "isAiGenerated": true
+   }
+  },
+  "record": {
+   "campaign": "medirun-glow-2026",
+   "slot": "g-sat-11-weekend",
+   "networks": [
+    "facebook",
+    "instagram"
+   ],
+   "kind": "STORY",
+   "pillar": "MEDIRUN",
+   "title": "სთორი · s05-weekend",
+   "text": "",
+   "textEn": null,
+   "mediaUrls": [
+    "https://medicard.ge/press/medirun-glow/s05-weekend.jpg"
+   ],
+   "scheduledAt": "2026-12-19T09:30:00+04:00",
+   "status": "SCHEDULED",
+   "notes": "MEDIRUN · გაანათე თბილისი · Metricool: ავტომატური გამოქვეყნება · სურათები AI-ით შექმნილი (Instagram-ზე მონიშნული)"
+  }
+ },
+ {
+  "slot": "g-sat-11-hint1",
+  "date": "2026-12-19T15:00:00+04:00",
+  "info": {
+   "autoPublish": true,
+   "draft": false,
+   "descendants": [],
+   "hasNotReadNotes": false,
+   "shortener": false,
+   "smartLinkData": {
+    "ids": []
+   },
+   "media": [
+    "https://medicard.ge/press/medirun-glow/s06-hint-11-1.jpg"
+   ],
+   "mediaAltText": [],
+   "publicationDate": {
+    "dateTime": "2026-12-19T15:00:00",
+    "timezone": "Asia/Tbilisi"
+   },
+   "providers": [
+    {
+     "network": "facebook"
+    },
+    {
+     "network": "instagram"
+    }
+   ],
+   "facebookData": {
+    "type": "STORY"
+   },
+   "instagramData": {
+    "type": "STORY",
+    "isAiGenerated": true
+   }
+  },
+  "record": {
+   "campaign": "medirun-glow-2026",
+   "slot": "g-sat-11-hint1",
+   "networks": [
+    "facebook",
+    "instagram"
+   ],
+   "kind": "STORY",
+   "pillar": "MEDIRUN",
+   "title": "სთორი · s06-hint-11-1",
+   "text": "",
+   "textEn": null,
+   "mediaUrls": [
+    "https://medicard.ge/press/medirun-glow/s06-hint-11-1.jpg"
+   ],
+   "scheduledAt": "2026-12-19T15:00:00+04:00",
+   "status": "SCHEDULED",
+   "notes": "MEDIRUN · გაანათე თბილისი · Metricool: ავტომატური გამოქვეყნება · სურათები AI-ით შექმნილი (Instagram-ზე მონიშნული)"
+  }
+ },
+ {
+  "slot": "g-sat-11-hint2",
+  "date": "2026-12-19T15:30:00+04:00",
+  "info": {
+   "autoPublish": true,
+   "draft": false,
+   "descendants": [],
+   "hasNotReadNotes": false,
+   "shortener": false,
+   "smartLinkData": {
+    "ids": []
+   },
+   "media": [
+    "https://medicard.ge/press/medirun-glow/s06-hint-11-2.jpg"
+   ],
+   "mediaAltText": [],
+   "publicationDate": {
+    "dateTime": "2026-12-19T15:30:00",
+    "timezone": "Asia/Tbilisi"
+   },
+   "providers": [
+    {
+     "network": "facebook"
+    },
+    {
+     "network": "instagram"
+    }
+   ],
+   "facebookData": {
+    "type": "STORY"
+   },
+   "instagramData": {
+    "type": "STORY",
+    "isAiGenerated": true
+   }
+  },
+  "record": {
+   "campaign": "medirun-glow-2026",
+   "slot": "g-sat-11-hint2",
+   "networks": [
+    "facebook",
+    "instagram"
+   ],
+   "kind": "STORY",
+   "pillar": "MEDIRUN",
+   "title": "სთორი · s06-hint-11-2",
+   "text": "",
+   "textEn": null,
+   "mediaUrls": [
+    "https://medicard.ge/press/medirun-glow/s06-hint-11-2.jpg"
+   ],
+   "scheduledAt": "2026-12-19T15:30:00+04:00",
+   "status": "SCHEDULED",
+   "notes": "MEDIRUN · გაანათე თბილისი · Metricool: ავტომატური გამოქვეყნება · სურათები AI-ით შექმნილი (Instagram-ზე მონიშნული)"
+  }
+ },
+ {
+  "slot": "g-sat-11-winners",
+  "date": "2026-12-19T18:30:00+04:00",
+  "info": null,
+  "record": {
+   "campaign": "medirun-glow-2026",
+   "slot": "g-sat-11-winners",
+   "networks": [
+    "facebook",
+    "instagram"
+   ],
+   "kind": "STORY",
+   "pillar": "MEDIRUN",
+   "title": "შაბათის წვიმის მპოვნელები — 19 დეკემბერი (ცოცხლად)",
+   "text": "შაბათის წვიმის მპოვნელები — 19 დეკემბერი (ცოცხლად)",
+   "textEn": null,
+   "mediaUrls": [],
+   "scheduledAt": "2026-12-19T18:30:00+04:00",
+   "status": "PLANNED",
+   "notes": "ხელით: მხოლოდ რეალური რიცხვები ადმინიდან (MEDIRUN → ჯილდოები); სახელი/ფოტო მხოლოდ თანხმობით."
+  }
+ },
+ {
+  "slot": "g-weekday-12-21",
+  "date": "2026-12-21T08:15:00+04:00",
+  "info": {
+   "autoPublish": true,
+   "draft": false,
+   "descendants": [],
+   "hasNotReadNotes": false,
+   "shortener": false,
+   "smartLinkData": {
+    "ids": []
+   },
+   "media": [
+    "https://medicard.ge/press/medirun-glow/s04-weekday.jpg"
+   ],
+   "mediaAltText": [],
+   "publicationDate": {
+    "dateTime": "2026-12-21T08:15:00",
+    "timezone": "Asia/Tbilisi"
+   },
+   "providers": [
+    {
+     "network": "facebook"
+    },
+    {
+     "network": "instagram"
+    }
+   ],
+   "facebookData": {
+    "type": "STORY"
+   },
+   "instagramData": {
+    "type": "STORY",
+    "isAiGenerated": true
+   }
+  },
+  "record": {
+   "campaign": "medirun-glow-2026",
+   "slot": "g-weekday-12-21",
+   "networks": [
+    "facebook",
+    "instagram"
+   ],
+   "kind": "STORY",
+   "pillar": "MEDIRUN",
+   "title": "სთორი · s04-weekday",
+   "text": "",
+   "textEn": null,
+   "mediaUrls": [
+    "https://medicard.ge/press/medirun-glow/s04-weekday.jpg"
+   ],
+   "scheduledAt": "2026-12-21T08:15:00+04:00",
+   "status": "SCHEDULED",
+   "notes": "MEDIRUN · გაანათე თბილისი · Metricool: ავტომატური გამოქვეყნება · სურათები AI-ით შექმნილი (Instagram-ზე მონიშნული)"
+  }
+ },
+ {
+  "slot": "g-iphone-8",
+  "date": "2026-12-23T13:00:00+04:00",
+  "info": {
+   "autoPublish": true,
+   "draft": false,
+   "descendants": [],
+   "hasNotReadNotes": false,
+   "shortener": false,
+   "smartLinkData": {
+    "ids": []
+   },
+   "media": [
+    "https://medicard.ge/press/medirun-glow/f05-iphone-8.jpg"
+   ],
+   "mediaAltText": [],
+   "publicationDate": {
+    "dateTime": "2026-12-23T13:00:00",
+    "timezone": "Asia/Tbilisi"
+   },
+   "providers": [
+    {
+     "network": "facebook"
+    },
+    {
+     "network": "instagram"
+    }
+   ],
+   "text": "🔴 31 დეკემბრამდე 8 დღე დარჩა.\n\nწითელ iPhone 18 Pro Max-ს მხოლოდ ის დაინახავს, ვინც MEDIRUN-ში თბილისის 1%-ს გაანათებს. ეს დაახლოებით 50 კილომეტრი ახალი ქუჩაა.\n\nვინც ყუთს პირველი გახსნის, iPhone-ს ის წაიღებს.\n\nშენ რამდენ პროცენტზე ხარ? შენი პროცენტი MEDIRUN-ში ჩანს. 👣\n\n📲 ჩამოტვირთე უფასოდ iPhone-ზე:\nhttps://apps.apple.com/app/id6812517519\n🌐 საიტი და ვებ-ვერსია: https://medicard.ge\n🤖 Android — სულ მალე\n\n#გაანათეთბილისი #MEDIRUN #MEDICARD #თბილისი #საქართველო",
+   "firstCommentText": "📲 iPhone: https://apps.apple.com/app/id6812517519\n💻 ვებ-ვერსია: https://medicard.ge/app\n🤖 Android — სულ მალე",
+   "facebookData": {
+    "type": "POST"
+   },
+   "instagramData": {
+    "type": "POST",
+    "isAiGenerated": true
+   }
+  },
+  "record": {
+   "campaign": "medirun-glow-2026",
+   "slot": "g-iphone-8",
+   "networks": [
+    "facebook",
+    "instagram"
+   ],
+   "kind": "POST",
+   "pillar": "MEDIRUN",
+   "title": "🔴 31 დეკემბრამდე 8 დღე დარჩა.",
+   "text": "🔴 31 დეკემბრამდე 8 დღე დარჩა.\n\nწითელ iPhone 18 Pro Max-ს მხოლოდ ის დაინახავს, ვინც MEDIRUN-ში თბილისის 1%-ს გაანათებს. ეს დაახლოებით 50 კილომეტრი ახალი ქუჩაა.\n\nვინც ყუთს პირველი გახსნის, iPhone-ს ის წაიღებს.\n\nშენ რამდენ პროცენტზე ხარ? შენი პროცენტი MEDIRUN-ში ჩანს. 👣\n\n📲 ჩამოტვირთე უფასოდ iPhone-ზე:\nhttps://apps.apple.com/app/id6812517519\n🌐 საიტი და ვებ-ვერსია: https://medicard.ge\n🤖 Android — სულ მალე\n\n#გაანათეთბილისი #MEDIRUN #MEDICARD #თბილისი #საქართველო",
+   "textEn": null,
+   "mediaUrls": [
+    "https://medicard.ge/press/medirun-glow/f05-iphone-8.jpg"
+   ],
+   "scheduledAt": "2026-12-23T13:00:00+04:00",
+   "status": "SCHEDULED",
+   "notes": "MEDIRUN · გაანათე თბილისი · Metricool: ავტომატური გამოქვეყნება · სურათები AI-ით შექმნილი (Instagram-ზე მონიშნული)"
+  }
+ },
+ {
+  "slot": "g-sat-12",
+  "date": "2026-12-25T13:00:00+04:00",
+  "info": {
+   "autoPublish": true,
+   "draft": false,
+   "descendants": [],
+   "hasNotReadNotes": false,
+   "shortener": false,
+   "smartLinkData": {
+    "ids": []
+   },
+   "media": [
+    "https://medicard.ge/press/medirun-glow/f14-saturday-12.jpg"
+   ],
+   "mediaAltText": [],
+   "publicationDate": {
+    "dateTime": "2026-12-25T13:00:00",
+    "timezone": "Asia/Tbilisi"
+   },
+   "providers": [
+    {
+     "network": "facebook"
+    },
+    {
+     "network": "instagram"
+    }
+   ],
+   "text": "🌧 შაბათის წვიმა — 26 დეკემბერი, 16:00\n\nხვალ ერთ თბილისურ პარკში საჩუქრების წვიმა მოვა: ყუთებში 50 და 100 Medi Coins იქნება.\n\nრომელ პარკში? 15:00-ზე სთორიში გამოცანას გამოვაქვეყნებთ, 15:30-ზე — მეორე მინიშნებას.\n\n🏮 შაბათობით ფარნის ყუთებიც ჩნდება — თითოში 300 Medi Coins. მათ მხოლოდ ის დაინახავს, ვისაც თბილისის 0,25% აქვს განათებული.\n\nჩართე შეტყობინებები, რომ მინიშნება არ გამოგრჩეს. 🔔\n\n📲 ჩამოტვირთე უფასოდ iPhone-ზე:\nhttps://apps.apple.com/app/id6812517519\n🌐 საიტი და ვებ-ვერსია: https://medicard.ge\n🤖 Android — სულ მალე\n\n#გაანათეთბილისი #MEDIRUN #MEDICARD #თბილისი #საქართველო",
+   "firstCommentText": "📲 iPhone: https://apps.apple.com/app/id6812517519\n💻 ვებ-ვერსია: https://medicard.ge/app\n🤖 Android — სულ მალე",
+   "facebookData": {
+    "type": "POST"
+   },
+   "instagramData": {
+    "type": "POST",
+    "isAiGenerated": true
+   }
+  },
+  "record": {
+   "campaign": "medirun-glow-2026",
+   "slot": "g-sat-12",
+   "networks": [
+    "facebook",
+    "instagram"
+   ],
+   "kind": "POST",
+   "pillar": "MEDIRUN",
+   "title": "🌧 შაბათის წვიმა — 26 დეკემბერი, 16:00",
+   "text": "🌧 შაბათის წვიმა — 26 დეკემბერი, 16:00\n\nხვალ ერთ თბილისურ პარკში საჩუქრების წვიმა მოვა: ყუთებში 50 და 100 Medi Coins იქნება.\n\nრომელ პარკში? 15:00-ზე სთორიში გამოცანას გამოვაქვეყნებთ, 15:30-ზე — მეორე მინიშნებას.\n\n🏮 შაბათობით ფარნის ყუთებიც ჩნდება — თითოში 300 Medi Coins. მათ მხოლოდ ის დაინახავს, ვისაც თბილისის 0,25% აქვს განათებული.\n\nჩართე შეტყობინებები, რომ მინიშნება არ გამოგრჩეს. 🔔\n\n📲 ჩამოტვირთე უფასოდ iPhone-ზე:\nhttps://apps.apple.com/app/id6812517519\n🌐 საიტი და ვებ-ვერსია: https://medicard.ge\n🤖 Android — სულ მალე\n\n#გაანათეთბილისი #MEDIRUN #MEDICARD #თბილისი #საქართველო",
+   "textEn": null,
+   "mediaUrls": [
+    "https://medicard.ge/press/medirun-glow/f14-saturday-12.jpg"
+   ],
+   "scheduledAt": "2026-12-25T13:00:00+04:00",
+   "status": "SCHEDULED",
+   "notes": "MEDIRUN · გაანათე თბილისი · Metricool: ავტომატური გამოქვეყნება · სურათები AI-ით შექმნილი (Instagram-ზე მონიშნული)"
+  }
+ },
+ {
+  "slot": "g-sat-12-tomorrow",
+  "date": "2026-12-25T21:00:00+04:00",
+  "info": {
+   "autoPublish": true,
+   "draft": false,
+   "descendants": [],
+   "hasNotReadNotes": false,
+   "shortener": false,
+   "smartLinkData": {
+    "ids": []
+   },
+   "media": [
+    "https://medicard.ge/press/medirun-glow/s07-tomorrow-12.jpg"
+   ],
+   "mediaAltText": [],
+   "publicationDate": {
+    "dateTime": "2026-12-25T21:00:00",
+    "timezone": "Asia/Tbilisi"
+   },
+   "providers": [
+    {
+     "network": "facebook"
+    },
+    {
+     "network": "instagram"
+    }
+   ],
+   "facebookData": {
+    "type": "STORY"
+   },
+   "instagramData": {
+    "type": "STORY",
+    "isAiGenerated": true
+   }
+  },
+  "record": {
+   "campaign": "medirun-glow-2026",
+   "slot": "g-sat-12-tomorrow",
+   "networks": [
+    "facebook",
+    "instagram"
+   ],
+   "kind": "STORY",
+   "pillar": "MEDIRUN",
+   "title": "სთორი · s07-tomorrow-12",
+   "text": "",
+   "textEn": null,
+   "mediaUrls": [
+    "https://medicard.ge/press/medirun-glow/s07-tomorrow-12.jpg"
+   ],
+   "scheduledAt": "2026-12-25T21:00:00+04:00",
+   "status": "SCHEDULED",
+   "notes": "MEDIRUN · გაანათე თბილისი · Metricool: ავტომატური გამოქვეყნება · სურათები AI-ით შექმნილი (Instagram-ზე მონიშნული)"
+  }
+ },
+ {
+  "slot": "g-sat-12-weekend",
+  "date": "2026-12-26T09:30:00+04:00",
+  "info": {
+   "autoPublish": true,
+   "draft": false,
+   "descendants": [],
+   "hasNotReadNotes": false,
+   "shortener": false,
+   "smartLinkData": {
+    "ids": []
+   },
+   "media": [
+    "https://medicard.ge/press/medirun-glow/s05-weekend.jpg"
+   ],
+   "mediaAltText": [],
+   "publicationDate": {
+    "dateTime": "2026-12-26T09:30:00",
+    "timezone": "Asia/Tbilisi"
+   },
+   "providers": [
+    {
+     "network": "facebook"
+    },
+    {
+     "network": "instagram"
+    }
+   ],
+   "facebookData": {
+    "type": "STORY"
+   },
+   "instagramData": {
+    "type": "STORY",
+    "isAiGenerated": true
+   }
+  },
+  "record": {
+   "campaign": "medirun-glow-2026",
+   "slot": "g-sat-12-weekend",
+   "networks": [
+    "facebook",
+    "instagram"
+   ],
+   "kind": "STORY",
+   "pillar": "MEDIRUN",
+   "title": "სთორი · s05-weekend",
+   "text": "",
+   "textEn": null,
+   "mediaUrls": [
+    "https://medicard.ge/press/medirun-glow/s05-weekend.jpg"
+   ],
+   "scheduledAt": "2026-12-26T09:30:00+04:00",
+   "status": "SCHEDULED",
+   "notes": "MEDIRUN · გაანათე თბილისი · Metricool: ავტომატური გამოქვეყნება · სურათები AI-ით შექმნილი (Instagram-ზე მონიშნული)"
+  }
+ },
+ {
+  "slot": "g-sat-12-hint1",
+  "date": "2026-12-26T15:00:00+04:00",
+  "info": {
+   "autoPublish": true,
+   "draft": false,
+   "descendants": [],
+   "hasNotReadNotes": false,
+   "shortener": false,
+   "smartLinkData": {
+    "ids": []
+   },
+   "media": [
+    "https://medicard.ge/press/medirun-glow/s06-hint-12-1.jpg"
+   ],
+   "mediaAltText": [],
+   "publicationDate": {
+    "dateTime": "2026-12-26T15:00:00",
+    "timezone": "Asia/Tbilisi"
+   },
+   "providers": [
+    {
+     "network": "facebook"
+    },
+    {
+     "network": "instagram"
+    }
+   ],
+   "facebookData": {
+    "type": "STORY"
+   },
+   "instagramData": {
+    "type": "STORY",
+    "isAiGenerated": true
+   }
+  },
+  "record": {
+   "campaign": "medirun-glow-2026",
+   "slot": "g-sat-12-hint1",
+   "networks": [
+    "facebook",
+    "instagram"
+   ],
+   "kind": "STORY",
+   "pillar": "MEDIRUN",
+   "title": "სთორი · s06-hint-12-1",
+   "text": "",
+   "textEn": null,
+   "mediaUrls": [
+    "https://medicard.ge/press/medirun-glow/s06-hint-12-1.jpg"
+   ],
+   "scheduledAt": "2026-12-26T15:00:00+04:00",
+   "status": "SCHEDULED",
+   "notes": "MEDIRUN · გაანათე თბილისი · Metricool: ავტომატური გამოქვეყნება · სურათები AI-ით შექმნილი (Instagram-ზე მონიშნული)"
+  }
+ },
+ {
+  "slot": "g-sat-12-hint2",
+  "date": "2026-12-26T15:30:00+04:00",
+  "info": {
+   "autoPublish": true,
+   "draft": false,
+   "descendants": [],
+   "hasNotReadNotes": false,
+   "shortener": false,
+   "smartLinkData": {
+    "ids": []
+   },
+   "media": [
+    "https://medicard.ge/press/medirun-glow/s06-hint-12-2.jpg"
+   ],
+   "mediaAltText": [],
+   "publicationDate": {
+    "dateTime": "2026-12-26T15:30:00",
+    "timezone": "Asia/Tbilisi"
+   },
+   "providers": [
+    {
+     "network": "facebook"
+    },
+    {
+     "network": "instagram"
+    }
+   ],
+   "facebookData": {
+    "type": "STORY"
+   },
+   "instagramData": {
+    "type": "STORY",
+    "isAiGenerated": true
+   }
+  },
+  "record": {
+   "campaign": "medirun-glow-2026",
+   "slot": "g-sat-12-hint2",
+   "networks": [
+    "facebook",
+    "instagram"
+   ],
+   "kind": "STORY",
+   "pillar": "MEDIRUN",
+   "title": "სთორი · s06-hint-12-2",
+   "text": "",
+   "textEn": null,
+   "mediaUrls": [
+    "https://medicard.ge/press/medirun-glow/s06-hint-12-2.jpg"
+   ],
+   "scheduledAt": "2026-12-26T15:30:00+04:00",
+   "status": "SCHEDULED",
+   "notes": "MEDIRUN · გაანათე თბილისი · Metricool: ავტომატური გამოქვეყნება · სურათები AI-ით შექმნილი (Instagram-ზე მონიშნული)"
+  }
+ },
+ {
+  "slot": "g-sat-12-winners",
+  "date": "2026-12-26T18:30:00+04:00",
+  "info": null,
+  "record": {
+   "campaign": "medirun-glow-2026",
+   "slot": "g-sat-12-winners",
+   "networks": [
+    "facebook",
+    "instagram"
+   ],
+   "kind": "STORY",
+   "pillar": "MEDIRUN",
+   "title": "შაბათის წვიმის მპოვნელები — 26 დეკემბერი (ცოცხლად)",
+   "text": "შაბათის წვიმის მპოვნელები — 26 დეკემბერი (ცოცხლად)",
+   "textEn": null,
+   "mediaUrls": [],
+   "scheduledAt": "2026-12-26T18:30:00+04:00",
+   "status": "PLANNED",
+   "notes": "ხელით: მხოლოდ რეალური რიცხვები ადმინიდან (MEDIRUN → ჯილდოები); სახელი/ფოტო მხოლოდ თანხმობით."
+  }
+ },
+ {
+  "slot": "g-weekday-12-28",
+  "date": "2026-12-28T08:15:00+04:00",
+  "info": {
+   "autoPublish": true,
+   "draft": false,
+   "descendants": [],
+   "hasNotReadNotes": false,
+   "shortener": false,
+   "smartLinkData": {
+    "ids": []
+   },
+   "media": [
+    "https://medicard.ge/press/medirun-glow/s04-weekday.jpg"
+   ],
+   "mediaAltText": [],
+   "publicationDate": {
+    "dateTime": "2026-12-28T08:15:00",
+    "timezone": "Asia/Tbilisi"
+   },
+   "providers": [
+    {
+     "network": "facebook"
+    },
+    {
+     "network": "instagram"
+    }
+   ],
+   "facebookData": {
+    "type": "STORY"
+   },
+   "instagramData": {
+    "type": "STORY",
+    "isAiGenerated": true
+   }
+  },
+  "record": {
+   "campaign": "medirun-glow-2026",
+   "slot": "g-weekday-12-28",
+   "networks": [
+    "facebook",
+    "instagram"
+   ],
+   "kind": "STORY",
+   "pillar": "MEDIRUN",
+   "title": "სთორი · s04-weekday",
+   "text": "",
+   "textEn": null,
+   "mediaUrls": [
+    "https://medicard.ge/press/medirun-glow/s04-weekday.jpg"
+   ],
+   "scheduledAt": "2026-12-28T08:15:00+04:00",
+   "status": "SCHEDULED",
+   "notes": "MEDIRUN · გაანათე თბილისი · Metricool: ავტომატური გამოქვეყნება · სურათები AI-ით შექმნილი (Instagram-ზე მონიშნული)"
+  }
+ },
+ {
+  "slot": "g-iphone-1",
+  "date": "2026-12-30T13:00:00+04:00",
+  "info": {
+   "autoPublish": true,
+   "draft": false,
+   "descendants": [],
+   "hasNotReadNotes": false,
+   "shortener": false,
+   "smartLinkData": {
+    "ids": []
+   },
+   "media": [
+    "https://medicard.ge/press/medirun-glow/f05-iphone-1.jpg"
+   ],
+   "mediaAltText": [],
+   "publicationDate": {
+    "dateTime": "2026-12-30T13:00:00",
+    "timezone": "Asia/Tbilisi"
+   },
+   "providers": [
+    {
+     "network": "facebook"
+    },
+    {
+     "network": "instagram"
+    }
+   ],
+   "text": "🔴 ხვალ, 12:00-ზე.\n\nხვალ თბილისში წითელი iPhone 18 Pro Max დაიმალება. ჩართე MEDIRUN 12:00-ზე — თუ თბილისის 1% გაქვს განათებული, ყუთის პულსს იგრძნობ.\n\nვინც ყუთს პირველი გახსნის, iPhone-ს ის წაიღებს. წარმატება, შუქურებო! ✨\n\n📲 ჩამოტვირთე უფასოდ iPhone-ზე:\nhttps://apps.apple.com/app/id6812517519\n🌐 საიტი და ვებ-ვერსია: https://medicard.ge\n🤖 Android — სულ მალე\n\n#გაანათეთბილისი #MEDIRUN #MEDICARD #თბილისი #საქართველო",
+   "firstCommentText": "📲 iPhone: https://apps.apple.com/app/id6812517519\n💻 ვებ-ვერსია: https://medicard.ge/app\n🤖 Android — სულ მალე",
+   "facebookData": {
+    "type": "POST"
+   },
+   "instagramData": {
+    "type": "POST",
+    "isAiGenerated": true
+   }
+  },
+  "record": {
+   "campaign": "medirun-glow-2026",
+   "slot": "g-iphone-1",
+   "networks": [
+    "facebook",
+    "instagram"
+   ],
+   "kind": "POST",
+   "pillar": "MEDIRUN",
+   "title": "🔴 ხვალ, 12:00-ზე.",
+   "text": "🔴 ხვალ, 12:00-ზე.\n\nხვალ თბილისში წითელი iPhone 18 Pro Max დაიმალება. ჩართე MEDIRUN 12:00-ზე — თუ თბილისის 1% გაქვს განათებული, ყუთის პულსს იგრძნობ.\n\nვინც ყუთს პირველი გახსნის, iPhone-ს ის წაიღებს. წარმატება, შუქურებო! ✨\n\n📲 ჩამოტვირთე უფასოდ iPhone-ზე:\nhttps://apps.apple.com/app/id6812517519\n🌐 საიტი და ვებ-ვერსია: https://medicard.ge\n🤖 Android — სულ მალე\n\n#გაანათეთბილისი #MEDIRUN #MEDICARD #თბილისი #საქართველო",
+   "textEn": null,
+   "mediaUrls": [
+    "https://medicard.ge/press/medirun-glow/f05-iphone-1.jpg"
+   ],
+   "scheduledAt": "2026-12-30T13:00:00+04:00",
+   "status": "SCHEDULED",
+   "notes": "MEDIRUN · გაანათე თბილისი · Metricool: ავტომატური გამოქვეყნება · სურათები AI-ით შექმნილი (Instagram-ზე მონიშნული)"
+  }
+ },
+ {
+  "slot": "g-iphone-s1",
+  "date": "2026-12-30T21:00:00+04:00",
+  "info": {
+   "autoPublish": true,
+   "draft": false,
+   "descendants": [],
+   "hasNotReadNotes": false,
+   "shortener": false,
+   "smartLinkData": {
+    "ids": []
+   },
+   "media": [
+    "https://medicard.ge/press/medirun-glow/s09-iphone-tomorrow.jpg"
+   ],
+   "mediaAltText": [],
+   "publicationDate": {
+    "dateTime": "2026-12-30T21:00:00",
+    "timezone": "Asia/Tbilisi"
+   },
+   "providers": [
+    {
+     "network": "facebook"
+    },
+    {
+     "network": "instagram"
+    }
+   ],
+   "facebookData": {
+    "type": "STORY"
+   },
+   "instagramData": {
+    "type": "STORY",
+    "isAiGenerated": true
+   }
+  },
+  "record": {
+   "campaign": "medirun-glow-2026",
+   "slot": "g-iphone-s1",
+   "networks": [
+    "facebook",
+    "instagram"
+   ],
+   "kind": "STORY",
+   "pillar": "MEDIRUN",
+   "title": "სთორი · s09-iphone-tomorrow",
+   "text": "",
+   "textEn": null,
+   "mediaUrls": [
+    "https://medicard.ge/press/medirun-glow/s09-iphone-tomorrow.jpg"
+   ],
+   "scheduledAt": "2026-12-30T21:00:00+04:00",
+   "status": "SCHEDULED",
+   "notes": "MEDIRUN · გაანათე თბილისი · Metricool: ავტომატური გამოქვეყნება · სურათები AI-ით შექმნილი (Instagram-ზე მონიშნული)"
+  }
+ },
+ {
+  "slot": "g-iphone-s2",
+  "date": "2026-12-31T09:00:00+04:00",
+  "info": {
+   "autoPublish": true,
+   "draft": false,
+   "descendants": [],
+   "hasNotReadNotes": false,
+   "shortener": false,
+   "smartLinkData": {
+    "ids": []
+   },
+   "media": [
+    "https://medicard.ge/press/medirun-glow/s09-iphone-today.jpg"
+   ],
+   "mediaAltText": [],
+   "publicationDate": {
+    "dateTime": "2026-12-31T09:00:00",
+    "timezone": "Asia/Tbilisi"
+   },
+   "providers": [
+    {
+     "network": "facebook"
+    },
+    {
+     "network": "instagram"
+    }
+   ],
+   "facebookData": {
+    "type": "STORY"
+   },
+   "instagramData": {
+    "type": "STORY",
+    "isAiGenerated": true
+   }
+  },
+  "record": {
+   "campaign": "medirun-glow-2026",
+   "slot": "g-iphone-s2",
+   "networks": [
+    "facebook",
+    "instagram"
+   ],
+   "kind": "STORY",
+   "pillar": "MEDIRUN",
+   "title": "სთორი · s09-iphone-today",
+   "text": "",
+   "textEn": null,
+   "mediaUrls": [
+    "https://medicard.ge/press/medirun-glow/s09-iphone-today.jpg"
+   ],
+   "scheduledAt": "2026-12-31T09:00:00+04:00",
+   "status": "SCHEDULED",
+   "notes": "MEDIRUN · გაანათე თბილისი · Metricool: ავტომატური გამოქვეყნება · სურათები AI-ით შექმნილი (Instagram-ზე მონიშნული)"
+  }
+ },
+ {
+  "slot": "g-iphone-s3",
+  "date": "2026-12-31T11:30:00+04:00",
+  "info": {
+   "autoPublish": true,
+   "draft": false,
+   "descendants": [],
+   "hasNotReadNotes": false,
+   "shortener": false,
+   "smartLinkData": {
+    "ids": []
+   },
+   "media": [
+    "https://medicard.ge/press/medirun-glow/s09-iphone-soon.jpg"
+   ],
+   "mediaAltText": [],
+   "publicationDate": {
+    "dateTime": "2026-12-31T11:30:00",
+    "timezone": "Asia/Tbilisi"
+   },
+   "providers": [
+    {
+     "network": "facebook"
+    },
+    {
+     "network": "instagram"
+    }
+   ],
+   "facebookData": {
+    "type": "STORY"
+   },
+   "instagramData": {
+    "type": "STORY",
+    "isAiGenerated": true
+   }
+  },
+  "record": {
+   "campaign": "medirun-glow-2026",
+   "slot": "g-iphone-s3",
+   "networks": [
+    "facebook",
+    "instagram"
+   ],
+   "kind": "STORY",
+   "pillar": "MEDIRUN",
+   "title": "სთორი · s09-iphone-soon",
+   "text": "",
+   "textEn": null,
+   "mediaUrls": [
+    "https://medicard.ge/press/medirun-glow/s09-iphone-soon.jpg"
+   ],
+   "scheduledAt": "2026-12-31T11:30:00+04:00",
+   "status": "SCHEDULED",
+   "notes": "MEDIRUN · გაანათე თბილისი · Metricool: ავტომატური გამოქვეყნება · სურათები AI-ით შექმნილი (Instagram-ზე მონიშნული)"
+  }
+ },
+ {
+  "slot": "g-iphone-winner",
+  "date": "2026-12-31T15:00:00+04:00",
+  "info": null,
+  "record": {
+   "campaign": "medirun-glow-2026",
+   "slot": "g-iphone-winner",
+   "networks": [
+    "facebook",
+    "instagram"
+   ],
+   "kind": "STORY",
+   "pillar": "MEDIRUN",
+   "title": "დიდი საჩუქრის გამარჯვებული (ცოცხლად)",
+   "text": "დიდი საჩუქრის გამარჯვებული (ცოცხლად)",
+   "textEn": null,
+   "mediaUrls": [],
+   "scheduledAt": "2026-12-31T15:00:00+04:00",
+   "status": "PLANNED",
+   "notes": "ხელით: გამარჯვებულის სახელი და ფოტო მხოლოდ წერილობითი თანხმობით. iPhone გადაეცემა აპში ნაჩვენები კოდითა და პირადობის მოწმობით."
+  }
+ }
+]

@@ -1,0 +1,318 @@
+{
+  "id": "medirun-glow-2026",
+  "name": {
+    "ka": "გაანათე თბილისი",
+    "en": "Light up Tbilisi"
+  },
+  "start": "2026-10-03",
+  "end": "2026-12-31",
+  "utcOffset": "+04:00",
+  "area": {
+    "id": "r1996871",
+    "ka": "თბილისი",
+    "en": "Tbilisi",
+    "km2": 503.93
+  },
+  "rulesUrl": "https://medicard.ge/medirun/rules.html",
+  "days": {
+    "weekday": {
+      "note": "ორშაბათი–პარასკევი: მცირე საჩუქრები, ცოტა ყუთი, პარკების სიღრმეში",
+      "waves": [
+        {
+          "id": "am",
+          "time": "08:30",
+          "hours": 5,
+          "rotation": 3,
+          "focus": 1
+        },
+        {
+          "id": "ev",
+          "time": "18:00",
+          "hours": 3,
+          "rotation": 2,
+          "focus": 1,
+          "litOnly": true
+        }
+      ],
+      "coins": [
+        {
+          "amount": 10,
+          "weight": 60
+        },
+        {
+          "amount": 20,
+          "weight": 35
+        },
+        {
+          "amount": 50,
+          "weight": 5
+        }
+      ],
+      "stock": [
+        2,
+        3
+      ],
+      "pulseRadius": 250,
+      "revealRadius": 20,
+      "minDepthM": 40
+    },
+    "weekend": {
+      "note": "შაბათი–კვირა: კარგი საჩუქრები",
+      "waves": [
+        {
+          "id": "am",
+          "time": "10:30",
+          "hours": 5,
+          "rotation": 4,
+          "focus": 2
+        },
+        {
+          "id": "ev",
+          "time": "17:30",
+          "hours": 3,
+          "rotation": 3,
+          "focus": 1,
+          "litOnly": true
+        }
+      ],
+      "coins": [
+        {
+          "amount": 30,
+          "weight": 50
+        },
+        {
+          "amount": 50,
+          "weight": 35
+        },
+        {
+          "amount": 100,
+          "weight": 15
+        }
+      ],
+      "stock": [
+        3,
+        4
+      ],
+      "pulseRadius": 300,
+      "revealRadius": 25,
+      "minDepthM": 30
+    }
+  },
+  "saturday": {
+    "time": "16:00",
+    "hours": 2,
+    "points": 8,
+    "stock": 6,
+    "radiusM": 700,
+    "pulseRadius": 350,
+    "revealRadius": 25,
+    "coins": [
+      {
+        "amount": 50,
+        "weight": 60
+      },
+      {
+        "amount": 100,
+        "weight": 40
+      }
+    ],
+    "lantern": {
+      "from": "2026-11-07",
+      "points": 2,
+      "stock": 5,
+      "coins": 300,
+      "minPercent": 0.25
+    },
+    "dates": {
+      "2026-10-10": "rike",
+      "2026-10-17": "vake",
+      "2026-10-24": "lisi",
+      "2026-10-31": "april9",
+      "2026-11-07": "vake",
+      "2026-11-14": "rike",
+      "2026-11-21": "lisi",
+      "2026-11-28": "april9",
+      "2026-12-05": "vake",
+      "2026-12-12": "rike",
+      "2026-12-19": "lisi",
+      "2026-12-26": "april9"
+    }
+  },
+  "weeks": [
+    {
+      "from": "2026-10-03",
+      "to": "2026-10-11",
+      "theme": "oldtown",
+      "anchors": [
+        [
+          44.8075,
+          41.6925,
+          1400
+        ]
+      ]
+    },
+    {
+      "from": "2026-10-12",
+      "to": "2026-10-18",
+      "theme": "green",
+      "kinds": [
+        "park",
+        "garden"
+      ]
+    },
+    {
+      "from": "2026-10-19",
+      "to": "2026-10-25",
+      "theme": "horizon",
+      "anchors": [
+        [
+          44.754,
+          41.7007,
+          900
+        ],
+        [
+          44.7345,
+          41.7438,
+          1100
+        ],
+        [
+          44.7864,
+          41.6954,
+          700
+        ],
+        [
+          44.8107,
+          41.7704,
+          700
+        ]
+      ]
+    },
+    {
+      "from": "2026-10-26",
+      "to": "2026-11-01",
+      "theme": "culture",
+      "anchors": [
+        [
+          44.8165,
+          41.6975,
+          700
+        ],
+        [
+          44.8071,
+          41.688,
+          600
+        ],
+        [
+          44.7957,
+          41.7032,
+          800
+        ]
+      ]
+    },
+    {
+      "from": "2026-11-02",
+      "to": "2026-11-08",
+      "theme": "districts",
+      "districts": [
+        "გლდანი",
+        "ნაძალადევი"
+      ]
+    },
+    {
+      "from": "2026-11-09",
+      "to": "2026-11-15",
+      "theme": "districts",
+      "districts": [
+        "დიდუბე",
+        "ჩუღურეთი",
+        "საბურთალო"
+      ]
+    },
+    {
+      "from": "2026-11-16",
+      "to": "2026-11-22",
+      "theme": "districts",
+      "districts": [
+        "ისანი",
+        "სამგორი"
+      ]
+    },
+    {
+      "from": "2026-11-23",
+      "to": "2026-11-29",
+      "theme": "districts",
+      "districts": [
+        "ვაკე",
+        "მთაწმინდა",
+        "კრწანისი"
+      ]
+    }
+  ],
+  "levels": [
+    {
+      "id": "spark",
+      "percent": 0.1,
+      "name": {
+        "ka": "ნაპერწკალი",
+        "en": "Spark"
+      },
+      "unlocks": {
+        "ka": "პირველი ნიშანი: ქალაქი უკვე შენი წყალობით ანათებს.",
+        "en": "Your first badge: the city already glows because of you."
+      }
+    },
+    {
+      "id": "lantern",
+      "percent": 0.25,
+      "name": {
+        "ka": "ფარანი",
+        "en": "Lantern"
+      },
+      "unlocks": {
+        "ka": "ნოემბრიდან შაბათობით ფარნის ყუთებს დაინახავ — თითოში 300 Medi Coins.",
+        "en": "From November you will see the Saturday lantern boxes, 300 Medi Coins each."
+      }
+    },
+    {
+      "id": "torch",
+      "percent": 0.5,
+      "name": {
+        "ka": "ჩირაღდანი",
+        "en": "Torch"
+      },
+      "unlocks": {
+        "ka": "შუქურამდე ნახევარი გზაღა დაგრჩა.",
+        "en": "Halfway to the lighthouse."
+      }
+    },
+    {
+      "id": "lighthouse",
+      "percent": 1,
+      "name": {
+        "ka": "შუქურა",
+        "en": "Lighthouse"
+      },
+      "unlocks": {
+        "ka": "31 დეკემბერს დაინახავ დიდ საჩუქარს — წითელ iPhone 18 Pro Max-ს.",
+        "en": "On 31 December you will see the grand prize, a red iPhone 18 Pro Max."
+      }
+    }
+  ],
+  "grand": {
+    "id": "glow-2026-12-31-grand",
+    "dropAt": "2026-12-31T12:00:00+04:00",
+    "hours": 6,
+    "minPercent": 1,
+    "prize": {
+      "ka": "iPhone 18 Pro Max",
+      "en": "iPhone 18 Pro Max"
+    },
+    "detail": {
+      "ka": "წითელი",
+      "en": "red"
+    },
+    "pulseRadius": 500,
+    "revealRadius": 20,
+    "spot": null
+  }
+}

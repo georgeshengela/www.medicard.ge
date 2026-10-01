@@ -27,5 +27,6 @@ const MESSAGES_EN=Object.freeze({
  'სესიის შემოწმება მიმდინარეობს.':'This session is being reviewed.',
  'საჩუქარი ამ მდებარეობაზე მიუწვდომელია.':'This gift is not available at this location.',
  'საჩუქრის მარაგი ამოიწურა.':'This gift is out of stock.',
+ 'ეს საჩუქარი ჯერ შენთვის დახურულია.':'This gift is still locked for you.',
 });
 export function fail(status,message,code='MEDIPULSI_ERROR'){throw Object.assign(new Error(message),{status,code},MESSAGES_EN[message]?{messageEn:MESSAGES_EN[message]}:{});}

@@ -11,7 +11,7 @@ type Options<T> = {
   /** FRESH.LIVE / SHORT / LONG (see queryClient.ts). */
   staleTime?: number;
   enabled?: boolean;
-} & Pick<UseQueryOptions<T>, 'placeholderData' | 'select' | 'refetchInterval'>;
+} & Pick<UseQueryOptions<T>, 'placeholderData' | 'select' | 'refetchInterval' | 'retry'>;
 
 /**
  * Server data for the signed-in account, cached app-wide (stale-while-revalidate):

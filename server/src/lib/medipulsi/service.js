@@ -6,6 +6,7 @@ import {pauseJourney,resetSession} from './core/session.js';
 import {emptyBook,advanceMission} from './core/missions.js';
 import {distance} from './core/engine.js';
 import {fail} from './schema.js';
+import {giftRules,percentsFor,isUnlocked,localizeGift,creditGiftCoins} from './giftRules.js';
 
 export const DEFAULTS={enabled:true,giftsEnabled:true,leaderboardEnabled:true,message:''};
 export async function config(db=prisma){const row=await db.medipulsiConfig.findUnique({where:{id:'main'}});return {...DEFAULTS,...row?.data};}
@@ -82,18 +83,23 @@ export async function batch(userId,sessionId,input,now=Date.now()){return transa
 const noSignal={signal:false,revealed:false,quality:false,period:2200,distance:0,gift:null};
 function fresh(j,now){return j?.lastFix&&now-j.lastFix<15000&&now-j.lastFix>=-5000&&j.accuracy<=25&&['tracking','off-path','stationary'].includes(j.status);}
 function inRange(j,g){return distance(j.position,[g.longitude,g.latitude])+j.accuracy<=g.revealRadius;}
-export async function nearby(userId,now=Date.now()){
+export async function nearby(userId,now=Date.now(),lang='ka'){
  if(!(await config()).giftsEnabled)return noSignal;
  const p=await prisma.medipulsiPlayer.findUnique({where:{userId}}),j=p?.state?.journey;
  if(!p?.activeSessionId||!fresh(j,now))return noSignal;
  const claimed=await prisma.medipulsiClaim.findMany({where:{userId},select:{giftId:true}});
  const gifts=await prisma.medipulsiGift.findMany({where:{published:true,archived:false,startsAt:{lte:new Date(now)},endsAt:{gt:new Date(now)},id:{notIn:claimed.map(c=>c.giftId)},latitude:{gte:j.position[1]-.01,lte:j.position[1]+.01}}});
- const closest=gifts.filter(g=>g.allocated<g.stock).map(g=>({g,d:distance(j.position,[g.longitude,g.latitude])})).filter(x=>x.d<=x.g.pulseRadius).sort((a,b)=>a.d-b.d)[0];
+ // Campaign rules: a gated box (grand prize, lantern boxes) does not exist for a player below its lit-city threshold.
+ const rules=await giftRules(),open=gifts.filter(g=>g.allocated<g.stock),gated=open.map(g=>rules.get(g.id)).filter(r=>r?.minPercent);
+ const percents=gated.length?await percentsFor(userId,gated):new Map();
+ const closest=open.filter(g=>isUnlocked(rules.get(g.id),id=>percents.get(id))).map(g=>({g,d:distance(j.position,[g.longitude,g.latitude])})).filter(x=>x.d<=x.g.pulseRadius).sort((a,b)=>a.d-b.d)[0];
  if(!closest)return {...noSignal,quality:true};
  const {g,d}=closest,revealed=inRange(j,g);
- return {signal:true,revealed,quality:true,period:Math.round((2200-1500*(1-d/g.pulseRadius))/100)*100,distance:revealed?Math.round(d):0,gift:revealed?{id:g.id,title:g.title,description:g.description,rewardKind:g.rewardKind,position:[g.longitude,g.latitude]}:null};
+ return {signal:true,revealed,quality:true,period:Math.round((2200-1500*(1-d/g.pulseRadius))/100)*100,distance:revealed?Math.round(d):0,gift:revealed?localizeGift({id:g.id,title:g.title,description:g.description,rewardKind:g.rewardKind,position:[g.longitude,g.latitude]},rules.get(g.id),lang):null};
 }
-export async function claim(userId,giftId,now=Date.now()){return transaction(async tx=>{
+export async function claim(userId,giftId,now=Date.now()){
+ const rule=(await giftRules()).get(giftId)||null,percents=rule?.minPercent?await percentsFor(userId,[rule],{maxAgeMs:0}):new Map();
+ return transaction(async tx=>{
  await enabled(tx);if(!(await config(tx)).giftsEnabled)fail(409,'საჩუქრები დროებით შეჩერებულია.');
  const p=await playerLock(tx,userId);
  const previous=await tx.medipulsiClaim.findUnique({where:{userId_giftId:{userId,giftId}}});if(previous)return previous;
@@ -102,9 +108,12 @@ export async function claim(userId,giftId,now=Date.now()){return transaction(asy
  await tx.$queryRaw`SELECT "id" FROM "MedipulsiGift" WHERE "id"=${giftId} FOR UPDATE`;
  const g=await tx.medipulsiGift.findUnique({where:{id:giftId}});
  if(!g||!g.published||g.archived||+g.startsAt>now||+g.endsAt<=now||!inRange(p.state.journey,g))fail(409,'საჩუქარი ამ მდებარეობაზე მიუწვდომელია.');
+ if(!isUnlocked(rule,id=>percents.get(id)))fail(409,'ეს საჩუქარი ჯერ შენთვის დახურულია.','GIFT_LOCKED');
  if(g.allocated>=g.stock)fail(409,'საჩუქრის მარაგი ამოიწურა.','OUT_OF_STOCK');
- const claimed=await tx.medipulsiClaim.create({data:{id:randomUUID(),userId,giftId,sessionId:s.id,code:randomBytes(10).toString('hex').toUpperCase(),status:g.rewardKind==='DIGITAL'?'APPROVED':'PENDING',reward:{title:g.title,description:g.description,kind:g.rewardKind,evidence:{fixAt:p.state.journey.lastFix,accuracy:p.state.journey.accuracy,distance:distance(p.state.journey.position,[g.longitude,g.latitude]),sessionMeters:s.meters,rejectedFixes:s.rejected}}}});
- await tx.medipulsiGift.update({where:{id:giftId},data:{allocated:{increment:1}}});return claimed;
+ const claimed=await tx.medipulsiClaim.create({data:{id:randomUUID(),userId,giftId,sessionId:s.id,code:randomBytes(10).toString('hex').toUpperCase(),status:g.rewardKind==='DIGITAL'?'APPROVED':'PENDING',reward:{title:g.title,description:g.description,kind:g.rewardKind,coins:rule?.coins||0,evidence:{fixAt:p.state.journey.lastFix,accuracy:p.state.journey.accuracy,distance:distance(p.state.journey.position,[g.longitude,g.latitude]),sessionMeters:s.meters,rejectedFixes:s.rejected}}}});
+ await tx.medipulsiGift.update({where:{id:giftId},data:{allocated:{increment:1}}});
+ await creditGiftCoins(tx,{userId,claimId:claimed.id,giftId,rule,now:new Date(now)});
+ return claimed;
 });}
 export async function leaderboard(period){
  if(!(await config()).leaderboardEnabled)return {rows:[]};

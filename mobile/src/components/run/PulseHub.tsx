@@ -25,6 +25,7 @@ import {MISSION_ART,RUN_GIFT,RUN_HERO,RUN_ICON} from './runArt';
 import {MediRunLogo,PulseGlyph} from './PulseIdentity';
 import {RouteThumb,WeekBars} from './RunVisuals';
 import {PulseTerritory} from './PulseTerritory';
+import {GrandPrizeCard} from './GrandPrizeCard';
 import { tx } from '@/i18n/locale';
 
 export const MISSION_ICONS={trees:Trees,landmark:Landmark,waves:Waves,mountain:Mountain,bridge:Compass,flower:Trees};
@@ -107,6 +108,8 @@ export default function PulseHub(){
   </View>
 
   {error&&!pulse.snapshot?<Card><Copy muted>{error}</Copy><Action secondary label={tx('კავშირის განახლება', 'Reconnect')} onPress={()=>{setError('');void getPulseClient().refresh().catch(e=>setError(e.message));}}/></Card>:null}
+
+  <GrandPrizeCard/>
 
   <Section title={tx('ეს კვირა', 'This week')} link={tx('ისტორია', 'History')} onLink={()=>setPanel('collection')}>
    <Card style={{gap:18}}>

@@ -4,6 +4,8 @@
  * scheduled in Metricool — when (Asia/Tbilisi), where, the caption, the media — and the exact history
  * ("SocialPostEvent"). Read-only; rows are recorded with `node server/scripts/social-log.mjs`.
  * Tabs: კალენდარი (month grid) · ჩამონათვალი (table) · ისტორია (event feed); a drawer shows one post.
+ * Brands: CAMPAIGNS maps each campaign to MEDICARD or MEDIRUN — MEDIRUN posts get night cards / badges, a
+ * brand filter (all views) and the „გაანათე თბილისი“ band; „კამპანიის დღე“ always counts the MEDICARD campaign.
  */
 (function adminV4Social(global) {
   const doc = document;
@@ -48,14 +50,38 @@
   const MONTHS_LONG = ['იანვარი', 'თებერვალი', 'მარტი', 'აპრილი', 'მაისი', 'ივნისი', 'ივლისი', 'აგვისტო', 'სექტემბერი', 'ოქტომბერი', 'ნოემბერი', 'დეკემბერი'];
   const WEEKDAYS = ['ორშ', 'სამ', 'ოთხ', 'ხუთ', 'პარ', 'შაბ', 'კვი'];
   const VIEW_KEY = 'medicard.admin.social.view';
+  const BRAND_KEY = 'medicard.admin.social.brand';
+
+  /* Campaign registry: which brand a campaign belongs to and how the page names it. Unknown ids that start
+     with "medirun" are MEDIRUN, everything else is MEDICARD. start/end (Tbilisi days) drive the MEDIRUN band. */
+  const CAMPAIGNS = {
+    'medirun-glow-2026': {
+      brand: 'medirun', label: 'MEDIRUN · გაანათე თბილისი', short: 'MEDIRUN', start: '2026-10-03', end: '2026-12-31',
+      posters: 'https://medicard.ge/press/medirun-glow/index.html',
+    },
+    'medirun-passport-2026-10': { brand: 'medirun', label: 'MEDIRUN · თბილისის პასპორტი', short: 'MEDIRUN' },
+    'launch-2026-10': { brand: 'medicard', label: 'MEDICARD · გაშვება', short: 'MEDICARD' },
+  };
+  const GLOW = 'medirun-glow-2026';
+  const BRANDS = { medicard: 'MEDICARD', medirun: 'MEDIRUN' };
+  const BRAND_FILTERS = [['all', 'ყველა'], ['medicard', 'MEDICARD'], ['medirun', 'MEDIRUN']];
 
   const st = {
     view: (() => { try { return sessionStorage.getItem(VIEW_KEY) || 'calendar'; } catch { return 'calendar'; } })(),
+    brand: (() => { try { const v = sessionStorage.getItem(BRAND_KEY); return BRANDS[v] ? v : 'all'; } catch { return 'all'; } })(),
     month: null,
     network: 'all',
     status: 'all',
     data: null,
   };
+
+  function campaignOf(id) {
+    const key = String(id || '');
+    if (Object.prototype.hasOwnProperty.call(CAMPAIGNS, key)) return CAMPAIGNS[key];
+    const brand = key.toLowerCase().startsWith('medirun') ? 'medirun' : 'medicard';
+    return { brand, label: key || BRANDS[brand], short: BRANDS[brand] };
+  }
+  const brandOf = (post) => campaignOf(post?.campaign).brand;
 
   /* ─────────────── Time (always Asia/Tbilisi, 24 h; built by hand — browsers often lack ka-GE data) ─────────────── */
   const partsFmt = new Intl.DateTimeFormat('en-GB', {
@@ -72,11 +98,19 @@
     return p ? `${p.d} ${MONTHS[p.m - 1]}${year ? ` ${p.y}` : ''}, ${p.time}` : '—';
   };
   const weekdayOf = (key) => (new Date(`${key}T00:00:00Z`).getUTCDay() + 6) % 7; // Monday = 0
+  const dayDiff = (fromKey, toKey) => Math.round((Date.parse(`${toKey}T00:00:00Z`) - Date.parse(`${fromKey}T00:00:00Z`)) / 86_400_000);
+  const shortDay = (key) => { const [, m, d] = key.split('-').map(Number); return `${d} ${MONTHS[m - 1]}`; };
 
   /* ─────────────── Small pieces ─────────────── */
   const nets = (list) => `<span class="s-nets">${(list || []).map((n) => `<span class="s-net is-${esc(n)}" title="${esc(NETWORKS[n]?.[1] || n)}">${esc(NETWORKS[n]?.[0] || n)}</span>`).join('')}</span>`;
   const statusBadge = (s) => `<span class="s-badge ${STATUS[s]?.[1] || ''}">${esc(STATUS[s]?.[0] || s)}</span>`;
   const kindBadge = (k) => `<span class="s-badge is-plain">${esc(k)}</span>`;
+  /** MEDIRUN (mint on night) / MEDICARD (neutral) badge; `full` shows the campaign label instead of the brand. */
+  function brandBadge(campaign, { full = false } = {}) {
+    const c = campaignOf(campaign);
+    return `<span class="s-badge s-brand is-${esc(c.brand)}" title="${esc(c.label)}">${esc(full ? c.label : c.short)}</span>`;
+  }
+  const brandDot = (brand) => `<span class="s-brand-dot is-${esc(brand)}" aria-hidden="true"></span>`;
   const isVideo = (url) => /\.(mp4|mov|webm|m4v)(\?|$)/i.test(url || '');
   function thumb(post, size = 44) {
     const url = post.mediaUrls?.[0];
@@ -91,6 +125,7 @@
 
   function filtered(posts) {
     return posts.filter((p) => {
+      if (st.brand !== 'all' && brandOf(p) !== st.brand) return false;
       if (st.network !== 'all' && !(p.networks || []).includes(st.network)) return false;
       if (st.status === 'upcoming') return p.status === 'PLANNED' || p.status === 'SCHEDULED';
       if (st.status !== 'all') return p.status === st.status;
@@ -106,6 +141,99 @@
     const [y, m] = month.split('-').map(Number);
     const date = new Date(Date.UTC(y, m - 1 + delta, 1));
     return `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, '0')}`;
+  }
+
+  /** „კამპანიის დღე“ counts the MEDICARD campaign (most recently started non-MEDIRUN one), in Tbilisi days. */
+  function medicardCampaign(s) {
+    const c = (s.campaigns || [])
+      .filter((x) => x.firstAt && campaignOf(x.campaign).brand !== 'medirun')
+      .sort((a, b) => Date.parse(b.firstAt) - Date.parse(a.firstAt))[0];
+    const first = c && tp(c.firstAt);
+    if (!first) return null;
+    const length = Number(s.campaign?.length) || 28;
+    const day = dayDiff(first.key, tp(new Date()).key) + 1;
+    return { ...c, label: campaignOf(c.campaign).label, length, day: day < 1 ? 0 : Math.min(day, length) };
+  }
+
+  /* ─────────────── MEDIRUN band (always the night city, in both admin themes) ─────────────── */
+  const SKYLINE = (() => {
+    const H = 96;
+    const back = [[0, 30, 44], [40, 22, 62], [86, 38, 36], [140, 26, 72], [184, 42, 50], [244, 30, 82], [292, 34, 46], [334, 26, 58]];
+    const front = [[18, 30, 34], [62, 34, 54], [112, 24, 28], [160, 36, 60], [216, 26, 38], [262, 40, 66], [318, 30, 30]];
+    const blocks = (list, cls) => list.map(([x, w, h]) => `<rect class="${cls}" x="${x}" y="${H - h}" width="${w}" height="${h}"/>`).join('');
+    let lit = '';
+    front.forEach(([x, w, h], b) => {
+      for (let y = H - h + 6; y < H - 6; y += 8) {
+        for (let wx = x + 5; wx < x + w - 5; wx += 7) if ((wx * 3 + y * 5 + b * 7) % 11 < 3) lit += `<rect x="${wx}" y="${y}" width="3" height="4"/>`;
+      }
+    });
+    // One gold window in the tallest tower: the finale gift hidden in the city.
+    return `<svg class="s-mr-sky" viewBox="0 0 360 ${H}" preserveAspectRatio="xMaxYMax meet" aria-hidden="true" focusable="false">${blocks(back, 'b')}${blocks(front, 'f')}<g class="w">${lit}</g><circle class="gh" cx="284.5" cy="76.5" r="7"/><rect class="g" x="282.5" y="74" width="4" height="5"/></svg>`;
+  })();
+  const GLOW_MARK = '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M3 21h18M5 21V10l5-3v14M10 21V4l9 4v13" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M13 10h2M13 13.5h2M16.5 13.5h.01M13 17h2" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>';
+
+  function glowWindow(c) {
+    const length = dayDiff(c.start, c.end) + 1;
+    const day = dayDiff(c.start, tp(new Date()).key) + 1;
+    if (day < 1) return { phase: 'before', day: 0, length, pct: 0 };
+    if (day > length) return { phase: 'after', day: length, length, pct: 100 };
+    return { phase: 'live', day, length, pct: Math.round((day / length) * 1000) / 10 };
+  }
+
+  function mediRunBand(allPosts) {
+    const mine = allPosts.filter((p) => brandOf(p) === 'medirun');
+    if (!mine.length) return '';
+    const c = CAMPAIGNS[GLOW];
+    const w = glowWindow(c);
+    const count = (status) => allPosts.filter((p) => p.campaign === GLOW && p.status === status).length;
+    const failed = count('FAILED');
+    const now = Date.now();
+    const next = mine
+      .filter((p) => (p.status === 'PLANNED' || p.status === 'SCHEDULED') && Date.parse(p.scheduledAt) >= now)
+      .sort((a, b) => Date.parse(a.scheduledAt) - Date.parse(b.scheduledAt))[0];
+    const dayHtml = w.phase === 'live'
+      ? `<strong>დღე ${num(w.day)}</strong><span>/ ${num(w.length)}</span>`
+      : `<strong>${w.phase === 'before' ? `იწყება ${esc(shortDay(c.start))}` : 'დასრულდა'}</strong><span>${num(w.length)} დღე</span>`;
+    const stat = (label, n, tone = '') => `<div class="${tone}"><dt>${esc(label)}</dt><dd>${num(n)}</dd></div>`;
+    const pressed = st.brand === 'medirun';
+    return `<section class="s-mr-band" aria-label="${esc(c.label)}">
+      ${SKYLINE}
+      <div class="s-mr-head">
+        <div class="s-mr-id">
+          <span class="s-mr-mark">${GLOW_MARK}</span>
+          <div>
+            <p class="s-mr-kicker">MEDIRUN კამპანია · ${esc(shortDay(c.start))} – ${esc(shortDay(c.end))}</p>
+            <h3>${esc(c.label)}</h3>
+            <p class="s-mr-note">ქალაქში დამალული საჩუქრების ძებნა. <b>ფინალი ${esc(shortDay(c.end))}:</b> წითელი iPhone 18 Pro Max — ჩანს მხოლოდ მათ, ვინც თბილისის 1% გაანათა.</p>
+          </div>
+        </div>
+        <div class="s-mr-actions">
+          <button type="button" class="s-mr-btn" data-brand-toggle aria-pressed="${pressed}">${pressed ? ico('check') : brandDot('medirun')} მხოლოდ MEDIRUN</button>
+          <a class="s-mr-btn is-ghost" href="${esc(c.posters)}" target="_blank" rel="noopener">პოსტერები ${ico('external')}</a>
+        </div>
+      </div>
+      <div class="s-mr-grid">
+        <div class="s-mr-cell">
+          <span class="s-mr-label">კამპანიის დღე</span>
+          <div class="s-mr-day">${dayHtml}</div>
+          <div class="s-mr-track" role="progressbar" aria-label="კამპანიის დღე" aria-valuemin="0" aria-valuemax="${w.length}" aria-valuenow="${w.day}"><i style="width:${w.pct}%"></i><b title="ფინალი ${esc(shortDay(c.end))}"></b></div>
+          <div class="s-mr-scale"><span>${esc(shortDay(c.start))}</span><span class="is-gold">${esc(shortDay(c.end))} · ფინალი</span></div>
+        </div>
+        <dl class="s-mr-cell s-mr-counts">
+          ${stat('Metricool-ში დაგეგმილი', count('SCHEDULED'))}
+          ${stat('გამოქვეყნდა', count('PUBLISHED'), 'is-mint')}
+          ${stat('ცოცხლად / ხელით', count('PLANNED'))}
+          ${failed ? stat('ვერ გამოქვეყნდა', failed, 'is-bad') : ''}
+        </dl>
+        <div class="s-mr-cell s-mr-next">
+          <span class="s-mr-label">შემდეგი MEDIRUN</span>
+          ${next ? `<button type="button" class="s-mr-next-btn" data-post="${esc(next.id)}">
+            <b>${esc(when(next.scheduledAt))} · ${esc(next.kind)}</b>
+            <span>${esc(next.title)}</span>
+          </button>` : '<p class="s-mr-none">დაგეგმილი MEDIRUN პოსტი აღარ არის.</p>'}
+        </div>
+      </div>
+    </section>`;
   }
 
   /* ─────────────── Views ─────────────── */
@@ -129,20 +257,29 @@
       const items = (byDay.get(key) || []).sort((a, b) => a.t.time.localeCompare(b.t.time));
       cells.push(`<div class="s-cal-day${key === todayKey ? ' is-today' : ''}${items.length ? '' : ' is-empty'}">
         <span class="s-cal-num">${day}<em>${WEEKDAYS[weekdayOf(key)]}</em></span>
-        ${items.map(({ p, t }) => `<button type="button" class="s-cal-item is-${esc(p.status.toLowerCase())}" data-post="${esc(p.id)}" title="${esc(`${t.time} · ${p.title}`)}">
-          <span class="s-cal-row"><b>${esc(t.time)}</b>${nets(p.networks)}<span class="s-cal-kind">${esc(p.kind)}</span></span>
+        ${items.map(({ p, t }) => {
+          const mr = brandOf(p) === 'medirun';
+          return `<button type="button" class="s-cal-item is-${esc(p.status.toLowerCase())}${mr ? ' is-medirun' : ''}" data-post="${esc(p.id)}" title="${esc(`${t.time} · ${mr ? 'MEDIRUN · ' : ''}${p.title}`)}">
+          <span class="s-cal-row"><b>${esc(t.time)}</b>${nets(p.networks)}<span class="s-cal-kind">${esc(p.kind)}</span>${mr ? '<span class="s-cal-tag">MEDIRUN</span>' : ''}</span>
           <span class="s-cal-title">${esc(p.title)}</span>
-        </button>`).join('')}
+        </button>`;
+        }).join('')}
       </div>`);
     }
     while (cells.length % 7) cells.push('<div class="s-cal-day is-out" aria-hidden="true"></div>');
     return `<section class="s-card">
       <header class="s-card-head s-cal-head">
         <div><h3>${esc(MONTHS_LONG[m - 1])} ${y}</h3><p>${num(inMonth)} ერთეული ამ თვეში · თბილისის დროით. დააჭირე პოსტს დეტალებისთვის.</p></div>
-        <div class="s-cal-nav">
-          <button type="button" class="btn ghost compact" data-month="-1" aria-label="წინა თვე">‹</button>
-          <button type="button" class="btn ghost compact" data-month="0">დღეს</button>
-          <button type="button" class="btn ghost compact" data-month="1" aria-label="შემდეგი თვე">›</button>
+        <div class="s-cal-tools">
+          <div class="s-cal-legend">
+            <span>${brandDot('medicard')}MEDICARD</span>
+            <span>${brandDot('medirun')}MEDIRUN</span>
+          </div>
+          <div class="s-cal-nav">
+            <button type="button" class="btn ghost compact" data-month="-1" aria-label="წინა თვე">‹</button>
+            <button type="button" class="btn ghost compact" data-month="0">დღეს</button>
+            <button type="button" class="btn ghost compact" data-month="1" aria-label="შემდეგი თვე">›</button>
+          </div>
         </div>
       </header>
       <div class="s-card-body"><div class="s-cal" role="grid">
@@ -156,29 +293,31 @@
     return `<section class="s-card">
       <header class="s-card-head"><div><h3>ყველა პოსტი და სთორი</h3><p>ჯერ მომავალი (უახლოესი პირველი), შემდეგ უკვე გასული (ბოლო პირველი). დრო — თბილისის.</p></div></header>
       <div class="s-card-body is-flush"><div class="s-table-wrap"><table class="s-table">
-        <thead><tr><th>თარიღი / დრო</th><th>ქსელები</th><th>ტიპი</th><th>რუბრიკა</th><th>სათაური</th><th>სტატუსი</th><th>მედია</th></tr></thead>
-        <tbody>${posts.length ? posts.map((p) => `<tr data-post="${esc(p.id)}" tabindex="0" style="cursor:pointer">
+        <thead><tr><th>თარიღი / დრო</th><th>კამპანია</th><th>ქსელები</th><th>ტიპი</th><th>რუბრიკა</th><th>სათაური</th><th>სტატუსი</th><th>მედია</th></tr></thead>
+        <tbody>${posts.length ? posts.map((p) => `<tr data-post="${esc(p.id)}" tabindex="0" style="cursor:pointer"${brandOf(p) === 'medirun' ? ' class="is-medirun"' : ''}>
           <td style="white-space:nowrap">${esc(when(p.scheduledAt))}</td>
+          <td class="s-social-camp">${brandBadge(p.campaign)}<div class="s-muted">${esc(campaignOf(p.campaign).label.replace(/^(MEDIRUN|MEDICARD)\s*·\s*/, ''))}</div></td>
           <td>${nets(p.networks)}</td>
           <td>${kindBadge(p.kind)}</td>
           <td>${esc(p.pillar || '—')}</td>
           <td><b>${esc(p.title)}</b><div class="s-muted" style="font-size:12px"><code>${esc(p.slot)}</code></div></td>
           <td>${statusBadge(p.status)}</td>
           <td>${thumb(p)}</td>
-        </tr>`).join('') : `<tr><td colspan="7"><div class="s-empty">${ico('share')}<strong>ამ ფილტრში ცარიელია</strong></div></td></tr>`}</tbody>
+        </tr>`).join('') : `<tr><td colspan="8"><div class="s-empty">${ico('share')}<strong>ამ ფილტრში ცარიელია</strong></div></td></tr>`}</tbody>
       </table></div></div>
     </section>`;
   }
 
-  function historyView(events) {
+  function historyView(events, postById) {
     return `<section class="s-card">
       <header class="s-card-head"><div><h3>ისტორია</h3><p>ყოველი ჩაწერა, ცვლილება და სტატუსი — ბოლო პირველი (მაქს. 300). დააჭირე სათაურს პოსტის გასახსნელად.</p></div></header>
       <div class="s-card-body is-flush">${events.length ? events.map((e) => {
         const [label, tone, iconName] = EVENT[e.type] || [e.type, '', 'info'];
+        const post = postById.get(e.postId);
         return `<article class="s-feed-item">
           <span class="s-avatar">${ico(iconName)}</span>
           <div>
-            <header><button type="button" class="s-link" data-post="${esc(e.postId)}"><b>${esc(e.title || e.slot)}</b></button>${nets(e.networks)}<span class="s-badge ${tone}">${esc(label)}</span><span>${esc(when(e.at, { year: true }))}</span></header>
+            <header><button type="button" class="s-link" data-post="${esc(e.postId)}"><b>${esc(e.title || e.slot)}</b></button>${post ? brandBadge(post.campaign) : ''}${nets(e.networks)}<span class="s-badge ${tone}">${esc(label)}</span><span>${esc(when(e.at, { year: true }))}</span></header>
             ${e.detail ? `<p class="s-feed-body">${esc(e.detail)}</p>` : ''}
           </div>
         </article>`;
@@ -192,29 +331,37 @@
     const s = d.summary || {};
     const posts = filtered(d.posts || []);
     const next = s.next;
-    const camp = s.campaign;
+    const camp = medicardCampaign(s);
     const failed = s.status?.FAILED || 0;
     const empty = !(d.posts || []).length;
+    const postById = new Map((d.posts || []).map((p) => [p.id, p]));
+    const events = (d.events || []).filter((e) => st.brand === 'all' || (postById.has(e.postId) && brandOf(postById.get(e.postId)) === st.brand));
+    const brandSeg = `<div class="s-segment" role="tablist" aria-label="ბრენდი">${BRAND_FILTERS.map(([k, label]) => `<button type="button" role="tab" aria-selected="${k === st.brand}" data-brand="${k}">${BRANDS[k] ? brandDot(k) : ''}${label}</button>`).join('')}</div>`;
 
-    const body = st.view === 'list' ? listView(posts) : st.view === 'history' ? historyView(d.events || []) : calendarView(posts);
+    const body = st.view === 'list' ? listView(posts) : st.view === 'history' ? historyView(events, postById) : calendarView(posts);
     root.innerHTML = `<div class="s-stack v3-tab-shell s-social">
       ${d.installed === false ? `<div class="s-callout is-warn">${ico('alert')}<p><b>SocialPost ცხრილი ჯერ არ არის.</b> შეიქმნება შემდეგი deploy-ისას (npm run db:install → install-social). ჩანაწერები ამის შემდეგ გამოჩნდება.</p></div>` : ''}
 
       <div class="s-metrics">
         ${metric('დაგეგმილი', num(s.planned || 0), `გეგმაში ${num(s.status?.PLANNED || 0)} · Metricool-ში ${num(s.status?.SCHEDULED || 0)}`)}
         ${metric('გამოქვეყნებული', num(s.published || 0), failed ? `<span style="color:var(--s-bad)">ვერ გამოქვეყნდა: ${num(failed)}</span>` : (s.lastPublished ? `ბოლო: ${esc(when(s.lastPublished.publishedAt || s.lastPublished.scheduledAt))}` : 'ჯერ არაფერი'), failed ? 'is-warn' : '')}
-        ${metric('შემდეგი პოსტი', next ? esc(when(next.scheduledAt)) : '—', next ? `${nets(next.networks)} ${esc(next.kind)} · ${esc(next.title)}` : 'დაგეგმილი პოსტი არ არის')}
-        ${metric('კამპანიის დღე', camp ? `${num(camp.day)} <small style="font-weight:500;color:var(--s-muted)">/ ${num(camp.length)}</small>` : '—', camp ? (camp.day ? `${esc(camp.campaign)} · დაიწყო ${esc(when(camp.firstAt))}` : `${esc(camp.campaign)} · იწყება ${esc(when(camp.firstAt))}`) : 'კამპანია არ არის')}
+        ${metric('შემდეგი პოსტი', next ? esc(when(next.scheduledAt)) : '—', next ? `${nets(next.networks)}${brandOf(next) === 'medirun' ? ` ${brandBadge(next.campaign)}` : ''} ${esc(next.kind)} · ${esc(next.title)}` : 'დაგეგმილი პოსტი არ არის')}
+        ${metric('კამპანიის დღე', camp ? `${num(camp.day)} <small style="font-weight:500;color:var(--s-muted)">/ ${num(camp.length)}</small>` : '—', camp ? (camp.day ? `${esc(camp.label)} · დაიწყო ${esc(when(camp.firstAt))}` : `${esc(camp.label)} · იწყება ${esc(when(camp.firstAt))}`) : 'კამპანია არ არის')}
       </div>
 
+      ${mediRunBand(d.posts || [])}
+
       <div class="s-toolbar">
-        <div class="s-segment" role="tablist" aria-label="ხედი">${VIEWS.map(([k, label]) => `<button type="button" role="tab" aria-selected="${k === st.view}" data-view="${k}">${label}${k === 'history' ? ` <i>${num((d.events || []).length)}</i>` : ''}</button>`).join('')}</div>
-        ${st.view === 'history' ? '<span></span>' : `<div class="s-toolbar" style="justify-content:flex-end">
-          <div class="s-segment" role="tablist" aria-label="ქსელი">${NET_FILTERS.map(([k, label]) => `<button type="button" role="tab" aria-selected="${k === st.network}" data-network="${k}">${label}</button>`).join('')}</div>
-          <div class="s-segment" role="tablist" aria-label="სტატუსი">${STATUS_FILTERS.map(([k, label]) => `<button type="button" role="tab" aria-selected="${k === st.status}" data-status="${k}">${label}</button>`).join('')}</div>
-        </div>`}
+        <div class="s-social-facets">
+          <div class="s-segment" role="tablist" aria-label="ხედი">${VIEWS.map(([k, label]) => `<button type="button" role="tab" aria-selected="${k === st.view}" data-view="${k}">${label}${k === 'history' ? ` <i>${num(events.length)}</i>` : ''}</button>`).join('')}</div>
+          ${brandSeg}
+        </div>
         <button type="button" class="btn ghost compact" data-refresh>${ico('refresh')} განახლება</button>
       </div>
+      ${st.view === 'history' ? '' : `<div class="s-social-facets">
+        <div class="s-segment" role="tablist" aria-label="ქსელი">${NET_FILTERS.map(([k, label]) => `<button type="button" role="tab" aria-selected="${k === st.network}" data-network="${k}">${label}</button>`).join('')}</div>
+        <div class="s-segment" role="tablist" aria-label="სტატუსი">${STATUS_FILTERS.map(([k, label]) => `<button type="button" role="tab" aria-selected="${k === st.status}" data-status="${k}">${label}</button>`).join('')}</div>
+      </div>`}
 
       ${empty && d.installed !== false ? `<div class="s-callout">${ico('info')}<p>ჯერ პოსტი არ ჩაწერილა. ოპერატორი ჩაწერს ყველა დაგეგმილ პოსტს: <code>node server/scripts/social-log.mjs upsert posts.json</code>, სტატუსს კი — <code>… status status.json</code>.</p></div>` : ''}
       ${body}
@@ -225,6 +372,13 @@
       try { sessionStorage.setItem(VIEW_KEY, st.view); } catch { /* private mode */ }
       paint(root);
     }));
+    const setBrand = (brand) => {
+      st.brand = BRANDS[brand] ? brand : 'all';
+      try { sessionStorage.setItem(BRAND_KEY, st.brand); } catch { /* private mode */ }
+      paint(root);
+    };
+    root.querySelectorAll('[data-brand]').forEach((btn) => btn.addEventListener('click', () => setBrand(btn.dataset.brand)));
+    root.querySelector('[data-brand-toggle]')?.addEventListener('click', () => setBrand(st.brand === 'medirun' ? 'all' : 'medirun'));
     root.querySelectorAll('[data-network]').forEach((btn) => btn.addEventListener('click', () => { st.network = btn.dataset.network; paint(root); }));
     root.querySelectorAll('[data-status]').forEach((btn) => btn.addEventListener('click', () => { st.status = btn.dataset.status; paint(root); }));
     root.querySelectorAll('[data-month]').forEach((btn) => btn.addEventListener('click', () => {
@@ -265,7 +419,7 @@
       <div>
         <p class="kicker" style="text-transform:none">${esc(p.campaign)} · <code>${esc(p.slot)}</code></p>
         <h3 style="margin:2px 0 8px">${esc(p.title)}</h3>
-        <div class="s-chips">${statusBadge(p.status)} ${kindBadge(p.kind)} ${p.pillar ? `<span class="s-badge is-accent">${esc(p.pillar)}</span>` : ''} ${nets(p.networks)}</div>
+        <div class="s-chips">${brandBadge(p.campaign, { full: true })} ${statusBadge(p.status)} ${kindBadge(p.kind)} ${p.pillar ? `<span class="s-badge is-accent">${esc(p.pillar)}</span>` : ''} ${nets(p.networks)}</div>
       </div>
       <dl class="s-social-facts">
         ${fact('დაგეგმილი დრო (თბილისი)', esc(when(p.scheduledAt, { year: true })))}
