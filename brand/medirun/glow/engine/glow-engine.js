@@ -795,7 +795,7 @@ export function createGlow({ mapboxgl, map, token, assetBase = '', hero = 'm', o
   const ring = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), M.ring); ring.renderOrder = 7; ring.frustumCulled = false; ring.scale.setScalar(22); scene.add(ring);
 
   // ---------- the runner ----------
-  const runner = { root: new THREE.Group(), target: null, pos: null, angle: 0, heading: null, speed: 0, lastFix: 0, scale: 3.5, activity: 'idle', forced: null, visible: true };
+  const runner = { root: new THREE.Group(), target: null, pos: null, from: null, t0: 0, dur: 1, interval: 0, angle: 0, heading: null, moveHeading: null, speed: 0, speedIn: 0, lastFix: 0, scale: 3.5, gait: 'idle', activity: 'idle', forced: null, visible: true };
   scene.add(runner.root);
   const glowDisc = new THREE.Mesh(new THREE.CircleGeometry(1, 32), new THREE.ShaderMaterial({
     ...additive, uniforms: U,
@@ -836,26 +836,50 @@ export function createGlow({ mapboxgl, map, token, assetBase = '', hero = 'm', o
       if (key === heroKey && heroReadyCb) heroReadyCb(key);
     }, undefined, () => { delete heroes[key]; });
   }
-  function play(h, name) {
-    const next = h.actions[name] || h.actions.run || Object.values(h.actions)[0];
+  // Gait thresholds in m/s with hysteresis, so GPS noise near a threshold never flickers between clips.
+  const GAIT = { walkOn: 0.6, walkOff: 0.35, runOn: 2.5, runOff: 2.1 };
+  const CLIP_SPEED = { walk: 1.35, run: 3.0 };     // ground speed each clip looks natural at
+  const toAngle = (deg) => Math.atan2(Math.sin((deg * Math.PI) / 180), -Math.cos((deg * Math.PI) / 180));
+  function play(h, name, fade) {
+    const next = h.actions[name] || h.actions.idle || Object.values(h.actions)[0];
     if (!next || h.current === next) return;
-    next.reset().setEffectiveWeight(1).fadeIn(0.3).play();
-    if (h.current) h.current.fadeOut(0.3);
+    next.reset();
+    // walk ⇄ run: begin the new cycle at the same point of the stride so the legs don't snap
+    const prev = h.current, stride = (a) => a && /walk|run/.test(a.getClip().name);
+    if (stride(prev) && stride(next)) next.time = (prev.time / prev.getClip().duration) * next.getClip().duration;
+    next.setEffectiveWeight(1).fadeIn(fade).play();
+    if (prev) prev.fadeOut(fade);
     h.current = next;
   }
   loadHero(heroKey);
 
-  /** GPS position of the runner; the engine glides there. heading in degrees (null → from movement). */
-  function setRunner(lng, lat, heading) {
+  /**
+   * A GPS fix. heading in degrees (null → direction of travel), speed in m/s (null → measured from fixes).
+   * The runner walks from where it is drawn to the fix over one fix interval at an even pace.
+   */
+  function setRunner(lng, lat, heading, speed) {
     const [x, y] = toLocal(lng, lat), t = performance.now() / 1000;
+    const hasSpeed = typeof speed === 'number' && Number.isFinite(speed) && speed >= 0;
+    const hasHeading = typeof heading === 'number' && Number.isFinite(heading);
     if (runner.target) {
-      const d = Math.hypot(x - runner.target[0], y - runner.target[1]), dt = Math.max(0.3, t - runner.lastFix);
-      runner.speed = runner.speed * 0.5 + (d / dt) * 0.5;
-      if (d > 0.4 && heading == null) runner.heading = Math.atan2(x - runner.target[0], -(y - runner.target[1]));
-    }
-    if (heading != null && Number.isFinite(heading)) runner.heading = Math.atan2(Math.sin((heading * Math.PI) / 180), -Math.cos((heading * Math.PI) / 180));
-    runner.target = [x, y]; runner.lastFix = t;
-    if (!runner.pos || Math.hypot(x - runner.pos[0], y - runner.pos[1]) > 120) { runner.pos = [x, y]; if (runner.heading != null) runner.angle = runner.heading; }
+      const d = Math.hypot(x - runner.target[0], y - runner.target[1]), gap = clamp(t - runner.lastFix, 0.2, 3);
+      runner.interval = runner.interval ? runner.interval * 0.7 + gap * 0.3 : gap;
+      runner.speedIn = hasSpeed ? speed : d / gap;
+      if (runner.speedIn < 0.4 && d < 3) {            // standing: GPS wanders a few metres — stay put, just turn
+        runner.lastFix = t;
+        if (hasHeading) runner.heading = toAngle(heading);
+        return;
+      }
+      if (d > 0.4) runner.moveHeading = Math.atan2(x - runner.target[0], -(y - runner.target[1]));
+    } else if (hasSpeed) runner.speedIn = speed;
+    // moving: face the way the trail goes; standing: the phone's heading
+    if (runner.speedIn > 0.8 && runner.moveHeading != null) runner.heading = runner.moveHeading;
+    else if (hasHeading) runner.heading = toAngle(heading);
+    else if (runner.moveHeading != null) runner.heading = runner.moveHeading;
+    const far = !runner.pos || Math.hypot(x - runner.pos[0], y - runner.pos[1]) > 120;
+    runner.from = far ? [x, y] : runner.pos.slice();
+    runner.target = [x, y]; runner.lastFix = t; runner.t0 = t; runner.dur = clamp(runner.interval || 1, 0.25, 2);
+    if (far) { runner.pos = [x, y]; if (runner.heading != null) runner.angle = runner.heading; }
   }
   /** 'auto' (speed decides) | 'idle' | 'walk' | 'run' | 'dance' */
   function setActivity(a) { runner.forced = a === 'auto' ? null : a; }
@@ -899,14 +923,24 @@ export function createGlow({ mapboxgl, map, token, assetBase = '', hero = 'm', o
     const p0 = map.project(c), p1 = map.project(toLngLat(cl[0] + 1, cl[1]));
     U.uPxM.value = Math.max(0.2, Math.hypot(p1.x - p0.x, p1.y - p0.y));
 
-    // runner: glide to the last fix, face the way it goes, play the matching clip
+    // runner: even glide to the last fix, gait from speed (stand / walk / run), smooth clip blends
     if (runner.target) {
-      if (!runner.pos) runner.pos = runner.target.slice();
-      const k = 1 - Math.exp(-dt * 3.2);
-      runner.pos[0] += (runner.target[0] - runner.pos[0]) * k; runner.pos[1] += (runner.target[1] - runner.pos[1]) * k;
-      if (runner.heading != null) runner.angle = lerpRad(runner.angle, runner.heading, 1 - Math.exp(-dt * 6));
-      if (performance.now() / 1000 - runner.lastFix > 6) runner.speed *= Math.exp(-dt);
-      const activity = runner.forced || (runner.speed > 2.0 ? 'run' : runner.speed > 0.5 ? 'walk' : 'idle');
+      const t = performance.now() / 1000;
+      if (!runner.pos) { runner.pos = runner.target.slice(); runner.from = runner.target.slice(); }
+      const u = clamp((t - runner.t0) / runner.dur, 0, 1);
+      runner.pos[0] = runner.from[0] + (runner.target[0] - runner.from[0]) * u;
+      runner.pos[1] = runner.from[1] + (runner.target[1] - runner.from[1]) * u;
+      if (t - runner.lastFix > 4) runner.speedIn *= Math.exp(-dt * 2);    // fixes stopped: slow to a stop
+      runner.speed += (runner.speedIn - runner.speed) * (1 - Math.exp(-dt / 0.6));
+      if (runner.heading != null) runner.angle = lerpRad(runner.angle, runner.heading, 1 - Math.exp(-dt * 5));
+      const v = runner.speed;
+      let gait = runner.gait;
+      if (gait === 'idle' && v > GAIT.walkOn) gait = 'walk';
+      if (gait === 'walk' && v < GAIT.walkOff) gait = 'idle';
+      if (gait !== 'run' && v > GAIT.runOn) gait = 'run';
+      if (gait === 'run' && v < GAIT.runOff) gait = 'walk';
+      runner.gait = gait;
+      const activity = runner.forced || gait;
       runner.activity = activity;
       const [x, y] = runner.pos;
       runner.root.position.set(x, y, 0.3); runner.root.rotation.z = runner.angle;
@@ -917,11 +951,12 @@ export function createGlow({ mapboxgl, map, token, assetBase = '', hero = 'm', o
       const moving = activity === 'run' || activity === 'walk';
       U.uRun.value += ((moving ? 1 : 0) - U.uRun.value) * Math.min(1, dt * 3);
       warmLight.position.set(x + 4, y - 3, 6); warmLight.intensity = 30 * U.uRun.value;
-      if (moving && runner.visible) { sparkDebt += dt * (activity === 'run' ? 70 : 25); const n = Math.floor(sparkDebt); sparkDebt -= n; if (n) emitSparks(n, x, y); }
+      if (moving && runner.visible) { sparkDebt += dt * (activity === 'run' ? 40 + 12 * v : 12); const n = Math.floor(sparkDebt); sparkDebt -= n; if (n) emitSparks(n, x, y); }
       const h = heroes[heroKey];
       if (h && h.mixer) {
-        play(h, activity);
-        if (h.actions.run) h.actions.run.timeScale = clamp(runner.speed / 3.0, 0.85, 1.4);
+        play(h, activity, activity === 'idle' || h.current === h.actions.idle ? 0.5 : 0.35);
+        if (h.actions.walk) h.actions.walk.timeScale = clamp(v / CLIP_SPEED.walk, 0.7, 1.4);
+        if (h.actions.run) h.actions.run.timeScale = clamp(v / CLIP_SPEED.run, 0.85, 1.75);
         h.mixer.update(dt);
       }
     } else { runner.root.visible = false; ring.visible = false; }

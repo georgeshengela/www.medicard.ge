@@ -1,7 +1,7 @@
 import type {LatLng} from './geo';
 import {tx} from '../../i18n/locale.js';
 import {MAP_FLAG,MAP_GIFT,MAP_PUCK} from './mapArt.js';
-export const RUN_MAP_HTML_REV=14;
+export const RUN_MAP_HTML_REV=15;
 /** MEDIRUN Glow engine + runner models, served with CORS by medicard.ge (built by brand/medirun/glow/engine/build.mjs). */
 export const GLOW_BASE='https://medicard.ge/medirun/glow/';
 
@@ -85,7 +85,7 @@ export function buildRunMapHtml(opts:{token:string;center:LatLng;dark:boolean;ch
    setData('route',line(m.route));if(goal)goal.remove();goal=null;
    if(m.pin){var el=document.createElement('div');el.className='goal';el.innerHTML='<img alt="" src="'+FLAG_ART+'">';goal=new mapboxgl.Marker({element:el}).setLngLat([m.pin.lng,m.pin.lat]).addTo(map);}
    if(m.fit)fit();else following=true;break;
-  case 'fix':position=[m.lng,m.lat];if(typeof m.heading==='number')heading=m.heading;if(glow)glow.setRunner(m.lng,m.lat,typeof m.heading==='number'?m.heading:null);else placePuck();break;
+  case 'fix':position=[m.lng,m.lat];if(typeof m.heading==='number')heading=m.heading;if(glow)glow.setRunner(m.lng,m.lat,typeof m.heading==='number'?m.heading:null,typeof m.speed==='number'?m.speed:null);else placePuck();break;
   case 'trail':if(glow){retained.trail=line(m.coords);glow.setTrail(m.coords||[]);}else setData('trail',line(m.coords));break;
   case 'paint':var lines=(m.lines||[]).filter(function(l){return l.length>1;});setData('paint',{type:'FeatureCollection',features:lines.map(function(l){return line(l);})});if(glow)glow.setPaint(lines);break;
   case 'mission':setData('mission',m.center?circle(m.center,m.radius||100):empty());break;

@@ -59,7 +59,7 @@ export default function PulseActive(){
  useEffect(()=>{if(!ready||!run.origin)return;map.current?.send({type:'init',origin:run.current||run.origin,pin:run.pin,route:run.route?.coords||null,fit:false,hero:user?.gender==='FEMALE'?'f':'m'});},[ready,run.origin,run.pin,run.route,user?.gender]);
  useEffect(()=>{if(ready)map.current?.send({type:'activity',value:running?'auto':'idle'});},[ready,running]);
  useEffect(()=>{if(ready)map.current?.send({type:'layout',top:insets.top+8+44+8+(mission||lit>0?42:0),bottom:Math.max(12,insets.bottom)+dockHeight+12});},[ready,insets.top,insets.bottom,dockHeight,Boolean(mission||lit>0)]);
- useEffect(()=>{if(ready&&run.current)map.current?.send({type:'fix',lat:run.current.lat,lng:run.current.lng,heading:run.headingDeg});},[ready,run.current,run.headingDeg]);
+ useEffect(()=>{if(ready&&run.current)map.current?.send({type:'fix',lat:run.current.lat,lng:run.current.lng,heading:run.headingDeg,speed:running?run.speedKmh/3.6:0});},[ready,run.current,run.headingDeg]);
  const paint=useMemo(()=>[...(pulse.journey.trail||[]),...coverageFeatures(pulse.journey).features.map(f=>f.geometry.coordinates)], [pulse.journey.trail,pulse.journey.covered]);
  useEffect(()=>{if(ready)map.current?.send({type:'paint',lines:paint});},[ready,paint]);
  useEffect(()=>{if(ready)map.current?.send({type:'mission',center:mission?.center||null,radius:mission?.radius});},[ready,mission]);

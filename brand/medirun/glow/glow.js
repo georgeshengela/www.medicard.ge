@@ -53,7 +53,8 @@ map.addSource('route', { type: 'geojson', data: { type: 'Feature', properties: {
 map.addLayer({ id: 'route-ahead', type: 'line', source: 'route', layout: { 'line-cap': 'round' }, paint: { 'line-color': '#5EEAD4', 'line-width': ['interpolate', ['linear'], ['zoom'], 14, 1.5, 18, 4], 'line-opacity': 0.35, 'line-dasharray': [1, 2.4] } });
 
 const state = {
-  head: 0, running: false, finished: false, mul: Number(params.get('speed')) || 8, cam: params.get('cam') || 'close',
+  // pace = how fast the simulated person moves (m/s); mul only fast-forwards time (?speed=, for tests)
+  head: 0, running: false, finished: false, pace: Number(params.get('pace') ?? 1.4), mul: Number(params.get('speed')) || 1, active: 0, cam: params.get('cam') || 'close',
   manual: false, hero: params.get('hero') === 'f' ? 'f' : 'm', lit: 0,
 };
 const glow = createGlow({
@@ -64,7 +65,6 @@ window.glow = { state, map, L, engine: glow };   // debug handle for previews
 $('loading').classList.add('done');
 
 // ---------- chrome ----------
-const REAL_PACE = 3.0;
 const ICON = {
   play: '<svg class="i" viewBox="0 0 24 24"><polygon points="6 3 20 12 6 21 6 3"/></svg>',
   pause: '<svg class="i" viewBox="0 0 24 24"><rect x="14" y="4" width="4" height="16" rx="1"/><rect x="6" y="4" width="4" height="16" rx="1"/></svg>',
@@ -83,7 +83,7 @@ function syncChrome() {
   $('status').textContent = state.running ? 'შენი გზა ფერადდება' : state.finished ? 'შენი ქალაქი ანთია' : state.head > 0 ? 'პაუზა · შენი გზა შენახულია' : 'დღეს სად მიგიყვანს გზა?';
   $('dot').className = 'dot' + (state.running ? ' on' : state.head > 0 && !state.finished ? ' paused' : '');
   $('locate').classList.toggle('active', !state.manual);
-  document.querySelectorAll('#segSpeed button').forEach((b) => b.classList.toggle('on', Number(b.dataset.v) === state.mul));
+  document.querySelectorAll('#segPace button').forEach((b) => b.classList.toggle('on', Number(b.dataset.v) === state.pace));
   document.querySelectorAll('#segCam button').forEach((b) => b.classList.toggle('on', b.dataset.v === state.cam));
   document.querySelectorAll('#segTilt button').forEach((b) => b.classList.toggle('on', (b.dataset.v === 'off') === document.body.classList.contains('flat')));
   document.querySelectorAll('#segHero button').forEach((b) => b.classList.toggle('on', b.dataset.v === state.hero));
@@ -91,7 +91,7 @@ function syncChrome() {
 }
 function openSheet(id) { $('sheetBack').classList.add('open'); $(id).classList.add('open'); }
 function closeSheets() { $('sheetBack').classList.remove('open'); document.querySelectorAll('.sheet').forEach((s) => s.classList.remove('open')); }
-function restart() { state.head = 0; state.finished = false; state.running = true; state.manual = false; if (state.cam === 'orbit') state.cam = 'close'; glow.setTrail([]); syncChrome(); }
+function restart() { state.head = 0; state.active = 0; state.finished = false; state.running = true; state.manual = false; if (state.cam === 'orbit') state.cam = 'close'; glow.setTrail([]); syncChrome(); }
 $('play').onclick = () => {
   if (state.finished) { restart(); return; }
   state.running = !state.running;
@@ -100,7 +100,7 @@ $('play').onclick = () => {
 };
 $('flag').onclick = () => {
   state.running = false; syncChrome();
-  $('finishStats').innerHTML = [['მანძილი', fmtDist(state.head), 24], ['დრო', fmtClock(state.head / REAL_PACE), 18], ['ტემპი', fmtPace(1000 / REAL_PACE), 18]]
+  $('finishStats').innerHTML = [['მანძილი', fmtDist(state.head), 24], ['დრო', fmtClock(state.active), 18], ['ტემპი', state.head > 0 ? fmtPace(state.active / (state.head / 1000)) : '–', 18]]
     .map(([l, v, s], i) => `<div style="flex:1;text-align:${['left', 'center', 'right'][i]}"><div class="lbl">${l}</div><div style="font-weight:700;font-size:${s}px;font-variant-numeric:tabular-nums">${v}</div></div>`).join('');
   openSheet('finish');
 };
@@ -110,7 +110,7 @@ $('sheetBack').onclick = closeSheets;
 document.querySelectorAll('[data-close]').forEach((b) => (b.onclick = closeSheets));
 $('locate').onclick = () => { state.manual = false; if (state.cam === 'orbit' && !state.finished) state.cam = 'close'; syncChrome(); };
 $('restart').onclick = () => { closeSheets(); restart(); };
-document.querySelectorAll('#segSpeed button').forEach((b) => (b.onclick = () => { state.mul = Number(b.dataset.v); syncChrome(); }));
+document.querySelectorAll('#segPace button').forEach((b) => (b.onclick = () => { state.pace = Number(b.dataset.v); syncChrome(); }));
 document.querySelectorAll('#segCam button').forEach((b) => (b.onclick = () => { state.cam = b.dataset.v; state.manual = false; syncChrome(); }));
 document.querySelectorAll('#segTilt button').forEach((b) => (b.onclick = () => { document.body.classList.toggle('flat', b.dataset.v === 'off'); syncChrome(); }));
 document.querySelectorAll('#segHero button').forEach((b) => (b.onclick = () => { state.hero = b.dataset.v; glow.setHero(state.hero); syncChrome(); }));
@@ -131,10 +131,10 @@ function emit(nowMs) {
   const at = sample(state.head), ahead = sample(state.head + 4);
   const heading = (Math.atan2(ahead.x - at.x, ahead.y - at.y) * 180) / Math.PI;
   const [lng, lat] = toLL(at.x, at.y);
-  // like the app: every GPS fix moves the runner and extends the trail to that same point
-  if (nowMs - fixAt < 400 && fixAt) return;
+  // like the app: a GPS fix about once a second moves the runner and extends the trail to that same point
+  if (nowMs - fixAt < 1000 / state.mul && fixAt) return;
   fixAt = nowMs;
-  glow.setRunner(lng, lat, heading);
+  glow.setRunner(lng, lat, heading, state.running ? state.pace * state.mul : 0);
   if (state.head > 0) {
     const coords = [];
     for (let i = 0; i <= at.i; i += 3) coords.push(toLL(PATH[i].x, PATH[i].y));
@@ -146,7 +146,8 @@ function tick(now) {
   const dt = Math.min(0.1, (now - last) / 1000);
   last = now;
   if (state.running) {
-    state.head = Math.min(L, state.head + REAL_PACE * state.mul * dt);
+    state.active += dt * state.mul;
+    state.head = Math.min(L, state.head + state.pace * state.mul * dt);
     if (state.head >= L) { state.running = false; state.finished = true; state.cam = 'orbit'; state.manual = false; syncChrome(); }
   }
   emit(now);
@@ -172,8 +173,8 @@ function tick(now) {
   }
 
   $('dist').textContent = fmtDist(state.head);
-  $('time').textContent = fmtClock(state.head / REAL_PACE);
-  $('pace').textContent = state.head > 0 ? fmtPace(1000 / REAL_PACE) : '–';
+  $('time').textContent = fmtClock(state.active);
+  $('pace').textContent = state.running && state.pace > 0 ? fmtPace(1000 / state.pace) : '–';
   $('goalBar').style.width = (100 * state.head) / L + '%';
   $('goalLeft').textContent = L - state.head > 1 ? 'დარჩა ' + fmtDist(L - state.head) : 'მიზანი შესრულდა ✓';
   frames++;

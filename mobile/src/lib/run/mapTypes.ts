@@ -1,7 +1,7 @@
 import type {LatLng} from './geo';
 export type RunMapMessage =
  | {type:'init';origin:LatLng;pin:LatLng|null;route:[number,number][]|null;radiusM?:number;fit?:boolean;hero?:'m'|'f';runner?:boolean}
- | {type:'fix';lat:number;lng:number;heading:number|null}
+ | {type:'fix';lat:number;lng:number;heading:number|null;speed?:number}
  | {type:'trail';coords:[number,number][]}
  | {type:'paint';lines:[number,number][][]}
  | {type:'mission';center:[number,number]|null;radius?:number}
