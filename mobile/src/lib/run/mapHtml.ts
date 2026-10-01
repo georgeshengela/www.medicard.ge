@@ -1,7 +1,7 @@
 import type {LatLng} from './geo';
 import {tx} from '../../i18n/locale.js';
 import {MAP_FLAG,MAP_GIFT,MAP_PUCK} from './mapArt.js';
-export const RUN_MAP_HTML_REV=20;
+export const RUN_MAP_HTML_REV=21;
 /** MEDIRUN Glow engine + runner models, served with CORS by medicard.ge (built by brand/medirun/glow/engine/build.mjs). */
 export const GLOW_BASE='https://medicard.ge/medirun/glow/';
 
@@ -79,7 +79,8 @@ export function buildRunMapHtml(opts:{token:string;center:LatLng;dark:boolean;ch
   // never move the camera under a finger: Mapbox cancels a pinch or drag on every programmatic camera move
   if(following&&ready&&!touching){
    var r=glow?glow.runner():null,target=r?[r.lng,r.lat]:position,hd=r&&r.heading!=null?r.heading:heading;
-   var zoom=threeD?18.2:17.4,pitch=threeD?60:0,bearing=rotate&&hd!=null?hd-(threeD?20:0):(rotate?map.getBearing():0);
+   // 3D: always from behind the runner, looking where it (and the phone) looks; 2D keeps the north-up / rotate setting
+   var zoom=threeD?18.2:17.4,pitch=threeD?60:0,bearing=hd!=null&&(threeD||rotate)?hd:(rotate?map.getBearing():0);
    // close-up: low and near, from the front while moving (the face is visible), slowly circling while standing
    var view=pad;
    if(closeUp){zoom=21.2;pitch=60;var moving=r&&(r.activity==='run'||r.activity==='walk');orbit=moving&&hd!=null?hd+155:(orbit||map.getBearing())+dt*9;bearing=orbit;

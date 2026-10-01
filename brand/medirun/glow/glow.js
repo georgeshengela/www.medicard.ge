@@ -43,7 +43,7 @@ function sample(s) {
 const bounds = ROUTE.coords.reduce((b, c) => b.extend(c), new mapboxgl.LngLatBounds(ROUTE.coords[0], ROUTE.coords[0]));
 
 const narrow = innerWidth < 700;
-const CAMS = { close: { zoom: narrow ? 18.3 : 17.9, pitch: 60, skew: -22 }, far: { zoom: narrow ? 17.1 : 16.9, pitch: 55, skew: -30 } };
+const CAMS = { close: { zoom: narrow ? 18.3 : 17.9, pitch: 60, skew: 0 }, far: { zoom: narrow ? 17.1 : 16.9, pitch: 55, skew: 0 } };   // from behind, like the app
 const map = new mapboxgl.Map({
   container: 'map', style: glowStyle(), center: ROUTE.coords[0], zoom: narrow ? 17 : 16.5, pitch: 58, bearing: -30,
   projection: 'mercator', antialias: true, maxPitch: 75, fadeDuration: 0,

@@ -887,6 +887,12 @@ export function createGlow({ mapboxgl, map, token, assetBase = '', hero = 'm', o
     const [rx, ry] = toLocal(lng, lat), t = performance.now() / 1000;
     const hasSpeed = typeof speed === 'number' && Number.isFinite(speed) && speed >= 0;
     const hasHeading = typeof heading === 'number' && Number.isFinite(heading);
+    if (runner.raw && Math.hypot(rx - runner.raw[0], ry - runner.raw[1]) < 0.05) {
+      // same place, new compass reading: only turn (never restart the glide or skew the fix interval)
+      if (hasHeading) runner.heading = toAngle(heading);
+      if (hasSpeed) runner.speedIn = speed;
+      return;
+    }
     if (runner.raw) {
       const d = Math.hypot(rx - runner.raw[0], ry - runner.raw[1]), gap = clamp(t - runner.lastFix, 0.2, 3);
       runner.interval = runner.interval ? runner.interval * 0.7 + gap * 0.3 : gap;
@@ -898,9 +904,8 @@ export function createGlow({ mapboxgl, map, token, assetBase = '', hero = 'm', o
       }
       if (d > 0.4) runner.moveHeading = Math.atan2(rx - runner.raw[0], -(ry - runner.raw[1]));
     } else if (hasSpeed) runner.speedIn = speed;
-    // moving: face the way the trail goes; standing: the phone's heading
-    if (runner.speedIn > 0.8 && runner.moveHeading != null) runner.heading = runner.moveHeading;
-    else if (hasHeading) runner.heading = toAngle(heading);
+    // the runner looks where the phone looks (compass from the app); without one, the way it moves
+    if (hasHeading) runner.heading = toAngle(heading);
     else if (runner.moveHeading != null) runner.heading = runner.moveHeading;
     runner.raw = [rx, ry];
     const [x, y] = outdoors(rx, ry);
