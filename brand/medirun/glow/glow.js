@@ -967,7 +967,8 @@ function tick(now) {
   U.uPxM.value = Math.max(0.2, Math.hypot(p2.x - p0.x, p2.y - p0.y));
 
   // 3D runner: on the trail, facing where it goes, kept at a readable size on screen.
-  const target = Math.atan2(-(near.x - at.x), near.y - at.y);
+  // After the Y-up → Z-up turn the model faces local -Y; rotate that onto the direction of travel.
+  const target = Math.atan2(near.x - at.x, -(near.y - at.y));
   if (state.head > 0 || state.running) heroAngle = lerpRad(heroAngle, target, 1 - Math.exp(-dt * 8));
   hero.root.position.set(at.x, at.y, 0.3);
   hero.root.rotation.z = heroAngle;
