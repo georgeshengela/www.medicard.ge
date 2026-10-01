@@ -18,6 +18,7 @@ import {
 import { Stack, useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as ImagePicker from "expo-image-picker";
+import { requestPhotoLibraryAccess } from "@/lib/photoLibraryAccess";
 import * as Haptics from "expo-haptics";
 import {
   ArrowLeft,
@@ -279,7 +280,7 @@ function NutritionScreen({ owner }: { owner: string }) {
   };
   const pick = (camera: boolean, mode: "photo" | "label") =>
     run(async () => {
-      const permission = await (camera ? ImagePicker.requestCameraPermissionsAsync() : ImagePicker.requestMediaLibraryPermissionsAsync());
+      const permission = await (camera ? ImagePicker.requestCameraPermissionsAsync() : requestPhotoLibraryAccess());
       if (!permission.granted) {
         Alert.alert(tx("ფოტოზე წვდომა", "Photo access"), tx("ფოტოს ასარჩევად ჩართე ნებართვა პარამეტრებში.", "To choose a photo, allow access in Settings."), [
           { text: tx("დახურვა", "Close") },

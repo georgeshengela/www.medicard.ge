@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Alert, Image, Keyboard, Pressable, ScrollView, View } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
+import { requestPhotoLibraryAccess } from '@/lib/photoLibraryAccess';
 import { Bird, Camera, Cat, Check, ChevronRight, Dog, Fish, PawPrint, Rabbit, Rat, Search, Stethoscope, Turtle, Fence, type LucideIcon } from 'lucide-react-native';
 import { PetInput as Input } from '@/components/pets/PetUi';
 import { SelectField } from '@/components/ui/SelectField';
@@ -50,7 +51,7 @@ export function PetForm({ initial, existingPhotoUrl, submitting, error, submitLa
   const pick = async (camera: boolean) => {
     setPicking(true);
     try {
-      const permission = camera ? await ImagePicker.requestCameraPermissionsAsync() : await ImagePicker.requestMediaLibraryPermissionsAsync();
+      const permission = camera ? await ImagePicker.requestCameraPermissionsAsync() : await requestPhotoLibraryAccess();
       if (!permission.granted) { Alert.alert(ka.upload.permissionDenied); return; }
       const result = camera ? await ImagePicker.launchCameraAsync(IMAGE_PICKER_OPTIONS) : await ImagePicker.launchImageLibraryAsync(IMAGE_PICKER_OPTIONS);
       if (!result.canceled && result.assets[0]) { const next = await toUploadableImage(result.assets[0]); if (mounted.current) { setPhoto(next); setRemovePhoto(false); } }

@@ -2,6 +2,7 @@ import React, { useCallback, useMemo, useState } from 'react';
 import { Alert, Pressable, Text, View, useWindowDimensions } from 'react-native';
 import { useFocusEffect } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
+import { requestPhotoLibraryAccess } from '@/lib/photoLibraryAccess';
 import { Camera, ImagePlus, Lock } from 'lucide-react-native';
 import { ka } from '@/i18n/ka';
 import { api, ApiError } from '@/lib/api';
@@ -49,7 +50,7 @@ export default function ProgressPhotosScreen() {
   const add = async (camera: boolean, chosenPose: ProgressPhoto['pose']) => {
     setBusy(true);
     try {
-      const permission = camera ? await ImagePicker.requestCameraPermissionsAsync() : await ImagePicker.requestMediaLibraryPermissionsAsync();
+      const permission = camera ? await ImagePicker.requestCameraPermissionsAsync() : await requestPhotoLibraryAccess();
       if (!permission.granted) {
         Alert.alert(ka.upload.permissionDenied);
         return;

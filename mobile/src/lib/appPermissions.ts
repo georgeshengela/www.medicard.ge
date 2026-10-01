@@ -1,6 +1,7 @@
 import type * as ExpoNotificationTypes from 'expo-notifications';
 import Constants from 'expo-constants';
 import * as ImagePicker from 'expo-image-picker';
+import { requestPhotoLibraryAccess, getPhotoLibraryAccess } from '@/lib/photoLibraryAccess';
 import * as LocalAuthentication from 'expo-local-authentication';
 import { Notifications } from '@/lib/expoNotifications';
 import * as Device from 'expo-device';
@@ -110,7 +111,7 @@ export async function loadAppPermissions(profile?: HealthProfile | null): Promis
     getRememberedOsNotificationGrant().catch(() => false),
     getScheduledReminderCounts(),
     ImagePicker.getCameraPermissionsAsync().catch(() => ({ status: ImagePicker.PermissionStatus.UNDETERMINED })),
-    ImagePicker.getMediaLibraryPermissionsAsync().catch(() => ({ status: ImagePicker.PermissionStatus.UNDETERMINED })),
+    getPhotoLibraryAccess().catch(() => ({ status: ImagePicker.PermissionStatus.UNDETERMINED })),
     LocalAuthentication.hasHardwareAsync().catch(() => false),
     LocalAuthentication.isEnrolledAsync().catch(() => false),
     isBiometricEnabled().catch(() => false),
@@ -248,7 +249,7 @@ export async function requestCameraAccess(): Promise<ExpoPermissionState> {
 }
 
 export async function requestPhotosAccess(): Promise<ExpoPermissionState> {
-  const result = await ImagePicker.requestMediaLibraryPermissionsAsync();
+  const result = await requestPhotoLibraryAccess();
   return mapPermissionStatus(result.status);
 }
 

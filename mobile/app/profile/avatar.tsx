@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, Image, Pressable, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
+import { requestPhotoLibraryAccess } from '@/lib/photoLibraryAccess';
 import { Camera, Check, ImagePlus, Lock, Trash2, type LucideIcon } from 'lucide-react-native';
 import { ka } from '@/i18n/ka';
 import { api, ApiError } from '@/lib/api';
@@ -63,7 +64,7 @@ export default function AvatarScreen() {
   const pick = async (camera: boolean) => {
     setBusy(camera ? 'camera' : 'gallery');
     try {
-      const permission = camera ? await ImagePicker.requestCameraPermissionsAsync() : await ImagePicker.requestMediaLibraryPermissionsAsync();
+      const permission = camera ? await ImagePicker.requestCameraPermissionsAsync() : await requestPhotoLibraryAccess();
       if (!permission.granted) return Alert.alert(ka.upload.permissionDenied);
       const opts = { ...IMAGE_PICKER_OPTIONS, allowsEditing: true, aspect: [1, 1] as [number, number] };
       const result = camera ? await ImagePicker.launchCameraAsync(opts) : await ImagePicker.launchImageLibraryAsync(opts);

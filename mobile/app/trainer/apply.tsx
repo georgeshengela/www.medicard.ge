@@ -3,6 +3,7 @@ import { Alert, Image, Pressable, Text, View } from 'react-native';
 import { useFocusEffect, useRouter } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import * as ImagePicker from 'expo-image-picker';
+import { requestPhotoLibraryAccess } from '@/lib/photoLibraryAccess';
 import { Award, BadgeCheck, Building2, Camera, Check, CircleAlert, Clock3, ImagePlus, MapPin, PartyPopper, Pencil, Plus, Trash2, X } from 'lucide-react-native';
 import { ka } from '@/i18n/ka';
 import { api, ApiError } from '@/lib/api';
@@ -162,7 +163,7 @@ export default function TrainerApplyScreen() {
     }
     setBusy(camera ? 'camera' : 'gallery');
     try {
-      const permission = camera ? await ImagePicker.requestCameraPermissionsAsync() : await ImagePicker.requestMediaLibraryPermissionsAsync();
+      const permission = camera ? await ImagePicker.requestCameraPermissionsAsync() : await requestPhotoLibraryAccess();
       if (!permission.granted) return Alert.alert(ka.upload.permissionDenied);
       const result = camera ? await ImagePicker.launchCameraAsync(IMAGE_PICKER_OPTIONS) : await ImagePicker.launchImageLibraryAsync(IMAGE_PICKER_OPTIONS);
       if (result.canceled || !result.assets[0]) return;

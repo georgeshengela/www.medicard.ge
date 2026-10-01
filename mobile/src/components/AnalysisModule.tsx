@@ -16,6 +16,7 @@ import {
 import * as DocumentPicker from 'expo-document-picker';
 import * as Haptics from 'expo-haptics';
 import * as ImagePicker from 'expo-image-picker';
+import { requestPhotoLibraryAccess } from '@/lib/photoLibraryAccess';
 import { useRouter } from 'expo-router';
 import { Camera, FileText, ImageIcon, RefreshCw, Sparkles, X, type LucideIcon } from 'lucide-react-native';
 import { ChatBubbleAssistant, ChatBubbleUser, ChatTypingBubble } from '@/components/chat/ChatBubble';
@@ -134,7 +135,7 @@ function AnalysisModuleContent({
         assets = selected.assets;
       } else {
         // The OS permission request starts directly in the button gesture.
-        const permission = await (source === 'camera' ? ImagePicker.requestCameraPermissionsAsync() : ImagePicker.requestMediaLibraryPermissionsAsync());
+        const permission = await (source === 'camera' ? ImagePicker.requestCameraPermissionsAsync() : requestPhotoLibraryAccess());
         if (!operation.current()) return;
         if (!permission.granted) {
           Alert.alert(tx('ფოტოზე წვდომა', 'Photo access'), ka.upload.permissionDenied, [
