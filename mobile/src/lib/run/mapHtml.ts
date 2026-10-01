@@ -1,7 +1,7 @@
 import type {LatLng} from './geo';
 import {tx} from '../../i18n/locale.js';
 import {MAP_FLAG,MAP_GIFT,MAP_PUCK} from './mapArt.js';
-export const RUN_MAP_HTML_REV=19;
+export const RUN_MAP_HTML_REV=20;
 /** MEDIRUN Glow engine + runner models, served with CORS by medicard.ge (built by brand/medirun/glow/engine/build.mjs). */
 export const GLOW_BASE='https://medicard.ge/medirun/glow/';
 
@@ -25,7 +25,7 @@ export function buildRunMapHtml(opts:{token:string;center:LatLng;dark:boolean;ch
  .goal{width:44px;height:44px;filter:drop-shadow(0 4px 6px #03071266);transition:filter .3s}.goal.reached{filter:drop-shadow(0 0 12px #5EEAD4)}
  /* Mapbox positions a marker with transform on its element, so the float animation lives on the inner image. */
  .gift{width:72px;height:72px;pointer-events:none}
- .gift .halo{position:absolute;left:50%;bottom:-6px;width:84px;height:28px;transform:translateX(-50%);border-radius:50%;background:radial-gradient(closest-side,rgba(252,211,77,.75),rgba(94,234,212,.25) 60%,transparent);animation:giftHalo 1.6s ease-in-out infinite}
+ .gift .halo{position:absolute;left:50%;bottom:-8%;width:116%;height:39%;transform:translateX(-50%);border-radius:50%;background:radial-gradient(closest-side,rgba(252,211,77,.75),rgba(94,234,212,.25) 60%,transparent);animation:giftHalo 1.6s ease-in-out infinite}
  .gift img{position:relative;filter:drop-shadow(0 8px 10px #03071266) drop-shadow(0 0 14px rgba(252,211,77,.55));animation:giftFloat 2.6s ease-in-out infinite}
  @keyframes giftFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-8px)}}
  @keyframes giftHalo{0%,100%{opacity:.65}50%{opacity:1}}
@@ -93,19 +93,22 @@ export function buildRunMapHtml(opts:{token:string;center:LatLng;dark:boolean;ch
  function setCloseUp(on){closeUp=on;orbit=map.getBearing();if(glow)glow.setHeroView(on);hintUntil=0;if(on&&!following){following=true;post({type:'follow',value:true});}}
  var hint=null;
  function maybeHint(){if(!glow||!showRunner)return;var n=0;try{n=Number(localStorage.getItem('medirun.heroHint')||0);}catch(e){}if(n>=3)return;try{localStorage.setItem('medirun.heroHint',String(n+1));}catch(e){}hint=document.createElement('div');hint.className='hint';hint.innerHTML=HINT;document.body.appendChild(hint);hintUntil=performance.now()+6000;}
+ // Markers are screen-sized DOM; shrink them as the map zooms out so a far-away gift never covers the runner.
+ function markerSize(full,min){return Math.round(Math.max(min,Math.min(full,full*Math.pow(2,(map.getZoom()-18.2)*0.8))));}
+ function sizeMarkers(){if(gift){var g=markerSize(72,22),el=gift.getElement();el.style.width=el.style.height=g+'px';}if(goal){var f=markerSize(44,24),ge=goal.getElement();ge.style.width=ge.style.height=f+'px';}}
  function circle(c,r){var points=[];for(var i=0;i<=64;i++){var angle=i/64*Math.PI*2;points.push([c[0]+Math.cos(angle)*r/(111195*Math.cos(c[1]*Math.PI/180)),c[1]+Math.sin(angle)*r/111195]);}return {type:'Feature',properties:{},geometry:{type:'Polygon',coordinates:[points]}};}
  function fit(bottom,paintOnly,top){var coords=paintOnly?[]:(retained.route&&retained.route.geometry&&retained.route.geometry.coordinates)||[];if(!paintOnly&&!coords.length&&retained.trail&&retained.trail.geometry)coords=retained.trail.geometry.coordinates;if(!coords.length&&retained.paint)coords=retained.paint.features.reduce(function(all,f){return all.concat(f.geometry.coordinates);},[]);if(!coords.length){following=true;return;}var bounds=new mapboxgl.LngLatBounds(coords[0],coords[0]);coords.forEach(function(p){bounds.extend(p);});following=false;post({type:'follow',value:false});map.fitBounds(bounds,{padding:{top:typeof top==='number'?top:120,bottom:bottom||230,left:45,right:45},maxZoom:17,pitch:threeD?45:0,duration:reduced?0:900});}
  function handle(m){switch(m.type){
   case 'init':position=[m.origin.lng,m.origin.lat];hero=m.hero==='f'?'f':'m';showRunner=m.runner!==false;
    if(glow){glow.setHero(hero);glow.setRunnerVisible(showRunner);glow.setRunner(position[0],position[1],null);}else placePuck();
    setData('route',line(m.route));if(goal)goal.remove();goal=null;
-   if(m.pin){var el=document.createElement('div');el.className='goal';el.innerHTML='<img alt="" src="'+FLAG_ART+'">';goal=new mapboxgl.Marker({element:el}).setLngLat([m.pin.lng,m.pin.lat]).addTo(map);}
+   if(m.pin){var el=document.createElement('div');el.className='goal';el.innerHTML='<img alt="" src="'+FLAG_ART+'">';goal=new mapboxgl.Marker({element:el}).setLngLat([m.pin.lng,m.pin.lat]).addTo(map);sizeMarkers();}
    if(m.fit)fit();else following=true;break;
   case 'fix':position=[m.lng,m.lat];if(typeof m.heading==='number')heading=m.heading;if(glow)glow.setRunner(m.lng,m.lat,typeof m.heading==='number'?m.heading:null,typeof m.speed==='number'?m.speed:null);else placePuck();break;
   case 'trail':if(glow){retained.trail=line(m.coords);glow.setTrail(m.coords||[]);}else setData('trail',line(m.coords));break;
   case 'paint':var lines=(m.lines||[]).filter(function(l){return l.length>1;});setData('paint',{type:'FeatureCollection',features:lines.map(function(l){return line(l);})});if(glow)glow.setPaint(lines);break;
   case 'mission':setData('mission',m.center?circle(m.center,m.radius||100):empty());break;
-  case 'gift':if(gift)gift.remove();gift=null;if(m.position){var box=document.createElement('div');box.className='gift';box.innerHTML='<span class="halo"></span><img alt="" src="'+GIFT_ART+'">';gift=new mapboxgl.Marker({element:box,anchor:'bottom'}).setLngLat(m.position).addTo(map);}break;
+  case 'gift':if(gift)gift.remove();gift=null;if(m.position){var box=document.createElement('div');box.className='gift';box.innerHTML='<span class="halo"></span><img alt="" src="'+GIFT_ART+'">';gift=new mapboxgl.Marker({element:box,anchor:'bottom'}).setLngLat(m.position).addTo(map);sizeMarkers();}break;
   case 'options':rotate=m.rotate;threeD=m.threeD;break;
   case 'follow':following=true;if(closeUp)setCloseUp(false);post({type:'follow',value:true});break;
   case 'fit':fit(m.bottom,m.paintOnly,m.top);break;
@@ -118,6 +121,7 @@ export function buildRunMapHtml(opts:{token:string;center:LatLng;dark:boolean;ch
  window.addEventListener('message',function(event){if(event.source===window.parent&&event.data&&event.data.channel===channel)window.__run(event.data.message);});
  map.on('style.load',function(){layers();startGlow();if(!ready){ready=true;post({type:'ready'});queue.forEach(handle);queue=[];raf=requestAnimationFrame(frame);setTimeout(maybeHint,4000);}});
  // Tap the runner for a close-up; tap again (or anywhere else) to go back.
+ map.on('zoom',sizeMarkers);
  map.on('click',function(e){if(!glow)return;if(glow.runnerHit(e.point.x,e.point.y))setCloseUp(!closeUp);else if(closeUp)setCloseUp(false);});
  function release(){if(closeUp)setCloseUp(false);if(following){following=false;post({type:'follow',value:false});}}
  ['dragstart','rotatestart','zoomstart','pitchstart'].forEach(function(event){map.on(event,function(e){if(e.originalEvent)release();});});
