@@ -173,3 +173,14 @@ test('apple revoke is skipped without keys and posts a signed client secret with
   assert.equal(secret.header.kid, 'KEY1234567');
   assert.equal(secret.payload.sub, 'ge.medicard.app');
 });
+
+test('apple key self-check reads Apple’s answer to a dummy code', async () => {
+  const { checkAppleKey } = await import('./socialAuth.js');
+  assert.equal(await checkAppleKey({ config }), 'not_configured');
+  const { privateKey: ecKey } = crypto.generateKeyPairSync('ec', { namedCurve: 'P-256' });
+  const withKeys = { ...config, appleTeamId: 'TEAM123456', appleKeyId: 'KEY1234567', applePrivateKey: ecKey.export({ format: 'pem', type: 'pkcs8' }) };
+  const answer = (error) => async () => ({ ok: false, status: 400, text: async () => JSON.stringify({ error }) });
+  assert.equal(await checkAppleKey({ config: withKeys, fetchImpl: answer('invalid_grant') }), 'ok');
+  assert.equal(await checkAppleKey({ config: withKeys, fetchImpl: answer('invalid_client') }), 'invalid_client');
+  assert.equal(await checkAppleKey({ config: { ...withKeys, applePrivateKey: 'not a pem' } }), 'key_unreadable');
+});

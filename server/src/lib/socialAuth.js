@@ -279,6 +279,39 @@ export async function revokeAppleToken(refreshToken, { config = socialConfig(), 
   }
 }
 
+/**
+ * Proves the Apple key env (team id, key id, private key, bundle id) without any user: a dummy
+ * authorization code is exchanged. Apple answers `invalid_grant` when it accepted our client secret
+ * (so revocation will work) and `invalid_client` when the key / ids are wrong. Never returns secrets.
+ * → 'ok' | 'not_configured' | 'key_unreadable' | 'invalid_client' | 'unreachable' | 'unexpected'
+ */
+export async function checkAppleKey({ config = socialConfig(), fetchImpl = fetch } = {}) {
+  if (!appleRevokeConfigured(config)) return 'not_configured';
+  let clientSecret;
+  try {
+    clientSecret = appleClientSecret(config);
+  } catch {
+    return 'key_unreadable';
+  }
+  try {
+    const { body } = await fetchJson(`${APPLE_ISSUER}/auth/token`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        client_id: config.appleAudiences[0],
+        client_secret: clientSecret,
+        code: 'medicard-key-self-check',
+        grant_type: 'authorization_code',
+      }).toString(),
+    }, fetchImpl);
+    if (body?.error === 'invalid_grant') return 'ok';
+    if (body?.error === 'invalid_client') return 'invalid_client';
+    return 'unexpected';
+  } catch {
+    return 'unreachable';
+  }
+}
+
 /* ───────── Refresh-token encryption ───────── */
 
 function cipherKey(secret) {

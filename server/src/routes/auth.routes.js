@@ -21,6 +21,7 @@ import { deleteUserAccount } from '../lib/deleteUser.js';
 import { queueAccountDeletedEmail, queueWelcomeEmail } from '../lib/email.js';
 import {
   SocialAuthError,
+  checkAppleKey,
   exchangeAppleCode,
   findIdentity,
   issueAppleNonce,
@@ -559,6 +560,19 @@ authRouter.get(
   asyncHandler(async (_req, res) => {
     res.set('Cache-Control', 'no-store');
     return res.json({ nonce: issueAppleNonce() });
+  }),
+);
+
+/** Whether account deletion can revoke Apple grants (status word only; result cached 10 minutes). */
+let appleKeyCheck = { at: 0, status: null };
+authRouter.get(
+  '/apple/status',
+  asyncHandler(async (_req, res) => {
+    if (!appleKeyCheck.status || Date.now() - appleKeyCheck.at > 10 * 60 * 1000) {
+      appleKeyCheck = { at: Date.now(), status: await checkAppleKey() };
+    }
+    res.set('Cache-Control', 'no-store');
+    return res.json({ revoke: appleKeyCheck.status });
   }),
 );
 
