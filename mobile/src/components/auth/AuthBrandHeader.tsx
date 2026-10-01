@@ -86,13 +86,17 @@ export function AuthBrandHeader({ subtitle, compact = false, durationMs = 280 }:
           }}
         />
       </Animated.View>
-      <Animated.View style={[{ overflow: 'hidden', alignItems: 'center' }, subStyle]}>
+      {/* Full-width box: a shrink-wrapped one clipped the last glyphs of the Georgian line on iOS. */}
+      <Animated.View style={[{ overflow: 'hidden', alignSelf: 'stretch', alignItems: 'center' }, subStyle]}>
         <Text
           onLayout={(e) => {
             subHeight.value = Math.ceil(e.nativeEvent.layout.height);
           }}
-          className="max-w-[320px] text-center font-sans"
+          className="text-center font-sans"
           style={{
+            width: '100%',
+            maxWidth: 320,
+            paddingHorizontal: 4,
             fontSize: FIGMA_AUTH.heroSubtitleSize,
             lineHeight: 22,
             color: auth.textSecondary,
