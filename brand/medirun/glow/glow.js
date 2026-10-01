@@ -145,6 +145,7 @@ function framePadding() {
 // ---------- the simulated run: a GPS-like fix twice a second ----------
 let last = performance.now(), frames = 0, fpsAt = last, fixAt = 0;
 function emit(nowMs) {
+  if (params.has('nosim')) return;     // tests drive the engine directly
   const at = sample(state.head), ahead = sample(state.head + 4);
   const heading = (Math.atan2(ahead.x - at.x, ahead.y - at.y) * 180) / Math.PI;
   const [lng, lat] = toLL(at.x, at.y);

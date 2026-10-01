@@ -63,18 +63,31 @@ function materials(U) {
     uniforms: U, side: THREE.DoubleSide,
     vertexShader: `
       attribute vec3 aFace; attribute vec2 aLit; attribute vec2 aBld;
-      varying vec3 vN; varying vec3 vFace; varying vec2 vLit; varying vec2 vBld; varying float vW;
+      varying vec3 vN; varying vec3 vFace; varying vec2 vLit; varying vec2 vBld; varying float vW; varying vec3 vPos;
       void main(){
-        vN = normal; vFace = aFace; vLit = aLit; vBld = aBld;
+        vN = normal; vFace = aFace; vLit = aLit; vBld = aBld; vPos = position;
         gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
         vW = gl_Position.w;
       }`,
     fragmentShader: `
-      uniform float uTime;
+      uniform float uTime; uniform vec3 uRunner; uniform float uCut;
       ${FOGFN}
-      varying vec3 vN; varying vec3 vFace; varying vec2 vLit; varying vec2 vBld; varying float vW;
+      varying vec3 vN; varying vec3 vFace; varying vec2 vLit; varying vec2 vBld; varying float vW; varying vec3 vPos;
       ${HASH}
       void main(){
+        // See-through: walls between the camera and the runner open up around it; the hole is filled with faint glass.
+        float cutFade = 0.0;
+        if (uCut > 0.0) {
+          vec3 seg = uRunner - cameraPosition;
+          float t = clamp(dot(vPos - cameraPosition, seg) / dot(seg, seg), 0.0, 1.0);
+          float d = length(vPos - (cameraPosition + seg * t)), r = uCut * t;
+          cutFade = (1.0 - smoothstep(r * 0.8, r, d)) * (1.0 - smoothstep(0.97, 0.995, t));
+        }
+        #ifdef GHOST
+          if (cutFade < 0.02) discard;      // the glass pass only draws what the opaque pass cut away
+        #else
+          if (cutFade > 0.5) discard;       // a clean hole where a wall would hide the runner
+        #endif
         vec3 n = normalize(vN);
         float roof = vFace.z, v = vFace.y, seed = vBld.x, top = vBld.y, strength = vLit.y;
         float since = uTime - vLit.x;
@@ -119,9 +132,14 @@ function materials(U) {
           col += glow * exp(-length(outside) * (shop ? 1.3 : 1.8)) * (1.0 - win) * light * 0.38 * lod;
           col += glow * light * (1.0 - lod) * 0.35;
         }
-        gl_FragColor = vec4(fogged(col, vW), 1.0);
+        #ifdef GHOST
+          gl_FragColor = vec4(fogged(col, vW) * 1.15, 0.2 * cutFade);
+        #else
+          gl_FragColor = vec4(fogged(col, vW), 1.0);
+        #endif
       }`,
   });
+  const buildingGhost = new THREE.ShaderMaterial({ uniforms: U, vertexShader: building.vertexShader, fragmentShader: building.fragmentShader, defines: { GHOST: 1 }, side: THREE.DoubleSide, transparent: true, depthWrite: false });
 
   const ribbonVert = `
     attribute float aAlong; attribute float aAcross;
@@ -144,7 +162,7 @@ function materials(U) {
       }`,
   };
   return {
-    building,
+    building, buildingGhost,
     core: new THREE.ShaderMaterial({ ...coreShader, defines: { XRAY: '1.0' } }),
     xray: new THREE.ShaderMaterial({ ...coreShader, defines: { XRAY: '0.28' }, depthFunc: THREE.GreaterDepth }),
     aura: new THREE.ShaderMaterial({
@@ -357,7 +375,7 @@ export function createGlow({ mapboxgl, map, token, assetBase = '', hero = 'm', o
   const MODEL = new THREE.Matrix4().makeTranslation(ORIGIN.x, ORIGIN.y, 0).scale(new THREE.Vector3(S, -S, S));
 
   const U = {
-    uTime: { value: 0 }, uHead: { value: 0 }, uRefW: { value: 1 }, uPxM: { value: 2 },
+    uTime: { value: 0 }, uHead: { value: 0 }, uRunner: { value: new THREE.Vector3() }, uCut: { value: 0 }, uRefW: { value: 1 }, uPxM: { value: 2 },
     uPR: { value: Math.min(2, window.devicePixelRatio || 1) }, uFog: { value: new THREE.Color('#121926') }, uRun: { value: 0 },
   };
   const M = materials(U);
@@ -425,6 +443,7 @@ export function createGlow({ mapboxgl, map, token, assetBase = '', hero = 'm', o
 
   // ---------- tiles ----------
   const tiles = new Map();
+  const glassMeshes = new Set();
   const group = new THREE.Group(); scene.add(group);
 
   function buildTile(t, tile) {
@@ -535,7 +554,7 @@ export function createGlow({ mapboxgl, map, token, assetBase = '', hero = 'm', o
           [[-1, -1], [1, -1], [1, 1], [-1, 1]].forEach(([u, v]) => { poolP.push(cx + u * R, cy + v * R, 0.15); poolUV.push(u, v); poolC.push(cx, cy, 0.15); });
           poolIdx.push(pool, pool + 1, pool + 2, pool, pool + 2, pool + 3);
           hazeP.push(cx, cy, Math.min(h, 18) * 0.8); hazeS.push(clamp(r * 2.6, 16, 46));
-          owners.push({ key: f.id != null ? 'id' + f.id : null, cx, cy, pts, first, count: n - first, pool, haze: hazeS.length - 1 });
+          owners.push({ key: f.id != null ? 'id' + f.id : null, cx, cy, pts, h, first, count: n - first, pool, haze: hazeS.length - 1 });
         }
       }
       if (n) {
@@ -549,6 +568,7 @@ export function createGlow({ mapboxgl, map, token, assetBase = '', hero = 'm', o
         geo.setAttribute('aLit', lit);
         geo.setIndex(idx);
         const mesh = new THREE.Mesh(geo, M.building); mesh.renderOrder = 1; mesh.frustumCulled = false; g.add(mesh);
+        const glass = new THREE.Mesh(geo, M.buildingGhost); glass.renderOrder = 4; glass.frustumCulled = false; glass.visible = U.uCut.value > 0; g.add(glass); glassMeshes.add(glass);
 
         const pg = new THREE.BufferGeometry();
         const plit = new THREE.Float32BufferAttribute(new Float32Array(poolP.length / 3 * 2).map((_, i) => (i % 2 ? 0 : NEVER)), 2);
@@ -573,7 +593,9 @@ export function createGlow({ mapboxgl, map, token, assetBase = '', hero = 'm', o
         for (const o of owners) {
           const ranges = [{ attr: lit, start: o.first, count: o.count }, { attr: plit, start: o.pool, count: 4 }];
           if (hlit) ranges.push({ attr: hlit, start: o.haze, count: 1 });
-          recs.push({ key: o.key, cx: o.cx, cy: o.cy, pts: o.pts, strength: 0, time: NEVER, ranges });
+          let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+          for (let k = 0; k < o.pts.length; k += 2) { x0 = Math.min(x0, o.pts[k]); x1 = Math.max(x1, o.pts[k]); y0 = Math.min(y0, o.pts[k + 1]); y1 = Math.max(y1, o.pts[k + 1]); }
+          recs.push({ key: o.key, cx: o.cx, cy: o.cy, pts: o.pts, h: o.h, bb: [x0, y0, x1, y1], strength: 0, time: NEVER, ranges });
         }
       }
     }
@@ -587,6 +609,7 @@ export function createGlow({ mapboxgl, map, token, assetBase = '', hero = 'm', o
     if (!t || !t.group) return;
     for (const rec of t.recs) { const list = grid.get(rec.cell); if (list) { const i = list.indexOf(rec); if (i >= 0) list.splice(i, 1); } }
     group.remove(t.group);
+    t.group.traverse((o) => glassMeshes.delete(o));
     t.group.traverse((o) => { if (o.geometry && o.geometry !== TREE) o.geometry.dispose(); });
   }
   let loading = 0;
@@ -798,7 +821,7 @@ export function createGlow({ mapboxgl, map, token, assetBase = '', hero = 'm', o
   const ring = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), M.ring); ring.renderOrder = 7; ring.frustumCulled = false; ring.scale.setScalar(22); scene.add(ring);
 
   // ---------- the runner ----------
-  const runner = { root: new THREE.Group(), target: null, pos: null, from: null, t0: 0, dur: 1, interval: 0, angle: 0, heading: null, moveHeading: null, speed: 0, speedIn: 0, lastFix: 0, scale: 3.5, gait: 'idle', activity: 'idle', forced: null, visible: true };
+  const runner = { root: new THREE.Group(), raw: null, target: null, pos: null, from: null, t0: 0, dur: 1, interval: 0, angle: 0, heading: null, moveHeading: null, speed: 0, speedIn: 0, lastFix: 0, scale: 3.5, gait: 'idle', activity: 'idle', forced: null, visible: true };
   scene.add(runner.root);
   const glowDisc = new THREE.Mesh(new THREE.CircleGeometry(1, 32), new THREE.ShaderMaterial({
     ...additive, uniforms: U,
@@ -861,11 +884,11 @@ export function createGlow({ mapboxgl, map, token, assetBase = '', hero = 'm', o
    * The runner walks from where it is drawn to the fix over one fix interval at an even pace.
    */
   function setRunner(lng, lat, heading, speed) {
-    const [x, y] = toLocal(lng, lat), t = performance.now() / 1000;
+    const [rx, ry] = toLocal(lng, lat), t = performance.now() / 1000;
     const hasSpeed = typeof speed === 'number' && Number.isFinite(speed) && speed >= 0;
     const hasHeading = typeof heading === 'number' && Number.isFinite(heading);
-    if (runner.target) {
-      const d = Math.hypot(x - runner.target[0], y - runner.target[1]), gap = clamp(t - runner.lastFix, 0.2, 3);
+    if (runner.raw) {
+      const d = Math.hypot(rx - runner.raw[0], ry - runner.raw[1]), gap = clamp(t - runner.lastFix, 0.2, 3);
       runner.interval = runner.interval ? runner.interval * 0.7 + gap * 0.3 : gap;
       runner.speedIn = hasSpeed ? speed : d / gap;
       if (runner.speedIn < 0.4 && d < 3) {            // standing: GPS wanders a few metres — stay put, just turn
@@ -873,17 +896,86 @@ export function createGlow({ mapboxgl, map, token, assetBase = '', hero = 'm', o
         if (hasHeading) runner.heading = toAngle(heading);
         return;
       }
-      if (d > 0.4) runner.moveHeading = Math.atan2(x - runner.target[0], -(y - runner.target[1]));
+      if (d > 0.4) runner.moveHeading = Math.atan2(rx - runner.raw[0], -(ry - runner.raw[1]));
     } else if (hasSpeed) runner.speedIn = speed;
     // moving: face the way the trail goes; standing: the phone's heading
     if (runner.speedIn > 0.8 && runner.moveHeading != null) runner.heading = runner.moveHeading;
     else if (hasHeading) runner.heading = toAngle(heading);
     else if (runner.moveHeading != null) runner.heading = runner.moveHeading;
+    runner.raw = [rx, ry];
+    const [x, y] = outdoors(rx, ry);
     const far = !runner.pos || Math.hypot(x - runner.pos[0], y - runner.pos[1]) > 120;
     runner.from = far ? [x, y] : runner.pos.slice();
     runner.target = [x, y]; runner.lastFix = t; runner.t0 = t; runner.dur = clamp(runner.interval || 1, 0.25, 2);
     if (far) { runner.pos = [x, y]; if (runner.heading != null) runner.angle = runner.heading; }
   }
+  // GPS indoors puts the runner inside a building, where it melts into the walls: stand it on the street just outside.
+  function pointInRing(p, x, y) {
+    let inside = false;
+    for (let i = 0, j = p.length - 2; i < p.length; j = i, i += 2) {
+      const xi = p[i], yi = p[i + 1], xj = p[j], yj = p[j + 1];
+      if ((yi > y) !== (yj > y) && x < ((xj - xi) * (y - yi)) / (yj - yi) + xi) inside = !inside;
+    }
+    return inside;
+  }
+  function insideBuilding(x, y) {
+    const cx = Math.floor(x / CELL), cy = Math.floor(y / CELL);
+    for (let i = -2; i <= 2; i++) for (let j = -2; j <= 2; j++) {
+      const list = grid.get(cx + i + ',' + (cy + j));
+      if (list) for (const rec of list) if (rec.bb && x >= rec.bb[0] && x <= rec.bb[2] && y >= rec.bb[1] && y <= rec.bb[3] && pointInRing(rec.pts, x, y)) return rec;
+    }
+    return null;
+  }
+  let occludedAt = 0, hidden = false, glassShown = false;
+  function occluded(rx, ry, rz) {               // walk from the runner towards the camera through the first 70 m
+    const c = camera.position, dx = c.x - rx, dy = c.y - ry, dz = c.z - rz, flat = Math.hypot(dx, dy) || 1;
+    for (let s = 1.5; s < 70; s += 2) {
+      const t = s / flat, z = rz + dz * t;
+      if (z > 80) break;
+      const rec = insideBuilding(rx + dx * t, ry + dy * t);
+      if (rec && z < rec.h) return true;
+    }
+    return false;
+  }
+  function segDist(px, py, ax, ay, bx, by) {
+    const dx = bx - ax, dy = by - ay, t = clamp(((px - ax) * dx + (py - ay) * dy) / (dx * dx + dy * dy || 1), 0, 1);
+    return Math.hypot(ax + dx * t - px, ay + dy * t - py);
+  }
+  function clearance(x, y) {                    // distance to the nearest wall around (x, y), capped at 25 m
+    let best = 25;
+    const cx = Math.floor(x / CELL), cy = Math.floor(y / CELL);
+    for (let i = -1; i <= 1; i++) for (let j = -1; j <= 1; j++) {
+      const list = grid.get(cx + i + ',' + (cy + j));
+      if (list) for (const rec of list) {
+        if (!rec.bb || x < rec.bb[0] - 25 || x > rec.bb[2] + 25 || y < rec.bb[1] - 25 || y > rec.bb[3] + 25) continue;
+        const p = rec.pts;
+        for (let a = 0, b = p.length - 2; a < p.length; b = a, a += 2) best = Math.min(best, segDist(x, y, p[b], p[b + 1], p[a], p[a + 1]));
+      }
+    }
+    return best;
+  }
+  /** Inside a building → the spot just outside it that opens onto the most open space (the street), not a back yard. */
+  function outdoors(x, y) {
+    const rec = insideBuilding(x, y);
+    if (!rec) return [x, y];
+    const p = rec.pts;
+    let best = null;
+    for (let a = 0, b = p.length - 2; a < p.length; b = a, a += 2) {
+      const ax = p[b], ay = p[b + 1], dx = p[a] - ax, dy = p[a + 1] - ay, len = Math.hypot(dx, dy);
+      if (len < 1.5) continue;
+      const t = clamp(((x - ax) * dx + (y - ay) * dy) / (len * len), 0.15, 0.85);
+      const nx = dy / len, ny = -dx / len;                     // outward for the counter-clockwise outer ring
+      for (let step = 3; step <= 15; step += 3) {
+        const qx = ax + dx * t + nx * step, qy = ay + dy * t + ny * step;
+        if (insideBuilding(qx, qy)) continue;
+        const score = Math.min(clearance(qx, qy), 12) - 0.35 * Math.hypot(qx - x, qy - y);
+        if (!best || score > best.score) best = { qx, qy, score };
+        break;
+      }
+    }
+    return best ? [best.qx, best.qy] : [x, y];
+  }
+
   /** 'auto' (speed decides) | 'idle' | 'walk' | 'run' | 'dance' */
   function setActivity(a) { runner.forced = a === 'auto' ? null : a; }
 
@@ -921,6 +1013,10 @@ export function createGlow({ mapboxgl, map, token, assetBase = '', hero = 'm', o
       streamAt = nowMs;
       const cv = map.getCanvas(), far = map.unproject([cv.clientWidth / 2, cv.clientHeight * 0.18]), fl = toLocal(far.lng, far.lat);
       streamTiles(cl[0], cl[1], clamp(Math.hypot(fl[0] - cl[0], fl[1] - cl[1]) * 1.15, MIN_RADIUS, MAX_RADIUS));
+      if (runner.raw && runner.pos) {       // a building that loaded after the fix may now contain the runner
+        const o = outdoors(runner.raw[0], runner.raw[1]);
+        if (Math.hypot(o[0] - runner.target[0], o[1] - runner.target[1]) > 0.5) { runner.from = runner.pos.slice(); runner.target = o; runner.t0 = performance.now() / 1000; runner.dur = 0.8; }
+      }
     }
     if (trail.dirty && nowMs - trail.lastBuild > 90) { trail.dirty = false; trail.lastBuild = nowMs; buildRibbons(); }
     const p0 = map.project(c), p1 = map.project(toLngLat(cl[0] + 1, cl[1]));
@@ -952,6 +1048,14 @@ export function createGlow({ mapboxgl, map, token, assetBase = '', hero = 'm', o
       runner.scale += (want - runner.scale) * Math.min(1, dt * 3); runner.root.scale.setScalar(runner.scale);
       runner.root.visible = runner.visible;
       ring.visible = runner.visible; ring.position.set(x, y, 0.33); ring.scale.setScalar(runner.scale * 6.3);
+      // open a window through buildings only while one actually hides the runner from the camera
+      const mid = 0.3 + 1.75 * runner.scale * 0.55;
+      U.uRunner.value.set(x, y, mid);
+      if (nowMs - occludedAt > 120) { occludedAt = nowMs; hidden = runner.visible && occluded(x, y, mid); }
+      U.uCut.value += ((hidden ? 1.75 * runner.scale * 0.8 + 2.5 : 0) - U.uCut.value) * Math.min(1, dt * 6);
+      if (U.uCut.value < 0.05) U.uCut.value = 0;
+      const glassOn = U.uCut.value > 0;
+      if (glassOn !== glassShown) { glassShown = glassOn; for (const m of glassMeshes) m.visible = glassOn; }
       const toCam = camera.position.clone().sub(runner.root.position); toCam.z = Math.max(toCam.z, toCam.length() * 0.35);
       faceLight.target = runner.root; faceLight.position.copy(runner.root.position).add(toCam.normalize().multiplyScalar(10));
       faceLight.intensity += ((heroView ? 1.7 : 0.5) - faceLight.intensity) * Math.min(1, dt * 3);
@@ -1012,7 +1116,7 @@ export function createGlow({ mapboxgl, map, token, assetBase = '', hero = 'm', o
     onHeroReady(cb) { heroReadyCb = cb; if (heroes[heroKey]?.holder) cb(heroKey); },
     runner() { if (!runner.pos) return null; const ll = toLngLat(runner.pos[0], runner.pos[1]); return { lng: ll.lng, lat: ll.lat, heading: runner.heading == null ? null : ((Math.atan2(Math.sin(runner.heading), -Math.cos(runner.heading)) * 180) / Math.PI + 360) % 360, speed: runner.speed, activity: runner.activity }; },
     litCount: () => litKeys.size,
-    debug: { THREE, scene, camera, U, tiles, heroes, runner },
+    debug: { THREE, scene, camera, U, tiles, heroes, runner, grid, insideBuilding, toLngLat },
     dispose() { disposed = true; cancelAnimationFrame(raf); try { map.removeLayer('medirun-glow'); } catch { /* map already gone */ } },
   };
 }

@@ -1,7 +1,7 @@
 import type {LatLng} from './geo';
 import {tx} from '../../i18n/locale.js';
 import {MAP_FLAG,MAP_GIFT,MAP_PUCK} from './mapArt.js';
-export const RUN_MAP_HTML_REV=17;
+export const RUN_MAP_HTML_REV=18;
 /** MEDIRUN Glow engine + runner models, served with CORS by medicard.ge (built by brand/medirun/glow/engine/build.mjs). */
 export const GLOW_BASE='https://medicard.ge/medirun/glow/';
 
