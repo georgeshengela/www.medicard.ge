@@ -1,7 +1,7 @@
 import type {LatLng} from './geo';
 import {tx} from '../../i18n/locale.js';
 import {MAP_FLAG,MAP_GIFT,MAP_PUCK} from './mapArt.js';
-export const RUN_MAP_HTML_REV=18;
+export const RUN_MAP_HTML_REV=19;
 /** MEDIRUN Glow engine + runner models, served with CORS by medicard.ge (built by brand/medirun/glow/engine/build.mjs). */
 export const GLOW_BASE='https://medicard.ge/medirun/glow/';
 
@@ -23,9 +23,13 @@ export function buildRunMapHtml(opts:{token:string;center:LatLng;dark:boolean;ch
  .puck{width:46px;height:46px;filter:drop-shadow(0 4px 6px #03071277)}
  .puck img,.goal img,.gift img{width:100%;height:100%;display:block}
  .goal{width:44px;height:44px;filter:drop-shadow(0 4px 6px #03071266);transition:filter .3s}.goal.reached{filter:drop-shadow(0 0 12px #5EEAD4)}
- .gift{width:64px;height:64px;filter:drop-shadow(0 8px 10px #03071266);animation:giftFloat 2.6s ease-in-out infinite}
- @keyframes giftFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-7px)}}
- @media (prefers-reduced-motion:reduce){.gift{animation:none}}
+ /* Mapbox positions a marker with transform on its element, so the float animation lives on the inner image. */
+ .gift{width:72px;height:72px;pointer-events:none}
+ .gift .halo{position:absolute;left:50%;bottom:-6px;width:84px;height:28px;transform:translateX(-50%);border-radius:50%;background:radial-gradient(closest-side,rgba(252,211,77,.75),rgba(94,234,212,.25) 60%,transparent);animation:giftHalo 1.6s ease-in-out infinite}
+ .gift img{position:relative;filter:drop-shadow(0 8px 10px #03071266) drop-shadow(0 0 14px rgba(252,211,77,.55));animation:giftFloat 2.6s ease-in-out infinite}
+ @keyframes giftFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-8px)}}
+ @keyframes giftHalo{0%,100%{opacity:.65}50%{opacity:1}}
+ @media (prefers-reduced-motion:reduce){.gift img,.gift .halo{animation:none}}
  .hint{position:absolute;left:0;top:0;transform:translate(-50%,-100%);padding:7px 12px;border-radius:14px;background:rgba(17,24,39,.92);color:#fff;font:600 12px/16px system-ui,sans-serif;white-space:nowrap;pointer-events:none;opacity:0;transition:opacity .4s;box-shadow:0 6px 14px rgba(3,7,18,.35)}
  .hint.on{opacity:1}.hint b{color:#5EEAD4}
  </style></head><body><div id="map"></div><script>
@@ -101,7 +105,7 @@ export function buildRunMapHtml(opts:{token:string;center:LatLng;dark:boolean;ch
   case 'trail':if(glow){retained.trail=line(m.coords);glow.setTrail(m.coords||[]);}else setData('trail',line(m.coords));break;
   case 'paint':var lines=(m.lines||[]).filter(function(l){return l.length>1;});setData('paint',{type:'FeatureCollection',features:lines.map(function(l){return line(l);})});if(glow)glow.setPaint(lines);break;
   case 'mission':setData('mission',m.center?circle(m.center,m.radius||100):empty());break;
-  case 'gift':if(gift)gift.remove();gift=null;if(m.position){var box=document.createElement('div');box.className='gift';box.innerHTML='<img alt="" src="'+GIFT_ART+'">';gift=new mapboxgl.Marker({element:box,anchor:'bottom'}).setLngLat(m.position).addTo(map);}break;
+  case 'gift':if(gift)gift.remove();gift=null;if(m.position){var box=document.createElement('div');box.className='gift';box.innerHTML='<span class="halo"></span><img alt="" src="'+GIFT_ART+'">';gift=new mapboxgl.Marker({element:box,anchor:'bottom'}).setLngLat(m.position).addTo(map);}break;
   case 'options':rotate=m.rotate;threeD=m.threeD;break;
   case 'follow':following=true;if(closeUp)setCloseUp(false);post({type:'follow',value:true});break;
   case 'fit':fit(m.bottom,m.paintOnly,m.top);break;
