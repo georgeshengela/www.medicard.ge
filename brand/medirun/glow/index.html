@@ -8,7 +8,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Georgian:wght@400;600;700&display=swap" rel="stylesheet">
 <link href="https://api.mapbox.com/mapbox-gl-js/v3.8.0/mapbox-gl.css" rel="stylesheet">
 <script src="https://api.mapbox.com/mapbox-gl-js/v3.8.0/mapbox-gl.js"></script>
-<script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.169.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.169.0/examples/jsm/"}}</script>
+<script type="importmap">{"imports":{"three":"./engine/node_modules/three/build/three.module.js","three/addons/":"./engine/node_modules/three/examples/jsm/","pbf":"./engine/node_modules/pbf/index.js","@mapbox/vector-tile":"./engine/node_modules/@mapbox/vector-tile/index.js","@mapbox/point-geometry":"./engine/node_modules/@mapbox/point-geometry/index.js"}}</script>
 <style>
   /* App dark theme tokens (mobile/src/theme/colors.ts darkColors, PulseUi.tsx). */
   :root { --bg100: #030712; --bg200: #1F2937; --bg300: #374151; --surface: #111827; --text100: #FFFFFF; --text200: #D1D5DB; --text300: #6B7280;
@@ -144,7 +144,7 @@
   <div><div class="note">სიმულაციის სიჩქარე</div><div class="seg" id="segSpeed"><button data-v="1">×1</button><button data-v="3">×3</button><button data-v="8">×8</button><button data-v="20">×20</button></div></div>
   <div><div class="note">კამერა</div><div class="seg" id="segCam"><button data-v="close">ახლოდან</button><button data-v="far">შორიდან</button><button data-v="orbit">ზემოდან</button></div></div>
   <div><div class="note">მინიატურის ეფექტი</div><div class="seg" id="segTilt"><button data-v="on">ჩართული</button><button data-v="off">გამორთული</button></div></div>
-  <div><div class="note">პერსონაჟი</div><div class="seg" id="segHero"><button data-v="3d">3D</button><button data-v="2d">ნეონის ფიგურა</button></div></div>
+  <div><div class="note">პერსონაჟი</div><div class="seg" id="segHero"><button data-v="m">კაცი</button><button data-v="f">ქალი</button></div></div>
   <button class="action secondary" id="restart"><svg class="i" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg><span>თავიდან დაწყება</span></button>
 </div>
 <div class="sheet" id="finish">
@@ -158,6 +158,6 @@
   </div>
 </div>
 <div class="fps" id="fps"></div>
-<script type="module" src="glow.js?v=3"></script>
+<script type="module" src="glow.js?v=4"></script>
 </body>
 </html>

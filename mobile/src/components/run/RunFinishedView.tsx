@@ -38,7 +38,7 @@ export function RunFinishedView({ summary, title, headerLeft, footer }: Props) {
 
   useEffect(() => {
     if (!mapReady || !mapCenter) return;
-    map.current?.send({ type: 'init', origin: mapCenter, pin: summary.pin, route: null, radiusM: 28, fit: false });
+    map.current?.send({ type: 'init', origin: mapCenter, pin: summary.pin, route: null, radiusM: 28, fit: false, runner: false });
     const segments = summary.segments || [summary.path];
     map.current?.send({ type: 'paint', lines: segments.map(segment => segment.map(pt => [pt.lng, pt.lat] as [number, number])) });
     map.current?.send({ type: 'options', rotate: false, threeD: false });

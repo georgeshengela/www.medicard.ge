@@ -1,0 +1,14 @@
+{
+  "name": "medirun-glow-engine",
+  "private": true,
+  "type": "module",
+  "description": "MEDIRUN Glow map engine (three.js layer on Mapbox GL). Build: node build.mjs → server/public/medirun/glow/engine.js",
+  "dependencies": {
+    "@mapbox/vector-tile": "2.0.3",
+    "pbf": "4.0.1",
+    "three": "0.170.0"
+  },
+  "devDependencies": {
+    "esbuild": "0.24.0"
+  }
+}

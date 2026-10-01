@@ -21,11 +21,11 @@ function metroBaseUrl(): string {
 }
 
 /**
- * Mapbox GL JS map in a WebView. Location uses the original teal puck
- * (3D character overlay is parked for now).
+ * Mapbox GL JS map in a WebView with the MEDIRUN Glow engine (night city that lights up, 3D runner);
+ * see mapHtml.ts. Falls back to the teal puck when the engine can't load.
  */
 export const RunMap = forwardRef<RunMapHandle, Props>(function RunMap(
-  { center, onReady, onFollowChange, onError, style, mapDark },
+  { center, onReady, onFollowChange, onError, onLit, style, mapDark },
   ref,
 ) {
   const colors = useThemeColors();
@@ -73,7 +73,7 @@ export const RunMap = forwardRef<RunMapHandle, Props>(function RunMap(
 
   const onMessage = useCallback(
     (e: WebViewMessageEvent) => {
-      let data: { type?: string; value?: boolean; message?: string; msg?: string } = {};
+      let data: { type?: string; value?: boolean; message?: string; msg?: string; count?: number } = {};
       try {
         data = JSON.parse(e.nativeEvent.data);
       } catch {
@@ -84,6 +84,8 @@ export const RunMap = forwardRef<RunMapHandle, Props>(function RunMap(
         onReady?.();
       } else if (data.type === 'follow') {
         onFollowChange?.(Boolean(data.value));
+      } else if (data.type === 'lit') {
+        onLit?.(Math.max(0, Math.round(Number(data.count) || 0)));
       } else if (data.type === 'error') {
         const msg = data.message ?? 'map-error';
         setFailed(msg);
@@ -92,7 +94,7 @@ export const RunMap = forwardRef<RunMapHandle, Props>(function RunMap(
         console.log('[RunMap WebView]', data.msg);
       }
     },
-    [onError, onFollowChange, onReady],
+    [onError, onFollowChange, onLit, onReady],
   );
 
   const tokenMissing = tokenReady && !token.startsWith('pk.');

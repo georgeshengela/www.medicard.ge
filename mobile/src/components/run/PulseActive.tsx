@@ -2,12 +2,12 @@ import React,{useEffect,useMemo,useRef,useState} from 'react';
 import {ActivityIndicator,BackHandler,Image,Pressable,View} from 'react-native';
 import {RUN_GIFT} from './runArt';
 import {useRouter} from 'expo-router';
-import {ArrowLeft,BookOpen,Check,Compass,Flag,Footprints,Gauge,Gift,LocateFixed,MoreHorizontal,Navigation,Pause,Play,Route,Settings2,Timer,Trophy} from 'lucide-react-native';
+import {ArrowLeft,BookOpen,Building2,Check,Compass,Flag,Footprints,Gauge,Gift,LocateFixed,MoreHorizontal,Navigation,Pause,Play,Route,Settings2,Timer,Trophy} from 'lucide-react-native';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
 import {hideFloatingTabBar} from '@/components/navigation/tabChrome';
 import {useAuth} from '@/store/AuthContext';
-import {useThemeColors} from '@/theme/colors';
+import {useIsDark,useThemeColors} from '@/theme/colors';
 import {cancelRun,finishRun,getRunState,onRunEvent,pauseRun,prepareExploration,resumeRun,runDerived,startRun,useRunSession} from '@/lib/run/store';
 import {formatClock,formatDistanceShort,formatPace} from '@/lib/run/geo';
 import {splitDurations} from '@/lib/run/insights';
@@ -27,12 +27,13 @@ import { tx } from '@/i18n/locale';
 type Notice={text:string;tone:'info'|'success'|'warn';sticky?:boolean};
 
 export default function PulseActive(){
- const router=useRouter(),c=useThemeColors(),insets=useSafeAreaInsets(),{healthProfile}=useAuth(),run=useRunSession(),pulse=usePulse(),derived=runDerived(run);
+ const router=useRouter(),c=useThemeColors(),dark=useIsDark(),insets=useSafeAreaInsets(),{healthProfile,user}=useAuth(),run=useRunSession(),pulse=usePulse(),derived=runDerived(run);
  const map=useRef<RunMapHandle>(null),[ready,setReady]=useState(false),[following,setFollowing]=useState(true),[details,setDetails]=useState(false),[menu,setMenu]=useState(false),[finish,setFinish]=useState(false),[gift,setGift]=useState(false),[panel,setPanel]=useState<PulsePanel|null>(null),[busy,setBusy]=useState(false),[notice,setNotice]=useState<Notice|null>(null),[mapError,setMapError]=useState('');
  const settings=pulse.snapshot?.settings||{},running=run.phase==='running',active=running||run.phase==='paused';
  const testPulse=useHeartbeat(pulse.signal,settings,running);
  const [dockHeight,setDockHeight]=useState(170);
  const mission=pulse.snapshot?.missions.find(m=>m.id===pulse.book.selected);
+ const [lit,setLit]=useState(0);   // buildings the Glow map lit during this session
  const center=run.current||run.origin;
  const mapDark=settings.mapMode==='night'||(settings.mapMode!=='day'&&Boolean(center&&nightAt(center.lat,center.lng)));
  const hapticOn=settings.haptic!==false;
@@ -55,7 +56,9 @@ export default function PulseActive(){
  }),[]);
  const leave=()=>{if(active){if(running)pauseRun();setFinish(true);}else{cancelRun();router.replace('/run' as never);}};
  useEffect(()=>{const sub=BackHandler.addEventListener('hardwareBackPress',()=>{leave();return true;});return()=>sub.remove();},[active,running]);
- useEffect(()=>{if(!ready||!run.origin)return;map.current?.send({type:'init',origin:run.current||run.origin,pin:run.pin,route:run.route?.coords||null,fit:false});},[ready,run.origin,run.pin,run.route]);
+ useEffect(()=>{if(!ready||!run.origin)return;map.current?.send({type:'init',origin:run.current||run.origin,pin:run.pin,route:run.route?.coords||null,fit:false,hero:user?.gender==='FEMALE'?'f':'m'});},[ready,run.origin,run.pin,run.route,user?.gender]);
+ useEffect(()=>{if(ready)map.current?.send({type:'activity',value:running?'auto':'idle'});},[ready,running]);
+ useEffect(()=>{if(ready)map.current?.send({type:'layout',top:insets.top+8+44+8+(mission||lit>0?42:0),bottom:Math.max(12,insets.bottom)+dockHeight+12});},[ready,insets.top,insets.bottom,dockHeight,Boolean(mission||lit>0)]);
  useEffect(()=>{if(ready&&run.current)map.current?.send({type:'fix',lat:run.current.lat,lng:run.current.lng,heading:run.headingDeg});},[ready,run.current,run.headingDeg]);
  const paint=useMemo(()=>[...(pulse.journey.trail||[]),...coverageFeatures(pulse.journey).features.map(f=>f.geometry.coordinates)], [pulse.journey.trail,pulse.journey.covered]);
  useEffect(()=>{if(ready)map.current?.send({type:'paint',lines:paint});},[ready,paint]);
@@ -72,7 +75,7 @@ export default function PulseActive(){
  const banner:Notice|null=run.syncError?{text:run.syncError,tone:'warn',sticky:true}:mapError?{text:mapError,tone:'warn',sticky:true}:run.error==='location'?{text:tx('GPS შეწყდა. შეამოწმე მდებარეობის წვდომა და გააგრძელე.', 'GPS stopped. Check location access and continue.'),tone:'warn',sticky:true}:run.transportWarning?{text:run.transportResuming?tx('სიჩქარე დაიკლო · ათვლა გაგრძელდება, როცა რამდენიმე წამს ფეხით იმოძრავებ.', 'Speed dropped · counting resumes after a few seconds on foot.'):tx(`მაღალი სიჩქარე (${Math.round(run.speedKmh)} კმ/სთ) · ტრანსპორტში პროგრესი არ ითვლება. სიჩქარე რომ დაიკლებს, ათვლა თავისით გაგრძელდება.`, `High speed (${Math.round(run.speedKmh)} km/h) · progress doesn’t count in a vehicle. It resumes on its own once you slow down.`),tone:'warn',sticky:true}:notice;
  const bannerColor=banner?.tone==='success'?RUN_TEAL:banner?.tone==='warn'?'#F59E0B':c.primary100;
  return <View style={{flex:1,backgroundColor:c.bg100}}>
-  {center?<RunMap ref={map} center={center} mapDark={mapDark} onReady={()=>setReady(true)} onFollowChange={setFollowing} onError={setMapError}/>:<View style={{flex:1,alignItems:'center',justifyContent:'center',padding:30,gap:18}}>
+  {center?<RunMap ref={map} center={center} mapDark={mapDark} onReady={()=>setReady(true)} onFollowChange={setFollowing} onError={setMapError} onLit={setLit}/>:<View style={{flex:1,alignItems:'center',justifyContent:'center',padding:30,gap:18}}>
    <View style={{width:88,height:88,borderRadius:44,backgroundColor:c.accent100,alignItems:'center',justifyContent:'center'}}><Compass color={c.primary100} size={40}/></View>
    {run.phase==='preparing'?<><ActivityIndicator color={RUN_TEAL}/><Copy>{tx('შენი მდებარეობა იძებნება…', 'Finding your location…')}</Copy></>:<><Copy bold size={22} style={{textAlign:'center'}}>{tx('მზად ხარ გასასვლელად?', 'Ready to head out?')}</Copy><Copy muted style={{textAlign:'center'}}>{run.error==='permission'?tx('MEDIRUN-ს მდებარეობის წვდომა სჭირდება, რომ შენი გზა დახატოს.', 'MEDIRUN needs location access to draw your path.'):tx('დავიწყოთ შენი მდებარეობიდან.', 'Let’s start from your location.')}</Copy><View style={{alignSelf:'stretch'}}><Action label={tx('მდებარეობის მიღება', 'Get my location')} icon={LocateFixed} onPress={()=>void prepareExploration({weightKg:healthProfile?.weightKg,heightCm:healthProfile?.heightCm})}/></View><Action secondary label={tx('უკან დაბრუნება', 'Go back')} onPress={leave}/></>}
   </View>}
@@ -85,7 +88,7 @@ export default function PulseActive(){
     </Card>
     <IconButton floating label={tx('მენიუ', 'Menu')} icon={MoreHorizontal} onPress={()=>setMenu(true)}/>
    </View>
-   {mission?<Pressable accessibilityRole="button" accessibilityLabel={tx(`მისია ${mission.name}, ${missionPercent(pulse.book,mission)} პროცენტი`, `Mission ${mission.name}, ${missionPercent(pulse.book,mission)} percent`)} onPress={()=>setPanel('missions')} style={{alignSelf:'flex-start',flexDirection:'row',alignItems:'center',gap:7,backgroundColor:c.surface,borderRadius:16,paddingVertical:8,paddingHorizontal:12,shadowColor:'#030712',shadowOpacity:.14,shadowRadius:10,shadowOffset:{width:0,height:4},elevation:4}}><Compass size={13} color={c.primary100}/><Copy size={11} bold>{mission.name}</Copy><View style={{width:1,height:12,backgroundColor:c.bg300}}/><Copy size={11} bold style={{color:c.primary100}}>{missionPercent(pulse.book,mission)}%</Copy></Pressable>:null}
+   {mission||lit>0?<View pointerEvents="box-none" style={{flexDirection:'row',alignItems:'center',flexWrap:'wrap',gap:8}}>{mission?<Pressable accessibilityRole="button" accessibilityLabel={tx(`მისია ${mission.name}, ${missionPercent(pulse.book,mission)} პროცენტი`, `Mission ${mission.name}, ${missionPercent(pulse.book,mission)} percent`)} onPress={()=>setPanel('missions')} style={{flexDirection:'row',alignItems:'center',gap:7,backgroundColor:c.surface,borderRadius:16,paddingVertical:8,paddingHorizontal:12,shadowColor:'#030712',shadowOpacity:.14,shadowRadius:10,shadowOffset:{width:0,height:4},elevation:4}}><Compass size={13} color={c.primary100}/><Copy size={11} bold>{mission.name}</Copy><View style={{width:1,height:12,backgroundColor:c.bg300}}/><Copy size={11} bold style={{color:c.primary100}}>{missionPercent(pulse.book,mission)}%</Copy></Pressable>:null}{lit>0?<View accessible accessibilityLabel={tx(`ანთია ${lit} შენობა`, `${lit} buildings lit`)} style={{flexDirection:'row',alignItems:'center',gap:7,backgroundColor:c.surface,borderRadius:16,paddingVertical:8,paddingHorizontal:12,shadowColor:'#030712',shadowOpacity:.14,shadowRadius:10,shadowOffset:{width:0,height:4},elevation:4}}><Building2 size={13} color={dark?'#FCD34D':'#B45309'}/><Copy size={11} bold style={{color:dark?'#FCD34D':'#B45309',fontVariant:['tabular-nums']}}>{lit}</Copy><Copy size={11} muted>{tx('ანთია', 'lit')}</Copy></View>:null}</View>:null}
    {banner?<Pressable accessibilityRole="button" accessibilityLabel={tx('შეტყობინების დახურვა', 'Dismiss message')} onPress={()=>{setNotice(null);setMapError('');}}><Card floating style={{paddingVertical:11,paddingHorizontal:14,borderRadius:16,flexDirection:'row',alignItems:'center',gap:10}}><View style={{width:4,alignSelf:'stretch',borderRadius:2,backgroundColor:bannerColor}}/><Copy size={12} bold={banner.tone==='success'} style={{flex:1}}>{banner.text}</Copy></Card></Pressable>:null}
   </View>
   {center?<View pointerEvents="box-none" style={{position:'absolute',bottom:Math.max(12,insets.bottom)+dockHeight+12,right:14,alignItems:'flex-end',gap:9}}><IconButton floating label={tx('ჩემს მდებარეობაზე დაბრუნება', 'Back to my location')} icon={LocateFixed} active={following} onPress={()=>map.current?.send({type:'follow'})}/></View>:null}
