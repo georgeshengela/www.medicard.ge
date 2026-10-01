@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import crypto from 'node:crypto';
 import jwt from 'jsonwebtoken';
 import {
+  DEFAULT_GOOGLE_CLIENT_IDS,
   SocialAuthError,
   appleNonceValid,
   appleRevokeConfigured,
@@ -67,9 +68,13 @@ test('google: an HS256 token signed with a guessable secret is never accepted', 
   await assert.rejects(verifyGoogleIdentity({ idToken: forged }, { config, fetchImpl }), { code: 'SOCIAL_TOKEN_INVALID' });
 });
 
-test('google: not configured answers 503 instead of accepting any audience', async () => {
-  const bare = socialConfig({ JWT_SECRET: SECRET });
-  await assert.rejects(verifyGoogleIdentity({ idToken: 'a.b.c' }, { config: bare, fetchImpl }), { code: 'SOCIAL_NOT_CONFIGURED', status: 503 });
+test('google: our own client ids are the default audience; an empty list answers 503, never "any audience"', async () => {
+  const defaults = socialConfig({ JWT_SECRET: SECRET });
+  assert.deepEqual(defaults.googleClientIds, [...DEFAULT_GOOGLE_CLIENT_IDS]);
+  const token = sign({ iss: 'https://accounts.google.com', aud: DEFAULT_GOOGLE_CLIENT_IDS[0], sub: 'g-2', email: 'b@gmail.com', email_verified: true });
+  assert.equal((await verifyGoogleIdentity({ idToken: token }, { config: defaults, fetchImpl })).subject, 'g-2');
+  const empty = { ...defaults, googleClientIds: [] };
+  await assert.rejects(verifyGoogleIdentity({ idToken: 'a.b.c' }, { config: empty, fetchImpl }), { code: 'SOCIAL_NOT_CONFIGURED', status: 503 });
 });
 
 test('apple: token must carry our server nonce and bundle audience', async () => {

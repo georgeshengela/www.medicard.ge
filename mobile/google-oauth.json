@@ -1,5 +1,6 @@
 {
   "_comment": "Google Sign-In OAuth client ids (public identifiers, not secrets). Google Cloud project of Firebase medicard-d6ea0 -> APIs & Services -> Credentials. webClientId = the Web client (the server's GOOGLE_CLIENT_IDS must list it and the iOS one). iosClientId = the iOS client for ge.medicard.app. Android needs no id here: its OAuth clients are matched by package + SHA-1. Changing iosClientId changes native config (URL scheme) = store build.",
-  "webClientId": "",
-  "iosClientId": ""
+  "webClientId": "535295295288-av02tceeve5s8cs1gpe1b4t43faltjku.apps.googleusercontent.com",
+  "iosClientId": "535295295288-9bg6olin1230i5qg2k0q4dpvbrv312qb.apps.googleusercontent.com",
+  "_androidClients": "Created 2026-10-01: EAS upload key SHA-1 33:5C:9F:26:92:34:90:32:9A:D3:91:B8:19:60:50:64:0B:70:92:A8 (client 535295295288-bt78r270o26hocibup6ofv4ooiaa1mem). TODO after the first Play upload: add an Android client with the Play App Signing SHA-1 (Play Console, MEDICARD AI, Gamoiwere account -> App signing)."
 }

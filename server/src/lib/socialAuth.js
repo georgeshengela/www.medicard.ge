@@ -44,10 +44,21 @@ function list(value) {
     .filter(Boolean);
 }
 
-/** Audiences we accept. Google: web + iOS + Android client ids; Apple: the bundle id(s). */
+/**
+ * MEDICARD's own Google OAuth clients (project medicard-d6ea0, created 2026-10-01) — public ids, the
+ * same values ship inside the app (mobile/google-oauth.json). Web = the token audience on Android and
+ * iOS (webClientId); iOS is listed too in case a token is minted for it. `GOOGLE_CLIENT_IDS` overrides.
+ */
+export const DEFAULT_GOOGLE_CLIENT_IDS = Object.freeze([
+  '535295295288-av02tceeve5s8cs1gpe1b4t43faltjku.apps.googleusercontent.com',
+  '535295295288-9bg6olin1230i5qg2k0q4dpvbrv312qb.apps.googleusercontent.com',
+]);
+
+/** Audiences we accept. Google: our web + iOS client ids; Apple: the bundle id(s). */
 export function socialConfig(env = process.env) {
+  const googleOverride = list(env.GOOGLE_CLIENT_IDS);
   return {
-    googleClientIds: list(env.GOOGLE_CLIENT_IDS),
+    googleClientIds: googleOverride.length ? googleOverride : [...DEFAULT_GOOGLE_CLIENT_IDS],
     appleAudiences: list(env.APPLE_BUNDLE_IDS || 'ge.medicard.app'),
     appleTeamId: String(env.APPLE_TEAM_ID || '').trim(),
     appleKeyId: String(env.APPLE_KEY_ID || '').trim(),
