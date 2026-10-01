@@ -23,7 +23,8 @@ type ButtonProps = {
 /**
  * Apple: black on light / white on dark (Apple HIG). Google: white with a hairline border and the
  * four-colour G (Google branding; white stays white on dark — owner rule "Google on dark is white").
- * Same size, radius and weight for both so neither is more prominent (App Review 4.8).
+ * The two sit side by side at the same size, radius and weight, so neither is more prominent
+ * (App Review 4.8); screen readers still hear the full "Continue with …" label.
  */
 function ProviderButton({ provider, busy, disabled, onPress }: ButtonProps) {
   const auth = useFigmaAuth();
@@ -31,6 +32,7 @@ function ProviderButton({ provider, busy, disabled, onPress }: ButtonProps) {
   const apple = provider === 'apple';
   const background = apple ? (dark ? '#FFFFFF' : '#000000') : '#FFFFFF';
   const ink = apple ? (dark ? '#000000' : '#FFFFFF') : '#1F1F1F';
+  const name = apple ? 'Apple' : 'Google';
   const label = apple ? tx('Apple-ით გაგრძელება', 'Continue with Apple') : tx('Google-ით გაგრძელება', 'Continue with Google');
 
   return (
@@ -41,12 +43,12 @@ function ProviderButton({ provider, busy, disabled, onPress }: ButtonProps) {
       activeOpacity={0.85}
       disabled={disabled || busy}
       onPress={onPress}
-      style={{ width: '100%' }}
+      style={{ flex: 1 }}
     >
       <View
         pointerEvents="none"
         style={{
-          minHeight: 52,
+          minHeight: auth.primaryMinHeight,
           borderRadius: auth.primaryRadius,
           backgroundColor: background,
           borderWidth: apple ? 0 : 1,
@@ -54,8 +56,8 @@ function ProviderButton({ provider, busy, disabled, onPress }: ButtonProps) {
           flexDirection: 'row',
           alignItems: 'center',
           justifyContent: 'center',
-          gap: 10,
-          paddingHorizontal: 20,
+          gap: 8,
+          paddingHorizontal: 12,
           opacity: disabled && !busy ? 0.5 : 1,
         }}
       >
@@ -63,16 +65,16 @@ function ProviderButton({ provider, busy, disabled, onPress }: ButtonProps) {
           {busy ? (
             <ActivityIndicator size="small" color={apple ? ink : '#4285F4'} />
           ) : apple ? (
-            <AppleLogo size={19} color={ink} />
+            <AppleLogo size={18} color={ink} />
           ) : (
-            <GoogleLogo size={19} />
+            <GoogleLogo size={18} />
           )}
         </View>
         <Text
           numberOfLines={1}
           style={{ fontFamily: 'NotoSansGeorgian_600SemiBold', fontSize: 16, lineHeight: 22, color: ink }}
         >
-          {label}
+          {name}
         </Text>
       </View>
     </TouchableOpacity>
@@ -131,27 +133,31 @@ export function SocialAuthButtons() {
   if (!apple && !google) return null;
 
   return (
-    <View style={{ gap: 12 }}>
-      {apple ? <ProviderButton provider="apple" busy={busy === 'apple'} disabled={busy !== null} onPress={() => void start('apple')} /> : null}
-      {google ? <ProviderButton provider="google" busy={busy === 'google'} disabled={busy !== null} onPress={() => void start('google')} /> : null}
-
-      {error ? (
-        <View
-          accessibilityLiveRegion="polite"
-          style={{
-            borderRadius: 16,
-            borderWidth: 1,
-            borderColor: colors.danger,
-            backgroundColor: colors.dangerBg,
-            paddingHorizontal: 16,
-            paddingVertical: 12,
-          }}
-        >
-          <Text style={{ fontFamily: 'NotoSansGeorgian_600SemiBold', fontSize: 14, lineHeight: 20, color: colors.danger }}>{error}</Text>
+    <View style={{ gap: 20 }}>
+      <View style={{ gap: 12 }}>
+        <View style={{ flexDirection: 'row', gap: 12 }}>
+          {apple ? <ProviderButton provider="apple" busy={busy === 'apple'} disabled={busy !== null} onPress={() => void start('apple')} /> : null}
+          {google ? <ProviderButton provider="google" busy={busy === 'google'} disabled={busy !== null} onPress={() => void start('google')} /> : null}
         </View>
-      ) : null}
 
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, marginTop: 4 }}>
+        {error ? (
+          <View
+            accessibilityLiveRegion="polite"
+            style={{
+              borderRadius: 16,
+              borderWidth: 1,
+              borderColor: colors.danger,
+              backgroundColor: colors.dangerBg,
+              paddingHorizontal: 16,
+              paddingVertical: 12,
+            }}
+          >
+            <Text style={{ fontFamily: 'NotoSansGeorgian_600SemiBold', fontSize: 14, lineHeight: 20, color: colors.danger }}>{error}</Text>
+          </View>
+        ) : null}
+      </View>
+
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
         <View style={{ flex: 1, height: 1, backgroundColor: auth.dividerColor }} />
         <Text style={{ fontFamily: 'NotoSansGeorgian_400Regular', fontSize: 13, lineHeight: 18, color: auth.textMuted }}>
           {tx('ან ელ-ფოსტით', 'or with email')}

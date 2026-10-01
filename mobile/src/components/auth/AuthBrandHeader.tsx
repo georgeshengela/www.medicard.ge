@@ -30,6 +30,8 @@ export function AuthBrandHeader({ subtitle, compact = false, durationMs = 280 }:
   const auth = useFigmaAuth();
   const reduceMotion = usePrefersReducedMotion();
   const progress = useSharedValue(compact ? 1 : 0);
+  // Measured subtitle height, so a two- or three-line subtitle is never clipped.
+  const subHeight = useSharedValue(46);
 
   useEffect(() => {
     if (reduceMotion) {
@@ -58,7 +60,7 @@ export function AuthBrandHeader({ subtitle, compact = false, durationMs = 280 }:
 
   const subStyle = useAnimatedStyle(() => ({
     opacity: interpolate(progress.value, [0, 0.4, 1], [1, 0, 0]),
-    height: interpolate(progress.value, [0, 1], [38, 0]),
+    height: interpolate(progress.value, [0, 1], [subHeight.value, 0]),
     marginTop: interpolate(progress.value, [0, 1], [FIGMA_AUTH.heroGap, 0]),
   }));
 
@@ -86,6 +88,9 @@ export function AuthBrandHeader({ subtitle, compact = false, durationMs = 280 }:
       </Animated.View>
       <Animated.View style={[{ overflow: 'hidden', alignItems: 'center' }, subStyle]}>
         <Text
+          onLayout={(e) => {
+            subHeight.value = Math.ceil(e.nativeEvent.layout.height);
+          }}
           className="max-w-[320px] text-center font-sans"
           style={{
             fontSize: FIGMA_AUTH.heroSubtitleSize,

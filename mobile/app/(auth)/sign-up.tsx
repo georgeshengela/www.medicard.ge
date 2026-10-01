@@ -13,7 +13,9 @@ import { EmailTypoHint } from '@/components/auth/EmailTypoHint';
 import { ka } from '@/i18n/ka';
 import { ApiError } from '@/lib/api';
 import { authErrorMessage } from '@/lib/authErrorMessage';
+import { AUTH_KEYBOARD_OPEN_PX } from '@/lib/authChrome';
 import { isPasswordStrongEnough, scorePassword } from '@/lib/passwordStrength';
+import { useKeyboardMetrics } from '@/lib/useKeyboardHeight';
 import { useAuth } from '@/store/AuthContext';
 
 type Errors = {
@@ -27,6 +29,8 @@ type Errors = {
 export default function SignUp() {
   const { signUp } = useAuth();
   const router = useRouter();
+  const { height: keyboardHeight } = useKeyboardMetrics();
+  const keyboardOpen = keyboardHeight > AUTH_KEYBOARD_OPEN_PX;
 
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
@@ -113,11 +117,17 @@ export default function SignUp() {
   };
 
   return (
-    <AuthShell footer={<AuthPrimaryButton label={ka.auth.signUp} loading={busy} onPress={submit} />}>
+    <AuthShell
+      footer={
+        <View style={{ gap: 4 }}>
+          <AuthPrimaryButton label={ka.auth.signUp} loading={busy} onPress={submit} />
+          {keyboardOpen ? null : <SignUpSwitchLink />}
+        </View>
+      }
+    >
       <AuthScreenTitle>{ka.auth.signUp}</AuthScreenTitle>
-      <SignUpSwitchLink />
 
-      <View style={{ marginBottom: 20 }}>
+      <View style={{ marginBottom: 24 }}>
         <SocialAuthButtons />
       </View>
 

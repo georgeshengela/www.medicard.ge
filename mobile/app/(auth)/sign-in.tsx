@@ -66,9 +66,14 @@ export default function SignIn() {
       <AuthShell
         hero
         heroSubtitle={ka.auth.signInHero}
-        footer={<AuthPrimaryButton label={ka.auth.signIn} loading={busy} onPress={() => void submit()} />}
+        footer={
+          <View style={{ gap: 12 }}>
+            <AuthPrimaryButton label={ka.auth.signIn} loading={busy} onPress={() => void submit()} />
+            {keyboardOpen ? null : <SignInSwitchLink />}
+          </View>
+        }
       >
-        <View style={{ gap: keyboardOpen ? 16 : FIGMA_AUTH.sectionGap, paddingTop: keyboardOpen ? 8 : 32 }}>
+        <View style={{ gap: keyboardOpen ? 16 : 24, paddingTop: keyboardOpen ? 8 : 0 }}>
           {keyboardOpen ? null : <SocialAuthButtons />}
           <View style={{ gap: 16 }}>
             <View style={{ gap: FIGMA_AUTH.formFieldGap }}>
@@ -147,8 +152,6 @@ export default function SignIn() {
               </Text>
             </View>
           ) : null}
-
-          {keyboardOpen ? null : <SignInSwitchLink />}
         </View>
       </AuthShell>
     </View>
