@@ -19,6 +19,13 @@ import {
 
 type Stats = { records: number; chats: number; activeMedications: number };
 
+export type SocialProvider = 'apple' | 'google';
+/** `link`: an email/password account already uses this address — prove it once (/(auth)/link-account). */
+export type SocialSignInResult =
+  | { status: 'signed-in' }
+  | { status: 'cancelled' }
+  | { status: 'link'; provider: SocialProvider; email: string; linkToken: string };
+
 export type SignUpInput = {
   fullName: string;
   email: string;
@@ -42,6 +49,10 @@ type AuthState = {
   signIn: (email: string, password: string) => Promise<void>;
   signUp: (input: SignUpInput) => Promise<void>;
   signInWithPhone: (phone: string, code: string, fullName?: string) => Promise<void>;
+  signInWithApple: () => Promise<SocialSignInResult>;
+  signInWithGoogle: () => Promise<SocialSignInResult>;
+  /** Attaches a pending Apple / Google sign-in to the existing account after its password was entered. */
+  linkSocialAccount: (linkToken: string, password: string) => Promise<void>;
   /** SMS password reset: sets the new password and signs in. */
   resetPasswordWithSms: (input: { phone: string; code: string; password: string; confirmPassword: string }) => Promise<void>;
   signOut: () => Promise<void>;
@@ -300,6 +311,29 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const consumeDailyBonus = useCallback(() => setPendingDailyBonus(null), []);
 
+  const completeSocial = useCallback(
+    async (
+      provider: SocialProvider,
+      call: () => Promise<Parameters<typeof adopt>[0] & { created?: boolean }>,
+    ): Promise<SocialSignInResult> => {
+      try {
+        const result = await call();
+        await adopt(result);
+        if (result.created) {
+          void import('@/lib/funnel').then(({ trackSignupCompleted }) => trackSignupCompleted(provider)).catch(() => undefined);
+        }
+        return { status: 'signed-in' };
+      } catch (error) {
+        const details = error instanceof ApiError ? error.details : undefined;
+        if (error instanceof ApiError && error.code === 'SOCIAL_LINK_REQUIRED' && typeof details?.linkToken === 'string') {
+          return { status: 'link', provider, email: String(details.email ?? ''), linkToken: details.linkToken };
+        }
+        throw error;
+      }
+    },
+    [adopt],
+  );
+
   const value = useMemo<AuthState>(
     () => ({
       ready,
@@ -337,6 +371,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           void import('@/lib/funnel').then(({ trackSignupCompleted }) => trackSignupCompleted('phone')).catch(() => undefined);
         }
       },
+      signInWithApple: async () => {
+        const { requestAppleCredential } = await import('@/lib/socialSignIn');
+        const { nonce } = await api.auth.appleNonce();
+        const credential = await requestAppleCredential(nonce);
+        if (!credential) return { status: 'cancelled' };
+        return completeSocial('apple', () => api.auth.apple(credential));
+      },
+      signInWithGoogle: async () => {
+        const { requestGoogleIdToken } = await import('@/lib/socialSignIn');
+        const idToken = await requestGoogleIdToken();
+        if (!idToken) return { status: 'cancelled' };
+        return completeSocial('google', () => api.auth.google({ idToken }));
+      },
+      linkSocialAccount: async (linkToken, password) => adopt(await api.auth.socialLink({ linkToken, password })),
       signOut: async () => {
         const userId = user?.id;
         setQuestVisualSession(false);
@@ -401,6 +449,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       pendingDailyBonus,
       consumeDailyBonus,
       adopt,
+      completeSocial,
       hydrate,
       refreshSession,
       refreshHealthProfile,

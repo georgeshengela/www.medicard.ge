@@ -740,6 +740,8 @@ export class ApiError extends Error {
   healthSchemaReady?: boolean;
   careSchemaReady?: boolean;
   chatSchemaReady?: boolean;
+  /** The error body as the server sent it (e.g. SOCIAL_LINK_REQUIRED carries `linkToken`). */
+  details?: Record<string, unknown>;
 
   constructor(
     message: string,
@@ -755,6 +757,7 @@ export class ApiError extends Error {
     this.usage = payload?.usage as Usage | undefined;
     this.upsell = payload?.upsell as Upsell | undefined;
     this.retryAfterSeconds = retryAfterSeconds;
+    this.details = payload;
     if (payload && 'schemaReady' in payload) this.schemaReady = payload.schemaReady as boolean;
     if (payload && 'healthSchemaReady' in payload) this.healthSchemaReady = payload.healthSchemaReady as boolean;
     if (payload && 'careSchemaReady' in payload) this.careSchemaReady = payload.careSchemaReady as boolean;
@@ -2327,6 +2330,16 @@ export const api = {
 
     login: (body: { email: string; password: string }) =>
       request<AuthResponse>('/api/auth/login', { method: 'POST', body, token: null, timeoutMs: 30_000, retryAuthConnection: true }),
+
+    /** Sign in with Apple / Google (2026-10-01). `created` = a new account was made. */
+    appleNonce: () =>
+      request<{ nonce: string }>('/api/auth/apple/nonce', { token: null, timeoutMs: 15_000 }),
+    apple: (body: { identityToken: string; authorizationCode?: string; nonce: string; fullName?: string }) =>
+      request<AuthResponse & { created?: boolean }>('/api/auth/apple', { method: 'POST', body, token: null, timeoutMs: 30_000 }),
+    google: (body: { idToken: string }) =>
+      request<AuthResponse & { created?: boolean }>('/api/auth/google', { method: 'POST', body, token: null, timeoutMs: 30_000 }),
+    socialLink: (body: { linkToken: string; password: string }) =>
+      request<AuthResponse>('/api/auth/social/link', { method: 'POST', body, token: null, timeoutMs: 30_000 }),
 
     phoneStart: (phone: string) =>
       request<{ sent: boolean; phone: string; message: string; devCode?: string; cooldownSec?: number }>(

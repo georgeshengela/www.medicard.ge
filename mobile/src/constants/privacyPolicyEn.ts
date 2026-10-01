@@ -25,7 +25,7 @@ export const PRIVACY_POLICY_EN: { title: string; effectiveDate: string; intro: s
     },
     {
       "title": "2. Your account and the records you add in the app",
-      "intro": "To register and sign you in, we process your email, name, account identifier and, where relevant, your phone number. Your password is stored on the server in hashed form. You can add your date of birth, sex and a photo to your profile.",
+      "intro": "To register and sign you in, we process your email, name, account identifier and, where relevant, your phone number. Your password is stored on the server in hashed form. If you sign in with Apple or Google, Apple / Google send us a permanent account identifier, your email (with Apple, possibly a private relay address) and, if you share it, your name; no health data is sent to them. When an account created with Apple is deleted, we also revoke the access Apple granted. You can add your date of birth, sex and a photo to your profile.",
       "paragraphs": [
         "The data you enter in the health features may include symptoms, conditions, allergies, medications, family history, goals, lab results, images, visits, cycle records and health metrics. This information may be special category personal data concerning health.",
         "In your cycle records you can choose to log sexual activity and sex drive. These fields are stored in the most sensitive category: they are not passed to AI recipients, a trainer, the women's space, analytics or notifications, and only you can see them. You can delete such a record at any time.",

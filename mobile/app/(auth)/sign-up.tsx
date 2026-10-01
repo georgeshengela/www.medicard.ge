@@ -5,6 +5,7 @@ import { Lock, Mail, User } from 'lucide-react-native';
 import { AuthShell } from '@/components/AuthShell';
 import { AuthScreenTitle } from '@/components/auth/AuthScreenTitle';
 import { SignUpSwitchLink } from '@/components/auth/AuthSwitchLink';
+import { SocialAuthButtons } from '@/components/auth/SocialAuthButtons';
 import { AuthPrimaryButton } from '@/components/auth/AuthPrimaryButton';
 import { PasswordStrengthHint } from '@/components/auth/PasswordStrengthHint';
 import { Input } from '@/components/ui/Input';
@@ -115,6 +116,10 @@ export default function SignUp() {
     <AuthShell footer={<AuthPrimaryButton label={ka.auth.signUp} loading={busy} onPress={submit} />}>
       <AuthScreenTitle>{ka.auth.signUp}</AuthScreenTitle>
       <SignUpSwitchLink />
+
+      <View style={{ marginBottom: 20 }}>
+        <SocialAuthButtons />
+      </View>
 
       <View style={{ gap: 16 }}>
         <Input

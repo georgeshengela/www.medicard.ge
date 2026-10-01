@@ -21,7 +21,7 @@ MEDICARD is operated by George Shengelia (გიორგი შენგელ�
 
 # 2. Account and records you add in the app
 
-For registration and sign-in, we process your email, name, account identifier and, where applicable, your phone number. Passwords are stored on the server in hashed form. Your date of birth, sex and photo may be added to your profile.
+For registration and sign-in, we process your email, name, account identifier and, where applicable, your phone number. Passwords are stored on the server in hashed form. If you sign in with Apple or Google, Apple / Google send us a permanent account identifier, your email (with Apple, possibly a private relay address) and, if you share it, your name; no health data is sent to them. When an account created with Apple is deleted, we also revoke the access Apple granted. Your date of birth, sex and photo may be added to your profile.
 
 The data you enter in health features may include symptoms, conditions, allergies, medications, family history, goals, lab tests, images, visits, cycle records and health metrics. This information may be a special category of personal data concerning health.
 

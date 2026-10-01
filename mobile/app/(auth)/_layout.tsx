@@ -21,6 +21,7 @@ export default function AuthLayout() {
         <Stack.Screen name="welcome" options={{ ...peerMotion, contentStyle: { backgroundColor: '#14B8A6' } }} />
         <Stack.Screen name="sign-in" options={peerMotion} />
         <Stack.Screen name="sign-up" options={peerMotion} />
+        <Stack.Screen name="link-account" />
         <Stack.Screen name="forgot-password" />
         <Stack.Screen name="assessment/index" />
         <Stack.Screen name="profile-setup" />

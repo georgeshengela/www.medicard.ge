@@ -2,17 +2,24 @@ import crypto from 'node:crypto';
 
 /** Phone-only accounts get a synthetic `<number>@phone.medicard.ge` login; it is not a mailbox. */
 export const SYNTHETIC_EMAIL_DOMAIN = 'phone.medicard.ge';
+/** Sign in with Apple without a shared address gets `apple.<hash>@apple.medicard.ge` (src/lib/socialAuth.js). */
+export const SYNTHETIC_EMAIL_DOMAINS = Object.freeze([SYNTHETIC_EMAIL_DOMAIN, 'apple.medicard.ge']);
+
+export function isSyntheticEmail(value) {
+  const email = normalizeEmail(value);
+  return SYNTHETIC_EMAIL_DOMAINS.some((domain) => email.endsWith(`@${domain}`));
+}
 
 export function normalizeEmail(value) {
   return String(value ?? '').trim().toLowerCase();
 }
 
-/** A real, mailable address: syntactically plausible and not a synthetic phone login. */
+/** A real, mailable address: syntactically plausible and not a synthetic phone / Apple login. */
 export function isDeliverableEmail(value) {
   const email = normalizeEmail(value);
   if (email.length < 6 || email.length > 254) return false;
   if (!/^[^\s@<>()",;]+@[^\s@<>()",;]+\.[a-z]{2,}$/i.test(email)) return false;
-  return !email.endsWith(`@${SYNTHETIC_EMAIL_DOMAIN}`);
+  return !isSyntheticEmail(email);
 }
 
 /**

@@ -3,6 +3,7 @@ import { revokeCycleShares } from './cycleLifecycle.js';
 import { unlinkStoredUpload } from './privateUploads.js';
 import { coachFilesOf } from './trainerStore.js';
 import { getUserLanguage, t } from './i18n.js';
+import { revokeAppleGrantsForUser } from './socialAuth.js';
 
 export const SMS_LOG_REDACTED_CONTENT = '[redacted]';
 
@@ -55,6 +56,10 @@ export async function deleteUserAccount(userId, lang = 'ka') {
 
   // Progress photos and trainer certificates cascade with the user row; their files are removed after.
   const coachFiles = await coachFilesOf(userId).catch(() => []);
+
+  // Sign in with Apple: revoke the grant before the row (and its stored token) goes — App Review 5.1.1(v).
+  // Best-effort: a failed revoke never keeps an account the person asked to delete.
+  await revokeAppleGrantsForUser(userId);
 
   const locationTable = await prisma.$queryRaw`SELECT to_regclass('"UserLocation"')::text AS name`;
   // A trainer keeps session rows about a deleted client (clientId → NULL); their notes about that person go.

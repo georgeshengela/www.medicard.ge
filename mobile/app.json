@@ -3,7 +3,7 @@
     "name": "MEDICARD AI",
     "slug": "medicard-ge",
     "scheme": "medicard",
-    "version": "1.0.0.17.38",
+    "version": "1.0.0.18.0",
     "assetBundlePatterns": [
       "assets/**"
     ],
@@ -14,8 +14,9 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "ge.medicard.app",
+      "usesAppleSignIn": true,
       "version": "1.11.30",
-      "buildNumber": "89",
+      "buildNumber": "90",
       "infoPlist": {
         "CFBundleDisplayName": "MEDICARD AI",
         "NSCameraUsageDescription": "კამერა საჭიროა კერძის, საკვების ეტიკეტისა და შტრიხკოდის სკანირებისთვის კვების დღიურში, ანალიზების, რენტგენის, კანის და ცხოველის ფოტოსთვის, პროფილისა და MEDI COACH-ის პროგრეს-ფოტოებისა და ტრენერის სერტიფიკატისთვის, QR კოდის წასაკითხად, ასევე MEDIRUN-ში ვირტუალური საჩუქრის აღმოსაჩენად.",
@@ -34,7 +35,7 @@
     "android": {
       "package": "ge.medicard.app",
       "googleServicesFile": "./google-services.json",
-      "versionCode": 89,
+      "versionCode": 90,
       "adaptiveIcon": {
         "backgroundColor": "#14B8A6",
         "foregroundImage": "./assets/android-icon-foreground.png",
@@ -159,6 +160,7 @@
           "faceIDPermission": "Medicard-ს Face ID სჭირდება ანგარიშისა და ციკლის მონაცემების დასაცავად."
         }
       ],
+      "expo-apple-authentication",
       "expo-sharing",
       "expo-status-bar",
       "@react-native-community/datetimepicker",

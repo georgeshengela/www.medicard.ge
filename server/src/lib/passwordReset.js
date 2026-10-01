@@ -1,6 +1,7 @@
 import crypto from 'node:crypto';
 import bcrypt from 'bcryptjs';
 import { prisma } from './prisma.js';
+import { isSyntheticEmail } from './email/address.js';
 import { sendPasswordResetCode } from './email.js';
 import { isQaOtpEnabled, matchesQaEmailOtp } from './qaOtp.js';
 import { evaluateOtpRow, unusedUnexpiredOtpWhere } from './otpContract.js';
@@ -34,7 +35,7 @@ export const EMAIL_NOT_FOUND_MESSAGE_EN =
  */
 export async function requestPasswordReset(email, lang = 'ka') {
   const normalized = email.trim().toLowerCase();
-  const user = normalized.endsWith('@phone.medicard.ge')
+  const user = isSyntheticEmail(normalized)
     ? null
     : await prisma.user.findUnique({ where: { email: normalized } });
 

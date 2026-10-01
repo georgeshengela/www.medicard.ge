@@ -6,6 +6,7 @@ import { AuthShell } from '@/components/AuthShell';
 import { SignInSwitchLink } from '@/components/auth/AuthSwitchLink';
 import { AuthCheckbox } from '@/components/auth/AuthCheckbox';
 import { AuthPrimaryButton } from '@/components/auth/AuthPrimaryButton';
+import { SocialAuthButtons } from '@/components/auth/SocialAuthButtons';
 import { Input } from '@/components/ui/Input';
 import { FIGMA_AUTH, useFigmaAuth } from '@/constants/figmaAuthLayout';
 import { ka } from '@/i18n/ka';
@@ -68,6 +69,7 @@ export default function SignIn() {
         footer={<AuthPrimaryButton label={ka.auth.signIn} loading={busy} onPress={() => void submit()} />}
       >
         <View style={{ gap: keyboardOpen ? 16 : FIGMA_AUTH.sectionGap, paddingTop: keyboardOpen ? 8 : 32 }}>
+          {keyboardOpen ? null : <SocialAuthButtons />}
           <View style={{ gap: 16 }}>
             <View style={{ gap: FIGMA_AUTH.formFieldGap }}>
               <Input

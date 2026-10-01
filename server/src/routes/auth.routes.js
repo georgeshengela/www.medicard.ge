@@ -19,6 +19,21 @@ import { claimDailyCheckIn } from '../lib/checkIn.js';
 import { recordAppActivityFromRequest } from '../lib/appActivity.js';
 import { deleteUserAccount } from '../lib/deleteUser.js';
 import { queueAccountDeletedEmail, queueWelcomeEmail } from '../lib/email.js';
+import {
+  SocialAuthError,
+  exchangeAppleCode,
+  findIdentity,
+  issueAppleNonce,
+  readLinkToken,
+  resolveSocialIdentity,
+  saveIdentity,
+  sealSecret,
+  signLinkToken,
+  socialDisplayName,
+  unusablePasswordHash,
+  verifyAppleIdentity,
+  verifyGoogleIdentity,
+} from '../lib/socialAuth.js';
 
 export const authRouter = Router();
 
@@ -404,6 +419,208 @@ authRouter.post(
       user: publicUser(user),
       usage: await getUsageSafe(user.id),
     });
+  }),
+);
+
+/* ───────── Sign in with Apple / Google (2026-10-01, src/lib/socialAuth.js) ───────── */
+
+const appleSignInSchema = z.object({
+  identityToken: z.string().min(20).max(8192),
+  authorizationCode: z.string().max(2048).optional(),
+  nonce: z.string().min(10).max(200),
+  // Apple shares the name only on the very first authorization, on the device — never in the token.
+  fullName: z.string().max(160).optional(),
+});
+const googleSignInSchema = z.object({ idToken: z.string().min(20).max(8192) });
+const socialLinkSchema = z.object({
+  linkToken: z.string().min(20).max(4096),
+  password: z.string().min(1, 'შეიყვანე პაროლი').max(128),
+});
+
+const SOCIAL_FAILURE_COPY = {
+  SOCIAL_NOT_CONFIGURED: ['ეს შესვლის გზა ჯერ არ არის ჩართული. შედი ელ-ფოსტით.', 'This sign-in option is not available yet. Please sign in with email.'],
+  SOCIAL_KEYS_UNAVAILABLE: ['შესვლის სერვისს ვერ დავუკავშირდით. სცადე ცოტა ხანში.', 'We could not reach the sign-in service. Please try again shortly.'],
+  SOCIAL_EMAIL_UNVERIFIED: ['ამ Google ანგარიშის ელ-ფოსტა დადასტურებული არ არის. აირჩიე სხვა ანგარიში ან შედი ელ-ფოსტით.', 'This Google account has no verified email. Choose another account or sign in with email.'],
+};
+
+function socialFailure(req, res, error) {
+  if (!(error instanceof SocialAuthError)) throw error;
+  const copy = SOCIAL_FAILURE_COPY[error.code] ?? ['შესვლა ვერ დადასტურდა. სცადე თავიდან.', 'We could not confirm this sign-in. Please try again.'];
+  return res.status(error.status).json({ error: t(req, copy[0], copy[1]), code: error.code });
+}
+
+const blockedPayload = (req) => ({
+  error: t(req, 'შენი ანგარიში დაბლოკილია. დაგვიკავშირდი მხარდაჭერას.', 'Your account is blocked. Please contact support.'),
+  code: 'ACCOUNT_BLOCKED',
+});
+
+/** Fresh connection (Neon pooler): never hand out a JWT the next request cannot resolve. */
+async function confirmedUserBundle(userId) {
+  for (let attempt = 0; attempt < 5; attempt += 1) {
+    const user = await loadUserBundle(userId);
+    if (user?.id) return user;
+    await new Promise((resolve) => setTimeout(resolve, 120 * (attempt + 1)));
+  }
+  return null;
+}
+
+/** Prisma unique error, or Postgres 23505 surfaced through a raw query (the AuthIdentity insert). */
+function isUniqueViolation(err) {
+  return err?.code === 'P2002' || (err?.code === 'P2010' && /23505|unique/i.test(String(err?.meta?.code ?? err?.message)));
+}
+
+async function signedInPayload(user, created) {
+  return { token: signToken(user), user: publicUser(user), usage: await getUsageSafe(user.id), created };
+}
+
+/**
+ * Signs a verified identity in: its own account, an account already verified by the other
+ * provider for the same email, or a new account. A password account with the same email answers
+ * 409 SOCIAL_LINK_REQUIRED + a 10-minute linkToken (see socialAuth.js "Linking rule").
+ */
+async function completeSocialSignIn(req, res, identity, { fullName = null, sealedRefresh = null, retried = false } = {}) {
+  const decision = await resolveSocialIdentity(identity);
+
+  if (decision.kind === 'link') {
+    return res.status(409).json({
+      error: t(
+        req,
+        'ამ ელ-ფოსტით ანგარიში უკვე გაქვს. შეიყვანე მისი პაროლი ერთხელ — შემდეგ ერთი შეხებით შეხვალ.',
+        'You already have an account with this email. Enter its password once — after that you can sign in with one tap.',
+      ),
+      code: 'SOCIAL_LINK_REQUIRED',
+      provider: identity.provider,
+      email: identity.email,
+      linkToken: signLinkToken(identity, { sealedRefresh }),
+    });
+  }
+
+  if (decision.kind === 'existing') {
+    const user = await loadUserBundle(decision.userId);
+    if (!user) {
+      return res.status(401).json({
+        error: t(req, 'შესვლა ვერ დადასტურდა. სცადე თავიდან.', 'We could not confirm this sign-in. Please try again.'),
+        code: 'SOCIAL_TOKEN_INVALID',
+      });
+    }
+    if (user.status === 'BLOCKED') return res.status(403).json(blockedPayload(req));
+    await saveIdentity({ userId: user.id, identity, sealedRefresh });
+    return res.json(await signedInPayload(user, false));
+  }
+
+  const settings = await getAppSettings();
+  if (!settings.allowRegistrations) {
+    return res.status(403).json({
+      error: t(req, 'რეგისტრაცია დროებით გამორთულია. სცადე მოგვიანებით.', 'Sign-up is paused for now. Please try again later.'),
+      code: 'REGISTRATIONS_CLOSED',
+    });
+  }
+
+  const packageId = await ensureFreePackageId();
+  const passwordHash = await unusablePasswordHash();
+  let createdId;
+  try {
+    createdId = await prisma.$transaction(async (tx) => {
+      const created = await tx.user.create({
+        data: {
+          email: decision.email,
+          fullName: socialDisplayName(fullName, identity.name),
+          passwordHash,
+          packageId,
+          status: 'ACTIVE',
+        },
+      });
+      await saveIdentity({ userId: created.id, identity, sealedRefresh }, tx);
+      return created.id;
+    });
+  } catch (err) {
+    // A double tap (or another device) created it a moment ago: resolve again once.
+    if (isUniqueViolation(err) && !retried) {
+      return completeSocialSignIn(req, res, identity, { fullName, sealedRefresh, retried: true });
+    }
+    throw err;
+  }
+
+  const user = await confirmedUserBundle(createdId);
+  if (!user) {
+    return res.status(500).json({
+      error: t(req, 'ანგარიში ვერ შეიქმნა. სცადე ხელახლა.', 'We could not create your account. Please try again.'),
+      code: 'REGISTER_UNCONFIRMED',
+    });
+  }
+  // Apple relay addresses accept mail only once medicard.ge is registered with Apple; skip the
+  // welcome email there so a bounce cannot suppress the address for later password resets.
+  if (!identity.privateRelay) queueWelcomeEmail(user, {}, { lang: req.lang });
+  return res.status(201).json(await signedInPayload(user, true));
+}
+
+authRouter.get(
+  '/apple/nonce',
+  asyncHandler(async (_req, res) => {
+    res.set('Cache-Control', 'no-store');
+    return res.json({ nonce: issueAppleNonce() });
+  }),
+);
+
+authRouter.post(
+  '/apple',
+  asyncHandler(async (req, res) => {
+    const data = appleSignInSchema.parse(req.body);
+    let identity;
+    try {
+      identity = await verifyAppleIdentity({ identityToken: data.identityToken, nonce: data.nonce });
+    } catch (error) {
+      return socialFailure(req, res, error);
+    }
+    const refreshToken = await exchangeAppleCode(data.authorizationCode);
+    return completeSocialSignIn(req, res, identity, {
+      fullName: data.fullName,
+      sealedRefresh: refreshToken ? sealSecret(refreshToken) : null,
+    });
+  }),
+);
+
+authRouter.post(
+  '/google',
+  asyncHandler(async (req, res) => {
+    const data = googleSignInSchema.parse(req.body);
+    let identity;
+    try {
+      identity = await verifyGoogleIdentity({ idToken: data.idToken });
+    } catch (error) {
+      return socialFailure(req, res, error);
+    }
+    return completeSocialSignIn(req, res, identity);
+  }),
+);
+
+/** Proves the existing password account once, then attaches the Apple / Google identity to it. */
+authRouter.post(
+  '/social/link',
+  asyncHandler(async (req, res) => {
+    const data = socialLinkSchema.parse(req.body);
+    const link = readLinkToken(data.linkToken);
+    if (!link) {
+      return res.status(400).json({
+        error: t(req, 'დრო ამოიწურა. სცადე შესვლა თავიდან.', 'This took too long. Please start the sign-in again.'),
+        code: 'SOCIAL_LINK_EXPIRED',
+      });
+    }
+    const user = await prisma.user.findUnique({ where: { email: link.identity.email }, include: { package: true } });
+    const valid = user ? await bcrypt.compare(data.password, user.passwordHash) : false;
+    if (!user || !valid) {
+      return res.status(401).json({ error: t(req, 'პაროლი არასწორია.', 'The password is incorrect.'), code: 'INVALID_PASSWORD' });
+    }
+    if (user.status === 'BLOCKED') return res.status(403).json(blockedPayload(req));
+    const owner = await findIdentity(link.identity.provider, link.identity.subject);
+    if (owner && owner.userId !== user.id) {
+      return res.status(409).json({
+        error: t(req, 'ეს Apple / Google ანგარიში უკვე სხვა Medicard ანგარიშზეა მიბმული.', 'This Apple / Google account is already linked to another Medicard account.'),
+        code: 'SOCIAL_ALREADY_LINKED',
+      });
+    }
+    await saveIdentity({ userId: user.id, identity: link.identity, sealedRefresh: link.sealedRefresh });
+    return res.json(await signedInPayload(user, false));
   }),
 );
 

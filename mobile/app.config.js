@@ -11,6 +11,23 @@
  */
 const FIVE = /^(\d+)\.(\d+)\.(\d+)\.(\d+)\.(\d+)$/;
 
+/**
+ * Google Sign-In on iOS returns to the app through the reversed iOS client id as a URL scheme.
+ * The plugin refuses to run without it, so it is added only once `google-oauth.json` has the id
+ * (until then the Google button stays hidden — src/lib/socialSignIn.ts).
+ */
+function withGoogleSignIn(plugins = []) {
+  let iosClientId = '';
+  try {
+    iosClientId = String(require('./google-oauth.json').iosClientId || '').trim();
+  } catch {
+    iosClientId = '';
+  }
+  const match = iosClientId.match(/^(.+)\.apps\.googleusercontent\.com$/);
+  if (!match) return plugins;
+  return [...plugins, ['@react-native-google-signin/google-signin', { iosUrlScheme: `com.googleusercontent.apps.${match[1]}` }]];
+}
+
 module.exports = ({ config }) => {
   const version = String(config.version || '').trim();
   const five = version.match(FIVE);
@@ -19,6 +36,7 @@ module.exports = ({ config }) => {
   return {
     ...config,
     runtimeVersion: `${five[1]}.${five[2]}.${five[3]}.${five[4]}`,
+    plugins: withGoogleSignIn(config.plugins),
     updates: {
       ...config.updates,
       url: `https://u.expo.dev/${projectId}`,

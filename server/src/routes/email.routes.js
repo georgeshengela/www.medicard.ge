@@ -156,7 +156,7 @@ adminEmailRouter.get('/overview', asyncHandler(async (req, res) => {
   }
   try {
     const r = await prisma.$queryRaw`SELECT COUNT(*) FILTER (WHERE "emailMarketingOptIn")::int AS "optedIn", COUNT(*)::int AS reachable
-      FROM "User" WHERE status <> 'BLOCKED' AND email NOT LIKE '%@phone.medicard.ge'`;
+      FROM "User" WHERE status <> 'BLOCKED' AND email NOT LIKE '%@phone.medicard.ge' AND email NOT LIKE '%@apple.medicard.ge'`;
     const { optedIn = 0, reachable = 0 } = r[0] || {};
     optIn = { optedIn, reachable, rate: reachable ? Math.round((optedIn / reachable) * 1000) / 10 : null };
   } catch (error) {

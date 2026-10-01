@@ -1,0 +1,5 @@
+{
+  "_comment": "Google Sign-In OAuth client ids (public identifiers, not secrets). Google Cloud project of Firebase medicard-d6ea0 -> APIs & Services -> Credentials. webClientId = the Web client (the server's GOOGLE_CLIENT_IDS must list it and the iOS one). iosClientId = the iOS client for ge.medicard.app. Android needs no id here: its OAuth clients are matched by package + SHA-1. Changing iosClientId changes native config (URL scheme) = store build.",
+  "webClientId": "",
+  "iosClientId": ""
+}
