@@ -41,14 +41,16 @@ const MAP_BOX={x:90,y:212,w:900,h:566};
 function mapArt(map:TerritoryMap){
  const s=Math.min(MAP_BOX.w/map.cols,MAP_BOX.h/map.rows),ox=MAP_BOX.x+(MAP_BOX.w-map.cols*s)/2,oy=MAP_BOX.y+(MAP_BOX.h-map.rows*s)/2;
  const f=(n:number)=>n.toFixed(1),dot=s*.13,sq=s*.78,halo=s*1.7;
- let dots='',glow='';const lit:string[]=Array(8).fill('');
+ let dots='',glow='',n=0,sx=0,sy=0;const lit:string[]=Array(8).fill('');
  map.grid.forEach((row,y)=>{for(let x=0;x<row.length;x++){const v=row.charCodeAt(x)-48;if(v<=0)continue;const cx=ox+(x+.5)*s,cy=oy+(y+.5)*s;
   if(v===1){dots+=`M${f(cx-dot)} ${f(cy)}a${f(dot)} ${f(dot)} 0 1 0 ${f(dot*2)} 0a${f(dot)} ${f(dot)} 0 1 0 ${f(-dot*2)} 0`;continue;}
+  n++;sx+=cx;sy+=cy;
   glow+=`M${f(cx-halo)} ${f(cy)}a${f(halo)} ${f(halo)} 0 1 0 ${f(halo*2)} 0a${f(halo)} ${f(halo)} 0 1 0 ${f(-halo*2)} 0`;
   lit[Math.min(7,v-2)]+=`M${f(cx-sq/2)} ${f(cy-sq/2)}h${f(sq)}v${f(sq)}h${f(-sq)}z`;
  }});
  const outline=map.outline.map(r=>r.map(([x,y],i)=>`${i?'L':'M'}${f(ox+x*s)} ${f(oy+y*s)}`).join('')+'Z').join('');
- return {dots,glow,lit,outline};
+ // A small painted spot on a big city gets rings, so it reads at a glance.
+ return {dots,glow,lit,outline,spot:n&&n<=12?{x:sx/n,y:sy/n}:null};
 }
 
 function ShareCard({city,country,paintedKm2,totalKm,lang,showMap=true}:{city:TerritoryArea|null;country:TerritoryArea|null;paintedKm2:number;totalKm:number;lang:'ka'|'en';showMap?:boolean}){
@@ -77,6 +79,7 @@ function ShareCard({city,country,paintedKm2,totalKm,lang,showMap=true}:{city:Ter
    <Path d={real.dots} fill="#FFFFFF" fillOpacity=".16"/>
    <Path d={real.glow} fill={TEAL} fillOpacity=".16"/>
    {real.lit.map((d,i)=>d?<Path key={i} d={d} fill={i>=5?MINT:TEAL} fillOpacity={.62+i*.05}/>:null)}
+   {real.spot?<G><Circle cx={real.spot.x} cy={real.spot.y} r="38" fill="none" stroke={MINT} strokeOpacity=".6" strokeWidth="3"/><Circle cx={real.spot.x} cy={real.spot.y} r="66" fill="none" stroke={MINT} strokeOpacity=".25" strokeWidth="2"/></G>:null}
   </G>:<G>
    {art.blocks.map((b,i)=><Rect key={i} x={b.x} y={b.y+(art.ch-b.h)} width={b.w} height={b.h} rx="14" fill={b.on?TEAL:'#1F2937'} fillOpacity={b.on?.9:.75}/>)}
    {art.pts.slice(1).map((p,i)=><Line key={'g'+i} x1={art.pts[i][0]} y1={art.pts[i][1]} x2={p[0]} y2={p[1]} stroke={TEAL} strokeWidth="26" strokeLinecap="round" strokeOpacity=".22"/>)}
