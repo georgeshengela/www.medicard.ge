@@ -5,7 +5,7 @@
 import {prisma} from '../prisma.js';
 import {nominatimTurn} from '../userLocation.js';
 import {countryCodeOf,countryNameKa,countryNameEn,cityNameKa,cityNameEn} from '../geoPlace.js';
-import {paintedCells,groupByTile,tileCenter,cellCenter,insideGeometry,geometryBbox,geometryAreaKm2,CELL_KM2,WORLD_LAND_KM2} from './territoryMath.js';
+import {paintedCells,groupByTile,tileCenter,cellCenter,insideGeometry,geometryBbox,geometryAreaKm2,cityMap,CELL_KM2,WORLD_LAND_KM2} from './territoryMath.js';
 
 const UA='Medicard.GE/1.0 (MEDIRUN painted city; contact@medicard.ge)';
 /** New tiles are looked up within this budget; the rest arrive on the next visit (`pending`). */
@@ -79,12 +79,13 @@ export async function territory(userId,lang='ka'){
   if(place.countryCode)countryCells.set(place.countryCode,(countryCells.get(place.countryCode)||0)+list.length);
   const city=place.cityId&&areas.get(place.cityId);if(!city?.geometry)continue;
   let box=boxes.get(city.id);if(!box)boxes.set(city.id,box=geometryBbox(city.geometry));
-  let n=0;for(const key of list){const p=cellCenter(key);if(p[0]>=box[0]&&p[0]<=box[2]&&p[1]>=box[1]&&p[1]<=box[3]&&insideGeometry(p,city.geometry))n++;}
-  if(n)cityCells.set(city.id,(cityCells.get(city.id)||0)+n);
+  let mine=cityCells.get(city.id);if(!mine)cityCells.set(city.id,mine=[]);
+  for(const key of list){const p=cellCenter(key);if(p[0]>=box[0]&&p[0]<=box[2]&&p[1]>=box[1]&&p[1]<=box[3]&&insideGeometry(p,city.geometry))mine.push(key);}
  }
  const name=a=>(lang==='en'?a.nameEn||a.nameKa:a.nameKa||a.nameEn)||'';
  const row=(a,count)=>({id:a.id,name:name(a),countryCode:a.countryCode,areaKm2:a.areaKm2,paintedKm2:count*CELL_KM2,percent:a.areaKm2>0?Math.min(100,count*CELL_KM2/a.areaKm2*100):0});
- const cities=[...cityCells].map(([id,n])=>row(areas.get(id),n)).sort((a,b)=>b.paintedKm2-a.paintedKm2);
+ // The six cities the app can pick from also get the minimal map for the share card.
+ const cities=[...cityCells].filter(([,keys])=>keys.length).sort((a,b)=>b[1].length-a[1].length).map(([id,keys],i)=>({...row(areas.get(id),keys.length),map:i<6?cityMap(areas.get(id).geometry,keys):null}));
  const countries=[...countryCells].filter(([code])=>areas.has('country:'+code)).map(([code,n])=>row(areas.get('country:'+code),n)).sort((a,b)=>b.paintedKm2-a.paintedKm2);
  const paintedKm2=cells.size*CELL_KM2;
  const result={paintedKm2,world:{percent:paintedKm2/WORLD_LAND_KM2*100},cities,countries,pending};

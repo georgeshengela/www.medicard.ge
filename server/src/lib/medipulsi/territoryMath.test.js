@@ -24,3 +24,13 @@ test('cells group into tiles and polygon tests respect holes; spherical area is 
  assert.ok(Math.abs(geometryAreaKm2(degree)-12364)<60,String(geometryAreaKm2(degree)));
  const c=cellCenter([...cells][0]);assert.ok(Math.abs(c[1]-41.71)<.01);
 });
+import {cityMap} from './territoryMath.js';
+test('city map: dot grid inside the outline, painted squares lit, coarse enough to hide the route',()=>{
+ const g={type:'Polygon',coordinates:[[[44.70,41.68],[44.80,41.68],[44.80,41.76],[44.70,41.76],[44.70,41.68]]]};
+ const keys=paintedCells({trail:[Array.from({length:21},(_,i)=>east(44.75,41.72,i*50))]});
+ const m=cityMap(g,keys);
+ assert.ok(m.cols<=64&&m.rows<=64&&m.cellM>=120);
+ assert.equal(m.grid.length,m.rows);assert.ok(m.grid.every(r=>r.length===m.cols));
+ const lit=m.grid.join('').replace(/[01]/g,'').length;assert.ok(lit>=5&&lit<=20,String(lit));
+ assert.ok(m.grid.join('').includes('1'));assert.equal(m.outline.length,1);
+});

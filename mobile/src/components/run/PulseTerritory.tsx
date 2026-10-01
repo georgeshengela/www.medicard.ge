@@ -1,15 +1,15 @@
 import React,{useMemo,useRef,useState} from 'react';
-import {Platform,Pressable,StyleSheet,View,useWindowDimensions} from 'react-native';
-import Svg,{Circle,Defs,G,Line,LinearGradient,RadialGradient,Rect,Stop,Text as SvgText,TSpan} from 'react-native-svg';
+import {Platform,Pressable,ScrollView,StyleSheet,Switch,View,useWindowDimensions} from 'react-native';
+import Svg,{Circle,Defs,G,Line,LinearGradient,Path,RadialGradient,Rect,Stop,Text as SvgText,TSpan} from 'react-native-svg';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
-import {Share2,X} from 'lucide-react-native';
+import {Map as MapIcon,Share2,X} from 'lucide-react-native';
 import {Modal,APP_MODAL_PROPS,APP_MODAL_OVERLAY} from '@/components/ui/appModal';
 import {useThemeColors} from '@/theme/colors';
 import {useAccountQuery} from '@/hooks/useAccountQuery';
 import {FRESH} from '@/lib/queryClient';
 import {pulseApi} from '@/lib/medipulsi/client';
-import {formatArea,formatPercent,type Territory,type TerritoryArea} from '@/lib/medipulsi/territory';
+import {formatArea,formatPercent,type Territory,type TerritoryArea,type TerritoryMap} from '@/lib/medipulsi/territory';
 import {appLang,tx} from '@/i18n/locale';
 import {Action,Card,Copy,Section,BOLD,SEMIBOLD,REGULAR} from './PulseUi';
 
@@ -36,10 +36,26 @@ function cityArt(seed:string,share:number){
  return {blocks,pts:path.map(([a,b])=>at(a,b)),ch};
 }
 
-function ShareCard({city,country,paintedKm2,totalKm,lang}:{city:TerritoryArea|null;country:TerritoryArea|null;paintedKm2:number;totalKm:number;lang:'ka'|'en'}){
+const MAP_BOX={x:90,y:212,w:900,h:566};
+/** The real city outline as a quiet dot grid; painted squares glow. Built once per city as a few long paths. */
+function mapArt(map:TerritoryMap){
+ const s=Math.min(MAP_BOX.w/map.cols,MAP_BOX.h/map.rows),ox=MAP_BOX.x+(MAP_BOX.w-map.cols*s)/2,oy=MAP_BOX.y+(MAP_BOX.h-map.rows*s)/2;
+ const f=(n:number)=>n.toFixed(1),dot=s*.13,sq=s*.78,halo=s*1.7;
+ let dots='',glow='';const lit:string[]=Array(8).fill('');
+ map.grid.forEach((row,y)=>{for(let x=0;x<row.length;x++){const v=row.charCodeAt(x)-48;if(v<=0)continue;const cx=ox+(x+.5)*s,cy=oy+(y+.5)*s;
+  if(v===1){dots+=`M${f(cx-dot)} ${f(cy)}a${f(dot)} ${f(dot)} 0 1 0 ${f(dot*2)} 0a${f(dot)} ${f(dot)} 0 1 0 ${f(-dot*2)} 0`;continue;}
+  glow+=`M${f(cx-halo)} ${f(cy)}a${f(halo)} ${f(halo)} 0 1 0 ${f(halo*2)} 0a${f(halo)} ${f(halo)} 0 1 0 ${f(-halo*2)} 0`;
+  lit[Math.min(7,v-2)]+=`M${f(cx-sq/2)} ${f(cy-sq/2)}h${f(sq)}v${f(sq)}h${f(-sq)}z`;
+ }});
+ const outline=map.outline.map(r=>r.map(([x,y],i)=>`${i?'L':'M'}${f(ox+x*s)} ${f(oy+y*s)}`).join('')+'Z').join('');
+ return {dots,glow,lit,outline};
+}
+
+function ShareCard({city,country,paintedKm2,totalKm,lang,showMap=true}:{city:TerritoryArea|null;country:TerritoryArea|null;paintedKm2:number;totalKm:number;lang:'ka'|'en';showMap?:boolean}){
  const main=city||country;
  const percent=`${formatPercent(main?.percent||0)}%`;
  const art=useMemo(()=>cityArt(main?.id||'medirun',main?.percent||0),[main?.id,main?.percent]);
+ const real=useMemo(()=>showMap&&city?.map?mapArt(city.map):null,[showMap,city?.map]);
  const t=(ka:string,en:string)=>lang==='en'?en:ka;
  const name=main?.name||'';
  const stats=[
@@ -56,10 +72,17 @@ function ShareCard({city,country,paintedKm2,totalKm,lang}:{city:TerritoryArea|nu
   <Rect x="0" y="0" width={W} height={H} fill="url(#glow)"/>
   <SvgText x={W/2} y="118" textAnchor="middle" fontFamily={BOLD} fontSize="64" fill="#FFFFFF" letterSpacing="2">MEDI<TSpan fill={TEAL} fontStyle="italic">RUN</TSpan></SvgText>
   <SvgText x={W/2} y="178" textAnchor="middle" fontFamily={SEMIBOLD} fontSize="32" fill={MINT}>{t('ჩემი გაფერადებული ქალაქი','My painted city')}</SvgText>
-  <G>{art.blocks.map((b,i)=><Rect key={i} x={b.x} y={b.y+(art.ch-b.h)} width={b.w} height={b.h} rx="14" fill={b.on?TEAL:'#1F2937'} fillOpacity={b.on?.9:.75}/>)}</G>
-  {art.pts.slice(1).map((p,i)=><Line key={'g'+i} x1={art.pts[i][0]} y1={art.pts[i][1]} x2={p[0]} y2={p[1]} stroke={TEAL} strokeWidth="26" strokeLinecap="round" strokeOpacity=".22"/>)}
-  {art.pts.slice(1).map((p,i)=><Line key={i} x1={art.pts[i][0]} y1={art.pts[i][1]} x2={p[0]} y2={p[1]} stroke={MINT} strokeWidth="9" strokeLinecap="round"/>)}
-  <Circle cx={art.pts.at(-1)![0]} cy={art.pts.at(-1)![1]} r="16" fill="#FFFFFF"/><Circle cx={art.pts.at(-1)![0]} cy={art.pts.at(-1)![1]} r="30" fill={MINT} fillOpacity=".25"/>
+  {real?<G>
+   <Path d={real.outline} fill="#0B1F22" fillOpacity=".85" stroke={MINT} strokeOpacity=".38" strokeWidth="3" strokeLinejoin="round" fillRule="evenodd"/>
+   <Path d={real.dots} fill="#FFFFFF" fillOpacity=".16"/>
+   <Path d={real.glow} fill={TEAL} fillOpacity=".16"/>
+   {real.lit.map((d,i)=>d?<Path key={i} d={d} fill={i>=5?MINT:TEAL} fillOpacity={.62+i*.05}/>:null)}
+  </G>:<G>
+   {art.blocks.map((b,i)=><Rect key={i} x={b.x} y={b.y+(art.ch-b.h)} width={b.w} height={b.h} rx="14" fill={b.on?TEAL:'#1F2937'} fillOpacity={b.on?.9:.75}/>)}
+   {art.pts.slice(1).map((p,i)=><Line key={'g'+i} x1={art.pts[i][0]} y1={art.pts[i][1]} x2={p[0]} y2={p[1]} stroke={TEAL} strokeWidth="26" strokeLinecap="round" strokeOpacity=".22"/>)}
+   {art.pts.slice(1).map((p,i)=><Line key={i} x1={art.pts[i][0]} y1={art.pts[i][1]} x2={p[0]} y2={p[1]} stroke={MINT} strokeWidth="9" strokeLinecap="round"/>)}
+   <Circle cx={art.pts.at(-1)![0]} cy={art.pts.at(-1)![1]} r="16" fill="#FFFFFF"/><Circle cx={art.pts.at(-1)![0]} cy={art.pts.at(-1)![1]} r="30" fill={MINT} fillOpacity=".25"/>
+  </G>}
   <SvgText x={W/2} y="858" textAnchor="middle" fontFamily={BOLD} fontSize={Math.min(76,1500/Math.max(1,name.length))} fill="#FFFFFF">{name}</SvgText>
   <SvgText x={W/2} y="1000" textAnchor="middle" fontFamily={BOLD} fontSize={Math.min(150,1650/percent.length)} fill={TEAL} letterSpacing="-2">{percent}</SvgText>
   <SvgText x={W/2} y="1056" textAnchor="middle" fontFamily={REGULAR} fontSize="32" fill="#C5DADA">{city?t('ქალაქის ფართობიდან გაფერადებულია','of the city is painted'):t('ქვეყნის ფართობიდან გაფერადებულია','of the country is painted')}</SvgText>
@@ -98,14 +121,15 @@ export function PulseTerritory({totalKm,walks}:{totalKm:number;walks:number}){
     <Action label={tx('პროგრესის გაზიარება','Share my progress')} icon={Share2} onPress={()=>setOpen(true)}/>
    </>}
   </Card>
-  {has?<ShareSheet visible={open} onClose={()=>setOpen(false)} city={city} country={country} paintedKm2={data!.paintedKm2} totalKm={totalKm} lang={lang}/>:null}
+  {has?<ShareSheet visible={open} onClose={()=>setOpen(false)} cities={data!.cities.slice(0,6)} onPick={setPick} city={city} country={country} paintedKm2={data!.paintedKm2} totalKm={totalKm} lang={lang}/>:null}
  </Section>;
 }
 
-function ShareSheet({visible,onClose,...card}:{visible:boolean;onClose:()=>void;city:TerritoryArea|null;country:TerritoryArea|null;paintedKm2:number;totalKm:number;lang:'ka'|'en'}){
+function ShareSheet({visible,onClose,cities,onPick,...card}:{visible:boolean;onClose:()=>void;cities:TerritoryArea[];onPick:(id:string)=>void;city:TerritoryArea|null;country:TerritoryArea|null;paintedKm2:number;totalKm:number;lang:'ka'|'en'}){
  const c=useThemeColors(),{width,height}=useWindowDimensions();
- const svg=useRef<Svg>(null),[busy,setBusy]=useState(false),[error,setError]=useState('');
- const w=Math.min(width-48,(height-260)*W/H,380),h=w*H/W;
+ const svg=useRef<Svg>(null),[busy,setBusy]=useState(false),[error,setError]=useState(''),[showMap,setShowMap]=useState(true);
+ const sheet=Math.min(width-32,420),hasMap=Boolean(card.city?.map);
+ const w=Math.max(200,Math.min(sheet-32,(height-(cities.length>1?400:350))*W/H)),h=w*H/W;
  const share=()=>{
   if(busy)return;setError('');
   if(Platform.OS==='web'){setError(tx('სურათის გაზიარება აპიდან შეგიძლია.','You can share the picture from the app.'));return;}
@@ -121,15 +145,24 @@ function ShareSheet({visible,onClose,...card}:{visible:boolean;onClose:()=>void;
   },{width:W,height:H});
  };
  return <Modal visible={visible} {...APP_MODAL_PROPS} onRequestClose={onClose}>
-  <View style={{flex:1,alignItems:'center',justifyContent:'center',padding:24}}>
+  <View style={{flex:1,alignItems:'center',justifyContent:'center',padding:16}}>
    <Pressable accessibilityRole="button" accessibilityLabel={tx('დახურვა','Close')} onPress={onClose} style={[StyleSheet.absoluteFill,{backgroundColor:APP_MODAL_OVERLAY}]}/>
-   <View style={{width:w+24,backgroundColor:c.surface,borderRadius:26,padding:12,gap:12}}>
-    <View style={{borderRadius:18,overflow:'hidden'}}><Svg ref={svg} width={w} height={h} viewBox={`0 0 ${W} ${H}`}><ShareCard {...card}/></Svg></View>
-    {error?<Copy size={12} style={{color:c.danger,textAlign:'center'}}>{error}</Copy>:null}
-    <View style={{flexDirection:'row',gap:10}}>
-     <View style={{flex:1}}><Action secondary label={tx('დახურვა','Close')} icon={X} onPress={onClose}/></View>
-     <View style={{flex:1.4}}><Action label={tx('გაზიარება','Share')} icon={Share2} busy={busy} onPress={share}/></View>
+   <View style={{width:sheet,backgroundColor:c.surface,borderRadius:28,paddingVertical:16,gap:14}}>
+    <View style={{flexDirection:'row',alignItems:'center',gap:12,paddingHorizontal:18}}>
+     <View style={{flex:1}}><Copy bold size={17}>{tx('გააზიარე შენი პროგრესი','Share your progress')}</Copy><Copy muted size={11}>{tx('Instagram-ის და Facebook-ის ზომა','Sized for Instagram and Facebook')}</Copy></View>
+     <Pressable accessibilityRole="button" accessibilityLabel={tx('დახურვა','Close')} onPress={onClose} hitSlop={8} style={{width:36,height:36,borderRadius:18,backgroundColor:c.bg200,alignItems:'center',justifyContent:'center'}}><X size={18} color={c.text200}/></Pressable>
     </View>
+    <View style={{alignItems:'center'}}><View style={{width:w,height:h,borderRadius:20,overflow:'hidden',backgroundColor:'#030712'}}>
+     <Svg ref={svg} width={w} height={h} viewBox={`0 0 ${W} ${H}`}><ShareCard {...card} showMap={showMap}/></Svg>
+    </View></View>
+    {cities.length>1?<ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{gap:8,paddingHorizontal:18}}>{cities.map(a=>{const on=a.id===card.city?.id;return <Pressable key={a.id} accessibilityRole="button" accessibilityState={{selected:on}} onPress={()=>onPick(a.id)} style={{paddingHorizontal:12,minHeight:34,justifyContent:'center',borderRadius:12,backgroundColor:on?c.accent100:c.bg200}}><Copy bold size={12} style={{color:on?c.primary100:c.text200}}>{a.name} · {formatPercent(a.percent)}%</Copy></Pressable>;})}</ScrollView>:null}
+    {hasMap?<View style={{flexDirection:'row',alignItems:'center',gap:12,marginHorizontal:18,paddingHorizontal:12,paddingVertical:10,borderRadius:16,backgroundColor:c.bg200}}>
+     <MapIcon size={18} color={c.primary200}/>
+     <View style={{flex:1}}><Copy bold size={13}>{tx('რუკა სურათზე','Map on the picture')}</Copy><Copy muted size={11}>{tx('ჩანს უბნები, სადაც გაისეირნე — ზუსტი გზა არა','Shows the areas you walked, not your exact route')}</Copy></View>
+     <Switch value={showMap} onValueChange={setShowMap} trackColor={{true:c.primary200,false:c.bg300}} thumbColor="#FFFFFF" accessibilityLabel={tx('რუკა სურათზე','Map on the picture')}/>
+    </View>:null}
+    {error?<Copy size={12} style={{color:c.danger,textAlign:'center',paddingHorizontal:18}}>{error}</Copy>:null}
+    <View style={{paddingHorizontal:18}}><Action label={tx('გაზიარება','Share')} icon={Share2} busy={busy} onPress={share}/></View>
    </View>
   </View>
  </Modal>;
