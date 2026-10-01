@@ -9,6 +9,7 @@ import * as game from '../lib/medipulsi/service.js';
 import {id,batchSchema,settingsSchema,fail} from '../lib/medipulsi/schema.js';
 import { t, getUserLanguage } from '../lib/i18n.js';
 import {localizeSnapshot} from '../lib/medipulsi/missionsEn.js';
+import {territory} from '../lib/medipulsi/territory.js';
 export const medipulsiRouter=Router();
 // The app's MEDIRUN client (pulseApi) sends no X-Medicard-Lang: fall back to the account's stored language.
 medipulsiRouter.use(requireAuth,asyncHandler(async(req,_res,next)=>{if(!req.langExplicit)req.lang=await getUserLanguage(req.user.id).catch(()=>'ka');next();}));
@@ -20,6 +21,9 @@ medipulsiRouter.put('/mission',write,asyncHandler(async(req,res)=>res.json(local
 medipulsiRouter.post('/sessions',write,asyncHandler(async(req,res)=>res.json(localizeSnapshot(await game.start(req.user.id,z.object({id:z.uuid()}).strict().parse(req.body).id),req.lang))));
 medipulsiRouter.post('/sessions/:id/batches',write,asyncHandler(async(req,res)=>res.json(await game.batch(req.user.id,id.parse(req.params.id),batchSchema.parse(req.body)))));
 medipulsiRouter.post('/sessions/:id/:action',write,asyncHandler(async(req,res)=>res.json(localizeSnapshot(await game.control(req.user.id,id.parse(req.params.id),z.enum(['pause','resume','finish']).parse(req.params.action)),req.lang))));
+const lookups=rateLimit({windowMs:60000,limit:20,standardHeaders:true,legacyHeaders:false,validate:RATE_LIMIT_VALIDATE});
+// Painted share of each city / country the person walked in (aggregates only, never the route).
+medipulsiRouter.get('/territory',lookups,asyncHandler(async(req,res)=>res.json(await territory(req.user.id,req.lang))));
 medipulsiRouter.get('/nearby',asyncHandler(async(req,res)=>res.json(await game.nearby(req.user.id))));
 medipulsiRouter.post('/gifts/:id/claim',write,asyncHandler(async(req,res)=>res.json(await game.claim(req.user.id,id.parse(req.params.id)))));
 medipulsiRouter.get('/leaderboard',asyncHandler(async(req,res)=>res.json(await game.leaderboard(z.enum(['week','season']).default('week').parse(req.query.period)))));

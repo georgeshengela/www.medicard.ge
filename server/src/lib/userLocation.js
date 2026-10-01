@@ -117,7 +117,8 @@ export async function loadUserLocationRow(userId) {
   }
 }
 
-async function reverseGeocode(lat, lng) {
+/** One Nominatim request per ~1.1 s for the whole process (OSM usage policy). */
+export async function nominatimTurn() {
   const slot = nominatimSlot.then(async () => {
     const wait = NOMINATIM_GAP_MS - (Date.now() - lastNominatimAt);
     if (wait > 0) await new Promise((resolve) => setTimeout(resolve, wait));
@@ -125,6 +126,10 @@ async function reverseGeocode(lat, lng) {
   });
   nominatimSlot = slot.catch(() => undefined);
   await slot;
+}
+
+async function reverseGeocode(lat, lng) {
+  await nominatimTurn();
 
   const url = new URL('https://nominatim.openstreetmap.org/reverse');
   url.searchParams.set('lat', String(lat));
