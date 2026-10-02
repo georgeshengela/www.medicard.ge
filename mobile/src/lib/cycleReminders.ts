@@ -191,7 +191,31 @@ export async function reconcileCycleReminders(userId: string, opts: { force?: bo
     const view = await loadCycleView(userId);
     if (!view?.canonical?.profile) return 0;
     const prefs = await getCycleReminderPrefs();
-    return await syncCycleReminders(view.canonical, prefs);
+    const count = await syncCycleReminders(view.canonical, prefs);
+    // Pregnancy care reminders used to be scheduled only when the cycle screen opened.
+    try {
+      const { supportsCycleCapability } = await import('@/lib/cycleModes');
+      const mode = view.canonical.profile.mode;
+      if (supportsCycleCapability(mode, 'showPregnancyCarePlanner')) {
+        const [{ api }, { cycleToday }, { syncPregnancyCareReminders }, { todayYmd }] = await Promise.all([
+          import('@/lib/api'),
+          import('@/lib/cycleCanonical'),
+          import('@/lib/pregnancyCareReminders'),
+          import('@/lib/hydration'),
+        ]);
+        const plan = await api.cycle.pregnancyCarePlan();
+        await syncPregnancyCareReminders({
+          plan,
+          userId,
+          mode,
+          today: cycleToday(view.canonical, todayYmd()),
+          privacyEnabled: Boolean(view.canonical.profile.privacyEnabled),
+        });
+      }
+    } catch {
+      /* pregnancy reminders are retried on the next foreground */
+    }
+    return count;
   } catch {
     return 0;
   }

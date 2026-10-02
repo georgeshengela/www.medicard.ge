@@ -96,7 +96,7 @@ describe('pets reminder HTTP', { timeout: 90_000 }, () => {
         }),
       );
       assert.equal(created.status, 201);
-      assert.equal(created.body.schedule.reminderEnabled, false);
+      assert.equal(created.body.schedule.reminderEnabled, true);
       const revision = created.body.schedule.revision;
       const nextDueOn = created.body.schedule.nextDueOn;
       const patched = await json(

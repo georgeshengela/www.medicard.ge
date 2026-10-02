@@ -267,8 +267,8 @@ export default function AssessmentScreen() {
         const draft = createWeightDraft(currentForm.weightKg);
         draft.targetKg = currentForm.targetWeightKg;
         draft.deadlineYmd = deadlineFromPace(currentForm.weightKg, currentForm.targetWeightKg, 'moderate');
-        // Reminders stay off until the person grants notifications in step 7.
-        draft.reminderEnabled = false;
+        // Reminders are on (default); nothing is shown until notifications are granted in step 7, and the
+        // reminder restore after that grant schedules them (a stored `false` used to keep them off forever).
         const goal = draftToGoal(draft);
         if (goal) await saveWeightGoal({ ...goal, updatedAt: new Date().toISOString() });
       }

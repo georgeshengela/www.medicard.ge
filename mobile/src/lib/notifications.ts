@@ -8,6 +8,7 @@ import { AppState, Platform } from 'react-native';
 import { ApiError, api } from './api';
 import type { Medication, ScheduledDose } from './api';
 import { localAccountId } from './localAccount';
+import { isReminderFamilyOn } from './reminderPrefs';
 import { getCycleReminderPrefs } from '@/lib/cycleReminderPrefs';
 import { loadEngagePrefs } from '@/lib/mediEngagePrefs';
 import {
@@ -30,15 +31,16 @@ import { getPreference, setPreference } from '@/lib/storage';
 import { dateLocale, tx } from '../i18n/locale.js';
 
 export const MED_CHANNEL_ID = 'medication-reminders';
-export const CYCLE_CHANNEL_ID = 'cycle-reminders';
+// v2 (2026-10-02): recreated at HIGH importance so reminders show a banner; Android cannot raise an existing channel.
+export const CYCLE_CHANNEL_ID = 'cycle-reminders-v2';
 export const CYCLE_DISCREET_CHANNEL_ID = 'medicard-discreet';
 export const PUSH_CHANNEL_ID = 'medicard-push';
-export const STEPS_CHANNEL_ID = 'steps-reminders';
-export const WEIGHT_CHANNEL_ID = 'weight-reminders';
+export const STEPS_CHANNEL_ID = 'steps-reminders-v2';
+export const WEIGHT_CHANNEL_ID = 'weight-reminders-v2';
 export const VISIT_CHANNEL_ID = 'doctor-visit-reminders';
 export const ENGAGE_CHANNEL_ID = 'medi-engage';
 export const PET_CARE_CHANNEL_ID = 'pet-care-reminders';
-export const NUTRITION_CHANNEL_ID = 'nutrition-reminders';
+export const NUTRITION_CHANNEL_ID = 'nutrition-reminders-v2';
 export const QA_PREFIX = 'qa:';
 
 export const NOTIF_PREFIX = {
@@ -147,15 +149,27 @@ export async function getNotificationPermissionGranted(): Promise<boolean> {
   try {
     const existing = await Notifications.getPermissionsAsync();
     const granted = notificationResponseIsGranted(existing);
-    if (granted) void ensureAndroidChannels();
+    // Channels must exist before the first reminder is scheduled into them (once per app run).
+    if (granted) await ensureAndroidChannelsOnce();
     return granted;
   } catch {
     return false;
   }
 }
 
+let channelsReady: Promise<void> | null = null;
+function ensureAndroidChannelsOnce(): Promise<void> {
+  if (!channelsReady) channelsReady = ensureAndroidChannels().catch(() => { channelsReady = null; });
+  return channelsReady;
+}
+
+/** Pre-v2 channels were DEFAULT importance (no banner); remove them so Settings shows one entry each. */
+const RETIRED_CHANNEL_IDS = ['cycle-reminders', 'steps-reminders', 'weight-reminders', 'nutrition-reminders'];
+
 async function ensureAndroidChannels(): Promise<void> {
   if (Platform.OS !== 'android') return;
+  const remove = (Notifications as unknown as { deleteNotificationChannelAsync?: (id: string) => Promise<void> }).deleteNotificationChannelAsync;
+  if (remove) await Promise.all(RETIRED_CHANNEL_IDS.map((id) => remove(id).catch(() => undefined)));
   await Notifications.setNotificationChannelAsync(MED_CHANNEL_ID, {
     name: tx('მედიკამენტების შეხსენებები', 'Medication reminders'),
     importance: Notifications.AndroidImportance.HIGH,
@@ -165,7 +179,7 @@ async function ensureAndroidChannels(): Promise<void> {
   });
   await Notifications.setNotificationChannelAsync(CYCLE_CHANNEL_ID, {
     name: tx('ციკლის შეხსენებები', 'Cycle reminders'),
-    importance: Notifications.AndroidImportance.DEFAULT,
+    importance: Notifications.AndroidImportance.HIGH,
     vibrationPattern: [0, 180, 120, 180],
     lightColor: '#E91E63',
     sound: 'default',
@@ -186,21 +200,21 @@ async function ensureAndroidChannels(): Promise<void> {
   });
   await Notifications.setNotificationChannelAsync(STEPS_CHANNEL_ID, {
     name: tx('ნაბიჯების შეხსენებები', 'Step reminders'),
-    importance: Notifications.AndroidImportance.DEFAULT,
+    importance: Notifications.AndroidImportance.HIGH,
     vibrationPattern: [0, 180, 120, 180],
     lightColor: '#14B8A6',
     sound: 'default',
   });
   await Notifications.setNotificationChannelAsync(NUTRITION_CHANNEL_ID, {
     name: tx('კვების შეხსენებები', 'Nutrition reminders'),
-    importance: Notifications.AndroidImportance.DEFAULT,
+    importance: Notifications.AndroidImportance.HIGH,
     vibrationPattern: [0, 180, 120, 180],
     lightColor: '#14B8A6',
     sound: 'default',
   });
   await Notifications.setNotificationChannelAsync(WEIGHT_CHANNEL_ID, {
     name: tx('წონის შეხსენებები', 'Weight reminders'),
-    importance: Notifications.AndroidImportance.DEFAULT,
+    importance: Notifications.AndroidImportance.HIGH,
     vibrationPattern: [0, 180, 120, 180],
     lightColor: '#14B8A6',
     sound: 'default',
@@ -228,6 +242,17 @@ async function ensureAndroidChannels(): Promise<void> {
   });
 }
 
+/** Right after a grant: every reminder family that waited for permission is scheduled at once. */
+function scheduleEverythingAfterGrant() {
+  setTimeout(() => {
+    void import('@/lib/reminderReconcile').then(({ reconcileAllLocalReminders }) => reconcileAllLocalReminders({ force: true })).catch(() => undefined);
+    void import('@/lib/petCareReminders').then(({ reconcilePetCareReminders }) => reconcilePetCareReminders({ reason: 'permission' })).catch(() => undefined);
+    void import('@/lib/queryClient').then(({ invalidate }) => invalidate('medications')).catch(() => undefined);
+    const owner = localAccountId();
+    if (owner) void import('@/lib/cycleReminders').then(({ reconcileCycleReminders }) => reconcileCycleReminders(owner, { force: true })).catch(() => undefined);
+  }, 0);
+}
+
 export async function requestNotificationPermission(): Promise<boolean> {
   // iOS 26 only shows Allow if this is the first await on the tap.
   // Do not read current status or setState first — that poisons denied
@@ -240,7 +265,10 @@ export async function requestNotificationPermission(): Promise<boolean> {
     void ensureAndroidChannels();
     void import('@/lib/mediNotificationActions').then((mod) => mod.registerNotificationCategories());
     const granted = notificationResponseIsGranted(next);
-    if (granted) await rememberOsNotificationGrant();
+    if (granted) {
+      await rememberOsNotificationGrant();
+      scheduleEverythingAfterGrant();
+    }
     return granted;
   } catch {
     try {
@@ -291,7 +319,18 @@ export async function getPushOptedInStored(): Promise<string | null> {
 }
 
 export async function getRememberedOsNotificationGrant(): Promise<boolean> {
-  return (await getPreference(PUSH_OS_GRANTED_KEY)) === '1';
+  if ((await getPreference(PUSH_OS_GRANTED_KEY)) === '1') return true;
+  // Allowed on an older build or later in the phone's Settings: the flag was never written, so push was
+  // skipped forever. Read (never request) the live permission and remember a grant.
+  try {
+    if (notificationResponseIsGranted(await Notifications.getPermissionsAsync())) {
+      await rememberOsNotificationGrant();
+      return true;
+    }
+  } catch {
+    /* native module unavailable (web) */
+  }
+  return false;
 }
 
 export async function rememberOsNotificationGrant(): Promise<void> {
@@ -488,6 +527,8 @@ export async function syncMedicationReminders(
 
   await cancelNotificationsByPrefix(NOTIF_PREFIX.med);
   if (localAccountId() !== expectedOwner) return 0;
+  // Profile → შეტყობინებები → წამლის მიღება (on unless the person turned it off).
+  if (!(await isReminderFamilyOn('meds'))) return 0;
 
   const byId = new Map(medications.map((med) => [med.id, med]));
   let scheduled = 0;
@@ -508,6 +549,8 @@ export async function syncMedicationReminders(
     const title = copy.title;
     const body = copy.body;
 
+    // One bad slot must not cost the remaining doses their reminders.
+    try {
       await Notifications.scheduleNotificationAsync({
         identifier: `${NOTIF_PREFIX.med}${slot.identifier}`,
         content: {
@@ -542,6 +585,9 @@ export async function syncMedicationReminders(
               },
       });
       scheduled += 1;
+    } catch {
+      /* skip this slot */
+    }
   }
 
   return scheduled;
@@ -582,7 +628,8 @@ export async function syncNutritionReminders(
 ): Promise<number> {
   if (!expectedOwner || localAccountId() !== expectedOwner) return 0;
   await cancelNotificationsByPrefix(NOTIF_PREFIX.nutrition);
-  if (!reminders?.enabled) return 0;
+  // The on/off switch lives in reminderPrefs (default on); the server row only supplies the times.
+  if (!reminders || !(await isReminderFamilyOn('nutrition'))) return 0;
   const granted = await getNotificationPermissionGranted();
   if (!granted || localAccountId() !== expectedOwner) return 0;
   let scheduled = 0;

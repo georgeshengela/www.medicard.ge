@@ -1,5 +1,6 @@
 import { getPreference, setPreference } from '@/lib/storage';
 import { getScopedPreference, localAccountId, setScopedPreference } from '@/lib/localAccount';
+import { isReminderFamilyOn } from '@/lib/reminderPrefs';
 
 export const PETS_REMINDER_PREFS_KEY = 'medicard.pets.reminders.v1';
 export const PETS_REMINDER_BOOK_KEY = 'medicard.pets.reminderBook.v1';
@@ -18,6 +19,8 @@ export type PetCareReminderPrefs = {
   dateBasedMinute: number;
   snoozeMinutes: number;
   overdueFollowUp: boolean;
+  /** True once the person flipped the overdue switch themselves; until then follow-ups stay on. */
+  followUpChosen?: boolean;
   dateBasedTimeAccepted: boolean;
   lastTimeZone: string | null;
   lastSyncStatus: 'idle' | 'ok' | 'failed' | 'permission_denied' | 'cancelled';
@@ -44,11 +47,11 @@ export type PendingPetCareConfirm = {
 };
 
 export const DEFAULT_PET_CARE_REMINDER_PREFS: PetCareReminderPrefs = {
-  globalOptIn: false,
+  globalOptIn: true,
   dateBasedHour: 9,
   dateBasedMinute: 0,
   snoozeMinutes: 20,
-  overdueFollowUp: false,
+  overdueFollowUp: true,
   dateBasedTimeAccepted: false,
   lastTimeZone: null,
   lastSyncStatus: 'idle',
@@ -69,7 +72,14 @@ function parseJson<T>(raw: string | null, fallback: T): T {
 
 export async function loadPetCareReminderPrefs(): Promise<PetCareReminderPrefs> {
   const parsed = parseJson<Partial<PetCareReminderPrefs>>(await getScopedPreference(PETS_REMINDER_PREFS_KEY), {});
-  return { ...DEFAULT_PET_CARE_REMINDER_PREFS, ...parsed };
+  return {
+    ...DEFAULT_PET_CARE_REMINDER_PREFS,
+    ...parsed,
+    // The global switch is Profile → შეტყობინებები → ცხოველის მოვლა (default on). The stored `globalOptIn`
+    // is ignored: older builds wrote the old `false` default back on every sync and silenced every pet reminder.
+    globalOptIn: await isReminderFamilyOn('pets'),
+    overdueFollowUp: parsed.followUpChosen === true ? parsed.overdueFollowUp !== false : true,
+  };
 }
 
 export async function savePetCareReminderPrefs(next: PetCareReminderPrefs): Promise<void> {

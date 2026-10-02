@@ -24,6 +24,7 @@ import {
   PermissionSectionLabel,
   PermissionToggleRow,
 } from '@/components/profile/PermissionToggleRow';
+import { ReminderFamiliesSection } from '@/components/profile/ReminderFamiliesSection';
 import { useFigmaHealthMetrics } from '@/constants/figmaHealthMetricsLayout';
 import { ka } from '@/i18n/ka';
 import { api, type EmailPreferences } from '@/lib/api';
@@ -197,19 +198,7 @@ export default function NotificationSettingsScreen() {
           {ka.notifSettings.intro}
         </Text>
 
-        <View style={{ gap: 8 }}>
-          <PermissionSectionLabel title={ka.notifSettings.essential} />
-          <PermissionGroup>
-            <View style={{ paddingHorizontal: 14, paddingVertical: 14, gap: 4 }}>
-              <Text style={{ fontFamily: 'NotoSansGeorgian_600SemiBold', fontSize: 15, color: colors.text100 }}>
-                {ka.notifSettings.essentialBody}
-              </Text>
-              <Text style={{ fontFamily: 'NotoSansGeorgian_400Regular', fontSize: 13, color: colors.text300 }}>
-                {ka.notifSettings.essentialHint}
-              </Text>
-            </View>
-          </PermissionGroup>
-        </View>
+        <ReminderFamiliesSection />
 
         <View style={{ gap: 8 }}>
           <PermissionSectionLabel title={ka.notifSettings.health} />

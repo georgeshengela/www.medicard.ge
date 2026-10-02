@@ -40,6 +40,11 @@ export function planMedicationReminderSlots(
     if (!start || (course.endDate && !end)) return [];
     start.setHours(0, 0, 0, 0); end?.setHours(23, 59, 59, 999);
     const cursor = new Date(now); cursor.setHours(0, 0, 0, 0);
+    // A course that has started and ends more than 60 days out (the medicine form saves start=today,
+    // end=+1 year) repeats daily/weekly. One-off dates would run out after ~2 weeks if the app is not
+    // opened; dated reminders take over once the end comes within the 60-day window.
+    const farEnd = !end || end.getTime() - cursor.getTime() > 60 * 86_400_000;
+    if (start <= cursor && farEnd) return planMedicationReminderSlots(medicationId, time, daysOfWeek, undefined, now);
     if (start > cursor) cursor.setTime(start.getTime());
     const slots: MedReminderSlot[] = [];
     // Upcoming dates are replenished when the app loads medications. Never schedule past course end.

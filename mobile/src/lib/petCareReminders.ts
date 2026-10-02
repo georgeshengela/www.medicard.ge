@@ -299,6 +299,7 @@ async function reconcileOnce(reason: string): Promise<{ scheduled: number; cance
       title: candidate.title,
       kind: candidate.kind,
       masked: discreet,
+      alertKind: candidate.alertKind,
     });
     const ok = await schedulePetCareDateNotification({
       identifier: candidate.identifier,

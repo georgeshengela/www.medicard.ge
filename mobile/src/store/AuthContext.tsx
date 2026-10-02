@@ -218,6 +218,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         void import('@/lib/cycleReminders').then(({ reconcileCycleReminders }) => reconcileCycleReminders(user.id));
       }
       if (user) {
+        void import('@/lib/reminderReconcile').then(({ reconcileAllLocalReminders }) => reconcileAllLocalReminders());
         void import('@/lib/petCareReminders').then(({ reconcilePetCareReminders, flushPendingPetCareConfirms }) => {
           void flushPendingPetCareConfirms();
           void reconcilePetCareReminders({ reason: 'foreground' });

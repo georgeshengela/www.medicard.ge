@@ -59,7 +59,7 @@ export function PetCareReminderCard({
   const [permissionGranted, setPermissionGranted] = React.useState(true);
   const [saving, setSaving] = React.useState(false);
   const [hour, setHour] = React.useState('09:00');
-  const [followUp, setFollowUp] = React.useState(false);
+  const [followUp, setFollowUp] = React.useState(true);
 
   const load = React.useCallback(async () => {
     const prefs = await loadPetCareReminderPrefs();
@@ -139,7 +139,7 @@ export function PetCareReminderCard({
 
   const saveFollowUp = async (next: boolean) => {
     const prefs = await loadPetCareReminderPrefs();
-    await savePetCareReminderPrefs({ ...prefs, overdueFollowUp: next });
+    await savePetCareReminderPrefs({ ...prefs, overdueFollowUp: next, followUpChosen: true });
     setFollowUp(next);
     await reconcilePetCareReminders({ reason: 'followup' });
   };

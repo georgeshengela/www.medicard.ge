@@ -294,6 +294,8 @@ export function petCareReminderEligibility({
   return { ok: true, reason: null, nowMs, timeZone };
 }
 
+export const PET_CARE_OVERDUE_STEPS = [1, 3, 7, 14, 30, 60, 90, 120, 150, 180, 210, 240, 270, 300, 330, 365];
+
 export function buildPetCareReminderCandidates({
   userId,
   petId,
@@ -407,44 +409,51 @@ export function buildPetCareReminderCandidates({
     });
   }
 
-  if (prefs?.overdueFollowUp === true && occurrence.plannedOn < `${new Date(now).getFullYear()}-${String(new Date(now).getMonth() + 1).padStart(2, '0')}-${String(new Date(now).getDate()).padStart(2, '0')}`) {
-    const followDate = addDaysCivil(occurrence.plannedOn, 1);
-    const wall = wallClockInstant(followDate, clock, timeZone);
-    if (wall.ok) {
+  const todayKey = `${new Date(now).getFullYear()}-${String(new Date(now).getMonth() + 1).padStart(2, '0')}-${String(new Date(now).getDate()).padStart(2, '0')}`;
+  if (prefs?.overdueFollowUp === true && occurrence.plannedOn < todayKey) {
+    // Overdue care keeps reminding: 1, 3, 7, 14 and 30 days after the date, then monthly for a year.
+    // The next two stay scheduled so it works even when the app is not opened in between.
+    let queued = 0;
+    for (const step of PET_CARE_OVERDUE_STEPS) {
+      if (queued >= 2) break;
+      const wall = wallClockInstant(addDaysCivil(occurrence.plannedOn, step), clock, timeZone);
+      if (!wall.ok) continue;
       let fire = wall.date;
       if (typeof bumpOutOfQuiet === 'function' && quietStart && quietEnd) {
         fire = bumpOutOfQuiet(fire, quietStart, quietEnd);
       }
-      if (fire.getTime() > now) {
-        const identity = phase5ReminderIdentity({
-          userId,
-          petId,
-          scheduleId: schedule.id,
-          occurrenceKey: occurrence.occurrenceKey,
-          alertKind: 'followup:1',
-        });
-        out.push({
-          identifier: petCareNotificationIdentifier(identity),
-          identity,
-          alertKind: 'followup:1',
-          fireAtMs: fire.getTime(),
-          plannedOn: occurrence.plannedOn,
-          plannedTime: occurrence.plannedTime || null,
-          exact,
-          offset: -1,
-          userId,
-          petId,
-          petName: petName || '',
-          scheduleId: schedule.id,
-          revision: occurrence.revision,
-          occurrenceKey: occurrence.occurrenceKey,
-          kind: schedule.kind,
-          title: schedule.title,
-          type: PET_CARE_REMINDER_TYPE,
-          family: PET_CARE_REMINDER_FAMILY,
-          meaning: PET_CARE_REMINDER_MEANING,
-        });
-      }
+      if (fire.getTime() <= now) continue;
+      const alertKind = `followup:${step}`;
+      const identity = phase5ReminderIdentity({
+        userId,
+        petId,
+        scheduleId: schedule.id,
+        occurrenceKey: occurrence.occurrenceKey,
+        alertKind,
+      });
+      out.push({
+        identifier: petCareNotificationIdentifier(identity),
+        identity,
+        alertKind,
+        fireAtMs: fire.getTime(),
+        plannedOn: occurrence.plannedOn,
+        plannedTime: occurrence.plannedTime || null,
+        exact,
+        offset: -step,
+        userId,
+        petId,
+        petName: petName || '',
+        scheduleId: schedule.id,
+        revision: occurrence.revision,
+        occurrenceKey: occurrence.occurrenceKey,
+        kind: schedule.kind,
+        title: schedule.title,
+        type: PET_CARE_REMINDER_TYPE,
+        family: PET_CARE_REMINDER_FAMILY,
+        meaning: PET_CARE_REMINDER_MEANING,
+        overdue: true,
+      });
+      queued += 1;
     }
   }
 
@@ -600,17 +609,35 @@ export function petCareMaskedCopy() {
   };
 }
 
-export function petCareCopy({ petName, title, kind, masked }) {
+export function petCareCopy({ petName, title, kind, masked, alertKind = 'due' }) {
   if (masked) return petCareMaskedCopy();
   const name = String(petName || '').trim() || tx('ცხოველი', 'Your pet');
   const care = String(title || '').trim() || tx('მოვლა', 'Care');
+  const heading = `${name} · ${care}`;
+  const kindStr = String(alertKind || 'due');
+  if (kindStr.startsWith('followup:')) {
+    const days = Number(kindStr.split(':')[1]) || 1;
+    return {
+      title: heading,
+      body: tx(
+        `ვადა ${days} დღის წინ გავიდა. თუ უკვე გააკეთე, გახსენი და მონიშნე.`,
+        `Overdue by ${days} ${days === 1 ? 'day' : 'days'}. If it’s done, open and mark it.`,
+      ),
+    };
+  }
+  if (kindStr.startsWith('advance:')) {
+    const days = Number(kindStr.split(':')[1]) || 1;
+    const when = days === 1 ? tx('ხვალ', 'tomorrow') : tx(`${days} დღეში`, `in ${days} days`);
+    const what = kind === 'VACCINATION' ? tx('აცრა', 'Vaccination') : kind === 'MEDICATION' || kind === 'FLEA_TICK' || kind === 'DEWORMING' ? tx('მიღება', 'A dose') : tx('მოვლა', 'Care');
+    return { title: heading, body: tx(`${what} ${when} არის დაგეგმილი.`, `${what} is planned ${when}.`) };
+  }
   if (kind === 'MEDICATION' || kind === 'FLEA_TICK' || kind === 'DEWORMING') {
-    return { title: `${name} · ${care}`, body: tx('მიღების დროა. გახსენი და დაადასტურე, თუ მიეცი.', 'Time for a dose. Open to confirm once you’ve given it.') };
+    return { title: heading, body: tx('მიღების დროა. გახსენი და დაადასტურე, თუ მიეცი.', 'Time for a dose. Open to confirm once you’ve given it.') };
   }
   if (kind === 'VACCINATION') {
-    return { title: `${name} · ${care}`, body: tx('დაგეგმილი აცრის დღეა. გახსენი და დაადასტურე, თუ გაკეთდა.', 'Vaccination is planned for today. Open to confirm once it’s done.') };
+    return { title: heading, body: tx('დაგეგმილი აცრის დღეა. გახსენი და დაადასტურე, თუ გაკეთდა.', 'Vaccination is planned for today. Open to confirm once it’s done.') };
   }
-  return { title: `${name} · ${care}`, body: tx('დაგეგმილი მოვლის დღეა. გახსენი და დაადასტურე.', 'Care is planned for today. Open to confirm.') };
+  return { title: heading, body: tx('დაგეგმილი მოვლის დღეა. გახსენი და დაადასტურე.', 'Care is planned for today. Open to confirm.') };
 }
 
 export function revalidatePetCareReminder(candidate, live = {}) {

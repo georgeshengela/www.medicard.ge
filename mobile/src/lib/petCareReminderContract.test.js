@@ -343,4 +343,36 @@ describe('pet care reminder contract', () => {
     assert.equal(decision.rewriteMasked, true);
     assert.match(completeRoute({ petId: PET, scheduleId: SCHEDULE_ID, occurrenceKey: 'k', revision: 1 }), /\/pets\/pet-1\/care\/complete/);
   });
+
+  it('keeps reminding about overdue care on a widening cadence (next two queued)', () => {
+    // Due 2026-09-20, now 10 days later: next follow-ups are day 14 and day 30.
+    const rows = buildPetCareReminderCandidates({
+      userId: USER,
+      petId: PET,
+      petName: 'ნუკრი',
+      schedule: schedule({ kind: 'VACCINATION', title: 'ცოფი' }),
+      occurrence: occurrence(),
+      prefs: { ...prefs, overdueFollowUp: true },
+      nowMs: Date.parse('2026-09-30T12:00:00'),
+    });
+    assert.deepEqual(rows.map((row) => row.alertKind), ['followup:14', 'followup:30']);
+    assert.ok(rows.every((row) => row.fireAtMs > Date.parse('2026-09-30T12:00:00')));
+    const off = buildPetCareReminderCandidates({
+      userId: USER,
+      petId: PET,
+      schedule: schedule(),
+      occurrence: occurrence(),
+      prefs: { ...prefs, overdueFollowUp: false },
+      nowMs: Date.parse('2026-09-30T12:00:00'),
+    });
+    assert.deepEqual(off, []);
+  });
+
+  it('tells advance, due and overdue reminders apart in the text', () => {
+    const base = { petName: 'ლუნა', title: 'ცოფი', kind: 'VACCINATION', masked: false };
+    assert.match(petCareCopy({ ...base, alertKind: 'advance:1' }).body, /ხვალ|tomorrow/);
+    assert.match(petCareCopy({ ...base, alertKind: 'due' }).body, /დღეა|today/);
+    assert.match(petCareCopy({ ...base, alertKind: 'followup:3' }).body, /3/);
+    assert.equal(petCareCopy({ ...base, alertKind: 'followup:3' }).title, 'ლუნა · ცოფი');
+  });
 });

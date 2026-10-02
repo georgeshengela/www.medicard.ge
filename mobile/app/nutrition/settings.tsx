@@ -12,6 +12,7 @@ import {
   nutritionHealthName,
 } from "@/lib/nutritionHealth";
 import { getNotificationPermissionGranted, requestNotificationPermission, syncNutritionReminders } from "@/lib/notifications";
+import { isReminderFamilyOn, setReminderFamily } from "@/lib/reminderPrefs";
 import { localAccountId } from "@/lib/localAccount";
 import { MedicalSourcesLink } from "@/components/health/MedicalSourcesLink";
 import { useAuth } from "@/store/AuthContext";
@@ -43,14 +44,17 @@ function Settings() {
     const n = ++seq.current;
     setError("");
     try {
-      const [data, granted, dashboard, health] = await Promise.all([
+      const [data, granted, dashboard, health, remindersOn] = await Promise.all([
         api.nutrition.preferences.get(),
         getNotificationPermissionGranted().catch(() => false),
         nutritionProgramApi.dashboard().catch(() => null),
         isNutritionHealthWriteEnabled().catch(() => false),
+        isReminderFamilyOn("nutrition"),
       ]);
       if (n !== seq.current) return;
-      setPrefs({ ...defaultNutritionPreferences(), ...data.preferences });
+      // On/off is the shared switch (Profile → შეტყობინებები, default on); the server row holds the times.
+      const loaded = { ...defaultNutritionPreferences(), ...data.preferences };
+      setPrefs({ ...loaded, reminders: { ...loaded.reminders, enabled: remindersOn } });
       setPermission(granted);
       setCalories(dashboard?.targets?.calories ?? null);
       setHealthOn(health);
@@ -73,9 +77,10 @@ function Settings() {
     setMessage("");
     try {
       const owner = localAccountId();
+      await setReminderFamily("nutrition", next.reminders.enabled);
       const saved = await api.nutrition.preferences.save(next);
       const count = await syncNutritionReminders(saved.preferences.reminders, owner);
-      setMessage(saved.preferences.reminders.enabled ? (count ? tx(`შენახულია · ${count} შეხსენება დაიგეგმა`, `Saved · ${count} ${count === 1 ? "reminder" : "reminders"} scheduled`) : tx("შენახულია · შეხსენებას ნებართვა სჭირდება", "Saved · reminders need permission")) : tx("შენახულია", "Saved"));
+      setMessage(next.reminders.enabled ? (count ? tx(`შენახულია · ${count} შეხსენება დაიგეგმა`, `Saved · ${count} ${count === 1 ? "reminder" : "reminders"} scheduled`) : tx("შენახულია · შეხსენებას ნებართვა სჭირდება", "Saved · reminders need permission")) : tx("შენახულია", "Saved"));
     } catch (e) {
       setError((e as Error).message);
     } finally {

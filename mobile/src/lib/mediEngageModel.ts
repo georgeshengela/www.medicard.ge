@@ -43,7 +43,7 @@ export const DEFAULT_ENGAGE_PREFS: MediEngagePrefs = {
     achievement: true,
     chatFollowup: true,
     reengage: true,
-    feature: false,
+    feature: true,
     question: true,
     birthday: true,
     sleep: true,

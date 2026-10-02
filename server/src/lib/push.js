@@ -61,7 +61,9 @@ export function applyPushReceipts(deliveries, receipts) {
         ...row,
         status: 'error',
         receiptStatus: 'error',
-        error: receipt.message || receipt.details?.error || row.error,
+        // The machine code (DeviceNotRegistered…) is in details.error; the message is prose. Code first,
+        // so stale-token cleanup below can recognise it.
+        error: receipt.details?.error || receipt.message || row.error,
       };
     }
     return { ...row, receiptStatus: receipt.status || 'ok' };

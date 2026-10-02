@@ -35,7 +35,8 @@ describe('pet care validation', () => {
       source: 'VETERINARIAN',
     });
     assert.equal(ok.doseUnit, 'ტაბლეტი');
-    assert.equal(ok.reminderEnabled, false);
+    assert.equal(ok.reminderEnabled, true);
+    assert.deepEqual(ok.reminderOffsetsDays, [1, 0]);
   });
 
   it('keeps product expiry off the event snapshot contract', () => {

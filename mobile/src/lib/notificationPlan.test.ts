@@ -133,3 +133,15 @@ it('home and calendar only show doses inside the inclusive course',()=>{
     assert.equal(routeFromNotificationData({ type: 'pet_care', petId: 'p1', route: '/typo' }), '/pets/p1/care');
   });
 });
+
+it('a long running course repeats daily/weekly instead of running out of dated reminders', () => {
+  const now = new Date(2026, 9, 2, 12);
+  const daily = planMedicationReminderSlots('m', '09:00', undefined, { startDate: '2026-10-02', endDate: '2027-10-02' }, now);
+  assert.deepEqual(daily.map((slot) => [slot.identifier, slot.date]), [['m:09:00', undefined]]);
+  const weekly = planMedicationReminderSlots('m', '09:00', [0, 3], { startDate: '2026-09-01', endDate: '2027-09-01' }, now);
+  assert.equal(weekly.length, 2);
+  assert.ok(weekly.every((slot) => slot.weekday != null && !slot.date));
+  // Near the end the course switches back to dated reminders that stop on the last day.
+  const ending = planMedicationReminderSlots('m', '09:00', undefined, { startDate: '2026-01-01', endDate: '2026-10-20' }, now);
+  assert.ok(ending.length > 0 && ending.every((slot) => slot.date));
+});

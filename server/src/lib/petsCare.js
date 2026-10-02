@@ -236,8 +236,9 @@ export function normalizeScheduleInput(input, { todayYmd } = {}) {
     source: requireSource(input.source),
     sourceNote: optionalText(input.sourceNote, SOURCE_NOTE_MAX, 'წყაროს შენიშვნა'),
     timezone: optionalText(input.timezone, 80, 'საათობრივი სარტყელი'),
-    reminderEnabled: false,
-    reminderOffsetsDays: [0],
+    // Reminders are on by default (the day before and on the day); the schedule screen can turn them off.
+    reminderEnabled: true,
+    reminderOffsetsDays: [1, 0],
     clientRequestId: normalizeClientRequestId(input.clientRequestId),
     todayYmd,
   };

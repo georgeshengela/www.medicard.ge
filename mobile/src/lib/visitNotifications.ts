@@ -1,3 +1,4 @@
+import { isReminderFamilyOn } from '@/lib/reminderPrefs';
 import { Platform } from 'react-native';
 import { Notifications } from '@/lib/expoNotifications';
 import type { DoctorVisit } from '@/lib/api';
@@ -26,6 +27,7 @@ export async function syncVisitReminders(visits: DoctorVisit[]): Promise<number>
 
   await ensureVisitChannel();
   await cancelVisitReminders();
+  if (!(await isReminderFamilyOn('visits'))) return 0;
 
   let scheduled = 0;
   const active = visits.filter((v) => v.active);
@@ -46,6 +48,7 @@ export async function syncVisitReminders(visits: DoctorVisit[]): Promise<number>
         place: place ? ` — ${place}` : '',
       });
 
+      try {
       await Notifications.scheduleNotificationAsync({
         identifier: id,
         content: {
@@ -67,6 +70,9 @@ export async function syncVisitReminders(visits: DoctorVisit[]): Promise<number>
         },
       });
       scheduled += 1;
+      } catch {
+        /* one bad date must not cost the other visits their reminders */
+      }
     }
   }
 

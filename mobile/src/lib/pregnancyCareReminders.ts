@@ -1,3 +1,4 @@
+import { isReminderFamilyOn } from '@/lib/reminderPrefs';
 import { parseDateKey } from '@/lib/cyclePhase';
 import { bumpOutOfQuiet } from '@/lib/mediEngageModel';
 import { loadEngagePrefs } from '@/lib/mediEngagePrefs';
@@ -33,6 +34,7 @@ export async function syncPregnancyCareReminders(opts: {
   privacyEnabled?: boolean;
 }): Promise<number> {
   await cancelPregnancyCareReminders();
+  if (!(await isReminderFamilyOn('pregnancy'))) return 0;
   const plan = opts.plan;
   if (!plan?.available || !plan.pregnancyEpisodeId) return 0;
 

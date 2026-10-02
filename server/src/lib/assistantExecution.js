@@ -71,7 +71,9 @@ export async function assertAssistantActionContext(userId, plan, db = prisma) {
 export async function dispatchAssistantOperation(plan, { userId, authorization, timezone, lang = 'ka', fetchImpl = fetch }) {
   if (plan.tool === 'weight_goal' || plan.tool === 'steps_goal') {
     const common = { id: plan.id, startedYmd: plan.today, deadlineYmd: plan.args.deadlineYmd, updatedAt: new Date().toISOString(),
-      reminderEnabled: false, reminderDays: [], reminderHour: 9, reminderMinute: 0 };
+      // Reminders on by default, same days/time the app uses for a goal made on the goal screen.
+      reminderEnabled: true, reminderDays: plan.tool === 'weight_goal' ? [1, 3, 4] : [1, 3, 5],
+      reminderHour: plan.tool === 'weight_goal' ? 12 : 10, reminderMinute: 0 };
     if (plan.tool === 'weight_goal') {
       const { startKg, targetKg } = plan.args;
       const weeks = (Date.parse(plan.args.deadlineYmd) - Date.parse(plan.today)) / 604800000;

@@ -72,8 +72,12 @@ export function runPostLoginSideEffects(user, healthProfile, { force = false } =
       void reconcilePetCareReminders({ reason: 'login' });
     }),
   );
+  // Goals restored from the server first, then every reminder family is put back on the device.
   schedulePostLoginWork('account', () =>
-    import('@/lib/accountSync').then(({ pullAccountState }) => pullAccountState().catch(() => undefined)),
+    import('@/lib/accountSync')
+      .then(({ pullAccountState }) => pullAccountState().catch(() => undefined))
+      .then(() => import('@/lib/reminderReconcile'))
+      .then(({ reconcileAllLocalReminders }) => reconcileAllLocalReminders({ force: true })),
   );
 }
 
