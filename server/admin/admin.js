@@ -66,6 +66,7 @@ const ICONS = {
   copy: '<rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>',
   eye: '<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>',
   info: '<circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/>',
+  menu: '<line x1="4" y1="7" x2="20" y2="7"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="17" x2="20" y2="17"/>',
 };
 
 function icon(name, size = '') {
@@ -295,15 +296,15 @@ function fmtDateShort(value) {
   return `${p.day} ${MONTHS_KA[p.month]}, ${p.year}`;
 }
 
+/** Day heading for the user timeline, by the Tbilisi calendar: დღეს · გუშინ · სამშაბათი, 30 სექტემბერი. */
 function timelineDayKa(value) {
-  if (!value) return 'უცნობია';
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return 'უცნობია';
-  const start = (d) => Date.UTC(d.getFullYear(), d.getMonth(), d.getDate());
-  const diff = Math.round((start(new Date()) - start(date)) / 86400000);
+  const p = value ? adminDateParts(value) : null;
+  if (!p) return 'უცნობია';
+  const now = adminDateParts(new Date());
+  const diff = Math.round((Date.UTC(now.year, now.month, now.day) - Date.UTC(p.year, p.month, p.day)) / 86400000);
   if (diff === 0) return 'დღეს';
   if (diff === 1) return 'გუშინ';
-  return fmtDateShort(value);
+  return `${WEEKDAYS_KA[p.weekday]}, ${p.day} ${MONTHS_KA[p.month]}${p.year === now.year ? '' : ` ${p.year}`}`;
 }
 
 function toDateInput(value) {
@@ -649,34 +650,34 @@ async function switchTab(tab, opts = {}) {
   });
 
   const copy = {
-    overview: ['Overview', 'ოპერაციები', 'რა საჭიროებს ყურადღებას ახლა?', 'overview.status'],
-    health: ['Health & Medi', 'ჯანმრთელობა', 'რომელი ჯანმრთელობის ფიჩერები გამოიყენება და ინახება?', 'health.page'],
-    audit: ['Production', 'აუდიტი', 'ვინ შეცვალა რა და როდის?', 'audit.page'],
-    quality: ['Production', 'ხარისხი', 'ვერსიები, ტელემეტრია და მონაცემები სანდოა?', 'quality.page'],
-    nutrition: ['Health', 'კვების დღიური', 'გამოყენება, ფოტოს შეფასება და სერვისის მართვა.', ''],
+    overview: ['Overview', 'ოპერაციები', 'რა საჭიროებს ყურადღებას ახლა და როგორ მიდის აპი.', 'overview.status'],
+    health: ['Health & Medi', 'ჯანმრთელობა', 'რომელ ჯანმრთელობის ფუნქციას იყენებენ და რამდენი ბრუნდება.', 'health.page'],
+    audit: ['Production', 'აუდიტი', 'ვინ რა შეცვალა ადმინში და როდის.', 'audit.page'],
+    quality: ['Production', 'ხარისხი', 'აპის ვერსიები, ტელემეტრია და მონაცემების მთლიანობა.', 'quality.page'],
+    nutrition: ['Health', 'კვების დღიური', 'დღიურის გამოყენება, AI კალორიის შეფასება და კერძების კატალოგი.', ''],
     community: ['Engagement', 'ქალების სივრცე', 'მოდერაცია, საჩივრები და წევრების უსაფრთხოება.', ''],
-    testing: ['Production', 'ტესტირების სივრცე', 'ეტაპები, შედეგები და დაცული სქრინები.', 'quality.page'],
+    testing: ['Production', 'ტესტირება', 'ტესტირების სესიები, ეტაპები, შედეგები და ხარვეზები.', 'quality.page'],
     'poster-studio': ['MEDICARD Studio', 'პოსტერების სტუდია', 'შეცვალე წარწერები და მოამზადე პოსტები სოციალური ქსელებისთვის.', ''],
-    'medipulsi': ['Engagement', 'MEDIRUN', 'გასეირნება, მისიები, აღმოჩენები და ჯილდოების მართვა.', ''],
-    orders: ['Operations', 'შეკვეთები', 'რა საჭიროებს ოპერაციულ დამუშავებას?', 'orders.page'],
-    users: ['People', 'მომხმარებლები', 'ვინ არის ბაზაში, რა ანგარიშის მდგომარეობა აქვს და ვისი გამოძიება გჭირდება.', 'users.registry'],
-    push: ['Engagement', 'Push & Brain', 'შეტყობინებები ფასდება, იგეგმება და მიეწოდება?', 'push.page'],
-    sms: ['Operations', 'SMS', 'გაგზავნა, ბალანსი და ჟურნალი.', 'sms.page'],
-    pharmacy: ['Operations', 'ფარმაცია', 'სინქი, მდგომარეობა და შეცდომები.', 'pharmacy.page'],
-    rewards: ['Commerce', 'ჯილდოები', 'მუშაობს თუ არა ჯილდოების სისტემა ნორმალურად?', 'rewards.page'],
-    ai: ['Health & Medi', 'Medi', 'მუშაობს თუ არა Medi საიმედოდ და უსაფრთხოდ?', 'medi.page'],
-    settings: ['Production', 'აპის რეჟიმი', 'რა წარმოების ქცევაა ჩართული?', 'settings.page'],
-    features: ['Production', 'მოდულები', 'რომელი მოდული მუშაობს და რომელი შეჩერებულია?', ''],
+    'medipulsi': ['Engagement', 'MEDIRUN', 'საჩუქრები, ჯილდოების გაცემა, მისიები და სესიები.', ''],
+    orders: ['Operations', 'ოპერაციული რიგი', 'დღევანდელი და მომავალი ვიზიტები, აქტიური მედიკამენტები და ახალი ანგარიშები.', 'orders.page'],
+    users: ['ადამიანები', 'მომხმარებლები', 'ყველა ანგარიში: ძებნა, ფილტრები და პროფილის გამოძიება.', 'users.registry'],
+    push: ['Engagement', 'Push & Brain', 'Brain-ის გადაწყვეტილებები, ხელით გაგზავნა, ტექსტები და მოწყობილობები.', 'push.page'],
+    sms: ['Operations', 'SMS', 'SMS-ის ბალანსი, გაგზავნა და ჟურნალი.', 'sms.page'],
+    pharmacy: ['Operations', 'ფარმაცია', 'აფთიაქების ფასების სინქრონიზაცია, დაფარვა და შეცდომები.', 'pharmacy.page'],
+    rewards: ['Commerce', 'ჯილდოები', 'პარტნიორები, კამპანიები, ვაუჩერები, გაცვლები და მოწვევები.', 'rewards.page'],
+    ai: ['Health & Medi', 'Medi', 'Medi-ს ხარისხი, შეცდომები, სიჩქარე და ხარჯი.', 'medi.page'],
+    settings: ['Production', 'აპის რეჟიმი', 'ტექნიკური სამუშაოები, იძულებითი განახლება და რეგისტრაცია.', 'settings.page'],
+    features: ['Production', 'მოდულები', 'ჩართე ან შეაჩერე ნებისმიერი მოდული ახალი ბილდის გარეშე.', ''],
     quests: ['Engagement', 'Medi Quest', 'მისიები, სამიზნეები და Medi Coins ჯილდოები.', ''],
     news: ['Engagement', 'სიახლეები', 'ბარათები აპის მთავარ გვერდზე: ღონისძიებები, საჩუქრები და სიახლეები.', ''],
-    social: ['Engagement', 'სოციალური ქსელები', 'კამპანიის ყველა პოსტი და სთორი: როდის, სად, რა ტექსტით და სურათით — და ზუსტი ისტორია.', ''],
-    errors: ['System', 'შეცდომები', 'აპის ავარიები და სერვერის შეცდომები — რა გატყდა, რამდენს შეეხო და სად.', ''],
+    social: ['Engagement', 'სოციალური ქსელები', 'კამპანიის პოსტები და სთორები: როდის, სად და რა ტექსტით გავიდა.', ''],
+    errors: ['System', 'შეცდომები', 'აპის ავარიები და სერვერის შეცდომები: რა გატყდა, სად და რამდენს შეეხო.', ''],
     capacity: ['System', 'სერვერის დატვირთვა', 'CPU, მეხსიერება, პასუხის დრო და როდის გაზარდო სერვერი Render-ზე.', ''],
-    funnel: ['Growth', 'ფუნელი', 'ინსტალაციიდან რეგისტრაციამდე, პირველ ქმედებამდე და დაბრუნებამდე.', ''],
-    director: ['Overview', 'დირექტორი', 'ცვლის ჩაბარება: დირექტორი მართავს, შენ ტელეგრამში ადასტურებ.', ''],
+    funnel: ['ზრდა', 'ფუნელი', 'გზა ინსტალაციიდან რეგისტრაციამდე, პირველ ქმედებამდე და დაბრუნებამდე.', ''],
+    director: ['Overview', 'დირექტორი', 'დირექტორი მართავს ცვლას, შენ ტელეგრამში ადასტურებ.', ''],
     email: ['Engagement', 'ელფოსტა', 'სისტემური წერილები, კამპანიები და მიწოდება.', ''],
-    support: ['Engagement', 'მხარდაჭერა', 'შემოსული წერილები support@medicard.ge-ზე — წაიკითხე და უპასუხე.', ''],
-    trainers: ['People', 'ტრენერები', 'MEDI COACH: ტრენერების დადასტურება და საქართველოს დარბაზების სია.', ''],
+    support: ['Engagement', 'მხარდაჭერა', 'support@medicard.ge-ზე შემოსული წერილები: წაიკითხე და უპასუხე.', ''],
+    trainers: ['ადამიანები', 'ტრენერები', 'MEDI COACH: განაცხადები, დარბაზები და შეტყობინებები.', ''],
   };
   setPageHeader(tab, copy);
 
@@ -1072,29 +1073,6 @@ function bindOrderCards() {
   });
 }
 
-function sortUsers(list) {
-  const dir = state.sortDir === 'asc' ? 1 : -1;
-  const key = state.sortKey;
-  return [...list].sort((a, b) => {
-    const va = key === 'used' ? a.usage?.used : a[key];
-    const vb = key === 'used' ? b.usage?.used : b[key];
-    if (va == null && vb == null) return 0;
-    if (va == null) return 1;
-    if (vb == null) return -1;
-    if (key === 'lastActiveAt' || key === 'createdAt') {
-      const ta = new Date(va).getTime() || 0;
-      const tb = new Date(vb).getTime() || 0;
-      return (ta - tb) * dir;
-    }
-    if (typeof va === 'number' && typeof vb === 'number') return (va - vb) * dir;
-    return String(va).localeCompare(String(vb), 'ka') * dir;
-  });
-}
-
-function avatarTone(user) {
-  return user.status === 'BLOCKED' ? 'muted' : 'free';
-}
-
 function freqKa(value) {
   return ({ often: 'ხშირად', balanced: 'დაბალანსებული', rare: 'იშვიათად' }[value] || value || 'უცნობია');
 }
@@ -1116,23 +1094,149 @@ function yesNoKa(value) {
   if (value === false) return 'არა';
   return 'უცნობია';
 }
-function copyAdminValue(value, label) {
-  if (!value) return;
-  navigator.clipboard?.writeText(String(value));
-  toast(`${label} დაკოპირდა`);
-}
 
 const USER_TABS = [
-  ['overview', 'მიმოხილვა', 'layout'],
-  ['activity', 'აქტივობა', 'activity'],
-  ['product', 'პროდუქტის გამოყენება', 'layers'],
-  ['notifications', 'შეტყობინებები', 'bell'],
-  ['devices', 'მოწყობილობები', 'phone'],
-  ['audit', 'აუდიტი', 'shield'],
+  ['overview', 'მიმოხილვა'],
+  ['activity', 'აქტივობა'],
+  ['product', 'გამოყენება'],
+  ['notifications', 'შეტყობინებები'],
+  ['devices', 'მოწყობილობები'],
+  ['audit', 'აუდიტი'],
 ];
+
+/* User profile (#/users/:id): what the app and the Brain record, in plain Georgian. */
+const USER_SCREEN_KA = {
+  '': 'მთავარი', home: 'მთავარი', explore: 'ყველა სერვისი', profile: 'პროფილი', records: 'ჩანაწერები', record: 'ჩანაწერი',
+  medications: 'მედიკამენტები', nutrition: 'კვება', 'nutrition/diary': 'კვების დღიური', assistant: 'Medi', chat: 'Medi',
+  'medi-quest': 'MEDI QUEST', 'medi-companion': 'MEDI QUEST', run: 'MEDIRUN', medipulsi: 'MEDIRUN', pets: 'ჩემი ცხოველები',
+  cycle: 'ციკლი', community: 'ქალების სივრცე', visits: 'ვიზიტები', lab: 'ლაბორატორია', symptoms: 'სიმპტომები',
+  pharmacy: 'ფარმაცია', coach: 'MEDI COACH', trainer: 'ტრენერი', news: 'სიახლეები', weather: 'ამინდი',
+  week: 'კვირის ანგარიში', 'health-metrics': 'ჯანმრთელობის მაჩვენებლები', invite: 'მოწვევა', share: 'გაზიარება',
+};
+const USER_SOURCE_KA = {
+  AppActivity: 'აპის აქტივობა', ChatSession: 'Medi ჩატი', ProductEvent: 'აპის მოვლენა',
+  MedicationDoseEvent: 'დოზის ჩანაწერი', MedicationSchedule: 'მედიკამენტის განრიგი',
+  NotificationOutcome: 'შეტყობინებიდან', notification: 'მონიშნა შეტყობინებიდან', app: 'მონიშნა აპში',
+};
+const USER_OUTCOME_KA = {
+  delivered: ['მიწოდებული', 'is-info'], opened: ['გაიხსნა', 'is-ok'], actioned: ['ქმედება შესრულდა', 'is-ok'],
+  snoozed: ['გადაიდო', 'is-plain'], dismissed: ['დახურა გაუხსნელად', 'is-plain'],
+  cancelled_by_revalidation: ['გაუქმდა გადამოწმებისას', 'is-warn'],
+};
+const USER_ACTION_KA = {
+  open: 'გახსნა', open_chat: 'Medi-ს ჩატი', medication_taken: 'წამალი მიიღო', hydration_logged: 'წყალი ჩაიწერა',
+  checkin_ok: 'შემოწმება: კარგად ვარ', snooze: 'გადადება',
+};
+const USER_REASON_KA = {
+  achievement_already_sent: 'მიღწევა უკვე გაიგზავნა', weekly_already_opened: 'კვირის ანგარიში უკვე გახსნილია',
+  draft_completed: 'მონახაზი უკვე დასრულდა', steps_no_longer_low: 'ნაბიჯები აღარ არის დაბალი',
+  valid_until_expired: 'შეტყობინების ვადა გავიდა',
+};
+const USER_AUDIT_KA = {
+  'user.status': 'ანგარიშის სტატუსი შეიცვალა', 'user.gender': 'სქესი შეიცვალა', 'user.export': 'მონაცემები ჩამოიტვირთა (JSON)',
+  'coins.grant': 'Medi Coins დაერიცხა', 'coins.revoke': 'Medi Coins ჩამოეჭრა',
+  TRAINER_APPROVE: 'ტრენერი დადასტურდა', TRAINER_REJECT: 'ტრენერის განაცხადი უარყოფილია',
+  TRAINER_SUSPEND: 'ტრენერი შეჩერდა', TRAINER_RESTORE: 'ტრენერი აღდგა',
+};
+const USER_AUDIT_FIELDS = {
+  status: 'სტატუსი', gender: 'სქესი', coins: 'ბალანსი', amount: 'რაოდენობა', reason: 'მიზეზი',
+  exportedAt: 'ჩამოტვირთვის დრო', note: 'შენიშვნა', approvedByOwner: 'დაადასტურა მფლობელმა',
+};
+
+function userWhen(value, mode = 'datetime') {
+  if (!value) return '—';
+  return window.AdminV3?.formatDate ? window.AdminV3.formatDate(value, mode) : fmtDate(value);
+}
+
+/** The admin-wide period the profile was loaded with (opsState.range), in words. */
+function userRangeLabel() {
+  const ops = typeof opsState === 'object' ? opsState : {};
+  const range = ops.range || '7d';
+  if (range === 'today') return 'დღეს';
+  const days = /^(\d+)d$/.exec(range);
+  if (days) return `ბოლო ${days[1]} დღე`;
+  const day = (v) => (window.AdminCharts?.dayLabel ? window.AdminCharts.dayLabel(v) : v);
+  if (range === 'custom' && ops.from && ops.to) return `${day(ops.from)} – ${day(ops.to)}`;
+  return 'არჩეული პერიოდი';
+}
+
+function userScreenKa(screen) {
+  const path = String(screen || '').replace(/^\(tabs\)\/?/, '').replace(/^\/+|\/+$/g, '');
+  return USER_SCREEN_KA[path] || USER_SCREEN_KA[path.split('/')[0]] || null;
+}
+
+function userTimelineLabel(item) {
+  if (item.event !== 'app_opened') return item.label || '—';
+  const screen = item.activityType ?? (String(item.label || '').startsWith('აქტივობა · ') ? item.label.slice(11) : null);
+  if (!screen || screen === 'open' || screen === 'heartbeat') return 'აპი გაიხსნა';
+  const ka = userScreenKa(screen);
+  return ka ? `აპში · ${ka}` : 'აპში';
+}
+
+/** Why the Brain held a notification back; suppressText() (ops-center.js) knows the phone's exact strings. */
+function userReasonText(code) {
+  const raw = String(code || '').trim();
+  if (!raw) return '—';
+  if (USER_REASON_KA[raw]) return USER_REASON_KA[raw];
+  const spaced = raw.replace(/_/g, ' ');
+  if (typeof suppressText !== 'function') return spaced;
+  const ka = suppressText(raw);
+  if (ka !== raw) return ka;
+  const kaSpaced = suppressText(spaced);
+  return kaSpaced !== spaced ? kaSpaced : spaced;
+}
+
+function userAuditLabel(action) {
+  return USER_AUDIT_KA[action] || 'ადმინის ქმედება';
+}
+
+function userAuditValue(key, value) {
+  if (value == null || value === '') return '—';
+  if (key === 'status') return value === 'BLOCKED' ? 'დაბლოკილი' : value === 'ACTIVE' ? 'შესვლა დაშვებულია' : String(value);
+  if (key === 'gender') return genderKa(value);
+  if (key === 'exportedAt') return userWhen(value);
+  if (typeof value === 'boolean') return value ? 'კი' : 'არა';
+  if (typeof value === 'number') return value.toLocaleString('ka-GE');
+  return typeof value === 'object' ? null : String(value);
+}
+
+/** Readable before → after rows for the known fields; everything else stays in the technical details. */
+function userAuditChanges(item) {
+  const prev = item.previous && typeof item.previous === 'object' ? item.previous : {};
+  const next = item.next && typeof item.next === 'object' ? item.next : {};
+  return [...new Set([...Object.keys(prev), ...Object.keys(next)])]
+    .filter((key) => USER_AUDIT_FIELDS[key])
+    .map((key) => ({
+      label: USER_AUDIT_FIELDS[key],
+      before: Object.hasOwn(prev, key) ? userAuditValue(key, prev[key]) : null,
+      after: Object.hasOwn(next, key) ? userAuditValue(key, next[key]) : null,
+    }))
+    .filter((row) => row.before != null || row.after != null);
+}
+
+function userFeatureRows(usage) {
+  const now = Date.now();
+  return Object.entries(FEATURE_USAGE_LABELS).map(([key, label]) => {
+    const feat = usage[key] || {};
+    const available = Object.hasOwn(usage, key) && feat.available !== false;
+    const used = available && Boolean(feat.used);
+    const lastMs = used && feat.lastUsed ? new Date(feat.lastUsed).getTime() || 0 : 0;
+    return {
+      key,
+      label,
+      available,
+      used,
+      lastUsed: used ? feat.lastUsed || null : null,
+      lastMs,
+      active: lastMs > 0 && now - lastMs < 86400000 * 2,
+      periodCount: available ? feat.periodCount ?? 0 : null,
+    };
+  });
+}
+
 const FEATURE_USAGE_LABELS = {
   medi: 'Medi · AI გამოყენება',
-  assistant: 'მედი · შესრულებული მოქმედებები',
+  assistant: 'Medi · შესრულებული მოქმედებები',
   consilium: 'AI კონსილიუმი',
   symptom_review: 'სიმპტომების განხილვა',
   lab: 'ლაბორატორიული ანალიზი',
@@ -1157,21 +1261,6 @@ const FEATURE_USAGE_LABELS = {
 };
 window.FEATURE_USAGE_LABELS = FEATURE_USAGE_LABELS;
 
-const FEATURE_USAGE_ICONS = {
-  assistant: 'spark', consilium: 'users', symptom_review: 'activity', lab: 'file',
-  imaging: 'image', skin: 'image', skincare: 'heart', records: 'file',
-  pregnancy: 'heart', medirun: 'map', quest: 'award', pets: 'heart',
-  medi_vet: 'spark', community: 'users',
-  medi: 'spark',
-  medications: 'pill',
-  cycle: 'calendar',
-  hydration: 'activity',
-  step_tracking: 'zap',
-  weight: 'activity',
-  visits: 'calendar',
-  weekly_report: 'file',
-};
-
 function adminFlagImg(code) {
   const iso = String(code || '').toLowerCase();
   if (!/^[a-z]{2}$/.test(iso)) return '';
@@ -1192,6 +1281,7 @@ function adminPlaceOf(loc) {
 window.adminFlagImg = adminFlagImg;
 window.adminPlaceOf = adminPlaceOf;
 
+/** Profile tabs. The page chrome, KPIs and the edit form live in admin-users-v3.js. */
 function renderUserInvestigationTabs(user, extra, pkgOptions, isPaid, activeTab) {
   const inv = extra.investigation || {};
   const ov = inv.overview || {};
@@ -1199,286 +1289,311 @@ function renderUserInvestigationTabs(user, extra, pkgOptions, isPaid, activeTab)
   const notes = inv.notifications || extra.notifications || {};
   const tab = USER_TABS.some(([key]) => key === activeTab) ? activeTab : 'overview';
   const tel = ov.telemetry || notes.telemetry || {};
-  const place = adminPlaceOf(ov.location);
-  const row = (label, value, icoName) => `<div class="inv-row">${icoName ? `<span class="inv-row-ico">${icon(icoName)}</span>` : ''}<span>${label}</span><strong>${value}</strong></div>`;
-  const sect = (title, icoName, body) => `<section class="inv-section"><h4>${icon(icoName)} ${title}</h4>${body}</section>`;
-  const form = `
-    <div class="umodal-form">
-      <label class="field"><span>სახელი</span><input id="edit-name" value="${escapeAttr(user.fullName)}" /></label>
-      <label class="field"><span>ელ-ფოსტა</span><input id="edit-email" type="email" value="${escapeAttr(user.email)}" /></label>
-      <label class="field"><span>ტელეფონი</span><input id="edit-phone" type="tel" value="${escapeAttr(user.phone || '')}" placeholder="—" /></label>
-      <label class="field"><span>სქესი</span>
-        <select id="edit-gender">
-          <option value="" ${!user.gender ? 'selected' : ''}>არ არის მითითებული</option>
-          <option value="MALE" ${user.gender === 'MALE' ? 'selected' : ''}>მამრობითი</option>
-          <option value="FEMALE" ${user.gender === 'FEMALE' ? 'selected' : ''}>მდედრობითი</option>
-          <option value="OTHER" ${user.gender === 'OTHER' ? 'selected' : ''}>სხვა</option>
-        </select>
-      </label>
-      <label class="field"><span>სტატუსი</span>
-        <select id="edit-status">
-          <option value="ACTIVE" ${user.status === 'ACTIVE' ? 'selected' : ''}>აქტიური — შეუძლია შესვლა</option>
-          <option value="BLOCKED" ${user.status === 'BLOCKED' ? 'selected' : ''}>დაბლოკილი — შესვლა აკრძალულია</option>
-        </select>
-      </label>
-      <label class="field span-2"><span>ადმინ შენიშვნა</span>
-        <textarea id="edit-note" rows="3">${escapeHtml(user.adminNote || '')}</textarea>
-      </label>
-    </div>`;
+  const period = userRangeLabel();
+  const esc = escapeHtml;
+  const info = (key, label) => (window.AdminV3?.infoButton ? window.AdminV3.infoButton(key, label) : '');
+  const empty = (iconName, text) => `<div class="s-empty">${icon(iconName)}<span>${esc(text)}</span></div>`;
+  const sub = (title, body) => `<section class="s-user-sub"><h4>${esc(title)}</h4>${body}</section>`;
+  const decisionList = notes.recentDecisions || extra.decisions || [];
+  const outcomeList = notes.recentOutcomes || [];
+  const timelineItems = inv.timeline || [];
+  const deviceList = inv.devices || extra.devices || [];
+  const auditList = inv.audit || [];
+  const features = userFeatureRows(usage);
+  const usedFeatures = features.filter((f) => f.used).sort((a, b) => b.lastMs - a.lastMs);
+  const resultIs = (d, keys) => keys.includes(String(d.result || '').toUpperCase());
+
+  const link = (key, iconName, title, text) => `
+    <button type="button" class="s-user-link" data-user-goto="${key}">
+      <span class="s-user-link-ico">${icon(iconName)}</span>
+      <span class="s-user-link-copy"><b>${esc(title)}</b><span>${esc(text)}</span></span>
+      ${icon('arrow')}
+    </button>`;
+  const lastEvent = timelineItems[0];
+  const lastAudit = auditList[0];
   const overview = `
-    <div class="user-overview">
-    <div class="user-overview-facts">
-    ${sect('ანგარიში', 'user', `<div class="inv-grid">
-      ${row('User ID', `<button type="button" class="inv-copy" data-copy="${escapeAttr(user.id)}" data-copy-label="User ID">${escapeHtml(user.id)}</button>`, 'copy')}
-      ${row('ანგარიშის სტატუსი', user.status === 'BLOCKED' ? 'დაბლოკილი' : 'შესვლა დაშვებულია', user.status === 'BLOCKED' ? 'lock' : 'check')}
-      ${row('რეგისტრაცია', fmtDateShort(user.createdAt), 'calendar')}
-      ${row('სქესი', genderKa(user.gender), 'user')}
-      ${row('ქვეყანა', `${place.flag}<span>${escapeHtml(place.country)}</span>`, 'globe')}
-      ${row('ქალაქი', escapeHtml(place.city), 'globe')}
-    </div>`)}
-    ${sect('აქტივობა', 'activity', `<div class="inv-grid">
-      ${row('ბოლო აქტივობა', ov.lastActiveAt ? fmtDate(ov.lastActiveAt) : 'უცნობია', 'activity')}
-      ${row('პლატფორმა', platformKa(ov.platform) || 'უცნობია', 'phone')}
-      ${row('ბოლო აპის ვერსია', ov.appVersion || 'უცნობია', 'layers')}
-      ${row('ნოტიფიკაციის ნებართვა', permKa(ov.notificationPermission), 'bell')}
-    </div>`)}
-    ${sect('პროდუქტის ათვისება', 'layers', `<p class="adoption-explainer">დადასტურებული გამოყენება შენახული ჩანაწერებით. თარიღი — ბოლო ჩანაწერია; მისი არქონა გვერდის არგახსნას არ ნიშნავს. კატეგორიები შეიძლება გადაიკვეთოს.</p><div class="v25-adopt">
-      ${Object.entries(FEATURE_USAGE_LABELS).map(([key, label]) => {
-        const feat = usage[key] || {};
-        const icoName = FEATURE_USAGE_ICONS[key] || 'activity';
-        const available = Object.hasOwn(usage, key) && feat.available !== false;
-        const meta = !available ? 'მონაცემი მიუწვდომელია' : feat.used ? (feat.lastUsed ? fmtDateShort(feat.lastUsed) : 'გამოყენებულია') : 'ჯერ არ დაფიქსირებულა';
-        return `<div class="v25-adopt-item${feat.used ? ' is-on' : ''}">
-          <span class="v25-adopt-ico">${icon(icoName)}</span>
-          <span class="v25-adopt-label">${escapeHtml(label)}</span>
-          <span class="v25-adopt-state">${!available ? 'უცნობია' : feat.used ? 'გამოყენებულია' : 'ჩანაწერი არ არის'}</span>
-          <strong class="v25-adopt-meta">${escapeHtml(meta)}</strong>
-        </div>`;
-      }).join('')}
-    </div>`)}
-    ${sect('შეტყობინების ქცევა', 'bell', `
-    <div class="inv-fatigue">
-      <div><span class="inv-fat-lab">${icon('user')} მომხმარებლის არჩევანი</span><strong>${escapeHtml(freqKa(ov.selectedFrequency))}</strong></div>
-      <div><span class="inv-fat-lab">${icon('shield')} საბაზისო ლიმიტი</span><strong>${ov.baseDailyCap == null ? 'უცნობია' : `${ov.baseDailyCap} / დღე`}</strong></div>
-      <div class="is-adapt"><span class="inv-fat-lab">${icon('spark')} Medi-ს მიმდინარე ადაპტაცია</span><strong>${ov.adaptiveDailyCap == null ? 'უცნობია' : `${ov.adaptiveDailyCap} / დღე`}</strong></div>
-    </div>
-    ${ov.capAdaptedByMedi || ov.capAdaptedNote ? `<p class="inv-note">Medi-მ დროებით შეამცირა სიხშირე ბოლო ჩართულობის მიხედვით. მომხმარებლის არჩევანი არ შეცვლილა.</p>` : ''}
-    `)}
-    </div>
-    <section class="inv-section inv-edit user-overview-edit"><h4>${icon('settings')} ანგარიშის რედაქტირება</h4>
-    ${form}
-    </section>
+    <p class="s-user-pane-note">მოკლე შეჯამება · ${esc(period)}. დააჭირე სტრიქონს დეტალებისთვის.</p>
+    <div class="s-user-links">
+      ${link('activity', 'activity', 'აქტივობა', lastEvent
+        ? `${timelineItems.length} მოვლენა · ბოლოს ${userWhen(lastEvent.at)} — ${userTimelineLabel(lastEvent)}`
+        : 'ამ პერიოდში აქტივობა არ ჩაწერილა')}
+      ${link('product', 'layers', 'გამოყენება', usedFeatures.length
+        ? `${usedFeatures.length} მოდული · ბოლოს: ${usedFeatures.slice(0, 3).map((f) => f.label).join(', ')}`
+        : 'მოდულის გამოყენება ჯერ არ დაფიქსირებულა')}
+      ${link('notifications', 'bell', 'შეტყობინებები', decisionList.length
+        ? `${decisionList.length} გადაწყვეტილება · გაიგზავნა ${decisionList.filter((d) => resultIs(d, ['SEND', 'SENT'])).length} · დაიბლოკა ${decisionList.filter((d) => resultIs(d, ['BLOCKED', 'SUPPRESSED'])).length} · გაიხსნა ${notes.opened ?? 0}`
+        : `ამ პერიოდში Brain-ს გადაწყვეტილება არ მიუღია · ნებართვა: ${permKa(notes.permission || ov.notificationPermission)}`)}
+      ${link('devices', 'phone', 'მოწყობილობები', deviceList.length
+        ? deviceList.map((d) => [platformKa(d.platform) || 'უცნობი კლიენტი', d.appVersion].filter(Boolean).join(' ')).join(' · ')
+        : 'აპის კლიენტი ჯერ არ დაფიქსირებულა')}
+      ${link('audit', 'shield', 'აუდიტი', lastAudit
+        ? `${auditList.length} ადმინის ქმედება · ბოლო: ${userAuditLabel(lastAudit.action)}, ${userWhen(lastAudit.time, 'date')}`
+        : 'ადმინს ამ ანგარიშზე ჯერ არაფერი შეუცვლია')}
     </div>`;
   const timelineGroups = [];
-  for (const item of inv.timeline || []) {
+  for (const item of timelineItems) {
     const day = timelineDayKa(item.at);
     const last = timelineGroups[timelineGroups.length - 1];
     if (!last || last.day !== day) timelineGroups.push({ day, items: [item] });
     else last.items.push(item);
   }
+  const clock = (value) => {
+    const p = value ? adminDateParts(value) : null;
+    return p ? `${p.hour}:${p.minute}` : '—';
+  };
   const timeline = timelineGroups.length
-    ? `<div class="inv-timeline">${timelineGroups.map((group) => `
-      <div class="inv-day">${escapeHtml(group.day)}</div>
-      ${group.items.map((item) => `
-        <div class="inv-tl-item">
-          <i></i>
-          <time>${item.at ? new Date(item.at).toLocaleTimeString('ka-GE', { hour: '2-digit', minute: '2-digit' }) : '—'}</time>
-          <strong>${escapeHtml(item.label)}</strong>
-          <em>${platformKa(item.platform) || 'უცნობია'} · ${escapeHtml(item.appVersion || 'უცნობია')} · ${escapeHtml(item.source || '')}</em>
-        </div>`).join('')}
-    `).join('')}</div>`
-    : '<p class="muted">ამ პერიოდში გასუფთავებული აქტივობა არ არის.</p>';
-  const usageRows = Object.entries(FEATURE_USAGE_LABELS).map(([key, label]) => {
-    const feat = usage[key] || {};
-    const active = feat.used && feat.lastUsed && (Date.now() - new Date(feat.lastUsed).getTime() < 86400000 * 2);
-    const available = Object.hasOwn(usage, key) && feat.available !== false;
-    const status = !available ? 'მიუწვდომელია' : !feat.used ? 'ჯერ არ დაფიქსირებულა' : active ? 'აქტიური' : 'გამოყენებული';
-    const statusClass = !feat.used ? ' is-off' : (feat.used ? ' is-on' : '');
-    const icoName = FEATURE_USAGE_ICONS[key] || 'activity';
-    return `<div class="v25-feat-row">
-      <div class="v25-feat-name"><b>${icon(icoName)} ${escapeHtml(label)}</b></div>
-      <div class="v25-feat-status-cell"><span class="v25-feat-status${statusClass}">${status}</span></div>
-      <div class="v25-feat-date"><em>${feat.lastUsed ? fmtDateShort(feat.lastUsed) : '—'}</em></div>
-      <div class="v25-feat-count"><em>${available ? (feat.periodCount ?? 0) : '—'}</em></div>
+    ? `<p class="s-user-pane-note">${esc(period)} · ${timelineItems.length} მოვლენა · თბილისის დროით.</p>
+      <ol class="s-user-tl">${timelineGroups.map((group) => `
+        <li class="s-user-tl-day">${esc(group.day)}</li>
+        ${group.items.map((item) => {
+          const meta = [platformKa(item.platform), item.appVersion, USER_SOURCE_KA[item.source]].filter(Boolean).join(' · ');
+          const route = item.event === 'app_opened' && item.activityType ? ` title="${escapeAttr(item.activityType)}"` : '';
+          return `<li class="s-user-tl-item">
+            <time datetime="${escapeAttr(item.at || '')}">${clock(item.at)}</time>
+            <div><b${route}>${esc(userTimelineLabel(item))}</b>${meta ? `<small>${esc(meta)}</small>` : ''}</div>
+            ${item.decisionId ? `<button type="button" class="btn ghost compact" data-decision="${escapeAttr(item.decisionId)}">დეტალები</button>` : ''}
+          </li>`;
+        }).join('')}`).join('')}
+      </ol>`
+    : empty('activity', `ამ პერიოდში (${period}) აქტივობა არ ჩაწერილა.`);
+
+  const featureStatus = (f) => {
+    if (!f.available) return '<span class="s-badge is-plain s-user-faint">მონაცემი არ არის</span>';
+    if (!f.used) return '<span class="s-badge is-plain">ჩანაწერი არ არის</span>';
+    return f.active
+      ? '<span class="s-badge is-ok" title="ბოლო 2 დღეში">აქტიური</span>'
+      : '<span class="s-badge is-info">გამოყენებული</span>';
+  };
+  const productRows = [...usedFeatures, ...features.filter((f) => f.available && !f.used), ...features.filter((f) => !f.available)];
+  const product = `
+    <p class="s-user-pane-note">გამოყენება დასტურდება შენახული ჩანაწერით · „ამ პერიოდში“ — ${esc(period)}. ${info('users.product', 'როგორ ითვლება')}</p>
+    <div class="s-table-wrap"><table class="s-table s-user-table">
+      <thead><tr><th>მოდული</th><th>სტატუსი</th><th>ბოლო ჩანაწერი</th><th class="num">ამ პერიოდში</th></tr></thead>
+      <tbody>${productRows.map((f) => `<tr${f.used ? '' : ' class="is-quiet"'}>
+        <td><b>${esc(f.label)}</b></td>
+        <td>${featureStatus(f)}</td>
+        <td>${f.lastUsed ? esc(userWhen(f.lastUsed, 'date')) : '<span class="s-muted">—</span>'}</td>
+        <td class="num">${f.periodCount == null ? '—' : Number(f.periodCount).toLocaleString('ka-GE')}</td>
+      </tr>`).join('')}</tbody>
+    </table></div>`;
+
+  const brain = notes.brain || {};
+  const baseCap = brain.baseDailyCap ?? ov.baseDailyCap;
+  const adaptiveCap = brain.adaptiveDailyCap ?? ov.adaptiveDailyCap;
+  const missing = [];
+  if (tel.brainSync == null) missing.push('Brain-ის სინქი');
+  if (tel.outcomeSync == null) missing.push('შედეგების სინქი');
+  if (!ov.platform && !extra.activity?.platform) missing.push('პლატფორმა');
+  if (!ov.appVersion && !extra.activity?.appVersion) missing.push('აპის ვერსია');
+  const unsupported = [tel.brainSync === false ? 'Brain-ის' : '', tel.outcomeSync === false ? 'შედეგების' : ''].filter(Boolean);
+  const kv = (label, value) => `<div><dt>${label}</dt><dd>${value}</dd></div>`;
+  const pagedTable = (id, head, rows) => `
+    <div class="v3-user-decisions" data-page-size="10">
+      <div class="s-table-wrap"><table class="s-table s-user-table" id="${id}-table"><thead><tr>${head}</tr></thead><tbody id="${id}-tbody">${rows}</tbody></table></div>
+      <div class="s-user-pager" id="${id}-pager" hidden></div>
+    </div>`;
+  const decisionRows = decisionList.map((d) => `
+    <tr class="is-click" data-decision="${escapeAttr(d.decisionId)}" tabindex="0" title="გადაწყვეტილების დეტალები">
+      <td class="s-user-nowrap">${esc(userWhen(d.createdAt))}</td>
+      <td>${esc(typeof brainFamilyLabel === 'function' ? brainFamilyLabel(d.family || d.candidate) : (d.family || d.candidate || '—'))}</td>
+      <td>${typeof brainResultBadge === 'function' ? brainResultBadge(d.result) : esc(d.result || '—')}</td>
+      <td>${d.reason ? esc(userReasonText(d.reason)) : '<span class="s-muted">—</span>'}</td>
+      <td class="s-user-go">${icon('arrow')}</td>
+    </tr>`).join('');
+  const outcomeRows = outcomeList.map((o) => {
+    const [label, tone] = USER_OUTCOME_KA[o.outcome] || [o.outcome || '—', 'is-plain'];
+    const open = o.decisionId ? ` class="is-click" data-decision="${escapeAttr(o.decisionId)}" tabindex="0" title="გადაწყვეტილების დეტალები"` : '';
+    return `<tr${open}>
+      <td class="s-user-nowrap">${esc(userWhen(o.occurredAt))}</td>
+      <td><span class="s-badge ${tone}">${esc(label)}</span></td>
+      <td>${o.actionKey ? esc(USER_ACTION_KA[o.actionKey] || o.actionKey) : '<span class="s-muted">—</span>'}</td>
+      <td class="s-user-go">${o.decisionId ? icon('arrow') : ''}</td>
+    </tr>`;
+  }).join('');
+  const reasons = notes.suppressionReasons || [];
+  const reasonMax = Math.max(1, ...reasons.map((r) => Number(r.count) || 0));
+  const reasonRows = reasons.map((r) => {
+    const text = userReasonText(r.reason);
+    return `<div class="s-user-meter">
+      <span>${esc(text)}</span>
+      <div class="s-meter is-warn" role="img" aria-label="${escapeAttr(`${text}: ${r.count}`)}"><i style="width:${Math.max(3, Math.round(((Number(r.count) || 0) / reasonMax) * 100))}%"></i></div>
+      <b>${Number(r.count || 0).toLocaleString('ka-GE')}</b>
     </div>`;
   }).join('');
-  const usageHead = `<div class="v25-feat-head" aria-hidden="true">
-    <span>მოდული</span><span>სტატუსი</span><span>ბოლო ჩანაწერი</span><span>პერიოდში</span>
-  </div>`;
-  const decisionList = notes.recentDecisions || extra.decisions || [];
-  const decisions = decisionList.map((item) => `
-    <tr>
-      <td><button type="button" class="inv-link" data-decision="${escapeAttr(item.decisionId)}">${escapeHtml(item.decisionId)}</button></td>
-      <td>${escapeHtml(item.family || item.candidate || '—')}</td>
-      <td><span class="badge result-${escapeAttr(item.result || 'unknown')}">${escapeHtml(item.result || '—')}</span></td>
-      <td title="${escapeAttr(item.reason || '')}">${escapeHtml(item.reason || '—')}</td>
-      <td>${fmtDate(item.createdAt)}</td>
-    </tr>`).join('');
-  const outcomes = (notes.recentOutcomes || []).map((item) => `
-    <tr>
-      <td><button type="button" class="inv-link" data-decision="${escapeAttr(item.decisionId)}">${escapeHtml(item.decisionId || '—')}</button></td>
-      <td>${escapeHtml(item.outcome)}</td>
-      <td>${escapeHtml(item.actionKey || '—')}</td>
-      <td>${fmtDate(item.occurredAt)}</td>
-    </tr>`).join('');
-  const suppress = (notes.suppressionReasons || []).map((item) => `<tr><td>${escapeHtml(item.reason)}</td><td>${item.count}</td></tr>`).join('');
   const notif = `
-    <div class="v25-brainbox">
-      <div><span>${icon('user')} არჩევანი</span><strong>${freqKa(notes.preference?.selectedFrequency || ov.selectedFrequency)}</strong></div>
-      <div class="is-adapt"><span>${icon('spark')} საბაზისო / ადაპტაცია</span><strong>${notes.brain?.baseDailyCap ?? ov.baseDailyCap ?? '—'} → ${notes.brain?.adaptiveDailyCap ?? ov.adaptiveDailyCap ?? '—'}</strong></div>
-      <div><span>${icon('bell')} ნებართვა</span><strong>${permKa(notes.permission || ov.notificationPermission)}</strong></div>
-      <div><span>${icon('activity')} ტელემეტრია</span><strong>Brain ${yesNoKa(tel.brainSync)} · Outcome ${yesNoKa(tel.outcomeSync)}</strong></div>
-    </div>
-    ${sect('Adaptive Brain', 'spark', `<div class="inv-fatigue">
-      <div><span class="inv-fat-lab">${icon('shield')} საბაზისო ლიმიტი</span><strong>${notes.brain?.baseDailyCap ?? ov.baseDailyCap ?? 'უცნობია'} / დღე</strong></div>
-      <div class="is-adapt"><span class="inv-fat-lab">${icon('spark')} Medi-ს ადაპტაცია</span><strong>${notes.brain?.adaptiveDailyCap ?? ov.adaptiveDailyCap ?? 'უცნობია'} / დღე</strong></div>
-      <div><span class="inv-fat-lab">${icon('alert')} დაღლილობა</span><strong>${fatigueKa(notes.brain?.fatigueState || ov.fatigueState)}</strong></div>
-    </div>`)}
-    ${sect('ტელემეტრია', 'activity', `<div class="inv-grid">
-      ${row('გახსნა / ქმედება', `${notes.opened ?? 0} / ${notes.actioned ?? 0}`, 'eye')}
-    </div>
-    ${tel.brainSync === false ? '<p class="inv-note">ამ კლიენტის ვერსია Brain-ის სინქრონიზაციას არ უჭერს მხარს.</p>' : ''}
-    ${tel.outcomeSync === false ? '<p class="inv-note">ამ კლიენტის ვერსია შედეგების სინქრონიზაციას არ უჭერს მხარს.</p>' : ''}
-    `)}
-    ${sect('ბოლო გადაწყვეტილებები', 'file', `
-      <div class="v3-user-decisions" data-page-size="10" data-total="${decisionList.length}">
-        <div class="v3-user-decisions-scroll">
-          <table class="inv-table" id="user-decisions-table">
-            <thead><tr><th>Decision ID</th><th>ოჯახი</th><th>შედეგი</th><th>მიზეზი</th><th>დრო</th></tr></thead>
-            <tbody id="user-decisions-tbody">${decisions || '<tr class="is-empty"><td colspan="5">გადაწყვეტილება ჯერ არ არის</td></tr>'}</tbody>
-          </table>
-        </div>
-        <div class="v3-user-decisions-pager" id="user-decisions-pager" hidden></div>
-      </div>`)}
-    ${sect('ბოლო შედეგები', 'check', `<table class="inv-table"><thead><tr><th>Decision ID</th><th>შედეგი</th><th>ქმედება</th><th>დრო</th></tr></thead>
-    <tbody>${outcomes || '<tr><td colspan="4">შედეგი ჯერ არ არის</td></tr>'}</tbody></table>`)}
-    ${sect('დაბლოკვის მიზეზები', 'lock', `<table class="inv-table"><thead><tr><th>მიზეზი</th><th>რაოდენობა</th></tr></thead>
-    <tbody>${suppress || '<tr><td colspan="2">დაბლოკვა არ არის</td></tr>'}</tbody></table>`)}`;
+    <p class="s-user-pane-note">${esc(period)} · რას წყვეტდა Brain და რა მოხდა შემდეგ. ${info('users.notifications', 'შეტყობინებების ახსნა')}</p>
+    ${missing.length >= 2 ? `<div class="s-callout">${icon('info')}<p>აპიდან ტელემეტრია ჯერ არ მოსულა (${esc(missing.join(', '))}). ეს ხშირად ნორმალურია — ძველი ვერსია ან აპი დიდი ხანია არ გახსნილა. ${info('users.telemetry')}</p></div>` : ''}
+    <dl class="s-user-kv">
+      ${kv('ნებართვა', esc(permKa(notes.permission || ov.notificationPermission)))}
+      ${kv('არჩეული სიხშირე', esc(freqKa(notes.preference?.selectedFrequency || ov.selectedFrequency)))}
+      ${kv('დღიური ლიმიტი', baseCap == null && adaptiveCap == null ? 'უცნობია' : `${esc(baseCap ?? '—')} → ${esc(adaptiveCap ?? '—')}<small>საბაზისო → Medi-ს ადაპტაცია</small>`)}
+      ${kv('დაღლილობა', esc(fatigueKa(brain.fatigueState || ov.fatigueState)))}
+      ${kv('გახსნა / ქმედება', `${esc(notes.opened ?? 0)} / ${esc(notes.actioned ?? 0)}`)}
+      ${kv('სინქი', `Brain: ${yesNoKa(tel.brainSync)} · შედეგები: ${yesNoKa(tel.outcomeSync)}`)}
+    </dl>
+    ${ov.capAdaptedByMedi || ov.capAdaptedNote ? `<div class="s-callout">${icon('spark')}<p>Medi-მ დროებით შეამცირა სიხშირე ბოლო ჩართულობის მიხედვით. ადამიანის არჩევანი არ შეცვლილა.</p></div>` : ''}
+    ${unsupported.length ? `<div class="s-callout is-warn">${icon('alert')}<p>ამ კლიენტის ვერსია ${unsupported.join(' და ')} სინქრონიზაციას მხარს არ უჭერს — მონაცემი შეიძლება არასრული იყოს.</p></div>` : ''}
+    ${sub('ბოლო გადაწყვეტილებები', decisionRows
+      ? pagedTable('user-decisions', '<th>დრო</th><th>ტიპი</th><th>შედეგი</th><th>მიზეზი</th><th class="s-user-go"><span class="sr-only">დეტალები</span></th>', decisionRows)
+      : empty('file', 'ამ პერიოდში Brain-ს გადაწყვეტილება არ მიუღია.'))}
+    ${sub('რა მოხდა გაგზავნის შემდეგ', outcomeRows
+      ? pagedTable('user-outcomes', '<th>დრო</th><th>შედეგი</th><th>ქმედება</th><th class="s-user-go"><span class="sr-only">დეტალები</span></th>', outcomeRows)
+      : empty('check', 'ამ პერიოდში შედეგი არ ჩაწერილა.'))}
+    ${sub('რატომ დაიბლოკა', reasonRows ? `<div class="s-user-meters">${reasonRows}</div>` : empty('check', 'ამ პერიოდში Brain-ს შეტყობინება არ დაუბლოკავს.'))}`;
 
-  const devices = (inv.devices || extra.devices || []).map((item) => `
-    <article class="v25-device">
-      <strong>${icon('phone')} ${platformKa(item.platform) || 'უცნობია'}</strong>
-      <span>${escapeHtml(item.appVersion || 'უცნობია')}</span>
-      <em>${item.firstSeen ? fmtDate(item.firstSeen) : '—'} → ${item.lastSeen ? fmtDate(item.lastSeen) : '—'}</em>
-      <em>${permKa(item.notificationPermission)} · Brain ${yesNoKa(item.telemetry?.brainSync)} · Outcome ${yesNoKa(item.telemetry?.outcomeSync)}</em>
-    </article>`).join('');
-  const audit = (inv.audit || []).map((item) => `
-    <div class="v25-audit-row">
-      <time>${fmtDate(item.time)}</time>
-      <div><b>${escapeHtml(item.admin || '—')}</b> · ${escapeHtml(item.action || '—')}</div>
-      <details><summary>დეტალი</summary><pre>${escapeHtml(JSON.stringify({ previous: item.previous ?? null, next: item.next ?? null }))}</pre></details>
-    </div>`).join('');
+  const deviceRows = deviceList.map((d) => `<tr>
+      <td><b>${esc(platformKa(d.platform) || 'უცნობი კლიენტი')}</b><small class="s-user-cell-sub">${esc(d.appVersion || 'ვერსია უცნობია')}</small></td>
+      <td class="s-user-nowrap">${esc(userWhen(d.firstSeen))}</td>
+      <td class="s-user-nowrap">${esc(userWhen(d.lastSeen))}</td>
+      <td>${esc(permKa(d.notificationPermission))}</td>
+      <td>Brain: ${yesNoKa(d.telemetry?.brainSync)}<small class="s-user-cell-sub">შედეგები: ${yesNoKa(d.telemetry?.outcomeSync)}</small></td>
+    </tr>`).join('');
+  const devices = deviceRows
+    ? `<p class="s-user-pane-note">აპის კლიენტები აქტივობისა და Push-ის ტოკენის მიხედვით. მოწყობილობის სახელი არ ინახება.</p>
+      <div class="s-table-wrap"><table class="s-table s-user-table">
+        <thead><tr><th>კლიენტი · ვერსია</th><th>პირველად</th><th>ბოლოს</th><th>შეტყობინებები</th><th>სინქი</th></tr></thead>
+        <tbody>${deviceRows}</tbody>
+      </table></div>`
+    : empty('phone', 'აპის კლიენტი ჯერ არ დაფიქსირებულა. მოწყობილობის სახელი არ ინახება.');
+
+  const audit = auditList.length
+    ? `<ol class="s-user-audit">${auditList.map((item) => {
+        const changes = userAuditChanges(item);
+        return `<li>
+          <div class="s-user-audit-head"><b>${esc(userAuditLabel(item.action))}</b><time>${esc(userWhen(item.time))}</time></div>
+          <p class="s-user-audit-who">${esc(item.admin || 'უცნობი ადმინი')}</p>
+          ${changes.length ? `<ul class="s-user-diff">${changes.map((c) => `<li><span>${esc(c.label)}</span>${c.before != null ? `<em>${esc(c.before)}</em> → ` : ''}<b>${esc(c.after ?? '—')}</b></li>`).join('')}</ul>` : ''}
+          <details class="s-details"><summary>ტექნიკური დეტალები</summary><div><pre>${esc(JSON.stringify({ action: item.action, previous: item.previous ?? null, next: item.next ?? null }, null, 2))}</pre></div></details>
+        </li>`;
+      }).join('')}</ol>`
+    : empty('shield', 'ადმინს ამ ანგარიშზე ჯერ არაფერი შეუცვლია.');
+
+  const pane = (key, html) => `<div class="user-pane s-user-pane${tab === key ? ' is-on' : ''}" data-user-pane="${key}" role="tabpanel" aria-labelledby="user-tab-${key}">${html}</div>`;
   return `
-    <div class="user-tabs" role="tablist">
-      ${USER_TABS.map(([key, label, icoName]) => `<button type="button" class="user-tab" role="tab" data-user-tab="${key}" aria-selected="${key === tab}">${icon(icoName || 'layout')} ${label}</button>`).join('')}
+    <div class="user-tabs" role="tablist" aria-label="პროფილის ნაწილები">
+      ${USER_TABS.map(([key, label]) => `<button type="button" class="user-tab" role="tab" id="user-tab-${key}" data-user-tab="${key}" aria-selected="${key === tab}" tabindex="${key === tab ? 0 : -1}">${label}</button>`).join('')}
     </div>
     <div class="user-body">
-      <div class="user-pane${tab === 'overview' ? ' is-on' : ''}" data-user-pane="overview">${overview}</div>
-      <div class="user-pane${tab === 'activity' ? ' is-on' : ''}" data-user-pane="activity">${timeline}</div>
-      <div class="user-pane${tab === 'product' ? ' is-on' : ''}" data-user-pane="product">
-        <div class="v25-feat">${usageHead}${usageRows}</div>
-      </div>
-      <div class="user-pane${tab === 'notifications' ? ' is-on' : ''}" data-user-pane="notifications">${notif}</div>
-      <div class="user-pane${tab === 'devices' ? ' is-on' : ''}" data-user-pane="devices">
-        ${devices ? `<div class="v25-devices">${devices}</div>` : '<p class="muted">ცნობილი კლიენტი არ არის. მოწყობილობის სახელი არ იგულისხმება.</p>'}
-      </div>
-      <div class="user-pane${tab === 'audit' ? ' is-on' : ''}" data-user-pane="audit">
-        ${audit ? `<div class="v25-audit">${audit}</div>` : '<p class="muted">ამ მომხმარებელზე ადმინ ქმედება არ არის.</p>'}
-      </div>
+      ${pane('overview', overview)}
+      ${pane('activity', timeline)}
+      ${pane('product', product)}
+      ${pane('notifications', notif)}
+      ${pane('devices', devices)}
+      ${pane('audit', audit)}
     </div>`;
 }
 
 function bindUserInvestigation(userId) {
-  document.querySelectorAll('[data-user-tab]').forEach((btn) => {
-    btn.onclick = () => {
-      const key = btn.dataset.userTab;
-      document.querySelectorAll('[data-user-tab]').forEach((el) => el.setAttribute('aria-selected', String(el === btn)));
-      document.querySelectorAll('[data-user-pane]').forEach((pane) => {
-        pane.classList.toggle('is-on', pane.dataset.userPane === key);
-      });
-      if (userId) {
-        const href = userPageHref(userId, key);
-        if (location.hash !== href) history.replaceState({ tab: 'users' }, '', href);
-      }
+  const root = $('tab-users') || document;
+  const tabs = [...root.querySelectorAll('[data-user-tab]')];
+  const select = (key) => {
+    tabs.forEach((el) => {
+      const on = el.dataset.userTab === key;
+      el.setAttribute('aria-selected', String(on));
+      el.tabIndex = on ? 0 : -1;
+    });
+    root.querySelectorAll('[data-user-pane]').forEach((pane) => {
+      pane.classList.toggle('is-on', pane.dataset.userPane === key);
+    });
+    if (userId) {
+      const href = userPageHref(userId, key);
+      if (location.hash !== href) history.replaceState({ tab: 'users' }, '', href);
+    }
+  };
+  tabs.forEach((btn, i) => {
+    btn.onclick = () => select(btn.dataset.userTab);
+    btn.onkeydown = (e) => {
+      if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return;
+      e.preventDefault();
+      const next = tabs[(i + (e.key === 'ArrowRight' ? 1 : tabs.length - 1)) % tabs.length];
+      next.focus();
+      select(next.dataset.userTab);
     };
   });
-  document.querySelectorAll('[data-copy]').forEach((btn) => {
-    btn.onclick = () => copyAdminValue(btn.dataset.copy, btn.dataset.copyLabel || 'ID');
-  });
-  document.querySelectorAll('[data-decision]').forEach((btn) => {
+  root.querySelectorAll('[data-user-goto]').forEach((btn) => {
     btn.onclick = () => {
-      if (typeof openDecisionDrawer === 'function') openDecisionDrawer(btn.dataset.decision);
+      select(btn.dataset.userGoto);
+      tabs.find((el) => el.dataset.userTab === btn.dataset.userGoto)?.focus();
     };
+  });
+  // Copy buttons ([data-copy]) are handled once, globally, by admin-v3.js.
+  root.querySelectorAll('[data-decision]').forEach((el) => {
+    const open = () => {
+      if (el.dataset.decision && typeof openDecisionDrawer === 'function') openDecisionDrawer(el.dataset.decision);
+    };
+    el.onclick = open;
+    if (el.tagName === 'TR') {
+      el.onkeydown = (e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          open();
+        }
+      };
+    }
   });
   bindUserDecisionsPager();
 }
 
+/** Pages the long profile tables (decisions, outcomes) ten rows at a time, in normal page flow. */
 function bindUserDecisionsPager() {
-  const wrap = document.querySelector('.v3-user-decisions');
-  if (!wrap) return;
-  const tbody = wrap.querySelector('#user-decisions-tbody');
-  const pager = wrap.querySelector('#user-decisions-pager');
-  if (!tbody || !pager) return;
-  const rows = [...tbody.querySelectorAll('tr')].filter((tr) => !tr.classList.contains('is-empty'));
-  const pageSize = Math.max(1, Number(wrap.dataset.pageSize || 10) || 10);
-  if (!rows.length) {
-    pager.hidden = true;
-    pager.innerHTML = '';
-    return;
-  }
-  const totalPages = Math.max(1, Math.ceil(rows.length / pageSize));
-  let page = 1;
+  ($('tab-users') || document).querySelectorAll('.v3-user-decisions').forEach((wrap) => {
+    const tbody = wrap.querySelector('tbody');
+    const pager = wrap.querySelector('.s-user-pager');
+    if (!tbody || !pager) return;
+    const rows = [...tbody.querySelectorAll('tr')];
+    const pageSize = Math.max(1, Number(wrap.dataset.pageSize || 10) || 10);
+    const totalPages = Math.max(1, Math.ceil(rows.length / pageSize));
+    let page = 1;
 
-  const paint = () => {
-    const start = (page - 1) * pageSize;
-    const end = start + pageSize;
-    rows.forEach((tr, i) => {
-      tr.hidden = i < start || i >= end;
-    });
-    if (totalPages <= 1) {
-      pager.hidden = true;
-      pager.innerHTML = '';
-      return;
-    }
-    pager.hidden = false;
-    const from = start + 1;
-    const to = Math.min(end, rows.length);
-    const pages = [];
-    if (totalPages <= 7) {
-      for (let i = 1; i <= totalPages; i++) pages.push(i);
-    } else {
-      pages.push(1);
-      if (page > 3) pages.push('…');
-      for (let i = Math.max(2, page - 1); i <= Math.min(totalPages - 1, page + 1); i++) pages.push(i);
-      if (page < totalPages - 2) pages.push('…');
-      pages.push(totalPages);
-    }
-    pager.innerHTML = `
-      <span class="v3-user-decisions-meta">${from}–${to} / ${rows.length}</span>
-      <div class="v3-user-decisions-nav">
-        <button type="button" class="btn tiny ghost" data-dec-prev ${page <= 1 ? 'disabled' : ''}>${icon('chevronLeft')} წინა</button>
-        <div class="v3-user-decisions-pages">
-          ${pages.map((p) => (p === '…'
-            ? '<span class="v3-users-page-gap">…</span>'
-            : `<button type="button" class="v3-users-page${p === page ? ' is-active' : ''}" data-dec-page="${p}">${p}</button>`
-          )).join('')}
-        </div>
-        <button type="button" class="btn tiny ghost" data-dec-next ${page >= totalPages ? 'disabled' : ''}>შემდეგი ${icon('arrow')}</button>
-      </div>`;
-    pager.querySelector('[data-dec-prev]')?.addEventListener('click', () => {
-      if (page > 1) { page -= 1; paint(); }
-    });
-    pager.querySelector('[data-dec-next]')?.addEventListener('click', () => {
-      if (page < totalPages) { page += 1; paint(); }
-    });
-    pager.querySelectorAll('[data-dec-page]').forEach((btn) => {
-      btn.addEventListener('click', () => {
-        page = Number(btn.dataset.decPage) || 1;
-        paint();
+    const paint = () => {
+      const start = (page - 1) * pageSize;
+      const end = start + pageSize;
+      rows.forEach((tr, i) => {
+        tr.hidden = i < start || i >= end;
       });
-    });
-  };
-  paint();
+      if (totalPages <= 1) {
+        pager.hidden = true;
+        pager.innerHTML = '';
+        return;
+      }
+      pager.hidden = false;
+      const pages = [];
+      if (totalPages <= 7) {
+        for (let i = 1; i <= totalPages; i++) pages.push(i);
+      } else {
+        pages.push(1);
+        if (page > 3) pages.push('…');
+        for (let i = Math.max(2, page - 1); i <= Math.min(totalPages - 1, page + 1); i++) pages.push(i);
+        if (page < totalPages - 2) pages.push('…');
+        pages.push(totalPages);
+      }
+      pager.innerHTML = `
+        <span>${start + 1}–${Math.min(end, rows.length)} / ${rows.length}</span>
+        <div>
+          <button type="button" class="btn ghost compact" data-dec-prev ${page <= 1 ? 'disabled' : ''}>${icon('chevronLeft')} წინა</button>
+          <span class="s-users-pages">
+            ${pages.map((p) => (p === '…'
+              ? '<span class="s-users-gap" aria-hidden="true">…</span>'
+              : `<button type="button" class="s-users-page" data-dec-page="${p}"${p === page ? ' aria-current="page"' : ''}>${p}</button>`
+            )).join('')}
+          </span>
+          <button type="button" class="btn ghost compact" data-dec-next ${page >= totalPages ? 'disabled' : ''}>შემდეგი ${icon('arrow')}</button>
+        </div>`;
+      pager.querySelector('[data-dec-prev]')?.addEventListener('click', () => {
+        if (page > 1) { page -= 1; paint(); }
+      });
+      pager.querySelector('[data-dec-next]')?.addEventListener('click', () => {
+        if (page < totalPages) { page += 1; paint(); }
+      });
+      pager.querySelectorAll('[data-dec-page]').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          page = Number(btn.dataset.decPage) || 1;
+          paint();
+        });
+      });
+    };
+    paint();
+  });
 }
 
 function currentUserProfileTab() {
@@ -1521,11 +1636,55 @@ const PUSH_SEGMENT_CHOICES = {
 const PUSH_SEGMENT_LABELS = {
   ...PUSH_SEGMENT_CHOICES,
   ACTIVE: 'აქტიური მომხმარებლები (ძველი სეგმენტი)',
-  FREE: 'უფასო პაკეტი (ძველი სეგმენტი)',
-  STANDARD: 'STANDARD (ძველი სეგმენტი)',
-  ULTIMATE: 'ULTIMATE (ძველი სეგმენტი)',
+  FREE: 'ყველა (ძველი პაკეტის სეგმენტი)',
+  STANDARD: 'ყველა (ძველი პაკეტის სეგმენტი)',
+  ULTIMATE: 'ყველა (ძველი პაკეტის სეგმენტი)',
 };
 const PUSH_CAMPAIGN_LIVE = new Set(['QUEUED', 'SENDING']);
+
+/** Engagement templates carry English machine labels (server pushEngageTemplates.js); name them for the owner. */
+const PUSH_ENGAGE_LABELS = {
+  'engage-checkin-morning': 'დღის შემოწმება · დილა',
+  'engage-checkin-mid': 'დღის შემოწმება · შუადღე',
+  'engage-checkin-evening': 'დღის შემოწმება · საღამო',
+  'engage-streak-week': 'სერია · 7 დღე',
+  'engage-streak-continue': 'სერიის გაგრძელება',
+  'engage-weekly': 'კვირის ანგარიში „ჩემი კვირა Medi-სთან“',
+  'engage-insight': 'ინსაითი',
+  'engage-insight-steps': 'ინსაითი · ნაბიჯები',
+  'engage-insight-cycle': 'ინსაითი · ციკლი',
+  'engage-insight-meds': 'ინსაითი · მედიკამენტის შეხსენებები',
+  'engage-achieve-steps': 'მიღწევა · ნაბიჯები',
+  'engage-achieve-month': 'მიღწევა · ერთი თვე ერთად',
+  'engage-achieve-meds': 'მიღწევა · მედიკამენტები',
+  'engage-hydration': 'წყალი',
+  'engage-hydration-low': 'წყალი · ცოტა დალია',
+  'engage-steps-quiet': 'მშვიდი დღე · ნაბიჯები',
+  'engage-sleep': 'ძილის დრო',
+  'engage-sleep-log': 'ძილის ჩაწერა',
+  'engage-reengage-2': 'დაბრუნება · 2 დღე',
+  'engage-reengage-5': 'დაბრუნება · 5 დღე',
+  'engage-reengage-14': 'დაბრუნება · 14 დღე',
+  'engage-reengage-30': 'დაბრუნება · 30 დღე',
+  'engage-feature': 'ახალი ფუნქცია',
+  'engage-morning': 'დილის მისალმება სახელით',
+  'engage-morning-wish': 'დილის მისალმება',
+  'engage-birthday': 'დაბადების დღე',
+  'engage-question': 'Medi-ს კითხვა',
+  'engage-chat': 'გუშინდელი საუბრის გაგრძელება',
+  'engage-masked': 'დაფარული შეხსენება',
+  'engage-unfinished': 'დაუსრულებელი საქმე',
+  'engage-unfinished-med': 'დაუსრულებელი საქმე · მედიკამენტი',
+  'engage-visit-followup': 'ვიზიტის შემდეგ',
+  'engage-quest-near-complete': 'Medi Quest · თითქმის დასრულებული',
+  'engage-quest-weather-window': 'Medi Quest · კარგი ამინდი სასეირნოდ',
+  'engage-quest-comeback': 'Medi Quest · დაბრუნება',
+  'engage-quest-morning-plan': 'Medi Quest · დილის გეგმა',
+  'engage-quest-weekly-progress': 'Medi Quest · კვირის პროგრესი',
+};
+function pushEngageLabel(t) {
+  return PUSH_ENGAGE_LABELS[t?.key] || t?.label || t?.key || '';
+}
 
 function pushCampaignStatusText(c) {
   if (c.status === 'SENT') return 'გაგზავნილი';
@@ -1553,7 +1712,7 @@ function pushDeliveryBarHtml(sent, target, failed = 0) {
   return `
       <div class="push-delivery">
         <div class="bar"><span style="width:${pct}%"></span></div>
-        <span class="mono push-delivery-val">${sent} ✓ · ${failed} ✗ / ${target}</span>
+        <span class="push-delivery-val">${Number(sent || 0).toLocaleString('ka-GE')} მიწოდებული${failed ? ` · ${Number(failed).toLocaleString('ka-GE')} ვერ` : ''} · ${Number(target || 0).toLocaleString('ka-GE')}-დან</span>
       </div>
     `;
 }
@@ -1619,7 +1778,7 @@ function pushPhoneHtml({ title, body, segmentLabel, reachHint }) {
         <div class="push-preview-row">
           <div class="push-preview-icon">${icon('bell')}</div>
           <div class="push-preview-meta">
-            <span class="push-preview-app">Medicard.GE</span>
+            <span class="push-preview-app">MEDICARD</span>
             <span class="push-preview-time" id="push-phone-time">${escapeHtml(time)}</span>
           </div>
         </div>
@@ -1649,8 +1808,12 @@ async function renderPush() {
     visit: 'ექიმთან ვიზიტი',
     activity: 'აქტივობა',
     admin: 'ადმინი · დისტანციური',
+    pets: 'ცხოველები · Medi Vet',
+    quota: 'ლიმიტები',
     engage: 'ჩართულობა · Medi',
   };
+  // Every non-engagement group the server has templates for (engagement has its own tab).
+  const COPY_GROUPS = ['med', 'cycle', 'visit', 'activity', 'pets', 'quota', 'admin'];
   const PLACEHOLDER_HELP = [
     ['name', 'მედიკამენტის სახელი'],
     ['dosage', 'დოზა'],
@@ -1680,9 +1843,6 @@ async function renderPush() {
   const totalFailed = statsFailed ?? campaigns.reduce((sum, c) => sum + (c.failedCount || 0), 0);
   const totalTarget = stats.totalTarget ?? campaigns.reduce((sum, c) => sum + (c.targetCount || 0), 0);
   const lastCampaign = campaigns[0];
-  const reachPct = subscribedUsers
-    ? Math.min(100, Math.round((activeDevices / Math.max(subscribedUsers, 1)) * 100))
-    : null;
   const deliveryAttempts = totalSent + totalFailed;
   const successPct = deliveryAttempts ? Math.round((totalSent / deliveryAttempts) * 100) : null;
   const customCount = templates.filter((t) => t.custom).length;
@@ -1695,9 +1855,10 @@ async function renderPush() {
     return n == null ? 'რაოდენობა უცნობია' : `${fmtN(n)} მოწყობილობა`;
   };
   const platformLabel = (platform) => {
-    if (platform === 'ios') return 'iOS';
-    if (platform === 'android') return 'Android';
-    if (platform === 'web') return 'Web';
+    const key = String(platform || '').toLowerCase();
+    if (key === 'ios') return 'iOS';
+    if (key === 'android') return 'Android';
+    if (key === 'web') return 'ვებ';
     return platform || '—';
   };
   const platformCount = (key) => Number(platforms[key] || 0);
@@ -1712,7 +1873,7 @@ async function renderPush() {
   const deliveryBar = pushDeliveryBarHtml;
 
   const groupCounts = Object.fromEntries(
-    ['med', 'cycle', 'visit', 'activity', 'admin'].map((group) => [
+    COPY_GROUPS.map((group) => [
       group,
       templates.filter((t) => t.group === group).length,
     ]),
@@ -1727,17 +1888,13 @@ async function renderPush() {
 
   $('tab-push').innerHTML = `
     <div class="push-studio v25-push dash-enter">
-      <header class="ops-head">
-        <p class="muted">მყისიერი Expo Push და Medi ტექსტები. ლოკალური შეხსენებები აქ არ იგზავნება.</p>
-        ${typeof opsRangeBar === 'function' ? opsRangeBar() : ''}
-      </header>
       <div class="v25-push-kpis">
-        ${pushStudioKpi('phone', 'მოწყობილობები', fmtN(activeDevices), 'აქტიური Expo token')}
-        ${pushStudioKpi('users', 'მომხმარებლები', fmtN(subscribedUsers), reachPct != null ? `~${reachPct}% რამდენიმე მოწყობილობა` : 'უნიკალური ანგარიში')}
-        ${pushStudioKpi('send', '24სთ', fmtN(sentLast24h), `${fmtN(totalSent)} სულ`)}
-        ${pushStudioKpi('alert', 'ვერ მივიდა', fmtN(totalFailed), successPct == null ? 'მიწოდება ჯერ არ არის' : `${successPct}% წარმატება`)}
-        ${pushStudioKpi('bell', 'კამპანიები', fmtN(campaigns.length), lastCampaign ? fmtDateShort(lastCampaign.sentAt || lastCampaign.createdAt) : 'ჯერ ცარიელია')}
-        ${pushStudioKpi('layers', 'iOS / Android', `${fmtN(platformCount('ios'))} / ${fmtN(platformCount('android'))}`, platformCount('web') ? `${fmtN(platformCount('web'))} Web` : 'Expo ქსელი')}
+        ${pushStudioKpi('phone', 'მოწყობილობები', fmtN(activeDevices), 'აქტიური ტელეფონი')}
+        ${pushStudioKpi('users', 'მომხმარებლები', fmtN(subscribedUsers), 'ანგარიში push-ით')}
+        ${pushStudioKpi('send', 'გაგზავნილი · 24სთ', fmtN(sentLast24h), `${fmtN(totalSent)} სულ`)}
+        ${pushStudioKpi('alert', 'ვერ მივიდა', fmtN(totalFailed), successPct == null ? 'მიწოდება ჯერ არ არის' : `${successPct}% მიწოდება`)}
+        ${pushStudioKpi('bell', 'კამპანიები', fmtN(campaigns.length), lastCampaign ? `ბოლო: ${window.AdminV3?.formatDate ? window.AdminV3.formatDate(lastCampaign.sentAt || lastCampaign.createdAt, 'date') : fmtDateShort(lastCampaign.sentAt || lastCampaign.createdAt)}` : 'ჯერ ცარიელია')}
+        ${pushStudioKpi('layers', 'iOS / Android', `${fmtN(platformCount('ios'))} / ${fmtN(platformCount('android'))}`, platformCount('web') ? `${fmtN(platformCount('web'))} ვებ` : 'ტელეფონები')}
       </div>
 
       <section class="card push-board">
@@ -1756,7 +1913,7 @@ async function renderPush() {
               <div class="push-compose-head">
                 <p class="kicker">გაგზავნა</p>
                 <h3>ახალი შეტყობინება</h3>
-                <p class="muted">Expo Push არჩეულ სეგმენტში. კამპანია რიგში დგება და ფონურად იგზავნება; პროგრესი ქვემოთ ახლდება. ლოკალური შეხსენებები აქ არ იგზავნება — მათი ტექსტი „Medi ტექსტებშია“.</p>
+                <p class="muted">შეტყობინება წავა არჩეული ჯგუფის ყველა ტელეფონზე. გაგზავნა რიგში დგება და ფონურად მიდის — პროგრესი ქვემოთ, „ბოლო გაშვებებში“ ჩანს. ავტომატური შეხსენებების ტექსტები „Medi ტექსტებშია“.</p>
               </div>
               <label class="field">
                 <span>სათაური <em id="push-title-count">0 / 120</em></span>
@@ -1791,7 +1948,6 @@ async function renderPush() {
                 </div>
               </div>
               <button type="button" class="btn primary wide ng-cta" id="push-send">${icon('send')} გაგზავნა</button>
-              <p class="push-compose-note">Expo Go (SDK 53+) Android-ზე remote push-ს აღარ იძლევა.</p>
             </form>
             <aside class="push-phone-col v3-push-preview-col">
               <p class="push-preview-label">გადახედვა</p>
@@ -1817,7 +1973,7 @@ async function renderPush() {
                       <strong>${escapeHtml(c.title)}</strong>
                       ${campaignStatus(c)}
                     </div>
-                    <div class="push-recent-meta">${SEGMENT_LABELS[c.segment] || c.segment} · ${fmtDateShort(c.sentAt || c.createdAt)}</div>
+                    <div class="push-recent-meta">${SEGMENT_LABELS[c.segment] || c.segment} · ${window.AdminV3?.formatDate ? window.AdminV3.formatDate(c.sentAt || c.createdAt, 'datetime') : fmtDateShort(c.sentAt || c.createdAt)}</div>
                     ${deliveryBar(c.sentCount || 0, c.targetCount || 0, c.failedCount || 0)}
                   </button>
                 `).join('')}
@@ -1837,8 +1993,8 @@ async function renderPush() {
           </div>
           <div class="push-copy-tools">
             <div class="push-group-pills" role="tablist" aria-label="ჯგუფი">
-              <button type="button" class="push-group-pill${pushCopyGroup === 'all' ? ' active' : ''}" data-copy-group="all">ყველა <b>${templates.length}</b></button>
-              ${['med', 'cycle', 'visit', 'activity', 'admin'].map((group) => `
+              <button type="button" class="push-group-pill${pushCopyGroup === 'all' ? ' active' : ''}" data-copy-group="all">ყველა <b>${templates.filter((t) => t.group !== 'engage').length}</b></button>
+              ${COPY_GROUPS.filter((group) => groupCounts[group]).map((group) => `
                 <button type="button" class="push-group-pill${pushCopyGroup === group ? ' active' : ''}" data-copy-group="${group}">${GROUP_LABELS[group]} <b>${groupCounts[group] || 0}</b></button>
               `).join('')}
             </div>
@@ -1855,7 +2011,7 @@ async function renderPush() {
             <ul>${PLACEHOLDER_HELP.map(([key, label]) => `<li><button type="button" class="push-ph-chip" data-ph-global="${key}">{${key}}</button> — ${escapeHtml(label)}</li>`).join('')}</ul>
           </details>
           <div class="push-templates">
-            ${['med', 'cycle', 'visit', 'activity', 'admin'].map((group) => {
+            ${COPY_GROUPS.map((group) => {
               const rows = templates.filter((t) => t.group === group);
               if (!rows.length) return '';
               return `
@@ -1899,9 +2055,9 @@ async function renderPush() {
         <div class="push-panel${pushStudioTab === 'engage' ? '' : ' hidden'}" data-push-panel="engage">
           <div class="push-copy-toolbar">
             <div>
-              <p class="kicker">Medi შეტყობინებების Brain</p>
+              <p class="kicker">Brain</p>
               <h3>ჩართულობის შეტყობინებები</h3>
-              <p class="muted">კვირის ანგარიში „ჩემი კვირა Medi-სთან“, შესვლები, დაუსრულებელი მონახაზები და ხელახალი ჩართულობა. გაგზავნას ტელეფონი წყვეტს — აქ მხოლოდ ხმა იცვლება.</p>
+              <p class="muted">კვირის ანგარიში, დღის შემოწმებები, დაუსრულებელი საქმეები და დაბრუნების მოწვევები. როდის გაიგზავნოს, ტელეფონზე Brain წყვეტს — აქ მხოლოდ ტექსტს ცვლი.</p>
             </div>
           </div>
           <div class="push-templates">
@@ -1913,9 +2069,9 @@ async function renderPush() {
                     body: pushPreviewCopy(t.body, t.sample || {}),
                   };
                   return `
-                    <article class="push-template-card" data-template="${escapeHtml(t.key)}" data-tpl-label="${escapeAttr(t.label)}" data-tpl-group="engage">
+                    <article class="push-template-card" data-template="${escapeHtml(t.key)}" data-tpl-label="${escapeAttr(`${pushEngageLabel(t)} ${t.label}`)}" data-tpl-group="engage">
                       <header>
-                        <strong>${escapeHtml(t.label)}</strong>
+                        <strong>${escapeHtml(pushEngageLabel(t))}</strong>
                         <span class="badge ${t.custom ? 'std' : 'neutral'}">${t.custom ? 'შეცვლილი' : 'ნაგულისხმევი'}</span>
                       </header>
                       <span class="push-template-key" ${pushShowKeys ? '' : 'hidden'}>${escapeHtml(t.key)}</span>
@@ -1961,28 +2117,32 @@ async function renderPush() {
                       ${campaignStatus(c)}
                     </div>
                     <p class="push-history-body">${escapeHtml((c.body || '').slice(0, 140))}${(c.body || '').length > 140 ? '…' : ''}</p>
-                    <div class="push-recent-meta">${SEGMENT_LABELS[c.segment] || c.segment} · ${fmtDateShort(c.sentAt || c.createdAt)} · ${escapeHtml(c.createdBy?.fullName || '—')}</div>
+                    <div class="push-recent-meta">${SEGMENT_LABELS[c.segment] || c.segment} · ${window.AdminV3?.formatDate ? window.AdminV3.formatDate(c.sentAt || c.createdAt, 'datetime') : fmtDateShort(c.sentAt || c.createdAt)} · ${escapeHtml(c.createdBy?.fullName || '—')}</div>
                     ${deliveryBar(c.sentCount || 0, c.targetCount || 0, c.failedCount || 0)}
                   </button>
                 `).join('')}
               </div>
-            ` : '<div class="empty push-empty"><strong>კამპანიები ჯერ არ არის</strong><p>პირველი push broadcast აქ გამოჩნდება.</p></div>'}
+            ` : '<div class="empty push-empty"><strong>კამპანიები ჯერ არ არის</strong><p>პირველი გაგზავნა აქ გამოჩნდება.</p></div>'}
           </div>
           <div class="push-history-pane${pushHistoryView === 'events' ? '' : ' hidden'}" data-history-pane="events">
             ${events.length ? `
               <div class="push-history-list">
-                ${events.map((e) => `
+                ${events.map((e) => {
+                  // Cycle reminders reach the server with their text masked on purpose.
+                  const masked = (v) => (/\[cycle-redacted\]/.test(String(v || '')) ? 'ციკლის შეხსენება (ტექსტი დაფარულია)' : v);
+                  return `
                   <article class="push-history-card static" data-history-text="${escapeAttr(`${e.title} ${e.body} ${e.key} ${e.source}`)}">
                     <div class="push-recent-top">
-                      <strong>${escapeHtml(e.title)}</strong>
+                      <strong>${escapeHtml(masked(e.title))}</strong>
                       <span class="badge ${e.source === 'qa' ? 'std' : e.source === 'broadcast' ? 'ok' : 'neutral'}">${escapeHtml(eventSourceLabel(e.source))}</span>
                     </div>
-                    <p class="push-history-body">${escapeHtml((e.body || '').slice(0, 140))}${(e.body || '').length > 140 ? '…' : ''}</p>
-                    <div class="push-recent-meta">${fmtDateShort(e.createdAt)} · ${escapeHtml(e.key)} · ${escapeHtml(e.user?.fullName || e.user?.email || '—')}</div>
+                    <p class="push-history-body">${escapeHtml(String(masked(e.body) || '').slice(0, 140))}${String(masked(e.body) || '').length > 140 ? '…' : ''}</p>
+                    <div class="push-recent-meta">${window.AdminV3?.formatDate ? window.AdminV3.formatDate(e.createdAt, 'datetime') : fmtDateShort(e.createdAt)} · ${escapeHtml(e.user?.fullName || e.user?.email || '—')}</div>
                   </article>
-                `).join('')}
+                `;
+                }).join('')}
               </div>
-            ` : '<div class="empty push-empty"><strong>ჯერ არ მოსულა</strong><p>აპიდან Fire ან ნამდვილი შეხსენება აქ გამოჩნდება.</p></div>'}
+            ` : '<div class="empty push-empty"><strong>ჯერ არ მოსულა</strong><p>ტელეფონზე მიღებული შეხსენებები აქ გამოჩნდება.</p></div>'}
           </div>
         </div>
 
@@ -1990,7 +2150,7 @@ async function renderPush() {
           <div class="push-device-stats">
             <article class="push-plat"><span>iOS</span><strong>${fmtN(platformCount('ios'))}</strong></article>
             <article class="push-plat android"><span>Android</span><strong>${fmtN(platformCount('android'))}</strong></article>
-            <article class="push-plat web"><span>Web</span><strong>${fmtN(platformCount('web'))}</strong></article>
+            ${platformCount('web') ? `<article class="push-plat web"><span>ვებ</span><strong>${fmtN(platformCount('web'))}</strong></article>` : ''}
           </div>
           ${devices.length ? `
             <div class="push-device-grid">
@@ -1999,12 +2159,12 @@ async function renderPush() {
                   <span class="badge ${d.platform === 'ios' ? 'std' : d.platform === 'android' ? 'ok' : 'neutral'}">${escapeHtml(platformLabel(d.platform))}</span>
                   <div class="stack">
                     <strong>${escapeHtml(d.user?.fullName || '—')}</strong>
-                    <span class="sub muted">${escapeHtml(d.user?.email || '')} · ${fmtDateShort(d.lastSeenAt)}</span>
+                    <span class="sub muted">${escapeHtml(d.user?.email || '')} · ბოლოს ${typeof fmtRelative === 'function' ? fmtRelative(d.lastSeenAt) : fmtDateShort(d.lastSeenAt)}</span>
                   </div>
                 </div>
               `).join('')}
             </div>
-          ` : `<div class="empty push-empty"><strong>მოწყობილობა არ არის</strong><p>ნებართვა საკმარისი არ არის — აპმა Expo token უნდა ატვირთოს შესვლის შემდეგ. Expo Go (SDK 53+) Android-ზე remote push-ს აღარ იძლევა. Store/dev build-ს სჭირდება Firebase FCM V1 და iOS APNs, შემდეგ ახალი native ინსტალაცია.</p></div>`}
+          ` : `<div class="empty push-empty"><strong>მოწყობილობა ჯერ არ არის</strong><p>ტელეფონი აქ გამოჩნდება, როცა ადამიანი აპში შევა და შეტყობინებებს დაუშვებს.</p></div>`}
         </div>
         <div class="push-panel${pushStudioTab === 'brain' ? '' : ' hidden'}" data-push-panel="brain">
           <div id="push-brain-host" class="ops-page"></div>
@@ -2030,7 +2190,7 @@ async function renderPush() {
   document.querySelectorAll('[data-push-tab]').forEach((btn) => {
     btn.onclick = () => setStudioTab(btn.dataset.pushTab);
   });
-  if (typeof bindOpsRange === 'function') bindOpsRange(renderPush);
+  // The period filter lives on the Brain tab only (renderPushBrainPanel binds it).
   if (pushStudioTab === 'brain') setStudioTab('brain');
 
   const syncPreview = () => {
@@ -2185,19 +2345,27 @@ async function renderPush() {
   });
 
   document.querySelectorAll('[data-tpl-reset]').forEach((btn) => {
-    btn.onclick = async () => {
+    btn.onclick = () => {
       const key = btn.dataset.tplReset;
-      if (!confirm('ნაგულისხმევ Medi ტექსტზე დავაბრუნოთ?')) return;
-      btn.disabled = true;
-      try {
-        await api(`/push/templates/${encodeURIComponent(key)}`, { method: 'DELETE' });
-        toast('ნაგულისხმევი დაბრუნდა');
-        pushStudioTab = 'copy';
-        await renderPush();
-      } catch (err) {
-        toast(err.message || 'ვერ დაბრუნდა', 'bad');
-        btn.disabled = false;
-      }
+      const reset = async () => {
+        btn.disabled = true;
+        try {
+          await api(`/push/templates/${encodeURIComponent(key)}`, { method: 'DELETE' });
+          toast('ნაგულისხმევი დაბრუნდა');
+          pushStudioTab = 'copy';
+          await renderPush();
+        } catch (err) {
+          toast(err.message || 'ვერ დაბრუნდა', 'bad');
+          btn.disabled = false;
+        }
+      };
+      window.AdminV3.openConfirm({
+        title: 'ნაგულისხმევ ტექსტზე დაბრუნება?',
+        message: 'ამ შაბლონის შენი ვერსია წაიშლება და Medi ისევ ორიგინალ ტექსტს გამოიყენებს.',
+        confirmLabel: 'დაბრუნება',
+        variant: 'danger',
+        onConfirm: reset,
+      });
     };
   });
 
@@ -2331,334 +2499,541 @@ async function viewPushCampaign(id) {
 }
 
 const AI_MODE_LABELS = {
-  DOCTOR: 'Medi',
-  CONSILIUM: 'კონსილიუმი',
-  LAB: 'ლაბორატორია',
-  IMAGING: 'იმიჯინგი',
-  SKIN: 'კანი',
-  SKINCARE: 'სკინქეარი',
+  DOCTOR: 'Medi · ექიმთან',
+  CONSILIUM: 'Medi · ღრმა ანალიზი',
+  SYMPTOM_CHECKER: 'სიმპტომების შემოწმება',
+  LAB: 'ლაბორატორიული ანალიზი',
+  LAB_ALIGN: 'ლაბორატორიის შედარება',
+  IMAGING: 'სამედიცინო გამოსახულება',
+  SKIN: 'კანის შეფასება',
+  SKINCARE: 'კანის მოვლა',
   MEDICATION: 'მედიკამენტები',
   CYCLE_WELLNESS: 'ციკლი',
-  SYMPTOM_CHECKER: 'სიმპტომების შემოწმება',
+  WEIGHT_ADVICE: 'წონის რჩევა',
+  VET: 'Medi Vet',
 };
+const aiModeLabel = (mode) => AI_MODE_LABELS[mode] || (!mode || mode === 'UNKNOWN' ? 'უცნობი მოდული' : 'სხვა მოდული');
+const aiNum1 = (n) => Number(n).toLocaleString('ka-GE', { maximumFractionDigits: 1 });
+const aiWhen = (iso) => (window.AdminV3?.formatDate ? window.AdminV3.formatDate(iso, 'datetime') : fmtDate(iso));
 
-function aiScoreTone(score) {
-  if (score == null || score === '—') return 'neutral';
-  const n = Number(score);
-  if (n >= 80) return 'ok';
-  if (n >= 72) return 'std';
-  return 'bad';
+// Since 20 Sep 2026 quality scans are scored locally (server/src/lib/aiQuality.js heuristicJudge): four checks,
+// at most 80 points, 72 to pass. Earlier scans were graded by an LLM on a 0–100 scale.
+const AI_LOCAL_SCORING_FROM = Date.parse('2026-09-20T00:00:00+04:00');
+function aiScoreMax(at, score) {
+  if (Number(score) > 80) return 100;
+  const t = Date.parse(at || '');
+  return Number.isFinite(t) && t < AI_LOCAL_SCORING_FROM ? 100 : 80;
+}
+const aiScoreText = (score, at) => (score == null ? '—' : `${aiNum1(score)} / ${aiScoreMax(at, score)}`);
+function aiScoreBand(score) {
+  if (score == null || !Number.isFinite(Number(score))) return ['', ''];
+  if (Number(score) >= 80) return ['კარგი', 'is-ok'];
+  if (Number(score) >= 72) return ['გამსვლელი', 'is-info'];
+  return ['დაბალი', 'is-bad'];
 }
 
-function aiScoreRing(score, caption, { compact = false } = {}) {
-  const tone = aiScoreTone(score);
-  const pct = score == null ? 0 : Math.min(100, Math.max(0, Number(score)));
-  const display = score == null ? '—' : score;
-  const wrapClass = compact ? 'ai-hero-score compact' : 'ai-hero-score';
-  return `
-    <div class="${wrapClass}">
-      <div class="ai-score-ring ${tone}" style="--pct:${pct}">
-        <div class="ai-score-inner">
-          <span class="ai-score-val">${display}</span>
-          <span class="ai-score-lbl">/ 100</span>
-        </div>
-      </div>
-      ${caption ? `<p class="ai-score-caption">${caption}</p>` : ''}
-    </div>
-  `;
+function aiSeconds(ms) {
+  if (ms == null || !Number.isFinite(Number(ms))) return '—';
+  const s = Number(ms) / 1000;
+  if (s < 60) return `${s.toLocaleString('ka-GE', { maximumFractionDigits: 1 })} წმ`;
+  const m = Math.floor(s / 60);
+  return `${m} წთ ${Math.round(s - m * 60)} წმ`;
 }
 
-function aiModeBars(byMode) {
-  const rows = Array.isArray(byMode) ? byMode : [];
-  if (!rows.length) {
-    return typeof opsEmpty === 'function'
-      ? opsEmpty('ამ პერიოდში მოდული არ არის', 'Medi გამოძახებები აქ გამოჩნდება.')
-      : '<p class="muted">ჯერ მონაცემი არ არის.</p>';
+/** Phone sign-ups log in with a synthetic <number>@phone.medicard.ge address: show the number instead. */
+function aiContact(user) {
+  const email = String(user?.email || '');
+  const phone = /^\+?(\d{9,15})@phone\.medicard\.ge$/i.exec(email);
+  if (phone) {
+    const d = phone[1];
+    return d.length === 12 && d.startsWith('995') ? `+995 ${d.slice(3, 6)} ${d.slice(6, 8)} ${d.slice(8, 10)} ${d.slice(10)}` : `+${d}`;
   }
-  const max = Math.max(1, ...rows.map((m) => Number(m.count) || 0));
-  const total = rows.reduce((sum, m) => sum + (Number(m.count) || 0), 0) || 1;
-  return `<div class="v3-medi-modes">${rows.map((m) => {
-    const count = Number(m.count) || 0;
-    const width = Math.max(6, Math.min(100, Math.round((count / max) * 100)));
-    const share = Math.min(100, Math.round((count / total) * 100));
-    return `<div class="v3-medi-mode">
-      <span class="v3-medi-mode-label">${escapeHtml(AI_MODE_LABELS[m.mode] || m.mode)}</span>
-      <span class="v3-medi-mode-track"><i style="width:${width}%"></i></span>
-      <strong class="v3-medi-mode-val">${typeof opsFmt === 'function' ? opsFmt(count) : count}<em>${share}%</em></strong>
-    </div>`;
-  }).join('')}</div>`;
+  if (/@apple\.medicard\.ge$/i.test(email)) return 'Apple-ით შესული';
+  return email;
 }
 
-function aiInitials(name) {
-  return (name || '?')
-    .split(' ')
-    .slice(0, 2)
-    .map((p) => p[0])
-    .join('')
-    .toUpperCase();
+function aiErrorText(message) {
+  const m = String(message || '');
+  if (/[ა-ჰ]/.test(m)) return m;
+  if (/timed? ?out|timeout|abort/i.test(m)) return 'AI-მ დროულად ვერ უპასუხა.';
+  if (/\b429\b|rate.?limit|quota|credit/i.test(m)) return 'AI პროვაიდერის ლიმიტი ამოიწურა — შეამოწმე OpenRouter-ის ბალანსი.';
+  if (/connect|network|ECONN|socket|fetch failed/i.test(m)) return 'AI სერვისთან კავშირი ვერ დამყარდა.';
+  if (/\b5\d\d\b|provider|gateway|unavailable|overloaded/i.test(m)) return 'AI პროვაიდერმა შეცდომა დააბრუნა.';
+  return 'AI-მ პასუხი ვერ დააბრუნა.';
+}
+
+const aiRunFailText = (summary) => (/[ა-ჰ]/.test(String(summary || '')) ? String(summary) : 'სკანი სერვერზე შეფერხდა — სცადე ხელახლა.');
+
+/** Two tracked calls store an English stub instead of the question (align-lab, weight-advice). */
+function aiPromptText(text) {
+  const t = String(text || '');
+  let m = /^align (\d+) analytes$/i.exec(t);
+  if (m) return `${m[1]} ანალიზის სახელის შესაბამისობა`;
+  m = /^weight ([\d.]+) kg$/i.exec(t);
+  if (m) return `წონა: ${m[1]} კგ`;
+  return t;
+}
+
+const AI_REPLY_FIELDS = [
+  ['urgencyKa', 'შეფასება'], ['urgency', 'სასწრაფოობა'], ['summaryKa', 'შეჯამება'], ['summary', 'შეჯამება'], ['blurb', 'შეჯამება'],
+  ['conditions', 'შესაძლო მდგომარეობები'], ['possibleCauses', 'შესაძლო მიზეზები'], ['redFlagsKa', 'საგანგაშო ნიშნები'],
+  ['nextStepsKa', 'შემდეგი ნაბიჯები'], ['advice', 'რჩევები'], ['tips', 'რჩევები'], ['seeDoctor', 'როდის მიმართოს ექიმს'],
+  ['joined', 'შესაბამისობაში მოვიდა'], ['aligned', 'შესაბამისობაში მოვიდა'], ['leftover', 'ვერ შესაბამისდა'],
+  ['unmatched', 'ვერ შესაბამისდა'], ['disclaimer', 'გაფრთხილება'],
+];
+const AI_URGENCY = { routine: 'გეგმიური', urgent: 'სასწრაფო', emergency: 'გადაუდებელი' };
+
+/** Structured replies (symptom check, lab names, weight advice) are JSON: show the known fields, keep the raw JSON folded. */
+function aiReplyHtml(text) {
+  let data = null;
+  try { data = JSON.parse(text); } catch { data = null; }
+  if (!data || typeof data !== 'object') return `<div class="s-medi-text">${escapeHtml(text || '—')}</div>`;
+  const src = data.result && typeof data.result === 'object' ? data.result : data;
+  const item = (key, v) => {
+    if (v && typeof v === 'object') return escapeHtml([v.nameKa || v.name || '', v.likelihood != null ? `${v.likelihood}%` : ''].filter(Boolean).join(' · ') || '—');
+    return escapeHtml(key === 'urgency' ? AI_URGENCY[v] || String(v) : String(v));
+  };
+  const seen = new Set();
+  const rows = AI_REPLY_FIELDS.filter(([key, label]) => {
+    const v = src[key];
+    if (v == null || v === '' || (Array.isArray(v) && !v.length) || seen.has(label)) return false;
+    seen.add(label);
+    return true;
+  }).map(([key, label]) => {
+    const v = src[key];
+    return `<div><dt>${label}</dt><dd>${Array.isArray(v) ? `<ul>${v.map((x) => `<li>${item(key, x)}</li>`).join('')}</ul>` : item(key, v)}</dd></div>`;
+  });
+  return `${rows.length ? `<dl class="s-medi-dl">${rows.join('')}</dl>` : '<p class="s-muted">სტრუქტურირებული პასუხი — სრული სახით ქვემოთ, ტექნიკურ დეტალებშია.</p>'}
+    <details class="s-details s-tech-details"><summary>ტექნიკური დეტალები</summary><div><pre>${escapeHtml(JSON.stringify(data, null, 2))}</pre></div></details>`;
+}
+
+/** What the local scan found missing in one answer (aiQuality.js heuristicJudge rubric); LLM-era results keep their own note. */
+function aiResultNote(r) {
+  const notes = String(r.notes || '');
+  if (!/^Heuristic audit/i.test(notes)) return escapeHtml(notes || '—');
+  const g = r.rubric || {};
+  const misses = [];
+  if (g.georgian < 20) misses.push('ტექსტი ქართულად არ არის');
+  if (g.disclaimer < 22) misses.push('აკლია გაფრთხილება');
+  if (g.safety < 20) misses.push('არ ურჩია ექიმთან მიმართვა ან 112');
+  if (g.clinical < 18) misses.push(g.clinical <= 5 ? 'აღწერა სხვა ორგანოს ეხება' : 'პასუხი ძალიან მოკლეა');
+  return misses.length ? escapeHtml(misses.join(' · ')) : 'ოთხივე წესი შესრულდა';
+}
+
+const AI_LOG_LIMIT = 25;
+const aiLog = { status: '', mode: '', offset: 0, seq: 0 };
+let aiRenderSeq = 0;
+
+function aiLogQuery() {
+  const params = new URLSearchParams({ limit: String(AI_LOG_LIMIT) });
+  if (aiLog.offset) params.set('offset', String(aiLog.offset));
+  if (aiLog.status) params.set('status', aiLog.status);
+  if (aiLog.mode) params.set('mode', aiLog.mode);
+  return params.toString();
+}
+
+function aiLogRow(row) {
+  const fb = row.feedback?.[0];
+  const ok = row.status === 'OK';
+  return `<tr class="is-click" tabindex="0" data-ai-view="${escapeHtml(row.id)}">
+    <td>${escapeHtml(aiWhen(row.createdAt))}</td>
+    <td><b>${escapeHtml(row.user?.fullName || '—')}</b><small class="s-medi-sub">${escapeHtml(aiContact(row.user))}</small></td>
+    <td>${escapeHtml(aiModeLabel(row.mode))}</td>
+    <td>${ok ? '<span class="s-badge is-ok">წარმატებული</span>' : `<span class="s-badge is-bad">შეცდომა</span><small class="s-medi-sub">${escapeHtml(aiErrorText(row.errorMessage))}</small>`}</td>
+    <td class="num">${escapeHtml(aiSeconds(row.latencyMs))}</td>
+    <td>${fb ? (fb.rating > 0 ? '<span class="s-badge is-plain is-ok">კარგი</span>' : '<span class="s-badge is-plain is-bad">ცუდი</span>') : '<span class="s-muted">—</span>'}</td>
+  </tr>`;
+}
+
+function aiLogBody(list) {
+  const fmt = (n) => (typeof opsFmt === 'function' ? opsFmt(n) : String(n ?? '—'));
+  const rows = list?.interactions || [];
+  const total = Number(list?.total ?? rows.length) || 0;
+  const filtered = Boolean(aiLog.status || aiLog.mode);
+  const last = aiLog.offset + rows.length;
+  const table = rows.length
+    ? `<div class="s-table-wrap"><table class="s-table s-medi-log">
+        <thead><tr><th>დრო</th><th>მომხმარებელი</th><th>მოდული</th><th>სტატუსი</th><th class="num">პასუხის დრო</th><th>შეფასება</th></tr></thead>
+        <tbody>${rows.map(aiLogRow).join('')}</tbody></table></div>`
+    : `<div class="s-empty">${icon('message')}<strong>${filtered ? 'ამ ფილტრით ჩანაწერი არ არის' : 'ჩანაწერი ჯერ არ არის'}</strong><span>${filtered ? 'შეცვალე ფილტრი ან აირჩიე „ყველა“.' : 'Medi-ს ყოველი მოთხოვნა აქ გამოჩნდება.'}</span></div>`;
+  return `<div class="s-card-body is-flush s-medi-logbody">${table}</div>
+    <footer class="s-pager"><span>${rows.length ? `${fmt(aiLog.offset + 1)}–${fmt(last)} / ${fmt(total)}` : '0'}</span><div>
+      <button type="button" class="btn compact" data-ai-page="-1" ${aiLog.offset ? '' : 'disabled'}>${icon('chevronLeft')} წინა</button>
+      <button type="button" class="btn compact" data-ai-page="1" ${last < total ? '' : 'disabled'}>შემდეგი ${icon('arrow')}</button></div></footer>`;
+}
+
+function bindAiLog(host) {
+  host.querySelectorAll('[data-ai-view]').forEach((tr) => {
+    tr.onclick = () => viewAiInteraction(tr.dataset.aiView);
+    tr.onkeydown = (e) => {
+      if (e.key !== 'Enter' && e.key !== ' ') return;
+      e.preventDefault();
+      viewAiInteraction(tr.dataset.aiView);
+    };
+  });
+  host.querySelectorAll('[data-ai-page]').forEach((btn) => {
+    btn.onclick = () => {
+      aiLog.offset = Math.max(0, aiLog.offset + Number(btn.dataset.aiPage) * AI_LOG_LIMIT);
+      void loadAiLog();
+    };
+  });
+}
+
+async function loadAiLog() {
+  const host = $('medi-log-body');
+  if (!host) return;
+  const seq = ++aiLog.seq;
+  host.setAttribute('aria-busy', 'true');
+  try {
+    const list = await api(`/ai/interactions?${aiLogQuery()}`);
+    if (seq !== aiLog.seq || !host.isConnected) return;
+    host.innerHTML = aiLogBody(list);
+    bindAiLog(host);
+  } catch (err) {
+    if (seq !== aiLog.seq || !host.isConnected) return;
+    host.innerHTML = `<div class="s-empty">${icon('alert')}<strong>ჟურნალი ვერ ჩაიტვირთა</strong><span>${escapeHtml(err.message || '')}</span><button type="button" class="btn compact" data-ai-retry>ხელახლა ცდა</button></div>`;
+    host.querySelector('[data-ai-retry]').onclick = () => void loadAiLog();
+  } finally {
+    host.removeAttribute('aria-busy');
+  }
 }
 
 async function renderAi() {
   const root = $('tab-ai');
+  const seq = ++aiRenderSeq;
   const helpBtn = (key) => (typeof window.AdminV3?.infoButton === 'function' ? window.AdminV3.infoButton(key) : '');
   const fmt = (n) => (typeof opsFmt === 'function' ? opsFmt(n) : String(n ?? '—'));
-  const deltaHtml = (d) => (typeof opsDelta === 'function' ? opsDelta(d) : '');
+  const charts = window.AdminCharts;
 
-  root.innerHTML = `<div class="ai-page v25-ai v3-workspace-wide v3-module v3-medi">
-    <div class="v3-medi-toolbar">
-      <div class="v3-medi-toolbar-copy">
-        <strong>Medi ობსერვატორია</strong>
-        <span>საიმედოობა · შეცდომები · ხარისხი · თბილისი</span>
-      </div>
+  root.innerHTML = `<div class="s-stack v3-tab-shell s-medi">
+    <div class="s-toolbar">
       ${typeof opsRangeBar === 'function' ? opsRangeBar() : ''}
+      <div class="s-medi-tools"><span class="s-muted" id="medi-updated"></span>
+        <button type="button" class="btn ghost compact" id="medi-refresh">${icon('refresh')} განახლება</button></div>
     </div>
-    <div id="medi-body">${typeof opsSkeleton === 'function' ? opsSkeleton(6) : '…'}</div>
+    <div id="medi-body" class="s-stack"><div class="v3-skel" aria-hidden="true">${'<i></i>'.repeat(6)}</div></div>
   </div>`;
 
   if (typeof bindOpsRange === 'function') bindOpsRange(renderAi);
+  $('medi-refresh').onclick = () => void renderAi();
 
   try {
     const [stats, list, evalRuns, usage] = await Promise.all([
       api('/ai/stats'),
-      api('/ai/interactions?limit=25'),
+      api(`/ai/interactions?${aiLogQuery()}`),
       api('/ai/eval-runs'),
       typeof opsQs === 'function'
         ? api(`/analytics/medi?${opsQs()}`).catch(() => null)
         : Promise.resolve(null),
     ]);
+    if (seq !== aiRenderSeq) return;
 
-    const interactions = list?.interactions || [];
-    const total = list?.total ?? interactions.length;
     const runs = evalRuns?.runs || [];
     const lastEval = stats.lastEval;
-    const fbTotal = (stats.feedback?.up || 0) + (stats.feedback?.down || 0);
-    const fbPct = fbTotal ? Math.min(100, Math.round((stats.feedback.up / fbTotal) * 100)) : null;
     const k = usage?.kpis || {};
+    const range = usage?.range;
+    const day = (d) => (charts?.dayLabel ? charts.dayLabel(d) : d);
+    const period = !range ? 'ბოლო 7 დღე'
+      : range.preset === 'today' ? 'დღეს'
+        : range.preset === 'custom' ? `${day(range.from)} – ${day(range.to)}` : `ბოლო ${range.days} დღე`;
     const errRate = k.errorRate?.value;
-    const errTone = errRate == null ? '' : errRate > 5 ? ' is-danger' : errRate > 0 ? ' is-amber' : ' is-ok';
+    const delta = (d) => {
+      if (!d?.show || d.abs == null) return '';
+      const sign = d.abs > 0 ? '+' : '';
+      const tone = d.abs > 0 ? ' is-ok' : d.abs < 0 ? ' is-bad' : '';
+      return `<span class="s-badge is-plain${tone}">${sign}${fmt(d.abs)}${d.pct == null ? '' : ` (${sign}${aiNum1(d.pct)}%)`}</span> წინა პერიოდთან`;
+    };
+    const metric = (label, value, hint, tone = '') => `<div class="s-metric${tone}"><span>${label}</span><strong>${value}</strong>${hint ? `<small>${hint}</small>` : ''}</div>`;
+    const mediUsers = Number(k.mediUsers?.value) || 0;
+    const kpis = usage ? [
+      metric('Medi-ს მომხმარებელი', fmt(k.mediUsers?.value), delta(k.mediUsers?.delta) || period),
+      metric('მოთხოვნა', fmt(k.messages?.value), delta(k.messages?.delta) || period),
+      metric('საუბარი', fmt(k.conversations?.value), k.avgMessagesPerConversation?.value != null ? `საშ. ${aiNum1(k.avgMessagesPerConversation.value)} მოთხოვნა საუბარში` : period),
+      metric('დაბრუნებული', fmt(k.returningUsers?.value), mediUsers ? `${Math.round(((Number(k.returningUsers?.value) || 0) / mediUsers) * 100)}% Medi-ს მომხმარებლებიდან` : period),
+      metric('შეცდომის წილი', errRate == null ? '—' : `${aiNum1(Math.min(100, errRate))}%`, `${fmt(k.errors?.value)} შეცდომა · ${period}`, errRate > 5 ? ' is-bad' : errRate > 0 ? ' is-warn' : ''),
+      metric('პასუხის საშუალო დრო', aiSeconds(k.avgLatencyMs?.value), period),
+    ] : [
+      metric('მოთხოვნა', fmt(stats.last7d), 'ბოლო 7 დღე'),
+      metric('შეცდომა', fmt(stats.errors24h), 'ბოლო 24 საათი', stats.errors24h ? ' is-warn' : ''),
+      metric('პასუხის საშუალო დრო', aiSeconds(stats.avgLatencyMs), 'წარმატებული · ბოლო 7 დღე'),
+    ];
 
-    const kpi = (tone, ico, label, value, hint) =>
-      `<article class="v3-medi-kpi${tone || ''}">
-        <span class="v3-medi-kpi-ico" aria-hidden="true">${icon(ico)}</span>
-        <div class="v3-medi-kpi-copy"><span>${label}</span><strong>${value}</strong>${hint ? `<em>${hint}</em>` : ''}</div>
-      </article>`;
-
-    const kpis = `<div class="v3-medi-kpis" role="group" aria-label="Medi მეტრიკები">
-      ${kpi('', 'users', 'Medi მომხმარებლები', fmt(k.mediUsers?.value ?? '—'), deltaHtml(k.mediUsers?.delta) || 'პერიოდში')}
-      ${kpi('', 'message', 'მოთხოვნები', fmt(k.messages?.value ?? stats.last7d), deltaHtml(k.messages?.delta) || `${fmt(stats.last24h)} · 24სთ`)}
-      ${kpi('', 'layers', 'საუბრები', fmt(k.conversations?.value ?? '—'), deltaHtml(k.conversations?.delta) || (k.avgMessagesPerConversation?.value != null ? `საშ. ${k.avgMessagesPerConversation.value}/საუბარი` : ''))}
-      ${kpi(errTone, 'alert', 'შეცდომის წილი', errRate == null ? '—' : `${Math.min(100, Number(errRate))}%`, `${fmt(k.errors?.value ?? stats.errors24h)} შეცდომა`)}
-      ${kpi('', 'zap', 'დაყოვნება', k.avgLatencyMs?.value != null ? `${fmt(k.avgLatencyMs.value)} ms` : `${fmt(stats.avgLatencyMs)} ms`, 'საშუალო')}
-      ${kpi(lastEval?.avgScore != null && lastEval.avgScore < 72 ? ' is-amber' : ' is-soft', 'spark', 'ბოლო სკანი', lastEval?.avgScore ?? '—', lastEval ? fmtDateShort(lastEval.finishedAt) : 'ჯერ არ გაშვებულა')}
-    </div>`;
-
-    const chartSeries = [];
-    if (usage?.charts?.messages?.some((d) => d.count > 0)) {
-      chartSeries.push({ points: usage.charts.messages, tone: 'teal', label: 'მოთხოვნები' });
+    const alerts = [];
+    if (usage && errRate > 5) {
+      alerts.push(`<div class="s-callout is-warn">${icon('alert')}<p><b>შეცდომების წილი ${aiNum1(errRate)}% — ${escapeHtml(period)}.</b> ${fmt(k.errors?.value)} მოთხოვნა ჩავარდა; მიზეზი ჟურნალშია.</p><button type="button" class="btn compact" data-ai-show-errors>შეცდომების ნახვა</button></div>`);
     }
-    if (usage?.charts?.errors?.some((d) => d.count > 0)) {
-      chartSeries.push({ points: usage.charts.errors, tone: 'rose', label: 'შეცდომები' });
+    if (lastEval?.avgScore != null && lastEval.avgScore < 72) {
+      alerts.push(`<div class="s-callout is-warn">${icon('alert')}<p><b>ბოლო ხარისხის სკანი დაბალია: ${aiScoreText(lastEval.avgScore, lastEval.finishedAt)}.</b> ნახე, რომელ პასუხებს აკლია გაფრთხილება ან სისრულე.</p><button type="button" class="btn compact" data-ai-run="${escapeHtml(lastEval.id)}">სკანის ნახვა</button></div>`);
     }
-    if (usage?.charts?.users?.some((d) => d.count > 0)) {
-      chartSeries.push({ points: usage.charts.users, tone: 'blue', label: 'მომხმარებლები' });
-    }
-    const charts = `<section class="v3-medi-panel" data-v3-medi="usage">
-      <div class="v3-medi-head"><div class="v3-medi-head-copy">
-        <div class="v3-title-row"><h3>დროითი წარმადობა</h3>${helpBtn('medi.errors')}</div>
-        <p class="muted">${escapeHtml(usage?.kpis?.estimatedCostNote || usage?.privacy || 'პირადი საუბრის ტექსტი აქედან არ ბრუნდება.')}${k.tokens?.total != null ? ` · ტოკენები: ${fmt(k.tokens.total)}` : ''}</p>
-      </div></div>
-      <div class="v3-medi-charts">
-        ${chartSeries.length && typeof opsLineChart === 'function'
-          ? opsLineChart(chartSeries, { label: 'Medi მოთხოვნები, შეცდომები და მომხმარებლები', height: 156 })
-          : (typeof opsEmpty === 'function'
-            ? opsEmpty('ამ პერიოდში Medi არ გამოიყენეს', 'ეს რეალური AI გამოძახებებია, არა ნიმუში.')
-            : '<p class="muted">მონაცემი არ არის.</p>')}
-      </div>
-    </section>`;
-
-    const opsStrip = `<div class="v3-medi-ops" role="group" aria-label="ოპერაციული სნეპშოტი">
-      <article class="v3-medi-ops-item"><span>24 საათი</span><strong>${fmt(stats.last24h)}</strong><em>${fmt(stats.errors24h)} შეცდომა</em></article>
-      <article class="v3-medi-ops-item"><span>7 დღე</span><strong>${fmt(stats.last7d)}</strong><em>საშ. ${fmt(stats.avgLatencyMs)} ms</em></article>
-      <article class="v3-medi-ops-item"><span>უკუკავშირი</span><strong>${fmt(stats.feedback?.up)} ↑ ${fmt(stats.feedback?.down)} ↓</strong><em>${fbPct != null ? `${fbPct}% კარგი · ` : ''}${fmt(fbTotal)} შეფასება</em></article>
-      <article class="v3-medi-ops-item"><span>დაბრუნებული</span><strong>${fmt(k.returningUsers?.value ?? '—')}</strong><em>წინა Medi მომხმარებლები</em></article>
-    </div>`;
-
-    const scanCard = `<section class="v3-medi-panel v3-medi-scan" data-v3-medi="quality">
-      <div class="v3-medi-head"><div class="v3-medi-head-copy">
-        <div class="v3-title-row"><h3>ხარისხის სკანი</h3>${helpBtn('medi.quality')}</div>
-        <p class="muted">LLM-as-judge — ქართული, disclaimer, უსაფრთხოება, კლინიკური სიზუსტე</p>
-      </div>
-      ${lastEval?.avgScore != null ? `<div class="v3-medi-score ${aiScoreTone(lastEval.avgScore)}"><strong>${lastEval.avgScore}</strong><span>/100</span></div>` : ''}
-      </div>
-      <div class="v3-medi-scan-body">
-        <div class="v3-medi-scan-form">
-          <label class="v3-medi-field"><span>სინჯის ზომა (5–40)</span>
-            <input id="ai-scan-size" type="number" min="5" max="40" value="20" />
-          </label>
-          <button type="button" class="btn primary" id="ai-scan-run">${icon('spark')} სკანის გაშვება</button>
-        </div>
-        ${lastEval?.summary
-          ? `<div class="v3-medi-scan-summary">${escapeHtml(lastEval.summary)}</div>`
-          : '<p class="v3-medi-foot muted">პირველი სკანი შეაფასებს ბოლო პასუხებს რუბრიკით 0–100.</p>'}
-      </div>
-    </section>`;
+    if (!usage) alerts.push(`<div class="s-callout">${icon('info')}<p>პერიოდის ანალიტიკა ვერ ჩაიტვირთა — ციფრები ბოლო 7 დღისა და 24 საათისაა.</p></div>`);
 
     const modeRows = (usage?.byMode?.length ? usage.byMode : stats.byMode) || [];
-    const modulesCard = `<section class="v3-medi-panel" data-v3-medi="modules">
-      <div class="v3-medi-head"><div class="v3-medi-head-copy">
-        <div class="v3-title-row"><h3>მოდულები</h3></div>
-        <p class="muted">${usage?.byMode?.length ? 'არჩეული პერიოდის AI გამოძახებები' : '7 დღის AI გამოძახებები'}</p>
-      </div></div>
-      <div class="v3-medi-modes-wrap">${aiModeBars(modeRows)}</div>
+    const knownModes = [...new Set([...Object.keys(AI_MODE_LABELS), ...modeRows.map((m) => m.mode)])].filter((m) => m && m !== 'UNKNOWN');
+    const logCard = `<section class="s-card" data-v3-medi="interactions" id="medi-log">
+      <header class="s-card-head">
+        <div><div class="s-medi-title"><h3>მოთხოვნების ჟურნალი</h3>${helpBtn('medi.interactions')}</div>
+          <p>უახლესი ზემოთ. სტრიქონი ხსნის შეკითხვასა და პასუხს — ეს პირადი ტექსტია, გახსენი მხოლოდ გამოსაძიებლად.</p></div>
+        <div class="s-medi-filters">
+          <div class="s-segment" role="tablist" aria-label="სტატუსის ფილტრი">${[['', 'ყველა'], ['ERROR', 'შეცდომები'], ['OK', 'წარმატებული']]
+            .map(([v, l]) => `<button type="button" role="tab" aria-selected="${aiLog.status === v}" data-ai-status="${v}">${l}</button>`).join('')}</div>
+          <select id="ai-log-mode" aria-label="მოდულის ფილტრი"><option value="">ყველა მოდული</option>${knownModes
+            .map((m) => `<option value="${escapeHtml(m)}"${aiLog.mode === m ? ' selected' : ''}>${escapeHtml(aiModeLabel(m))}</option>`).join('')}</select>
+        </div>
+      </header>
+      <div id="medi-log-body">${aiLogBody(list)}</div>
     </section>`;
 
-    function feedbackCell(row) {
-      const fb = row.feedback?.[0];
-      if (!fb) return '<span class="muted">—</span>';
-      return fb.rating > 0
-        ? `<span class="badge ok">${icon('check')} კარგი</span>`
-        : `<span class="badge bad">${icon('x')} ცუდი</span>`;
-    }
+    const trendCard = `<section class="s-card" data-v3-medi="usage">
+      <header class="s-card-head"><div><h3>მოთხოვნები და მომხმარებლები</h3>
+        <p>დღეების მიხედვით, ${escapeHtml(period)}. ბოლო 24 საათში: ${fmt(stats.last24h)} მოთხოვნა, ${fmt(stats.errors24h)} შეცდომა.</p></div></header>
+      <div class="s-card-body">${usage && charts?.line
+        ? charts.line([
+          { label: 'მოთხოვნები', tone: 'teal', points: usage.charts?.messages || [] },
+          { label: 'მომხმარებლები', tone: 'blue', points: usage.charts?.users || [] },
+        ], { label: 'Medi-ს მოთხოვნები და მომხმარებლები დღეების მიხედვით', height: 220, empty: 'ამ პერიოდში Medi არ გამოუყენებიათ' })
+        : `<div class="s-empty">${icon('activity')}<span>პერიოდის მონაცემი ვერ ჩაიტვირთა.</span></div>`}</div>
+      ${k.tokens?.total != null ? `<footer class="s-card-foot"><span class="s-foot-note">ტოკენები: ${fmt(k.tokens.total)} · მოდელის ფასი არ ინახება, ამიტომ თანხა არ ჩანს.</span></footer>` : ''}
+    </section>`;
 
-    const logCard = `<section class="v3-medi-panel" data-v3-medi="interactions">
-      <div class="v3-medi-head"><div class="v3-medi-head-copy">
-        <div class="v3-title-row"><h3>ბოლო ურთიერთობები</h3>${helpBtn('medi.interactions')}</div>
-        <p class="muted">${fmt(total)} ჩანაწერი სისტემაში · პირადი ტექსტი ცხრილში არ ჩანს</p>
-      </div></div>
-      <div class="v3-medi-table-wrap">
-        <table class="v3-medi-table">
-          <thead><tr><th>დრო</th><th>მომხმარებელი</th><th>მოდული</th><th>სტატუსი</th><th>დრო (ms)</th><th>უკუკავშირი</th><th class="col-actions">მოქმედება</th></tr></thead>
-          <tbody>
-            ${interactions.length ? interactions.map((row) => `
-              <tr>
-                <td class="mono">${fmtDateShort(row.createdAt)}</td>
-                <td>
-                  <div class="v3-medi-person">
-                    <div class="v3-medi-avatar">${escapeHtml(aiInitials(row.user?.fullName))}</div>
-                    <div class="v3-medi-person-copy">
-                      <strong>${escapeHtml(row.user?.fullName || '—')}</strong>
-                      <span>${escapeHtml(row.user?.email || row.user?.phone || '')}</span>
-                    </div>
-                  </div>
-                </td>
-                <td><span class="badge neutral">${escapeHtml(AI_MODE_LABELS[row.mode] || row.mode)}</span></td>
-                <td>${row.status === 'OK' ? '<span class="badge ok">OK</span>' : '<span class="badge bad">შეცდომა</span>'}</td>
-                <td class="mono">${row.latencyMs != null ? `${row.latencyMs} ms` : '—'}</td>
-                <td>${feedbackCell(row)}</td>
-                ${tableActionCell(`<button type="button" class="btn tiny ghost" data-ai-view="${row.id}">${icon('file')} ნახვა</button>`)}
-              </tr>
-            `).join('') : '<tr><td colspan="7"><div class="empty"><strong>ჩანაწერები ცარიელია</strong><p>AI გამოძახების შემდეგ აქ გამოჩნდება.</p></div></td></tr>'}
-          </tbody>
-        </table>
+    const errorsCard = `<section class="s-card">
+      <header class="s-card-head"><div><div class="s-medi-title"><h3>შეცდომები დღეში</h3>${helpBtn('medi.errors')}</div>
+        <p>${usage ? `${fmt(k.errors?.value)} შეცდომა, ${escapeHtml(period)}.` : 'პერიოდის მონაცემი ვერ ჩაიტვირთა.'}</p></div></header>
+      <div class="s-card-body">${usage && charts?.bars
+        ? charts.bars(usage.charts?.errors || [], { label: 'შეცდომები', tone: 'bad', height: 220, empty: 'ამ პერიოდში შეცდომა არ ყოფილა' })
+        : ''}</div>
+    </section>`;
+
+    const modeTotal = modeRows.reduce((sum, m) => sum + (Number(m.count) || 0), 0) || 1;
+    const modeMax = Math.max(1, ...modeRows.map((m) => Number(m.count) || 0));
+    const modulesCard = `<section class="s-card" data-v3-medi="modules">
+      <header class="s-card-head"><div><h3>მოდულები</h3><p>რომელი Medi ფუნქცია გამოიყენეს — ${usage?.byMode?.length ? escapeHtml(period) : 'ბოლო 7 დღე'}.</p></div></header>
+      <div class="s-card-body">${modeRows.length ? `<ul class="s-share-list">${modeRows.map((m) => {
+        const n = Number(m.count) || 0;
+        return `<li><span>${escapeHtml(aiModeLabel(m.mode))}</span><div class="s-meter"><i style="width:${Math.max(2, Math.round((n / modeMax) * 100))}%"></i></div><b>${fmt(n)}</b><em>${Math.round((n / modeTotal) * 100)}%</em></li>`;
+      }).join('')}</ul>` : `<div class="s-empty">${icon('layers')}<span>ამ პერიოდში Medi არ გამოუყენებიათ.</span></div>`}</div>
+    </section>`;
+
+    const fbUp = Number(stats.feedback?.up) || 0;
+    const fbDown = Number(stats.feedback?.down) || 0;
+    const fbTotal = fbUp + fbDown;
+    const fbPct = fbTotal ? Math.round((fbUp / fbTotal) * 100) : null;
+    const [band, bandTone] = aiScoreBand(lastEval?.avgScore);
+    const qualityCard = `<section class="s-card" data-v3-medi="quality">
+      <header class="s-card-head"><div><div class="s-medi-title"><h3>პასუხების ხარისხი</h3>${helpBtn('medi.quality')}</div>
+        <p>ავტომატური სკანი და ადამიანების შეფასება პასუხის ქვეშ.</p></div></header>
+      <div class="s-card-body">
+        <div class="s-medi-scores">
+          <div class="s-medi-score">
+            <span>ბოლო სკანი</span>
+            <strong class="${bandTone}">${aiScoreText(lastEval?.avgScore, lastEval?.finishedAt)}</strong>
+            <small>${lastEval
+              ? `${band ? `<span class="s-badge is-plain ${bandTone}">${band}</span>` : ''}${escapeHtml(aiWhen(lastEval.finishedAt))} · ${fmt(lastEval.sampleSize)}-დან ${fmt(lastEval.lowScoreCount)} დაბალი`
+              : 'სკანი ჯერ არ გაშვებულა'}</small>
+          </div>
+          <div class="s-medi-score">
+            <span>ადამიანების შეფასება</span>
+            <strong>${fbPct == null ? '—' : `${fbPct}%`}</strong>
+            <small>${fbTotal ? `${fmt(fbUp)} კარგი · ${fmt(fbDown)} ცუდი · სულ` : 'შეფასება ჯერ არ არის'}</small>
+            ${fbTotal ? `<div class="s-meter" role="img" aria-label="კარგი შეფასება ${fbPct}%"><i style="width:${fbPct}%"></i></div>` : ''}
+          </div>
+        </div>
+        <div class="s-medi-scan">
+          <label class="s-field"><span>შესაფასებელი პასუხები (5–40)</span>
+            <input id="ai-scan-size" type="number" min="5" max="40" value="20" inputmode="numeric"></label>
+          <button type="button" class="btn primary" id="ai-scan-run">${icon('spark')} სკანის გაშვება</button>
+        </div>
+        <p class="s-medi-note">სკანი ოთხ წესს ამოწმებს: ქართული ენა, გაფრთხილება, ექიმთან ან 112-ზე მიმართვა, სისრულე. მაქსიმუმი 80 ქულაა, 72-დან პასუხი გამსვლელია.</p>
       </div>
     </section>`;
 
-    const historyCard = `<section class="v3-medi-panel" data-v3-medi="scans">
-      <div class="v3-medi-head"><div class="v3-medi-head-copy">
-        <div class="v3-title-row"><h3>სკანის ისტორია</h3>${helpBtn('medi.quality')}</div>
-        <p class="muted">${fmt(runs.length)} გაშვება</p>
-      </div></div>
-      ${runs.length ? `<div class="v3-medi-runs">
-        ${runs.map((run) => `
-          <article class="v3-medi-run" data-run="${run.id}" role="button" tabindex="0">
-            <div class="v3-medi-run-top">
-              <div class="v3-medi-run-score ${aiScoreTone(run.avgScore)}">
-                <strong>${run.avgScore ?? '—'}</strong><span>/100</span>
-              </div>
-              ${run.status === 'DONE' ? '<span class="badge ok">მზადა</span>' : run.status === 'FAILED' ? '<span class="badge bad">ჩავარდა</span>' : '<span class="badge std">მიმდ.</span>'}
-            </div>
-            <div class="v3-medi-run-meta">${fmtDate(run.finishedAt || run.createdAt)} · ${run.lowScoreCount}/${run.sampleSize} დაბალი</div>
-            <p class="v3-medi-run-summary">${escapeHtml(run.summary || '—')}</p>
-          </article>
-        `).join('')}
-      </div>` : '<div class="empty v3-medi-empty"><strong>სკანი ჯერ არ გაშვებულა</strong><p>გაუშვით ხარისხის სკანი ზემოთ.</p></div>'}
+    const runRow = (run) => {
+      const at = run.finishedAt || run.createdAt;
+      const [b, t] = aiScoreBand(run.avgScore);
+      const status = run.status === 'DONE' ? '<span class="s-badge is-ok">დასრულდა</span>'
+        : run.status === 'FAILED'
+          ? `<span class="s-badge is-bad">ვერ დასრულდა</span><small class="s-medi-sub" title="${escapeHtml(run.summary || '')}">${escapeHtml(aiRunFailText(run.summary))}</small>`
+          : '<span class="s-badge is-info">მიმდინარეობს</span>';
+      return `<tr class="is-click" tabindex="0" data-ai-run="${escapeHtml(run.id)}">
+        <td>${escapeHtml(aiWhen(at))}</td>
+        <td>${run.avgScore == null ? '<span class="s-muted">—</span>' : `<b>${aiScoreText(run.avgScore, at)}</b> <span class="s-badge is-plain ${t}">${b}</span>`}</td>
+        <td class="num">${run.status === 'DONE' ? `${fmt(run.lowScoreCount)} / ${fmt(run._count?.results ?? run.sampleSize)}` : '—'}</td>
+        <td>${status}</td>
+        <td>${escapeHtml(run.triggeredBy?.fullName || run.triggeredBy?.email || '—')}</td>
+      </tr>`;
+    };
+    const historyCard = `<section class="s-card" data-v3-medi="scans">
+      <header class="s-card-head"><div><h3>სკანების ისტორია</h3><p>ბოლო ${fmt(runs.length)} გაშვება. სტრიქონი აჩვენებს თითო პასუხის შეფასებას.</p></div></header>
+      <div class="s-card-body is-flush s-medi-flush">${runs.length ? `<div class="s-table-wrap"><table class="s-table">
+        <thead><tr><th>დრო</th><th>საშუალო ქულა</th><th class="num">დაბალი / სულ</th><th>სტატუსი</th><th>ვინ გაუშვა</th></tr></thead>
+        <tbody>${runs.map(runRow).join('')}</tbody></table></div>`
+        : `<div class="s-empty">${icon('spark')}<strong>სკანი ჯერ არ გაშვებულა</strong><span>გაუშვი „პასუხების ხარისხის“ ბარათიდან.</span></div>`}</div>
     </section>`;
 
-    $('medi-body').innerHTML = `<div class="v3-medi-body">
-      ${kpis}
-      ${opsStrip}
-      ${charts}
-      <div class="v3-medi-split">${scanCard}${modulesCard}</div>
+    const body = $('medi-body');
+    body.innerHTML = `${alerts.join('')}
+      <div class="s-metrics">${kpis.join('')}</div>
       ${logCard}
-      ${historyCard}
-    </div>`;
+      <div class="s-medi-grid is-wide-left">${trendCard}${errorsCard}</div>
+      <div class="s-medi-grid">${modulesCard}${qualityCard}</div>
+      ${historyCard}`;
+    const updated = $('medi-updated');
+    if (updated) updated.textContent = usage?.refreshedAt ? `განახლდა ${aiWhen(usage.refreshedAt)}` : '';
 
-    $('ai-scan-run').onclick = async () => {
-      const sampleSize = Number($('ai-scan-size').value) || 20;
-      if (!confirm(`გავუშვათ ხარისხის სკანი (${sampleSize} პასუხი)? შეიძლება OpenRouter კრედიტი დაიხარჯოს.`)) return;
-      $('ai-scan-run').disabled = true;
-      try {
-        const result = await api('/ai/scan', { method: 'POST', body: { sampleSize } });
-        toast(`სკანი დასრულდა — საშუალო ${result.run.avgScore ?? '—'}/100`);
-        await renderAi();
-      } catch (err) {
-        toast(err.message || 'სკანი ვერ დასრულდა', 'bad');
-        const btn = $('ai-scan-run');
-        if (btn) btn.disabled = false;
-      }
-    };
-
-    document.querySelectorAll('[data-ai-view]').forEach((btn) => {
-      btn.onclick = () => viewAiInteraction(btn.dataset.aiView);
-    });
-    document.querySelectorAll('[data-run]').forEach((el) => {
-      el.onclick = () => viewEvalRun(el.dataset.run);
-      el.onkeydown = (e) => {
-        if (e.key === 'Enter' || e.key === ' ') {
-          e.preventDefault();
-          viewEvalRun(el.dataset.run);
-        }
+    bindAiLog($('medi-log-body'));
+    body.querySelectorAll('[data-ai-status]').forEach((btn) => {
+      btn.onclick = () => {
+        aiLog.status = btn.dataset.aiStatus;
+        aiLog.offset = 0;
+        body.querySelectorAll('[data-ai-status]').forEach((b) => b.setAttribute('aria-selected', String(b === btn)));
+        void loadAiLog();
       };
     });
+    $('ai-log-mode').onchange = (e) => {
+      aiLog.mode = e.target.value;
+      aiLog.offset = 0;
+      void loadAiLog();
+    };
+    body.querySelector('[data-ai-show-errors]')?.addEventListener('click', () => {
+      body.querySelector('[data-ai-status="ERROR"]')?.click();
+      $('medi-log')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+    body.querySelectorAll('[data-ai-run]').forEach((el) => {
+      el.onclick = () => viewEvalRun(el.dataset.aiRun);
+      el.onkeydown = (e) => {
+        if (el.tagName !== 'TR' || (e.key !== 'Enter' && e.key !== ' ')) return;
+        e.preventDefault();
+        viewEvalRun(el.dataset.aiRun);
+      };
+    });
+    $('ai-scan-run').onclick = () => {
+      const sampleSize = Number($('ai-scan-size').value) || 20;
+      window.AdminV3?.openConfirm?.({
+        title: 'ხარისხის სკანის გაშვება',
+        message: `შეფასდება ${sampleSize} უახლესი წარმატებული პასუხი. სკანი სერვერზე მუშაობს: ტექსტი გარე სერვისს არ ეგზავნება და AI კრედიტი არ იხარჯება.`,
+        confirmLabel: 'გაშვება',
+        onConfirm: async () => {
+          let result;
+          try {
+            result = await api('/ai/scan', { method: 'POST', body: { sampleSize } });
+          } catch (err) {
+            throw new Error(/[ა-ჰ]/.test(err.message || '') ? err.message : 'სკანი ვერ დასრულდა — სცადე ცოტა ხანში.');
+          }
+          const run = result?.run || {};
+          if (run.status === 'FAILED') toast(aiRunFailText(run.summary), 'bad');
+          else toast(`სკანი დასრულდა — საშუალო ${aiScoreText(run.avgScore, run.finishedAt || new Date().toISOString())}`);
+          void renderAi();
+        },
+      });
+    };
   } catch (err) {
-    $('medi-body').innerHTML = typeof opsError === 'function'
-      ? opsError(err.message, 'medi-retry')
-      : `<div class="empty"><strong>შეცდომა</strong><p>${escapeHtml(err.message)}</p></div>`;
-    $('medi-retry')?.addEventListener('click', renderAi);
+    if (seq !== aiRenderSeq) return;
+    $('medi-body').innerHTML = `<div class="s-card"><div class="s-empty">${icon('alert')}<strong>Medi-ს მონაცემები ვერ ჩაიტვირთა</strong><span>${escapeHtml(err.message || '')}</span><button type="button" class="btn" id="medi-retry">ხელახლა ცდა</button></div></div>`;
+    $('medi-retry')?.addEventListener('click', () => void renderAi());
   }
 }
 
 async function viewAiInteraction(id) {
-  const { interaction } = await api(`/ai/interactions/${id}`);
+  let interaction;
+  try {
+    ({ interaction } = await api(`/ai/interactions/${encodeURIComponent(id)}`));
+  } catch (err) {
+    toast(err.message || 'ჩანაწერი ვერ ჩაიტვირთა', 'bad');
+    return;
+  }
+  const fmt = (n) => (typeof opsFmt === 'function' ? opsFmt(n) : String(n ?? '—'));
+  const ok = interaction.status === 'OK';
   const fb = interaction.feedback?.[0];
-  openDrawer(`
-    <p class="kicker">${AI_MODE_LABELS[interaction.mode] || interaction.mode}</p>
-    <h3>AI ურთიერთობა</h3>
-    <p class="muted mono" style="font-size:11px">${escapeHtml(interaction.id)}</p>
-    <div class="drawer-stats">
-      <div class="drawer-stat"><div class="label">მომხმარებელი</div><strong>${escapeHtml(interaction.user?.fullName || '—')}</strong></div>
-      <div class="drawer-stat"><div class="label">სტატუსი</div><strong>${interaction.status === 'OK' ? '✓ წარმატებული' : '✗ შეცდომა'}</strong></div>
-      <div class="drawer-stat"><div class="label">მოდელი</div><strong class="mono">${escapeHtml(interaction.reasoningModel || '—')}</strong></div>
-      <div class="drawer-stat"><div class="label">Prompt</div><strong class="mono">v${escapeHtml(interaction.promptVersion)}</strong></div>
-      <div class="drawer-stat"><div class="label">დრო (ms)</div><strong>${interaction.latencyMs ?? '—'} ms</strong></div>
+  const user = interaction.user || {};
+  const contact = aiContact(user);
+  const usage = interaction.tokenUsage || null;
+  const tokens = usage ? usage.total_tokens ?? usage.total ?? null : null;
+  const row = (label, value) => `<div class="inv-row"><span>${label}</span><strong>${value}</strong></div>`;
+  openDrawer(`<div class="umodal s-medi-drawer">
+    <header class="umodal-hero">
+      <div class="umodal-hero-copy">
+        <p class="kicker">${escapeHtml(aiModeLabel(interaction.mode))}</p>
+        <h3>${ok ? 'Medi-ს პასუხი' : 'Medi-მ ვერ უპასუხა'}</h3>
+        <p class="muted">${escapeHtml(user.fullName || '—')} · ${escapeHtml(aiWhen(interaction.createdAt))}</p>
+      </div>
+      <button type="button" class="btn icon-only ghost umodal-close" id="drawer-cancel" aria-label="დახურვა">${icon('x')}</button>
+    </header>
+    <div class="umodal-body">
+      ${ok ? '' : `<div class="s-callout is-warn">${icon('alert')}<p>${escapeHtml(aiErrorText(interaction.errorMessage))}</p></div>`}
+      <section class="dec-section"><h4>დეტალები</h4><div class="inv-grid">
+        ${row('სტატუსი', ok ? '<span class="s-badge is-ok">წარმატებული</span>' : '<span class="s-badge is-bad">შეცდომა</span>')}
+        ${row('მომხმარებელი', `${user.id ? `<button type="button" class="inv-link" id="ai-open-user">${escapeHtml(user.fullName || 'პროფილი')}</button>` : escapeHtml(user.fullName || '—')}${contact ? ` <span class="s-muted">· ${escapeHtml(contact)}</span>` : ''}`)}
+        ${row('პასუხის დრო', escapeHtml(aiSeconds(interaction.latencyMs)))}
+        ${row('მოდელი', escapeHtml(interaction.reasoningModel || '—'))}
+        ${interaction.visionModel ? row('სურათის მოდელი', escapeHtml(interaction.visionModel)) : ''}
+        ${tokens != null ? row('ტოკენები', fmt(tokens)) : ''}
+        ${row('ინსტრუქციების ვერსია', escapeHtml(interaction.promptVersion || '—'))}
+        ${row('ჩანაწერი', window.AdminV3?.copyIdButton ? window.AdminV3.copyIdButton(interaction.id, 'ჩანაწერის ID') : escapeHtml(interaction.id))}
+      </div></section>
+      ${fb ? `<section class="dec-section"><h4>ადამიანის შეფასება</h4><p class="s-medi-fb">${fb.rating > 0 ? '<span class="s-badge is-ok">კარგი</span>' : '<span class="s-badge is-bad">ცუდი</span>'}${fb.comment ? `<span>${escapeHtml(fb.comment)}</span>` : ''}</p></section>` : ''}
+      <section class="dec-section"><h4>შეკითხვა</h4><div class="s-medi-text">${escapeHtml(aiPromptText(interaction.userPrompt) || '—')}</div></section>
+      ${ok
+        ? `<section class="dec-section"><h4>პასუხი</h4>${aiReplyHtml(interaction.assistantReply)}</section>`
+        : (interaction.errorMessage ? `<details class="s-details s-tech-details"><summary>ტექნიკური დეტალები</summary><div><pre>${escapeHtml(interaction.errorMessage)}</pre></div></details>` : '')}
     </div>
-    ${fb ? `<span class="ai-pill ${fb.rating > 0 ? 'ok' : 'bad'}">${fb.rating > 0 ? '👍 კარგი' : '👎 ცუდი'}${fb.comment ? ` · ${escapeHtml(fb.comment)}` : ''}</span>` : ''}
-    <div class="field"><span>შეკითხვა / კონტექსტი</span><div class="ai-drawer-block"><pre>${escapeHtml(interaction.userPrompt || '—')}</pre></div></div>
-    <div class="field"><span>AI პასუხი</span><div class="ai-drawer-block"><pre>${escapeHtml(interaction.assistantReply || interaction.errorMessage || '—')}</pre></div></div>
-    <div class="row"><button class="btn ghost" id="drawer-cancel">დახურვა</button></div>
-  `);
+  </div>`, { wide: true });
   $('drawer-cancel').onclick = closeDrawer;
+  $('ai-open-user')?.addEventListener('click', () => editUser(user.id));
 }
 
 async function viewEvalRun(id) {
-  const { run } = await api(`/ai/eval-runs/${id}`);
-  openDrawer(`
-    <p class="kicker">ხარისხის სკანი</p>
-    <h3>სკანის დეტალები</h3>
-    ${aiScoreRing(run.avgScore, `${run.lowScoreCount}/${run.sampleSize} დაბალი`, { compact: true })}
-    <p class="muted">${escapeHtml(run.summary || '')}</p>
-    <div class="detail-list" style="margin-top:14px">
-      ${run.results.map((r) => `
-        <div class="detail">
-          <span>${AI_MODE_LABELS[r.mode] || r.mode}</span>
-          <strong>${r.passed ? '✓' : '✗'} ${r.score}</strong>
-        </div>
-        ${r.notes ? `<p class="muted" style="margin:0 0 10px;font-size:12px;line-height:1.5">${escapeHtml(r.notes)}</p>` : ''}
-      `).join('')}
+  let run;
+  try {
+    ({ run } = await api(`/ai/eval-runs/${encodeURIComponent(id)}`));
+  } catch (err) {
+    toast(err.message || 'სკანი ვერ ჩაიტვირთა', 'bad');
+    return;
+  }
+  const fmt = (n) => (typeof opsFmt === 'function' ? opsFmt(n) : String(n ?? '—'));
+  const at = run.finishedAt || run.createdAt;
+  const done = run.status === 'DONE';
+  const [band] = aiScoreBand(run.avgScore);
+  const results = run.results || [];
+  const lowByMode = Object.entries(results.filter((r) => !r.passed).reduce((acc, r) => ({ ...acc, [r.mode]: (acc[r.mode] || 0) + 1 }), {}))
+    .sort((a, b) => b[1] - a[1]);
+  const lowMax = Math.max(1, ...lowByMode.map(([, n]) => n));
+  const who = run.triggeredBy?.fullName || run.triggeredBy?.email;
+  openDrawer(`<div class="umodal s-medi-drawer">
+    <header class="umodal-hero">
+      <div class="umodal-hero-copy">
+        <p class="kicker">ხარისხის სკანი · ${escapeHtml(aiWhen(at))}</p>
+        <h3>${done ? `${aiScoreText(run.avgScore, at)} · ${band}` : run.status === 'FAILED' ? 'სკანი ვერ დასრულდა' : 'სკანი მიმდინარეობს'}</h3>
+        <p class="muted">${done ? `${fmt(results.length || run.sampleSize)} პასუხი · ${fmt(run.lowScoreCount)} დაბალი` : `${fmt(run.sampleSize)} პასუხი`}${who ? ` · გაუშვა ${escapeHtml(who)}` : ''}</p>
+      </div>
+      <button type="button" class="btn icon-only ghost umodal-close" id="drawer-cancel" aria-label="დახურვა">${icon('x')}</button>
+    </header>
+    <div class="umodal-body">
+      ${run.status === 'FAILED' ? `<div class="s-callout is-warn">${icon('alert')}<p>${escapeHtml(aiRunFailText(run.summary))}</p></div>
+        ${run.summary && !/[ა-ჰ]/.test(run.summary) ? `<details class="s-details s-tech-details"><summary>ტექნიკური დეტალები</summary><div><pre>${escapeHtml(run.summary)}</pre></div></details>` : ''}` : ''}
+      ${done && aiScoreMax(at, run.avgScore) === 80 ? `<p class="s-medi-note">ოთხი წესი: ქართული ენა, გაფრთხილება, ექიმთან ან 112-ზე მიმართვა, სისრულე. მაქსიმუმი 80 ქულაა, 72-დან პასუხი გამსვლელია.</p>` : ''}
+      ${lowByMode.length ? `<section class="dec-section"><h4>დაბალი ქულა მოდულების მიხედვით</h4><ul class="s-share-list is-compact">${lowByMode
+        .map(([mode, n]) => `<li><span>${escapeHtml(aiModeLabel(mode))}</span><div class="s-meter is-warn"><i style="width:${Math.round((n / lowMax) * 100)}%"></i></div><b>${fmt(n)}</b></li>`).join('')}</ul></section>` : ''}
+      ${results.length ? `<section class="dec-section"><h4>შეფასებული პასუხები</h4><p class="s-medi-note">უდაბლესი ზემოთ. სტრიქონი ხსნის თავად პასუხს.</p>
+        <div class="s-table-wrap"><table class="s-table">
+          <thead><tr><th>მოდული</th><th class="num">ქულა</th><th>რა აკლია</th></tr></thead>
+          <tbody>${results.map((r) => `<tr class="is-click" tabindex="0" data-ai-view="${escapeHtml(r.interactionId || r.sourceId || '')}">
+            <td>${escapeHtml(aiModeLabel(r.mode))}</td>
+            <td class="num"><span class="s-badge is-plain ${r.passed ? '' : 'is-bad'}">${aiNum1(r.score)}</span></td>
+            <td>${aiResultNote(r)}</td></tr>`).join('')}</tbody></table></div></section>` : ''}
+      <section class="dec-section"><h4>ჩანაწერი</h4><div class="inv-grid">
+        <div class="inv-row"><span>სკანის ID</span><strong>${window.AdminV3?.copyIdButton ? window.AdminV3.copyIdButton(run.id, 'სკანის ID') : escapeHtml(run.id)}</strong></div>
+      </div></section>
     </div>
-    <div class="row"><button class="btn ghost" id="drawer-cancel">დახურვა</button></div>
-  `);
+  </div>`, { wide: true });
   $('drawer-cancel').onclick = closeDrawer;
+  $('drawer-body')?.querySelectorAll('[data-ai-view]').forEach((tr) => {
+    if (!tr.dataset.aiView) return;
+    tr.onclick = () => viewAiInteraction(tr.dataset.aiView);
+    tr.onkeydown = (e) => {
+      if (e.key !== 'Enter' && e.key !== ' ') return;
+      e.preventDefault();
+      viewAiInteraction(tr.dataset.aiView);
+    };
+  });
 }
 
 async function renderSettings() {

@@ -1,6 +1,7 @@
 /**
- * MediCard Admin V3 Step 4 — Users registry + investigation workspace.
- * Loaded after admin.js. Overrides renderUsers / renderUserPage.
+ * MediCard Admin — users registry (#/users) and the user profile (#/users/:id).
+ * Loaded after admin.js and overrides renderUsers / renderUserPage. The profile's tabs are rendered by
+ * renderUserInvestigationTabs() in admin.js.
  */
 (function adminUsersV3(global) {
   const V3 = () => global.AdminV3 || {};
@@ -12,6 +13,14 @@
   }
   function escA(v) {
     return typeof escapeAttr === 'function' ? escapeAttr(v) : esc(v);
+  }
+  const ico = (name) => (typeof icon === 'function' ? icon(name) : '');
+  const when = (value, mode = 'datetime') => (V3().formatDate ? V3().formatDate(value, mode) : String(value || '—'));
+  const relative = (value) => (typeof fmtRelative === 'function' ? fmtRelative(value) : when(value));
+
+  function fmtKa(n) {
+    if (n == null) return '—';
+    return Number(n).toLocaleString('ka-GE');
   }
 
   /** Asia/Tbilisi calendar YMD for date inputs (not UTC midnight). */
@@ -54,9 +63,12 @@
     return status === 'BLOCKED' ? 'დაბლოკილი' : 'შესვლა დაშვებულია';
   }
 
-  function accountStatusCell(status) {
-    const blocked = status === 'BLOCKED';
-    return `<span class="v3-acct${blocked ? ' is-blocked' : ''}"><i></i>${accountStatusLabel(status)}</span>`;
+  function accountStatusBadge(status) {
+    return `<span class="s-badge ${status === 'BLOCKED' ? 'is-bad' : 'is-ok'}">${accountStatusLabel(status)}</span>`;
+  }
+
+  function setUsersHeader(title, subtitle, helpKey) {
+    if (typeof setPageHeader === 'function') setPageHeader('users', { users: ['ადამიანები', title, subtitle, helpKey] });
   }
 
   function usersFilterParamsFromHash() {
@@ -106,82 +118,93 @@
     };
   }
 
+  /** Every value of the server's `activity` filter, grouped the way people think about them. */
+  const ACTIVITY_GROUPS = [
+    ['აქტივობა', [['today', 'აპში დღეს'], ['inactive7', '7+ დღე არ შემოსულა'], ['inactive30', '30+ დღე არ შემოსულა']]],
+    ['მოდული', [['medi', 'Medi'], ['meds', 'მედიკამენტები'], ['cycle', 'ციკლი']]],
+    ['აპი', [['ios', 'iOS'], ['android', 'Android'], ['notif_disabled', 'შეტყობინებები გამორთულია'], ['outdated', 'ძველი ვერსია']]],
+    ['გადასახედი', [['under18', '18 წლამდე']]],
+  ];
+  const ACTIVITY_LABELS = Object.fromEntries(ACTIVITY_GROUPS.flatMap(([, items]) => items));
+
+  function activityLabelKa(key) {
+    return ACTIVITY_LABELS[key] || key;
+  }
+
   function activeFilterChips(f) {
     const chips = [];
-    if (f.q) chips.push(['q', `ძებნა: ${f.q}`]);
-    if (f.status === 'ACTIVE') chips.push(['status', 'შესვლა დაშვებულია']);
-    if (f.status === 'BLOCKED') chips.push(['status', 'დაბლოკილი']);
-    if (f.activity === 'today') chips.push(['activity', 'აპში დღეს']);
-    if (f.activity === 'inactive7') chips.push(['activity', '7+ დღე უქმე']);
-    if (f.activity === 'inactive30') chips.push(['activity', '30+ დღე უქმე']);
-    if (f.activity === 'under18') chips.push(['activity', '18 წლამდე — გადასახედი']);
-    if (f.activity && !['today', 'inactive7', 'inactive30'].includes(f.activity)) {
-      chips.push(['activity', f.activity]);
-    }
-    if (f.appVersion) chips.push(['appVersion', `აპი ${f.appVersion}`]);
+    if (f.q) chips.push(['q', `ძებნა: „${f.q}“`]);
+    if (f.status) chips.push(['status', f.status === 'ACTIVE' || f.status === 'BLOCKED' ? accountStatusLabel(f.status) : f.status]);
+    if (f.activity) chips.push(['activity', activityLabelKa(f.activity)]);
+    if (f.appVersion) chips.push(['appVersion', `აპის ვერსია ${f.appVersion}`]);
     return chips;
   }
 
-  function activityBucket(user) {
-    const at = user.lastActiveAt ? new Date(user.lastActiveAt).getTime() : 0;
-    if (!at) return { label: 'არასდროს', tone: 'mute' };
-    const days = Math.floor((Date.now() - at) / 86400000);
-    if (days <= 0) return { label: 'დღეს', tone: 'live' };
-    if (days < 7) return { label: `${days}დ წინ`, tone: 'ok' };
-    if (days < 30) return { label: `${Math.floor(days / 7)}კვ წინ`, tone: 'warn' };
-    return {
-      label: typeof fmtDateShort === 'function' ? fmtDateShort(user.lastActiveAt) : String(user.lastActiveAt),
-      tone: 'mute',
-    };
+  /** Last app use → relative words plus a tone for the dot: today, this week, this month, older. */
+  function activityState(value) {
+    const at = value ? new Date(value).getTime() : NaN;
+    if (!Number.isFinite(at)) return { label: 'არასდროს', tone: 'none', title: 'აპში ჯერ არ შემოსულა' };
+    const days = (Date.now() - at) / 86400000;
+    const tone = days < 1 ? 'live' : days < 7 ? 'ok' : days < 30 ? 'warn' : 'idle';
+    return { label: relative(value), tone, title: when(value) };
   }
 
-  function activityLabelKa(key) {
-    const map = {
-      today: 'აპში დღეს',
-      inactive7: '7+ დღე უქმე',
-      inactive30: '30+ დღე უქმე',
-      medi: 'Medi',
-      meds: 'მედიკამენტები',
-      cycle: 'ციკლი',
-      ios: 'iOS',
-      android: 'Android',
-      notif_disabled: 'ნოტიფი გამორთული',
-      outdated: 'ძველი ვერსია',
-    };
-    return map[key] || key;
-  }
-
-  function featureChips(user) {
+  function featureBadges(user) {
     const counts = user.counts || {};
     const bits = [];
-    if (counts.chats > 0) bits.push(`<span class="v3-users-feat" title="Medi ჩატი">${typeof icon === 'function' ? icon('spark') : ''} Medi</span>`);
-    if (counts.medications > 0) bits.push(`<span class="v3-users-feat" title="მედიკამენტები">${typeof icon === 'function' ? icon('pill') : ''} მედ.</span>`);
-    if (user.hasCycle) bits.push(`<span class="v3-users-feat" title="ციკლი">${typeof icon === 'function' ? icon('activity') : ''} ციკლი</span>`);
+    if (counts.chats > 0) bits.push('<span class="s-badge is-plain">Medi</span>');
+    if (counts.medications > 0) bits.push('<span class="s-badge is-plain">მედიკამენტები</span>');
+    if (user.hasCycle) bits.push('<span class="s-badge is-plain">ციკლი</span>');
     if (user.notificationPermission === 'denied' || user.notificationPermission === 'disabled') {
-      bits.push(`<span class="v3-users-feat is-off" title="შეტყობინება გამორთულია">${typeof icon === 'function' ? icon('bell') : ''} ნოტიფი</span>`);
+      bits.push('<span class="s-badge is-warn is-plain">შეტყობინებები გამორთულია</span>');
     }
-    return bits.length ? `<div class="v3-users-feats">${bits.join('')}</div>` : '';
+    return bits.length ? `<span class="s-users-feats">${bits.join('')}</span>` : '';
   }
 
-  function platformIco(platform) {
-    const p = String(platform || '').toLowerCase();
-    if (p.includes('ios') || p === 'iphone') return 'phone';
-    if (p.includes('android')) return 'phone';
-    if (p.includes('web')) return 'globe';
-    return 'globe';
+  /** Phone and Apple sign-ups log in with a synthetic …@phone/@apple.medicard.ge address: show the real contact once. */
+  function contactLine(user) {
+    const email = String(user.email || '');
+    const synthetic = /@(phone|apple)\.medicard\.ge$/i.test(email);
+    const shown = synthetic ? (typeof aiContact === 'function' ? aiContact(user) : '') : email;
+    const digits = (v) => String(v).replace(/\D/g, '');
+    const seen = new Map();
+    [shown, user.phone].filter(Boolean).forEach((p) => { if (!seen.has(digits(p) || p)) seen.set(digits(p) || p, p); });
+    return [...seen.values()].join(' · ');
   }
 
-  function sortHeader(key, label) {
-    const active = state.sortKey === key;
-    const dir = active ? (state.sortDir === 'asc' ? 'asc' : 'desc') : '';
-    return `<th class="is-sort${active ? ' is-active' : ''}" data-sort="${escA(key)}" aria-sort="${active ? (state.sortDir === 'asc' ? 'ascending' : 'descending') : 'none'}" tabindex="0" role="columnheader">
-      <span>${esc(label)}</span>${active ? `<i class="v3-users-sort is-${dir}" aria-hidden="true"></i>` : ''}
-    </th>`;
+  function personInitials(user) {
+    return typeof initials === 'function' ? initials(user.fullName || user.email) : '?';
   }
 
-  function fmtKa(n) {
-    if (n == null) return '—';
-    return Number(n).toLocaleString('ka-GE');
+  function userRow(u) {
+    const act = activityState(u.lastActiveAt);
+    const blocked = u.status === 'BLOCKED';
+    const platform = (typeof platformKa === 'function' && platformKa(u.platform)) || '';
+    const contact = contactLine(u);
+    return `
+      <tr class="is-click${blocked ? ' is-blocked' : ''}" data-id="${escA(u.id)}" tabindex="0">
+        <td>
+          <div class="s-users-person">
+            <span class="s-avatar${blocked ? ' is-muted' : ''}" aria-hidden="true">${esc(personInitials(u))}</span>
+            <span class="s-users-name">
+              <b>${esc(u.fullName || contactLine(u) || '—')}</b>
+              <small>${esc(contact || 'კონტაქტი არ არის')}</small>
+              <code>${esc(String(u.id).slice(0, 8))}…</code>
+              ${blocked ? '<span class="s-badge is-bad s-users-narrow">დაბლოკილი</span>' : ''}
+            </span>
+          </div>
+        </td>
+        <td>${blocked ? accountStatusBadge('BLOCKED') : '<span class="s-users-ok">დაშვებულია</span>'}</td>
+        <td>
+          <div class="s-users-act">
+            <span class="s-users-when is-${act.tone}" title="${escA(act.title)}"><i aria-hidden="true"></i>${esc(act.label)}</span>
+            ${featureBadges(u)}
+          </div>
+        </td>
+        <td><span class="s-users-app">${platform ? esc(platform) : '<span class="s-muted">—</span>'}<small>${u.appVersion ? esc(u.appVersion) : 'ვერსია უცნობია'}</small></span></td>
+        <td class="s-users-date" title="${escA(when(u.createdAt, 'tz'))}">${esc(when(u.createdAt))}</td>
+        <td class="s-users-go" aria-hidden="true">${ico('arrow')}</td>
+      </tr>`;
   }
 
   async function renderUsersV3() {
@@ -191,126 +214,94 @@
       return;
     }
     state.userPageId = null;
-    if (!state.sortKey) state.sortKey = 'createdAt';
-    if (!state.sortDir) state.sortDir = 'desc';
     const root = $('tab-users');
     if (!root) return;
     const initial = usersFilterParamsFromHash();
     state.offset = (initial.page - 1) * PAGE;
-    const ico = (name) => (typeof icon === 'function' ? icon(name) : '');
 
     const V = V3();
-    if (typeof setPageHeader === 'function') {
-      setPageHeader('users', {
-        users: ['People', 'მომხმარებლები', 'რეესტრი, ფილტრები და გამოძიება — ნამდვილი ანგარიშები, უსაფრთხო ველები.', 'users.registry'],
-      });
-    }
+    setUsersHeader('მომხმარებლები', 'ყველა ანგარიში: ძებნა, ფილტრები და პროფილის გამოძიება.', 'users.registry');
     V.setHeaderActions?.(`
       <button type="button" class="btn ghost compact" id="user-reload">${ico('refresh')} განახლება</button>
-      <button type="button" class="btn primary compact" id="user-csv">${ico('download')} CSV</button>
+      <button type="button" class="btn compact" id="user-csv">${ico('download')} CSV</button>
     `);
 
-    const activityChips = [
-      ['', 'ყველა'],
-      ['today', 'აპში დღეს'],
-      ['inactive7', '7+ დღე'],
-      ['inactive30', '30+ დღე'],
-      ['medi', 'Medi'],
-      ['meds', 'მედიკამენტები'],
-      ['cycle', 'ციკლი'],
-      ['ios', 'iOS'],
-      ['android', 'Android'],
-      ['notif_disabled', 'ნოტიფი გამორთული'],
-      ['outdated', 'ძველი ვერსია'],
-      ['under18', '18 წლამდე'],
-    ];
+    const chip = (val, label) => `<button type="button" class="s-users-chip" data-activity-chip="${escA(val)}" aria-pressed="${(initial.activity || '') === val}">${esc(label)}</button>`;
 
     root.innerHTML = `
-      <div class="v3-users v3-workspace-wide">
-        <div class="v3-users-kpis" id="users-kpis" aria-label="რეესტრის მაჩვენებლები">
-          <button type="button" class="v3-users-kpi" data-kpi-status="" aria-pressed="${!initial.status ? 'true' : 'false'}">
-            <span class="v3-users-kpi-ico">${ico('users')}</span>
-            <span class="v3-users-kpi-copy"><span>სულ</span><strong id="users-kpi-total">—</strong><em>რეესტრში</em></span>
-          </button>
-          <button type="button" class="v3-users-kpi is-ok" data-kpi-status="ACTIVE" aria-pressed="${initial.status === 'ACTIVE' ? 'true' : 'false'}">
-            <span class="v3-users-kpi-ico">${ico('check')}</span>
-            <span class="v3-users-kpi-copy"><span>შესვლა დაშვებულია</span><strong id="users-kpi-active">—</strong><em>აქტიური ანგარიში</em></span>
-          </button>
-          <button type="button" class="v3-users-kpi is-danger" data-kpi-status="BLOCKED" aria-pressed="${initial.status === 'BLOCKED' ? 'true' : 'false'}">
-            <span class="v3-users-kpi-ico">${ico('lock')}</span>
-            <span class="v3-users-kpi-copy"><span>დაბლოკილი</span><strong id="users-kpi-blocked">—</strong><em>წვდომა შეზღუდულია</em></span>
-          </button>
-          <article class="v3-users-kpi is-soft" aria-label="ახალი რეგისტრაციები">
-            <span class="v3-users-kpi-ico">${ico('calendar')}</span>
-            <span class="v3-users-kpi-copy"><span>ახალი · 7დ</span><strong id="users-kpi-week">—</strong><em id="users-kpi-today-hint">დღეს —</em></span>
-          </article>
+      <div class="s-stack v3-tab-shell s-users">
+        <div class="s-metrics" id="users-kpis" aria-label="რეესტრის მაჩვენებლები">
+          <div class="s-metric"><span>სულ ანგარიში</span><strong id="users-kpi-total">—</strong><small>მთელი ბაზა</small></div>
+          <div class="s-metric"><span>შესვლა დაშვებულია</span><strong id="users-kpi-active">—</strong><small>აქტიური ანგარიში</small></div>
+          <div class="s-metric"><span>დაბლოკილი</span><strong id="users-kpi-blocked">—</strong><small>აპში ვერ შედის</small></div>
+          <div class="s-metric"><span>ახალი · 7 დღე</span><strong id="users-kpi-week">—</strong><small id="users-kpi-today-hint">დღეს —</small></div>
         </div>
 
-        <section class="v3-users-board">
-          <div class="v3-users-toolbar">
-            <label class="v3-users-search">
-              <span class="sr-only">ძებნა</span>
-              ${ico('search')}
-              <input id="user-q" type="search" placeholder="სახელი, ელ-ფოსტა, ტელეფონი ან ID…" value="${escA(initial.q)}" autocomplete="off" />
-              <button type="button" id="user-q-clear" class="v3-icon-btn v3-users-clear${initial.q ? '' : ' hidden'}" aria-label="ძებნის გასუფთავება">${ico('x')}</button>
-            </label>
-            <div class="v3-users-filters" role="group" aria-label="ანგარიში">
-              <div class="v3-users-chips" id="users-status-chips" role="tablist" aria-label="ანგარიში">
-                <button type="button" class="v3-users-chip${!initial.status ? ' is-active' : ''}" data-status-chip="" aria-pressed="${!initial.status}">ყველა</button>
-                <button type="button" class="v3-users-chip${initial.status === 'ACTIVE' ? ' is-active' : ''}" data-status-chip="ACTIVE" aria-pressed="${initial.status === 'ACTIVE'}">აქტიური</button>
-                <button type="button" class="v3-users-chip${initial.status === 'BLOCKED' ? ' is-active' : ''}" data-status-chip="BLOCKED" aria-pressed="${initial.status === 'BLOCKED'}">დაბლოკილი</button>
-              </div>
-              <button type="button" id="user-clear-filters" class="btn tiny ghost${activeFilterChips(initial).length ? '' : ' hidden'}">${ico('x')} გასუფთავება</button>
+        <section class="s-card s-users-board">
+          <header class="s-card-head">
+            <div>
+              <h3 class="s-users-title">რეესტრი ${V.infoButton ? V.infoButton('users.table') : ''}</h3>
+              <p>ახალი ანგარიშები პირველად · გვერდზე ${PAGE}.</p>
             </div>
-            <span id="user-meta" class="v3-users-meta">იტვირთება…</span>
-          </div>
+            <span id="user-meta" class="s-users-meta" aria-live="polite">იტვირთება…</span>
+          </header>
 
-          <div class="v3-users-activity" role="group" aria-label="აპის აქტივობა">
-            ${activityChips.map(([val, lab]) => `
-              <button type="button" class="v3-users-chip${(initial.activity || '') === val ? ' is-active' : ''}" data-activity-chip="${escA(val)}" aria-pressed="${(initial.activity || '') === val}">${esc(lab)}</button>
-            `).join('')}
+          <div class="s-users-controls">
+            <div class="s-users-bar">
+              <label class="s-users-search">
+                <span class="sr-only">ძებნა</span>
+                ${ico('search')}
+                <input id="user-q" type="search" placeholder="სახელი, ელ-ფოსტა, ტელეფონი ან ID…" value="${escA(initial.q)}" autocomplete="off" />
+                <button type="button" id="user-q-clear" class="s-users-clear${initial.q ? '' : ' hidden'}" aria-label="ძებნის გასუფთავება">${ico('x')}</button>
+              </label>
+              <div class="s-segment" id="users-status-chips" role="tablist" aria-label="ანგარიშის სტატუსი">
+                <button type="button" role="tab" data-status-chip="" aria-selected="${!initial.status}">ყველა</button>
+                <button type="button" role="tab" data-status-chip="ACTIVE" aria-selected="${initial.status === 'ACTIVE'}">შესვლა დაშვებულია</button>
+                <button type="button" role="tab" data-status-chip="BLOCKED" aria-selected="${initial.status === 'BLOCKED'}">დაბლოკილი</button>
+              </div>
+            </div>
+
+            <div class="s-users-facets" role="group" aria-label="ფილტრი აპის გამოყენებით">
+              ${chip('', 'ყველა')}
+              ${ACTIVITY_GROUPS.map(([group, items]) => `
+                <span class="s-users-group"><span class="s-users-group-label">${esc(group)}</span>${items.map(([val, label]) => chip(val, label)).join('')}</span>
+              `).join('')}
+              ${V.infoButton ? V.infoButton('users.activityFilter', 'ფილტრის ახსნა') : ''}
+            </div>
+
+            <div id="users-filter-summary" class="s-users-active" hidden></div>
           </div>
 
           <select id="user-status" class="sr-only" aria-hidden="true" tabindex="-1">
             <option value=""></option><option value="ACTIVE"${initial.status === 'ACTIVE' ? ' selected' : ''}></option><option value="BLOCKED"${initial.status === 'BLOCKED' ? ' selected' : ''}></option>
           </select>
           <select id="user-activity" class="sr-only" aria-hidden="true" tabindex="-1">
-            ${activityChips.map(([val]) => `<option value="${escA(val)}"${(initial.activity || '') === val ? ' selected' : ''}></option>`).join('')}
+            <option value=""></option>
+            ${Object.keys(ACTIVITY_LABELS).map((val) => `<option value="${escA(val)}"${(initial.activity || '') === val ? ' selected' : ''}></option>`).join('')}
           </select>
 
-          <div id="users-filter-summary" class="v3-users-active"></div>
-
-          <div class="v3-users-table-head">
-            <div class="v3-title-row">
-              <h3>რეესტრი</h3>
-              ${V.infoButton ? V.infoButton('users.table') : ''}
-              ${V.infoButton ? V.infoButton('users.activityFilter', 'აქტივობის ფილტრის ახსნა') : ''}
-            </div>
-            <span class="v3-users-page-size">${PAGE} / გვერდი</span>
-          </div>
-
-          <div class="v3-table-wrap" id="users-table-wrap">
-            <table class="v3-table is-clickable v3-users-table" aria-label="მომხმარებლების რეესტრი">
+          <div class="s-table-wrap" id="users-table-wrap">
+            <table class="s-table s-users-table" aria-label="მომხმარებლების რეესტრი">
               <thead>
                 <tr>
-                  ${sortHeader('fullName', 'პირი')}
-                  ${sortHeader('status', 'ანგარიში')}
-                  ${sortHeader('lastActiveAt', 'აქტივობა')}
-                  ${sortHeader('platform', 'აპი')}
-                  ${sortHeader('createdAt', 'რეგისტრაცია')}
-                  <th class="col-go" aria-label="გახსნა"></th>
+                  <th scope="col">ადამიანი</th>
+                  <th scope="col">ანგარიში</th>
+                  <th scope="col">ბოლო აქტივობა</th>
+                  <th scope="col">აპი</th>
+                  <th scope="col" aria-sort="descending">რეგისტრაცია ${ico('arrow')}</th>
+                  <th scope="col" class="s-users-go"><span class="sr-only">გახსნა</span></th>
                 </tr>
               </thead>
-              <tbody id="users-tbody"><tr><td colspan="7" class="v3-users-skel">${Array.from({ length: 6 }, () => '<div class="v3-users-skel-row" aria-hidden="true"></div>').join('')}</td></tr></tbody>
+              <tbody id="users-tbody"><tr><td colspan="6"><div class="v3-skel" aria-hidden="true">${'<i></i>'.repeat(6)}</div></td></tr></tbody>
             </table>
           </div>
 
-          <div class="v3-users-pager">
-            <strong id="page-ind">0 / 0</strong>
-            <div class="v3-users-pager-nav">
-              <button class="btn tiny ghost" id="prev-page" type="button">${ico('chevronLeft')} წინა</button>
-              <div id="user-pager-pages" class="v3-users-pages"></div>
-              <button class="btn tiny ghost" id="next-page" type="button">შემდეგი ${ico('arrow')}</button>
+          <div class="s-pager">
+            <span id="page-ind">0 / 0</span>
+            <div class="s-users-pager-nav">
+              <button class="btn ghost compact" id="prev-page" type="button">${ico('chevronLeft')} წინა</button>
+              <span id="user-pager-pages" class="s-users-pages"></span>
+              <button class="btn ghost compact" id="next-page" type="button">შემდეგი ${ico('arrow')}</button>
             </div>
           </div>
         </section>
@@ -319,37 +310,26 @@
     const syncChipUi = () => {
       const f = readFiltersFromUi();
       document.querySelectorAll('[data-status-chip]').forEach((btn) => {
-        const on = (btn.dataset.statusChip || '') === (f.status || '');
-        btn.classList.toggle('is-active', on);
-        btn.setAttribute('aria-pressed', on ? 'true' : 'false');
+        btn.setAttribute('aria-selected', String((btn.dataset.statusChip || '') === (f.status || '')));
       });
       document.querySelectorAll('[data-activity-chip]').forEach((btn) => {
-        const on = (btn.dataset.activityChip || '') === (f.activity || '');
-        btn.classList.toggle('is-active', on);
-        btn.setAttribute('aria-pressed', on ? 'true' : 'false');
-      });
-      document.querySelectorAll('[data-kpi-status]').forEach((btn) => {
-        const want = btn.dataset.kpiStatus || '';
-        const on = want === ''
-          ? !f.status
-          : f.status === want;
-        btn.setAttribute('aria-pressed', on ? 'true' : 'false');
-        btn.classList.toggle('is-pressed', on);
+        btn.setAttribute('aria-pressed', String((btn.dataset.activityChip || '') === (f.activity || '')));
       });
     };
 
     const paintSummary = () => {
       const f = readFiltersFromUi();
-      const chips = activeFilterChips(f).map(([key, label]) => {
-        if (key === 'activity' && f.activity) return [key, activityLabelKa(f.activity)];
-        return [key, label];
-      });
+      const chips = activeFilterChips(f);
       const host = $('users-filter-summary');
       if (!host) return;
+      host.hidden = !chips.length;
       host.innerHTML = chips.length
-        ? `<span class="v3-users-active-count">${chips.length} ფილტრი</span>${chips.map(([, label]) => `<span class="v3-users-active-chip">${esc(label)}</span>`).join('')}`
+        ? `<span class="s-users-active-count">${chips.length === 1 ? 'ფილტრი' : `${chips.length} ფილტრი`}</span>
+          ${chips.map(([key, label]) => `<button type="button" class="s-users-active-chip" data-clear-filter="${escA(key)}" title="ფილტრის მოხსნა">${esc(label)}${ico('x')}</button>`).join('')}
+          <button type="button" id="user-clear-filters" class="btn ghost compact">ყველას გასუფთავება</button>`
         : '';
-      $('user-clear-filters')?.classList.toggle('hidden', !chips.length);
+      host.querySelectorAll('[data-clear-filter]').forEach((btn) => btn.addEventListener('click', () => clearOne(btn.dataset.clearFilter)));
+      $('user-clear-filters')?.addEventListener('click', clearAll);
       syncChipUi();
     };
 
@@ -358,7 +338,7 @@
       if (!wrap) return;
       const totalPages = Math.max(1, Math.ceil((state.total || 0) / PAGE));
       const current = Math.floor((state.offset || 0) / PAGE) + 1;
-      if (!state.total) {
+      if (!state.total || totalPages <= 1) {
         wrap.innerHTML = '';
         return;
       }
@@ -373,8 +353,8 @@
         pages.push(totalPages);
       }
       wrap.innerHTML = pages.map((p) => (p === '…'
-        ? '<span class="v3-users-page-gap">…</span>'
-        : `<button type="button" class="v3-users-page${p === current ? ' is-active' : ''}" data-page="${p}">${p}</button>`
+        ? '<span class="s-users-gap" aria-hidden="true">…</span>'
+        : `<button type="button" class="s-users-page" data-page="${p}"${p === current ? ' aria-current="page"' : ''}>${p}</button>`
       )).join('');
       wrap.querySelectorAll('[data-page]').forEach((btn) => {
         btn.onclick = () => {
@@ -396,12 +376,14 @@
     };
 
     const load = async () => {
+      // Live refreshes call this through window.__reloadUsers; on a profile page the list is gone.
+      if (!$('users-tbody')) return;
       const f = readFiltersFromUi();
       writeUsersHash(f);
       paintSummary();
       const wrap = $('users-table-wrap');
       const body = $('users-tbody');
-      wrap?.classList.add('is-loading');
+      wrap?.setAttribute('aria-busy', 'true');
       const params = new URLSearchParams({ limit: String(PAGE), offset: String(state.offset) });
       if (f.q) params.set('q', f.q);
       if (f.status) params.set('status', f.status);
@@ -414,92 +396,46 @@
         paintKpis(data.kpis);
         paintTable();
       } catch (err) {
-        toast(err.message, 'bad');
-        if (body) {
-          body.innerHTML = `<tr><td colspan="7">${V.errorState ? V.errorState('ჩატვირთვა ვერ მოხერხდა', err.message, 'users-retry') : esc(err.message)}</td></tr>`;
+        if (body && $('users-tbody') === body) {
+          body.innerHTML = `<tr><td colspan="6"><div class="s-empty" role="alert">${ico('alert')}<strong>რეესტრი ვერ ჩაიტვირთა</strong><span>სერვერმა პასუხი ვერ დააბრუნა — სცადე ხელახლა.</span>${err.message ? `<small>${esc(err.message)}</small>` : ''}<button type="button" class="btn compact" id="users-retry">ხელახლა ცდა</button></div></td></tr>`;
           $('users-retry')?.addEventListener('click', load);
+          if ($('user-meta')) $('user-meta').textContent = '';
+          if ($('prev-page')) $('prev-page').disabled = true;
+          if ($('next-page')) $('next-page').disabled = true;
         }
       } finally {
-        wrap?.classList.remove('is-loading');
+        wrap?.removeAttribute('aria-busy');
       }
     };
 
     const paintTable = () => {
-      const rows = typeof sortUsers === 'function' ? sortUsers(state.users) : state.users;
+      const rows = state.users || [];
       const from = state.total ? state.offset + 1 : 0;
       const to = state.total ? Math.min(state.offset + PAGE, state.total) : 0;
-      const f = readFiltersFromUi();
-      const filtered = activeFilterChips(f).length > 0;
+      const filtered = activeFilterChips(readFiltersFromUi()).length > 0;
       const metaEl = $('user-meta');
       const pageEl = $('page-ind');
       // Guard: list paint can finish after navigating to #/users/:id
       if (!metaEl || !pageEl || !$('users-tbody')) return;
       metaEl.textContent = state.total
-        ? `${from}–${to} · ${fmtKa(state.total)} ანგარიში`
-        : (filtered ? 'ფილტრს არ ემთხვევა' : 'ჩანაწერი არ არის');
-      pageEl.textContent = state.total ? `${from}–${to} / ${fmtKa(state.total)}` : '0 / 0';
+        ? `${fmtKa(state.total)} ანგარიში${filtered ? ' ფილტრით' : ''}`
+        : (filtered ? 'ფილტრს არაფერი ემთხვევა' : 'ჩანაწერი არ არის');
+      pageEl.textContent = state.total ? `${fmtKa(from)}–${fmtKa(to)} / ${fmtKa(state.total)}` : '0 / 0';
       if ($('prev-page')) $('prev-page').disabled = state.offset === 0;
       if ($('next-page')) $('next-page').disabled = state.offset + PAGE >= state.total;
       paintPagerPages();
 
-      // Refresh sort header marks
-      document.querySelectorAll('.v3-users-table thead th[data-sort]').forEach((th) => {
-        const key = th.dataset.sort;
-        const active = state.sortKey === key;
-        th.classList.toggle('is-active', active);
-        th.setAttribute('aria-sort', active ? (state.sortDir === 'asc' ? 'ascending' : 'descending') : 'none');
-        const mark = th.querySelector('.v3-users-sort');
-        if (active) {
-          if (!mark) th.insertAdjacentHTML('beforeend', `<i class="v3-users-sort is-${state.sortDir}" aria-hidden="true"></i>`);
-          else mark.className = `v3-users-sort is-${state.sortDir}`;
-        } else if (mark) mark.remove();
-      });
-
       const body = $('users-tbody');
       if (!rows.length) {
-        body.innerHTML = `<tr><td colspan="7"><div class="v3-empty v3-users-empty">${ico('users')}
-          <strong>${filtered ? 'ფილტრს არ ემთხვევა' : 'მომხმარებლები ჯერ არ არის'}</strong>
-          <p>${filtered ? 'გაასუფთავე ფილტრები ან შეცვალე ძებნა.' : 'პირველი ანგარიში აქ გამოჩნდება.'}</p>
-          ${filtered ? '<button type="button" class="btn tiny ghost" id="users-empty-clear">გასუფთავება</button>' : ''}
+        body.innerHTML = `<tr><td colspan="6"><div class="s-empty">${ico('users')}
+          <strong>${filtered ? 'ფილტრს არაფერი ემთხვევა' : 'მომხმარებლები ჯერ არ არის'}</strong>
+          <span>${filtered ? 'შეცვალე ძებნა ან მოხსენი ფილტრები.' : 'პირველი ანგარიში რეგისტრაციისთანავე აქ გამოჩნდება.'}</span>
+          ${filtered ? '<button type="button" class="btn compact" id="users-empty-clear">ფილტრების გასუფთავება</button>' : ''}
         </div></td></tr>`;
         $('users-empty-clear')?.addEventListener('click', clearAll);
         return;
       }
-      body.innerHTML = rows.map((u) => {
-        const act = activityBucket(u);
-        const created = typeof fmtDateShort === 'function' ? fmtDateShort(u.createdAt) : '';
-        return `
-        <tr data-id="${escA(u.id)}" class="${u.status === 'BLOCKED' ? 'row-blocked' : ''}" tabindex="0">
-          <td>
-            <div class="v3-users-person">
-              <div class="avatar avatar-${typeof avatarTone === 'function' ? avatarTone(u) : 'teal'}">${esc(typeof initials === 'function' ? initials(u.fullName) : '?')}</div>
-              <div class="v3-users-person-copy">
-                <strong>${esc(u.fullName || '—')}</strong>
-                <span class="sub">${esc(u.email || '')}${u.phone ? ` · ${esc(u.phone)}` : ''}</span>
-                <span class="v3-users-id">${esc(String(u.id).slice(0, 8))}…</span>
-              </div>
-            </div>
-          </td>
-          <td>${accountStatusCell(u.status)}</td>
-          <td>
-            <div class="v3-users-act">
-              <strong class="v3-users-act-badge is-${act.tone}">${esc(act.label)}</strong>
-              <span class="sub">${u.lastActiveAt && typeof fmtRelative === 'function' ? fmtRelative(u.lastActiveAt) : '—'}</span>
-              ${featureChips(u)}
-            </div>
-          </td>
-          <td>
-            <div class="v3-users-app">
-              <strong>${ico(platformIco(u.platform))} ${typeof platformKa === 'function' ? (platformKa(u.platform) || '—') : (u.platform || '—')}</strong>
-              <span class="sub">${u.appVersion ? esc(u.appVersion) : 'ვერსია უცნობია'}</span>
-            </div>
-          </td>
-          <td>
-            <strong class="v3-users-created">${esc(created || '—')}</strong>
-          </td>
-          <td class="col-go"><span class="v3-users-go" aria-hidden="true">${ico('arrow')}</span></td>
-        </tr>`;
-      }).join('');
+      body.innerHTML = rows.map(userRow).join('');
       body.querySelectorAll('tr[data-id]').forEach((tr) => {
         const open = () => {
           if (typeof editUser === 'function') editUser(tr.dataset.id);
@@ -517,10 +453,23 @@
 
     const clearAll = () => {
       if ($('user-q')) $('user-q').value = '';
+      $('user-q-clear')?.classList.add('hidden');
       if ($('user-status')) $('user-status').value = '';
       if ($('user-activity')) $('user-activity').value = '';
       state.offset = 0;
       writeUsersHash({ q: '', status: '', activity: '', appVersion: '', page: 1 });
+      load();
+    };
+
+    const clearOne = (key) => {
+      if (key === 'q') {
+        if ($('user-q')) $('user-q').value = '';
+        $('user-q-clear')?.classList.add('hidden');
+      }
+      if (key === 'status' && $('user-status')) $('user-status').value = '';
+      if (key === 'activity' && $('user-activity')) $('user-activity').value = '';
+      state.offset = 0;
+      if (key === 'appVersion') writeUsersHash({ ...readFiltersFromUi(), appVersion: '', page: 1 });
       load();
     };
 
@@ -532,6 +481,7 @@
     };
     $('user-q-clear').onclick = () => {
       $('user-q').value = '';
+      $('user-q-clear').classList.add('hidden');
       state.offset = 0;
       load();
       $('user-q').focus();
@@ -549,72 +499,72 @@
     document.querySelectorAll('[data-activity-chip]').forEach((btn) => {
       btn.addEventListener('click', () => setSelectAndLoad('user-activity', btn.dataset.activityChip));
     });
-    document.querySelectorAll('[data-kpi-status]').forEach((btn) => {
-      btn.addEventListener('click', () => {
-          setSelectAndLoad('user-status', btn.dataset.kpiStatus);
-      });
-    });
 
-    document.querySelectorAll('.v3-users-table thead th[data-sort]').forEach((th) => {
-      const toggle = () => {
-        const key = th.dataset.sort;
-        if (state.sortKey === key) state.sortDir = state.sortDir === 'asc' ? 'desc' : 'asc';
-        else {
-          state.sortKey = key;
-          state.sortDir = key === 'fullName' ? 'asc' : 'desc';
-        }
-        paintTable();
-      };
-      th.addEventListener('click', toggle);
-      th.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter' || e.key === ' ') {
-          e.preventDefault();
-          toggle();
-        }
-      });
-    });
-
-    $('user-clear-filters').onclick = clearAll;
     $('user-reload').onclick = load;
     window.__reloadUsers = load;
     $('prev-page').onclick = () => { state.offset = Math.max(0, state.offset - PAGE); load(); };
     $('next-page').onclick = () => {
       if (state.offset + PAGE < state.total) { state.offset += PAGE; load(); }
     };
-    $('user-csv').onclick = () => {
+    $('user-csv').onclick = async () => {
       const f = readFiltersFromUi();
       const params = new URLSearchParams();
       if (f.q) params.set('q', f.q);
       if (f.status) params.set('status', f.status);
       if (f.activity) params.set('activity', f.activity);
       if (f.appVersion) params.set('appVersion', f.appVersion);
-      if (typeof opsDownload === 'function') {
-        opsDownload(`/export/users?${params.toString()}`, 'users.csv');
+      if (typeof opsDownload !== 'function') {
+        toast('CSV ექსპორტი მიუწვდომელია', 'warn');
         return;
       }
-      toast('CSV ექსპორტი მიუწვდომელია', 'warn');
+      const btn = $('user-csv');
+      btn?.classList.add('is-loading');
+      try {
+        await opsDownload(`/export/users?${params.toString()}`, 'users.csv');
+      } catch {
+        toast('CSV ფაილი ვერ ჩამოიტვირთა. სცადე ხელახლა.', 'bad');
+      } finally {
+        btn?.classList.remove('is-loading');
+      }
     };
     await load();
   }
 
+  /* ─────────────── Profile ─────────────── */
+
+  function renderProfileError(root, id, err, backHref) {
+    const missing = err?.status === 404;
+    setUsersHeader(missing ? 'მომხმარებელი ვერ მოიძებნა' : 'პროფილი ვერ ჩაიტვირთა', '', 'users.investigation');
+    root.innerHTML = `
+      <div class="v3-user-page s-user s-stack">
+        <div class="s-user-nav"><a class="btn ghost compact" id="user-page-back" href="${escA(backHref)}">${ico('chevronLeft')} რეესტრი</a></div>
+        <section class="s-card">
+          <div class="s-empty" role="alert">
+            ${ico('alert')}
+            <strong>${missing ? 'ეს ანგარიში ვერ მოიძებნა' : 'პროფილი ვერ ჩაიტვირთა'}</strong>
+            <span>${missing ? 'შესაძლოა წაიშალა ან ბმული არასწორია. მოძებნე ადამიანი რეესტრში.' : 'სერვერმა პასუხი ვერ დააბრუნა. სცადე ხელახლა.'}</span>
+            ${!missing && err?.message ? `<small>${esc(err.message)}</small>` : ''}
+            <div class="s-user-err-actions">
+              <button type="button" class="btn ${missing ? 'ghost ' : ''}compact" id="user-retry">${ico('refresh')} ხელახლა ცდა</button>
+              <a class="btn ${missing ? '' : 'ghost '}compact" href="${escA(backHref)}">რეესტრში დაბრუნება</a>
+            </div>
+          </div>
+        </section>
+      </div>`;
+    $('user-retry')?.addEventListener('click', () => renderUserPageV3(id, { profileTab: hashSearch().get('profileTab') }));
+  }
+
   async function renderUserPageV3(id, opts = {}) {
-    // Delegate structure to legacy renderer then enhance chrome — full rewrite for reliability
-    if (typeof renderUserPage === 'function' && renderUserPage !== renderUserPageV3) {
-      // Fall through: we replace renderUserPage below by assigning this function
-    }
     const root = $('tab-users');
     if (!root) return;
     state.selectedId = id;
     state.userPageId = id;
     state.tab = 'users';
     const V = V3();
-    if (typeof setPageHeader === 'function') {
-      setPageHeader('users', {
-        users: ['People', 'პროფილი იტვირთება…', '', 'users.investigation'],
-      });
-    }
+    const backHref = typeof usersListHref === 'function' ? usersListHref() : '#/users';
+    setUsersHeader('პროფილი იტვირთება…', '', 'users.investigation');
     V.setHeaderActions?.('');
-    root.innerHTML = `<div class="v3-user-page"><div class="user-page-loading">${typeof icon === 'function' ? icon('refresh') : ''}<span>პროფილი იტვირთება…</span></div></div>`;
+    root.innerHTML = `<div class="v3-user-page s-user s-stack"><section class="s-card s-user-loading" aria-busy="true"><div class="v3-skel" aria-hidden="true">${'<i></i>'.repeat(5)}</div><span class="sr-only">პროფილი იტვირთება…</span></section></div>`;
 
     let user;
     let profileExtra;
@@ -624,217 +574,169 @@
       user = data.user;
       profileExtra = data;
     } catch (err) {
-      toast(err.message, 'bad');
-      location.hash = typeof usersListHref === 'function' ? usersListHref() : '#/users';
+      if (state.userPageId === id) renderProfileError(root, id, err, backHref);
       return;
     }
+    // The admin may have gone back to the list (or to another profile) while this one loaded.
+    if (state.userPageId !== id) return;
 
-    if (typeof setPageHeader === 'function') {
-      setPageHeader('users', {
-        users: [
-          'People',
-          user.fullName || user.email || 'მომხმარებელი',
-          (user.email || '') + (user.phone ? ` · ${user.phone}` : ''),
-          'users.investigation',
-        ],
-      });
-    }
-    V.setHeaderActions?.(`
-      ${V.copyIdButton ? V.copyIdButton(user.id, 'User ID') : ''}
-      <button type="button" class="btn ghost compact" id="user-header-reload">${typeof icon === 'function' ? icon('refresh') : ''} განახლება</button>
-    `);
+    const period = typeof userRangeLabel === 'function' ? userRangeLabel() : '';
+    const name = user.fullName || user.email || 'მომხმარებელი';
+    setUsersHeader(name, `მომხმარებლის პროფილი · მონაცემები: ${period}`, 'users.investigation');
+    V.setHeaderActions?.(`<button type="button" class="btn ghost compact" id="user-header-reload">${ico('refresh')} განახლება</button>`);
 
-    const ico = (name) => (typeof icon === 'function' ? icon(name) : '');
     const ov = profileExtra.investigation?.overview || {};
     const usageMap = profileExtra.investigation?.productUsage || {};
     const notes = profileExtra.investigation?.notifications || profileExtra.notifications || {};
     const featureKeys = Object.keys(typeof FEATURE_USAGE_LABELS === 'object' ? FEATURE_USAGE_LABELS : {});
-    const featUsed = featureKeys.filter(key => usageMap[key]?.available !== false && usageMap[key]?.used).length;
-    const featUnknown = featureKeys.filter(key => !Object.hasOwn(usageMap, key) || usageMap[key]?.available === false).length;
-    const featTotal = Object.keys(typeof FEATURE_USAGE_LABELS === 'object' ? FEATURE_USAGE_LABELS : {}).length || 8;
+    const featUsed = featureKeys.filter((key) => usageMap[key]?.available !== false && usageMap[key]?.used).length;
+    const featUnknown = featureKeys.filter((key) => !Object.hasOwn(usageMap, key) || usageMap[key]?.available === false).length;
+    const featTotal = featureKeys.length || 8;
     const lastActiveAt = profileExtra.activity?.lastActiveAt || ov.lastActiveAt || null;
-    const lastActive = lastActiveAt
-      ? (typeof fmtDateShort === 'function' ? fmtDateShort(lastActiveAt) : lastActiveAt)
-      : '—';
-    const lastActiveRel = lastActiveAt && typeof fmtRelative === 'function'
-      ? fmtRelative(lastActiveAt)
-      : '';
-    const actBucket = activityBucket({ lastActiveAt });
-    const platformLabel = (typeof platformKa === 'function'
+    const platform = (typeof platformKa === 'function'
       ? platformKa(profileExtra.activity?.platform || ov.platform || user.platform)
-      : null) || '—';
+      : null) || '';
     const appVer = profileExtra.activity?.appVersion || ov.appVersion || user.appVersion || '';
-    const notifPerm = typeof permKa === 'function'
-      ? permKa(ov.notificationPermission || notes.permission || user.notificationPermission)
-      : (ov.notificationPermission || '—');
-    const createdLabel = typeof fmtDateShort === 'function' ? fmtDateShort(user.createdAt) : esc(user.createdAt);
-    const tone = typeof avatarTone === 'function' ? avatarTone(user) : 'teal';
-    const init = typeof initials === 'function' ? initials(user.fullName || user.email) : '?';
-    const subLine = [user.email, user.phone].filter(Boolean).join(' · ');
-    const place = (typeof adminPlaceOf === 'function' ? adminPlaceOf(ov.location) : { line: '', country: 'უცნობია', city: 'უცნობია', flag: '' });
-    const placeMeta = place.line
-      ? `<span class="v3-user-place">${place.flag || ico('globe')} ${esc(place.line)}</span>`
-      : `<span class="v3-user-place is-unknown">${ico('globe')} ქვეყანა უცნობია</span>`;
+    const perm = ov.notificationPermission || notes.permission || user.notificationPermission;
+    const freq = ov.selectedFrequency || notes.preference?.selectedFrequency;
+    const medi = usageMap.medi || {};
+    const mediPeriod = medi.available === false ? null : (medi.periodCount ?? 0);
+    const mediTotal = ov.medi?.requests;
+    const blocked = user.status === 'BLOCKED';
+    const contact = contactLine(user);
+    const place = typeof adminPlaceOf === 'function' ? adminPlaceOf(ov.location) : { line: '', flag: '' };
+    const genderAge = [
+      user.gender && typeof genderKa === 'function' ? genderKa(user.gender) : null,
+      user.age != null ? `${user.age} წლის` : null,
+    ].filter(Boolean).join(' · ');
 
-    // MEDICARD is free: no package list, tariff badge or renewal controls.
-    const pkgOptions = '';
-    const isPaid = false;
-    const aiLabel = user.usage?.unlimited
-      ? '∞'
-      : `${user.usage?.used ?? 0} / ${user.usage?.limit ?? '—'}`;
-    const aiSub = user.usage?.unlimited
-      ? 'შეუზღუდავი'
-      : (user.usage?.remaining != null ? `${user.usage.remaining} დარჩა` : 'თვიური ლიმიტი');
+    const hero = `
+      <section class="s-card v3-user-hero s-user-hero${blocked ? ' is-blocked' : ''}">
+        <span class="s-avatar s-user-avatar${blocked ? ' is-muted' : ''}" aria-hidden="true">${esc(personInitials(user))}</span>
+        <div class="s-user-ident">
+          <div class="s-user-title"><h2>${esc(name)}</h2>${accountStatusBadge(user.status)}</div>
+          <p class="s-user-contact">${esc(contact || 'კონტაქტი არ არის მითითებული')}</p>
+          <ul class="s-user-meta">
+            <li><button type="button" class="s-user-idchip" data-copy="${escA(user.id)}" data-copy-label="მომხმარებლის ID" title="${escA(user.id)} — დააჭირე კოპირებისთვის" aria-label="მომხმარებლის ID-ის კოპირება">${ico('copy')}<code>${esc(String(user.id).slice(0, 8))}…</code></button></li>
+            <li>${place.line ? `${place.flag || ico('globe')}<span>${esc(place.line)}</span>` : `${ico('globe')}<span>ადგილი უცნობია</span>`}</li>
+            <li>${ico('calendar')}<span>რეგისტრაცია: ${esc(when(user.createdAt, 'date'))}</span></li>
+            <li>${ico('user')}<span>${esc(genderAge || 'სქესი და ასაკი უცნობია')}</span></li>
+          </ul>
+        </div>
+      </section>`;
 
-    const formHtml = `
-      <div class="v3-user-edit-form" id="user-edit-form">
-        ${V.field ? V.field({ id: 'edit-name', label: 'სახელი', control: V.input({ id: 'edit-name', value: user.fullName }) }) : ''}
-        ${V.field ? V.field({ id: 'edit-email', label: 'ელ-ფოსტა', control: V.input({ id: 'edit-email', type: 'email', value: user.email }) }) : ''}
-        ${V.field ? V.field({ id: 'edit-phone', label: 'ტელეფონი', control: V.input({ id: 'edit-phone', type: 'tel', value: user.phone || '' }) }) : ''}
-        ${V.field ? V.field({
-          id: 'edit-gender',
-          label: 'სქესი',
-          help: 'ციკლის მოდული მხოლოდ მდედრობითზე ჩანს',
-          control: `<select id="edit-gender" class="v3-input">
-            <option value="" ${!user.gender ? 'selected' : ''}>არ არის მითითებული</option>
-            <option value="MALE" ${user.gender === 'MALE' ? 'selected' : ''}>მამრობითი</option>
-            <option value="FEMALE" ${user.gender === 'FEMALE' ? 'selected' : ''}>მდედრობითი</option>
-            <option value="OTHER" ${user.gender === 'OTHER' ? 'selected' : ''}>სხვა</option>
-          </select>`,
-        }) : ''}
-        ${V.field ? V.field({
-          id: 'edit-status',
-          label: 'ანგარიშის სტატუსი',
-          help: 'შესვლა დაშვებულია ≠ აპის აქტივობა',
-          control: `<select id="edit-status" class="v3-input">
-            <option value="ACTIVE" ${user.status === 'ACTIVE' ? 'selected' : ''}>შესვლა დაშვებულია</option>
-            <option value="BLOCKED" ${user.status === 'BLOCKED' ? 'selected' : ''}>დაბლოკილი</option>
-          </select>`,
-        }) : ''}
-        ${V.field ? `<div class="v3-user-edit-full">${V.field({
-          id: 'edit-note',
-          label: 'ადმინ შენიშვნა',
-          control: `<textarea id="edit-note" class="v3-input" rows="3">${esc(user.adminNote || '')}</textarea>`,
-        })}</div>` : ''}
-        <div class="v3-destructive-zone v3-user-edit-full">
-          <h4>საშიში ქმედება</h4>
-          <p class="muted">წაშლა შეუქცევადია და შლის პროფილსა და დაკავშირებულ მონაცემებს.</p>
-          <button class="btn danger" id="user-del" type="button">${ico('trash')} წაშლა</button>
+    const callouts = [
+      blocked
+        ? `<div class="s-callout is-bad" role="status">${ico('lock')}<div><p><b>ანგარიში დაბლოკილია</b> — ადამიანი აპში ვერ შედის. აღსადგენად შეცვალე „ანგარიშის სტატუსი“ და შეინახე.</p>${user.adminNote ? `<p>შენიშვნა: ${esc(user.adminNote)}</p>` : ''}</div></div>`
+        : '',
+      user.age != null && user.age < 18
+        ? `<div class="s-callout is-warn">${ico('alert')}<p><b>${esc(user.age)} წლის</b> — ანგარიში 18+ წესამდე შეიქმნა და შენს განხილვას ელოდება.</p></div>`
+        : '',
+    ].join('');
+
+    const kpis = `
+      <div class="s-metrics s-user-kpis" aria-label="მთავარი მაჩვენებლები">
+        <div class="s-metric">
+          <span>ბოლო აქტივობა</span>
+          <strong>${esc(lastActiveAt ? relative(lastActiveAt) : 'არასდროს')}</strong>
+          <small>${esc(lastActiveAt ? [when(lastActiveAt), [platform, appVer].filter(Boolean).join(' ')].filter(Boolean).join(' · ') : 'აპში ჯერ არ შემოსულა')}</small>
+        </div>
+        <div class="s-metric">
+          <span>Medi მოთხოვნები</span>
+          <strong>${mediPeriod == null ? '—' : fmtKa(mediPeriod)}</strong>
+          <small>${esc(period)}${mediTotal != null ? ` · სულ ${fmtKa(mediTotal)}` : ''} · ${fmtKa(user.counts?.chats ?? 0)} საუბარი</small>
+        </div>
+        <div class="s-metric">
+          <span>მედიკამენტები</span>
+          <strong>${fmtKa(user.counts?.medications ?? 0)}</strong>
+          <small>ანგარიშში შენახული</small>
+        </div>
+        <div class="s-metric">
+          <span>გამოყენებული მოდული</span>
+          <strong>${fmtKa(featUsed)}<em class="s-user-den"> / ${fmtKa(featTotal)}</em></strong>
+          <small>${featUnknown ? `${fmtKa(featUnknown)} მოდულზე მონაცემი არ არის` : 'ყველა დროის მანძილზე'}</small>
+        </div>
+        <div class="s-metric${perm === 'disabled' ? ' is-warn' : ''}">
+          <span>შეტყობინებები</span>
+          <strong>${esc(typeof permKa === 'function' ? permKa(perm) : (perm || '—'))}</strong>
+          <small>სიხშირე: ${esc(typeof freqKa === 'function' ? freqKa(freq) : (freq || '—'))}</small>
         </div>
       </div>`;
 
+    const opt = (value, label, current) => `<option value="${value}"${current === value ? ' selected' : ''}>${label}</option>`;
+    const editCard = `
+      <section class="s-card s-user-edit" aria-labelledby="user-edit-title">
+        <header class="s-card-head">
+          <div>
+            <h3 id="user-edit-title" class="s-user-h3">ანგარიშის რედაქტირება ${V.infoButton ? V.infoButton('users.accountStatus') : ''}</h3>
+            <p>ცვლილების შემდეგ ქვემოთ გამოჩნდება შენახვის ზოლი.</p>
+          </div>
+        </header>
+        <div class="s-card-body">
+          <div class="s-user-form" id="user-edit-form">
+            <label class="s-field" for="edit-name"><span>სახელი</span><input id="edit-name" value="${escA(user.fullName || '')}" autocomplete="off" /></label>
+            <label class="s-field" for="edit-email"><span>ელ-ფოსტა</span><input id="edit-email" type="email" value="${escA(user.email || '')}" autocomplete="off" /></label>
+            <label class="s-field" for="edit-phone"><span>ტელეფონი</span><input id="edit-phone" type="tel" value="${escA(user.phone || '')}" placeholder="—" autocomplete="off" /></label>
+            <label class="s-field" for="edit-gender"><span>სქესი</span>
+              <select id="edit-gender">
+                ${opt('', 'არ არის მითითებული', user.gender || '')}
+                ${opt('MALE', 'მამრობითი', user.gender)}
+                ${opt('FEMALE', 'მდედრობითი', user.gender)}
+                ${opt('OTHER', 'სხვა', user.gender)}
+              </select>
+              <small>ციკლის მოდული მხოლოდ მდედრობითზე ჩანს.</small>
+            </label>
+            <label class="s-field" for="edit-status"><span>ანგარიშის სტატუსი</span>
+              <select id="edit-status">
+                ${opt('ACTIVE', 'შესვლა დაშვებულია', user.status)}
+                ${opt('BLOCKED', 'დაბლოკილი', user.status)}
+              </select>
+              <small>„დაბლოკილი“ — ადამიანი აპში ვერ შედის. ეს არ არის აპის აქტივობა.</small>
+            </label>
+            <label class="s-field" for="edit-note"><span>ადმინის შენიშვნა</span>
+              <textarea id="edit-note" rows="3">${esc(user.adminNote || '')}</textarea>
+              <small>ჩანს მხოლოდ ადმინებს.</small>
+            </label>
+          </div>
+        </div>
+        <div class="s-user-danger">
+          <div><b>ანგარიშის წაშლა</b><small>შეუქცევადია: იშლება პროფილი და ყველა დაკავშირებული მონაცემი.</small></div>
+          <button class="btn danger compact" id="user-del" type="button">${ico('trash')} წაშლა</button>
+        </div>
+      </section>`;
+
     const tabsHtml = typeof renderUserInvestigationTabs === 'function'
-      ? renderUserInvestigationTabs(user, profileExtra, pkgOptions, isPaid, opts.profileTab || 'overview')
+      ? renderUserInvestigationTabs(user, profileExtra, '', false, opts.profileTab || 'overview')
       : '';
 
+    const sticky = V.stickyActions
+      ? V.stickyActions({
+        dirty: false,
+        cancel: `<button type="button" class="btn ghost" id="user-cancel-nav">${ico('chevronLeft')} უკან</button>`,
+        save: `<button type="button" class="btn primary" id="user-save">${ico('check')} შენახვა</button>`,
+        danger: '',
+      }).replace('class="v3-sticky-actions', 'class="v3-sticky-actions v3-user-sticky')
+      : '<footer class="user-actions"><button class="btn primary" id="user-save">შენახვა</button></footer>';
+
     root.innerHTML = `
-      <div class="v3-user-page v3-workspace-wide">
-        <div class="v3-user-nav">
-          <a class="v3-user-back" id="user-page-back" href="${typeof usersListHref === 'function' ? usersListHref() : '#/users'}">${ico('chevronLeft')} რეესტრი</a>
-          <span class="v3-user-nav-hint">გამოძიება · უსაფრთხო ველები</span>
+      <div class="v3-user-page s-user s-stack">
+        <div class="s-user-nav">
+          <a class="btn ghost compact" id="user-page-back" href="${escA(backHref)}">${ico('chevronLeft')} რეესტრი</a>
         </div>
-
-        <section class="v3-user-hero${user.status === 'BLOCKED' ? ' is-blocked' : ''}">
-          <div class="v3-user-hero-main">
-            <div class="avatar avatar-${escA(tone)} v3-user-avatar">${esc(init)}</div>
-            <div class="v3-user-hero-copy">
-              <div class="v3-user-hero-title">
-                <h2>${esc(user.fullName || user.email || 'მომხმარებელი')}</h2>
-                ${accountStatusCell(user.status)}
-              </div>
-              <p class="v3-user-hero-sub">${esc(subLine || 'კონტაქტი არ არის')}</p>
-              <div class="v3-user-hero-meta">
-                <button type="button" class="v3-user-idchip inv-copy" data-copy="${escA(user.id)}" data-copy-label="User ID" title="User ID კოპირება">
-                  ${ico('file')} ${esc(String(user.id).slice(0, 8))}…
-                </button>
-                ${placeMeta}
-                <span>${ico('calendar')} ${esc(createdLabel)}</span>
-                <span>${ico(platformIco(platformLabel))} ${esc(platformLabel)}${appVer ? ` · ${esc(appVer)}` : ''}</span>
-              </div>
-            </div>
-          </div>
-          <div class="v3-user-hero-actions">
-            <span class="muted">უფასო წვდომა</span>
-
-          </div>
-        </section>
-
-        <div class="v3-user-kpis" aria-label="ოპერაციული მაჩვენებლები">
-          <article class="v3-user-kpi is-live">
-            <span class="v3-user-kpi-ico">${ico('activity')}</span>
-            <span class="v3-user-kpi-copy">
-              <span>აქტივობა</span>
-              <strong class="v3-users-act-badge is-${actBucket.tone}">${esc(actBucket.label)}</strong>
-              <em>${esc(lastActiveRel || lastActive)}</em>
-            </span>
-          </article>
-          <article class="v3-user-kpi">
-            <span class="v3-user-kpi-ico">${ico('spark')}</span>
-            <span class="v3-user-kpi-copy">
-              <span>AI · თვე</span>
-              <strong>${esc(aiLabel)}</strong>
-              <em>${esc(aiSub)}</em>
-            </span>
-          </article>
-          <article class="v3-user-kpi">
-            <span class="v3-user-kpi-ico">${ico('layers')}</span>
-            <span class="v3-user-kpi-copy">
-              <span>პროდუქტი</span>
-              <strong>${featUsed}<span class="v3-user-kpi-den"> / ${featTotal}</span></strong>
-              <em>მოდული გამოყენებული${featUnknown ? ` · ${featUnknown} უცნობია` : ''}</em>
-            </span>
-          </article>
-          <article class="v3-user-kpi">
-            <span class="v3-user-kpi-ico">${ico('bell')}</span>
-            <span class="v3-user-kpi-copy">
-              <span>შეტყობინება</span>
-              <strong>${esc(notifPerm)}</strong>
-              <em>${esc(typeof freqKa === 'function' ? freqKa(ov.selectedFrequency || notes.preference?.selectedFrequency) : (ov.selectedFrequency || '—'))}</em>
-            </span>
-          </article>
-          <article class="v3-user-kpi">
-            <span class="v3-user-kpi-ico">${ico('message')}</span>
-            <span class="v3-user-kpi-copy">
-              <span>ჩანაწერები</span>
-              <strong>${fmtKa(user.counts?.chats ?? 0)} · ${fmtKa(user.counts?.medications ?? 0)}</strong>
-              <em>Medi ჩატი · მედიკამენტები</em>
-            </span>
-          </article>
-        </div>
-
-        <div class="v3-user-workspace">
-          <div class="v3-user-main user-workspace v3-user-board" id="user-inv-host">${tabsHtml}</div>
-          <aside class="v3-user-side">
-            <div class="v3-user-card v3-user-edit-card">
-              <div class="v3-title-row">
-                <h3>${ico('settings')} ანგარიშის რედაქტირება</h3>
-                ${V.infoButton ? V.infoButton('users.accountStatus') : ''}
-              </div>
-              <p class="v3-user-edit-lead">საკონტაქტო მონაცემები, ანგარიშის სტატუსი და შიდა შენიშვნა.</p>
-              ${formHtml}
-            </div>
+        ${hero}
+        ${callouts}
+        ${kpis}
+        <div class="s-user-layout">
+          <section class="s-card v3-user-board s-user-board" id="user-inv-host" aria-label="პროფილის დეტალები">${tabsHtml}</section>
+          <aside class="s-user-side">
+            ${editCard}
             <div id="user-insights-host" class="s-insights-host"></div>
           </aside>
         </div>
-
-        ${V.stickyActions ? V.stickyActions({
-          dirty: false,
-          cancel: `<button type="button" class="btn ghost" id="user-cancel-nav">${ico('chevronLeft')} უკან</button>`,
-          save: `<button type="button" class="btn primary" id="user-save">${ico('check')} შენახვა</button>`,
-          danger: '',
-        }).replace('class="v3-sticky-actions', 'class="v3-sticky-actions v3-user-sticky') : `<footer class="user-actions"><button class="btn primary" id="user-save">შენახვა</button></footer>`}
+        ${sticky}
       </div>`;
 
-    // Hide duplicate edit form inside overview tab if present
-    root.querySelector('.user-overview-edit')?.remove();
-
     if (typeof bindUserInvestigation === 'function') bindUserInvestigation(id);
-    // Copy chips in hero (bindUserInvestigation also covers [data-copy] in tabs)
-    root.querySelectorAll('.v3-user-hero [data-copy]').forEach((btn) => {
-      btn.onclick = () => {
-        if (typeof copyAdminValue === 'function') copyAdminValue(btn.dataset.copy, btn.dataset.copyLabel || 'ID');
-      };
-    });
     V.watchDirty?.(root.querySelector('#user-edit-form'));
     V.setDirty?.(false);
     global.AdminV4Manage?.mountUserInsights(id);
@@ -896,46 +798,8 @@
     });
   }
 
-  // Patch telemetry empty presentation inside legacy tabs after bind
-  const _legacyTabs = global.renderUserInvestigationTabs;
-  if (typeof _legacyTabs === 'function') {
-    global.renderUserInvestigationTabs = function patchedTabs(user, extra, pkgOptions, isPaid, activeTab) {
-      let html = _legacyTabs(user, extra, pkgOptions, isPaid, activeTab);
-      const ov = extra.investigation?.overview || {};
-      const notes = extra.investigation?.notifications || extra.notifications || {};
-      const tel = ov.telemetry || notes.telemetry || {};
-      const missing = [];
-      if (tel.brainSync == null) missing.push('Brain სინქი');
-      if (tel.outcomeSync == null) missing.push('Outcome სინქი');
-      if (!ov.platform && !extra.activity?.platform) missing.push('პლატფორმა');
-      if (!ov.appVersion && !extra.activity?.appVersion) missing.push('აპის ვერსია');
-      if (missing.length >= 2) {
-        const box = `<div class="v3-telem-empty"><div class="v3-title-row"><strong>კლიენტის ტელემეტრია</strong>${V3().infoButton ? V3().infoButton('users.telemetry') : ''}</div><p>ბოლო კლიენტის ტელემეტრია მიუწვდომელია. ეს ხშირად ნორმალურია — არა აუცილებლად შეცდომა.</p><p class="muted">უცნობი: ${missing.map(esc).join(' · ')}</p></div>`;
-        html = html.replace(
-          /<section class="inv-section"><h4>ტელემეტრია<\/h4>/,
-          `${box}<section class="inv-section"><h4>ტელემეტრია</h4>`,
-        );
-      }
-      html = html.replace(
-        /(<div class="user-pane[^"]*" data-user-pane="notifications">)/,
-        `$1<div class="v3-title-row" style="margin:4px 0 10px"><strong>შეტყობინებები</strong>${V3().infoButton ? V3().infoButton('users.notifications', 'შეტყობინებების ახსნა') : ''}</div>`,
-      );
-      // Fix account status wording in overview
-      html = html.replaceAll('>აქტიური</strong>', '>შესვლა დაშვებულია</strong>');
-      html = html.replaceAll(
-        'აქტიური — შეუძლია შესვლა',
-        'შესვლა დაშვებულია',
-      );
-      html = html.replaceAll(
-        'დაბლოკილი — შესვლა აკრძალულია',
-        'დაბლოკილი',
-      );
-      return html;
-    };
-  }
-
   global.renderUsers = renderUsersV3;
   global.renderUserPage = renderUserPageV3;
   // Keep status cell honest if legacy paint still used
-  global.usersStatusCell = accountStatusCell;
+  global.usersStatusCell = accountStatusBadge;
 })(window);

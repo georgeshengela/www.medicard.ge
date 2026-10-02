@@ -33,9 +33,10 @@
   const ico = (name) => (typeof icon === "function" ? icon(name) : "");
   const V = () => global.AdminV3 || {};
   const fmt = (n) => (Number.isFinite(Number(n)) ? Number(n).toLocaleString("ka-GE") : "—");
+  const pct = (part, whole) => (whole ? Math.round((part / whole) * 100) : 0);
 
-  function metric(label, value, tone) {
-    return `<div class="s-metric${tone ? ` is-${tone}` : ""}"><span>${esc(label)}</span><strong>${value}</strong></div>`;
+  function metric(label, value, hint, tone) {
+    return `<div class="s-metric${tone ? ` is-${tone}` : ""}"><span>${esc(label)}</span><strong>${value}</strong>${hint ? `<small>${esc(hint)}</small>` : ""}</div>`;
   }
 
   function renderRecipes(root, recipes, can) {
@@ -48,12 +49,12 @@
           <td>${esc(labels[r.data.diet])}</td>
           <td class="num">${fmt(r.totals.calories)}</td>
           <td>${r.active ? '<span class="s-badge is-ok">მოქმედი</span>' : '<span class="s-badge">შეჩერებული</span>'}</td>
-          <td class="num">${can ? `<button type="button" class="btn compact" data-edit="${i}">რედაქტირება</button>` : ""}</td>
+          <td class="num">${can ? `<button type="button" class="btn ghost compact" data-edit="${i}">რედაქტირება</button>` : ""}</td>
         </tr>`,
       )
       .join("");
     list.innerHTML = recipes.length
-      ? `<div class="s-table-wrap"><table class="s-table"><thead><tr><th>კერძი</th><th>კვება</th><th>არჩევანი</th><th class="num">კკალ · საბაზისო</th><th>სტატუსი</th><th></th></tr></thead><tbody>${rows}</tbody></table></div>`
+      ? `<div class="s-table-wrap"><table class="s-table"><thead><tr><th>კერძი</th><th>კვება</th><th>არჩევანი</th><th class="num">კკალ · ერთი პორცია</th><th>სტატუსი</th><th></th></tr></thead><tbody>${rows}</tbody></table></div>`
       : `<div class="s-empty">${ico("layers")}<strong>კატალოგი ცარიელია</strong><span>დაამატე პირველი კერძი.</span></div>`;
     list.querySelectorAll("[data-edit]").forEach((b) => (b.onclick = () => editRecipe(recipes[Number(b.dataset.edit)])));
     const add = root.querySelector("[data-add]");
@@ -85,14 +86,14 @@
       wide: true,
       body: '<form id="nutrition-recipe-form" class="s-stack" novalidate></form>',
       footer:
-        '<p class="s-form-msg" data-message role="status" style="margin-right:auto"></p>' +
+        '<p class="s-form-msg" data-message role="status"></p>' +
         '<button type="button" class="btn" data-close>გაუქმება</button>' +
         '<button type="submit" class="btn primary" form="nutrition-recipe-form">კერძის შენახვა</button>',
     });
     const box = document.getElementById("nutrition-recipe-form");
     const panel = box?.closest(".v3-dialog-panel");
     if (!box || !panel) return;
-    panel.style.width = "min(920px, calc(100vw - 32px))";
+    panel.classList.add("s-nutri-dialog");
 
     function draw() {
       const input = (key, label, type = "text", extra = "") =>
@@ -115,7 +116,7 @@
           ${select("diet", "კვების არჩევანი", ["balanced", "vegetarian", "vegan"])}
           ${input("minutes", "მომზადების წუთები", "number", 'min="0" step="1"')}
         </div>
-        <div class="s-switch-row" style="padding-top:0">
+        <div class="s-switch-row s-nutri-active">
           <div><b>აქტიურია</b><small>გამორთული კერძი ახალ რაციონში არ მოხვდება.</small></div>
           <input class="s-switch" data-active type="checkbox" role="switch" aria-label="აქტიურია" ${active ? "checked" : ""}>
         </div>
@@ -128,14 +129,14 @@
             .join("")}</div>
         </div>
         <div class="s-card">
-          <div class="s-table-wrap"><table class="s-table is-edit"><thead><tr>${ITEM_KEYS.map(
+          <div class="s-table-wrap"><table class="s-table is-edit s-nutri-items"><thead><tr>${ITEM_KEYS.map(
             (k) => `<th${k === "name" ? "" : ' class="num"'}>${ITEM_LABELS[k]}</th>`,
           ).join("")}<th></th></tr></thead><tbody>${draft.items
             .map(
               (item, i) =>
                 `<tr>${ITEM_KEYS.map(
                   (k) =>
-                    `<td><input aria-label="${ITEM_LABELS[k]} ${i + 1}" style="min-width:${k === "name" ? 180 : 72}px" data-item="${i}" data-key="${k}" type="${
+                    `<td><input aria-label="${ITEM_LABELS[k]} ${i + 1}" data-item="${i}" data-key="${k}" type="${
                       k === "name" ? "text" : "number"
                     }" step="0.1" min="0" value="${esc(item[k])}"></td>`,
                 ).join("")}<td><button type="button" class="btn ghost icon-only" data-remove="${i}" aria-label="ინგრედიენტის ამოღება" title="ამოღება">${ico("trash")}</button></td></tr>`,
@@ -144,9 +145,9 @@
             <tfoot><tr><td><b>სულ</b></td>${["grams", "calories", "protein", "carbs", "fat"]
               .map((k) => `<td class="num"><b>${fmt(Math.round(totals[k] * 10) / 10)}</b></td>`)
               .join("")}<td></td></tr></tfoot></table></div>
-          <div class="s-card-foot" style="justify-content:flex-start"><button class="btn compact" type="button" data-ingredient ${
+          <div class="s-card-foot s-nutri-items-foot"><button class="btn compact" type="button" data-ingredient ${
             draft.items.length >= 20 ? "disabled" : ""
-          }>${ico("plus")} ინგრედიენტის დამატება</button><span class="s-foot-note" style="margin:0 0 0 auto">${draft.items.length} / 20</span></div>
+          }>${ico("plus")} ინგრედიენტის დამატება</button><span class="s-foot-note">${draft.items.length} / 20</span></div>
         </div>
         <label class="s-field"><span>მომზადება</span><textarea rows="4" data-field="instructions">${esc(draft.instructions)}</textarea></label>
         ${input("source", "კვებითი მონაცემების წყარო / ცნობარის ნომრები")}`;
@@ -208,6 +209,48 @@
     box.querySelector('[data-field="title"]')?.focus();
   }
 
+  /** How meals were logged in the last 30 days (server groups voice with text and saved with search). */
+  function sourcesCard(s) {
+    if (!s) return "";
+    const rows = [
+      ["ფოტოდან", s.photo],
+      ["აღწერით ან ხმით", s.text],
+      ["ძებნით ან შენახულიდან", s.search],
+      ["ხელით", s.manual],
+      ["შტრიხკოდით", s.barcode],
+      ["ეტიკეტის ფოტოთი", s.label],
+      ["კვების გეგმიდან", s.plan],
+    ]
+      .filter(([, n]) => Number.isFinite(Number(n)))
+      .sort((a, b) => b[1] - a[1]);
+    const total = rows.reduce((sum, [, n]) => sum + Number(n), 0);
+    return `<section class="s-card">
+      <header class="s-card-head"><div><h3>როგორ ამატებენ კვებას</h3><p>ბოლო 30 დღე · ${fmt(total)} ჩანაწერი.</p></div></header>
+      <div class="s-card-body">${total
+        ? `<ul class="s-share-list">${rows
+            .map(([label, n]) => `<li><span>${label}</span><div class="s-meter"><i style="width:${pct(n, total)}%"></i></div><b>${fmt(n)}</b><em>${pct(n, total)}%</em></li>`)
+            .join("")}</ul>`
+        : `<div class="s-empty">${ico("layers")}<span>ბოლო 30 დღეში კვება არ დაუმატებიათ.</span></div>`}</div>
+    </section>`;
+  }
+
+  function totalsCard(data, programs) {
+    const fact = (label, value) => `<div><dt>${label}</dt><dd>${value}</dd></div>`;
+    const x = data.extras;
+    return `<section class="s-card">
+      <header class="s-card-head"><div><h3>სულ, გაშვებიდან</h3><p>დაგროვილი მონაცემები მთელი დროის განმავლობაში.</p></div></header>
+      <div class="s-card-body"><dl class="s-nutri-facts">
+        ${fact("ადამიანი, ვინც კვება აღრიცხა", fmt(data.usage.users))}
+        ${fact("შენახული კვება", fmt(data.usage.meals))}
+        ${fact("კვების გეგმა", `${fmt(programs.usage.active)} ახლა მოქმედი <small>· ${fmt(programs.usage.total)} შექმნილი</small>`)}
+        ${fact("დაგეგმილი კვება", `${fmt(programs.plans.meals)} <small>· ${fmt(programs.plans.users)} ადამიანი</small>`)}
+        ${x ? fact("შენახული საკვები და რეცეპტი", fmt(x.foods)) : ""}
+        ${x ? fact("შტრიხკოდით ნაპოვნი პროდუქტი", fmt(x.products)) : ""}
+        ${x ? fact("ვარჯიშის ჩანაწერი", fmt(x.activities)) : ""}
+      </dl></div>
+    </section>`;
+  }
+
   global.renderNutrition = async function () {
     const root = document.getElementById("tab-nutrition");
     if (!root) return;
@@ -218,46 +261,29 @@
       if (gen !== generation) return;
       const can = state.admin?.capabilities == null || state.admin.capabilities.includes("NUTRITION_MANAGE");
       const failRate = data.scans.total ? data.scans.failed / data.scans.total : 0;
-      const usage = [
-        metric("მომხმარებელი", fmt(data.usage.users)),
-        metric("შენახული კვება", fmt(data.usage.meals)),
-        metric("კვება · 7 დღე", fmt(data.usage.weekMeals)),
-        metric("მოქმედი კვების გეგმა", fmt(programs.usage.active)),
-        metric("დაგეგმილი კვება", fmt(programs.plans.meals)),
-        metric("კერძი კატალოგში", fmt(programs.recipes.length)),
+      const recipes = programs.recipes || [];
+      const week = [
+        metric("შენახული კვება", fmt(data.usage.weekMeals), "ბოლო 7 დღე"),
+        metric("AI შეფასება", fmt(data.scans.total), "ბოლო 7 დღე"),
+        metric("ვერ შეფასდა", fmt(data.scans.failed), `${pct(data.scans.failed, data.scans.total)}% შეფასებიდან · ბოლო 7 დღე`, failRate > 0.2 ? "bad" : failRate > 0.05 ? "warn" : ""),
+        metric("შეფასების საშუალო დრო", `${(data.scans.averageMs / 1000).toLocaleString("ka-GE", { maximumFractionDigits: 1 })} წმ`, "ერთი შეფასება · ბოლო 7 დღე", data.scans.averageMs > 12000 ? "warn" : ""),
       ].join("");
-      const ai = [
-        metric("AI შეფასება · 7 დღე", fmt(data.scans.total)),
-        metric("შეფასების შეცდომა", fmt(data.scans.failed), failRate > 0.2 ? "bad" : failRate > 0.05 ? "warn" : ""),
-        metric("საშუალო AI დრო", `${(data.scans.averageMs / 1000).toFixed(1)} წმ`, data.scans.averageMs > 12000 ? "warn" : ""),
-      ].join("");
-      const sources = data.sources
-        ? [
-            metric("ფოტოდან", fmt(data.sources.photo)),
-            metric("შტრიხკოდი / ეტიკეტი", fmt(data.sources.barcode + data.sources.label)),
-            metric("აღწერით / ხმით", fmt(data.sources.text)),
-            metric("ძებნა / ხელით", fmt(data.sources.search + data.sources.manual)),
-          ].join("")
-        : "";
-      const extras = data.extras
-        ? [
-            metric("შენახული საკვები", fmt(data.extras.foods)),
-            metric("ქეშირებული პროდუქტი", fmt(data.extras.products)),
-            metric("ვარჯიშის ჩანაწერი", fmt(data.extras.activities)),
-          ].join("")
-        : "";
-      root.innerHTML = `<div class="s-stack v3-tab-shell">
-        <div class="s-section-title"><h3>გამოყენება</h3><button type="button" class="btn ghost compact" data-refresh>${ico("refresh")} განახლება</button></div>
-        <div class="s-metrics">${usage}</div>
-        <div class="s-section-title"><h3>AI შეფასება</h3></div>
-        <div class="s-metrics">${ai}</div>
-        ${sources ? `<div class="s-section-title"><h3>აღრიცხვის წყაროები · 30 დღე</h3></div><div class="s-metrics">${sources}</div>` : ""}
-        ${extras ? `<div class="s-section-title"><h3>დამატებითი მონაცემები</h3></div><div class="s-metrics">${extras}</div>` : ""}
+      root.innerHTML = `<div class="s-stack v3-tab-shell s-nutri">
+        <div class="s-section-title"><h3>ბოლო 7 დღე</h3><button type="button" class="btn ghost compact" data-refresh>${ico("refresh")} განახლება</button></div>
+        <div class="s-metrics">${week}</div>
+        <div class="s-nutri-grid">${sourcesCard(data.sources)}${totalsCard(data, programs)}</div>
+        <section class="s-card">
+          <header class="s-card-head"><div><h3>კერძების კატალოგი</h3>
+            <p>${fmt(recipes.length)} კერძი, ${fmt(recipes.filter((r) => r.active).length)} მოქმედი. ცვლილება შედის ახლად შედგენილ რაციონში; შენახული კვება არ იცვლება.</p></div>
+            ${can ? `<button type="button" class="btn compact" data-add>${ico("plus")} კერძის დამატება</button>` : ""}</header>
+          <div class="s-card-body is-flush s-nutri-catalog" id="nutrition-recipes"></div>
+        </section>
         <section class="s-card">
           <header class="s-card-head"><div><h3>სერვისის პარამეტრები</h3>
-            <p>მომხმარებელი იღებს სავარაუდო შედეგს, ამოწმებს საკვებსა და პორციას და შემდეგ ინახავს. ხელით აღრიცხვა ყოველთვის ხელმისაწვდომია.</p></div></header>
+            <p>შეფასება ადამიანის დადასტურებამდე არ ინახება; ხელით აღრიცხვა ყოველთვის მუშაობს.</p></div></header>
           <div class="s-card-body">
-            <label class="s-switch-row"><div><b>ფოტოდან AI შეფასება</b><small>ფოტოს გაგზავნამდე საჭიროა მოქმედი AI თანხმობა.</small></div>
+            <label class="s-switch-row"><div><b>AI კალორიის შეფასება</b><small>ფოტოდან, ეტიკეტიდან და აღწერიდან. გამორთვისას ადამიანი კვებას ხელით ან ძებნით დაამატებს.</small>
+              <small class="s-nutri-rel">იგივე შეფასებას აჩერებს <a href="#/features">მოდულები → კვების AI შეფასება</a> (იქ შენი შეტყობინებაც ჩანს) — შეფასება მუშაობს, როცა ორივე ჩართულია.</small></div>
               <input class="s-switch" type="checkbox" role="switch" id="nutrition-photo" ${data.settings.photoEnabled ? "checked" : ""} ${can ? "" : "disabled"}></label>
             <label class="s-switch-row"><div><b>რაციონისა და მიზნის შექმნა</b><small>საწყისი სამიზნე გამოითვლება შესაბამისობის შემოწმების შემდეგ.</small></div>
               <input class="s-switch" type="checkbox" role="switch" id="nutrition-program" ${data.settings.programEnabled ? "checked" : ""} ${can ? "" : "disabled"}></label>
@@ -268,14 +294,8 @@
             <p>კალორიები შეფასებაა, არა ზუსტი გაზომვა. შეცდომის დროს აპი სთავაზობს ხელით აღრიცხვას. შედეგი დიეტოლოგის დანიშნულება არ არის. კერძები USDA-ს ცნობარს ეყრდნობა; ადმინისტრატორი პასუხისმგებელია ცვლილების, ალერგენებისა და წყაროს სისწორეზე.</p>
           </div></details>
         </section>
-        <section class="s-card">
-          <header class="s-card-head"><div><h3>კერძების კატალოგი</h3>
-            <p>ცვლილება გავრცელდება ახლად შედგენილ რაციონზე. უკვე შენახული კვება და მისი პორცია დარჩება.</p></div>
-            ${can ? `<button type="button" class="btn primary compact" data-add>${ico("plus")} კერძის დამატება</button>` : ""}</header>
-          <div class="s-card-body is-flush" id="nutrition-recipes" style="border-top:1px solid var(--s-line-soft)"></div>
-        </section>
       </div>`;
-      renderRecipes(root, programs.recipes, can);
+      renderRecipes(root, recipes, can);
       root.querySelector("[data-refresh]").onclick = () => void global.renderNutrition();
       const save = root.querySelector("[data-save]");
       if (save) {

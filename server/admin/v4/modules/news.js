@@ -12,13 +12,22 @@
   const ico = (n) => (typeof global.icon === 'function' ? global.icon(n) : '');
   const fmt = (n) => (Number.isFinite(Number(n)) ? Number(n).toLocaleString('ka-GE') : '—');
   const toast = (m, k) => global.toast?.(m, k);
+  /** The server's message when it is Georgian; otherwise our sentence (the raw English stays out of the owner's way). */
+  const say = (err, fallback) => (/[ა-ჿ]/.test(err?.message || '') ? err.message : fallback);
   const api = (path, opts) => global.api(`/announcements${path}`, opts);
   const manageApi = (path, opts) => global.api(`/manage${path}`, opts);
-  const skel = () => `<div class="s-stack"><div class="v3-skel" aria-hidden="true">${'<i></i>'.repeat(6)}</div></div>`;
+  /** Placeholder in the page's own shape (KPI strip + list), so nothing jumps when the data lands. */
+  const skel = () => `<div class="s-stack v3-tab-shell" aria-busy="true" aria-label="იტვირთება…">
+    <div class="s-metrics">${'<div class="s-metric p1-skel-kpi"><i></i><i></i><i></i></div>'.repeat(4)}</div>
+    <section class="s-card"><div class="p1-skel-rows">${'<i></i>'.repeat(6)}</div></section>
+  </div>`;
 
   if (typeof ICONS === 'object') {
     ICONS['arrow-left'] = ICONS['arrow-left'] || '<line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/>';
     ICONS.upload = ICONS.upload || '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>';
+    ICONS.edit = ICONS.edit || '<path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/>';
+    ICONS.more = ICONS.more || '<circle cx="5" cy="12" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="19" cy="12" r="1.5"/>';
+    ICONS.archive = ICONS.archive || '<rect x="3" y="4" width="18" height="4" rx="1"/><path d="M5 8v11a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V8"/><line x1="10" y1="12" x2="14" y2="12"/>';
     ICONS.megaphone = '<path d="M3 11v2a1 1 0 0 0 1 1h2l5 4V6L6 10H4a1 1 0 0 0-1 1z"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/><path d="M18.5 5.5a9 9 0 0 1 0 13"/>';
     doc.querySelectorAll('[data-icon="megaphone"]').forEach((el) => {
       el.querySelector('svg.icon')?.remove();
@@ -65,25 +74,20 @@
   ];
   const PHASE = {
     LIVE: ['is-ok', 'აქტიური'],
-    SCHEDULED: ['is-accent', 'დაგეგმილი'],
+    SCHEDULED: ['is-info', 'დაგეგმილი'],
     DRAFT: ['', 'დრაფტი'],
-    ENDED: ['is-warn', 'დასრულდა'],
-    ARCHIVED: ['', 'არქივი'],
+    ENDED: ['is-plain', 'დასრულდა'],
+    ARCHIVED: ['is-plain', 'არქივი'],
   };
   const FILTERS = [['all', 'ყველა'], ['LIVE', 'აქტიური'], ['SCHEDULED', 'დაგეგმილი'], ['DRAFT', 'დრაფტი'], ['ENDED', 'დასრულებული'], ['ARCHIVED', 'არქივი']];
+  /** How many cards the app's Home shows at once (by „რიგი“). */
+  const HOME_MAX = 5;
 
   const st = { filter: 'all', editing: null, list: [], newsFlag: true };
 
   const pct = (a, b) => (b ? `${Math.round((a / b) * 1000) / 10}%` : '—');
-  const MONTHS = ['იან', 'თებ', 'მარ', 'აპრ', 'მაი', 'ივნ', 'ივლ', 'აგვ', 'სექ', 'ოქტ', 'ნოე', 'დეკ'];
-  /** "10 ოქტ, 22:18" in Tbilisi time — built by hand because browsers often lack ka-GE locale data. */
-  const when = (iso) => {
-    if (!iso) return '';
-    const p = Object.fromEntries(new Intl.DateTimeFormat('en-GB', {
-      timeZone: 'Asia/Tbilisi', hourCycle: 'h23', hour: '2-digit', minute: '2-digit', day: 'numeric', month: 'numeric',
-    }).formatToParts(new Date(iso)).map((x) => [x.type, x.value]));
-    return `${p.day} ${MONTHS[Number(p.month) - 1]}, ${p.hour}:${p.minute}`;
-  };
+  /** "დღეს, 14:05" · "28 სექ, 18:30" · "28 სექ 2025, 18:30" — Tbilisi time, like every other admin table. */
+  const when = (iso) => (iso ? V().formatDate?.(iso, 'datetime') || '' : '');
   /** ISO → value for <input type="datetime-local"> in the browser's zone (the owner works in Tbilisi). */
   const toLocalInput = (iso) => {
     if (!iso) return '';
@@ -98,11 +102,16 @@
     const p = Array.isArray(a.platforms) && a.platforms.length ? ` · ${a.platforms.map((x) => (x === 'ios' ? 'iOS' : 'Android')).join(', ')}` : '';
     return g + p;
   };
+  const toneStyle = (tone) => {
+    const [, light, dark] = TONES[tone] || TONES.teal;
+    return `--tone:${light};--tone-dk:${dark}`;
+  };
 
   /* ═════════ list ═════════ */
   async function renderNews() {
     const root = $('tab-news');
     if (!root) return;
+    closeRowMenu();
     if (st.editing) return renderEditor(root, st.editing);
     root.innerHTML = skel();
     let data;
@@ -115,73 +124,159 @@
       const flag = flags?.features?.find((f) => f.key === 'news');
       st.newsFlag = flag ? flag.effective !== false : true;
     } catch (err) {
-      root.innerHTML = `<div class="s-card"><div class="s-empty">${ico('alert')}<strong>ვერ ჩაიტვირთა</strong><span>${esc(err?.message || '')}</span><button type="button" class="btn" data-retry>ხელახლა ცდა</button></div></div>`;
+      root.innerHTML = `<div class="s-card"><div class="s-empty">${ico('alert')}<strong>სიახლეები ვერ ჩაიტვირთა</strong><span>${esc(say(err, 'სერვერმა პასუხი ვერ დააბრუნა. სცადე ხელახლა.'))}</span><button type="button" class="btn" data-retry>ხელახლა ცდა</button></div></div>`;
       root.querySelector('[data-retry]').onclick = () => renderNews();
       return;
     }
     st.list = data.announcements || [];
-    const all = st.list;
-    const live = all.filter((a) => a.phase === 'LIVE');
-    const views = all.reduce((s, a) => s + (a.stats?.views || 0), 0);
-    const clicks = all.reduce((s, a) => s + (a.stats?.clicks || 0), 0);
-    const rows = all.filter((a) => st.filter === 'all' ? a.phase !== 'ARCHIVED' : a.phase === st.filter);
+    // The archive filter loads archived cards too: every number on the page counts the cards outside the archive.
+    const current = st.list.filter((a) => a.phase !== 'ARCHIVED');
+    const inPhase = (phase) => current.filter((a) => a.phase === phase);
+    const live = inPhase('LIVE').length;
+    const nextStart = inPhase('SCHEDULED').map((a) => a.startsAt).filter(Boolean).sort()[0];
+    const views = current.reduce((s, a) => s + (a.stats?.views || 0), 0);
+    const clicks = current.reduce((s, a) => s + (a.stats?.clicks || 0), 0);
+    const counts = {
+      all: current.length,
+      LIVE: live,
+      SCHEDULED: inPhase('SCHEDULED').length,
+      DRAFT: inPhase('DRAFT').length,
+      ENDED: inPhase('ENDED').length,
+      ARCHIVED: st.filter === 'ARCHIVED' ? st.list.length - current.length : null,
+    };
+    const rows = st.filter === 'all' ? current : st.list.filter((a) => a.phase === st.filter);
 
-    root.innerHTML = `<div class="s-stack v3-tab-shell">
+    root.innerHTML = `<div class="s-stack v3-tab-shell p1-news">
       ${st.newsFlag ? '' : `<div class="s-callout is-warn">${ico('alert')}<p><b>სიახლეები გამორთულია „მოდულებში“.</b> აპში არცერთი ბარათი არ ჩანს, სანამ <a href="#/features">მოდულები → სიახლეები</a> ისევ არ ჩაირთვება.</p></div>`}
       <div class="s-metrics">
-        <div class="s-metric"><span>ახლა აპში</span><strong>${fmt(live.length)}</strong><small>ერთდროულად ჩანს მაქს. 5</small></div>
-        <div class="s-metric"><span>დაგეგმილი</span><strong>${fmt(all.filter((a) => a.phase === 'SCHEDULED').length)}</strong></div>
-        <div class="s-metric"><span>ნახვა (უნიკალური)</span><strong>${fmt(views)}</strong><small>ყველა სიახლე</small></div>
+        <div class="s-metric${live > HOME_MAX ? ' is-warn' : ''}"><span>ახლა აპში</span><strong>${fmt(live)}</strong><small>${live > HOME_MAX ? `ჩანს მხოლოდ პირველი ${HOME_MAX} (რიგით)` : `ერთდროულად ჩანს მაქს. ${HOME_MAX}`}</small></div>
+        <div class="s-metric"><span>დაგეგმილი</span><strong>${fmt(counts.SCHEDULED)}</strong><small>${nextStart ? `უახლოესი: ${esc(when(nextStart))}` : 'დაგეგმილი ბარათი არ არის'}</small></div>
+        <div class="s-metric"><span>ნახვა</span><strong>${fmt(views)}</strong><small>უნიკალური ადამიანები · არქივის გარეშე</small></div>
         <div class="s-metric"><span>დაჭერა</span><strong>${fmt(clicks)}</strong><small>CTR ${pct(clicks, views)}</small></div>
+      </div>
+      <div class="s-toolbar">
+        <div class="s-segment s-segment-wrap" role="tablist" aria-label="სტატუსის ფილტრი">${FILTERS.map(([k, l]) => `<button type="button" role="tab" data-filter="${k}" aria-selected="${k === st.filter}">${l}${counts[k] == null ? '' : ` <i>${fmt(counts[k])}</i>`}</button>`).join('')}</div>
+        <button type="button" class="btn primary" data-new>${ico('plus')} ახალი სიახლე</button>
       </div>
       <section class="s-card">
         <header class="s-card-head"><div><h3>სიახლის ბარათები</h3>
-          <p>ბარათი ჩანს აპის მთავარ გვერდზე, კვების სექციის ზემოთ. დაჭერისას იხსნება დეტალური გვერდი. ჩანს აპის 1.0.0.16.2 და უფრო ახალ ვერსიაში.</p></div>
-          <button type="button" class="btn primary" data-new>${ico('plus')} ახალი სიახლე</button></header>
-        <div class="s-card-body" style="padding-bottom:0"><div class="s-segment s-segment-wrap" role="tablist" aria-label="ფილტრი">${FILTERS.map(([k, l]) => `<button type="button" role="tab" data-filter="${k}" aria-selected="${k === st.filter}">${l}</button>`).join('')}</div></div>
-        <div class="s-card-body is-flush">${rows.length ? `<div class="s-table-wrap"><table class="s-table">
-          <thead><tr><th>სიახლე</th><th>სტატუსი</th><th>აუდიტორია</th><th>დრო</th><th class="num">ნახვა</th><th class="num">დაჭერა</th><th class="num">დამალა</th><th class="num">რიგი</th><th></th></tr></thead>
+          <p>აპის მთავარ გვერდზე, კვების ზემოთ · აპის 1.0.0.16.2-დან</p></div></header>
+        <div class="s-card-body is-flush">${rows.length ? `<div class="s-table-wrap"><table class="s-table p1-news-table">
+          <thead><tr><th>სიახლე</th><th>სტატუსი</th><th>აუდიტორია</th><th>ჩვენების დრო</th><th class="num" title="უნიკალური ადამიანები, ვინც ბარათი დაინახა">ნახვა</th><th class="num" title="ვინც ბარათს დააჭირა; ქვემოთ — CTR">დაჭერა</th><th class="num" title="ვინც ბარათი X-ით დახურა — მას ის აღარ გამოუჩნდება">დამალა</th><th class="num" title="ნაკლები რიცხვი = პირველი">რიგი</th><th aria-label="მოქმედებები"></th></tr></thead>
           <tbody>${rows.map(rowHtml).join('')}</tbody></table></div>`
-          : `<div class="s-empty">${ico('megaphone')}<strong>${st.filter === 'all' ? 'ჯერ სიახლე არ გაქვს' : 'ამ ფილტრში ცარიელია'}</strong><span>მაგალითად: „მოიარე ლისი და მოიგე PS5“ — სურათი, მოკლე ტექსტი და ღილაკი MEDIRUN-ზე.</span></div>`}</div>
+          : `<div class="s-empty">${ico('megaphone')}<strong>${st.filter === 'all' ? 'ჯერ სიახლე არ გაქვს' : 'ამ ფილტრში სიახლე არ არის'}</strong><span>${st.filter === 'all' ? 'მაგალითად: „მოიარე ლისი და მოიგე PS5“ — სურათი, მოკლე ტექსტი და ღილაკი MEDIRUN-ზე.' : 'აირჩიე სხვა სტატუსი ან „ყველა“.'}</span></div>`}</div>
       </section>
-      <div class="s-callout">${ico('info')}<p>სიახლე ჯანმრთელობის მონაცემს არ შეიცავს და არ იყენებს. ნახვა ითვლება ერთხელ ადამიანზე. „დამალა“ — ვინც ბარათი X-ით დახურა; მას ის აღარ გამოუჩნდება არცერთ მოწყობილობაზე.</p></div>
     </div>`;
 
     root.querySelector('[data-new]').onclick = () => openEditor(null);
     root.querySelectorAll('[data-filter]').forEach((b) => b.addEventListener('click', () => { st.filter = b.dataset.filter; void renderNews(); }));
     root.querySelectorAll('[data-row]').forEach((tr) => {
       const item = st.list.find((a) => a.id === tr.dataset.row);
-      tr.querySelector('[data-edit]')?.addEventListener('click', () => openEditor(item));
-      tr.querySelector('[data-dup]')?.addEventListener('click', () => openEditor({ ...item, id: null, status: 'DRAFT', title: `${item.title} (ასლი)` }));
+      if (!item) return;
+      if (tr.classList.contains('is-click')) {
+        tr.addEventListener('click', (e) => { if (!e.target.closest('button, a')) openEditor(item); });
+        tr.addEventListener('keydown', (e) => { if (e.key === 'Enter' && e.target === tr) { e.preventDefault(); openEditor(item); } });
+      }
       tr.querySelector('[data-toggle-live]')?.addEventListener('click', (e) => togglePublish(item, e.currentTarget));
       tr.querySelector('[data-archive]')?.addEventListener('click', () => archive(item, item.status !== 'ARCHIVED'));
+      tr.querySelector('[data-more]')?.addEventListener('click', (e) => openRowMenu(e.currentTarget, item));
     });
   }
 
   function rowHtml(a) {
     const [badge, label] = PHASE[a.phase] || ['', a.phase];
-    const thumb = a.image
-      ? `<img src="${esc(imgSrc(a.image))}" alt="" style="width:64px;height:36px;object-fit:cover;border-radius:6px;flex:none">`
-      : `<span style="width:64px;height:36px;border-radius:6px;flex:none;display:grid;place-items:center;background:${TONES[a.tone]?.[1] || '#0F766E'}1f;color:${TONES[a.tone]?.[1] || '#0F766E'}">${ico('megaphone')}</span>`;
-    const window = [a.startsAt ? `${when(a.startsAt)}-დან` : '', a.endsAt ? `${when(a.endsAt)}-მდე` : ''].filter(Boolean).join(' ') || 'უვადო';
+    const archived = a.status === 'ARCHIVED';
     const published = a.status === 'PUBLISHED';
-    return `<tr data-row="${esc(a.id)}">
-      <td><div style="display:flex;gap:12px;align-items:center;min-width:260px">${thumb}<div style="min-width:0"><b>${esc(a.title)}</b><div class="s-muted" style="font-size:12px;max-width:380px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(a.body || a.details || '')}</div></div></div></td>
-      <td><span class="s-badge ${badge}">${label}</span></td>
-      <td>${esc(audienceText(a.audience))}</td>
-      <td style="font-size:12.5px">${esc(window)}</td>
-      <td class="num">${fmt(a.stats?.views)}</td>
-      <td class="num">${fmt(a.stats?.clicks)}<div class="s-muted" style="font-size:11.5px">${pct(a.stats?.clicks || 0, a.stats?.views || 0)}</div></td>
-      <td class="num">${fmt(a.stats?.dismissals)}</td>
-      <td class="num">${fmt(a.priority)}</td>
-      <td class="num" style="white-space:nowrap">
-        ${a.status === 'ARCHIVED'
-          ? '<button type="button" class="btn compact" data-archive>აღდგენა</button>'
-          : `<button type="button" class="btn compact" data-edit>რედაქტირება</button>
-             <button type="button" class="btn compact ${published ? '' : 'primary'}" data-toggle-live>${published ? 'შეჩერება' : 'გამოქვეყნება'}</button>
-             <button type="button" class="btn compact ghost" data-dup title="ასლის შექმნა">ასლი</button>
-             <button type="button" class="btn compact ghost" data-archive title="არქივში გადატანა">არქივი</button>`}
+    const views = a.stats?.views || 0;
+    const clicks = a.stats?.clicks || 0;
+    const thumb = a.image
+      ? `<img class="p1-news-thumb" src="${esc(imgSrc(a.image))}" alt="" loading="lazy" decoding="async">`
+      : `<span class="p1-news-thumb is-tile" style="${toneStyle(a.tone)}">${ico('megaphone')}</span>`;
+    const span = [a.startsAt ? `<span>${esc(when(a.startsAt))}-დან</span>` : '', a.endsAt ? `<span>${esc(when(a.endsAt))}-მდე</span>` : ''].join('');
+    return `<tr data-row="${esc(a.id)}"${archived ? '' : ' class="is-click" tabindex="0"'}>
+      <td data-label="სიახლე"><div class="p1-news-item">${thumb}<div><b>${esc(a.title)}</b><span>${esc(a.body || a.details || '')}</span></div></div></td>
+      <td data-label="სტატუსი"><span class="s-badge ${badge}">${esc(label)}</span></td>
+      <td data-label="აუდიტორია">${esc(audienceText(a.audience))}</td>
+      <td data-label="ჩვენების დრო"><div class="p1-news-when">${span || '<span class="s-muted">უვადოდ</span>'}</div></td>
+      <td class="num" data-label="ნახვა">${fmt(views)}</td>
+      <td class="num" data-label="დაჭერა">${fmt(clicks)}<small class="p1-sub">${pct(clicks, views)}</small></td>
+      <td class="num" data-label="დამალა">${fmt(a.stats?.dismissals)}</td>
+      <td class="num" data-label="რიგი">${fmt(a.priority)}</td>
+      <td class="p1-row-actions">${archived
+        ? '<button type="button" class="btn compact" data-archive>აღდგენა</button>'
+        : `<button type="button" class="btn compact" data-toggle-live>${published ? 'შეჩერება' : 'გამოქვეყნება'}</button><button type="button" class="btn compact ghost icon-only" data-more aria-haspopup="menu" aria-expanded="false" aria-label="სხვა მოქმედებები" title="სხვა მოქმედებები">${ico('more')}</button>`}
       </td></tr>`;
+  }
+
+  /* Row menu: the rarer actions of a card (edit, copy, archive) behind „⋯“. */
+  let rowMenu = null;
+  function closeRowMenu(focusAnchor = false) {
+    if (!rowMenu) return;
+    const { node, anchor } = rowMenu;
+    rowMenu = null;
+    doc.removeEventListener('pointerdown', onMenuOutside, true);
+    doc.removeEventListener('scroll', onMenuScroll, true);
+    global.removeEventListener('resize', onMenuScroll);
+    global.removeEventListener('hashchange', onMenuLeave);
+    anchor.setAttribute('aria-expanded', 'false');
+    node.classList.add('s-leaving');
+    setTimeout(() => node.remove(), 140);
+    if (focusAnchor && anchor.isConnected) anchor.focus();
+  }
+  function onMenuOutside(e) {
+    if (rowMenu && !rowMenu.node.contains(e.target) && !rowMenu.anchor.contains(e.target)) closeRowMenu();
+  }
+  /** The menu is fixed-positioned: it follows its „⋯“ button while the page scrolls and closes once the row leaves the screen. */
+  function placeRowMenu() {
+    if (!rowMenu) return;
+    const { node, anchor } = rowMenu;
+    const r = anchor.getBoundingClientRect();
+    if (!anchor.isConnected || !anchor.offsetParent || r.bottom < 0 || r.top > innerHeight) { closeRowMenu(); return; }
+    const w = node.offsetWidth;
+    const h = node.offsetHeight;
+    node.style.left = `${Math.max(8, Math.min(innerWidth - w - 8, r.right - w))}px`;
+    node.style.top = `${r.bottom + 6 + h <= innerHeight - 8 ? r.bottom + 6 : Math.max(8, r.top - h - 6)}px`;
+  }
+  function onMenuScroll() { placeRowMenu(); }
+  function onMenuLeave() { closeRowMenu(); }
+  function openRowMenu(anchor, item) {
+    const again = rowMenu?.anchor === anchor;
+    closeRowMenu();
+    if (again) return;
+    const node = doc.createElement('div');
+    node.className = 's-menu p1-row-menu';
+    node.setAttribute('role', 'menu');
+    node.setAttribute('aria-label', item.title || 'სიახლე');
+    node.innerHTML = `<button type="button" role="menuitem" data-m="edit">${ico('edit')}<span>რედაქტირება</span></button>
+      <button type="button" role="menuitem" data-m="dup">${ico('copy')}<span>ასლის შექმნა</span></button>
+      <div class="s-menu-sep"></div>
+      <button type="button" role="menuitem" data-m="archive" class="is-danger">${ico('archive')}<span>არქივში გადატანა</span></button>`;
+    doc.body.appendChild(node);
+    rowMenu = { node, anchor };
+    placeRowMenu();
+    if (!rowMenu) return;
+    anchor.setAttribute('aria-expanded', 'true');
+    node.addEventListener('click', (e) => {
+      const btn = e.target.closest('[data-m]');
+      if (!btn) return;
+      closeRowMenu();
+      if (btn.dataset.m === 'edit') openEditor(item);
+      else if (btn.dataset.m === 'dup') openEditor({ ...item, id: null, status: 'DRAFT', title: `${item.title} (ასლი)` });
+      else if (btn.dataset.m === 'archive') void archive(item, true);
+    });
+    node.addEventListener('keydown', (e) => {
+      const items = [...node.querySelectorAll('[role="menuitem"]')];
+      const i = items.indexOf(doc.activeElement);
+      if (e.key === 'ArrowDown') { e.preventDefault(); items[(i + 1) % items.length].focus(); }
+      else if (e.key === 'ArrowUp') { e.preventDefault(); items[(i - 1 + items.length) % items.length].focus(); }
+      else if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); closeRowMenu(true); }
+      else if (e.key === 'Tab') closeRowMenu();
+    });
+    doc.addEventListener('pointerdown', onMenuOutside, true);
+    doc.addEventListener('scroll', onMenuScroll, true);
+    global.addEventListener('resize', onMenuScroll);
+    global.addEventListener('hashchange', onMenuLeave);
+    node.querySelector('[role="menuitem"]')?.focus();
   }
 
   const payloadOf = (a, status) => ({
@@ -213,7 +308,7 @@
         toast(next === 'PUBLISHED' ? 'სიახლე გამოქვეყნდა' : 'სიახლე შეჩერდა', next === 'PUBLISHED' ? 'ok' : 'warn');
         await renderNews();
       } catch (e) {
-        toast(e.message, 'bad');
+        toast(say(e, 'სტატუსი ვერ შეიცვალა. სცადე ხელახლა.'), 'bad');
         btn.disabled = false;
       }
     };
@@ -233,7 +328,7 @@
         await api(`/${encodeURIComponent(a.id)}/archive`, { method: 'POST', body: { archived } });
         toast(archived ? 'არქივში გადავიდა' : 'აღდგა დრაფტად', 'ok');
         await renderNews();
-      } catch (e) { toast(e.message, 'bad'); }
+      } catch (e) { toast(say(e, archived ? 'არქივში ვერ გადავიდა. სცადე ხელახლა.' : 'ვერ აღდგა. სცადე ხელახლა.'), 'bad'); }
     };
     if (!archived) return run();
     V().openConfirm?.({
@@ -263,15 +358,19 @@
   function renderEditor(root, a) {
     const custom = a.ctaKind === 'route' && a.ctaTarget && !ROUTES.some(([r]) => r === a.ctaTarget);
     const isLive = a.id && a.status === 'PUBLISHED';
-    root.innerHTML = `<div class="s-stack v3-tab-shell">
+    const [phaseBadge, phaseLabel] = a.id ? PHASE[a.phase] || ['', ''] : ['', 'ახალი'];
+    root.innerHTML = `<div class="s-stack v3-tab-shell p1-news">
       <div class="s-toolbar">
-        <button type="button" class="btn ghost" data-back>${ico('arrow-left')} ყველა სიახლე</button>
-        <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <div class="p1-toolbar-group">
+          <button type="button" class="btn ghost" data-back>${ico('arrow-left')} ყველა სიახლე</button>
+          ${phaseLabel ? `<span class="s-badge ${phaseBadge}">${esc(phaseLabel)}</span>` : ''}
+        </div>
+        <div class="p1-toolbar-group">
+          <p class="s-form-msg p1-form-msg" role="alert" data-msg></p>
           ${isLive ? '' : '<button type="button" class="btn" data-save-draft>დრაფტად შენახვა</button>'}
           <button type="button" class="btn primary" data-save-live>${isLive ? 'ცვლილებების შენახვა' : 'გამოქვეყნება'}</button>
         </div>
       </div>
-      <p class="s-form-msg" role="alert" data-msg></p>
       <div class="s-split">
         <form class="s-stack" data-form novalidate>
           <section class="s-card"><header class="s-card-head"><div><h3>შინაარსი</h3><p>მოკლე და კონკრეტული: რა ხდება და რას იღებს ადამიანი.</p></div></header>
@@ -280,13 +379,13 @@
               <label class="s-field"><span>მოკლე ტექსტი ბარათზე</span><textarea data-f="body" maxlength="220" rows="3" placeholder="MEDIRUN-ის შემოდგომის ღონისძიება: 1–15 ოქტომბერი. ყველა, ვინც ლისის ტბას შემოუვლის, მონაწილეობს გათამაშებაში.">${esc(a.body)}</textarea><small data-count="body"></small></label>
               <div class="s-form-grid">
                 <label class="s-field"><span>ნიშანი (ბეჯი)</span><input data-f="badge" maxlength="24" value="${esc(a.badge)}" placeholder="სიახლე / ღონისძიება / საჩუქარი"><small>ცარიელზე ჩანს „სიახლე“.</small></label>
-                <div class="s-field"><span>ფერი</span><div class="s-chips" role="radiogroup" aria-label="ფერი">${Object.entries(TONES).map(([k, [label, hex]]) => `<button type="button" role="radio" aria-checked="${a.tone === k}" data-tone="${k}" title="${label}" aria-label="${label}" style="width:30px;height:30px;border-radius:50%;border:2px solid ${a.tone === k ? 'var(--s-ink)' : 'transparent'};background:${hex};box-shadow:inset 0 0 0 2px var(--s-surface);cursor:pointer"></button>`).join('')}</div></div>
+                <div class="s-field"><span>ფერი</span><div class="s-chips p1-swatches" role="radiogroup" aria-label="ფერი">${Object.entries(TONES).map(([k, [label, hex]]) => `<button type="button" role="radio" class="p1-swatch" style="--swatch:${hex}" aria-checked="${a.tone === k}" data-tone="${k}" title="${label}" aria-label="${label}"></button>`).join('')}</div></div>
               </div>
               <div class="s-field"><span>სურათი (არასავალდებულო)</span>
-                <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
-                  <label class="btn compact" style="cursor:pointer">${ico('upload')} ატვირთვა<input type="file" accept="image/jpeg,image/png,image/webp" data-file hidden></label>
+                <div class="p1-upload">
+                  <label class="btn compact">${ico('upload')} ატვირთვა<input type="file" accept="image/jpeg,image/png,image/webp" data-file hidden></label>
                   <button type="button" class="btn compact ghost" data-remove-image ${a.image || a.imageUrl ? '' : 'hidden'}>სურათის მოშორება</button>
-                  <span class="s-muted" style="font-size:12px" data-image-state></span>
+                  <span class="p1-upload-state" data-image-state></span>
                 </div>
                 <small>საუკეთესოა ჰორიზონტალური 16:9 (მაგ. 1600×900). ბრაუზერი თვითონ შეამცირებს ≤1600px-მდე.</small></div>
               <label class="s-field"><span>დეტალური ტექსტი (იხსნება ბარათზე დაჭერით)</span><textarea data-f="details" maxlength="4000" rows="7" placeholder="წესები, თარიღები, როგორ მივიღო მონაწილეობა, პრიზის გადაცემა…">${esc(a.details)}</textarea><small>ცარიელი ხაზი = ახალი აბზაცი.</small></label>
@@ -315,15 +414,15 @@
                 <label class="s-field"><span>დასრულება</span><input type="datetime-local" data-f="endsAt" value="${esc(toLocalInput(a.endsAt))}"><small>ცარიელი = სანამ ხელით არ შეაჩერებ.</small></label>
                 <label class="s-field"><span>რიგი</span><input type="number" min="0" max="1000" data-f="priority" value="${esc(a.priority ?? 100)}"><small>ნაკლები = პირველი (რამდენიმე ბარათისას).</small></label>
               </div>
-              <label class="s-switch-row" style="display:flex;align-items:center;justify-content:space-between;gap:12px"><span><b style="font-size:13.5px">ადამიანს შეუძლია დამალოს (X)</b><br><small class="s-muted">გამორთე მხოლოდ მნიშვნელოვან ცნობაზე.</small></span><input class="s-switch" type="checkbox" role="switch" data-f="dismissible" ${a.dismissible !== false ? 'checked' : ''}></label>
+              <label class="s-switch-row"><span><b>ადამიანს შეუძლია დამალოს (X)</b><small>გამორთე მხოლოდ მნიშვნელოვან ცნობაზე.</small></span><input class="s-switch" type="checkbox" role="switch" data-f="dismissible" ${a.dismissible !== false ? 'checked' : ''}></label>
             </div></section>
         </form>
 
         <div class="s-preview">
-          <div class="s-toolbar"><b style="font-size:13px">აპში ასე გამოჩნდება</b>
+          <div class="s-toolbar"><b class="p1-preview-title">აპში ასე გამოჩნდება</b>
             <div class="s-segment" role="tablist" aria-label="თემა"><button type="button" role="tab" data-pv-theme="light" aria-selected="true">ნათელი</button><button type="button" role="tab" data-pv-theme="dark" aria-selected="false">მუქი</button></div></div>
           <div data-phone></div>
-          <p class="s-muted" style="font-size:12px;margin:0">ბარათზე დაჭერით იხსნება დეტალური გვერდი: სურათი, სათაური, დეტალური ტექსტი და ღილაკი.</p>
+          <p class="p1-preview-note">ბარათზე დაჭერით იხსნება დეტალური გვერდი: სურათი, სათაური, დეტალური ტექსტი და ღილაკი.</p>
         </div>
       </div>
     </div>`;
@@ -375,10 +474,7 @@
     form.addEventListener('submit', (e) => e.preventDefault());
     root.querySelectorAll('[data-tone]').forEach((b) => b.addEventListener('click', () => {
       a.tone = b.dataset.tone;
-      root.querySelectorAll('[data-tone]').forEach((x) => {
-        x.setAttribute('aria-checked', String(x === b));
-        x.style.borderColor = x === b ? 'var(--s-ink)' : 'transparent';
-      });
+      root.querySelectorAll('[data-tone]').forEach((x) => x.setAttribute('aria-checked', String(x === b)));
       V().setDirty?.(true);
       paint();
     }));
@@ -432,7 +528,7 @@
         paint();
       } catch (err) {
         state.textContent = '';
-        toast(err.message || 'სურათი ვერ აიტვირთა', 'bad');
+        toast(say(err, 'სურათი ვერ აიტვირთა. სცადე სხვა ფაილი ან ხელახლა.'), 'bad');
       }
     });
 
@@ -454,7 +550,7 @@
           st.editing = null;
           await renderNews();
         } catch (err) {
-          msg.textContent = err.fields?.map?.((f) => f.message).join(' · ') || err.message;
+          msg.textContent = err.fields?.map?.((f) => f.message).join(' · ') || say(err, 'ვერ შეინახა. შეამოწმე ველები და სცადე ხელახლა.');
         } finally {
           btn.disabled = false;
           btn.classList.remove('is-loading');
@@ -479,36 +575,27 @@
   function phonePreview(a, theme) {
     const dark = theme === 'dark';
     const [, lightInk, darkInk] = TONES[a.tone] || TONES.teal;
-    const ink = dark ? darkInk : lightInk;
-    const c = dark
-      ? { bg: '#030712', surface: '#111827', text1: '#FFFFFF', text2: '#D1D5DB', rule: '#374151', link: '#99F6E4' }
-      : { bg: '#F3F5F6', surface: '#FFFFFF', text1: '#111827', text2: '#4B5563', rule: '#E5E7EB', link: '#0F766E' };
     const img = a.image || a.imageUrl;
-    const x = a.dismissible !== false
-      ? `<span style="position:absolute;top:10px;right:10px;width:28px;height:28px;border-radius:14px;display:grid;place-items:center;background:${img ? 'rgba(0,0,0,.45)' : 'transparent'};color:${img ? '#fff' : c.text2};font-size:16px">×</span>` : '';
-    const cta = a.ctaKind !== 'none' && a.ctaLabel
-      ? `<div style="display:flex;align-items:center;gap:8px;border-top:1px solid ${c.rule};padding-top:12px;margin-top:14px;color:${ink};font:600 13px/20px 'Noto Sans Georgian',sans-serif"><span style="flex:1">${esc(a.ctaLabel)}</span><span>↗</span></div>`
-      : `<div style="display:flex;align-items:center;gap:8px;border-top:1px solid ${c.rule};padding-top:12px;margin-top:14px;color:${ink};font:600 13px/20px 'Noto Sans Georgian',sans-serif"><span style="flex:1">დეტალურად</span><span>↗</span></div>`;
-    const badge = `<span style="display:inline-block;padding:3px 9px;border-radius:99px;background:${ink}${dark ? '26' : '14'};color:${ink};font:600 11px/16px 'Noto Sans Georgian',sans-serif">${esc(a.badge || 'სიახლე')}</span>`;
-    const tile = img ? '' : `<span style="width:42px;height:42px;border-radius:14px;flex:none;display:grid;place-items:center;background:${ink}${dark ? '26' : '14'};color:${ink}">${ico('megaphone')}</span>`;
-    return `<div style="width:360px;max-width:100%;margin:0 auto;border-radius:36px;padding:14px;background:${dark ? '#1f2937' : '#d9dee2'}">
-      <div style="border-radius:26px;background:${c.bg};padding:18px 20px 22px;font-family:'Noto Sans Georgian',sans-serif">
-        <div style="height:10px;border-radius:6px;background:${c.surface};opacity:.6;margin-bottom:22px"></div>
-        <div style="font:700 17px/24px 'Noto Sans Georgian',sans-serif;color:${c.text1};margin-bottom:12px">სიახლეები</div>
-        <div style="position:relative;border-radius:22px;background:${c.surface};overflow:hidden">
-          ${img ? `<img src="${esc(imgSrc(img))}" alt="" style="display:block;width:100%;aspect-ratio:16/9;object-fit:cover">` : ''}
+    const x = a.dismissible !== false ? `<span class="p1-phone-x${img ? ' is-on-image' : ''}" aria-hidden="true">×</span>` : '';
+    const tile = img ? '' : `<span class="p1-phone-tile">${ico('megaphone')}</span>`;
+    return `<div class="p1-phone${dark ? ' is-dark' : ''}" style="--ph-ink:${dark ? darkInk : lightInk}">
+      <div class="p1-phone-screen">
+        <div class="p1-phone-bar"></div>
+        <div class="p1-phone-h">სიახლეები</div>
+        <div class="p1-phone-card">
+          ${img ? `<img class="p1-phone-img" src="${esc(imgSrc(img))}" alt="">` : ''}
           ${x}
-          <div style="padding:18px">
-            <div style="display:flex;gap:14px;align-items:flex-start">${tile}<div style="min-width:0;flex:1;display:grid;gap:6px;${img || a.dismissible === false ? '' : 'padding-right:22px'}">
-              <div>${badge}</div>
-              <div style="font:600 16px/23px 'Noto Sans Georgian',sans-serif;color:${c.text1}">${esc(a.title || 'სათაური')}</div>
-              ${a.body ? `<div style="font:400 13px/20px 'Noto Sans Georgian',sans-serif;color:${c.text2};display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden">${esc(a.body)}</div>` : ''}
+          <div class="p1-phone-body">
+            <div class="p1-phone-row">${tile}<div class="p1-phone-copy${img || a.dismissible === false ? '' : ' has-x'}">
+              <div><span class="p1-phone-badge">${esc(a.badge || 'სიახლე')}</span></div>
+              <div class="p1-phone-title">${esc(a.title || 'სათაური')}</div>
+              ${a.body ? `<div class="p1-phone-text">${esc(a.body)}</div>` : ''}
             </div></div>
-            ${cta}
+            <div class="p1-phone-cta"><span>${esc(a.ctaKind !== 'none' && a.ctaLabel ? a.ctaLabel : 'დეტალურად')}</span><span aria-hidden="true">↗</span></div>
           </div>
         </div>
-        <div style="font:700 17px/24px 'Noto Sans Georgian',sans-serif;color:${c.text1};margin:26px 0 12px">კვება</div>
-        <div style="height:92px;border-radius:22px;background:${c.surface};opacity:.7"></div>
+        <div class="p1-phone-h is-next">კვება</div>
+        <div class="p1-phone-ghost"></div>
       </div></div>`;
   }
 

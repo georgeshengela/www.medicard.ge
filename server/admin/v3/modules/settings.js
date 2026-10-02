@@ -1,5 +1,5 @@
 /**
- * MediCard Admin V3 — Settings observatory (full override of renderSettings).
+ * MediCard Admin V3 — App mode (full override of renderSettings).
  * Production controls: maintenance, force update, registration, QA OTP, support.
  * URL range/grain are unused by settings APIs.
  */
@@ -7,6 +7,13 @@
   const Shell = () => global.AdminV3Shell || {};
   const V = () => global.AdminV3 || {};
   const $ = (id) => document.getElementById(id);
+
+  /** Mirrors the PATCH /settings validation, so a bad value is caught at its field before the request. */
+  const FIELD_RULES = {
+    'set-msg': (v) => (v.length >= 3 && v.length <= 500 ? '' : 'შეტყობინება უნდა იყოს 3-დან 500 სიმბოლომდე.'),
+    'set-minver': (v) => (/^\d+\.\d+\.\d+(?:\.\d+){0,2}$/.test(v) ? '' : 'ჩაწერე ვერსია ციფრებითა და წერტილებით, მაგ. 1.0.0.13.0.'),
+    'set-email': (v) => (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v) ? '' : 'ჩაწერე სწორი ელფოსტა, მაგ. support@medicard.ge.'),
+  };
 
   function esc(v) {
     return typeof escapeHtml === 'function'
@@ -21,7 +28,7 @@
     return typeof escapeAttr === 'function' ? escapeAttr(v) : esc(v).replaceAll("'", '&#39;');
   }
   function onOff(on) {
-    return typeof onOffLabel === 'function' ? onOffLabel(on) : on ? 'ჩართულია' : 'გამორთულია';
+    return on ? 'ჩართულია' : 'გამორთულია';
   }
   function ico(name) {
     return typeof icon === 'function' ? icon(name) : '';
@@ -29,74 +36,49 @@
   function helpBtn(key) {
     return V().infoButton ? V().infoButton(key) : '';
   }
-  function shortDate(iso) {
+  function when(iso) {
     if (!iso) return '—';
-    if (typeof fmtDate === 'function') return fmtDate(iso);
-    if (typeof fmtDateShort === 'function') return fmtDateShort(iso);
-    return String(iso);
+    return V().formatDate ? V().formatDate(iso, 'datetime') : String(iso);
+  }
+  function toastMsg(msg, tone) {
+    if (typeof toast === 'function') toast(msg, tone);
   }
 
-  function kpiCell(icoName, label, value, hint, tone) {
-    const toneClass =
-      tone === 'warn'
-        ? ' is-amber'
-        : tone === 'ok'
-          ? ' is-ok'
-          : tone === 'soft'
-            ? ' is-soft'
-            : '';
-    return `<article class="v3-settings-kpi${toneClass}">
-      <span class="v3-settings-kpi-ico" aria-hidden="true">${ico(icoName || 'settings')}</span>
-      <div class="v3-settings-kpi-copy">
-        <span>${esc(label)}</span>
-        <strong>${esc(value)}</strong>
-        ${hint != null && hint !== '' ? `<em>${esc(hint)}</em>` : ''}
-      </div>
-    </article>`;
+  function metric(label, value, hint, tone) {
+    return `<div class="s-metric${tone ? ` is-${tone}` : ''}"><span>${esc(label)}</span><strong>${esc(value)}</strong>${hint ? `<small>${esc(hint)}</small>` : ''}</div>`;
   }
 
-  function toggleRow({ id, title, body, checked, helpKey }) {
-    return `
-      <div class="v3-settings-toggle">
-        <div class="v3-settings-toggle-copy">
-          <div class="v3-title-row">
-            <strong>${esc(title)}</strong>
-            ${helpKey ? helpBtn(helpKey) : ''}
-          </div>
-          ${body ? `<p>${esc(body)}</p>` : ''}
-        </div>
-        <label class="toggle v3-settings-switch">
-          <span class="switch"><input id="${escA(id)}" type="checkbox" ${checked ? 'checked' : ''}/><i></i></span>
-        </label>
+  function switchRow({ id, title, body }) {
+    return `<div class="s-switch-row">
+        <div><b>${esc(title)}</b>${body ? `<small>${esc(body)}</small>` : ''}</div>
+        <input id="${escA(id)}" class="s-switch" type="checkbox" role="switch" aria-label="${escA(title)}" />
       </div>`;
   }
 
   function fieldBlock({ id, label, control, hint }) {
-    return `<label class="v3-settings-field" for="${escA(id)}">
+    return `<label class="s-field" for="${escA(id)}">
       <span>${esc(label)}</span>
       ${control}
-      ${hint ? `<em>${esc(hint)}</em>` : ''}
+      ${hint ? `<small>${esc(hint)}</small>` : ''}
+      <em class="p2-field-err" id="${escA(id)}-err" role="alert"></em>
     </label>`;
   }
 
   function textInput({ id, value, placeholder, disabled, type }) {
     const t = type || 'text';
     if (t === 'textarea') {
-      return `<textarea id="${escA(id)}" class="v3-settings-control" rows="3" ${disabled ? 'disabled' : ''}>${esc(value || '')}</textarea>`;
+      return `<textarea id="${escA(id)}" rows="3" maxlength="500" ${disabled ? 'disabled' : ''}>${esc(value || '')}</textarea>`;
     }
-    return `<input id="${escA(id)}" class="v3-settings-control" type="${escA(t)}" value="${escA(value || '')}" placeholder="${escA(placeholder || '')}" ${disabled ? 'disabled' : ''} />`;
+    return `<input id="${escA(id)}" type="${escA(t)}" value="${escA(value || '')}" placeholder="${escA(placeholder || '')}" ${disabled ? 'disabled' : ''} />`;
   }
 
-  function panel({ title, description, helpKey, content, tone }) {
-    const toneClass = tone === 'danger' ? ' is-danger' : tone === 'warn' ? ' is-warn' : '';
-    return `<section class="v3-settings-panel${toneClass}" data-v3-settings="section">
-      <div class="v3-settings-head">
-        <div class="v3-settings-head-copy">
-          <div class="v3-title-row"><h3>${esc(title)}</h3>${helpKey ? helpBtn(helpKey) : ''}</div>
-          ${description ? `<p class="muted">${esc(description)}</p>` : ''}
-        </div>
-      </div>
-      <div class="v3-settings-panel-body">${content}</div>
+  function panel({ title, description, helpKey, content }) {
+    return `<section class="s-card" data-v3-settings="section">
+      <header class="s-card-head">
+        <div><h3>${esc(title)}</h3>${description ? `<p>${esc(description)}</p>` : ''}</div>
+        ${helpKey ? helpBtn(helpKey) : ''}
+      </header>
+      <div class="s-card-body">${content}</div>
     </section>`;
   }
 
@@ -117,6 +99,27 @@
     return Object.keys(baseline).some((k) => String(body[k] ?? '') !== String(baseline[k] ?? ''));
   }
 
+  function setFieldError(id, msg) {
+    const el = $(id);
+    const out = $(`${id}-err`);
+    if (out) out.textContent = msg || '';
+    if (el) {
+      if (msg) el.setAttribute('aria-invalid', 'true');
+      else el.removeAttribute('aria-invalid');
+    }
+  }
+
+  /** Checks every text field; marks the bad ones and returns the first, or null when all are fine. */
+  function validateFields() {
+    let first = null;
+    Object.entries(FIELD_RULES).forEach(([id, rule]) => {
+      const msg = rule(($(id)?.value || '').trim());
+      setFieldError(id, msg);
+      if (msg && !first) first = $(id);
+    });
+    return first;
+  }
+
   function syncDangerHints() {
     const maint = $('set-maint')?.checked;
     const force = $('set-force')?.checked;
@@ -124,11 +127,11 @@
     const box = $('set-danger-live');
     if (!box) return;
     const bits = [];
-    if (maint) bits.push('ტექნიკური რეჟიმი ჩართულია — მომხმარებლები აპში ვერ შევლენ.');
-    if (force) bits.push('იძულებითი განახლება ჩართულია — ძველი ვერსიები დაიბლოკება.');
-    if (qa) bits.push('QA OTP ჩართულია — ტესტის კოდები მუშაობს წარმოებაშიც, თუ გარემო არ ზღუდავს.');
+    if (maint) bits.push('ტექნიკური სამუშაოები ჩართულია — მომხმარებლები აპში ვერ შედიან.');
+    if (force) bits.push('იძულებითი განახლება ჩართულია — მინიმალურზე ძველი ვერსიები დაბლოკილია.');
+    if (qa) bits.push('სატესტო OTP ჩართულია — კოდები 0000 / 000000 წარმოებაშიც მუშაობს.');
     box.innerHTML = bits.length
-      ? `<div class="v3-settings-alert is-danger"><span class="v3-settings-alert-ico">${ico('alert')}</span><div><strong>აქტიური რისკი</strong><p>${bits.map(esc).join(' ')}</p></div></div>`
+      ? `<div class="s-callout ${maint ? 'is-bad' : 'is-warn'}">${ico('alert')}<div>${bits.map((b) => `<p>${esc(b)}</p>`).join('')}</div></div>`
       : '';
   }
 
@@ -140,6 +143,7 @@
     if ($('set-msg')) $('set-msg').value = settings.maintenanceMessage || '';
     if ($('set-minver')) $('set-minver').value = settings.minAppVersion || '';
     if ($('set-email')) $('set-email').value = settings.supportEmail || '';
+    Object.keys(FIELD_RULES).forEach((id) => setFieldError(id, ''));
     syncDangerHints();
   }
 
@@ -170,6 +174,13 @@
 
   async function saveSettings(baseline, btn) {
     const Av = V();
+    const invalid = validateFields();
+    if (invalid) {
+      invalid.focus();
+      invalid.scrollIntoView?.({ block: 'center', behavior: 'smooth' });
+      toastMsg('შეასწორე მონიშნული ველი და ისევ შეინახე.', 'bad');
+      return;
+    }
     const body = readBody();
     const turningOnDanger =
       (body.maintenanceMode && !baseline.maintenanceMode) ||
@@ -177,31 +188,37 @@
       (body.qaOtpEnabled && !baseline.qaOtpEnabled);
 
     const doSave = async () => {
-      if (Av.runMutation) {
-        await Av.runMutation({
-          action: () => api('/settings', { method: 'PATCH', body }),
-          pendingElement: btn,
-          successMessage: 'რეჟიმი შენახულია',
-          refresh: async (result) => {
-            const next = result?.settings || (await api('/settings')).settings;
-            if (typeof setLivePill === 'function') setLivePill(next);
-            Av.setDirty?.(false);
-            await renderSettingsV3();
-          },
-        });
-        return;
+      if (btn) {
+        btn.disabled = true;
+        btn.classList.add('is-loading');
       }
-      const next = await api('/settings', { method: 'PATCH', body });
-      if (typeof setLivePill === 'function') setLivePill(next.settings);
-      if (typeof toast === 'function') toast('რეჟიმი შენახულია');
-      Av.setDirty?.(false);
-      await renderSettingsV3();
+      try {
+        const result = await api('/settings', { method: 'PATCH', body });
+        toastMsg('რეჟიმი შენახულია', 'ok');
+        const next = result?.settings || (await api('/settings')).settings;
+        if (typeof setLivePill === 'function') setLivePill(next);
+        Av.setDirty?.(false);
+        await renderSettingsV3();
+      } catch (err) {
+        const msg = err?.message || 'შენახვა ვერ მოხერხდა';
+        // The server refuses a minimum that would lock out the current app — show it at the version field.
+        if (/მინიმუმ/.test(msg)) {
+          setFieldError('set-minver', msg);
+          $('set-minver')?.focus();
+        }
+        toastMsg(msg, 'bad');
+      } finally {
+        if (btn) {
+          btn.disabled = false;
+          btn.classList.remove('is-loading');
+        }
+      }
     };
 
     if (turningOnDanger && Av.openConfirm) {
       Av.openConfirm({
         title: 'სახიფათო ცვლილებების შენახვა',
-        message: 'შენახვა ჩართავს წარმოების რეჟიმს, რომელიც ყველა მომხმარებელზე მოქმედებს. დარწმუნებული ხარ?',
+        message: 'შენახვა ჩართავს რეჟიმს, რომელიც ყველა მომხმარებელზე მოქმედებს. დარწმუნებული ხარ?',
         confirmLabel: 'შენახვა',
         variant: 'danger',
         onConfirm: doSave,
@@ -221,30 +238,29 @@
       tab: 'settings',
       kicker: 'Production',
       title: 'აპის რეჟიმი',
-      purpose: 'რა წარმოების ქცევაა ჩართული — ოფლაინი, განახლება, რეგისტრაცია და QA.',
+      purpose: 'აპის გაჩერება, განახლება და რეგისტრაცია.',
       helpKey: 'settings.page',
+      actionsHtml: `<button type="button" class="btn ghost compact" id="set-refresh">${ico('refresh')} განახლება</button>`,
     });
 
-    root.classList.add('v3-workspace-wide', 'v3-module', 'v3-settings');
-    root.innerHTML = `<div class="v3-settings-body dash-enter" data-v3-settings="loading">
-      <div class="v3-settings-toolbar">
-        <div class="v3-settings-toolbar-copy">
-          <strong>აპის რეჟიმის ობსერვატორია</strong>
-          <span>იტვირთება…</span>
-        </div>
-      </div>
-    </div>`;
+    root.classList.add('v3-workspace-wide', 'v3-settings');
+    root.innerHTML = `<div class="s-stack v3-tab-shell p2-ops" data-v3-settings="loading">${Av.skeleton ? Av.skeleton(5) : ''}</div>`;
+
+    $('set-refresh')?.addEventListener('click', async () => {
+      if (Av.dirty && Av.confirmLeave) {
+        const ok = await Av.confirmLeave();
+        if (!ok) return;
+      }
+      void renderSettingsV3();
+    });
 
     let settings;
     try {
       ({ settings } = await api('/settings'));
     } catch (err) {
-      root.innerHTML = `<div class="v3-settings-body" data-v3-settings="error">
-        <div class="v3-settings-empty is-err">
-          <strong>პარამეტრები ვერ ჩაიტვირთა</strong>
-          <p>${esc(err.message || 'უცნობი შეცდომა')}</p>
-          <button type="button" class="btn ghost compact" id="set-retry">${ico('refresh')} ხელახლა სცადე</button>
-        </div>
+      root.innerHTML = `<div class="s-stack v3-tab-shell p2-ops" data-v3-settings="error">
+        <div class="s-card"><div class="s-empty">${ico('alert')}<strong>პარამეტრები ვერ ჩაიტვირთა</strong><span>${esc(err.message || 'უცნობი შეცდომა')}</span>
+          <button type="button" class="btn compact" id="set-retry">${ico('refresh')} ხელახლა ცდა</button></div></div>
       </div>`;
       $('set-retry')?.addEventListener('click', () => void renderSettingsV3());
       return;
@@ -263,48 +279,31 @@
     };
 
     root.innerHTML = `
-      <div class="v3-settings-body dash-enter" data-v3-settings="page">
-        <div class="v3-settings-toolbar">
-          <div class="v3-settings-toolbar-copy">
-            <strong>აპის რეჟიმის ობსერვატორია</strong>
-            <span>წარმოების კონტროლი · პერიოდის ფილტრი არ გამოიყენება${settings.updatedAt ? ` · განახლდა ${esc(shortDate(settings.updatedAt))}` : ''}</span>
-          </div>
-          <div class="v3-settings-toolbar-actions">
-            ${helpBtn('settings.page')}
-            <button type="button" class="btn ghost compact" id="set-refresh">${ico('refresh')} განახლება</button>
-          </div>
-        </div>
-
-        <div class="v3-settings-kpis" role="group" aria-label="რეჟიმის მდგომარეობა">
-          ${kpiCell('alert', 'ოფლაინი', onOff(settings.maintenanceMode), 'ტექნიკური რეჟიმი', settings.maintenanceMode ? 'warn' : 'ok')}
-          ${kpiCell('zap', 'იძ. განახლება', onOff(settings.forceUpdate), 'ძველი კლიენტები', settings.forceUpdate ? 'warn' : 'ok')}
-          ${kpiCell('users', 'რეგისტრაცია', settings.allowRegistrations ? 'ღიაა' : 'დახურულია', 'ახალი ანგარიშები', settings.allowRegistrations ? 'ok' : 'warn')}
-          ${kpiCell('shield', 'QA OTP', onOff(settings.qaOtpEnabled), 'ტესტის კოდები', settings.qaOtpEnabled ? 'warn' : 'ok')}
-        </div>
-
+      <div class="s-stack v3-tab-shell p2-ops" data-v3-settings="page">
         <div id="set-danger-live"></div>
 
-        <div class="v3-settings-grid" id="settings-form">
+        <div class="s-metrics" role="group" aria-label="შენახული რეჟიმი">
+          ${metric('ტექნიკური სამუშაოები', onOff(settings.maintenanceMode), settings.maintenanceMode ? 'აპი მომხმარებლებისთვის გაჩერებულია' : 'აპი ჩვეულებრივ მუშაობს', settings.maintenanceMode ? 'bad' : '')}
+          ${metric('იძულებითი განახლება', onOff(settings.forceUpdate), `მინიმალური ვერსია ${settings.minAppVersion || '—'}`, settings.forceUpdate ? 'warn' : '')}
+          ${metric('რეგისტრაცია', settings.allowRegistrations ? 'ღიაა' : 'დახურულია', 'ახალი ანგარიშების გახსნა', settings.allowRegistrations ? '' : 'warn')}
+          ${metric('სატესტო OTP კოდები', onOff(settings.qaOtpEnabled), 'ტესტ-ანგარიშებისთვის', settings.qaOtpEnabled ? 'warn' : '')}
+        </div>
+
+        <div class="p2-settings-grid p2-form" id="settings-form">
           ${panel({
-            title: 'აპის ხელმისაწვდომობა',
-            description: 'ოფლაინი / განახლების რეჟიმი და შეტყობინება მომხმარებლებისთვის',
+            title: 'ტექნიკური სამუშაოები',
+            description: 'აპის დროებით გაჩერება ყველასთვის. ადმინი ამ დროსაც მუშაობს.',
             helpKey: 'settings.maintenance',
-            tone: 'danger',
             content: `
-              <div class="v3-settings-alert is-danger">
-                <span class="v3-settings-alert-ico">${ico('alert')}</span>
-                <div><strong>წარმოების გავლენა</strong><p>ტექნიკური რეჟიმი აჩერებს აპსა და API-ს მომხმარებლებისთვის. ადმინ კონსოლი რჩება ხელმისაწვდომი.</p></div>
-              </div>
-              ${toggleRow({
+              ${switchRow({
                 id: 'set-maint',
-                title: 'ოფლაინი / განახლება',
-                body: 'აპი და API გაჩერდება მომხმარებლებისთვის.',
-                checked: settings.maintenanceMode,
-                helpKey: 'settings.maintenance',
+                title: 'აპის გაჩერება',
+                body: 'მომხმარებლები აპში ვერ შევლენ და ნახავენ ქვემოთ დაწერილ შეტყობინებას.',
               })}
               ${fieldBlock({
                 id: 'set-msg',
-                label: 'ოფლაინის შეტყობინება',
+                label: 'შეტყობინება მომხმარებლებს',
+                hint: 'ჩანს აპში, სანამ რეჟიმი ჩართულია · 3–500 სიმბოლო',
                 control: textInput({ id: 'set-msg', type: 'textarea', value: settings.maintenanceMessage || '' }),
               })}
             `,
@@ -312,31 +311,24 @@
 
           ${panel({
             title: 'განახლების პოლიტიკა',
-            description: 'მინიმალური ვერსია და იძულებითი განახლება',
+            description: 'რომელ ვერსიაზე მოსთხოვოს აპმა ადამიანს განახლება.',
             helpKey: 'settings.forceUpdate',
-            tone: 'warn',
             content: `
-              <div class="v3-settings-alert is-warn">
-                <span class="v3-settings-alert-ico">${ico('zap')}</span>
-                <div><strong>ყურადღება</strong><p>იძულებითი განახლება ბლოკავს ძველ კლიენტებს. მინიმალური ვერსია უნდა ემთხვეოდეს რეალურ mobile/app.json რელიზს.</p></div>
-              </div>
-              ${toggleRow({
+              ${switchRow({
                 id: 'set-force',
                 title: 'იძულებითი განახლება',
-                body: 'ძველი აპის ვერსია ვერ შევა სისტემაში.',
-                checked: settings.forceUpdate,
-                helpKey: 'settings.forceUpdate',
+                body: 'მინიმალურზე ძველი ვერსია ვერ შევა — ადამიანს ჯერ განახლებას მოსთხოვს.',
               })}
-              <div class="v3-settings-fields">
-                ${fieldBlock({
-                  id: 'set-mobile-ro',
-                  label: 'აპის ვერსია (mobile/app.json)',
-                  control: textInput({ id: 'set-mobile-ro', value: settings.mobileAppVersion || '—', disabled: true }),
-                  hint: 'მხოლოდ წაკითხვა',
-                })}
+              <div class="s-form-grid">
+                <div class="s-field">
+                  <span>აპის ბოლო ვერსია</span>
+                  <div class="p2-static" id="set-mobile-ro">${esc(settings.mobileAppVersion || '—')}</div>
+                  <small>ბოლო გამოშვება · აქ არ იცვლება</small>
+                </div>
                 ${fieldBlock({
                   id: 'set-minver',
-                  label: 'მინიმალური აპის ვერსია (API)',
+                  label: 'მინიმალური ვერსია',
+                  hint: 'ამაზე ძველს აპი განახლებას სთხოვს',
                   control: textInput({
                     id: 'set-minver',
                     value: settings.minAppVersion || '',
@@ -349,41 +341,31 @@
 
           ${panel({
             title: 'რეგისტრაცია',
-            description: 'ახალი ანგარიშების გახსნა',
-            content: toggleRow({
+            description: 'ახალი ანგარიშების გახსნა აპში.',
+            content: switchRow({
               id: 'set-reg',
               title: 'რეგისტრაცია ღიაა',
-              body: 'გამორთვისას ახალი ანგარიშები ვერ შეიქმნება.',
-              checked: settings.allowRegistrations,
+              body: 'გამორთვისას ახალი ანგარიში ვერ შეიქმნება; არსებული ანგარიშები მუშაობს.',
             }),
           })}
 
           ${panel({
             title: 'QA კონტროლი',
-            description: 'ტესტის OTP და სხვა QA გადართვები',
+            description: 'სატესტო გადართვები — მხოლოდ ტესტირების დროს.',
             helpKey: 'settings.qa',
-            tone: 'warn',
-            content: `
-              <div class="v3-settings-alert is-warn">
-                <span class="v3-settings-alert-ico">${ico('shield')}</span>
-                <div><strong>მხოლოდ უსაფრთხო გარემო</strong><p>QA OTP ტესტის კოდებს (0000 / 000000) უშვებს. გამორთე ტესტის შემდეგ.</p></div>
-              </div>
-              ${toggleRow({
-                id: 'set-qa-otp',
-                title: 'QA OTP',
-                body: 'ტესტის კოდი 0000 (ტელეფონი) და 000000 (ელ-ფოსტა) ყოველთვის მუშაობს.',
-                checked: settings.qaOtpEnabled,
-                helpKey: 'settings.qa',
-              })}
-            `,
+            content: switchRow({
+              id: 'set-qa-otp',
+              title: 'სატესტო OTP კოდები',
+              body: 'კოდი 0000 (ტელეფონი) და 000000 (ელფოსტა) ყოველთვის მუშაობს. ტესტის შემდეგ გამორთე.',
+            }),
           })}
 
           ${panel({
             title: 'მხარდაჭერა',
-            description: 'საკონტაქტო ელ-ფოსტა აპში',
+            description: 'საკონტაქტო მისამართი, რომელსაც აპი აჩვენებს.',
             content: fieldBlock({
               id: 'set-email',
-              label: 'მხარდაჭერის ელ-ფოსტა',
+              label: 'მხარდაჭერის ელფოსტა',
               control: textInput({ id: 'set-email', type: 'email', value: settings.supportEmail || '' }),
             }),
           })}
@@ -393,34 +375,27 @@
           Av.stickyActions
             ? Av.stickyActions({
                 dirty: false,
+                danger: settings.updatedAt ? `<span class="p2-meta">ბოლოს შეინახა: ${esc(when(settings.updatedAt))}</span>` : '',
                 cancel: `<button type="button" class="btn ghost" id="set-cancel">გაუქმება</button>`,
                 save: `<button type="button" class="btn primary" id="set-save">${ico('check')} შენახვა</button>`,
               })
-            : `<div class="v3-settings-actions"><button type="button" class="btn ghost" id="set-cancel">გაუქმება</button><button type="button" class="btn primary" id="set-save">${ico('check')} შენახვა</button></div>`
+            : `<div class="p2-form-foot"><button type="button" class="btn ghost" id="set-cancel">გაუქმება</button><button type="button" class="btn primary" id="set-save">${ico('check')} შენახვა</button></div>`
         }
       </div>
     `;
 
-    syncDangerHints();
+    applyBaseline(baseline);
     Av.setDirty?.(false);
     Av.watchDirty?.($('settings-form'));
-
-    $('set-refresh')?.addEventListener('click', async () => {
-      if (Av.dirty && Av.confirmLeave) {
-        const ok = await Av.confirmLeave();
-        if (!ok) return;
-      }
-      void renderSettingsV3();
-    });
 
     bindDangerToggle(
       'set-maint',
       {
-        title: 'ტექნიკური რეჟიმი',
+        title: 'ტექნიკური სამუშაოები',
         variant: 'danger',
         message: (on) =>
           on
-            ? 'ჩართვის შემდეგ მომხმარებლები აპში ვერ შევლენ და დაინახავენ ოფლაინ შეტყობინებას. ადმინი რჩება ხელმისაწვდომი. გავაგრძელოთ?'
+            ? 'ჩართვის შემდეგ მომხმარებლები აპში ვერ შევლენ და დაინახავენ შეტყობინებას. ადმინი მუშაობს. გავაგრძელოთ?'
             : 'გამორთვის შემდეგ აპი ისევ ხელმისაწვდომი გახდება მომხმარებლებისთვის. გავაგრძელოთ?',
       },
       baseline,
@@ -432,20 +407,20 @@
         variant: 'warning',
         message: (on) =>
           on
-            ? 'ძველი აპის ვერსიები ვეღარ შევლენ სისტემაში. დარწმუნდი, რომ მინიმალური ვერსია სწორია.'
-            : 'იძულებითი განახლება გაითიშება — ძველი კლიენტები კვლავ შეძლებენ შესვლას (თუ სხვა პოლიტიკა არ ზღუდავს).',
+            ? 'მინიმალურზე ძველი ვერსიები ვეღარ შევლენ. დარწმუნდი, რომ მინიმალური ვერსია სწორია.'
+            : 'იძულებითი განახლება გამოირთვება — ძველი ვერსიებიც შეძლებენ შესვლას.',
       },
       baseline,
     );
     bindDangerToggle(
       'set-qa-otp',
       {
-        title: 'QA OTP',
+        title: 'სატესტო OTP კოდები',
         variant: 'warning',
         message: (on) =>
           on
-            ? 'ტესტის OTP კოდები იმუშავებს. წარმოებაში ჩართვა უსაფრთხოების რისკია. გავაგრძელოთ?'
-            : 'QA OTP გამოირთვება — ტესტის კოდები აღარ იმუშავებს.',
+            ? 'სატესტო კოდები იმუშავებს წარმოებაშიც — ეს უსაფრთხოების რისკია. გავაგრძელოთ?'
+            : 'სატესტო კოდები აღარ იმუშავებს.',
       },
       baseline,
     );
@@ -463,9 +438,11 @@
       void saveSettings(baseline, $('set-save'));
     });
 
-    // Keep danger banner in sync for non-confirm fields too
     ['set-msg', 'set-minver', 'set-email', 'set-reg'].forEach((id) => {
-      $(id)?.addEventListener('input', () => Av.setDirty?.(true));
+      $(id)?.addEventListener('input', () => {
+        Av.setDirty?.(true);
+        if (FIELD_RULES[id] && $(`${id}-err`)?.textContent) setFieldError(id, FIELD_RULES[id](($(id)?.value || '').trim()));
+      });
       $(id)?.addEventListener('change', () => {
         Av.setDirty?.(isFormDirty(baseline));
         syncDangerHints();

@@ -86,6 +86,9 @@
       btn.classList.toggle('is-active', on);
       btn.setAttribute('aria-selected', String(on));
     });
+    // Device and broadcast numbers belong to sending; Brain and the text editors have their own context.
+    const kpis = document.querySelector('#tab-push .v25-push-kpis');
+    if (kpis) kpis.hidden = !['compose', 'history', 'devices'].includes(tab);
   }
 
   function selectTab(tab) {
@@ -114,6 +117,9 @@
       if (oldNav) oldNav.replaceWith(navHost);
       else board.insertBefore(navHost, board.firstChild);
     }
+    // Tabs first: they decide what the page is about; the numbers under them follow the tab.
+    const kpis = root.querySelector('.v25-push-kpis');
+    if (kpis && navHost.nextElementSibling !== kpis) kpis.parentNode.insertBefore(navHost, kpis);
 
     const S = Shell();
     navHost.innerHTML = S.subnav
@@ -249,7 +255,7 @@
       tab: 'push',
       kicker: 'Engagement',
       title: 'Push & Brain',
-      purpose: 'შეტყობინებები ფასდება, იგეგმება და მიეწოდება — Brain პირველია.',
+      purpose: 'Brain-ის გადაწყვეტილებები, ხელით გაგზავნა, ტექსტები და მოწყობილობები.',
       helpKey: 'push.page',
     });
 

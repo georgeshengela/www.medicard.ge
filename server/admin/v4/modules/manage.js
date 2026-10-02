@@ -2,7 +2,7 @@
  * MediCard Admin V4 — management modules backed by /api/admin/manage:
  *   #/features  მოდულები — kill switches with a user-facing message
  *   #/quests    Medi Quest — template targets, rewards, priority, on/off
- *   user profile card — Medi Coins balance + grant/revoke, quests, AI consent, data export
+ *   user profile cards — Medi Coins balance + grant/revoke, quests, AI consent, data export
  */
 (function adminV4Manage(global) {
   const doc = document;
@@ -11,7 +11,7 @@
   const esc = (v) => String(v ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const ico = (n) => (typeof global.icon === 'function' ? global.icon(n) : '');
   const fmt = (n) => (Number.isFinite(Number(n)) ? Number(n).toLocaleString('ka-GE') : '—');
-  const when = (iso) => (iso ? (typeof global.fmtDate === 'function' ? global.fmtDate(iso) : new Date(iso).toLocaleString('ka-GE')) : '—');
+  const when = (iso) => (iso ? (V().formatDate ? V().formatDate(iso, 'datetime') : typeof global.fmtDate === 'function' ? global.fmtDate(iso) : String(iso)) : '—');
   const api = (path, opts) => global.api(`/manage${path}`, opts);
   const skel = () => `<div class="s-stack"><div class="v3-skel" aria-hidden="true">${'<i></i>'.repeat(6)}</div></div>`;
   const fail = (root, err, retry) => {
@@ -21,10 +21,17 @@
 
   /* ═════════ მოდულები (kill switches) ═════════ */
   const FEATURE_GROUPS = [
-    ['module', 'მოდულები', 'მთელი მიმართულება. აპის 1.0.0.16.2+ ვერსიაში გამორთული მოდული ქრება მთავარი გვერდიდან, მენიუებიდან და პროფილიდან; ძველ ვერსიებში იბლოკება ცვლილებები და ჩანს შენი შეტყობინება.'],
-    ['ai', 'AI და ცალკეული ფუნქციები', 'ერთი ფუნქცია მოდულის შიგნით. მშობელი მოდულის გამორთვა ამ ფუნქციასაც თიშავს.'],
+    ['module', 'მოდულები', 'მთელი მიმართულება: ახალ აპში ქრება, ძველში ჩერდება ცვლილებები და ჩანს შენი შეტყობინება.'],
+    ['ai', 'AI ფუნქციები', 'AI-ზე მომუშავე ფუნქციები. მშობელი მოდულის გამორთვა მათაც თიშავს.'],
     ['system', 'ფონური სისტემები', 'ეკრანის გარეშე მომუშავე პროცესები.'],
   ];
+  // Display grouping only (the server group stays as is): the reward store is part of MEDI QUEST, not an AI feature.
+  const DISPLAY_GROUP = { rewardsStore: 'module' };
+  // Switches that have a twin elsewhere in the admin.
+  const RELATED = {
+    nutritionAi: 'იგივე შეფასებას აჩერებს <a href="#/nutrition">კვების დღიური</a> → „AI კალორიის შეფასება“ — შეფასება მუშაობს, როცა ორივე ჩართულია.',
+    email: 'იგივე გადამრთველი ჩანს <a href="#/email">ელფოსტის</a> გვერდზეც.',
+  };
 
   async function renderFeatures() {
     const root = $('tab-features');
@@ -34,31 +41,42 @@
     try { data = await api('/features'); } catch (err) { fail(root, err, renderFeatures); return; }
     const list = data.features || [];
     const labelOf = (key) => list.find((f) => f.key === key)?.label || key;
-    const off = list.filter((f) => !f.enabled).length;
-    const flagRow = (f) => `
-          <div class="s-flag${f.effective === false ? ' is-off' : ''}" data-flag="${esc(f.key)}">
+    const off = list.filter((f) => !f.enabled);
+    const groupOf = (f) => DISPLAY_GROUP[f.key] || f.group || 'module';
+    const flagRow = (f, nested) => `
+          <div class="s-flag${f.effective === false ? ' is-off' : ''}${nested ? ' is-child' : ''}" data-flag="${esc(f.key)}">
             <div class="s-flag-main">
               <div class="s-flag-title"><b>${esc(f.label)}</b>${!f.enabled
                 ? '<span class="s-badge is-bad">შეჩერებულია</span>'
                 : f.blockedBy ? `<span class="s-badge is-warn">შეჩერებულია „${esc(labelOf(f.blockedBy))}“-ით</span>` : '<span class="s-badge is-ok">ჩართულია</span>'}
                 ${f.parent ? `<span class="s-badge is-plain">${esc(labelOf(f.parent))}-ის ნაწილი</span>` : ''}</div>
               <p>${esc(f.description)}</p>
-              ${f.updatedAt ? `<small>ბოლოს შეცვალა ${esc(f.updatedBy || 'ადმინი')} · ${esc(when(f.updatedAt))}</small>` : ''}
-              <label class="s-field s-flag-msg"><span>შეტყობინება ადამიანისთვის, როცა გამორთულია</span>
-                <input type="text" maxlength="240" value="${esc(f.message)}" data-msg></label>
+              ${RELATED[f.key] ? `<p class="s-flag-rel">${ico('link')}<span>${RELATED[f.key]}</span></p>` : ''}
+              <small data-updated>${f.updatedAt ? `ბოლოს შეცვალა ${esc(f.updatedBy || 'ადმინი')} · ${esc(when(f.updatedAt))}` : ''}</small>
+              <div class="s-flag-msg">
+                <label class="s-field"><span>შეტყობინება ადამიანისთვის, როცა გამორთულია</span>
+                  <input type="text" maxlength="240" value="${esc(f.message)}" data-msg></label>
+                <button type="button" class="btn compact" data-msg-save disabled>შენახვა</button>
+                <small class="s-flag-dirty" data-msg-state aria-live="polite"></small>
+              </div>
             </div>
             <input class="s-switch" type="checkbox" role="switch" aria-label="${esc(f.label)}" ${f.enabled ? 'checked' : ''} data-toggle>
           </div>`;
-    root.innerHTML = `<div class="s-stack v3-tab-shell">
-      <div class="s-callout ${off ? 'is-warn' : 'is-ok'}">${ico(off ? 'alert' : 'check')}<p>${off
-        ? `<b>${off} გადამრთველი გამორთულია.</b> ადამიანები ხედავენ ქვემოთ მითითებულ შეტყობინებას; ისტორია და სხვა ფუნქციები მუშაობს.`
-        : '<b>ყველა მოდული ჩართულია.</b> გამორთვა გამოიყენე, როცა მოდულში ხარვეზია, AI პროვაიდერი შეფერხდა, ხარჯი მკვეთრად გაიზარდა ან ფუნქციას ბოროტად იყენებენ.'}</p></div>
+    // Within a group a feature follows its parent when both are shown there.
+    const groupRows = (group) => {
+      const items = list.filter((f) => groupOf(f) === group);
+      const tops = items.filter((f) => !f.parent || !items.some((p) => p.key === f.parent));
+      return tops.flatMap((p) => [flagRow(p, false), ...items.filter((c) => c.parent === p.key).map((c) => flagRow(c, true))]).join('');
+    };
+    root.innerHTML = `<div class="s-stack v3-tab-shell s-flags">
+      ${off.length ? `<div class="s-callout is-warn">${ico('alert')}<p><b>გამორთულია: ${off.map((f) => esc(f.label)).join(', ')}.</b> ადამიანები ხედავენ შენს შეტყობინებას; ისტორია და სხვა ფუნქციები მუშაობს.</p></div>` : ''}
+      <p class="s-flags-note">${ico('info')}<span>ცვლილება მოქმედებს 15 წამში, ბილდისა და დეპლოის გარეშე. ყოველი ცვლილება იწერება აუდიტში.</span></p>
       ${FEATURE_GROUPS.map(([group, title, note]) => {
-        const items = list.filter((f) => (f.group || 'module') === group);
-        if (!items.length) return '';
+        const rows = groupRows(group);
+        if (!rows) return '';
         return `<section class="s-card">
-        <header class="s-card-head"><div><h3>${esc(title)}</h3><p>${esc(note)} ცვლილება მოქმედებს ≤15 წამში, ბილდისა და დეპლოის გარეშე; ყოველი ცვლილება იწერება აუდიტში.</p></div></header>
-        <div class="s-card-body is-flush">${items.map(flagRow).join('')}</div>
+        <header class="s-card-head"><div><h3>${esc(title)}</h3><p>${esc(note)}</p></div></header>
+        <div class="s-card-body is-flush">${rows}</div>
       </section>`;
       }).join('')}
     </div>`;
@@ -66,6 +84,9 @@
       const key = row.dataset.flag;
       const toggle = row.querySelector('[data-toggle]');
       const msg = row.querySelector('[data-msg]');
+      const msgSave = row.querySelector('[data-msg-save]');
+      const msgState = row.querySelector('[data-msg-state]');
+      let savedMsg = msg.value;
       const save = async (enabled) => {
         await api(`/features/${encodeURIComponent(key)}`, { method: 'PUT', body: { enabled, message: msg.value } });
         global.toast?.(enabled ? 'მოდული ჩაირთო' : 'მოდული შეჩერდა', enabled ? 'ok' : 'warn');
@@ -86,7 +107,35 @@
           onConfirm: () => save(false),
         });
       });
-      msg.addEventListener('change', () => { void api(`/features/${encodeURIComponent(key)}`, { method: 'PUT', body: { enabled: toggle.checked, message: msg.value } }).then(() => global.toast?.('შეტყობინება შენახულია', 'ok')).catch((e) => global.toast?.(e.message, 'bad')); });
+      const syncMsg = () => {
+        const dirty = msg.value !== savedMsg;
+        msgSave.disabled = !dirty;
+        msgSave.classList.toggle('primary', dirty);
+        msgState.textContent = dirty ? 'შეუნახავი ცვლილება' : '';
+        row.classList.toggle('is-dirty', dirty);
+      };
+      msg.addEventListener('input', syncMsg);
+      msg.addEventListener('keydown', (e) => {
+        if (e.key !== 'Enter' || msgSave.disabled) return;
+        e.preventDefault();
+        msgSave.click();
+      });
+      msgSave.onclick = async () => {
+        msgSave.disabled = true;
+        msgSave.classList.add('is-loading');
+        try {
+          const res = await api(`/features/${encodeURIComponent(key)}`, { method: 'PUT', body: { enabled: toggle.checked, message: msg.value } });
+          savedMsg = msg.value;
+          const f = res?.feature;
+          if (f?.updatedAt) row.querySelector('[data-updated]').textContent = `ბოლოს შეცვალა ${f.updatedBy || 'ადმინი'} · ${when(f.updatedAt)}`;
+          global.toast?.('შეტყობინება შენახულია', 'ok');
+        } catch (e) {
+          global.toast?.(e.message, 'bad');
+        } finally {
+          msgSave.classList.remove('is-loading');
+          syncMsg();
+        }
+      };
     });
   }
 
@@ -105,38 +154,45 @@
     const weekly = t.filter((q) => q.isActive && q.cadence === 'WEEKLY').reduce((s, q) => s + q.rewardCoins, 0);
     const assigned = t.reduce((s, q) => s + q.stats7d.assigned, 0);
     const completed = t.reduce((s, q) => s + q.stats7d.completed, 0);
-    root.innerHTML = `<div class="s-stack v3-tab-shell">
+    const pct = (part, whole) => (whole ? Math.round((part / whole) * 100) : 0);
+    root.innerHTML = `<div class="s-stack v3-tab-shell s-quests">
       <div class="s-metrics">
-        <div class="s-metric"><span>აქტიური მისია</span><strong>${t.filter((q) => q.isActive).length} / ${t.length}</strong></div>
-        <div class="s-metric"><span>მაქს. coin დღეში</span><strong>${fmt(daily)}</strong><small>ყველა დღიური მისიით</small></div>
-        <div class="s-metric"><span>იდეალური კვირა</span><strong>${fmt(daily * 7 + weekly)}</strong><small>coin</small></div>
-        <div class="s-metric"><span>დასრულება · 7 დღე</span><strong>${assigned ? Math.round((completed / assigned) * 100) : 0}%</strong><small>${fmt(completed)} / ${fmt(assigned)} მისია</small></div>
+        <div class="s-metric"><span>აქტიური მისია</span><strong>${t.filter((q) => q.isActive).length} / ${t.length}</strong><small>ჩართული შაბლონი</small></div>
+        <div class="s-metric"><span>მაქს. Medi Coins დღეში</span><strong>${fmt(daily)}</strong><small>ყველა დღიური მისიით</small></div>
+        <div class="s-metric"><span>იდეალური კვირა</span><strong>${fmt(daily * 7 + weekly)}</strong><small>Coins, ყველა მისიის შესრულებით</small></div>
+        <div class="s-metric"><span>შესრულება · 7 დღე</span><strong>${pct(completed, assigned)}%</strong><small>${fmt(completed)} / ${fmt(assigned)} მისია</small></div>
       </div>
       <section class="s-card">
         <header class="s-card-head"><div><h3>მისიების შაბლონები</h3>
-          <p>სამიზნე, ჯილდო და რიგი მოქმედებს ახლად მინიჭებულ მისიებზე (ხვალინდელი დღიური / მომდევნო კვირის). ლიმიტები: დღიური ≤250 coin და ≤250 XP, კვირის ≤1000. შეცვლილი შაბლონი დეპლოიმ აღარ გადაწეროს — ის ადმინის მართვაშია.</p></div></header>
-        <div class="s-card-body is-flush"><div class="s-table-wrap"><table class="s-table is-edit">
-          <thead><tr><th>მისია</th><th>ტიპი</th><th class="num">სამიზნე</th><th class="num">Coin</th><th class="num">XP</th><th class="num">რიგი</th><th>7 დღე</th><th>აქტიური</th><th></th></tr></thead>
+          <p>სამიზნე, ჯილდო და რიგი მოქმედებს ახლად მინიჭებულ მისიებზე. ლიმიტი: დღიური ≤250, კვირის ≤1000 Coins და XP.</p></div></header>
+        <div class="s-card-body is-flush s-quest-body"><div class="s-table-wrap"><table class="s-table is-edit s-quest-table">
+          <thead><tr><th>მისია</th><th>სიხშირე</th><th class="num">სამიზნე</th><th class="num">ჯილდო · Coins</th><th class="num">ჯილდო · XP</th><th class="num">რიგი</th><th class="num">შესრულება · 7 დღე</th><th>აქტიური</th><th></th></tr></thead>
           <tbody>${t.map((q) => `<tr data-quest="${esc(q.key)}">
-            <td><b>${esc(q.label)}</b><div class="s-muted" style="font-size:12px">${esc(q.key)}${q.adminManaged ? ' · <span class="s-badge is-accent is-plain">ადმინის მართვაში</span>' : ''}</div></td>
-            <td>${esc(CADENCE[q.cadence] || q.cadence)}</td>
-            <td class="num"><input type="number" min="1" data-f="defaultTarget" value="${q.defaultTarget}" style="width:96px"><div class="s-muted" style="font-size:11.5px">${esc(UNIT[q.progressType] || '')}</div></td>
-            <td class="num"><input type="number" min="0" data-f="rewardCoins" value="${q.rewardCoins}" style="width:80px"></td>
-            <td class="num"><input type="number" min="0" data-f="rewardXp" value="${q.rewardXp}" style="width:80px"></td>
-            <td class="num"><input type="number" min="0" data-f="priority" value="${q.priority}" style="width:70px"></td>
-            <td><span class="s-muted" style="font-size:12.5px">${fmt(q.stats7d.completed)} / ${fmt(q.stats7d.assigned)}</span></td>
+            <td><b title="${esc(q.key)}">${esc(q.label)}</b><small class="s-quest-meta">${q.adminManaged ? '<span class="s-badge is-accent is-plain">ადმინის მართვაში</span>' : ''}${q.updatedAt ? `<span>შეიცვალა ${esc(when(q.updatedAt))}</span>` : ''}</small></td>
+            <td>${esc(CADENCE[q.cadence] || 'სხვა')}</td>
+            <td class="num"><input type="number" min="1" data-f="defaultTarget" value="${q.defaultTarget}" aria-label="სამიზნე"><small class="s-quest-meta">${esc(UNIT[q.progressType] || '')}</small></td>
+            <td class="num"><input type="number" min="0" data-f="rewardCoins" value="${q.rewardCoins}" aria-label="ჯილდო Coins"></td>
+            <td class="num"><input type="number" min="0" data-f="rewardXp" value="${q.rewardXp}" aria-label="ჯილდო XP"></td>
+            <td class="num"><input type="number" min="0" data-f="priority" value="${q.priority}" aria-label="რიგი"></td>
+            <td class="num"><b>${pct(q.stats7d.completed, q.stats7d.assigned)}%</b><small class="s-quest-meta">${fmt(q.stats7d.completed)} / ${fmt(q.stats7d.assigned)}</small></td>
             <td><input class="s-switch" type="checkbox" role="switch" data-f="isActive" ${q.isActive ? 'checked' : ''} aria-label="აქტიური"></td>
-            <td class="num"><button type="button" class="btn compact primary" data-save disabled>შენახვა</button></td>
+            <td class="num"><button type="button" class="btn compact" data-save disabled>შენახვა</button></td>
           </tr>`).join('')}</tbody></table></div></div>
+        <footer class="s-card-foot"><span class="s-foot-note">Medi Coins-ს ფულადი ღირებულება არ აქვს. ჯილდოს შემცირება უკვე მიღებულ Coins-ს არ ცვლის; გამორთვა ახალ მინიჭებას აჩერებს.</span></footer>
       </section>
-      <div class="s-callout">${ico('info')}<p>Medi Coins-ს ფულადი ღირებულება არ აქვს. ჯილდოს შემცირება არ ცვლის უკვე მიღებულ coin-ებს. მისიის გამორთვა ახალ მინიჭებას აჩერებს; მიმდინარე მისია ბოლომდე გრძელდება.</p></div>
     </div>`;
     root.querySelectorAll('[data-quest]').forEach((row) => {
       const btn = row.querySelector('[data-save]');
       const read = () => Object.fromEntries([...row.querySelectorAll('[data-f]')].map((el) => [el.dataset.f, el.type === 'checkbox' ? el.checked : Number(el.value)]));
       const initial = JSON.stringify(read());
-      row.querySelectorAll('[data-f]').forEach((el) => el.addEventListener('input', () => { btn.disabled = JSON.stringify(read()) === initial; }));
-      row.querySelectorAll('[data-f]').forEach((el) => el.addEventListener('change', () => { btn.disabled = JSON.stringify(read()) === initial; }));
+      const sync = () => {
+        const dirty = JSON.stringify(read()) !== initial;
+        btn.disabled = !dirty;
+        btn.classList.toggle('primary', dirty);
+        row.classList.toggle('is-dirty', dirty);
+      };
+      row.querySelectorAll('[data-f]').forEach((el) => el.addEventListener('input', sync));
+      row.querySelectorAll('[data-f]').forEach((el) => el.addEventListener('change', sync));
       btn.onclick = async () => {
         btn.disabled = true;
         btn.classList.add('is-loading');
@@ -154,8 +210,19 @@
 
   /* ═════════ User profile: coins, quests, consent, export ═════════ */
   const DECISION = { accepted: ['მიცემული', 'is-ok'], declined: ['უარი', 'is-warn'], revoked: ['გაუქმებული', 'is-bad'] };
+  const QUEST_STATUS = { ACTIVE: ['მიმდინარე', 'is-info'], COMPLETED: ['შესრულდა', 'is-ok'], CLAIMED: ['ჯილდო აღებულია', 'is-ok'], EXPIRED: ['ვადა გავიდა', 'is-plain'], CANCELLED: ['გაუქმდა', 'is-plain'] };
+  const SOURCE = { QUEST: 'მისია', ACHIEVEMENT: 'მიღწევა', SYSTEM: 'ადმინი / სისტემა', REFERRAL: 'მოწვევა', REWARD_REDEMPTION: 'ჯილდოზე გაცვლა', MEDIRUN: 'MEDIRUN' };
   const shortVer = (v) => { const t = String(v || ''); return t.length > 16 ? `${t.slice(0, 10)}…` : t; };
-  const SOURCE = { QUEST: 'მისია', ACHIEVEMENT: 'მიღწევა', SYSTEM: 'ადმინი / სისტემა', REFERRAL: 'მოწვევა', REWARD_REDEMPTION: 'ჯილდოზე გაცვლა' };
+  /** Quest periods are a Tbilisi day (2026-10-02) or an ISO week (2026-W40). */
+  function periodLabel(key) {
+    const text = String(key || '');
+    const week = /^(\d{4})-W(\d{1,2})$/.exec(text);
+    if (week) {
+      const n = Number(week[2]);
+      return `${n === 1 ? '1-ლი' : `მე-${n}`} კვირა, ${week[1]}`;
+    }
+    return /^\d{4}-\d{2}-\d{2}$/.test(text) && global.AdminCharts?.dayLabel ? global.AdminCharts.dayLabel(text, true) : text;
+  }
 
   async function mountUserInsights(userId) {
     const host = $('user-insights-host');
@@ -169,12 +236,12 @@
     if ($('user-insights-host') !== host) return;
     const e = d.economy;
     const consent = d.consent.current;
-    const [cLabel, cTone] = consent ? (DECISION[consent.decision] || [consent.decision, '']) : ['არ აურჩევია', ''];
+    const [cLabel, cTone] = consent ? (DECISION[consent.decision] || ['უცნობი', '']) : ['არ აურჩევია', ''];
     host.innerHTML = `
       <div class="v3-user-card s-insights">
         <h3>${ico('gift')} Medi Coins და Quest</h3>
         <div class="s-insight-stats">
-          <div><span>ბალანსი</span><strong>${fmt(e.coins)}</strong></div>
+          <div><span>ბალანსი</span><strong>${fmt(e.coins)}</strong><small>Coins</small></div>
           <div><span>დონე · XP</span><strong>${fmt(e.level)}</strong><small>${fmt(e.xp)} XP</small></div>
           <div><span>სერია</span><strong>${fmt(e.streak)}</strong><small>მაქს. ${fmt(e.longestStreak)}</small></div>
         </div>
@@ -183,20 +250,25 @@
           <button type="button" class="btn compact danger" data-coins="revoke">ჩამოჭრა</button>
         </div>
         <details class="s-details"><summary>ოპერაციები (${e.ledger.length})</summary><div>
-          ${e.ledger.length ? `<ul class="s-ledger">${e.ledger.map((r) => `<li><span class="s-ledger-amt ${r.amount < 0 ? 'is-neg' : ''}">${r.amount > 0 ? '+' : ''}${fmt(r.amount)} ${r.currency === 'XP' ? 'XP' : 'coin'}</span>
-            <span>${esc(SOURCE[r.source] || r.source)}${r.reason ? ` — ${esc(r.reason)}` : ''}<small>${esc(when(r.createdAt))}${r.adminEmail ? ` · ${esc(r.adminEmail)}` : ''}</small></span></li>`).join('')}</ul>` : '<p class="s-muted">ოპერაცია ჯერ არ არის.</p>'}
+          ${e.ledger.length ? `<ul class="s-ledger">${e.ledger.map((r) => `<li><span class="s-ledger-amt ${r.amount < 0 ? 'is-neg' : ''}">${r.amount > 0 ? '+' : ''}${fmt(r.amount)} ${r.currency === 'XP' ? 'XP' : 'Coins'}</span>
+            <span>${esc(SOURCE[r.source] || 'სხვა')}${r.reason ? ` — ${esc(r.reason)}` : ''}<small>${esc(when(r.createdAt))}${r.adminEmail ? ` · ${esc(r.adminEmail)}` : ''}</small></span></li>`).join('')}</ul>` : '<p class="s-muted">ოპერაცია ჯერ არ არის.</p>'}
         </div></details>
         <details class="s-details"><summary>მისიები (${d.quests.length})</summary><div>
-          ${d.quests.length ? `<ul class="s-ledger">${d.quests.map((q) => `<li><span class="s-badge ${q.status === 'CLAIMED' || q.status === 'COMPLETED' ? 'is-ok' : q.status === 'ACTIVE' ? 'is-info' : ''}">${esc(q.status)}</span>
-            <span>${esc(q.label)} · ${fmt(q.progress)}/${fmt(q.target)}<small>${esc(q.periodKey)}</small></span></li>`).join('')}</ul>` : '<p class="s-muted">მისია არ მინიჭებია.</p>'}
+          ${d.quests.length ? `<ul class="s-ledger">${d.quests.map((q) => {
+            const [label, tone] = QUEST_STATUS[q.status] || ['სხვა', 'is-plain'];
+            return `<li><span class="s-badge ${tone}">${esc(label)}</span>
+            <span>${esc(q.label)} · ${fmt(q.progress)}/${fmt(q.target)}<small>${esc(periodLabel(q.periodKey))}</small></span></li>`;
+          }).join('')}</ul>` : '<p class="s-muted">მისია არ მინიჭებია.</p>'}
         </div></details>
       </div>
       <div class="v3-user-card s-insights">
         <h3>${ico('shield')} AI თანხმობა</h3>
         <p class="s-insight-consent"><span class="s-badge ${cTone}">${esc(cLabel)}</span>${consent ? `<span class="s-muted" title="${esc(consent.version)}">ვერსია ${esc(shortVer(consent.version))} · ${esc(when(consent.updatedAt))}</span>` : ''}</p>
-        ${d.consent.events.length ? `<details class="s-details"><summary>ისტორია (${d.consent.events.length})</summary><div><ul class="s-ledger">${d.consent.events.map((ev) => `<li><span class="s-badge ${(DECISION[ev.decision] || [])[1] || ''}">${esc((DECISION[ev.decision] || [ev.decision])[0])}</span><span title="${esc(ev.version)}">ვერსია ${esc(shortVer(ev.version))}<small>${esc(when(ev.createdAt))}</small></span></li>`).join('')}</ul></div></details>` : ''}
-        <h3 style="margin-top:18px">${ico('download')} მონაცემების ექსპორტი</h3>
-        <p class="s-muted" style="margin:4px 0 10px;font-size:12.5px">ადამიანის მოთხოვნით (წვდომის უფლება) — JSON ფაილი პროფილით, ჯანმრთელობის ჩანაწერებით, თანხმობებითა და ოპერაციებით. ქმედება იწერება აუდიტში.</p>
+        ${d.consent.events.length ? `<details class="s-details"><summary>ისტორია (${d.consent.events.length})</summary><div><ul class="s-ledger">${d.consent.events.map((ev) => `<li><span class="s-badge ${(DECISION[ev.decision] || [])[1] || ''}">${esc((DECISION[ev.decision] || ['უცნობი'])[0])}</span><span title="${esc(ev.version)}">ვერსია ${esc(shortVer(ev.version))}<small>${esc(when(ev.createdAt))}</small></span></li>`).join('')}</ul></div></details>` : ''}
+      </div>
+      <div class="v3-user-card s-insights">
+        <h3>${ico('download')} მონაცემების ექსპორტი</h3>
+        <p class="s-insight-note">ადამიანის მოთხოვნით (წვდომის უფლება) — JSON ფაილი პროფილით, ჯანმრთელობის ჩანაწერებით, თანხმობებითა და ოპერაციებით. ქმედება იწერება აუდიტში.</p>
         <button type="button" class="btn compact" data-export>${ico('download')} JSON ექსპორტი</button>
       </div>`;
     host.querySelectorAll('[data-coins]').forEach((b) => b.addEventListener('click', () => coinsDialog(userId, b.dataset.coins, e.coins)));
@@ -211,17 +283,18 @@
     const grant = mode === 'grant';
     const dialog = V().openDialog?.({
       title: grant ? 'Medi Coins-ის დარიცხვა' : 'Medi Coins-ის ჩამოჭრა',
-      description: `მიმდინარე ბალანსი: ${fmt(balance)} coin. ოპერაცია ჩაიწერება ადამიანის ისტორიასა და აუდიტში.`,
-      body: `<form id="coins-form" class="s-stack" style="gap:14px" novalidate>
+      description: `მიმდინარე ბალანსი: ${fmt(balance)} Coins. ოპერაცია ჩაიწერება ადამიანის ისტორიასა და აუდიტში.`,
+      body: `<form id="coins-form" class="s-stack s-coins-form" novalidate>
         <label class="s-field"><span>რაოდენობა</span><input type="number" min="1" max="${grant ? 5000 : Math.max(1, balance)}" step="1" name="amount" required placeholder="მაგ. 100"></label>
         <label class="s-field"><span>მიზეზი</span><input type="text" name="reason" minlength="3" maxlength="200" required placeholder="${grant ? 'მაგ. ტექნიკური ხარვეზის კომპენსაცია' : 'მაგ. მოწვევის თაღლითობა'}"></label>
       </form>`,
-      footer: `<p class="s-form-msg" role="alert" style="margin-right:auto"></p><button type="button" class="btn" data-cancel>გაუქმება</button>
+      footer: `<p class="s-form-msg" role="alert"></p><button type="button" class="btn" data-cancel>გაუქმება</button>
         <button type="submit" class="btn ${grant ? 'primary' : 'danger'}" form="coins-form">${grant ? 'დარიცხვა' : 'ჩამოჭრა'}</button>`,
     });
     const form = $('coins-form');
     const panel = form?.closest('.v3-dialog-panel');
     if (!form || !panel) return;
+    panel.classList.add('s-coins-dialog');
     if (!grant) panel.classList.add('is-danger');
     form.querySelector('[name=amount]').focus();
     panel.querySelector('[data-cancel]').onclick = () => void dialog.close();
@@ -239,7 +312,7 @@
         const r = await api(`/users/${encodeURIComponent(userId)}/coins`, { method: 'POST', body: { amount: grant ? amount : -amount, reason } });
         V().setDirty?.(false);
         await dialog.close();
-        global.toast?.(`ახალი ბალანსი: ${fmt(r.balance)} coin`, 'ok');
+        global.toast?.(`ახალი ბალანსი: ${fmt(r.balance)} Coins`, 'ok');
         void mountUserInsights(userId);
       } catch (e) {
         alertEl.textContent = e.message || 'ვერ შესრულდა';

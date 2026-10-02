@@ -112,6 +112,18 @@
       if (diff === 1) return 'გუშინ';
       return `${p.day} ${MONTHS_KA_SHORT[p.month]}`;
     }
+    // One date+time style for every log and table: "დღეს, 14:05" · "გუშინ, 09:12" · "28 სექ, 18:30" · "28 სექ 2025, 18:30".
+    if (mode === 'datetime') {
+      if (diff === 0) return `დღეს, ${p.hour}:${p.minute}`;
+      if (diff === 1) return `გუშინ, ${p.hour}:${p.minute}`;
+      return `${p.day} ${MONTHS_KA_SHORT[p.month]}${p.year === now.year ? '' : ` ${p.year}`}, ${p.hour}:${p.minute}`;
+    }
+    // Date only, same rules: "დღეს" · "გუშინ" · "28 სექ" · "28 სექ 2025".
+    if (mode === 'date') {
+      if (diff === 0) return 'დღეს';
+      if (diff === 1) return 'გუშინ';
+      return `${p.day} ${MONTHS_KA_SHORT[p.month]}${p.year === now.year ? '' : ` ${p.year}`}`;
+    }
     if (mode === 'short') return `${p.day} ${MONTHS_KA[p.month]}, ${p.year}`;
     if (mode === 'tz') return `${p.day} ${MONTHS_KA[p.month]}, ${p.year}, ${p.hour}:${p.minute} · თბილისი`;
     return `${p.day} ${MONTHS_KA[p.month]}, ${p.year}, ${p.hour}:${p.minute}`;
@@ -285,7 +297,7 @@
           <input type="date" id="ops-to" value="${esc(to)}" />
           <button type="button" class="btn compact" id="ops-custom-apply">გამოყენება</button>
         </label>
-        <span class="v3-filter-meta">თბილისი</span>
+        <span class="v3-filter-meta" title="ყველა დღე და საათი ითვლება თბილისის დროით">თბილისის დრო</span>
         ${applied ? `<button type="button" class="v3-filter-clear" id="ops-range-clear">გასუფთავება</button>` : ''}
       </div>`;
   }
@@ -800,14 +812,14 @@
       { group: 'Commerce', tab: 'rewards', label: 'ჯილდოები' },
       { group: 'Commerce', tab: 'rewards', label: 'კამპანიები', hash: '#/rewards?tab=campaigns' },
       { group: 'Commerce', tab: 'rewards', label: 'პარტნიორები', hash: '#/rewards?tab=partners' },
-      { group: 'Operations', tab: 'orders', label: 'შეკვეთები' },
+      { group: 'Operations', tab: 'orders', label: 'ოპერაციული რიგი' },
       { group: 'Operations', tab: 'sms', label: 'SMS' },
       { group: 'Operations', tab: 'pharmacy', label: 'ფარმაცია' },
       { group: 'Production', tab: 'quality', label: 'ხარისხი' },
       { group: 'Production', tab: 'testing', label: 'ტესტირება' },
       { group: 'Production', tab: 'audit', label: 'აუდიტი' },
       { group: 'Production', tab: 'settings', label: 'რეჟიმი' },
-      { group: 'Help', tab: 'overview', label: 'როგორ მუშაობს Admin', helpKey: 'global.howAdminWorks' },
+      { group: 'Help', tab: 'overview', label: 'როგორ მუშაობს ადმინი', helpKey: 'global.howAdminWorks' },
     ];
   }
 

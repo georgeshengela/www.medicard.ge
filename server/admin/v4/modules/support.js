@@ -1,11 +1,11 @@
 /**
  * MediCard Admin V4 — #/support მხარდაჭერა (/api/admin/support).
  * A three-pane inbox for mail to support@medicard.ge (and any @medicard.ge):
- *   left    conversation list — search, status chips, "mine" / "unread", avatar + preview per row
+ *   left    conversation list — search, status filters, "mine" / "unread", avatar + preview per row
  *   middle  conversation — subject bar with status/assignee, chat-style timeline (mail left, our
  *           replies right, internal notes as tinted cards), day separators, sticky composer
  *   right   person — linked account (basic facts only, never health data), details, earlier threads
- * Inbound HTML is sanitized on the server and shown only inside <iframe sandbox> with a
+ * Inbound HTML is sanitized on the server and shown only inside <iframe sandbox> (no scripts) with a
  * `default-src 'none'` CSP — never inserted into this page. Sidebar badge: unread threads, polled
  * every 60 s. Keys: j / k next / previous, r reply, n note, e close / reopen, Ctrl+Enter send.
  */
@@ -41,15 +41,21 @@
   const FILTERS = [['active', 'აქტიური'], ['new', 'ახალი'], ['open', 'ღია'], ['waiting', 'ელოდება'], ['closed', 'დახურული'], ['all', 'ყველა']];
   const BODY_NOTE = {
     pending: 'ტექსტი იტვირთება Resend-იდან…',
-    restricted: 'ტექსტი ვერ წავიკითხეთ: Resend-ის გასაღებს მხოლოდ გაგზავნის უფლება აქვს. დაამატე RESEND_INBOUND_API_KEY (Full access) Render-ში.',
-    failed: 'ტექსტი ვერ ჩამოიტვირთა რამდენიმე ცდის შემდეგ.',
+    restricted: 'ტექსტი ვერ წავიკითხეთ: Resend-ის ახლანდელ გასაღებს მხოლოდ გაგზავნა შეუძლია. დაამატე Render-ში ცვლადი RESEND_INBOUND_API_KEY (Full access გასაღები).',
+    failed: 'ტექსტი რამდენიმე ცდის შემდეგაც ვერ ჩამოიტვირთა.',
   };
-  const INKS = ['#0F766E', '#1D4ED8', '#7C3AED', '#BE185D', '#B45309', '#15803D', '#0369A1'];
+  const SEND_STATUS = { failed: 'ვერ გაიგზავნა', bounced: 'დაბრუნდა', complained: 'სპამად მონიშნა', suppressed: 'დაბლოკილი მისამართი', delayed: 'იგვიანებს' };
+  const SEND_OK = ['sent', 'delivered', 'queued', 'opened', 'clicked'];
+  /** Outbound mail without an admin author is the Director's (autopilot reply or a draft the owner approved). */
+  const DIRECTOR = 'დირექტორი';
+  /** Formatting a text part cannot carry: such mail opens in its original look. */
+  const RICH_HTML = /<(img|table|h[1-6]|ul|ol|hr|font)\b|background(-color)?\s*:|font-size\s*:/i;
+  const HUES = 4;
   const badge = (key) => { const [label, tone] = STATUS[key] || [key, 'is-plain']; return `<span class="s-badge ${tone}">${esc(label)}</span>`; };
   const nameOf = (t) => t.counterpartName || t.counterpartEmail || '—';
   const ACCOUNT_STATUS = { ACTIVE: 'აქტიური', BLOCKED: 'დაბლოკილი', DELETED: 'წაშლილი', PENDING: 'მოლოდინში' };
 
-  const st = { sub: 'inbox', filter: { status: 'active', mine: false, unread: false, q: '', offset: 0 }, threadId: null, config: null, composeMode: 'reply', snippets: null, list: [], thread: null, sideOpen: false };
+  const st = { sub: 'inbox', filter: { status: 'active', mine: false, unread: false, q: '', offset: 0 }, threadId: null, config: null, composeMode: 'reply', snippets: null, list: [], thread: null, sideOpen: false, lastOut: {}, pinBottom: true, frameObserver: null };
 
   /* ═════════ Helpers ═════════ */
   function hash(s) { let h = 0; for (const ch of String(s || '')) h = (h * 31 + ch.charCodeAt(0)) | 0; return Math.abs(h); }
@@ -60,27 +66,16 @@
     return letters.toUpperCase();
   }
   function avatar(seed, label, size = '') {
-    return `<span class="sx-av ${size}" style="--av:${INKS[hash(seed) % INKS.length]}" aria-hidden="true">${esc(initials(label || seed))}</span>`;
+    return `<span class="sx-av is-hue-${(hash(seed) % HUES) + 1}${size ? ` ${size}` : ''}" aria-hidden="true">${esc(initials(label || seed))}</span>`;
   }
-  const dayKey = (d) => `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
-  function dayLabel(iso) {
-    const d = new Date(iso);
-    const now = new Date();
-    const y = new Date(now); y.setDate(now.getDate() - 1);
-    if (dayKey(d) === dayKey(now)) return 'დღეს';
-    if (dayKey(d) === dayKey(y)) return 'გუშინ';
-    return d.toLocaleDateString('ka-GE', { day: 'numeric', month: 'long', year: d.getFullYear() === now.getFullYear() ? undefined : 'numeric' });
-  }
-  const clock = (iso) => new Date(iso).toLocaleTimeString('ka-GE', { hour: '2-digit', minute: '2-digit', hour12: false });
-  function shortWhen(iso) {
-    if (!iso) return '';
-    const d = new Date(iso);
-    const now = new Date();
-    if (dayKey(d) === dayKey(now)) return clock(iso);
-    const label = dayLabel(iso);
-    return label === 'გუშინ' ? 'გუშინ' : d.toLocaleDateString('ka-GE', { day: 'numeric', month: 'short' });
-  }
-  const fullWhen = (iso) => (iso ? `${dayLabel(iso)}, ${clock(iso)}` : '—');
+  /* Dates: Tbilisi time, the admin's one format (AdminV3.formatDate). */
+  const tbParts = (iso) => (iso && typeof global.adminDateParts === 'function' ? global.adminDateParts(iso) : null);
+  const formatDate = (iso, mode) => (iso && typeof V().formatDate === 'function' ? V().formatDate(iso, mode) : '');
+  const dayKey = (iso) => { const p = tbParts(iso); return p ? `${p.year}-${p.month}-${p.day}` : String(iso || '').slice(0, 10); };
+  const clock = (iso) => { const p = tbParts(iso); return p ? `${p.hour}:${p.minute}` : ''; };
+  const dayLabel = (iso) => formatDate(iso, 'date') || '—';
+  const shortWhen = (iso) => formatDate(iso, 'compact');
+  const fullWhen = (iso) => formatDate(iso, 'datetime') || '—';
   /** New part vs quoted history of a text mail. Mirrors server/src/lib/support/quote.js. */
   const WROTE = /(wrote|писал\(?а?\)?|დაწერა|schrieb|a écrit|escribió)\s*:\s*$/i;
   const HEADER_START = /^(on|am|le|el|\d{1,2}[./]|[\p{L}]{2,4},)\s/iu;
@@ -99,6 +94,12 @@
     if (cut <= 0) return { main: String(text ?? '').trim(), quoted: '' };
     return { main: lines.slice(0, cut).join('\n').trim(), quoted: lines.slice(cut).join('\n').trim() };
   }
+  /** „შენ“ for the signed-in admin, the Director for author-less replies, otherwise the admin's name. */
+  function authorLabel(m, d) {
+    if (!m.author) return DIRECTOR;
+    const me = (d?.admins || []).find((a) => a.id === d?.me);
+    return me && me.name === m.author ? 'შენ' : m.author;
+  }
   function params() { return typeof global.hashSearch === 'function' ? global.hashSearch() : new URLSearchParams(location.hash.split('?')[1] || ''); }
   function writeHash() {
     const p = params();
@@ -109,6 +110,7 @@
   }
   const typing = () => { const a = doc.activeElement; return a && (a.matches?.('input, textarea, select, [contenteditable="true"]')); };
   const isVisible = () => { const r = $('tab-support'); return r && !r.classList.contains('hidden') && r.offsetParent !== null; };
+  const errorCard = (err, title = 'ვერ ჩაიტვირთა') => `<div class="s-empty">${ico('alert')}<strong>${esc(title)}</strong><span>${esc(err?.message || 'სცადე ხელახლა.')}</span><button type="button" class="btn compact" data-retry>${ico('refresh')} ხელახლა ცდა</button></div>`;
 
   /* ═════════ Sidebar badge ═════════ */
   let badgeTimer = null;
@@ -150,10 +152,10 @@
     st.sub = SUBS.some(([k]) => k === p.get('tab')) ? p.get('tab') : st.sub || 'inbox';
     st.threadId = p.get('thread') || st.threadId;
     root.innerHTML = `<div class="sx v3-tab-shell">
-      <div class="sx-top">
-        <div class="s-segment" role="tablist" aria-label="მხარდაჭერის განყოფილებები">${SUBS.map(([k, l]) => `<button type="button" role="tab" data-support-sub="${k}" aria-selected="${k === st.sub}">${l}</button>`).join('')}</div>
+      <div class="p4-tabs sx-top">
+        <nav class="v3-subnav" role="tablist" aria-label="მხარდაჭერის განყოფილებები">${SUBS.map(([k, l]) => `<button type="button" role="tab" class="v3-subnav-btn${k === st.sub ? ' is-active' : ''}" data-support-sub="${k}" aria-selected="${k === st.sub}">${l}</button>`).join('')}</nav>
         <div class="sx-health" id="support-health" aria-live="polite"></div>
-        <button type="button" class="btn ghost compact" data-support-refresh title="განახლება">${ico('refresh')}<span>განახლება</span></button>
+        <button type="button" class="btn ghost compact" data-support-refresh>${ico('refresh')}<span>განახლება</span></button>
       </div>
       <div id="support-callouts"></div>
       <div id="support-pane"></div>
@@ -161,7 +163,7 @@
     root.querySelectorAll('[data-support-sub]').forEach((btn) => btn.addEventListener('click', () => {
       st.sub = btn.dataset.supportSub;
       writeHash();
-      root.querySelectorAll('[data-support-sub]').forEach((b) => b.setAttribute('aria-selected', String(b === btn)));
+      root.querySelectorAll('[data-support-sub]').forEach((b) => { const on = b === btn; b.setAttribute('aria-selected', String(on)); b.classList.toggle('is-active', on); });
       void paintSub();
     }));
     root.querySelector('[data-support-refresh]').onclick = () => { void paintCallouts(); void paintSub(); void refreshBadge(); };
@@ -171,41 +173,41 @@
 
   async function paintCallouts() {
     const box = $('support-callouts');
-    const chips = $('support-health');
+    const meta = $('support-health');
     if (!box) return;
     try {
       const c = await api('/config');
       st.config = c;
       const h = c.health || {};
       const out = [];
-      if (h.installed === false) out.push(`<div class="s-callout is-warn">${ico('alert')}<p><b>მხარდაჭერის ცხრილები ჯერ არ არის დაყენებული.</b> შეიქმნება შემდეგი დეპლოისას (db:install).</p></div>`);
-      if (!c.webhookConfigured) out.push(`<div class="s-callout is-warn">${ico('alert')}<p><b>Webhook არ არის მორგებული</b> (RESEND_WEBHOOK_SECRET) — შემოსული წერილები აქ ვერ მოვა.</p></div>`);
-      if (!c.inboundKeyConfigured && (h.restricted30 > 0 || h.inboundKeyNeeded)) out.push(`<div class="s-callout is-warn">${ico('alert')}<p><b>ჩანს მხოლოდ გამგზავნი და სათაური.</b> ტექსტის წასაკითხად Render-ში დაამატე RESEND_INBOUND_API_KEY (Resend-ის Full access გასაღები).</p></div>`);
-      if (c.emailEnabled === false) out.push(`<div class="s-callout is-warn">${ico('alert')}<p><b>ელფოსტა გამორთულია</b> — პასუხები არ გაიგზავნება. ჩართე #/email → მიმოხილვა.</p></div>`);
-      box.innerHTML = out.length ? `<div class="s-stack sx-callouts">${out.join('')}</div>` : '';
-      if (chips && h.installed !== false) {
-        const dot = (ok) => `<i class="sx-dot ${ok ? 'is-ok' : 'is-warn'}"></i>`;
-        chips.innerHTML = `
-          <span class="sx-chip" title="ბოლო შემოსული წერილი">${dot(h.eventsArriving)}${h.lastReceivedAt ? `ბოლო: ${esc(fullWhen(h.lastReceivedAt))}` : 'ჯერ არაფერი მოსულა'}</span>
-          <span class="sx-chip" title="შემოსული წერილები">7 დღე · <b>${fmt(h.count7)}</b></span>
-          <span class="sx-chip" title="30 დღე">30 დღე · <b>${fmt(h.count30)}</b></span>
-          <span class="sx-chip" title="ტექსტის წაკითხვა">${dot(h.inboundKeyConfigured || !h.inboundKeyNeeded)}${h.inboundKeyConfigured ? 'სრული ტექსტი' : h.inboundKeyNeeded ? 'მხოლოდ მეტამონაცემი' : 'ტექსტი იკითხება'}</span>`;
-      }
+      if (h.installed === false) out.push('<b>მხარდაჭერის ფოსტა სერვერზე ჯერ არ არის ჩართული.</b> ჩაირთვება შემდეგი დეპლოისას.');
+      if (!c.webhookConfigured) out.push('<b>შემოსული წერილები აქ ვერ მოვა:</b> Resend ჩვენამდე ვერ აღწევს. დაამატე Render-ში ცვლადი RESEND_WEBHOOK_SECRET.');
+      if (!c.inboundKeyConfigured && (h.restricted30 > 0 || h.inboundKeyNeeded)) out.push('<b>ჩანს მხოლოდ გამგზავნი და სათაური.</b> ტექსტის წასაკითხად დაამატე Render-ში ცვლადი RESEND_INBOUND_API_KEY (Resend-ის Full access გასაღები).');
+      if (c.emailEnabled === false) out.push('<b>ელფოსტა გამორთულია — პასუხები არ გაიგზავნება.</b> <a href="#/email?tab=overview">ჩართე ელფოსტის გვერდზე</a>.');
+      box.innerHTML = out.length ? `<div class="s-stack sx-callouts">${out.map((p) => `<div class="s-callout is-warn">${ico('alert')}<p>${p}</p></div>`).join('')}</div>` : '';
+      if (meta && h.installed !== false) {
+        const readable = h.inboundKeyConfigured || !h.inboundKeyNeeded;
+        meta.innerHTML = `<span class="sx-meta-item" title="ბოლო შემოსული წერილი"><i class="sx-dot ${h.eventsArriving ? 'is-ok' : 'is-warn'}"></i>${h.lastReceivedAt ? `ბოლო წერილი ${esc(fullWhen(h.lastReceivedAt))}` : 'ჯერ არაფერი მოსულა'}</span>
+          <span class="sx-meta-item">7 დღეში <b>${fmt(h.count7)}</b> · 30 დღეში <b>${fmt(h.count30)}</b></span>
+          ${readable ? '' : '<span class="sx-meta-item is-warn"><i class="sx-dot is-warn"></i>ჩანს მხოლოდ სათაური</span>'}`;
+      } else if (meta) meta.innerHTML = '';
     } catch (err) {
-      box.innerHTML = err?.status === 403 ? `<div class="s-callout is-warn">${ico('shield')}<p>შენს ანგარიშს არ აქვს SUPPORT_VIEW უფლება.</p></div>` : '';
-      if (chips) chips.innerHTML = '';
+      box.innerHTML = err?.status === 403 ? `<div class="s-callout is-warn">${ico('shield')}<p>შენს ანგარიშს მხარდაჭერის წერილების ნახვის უფლება არ აქვს.</p></div>` : '';
+      if (meta) meta.innerHTML = '';
     }
   }
+
+  const inboxSkeleton = () => '<div class="sx-shell is-loading" aria-busy="true" aria-label="იტვირთება"><div class="sx-rows-skel"><i></i><i></i><i></i><i></i><i></i></div><div class="sx-conv-skel"><i></i><i></i><i></i></div></div>';
 
   async function paintSub() {
     const pane = $('support-pane');
     if (!pane) return;
-    pane.innerHTML = '<div class="sx-shell is-loading"><div class="v3-skel" aria-hidden="true"><i></i><i></i><i></i><i></i></div></div>';
+    pane.innerHTML = st.sub === 'snippets' ? '<div class="p4-skel" aria-busy="true" aria-label="იტვირთება"><i class="is-block"></i></div>' : inboxSkeleton();
     try {
       if (st.sub === 'snippets') await paintSnippets(pane);
       else await paintInbox(pane);
     } catch (err) {
-      pane.innerHTML = `<div class="s-card"><div class="s-empty">${ico('alert')}<strong>ვერ ჩაიტვირთა</strong><span>${esc(err?.message || '')}</span><button type="button" class="btn" data-retry>ხელახლა ცდა</button></div></div>`;
+      pane.innerHTML = `<section class="s-card">${errorCard(err)}</section>`;
       pane.querySelector('[data-retry]').onclick = () => void paintSub();
     }
   }
@@ -243,6 +245,10 @@
     await Promise.all([paintList(), paintThread()]);
   }
 
+  function rowWho(t) {
+    return st.lastOut[t.id] || 'ჩვენ';
+  }
+
   async function paintList() {
     const box = $('support-list');
     const filters = $('support-filters');
@@ -254,7 +260,15 @@
     if (f.unread) q.set('unread', '1');
     if (f.q) q.set('q', f.q);
     if (!box.childElementCount) box.innerHTML = '<li class="sx-rows-skel"><i></i><i></i><i></i></li>';
-    const d = await api(`/threads?${q}`);
+    let d;
+    try {
+      d = await api(`/threads?${q}`);
+    } catch (err) {
+      box.innerHTML = `<li class="sx-rows-error">${errorCard(err, 'სია ვერ ჩაიტვირთა')}</li>`;
+      box.querySelector('[data-retry]').onclick = () => { box.innerHTML = ''; void paintList(); };
+      if (pager) pager.innerHTML = '';
+      return;
+    }
     const c = d.counts || {};
     const countOf = (k) => (k === 'active' ? (c.new || 0) + (c.open || 0) + (c.waiting || 0) : k === 'all' ? Object.values(c).reduce((s, n) => s + n, 0) : c[k] || 0);
     const off = f.offset || 0;
@@ -263,26 +277,28 @@
     st.admins = d.admins || [];
     st.me = d.me;
     if (filters) {
-      filters.innerHTML = FILTERS.map(([k, l]) => `<button type="button" role="tab" class="sx-filter" aria-selected="${k === f.status}" data-filter-status="${k}">${l}<i>${fmt(countOf(k))}</i></button>`).join('');
+      filters.innerHTML = FILTERS.map(([k, l]) => `<button type="button" role="tab" class="sx-filter" aria-selected="${k === f.status}" data-filter-status="${k}"><span>${l}</span><i>${fmt(countOf(k))}</i></button>`).join('');
       filters.querySelectorAll('[data-filter-status]').forEach((b) => b.addEventListener('click', () => { st.filter = { ...st.filter, status: b.dataset.filterStatus, offset: 0 }; void paintList(); }));
     }
+    const searching = f.q || f.mine || f.unread;
     box.innerHTML = threads.length ? threads.map((t) => {
       const pv = t.preview;
       const pvText = pv ? (pv.pending ? 'ტექსტი იტვირთება…' : pv.text || '(ცარიელი)') : '';
+      const out = pv?.direction === 'outbound';
       return `<li><button type="button" class="sx-row${t.id === st.threadId ? ' is-active' : ''}${t.unread ? ' is-unread' : ''}" data-thread="${esc(t.id)}">
         ${avatar(t.counterpartEmail, nameOf(t))}
         <span class="sx-row-main">
-          <span class="sx-row-top"><b>${esc(nameOf(t))}</b><time datetime="${esc(t.lastMessageAt)}">${esc(shortWhen(t.lastMessageAt))}</time></span>
+          <span class="sx-row-top"><b>${esc(nameOf(t))}</b><time datetime="${esc(t.lastMessageAt)}" title="${esc(fullWhen(t.lastMessageAt))}">${esc(shortWhen(t.lastMessageAt))}</time></span>
           <span class="sx-row-subject">${esc(t.subject || '(უსათაურო)')}</span>
-          ${pvText ? `<span class="sx-row-preview">${pv?.direction === 'outbound' ? `${ico('undo')}<em>შენ:</em> ` : ''}${esc(pvText)}</span>` : ''}
+          ${pvText ? `<span class="sx-row-preview">${out ? `${ico('undo')}<em data-who>${esc(rowWho(t))}:</em> ` : ''}${esc(pvText)}</span>` : ''}
           <span class="sx-row-meta">${badge(t.status)}${t.messageCount > 1 ? `<span>${fmt(t.messageCount)} წერილი</span>` : ''}${t.userId ? '<span class="sx-tag">მომხმარებელი</span>' : ''}</span>
         </span>
         ${t.unread ? '<i class="sx-unread" aria-label="წაუკითხავი"></i>' : ''}
       </button></li>`;
-    }).join('') : `<li class="sx-rows-empty">${ico('inbox')}<b>${f.q || f.mine || f.unread ? 'ვერაფერი მოიძებნა' : 'შემოსული ცარიელია'}</b><span>${f.q || f.mine || f.unread ? 'სცადე სხვა ფილტრი ან ძებნა.' : 'ახალი წერილები support@medicard.ge-ზე აქ გამოჩნდება.'}</span></li>`;
+    }).join('') : `<li class="sx-rows-empty">${ico('inbox')}<b>${searching ? 'ვერაფერი მოიძებნა' : 'აქ ცარიელია'}</b><span>${searching ? 'სცადე სხვა ფილტრი ან ძებნა.' : 'ახალი წერილები support@medicard.ge-ზე აქ გამოჩნდება.'}</span></li>`;
     if (pager) {
       pager.innerHTML = d.total > 40
-        ? `<span>${fmt(d.total ? off + 1 : 0)}–${fmt(Math.min(off + threads.length, d.total))} / ${fmt(d.total)}</span><div><button type="button" class="btn compact ghost" data-prev ${off ? '' : 'disabled'} aria-label="წინა">${ico('back')}</button><button type="button" class="btn compact ghost" data-next ${off + threads.length < d.total ? '' : 'disabled'} aria-label="შემდეგი" style="transform:scaleX(-1)">${ico('back')}</button></div>`
+        ? `<span>${fmt(d.total ? off + 1 : 0)}–${fmt(Math.min(off + threads.length, d.total))} / ${fmt(d.total)}</span><div><button type="button" class="sx-icon-btn" data-prev ${off ? '' : 'disabled'} aria-label="წინა გვერდი" title="წინა გვერდი">${ico('chevronLeft')}</button><button type="button" class="sx-icon-btn" data-next ${off + threads.length < d.total ? '' : 'disabled'} aria-label="შემდეგი გვერდი" title="შემდეგი გვერდი">${ico('arrow')}</button></div>`
         : `<span>${fmt(d.total)} საუბარი</span><span class="sx-keys" title="კლავიატურა"><kbd>j</kbd><kbd>k</kbd> ნავიგაცია · <kbd>r</kbd> პასუხი</span>`;
       pager.querySelector('[data-prev]')?.addEventListener('click', () => { st.filter.offset = Math.max(0, off - 40); void paintList(); });
       pager.querySelector('[data-next]')?.addEventListener('click', () => { st.filter.offset = off + 40; void paintList(); });
@@ -320,21 +336,80 @@
     return `<!DOCTYPE html><html><head><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src data:; style-src 'unsafe-inline'"><base target="_blank"><style>html,body{margin:0}body{padding:2px 2px 8px;font:14px/1.6 -apple-system,Segoe UI,Roboto,sans-serif;color:#0f172a;background:transparent;overflow-wrap:anywhere}img{max-width:100%;height:auto}table{max-width:100%}a{color:#0f766e}blockquote{margin:8px 0;padding-left:12px;border-left:3px solid #e2e8f0;color:#64748b}</style></head><body>${html}</body></html>`;
   }
 
+  /** Mail HTML of each visible frame, for the measuring copy below. */
+  const frameHtml = new WeakMap();
+
+  /**
+   * The mail frame is sized to its content. The visible frame keeps its strict sandbox (opaque origin,
+   * no scripts), so the page cannot read its height; an invisible copy that allows the same origin but
+   * no scripts, no popups and no pointer events is laid out at the same width, measured and removed.
+   * If that fails, CSS gives the frame a viewport-based height with its own scroll.
+   */
+  function fitFrame(frame) {
+    const html = frameHtml.get(frame);
+    if (!html || !frame.isConnected || frame.hidden) return;
+    const cs = getComputedStyle(frame);
+    const px = (k) => parseFloat(cs[k]) || 0;
+    const width = frame.getBoundingClientRect().width - px('paddingLeft') - px('paddingRight') - px('borderLeftWidth') - px('borderRightWidth');
+    if (width <= 0) return;
+    const seq = String((Number(frame.dataset.fitSeq) || 0) + 1);
+    frame.dataset.fitSeq = seq;
+    const probe = doc.createElement('iframe');
+    probe.className = 'sx-frame-probe';
+    probe.setAttribute('sandbox', 'allow-same-origin');
+    probe.setAttribute('aria-hidden', 'true');
+    probe.tabIndex = -1;
+    probe.style.width = `${width}px`;
+    probe.addEventListener('load', () => {
+      try {
+        if (frame.dataset.fitSeq !== seq || !frame.isConnected) return;
+        const pd = probe.contentDocument;
+        pd.documentElement.style.overflowY = 'hidden';
+        const wide = pd.documentElement.scrollWidth > pd.documentElement.clientWidth + 1 ? 18 : 0;
+        const h = Math.ceil(pd.body.scrollHeight) + wide;
+        const box = px('paddingTop') + px('paddingBottom') + px('borderTopWidth') + px('borderBottomWidth');
+        frame.style.height = `${Math.min(4000, Math.max(36, h)) + box}px`;
+        frame.classList.remove('is-scroll');
+        if (st.pinBottom) {
+          const tl = doc.querySelector('#support-thread [data-timeline]');
+          if (tl) tl.scrollTop = tl.scrollHeight;
+        }
+      } catch {
+        frame.classList.add('is-scroll');
+      } finally {
+        probe.remove();
+      }
+    }, { once: true });
+    probe.srcdoc = frameDoc(html);
+    doc.body.appendChild(probe);
+  }
+  function frameObserver() {
+    if (st.frameObserver || typeof ResizeObserver !== 'function') return st.frameObserver;
+    st.frameObserver = new ResizeObserver((entries) => entries.forEach((e) => {
+      const w = Math.round(e.contentRect.width);
+      if (!w || e.target.dataset.fitW === String(w)) return;
+      e.target.dataset.fitW = String(w);
+      requestAnimationFrame(() => fitFrame(e.target));
+    }));
+    return st.frameObserver;
+  }
+
   function messageHtml(m, t) {
     if (m.direction === 'note') {
       return `<article class="sx-note" data-message="${esc(m.id)}">
-        <header>${ico('lock')}<b>${esc(m.author || 'ადმინი')}</b><span>შიდა შენიშვნა · მხოლოდ ადმინები ხედავენ</span><time>${esc(clock(m.createdAt))}</time></header>
+        <header>${ico('lock')}<b>${esc(m.author || 'ადმინი')}</b><span title="ჩანს მხოლოდ ადმინებს, არ იგზავნება">შიდა შენიშვნა</span><time title="${esc(fullWhen(m.createdAt))}">${esc(clock(m.createdAt))}</time></header>
         <pre class="sx-text" data-text>${esc(m.textBody || '')}</pre>
       </article>`;
     }
     const out = m.direction === 'outbound';
-    const name = out ? (m.author || 'ადმინი') : (m.fromName || m.fromEmail || nameOf(t));
+    const director = out && !m.author;
+    const name = out ? (director ? DIRECTOR : m.author) : (m.fromName || m.fromEmail || nameOf(t));
     const hasHtml = Boolean(m.htmlBody);
     const pending = ['pending', 'restricted', 'failed'].includes(m.bodyStatus);
-    // Mails with a text part open as text (natural height, quoted history folded); HTML is one
-    // click away. HTML-only mails open as HTML.
     const hasText = Boolean(String(m.textBody || '').trim());
-    const startText = hasHtml && hasText;
+    // Plain mail (a Gmail reply) opens as text with the quoted history folded; mail whose look matters
+    // (images, tables, colours) or that has no text opens as the original. The toggle switches either way.
+    const startText = hasHtml && hasText && !RICH_HTML.test(m.htmlBody);
     const { main, quoted } = splitQuoted(m.textBody || '');
     const textBlock = `<div class="sx-textwrap" data-text ${hasHtml && !startText ? 'hidden' : ''}>
         <pre class="sx-text">${esc(main || (quoted ? '' : '(ცარიელი)'))}</pre>
@@ -342,21 +417,21 @@
       </div>`;
     const body = pending
       ? `<div class="sx-body-note${m.bodyStatus === 'pending' ? '' : ' is-warn'}">${ico(m.bodyStatus === 'pending' ? 'refresh' : 'alert')}<span>${esc(BODY_NOTE[m.bodyStatus])}</span>${m.bodyStatus !== 'pending' ? `<button type="button" class="btn compact ghost" data-refetch="${esc(m.id)}">ხელახლა ცდა</button>` : ''}</div>`
-      : `${hasHtml ? `<iframe class="sx-frame" title="წერილის ტექსტი" sandbox="allow-popups allow-popups-to-escape-sandbox" referrerpolicy="no-referrer" data-frame ${startText ? 'hidden' : ''}></iframe>` : ''}
+      : `${hasHtml ? `<iframe class="sx-frame" title="წერილის ორიგინალი" sandbox="allow-popups allow-popups-to-escape-sandbox" referrerpolicy="no-referrer" data-frame ${startText ? 'hidden' : ''}></iframe>` : ''}
          ${textBlock}`;
     const atts = (m.attachments || []).length
       ? `<div class="sx-atts">${m.attachments.map((a) => `<button type="button" class="sx-att" data-att="${esc(a.id)}" data-msg="${esc(m.id)}" data-name="${esc(a.filename)}">${ico('paperclip')}<span>${esc(a.filename)}</span>${a.size ? `<small>${fmt(Math.ceil(a.size / 1024))} KB</small>` : ''}</button>`).join('')}</div>`
       : '';
-    const failed = out && m.sendStatus && !['sent', 'delivered', 'queued'].includes(m.sendStatus) ? `<span class="s-badge is-bad">${esc(m.sendStatus)}</span>` : '';
-    return `<article class="sx-msg ${out ? 'is-out' : 'is-in'}" data-message="${esc(m.id)}">
+    const failed = out && m.sendStatus && !SEND_OK.includes(m.sendStatus) ? `<span class="s-badge is-bad">${esc(SEND_STATUS[m.sendStatus] || 'გაგზავნის პრობლემა')}</span>` : '';
+    return `<article class="sx-msg ${out ? 'is-out' : 'is-in'}${director ? ' is-director' : ''}" data-message="${esc(m.id)}">
       ${out ? '' : avatar(m.fromEmail || t.counterpartEmail, name)}
       <div class="sx-bubble">
         <header>
-          <b>${esc(name)}</b>
+          <b>${director ? ico('director') : ''}${esc(name)}</b>
           ${out ? `<span class="sx-muted">→ ${esc((m.toEmails || []).join(', ') || t.counterpartEmail)}</span>` : m.fromName ? `<span class="sx-muted">${esc(m.fromEmail)}</span>` : ''}
           ${m.isAuto ? '<span class="sx-tag">ავტომატური</span>' : ''}${failed}
           <span class="sx-bubble-tools">
-            ${hasHtml && !pending ? `<button type="button" class="sx-mini" data-view-toggle aria-pressed="${startText}" title="ხედის შეცვლა">${ico('eye')}<span>${startText ? 'HTML' : 'ტექსტი'}</span></button>` : ''}
+            ${hasHtml && !pending ? `<button type="button" class="sx-mini" data-view-toggle aria-pressed="${startText}" title="ორიგინალი ან მხოლოდ ტექსტი">${ico('eye')}<span>${startText ? 'ორიგინალი' : 'მხოლოდ ტექსტი'}</span></button>` : ''}
             <time title="${esc(fullWhen(m.createdAt))}">${esc(clock(m.createdAt))}</time>
           </span>
         </header>
@@ -368,7 +443,7 @@
   function timelineHtml(messages, t) {
     let last = '';
     return messages.map((m) => {
-      const k = dayKey(new Date(m.createdAt));
+      const k = dayKey(m.createdAt);
       const sep = k !== last ? `<div class="sx-day"><span>${esc(dayLabel(m.createdAt))}</span></div>` : '';
       last = k;
       return sep + messageHtml(m, t);
@@ -379,6 +454,7 @@
     const box = $('support-thread');
     const side = $('support-side');
     if (!box) return;
+    st.frameObserver?.disconnect();
     if (!st.threadId) {
       box.innerHTML = `<div class="sx-empty">${ico('mail')}<b>აირჩიე საუბარი</b><span>მარცხენა სიიდან გახსენი წერილი, წაიკითხე და უპასუხე — პასუხი წავა support@medicard.ge-დან, იმავე ძაფში.</span></div>`;
       if (side) side.innerHTML = '';
@@ -391,7 +467,7 @@
       d = await api(`/threads/${encodeURIComponent(st.threadId)}`);
     } catch (err) {
       if (err?.status === 404) { st.threadId = null; writeHash(); return paintThread(); }
-      box.innerHTML = `<div class="sx-empty">${ico('alert')}<b>ვერ ჩაიტვირთა</b><span>${esc(err?.message || '')}</span><button type="button" class="btn compact" data-retry>ხელახლა ცდა</button></div>`;
+      box.innerHTML = `<div class="sx-empty">${errorCard(err)}</div>`;
       box.querySelector('[data-retry]').onclick = () => void paintThread();
       return;
     }
@@ -399,44 +475,54 @@
     const t = d.thread;
     const admins = d.admins || [];
     const closed = t.status === 'closed';
+    const lastOut = [...(d.messages || [])].reverse().find((m) => m.direction === 'outbound');
+    if (lastOut) {
+      st.lastOut[t.id] = authorLabel(lastOut, d);
+      const who = doc.querySelector(`#support-list [data-thread="${CSS.escape(t.id)}"] [data-who]`);
+      if (who) who.textContent = `${st.lastOut[t.id]}:`;
+    }
     box.innerHTML = `
       <header class="sx-conv-head">
-        <button type="button" class="sx-icon-btn sx-back" data-back aria-label="სიაში დაბრუნება">${ico('back')}</button>
-        <div class="sx-conv-title">
-          <h2>${esc(t.subject || '(უსათაურო)')}</h2>
-          <p>${esc(nameOf(t))}${t.counterpartName ? ` · ${esc(t.counterpartEmail)}` : ''} · ${fmt(t.messageCount)} წერილი</p>
+        <div class="sx-conv-top">
+          <button type="button" class="sx-icon-btn sx-back" data-back aria-label="სიაში დაბრუნება" title="სიაში დაბრუნება">${ico('back')}</button>
+          <h2 title="${esc(t.subject || '')}">${esc(t.subject || '(უსათაურო)')}</h2>
+          <div class="sx-conv-icons">
+            <button type="button" class="sx-icon-btn" data-mark-unread title="წაუკითხავად მონიშვნა" aria-label="წაუკითხავად მონიშვნა">${ico('mail')}</button>
+            <button type="button" class="sx-icon-btn sx-side-btn" data-side aria-label="კონტაქტის ინფორმაცია" title="კონტაქტი" aria-pressed="${st.sideOpen}">${ico('user')}</button>
+          </div>
         </div>
-        <div class="sx-conv-actions">
-          <label class="sx-select" title="სტატუსი">${badge(t.status)}<select data-status aria-label="სტატუსი">${Object.entries(STATUS).map(([k, [l]]) => `<option value="${k}" ${k === t.status ? 'selected' : ''}>${l}</option>`).join('')}</select></label>
-          <label class="sx-select" title="პასუხისმგებელი">${ico('user')}<span>${esc(admins.find((a) => a.id === t.assignedAdminId)?.name || 'მიუბმელი')}</span><select data-assign aria-label="პასუხისმგებელი"><option value="">მიუბმელი</option>${admins.map((a) => `<option value="${esc(a.id)}" ${a.id === t.assignedAdminId ? 'selected' : ''}>${esc(a.name)}${a.id === d.me ? ' (მე)' : ''}</option>`).join('')}</select></label>
-          <button type="button" class="btn compact ${closed ? '' : 'primary'}" data-close-toggle title="კლავიში e">${ico(closed ? 'undo' : 'check')}${closed ? 'ხელახლა გახსნა' : 'დახურვა'}</button>
-          <button type="button" class="sx-icon-btn" data-mark-unread title="წაუკითხავად მონიშვნა" aria-label="წაუკითხავად მონიშვნა">${ico('mail')}</button>
-          <button type="button" class="sx-icon-btn sx-side-btn" data-side aria-label="კონტაქტის ინფორმაცია" title="კონტაქტი">${ico('user')}</button>
+        <div class="sx-conv-bar">
+          <p class="sx-conv-meta" title="${esc(`${nameOf(t)}${t.counterpartName ? ` · ${t.counterpartEmail}` : ''}`)}">${esc(nameOf(t))}${t.counterpartName ? ` · ${esc(t.counterpartEmail)}` : ''} · ${fmt(t.messageCount)} წერილი</p>
+          <div class="sx-conv-actions">
+            <label class="sx-select" title="სტატუსი">${badge(t.status)}<select data-status aria-label="სტატუსი">${Object.entries(STATUS).map(([k, [l]]) => `<option value="${k}" ${k === t.status ? 'selected' : ''}>${l}</option>`).join('')}</select></label>
+            <label class="sx-select" title="პასუხისმგებელი">${ico('user')}<span>${esc(admins.find((a) => a.id === t.assignedAdminId)?.name || 'მიუბმელი')}</span><select data-assign aria-label="პასუხისმგებელი"><option value="">მიუბმელი</option>${admins.map((a) => `<option value="${esc(a.id)}" ${a.id === t.assignedAdminId ? 'selected' : ''}>${esc(a.name)}${a.id === d.me ? ' (მე)' : ''}</option>`).join('')}</select></label>
+            <button type="button" class="btn compact ${closed ? '' : 'primary'}" data-close-toggle title="კლავიში e">${ico(closed ? 'undo' : 'check')}<span>${closed ? 'ხელახლა გახსნა' : 'დახურვა'}</span></button>
+          </div>
         </div>
       </header>
-      ${d.suppressed ? `<div class="sx-banner is-warn">${ico('alert')}<span>ეს მისამართი დაბლოკილია (bounce ან საჩივარი) — პასუხი არ გაიგზავნება. შეამოწმე #/email → „მისამართის შემოწმება“.</span></div>` : ''}
+      ${d.suppressed ? `<div class="sx-banner is-warn">${ico('alert')}<span>ეს მისამართი დაბლოკილია (წერილი დაბრუნდა ან სპამად მონიშნა) — პასუხი არ გაიგზავნება. <a href="#/email?tab=overview">შეამოწმე ელფოსტის გვერდზე</a>.</span></div>` : ''}
       <div class="sx-timeline" data-timeline>${timelineHtml(d.messages || [], t)}</div>
       <footer class="sx-composer" data-composer></footer>`;
 
+    const observer = frameObserver();
     const byId = Object.fromEntries((d.messages || []).map((m) => [m.id, m]));
     box.querySelectorAll('[data-message]').forEach((el) => {
       const m = byId[el.dataset.message];
       const frame = el.querySelector('[data-frame]');
       if (frame && m?.htmlBody) {
+        frameHtml.set(frame, m.htmlBody);
         frame.srcdoc = frameDoc(m.htmlBody);
-        // The sandbox (no same-origin) hides the frame's real height, so size it from the text.
-        const text = String(m.textBody || m.htmlBody.replace(/<[^>]+>/g, ' '));
-        const lines = text.split('\n').reduce((n, line) => n + Math.max(1, Math.ceil(line.length / 90)), 0);
-        const media = /<(img|table)\b/i.test(m.htmlBody) ? 240 : 0;
-        frame.style.height = `${Math.min(640, Math.max(34, 12 + lines * 23 + media))}px`;
+        if (observer) observer.observe(frame);
+        else requestAnimationFrame(() => fitFrame(frame));
       }
       el.querySelector('[data-view-toggle]')?.addEventListener('click', (e) => {
         const b = e.currentTarget;
         const showText = b.getAttribute('aria-pressed') !== 'true';
         b.setAttribute('aria-pressed', String(showText));
-        b.querySelector('span').textContent = showText ? 'HTML' : 'ტექსტი';
+        b.querySelector('span').textContent = showText ? 'ორიგინალი' : 'მხოლოდ ტექსტი';
         if (frame) frame.hidden = showText;
         el.querySelector('[data-text]').hidden = !showText;
+        if (frame && !showText) requestAnimationFrame(() => fitFrame(frame));
       });
     });
     box.querySelectorAll('[data-quote-toggle]').forEach((b) => b.addEventListener('click', () => {
@@ -456,11 +542,20 @@
       st.threadId = null; writeHash(); void paintThread(); void paintList();
     };
     box.querySelector('[data-back]').onclick = () => guardDiscard(() => { st.threadId = null; writeHash(); void paintThread(); });
-    box.querySelector('[data-side]').onclick = () => { st.sideOpen = !st.sideOpen; $('support-shell')?.classList.toggle('side-open', st.sideOpen); };
+    box.querySelector('[data-side]').onclick = (e) => {
+      st.sideOpen = !st.sideOpen;
+      e.currentTarget.setAttribute('aria-pressed', String(st.sideOpen));
+      $('support-shell')?.classList.toggle('side-open', st.sideOpen);
+    };
     paintSide(d);
     await paintComposer(box.querySelector('[data-composer]'), t, d);
     const tl = box.querySelector('[data-timeline]');
-    if (tl) tl.scrollTop = tl.scrollHeight;
+    if (tl) {
+      st.pinBottom = true;
+      tl.scrollTop = tl.scrollHeight;
+      // Frames grow after load; keep the newest message in view until the owner scrolls up.
+      tl.addEventListener('scroll', () => { st.pinBottom = tl.scrollHeight - tl.scrollTop - tl.clientHeight < 40; }, { passive: true });
+    }
   }
 
   function paintSide(d) {
@@ -473,12 +568,12 @@
       <div class="sx-person">
         ${avatar(t.counterpartEmail, nameOf(t), 'is-lg')}
         <b>${esc(t.counterpartName || t.counterpartEmail)}</b>
-        <button type="button" class="sx-copy" data-copy="${esc(t.counterpartEmail)}" title="კოპირება">${esc(t.counterpartEmail)}${ico('copy')}</button>
+        <button type="button" class="sx-copy" data-copy="${esc(t.counterpartEmail)}" title="მისამართის კოპირება">${esc(t.counterpartEmail)}${ico('copy')}</button>
       </div>
       <section class="sx-side-sec">
         <h4>ანგარიში</h4>
         ${u ? `<div class="sx-account">
-            <div><b>${esc(u.fullName || 'მომხმარებელი')}</b><span>${esc(ACCOUNT_STATUS[u.status] || u.status || '')} · რეგისტრაცია ${esc(dayLabel(u.createdAt))}</span></div>
+            <div><b>${esc(u.fullName || 'მომხმარებელი')}</b><span>${esc(ACCOUNT_STATUS[u.status] || 'სტატუსი უცნობია')} · რეგისტრაცია ${esc(dayLabel(u.createdAt))}</span></div>
             <a class="btn compact" href="#/users/${encodeURIComponent(u.id)}">პროფილი</a>
           </div>`
           : '<p class="sx-muted">ამ მისამართით მედიქარდის ანგარიში არ არის (ან სხვა ელფოსტით არის დარეგისტრირებული).</p>'}
@@ -497,9 +592,6 @@
         <h4>წინა საუბრები${history.length ? ` <i>${fmt(history.length)}</i>` : ''}</h4>
         ${history.length ? `<ul class="sx-history">${history.map((h) => `<li><button type="button" data-open-thread="${esc(h.id)}"><span>${esc(h.subject || '(უსათაურო)')}</span><small>${badge(h.status)} ${esc(shortWhen(h.lastMessageAt))}</small></button></li>`).join('')}</ul>` : '<p class="sx-muted">ეს პირველი საუბარია ამ ადამიანთან.</p>'}
       </section>`;
-    side.querySelector('[data-copy]')?.addEventListener('click', async (e) => {
-      try { await navigator.clipboard.writeText(e.currentTarget.dataset.copy); toast('მისამართი დაკოპირდა', 'ok'); } catch { /* clipboard blocked */ }
-    });
     side.querySelectorAll('[data-open-thread]').forEach((b) => b.addEventListener('click', () => openThread(b.dataset.openThread)));
   }
 
@@ -523,7 +615,7 @@
     try {
       const res = await fetch(`${base}/api/admin/support/messages/${encodeURIComponent(btn.dataset.msg)}/attachments/${encodeURIComponent(btn.dataset.att)}`, { headers: token ? { Authorization: `Bearer ${token}` } : {} });
       if (!res.ok) {
-        let msg = `შეცდომა ${res.status}`;
+        let msg = `ფაილი ვერ ჩამოიტვირთა (${res.status})`;
         try { msg = (await res.json()).error || msg; } catch { /* not json */ }
         throw new Error(msg);
       }
@@ -543,17 +635,25 @@
     }
   }
 
+  /** Quick replies; a failed load throws (and is not cached) so the caller can show it and retry. */
   async function loadSnippets(force) {
-    if (!st.snippets || force) st.snippets = (await api('/snippets').catch(() => ({ snippets: [] }))).snippets || [];
+    if (!st.snippets || force) {
+      const r = await api('/snippets');
+      st.snippets = r.snippets || [];
+    }
     return st.snippets;
   }
 
   /* ═════════ Composer ═════════ */
   async function paintComposer(box, thread, d) {
     if (!box) return;
-    const snippets = await loadSnippets();
+    let snippets = null;
+    try { snippets = await loadSnippets(); } catch { snippets = null; }
     const note = st.composeMode === 'note';
     const blocked = d.suppressed;
+    const snipMenu = snippets === null
+      ? '<div class="sx-snip-empty"><span>სწრაფი პასუხები ვერ ჩაიტვირთა.</span><button type="button" class="btn compact" data-snip-retry>ხელახლა ცდა</button></div>'
+      : snippets.map((s) => `<button type="button" role="menuitem" data-snippet="${esc(s.id)}"><b>${esc(s.title)}</b><span>${esc(s.body.slice(0, 90))}</span></button>`).join('');
     box.classList.toggle('is-note', note);
     box.innerHTML = `
       <div class="sx-compose-top">
@@ -562,30 +662,38 @@
           <button type="button" role="tab" aria-selected="${note}" data-mode="note">${ico('lock')}შიდა შენიშვნა</button>
         </div>
         <span class="sx-compose-to">${note ? 'ჩანს მხოლოდ ადმინებს, არ იგზავნება' : `→ ${esc(thread.counterpartEmail)}`}</span>
-        ${note || !snippets.length ? '' : `<div class="sx-snip"><button type="button" class="sx-mini" data-snip-open aria-haspopup="menu" aria-expanded="false">${ico('zap')}<span>სწრაფი პასუხი</span></button>
-          <div class="sx-snip-menu" role="menu" hidden>${snippets.map((s) => `<button type="button" role="menuitem" data-snippet="${esc(s.id)}"><b>${esc(s.title)}</b><span>${esc(s.body.slice(0, 90))}</span></button>`).join('')}</div></div>`}
+        ${note || (snippets && !snippets.length) ? '' : `<div class="sx-snip"><button type="button" class="sx-mini" data-snip-open aria-haspopup="menu" aria-expanded="false" title="სწრაფი პასუხი">${ico('zap')}<span>სწრაფი პასუხი</span></button>
+          <div class="sx-snip-menu" role="menu" hidden>${snipMenu}</div></div>`}
       </div>
-      <textarea class="sx-input" data-compose-body rows="3" maxlength="${note ? 5000 : 20000}" placeholder="${note ? 'მაგ.: ვამოწმებ Android 14-ზე, ხვალ დავუკავშირდები' : 'დაწერე პასუხი… (აბზაცი — ცარიელი ხაზი, **მუქი**, სია „- “-ით)'}"></textarea>
+      <textarea class="sx-input" data-compose-body rows="3" maxlength="${note ? 5000 : 20000}" aria-label="${note ? 'შიდა შენიშვნა' : 'პასუხის ტექსტი'}" placeholder="${note ? 'მაგ.: ვამოწმებ Android 14-ზე, ხვალ დავუკავშირდები' : 'დაწერე პასუხი… (აბზაცი — ცარიელი ხაზი, **მუქი**, სია „- “-ით)'}"></textarea>
       <div class="sx-compose-foot">
+        ${note ? '' : `<label class="sx-after">გაგზავნის შემდეგ<select data-after>${['waiting', 'open', 'closed'].map((k) => `<option value="${k}" ${k === 'waiting' ? 'selected' : ''}>${STATUS[k][0]}</option>`).join('')}</select></label>`}
         <span class="sx-keys"><kbd>Ctrl</kbd>+<kbd>Enter</kbd> ${note ? 'შენახვა' : 'გაგზავნა'}</span>
-        ${note ? '' : `<label class="sx-after">გაგზავნის შემდეგ<select data-after>${['waiting', 'open', 'closed'].map((k) => `<option value="${k}" ${k === 'waiting' ? 'selected' : ''}>${STATUS[k][0]}</option>`).join('')}</select></label>
-          <button type="button" class="btn compact ghost" data-preview>${ico('eye')}გადახედვა</button>`}
+        ${note ? '' : `<button type="button" class="btn compact ghost" data-preview title="გადახედვა — როგორ ნახავს ადამიანი">${ico('eye')}<span>გადახედვა</span></button>`}
         <button type="button" class="btn primary compact" data-send ${!note && blocked ? 'disabled' : ''}>${note ? `${ico('lock')}შენახვა` : `${ico('send')}გაგზავნა`}</button>
       </div>`;
     const ta = box.querySelector('[data-compose-body]');
-    const grow = () => { ta.style.height = 'auto'; ta.style.height = `${Math.min(320, Math.max(84, ta.scrollHeight + 2))}px`; };
+    const grow = () => { ta.style.height = 'auto'; ta.style.height = `${Math.min(320, Math.max(72, ta.scrollHeight + 2))}px`; };
     ta.addEventListener('input', grow);
+    const repaintKeepingText = () => {
+      const text = ta.value;
+      return paintComposer(box, thread, d).then(() => { const next = box.querySelector('[data-compose-body]'); if (next) { next.value = text; next.dispatchEvent(new Event('input')); next.focus(); } });
+    };
     box.querySelectorAll('[data-mode]').forEach((b) => b.addEventListener('click', () => {
       if (b.dataset.mode === st.composeMode) return;
-      const text = ta.value;
       st.composeMode = b.dataset.mode;
-      void paintComposer(box, thread, d).then(() => { const next = box.querySelector('[data-compose-body]'); if (next) { next.value = text; next.dispatchEvent(new Event('input')); next.focus(); } });
+      void repaintKeepingText();
     }));
     const menu = box.querySelector('.sx-snip-menu');
     const opener = box.querySelector('[data-snip-open]');
     opener?.addEventListener('click', () => { const open = menu.hidden; menu.hidden = !open; opener.setAttribute('aria-expanded', String(open)); });
+    box.querySelector('[data-snip-retry]')?.addEventListener('click', async (e) => {
+      const btn = e.currentTarget;
+      btn.disabled = true;
+      try { await loadSnippets(true); await repaintKeepingText(); } catch (err) { toast(err.message, 'bad'); btn.disabled = false; }
+    });
     box.querySelectorAll('[data-snippet]').forEach((b) => b.addEventListener('click', () => {
-      const s = snippets.find((x) => x.id === b.dataset.snippet);
+      const s = (snippets || []).find((x) => x.id === b.dataset.snippet);
       menu.hidden = true;
       if (!s) return;
       const at = ta.selectionStart ?? ta.value.length;
@@ -600,7 +708,7 @@
         V().openDialog?.({
           title: 'პასუხის გადახედვა',
           description: `${r.from} → ${r.to} · ${r.subject}`,
-          body: '<iframe class="s-preview-frame" title="პასუხის გადახედვა" sandbox="" id="support-preview-frame"></iframe>',
+          body: '<iframe class="s-preview-frame sx-preview-frame" title="პასუხის გადახედვა" sandbox="" id="support-preview-frame"></iframe>',
           wide: true,
           watchDirty: false,
         });
@@ -672,14 +780,14 @@
   async function paintSnippets(pane) {
     const list = await loadSnippets(true);
     pane.innerHTML = `<section class="s-card">
-      <header class="s-card-head"><div><h3>სწრაფი პასუხები</h3><p>ხშირი პასუხების შაბლონები. პასუხის წერისას „სწრაფი პასუხი“ ჩასვამს ტექსტს კურსორთან — შემდეგ შეგიძლია შეცვალო.</p></div>
+      <header class="s-card-head"><div><h3>სწრაფი პასუხები</h3><p>ხშირი პასუხების შაბლონები. პასუხის წერისას „სწრაფი პასუხი“ ტექსტს კურსორთან ჩასვამს.</p></div>
         <button type="button" class="btn primary compact" data-new>${ico('plus')} ახალი</button></header>
       <div class="s-card-body">${list.length ? `<div class="sx-snip-grid">${list.map((s) => `<article class="sx-snip-card" data-snip="${esc(s.id)}">
-          <header><b>${esc(s.title)}</b><time>${esc(shortWhen(s.updatedAt))}</time></header>
+          <header><b>${esc(s.title)}</b><time title="ბოლო ცვლილება: ${esc(fullWhen(s.updatedAt))}">${esc(dayLabel(s.updatedAt))}</time></header>
           <p>${esc(s.body)}</p>
           <footer><button type="button" class="btn compact ghost" data-edit>${ico('edit')} რედაქტირება</button><button type="button" class="btn compact ghost danger" data-del>წაშლა</button></footer>
         </article>`).join('')}</div>`
-        : `<div class="sx-empty is-inline">${ico('zap')}<b>სწრაფი პასუხი ჯერ არ არის</b><span>შექმენი პირველი — მაგ. „მადლობა, ვამოწმებთ და მალე მოგწერთ“.</span></div>`}</div>
+        : `<div class="s-empty">${ico('zap')}<strong>სწრაფი პასუხი ჯერ არ არის</strong><span>შექმენი პირველი — მაგ. „მადლობა, ვამოწმებთ და მალე მოგწერთ“.</span></div>`}</div>
     </section>`;
     pane.querySelector('[data-new]').onclick = () => openSnippetDialog(null);
     pane.querySelectorAll('[data-snip]').forEach((card) => {

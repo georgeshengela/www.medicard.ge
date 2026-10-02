@@ -1093,8 +1093,10 @@ adminRouter.get(
     if (query.status !== 'ALL') where.status = query.status;
     if (query.purpose !== 'ALL') where.purpose = query.purpose;
     if (query.q) {
+      // A text-only search has no digits; `contains: ''` would match every number.
+      const digits = query.q.replace(/\D/g, '');
       where.OR = [
-        { destination: { contains: query.q.replace(/\D/g, '') } },
+        ...(digits ? [{ destination: { contains: digits } }] : []),
         { content: { contains: query.q, mode: 'insensitive' } },
       ];
     }

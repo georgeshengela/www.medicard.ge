@@ -133,7 +133,7 @@ html body .v3-cc {
 html body .v3-cc > div:empty { display: none; }
 html body .v3-cc .v3-cc-split { gap: 20px !important; align-items: stretch !important; }
 html body .v3-cc .v3-cc-split > div { display: grid; }
-html body .v3-cc .v3-cc-split > div > .v3-section { height: 100%; box-sizing: border-box; }
+html body .v3-cc .v3-cc-split > div > .v3-section { height: 100%; box-sizing: border-box; align-content: start; }
 
 /* Toolbar */
 html body .v3-cc-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin: 0 !important; }
@@ -225,6 +225,31 @@ html body .v3-cc .v3-cc-chip {
 html body .v3-cc .v3-cc-chip .icon { width: 13px; height: 13px; }
 html body .v3-cc .v3-cc-chip.is-ok .icon { color: var(--s-ok); }
 html body .v3-cc .v3-cc-chip.is-warn { color: var(--s-warn) !important; }
+html body .v3-cc .v3-cc-chip.is-bad { color: var(--s-bad) !important; }
+html body .v3-cc button.v3-cc-chip { cursor: pointer; font-family: inherit; transition: box-shadow .14s var(--s-ease); }
+html body .v3-cc button.v3-cc-chip:hover { box-shadow: var(--s-shadow-btn) !important; }
+html body .v3-cc-alert-tech {
+  display: block; max-width: 100%; margin-top: 2px;
+  font: 500 11.5px/1.4 var(--s-mono); color: var(--s-faint);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  background: none !important; padding: 0 !important;
+}
+html body .v3-cc-infra-note { margin: 4px 0 0; font-size: 12px; line-height: 1.45; color: var(--s-muted); }
+
+@media (max-width: 560px) {
+  /* Phones: the period chips stay on one line; the time-zone caption is in the guide. */
+  html body .workspace .v3-filterbar .v3-filter-meta { display: none !important; }
+  html body .workspace .v3-filterbar { flex-wrap: nowrap !important; overflow-x: auto; scrollbar-width: none; }
+}
+/* Period filter: the time-zone note is a caption, not a fake option inside the segment. */
+html body .workspace .v3-filterbar .v3-filter-meta {
+  display: inline-flex; align-items: center; align-self: center;
+  margin-left: 6px; padding: 0 8px 0 10px !important;
+  border: 0 !important; border-left: 1px solid var(--s-line) !important; border-radius: 0 !important;
+  background: none !important; box-shadow: none !important;
+  font-size: 12px !important; font-weight: 500 !important; color: var(--s-faint) !important;
+  white-space: nowrap;
+}
 
 /* Attention list */
 html body .v3-cc-alerts { display: grid !important; gap: 0 !important; margin: -4px 0 -8px; }
@@ -395,64 +420,14 @@ html body .workspace :is(
 ) > strong { margin: 12px 0 4px !important; white-space: nowrap; }
 
 /* ═════════ User profile ═════════ */
-html body .v3-user-page .v3-user-kpi {
-  display: grid !important; grid-template-columns: 28px minmax(0, 1fr) !important;
-  column-gap: 10px !important; row-gap: 0 !important; align-items: center !important; align-content: start;
-  padding: 16px 18px !important;
-}
-html body .v3-user-page .v3-user-kpi-copy { display: contents !important; }
-html body .v3-user-page .v3-user-kpi-ico { grid-column: 1; grid-row: 1; width: 28px !important; height: 28px !important; border-radius: 8px !important; display: grid !important; place-items: center; background: var(--s-accent-soft) !important; color: var(--s-accent) !important; }
-html body .v3-user-page .v3-user-kpi-ico .icon { width: 15px; height: 15px; }
-html body .v3-user-page .v3-user-kpi-copy > span:first-child { grid-column: 2; grid-row: 1; font-size: 12.5px; font-weight: 500; color: var(--s-muted); }
-html body .v3-user-page .v3-user-kpi-copy > :not(:first-child) { grid-column: 1 / -1; }
-html body .v3-user-page .v3-user-kpi-copy > strong {
-  margin: 12px 0 4px; font-size: 20px !important; font-weight: 650 !important; line-height: 1.2;
-  color: var(--s-ink); overflow-wrap: anywhere; justify-self: start;
-}
-html body .v3-user-page .v3-user-kpi-copy > strong.v3-users-act-badge { font-size: 13px !important; padding: 3px 9px !important; border-radius: 99px !important; }
-html body .v3-user-page .v3-user-kpi-copy > em { font-style: normal; font-size: 12px; color: var(--s-muted); }
-html body .v3-user-page .v3-user-kpi-den { font-size: 14px; color: var(--s-faint); font-weight: 500; }
-
-html body .v3-user-page .v3-user-hero {
+/* The page itself is styled in components.css [P6]; these cards come from v4/modules/manage.js and match .s-card. */
+html body .v3-user-page .v3-user-card {
   background: var(--s-surface) !important; border: 1px solid var(--s-line) !important;
-  border-radius: 16px !important; box-shadow: var(--s-shadow-xs) !important;
-  padding: 22px 24px !important;
-  background-image: radial-gradient(90% 140% at 100% 0%, color-mix(in srgb, var(--s-accent) 7%, transparent), transparent 60%) !important;
+  border-radius: var(--s-radius-lg) !important; box-shadow: var(--s-shadow-xs) !important;
+  padding: 20px !important;
 }
-html body .v3-user-page .v3-user-hero h1,
-html body .v3-user-page .v3-user-hero h2 { font-size: 22px !important; font-weight: 650 !important; letter-spacing: -0.02em; color: var(--s-ink) !important; }
-
-html body .v3-user-page :is(.v3-user-card, .v3-user-board) {
-  background: var(--s-surface) !important; border: 1px solid var(--s-line) !important;
-  border-radius: 14px !important; box-shadow: var(--s-shadow-xs) !important;
-}
-html body .v3-user-page .v3-user-card { padding: 20px !important; }
-html body .v3-user-page .v3-user-card h3 { display: flex; align-items: center; gap: 8px; margin: 0; font-size: 15px !important; font-weight: 650 !important; color: var(--s-ink); }
+html body .v3-user-page .v3-user-card h3 { display: flex; align-items: center; gap: 8px; margin: 0; font-size: 14.5px !important; font-weight: 650 !important; color: var(--s-ink); }
 html body .v3-user-page .v3-user-card h3 .icon { width: 16px; height: 16px; color: var(--s-muted); }
-html body .v3-user-page .v3-user-edit-lead { margin: 4px 0 16px; font-size: 13px; color: var(--s-muted); line-height: 1.5; }
-html body .v3-user-page .v3-user-edit-form { display: grid !important; grid-template-columns: 1fr !important; gap: 14px !important; }
-html body .v3-user-page .v3-user-edit-form .v3-field { display: grid !important; gap: 6px !important; height: auto !important; min-height: 0 !important; }
-html body .v3-user-page .v3-user-edit-form .v3-field-label { font-size: 12.5px; font-weight: 600; color: var(--s-text-2); }
-html body .v3-user-page .v3-user-edit-form .v3-field-help { position: static !important; font-size: 12px !important; color: var(--s-muted) !important; line-height: 1.45; }
-html body .v3-user-page .v3-user-edit-form :is(input, select, textarea) { width: 100%; box-sizing: border-box; padding: 7px 10px; }
-html body .v3-user-page .v3-destructive-zone {
-  margin-top: 6px; padding: 14px !important;
-  border: 1px solid color-mix(in srgb, var(--s-bad) 25%, var(--s-line)) !important; border-radius: 12px !important;
-  background: color-mix(in srgb, var(--s-bad) 4%, var(--s-surface)) !important;
-}
-html body .v3-user-page .v3-destructive-zone h4 { margin: 0 0 4px; font-size: 13px; font-weight: 650; color: var(--s-bad); }
-html body .v3-user-page .v3-destructive-zone p { margin: 0 0 10px; font-size: 12.5px; }
-
-/* Inner investigation sections (ანგარიში / აქტივობა / …) */
-html body .v3-user-page .inv-section {
-  margin: 0 0 16px !important; padding: 16px 18px !important;
-  border: 1px solid var(--s-line-soft) !important; border-radius: 12px !important;
-  background: var(--s-raised) !important; box-shadow: none !important;
-}
-html body .v3-user-page .inv-section h4 { display: flex; align-items: center; gap: 8px; margin: 0 0 12px !important; font-size: 13.5px !important; font-weight: 650 !important; color: var(--s-ink) !important; }
-html body .v3-user-page .inv-section h4 .icon { width: 15px; height: 15px; color: var(--s-accent); }
-html body .v3-user-page .inv-row > span { font-size: 12px !important; color: var(--s-muted) !important; font-weight: 500 !important; text-transform: none !important; letter-spacing: 0 !important; }
-html body .v3-user-page .inv-row > strong { font-size: 13.5px !important; font-weight: 600 !important; color: var(--s-ink) !important; }
 
 /* Save bar: appears only when there are unsaved changes (Stripe-style) */
 html body .v3-user-page .v3-user-sticky {
@@ -468,7 +443,6 @@ html body .v3-user-page .v3-user-sticky.is-dirty { opacity: 1; transform: none; 
 html body .v3-user-page .v3-user-sticky .v3-dirty-dot { color: #f5b546; font-weight: 600; padding-right: 8px; }
 html body .v3-user-page .v3-user-sticky .btn.ghost { color: inherit !important; opacity: .8; }
 html body .v3-user-page .v3-user-sticky .btn.ghost:hover { background: rgba(127, 127, 127, .18) !important; opacity: 1; }
-html body .v3-user-page { padding-bottom: 24px; }
 
 /* ═════════ Filter rows & selects (all modules) ═════════ */
 html body .workspace :is([class$="-filters"], [class*="-filters "], .v3-filterbar) {
@@ -490,40 +464,17 @@ html body .workspace td.col-actions { vertical-align: middle; }
 html body .workspace .row-actions { display: flex; justify-content: flex-end; gap: 6px; }
 html body #tab-audit tbody td:first-child, html body #tab-sms tbody td:first-child, html body #tab-ai tbody td:first-child { white-space: nowrap; }
 
-/* ═════════ MEDIRUN (medipulsi module) ═════════ */
-html body #tab-medipulsi .mp > nav[role="tablist"] {
-  display: flex; gap: 20px; padding: 0 2px; margin-bottom: 20px;
-  border-bottom: 1px solid var(--s-line); background: transparent !important; border-radius: 0 !important; box-shadow: none !important;
-  overflow-x: auto; scrollbar-width: none;
-}
-html body #tab-medipulsi .mp > nav[role="tablist"] button {
-  position: relative; flex: none; height: 40px; padding: 0 2px !important;
-  border: 0 !important; border-radius: 0 !important; background: transparent !important; box-shadow: none !important;
-  color: var(--s-muted) !important; font: 500 13.5px var(--s-font);
-}
-html body #tab-medipulsi .mp > nav[role="tablist"] button:hover { color: var(--s-ink) !important; }
-html body #tab-medipulsi .mp > nav[role="tablist"] button[aria-selected="true"] { color: var(--s-accent-ink) !important; font-weight: 600; }
-html body #tab-medipulsi .mp > nav[role="tablist"] button[aria-selected="true"]::after {
-  content: ""; position: absolute; left: 0; right: 0; bottom: -1px; height: 2px; border-radius: 2px 2px 0 0; background: var(--s-accent);
-}
-html body #tab-medipulsi .mp-heading { margin-bottom: 18px; }
-html body #tab-medipulsi .mp-heading span { font-size: 12px; font-weight: 600; color: var(--s-accent-ink); letter-spacing: .02em; }
-html body #tab-medipulsi .mp-heading h2 { margin: 6px 0 4px; font-size: 22px; font-weight: 650; letter-spacing: -0.02em; color: var(--s-ink); }
-html body #tab-medipulsi .mp-heading p { margin: 0; font-size: 13px; color: var(--s-muted); }
-html body #tab-medipulsi .mp-metrics {
-  display: grid !important; grid-template-columns: repeat(4, minmax(0, 1fr)) !important; gap: 0 !important;
-  background: var(--s-surface); border: 1px solid var(--s-line); border-radius: 14px; overflow: hidden; box-shadow: var(--s-shadow-xs);
-}
-html body #tab-medipulsi .mp-metrics article {
-  display: grid; gap: 8px; padding: 16px 18px !important; margin: 0 -1px -1px 0;
-  border: 0 !important; border-radius: 0 !important; box-shadow: none !important; background: transparent !important;
-  border-right: 1px solid var(--s-line-soft) !important; border-bottom: 1px solid var(--s-line-soft) !important;
-}
-html body #tab-medipulsi .mp-metrics span { font-size: 12.5px; font-weight: 500; color: var(--s-muted); }
-html body #tab-medipulsi .mp-metrics strong { font-size: 26px !important; font-weight: 650; letter-spacing: -0.02em; color: var(--s-ink); }
-html body #tab-medipulsi .mp-note {
-  margin-top: 16px; padding: 12px 14px !important; border: 0 !important; border-radius: 12px !important;
-  background: var(--s-ok-soft) !important; color: var(--s-ok) !important; font-size: 13px;
-}
-html body #tab-medipulsi :is(table) { font-size: 13px; }
-@media (max-width: 760px) { html body #tab-medipulsi .mp-metrics { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; } }
+/* ═════════ Push & Brain (#/push) ═════════ */
+/* Reasons are sentences now: give them room and let them wrap instead of clipping mid-word. */
+html body #tab-push [data-v3-brain="suppress"] .v3-bar-row { grid-template-columns: minmax(0, 1.5fr) minmax(48px, 1fr) auto !important; }
+html body #tab-push [data-v3-brain="suppress"] .v3-bar-label { white-space: normal !important; line-height: 1.35; overflow: visible; text-overflow: clip; }
+html body #tab-push .v3-brain-search input { width: 280px; max-width: 100%; }
+html body #tab-push .v3-brain-table td.v3-brain-when { white-space: nowrap; color: var(--s-text-2); }
+html body #tab-push .v3-brain-table td.v3-brain-id { font-size: 11.5px; color: var(--s-faint); }
+html body #tab-push .v3-brain-table .v3-brain-user { font-weight: 600; color: var(--s-ink); }
+html body #tab-push .v3-brain-table td .s-badge { vertical-align: middle; }
+html body #tab-push .push-delivery-val { font-size: 12px; color: var(--s-muted); font-variant-numeric: tabular-nums; }
+html body #tab-push .v3-push-subnav-host { margin-bottom: 4px; }
+html body #tab-push .push-tpl-search { position: relative; display: block; }
+html body #tab-push .push-tpl-search .icon { position: absolute; left: 11px; top: 50%; transform: translateY(-50%); width: 15px; height: 15px; color: var(--s-faint); pointer-events: none; }
+html body #tab-push .push-tpl-search input { padding-left: 34px !important; }

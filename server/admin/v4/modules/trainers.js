@@ -1,7 +1,8 @@
 /**
  * MediCard Admin V4 — #/trainers ტრენერები (MEDI COACH, /api/admin/trainers).
  * Verify trainer applications (profile, phone, account age, certificate photos), suspend/restore,
- * and curate the Georgian gym directory (approve trainer-proposed gyms, hide, add).
+ * curate the Georgian gym directory (approve trainer-proposed gyms, hide, add) and review the
+ * reports clients and trainers send about each other.
  * Admins never see clients' health data here — only counts.
  */
 (function adminV4Trainers(global) {
@@ -11,18 +12,21 @@
   const esc = (v) => String(v ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const ico = (n) => (typeof global.icon === 'function' ? global.icon(n) : '');
   const fmt = (n) => (Number.isFinite(Number(n)) ? Number(n).toLocaleString('ka-GE') : '—');
-  const when = (iso) => (iso ? new Date(iso).toLocaleString('ka-GE', { dateStyle: 'medium', timeStyle: 'short', hour12: false }) : '—');
+  const when = (iso) => (!iso ? '—' : V().formatDate ? V().formatDate(iso, 'datetime') : String(iso));
   const ageDays = (iso) => (iso ? Math.max(0, Math.round((Date.now() - new Date(iso).getTime()) / 86400000)) : null);
   const api = (path, opts) => global.api(`/trainers${path}`, opts);
-  const skel = () => `<div class="s-stack"><div class="v3-skel" aria-hidden="true">${'<i></i>'.repeat(6)}</div></div>`;
+  const skel = () => `<div class="v3-skel" aria-hidden="true">${'<i></i>'.repeat(6)}</div>`;
   const toast = (m, t) => global.toast?.(m, t);
 
   const STATUS = { PENDING: ['განიხილება', 'is-warn'], VERIFIED: ['დადასტურებული', 'is-ok'], REJECTED: ['უარყოფილი', 'is-bad'], SUSPENDED: ['შეჩერებული', 'is-bad'] };
   const GYM_STATUS = { ACTIVE: ['აქტიური', 'is-ok'], PROPOSED: ['შემოთავაზებული', 'is-warn'], HIDDEN: ['დამალული', ''] };
+  const GYM_SOURCE = { trainer: 'ტრენერმა შემოგვთავაზა', admin: 'დაამატა ადმინმა' };
+  const VIEWS = [['trainers', 'ტრენერები'], ['gyms', 'დარბაზები'], ['reports', 'შეტყობინებები']];
   let view = 'trainers';
   let status = 'PENDING';
   let gymStatus = 'PROPOSED';
   let gymQuery = '';
+  let reportStatus = 'open';
 
   if (typeof ICONS === 'object') {
     ICONS.coach = '<path d="M6.5 6.5 17.5 17.5"/><path d="M3 10l4-4 1.5 1.5L4.5 11.5z"/><path d="M13 20l4-4 1.5 1.5-4 4z"/><path d="M10 3l4 4"/><path d="M17 10l4 4"/>';
@@ -33,6 +37,9 @@
   }
 
   const badge = (map, key) => `<span class="s-badge ${(map[key] || ['', ''])[1]}">${esc((map[key] || [key])[0])}</span>`;
+  const emptyCard = (title, text) => `<div class="s-card"><div class="s-empty">${ico('check')}<strong>${esc(title)}</strong>${text ? `<span>${esc(text)}</span>` : ''}</div></div>`;
+  const segment = (label, items, current, attr) => `<div class="s-segment" role="tablist" aria-label="${esc(label)}">${items.map(([key, text, count]) => `<button type="button" role="tab" aria-selected="${key === current}" ${attr}="${esc(key)}">${esc(text)}${count ? ` <i${key === 'PENDING' || key === 'open' ? ' class="is-hot"' : ''}>${fmt(count)}</i>` : ''}</button>`).join('')}</div>`;
+  const refreshBtn = `<button type="button" class="btn ghost compact" data-refresh>${ico('refresh')} განახლება</button>`;
 
   async function openCertificate(file, title) {
     const dialog = V().openDialog?.({ title: title || 'სერტიფიკატი', description: 'ფაილი ჩანს მხოლოდ ადმინებს. კლიენტები ხედავენ დასახელებას, გამცემს და წელს.', body: '<div class="s-empty">იტვირთება…</div>', wide: true });
@@ -41,7 +48,7 @@
       if (!res.ok) throw new Error(res.status === 404 ? 'ფაილი ვერ მოიძებნა (შესაძლოა სერვერის დისკიდან წაიშალა).' : 'ფაილი ვერ ჩაიტვირთა.');
       const url = URL.createObjectURL(await res.blob());
       const body = doc.querySelector('#v3-dialog .v3-overlay-body');
-      if (body) body.innerHTML = `<img src="${url}" alt="${esc(title)}" style="max-width:100%;max-height:70vh;display:block;margin:0 auto;border-radius:12px">`;
+      if (body) body.innerHTML = `<img class="s-coach-cert-img" src="${url}" alt="${esc(title)}">`;
     } catch (err) {
       const body = doc.querySelector('#v3-dialog .v3-overlay-body');
       if (body) body.innerHTML = `<div class="s-empty">${ico('alert')}<span>${esc(err.message)}</span></div>`;
@@ -60,11 +67,11 @@
     const dialog = V().openDialog?.({
       title: `${copy[0]} · ${t.displayName}`,
       description: copy[1],
-      body: `<form id="trainer-review" class="s-stack" style="gap:14px" novalidate>
+      body: `<form id="trainer-review" class="s-stack s-coach-form" novalidate>
         <label class="s-field"><span>${needsNote ? 'მიზეზი (ტრენერი ნახავს)' : 'შენიშვნა (არასავალდებულო)'}</span>
           <textarea name="note" rows="3" maxlength="500" ${needsNote ? 'required' : ''} placeholder="${action === 'reject' ? 'მაგ. სერტიფიკატის ფოტო ბუნდოვანია — ატვირთე მკაფიო ფოტო' : ''}"></textarea></label>
       </form>`,
-      footer: `<p class="s-form-msg" role="alert" style="margin-right:auto"></p><button type="button" class="btn" data-cancel>გაუქმება</button>
+      footer: `<p class="s-form-msg s-coach-msg" role="alert"></p><button type="button" class="btn" data-cancel>გაუქმება</button>
         <button type="submit" class="btn ${copy[2]}" form="trainer-review">${copy[0]}</button>`,
     });
     const form = $('trainer-review');
@@ -94,52 +101,82 @@
     };
   }
 
-  function trainerRow(t) {
+  function trainerCard(t) {
     const days = ageDays(t.accountCreatedAt);
     const actions = {
-      PENDING: `<button class="btn primary compact" data-act="approve">${ico('check')} დადასტურება</button><button class="btn ghost compact" data-act="reject">უარყოფა</button>`,
-      VERIFIED: `<button class="btn ghost compact" data-act="suspend">შეჩერება</button>`,
-      REJECTED: `<button class="btn ghost compact" data-act="approve">დადასტურება</button>`,
-      SUSPENDED: `<button class="btn ghost compact" data-act="restore">აღდგენა</button>`,
+      PENDING: `<button type="button" class="btn compact" data-act="approve">${ico('check')} დადასტურება</button><button type="button" class="btn ghost compact" data-act="reject">უარყოფა</button>`,
+      VERIFIED: '<button type="button" class="btn ghost compact" data-act="suspend">შეჩერება</button>',
+      REJECTED: '<button type="button" class="btn ghost compact" data-act="approve">დადასტურება</button>',
+      SUSPENDED: '<button type="button" class="btn ghost compact" data-act="restore">აღდგენა</button>',
     }[t.status] || '';
-    return `<article class="s-card" data-trainer="${esc(t.userId)}">
-      <header class="s-card-head"><div>
-        <h3>${esc(t.displayName)} ${badge(STATUS, t.status)}</h3>
-        <p>${esc(t.fullName || '')} · ${t.phoneVerified ? `${ico('check')} ტელეფონი ${esc(t.phone)}` : '<span class="s-badge is-bad">ტელეფონი არ არის</span>'}${t.email ? ` · ${esc(t.email)}` : ''} · ანგარიში ${days != null ? `${fmt(days)} დღის` : '—'}${t.accountStatus !== 'ACTIVE' ? ' · <span class="s-badge is-bad">დაბლოკილი</span>' : ''}</p>
-      </div><div style="display:flex;gap:8px;flex-wrap:wrap">${actions}</div></header>
-      <div class="s-card-body" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:16px">
-        <div><small class="s-muted">შესახებ</small><p style="margin:4px 0 0;white-space:pre-wrap">${esc(t.bio || '—')}</p>
-          <p style="margin:8px 0 0">${t.specialties.map((s) => `<span class="s-badge is-plain">${esc(s)}</span>`).join(' ') || ''}</p>
-          <p class="s-muted" style="margin:8px 0 0">${t.experienceYears != null ? `${fmt(t.experienceYears)} წლის გამოცდილება` : 'გამოცდილება არ არის მითითებული'}${t.instagram ? ` · <a href="https://instagram.com/${encodeURIComponent(t.instagram)}" target="_blank" rel="noopener noreferrer">@${esc(t.instagram)}</a>` : ''}</p></div>
-        <div><small class="s-muted">დარბაზები</small>${t.gyms.map((g) => `<p style="margin:4px 0 0">${esc(g.brand)} · ${esc(g.name)}, ${esc(g.city)} ${g.status === 'PROPOSED' ? badge(GYM_STATUS, 'PROPOSED') : ''}</p>`).join('') || '<p>—</p>'}</div>
-        <div><small class="s-muted">სერტიფიკატები</small>${t.certificates.length ? t.certificates.map((c) => `<p style="margin:4px 0 0"><button type="button" class="btn ghost compact" data-cert="${esc(c.file)}" data-title="${esc(c.title)}">${ico('eye')} ${esc(c.title)}</button> <span class="s-muted">${esc([c.issuer, c.year].filter(Boolean).join(' · '))}</span></p>`).join('') : '<p><span class="s-badge is-warn">სერტიფიკატი არ არის</span></p>'}</div>
-        <div><small class="s-muted">აქტივობა</small><p style="margin:4px 0 0">${fmt(t.clients)} აქტიური კლიენტი</p>
-          <p class="s-muted" style="margin:4px 0 0">გაგზავნა: ${esc(when(t.submittedAt))}</p>
-          ${t.reviewedAt ? `<p class="s-muted" style="margin:4px 0 0">განხილვა: ${esc(t.reviewedBy || '')} · ${esc(when(t.reviewedAt))}</p>` : ''}
-          ${t.reviewNote ? `<p style="margin:4px 0 0">„${esc(t.reviewNote)}“</p>` : ''}</div>
+    const meta = [
+      t.fullName ? `<span>${esc(t.fullName)}</span>` : '',
+      t.phoneVerified ? `<span class="is-ok">${ico('check')} ტელეფონი ${esc(t.phone)}</span>` : '<span class="s-badge is-bad">დადასტურებული ტელეფონი არ აქვს</span>',
+      t.email ? `<span>${esc(t.email)}</span>` : '',
+      `<span>ანგარიში ${days != null ? `${fmt(days)} დღის` : '—'}</span>`,
+      t.accountStatus !== 'ACTIVE' ? '<span class="s-badge is-bad">ანგარიში დაბლოკილია</span>' : '',
+    ].filter(Boolean).join('');
+    const specialties = (t.specialties || []).map((s) => `<span class="s-badge is-plain">${esc(s)}</span>`).join('');
+    const gyms = (t.gyms || []).map((g) => `<li>${esc(g.brand)} · ${esc(g.name)}, ${esc(g.city)} ${g.status === 'PROPOSED' ? badge(GYM_STATUS, 'PROPOSED') : ''}</li>`).join('');
+    const certs = (t.certificates || []).map((c) => `<li>
+      <button type="button" class="s-coach-cert" data-cert="${esc(c.file)}" data-title="${esc(c.title)}">${ico('eye')} ${esc(c.title)}</button>
+      ${c.issuer || c.year ? `<span class="s-muted">${esc([c.issuer, c.year].filter(Boolean).join(' · '))}</span>` : ''}
+    </li>`).join('');
+    return `<article class="s-card s-coach-card" data-trainer="${esc(t.userId)}">
+      <header class="s-card-head">
+        <div>
+          <h3 class="s-coach-title">${esc(t.displayName)} ${badge(STATUS, t.status)}</h3>
+          <p class="s-coach-meta">${meta}</p>
+        </div>
+        <div class="s-coach-actions">${actions}</div>
+      </header>
+      <div class="s-card-body s-coach-grid">
+        <section>
+          <h4>შესახებ</h4>
+          <p class="s-coach-bio">${esc(t.bio || '—')}</p>
+          ${specialties ? `<div class="s-chips s-coach-chips">${specialties}</div>` : ''}
+          <p class="s-coach-sub">${t.experienceYears != null ? `${fmt(t.experienceYears)} წლის გამოცდილება` : 'გამოცდილება არ არის მითითებული'}${t.instagram ? ` · <a href="https://instagram.com/${encodeURIComponent(t.instagram)}" target="_blank" rel="noopener noreferrer">@${esc(t.instagram)}</a>` : ''}</p>
+        </section>
+        <section>
+          <h4>დარბაზები</h4>
+          ${gyms ? `<ul class="s-coach-list">${gyms}</ul>` : '<p class="s-muted">არ არის მითითებული</p>'}
+        </section>
+        <section>
+          <h4>სერტიფიკატები</h4>
+          ${certs ? `<ul class="s-coach-list">${certs}</ul>` : '<span class="s-badge is-warn">სერტიფიკატი არ არის</span>'}
+        </section>
+        <section>
+          <h4>აქტივობა</h4>
+          <dl class="s-coach-dl">
+            <div><dt>კლიენტი</dt><dd>${fmt(t.clients)} აქტიური</dd></div>
+            <div><dt>გაგზავნა</dt><dd>${esc(when(t.submittedAt))}</dd></div>
+            ${t.reviewedAt ? `<div><dt>განხილვა</dt><dd>${esc(when(t.reviewedAt))}${t.reviewedBy ? ` · ${esc(t.reviewedBy)}` : ''}</dd></div>` : ''}
+          </dl>
+          ${t.reviewNote ? `<p class="s-coach-note">„${esc(t.reviewNote)}“</p>` : ''}
+        </section>
       </div>
     </article>`;
   }
 
-  function paintTrainers(root, data) {
+  function paintTrainers(body, data) {
     const c = data.counts || {};
     const list = data.trainers || [];
-    root.querySelector('[data-body]').innerHTML = `
+    const counts = { PENDING: c.pending, VERIFIED: c.verified, REJECTED: c.rejected, SUSPENDED: c.suspended };
+    body.innerHTML = `
       <div class="s-metrics">
-        <div class="s-metric"><span>განსახილველი</span><strong>${fmt(c.pending)}</strong><small>ელოდება დადასტურებას</small></div>
+        <div class="s-metric${c.pending ? ' is-warn' : ''}"><span>განსახილველი</span><strong>${fmt(c.pending)}</strong><small>ელოდება შენს გადაწყვეტილებას</small></div>
         <div class="s-metric"><span>დადასტურებული</span><strong>${fmt(c.verified)}</strong><small>შეჩერებული ${fmt(c.suspended)} · უარყოფილი ${fmt(c.rejected)}</small></div>
         <div class="s-metric"><span>აქტიური კავშირი</span><strong>${fmt(c.activeLinks)}</strong><small>ტრენერი ↔ კლიენტი</small></div>
         <div class="s-metric"><span>ვარჯიშები</span><strong>${fmt(c.upcomingSessions)}</strong><small>დაგეგმილი · ჩატარდა ${fmt(c.doneSessions)}</small></div>
       </div>
       <div class="s-toolbar">
-        <div class="s-segment" role="tablist" aria-label="სტატუსი">${['PENDING', 'VERIFIED', 'REJECTED', 'SUSPENDED', 'ALL'].map((k) => `<button type="button" role="tab" aria-selected="${k === status}" data-status="${k}">${k === 'ALL' ? 'ყველა' : STATUS[k][0]}</button>`).join('')}</div>
-        <button type="button" class="btn ghost compact" data-refresh>${ico('refresh')} განახლება</button>
+        ${segment('განაცხადის სტატუსი', [...['PENDING', 'VERIFIED', 'REJECTED', 'SUSPENDED'].map((k) => [k, STATUS[k][0], counts[k]]), ['ALL', 'ყველა']], status, 'data-status')}
+        ${refreshBtn}
       </div>
-      ${list.length ? list.map(trainerRow).join('') : `<div class="s-card"><div class="s-empty">${ico('check')}<strong>${status === 'PENDING' ? 'განსახილველი განაცხადი არ არის' : 'სია ცარიელია'}</strong></div></div>`}
-      <div class="s-callout">${ico('shield')}<p>შეამოწმე: რეალური სახელი (ემთხვევა სერტიფიკატს), დადასტურებული ტელეფონი, ანგარიშის ასაკი, სერტიფიკატის ფოტო და დარბაზი. საეჭვოს შემთხვევაში დაურეკე ან სთხოვე დამატებითი დოკუმენტი — უარყოფის მიზეზს ტრენერი ნახავს. კლიენტების ჯანმრთელობის მონაცემი აქ არ ჩანს.</p></div>`;
-    root.querySelectorAll('[data-status]').forEach((b) => b.addEventListener('click', () => { status = b.dataset.status; void renderTrainers(); }));
-    root.querySelector('[data-refresh]')?.addEventListener('click', () => void renderTrainers());
-    root.querySelectorAll('[data-trainer]').forEach((card) => {
+      <div class="s-stack" data-list>${list.length
+        ? list.map(trainerCard).join('')
+        : emptyCard(status === 'PENDING' ? 'განსახილველი განაცხადი არ არის' : 'ამ სტატუსით ტრენერი არ არის', status === 'PENDING' ? 'ახალი განაცხადი აქ გამოჩნდება.' : '')}</div>`;
+    body.querySelectorAll('[data-trainer]').forEach((card) => {
       const t = list.find((x) => x.userId === card.dataset.trainer);
       card.querySelectorAll('[data-act]').forEach((b) => b.addEventListener('click', () => review(t, b.dataset.act)));
       card.querySelectorAll('[data-cert]').forEach((b) => b.addEventListener('click', () => void openCertificate(b.dataset.cert, b.dataset.title)));
@@ -150,13 +187,13 @@
     const dialog = V().openDialog?.({
       title: 'დარბაზის დამატება',
       description: 'ახალი ფილიალი მაშინვე გამოჩნდება ტრენერების სიაში.',
-      body: `<form id="gym-add" class="s-stack" style="gap:14px" novalidate>
+      body: `<form id="gym-add" class="s-stack s-coach-form" novalidate>
         <label class="s-field"><span>ბრენდი / კომპანია</span><input name="brand" required maxlength="80" placeholder="მაგ. Oktopus"></label>
         <label class="s-field"><span>ფილიალი</span><input name="name" maxlength="80" placeholder="მაგ. ვაკე"></label>
         <label class="s-field"><span>ქალაქი</span><input name="city" required maxlength="40" value="თბილისი"></label>
         <label class="s-field"><span>მისამართი</span><input name="address" maxlength="160"></label>
       </form>`,
-      footer: `<p class="s-form-msg" role="alert" style="margin-right:auto"></p><button type="button" class="btn" data-cancel>გაუქმება</button><button type="submit" class="btn primary" form="gym-add">დამატება</button>`,
+      footer: '<p class="s-form-msg s-coach-msg" role="alert"></p><button type="button" class="btn" data-cancel>გაუქმება</button><button type="submit" class="btn primary" form="gym-add">დამატება</button>',
     });
     const form = $('gym-add');
     const panel = form?.closest('.v3-dialog-panel');
@@ -178,91 +215,168 @@
     };
   }
 
-  function paintGyms(root, gyms) {
-    const q = gymQuery.trim().toLowerCase();
-    const shown = gyms.filter((g) => !q || `${g.brand} ${g.name} ${g.city} ${g.address || ''}`.toLowerCase().includes(q));
-    root.querySelector('[data-body]').innerHTML = `
-      <div class="s-toolbar">
-        <div class="s-segment" role="tablist" aria-label="სტატუსი">${['PROPOSED', 'ACTIVE', 'HIDDEN', 'ALL'].map((k) => `<button type="button" role="tab" aria-selected="${k === gymStatus}" data-gstatus="${k}">${k === 'ALL' ? 'ყველა' : GYM_STATUS[k][0]}</button>`).join('')}</div>
-        <label class="s-field" style="min-width:260px;margin:0"><span class="sr-only">ძებნა</span><input type="search" placeholder="ძებნა: ბრენდი, ქალაქი, მისამართი" value="${esc(gymQuery)}" data-gq></label>
-        <button type="button" class="btn primary compact" data-add>${ico('plus')} დარბაზის დამატება</button>
-      </div>
-      <section class="s-card"><div class="s-card-body is-flush"><div class="s-table-wrap"><table class="s-table">
-        <thead><tr><th>ბრენდი</th><th>ფილიალი</th><th>ქალაქი</th><th>მისამართი</th><th class="num">ტრენერი</th><th>სტატუსი</th><th>წყარო</th><th></th></tr></thead>
-        <tbody>${shown.length ? shown.map((g) => `<tr data-gym="${esc(g.id)}">
-          <td><b>${esc(g.brand)}</b>${g.brandKa ? `<br><small class="s-muted">${esc(g.brandKa)}</small>` : ''}</td>
-          <td>${esc(g.name)}</td><td>${esc(g.city)}</td><td>${esc(g.address || '—')}</td>
-          <td class="num">${fmt(g.trainers)}</td><td>${badge(GYM_STATUS, g.status)}</td>
-          <td>${g.source && /^https?:/.test(g.source) ? `<a href="${esc(g.source)}" target="_blank" rel="noopener noreferrer">წყარო</a>` : esc(g.source === 'trainer' ? 'ტრენერმა შემოგვთავაზა' : g.source || '—')}</td>
-          <td style="white-space:nowrap">${g.status !== 'ACTIVE' ? `<button class="btn ghost compact" data-gset="ACTIVE">${g.status === 'PROPOSED' ? 'დადასტურება' : 'ჩვენება'}</button>` : ''}${g.status !== 'HIDDEN' ? `<button class="btn ghost compact" data-gset="HIDDEN">დამალვა</button>` : ''}</td>
-        </tr>`).join('') : '<tr><td colspan="8"><div class="s-empty">ჩანაწერი არ არის.</div></td></tr>'}</tbody></table></div></div></section>
-      <div class="s-callout">${ico('info')}<p>სია აწყობილია საჯარო წყაროებიდან (ოფიციალური საიტები, fitpass.ge, yell.ge, kompas.ge; 2026-09-28). დაბალი სანდოობის ფილიალები დამალულია, სანამ არ დაადასტურებ. დამალული დარბაზი ტრენერის პროფილიდან არ იშლება.</p></div>`;
-    root.querySelectorAll('[data-gstatus]').forEach((b) => b.addEventListener('click', () => { gymStatus = b.dataset.gstatus; void renderTrainers(); }));
-    const input = root.querySelector('[data-gq]');
-    input?.addEventListener('input', () => { gymQuery = input.value; paintGyms(root, gyms); const again = root.querySelector('[data-gq]'); again?.focus(); again?.setSelectionRange(again.value.length, again.value.length); });
-    root.querySelector('[data-add]')?.addEventListener('click', gymDialog);
-    root.querySelectorAll('[data-gym]').forEach((row) => row.querySelectorAll('[data-gset]').forEach((b) => b.addEventListener('click', async () => {
-      b.disabled = true;
-      try {
-        await api(`/gyms/${encodeURIComponent(row.dataset.gym)}`, { method: 'PATCH', body: { status: b.dataset.gset } });
-        toast(b.dataset.gset === 'ACTIVE' ? 'დარბაზი აქტიურია' : 'დარბაზი დაიმალა', 'ok');
-        await renderTrainers();
-      } catch (err) { toast(err.message, 'bad'); b.disabled = false; }
-    })));
+  function gymSource(src) {
+    if (src && /^https?:/.test(src)) {
+      let host = 'წყარო';
+      try { host = new URL(src).hostname.replace(/^www\./, ''); } catch { /* keep the generic label */ }
+      return `<a href="${esc(src)}" target="_blank" rel="noopener noreferrer">${esc(host)}</a>`;
+    }
+    return esc(GYM_SOURCE[src] || (src ? 'სხვა' : '—'));
   }
 
-  let reportStatus = 'open';
-  function paintReports(root, data) {
-    const rows = data.reports || [];
-    const when = (iso) => (iso ? new Date(iso).toLocaleString('en-GB', { timeZone: 'Asia/Tbilisi', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '—');
-    root.querySelector('[data-body]').innerHTML = `
+  function paintGyms(body, gyms) {
+    body.innerHTML = `
       <div class="s-toolbar">
-        <div class="s-segment" role="tablist" aria-label="სტატუსი">${[['open', 'განსახილველი'], ['resolved', 'განხილული'], ['all', 'ყველა']].map(([k, l]) => `<button type="button" role="tab" aria-selected="${k === reportStatus}" data-rstatus="${k}">${l}</button>`).join('')}</div>
+        <div class="s-coach-facets">
+          ${segment('დარბაზის სტატუსი', [...['PROPOSED', 'ACTIVE', 'HIDDEN'].map((k) => [k, GYM_STATUS[k][0]]), ['ALL', 'ყველა']], gymStatus, 'data-gstatus')}
+          <label class="s-coach-search"><span class="sr-only">ძებნა</span><input type="search" placeholder="ძებნა: ბრენდი, ქალაქი, მისამართი" value="${esc(gymQuery)}" data-gq></label>
+        </div>
+        <button type="button" class="btn primary compact" data-add>${ico('plus')} დარბაზის დამატება</button>
       </div>
-      <section class="s-card"><div class="s-card-body is-flush"><div class="s-table-wrap"><table class="s-table">
-        <thead><tr><th>როდის</th><th>ვინ</th><th>ვიზე</th><th>მიზეზი</th><th>დეტალები</th><th>დაბლოკა</th><th></th></tr></thead>
-        <tbody>${rows.length ? rows.map((r) => `<tr data-report="${esc(r.id)}">
-          <td style="white-space:nowrap">${esc(when(r.createdAt))}</td>
-          <td>${esc(r.reporterName || '—')}<br><small class="s-muted">${r.reporterRole === 'CLIENT' ? 'კლიენტი' : 'ტრენერი'}</small></td>
-          <td>${esc(r.subjectName || '—')}</td>
-          <td>${esc(r.reasonLabel)}</td>
-          <td style="max-width:360px;white-space:normal">${esc(r.details || '—')}${r.resolvedNote ? `<br><small class="s-muted">განხილვა: ${esc(r.resolvedNote)}</small>` : ''}</td>
-          <td>${r.blocked ? '<span class="s-badge is-warn is-plain">დიახ</span>' : '—'}</td>
-          <td>${r.status === 'open' ? '<button class="btn ghost compact" data-resolve>განხილულია</button>' : '<span class="s-badge is-ok is-plain">განხილულია</span>'}</td>
-        </tr>`).join('') : '<tr><td colspan="7"><div class="s-empty">შეტყობინება არ არის.</div></td></tr>'}</tbody></table></div></div></section>
-      <div class="s-callout">${ico('info')}<p>კლიენტი და ტრენერი ერთმანეთზე შეტყობინებას აპიდან აგზავნის. საჭიროებისას ტრენერი შეაჩერე „ტრენერები“ ჩანართიდან. ახალ შეტყობინებაზე ტელეგრამში დირექტორიც გატყობინებს.</p></div>`;
-    root.querySelectorAll('[data-rstatus]').forEach((b) => b.addEventListener('click', () => { reportStatus = b.dataset.rstatus; void renderTrainers(); }));
-    root.querySelectorAll('[data-report] [data-resolve]').forEach((b) => b.addEventListener('click', async () => {
-      const id = b.closest('[data-report]').dataset.report;
-      const note = '';
-      b.disabled = true;
+      <section class="s-card"><div class="s-card-body is-flush" data-list><div class="s-table-wrap"><table class="s-table s-coach-table">
+        <thead><tr><th>ბრენდი</th><th>ფილიალი</th><th>ქალაქი</th><th>მისამართი</th><th class="num">ტრენერი</th><th>სტატუსი</th><th>წყარო</th><th><span class="sr-only">ქმედება</span></th></tr></thead>
+        <tbody data-gym-rows></tbody>
+      </table></div></div></section>`;
+
+    const tbody = body.querySelector('[data-gym-rows]');
+    const paintRows = () => {
+      const q = gymQuery.trim().toLowerCase();
+      const shown = gyms.filter((g) => !q || `${g.brand} ${g.name} ${g.city} ${g.address || ''}`.toLowerCase().includes(q));
+      tbody.innerHTML = shown.length ? shown.map((g) => `<tr data-gym="${esc(g.id)}">
+          <td><b>${esc(g.brand)}</b>${g.brandKa ? `<small class="s-coach-sub2">${esc(g.brandKa)}</small>` : ''}</td>
+          <td>${esc(g.name)}</td><td>${esc(g.city)}</td><td>${esc(g.address || '—')}</td>
+          <td class="num">${fmt(g.trainers)}</td><td>${badge(GYM_STATUS, g.status)}</td>
+          <td>${gymSource(g.source)}</td>
+          <td class="s-coach-row-actions">${g.status !== 'ACTIVE' ? `<button type="button" class="btn ghost compact" data-gset="ACTIVE">${g.status === 'PROPOSED' ? 'დადასტურება' : 'ჩვენება'}</button>` : ''}${g.status !== 'HIDDEN' ? '<button type="button" class="btn ghost compact" data-gset="HIDDEN">დამალვა</button>' : ''}</td>
+        </tr>`).join('')
+        : `<tr><td colspan="8"><div class="s-empty">${ico('search')}<span>${q ? 'ძებნას არაფერი ემთხვევა.' : gymStatus === 'PROPOSED' ? 'ტრენერებს ახალი დარბაზი არ შემოუთავაზებიათ.' : 'ამ სტატუსით დარბაზი არ არის.'}</span></div></td></tr>`;
+      tbody.querySelectorAll('[data-gym]').forEach((row) => row.querySelectorAll('[data-gset]').forEach((b) => b.addEventListener('click', async () => {
+        b.disabled = true;
+        try {
+          await api(`/gyms/${encodeURIComponent(row.dataset.gym)}`, { method: 'PATCH', body: { status: b.dataset.gset } });
+          toast(b.dataset.gset === 'ACTIVE' ? 'დარბაზი აქტიურია' : 'დარბაზი დაიმალა', 'ok');
+          await renderTrainers();
+        } catch (err) { toast(err.message, 'bad'); b.disabled = false; }
+      })));
+    };
+    paintRows();
+    const input = body.querySelector('[data-gq]');
+    input?.addEventListener('input', () => { gymQuery = input.value; paintRows(); });
+    body.querySelector('[data-add]')?.addEventListener('click', gymDialog);
+  }
+
+  function resolveDialog(report) {
+    const dialog = V().openDialog?.({
+      title: 'შეტყობინების განხილვა',
+      description: `${report.reporterName || '—'} → ${report.subjectName || '—'} · ${report.reasonLabel || ''}`,
+      body: `<form id="report-resolve" class="s-stack s-coach-form" novalidate>
+        <label class="s-field"><span>შენიშვნა (არასავალდებულო)</span>
+          <textarea name="note" rows="3" maxlength="500" placeholder="მაგ. ტრენერს დავუკავშირდით, გაფრთხილება მიეცა"></textarea>
+          <small>ჩანს მხოლოდ ადმინებს, ამ შეტყობინებასთან.</small></label>
+      </form>`,
+      footer: '<p class="s-form-msg s-coach-msg" role="alert"></p><button type="button" class="btn" data-cancel>გაუქმება</button><button type="submit" class="btn primary" form="report-resolve">განხილულად მონიშვნა</button>',
+    });
+    const form = $('report-resolve');
+    const panel = form?.closest('.v3-dialog-panel');
+    if (!form || !panel) return;
+    form.note.focus();
+    panel.querySelector('[data-cancel]').onclick = () => void dialog.close();
+    form.onsubmit = async (ev) => {
+      ev.preventDefault();
+      const note = form.note.value.trim();
+      const submit = panel.querySelector('[type=submit]');
+      submit.disabled = true;
+      submit.classList.add('is-loading');
       try {
-        await api(`/reports/${encodeURIComponent(id)}/resolve`, { method: 'POST', body: { note } });
+        await api(`/reports/${encodeURIComponent(report.id)}/resolve`, { method: 'POST', body: { note } });
+        V().setDirty?.(false);
+        await dialog.close();
         toast('განხილულად მოინიშნა', 'ok');
         await renderTrainers();
-      } catch (err) { toast(err.message, 'bad'); b.disabled = false; }
+      } catch (err) {
+        panel.querySelector('[role=alert]').textContent = err.message || 'შეცდომა';
+        submit.disabled = false;
+        submit.classList.remove('is-loading');
+      }
+    };
+  }
+
+  function paintReports(body, data) {
+    const rows = data.reports || [];
+    body.innerHTML = `
+      <div class="s-toolbar">
+        ${segment('შეტყობინების სტატუსი', [['open', 'განსახილველი', data.open], ['resolved', 'განხილული'], ['all', 'ყველა']], reportStatus, 'data-rstatus')}
+        ${refreshBtn}
+      </div>
+      <section class="s-card"><div class="s-card-body is-flush" data-list>${rows.length ? `<div class="s-table-wrap"><table class="s-table s-coach-table">
+        <thead><tr><th>როდის</th><th>ვინ</th><th>ვისზე</th><th>მიზეზი</th><th>დეტალები</th><th>დაბლოკა</th><th><span class="sr-only">სტატუსი</span></th></tr></thead>
+        <tbody>${rows.map((r) => `<tr data-report="${esc(r.id)}">
+          <td class="s-coach-nowrap">${esc(when(r.createdAt))}</td>
+          <td><b>${esc(r.reporterName || '—')}</b><small class="s-coach-sub2">${r.reporterRole === 'CLIENT' ? 'კლიენტი' : 'ტრენერი'}</small></td>
+          <td>${esc(r.subjectName || '—')}</td>
+          <td>${esc(r.reasonLabel || '—')}</td>
+          <td class="s-coach-details">${esc(r.details || '—')}${r.status !== 'open' && r.resolvedNote ? `<small class="s-coach-sub2">შენიშვნა: ${esc(r.resolvedNote)}</small>` : ''}</td>
+          <td>${r.blocked ? '<span class="s-badge is-warn">დაბლოკა</span>' : '<span class="s-muted">—</span>'}</td>
+          <td class="s-coach-row-actions">${r.status === 'open'
+            ? '<button type="button" class="btn compact" data-resolve>განხილვა…</button>'
+            : `<span class="s-badge is-ok" title="${esc(r.resolvedAt ? when(r.resolvedAt) : '')}">განხილულია</span>`}</td>
+        </tr>`).join('')}</tbody></table></div>`
+        : `<div class="s-empty">${ico('check')}<span>${reportStatus === 'open' ? 'განსახილველი შეტყობინება არ არის.' : 'შეტყობინება არ არის.'}</span></div>`}</div></section>`;
+    body.querySelectorAll('[data-report] [data-resolve]').forEach((b) => b.addEventListener('click', () => {
+      const report = rows.find((x) => x.id === b.closest('[data-report]').dataset.report);
+      if (report) resolveDialog(report);
     }));
   }
 
-  async function renderTrainers() {
+  /** `loading`: 'view' replaces the whole body with a skeleton; 'list' only the list under the toolbar. */
+  async function renderTrainers({ loading } = {}) {
     const root = $('tab-trainers');
     if (!root) return;
     if (!root.querySelector('[data-body]')) {
-      root.innerHTML = `<div class="s-stack v3-tab-shell">
-        <div class="s-segment" role="tablist" aria-label="განყოფილება"><button type="button" role="tab" data-view="trainers">ტრენერები</button><button type="button" role="tab" data-view="gyms">დარბაზები</button><button type="button" role="tab" data-view="reports">შეტყობინებები</button></div>
+      root.innerHTML = `<div class="s-stack v3-tab-shell s-coach">
+        <div class="v3-tabs s-coach-tabs" role="tablist" aria-label="განყოფილება">${VIEWS.map(([key, label]) => `<button type="button" class="v3-tab" role="tab" data-view="${key}">${label}</button>`).join('')}</div>
         <div class="s-stack" data-body>${skel()}</div></div>`;
-      root.querySelectorAll('[data-view]').forEach((b) => b.addEventListener('click', () => { view = b.dataset.view; void renderTrainers(); }));
+      root.querySelectorAll('[data-view]').forEach((b) => b.addEventListener('click', () => {
+        if (view === b.dataset.view) return;
+        view = b.dataset.view;
+        void renderTrainers({ loading: 'view' });
+      }));
     }
-    root.querySelectorAll('[data-view]').forEach((b) => b.setAttribute('aria-selected', String(b.dataset.view === view)));
+    root.querySelectorAll('[data-view]').forEach((b) => {
+      const on = b.dataset.view === view;
+      b.setAttribute('aria-selected', String(on));
+      b.tabIndex = on ? 0 : -1;
+    });
     const body = root.querySelector('[data-body]');
+    if (loading === 'view') body.innerHTML = skel();
+    const list = body.querySelector('[data-list]');
+    if (loading === 'list' && list) list.innerHTML = skel();
+    body.setAttribute('aria-busy', 'true');
     try {
-      if (view === 'trainers') paintTrainers(root, await api(`?status=${status}`));
-      else if (view === 'reports') paintReports(root, await api(`/reports?status=${reportStatus}`));
-      else paintGyms(root, (await api(`/gyms?status=${gymStatus}`)).gyms || []);
+      if (view === 'trainers') paintTrainers(body, await api(`?status=${status}`));
+      else if (view === 'reports') paintReports(body, await api(`/reports?status=${reportStatus}`));
+      else paintGyms(body, (await api(`/gyms?status=${gymStatus}`)).gyms || []);
+      bindToolbar(body);
     } catch (err) {
-      body.innerHTML = `<div class="s-card"><div class="s-empty">${ico('alert')}<strong>ვერ ჩაიტვირთა</strong><span>${esc(err?.status === 403 ? 'შენს ანგარიშს არ აქვს TRAINER_VIEW უფლება.' : err?.message || '')}</span><button type="button" class="btn" data-retry>ხელახლა ცდა</button></div></div>`;
-      body.querySelector('[data-retry]').onclick = renderTrainers;
+      const denied = err?.status === 403;
+      body.innerHTML = `<div class="s-card"><div class="s-empty" role="alert">${ico('alert')}<strong>ვერ ჩაიტვირთა</strong><span>${denied ? 'შენს ანგარიშს არ აქვს ტრენერების ნახვის უფლება (TRAINER_VIEW).' : 'სერვერმა პასუხი ვერ დააბრუნა — სცადე ხელახლა.'}</span>${!denied && err?.message ? `<small>${esc(err.message)}</small>` : ''}<button type="button" class="btn compact" data-retry>ხელახლა ცდა</button></div></div>`;
+      body.querySelector('[data-retry]').onclick = () => void renderTrainers({ loading: 'view' });
+    } finally {
+      body.removeAttribute('aria-busy');
     }
+  }
+
+  /** Status filters and refresh: mark the choice at once, show a skeleton in the list while it loads. */
+  function bindToolbar(body) {
+    const filter = (attr, set) => body.querySelectorAll(`[${attr}]`).forEach((b) => b.addEventListener('click', () => {
+      set(b.getAttribute(attr));
+      b.closest('[role=tablist]').querySelectorAll('[role=tab]').forEach((x) => x.setAttribute('aria-selected', String(x === b)));
+      void renderTrainers({ loading: 'list' });
+    }));
+    filter('data-status', (v) => { status = v; });
+    filter('data-gstatus', (v) => { gymStatus = v; });
+    filter('data-rstatus', (v) => { reportStatus = v; });
+    body.querySelector('[data-refresh]')?.addEventListener('click', () => void renderTrainers({ loading: 'list' }));
   }
 
   global.renderTrainersAdmin = renderTrainers;

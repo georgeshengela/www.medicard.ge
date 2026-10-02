@@ -1,7 +1,7 @@
 /**
  * MediCard Admin V4 — #/funnel ფუნელი (product funnel, /api/admin/funnel).
- * install/source → signup → onboarding → first health action → D1, split by "door" (primaryGoal)
- * and by source; onboarding step drop-off; D1/D7/D30 from the existing retention analytics.
+ * install/source → signup → onboarding → first health action → D1, split by the goal picked at sign-up
+ * ("door", primaryGoal) and by source; onboarding step drop-off; D1/D7/D30 from the existing retention analytics.
  * Events carry names and small enums only — no health values.
  */
 (function adminV4Funnel(global) {
@@ -12,11 +12,13 @@
   const fmt = (n) => (Number.isFinite(Number(n)) ? Number(n).toLocaleString('ka-GE') : '—');
   const pct = (n) => (n == null ? '—' : `${Number(n).toLocaleString('ka-GE', { maximumFractionDigits: 1 })}%`);
   const skel = () => `<div class="s-stack"><div class="v3-skel" aria-hidden="true">${'<i></i>'.repeat(6)}</div></div>`;
+  const dayLabel = (day) => (global.AdminCharts?.dayLabel ? global.AdminCharts.dayLabel(day) : String(day || ''));
+  const when = (iso) => (global.AdminV3?.formatDate ? global.AdminV3.formatDate(iso, 'datetime') : String(iso || ''));
 
   const PERIODS = [7, 30, 90];
   const GOALS = { medications: 'წამლები', nutrition: 'კვება და წონა', cycle: 'ციკლი', general: 'ზოგადი', unknown: 'არ აირჩია' };
   const STEPS = {
-    'o1-gender': 'სქესი', 'o2-goal': 'მთავარი მიზანი (კარი)', 'o3-birthdate': 'დაბადების თარიღი', 'o4-body': 'სიმაღლე და წონა',
+    'o1-gender': 'სქესი', 'o2-goal': 'მთავარი მიზანი', 'o3-birthdate': 'დაბადების თარიღი', 'o4-body': 'სიმაღლე და წონა',
     'o5-medication': 'პირველი წამალი', 'o5-weight': 'სამიზნე წონა', 'o5-cycle': 'ბოლო მენსტრუაცია',
     privacy: 'კონფიდენციალობა', 'ai-privacy': 'AI თანხმობა', notifications: 'შეტყობინებები',
   };
@@ -36,21 +38,49 @@
     });
   }
 
+  const rateTone = (rate) => (rate >= 50 ? 'is-ok' : rate >= 20 ? 'is-warn' : 'is-bad');
+  const rateBadge = (rate, title) => (rate == null ? '' : `<span class="s-badge is-plain ${rateTone(rate)}" title="${esc(title)}">${pct(rate)}</span>`);
+  const retentionMetric = (label, r) => `<div class="s-metric"><span>${label}</span><strong>${r && r.available ? pct(r.rate) : '—'}</strong><small>${r && r.available ? `${fmt(r.retained)} / ${fmt(r.eligible)} ადამიანი` : 'საკმარისი მონაცემი ჯერ არ არის'}</small></div>`;
+  const empty = (text) => `<div class="s-empty">${ico('info')}<span>${esc(text)}</span></div>`;
+
+  function periodText(p) {
+    if (!p?.from || !p?.to) return '';
+    const year = String(new Date().getFullYear());
+    const tail = String(p.to).slice(0, 4) === year ? '' : `, ${String(p.to).slice(0, 4)}`;
+    return `${dayLabel(p.from)} – ${dayLabel(p.to)}${tail}`;
+  }
+
+  /** Horizontal funnel: one column per step, the bar shows who is left and (lighter) who dropped since the step before. */
+  function funnelSteps(steps) {
+    if (!steps.length) return empty('ამ პერიოდში ფუნელის მოვლენები ჯერ არ არის.');
+    const top = Math.max(1, ...steps.map((s) => s.count || 0));
+    const share = (n) => Math.max(0, Math.min(100, ((Number(n) || 0) / top) * 100));
+    return `<ol class="s-funnel" style="--n:${steps.length}">${steps.map((s, i) => {
+      const prev = i ? steps[i - 1].count || 0 : s.count || 0;
+      const kept = share(s.count);
+      const lost = i ? Math.max(0, share(prev) - kept) : 0;
+      const foot = i
+        ? `${rateBadge(s.fromPrevious, 'წინა ნაბიჯიდან')}<span>წინა ნაბიჯიდან</span>`
+        : '<span>საწყისი ნაბიჯი</span>';
+      return `<li class="s-funnel-step">
+        <div class="s-funnel-head"><span>${esc(s.label)}</span><strong>${fmt(s.count)}</strong></div>
+        <div class="s-funnel-bar" role="img" aria-label="${esc(`${s.label}: ${fmt(s.count)}`)}" style="--v:${kept.toFixed(1)}%;--lost:${lost.toFixed(1)}%"><b></b><i></i></div>
+        <div class="s-funnel-foot">${foot}${s.key === 'd1' && s.eligible != null ? `<small>ვადაში ${fmt(s.eligible)} ადამიანი</small>` : ''}</div>
+      </li>`;
+    }).join('')}</ol>`;
+  }
+
   function meterRow(label, count, max, extra) {
-    const w = max > 0 ? Math.max(2, Math.round((count / max) * 100)) : 0;
-    return `<div style="display:grid;grid-template-columns:minmax(140px,220px) 1fr auto;gap:14px;align-items:center;padding:10px 18px;border-top:1px solid var(--s-line-soft)">
-      <span style="font-size:13px">${esc(label)}</span>
-      <div class="s-meter" role="img" aria-label="${esc(label)}: ${fmt(count)}"><i style="width:${count ? w : 0}%"></i></div>
-      <span style="display:flex;gap:8px;align-items:center;justify-content:flex-end;min-width:150px"><b style="font-variant-numeric:tabular-nums">${fmt(count)}</b>${extra || ''}</span>
+    const w = max > 0 && count ? Math.max(2, Math.round((count / max) * 100)) : 0;
+    return `<div class="s-funnel-row">
+      <span>${esc(label)}</span>
+      <div class="s-meter" role="img" aria-label="${esc(label)}: ${fmt(count)}"><i style="width:${w}%"></i></div>
+      <span class="s-funnel-row-val"><b>${fmt(count)}</b>${extra || ''}</span>
     </div>`;
   }
 
-  const rateBadge = (rate, title) => (rate == null ? '' : `<span class="s-badge ${rate >= 50 ? 'is-ok' : rate >= 20 ? 'is-warn' : 'is-bad'} is-plain" title="${esc(title)}">${pct(rate)}</span>`);
-  const retentionMetric = (label, r) => `<div class="s-metric"><span>${label}</span><strong>${r && r.available ? pct(r.rate) : '—'}</strong><small>${r && r.available ? `${fmt(r.retained)} / ${fmt(r.eligible)} ადამიანი` : 'საკმარისი მონაცემი ჯერ არ არის'}</small></div>`;
-
   function paint(root, d) {
     const steps = d.steps || [];
-    const top = Math.max(1, ...steps.map((s) => s.count || 0));
     const signup = steps.find((s) => s.key === 'signup');
     const onboarded = steps.find((s) => s.key === 'onboarding_completed');
     const activated = steps.find((s) => s.key === 'first_health_action');
@@ -58,6 +88,9 @@
     const ret = d.retention || {};
     const onb = d.onboarding || [];
     const onbTop = Math.max(1, ...onb.map((s) => s.viewed || 0));
+    const goals = d.goals || [];
+    const sources = d.sources || [];
+    const features = d.features || [];
     const trend = d.trend || {};
     const chart = global.AdminCharts?.line
       ? global.AdminCharts.line([
@@ -67,12 +100,15 @@
       ], { label: 'დღიური ტრენდი', height: 220, empty: 'ამ პერიოდში მოვლენები არ არის' })
       : '';
 
-    root.innerHTML = `<div class="s-stack v3-tab-shell">
+    root.innerHTML = `<div class="s-stack v3-tab-shell s-funnel-page">
       <div class="s-toolbar">
         <div class="s-segment" role="tablist" aria-label="პერიოდი">${PERIODS.map((p) => `<button type="button" role="tab" aria-selected="${p === days}" data-days="${p}">${p} დღე</button>`).join('')}</div>
-        <button type="button" class="btn ghost compact" data-refresh>${ico('refresh')} განახლება</button>
+        <div class="s-funnel-tools">
+          ${d.refreshedAt ? `<span class="s-funnel-meta">განახლდა ${esc(when(d.refreshedAt))}</span>` : ''}
+          <button type="button" class="btn ghost compact" data-refresh>${ico('refresh')} განახლება</button>
+        </div>
       </div>
-      ${d.installed === false ? `<div class="s-callout is-warn">${ico('alert')}<p><b>ფუნელის ცხრილი ჯერ არ არის დაყენებული.</b> ის შეიქმნება შემდეგი დეპლოისას (release → install-funnel). მანამდე ქვემოთ მხოლოდ ბაზის რეტენშენი ჩანს.</p></div>` : ''}
+      ${d.installed === false ? `<div class="s-callout is-warn">${ico('alert')}<p><b>ფუნელის ცხრილი ჯერ არ არის შექმნილი.</b> ის შეიქმნება შემდეგი დეპლოისას. მანამდე აქ მხოლოდ დაბრუნების მაჩვენებლები ჩანს.</p></div>` : ''}
       ${d.installed !== false && !d.hasData ? `<div class="s-callout">${ico('info')}<p>ამ პერიოდში ფუნელის მოვლენები ჯერ არ მოსულა. მოვლენებს აგზავნის აპის ახალი ვერსია — ძველი ვერსიები აქ არ ჩანს.</p></div>` : ''}
       <div class="s-metrics">
         <div class="s-metric"><span>ინსტალაცია</span><strong>${fmt(install?.count)}</strong><small>პირველი გახსნა ამ პერიოდში</small></div>
@@ -81,37 +117,38 @@
         <div class="s-metric"><span>პირველი ქმედება</span><strong>${pct(activated?.fromSignup)}</strong><small>${fmt(activated?.count)} რეგისტრაციიდან</small></div>
       </div>
       <section class="s-card">
-        <header class="s-card-head"><div><h3>ფუნელი · ${esc(d.period?.from || '')} – ${esc(d.period?.to || '')}</h3>
-          <p>რეგისტრაციის შემდეგი ნაბიჯები ითვლება ამ პერიოდში დარეგისტრირებულ ადამიანებზე (კოჰორტა). % — წინა ნაბიჯიდან გადასვლა. D1 ითვლება მხოლოდ მათზე, ვისთვისაც მეორე დღე უკვე დადგა.</p></div></header>
-        <div class="s-card-body is-flush">${steps.map((s, i) => meterRow(s.label, s.count, top, i ? rateBadge(s.fromPrevious, 'წინა ნაბიჯიდან') + (s.key === 'd1' ? `<small class="s-muted">${fmt(s.eligible)} ვადაში</small>` : '') : '')).join('')}</div>
+        <header class="s-card-head"><div><h3>ფუნელი · ${esc(periodText(d.period))}</h3>
+          <p>ამ პერიოდში დარეგისტრირებულთა გზა. ღია ფერი — ვინც წინა ნაბიჯის შემდეგ დაიკარგა.</p></div></header>
+        <div class="s-card-body">${funnelSteps(steps)}</div>
       </section>
       <section class="s-card">
-        <header class="s-card-head"><div><h3>დღიური ტრენდი</h3><p>უნიკალური ინსტალაციები, რეგისტრაციები და პირველი ჯანმრთელობის ქმედებები თბილისის დღეების მიხედვით.</p></div></header>
+        <header class="s-card-head"><div><h3>დღიური ტრენდი</h3><p>ინსტალაციები, რეგისტრაციები და პირველი ჯანმრთელობის ქმედებები, თბილისის დღეების მიხედვით.</p></div></header>
         <div class="s-card-body">${chart}</div>
       </section>
+      <div class="s-section-title"><h3>დაბრუნება · ბოლო 90 დღის კოჰორტა</h3><span class="s-funnel-meta">პერიოდის არჩევანზე არ იცვლება</span></div>
       <div class="s-metrics">
         ${retentionMetric('D1 დაბრუნება', ret.d1)}
         ${retentionMetric('D7 დაბრუნება', ret.d7)}
         ${retentionMetric('D30 დაბრუნება', ret.d30)}
       </div>
       <section class="s-card">
-        <header class="s-card-head"><div><h3>კარი — მთავარი მიზანი</h3><p>რომელი მიზნით შემოსულები იწყებენ რეალურად გამოყენებას და ბრუნდებიან. მხოლოდ ონბორდინგდასრულებული ადამიანები ამ პერიოდის კოჰორტიდან.</p></div></header>
-        <div class="s-card-body is-flush"><div class="s-table-wrap"><table class="s-table">
-          <thead><tr><th>კარი</th><th class="num">ადამიანი</th><th class="num">პირველი ქმედება</th><th class="num">D1</th><th class="num">D7</th><th>პირველი ქმედების ტიპი</th></tr></thead>
-          <tbody>${(d.goals || []).map((g) => `<tr>
+        <header class="s-card-head"><div><h3>მიზანი რეგისტრაციისას</h3><p>რომელი მიზნით შემოსულები იწყებენ გამოყენებას და ბრუნდებიან. მხოლოდ ონბორდინგდასრულებულები.</p></div></header>
+        <div class="s-card-body is-flush">${goals.length ? `<div class="s-table-wrap"><table class="s-table">
+          <thead><tr><th>მიზანი</th><th class="num">ადამიანი</th><th class="num">პირველი ქმედება</th><th class="num">D1</th><th class="num">D7</th><th>რით დაიწყეს</th></tr></thead>
+          <tbody>${goals.map((g) => `<tr>
             <td><b>${esc(GOALS[g.goal] || g.goal)}</b></td>
             <td class="num">${fmt(g.users)}</td>
             <td class="num">${pct(g.activationRate)}</td>
             <td class="num">${pct(g.d1Rate)}</td>
             <td class="num">${pct(g.d7Rate)}</td>
-            <td>${Object.entries(g.actions || {}).sort((a, b) => b[1] - a[1]).map(([k, n]) => `<span class="s-badge is-plain">${esc(ACTIONS[k] || k)} · ${fmt(n)}</span>`).join(' ') || '<span class="s-muted">—</span>'}</td>
-          </tr>`).join('')}</tbody></table></div></div>
+            <td><span class="s-funnel-badges">${Object.entries(g.actions || {}).sort((a, b) => b[1] - a[1]).map(([k, n]) => `<span class="s-badge is-plain">${esc(ACTIONS[k] || k)} · ${fmt(n)}</span>`).join('') || '<span class="s-muted">—</span>'}</span></td>
+          </tr>`).join('')}</tbody></table></div>` : empty('ამ პერიოდში ონბორდინგი ჯერ არავის დაუსრულებია.')}</div>
       </section>
       <section class="s-card">
-        <header class="s-card-head"><div><h3>წყარო</h3><p>საიდან მოვიდა ინსტალაცია: მოწვევის ბმული, UTM კამპანია (utm_source / utm_campaign) ან ორგანული. „უცნობი“ — რეგისტრაცია ინსტალაციის მოვლენის გარეშე (მაგ. ძველი ვერსია).</p></div></header>
-        <div class="s-card-body is-flush"><div class="s-table-wrap"><table class="s-table">
+        <header class="s-card-head"><div><h3>წყარო</h3><p>საიდან მოვიდა ინსტალაცია: მოწვევის ბმული, UTM კამპანია თუ ორგანული. „უცნობი“ — რეგისტრაცია ინსტალაციის მოვლენის გარეშე.</p></div></header>
+        <div class="s-card-body is-flush">${sources.length ? `<div class="s-table-wrap"><table class="s-table">
           <thead><tr><th>წყარო</th><th class="num">ინსტალაცია</th><th class="num">რეგისტრაცია</th><th class="num">ინსტ. → რეგ.</th><th class="num">ონბორდინგი</th><th class="num">პირველი ქმედება</th><th class="num">D1</th></tr></thead>
-          <tbody>${(d.sources || []).length ? d.sources.map((s) => `<tr>
+          <tbody>${sources.map((s) => `<tr>
             <td><b>${esc(sourceLabel(s.key))}</b></td>
             <td class="num">${fmt(s.installs)}</td>
             <td class="num">${fmt(s.signups)}</td>
@@ -119,18 +156,21 @@
             <td class="num">${fmt(s.onboarded)}</td>
             <td class="num">${fmt(s.activated)} <span class="s-muted">(${pct(s.activationRate)})</span></td>
             <td class="num">${pct(s.d1Rate)}</td>
-          </tr>`).join('') : '<tr><td colspan="7"><div class="s-empty">ამ პერიოდში წყაროს მონაცემი არ არის.</div></td></tr>'}</tbody></table></div></div>
+          </tr>`).join('')}</tbody></table></div>` : empty('ამ პერიოდში წყაროს მონაცემი არ არის.')}</div>
       </section>
       <section class="s-card">
-        <header class="s-card-head"><div><h3>ონბორდინგის ნაბიჯები</h3><p>რამდენმა ნახა თითო ნაბიჯი და რამდენმა გაიარა. სადაც „გაიარა“ მკვეთრად ეცემა, იქ იკარგებიან ადამიანები. მიზნის ნაბიჯი (o5) ჩანს მხოლოდ შესაბამისი კარის ადამიანებზე.</p></div></header>
-        <div class="s-card-body is-flush">${onb.map((s) => meterRow(STEPS[s.stepKey] || s.stepKey, s.viewed, onbTop, `${rateBadge(s.completionRate, 'გაიარა / ნახა')}<small class="s-muted">გაიარა ${fmt(s.completed)}</small>`)).join('')}</div>
+        <header class="s-card-head"><div><h3>ონბორდინგის ნაბიჯები</h3><p>რამდენმა ნახა თითო ნაბიჯი და რამდენმა გაიარა. სადაც % მკვეთრად ეცემა, იქ იკარგებიან.</p></div></header>
+        <div class="s-card-body is-flush">${onb.length
+          ? `<div class="s-funnel-rows">${onb.map((s) => meterRow(STEPS[s.stepKey] || s.stepKey, s.viewed, onbTop, `${rateBadge(s.completionRate, 'გაიარა / ნახა')}<small>გაიარა ${fmt(s.completed)}</small>`)).join('')}</div>`
+          : empty('ამ პერიოდში ონბორდინგის ნაბიჯები ჯერ არავის უნახავს.')}</div>
       </section>
-      <div class="s-metrics">${(d.features || []).map((f) => `<div class="s-metric"><span>${esc(FEATURES[f.name] || f.name)}</span><strong>${fmt(f.users)}</strong><small>ადამიანი · ${fmt(f.events)} ჯერ</small></div>`).join('')}</div>
-      <div class="s-callout">${ico('shield')}<p>ფუნელი ინახავს მხოლოდ მოვლენის სახელს და მოკლე კატეგორიას (ნაბიჯი, მიზანი, ქმედების ტიპი, წყარო, პლატფორმა, ვერსია). ჯანმრთელობის მნიშვნელობები, სახელები და ტექსტი არ იგზავნება; ინსტალაციის ID ინახება მხოლოდ ჰეშად.</p></div>
+      ${features.length ? `<div class="s-section-title"><h3>სხვა მოვლენები</h3></div>
+      <div class="s-metrics">${features.map((f) => `<div class="s-metric"><span>${esc(FEATURES[f.name] || f.name)}</span><strong>${fmt(f.users)}</strong><small>ადამიანი · ${fmt(f.events)} ჯერ</small></div>`).join('')}</div>` : ''}
     </div>`;
 
     root.querySelectorAll('[data-days]').forEach((btn) => btn.addEventListener('click', () => {
       days = Number(btn.dataset.days) || 30;
+      root.querySelectorAll('[data-days]').forEach((b) => b.setAttribute('aria-selected', String(b === btn)));
       void renderFunnel();
     }));
     root.querySelector('[data-refresh]')?.addEventListener('click', () => void renderFunnel());
@@ -144,7 +184,7 @@
     try {
       data = await global.api(`/funnel?days=${days}`);
     } catch (err) {
-      root.innerHTML = `<div class="s-card"><div class="s-empty">${ico('alert')}<strong>ვერ ჩაიტვირთა</strong><span>${esc(err?.message || '')}</span><button type="button" class="btn" data-retry>ხელახლა ცდა</button></div></div>`;
+      root.innerHTML = `<div class="s-card"><div class="s-empty" role="alert">${ico('alert')}<strong>ფუნელი ვერ ჩაიტვირთა</strong><span>სერვერმა პასუხი ვერ დააბრუნა — სცადე ხელახლა.</span>${err?.message ? `<small>${esc(err.message)}</small>` : ''}<button type="button" class="btn compact" data-retry>ხელახლა ცდა</button></div></div>`;
       root.querySelector('[data-retry]').onclick = renderFunnel;
       return;
     }

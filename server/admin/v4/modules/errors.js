@@ -14,8 +14,10 @@
 
   const PERIODS = [[1, '1 სთ'], [24, '24 სთ'], [168, '7 დღე']];
   const SOURCES = [['all', 'ყველა'], ['app', 'აპი'], ['server', 'სერვერი']];
-  const KIND = { crash: 'ავარია', error: 'შეცდომა', unhandled_rejection: 'Promise', render: 'ეკრანის რენდერი' };
+  const KIND = { crash: 'ავარია', error: 'შეცდომა', unhandled_rejection: 'დაუმუშავებელი შეცდომა', render: 'ეკრანის შეცდომა' };
   const SOURCE = { app: 'აპი', server: 'სერვერი' };
+  const PLATFORM = { ios: 'iOS', android: 'Android', web: 'ვები' };
+  const platformLabel = (p) => PLATFORM[p] || p || '—';
 
   let hours = 24;
   let source = 'all';
@@ -30,16 +32,18 @@
   }
 
   const MONTHS = ['იან', 'თებ', 'მარ', 'აპრ', 'მაი', 'ივნ', 'ივლ', 'აგვ', 'სექ', 'ოქტ', 'ნოე', 'დეკ'];
-  /** 24-hour Tbilisi time; built by hand because browsers often lack ka-GE locale data. */
-  const tbilisiTime = (iso, withDay = true) => {
+  /** Tbilisi date parts; built by hand because browsers often lack ka-GE locale data. */
+  const tbilisiParts = (iso) => Object.fromEntries(new Intl.DateTimeFormat('en-GB', {
+    timeZone: 'Asia/Tbilisi', hourCycle: 'h23', hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit', year: 'numeric',
+  }).formatToParts(new Date(iso)).map((p) => [p.type, p.value]));
+  const when = (iso) => {
     if (!iso) return '—';
-    const parts = Object.fromEntries(new Intl.DateTimeFormat('en-GB', {
-      timeZone: 'Asia/Tbilisi', hourCycle: 'h23', hour: '2-digit', minute: '2-digit', day: 'numeric', month: 'numeric',
-    }).formatToParts(new Date(iso)).map((p) => [p.type, p.value]));
-    const time = `${parts.hour}:${parts.minute}`;
-    return withDay ? `${parts.day} ${MONTHS[Number(parts.month) - 1]}, ${time}` : time;
+    if (global.AdminV3?.formatDate) return global.AdminV3.formatDate(iso, 'datetime');
+    const p = tbilisiParts(iso);
+    return `${Number(p.day)} ${MONTHS[Number(p.month) - 1]}, ${p.hour}:${p.minute}`;
   };
   const ago = (iso) => {
+    if (typeof global.fmtRelative === 'function') return global.fmtRelative(iso);
     const min = Math.max(0, Math.round((Date.now() - new Date(iso).getTime()) / 60000));
     if (min < 1) return 'ახლახან';
     if (min < 60) return `${min} წთ წინ`;
@@ -48,11 +52,11 @@
   };
 
   function badges(g) {
-    const out = [`<span class="s-badge">${esc(SOURCE[g.source] || g.source)}</span>`];
+    const out = [`<span class="s-badge is-plain">${esc(SOURCE[g.source] || g.source)}</span>`];
     if (g.kind === 'crash' || g.fatal) out.push(`<span class="s-badge is-bad">${g.kind === 'crash' ? 'ავარია' : 'ფატალური'}</span>`);
     else out.push(`<span class="s-badge is-warn">${esc(KIND[g.kind] || g.kind)}</span>`);
     if (new Date(g.firstSeen).getTime() >= Date.now() - hours * 3600_000) out.push('<span class="s-badge is-info">ახალი</span>');
-    return out.join(' ');
+    return `<span class="p3-badges">${out.join('')}</span>`;
   }
 
   function metric(label, value, small, tone = '') {
@@ -64,32 +68,36 @@
     const t = d.totals || {};
     root.innerHTML = `<div class="s-stack v3-tab-shell">
       <div class="s-toolbar">
-        <div class="s-segment" role="tablist" aria-label="პერიოდი">${PERIODS.map(([h, label]) => `<button type="button" role="tab" aria-selected="${h === hours}" data-hours="${h}">${label}</button>`).join('')}</div>
-        <div class="s-segment" role="tablist" aria-label="წყარო">${SOURCES.map(([k, label]) => `<button type="button" role="tab" aria-selected="${k === source}" data-source="${k}">${label}</button>`).join('')}</div>
-        <span class="s-muted" style="font-size:12px">ახლდება ყოველ წუთს</span>
-        <button type="button" class="btn ghost compact" data-refresh>${ico('refresh')} განახლება</button>
+        <div class="p3-tools">
+          <div class="s-segment" role="tablist" aria-label="პერიოდი">${PERIODS.map(([h, label]) => `<button type="button" role="tab" aria-selected="${h === hours}" data-hours="${h}">${label}</button>`).join('')}</div>
+          <div class="s-segment" role="tablist" aria-label="წყარო">${SOURCES.map(([k, label]) => `<button type="button" role="tab" aria-selected="${k === source}" data-source="${k}">${label}</button>`).join('')}</div>
+        </div>
+        <div class="p3-tools">
+          <span class="p3-meta">ახლდება ყოველ წუთს</span>
+          <button type="button" class="btn ghost compact" data-refresh>${ico('refresh')} განახლება</button>
+        </div>
       </div>
-      ${d.installed === false ? `<div class="s-callout is-warn">${ico('alert')}<p><b>ErrorEvent ცხრილი ჯერ არ არის.</b> შეიქმნება შემდეგი deploy-ისას (npm run db:install → install-errors). ჩაწერა ამის შემდეგ დაიწყება.</p></div>` : ''}
-      ${d.recording === false ? `<div class="s-callout">${ico('info')}<p>ამ სერვერზე ჩაწერა გამორთულია (ლოკალური სერვერი ან ERROR_MONITOR=off). ცხრილში ჩანს production-ის ჩანაწერები.</p></div>` : ''}
+      ${d.installed === false ? `<div class="s-callout is-warn">${ico('alert')}<p><b>შეცდომების ცხრილი ჯერ არ არის.</b> ის შეიქმნება სერვერის შემდეგი განახლებისას — ჩაწერა ამის შემდეგ დაიწყება.</p></div>` : ''}
+      ${d.recording === false ? `<div class="s-callout">${ico('info')}<p>ეს სერვერი ახალ შეცდომებს არ იწერს (ლოკალური სერვერი ან ჩაწერა გამორთულია). ცხრილში ჩანს მთავარი სერვერის ჩანაწერები.</p></div>` : ''}
 
       <div class="s-metrics">
-        ${metric('შემთხვევა', t.events, 'ყველა ჩანაწერი პერიოდში', t.events ? 'is-warn' : '')}
+        ${metric('შემთხვევა', t.events, 'ყველა ჩანაწერი პერიოდში')}
         ${metric('ჯგუფი', t.groups, `ახალი: ${num(t.newGroups)}`)}
         ${metric('ადამიანი', t.users, 'ვისაც შეეხო (ანონიმურად)')}
         ${metric('ავარია / ფატალური', t.fatal, 'აპის ავარია ან სერვერის გაჩერება', t.fatal ? 'is-bad' : '')}
       </div>
 
       <section class="s-card">
-        <header class="s-card-head"><div><h3>შეცდომების ჯგუფები</h3><p>ერთი ჯგუფი = ერთი და იგივე შეცდომა (იგივე ტიპი, ტექსტი და კოდის ადგილი). დააჭირე სტრიქონს დეტალებისთვის.</p></div></header>
+        <header class="s-card-head"><div><h3>შეცდომების ჯგუფები</h3><p>ერთი ჯგუფი = ერთი და იგივე შეცდომა (ტიპი, ტექსტი და კოდის ადგილი). დააჭირე სტრიქონს დეტალებისთვის.</p></div></header>
         <div class="s-card-body is-flush"><div class="s-table-wrap"><table class="s-table">
           <thead><tr><th>შეცდომა</th><th>ტიპი</th><th class="num">რაოდენობა</th><th class="num">ადამიანი</th><th>პლატფორმა / ვერსია</th><th>ბოლოს</th></tr></thead>
-          <tbody>${groups.length ? groups.map((g) => `<tr data-fp="${esc(g.fingerprint)}" tabindex="0" style="cursor:pointer">
-            <td><b>${esc(g.name)}</b><div class="s-muted" style="font-size:12.5px;overflow-wrap:anywhere">${esc(g.message || '—')}</div>${g.sampleRoute ? `<div class="s-muted" style="font-size:12px"><code>${esc(g.sampleRoute)}</code></div>` : ''}</td>
+          <tbody>${groups.length ? groups.map((g) => `<tr class="is-click" data-fp="${esc(g.fingerprint)}" tabindex="0">
+            <td class="p3-err-cell"><b>${esc(g.name)}</b><span class="p3-sub">${esc(g.message || '—')}</span>${g.sampleRoute ? `<span class="p3-sub"><code>${esc(g.sampleRoute)}</code></span>` : ''}</td>
             <td>${badges(g)}</td>
             <td class="num">${num(g.count)}</td>
             <td class="num">${num(g.users)}</td>
-            <td>${esc((g.platforms || []).join(', ') || '—')}${g.versions?.length ? `<div class="s-muted" style="font-size:12px">${g.versions.map((v) => `${esc(v.version)} (${num(v.count)})`).join(' · ')}</div>` : ''}</td>
-            <td>${esc(ago(g.lastSeen))}<div class="s-muted" style="font-size:12px">პირველად: ${esc(tbilisiTime(g.firstSeen))}</div></td>
+            <td>${esc((g.platforms || []).map(platformLabel).join(', ') || '—')}${g.versions?.length ? `<span class="p3-sub">${g.versions.map((v) => `<span class="p3-nowrap">${esc(v.version)} (${num(v.count)})</span>`).join(' · ')}</span>` : ''}</td>
+            <td class="p3-nowrap">${esc(ago(g.lastSeen))}<span class="p3-sub">პირველად: ${esc(when(g.firstSeen))}</span></td>
           </tr>`).join('') : `<tr><td colspan="6"><div class="s-empty">${ico('check')}<strong>ამ პერიოდში შეცდომა არ ყოფილა</strong></div></td></tr>`}</tbody>
         </table></div></div>
       </section>
@@ -112,6 +120,34 @@
     });
   }
 
+  /**
+   * Counts per bucket → columns. A day of hourly columns gets "14:00" labels; over 7 days the 168 hourly
+   * buckets are summed per Tbilisi day, because hour labels with dates do not fit under ~3px columns.
+   */
+  function hourlyChart(d) {
+    const rows = d.hourly || [];
+    const long = (d.hours || 24) > 24;
+    let points;
+    if (long) {
+      const byDay = new Map();
+      rows.forEach((h) => {
+        const p = tbilisiParts(h.hour);
+        const key = `${p.year}-${p.month}-${p.day}`;
+        byDay.set(key, (byDay.get(key) || 0) + (Number(h.count) || 0));
+      });
+      points = [...byDay].map(([day, count]) => ({ day, count }));
+    } else {
+      points = rows.map((h) => {
+        const p = tbilisiParts(h.hour);
+        return { day: `${p.hour}:00`, count: h.count };
+      });
+    }
+    const chart = global.AdminCharts?.bars
+      ? global.AdminCharts.bars(points, { label: long ? 'შემთხვევა დღეში' : 'შემთხვევა საათში', height: 180, tone: 'bad', empty: 'ამ პერიოდში შემთხვევა არ არის' })
+      : '';
+    return { long, chart };
+  }
+
   async function openGroup(group) {
     if (!group) return;
     const V = global.AdminV3;
@@ -119,30 +155,36 @@
     try {
       d = await global.api(`/errors/${encodeURIComponent(group.fingerprint)}?hours=${Math.max(24, hours)}`);
     } catch (err) {
-      global.toast?.(err?.message || 'ვერ ჩაიტვირთა', 'bad');
+      global.toast?.(`შეცდომის დეტალები ვერ ჩაიტვირთა.${err?.message ? ` (${err.message})` : ''}`, 'bad');
       return;
     }
     const events = d.events || [];
     const stack = events.find((e) => e.stackTop)?.stackTop || group.sampleStack;
-    const points = (d.hourly || []).map((h) => ({ day: tbilisiTime(h.hour, (d.hours || 24) > 24), count: h.count }));
-    const chart = global.AdminCharts?.line
-      ? global.AdminCharts.line([{ label: 'შემთხვევა / სთ', tone: 'bad', points }], { label: 'შემთხვევები საათობრივად', height: 180, empty: 'ამ პერიოდში შემთხვევა არ არის' })
-      : '';
+    const { long, chart } = hourlyChart(d);
+    const kind = group.kind === 'crash' ? 'ავარია' : group.fatal ? `${KIND[group.kind] || group.kind} · ფატალური` : (KIND[group.kind] || group.kind);
     V?.openDialog?.({
-      title: `${group.name}: ${group.message || ''}`.slice(0, 140),
-      description: `${SOURCE[group.source] || group.source} · ${KIND[group.kind] || group.kind} · ${num(group.count)} შემთხვევა · ${num(group.users)} ადამიანი · პირველად ${tbilisiTime(group.firstSeen)}`,
+      title: group.name || 'შეცდომა',
+      description: group.message || '',
       wide: true,
       watchDirty: false,
-      body: `<div class="s-stack">
-        <section class="s-card"><header class="s-card-head"><div><h3>შემთხვევები საათობრივად</h3><p>ბოლო ${esc(d.hours >= 168 ? '7 დღე' : `${d.hours} საათი`)}, თბილისის დროით.</p></div></header><div class="s-card-body">${chart}</div></section>
-        <section class="s-card"><header class="s-card-head"><div><h3>სტეკი</h3><p>კოდის ბოლო ${esc(stack ? stack.split('\n').length : 0)} ნაბიჯი — ფუნქცია (ფაილი:ხაზი). სრული მისამართები და პირადი მონაცემები მოშორებულია.</p></div></header>
+      body: `<div class="s-stack p3-err-detail">
+        <dl class="p3-facts">
+          <div><dt>წყარო</dt><dd>${esc(SOURCE[group.source] || group.source)}</dd></div>
+          <div><dt>ტიპი</dt><dd>${esc(kind)}</dd></div>
+          <div><dt>შემთხვევა</dt><dd>${num(group.count)}</dd></div>
+          <div><dt>ადამიანი</dt><dd>${num(group.users)}</dd></div>
+          <div><dt>პირველად</dt><dd>${esc(when(group.firstSeen))}</dd></div>
+          <div><dt>ბოლოს</dt><dd>${esc(when(group.lastSeen))}</dd></div>
+        </dl>
+        <section class="s-card"><header class="s-card-head"><div><h3>${long ? 'შემთხვევები დღეების მიხედვით' : 'შემთხვევები საათობრივად'}</h3><p>ბოლო ${esc(d.hours >= 168 ? '7 დღე' : `${d.hours} საათი`)}, თბილისის დროით.</p></div></header><div class="s-card-body">${chart}</div></section>
+        <section class="s-card"><header class="s-card-head"><div><h3>სტეკი</h3><p>კოდის ბოლო ${esc(stack ? stack.split('\n').length : 0)} ნაბიჯი — ფუნქცია (ფაილი:ხაზი). მისამართები და პირადი მონაცემები მოშორებულია.</p></div></header>
           <div class="s-card-body">${stack ? `<pre class="s-preview-text">${esc(stack)}</pre>` : '<div class="s-empty">სტეკი არ მოსულა.</div>'}</div></section>
         <section class="s-card"><header class="s-card-head"><div><h3>ბოლო შემთხვევები</h3><p>ბოლო 50 ჩანაწერი. „×N“ — 10 წამში განმეორებული იგივე შეცდომა ერთ ჩანაწერად.</p></div></header>
           <div class="s-card-body is-flush"><div class="s-table-wrap"><table class="s-table">
             <thead><tr><th>დრო</th><th>მისამართი</th><th>პლატფორმა</th><th>ვერსია</th><th>ადამიანი</th><th class="num">რაოდ.</th></tr></thead>
-            <tbody>${events.length ? events.map((e) => `<tr><td>${esc(tbilisiTime(e.createdAt))}</td><td><code>${esc(e.route || '—')}</code></td><td>${esc(e.platform || '—')}</td><td>${esc(e.appVersion || '—')}</td><td>${e.userHash ? `<code>${esc(e.userHash.slice(0, 8))}</code>` : '<span class="s-muted">სტუმარი</span>'}</td><td class="num">×${num(e.count)}</td></tr>`).join('') : '<tr><td colspan="6"><div class="s-empty">ჩანაწერი არ არის.</div></td></tr>'}</tbody>
+            <tbody>${events.length ? events.map((e) => `<tr><td class="p3-nowrap">${esc(when(e.createdAt))}</td><td><code>${esc(e.route || '—')}</code></td><td>${esc(platformLabel(e.platform))}</td><td>${esc(e.appVersion || '—')}</td><td>${e.userHash ? `<code>${esc(e.userHash.slice(0, 8))}</code>` : '<span class="s-muted">სტუმარი</span>'}</td><td class="num">×${num(e.count)}</td></tr>`).join('') : '<tr><td colspan="6"><div class="s-empty">ჩანაწერი არ არის.</div></td></tr>'}</tbody>
           </table></div></div></section>
-        <p class="s-muted" style="font-size:12px;margin:0">ანაბეჭდი (fingerprint): <code>${esc(group.fingerprint)}</code></p>
+        <p class="p3-foot">ჯგუფის ანაბეჭდი: ${V?.copyIdButton ? V.copyIdButton(group.fingerprint, 'ანაბეჭდი') : `<code>${esc(group.fingerprint)}</code>`}</p>
       </div>`,
     });
     global.AdminCharts?.hydrate?.();
@@ -157,7 +199,7 @@
       data = await global.api(`/errors?hours=${hours}&source=${source}`);
     } catch (err) {
       if (silent) return;
-      root.innerHTML = `<div class="s-card"><div class="s-empty">${ico('alert')}<strong>ვერ ჩაიტვირთა</strong><span>${esc(err?.message || '')}</span><button type="button" class="btn" data-retry>ხელახლა ცდა</button></div></div>`;
+      root.innerHTML = `<div class="s-card"><div class="s-empty">${ico('alert')}<strong>შეცდომების სია ვერ ჩაიტვირთა</strong><span>შეამოწმე კავშირი და სცადე ხელახლა.</span>${err?.message ? `<small class="p3-raw">${esc(err.message)}</small>` : ''}<button type="button" class="btn" data-retry>ხელახლა ცდა</button></div></div>`;
       root.querySelector('[data-retry]').onclick = () => renderErrorsAdmin();
       return;
     }

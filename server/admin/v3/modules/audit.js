@@ -1,32 +1,211 @@
 /**
- * MediCard Admin V3 — Audit journal observatory (full override of renderAuditLog).
- * Search + action filter + pagination. URL range/grain are unused by audit APIs.
+ * MediCard Admin V3 — Audit journal (full override of renderAuditLog).
+ * Search + action filter + pagination over /api/admin/audit. URL range/grain are unused by audit APIs.
+ * Owns the Georgian vocabulary for audit actions, objects and fields; window.AdminAuditLabels shares it
+ * with the activity sheet (v4/experience.js).
  */
 (function adminV3Audit(global) {
   const Shell = () => global.AdminV3Shell || {};
   const V = () => global.AdminV3 || {};
   const $ = (id) => document.getElementById(id);
 
-  const ACTION_OPTS = [
-    ['', 'ყველა ქმედება'],
-    ['user.status', 'მომხმარებლის სტატუსი'],
-    ['settings.update', 'პარამეტრები'],
-    ['push.template.save', 'Push შაბლონი · შენახვა'],
-    ['push.template.reset', 'Push შაბლონი · reset'],
-    ['PARTNER_CREATED', 'პარტნიორი · შექმნა'],
-    ['PARTNER_UPDATED', 'პარტნიორი · განახლება'],
-    ['CAMPAIGN_CREATED', 'კამპანია · შექმნა'],
-    ['CAMPAIGN_UPDATED', 'კამპანია · განახლება'],
-    ['CAMPAIGN_STATUS_CHANGED', 'კამპანია · სტატუსი'],
-    ['INVENTORY_ADJUSTED', 'მარაგი'],
-    ['CODE_IMPORTED', 'კოდების იმპორტი'],
-    ['REDEMPTION_STATUS_CHANGED', 'გაცვლის სტატუსი'],
+  // Every action the server writes (writeAdminAudit in server/src), grouped by area for the filter.
+  // Labels read "<object> · <what happened>", the object named exactly as TARGET_KA names it.
+  const ACTION_GROUPS = [
+    ['მომხმარებლები', [
+      ['user.status', 'მომხმარებელი · სტატუსის შეცვლა'],
+      ['user.gender', 'მომხმარებელი · სქესის შეცვლა'],
+      ['user.export', 'მომხმარებელი · მონაცემების ექსპორტი'],
+      ['coins.grant', 'მომხმარებელი · Medi Coins-ის დარიცხვა'],
+      ['coins.revoke', 'მომხმარებელი · Medi Coins-ის ჩამოჭრა'],
+    ]],
+    ['აპი და მოდულები', [
+      ['settings.update', 'აპის პარამეტრები · შეცვლა'],
+      ['feature.toggle', 'მოდული · ჩართვა / გამორთვა'],
+      ['quest.template.update', 'Medi Quest შაბლონი · შეცვლა'],
+      ['capacity.test_alert', 'სისტემა · სატესტო გაფრთხილება'],
+    ]],
+    ['Push', [
+      ['push.template.save', 'Push შაბლონი · შენახვა'],
+      ['push.template.reset', 'Push შაბლონი · ნაგულისხმევზე დაბრუნება'],
+    ]],
+    ['სიახლეები', [
+      ['announcement.create', 'სიახლე · შექმნა'],
+      ['announcement.update', 'სიახლე · რედაქტირება'],
+      ['announcement.publish', 'სიახლე · გამოქვეყნება'],
+      ['announcement.unpublish', 'სიახლე · გამოქვეყნების მოხსნა'],
+      ['announcement.archive', 'სიახლე · არქივში გადატანა'],
+      ['announcement.restore', 'სიახლე · არქივიდან დაბრუნება'],
+    ]],
+    ['ელფოსტა', [
+      ['email.template.update', 'ელფოსტის შაბლონი · შეცვლა'],
+      ['email.template.toggle', 'ელფოსტის შაბლონი · ჩართვა / გამორთვა'],
+      ['email.template.reset', 'ელფოსტის შაბლონი · ნაგულისხმევზე დაბრუნება'],
+      ['email.template.test', 'ელფოსტის შაბლონი · სატესტო წერილი'],
+      ['email.campaign.create', 'ელფოსტის კამპანია · შექმნა'],
+      ['email.campaign.update', 'ელფოსტის კამპანია · შეცვლა'],
+      ['email.campaign.test', 'ელფოსტის კამპანია · სატესტო წერილი'],
+      ['email.campaign.queue', 'ელფოსტის კამპანია · გაშვება'],
+      ['email.campaign.cancel', 'ელფოსტის კამპანია · გაუქმება'],
+      ['email.suppression.remove', 'დაბლოკილი მისამართი · ბლოკის მოხსნა'],
+    ]],
+    ['მხარდაჭერა', [
+      ['support.reply', 'მხარდაჭერის საუბარი · პასუხი'],
+      ['support.note', 'მხარდაჭერის საუბარი · შიდა შენიშვნა'],
+      ['support.thread.status', 'მხარდაჭერის საუბარი · სტატუსის შეცვლა'],
+      ['support.thread.assign', 'მხარდაჭერის საუბარი · პასუხისმგებლის შეცვლა'],
+      ['support.attachment.download', 'მხარდაჭერის საუბარი · დანართის ჩამოტვირთვა'],
+      ['support.snippet.create', 'სწრაფი პასუხი · შექმნა'],
+      ['support.snippet.update', 'სწრაფი პასუხი · შეცვლა'],
+      ['support.snippet.delete', 'სწრაფი პასუხი · წაშლა'],
+    ]],
+    ['დირექტორი', [
+      ['director.shift_on', 'დირექტორი · ცვლის ჩართვა'],
+      ['director.shift_off', 'დირექტორი · ცვლის გამორთვა'],
+      ['director.telegram_pair', 'დირექტორი · Telegram-ის დაკავშირება'],
+      ['director.telegram_unpair', 'დირექტორი · Telegram-ის გათიშვა'],
+      ['director.telegram_webhook', 'დირექტორი · Telegram-ის კავშირის განახლება'],
+      ['director.approve', 'დირექტორის წინადადება · დადასტურება'],
+      ['director.reject', 'დირექტორის წინადადება · უარყოფა'],
+    ]],
+    ['ჯილდოები', [
+      ['PARTNER_CREATED', 'პარტნიორი · შექმნა'],
+      ['PARTNER_UPDATED', 'პარტნიორი · განახლება'],
+      ['REWARD_DEFINITION_CREATED', 'ჯილდო · შექმნა'],
+      ['INVENTORY_ADJUSTED', 'ჯილდო · მარაგის კორექტირება'],
+      ['CODE_POOL_IMPORTED', 'ჯილდო · კოდების იმპორტი'],
+      ['CODE_DISABLED', 'ჯილდოს კოდი · გამორთვა'],
+      ['CAMPAIGN_CREATED', 'ჯილდოს კამპანია · შექმნა'],
+      ['CAMPAIGN_UPDATED', 'ჯილდოს კამპანია · განახლება'],
+      ['CAMPAIGN_ACTIVATED', 'ჯილდოს კამპანია · გააქტიურება'],
+      ['CAMPAIGN_PAUSED', 'ჯილდოს კამპანია · შეჩერება'],
+      ['REDEMPTION_STATUS_CHANGED', 'ჯილდოს გაცვლა · სტატუსის შეცვლა'],
+    ]],
+    ['ტრენერები', [
+      ['TRAINER_APPROVE', 'ტრენერი · დადასტურება'],
+      ['TRAINER_REJECT', 'ტრენერი · უარყოფა'],
+      ['TRAINER_SUSPEND', 'ტრენერი · შეჩერება'],
+      ['TRAINER_RESTORE', 'ტრენერი · აღდგენა'],
+      ['COACH_REPORT_RESOLVE', 'MEDI COACH შეტყობინება · განხილვა'],
+      ['GYM_ADD', 'დარბაზი · დამატება'],
+      ['GYM_UPDATE', 'დარბაზი · შეცვლა'],
+    ]],
+    ['კვება', [
+      ['NUTRITION_SETTINGS', 'კვების პარამეტრები · შეცვლა'],
+      ['NUTRITION_RECIPE', 'რეცეპტი · შენახვა'],
+    ]],
   ];
+  // Names that only older rows carry; they get a label but are not offered in the filter.
+  const LEGACY_ACTIONS = {
+    CAMPAIGN_STATUS_CHANGED: 'ჯილდოს კამპანია · სტატუსის შეცვლა',
+    CODE_IMPORTED: 'ჯილდო · კოდების იმპორტი',
+  };
+  const ACTION_KA = { ...LEGACY_ACTIONS, ...Object.fromEntries(ACTION_GROUPS.flatMap(([, items]) => items)) };
 
-  const ACTION_KA = Object.fromEntries(ACTION_OPTS.filter(([k]) => k));
+  const TARGET_KA = {
+    user: 'მომხმარებელი',
+    settings: 'აპის პარამეტრები',
+    featureFlag: 'მოდული',
+    questTemplate: 'Medi Quest შაბლონი',
+    system: 'სისტემა',
+    pushTemplate: 'Push შაბლონი',
+    announcement: 'სიახლე',
+    emailTemplate: 'ელფოსტის შაბლონი',
+    emailCampaign: 'ელფოსტის კამპანია',
+    emailSuppression: 'დაბლოკილი მისამართი',
+    supportThread: 'მხარდაჭერის საუბარი',
+    supportSnippet: 'სწრაფი პასუხი',
+    director: 'დირექტორი',
+    director_proposal: 'დირექტორის წინადადება',
+    rewardPartner: 'პარტნიორი',
+    rewardDefinition: 'ჯილდო',
+    rewardCampaign: 'ჯილდოს კამპანია',
+    rewardCode: 'ჯილდოს კოდი',
+    rewardRedemption: 'ჯილდოს გაცვლა',
+    TrainerProfile: 'ტრენერი',
+    CoachReport: 'MEDI COACH შეტყობინება',
+    Gym: 'დარბაზი',
+    NutritionSettings: 'კვების პარამეტრები',
+    NutritionRecipe: 'რეცეპტი',
+  };
+  // The admin page where each kind of object lives (the link in the details dialog).
+  const PAGES = {
+    settings: ['#/settings', 'აპის რეჟიმი'], features: ['#/features', 'მოდულები'], quests: ['#/quests', 'Medi Quest'],
+    capacity: ['#/capacity', 'სერვერის დატვირთვა'], push: ['#/push', 'Push & Brain'], news: ['#/news', 'სიახლეები'],
+    email: ['#/email', 'ელფოსტა'], support: ['#/support', 'მხარდაჭერა'], director: ['#/director', 'დირექტორი'],
+    rewards: ['#/rewards', 'ჯილდოები'], trainers: ['#/trainers', 'ტრენერები'], nutrition: ['#/nutrition', 'კვების დღიური'],
+  };
+  const TARGET_PAGE = {
+    settings: 'settings', featureFlag: 'features', questTemplate: 'quests', system: 'capacity', pushTemplate: 'push',
+    announcement: 'news', emailTemplate: 'email', emailCampaign: 'email', emailSuppression: 'email',
+    supportThread: 'support', supportSnippet: 'support', director: 'director', director_proposal: 'director',
+    rewardPartner: 'rewards', rewardDefinition: 'rewards', rewardCampaign: 'rewards', rewardCode: 'rewards', rewardRedemption: 'rewards',
+    TrainerProfile: 'trainers', CoachReport: 'trainers', Gym: 'trainers', NutritionSettings: 'nutrition', NutritionRecipe: 'nutrition',
+  };
+  const FEATURE_KA = {
+    cycle: 'ციკლი და ორსულობა', nutrition: 'კვების დღიური', nutritionAi: 'კვების AI შეფასება', medi: 'Medi', pets: 'ჩემი ცხოველები',
+    mediVet: 'Medi Vet', medirun: 'MEDIRUN', medirunAutopilot: 'MEDIRUN ავტოპილოტი', quest: 'MEDI QUEST', rewardsStore: 'ჯილდოების გაცვლა',
+    coach: 'MEDI COACH', community: 'ქალების სივრცე', pharmacy: 'აფთიაქი', news: 'სიახლეები', referralRewards: 'მოწვევის ჯილდოები', email: 'ელფოსტა',
+  };
+  const EMAIL_TEMPLATE_KA = { welcome: 'მისალმება', password_reset: 'პაროლის აღდგენა', account_deleted: 'ანგარიშის წაშლა' };
+  // Objects with one fixed id: the id says nothing, a name does.
+  const SINGLETON_KA = { 'settings:default': 'ზოგადი', 'system:capacity': 'სერვერის დატვირთვა', 'director:shift': 'ცვლა', 'director:telegram': 'Telegram', 'NutritionSettings:main': 'ზოგადი' };
+
+  const FIELD_KA = {
+    status: 'სტატუსი', enabled: 'ჩართულია', message: 'შეტყობინება', title: 'სათაური', body: 'ტექსტი', subject: 'თემა',
+    preheader: 'წინასიტყვა', heading: 'სათაური წერილში', ctaLabel: 'ღილაკის ტექსტი', ctaUrl: 'ღილაკის ბმული', ctaKind: 'ღილაკის ტიპი',
+    ctaTarget: 'ღილაკის მისამართი', audience: 'აუდიტორია', gender: 'სქესი', platform: 'პლატფორმა', priority: 'რიგი',
+    startsAt: 'დაწყება', endsAt: 'დასრულება', maintenanceMode: 'ტექნიკური რეჟიმი', maintenanceMessage: 'ტექნიკური რეჟიმის ტექსტი',
+    forceUpdate: 'იძულებითი განახლება', allowRegistrations: 'რეგისტრაცია ღიაა', minAppVersion: 'მინიმალური ვერსია',
+    qaOtpEnabled: 'სატესტო SMS კოდი', supportEmail: 'მხარდაჭერის ელფოსტა', coins: 'ბალანსი (coin)', amount: 'რაოდენობა',
+    reason: 'მიზეზი', note: 'შენიშვნა', approvedByOwner: 'მფლობელმა დაადასტურა', chars: 'ტექსტის სიგრძე', defaultTarget: 'სამიზნე',
+    target: 'სამიზნე', rewardXp: 'XP ჯილდო', rewardCoins: 'Coin ჯილდო', isActive: 'აქტიურია', active: 'აქტიურია',
+    inventoryQuantity: 'მარაგი', delta: 'ცვლილება', sent: 'გაიგზავნა', channel: 'არხი', photoEnabled: 'ფოტოთი შეფასება',
+    programEnabled: 'კვების პროგრამა', name: 'სახელი', brand: 'ბრენდი', brandKa: 'ბრენდი (ქართულად)', city: 'ქალაქი',
+    district: 'უბანი', address: 'მისამართი', imported: 'იმპორტირდა', accepted: 'მიღებულია', duplicates: 'გამეორებული',
+    invalid: 'არასწორი', expiredRejected: 'ვადაგასული', total: 'სულ', exportedAt: 'ექსპორტის დრო', noteId: 'შენიშვნა',
+    removed: 'მოხსნილია', reset: 'ნაგულისხმევზე დაბრუნდა', id: 'ID', key: 'გასაღები', type: 'ტიპი', kind: 'ტიპი',
+    displayName: 'სახელი', legalName: 'იურიდიული სახელი', category: 'კატეგორია', website: 'ვებგვერდი', countryCode: 'ქვეყანა',
+    lowStockThreshold: 'მცირე მარაგის ზღვარი', costCoins: 'ფასი (coin)', coinCost: 'ფასი (coin)', partnerId: 'პარტნიორი',
+    codeMasked: 'კოდი', segment: 'სეგმენტი', targetCount: 'მიმღები', sentCount: 'გაგზავნილი', toHash: 'მიმღები (დაშიფრული)',
+    url: 'მისამართი', messageId: 'წერილი', attachmentId: 'დანართი', assignedAdminId: 'პასუხისმგებელი ადმინი',
+    unread: 'წაუკითხავი', data: 'მონაცემები', result: 'შედეგი', delivered: 'მიწოდებულია',
+  };
+  const VALUE_KA = {
+    ACTIVE: 'აქტიური', BLOCKED: 'დაბლოკილი', PENDING: 'მოლოდინში', DRAFT: 'მონახაზი', PUBLISHED: 'გამოქვეყნებული',
+    ARCHIVED: 'არქივში', SCHEDULED: 'დაგეგმილი', ENDED: 'დასრულებული', PAUSED: 'შეჩერებული', VERIFIED: 'დადასტურებული',
+    REJECTED: 'უარყოფილი', SUSPENDED: 'შეჩერებული', FULFILLED: 'შესრულებული', USED: 'გამოყენებული', ISSUED: 'გაცემული',
+    EXPIRED: 'ვადაგასული', CANCELLED: 'გაუქმებული', CANCELED: 'გაუქმებული', OPEN: 'ღია', CLOSED: 'დახურული',
+    AVAILABLE: 'ხელმისაწვდომი', RESERVED: 'დაჯავშნილი', DISABLED: 'გამორთული', HIDDEN: 'დამალული', PROPOSED: 'შემოთავაზებული',
+    QUEUED: 'რიგში', SENDING: 'იგზავნება', SENT: 'გაგზავნილი', FAILED: 'ჩაიშალა', DONE: 'დასრულებული',
+    MALE: 'კაცი', FEMALE: 'ქალი', OTHER: 'სხვა', ALL: 'ყველა', IOS: 'iOS', ANDROID: 'Android', WEB: 'ვები',
+    VOUCHER: 'ვაუჩერი', MARKETING_OPT_IN: 'მარკეტინგზე თანხმობით',
+    new: 'ახალი', open: 'ღია', waiting: 'პასუხს ელოდება', closed: 'დახურული',
+    route: 'აპის გვერდი', url: 'ბმული', none: 'ღილაკის გარეშე', telegram: 'Telegram',
+    '[redacted]': 'დაფარულია',
+  };
+  // Fallback words for keys nobody mapped yet ("gift.save" → "საჩუქარი · შენახვა").
+  const WORDS = {
+    user: 'მომხმარებელი', status: 'სტატუსი', settings: 'პარამეტრები', update: 'შეცვლა', updated: 'შეცვლა', create: 'შექმნა',
+    created: 'შექმნა', delete: 'წაშლა', deleted: 'წაშლა', remove: 'მოხსნა', removed: 'მოხსნა', add: 'დამატება', save: 'შენახვა',
+    reset: 'ნაგულისხმევზე დაბრუნება', toggle: 'ჩართვა / გამორთვა', enable: 'ჩართვა', disable: 'გამორთვა', disabled: 'გამორთვა',
+    approve: 'დადასტურება', reject: 'უარყოფა', suspend: 'შეჩერება', restore: 'აღდგენა', archive: 'არქივში გადატანა',
+    publish: 'გამოქვეყნება', export: 'ექსპორტი', import: 'იმპორტი', imported: 'იმპორტი', test: 'ტესტი', send: 'გაგზავნა',
+    template: 'შაბლონი', campaign: 'კამპანია', email: 'ელფოსტა', push: 'Push', support: 'მხარდაჭერა', reward: 'ჯილდო',
+    partner: 'პარტნიორი', code: 'კოდი', coins: 'Medi Coins', feature: 'მოდული', quest: 'Medi Quest', trainer: 'ტრენერი',
+    gym: 'დარბაზი', nutrition: 'კვება', recipe: 'რეცეპტი', director: 'დირექტორი', announcement: 'სიახლე', gift: 'საჩუქარი',
+    note: 'შენიშვნა', reply: 'პასუხი', changed: 'შეცვლა', resolve: 'განხილვა', paused: 'შეჩერება', activated: 'გააქტიურება',
+    community: 'ქალების სივრცე', medirun: 'MEDIRUN', medipulsi: 'MEDIRUN', profile: 'პროფილი', report: 'შეტყობინება',
+  };
+  function readable(key) {
+    const words = String(key || '').replace(/([a-z])([A-Z])/g, '$1_$2').split(/[._\s-]+/).filter(Boolean).map((w) => w.toLowerCase());
+    return words.length ? words.map((w) => WORDS[w] || w).join(' · ') : '—';
+  }
+  const actionLabel = (action) => ACTION_KA[action] || readable(action);
+  const targetLabel = (type) => TARGET_KA[type] || readable(type);
+  const fieldLabel = (key) => String(key).split('.').map((k) => FIELD_KA[k] || readable(k)).join(' · ');
 
   let state = { q: '', action: '', offset: 0, limit: 40 };
-  let lastRows = [];
 
   function esc(v) {
     if (typeof opsEscape === 'function') return opsEscape(v);
@@ -48,40 +227,72 @@
   function ico(name) {
     return typeof icon === 'function' ? icon(name) : '';
   }
-  function helpBtn(key) {
-    return V().infoButton ? V().infoButton(key) : '';
-  }
-  function shortDate(iso) {
-    if (typeof fmtDateShort === 'function') return fmtDateShort(iso);
-    return iso || '—';
-  }
-  function fullDate(iso) {
+  function when(iso, mode = 'datetime') {
+    if (V().formatDate) return V().formatDate(iso, mode);
     if (typeof fmtDate === 'function') return fmtDate(iso);
     return iso || '—';
   }
-  function actionLabel(action) {
-    return ACTION_KA[action] || action || '—';
+  const clip = (text, max) => (text.length > max ? `${text.slice(0, max - 1)}…` : text);
+
+  function valueText(v) {
+    if (v === null || v === undefined || v === '') return '—';
+    if (typeof v === 'boolean') return v ? 'კი' : 'არა';
+    if (typeof v === 'number') return v.toLocaleString('ka-GE');
+    if (Array.isArray(v)) return v.length ? v.map(valueText).join(', ') : '—';
+    if (typeof v === 'object') return Object.entries(v).map(([k, x]) => `${fieldLabel(k)}: ${valueText(x)}`).join(' · ') || '—';
+    const s = String(v);
+    if (VALUE_KA[s]) return VALUE_KA[s];
+    if (global.CATEGORY_KA?.[s]) return global.CATEGORY_KA[s];
+    if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(s)) return when(s);
+    return s;
   }
 
-  function compactAuditVal(value) {
-    if (value == null) return '—';
-    if (typeof value === 'boolean') return value ? 'კი' : 'არა';
-    if (typeof value === 'number') return String(value);
-    if (typeof value === 'string') return value.length > 42 ? `${value.slice(0, 42)}…` : value;
-    if (Array.isArray(value)) return `${value.length} ელემენტი`;
-    if (typeof value === 'object') {
-      const keys = Object.keys(value);
-      return keys.length ? keys.slice(0, 3).join(', ') : '{}';
-    }
-    return String(value);
+  /** One level of nesting is spelled out ("audience.gender") so a diff names each changed field. */
+  function flatten(obj) {
+    const out = {};
+    if (!obj || typeof obj !== 'object' || Array.isArray(obj)) return out;
+    Object.entries(obj).forEach(([k, v]) => {
+      if (v && typeof v === 'object' && !Array.isArray(v) && Object.keys(v).length) Object.entries(v).forEach(([k2, v2]) => { out[`${k}.${k2}`] = v2; });
+      else out[k] = v;
+    });
+    return out;
+  }
+  const isObj = (v) => Boolean(v) && typeof v === 'object' && !Array.isArray(v);
+  const same = (a, b) => JSON.stringify(a ?? null) === JSON.stringify(b ?? null);
+
+  /**
+   * The fields this entry changed. Some writers store a whole "before" snapshot but only the fields that
+   * were sent as "after" (settings) — a field missing from "after" was not part of the change.
+   */
+  function changes(row) {
+    const prev = flatten(row.previousValue);
+    const next = flatten(row.newValue);
+    const both = isObj(row.previousValue) && isObj(row.newValue);
+    return [...new Set([...Object.keys(prev), ...Object.keys(next)])]
+      .filter((k) => !(both && !(k in next)) && !same(prev[k], next[k]))
+      .map((k) => ({ key: k, before: prev[k], after: next[k] }));
   }
 
-  function summarizeAudit(row) {
-    const prev = row.previousValue || {};
-    const next = row.newValue || {};
-    const keys = [...new Set([...Object.keys(prev), ...Object.keys(next)])].slice(0, 3);
-    if (!keys.length) return actionLabel(row.action);
-    return keys.map((key) => `${key}: ${compactAuditVal(prev[key])} → ${compactAuditVal(next[key])}`).join(' · ');
+  function summary(row) {
+    const list = changes(row);
+    if (!list.length) return '';
+    const created = !isObj(row.previousValue);
+    return list.slice(0, 3).map((c) => (created
+      ? `${fieldLabel(c.key)}: ${clip(valueText(c.after), 40)}`
+      : `${fieldLabel(c.key)}: ${clip(valueText(c.before), 32)} → ${clip(valueText(c.after), 32)}`)).join(' · ')
+      + (list.length > 3 ? ` · +${list.length - 3}` : '');
+  }
+
+  /** The specific object: a name for known keys, otherwise a short id. */
+  function targetDetail(row, { copy = false } = {}) {
+    const { targetType: type, targetId: id } = row;
+    if (!id) return '';
+    if (SINGLETON_KA[`${type}:${id}`]) return esc(SINGLETON_KA[`${type}:${id}`]);
+    if (type === 'featureFlag') return esc(FEATURE_KA[id] || id);
+    if (type === 'emailTemplate') return esc(EMAIL_TEMPLATE_KA[id] || id);
+    if (type === 'pushTemplate' || type === 'questTemplate') return `<code>${esc(id)}</code>`;
+    if (copy && V().copyIdButton) return V().copyIdButton(id);
+    return `<span class="p3-mono s-muted">${esc(String(id).slice(0, 8))}…</span>`;
   }
 
   function readHashState() {
@@ -100,89 +311,58 @@
     });
   }
 
-  function kpiCell(icoName, label, value, hint, tone) {
-    const toneClass =
-      tone === 'warn'
-        ? ' is-amber'
-        : tone === 'ok'
-          ? ' is-ok'
-          : tone === 'soft'
-            ? ' is-soft'
-            : '';
-    return `<article class="v3-audit-kpi${toneClass}">
-      <span class="v3-audit-kpi-ico" aria-hidden="true">${ico(icoName || 'shield')}</span>
-      <div class="v3-audit-kpi-copy">
-        <span>${esc(label)}</span>
-        <strong>${value}</strong>
-        ${hint != null && hint !== '' ? `<em>${esc(hint)}</em>` : ''}
-      </div>
-    </article>`;
+  function metric(label, value, hint) {
+    return `<div class="s-metric"><span>${esc(label)}</span><strong>${value}</strong><small>${esc(hint || '')}</small></div>`;
+  }
+
+  function actionOptions() {
+    // A legacy or unknown action from the URL still shows as the selected option.
+    const known = !state.action || ACTION_GROUPS.some(([, items]) => items.some(([key]) => key === state.action));
+    return `<option value="">ყველა ქმედება</option>
+      ${known ? '' : `<option value="${escA(state.action)}" selected>${esc(actionLabel(state.action))}</option>`}
+      ${ACTION_GROUPS.map(([group, items]) => `<optgroup label="${escA(group)}">${items.map(([val, label]) => `<option value="${escA(val)}"${state.action === val ? ' selected' : ''}>${esc(label)}</option>`).join('')}</optgroup>`).join('')}`;
   }
 
   function openAuditDetail(row) {
-    if (!row || typeof openDrawer !== 'function') return;
-    const prev = row.previousValue || {};
-    const next = row.newValue || {};
-    const keys = [...new Set([...Object.keys(prev), ...Object.keys(next)])];
-    const changes = keys.length
-      ? keys
-          .map(
-            (key) => `<div class="v3-audit-diff">
-              <code>${esc(key)}</code>
-              <strong>${esc(compactAuditVal(prev[key]))} → ${esc(compactAuditVal(next[key]))}</strong>
-            </div>`,
-          )
-          .join('')
-      : '<p class="muted v3-audit-empty-note">ცვლილების დეტალი არ არის.</p>';
-
-    const rawPrev = JSON.stringify(prev, null, 2);
-    const rawNext = JSON.stringify(next, null, 2);
-
-    openDrawer(
-      `
-      <div class="umodal v3-audit-modal">
-        <header class="umodal-hero v3-audit-modal-hero">
-          <div class="umodal-hero-copy">
-            <p class="kicker">აუდიტი</p>
-            <h3>${esc(actionLabel(row.action))}</h3>
-            <p class="muted">${esc(row.adminEmail || '—')} · ${esc(fullDate(row.createdAt))}</p>
-          </div>
-          <button type="button" class="btn icon-only ghost umodal-close" id="drawer-cancel" aria-label="დახურვა" title="დახურვა">${ico('x') || '×'}</button>
-        </header>
-        <div class="umodal-body v3-audit-modal-body">
-          <section class="v3-audit-block">
-            <h4>ობიექტი</h4>
-            <div class="v3-audit-meta">
-              <div><span>ტიპი</span><strong>${esc(row.targetType || '—')}</strong></div>
-              <div><span>ID</span><strong class="mono">${esc(row.targetId || '—')}</strong></div>
-              <div><span>ქმედება</span><strong class="mono">${esc(row.action || '—')}</strong></div>
-            </div>
-          </section>
-          <section class="v3-audit-block">
-            <h4>ცვლილება</h4>
-            <div class="v3-audit-diffs">${changes}</div>
-          </section>
-          <details class="v3-audit-raw">
-            <summary>ტექნიკური JSON</summary>
-            <div class="v3-audit-raw-split">
-              <div>
-                <span>წინა</span>
-                <pre>${esc(rawPrev)}</pre>
-              </div>
-              <div>
-                <span>ახალი</span>
-                <pre>${esc(rawNext)}</pre>
-              </div>
-            </div>
-          </details>
-        </div>
-      </div>
-    `,
-      { modal: true, wide: true },
-    );
-    $('drawer-cancel')?.addEventListener('click', () => {
-      if (typeof closeDrawer === 'function') closeDrawer();
+    if (!row) return;
+    const list = changes(row);
+    const created = !isObj(row.previousValue);
+    const removed = !isObj(row.newValue) && isObj(row.previousValue);
+    const page = row.targetType === 'user' && row.targetId
+      ? [`#/users/${encodeURIComponent(row.targetId)}`, 'მომხმარებლის პროფილი']
+      : PAGES[TARGET_PAGE[row.targetType]];
+    const diff = list.length
+      ? `<div class="s-table-wrap"><table class="s-table p3-diff"><thead><tr><th>ველი</th>${created ? '' : '<th>ძველი</th>'}${removed ? '' : '<th>ახალი</th>'}</tr></thead><tbody>${list.map((c) => `<tr>
+          <td class="p3-diff-key">${esc(fieldLabel(c.key))}</td>
+          ${created ? '' : `<td class="p3-diff-old" data-label="ძველი">${esc(valueText(c.before))}</td>`}
+          ${removed ? '' : `<td class="p3-diff-new" data-label="ახალი">${esc(valueText(c.after))}</td>`}
+        </tr>`).join('')}</tbody></table></div>`
+      : '<div class="s-empty">ამ ქმედებას ცვლილების დეტალი არ ჩაუწერია.</div>';
+    const detail = targetDetail(row, { copy: true });
+    const dialog = V().openDialog?.({
+      title: actionLabel(row.action),
+      wide: true,
+      watchDirty: false,
+      body: `<div class="s-stack p3-audit-detail">
+        <dl class="p3-facts">
+          <div><dt>ადმინი</dt><dd>${esc(row.adminEmail || '—')}</dd></div>
+          <div><dt>დრო</dt><dd>${esc(when(row.createdAt))}</dd></div>
+          <div><dt>ობიექტი</dt><dd>${esc(targetLabel(row.targetType))}${detail ? ` · ${detail}` : ''}</dd></div>
+        </dl>
+        <section class="s-card"><header class="s-card-head"><div><h3>${created ? 'ახალი მნიშვნელობები' : removed ? 'წაშლილი მნიშვნელობები' : 'რა შეიცვალა'}</h3><p>${created ? 'ობიექტი ამ ქმედებით შეიქმნა.' : 'მხოლოდ შეცვლილი ველები; საიდუმლო ველები დაფარულია.'}</p></div></header>
+          <div class="s-card-body is-flush">${diff}</div></section>
+        <section class="s-card"><details class="s-details p3-tech"><summary>ტექნიკური დეტალები</summary><div>
+          <dl class="p3-facts">
+            <div><dt>ქმედების კოდი</dt><dd class="p3-mono">${esc(row.action || '—')}</dd></div>
+            <div><dt>ობიექტის ტიპი</dt><dd class="p3-mono">${esc(row.targetType || '—')}</dd></div>
+            <div><dt>ობიექტის ID</dt><dd class="p3-mono">${esc(row.targetId || '—')}</dd></div>
+          </dl>
+          <pre class="s-preview-text">${esc(JSON.stringify({ previousValue: row.previousValue ?? null, newValue: row.newValue ?? null }, null, 2))}</pre>
+        </div></details></section>
+      </div>`,
+      footer: page ? `<a class="btn" href="${escA(page[0])}" data-audit-open>${ico('link')} გადასვლა: ${esc(page[1])}</a>` : '',
     });
+    document.querySelector('#v3-dialog [data-audit-open]')?.addEventListener('click', () => { void dialog?.close(); });
   }
 
   function logsQuery() {
@@ -196,21 +376,20 @@
 
   function tableRowsHtml(rows) {
     if (!rows.length) {
-      return `<tr><td colspan="5"><div class="v3-audit-empty-inline">
-        <strong>ჩანაწერი არ არის</strong>
-        <p>შაბლონის, პარამეტრების ან სტატუსის შენახვა აქ გამოჩნდება.</p>
-      </div></td></tr>`;
+      return `<tr><td colspan="5"><div class="s-empty">${ico('search')}<strong>ჩანაწერი არ არის</strong><span>${state.q || state.action ? 'ამ ფილტრით ცვლილება ვერ მოიძებნა — შეცვალე ძებნა ან ქმედება.' : 'ადმინის ცვლილებები (პარამეტრები, სტატუსები, შაბლონები…) აქ გამოჩნდება.'}</span></div></td></tr>`;
     }
     return rows
-      .map(
-        (row, i) => `<tr class="is-click" data-audit="${i}" tabindex="0">
-        <td class="muted">${esc(shortDate(row.createdAt))}</td>
-        <td>${esc(row.adminEmail || '—')}</td>
-        <td><span class="v3-audit-pill">${esc(actionLabel(row.action))}</span></td>
-        <td class="mono">${esc([row.targetType, row.targetId].filter(Boolean).join(' · ') || '—')}</td>
-        <td class="v3-audit-clip muted">${esc(summarizeAudit(row))}</td>
-      </tr>`,
-      )
+      .map((row, i) => {
+        const change = summary(row);
+        const detail = targetDetail(row);
+        return `<tr class="is-click" data-audit="${i}" tabindex="0">
+        <td class="p3-nowrap">${esc(when(row.createdAt))}</td>
+        <td class="p3-admin">${esc(row.adminEmail || '—')}</td>
+        <td class="p3-action">${esc(actionLabel(row.action))}</td>
+        <td class="p3-target">${detail || '<span class="s-muted">—</span>'}</td>
+        <td class="p3-change">${change ? esc(change) : '<span class="s-muted">—</span>'}</td>
+      </tr>`;
+      })
       .join('');
   }
 
@@ -233,13 +412,12 @@
     const kpis = $('audit-kpis');
     if (!tbody) return;
 
-    tbody.innerHTML = `<tr><td colspan="5"><div class="v3-audit-empty-inline">იტვირთება…</div></td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="5"><div class="v3-skel" aria-hidden="true"><i></i><i></i><i></i><i></i></div></td></tr>`;
     writeHashState();
 
     try {
       const data = await api(`/audit?${logsQuery()}`);
       const rows = data.entries || [];
-      lastRows = rows;
       const total = Number(data.total) || 0;
       const admins = new Set(rows.map((r) => r.adminEmail).filter(Boolean)).size;
       const actions = new Set(rows.map((r) => r.action).filter(Boolean)).size;
@@ -255,10 +433,9 @@
       }
       if (kpis) {
         kpis.innerHTML = `
-          ${kpiCell('file', 'სულ ჩანაწერი', fmt(total), state.q || state.action ? 'ფილტრის მიხედვით' : 'ყველა', 'soft')}
-          ${kpiCell('activity', 'ამ გვერდზე', fmt(rows.length), `ლიმიტი ${state.limit}`, '')}
-          ${kpiCell('users', 'ადმინები', fmt(admins), 'ამ გვერდზე', admins ? 'ok' : '')}
-          ${kpiCell('layers', 'ქმედებები', fmt(actions), 'უნიკალური ამ გვერდზე', 'soft')}
+          ${metric('ჩანაწერი', fmt(total), state.q || state.action ? 'ფილტრის მიხედვით' : 'მთელი ჟურნალი')}
+          ${metric('ადმინი', fmt(admins), 'ამ გვერდზე')}
+          ${metric('ქმედების ტიპი', fmt(actions), 'ამ გვერდზე')}
         `;
       }
 
@@ -267,11 +444,9 @@
       if (prev) prev.disabled = state.offset <= 0;
       if (next) next.disabled = state.offset + state.limit >= total;
     } catch (err) {
-      tbody.innerHTML = `<tr><td colspan="5"><div class="v3-audit-empty-inline is-err">
-        <strong>აუდიტი ვერ ჩაიტვირთა</strong>
-        <p>${esc(err.message || 'შეცდომა')}</p>
-        <button type="button" class="btn ghost compact" id="audit-retry">${ico('refresh')} ხელახლა სცადე</button>
-      </div></td></tr>`;
+      if (meta) meta.textContent = '—';
+      if (kpis) kpis.innerHTML = `${metric('ჩანაწერი', '—', '')}${metric('ადმინი', '—', 'ამ გვერდზე')}${metric('ქმედების ტიპი', '—', 'ამ გვერდზე')}`;
+      tbody.innerHTML = `<tr><td colspan="5"><div class="s-empty">${ico('alert')}<strong>აუდიტი ვერ ჩაიტვირთა</strong><span>შეამოწმე კავშირი და სცადე ხელახლა.</span>${err?.message ? `<small class="p3-raw">${esc(err.message)}</small>` : ''}<button type="button" class="btn ghost compact" id="audit-retry">${ico('refresh')} ხელახლა ცდა</button></div></td></tr>`;
       $('audit-retry')?.addEventListener('click', () => void loadJournal());
     }
   }
@@ -287,57 +462,40 @@
       tab: 'audit',
       kicker: 'Production',
       title: 'აუდიტი',
-      purpose: 'ვინ შეცვალა შაბლონები, პარამეტრები ან სტატუსი — და როდის.',
+      purpose: 'ვინ რა შეცვალა ადმინში და როდის.',
       helpKey: 'audit.page',
     });
 
-    root.classList.add('v3-workspace-wide', 'v3-module', 'v3-audit');
+    // No "v3-module": its legacy field styles (unify.css) would override the s-* filter controls.
+    root.classList.add('v3-workspace-wide', 'v3-audit');
     root.innerHTML = `
-      <div class="v3-audit-body dash-enter" data-v3-audit="page">
-        <div class="v3-audit-toolbar">
-          <div class="v3-audit-toolbar-copy">
-            <strong>აუდიტის ობსერვატორია</strong>
-            <span>ადმინისტრაციული ცვლილებები · საიდუმლოებები დამალულია · პერიოდის ფილტრი არ გამოიყენება</span>
+      <div class="s-stack v3-tab-shell" data-v3-audit="page">
+        <div class="s-toolbar">
+          <div class="p3-tools">
+            <select id="audit-action" class="p3-select" aria-label="ქმედება">${actionOptions()}</select>
+            <label class="p3-search">
+              <span class="sr-only">ძებნა</span>
+              ${ico('search')}
+              <input id="audit-q" type="search" placeholder="ადმინის ელფოსტა ან ობიექტის ID…" value="${escA(state.q)}" autocomplete="off" />
+            </label>
+            <button type="button" class="btn" id="audit-search">ძებნა</button>
           </div>
-          <div class="v3-audit-toolbar-actions">
-            ${helpBtn('audit.page')}
-            <button type="button" class="btn ghost compact" id="audit-export">${ico('file')} CSV</button>
+          <div class="p3-tools">
+            <button type="button" class="btn ghost compact" id="audit-export">${ico('download')} CSV</button>
             <button type="button" class="btn ghost compact" id="audit-refresh">${ico('refresh')} განახლება</button>
           </div>
         </div>
 
-        <div class="v3-audit-kpis" id="audit-kpis" role="group" aria-label="აუდიტის მდგომარეობა">
-          ${kpiCell('file', 'სულ ჩანაწერი', '…', '', 'soft')}
-          ${kpiCell('activity', 'ამ გვერდზე', '…', '', '')}
-          ${kpiCell('users', 'ადმინები', '…', '', '')}
-          ${kpiCell('layers', 'ქმედებები', '…', '', '')}
+        <div class="s-metrics" id="audit-kpis" role="group" aria-label="აუდიტის მდგომარეობა">
+          ${metric('ჩანაწერი', '…', '')}
+          ${metric('ადმინი', '…', 'ამ გვერდზე')}
+          ${metric('ქმედების ტიპი', '…', 'ამ გვერდზე')}
         </div>
 
-        <section class="v3-audit-panel" data-v3-audit="journal">
-          <div class="v3-audit-head">
-            <div class="v3-audit-head-copy">
-              <div class="v3-title-row"><h3>აუდიტის ჟურნალი</h3></div>
-              <p class="muted"><span id="audit-log-meta">იტვირთება…</span></p>
-            </div>
-          </div>
-
-          <div class="v3-audit-filters">
-            <select id="audit-action" aria-label="ქმედება">
-              ${ACTION_OPTS.map(
-                ([val, label]) =>
-                  `<option value="${escA(val)}"${state.action === val ? ' selected' : ''}>${esc(label)}</option>`,
-              ).join('')}
-            </select>
-            <label class="v3-audit-search">
-              <span class="sr-only">ძებნა</span>
-              ${ico('search')}
-              <input id="audit-q" type="search" placeholder="ადმინი, ქმედება, ობიექტი…" value="${escA(state.q)}" autocomplete="off" />
-            </label>
-            <button type="button" class="btn secondary compact" id="audit-search">ძებნა</button>
-          </div>
-
-          <div class="v3-audit-table-wrap">
-            <table class="v3-audit-table">
+        <section class="s-card" data-v3-audit="journal">
+          <header class="s-card-head"><div><h3>აუდიტის ჟურნალი</h3><p>ადმინების ცვლილებები, ახალი პირველი. დააჭირე სტრიქონს დეტალებისთვის; საიდუმლო ველები დაფარულია.</p></div></header>
+          <div class="s-card-body is-flush"><div class="s-table-wrap">
+            <table class="s-table p3-audit-table">
               <thead>
                 <tr>
                   <th>დრო</th>
@@ -349,11 +507,13 @@
               </thead>
               <tbody id="audit-log-body"></tbody>
             </table>
-          </div>
-
-          <div class="v3-audit-pager">
-            <button type="button" class="btn ghost compact" id="audit-log-prev" disabled>წინა</button>
-            <button type="button" class="btn ghost compact" id="audit-log-next" disabled>შემდეგი</button>
+          </div></div>
+          <div class="s-pager">
+            <span id="audit-log-meta">იტვირთება…</span>
+            <div>
+              <button type="button" class="btn ghost compact" id="audit-log-prev" disabled>წინა</button>
+              <button type="button" class="btn ghost compact" id="audit-log-next" disabled>შემდეგი</button>
+            </div>
           </div>
         </section>
       </div>
@@ -396,5 +556,11 @@
     await loadJournal();
   }
 
+  global.AdminAuditLabels = {
+    action: actionLabel,
+    target: targetLabel,
+    field: fieldLabel,
+    value: valueText,
+  };
   global.renderAuditLog = renderAuditLogV3;
 })(window);

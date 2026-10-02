@@ -36,62 +36,70 @@
     if (value == null || Number.isNaN(Number(value))) return '—';
     return `${value}%`;
   }
+  const share = (part, total) => `${(total > 0 ? (100 * (Number(part) || 0)) / total : 0).toLocaleString('ka-GE', { maximumFractionDigits: 1 })}%`;
 
-  function kpiCell(icoName, label, value, hint, tone) {
-    const toneClass =
-      tone === 'warn'
-        ? ' is-amber'
-        : tone === 'bad'
-          ? ' is-danger'
-          : tone === 'ok'
-            ? ' is-ok'
-            : tone === 'soft'
-              ? ' is-soft'
-              : '';
-    return `<article class="v3-quality-kpi${toneClass}">
-      <span class="v3-quality-kpi-ico" aria-hidden="true">${ico(icoName || 'activity')}</span>
-      <div class="v3-quality-kpi-copy">
-        <span>${esc(label)}</span>
-        <strong>${value}</strong>
-        ${hint != null && hint !== '' ? `<em>${esc(hint)}</em>` : ''}
-      </div>
-    </article>`;
+  function metric(label, value, hint, tone = '') {
+    return `<div class="s-metric ${tone}"><span>${esc(label)}</span><strong>${value}</strong><small>${hint || ''}</small></div>`;
   }
 
-  function issueCard(label, count, href, tone) {
+  /** One check of the integrity table: a zero is fine; a non-zero count is either worth a look or just context. */
+  function checkRow(label, hint, count, href, attention) {
     const n = Number(count) || 0;
-    const toneClass = tone === 'warn' ? ' is-warn' : tone === 'ok' ? ' is-ok' : '';
-    return `<button type="button" class="v3-quality-issue${toneClass}" data-href="${esc(href || '#/quality')}">
-      <span class="v3-quality-issue-label">${esc(label)}</span>
-      <strong>${fmt(n)}</strong>
-      <em>ნახვა</em>
-    </button>`;
+    const status = !n
+      ? '<span class="s-badge is-ok">რიგზეა</span>'
+      : attention
+        ? '<span class="s-badge is-warn">შესამოწმებელი</span>'
+        : '<span class="s-badge is-plain">ცნობისთვის</span>';
+    return `<tr${href ? ` class="is-click" data-href="${esc(href)}" tabindex="0"` : ''}>
+      <td><b>${esc(label)}</b><span class="p3-sub">${esc(hint)}</span></td>
+      <td class="num">${fmt(n)}</td>
+      <td>${status}</td>
+    </tr>`;
   }
+  const groupRow = (title, note) => `<tr class="p3-group-row"><td colspan="3">${esc(title)}${note ? `<span>${esc(note)}</span>` : ''}</td></tr>`;
 
-  function policyCell(label, value) {
-    return `<div class="v3-quality-policy-cell">
-      <span>${esc(label)}</span>
-      <strong class="mono">${esc(value || '—')}</strong>
-    </div>`;
-  }
-
-  function miniKpi(icoName, label, value) {
-    return `<article class="v3-quality-mini">
-      <span class="v3-quality-mini-ico">${ico(icoName)}</span>
-      <div>
-        <span>${esc(label)}</span>
-        <strong>${value}</strong>
-      </div>
-    </article>`;
+  /** Ranked meter rows (part of a whole); rows with an href open that filter. */
+  function meterRows(rows, { total, empty }) {
+    const list = rows.filter((r) => Number(r.count) > 0);
+    if (!list.length) return `<div class="s-empty">${esc(empty)}</div>`;
+    const max = Math.max(1, ...list.map((r) => Number(r.count) || 0));
+    const sumAll = total || list.reduce((s, r) => s + (Number(r.count) || 0), 0);
+    return `<div class="p3-meters">${list.map((r) => {
+      const width = Math.max(2, Math.round(((Number(r.count) || 0) / max) * 100));
+      const inner = `<span class="p3-meter-label">${r.labelHtml || esc(r.label)}</span>
+        <span class="s-meter" aria-hidden="true"><i style="width:${width}%"></i></span>
+        <span class="p3-meter-val"><b>${fmt(r.count)}</b><small>${share(r.count, sumAll)}</small></span>`;
+      return r.href
+        ? `<button type="button" class="p3-meter-row is-link" data-href="${esc(r.href)}">${inner}</button>`
+        : `<div class="p3-meter-row">${inner}</div>`;
+    }).join('')}</div>`;
   }
 
   function bindNav(root) {
-    root.querySelectorAll('[data-href]').forEach((btn) => {
-      btn.addEventListener('click', () => {
-        const href = btn.getAttribute('data-href');
+    root.querySelectorAll('[data-href]').forEach((el) => {
+      const go = () => {
+        const href = el.getAttribute('data-href');
         if (href) location.hash = href;
-      });
+      };
+      el.addEventListener('click', go);
+      if (el.tagName === 'TR') {
+        el.addEventListener('keydown', (e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            go();
+          }
+        });
+      }
     });
+  }
+
+  function toolbar(rangeHtml) {
+    return `<div class="s-toolbar">
+      <div class="p3-tools">${rangeHtml}</div>
+      <div class="p3-tools">
+        <button type="button" class="btn ghost compact" id="quality-refresh">${ico('refresh')} განახლება</button>
+      </div>
+    </div>`;
   }
 
   async function renderQualityOpsV3() {
@@ -104,25 +112,20 @@
       tab: 'quality',
       kicker: 'Production',
       title: 'ხარისხი',
-      purpose: 'ვერსიები, ტელემეტრია და მონაცემები სანდოა თუ არა.',
+      purpose: 'აპის ვერსიები, Push-ის ნებართვა და მონაცემების მთლიანობა.',
       helpKey: 'quality.page',
     });
 
     const rangeHtml = Av.filterBar ? Av.filterBar() : typeof opsRangeBar === 'function' ? opsRangeBar() : '';
 
-    root.classList.add('v3-workspace-wide', 'v3-module', 'v3-quality');
-    root.innerHTML = `
-      <div class="v3-quality-body dash-enter" data-v3-quality="loading">
-        <div class="v3-quality-toolbar">
-          <div class="v3-quality-toolbar-copy">
-            <strong>ხარისხის ობსერვატორია</strong>
-            <span>იტვირთება…</span>
-          </div>
-        </div>
-        <div id="quality-body">${Av.skeleton ? Av.skeleton(6) : typeof opsSkeleton === 'function' ? opsSkeleton(6) : '<p class="muted">იტვირთება…</p>'}</div>
-      </div>
-    `;
+    // No "v3-module": its legacy field styles (unify.css) would restyle the range date inputs.
+    root.classList.add('v3-workspace-wide', 'v3-quality');
+    root.innerHTML = `<div class="s-stack v3-tab-shell" data-v3-quality="loading">
+      ${toolbar(rangeHtml)}
+      <div id="quality-body">${Av.skeleton ? Av.skeleton(6) : '<div class="v3-skel" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i></div>'}</div>
+    </div>`;
 
+    $('quality-refresh')?.addEventListener('click', () => void renderQualityOpsV3());
     if (typeof bindOpsRange === 'function') bindOpsRange(renderQualityOpsV3);
 
     try {
@@ -140,48 +143,21 @@
         ]);
       })();
 
-      const versionCoverage =
+      const versionCoverageRate =
         quality.versionCoverageRate != null
-          ? coveragePct(quality.versionCoverageRate)
+          ? Number(quality.versionCoverageRate)
           : quality.activeUsersSampled
-            ? coveragePct(
-                Math.round(
-                  100 - (100 * (quality.usersMissingAppVersion || 0) / Math.max(1, quality.activeUsersSampled)),
-                ),
-              )
-            : '—';
+            ? Math.round(100 - (100 * (quality.usersMissingAppVersion || 0)) / Math.max(1, quality.activeUsersSampled))
+            : null;
+      const versionCoverage = coveragePct(versionCoverageRate);
 
-      const telemetryCoverage = versions.belowOutcomeSync?.rate?.hidden
-        ? '—'
-        : versions.belowOutcomeSync?.rate?.value == null
-          ? '—'
-          : `${Math.max(0, 100 - versions.belowOutcomeSync.rate.value)}%`;
-
-      const permCoverage = permissions.enabledRate?.hidden
-        ? '—'
-        : permissions.enabledRate?.value == null
-          ? '—'
-          : `${permissions.enabledRate.value}%`;
+      const permRate = permissions.enabledRate?.hidden || permissions.enabledRate?.value == null ? null : Number(permissions.enabledRate.value);
+      const permTotal = Number(permissions.total) || (Number(permissions.enabled) || 0) + (Number(permissions.disabled) || 0) + (Number(permissions.provisional) || 0) + (Number(permissions.unknown) || 0);
 
       const policy = versions.policy || {};
-      const minOutcome = policy.minimumOutcomeSyncVersion || '24.0.0';
-      const minBrain = policy.minimumBrainSyncVersion || '23.0.3';
-
-      const barChart =
-        typeof opsBarChart === 'function'
-          ? opsBarChart(
-              (versions.versions || []).map((row) => ({
-                label: row.version,
-                count: row.users,
-                href: `#/users?appVersion=${encodeURIComponent(row.version)}`,
-              })),
-            )
-          : `<ul class="v3-quality-ver-list">${(versions.versions || [])
-              .map(
-                (row) =>
-                  `<li><a href="#/users?appVersion=${encodeURIComponent(row.version)}">${esc(row.version)}</a> — ${fmt(row.users)}</li>`,
-              )
-              .join('')}</ul>`;
+      const minOutcome = policy.minimumOutcomeSyncVersion || versions.belowOutcomeSync?.minimum || '24.0.0';
+      const minBrain = policy.minimumBrainSyncVersion || versions.belowBrainSync?.minimum || '23.0.3';
+      const current = policy.currentRecommendedVersion || versions.current || null;
 
       const missVer = Number(quality.usersMissingAppVersion) || 0;
       const missPlat = Number(quality.usersMissingPlatform) || 0;
@@ -191,139 +167,112 @@
       const belowBrain = Number(versions.belowBrainSync?.users) || 0;
       const inactive = Number(quality.usersWithoutRecentActivity) || 0;
       const futureTs = Number(quality.futureTimestamps) || 0;
+      const windowDays = Number(quality.sampleWindowDays) || 90;
+      const gateRate = (gate) => (gate?.rate?.hidden || gate?.rate?.value == null ? '' : ` · ${gate.rate.value}% აქტიურიდან`);
 
-      root.innerHTML = `
-        <div class="v3-quality-body dash-enter" data-v3-quality="page">
-          <div class="v3-quality-toolbar">
-            <div class="v3-quality-toolbar-copy">
-              <strong>ხარისხის ობსერვატორია</strong>
-              <span>ვერსიები და კვირის მეტრიკები — არჩეული პერიოდი · მთლიანობა / ნებართვა — სნეპშოტი</span>
-            </div>
-            <div class="v3-quality-toolbar-actions">
-              ${helpBtn('quality.page')}
-              <button type="button" class="btn ghost compact" id="quality-refresh">${ico('refresh')} განახლება</button>
-            </div>
-          </div>
+      const versionList = (versions.versions || []).map((row) => ({
+        label: row.version,
+        labelHtml: `${row.version === 'unknown' ? 'უცნობი ვერსია' : esc(row.version)}${current && row.version === current ? ' <span class="s-badge is-accent is-plain">ბოლო</span>' : ''}`,
+        count: row.users,
+        href: `#/users?appVersion=${encodeURIComponent(row.version)}`,
+      })).sort((a, b) => (Number(b.count) || 0) - (Number(a.count) || 0));
+      const pu = versions.platformUsers || {};
+      const platformList = [
+        { label: 'iOS', count: pu.ios },
+        { label: 'Android', count: pu.android },
+        { label: 'ვები', count: pu.web },
+        { label: 'უცნობი', count: pu.unknown },
+      ];
+      const permissionList = [
+        { label: 'ჩართული', count: permissions.enabled },
+        { label: 'გამორთული', count: permissions.disabled },
+        { label: 'ჩუმი მიწოდება (iOS)', count: permissions.provisional },
+        { label: 'უცნობი', count: permissions.unknown },
+      ];
 
-          ${rangeHtml ? `<div class="v3-quality-range">${rangeHtml}</div>` : ''}
+      root.innerHTML = `<div class="s-stack v3-tab-shell" data-v3-quality="page">
+        ${toolbar(rangeHtml)}
 
-          <div class="v3-quality-kpis" role="group" aria-label="დაფარვის მდგომარეობა">
-            ${kpiCell('layers', 'ვერსიის დაფარვა', esc(versionCoverage), missVer ? `${fmt(missVer)} აკლია ვერსია` : 'ყველას აქვს ვერსია', missVer > 0 ? 'warn' : 'ok')}
-            ${kpiCell('activity', 'ტელემეტრიის დაფარვა', esc(telemetryCoverage), 'პერიოდის აქტიური', 'soft')}
-            ${kpiCell('bell', 'ნებართვის დაფარვა', esc(permCoverage), 'ჩართული push', permCoverage !== '—' && Number(String(permCoverage).replace('%', '')) < 50 ? 'warn' : 'soft')}
-            ${kpiCell('users', 'აქტიური ნიმუში', fmt(quality.activeUsersSampled), quality.sampleWindowDays ? `${quality.sampleWindowDays}დ ფანჯარა` : '', '')}
-          </div>
-
-          <section class="v3-quality-panel" data-v3-quality="policy">
-            <div class="v3-quality-head">
-              <div class="v3-quality-head-copy">
-                <div class="v3-title-row"><h3>ვერსიის პოლიტიკა</h3>${helpBtn('quality.versions')}</div>
-                <p class="muted">რეკომენდებული და მინიმალური სინქ ვერსიები</p>
-              </div>
-            </div>
-            <div class="v3-quality-policy">
-              ${policyCell('რეკომენდებული', policy.currentRecommendedVersion)}
-              ${policyCell('მინ. Brain sync', minBrain)}
-              ${policyCell('მინ. Outcome sync', minOutcome)}
-              ${policyCell('მინ. მხარდაჭერილი', policy.minimumSupportedVersion)}
-              ${policyCell('იძულებითი განახლება', policy.forceUpdateVersion || 'გამორთული')}
-            </div>
-          </section>
-
-          <section class="v3-quality-panel" data-v3-quality="integrity">
-            <div class="v3-quality-head">
-              <div class="v3-quality-head-copy">
-                <div class="v3-title-row"><h3>ოპერაციული დიაგნოსტიკა</h3>${helpBtn('quality.integrity')}</div>
-                <p class="muted">მონაცემების მთლიანობა და კლიენტების ჩამორჩენა · 90დ ნიმუში</p>
-              </div>
-            </div>
-            <div class="v3-quality-groups">
-              <div class="v3-quality-group">
-                <h4>მონაცემები</h4>
-                ${issueCard('ვერსია არ არის', missVer, '#/users', missVer > 0 ? 'warn' : 'ok')}
-                ${issueCard('პლატფორმა არ არის', missPlat, '#/users', missPlat > 0 ? 'warn' : 'ok')}
-                ${issueCard('უპატრონო შედეგი', orphan, '#/push', orphan >= 10 ? 'warn' : '')}
-                ${issueCard('დუბლიკატი ID', dupes, '#/push', dupes > 0 ? 'warn' : 'ok')}
-                ${issueCard('მომავალი timestamp', futureTs, '#/quality', futureTs > 0 ? 'warn' : 'ok')}
-                ${issueCard('ბოლო აქტივობა არა', inactive, '#/users', inactive > 0 ? 'warn' : '')}
-              </div>
-              <div class="v3-quality-group">
-                <h4>შეტყობინებები</h4>
-                ${issueCard('არასწორი route', quality.invalidRoutes, '#/push', Number(quality.invalidRoutes) > 0 ? 'warn' : 'ok')}
-                ${issueCard('უცნობი action', quality.unknownActionKeys, '#/push', Number(quality.unknownActionKeys) > 0 ? 'warn' : 'ok')}
-                ${issueCard('რევალიდაცია არ არის', quality.decisionsMissingRevalidation, '#/push', '')}
-              </div>
-              <div class="v3-quality-group">
-                <h4>კლიენტები</h4>
-                ${issueCard(`${minOutcome}-ზე დაბლა`, belowOutcome, '#/users?activity=outdated', versions.belowOutcomeSync?.rate?.value >= 15 ? 'warn' : '')}
-                ${issueCard(`${minBrain}-ზე დაბლა`, belowBrain, '#/users?activity=outdated', versions.belowBrainSync?.rate?.value >= 15 ? 'warn' : '')}
-              </div>
-            </div>
-          </section>
-
-          <div class="v3-quality-split">
-            <section class="v3-quality-panel" data-v3-quality="versions">
-              <div class="v3-quality-head">
-                <div class="v3-quality-head-copy">
-                  <div class="v3-title-row"><h3>ვერსიები</h3>${helpBtn('quality.versions')}</div>
-                  <p class="muted">${esc(versions.definition || 'რომელი აპის ვერსიები აქტიურ მომხმარებლებშია')}</p>
-                </div>
-              </div>
-              <div class="v3-quality-chart">${barChart}</div>
-              <div class="v3-quality-platforms">
-                <span>iOS <strong>${fmt(versions.platformUsers?.ios)}</strong></span>
-                <span>Android <strong>${fmt(versions.platformUsers?.android)}</strong></span>
-                <span>უცნობი <strong>${fmt(versions.platformUsers?.unknown)}</strong></span>
-              </div>
-            </section>
-
-            <section class="v3-quality-panel" data-v3-quality="permissions">
-              <div class="v3-quality-head">
-                <div class="v3-quality-head-copy">
-                  <div class="v3-title-row"><h3>ნებართვა</h3>${helpBtn('quality.telemetry')}</div>
-                  <p class="muted">Push ნებართვის სნეპშოტი</p>
-                </div>
-              </div>
-              <div class="v3-quality-minis">
-                ${miniKpi('bell', 'ჩართული', fmt(permissions.enabled))}
-                ${miniKpi('x', 'გამორთული', fmt(permissions.disabled))}
-                ${miniKpi('shield', 'შეზღუდული', fmt(permissions.provisional))}
-                ${miniKpi('users', 'უცნობი', fmt(permissions.unknown))}
-              </div>
-            </section>
-          </div>
-
-          <section class="v3-quality-panel" data-v3-quality="extra">
-            <div class="v3-quality-head">
-              <div class="v3-quality-head-copy">
-                <div class="v3-title-row"><h3>კვირა · ინსაითი · მედიკამენტი</h3></div>
-                <p class="muted">არჩეული პერიოდის ოპერაციული მეტრიკები</p>
-              </div>
-            </div>
-            <div class="v3-quality-minis is-wide">
-              ${miniKpi('file', 'ანგარიში შეიქმნა', fmt(extra.weekly?.generated))}
-              ${miniKpi('bell', 'კვირის გაგზავნა', fmt(extra.weekly?.sent))}
-              ${miniKpi('check', 'ანგარიში გაიხსნა', fmt(extra.weekly?.opened))}
-              ${miniKpi('activity', 'გახსნის წილი', rate(extra.weekly?.openRate))}
-              ${miniKpi('layers', 'ინსაითი', fmt(extra.insights?.generated))}
-              ${miniKpi('pill', 'მიღება ნოტიფით', fmt(extra.medications?.takenViaNotification))}
-              ${miniKpi('users', 'მიღება აპში', fmt(extra.medications?.takenInApp))}
-            </div>
-          </section>
+        <div class="s-metrics" role="group" aria-label="დაფარვის მდგომარეობა">
+          ${metric('ვერსიის დაფარვა', esc(versionCoverage), missVer ? `${fmt(missVer)} ადამიანს ვერსია არ აქვს · ${windowDays} დღე` : `ყველას აქვს ვერსია · ${windowDays} დღე`, versionCoverageRate != null && versionCoverageRate < 90 ? 'is-warn' : '')}
+          ${metric('Push ნებართვა', permRate == null ? '—' : esc(`${permRate}%`), permTotal ? `ჩართული აქვს ${fmt(permissions.enabled)} / ${fmt(permTotal)}` : 'მონაცემი ჯერ არ არის', permRate != null && permRate < 50 ? 'is-warn' : '')}
+          ${metric(`აქტიური · ${windowDays} დღე`, fmt(quality.activeUsersSampled), inactive ? `${fmt(inactive)} ანგარიში ამ დროში არ შემოსულა` : 'ყველა ანგარიში აქტიურია')}
         </div>
-      `;
+
+        <section class="s-card" data-v3-quality="integrity">
+          <header class="s-card-head"><div><div class="p3-title"><h3>მონაცემების შემოწმება</h3>${helpBtn('quality.integrity')}</div><p>ბოლო ${windowDays} დღის ჩანაწერები. დააჭირე სტრიქონს — გაიხსნება შესაბამისი გვერდი.</p></div></header>
+          <div class="s-card-body is-flush"><div class="s-table-wrap"><table class="s-table p3-checks">
+            <thead><tr><th>შემოწმება</th><th class="num">რაოდენობა</th><th>მდგომარეობა</th></tr></thead>
+            <tbody>
+              ${groupRow('მონაცემები')}
+              ${checkRow('ვერსიის გარეშე', 'აქტიური ადამიანის ბოლო ჩანაწერს აპის ვერსია არ აქვს', missVer, '#/users', missVer > 0)}
+              ${checkRow('პლატფორმის გარეშე', 'ბოლო ჩანაწერში უცნობია iOS თუ Android', missPlat, '#/users', missPlat > 0)}
+              ${checkRow('შედეგი გადაწყვეტილების გარეშე', 'შეტყობინების გახსნას ან ქმედებას Brain-ის გადაწყვეტილება არ მოეძებნა', orphan, '#/push', orphan >= 10)}
+              ${checkRow('გამეორებული გადაწყვეტილება', 'ერთი და იგივე გადაწყვეტილება ორჯერ ჩაიწერა', dupes, '#/push', dupes > 0)}
+              ${checkRow('მომავლის თარიღი', 'ჩანაწერის დრო მომავალშია — ხშირად მოწყობილობის საათის ბრალია', futureTs, null, futureTs > 0)}
+              ${groupRow('შეტყობინებები')}
+              ${checkRow('არასწორი გადასასვლელი გვერდი', 'შეტყობინების ბმული „/“-ით არ იწყება — აპი გვერდს ვერ გახსნის', quality.invalidRoutes, '#/push', Number(quality.invalidRoutes) > 0)}
+              ${checkRow('უცნობი ღილაკი', 'შეტყობინების შედეგში ისეთი ქმედებაა, რომელსაც სისტემა არ იცნობს', quality.unknownActionKeys, '#/push', Number(quality.unknownActionKeys) > 0)}
+              ${checkRow('გაგზავნა ბოლო შემოწმების გარეშე', 'დაგეგმილი შეტყობინება გაიგზავნა გაგზავნისწინა შემოწმების გარეშე', quality.decisionsMissingRevalidation, '#/push', false)}
+              ${groupRow('ძველი ბილდები', 'ორივე ზღვარი ძველ ნუმერაციას ეხება — ყველა 1.0.0.x ბილდი მათ აკმაყოფილებს.')}
+              ${checkRow(`${minOutcome}-მდე ვერსია`, `შეტყობინების შედეგებს არ აგზავნის${gateRate(versions.belowOutcomeSync)}`, belowOutcome, '#/users?activity=outdated', versions.belowOutcomeSync?.rate?.value >= 15)}
+              ${checkRow(`${minBrain}-მდე ვერსია`, `Brain-ის გადაწყვეტილებებს ვერ სინქრონიზებს${gateRate(versions.belowBrainSync)}`, belowBrain, '#/users?activity=outdated', versions.belowBrainSync?.rate?.value >= 15)}
+            </tbody>
+          </table></div></div>
+        </section>
+
+        <div class="p3-split">
+          <section class="s-card" data-v3-quality="versions">
+            <header class="s-card-head"><div><div class="p3-title"><h3>ვერსიები</h3>${helpBtn('quality.versions')}</div><p>ვინ რომელი ვერსიით გამოიყენა აპი არჩეულ პერიოდში. დააჭირე ვერსიას — გაიხსნება მისი მომხმარებლები.</p></div></header>
+            <div class="s-card-body is-flush">${meterRows(versionList, { empty: 'ამ პერიოდში აქტივობა არ არის.' })}</div>
+          </section>
+          <div class="s-stack">
+            <section class="s-card">
+              <header class="s-card-head"><div><h3>პლატფორმა</h3><p>არჩეული პერიოდის აქტიური ადამიანები.</p></div></header>
+              <div class="s-card-body is-flush">${meterRows(platformList, { total: Number(versions.activeUsers) || 0, empty: 'ამ პერიოდში აქტივობა არ არის.' })}</div>
+            </section>
+            <section class="s-card" data-v3-quality="permissions">
+              <header class="s-card-head"><div><div class="p3-title"><h3>Push ნებართვა</h3>${helpBtn('quality.permissions')}</div><p>ახლანდელი მდგომარეობა — თითო ადამიანის ბოლო სტატუსი.</p></div></header>
+              <div class="s-card-body is-flush">${meterRows(permissionList, { total: permTotal, empty: 'ნებართვის მონაცემი ჯერ არ არის.' })}</div>
+            </section>
+          </div>
+        </div>
+
+        <div class="s-section-title"><h3>კვირის ანგარიში · არჩეული პერიოდი</h3></div>
+        <div class="s-metrics" data-v3-quality="extra">
+          ${metric('შეიქმნა', fmt(extra.weekly?.generated), 'კვირის ანგარიში')}
+          ${metric('გაიგზავნა', fmt(extra.weekly?.sent), 'Push შეტყობინებით')}
+          ${metric('გაიხსნა', fmt(extra.weekly?.opened), 'ანგარიში ნახეს')}
+          ${metric('გახსნის წილი', esc(rate(extra.weekly?.openRate)), 'გახსნილი / შექმნილი')}
+        </div>
+        <div class="s-section-title"><h3>ინსაითები და წამლები · არჩეული პერიოდი</h3></div>
+        <div class="s-metrics">
+          ${metric('ინსაითი შეიქმნა', fmt(extra.insights?.generated), 'Brain-ის ინსაითები')}
+          ${metric('მიღება შეტყობინებიდან', fmt(extra.medications?.takenViaNotification), 'წამალი მონიშნეს შეტყობინებიდან')}
+          ${metric('მიღება აპში', fmt(extra.medications?.takenInApp), 'წამალი მონიშნეს აპის შიგნით')}
+        </div>
+
+        <section class="s-card" data-v3-quality="policy">
+          <header class="s-card-head"><div><div class="p3-title"><h3>ვერსიის პოლიტიკა</h3>${helpBtn('quality.policy')}</div><p>რომელი ვერსიაა ბოლო და რომლის ქვემოთ ითხოვს აპი განახლებას.</p></div>
+            <button type="button" class="btn ghost compact" data-href="#/settings">${ico('settings')} აპის რეჟიმი</button></header>
+          <div class="s-card-body">
+            <dl class="p3-facts">
+              <div><dt>ბოლო ვერსია</dt><dd class="p3-mono">${esc(current || '—')}</dd></div>
+              <div><dt>მინიმალური მხარდაჭერილი</dt><dd class="p3-mono">${esc(policy.minimumSupportedVersion || '—')}</dd></div>
+              <div><dt>იძულებითი განახლება</dt><dd>${policy.forceUpdateVersion ? `<span class="p3-mono">${esc(policy.forceUpdateVersion)}</span>-ზე დაბლა` : 'გამორთული'}</dd></div>
+              <div><dt>ძველი ზღვარი · შედეგების სინქი</dt><dd class="p3-mono">${esc(minOutcome)}</dd></div>
+              <div><dt>ძველი ზღვარი · Brain-ის სინქი</dt><dd class="p3-mono">${esc(minBrain)}</dd></div>
+            </dl>
+          </div>
+        </section>
+      </div>`;
 
       $('quality-refresh')?.addEventListener('click', () => void renderQualityOpsV3());
       bindNav(root);
       if (typeof bindOpsRange === 'function') bindOpsRange(renderQualityOpsV3);
     } catch (err) {
       const body = $('quality-body') || root;
-      body.innerHTML = Av.errorState
-        ? Av.errorState('ხარისხის მონაცემები ვერ ჩაიტვირთა', err.message, 'quality-retry')
-        : typeof opsError === 'function'
-          ? opsError(err.message, 'quality-retry')
-          : `<div class="v3-quality-empty is-err"><strong>ჩატვირთვა ვერ მოხერხდა</strong><p>${esc(err.message)}</p>
-              <button type="button" class="btn ghost compact" id="quality-retry">${ico('refresh')} ხელახლა სცადე</button></div>`;
+      body.innerHTML = `<div class="s-card"><div class="s-empty">${ico('alert')}<strong>ხარისხის მონაცემები ვერ ჩაიტვირთა</strong><span>შეამოწმე კავშირი და სცადე ხელახლა.</span>${err?.message ? `<small class="p3-raw">${esc(err.message)}</small>` : ''}<button type="button" class="btn" id="quality-retry">${ico('refresh')} ხელახლა ცდა</button></div></div>`;
       $('quality-retry')?.addEventListener('click', () => void renderQualityOpsV3());
     }
   }

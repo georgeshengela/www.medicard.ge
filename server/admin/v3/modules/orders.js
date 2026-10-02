@@ -1,6 +1,6 @@
 /**
- * MediCard Admin V3 — Orders queue observatory (full override of renderOrders).
- * Operational queue: visits, meds, signups — not commerce checkout.
+ * MediCard Admin V3 — Operational queue (full override of renderOrders).
+ * Visits, medication schedules and new accounts — not commerce checkout.
  * URL range/grain are preserved by shell but unused by this API.
  */
 (function adminV3Orders(global) {
@@ -29,6 +29,10 @@
     ['meds', 'მედიკამენტები'],
     ['new', 'ახალი ანგარიშები'],
   ];
+  /** Sign-ups without a name get this placeholder (server/src/lib/socialAuth.js DEFAULT_SOCIAL_NAME). */
+  const PLACEHOLDER_NAME = 'Medicard მომხმარებელი';
+  const WEEKDAYS = ['კვირა', 'ორშაბათი', 'სამშაბათი', 'ოთხშაბათი', 'ხუთშაბათი', 'პარასკევი', 'შაბათი'];
+  const MONTHS = ['იან', 'თებ', 'მარ', 'აპრ', 'მაი', 'ივნ', 'ივლ', 'აგვ', 'სექ', 'ოქტ', 'ნოე', 'დეკ'];
 
   function esc(v) {
     return typeof escapeHtml === 'function' ? escapeHtml(v) : String(v ?? '');
@@ -48,119 +52,87 @@
     if (typeof global.doctorLabel === 'function') return global.doctorLabel(type);
     return DOCTOR_TYPE_KA[String(type || '').toUpperCase()] || type || 'ვიზიტი';
   }
-  function doctorName(v) {
-    if (typeof global.doctorName === 'function') return global.doctorName(v);
-    const name = [v.doctorFirstName, v.doctorLastName].filter(Boolean).join(' ').trim();
-    return name || doctorLabel(v.doctorType);
-  }
-  function initialsOf(name) {
-    if (typeof global.initialsOf === 'function') return global.initialsOf(name);
-    const parts = String(name || '').trim().split(/\s+/).filter(Boolean);
-    if (!parts.length) return '•';
-    return ((parts[0][0] || '') + (parts[1]?.[0] || '')).toUpperCase();
-  }
-  function shortDate(iso) {
-    if (typeof fmtDateShort === 'function') return fmtDateShort(iso);
-    return iso || '—';
-  }
   function openUser(id) {
     if (!id) return;
     if (typeof editUser === 'function') editUser(id);
     else if (typeof global.editUser === 'function') global.editUser(id);
   }
-
-  function kpiCell(icoName, label, value, hint, key, tone, active) {
-    const toneClass =
-      tone === 'warn'
-        ? ' is-amber'
-        : tone === 'ok'
-          ? ' is-ok'
-          : tone === 'soft'
-            ? ' is-soft'
-            : '';
-    const on = active ? ' is-active' : '';
-    return `<button type="button" class="v3-orders-kpi${toneClass}${on}" data-orders-filter="${esc(key)}" aria-pressed="${active ? 'true' : 'false'}">
-      <span class="v3-orders-kpi-ico" aria-hidden="true">${ico(icoName)}</span>
-      <div class="v3-orders-kpi-copy">
-        <span>${esc(label)}</span>
-        <strong>${value}</strong>
-        ${hint ? `<em>${esc(hint)}</em>` : ''}
-      </div>
-    </button>`;
+  function when(iso) {
+    if (!iso) return '—';
+    return V().formatDate ? V().formatDate(iso, 'datetime') : String(iso);
+  }
+  /** "+995 591 00 00 00" for a Georgian mobile, otherwise the digits as given. */
+  function fmtPhone(raw) {
+    const d = String(raw || '').replace(/\D/g, '');
+    if (/^9955\d{8}$/.test(d)) return `+995 ${d.slice(3, 6)} ${d.slice(6, 8)} ${d.slice(8, 10)} ${d.slice(10)}`;
+    return raw ? String(raw) : '';
+  }
+  /**
+   * Phone and Apple sign-ups carry a synthetic login (…@phone.medicard.ge / …@apple.medicard.ge) and often the
+   * placeholder name — show the person by what is real: name, phone or "Apple-ით შესული".
+   */
+  function personOf(u) {
+    const email = String(u?.email || '');
+    const domain = email.split('@')[1] || '';
+    const phoneLogin = domain === 'phone.medicard.ge' ? email.split('@')[0] : '';
+    const apple = domain === 'apple.medicard.ge';
+    const phone = fmtPhone(u?.phone || phoneLogin);
+    const name = String(u?.fullName || '').trim();
+    const named = Boolean(name) && name !== PLACEHOLDER_NAME;
+    const contact = apple ? 'Apple-ით შესული' : phoneLogin || !email ? phone : email;
+    if (named) return { main: name, sub: contact || '' };
+    return { main: contact || 'უცნობი ანგარიში', sub: 'სახელი არ აქვს' };
+  }
+  function two(main, sub) {
+    return `<div class="p2-two"><b>${main}</b>${sub ? `<small>${sub}</small>` : ''}</div>`;
+  }
+  function personCell(u) {
+    const p = personOf(u);
+    return two(esc(p.main), esc(p.sub));
+  }
+  function doctorCell(v) {
+    const name = [v.doctorFirstName, v.doctorLastName].filter(Boolean).join(' ').trim();
+    return name ? two(esc(name), esc(doctorLabel(v.doctorType))) : two(esc(doctorLabel(v.doctorType)), 'ექიმის სახელი არ არის');
+  }
+  function placeCell(v) {
+    if (!v.addressLabel && !v.address) return '<span class="s-muted">მისამართი არ არის</span>';
+    return two(esc(v.addressLabel || v.address), v.addressLabel && v.address ? esc(v.address) : '');
+  }
+  /** "3 ოქტ, პარასკევი" for a Tbilisi calendar day key. */
+  function dayTitle(ymd) {
+    const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(ymd || ''));
+    if (!m) return String(ymd || '—');
+    const wd = new Date(Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3]))).getUTCDay();
+    return `${Number(m[3])} ${MONTHS[Number(m[2]) - 1]}, ${WEEKDAYS[wd]}`;
+  }
+  function addDays(ymd, n) {
+    const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(ymd || ''));
+    if (!m) return '';
+    return new Date(Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3]) + n)).toISOString().slice(0, 10);
+  }
+  function emptyHtml(text) {
+    return `<div class="s-empty p2-empty-sm">${ico('calendar')}<span>${esc(text)}</span></div>`;
+  }
+  function table(head, rows) {
+    return `<div class="s-table-wrap"><table class="s-table"><thead><tr>${head}</tr></thead><tbody>${rows}</tbody></table></div>`;
   }
 
-  function emptyCol(title) {
-    return `<div class="v3-orders-empty-col"><span class="v3-orders-empty-ico">${ico('layers')}</span><strong>${esc(title)}</strong></div>`;
+  function visitRow(v) {
+    return `<tr class="is-click" tabindex="0" data-open-user="${esc(v.user?.id || '')}">
+      <td class="p2-time"><b>${esc(v.visitTime || '—')}</b></td>
+      <td>${doctorCell(v)}</td>
+      <td>${personCell(v.user)}</td>
+      <td>${placeCell(v)}</td>
+    </tr>`;
   }
 
-  function visitCard(v, tone) {
-    const place = v.addressLabel || v.address || 'მისამართი არ არის';
-    const chip = tone === 'today' ? 'დღეს' : 'დაგეგმილი';
-    const when = `${v.visitTime || '—'} · ${shortDate(`${v.visitDate}T12:00:00`)}`;
-    return `<button type="button" class="v3-orders-card is-visit is-${tone}" data-open-user="${esc(v.user?.id || '')}">
-      <div class="v3-orders-card-meta">
-        <time>${esc(when)}</time>
-        <span class="v3-orders-chip is-${tone}">${esc(chip)}</span>
-      </div>
-      <div class="v3-orders-card-main">
-        <strong>${esc(doctorName(v))}</strong>
-        <p>${esc(doctorLabel(v.doctorType))}</p>
-      </div>
-      <div class="v3-orders-who">
-        <i>${esc(initialsOf(v.user?.fullName))}</i>
-        <div>
-          <b>${esc(v.user?.fullName || '—')}</b>
-          <span>${esc(place)}</span>
-        </div>
-      </div>
-    </button>`;
-  }
-
-  function medCard(m) {
-    return `<button type="button" class="v3-orders-card is-med" data-open-user="${esc(m.user?.id || '')}">
-      <div class="v3-orders-card-meta">
-        <time>${esc(shortDate(m.createdAt))}</time>
-        <span class="v3-orders-chip is-med">აქტიური</span>
-      </div>
-      <div class="v3-orders-card-main">
-        <strong>${esc(m.medName)}</strong>
-        <p>${esc(m.dosage || '—')}${m.frequency ? ` · ${esc(m.frequency)}` : ''}</p>
-      </div>
-      <div class="v3-orders-who">
-        <i>${esc(initialsOf(m.user?.fullName))}</i>
-        <div>
-          <b>${esc(m.user?.fullName || '—')}</b>
-          <span>${esc(m.user?.email || '')}</span>
-        </div>
-      </div>
-    </button>`;
-  }
-
-  function signupRow(u) {
-    return `<button type="button" class="v3-orders-card is-signup" data-open-user="${esc(u.id)}">
-      <div class="v3-orders-who is-lead">
-        <i>${esc(initialsOf(u.fullName))}</i>
-        <div>
-          <b>${esc(u.fullName)}</b>
-          <span>${esc(u.email)}</span>
-        </div>
-      </div>
-    </button>`;
-  }
-
-  function sectionPanel(opts) {
-    return `<section class="v3-orders-panel" data-orders-col="${esc(opts.key)}" ${opts.hidden ? 'hidden' : ''}>
-      <div class="v3-orders-head">
-        <div class="v3-orders-head-copy">
-          <div class="v3-title-row">
-            <span class="v3-orders-dot is-${esc(opts.tone)}" aria-hidden="true"></span>
-            <h3>${esc(opts.title)}</h3>
-          </div>
-          <p class="muted">${esc(opts.subtitle || '')}</p>
-        </div>
-        <span class="v3-orders-count">${fmt(opts.count)}</span>
-      </div>
-      <div class="v3-orders-list" id="${esc(opts.listId)}"></div>
+  function section({ key, title, desc, countId, listId, help }) {
+    return `<section class="s-card" data-orders-col="${esc(key)}">
+      <header class="s-card-head">
+        <div><h3>${esc(title)}</h3>${desc ? `<p>${desc}</p>` : ''}</div>
+        <div class="p2-row-end"><span class="p2-meta" id="${esc(countId)}"></span>${help || ''}</div>
+      </header>
+      <div class="s-card-body is-flush" id="${esc(listId)}"></div>
     </section>`;
   }
 
@@ -168,40 +140,33 @@
     Shell().mountHeader?.({
       tab: 'orders',
       kicker: 'Operations',
-      title: 'შეკვეთები',
-      purpose: 'დღევანდელი ვიზიტები, მედიკამენტები და ახალი ანგარიშები — ერთ რიგში.',
+      title: 'ოპერაციული რიგი',
+      purpose: 'ექიმთან ვიზიტები, მედიკამენტები და ახალი ანგარიშები.',
       helpKey: 'orders.page',
+      actionsHtml: `<button type="button" class="btn ghost compact" id="ord-refresh">${ico('refresh')} განახლება</button>`,
     });
+    $('ord-refresh')?.addEventListener('click', () => void renderOrdersV3());
 
     const root = $('tab-orders');
     if (!root) return;
 
-    root.classList.add('v3-workspace-wide', 'v3-module', 'v3-orders');
-    root.innerHTML = `<div class="v3-orders-body dash-enter" data-v3-orders="loading">
-      <div class="v3-orders-toolbar">
-        <div class="v3-orders-toolbar-copy">
-          <strong>ოპერაციების რიგი</strong>
-          <span>იტვირთება…</span>
-        </div>
-      </div>
-    </div>`;
+    root.classList.add('v3-workspace-wide', 'v3-orders');
+    root.innerHTML = `<div class="s-stack v3-tab-shell p2-ops" data-v3-orders="loading">${V().skeleton ? V().skeleton(6) : ''}</div>`;
 
     let data;
     try {
       data = await api('/orders');
     } catch (e) {
-      root.innerHTML = `<div class="v3-orders-body" data-v3-orders="error">
-        <div class="v3-orders-empty is-err">
-          <strong>რიგი ვერ ჩაიტვირთა</strong>
-          <p>${esc(e.message || 'უცნობი შეცდომა')}</p>
-          <button type="button" class="btn ghost compact" id="ord-retry">${ico('refresh')} ხელახლა სცადე</button>
-        </div>
+      root.innerHTML = `<div class="s-stack v3-tab-shell p2-ops" data-v3-orders="error">
+        <div class="s-card"><div class="s-empty">${ico('alert')}<strong>რიგი ვერ ჩაიტვირთა</strong><span>${esc(e.message || 'უცნობი შეცდომა')}</span>
+          <button type="button" class="btn compact" id="ord-retry">${ico('refresh')} ხელახლა ცდა</button></div></div>
       </div>`;
       $('ord-retry')?.addEventListener('click', () => void renderOrdersV3());
       return;
     }
 
     const today = data.today;
+    const tomorrow = addDays(today, 1);
     const visits = data.visits || [];
     const todayVisits = visits.filter((v) => v.visitDate === today);
     const laterVisits = visits.filter((v) => v.visitDate !== today);
@@ -212,12 +177,18 @@
 
     let filter = 'all';
     let query = '';
+    let laterExpanded = false;
+    const weekEnd = addDays(today, 7);
 
     function paint() {
       const q = query.trim().toLowerCase();
       const match = (text) => !q || String(text || '').toLowerCase().includes(q);
+      const personText = (u) => {
+        const p = personOf(u);
+        return [u?.fullName, u?.email, u?.phone, p.main, p.sub].join(' ');
+      };
       const visFilter = (v) => {
-        const hay = [v.user?.fullName, v.user?.email, doctorName(v), v.addressLabel, v.address, v.doctorType].join(' ');
+        const hay = [personText(v.user), v.doctorFirstName, v.doctorLastName, doctorLabel(v.doctorType), v.addressLabel, v.address, v.doctorType].join(' ');
         if (!match(hay)) return false;
         if (filter === 'today') return v.visitDate === today;
         if (filter === 'visits') return true;
@@ -226,35 +197,74 @@
       };
       const meds = medsAll.filter((m) => {
         if (filter === 'visits' || filter === 'today' || filter === 'new') return false;
-        return match([m.medName, m.user?.fullName, m.dosage].join(' '));
+        return match([m.medName, personText(m.user), m.dosage].join(' '));
       });
       const signups = signupsAll.filter((u) => {
         if (filter === 'visits' || filter === 'today' || filter === 'meds') return false;
-        return match([u.fullName, u.email, u.package?.nameKa].join(' '));
+        return match([personText(u), u.package?.nameKa].join(' '));
       });
       const shownToday = todayVisits.filter(visFilter);
       const shownLater = laterVisits.filter(visFilter);
+      const counted = (shown, total, unit) => `${q && shown !== total ? `${fmt(shown)} / ${fmt(total)}` : fmt(total)} ${unit}`;
 
       const todayEl = root.querySelector('#orders-today-list');
       const laterEl = root.querySelector('#orders-later-list');
       const medsEl = root.querySelector('#orders-meds-list');
       const feedEl = root.querySelector('#orders-feed');
+      const visitHead = '<th>დრო</th><th>ექიმი</th><th>მომხმარებელი</th><th>ადგილი</th>';
       if (todayEl) {
         todayEl.innerHTML = shownToday.length
-          ? shownToday.map((v) => visitCard(v, 'today')).join('')
-          : emptyCol('დღეს ვიზიტი არ არის');
+          ? table(visitHead, shownToday.map(visitRow).join(''))
+          : emptyHtml(q ? 'ძიებას დღევანდელი ვიზიტი არ ემთხვევა' : 'დღეს ვიზიტი არ არის');
       }
       if (laterEl) {
+        // The next week first; the rest of the 21 days opens on request (search and the visits filter show all).
+        const all = laterExpanded || q || filter === 'visits';
+        const listed = all ? shownLater : shownLater.filter((v) => v.visitDate < weekEnd);
+        const rest = shownLater.length - listed.length;
+        let lastDay = '';
+        const rows = listed.map((v) => {
+          let head = '';
+          if (v.visitDate !== lastDay) {
+            lastDay = v.visitDate;
+            const n = listed.filter((x) => x.visitDate === v.visitDate).length;
+            head = `<tr class="p2-group"><td colspan="4">${v.visitDate === tomorrow ? 'ხვალ · ' : ''}${esc(dayTitle(v.visitDate))}<span>${fmt(n)} ვიზიტი</span></td></tr>`;
+          }
+          return head + visitRow(v);
+        }).join('');
         laterEl.innerHTML = shownLater.length
-          ? shownLater.map((v) => visitCard(v, 'soon')).join('')
-          : emptyCol('მოახლოებული ვიზიტი არ არის');
+          ? `${listed.length ? table(visitHead, rows) : emptyHtml('მომდევნო 7 დღეში ვიზიტი არ არის')}${rest > 0 ? `<div class="s-pager"><span>ნაჩვენებია მომდევნო 7 დღე</span><div><button type="button" class="btn ghost compact" id="orders-later-more">კიდევ ${fmt(rest)} ვიზიტი — 21 დღემდე</button></div></div>` : ''}`
+          : emptyHtml(q ? 'ძიებას მომავალი ვიზიტი არ ემთხვევა' : 'მომდევნო 21 დღეში ვიზიტი არ არის');
+        laterEl.querySelector('#orders-later-more')?.addEventListener('click', () => {
+          laterExpanded = true;
+          paint();
+        });
       }
       if (medsEl) {
-        medsEl.innerHTML = meds.length ? meds.map(medCard).join('') : emptyCol('აქტიური მედიკამენტი არ ჩანს');
+        medsEl.innerHTML = meds.length
+          ? table('<th>მედიკამენტი</th><th>მომხმარებელი</th><th>დაემატა</th>', meds.map((m) => `<tr class="is-click" tabindex="0" data-open-user="${esc(m.user?.id || '')}">
+              <td>${two(esc(m.medName), esc([m.dosage, m.frequency].filter(Boolean).join(' · ')))}</td>
+              <td>${personCell(m.user)}</td>
+              <td class="s-muted p2-nowrap">${esc(when(m.createdAt))}</td>
+            </tr>`).join(''))
+          : emptyHtml(q ? 'ძიებას მედიკამენტი არ ემთხვევა' : 'აქტიური მედიკამენტი არ ჩანს');
       }
       if (feedEl) {
-        feedEl.innerHTML = signups.length ? signups.map(signupRow).join('') : emptyCol('ახალი ანგარიში არ არის');
+        feedEl.innerHTML = signups.length
+          ? table('<th>ანგარიში</th><th>რეგისტრაცია</th>', signups.map((u) => `<tr class="is-click" tabindex="0" data-open-user="${esc(u.id)}">
+              <td>${personCell(u)}</td>
+              <td class="s-muted p2-nowrap">${esc(when(u.createdAt))}</td>
+            </tr>`).join(''))
+          : emptyHtml(q ? 'ძიებას ანგარიში არ ემთხვევა' : 'ახალი ანგარიში არ არის');
       }
+      const setCount = (id, text) => {
+        const el = root.querySelector(`#${id}`);
+        if (el) el.textContent = text;
+      };
+      setCount('orders-today-count', counted(shownToday.length, todayVisits.length, 'ვიზიტი'));
+      setCount('orders-later-count', counted(shownLater.length, laterVisits.length, 'ვიზიტი'));
+      setCount('orders-meds-count', counted(meds.length, medsAll.length, 'გრაფიკი'));
+      setCount('orders-new-count', counted(signups.length, signupsAll.length, 'ანგარიში'));
 
       const show = {
         today: filter === 'all' || filter === 'today' || filter === 'visits',
@@ -269,91 +279,75 @@
       root.querySelectorAll('[data-orders-filter]').forEach((btn) => {
         const on = btn.dataset.ordersFilter === filter;
         btn.classList.toggle('is-active', on);
-        btn.classList.toggle('active', on);
         if (btn.hasAttribute('aria-pressed')) btn.setAttribute('aria-pressed', String(on));
         if (btn.getAttribute('role') === 'tab') btn.setAttribute('aria-selected', String(on));
       });
 
       root.querySelectorAll('[data-open-user]').forEach((el) => {
         el.onclick = () => openUser(el.getAttribute('data-open-user'));
+        el.onkeydown = (e) => {
+          if (e.key !== 'Enter' && e.key !== ' ') return;
+          e.preventDefault();
+          openUser(el.getAttribute('data-open-user'));
+        };
       });
     }
 
+    const tile = (key, label, value, hint, tone) => `<button type="button" class="s-metric p2-metric-btn${tone ? ` is-${tone}` : ''}" data-orders-filter="${key}" aria-pressed="false">
+        <span>${esc(label)}</span><strong>${value}</strong><small>${esc(hint)}</small>
+      </button>`;
+
     root.innerHTML = `
-      <div class="v3-orders-body dash-enter" data-v3-orders="page">
-        ${
-          jobs.length
-            ? `<div class="v3-orders-live" role="status">
-                <span class="v3-orders-live-ico">${ico('activity')}</span>
-                <div><strong>სინქი მიმდინარეობს</strong><span>${jobs.map((j) => esc(j.source)).join(' · ')}</span></div>
-                <span class="v3-orders-live-dot" aria-hidden="true"></span>
-              </div>`
-            : ''
-        }
-
-        <div class="v3-orders-toolbar">
-          <div class="v3-orders-toolbar-copy">
-            <strong>ოპერაციების რიგი</strong>
-            <span>თბილისის დღე · ვიზიტები, მედიკამენტები და ახალი ანგარიშები</span>
+      <div class="s-stack v3-tab-shell p2-ops" data-v3-orders="page">
+        <div class="s-toolbar">
+          <div class="s-segment" role="tablist" aria-label="რიგის ფილტრი">
+            ${FILTERS.map(([key, label]) => `<button type="button" role="tab" data-orders-filter="${key}" aria-selected="${key === 'all'}">${esc(label)}</button>`).join('')}
           </div>
-          <div class="v3-orders-toolbar-actions">
+          <div class="p2-row-end">
+            ${jobs.length ? `<a class="s-badge is-info p2-link-badge" href="#/pharmacy" title="${esc(jobs.map((j) => j.source).join(' · '))}">ფარმაციის სინქი მიმდინარეობს</a>` : ''}
+            <label class="p2-search">
+              <span class="sr-only">ძებნა</span>
+              ${ico('search')}
+              <input id="orders-q" type="search" placeholder="სახელი, ტელეფონი, ექიმი, მედიკამენტი…" autocomplete="off" />
+            </label>
             ${helpBtn('orders.queue')}
-            <button type="button" class="btn ghost compact" id="ord-refresh">${ico('refresh')} განახლება</button>
           </div>
         </div>
 
-        <div class="v3-orders-kpis" role="group" aria-label="რიგის მდგომარეობა">
-          ${kpiCell('calendar', 'დღეს', fmt(k.visitsToday), 'ვიზიტი თბილისის დღეს', 'today', Number(k.visitsToday) > 0 ? 'ok' : 'soft', false)}
-          ${kpiCell('activity', '7 დღე', fmt(k.visitsWeek), 'მოახლოებული ვიზიტი', 'visits', 'soft', false)}
-          ${kpiCell('pill', 'მედიკამენტები', fmt(k.activeMeds), 'აქტიური გრაფიკი', 'meds', Number(k.activeMeds) > 0 ? 'ok' : '', false)}
-          ${kpiCell('zap', 'ახალი', fmt(k.newUsersToday), 'რეგისტრაცია დღეს', 'new', Number(k.newUsersToday) > 0 ? 'ok' : 'soft', false)}
+        <div class="s-metrics" role="group" aria-label="რიგის მდგომარეობა">
+          ${tile('today', 'ვიზიტები დღეს', fmt(k.visitsToday), 'თბილისის დროით')}
+          ${tile('visits', 'ვიზიტები 7 დღეში', fmt(k.visitsWeek), 'დღეს და მომდევნო 6 დღე')}
+          ${tile('meds', 'აქტიური მედიკამენტები', fmt(k.activeMeds), 'მიღების გრაფიკი, ყველა ანგარიშზე')}
+          ${tile('new', 'ახალი ანგარიშები დღეს', fmt(k.newUsersToday), 'რეგისტრაცია თბილისის დღეში')}
         </div>
 
-        <div class="v3-orders-controls">
-          <div class="v3-orders-filters" role="tablist" aria-label="რიგის ფილტრი">
-            ${FILTERS.map(
-              ([key, label]) =>
-                `<button type="button" role="tab" data-orders-filter="${key}" aria-selected="${key === 'all' ? 'true' : 'false'}" class="${key === 'all' ? 'is-active' : ''}">${esc(label)}</button>`,
-            ).join('')}
-          </div>
-          <label class="v3-orders-search">
-            <span class="sr-only">ძებნა</span>
-            ${ico('search')}
-            <input id="orders-q" type="search" placeholder="სახელი, ექიმი, მედიკამენტი…" autocomplete="off" />
-          </label>
-        </div>
-
-        <div class="v3-orders-queue">
-          ${sectionPanel({
-            key: 'today',
-            tone: 'now',
-            title: 'დღეს',
-            subtitle: 'დღევანდელი ვიზიტები',
-            count: todayVisits.length,
-            listId: 'orders-today-list',
-          })}
-          ${sectionPanel({
-            key: 'later',
-            tone: 'soon',
-            title: 'მოახლოებული',
-            subtitle: 'შემდეგი 21 დღე',
-            count: laterVisits.length,
-            listId: 'orders-later-list',
-          })}
-          ${sectionPanel({
+        ${section({
+          key: 'today',
+          title: 'დღეს',
+          desc: esc(dayTitle(today)),
+          countId: 'orders-today-count',
+          listId: 'orders-today-list',
+        })}
+        ${section({
+          key: 'later',
+          title: 'მომდევნო 21 დღე',
+          desc: `ხვალიდან, დღეების მიხედვით${visits.length >= 80 ? ' · ნაჩვენებია უახლოესი 80 ვიზიტი' : ''}.`,
+          countId: 'orders-later-count',
+          listId: 'orders-later-list',
+        })}
+        <div class="p2-split">
+          ${section({
             key: 'meds',
-            tone: 'med',
-            title: 'მედიკამენტები',
-            subtitle: 'აქტიური გრაფიკები',
-            count: medsAll.length,
+            title: 'ბოლოს დამატებული მედიკამენტები',
+            desc: `უახლესი ${fmt(medsAll.length)} აქტიური გრაფიკი (სულ ${fmt(k.activeMeds)}).`,
+            countId: 'orders-meds-count',
             listId: 'orders-meds-list',
           })}
-          ${sectionPanel({
+          ${section({
             key: 'new',
-            tone: 'new',
             title: 'ახალი ანგარიშები',
-            subtitle: 'ბოლო რეგისტრაციები',
-            count: signupsAll.length,
+            desc: `ბოლო ${fmt(signupsAll.length)} რეგისტრაცია.`,
+            countId: 'orders-new-count',
             listId: 'orders-feed',
           })}
         </div>
@@ -362,10 +356,9 @@
 
     paint();
 
-    $('ord-refresh')?.addEventListener('click', () => void renderOrdersV3());
     root.querySelectorAll('[data-orders-filter]').forEach((btn) => {
       btn.addEventListener('click', () => {
-        filter = btn.dataset.ordersFilter || 'all';
+        filter = btn.dataset.ordersFilter === filter && btn.hasAttribute('aria-pressed') ? 'all' : (btn.dataset.ordersFilter || 'all');
         paint();
       });
     });

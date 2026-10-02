@@ -83,6 +83,26 @@ html[data-theme="dark"] {
 .s-tip-row i { width: 8px; height: 8px; border-radius: 99px; background: var(--k); flex: none; }
 .s-tip-row em { margin-left: auto; padding-left: 14px; font-style: normal; font-weight: 650; color: var(--s-ink); font-variant-numeric: tabular-nums; }
 
+/* ───────── Columns (AdminCharts.bars) ───────── */
+.s-bar { fill: var(--k); transition: opacity .14s var(--s-ease); }
+.s-bar.is-s1 { --k: var(--c-s1); }
+.s-bar.is-s2 { --k: var(--c-s2); }
+.s-bar.is-s3 { --k: var(--c-s3); }
+.s-bar.is-s4 { --k: var(--c-s4); }
+.s-bar.is-bad { --k: var(--c-bad); }
+.s-bar.is-prev { --k: var(--c-prev); }
+.s-chart-svg.is-hover .s-bar:not(.is-on) { opacity: .42; }
+.s-bar.is-partial { opacity: .5; }
+.s-chart-svg.is-hover .s-bar.is-partial.is-on { opacity: .75; }
+.s-line.is-partial { stroke-dasharray: 3 4; }
+.s-end.is-partial { fill: var(--s-surface); stroke: var(--k); stroke-width: 2; }
+.s-chart-plot.is-enter .s-line.is-partial { stroke-dasharray: 3 4; stroke-dashoffset: 0; animation: s-fade-in .3s .7s var(--s-ease) both; }
+.s-bar-val { fill: var(--s-text-2); font-size: 11.5px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.s-chart-svg.is-hover .s-bar-val { opacity: 0; }
+.is-bars .s-hit { cursor: default; }
+.s-chart-plot.is-enter .s-bars { transform-box: fill-box; transform-origin: 50% 100%; animation: s-rise .55s var(--s-ease) both; }
+@keyframes s-rise { from { transform: scaleY(0); } to { transform: scaleY(1); } }
+
 .s-chart-plot.is-enter .s-line { stroke-dasharray: 1; stroke-dashoffset: 1; animation: s-draw 0.9s var(--s-ease) forwards; }
 .s-chart-plot.is-enter .s-line.is-prev { stroke-dasharray: 4 4; stroke-dashoffset: 0; animation: none; }
 .s-chart-plot.is-enter .s-area { opacity: 0; animation: s-fade-in .6s .25s var(--s-ease) forwards; }

@@ -55,7 +55,8 @@ html[data-theme="light"] {
   --s-ease: cubic-bezier(0.2, 0.8, 0.2, 1);
   --s-ease-in: cubic-bezier(0.4, 0, 1, 1);
   --s-spring: cubic-bezier(0.32, 0.72, 0, 1);
-  --s-font: "Inter", "Noto Sans Georgian", "Noto Sans", system-ui, sans-serif;
+  /* FiraGO = the site's brand face; one family draws Georgian, Latin and figures alike. */
+  --s-font: "FiraGO", "Noto Sans Georgian", "Noto Sans", system-ui, sans-serif;
   --s-mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
   --s-row: 44px;
   --s-row-pad: 10px;
@@ -165,6 +166,8 @@ html[data-density="compact"] { --s-row: 36px; --s-row-pad: 6px; }
 
 /* ───────────────────────── 2. Base ───────────────────────── */
 html, body { background: var(--s-bg) !important; }
+/* `hidden` always wins over the many display rules in older layers (the repeated attribute only adds weight). */
+html body [hidden][hidden][hidden] { display: none !important; }
 body {
   font-family: var(--s-font) !important;
   color: var(--s-text);
@@ -340,18 +343,30 @@ html body .v3-page-header #page-greeting {
   letter-spacing: -0.005em;
   color: var(--s-ink);
 }
-/* Stripe-style header: breadcrumb over title. The purpose line lives in the title tooltip and the (i) help. */
-html body .v3-page-header #page-subtitle { display: none !important; }
-html body .s-crumb {
-  display: inline-flex; align-items: center; gap: 6px;
-  font-size: 12px; font-weight: 500; color: var(--s-faint);
-  margin: 0 0 1px;
-  line-height: 1.2;
+/* Header = title over a one-line purpose ("what is this page for"). The sidebar already shows where you are,
+   so the breadcrumb stays out of the way; the full purpose sits in the title tooltip and the guide. */
+html body .v3-page-header #page-subtitle {
+  display: block !important;
+  grid-area: sub;
+  margin: 0 !important;
+  max-width: 76ch;
+  font-size: 12.5px !important;
+  font-weight: 400 !important;
+  line-height: 1.35 !important;
+  color: var(--s-muted) !important;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
-html body .s-crumb b { font-weight: 500; color: var(--s-muted); }
-html body .s-crumb i { font-style: normal; opacity: .6; }
-html body .v3-page-header .topbar-copy { gap: 1px; grid-template-areas: "crumb" "title" "sub"; }
-html body .v3-page-header .s-crumb { grid-area: crumb; }
+html body .v3-page-header #page-kicker { display: none !important; }
+html body .s-crumb { display: none !important; }
+html body .v3-page-header .topbar-copy {
+  display: grid !important;
+  gap: 2px;
+  min-width: 0;
+  grid-template-areas: "title" "sub";
+}
+html body .v3-page-header .v3-page-title-row { grid-area: title; min-width: 0; }
 html body .v3-page-header-actions, html body .v3-page-header-status { height: auto; gap: 8px; }
 
 html body .v3-page-header .status-pill,
@@ -414,14 +429,32 @@ kbd, .s-kbd {
 }
 @media (max-width: 1180px) { .s-top-search { min-width: 0; } .s-top-search span, .s-top-search kbd { display: none; } }
 @media (max-width: 960px) {
+  /* One row: [menu · title] [page actions] [tools]. Nothing wraps under the header. */
   html body .app.v3-ready .v3-page-header.ng-topbar,
   html body .v3-page-header.ng-topbar,
   html body .v3-page-header {
-    height: auto !important; min-height: 56px !important;
-    padding-block: 10px !important;
-    flex-wrap: wrap; row-gap: 8px;
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) auto auto;
+    align-items: center;
+    column-gap: 6px;
+    height: auto !important; min-height: 56px !important; max-height: none !important;
+    padding: 8px 12px !important;
+    flex-wrap: nowrap;
   }
-  .s-crumb { display: none !important; }
+  html body .v3-page-header .v3-page-header-main { grid-column: 1; grid-row: 1; order: 0; min-width: 0; gap: 8px; }
+  html body .v3-page-header .v3-page-header-actions { grid-column: 2; grid-row: 1; order: 0; }
+  html body .v3-page-header .v3-page-header-status { grid-column: 3; grid-row: 1; order: 0; gap: 2px; }
+  html body .v3-page-header .v3-page-mark { display: none !important; }
+  html body .v3-page-header #page-greeting { font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  html body .v3-page-header .s-guide-btn { width: 32px; padding: 0 !important; justify-content: center; }
+  html body .v3-page-header .s-guide-btn span { display: none; }
+  html body .v3-page-header .s-top-search { width: 32px; min-width: 0; padding: 0; justify-content: center; border-color: transparent; box-shadow: none; background: transparent; }
+  html body #live-pill { width: 28px; padding: 0 !important; justify-content: center; font-size: 0 !important; gap: 0 !important; }
+  html body #live-pill .icon { width: 14px; height: 14px; }
+  html body #sidebar-toggle { flex: none; }
+}
+@media (max-width: 720px) {
+  html body .v3-page-header #page-subtitle { display: none !important; }
 }
 @media (max-width: 720px) {
   html body .v3-page-mark,
@@ -910,6 +943,7 @@ html body .toast.s-leaving { animation: s-toast-out .2s var(--s-ease-in) both !i
 .s-health-cell { border: 1px solid var(--s-line); border-radius: var(--s-radius); padding: 10px 12px; display: grid; gap: 3px; }
 .s-health-cell span { font-size: 12px; color: var(--s-muted); display: flex; align-items: center; gap: 6px; }
 .s-health-cell strong { font-size: 15px; font-weight: 650; color: var(--s-ink); font-variant-numeric: tabular-nums; }
+.s-health-cell .s-health-sub { font-size: 12px; font-weight: 500; color: var(--s-muted); }
 
 .s-feed-day { position: sticky; top: -8px; z-index: 1; background: var(--s-surface); padding: 14px 0 6px; font-size: 11.5px; font-weight: 600; color: var(--s-faint); letter-spacing: .02em; }
 .s-feed { list-style: none; margin: 0; padding: 0; position: relative; }
@@ -964,11 +998,52 @@ html body .v3-nav-group-items { transition: none; }
 /* ───────────────────────── 14. Login ───────────────────────── */
 html body .login-shell { background: var(--s-bg) !important; }
 html body .login-card {
+  width: min(400px, calc(100% - 32px)) !important;
+  padding: 32px 30px 30px !important;
+  gap: 14px !important;
   background: var(--s-surface) !important;
-  border: 0 !important;
+  border: 1px solid var(--s-line) !important;
   border-radius: var(--s-radius-xl) !important;
-  box-shadow: var(--s-shadow-lg) !important;
+  box-shadow: var(--s-shadow-md) !important;
   animation: s-dialog-in .4s var(--s-spring) both;
+}
+html body .login-card h2 {
+  margin: 0 !important;
+  font-size: 22px !important;
+  font-weight: 700 !important;
+  letter-spacing: -0.01em !important;
+  color: var(--s-ink) !important;
+}
+html body .login-card .login-sub { margin: -8px 0 6px; font-size: 13.5px; line-height: 1.5; color: var(--s-muted); }
+html body .login-card .field > span { font-size: 12.5px !important; font-weight: 600 !important; color: var(--s-text-2) !important; }
+html body .login-card input { min-height: 42px !important; font-size: 14px !important; }
+html body .login-card .btn.primary { height: 42px !important; min-height: 42px !important; margin-top: 6px !important; font-size: 14px !important; }
+html body .login-card .login-mark { width: 44px !important; height: 44px !important; margin: 0 0 6px !important; border-radius: 12px !important; }
+html body .login-card #login-error { margin: 0; padding: 9px 12px; border-radius: var(--s-radius-sm); background: var(--s-bad-soft); color: var(--s-bad); font-size: 13px; }
+html body .login-card #login-error.hidden { display: none; }
+@media (min-width: 1100px) {
+  html body .login-shell { grid-template-columns: minmax(400px, 460px) minmax(0, 1fr) !important; }
+  /* The rail carries the brand; the card stays a plain sign-in form. */
+  html body .login-card .login-mark { display: none !important; }
+  html body .login-rail {
+    justify-content: center;
+    gap: 0;
+    padding: 56px 48px !important;
+    background: #0b1220 !important;
+    border-right: 0 !important;
+    color: #e6ebf2;
+  }
+  html body .login-rail .v3-brand-mark { width: 44px !important; height: 44px !important; margin-bottom: 18px !important; }
+  html body .login-rail .rail-kicker.v3-brand-name { margin: 0 0 6px !important; font-size: 15px !important; color: #5eead4 !important; }
+  html body .login-rail h1 { margin: 0 0 12px !important; font-size: 30px !important; font-weight: 700 !important; letter-spacing: -0.02em !important; line-height: 1.2 !important; color: #fff !important; }
+  html body .login-rail .rail-copy { max-width: 36ch !important; margin: 0 0 28px !important; font-size: 14px !important; line-height: 1.65 !important; color: #a9b4c4 !important; }
+  html body .login-rail .rail-list { display: grid; gap: 14px !important; margin: 0; padding: 0; list-style: none; }
+  html body .login-rail .rail-list li { display: flex; align-items: center; gap: 12px !important; font-size: 13.5px !important; font-weight: 500 !important; color: #dbe3ee !important; }
+  html body .login-rail .rail-list li::before { content: none !important; display: none !important; }
+  html body .login-rail .rail-list li .icon {
+    flex: none; width: 30px; height: 30px; padding: 7px; box-sizing: border-box;
+    border-radius: 9px; background: rgba(94, 234, 212, 0.1); color: #5eead4;
+  }
 }
 
 /* ───────────────────────── 15. Keyframes ───────────────────────── */
@@ -1126,7 +1201,7 @@ html body .workspace :is(.v25-push-kpis, .v3-brain-kpis, .v3-users-kpis, .v3-med
     grid-template-columns: repeat(6, minmax(0, 1fr)) !important;
   }
 }
-@media (min-width: 1600px) {
+@media (min-width: 1280px) {
   html body .workspace .v3-brain-kpis:has(> :nth-child(7):last-child) { grid-template-columns: repeat(7, minmax(0, 1fr)) !important; }
 }
 @media (max-width: 640px) {
@@ -1183,5 +1258,11 @@ html body :is(.drawer, .v3-overlay) .dec-life-step { display: grid; gap: 2px; }
 html body :is(.drawer, .v3-overlay) .dec-life-step strong { font-size: 13px; color: var(--s-ink); }
 html body :is(.drawer, .v3-overlay) .dec-life-step em { font-style: normal; font-size: 12px; color: var(--s-muted); }
 html body .drawer .umodal-close { width: 30px; height: 30px; }
+/* Sections are separated by their heading's space; the older layer's extra rules drew double lines. */
+html body :is(.drawer, .v3-overlay) .dec-inspector .dec-section { margin: 0 !important; padding: 0 !important; border: 0 !important; background: none !important; }
+html body :is(.drawer, .v3-overlay) .dec-inspector .dec-section > p { margin: 10px 0 0; font-size: 12.5px; line-height: 1.5; }
+html body :is(.drawer, .v3-overlay) .inv-note { margin: 10px 0 0; padding: 9px 12px; border-radius: var(--s-radius-sm); background: var(--s-warn-soft); color: var(--s-warn); font-size: 12.5px; line-height: 1.45; }
+html body :is(.drawer, .v3-overlay) .inv-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 22px; padding-top: 16px; border-top: 1px solid var(--s-line-soft); }
+html body :is(.drawer, .v3-overlay) .umodal-hero-copy > p:last-child:has(.s-badge) { margin: 8px 0 0; }
 html body .workspace .v3-brain-kpis:has(> :nth-child(7):last-child) { grid-template-columns: repeat(4, minmax(0, 1fr)) !important; }
-@media (min-width: 1600px) { html body .workspace .v3-brain-kpis:has(> :nth-child(7):last-child) { grid-template-columns: repeat(7, minmax(0, 1fr)) !important; } }
+@media (min-width: 1280px) { html body .workspace .v3-brain-kpis:has(> :nth-child(7):last-child) { grid-template-columns: repeat(7, minmax(0, 1fr)) !important; } }

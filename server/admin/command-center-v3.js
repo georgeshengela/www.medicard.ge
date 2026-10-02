@@ -5,15 +5,15 @@
 (function commandCenterV3(global) {
   const V3 = () => global.AdminV3 || {};
   const STATUS_KA = {
-    healthy: { label: 'გამართული', summary: 'კრიტიკული წარმოების პრობლემა არ ჩანს.' },
-    attention: { label: 'საჭიროა ყურადღება', summary: 'ქვემოთ ჩამოთვლილი სიგნალები საჭიროებს შემოწმებას.' },
-    degraded: { label: 'დეგრადირებული', summary: 'სისტემა ან მონაცემთა ბაზა არ მუშაობს ნორმალურად.' },
+    healthy: { label: 'ყველაფერი რიგზეა', summary: 'სერვერი, ბაზა და სერვისები ნორმალურად მუშაობს.' },
+    attention: { label: 'საჭიროა ყურადღება', summary: 'რამდენიმე რამ საჭიროებს შემოწმებას — სია ქვემოთაა.' },
+    degraded: { label: 'სისტემას პრობლემა აქვს', summary: 'სერვერი ან მონაცემთა ბაზა ნორმალურად არ მუშაობს.' },
   };
   const DEST = {
     '#/ai': 'Medi',
     '#/quality': 'ხარისხი',
     '#/push': 'Push & Brain',
-    '#/settings': 'რეჟიმი',
+    '#/settings': 'აპის რეჟიმი',
     '#/sms': 'SMS',
     '#/pharmacy': 'ფარმაცია',
     '#/health': 'ჯანმრთელობა',
@@ -105,9 +105,17 @@
     if (Number(smsFailed24h) >= 3) add({ key: 'sms', severity: 'warning', title: 'SMS შეცდომები', detail: `${smsFailed24h} SMS ვერ გაიგზავნა ბოლო 24 საათში.`, href: '#/sms', period: 'ბოლო 24სთ' });
     if (lastSyncFailed) add({ key: 'pharmacy-sync', severity: 'warning', title: 'ფარმაციის ბოლო სინქი ჩაიშალა', detail: 'აფთიაქის სინქრონიზაცია წარუმატებელია.', href: '#/pharmacy' });
     if (Number(failedCampaigns24h) > 0) add({ key: 'push-failed', severity: 'warning', title: 'Push კამპანია ჩაიშალა', detail: `${failedCampaigns24h} კამპანია წარუმატებელია ბოლო 24 საათში.`, href: '#/push' });
+    // The server repeats some of the checks above (SMS, pharmacy sync, AI). One row per problem:
+    // a server item that points at a page already listed only adds its technical detail to that row.
+    const byHref = new Map(items.filter((i) => ['sms', 'pharmacy-sync', 'push-failed', 'ai-errors'].includes(i.key)).map((i) => [i.href, i]));
     for (const raw of attention || []) {
       if (!raw?.title || raw.severity === 'info') continue;
       if (/AI შეცდომ/i.test(raw.title) && seen.has('ai-errors')) continue;
+      const twin = raw.href && byHref.get(raw.href);
+      if (twin) {
+        if (raw.detail && /[A-Za-z]{4}/.test(raw.detail) && !/[ა-ჰ]/.test(raw.detail) && !twin.tech) twin.tech = raw.detail;
+        continue;
+      }
       const title = raw.metric?.orphanOutcomes != null ? 'შედეგები გადაწყვეტილების გარეშე' : raw.title;
       const detail = raw.metric?.orphanOutcomes != null
         ? `${raw.metric.orphanOutcomes} შეტყობინების შედეგს არ აქვს შესაბამისი გადაწყვეტილება.`
@@ -285,11 +293,9 @@
           ${typeof opsRangeBar === 'function' ? opsRangeBar() : ''}
           ${liveChip()}
         </div>
-        <div id="ops-live-hero"><div class="v3-cc-skel-row is-hero" aria-hidden="true"></div></div>
         <div id="ops-status"><div class="v3-cc-skel-status" aria-hidden="true"></div></div>
-        <div id="ops-attention">${skel('is-alert')}</div>
-        <div id="ops-infra">${skel('is-infra')}</div>
-        <div id="ops-notif">${skel('is-funnel')}</div>
+        <div id="ops-attention"></div>
+        <div id="ops-live-hero"><div class="v3-cc-skel-row is-hero" aria-hidden="true"></div></div>
         <div class="v3-cc-split is-wide">
           <div id="ops-activity">${skel('is-plot')}</div>
           <div id="ops-movement">${skel('is-strip')}</div>
@@ -299,6 +305,8 @@
           <div id="ops-retention">${skel('is-strip')}</div>
           <div id="ops-features">${skel('is-alert')}</div>
         </div>
+        <div id="ops-notif">${skel('is-funnel')}</div>
+        <div id="ops-infra">${skel('is-infra')}</div>
         <div id="ops-geo">${skel('is-map')}</div>
       </div>`;
     if (typeof bindOpsRange === 'function') bindOpsRange(renderCommandCenter);
@@ -355,7 +363,7 @@
       attention: mergedAttention,
     });
     paintLiveHero(root, overview, system);
-    paintStatus(root, resolved, system, overview);
+    paintStatus(root, resolved, system, overview, balances.error ? ccLastBalances : balances);
     paintAttention(root, resolved);
     paintInfra(root, overview, system, balances.error ? ccLastBalances : balances);
     paintBrain(root, notif);
@@ -393,7 +401,7 @@
             ${V3().infoButton ? V3().infoButton('overview.live') : ''}
           </div>
           <strong>${seedOnline()}</strong>
-          <em>რეალურ დროში · ბოლო 90 წმ · Socket.IO</em>
+          <em>რეალურ დროში · ბოლო 90 წამი</em>
         </article>
         <div class="v3-cc-hero-grid">
           ${metric({ kpi: 'activeToday', icon: 'users', label: 'აქტიური დღეს', value: fmt(k.activeToday?.value), period: 'დღეს · თბილისი', tip: k.activeToday?.definition || 'უნიკალური აქტიური მომხმარებლები თბილისის დღეს.', go: 'users', hint: sp(overview.charts?.dau?.series, 'teal') })}
@@ -404,11 +412,16 @@
       </section>`;
   }
 
-  function paintStatus(root, resolved, system, overview) {
+  function paintStatus(root, resolved, system, overview, balances) {
     const ka = STATUS_KA[resolved.level] || STATUS_KA.healthy;
     const env = system.environment || overview.environment;
     const apiOk = system.api?.ok !== false && !system.error;
     const dbOk = system.database?.ok !== false;
+    const or = balances?.openrouter;
+    const orTone = or?.tone === 'bad' ? 'is-bad' : or?.tone === 'warn' ? 'is-warn' : 'is-ok';
+    const orChip = or && (or.remaining != null || or.error)
+      ? `<button type="button" class="v3-cc-chip ${orTone}" data-scroll="ops-infra" title="OpenRouter-ის დარჩენილი ბალანსი — Medi-ს სურათების ანალიზი">${ico('wallet')} OpenRouter ${or.remaining != null ? esc(usd(or.remaining)) : 'ვერ შემოწმდა'}</button>`
+      : '';
     $('ops-status').innerHTML = `
       <section class="v3-cc-status is-${resolved.level}" aria-label="საოპერაციო მდგომარეობა">
         <div class="v3-cc-status-main">
@@ -424,32 +437,34 @@
         <div class="v3-cc-sys" aria-label="სისტემა">
           <span class="v3-cc-chip ${apiOk ? 'is-ok' : 'is-warn'}">${ico(apiOk ? 'check' : 'alert')} API</span>
           <span class="v3-cc-chip ${dbOk ? 'is-ok' : 'is-warn'}">${ico(dbOk ? 'check' : 'alert')} ბაზა${system.database?.latencyMs != null ? ` · ${fmt(system.database.latencyMs)}ms` : ''}</span>
+          ${orChip}
           ${env ? `<span class="v3-cc-chip${env === 'production' ? ' is-prod' : ''}" title="გარემო">${ico('globe')} ${env === 'production' ? 'წარმოება' : esc(env)}</span>` : ''}
           ${system.settings?.maintenanceMode ? `<span class="v3-cc-chip is-warn">${ico('lock')} ოფლაინ რეჟიმი</span>` : ''}
           ${system.settings?.forceUpdate ? `<span class="v3-cc-chip is-warn">${ico('download')} იძულებითი განახლება</span>` : ''}
         </div>
       </section>`;
+    $('ops-status').querySelector('[data-scroll]')?.addEventListener('click', (e) => {
+      $(e.currentTarget.dataset.scroll)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
   }
 
   function paintAttention(root, resolved) {
+    // Nothing to act on → the status band above already says so; no second "all good" card.
     if (!resolved.items.length) {
-      $('ops-attention').innerHTML = section({
-        title: 'საჭიროებს ყურადღებას',
-        helpKey: 'overview.attention',
-        content: `<div class="v3-cc-healthy-card"><span class="v3-cc-healthy-ico" aria-hidden="true">${ico('check')}</span><div><strong>ყველაფერი რიგზეა</strong><p>ქმედებას საჭირო სიგნალი არ არის.</p></div></div>`,
-      });
+      $('ops-attention').innerHTML = '';
       return;
     }
     $('ops-attention').innerHTML = section({
       title: 'საჭიროებს ყურადღებას',
       helpKey: 'overview.attention',
-      description: `${resolved.items.length} სიგნალი საჭიროებს შემოწმებას — დააჭირე გადასასვლელად.`,
+      description: `${resolved.items.length === 1 ? '1 საკითხი' : `${resolved.items.length} საკითხი`} — დააჭირე სტრიქონს, გადაგიყვანს შესაბამის გვერდზე.`,
       content: `<div class="v3-cc-alerts">${resolved.items.map((item) => `
         <button type="button" class="v3-cc-alert is-${item.severity}" data-href="${esc(item.href || '#/quality')}">
           <span class="v3-cc-alert-ico" aria-hidden="true">${ico(alertIcon(item))}</span>
           <span class="v3-cc-alert-copy">
             <strong>${esc(item.title)}</strong>
             <span>${esc(item.detail || '')}</span>
+            ${item.tech ? `<code class="v3-cc-alert-tech" title="${esc(item.tech)}">${esc(item.tech)}</code>` : ''}
             ${item.period ? `<small>${esc(item.period)}</small>` : ''}
           </span>
           <span class="v3-cc-alert-right">
@@ -482,8 +497,8 @@
           <em>მინ. ვერსია ${esc(minVer)}</em>
           <div class="v3-cc-infra-tags">
             <span class="v3-cc-chip${settings.allowRegistrations === false ? ' is-warn' : ' is-ok'}">${ico(settings.allowRegistrations === false ? 'lock' : 'check')} ${settings.allowRegistrations === false ? 'რეგისტრაცია დახურულია' : 'რეგისტრაცია ღიაა'}</span>
-            ${settings.forceUpdate ? `<span class="v3-cc-chip is-warn">${ico('download')} Force update</span>` : ''}
-            ${settings.maintenanceMode ? `<span class="v3-cc-chip is-warn">${ico('lock')} Maintenance</span>` : ''}
+            ${settings.forceUpdate ? `<span class="v3-cc-chip is-warn">${ico('download')} იძულებითი განახლება</span>` : ''}
+            ${settings.maintenanceMode ? `<span class="v3-cc-chip is-warn">${ico('lock')} ტექნიკური სამუშაოები</span>` : ''}
           </div>
         </article>
         <article class="v3-cc-infra-card is-${orTone}" title="OpenRouter კრედიტები">
@@ -507,7 +522,7 @@
             <span><b>~ კრ.</b> ${fmt(emd?.estimatedCreditsThisMonth ?? 0)}</span>
             <span><b>სულ</b> ${fmt(emd?.usedAll ?? 0)}</span>
           </div>
-          ${emd?.error ? `<p class="v3-cc-infra-err">${esc(emd.error)}</p>` : ''}
+          ${emd?.error ? `<p class="${emdTone === 'bad' ? 'v3-cc-infra-err' : 'v3-cc-infra-note'}">${esc(emd.error)}</p>` : ''}
           <a class="v3-cc-infra-link" href="${esc(emd?.dashboardUrl || 'https://evidencemd.ai/developers')}" target="_blank" rel="noreferrer">${ico('link')} დეშბორდი</a>
         </article>
         <article class="v3-cc-infra-card" title="AI ტელემეტრია ბოლო 24 საათში">
@@ -517,7 +532,7 @@
           <div class="v3-cc-infra-stats">
             <span><b>შეცდომა 7დ</b> ${fmt(system.ai?.errors7d ?? 0)}</span>
             <span><b>Push 24სთ</b> ${fmt(system.push?.sent24h ?? 0)}</span>
-            <span><b>SMS fail</b> ${fmt(system.sms?.failed24h ?? 0)}</span>
+            <span><b>SMS შეცდომა</b> ${fmt(system.sms?.failed24h ?? 0)}</span>
           </div>
           <button type="button" class="v3-cc-infra-link" data-go="ai">${ico('arrow')} Medi გვერდი</button>
         </article>
@@ -655,7 +670,7 @@
             ? Math.round(usable.reduce((sum, d) => sum + d.count, 0) / usable.length)
             : null;
           return [
-            data.summary?.peak ? `პიკი ${data.summary.peak.day} · ${fmt(data.summary.peak.count)}` : '',
+            data.summary?.peak ? `პიკი ${global.AdminCharts?.dayLabel ? global.AdminCharts.dayLabel(data.summary.peak.day, true) : data.summary.peak.day} · ${fmt(data.summary.peak.count)}` : '',
             avg != null ? `საშუალო ${fmt(avg)}` : '',
           ].filter(Boolean).join(' · ');
         })()}</p>`,
@@ -714,7 +729,9 @@
       title: 'ზრდა · ახალი მომხმარებლები',
       helpKey: 'overview.growth',
       description: 'არჩეული პერიოდი · ახალი რეგისტრაციები თბილისის დღეებზე.',
-      content: `${lineChart(growthSeries, { label: 'ახალი მომხმარებელი', height: 200, tone: 'blue' })}`,
+      content: global.AdminCharts?.bars
+        ? global.AdminCharts.bars(growthSeries, { label: 'ახალი მომხმარებელი', height: 200, tone: 'blue', empty: 'ამ პერიოდში ახალი რეგისტრაცია არ არის' })
+        : lineChart(growthSeries, { label: 'ახალი მომხმარებელი', height: 200, tone: 'blue' }),
     });
     const tip = $('ops-growth')?.querySelector('.v3-cc-chart-tip');
     $('ops-growth')?.querySelectorAll('.ops-hit').forEach((hit) => {

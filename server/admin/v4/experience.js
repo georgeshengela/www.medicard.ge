@@ -41,6 +41,30 @@
       plus: '<line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>',
       book: '<path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/><path d="M9 7h7M9 11h5"/>',
       server: '<rect x="3" y="4" width="18" height="7" rx="2"/><rect x="3" y="13" width="18" height="7" rx="2"/><path d="M7 7.5h.01M7 16.5h.01"/>',
+      // Sidebar: one distinct glyph per page so the menu scans by shape.
+      pulse: '<path d="M19.5 12.6 12 20l-7.5-7.4A5 5 0 0 1 12 6.1a5 5 0 0 1 7.5 6.5z"/><path d="M3 12.5h4.5l1.8-2.6 2.6 5 1.9-2.4H21"/>',
+      apple: '<path d="M12 7.2c-1.6-1.3-4.1-1.5-5.7-.3C4.2 8.5 4 11.9 5.2 15c1.1 2.9 3.1 5.5 5 5.5.9 0 1.2-.5 1.8-.5s.9.5 1.8.5c1.9 0 3.9-2.6 5-5.5 1.2-3.1 1-6.5-1.1-8.1-1.6-1.2-4.1-1-5.7.3z"/><path d="M12 7.2c0-2 .9-3.5 2.8-4.2"/>',
+      route: '<circle cx="6" cy="19" r="2.2"/><circle cx="18" cy="5" r="2.2"/><path d="M8.2 19H16a3.5 3.5 0 0 0 0-7H8a3.5 3.5 0 0 1 0-7h7.8"/>',
+      target: '<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.2"/>',
+      toggle: '<rect x="2" y="6" width="20" height="12" rx="6"/><circle cx="16" cy="12" r="3"/>',
+      flask: '<path d="M9 3h6"/><path d="M10 3v6.4L4.7 18.3A1.8 1.8 0 0 0 6.2 21h11.6a1.8 1.8 0 0 0 1.5-2.7L14 9.4V3"/><path d="M7.4 15h9.2"/>',
+      history: '<path d="M3 12a9 9 0 1 0 2.6-6.4L3 8.2"/><path d="M3 3.5v4.7h4.7"/><path d="M12 7.5V12l3 2"/>',
+      sidebar: '<rect x="3" y="4" width="18" height="16" rx="2.5"/><line x1="9" y1="4" x2="9" y2="20"/>',
+      // Health features (#/health).
+      droplet: '<path d="M12 2.8s6.5 7.1 6.5 11.7a6.5 6.5 0 0 1-13 0C5.5 9.9 12 2.8 12 2.8z"/>',
+      scale: '<rect x="3" y="3" width="18" height="18" rx="4"/><path d="M8.5 9.5a5 5 0 0 1 7 0"/><path d="m12 11.5 1.6-2.4"/>',
+      footprints: '<path d="M7.5 3.5c1.8 0 2.8 1.8 2.8 4.2S9.4 12 7.6 12 5 10.4 5 8s.7-4.5 2.5-4.5z"/><path d="M5.6 14.2h4.2v1.7a2.1 2.1 0 0 1-4.2 0z"/><path d="M16.5 7.5c1.8 0 2.5 2 2.5 4.4s-1.1 4.1-2.9 4.1-2.7-2-2.7-4.4 1.3-4.1 3.1-4.1z"/><path d="M14.2 18.2h4.2v1.6a2.1 2.1 0 0 1-4.2 0z"/>',
+      stethoscope: '<path d="M5 3v5a5 5 0 0 0 10 0V3"/><path d="M10 13v2a5 5 0 0 0 10 0v-2"/><circle cx="20" cy="11" r="2"/>',
+    });
+  }
+
+  /** Module scripts add their own glyphs after admin.js painted the sidebar; paint it again once everything is loaded. */
+  function paintNavIcons() {
+    if (typeof ICONS !== 'object') return;
+    doc.querySelectorAll('.v3-sidebar :is(.nav, .foot-icon)[data-icon]').forEach((btn) => {
+      if (!ICONS[btn.dataset.icon]) return;
+      btn.querySelector('svg.icon')?.remove();
+      btn.insertAdjacentHTML('afterbegin', ico(btn.dataset.icon));
     });
   }
 
@@ -202,6 +226,7 @@
     return '';
   }
   function syncChrome() {
+    if (doc.documentElement.dataset.ready === 'login') { doc.title = 'შესვლა · Medicard ადმინი'; return; }
     const tab = currentTab();
     const page = pageOf(tab);
     const copy = doc.querySelector('.v3-page-header .topbar-copy');
@@ -232,12 +257,11 @@
         </button>
         <button type="button" class="s-guide-btn" data-s="guide" aria-label="ამ გვერდის გზამკვლევი" title="გზამკვლევი — როგორ მუშაობს ეს გვერდი">${ico('book')}<span>გზამკვლევი</span></button>
         <button type="button" class="s-icon-btn" data-s="activity" aria-label="აქტივობა და სისტემა" title="აქტივობა და სისტემა (⇧A)">${ico('bell')}</button>
-        <button type="button" class="s-icon-btn" data-s="keys" aria-label="კლავიატურის მალსახმობები" title="მალსახმობები (?)">${ico('keyboard')}</button>
       </div>`);
+    // Keyboard shortcuts stay one keypress away (?), in the account menu and in the palette footer.
     status.querySelector('[data-s="palette"]').addEventListener('click', () => openPalette());
     status.querySelector('[data-s="activity"]').addEventListener('click', () => openActivity());
     status.querySelector('[data-s="guide"]').addEventListener('click', () => openGuide());
-    status.querySelector('[data-s="keys"]').addEventListener('click', () => openKeys());
     $('live-pill')?.addEventListener('click', () => openActivity());
     if ($('live-pill')) { $('live-pill').style.cursor = 'pointer'; $('live-pill').title = 'სისტემის მდგომარეობა'; }
 
@@ -643,6 +667,13 @@
   function humanAction(entry) {
     const action = String(entry.action || '');
     const hit = ACTION_WORDS.find(([re]) => re.test(action));
+    // The audit page owns the full Georgian vocabulary (v3/modules/audit.js); fall back to the short maps here.
+    const labels = global.AdminAuditLabels;
+    if (labels?.action) {
+      const target = entry.targetType && labels.target ? labels.target(entry.targetType) : '';
+      const what = labels.action(action);
+      return { text: target && !what.includes(target) ? `${target} · ${what}` : what, icon: hit ? hit[2] : 'file', danger: /DELETE|BLOCK/i.test(action) };
+    }
     const target = TARGETS[entry.targetType] || String(entry.targetType || action.split(/[._]/)[0] || '').replace(/([a-z])([A-Z])/g, '$1 $2');
     return { text: `${target}${hit ? ` · ${hit[1]}` : ''}`, icon: hit ? hit[2] : 'file', danger: /DELETE|BLOCK/i.test(action) };
   }
@@ -678,8 +709,8 @@
     const healthHtml = h ? `<div class="s-health-grid">
         ${cell('API', h.api?.ok ? 'მუშაობს' : 'შეფერხება', h.api?.ok ? '' : 'bad')}
         ${cell('მონაცემთა ბაზა', h.database?.ok ? `${esc(h.database.latencyMs)} ms` : 'შეცდომა', h.database?.ok ? (h.database.latencyMs > 250 ? 'warn' : '') : 'bad')}
-        ${cell('Medi · 24სთ', `${esc(h.ai?.last24h ?? 0)} <small style="font-weight:500;color:var(--s-muted)">/ ${esc(h.ai?.errors24h ?? 0)} შეცდ.</small>`, h.ai?.errors24h ? 'warn' : '')}
-        ${cell('Push · 24სთ', `${esc(h.push?.sent24h ?? 0)} <small style="font-weight:500;color:var(--s-muted)">/ ${esc(h.push?.failed24h ?? 0)} ვერ</small>`, h.push?.failed24h ? 'warn' : '')}
+        ${cell('Medi · 24სთ', `${esc(h.ai?.last24h ?? 0)} <small class="s-health-sub">/ ${esc(h.ai?.errors24h ?? 0)} შეცდომა</small>`, h.ai?.errors24h ? 'warn' : '')}
+        ${cell('Push · 24სთ', `${esc(h.push?.sent24h ?? 0)} <small class="s-health-sub">/ ${esc(h.push?.failed24h ?? 0)} ვერ მივიდა</small>`, h.push?.failed24h ? 'warn' : '')}
         ${cell('აპის ვერსია', esc(h.appVersion || '—'))}
         ${cell('რეჟიმი', h.settings?.maintenanceMode ? 'ტექ. სამუშაოები' : 'ჩვეულებრივი', h.settings?.maintenanceMode ? 'warn' : '')}
       </div>${(h.attention || []).map((a) => `<div class="s-attn">${ico('alert')}<span>${esc(a.message || a.title || a)}</span></div>`).join('')}`
@@ -828,6 +859,7 @@
   /* ─────────────── Boot ─────────────── */
   function boot() {
     applyDensity(read(DENSITY_KEY, 'comfortable'));
+    paintNavIcons();
     overlayObserver.observe(doc.body, { childList: true, subtree: false });
     if ($('v3-confirm-root')) overlayObserver.observe($('v3-confirm-root'), { childList: true });
     if ($('toasts')) overlayObserver.observe($('toasts'), { childList: true });
