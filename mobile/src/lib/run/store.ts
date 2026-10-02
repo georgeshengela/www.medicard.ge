@@ -69,6 +69,8 @@ export type RunState = {
   transportResuming: boolean;
   /** Run was auto-cancelled because the user appears to be in a vehicle. */
   transportCancelled: boolean;
+  /** Paused by the system (the app left the screen), not by the person — continues on return. */
+  autoPaused: boolean;
 };
 
 const PIN_RADIUS_M = 28;
@@ -113,7 +115,11 @@ const initial: RunState = {
   transportWarning: false,
   transportResuming: false,
   transportCancelled: false,
+  autoPaused: false,
 };
+
+/** A system pause continues on its own when the app is back within this window; after it the person decides. */
+const AUTO_RESUME_WINDOW_MS = 30 * 60_000;
 
 let state: RunState = initial;
 const listeners = new Set<() => void>();
@@ -130,6 +136,8 @@ let prepareAbort: AbortController | null = null;
 let persistTimer: ReturnType<typeof setTimeout> | null = null;
 let hydratePromise: Promise<boolean> | null = null;
 let appStateSub: { remove: () => void } | null = null;
+let autoPausedAt: number | null = null;
+let autoResuming = false;
 
 /** Live session the user has started — badge + persistence apply. */
 export function isActiveRunPhase(phase: RunPhase): phase is 'running' | 'paused' {
@@ -137,7 +145,7 @@ export function isActiveRunPhase(phase: RunPhase): phase is 'running' | 'paused'
 }
 
 /** One-shot event hooks for haptics / banners in the UI layer. */
-type RunEvent = 'pin_reached' | 'target_completed' | 'transport_warning' | 'transport_resumed' | 'transport_cancelled' | 'km_split';
+type RunEvent = 'pin_reached' | 'target_completed' | 'transport_warning' | 'transport_resumed' | 'transport_cancelled' | 'km_split' | 'auto_resumed';
 const eventListeners = new Set<(e: RunEvent) => void>();
 export function onRunEvent(fn: (e: RunEvent) => void): () => void {
   eventListeners.add(fn);
@@ -231,15 +239,49 @@ function wipePersist() {
 function ensureAppStatePersist() {
   if (appStateSub) return;
   appStateSub = AppState.addEventListener('change', (next: AppStateStatus) => {
-    if (next === 'background' || next === 'inactive') {
-      if (state.phase === 'running') pauseRun();
+    if (next === 'background') {
+      // The GPS watch stops with the app; a system pause continues on its own on return.
+      if (state.phase === 'running') pauseRun('background');
       if (isActiveRunPhase(state.phase)) void flushPersist();
-    } else if (next === 'active' && state.phase === 'running') {
-      // Re-arm GPS after OS may have paused the watch while backgrounded.
-      void startWatch();
-      startTimer();
+    } else if (next === 'inactive') {
+      // Control Center, the notification shade, a call banner or Face ID: the run keeps going.
+      if (isActiveRunPhase(state.phase)) void flushPersist();
+    } else if (next === 'active') {
+      if (state.phase === 'running') {
+        // Re-arm GPS after OS may have paused the watch while backgrounded.
+        void startWatch();
+        startTimer();
+      } else void maybeAutoResume();
     }
   });
+}
+
+/** Continue a run the system paused when the app left the screen. A failed attempt (network waking up) retries once. */
+async function maybeAutoResume(): Promise<void> {
+  if (autoResuming || state.phase !== 'paused' || !state.autoPaused || autoPausedAt == null) return;
+  if (Date.now() - autoPausedAt > AUTO_RESUME_WINDOW_MS) {
+    autoPausedAt = null;
+    set({ autoPaused: false });
+    return;
+  }
+  autoResuming = true;
+  // startRun() replaces `state`; read it fresh after every await.
+  const current = (): RunState => state;
+  const stillWaiting = () => current().phase === 'paused' && current().autoPaused && AppState.currentState === 'active';
+  try {
+    for (let attempt = 0; attempt < 2; attempt++) {
+      await startRun();
+      if (current().phase === 'running') {
+        emit('auto_resumed');
+        return;
+      }
+      if (attempt > 0 || !stillWaiting()) return;
+      await new Promise((resolve) => setTimeout(resolve, 1500));
+      if (!stillWaiting()) return;
+    }
+  } finally {
+    autoResuming = false;
+  }
 }
 
 function subscribe(fn: () => void) {
@@ -374,23 +416,26 @@ export async function startRun(): Promise<void> {
     const verified=await client.begin();
     if(owner!==generation || (AppState.currentState && AppState.currentState!=='active')){client.stop();return;}
     const now=Date.now();
+    autoPausedAt=null;
     if(state.phase==='ready'){
       movingAccumMs=verified.seconds*1000;
-      set({phase:'running',startedAt:now,path:state.current?[state.current]:[],segments:[],splits:Array.from({length:Math.floor(verified.meters/1000)},()=>-1),distanceM:verified.meters,movingMs:movingAccumMs,elapsedMs:0,error:null,syncError:null});
-    } else set({phase:'running',distanceM:verified.meters,error:null,syncError:null});
+      set({phase:'running',startedAt:now,path:state.current?[state.current]:[],segments:[],splits:Array.from({length:Math.floor(verified.meters/1000)},()=>-1),distanceM:verified.meters,movingMs:movingAccumMs,elapsedMs:0,error:null,syncError:null,autoPaused:false});
+    } else set({phase:'running',distanceM:verified.meters,error:null,syncError:null,autoPaused:false});
     segmentStartedAt=now;lastFixAt=0;
     startTimer();ensureAppStatePersist();await startWatch();void flushPersist();
   }catch(error){if(owner===generation)set({error:'sync',syncError:(error as Error).message});}
   finally{starting=false;}
 }
 
-export function pauseRun(): void {
+/** `background`: the system paused the run because the app left the screen — it continues on return. */
+export function pauseRun(reason: 'manual' | 'background' = 'manual'): void {
   if (state.phase !== 'running') return;
   if (segmentStartedAt != null) movingAccumMs += Date.now() - segmentStartedAt;
   segmentStartedAt = null;
   generation++;watchSub?.remove();watchSub=null;headingSub?.remove();headingSub=null;compassLive=false;lastFixAt=0;
   if(!state.simulating)getPulseClient().stop();
-  set({ phase: 'paused', movingMs: movingAccumMs, speedKmh:0, transportWarning:false, transportResuming:false });
+  autoPausedAt = reason === 'background' ? Date.now() : null;
+  set({ phase: 'paused', movingMs: movingAccumMs, speedKmh:0, transportWarning:false, transportResuming:false, autoPaused: reason === 'background' });
   void flushPersist();
 }
 
@@ -431,7 +476,7 @@ export async function finishRun(): Promise<RunSummary | null> {
   const wasSimulation=state.simulating;
   stopEverything();
   wipePersist();
-  set({ phase: 'finished', movingMs, elapsedMs, summary });
+  set({ phase: 'finished', movingMs, elapsedMs, summary, autoPaused: false });
   if (!wasSimulation && (summary.distanceM >= 50 || summary.movingMs >= 60_000)) {
     const owner=generation;
     void saveRunSummary(summary).catch(()=>{if(owner===generation)set({syncError:tx('სესიის დეტალები ტელეფონში ვერ შეინახა. გადაამოწმე თავისუფალი ადგილი.','Couldn’t save the session details on your phone. Check your free storage.')});});
@@ -484,6 +529,7 @@ export function hydrateActiveRun(): Promise<boolean> {
 
     movingAccumMs = Math.max(0, snap.movingAccumMs);
     segmentStartedAt = null;
+    autoPausedAt = null;
     isReachedEmitted = snap.reachedPin;
     isCompletedEmitted = snap.completedTarget;
     lastFixAt = 0;
@@ -583,6 +629,7 @@ function stopEverything() {
     pinFinishTimer = null;
   }
   segmentStartedAt = null;
+  autoPausedAt = null;
 }
 
 function startTimer() {

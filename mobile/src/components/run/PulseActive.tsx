@@ -1,7 +1,8 @@
 import React,{useEffect,useMemo,useRef,useState} from 'react';
 import {ActivityIndicator,BackHandler,Image,Pressable,View} from 'react-native';
 import {RUN_GIFT} from './runArt';
-import {useRouter} from 'expo-router';
+import {useIsFocused,useRouter} from 'expo-router';
+import {activateKeepAwakeAsync,deactivateKeepAwake} from 'expo-keep-awake';
 import {ArrowLeft,BookOpen,Building2,Check,Compass,Flag,Footprints,Gauge,Gift,LocateFixed,MoreHorizontal,Navigation,Pause,Play,Route,Settings2,Timer,Trophy} from 'lucide-react-native';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
@@ -25,6 +26,7 @@ import {MediRunLogo,PulseGlyph} from './PulseIdentity';
 import { tx } from '@/i18n/locale';
 
 type Notice={text:string;tone:'info'|'success'|'warn';sticky?:boolean};
+const KEEP_AWAKE_TAG='medirun-session';
 
 export default function PulseActive(){
  const router=useRouter(),c=useThemeColors(),dark=useIsDark(),insets=useSafeAreaInsets(),{healthProfile,user}=useAuth(),run=useRunSession(),pulse=usePulse(),derived=runDerived(run);
@@ -38,7 +40,10 @@ export default function PulseActive(){
  const mapDark=settings.mapMode==='night'||(settings.mapMode!=='day'&&Boolean(center&&nightAt(center.lat,center.lng)));
  const hapticOn=settings.haptic!==false;
  const hapticRef=useRef(hapticOn);hapticRef.current=hapticOn;
+ const focused=useIsFocused();
  useEffect(()=>hideFloatingTabBar(),[]);
+ // Like a navigation app: while a session records and its map is on screen, the screen does not dim and lock.
+ useEffect(()=>{if(!running||!focused)return;void activateKeepAwakeAsync(KEEP_AWAKE_TAG).catch(()=>{});return()=>{void deactivateKeepAwake(KEEP_AWAKE_TAG).catch(()=>{});};},[running,focused]);
  useEffect(()=>{if(run.phase==='finished')router.replace('/run/summary' as never);},[run.phase,router]);
  useEffect(()=>{if(pulse.conflict&&running)pauseRun();},[pulse.conflict,running]);
  // Transient notices fade on their own; warnings stay until tapped.
@@ -52,6 +57,7 @@ export default function PulseActive(){
   }
   if(event==='transport_warning'){if(hapticRef.current)void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning).catch(()=>{});return;}
   if(event==='transport_resumed'){setNotice({text:tx('ათვლა განახლდა — გააგრძელე!', 'Counting again — keep going!'),tone:'success'});return;}
+  if(event==='auto_resumed'){setNotice({text:tx('სესია გაგრძელდა — შენი გზა ისევ იწერება', 'Session resumed — your path is recording again'),tone:'success'});return;}
   if(event==='target_completed'||event==='pin_reached'){setNotice({text:event==='target_completed'?tx('მიზანი შესრულებულია! შეგიძლია გააგრძელო აღმოჩენა.', 'Goal reached! You can keep exploring.'):tx('დანიშნულების ადგილს მიაღწიე!', 'You’ve reached your destination!'),tone:'success'});void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(()=>{});}
  }),[]);
  const leave=()=>{if(active){if(running)pauseRun();setFinish(true);}else{cancelRun();router.replace('/run' as never);}};
@@ -109,7 +115,7 @@ export default function PulseActive(){
   <Sheet title={tx('შენი გასეირნება', 'Your walk')} visible={details} onClose={()=>setDetails(false)}>
    <Card><Copy bold size={18}>{run.target?targetLabel(run.target):tx('თავისუფალი გასეირნება', 'Free walk')}</Copy>{[{label:tx('სავარაუდო ნაბიჯები', 'Estimated steps'),value:derived.steps.toLocaleString(),icon:Footprints},{label:tx('საშუალო ტემპი', 'Average pace'),value:formatPace(derived.pace)+tx(' /კმ', ' /km'),icon:Gauge},{label:tx('მიმდინარე სიჩქარე', 'Current speed'),value:run.speedKmh.toFixed(1)+tx(' კმ/სთ', ' km/h'),icon:Navigation},{label:tx('სესიის დრო პაუზების ჩათვლით', 'Session time incl. pauses'),value:formatClock(run.elapsedMs),icon:Timer},{label:tx('GPS სიზუსტე', 'GPS accuracy'),value:run.accuracyM==null?tx('ველოდებით', 'Waiting'):Math.round(run.accuracyM)+tx(' მ', ' m'),icon:LocateFixed}].map(row=><View key={row.label} style={{flexDirection:'row',gap:10,alignItems:'center',minHeight:30}}><row.icon size={18} color={c.primary100}/><Copy muted size={12} style={{flex:1}}>{row.label}</Copy><Copy bold size={13}>{row.value}</Copy></View>)}</Card>
    {run.splits.length?<Card><Copy bold>{tx('კილომეტრები', 'Kilometers')}</Copy>{splitDurations(run.splits).map((ms,i)=><View key={i} style={{flexDirection:'row',alignItems:'center',gap:10}}><Copy muted size={12} style={{flex:1}}>{i+1} {tx('კმ', 'km')}</Copy><Copy bold size={13} style={{fontVariant:['tabular-nums']}}>{ms!=null?formatPace(ms/1000):'–'}</Copy></View>)}</Card>:null}
-   <Card><Copy bold>{pulse.pending?tx('შენახულია ტელეფონში · იგზავნება', 'Saved on your phone · sending'):tx('ანგარიშთან სინქრონიზაცია', 'Syncing with your account')}</Copy><Copy muted>{pulse.message}</Copy><Copy muted size={12}>{tx('ეკრანის ჩაკეტვისას ან აპიდან გასვლისას სესია პაუზდება. დაბრუნებისას გააგრძელე.', 'The session pauses when you lock the screen or leave the app. Continue when you’re back.')}</Copy></Card>
+   <Card><Copy bold>{pulse.pending?tx('შენახულია ტელეფონში · იგზავნება', 'Saved on your phone · sending'):tx('ანგარიშთან სინქრონიზაცია', 'Syncing with your account')}</Copy><Copy muted>{pulse.message}</Copy><Copy muted size={12}>{tx('სესიის დროს ეკრანი ანთებული რჩება. თუ აპიდან გახვალ ან ტელეფონს ჩაკეტავ, სესია პაუზდება და დაბრუნებისას თავისით გაგრძელდება.', 'The screen stays on during a session. If you leave the app or lock your phone, the session pauses and continues on its own when you’re back.')}</Copy></Card>
   </Sheet>
   <Sheet title={tx('შენი მოძრაობის სივრცე', 'Your activity space')} visible={menu} onClose={()=>setMenu(false)}><Action secondary label={tx('გავლილი გზების რუკა', 'Map of your paths')} icon={Route} disabled={paint.length===0} onPress={()=>{setMenu(false);map.current?.send({type:'fit',bottom:dockHeight+35,paintOnly:true});}}/>{([{id:'missions',label:tx('თბილისის პასპორტი', 'Tbilisi passport'),icon:Compass},{id:'collection',label:tx('ჩემი აღმოჩენები', 'My finds'),icon:Gift},{id:'leaderboard',label:tx('ლიდერბორდი', 'Leaderboard'),icon:Trophy},{id:'settings',label:tx('პარამეტრები', 'Settings'),icon:Settings2},{id:'help',label:tx('როგორ მუშაობს?', 'How it works'),icon:BookOpen}] as const).map(item=><Action key={item.id} secondary label={item.label} icon={item.icon} onPress={()=>openPanel(item.id)}/>)}</Sheet>
   <Sheet title={tx('დავასრულოთ გასეირნება?', 'Finish your walk?')} visible={finish} onClose={()=>setFinish(false)}>
