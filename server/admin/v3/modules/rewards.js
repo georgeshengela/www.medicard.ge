@@ -131,6 +131,8 @@
   // Glyphs the store tab uses (same 24px stroke family as admin.js ICONS).
   if (typeof ICONS === 'object') {
     if (!ICONS.edit) ICONS.edit = '<path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/>';
+    if (!ICONS.pause) ICONS.pause = '<rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/>';
+    if (!ICONS.play) ICONS.play = '<polygon points="7 4 20 12 7 20 7 4"/>';
     if (!ICONS.plus) ICONS.plus = '<line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>';
   }
 
@@ -420,23 +422,30 @@
           : `<button type="button" class="btn ghost compact" data-st-open="${esc(r.id)}">დეტალები</button>`}</td>
       </tr>`).join('');
     const itemCards = items.map((i) => {
-      const low = i.status === 'ACTIVE' && i.stock <= 0;
-      return `<article class="s-card p2-store-item${i.status !== 'ACTIVE' ? ' is-paused' : ''}">
-        <div class="p2-store-img">${i.imageUrl ? `<img src="${esc(i.imageUrl)}" alt="" loading="lazy">` : ico('gift')}</div>
-        <div class="p2-store-body">
-          <div class="p2-store-tags"><span class="s-badge is-plain">${esc(STORE_KIND_KA[i.kind] || 'საჩუქარი')}</span>${i.status === 'ACTIVE' ? (low ? '<span class="s-badge is-bad">ამოიწურა</span>' : '<span class="s-badge is-ok">აპში ჩანს</span>') : '<span class="s-badge is-warn">შეჩერებული</span>'}</div>
-          <h4>${esc(i.title)}</h4>
-          <p class="p2-store-price"><b>${fmt(i.coinCost)}</b> Medi Coins <span class="s-muted">${esc(coinsGel(i.coinCost))}${i.retailGel != null ? ` · მაღაზიაში ${esc(gel(i.retailGel))}` : ''}</span></p>
-          <dl class="p2-store-stats">
-            <div><dt>მარაგში</dt><dd class="${i.stock <= 0 ? 'is-bad' : ''}">${fmt(i.stock)}</dd></div>
-            <div><dt>გადასაცემი</dt><dd class="${i.pending ? 'is-warn' : ''}">${fmt(i.pending)}</dd></div>
-            <div><dt>გადაცემული</dt><dd>${fmt(i.handedOver)}</dd></div>
-          </dl>
-          <div class="p2-store-actions">
-            <button type="button" class="btn compact" data-st-stock="${esc(i.id)}">${ico('plus')} მარაგი</button>
-            <button type="button" class="btn ghost compact" data-st-edit="${esc(i.id)}">${ico('edit')} შეცვლა</button>
-            <button type="button" class="btn ghost compact" data-st-status="${esc(i.id)}" data-status="${esc(i.status)}">${i.status === 'ACTIVE' ? 'შეჩერება' : 'გააქტიურება'}</button>
+      const out = i.status === 'ACTIVE' && i.stock <= 0;
+      const taken = (i.pending || 0) + (i.handedOver || 0);
+      const total = i.stock + taken;
+      const leftPct = total > 0 ? Math.round((i.stock / total) * 100) : 0;
+      const state = i.status !== 'ACTIVE' ? ['შეჩერებული', 'is-warn'] : out ? ['ამოიწურა', 'is-bad'] : ['აპში ჩანს', 'is-ok'];
+      return `<article class="p2-prize${i.status !== 'ACTIVE' ? ' is-paused' : ''}${out ? ' is-out' : ''}">
+        <div class="p2-prize-media">
+          ${i.imageUrl ? `<img src="${esc(i.imageUrl)}" alt="" loading="lazy">` : `<span class="p2-prize-ph">${ico('gift')}</span>`}
+          <span class="s-badge ${state[1]} p2-prize-state">${state[0]}</span>
+          <span class="p2-prize-kind">${esc(STORE_KIND_KA[i.kind] || 'საჩუქარი')}</span>
+        </div>
+        <div class="p2-prize-body">
+          <h4 title="${esc(i.title)}">${esc(i.title)}</h4>
+          <div class="p2-prize-price"><b>${fmt(i.coinCost)}</b><span>Medi Coins</span></div>
+          <p class="p2-prize-gel">${esc(coinsGel(i.coinCost))}${i.retailGel != null ? ` · მაღაზიაში ${esc(gel(i.retailGel))}` : ''}</p>
+          <div class="p2-prize-stock">
+            <div class="p2-prize-stock-row"><span>მარაგში <b class="${i.stock <= 0 ? 'is-bad' : ''}">${fmt(i.stock)}</b>${total ? ` / ${fmt(total)}` : ''}</span>${i.pending ? `<span class="p2-prize-wait">${fmt(i.pending)} გადასაცემი</span>` : i.handedOver ? `<span class="s-muted">${fmt(i.handedOver)} გადაცემული</span>` : ''}</div>
+            <div class="p2-prize-bar" role="img" aria-label="მარაგის ${leftPct}% დარჩა"><i style="width:${leftPct}%"></i></div>
           </div>
+        </div>
+        <div class="p2-prize-foot">
+          <button type="button" class="btn compact" data-st-stock="${esc(i.id)}">${ico('plus')} მარაგი</button>
+          <button type="button" class="btn ghost compact p2-icon-btn" data-st-edit="${esc(i.id)}" title="შეცვლა" aria-label="შეცვლა: ${esc(i.title)}">${ico('edit')}</button>
+          <button type="button" class="btn ghost compact p2-icon-btn" data-st-status="${esc(i.id)}" data-status="${esc(i.status)}" title="${i.status === 'ACTIVE' ? 'შეჩერება' : 'გააქტიურება'}" aria-label="${i.status === 'ACTIVE' ? 'შეჩერება' : 'გააქტიურება'}: ${esc(i.title)}">${ico(i.status === 'ACTIVE' ? 'pause' : 'play')}</button>
         </div>
       </article>`;
     }).join('');
@@ -461,7 +470,7 @@
         title: `საჩუქრები · ${fmt(items.length)}`,
         desc: 'ის, რაც აპის მაღაზიაში ჩანს (Medi Quest → ჯილდოების მაღაზია). 100 მონეტა ≈ 1 ₾.',
         action: `<button type="button" class="btn" data-st-new>${ico('plus')} ახალი საჩუქარი</button>`,
-        body: items.length ? `<div class="p2-store-grid">${itemCards}</div>` : `<div class="s-empty">${ico('gift')}<strong>საჩუქრები ჯერ არ არის</strong></div>`,
+        body: items.length ? `<div class="p2-prizes">${itemCards}</div>` : `<div class="s-empty">${ico('gift')}<strong>საჩუქრები ჯერ არ არის</strong></div>`,
       })}
     `);
     bindSubnav(root);
