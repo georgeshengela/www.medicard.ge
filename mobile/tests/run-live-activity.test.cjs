@@ -125,3 +125,16 @@ test('a stale activity (the app stopped updating) says so instead of ticking on'
   assert.ok(!banner.includes('⏱timer'), 'no running clock on stale content');
   assert.ok(banner.includes('24:31'));
 });
+
+test('live timers have a fixed width so the compact Dynamic Island stays narrow', () => {
+  const render = widgetRuntime(shippedLayout().layout);
+  const width = (node) => {
+    const timer = find(node, 'TextView').find((t) => t.props.timerInterval);
+    return timer?.props.modifiers.find((m) => m.$type === 'frame')?.width;
+  };
+  const short = render(base, { colorScheme: 'dark' });
+  assert.ok(width(short.compactTrailing) > 0 && width(short.compactTrailing) <= 44, 'mm:ss fits a tight compact trailing region');
+  assert.ok(width(short.expandedTrailing) > 0 && width(short.banner) > 0);
+  const long = render({ ...base, clockStart: Date.now() - 2 * 3600 * 1000 }, { colorScheme: 'dark' });
+  assert.ok(width(long.compactTrailing) > width(short.compactTrailing) && width(long.compactTrailing) <= 60, 'room for hours, still compact');
+});

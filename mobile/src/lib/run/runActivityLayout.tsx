@@ -16,6 +16,7 @@ import {
   frame,
   lineLimit,
   monospacedDigit,
+  multilineTextAlignment,
   padding,
 } from '@expo/ui/swift-ui/modifiers';
 import { createLiveActivity, type LiveActivityEnvironment } from 'expo-widgets';
@@ -54,15 +55,25 @@ const MedirunActivity = (props: RunActivityProps, environment: LiveActivityEnvir
   const start = new Date(props.clockStart);
   const end = new Date(props.clockStart + 24 * 3600 * 1000);
 
-  const Clock = ({ size, color }: { size: number; color: string }) =>
+  // A live timer text is greedy: it takes every point it is offered, which stretched the compact Dynamic Island
+  // across the whole top of the screen. A fixed width sized to the digits keeps every region tight.
+  // From ~50 min on the clock may show hours (1:02:03), so it gets room for them in advance.
+  const hours = props.clock.length > 5 || (ticking && Date.now() - props.clockStart > 50 * 60 * 1000);
+  const Clock = ({ size, color, align }: { size: number; color: string; align: 'leading' | 'trailing' }) =>
     ticking ? (
       <Text
         timerInterval={{ lower: start, upper: end }}
         countsDown={false}
-        modifiers={[font({ size, weight: 'semibold', design: 'rounded' }), monospacedDigit(), foregroundStyle(color)]}
+        modifiers={[
+          font({ size, weight: 'semibold', design: 'rounded' }),
+          monospacedDigit(),
+          foregroundStyle(color),
+          multilineTextAlignment(align),
+          frame({ width: Math.ceil(size * (hours ? 3.9 : 2.9)), alignment: align }),
+        ]}
       />
     ) : (
-      <Text modifiers={[font({ size, weight: 'semibold', design: 'rounded' }), monospacedDigit(), foregroundStyle(color)]}>
+      <Text modifiers={[font({ size, weight: 'semibold', design: 'rounded' }), monospacedDigit(), foregroundStyle(color), lineLimit(1)]}>
         {props.clock}
       </Text>
     );
@@ -122,7 +133,7 @@ const MedirunActivity = (props: RunActivityProps, environment: LiveActivityEnvir
             <Caption text={props.distanceLabel} />
           </VStack>
           <VStack alignment="leading" spacing={1}>
-            <Clock size={24} color="#FFFFFF" />
+            <Clock size={24} color="#FFFFFF" align="leading" />
             <Caption text={props.timeLabel} />
           </VStack>
           {props.lit > 0 ? (
@@ -142,7 +153,7 @@ const MedirunActivity = (props: RunActivityProps, environment: LiveActivityEnvir
       </VStack>
     ),
     compactLeading: <Image systemName={glyph} size={15} color={accent} modifiers={[padding({ leading: 4 })]} />,
-    compactTrailing: <Clock size={14} color={accent} />,
+    compactTrailing: <Clock size={14} color={accent} align="trailing" />,
     minimal: <Image systemName={glyph} size={14} color={accent} />,
     expandedLeading: (
       <VStack alignment="leading" spacing={1} modifiers={[padding({ leading: 6 })]}>
@@ -152,7 +163,7 @@ const MedirunActivity = (props: RunActivityProps, environment: LiveActivityEnvir
     ),
     expandedTrailing: (
       <VStack alignment="trailing" spacing={1} modifiers={[padding({ trailing: 6 })]}>
-        <Clock size={22} color="#FFFFFF" />
+        <Clock size={22} color="#FFFFFF" align="trailing" />
         <Caption text={props.timeLabel} />
       </VStack>
     ),
