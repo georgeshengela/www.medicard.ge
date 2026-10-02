@@ -42,14 +42,14 @@ const redeemBody = z.object({
 rewardsRouter.get(
   '/',
   asyncHandler(async (req, res) => {
-    res.json(await listStoreRewards(req.user.id));
+    res.json(await listStoreRewards(req.user.id, { lang: req.lang }));
   }),
 );
 
 rewardsRouter.get(
   '/redemptions',
   asyncHandler(async (req, res) => {
-    res.json(await listMyRedemptions(req.user.id));
+    res.json(await listMyRedemptions(req.user.id, { lang: req.lang }));
   }),
 );
 
@@ -72,7 +72,7 @@ rewardsRouter.get(
   '/:id',
   asyncHandler(async (req, res) => {
     const { id } = idParam.parse(req.params);
-    res.json(await getStoreReward(req.user.id, id));
+    res.json(await getStoreReward(req.user.id, id, { lang: req.lang }));
   }),
 );
 

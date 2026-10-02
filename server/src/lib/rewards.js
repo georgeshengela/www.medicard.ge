@@ -144,6 +144,11 @@ export async function ensureRewardDefinitions(db = prisma) {
       status = REWARD_STATUSES.DRAFT;
     }
     const existing = await db.rewardDefinition.findUnique({ where: { key: row.key } });
+    if (existing?.metadata?.adminManaged) {
+      // Edited in admin „მაღაზია“: price, text, image, limits and status are the admin's now.
+      out.push(existing);
+      continue;
+    }
     if (!existing) {
       const created = await db.rewardDefinition.create({
         data: {
@@ -360,7 +365,19 @@ function publicPartner(partner) {
 /** Store art served by the site (server/public/rewards/*.webp); other image keys are art tags the app maps itself. */
 export function rewardImageUrl(imageKey) {
   const k = String(imageKey || '');
-  return /^\/rewards\/[a-z0-9-]+\.webp$/.test(k) ? `https://medicard.ge${k}` : null;
+  return /^\/rewards\/[a-z0-9-]+\.webp$/.test(k) || /^\/api\/announcements\/image\/[0-9a-f-]{36}$/.test(k) ? `https://medicard.ge${k}` : null;
+}
+
+/** Admin-created prizes keep English copy in metadata; English readers get it in place of the Georgian key. */
+export function localizeReward(reward, lang) {
+  const m = reward?.metadata;
+  if (!reward || lang !== 'en' || !m || typeof m !== 'object') return reward;
+  return {
+    ...reward,
+    titleKey: m.titleEn || reward.titleKey,
+    descriptionKey: m.descriptionEn || reward.descriptionKey,
+    termsKey: m.termsEn || reward.termsKey,
+  };
 }
 
 function publicReward(reward, extras = {}) {
@@ -393,8 +410,9 @@ function publicReward(reward, extras = {}) {
   };
 }
 
-function publicRedemption(row, { includeCode = false } = {}) {
+function publicRedemption(row, { includeCode = false, lang } = {}) {
   if (!row) return null;
+  if (row.reward && lang) row = { ...row, reward: localizeReward(row.reward, lang) };
   const code = row.code || null;
   return {
     id: row.id,
@@ -495,7 +513,7 @@ export async function listStoreRewards(userId, options = {}) {
       reward.inventoryMode === INVENTORY_MODES.CODE_POOL ? await codePoolAvailable(db, reward.id) : null;
     const eligibility = await userEligibilityFor(db, userId, reward, balance, now, timeZone);
     items.push(
-      publicReward(reward, {
+      publicReward(localizeReward(reward, options.lang), {
         userEligibility: { canRedeem: eligibility.canRedeem, reasonCode: eligibility.reasonCode },
         userRedemptionCount: count,
         userBalance: balance.coins,
@@ -544,7 +562,7 @@ export async function getStoreReward(userId, rewardId, options = {}) {
   const availableCodes =
     reward.inventoryMode === INVENTORY_MODES.CODE_POOL ? await codePoolAvailable(db, reward.id) : null;
   const eligibility = await userEligibilityFor(db, userId, reward, balance, now, timeZone);
-  return publicReward(reward, {
+  return publicReward(localizeReward(reward, options.lang), {
     userEligibility: { canRedeem: eligibility.canRedeem, reasonCode: eligibility.reasonCode },
     userRedemptionCount: count,
     userBalance: balance.coins,
@@ -585,7 +603,7 @@ export async function listMyRedemptions(userId, options = {}) {
           .catch(() => {});
       }
     }
-    items.push(publicRedemption({ ...row, status }, { includeCode: true }));
+    items.push(publicRedemption({ ...row, status }, { includeCode: true, lang: options.lang }));
   }
   return {
     active: items.filter((i) => i.status === REDEMPTION_STATUSES.ISSUED || i.status === REDEMPTION_STATUSES.PENDING),

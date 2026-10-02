@@ -20,6 +20,11 @@ import {
   listRedemptionsAdmin,
   markRedemptionUsed,
   cancelRedemption,
+  listStoreAdmin,
+  setStoreItemStatus,
+  createStoreItem,
+  updateStoreItem,
+  listStoreRedemptions,
   pauseCampaign,
   rewardsOverview,
   serializeCampaignForPartner,
@@ -27,6 +32,7 @@ import {
   upsertPartner,
 } from '../lib/rewardsAdmin.js';
 import { prisma } from '../lib/prisma.js';
+import { decodeImageDataUrl, saveImage } from '../lib/announcements.js';
 
 export const adminRewardsRouter = Router();
 adminRewardsRouter.use(requireAdmin);
@@ -283,6 +289,82 @@ adminRewardsRouter.post(
   requireAdminCapability('REWARD_CODES_MANAGE'),
   asyncHandler(async (req, res) => {
     res.json({ ok: true, code: await disableAvailableCode(req.params.id, { admin: req.admin }) });
+  }),
+);
+
+const storeItemBody = z.object({
+  title: z.string().trim().min(1).max(200).optional(),
+  titleEn: z.string().trim().max(200).nullable().optional(),
+  description: z.string().trim().max(400).optional(),
+  descriptionEn: z.string().trim().max(400).nullable().optional(),
+  kind: z.enum(['GADGET', 'GIFT_CARD']).optional(),
+  coinCost: z.number().int().min(100).max(100_000).optional(),
+  retailGel: z.number().int().min(0).max(100_000).nullable().optional(),
+  perUserLimit: z.number().int().min(1).max(20).nullable().optional(),
+  stock: z.number().int().min(0).max(10_000).optional(),
+  imageKey: z.string().regex(/^\/(rewards\/[a-z0-9-]+\.webp|api\/announcements\/image\/[0-9a-f-]{36})$/).nullable().optional(),
+  featured: z.boolean().optional(),
+  sortOrder: z.number().int().min(0).max(10_000).optional(),
+  status: z.enum(['ACTIVE', 'PAUSED']).optional(),
+});
+
+adminRewardsRouter.post(
+  '/store',
+  mutateLimiter,
+  requireAdminCapability('REWARDS_MANAGE'),
+  asyncHandler(async (req, res) => {
+    const body = storeItemBody.extend({ title: z.string().trim().min(1).max(200), coinCost: z.number().int().min(100).max(100_000) }).parse(req.body || {});
+    res.status(201).json({ ok: true, item: await createStoreItem(body, { admin: req.admin }) });
+  }),
+);
+
+adminRewardsRouter.patch(
+  '/store/:id',
+  mutateLimiter,
+  requireAdminCapability('REWARDS_MANAGE'),
+  asyncHandler(async (req, res) => {
+    const body = storeItemBody.omit({ stock: true, status: true }).parse(req.body || {});
+    res.json({ ok: true, item: await updateStoreItem(req.params.id, body, { admin: req.admin }) });
+  }),
+);
+
+adminRewardsRouter.get(
+  '/store/redemptions',
+  requireAdminCapability('REDEMPTIONS_VIEW'),
+  asyncHandler(async (req, res) => {
+    const { status } = z.object({ status: z.enum(['PENDING', 'USED', 'CANCELLED']).optional() }).parse(req.query || {});
+    res.json({ items: await listStoreRedemptions({ status: status || null }) });
+  }),
+);
+
+/** Prize pictures: the same small image store the home news uses (public bytes, /api/announcements/image/:id). */
+adminRewardsRouter.post(
+  '/store/images',
+  mutateLimiter,
+  requireAdminCapability('REWARDS_MANAGE'),
+  asyncHandler(async (req, res) => {
+    const body = z.object({ dataUrl: z.string().max(1_700_000), width: z.number().int().min(1).max(8000).optional(), height: z.number().int().min(1).max(8000).optional() }).parse(req.body || {});
+    const decoded = decodeImageDataUrl(body.dataUrl);
+    const image = await saveImage({ ...decoded, width: body.width ?? null, height: body.height ?? null }, { admin: req.admin });
+    res.status(201).json({ image, imageKey: `/api/announcements/image/${image.id}` });
+  }),
+);
+
+adminRewardsRouter.get(
+  '/store',
+  requireAdminCapability('REWARDS_VIEW'),
+  asyncHandler(async (_req, res) => {
+    res.json(await listStoreAdmin());
+  }),
+);
+
+adminRewardsRouter.post(
+  '/store/:id/status',
+  mutateLimiter,
+  requireAdminCapability('REWARDS_MANAGE'),
+  asyncHandler(async (req, res) => {
+    const { status } = z.object({ status: z.enum(['ACTIVE', 'PAUSED']) }).parse(req.body || {});
+    res.json({ ok: true, item: await setStoreItemStatus(req.params.id, status, { admin: req.admin }) });
   }),
 );
 

@@ -10,6 +10,7 @@
 
   const TABS = [
     ['overview', 'მიმოხილვა'],
+    ['store', 'მაღაზია'],
     ['campaigns', 'კამპანიები'],
     ['partners', 'პარტნიორები'],
     ['redemptions', 'გაცვლები'],
@@ -127,6 +128,11 @@
   ];
 
   let renderSeq = 0;
+  // Glyphs the store tab uses (same 24px stroke family as admin.js ICONS).
+  if (typeof ICONS === 'object') {
+    if (!ICONS.edit) ICONS.edit = '<path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/>';
+    if (!ICONS.plus) ICONS.plus = '<line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>';
+  }
 
   function esc(v) {
     return typeof escapeHtml === 'function' ? escapeHtml(v) : String(v ?? '');
@@ -382,6 +388,263 @@
       return;
     }
     open(opts);
+  }
+
+  /* ── მაღაზია: store prizes (gift cards, gadgets) — hand-overs, stock, items, history ── */
+
+  const STORE_KIND_KA = { GADGET: 'გაჯეტი', GIFT_CARD: 'სასაჩუქრე ბარათი' };
+  const STORE_FILTERS = [['PENDING', 'გადასაცემი'], ['USED', 'გადაცემული'], ['CANCELLED', 'გაუქმებული'], ['', 'ყველა']];
+  let storeFilter = 'PENDING';
+  const gel = (n) => (n == null ? '—' : `${fmt(n)} ₾`);
+  const coinsGel = (c) => `≈ ${fmt(Math.round(Number(c) / 100))} ₾`;
+
+  async function renderStore(root, seq) {
+    const [data, reds] = await Promise.all([
+      apiRewards('/store'),
+      apiRewards(`/store/redemptions${storeFilter ? `?status=${storeFilter}` : ''}`),
+    ]);
+    if (seq !== renderSeq) return;
+    const items = data.items || [];
+    const t = data.totals || {};
+    const list = reds.items || [];
+    const userCell = (u) => (u
+      ? two(`<a href="#/users/${encodeURIComponent(u.id)}">${esc(u.name || 'მომხმარებელი')}</a>`, u.phone ? `<span class="mono">${esc(u.phone)}</span>` : 'ტელეფონი არ არის')
+      : '—');
+    const redRows = list.map((r) => `<tr>
+        <td><div class="p2-store-cell">${r.reward?.imageUrl ? `<img src="${esc(r.reward.imageUrl)}" alt="" loading="lazy">` : ''}${two(esc(r.reward?.title || '—'), `${fmt(r.coinCost)} Medi Coins`)}</div></td>
+        <td>${userCell(r.user)}</td>
+        <td>${badge(r.status)}</td>
+        <td class="s-muted">${esc(when(r.redeemedAt))}${r.status === 'PENDING' ? `<small class="p2-sub">გადაეცი ${esc(inDays(new Date(Date.parse(r.redeemedAt) + 14 * 86400000).toISOString()))}</small>` : ''}</td>
+        <td class="p2-actions">${r.status === 'PENDING'
+          ? `<button type="button" class="btn compact" data-st-hand="${esc(r.id)}">${ico('check')} გაცემულია</button><button type="button" class="btn ghost compact" data-st-cancel="${esc(r.id)}" data-cost="${esc(r.coinCost)}">გაუქმება</button>`
+          : `<button type="button" class="btn ghost compact" data-st-open="${esc(r.id)}">დეტალები</button>`}</td>
+      </tr>`).join('');
+    const itemCards = items.map((i) => {
+      const low = i.status === 'ACTIVE' && i.stock <= 0;
+      return `<article class="s-card p2-store-item${i.status !== 'ACTIVE' ? ' is-paused' : ''}">
+        <div class="p2-store-img">${i.imageUrl ? `<img src="${esc(i.imageUrl)}" alt="" loading="lazy">` : ico('gift')}</div>
+        <div class="p2-store-body">
+          <div class="p2-store-tags"><span class="s-badge is-plain">${esc(STORE_KIND_KA[i.kind] || 'საჩუქარი')}</span>${i.status === 'ACTIVE' ? (low ? '<span class="s-badge is-bad">ამოიწურა</span>' : '<span class="s-badge is-ok">აპში ჩანს</span>') : '<span class="s-badge is-warn">შეჩერებული</span>'}</div>
+          <h4>${esc(i.title)}</h4>
+          <p class="p2-store-price"><b>${fmt(i.coinCost)}</b> Medi Coins <span class="s-muted">${esc(coinsGel(i.coinCost))}${i.retailGel != null ? ` · მაღაზიაში ${esc(gel(i.retailGel))}` : ''}</span></p>
+          <dl class="p2-store-stats">
+            <div><dt>მარაგში</dt><dd class="${i.stock <= 0 ? 'is-bad' : ''}">${fmt(i.stock)}</dd></div>
+            <div><dt>გადასაცემი</dt><dd class="${i.pending ? 'is-warn' : ''}">${fmt(i.pending)}</dd></div>
+            <div><dt>გადაცემული</dt><dd>${fmt(i.handedOver)}</dd></div>
+          </dl>
+          <div class="p2-store-actions">
+            <button type="button" class="btn compact" data-st-stock="${esc(i.id)}">${ico('plus')} მარაგი</button>
+            <button type="button" class="btn ghost compact" data-st-edit="${esc(i.id)}">${ico('edit')} შეცვლა</button>
+            <button type="button" class="btn ghost compact" data-st-status="${esc(i.id)}" data-status="${esc(i.status)}">${i.status === 'ACTIVE' ? 'შეჩერება' : 'გააქტიურება'}</button>
+          </div>
+        </div>
+      </article>`;
+    }).join('');
+
+    root.innerHTML = shellHtml('store', `
+      <div class="s-metrics">
+        ${metric('გადასაცემი', fmt(t.pending), 'გაცვალეს, ჯერ არ მიუღიათ', t.pending ? 'warn' : '')}
+        ${metric('გადაცემული', fmt(t.handedOver), 'სულ ხელში მიღებული')}
+        ${metric('მარაგის ღირებულება', gel(t.stockValueGel), 'მაღაზიის ფასით, რაც ჯერ დარჩა')}
+        ${metric('დახარჯული', gel(t.spentGel), 'გაცემული + გადასაცემი')}
+      </div>
+      ${card({
+        title: 'ვინ რა გაცვალა',
+        desc: 'დაურეკე, შეუთანხმდი და თბილისში 14 დღეში გადაეცი. თუ ვერ ხერხდება, გააუქმე — მონეტები სრულად დაუბრუნდება და მარაგი აღდგება.',
+        action: `<div class="s-segment" role="tablist" aria-label="სტატუსი">${STORE_FILTERS.map(([k, l]) => `<button type="button" role="tab" aria-selected="${k === storeFilter}" data-st-filter="${k}">${l}</button>`).join('')}</div>`,
+        flush: true,
+        body: list.length
+          ? table('<th>საჩუქარი</th><th>ვინ</th><th>სტატუსი</th><th>როდის</th><th><span class="sr-only">მოქმედება</span></th>', redRows)
+          : `<div class="s-empty">${ico('gift')}<strong>${storeFilter === 'PENDING' ? 'გადასაცემი არაფერია' : 'ჩანაწერი არ არის'}</strong><span>${storeFilter === 'PENDING' ? 'ახალი გაცვლისას Telegram-ში შეტყობინება მოგივა.' : 'სხვა ფილტრი სცადე.'}</span></div>`,
+      })}
+      ${card({
+        title: `საჩუქრები · ${fmt(items.length)}`,
+        desc: 'ის, რაც აპის მაღაზიაში ჩანს (Medi Quest → ჯილდოების მაღაზია). 100 მონეტა ≈ 1 ₾.',
+        action: `<button type="button" class="btn" data-st-new>${ico('plus')} ახალი საჩუქარი</button>`,
+        body: items.length ? `<div class="p2-store-grid">${itemCards}</div>` : `<div class="s-empty">${ico('gift')}<strong>საჩუქრები ჯერ არ არის</strong></div>`,
+      })}
+    `);
+    bindSubnav(root);
+
+    root.querySelectorAll('[data-st-filter]').forEach((b) => b.addEventListener('click', () => { storeFilter = b.dataset.stFilter; void renderRewards(); }));
+    root.querySelectorAll('[data-st-open]').forEach((b) => b.addEventListener('click', () => openRedemption(b.dataset.stOpen)));
+    root.querySelectorAll('[data-st-hand]').forEach((b) => b.addEventListener('click', () => confirmThen({
+      title: 'საჩუქარი გადაეცა?',
+      message: 'გაცვლა მოინიშნება „გადაცემულად“: ადამიანმა საჩუქარი ხელში მიიღო.',
+      confirmLabel: 'გაცემულია',
+      onConfirm: async () => { await mutate(() => apiRewards(`/redemptions/${encodeURIComponent(b.dataset.stHand)}/mark-used`, { method: 'POST', body: { reason: 'handed_over' } }), { pendingElement: b, successMessage: 'მოინიშნა: გადაეცა' }); },
+    })));
+    root.querySelectorAll('[data-st-cancel]').forEach((b) => b.addEventListener('click', () => confirmThen({
+      title: 'გავაუქმო გაცვლა?',
+      message: `მომხმარებელს ${fmt(b.dataset.cost)} Medi Coins დაუბრუნდება და მარაგი ერთით გაიზრდება. ამას ვერ დააბრუნებ.`,
+      confirmLabel: 'გაუქმება',
+      variant: 'warning',
+      onConfirm: async () => { await mutate(() => apiRewards(`/redemptions/${encodeURIComponent(b.dataset.stCancel)}/cancel`, { method: 'POST', body: { reason: 'admin_cancel' } }), { pendingElement: b, successMessage: 'გაუქმდა, მონეტები დაბრუნდა' }); },
+    })));
+    root.querySelectorAll('[data-st-status]').forEach((b) => b.addEventListener('click', () => {
+      const pause = b.dataset.status === 'ACTIVE';
+      confirmThen({
+        title: pause ? 'შევაჩერო საჩუქარი?' : 'გავააქტიურო საჩუქარი?',
+        message: pause ? 'აპის მაღაზიაში აღარ გამოჩნდება. უკვე გაცვლილი გადაცემას ისევ ელოდება.' : 'აპის მაღაზიაში ისევ გამოჩნდება.',
+        confirmLabel: pause ? 'შეჩერება' : 'გააქტიურება',
+        variant: pause ? 'warning' : undefined,
+        onConfirm: async () => { await mutate(() => apiRewards(`/store/${encodeURIComponent(b.dataset.stStatus)}/status`, { method: 'POST', body: { status: pause ? 'PAUSED' : 'ACTIVE' } }), { pendingElement: b, successMessage: pause ? 'შეჩერდა' : 'გააქტიურდა' }); },
+      });
+    }));
+    root.querySelectorAll('[data-st-stock]').forEach((b) => b.addEventListener('click', () => openStockDialog(items.find((i) => i.id === b.dataset.stStock))));
+    root.querySelectorAll('[data-st-edit]').forEach((b) => b.addEventListener('click', () => openStoreItemDialog(items.find((i) => i.id === b.dataset.stEdit))));
+    root.querySelector('[data-st-new]')?.addEventListener('click', () => openStoreItemDialog(null));
+  }
+
+  function openStockDialog(item) {
+    const open = V().openDialog;
+    if (!open || !item) return;
+    const dlg = open({
+      title: `მარაგი · ${item.title}`,
+      body: `<div class="s-stack p2-dialog">
+        <p class="s-muted">ახლა მარაგშია <b>${fmt(item.stock)}</b>. ჩაწერე, რამდენით გაიზარდოს (ან მინუსით შემცირდეს).</p>
+        <div class="p2-store-step">
+          <button type="button" class="btn ghost" data-step="-1" aria-label="ერთით ნაკლები">−</button>
+          <input id="st-delta" class="s-input" type="number" step="1" value="1" aria-label="რაოდენობა">
+          <button type="button" class="btn ghost" data-step="1" aria-label="ერთით მეტი">+</button>
+        </div>
+        <label class="s-field"><span>მიზეზი</span><input id="st-reason" class="s-input" type="text" maxlength="200" value="შევიძინე ახალი"></label>
+        <p class="s-callout is-bad" id="st-err" hidden></p>
+      </div>`,
+      footer: '<button type="button" class="btn ghost" id="st-close">გაუქმება</button><button type="button" class="btn" id="st-save">შენახვა</button>',
+    });
+    const input = $('st-delta');
+    document.querySelectorAll('.p2-store-step [data-step]').forEach((b) => b.addEventListener('click', () => { input.value = String((Number(input.value) || 0) + Number(b.dataset.step)); }));
+    $('st-close')?.addEventListener('click', () => void dlg?.close?.());
+    $('st-save')?.addEventListener('click', async () => {
+      const delta = Math.round(Number(input.value) || 0);
+      const reason = ($('st-reason')?.value || '').trim();
+      const err = $('st-err');
+      if (!delta || reason.length < 3 || item.stock + delta < 0) {
+        err.hidden = false;
+        err.textContent = !delta ? 'ჩაწერე რაოდენობა.' : reason.length < 3 ? 'მიზეზი მინიმუმ 3 ასოა.' : 'მარაგი უარყოფითი ვერ იქნება.';
+        return;
+      }
+      const res = await mutate(() => apiRewards(`/rewards/${encodeURIComponent(item.id)}/inventory/adjust`, { method: 'POST', body: { delta, reason } }), { pendingElement: $('st-save'), successMessage: `მარაგი: ${fmt(item.stock + delta)}` });
+      if (res?.ok !== false) void dlg?.close?.();
+    });
+  }
+
+  /** New prize or edit; the picture is resized in the browser (≤640 px WebP) and stored like the home news pictures. */
+  function openStoreItemDialog(item) {
+    const open = V().openDialog;
+    if (!open) return;
+    const isNew = !item;
+    const v = item || { kind: 'GADGET', perUserLimit: 1 };
+    let imageKey = null;
+    const dlg = open({
+      title: isNew ? 'ახალი საჩუქარი' : `შეცვლა · ${item.title}`,
+      wide: true,
+      body: `<form class="s-stack p2-dialog p2-store-form" id="st-form" novalidate>
+        <div class="p2-store-form-grid">
+          <div class="p2-store-pic">
+            <div class="p2-store-img" id="st-pic">${v.imageUrl ? `<img src="${esc(v.imageUrl)}" alt="">` : ico('image')}</div>
+            <label class="btn ghost compact">${ico('image')} სურათის ატვირთვა<input id="st-file" type="file" accept="image/png,image/jpeg,image/webp" hidden></label>
+            <small class="s-muted" id="st-pic-note">PNG გამჭვირვალე ფონით საუკეთესოა. მაქს. 640 px.</small>
+          </div>
+          <div class="s-stack">
+            <label class="s-field"><span>სახელი (ქართულად)</span><input id="st-title" class="s-input" maxlength="200" value="${esc(v.title || '')}" placeholder="მაგ. JBL Go 4 დინამიკი"></label>
+            <label class="s-field"><span>სახელი (ინგლისურად, არასავალდებულო)</span><input id="st-title-en" class="s-input" maxlength="200" value="${esc(v.titleEn || '')}" placeholder="JBL Go 4 speaker"></label>
+            <label class="s-field"><span>მოკლე აღწერა</span><textarea id="st-desc" class="s-input" rows="2" maxlength="400">${esc(v.description && v.description !== v.title ? v.description : '')}</textarea></label>
+            <label class="s-field"><span>აღწერა (ინგლისურად)</span><textarea id="st-desc-en" class="s-input" rows="2" maxlength="400">${esc(v.descriptionEn || '')}</textarea></label>
+          </div>
+        </div>
+        <div class="p2-store-form-row">
+          <label class="s-field"><span>ტიპი</span><select id="st-kind" class="s-input"><option value="GADGET"${v.kind !== 'GIFT_CARD' ? ' selected' : ''}>გაჯეტი</option><option value="GIFT_CARD"${v.kind === 'GIFT_CARD' ? ' selected' : ''}>სასაჩუქრე ბარათი</option></select></label>
+          <label class="s-field"><span>მაღაზიის ფასი, ₾</span><input id="st-gel" class="s-input" type="number" min="0" value="${esc(v.retailGel ?? '')}"></label>
+          <label class="s-field"><span>ფასი, Medi Coins</span><input id="st-cost" class="s-input" type="number" min="100" max="100000" step="100" value="${esc(v.coinCost ?? '')}"><small class="s-muted p2-store-hint" id="st-cost-hint" title="დააჭირე და ჩაიწერება">100 მონეტა ≈ 1 ₾</small></label>
+          ${isNew ? '<label class="s-field"><span>მარაგი, ცალი</span><input id="st-stock" class="s-input" type="number" min="0" value="1"></label>' : ''}
+          <label class="s-field"><span>ერთ ადამიანს მაქს.</span><input id="st-limit" class="s-input" type="number" min="1" max="20" value="${esc(v.perUserLimit ?? 1)}"></label>
+        </div>
+        <p class="s-callout is-bad" id="st-form-err" hidden></p>
+      </form>`,
+      footer: `<button type="button" class="btn ghost" id="st-f-close">გაუქმება</button><button type="button" class="btn" id="st-f-save">${isNew ? 'დამატება მაღაზიაში' : 'შენახვა'}</button>`,
+    });
+    const gelEl = $('st-gel');
+    const costEl = $('st-cost');
+    const hint = () => {
+      const g = Number(gelEl.value);
+      const c = Number(costEl.value);
+      $('st-cost-hint').textContent = g > 0 && !c ? `შემოთავაზება: ${fmt(Math.round(g * 100 / 500) * 500 + 500)} — დააჭირე` : c ? coinsGel(c) : '100 მონეტა ≈ 1 ₾';
+    };
+    $('st-cost-hint')?.addEventListener('click', () => {
+      const g = Number(gelEl.value);
+      if (g > 0 && !Number(costEl.value)) { costEl.value = String(Math.round(g * 100 / 500) * 500 + 500); hint(); }
+    });
+    gelEl?.addEventListener('input', hint);
+    costEl?.addEventListener('input', hint);
+    hint();
+    $('st-file')?.addEventListener('change', async (e) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+      const note = $('st-pic-note');
+      note.textContent = 'იტვირთება…';
+      try {
+        const resized = await resizeStoreImage(file);
+        const res = await apiRewards('/store/images', { method: 'POST', body: resized });
+        imageKey = res.imageKey;
+        $('st-pic').innerHTML = `<img src="${esc(resized.dataUrl)}" alt="">`;
+        note.textContent = `ატვირთულია · ${resized.width}×${resized.height}`;
+      } catch (err) {
+        note.textContent = errorText(err);
+      }
+    });
+    $('st-f-close')?.addEventListener('click', () => void dlg?.close?.());
+    $('st-f-save')?.addEventListener('click', async () => {
+      const err = $('st-form-err');
+      const title = ($('st-title')?.value || '').trim();
+      const coinCost = Math.round(Number(costEl.value) || 0);
+      if (!title || coinCost < 100 || coinCost > 100000) {
+        err.hidden = false;
+        err.textContent = !title ? 'სახელი სავალდებულოა.' : 'ფასი 100-დან 100 000 მონეტამდე.';
+        return;
+      }
+      const num = (id) => { const x = $(id)?.value; return x === '' || x == null ? null : Math.round(Number(x)); };
+      const body = {
+        title,
+        titleEn: ($('st-title-en')?.value || '').trim() || null,
+        description: ($('st-desc')?.value || '').trim() || title,
+        descriptionEn: ($('st-desc-en')?.value || '').trim() || null,
+        kind: $('st-kind')?.value || 'GADGET',
+        coinCost,
+        retailGel: num('st-gel'),
+        perUserLimit: num('st-limit') || 1,
+        ...(imageKey ? { imageKey } : {}),
+        ...(isNew ? { stock: num('st-stock') || 0 } : {}),
+      };
+      const res = await mutate(
+        () => (isNew ? apiRewards('/store', { method: 'POST', body }) : apiRewards(`/store/${encodeURIComponent(item.id)}`, { method: 'PATCH', body })),
+        { pendingElement: $('st-f-save'), successMessage: isNew ? 'დაემატა მაღაზიაში' : 'შენახულია' },
+      );
+      if (res?.ok !== false) void dlg?.close?.();
+    });
+  }
+
+  function resizeStoreImage(file) {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      const url = URL.createObjectURL(file);
+      img.onload = () => {
+        URL.revokeObjectURL(url);
+        const scale = Math.min(1, 640 / Math.max(img.width, img.height));
+        const width = Math.max(1, Math.round(img.width * scale));
+        const height = Math.max(1, Math.round(img.height * scale));
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        canvas.getContext('2d').drawImage(img, 0, 0, width, height);
+        let dataUrl = canvas.toDataURL('image/webp', 0.86);
+        if (!dataUrl.startsWith('data:image/webp')) dataUrl = canvas.toDataURL('image/png');
+        resolve({ dataUrl, width, height });
+      };
+      img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('სურათი ვერ წავიკითხე — სცადე PNG ან JPEG.')); };
+      img.src = url;
+    });
   }
 
   /* ── Redemption detail (dialog) ───────────────────────── */
@@ -1324,6 +1587,7 @@
     } catch { /* ignore */ }
     try {
       if (edit === 'new') await renderCampaignForm(root, seq);
+      else if (tab === 'store') await renderStore(root, seq);
       else if (tab === 'partners') await renderPartners(root, seq);
       else if (tab === 'campaigns') await renderCampaigns(root, seq);
       else if (tab === 'redemptions') await renderRedemptions(root, seq);

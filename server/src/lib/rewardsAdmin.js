@@ -21,8 +21,12 @@ import {
   QUEST_PREMIUM_ENTITLEMENT_EXISTS,
   REWARD_STATUSES,
   REWARD_TYPES,
+  PERIOD_LIMIT_TYPES,
+  SHOP_TERMS_GADGET,
+  SHOP_TERMS_GIFT_CARD,
 } from './rewardDefs.js';
-import { maskCode } from './rewards.js';
+import { maskCode, ensureRewardDefinitions, rewardImageUrl } from './rewards.js';
+import { validateRewardCoinCost } from './questEconomy.js';
 
 function httpError(message, status = 400, code = null) {
   const error = new Error(message);
@@ -940,6 +944,193 @@ export async function cancelRedemption(id, { admin, reason } = {}, options = {})
     targetId: id,
     previousValue: { status: previous.status },
     newValue: { status: row.status, refundedCoins: previous.coinCost, reason: note },
+  });
+  return row;
+}
+
+
+/**
+ * Admin „მაღაზია“ tab: every store prize (PHYSICAL_PRIZE) with price, stock left and how many redemptions wait,
+ * were handed over or were cancelled. Ensures the catalog rows exist first (they are created lazily).
+ */
+export async function listStoreAdmin(options = {}) {
+  const db = dbOf(options);
+  await ensureRewardDefinitions(db);
+  const rows = await db.rewardDefinition.findMany({
+    where: { type: REWARD_TYPES.PHYSICAL_PRIZE },
+    orderBy: [{ sortOrder: 'asc' }, { key: 'asc' }],
+  });
+  // Prize redemptions are few (finite stock), so plain rows are enough.
+  const reds = rows.length
+    ? await db.rewardRedemption.findMany({ where: { rewardId: { in: rows.map((r) => r.id) } }, select: { rewardId: true, status: true } })
+    : [];
+  const by = new Map();
+  for (const r of reds) {
+    const m = by.get(r.rewardId) || {};
+    m[r.status] = (m[r.status] || 0) + 1;
+    by.set(r.rewardId, m);
+  }
+  const items = rows.map((r) => {
+    const n = by.get(r.id) || {};
+    const meta = r.metadata && typeof r.metadata === 'object' ? r.metadata : {};
+    return {
+      id: r.id,
+      key: r.key,
+      title: r.titleKey,
+      titleEn: meta.titleEn || null,
+      description: r.descriptionKey,
+      descriptionEn: meta.descriptionEn || null,
+      imageUrl: rewardImageUrl(r.imageKey),
+      status: r.status,
+      coinCost: r.coinCost,
+      stock: r.inventoryQuantity ?? 0,
+      perUserLimit: r.perUserLimit ?? null,
+      kind: meta.kind || null,
+      retailGel: meta.retailGel ?? null,
+      pending: n.PENDING || 0,
+      handedOver: n.USED || 0,
+      cancelled: n.CANCELLED || 0,
+    };
+  });
+  const sum = (f) => items.reduce((s, i) => s + f(i), 0);
+  return {
+    items,
+    totals: {
+      items: items.length,
+      pending: sum((i) => i.pending),
+      handedOver: sum((i) => i.handedOver),
+      stockValueGel: sum((i) => (i.retailGel || 0) * i.stock),
+      spentGel: sum((i) => (i.retailGel || 0) * (i.handedOver + i.pending)),
+    },
+  };
+}
+
+
+const STORE_KINDS = new Set(['GADGET', 'GIFT_CARD']);
+
+function storeFields(input, previous = null) {
+  const meta = { ...((previous?.metadata && typeof previous.metadata === 'object') ? previous.metadata : {}) };
+  const kind = input.kind && STORE_KINDS.has(input.kind) ? input.kind : meta.kind || 'GADGET';
+  const data = {};
+  if (input.title != null) data.titleKey = String(input.title).trim().slice(0, 200);
+  if (input.description != null) data.descriptionKey = String(input.description).trim().slice(0, 400);
+  if (input.coinCost != null) data.coinCost = validateRewardCoinCost(Number(input.coinCost));
+  if (input.perUserLimit !== undefined) {
+    const n = input.perUserLimit == null ? null : Math.max(1, Math.min(20, Number(input.perUserLimit)));
+    data.perUserLimit = n;
+    data.periodLimitType = n == null ? PERIOD_LIMIT_TYPES.NONE : PERIOD_LIMIT_TYPES.LIFETIME;
+    data.periodLimitCount = n;
+  }
+  if (input.imageKey !== undefined) data.imageKey = input.imageKey || null;
+  if (input.sortOrder != null) data.sortOrder = Math.max(0, Math.min(10_000, Number(input.sortOrder)));
+  if (input.featured != null) data.featured = Boolean(input.featured);
+  data.termsKey = kind === 'GIFT_CARD' ? SHOP_TERMS_GIFT_CARD : SHOP_TERMS_GADGET;
+  for (const [k, v] of [['titleEn', input.titleEn], ['descriptionEn', input.descriptionEn]]) {
+    if (v !== undefined) meta[k] = v ? String(v).trim().slice(0, k === 'titleEn' ? 200 : 400) : null;
+  }
+  if (input.retailGel !== undefined) meta.retailGel = input.retailGel == null ? null : Math.max(0, Math.round(Number(input.retailGel)));
+  meta.kind = kind;
+  meta.fulfilment = 'MANUAL_TBILISI';
+  meta.adminManaged = true;
+  data.metadata = meta;
+  return data;
+}
+
+/** New store prize from admin („ახალი საჩუქარი“): FINITE stock, PENDING hand-over like the catalog prizes. */
+export async function createStoreItem(input, { admin } = {}, options = {}) {
+  const db = dbOf(options);
+  const stock = Math.max(0, Math.min(10_000, Math.round(Number(input.stock) || 0)));
+  const data = storeFields(input);
+  if (!data.titleKey) throw httpError('სახელი სავალდებულოა.', 400);
+  if (!data.coinCost) throw httpError('ფასი სავალდებულოა.', 400);
+  const id = randomUUID();
+  const row = await db.$transaction(async (tx) => {
+    const created = await tx.rewardDefinition.create({
+      data: {
+        id,
+        key: `SHOP_CUSTOM_${id.slice(0, 8).toUpperCase()}`,
+        type: REWARD_TYPES.PHYSICAL_PRIZE,
+        status: input.status === REWARD_STATUSES.PAUSED ? REWARD_STATUSES.PAUSED : REWARD_STATUSES.ACTIVE,
+        descriptionKey: data.descriptionKey || data.titleKey,
+        inventoryMode: INVENTORY_MODES.FINITE,
+        inventoryQuantity: stock,
+        redemptionExpiryDays: null,
+        sortOrder: data.sortOrder ?? 500,
+        featured: data.featured ?? false,
+        ...data,
+        perUserLimit: data.perUserLimit ?? 1,
+        periodLimitType: data.periodLimitType ?? PERIOD_LIMIT_TYPES.LIFETIME,
+        periodLimitCount: data.periodLimitCount ?? 1,
+      },
+    });
+    if (stock > 0) {
+      await tx.rewardInventoryAdjustment.create({
+        data: { id: randomUUID(), rewardId: id, delta: stock, reason: 'INITIAL_STOCK', actorType: 'ADMIN', actorId: admin?.id || null },
+      });
+    }
+    return created;
+  });
+  await writeAdminAudit({ admin, action: 'REWARD_DEFINITION_CREATED', targetType: 'rewardDefinition', targetId: id, newValue: { key: row.key, title: row.titleKey, coinCost: row.coinCost, stock } });
+  return row;
+}
+
+/** Edit a store prize (catalog or admin-made). From then on the catalog code leaves it alone. Stock: inventory adjust. */
+export async function updateStoreItem(id, input, { admin } = {}, options = {}) {
+  const db = dbOf(options);
+  const previous = await db.rewardDefinition.findUnique({ where: { id } });
+  if (!previous || previous.type !== REWARD_TYPES.PHYSICAL_PRIZE) throw httpError('store item not found', 404);
+  const data = storeFields(input, previous);
+  const row = await db.rewardDefinition.update({ where: { id }, data });
+  await writeAdminAudit({
+    admin,
+    action: 'REWARD_DEFINITION_UPDATED',
+    targetType: 'rewardDefinition',
+    targetId: id,
+    previousValue: { title: previous.titleKey, coinCost: previous.coinCost, perUserLimit: previous.perUserLimit },
+    newValue: { title: row.titleKey, coinCost: row.coinCost, perUserLimit: row.perUserLimit },
+  });
+  return row;
+}
+
+/**
+ * Who swapped what: store prize redemptions with the account to call (name + phone) — the team needs it to hand the
+ * prize over. Store prizes only; other rewards keep the masked list.
+ */
+export async function listStoreRedemptions({ status = null, limit = 200 } = {}, options = {}) {
+  const db = dbOf(options);
+  const rows = await db.rewardRedemption.findMany({
+    where: { reward: { type: REWARD_TYPES.PHYSICAL_PRIZE }, ...(status ? { status } : {}) },
+    orderBy: { redeemedAt: 'desc' },
+    take: Math.min(500, Math.max(1, Number(limit) || 200)),
+    include: { reward: true, user: { select: { id: true, fullName: true, phone: true } } },
+  });
+  return rows.map((r) => ({
+    id: r.id,
+    status: r.status,
+    coinCost: r.coinCost,
+    redeemedAt: r.redeemedAt,
+    usedAt: r.usedAt,
+    cancelledAt: r.cancelledAt,
+    cancellationReason: r.cancellationReason,
+    reward: r.reward ? { id: r.reward.id, key: r.reward.key, title: r.reward.titleKey, imageUrl: rewardImageUrl(r.reward.imageKey) } : null,
+    user: r.user ? { id: r.user.id, name: r.user.fullName || null, phone: r.user.phone || null } : null,
+  }));
+}
+
+/** Pause or resume one store prize (ensureRewardDefinitions keeps a PAUSED row paused). */
+export async function setStoreItemStatus(id, status, { admin } = {}, options = {}) {
+  const db = dbOf(options);
+  if (status !== REWARD_STATUSES.ACTIVE && status !== REWARD_STATUSES.PAUSED) throw httpError('status must be ACTIVE or PAUSED', 400);
+  const previous = await db.rewardDefinition.findUnique({ where: { id } });
+  if (!previous || previous.type !== REWARD_TYPES.PHYSICAL_PRIZE) throw httpError('store item not found', 404);
+  const row = await db.rewardDefinition.update({ where: { id }, data: { status } });
+  await writeAdminAudit({
+    admin,
+    action: 'REWARD_DEFINITION_STATUS_CHANGED',
+    targetType: 'rewardDefinition',
+    targetId: id,
+    previousValue: { status: previous.status },
+    newValue: { status },
   });
   return row;
 }

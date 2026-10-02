@@ -324,7 +324,7 @@ function RewardCard({
             backgroundColor: dark ? QUEST.wash.dark : QUEST.wash.light,
           }}
         >
-          <QuestArt source={rewardArt(reward)} size={Math.round(QUEST.icon * 0.8)} />
+          <QuestArt source={rewardArt(reward)} size={Math.round(QUEST.icon * (reward.imageUrl ? 0.96 : 0.8))} />
         </View>
         <View style={{ flex: 1, minWidth: 0, gap: 4 }}>
           <Text numberOfLines={2} style={{ fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 15, lineHeight: 20, color: colors.text100 }}>
@@ -344,6 +344,11 @@ function RewardCard({
             </Text>
             {reward.inventoryState === 'OUT_OF_STOCK' ? (
               <Text style={{ fontFamily: 'NotoSansGeorgian_500Medium', fontSize: 12, color: colors.text300 }}>{copy.outOfStock}</Text>
+            ) : reward.type === 'PHYSICAL_PRIZE' && typeof reward.inventoryRemaining === 'number' && reward.inventoryRemaining > 0 ? (
+              <Text style={{ fontFamily: 'NotoSansGeorgian_600SemiBold', fontSize: 12, color: colors.text200 }}>
+                {copy.left(formatQuestNumber(reward.inventoryRemaining, appLang()))}
+                {shortfall > 0 ? ` · ${copy.needMore(formatQuestNumber(shortfall, appLang()))}` : ''}
+              </Text>
             ) : shortfall > 0 ? (
               <Text style={{ fontFamily: 'NotoSansGeorgian_500Medium', fontSize: 12, color: colors.text300 }}>
                 {copy.needMore(formatQuestNumber(shortfall, appLang()))}

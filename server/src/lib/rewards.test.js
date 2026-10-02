@@ -18,10 +18,11 @@ import {
   ensureRewardDefinitions,
   importRewardCodes,
   listStoreRewards,
+  localizeReward,
   redeemReward,
   rewardImageUrl,
 } from './rewards.js';
-import { cancelRedemption, markRedemptionUsed } from './rewardsAdmin.js';
+import { cancelRedemption, createStoreItem, listStoreAdmin, markRedemptionUsed, setStoreItemStatus, updateStoreItem } from './rewardsAdmin.js';
 import { SHOP_PRIZES } from './rewardDefs.js';
 
 const USER = 'user-rewards-1';
@@ -464,5 +465,50 @@ describe('store prizes (gift cards, gadgets)', () => {
     const b = await redeemReward(USER, buds.id, { ...options, idempotencyKey: 'shop-buds-2' });
     const used = await markRedemptionUsed(b.redemption.id, { admin: { id: 'admin-1' } }, options);
     assert.equal(used.status, 'USED');
+  });
+});
+
+describe('admin store tab', () => {
+  it('lists every prize with stock and redemption counts, and pausing survives the catalog refresh', async () => {
+    const { db, options } = await setup();
+    const card = [...db._state.rewardDefinition.values()].find((r) => r.key === 'SHOP_GIFTCARD_50');
+    await creditCoins(db, USER, 10_000);
+    await redeemReward(USER, card.id, { ...options, idempotencyKey: 'store-tab-1' });
+    const out = await listStoreAdmin(options);
+    assert.equal(out.items.length, SHOP_PRIZES.length);
+    const row = out.items.find((i) => i.key === 'SHOP_GIFTCARD_50');
+    assert.equal(row.pending, 1);
+    assert.equal(row.stock, 9);
+    assert.equal(row.title, card.titleKey);
+    assert.equal(out.totals.pending, 1);
+    await setStoreItemStatus(card.id, 'PAUSED', { admin: { id: 'admin-1' } }, options);
+    await ensureRewardDefinitions(db);
+    assert.equal([...db._state.rewardDefinition.values()].find((r) => r.key === 'SHOP_GIFTCARD_50').status, 'PAUSED');
+    await assert.rejects(() => setStoreItemStatus(card.id, 'ARCHIVED', {}, options), (e) => e.status === 400);
+  });
+});
+
+describe('admin store management', () => {
+  it('creates a prize with stock, edits survive the catalog refresh, English readers get the English copy', async () => {
+    const { db, options } = await setup();
+    const item = await createStoreItem({ title: 'JBL Go 4', titleEn: 'JBL Go 4 speaker', description: 'პატარა დინამიკი', coinCost: 12000, stock: 4, retailGel: 119, kind: 'GADGET', imageKey: '/rewards/buds.webp' }, { admin: { id: 'admin-1' } }, options);
+    assert.match(item.key, /^SHOP_CUSTOM_/);
+    assert.equal(item.inventoryQuantity, 4);
+    assert.equal(item.metadata.adminManaged, true);
+    const en = localizeReward(item, 'en');
+    assert.equal(en.titleKey, 'JBL Go 4 speaker');
+    assert.equal(localizeReward(item, 'ka').titleKey, 'JBL Go 4');
+
+    const watch = [...db._state.rewardDefinition.values()].find((r) => r.key === 'SHOP_WATCH');
+    await updateStoreItem(watch.id, { coinCost: 65000, title: 'Apple Watch SE 3 · 40 მმ' }, { admin: { id: 'admin-1' } }, options);
+    await ensureRewardDefinitions(db);
+    const after = [...db._state.rewardDefinition.values()].find((r) => r.key === 'SHOP_WATCH');
+    assert.equal(after.coinCost, 65000);
+    assert.equal(after.titleKey, 'Apple Watch SE 3 · 40 მმ');
+
+    await assert.rejects(() => updateStoreItem(watch.id, { coinCost: 50 }, {}, options), /range/);
+    const list = await listStoreAdmin(options);
+    assert.equal(list.items.length, SHOP_PRIZES.length + 1);
+    assert.equal(rewardImageUrl('/api/announcements/image/0f8fad5b-d9cb-469f-a165-70867728950e'), 'https://medicard.ge/api/announcements/image/0f8fad5b-d9cb-469f-a165-70867728950e');
   });
 });
