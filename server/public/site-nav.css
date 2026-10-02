@@ -56,8 +56,9 @@ body.tb-offset { padding-top: 92px; }
   font-size: 14px; font-weight: 500; white-space: nowrap; color: var(--tb-ink-2);
   transition: color .2s;
 }
-/* MEDIRUN campaign: a small live dot instead of an icon */
-.tb-live { width: 7px; height: 7px; border-radius: 50%; background: #14B8A6; box-shadow: 0 0 0 3px rgba(20, 184, 166, .18); animation: tb-live 1.8s infinite; }
+/* MEDIRUN campaign: a small live dot on the corner of its icon */
+.tb-ico { position: relative; display: inline-flex; }
+.tb-live { position: absolute; right: -3px; top: -2px; width: 7px; height: 7px; border-radius: 50%; background: #14B8A6; box-shadow: 0 0 0 3px rgba(20, 184, 166, .18); animation: tb-live 1.8s infinite; }
 @keyframes tb-live { 0%, 100% { box-shadow: 0 0 0 3px rgba(20, 184, 166, .18); } 50% { box-shadow: 0 0 0 6px rgba(20, 184, 166, 0); } }
 @media (prefers-reduced-motion: reduce) { .tb-live { animation: none; } }
 .tb-link svg { flex: none; opacity: .75; transition: transform .35s var(--tb-ease), opacity .2s; }
@@ -163,6 +164,8 @@ a.store-badge.is-official:hover::after { transform: translateX(120%); }
 
 @media (max-width: 1180px) {
   .tb-link { padding: 0 9px; font-size: 13.5px; }
+  .tb-link svg:not(.tb-caret) { display: none; }
+  .tb-live { position: static; }
 }
 
 @media (max-width: 1000px) {

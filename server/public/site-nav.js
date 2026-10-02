@@ -86,10 +86,10 @@
 
   var links = ITEMS.filter(function (it) { return it.bar !== false; }).map(function (it) {
     var cur = it.key === current ? ' aria-current="page"' : '';
-    var a = '<a class="tb-link' + (it.live ? ' is-live' : '') + '" href="' + it.href + '" data-key="' + it.key + '"' + cur + '>' + (it.live ? '<i class="tb-live" aria-hidden="true"></i>' : '') + '<span>' + esc(it.label) + '</span></a>';
+    var a = '<a class="tb-link' + (it.live ? ' is-live' : '') + '" href="' + it.href + '" data-key="' + it.key + '"' + cur + '>' + (it.live ? '<span class="tb-ico">' + ICON[it.icon] + '<i class="tb-live" aria-hidden="true"></i></span>' : ICON[it.icon]) + '<span>' + esc(it.label) + '</span></a>';
     if (!it.mega) return a;
     return '<div class="tb-has-mega">' +
-      '<a class="tb-link" href="' + it.href + '" data-key="' + it.key + '"' + cur + ' aria-haspopup="true" aria-expanded="false" aria-controls="tb-mega"><span>' + esc(it.label) + '</span>' +
+      '<a class="tb-link" href="' + it.href + '" data-key="' + it.key + '"' + cur + ' aria-haspopup="true" aria-expanded="false" aria-controls="tb-mega">' + ICON[it.icon] + '<span>' + esc(it.label) + '</span>' +
       '<svg class="tb-caret" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></a>' +
       mega + '</div>';
   }).join('');
