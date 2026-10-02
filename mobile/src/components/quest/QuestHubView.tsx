@@ -17,6 +17,7 @@ import { QuestArt, QuestCoinMark } from './QuestIcon';
 import { QUEST_GIFT_ART, QUEST_STEPS_ART, QUEST_STREAK_ART, QUEST_TROPHY_ART } from './questArt';
 import { Bone } from '@/components/ui/Skeleton';
 import { useIsDark, useThemeColors } from '@/theme/colors';
+import { isHrefAvailable, useFeatureState } from '@/lib/featureFlags';
 import { QButton, QCard, QF, QHeading, QLink, QNotice, QText } from './QuestHubPrimitives';
 
 export type QuestHubViewProps = {
@@ -40,10 +41,13 @@ export function QuestHubView(p: QuestHubViewProps) {
   const setupSteps = ![...daily, ...weekly].some(q => q.progressType === 'STEPS');
   const setupWater = !daily.some(q => q.progressType === 'HYDRATION_GOAL_PERCENT');
   const open = p.onNavigate;
+  // Links into a module an admin paused (admin „მოდულები“) are left out; the missions themselves stay.
+  const features = useFeatureState();
+  const can = (href: string) => isHrefAvailable(href, features);
   const card = (quest: QuestItem, weeklyCard = false) => <View key={quest.id} style={{ gap: 8 }}>
-    <QuestCard quest={quest} weekly={weeklyCard} offline={p.offline || p.stale} claiming={p.claimingId === quest.id} claimDisabled={Boolean(p.claimingId)} onClaim={() => p.onClaim(quest.id)} onOpenMedi={() => open('/assistant?mode=doctor')}
+    <QuestCard quest={quest} weekly={weeklyCard} offline={p.offline || p.stale} claiming={p.claimingId === quest.id} claimDisabled={Boolean(p.claimingId)} onClaim={() => p.onClaim(quest.id)} onOpenMedi={can('/assistant') ? () => open('/assistant?mode=doctor') : undefined}
       contextHint={p.contextFor?.(quest)} whyTargetLabel={p.whyLabel?.(quest)} onWhyTarget={() => p.onWhy?.(quest)}
-      action={quest.status === 'ACTIVE' && quest.progressType === 'STEPS' ? { label: tx('ნაბიჯების ნახვა', 'View steps'), onPress: () => open('/health-metrics/steps') } : quest.status === 'ACTIVE' && quest.progressType === 'HYDRATION_GOAL_PERCENT' ? { label: tx('წყლის ჩაწერა', 'Log water'), onPress: () => open('/health-metrics/hydration') } : undefined} />
+      action={quest.status === 'ACTIVE' && quest.progressType === 'STEPS' && can('/health-metrics/steps') ? { label: tx('ნაბიჯების ნახვა', 'View steps'), onPress: () => open('/health-metrics/steps') } : quest.status === 'ACTIVE' && quest.progressType === 'HYDRATION_GOAL_PERCENT' && can('/health-metrics/hydration') ? { label: tx('წყლის ჩაწერა', 'Log water'), onPress: () => open('/health-metrics/hydration') } : undefined} />
     {p.claimError?.id === quest.id ? <QNotice text={p.claimError.message} danger /> : null}
   </View>;
   const companionBody = (content: React.ReactNode) => p.companion ? <View style={{ gap: 12 }}>
@@ -86,8 +90,8 @@ export function QuestHubView(p: QuestHubViewProps) {
           </View>
           {weekly.length ? <View style={{ gap: 12 }}><QHeading title={tx('კვირის გამოწვევა', 'Weekly challenge')} meta={tx('ორშაბათი — კვირა', 'Monday — Sunday')} />{weekly.map(q => card(q, true))}</View> : null}
           {setupSteps ? <QLink title={tx('ნაბიჯები დაუკავშირე', 'Connect your steps')} body={tx('შეამოწმე ჯანმრთელობის აპის წვდომა მოძრაობის მისიებისთვის.', 'Check health app access for movement missions.')} art={QUEST_STEPS_ART} onPress={() => open('/profile/permissions')} /> : null}
-          {setupWater ? <QLink title={tx('წყლის მიზანი დააყენე', 'Set a water goal')} body={tx('შენი დღიური მიზანი ჰიდრატაციის მისიას გახსნის.', 'Your daily goal unlocks the hydration mission.')} art={QUEST_ART.hydration} onPress={() => open('/health-metrics/hydration')} /> : null}
-          <QLink title={tx('მოიწვიე ოჯახის წევრი', 'Invite a family member')} body={tx('პირველი ჩანაწერის შემდეგ ორივე მიიღებთ 100 Medi მონეტას.', 'After their first entry, you both get 100 Medi Coins.')} art={QUEST_GIFT_ART} onPress={() => open('/profile/invite')} />
+          {setupWater && can('/health-metrics/hydration') ? <QLink title={tx('წყლის მიზანი დააყენე', 'Set a water goal')} body={tx('შენი დღიური მიზანი ჰიდრატაციის მისიას გახსნის.', 'Your daily goal unlocks the hydration mission.')} art={QUEST_ART.hydration} onPress={() => open('/health-metrics/hydration')} /> : null}
+          {can('/profile/invite') ? <QLink title={tx('მოიწვიე ოჯახის წევრი', 'Invite a family member')} body={tx('პირველი ჩანაწერის შემდეგ ორივე მიიღებთ 100 Medi მონეტას.', 'After their first entry, you both get 100 Medi Coins.')} art={QUEST_GIFT_ART} onPress={() => open('/profile/invite')} /> : null}
           <QLink title={tx('ნახე, როგორ ვითარდები', 'See how you’re growing')} body={tx('ეტაპები და კოლექცია — შენი შესრულებული მისიებიდან.', 'Stages and collection — built from the missions you’ve completed.')} art={QUEST_TROPHY_ART} onPress={() => { p.onTab('progress'); scroll.current?.scrollTo({ y: 0, animated: false }); }} />
         </> : p.tab === 'progress' ? <>
           <View><QText size={25} bold>{tx('ყოველი მისია წინ გწევს.', 'Every mission moves you forward.')}</QText><QText size={13} muted>{tx('შენი ეტაპები, სერია და მიღწევები ერთ გზაზე.', 'Your stages, streak and achievements on one path.')}</QText></View>

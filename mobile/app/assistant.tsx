@@ -18,8 +18,9 @@ import { api, assistantRequest, ApiError } from '@/lib/api';
 import { localAccountId } from '@/lib/localAccount';
 import { MediConsultation } from '@/components/chat/MediConsultation';
 import { MediHeader } from '@/components/assistant/MediHeader';
-import { apiModeFor, legacyChatRouteToMedi, mediModeFromParam, mediRoute } from '@/lib/mediModes';
+import { apiModeFor, legacyChatRouteToMedi, MEDI_MODES, mediModeFromParam, mediRoute, type MediMode } from '@/lib/mediModes';
 import { assistantDisplay, assistantFieldLabels, stageAssistantLaunch, type AssistantAction, type AssistantChoices, type AssistantNative, type AssistantPlan, type AssistantReview, type AssistantTool, type AssistantFeature, type AssistantGroup } from '@/lib/assistant';
+import { featureForHref, featureMessage, isFeatureOn, isHrefAvailable, useFeature, useFeatureState } from '@/lib/featureFlags';
 import { tx } from '@/i18n/locale';
 
 type Turn = { role: 'user' | 'assistant'; content: string };
@@ -29,19 +30,27 @@ export default function AssistantScreen() {
   const router = useRouter();
   const theme = useThemeColors();
   const params = useLocalSearchParams<{ mode?: string; sessionId?: string; prefill?: string }>();
+  const features = useFeatureState();
   if (!user) return null;
-  const mode = mediModeFromParam(params.mode);
-  const apiMode = apiModeFor(mode);
+  // Doctor and deep analysis can be paused from admin („მოდულები“); Medi itself is covered by ModuleGate.
+  // The switch offers only modes that are on. A saved conversation of a paused mode stays readable;
+  // a new one opens the regular Medi chat with the admin's message instead.
+  const modeOn = (m: MediMode) => m === 'medi' || isHrefAvailable(mediRoute({ mode: m }), features);
+  const requested = mediModeFromParam(params.mode);
   const sessionId = typeof params.sessionId === 'string' ? params.sessionId : undefined;
+  const requestedOn = modeOn(requested);
+  const pausedMessage = requestedOn ? undefined : featureMessage(featureForHref(mediRoute({ mode: requested })) ?? 'medi', features);
+  const mode: MediMode = requestedOn || sessionId ? requested : 'medi';
+  const apiMode = apiModeFor(mode);
   if (apiMode) {
-    return <MediConsultation apiMode={apiMode} sessionId={sessionId} prefill={typeof params.prefill === 'string' ? params.prefill : undefined}
-      header={() => <MediHeader subtitle={ka.chat.mediModeSubtitles[mode]} mode={mode} onMode={next => router.replace(mediRoute({ mode: next }) as never)}
+    return <MediConsultation apiMode={apiMode} sessionId={sessionId} prefill={requestedOn && typeof params.prefill === 'string' ? params.prefill : undefined} pausedMessage={pausedMessage}
+      header={() => <MediHeader subtitle={ka.chat.mediModeSubtitles[mode]} mode={mode} modes={MEDI_MODES.filter(m => m === mode || modeOn(m))} onMode={next => router.replace(mediRoute({ mode: next }) as never)}
         onBack={() => (router.canGoBack() ? router.back() : router.replace('/(tabs)/home' as never))}
         right={<Pressable accessibilityRole="button" accessibilityLabel={tx('AI და კონფიდენციალურობა', 'AI and privacy')} onPress={() => router.push('/profile/ai-data' as never)} style={{ width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center' }}><SlidersHorizontal size={21} color={theme.text200} /></Pressable>} />} />;
   }
-  return <AssistantSession key={`${user.id}:${sessionId ?? 'new'}`} owner={user.id} sessionId={sessionId} />;
+  return <AssistantSession key={`${user.id}:${sessionId ?? 'new'}`} owner={user.id} sessionId={sessionId} modes={MEDI_MODES.filter(modeOn)} pausedMessage={pausedMessage} />;
 }
-function AssistantSession({ owner, sessionId }: { owner: string; sessionId?: string }) {
+function AssistantSession({ owner, sessionId, modes, pausedMessage }: { owner: string; sessionId?: string; modes: readonly MediMode[]; pausedMessage?: string }) {
   const C = useThemeColors(), router = useRouter();
   const { refreshHealthProfile } = useAuth();
   const scope = 'auto' as const;
@@ -52,7 +61,10 @@ function AssistantSession({ owner, sessionId }: { owner: string; sessionId?: str
   const [features, setFeatures] = useState<AssistantFeature[]>([]), [groups, setGroups] = useState<AssistantGroup[]>([]);
   const [choices, setChoices] = useState<AssistantChoices>({});
   const [voice, setVoice] = useState(false), [voiceOutput, setVoiceOutput] = useState(false);
-  const [notice, setNotice] = useState<string | null>(null);
+  // Voice can be paused from admin: no microphone and no spoken replies; typing keeps working.
+  const voiceOn = useFeature('voice');
+  const voiceIn = voice && voiceOn, voiceOut = voiceOutput && voiceOn;
+  const [notice, setNotice] = useState<string | null>(pausedMessage ?? null);
   const [voiceMode, setVoiceMode] = useState(true);
   const [text, setText] = useState('');
   const [history, setHistory] = useState<Turn[]>([]);
@@ -83,8 +95,8 @@ function AssistantSession({ owner, sessionId }: { owner: string; sessionId?: str
   }, [sessionId, owner]);
   const retryPlan = useRef<{ value: string; fromVoice: boolean; petId?: string } | null>(null);
   const valid = (n = generation.current) => alive.current && focused.current && owner === localAccountId() && n === generation.current;
-  const speech = useAssistantSpeech(owner, voiceOutput, setNotice);
-  const capture = useAssistantVoice({ owner, blocked: !!busy,
+  const speech = useAssistantSpeech(owner, voiceOut, setNotice);
+  const capture = useAssistantVoice({ owner, blocked: !!busy || !voiceIn,
     beforeStart: () => { retryPlan.current = null; speech.stop(); Keyboard.dismiss(); setError(null); setNotice(null); setVoiceMode(true); setManual(false); },
     onTranscript: value => { void send(value, true); },
     onError: setError, onNotice: setNotice,
@@ -162,8 +174,14 @@ function AssistantSession({ owner, sessionId }: { owner: string; sessionId?: str
       if (result.native) {
         // Open immediately; waiting for TTS playback made native handoffs feel stalled.
         // A consultation handoff switches /assistant's mode in place instead of opening another screen.
-        if (stageAssistantLaunch(owner, result.operationId, result.native)) {
-          if (result.native.route.startsWith('/chat/')) router.replace(legacyChatRouteToMedi(result.native.route) as never);
+        const consult = result.native.route.startsWith('/chat/');
+        const target = consult ? legacyChatRouteToMedi(result.native.route) : result.native.route;
+        const paused = featureForHref(target);
+        if (paused && !isFeatureOn(paused)) {
+          // The destination's module (or Medi mode) is paused from admin: say so instead of opening it.
+          setNotice(featureMessage(paused));
+        } else if (stageAssistantLaunch(owner, result.operationId, result.native)) {
+          if (consult) router.replace(target as never);
           else router.push(result.native.route as never);
         }
       } else {
@@ -252,10 +270,10 @@ function AssistantSession({ owner, sessionId }: { owner: string; sessionId?: str
   </Pressable>;
   const resetConversation = () => { if (working.current || capture.isBusy()) return; speech.stop(); generation.current++; conversation.current = undefined; if (sessionId) router.replace('/assistant' as never); setHistory([]); setReview(null); setDraft(null); setReceipt(null); setText(''); setManual(false); setMenu(false); setError(null); setNotice(null); setHistoryOpen(false); setVoiceMode(true); };
   const goBack = () => { if (picker) setPicker(false); else if (manual) setManual(false); else if (menu || historyOpen) { setMenu(false); setHistoryOpen(false); } else if (router.canGoBack()) router.back(); else router.replace('/(tabs)/home' as never); };
-  const header = <MediHeader subtitle={ka.chat.mediModeSubtitles.medi} mode="medi" onMode={next => { if (next !== 'medi') router.replace(mediRoute({ mode: next }) as never); }} onBack={goBack}
+  const header = <MediHeader subtitle={ka.chat.mediModeSubtitles.medi} mode="medi" modes={modes} onMode={next => { if (next !== 'medi') router.replace(mediRoute({ mode: next }) as never); }} onBack={goBack}
     right={<Pressable accessibilityRole="button" accessibilityLabel={tx('საუბრის პარამეტრები', 'Conversation options')} accessibilityState={{ expanded: menu }} disabled={!!busy || capture.phase !== 'idle'} onPress={() => { speech.stop(); Keyboard.dismiss(); setMenu(!menu); }} style={{ width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center', backgroundColor: menu ? C.bg200 : 'transparent' }}><Ellipsis size={23} color={C.text200} /></Pressable>} />;
   return <ChatScreenShell style={{ backgroundColor: C.bg100 }} header={header}
-    footer={picker || menu || historyOpen ? undefined : <AssistantTalkDock voice={voice} voiceOutput={voiceOutput} phase={capture.phase} duration={capture.duration} metering={capture.metering}
+    footer={picker || menu || historyOpen ? undefined : <AssistantTalkDock voice={voiceIn} voiceOutput={voiceOut} phase={capture.phase} duration={capture.duration} metering={capture.metering}
       speechPhase={speech.phase} muted={speech.muted} busy={busy} reviewing={!!review} text={text} onText={setText} onSend={() => void send()} tapMode={tapMode}
       voiceStage={voiceMode && !manual} formActive={!!draft && manual} formEditing={formEditing} onTextFocus={() => setFormEditing(false)} onSave={() => void prepare(true)} onMode={typing => { setVoiceMode(!typing); if (!typing) setManual(false); }}
       start={capture.start} release={capture.release} cancel={capture.cancel} stopSpeech={speech.stop} toggleSpeech={speech.toggle} />}>
@@ -264,8 +282,8 @@ function AssistantSession({ owner, sessionId }: { owner: string; sessionId?: str
       {button(tx('საუბრის გაგრძელება', 'Continue conversation'), () => setMenu(false), true)}
       {history.length ? button(tx('საუბრის ისტორია', 'Conversation history'), () => { setMenu(false); setHistoryOpen(true); }) : null}
       {button(tx('რას აკეთებს Medi', 'What Medi can do'), () => { setMenu(false); showDirectory(); })}
-      {button(tapMode ? tx('ჩაწერა: ერთი შეხებით', 'Recording: tap') : tx('ჩაწერა: დაჭერით და აშვებით', 'Recording: hold and release'), () => setTapMode(!tapMode))}
-      <Text style={quiet}>{tapMode ? tx('შეხება იწყებს ჩაწერას. მეორე შეხება აგზავნის.', 'Tap to start recording. Tap again to send.') : tx('გეჭიროს საუბრისას. აშვებისას შენი ნათქვამი იგზავნება.', 'Hold while you speak. Release to send what you said.')} {tx('Medi გისმენს მხოლოდ ჩაწერისას. ჩანაწერის შენახვამდე გეკითხება.', 'Medi only listens while recording and asks you before saving anything.')}</Text>
+      {voiceIn ? button(tapMode ? tx('ჩაწერა: ერთი შეხებით', 'Recording: tap') : tx('ჩაწერა: დაჭერით და აშვებით', 'Recording: hold and release'), () => setTapMode(!tapMode)) : null}
+      {voiceIn ? <Text style={quiet}>{tapMode ? tx('შეხება იწყებს ჩაწერას. მეორე შეხება აგზავნის.', 'Tap to start recording. Tap again to send.') : tx('გეჭიროს საუბრისას. აშვებისას შენი ნათქვამი იგზავნება.', 'Hold while you speak. Release to send what you said.')} {tx('Medi გისმენს მხოლოდ ჩაწერისას. ჩანაწერის შენახვამდე გეკითხება.', 'Medi only listens while recording and asks you before saving anything.')}</Text> : null}
       {history.length || draft || review ? button(tx('ახალი საუბარი', 'New conversation'), resetConversation) : null}
     </ChatFormScroll> : historyOpen ? <ChatFormScroll contentContainerStyle={{ padding: 20, gap: 16 }}>
       {history.map((turn, i) => <View key={i} style={{ alignSelf: turn.role === 'user' ? 'flex-end' : 'stretch', maxWidth: '95%', padding: 16, borderRadius: 20, backgroundColor: turn.role === 'user' ? C.bg200 : C.surface }}><Text selectable style={{ color: C.text100, fontSize: 14, lineHeight: 24, fontFamily: 'NotoSansGeorgian_400Regular' }}>{turn.content}</Text></View>)}
@@ -275,9 +293,9 @@ function AssistantSession({ owner, sessionId }: { owner: string; sessionId?: str
       {error ? <Text accessibilityRole="alert" style={{ ...quiet, color: C.danger }}>{error}</Text> : null}
       <AssistantForm onFieldFocus={() => { speech.stop(); setFormEditing(true); }} key={draft.tool} schema={activeTool.parameters} values={draft.args} focusFields={focusFields} choices={{ ...choices, id: draft.tool.startsWith('visit_') ? choices.visitId : choices.medicationId }} disabled={!!busy || capture.phase !== 'idle'} onChange={args => { speech.stop(); setError(null); setDraft({ ...draft, args }); }} />
       {button(tx('გადამოწმება', 'Review'), () => void prepare(), true)}
-      {button(tx('ხმით გაგრძელება', 'Continue by voice'), () => { Keyboard.dismiss(); setManual(false); setVoiceMode(true); })}
+      {voiceIn ? button(tx('ხმით გაგრძელება', 'Continue by voice'), () => { Keyboard.dismiss(); setManual(false); setVoiceMode(true); }) : null}
     </ChatFormScroll> : <AssistantVoiceStage phase={capture.phase} metering={capture.metering} processing={!!busy || capture.phase === 'transcribing'} speaking={speech.phase === 'speaking'}
-      reply={review ? reviewSpeech(review) : lastReply} userText={lastUser} error={error} notice={notice} hasTask={!!task}>
+      reply={review ? reviewSpeech(review) : lastReply} userText={lastUser} error={error} notice={notice ?? (voiceOn ? null : featureMessage('voice'))} hasTask={!!task}>
       {error && !review && retryPlan.current ? <View style={{ width: '100%', gap: 8 }}>{button(tx('ხელახლა ცდა', 'Try again'), () => { const pending = retryPlan.current; if (pending) void send(pending.value, pending.fromVoice, pending.petId); }, true)}</View> : null}
       {suggestions.length ? <View style={{ width: '100%', gap: 10, flexDirection: suggestions.length <= 2 ? 'row' : 'column' }}>{suggestions.map((option, i) => <View key={i} style={suggestions.length <= 2 ? { flex: 1 } : undefined}>{button(option.label, () => void send(option.text, voiceMode, option.petId))}</View>)}</View> : null}
       {review ? <View style={{ width: '100%', borderRadius: 22, padding: 16, backgroundColor: C.surface, borderWidth: 1, borderColor: C.bg300, gap: 12 }}>

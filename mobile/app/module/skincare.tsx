@@ -29,6 +29,7 @@ import {
   type SavedSkincareRoutine,
 } from '@/lib/skincareStorage';
 import { useAuth } from '@/store/AuthContext';
+import { useFeature } from '@/lib/featureFlags';
 import { useThemeColors } from '@/theme/colors';
 
 export default function SkincareModule() {
@@ -40,6 +41,7 @@ function SkincareModuleContent() {
   const FIGMA = useFigmaChat();
   const colors = useThemeColors();
   const router = useRouter();
+  const recordsOn = useFeature('records');
   const { user, applyUsage } = useAuth();
   const task = useAnalysisTask(`${user?.id}:skincare`);
   const historyRevision = useRef(0);
@@ -188,7 +190,7 @@ function SkincareModuleContent() {
             setProducts('');
             setError(null);
           }}
-          onOpenRecord={() => router.push(`/record/${result.recordId}` as never)}
+          onOpenRecord={recordsOn ? () => router.push(`/record/${result.recordId}` as never) : undefined}
         />
       ) : busy ? (
         <View style={{ flex: 1, paddingHorizontal: 16, paddingTop: 40, alignItems: 'center', gap: 20 }}>

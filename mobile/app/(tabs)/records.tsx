@@ -29,6 +29,7 @@ import { HUB, hubInk, hubText, hubTint, type HubInk } from '@/theme/hub';
 import { useAccountQuery } from '@/hooks/useAccountQuery';
 import { accountKey, FRESH, queryClient } from '@/lib/queryClient';
 import { useIsDark, useThemeColors } from '@/theme/colors';
+import { isFeatureOn, isHrefAvailable, useFeatureState } from '@/lib/featureFlags';
 import { tx } from '@/i18n/locale';
 
 const RECORDS_KEY = ['records', 'list'] as const;
@@ -58,6 +59,12 @@ const ADD_TILES: HubTile[] = [
   { key: 'symptoms', title: tx('სიმპტომები', 'Symptoms'), detail: tx('აღწერე, რა გაწუხებს', 'Describe what bothers you'), href: '/symptoms', icon: Stethoscope, ink: 'teal' },
 ];
 
+/** The header „+“ sheet. */
+const UPLOADS = [
+  { text: ka.records.addLab, href: '/lab/analyze' },
+  { text: ka.records.addImaging, href: '/module/imaging' },
+];
+
 /** "ჩემი ბარათი" — lab results, saved analyses and every conversation with Medi, in the Home hub language. */
 export default function Records() {
   const router = useRouter();
@@ -67,6 +74,11 @@ export default function Records() {
 
   const [filter, setFilter] = useState<(typeof FILTERS)[number]>('ALL');
   const [refreshing, setRefreshing] = useState(false);
+  // Lab results, imaging, skin and symptoms have admin switches of their own; saved entries stay listed.
+  const features = useFeatureState();
+  const labsOn = isFeatureOn('labs', features);
+  const addTiles = ADD_TILES.filter((tile) => isHrefAvailable(tile.href, features));
+  const uploads = useMemo(() => UPLOADS.filter((option) => isHrefAvailable(option.href, features)), [features]);
 
   // Records: AI endpoints (lab, skin, Medi) and uploads invalidate 'records' after they save, so 30 s
   // fresh is safe. Chats stay LIVE: streamed Medi answers bypass api.ts and never signal.
@@ -119,16 +131,16 @@ export default function Records() {
   const startUpload = useCallback(() => {
     Alert.alert(ka.records.addCta, ka.records.emptyHint, [
       { text: ka.common.cancel, style: 'cancel' },
-      { text: ka.records.addLab, onPress: () => router.push('/lab/analyze' as never) },
-      { text: ka.records.addImaging, onPress: () => router.push('/module/imaging' as never) },
+      ...uploads.map((option) => ({ text: option.text, onPress: () => router.push(option.href as never) })),
     ]);
-  }, [router]);
+  }, [router, uploads]);
+  const canUpload = uploads.length > 0;
 
   return (
     <>
       <Stack.Screen
         options={{
-          headerRight: () => (
+          headerRight: () => !canUpload ? null : (
             <Pressable
               accessibilityRole="button"
               accessibilityLabel={ka.records.addCta}
@@ -147,9 +159,11 @@ export default function Records() {
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={c.primary200} />}
         showsVerticalScrollIndicator={false}
       >
-        <View style={[s.section, { marginTop: 12 }]}>
-          <HomeLabSection edgeInset={0} />
-        </View>
+        {labsOn ? (
+          <View style={[s.section, { marginTop: 12 }]}>
+            <HomeLabSection edgeInset={0} />
+          </View>
+        ) : null}
 
         {!ready ? (
           <View style={s.section}>
@@ -171,8 +185,8 @@ export default function Records() {
               }
               title={ka.records.empty}
               body={ka.records.emptyHint}
-              cta={ka.records.addCta}
-              onPress={startUpload}
+              cta={canUpload ? ka.records.addCta : undefined}
+              onPress={canUpload ? startUpload : undefined}
             />
           </View>
         ) : (
@@ -251,10 +265,12 @@ export default function Records() {
           </>
         )}
 
-        <View style={s.section}>
-          <HomeSectionHeading title={tx('დამატება', 'Add')} />
-          <HubTileGrid tiles={ADD_TILES} />
-        </View>
+        {addTiles.length ? (
+          <View style={s.section}>
+            <HomeSectionHeading title={tx('დამატება', 'Add')} />
+            <HubTileGrid tiles={addTiles} />
+          </View>
+        ) : null}
       </ScrollView>
     </>
   );

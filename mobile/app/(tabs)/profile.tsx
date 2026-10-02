@@ -89,6 +89,8 @@ export default function Profile() {
   const [notificationsOn, setNotificationsOn] = useState<boolean | null>(null);
   const [showCyclePrompt, setShowCyclePrompt] = useState(false);
   const features = useFeatureState();
+  const recordsOn = isFeatureOn('records', features);
+  const medsOn = isFeatureOn('medications', features);
   const [editingMedical, setEditingMedical] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [deleteBusy, setDeleteBusy] = useState(false);
@@ -277,15 +279,17 @@ export default function Profile() {
         </View>
       </View>
 
-      {/* Stats: three doors, not three numbers */}
-      <View style={s.section}>
-        <HomeSectionHeading title={ka.profile.stats} />
-        <View style={{ flexDirection: 'row', gap: 10 }}>
-          <StatTile icon={FileText} ink="teal" value={stats?.records ?? 0} label={ka.profile.statRecords} onPress={() => router.push('/(tabs)/records')} />
-          <StatTile icon={MessageSquareText} ink="blue" value={stats?.chats ?? 0} label={ka.profile.statChats} onPress={() => router.push('/(tabs)/records')} />
-          <StatTile icon={Pill} ink="violet" value={stats?.activeMedications ?? 0} label={ka.profile.statMeds} onPress={() => router.push('/(tabs)/medications')} />
+      {/* Stats: three doors, not three numbers. Records and chats open „ჩემი ბარათი“, so both follow its switch. */}
+      {recordsOn || medsOn ? (
+        <View style={s.section}>
+          <HomeSectionHeading title={ka.profile.stats} />
+          <View style={{ flexDirection: 'row', gap: 10 }}>
+            {recordsOn ? <StatTile icon={FileText} ink="teal" value={stats?.records ?? 0} label={ka.profile.statRecords} onPress={() => router.push('/(tabs)/records')} /> : null}
+            {recordsOn ? <StatTile icon={MessageSquareText} ink="blue" value={stats?.chats ?? 0} label={ka.profile.statChats} onPress={() => router.push('/(tabs)/records')} /> : null}
+            {medsOn ? <StatTile icon={Pill} ink="violet" value={stats?.activeMedications ?? 0} label={ka.profile.statMeds} onPress={() => router.push('/(tabs)/medications')} /> : null}
+          </View>
         </View>
-      </View>
+      ) : null}
 
       {/* Quest — each module block disappears while an admin has it paused (admin „მოდულები“) */}
       {isFeatureOn('quest', features) ? (
@@ -343,9 +347,11 @@ export default function Profile() {
             onCancel={() => setEditingMedical(false)}
           />
         )}
-        <View style={[s.card, { backgroundColor: colors.surface, marginTop: 12 }]}>
-          <ProfileMenuRow icon={FileText} ink="teal" label={ka.passport.profileRow} value={ka.passport.profileRowHint} onPress={() => router.push('/profile/health-passport' as never)} isLast />
-        </View>
+        {isFeatureOn('healthPassport', features) ? (
+          <View style={[s.card, { backgroundColor: colors.surface, marginTop: 12 }]}>
+            <ProfileMenuRow icon={FileText} ink="teal" label={ka.passport.profileRow} value={ka.passport.profileRowHint} onPress={() => router.push('/profile/health-passport' as never)} isLast />
+          </View>
+        ) : null}
       </View>
 
       {/* Settings */}
@@ -384,7 +390,7 @@ export default function Profile() {
       <View style={s.section}>
         <HomeSectionHeading title={tx('აპლიკაცია', 'App')} />
         <View style={[s.list, { backgroundColor: colors.surface }]}>
-          <ProfileMenuRow icon={Gift} ink="amber" label={ka.referral.profileRow} onPress={() => router.push('/profile/invite' as never)} />
+          {isFeatureOn('invites', features) ? <ProfileMenuRow icon={Gift} ink="amber" label={ka.referral.profileRow} onPress={() => router.push('/profile/invite' as never)} /> : null}
           <ProfileMenuRow icon={Lock} ink="neutral" label={ka.profile.privacyPolicy} onPress={() => router.push('/profile/privacy')} />
           <ProfileMenuRow icon={FileText} ink="neutral" label={ka.profile.terms} onPress={() => router.push('/profile/terms')} />
           <ProfileMenuRow icon={Mail} ink="neutral" label={ka.profile.support} value={ka.profile.supportEmail} onPress={() => void openEmail(SUPPORT_EMAIL)} />

@@ -4,12 +4,16 @@ import { ka } from '@/i18n/ka';
 import { MEDI_MODES, type MediMode } from '@/lib/mediModes';
 import { useThemeColors } from '@/theme/colors';
 
-/** The three ways to talk to Medi, on one screen. Segmented, 44pt targets, no extra screens. */
-export function MediModeSwitch({ value, onChange }: { value: MediMode; onChange: (mode: MediMode) => void }) {
+/**
+ * The three ways to talk to Medi, on one screen. Segmented, 44pt targets, no extra screens.
+ * `modes` leaves out a mode an admin paused; with one mode left there is nothing to switch.
+ */
+export function MediModeSwitch({ value, onChange, modes = MEDI_MODES }: { value: MediMode; onChange: (mode: MediMode) => void; modes?: readonly MediMode[] }) {
   const c = useThemeColors();
+  if (modes.length < 2) return null;
   return (
     <View accessibilityRole="tablist" style={{ flexDirection: 'row', gap: 4, marginHorizontal: 16, marginBottom: 10, padding: 4, borderRadius: 16, backgroundColor: c.bg200 }}>
-      {MEDI_MODES.map((mode) => {
+      {modes.map((mode) => {
         const active = mode === value;
         return (
           <Pressable

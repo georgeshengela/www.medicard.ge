@@ -8,6 +8,7 @@ import { AVATAR_SOURCES, isAvatarId } from '@/constants/avatarAssets';
 import { PrivateImage } from '@/components/coach/CoachUI';
 import { useMyAvatarUrl } from '@/lib/myAvatar';
 import { useWeather } from '@/hooks/useWeather';
+import { useFeature } from '@/lib/featureFlags';
 import { greeting } from '@/lib/format';
 import { useIsDark, useThemeColors } from '@/theme/colors';
 import { tx } from '@/i18n/locale';
@@ -31,7 +32,8 @@ export function HomeHeader({ firstName, initial, avatarId, streak, dateLabel }: 
   const c = useThemeColors();
   const dark = useIsDark();
   const router = useRouter();
-  const { snapshot, loading } = useWeather();
+  // Paused from admin („მოდულები“): no pill, and no weather fetch behind it.
+  const weatherOn = useFeature('weather');
 
   return (
     <View style={s.wrap}>
@@ -40,32 +42,7 @@ export function HomeHeader({ firstName, initial, avatarId, streak, dateLabel }: 
           <Text numberOfLines={1} style={[s.date, { color: c.text200 }]}>
             {dateLabel}
           </Text>
-          {snapshot || loading ? (
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel={
-                snapshot
-                  ? tx(`ამინდი: ${Math.round(snapshot.current.temperatureC)} გრადუსი, ${snapshot.location.city}`, `Weather: ${Math.round(snapshot.current.temperatureC)} degrees, ${snapshot.location.city}`)
-                  : tx('ამინდი', 'Weather')
-              }
-              onPress={() => router.push('/weather' as never)}
-              style={[s.pill, { backgroundColor: dark ? '#152638' : '#EDF5FB' }]}
-            >
-              {snapshot ? (
-                <View style={s.weatherIcon}>
-                  <Meteocon
-                    slug={meteoconSlugFor(snapshot.current.condition, snapshot.current.isDay)}
-                    size={26}
-                  />
-                </View>
-              ) : (
-                <CloudSun size={15} color={dark ? '#A7D5F1' : '#397C9E'} />
-              )}
-              <Text style={[s.pillText, { color: dark ? '#DCEBF7' : '#23465C' }]}>
-                {snapshot ? `${Math.round(snapshot.current.temperatureC)}°` : '…'}
-              </Text>
-            </Pressable>
-          ) : null}
+          {weatherOn ? <WeatherPill /> : null}
           {streak > 0 ? (
             <Pressable
               accessibilityRole="button"
@@ -105,6 +82,39 @@ export function HomeHeader({ firstName, initial, avatarId, streak, dateLabel }: 
         )}
       </Pressable>
     </View>
+  );
+}
+
+function WeatherPill() {
+  const dark = useIsDark();
+  const router = useRouter();
+  const { snapshot, loading } = useWeather();
+  if (!snapshot && !loading) return null;
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={
+        snapshot
+          ? tx(`ამინდი: ${Math.round(snapshot.current.temperatureC)} გრადუსი, ${snapshot.location.city}`, `Weather: ${Math.round(snapshot.current.temperatureC)} degrees, ${snapshot.location.city}`)
+          : tx('ამინდი', 'Weather')
+      }
+      onPress={() => router.push('/weather' as never)}
+      style={[s.pill, { backgroundColor: dark ? '#152638' : '#EDF5FB' }]}
+    >
+      {snapshot ? (
+        <View style={s.weatherIcon}>
+          <Meteocon
+            slug={meteoconSlugFor(snapshot.current.condition, snapshot.current.isDay)}
+            size={26}
+          />
+        </View>
+      ) : (
+        <CloudSun size={15} color={dark ? '#A7D5F1' : '#397C9E'} />
+      )}
+      <Text style={[s.pillText, { color: dark ? '#DCEBF7' : '#23465C' }]}>
+        {snapshot ? `${Math.round(snapshot.current.temperatureC)}°` : '…'}
+      </Text>
+    </Pressable>
   );
 }
 

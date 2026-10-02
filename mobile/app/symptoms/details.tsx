@@ -16,6 +16,7 @@ import { useMedications } from '@/hooks/useMedications';
 import { ka } from '@/i18n/ka';
 import { updateSymptomChecker, useSymptomChecker } from '@/lib/symptomCheckerStore';
 import { useAuth } from '@/store/AuthContext';
+import { useFeature } from '@/lib/featureFlags';
 
 export default function SymptomDetailsScreen() {
   const T = useFigmaSymptoms();
@@ -25,6 +26,8 @@ export default function SymptomDetailsScreen() {
   const state = useSymptomChecker();
   const { user } = useAuth();
   const { medications } = useMedications();
+  // While medications are paused from admin the list still shows here, it just does not open the module.
+  const medsOn = useFeature('medications');
   const firstName = user?.fullName?.split(' ')[0] ?? '';
   const [durationOpen, setDurationOpen] = useState(false);
   const navigating = useRef(false);
@@ -62,12 +65,12 @@ export default function SymptomDetailsScreen() {
         </View>
 
         <FieldBlock label={ka.symptoms.currentMedication}>
-          <Pressable onPress={() => router.push('/(tabs)/medications' as never)} style={fieldBox}>
+          <Pressable disabled={!medsOn} onPress={() => router.push('/(tabs)/medications' as never)} style={fieldBox}>
             <Pill size={20} color={T.textSecondary} strokeWidth={1.8} />
             <Text style={{ flex: 1, fontSize: 16, lineHeight: 22, color: T.textSecondary }} numberOfLines={1}>
               {medSummary}
             </Text>
-            <Pencil size={20} color={T.textSecondary} strokeWidth={1.8} />
+            {medsOn ? <Pencil size={20} color={T.textSecondary} strokeWidth={1.8} /> : null}
           </Pressable>
         </FieldBlock>
 

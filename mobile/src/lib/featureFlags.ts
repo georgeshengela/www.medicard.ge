@@ -2,6 +2,7 @@ import { useSyncExternalStore } from 'react';
 import { getPreference, setPreference } from '@/lib/storage';
 import {
   EMPTY_FEATURE_STATE,
+  engageFamilyOnIn,
   featureOnIn,
   hrefAvailableIn,
   sanitizeFeatureState,
@@ -26,12 +27,18 @@ const listeners = new Set<() => void>();
 let state: FeatureState = EMPTY_FEATURE_STATE;
 let hydrated = false;
 
-/** Title on the paused-module screen. */
+/** Title on the paused-module screen: „<label> დროებით შეჩერებულია“ / "<label> is paused for now". */
 export const FEATURE_LABELS: Record<FeatureKey, string> = {
   cycle: tx('ციკლი', 'Cycle'),
   nutrition: tx('კვება', 'Nutrition'),
   nutritionAi: tx('კვების AI', 'Nutrition AI'),
   medi: 'Medi',
+  mediDoctor: tx('Medi · ექიმთან', 'Medi · Doctor'),
+  mediDeep: tx('Medi · ღრმა ანალიზი', 'Medi · Deep analysis'),
+  symptoms: tx('სიმპტომების შემოწმება', 'Symptom check'),
+  imaging: tx('რენტგენი, CT და MRI', 'X-ray, CT and MRI analysis'),
+  skin: tx('კანის ანალიზი და მოვლა', 'Skin analysis and care'),
+  voice: tx('ხმოვანი Medi', 'Voice Medi'),
   pets: tx('ჩემი ცხოველები', 'My pets'),
   mediVet: 'Medi Vet',
   medirun: 'MEDIRUN',
@@ -41,6 +48,18 @@ export const FEATURE_LABELS: Record<FeatureKey, string> = {
   community: tx('ქალების სივრცე', "Women's space"),
   pharmacy: tx('აფთიაქი', 'Pharmacy'),
   news: tx('სიახლეები', 'News'),
+  visits: tx('ექიმთან ვიზიტები', 'Doctor visits'),
+  medications: tx('მედიკამენტები', 'Medications'),
+  records: tx('სამედიცინო ჩანაწერები', 'Medical records'),
+  labs: tx('ლაბორატორიული ანალიზები', 'Lab results'),
+  // „წყალი / წონა / ამინდი დროებით შეჩერებულია“ reads as if the water itself stopped — name the feature.
+  hydration: tx('წყლის აღრიცხვა', 'Water tracking'),
+  steps: tx('ნაბიჯების აღრიცხვა', 'Step tracking'),
+  weight: tx('წონა და მიზანი', 'Weight and goal'),
+  weather: tx('ამინდის გვერდი', 'Weather'),
+  weeklyReport: tx('კვირის ანგარიში', 'Weekly report'),
+  healthPassport: tx('ჯანმრთელობის პასპორტი', 'Health passport'),
+  invites: tx('მეგობრის მოწვევა', 'Inviting friends'),
 };
 
 const DEFAULT_MESSAGE = tx('ეს ფუნქცია დროებით შეჩერებულია. შენი მონაცემები შენახულია.', 'This feature is paused for now. Your data is safe.');
@@ -67,6 +86,11 @@ export function featureMessage(key: FeatureKey | string, from: FeatureState = st
 
 export function isHrefAvailable(href: string, from: FeatureState = state): boolean {
   return hrefAvailableIn(from, href);
+}
+
+/** False while the module behind a Notification Brain family (weather tips, weekly report, …) is paused. */
+export function isEngageFamilyOn(family: string, from: FeatureState = state): boolean {
+  return engageFamilyOnIn(from, family);
 }
 
 /** Apply the `/api/app/status` answer. */

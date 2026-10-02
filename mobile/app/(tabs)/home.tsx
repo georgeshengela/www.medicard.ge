@@ -93,11 +93,14 @@ export default function Home() {
   const router = useRouter();
   const c = useThemeColors();
 
+  const features = useFeatureState();
+  const invitesOn = isFeatureOn('invites', features);
   // An invite link opened before sign-up: offer the code once, while the account is new.
+  // While invites are paused the code stays saved, so it is offered once they are back.
   const userId = user?.id;
   const userCreatedAt = user?.createdAt;
   useEffect(() => {
-    if (!userId) return;
+    if (!userId || !invitesOn) return;
     let live = true;
     void readPendingReferralCode().then(async (code) => {
       if (!code || !live) return;
@@ -108,7 +111,7 @@ export default function Home() {
     return () => {
       live = false;
     };
-  }, [router, userId, userCreatedAt]);
+  }, [router, userId, userCreatedAt, invitesOn]);
   const insets = useSafeAreaInsets();
   const tabInset = useTabBarInset(20);
   const hydration = useHydration();
@@ -119,9 +122,23 @@ export default function Home() {
   const [showCyclePrompt, setShowCyclePrompt] = useState(false);
   const female = user?.gender === 'FEMALE';
   const completion = profileCompletion(healthProfile, user);
-  const features = useFeatureState();
   const communityEntry = useCommunityEntry(user?.id, female) && isFeatureOn('community', features);
   const news = useAnnouncements();
+  const stepsOn = isFeatureOn('steps', features);
+  const waterOn = isFeatureOn('hydration', features);
+  const medsOn = isFeatureOn('medications', features);
+  // AI check-ups: each tile has its own switch (symptoms, labs, imaging, skin); deep analysis is a Medi mode.
+  const checkupTiles = CHECKUP_TILES.filter((tile) => isHrefAvailable(tile.href, features));
+  const deepOn = isHrefAvailable(mediRoute({ mode: 'deep' }), features);
+  const serviceTiles = SERVICE_TILES.filter((tile) => isHrefAvailable(tile.href, features));
+
+  const today = todayYmd();
+  const doses = useMemo(
+    () => computeTodayDoses(meds.medications, meds.schedule, meds.doseLogs, today),
+    [meds.medications, meds.schedule, meds.doseLogs, today],
+  );
+  const showMedsRing = medsOn && doses.total > 0;
+
   // Sections of modules an admin paused (admin „მოდულები“) are left out entirely.
   const hiddenSections = useMemo(() => {
     const hidden = new Set<HomeSectionId>();
@@ -132,10 +149,13 @@ export default function Home() {
       hidden.add('ask');
       hidden.add('checkup');
     }
+    if (!checkupTiles.length && !deepOn) hidden.add('checkup');
     if (!isFeatureOn('news', features)) hidden.add('news');
+    // Reminders keep arriving while medications are paused; only the Home block goes.
+    if (!medsOn) hidden.add('nextDose');
+    if (!stepsOn && !waterOn && !showMedsRing) hidden.add('hero');
     return hidden;
-  }, [features]);
-  const serviceTiles = SERVICE_TILES.filter((tile) => isHrefAvailable(tile.href, features));
+  }, [features, checkupTiles.length, deepOn, medsOn, stepsOn, waterOn, showMedsRing]);
 
   useFocusEffect(
     useCallback(() => {
@@ -181,12 +201,6 @@ export default function Home() {
   );
   const firstName = user?.fullName?.split(' ')[0] ?? '';
 
-  const today = todayYmd();
-  const doses = useMemo(
-    () => computeTodayDoses(meds.medications, meds.schedule, meds.doseLogs, today),
-    [meds.medications, meds.schedule, meds.doseLogs, today],
-  );
-
   const addGlass = useCallback(() => {
     void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => undefined);
     void hydration
@@ -196,16 +210,20 @@ export default function Home() {
 
   const stepsTotal = steps.bundle?.todayTotal ?? 0;
   const stepsGoal = steps.bundle?.goal ?? 0;
-  const rings: DayRing[] = [
-    {
+  // A paused module's ring (and the quick „add a glass“) leaves the card; the rest close up.
+  const rings: DayRing[] = [];
+  if (stepsOn) {
+    rings.push({
       key: 'steps',
       progress: stepsGoal > 0 ? stepsTotal / stepsGoal : 0,
       label: tx('ნაბიჯი', 'Steps'),
       value: steps.loading && !steps.bundle ? '…' : steps.bundle ? tx(`${groupDigits(stepsTotal)} ნაბიჯი`, `${groupDigits(stepsTotal)} ${stepsTotal === 1 ? 'step' : 'steps'}`) : tx('ნაბიჯები', 'Steps'),
       hint: stepsGoal > 0 ? tx(`მიზანი ${groupDigits(stepsGoal)}`, `Goal ${groupDigits(stepsGoal)}`) : tx('დააკავშირე მოწყობილობა', 'Connect a device'),
       onPress: () => open('/health-metrics/steps'),
-    },
-    {
+    });
+  }
+  if (waterOn) {
+    rings.push({
       key: 'water',
       progress: hydration.progress,
       label: tx('წყალი', 'Water'),
@@ -214,9 +232,9 @@ export default function Home() {
       onPress: () => open('/health-metrics/hydration'),
       onQuickAdd: addGlass,
       quickAddLabel: tx(`წყლის დამატება, ${HYDRATION_DROP_ML} მლ`, `Add water, ${HYDRATION_DROP_ML} ml`),
-    },
-  ];
-  if (doses.total > 0) {
+    });
+  }
+  if (showMedsRing) {
     rings.push({
       key: 'meds',
       progress: doses.taken / doses.total,
@@ -247,7 +265,9 @@ export default function Home() {
       <View style={[s.section, { marginTop: 22 }]}>
         {heading(tx('შენი დღე', 'Your day'), '/health-metrics', tx('ყველა მაჩვენებელი', 'All metrics'))}
         <HomeDayRings rings={rings} />
-        <MedicalSourcesLink sourceIds={['dailySteps', 'waterIntake']} />
+        {stepsOn || waterOn ? (
+          <MedicalSourcesLink sourceIds={[...(stepsOn ? ['dailySteps' as const] : []), ...(waterOn ? ['waterIntake' as const] : [])]} />
+        ) : null}
       </View>
     ),
     ask: (
@@ -281,8 +301,8 @@ export default function Home() {
     checkup: (
       <View style={s.section}>
         {heading(tx('შემოწმება AI-სთან', 'Check with AI'))}
-        <HubTileGrid tiles={CHECKUP_TILES} />
-        <View style={{ marginTop: 12 }}>
+        {checkupTiles.length ? <HubTileGrid tiles={checkupTiles} /> : null}
+        {deepOn ? <View style={{ marginTop: checkupTiles.length ? 12 : 0 }}>
           <HubFeatureCard
             tone="spotlight"
             stackLead
@@ -302,7 +322,7 @@ export default function Home() {
             note={tx('AI განხილვაა, არა ექიმების კონსულტაცია.', 'This is an AI review, not a consultation with doctors.')}
             onPress={() => open(mediRoute({ mode: 'deep' }))}
           />
-        </View>
+        </View> : null}
       </View>
     ),
     profileNudge: completion.percent < 100 ? (

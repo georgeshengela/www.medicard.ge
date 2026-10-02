@@ -14,7 +14,8 @@ import { splitSkincareSections, type SavedSkincareRoutine } from '@/lib/skincare
 type Props = {
   routine: SavedSkincareRoutine;
   onNew: () => void;
-  onOpenRecord: () => void;
+  /** Omitted while „ჩემი ბარათი“ (records) is paused from admin. */
+  onOpenRecord?: () => void;
 };
 
 export function SkincareResultCard({ routine, onNew, onOpenRecord }: Props) {
@@ -118,7 +119,7 @@ export function SkincareResultCard({ routine, onNew, onOpenRecord }: Props) {
         </View>
       )}
 
-      <AuthPrimaryButton label={ka.modules.skincare.viewRecord} onPress={onOpenRecord} />
+      {onOpenRecord ? <AuthPrimaryButton label={ka.modules.skincare.viewRecord} onPress={onOpenRecord} /> : null}
 
       <Pressable
         accessibilityRole="button"

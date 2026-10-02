@@ -9,6 +9,7 @@ import { ProductHeroSkeleton } from '@/components/ui/Skeleton';
 import { ka } from '@/i18n/ka';
 import { api, type CatalogProductDetail } from '@/lib/api';
 import { catalogProductSetupParams } from '@/lib/medicationCatalogNav';
+import { useFeature } from '@/lib/featureFlags';
 import { useThemeColors } from '@/theme/colors';
 import { pharmPx } from '@/constants/pharmacyVisuals';
 
@@ -25,6 +26,8 @@ export default function PharmacyProductScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const colors = useThemeColors();
+  // „Add to my medications“ leads into the medications module, which an admin can pause.
+  const medsOn = useFeature('medications');
   const [product, setProduct] = useState<CatalogProductDetail | null>(null);
   const [refreshing, setRefreshing] = useState(false);
 
@@ -100,12 +103,14 @@ export default function PharmacyProductScreen() {
         ) : null}
       </View>
 
-      <MedsButton
-        label={ka.meds.addMedicationCta}
-        icon={Plus}
-        onPress={() => router.push({ pathname: '/medications/add/setup', params: catalogProductSetupParams(product) })}
-        style={{ marginTop: pharmPx(12) }}
-      />
+      {medsOn ? (
+        <MedsButton
+          label={ka.meds.addMedicationCta}
+          icon={Plus}
+          onPress={() => router.push({ pathname: '/medications/add/setup', params: catalogProductSetupParams(product) })}
+          style={{ marginTop: pharmPx(12) }}
+        />
+      ) : null}
 
       {product.bestPriceGel != null ? (
         <View

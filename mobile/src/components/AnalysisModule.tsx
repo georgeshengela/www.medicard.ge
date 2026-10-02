@@ -1,5 +1,6 @@
 import { labRowName } from '@/lib/labNames';
 import { tx } from '@/i18n/locale';
+import { useFeature } from '@/lib/featureFlags';
 import React, { useCallback, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
@@ -82,6 +83,8 @@ function AnalysisModuleContent({
 }: Props) {
   const FIGMA_CHAT = useFigmaChat();
   const router = useRouter();
+  // The saved record lives in „ჩემი ბარათი“, which an admin can pause; the result stays readable here.
+  const recordsOn = useFeature('records');
   const profile = useMemo(() => getAnalysisChatProfile(kind), [kind]);
   const plan = usePlanUsage();
   const { user, applyUsage } = useAuth();
@@ -648,7 +651,7 @@ function AnalysisModuleContent({
             <ChatBubbleAssistant icon={icon} timestamp={new Date().toISOString()}>
               <View style={{ paddingVertical: 6 }}><Text style={{ fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 18, color: FIGMA_CHAT.textPrimary }}>{tx('შენი შედეგი', 'Your result')}</Text></View>
               <Markdown content={result.analysis} />
-              <AuthPrimaryButton label={tx('შენახული ჩანაწერის ნახვა', 'View saved record')} onPress={() => router.push(`/record/${result.record.id}` as never)} />
+              {recordsOn ? <AuthPrimaryButton label={tx('შენახული ჩანაწერის ნახვა', 'View saved record')} onPress={() => router.push(`/record/${result.record.id}` as never)} /> : null}
               <Pressable
                 onPress={reset}
                 style={{

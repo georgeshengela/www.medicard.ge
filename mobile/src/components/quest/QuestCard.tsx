@@ -247,7 +247,8 @@ export function QuestCard({
       {conversational ? (
         <View style={{ marginTop: 14 }}>
           <QuestMediLine text={helper} />
-          <Pressable
+          {/* No Medi button while Medi is paused from admin (the caller passes no handler). */}
+          {onOpenMedi ? <Pressable
             accessibilityRole="button"
             accessibilityLabel={copy.openMedi}
             onPress={onOpenMedi}
@@ -269,7 +270,7 @@ export function QuestCard({
             <Text style={{ fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 14, lineHeight: 20, color: colors.text100 }}>
               {copy.openMedi}
             </Text>
-          </Pressable>
+          </Pressable> : null}
         </View>
       ) : null}
     </View>

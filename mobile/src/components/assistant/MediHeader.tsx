@@ -9,10 +9,12 @@ import { tx } from '@/i18n/locale';
 
 /** One header for every Medi mode, so switching modes does not change the chrome. */
 export function MediHeader({
-  subtitle, mode, onMode, onBack, right,
+  subtitle, mode, modes, onMode, onBack, right,
 }: {
   subtitle: string;
   mode: MediMode;
+  /** Modes to offer (admin can pause doctor / deep); all three by default. */
+  modes?: readonly MediMode[];
   onMode: (mode: MediMode) => void;
   onBack: () => void;
   right?: React.ReactNode;
@@ -33,7 +35,7 @@ export function MediHeader({
         </View>
         {right}
       </View>
-      <MediModeSwitch value={mode} onChange={onMode} />
+      <MediModeSwitch value={mode} modes={modes} onChange={onMode} />
     </View>
   );
 }

@@ -4,6 +4,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Mic, Send, Sparkles, X } from "lucide-react-native";
 import { APP_MODAL_OVERLAY, APP_MODAL_PROPS, Modal } from "@/components/ui/appModal";
 import { useAssistantVoice } from "@/components/assistant/useAssistantVoice";
+import { useFeature } from "@/lib/featureFlags";
 import { useThemeColors } from "@/theme/colors";
 import { hubText } from "@/theme/hub";
 import { tx } from '@/i18n/locale';
@@ -54,9 +55,11 @@ export function DescribeMealModal({
       setDictated(false);
     }
   }, [visible]);
+  // Dictation uses Medi's speech recognition; while voice is paused from admin the field is typed only.
+  const voiceOn = useFeature("voice");
   const capture = useAssistantVoice({
     owner,
-    blocked: busy || !visible,
+    blocked: busy || !visible || !voiceOn,
     beforeStart: () => {
       Keyboard.dismiss();
       setNotice("");
@@ -122,7 +125,7 @@ export function DescribeMealModal({
             <Text accessibilityRole={error || voiceError ? "alert" : "text"} style={[txt, { fontSize: 12, lineHeight: 19, color: error || voiceError ? c.danger : c.text200 }]}>{error || voiceError || notice}</Text>
           )}
           <View style={s.actions}>
-            <Pressable
+            {voiceOn ? <Pressable
               accessibilityRole="button"
               accessibilityLabel={recording ? tx("ჩაწერა მიმდინარეობს — აუშვი დასასრულებლად", "Recording — release to finish") : tx("დააჭირე და ილაპარაკე", "Press and speak")}
               accessibilityHint={tx("გააჩერე ღილაკი ლაპარაკის დროს", "Hold the button while you speak")}
@@ -133,7 +136,7 @@ export function DescribeMealModal({
             >
               {transcribing ? <ActivityIndicator color={c.primary200} /> : <Mic size={22} color={recording ? "#FFFFFF" : c.text100} />}
               <Text style={[hubText.link, { color: recording ? "#FFFFFF" : c.text100 }]}>{recording ? tx("ვისმენ…", "Listening…") : transcribing ? tx("ვამუშავებ", "Processing") : tx("თქვი", "Speak")}</Text>
-            </Pressable>
+            </Pressable> : null}
             <Pressable
               accessibilityRole="button"
               accessibilityLabel={tx("შეფასება", "Estimate")}

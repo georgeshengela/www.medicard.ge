@@ -26,6 +26,8 @@ import {
 } from '@/lib/healthMetrics';
 import { formatStepsCount } from '@/lib/stepsMetrics.shared';
 import { openHealthAppSettings, type HealthConnectResult } from '@/lib/healthSync';
+import { isFeatureOn, useFeatureState } from '@/lib/featureFlags';
+import type { MedicalSourceId } from '@/constants/medicalSources';
 import { useAuth } from '@/store/AuthContext';
 
 function explainFailure(result: Extract<HealthConnectResult, { ok: false }>): string {
@@ -55,6 +57,13 @@ export default function HealthMetricsScreen() {
   const [connecting, setConnecting] = useState(false);
   const [status, setStatus] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
+  // Water, steps and weight each have an admin switch; a paused one leaves this overview.
+  const features = useFeatureState();
+  const stepsOn = isFeatureOn('steps', features);
+  const metricOn = (key: string) => (key === 'hydration' || key === 'weight' ? isFeatureOn(key, features) : true);
+  const metrics = (bundle?.metrics ?? []).filter((metric) => metricOn(metric.key));
+  const sourceIds: MedicalSourceId[] = ['bmi', 'bloodPressure', 'restingHeartRate', 'sleepAdults'];
+  if (metricOn('hydration')) sourceIds.push('waterIntake');
 
   const platform = getHealthPlatform();
   const platformLabel =
@@ -142,7 +151,7 @@ export default function HealthMetricsScreen() {
           </Text>
         </View>
 
-        <View style={{ paddingHorizontal: 16, paddingBottom: 12 }}>
+        {stepsOn ? <View style={{ paddingHorizontal: 16, paddingBottom: 12 }}>
           <Pressable
             accessibilityRole="button"
             onPress={() => router.push('/health-metrics/steps' as never)}
@@ -171,7 +180,7 @@ export default function HealthMetricsScreen() {
             </View>
             <ChevronRight size={20} color={FIGMA_STEPS.brand} strokeWidth={2.2} />
           </Pressable>
-        </View>
+        </View> : null}
 
         {!bundle?.connected && isHealthPlatformSupported() ? (
           <View style={{ paddingHorizontal: 16, paddingBottom: 12 }}>
@@ -253,7 +262,7 @@ export default function HealthMetricsScreen() {
           </View>
         ) : (
           <View style={{ paddingHorizontal: 16, gap: 6 }}>
-            {bundle?.metrics.map((metric) => (
+            {metrics.map((metric) => (
               <HealthMetricCard
                 key={metric.key}
                 metric={metric}
@@ -267,8 +276,8 @@ export default function HealthMetricsScreen() {
                 }
               />
             ))}
-            {bundle?.metrics.some((metric) => metric.value != null) ? (
-              <MedicalSourcesLink sourceIds={['bmi', 'bloodPressure', 'restingHeartRate', 'sleepAdults', 'waterIntake']} />
+            {metrics.some((metric) => metric.value != null) ? (
+              <MedicalSourcesLink sourceIds={sourceIds} />
             ) : null}
           </View>
         )}

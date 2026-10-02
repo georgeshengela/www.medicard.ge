@@ -7,8 +7,9 @@ import { useIsDark, useThemeColors } from '@/theme/colors';
 type Props = {
   title: string;
   body: string;
-  cta: string;
-  onPress: () => void;
+  /** Without a CTA the card is plain information (e.g. its action belongs to a paused module). */
+  cta?: string;
+  onPress?: () => void;
   accessibilityLabel?: string;
   /** Icon tile (surface tone) — or pass `lead` to render your own header element. */
   icon?: LucideIcon;
@@ -52,10 +53,12 @@ export function HubFeatureCard({
   const ctaColor = spotlight ? '#99F6E4' : c.primary100;
   const rule = spotlight ? 'rgba(255,255,255,0.14)' : c.bg300;
 
+  const action = Boolean(cta && onPress);
   return (
     <Pressable
-      accessibilityRole="button"
-      accessibilityLabel={accessibilityLabel ?? `${title}. ${cta}`}
+      accessibilityRole={action ? 'button' : undefined}
+      accessibilityLabel={accessibilityLabel ?? (action ? `${title}. ${cta}` : `${title}. ${body}`)}
+      disabled={!action}
       onPress={onPress}
       style={[s.card, { backgroundColor: spotlight ? HUB.spotlightBg : c.surface }]}
     >
@@ -71,10 +74,12 @@ export function HubFeatureCard({
           <Text style={[hubText.body, { color: textSecondary }]}>{body}</Text>
         </View>
       </View>
-      <View style={[s.ctaRow, { borderColor: rule }]}>
-        <Text style={[hubText.link, { color: ctaColor, flex: 1 }]}>{cta}</Text>
-        <ArrowUpRight size={18} color={ctaColor} />
-      </View>
+      {action ? (
+        <View style={[s.ctaRow, { borderColor: rule }]}>
+          <Text style={[hubText.link, { color: ctaColor, flex: 1 }]}>{cta}</Text>
+          <ArrowUpRight size={18} color={ctaColor} />
+        </View>
+      ) : null}
       {note ? <Text style={[hubText.small, { color: textSecondary, marginTop: -6 }]}>{note}</Text> : null}
       {art ? (
         <View accessible={false} importantForAccessibility="no-hide-descendants" pointerEvents="none" style={s.art}>

@@ -20,6 +20,7 @@ import {
   type LucideIcon,
 } from "lucide-react-native";
 import { useAuth } from "@/store/AuthContext";
+import { isHrefAvailable, useFeatureState } from "@/lib/featureFlags";
 import { tx } from "@/i18n/locale";
 import { nutritionDateLabel } from "@/lib/nutritionProgram";
 import { mealLabels } from "@/lib/nutrition";
@@ -40,7 +41,10 @@ function Hub() {
     dark = useIsDark(),
     router = useRouter(),
     { data: d, error, loading, load } = useNutritionDashboard();
+  // Water, steps, weight and Medi have admin switches of their own: a paused one loses its door here.
+  const features = useFeatureState();
   const dayTile = (icon: LucideIcon, ink: HubInk, value: string, label: string, href: string) => {
+    if (!isHrefAvailable(href, features)) return null;
     const Icon = icon, hex = hubInk(ink, dark);
     return (
       <Pressable key={label} accessibilityRole="button" accessibilityLabel={`${label}: ${value}`} onPress={() => router.push(href as never)} style={[s.dayTile, { backgroundColor: c.bg100 }]}>
@@ -53,6 +57,7 @@ function Hub() {
     );
   };
   const link = (icon: LucideIcon, ink: HubInk, title: string, subtitle: string, href: string, last = false) => {
+    if (!isHrefAvailable(href, features)) return null;
     const Icon = icon, hex = hubInk(ink, dark);
     return (
       <Pressable key={title} accessibilityRole="button" accessibilityLabel={`${title}. ${subtitle}`} onPress={() => router.push(href as never)} style={[s.link, !last && { borderBottomWidth: 1, borderBottomColor: c.bg300 }]}>
@@ -202,9 +207,11 @@ function Hub() {
                       : tx("დღის სამიზნე გეგმიდანაა. წონას როცა ჩაწერ, პროგნოზიც გამოჩნდება.", "Your daily target comes from the plan. Log your weight and a forecast will appear.")}
                 </Text>
                 <MedicalSourcesLink sourceIds={["bodyWeightPlanner", "weightPace"]} />
-                <Pressable accessibilityRole="button" onPress={() => router.push("/health-metrics/weight")} style={[s.secondary, { backgroundColor: c.bg200 }]}>
-                  <Text style={[hubText.link, { color: c.text100 }]}>{tx("წონის ჩაწერა", "Log weight")}</Text>
-                </Pressable>
+                {isHrefAvailable("/health-metrics/weight", features) ? (
+                  <Pressable accessibilityRole="button" onPress={() => router.push("/health-metrics/weight")} style={[s.secondary, { backgroundColor: c.bg200 }]}>
+                    <Text style={[hubText.link, { color: c.text100 }]}>{tx("წონის ჩაწერა", "Log weight")}</Text>
+                  </Pressable>
+                ) : null}
               </HubCard>
             )}
           </HubSection>

@@ -2,6 +2,9 @@ import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import { existsSync, readFileSync } from 'node:fs';
 import {
+  ENGAGE_FAMILY_FEATURES,
+  FEATURE_KEYS,
+  engageFamilyOnIn,
   featureForHref,
   featureForPath,
   featureOnIn,
@@ -10,9 +13,13 @@ import {
   type FeatureKey,
 } from './featureRoutes.ts';
 import { ROUTE_ROOTS, detailParagraphs, isAllowedAppRoute } from './announcementRules.ts';
+import { ENGAGE_FAMILIES, type EngageFamily } from './mediNotificationBrain.shared.ts';
+import { engageDestination } from './notificationPlan.ts';
+import { mediRoute, legacyChatRouteToMedi } from './mediModes.ts';
 
 const serverFlags = readFileSync(new URL('../../../server/src/lib/featureFlags.js', import.meta.url), 'utf8');
 const serverNews = readFileSync(new URL('../../../server/src/lib/announcements.js', import.meta.url), 'utf8');
+const EMPTY = sanitizeFeatureState(null);
 
 describe('module switches in the app', () => {
   it('missing or malformed answers never hide a module', () => {
@@ -37,15 +44,77 @@ describe('module switches in the app', () => {
       [['coach', 'clients'], 'coach'],
       [['trainer'], 'coach'],
       [['assistant'], 'medi'],
-      [['module', 'skin'], 'medi'],
+      [['chat', '[mode]'], 'medi'],
       [['news', '[id]'], 'news'],
-      [['(tabs)', 'home'], null],
-      [['medications'], null],
-      [['lab'], null],
+      // Medi's tools have switches of their own; the server reports them off while Medi is off.
+      [['symptoms'], 'symptoms'],
+      [['symptoms', 'results'], 'symptoms'],
+      [['module', 'skin'], 'skin'],
+      [['module', 'skincare'], 'skin'],
+      [['module', 'imaging'], 'imaging'],
+      [['module', 'lab'], 'labs'],
+      [['module', 'other'], 'medi'],
+      [['lab'], 'labs'],
+      [['lab', '[date]'], 'labs'],
+      [['lab', 'param', '[key]'], 'labs'],
+      [['lab', 'analyze'], 'labs'],
+      [['visits'], 'visits'],
+      [['visits', 'editor'], 'visits'],
+      [['medications'], 'medications'],
+      [['medications', 'add', 'search'], 'medications'],
+      [['record', '[id]'], 'records'],
+      [['health-metrics'], null],
+      [['health-metrics', 'index'], null],
+      [['health-metrics', 'hydration', 'log'], 'hydration'],
+      [['health-metrics', 'steps', 'goal', 'set'], 'steps'],
+      [['health-metrics', 'weight', 'goal', 'target'], 'weight'],
+      [['weather'], 'weather'],
+      [['week'], 'weeklyReport'],
+      [['profile', 'health-passport'], 'healthPassport'],
+      [['profile', 'invite'], 'invites'],
+      [['profile', 'invite-code'], 'invites'],
+      [['invite', '[code]'], 'invites'],
+      [['profile', 'notifications'], null],
+      [['profile', 'streak'], null],
+      [['explore'], null],
     ];
     for (const [segments, key] of cases) assert.equal(featureForPath(segments), key, segments.join('/'));
-    assert.equal(featureForHref('/(tabs)/medications'), null);
-    assert.equal(featureForHref('/assistant?mode=deep'), 'medi');
+  });
+
+  it('expo-router groups are not part of the route', () => {
+    assert.equal(featureForPath(['(tabs)', 'medications']), 'medications');
+    assert.equal(featureForPath(['(tabs)', 'records']), 'records');
+    assert.equal(featureForPath(['(tabs)', 'home']), null);
+    assert.equal(featureForPath(['(tabs)', 'profile']), null);
+    assert.equal(featureForPath(['(auth)', 'sign-in']), null);
+    assert.equal(featureForPath([]), null);
+    assert.equal(featureForHref('/(tabs)/medications'), 'medications');
+    assert.equal(featureForHref('/(tabs)/records'), 'records');
+    assert.equal(featureForHref('/(tabs)/home'), null);
+    assert.equal(featureForHref('/(tabs)/profile?action=question'), null);
+  });
+
+  it('reads Medi’s mode from the link', () => {
+    assert.equal(featureForHref('/assistant'), 'medi');
+    assert.equal(featureForHref('/assistant?mode=medi'), 'medi');
+    assert.equal(featureForHref('/assistant?mode=doctor'), 'mediDoctor');
+    assert.equal(featureForHref('/assistant?mode=deep'), 'mediDeep');
+    assert.equal(featureForHref('/assistant?sessionId=s1&mode=CONSILIUM'), 'mediDeep');
+    assert.equal(featureForHref(mediRoute({ mode: 'deep', sessionId: 's1', prefill: 'a&mode=doctor' })), 'mediDeep');
+    assert.equal(featureForHref(mediRoute({ prefill: 'mode=deep' })), 'medi');
+    assert.equal(featureForHref('/chat/doctor?sessionId=s1'), 'mediDoctor');
+    assert.equal(featureForHref('/chat/consilium'), 'mediDeep');
+    // Legacy chat links resolve exactly like the redirect does.
+    for (const route of ['/chat/doctor', '/chat/DOCTOR?prefill=x', '/chat/consilium?sessionId=s', '/chat/CONSILIUM', '/chat/assistant']) {
+      assert.equal(featureForHref(route), featureForHref(legacyChatRouteToMedi(route)), route);
+    }
+    assert.equal(featureForHref('/symptoms'), 'symptoms');
+    assert.equal(featureForHref('/health-metrics'), null);
+    assert.equal(featureForHref('/health-metrics/weight'), 'weight');
+    assert.equal(featureForHref('/weather?from=push'), 'weather');
+    assert.equal(featureForHref('/visits/editor?id=v1#top'), 'visits');
+    assert.equal(featureForHref('/profile/invite-code?code=ABC123'), 'invites');
+    assert.equal(featureForHref(''), null);
   });
 
   it('hides only entries of paused modules', () => {
@@ -57,9 +126,66 @@ describe('module switches in the app', () => {
     assert.equal(hrefAvailableIn(state, '/visits'), true);
   });
 
+  it('a paused Medi mode hides only that mode', () => {
+    const deepOff = sanitizeFeatureState({ flags: { mediDeep: false } });
+    assert.equal(hrefAvailableIn(deepOff, '/assistant'), true);
+    assert.equal(hrefAvailableIn(deepOff, '/assistant?mode=doctor'), true);
+    assert.equal(hrefAvailableIn(deepOff, '/assistant?mode=deep'), false);
+    // Medi off: the server reports every child off too (effective state), lab results stay.
+    const mediOff = sanitizeFeatureState({
+      flags: { medi: false, mediDoctor: false, mediDeep: false, symptoms: false, imaging: false, skin: false, voice: false },
+    });
+    for (const href of ['/assistant', '/assistant?mode=doctor', '/assistant?mode=deep', '/symptoms', '/module/imaging', '/module/skin', '/module/skincare']) {
+      assert.equal(hrefAvailableIn(mediOff, href), false, href);
+    }
+    assert.equal(hrefAvailableIn(mediOff, '/lab'), true);
+    assert.equal(hrefAvailableIn(mediOff, '/(tabs)/records'), true);
+  });
+
+  it('new module switches hide their own entries', () => {
+    const all = sanitizeFeatureState({
+      flags: Object.fromEntries(
+        ['visits', 'medications', 'records', 'labs', 'hydration', 'steps', 'weight', 'weather', 'weeklyReport', 'healthPassport', 'invites'].map((k) => [k, false]),
+      ),
+    });
+    for (const href of [
+      '/visits', '/(tabs)/medications', '/medications/add', '/(tabs)/records', '/record/r1', '/lab', '/module/lab',
+      '/health-metrics/hydration', '/health-metrics/steps', '/health-metrics/weight', '/weather', '/week',
+      '/profile/health-passport', '/profile/invite', '/profile/invite-code', '/invite/ABC123',
+    ]) {
+      assert.equal(hrefAvailableIn(all, href), false, href);
+    }
+    for (const href of ['/health-metrics', '/(tabs)/home', '/(tabs)/profile', '/profile/notifications', '/explore', '/assistant']) {
+      assert.equal(hrefAvailableIn(all, href), true, href);
+    }
+  });
+
   it('every app switch exists on the server', () => {
-    const keys: FeatureKey[] = ['cycle', 'nutrition', 'nutritionAi', 'medi', 'pets', 'mediVet', 'medirun', 'quest', 'rewardsStore', 'coach', 'community', 'pharmacy', 'news'];
-    for (const key of keys) assert.match(serverFlags, new RegExp(`key: '${key}'`), key);
+    for (const key of FEATURE_KEYS) assert.match(serverFlags, new RegExp(`key: '${key}'`), key);
+  });
+});
+
+describe('module switches and the Notification Brain', () => {
+  it('a paused module stops only its own families', () => {
+    const state = sanitizeFeatureState({ flags: { weather: false, weeklyReport: false, visits: false, hydration: false, steps: false } });
+    for (const family of ['weatherWellness', 'weekly', 'feature', 'visitFollowup', 'hydration', 'stepsQuiet']) {
+      assert.equal(engageFamilyOnIn(state, family), false, family);
+      assert.equal(engageFamilyOnIn(EMPTY, family), true, family);
+    }
+    for (const family of ['birthday', 'checkin', 'morning', 'reengage', 'insight', 'questSmart', 'constructor', '']) {
+      assert.equal(engageFamilyOnIn(state, family), true, family);
+    }
+  });
+
+  it('each switchable family has a topic no other family uses and opens its own module', () => {
+    const families = Object.keys(ENGAGE_FAMILIES) as EngageFamily[];
+    for (const [family, key] of ENGAGE_FAMILY_FEATURES) {
+      assert.ok(family in ENGAGE_FAMILIES, `${family} is not an engage family`);
+      const topic = ENGAGE_FAMILIES[family as EngageFamily].topic;
+      const sharing = families.filter((other) => other !== family && ENGAGE_FAMILIES[other].topic === topic);
+      assert.deepEqual(sharing, [], `${family} shares topic ${topic}`);
+      assert.equal(featureForHref(engageDestination(family, { visitId: 'v1' })), key, family);
+    }
   });
 });
 

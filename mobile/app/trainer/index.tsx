@@ -19,6 +19,7 @@ import {
 } from 'lucide-react-native';
 import { api, ApiError } from '@/lib/api';
 import { localAccountId } from '@/lib/localAccount';
+import { isHrefAvailable, useFeatureState } from '@/lib/featureFlags';
 import { useAuth } from '@/store/AuthContext';
 import {
   DAY_STATUS_LABEL,
@@ -42,6 +43,7 @@ import { tx } from '@/i18n/locale';
 export default function MyTrainerScreen() {
   const router = useRouter();
   const c = useThemeColors();
+  const features = useFeatureState();
   const { healthProfile } = useAuth();
   const [me, setMe] = useState<CoachMe | null>(null);
   const [ov, setOv] = useState<ClientOverview | null>(null);
@@ -331,7 +333,7 @@ export default function MyTrainerScreen() {
                 { label: tx('ფოტო-პროგრესი: მანამდე / შემდეგ', 'Photo progress: before / after'), icon: Camera, href: '/trainer/progress' },
                 { label: tx('წონა და მიზანი', 'Weight and goal'), icon: Target, href: '/health-metrics/weight' },
                 ...(link?.status === 'ACTIVE' ? [{ label: tx('ვარჯიშების ისტორია', 'Workout history'), icon: Dumbbell, href: '/trainer/sessions' }] : []),
-              ].map((row, i, arr) => (
+              ].filter((row) => isHrefAvailable(row.href, features)).map((row, i, arr) => (
                 <Card key={row.href} onPress={() => router.push(row.href as never)} style={{ paddingHorizontal: 0, paddingVertical: 12, borderBottomWidth: i < arr.length - 1 ? 0.5 : 0, borderColor: c.bg300, borderRadius: 0 }}>
                   <View style={coachStyles.row}>
                     <IconTile icon={row.icon} ink="teal" size={36} />

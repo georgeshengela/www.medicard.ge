@@ -11,6 +11,7 @@ import { getRunState } from '@/lib/run/store';
 import { useThemeColors } from '@/theme/colors';
 import { useAuth } from '@/store/AuthContext';
 import { usePrefersReducedMotion } from '@/hooks/usePrefersReducedMotion';
+import { isHrefAvailable, useFeatureState } from '@/lib/featureFlags';
 import { tx } from '@/i18n/locale';
 
 export const TAB_BAR_HEIGHT = 64;
@@ -43,6 +44,18 @@ const RIGHT_TABS: TabDef[] = [
   { href: '/(tabs)/profile', name: 'profile', title: ka.tabs.profile, Icon: User },
 ];
 
+/**
+ * Centre of a tab in slot units. Each side owns two of the five slots (RUN sits in the middle one);
+ * when an admin pauses a tab's module the other tab on that side takes the whole half.
+ */
+function slotCenter(name: TabDef['name'] | 'run', left: TabDef[], right: TabDef[]): number | null {
+  const l = left.findIndex((tab) => tab.name === name);
+  if (l >= 0) return (l + 0.5) * (2 / left.length);
+  const r = right.findIndex((tab) => tab.name === name);
+  if (r >= 0) return 3 + (r + 0.5) * (2 / right.length);
+  return null;
+}
+
 function openLiveRun(router: ReturnType<typeof useRouter>) {
   const phase = getRunState().phase;
   if (phase === 'running' || phase === 'paused' || phase === 'ready' || phase === 'preparing') {
@@ -64,6 +77,10 @@ export function FloatingTabBar({ visible = true }: { visible?: boolean }) {
   const router = useRouter();
   const segments = useSegments();
   const reveal = useSharedValue(visible ? 1 : 0);
+  // Records and medications tabs leave the bar while their module is paused (admin „მოდულები“).
+  const features = useFeatureState();
+  const leftTabs = LEFT_TABS.filter((tab) => isHrefAvailable(tab.href, features));
+  const rightTabs = RIGHT_TABS.filter((tab) => isHrefAvailable(tab.href, features));
 
   useEffect(() => {
     reveal.value = withTiming(visible ? 1 : 0, {
@@ -89,15 +106,14 @@ export function FloatingTabBar({ visible = true }: { visible?: boolean }) {
   const translateX = useSharedValue(0);
   const innerPad = 5;
   const slotCount = 5;
-  const activeSlot =
-    selected === 'home' ? 0 : selected === 'records' ? 1 : selected === 'medications' ? 3 : selected === 'profile' ? 4 : -1;
+  const activeCenter = slotCenter(selected, leftTabs, rightTabs);
   const tabWidth = trackWidth > 0 ? (trackWidth - innerPad * 2) / slotCount : 0;
 
   useEffect(() => {
-    if (tabWidth === 0 || activeSlot < 0) return;
-    const position = innerPad + activeSlot * tabWidth;
+    if (tabWidth === 0 || activeCenter == null) return;
+    const position = innerPad + (activeCenter - 0.5) * tabWidth;
     translateX.value = reduceMotion ? position : withTiming(position, { duration: 180, easing: Easing.out(Easing.cubic) });
-  }, [activeSlot, tabWidth, translateX, reduceMotion]);
+  }, [activeCenter, tabWidth, translateX, reduceMotion]);
 
   const indicatorStyle = useAnimatedStyle(() => ({
     transform: [{ translateX: translateX.value }],
@@ -156,7 +172,7 @@ export function FloatingTabBar({ visible = true }: { visible?: boolean }) {
           shadowRadius: 16,
         }}
       >
-        {tabWidth > 0 && activeSlot >= 0 ? (
+        {tabWidth > 0 && activeCenter != null ? (
           <Animated.View
             pointerEvents="none"
             style={[
@@ -174,15 +190,19 @@ export function FloatingTabBar({ visible = true }: { visible?: boolean }) {
           />
         ) : null}
 
-        {LEFT_TABS.map((tab) => (
-          <TabButton key={tab.name} tab={tab} focused={tab.name === selected} color={tab.name === selected ? colors.primary100 : colors.text200} onPress={() => goTab(tab)} />
-        ))}
+        <View style={{ flex: 2, height: '100%', flexDirection: 'row' }}>
+          {leftTabs.map((tab) => (
+            <TabButton key={tab.name} tab={tab} focused={tab.name === selected} color={tab.name === selected ? colors.primary100 : colors.text200} onPress={() => goTab(tab)} />
+          ))}
+        </View>
 
         <View style={{ flex: 1, height: '100%' }} />
 
-        {RIGHT_TABS.map((tab) => (
-          <TabButton key={tab.name} tab={tab} focused={tab.name === selected} color={tab.name === selected ? colors.primary100 : colors.text200} onPress={() => goTab(tab)} />
-        ))}
+        <View style={{ flex: 2, height: '100%', flexDirection: 'row' }}>
+          {rightTabs.map((tab) => (
+            <TabButton key={tab.name} tab={tab} focused={tab.name === selected} color={tab.name === selected ? colors.primary100 : colors.text200} onPress={() => goTab(tab)} />
+          ))}
+        </View>
       </View>
 
       <View

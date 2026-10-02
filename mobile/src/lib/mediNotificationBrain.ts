@@ -21,8 +21,9 @@ import {
   saveEngageSignals,
   saveEngageTrace,
 } from '@/lib/mediEngagePrefs';
-import type { EngageSnapshot, UnfinishedDraft } from './mediNotificationBrain.shared';
-import { evaluateEngageBrain } from './mediNotificationBrain.shared';
+import type { EngageFamily, EngageSnapshot, UnfinishedDraft } from './mediNotificationBrain.shared';
+import { ENGAGE_FAMILIES, evaluateEngageBrain } from './mediNotificationBrain.shared';
+import { hydrateFeatureFlags, isEngageFamilyOn } from '@/lib/featureFlags';
 import { visitDateTimeMs } from '@/lib/visitReminders';
 import { cancelNotificationsByPrefix, ENGAGE_CHANNEL_ID, NOTIF_PREFIX, getNotificationPermissionGranted } from '@/lib/notifications';
 import { applyPushCopy } from '@/lib/pushCopy';
@@ -62,6 +63,23 @@ function weekRange(end: Date): { thisWeek: string[]; prevWeek: string[] } {
   return { thisWeek, prevWeek };
 }
 
+/**
+ * Admin module switches (admin „მოდულები“): a family that only exists for a paused module (weather tips,
+ * the weekly report, the after-visit question, water and quiet-steps nudges) is treated like a topic the
+ * person turned off, so the brain picks something else for the day. Never saved: the person's own
+ * choices come back untouched when the module does. Medication and visit reminders are not engage
+ * families and keep firing.
+ */
+function withPausedModuleTopics(prefs: EngageSnapshot['prefs']): EngageSnapshot['prefs'] {
+  let topics: EngageSnapshot['prefs']['topics'] | null = null;
+  for (const family of Object.keys(ENGAGE_FAMILIES) as EngageFamily[]) {
+    if (isEngageFamilyOn(family)) continue;
+    if (!topics) topics = { ...prefs.topics };
+    topics[ENGAGE_FAMILIES[family].topic] = false;
+  }
+  return topics ? { ...prefs, topics } : prefs;
+}
+
 function pickUnfinished(drafts: UnfinishedDraft[], scheduleGap: UnfinishedDraft | null): UnfinishedDraft | null {
   const real = [...drafts, scheduleGap].filter((row): row is UnfinishedDraft => Boolean(row));
   real.sort((a, b) => b.updatedAt - a.updatedAt);
@@ -71,6 +89,8 @@ function pickUnfinished(drafts: UnfinishedDraft[], scheduleGap: UnfinishedDraft 
 export async function buildEngageSnapshot(user?: User | null, health?: HealthProfile | null): Promise<EngageSnapshot> {
   const now = new Date();
   const today = hydrationToday(now);
+  // A cold start can run the brain before the switches load; the last known answer is enough.
+  await hydrateFeatureFlags();
   const [prefs, lastOpenAt, sent, seen, logs, goalMl, bundle, doses, outcomes, openAt, drafts] = await Promise.all([
     loadEngagePrefs(),
     loadEngageLastOpenAt(),
@@ -272,7 +292,7 @@ export async function buildEngageSnapshot(user?: User | null, health?: HealthPro
     openAt,
     outcomes,
     sent,
-    prefs,
+    prefs: withPausedModuleTopics(prefs),
     weather,
     quest,
   };
@@ -640,6 +660,10 @@ export async function shouldDeliverNotification(data: Record<string, unknown> | 
   }
   if (data.type === 'cycle_reminder' || data.family === 'cycleReminder' || data.type === 'cycle_tip') {
     return deliverCycleReminder(data);
+  }
+  // Scheduled before an admin paused its module: drop it instead of opening a paused screen.
+  if (data.type === 'medi_engage' && !isEngageFamilyOn(String(data.family || ''))) {
+    return { ok: false, reason: 'module_paused' };
   }
   const { revalidateEngageCandidate } = await import('./mediNotificationRevalidate');
   const { findDoseLog, loadDoseLogs } = await import('@/lib/medications.shared');

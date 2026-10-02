@@ -32,6 +32,11 @@ type Props = {
   prefill?: string;
   /** Header with the mode switch, supplied by /assistant. */
   header: (profile: { title: string; icon: ReturnType<typeof getConversationalChatProfile>['icon'] }) => React.ReactNode;
+  /**
+   * Set while an admin has paused this mode (admin „მოდულები“): a saved conversation stays readable,
+   * nothing new can be sent, and this text says why.
+   */
+  pausedMessage?: string;
 };
 
 export function MediConsultation(props: Props) {
@@ -39,7 +44,7 @@ export function MediConsultation(props: Props) {
   return <MediConsultationContent key={`${user?.id}:${props.apiMode}:${props.sessionId ?? 'new'}`} {...props} />;
 }
 
-function MediConsultationContent({ apiMode, sessionId: initialSessionId, prefill, header }: Props) {
+function MediConsultationContent({ apiMode, sessionId: initialSessionId, prefill, header, pausedMessage }: Props) {
   const FIGMA_CHAT = useFigmaChat();
   const params = { mode: apiMode === 'CONSILIUM' ? 'consilium' : 'doctor', sessionId: initialSessionId, prefill };
   const profile = useMemo(() => getConversationalChatProfile(params.mode), [params.mode]);
@@ -182,10 +187,10 @@ function MediConsultationContent({ apiMode, sessionId: initialSessionId, prefill
   );
 
   useEffect(() => {
-    if (!user?.id || historyState !== 'ready' || params.sessionId) return;
+    if (!user?.id || historyState !== 'ready' || params.sessionId || pausedMessage) return;
     const message = consumeAssistantLaunch(user.id, `/chat/${mode === 'CONSILIUM' ? 'consilium' : 'doctor'}`);
     if (message) { setDraft(message); void send(message); }
-  }, [user?.id, historyState, params.sessionId, mode, send]);
+  }, [user?.id, historyState, params.sessionId, mode, send, pausedMessage]);
 
   const submitFeedback = useCallback(async (index: number, rating: 1 | -1) => {
     const owner = localAccountId();
@@ -206,7 +211,8 @@ function MediConsultationContent({ apiMode, sessionId: initialSessionId, prefill
     <>
       <ChatScreenShell
         header={header({ title: profile.title, icon: profile.icon })}
-        footer={<ChatInputBar value={draft} onChangeText={setDraft} onSend={() => send(draft)} sending={sending} disabled={historyState !== 'ready'} />}
+        footer={<ChatInputBar value={draft} onChangeText={setDraft} onSend={() => send(draft)} sending={sending} disabled={historyState !== 'ready' || Boolean(pausedMessage)}
+          placeholder={pausedMessage ? tx('ეს რეჟიმი დროებით შეჩერებულია', 'This mode is paused for now') : undefined} />}
       >
         <FlatList
           ref={listRef}
@@ -239,7 +245,7 @@ function MediConsultationContent({ apiMode, sessionId: initialSessionId, prefill
               <ChatBubbleAssistant icon={profile.icon} timestamp={new Date().toISOString()}>
                 <ChatEmptyHero title={profile.emptyTitle} body={profile.emptyBody} />
               </ChatBubbleAssistant>
-              {profile.suggestions.map((suggestion) => (
+              {pausedMessage ? null : profile.suggestions.map((suggestion) => (
                 <ChatSuggestionChip key={suggestion} label={suggestion} onPress={() => send(suggestion)} />
               ))}
             </View>
@@ -263,6 +269,11 @@ function MediConsultationContent({ apiMode, sessionId: initialSessionId, prefill
           }
           ListFooterComponent={
             <View style={{ gap: FIGMA_CHAT.messageGap, paddingTop: messages.length ? FIGMA_CHAT.messageGap : 0 }}>
+              {pausedMessage ? (
+                <Text accessibilityRole="alert" style={{ fontSize: 13, lineHeight: 21, color: FIGMA_CHAT.textSecondary, fontFamily: 'NotoSansGeorgian_400Regular', textAlign: 'center', paddingHorizontal: 8 }}>
+                  {pausedMessage}
+                </Text>
+              ) : null}
               {error ? (
                 <View
                   style={{

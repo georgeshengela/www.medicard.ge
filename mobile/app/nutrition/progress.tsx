@@ -4,6 +4,7 @@ import { useRouter } from "expo-router";
 import { CalendarCheck2, Ruler, TrendingDown, TrendingUp } from "lucide-react-native";
 import { MedicalSourcesLink } from "@/components/health/MedicalSourcesLink";
 import { useAuth } from "@/store/AuthContext";
+import { useFeature } from "@/lib/featureFlags";
 import { tx } from "@/i18n/locale";
 import { useThemeColors } from "@/theme/colors";
 import { nutritionDateLabel } from "@/lib/nutritionProgram";
@@ -26,6 +27,7 @@ function Progress() {
   const c = useThemeColors(),
     r = useRouter(),
     { data: d, error, loading, load } = useNutritionDashboard();
+  const weightOn = useFeature("weight");
   const recorded = d?.days.filter((v) => v.recorded) || [];
   const stat = (value: string, label: string) => (
     <View style={{ flex: 1, minWidth: 0, backgroundColor: c.bg100, borderRadius: 16, padding: 12, gap: 2 }}>
@@ -126,10 +128,12 @@ function Progress() {
             <NText style={{ fontSize: 12, color: c.text200 }}>
               {tx("ბოლო 28 გაზომვა. დღის რყევა ბუნებრივია — ყურადღება მიაქციე ხანგრძლივ ტენდენციას.", "Last 28 measurements. Daily swings are natural — watch the long-term trend.")}
             </NText>
-            <NButton
-              label={tx("წონის დამატება", "Add weight")}
-              onPress={() => r.push("/health-metrics/weight")}
-            />
+            {weightOn ? (
+              <NButton
+                label={tx("წონის დამატება", "Add weight")}
+                onPress={() => r.push("/health-metrics/weight")}
+              />
+            ) : null}
           </NCard>
           <NCard>
             <View style={{ flexDirection: "row", alignItems: "center", gap: 9 }}>
