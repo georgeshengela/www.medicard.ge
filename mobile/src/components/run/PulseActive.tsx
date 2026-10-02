@@ -3,7 +3,7 @@ import {ActivityIndicator,AppState,BackHandler,Image,Pressable,View} from 'react
 import {RUN_GIFT} from './runArt';
 import {useIsFocused,useLocalSearchParams,useRouter} from 'expo-router';
 import {activateKeepAwakeAsync,deactivateKeepAwake} from 'expo-keep-awake';
-import {ArrowLeft,BookOpen,Building2,Check,Compass,Flag,Footprints,Gauge,Gift,LocateFixed,MoreHorizontal,Navigation,Pause,Play,Route,Settings2,Timer,Trophy} from 'lucide-react-native';
+import {ArrowLeft,BookOpen,Building2,Check,Compass,Footprints,Gauge,Gift,LocateFixed,MoreHorizontal,Navigation,Route,Settings2,Timer,Trophy} from 'lucide-react-native';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
 import {hideFloatingTabBar} from '@/components/navigation/tabChrome';
@@ -20,9 +20,10 @@ import {useHeartbeat} from '@/lib/medipulsi/useHeartbeat';
 import {nightAt} from '@/lib/medipulsi/daylight';
 import {targetLabel} from '@/lib/run/labels';
 import {RunMap,type RunMapHandle} from './RunMap';
+import {RunDock} from './RunDock';
 import {PulsePanels,type PulsePanel} from './PulsePanels';
 import {PulseGift} from './PulseGift';
-import {Action,Bar,Card,Copy,IconButton,RUN_CTA,RUN_TEAL,Sheet} from './PulseUi';
+import {Action,Card,Copy,IconButton,RUN_CTA,RUN_TEAL,Sheet} from './PulseUi';
 import {MediRunLogo,PulseGlyph} from './PulseIdentity';
 import { tx } from '@/i18n/locale';
 
@@ -41,7 +42,7 @@ export default function PulseActive(){
  const mapDark=settings.mapMode==='night'||(settings.mapMode!=='day'&&Boolean(center&&nightAt(center.lat,center.lng)));
  const hapticOn=settings.haptic!==false;
  const hapticRef=useRef(hapticOn);hapticRef.current=hapticOn;
- const focused=useIsFocused(),params=useLocalSearchParams<{resume?:string}>();
+ const focused=useIsFocused(),params=useLocalSearchParams<{resume?:string;gift?:string}>();
  // While the phone is locked or another app is open the map gets nothing; coming back sends the latest state once.
  const [appActive,setAppActive]=useState(AppState.currentState!=='background'),[mapEpoch,setMapEpoch]=useState(0);
  const live=ready&&appActive;
@@ -81,6 +82,8 @@ export default function PulseActive(){
  const end=async()=>{if(busy)return;setBusy(true);try{await finishRun();setFinish(false);}finally{setBusy(false);}};
  // „გაგრძელება“ on the lock-screen Live Activity opens medicard://run/active?resume=1.
  useEffect(()=>{if(params.resume!=='1'||(run.phase!=='paused'&&run.phase!=='running'))return;router.setParams({resume:undefined} as never);if(run.phase==='paused')void begin();},[params.resume,run.phase]);
+ // „საჩუქარი გვერდითაა“ notification opens medicard://run/active?gift=1: the camera finder opens once the pulse confirms it.
+ useEffect(()=>{if(params.gift!=='1'||!running||!pulse.signal.revealed)return;router.setParams({gift:undefined} as never);setGift(true);},[params.gift,running,pulse.signal.revealed]);
  const openPanel=(value:PulsePanel)=>{setMenu(false);setPanel(value);};
  const gpsGood=run.accuracyM!=null&&run.accuracyM<=25;
  const remaining=run.targetMeters>0?Math.max(0,run.targetMeters-run.distanceM):0;
@@ -108,17 +111,7 @@ export default function PulseActive(){
   {center?<View pointerEvents="box-none" style={{position:'absolute',bottom:Math.max(12,insets.bottom)+dockHeight+12,right:14,alignItems:'flex-end',gap:9}}><IconButton floating label={tx('ჩემს მდებარეობაზე დაბრუნება', 'Back to my location')} icon={LocateFixed} active={following} onPress={()=>map.current?.send({type:'follow'})}/></View>:null}
   {center?<View onLayout={event=>setDockHeight(event.nativeEvent.layout.height)} style={{position:'absolute',bottom:Math.max(12,insets.bottom),left:14,right:14,gap:10}}>
    {running&&pulse.signal.signal?<Pressable accessibilityRole="button" accessibilityLabel={pulse.signal.revealed?tx('საჩუქრის აღმოჩენა', 'Find the gift'):tx('გულისცემის სიგნალი', 'Heartbeat signal')} onPress={()=>{if(pulse.signal.revealed)setGift(true);else setNotice({text:tx('მოუსმინე რიტმს. უფრო სწრაფი ორმაგი პულსი ნიშნავს, რომ უახლოვდები.', 'Listen to the rhythm. A faster double pulse means you’re getting closer.'),tone:'info'});}} style={{backgroundColor:pulse.signal.revealed?RUN_CTA:c.surface,borderRadius:22,padding:12,flexDirection:'row',alignItems:'center',gap:12,shadowColor:'#030712',shadowOpacity:.16,shadowRadius:14,shadowOffset:{width:0,height:6},elevation:6}}><PulseGlyph active period={pulse.signal.period}/><View style={{flex:1}}><Copy bold size={13} style={pulse.signal.revealed?{color:'#fff'}:undefined}>{pulse.signal.revealed?tx('აღმოჩენა შენ გვერდითაა', 'The find is right next to you'):tx('გესმის? რაღაც ახლოსაა…', 'Hear that? Something’s nearby…')}</Copy><Copy size={11} style={{color:pulse.signal.revealed?'#CCFBF1':c.text200}}>{pulse.signal.revealed?tx('გახსენი კამერა და შეეხე ყუთს', 'Open the camera and tap the box'):tx('მოუსმინე პულსს · მიჰყევი რიტმს', 'Listen to the pulse · follow the rhythm')}</Copy></View>{pulse.signal.revealed?<Image source={RUN_GIFT} accessibilityIgnoresInvertColors style={{width:34,height:34}}/>:null}</Pressable>:null}
-   <Card floating style={{padding:16,borderRadius:26,gap:14}}>
-    <Pressable accessibilityRole="button" accessibilityLabel={tx('გასეირნების დეტალები', 'Walk details')} onPress={()=>setDetails(true)} style={{gap:12}}>
-     <View style={{flexDirection:'row',alignItems:'flex-end'}}>
-      <View style={{flex:1.25}}><Copy size={10} muted>{tx('მანძილი', 'Distance')}</Copy><Copy bold size={34} style={{lineHeight:42,letterSpacing:-1,fontVariant:['tabular-nums']}}>{formatDistanceShort(run.distanceM)}</Copy></View>
-      <View style={{flex:1}}><Copy size={10} muted>{tx('აქტიური დრო', 'Active time')}</Copy><Copy bold size={21} style={{lineHeight:30,fontVariant:['tabular-nums']}}>{formatClock(run.movingMs)}</Copy></View>
-      <View style={{flex:.8,alignItems:'flex-end'}}><Copy size={10} muted>{tx('ტემპი', 'Pace')}</Copy><Copy bold size={21} style={{lineHeight:30,fontVariant:['tabular-nums']}}>{formatPace(derived.pace)}</Copy></View>
-     </View>
-     {run.targetMeters>0?<View style={{gap:6}}><Bar value={derived.progress*100} height={5} label={tx('მიზნის პროგრესი', 'Goal progress')}/><View style={{flexDirection:'row',justifyContent:'space-between'}}><Copy size={10} muted>{run.target?targetLabel(run.target):''}</Copy><Copy size={10} bold style={{color:c.primary100}}>{remaining>0?tx(`დარჩა ${formatDistanceShort(remaining)}`, `${formatDistanceShort(remaining)} to go`):tx('მიზანი შესრულდა ✓', 'Goal reached ✓')}</Copy></View></View>:null}
-    </Pressable>
-    <View style={{flexDirection:'row',gap:10,alignItems:'center'}}><View style={{flex:1}}><Action label={running?tx('პაუზა', 'Pause'):run.phase==='paused'?tx('გავაგრძელოთ გზა', 'Keep going'):tx('დავიწყოთ აღმოჩენა', 'Start exploring')} busy={busy} disabled={run.phase==='preparing'} icon={running?Pause:Play} secondary={running} onPress={()=>running?pauseRun():void begin()}/></View>{active?<Pressable accessibilityRole="button" accessibilityLabel={tx('სესიის დასრულება', 'End session')} onPress={()=>{if(running)pauseRun();setFinish(true);}} style={{width:52,height:52,borderRadius:18,backgroundColor:c.bg200,alignItems:'center',justifyContent:'center'}}><Flag size={20} color={c.danger}/></Pressable>:null}</View>
-   </Card>
+   <RunDock run={run} pace={derived.pace} progress={derived.progress} busy={busy} onPrimary={()=>running?pauseRun():void begin()} onFinish={()=>{if(running)pauseRun();setFinish(true);}} onDetails={()=>setDetails(true)}/>
   </View>:null}
   <Sheet title={tx('შენი გასეირნება', 'Your walk')} visible={details} onClose={()=>setDetails(false)}>
    <Card><Copy bold size={18}>{run.target?targetLabel(run.target):tx('თავისუფალი გასეირნება', 'Free walk')}</Copy>{[{label:tx('სავარაუდო ნაბიჯები', 'Estimated steps'),value:derived.steps.toLocaleString(),icon:Footprints},{label:tx('საშუალო ტემპი', 'Average pace'),value:formatPace(derived.pace)+tx(' /კმ', ' /km'),icon:Gauge},{label:tx('მიმდინარე სიჩქარე', 'Current speed'),value:run.speedKmh.toFixed(1)+tx(' კმ/სთ', ' km/h'),icon:Navigation},{label:tx('სესიის დრო პაუზების ჩათვლით', 'Session time incl. pauses'),value:formatClock(run.elapsedMs),icon:Timer},{label:tx('GPS სიზუსტე', 'GPS accuracy'),value:run.accuracyM==null?tx('ველოდებით', 'Waiting'):Math.round(run.accuracyM)+tx(' მ', ' m'),icon:LocateFixed}].map(row=><View key={row.label} style={{flexDirection:'row',gap:10,alignItems:'center',minHeight:30}}><row.icon size={18} color={c.primary100}/><Copy muted size={12} style={{flex:1}}>{row.label}</Copy><Copy bold size={13}>{row.value}</Copy></View>)}</Card>

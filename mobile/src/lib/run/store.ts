@@ -29,6 +29,7 @@ import {
   stopRunLocationUpdates,
   type TaskFix,
 } from '@/lib/run/locationTask';
+import { onGiftSignal, resetGiftAlerts } from '@/lib/run/giftAlerts';
 
 export type RunPhase = 'idle' | 'preparing' | 'ready' | 'running' | 'paused' | 'finished';
 export type RunError = 'permission' | 'location' | 'sync' | null;
@@ -164,6 +165,9 @@ let trackingSince = 0;
 /** Start of the current vehicle stretch (journey.vehicle set); active time does not run meanwhile. */
 let vehicleSince: number | null = null;
 let lastPersistAt = 0;
+let lastBackgroundNearbyAt = 0;
+/** In the background the gift pulse is asked for this often (on screen the client polls every 5 s). */
+const BACKGROUND_NEARBY_MS = 20_000;
 
 /** Live session the user has started — badge + persistence apply. */
 export function isActiveRunPhase(phase: RunPhase): phase is 'running' | 'paused' {
@@ -478,6 +482,7 @@ export async function startRun(): Promise<void> {
     const now=Date.now();
     autoPausedAt=null;vehicleSince=null;trackingSince=now;
     if(state.phase==='ready'){
+      resetGiftAlerts();lastBackgroundNearbyAt=0;
       movingAccumMs=verified.seconds*1000;
       set({phase:'running',startedAt:now,path:state.current?[state.current]:[],segments:[],splits:Array.from({length:Math.floor(verified.meters/1000)},()=>-1),distanceM:verified.meters,movingMs:movingAccumMs,elapsedMs:0,error:null,syncError:null,autoPaused:false,driving:false});
     } else set({phase:'running',distanceM:verified.meters,error:null,syncError:null,autoPaused:false,driving:false});
@@ -747,6 +752,19 @@ function onBackgroundFixes(fixes: TaskFix[]) {
     if (fix.at < trackingSince - 2000) continue;
     ingestFix(fix);
   }
+  checkNearbyInBackground();
+}
+
+/** Phone locked: ask for the gift pulse every 20 s (GPS events drive it — Android pauses JS timers there). */
+function checkNearbyInBackground() {
+  if (AppState.currentState === 'active' || state.phase !== 'running' || state.simulating) return;
+  const now = Date.now();
+  if (now - lastBackgroundNearbyAt < BACKGROUND_NEARBY_MS) return;
+  lastBackgroundNearbyAt = now;
+  const client = getPulseClient();
+  void client.tick(true).then(() => {
+    if (state.phase === 'running') onGiftSignal(client.getSnapshot().signal);
+  }).catch(() => {});
 }
 
 async function startWatch() {
@@ -867,6 +885,7 @@ function ingestFix(fix: Fix) {
     else if(before.vehicle&&!journey.vehicle)emit('transport_resumed');
     if(reached&&!isReachedEmitted){isReachedEmitted=true;emit('pin_reached');}
     if(complete&&!isCompletedEmitted){isCompletedEmitted=true;emit('target_completed');}
+    onGiftSignal(client.getSnapshot().signal);
     lastFixAt=journey.lastFix??0;return;
   }
   const point = {lat:fix.lat,lng:fix.lng};

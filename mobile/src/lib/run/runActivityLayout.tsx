@@ -39,6 +39,9 @@ export type RunActivityProps = {
   resumeLabel: string;
   resumeUrl: string;
   staleText: string;
+  /** The gift pulse while recording: none, near (signal) or here (in reach). */
+  find: 'none' | 'near' | 'here';
+  findText: string;
 };
 
 const MedirunActivity = (props: RunActivityProps, environment: LiveActivityEnvironment) => {
@@ -49,9 +52,12 @@ const MedirunActivity = (props: RunActivityProps, environment: LiveActivityEnvir
   const stale = environment.isStale === true;
   const tone = stale ? 'pause' : props.tone;
   const ticking = props.ticking && !stale;
-  const accent = tone === 'live' ? TEAL : tone === 'hold' ? AMBER : '#CBD5E1';
-  const glyph = tone === 'hold' ? 'car.fill' : tone === 'pause' ? 'pause.fill' : 'figure.run';
-  const status = stale ? props.staleText : props.status;
+  const ROSE = '#FB7185';
+  // A find nearby outranks the live state: rose heart instead of the runner, in every region.
+  const finding = !stale && tone === 'live' && props.find !== 'none';
+  const accent = finding ? ROSE : tone === 'live' ? TEAL : tone === 'hold' ? AMBER : '#CBD5E1';
+  const glyph = finding ? (props.find === 'here' ? 'gift.fill' : 'heart.fill') : tone === 'hold' ? 'car.fill' : tone === 'pause' ? 'pause.fill' : 'figure.run';
+  const status = stale ? props.staleText : finding ? props.findText : props.status;
   const start = new Date(props.clockStart);
   const end = new Date(props.clockStart + 24 * 3600 * 1000);
 
@@ -69,7 +75,7 @@ const MedirunActivity = (props: RunActivityProps, environment: LiveActivityEnvir
           monospacedDigit(),
           foregroundStyle(color),
           multilineTextAlignment(align),
-          frame({ width: Math.ceil(size * (hours ? 3.9 : 2.9)), alignment: align }),
+          frame({ width: Math.ceil(size * (hours ? 4.6 : 3.55)), alignment: align }),
         ]}
       />
     ) : (
@@ -133,7 +139,7 @@ const MedirunActivity = (props: RunActivityProps, environment: LiveActivityEnvir
             <Caption text={props.distanceLabel} />
           </VStack>
           <VStack alignment="leading" spacing={1}>
-            <Clock size={24} color="#FFFFFF" align="leading" />
+            <Clock size={22} color="#FFFFFF" align="leading" />
             <Caption text={props.timeLabel} />
           </VStack>
           {props.lit > 0 ? (

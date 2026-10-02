@@ -50,6 +50,7 @@ const base = {
   tone: 'live', status: 'შენი გზა იწერება', distance: '3.24', unit: 'კმ', distanceLabel: 'მანძილი', timeLabel: 'აქტიური დრო',
   ticking: true, clockStart: Date.now() - 1471000, clock: '24:31', lit: 47, litLabel: 'ანთია', pauseLabel: 'პაუზა',
   resumeLabel: 'გაგრძელება', resumeUrl: 'medicard://run/active?resume=1', staleText: 'განახლება შეჩერდა · გახსენი აპი',
+  find: 'none', findText: 'აღმოჩენა ახლოსაა',
 };
 
 const texts = (node, out = []) => {
@@ -133,8 +134,20 @@ test('live timers have a fixed width so the compact Dynamic Island stays narrow'
     return timer?.props.modifiers.find((m) => m.$type === 'frame')?.width;
   };
   const short = render(base, { colorScheme: 'dark' });
-  assert.ok(width(short.compactTrailing) > 0 && width(short.compactTrailing) <= 44, 'mm:ss fits a tight compact trailing region');
+  assert.ok(width(short.compactTrailing) > 0 && width(short.compactTrailing) >= 48 && width(short.compactTrailing) <= 52, 'mm:ss fits without truncation, still compact');
   assert.ok(width(short.expandedTrailing) > 0 && width(short.banner) > 0);
   const long = render({ ...base, clockStart: Date.now() - 2 * 3600 * 1000 }, { colorScheme: 'dark' });
-  assert.ok(width(long.compactTrailing) > width(short.compactTrailing) && width(long.compactTrailing) <= 60, 'room for hours, still compact');
+  assert.ok(width(long.compactTrailing) > width(short.compactTrailing) && width(long.compactTrailing) <= 66, 'room for hours, still compact');
+});
+
+test('a find nearby turns the runner into a rose heart everywhere, a gift in reach into a gift box', () => {
+  const render = widgetRuntime(shippedLayout().layout);
+  const near = render({ ...base, find: 'near' }, { colorScheme: 'dark' });
+  assert.ok(texts(near.banner).includes('აღმოჩენა ახლოსაა'));
+  for (const region of ['banner', 'compactLeading', 'minimal', 'expandedBottom']) assert.ok(symbols(near[region]).includes('heart.fill'), region);
+  const here = render({ ...base, find: 'here', findText: 'საჩუქარი გვერდითაა' }, { colorScheme: 'dark' });
+  assert.ok(texts(here.banner).includes('საჩუქარი გვერდითაა'));
+  assert.ok(symbols(here.compactLeading).includes('gift.fill'));
+  const parked = render({ ...base, find: 'near', tone: 'pause', ticking: false }, { colorScheme: 'dark' });
+  assert.ok(!symbols(parked.banner).includes('heart.fill'), 'paused sessions show no pulse');
 });

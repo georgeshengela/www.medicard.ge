@@ -11,6 +11,8 @@ import { AppState, Platform } from 'react-native';
 import { tx } from '@/i18n/locale';
 import { formatClock } from '@/lib/run/geo';
 import { getRunState, pauseRun, subscribeRunState, type RunState } from '@/lib/run/store';
+import { getPulseClient } from '@/lib/medipulsi/client';
+import type { GiftSignal } from '@/lib/medipulsi/types';
 import type { RunActivityProps } from '@/lib/run/runActivityLayout';
 
 type Instance = {
@@ -55,6 +57,14 @@ function load(): boolean {
   }
 }
 
+function currentSignal(): GiftSignal | null {
+  try {
+    return getPulseClient().getSnapshot().signal;
+  } catch {
+    return null;
+  }
+}
+
 function distanceParts(meters: number): { distance: string; unit: string } {
   if (meters < 1000) return { distance: String(Math.round(meters)), unit: tx('მ', 'm') };
   return { distance: (meters / 1000).toFixed(meters < 100_000 ? 2 : 1), unit: tx('კმ', 'km') };
@@ -72,8 +82,15 @@ function statusOf(s: RunState): { tone: RunActivityProps['tone']; status: string
   return { tone: 'live', status: tx('შენი გზა იწერება', 'Your path is recording') };
 }
 
-export function runActivityProps(s: RunState, now = Date.now()): RunActivityProps {
+/** The gift pulse while recording: near (signal) or here (in reach). */
+function findOf(s: RunState, signal: GiftSignal | null): RunActivityProps['find'] {
+  if (s.phase !== 'running' || s.transportWarning || !signal?.signal || !signal.quality) return 'none';
+  return signal.revealed ? 'here' : 'near';
+}
+
+export function runActivityProps(s: RunState, now = Date.now(), signal: GiftSignal | null = null): RunActivityProps {
   const { tone, status } = statusOf(s);
+  const find = findOf(s, signal);
   // Active time stops while paused or in a vehicle; otherwise the lock screen clock ticks on its own.
   const ticking = s.phase === 'running' && !s.transportWarning;
   return {
@@ -91,15 +108,17 @@ export function runActivityProps(s: RunState, now = Date.now()): RunActivityProp
     resumeLabel: tx('გაგრძელება', 'Continue'),
     resumeUrl: RESUME_URL,
     staleText: tx('განახლება შეჩერდა · გახსენი აპი', 'Updates stopped · open the app'),
+    find,
+    findText: find === 'here' ? tx('საჩუქარი გვერდითაა', 'The gift is right here') : tx('აღმოჩენა ახლოსაა', 'A find is near'),
   };
 }
 
 /** What the person can see change; the clock start moves every second and is deliberately left out. */
 function visibleKey(p: RunActivityProps): string {
-  return [p.tone, p.status, p.distance, p.unit, p.ticking, p.ticking ? '' : p.clock, p.lit].join('|');
+  return [p.tone, p.status, p.find, p.distance, p.unit, p.ticking, p.ticking ? '' : p.clock, p.lit].join('|');
 }
 function majorKey(p: RunActivityProps): string {
-  return [p.tone, p.status, p.ticking].join('|');
+  return [p.tone, p.status, p.find, p.ticking].join('|');
 }
 
 function staleDateFor(p: RunActivityProps): Date | undefined {
@@ -142,7 +161,7 @@ function sync(): void {
     endActivity();
     return;
   }
-  const props = runActivityProps(s);
+  const props = runActivityProps(s, Date.now(), currentSignal());
   if (!instance) {
     // ActivityKit starts an activity only from the foreground: the session start/resume on screen.
     if (suppressed || s.phase !== 'running' || AppState.currentState !== 'active' || !factory) return;
@@ -173,7 +192,7 @@ function sync(): void {
   if (s.phase === 'running' && !heartbeat) {
     heartbeat = setInterval(() => {
       const now = getRunState();
-      if (now.phase === 'running' && instance) send(runActivityProps(now));
+      if (now.phase === 'running' && instance) send(runActivityProps(now, Date.now(), currentSignal()));
     }, HEARTBEAT_MS);
   } else if (s.phase !== 'running' && heartbeat) {
     clearInterval(heartbeat);
