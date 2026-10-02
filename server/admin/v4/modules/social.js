@@ -71,7 +71,7 @@
      with "medirun" are MEDIRUN, everything else is MEDICARD. start/end (Tbilisi days) drive the MEDIRUN band. */
   const CAMPAIGNS = {
     'medirun-glow-2026': {
-      brand: 'medirun', label: 'MEDIRUN · გაანათე თბილისი', short: 'MEDIRUN', start: '2026-10-03', end: '2026-12-31',
+      brand: 'medirun', label: 'MEDIRUN · გაანათე თბილისი', short: 'MEDIRUN', start: '2026-10-05', end: '2026-12-31',
       posters: '#/campaigns',
     },
     'medirun-passport-2026-10': { brand: 'medirun', label: 'MEDIRUN · თბილისის პასპორტი', short: 'MEDIRUN' },

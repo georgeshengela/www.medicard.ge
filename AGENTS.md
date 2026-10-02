@@ -214,7 +214,9 @@ token (`https://medicard.ge/u/TOKEN`), never the user id; a trainer's scan retur
 was verified with a decoder (round dots failed) — keep modules ≥ 0.47 cell and logo ≤ 20 %. Codes stay as a
 fallback until the owner says otherwise.
 
-## MEDIRUN „გაანათე თბილისი“ campaign (2026-10-01, 3 Oct – 31 Dec 2026)
+## MEDIRUN „გაანათე თბილისი“ campaign (2026-10-01, 5 Oct – 31 Dec 2026)
+
+Start moved on 2 Oct (owner): Saturday 3 Oct → Monday 5 Oct, first boxes 08:30; end and grand prize unchanged. The start lives in `medirun-campaign.json` (`start`, first `weeks.from`), the site timer (`/medirun` `START`), `campaignMedia.js`, admin `social.js` and `posters.html` CONFIG — move them together.
 
 Owner-requested city gift hunt (this is the MEDIRUN event allowed under the freeze). Owner logic: Monday–Friday a few small boxes, weekends better ones, Saturdays 16:00 a coin rain in one park (park revealed by riddle stories at 15:00/15:30), from 7 Nov "lantern" boxes for players with ≥0.25% of Tbilisi lit, and 31 Dec 12:00 one red iPhone 18 Pro Max visible only to players with ≥1% of Tbilisi lit. Keep it cheap, few boxes, deep inside parks on public footpaths (never roads, yards, water, church grounds, schools). No physical box is ever left in the street; no random draw anywhere (Georgian promo-lottery permit risk); no merch for now (owner said not yet).
 - Config `server/src/data/medirun-campaign.json`; spots `server/src/data/medirun-spots-tbilisi.json` (OSM footway nodes inside public parks, with district and `depthM`). Plan is pure and deterministic: `server/src/lib/medipulsi/autopilot.js` `planDay(date)` (tests `autopilot.test.js`). Gift ids `glow-YYYY-MM-DD-…`.

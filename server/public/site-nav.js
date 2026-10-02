@@ -52,7 +52,7 @@
     // The logo is the way home on the bar; „მთავარი“ stays in the phone menu only.
     { key: 'home', href: '/', label: T('მთავარი', 'Home'), hint: T('დღე მედიქარდთან', 'A day with MEDICARD'), icon: 'home', bar: false },
     { key: 'about', href: '/about', label: T('ჩვენ შესახებ', 'About'), hint: T('ვინ ვართ და რისი გვჯერა', 'Who we are and what we believe'), icon: 'about' },
-    { key: 'medirun', href: '/medirun', label: 'MEDIRUN', hint: T('გაანათე თბილისი · 3 ოქტ – 31 დეკ', 'Light up Tbilisi · 3 Oct – 31 Dec'), icon: 'run', live: true },
+    { key: 'medirun', href: '/medirun', label: 'MEDIRUN', hint: T('გაანათე თბილისი · 5 ოქტ – 31 დეკ', 'Light up Tbilisi · 5 Oct – 31 Dec'), icon: 'run', live: true },
     { key: 'calculators', href: '/calculators', label: T('კალკულატორები', 'Calculators'), hint: T('ციკლი და ორსულობა — 10 უფასო', 'Cycle and pregnancy — 10 free tools'), icon: 'calc', mega: true },
     { key: 'faq', href: onHome ? '#faq' : '/#faq', label: T('კითხვები', 'FAQ'), hint: T('ხშირი კითხვები', 'Frequently asked questions'), icon: 'faq' },
     { key: 'contact', href: '/contact', label: T('კონტაქტი', 'Contact'), hint: T('მოგვწერე', 'Write to us'), icon: 'mail' }

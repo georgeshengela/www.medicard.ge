@@ -79,14 +79,14 @@ h1{font-weight:800;letter-spacing:-1.5px;line-height:1.04}
 const Q = new URLSearchParams(location.search);
 const CONFIG = {
   name: 'გაანათე თბილისი',
-  dates: '3 ოქტომბერი – 31 დეკემბერი',
-  teaserDate: '03.10',
+  dates: '5 ოქტომბერი – 31 დეკემბერი',
+  teaserDate: '05.10',
   android: Q.get('android') === '1', // re-render with --android once Google Play is live
   qrUrl: 'https://medicard.ge/?utm_source=print&utm_medium=poster&utm_campaign=medirun_glow',
   grand: { day: '31 დეკემბერი', time: '12:00', prize: 'წითელი iPhone 18 Pro Max' },
   levels: [
     ['0,1%', 'ნაპერწკალი', 'პირველი ნიშანი: ქალაქი უკვე შენი წყალობით ანათებს.'],
-    ['0,25%', 'ფარანი', 'ნოემბრიდან შაბათობით ფარნის ყუთებს დაინახავ — თითოში 300 Medi Coins.'],
+    ['0,25%', 'ფარანი', 'ნოემბრიდან შაბათობით ფარნის ყუთებს დაინახავ — თითოში 1 500 Medi Coins.'],
     ['0,5%', 'ჩირაღდანი', 'შუქურამდე ნახევარი გზაღა დაგრჩა.'],
     ['1%', 'შუქურა', '31 დეკემბერს წითელ iPhone 18 Pro Max-ს დაინახავ.'],
   ],
@@ -112,7 +112,7 @@ const CONFIG = {
     april9: ['ბაღი რუსთაველზე, რომელიც თარიღის სახელს ატარებს.', 'რუსთაველის გამზირის გასწვრივ, ხეების ჩრდილში.'],
   },
   weeks: [
-    { n: 1, dates: '3–11 ოქტომბერი', chapter: 'oldtown', title: 'ძველი ქალაქის ამბები', sub: 'ამ კვირაში მეტი ყუთი მოედნებთან, ხიდებთან და აბანოებთან.', sat: 0 },
+    { n: 1, dates: '5–11 ოქტომბერი', chapter: 'oldtown', title: 'ძველი ქალაქის ამბები', sub: 'ამ კვირაში მეტი ყუთი მოედნებთან, ხიდებთან და აბანოებთან.', sat: 0 },
     { n: 2, dates: '12–18 ოქტომბერი', chapter: 'green', title: 'მწვანე თბილისი', sub: 'ამ კვირაში მეტი ყუთი ბაღებსა და პარკებში.', sat: 1 },
     { n: 3, dates: '19–25 ოქტომბერი', chapter: 'horizon', title: 'წყალი და ჰორიზონტი', sub: 'ამ კვირაში მეტი ყუთი ტბებთან და ქალაქის გადასახედებთან.', sat: 2 },
     { n: 4, dates: '26 ოქტომბერი – 1 ნოემბერი', chapter: 'culture', title: 'ქალაქის ხელწერა', sub: 'ამ კვირაში მეტი ყუთი სამებასთან, ბოტანიკურ ბაღთან და რუსთაველზე.', sat: 3 },
@@ -192,8 +192,8 @@ P['f02-how'] = { kind: 'feed', cls: 'rings', html: () => `${header(70, CONFIG.na
 
 // F03 weekly rhythm
 const RHYTHM = [
-  ['', 'ორშაბათი–<br>პარასკევი', 'მცირე ყუთები 08:30-სა და 18:00-ზე: 10–50 Medi Coins.'],
-  ['', 'შაბათი–<br>კვირა', 'უფრო დიდი ყუთები 10:30-სა და 17:30-ზე: 30–100 Medi Coins.'],
+  ['', 'ორშაბათი–<br>პარასკევი', 'მცირე ყუთები 08:30-სა და 18:00-ზე: 50–250 Medi Coins.'],
+  ['', 'შაბათი–<br>კვირა', 'უფრო დიდი ყუთები 10:30-სა და 17:30-ზე: 150–500 Medi Coins.'],
   ['gold', 'შაბათს,<br>16:00', 'საჩუქრების წვიმა ერთ პარკში. რომელში — საათით ადრე გეტყვით.'],
   ['red', '31<br>დეკემბერი', `${CONFIG.grand.prize} — მხოლოდ შუქურებისთვის.`],
 ];
@@ -291,7 +291,7 @@ P['f14-saturday'] = { kind: 'feed', html: () => { const s = CONFIG.saturdays[sat
   <div class="abs" style="left:80px;right:80px;bottom:130px">
     <div class="eyebrow gold" style="font-size:32px;margin-bottom:14px">${s.label}, 16:00</div>
     <h1 style="font-size:88px">საჩუქრების წვიმა ერთ პარკში.</h1>
-    <p class="sub" style="font-size:31px;margin-top:20px">რომელ პარკში — 15:00-ზე გეტყვით სთორიში, გამოცანით. ყუთებში 50 და 100 Medi Coins-ია.${s.lantern ? ' ფარნის ყუთებს კი მხოლოდ ის დაინახავს, ვისაც თბილისის 0,25% აქვს განათებული.' : ''}</p>
+    <p class="sub" style="font-size:31px;margin-top:20px">რომელ პარკში — 15:00-ზე გეტყვით სთორიში, გამოცანით. ყუთებში 250 და 500 Medi Coins-ია.${s.lantern ? ' ფარნის ყუთებს კი მხოლოდ ის დაინახავს, ვისაც თბილისის 0,25% აქვს განათებული.' : ''}</p>
   </div>${foot(80)}`; } };
 
 // ---------- stories 1080x1920 ----------
@@ -431,7 +431,7 @@ P['pa4-partner'] = { kind: 'print', cls: 'rings', size: page(210, 297), html: ()
   ${header(48, 'პარტნიორებისთვის', '', 30)}
   <div class="abs" style="left:56px;right:56px;top:118px">
     <h1 style="font-size:50px">გახდი MEDIRUN-ის საჩუქრის წერტილი.</h1>
-    <p class="sub" style="font-size:18px;margin-top:12px">MEDIRUN თამაშია MEDICARD-ის აპში: ადამიანი დადის ან დარბის, ქალაქი რუკაზე ინთება, საჩუქართან მიახლოებისას კი ტელეფონი გულისცემასავით კანკალებს. 3 ოქტომბრიდან 31 დეკემბრამდე თბილისში ვატარებთ კამპანიას „${CONFIG.name}“.</p>
+    <p class="sub" style="font-size:18px;margin-top:12px">MEDIRUN თამაშია MEDICARD-ის აპში: ადამიანი დადის ან დარბის, ქალაქი რუკაზე ინთება, საჩუქართან მიახლოებისას კი ტელეფონი გულისცემასავით კანკალებს. 5 ოქტომბრიდან 31 დეკემბრამდე თბილისში ვატარებთ კამპანიას „${CONFIG.name}“.</p>
   </div>
   <div class="abs" style="left:56px;right:56px;top:340px;display:grid;grid-template-columns:1fr 1fr;gap:16px">
     ${[

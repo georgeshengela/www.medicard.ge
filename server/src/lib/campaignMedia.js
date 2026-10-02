@@ -31,7 +31,7 @@ export const PRIVATE_CAMPAIGNS = [
     slug: 'medirun-glow',
     brand: 'medirun',
     name: 'გაანათე თბილისი',
-    start: '2026-10-03',
+    start: '2026-10-05',
     end: '2026-12-31',
     rulesUrl: 'https://medicard.ge/medirun#rules',
     plan: 'plan.html',

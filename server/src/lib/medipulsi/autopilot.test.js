@@ -18,8 +18,8 @@ test('nothing outside the campaign',()=>{
  assert.equal(plan('2027-01-01').length,0);
 });
 test('weekdays: few small boxes deep inside parks; weekends: more and better',()=>{
- assert.equal(dayKind('2026-10-05'),'weekday');assert.equal(dayKind('2026-10-04'),'weekend');
- const mon=plan('2026-10-05'),sun=plan('2026-10-04');
+ assert.equal(dayKind('2026-10-05'),'weekday');assert.equal(dayKind('2026-10-11'),'weekend');
+ const mon=plan('2026-10-05'),sun=plan('2026-10-11');
  assert.ok(mon.length>=5&&mon.length<=7,`weekday boxes ${mon.length}`);
  assert.ok(mon.every(p=>p.rule.coins<=250&&p.gift.stock<=3&&p.gift.pulseRadius===250)); // coins ×5 since 2 Oct (store economy)
  assert.ok(mon.every(p=>spots.find(s=>s.id===p.rule.meta.spot).depthM>=40),'weekday boxes avoid park edges');
@@ -41,9 +41,10 @@ test('rotation visits every district before repeating one',()=>{
  assert.equal(new Set(order.slice(0,10).map(s=>s.district)).size,10);
  assert.equal(order.length,spots.length);
 });
-test('a week of weekday boxes never reuses a spot',()=>{
- const seen=new Set();
- for(let d='2026-10-05';d<='2026-10-09';d=dateAdd(d,1))for(const p of plan(d).filter(p=>p.rule.meta.kind==='am')){assert.ok(!seen.has(p.rule.meta.spot),`${p.rule.meta.spot} reused`);seen.add(p.rule.meta.spot);}
+test('a week of weekday boxes never reuses a rotation spot',()=>{
+ // Theme-week focus spots may repeat by design (a small area); the city-wide rotation must not.
+ const seen=new Set(),campaign={...CAMPAIGN,weeks:[]};
+ for(let d='2026-10-05';d<='2026-10-09';d=dateAdd(d,1))for(const p of planDay(d,{spots,golden,campaign}).filter(p=>p.rule.meta.kind==='am')){assert.ok(!seen.has(p.rule.meta.spot),`${p.rule.meta.spot} reused`);seen.add(p.rule.meta.spot);}
 });
 test('Saturday 16:00 rain around the announced park; lanterns from November need 0.25%',()=>{
  const oct=plan('2026-10-10'),rain=oct.filter(p=>p.rule.meta.kind==='saturday');
@@ -62,7 +63,7 @@ test('the grand prize exists only on 31 December, for 1% of Tbilisi, as a physic
  assert.match(g.gift.title,/iPhone 18 Pro Max/);
 });
 test('every gift id fits the admin id format',()=>{
- for(const d of ['2026-10-03','2026-11-07','2026-12-31'])for(const p of plan(d))assert.match(p.gift.id,/^[a-zA-Z0-9_-]{1,80}$/);
+ for(const d of ['2026-10-05','2026-11-07','2026-12-31'])for(const p of plan(d))assert.match(p.gift.id,/^[a-zA-Z0-9_-]{1,80}$/);
 });
 
 test('gating: a rule without threshold is open, a gated rule needs the share',()=>{

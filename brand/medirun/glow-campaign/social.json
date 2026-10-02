@@ -1,10 +1,10 @@
 [
  {
   "slot": "g-teaser",
-  "date": "2026-10-02T17:00:00+04:00",
+  "date": "2026-10-04T17:00:00+04:00",
   "info": {
    "autoPublish": true,
-   "draft": false,
+   "draft": true,
    "descendants": [],
    "hasNotReadNotes": false,
    "shortener": false,
@@ -16,7 +16,7 @@
    ],
    "mediaAltText": [],
    "publicationDate": {
-    "dateTime": "2026-10-02T17:00:00",
+    "dateTime": "2026-10-04T17:00:00",
     "timezone": "Asia/Tbilisi"
    },
    "providers": [
@@ -27,7 +27,7 @@
      "network": "instagram"
     }
    ],
-   "text": "რაღაც აინთება. ✨\n\nხვალ, 3 ოქტომბერს, თბილისში ახალი თამაში იწყება.\n\nჩამოტვირთე MEDICARD დღესვე, რომ ხვალ პირველებს შორის იყო. 👇\n\n📲 ჩამოტვირთე უფასოდ iPhone-ზე:\nhttps://apps.apple.com/app/id6812517519\n🌐 საიტი და ვებ-ვერსია: https://medicard.ge\n🤖 Android — სულ მალე\n\n#გაანათეთბილისი #MEDIRUN #MEDICARD #თბილისი #საქართველო",
+   "text": "რაღაც აინთება. ✨\n\nხვალ, 5 ოქტომბერს, თბილისში ახალი თამაში იწყება.\n\nჩამოტვირთე MEDICARD დღესვე, რომ ხვალ პირველებს შორის იყო. 👇\n\n📲 ჩამოტვირთე უფასოდ iPhone-ზე:\nhttps://apps.apple.com/app/id6812517519\n🌐 საიტი და ვებ-ვერსია: https://medicard.ge\n🤖 Android — სულ მალე\n\n#გაანათეთბილისი #MEDIRUN #MEDICARD #თბილისი #საქართველო",
    "firstCommentText": "📲 iPhone: https://apps.apple.com/app/id6812517519\n💻 ვებ-ვერსია: https://medicard.ge/app\n🤖 Android — სულ მალე",
    "facebookData": {
     "type": "POST"
@@ -47,22 +47,22 @@
    "kind": "POST",
    "pillar": "MEDIRUN",
    "title": "რაღაც აინთება. ✨",
-   "text": "რაღაც აინთება. ✨\n\nხვალ, 3 ოქტომბერს, თბილისში ახალი თამაში იწყება.\n\nჩამოტვირთე MEDICARD დღესვე, რომ ხვალ პირველებს შორის იყო. 👇\n\n📲 ჩამოტვირთე უფასოდ iPhone-ზე:\nhttps://apps.apple.com/app/id6812517519\n🌐 საიტი და ვებ-ვერსია: https://medicard.ge\n🤖 Android — სულ მალე\n\n#გაანათეთბილისი #MEDIRUN #MEDICARD #თბილისი #საქართველო",
+   "text": "რაღაც აინთება. ✨\n\nხვალ, 5 ოქტომბერს, თბილისში ახალი თამაში იწყება.\n\nჩამოტვირთე MEDICARD დღესვე, რომ ხვალ პირველებს შორის იყო. 👇\n\n📲 ჩამოტვირთე უფასოდ iPhone-ზე:\nhttps://apps.apple.com/app/id6812517519\n🌐 საიტი და ვებ-ვერსია: https://medicard.ge\n🤖 Android — სულ მალე\n\n#გაანათეთბილისი #MEDIRUN #MEDICARD #თბილისი #საქართველო",
    "textEn": null,
    "mediaUrls": [
     "https://medicard.ge/press/medirun-glow/f00-teaser.jpg"
    ],
-   "scheduledAt": "2026-10-02T17:00:00+04:00",
+   "scheduledAt": "2026-10-04T17:00:00+04:00",
    "status": "SCHEDULED",
    "notes": "MEDIRUN · გაანათე თბილისი · Metricool: ავტომატური გამოქვეყნება · სურათები AI-ით შექმნილი (Instagram-ზე მონიშნული)"
   }
  },
  {
   "slot": "g-teaser-s1",
-  "date": "2026-10-02T18:30:00+04:00",
+  "date": "2026-10-04T18:30:00+04:00",
   "info": {
    "autoPublish": true,
-   "draft": false,
+   "draft": true,
    "descendants": [],
    "hasNotReadNotes": false,
    "shortener": false,
@@ -74,7 +74,7 @@
    ],
    "mediaAltText": [],
    "publicationDate": {
-    "dateTime": "2026-10-02T18:30:00",
+    "dateTime": "2026-10-04T18:30:00",
     "timezone": "Asia/Tbilisi"
    },
    "providers": [
@@ -108,14 +108,14 @@
    "mediaUrls": [
     "https://medicard.ge/press/medirun-glow/s01-teaser.jpg"
    ],
-   "scheduledAt": "2026-10-02T18:30:00+04:00",
+   "scheduledAt": "2026-10-04T18:30:00+04:00",
    "status": "SCHEDULED",
    "notes": "MEDIRUN · გაანათე თბილისი · Metricool: ავტომატური გამოქვეყნება · სურათები AI-ით შექმნილი (Instagram-ზე მონიშნული)"
   }
  },
  {
   "slot": "g-teaser-s2",
-  "date": "2026-10-02T21:30:00+04:00",
+  "date": "2026-10-04T21:30:00+04:00",
   "info": {
    "autoPublish": true,
    "draft": false,
@@ -130,7 +130,7 @@
    ],
    "mediaAltText": [],
    "publicationDate": {
-    "dateTime": "2026-10-02T21:30:00",
+    "dateTime": "2026-10-04T21:30:00",
     "timezone": "Asia/Tbilisi"
    },
    "providers": [
@@ -164,14 +164,14 @@
    "mediaUrls": [
     "https://medicard.ge/press/medirun-glow/s02-teaser.jpg"
    ],
-   "scheduledAt": "2026-10-02T21:30:00+04:00",
+   "scheduledAt": "2026-10-04T21:30:00+04:00",
    "status": "SCHEDULED",
    "notes": "MEDIRUN · გაანათე თბილისი · Metricool: ავტომატური გამოქვეყნება · სურათები AI-ით შექმნილი (Instagram-ზე მონიშნული)"
   }
  },
  {
   "slot": "g-launch-s",
-  "date": "2026-10-03T08:30:00+04:00",
+  "date": "2026-10-05T08:30:00+04:00",
   "info": {
    "autoPublish": true,
    "draft": false,
@@ -186,7 +186,7 @@
    ],
    "mediaAltText": [],
    "publicationDate": {
-    "dateTime": "2026-10-03T08:30:00",
+    "dateTime": "2026-10-05T08:30:00",
     "timezone": "Asia/Tbilisi"
    },
    "providers": [
@@ -220,17 +220,17 @@
    "mediaUrls": [
     "https://medicard.ge/press/medirun-glow/s03-launch.jpg"
    ],
-   "scheduledAt": "2026-10-03T08:30:00+04:00",
+   "scheduledAt": "2026-10-05T08:30:00+04:00",
    "status": "SCHEDULED",
    "notes": "MEDIRUN · გაანათე თბილისი · Metricool: ავტომატური გამოქვეყნება · სურათები AI-ით შექმნილი (Instagram-ზე მონიშნული)"
   }
  },
  {
   "slot": "g-launch",
-  "date": "2026-10-03T12:00:00+04:00",
+  "date": "2026-10-05T12:00:00+04:00",
   "info": {
    "autoPublish": true,
-   "draft": false,
+   "draft": true,
    "descendants": [],
    "hasNotReadNotes": false,
    "shortener": false,
@@ -246,7 +246,7 @@
    ],
    "mediaAltText": [],
    "publicationDate": {
-    "dateTime": "2026-10-03T12:00:00",
+    "dateTime": "2026-10-05T12:00:00",
     "timezone": "Asia/Tbilisi"
    },
    "providers": [
@@ -286,14 +286,14 @@
     "https://medicard.ge/press/medirun-glow/f04-levels.jpg",
     "https://medicard.ge/press/medirun-glow/f13-safety.jpg"
    ],
-   "scheduledAt": "2026-10-03T12:00:00+04:00",
+   "scheduledAt": "2026-10-05T12:00:00+04:00",
    "status": "SCHEDULED",
    "notes": "MEDIRUN · გაანათე თბილისი · Metricool: ავტომატური გამოქვეყნება · სურათები AI-ით შექმნილი (Instagram-ზე მონიშნული)"
   }
  },
  {
   "slot": "g-launch-how",
-  "date": "2026-10-03T18:00:00+04:00",
+  "date": "2026-10-05T18:00:00+04:00",
   "info": {
    "autoPublish": true,
    "draft": false,
@@ -308,7 +308,7 @@
    ],
    "mediaAltText": [],
    "publicationDate": {
-    "dateTime": "2026-10-03T18:00:00",
+    "dateTime": "2026-10-05T18:00:00",
     "timezone": "Asia/Tbilisi"
    },
    "providers": [
@@ -342,14 +342,14 @@
    "mediaUrls": [
     "https://medicard.ge/press/medirun-glow/s10-how.jpg"
    ],
-   "scheduledAt": "2026-10-03T18:00:00+04:00",
+   "scheduledAt": "2026-10-05T18:00:00+04:00",
    "status": "SCHEDULED",
    "notes": "MEDIRUN · გაანათე თბილისი · Metricool: ავტომატური გამოქვეყნება · სურათები AI-ით შექმნილი (Instagram-ზე მონიშნული)"
   }
  },
  {
   "slot": "g-iphone",
-  "date": "2026-10-04T13:00:00+04:00",
+  "date": "2026-10-08T13:00:00+04:00",
   "info": {
    "autoPublish": true,
    "draft": false,
@@ -364,7 +364,7 @@
    ],
    "mediaAltText": [],
    "publicationDate": {
-    "dateTime": "2026-10-04T13:00:00",
+    "dateTime": "2026-10-08T13:00:00",
     "timezone": "Asia/Tbilisi"
    },
    "providers": [
@@ -400,14 +400,14 @@
    "mediaUrls": [
     "https://medicard.ge/press/medirun-glow/f05-iphone.jpg"
    ],
-   "scheduledAt": "2026-10-04T13:00:00+04:00",
+   "scheduledAt": "2026-10-08T13:00:00+04:00",
    "status": "SCHEDULED",
    "notes": "MEDIRUN · გაანათე თბილისი · Metricool: ავტომატური გამოქვეყნება · სურათები AI-ით შექმნილი (Instagram-ზე მონიშნული)"
   }
  },
  {
   "slot": "g-weekday-10-05",
-  "date": "2026-10-05T08:15:00+04:00",
+  "date": "2026-10-06T08:15:00+04:00",
   "info": {
    "autoPublish": true,
    "draft": false,
@@ -422,7 +422,7 @@
    ],
    "mediaAltText": [],
    "publicationDate": {
-    "dateTime": "2026-10-05T08:15:00",
+    "dateTime": "2026-10-06T08:15:00",
     "timezone": "Asia/Tbilisi"
    },
    "providers": [
@@ -456,7 +456,7 @@
    "mediaUrls": [
     "https://medicard.ge/press/medirun-glow/s04-weekday.jpg"
    ],
-   "scheduledAt": "2026-10-05T08:15:00+04:00",
+   "scheduledAt": "2026-10-06T08:15:00+04:00",
    "status": "SCHEDULED",
    "notes": "MEDIRUN · გაანათე თბილისი · Metricool: ავტომატური გამოქვეყნება · სურათები AI-ით შექმნილი (Instagram-ზე მონიშნული)"
   }
@@ -466,7 +466,7 @@
   "date": "2026-10-06T13:00:00+04:00",
   "info": {
    "autoPublish": true,
-   "draft": false,
+   "draft": true,
    "descendants": [],
    "hasNotReadNotes": false,
    "shortener": false,
@@ -489,7 +489,7 @@
      "network": "instagram"
     }
    ],
-   "text": "🏛 კვირა 1 — ძველი ქალაქის ამბები\n\n3–11 ოქტომბერს მეტი ყუთი ძველ თბილისშია: მოედნებთან, ხიდებთან და აბანოებთან.\n\nყუთები საჯარო ბილიკებზეა, ოღონდ პარკების სიღრმეში — ცოტა ძებნა მოგიწევს. 😉\n\n⭐ შაბათს, 10 ოქტომბერს, 16:00-ზე — საჩუქრების წვიმა. რომელ პარკში — იმ დღეს, 15:00-ზე გეტყვით.\n\n📲 ჩამოტვირთე უფასოდ iPhone-ზე:\nhttps://apps.apple.com/app/id6812517519\n🌐 საიტი და ვებ-ვერსია: https://medicard.ge\n🤖 Android — სულ მალე\n\n#გაანათეთბილისი #MEDIRUN #MEDICARD #თბილისი #საქართველო",
+   "text": "🏛 კვირა 1 — ძველი ქალაქის ამბები\n\n5–11 ოქტომბერს მეტი ყუთი ძველ თბილისშია: მოედნებთან, ხიდებთან და აბანოებთან.\n\nყუთები საჯარო ბილიკებზეა, ოღონდ პარკების სიღრმეში — ცოტა ძებნა მოგიწევს. 😉\n\n⭐ შაბათს, 10 ოქტომბერს, 16:00-ზე — საჩუქრების წვიმა. რომელ პარკში — იმ დღეს, 15:00-ზე გეტყვით.\n\n📲 ჩამოტვირთე უფასოდ iPhone-ზე:\nhttps://apps.apple.com/app/id6812517519\n🌐 საიტი და ვებ-ვერსია: https://medicard.ge\n🤖 Android — სულ მალე\n\n#გაანათეთბილისი #MEDIRUN #MEDICARD #თბილისი #საქართველო",
    "firstCommentText": "📲 iPhone: https://apps.apple.com/app/id6812517519\n💻 ვებ-ვერსია: https://medicard.ge/app\n🤖 Android — სულ მალე",
    "facebookData": {
     "type": "POST"
@@ -509,7 +509,7 @@
    "kind": "POST",
    "pillar": "MEDIRUN",
    "title": "🏛 კვირა 1 — ძველი ქალაქის ამბები",
-   "text": "🏛 კვირა 1 — ძველი ქალაქის ამბები\n\n3–11 ოქტომბერს მეტი ყუთი ძველ თბილისშია: მოედნებთან, ხიდებთან და აბანოებთან.\n\nყუთები საჯარო ბილიკებზეა, ოღონდ პარკების სიღრმეში — ცოტა ძებნა მოგიწევს. 😉\n\n⭐ შაბათს, 10 ოქტომბერს, 16:00-ზე — საჩუქრების წვიმა. რომელ პარკში — იმ დღეს, 15:00-ზე გეტყვით.\n\n📲 ჩამოტვირთე უფასოდ iPhone-ზე:\nhttps://apps.apple.com/app/id6812517519\n🌐 საიტი და ვებ-ვერსია: https://medicard.ge\n🤖 Android — სულ მალე\n\n#გაანათეთბილისი #MEDIRUN #MEDICARD #თბილისი #საქართველო",
+   "text": "🏛 კვირა 1 — ძველი ქალაქის ამბები\n\n5–11 ოქტომბერს მეტი ყუთი ძველ თბილისშია: მოედნებთან, ხიდებთან და აბანოებთან.\n\nყუთები საჯარო ბილიკებზეა, ოღონდ პარკების სიღრმეში — ცოტა ძებნა მოგიწევს. 😉\n\n⭐ შაბათს, 10 ოქტომბერს, 16:00-ზე — საჩუქრების წვიმა. რომელ პარკში — იმ დღეს, 15:00-ზე გეტყვით.\n\n📲 ჩამოტვირთე უფასოდ iPhone-ზე:\nhttps://apps.apple.com/app/id6812517519\n🌐 საიტი და ვებ-ვერსია: https://medicard.ge\n🤖 Android — სულ მალე\n\n#გაანათეთბილისი #MEDIRUN #MEDICARD #თბილისი #საქართველო",
    "textEn": null,
    "mediaUrls": [
     "https://medicard.ge/press/medirun-glow/f06-week1.jpg"
@@ -524,7 +524,7 @@
   "date": "2026-10-07T09:30:00+04:00",
   "info": {
    "autoPublish": true,
-   "draft": false,
+   "draft": true,
    "descendants": [],
    "hasNotReadNotes": false,
    "shortener": false,
@@ -544,7 +544,7 @@
      "network": "linkedin"
     }
    ],
-   "text": "We turned Tbilisi into a game.\n\nMEDIRUN is the walking game inside MEDICARD. Streets light up on your map as you walk, and when you get close to a hidden gift, your phone starts beating like a heart.\n\nFrom 3 October to 31 December the city is the playing field:\n• Monday to Friday, a few small boxes hidden deep inside parks\n• Weekends, bigger ones\n• Saturdays at 16:00, a gift rain in one park, revealed an hour earlier with a riddle\n• 31 December, one red iPhone 18 Pro Max, visible only to players who have lit 1% of Tbilisi (about 50 km of new streets)\n\nThe world doesn't need another tracker. It needs a reason to go outside.\n\n📲 Download free on iPhone: https://apps.apple.com/app/id6812517519\n🌐 Website & web app: https://medicard.ge\n\n#MEDIRUN #MEDICARD #Tbilisi #Georgia #HealthTech",
+   "text": "We turned Tbilisi into a game.\n\nMEDIRUN is the walking game inside MEDICARD. Streets light up on your map as you walk, and when you get close to a hidden gift, your phone starts beating like a heart.\n\nFrom 5 October to 31 December the city is the playing field:\n• Monday to Friday, a few small boxes hidden deep inside parks\n• Weekends, bigger ones\n• Saturdays at 16:00, a gift rain in one park, revealed an hour earlier with a riddle\n• 31 December, one red iPhone 18 Pro Max, visible only to players who have lit 1% of Tbilisi (about 50 km of new streets)\n\nThe world doesn't need another tracker. It needs a reason to go outside.\n\n📲 Download free on iPhone: https://apps.apple.com/app/id6812517519\n🌐 Website & web app: https://medicard.ge\n\n#MEDIRUN #MEDICARD #Tbilisi #Georgia #HealthTech",
    "linkedinData": {
     "type": "post",
     "previewIncluded": true,
@@ -560,7 +560,7 @@
    "kind": "POST",
    "pillar": "MEDIRUN",
    "title": "We turned Tbilisi into a game.",
-   "text": "We turned Tbilisi into a game.\n\nMEDIRUN is the walking game inside MEDICARD. Streets light up on your map as you walk, and when you get close to a hidden gift, your phone starts beating like a heart.\n\nFrom 3 October to 31 December the city is the playing field:\n• Monday to Friday, a few small boxes hidden deep inside parks\n• Weekends, bigger ones\n• Saturdays at 16:00, a gift rain in one park, revealed an hour earlier with a riddle\n• 31 December, one red iPhone 18 Pro Max, visible only to players who have lit 1% of Tbilisi (about 50 km of new streets)\n\nThe world doesn't need another tracker. It needs a reason to go outside.\n\n📲 Download free on iPhone: https://apps.apple.com/app/id6812517519\n🌐 Website & web app: https://medicard.ge\n\n#MEDIRUN #MEDICARD #Tbilisi #Georgia #HealthTech",
+   "text": "We turned Tbilisi into a game.\n\nMEDIRUN is the walking game inside MEDICARD. Streets light up on your map as you walk, and when you get close to a hidden gift, your phone starts beating like a heart.\n\nFrom 5 October to 31 December the city is the playing field:\n• Monday to Friday, a few small boxes hidden deep inside parks\n• Weekends, bigger ones\n• Saturdays at 16:00, a gift rain in one park, revealed an hour earlier with a riddle\n• 31 December, one red iPhone 18 Pro Max, visible only to players who have lit 1% of Tbilisi (about 50 km of new streets)\n\nThe world doesn't need another tracker. It needs a reason to go outside.\n\n📲 Download free on iPhone: https://apps.apple.com/app/id6812517519\n🌐 Website & web app: https://medicard.ge\n\n#MEDIRUN #MEDICARD #Tbilisi #Georgia #HealthTech",
    "textEn": null,
    "mediaUrls": [
     "https://medicard.ge/press/medirun-glow/f01-key.jpg"
@@ -1071,7 +1071,7 @@
      "network": "linkedin"
     }
    ],
-   "text": "Tbilisi businesses: want walkers at your door?\n\nDuring “Light up Tbilisi” (3 October – 31 December), MEDIRUN players walk the city looking for hidden gift boxes. A café, gym, shop or pharmacy can become a gift point: we place a virtual box at your door and players come to you.\n\nYou give a few dozen small gifts (a coffee, a discount, a day pass). We bring visitors, mention you in our posts and tell you exactly how many people opened your box. No fees.\n\nWrite to support@medicard.ge\n\n📲 Download free on iPhone: https://apps.apple.com/app/id6812517519\n🌐 Website & web app: https://medicard.ge\n\n#MEDIRUN #Tbilisi #LocalBusiness #Georgia",
+   "text": "Tbilisi businesses: want walkers at your door?\n\nDuring “Light up Tbilisi” (5 October – 31 December), MEDIRUN players walk the city looking for hidden gift boxes. A café, gym, shop or pharmacy can become a gift point: we place a virtual box at your door and players come to you.\n\nYou give a few dozen small gifts (a coffee, a discount, a day pass). We bring visitors, mention you in our posts and tell you exactly how many people opened your box. No fees.\n\nWrite to support@medicard.ge\n\n📲 Download free on iPhone: https://apps.apple.com/app/id6812517519\n🌐 Website & web app: https://medicard.ge\n\n#MEDIRUN #Tbilisi #LocalBusiness #Georgia",
    "linkedinData": {
     "type": "post",
     "previewIncluded": true,
@@ -1087,7 +1087,7 @@
    "kind": "POST",
    "pillar": "MEDIRUN",
    "title": "Tbilisi businesses: want walkers at your door?",
-   "text": "Tbilisi businesses: want walkers at your door?\n\nDuring “Light up Tbilisi” (3 October – 31 December), MEDIRUN players walk the city looking for hidden gift boxes. A café, gym, shop or pharmacy can become a gift point: we place a virtual box at your door and players come to you.\n\nYou give a few dozen small gifts (a coffee, a discount, a day pass). We bring visitors, mention you in our posts and tell you exactly how many people opened your box. No fees.\n\nWrite to support@medicard.ge\n\n📲 Download free on iPhone: https://apps.apple.com/app/id6812517519\n🌐 Website & web app: https://medicard.ge\n\n#MEDIRUN #Tbilisi #LocalBusiness #Georgia",
+   "text": "Tbilisi businesses: want walkers at your door?\n\nDuring “Light up Tbilisi” (5 October – 31 December), MEDIRUN players walk the city looking for hidden gift boxes. A café, gym, shop or pharmacy can become a gift point: we place a virtual box at your door and players come to you.\n\nYou give a few dozen small gifts (a coffee, a discount, a day pass). We bring visitors, mention you in our posts and tell you exactly how many people opened your box. No fees.\n\nWrite to support@medicard.ge\n\n📲 Download free on iPhone: https://apps.apple.com/app/id6812517519\n🌐 Website & web app: https://medicard.ge\n\n#MEDIRUN #Tbilisi #LocalBusiness #Georgia",
    "textEn": null,
    "mediaUrls": [
     "https://medicard.ge/press/medirun-glow/f12-partner.jpg"

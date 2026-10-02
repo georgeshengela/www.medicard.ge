@@ -33,7 +33,7 @@
   const metric = (label, value, hint, tone = '') => `<div class="s-metric${tone ? ` ${tone}` : ''}"><span>${esc(label)}</span><strong>${value}</strong>${hint ? `<small>${esc(hint)}</small>` : ''}</div>`;
   const sub = (html) => `<small class="s-run-sub">${html}</small>`;
 
-  /** Autopilot gift ids look like glow-2026-10-03-am-01. */
+  /** Autopilot gift ids look like glow-2026-10-05-am-01. */
   function campaignLabel(id) {
     const m = /^glow-\d{4}-\d{2}-\d{2}-([a-z]+)/.exec(String(id || ''));
     return m ? `„გაანათე თბილისი“ · ${BOX_KIND[m[1]] || 'კამპანიის ყუთი'}` : '';
