@@ -1,6 +1,6 @@
 <title>გაანათე თბილისი</title>
 <style>
-/* Layout: a night-map legend. One reading column with a sticky section bar. */
+/* Layout: a night-map legend. Status first, then the three months as one timeline, then the rules of play, then the work for the owner. */
 @font-face{font-family:FiraGO;src:url(fonts/FiraGO-Regular.woff2) format("woff2");font-weight:400;font-display:swap}
 @font-face{font-family:FiraGO;src:url(fonts/FiraGO-SemiBold.woff2) format("woff2");font-weight:600;font-display:swap}
 @font-face{font-family:FiraGO;src:url(fonts/FiraGO-ExtraBold.woff2) format("woff2");font-weight:800;font-display:swap}
@@ -8,68 +8,127 @@
   --bg:#050B16; --surface:#0C1828; --raised:#122236; --line:#1C3044; --fg:#E7EEF5; --mute:#8EA2B6;
   --mint:#2DD4BF; --mint-ink:#99F6E4; --mint-tint:rgba(45,212,191,.12);
   --gold:#F5B83D; --gold-tint:rgba(245,184,61,.13); --red:#FB7185; --red-tint:rgba(251,113,133,.12);
-  --display:FiraGO,"Noto Sans Georgian",system-ui,sans-serif; --body:FiraGO,"Noto Sans Georgian",system-ui,sans-serif;
+  --on-mint:#04211E;
+  --font:FiraGO,"Noto Sans Georgian",system-ui,sans-serif; --mono:ui-monospace,SFMono-Regular,Consolas,monospace;
   color-scheme:dark;
 }
 @media (prefers-color-scheme: light){:root:not([data-theme="dark"]){
   --bg:#F3F6F7; --surface:#FFFFFF; --raised:#EAF1F2; --line:#D3DFE2; --fg:#0B1A24; --mute:#51636E;
   --mint:#0F8F80; --mint-ink:#0B6B60; --mint-tint:rgba(15,143,128,.10);
-  --gold:#A86A0B; --gold-tint:rgba(168,106,11,.10); --red:#BE123C; --red-tint:rgba(190,18,60,.08); color-scheme:light }}
+  --gold:#A86A0B; --gold-tint:rgba(168,106,11,.10); --red:#BE123C; --red-tint:rgba(190,18,60,.08); --on-mint:#FFFFFF; color-scheme:light }}
 :root[data-theme="light"]{
   --bg:#F3F6F7; --surface:#FFFFFF; --raised:#EAF1F2; --line:#D3DFE2; --fg:#0B1A24; --mute:#51636E;
   --mint:#0F8F80; --mint-ink:#0B6B60; --mint-tint:rgba(15,143,128,.10);
-  --gold:#A86A0B; --gold-tint:rgba(168,106,11,.10); --red:#BE123C; --red-tint:rgba(190,18,60,.08); color-scheme:light }
+  --gold:#A86A0B; --gold-tint:rgba(168,106,11,.10); --red:#BE123C; --red-tint:rgba(190,18,60,.08); --on-mint:#FFFFFF; color-scheme:light }
 *{box-sizing:border-box}
-body{margin:0;background:var(--bg);color:var(--fg);font-family:var(--body);font-size:16px;line-height:1.6}
-.wrap{max-width:1080px;margin:0 auto;padding-inline:20px;padding-block:0 80px}
+body{margin:0;background:var(--bg);color:var(--fg);font-family:var(--font);font-size:16px;line-height:1.6}
+.wrap{max-width:1080px;margin:0 auto;padding-inline:20px;padding-block:0 96px}
 a{color:var(--mint-ink)}
-h1,h2,h3{font-family:var(--display);text-wrap:balance;margin:0}
+h1,h2,h3{text-wrap:balance;margin:0}
 h1{font-weight:800;font-size:clamp(40px,7vw,68px);line-height:1.02;letter-spacing:-.02em}
-h2{font-weight:800;font-size:clamp(25px,3.4vw,34px);line-height:1.12}
-h3{font-weight:600;font-size:18px;line-height:1.3}
+h2{font-weight:800;font-size:clamp(24px,3.2vw,32px);line-height:1.15}
+h3{font-weight:600;font-size:17px;line-height:1.35}
 p{margin:0}
 .label{font-weight:600;font-size:12.5px;letter-spacing:.08em;color:var(--mint-ink)}
 .mute{color:var(--mute)}
+.small{font-size:14px}
 .num{font-variant-numeric:tabular-nums}
-nav.bar{position:sticky;top:env(safe-area-inset-top,0px);z-index:10;background:color-mix(in srgb,var(--bg) 88%,transparent);backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
-nav.bar .in{max-width:1080px;margin:0 auto;padding-inline:20px;display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;padding-block:10px}
+
+nav.bar{position:sticky;top:env(safe-area-inset-top,0px);z-index:10;background:color-mix(in srgb,var(--bg) 90%,transparent);backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
+nav.bar .in{max-width:1080px;margin:0 auto;padding-inline:20px;display:flex;gap:4px;overflow-x:auto;scrollbar-width:none;padding-block:10px}
 nav.bar a{flex:none;text-decoration:none;color:var(--mute);font-size:14px;font-weight:600;padding:6px 12px;border-radius:999px}
 nav.bar a:hover,nav.bar a:focus-visible{color:var(--fg);background:var(--raised);outline:none}
-.hero{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,.85fr);gap:40px;align-items:center;padding-block:44px 20px}
-.hero img{width:100%;border-radius:18px;display:block;box-shadow:0 30px 60px rgba(0,0,0,.35)}
-.lede{font-size:19px;margin-top:16px;max-width:60ch}
+
+/* Hero */
+.hero{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,320px);gap:48px;align-items:center;padding-block:40px 8px}
+.hero figure{margin:0;justify-self:end;width:100%}
+.hero img{width:100%;border-radius:18px;display:block;box-shadow:0 30px 60px rgba(0,0,0,.3)}
+.hero figcaption{font-size:13px;color:var(--mute);margin-top:8px;text-align:center}
+.lede{font-size:18.5px;margin-top:16px;max-width:58ch}
 .cta{display:flex;flex-wrap:wrap;gap:10px;margin-top:22px}
-.btn{display:inline-flex;align-items:center;gap:8px;font-weight:600;text-decoration:none;border-radius:999px;padding:10px 18px;background:var(--mint);color:#04211E}
+.btn{display:inline-flex;align-items:center;gap:8px;font-weight:600;text-decoration:none;border-radius:999px;padding:10px 18px;background:var(--mint);color:var(--on-mint)}
 .btn.ghost{background:var(--raised);color:var(--fg);border:1px solid var(--line)}
 .btn:focus-visible{outline:2px solid var(--mint);outline-offset:2px}
-.facts{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:1px;background:var(--line);border:1px solid var(--line);border-radius:16px;overflow:hidden;margin-top:26px}
-.facts div{background:var(--surface);padding:14px 16px}
-.facts b{display:block;font-family:var(--display);font-weight:800;font-size:19px}
-.facts span{font-size:13.5px;color:var(--mute)}
-section{padding-top:60px;scroll-margin-top:64px}
-section > header{display:flex;flex-direction:column;gap:8px;margin-bottom:20px;max-width:70ch}
-.cols{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:16px}
+
+/* Status strip */
+.status{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-top:28px}
+.st{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:14px 16px;display:flex;flex-direction:column;gap:4px;min-width:0}
+.st .k{display:flex;align-items:center;gap:8px;font-weight:600;font-size:14.5px}
+.dot{width:9px;height:9px;border-radius:50%;flex:none;background:var(--mint);box-shadow:0 0 0 4px var(--mint-tint)}
+.dot.gold{background:var(--gold);box-shadow:0 0 0 4px var(--gold-tint)}
+.st p{font-size:13.5px;color:var(--mute)}
+
+section{padding-top:64px;scroll-margin-top:64px}
+section > header{display:flex;flex-direction:column;gap:8px;margin-bottom:22px;max-width:68ch}
+.cols{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:14px}
 .card{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:20px;display:flex;flex-direction:column;gap:10px;min-width:0}
-.card.gold{border-color:color-mix(in srgb,var(--gold) 45%,var(--line));background:linear-gradient(160deg,var(--gold-tint),var(--surface) 60%)}
-.card.red{border-color:color-mix(in srgb,var(--red) 45%,var(--line));background:linear-gradient(160deg,var(--red-tint),var(--surface) 60%)}
+.card.gold{border-color:color-mix(in srgb,var(--gold) 45%,var(--line))}
+.card.red{border-color:color-mix(in srgb,var(--red) 45%,var(--line))}
 .card ul{margin:0;padding-left:20px;display:flex;flex-direction:column;gap:6px}
 .chip{display:inline-flex;align-self:flex-start;font-size:12.5px;font-weight:600;border-radius:999px;padding:3px 10px;background:var(--mint-tint);color:var(--mint-ink)}
 .chip.gold{background:var(--gold-tint);color:var(--gold)}.chip.red{background:var(--red-tint);color:var(--red)}
+
+/* Timeline: three months side by side, milestones down each */
+.months{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
+.month{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:18px 18px 20px;display:flex;flex-direction:column;gap:14px;min-width:0}
+.month h3{font-size:20px;font-weight:800}
+.month .theme{font-size:14px;color:var(--mute);margin-top:-8px}
+.month ol{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:12px;border-left:2px solid var(--line);margin-left:4px}
+.month li{position:relative;padding-left:16px;font-size:14.5px;line-height:1.45}
+.month li::before{content:"";position:absolute;left:-6px;top:6px;width:10px;height:10px;border-radius:50%;background:var(--bg);border:2px solid var(--mint)}
+.month li.gold::before{border-color:var(--gold);background:var(--gold)}
+.month li.red::before{border-color:var(--red);background:var(--red)}
+.month li b{display:block;font-size:13px;color:var(--mute);font-weight:600}
+.month.dec{border-color:color-mix(in srgb,var(--red) 40%,var(--line))}
+
+/* Tables */
 .tbl{overflow-x:auto;border:1px solid var(--line);border-radius:16px;background:var(--surface)}
-table{border-collapse:collapse;width:100%;font-size:14.5px}
-th,td{text-align:left;vertical-align:top;padding:11px 14px;border-bottom:1px solid var(--line)}
+table{border-collapse:collapse;width:100%;font-size:14.5px;min-width:620px}
+th,td{text-align:left;vertical-align:top;padding:12px 14px;border-bottom:1px solid var(--line)}
 th{font-size:12.5px;letter-spacing:.06em;color:var(--mute);font-weight:600;background:var(--raised);white-space:nowrap}
 tr:last-child td{border-bottom:0}
-td.t{white-space:nowrap;font-variant-numeric:tabular-nums;color:var(--mute)}
-pre.cmd{margin:0;background:var(--raised);border:1px solid var(--line);border-radius:12px;padding:12px 14px;overflow-x:auto;font:13.5px/1.55 ui-monospace,SFMono-Regular,Consolas,monospace;color:var(--fg);white-space:pre-wrap;word-break:break-all}
-.gal{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:14px}
+td.t{white-space:nowrap;font-variant-numeric:tabular-nums;font-weight:600}
+td.t span{display:block;font-weight:400;color:var(--mute);font-size:13px}
+tr.gold td.t{color:var(--gold)} tr.red td.t{color:var(--red)}
+
+/* Levels: one scale from 0 to 1% */
+.scale{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:22px 20px 18px}
+.steps{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+.step{display:flex;flex-direction:column;gap:2px;min-width:0}
+.step::before{content:"";height:8px;border-radius:999px;background:var(--mint);opacity:.55;margin-bottom:12px}
+.step.gold::before{background:var(--gold);opacity:1}.step.red::before{background:var(--red);opacity:1}
+.step .pct{font-weight:800;font-size:22px;font-variant-numeric:tabular-nums}
+.step.gold .pct{color:var(--gold)} .step.red .pct{color:var(--red)} .step .pct{color:var(--mint-ink)}
+.step h3{font-size:16px}
+.step p{font-size:13.5px;color:var(--mute)}
+
+.gal{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px;margin-top:16px}
+.gal figure{margin:0;display:flex;flex-direction:column;gap:6px;min-width:0}
 .gal img{width:100%;border-radius:12px;border:1px solid var(--line);display:block}
-@media (max-width:820px){.hero{grid-template-columns:1fr;padding-top:26px}.facts{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.gal figcaption{font-size:13px;color:var(--mute)}
+
+details.cmds{margin-top:14px;background:var(--surface);border:1px solid var(--line);border-radius:16px}
+details.cmds summary{cursor:pointer;padding:14px 18px;font-weight:600;list-style-position:inside}
+details.cmds summary:focus-visible{outline:2px solid var(--mint);outline-offset:2px;border-radius:16px}
+.cmdlist{display:flex;flex-direction:column;gap:14px;padding:0 18px 18px}
+.cmdlist div{display:flex;flex-direction:column;gap:6px;min-width:0}
+.cmdlist p{font-size:14px;color:var(--mute)}
+pre.cmd{margin:0;background:var(--raised);border:1px solid var(--line);border-radius:10px;padding:10px 12px;overflow-x:auto;font:13px/1.55 var(--mono);color:var(--fg);white-space:pre-wrap;word-break:break-all}
+
+.total{display:flex;flex-wrap:wrap;gap:6px 16px;align-items:baseline}
+.total b{font-size:26px;font-weight:800;font-variant-numeric:tabular-nums}
+
+@media (max-width:860px){
+  .hero{grid-template-columns:1fr;padding-top:24px}
+  .hero figure{max-width:240px;justify-self:start}
+  .status,.months{grid-template-columns:1fr}
+  .steps{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
 @media (prefers-reduced-motion:no-preference){html{scroll-behavior:smooth}}
 </style>
 
 <nav class="bar" aria-label="სექციები"><div class="in">
-  <a href="#rhythm">რიტმი</a><a href="#levels">დონეები</a><a href="#where">სად და როგორ</a><a href="#commands">ბრძანებები</a><a href="#posts">პოსტები</a><a href="#app">აპი და ადმინი</a><a href="#gates">სტარტამდე</a><a href="#cost">ხარჯი</a><a href="#next">შემდეგი</a>
+  <a href="#calendar">კალენდარი</a><a href="#week">კვირა</a><a href="#levels">დონეები</a><a href="#boxes">ყუთები</a><a href="#posts">პოსტები</a><a href="#control">მართვა</a><a href="#decide">გადასაწყვეტი</a><a href="#cost">ხარჯი</a><a href="#next">შემდეგი</a>
 </div></nav>
 
 <div class="wrap">
@@ -77,120 +136,177 @@ pre.cmd{margin:0;background:var(--raised);border:1px solid var(--line);border-ra
   <div>
     <div class="label">MEDIRUN · კამპანია თბილისში</div>
     <h1 style="margin-top:10px">გაანათე თბილისი</h1>
-    <p class="lede">3 ოქტომბრიდან 31 დეკემბრამდე ქალაქში იაფი საჩუქრები იმალება. ყუთი MEDIRUN-ის რუკაზე ჩანს, მიახლოებისას ტელეფონი გულისცემასავით კანკალებს, გახსნისთანავე კი Medi Coins თავისით ირიცხება. 31 დეკემბერს წითელი iPhone 18 Pro Max დაიმალება. მას მხოლოდ ის დაინახავს, ვინც თბილისის 1%-ს გაანათებს.</p>
+    <p class="lede">3 ოქტომბრიდან 31 დეკემბრამდე თბილისის პარკებში ყოველდღე ციფრული ყუთები ჩნდება. ყუთი MEDIRUN-ის რუკაზე ჩანს, ახლოს მისვლისას ტელეფონი კანკალებს, გახსნისას კი Medi Coins თავისით ირიცხება. 31 დეკემბერს დაიმალება წითელი iPhone 18 Pro Max, რომელსაც მხოლოდ ის დაინახავს, ვინც თბილისის 1%-ს გაანათებს.</p>
     <div class="cta">
-      <a class="btn" href="https://medicard.ge/press/medirun-glow/index.html" target="_blank" rel="noopener">ყველა პოსტერი და ტექსტი</a>
+      <a class="btn" href="https://medicard.ge/press/medirun-glow/index.html" target="_blank" rel="noopener">ყველა პოსტი, ტექსტი და PDF</a>
       <a class="btn ghost" href="https://medicard.ge/medirun/rules.html" target="_blank" rel="noopener">წესები</a>
     </div>
-    <div class="facts">
-      <div><b class="num">2 ოქტ</b><span>თიზერი</span></div>
-      <div><b class="num">3 ოქტ</b><span>სტარტი, შაბათი</span></div>
-      <div><b class="num">110</b><span>დაგეგმილი პოსტი და სთორი</span></div>
-      <div><b class="num">31 დეკ</b><span>წითელი iPhone, 1%-ზე</span></div>
-    </div>
   </div>
-  <img src="img/f05-iphone.jpg" alt="პოსტერი: 31 დეკემბერი, წითელი iPhone 18 Pro Max, თბილისის 1%" width="640" height="800">
+  <figure>
+    <img src="img/f05-iphone.jpg" alt="პოსტერი: 31 დეკემბერი, წითელი iPhone 18 Pro Max, თბილისის 1%" width="640" height="800">
+    <figcaption>მთავარი პრიზი, 31 დეკემბერი</figcaption>
+  </figure>
 </div>
 
-<section id="rhythm">
-  <header><div class="label">01 · კვირის რიტმი</div><h2>სამუშაო დღეებში ცოტა, შაბათ-კვირას მეტი</h2></header>
+<div class="status" aria-label="სტატუსი 2 ოქტომბრისთვის">
+  <div class="st"><div class="k"><span class="dot"></span>ავტოპილოტი მუშაობს</div><p>1 ოქტომბრიდან production-შია. ყოველ 10 წუთში ქმნის დღევანდელ და ხვალინდელ ყუთებს.</p></div>
+  <div class="st"><div class="k"><span class="dot"></span>110 პოსტი დაგეგმილია</div><p>Metricool-ში, Facebook · Instagram · LinkedIn. თიზერი 2 ოქტომბერს, სტარტი 3-ში.</p></div>
+  <div class="st"><div class="k"><span class="dot gold"></span>შენზეა</div><p>შაბათის 18:30 „მპოვნელების“ პოსტი ხელით, Android-ი და იურისტის შემოწმება.</p></div>
+</div>
+
+<section id="calendar">
+  <header><div class="label">კალენდარი</div><h2>სამი თვე, თითოს თავისი ამბავი</h2>
+  <p class="mute">ოქტომბერში ქალაქს ვეცნობით, ნოემბერში უბნები ეჯიბრება ერთმანეთს, დეკემბერში ყველაფერი 31-ისკენ მიდის.</p></header>
+  <div class="months">
+    <div class="month">
+      <h3>ოქტომბერი</h3><p class="theme">ქალაქის პასპორტი, 4 თავი</p>
+      <ol>
+        <li><b>2 ოქტ, ხუთშაბათი</b>თიზერი</li>
+        <li><b>3 ოქტ, შაბათი</b>სტარტი, პირველი ყუთები</li>
+        <li><b>3–11 ოქტ</b>ძველი ქალაქი</li>
+        <li class="gold"><b>10 ოქტ, 16:00</b>პირველი შაბათის წვიმა, რიყე</li>
+        <li><b>შემდეგი კვირები</b>მწვანე თბილისი · ტბები და ხედები · ქალაქის ხელწერა</li>
+      </ol>
+    </div>
+    <div class="month">
+      <h3>ნოემბერი</h3><p class="theme">უბნების თვე</p>
+      <ol>
+        <li><b>ყოველ კვირას</b>2–3 უბანი იღებს მეტ ყუთს</li>
+        <li class="gold"><b>7 ნოემბრიდან, შაბათობით</b>ფარნის ყუთები 300 მონეტით, მხოლოდ 0,25%-ის მქონეებისთვის</li>
+        <li><b>შაბათობით 16:00</b>წვიმა: ვაკე, რიყე, ლისი, 9 აპრილის ბაღი</li>
+      </ol>
+    </div>
+    <div class="month dec">
+      <h3>დეკემბერი</h3><p class="theme">შუქურების თვე</p>
+      <ol>
+        <li><b>ყოველ კვირას</b>iPhone-ის უკუთვლა პოსტებში</li>
+        <li><b>30 დეკემბერი</b>„ხვალ“</li>
+        <li class="red"><b>31 დეკ, 12:00–18:00</b>წითელი iPhone ერთ ყუთში. ჩანს მხოლოდ 1%-ის მქონეებს, იგებს პირველი, ვინც გახსნის</li>
+      </ol>
+    </div>
+  </div>
+</section>
+
+<section id="week">
+  <header><div class="label">ჩვეულებრივი კვირა</div><h2>სამუშაო დღეებში ცოტა, შაბათ-კვირას მეტი</h2>
+  <p class="mute">ყუთს რამდენიმე ადამიანი ხსნის, შემდეგ ქრება. საღამოს ყუთები მხოლოდ განათებულ ბილიკებზე დგას.</p></header>
   <div class="tbl"><table>
-    <thead><tr><th>როდის</th><th>რა</th><th>ყუთები</th><th>მონეტები</th></tr></thead>
+    <thead><tr><th>როდის</th><th>რა</th><th>ყუთი დღეში</th><th>ერთ ყუთს ხსნის</th><th>მონეტა</th></tr></thead>
     <tbody>
-      <tr><td class="t">ორშ–პარ · 08:30, 18:00</td><td>მცირე ყუთები, პარკების სიღრმეში. საღამოს მხოლოდ განათებულ ბილიკებზე.</td><td class="num">~6 დღეში, თითოს 2–3 ადამიანი ხსნის</td><td class="num">10–50</td></tr>
-      <tr><td class="t">შაბ–კვი · 10:30, 17:30</td><td>უფრო დიდი ყუთები</td><td class="num">~10 დღეში, თითოს 3–4 ადამიანი ხსნის</td><td class="num">30–100</td></tr>
-      <tr><td class="t">შაბათი · 16:00</td><td>საჩუქრების წვიმა ერთ პარკში. პარკს 15:00-ზე და 15:30-ზე გამოცანით ვამხელთ სთორიში.</td><td class="num">8 წერტილი, თითოს 6 ადამიანი ხსნის</td><td class="num">50–100</td></tr>
-      <tr><td class="t">7 ნოემბრიდან, შაბათობით</td><td>ფარნის ყუთები: მხოლოდ 0,25%-ის მქონეებისთვის</td><td class="num">2 წერტილი, თითოს 5 ადამიანი ხსნის</td><td class="num">300</td></tr>
-      <tr><td class="t">31 დეკემბერი · 12:00</td><td>წითელი iPhone 18 Pro Max: მხოლოდ შუქურებისთვის (1%). იგებს, ვინც პირველი გახსნის.</td><td class="num">1 ყუთი, 6 საათით</td><td>—</td></tr>
+      <tr><td class="t">ორშ–პარ<span>08:30 · 18:00</span></td><td>მცირე ყუთები პარკების სიღრმეში</td><td class="num">5–6</td><td class="num">2–3 ადამიანი</td><td class="num">10–50</td></tr>
+      <tr><td class="t">შაბ–კვი<span>10:30 · 17:30</span></td><td>უფრო დიდი ყუთები</td><td class="num">~10</td><td class="num">3–4 ადამიანი</td><td class="num">30–100</td></tr>
+      <tr class="gold"><td class="t">შაბათი<span>16:00, 10 ოქტ-დან</span></td><td>საჩუქრების წვიმა ერთ პარკში. პარკს 15:00-ზე და 15:30-ზე სთორიში გამოცანით ვამხელთ</td><td class="num">8</td><td class="num">6 ადამიანი</td><td class="num">50–100</td></tr>
+      <tr class="gold"><td class="t">შაბათი<span>7 ნოემბრიდან</span></td><td>ფარნის ყუთები, მხოლოდ 0,25%-ზე</td><td class="num">1–2</td><td class="num">5 ადამიანი</td><td class="num">300</td></tr>
+      <tr class="red"><td class="t">31 დეკემბერი<span>12:00, 6 საათით</span></td><td>წითელი iPhone 18 Pro Max, მხოლოდ 1%-ზე</td><td class="num">1</td><td class="num">1 ადამიანი</td><td>—</td></tr>
     </tbody>
   </table></div>
-  <p class="mute" style="margin-top:12px">ოქტომბრის კვირები პასპორტის 4 თავს მიჰყვება: ძველი ქალაქი, მწვანე თბილისი, ტბები და ხედები, ქალაქის ხელწერა. ნოემბერი უბნების თვეა: ყოველ კვირას ორი-სამი უბანი იღებს მეტ ყუთს. დეკემბერი შუქურების თვეა.</p>
 </section>
 
 <section id="levels">
-  <header><div class="label">02 · დონეები</div><h2>დიდი საჩუქარი მხოლოდ მათ ეჩვენებათ, ვინც ქალაქი გაანათა</h2>
-  <p class="mute">აპი უკვე ითვლის, თბილისის რა ნაწილი აქვს გაანათებული ადამიანს. ბილიკის 100 მ სიგანის ზოლი ითვლება, ერთი ქუჩა მხოლოდ ერთხელ. თბილისის ფართობი 504 კმ²-ია, ამიტომ 1% დაახლოებით 50 კმ ახალი ქუჩაა. სამ თვეში ეს მიღწევადია, მაგრამ მხოლოდ მათთვის, ვინც ნამდვილად დადის.</p></header>
-  <div class="cols">
-    <div class="card"><span class="chip">0,1%</span><h3>ნაპერწკალი</h3><p class="mute">პირველი ნიშანი, ~5 კმ</p></div>
-    <div class="card gold"><span class="chip gold">0,25%</span><h3>ფარანი</h3><p class="mute">შაბათის ფარნის ყუთები (300 მონეტა), ~13 კმ</p></div>
-    <div class="card"><span class="chip">0,5%</span><h3>ჩირაღდანი</h3><p class="mute">ნახევარი გზა, ~25 კმ</p></div>
-    <div class="card red"><span class="chip red">1%</span><h3>შუქურა</h3><p class="mute">31 დეკემბერს წითელ iPhone-ს ხედავს, ~50 კმ</p></div>
+  <header><div class="label">დონეები</div><h2>დიდ საჩუქარს მხოლოდ ის ხედავს, ვინც ქალაქი გაანათა</h2>
+  <p class="mute">აპი ითვლის, თბილისის რა ნაწილი აქვს ადამიანს გავლილი: ბილიკის 100 მ სიგანის ზოლი, ერთი ქუჩა მხოლოდ ერთხელ. თბილისი 504 კმ²-ია, ამიტომ 1% დაახლოებით 50 კმ ახალი ქუჩაა. სამ თვეში მიღწევადია, თუ ადამიანი ნამდვილად დადის.</p></header>
+  <div class="scale">
+    <div class="steps">
+      <div class="step"><span class="pct">0,1%</span><h3>ნაპერწკალი</h3><p>~5 კმ, პირველი ნიშანი</p></div>
+      <div class="step gold"><span class="pct">0,25%</span><h3>ფარანი</h3><p>~13 კმ, ფარნის ყუთები</p></div>
+      <div class="step"><span class="pct">0,5%</span><h3>ჩირაღდანი</h3><p>~25 კმ, ნახევარი გზა</p></div>
+      <div class="step red"><span class="pct">1%</span><h3>შუქურა</h3><p>~50 კმ, ხედავს iPhone-ს</p></div>
+    </div>
   </div>
-  <p class="mute" style="margin-top:12px">სერვერი ამას სამ ადგილას ერთი ფუნქციით ამოწმებს: აპის გვერდზე, ყუთის ჩვენებისას და გახსნისას. ამიტომ ადამიანს ის, რასაც აპში ხედავს, და რასაც ქუჩაში პოულობს, ერთმანეთს ყოველთვის ემთხვევა.</p>
+  <p class="mute small" style="margin-top:12px">სერვერი წილს ერთი ფუნქციით ითვლის აპის გვერდზე, ყუთის ჩვენებისას და გახსნისას, ამიტომ აპში ნაჩვენები და ქუჩაში ნაპოვნი ყოველთვის ემთხვევა.</p>
 </section>
 
-<section id="where">
-  <header><div class="label">03 · სად და როგორ</div><h2>ყველაფერს სერვერი ავტომატურად აწყობს</h2></header>
+<section id="boxes">
+  <header><div class="label">ყუთები</div><h2>სად დგება და როგორ ჩნდება</h2></header>
   <div class="cols">
-    <div class="card"><h3>სად</h3><ul><li>OpenStreetMap-ის ფეხით სავალი ბილიკები საჯარო პარკებსა და მოედნებში, ათივე რაიონში</li><li>უპირატესობა ბილიკებს, რომლებიც პარკის კიდიდან ღრმადაა: ცოტა ძებნა სჭირდება, მაგრამ უსაფრთხოა</li><li>არასოდეს გზაზე, ეზოში, წყალთან, ტაძრის გალავანში, სკოლასა და საავადმყოფოსთან</li><li>ერთი წერტილი მეორედ არ მეორდება, სანამ მთელი სია არ შემოივლის. ყოველდღე ყველა უბანი იღებს ყუთს</li></ul></div>
-    <div class="card"><h3>როგორ ჩნდება</h3><ul><li>გეგმა თარიღზეა დამოკიდებული და ყოველთვის ერთნაირია: ერთი დღე ყოველთვის ერთსა და იმავე ყუთებს იძლევა</li><li>ყუთი წინასწარ იქმნება და თავის დროზე ჩნდება. ვადის გასვლისას ქრება</li><li>Medi Coins გახსნისთანავე ირიცხება, ორჯერ ჩარიცხვა შეუძლებელია</li><li>გადაუდებელ შემთხვევაში: ადმინი → MEDIRUN → პარამეტრები → საჩუქრები გამორთე</li></ul></div>
-    <div class="card gold"><h3>ავტოპილოტი</h3><p>ავტომატური დაყრის კოდი დაწერილი და შემოწმებულია, მაგრამ production-ში თავისით არ ჩართულა: მის ჩასართავად შენი ცალსახა თანხმობაა საჭირო. მანამდე საჩუქრები ქვემოთ მოცემული ერთი ბრძანებით იყრება.</p></div>
-  </div>
-</section>
-
-<section id="commands">
-  <header><div class="label">04 · ბრძანებები</div><h2>საჩუქრების დაყრა ერთი ბრძანებით</h2><p class="mute">გაუშვი პროექტის საქაღალდიდან. ყველაფერი, plan-ისა და spots-ის გარდა, მთავარ ბაზაში წერს, ზუსტად ისე, როგორც ადმინის MEDIRUN გვერდი.</p></header>
-  <div class="cols">
-    <div class="card"><h3>ნახე, რა დაიყრება (ბაზაში არაფერს წერს)</h3><pre class="cmd">node server/scripts/medirun-drops.mjs plan 2026-10-03</pre></div>
-    <div class="card"><h3>დაყარე მთელი კვირა წინასწარ</h3><pre class="cmd">node server/scripts/medirun-drops.mjs apply 2026-10-03 --days 7</pre></div>
-    <div class="card"><h3>ნახე, რამდენმა გახსნა</h3><pre class="cmd">node server/scripts/medirun-drops.mjs status 2026-10-03</pre></div>
-    <div class="card"><h3>დამატებითი ყუთი სადმე</h3><pre class="cmd">node server/scripts/medirun-drops.mjs drop --spot rike --coins 100 --stock 10 --at 2026-10-04T18:00</pre></div>
-    <div class="card red"><h3>iPhone-ის დამალვა (საიდუმლო)</h3><pre class="cmd">node server/scripts/medirun-drops.mjs grand --spot vake</pre></div>
-    <div class="card"><h3>დღის ყუთების გაუქმება</h3><pre class="cmd">node server/scripts/medirun-drops.mjs clear 2026-10-03</pre></div>
+    <div class="card"><h3>სად</h3><ul>
+      <li>ფეხით სავალ ბილიკებზე საჯარო პარკებსა და მოედნებში, ათივე რაიონში</li>
+      <li>უპირატესად პარკის სიღრმეში: ცოტა ძებნა სჭირდება, მაგრამ უსაფრთხოა</li>
+      <li>არასოდეს გზაზე, ეზოში, წყალთან, ეკლესიის ეზოში, სკოლასთან ან საავადმყოფოსთან</li>
+      <li>წერტილი არ მეორდება, სანამ მთელი სია არ შემოივლის</li>
+    </ul></div>
+    <div class="card"><h3>როგორ</h3><ul>
+      <li>ყოველი დღის გეგმა წინასწარ ცნობილია და არ იცვლება</li>
+      <li>ყუთი თავის დროზე ჩნდება და ვადის გასვლისას ქრება</li>
+      <li>მონეტები გახსნისთანავე ირიცხება, ორჯერ ჩარიცხვა შეუძლებელია</li>
+      <li>ქუჩაში ფიზიკური ყუთი არასოდეს დევს, გათამაშება არსად არის</li>
+    </ul></div>
   </div>
 </section>
 
 <section id="posts">
-  <header><div class="label">05 · პოსტები</div><h2>110 ერთეული Facebook-ზე, Instagram-სა და LinkedIn-ზე</h2>
-  <p class="mute">ყველა პოსტი და სთორი თარიღის მიხედვით, ზუსტი ტექსტით და კოპირების ღილაკით, ერთ გვერდზეა: <a href="https://medicard.ge/press/medirun-glow/index.html" target="_blank" rel="noopener">medicard.ge/press/medirun-glow</a>. იქვეა ბეჭდვის PDF-ებიც. ყველა წარწერაში არის App Store-ის ბმული და medicard.ge, ყველა სურათზე კი წარწერა „App Store · medicard.ge“.</p></header>
+  <header><div class="label">პოსტები</div><h2>110 პოსტი და სთორი, ყველა დაგეგმილია</h2>
+  <p class="mute">ყოველი პოსტი თარიღით, ზუსტი ტექსტით და კოპირების ღილაკით ერთ გვერდზეა, იქვეა ბეჭდვის PDF-ები. ყველა ტექსტში არის App Store-ის ბმული და medicard.ge.</p></header>
   <div class="tbl"><table>
-    <thead><tr><th>რეგულარულად</th><th>რა</th></tr></thead>
+    <thead><tr><th>როდის</th><th>რა</th></tr></thead>
     <tbody>
-      <tr><td class="t">ორშაბათი 08:15</td><td>სთორი: ამ კვირის რიტმი</td></tr>
-      <tr><td class="t">ორშაბათი/ოთხშაბათი 13:00</td><td>კვირის თემა, დონეები, iPhone-ის უკუთვლა</td></tr>
-      <tr><td class="t">პარასკევი 13:00 · 21:00</td><td>შაბათის წვიმის ანონსი · სთორი „ხვალ, 16:00“</td></tr>
-      <tr><td class="t">შაბათი 09:30 · 15:00 · 15:30</td><td>შაბათ-კვირის სთორი · მინიშნება 1 · მინიშნება 2</td></tr>
-      <tr><td class="t">შაბათი 18:30</td><td>მპოვნელები: ხელით, მხოლოდ რეალური რიცხვებით (ადმინში „გეგმაში“ ჩანს)</td></tr>
-      <tr><td class="t">30–31 დეკემბერი</td><td>„ხვალ“, „დღეს“, „30 წუთში“ და გამარჯვებული</td></tr>
+      <tr><td class="t">ორშაბათი<span>08:15</span></td><td>სთორი: ამ კვირის რიტმი</td></tr>
+      <tr><td class="t">ორშაბათი, ოთხშაბათი<span>13:00</span></td><td>კვირის თემა, დონეები, iPhone-ის უკუთვლა</td></tr>
+      <tr><td class="t">პარასკევი<span>13:00 · 21:00</span></td><td>შაბათის წვიმის ანონსი · სთორი „ხვალ, 16:00“</td></tr>
+      <tr><td class="t">შაბათი<span>09:30 · 15:00 · 15:30</span></td><td>შაბათ-კვირის სთორი · მინიშნება 1 · მინიშნება 2</td></tr>
+      <tr class="gold"><td class="t">შაბათი<span>18:30, ხელით</span></td><td>„მპოვნელები“: მხოლოდ რეალური რიცხვებით. ადმინის #/social-ში „გეგმაში“ ჩანს</td></tr>
+      <tr class="red"><td class="t">30–31 დეკემბერი</td><td>„ხვალ“, „დღეს“, „30 წუთში“ და გამარჯვებული</td></tr>
     </tbody>
   </table></div>
-  <div class="gal" style="margin-top:16px">
-    <img src="img/f01-key.jpg" alt="მთავარი პოსტერი"><img src="img/f03-week.jpg" alt="კვირის რიტმი"><img src="img/f04-levels.jpg" alt="დონეები"><img src="img/f14-saturday-01.jpg" alt="შაბათის წვიმა"><img src="img/f10-november.jpg" alt="ნოემბერი"><img src="img/f11-december.jpg" alt="დეკემბერი">
+  <div class="gal">
+    <figure><img src="img/f01-key.jpg" alt="მთავარი პოსტერი" loading="lazy"><figcaption>მთავარი</figcaption></figure>
+    <figure><img src="img/f03-week.jpg" alt="კვირის რიტმი" loading="lazy"><figcaption>კვირის რიტმი</figcaption></figure>
+    <figure><img src="img/f04-levels.jpg" alt="დონეები" loading="lazy"><figcaption>დონეები</figcaption></figure>
+    <figure><img src="img/f14-saturday-01.jpg" alt="შაბათის წვიმა" loading="lazy"><figcaption>შაბათის წვიმა</figcaption></figure>
+    <figure><img src="img/f10-november.jpg" alt="ნოემბერი" loading="lazy"><figcaption>ნოემბერი</figcaption></figure>
+    <figure><img src="img/f11-december.jpg" alt="დეკემბერი" loading="lazy"><figcaption>დეკემბერი</figcaption></figure>
   </div>
 </section>
 
-<section id="app">
-  <header><div class="label">06 · აპი და ადმინი</div><h2>რას ხედავს მოთამაშე და რას ხედავ შენ</h2></header>
+<section id="control">
+  <header><div class="label">მართვა</div><h2>სადაც ხედავ და სადაც აჩერებ</h2>
+  <p class="mute">ყოველდღიური ყუთები თავისით იქმნება. ხელით ჩარევა მხოლოდ დამატებითი ყუთისთვის ან გაჩერებისთვის გჭირდება.</p></header>
   <div class="cols">
-    <div class="card"><h3>აპში: „დიდი საჩუქარი“</h3><p class="mute">MEDIRUN-ის მთავარზე ბარათი პროგრესის ზოლით, შიგნით კი გვერდი: თბილისის რამდენი % აქვს, ეკუთვნის თუ არა iPhone-ის ნახვა, რამდენი კილომეტრი ახალი ქუჩა აკლია, დონეები და წესების ბმული. ის OTA-ით ვრცელდება და ახალ ბილდს არ საჭიროებს.</p></div>
-    <div class="card"><h3>ადმინში: #/social</h3><p class="mute">MEDIRUN-ის პოსტებს ღამის ფერის ბარათი და მწვანე „MEDIRUN“ ნიშანი აქვს. ზემოთ ცალკე ბანერია კამპანიის დღით (N / 90), რიცხვებით და შემდეგი პოსტით. ფილტრი: ყველა · MEDICARD · MEDIRUN.</p></div>
-    <div class="card"><h3>ადმინში: MEDIRUN</h3><p class="mute">კამპანიის ყუთები ჩვეულებრივ საჩუქრებად ჩანს (ID იწყება glow-ით). iPhone-ის მოთხოვნა ჯერ ადმინის შემოწმებას გადის, მერე „დადასტურებულს“ და „გაცემულს“.</p></div>
+    <div class="card"><h3>აპში: „დიდი საჩუქარი“</h3><p class="mute">MEDIRUN-ის მთავარზე ბარათი პროგრესის ზოლით. გვერდზე ჩანს თბილისის წილი, ჩანს თუ არა iPhone, რამდენი კმ აკლია, დონეები და წესები.</p></div>
+    <div class="card"><h3>ადმინში: MEDIRUN და #/social</h3><p class="mute">კამპანიის ყუთები ჩვეულებრივ საჩუქრებად ჩანს, ID იწყება glow-ით. #/social-ში ცალკე ზოლია კამპანიის დღით (N / 90) და შემდეგი პოსტით, ფილტრით MEDIRUN.</p></div>
+    <div class="card gold"><h3>გაჩერება</h3><ul>
+      <li>ახალი ყუთების შეჩერება: ადმინი → მოდულები → „MEDIRUN ავტოპილოტი“</li>
+      <li>ყველა საჩუქრის გამორთვა: ადმინი → MEDIRUN → პარამეტრები</li>
+      <li>iPhone-ის მოთხოვნა ჯერ ადმინის შემოწმებას გადის</li>
+    </ul></div>
   </div>
+  <details class="cmds">
+    <summary>ბრძანებები ხელით მართვისთვის</summary>
+    <div class="cmdlist">
+      <div><p>ნახე დღის გეგმა (ბაზაში არაფერს წერს)</p><pre class="cmd">node server/scripts/medirun-drops.mjs plan 2026-10-03</pre></div>
+      <div><p>ნახე, რამდენმა გახსნა</p><pre class="cmd">node server/scripts/medirun-drops.mjs status 2026-10-03</pre></div>
+      <div><p>დამატებითი ყუთი, მაგალითად პარტნიორთან</p><pre class="cmd">node server/scripts/medirun-drops.mjs drop --spot rike --coins 100 --stock 10 --at 2026-10-04T18:00</pre></div>
+      <div><p>დღის ყუთების გაუქმება</p><pre class="cmd">node server/scripts/medirun-drops.mjs clear 2026-10-03</pre></div>
+      <p>ყველაფერი plan-ის გარდა მთავარ ბაზაში წერს. ავტოპილოტი არსებულ ყუთებს არ ცვლის, ამიტომ ხელით დამატებული ყუთი უსაფრთხოა.</p>
+    </div>
+  </details>
 </section>
 
-<section id="gates">
-  <header><div class="label">07 · სტარტამდე</div><h2>რაც შენ უნდა გადაწყვიტო</h2></header>
+<section id="decide">
+  <header><div class="label">გადასაწყვეტი</div><h2>რაც შენზეა</h2></header>
   <div class="cols">
-    <div class="card red"><span class="chip red">Android</span><p>Google Play-ზე აპი ჯერ არ არის, ამიტომ თამაში მხოლოდ iPhone-ზეა. ყველა წარწერაში წერია „Android — სულ მალე“.</p></div>
-    <div class="card gold"><span class="chip gold">იურიდიული</span><p>შემთხვევითი გათამაშება არსად არ არის: იგებს, ვინც პოულობს. წესების გვერდი და პრიზის გადასახადი იურისტთან და ბუღალტერთან გადაამოწმე.</p></div>
-    <div class="card"><span class="chip">App Store 5.3</span><p>წესები ჩანს აპში (დიდი საჩუქრის გვერდიდან) და საიტზე. ორივეგან წერია, რომ Apple სპონსორი არ არის.</p></div>
+    <div class="card red"><span class="chip red">Android</span><p>Google Play-ზე აპი ჯერ არ არის, ამიტომ თამაში მხოლოდ iPhone-ზეა. ყველა ტექსტში წერია „Android — სულ მალე“.</p></div>
+    <div class="card gold"><span class="chip gold">იურისტი და ბუღალტერი</span><p>გათამაშება არ არის, იგებს ის, ვინც პოულობს. წესები და პრიზის გადასახადი სპეციალისტთან გადაამოწმე.</p></div>
+    <div class="card"><span class="chip">App Store 5.3</span><p>წესები ჩანს აპშიც და საიტზეც. ორივეგან წერია, რომ Apple სპონსორი არ არის.</p></div>
   </div>
 </section>
 
 <section id="cost">
-  <header><div class="label">08 · ხარჯი</div><h2>იაფი ყოველდღე, ერთი დიდი ბოლოს</h2></header>
+  <header><div class="label">ხარჯი</div><h2>იაფი ყოველდღე, ერთი დიდი ბოლოს</h2></header>
   <div class="cols">
-    <div class="card"><h3>Medi Coins</h3><p class="mute">ფული არ ჯდება, სანამ ადამიანი მონეტებს ჯილდოზე არ გადაცვლის. აქტიური ჯილდოები 300 და 600 მონეტა ღირს. ყველა ყუთი რომ გაიხსნას, კვირაში მაქსიმუმ ~11 000 მონეტა გაიცემა ყველა მოთამაშეზე ჯამში.</p></div>
+    <div class="card"><h3>Medi Coins</h3>
+      <div class="total"><b>~105 000</b><span class="mute small">მონეტა 3 თვეში, თუ ~700-ვე ყუთი ბოლომდე გაიხსნება</span></div>
+      <p class="mute small">კვირაში 4 700–11 000. ფული არ ჯდება, სანამ ადამიანი მონეტებს ჯილდოზე არ გადაცვლის (ჯილდოები 300 და 600 მონეტაა).</p></div>
     <div class="card red"><h3>iPhone 18 Pro Max</h3><p class="mute">ერთადერთი რეალური ხარჯი. გადაეცემა სესიის შემოწმების შემდეგ, პირადობით და აპის კოდით.</p></div>
-    <div class="card"><h3>რეკლამა</h3><p class="mute">სურვილისამებრ: შაბათის ანონსებზე და iPhone-ის პოსტებზე, მხოლოდ თბილისზე. Android-ის გაშვებამდე უმჯობესია ფასიანი რეკლამა არ ჩავრთოთ.</p></div>
+    <div class="card"><h3>რეკლამა</h3><p class="mute">სურვილისამებრ, მხოლოდ თბილისზე: შაბათის ანონსები და iPhone-ის პოსტები. Android-ამდე ფასიანი რეკლამა არ ღირს.</p></div>
   </div>
 </section>
 
 <section id="next">
-  <header><div class="label">09 · შემდეგი</div><h2>პარტნიორები და ინვესტორები</h2></header>
+  <header><div class="label">შემდეგი</div><h2>პარტნიორები და ინვესტორები</h2></header>
   <div class="cols">
-    <div class="card"><h3>პარტნიორები</h3><p class="mute">მზადაა A4 ფურცელი, ვიტრინის სტიკერი, მაგიდის ბარათი და პოსტი „შენი კარი — საჩუქრის წერტილი“ (7 და 14 ოქტომბერი). პარტნიორის ყუთი იგივე ბრძანებით იდება: drop --spot … ან --lat/--lng.</p></div>
-    <div class="card"><h3>ინვესტორები</h3><p class="mute">LinkedIn-ის 3 ინგლისური პოსტი (7.10, 14.10, 2.12) ამბავს ჰყვება: „მსოფლიოს კიდევ ერთი ტრეკერი არ სჭირდება. მას გარეთ გასვლის მიზეზი სჭირდება“. კამპანიის რეალური რიცხვები (მოთამაშეები, გახსნილი ყუთები, კილომეტრები) ადმინიდან შემდეგი ნაბიჯისთვის გამოგვადგება.</p></div>
+    <div class="card"><h3>პარტნიორები</h3><p class="mute">მზადაა A4 ფურცელი, ვიტრინის სტიკერი, მაგიდის ბარათი და პოსტი „შენი კარი — საჩუქრის წერტილი“ (7 და 14 ოქტომბერი). პარტნიორთან ყუთი ზემოთ მოცემული drop ბრძანებით იდება.</p></div>
+    <div class="card"><h3>ინვესტორები</h3><p class="mute">LinkedIn-ზე 3 ინგლისური პოსტი (7.10, 14.10, 2.12). ამბავი: ადამიანს კიდევ ერთი ტრეკერი არ სჭირდება, მას გარეთ გასვლის მიზეზი სჭირდება. კამპანიის რეალური რიცხვები ადმინიდან შემდეგ ნაბიჯში გამოგვადგება.</p></div>
   </div>
 </section>
 </div>
