@@ -25,6 +25,15 @@ const SWITCH_COPY: Record<AppLang, { title: string; body: string; confirm: strin
   },
 };
 
+/** Asks before restarting in `lang`; `onStart` runs once the person confirms. */
+export function confirmLanguageSwitch(lang: AppLang, onStart: () => Promise<void>) {
+  const copy = SWITCH_COPY[lang];
+  Alert.alert(copy.title, copy.body, [
+    { text: copy.cancel, style: 'cancel' },
+    { text: copy.confirm, onPress: () => void onStart() },
+  ]);
+}
+
 /** Profile → Settings: two-option segmented control that restarts the app in the chosen language. */
 export function LanguageSelect() {
   const colors = useThemeColors();
@@ -34,17 +43,10 @@ export function LanguageSelect() {
 
   const choose = (lang: AppLang) => {
     if (lang === current || pending) return;
-    const copy = SWITCH_COPY[lang];
-    Alert.alert(copy.title, copy.body, [
-      { text: copy.cancel, style: 'cancel' },
-      {
-        text: copy.confirm,
-        onPress: () => {
-          setPending(lang);
-          void setLanguageAndReload(lang).finally(() => setPending(null));
-        },
-      },
-    ]);
+    confirmLanguageSwitch(lang, async () => {
+      setPending(lang);
+      await setLanguageAndReload(lang).finally(() => setPending(null));
+    });
   };
 
   return (
