@@ -689,7 +689,7 @@ html body .workspace .sx-after select { height: 30px; min-height: 30px; padding:
 .s-social table.s-table { min-width: 980px; }
 
 /* MEDIRUN brand on #/social: the night city. Fixed colours on purpose — identical in the light and dark admin. */
-.s-social, .s-social-drawer {
+.s-social, .s-social-drawer, .cp-page {
   --mr-night: #08111f;
   --mr-night-2: #0e1c34;
   --mr-ink: #f1f6ff;
@@ -1778,3 +1778,52 @@ html body .workspace .s-coach-search input { width: 100%; height: 32px; box-sizi
 .s-coach-form.s-stack { gap: 14px; }
 .s-coach-msg { margin-right: auto; }
 /* ─── [/P6] ─── */
+
+/* ─── [campaigns] #/campaigns კამპანიები ─── */
+.cp-page .s-card.cp-hero { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 18px; padding: 20px 22px;
+  background: linear-gradient(135deg, var(--mr-night), var(--mr-night-2)); border-color: var(--mr-line); color: var(--mr-text); }
+.cp-hero-id { display: grid; gap: 6px; min-width: 0; flex: 1 1 420px; }
+.cp-brand { justify-self: start; font-size: 11.5px; font-weight: 700; letter-spacing: .08em; color: var(--mr-mint); background: var(--mr-mint-soft);
+  box-shadow: inset 0 0 0 1px var(--mr-mint-ring); border-radius: 99px; padding: 2px 10px; }
+.cp-hero h2 { margin: 0; font-size: 26px; font-weight: 750; letter-spacing: -.02em; color: #fff; }
+.cp-hero p { margin: 0; max-width: 68ch; font-size: 13.5px; line-height: 1.6; color: var(--mr-muted); }
+.cp-hero-side { display: grid; justify-items: end; gap: 12px; }
+.cp-links { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; }
+.cp-page .s-card.cp-hero .btn.ghost { background: rgba(255, 255, 255, .07); color: var(--mr-ink); border: 1px solid var(--mr-line); box-shadow: none; }
+.cp-page .s-card.cp-hero .btn.ghost:hover { background: rgba(255, 255, 255, .14); }
+.cp-page .s-card.cp-hero .btn.ghost .icon { color: var(--mr-mint); }
+@media (max-width: 760px) { .cp-hero-side { justify-items: start; } .cp-links { justify-content: flex-start; } }
+
+.cp-doc { overflow: hidden; }
+.cp-doc-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.cp-frame { display: block; width: 100%; height: 1400px; border: 0; border-top: 1px solid var(--s-line); background: var(--s-sunken); }
+
+.cp-toolbar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; }
+.cp-jump { display: flex; flex-wrap: wrap; gap: 6px; }
+.cp-day { display: grid; gap: 12px; scroll-margin-top: 80px; }
+.cp-day h3 { margin: 6px 0 0; font-size: 15px; font-weight: 650; color: var(--s-ink); display: flex; align-items: center; gap: 8px; }
+.cp-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px; }
+.cp-post { display: flex; flex-direction: column; gap: 10px; min-width: 0; padding: 14px; background: var(--s-surface);
+  border: 1px solid var(--s-line); border-radius: var(--s-radius-lg); box-shadow: var(--s-shadow-xs); }
+.cp-post.is-manual { border-style: dashed; border-color: var(--s-warn); }
+.cp-post header { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; font-size: 12.5px; }
+.cp-post header b { font-size: 16px; font-weight: 700; color: var(--s-ink); font-variant-numeric: tabular-nums; margin-right: 2px; }
+.cp-nets { color: var(--s-muted); }
+.cp-media { display: grid; gap: 6px; }
+.cp-media.is-many { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.cp-media img, .cp-media video { display: block; width: 100%; height: auto; border-radius: 10px; border: 1px solid var(--s-line-soft); background: var(--s-sunken); }
+.cp-post.is-story .cp-media img { width: auto; max-width: 100%; max-height: 300px; margin-inline: auto; }
+.cp-post h4 { margin: 0; font-size: 14px; font-weight: 650; color: var(--s-ink); }
+.cp-note { margin: 0; font-size: 13px; line-height: 1.55; color: var(--s-muted); }
+.cp-text { margin: 0; max-height: 240px; overflow: auto; white-space: pre-wrap; word-break: break-word; font: 13px/1.55 var(--s-font);
+  color: var(--s-text); background: var(--s-sunken); border-radius: 10px; padding: 10px 12px; }
+.cp-copy { align-self: flex-start; }
+
+.cp-print { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 14px; }
+.cp-print-item { display: flex; flex-direction: column; gap: 12px; padding: 14px; min-width: 0; }
+.cp-print-img { display: grid; place-items: center; aspect-ratio: 3 / 4; background: var(--s-sunken); border-radius: 10px; overflow: hidden; }
+.cp-print-img img { max-width: 100%; max-height: 100%; object-fit: contain; display: block; }
+.cp-print-body h4 { margin: 0; font-size: 14px; font-weight: 650; color: var(--s-ink); }
+.cp-print-body p { margin: 4px 0 0; font-size: 12.5px; color: var(--s-muted); }
+.cp-print-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: auto; }
+/* ─── [/campaigns] ─── */

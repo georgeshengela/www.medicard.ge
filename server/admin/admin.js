@@ -5,7 +5,7 @@ const EMAIL_KEY = 'medicard.admin.email';
 const TAB_KEY = 'medicard.admin.tab';
 const USERS_PAGE_SIZE = 15;
 const PAGE_SIZE = 25;
-const ADMIN_TABS = ['overview', 'orders', 'users', 'push', 'sms', 'pharmacy', 'rewards', 'ai', 'health', 'audit', 'quality', 'testing', 'nutrition', 'community', 'medipulsi', 'poster-studio', 'settings', 'features', 'quests', 'funnel', 'director', 'email', 'support', 'trainers', 'capacity', 'news', 'errors', 'social'];
+const ADMIN_TABS = ['overview', 'orders', 'users', 'push', 'sms', 'pharmacy', 'rewards', 'ai', 'health', 'audit', 'quality', 'testing', 'nutrition', 'community', 'medipulsi', 'poster-studio', 'settings', 'features', 'quests', 'funnel', 'director', 'email', 'support', 'trainers', 'capacity', 'news', 'errors', 'social', 'campaigns'];
 
 const state = {
   token: localStorage.getItem(TOKEN_KEY) || '',
@@ -213,6 +213,9 @@ function rememberAdmin(admin, token) {
 
 function logout(reason) {
   $('tab-poster-studio')?.replaceChildren();
+  $('tab-campaigns')?.replaceChildren();
+  // Close the admin-only campaign media cookie while the token can still authorise it.
+  if (state.token) void window.AdminCampaignMedia?.end();
   disconnectAdminRealtime();
   state.token = '';
   state.admin = null;
@@ -670,6 +673,7 @@ async function switchTab(tab, opts = {}) {
     features: ['Production', 'მოდულები', 'ჩართე ან შეაჩერე ნებისმიერი მოდული ახალი ბილდის გარეშე.', ''],
     quests: ['Engagement', 'Medi Quest', 'მისიები, სამიზნეები და Medi Coins ჯილდოები.', ''],
     news: ['Engagement', 'სიახლეები', 'ბარათები აპის მთავარ გვერდზე: ღონისძიებები, საჩუქრები და სიახლეები.', ''],
+    campaigns: ['Engagement', 'კამპანიები', 'კამპანიის გეგმა, ყველა პოსტი ტექსტით და ბეჭდვის ფაილები. ჩანს მხოლოდ ადმინში.', ''],
     social: ['Engagement', 'სოციალური ქსელები', 'კამპანიის პოსტები და სთორები: როდის, სად და რა ტექსტით გავიდა.', ''],
     errors: ['System', 'შეცდომები', 'აპის ავარიები და სერვერის შეცდომები: რა გატყდა, სად და რამდენს შეეხო.', ''],
     capacity: ['System', 'სერვერის დატვირთვა', 'CPU, მეხსიერება, პასუხის დრო და როდის გაზარდო სერვერი Render-ზე.', ''],
@@ -711,6 +715,7 @@ async function switchTab(tab, opts = {}) {
     if (tab === 'errors' && typeof renderErrorsAdmin === 'function') await renderErrorsAdmin();
     if (tab === 'news' && typeof renderNews === 'function') await renderNews();
     if (tab === 'social' && typeof renderSocialAdmin === 'function') await renderSocialAdmin();
+    if (tab === 'campaigns' && typeof renderCampaignsAdmin === 'function') await renderCampaignsAdmin();
     if (tab === 'director' && typeof renderDirector === 'function') await renderDirector();
     if (tab === 'email' && typeof renderEmailAdmin === 'function') await renderEmailAdmin();
     if (tab === 'support' && typeof renderSupportAdmin === 'function') await renderSupportAdmin();

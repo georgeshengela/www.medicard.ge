@@ -40,6 +40,8 @@ import { adminFunnelRouter, funnelRouter } from './routes/funnel.routes.js';
 import { adminCapacityRouter } from './routes/capacity.routes.js';
 import { adminErrorsRouter } from './routes/errors.routes.js';
 import { adminSocialRouter } from './routes/social.routes.js';
+import { adminCampaignsRouter } from './routes/campaigns.routes.js';
+import { campaignMediaGate } from './lib/campaignMedia.js';
 import { errorMonitorEnabled, recordFatalError, startErrorPurge, stopErrorPurge } from './lib/errorMonitor.js';
 import { langMiddleware, t } from './lib/i18n.js';
 import { capacityMiddleware, startCapacityMonitor, stopCapacityMonitor } from './lib/capacity.js';
@@ -342,6 +344,7 @@ app.use('/api/admin/funnel', adminFunnelRouter);
 app.use('/api/admin/capacity', adminCapacityRouter);
 app.use('/api/admin/errors', adminErrorsRouter);
 app.use('/api/admin/social', adminSocialRouter);
+app.use('/api/admin/campaigns', adminCampaignsRouter);
 app.use('/api/admin/announcements', adminAnnouncementsRouter);
 app.use('/api/admin/email', adminEmailRouter);
 app.use('/api/admin/support', adminSupportRouter);
@@ -366,6 +369,9 @@ app.get(['/medipulsi', '/medipulsi/', '/medipulsi/index.html'], (req,res) => {
   if(!existsSync(file))return res.status(503).send(t(req, 'MEDIPULSI მზადდება.', 'MEDIRUN is getting ready.'));
   return res.sendFile(file);
 });
+
+// Admin-only campaign media (/press/medirun-glow/…): files live outside public/, served only with the admin media cookie.
+app.use(campaignMediaGate());
 
 if (serveAdmin) {
   // Must be registered before the marketing-site fallback, otherwise /admin becomes the landing page.

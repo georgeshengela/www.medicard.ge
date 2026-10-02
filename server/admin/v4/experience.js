@@ -73,7 +73,7 @@
     overview: 'o', users: 'u', push: 'p', 'poster-studio': 'i', nutrition: 'n', community: 'c', medipulsi: 'm',
     health: 'h', ai: 'd', rewards: 'r', orders: 'e', sms: 'x', pharmacy: 'f', quality: 'q', testing: 't', audit: 'a', settings: 's', quests: 'k', features: 'l', funnel: 'v', email: 'j', support: 'b', trainers: 'w', capacity: 'z', news: 'y', errors: 'g',
     // Every letter is taken; digits work the same way (physical Digit keys, any layout).
-    social: '1',
+    social: '1', campaigns: '2',
   };
   const SUBPAGES = [
     ['push', 'brain', 'გადაწყვეტილებები', 'Brain decisions'],

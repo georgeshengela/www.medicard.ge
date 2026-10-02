@@ -72,7 +72,7 @@
   const CAMPAIGNS = {
     'medirun-glow-2026': {
       brand: 'medirun', label: 'MEDIRUN · გაანათე თბილისი', short: 'MEDIRUN', start: '2026-10-03', end: '2026-12-31',
-      posters: 'https://medicard.ge/press/medirun-glow/index.html',
+      posters: '#/campaigns',
     },
     'medirun-passport-2026-10': { brand: 'medirun', label: 'MEDIRUN · თბილისის პასპორტი', short: 'MEDIRUN' },
     'launch-2026-10': { brand: 'medicard', label: 'MEDICARD · გაშვება', short: 'MEDICARD' },
@@ -154,8 +154,10 @@
   const brandDot = (brand) => `<span class="s-brand-dot is-${esc(brand)}" aria-hidden="true"></span>`;
   const copyChip = (value) => `<button type="button" class="inv-copy p1-copy" data-copy="${esc(value)}" title="დააკოპირე">${esc(value)}${ico('copy')}</button>`;
   const isVideo = (url) => /\.(mp4|mov|webm|m4v)(\?|$)/i.test(url || '');
+  /** Campaign posters are admin-only files on this origin (lib/campaignMedia.js): load them without the site prefix. */
+  const mediaUrl = (url) => (global.AdminCampaignMedia?.local ? global.AdminCampaignMedia.local(url) : url);
   function thumb(post) {
-    const url = post.mediaUrls?.[0];
+    const url = mediaUrl(post.mediaUrls?.[0]);
     if (!url) return '<span class="s-muted">—</span>';
     const more = post.mediaUrls.length > 1 ? `<i class="s-social-more">+${post.mediaUrls.length - 1}</i>` : '';
     if (isVideo(url)) return `<span class="s-social-thumb is-video">${ico('play')}${more}</span>`;
@@ -251,7 +253,7 @@
         </div>
         <div class="s-mr-actions">
           <button type="button" class="s-mr-btn" data-brand-toggle aria-pressed="${pressed}">${pressed ? ico('check') : brandDot('medirun')} მხოლოდ MEDIRUN</button>
-          <a class="s-mr-btn is-ghost" href="${esc(c.posters)}" target="_blank" rel="noopener">პოსტერები ${ico('external')}</a>
+          <a class="s-mr-btn is-ghost" href="${esc(c.posters)}">გეგმა და პოსტერები</a>
         </div>
       </div>
       <div class="s-mr-grid">
@@ -455,7 +457,7 @@
   /* ─────────────── Drawer: one post ─────────────── */
   function media(urls) {
     if (!urls?.length) return '<p class="p1-drawer-none">მედია არ არის მიბმული.</p>';
-    return `<div class="s-social-media">${urls.map((url) => (isVideo(url)
+    return `<div class="s-social-media">${urls.map(mediaUrl).map((url) => (isVideo(url)
       ? `<video src="${esc(url)}" controls preload="metadata" playsinline></video>`
       : `<a href="${esc(url)}" target="_blank" rel="noopener noreferrer" title="სრული ზომით გახსნა"><img src="${esc(url)}" alt="" loading="lazy" decoding="async"></a>`)).join('')}</div>`;
   }
@@ -516,7 +518,8 @@
     if (!st.data) root.innerHTML = skel();
     let summary; let list; let events;
     try {
-      [summary, list, events] = await Promise.all([
+      [, summary, list, events] = await Promise.all([
+        global.AdminCampaignMedia?.ensure?.().catch(() => null),
         global.api('/social/summary'),
         global.api('/social'),
         global.api('/social/events?limit=300'),
