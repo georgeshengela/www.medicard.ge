@@ -127,7 +127,8 @@ export class PulseSessionClient {
   this.set({running:false,signal:EMPTY_SIGNAL,journey:finish?resetSession(this.view.journey):pauseJourney(this.view.journey),message:tx('გასეირნება შენახულია · სინქრონიზდება','Walk saved · syncing')});
   void this.persist();void this.flush().catch(()=>{});
  }
- async tick(){this.seal();if(Date.now()<this.retryAt)return;try{await this.flush();if(this.view.running){const signal=await this.adapter.request<GiftSignal>('/nearby');this.set({signal});}}catch{this.set({signal:EMPTY_SIGNAL});}}
+ /** Uploads, then asks for a nearby gift — only while the map is on screen (`nearby`), never from a locked phone. */
+ async tick(nearby=true){this.seal();if(Date.now()<this.retryAt)return;try{await this.flush();if(this.view.running&&nearby){const signal=await this.adapter.request<GiftSignal>('/nearby');this.set({signal});}}catch{this.set({signal:EMPTY_SIGNAL});}}
  async refresh(){await this.init();if(!this.view.running&&(this.queue.length||this.fixes.length)){this.seal();try{await this.flush();}catch{/* Reading saved progress remains available while an upload waits. */}}const snapshot=await this.adapter.request<Snapshot>('/bootstrap');this.apply(snapshot,!this.view.running&&!this.queue.length&&!this.fixes.length);await this.persist();return snapshot;}
  async selectMission(id:string|null){this.seal();await this.flush();const snapshot=await this.adapter.request<Snapshot>('/mission','PUT',{id});this.apply(snapshot);this.set({book:snapshot.state.book});await this.persist();}
  async settings(value:PulseSettings|{handle:string;leaderboardOptIn:boolean}){const snapshot=await this.adapter.request<Snapshot>('/settings','PATCH',value);this.apply(snapshot);await this.persist();}

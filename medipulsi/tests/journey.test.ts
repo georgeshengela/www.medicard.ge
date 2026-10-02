@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {distance} from '../src/engine.ts';
-import {createJourney,advanceDemo,acceptFix,mergeIntervals,coveredLength,proximity,parkProgress,loadJourney,validConfig,DEFAULT_CONFIG,PLAYABLE,EDGE,NODES,GIFTS,START,shortestPath,planTo,interpolate,PARK_SHARE,PARK_AREA,DISTRICT_AREA,PARK_METERS} from '../src/journey.ts';
+import {createJourney,advanceDemo,acceptFix,mergeIntervals,coveredLength,proximity,parkProgress,loadJourney,validConfig,DEFAULT_CONFIG,PLAYABLE,EDGE,NODES,GIFTS,START,shortestPath,planTo,interpolate,PARK_SHARE,PARK_AREA,DISTRICT_AREA,PARK_METERS,VEHICLE_CONFIRM_S} from '../src/journey.ts';
 
 test('OSM park network is connected and every demo transition follows its geometry',()=>{
  let s=createJourney();const c={...DEFAULT_CONFIG,rate:25,scenario:'explore' as const};
@@ -45,7 +45,7 @@ test('valid movement counts but inaccurate fixes, jitter and vehicle jumps do no
  const wrong=acceptFix(s,{position:NODES[e.b],accuracy:40,timestamp:now-8000,speed:1});assert.equal(wrong.meters,0);assert.equal(wrong.status,'inaccurate');
  const still=acceptFix(s,{position:s.lastRaw!,accuracy:5,timestamp:now-8000,speed:0});assert.equal(still.meters,0);
  s=acceptFix(s,{position:interpolate(NODES[e.a],NODES[e.b],.3),accuracy:5,timestamp:now-5000,speed:1.4});assert.ok(s.meters>2);assert.ok(s.steps>0);
- const jumped=acceptFix(s,{position:[s.position[0]+.03,s.position[1]],accuracy:5,timestamp:now,speed:20});assert.equal(jumped.meters,s.meters);assert.deepEqual(jumped.covered,s.covered);assert.equal(jumped.status,'vehicle');
+ const jumped=acceptFix(s,{position:[s.position[0]+.03,s.position[1]],accuracy:5,timestamp:now,speed:20});assert.equal(jumped.meters,s.meters);assert.deepEqual(jumped.covered,s.covered);assert.equal(jumped.status,'surge');assert.equal(jumped.vehicle,undefined,'one fast fix is not yet a vehicle');
 });
 test('route choices connect through actual graph edges without direct cross-park lines',()=>{
  const path=shortestPath(START,GIFTS[0]);assert.ok(path&&path.edges.length>3);let node=START;for(const id of path!.edges){const e=EDGE.get(id)!;assert.ok(e.a===node||e.b===node);node=e.a===node?e.b:e.a;}assert.equal(node,GIFTS[0]);assert.deepEqual(planTo(createJourney(),GIFTS[0]).queue,path!.edges);
@@ -72,4 +72,14 @@ test('in a car the marker keeps moving, nothing counts, and walking resumes afte
  step(2.2);assert.equal(s.vehicle,null);assert.equal(s.meters,0);assert.notEqual(s.status,'vehicle');
  for(let i=0;i<5;i++)step(2.2);
  assert.ok(s.meters>10&&s.meters<12,`walking counts again (${s.meters})`);assert.equal(s.maxSpeed<10,true);
+});
+test('a lone GPS jump never counts and never raises the vehicle warning; a few seconds of speed do',()=>{
+ const t0=Date.now()-120000;let t=t0,lng=44.8,s=acceptFix(createJourney('gps'),{position:[lng,41.7],accuracy:5,timestamp:t,speed:0},.72,t);
+ const step=(mps:number,gps:number|null=mps)=>{t+=1000;lng+=mps/83100;s=acceptFix(s,{position:[lng,41.7],accuracy:5,timestamp:t,speed:gps},.72,t);};
+ for(let i=0;i<5;i++)step(1.4);const walked=s.meters;assert.ok(walked>5);
+ step(25,null);assert.equal(s.status,'surge');assert.ok(!s.vehicle);assert.equal(s.meters,walked,'the jump itself never counts');
+ step(1.4);assert.equal(s.surge,0,'one calm fix forgets the jump');assert.ok(!s.vehicle);
+ for(let i=0;i<5;i++)step(1.4);assert.ok(s.meters>walked,'walking keeps counting right after a jump');
+ const before=s.meters;for(let i=0;i<VEHICLE_CONFIRM_S-1;i++)step(14);assert.ok(!s.vehicle,'three seconds of speed are not yet a vehicle');
+ step(14);assert.ok(s.vehicle);assert.equal(s.status,'vehicle');assert.equal(s.meters,before,'nothing from the start of the drive counts');
 });

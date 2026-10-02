@@ -35,7 +35,7 @@ export function mergeIntervals(intervals:Interval[],range:Interval):Interval[]{c
 export function coveredLength(covered:Record<string,Interval[]>,parkOnly=true){let total=0;for(const [id,ranges] of Object.entries(covered)){const e=EDGE.get(id);if(e&&(!parkOnly||e.playable))total+=ranges.reduce((s,r)=>s+(r[1]-r[0])*e.length,0);}return total;}
 export function parkProgress(s:Journey){const unique=coveredLength(s.covered);return {unique,percent:Math.min(100,unique/PARK_METERS*100),complete:unique/PARK_METERS>=.85};}
 export type Cursor={edge:string;from:string;offset:number};
-export type Journey={version:3;network:string;source:Source;position:Coordinate;heading:number;meters:number;seconds:number;movingSeconds:number;steps:number;speed:number;maxSpeed:number;sessionStartCoverage:number;covered:Record<string,Interval[]>;trail?:WalkingTrail;claimed:boolean;cursor:Cursor|null;queue:string[];seed:number;accuracy:number;lastFix:number|null;lastRaw:Coordinate|null;match:{edge:string;t:number}|null;rejected:number;status:string;startedAt:string;completedAt:string|null;pauseReason?:'manual'|'background'|'reload'|'gps'|null;pausedAt?:string|null;vehicle?:{calm:number}|null};
+export type Journey={version:3;network:string;source:Source;position:Coordinate;heading:number;meters:number;seconds:number;movingSeconds:number;steps:number;speed:number;maxSpeed:number;sessionStartCoverage:number;covered:Record<string,Interval[]>;trail?:WalkingTrail;claimed:boolean;cursor:Cursor|null;queue:string[];seed:number;accuracy:number;lastFix:number|null;lastRaw:Coordinate|null;match:{edge:string;t:number}|null;rejected:number;status:string;startedAt:string;completedAt:string|null;pauseReason?:'manual'|'background'|'reload'|'gps'|null;pausedAt?:string|null;vehicle?:{calm:number}|null;surge?:number};
 export function createJourney(source:Source='demo',spawn=START):Journey{return {version:3,network:NETWORK_VERSION,source,position:[...NODES[spawn]],heading:200,meters:0,seconds:0,movingSeconds:0,steps:0,speed:0,maxSpeed:0,sessionStartCoverage:0,covered:{},trail:[],claimed:false,cursor:null,queue:[],seed:7,accuracy:source==='demo'?6:999,lastFix:null,lastRaw:null,match:null,rejected:0,status:source==='demo'?'ready':'waiting',startedAt:new Date().toISOString(),completedAt:null};}
 export type DemoConfig={pace:'walk'|'run';speed:number;rate:number;scenario:'explore'|'gift'|'return'|'still';accuracy:number;pulseRadius:number;revealRadius:number;giftIndex:number;autoPause:boolean;stride:number};
 export const DEFAULT_CONFIG:DemoConfig={pace:'walk',speed:5,rate:10,scenario:'explore',accuracy:6,pulseRadius:120,revealRadius:18,giftIndex:0,autoPause:true,stride:.72};
@@ -71,21 +71,27 @@ export function advanceDemo(input:Journey,elapsed:number,c:DemoConfig):Journey{
 }
 export function nearestEdge(p:Coordinate){let best:{edge:Edge;t:number;point:Coordinate;distance:number}|null=null;const sx=Math.cos(p[1]*Math.PI/180);for(const e of EDGES){const a=NODES[e.a],b=NODES[e.b],dx=(b[0]-a[0])*sx,dy=b[1]-a[1];const t=Math.max(0,Math.min(1,((p[0]-a[0])*sx*dx+(p[1]-a[1])*dy)/(dx*dx+dy*dy)));const point=interpolate(a,b,t),d=distance(p,point);if(!best||d<best.distance)best={edge:e,t,point,distance:d};}return best!;}
 export type Fix={position:Coordinate;accuracy:number;timestamp:number;speed:number|null};
-/** Faster than any runner (25 km/h) means a vehicle; counting resumes after this many seconds of moving at a human pace. */
-export const VEHICLE_MPS=7,VEHICLE_RESUME_S=15;
+/** Faster than any runner (25 km/h) means a vehicle once it lasts VEHICLE_CONFIRM_S seconds (a lone GPS jump only fails to count);
+ * counting resumes after VEHICLE_RESUME_S seconds of moving at a human pace. */
+export const VEHICLE_MPS=7,VEHICLE_RESUME_S=15,VEHICLE_CONFIRM_S=4;
 /** Only quality, fresh, plausible fixes count. A gap never paints a shortcut. */
 export function acceptFix(input:Journey,fix:Fix,stride=.72,now=Date.now()):Journey{
  if(!fix.position.every(Number.isFinite)||Math.abs(fix.position[0])>180||Math.abs(fix.position[1])>90||!Number.isFinite(fix.accuracy)||fix.accuracy<0||!Number.isFinite(fix.timestamp)||fix.timestamp>now+5000||fix.timestamp<now-15000||(input.lastFix!==null&&fix.timestamp<=input.lastFix))return {...input,speed:0,rejected:input.rejected+1,status:'invalid'};
  if(fix.accuracy>25)return {...input,accuracy:fix.accuracy,speed:0,rejected:input.rejected+1,status:'inaccurate'};
  const match=nearestEdge(fix.position),onPath=match.distance<=Math.min(18,Math.max(8,fix.accuracy));
- const base={...input,covered:{...input.covered},accuracy:fix.accuracy,status:onPath?'tracking':'off-path'};
+ const base={...input,covered:{...input.covered},accuracy:fix.accuracy,status:onPath?'tracking':'off-path',surge:0};
  if(!input.lastRaw||input.lastFix===null||fix.timestamp-input.lastFix>15000){return {...base,...(input.vehicle?{status:'vehicle'}:{}),position:onPath?match.point:fix.position,lastRaw:fix.position,lastFix:fix.timestamp,match:onPath?{edge:match.edge.id,t:match.t}:null,speed:0};}
  const seconds=(fix.timestamp-input.lastFix)/1000,rawDistance=distance(input.lastRaw,fix.position),speed=rawDistance/seconds;
  const still=rawDistance<Math.max(2,Math.min(6,fix.accuracy*.25));
  // In a vehicle the marker keeps following GPS and the live speed stays real, but nothing counts:
  // not the drive, not slowing down for a light. Counting resumes after a stretch at a human pace.
  const follow={position:fix.position,heading:still?input.heading:heading(input.lastRaw,fix.position),lastFix:fix.timestamp,lastRaw:fix.position,match:null};
- if(speed>VEHICLE_MPS||(fix.speed!==null&&fix.speed>VEHICLE_MPS))return {...base,...follow,speed:Math.max(speed,fix.speed??0)*3.6,rejected:input.rejected+1,status:'vehicle',vehicle:{calm:0}};
+ if(speed>VEHICLE_MPS||(fix.speed!==null&&fix.speed>VEHICLE_MPS)){
+  // A lone fast fix is usually a GPS jump: it never counts, but only a few seconds of speed make it a vehicle.
+  const surge=input.vehicle?VEHICLE_CONFIRM_S:(input.surge||0)+Math.min(seconds,3),kmh=Math.max(speed,fix.speed??0)*3.6;
+  if(surge>=VEHICLE_CONFIRM_S)return {...base,...follow,speed:kmh,rejected:input.rejected+1,status:'vehicle',vehicle:{calm:0}};
+  return {...base,...follow,speed:kmh,rejected:input.rejected+1,status:'surge',surge};
+ }
  if(input.vehicle){
   if(still)return {...base,speed:0,status:'vehicle'};
   const calm=input.vehicle.calm+Math.min(seconds,3);

@@ -11,6 +11,9 @@ const root = path.join(__dirname, '..');
 const ALLOWED_BARE_RUN = new Set([
   path.join('src', 'components', 'run', 'PulseIdentity.tsx'),
   path.join('src', 'components', 'navigation', 'FloatingTabBar.tsx'),
+  // The MEDIRUN logotype drawn as a MEDI + RUN pair (share card, lock-screen Live Activity).
+  path.join('src', 'components', 'run', 'PulseTerritory.tsx'),
+  path.join('src', 'lib', 'run', 'runActivityLayout.tsx'),
 ]);
 
 function files(dir, out = []) {

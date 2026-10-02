@@ -1,4 +1,5 @@
 import {useSyncExternalStore} from 'react';
+import {AppState} from 'react-native';
 import {API_BASE_URL,guardRequest} from '@/lib/api';
 import {getToken,getPreference,setPreferenceStrict} from '@/lib/storage';
 import {localAccountId} from '@/lib/localAccount';
@@ -29,7 +30,7 @@ export function getPulseClient(){
  const key=`medicard.medipulsi.native.${owner||'signed-out'}`;
  client=new PulseSessionClient({id:uuid,request:<T>(path:string,method?:string,body?:unknown)=>pulseApi<T>(path,method,body,owner),read:()=>getPreference(key),write:value=>setPreferenceStrict(key,value),archive:value=>setPreferenceStrict(key+'.conflict.'+Date.now(),value)});
  const activeClient=client;
- timer=setInterval(()=>{if(localAccountId()===owner&&(activeClient.getSnapshot().running||activeClient.getSnapshot().pending))void activeClient.tick();},5000);
+ timer=setInterval(()=>{if(localAccountId()===owner&&(activeClient.getSnapshot().running||activeClient.getSnapshot().pending))void activeClient.tick(AppState.currentState==='active');},5000);
  return client;
 }
 export function usePulse(){const current=getPulseClient();return useSyncExternalStore(current.subscribe,current.getSnapshot,current.getSnapshot);}

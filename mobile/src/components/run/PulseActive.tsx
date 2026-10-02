@@ -1,7 +1,7 @@
 import React,{useEffect,useMemo,useRef,useState} from 'react';
-import {ActivityIndicator,BackHandler,Image,Pressable,View} from 'react-native';
+import {ActivityIndicator,AppState,BackHandler,Image,Pressable,View} from 'react-native';
 import {RUN_GIFT} from './runArt';
-import {useIsFocused,useRouter} from 'expo-router';
+import {useIsFocused,useLocalSearchParams,useRouter} from 'expo-router';
 import {activateKeepAwakeAsync,deactivateKeepAwake} from 'expo-keep-awake';
 import {ArrowLeft,BookOpen,Building2,Check,Compass,Flag,Footprints,Gauge,Gift,LocateFixed,MoreHorizontal,Navigation,Pause,Play,Route,Settings2,Timer,Trophy} from 'lucide-react-native';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
@@ -9,7 +9,8 @@ import * as Haptics from 'expo-haptics';
 import {hideFloatingTabBar} from '@/components/navigation/tabChrome';
 import {useAuth} from '@/store/AuthContext';
 import {useIsDark,useThemeColors} from '@/theme/colors';
-import {cancelRun,finishRun,getRunState,onRunEvent,pauseRun,prepareExploration,resumeRun,runDerived,startRun,useRunSession} from '@/lib/run/store';
+import {cancelRun,finishRun,getRunState,onRunEvent,pauseRun,prepareExploration,resumeRun,runDerived,setLitBuildings,startRun,useRunSession} from '@/lib/run/store';
+import {backgroundLocationAvailable} from '@/lib/run/locationTask';
 import {formatClock,formatDistanceShort,formatPace} from '@/lib/run/geo';
 import {splitDurations} from '@/lib/run/insights';
 import {coverageFeatures} from '@/lib/medipulsi/core/journey';
@@ -40,10 +41,15 @@ export default function PulseActive(){
  const mapDark=settings.mapMode==='night'||(settings.mapMode!=='day'&&Boolean(center&&nightAt(center.lat,center.lng)));
  const hapticOn=settings.haptic!==false;
  const hapticRef=useRef(hapticOn);hapticRef.current=hapticOn;
- const focused=useIsFocused();
+ const focused=useIsFocused(),params=useLocalSearchParams<{resume?:string}>();
+ // While the phone is locked or another app is open the map gets nothing; coming back sends the latest state once.
+ const [appActive,setAppActive]=useState(AppState.currentState!=='background'),[mapEpoch,setMapEpoch]=useState(0);
+ const live=ready&&appActive;
+ useEffect(()=>{const sub=AppState.addEventListener('change',next=>setAppActive(next!=='background'));return()=>sub.remove();},[]);
  useEffect(()=>hideFloatingTabBar(),[]);
  // Like a navigation app: while a session records and its map is on screen, the screen does not dim and lock.
- useEffect(()=>{if(!running||!focused)return;void activateKeepAwakeAsync(KEEP_AWAKE_TAG).catch(()=>{});return()=>{void deactivateKeepAwake(KEEP_AWAKE_TAG).catch(()=>{});};},[running,focused]);
+ // A long drive (drive mode) lets it sleep — the session keeps recording in the background.
+ useEffect(()=>{if(!running||!focused||run.driving)return;void activateKeepAwakeAsync(KEEP_AWAKE_TAG).catch(()=>{});return()=>{void deactivateKeepAwake(KEEP_AWAKE_TAG).catch(()=>{});};},[running,focused,run.driving]);
  useEffect(()=>{if(run.phase==='finished')router.replace('/run/summary' as never);},[run.phase,router]);
  useEffect(()=>{if(pulse.conflict&&running)pauseRun();},[pulse.conflict,running]);
  // Transient notices fade on their own; warnings stay until tapped.
@@ -62,26 +68,28 @@ export default function PulseActive(){
  }),[]);
  const leave=()=>{if(active){if(running)pauseRun();setFinish(true);}else{cancelRun();router.replace('/run' as never);}};
  useEffect(()=>{const sub=BackHandler.addEventListener('hardwareBackPress',()=>{leave();return true;});return()=>sub.remove();},[active,running]);
- useEffect(()=>{if(!ready||!run.origin)return;map.current?.send({type:'init',origin:run.current||run.origin,pin:run.pin,route:run.route?.coords||null,fit:false,hero:user?.gender==='FEMALE'?'f':'m'});},[ready,run.origin,run.pin,run.route,user?.gender]);
- useEffect(()=>{if(ready)map.current?.send({type:'activity',value:running?'auto':'idle'});},[ready,running]);
- useEffect(()=>{if(ready)map.current?.send({type:'layout',top:insets.top+8+44+8+(mission||lit>0?42:0),bottom:Math.max(12,insets.bottom)+dockHeight+12});},[ready,insets.top,insets.bottom,dockHeight,Boolean(mission||lit>0)]);
- useEffect(()=>{if(ready&&run.current)map.current?.send({type:'fix',lat:run.current.lat,lng:run.current.lng,heading:run.headingDeg,speed:running?run.speedKmh/3.6:0});},[ready,run.current,run.headingDeg]);
+ useEffect(()=>{if(!live||!run.origin)return;map.current?.send({type:'init',origin:run.current||run.origin,pin:run.pin,route:run.route?.coords||null,fit:false,hero:user?.gender==='FEMALE'?'f':'m'});},[live,mapEpoch,run.origin,run.pin,run.route,user?.gender]);
+ useEffect(()=>{if(live)map.current?.send({type:'activity',value:running?'auto':'idle'});},[live,mapEpoch,running]);
+ useEffect(()=>{if(live)map.current?.send({type:'layout',top:insets.top+8+44+8+(mission||lit>0?42:0),bottom:Math.max(12,insets.bottom)+dockHeight+12});},[live,mapEpoch,insets.top,insets.bottom,dockHeight,Boolean(mission||lit>0)]);
+ useEffect(()=>{if(live&&run.current)map.current?.send({type:'fix',lat:run.current.lat,lng:run.current.lng,heading:run.headingDeg,speed:running?run.speedKmh/3.6:0});},[live,mapEpoch,run.current,run.headingDeg]);
  const paint=useMemo(()=>[...(pulse.journey.trail||[]),...coverageFeatures(pulse.journey).features.map(f=>f.geometry.coordinates)], [pulse.journey.trail,pulse.journey.covered]);
- useEffect(()=>{if(ready)map.current?.send({type:'paint',lines:paint});},[ready,paint]);
- useEffect(()=>{if(ready)map.current?.send({type:'mission',center:mission?.center||null,radius:mission?.radius});},[ready,mission]);
- useEffect(()=>{if(ready)map.current?.send({type:'gift',position:running&&pulse.signal.revealed?pulse.signal.gift?.position||null:null});},[ready,running,pulse.signal.revealed,pulse.signal.gift]);
- useEffect(()=>{if(ready)map.current?.send({type:'options',rotate:settings.followBearing!==false,threeD:settings.threeD!==false});},[ready,settings.followBearing,settings.threeD]);
+ useEffect(()=>{if(live)map.current?.send({type:'paint',lines:paint});},[live,mapEpoch,paint]);
+ useEffect(()=>{if(live)map.current?.send({type:'mission',center:mission?.center||null,radius:mission?.radius});},[live,mapEpoch,mission]);
+ useEffect(()=>{if(live)map.current?.send({type:'gift',position:running&&pulse.signal.revealed?pulse.signal.gift?.position||null:null});},[live,mapEpoch,running,pulse.signal.revealed,pulse.signal.gift]);
+ useEffect(()=>{if(live)map.current?.send({type:'options',rotate:settings.followBearing!==false,threeD:settings.threeD!==false});},[live,mapEpoch,settings.followBearing,settings.threeD]);
  const begin=async()=>{if(busy)return;setBusy(true);try{await (run.phase==='paused'?resumeRun():startRun());}finally{setBusy(false);}};
  const end=async()=>{if(busy)return;setBusy(true);try{await finishRun();setFinish(false);}finally{setBusy(false);}};
+ // „გაგრძელება“ on the lock-screen Live Activity opens medicard://run/active?resume=1.
+ useEffect(()=>{if(params.resume!=='1'||(run.phase!=='paused'&&run.phase!=='running'))return;router.setParams({resume:undefined} as never);if(run.phase==='paused')void begin();},[params.resume,run.phase]);
  const openPanel=(value:PulsePanel)=>{setMenu(false);setPanel(value);};
  const gpsGood=run.accuracyM!=null&&run.accuracyM<=25;
  const remaining=run.targetMeters>0?Math.max(0,run.targetMeters-run.distanceM):0;
- const status=running?(run.transportWarning?tx('ტრანსპორტი · პროგრესი პაუზაზეა', 'Vehicle · progress on hold'):gpsGood?tx('შენი გზა ფერადდება', 'Your path is filling with color'):tx('ზუსტ GPS-ს ველოდებით', 'Waiting for accurate GPS')):run.phase==='paused'?tx('პაუზა · შენი გზა შენახულია', 'Paused · your path is saved'):tx('დღეს სად მიგიყვანს გზა?', 'Where will your path take you today?');
+ const status=running?(run.transportWarning?(run.driving?tx('მანქანაში · სესია ავტო-პაუზაზეა', 'In a vehicle · session auto-paused'):tx('ტრანსპორტი · პროგრესი პაუზაზეა', 'Vehicle · progress on hold')):gpsGood?tx('შენი გზა ფერადდება', 'Your path is filling with color'):tx('ზუსტ GPS-ს ველოდებით', 'Waiting for accurate GPS')):run.phase==='paused'?tx('პაუზა · შენი გზა შენახულია', 'Paused · your path is saved'):tx('დღეს სად მიგიყვანს გზა?', 'Where will your path take you today?');
  // System messages outrank transient toasts.
- const banner:Notice|null=run.syncError?{text:run.syncError,tone:'warn',sticky:true}:mapError?{text:mapError,tone:'warn',sticky:true}:run.error==='location'?{text:tx('GPS შეწყდა. შეამოწმე მდებარეობის წვდომა და გააგრძელე.', 'GPS stopped. Check location access and continue.'),tone:'warn',sticky:true}:run.transportWarning?{text:run.transportResuming?tx('სიჩქარე დაიკლო · ათვლა გაგრძელდება, როცა რამდენიმე წამს ფეხით იმოძრავებ.', 'Speed dropped · counting resumes after a few seconds on foot.'):tx(`მაღალი სიჩქარე (${Math.round(run.speedKmh)} კმ/სთ) · ტრანსპორტში პროგრესი არ ითვლება. სიჩქარე რომ დაიკლებს, ათვლა თავისით გაგრძელდება.`, `High speed (${Math.round(run.speedKmh)} km/h) · progress doesn’t count in a vehicle. It resumes on its own once you slow down.`),tone:'warn',sticky:true}:notice;
+ const banner:Notice|null=run.syncError?{text:run.syncError,tone:'warn',sticky:true}:mapError?{text:mapError,tone:'warn',sticky:true}:run.error==='location'?{text:tx('GPS შეწყდა. შეამოწმე მდებარეობის წვდომა და გააგრძელე.', 'GPS stopped. Check location access and continue.'),tone:'warn',sticky:true}:run.transportWarning?{text:run.transportResuming?tx('სიჩქარე დაიკლო · ათვლა გაგრძელდება, როცა რამდენიმე წამს ფეხით იმოძრავებ.', 'Speed dropped · counting resumes after a few seconds on foot.'):run.driving?tx('მანქანაში ხარ · დრო და მანძილი შეჩერებულია. ეკრანი შეგიძლია ჩაკეტო — ფეხით სვლისას ათვლა თავისით გაგრძელდება.', 'You’re in a vehicle · time and distance are on hold. You can lock the screen — counting resumes on its own once you walk.'):tx(`მაღალი სიჩქარე (${Math.round(run.speedKmh)} კმ/სთ) · ტრანსპორტში მანძილი და აქტიური დრო არ ითვლება. სიჩქარე რომ დაიკლებს, ათვლა თავისით გაგრძელდება.`, `High speed (${Math.round(run.speedKmh)} km/h) · distance and active time don’t count in a vehicle. Counting resumes on its own once you slow down.`),tone:'warn',sticky:true}:notice;
  const bannerColor=banner?.tone==='success'?RUN_TEAL:banner?.tone==='warn'?'#F59E0B':c.primary100;
  return <View style={{flex:1,backgroundColor:c.bg100}}>
-  {center?<RunMap ref={map} center={center} mapDark={mapDark} onReady={()=>setReady(true)} onFollowChange={setFollowing} onError={setMapError} onLit={setLit}/>:<View style={{flex:1,alignItems:'center',justifyContent:'center',padding:30,gap:18}}>
+  {center?<RunMap ref={map} center={center} mapDark={mapDark} onReady={()=>{setReady(true);setMapEpoch(e=>e+1);}} onFollowChange={setFollowing} onError={setMapError} onLit={n=>{setLit(n);setLitBuildings(n);}}/>:<View style={{flex:1,alignItems:'center',justifyContent:'center',padding:30,gap:18}}>
    <View style={{width:88,height:88,borderRadius:44,backgroundColor:c.accent100,alignItems:'center',justifyContent:'center'}}><Compass color={c.primary100} size={40}/></View>
    {run.phase==='preparing'?<><ActivityIndicator color={RUN_TEAL}/><Copy>{tx('შენი მდებარეობა იძებნება…', 'Finding your location…')}</Copy></>:<><Copy bold size={22} style={{textAlign:'center'}}>{tx('მზად ხარ გასასვლელად?', 'Ready to head out?')}</Copy><Copy muted style={{textAlign:'center'}}>{run.error==='permission'?tx('MEDIRUN-ს მდებარეობის წვდომა სჭირდება, რომ შენი გზა დახატოს.', 'MEDIRUN needs location access to draw your path.'):tx('დავიწყოთ შენი მდებარეობიდან.', 'Let’s start from your location.')}</Copy><View style={{alignSelf:'stretch'}}><Action label={tx('მდებარეობის მიღება', 'Get my location')} icon={LocateFixed} onPress={()=>void prepareExploration({weightKg:healthProfile?.weightKg,heightCm:healthProfile?.heightCm})}/></View><Action secondary label={tx('უკან დაბრუნება', 'Go back')} onPress={leave}/></>}
   </View>}
@@ -115,7 +123,7 @@ export default function PulseActive(){
   <Sheet title={tx('შენი გასეირნება', 'Your walk')} visible={details} onClose={()=>setDetails(false)}>
    <Card><Copy bold size={18}>{run.target?targetLabel(run.target):tx('თავისუფალი გასეირნება', 'Free walk')}</Copy>{[{label:tx('სავარაუდო ნაბიჯები', 'Estimated steps'),value:derived.steps.toLocaleString(),icon:Footprints},{label:tx('საშუალო ტემპი', 'Average pace'),value:formatPace(derived.pace)+tx(' /კმ', ' /km'),icon:Gauge},{label:tx('მიმდინარე სიჩქარე', 'Current speed'),value:run.speedKmh.toFixed(1)+tx(' კმ/სთ', ' km/h'),icon:Navigation},{label:tx('სესიის დრო პაუზების ჩათვლით', 'Session time incl. pauses'),value:formatClock(run.elapsedMs),icon:Timer},{label:tx('GPS სიზუსტე', 'GPS accuracy'),value:run.accuracyM==null?tx('ველოდებით', 'Waiting'):Math.round(run.accuracyM)+tx(' მ', ' m'),icon:LocateFixed}].map(row=><View key={row.label} style={{flexDirection:'row',gap:10,alignItems:'center',minHeight:30}}><row.icon size={18} color={c.primary100}/><Copy muted size={12} style={{flex:1}}>{row.label}</Copy><Copy bold size={13}>{row.value}</Copy></View>)}</Card>
    {run.splits.length?<Card><Copy bold>{tx('კილომეტრები', 'Kilometers')}</Copy>{splitDurations(run.splits).map((ms,i)=><View key={i} style={{flexDirection:'row',alignItems:'center',gap:10}}><Copy muted size={12} style={{flex:1}}>{i+1} {tx('კმ', 'km')}</Copy><Copy bold size={13} style={{fontVariant:['tabular-nums']}}>{ms!=null?formatPace(ms/1000):'–'}</Copy></View>)}</Card>:null}
-   <Card><Copy bold>{pulse.pending?tx('შენახულია ტელეფონში · იგზავნება', 'Saved on your phone · sending'):tx('ანგარიშთან სინქრონიზაცია', 'Syncing with your account')}</Copy><Copy muted>{pulse.message}</Copy><Copy muted size={12}>{tx('სესიის დროს ეკრანი ანთებული რჩება. თუ აპიდან გახვალ ან ტელეფონს ჩაკეტავ, სესია პაუზდება და დაბრუნებისას თავისით გაგრძელდება.', 'The screen stays on during a session. If you leave the app or lock your phone, the session pauses and continues on its own when you’re back.')}</Copy></Card>
+   <Card><Copy bold>{pulse.pending?tx('შენახულია ტელეფონში · იგზავნება', 'Saved on your phone · sending'):tx('ანგარიშთან სინქრონიზაცია', 'Syncing with your account')}</Copy><Copy muted>{pulse.message}</Copy><Copy muted size={12}>{backgroundLocationAvailable()?tx('რუკაზე ყოფნისას ეკრანი ანთებული რჩება. ტელეფონი შეგიძლია ჩაკეტო ან სხვა აპი გახსნა — სესია ფონზეც იწერება, სანამ პაუზას ან დასრულებას არ დააჭერ.', 'The screen stays on while the map is open. You can lock your phone or open another app — the session keeps recording in the background until you pause or finish it.'):tx('სესიის დროს ეკრანი ანთებული რჩება. თუ აპიდან გახვალ ან ტელეფონს ჩაკეტავ, სესია პაუზდება და დაბრუნებისას თავისით გაგრძელდება.', 'The screen stays on during a session. If you leave the app or lock your phone, the session pauses and continues on its own when you’re back.')}</Copy></Card>
   </Sheet>
   <Sheet title={tx('შენი მოძრაობის სივრცე', 'Your activity space')} visible={menu} onClose={()=>setMenu(false)}><Action secondary label={tx('გავლილი გზების რუკა', 'Map of your paths')} icon={Route} disabled={paint.length===0} onPress={()=>{setMenu(false);map.current?.send({type:'fit',bottom:dockHeight+35,paintOnly:true});}}/>{([{id:'missions',label:tx('თბილისის პასპორტი', 'Tbilisi passport'),icon:Compass},{id:'collection',label:tx('ჩემი აღმოჩენები', 'My finds'),icon:Gift},{id:'leaderboard',label:tx('ლიდერბორდი', 'Leaderboard'),icon:Trophy},{id:'settings',label:tx('პარამეტრები', 'Settings'),icon:Settings2},{id:'help',label:tx('როგორ მუშაობს?', 'How it works'),icon:BookOpen}] as const).map(item=><Action key={item.id} secondary label={item.label} icon={item.icon} onPress={()=>openPanel(item.id)}/>)}</Sheet>
   <Sheet title={tx('დავასრულოთ გასეირნება?', 'Finish your walk?')} visible={finish} onClose={()=>setFinish(false)}>

@@ -30,6 +30,23 @@ let started = false;
 let lastCheck = 0;
 let ready = false;
 let backgroundedAt = 0;
+const busyChecks = new Set<() => boolean>();
+
+/** While `isBusy()` is true a downloaded update waits: a reload would drop live work (a MEDIRUN session). */
+export function holdOtaReloadWhile(isBusy: () => boolean): void {
+  busyChecks.add(isBusy);
+}
+
+function busy(): boolean {
+  for (const check of busyChecks) {
+    try {
+      if (check()) return true;
+    } catch {
+      /* a broken check never blocks updates */
+    }
+  }
+  return false;
+}
 
 async function checkAndFetch() {
   if (!Updates) return;
@@ -58,7 +75,7 @@ export function startOtaUpdates() {
     if (next !== 'active') return;
     const away = backgroundedAt ? Date.now() - backgroundedAt : 0;
     backgroundedAt = 0;
-    if (ready && away >= APPLY_AFTER_AWAY_MS) {
+    if (ready && away >= APPLY_AFTER_AWAY_MS && !busy()) {
       void Updates?.reloadAsync().catch(() => undefined);
       return;
     }

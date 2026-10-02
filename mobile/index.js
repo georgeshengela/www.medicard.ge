@@ -11,5 +11,7 @@ LogBox.ignoreLogs([
 ]);
 
 import './src/lib/bootGuard.js';
+// MEDIRUN background GPS task: must be defined before any screen mounts (the OS can deliver locations first).
+import './src/lib/run/locationTask';
 import 'expo-router/entry';
 

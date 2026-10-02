@@ -66,10 +66,14 @@ import { useStackMotion } from '@/hooks/useStackMotion';
 import { ModuleGate } from '@/components/ModuleGate';
 import { applyFeatureStatus, useFeature } from '@/lib/featureFlags';
 import { noteFeatureStatusFetched, startFeatureFlagSync } from '@/lib/featureFlagSync';
-import { startOtaUpdates } from '@/lib/otaUpdates';
+import { holdOtaReloadWhile, startOtaUpdates } from '@/lib/otaUpdates';
+import { startRunLiveActivity } from '@/lib/run/liveActivity';
+import { getRunState, isActiveRunPhase } from '@/lib/run/store';
 
 // Self-hosted error monitoring: fatals, render errors and unhandled rejections → our server.
 installErrorReporting();
+// Never swap the JS bundle under a live MEDIRUN session (a reload would drop the session from memory).
+holdOtaReloadWhile(() => isActiveRunPhase(getRunState().phase));
 
 // Native screens = GPU stack transitions. Do not set this to false — that is
 // what made page changes feel like a late pop. Tab chrome stays above via AppChromeOverlay.
@@ -245,6 +249,8 @@ function AppShell() {
 
   useEffect(() => {
     startFunnel();
+    // MEDIRUN on the lock screen / Dynamic Island (iOS); ends activities a previous process left behind.
+    startRunLiveActivity();
   }, []);
 
   useEffect(() => {

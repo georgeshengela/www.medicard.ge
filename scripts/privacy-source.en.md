@@ -2,7 +2,7 @@
 
 This is an English translation. If it differs from the Georgian version, the Georgian version prevails.
 
-**Last updated:** September 29, 2026
+**Last updated:** October 2, 2026
 **Effective date:** September 20, 2026
 
 This policy explains how account, health and activity information is processed in MEDICARD. The amount of data depends on the features you use and the permissions you grant. Reading this policy does not mean you consent to sharing with AI — the app offers you a separate choice for that.
@@ -41,7 +41,7 @@ The notifications permission is used for reminders. A calendar entry is added on
 
 When your city is determined, we process GPS coordinates, accuracy and the time of the fix. The device's geocoding is used to obtain the city and country; where needed, the coordinates are sent to OpenStreetMap's Nominatim service. To obtain the weather, the coordinates are sent to Open-Meteo.
 
-During an active MEDIRUN session, we process the route travelled, distance, time, speed and game progress. Mapbox is used to display the map. The game route and the home city in your profile are stored for different purposes; walking does not automatically change your profile city. Continuous background GPS collection is not used in this version.
+During an active MEDIRUN session, we process the route travelled, distance, time, speed and game progress. Mapbox is used to display the map. The game route and the home city in your profile are stored for different purposes; walking does not automatically change your profile city. A session you start keeps recording your path while the screen is locked or another app is open (a blue indicator on iPhone, a notification on Android) until you pause or finish it; outside a session, location is not collected in the background. On iPhone, the session’s distance and time appear on the lock screen as a Live Activity, which is created on the phone and not sent to Apple.
 
 # 5. Data shared with AI and the purpose
 

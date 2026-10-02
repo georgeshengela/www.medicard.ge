@@ -173,8 +173,9 @@ export function nearestEdge(p) { let best = null; const sx = Math.cos(p[1] * Mat
     if (!best || d < best.distance)
         best = { edge: e, t, point, distance: d };
 } return best; }
-/** Faster than any runner (25 km/h) means a vehicle; counting resumes after this many seconds of moving at a human pace. */
-export const VEHICLE_MPS = 7, VEHICLE_RESUME_S = 15;
+/** Faster than any runner (25 km/h) means a vehicle once it lasts VEHICLE_CONFIRM_S seconds (a lone GPS jump only fails to count);
+ * counting resumes after VEHICLE_RESUME_S seconds of moving at a human pace. */
+export const VEHICLE_MPS = 7, VEHICLE_RESUME_S = 15, VEHICLE_CONFIRM_S = 4;
 /** Only quality, fresh, plausible fixes count. A gap never paints a shortcut. */
 export function acceptFix(input, fix, stride = .72, now = Date.now()) {
     if (!fix.position.every(Number.isFinite) || Math.abs(fix.position[0]) > 180 || Math.abs(fix.position[1]) > 90 || !Number.isFinite(fix.accuracy) || fix.accuracy < 0 || !Number.isFinite(fix.timestamp) || fix.timestamp > now + 5000 || fix.timestamp < now - 15000 || (input.lastFix !== null && fix.timestamp <= input.lastFix))
@@ -182,7 +183,7 @@ export function acceptFix(input, fix, stride = .72, now = Date.now()) {
     if (fix.accuracy > 25)
         return { ...input, accuracy: fix.accuracy, speed: 0, rejected: input.rejected + 1, status: 'inaccurate' };
     const match = nearestEdge(fix.position), onPath = match.distance <= Math.min(18, Math.max(8, fix.accuracy));
-    const base = { ...input, covered: { ...input.covered }, accuracy: fix.accuracy, status: onPath ? 'tracking' : 'off-path' };
+    const base = { ...input, covered: { ...input.covered }, accuracy: fix.accuracy, status: onPath ? 'tracking' : 'off-path', surge: 0 };
     if (!input.lastRaw || input.lastFix === null || fix.timestamp - input.lastFix > 15000) {
         return { ...base, ...(input.vehicle ? { status: 'vehicle' } : {}), position: onPath ? match.point : fix.position, lastRaw: fix.position, lastFix: fix.timestamp, match: onPath ? { edge: match.edge.id, t: match.t } : null, speed: 0 };
     }
@@ -191,8 +192,13 @@ export function acceptFix(input, fix, stride = .72, now = Date.now()) {
     // In a vehicle the marker keeps following GPS and the live speed stays real, but nothing counts:
     // not the drive, not slowing down for a light. Counting resumes after a stretch at a human pace.
     const follow = { position: fix.position, heading: still ? input.heading : heading(input.lastRaw, fix.position), lastFix: fix.timestamp, lastRaw: fix.position, match: null };
-    if (speed > VEHICLE_MPS || (fix.speed !== null && fix.speed > VEHICLE_MPS))
-        return { ...base, ...follow, speed: Math.max(speed, fix.speed ?? 0) * 3.6, rejected: input.rejected + 1, status: 'vehicle', vehicle: { calm: 0 } };
+    if (speed > VEHICLE_MPS || (fix.speed !== null && fix.speed > VEHICLE_MPS)) {
+        // A lone fast fix is usually a GPS jump: it never counts, but only a few seconds of speed make it a vehicle.
+        const surge = input.vehicle ? VEHICLE_CONFIRM_S : (input.surge || 0) + Math.min(seconds, 3), kmh = Math.max(speed, fix.speed ?? 0) * 3.6;
+        if (surge >= VEHICLE_CONFIRM_S)
+            return { ...base, ...follow, speed: kmh, rejected: input.rejected + 1, status: 'vehicle', vehicle: { calm: 0 } };
+        return { ...base, ...follow, speed: kmh, rejected: input.rejected + 1, status: 'surge', surge };
+    }
     if (input.vehicle) {
         if (still)
             return { ...base, speed: 0, status: 'vehicle' };

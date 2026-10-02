@@ -34,6 +34,13 @@ export const RunMap = forwardRef<RunMapHandle, Props>(function RunMap(
   const web = useRef<WebView>(null);
   const [ready, setReady] = useState(false);
   const [failed, setFailed] = useState<string | null>(null);
+  /** A long session in the background can lose the web page (iOS content process / Android renderer killed):
+   * a fresh WebView mounts and reports ready again, so the screen re-sends the whole state. */
+  const [webGen, setWebGen] = useState(0);
+  const recover = useCallback(() => {
+    setReady(false);
+    setWebGen((gen) => gen + 1);
+  }, []);
   const [token, setToken] = useState(() => peekMapboxToken());
   const [tokenReady, setTokenReady] = useState(() => peekMapboxToken().startsWith('pk.'));
   const initialDark = useRef(dark);
@@ -103,8 +110,10 @@ export const RunMap = forwardRef<RunMapHandle, Props>(function RunMap(
     <View style={[styles.fill, { backgroundColor: dark ? '#030712' : '#e5eef0' }, style]}>
       {html ? (
         <WebView
-          key={token.slice(0, 16)}
+          key={`${token.slice(0, 16)}:${webGen}`}
           ref={web}
+          onContentProcessDidTerminate={recover}
+          onRenderProcessGone={recover}
           originWhitelist={['*']}
           source={{ html, baseUrl }}
           style={[styles.fill, { backgroundColor: 'transparent' }]}

@@ -3,7 +3,7 @@
     "name": "MEDICARD AI",
     "slug": "medicard-ge",
     "scheme": "medicard",
-    "version": "1.0.0.18.20",
+    "version": "1.0.0.19.0",
     "assetBundlePatterns": [
       "assets/**"
     ],
@@ -16,18 +16,19 @@
       "bundleIdentifier": "ge.medicard.app",
       "usesAppleSignIn": true,
       "version": "1.11.30",
-      "buildNumber": "90",
+      "buildNumber": "28",
       "infoPlist": {
         "CFBundleDisplayName": "MEDICARD AI",
         "NSCameraUsageDescription": "კამერა საჭიროა კერძის, საკვების ეტიკეტისა და შტრიხკოდის სკანირებისთვის კვების დღიურში, ანალიზების, რენტგენის, კანის და ცხოველის ფოტოსთვის, პროფილისა და MEDI COACH-ის პროგრეს-ფოტოებისა და ტრენერის სერტიფიკატისთვის, QR კოდის წასაკითხად, ასევე MEDIRUN-ში ვირტუალური საჩუქრის აღმოსაჩენად.",
         "NSPhotoLibraryUsageDescription": "გალერეაზე წვდომა საჭიროა შენ მიერ არჩეული კერძის ფოტოების, სამედიცინო დოკუმენტების, ცხოველის ფოტოების, პროფილის ფოტოს, MEDI COACH-ის პროგრეს-ფოტოების, ტრენერის სერტიფიკატის და ქალების სივრცის პოსტების ფოტოების ასატვირთად.",
         "NSMicrophoneUsageDescription": "მიკროფონი გამოიყენება შენი სურვილით ხმოვანი ასისტენტისთვის და ხმის ანალიზისთვის.",
         "NSFaceIDUsageDescription": "MEDICARD AI-ს Face ID სჭირდება ანგარიშისა და ციკლის მონაცემების დასაცავად.",
-        "NSLocationWhenInUseUsageDescription": "MEDICARD AI-ს ადგილმდებარეობა სჭირდება ქალაქის/ამინდისთვის და MEDIRUN-ში გავლილი გზისა და ახლომახლო საჩუქრების აღმოსაჩენად. ფონური წვდომა არ გამოიყენება.",
+        "NSLocationWhenInUseUsageDescription": "MEDICARD AI-ს ადგილმდებარეობა სჭირდება ქალაქის/ამინდისთვის და MEDIRUN-ში გავლილი გზისა და ახლომახლო საჩუქრების აღმოსაჩენად. შენ მიერ დაწყებული MEDIRUN სესია ეკრანის ჩაკეტვის შემდეგაც აგრძელებს გზის ჩაწერას (ზემოთ ლურჯი ნიშანი ჩანს), სანამ პაუზას ან დასრულებას არ დააჭერ.",
         "NSCalendarsUsageDescription": "კალენდარში შენ მიერ არჩეული ჩანაწერის დასამატებლად საჭიროა კალენდარზე წვდომა.",
         "NSCalendarsFullAccessUsageDescription": "კალენდარში შენ მიერ არჩეული ჩანაწერის დასამატებლად საჭიროა კალენდარზე წვდომა.",
         "UIBackgroundModes": [
-          "remote-notification"
+          "remote-notification",
+          "location"
         ],
         "ITSAppUsesNonExemptEncryption": false
       }
@@ -35,7 +36,7 @@
     "android": {
       "package": "ge.medicard.app",
       "googleServicesFile": "./google-services.json",
-      "versionCode": 90,
+      "versionCode": 91,
       "adaptiveIcon": {
         "backgroundColor": "#14B8A6",
         "foregroundImage": "./assets/android-icon-foreground.png",
@@ -52,6 +53,8 @@
       "permissions": [
         "android.permission.ACCESS_COARSE_LOCATION",
         "android.permission.ACCESS_FINE_LOCATION",
+        "android.permission.FOREGROUND_SERVICE_LOCATION",
+        "android.permission.FOREGROUND_SERVICE",
         "android.permission.CAMERA",
         "android.permission.POST_NOTIFICATIONS",
         "android.permission.READ_CALENDAR",
@@ -154,9 +157,14 @@
       [
         "expo-location",
         {
-          "locationWhenInUsePermission": "MEDICARD AI-ს ადგილმდებარეობა სჭირდება ქალაქის/ამინდისთვის და MEDIRUN-ში გავლილი გზისა და ახლომახლო საჩუქრების აღმოსაჩენად. ფონური წვდომა არ გამოიყენება.",
-          "isIosBackgroundLocationEnabled": false,
-          "isAndroidBackgroundLocationEnabled": false
+          "locationWhenInUsePermission": "MEDICARD AI-ს ადგილმდებარეობა სჭირდება ქალაქის/ამინდისთვის და MEDIRUN-ში გავლილი გზისა და ახლომახლო საჩუქრების აღმოსაჩენად. შენ მიერ დაწყებული MEDIRUN სესია ეკრანის ჩაკეტვის შემდეგაც აგრძელებს გზის ჩაწერას (ზემოთ ლურჯი ნიშანი ჩანს), სანამ პაუზას ან დასრულებას არ დააჭერ.",
+          "locationAlwaysAndWhenInUsePermission": "MEDICARD AI მდებარეობას ფონზე იყენებს მხოლოდ შენ მიერ დაწყებულ MEDIRUN სესიაში, გავლილი გზის ჩასაწერად ეკრანის ჩაკეტვისას. სესიის გარეთ მდებარეობა ფონზე არ გროვდება.",
+          "locationAlwaysPermission": "MEDICARD AI მდებარეობას ფონზე იყენებს მხოლოდ შენ მიერ დაწყებულ MEDIRUN სესიაში, გავლილი გზის ჩასაწერად ეკრანის ჩაკეტვისას. სესიის გარეთ მდებარეობა ფონზე არ გროვდება.",
+          "motionUsagePermission": "MEDICARD AI-ს მოძრაობის სენსორები სჭირდება MEDIRUN-ში ვირტუალური საჩუქრის კამერაში სწორ ადგილას საჩვენებლად.",
+          "isIosBackgroundLocationEnabled": true,
+          "isAndroidBackgroundLocationEnabled": false,
+          "isAndroidForegroundServiceEnabled": true,
+          "androidForegroundServiceIcon": "./assets/android-icon-monochrome.png"
         }
       ],
       [
@@ -178,6 +186,17 @@
           "enableBackgroundPlayback": false
         }
       ],
+      [
+        "expo-widgets",
+        {
+          "bundleIdentifier": "ge.medicard.app.widgets",
+          "groupIdentifier": "group.ge.medicard.app",
+          "enablePushNotifications": false,
+          "frequentUpdates": false,
+          "widgets": []
+        }
+      ],
+      "./plugins/withMedirunBackground",
       "./plugins/withIosMarketingVersion"
     ],
     "extra": {

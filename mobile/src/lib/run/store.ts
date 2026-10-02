@@ -23,6 +23,12 @@ import { downsamplePath, saveRunSummary, type RunSummary } from '@/lib/run/histo
 import { generateTargetPin, type RunRoute } from '@/lib/run/mapbox';
 import { advanceSplits } from '@/lib/run/insights';
 import { requestLocationPermission } from '@/lib/userLocation';
+import {
+  setRunLocationSink,
+  startRunLocationUpdates,
+  stopRunLocationUpdates,
+  type TaskFix,
+} from '@/lib/run/locationTask';
 
 export type RunPhase = 'idle' | 'preparing' | 'ready' | 'running' | 'paused' | 'finished';
 export type RunError = 'permission' | 'location' | 'sync' | null;
@@ -71,6 +77,12 @@ export type RunState = {
   transportCancelled: boolean;
   /** Paused by the system (the app left the screen), not by the person — continues on return. */
   autoPaused: boolean;
+  /** GPS keeps recording with the screen locked or another app open (background location task). */
+  recordsInBackground: boolean;
+  /** A long stretch in a vehicle: active time is on hold, GPS runs coarser and the screen may sleep. */
+  driving: boolean;
+  /** Buildings the Glow map lit this session (for the Live Activity). */
+  litBuildings: number;
 };
 
 const PIN_RADIUS_M = 28;
@@ -116,10 +128,17 @@ const initial: RunState = {
   transportResuming: false,
   transportCancelled: false,
   autoPaused: false,
+  recordsInBackground: false,
+  driving: false,
+  litBuildings: 0,
 };
 
 /** A system pause continues on its own when the app is back within this window; after it the person decides. */
 const AUTO_RESUME_WINDOW_MS = 30 * 60_000;
+/** This long in a vehicle (driving, not walking) switches to drive mode: coarser GPS, the screen may sleep. */
+const DRIVE_MODE_AFTER_MS = 3 * 60_000;
+/** Seconds at a human pace inside vehicle mode that end drive mode (precise GPS before counting resumes). */
+const DRIVE_MODE_EXIT_CALM_S = 6;
 
 let state: RunState = initial;
 const listeners = new Set<() => void>();
@@ -138,6 +157,13 @@ let hydratePromise: Promise<boolean> | null = null;
 let appStateSub: { remove: () => void } | null = null;
 let autoPausedAt: number | null = null;
 let autoResuming = false;
+/** How GPS reaches the store while running: the background task, or a foreground-only watch (fallback). */
+let tracking: 'background' | 'watch' | null = null;
+/** Fixes older than the latest start/resume belong to an earlier stretch and are dropped. */
+let trackingSince = 0;
+/** Start of the current vehicle stretch (journey.vehicle set); active time does not run meanwhile. */
+let vehicleSince: number | null = null;
+let lastPersistAt = 0;
 
 /** Live session the user has started — badge + persistence apply. */
 export function isActiveRunPhase(phase: RunPhase): phase is 'running' | 'paused' {
@@ -145,7 +171,7 @@ export function isActiveRunPhase(phase: RunPhase): phase is 'running' | 'paused'
 }
 
 /** One-shot event hooks for haptics / banners in the UI layer. */
-type RunEvent = 'pin_reached' | 'target_completed' | 'transport_warning' | 'transport_resumed' | 'transport_cancelled' | 'km_split' | 'auto_resumed';
+type RunEvent = 'pin_reached' | 'target_completed' | 'transport_warning' | 'transport_resumed' | 'transport_cancelled' | 'km_split' | 'auto_resumed' | 'drive_mode';
 const eventListeners = new Set<(e: RunEvent) => void>();
 export function onRunEvent(fn: (e: RunEvent) => void): () => void {
   eventListeners.add(fn);
@@ -207,6 +233,11 @@ function buildPersistSnapshot(): PersistedActiveRun | null {
 }
 
 function schedulePersist() {
+  // Android pauses JS timers while the app is in the background; GPS events still arrive, so write directly.
+  if (AppState.currentState === 'background') {
+    if (Date.now() - lastPersistAt >= 5000) void flushPersist();
+    return;
+  }
   if (persistTimer) return;
   persistTimer = setTimeout(() => {
     persistTimer = null;
@@ -219,6 +250,7 @@ async function flushPersist() {
     clearTimeout(persistTimer);
     persistTimer = null;
   }
+  lastPersistAt = Date.now();
   const snap = buildPersistSnapshot();
   if (!snap) return;
   try {
@@ -240,20 +272,34 @@ function ensureAppStatePersist() {
   if (appStateSub) return;
   appStateSub = AppState.addEventListener('change', (next: AppStateStatus) => {
     if (next === 'background') {
-      // The GPS watch stops with the app; a system pause continues on its own on return.
-      if (state.phase === 'running') pauseRun('background');
+      if (state.phase === 'running') {
+        // The background task keeps recording with the screen locked; only the compass rests.
+        if (tracking === 'background') stopHeadingWatch();
+        // A foreground-only watch stops with the app: a system pause that continues on its own on return.
+        else pauseRun('background');
+      }
       if (isActiveRunPhase(state.phase)) void flushPersist();
     } else if (next === 'inactive') {
       // Control Center, the notification shade, a call banner or Face ID: the run keeps going.
       if (isActiveRunPhase(state.phase)) void flushPersist();
     } else if (next === 'active') {
       if (state.phase === 'running') {
-        // Re-arm GPS after OS may have paused the watch while backgrounded.
+        // Re-arm the compass (and GPS if the OS dropped it); location access may have been revoked meanwhile.
         void startWatch();
         startTimer();
+        void verifyLocationAccess();
       } else void maybeAutoResume();
     }
   });
+}
+
+/** Location access switched off in Settings while the app was away: pause honestly instead of waiting forever. */
+async function verifyLocationAccess(): Promise<void> {
+  const owner = generation;
+  const access = await Location.getForegroundPermissionsAsync().catch(() => null);
+  if (!access || access.granted || owner !== generation || state.phase !== 'running' || state.simulating) return;
+  pauseRun();
+  set({ error: 'location' });
 }
 
 /** Continue a run the system paused when the app left the screen. A failed attempt (network waking up) retries once. */
@@ -289,8 +335,22 @@ function subscribe(fn: () => void) {
   return () => listeners.delete(fn);
 }
 
+/** Every state change (UI outside React: the Live Activity). */
+export function subscribeRunState(fn: () => void): () => void {
+  listeners.add(fn);
+  return () => {
+    listeners.delete(fn);
+  };
+}
+
 export function getRunState(): RunState {
   return state;
+}
+
+/** The Glow map reports how many buildings this session lit (shown on the Live Activity). */
+export function setLitBuildings(count: number): void {
+  const next = Math.max(0, Math.round(Number(count) || 0));
+  if (next !== state.litBuildings && isActiveRunPhase(state.phase)) set({ litBuildings: next });
 }
 
 export function useRunSession(): RunState {
@@ -416,11 +476,11 @@ export async function startRun(): Promise<void> {
     const verified=await client.begin();
     if(owner!==generation || (AppState.currentState && AppState.currentState!=='active')){client.stop();return;}
     const now=Date.now();
-    autoPausedAt=null;
+    autoPausedAt=null;vehicleSince=null;trackingSince=now;
     if(state.phase==='ready'){
       movingAccumMs=verified.seconds*1000;
-      set({phase:'running',startedAt:now,path:state.current?[state.current]:[],segments:[],splits:Array.from({length:Math.floor(verified.meters/1000)},()=>-1),distanceM:verified.meters,movingMs:movingAccumMs,elapsedMs:0,error:null,syncError:null,autoPaused:false});
-    } else set({phase:'running',distanceM:verified.meters,error:null,syncError:null,autoPaused:false});
+      set({phase:'running',startedAt:now,path:state.current?[state.current]:[],segments:[],splits:Array.from({length:Math.floor(verified.meters/1000)},()=>-1),distanceM:verified.meters,movingMs:movingAccumMs,elapsedMs:0,error:null,syncError:null,autoPaused:false,driving:false});
+    } else set({phase:'running',distanceM:verified.meters,error:null,syncError:null,autoPaused:false,driving:false});
     segmentStartedAt=now;lastFixAt=0;
     startTimer();ensureAppStatePersist();await startWatch();void flushPersist();
   }catch(error){if(owner===generation)set({error:'sync',syncError:(error as Error).message});}
@@ -432,10 +492,10 @@ export function pauseRun(reason: 'manual' | 'background' = 'manual'): void {
   if (state.phase !== 'running') return;
   if (segmentStartedAt != null) movingAccumMs += Date.now() - segmentStartedAt;
   segmentStartedAt = null;
-  generation++;watchSub?.remove();watchSub=null;headingSub?.remove();headingSub=null;compassLive=false;lastFixAt=0;
+  generation++;stopTracking();lastFixAt=0;vehicleSince=null;
   if(!state.simulating)getPulseClient().stop();
   autoPausedAt = reason === 'background' ? Date.now() : null;
-  set({ phase: 'paused', movingMs: movingAccumMs, speedKmh:0, transportWarning:false, transportResuming:false, autoPaused: reason === 'background' });
+  set({ phase: 'paused', movingMs: movingAccumMs, speedKmh:0, transportWarning:false, transportResuming:false, autoPaused: reason === 'background', recordsInBackground:false, driving:false });
   void flushPersist();
 }
 
@@ -476,7 +536,7 @@ export async function finishRun(): Promise<RunSummary | null> {
   const wasSimulation=state.simulating;
   stopEverything();
   wipePersist();
-  set({ phase: 'finished', movingMs, elapsedMs, summary, autoPaused: false });
+  set({ phase: 'finished', movingMs, elapsedMs, summary, autoPaused: false, recordsInBackground: false, driving: false });
   if (!wasSimulation && (summary.distanceM >= 50 || summary.movingMs >= 60_000)) {
     const owner=generation;
     void saveRunSummary(summary).catch(()=>{if(owner===generation)set({syncError:tx('სესიის დეტალები ტელეფონში ვერ შეინახა. გადაამოწმე თავისუფალი ადგილი.','Couldn’t save the session details on your phone. Check your free storage.')});});
@@ -613,13 +673,26 @@ function applyCompassHeading(deg: number): void {
   set({ headingDeg: next });
 }
 
-function stopEverything() {
-  generation++;
-  watchSub?.remove();
-  watchSub = null;
+function stopHeadingWatch() {
   headingSub?.remove();
   headingSub = null;
   compassLive = false;
+}
+
+/** Ends every GPS source of the session. The background stop is queued behind any start still in flight. */
+function stopTracking() {
+  watchSub?.remove();
+  watchSub = null;
+  stopHeadingWatch();
+  setRunLocationSink(null);
+  if (tracking !== 'watch') void stopRunLocationUpdates();
+  tracking = null;
+  vehicleSince = null;
+}
+
+function stopEverything() {
+  generation++;
+  stopTracking();
   if (timer) clearInterval(timer);
   timer = null;
   if (simTimer) clearInterval(simTimer);
@@ -652,39 +725,102 @@ async function startHeadingWatch() {
       if (typeof deg !== 'number' || deg < 0 || Number.isNaN(deg)) return;
       applyCompassHeading(deg);
     });
-    if(owner!==generation)subscription.remove();else headingSub=subscription;
+    if(owner!==generation||headingSub||AppState.currentState==='background')subscription.remove();else headingSub=subscription;
   } catch {
     compassLive = false;
+  }
+}
+
+/** Texts of the Android foreground-service notification (iOS shows its blue location indicator instead). */
+function trackingMode(drive: boolean) {
+  return {
+    drive,
+    notificationTitle: tx('MEDIRUN · სესია მიმდინარეობს', 'MEDIRUN · session in progress'),
+    notificationBody: tx('შენი გზა იწერება ეკრანის ჩაკეტვის შემდეგაც. შეეხე, რომ რუკაზე დაბრუნდე.', 'Your path keeps recording with the screen locked. Tap to return to the map.'),
+  };
+}
+
+/** Locations from the background task. Each start/resume drops what belongs to an earlier stretch. */
+function onBackgroundFixes(fixes: TaskFix[]) {
+  for (const fix of fixes) {
+    if (state.phase !== 'running' || state.simulating || tracking !== 'background') return;
+    if (fix.at < trackingSince - 2000) continue;
+    ingestFix(fix);
   }
 }
 
 async function startWatch() {
   if (state.simulating || state.phase!=='running') return;
   const owner=generation;
-  if (!watchSub) {
-    try {
-      const subscription = await Location.watchPositionAsync(
-        {
-          accuracy: Location.Accuracy.BestForNavigation,
-          timeInterval: 1000,
-          distanceInterval: 2,
-        },
-        (fix) => {if(owner!==generation)return;ingestFix({
-          lat: fix.coords.latitude,
-          lng: fix.coords.longitude,
-          accuracy: fix.coords.accuracy ?? null,
-          heading: fix.coords.heading != null && fix.coords.heading >= 0 ? fix.coords.heading : null,
-          at: fix.timestamp,
-          speed: fix.coords.speed,
-          mocked: fix.mocked === true,
-        });},
-      );
-      if(owner!==generation)subscription.remove();else watchSub=subscription;
-    } catch {
-      pauseRun();set({error:'location'});
+  if (!tracking) {
+    // Preferred: the background task, so the session keeps recording with the screen locked.
+    tracking = 'background';
+    setRunLocationSink(onBackgroundFixes);
+    const background = await startRunLocationUpdates(trackingMode(state.driving));
+    if (owner !== generation || state.phase !== 'running') return; // paused or finished meanwhile; the stop is queued
+    if (background) {
+      if (!state.recordsInBackground) set({ recordsInBackground: true });
+    } else {
+      // Fallback (no background capability): a foreground-only watch; leaving the app pauses the session.
+      setRunLocationSink(null);
+      tracking = 'watch';
+      try {
+        const subscription = await Location.watchPositionAsync(
+          {
+            accuracy: Location.Accuracy.BestForNavigation,
+            timeInterval: 1000,
+            distanceInterval: 2,
+          },
+          (fix) => {if(owner!==generation)return;ingestFix({
+            lat: fix.coords.latitude,
+            lng: fix.coords.longitude,
+            accuracy: fix.coords.accuracy ?? null,
+            heading: fix.coords.heading != null && fix.coords.heading >= 0 ? fix.coords.heading : null,
+            at: fix.timestamp,
+            speed: fix.coords.speed,
+            mocked: fix.mocked === true,
+          });},
+        );
+        if(owner!==generation)subscription.remove();else watchSub=subscription;
+      } catch {
+        if (owner === generation) {pauseRun();set({error:'location'});}
+        return;
+      }
+      if (owner !== generation) return;
+      if (state.recordsInBackground) set({ recordsInBackground: false });
     }
   }
-  await startHeadingWatch();
+  // The compass only matters on screen.
+  if (AppState.currentState === 'active') await startHeadingWatch();
+}
+
+/** Drive mode: after a long vehicle stretch the GPS runs coarser (battery); walking again makes it precise first. */
+function setDriveMode(on: boolean) {
+  if (state.driving === on) return;
+  set({ driving: on });
+  if (tracking === 'background') void startRunLocationUpdates(trackingMode(on));
+  if (on) emit('drive_mode');
+}
+
+/** Active time stops while in a vehicle and runs again once counting resumes. Drive mode follows a long stretch. */
+function trackVehicle(vehicle: { calm: number } | null | undefined, now: number) {
+  if (vehicle) {
+    if (vehicleSince == null) {
+      vehicleSince = now;
+      if (segmentStartedAt != null) {
+        movingAccumMs += Math.max(0, now - segmentStartedAt);
+        segmentStartedAt = null;
+      }
+    }
+    if (!state.driving && vehicle.calm === 0 && now - vehicleSince >= DRIVE_MODE_AFTER_MS) setDriveMode(true);
+    else if (state.driving && vehicle.calm >= DRIVE_MODE_EXIT_CALM_S) setDriveMode(false);
+    return;
+  }
+  if (vehicleSince != null) {
+    vehicleSince = null;
+    if (segmentStartedAt == null) segmentStartedAt = now;
+  }
+  if (state.driving) setDriveMode(false);
 }
 
 type Fix = { lat: number; lng: number; accuracy: number | null; heading: number | null; at: number; speed?:number|null; mocked?:boolean };
@@ -725,6 +861,7 @@ function ingestFix(fix: Fix) {
     }
     const reached=Boolean(state.pin && added>0 && haversineM(point,state.pin)<=PIN_RADIUS_M);
     const complete=state.targetMeters>0 && journey.meters>=state.targetMeters;
+    trackVehicle(journey.vehicle,Math.min(fix.at,Date.now()));
     set({current:point,accuracyM:fix.accuracy,headingDeg:compassLive?state.headingDeg:(fix.heading??journey.heading),distanceM:journey.meters,speedKmh:journey.speed,path,segments,reachedPin:state.reachedPin||reached,completedTarget:state.completedTarget||complete,transportWarning:Boolean(journey.vehicle),transportResuming:Boolean(journey.vehicle)&&journey.speed<VEHICLE_MPS*3.6});
     if(journey.vehicle&&!before.vehicle)emit('transport_warning');
     else if(before.vehicle&&!journey.vehicle)emit('transport_resumed');
@@ -857,11 +994,7 @@ function setSimMode(mode: SimMode): void {
     set({syncError:tx('დემო დასრულდა. GPS სესიისთვის დააჭირე გაგრძელებას.','Demo finished. Tap Continue for a GPS session.')});
     return;
   }
-  watchSub?.remove();
-  watchSub = null;
-  headingSub?.remove();
-  headingSub = null;
-  compassLive = false;
+  stopTracking();
   set({ simulating: true, simMode: mode });
 
   const line: LatLng[] =
