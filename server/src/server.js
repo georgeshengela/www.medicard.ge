@@ -237,6 +237,17 @@ for (const [route, file] of [['/about', 'about.html'], ['/contact', 'contact.htm
   });
 }
 
+// MEDIRUN campaign page „გაანათე თბილისი“ (rules included, #rules). The old rules address keeps working.
+app.get(['/medirun', '/medirun/'], (_req, res, next) => {
+  if (!PUBLIC_DIST) return next();
+  res.set('Cache-Control', 'no-store');
+  res.sendFile(path.join(PUBLIC_DIST, 'medirun', 'index.html'));
+});
+app.get(['/medirun/rules', '/medirun/rules.html', '/medirun/index.html'], (req, res) => {
+  const q = req.url.includes('?') ? req.url.slice(req.url.indexOf('?')) : '';
+  res.redirect(301, `/medirun${q}${req.path.includes('rules') ? '#rules' : ''}`);
+});
+
 // One-click marketing unsubscribe (email links + RFC 8058 POST). Public, no auth.
 app.use(unsubscribeRouter);
 

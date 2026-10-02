@@ -432,3 +432,58 @@ h1, h2, h3, p { margin: 0; }
 
 .foot-brand { display: inline-flex; align-items: center; gap: 10px; text-decoration: none; font-weight: 700; color: var(--ink); }
 .foot-brand img { border-radius: 8px; }
+
+/* MEDIRUN campaign „გაანათე თბილისი“: hero button + one night band in the poster language (details at /medirun) */
+.hero-promo { display: inline-flex; align-items: center; gap: 10px; margin-bottom: 22px; padding: 7px 14px 7px 12px; border-radius: 999px;
+  background: #071427; color: #E2E8F0; text-decoration: none; font-size: 14px; font-weight: 500;
+  box-shadow: 0 0 0 1px rgba(94, 234, 212, .35), 0 10px 26px rgba(3, 7, 18, .22); opacity: 0; animation: fade .9s .1s var(--ease) forwards;
+  transition: transform .25s var(--ease), box-shadow .25s; }
+.hero-promo:hover { transform: translateY(-1px); box-shadow: 0 0 0 1px rgba(94, 234, 212, .7), 0 14px 30px rgba(3, 7, 18, .28); }
+.hero-promo b { color: #5EEAD4; font-weight: 700; }
+.hero-promo i { width: 8px; height: 8px; border-radius: 50%; background: #5EEAD4; animation: promo-beat 1.6s infinite; }
+.hero-promo svg { opacity: .8; transition: transform .25s var(--ease); }
+.hero-promo:hover svg { transform: translateX(3px); }
+@keyframes promo-beat { 0% { box-shadow: 0 0 0 0 rgba(94, 234, 212, .6); } 70% { box-shadow: 0 0 0 9px rgba(94, 234, 212, 0); } 100% { box-shadow: 0 0 0 0 rgba(94, 234, 212, 0); } }
+
+.glow { position: relative; isolation: isolate; overflow: hidden; background: #030712; color: #E2E8F0; padding: clamp(96px, 12vw, 160px) 0; }
+.glow-art { position: absolute; inset: 0; z-index: -2; }
+.glow-art img { width: 100%; height: 100%; object-fit: cover; object-position: 60% 45%; }
+.glow::before { content: ""; position: absolute; inset: 0; z-index: -1;
+  background: linear-gradient(90deg, #030712 0%, rgba(3, 7, 18, .92) 34%, rgba(3, 7, 18, .35) 68%, rgba(3, 7, 18, .55) 100%),
+              linear-gradient(180deg, #030712 0%, rgba(3, 7, 18, 0) 18%, rgba(3, 7, 18, 0) 78%, #030712 100%); }
+.glow-grid { display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(0, .95fr); gap: clamp(32px, 5vw, 72px); align-items: center; }
+.glow-copy { display: grid; gap: 20px; max-width: 36rem; }
+.glow-top { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
+.glow-brand { font-weight: 800; font-size: 26px; letter-spacing: -.02em; color: #fff; white-space: nowrap; }
+.glow-brand b { color: #14B8A6; font-style: italic; }
+.glow-chip { border: 1.5px solid rgba(94, 234, 212, .5); border-radius: 999px; padding: 5px 13px; font-size: 14px; font-weight: 700; color: #99F6E4; background: rgba(3, 7, 18, .55); white-space: nowrap; }
+.glow h2 { font-size: clamp(48px, 7vw, 104px); color: #fff; text-wrap: balance; }
+.glow-lead { font-size: clamp(17px, 1.4vw, 20px); color: #CBD5E1; max-width: 32rem; }
+.glow-facts { list-style: none; margin: 4px 0 0; padding: 0; display: grid; gap: 10px; }
+.glow-facts li { display: grid; grid-template-columns: 9.5rem minmax(0, 1fr); gap: 14px; align-items: baseline; padding: 14px 18px; border-radius: 18px;
+  background: rgba(13, 27, 48, .7); border: 1px solid rgba(94, 234, 212, .22); backdrop-filter: blur(6px); }
+.glow-facts b { color: #5EEAD4; font-weight: 800; font-size: 16px; }
+.glow-facts span { color: #E2E8F0; font-size: 15.5px; }
+.glow-facts li.is-gold { border-color: rgba(252, 211, 77, .45); } .glow-facts li.is-gold b { color: #FCD34D; }
+.glow-facts li.is-red { border-color: rgba(253, 164, 175, .55); background: linear-gradient(90deg, rgba(244, 63, 94, .22), rgba(13, 27, 48, .7)); } .glow-facts li.is-red b { color: #FDA4AF; }
+.glow-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 14px; margin-top: 8px; }
+.glow-btn { display: inline-flex; align-items: center; gap: 10px; min-height: 54px; padding: 0 26px; border-radius: 999px; background: #14B8A6; color: #022C29;
+  font-weight: 700; font-size: 16px; text-decoration: none; box-shadow: 0 12px 34px rgba(20, 184, 166, .38); transition: background .2s, transform .25s var(--ease); }
+.glow-btn:hover { background: #5EEAD4; transform: translateY(-1px); }
+.glow-link { color: #E2E8F0; font-weight: 600; text-underline-offset: 4px; }
+.glow-visual { position: relative; aspect-ratio: 1; width: min(100%, 460px); justify-self: center; display: grid; place-items: center; }
+.glow-visual img { position: relative; width: 46%; filter: drop-shadow(0 0 34px rgba(45, 212, 191, .55)) drop-shadow(0 30px 40px rgba(0, 0, 0, .55)); animation: glow-float 4.5s ease-in-out infinite; }
+.glow-ring { position: absolute; border-radius: 50%; border: 2px solid rgba(94, 234, 212, .55); inset: 22%; animation: glow-pulse 3.2s var(--ease) infinite; }
+.glow-ring.r2 { inset: 10%; opacity: .55; animation-delay: .5s; } .glow-ring.r3 { inset: -2%; opacity: .28; animation-delay: 1s; }
+@keyframes glow-float { 50% { transform: translateY(-12px) rotate(-2deg); } }
+@keyframes glow-pulse { 0%, 100% { transform: scale(1); } 12% { transform: scale(1.04); } 24% { transform: scale(1); } 36% { transform: scale(1.025); } }
+@media (max-width: 860px) {
+  .glow-grid { grid-template-columns: 1fr; }
+  .glow-visual { width: min(70%, 300px); order: -1; }
+  .glow::before { background: linear-gradient(180deg, #030712 0%, rgba(3, 7, 18, .55) 30%, rgba(3, 7, 18, .9) 55%, #030712 100%); }
+  .glow-facts li { grid-template-columns: 1fr; gap: 2px; }
+  .hero-promo { margin-bottom: 16px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .hero-promo, .hero-promo i, .glow-visual img, .glow-ring { animation: none; opacity: 1; }
+}

@@ -23,15 +23,15 @@
   <link rel="preload" href="/fonts/firago/FiraGO-Regular.woff2" as="font" type="font/woff2" crossorigin />
   <link rel="preload" href="/fonts/firago/FiraGO-Bold.woff2" as="font" type="font/woff2" crossorigin />
   <link rel="modulepreload" href="/vendor/three/three.module.min.js" />
-  <link rel="stylesheet" href="/site-nav.css?v=8" />
-  <link rel="stylesheet" href="/home.css?v=14" />
+  <link rel="stylesheet" href="/site-nav.css?v=9" />
+  <link rel="stylesheet" href="/home.css?v=15" />
   <script type="importmap">{ "imports": { "three": "/vendor/three/three.module.min.js" } }</script>
 </head>
 <body>
   <a class="skip" href="#main" data-en="Skip to content">გადადი შინაარსზე</a>
 
   <header class="tb" id="topbar"></header>
-  <script src="/site-nav.js?v=7"></script>
+  <script src="/site-nav.js?v=8"></script>
 
   <main id="main">
     <!-- A day with MEDICARD: one screen, a vertical clock that moves the 3D phone through the day -->
@@ -48,6 +48,10 @@
 
       <div class="day-ui">
         <div class="hero-copy">
+          <a class="hero-promo" href="#medirun">
+            <i aria-hidden="true"></i><span data-en-html="<b>New</b> · Light up Tbilisi"><b>ახალი</b> · გაანათე თბილისი</span>
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="m13 6 6 6-6 6"/></svg>
+          </a>
           <h1 class="hero-title">
             <span class="line"><span data-en="Health at">ჯანმრთელობა</span></span>
             <span class="line"><span data-en="every hour">დღის ყოველ</span></span>
@@ -103,7 +107,40 @@
         </div>
       </div>
 
-      <a class="scroll-cue" href="#medi" aria-label="ქვემოთ გადასვლა" data-en-aria-label="Scroll down"><span></span></a>
+      <a class="scroll-cue" href="#medirun" aria-label="ქვემოთ გადასვლა" data-en-aria-label="Scroll down"><span></span></a>
+    </section>
+
+    <!-- MEDIRUN campaign „გაანათე თბილისი“ (3 Oct – 31 Dec 2026); details and rules at /medirun -->
+    <section class="glow" id="medirun" data-tone="dark" aria-labelledby="glow-title">
+      <div class="glow-art" aria-hidden="true">
+        <picture>
+          <source media="(max-width: 860px)" srcset="/medirun/img/city-sm.webp" />
+          <img src="/medirun/img/city.webp" alt="" width="1920" height="1072" loading="lazy" decoding="async" />
+        </picture>
+      </div>
+      <div class="wrap glow-grid">
+        <div class="glow-copy">
+          <div class="glow-top">
+            <span class="glow-brand">MEDI<b>RUN</b></span>
+            <span class="glow-chip" data-en="3 Oct – 31 Dec · Tbilisi">3 ოქტ – 31 დეკ · თბილისი</span>
+          </div>
+          <h2 class="display" id="glow-title" data-en="Light up Tbilisi.">გაანათე თბილისი.</h2>
+          <p class="glow-lead" data-en="Gifts hide in the city’s parks every day. Turn on MEDIRUN, go for a walk — your phone beats like a heart when a box is near.">ქალაქის პარკებში ყოველდღე საჩუქრები იმალება. ჩართე MEDIRUN, გაისეირნე — ყუთთან ტელეფონი გულისცემასავით აჩქარდება.</p>
+          <ul class="glow-facts">
+            <li><b data-en="Every day">ყოველდღე</b><span data-en="Boxes with Medi Coins in the parks">ყუთები Medi Coins-ით პარკებში</span></li>
+            <li class="is-gold"><b data-en="Saturdays, 16:00">შაბათს, 16:00</b><span data-en="A gift rain in one park">საჩუქრების წვიმა ერთ პარკში</span></li>
+            <li class="is-red"><b data-en="31 December">31 დეკემბერი</b><span data-en="A red iPhone 18 Pro Max for those who light up 1% of Tbilisi">წითელი iPhone 18 Pro Max მათთვის, ვინც თბილისის 1%-ს გაანათებს</span></li>
+          </ul>
+          <div class="glow-actions">
+            <a class="glow-btn" href="/medirun"><span data-en="See how it works">დეტალურად</span><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="m13 6 6 6-6 6"/></svg></a>
+            <a class="glow-link" href="/medirun#rules" data-en="Rules">წესები</a>
+          </div>
+        </div>
+        <div class="glow-visual" aria-hidden="true">
+          <span class="glow-ring r3"></span><span class="glow-ring r2"></span><span class="glow-ring r1"></span>
+          <img src="/medirun/img/gift.webp" alt="" width="489" height="520" loading="lazy" decoding="async" />
+        </div>
+      </div>
     </section>
 
     <!-- Medi -->

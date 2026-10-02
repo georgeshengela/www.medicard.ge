@@ -2,11 +2,11 @@
 // The navigation itself is rendered by server/public/site-nav.js so every page gets the same menu.
 // English copy rides along as data-en / data-en-html (server/public/site-i18n.js swaps it in).
 
-export const SITE_STYLES = `  <link rel="stylesheet" href="/site-nav.css?v=8" />
+export const SITE_STYLES = `  <link rel="stylesheet" href="/site-nav.css?v=9" />
   <link rel="stylesheet" href="/site-refresh.css?v=2" />`;
 
 export const SITE_HEADER = `  <header class="tb" id="topbar"></header>
-  <script src="/site-nav.js?v=7"></script>`;
+  <script src="/site-nav.js?v=8"></script>`;
 
 /** Attribute value escaping for data-en* (keeps our own markup in data-en-html). */
 export function enAttr(s) {

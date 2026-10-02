@@ -157,7 +157,7 @@ a.store-badge.is-official:hover::after { transform: translateX(120%); }
 .tb-burger { display: none; }
 .tb-sheet { display: none; }
 
-@media (max-width: 1200px) {
+@media (max-width: 1360px) {
   .tb-link { padding: 0 11px; font-size: 14px; }
   .tb-link svg { display: none; }
   .tb-caret { display: inline !important; }

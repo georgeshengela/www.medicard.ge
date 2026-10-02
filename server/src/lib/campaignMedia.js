@@ -33,7 +33,7 @@ export const PRIVATE_CAMPAIGNS = [
     name: 'გაანათე თბილისი',
     start: '2026-10-03',
     end: '2026-12-31',
-    rulesUrl: 'https://medicard.ge/medirun/rules.html',
+    rulesUrl: 'https://medicard.ge/medirun#rules',
     plan: 'plan.html',
     prints: [
       { file: 'pa3-key', name: 'A3 პოსტერი QR-ით', spec: '303×426 მმ, 3 მმ ზედნადებით' },

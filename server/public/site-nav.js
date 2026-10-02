@@ -51,6 +51,7 @@
   var ITEMS = [
     { key: 'home', href: '/', label: T('მთავარი', 'Home'), hint: T('დღე მედიქარდთან', 'A day with MEDICARD'), icon: 'home' },
     { key: 'about', href: '/about', label: T('ჩვენ შესახებ', 'About'), hint: T('ვინ ვართ და რისი გვჯერა', 'Who we are and what we believe'), icon: 'about' },
+    { key: 'medirun', href: '/medirun', label: 'MEDIRUN', hint: T('გაანათე თბილისი · 3 ოქტ – 31 დეკ', 'Light up Tbilisi · 3 Oct – 31 Dec'), icon: 'run' },
     { key: 'calculators', href: '/calculators', label: T('კალკულატორები', 'Calculators'), hint: T('ციკლი და ორსულობა — 10 უფასო', 'Cycle and pregnancy — 10 free tools'), icon: 'calc', mega: true },
     { key: 'faq', href: onHome ? '#faq' : '/#faq', label: T('კითხვები', 'FAQ'), hint: T('ხშირი კითხვები', 'Frequently asked questions'), icon: 'faq' },
     { key: 'contact', href: '/contact', label: T('კონტაქტი', 'Contact'), hint: T('მოგვწერე', 'Write to us'), icon: 'mail' }
@@ -61,7 +62,7 @@
     /^\/about/.test(path) ? 'about' :
     /^\/contact/.test(path) ? 'contact' :
     /^\/calculators/.test(path) ? 'calculators' :
-    /^\/medipulsi/.test(path) ? 'medirun' : '';
+    /^\/medi(pulsi|run)/.test(path) ? 'medirun' : '';
 
   function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
 
