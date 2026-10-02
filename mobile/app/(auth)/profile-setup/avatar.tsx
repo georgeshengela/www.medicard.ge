@@ -11,6 +11,7 @@ import { extraAnswersPayload, formFromProfile, fullProfilePayload } from '@/lib/
 import { nextProfileSetupHref } from '@/lib/onboarding';
 import { useOnboardingDevPreview } from '@/lib/onboardingDevPreview';
 import { needsHealthAssessment, needsProfileSetup, useAuth } from '@/store/AuthContext';
+import { omitHomeLayoutKeys } from '@/lib/home/homeLayout';
 
 export default function ProfileSetupAvatarScreen() {
   const router = useRouter();
@@ -56,7 +57,7 @@ export default function ProfileSetupAvatarScreen() {
         ...fullProfilePayload(form, healthProfile?.currentStepIndex ?? 0),
         extraAnswers: {
           ...extraAnswersPayload(form),
-          ...((healthProfile?.extraAnswers ?? {}) as Record<string, unknown>),
+          ...omitHomeLayoutKeys((healthProfile?.extraAnswers ?? {}) as Record<string, unknown>),
           assessmentPhaseComplete: true,
           avatarId,
         },

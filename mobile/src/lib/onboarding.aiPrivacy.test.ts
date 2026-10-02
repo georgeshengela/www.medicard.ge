@@ -21,10 +21,19 @@ describe('7-step onboarding tail (privacy → AI → notifications)', () => {
     );
   });
 
-  it('finishes after the notification step whatever the answer', () => {
+  it('asks for the Home layout after the notification step whatever the answer', () => {
     for (const notificationsEnabled of [true, false]) {
       assert.equal(
         nextProfileSetupHref(profile({ privacyAccepted: true, aiPrivacyPrompted: true, notificationsEnabled }) as never, user as never),
+        '/(auth)/profile-setup/home-layout',
+      );
+    }
+  });
+
+  it('finishes once a Home layout is chosen', () => {
+    for (const homeLayout of ['women', 'active', 'weight', 'standard']) {
+      assert.equal(
+        nextProfileSetupHref(profile({ privacyAccepted: true, aiPrivacyPrompted: true, notificationsEnabled: true, homeLayout }) as never, user as never),
         '/(auth)/profile-setup/analyzing',
       );
     }
@@ -32,7 +41,7 @@ describe('7-step onboarding tail (privacy → AI → notifications)', () => {
 
   it('no longer blocks on avatar, phone verification, Face ID or location', () => {
     assert.equal(
-      nextProfileSetupHref(profile({ privacyAccepted: true, aiPrivacyPrompted: true, notificationsEnabled: true }) as never, { phone: '' } as never),
+      nextProfileSetupHref(profile({ privacyAccepted: true, aiPrivacyPrompted: true, notificationsEnabled: true, homeLayout: 'standard' }) as never, { phone: '' } as never),
       '/(auth)/profile-setup/analyzing',
     );
   });

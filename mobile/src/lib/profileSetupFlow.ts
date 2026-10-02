@@ -9,6 +9,7 @@ import {
 import type { User } from '@/lib/api';
 import { getPreference, setPreference } from '@/lib/storage';
 import { trackOnboardingCompleted } from '@/lib/funnel';
+import { omitHomeLayoutKeys } from '@/lib/home/homeLayout';
 
 export const BIOMETRIC_PREF_KEY = 'medicard.biometric.enabled';
 
@@ -23,7 +24,8 @@ export async function patchProfileExtra(
     ...fullProfilePayload(form, healthProfile.currentStepIndex ?? 0),
     extraAnswers: {
       ...extraAnswersPayload(form),
-      ...extra,
+      // The Home layout has its own debounced writer; a stale copy here must not undo a newer choice.
+      ...omitHomeLayoutKeys(extra),
       assessmentPhaseComplete: true,
       ...patch,
     },
@@ -51,7 +53,8 @@ export async function finishOnboarding(healthProfile: HealthProfile, user: User)
     ...fullProfilePayload(form, healthProfile.currentStepIndex ?? 0),
     extraAnswers: {
       ...extraAnswersPayload(form),
-      ...extra,
+      // The Home layout has its own debounced writer; a stale copy here must not undo a newer choice.
+      ...omitHomeLayoutKeys(extra),
       assessmentPhaseComplete: true,
       phoneVerified: true,
       privacyAccepted: true,

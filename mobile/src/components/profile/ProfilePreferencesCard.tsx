@@ -1,17 +1,19 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Animated, Pressable, Text, View } from 'react-native';
-import { CalendarHeart, House, Languages, Moon, Palette, Smartphone, Sun, SunMoon, type LucideIcon } from 'lucide-react-native';
+import { ChevronRight, Languages, LayoutDashboard, Moon, Palette, Sun, SunMoon, type LucideIcon } from 'lucide-react-native';
 import { confirmLanguageSwitch } from '@/components/ui/LanguageSelect';
 import { ka } from '@/i18n/ka';
 import { appLang, setLanguageAndReload, tx, type AppLang } from '@/i18n/locale';
-import { getHomeLanding, setCyclePromptSeen, setHomeLanding, type HomeLanding } from '@/lib/homeScreenPrefs';
+import { HomeLayoutPicker } from '@/components/home/layout/HomeLayoutPicker';
+import { useHomeLayout } from '@/hooks/useHomeLayout';
+import { isFeatureOn, useFeatureState } from '@/lib/featureFlags';
+import { HOME_LAYOUT_NAMES } from '@/lib/home/homeLayout';
 import { useIsDark, useThemeColors } from '@/theme/colors';
 import { hubInk, hubText, hubTint, type HubInk } from '@/theme/hub';
 import { useTheme, type ThemePreference } from '@/store/ThemeContext';
 
 const SEG = 40;
 const PAD = 3;
-const CYCLE_ROSE = '#D4738A';
 
 type SegOption<T extends string> = { value: T; label: string; icon?: LucideIcon; text?: string; tint?: string };
 
@@ -78,14 +80,30 @@ function MiniSegment<T extends string>({ value, options, onChange, label }: { va
   );
 }
 
-function PrefRow({ icon: Icon, ink, title, value, children, divider }: { icon: LucideIcon; ink: HubInk; title: string; value: string; children: React.ReactNode; divider?: boolean }) {
+function PrefRow({
+  icon: Icon,
+  ink,
+  title,
+  value,
+  children,
+  divider,
+  onPress,
+}: {
+  icon: LucideIcon;
+  ink: HubInk;
+  title: string;
+  value: string;
+  children: React.ReactNode;
+  divider?: boolean;
+  /** The whole row opens something (e.g. the Home layout picker). */
+  onPress?: () => void;
+}) {
   const colors = useThemeColors();
   const dark = useIsDark();
   const inkHex = hubInk(ink, dark);
-  return (
+  const rowStyle = { flexDirection: 'row' as const, alignItems: 'center' as const, gap: 12, paddingHorizontal: 16, paddingVertical: 12, minHeight: 62 };
+  const content = (
     <>
-      {divider ? <View style={{ height: 1, backgroundColor: colors.bg300, marginLeft: 66 }} /> : null}
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 16, paddingVertical: 12, minHeight: 62 }}>
         <View style={{ width: 38, height: 38, borderRadius: 12, alignItems: 'center', justifyContent: 'center', backgroundColor: hubTint(inkHex, dark) }}>
           <Icon size={18} color={inkHex} strokeWidth={1.9} />
         </View>
@@ -98,7 +116,18 @@ function PrefRow({ icon: Icon, ink, title, value, children, divider }: { icon: L
           </Text>
         </View>
         {children}
-      </View>
+    </>
+  );
+  return (
+    <>
+      {divider ? <View style={{ height: 1, backgroundColor: colors.bg300, marginLeft: 66 }} /> : null}
+      {onPress ? (
+        <Pressable accessibilityRole="button" accessibilityLabel={`${title}. ${value}`} onPress={onPress} style={rowStyle}>
+          {content}
+        </Pressable>
+      ) : (
+        <View style={rowStyle}>{content}</View>
+      )}
     </>
   );
 }
@@ -114,22 +143,15 @@ const LANG_OPTIONS: SegOption<AppLang>[] = [
   { value: 'en', label: 'English', text: 'EN' },
 ];
 
-const LANDING_OPTIONS: SegOption<HomeLanding>[] = [
-  { value: 'hub', label: ka.profile.homeLandingHub, icon: House },
-  { value: 'cycle', label: ka.profile.homeLandingCycle, icon: CalendarHeart, tint: CYCLE_ROSE },
-];
-
-/** Profile → Settings: appearance, language and (for women) the opening screen in one compact card. */
-export function ProfilePreferencesCard({ showLanding }: { showLanding: boolean }) {
+/** Profile → Settings: the Home layout, appearance and language in one compact card. */
+export function ProfilePreferencesCard() {
   const colors = useThemeColors();
   const { preference, setPreference } = useTheme();
   const current = appLang();
   const [pendingLang, setPendingLang] = useState<AppLang | null>(null);
-  const [landing, setLanding] = useState<HomeLanding | null>(null);
-
-  useEffect(() => {
-    if (showLanding) void getHomeLanding().then(setLanding);
-  }, [showLanding]);
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const layoutsOn = isFeatureOn('homeLayouts', useFeatureState());
+  const { layout } = useHomeLayout();
 
   const lang = pendingLang ?? current;
   const chooseLang = (next: AppLang) => {
@@ -140,33 +162,28 @@ export function ProfilePreferencesCard({ showLanding }: { showLanding: boolean }
     });
   };
 
-  const chooseLanding = async (next: HomeLanding) => {
-    setLanding(next);
-    await setHomeLanding(next);
-    await setCyclePromptSeen(true);
-  };
-
   const themeLabel = THEME_OPTIONS.find((option) => option.value === preference)?.label ?? '';
 
   return (
     <View style={{ borderRadius: 22, backgroundColor: colors.surface, overflow: 'hidden' }}>
-      <PrefRow icon={Palette} ink="violet" title={ka.profile.appearance} value={themeLabel}>
+      {layoutsOn ? (
+        <PrefRow
+          icon={LayoutDashboard}
+          ink="teal"
+          title={tx('მთავარი გვერდი', 'Home layout')}
+          value={HOME_LAYOUT_NAMES[layout]}
+          onPress={() => setPickerOpen(true)}
+        >
+          <ChevronRight size={17} color={colors.text300} />
+        </PrefRow>
+      ) : null}
+      <PrefRow icon={Palette} ink="violet" title={ka.profile.appearance} value={themeLabel} divider={layoutsOn}>
         <MiniSegment label={ka.profile.appearance} value={preference} options={THEME_OPTIONS} onChange={setPreference} />
       </PrefRow>
       <PrefRow icon={Languages} ink="sky" title={tx('ენა', 'Language')} value={lang === 'ka' ? 'ქართული' : 'English'} divider>
         <MiniSegment label={tx('ენა', 'Language')} value={lang} options={LANG_OPTIONS} onChange={chooseLang} />
       </PrefRow>
-      {showLanding && landing ? (
-        <PrefRow
-          icon={Smartphone}
-          ink="rose"
-          title={ka.profile.homeLandingTitle}
-          value={landing === 'cycle' ? tx('ციკლის ეკრანით', 'Opens on Cycle') : tx('მთავარი გვერდით', 'Opens on Home')}
-          divider
-        >
-          <MiniSegment label={ka.profile.homeLandingTitle} value={landing} options={LANDING_OPTIONS} onChange={(next) => void chooseLanding(next)} />
-        </PrefRow>
-      ) : null}
+      {layoutsOn ? <HomeLayoutPicker visible={pickerOpen} onClose={() => setPickerOpen(false)} source="profile" /> : null}
     </View>
   );
 }

@@ -257,8 +257,8 @@ export const ONBOARDING_STEPS: AssessmentStep[] = [
   { key: 'o5-cycle', figmaId: '9217:164472', type: 'goal-cycle', titleKey: 'goalCycleTitle', bodyKey: 'goalCycleBody', skippable: true },
 ];
 
-/** Steps 6 (privacy + AI consent) and 7 (notifications) run after the assessment screen. */
-export const ONBOARDING_TAIL_STEPS = 2;
+/** Steps 6 (privacy + AI consent), 7 (notifications) and 8 (Home layout) run after the assessment screen. */
+export const ONBOARDING_TAIL_STEPS = 3;
 
 const GOAL_STEP: Record<PrimaryGoal, AssessmentStepType | null> = {
   medications: 'goal-medication',

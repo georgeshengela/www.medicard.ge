@@ -6,10 +6,8 @@ import Animated, { Easing, useAnimatedStyle, useSharedValue, withTiming } from '
 import * as Haptics from 'expo-haptics';
 import { CalendarClock, FolderHeart, Footprints, House, User, type LucideIcon } from 'lucide-react-native';
 import { ka } from '@/i18n/ka';
-import { getHomeLanding, resolveInitialRoute } from '@/lib/homeScreenPrefs';
 import { getRunState } from '@/lib/run/store';
 import { useThemeColors } from '@/theme/colors';
-import { useAuth } from '@/store/AuthContext';
 import { usePrefersReducedMotion } from '@/hooks/usePrefersReducedMotion';
 import { isHrefAvailable, useFeatureState } from '@/lib/featureFlags';
 import { tx } from '@/i18n/locale';
@@ -72,7 +70,6 @@ function openLiveRun(router: ReturnType<typeof useRouter>) {
 export function FloatingTabBar({ visible = true }: { visible?: boolean }) {
   const colors = useThemeColors();
   const reduceMotion = usePrefersReducedMotion();
-  const { user } = useAuth();
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const segments = useSegments();
@@ -123,12 +120,6 @@ export function FloatingTabBar({ visible = true }: { visible?: boolean }) {
     void Haptics.selectionAsync().catch(() => undefined);
     setSelected(tab.name);
     if (tab.name === selected) return;
-    if (tab.name === 'home') {
-      void getHomeLanding().then((landing) => {
-        router.replace(resolveInitialRoute(landing, user?.gender) as never);
-      });
-      return;
-    }
     router.replace(tab.href);
   };
 

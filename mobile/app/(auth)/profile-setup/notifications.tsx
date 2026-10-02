@@ -13,6 +13,7 @@ import { useOnboardingDevPreview, onboardingScreenBlocked, onboardingStepHref } 
 import { useAuth } from '@/store/AuthContext';
 import { useFigmaProfileSetup } from '@/constants/figmaProfileSetupLayout';
 import { tx } from '@/i18n/locale';
+import { isFeatureOn, useFeatureState } from '@/lib/featureFlags';
 
 /** Enable notifications — Figma 8845:312878 */
 export default function ProfileSetupNotificationsScreen() {
@@ -21,6 +22,7 @@ export default function ProfileSetupNotificationsScreen() {
   const preview = useOnboardingDevPreview();
   const { ready, user, healthProfile, setHealthProfile } = useAuth();
   const [busy, setBusy] = useState(false);
+  const layoutsOn = isFeatureOn('homeLayouts', useFeatureState());
 
   if (!ready) {
     return (
@@ -35,7 +37,9 @@ export default function ProfileSetupNotificationsScreen() {
   if (blocked === 'assessment') return <Redirect href="/(auth)/assessment" />;
   if (blocked === 'home') return <Redirect href="/(tabs)/home" />;
 
-  const goLocation = () => router.replace(onboardingStepHref('/(auth)/profile-setup/analyzing', preview) as never);
+  // Step 8: the Home layout — skipped while the admin switch „homeLayouts“ is off.
+  const goLocation = () =>
+    router.replace(onboardingStepHref(layoutsOn || preview ? '/(auth)/profile-setup/home-layout' : '/(auth)/profile-setup/analyzing', preview) as never);
 
   // App Review 5.1.1(iv): one "Continue" button that always opens the OS sheet; the
   // person answers there. No skip before the request.

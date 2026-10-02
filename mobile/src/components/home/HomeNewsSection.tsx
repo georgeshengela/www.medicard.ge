@@ -8,6 +8,7 @@ import { HomeSectionHeading } from '@/components/home/HomeSectionHeading';
 import { HUB, hubInk, hubText, hubTint } from '@/theme/hub';
 import { useIsDark, useThemeColors } from '@/theme/colors';
 import { tx } from '@/i18n/locale';
+import { useHomeAccent } from '@/theme/homeAccent';
 
 const PEEK = 28;
 const GAP = 12;
@@ -142,10 +143,11 @@ function NewsCard({ item, width, onDismiss }: { item: Announcement; width: numbe
 
 function Dots({ count, active }: { count: number; active: number }) {
   const c = useThemeColors();
+  const accent = useHomeAccent();
   return (
     <View style={s.dots} accessible={false} importantForAccessibility="no-hide-descendants">
       {Array.from({ length: count }, (_, i) => (
-        <View key={i} style={[s.dot, { backgroundColor: i === active ? c.primary200 : c.bg300, width: i === active ? 16 : 6 }]} />
+        <View key={i} style={[s.dot, { backgroundColor: i === active ? accent.ring : c.bg300, width: i === active ? 16 : 6 }]} />
       ))}
     </View>
   );

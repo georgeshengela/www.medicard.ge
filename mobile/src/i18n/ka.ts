@@ -691,14 +691,6 @@ const kaStrings = {
     nextDoseOf: (taken: number, total: number) => `${taken}/${total}`,
     featured: 'გამორჩეული',
     allServices: 'ყველა სერვისი',
-    cyclePromptTitle: 'ციკლი — შენი მთავარი გვერდი?',
-    cyclePromptBody:
-      'ბევრი ქალი Medicard-ს ციკლის თვალყურის დევნებისთვის იყენებს. გინდა აპის გახსნისას პირდაპირ ციკლზე მოხვდე?',
-    cyclePromptPrimary: 'დიახ, ციკლი მთავარი გვერდია',
-    cyclePromptPrimaryHint: 'აპი ყოველთვის ციკლით გაიხსნება',
-    cyclePromptSecondary: 'არა, ზოგადი მთავარი გვერდი',
-    cyclePromptSecondaryHint: 'ციკლზე მთავარიდან გადახვალ',
-    cyclePromptFooter: 'შეგიძლია ნებისმიერ დროს შეცვალო პროფილიდან.',
   },
 
   healthMetrics: {
@@ -3458,12 +3450,6 @@ const kaStrings = {
     themeDark: 'მუქი',
     themeSystem: 'სისტემის',
     themeHint: 'აირჩიე გარეგნობა ან მიჰყევი ტელეფონის პარამეტრს.',
-    homeLandingTitle: 'აპის გახსნა',
-    homeLandingHub: 'ზოგადი',
-    homeLandingHubHint: 'მთავარი გვერდი — ყველა სერვისით',
-    homeLandingCycle: 'ციკლი',
-    homeLandingCycleHint: 'აპი პირდაპირ ციკლის ეკრანით გაიხსნება',
-    homeLandingExplain: 'აპის გახსნისას შეგიძლია პირდაპირ ციკლზე მოხვიდე, ან ჩვეულებრივ მთავარ გვერდზე — მედიკამენტებით, ლაბით და ყველა სერვისით. ციკლს მთავარიდანაც მიუწვდები.',
     notifications: 'შეტყობინებები',
     notificationsOff: 'გამორთულია',
     permissions: 'ნებართვები და კავშირები',

@@ -31,7 +31,6 @@ import { api, ApiError, type Gender } from '@/lib/api';
 import { LBS_PER_KG, displayWeightForUnit } from '@/lib/assessmentForm';
 import { MIN_USER_AGE, ageFromBirthDate, isoToDisplay, normalizeIsoDate, parseBirthDate } from '@/lib/birthdate';
 import { BMI_ZONE_COLORS, bmiCategory, bmiFromWeight } from '@/lib/bmi';
-import { getCyclePromptSeen } from '@/lib/homeScreenPrefs';
 import { useAuth } from '@/store/AuthContext';
 import { useIsDark, useThemeColors } from '@/theme/colors';
 import { HUB, hubText } from '@/theme/hub';
@@ -74,7 +73,7 @@ function cleanList(list: string[] | null | undefined): string[] {
 }
 
 /** Profile → „სამედიცინო პროფილი“: compact summary where every value opens its own editor sheet. */
-export function MedicalProfileSection({ onFemaleSaved }: { onFemaleSaved?: () => void }) {
+export function MedicalProfileSection() {
   const { user, healthProfile } = useAuth();
   const colors = useThemeColors();
   const dark = useIsDark();
@@ -193,7 +192,7 @@ export function MedicalProfileSection({ onFemaleSaved }: { onFemaleSaved?: () =>
         ))}
       </View>
 
-      <MedicalEditSheet field={field} onClose={() => setField(null)} onFemaleSaved={onFemaleSaved} />
+      <MedicalEditSheet field={field} onClose={() => setField(null)} />
     </View>
   );
 }
@@ -214,7 +213,7 @@ type Draft = {
   conditions: string[];
 };
 
-function MedicalEditSheet({ field, onClose, onFemaleSaved }: { field: Field | null; onClose: () => void; onFemaleSaved?: () => void }) {
+function MedicalEditSheet({ field, onClose }: { field: Field | null; onClose: () => void }) {
   const { user, healthProfile, setHealthProfile, setUser } = useAuth();
   const colors = useThemeColors();
   const safe = useSafeAreaInsets();
@@ -298,12 +297,10 @@ function MedicalEditSheet({ field, onClose, onFemaleSaved }: { field: Field | nu
     setBusy(true);
     setError(null);
     try {
-      const wasFemale = user?.gender === 'FEMALE';
       const result = await api.healthProfile.update(body);
       setHealthProfile(result.profile);
       if (result.user) setUser(result.user);
       onClose();
-      if (shown === 'gender' && draft.gender === 'FEMALE' && !wasFemale && !(await getCyclePromptSeen())) onFemaleSaved?.();
     } catch (err) {
       setError(err instanceof ApiError ? err.message : ka.common.error);
     } finally {

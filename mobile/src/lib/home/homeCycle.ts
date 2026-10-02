@@ -1,0 +1,385 @@
+/**
+ * Pure helpers for the women's Home cycle sections (hero ring, week strip, actions, stats, tips).
+ *
+ * No React Native and no `@/` value imports, so node tests load it. Every rule here mirrors the
+ * cycle screen (`app/cycle/index.tsx`, `CycleHero`, `CycleStatusGauge`, `CycleDayStrip`,
+ * `CycleStatsCard`) — the Home only shows less of it, never something the cycle screen would hide.
+ * Eligibility flags (forecast / fertility / contraception / mode) are computed by the caller with
+ * the real helpers and passed in as booleans.
+ */
+import { classifyCycleDay, mergeLoggedFlowOntoMarks } from '../cyclePresentation.js';
+import type { CycleAverages, CycleDayMark } from '@/lib/api';
+
+// ---------- civil dates (YYYY-MM-DD, no timezone shift — same math as src/lib/cyclePhase.ts) ----------
+
+function utc(key: string): number {
+  const [y, m, d] = key.split('-').map(Number);
+  return Date.UTC(y, m - 1, d);
+}
+
+export function addDaysKey(key: string, delta: number): string {
+  const dt = new Date(utc(key));
+  dt.setUTCDate(dt.getUTCDate() + delta);
+  return `${dt.getUTCFullYear()}-${String(dt.getUTCMonth() + 1).padStart(2, '0')}-${String(dt.getUTCDate()).padStart(2, '0')}`;
+}
+
+export function daysBetweenKeys(fromKey: string, toKey: string): number {
+  return Math.round((utc(toKey) - utc(fromKey)) / 86_400_000);
+}
+
+/** 0 = Monday … 6 = Sunday (WEEKDAYS_KA order). */
+export function weekdayIndex(key: string): number {
+  return (new Date(utc(key)).getUTCDay() + 6) % 7;
+}
+
+// ---------- ring ----------
+
+export type RingPhaseKind = 'period' | 'follicular' | 'fertile' | 'luteal';
+
+/** Degrees clockwise from 12 o'clock (0…360). `livedTo` = end of the full-colour part, null = all ahead. */
+export type RingArc = { kind: RingPhaseKind; from: number; to: number; livedTo: number | null };
+
+export type CycleRingModel = {
+  /** Days around the ring (a late cycle grows the ring instead of wrapping today onto day 1). */
+  count: number;
+  arcs: RingArc[];
+  /** Centre of today's slot; null when the day is unknown or the length is hidden. */
+  todayDeg: number | null;
+};
+
+const MIN_ARC_DEG = 0.2;
+
+/**
+ * Phase arcs for the static Home ring — the same phase runs as the cycle dial
+ * (`CycleStatusGauge`): bleeding (logged days when present, else the usual length) → follicular →
+ * fertile window → luteal. Without a visible fertile window everything after bleeding is follicular,
+ * exactly like the dial. `capDeg` pulls each end in so round caps leave a small gap.
+ */
+export function cycleRingModel({
+  day,
+  cycleLength,
+  periodLength = 5,
+  recordedPeriodDays = [],
+  fertileDays = null,
+  hideLengthChrome = false,
+  capDeg = 0,
+}: {
+  day: number | null;
+  cycleLength: number;
+  periodLength?: number;
+  recordedPeriodDays?: number[];
+  fertileDays?: { from: number; to: number } | null;
+  hideLengthChrome?: boolean;
+  capDeg?: number;
+}): CycleRingModel {
+  const length = hideLengthChrome ? 0 : Math.max(14, Math.round(cycleLength) || 28);
+  if (!length) return { count: 28, arcs: [], todayDeg: null };
+  const count = Math.max(length, day ?? 0);
+  const early = recordedPeriodDays.filter((d) => d <= 12);
+  const loggedMax = early.length ? Math.max(...early) : 0;
+  const periodEnd = Math.max(1, Math.min(loggedMax || periodLength, count));
+  const fStart = fertileDays ? Math.min(fertileDays.from, fertileDays.to) : null;
+  const fEnd = fertileDays ? Math.max(fertileDays.from, fertileDays.to) : null;
+  const phases: { kind: RingPhaseKind; from: number; to: number }[] = [{ kind: 'period', from: 1, to: periodEnd }];
+  if (fStart != null && fEnd != null && fStart > periodEnd) {
+    if (fStart - 1 > periodEnd) phases.push({ kind: 'follicular', from: periodEnd + 1, to: fStart - 1 });
+    phases.push({ kind: 'fertile', from: fStart, to: Math.min(fEnd, count) });
+    if (fEnd < count) phases.push({ kind: 'luteal', from: fEnd + 1, to: count });
+  } else if (periodEnd < count) {
+    phases.push({ kind: 'follicular', from: periodEnd + 1, to: count });
+  }
+
+  const slot = (pos: number) => (pos / count) * 360;
+  const arcs: RingArc[] = [];
+  for (const p of phases) {
+    const from = slot(p.from - 1) + capDeg;
+    const to = slot(p.to) - capDeg;
+    if (to - from <= MIN_ARC_DEG) continue;
+    let livedTo: number | null = null;
+    if (day != null && day >= p.from) {
+      const end = Math.min(to, slot(Math.min(day, p.to)) - capDeg);
+      livedTo = end - from > MIN_ARC_DEG ? end : null;
+    }
+    arcs.push({ kind: p.kind, from, to, livedTo });
+  }
+  return { count, arcs, todayDeg: day != null && day > 0 ? slot(day - 0.5) : null };
+}
+
+/** The estimated fertile window as cycle days of this cycle, clipped to its edges (CycleHero overlays). */
+export function fertileDaysInCycle({
+  today,
+  day,
+  cycleLength,
+  window,
+}: {
+  today: string;
+  day: number | null;
+  cycleLength: number;
+  /** Pass null when fertility marks or forecasts are not allowed. */
+  window: { start: string; end: string } | null | undefined;
+}): { from: number; to: number } | null {
+  if (!window || day == null || day <= 0 || !cycleLength) return null;
+  const cycleStart = addDaysKey(today, -(day - 1));
+  const from = Math.max(1, daysBetweenKeys(cycleStart, window.start) + 1);
+  const to = Math.min(cycleLength, daysBetweenKeys(cycleStart, window.end) + 1);
+  return from <= to ? { from, to } : null;
+}
+
+/** Logged bleeding days of the current cycle as cycle-day numbers (dial's rose ticks / arc). */
+export function recordedPeriodDaysInCycle({
+  today,
+  day,
+  cycleLength,
+  bleedDates,
+}: {
+  today: string;
+  day: number | null;
+  cycleLength: number;
+  bleedDates: string[];
+}): number[] {
+  if (day == null || day <= 0) return [];
+  const cycleStart = addDaysKey(today, -(day - 1));
+  const max = Math.max(cycleLength, day);
+  return bleedDates.map((date) => daysBetweenKeys(cycleStart, date) + 1).filter((d) => d >= 1 && d <= max);
+}
+
+// ---------- centre number and actions (CycleHero grammar) ----------
+
+export type CycleCenter =
+  | { kind: 'periodDay'; day: number | null }
+  | { kind: 'periodToday' }
+  | { kind: 'countdown'; days: number }
+  | { kind: 'late'; day: number; lateBy: number }
+  | { kind: 'cycleDay'; day: number | null; length: number | null }
+  | { kind: 'none' };
+
+/** One number in the ring: bleeding day → „დღეს“ → countdown („სავარაუდოდ“) → cycle day. */
+export function cycleCenter({
+  hideLengthChrome,
+  hidePredicted,
+  onPeriod,
+  predictedToday,
+  forecastOn,
+  inDays,
+  day,
+  cycleLength,
+}: {
+  hideLengthChrome: boolean;
+  hidePredicted: boolean;
+  onPeriod: boolean;
+  predictedToday: boolean;
+  forecastOn: boolean;
+  inDays: number | null;
+  day: number | null;
+  cycleLength: number;
+}): CycleCenter {
+  if (hideLengthChrome) return { kind: 'none' };
+  if (onPeriod) return { kind: 'periodDay', day };
+  if (!hidePredicted && (predictedToday || (forecastOn && inDays === 0))) return { kind: 'periodToday' };
+  if (forecastOn && inDays != null && inDays > 0) return { kind: 'countdown', days: inDays };
+  if (forecastOn && inDays != null && inDays < 0 && day != null) return { kind: 'late', day, lateBy: -inDays };
+  return { kind: 'cycleDay', day, length: Math.max(14, Math.round(cycleLength) || 28) };
+}
+
+/** „მენსტრუაცია დაიწყო“ leads when it is plausible soon, or the rhythm is unknown / late (CycleHero). */
+export function startLeads({
+  onPeriod,
+  forecastOn,
+  predictedToday,
+  inDays,
+}: {
+  onPeriod: boolean;
+  forecastOn: boolean;
+  predictedToday: boolean;
+  inDays: number | null;
+}): boolean {
+  return !onPeriod && (!forecastOn || predictedToday || (inDays != null && inDays <= 3));
+}
+
+export type CycleHeroActionId = 'start' | 'end' | 'log' | 'logFlow';
+
+/**
+ * Filled + tonal buttons. On the period: „დასრულება“ leads except on day 1 (ending day 1 would
+ * erase the start — undo lives in the toast), where today's flow is the only action.
+ */
+export function cycleHeroActions({
+  onPeriod,
+  dayOne,
+  leadsWithStart,
+}: {
+  onPeriod: boolean;
+  dayOne: boolean;
+  leadsWithStart: boolean;
+}): { primary: CycleHeroActionId; secondary: CycleHeroActionId | null } {
+  if (onPeriod) return dayOne ? { primary: 'logFlow', secondary: null } : { primary: 'end', secondary: 'log' };
+  return leadsWithStart ? { primary: 'start', secondary: 'log' } : { primary: 'log', secondary: 'start' };
+}
+
+export type CycleHeroVariant =
+  | 'lockUnknown'
+  | 'locked'
+  | 'loading'
+  | 'failed'
+  | 'setup'
+  | 'pregnancy'
+  | 'postpartum'
+  | 'peri'
+  | 'cycle';
+
+/** Which hero to draw. The privacy lock wins over everything (fail-closed while unknown). */
+export function cycleHeroVariant({
+  locked,
+  hasView,
+  failed,
+  setupNeeded,
+  pregnancy,
+  postpartum,
+  peri,
+}: {
+  locked: boolean | null;
+  hasView: boolean;
+  failed: boolean;
+  setupNeeded: boolean;
+  pregnancy: boolean;
+  postpartum: boolean;
+  peri: boolean;
+}): CycleHeroVariant {
+  if (locked === null) return 'lockUnknown';
+  if (locked) return 'locked';
+  if (!hasView) return failed ? 'failed' : 'loading';
+  if (pregnancy) return 'pregnancy';
+  if (postpartum) return 'postpartum';
+  if (peri) return 'peri';
+  if (setupNeeded) return 'setup';
+  return 'cycle';
+}
+
+// ---------- week strip ----------
+
+export type StripDay = {
+  key: string;
+  dayOfMonth: number;
+  weekday: number;
+  today: boolean;
+  loggedPeriod: boolean;
+  spotting: boolean;
+  predictedPeriod: boolean;
+  fertile: boolean;
+  ovulation: boolean;
+};
+
+/**
+ * Seven days −3…+3 in the cycle grammar. Only bleeding and estimate layers come out — never sex,
+ * BBT, tests or "something logged" dots (those are private and stay inside /cycle).
+ */
+export function cycleWeekStrip({
+  today,
+  calendar,
+  bleedLogs,
+  showFertility,
+  showOvulation,
+  showPredicted,
+}: {
+  today: string;
+  calendar: Record<string, CycleDayMark> | null | undefined;
+  /** Only date + flow are read. */
+  bleedLogs: { date: string; flow?: string | null }[];
+  showFertility: boolean;
+  showOvulation: boolean;
+  showPredicted: boolean;
+}): StripDay[] {
+  const marks = mergeLoggedFlowOntoMarks(calendar ?? {}, bleedLogs) as Record<string, CycleDayMark>;
+  return Array.from({ length: 7 }, (_, i) => {
+    const key = addDaysKey(today, i - 3);
+    const layers = classifyCycleDay(marks[key], { showFertility, showPredicted });
+    const ovulation = layers.ovulation && showOvulation;
+    return {
+      key,
+      dayOfMonth: Number(key.slice(8, 10)),
+      weekday: weekdayIndex(key),
+      today: key === today,
+      loggedPeriod: layers.loggedPeriod,
+      spotting: layers.spotting,
+      predictedPeriod: layers.predictedPeriod,
+      // An ovulation day whose date may not be shown still sits inside the fertile window.
+      fertile: layers.fertile || (layers.ovulation && !showOvulation),
+      ovulation,
+    };
+  });
+}
+
+// ---------- my cycle stats (CycleStatsCard math) ----------
+
+/** Typical adult ranges shown as reference, never as a diagnosis (ACOG: cycle 21–35, bleeding 2–7). */
+export const TYPICAL_RANGES = { cycle: [21, 35], period: [2, 7], variation: 7 } as const;
+
+export type StatTone = 'typical' | 'longer' | 'shorter' | 'variable' | 'unknown';
+export type CycleStat = { value: number | null; tone: StatTone };
+export type CycleStatsModel = { cycleCount: number; cycle: CycleStat; period: CycleStat; variation: CycleStat };
+
+const rangeTone = (v: number | null, [lo, hi]: readonly [number, number]): StatTone =>
+  v == null ? 'unknown' : v < lo ? 'shorter' : v > hi ? 'longer' : 'typical';
+
+/**
+ * Stats only from a real pattern: an inferred average over at least 2 cycles. Settings defaults
+ * (a new user's 28 / 5) never show up as „ტიპური“ on Home. `eligible` = classic overview mode and
+ * the cycle length is not suppressed (same gate as the cycle screen).
+ */
+export function cycleStatsModel({
+  eligible,
+  averages,
+  cycleLengths,
+}: {
+  eligible: boolean;
+  averages: Pick<CycleAverages, 'usedCycleLength' | 'usedPeriodLength' | 'source' | 'cycleCount'> | null | undefined;
+  cycleLengths: { length: number }[] | null | undefined;
+}): CycleStatsModel | null {
+  if (!eligible || !averages) return null;
+  if (averages.source !== 'inferred' || (averages.cycleCount ?? 0) < 2) return null;
+  const cycle = averages.usedCycleLength ?? null;
+  const period = averages.usedPeriodLength ?? null;
+  if (cycle == null && period == null) return null;
+  const lengths = (cycleLengths ?? []).map((x) => x.length).filter((n) => Number.isFinite(n)).slice(-6);
+  const variation = lengths.length >= 2 ? Math.max(...lengths) - Math.min(...lengths) : null;
+  return {
+    cycleCount: averages.cycleCount,
+    cycle: { value: cycle, tone: rangeTone(cycle, TYPICAL_RANGES.cycle) },
+    period: { value: period, tone: rangeTone(period, TYPICAL_RANGES.period) },
+    variation: {
+      value: variation,
+      tone: variation == null ? 'unknown' : variation <= TYPICAL_RANGES.variation ? 'typical' : 'variable',
+    },
+  };
+}
+
+// ---------- daily tips ----------
+
+/**
+ * The tips row shows the everyday DAILY_TIPS cards only (`tip_*` from buildCycleAdvice): no
+ * condition cards (PCOS, endometriosis…) and no log-driven cards at a glance.
+ */
+export function homeTipCards<T extends { id: string }>(cards: T[], limit = 3): T[] {
+  return cards.filter((card) => card.id.startsWith('tip_')).slice(0, limit);
+}
+
+/**
+ * Same gate as the cycle screen's tips panel (classic overview + forecast allowed), plus phase as
+ * biology (hormonal contraception), a set-up cycle and a known phase.
+ */
+export function cycleTipsAllowed({
+  locked,
+  classicOverview,
+  forecastAllowed,
+  phaseBiological,
+  setupNeeded,
+  phase,
+}: {
+  locked: boolean | null;
+  classicOverview: boolean;
+  forecastAllowed: boolean;
+  phaseBiological: boolean;
+  setupNeeded: boolean;
+  phase: string;
+}): boolean {
+  return locked === false && classicOverview && forecastAllowed && phaseBiological && !setupNeeded && phase !== 'unknown';
+}

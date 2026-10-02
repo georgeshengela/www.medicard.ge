@@ -61,7 +61,6 @@ import { APP_VERSION } from '@/lib/appVersion';
 import { startLivePresence, setLivePresenceScreen, stopLivePresence } from '@/lib/livePresence';
 import { rememberMapboxToken } from '@/lib/run/mapbox';
 import { consumePendingCycleShare, isCycleShareCode, savePendingCycleShare } from '@/lib/cycleSharePending';
-import { getHomeLanding, resolveInitialRoute } from '@/lib/homeScreenPrefs';
 import { useStackMotion } from '@/hooks/useStackMotion';
 import { ModuleGate } from '@/components/ModuleGate';
 import { applyFeatureStatus, useFeature } from '@/lib/featureFlags';
@@ -172,7 +171,6 @@ function AuthGate({ children }: { children: React.ReactNode }) {
           return;
         }
 
-        const landing = await getHomeLanding();
         const onPrivacy = segments.includes('privacy');
         const onResults = segments.includes('results');
         const onAnalyzing = segments.includes('analyzing');
@@ -189,7 +187,7 @@ function AuthGate({ children }: { children: React.ReactNode }) {
           return;
         }
 
-        router.replace(resolveInitialRoute(landing, user.gender) as never);
+        router.replace('/(tabs)/home' as never);
       })();
     }
   }, [ready, user, segments, router, gate.kind, healthProfile, refreshHealthProfile, qaPreview, sessionRestoreError]);

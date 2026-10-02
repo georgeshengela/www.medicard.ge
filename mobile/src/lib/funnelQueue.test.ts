@@ -69,6 +69,23 @@ describe('funnel queue', () => {
     assert.deepEqual(first.props, { type: 'meal' });
   });
 
+  it('keeps every home layout enum intact (server allow-list values)', async () => {
+    const h = harness();
+    const events: Array<[Parameters<typeof h.q.enqueue>[0], Record<string, string>]> = [
+      ['home_layout_picker_opened', { source: 'home_header' }],
+      ['home_layout_picker_opened', { source: 'home_footer' }],
+      ['home_layout_changed', { layout: 'women', from: 'none', source: 'onboarding' }],
+      ['home_layout_changed', { layout: 'weight', from: 'active', source: 'profile' }],
+      ['home_layout_changed', { layout: 'standard', from: 'women', source: 'offer' }],
+      ['home_layout_offer_answered', { choice: 'dismissed' }],
+    ];
+    for (const [name, props] of events) {
+      await h.q.enqueue(name, props);
+      await h.q.flush();
+    }
+    assert.deepEqual(h.batches.flat().map((e) => [e.name, e.props]), events);
+  });
+
   it('does not send events recorded under another account', async () => {
     const h = harness([], { id: 'a' });
     await h.q.enqueue('signup_completed', { method: 'email' });

@@ -11,6 +11,7 @@ import { usePrefersReducedMotion } from '@/hooks/usePrefersReducedMotion';
 import { useIsDark, useThemeColors } from '@/theme/colors';
 import { HUB, hubInk, hubText, hubTint, type HubInk } from '@/theme/hub';
 import { tx } from '@/i18n/locale';
+import { useHomeAccent } from '@/theme/homeAccent';
 
 const AnimatedCircle = Animated.createAnimatedComponent(Circle);
 const RING = 96;
@@ -85,6 +86,7 @@ function MacroChip({ macro }: { macro: Macro }) {
 export function HomeNutritionCard() {
   const c = useThemeColors();
   const dark = useIsDark();
+  const accent = useHomeAccent();
   const router = useRouter();
   const reduceMotion = usePrefersReducedMotion();
   const { data, loading } = useNutritionDashboard();
@@ -163,7 +165,7 @@ export function HomeNutritionCard() {
           accessibilityRole="button"
           accessibilityLabel={tx('გადაიღე კერძი — კამერა იხსნება და Medi კალორიებს დაითვლის', 'Snap a meal — the camera opens and Medi counts the calories')}
           onPress={() => router.push({ pathname: '/nutrition/diary', params: { method: 'camera' } } as never)}
-          style={[s.primary, { backgroundColor: dark ? '#0D9488' : '#0F766E' }]}
+          style={[s.primary, { backgroundColor: accent.cta }]}
         >
           <Camera size={20} color="#FFFFFF" strokeWidth={2} />
           <Text style={[hubText.link, { color: '#FFFFFF', fontSize: 14 }]}>{tx('გადაიღე კერძი', 'Snap a meal')}</Text>

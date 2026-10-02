@@ -48,27 +48,31 @@ const EMPTY_LOGS: HydrationLog[] = [];
 const EMPTY_SERVER: Record<string, number> = {};
 
 /** Water is LIVE: the last total shows at once and re-reads on every visit and health change. */
-export function useHydration() {
+export function useHydration(opts: { enabled?: boolean } = {}) {
   const { user } = useAuth();
+  const enabled = Boolean(user?.id) && (opts.enabled ?? true);
   const query = useAccountQuery<HydrationData>({
     key: [...HYDRATION_KEY],
     fetch: fetchHydration,
     staleTime: FRESH.LIVE,
-    enabled: Boolean(user?.id),
+    enabled,
   });
   const { refetch } = query;
   const refresh = useCallback(async () => {
     await refetch();
   }, [refetch]);
 
-  useEffect(() => subscribeHealthRefresh(() => {
-    void queryClient.invalidateQueries({ queryKey: accountKey(...HYDRATION_KEY) });
-  }), []);
+  useEffect(() => {
+    if (!enabled) return undefined;
+    return subscribeHealthRefresh(() => {
+      void queryClient.invalidateQueries({ queryKey: accountKey(...HYDRATION_KEY) });
+    });
+  }, [enabled]);
 
   const logs = query.data?.logs ?? EMPTY_LOGS;
   const goalMl = query.data?.goalMl ?? 2000;
   const serverByDate = query.data?.serverByDate ?? EMPTY_SERVER;
-  const loading = Boolean(user?.id) && !query.data && query.fetchStatus !== 'idle';
+  const loading = enabled && !query.data && query.fetchStatus !== 'idle';
 
   const patch = useCallback((next: Partial<HydrationData>) => {
     queryClient.setQueryData<HydrationData>(accountKey(...HYDRATION_KEY), (old) =>

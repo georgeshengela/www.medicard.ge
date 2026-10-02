@@ -260,11 +260,13 @@ export function NScreen({
   );
 }
 /** Cached app-wide (Home card, hub, plan, goal, progress, weight share one answer); meal writes invalidate it. */
-export function useNutritionDashboard() {
+export function useNutritionDashboard(opts: { enabled?: boolean } = {}) {
   const query = useAccountQuery<NutritionDashboard>({
     key: ["nutrition", "dashboard"],
     fetch: () => nutritionProgramApi.dashboard(),
     staleTime: FRESH.SHORT,
+    // Home layouts that do not show nutrition keep the observer quiet (no fetch, no focus refetch).
+    enabled: opts.enabled ?? true,
   });
   const { refetch } = query;
   const load = useCallback(async () => {

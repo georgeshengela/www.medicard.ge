@@ -260,13 +260,6 @@ export const enAccount: Pick<Strings, 'visits' | 'referral' | 'passport' | 'phon
     themeDark: 'Dark',
     themeSystem: 'System',
     themeHint: 'Choose an appearance or follow your phone’s setting.',
-    homeLandingTitle: 'Open the app to',
-    homeLandingHub: 'General',
-    homeLandingHubHint: 'Home — with every service',
-    homeLandingCycle: 'Cycle',
-    homeLandingCycleHint: 'The app opens straight to your cycle',
-    homeLandingExplain:
-      'When you open the app, you can land straight on your cycle or on the usual Home page — with medications, lab and every service. You can always reach your cycle from Home too.',
     notifications: 'Notifications',
     notificationsOff: 'Off',
     permissions: 'Permissions and connections',

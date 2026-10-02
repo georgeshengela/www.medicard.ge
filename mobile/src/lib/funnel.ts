@@ -15,6 +15,9 @@ import {
   createFunnelQueue,
   installSourceFromUrl,
   type FunnelEventName,
+  type FunnelHomeLayout,
+  type FunnelHomeLayoutOfferChoice,
+  type FunnelHomeLayoutSource,
   type HealthActionType,
   type SendResult,
 } from './funnelQueue';
@@ -100,6 +103,22 @@ export function trackOnboardingCompleted(primaryGoal: unknown): void {
 /** First medication / meal / cycle log / weight / visit / record / manual check-in of this account. */
 export function trackFirstHealthAction(type: HealthActionType): void {
   void trackOncePerAccount('first_health_action', { type }).catch(() => undefined);
+}
+
+/** Home layout picker shown (header chip, footer link, Profile row, the offer card, onboarding step). */
+export function trackHomeLayoutPickerOpened(source: FunnelHomeLayoutSource): void {
+  trackFunnel('home_layout_picker_opened', { source });
+}
+
+/** A saved layout change. `from: 'none'` = no earlier choice (first pick in onboarding). Same layout = no event. */
+export function trackHomeLayoutChanged(layout: FunnelHomeLayout, from: FunnelHomeLayout | 'none', source: FunnelHomeLayoutSource): void {
+  if (layout === from) return;
+  trackFunnel('home_layout_changed', { layout, from, source });
+}
+
+/** Answer to the women's Home offer card: tried it, dismissed it, or picked another layout. */
+export function trackHomeLayoutOfferAnswered(choice: FunnelHomeLayoutOfferChoice): void {
+  trackFunnel('home_layout_offer_answered', { choice });
 }
 
 const viewedSteps = new Set<string>();

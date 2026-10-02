@@ -13,6 +13,28 @@ const CACHE_KEY = 'medicard.weather.cache.v2';
 
 let memory: { owner: string; record: WeatherCacheRecord } | null = null;
 let generation = 0;
+const cacheListeners = new Set<() => void>();
+
+/**
+ * Read-only observers (Home's outdoor tile) learn that a new snapshot was written or the cache was
+ * cleared, so they can re-read it instead of fetching the weather a second time. Notification only.
+ */
+export function subscribeWeatherCache(listener: () => void): () => void {
+  cacheListeners.add(listener);
+  return () => {
+    cacheListeners.delete(listener);
+  };
+}
+
+function notifyWeatherCache() {
+  cacheListeners.forEach((listener) => {
+    try {
+      listener();
+    } catch {
+      // An observer's failure never affects the writer.
+    }
+  });
+}
 
 export function locationChangedMeaningfully(
   a: { lat: number; lng: number },
@@ -49,12 +71,14 @@ export async function readWeatherCache(owner = localAccountId()): Promise<Weathe
 export async function writeWeatherCache(record: WeatherCacheRecord, owner = localAccountId()): Promise<void> {
   if (!owner || owner !== localAccountId()) return;
   memory = { owner, record };
+  notifyWeatherCache();
   await setPreference(`${CACHE_KEY}.${owner}`, JSON.stringify(record));
 }
 
 export async function clearWeatherCache(owner = localAccountId()): Promise<void> {
   generation++;
   if (memory?.owner === owner) memory = null;
+  notifyWeatherCache();
   if (owner) await deletePreference(`${CACHE_KEY}.${owner}`);
 }
 

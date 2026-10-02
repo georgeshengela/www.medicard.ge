@@ -683,13 +683,5 @@ export const enCore: Pick<Strings, 'app' | 'common' | 'auth' | 'assessment' | 'o
     nextDoseOf: (taken: number, total: number) => `${taken}/${total}`,
     featured: 'Featured',
     allServices: 'All services',
-    cyclePromptTitle: 'Make cycle your home screen?',
-    cyclePromptBody:
-      'Many women use Medicard to track their cycle. Would you like the app to open straight to your cycle?',
-    cyclePromptPrimary: 'Yes, cycle is my home',
-    cyclePromptPrimaryHint: 'The app will always open to your cycle',
-    cyclePromptSecondary: 'No, the regular home',
-    cyclePromptSecondaryHint: 'You can reach your cycle from Home',
-    cyclePromptFooter: 'You can change this anytime in Profile.',
   },
 };

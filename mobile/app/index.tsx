@@ -1,6 +1,5 @@
 import { Redirect } from 'expo-router';
 import { View } from 'react-native';
-import { resolveInitialRoute, getHomeLanding } from '@/lib/homeScreenPrefs';
 import { needsHealthAssessment, needsProfileSetup, useAuth } from '@/store/AuthContext';
 import { nextProfileSetupHref } from '@/lib/onboarding';
 import { useEffect, useState } from 'react';
@@ -33,8 +32,8 @@ export default function Index() {
         return;
       }
 
-      const landing = await getHomeLanding();
-      if (!cancelled) setHref(resolveInitialRoute(landing, user.gender));
+      // Home is always the first screen; its layout (women's, active, …) is chosen on Home itself.
+      if (!cancelled) setHref('/(tabs)/home');
     })();
 
     return () => {

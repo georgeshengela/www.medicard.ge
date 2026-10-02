@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import {
   RefreshControl,
   ScrollView,
@@ -7,6 +7,7 @@ import {
   View,
 } from 'react-native';
 import { useFocusEffect, useRouter } from 'expo-router';
+import Animated, { Easing, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
 import {
@@ -27,7 +28,6 @@ import {
   Trophy,
 } from 'lucide-react-native';
 import { Disclaimer } from '@/components/Disclaimer';
-import { DefaultHomePrompt } from '@/components/home/DefaultHomePrompt';
 import { HomeAskMedi } from '@/components/home/HomeAskMedi';
 import { HomeCyclePreviewCard } from '@/components/home/HomeCyclePreviewCard';
 import { HomeDayRings, type DayRing } from '@/components/home/HomeDayRings';
@@ -55,7 +55,6 @@ import { primaryGoalFromProfile } from '@/lib/assessmentForm';
 import { profileCompletion } from '@/lib/profileCompletion';
 import { mediRoute } from '@/lib/mediModes';
 import { computeTodayDoses } from '@/lib/home/todayDoses';
-import { getCyclePromptSeen, type HomeLanding } from '@/lib/homeScreenPrefs';
 import { todayYmd } from '@/lib/medications.shared';
 import { useAuth } from '@/store/AuthContext';
 import { useCommunityEntry } from '@/lib/communityAccess';
@@ -64,6 +63,31 @@ import { HUB, hubText } from '@/theme/hub';
 import { ka } from '@/i18n/ka';
 import { clearPendingReferralCode, readPendingReferralCode } from '@/lib/referral';
 import { HYDRATION_DROP_ML } from '@/types/hydration';
+import { useNutritionDashboard } from '@/components/nutrition/ProgramUI';
+import { HomeCustomizeRow, HomeLayoutOfferCard, HomeWash } from '@/components/home/layout/HomeLayoutChrome';
+import { HomeLayoutPicker } from '@/components/home/layout/HomeLayoutPicker';
+import { HomeDayPair } from '@/components/home/sections/HomeDayPair';
+import { HomeNutritionLite } from '@/components/home/sections/HomeNutritionLite';
+import { HomeEnergyCard } from '@/components/home/sections/HomeEnergyCard';
+import { HomeCycleHero, HomeCycleToastHost } from '@/components/home/sections/HomeCycleHero';
+import { HomeCycleTips } from '@/components/home/sections/HomeCycleTips';
+import { HomeCycleStats } from '@/components/home/sections/HomeCycleStats';
+import { HomeMoveHero } from '@/components/home/sections/HomeMoveHero';
+import { HomeWaterOutdoor } from '@/components/home/sections/HomeWaterOutdoor';
+import { HomeMedirunCard } from '@/components/home/sections/HomeMedirunCard';
+import { HomeQuestCard } from '@/components/home/sections/HomeQuestCard';
+import { refreshActiveHomeData } from '@/hooks/useHomeActive';
+import { HomeQuickLog } from '@/components/home/sections/HomeQuickLog';
+import { HomeWeightProgress } from '@/components/home/sections/HomeWeightProgress';
+import { HomeMealsCard } from '@/components/home/sections/HomeMealsCard';
+import { HomeNutritionTools } from '@/components/home/sections/HomeNutritionTools';
+import { useHomeLayout } from '@/hooks/useHomeLayout';
+import { usePrefersReducedMotion } from '@/hooks/usePrefersReducedMotion';
+import { useCycleView } from '@/lib/cycleViewCache';
+import { trackHomeLayoutChanged, trackHomeLayoutOfferAnswered } from '@/lib/funnel';
+import { chooseHomeLayout } from '@/lib/home/homeLayoutStore';
+import { HomeAccentContext, homeAccentFor } from '@/theme/homeAccent';
+import { useIsDark } from '@/theme/colors';
 import { tx } from '@/i18n/locale';
 
 /** Four AI check-ups, one per question a person actually has. */
@@ -114,19 +138,38 @@ export default function Home() {
   }, [router, userId, userCreatedAt, invitesOn]);
   const insets = useSafeAreaInsets();
   const tabInset = useTabBarInset(20);
-  const hydration = useHydration();
-  const steps = useStepsMetrics('1d');
-  const meds = useMedications();
-  const [refreshing, setRefreshing] = useState(false);
-  const [refreshError, setRefreshError] = useState(false);
-  const [showCyclePrompt, setShowCyclePrompt] = useState(false);
-  const female = user?.gender === 'FEMALE';
-  const completion = profileCompletion(healthProfile, user);
-  const communityEntry = useCommunityEntry(user?.id, female) && isFeatureOn('community', features);
-  const news = useAnnouncements();
+  const dark = useIsDark();
+  const reduceMotion = usePrefersReducedMotion();
+  // Which Home (women's / active / nutrition & weight / standard): synchronous on the first frame.
+  const { layout, offer, cycleLocked } = useHomeLayout();
+  const accent = useMemo(() => homeAccentFor(layout, dark, c), [layout, dark, c]);
+  const layoutsOn = isFeatureOn('homeLayouts', features);
   const stepsOn = isFeatureOn('steps', features);
   const waterOn = isFeatureOn('hydration', features);
   const medsOn = isFeatureOn('medications', features);
+  const nutritionOn = isFeatureOn('nutrition', features);
+  const cycleOn = isFeatureOn('cycle', features);
+  const female = user?.gender === 'FEMALE';
+  // One subscriber per query key on Home: shared data lives here and is handed to the sections.
+  const hydration = useHydration({ enabled: waterOn });
+  const steps = useStepsMetrics('1d', { enabled: stepsOn });
+  const meds = useMedications();
+  // The standard nutrition card reads the dashboard itself; the other layouts share this one.
+  const nutrition = useNutritionDashboard({ enabled: nutritionOn && layout !== 'standard' });
+  const cycleQuery = useCycleView(user?.id, layout === 'women' && female && cycleOn && cycleLocked === false);
+  const cycle = {
+    view: cycleQuery.data ?? null,
+    loading: !cycleQuery.data && cycleQuery.fetchStatus !== 'idle',
+    failed: !cycleQuery.data && Boolean(cycleQuery.error),
+    retry: () => void cycleQuery.refetch(),
+  };
+  const [refreshing, setRefreshing] = useState(false);
+  const [refreshError, setRefreshError] = useState(false);
+  const [picker, setPicker] = useState<'home_header' | 'home_footer' | 'offer' | null>(null);
+  const [offerConfirm, setOfferConfirm] = useState(false);
+  const completion = profileCompletion(healthProfile, user);
+  const communityEntry = useCommunityEntry(user?.id, female) && isFeatureOn('community', features);
+  const news = useAnnouncements();
   // AI check-ups: each tile has its own switch (symptoms, labs, imaging, skin); deep analysis is a Medi mode.
   const checkupTiles = CHECKUP_TILES.filter((tile) => isHrefAvailable(tile.href, features));
   const deepOn = isHrefAvailable(mediRoute({ mode: 'deep' }), features);
@@ -154,25 +197,74 @@ export default function Home() {
     // Reminders keep arriving while medications are paused; only the Home block goes.
     if (!medsOn) hidden.add('nextDose');
     if (!stepsOn && !waterOn && !showMedsRing) hidden.add('hero');
+    // Layout sections follow the same switches as the modules they summarise.
+    if (!cycleOn) (['cycleHero', 'cycleTips', 'cycleStats'] as const).forEach((id) => hidden.add(id));
+    if (!stepsOn && !waterOn) {
+      hidden.add('dayPair');
+      hidden.add('waterSteps');
+    }
+    if (!stepsOn) hidden.add('moveHero');
+    if (!waterOn && !isFeatureOn('weather', features)) hidden.add('waterOutdoor');
+    if (!isFeatureOn('medirun', features)) hidden.add('medirun');
+    if (!isFeatureOn('quest', features)) hidden.add('quest');
+    if (!nutritionOn) (['nutritionLite', 'energy', 'quickLog', 'meals', 'nutritionTools'] as const).forEach((id) => hidden.add(id));
+    if (!isFeatureOn('weight', features)) hidden.add('weightProgress');
+    if (!layoutsOn) hidden.add('customize');
     return hidden;
-  }, [features, checkupTiles.length, deepOn, medsOn, stepsOn, waterOn, showMedsRing]);
+  }, [features, checkupTiles.length, deepOn, medsOn, stepsOn, waterOn, showMedsRing, cycleOn, nutritionOn, layoutsOn]);
+
+  // A new layout starts at its top, with a short fade (none under reduced motion).
+  const scrollRef = useRef<ScrollView>(null);
+  const fade = useSharedValue(1);
+  const shownLayout = useRef(layout);
+  useLayoutEffect(() => {
+    if (shownLayout.current === layout) return;
+    shownLayout.current = layout;
+    scrollRef.current?.scrollTo({ y: 0, animated: false });
+    if (reduceMotion) return;
+    fade.value = 0;
+    fade.value = withTiming(1, { duration: 180, easing: Easing.out(Easing.cubic) });
+  }, [layout, reduceMotion, fade]);
+  const fadeStyle = useAnimatedStyle(() => ({ opacity: fade.value }));
+
+  // The confirmation after trying the women's Home stays a few seconds, never past leaving Home.
+  useEffect(() => {
+    if (!offerConfirm) return undefined;
+    const timer = setTimeout(() => setOfferConfirm(false), 6000);
+    return () => clearTimeout(timer);
+  }, [offerConfirm]);
+  const answerOffer = {
+    onTry: () => {
+      void Haptics.selectionAsync().catch(() => undefined);
+      chooseHomeLayout('women', { offerDone: true });
+      trackHomeLayoutOfferAnswered('tried');
+      trackHomeLayoutChanged('women', layout, 'offer');
+      setOfferConfirm(true);
+    },
+    onDismiss: () => {
+      chooseHomeLayout(null, { offerDone: true });
+      trackHomeLayoutOfferAnswered('dismissed');
+    },
+    onBrowse: () => {
+      chooseHomeLayout(null, { offerDone: true });
+      trackHomeLayoutOfferAnswered('other');
+      setPicker('offer');
+    },
+    onUndo: () => {
+      chooseHomeLayout('standard', { offerDone: true });
+      trackHomeLayoutChanged('standard', 'women', 'offer');
+      setOfferConfirm(false);
+    },
+  };
 
   useFocusEffect(
     useCallback(() => {
-      let active = true;
       // Session (/auth/me) at most once a minute on focus; pull-to-refresh always re-reads.
       void refresh({ maxAgeMs: 60_000 }).catch(() => {});
-      if (female)
-        void getCyclePromptSeen()
-          .then((seen) => {
-            if (active) setShowCyclePrompt(!seen);
-          })
-          .catch(() => {});
-      else setShowCyclePrompt(false);
       return () => {
-        active = false;
+        setOfferConfirm(false);
       };
-    }, [user?.id, female, refresh]),
+    }, [refresh]),
   );
 
   const onRefresh = async () => {
@@ -181,10 +273,14 @@ export default function Home() {
     try {
       const results = await Promise.allSettled([
         refresh(),
-        steps.refresh(),
-        hydration.refresh(),
+        stepsOn ? steps.refresh() : Promise.resolve(),
+        waterOn ? hydration.refresh() : Promise.resolve(),
         meds.load(),
         news.reload(),
+        // Layout-only data refreshes only where that layout shows it (active queries only).
+        layout !== 'standard' && nutritionOn ? nutrition.load() : Promise.resolve(),
+        layout === 'women' && cycleQuery.isEnabled ? cycleQuery.refetch() : Promise.resolve(),
+        layout === 'active' ? refreshActiveHomeData() : Promise.resolve(),
       ]);
       setRefreshError(results.some((result) => result.status === 'rejected'));
       requestHealthRefresh();
@@ -258,6 +354,7 @@ export default function Home() {
           avatarId={avatar}
           streak={user?.currentStreak ?? 0}
           dateLabel={formatDayMonthYearKa()}
+          onCustomize={layoutsOn ? () => setPicker('home_header') : undefined}
         />
       </View>
     ),
@@ -276,7 +373,7 @@ export default function Home() {
       </View>
     ),
     nextDose: <HomeNextDoseSection meds={meds} />,
-    coach: <HomeCoachSection />,
+    coach: <HomeCoachSection tone={layout === 'active' || layout === 'weight' ? 'surface' : 'spotlight'} />,
     cycle: (
       <View style={s.section}>
         {heading(tx('ქალის ჯანმრთელობა', "Women's health"), '/cycle', tx('ციკლის ნახვა', 'View cycle'))}
@@ -348,11 +445,63 @@ export default function Home() {
         <Disclaimer />
       </View>
     ),
-  };
+    // ---- shared by the layouts ----
+    layoutOffer: (
+      <HomeLayoutOfferCard
+        confirmed={offerConfirm}
+        onTry={answerOffer.onTry}
+        onDismiss={answerOffer.onDismiss}
+        onBrowse={answerOffer.onBrowse}
+        onUndo={answerOffer.onUndo}
+      />
+    ),
+    customize: <HomeCustomizeRow layout={layout} onPress={() => setPicker('home_footer')} />,
+    nutritionLite: <HomeNutritionLite nutrition={nutrition} />,
+    dayPair: (
+      <HomeDayPair
+        steps={steps}
+        hydration={hydration}
+        onAddWater={addGlass}
+        stepsOn={stepsOn}
+        waterOn={waterOn}
+        title={tx('შენი დღე', 'Your day')}
+        linkLabel={tx('ყველა მაჩვენებელი', 'All metrics')}
+        linkHref="/health-metrics"
+      />
+    ),
+    waterSteps: (
+      <HomeDayPair
+        steps={steps}
+        hydration={hydration}
+        onAddWater={addGlass}
+        stepsOn={stepsOn}
+        waterOn={waterOn}
+        title={tx('წყალი და ნაბიჯები', 'Water and steps')}
+        linkLabel={tx('მაჩვენებლები', 'Metrics')}
+        linkHref="/health-metrics"
+      />
+    ),
+    // ---- women ----
+    cycleHero: <HomeCycleHero cycle={cycle} locked={cycleLocked} userId={user?.id} first />,
+    cycleTips: <HomeCycleTips cycle={cycle} locked={cycleLocked} />,
+    cycleStats: <HomeCycleStats cycle={cycle} locked={cycleLocked} showCommunity={communityEntry} />,
+    // ---- active ----
+    moveHero: <HomeMoveHero steps={steps} first />,
+    waterOutdoor: <HomeWaterOutdoor hydration={hydration} onAddWater={addGlass} />,
+    medirun: <HomeMedirunCard />,
+    quest: <HomeQuestCard />,
+    // ---- nutrition & weight ----
+    energy: <HomeEnergyCard nutrition={nutrition} first />,
+    quickLog: <HomeQuickLog />,
+    weightProgress: <HomeWeightProgress nutrition={nutrition} />,
+    meals: <HomeMealsCard nutrition={nutrition} />,
+    nutritionTools: <HomeNutritionTools nutrition={nutrition} female={female} />,
+  } satisfies Record<HomeSectionId, React.ReactNode>;
 
   return (
-    <>
+    <HomeAccentContext.Provider value={accent}>
       <ScrollView
+        ref={scrollRef}
         style={{ flex: 1, backgroundColor: c.bg100 }}
         contentContainerStyle={{
           paddingBottom: tabInset + 20,
@@ -361,7 +510,7 @@ export default function Home() {
           alignSelf: 'center',
         }}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={c.primary100} />
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={accent.ink} />
         }
         showsVerticalScrollIndicator={false}
       >
@@ -373,22 +522,24 @@ export default function Home() {
             {tx('განახლება ვერ დასრულდა. ხელახლა ჩამოწიე გვერდი.', "Couldn't refresh. Pull down to try again.")}
           </Text>
         ) : null}
-        {buildHomeSectionOrder({
-          includeCycle: female,
-          primaryGoal: primaryGoalFromProfile(healthProfile),
-          hidden: hiddenSections,
-        }).map((id) => (
-          <React.Fragment key={id}>{sections[id]}</React.Fragment>
-        ))}
+        <HomeWash topInset={insets.top} />
+        <Animated.View style={fadeStyle}>
+          {buildHomeSectionOrder({
+            layout,
+            includeCycle: female,
+            primaryGoal: primaryGoalFromProfile(healthProfile),
+            hidden: hiddenSections,
+            offer: offer || offerConfirm,
+          }).map((id) => (
+            <React.Fragment key={id}>{sections[id]}</React.Fragment>
+          ))}
+        </Animated.View>
       </ScrollView>
-      <DefaultHomePrompt
-        visible={showCyclePrompt}
-        onClose={(landing: HomeLanding) => {
-          setShowCyclePrompt(false);
-          if (landing === 'cycle') router.replace('/cycle');
-        }}
-      />
-    </>
+      {layout === 'women' ? <HomeCycleToastHost /> : null}
+      {layoutsOn ? (
+        <HomeLayoutPicker visible={picker !== null} onClose={() => setPicker(null)} source={picker ?? 'home_header'} />
+      ) : null}
+    </HomeAccentContext.Provider>
   );
 }
 

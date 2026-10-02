@@ -17,7 +17,6 @@ import {
   Trash2,
   type LucideIcon,
 } from 'lucide-react-native';
-import { DefaultHomePrompt } from '@/components/home/DefaultHomePrompt';
 import { HomeSectionHeading } from '@/components/home/HomeSectionHeading';
 import { HomeMediQuestSection } from '@/components/quest/HomeMediQuestSection';
 import { ProfilePetsSection } from '@/components/pets/ProfilePetsSection';
@@ -62,7 +61,6 @@ export default function Profile() {
 
   const [refreshing, setRefreshing] = useState(false);
   const [notificationsOn, setNotificationsOn] = useState<boolean | null>(null);
-  const [showCyclePrompt, setShowCyclePrompt] = useState(false);
   const features = useFeatureState();
   const recordsOn = isFeatureOn('records', features);
   const medsOn = isFeatureOn('medications', features);
@@ -258,7 +256,7 @@ export default function Profile() {
       {/* Medical profile */}
       <View style={s.section}>
         <HomeSectionHeading title={ka.profile.medicalProfile} />
-        <MedicalProfileSection onFemaleSaved={() => setShowCyclePrompt(true)} />
+        <MedicalProfileSection />
         {isFeatureOn('healthPassport', features) ? (
           <View style={[s.card, { backgroundColor: colors.surface, marginTop: 12 }]}>
             <ProfileMenuRow icon={FileText} ink="teal" label={ka.passport.profileRow} value={ka.passport.profileRowHint} onPress={() => router.push('/profile/health-passport' as never)} isLast />
@@ -270,7 +268,7 @@ export default function Profile() {
       <View style={s.section}>
         <HomeSectionHeading title={ka.profile.settings} />
         <View style={{ gap: 12 }}>
-          <ProfilePreferencesCard showLanding={user?.gender === 'FEMALE'} />
+          <ProfilePreferencesCard />
           <View style={[s.list, { backgroundColor: colors.surface }]}>
             <ProfileMenuRow
               icon={BellRing}
@@ -310,7 +308,6 @@ export default function Profile() {
         {ka.app.disclaimer}
       </Text>
 
-      <DefaultHomePrompt visible={showCyclePrompt} onClose={() => setShowCyclePrompt(false)} />
       <DeleteAccountModal
         visible={deleteOpen}
         busy={deleteBusy}

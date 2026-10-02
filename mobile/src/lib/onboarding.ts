@@ -30,7 +30,8 @@ function phoneDigits(user: User | null | undefined): string {
 /**
  * Next unfinished setup screen after the 5 assessment steps (7-step onboarding, 2026-09-27):
  * step 6 = privacy acceptance (required, legal record) then the voluntary AI consent,
- * step 7 = notification permission (requested only from its button). Avatar, phone
+ * step 7 = notification permission (requested only from its button), step 8 = the Home layout
+ * (women's / active / nutrition & weight / standard — changeable any time later). Avatar, phone
  * verification, Face ID and location are no longer onboarding steps: they are asked when a
  * feature actually needs them. Their screens stay routable for that.
  */
@@ -42,6 +43,9 @@ export function nextProfileSetupHref(
   if (extra.privacyAccepted !== true) return '/(auth)/profile-setup/privacy';
   if (extra.aiPrivacyPrompted !== true) return '/(auth)/profile-setup/ai-privacy';
   if (extra.notificationsEnabled === undefined) return '/(auth)/profile-setup/notifications';
+  // Step 8 (owner 2026-10-02): pick the Home layout before landing on Home. The screen itself
+  // skips ahead while the admin switch „homeLayouts“ is off.
+  if (typeof extra.homeLayout !== 'string' && extra.homeLayoutOfferDone !== true) return '/(auth)/profile-setup/home-layout';
   return '/(auth)/profile-setup/analyzing';
 }
 

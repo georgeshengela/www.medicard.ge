@@ -4,6 +4,7 @@ import { resetRunMemory } from '@/lib/run/store';
 import { ka } from '@/i18n/ka';
 import { ApiError, api, type AiEngineId, type CheckInState, type Gender, type HealthProfile, type Usage, type User } from '@/lib/api';
 import { setLocalAccountId, wipeLegacyUnscopedHealthCaches } from '@/lib/localAccount';
+import { primeHomeLayout, registerHomeLayoutProfilePatch } from '@/lib/home/homeLayoutStore';
 import { needsHealthAssessment as needsHealthAssessmentFromLib, needsProfileSetup } from '@/lib/onboarding';
 import { clearSessionSnapshot, loadSessionSnapshot, saveSessionSnapshot } from '@/lib/sessionSnapshot';
 import { clearToken, getToken, setToken } from '@/lib/storage';
@@ -145,6 +146,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           lastMeAt.current = Date.now();
           setSessionRestoreError(null);
           setLocalAccountId(me.user.id);
+          // Home layout + cycle lock + cached flags before the first Home frame (≤ ~300 ms, never throws).
+          await primeHomeLayout(me.user.id, me.healthProfile ?? null, me.user.gender);
+          if (await getToken() !== token) return;
           // Keep the same object when nothing changed, so effects keyed on [user] (quest socket,
           // reminders) do not re-run on every Home/Profile focus.
           setUser((prev) => (sameJson(prev, me.user) ? prev : me.user));
@@ -188,6 +192,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     hydrate().finally(() => setReady(true));
   }, [hydrate]);
+
+  // A saved Home layout choice is merged into the in-memory profile, so screens that re-send the
+  // whole profile (onboarding, setup) and every reader see the same value as the server.
+  useEffect(() => {
+    registerHomeLayoutProfilePatch((patch) =>
+      setHealthProfile((prev) =>
+        prev ? { ...prev, extraAnswers: { ...((prev.extraAnswers ?? {}) as Record<string, unknown>), ...patch } } : prev,
+      ),
+    );
+    return () => registerHomeLayoutProfilePatch(null);
+  }, []);
 
   useEffect(() => {
     if (!isQuestDevEnabled()) return undefined;
@@ -246,6 +261,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       const settle = async (user: User, usage: Usage, stats: Stats, healthProfile: HealthProfile | null) => {
         setLocalAccountId(user.id);
+        await primeHomeLayout(user.id, healthProfile, user.gender);
+        if (await getToken() !== result.token) return;
         setUser(user);
         setUsage(usage);
         setStats(stats);

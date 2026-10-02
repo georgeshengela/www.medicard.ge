@@ -3,8 +3,8 @@ import { Stack, useSegments } from 'expo-router';
 import { useStackMotion } from '@/hooks/useStackMotion';
 import { trackOnboardingStep } from '@/lib/funnel';
 
-/** Onboarding steps 6–7 (privacy, AI consent, notifications) for the product funnel: keys only. */
-const FUNNEL_TAIL = ['privacy', 'ai-privacy', 'notifications', 'analyzing'];
+/** Onboarding steps 6–8 (privacy, AI consent, notifications, Home layout) for the product funnel: keys only. */
+const FUNNEL_TAIL = ['privacy', 'ai-privacy', 'notifications', 'home-layout', 'analyzing'];
 
 export default function ProfileSetupLayout() {
   const motion = useStackMotion();
@@ -29,6 +29,7 @@ export default function ProfileSetupLayout() {
       <Stack.Screen name="face-id" />
       <Stack.Screen name="privacy" />
       <Stack.Screen name="notifications" />
+      <Stack.Screen name="home-layout" />
       <Stack.Screen name="ai-privacy" />
       <Stack.Screen name="location" />
       <Stack.Screen name="analyzing" />

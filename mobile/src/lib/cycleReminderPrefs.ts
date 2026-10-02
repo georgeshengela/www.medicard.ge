@@ -1,3 +1,4 @@
+import { useSyncExternalStore } from 'react';
 import { getPreference, setPreference } from '@/lib/storage';
 
 import type { CycleNotificationMaskStyle } from '@/lib/cycleNotificationMask';
@@ -116,11 +117,44 @@ export async function setCycleReminderPrefs(prefs: Partial<CycleReminderPrefs>):
   await Promise.all(tasks);
 }
 
+// Synchronous copy of the Face ID / PIN cycle lock for Home: primed at sign-in so the women's
+// Home never paints cycle data (or a skeleton flash) before the lock is known. `null` = not read yet.
+let privacyLockCache: boolean | null = null;
+const privacyLockListeners = new Set<() => void>();
+function rememberPrivacyLock(enabled: boolean) {
+  if (privacyLockCache === enabled) return;
+  privacyLockCache = enabled;
+  privacyLockListeners.forEach((listener) => listener());
+}
+
 export async function isCyclePrivacyLockEnabled(): Promise<boolean> {
   const v = await getPreference(CYCLE_REMINDER_KEYS.privacyLock);
+  rememberPrivacyLock(v === '1');
   return v === '1';
 }
 
 export async function setCyclePrivacyLockEnabled(enabled: boolean): Promise<void> {
   await setPreference(CYCLE_REMINDER_KEYS.privacyLock, enabled ? '1' : '0');
+  rememberPrivacyLock(enabled);
+}
+
+/** Last known lock state without waiting; `null` until the first read. */
+export function peekCyclePrivacyLock(): boolean | null {
+  return privacyLockCache;
+}
+
+/** Live lock state for Home (re-renders when the cycle settings change it). Starts a read if unknown. */
+export function useCyclePrivacyLock(): boolean | null {
+  const value = useSyncExternalStore(
+    (listener) => {
+      privacyLockListeners.add(listener);
+      if (privacyLockCache === null) void isCyclePrivacyLockEnabled().catch(() => rememberPrivacyLock(false));
+      return () => {
+        privacyLockListeners.delete(listener);
+      };
+    },
+    peekCyclePrivacyLock,
+    peekCyclePrivacyLock,
+  );
+  return value;
 }

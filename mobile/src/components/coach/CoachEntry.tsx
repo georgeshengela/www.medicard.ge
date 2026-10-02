@@ -12,6 +12,7 @@ import { StyledQr } from '@/components/coach/StyledQr';
 import { HUB, hubInk, hubText, hubTint, type HubInk } from '@/theme/hub';
 import { useIsDark, useThemeColors } from '@/theme/colors';
 import { tx } from '@/i18n/locale';
+import { useHomeAccent } from '@/theme/homeAccent';
 
 type State = { me: CoachMe; overview: ClientOverview | null };
 
@@ -30,11 +31,16 @@ function useCoachState(): State | null {
   return query.data ?? null;
 }
 
-/** Home: shows only for people with a trainer (next session) or verified trainers (workspace shortcut). */
-export function HomeCoachSection() {
+/**
+ * Home: shows only for people with a trainer (next session) or verified trainers (workspace shortcut).
+ * `tone="surface"` on Home layouts that already have their one spotlight (active, nutrition & weight).
+ */
+export function HomeCoachSection({ tone = 'spotlight' }: { tone?: 'spotlight' | 'surface' } = {}) {
   const router = useRouter();
   const c = useThemeColors();
+  const accent = useHomeAccent();
   const state = useCoachState();
+  const quiet = tone === 'surface';
   if (!state) return null;
   const trainer = state.me.trainerProfile?.status === 'VERIFIED';
   const next = state.overview?.upcoming?.find((s) => s.status === 'SCHEDULED');
@@ -43,17 +49,17 @@ export function HomeCoachSection() {
     <View style={{ paddingHorizontal: HUB.gutter, marginTop: HUB.sectionGap }}>
       <HomeSectionHeading title={trainer && !state.overview?.link ? tx('ტრენერის რეჟიმი', 'Trainer mode') : tx('ჩემი ტრენერი', 'My trainer')} linkLabel={tx('გახსნა', 'Open')} onLink={() => router.push((trainer && !state.overview?.link ? '/coach' : '/trainer') as never)} />
       {state.overview?.link ? (
-        <Pressable accessibilityRole="button" accessibilityLabel={next ? tx(`შემდეგი ვარჯიში ${next.label}`, `Next workout ${next.label}`) : tx('ჩემი ტრენერი', 'My trainer')} onPress={() => router.push('/trainer' as never)} style={[s.card, { backgroundColor: HUB.spotlightBg }]}>
-          <View style={s.tile}>
-            <CalendarCheck2 size={21} color="#99F6E4" />
+        <Pressable accessibilityRole="button" accessibilityLabel={next ? tx(`შემდეგი ვარჯიში ${next.label}`, `Next workout ${next.label}`) : tx('ჩემი ტრენერი', 'My trainer')} onPress={() => router.push('/trainer' as never)} style={[s.card, { backgroundColor: quiet ? c.surface : HUB.spotlightBg }]}>
+          <View style={[s.tile, quiet ? { backgroundColor: accent.tint } : null]}>
+            <CalendarCheck2 size={21} color={quiet ? accent.ink : '#99F6E4'} />
           </View>
           <View style={{ flex: 1, gap: 2 }}>
-            <Text style={[hubText.cardTitle, { color: '#FFFFFF', fontSize: 16 }]}>{next ? `${dayLabel(tbilisiYmd(next.startsAt))}, ${clockOf(next.startsAt)}` : tx('ვარჯიში დაგეგმილი არ არის', 'No workout scheduled')}</Text>
-            <Text style={[hubText.body, { color: '#C5DADA' }]} numberOfLines={1}>
+            <Text style={[hubText.cardTitle, { color: quiet ? c.text100 : '#FFFFFF', fontSize: 16 }]}>{next ? `${dayLabel(tbilisiYmd(next.startsAt))}, ${clockOf(next.startsAt)}` : tx('ვარჯიში დაგეგმილი არ არის', 'No workout scheduled')}</Text>
+            <Text style={[hubText.body, { color: quiet ? c.text200 : '#C5DADA' }]} numberOfLines={1}>
               {next ? `${new Date(next.startsAt).getTime() - Date.now() < 6 * 3600000 ? `${relativeStart(next.startsAt)} · ` : ''}${next.kindLabel}${next.gym ? ` · ${next.gym.brand}` : ''} · ${state.overview.trainer?.displayName ?? ''}${next.clientConfirmedAt ? ' ✓' : ''}` : state.overview.trainer?.displayName ?? ''}
             </Text>
           </View>
-          <ChevronRight size={18} color="#99F6E4" />
+          <ChevronRight size={18} color={quiet ? c.text300 : '#99F6E4'} />
         </Pressable>
       ) : null}
       {trainer ? (

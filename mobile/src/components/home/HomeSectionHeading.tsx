@@ -3,6 +3,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { ChevronRight } from 'lucide-react-native';
 import { HUB, hubText } from '@/theme/hub';
 import { useThemeColors } from '@/theme/colors';
+import { useHomeAccent } from '@/theme/homeAccent';
 
 /** Section label that sits above its card, with an optional right-aligned link. */
 export function HomeSectionHeading({
@@ -15,6 +16,7 @@ export function HomeSectionHeading({
   onLink?: () => void;
 }) {
   const c = useThemeColors();
+  const accent = useHomeAccent();
   return (
     <View style={s.row}>
       <Text accessibilityRole="header" style={[hubText.sectionTitle, { color: c.text100, flex: 1 }]}>
@@ -27,8 +29,8 @@ export function HomeSectionHeading({
           onPress={onLink}
           style={s.link}
         >
-          <Text style={[hubText.link, { color: c.primary100 }]}>{linkLabel}</Text>
-          <ChevronRight size={15} color={c.primary100} />
+          <Text style={[hubText.link, { color: accent.ink }]}>{linkLabel}</Text>
+          <ChevronRight size={15} color={accent.ink} />
         </Pressable>
       ) : null}
     </View>

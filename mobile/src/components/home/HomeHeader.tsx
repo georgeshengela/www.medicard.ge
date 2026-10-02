@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Image, Pressable, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { useRouter } from 'expo-router';
-import { CloudSun } from 'lucide-react-native';
+import { CloudSun, LayoutDashboard } from 'lucide-react-native';
 import { RUN_ICON } from '@/components/run/runArt';
 import { Meteocon, meteoconSlugFor } from '@/components/weather/Meteocon';
 import { AVATAR_SOURCES, isAvatarId } from '@/constants/avatarAssets';
@@ -12,6 +12,7 @@ import { useFeature } from '@/lib/featureFlags';
 import { greeting } from '@/lib/format';
 import { useIsDark, useThemeColors } from '@/theme/colors';
 import { tx } from '@/i18n/locale';
+import { useHomeAccent } from '@/theme/homeAccent';
 
 type Props = {
   firstName: string;
@@ -19,19 +20,22 @@ type Props = {
   avatarId: string | null;
   streak: number;
   dateLabel: string;
+  /** Opens the Home layout picker (hidden while admin paused „homeLayouts“). */
+  onCustomize?: () => void;
 };
 
 /**
  * Greeting row. Everything glanceable that used to need its own card
  * (weather, streak) now lives as a small pill beside the date.
  */
-export function HomeHeader({ firstName, initial, avatarId, streak, dateLabel }: Props) {
+export function HomeHeader({ firstName, initial, avatarId, streak, dateLabel, onCustomize }: Props) {
   const myPhoto = useMyAvatarUrl();
   const [brokenPhoto, setBrokenPhoto] = useState<string | null>(null);
   const narrow = useWindowDimensions().width < 360;
   const c = useThemeColors();
   const dark = useIsDark();
   const router = useRouter();
+  const accent = useHomeAccent();
   // Paused from admin („მოდულები“): no pill, and no weather fetch behind it.
   const weatherOn = useFeature('weather');
 
@@ -67,18 +71,29 @@ export function HomeHeader({ firstName, initial, avatarId, streak, dateLabel }: 
         </Text>
       </View>
 
+      {onCustomize ? (
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={tx('მთავარი გვერდის შეცვლა', 'Change Home layout')}
+          hitSlop={4}
+          onPress={onCustomize}
+          style={[s.customize, { backgroundColor: c.surface }]}
+        >
+          <LayoutDashboard size={19} color={accent.ink} strokeWidth={2} />
+        </Pressable>
+      ) : null}
       <Pressable
         accessibilityRole="button"
         accessibilityLabel={tx('ჩემი პროფილი', 'My profile')}
         onPress={() => router.push('/(tabs)/profile' as never)}
-        style={[s.avatar, { backgroundColor: c.accent100 }]}
+        style={[s.avatar, { backgroundColor: accent.soft }]}
       >
         {myPhoto && brokenPhoto !== myPhoto ? (
           <PrivateImage path={myPhoto} label={tx('ჩემი პროფილი', 'My profile')} style={{ width: 48, height: 48, borderRadius: 24 }} onFail={() => setBrokenPhoto(myPhoto)} />
         ) : isAvatarId(avatarId) ? (
           <Image source={AVATAR_SOURCES[avatarId]} style={{ width: 48, height: 48, borderRadius: 24 }} />
         ) : (
-          <Text style={[s.avatarText, { color: c.primary100 }]}>{initial}</Text>
+          <Text style={[s.avatarText, { color: accent.ink }]}>{initial}</Text>
         )}
       </Pressable>
     </View>
@@ -164,6 +179,14 @@ const s = StyleSheet.create({
     letterSpacing: -0.3,
   },
   titleNarrow: { fontSize: 18, lineHeight: 26 },
+  customize: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: -4,
+  },
   avatar: {
     width: 48,
     height: 48,

@@ -3,6 +3,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { ArrowUpRight, type LucideIcon } from 'lucide-react-native';
 import { HUB, hubInk, hubText, hubTint, type HubInk } from '@/theme/hub';
 import { useIsDark, useThemeColors } from '@/theme/colors';
+import { useHomeAccent } from '@/theme/homeAccent';
 
 type Props = {
   title: string;
@@ -46,11 +47,12 @@ export function HubFeatureCard({
 }: Props) {
   const c = useThemeColors();
   const dark = useIsDark();
+  const accent = useHomeAccent();
   const spotlight = tone === 'spotlight';
   const inkHex = hubInk(ink, dark);
   const textPrimary = spotlight ? '#FFFFFF' : c.text100;
   const textSecondary = spotlight ? '#C5DADA' : c.text200;
-  const ctaColor = spotlight ? '#99F6E4' : c.primary100;
+  const ctaColor = spotlight ? '#99F6E4' : accent.ink;
   const rule = spotlight ? 'rgba(255,255,255,0.14)' : c.bg300;
 
   const action = Boolean(cta && onPress);

@@ -60,6 +60,7 @@ export const FEATURE_LABELS: Record<FeatureKey, string> = {
   weeklyReport: tx('კვირის ანგარიში', 'Weekly report'),
   healthPassport: tx('ჯანმრთელობის პასპორტი', 'Health passport'),
   invites: tx('მეგობრის მოწვევა', 'Inviting friends'),
+  homeLayouts: tx('მთავარი გვერდის ვარიანტები', 'Home layouts'),
 };
 
 const DEFAULT_MESSAGE = tx('ეს ფუნქცია დროებით შეჩერებულია. შენი მონაცემები შენახულია.', 'This feature is paused for now. Your data is safe.');

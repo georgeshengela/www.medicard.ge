@@ -337,8 +337,6 @@ async function captureAll(browser, token) {
     await context.addInitScript(
       ({ token: t, authed: on }) => {
         localStorage.setItem('medicard.theme.preference', 'dark');
-        localStorage.setItem('medicard.home.landing', 'hub');
-        localStorage.setItem('medicard.home.cyclePromptSeen', '1');
         if (on) localStorage.setItem('medicard.auth.token', t);
         else localStorage.removeItem('medicard.auth.token');
       },

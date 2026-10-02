@@ -13,10 +13,17 @@ export type FunnelEventName =
   | 'first_health_action'
   | 'price_alert_opened'
   | 'health_passport_created'
-  | 'referral_shared';
+  | 'referral_shared'
+  | 'home_layout_picker_opened'
+  | 'home_layout_changed'
+  | 'home_layout_offer_answered';
 
 export type HealthActionType = 'medication' | 'meal' | 'cycle' | 'weight' | 'visit' | 'record' | 'checkin_manual';
 export type InstallSource = 'organic' | 'invite' | 'utm' | 'deeplink';
+/** Same enums as server HOME_LAYOUTS / HOME_LAYOUT_SOURCES / HOME_LAYOUT_OFFER_CHOICES. */
+export type FunnelHomeLayout = 'standard' | 'women' | 'active' | 'weight';
+export type FunnelHomeLayoutSource = 'home_header' | 'home_footer' | 'profile' | 'offer' | 'onboarding';
+export type FunnelHomeLayoutOfferChoice = 'tried' | 'dismissed' | 'other';
 
 export type FunnelProps = Record<string, string>;
 

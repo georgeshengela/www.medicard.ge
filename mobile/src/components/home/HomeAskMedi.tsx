@@ -4,6 +4,7 @@ import { Sparkles } from 'lucide-react-native';
 import { HomeMediOrb } from '@/components/home/HomeMediOrb';
 import { useThemeColors } from '@/theme/colors';
 import { tx } from '@/i18n/locale';
+import { useHomeAccent } from '@/theme/homeAccent';
 
 /**
  * One line to Medi. Reads as an input, behaves as a door: tapping anywhere
@@ -11,6 +12,7 @@ import { tx } from '@/i18n/locale';
  */
 export function HomeAskMedi({ onPress }: { onPress: () => void }) {
   const c = useThemeColors();
+  const accent = useHomeAccent();
   return (
     <Pressable
       accessibilityRole="button"
@@ -18,7 +20,7 @@ export function HomeAskMedi({ onPress }: { onPress: () => void }) {
       onPress={onPress}
       style={[s.bar, { backgroundColor: c.surface, borderColor: c.bg300 }]}
     >
-      <Sparkles size={18} color={c.primary100} strokeWidth={2} />
+      <Sparkles size={18} color={accent.ink} strokeWidth={2} />
       <View style={{ flex: 1, minWidth: 0 }}>
         <Text numberOfLines={1} style={[s.placeholder, { color: c.text100 }]}>
           {tx('ჰკითხე Medi-ს', 'Ask Medi')}
@@ -27,7 +29,7 @@ export function HomeAskMedi({ onPress }: { onPress: () => void }) {
           {tx('ხმით ან ტექსტით', 'By voice or text')}
         </Text>
       </View>
-      <HomeMediOrb size={46} background={c.accent100} ringColor={c.primary200} iconColor={c.primary100} />
+      <HomeMediOrb size={46} background={accent.soft} ringColor={accent.ring} iconColor={accent.ink} />
     </Pressable>
   );
 }
