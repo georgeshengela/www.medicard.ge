@@ -495,7 +495,7 @@ export default function Home() {
     quickLog: <HomeQuickLog />,
     weightProgress: <HomeWeightProgress nutrition={nutrition} />,
     meals: <HomeMealsCard nutrition={nutrition} />,
-    nutritionTools: <HomeNutritionTools nutrition={nutrition} female={female} />,
+    nutritionTools: <HomeNutritionTools nutrition={nutrition} />,
   } satisfies Record<HomeSectionId, React.ReactNode>;
 
   return (

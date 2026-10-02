@@ -404,17 +404,18 @@ function ClassicCycleCard({
   const plan = cycleHeroActions({ onPeriod, dayOne: isDayOne, leadsWithStart: leads });
   const startLabel = uncertainBleed ? ka.cycle.heroBleedingStarted : ka.cycle.heroPeriodStarted;
   const button = (id: CycleHeroActionId, filled: boolean) => {
-    const common = { filled, flex: filled ? 1.7 : 1, disabled: busy } as const;
-    if (id === 'start') return <HeroButton key={id} {...common} label={startLabel} icon={Droplet} onPress={onStart} />;
-    if (id === 'end') return <HeroButton key={id} {...common} label={ka.cycle.periodEndCta} icon={Check} onPress={onEnd} />;
-    if (id === 'logFlow') return <HeroButton key={id} {...common} label={ka.cycle.logTodayFlow} icon={Droplet} onPress={onLog} />;
+    // The tonal button carries no icon, so the filled one keeps its label on one line at 390 pt.
+    const common = { filled, flex: filled ? 1.9 : 1, disabled: busy } as const;
+    if (id === 'start') return <HeroButton key={id} {...common} label={startLabel} icon={filled ? Droplet : undefined} onPress={onStart} />;
+    if (id === 'end') return <HeroButton key={id} {...common} label={ka.cycle.periodEndCta} icon={filled ? Check : undefined} onPress={onEnd} />;
+    if (id === 'logFlow') return <HeroButton key={id} {...common} label={ka.cycle.logTodayFlow} icon={filled ? Droplet : undefined} onPress={onLog} />;
     return (
       <HeroButton
         key={id}
         {...common}
         label={filled ? ka.cycle.logTodayCta : tx('აღრიცხვა', 'Log')}
         a11y={ka.cycle.logTodayCta}
-        icon={Plus}
+        icon={filled ? Plus : undefined}
         onPress={onLog}
       />
     );
@@ -482,9 +483,11 @@ function centerCopy(center: CycleCenter, uncertainBleed: boolean): CenterText {
       return { top: ka.cycle.heroLikely, value: ka.cycle.heroToday, bottom: ka.cycle.legendPeriodPredicted, tone: 'period' };
     case 'countdown':
       return {
-        top: uncertainBleed ? ka.cycle.heroUntilBleeding : ka.cycle.heroUntilPeriod,
+        // Short words: the captions sit where the ring is narrow. „სავარაუდოდ“ + the date stay in the
+        // dashed badge beside the ring, so the estimate is still named as one.
+        top: uncertainBleed ? tx('სისხლდენა', 'Bleeding in') : tx('მენსტრუაცია', 'Period in'),
         value: String(center.days),
-        bottom: ka.cycle.heroDaysEstimated,
+        bottom: tx('დღეში', center.days === 1 ? 'day' : 'days'),
       };
     case 'late':
       return { top: ka.cycle.cycleDay, value: String(center.day), bottom: ka.cycle.heroLateBy(center.lateBy) };

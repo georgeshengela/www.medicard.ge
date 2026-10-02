@@ -63,7 +63,7 @@ export function HomeQuickLog({ first = false }: { first?: boolean }) {
                 <View style={[s.icon, { backgroundColor: tint }]}>
                   <tile.icon size={22} color={ink} strokeWidth={1.9} />
                 </View>
-                <Text numberOfLines={1} style={[hubText.link, s.label, { color: c.text100 }]}>
+                <Text numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.75} style={[hubText.link, s.label, { color: c.text100 }]}>
                   {tile.label}
                 </Text>
               </Pressable>
