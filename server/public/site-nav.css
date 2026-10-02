@@ -46,16 +46,20 @@ body.tb-offset { padding-top: 92px; }
 /* Links with a highlight that glides to whatever you point at */
 .tb-links { position: relative; display: flex; align-items: center; gap: 2px; margin-left: auto; }
 .tb-glide {
-  position: absolute; left: 0; top: 50%; height: 40px; margin-top: -20px; width: 0;
+  position: absolute; left: 0; top: 50%; height: 36px; margin-top: -18px; width: 0;
   border-radius: 999px; background: var(--tb-glide); opacity: 0; pointer-events: none;
   transition: transform .38s var(--tb-ease), width .38s var(--tb-ease), opacity .25s, background-color .4s;
 }
 .tb-link {
-  position: relative; display: inline-flex; align-items: center; gap: 8px;
-  height: 40px; padding: 0 14px; border-radius: 999px;
-  font-size: 15px; font-weight: 500; white-space: nowrap; color: var(--tb-ink-2);
+  position: relative; display: inline-flex; align-items: center; gap: 7px;
+  height: 36px; padding: 0 12px; border-radius: 999px;
+  font-size: 14px; font-weight: 500; white-space: nowrap; color: var(--tb-ink-2);
   transition: color .2s;
 }
+/* MEDIRUN campaign: a small live dot instead of an icon */
+.tb-live { width: 7px; height: 7px; border-radius: 50%; background: #14B8A6; box-shadow: 0 0 0 3px rgba(20, 184, 166, .18); animation: tb-live 1.8s infinite; }
+@keyframes tb-live { 0%, 100% { box-shadow: 0 0 0 3px rgba(20, 184, 166, .18); } 50% { box-shadow: 0 0 0 6px rgba(20, 184, 166, 0); } }
+@media (prefers-reduced-motion: reduce) { .tb-live { animation: none; } }
 .tb-link svg { flex: none; opacity: .75; transition: transform .35s var(--tb-ease), opacity .2s; }
 .tb-link:hover, .tb-link:focus-visible, .tb-link[aria-current="page"] { color: var(--tb-ink); }
 .tb-link:hover svg { transform: translateY(-1px) scale(1.08); opacity: 1; }
@@ -66,9 +70,9 @@ body.tb-offset { padding-top: 92px; }
 .tb-has-mega.is-open .tb-caret { transform: rotate(180deg) !important; }
 
 .tb-login {
-  display: inline-flex; align-items: center; gap: 8px; height: 42px; padding: 0 18px 0 14px; margin-left: 6px;
+  display: inline-flex; align-items: center; gap: 8px; height: 38px; padding: 0 16px 0 12px; margin-left: 4px;
   border-radius: 999px; background: var(--tb-teal); color: #fff !important;
-  font-weight: 600; font-size: 15px; white-space: nowrap;
+  font-weight: 600; font-size: 14px; white-space: nowrap;
   transition: background-color .2s, transform .2s var(--tb-ease);
 }
 .tb-login:hover { background: #0B7F75; }
@@ -157,13 +161,11 @@ a.store-badge.is-official:hover::after { transform: translateX(120%); }
 .tb-burger { display: none; }
 .tb-sheet { display: none; }
 
-@media (max-width: 1360px) {
-  .tb-link { padding: 0 11px; font-size: 14px; }
-  .tb-link svg { display: none; }
-  .tb-caret { display: inline !important; }
+@media (max-width: 1180px) {
+  .tb-link { padding: 0 9px; font-size: 13.5px; }
 }
 
-@media (max-width: 900px) {
+@media (max-width: 1000px) {
   .tb-links { display: none; }
   .tb-login { margin-left: auto; height: 40px; padding: 0 14px 0 12px; font-size: 14px; }
   .tb-burger {
@@ -254,7 +256,7 @@ a.store-badge.is-official:hover::after { transform: translateX(120%); }
 .tb-lang-sheet button { width: 52px; height: 34px; font-size: 14px; }
 .tb-lang-sheet .tb-lang-glide { width: 52px; height: 34px; }
 .tb-lang-sheet[data-active="en"] .tb-lang-glide { transform: translateX(52px); }
-@media (max-width: 900px) {
+@media (max-width: 1000px) {
   .tb-bar > .tb-lang { display: none; }
 }
 @media (prefers-reduced-motion: reduce) {

@@ -49,9 +49,10 @@
   };
 
   var ITEMS = [
-    { key: 'home', href: '/', label: T('მთავარი', 'Home'), hint: T('დღე მედიქარდთან', 'A day with MEDICARD'), icon: 'home' },
+    // The logo is the way home on the bar; „მთავარი“ stays in the phone menu only.
+    { key: 'home', href: '/', label: T('მთავარი', 'Home'), hint: T('დღე მედიქარდთან', 'A day with MEDICARD'), icon: 'home', bar: false },
     { key: 'about', href: '/about', label: T('ჩვენ შესახებ', 'About'), hint: T('ვინ ვართ და რისი გვჯერა', 'Who we are and what we believe'), icon: 'about' },
-    { key: 'medirun', href: '/medirun', label: 'MEDIRUN', hint: T('გაანათე თბილისი · 3 ოქტ – 31 დეკ', 'Light up Tbilisi · 3 Oct – 31 Dec'), icon: 'run' },
+    { key: 'medirun', href: '/medirun', label: 'MEDIRUN', hint: T('გაანათე თბილისი · 3 ოქტ – 31 დეკ', 'Light up Tbilisi · 3 Oct – 31 Dec'), icon: 'run', live: true },
     { key: 'calculators', href: '/calculators', label: T('კალკულატორები', 'Calculators'), hint: T('ციკლი და ორსულობა — 10 უფასო', 'Cycle and pregnancy — 10 free tools'), icon: 'calc', mega: true },
     { key: 'faq', href: onHome ? '#faq' : '/#faq', label: T('კითხვები', 'FAQ'), hint: T('ხშირი კითხვები', 'Frequently asked questions'), icon: 'faq' },
     { key: 'contact', href: '/contact', label: T('კონტაქტი', 'Contact'), hint: T('მოგვწერე', 'Write to us'), icon: 'mail' }
@@ -83,12 +84,12 @@
       '</div>' +
     '</div>';
 
-  var links = ITEMS.map(function (it) {
+  var links = ITEMS.filter(function (it) { return it.bar !== false; }).map(function (it) {
     var cur = it.key === current ? ' aria-current="page"' : '';
-    var a = '<a class="tb-link" href="' + it.href + '" data-key="' + it.key + '"' + cur + '>' + ICON[it.icon] + '<span>' + esc(it.label) + '</span></a>';
+    var a = '<a class="tb-link' + (it.live ? ' is-live' : '') + '" href="' + it.href + '" data-key="' + it.key + '"' + cur + '>' + (it.live ? '<i class="tb-live" aria-hidden="true"></i>' : '') + '<span>' + esc(it.label) + '</span></a>';
     if (!it.mega) return a;
     return '<div class="tb-has-mega">' +
-      '<a class="tb-link" href="' + it.href + '" data-key="' + it.key + '"' + cur + ' aria-haspopup="true" aria-expanded="false" aria-controls="tb-mega">' + ICON[it.icon] + '<span>' + esc(it.label) + '</span>' +
+      '<a class="tb-link" href="' + it.href + '" data-key="' + it.key + '"' + cur + ' aria-haspopup="true" aria-expanded="false" aria-controls="tb-mega"><span>' + esc(it.label) + '</span>' +
       '<svg class="tb-caret" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></a>' +
       mega + '</div>';
   }).join('');

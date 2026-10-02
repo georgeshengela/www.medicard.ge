@@ -19,12 +19,12 @@
   <link rel="preload" href="/fonts/firago/FiraGO-ExtraBold.woff2" as="font" type="font/woff2" crossorigin />
   <link rel="preload" href="/medirun/img/city.webp" as="image" media="(min-width: 761px)" />
   <link rel="preload" href="/medirun/img/city-sm.webp" as="image" media="(max-width: 760px)" />
-  <link rel="stylesheet" href="/site-nav.css?v=9" />
-  <link rel="stylesheet" href="/medirun/medirun.css?v=1" />
+  <link rel="stylesheet" href="/site-nav.css?v=10" />
+  <link rel="stylesheet" href="/medirun/medirun.css?v=2" />
 </head>
-<body>
+<body class="mr-page">
   <header class="tb" id="topbar"></header>
-  <script src="/site-nav.js?v=8"></script>
+  <script src="/site-nav.js?v=9"></script>
 
   <main id="main">
     <!-- Hero: the key art -->
@@ -33,19 +33,39 @@
         <source media="(max-width: 760px)" srcset="/medirun/img/city-sm.webp" />
         <img src="/medirun/img/city.webp" alt="" width="1920" height="1072" fetchpriority="high" />
       </picture>
-      <div class="wrap hero-copy">
-        <div class="hero-top">
-          <span class="brand">MEDI<b>RUN</b></span>
-          <span class="chip" data-en="Light up Tbilisi">გაანათე თბილისი</span>
+      <div class="wrap hero-grid">
+        <div class="hero-copy">
+          <div class="hero-top">
+            <span class="brand">MEDI<b>RUN</b></span>
+            <span class="chip" data-en="Light up Tbilisi">გაანათე თბილისი</span>
+          </div>
+          <p class="eyebrow" data-en="3 October – 31 December · all over Tbilisi">3 ოქტომბერი – 31 დეკემბერი · მთელ თბილისში</p>
+          <h1 class="display" id="hero-title" data-en="Gifts are hidden across the city.">ქალაქში საჩუქრებია დამალული.</h1>
+          <p class="sub" data-en="Turn on MEDIRUN and go for a walk. Near a gift your phone’s heart starts racing. Open the box and Medi Coins land in your account.">ჩართე MEDIRUN და გაისეირნე. საჩუქართან ტელეფონს გული აუჩქარდება. გახსენი ყუთი და Medi Coins თავისით ჩაირიცხება.</p>
+          <div class="hero-actions">
+            <a class="store-badge is-official" href="https://apps.apple.com/app/id6812517519"><img src="/icons/app-store-badge.svg" alt="Download on the App Store" width="162" height="54" /></a>
+            <a class="btn btn-ghost" href="#how" data-en="How to play">როგორ ვითამაშო</a>
+          </div>
         </div>
-        <p class="eyebrow" data-en="3 October – 31 December · all over Tbilisi">3 ოქტომბერი – 31 დეკემბერი · მთელ თბილისში</p>
-        <h1 class="display" id="hero-title" data-en="Gifts are hidden across the city.">ქალაქში საჩუქრებია დამალული.</h1>
-        <p class="sub" data-en="Turn on MEDIRUN and go for a walk. Near a gift your phone’s heart starts racing. Open the box and Medi Coins land in your account.">ჩართე MEDIRUN და გაისეირნე. საჩუქართან ტელეფონს გული აუჩქარდება. გახსენი ყუთი და Medi Coins თავისით ჩაირიცხება.</p>
-        <div class="hero-actions">
-          <a class="store-badge" href="https://apps.apple.com/app/id6812517519"><img src="/icons/app-store-badge.svg" alt="Download on the App Store" width="156" height="52" /></a>
-          <a class="btn btn-ghost" href="#how" data-en="How to play">როგორ ვითამაშო</a>
-        </div>
-        <p class="countdown" aria-live="polite"><span class="dot" aria-hidden="true"></span><span id="countdown">იწყება 3 ოქტომბერს</span></p>
+
+        <aside class="timer" aria-labelledby="timer-title">
+          <span class="timer-ring r1" aria-hidden="true"></span><span class="timer-ring r2" aria-hidden="true"></span>
+          <p class="timer-label" id="timer-title" data-en="Until the start">დაწყებამდე</p>
+          <div class="timer-grid num" role="timer" aria-live="off">
+            <div><b id="t-d">00</b><span data-en="days">დღე</span></div>
+            <i aria-hidden="true">:</i>
+            <div><b id="t-h">00</b><span data-en="hours">საათი</span></div>
+            <i aria-hidden="true">:</i>
+            <div><b id="t-m">00</b><span data-en="min">წუთი</span></div>
+            <i aria-hidden="true">:</i>
+            <div><b id="t-s">00</b><span data-en="sec">წამი</span></div>
+          </div>
+          <p class="timer-when" id="timer-when" data-en="Saturday, 3 October · first boxes at 10:30">შაბათი, 3 ოქტომბერი · პირველი ყუთები 10:30-ზე</p>
+          <div class="timer-next">
+            <img src="/medirun/img/gift.webp" alt="" width="56" height="60" />
+            <p id="timer-next" data-en="Then every day until 31 December — and a red iPhone 18 Pro Max for those who light up 1% of Tbilisi.">შემდეგ ყოველდღე, 31 დეკემბრამდე — ბოლოს კი წითელი iPhone 18 Pro Max მათთვის, ვინც თბილისის 1%-ს გაანათებს.</p>
+          </div>
+        </aside>
       </div>
     </section>
 
@@ -271,7 +291,7 @@
         <h2 class="display" data-en="Your Tbilisi is waiting to light up.">შენი თბილისი ანთებას ელოდება.</h2>
         <p class="sub" data-en="MEDICARD is free on iPhone. Android — coming soon.">MEDICARD უფასოა iPhone-ზე. Android — სულ მალე.</p>
         <div class="hero-actions">
-          <a class="store-badge" href="https://apps.apple.com/app/id6812517519"><img src="/icons/app-store-badge.svg" alt="Download on the App Store" width="156" height="52" /></a>
+          <a class="store-badge is-official" href="https://apps.apple.com/app/id6812517519"><img src="/icons/app-store-badge.svg" alt="Download on the App Store" width="162" height="54" /></a>
           <a class="btn btn-ghost" href="#rules" data-en="Read the rules">წესების ნახვა</a>
         </div>
       </div>
@@ -286,26 +306,44 @@
   </footer>
 
   <script>
-    /* Campaign clock in Tbilisi time: before the start, the days left; during, the day and the days to 31 December. */
+    /* Hero timer in Tbilisi time: to the first boxes (3 Oct 10:30), then to the grand prize (31 Dec 12:00), then done. */
     (function () {
-      var el = document.getElementById('countdown');
-      if (!el) return;
       var T = function (ka, en) { return window.MedicardI18n ? window.MedicardI18n.t(ka, en) : ka; };
-      var today = new Date(Date.now() + 4 * 3600e3).toISOString().slice(0, 10);
-      var day = function (a, b) { return Math.round((Date.parse(b + 'T00:00:00Z') - Date.parse(a + 'T00:00:00Z')) / 864e5); };
-      var start = '2026-10-03', end = '2026-12-31', text;
-      if (today < start) {
-        var n = day(today, start);
-        text = n === 1 ? T('იწყება ხვალ, 3 ოქტომბერს', 'Starts tomorrow, 3 October') : T('იწყება ' + n + ' დღეში, 3 ოქტომბერს', 'Starts in ' + n + ' days, on 3 October');
-      } else if (today < end) {
-        var left = day(today, end);
-        text = T('მიმდინარეობს · დიდ საჩუქრამდე ' + left + ' დღე', 'Live now · ' + left + ' days to the grand prize');
-      } else if (today === end) {
-        text = T('დღეს, 12:00 — დიდი საჩუქარი', 'Today at 12:00 — the grand prize');
-      } else {
-        text = T('კამპანია დასრულდა. მადლობა, რომ ქალაქი გაანათე!', 'The campaign is over. Thank you for lighting up the city!');
+      var START = Date.parse('2026-10-03T10:30:00+04:00'), GRAND = Date.parse('2026-12-31T12:00:00+04:00'), END = Date.parse('2026-12-31T18:00:00+04:00');
+      var $ = function (id) { return document.getElementById(id); };
+      var pad = function (n) { return (n < 10 ? '0' : '') + n; };
+      var phase = '';
+      function setPhase(p) {
+        if (p === phase) return;
+        phase = p;
+        var timer = document.querySelector('.timer');
+        timer.dataset.phase = p;
+        if (p === 'grand') {
+          $('timer-title').textContent = T('დიდ საჩუქრამდე', 'Until the grand prize');
+          $('timer-when').textContent = T('31 დეკემბერი, 12:00 · წითელი iPhone 18 Pro Max', '31 December, 12:00 · a red iPhone 18 Pro Max');
+          $('timer-next').textContent = T('კამპანია მიმდინარეობს: ყუთები ყოველდღე ჩნდება. გაანათე თბილისის 1% და iPhone-ს დაინახავ.', 'The campaign is live: boxes appear every day. Light up 1% of Tbilisi to see the iPhone.');
+        } else if (p === 'live') {
+          $('timer-title').textContent = T('ყუთი იმალება', 'The box is hidden');
+          $('timer-when').textContent = T('დღეს, 18:00-მდე · მხოლოდ შუქურებისთვის (1%)', 'Today until 18:00 · lighthouses only (1%)');
+        } else if (p === 'over') {
+          $('timer-title').textContent = T('კამპანია დასრულდა', 'The campaign is over');
+          $('timer-when').textContent = T('მადლობა, რომ ქალაქი გაანათე!', 'Thank you for lighting up the city!');
+        }
       }
-      el.textContent = text;
+      function tick() {
+        var now = Date.now(), target;
+        if (now < START) { setPhase('start'); target = START; }
+        else if (now < GRAND) { setPhase('grand'); target = GRAND; }
+        else if (now < END) { setPhase('live'); target = END; }
+        else { setPhase('over'); target = now; }
+        var s = Math.max(0, Math.floor((target - now) / 1000));
+        $('t-d').textContent = pad(Math.floor(s / 86400));
+        $('t-h').textContent = pad(Math.floor(s % 86400 / 3600));
+        $('t-m').textContent = pad(Math.floor(s % 3600 / 60));
+        $('t-s').textContent = pad(s % 60);
+      }
+      tick();
+      setInterval(tick, 1000);
     })();
   </script>
 </body>

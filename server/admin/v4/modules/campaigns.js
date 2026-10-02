@@ -22,6 +22,8 @@
     ICONS.flag = ICONS.flag || '<path d="M4 21V4"/><path d="M4 4h12l-2 4 2 4H4"/>';
     ICONS.copy = ICONS.copy || '<rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/>';
     ICONS.external = ICONS.external || '<path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/>';
+    ICONS.x = ICONS.x || '<line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>';
+    ICONS.rows = ICONS.rows || '<line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/>';
     ICONS.download = ICONS.download || '<path d="M12 3v12"/><polyline points="7 10 12 15 17 10"/><path d="M5 21h14"/>';
   }
 
@@ -34,7 +36,7 @@
   const MONTHS_SHORT = ['იან', 'თებ', 'მარ', 'აპრ', 'მაი', 'ივნ', 'ივლ', 'აგვ', 'სექ', 'ოქტ', 'ნოე', 'დეკ'];
   const WEEKDAYS = ['კვირა', 'ორშაბათი', 'სამშაბათი', 'ოთხშაბათი', 'ხუთშაბათი', 'პარასკევი', 'შაბათი'];
 
-  const st = { sub: 'plan', filter: 'upcoming', campaigns: null, campaign: null, posts: null, frameObs: null };
+  const st = { sub: 'plan', filter: 'upcoming', campaigns: null, campaign: null, posts: null, frameObs: null, posters: [], texts: new Map() };
 
   /* ─────────────── Media session (shared with #/social) ─────────────── */
   let session = null;
@@ -167,6 +169,7 @@
   function paintSub() {
     const pane = $('cp-pane');
     if (!pane) return;
+    closeViewer();
     st.frameObs?.disconnect();
     st.frameObs = null;
     if (st.sub === 'posts') paintPosts(pane);
@@ -186,6 +189,13 @@
         <a class="btn ghost compact" href="${esc(c.planUrl)}" target="_blank" rel="noopener">${ico('external')}<span>ცალკე გახსნა</span></a></div>
       <iframe class="cp-frame" title="კამპანიის გეგმა" src="${esc(c.planUrl)}" loading="lazy"></iframe>
     </section>`;
+    st.posters = collectPosters();
+    if (st.posters.length) {
+      pane.insertAdjacentHTML('afterbegin', `<section class="s-card cp-strip">
+        <div class="s-card-head cp-doc-head"><div><h3>პოსტერები და სთორები · ${num(st.posters.length)}</h3><p>დააჭირე და სრული ზომით ნახავ. შემდეგზე ისრებით გადახვალ (← →), დახურვა Esc.</p></div></div>
+        <div class="cp-strip-row">${st.posters.map((x, k) => `<button type="button" class="cp-strip-item${x.story ? ' is-story' : ''}" data-poster="${k}" title="${esc(x.caption)}"><img src="${esc(x.src)}" alt="" loading="lazy" decoding="async"></button>`).join('')}</div>
+      </section>`);
+    }
     const frame = pane.querySelector('iframe');
     frame.addEventListener('load', () => {
       let d;
@@ -194,7 +204,13 @@
       const sync = () => { d.documentElement.dataset.theme = doc.documentElement.dataset.theme === 'dark' ? 'dark' : 'light'; };
       d.documentElement.classList.add('embed');
       sync();
-      const fit = () => { frame.style.height = `${Math.max(400, d.documentElement.scrollHeight + 2)}px`; };
+      // Every picture in the plan opens in the admin viewer, with the plan's other pictures one arrow away.
+      const imgs = [...d.querySelectorAll('img')].filter((im) => !im.closest('nav, .hero'));
+      imgs.forEach((im, i) => {
+        im.style.cursor = 'zoom-in';
+        im.addEventListener('click', (e) => { e.preventDefault(); openViewer(imgs.map((x) => ({ src: x.currentSrc || x.src, caption: x.alt || '' })), i); });
+      });
+      const fit =() => { frame.style.height = `${Math.max(400, d.documentElement.scrollHeight + 2)}px`; };
       fit();
       const ro = new ResizeObserver(fit);
       ro.observe(d.body);
@@ -202,34 +218,118 @@
       mo.observe(doc.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
       st.frameObs = { disconnect() { ro.disconnect(); mo.disconnect(); } };
     });
+    pane.querySelectorAll('[data-poster]').forEach((b) => b.addEventListener('click', () => openViewer(st.posters, Number(b.dataset.poster))));
   }
 
-  /* ─────────────── პოსტები და ტექსტები ─────────────── */
-  function postCard(p) {
+  /** Every poster and story of the campaign once, in calendar order, captioned with the post that uses it. */
+  function collectPosters() {
+    const seen = new Map();
+    for (const p of st.posts || []) {
+      for (const u of (p.mediaUrls || []).map(local)) {
+        if (/\.(mp4|mov|webm)$/i.test(u) || seen.has(u)) continue;
+        seen.set(u, { src: u, caption: postCaption(p), story: p.kind === 'STORY' });
+      }
+    }
+    return [...seen.values()];
+  }
+  function postCaption(p) {
+    const t = tp(p.scheduledAt);
+    return [t ? `${shortDay(t.key)}, ${t.time}` : '', KIND[p.kind] || '', p.kind === 'STORY' ? '' : p.title || ''].filter(Boolean).join(' · ');
+  }
+
+  /* ─────────────── Viewer: any campaign picture full size, ← → between them, Esc closes ─────────────── */
+  let viewer = null;
+  function openViewer(items, index = 0) {
+    if (!items?.length) return;
+    closeViewer();
+    let i = Math.min(Math.max(0, index), items.length - 1);
+    const el = doc.createElement('div');
+    el.className = 'cp-viewer';
+    el.setAttribute('role', 'dialog');
+    el.setAttribute('aria-modal', 'true');
+    el.setAttribute('aria-label', 'სურათის ნახვა');
+    el.innerHTML = `<div class="cp-viewer-scrim" data-close></div>
+      <figure class="cp-viewer-stage"><img alt=""><figcaption><span class="cp-viewer-cap"></span><span class="cp-viewer-count"></span></figcaption></figure>
+      <div class="cp-viewer-bar">
+        <a class="btn ghost compact" data-open target="_blank" rel="noopener">${ico('external')}<span>სრული ზომით</span></a>
+        <a class="btn ghost compact" data-dl download>${ico('download')}<span>ჩამოტვირთვა</span></a>
+        <button type="button" class="btn ghost compact" data-close>${ico('x')}<span>დახურვა</span></button>
+      </div>
+      ${items.length > 1 ? '<button type="button" class="cp-viewer-nav is-prev" data-step="-1" aria-label="წინა">‹</button><button type="button" class="cp-viewer-nav is-next" data-step="1" aria-label="შემდეგი">›</button>' : ''}`;
+    const img = el.querySelector('img');
+    const show = () => {
+      const it = items[i];
+      img.src = it.src;
+      img.alt = it.caption || '';
+      el.querySelector('.cp-viewer-cap').textContent = it.caption || '';
+      el.querySelector('.cp-viewer-count').textContent = items.length > 1 ? `${i + 1} / ${items.length}` : '';
+      el.querySelector('[data-open]').href = it.href || it.src;
+      el.querySelector('[data-open] span').textContent = it.href ? 'PDF-ის გახსნა' : 'სრული ზომით';
+      el.querySelector('[data-dl]').href = it.href || it.src;
+    };
+    const step = (d) => { i = (i + d + items.length) % items.length; show(); };
+    const onKey = (e) => {
+      if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); closeViewer(); }
+      else if (e.key === 'ArrowRight') { e.preventDefault(); step(1); }
+      else if (e.key === 'ArrowLeft') { e.preventDefault(); step(-1); }
+    };
+    el.addEventListener('click', (e) => {
+      if (e.target.closest('[data-close]')) { closeViewer(); return; }
+      const s = e.target.closest('[data-step]');
+      if (s) step(Number(s.dataset.step));
+    });
+    doc.addEventListener('keydown', onKey, true);
+    doc.body.appendChild(el);
+    viewer = { el, onKey, back: doc.activeElement };
+    show();
+    el.querySelector('button[data-close]').focus();
+  }
+  function closeViewer() {
+    if (!viewer) return;
+    doc.removeEventListener('keydown', viewer.onKey, true);
+    viewer.el.remove();
+    try { viewer.back?.focus?.(); } catch { /* element gone */ }
+    viewer = null;
+  }
+
+  /* ─────────────── პოსტები და ტექსტები: one compact row per post; the full text opens on demand ─────────────── */
+  const isVideo = (u) => /\.(mp4|mov|webm)$/i.test(u);
+  function postRow(p) {
     const t = tp(p.scheduledAt);
     const [sl, stone] = STATUS[p.status] || [p.status, 'is-plain'];
     const story = p.kind === 'STORY';
     const manual = p.status === 'PLANNED';
     const urls = (p.mediaUrls || []).map(local);
-    const text = String(p.text || '');
-    const media = urls.length
-      ? `<div class="cp-media${urls.length > 1 ? ' is-many' : ''}">${urls.map((u) => (/\.(mp4|mov|webm)$/i.test(u)
-        ? `<video src="${esc(u)}" controls preload="metadata" playsinline></video>`
-        : `<a href="${esc(u)}" target="_blank" rel="noopener" title="სრული ზომით გახსნა"><img src="${esc(u)}" alt="" loading="lazy" decoding="async"></a>`)).join('')}</div>`
-      : '';
-    const body = story
-      ? `<p class="cp-note">${esc(text.replace(/^სთორი:\s*/, '') || p.title || '')}</p>`
-      : `${p.title ? `<h4>${esc(p.title)}</h4>` : ''}${manual && p.notes ? `<p class="cp-note">${esc(p.notes)}</p>` : ''}${text ? `<pre class="cp-text">${esc(text)}</pre><button type="button" class="btn ghost compact cp-copy" data-copy>${ico('copy')}<span>ტექსტის კოპირება</span></button>` : ''}`;
-    return `<article class="cp-post${manual ? ' is-manual' : ''}${story ? ' is-story' : ''}">
-      <header><b>${esc(t?.time || '')}</b><span class="s-badge is-plain">${esc(KIND[p.kind] || p.kind || '')}</span><span class="s-badge ${stone}">${esc(manual ? 'ხელით' : sl)}</span><span class="cp-nets">${esc((p.networks || []).map((n) => NET[n] || n).join(' · '))}</span></header>
-      ${media}${body}
+    const first = urls.find((u) => !isVideo(u));
+    const text = story ? String(p.text || '').replace(/^სთორი:\s*/, '') : String(p.text || '');
+    // The caption usually opens with the title line; the preview starts after it.
+    const body = p.title && text.startsWith(p.title) ? text.slice(p.title.length).replace(/^\s+/, '') : text;
+    const preview = manual && p.notes ? p.notes : body;
+    st.texts.set(p.id, text);
+    const thumb = first
+      ? `<button type="button" class="cp-thumb${story ? ' is-story' : ''}" data-view="${esc(p.id)}" title="სურათის ნახვა"><img src="${esc(first)}" alt="" loading="lazy" decoding="async">${urls.length > 1 ? `<i>${urls.length}</i>` : ''}</button>`
+      : `<span class="cp-thumb is-empty">${ico(urls.length ? 'play' : 'image')}</span>`;
+    const canCopy = text && !story;
+    return `<article class="cp-row${manual ? ' is-manual' : ''}">
+      ${thumb}
+      <div class="cp-row-main">
+        <div class="cp-row-meta"><b>${esc(t?.time || '')}</b><span class="s-badge is-plain">${esc(KIND[p.kind] || p.kind || '')}</span><span class="s-badge ${manual ? 'is-warn' : stone}">${esc(manual ? 'ხელით' : sl)}</span><span class="cp-nets">${esc((p.networks || []).map((n) => NET[n] || n).join(' · '))}</span></div>
+        ${p.title && !story ? `<h4>${esc(p.title)}</h4>` : ''}
+        ${preview ? `<p class="cp-row-text">${esc(preview)}</p>` : ''}
+        ${canCopy ? `<div class="cp-row-actions">
+          <button type="button" class="cp-link" data-copy="${esc(p.id)}">${ico('copy')}<span>კოპირება</span></button>
+          <button type="button" class="cp-link" data-more aria-expanded="false">${ico('rows')}<span>მთლიანი ტექსტი</span></button>
+        </div>` : ''}
+      </div>
     </article>`;
   }
 
   function paintPosts(pane) {
     const all = st.posts || [];
     const now = Date.now();
-    const list = all.filter((p) => (st.filter === 'all' ? true : st.filter === 'done' ? p.status === 'PUBLISHED' : Date.parse(p.scheduledAt) >= now - 30 * 60_000 && p.status !== 'CANCELED'));
+    st.texts = new Map();
+    const upcoming = (p) => Date.parse(p.scheduledAt) >= now - 30 * 60_000 && p.status !== 'CANCELED';
+    const list = all.filter((p) => (st.filter === 'all' ? true : st.filter === 'done' ? p.status === 'PUBLISHED' : upcoming(p)));
     const days = [];
     for (const p of list) {
       const key = tp(p.scheduledAt)?.key;
@@ -238,32 +338,46 @@
       days[days.length - 1][1].push(p);
     }
     const months = [...new Set(days.map(([k]) => k.slice(0, 7)))];
-    const counts = { upcoming: all.filter((p) => Date.parse(p.scheduledAt) >= now - 30 * 60_000 && p.status !== 'CANCELED').length, all: all.length, done: all.filter((p) => p.status === 'PUBLISHED').length };
+    const counts = { upcoming: all.filter(upcoming).length, all: all.length, done: all.filter((p) => p.status === 'PUBLISHED').length };
     pane.innerHTML = `<div class="s-stack cp-posts">
       <div class="cp-toolbar">
         <div class="s-segment" role="tablist" aria-label="ფილტრი">${FILTERS.map(([k, l]) => `<button type="button" role="tab" aria-selected="${k === st.filter}" data-cp-filter="${k}">${l} <i>${num(counts[k])}</i></button>`).join('')}</div>
-        ${months.length > 1 ? `<div class="cp-jump">${months.map((m) => `<button type="button" class="btn ghost compact" data-cp-month="${m}">${MONTHS[Number(m.slice(5)) - 1]}</button>`).join('')}</div>` : ''}
+        ${months.length > 1 ? `<div class="s-segment" aria-label="თვეზე გადასვლა">${months.map((m) => `<button type="button" data-cp-month="${m}">${MONTHS[Number(m.slice(5)) - 1]}</button>`).join('')}</div>` : ''}
       </div>
-      ${days.length ? days.map(([key, items]) => `<section class="cp-day" data-month="${key.slice(0, 7)}">
-        <h3>${esc(longDay(key))}${key === todayKey() ? ' <span class="s-badge is-info">დღეს</span>' : ''}</h3>
-        <div class="cp-grid">${items.map(postCard).join('')}</div>
-      </section>`).join('') : `<section class="s-card"><div class="s-empty">${ico('share')}<strong>${all.length ? 'ამ ფილტრით პოსტი არ არის' : 'პოსტები ჯერ არ არის ჩაწერილი'}</strong><span>${all.length ? 'აირჩიე „ყველა“.' : 'პოსტები #/social-ში social-log.mjs-ით ემატება.'}</span></div></section>`}
+      ${days.length ? `<div class="cp-days">${days.map(([key, items]) => `<section class="s-card cp-day" data-month="${key.slice(0, 7)}">
+        <header class="cp-day-head"><h3>${esc(longDay(key))}</h3>${key === todayKey() ? '<span class="s-badge is-info">დღეს</span>' : ''}<span class="cp-day-n">${num(items.length)}</span></header>
+        <div class="cp-rows">${items.map(postRow).join('')}</div>
+      </section>`).join('')}</div>` : `<section class="s-card"><div class="s-empty">${ico('share')}<strong>${all.length ? 'ამ ფილტრით პოსტი არ არის' : 'პოსტები ჯერ არ არის ჩაწერილი'}</strong><span>${all.length ? 'აირჩიე „ყველა“.' : 'პოსტები #/social-ში social-log.mjs-ით ემატება.'}</span></div></section>`}
     </div>`;
     pane.querySelectorAll('[data-cp-filter]').forEach((b) => b.addEventListener('click', () => { st.filter = b.dataset.cpFilter; paintPosts(pane); }));
     pane.querySelectorAll('[data-cp-month]').forEach((b) => b.addEventListener('click', () => pane.querySelector(`.cp-day[data-month="${b.dataset.cpMonth}"]`)?.scrollIntoView({ behavior: 'smooth', block: 'start' })));
+    pane.querySelectorAll('[data-view]').forEach((b) => b.addEventListener('click', () => {
+      const p = list.find((x) => x.id === b.dataset.view);
+      if (!p) return;
+      const cap = postCaption(p);
+      const pics = (p.mediaUrls || []).map(local).filter((u) => !isVideo(u));
+      openViewer(pics.map((src, k) => ({ src, caption: pics.length > 1 ? `${cap} · ${k + 1}` : cap })), 0);
+    }));
+    pane.querySelectorAll('[data-more]').forEach((b) => b.addEventListener('click', () => {
+      const row = b.closest('.cp-row');
+      const open = row.classList.toggle('is-open');
+      b.setAttribute('aria-expanded', String(open));
+      b.querySelector('span').textContent = open ? 'დაკეცვა' : 'მთლიანი ტექსტი';
+    }));
     pane.querySelectorAll('[data-copy]').forEach((b) => b.addEventListener('click', async () => {
-      const pre = b.previousElementSibling;
       const label = b.querySelector('span');
       try {
-        await navigator.clipboard.writeText(pre.textContent);
-        label.textContent = 'დაკოპირდა';
-        setTimeout(() => { label.textContent = 'ტექსტის კოპირება'; }, 1500);
+        await navigator.clipboard.writeText(st.texts.get(b.dataset.copy) || '');
+        label.textContent = 'დაკოპირდა ✓';
+        setTimeout(() => { label.textContent = 'კოპირება'; }, 1500);
       } catch {
+        const row = b.closest('.cp-row');
+        row.classList.add('is-open');
         const r = doc.createRange();
-        r.selectNodeContents(pre);
-        const s = getSelection();
-        s.removeAllRanges();
-        s.addRange(r);
+        r.selectNodeContents(row.querySelector('.cp-row-text'));
+        const sel = getSelection();
+        sel.removeAllRanges();
+        sel.addRange(r);
         global.toast?.('ტექსტი მოინიშნა: დააკოპირე Ctrl+C-ით.');
       }
     }));
@@ -273,15 +387,17 @@
   function paintPrint(pane) {
     const prints = st.campaign.prints || [];
     const mb = (b) => (b < 1048576 ? `${Math.max(1, Math.round(b / 1024)).toLocaleString('ka-GE')} კბ` : `${(b / 1048576).toLocaleString('ka-GE', { maximumFractionDigits: 1 })} მბ`);
-    pane.innerHTML = prints.length ? `<div class="cp-print">${prints.map((p) => `<article class="s-card cp-print-item">
-        <a class="cp-print-img" href="${esc(p.pdf)}" target="_blank" rel="noopener" title="PDF-ის გახსნა"><img src="${esc(p.preview)}" alt="" decoding="async"></a>
+    pane.innerHTML = prints.length ? `<div class="cp-print">${prints.map((p, k) => `<article class="s-card cp-print-item">
+        <button type="button" class="cp-print-img" data-print="${k}" title="სურათის ნახვა"><img src="${esc(p.preview)}" alt="" decoding="async"></button>
         <div class="cp-print-body"><h4>${esc(p.name)}</h4><p>${esc(p.spec)} · PDF, ${esc(mb(p.bytes))}</p></div>
         <div class="cp-print-actions">
-          <a class="btn compact" href="${esc(p.pdf)}" target="_blank" rel="noopener">${ico('external')}<span>გახსნა</span></a>
+          <a class="btn compact" href="${esc(p.pdf)}" target="_blank" rel="noopener">${ico('external')}<span>PDF</span></a>
           <a class="btn ghost compact" href="${esc(p.pdf)}" download>${ico('download')}<span>ჩამოტვირთვა</span></a>
         </div>
       </article>`).join('')}</div>`
       : `<section class="s-card"><div class="s-empty">${ico('image')}<strong>ბეჭდვის ფაილები არ არის</strong><span>გაუშვი render.py და build_gallery.py.</span></div></section>`;
+    const items = prints.map((p) => ({ src: p.preview, href: p.pdf, caption: `${p.name} · ${p.spec}` }));
+    pane.querySelectorAll('[data-print]').forEach((b) => b.addEventListener('click', () => openViewer(items, Number(b.dataset.print))));
   }
 
   global.renderCampaignsAdmin = renderCampaignsAdmin;

@@ -127,7 +127,8 @@ pre.cmd{margin:0;background:var(--raised);border:1px solid var(--line);border-ra
 @media (prefers-reduced-motion:no-preference){html{scroll-behavior:smooth}}
 /* Inside admin (#/campaigns sets html.embed): the admin page owns navigation and links. */
 html.embed nav.bar,html.embed .hero{display:none}
-html.embed .wrap{padding-block-end:32px}
+html.embed .wrap{max-width:none;padding-inline:clamp(20px,2.4vw,32px);padding-block-end:32px}
+html.embed section > header{max-width:90ch}
 html.embed .status{margin-top:20px}
 html.embed section{padding-top:44px}
 </style>
