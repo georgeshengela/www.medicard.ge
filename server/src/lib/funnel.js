@@ -17,12 +17,16 @@ export const FUNNEL_PERIODS = Object.freeze([7, 30, 90]);
 
 export const ONBOARDING_STEP_KEYS = Object.freeze([
   'o1-gender', 'o2-goal', 'o3-birthdate', 'o4-body', 'o5-medication', 'o5-weight', 'o5-cycle',
-  'privacy', 'ai-privacy', 'notifications',
+  'privacy', 'ai-privacy', 'notifications', 'home-layout',
 ]);
 export const PRIMARY_GOALS = Object.freeze(['medications', 'nutrition', 'cycle', 'general', 'unknown']);
 export const HEALTH_ACTION_TYPES = Object.freeze(['medication', 'meal', 'cycle', 'weight', 'visit', 'record', 'checkin_manual']);
 export const INSTALL_SOURCES = Object.freeze(['organic', 'invite', 'utm', 'deeplink']);
 export const SIGNUP_METHODS = Object.freeze(['email', 'phone', 'google', 'apple']);
+/** Personalised Home layouts. home_layout_changed.from is 'none' when there was no earlier choice (first pick in onboarding). */
+export const HOME_LAYOUTS = Object.freeze(['standard', 'women', 'active', 'weight']);
+export const HOME_LAYOUT_SOURCES = Object.freeze(['home_header', 'home_footer', 'profile', 'offer', 'onboarding']);
+export const HOME_LAYOUT_OFFER_CHOICES = Object.freeze(['tried', 'dismissed', 'other']);
 
 /** Marketing slug from a URL (utm_source=instagram). Letters, digits, - _ . only. */
 const slug = z.string().trim().toLowerCase().regex(/^[a-z0-9][a-z0-9._-]{0,39}$/);
@@ -43,6 +47,13 @@ const PROPS = {
   price_alert_opened: none,
   health_passport_created: none,
   referral_shared: none,
+  home_layout_picker_opened: z.object({ source: z.enum(HOME_LAYOUT_SOURCES) }).strict(),
+  home_layout_changed: z.object({
+    layout: z.enum(HOME_LAYOUTS),
+    from: z.enum([...HOME_LAYOUTS, 'none']),
+    source: z.enum(HOME_LAYOUT_SOURCES),
+  }).strict(),
+  home_layout_offer_answered: z.object({ choice: z.enum(HOME_LAYOUT_OFFER_CHOICES) }).strict(),
 };
 
 export const FUNNEL_EVENT_NAMES = Object.freeze(Object.keys(PROPS));
@@ -50,6 +61,7 @@ export const FUNNEL_EVENT_NAMES = Object.freeze(Object.keys(PROPS));
 export const ACCOUNT_EVENTS = new Set([
   'signup_completed', 'onboarding_completed', 'first_health_action',
   'price_alert_opened', 'health_passport_created', 'referral_shared',
+  'home_layout_picker_opened', 'home_layout_changed', 'home_layout_offer_answered',
 ]);
 
 export const batchSchema = z.object({
@@ -148,6 +160,14 @@ function activityIndex(activityRows) {
   }
   return byUser;
 }
+
+/** „სხვა მოვლენები“ on the admin page, in this order. */
+export const FEATURE_EVENTS = Object.freeze([
+  'price_alert_opened', 'health_passport_created', 'referral_shared',
+  'home_layout_picker_opened', 'home_layout_changed', 'home_layout_offer_answered',
+]);
+/** Events counted per value of one enum prop (event counts, not people). */
+const FEATURE_BREAKDOWN = Object.freeze({ home_layout_changed: 'layout', home_layout_offer_answered: 'choice' });
 
 /**
  * Pure: builds the funnel from events (period + cohort history) and AppActivity rows.
@@ -248,9 +268,18 @@ export function buildFunnelReport({ periodEvents = [], cohortEvents = [], activi
     return { stepKey, viewed: viewed.size, completed: completed.size, completionRate: rateSafe(completed.size, viewed.size) };
   }).filter((s) => s.viewed > 0 || !s.stepKey.startsWith('o5-'));
 
-  const features = ['price_alert_opened', 'health_passport_created', 'referral_shared'].map((name) => {
+  const features = FEATURE_EVENTS.map((name) => {
     const rows = period.filter((e) => e.name === name);
-    return { name, events: rows.length, users: new Set(rows.map((e) => e.userId).filter(Boolean)).size };
+    const feature = { name, events: rows.length, users: new Set(rows.map((e) => e.userId).filter(Boolean)).size };
+    const prop = FEATURE_BREAKDOWN[name];
+    if (prop) {
+      feature.breakdown = {};
+      for (const e of rows) {
+        const value = typeof e.props?.[prop] === 'string' ? e.props[prop] : 'unknown';
+        feature.breakdown[value] = (feature.breakdown[value] || 0) + 1;
+      }
+    }
+    return feature;
   });
 
   const dayList = enumerateYmds(fromYmd, today);

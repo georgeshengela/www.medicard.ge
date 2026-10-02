@@ -246,6 +246,15 @@ export const FEATURES = Object.freeze([
     defaultMessageEn: 'News is hidden for a moment.',
   },
   {
+    // UI only: the choice is saved through PUT /api/health-profile, which is never gated.
+    key: 'homeLayouts',
+    group: 'module',
+    label: 'მთავარი გვერდის ვარიანტები',
+    description: 'ქალის / აქტიური / კვება და წონის მთავარი გვერდები და მათი არჩევა (მათ შორის რეგისტრაციისას). გამორთვისას ყველა სტანდარტულ მთავარ გვერდს ხედავს; არჩევანი ინახება.',
+    defaultMessage: 'მთავარი გვერდის ვარიანტები დროებით შეჩერებულია.',
+    defaultMessageEn: 'Home layouts are paused for a moment.',
+  },
+  {
     key: 'weather',
     group: 'module',
     label: 'ამინდი და თავის შეგრძნება',

@@ -27,7 +27,7 @@
     ['daily', 'ყოველდღიური აღრიცხვა', 'წყალი, ნაბიჯები, წონა, კვება და ციკლი.', ['hydration', 'steps', 'weight', 'nutrition', 'cycle']],
     ['medi', 'Medi და AI', 'Medi-ს შეჩერება მის ყველა ხელსაწყოს აჩერებს; თითოეული ცალკეც ითიშება.', ['medi']],
     ['play', 'მოძრაობა და ჯილდოები', 'MEDIRUN, მისიები, ჯილდოები და მეგობრის მოწვევა.', ['medirun', 'quest', 'invites']],
-    ['more', 'სხვა სივრცეები', 'ცალკე მიმართულებები და დამატებითი გვერდები.', ['pets', 'coach', 'community', 'pharmacy', 'news', 'weather', 'weeklyReport', 'healthPassport']],
+    ['more', 'სხვა სივრცეები', 'ცალკე მიმართულებები და დამატებითი გვერდები.', ['pets', 'coach', 'community', 'pharmacy', 'news', 'homeLayouts', 'weather', 'weeklyReport', 'healthPassport']],
     ['system', 'ფონური სისტემები', 'ეკრანის გარეშე მომუშავე პროცესები.', ['email']],
   ];
   const FALLBACK_SECTION = { module: 'more', ai: 'medi', system: 'system' };

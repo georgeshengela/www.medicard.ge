@@ -183,20 +183,25 @@ async function persistRow(userId, next) {
 }
 
 async function mergeHealthProfileLocation(userId, snapshot) {
-  const profile = await prisma.healthProfile.findUnique({ where: { userId } });
-  if (!profile) return null;
-  const extra = profile.extraAnswers && typeof profile.extraAnswers === 'object' ? profile.extraAnswers : {};
-  const updated = await prisma.healthProfile.update({
-    where: { userId },
-    data: {
-      extraAnswers: {
-        ...extra,
-        locationPrompted: snapshot.prompted,
-        location: snapshot,
+  // Same row lock as PUT /api/health-profile: a profile write landing between this read and
+  // this write (e.g. the Home layout choice) must not be undone by a location sync.
+  const updated = await prisma.$transaction(async (tx) => {
+    const locked = await tx.$queryRaw`SELECT "userId" FROM "HealthProfile" WHERE "userId"=${userId} FOR UPDATE`;
+    if (!locked.length) return null;
+    const profile = await tx.healthProfile.findUnique({ where: { userId } });
+    const extra = profile?.extraAnswers && typeof profile.extraAnswers === 'object' ? profile.extraAnswers : {};
+    return tx.healthProfile.update({
+      where: { userId },
+      data: {
+        extraAnswers: {
+          ...extra,
+          locationPrompted: snapshot.prompted,
+          location: snapshot,
+        },
       },
-    },
+    });
   });
-  return publicHealthProfile(updated);
+  return updated ? publicHealthProfile(updated) : null;
 }
 
 export async function getUserLocationSnapshot(userId) {

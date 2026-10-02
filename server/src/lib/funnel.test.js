@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { describe, it } from 'node:test';
 import {
-  ACCOUNT_EVENTS, FUNNEL_EVENT_NAMES, MAX_BATCH, batchSchema, buildFunnelReport, ingestFunnelEvents, installHashOf,
+  ACCOUNT_EVENTS, FEATURE_EVENTS, FUNNEL_EVENT_NAMES, HOME_LAYOUTS, HOME_LAYOUT_SOURCES, MAX_BATCH, batchSchema, buildFunnelReport, ingestFunnelEvents, installHashOf,
   linkInstallToUser, parseFunnelDays, sanitizeFunnelEvent, sourceKey,
 } from './funnel.js';
 import { funnelStatements } from '../../scripts/install-funnel.mjs';
@@ -24,8 +24,11 @@ describe('funnel allow-list', () => {
       { name: 'price_alert_opened' },
       { name: 'health_passport_created', props: {} },
       { name: 'referral_shared' },
+      { name: 'home_layout_picker_opened', props: { source: 'home_header' } },
+      { name: 'home_layout_changed', props: { layout: 'women', from: 'standard', source: 'offer' } },
+      { name: 'home_layout_offer_answered', props: { choice: 'tried' } },
     ];
-    assert.equal(ok.length, FUNNEL_EVENT_NAMES.length);
+    assert.deepEqual(ok.map((e) => e.name).sort(), [...FUNNEL_EVENT_NAMES].sort());
     for (const e of ok) assert.ok(sanitizeFunnelEvent(e, { now, signedIn: true }), e.name);
     assert.equal(sanitizeFunnelEvent(ok[0], { now }).props.utmSource, 'instagram');
   });
@@ -47,11 +50,45 @@ describe('funnel allow-list', () => {
   });
 
   it('keeps account events for signed-in requests only', () => {
+    const valid = {
+      signup_completed: { method: 'email' },
+      onboarding_completed: { primaryGoal: 'general' },
+      first_health_action: { type: 'meal' },
+      home_layout_picker_opened: { source: 'profile' },
+      home_layout_changed: { layout: 'active', from: 'none', source: 'onboarding' },
+      home_layout_offer_answered: { choice: 'dismissed' },
+    };
     for (const name of ACCOUNT_EVENTS) {
-      const props = name === 'signup_completed' ? { method: 'email' } : name === 'onboarding_completed' ? { primaryGoal: 'general' } : name === 'first_health_action' ? { type: 'meal' } : {};
+      const props = valid[name] ?? {};
+      assert.ok(sanitizeFunnelEvent({ name, props }, { now, signedIn: true }), name);
       assert.equal(sanitizeFunnelEvent({ name, props }, { now, signedIn: false }), null, name);
     }
     assert.ok(sanitizeFunnelEvent({ name: 'app_first_open', props: { source: 'organic' } }, { now, signedIn: false }));
+  });
+
+  it('home layout events take exact enums only', () => {
+    const okEvents = [
+      ...HOME_LAYOUT_SOURCES.map((source) => ({ name: 'home_layout_picker_opened', props: { source } })),
+      ...HOME_LAYOUTS.map((layout) => ({ name: 'home_layout_changed', props: { layout, from: 'none', source: 'onboarding' } })),
+      ...HOME_LAYOUTS.map((from) => ({ name: 'home_layout_changed', props: { layout: 'weight', from, source: 'home_footer' } })),
+      ...['tried', 'dismissed', 'other'].map((choice) => ({ name: 'home_layout_offer_answered', props: { choice } })),
+    ];
+    for (const e of okEvents) assert.deepEqual(sanitizeFunnelEvent(e, { now, signedIn: true })?.props, e.props, JSON.stringify(e));
+    const bad = [
+      { name: 'home_layout_picker_opened' },
+      { name: 'home_layout_picker_opened', props: { source: 'settings' } },
+      { name: 'home_layout_picker_opened', props: { source: 'profile', layout: 'women' } },
+      { name: 'home_layout_changed', props: { layout: 'women', from: 'standard' } },
+      { name: 'home_layout_changed', props: { layout: 'none', from: 'standard', source: 'profile' } },
+      { name: 'home_layout_changed', props: { layout: 'pregnancy', from: 'standard', source: 'profile' } },
+      { name: 'home_layout_changed', props: { layout: 'women', from: 'cycle', source: 'profile' } },
+      { name: 'home_layout_changed', props: { layout: 'Women', from: 'standard', source: 'profile' } },
+      { name: 'home_layout_changed', props: { layout: 'women', from: 'standard', source: 'profile', gender: 'female' } },
+      { name: 'home_layout_offer_answered', props: { choice: 'maybe' } },
+      { name: 'home_layout_offer_answered', props: { choice: 'tried', layout: 'women' } },
+      { name: 'home_layout_offer_answered', props: {} },
+    ];
+    for (const e of bad) assert.equal(sanitizeFunnelEvent(e, { now, signedIn: true }), null, JSON.stringify(e));
   });
 
   it('clamps future timestamps and drops stale ones', () => {
@@ -159,6 +196,11 @@ describe('funnel report', () => {
     ev('onboarding_completed', 'u1', 'h1', { primaryGoal: 'nutrition' }, '2026-09-25T08:10:00Z'),
     ev('first_health_action', 'u1', 'h1', { type: 'meal' }, '2026-09-25T12:00:00Z'),
     ev('referral_shared', 'u1', 'h1', {}, '2026-09-26T12:00:00Z'),
+    ev('home_layout_picker_opened', 'u2', 'h2', { source: 'home_header' }, '2026-09-26T13:00:00Z'),
+    ev('home_layout_changed', 'u2', 'h2', { layout: 'women', from: 'standard', source: 'home_header' }, '2026-09-26T13:01:00Z'),
+    ev('home_layout_changed', 'u2', 'h2', { layout: 'standard', from: 'women', source: 'profile' }, '2026-09-27T13:01:00Z'),
+    ev('home_layout_changed', 'u1', 'h1', { layout: 'women', from: 'none', source: 'onboarding' }, '2026-09-25T08:09:00Z'),
+    ev('home_layout_offer_answered', 'u1', 'h1', { choice: 'dismissed' }, '2026-09-27T09:00:00Z'),
   ];
   const cohortEvents = periodEvents.filter((e) => e.userId);
   const report = buildFunnelReport({
@@ -189,6 +231,12 @@ describe('funnel report', () => {
     const gender = report.onboarding.find((s) => s.stepKey === 'o1-gender');
     assert.deepEqual([gender.viewed, gender.completed, gender.completionRate], [2, 1, 50]);
     assert.equal(report.features.find((f) => f.name === 'referral_shared').users, 1);
+    assert.deepEqual(report.features.map((f) => f.name), [...FEATURE_EVENTS]);
+    const changed = report.features.find((f) => f.name === 'home_layout_changed');
+    assert.deepEqual([changed.events, changed.users, changed.breakdown], [3, 2, { women: 2, standard: 1 }]);
+    assert.deepEqual(report.features.find((f) => f.name === 'home_layout_offer_answered').breakdown, { dismissed: 1 });
+    assert.equal(report.features.find((f) => f.name === 'home_layout_picker_opened').breakdown, undefined);
+    assert.equal(report.features.find((f) => f.name === 'referral_shared').breakdown, undefined);
     assert.equal(report.trend.installs.length, 7);
   });
 });
@@ -196,6 +244,8 @@ describe('funnel report', () => {
 describe('funnel install script', () => {
   it('ships only additive statements on the funnel table', () => {
     const sql = readFileSync(new URL('../../prisma/20260928-funnel.sql', import.meta.url), 'utf8');
+    // Repeatable events (home layout picks) must never sit behind a once-per-user/install unique index.
+    for (const name of ['home_layout_picker_opened', 'home_layout_changed', 'home_layout_offer_answered']) assert.ok(!sql.includes(name), name);
     assert.ok(funnelStatements(sql).length >= 5);
     assert.throws(() => funnelStatements('DROP TABLE "FunnelEvent";'));
     assert.throws(() => funnelStatements('CREATE TABLE IF NOT EXISTS "User" (id TEXT);'));

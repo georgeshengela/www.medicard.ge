@@ -20,10 +20,25 @@
   const STEPS = {
     'o1-gender': 'სქესი', 'o2-goal': 'მთავარი მიზანი', 'o3-birthdate': 'დაბადების თარიღი', 'o4-body': 'სიმაღლე და წონა',
     'o5-medication': 'პირველი წამალი', 'o5-weight': 'სამიზნე წონა', 'o5-cycle': 'ბოლო მენსტრუაცია',
-    privacy: 'კონფიდენციალობა', 'ai-privacy': 'AI თანხმობა', notifications: 'შეტყობინებები',
+    privacy: 'კონფიდენციალობა', 'ai-privacy': 'AI თანხმობა', notifications: 'შეტყობინებები', 'home-layout': 'მთავარი გვერდის არჩევა',
   };
   const ACTIONS = { medication: 'წამალი', meal: 'კვება', cycle: 'ციკლი', weight: 'წონა', visit: 'ვიზიტი', record: 'ჩანაწერი', checkin_manual: 'მაჩვენებელი ხელით' };
-  const FEATURES = { price_alert_opened: 'ფასის კლების შეტყობინება გახსნეს', health_passport_created: 'ჯანმრთელობის პასპორტი შექმნეს', referral_shared: 'მოწვევა გააზიარეს' };
+  const FEATURES = {
+    price_alert_opened: 'ფასის კლების შეტყობინება გახსნეს', health_passport_created: 'ჯანმრთელობის პასპორტი შექმნეს', referral_shared: 'მოწვევა გააზიარეს',
+    home_layout_picker_opened: 'მთავარი გვერდის არჩევა გაიხსნა', home_layout_changed: 'მთავარი გვერდი შეიცვალა', home_layout_offer_answered: 'ქალის გვერდის შეთავაზებაზე პასუხი',
+  };
+  // Per-value counts the server sends for some events (FEATURE_BREAKDOWN in src/lib/funnel.js). Never show the raw enum.
+  const BREAKDOWN = {
+    home_layout_changed: { standard: 'სტანდარტული', women: 'ქალის ჯანმრთელობა', active: 'აქტიური', weight: 'კვება და წონა' },
+    home_layout_offer_answered: { tried: 'სცადა', dismissed: 'უარი თქვა', other: 'სხვა აირჩია' },
+  };
+  const breakdownBadges = (f) => {
+    const names = BREAKDOWN[f.name] || {};
+    const entries = Object.entries(f.breakdown || {}).filter(([, n]) => n > 0).sort((a, b) => b[1] - a[1]);
+    return entries.length
+      ? `<span class="s-funnel-badges">${entries.map(([k, n]) => `<span class="s-badge is-plain">${esc(names[k] || 'უცნობი')} · ${fmt(n)}</span>`).join('')}</span>`
+      : '';
+  };
   const SOURCES = { organic: 'ორგანული', invite: 'მოწვევის ბმული', deeplink: 'სხვა ბმული', unknown: 'უცნობი' };
   const sourceLabel = (key) => (String(key).startsWith('utm:') ? `UTM · ${key.slice(4)}` : SOURCES[key] || key);
 
@@ -165,7 +180,7 @@
           : empty('ამ პერიოდში ონბორდინგის ნაბიჯები ჯერ არავის უნახავს.')}</div>
       </section>
       ${features.length ? `<div class="s-section-title"><h3>სხვა მოვლენები</h3></div>
-      <div class="s-metrics">${features.map((f) => `<div class="s-metric"><span>${esc(FEATURES[f.name] || f.name)}</span><strong>${fmt(f.users)}</strong><small>ადამიანი · ${fmt(f.events)} ჯერ</small></div>`).join('')}</div>` : ''}
+      <div class="s-metrics">${features.map((f) => `<div class="s-metric"><span>${esc(FEATURES[f.name] || f.name)}</span><strong>${fmt(f.users)}</strong><small>ადამიანი · ${fmt(f.events)} ჯერ</small>${breakdownBadges(f)}</div>`).join('')}</div>` : ''}
     </div>`;
 
     root.querySelectorAll('[data-days]').forEach((btn) => btn.addEventListener('click', () => {

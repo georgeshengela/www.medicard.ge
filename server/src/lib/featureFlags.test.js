@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { readFileSync, readdirSync } from 'node:fs';
 import { describe, it, beforeEach } from 'node:test';
 import {
   listFeatureFlags, isFeatureEnabled, setFeatureFlag, resetFeatureFlagCacheForTests, FEATURES,
@@ -116,5 +117,34 @@ describe('module hierarchy', () => {
     assert.equal(flags.visits, false);
     assert.ok((await featureDisabledMessage('visits', db)).length > 10);
     assert.ok(/visit/i.test(await featureDisabledMessage('visits', db, 'en')));
+  });
+});
+
+describe('home layouts switch', () => {
+  beforeEach(() => resetFeatureFlagCacheForTests());
+
+  it('is a top-level module the app reads from /api/app/status', async () => {
+    const def = FEATURES.find((f) => f.key === 'homeLayouts');
+    assert.ok(def, 'homeLayouts missing');
+    assert.equal(def.group, 'module');
+    assert.equal(def.parent, undefined);
+    assert.ok(def.defaultMessage && def.defaultMessageEn);
+    const db = fakeDb();
+    assert.equal((await publicFeatureFlags(db)).homeLayouts, true);
+    await setFeatureFlag('homeLayouts', { enabled: false }, { db });
+    resetFeatureFlagCacheForTests();
+    assert.equal((await publicFeatureFlags(db)).homeLayouts, false);
+    assert.equal((await publicFeatureMessages(db, 'en')).homeLayouts, 'Home layouts are paused for a moment.');
+  });
+
+  it('gates the app UI only — no route refuses writes for it', () => {
+    // The choice is saved through PUT /api/health-profile, which must keep working while the switch is off.
+    const dir = new URL('../routes/', import.meta.url);
+    const sources = [
+      readFileSync(new URL('../server.js', import.meta.url), 'utf8'),
+      readFileSync(new URL('./featureGates.js', import.meta.url), 'utf8'),
+      ...readdirSync(dir).filter((f) => f.endsWith('.js')).map((f) => readFileSync(new URL(f, dir), 'utf8')),
+    ];
+    for (const src of sources) assert.doesNotMatch(src, /requireFeature\(\s*['"]homeLayouts['"]/);
   });
 });
