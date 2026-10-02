@@ -19,7 +19,10 @@ import {
   importRewardCodes,
   listStoreRewards,
   redeemReward,
+  rewardImageUrl,
 } from './rewards.js';
+import { cancelRedemption, markRedemptionUsed } from './rewardsAdmin.js';
+import { SHOP_PRIZES } from './rewardDefs.js';
 
 const USER = 'user-rewards-1';
 const USER_B = 'user-rewards-2';
@@ -94,7 +97,7 @@ describe('phase 7 economy guards', () => {
     assert.equal(byKey.MEDI_PREMIUM_DAY, undefined);
     assert.equal(byKey.MEDI_PREMIUM_3D, undefined);
     assert.equal(byKey.PARTNER_TEST_10.status, REWARD_STATUSES.DRAFT);
-    assert.equal(REWARD_CATALOG.length, 3);
+    assert.equal(REWARD_CATALOG.filter((r) => !r.key.startsWith('SHOP_')).length, 3);
     assert.ok(REWARD_CATALOG.every((r) => !RETIRED_REWARD_KEYS.includes(r.key)));
   });
 
@@ -412,5 +415,54 @@ describe('phase 7 store listing', () => {
     assert.ok(!keys.includes('MEDI_PREMIUM_DAY'));
     const theme = store.available.find((r) => r.key === 'MEDI_THEME_7D');
     assert.equal(theme.userEligibility.reasonCode, 'REWARD_INSUFFICIENT_COINS');
+  });
+});
+
+describe('store prizes (gift cards, gadgets)', () => {
+  const shop = (db, key) => [...db._state.rewardDefinition.values()].find((r) => r.key === key);
+
+  it('seeds every prize ACTIVE with finite stock, a price inside the economy range and our own art', async () => {
+    const { db } = await setup();
+    for (const p of SHOP_PRIZES) {
+      const row = shop(db, p.key);
+      assert.equal(row.type, REWARD_TYPES.PHYSICAL_PRIZE);
+      assert.equal(row.status, REWARD_STATUSES.ACTIVE);
+      assert.equal(row.inventoryMode, 'FINITE');
+      assert.ok(row.inventoryQuantity > 0);
+      assert.equal(validateRewardCoinCost(row.coinCost), row.coinCost);
+      assert.match(rewardImageUrl(row.imageKey), /^https:\/\/medicard\.ge\/rewards\/[a-z0-9-]+\.webp$/);
+    }
+    const budget = SHOP_PRIZES.reduce((sum, p) => sum + p.metadata.retailGel * p.inventoryQuantity, 0);
+    assert.ok(budget <= 5100, `store budget ${budget} ₾`);
+    assert.equal(rewardImageUrl('theme'), null);
+  });
+
+  it('redeems as PENDING, takes stock, and the catalog never refills it', async () => {
+    const { db, options } = await setup();
+    const card = shop(db, 'SHOP_GIFTCARD_50');
+    await creditCoins(db, USER, 20_000);
+    const out = await redeemReward(USER, card.id, { ...options, idempotencyKey: 'shop-card-1' });
+    assert.equal(out.redemption.status, 'PENDING');
+    assert.equal(out.wallet.spent, 5000);
+    assert.equal(shop(db, 'SHOP_GIFTCARD_50').inventoryQuantity, 9);
+    await ensureRewardDefinitions(db);
+    assert.equal(shop(db, 'SHOP_GIFTCARD_50').inventoryQuantity, 9);
+    await redeemReward(USER, card.id, { ...options, idempotencyKey: 'shop-card-2' });
+    await assert.rejects(() => redeemReward(USER, card.id, { ...options, idempotencyKey: 'shop-card-3' }), (e) => e.status === 409);
+  });
+
+  it('cancel gives the coins and the stock back; handed over marks it USED', async () => {
+    const { db, options } = await setup();
+    const buds = shop(db, 'SHOP_BUDS');
+    await creditCoins(db, USER, 6000);
+    const a = await redeemReward(USER, buds.id, { ...options, idempotencyKey: 'shop-buds-1' });
+    assert.equal((await getRewardBalance(USER, options)).coins, 500);
+    await cancelRedemption(a.redemption.id, { admin: { id: 'admin-1' }, reason: 'test' }, options);
+    assert.equal((await getRewardBalance(USER, options)).coins, 6000);
+    assert.equal(shop(db, 'SHOP_BUDS').inventoryQuantity, 5);
+    await assert.rejects(() => cancelRedemption(a.redemption.id, { admin: { id: 'admin-1' } }, options), (e) => e.status === 409);
+    const b = await redeemReward(USER, buds.id, { ...options, idempotencyKey: 'shop-buds-2' });
+    const used = await markRedemptionUsed(b.redemption.id, { admin: { id: 'admin-1' } }, options);
+    assert.equal(used.status, 'USED');
   });
 });

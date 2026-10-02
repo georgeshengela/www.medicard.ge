@@ -21,11 +21,11 @@ test('weekdays: few small boxes deep inside parks; weekends: more and better',()
  assert.equal(dayKind('2026-10-05'),'weekday');assert.equal(dayKind('2026-10-04'),'weekend');
  const mon=plan('2026-10-05'),sun=plan('2026-10-04');
  assert.ok(mon.length>=5&&mon.length<=7,`weekday boxes ${mon.length}`);
- assert.ok(mon.every(p=>p.rule.coins<=50&&p.gift.stock<=3&&p.gift.pulseRadius===250));
+ assert.ok(mon.every(p=>p.rule.coins<=250&&p.gift.stock<=3&&p.gift.pulseRadius===250)); // coins ×5 since 2 Oct (store economy)
  assert.ok(mon.every(p=>spots.find(s=>s.id===p.rule.meta.spot).depthM>=40),'weekday boxes avoid park edges');
  const avg=list=>list.reduce((s,p)=>s+p.rule.coins,0)/list.length;
  assert.ok(sun.length>mon.length&&avg(sun)>avg(mon));
- assert.ok(sun.every(p=>p.rule.coins>=30));
+ assert.ok(sun.every(p=>p.rule.coins>=150));
 });
 test('evening waves only use lit paths, and no spot repeats inside a day',()=>{
  for(const date of ['2026-10-05','2026-10-10','2026-11-14']){
@@ -52,7 +52,7 @@ test('Saturday 16:00 rain around the announced park; lanterns from November need
  assert.equal(oct.filter(p=>p.rule.meta.kind==='lantern').length,0);
  assert.equal(plan('2026-10-11').filter(p=>p.rule.meta.kind==='saturday').length,0,'Sunday has no rain');
  const nov=plan('2026-11-07').filter(p=>p.rule.meta.kind==='lantern');
- for(const p of nov){assert.equal(p.rule.minPercent,0.25);assert.equal(p.rule.areaId,CAMPAIGN.area.id);assert.equal(p.rule.coins,300);}
+ for(const p of nov){assert.equal(p.rule.minPercent,0.25);assert.equal(p.rule.areaId,CAMPAIGN.area.id);assert.equal(p.rule.coins,1500);}
 });
 test('the grand prize exists only on 31 December, for 1% of Tbilisi, as a physical single box',()=>{
  assert.equal(plan('2026-12-30').filter(p=>p.rule.meta.kind==='grand').length,0);

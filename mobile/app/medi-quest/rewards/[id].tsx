@@ -342,6 +342,11 @@ export default function RewardDetailScreen() {
                 style={{ fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 28, color: colors.text100 }}
               />
             </View>
+            {success?.redemption.status === 'PENDING' ? (
+              <Text style={{ fontFamily: 'NotoSansGeorgian_500Medium', fontSize: 14, lineHeight: 21, color: colors.text200 }}>
+                {copy.physicalSuccess}
+              </Text>
+            ) : null}
             {success?.redemption.code ? (
               <View style={{ gap: 8 }}>
                 <Text style={{ fontFamily: 'NotoSansGeorgian_600SemiBold', fontSize: 13, color: colors.text300 }}>CODE</Text>

@@ -17,6 +17,7 @@ import {
   CODE_STATUSES,
   INVENTORY_MODES,
   LEDGER_SOURCE_REWARD_REDEMPTION,
+  LEDGER_SOURCE_REWARD_REFUND,
   QUEST_PREMIUM_ENTITLEMENT_EXISTS,
   REWARD_STATUSES,
   REWARD_TYPES,
@@ -781,6 +782,8 @@ export async function getRedemptionAdmin(id, options = {}) {
     cancelledAt: r.cancelledAt,
     cancellationReason: r.cancellationReason,
     maskedUserRef: maskedUserRef(r.userId),
+    // A physical prize has to be handed over: only then does the admin get the account to call.
+    fulfilmentUserId: r.reward?.type === REWARD_TYPES.PHYSICAL_PRIZE ? r.userId : null,
     reward: r.reward
       ? {
           id: r.reward.id,
@@ -832,8 +835,9 @@ export async function markRedemptionUsed(id, { admin, reason } = {}, options = {
   const db = dbOf(options);
   const previous = await db.rewardRedemption.findUnique({ where: { id } });
   if (!previous) throw httpError('redemption not found', 404);
-  if (previous.status !== 'ISSUED') {
-    throw httpError('only ISSUED can be marked USED', 409);
+  // PENDING = a physical prize; „გაცემულია“ marks it handed over.
+  if (previous.status !== 'ISSUED' && previous.status !== 'PENDING') {
+    throw httpError('only ISSUED or PENDING can be marked USED', 409);
   }
   const row = await db.$transaction(async (tx) => {
     const updated = await tx.rewardRedemption.update({
@@ -867,6 +871,75 @@ export async function markRedemptionUsed(id, { admin, reason } = {}, options = {
     targetId: id,
     previousValue: { status: previous.status },
     newValue: { status: row.status, reason: reason || null },
+  });
+  return row;
+}
+
+
+/**
+ * Cancel a redemption the team cannot (or should not) fulfil — e.g. a physical prize that cannot be handed over.
+ * The coins go back to the person (ledger REWARD_REFUND, idempotent per redemption) and FINITE stock goes back up.
+ * Only PENDING (physical prizes) or ISSUED without a code: a revealed code cannot be taken back.
+ */
+export async function cancelRedemption(id, { admin, reason } = {}, options = {}) {
+  const db = dbOf(options);
+  const previous = await db.rewardRedemption.findUnique({ where: { id }, include: { reward: true } });
+  if (!previous) throw httpError('redemption not found', 404);
+  if (!(previous.status === 'PENDING' || (previous.status === 'ISSUED' && !previous.codeId))) {
+    throw httpError('only PENDING (or ISSUED without a code) can be cancelled', 409);
+  }
+  const note = reason ? String(reason).slice(0, 240) : 'admin_cancel';
+  const row = await db.$transaction(async (tx) => {
+    const now = new Date();
+    const updated = await tx.rewardRedemption.update({
+      where: { id },
+      data: { status: 'CANCELLED', cancelledAt: now, cancellationReason: note },
+    });
+    await tx.rewardLedger.create({
+      data: {
+        id: randomUUID(),
+        userId: previous.userId,
+        currency: 'COIN',
+        amount: previous.coinCost,
+        transactionType: 'ADJUST',
+        sourceType: LEDGER_SOURCE_REWARD_REFUND,
+        sourceId: id,
+        createdAt: now,
+        metadata: { rewardKey: previous.reward?.key || null, reason: note },
+      },
+    });
+    if (previous.reward?.inventoryMode === INVENTORY_MODES.FINITE) {
+      await tx.rewardDefinition.update({ where: { id: previous.rewardId }, data: { inventoryQuantity: { increment: 1 } } });
+      await tx.rewardInventoryAdjustment.create({
+        data: { id: randomUUID(), rewardId: previous.rewardId, delta: 1, reason: 'REDEMPTION_CANCELLED', actorType: 'ADMIN', actorId: admin?.id || null },
+      });
+    }
+    try {
+      await tx.userQuestProfile.update({ where: { userId: previous.userId }, data: { cachedCoinBalance: { increment: previous.coinCost } } });
+    } catch {
+      // No quest profile yet: the ledger stays authoritative.
+    }
+    await tx.rewardRedemptionAudit.create({
+      data: {
+        id: randomUUID(),
+        redemptionId: id,
+        userId: previous.userId,
+        rewardId: previous.rewardId,
+        coinCost: previous.coinCost,
+        fromStatus: previous.status,
+        toStatus: 'CANCELLED',
+        note,
+      },
+    });
+    return updated;
+  });
+  await writeAdminAudit({
+    admin,
+    action: 'REDEMPTION_STATUS_CHANGED',
+    targetType: 'rewardRedemption',
+    targetId: id,
+    previousValue: { status: previous.status },
+    newValue: { status: row.status, refundedCoins: previous.coinCost, reason: note },
   });
   return row;
 }

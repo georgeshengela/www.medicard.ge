@@ -117,7 +117,7 @@ function Group({
                 {name}
               </Text>
               <Text style={{ fontFamily: 'NotoSansGeorgian_500Medium', fontSize: 12, color: colors.text300, marginTop: 4 }}>
-                {statusLabel}
+                {item.status === 'PENDING' ? copy.statusPending : statusLabel}
                 {' · '}
                 {new Date(item.redeemedAt).toLocaleDateString(dateLocale())}
                 {item.expiresAt ? ` · ${copy.expires} ${new Date(item.expiresAt).toLocaleDateString(dateLocale())}` : ''}

@@ -53,7 +53,9 @@ export function achievementArt(item: { key?: string | null; category?: string | 
 }
 
 /** Store reward by type (StoreReward.type); profile-style perks get their own badge. */
-export function rewardArt(reward: { type?: string | null; key?: string | null; entitlementKey?: string | null }): ImageSourcePropType {
+export function rewardArt(reward: { type?: string | null; key?: string | null; entitlementKey?: string | null; imageUrl?: string | null }): ImageSourcePropType {
+  // Store prizes carry their own art (server/public/rewards/*.webp).
+  if (reward.imageUrl && /^https:\/\//.test(reward.imageUrl)) return { uri: reward.imageUrl };
   switch (reward.type) {
     case 'DIGITAL_PERK': {
       const hint = `${reward.key ?? ''} ${reward.entitlementKey ?? ''}`.toUpperCase();

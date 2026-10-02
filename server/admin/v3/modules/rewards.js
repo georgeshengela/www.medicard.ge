@@ -65,6 +65,7 @@
     PREMIUM_ACCESS: 'Premium წვდომა',
     PARTNER_VOUCHER: 'პარტნიორის ვაუჩერი',
     COUPON_CODE: 'კუპონის კოდი',
+    PHYSICAL_PRIZE: 'ფიზიკური საჩუქარი',
   };
   const COUNTRY_KA = { GE: 'საქართველო' };
   /** Built-in rewards keep an app translation key instead of a title (mobile/src/i18n/quest/rewards.js). */
@@ -83,6 +84,8 @@
   const NOTE_KA = {
     redeem: 'გაცვალა აპში',
     admin_mark_used: 'ადმინმა მონიშნა გამოყენებულად',
+    handed_over: 'გადაეცა მომხმარებელს',
+    admin_cancel: 'ადმინმა გააუქმა, მონეტები დაბრუნდა',
     partner_unavailable: 'პარტნიორი მიუწვდომელია',
   };
   const REFERRAL_STATUS = {
@@ -408,7 +411,9 @@
           ['კამპანია', d.campaign ? two(esc(d.campaign.name || d.campaign.key), esc(statusWord(d.campaign.status))) : '—'],
           ['ფასი', `${fmt(d.coinCost)} Medi Coins`],
           ['კოდი', d.code ? two(`<span class="mono">${esc(maskedCode(d.code.codeMasked))}</span>`, esc(statusWord(d.code.status))) : '—'],
-          ['მომხმარებელი', `<span class="mono">${esc(d.maskedUserRef || '—')}</span>`],
+          ['მომხმარებელი', d.fulfilmentUserId
+            ? two(`<a class="mono" href="#/users/${encodeURIComponent(d.fulfilmentUserId)}">${esc(d.maskedUserRef || 'გახსნა')}</a>`, 'ტელეფონი მომხმარებლის გვერდზეა — დაურეკე და შეუთანხმდი გადაცემას')
+            : `<span class="mono">${esc(d.maskedUserRef || '—')}</span>`],
           ['გაცვალა', esc(when(d.redeemedAt))],
           ['ვადა', d.expiresAt ? esc(when(d.expiresAt)) : 'ვადის გარეშე'],
           d.usedAt ? ['გამოიყენა', esc(when(d.usedAt))] : null,
@@ -421,13 +426,29 @@
             ${a.note ? `<span>${esc(NOTE_KA[a.note] || a.note)}</span>` : ''}</div>
             <time>${esc(when(a.createdAt))}</time>
           </li>`).join('');
-        host.innerHTML = `<div class="s-stack p2-detail">
+        const handover = d.status === 'PENDING'
+          ? `<div class="s-callout">${ico('gift')}<div><b>საჩუქარი გადაცემას ელოდება</b><p>გადაეცი თბილისში 14 დღეში. თუ ვერ ხერხდება, გააუქმე — მონეტები მომხმარებელს სრულად დაუბრუნდება და მარაგი აღდგება.</p>
+              <div class="s-row" style="gap:8px;margin-top:10px"><button type="button" class="btn" id="rw-handover">${ico('check')} გაცემულია</button><button type="button" class="btn ghost" id="rw-cancel">გაუქმება და მონეტების დაბრუნება</button></div></div></div>`
+          : '';
+        host.innerHTML = `<div class="s-stack p2-detail">${handover}
           <dl class="p2-facts">${facts.map(([k, v]) => `<div><dt>${esc(k)}</dt><dd>${v}</dd></div>`).join('')}</dl>
           <section>
             <h4 class="p2-h">ისტორია</h4>
             ${steps ? `<ol class="p2-steps">${steps}</ol>` : '<p class="s-muted">ცვლილებები ჯერ არ ჩაწერილა.</p>'}
           </section>
         </div>`;
+        const act = (btn, path, reason, done) => btn?.addEventListener('click', () => confirmThen({
+          title: done.title,
+          message: done.message,
+          confirmLabel: done.label,
+          variant: done.variant,
+          onConfirm: async () => {
+            await mutate(() => apiRewards(`/redemptions/${encodeURIComponent(id)}/${path}`, { method: 'POST', body: { reason } }), { pendingElement: btn, successMessage: done.ok });
+            void dlg?.close?.();
+          },
+        }));
+        act($('rw-handover'), 'mark-used', 'handed_over', { title: 'საჩუქარი გადაეცა?', message: 'გაცვლა მოინიშნება „გამოყენებულად“. ეს ნიშნავს, რომ ადამიანმა საჩუქარი ხელში მიიღო.', label: 'გაცემულია', ok: 'მოინიშნა: გადაეცა' });
+        act($('rw-cancel'), 'cancel', 'admin_cancel', { title: 'გავაუქმო გაცვლა?', message: `მომხმარებელს ${fmt(d.coinCost)} Medi Coins დაუბრუნდება და მარაგი ერთით გაიზრდება. ამას ვერ დააბრუნებ.`, label: 'გაუქმება', variant: 'warning', ok: 'გაუქმდა, მონეტები დაბრუნდა' });
       })
       .catch((err) => {
         const host = $('rw-redemption-detail');

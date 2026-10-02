@@ -4,6 +4,73 @@
  */
 
 const REWARD_TITLES = {
+  // Store prizes (server/src/lib/rewardDefs.js SHOP_PRIZES): keyed by the Georgian copy the server sends.
+  "Zoommer-ის სასაჩუქრე ბარათი 50₾": {
+    ka: "Zoommer-ის სასაჩუქრე ბარათი 50₾",
+    en: "Zoommer gift card 50 ₾",
+    fr: "Carte cadeau Zoommer 50 ₾",
+    ru: "Подарочная карта Zoommer 50 ₾",
+  },
+  "Zoommer-ის სასაჩუქრე ბარათი 100₾": {
+    ka: "Zoommer-ის სასაჩუქრე ბარათი 100₾",
+    en: "Zoommer gift card 100 ₾",
+    fr: "Carte cadeau Zoommer 100 ₾",
+    ru: "Подарочная карта Zoommer 100 ₾",
+  },
+  "Zoommer-ის სასაჩუქრე ბარათი 200₾": {
+    ka: "Zoommer-ის სასაჩუქრე ბარათი 200₾",
+    en: "Zoommer gift card 200 ₾",
+    fr: "Carte cadeau Zoommer 200 ₾",
+    ru: "Подарочная карта Zoommer 200 ₾",
+  },
+  "Xiaomi Redmi Buds 6 Active": {
+    ka: "Xiaomi Redmi Buds 6 Active",
+    en: "Xiaomi Redmi Buds 6 Active",
+    fr: "Xiaomi Redmi Buds 6 Active",
+    ru: "Xiaomi Redmi Buds 6 Active",
+  },
+  "Xiaomi ჭკვიანი სასწორი S400": {
+    ka: "Xiaomi ჭკვიანი სასწორი S400",
+    en: "Xiaomi Body Composition Scale S400",
+    fr: "Balance connectée Xiaomi S400",
+    ru: "Умные весы Xiaomi S400",
+  },
+  "Xiaomi Power Bank 10 000 mAh": {
+    ka: "Xiaomi Power Bank 10 000 mAh",
+    en: "Xiaomi Power Bank 10,000 mAh",
+    fr: "Xiaomi Power Bank 10,000 mAh",
+    ru: "Xiaomi Power Bank 10,000 mAh",
+  },
+  "Xiaomi Redmi Watch 5 Active": {
+    ka: "Xiaomi Redmi Watch 5 Active",
+    en: "Xiaomi Redmi Watch 5 Active",
+    fr: "Xiaomi Redmi Watch 5 Active",
+    ru: "Xiaomi Redmi Watch 5 Active",
+  },
+  "Xiaomi Smart Band 10": {
+    ka: "Xiaomi Smart Band 10",
+    en: "Xiaomi Smart Band 10",
+    fr: "Xiaomi Smart Band 10",
+    ru: "Xiaomi Smart Band 10",
+  },
+  "Apple AirPods 4": {
+    ka: "Apple AirPods 4",
+    en: "Apple AirPods 4",
+    fr: "Apple AirPods 4",
+    ru: "Apple AirPods 4",
+  },
+  "Apple AirPods Pro 3": {
+    ka: "Apple AirPods Pro 3",
+    en: "Apple AirPods Pro 3",
+    fr: "Apple AirPods Pro 3",
+    ru: "Apple AirPods Pro 3",
+  },
+  "Apple Watch SE 3": {
+    ka: "Apple Watch SE 3",
+    en: "Apple Watch SE 3",
+    fr: "Apple Watch SE 3",
+    ru: "Apple Watch SE 3",
+  },
   'reward.mediTheme7d.title': {
     ka: 'Medi Quest სტილი — 7 დღე',
     en: 'Medi Quest style — 7 days',
@@ -37,6 +104,72 @@ const REWARD_TITLES = {
 };
 
 const REWARD_DESCRIPTIONS = {
+  "იყიდე Zoommer-ში ნებისმიერი რამ 50₾-ის ღირებულებით.": {
+    ka: "იყიდე Zoommer-ში ნებისმიერი რამ 50₾-ის ღირებულებით.",
+    en: "Spend 50 ₾ on anything at Zoommer.",
+    fr: "Dépensez 50 ₾ chez Zoommer.",
+    ru: "Потратьте 50 ₾ на что угодно в Zoommer.",
+  },
+  "იყიდე Zoommer-ში ნებისმიერი რამ 100₾-ის ღირებულებით.": {
+    ka: "იყიდე Zoommer-ში ნებისმიერი რამ 100₾-ის ღირებულებით.",
+    en: "Spend 100 ₾ on anything at Zoommer.",
+    fr: "Dépensez 100 ₾ chez Zoommer.",
+    ru: "Потратьте 100 ₾ на что угодно в Zoommer.",
+  },
+  "იყიდე Zoommer-ში ნებისმიერი რამ 200₾-ის ღირებულებით.": {
+    ka: "იყიდე Zoommer-ში ნებისმიერი რამ 200₾-ის ღირებულებით.",
+    en: "Spend 200 ₾ on anything at Zoommer.",
+    fr: "Dépensez 200 ₾ chez Zoommer.",
+    ru: "Потратьте 200 ₾ на что угодно в Zoommer.",
+  },
+  "უსადენო ყურსასმენები ხმაურის ჩახშობით — სირბილისთვის და ყოველდღისთვის.": {
+    ka: "უსადენო ყურსასმენები ხმაურის ჩახშობით — სირბილისთვის და ყოველდღისთვის.",
+    en: "Wireless earbuds with noise reduction — for runs and every day.",
+    fr: "Wireless earbuds with noise reduction — for runs and every day.",
+    ru: "Wireless earbuds with noise reduction — for runs and every day.",
+  },
+  "წონა, ცხიმოვანი და კუნთოვანი მასა, პულსი — ყოველ დილით ერთ წამში.": {
+    ka: "წონა, ცხიმოვანი და კუნთოვანი მასა, პულსი — ყოველ დილით ერთ წამში.",
+    en: "Weight, body fat, muscle and heart rate — every morning in a second.",
+    fr: "Weight, body fat, muscle and heart rate — every morning in a second.",
+    ru: "Weight, body fat, muscle and heart rate — every morning in a second.",
+  },
+  "22.5W სწრაფი დატენვა ჯიბის ზომაში: ტელეფონი MEDIRUN-ზე აღარ დაგიჯდება.": {
+    ka: "22.5W სწრაფი დატენვა ჯიბის ზომაში: ტელეფონი MEDIRUN-ზე აღარ დაგიჯდება.",
+    en: "22.5 W fast charging in your pocket: your phone won’t die on a MEDIRUN walk.",
+    fr: "22.5 W fast charging in your pocket: your phone won’t die on a MEDIRUN walk.",
+    ru: "22.5 W fast charging in your pocket: your phone won’t die on a MEDIRUN walk.",
+  },
+  "დიდი ეკრანი, პულსი, ნაბიჯები და ძილი — და გრძელი ბატარეა.": {
+    ka: "დიდი ეკრანი, პულსი, ნაბიჯები და ძილი — და გრძელი ბატარეა.",
+    en: "A big screen, heart rate, steps and sleep — and a long battery.",
+    fr: "A big screen, heart rate, steps and sleep — and a long battery.",
+    ru: "A big screen, heart rate, steps and sleep — and a long battery.",
+  },
+  "მსუბუქი სამაჯური AMOLED ეკრანით: პულსი, ძილი და ვარჯიშები.": {
+    ka: "მსუბუქი სამაჯური AMOLED ეკრანით: პულსი, ძილი და ვარჯიშები.",
+    en: "A light band with an AMOLED screen: heart rate, sleep and workouts.",
+    fr: "A light band with an AMOLED screen: heart rate, sleep and workouts.",
+    ru: "A light band with an AMOLED screen: heart rate, sleep and workouts.",
+  },
+  "ახალი AirPods: მსუბუქი, კომფორტული, სივრცითი აუდიოთი.": {
+    ka: "ახალი AirPods: მსუბუქი, კომფორტული, სივრცითი აუდიოთი.",
+    en: "The new AirPods: light, comfortable, with spatial audio.",
+    fr: "The new AirPods: light, comfortable, with spatial audio.",
+    ru: "The new AirPods: light, comfortable, with spatial audio.",
+  },
+  "ხმაურის აქტიური ჩახშობა და პულსის გაზომვა ვარჯიშისას.": {
+    ka: "ხმაურის აქტიური ჩახშობა და პულსის გაზომვა ვარჯიშისას.",
+    en: "Active noise cancellation and heart-rate sensing during workouts.",
+    fr: "Active noise cancellation and heart-rate sensing during workouts.",
+    ru: "Active noise cancellation and heart-rate sensing during workouts.",
+  },
+  "Apple Watch SE 3 GPS: აქტიურობა, ძილი და ვარჯიში მაჯაზე.": {
+    ka: "Apple Watch SE 3 GPS: აქტიურობა, ძილი და ვარჯიში მაჯაზე.",
+    en: "Apple Watch SE 3 GPS: activity, sleep and workouts on your wrist.",
+    fr: "Apple Watch SE 3 GPS: activity, sleep and workouts on your wrist.",
+    ru: "Apple Watch SE 3 GPS: activity, sleep and workouts on your wrist.",
+  },
   'reward.mediTheme7d.description': {
     ka: 'ოქროსფერი აქცენტი Medi Quest ჰაბზე 7 დღით. მხოლოდ კოსმეტიკა — XP/Coins არ იცვლება.',
     en: 'A gold accent on the Medi Quest hub for 7 days. Cosmetic only — XP/Coins unchanged.',
@@ -70,6 +203,18 @@ const REWARD_DESCRIPTIONS = {
 };
 
 const REWARD_TERMS = {
+  "ფიზიკურ ბარათს თბილისში 14 დღეში გადმოგცემთ — დაგიკავშირდებით ანგარიშის ტელეფონზე. ფულზე არ იცვლება. მარაგი შეზღუდულია. თუ გადაცემა ვერ მოხერხდა, Medi Coins სრულად დაგიბრუნდება. Zoommer ამ ჯილდოს სპონსორი არ არის.": {
+    ka: "ფიზიკურ ბარათს თბილისში 14 დღეში გადმოგცემთ — დაგიკავშირდებით ანგარიშის ტელეფონზე. ფულზე არ იცვლება. მარაგი შეზღუდულია. თუ გადაცემა ვერ მოხერხდა, Medi Coins სრულად დაგიბრუნდება. Zoommer ამ ჯილდოს სპონსორი არ არის.",
+    en: "We hand the physical card over in Tbilisi within 14 days and call the phone on your account. Not exchangeable for cash. Limited stock. If the hand-over fails, your Medi Coins are refunded in full. Zoommer is not a sponsor of this reward.",
+    fr: "We hand the physical card over in Tbilisi within 14 days and call the phone on your account. Not exchangeable for cash. Limited stock. If the hand-over fails, your Medi Coins are refunded in full. Zoommer is not a sponsor of this reward.",
+    ru: "We hand the physical card over in Tbilisi within 14 days and call the phone on your account. Not exchangeable for cash. Limited stock. If the hand-over fails, your Medi Coins are refunded in full. Zoommer is not a sponsor of this reward.",
+  },
+  "ახალი, ოფიციალური გარანტიით. თბილისში 14 დღეში გადმოგცემთ — დაგიკავშირდებით ანგარიშის ტელეფონზე. ფულზე ან სხვა ნივთზე არ იცვლება, ფერი მარაგის მიხედვით. მარაგი შეზღუდულია. თუ გადაცემა ვერ მოხერხდა, Medi Coins სრულად დაგიბრუნდება. Apple და Xiaomi ამ ჯილდოების სპონსორები არ არიან.": {
+    ka: "ახალი, ოფიციალური გარანტიით. თბილისში 14 დღეში გადმოგცემთ — დაგიკავშირდებით ანგარიშის ტელეფონზე. ფულზე ან სხვა ნივთზე არ იცვლება, ფერი მარაგის მიხედვით. მარაგი შეზღუდულია. თუ გადაცემა ვერ მოხერხდა, Medi Coins სრულად დაგიბრუნდება. Apple და Xiaomi ამ ჯილდოების სპონსორები არ არიან.",
+    en: "New, with the official warranty. We hand it over in Tbilisi within 14 days and call the phone on your account. Not exchangeable for cash or another item; colour depends on stock. Limited stock. If the hand-over fails, your Medi Coins are refunded in full. Apple and Xiaomi are not sponsors of these rewards.",
+    fr: "New, with the official warranty. We hand it over in Tbilisi within 14 days and call the phone on your account. Not exchangeable for cash or another item; colour depends on stock. Limited stock. If the hand-over fails, your Medi Coins are refunded in full. Apple and Xiaomi are not sponsors of these rewards.",
+    ru: "New, with the official warranty. We hand it over in Tbilisi within 14 days and call the phone on your account. Not exchangeable for cash or another item; colour depends on stock. Limited stock. If the hand-over fails, your Medi Coins are refunded in full. Apple and Xiaomi are not sponsors of these rewards.",
+  },
   'reward.mediTheme7d.terms': {
     ka: 'ლოიალობის ქულები — არა ფული. 14 დღეში ერთხელ. იცვლის მხოლოდ Medi Quest ჰაბის ვიზუალს. ვადის გასვლის შემდეგ სტილი ქრება. Coins არ ბრუნდება.',
     en: 'Loyalty points — not money. Once every 14 days. Changes only the Medi Quest hub look. After expiry the style ends. Coins are not refunded.',
@@ -138,6 +283,8 @@ const STORE = {
     used: 'გამოყენებული',
     expired: 'ვადაგასული',
     statusIssued: 'გაცემული',
+    statusPending: 'გადაცემას ელოდება',
+    physicalSuccess: 'დაგიკავშირდებით ანგარიშის ტელეფონზე და საჩუქარს თბილისში 14 დღეში გადმოგცემთ.',
     statusUsed: 'გამოყენებული',
     statusExpired: 'ვადაგასული',
     ledgerRedeem: 'Medi ჯილდო',
@@ -180,6 +327,8 @@ const STORE = {
     used: 'Used',
     expired: 'Expired',
     statusIssued: 'Issued',
+    statusPending: 'Waiting for hand-over',
+    physicalSuccess: 'We’ll call the phone on your account and hand the prize over in Tbilisi within 14 days.',
     statusUsed: 'Used',
     statusExpired: 'Expired',
     ledgerRedeem: 'Medi reward',
@@ -222,6 +371,8 @@ const STORE = {
     used: 'Utilisées',
     expired: 'Expirées',
     statusIssued: 'Émise',
+    statusPending: 'En attente de remise',
+    physicalSuccess: 'Nous appellerons le numéro de votre compte et remettrons le cadeau à Tbilissi sous 14 jours.',
     statusUsed: 'Utilisée',
     statusExpired: 'Expirée',
     ledgerRedeem: 'Récompense Medi',
@@ -264,6 +415,8 @@ const STORE = {
     used: 'Использованные',
     expired: 'Истёкшие',
     statusIssued: 'Выдана',
+    statusPending: 'Ожидает вручения',
+    physicalSuccess: 'Мы позвоним на номер вашего аккаунта и вручим приз в Тбилиси в течение 14 дней.',
     statusUsed: 'Использована',
     statusExpired: 'Истекла',
     ledgerRedeem: 'Награда Medi',

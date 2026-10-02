@@ -19,6 +19,7 @@ import {
   listPartners,
   listRedemptionsAdmin,
   markRedemptionUsed,
+  cancelRedemption,
   pauseCampaign,
   rewardsOverview,
   serializeCampaignForPartner,
@@ -216,6 +217,19 @@ adminRewardsRouter.get(
   requireAdminCapability('REDEMPTIONS_VIEW'),
   asyncHandler(async (req, res) => {
     res.json(await listRedemptionsAdmin(req.query));
+  }),
+);
+
+adminRewardsRouter.post(
+  '/redemptions/:id/cancel',
+  mutateLimiter,
+  requireAdminCapability('REDEMPTIONS_MANAGE'),
+  asyncHandler(async (req, res) => {
+    const reason = z.string().max(240).optional().parse(req.body?.reason);
+    res.json({
+      ok: true,
+      redemption: await cancelRedemption(req.params.id, { admin: req.admin, reason }),
+    });
   }),
 );
 

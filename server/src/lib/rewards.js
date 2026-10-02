@@ -24,7 +24,8 @@ import { getRewardBalance } from './quest.js';
 import { findLiveCampaignForReward, explainMissingLiveCampaign } from './rewardCampaignRuntime.js';
 import { PARTNER_STATUSES } from './rewardCampaignDefs.js';
 
-const SUCCESS_STATUSES = new Set([REDEMPTION_STATUSES.ISSUED, REDEMPTION_STATUSES.USED]);
+/** PENDING = a physical prize waiting to be handed over; it counts against stock and user limits like ISSUED. */
+const SUCCESS_STATUSES = new Set([REDEMPTION_STATUSES.PENDING, REDEMPTION_STATUSES.ISSUED, REDEMPTION_STATUSES.USED]);
 
 function dbOf(options = {}) {
   return options.db || prisma;
@@ -192,7 +193,11 @@ export async function ensureRewardDefinitions(db = prisma) {
         imageKey: row.imageKey ?? null,
         coinCost: row.coinCost,
         inventoryMode: row.inventoryMode,
-        inventoryQuantity: row.inventoryQuantity ?? null,
+        // FINITE stock belongs to redemptions and admin adjustments once the row exists — never refill it here.
+        inventoryQuantity:
+          row.inventoryMode === INVENTORY_MODES.FINITE && existing.inventoryMode === INVENTORY_MODES.FINITE
+            ? existing.inventoryQuantity
+            : row.inventoryQuantity ?? null,
         perUserLimit: row.perUserLimit ?? null,
         periodLimitType: row.periodLimitType ?? null,
         periodLimitCount: row.periodLimitCount ?? null,
@@ -352,6 +357,12 @@ function publicPartner(partner) {
   };
 }
 
+/** Store art served by the site (server/public/rewards/*.webp); other image keys are art tags the app maps itself. */
+export function rewardImageUrl(imageKey) {
+  const k = String(imageKey || '');
+  return /^\/rewards\/[a-z0-9-]+\.webp$/.test(k) ? `https://medicard.ge${k}` : null;
+}
+
 function publicReward(reward, extras = {}) {
   const inventory = extras.inventory || inventoryStateFor(reward, extras.availableCodes);
   return {
@@ -362,6 +373,7 @@ function publicReward(reward, extras = {}) {
     descriptionKey: reward.descriptionKey,
     termsKey: reward.termsKey || null,
     imageKey: reward.imageKey || null,
+    imageUrl: rewardImageUrl(reward.imageKey),
     coinCost: reward.coinCost,
     availability: reward.status,
     inventoryState: inventory.state,
@@ -400,6 +412,7 @@ function publicRedemption(row, { includeCode = false } = {}) {
           descriptionKey: row.reward.descriptionKey,
           termsKey: row.reward.termsKey || null,
           imageKey: row.reward.imageKey || null,
+          imageUrl: rewardImageUrl(row.reward.imageKey),
           partnerDisplay: publicPartner(row.reward.partner),
         }
       : null,
@@ -575,7 +588,7 @@ export async function listMyRedemptions(userId, options = {}) {
     items.push(publicRedemption({ ...row, status }, { includeCode: true }));
   }
   return {
-    active: items.filter((i) => i.status === REDEMPTION_STATUSES.ISSUED),
+    active: items.filter((i) => i.status === REDEMPTION_STATUSES.ISSUED || i.status === REDEMPTION_STATUSES.PENDING),
     used: items.filter((i) => i.status === REDEMPTION_STATUSES.USED),
     expired: items.filter((i) => i.status === REDEMPTION_STATUSES.EXPIRED),
     items,
@@ -742,7 +755,7 @@ export async function redeemReward(userId, rewardId, options = {}) {
         id: redemptionId,
         userId,
         rewardId: reward.id,
-        status: REDEMPTION_STATUSES.ISSUED,
+        status: reward.type === REWARD_TYPES.PHYSICAL_PRIZE ? REDEMPTION_STATUSES.PENDING : REDEMPTION_STATUSES.ISSUED,
         coinCost: reward.coinCost,
         codeId: codeRow?.id || null,
         idempotencyKey,

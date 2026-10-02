@@ -88,5 +88,11 @@ rewardsRouter.post(
       lang: req.lang,
     });
     res.json({ ok: true, ...result });
+    // A physical prize waits for the team: tell the owner at once (no personal data in the notice).
+    if (result?.redemption?.status === 'PENDING' && !result.idempotentReplay) {
+      import('../lib/director/service.js')
+        .then(({ notifyOwner }) => notifyOwner(`🎁 მაღაზია: ახალი გაცვლა — ${result.redemption.reward?.key || id} (${result.wallet?.spent ?? '?'} Medi Coins). გადაეცი თბილისში 14 დღეში: ადმინი → ჯილდოები → გაცვლები.`))
+        .catch(() => {});
+    }
   }),
 );

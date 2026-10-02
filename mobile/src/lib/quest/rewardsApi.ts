@@ -8,6 +8,7 @@ export type StoreReward = {
   descriptionKey: string;
   termsKey: string | null;
   imageKey: string | null;
+  imageUrl?: string | null;
   coinCost: number;
   availability: string;
   inventoryState: string;
@@ -52,6 +53,7 @@ export type RedemptionItem = {
     descriptionKey: string;
     termsKey: string | null;
     imageKey: string | null;
+    imageUrl?: string | null;
     partnerDisplay: StoreReward['partnerDisplay'];
   } | null;
   code: string | null;
