@@ -20,66 +20,154 @@
   };
 
   /* ═════════ მოდულები (kill switches) ═════════ */
-  const FEATURE_GROUPS = [
-    ['module', 'მოდულები', 'მთელი მიმართულება: ახალ აპში ქრება, ძველში ჩერდება ცვლილებები და ჩანს შენი შეტყობინება.'],
-    ['ai', 'AI ფუნქციები', 'AI-ზე მომუშავე ფუნქციები. მშობელი მოდულის გამორთვა მათაც თიშავს.'],
-    ['system', 'ფონური სისტემები', 'ეკრანის გარეშე მომუშავე პროცესები.'],
+  // Display sections by what people use (the server `group` stays as is). A child always sits under its parent;
+  // a key missing here falls back by its server group, so a new switch never disappears.
+  const FEATURE_SECTIONS = [
+    ['health', 'ჯანმრთელობის ბარათი', 'წამლები, ვიზიტები, ჩანაწერები და ანალიზები. შეჩერებისას ტელეფონზე უკვე დაყენებული შეხსენებები გრძელდება.', ['medications', 'visits', 'records', 'labs']],
+    ['daily', 'ყოველდღიური აღრიცხვა', 'წყალი, ნაბიჯები, წონა, კვება და ციკლი.', ['hydration', 'steps', 'weight', 'nutrition', 'cycle']],
+    ['medi', 'Medi და AI', 'Medi-ს შეჩერება მის ყველა ხელსაწყოს აჩერებს; თითოეული ცალკეც ითიშება.', ['medi']],
+    ['play', 'მოძრაობა და ჯილდოები', 'MEDIRUN, მისიები, ჯილდოები და მეგობრის მოწვევა.', ['medirun', 'quest', 'invites']],
+    ['more', 'სხვა სივრცეები', 'ცალკე მიმართულებები და დამატებითი გვერდები.', ['pets', 'coach', 'community', 'pharmacy', 'news', 'weather', 'weeklyReport', 'healthPassport']],
+    ['system', 'ფონური სისტემები', 'ეკრანის გარეშე მომუშავე პროცესები.', ['email']],
   ];
-  // Display grouping only (the server group stays as is): the reward store is part of MEDI QUEST, not an AI feature.
-  const DISPLAY_GROUP = { rewardsStore: 'module' };
+  const FALLBACK_SECTION = { module: 'more', ai: 'medi', system: 'system' };
   // Switches that have a twin elsewhere in the admin.
   const RELATED = {
     nutritionAi: 'იგივე შეფასებას აჩერებს <a href="#/nutrition">კვების დღიური</a> → „AI კალორიის შეფასება“ — შეფასება მუშაობს, როცა ორივე ჩართულია.',
     email: 'იგივე გადამრთველი ჩანს <a href="#/email">ელფოსტის</a> გვერდზეც.',
   };
+  // Kept across re-renders (a toggle re-renders the page).
+  const featureView = { q: '', onlyOff: false };
 
   async function renderFeatures() {
     const root = $('tab-features');
     if (!root) return;
-    root.innerHTML = skel();
+    if (!root.querySelector('[data-flag]')) root.innerHTML = skel();
     let data;
     try { data = await api('/features'); } catch (err) { fail(root, err, renderFeatures); return; }
     const list = data.features || [];
-    const labelOf = (key) => list.find((f) => f.key === key)?.label || key;
+    const byKey = new Map(list.map((f) => [f.key, f]));
+    const labelOf = (key) => byKey.get(key)?.label || key;
     const off = list.filter((f) => !f.enabled);
-    const groupOf = (f) => DISPLAY_GROUP[f.key] || f.group || 'module';
+    const paused = list.filter((f) => f.effective === false);
+    const isTop = (f) => !f.parent || !byKey.has(f.parent);
+    const listed = new Set(FEATURE_SECTIONS.flatMap(([, , , keys]) => keys));
+    const topsOf = ([id, , , keys]) => [
+      ...keys.map((k) => byKey.get(k)).filter((f) => f && isTop(f)),
+      ...list.filter((f) => isTop(f) && !listed.has(f.key) && (FALLBACK_SECTION[f.group] || 'more') === id),
+    ];
     const flagRow = (f, nested) => `
-          <div class="s-flag${f.effective === false ? ' is-off' : ''}${nested ? ' is-child' : ''}" data-flag="${esc(f.key)}">
+          <div class="s-flag${f.effective === false ? ' is-off' : ''}${nested ? ' is-child' : ''}" data-flag="${esc(f.key)}"${nested ? ` data-parent="${esc(f.parent)}"` : ''}>
             <div class="s-flag-main">
               <div class="s-flag-title"><b>${esc(f.label)}</b>${!f.enabled
                 ? '<span class="s-badge is-bad">შეჩერებულია</span>'
-                : f.blockedBy ? `<span class="s-badge is-warn">შეჩერებულია „${esc(labelOf(f.blockedBy))}“-ით</span>` : '<span class="s-badge is-ok">ჩართულია</span>'}
-                ${f.parent ? `<span class="s-badge is-plain">${esc(labelOf(f.parent))}-ის ნაწილი</span>` : ''}</div>
+                : f.blockedBy ? `<span class="s-badge is-warn">შეჩერებულია „${esc(labelOf(f.blockedBy))}“-ით</span>` : '<span class="s-badge is-ok">ჩართულია</span>'}</div>
               <p>${esc(f.description)}</p>
               ${RELATED[f.key] ? `<p class="s-flag-rel">${ico('link')}<span>${RELATED[f.key]}</span></p>` : ''}
               <small data-updated>${f.updatedAt ? `ბოლოს შეცვალა ${esc(f.updatedBy || 'ადმინი')} · ${esc(when(f.updatedAt))}` : ''}</small>
-              <div class="s-flag-msg">
-                <label class="s-field"><span>შეტყობინება ადამიანისთვის, როცა გამორთულია</span>
-                  <input type="text" maxlength="240" value="${esc(f.message)}" data-msg></label>
-                <button type="button" class="btn compact" data-msg-save disabled>შენახვა</button>
-                <small class="s-flag-dirty" data-msg-state aria-live="polite"></small>
-              </div>
+              <details class="s-flag-more"${f.enabled ? '' : ' open'}>
+                <summary>${ico('message')}<span>შეტყობინება ადამიანისთვის</span></summary>
+                <div class="s-flag-msg">
+                  <label class="s-field"><span>ჩანს აპში, როცა გამორთულია</span>
+                    <input type="text" maxlength="240" value="${esc(f.message)}" data-msg></label>
+                  <button type="button" class="btn compact" data-msg-save disabled>შენახვა</button>
+                  <small class="s-flag-dirty" data-msg-state aria-live="polite"></small>
+                </div>
+              </details>
             </div>
             <input class="s-switch" type="checkbox" role="switch" aria-label="${esc(f.label)}" ${f.enabled ? 'checked' : ''} data-toggle>
           </div>`;
-    // Within a group a feature follows its parent when both are shown there.
-    const groupRows = (group) => {
-      const items = list.filter((f) => groupOf(f) === group);
-      const tops = items.filter((f) => !f.parent || !items.some((p) => p.key === f.parent));
-      return tops.flatMap((p) => [flagRow(p, false), ...items.filter((c) => c.parent === p.key).map((c) => flagRow(c, true))]).join('');
+    // Board: a parent with its child switches takes a full row; the rest pair up in two columns on wide
+    // screens (a single one waits for the next single, so no cell is left empty; a last single goes wide).
+    const sectionRows = (section) => {
+      const cells = [];
+      let single = null;
+      for (const p of topsOf(section)) {
+        const kids = list.filter((c) => c.parent === p.key);
+        if (kids.length) {
+          cells.push({ p, kids, wide: true });
+        } else if (single) {
+          cells.splice(cells.indexOf(single) + 1, 0, { p, kids, wide: false });
+          single = null;
+        } else {
+          single = { p, kids, wide: false };
+          cells.push(single);
+        }
+      }
+      if (single) single.wide = true;
+      return cells.map(({ p, kids, wide }) => `<div class="s-flag-group${wide ? ' is-wide' : ''}">${flagRow(p, false)}${kids.length
+        ? `<div class="s-flag-kids">${kids.map((c) => flagRow(c, true)).join('')}</div>` : ''}</div>`).join('');
     };
     root.innerHTML = `<div class="s-stack v3-tab-shell s-flags">
-      ${off.length ? `<div class="s-callout is-warn">${ico('alert')}<p><b>გამორთულია: ${off.map((f) => esc(f.label)).join(', ')}.</b> ადამიანები ხედავენ შენს შეტყობინებას; ისტორია და სხვა ფუნქციები მუშაობს.</p></div>` : ''}
-      <p class="s-flags-note">${ico('info')}<span>ცვლილება მოქმედებს 15 წამში, ბილდისა და დეპლოის გარეშე. ყოველი ცვლილება იწერება აუდიტში.</span></p>
-      ${FEATURE_GROUPS.map(([group, title, note]) => {
-        const rows = groupRows(group);
+      ${off.length ? `<div class="s-callout is-warn">${ico('alert')}<p><b>შეჩერებულია: ${off.map((f) => `<a href="#/features" data-jump="${esc(f.key)}">${esc(f.label)}</a>`).join(', ')}.</b> ადამიანები ხედავენ შენს შეტყობინებას; ისტორია და სხვა ფუნქციები მუშაობს.</p></div>` : ''}
+      <div class="s-toolbar s-flags-tools">
+        <label class="sx-search">${ico('search')}<span class="sr-only">მოდულის ძებნა</span><input type="search" placeholder="მოძებნე: ვიზიტები, Medi, წყალი…" value="${esc(featureView.q)}" data-flag-q autocomplete="off"></label>
+        <div class="s-segment" role="tablist" aria-label="ჩვენება">
+          <button type="button" role="tab" aria-selected="${!featureView.onlyOff}" data-only-off="0">ყველა <i>${list.length}</i></button>
+          <button type="button" role="tab" aria-selected="${featureView.onlyOff}" data-only-off="1">შეჩერებული <i${paused.length ? ' class="is-hot"' : ''}>${paused.length}</i></button>
+        </div>
+      </div>
+      <p class="s-flags-note">${ico('info')}<span>ცვლილება მოქმედებს 15 წამში, ბილდისა და დეპლოის გარეშე: ძველ ვერსიაშიც ჩერდება ჩაწერა და ჩანს შენი შეტყობინება, ახალ ვერსიაში მოდული იმალება. ყოველი ცვლილება იწერება აუდიტში.</span></p>
+      ${FEATURE_SECTIONS.map((section) => {
+        const [id, title, note] = section;
+        const rows = sectionRows(section);
         if (!rows) return '';
-        return `<section class="s-card">
+        return `<section class="s-card" data-flag-section="${esc(id)}">
         <header class="s-card-head"><div><h3>${esc(title)}</h3><p>${esc(note)}</p></div></header>
-        <div class="s-card-body is-flush">${rows}</div>
+        <div class="s-card-body is-flush s-flag-board">${rows}</div>
       </section>`;
       }).join('')}
+      <div class="s-card" data-flag-none hidden><div class="s-empty">${ico('search')}<strong>ვერაფერი მოიძებნა</strong><span>სცადე სხვა სიტყვა ან აირჩიე „ყველა“.</span></div></div>
     </div>`;
+
+    // Search + „შეჩერებული“: a parent stays visible while one of its children matches.
+    const applyView = () => {
+      const q = featureView.q.trim().toLowerCase();
+      const own = (f) => (!featureView.onlyOff || f.effective === false)
+        && (!q || `${f.label} ${f.description} ${f.key}`.toLowerCase().includes(q));
+      const show = (f) => own(f) || list.some((c) => c.parent === f.key && own(c));
+      let any = false;
+      root.querySelectorAll('[data-flag-section]').forEach((section) => {
+        let count = 0;
+        section.querySelectorAll('.s-flag-group').forEach((group) => {
+          let rows = 0;
+          group.querySelectorAll('[data-flag]').forEach((row) => {
+            const f = byKey.get(row.dataset.flag);
+            const visibleRow = Boolean(f) && (row.dataset.parent ? own(f) : show(f));
+            row.hidden = !visibleRow;
+            if (visibleRow) rows += 1;
+          });
+          group.hidden = rows === 0;
+          count += rows;
+        });
+        section.hidden = count === 0;
+        if (count) any = true;
+      });
+      // While filtering the results read as one list (two columns would leave holes).
+      root.querySelector('.s-flags').classList.toggle('is-filtered', Boolean(q) || featureView.onlyOff);
+      root.querySelector('[data-flag-none]').hidden = any;
+    };
+    const qInput = root.querySelector('[data-flag-q]');
+    qInput.addEventListener('input', () => { featureView.q = qInput.value; applyView(); });
+    root.querySelectorAll('[data-only-off]').forEach((btn) => btn.addEventListener('click', () => {
+      featureView.onlyOff = btn.dataset.onlyOff === '1';
+      root.querySelectorAll('[data-only-off]').forEach((b) => b.setAttribute('aria-selected', String(b === btn)));
+      applyView();
+    }));
+    root.querySelectorAll('[data-jump]').forEach((a) => a.addEventListener('click', (e) => {
+      e.preventDefault();
+      featureView.q = '';
+      qInput.value = '';
+      applyView();
+      const row = root.querySelector(`[data-flag="${CSS.escape(a.dataset.jump)}"]`);
+      if (!row) return;
+      row.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      row.classList.remove('is-flash');
+      void row.offsetWidth;
+      row.classList.add('is-flash');
+    }));
+    applyView();
+
     root.querySelectorAll('[data-flag]').forEach((row) => {
       const key = row.dataset.flag;
       const toggle = row.querySelector('[data-toggle]');

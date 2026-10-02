@@ -1430,7 +1430,8 @@ html body table.s-table.s-run-table td { vertical-align: top; }
 /* მოდულები (#/features) */
 .s-flags-note { display: flex; align-items: center; gap: 8px; margin: 0; font-size: 12.5px; color: var(--s-muted); }
 .s-flags-note > .icon { flex: none; width: 15px; height: 15px; color: var(--s-faint); }
-.s-flag.is-child { padding-left: 46px; }
+.s-flags-tools .sx-search { flex: 0 1 340px; }
+.s-flags .s-callout a { color: inherit; text-decoration: underline; text-underline-offset: 3px; }
 .s-flag p.s-flag-rel { display: flex; align-items: flex-start; gap: 6px; font-size: 12.5px; color: var(--s-text-2); }
 .s-flag-rel > .icon { flex: none; width: 14px; height: 14px; margin-top: 3px; color: var(--s-faint); }
 .s-flag-rel a { color: var(--s-accent-ink); font-weight: 600; }
@@ -1439,7 +1440,33 @@ html body table.s-table.s-run-table td { vertical-align: top; }
 .s-flag-msg .s-field { flex: 1 1 320px; }
 .s-flag small.s-flag-dirty { flex-basis: 100%; color: var(--s-warn); font-weight: 600; }
 .s-flag.is-dirty .s-flag-msg input { border-color: var(--s-warn); }
-@media (max-width: 640px) { .s-flag.is-child { padding-left: 22px; } }
+/* The message editor opens on demand (and by itself while the module is off). */
+.s-flag-more > summary { display: inline-flex; align-items: center; gap: 6px; width: fit-content; padding: 2px 0; list-style: none; cursor: pointer; font-size: 12.5px; font-weight: 600; color: var(--s-accent-ink); }
+.s-flag-more > summary::-webkit-details-marker { display: none; }
+.s-flag-more > summary .icon { flex: none; width: 14px; height: 14px; }
+.s-flag-more > summary:hover span { text-decoration: underline; text-underline-offset: 3px; }
+.s-flag-more > summary:focus-visible { outline: 2px solid var(--s-accent); outline-offset: 3px; border-radius: 4px; }
+.s-flag-more[open] > summary { color: var(--s-muted); }
+.s-flag-more .s-flag-msg { margin-top: 8px; }
+/* Board: 1px gaps over the line colour draw the grid lines whatever the order of the cells. */
+.s-flag-board { display: grid; grid-template-columns: minmax(0, 1fr); gap: 1px; background: var(--s-line-soft); }
+.s-flag-group { min-width: 0; background: var(--s-surface); }
+.s-flag-kids { display: grid; grid-template-columns: minmax(0, 1fr); gap: 1px; margin-left: 22px; border-top: 1px solid var(--s-line-soft); border-left: 2px solid var(--s-line); background: var(--s-line-soft); }
+.s-flag-kids > .s-flag { border-top: 0; background: var(--s-surface); }
+.s-flag-kids > .s-flag.is-off { background: color-mix(in srgb, var(--s-bad) 4%, var(--s-surface)); }
+@media (min-width: 1400px) {
+  .s-flags:not(.is-filtered) .s-flag-board { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .s-flags:not(.is-filtered) .s-flag-group.is-wide { grid-column: 1 / -1; }
+  .s-flags:not(.is-filtered) .s-flag-kids { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .s-flags:not(.is-filtered) .s-flag-kids > .s-flag:last-child:nth-child(odd) { grid-column: 1 / -1; }
+}
+.s-flag.is-flash { animation: s-flag-flash 1.6s ease-out; }
+@keyframes s-flag-flash { 0%, 30% { background: color-mix(in srgb, var(--s-accent) 14%, var(--s-surface)); } 100% { background: var(--s-surface); } }
+@media (prefers-reduced-motion: reduce) { .s-flag.is-flash { animation: none; outline: 2px solid var(--s-accent); outline-offset: -2px; } }
+@media (max-width: 640px) {
+  .s-flag-kids { margin-left: 10px; }
+  .s-flags-tools .sx-search { flex-basis: 100%; }
+}
 
 /* Medi Quest (#/quests) and the user-page Medi Coins / AI consent cards */
 .s-quest-body { border-top: 1px solid var(--s-line-soft); }

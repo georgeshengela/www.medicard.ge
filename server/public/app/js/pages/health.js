@@ -15,7 +15,7 @@ import {
   KA_MONTHS_SHORT,
 } from '../ui.js';
 import { lineChart, barChart, ring, rings, sparkline } from '../charts.js';
-import { session, setProfile } from '../session.js';
+import { session, setProfile, featureOn } from '../session.js';
 import { t, isEn } from '../i18n.js';
 
 const CSS = '/app/css/health.css';
@@ -175,11 +175,12 @@ export default async function healthPage(root, ctx) {
     const keys = rangeKeys(range);
     const byDate = new Map(state.daily.map((d) => [d.date, d]));
     const history = weightHistory(state.daily, state.app?.weightLogs);
+    // Each tracker can be paused from admin „მოდულები“; the page shows the ones that run.
     mount(body,
       overview(history, byDate),
-      section(t('წონა', 'Weight'), weightSection(history, keys), { action: button(t('წონის ჩაწერა', 'Log weight'), { size: 'sm', icon: 'plus', onClick: openWeightLog }) }),
-      section(t('ნაბიჯები', 'Steps'), stepsSection(byDate, keys)),
-      section(t('წყალი', 'Water'), waterSection(byDate, keys), { action: button(t('მიზანი', 'Goal'), { size: 'sm', variant: 'ghost', icon: 'target', onClick: openWaterGoal }) }));
+      featureOn('weight') ? section(t('წონა', 'Weight'), weightSection(history, keys), { action: button(t('წონის ჩაწერა', 'Log weight'), { size: 'sm', icon: 'plus', onClick: openWeightLog }) }) : null,
+      featureOn('steps') ? section(t('ნაბიჯები', 'Steps'), stepsSection(byDate, keys)) : null,
+      featureOn('hydration') ? section(t('წყალი', 'Water'), waterSection(byDate, keys), { action: button(t('მიზანი', 'Goal'), { size: 'sm', variant: 'ghost', icon: 'target', onClick: openWaterGoal }) }) : null);
   }
 
   /* KPI row */
@@ -196,11 +197,11 @@ export default async function healthPage(root, ctx) {
     h('div', { class: 'stat-value' }, value, unit ? h('small', null, ` ${unit}`) : null),
     h('div', { class: 'stat-delta' }, sub));
     return h('div', { class: 'grid grid-3 hm-kpis' },
-      kpi('scale', 'violet', t('წონა', 'Weight'), fmtKg(current), current != null ? KG : '', history.length ? t(`ბოლო ჩანაწერი: ${fmtDate(history.at(-1).date)}`, `Last entry: ${fmtDate(history.at(-1).date)}`) : t('ჯერ არ ჩაგიწერია', 'Nothing logged yet'),
+      !featureOn('weight') ? null : kpi('scale', 'violet', t('წონა', 'Weight'), fmtKg(current), current != null ? KG : '', history.length ? t(`ბოლო ჩანაწერი: ${fmtDate(history.at(-1).date)}`, `Last entry: ${fmtDate(history.at(-1).date)}`) : t('ჯერ არ ჩაგიწერია', 'Nothing logged yet'),
         sparkline(history.slice(-14).map((p) => p.kg), { width: 90, height: 30, color: 'var(--ink-violet)' }), 'hm-weight'),
-      kpi('footprints', 'green', t('ნაბიჯი დღეს', 'Steps today'), fmtNum(steps), '', t(`მიზანი ${fmtNum(STEPS_DAY_GOAL)}`, `Goal ${fmtNum(STEPS_DAY_GOAL)}`),
+      !featureOn('steps') ? null : kpi('footprints', 'green', t('ნაბიჯი დღეს', 'Steps today'), fmtNum(steps), '', t(`მიზანი ${fmtNum(STEPS_DAY_GOAL)}`, `Goal ${fmtNum(STEPS_DAY_GOAL)}`),
         sparkline(last14.map((k) => Number(byDate.get(k)?.steps) || 0), { width: 90, height: 30, color: 'var(--ink-green)' }), 'hm-steps'),
-      kpi('droplet', 'sky', t('წყალი დღეს', 'Water today'), fmtMl(water), '', t(`მიზანი ${fmtMl(state.waterGoal)}`, `Goal ${fmtMl(state.waterGoal)}`),
+      !featureOn('hydration') ? null : kpi('droplet', 'sky', t('წყალი დღეს', 'Water today'), fmtMl(water), '', t(`მიზანი ${fmtMl(state.waterGoal)}`, `Goal ${fmtMl(state.waterGoal)}`),
         sparkline(last14.map((k) => Math.max(0, Number(byDate.get(k)?.hydrationMl) || 0)), { width: 90, height: 30, color: 'var(--ink-sky)' }), 'hm-water'));
   }
 
@@ -651,21 +652,24 @@ export function homeActivityCard() {
         toast(t('+250 მლ ჩაიწერა', '+250 ml logged'), 'ok', { action: { label: t('გაუქმება', 'Undo'), onClick: () => { undoWater(ev).then(() => readToday()).then((r) => { if (r) { const i = daily.findIndex((d) => d.date === r.date); if (i >= 0) daily[i] = r; } paint(); }).catch((e) => toast(e.message, 'error')); } } });
       } catch (e) { toast(e.message || t('ვერ ჩაიწერა.', 'Couldn’t log it.'), 'error'); }
     }));
+    // Paused trackers (admin „მოდულები“) leave the card; the rest stay as they are.
+    const showSteps = featureOn('steps'), showWater = featureOn('hydration');
+    const ringItems = [
+      showSteps ? { value: steps, max: STEPS_DAY_GOAL, color: 'var(--c6)', name: t('ნაბიჯი', 'Steps') } : null,
+      showWater ? { value: water, max: goalMl, color: 'var(--c5)', name: t('წყალი', 'Water') } : null,
+    ].filter(Boolean);
     mount(el,
-      h('div', { class: 'hm-home-top' },
-        rings([
-          { value: steps, max: STEPS_DAY_GOAL, color: 'var(--c6)', name: t('ნაბიჯი', 'Steps') },
-          { value: water, max: goalMl, color: 'var(--c5)', name: t('წყალი', 'Water') },
-        ], { size: 124, stroke: 12, gap: 5 }),
+      !ringItems.length ? null : h('div', { class: 'hm-home-top' },
+        rings(ringItems, { size: 124, stroke: 12, gap: 5 }),
         h('div', { class: 'stack hm-home-legend', style: { gap: '12px' } },
-          h('a', { class: 'hm-home-metric', href: '/health', 'data-link': '' },
+          !showSteps ? null : h('a', { class: 'hm-home-metric', href: '/health', 'data-link': '' },
             h('i', { style: { background: 'var(--c6)' } }),
             h('div', null, h('span', null, t('ნაბიჯი', 'Steps')), h('b', null, fmtNum(steps), h('small', null, ` / ${fmtNum(STEPS_DAY_GOAL)}`)))),
-          h('a', { class: 'hm-home-metric', href: '/health', 'data-link': '' },
+          !showWater ? null : h('a', { class: 'hm-home-metric', href: '/health', 'data-link': '' },
             h('i', { style: { background: 'var(--c5)' } }),
             h('div', null, h('span', null, t('წყალი', 'Water')), h('b', null, fmtNum(water), h('small', null, ` / ${fmtNum(goalMl)} ${ML}`)))),
-          add)),
-      h('a', { class: 'hm-home-weight', href: '/health', 'data-link': '' },
+          showWater ? add : null)),
+      !featureOn('weight') ? null : h('a', { class: 'hm-home-weight', href: '/health', 'data-link': '' },
         tile('scale', 'violet', 34),
         h('div', { class: 'row-main' },
           h('div', { class: 'row-sub' }, t('წონა', 'Weight')),

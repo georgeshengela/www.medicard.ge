@@ -11,6 +11,7 @@ import rateLimit from 'express-rate-limit';
 import { env, hasVisionProvider } from './config/env.js';
 import { prisma } from './lib/prisma.js';
 import { requireFeature } from './lib/featureFlags.js';
+import { aiFeatureGates, assistantFeatureGates, healthMetricsFeatureGates } from './lib/featureGates.js';
 import { adminManageRouter } from './routes/adminManage.routes.js';
 import {
   apiTrafficKey,
@@ -301,14 +302,14 @@ const authWriteLimiter = rateLimit({
 app.use('/api/auth', authWriteLimiter, authRouter);
 app.use('/api/health-profile', healthProfileRouter);
 app.use('/api/account', accountRouter);
-app.use('/api/health-metrics', healthMetricsRouter);
-app.use('/api/ai', requireFeature('medi', { match: (req) => req.path !== '/feedback' }), aiRouter);
-app.use('/api/assistant', requireFeature('medi'), assistantRouter);
+app.use('/api/health-metrics', ...healthMetricsFeatureGates, healthMetricsRouter);
+app.use('/api/ai', ...aiFeatureGates, aiRouter);
+app.use('/api/assistant', ...assistantFeatureGates, assistantRouter);
 app.use('/api/chats', chatsRouter);
-app.use('/api/records', recordsRouter);
+app.use('/api/records', requireFeature('records'), recordsRouter);
 app.use('/api/files', filesRouter);
-app.use('/api/medications', medicationsRouter);
-app.use('/api/visits', visitsRouter);
+app.use('/api/medications', requireFeature('medications'), medicationsRouter);
+app.use('/api/visits', requireFeature('visits'), visitsRouter);
 app.use('/api/pets', requireFeature('pets'), requireFeature('mediVet', { match: (req) => /\/chat\/query$/.test(req.path) }), petsRouter);
 app.use('/api/nutrition', requireFeature('nutrition'), requireFeature('nutritionAi', { match: (req) => req.path === '/estimate' || req.path === '/quick-log' }), nutritionRouter);
 app.use('/api/admin/nutrition', adminNutritionRouter);
@@ -333,7 +334,7 @@ app.use('/api/location', locationRouter);
 app.use('/api/quests', requireFeature('quest'), questsRouter);
 app.use('/api/achievements', achievementsRouter);
 app.use('/api/rewards', requireFeature('rewardsStore', { match: (req) => /\/redeem$/.test(req.path) }), rewardsRouter);
-app.use('/api/referrals', referralRouter);
+app.use('/api/referrals', requireFeature('invites'), referralRouter);
 app.use('/api/trainer', requireFeature('coach'), trainerRouter);
 app.use('/api/admin/trainers', adminTrainerRouter);
 app.use('/api/identity', identityRouter);

@@ -320,9 +320,10 @@
     const q = typeof opsQs === 'function' ? opsQs() : `range=${opsState.range}`;
     const grain = opsState.grain || 'dau';
     const freshQs = opts && opts.fresh === true ? '&fresh=1' : '';
-    const [bundle, balances] = await Promise.all([
+    const [bundle, balances, flags] = await Promise.all([
       api(`/analytics/dashboard?${q}&grain=${grain}${freshQs}`).catch((err) => ({ error: err.message })),
       api('/balances').catch((err) => ({ error: err.message })),
+      api('/manage/features').catch(() => null),
     ]);
     const overview = bundle.overview || { error: bundle.error };
     const users = bundle.users || { error: bundle.error };
@@ -363,7 +364,7 @@
       attention: mergedAttention,
     });
     paintLiveHero(root, overview, system);
-    paintStatus(root, resolved, system, overview, balances.error ? ccLastBalances : balances);
+    paintStatus(root, resolved, system, overview, balances.error ? ccLastBalances : balances, flags?.features);
     paintAttention(root, resolved);
     paintInfra(root, overview, system, balances.error ? ccLastBalances : balances);
     paintBrain(root, notif);
@@ -412,7 +413,7 @@
       </section>`;
   }
 
-  function paintStatus(root, resolved, system, overview, balances) {
+  function paintStatus(root, resolved, system, overview, balances, features) {
     const ka = STATUS_KA[resolved.level] || STATUS_KA.healthy;
     const env = system.environment || overview.environment;
     const apiOk = system.api?.ok !== false && !system.error;
@@ -421,6 +422,11 @@
     const orTone = or?.tone === 'bad' ? 'is-bad' : or?.tone === 'warn' ? 'is-warn' : 'is-ok';
     const orChip = or && (or.remaining != null || or.error)
       ? `<button type="button" class="v3-cc-chip ${orTone}" data-scroll="ops-infra" title="OpenRouter-ის დარჩენილი ბალანსი — Medi-ს სურათების ანალიზი">${ico('wallet')} OpenRouter ${or.remaining != null ? esc(usd(or.remaining)) : 'ვერ შემოწმდა'}</button>`
+      : '';
+    // A paused module is a decision, not a fault: a reminder chip, the status level stays as it is.
+    const paused = (features || []).filter((f) => f.enabled === false);
+    const pausedChip = paused.length
+      ? `<button type="button" class="v3-cc-chip is-warn" data-href="#/features" title="${esc(paused.map((f) => f.label).join(', '))}">${ico('lock')} შეჩერებულია: ${esc(paused.length > 2 ? `${paused.length} მოდული` : paused.map((f) => f.label).join(', '))}</button>`
       : '';
     $('ops-status').innerHTML = `
       <section class="v3-cc-status is-${resolved.level}" aria-label="საოპერაციო მდგომარეობა">
@@ -441,6 +447,7 @@
           ${env ? `<span class="v3-cc-chip${env === 'production' ? ' is-prod' : ''}" title="გარემო">${ico('globe')} ${env === 'production' ? 'წარმოება' : esc(env)}</span>` : ''}
           ${system.settings?.maintenanceMode ? `<span class="v3-cc-chip is-warn">${ico('lock')} ოფლაინ რეჟიმი</span>` : ''}
           ${system.settings?.forceUpdate ? `<span class="v3-cc-chip is-warn">${ico('download')} იძულებითი განახლება</span>` : ''}
+          ${pausedChip}
         </div>
       </section>`;
     $('ops-status').querySelector('[data-scroll]')?.addEventListener('click', (e) => {

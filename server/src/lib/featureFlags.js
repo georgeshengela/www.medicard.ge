@@ -20,6 +20,62 @@ import { isEnglish } from './i18n.js';
  */
 export const FEATURES = Object.freeze([
   {
+    key: 'medications',
+    group: 'module',
+    label: 'მედიკამენტები',
+    description: 'მედიკამენტების სია, მიღების აღრიცხვა და შეხსენებების დაყენება. ახალი მედიკამენტი ვერ ემატება; ახალ ვერსიაში ჩანართი იმალება. უკვე დაყენებული შეხსენებები ტელეფონზე გრძელდება — დოზა არავინ გამოტოვოს.',
+    defaultMessage: 'მედიკამენტების განყოფილება დროებით შეჩერებულია. დაყენებული შეხსენებები ჩვეულებრივ მოგივა.',
+    defaultMessageEn: 'Medications are paused for a moment. Reminders you set still arrive as usual.',
+  },
+  {
+    key: 'visits',
+    group: 'module',
+    label: 'ექიმთან ვიზიტები',
+    description: 'ვიზიტების კალენდარი და ჩაწერა. ახალი ვიზიტი ვერ ემატება (Medi-ს მეშვეობითაც); ახალ ვერსიაში მოდული იმალება. უკვე დაყენებული შეხსენებები ტელეფონზე რჩება.',
+    defaultMessage: 'ექიმთან ვიზიტების ჩაწერა დროებით შეჩერებულია. შენი ვიზიტები შენახულია.',
+    defaultMessageEn: 'Doctor visits are paused for a moment. Your visits are saved.',
+  },
+  {
+    key: 'records',
+    group: 'module',
+    label: 'სამედიცინო ჩანაწერები',
+    description: 'ანალიზების, კვლევებისა და დოკუმენტების ბარათი. ახალი ჩანაწერი ვერ ემატება; ახალ ვერსიაში ჩანართი იმალება. არსებული ჩანაწერები ინახება.',
+    defaultMessage: 'სამედიცინო ჩანაწერები დროებით შეჩერებულია. შენი ჩანაწერები შენახულია.',
+    defaultMessageEn: 'Medical records are paused for a moment. Your records are saved.',
+  },
+  {
+    key: 'labs',
+    group: 'module',
+    label: 'ლაბორატორიული ანალიზები',
+    description: 'ანალიზების ისტორია, პარამეტრების დინამიკა და ფოტოდან/PDF-დან ამოკითხვა. ახალი ანალიზის წაკითხვა ჩერდება.',
+    defaultMessage: 'ლაბორატორიული ანალიზები დროებით შეჩერებულია. შენი შედეგები შენახულია.',
+    defaultMessageEn: 'Lab results are paused for a moment. Your results are saved.',
+  },
+  {
+    key: 'hydration',
+    group: 'module',
+    label: 'წყალი',
+    description: 'წყლის აღრიცხვა და დღიური მიზანი. ახალ ვერსიაში იმალება მთავარი გვერდის რგოლიც; ძველ ვერსიებში მხოლოდ მიზნის შეცვლა იბლოკება.',
+    defaultMessage: 'წყლის აღრიცხვა დროებით შეჩერებულია.',
+    defaultMessageEn: 'Water tracking is paused for a moment.',
+  },
+  {
+    key: 'steps',
+    group: 'module',
+    label: 'ნაბიჯები',
+    description: 'ნაბიჯების ეკრანი და მთავარი გვერდის რგოლი. ტელეფონის სინქრონიზაცია ფონურად გრძელდება, რომ ისტორია არ დაიკარგოს. მოქმედებს ახალ ვერსიაში.',
+    defaultMessage: 'ნაბიჯები დროებით შეჩერებულია.',
+    defaultMessageEn: 'Steps are paused for a moment.',
+  },
+  {
+    key: 'weight',
+    group: 'module',
+    label: 'წონა და მიზანი',
+    description: 'წონის ჩანაწერები, მიზანი და პროგრესი. მოქმედებს ახალ ვერსიაში.',
+    defaultMessage: 'წონის განყოფილება დროებით შეჩერებულია. შენი ჩანაწერები შენახულია.',
+    defaultMessageEn: 'Weight is paused for a moment. Your entries are saved.',
+  },
+  {
     key: 'cycle',
     group: 'module',
     label: 'ციკლი და ორსულობა',
@@ -51,6 +107,60 @@ export const FEATURES = Object.freeze([
     description: 'Medi-ს საუბარი, ექიმთან რეჟიმი, ღრმა ანალიზი, სიმპტომები, ლაბორატორია, კანი და გამოსახულებები.',
     defaultMessage: 'Medi დროებით მიუწვდომელია. ცოტა ხანში ისევ ჩაირთვება.',
     defaultMessageEn: 'Medi is unavailable for a moment. It will be back shortly.',
+  },
+  {
+    key: 'mediDoctor',
+    group: 'ai',
+    parent: 'medi',
+    label: 'Medi · ექიმთან',
+    description: '„ექიმთან“ რეჟიმი — კლინიკური კონსულტაცია Medi-სთან. ჩვეულებრივი Medi და დანარჩენი ფუნქციები მუშაობს.',
+    defaultMessage: '„ექიმთან“ რეჟიმი დროებით გამორთულია. Medi-სთან ჩვეულებრივი საუბარი მუშაობს.',
+    defaultMessageEn: 'Doctor mode is off for a moment. The regular Medi chat still works.',
+  },
+  {
+    key: 'mediDeep',
+    group: 'ai',
+    parent: 'medi',
+    label: 'Medi · ღრმა ანალიზი',
+    description: '„ღრმა ანალიზის“ რეჟიმი (კონსილიუმი) — ყველაზე ძვირი AI პასუხები. ჩვეულებრივი Medi მუშაობს.',
+    defaultMessage: 'ღრმა ანალიზი დროებით გამორთულია. Medi-სთან ჩვეულებრივი საუბარი მუშაობს.',
+    defaultMessageEn: 'Deep analysis is off for a moment. The regular Medi chat still works.',
+  },
+  {
+    key: 'symptoms',
+    group: 'ai',
+    parent: 'medi',
+    label: 'სიმპტომების შემოწმება',
+    description: 'სხეულის რუკით სიმპტომების შემოწმება და შედეგი. ძველი შედეგები ჩანს.',
+    defaultMessage: 'სიმპტომების შემოწმება დროებით გამორთულია.',
+    defaultMessageEn: 'Symptom check is off for a moment.',
+  },
+  {
+    key: 'imaging',
+    group: 'ai',
+    parent: 'medi',
+    label: 'რენტგენი, CT და MRI',
+    description: 'სამედიცინო გამოსახულებების (რენტგენი, CT, MRI) AI ანალიზი. ძველი შედეგები ჩანს.',
+    defaultMessage: 'გამოსახულებების ანალიზი დროებით გამორთულია.',
+    defaultMessageEn: 'Imaging analysis is off for a moment.',
+  },
+  {
+    key: 'skin',
+    group: 'ai',
+    parent: 'medi',
+    label: 'კანის ანალიზი და მოვლა',
+    description: 'კანის ფოტოს AI ანალიზი და კანის მოვლის რჩევები. ძველი შედეგები ჩანს.',
+    defaultMessage: 'კანის ანალიზი დროებით გამორთულია.',
+    defaultMessageEn: 'Skin analysis is off for a moment.',
+  },
+  {
+    key: 'voice',
+    group: 'ai',
+    parent: 'medi',
+    label: 'ხმოვანი Medi',
+    description: 'ხმით საუბარი Medi-სთან: მეტყველების ამოცნობა და პასუხის ხმამაღლა წაკითხვა. ტექსტური საუბარი მუშაობს.',
+    defaultMessage: 'ხმოვანი რეჟიმი დროებით გამორთულია — Medi-ს ტექსტით მიწერე.',
+    defaultMessageEn: 'Voice is off for a moment — type to Medi instead.',
   },
   {
     key: 'pets',
@@ -136,8 +246,41 @@ export const FEATURES = Object.freeze([
     defaultMessageEn: 'News is hidden for a moment.',
   },
   {
+    key: 'weather',
+    group: 'module',
+    label: 'ამინდი და თავის შეგრძნება',
+    description: 'ამინდის გვერდი და ამინდზე დაფუძნებული რჩევები/შეხსენებები. მოქმედებს ახალ ვერსიაში.',
+    defaultMessage: 'ამინდის გვერდი დროებით შეჩერებულია.',
+    defaultMessageEn: 'Weather is paused for a moment.',
+  },
+  {
+    key: 'weeklyReport',
+    group: 'module',
+    label: 'კვირის ანგარიში („ჩემი კვირა“)',
+    description: 'კვირის შეჯამების გვერდი და კვირის ანგარიშის შეხსენება. მოქმედებს ახალ ვერსიაში.',
+    defaultMessage: 'კვირის ანგარიში დროებით შეჩერებულია.',
+    defaultMessageEn: 'The weekly report is paused for a moment.',
+  },
+  {
+    key: 'healthPassport',
+    group: 'module',
+    label: 'ჯანმრთელობის პასპორტი (PDF)',
+    description: 'პროფილიდან PDF-ის შექმნა და გაზიარება. მოქმედებს ახალ ვერსიაში.',
+    defaultMessage: 'ჯანმრთელობის პასპორტი დროებით შეჩერებულია.',
+    defaultMessageEn: 'The health passport is paused for a moment.',
+  },
+  {
+    key: 'invites',
+    group: 'module',
+    label: 'მეგობრის მოწვევა',
+    description: 'მოწვევის კოდი, ბმული და კოდის შეყვანა. ახალი კოდი ვერ შეიყვანება; გამორთვა აჩერებს მოწვევის ჯილდოებსაც.',
+    defaultMessage: 'მეგობრის მოწვევა დროებით შეჩერებულია.',
+    defaultMessageEn: 'Invites are paused for a moment.',
+  },
+  {
     key: 'referralRewards',
     group: 'system',
+    parent: 'invites',
     label: 'მოწვევის ჯილდოები',
     description: 'მეგობრის მოწვევისთვის 100 coin-ის ავტომატური დარიცხვა. კოდის შეყვანა გრძელდება, დარიცხვა ჩაირთვება ხელახლა ჩართვისას.',
     defaultMessage: 'მოწვევის ჯილდოები დროებით შეჩერებულია.',
@@ -296,4 +439,10 @@ export function requireFeature(key, { match } = {}) {
 export function resetFeatureFlagCacheForTests() {
   cache = { at: 0, rows: null };
   ensured = false;
+}
+
+/** Tests: serve these rows instead of the table (for 15 s, or until the reset above). */
+export function primeFeatureFlagsForTests(rows) {
+  cache = { at: Date.now(), rows: rows.map((r) => ({ message: null, updatedAt: null, updatedBy: null, ...r })) };
+  ensured = true;
 }

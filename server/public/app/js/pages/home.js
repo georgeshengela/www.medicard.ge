@@ -51,7 +51,7 @@ function summaryStats() {
   return h('div', { class: 'grid grid-4 grid-stats' },
     card(stat(t('სტრიკი', 'Streak'), fmtNum(u.currentStreak || 0), { icon: 'flame', unit: t('დღე', (u.currentStreak || 0) === 1 ? 'day' : 'days'), delta: t(`რეკორდი ${fmtNum(u.longestStreak || 0)} დღე`, `Best: ${fmtNum(u.longestStreak || 0)} ${(u.longestStreak || 0) === 1 ? 'day' : 'days'}`) })),
     card(stat(t('ქულები', 'Points'), fmtNum(u.points || 0), { icon: 'star', delta: t('ყოველდღიური შესვლით და მისიებით', 'From daily check-ins and missions') })),
-    card(stat(t('აქტიური წამლები', 'Active medications'), fmtNum(st.activeMedications || 0), { icon: 'pill', delta: t(`${fmtNum(st.records || 0)} ჩანაწერი ბარათში`, `${fmtNum(st.records || 0)} ${(st.records || 0) === 1 ? 'record' : 'records'} in your card`) })),
+    featureOn('medications') ? card(stat(t('აქტიური წამლები', 'Active medications'), fmtNum(st.activeMedications || 0), { icon: 'pill', delta: t(`${fmtNum(st.records || 0)} ჩანაწერი ბარათში`, `${fmtNum(st.records || 0)} ${(st.records || 0) === 1 ? 'record' : 'records'} in your card`) })) : null,
     card(stat('BMI', bmi ? bmi.toFixed(1) : '—', { icon: 'scale', delta: bmi ? bmiLabel(bmi) : t('დაამატე სიმაღლე და წონა პროფილში', 'Add your height and weight in Profile') })));
 }
 
@@ -62,14 +62,17 @@ function bmiLabel(b) {
   return t('საგრძნობლად მაღალი', 'Well above the normal range');
 }
 
+/** The activity card and metrics page stay while any tracker runs (admin „მოდულები“). */
+const trackersOn = () => ['weight', 'steps', 'hydration'].some((key) => featureOn(key));
+
 function toolsGrid() {
   const tools = [
-    { href: '/records', icon: 'folder', ink: 'blue', title: t('ჩემი ბარათი', 'My card'), body: t('დოკუმენტები, დასკვნები და Medi-სთან საუბრები ერთ ადგილას.', 'Documents, doctor reports and your Medi conversations in one place.') },
-    { href: '/lab', icon: 'flask', ink: 'violet', title: t('ანალიზები', 'Lab results'), body: t('შედეგები, ნორმები და მაჩვენებლების დინამიკა ჩარტებზე.', 'Results, reference ranges and trends on charts.') },
-    { href: '/visits', icon: 'stethoscope', ink: 'sky', title: t('ვიზიტები', 'Visits'), body: t('ექიმთან ვიზიტების კალენდარი და ისტორია.', 'Your doctor visit calendar and history.') },
-    { href: '/health', icon: 'activity', ink: 'green', title: t('მაჩვენებლები', 'Health metrics'), body: t('წონა, ნაბიჯები და წყალი — ტენდენციები დროში.', 'Weight, steps and water: trends over time.') },
+    featureOn('records') ? { href: '/records', icon: 'folder', ink: 'blue', title: t('ჩემი ბარათი', 'My card'), body: t('დოკუმენტები, დასკვნები და Medi-სთან საუბრები ერთ ადგილას.', 'Documents, doctor reports and your Medi conversations in one place.') } : null,
+    featureOn('labs') ? { href: '/lab', icon: 'flask', ink: 'violet', title: t('ანალიზები', 'Lab results'), body: t('შედეგები, ნორმები და მაჩვენებლების დინამიკა ჩარტებზე.', 'Results, reference ranges and trends on charts.') } : null,
+    featureOn('visits') ? { href: '/visits', icon: 'stethoscope', ink: 'sky', title: t('ვიზიტები', 'Visits'), body: t('ექიმთან ვიზიტების კალენდარი და ისტორია.', 'Your doctor visit calendar and history.') } : null,
+    trackersOn() ? { href: '/health', icon: 'activity', ink: 'green', title: t('მაჩვენებლები', 'Health metrics'), body: t('წონა, ნაბიჯები და წყალი — ტენდენციები დროში.', 'Weight, steps and water: trends over time.') } : null,
     featureOn('pets') ? { href: '/pets', icon: 'paw', ink: 'amber', title: t('ჩემი ცხოველები', 'My pets'), body: t('მოვლა, წონა და Medi Vet შენი ცხოველებისთვის.', 'Care, weight and Medi Vet for your pets.') } : null,
-    featureOn('medi') ? { href: '/medi?mode=doctor', icon: 'stethoscope', ink: 'teal', title: t('ექიმთან', 'Doctor mode'), body: t('კლინიკური შეკითხვა Medi-ს ექიმის რეჟიმში.', 'Ask Medi a clinical question in doctor mode.') } : null,
+    featureOn('mediDoctor') ? { href: '/medi?mode=doctor', icon: 'stethoscope', ink: 'teal', title: t('ექიმთან', 'Doctor mode'), body: t('კლინიკური შეკითხვა Medi-ს ექიმის რეჟიმში.', 'Ask Medi a clinical question in doctor mode.') } : null,
   ].filter(Boolean);
   return h('div', { class: 'grid grid-3' }, tools.map((tool) => h('a', { class: 'card hover', href: tool.href, 'data-link': '' },
     h('div', { class: 'feature' }, tile(tool.icon, tool.ink), h('h3', null, tool.title), h('p', null, tool.body),
@@ -81,8 +84,8 @@ export default async function home(root, { navigate }) {
   const goal = profileExtra().primaryGoal;
 
   const sections = {
-    meds: () => section(t('შემდეგი მიღება', 'Next dose'), lazyCard(() => import('./medications.js'), 'homeCard'), { link: { href: '/medications', label: t('ყველა', 'All') } }),
-    activity: () => section(t('აქტიურობა', 'Activity'), lazyCard(() => import('./health.js'), 'homeActivityCard'), { link: { href: '/health', label: t('დეტალურად', 'Details') } }),
+    meds: () => featureOn('medications') ? section(t('შემდეგი მიღება', 'Next dose'), lazyCard(() => import('./medications.js'), 'homeCard'), { link: { href: '/medications', label: t('ყველა', 'All') } }) : null,
+    activity: () => trackersOn() ? section(t('აქტიურობა', 'Activity'), lazyCard(() => import('./health.js'), 'homeActivityCard'), { link: { href: '/health', label: t('დეტალურად', 'Details') } }) : null,
     nutrition: () => featureOn('nutrition') ? section(t('კვება', 'Nutrition'), lazyCard(() => import('./nutrition.js'), 'homeCard'), { link: { href: '/nutrition', label: t('დღიური', 'Diary') } }) : null,
     cycle: () => featureOn('cycle') && isFemale() ? section(t('ციკლი', 'Cycle'), lazyCard(() => import('./cycle.js'), 'homeCard'), { link: { href: '/cycle', label: t('გახსნა', 'Open') } }) : null,
     quest: () => featureOn('quest') ? section('Medi Quest', lazyCard(() => import('./quest.js'), 'homeCard'), { link: { href: '/quest', label: t('მისიები', 'Missions') } }) : null,
@@ -119,8 +122,8 @@ export default async function home(root, { navigate }) {
         h('p', { style: { marginTop: 0, fontSize: '14px' } }, `${fmtDate(new Date(), { year: true })}`),
         h('h1', null, `${greeting()}${name ? `, ${name}` : ''}`)),
       h('div', { class: 'page-head-actions' },
-        button('Medi', { variant: 'secondary', icon: 'sparkles', href: '/medi' }),
-        button(t('წამლის დამატება', 'Add medication'), { icon: 'plus', href: '/medications?add=1' }))),
+        featureOn('medi') ? button('Medi', { variant: 'secondary', icon: 'sparkles', href: '/medi' }) : null,
+        featureOn('medications') ? button(t('წამლის დამატება', 'Add medication'), { icon: 'plus', href: '/medications?add=1' }) : null)),
     featureOn('medi') ? h('div', { class: 'hub-section' }, askMedi(navigate)) : null,
     h('div', { class: 'hub-section' }, summaryStats()),
     news,

@@ -10,7 +10,7 @@ import {
 import { get, post, del, stream, invalidate, ApiError } from '../api.js';
 import { withAiConsent } from '../aiConsent.js';
 import { t, isEn } from '../i18n.js';
-import { session, firstName } from '../session.js';
+import { session, firstName, featureOn } from '../session.js';
 
 const CSS_HREF = '/app/css/medi.css';
 const APP_STORE = 'https://apps.apple.com/app/id6812517519';
@@ -65,6 +65,9 @@ const MODES = {
   },
 };
 const MODE_KEYS = ['medi', 'doctor', 'deep'];
+/** Admin „მოდულები“ can pause a mode: its tab hides and new conversations start in Medi; old ones still open. */
+const MODE_FEATURE = { doctor: 'mediDoctor', deep: 'mediDeep' };
+const modeOn = (k) => !MODE_FEATURE[k] || featureOn(MODE_FEATURE[k]);
 
 function modeFromParam(raw) {
   const v = String(raw || '').trim().toLowerCase();
@@ -191,7 +194,7 @@ export default async function mediPage(root, ctx) {
   const same = () => alive && session.user?.id === owner;
 
   const st = {
-    mode: modeFromParam(ctx.query.mode),
+    mode: (() => { const m = modeFromParam(ctx.query.mode); return modeOn(m) || ctx.query.session || ctx.query.sessionId ? m : 'medi'; })(),
     conv: { sessionId: ctx.query.session || ctx.query.sessionId || null, key: 0 },
     messages: [],
     loadState: 'ready', // loading | ready | error
@@ -293,7 +296,7 @@ export default async function mediPage(root, ctx) {
   function renderHead() {
     const m = mode();
     const sw = h('div', { class: 'medi-modes', role: 'tablist', 'aria-label': t('Medi-ს რეჟიმი', 'Medi mode') },
-      MODE_KEYS.map((k) => h('button', {
+      MODE_KEYS.filter((k) => modeOn(k) || k === st.mode).map((k) => h('button', {
         type: 'button', role: 'tab', class: k === st.mode ? 'on' : '', 'aria-selected': k === st.mode ? 'true' : 'false',
         title: MODES[k].subtitle,
         onClick: () => { if (k !== st.mode) openConversation(k, null, { push: true }); },
@@ -471,7 +474,7 @@ export default async function mediPage(root, ctx) {
 
   function openConversation(nextMode, sessionId, { push = false } = {}) {
     abortCurrent();
-    st.mode = MODES[nextMode] ? nextMode : 'medi';
+    st.mode = MODES[nextMode] && (modeOn(nextMode) || sessionId) ? nextMode : 'medi';
     st.conv = { sessionId: sessionId || null, key: (st.conv?.key || 0) + 1 };
     st.messages = [];
     st.review = null; st.draft = null; st.suggestions = []; st.receipt = null;

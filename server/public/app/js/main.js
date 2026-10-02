@@ -10,16 +10,19 @@ const BASE = '/app';
 
 /* Route table. `page` is a lazy module whose default export is
    async (root, ctx) => cleanup?  ctx = { params, query, navigate, setTitle } */
+/** The metrics page is open while any of its trackers is (admin „მოდულები“ pauses each one). */
+const TRACKERS = ['weight', 'steps', 'hydration'];
+
 const ROUTES = [
   { path: '/', page: () => import('./pages/home.js'), title: t('მთავარი', 'Home') },
   { path: '/medi', page: () => import('./pages/medi.js'), title: 'Medi', feature: 'medi' },
-  { path: '/medications', page: () => import('./pages/medications.js'), title: t('მედიკამენტები', 'Medications') },
-  { path: '/medications/:id', page: () => import('./pages/medications.js'), title: t('მედიკამენტი', 'Medication') },
-  { path: '/records', page: () => import('./pages/records.js'), title: t('ჩემი ბარათი', 'My card') },
-  { path: '/records/:id', page: () => import('./pages/records.js'), title: t('ჩანაწერი', 'Record') },
-  { path: '/lab', page: () => import('./pages/lab.js'), title: t('ანალიზები', 'Lab results') },
-  { path: '/visits', page: () => import('./pages/visits.js'), title: t('ვიზიტები', 'Visits') },
-  { path: '/health', page: () => import('./pages/health.js'), title: t('მაჩვენებლები', 'Health metrics') },
+  { path: '/medications', page: () => import('./pages/medications.js'), title: t('მედიკამენტები', 'Medications'), feature: 'medications' },
+  { path: '/medications/:id', page: () => import('./pages/medications.js'), title: t('მედიკამენტი', 'Medication'), feature: 'medications' },
+  { path: '/records', page: () => import('./pages/records.js'), title: t('ჩემი ბარათი', 'My card'), feature: 'records' },
+  { path: '/records/:id', page: () => import('./pages/records.js'), title: t('ჩანაწერი', 'Record'), feature: 'records' },
+  { path: '/lab', page: () => import('./pages/lab.js'), title: t('ანალიზები', 'Lab results'), feature: 'labs' },
+  { path: '/visits', page: () => import('./pages/visits.js'), title: t('ვიზიტები', 'Visits'), feature: 'visits' },
+  { path: '/health', page: () => import('./pages/health.js'), title: t('მაჩვენებლები', 'Health metrics'), anyOf: TRACKERS },
   { path: '/nutrition', page: () => import('./pages/nutrition.js'), title: t('კვება', 'Nutrition'), feature: 'nutrition' },
   { path: '/cycle', page: () => import('./pages/cycle.js'), title: t('ციკლი', 'Cycle'), feature: 'cycle' },
   { path: '/quest', page: () => import('./pages/quest.js'), title: 'Medi Quest', feature: 'quest' },
@@ -41,11 +44,11 @@ const NAV = [
     { href: '/medi', label: 'Medi', icon: 'sparkles', feature: 'medi' },
   ] },
   { group: t('ჯანმრთელობა', 'Health'), items: [
-    { href: '/medications', label: t('მედიკამენტები', 'Medications'), icon: 'pill' },
-    { href: '/records', label: t('ჩემი ბარათი', 'My card'), icon: 'folder' },
-    { href: '/lab', label: t('ანალიზები', 'Lab results'), icon: 'flask' },
-    { href: '/visits', label: t('ვიზიტები', 'Visits'), icon: 'stethoscope' },
-    { href: '/health', label: t('მაჩვენებლები', 'Health metrics'), icon: 'activity' },
+    { href: '/medications', label: t('მედიკამენტები', 'Medications'), icon: 'pill', feature: 'medications' },
+    { href: '/records', label: t('ჩემი ბარათი', 'My card'), icon: 'folder', feature: 'records' },
+    { href: '/lab', label: t('ანალიზები', 'Lab results'), icon: 'flask', feature: 'labs' },
+    { href: '/visits', label: t('ვიზიტები', 'Visits'), icon: 'stethoscope', feature: 'visits' },
+    { href: '/health', label: t('მაჩვენებლები', 'Health metrics'), icon: 'activity', anyOf: TRACKERS },
   ] },
   { group: t('ცხოვრების წესი', 'Lifestyle'), items: [
     { href: '/nutrition', label: t('კვება', 'Nutrition'), icon: 'apple', feature: 'nutrition' },
@@ -59,9 +62,9 @@ const NAV = [
 
 const BOTTOM = [
   { href: '/', label: t('მთავარი', 'Home'), icon: 'home' },
-  { href: '/medications', label: t('წამლები', 'Meds'), icon: 'pill' },
+  { href: '/medications', label: t('წამლები', 'Meds'), icon: 'pill', feature: 'medications' },
   { href: '/medi', label: 'Medi', icon: 'sparkles', feature: 'medi' },
-  { href: '/records', label: t('ბარათი', 'Card'), icon: 'folder' },
+  { href: '/records', label: t('ბარათი', 'Card'), icon: 'folder', feature: 'records' },
   { menu: true, label: t('მენიუ', 'Menu'), icon: 'grid' },
 ];
 
@@ -125,8 +128,14 @@ document.addEventListener('click', (e) => {
 });
 window.addEventListener('popstate', () => route());
 
+/** Admin „მოდულები“: an item is shown while its module runs (`anyOf`: while one of several does). */
+function featureAllows(item) {
+  if (item.anyOf) return item.anyOf.some((key) => featureOn(key));
+  return !item.feature || featureOn(item.feature);
+}
+
 function visible(item) {
-  if (item.feature && !featureOn(item.feature)) return false;
+  if (!featureAllows(item)) return false;
   if (item.female && !isFemale()) return false;
   if (item.trainer && !isTrainer()) return false;
   return true;
@@ -228,12 +237,12 @@ async function route() {
   cleanup = null;
   markNav(path);
 
-  if (!m || (m.route.feature && !featureOn(m.route.feature))) {
+  if (!m || !featureAllows(m.route)) {
     mount(shell.crumb, '');
     mount(shell.content, h('div', { class: 'page' }, h('div', { class: 'empty', style: { paddingTop: '80px' } },
       h('div', { class: 'empty-art' }, icon(m ? 'lock' : 'search', { size: 26 })),
       h('h3', null, m ? t('ეს სივრცე დროებით შეჩერებულია', 'This section is paused for now') : t('გვერდი ვერ მოიძებნა', 'Page not found')),
-      h('p', null, m ? ((!isEn && session.featureMessages?.[m.route.feature]) || t('მალე ისევ ჩაირთვება.', 'It will be back soon.')) : t('შეამოწმე მისამართი ან დაბრუნდი მთავარზე.', 'Check the address or go back home.')),
+      h('p', null, m ? ((!isEn && session.featureMessages?.[m.route.feature || m.route.anyOf?.[0]]) || t('მალე ისევ ჩაირთვება.', 'It will be back soon.')) : t('შეამოწმე მისამართი ან დაბრუნდი მთავარზე.', 'Check the address or go back home.')),
       h('a', { class: 'btn btn-primary', href: '/', 'data-link': '' }, t('მთავარზე დაბრუნება', 'Back to home')))));
     return;
   }

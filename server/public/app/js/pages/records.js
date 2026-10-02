@@ -287,7 +287,7 @@ async function listPage(root, ctx) {
     }))), { link: { href: '/medi', label: 'Medi' } }) : null;
 
     mount(body,
-      h('div', { class: 'grid grid-main rec-top' }, overview, h('div', { class: 'stack', style: { gap: '16px' } }, labCard, featureOn('medi') ? mediHint() : null)),
+      h('div', { class: 'grid grid-main rec-top' }, overview, h('div', { class: 'stack', style: { gap: '16px' } }, featureOn('labs') ? labCard : null, featureOn('medi') ? mediHint() : null)),
       h('div', { class: 'grid grid-main' },
         h('div', null, section(t('ანალიზები და დასკვნები', 'Lab tests and reviews'), h('div', { class: 'stack', style: { gap: '12px' } },
           h('div', { class: 'rec-tools' }, search, chipsHost), listHost))),
@@ -336,9 +336,9 @@ async function listPage(root, ctx) {
     const addTile = (ic, ink, title, sub, onClick, href) => h(href ? 'a' : 'button', { class: 'card hover rec-add', type: href ? undefined : 'button', href, 'data-link': href ? '' : undefined, onClick },
       tile(ic, ink, 40), h('div', null, h('div', { class: 'card-title' }, title), h('div', { class: 'card-sub' }, sub)));
     return section(t('დამატება', 'Add'), h('div', { class: 'rec-add-grid' },
-      addTile('flask', 'blue', t('ანალიზი', 'Lab test'), t('ფოტო ან PDF — ნორმებით', 'Photo or PDF — with reference ranges'), () => openLabUpload({ navigate: ctx.navigate, onSaved: () => refresh().catch(() => {}) })),
-      addTile('scanLine', 'sky', t('სნიმარი', 'Scan'), t('რენტგენი, ექო, MRI', 'X-ray, ultrasound, MRI'), () => openImageUpload('IMAGING', { navigate: ctx.navigate, onSaved: () => refresh().catch(() => {}) })),
-      addTile('scanFace', 'rose', t('კანი', 'Skin'), t('ფოტოს შეფასება', 'Photo check'), () => openImageUpload('SKIN', { navigate: ctx.navigate, onSaved: () => refresh().catch(() => {}) })),
+      !featureOn('labs') ? null : addTile('flask', 'blue', t('ანალიზი', 'Lab test'), t('ფოტო ან PDF — ნორმებით', 'Photo or PDF — with reference ranges'), () => openLabUpload({ navigate: ctx.navigate, onSaved: () => refresh().catch(() => {}) })),
+      !featureOn('imaging') ? null : addTile('scanLine', 'sky', t('სნიმარი', 'Scan'), t('რენტგენი, ექო, MRI', 'X-ray, ultrasound, MRI'), () => openImageUpload('IMAGING', { navigate: ctx.navigate, onSaved: () => refresh().catch(() => {}) })),
+      !featureOn('skin') ? null : addTile('scanFace', 'rose', t('კანი', 'Skin'), t('ფოტოს შეფასება', 'Photo check'), () => openImageUpload('SKIN', { navigate: ctx.navigate, onSaved: () => refresh().catch(() => {}) })),
       featureOn('medi') ? addTile('sparkles', 'teal', t('ჰკითხე Medi-ს', 'Ask Medi'), t('აღწერე, რა გაწუხებს', 'Describe what’s bothering you'), null, '/medi') : null));
   }
 
@@ -407,7 +407,7 @@ async function detailPage(root, ctx) {
       h('div', { class: 'hstack', style: { gap: '14px', flexWrap: 'nowrap' } }, tile(l.icon, l.ink, 52),
         h('div', null, h('h1', null, typeLabel(record.type)), h('p', null, fmtDateTime(record.createdAt)))),
       h('div', { class: 'page-head-actions' },
-        record.type === 'LAB' ? button(t('ლაბორატორია', 'Lab tests'), { variant: 'secondary', icon: 'activity', href: '/lab' }) : null,
+        record.type === 'LAB' && featureOn('labs') ? button(t('ლაბორატორია', 'Lab tests'), { variant: 'secondary', icon: 'activity', href: '/lab' }) : null,
         delBtn)),
     h('div', { class: `grid ${fileSide ? 'grid-main' : ''}` },
       card({ class: 'pad-lg rec-analysis' },

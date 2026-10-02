@@ -23,6 +23,7 @@ import { enforceAiQuota } from '../middleware/aiLimiter.js';
 import { getUsage, commitAiCredit } from '../lib/usage.js';
 import { asyncHandler } from '../middleware/error.js';
 import { QuestSignal, refreshQuestProgressForUser } from '../lib/quest.js';
+import { featureDisabledMessage, isFeatureEnabled } from '../lib/featureFlags.js';
 
 export const aiRouter = Router();
 
@@ -314,6 +315,11 @@ aiRouter.post(
     }
 
     const { kind, context } = analyzeSchema.parse(req.body);
+    // Each image kind has its own admin switch; the multipart body is only readable here.
+    const kindFeature = { LAB: 'labs', IMAGING: 'imaging', SKIN: 'skin' }[kind];
+    if (kindFeature && !(await isFeatureEnabled(kindFeature))) {
+      return res.status(503).json({ error: await featureDisabledMessage(kindFeature, undefined, req.lang), code: 'FEATURE_DISABLED', feature: kindFeature });
+    }
     const { buffer } = req.file;
     const mimetype = sniffImageMime(buffer, normalizeUploadMime(req.file.mimetype));
     const isPdf = mimetype === 'application/pdf';

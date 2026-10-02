@@ -77,12 +77,44 @@ describe('module hierarchy', () => {
     assert.equal((await publicFeatureMessages(db, 'en')).pets, 'Pets is paused for a moment. Your data is saved.');
   });
 
-  it('every parent is a real module and every key is unique', () => {
+  it('every parent is a real top-level feature and every key is unique', () => {
     const keys = FEATURES.map((f) => f.key);
     assert.equal(new Set(keys).size, keys.length);
     for (const f of FEATURES) {
       assert.ok(['module', 'ai', 'system'].includes(f.group), f.key);
-      if (f.parent) assert.equal(FEATURES.find((p) => p.key === f.parent)?.group, 'module', f.key);
+      if (!f.parent) continue;
+      const parent = FEATURES.find((p) => p.key === f.parent);
+      assert.ok(parent, f.key);
+      // blockingKey looks one level up only, so a parent must not have a parent of its own.
+      assert.equal(parent.parent, undefined, f.key);
     }
+  });
+
+  it('pauses every Medi tool with Medi and each tool on its own', async () => {
+    const db = fakeDb();
+    await setFeatureFlag('medi', { enabled: false, message: 'Medi ისვენებს' }, { db });
+    resetFeatureFlagCacheForTests();
+    for (const key of ['mediDoctor', 'mediDeep', 'symptoms', 'imaging', 'skin', 'voice']) {
+      assert.equal(await isFeatureEnabled(key, db), false, key);
+      assert.equal(await featureDisabledMessage(key, db), 'Medi ისვენებს', key);
+    }
+    await setFeatureFlag('medi', { enabled: true }, { db });
+    await setFeatureFlag('symptoms', { enabled: false }, { db });
+    resetFeatureFlagCacheForTests();
+    assert.equal(await isFeatureEnabled('medi', db), true);
+    assert.equal(await isFeatureEnabled('symptoms', db), false);
+    assert.equal(await isFeatureEnabled('mediDoctor', db), true);
+  });
+
+  it('lets core health modules be paused like any other', async () => {
+    const db = fakeDb();
+    await setFeatureFlag('visits', { enabled: false }, { db });
+    resetFeatureFlagCacheForTests();
+    assert.equal(await isFeatureEnabled('visits', db), false);
+    assert.equal(await isFeatureEnabled('medications', db), true);
+    const flags = await publicFeatureFlags(db);
+    assert.equal(flags.visits, false);
+    assert.ok((await featureDisabledMessage('visits', db)).length > 10);
+    assert.ok(/visit/i.test(await featureDisabledMessage('visits', db, 'en')));
   });
 });
