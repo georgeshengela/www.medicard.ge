@@ -7,6 +7,7 @@ import { MedicalSourcesLink } from '@/components/health/MedicalSourcesLink';
 import type { MedicalSourceId } from '@/constants/medicalSources';
 import { CyclePeriodToast } from '@/components/cycle/CyclePeriodToast';
 import { CycleHeavyBleedingCard } from '@/components/cycle/CycleHeavyBleedingCard';
+import { CycleStillBleedingRow } from '@/components/cycle/CycleStillBleedingRow';
 import { CycleQuickLogSheet } from '@/components/cycle/CycleQuickLogSheet';
 import { CycleSexSheet } from '@/components/cycle/CycleSexSheet';
 import { CycleExpectationLine } from '@/components/cycle/CycleExpectationLine';
@@ -23,7 +24,7 @@ import { cycleToday, phaseFromBundle, usedCycleLength } from '@/lib/cycleCanonic
 import { expectationLine, expectationsFromBundle } from '@/lib/cycleExpectations';
 import { displayPhaseLabel } from '@/lib/cycleHonesty';
 import { showHeavyBleedingCard } from '@/lib/cycleHeavyBleeding';
-import { isBleedFlow } from '@/lib/cycleLogSave';
+import { heroPeriodState, heroPlanWhileAsking } from '@/lib/cyclePeriodStatus';
 import { cycleModeCapabilities } from '@/lib/cycleModes';
 import { POSTPARTUM_OVULATION_NOTE } from '@/lib/cycleTone';
 import { bleedingIsUncertain, showFertilityUi, showOvulationUi } from '@/lib/cycleContraception';
@@ -259,6 +260,7 @@ export function HomeCycleHero({ cycle, locked, userId, first }: HomeCycleHeroPro
         sexBusy={actions.sexBusy}
         onStart={actions.startPeriod}
         onEnd={actions.endPeriod}
+        onStillBleeding={actions.stillBleeding}
         onLog={() => actions.openLog()}
         onSex={actions.logSex}
         onOpen={openCycle}
@@ -318,7 +320,7 @@ function HomeCycleToast({ entry, bottomInset }: { entry: HomeCycleToastEntry; bo
       <CyclePeriodToast
         bottomInset={bottomInset}
         title={ka.cycle.periodEndedToast}
-        hint={ka.cycle.periodEndedToastHint}
+        hint={entry.hint ?? ka.cycle.periodEndedToastHint}
         primaryLabel={ka.cycle.logTodayCta}
         PrimaryIcon={PencilLine}
         onAddFlow={entry.onAddFlow}
@@ -353,6 +355,7 @@ function ClassicCycleCard({
   sexBusy,
   onStart,
   onEnd,
+  onStillBleeding,
   onLog,
   onSex,
   onOpen,
@@ -366,6 +369,7 @@ function ClassicCycleCard({
   sexBusy: boolean;
   onStart: () => void;
   onEnd: () => void;
+  onStillBleeding: () => void;
   onLog: () => void;
   onSex: () => void;
   onOpen: () => void;
@@ -378,10 +382,19 @@ function ClassicCycleCard({
   const cycleLen = usedCycleLength(bundle);
   const length = Math.round(cycleLen) || 28;
   const todayLog = bundle.logs.find((l) => l.date === today);
-  const onPeriod = isBleedFlow(todayLog?.flow);
   const uncertainBleed = bleedingIsUncertain(bundle);
   const hideLengthChrome = suppressCycleLengthChrome(bundle);
   const hidePredicted = !forecastPresentationAllowed(bundle);
+  // Period auto-end (brief §9 wave 2 item 3): an open period stays a period day until its usual length,
+  // the day after it asks „ჯერ კიდევ გაქვს?“ once, then the hero is back to normal (no nagging).
+  const periodState = heroPeriodState({
+    status: bundle.periodStatus,
+    statusToday: bundle.meta?.today,
+    today,
+    todayFlow: todayLog?.flow,
+    enabled: caps.showClassicCycleOverview && !hideLengthChrome && !hidePredicted && !uncertainBleed,
+  });
+  const onPeriod = periodState.onPeriod;
   const fertilityVisible = showFertilityUi(bundle);
   const next = bundle.predictions?.nextPeriodStart ?? null;
   const predictedToday = Boolean(bundle.predictions?.calendar?.[today]?.period && bundle.predictions.calendar[today].predicted);
@@ -413,7 +426,7 @@ function ClassicCycleCard({
   const title = hideLengthChrome
     ? ka.cycle.postpartumReturnGathering
     : phase.day != null
-      ? displayPhaseLabel(phase.phase, phase.phaseKa, { loggedPeriod: onPeriod })
+      ? displayPhaseLabel(onPeriod ? 'period' : phase.phase, phase.phaseKa, { loggedPeriod: periodState.loggedToday })
       : ka.cycle.statusLearning;
   const detail = hideLengthChrome
     ? ka.cycle.postpartumReturnLearning
@@ -435,7 +448,7 @@ function ClassicCycleCard({
 
   const leads = startLeads({ onPeriod, forecastOn, predictedToday, inDays });
   const isDayOne = dayOne || bundle.profile.lastPeriodStart === today || (onPeriod && phase.day === 1);
-  const plan = cycleHeroActions({ onPeriod, dayOne: isDayOne, leadsWithStart: leads });
+  const plan = heroPlanWhileAsking(cycleHeroActions({ onPeriod, dayOne: isDayOne, leadsWithStart: leads }), periodState.askStill);
   const startLabel = uncertainBleed ? ka.cycle.heroBleedingStarted : ka.cycle.heroPeriodStarted;
   const sexLogged = todayLog?.sexualActivity === true;
   // Her own pattern, read on the device (brief §9 item 11): one quiet „სავარაუდოა“ line, never a diagnosis.
@@ -507,6 +520,7 @@ function ClassicCycleCard({
           </View>
         ) : null}
       </Pressable>
+      {periodState.askStill ? <CycleStillBleedingRow onYes={onStillBleeding} onEnded={onEnd} disabled={busy} /> : null}
       {/* The cycle screen's pattern: the leading action full width, then the other one beside „♥ სექსი“. */}
       <View style={s.actions}>
         {button(plan.primary, true)}

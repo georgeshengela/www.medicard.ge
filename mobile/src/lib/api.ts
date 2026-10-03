@@ -1947,6 +1947,22 @@ export type CycleBundle = {
   } | null;
   summary: CycleDoctorSummary;
   localInsights?: CycleInsights;
+  /** Period auto-end (server-derived at read time; absent on older servers). */
+  periodStatus?: CyclePeriodStatus | null;
+};
+
+/** Brief §9 wave 2 item 3: whether the latest logged bleeding run is still open on the server's today. */
+export type CyclePeriodStatus = {
+  state: 'active' | 'ended' | 'askStill';
+  /** Day of the run today (1 = its first day); null once ended. */
+  day: number | null;
+  typicalLength: number;
+  /** Ended by the typical length, not by a „none“ / „spotting“ log. */
+  autoEnded: boolean;
+  start?: string;
+  /** The run's last logged bleeding day. */
+  lastBleed?: string;
+  longRun?: boolean;
 };
 
 type RequestOptions = {

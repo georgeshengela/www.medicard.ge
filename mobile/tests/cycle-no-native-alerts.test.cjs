@@ -53,10 +53,14 @@ test('every cycle explanation / confirmation goes through CycleExplainSheet or a
 test('the end-period toast undo restores exactly the bleeding that was logged', () => {
   for (const rel of ['app/cycle/index.tsx', 'src/components/home/sections/useHomeCycleActions.ts']) {
     const src = readFileSync(join(root, ...rel.split('/')), 'utf8');
-    // Only a logged bleeding intensity is restored; an unlogged day never gets a synthesized flow on undo.
-    assert.match(src, /flowBefore === 'light' \|\| flowBefore === 'medium' \|\| flowBefore === 'heavy' \? flowBefore : null/, rel);
-    assert.match(src, /if \(!entry\.beforeFlow\) return;/, rel);
+    // One shared rule (periodEndUndo): a logged bleeding intensity is restored, an empty flow is cleared
+    // again, a day the end created is removed — an unlogged day never gets a synthesized flow on undo.
+    assert.match(src, /periodEndUndo\(before \? \{ flow: before\.flow \} : null\)/, rel);
+    assert.match(src, /undo\.kind === 'restoreFlow'\s*\? await saveCycleObservation\([^)]*\{ flow: undo\.flow \}\)/, rel);
+    assert.match(src, /queueRemoveCycleLog\(/, rel);
   }
+  const helper = readFileSync(join(root, 'src', 'lib', 'cyclePeriodStatus.ts'), 'utf8');
+  assert.match(helper, /if \(before && isBleed\(before\.flow\)\) return \{ kind: 'restoreFlow', flow: before\.flow \};/);
 });
 
 test('period copy says „სისხლდენა“, never the discharge word, and the toast copy exists in both languages', () => {

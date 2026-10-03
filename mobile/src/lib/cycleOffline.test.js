@@ -313,9 +313,30 @@ describe('health mutations overlay (no local engine)', () => {
     const cached = sampleBundle();
     const q = [createMutation('user-a', 'END_PERIOD', { date: '2026-08-14' })];
     const { bundle } = overlayPendingOnBundle(cached, q, 'user-a');
-    assert.equal(bundle.logs.length, cached.logs.length);
+    // The end day is kept as „none“ (server planEndPeriod markNone) — never as bleeding.
+    assert.equal(bundle.logs.length, cached.logs.length + 1);
+    assert.equal(bundle.logs.find((l) => l.date === '2026-08-14')?.flow, 'none');
     assert.ok(!bundle.logs.some((l) => l.date === '2026-08-15' && l.flow === 'medium'));
     assert.equal(true, snapshotEqualsDerived(cached, bundle));
+  });
+
+  it('End Period on the „still bleeding?“ day (nothing logged) marks that day „none“', () => {
+    const cached = sampleBundle({
+      meta: { today: '2026-08-18', timezone: 'Asia/Tbilisi' },
+      periodRanges: [{ start: '2026-08-12', end: '2026-08-13', lengthDays: 2, source: 'logged' }],
+    });
+    const q = [createMutation('user-a', 'END_PERIOD', { date: '2026-08-18' })];
+    const { bundle } = overlayPendingOnBundle(cached, q, 'user-a');
+    assert.equal(bundle.logs.find((l) => l.date === '2026-08-18')?.flow, 'none');
+    assert.equal(bundle.predictions.calendar['2026-08-18']?.period, false);
+  });
+
+  it('End Period on the first day (undo of a start) only touches that day', () => {
+    const cached = sampleBundle();
+    const q = [createMutation('user-a', 'END_PERIOD', { date: '2026-08-12' })];
+    const { bundle } = overlayPendingOnBundle(cached, q, 'user-a');
+    assert.equal(bundle.logs.filter((l) => l.date === '2026-08-12').length, 1);
+    assert.equal(bundle.logs.find((l) => l.date === '2026-08-12')?.flow, 'none');
   });
 
   it('End Period overlay clears today so the hub is no longer on period', () => {

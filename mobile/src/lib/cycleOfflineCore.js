@@ -519,6 +519,22 @@ function overlayPendingOnBundle(bundle, queue, userScope) {
           patchCalendarObservation(next, key, { flow: 'none', logged: true, period: false });
           pendingDates.push(key);
         }
+        // Server planEndPeriod `markNone`: „დასრულდა“ after the run's first day is kept as „none“ even when
+        // nothing was logged that day (the „still bleeding?“ question day), so it is not asked again.
+        const run =
+          containing ||
+          [...ranges].filter((r) => r.start <= date).sort((a, b) => a.start.localeCompare(b.start)).pop();
+        const onDay = (next.logs || []).find((l) => l.date === date);
+        if (
+          run &&
+          date > run.start &&
+          date < addDaysYmd(run.start, 14) &&
+          onDay?.flow !== 'none' &&
+          onDay?.flow !== 'spotting'
+        ) {
+          upsertLogOnBundle(next, date, { flow: 'none' }, userScope);
+          patchCalendarObservation(next, date, { flow: 'none', logged: true, period: false });
+        }
       }
     } else if (op === 'FILL_PERIOD') {
       const days = eachYmd(payload.start, payload.end);

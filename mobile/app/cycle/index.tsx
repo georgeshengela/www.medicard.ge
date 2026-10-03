@@ -9,6 +9,8 @@ import { useNavigation, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, { FadeInUp } from 'react-native-reanimated';
 import * as Haptics from 'expo-haptics';
+import { tx } from '@/i18n/locale';
+import { periodEndUndo, stillBleedingFlow, type PeriodEndUndo } from '@/lib/cyclePeriodStatus';
 import { CalendarHeart, Heart, MessageSquareText, PencilLine } from 'lucide-react-native';
 import { CycleHomeHeader } from '@/components/cycle/CycleHomeHeader';
 import { CycleHero } from '@/components/cycle/CycleHero';
@@ -63,6 +65,7 @@ import {
   discardCycleMutation,
   queueApplyPeriod,
   saveCycleObservation,
+  queueRemoveCycleLog,
   type CycleView,
 } from '@/lib/cycleOffline';
 import { putCycleBundle, putCycleView, useCycleView } from '@/lib/cycleViewCache';
@@ -238,7 +241,8 @@ export default function CycleHome() {
   const [periodToast, setPeriodToast] = useState<string | null>(null);
   const [periodBusy, setPeriodBusy] = useState(false);
   /** One-tap "period ended" confirmation: today's bleeding before the tap, for undo (brief §8.2 item 12). */
-  const [endToast, setEndToast] = useState<{ date: string; beforeFlow: 'light' | 'medium' | 'heavy' | null } | null>(null);
+  /** `undo` puts the day back exactly; `wasBleeding` = today had bleeding logged (else the „still bleeding?“ answer). */
+  const [endToast, setEndToast] = useState<{ date: string; undo: PeriodEndUndo; wasBleeding: boolean } | null>(null);
   /** „როგორ ითვლება?“ — the ring / phase pill explanation sheet (replaces the native alert). */
   const [explainOpen, setExplainOpen] = useState(false);
   /** Sex and sex drive have their own private sheet (separate from the daily log). */
@@ -792,8 +796,8 @@ export default function CycleHome() {
    */
   const endPeriod = async () => {
     if (!user?.id || periodBusy) return;
-    const flowBefore = bundle?.logs.find((l) => l.date === today)?.flow;
-    const beforeFlow = flowBefore === 'light' || flowBefore === 'medium' || flowBefore === 'heavy' ? flowBefore : null;
+    const before = bundle?.logs.find((l) => l.date === today) ?? null;
+    const undo = periodEndUndo(before ? { flow: before.flow } : null);
     setPeriodBusy(true);
     try {
       const result = await queueApplyPeriod(user.id, { action: 'end', date: today });
@@ -801,7 +805,7 @@ export default function CycleHome() {
       showView(result.view);
       setPeriodToast(null);
       setSexToast(null);
-      setEndToast({ date: today, beforeFlow });
+      setEndToast({ date: today, undo, wasBleeding: undo.kind === 'restoreFlow' });
     } catch (err) {
       setError(err instanceof Error ? err.message : ka.common.error);
     } finally {
@@ -809,16 +813,40 @@ export default function CycleHome() {
     }
   };
 
-  /** Undo of "period ended": today's bleeding comes back exactly as it was logged. */
-  const undoPeriodEnd = async (entry: { date: string; beforeFlow: 'light' | 'medium' | 'heavy' | null }) => {
+  /** Undo of "period ended": the day comes back exactly as it was (bleeding, an empty flow, or no log). */
+  const undoPeriodEnd = async (entry: { date: string; undo: PeriodEndUndo }) => {
     if (!user?.id) return;
     setEndToast(null);
-    if (!entry.beforeFlow) return;
+    const undo = entry.undo;
+    if (undo.kind === 'keep') return;
     try {
-      const result = await saveCycleObservation(user.id, entry.date, { flow: entry.beforeFlow });
+      const result =
+        undo.kind === 'restoreFlow'
+          ? await saveCycleObservation(user.id, entry.date, { flow: undo.flow })
+          : undo.kind === 'clearFlow'
+            ? await saveCycleObservation(user.id, entry.date, { flow: null })
+            : await queueRemoveCycleLog(user.id, entry.date);
       showView(result.view);
     } catch (err) {
       setError(err instanceof Error ? err.message : ka.common.error);
+    }
+  };
+
+  /** „ჯერ კიდევ გაქვს?“ → „კი“ (period auto-end, brief §9 wave 2 item 3): today's flow at her last level, else light. */
+  const stillBleedingNow = async () => {
+    if (!user?.id || periodBusy || !bundle) return;
+    setPeriodBusy(true);
+    try {
+      const result = await saveCycleObservation(user.id, today, { flow: stillBleedingFlow(bundle.logs, today) });
+      Haptics.selectionAsync().catch(() => undefined);
+      showView(result.view);
+      setPeriodToast(null);
+      setSexToast(null);
+      setEndToast(null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : ka.common.error);
+    } finally {
+      setPeriodBusy(false);
     }
   };
 
@@ -1145,6 +1173,8 @@ export default function CycleHome() {
                     onSex={() => void logSexNow()}
                     sexLogged={todayLog?.sexualActivity === true}
                     onEnd={() => void endPeriod()}
+                    onStillBleeding={() => void stillBleedingNow()}
+                    busy={periodBusy}
                     onInfo={() => setExplainOpen(true)}
                   />
                 )}
@@ -1429,7 +1459,11 @@ export default function CycleHome() {
         <CyclePeriodToast
           bottomInset={insets.bottom}
           title={ka.cycle.periodEndedToast}
-          hint={ka.cycle.periodEndedToastHint}
+          hint={
+            endToast.wasBleeding
+              ? ka.cycle.periodEndedToastHint
+              : tx('დღე სისხლდენის გარეშე აღირიცხა — გაუქმება აბრუნებს.', 'Today is logged without bleeding — undo takes it back.')
+          }
           primaryLabel={ka.cycle.logTodayCta}
           PrimaryIcon={PencilLine}
           onAddFlow={() => {

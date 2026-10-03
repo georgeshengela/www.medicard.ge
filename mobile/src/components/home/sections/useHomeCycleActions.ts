@@ -6,7 +6,9 @@ import type { CycleLogForm } from '@/components/cycle/CycleLogTabs';
 import { periodToastTitle } from '@/components/cycle/CyclePeriodToast';
 import { formFromCycleLog, persistCycleLog } from '@/lib/cycleLogSave';
 import { periodStartTone } from '@/lib/cycleTone';
-import { queueApplyPeriod, saveCycleObservation, type CycleView } from '@/lib/cycleOffline';
+import { queueApplyPeriod, queueRemoveCycleLog, saveCycleObservation, type CycleView } from '@/lib/cycleOffline';
+import { periodEndUndo, stillBleedingFlow, type PeriodEndUndo } from '@/lib/cyclePeriodStatus';
+import { tx } from '@/i18n/locale';
 import { putCycleView } from '@/lib/cycleViewCache';
 import { getCycleReminderPrefs } from '@/lib/cycleReminderPrefs';
 import { syncCycleReminders } from '@/lib/cycleReminders';
@@ -30,12 +32,15 @@ export type HomeCycleToast = {
   date: string;
   /** Period toast title for the cycle mode (neutral „ახალი ციკლი დაიწყო“ while trying to conceive); undefined = default. */
   title?: string;
+  /** Period end: the line under the title (default: today's bleeding was removed). */
+  hint?: string;
   /** Period: add today's flow. Period end: log today. Sex: open the details sheet. */
   onAddFlow: () => void;
   onUndo: () => void;
 };
 
-type EndToast = { date: string; beforeFlow: 'light' | 'medium' | 'heavy' | null };
+/** `undo` puts the day back exactly; `wasBleeding` = today had bleeding logged (else the „still bleeding?“ answer). */
+type EndToast = { date: string; undo: PeriodEndUndo; wasBleeding: boolean };
 
 let toastEntry: HomeCycleToast | null = null;
 let hostCount = 0;
@@ -94,6 +99,8 @@ export type HomeCycleActions = {
   sheet: HomeCycleSheet;
   startPeriod: () => void;
   endPeriod: () => void;
+  /** „ჯერ კიდევ გაქვს?“ → „კი“: today's flow at her last logged level (else light), normal save path. */
+  stillBleeding: () => void;
   undoStart: (date: string) => void;
   addFlow: (date: string) => void;
   openLog: (date?: string, periodStart?: boolean) => void;
@@ -234,8 +241,8 @@ export function useHomeCycleActions({
   /** One tap: the period ends today (the server clears today's logged bleeding); the toast's undo restores it. */
   const endPeriod = useCallback(() => {
     if (!userId || busyRef.current) return;
-    const flowBefore = view?.display.logs.find((l) => l.date === today)?.flow;
-    const beforeFlow = flowBefore === 'light' || flowBefore === 'medium' || flowBefore === 'heavy' ? flowBefore : null;
+    const before = view?.display.logs.find((l) => l.date === today) ?? null;
+    const undo = periodEndUndo(before ? { flow: before.flow } : null);
     busyRef.current = true;
     setBusy(true);
     setError(null);
@@ -247,7 +254,33 @@ export function useHomeCycleActions({
         if (alive.current) {
           setSexBefore(null);
           setToastDate(null);
-          setEndToast({ date: today, beforeFlow });
+          setEndToast({ date: today, undo, wasBleeding: undo.kind === 'restoreFlow' });
+        }
+      } catch (err) {
+        fail(err);
+      } finally {
+        busyRef.current = false;
+        if (alive.current) setBusy(false);
+      }
+    })();
+  }, [userId, view, today, showView, fail]);
+
+  /** „ჯერ კიდევ გაქვს?“ → „კი“: the run continues today (a bleeding log; the server's period status follows). */
+  const stillBleeding = useCallback(() => {
+    if (!userId || !view || busyRef.current) return;
+    const flow = stillBleedingFlow(view.display.logs, today);
+    busyRef.current = true;
+    setBusy(true);
+    setError(null);
+    void (async () => {
+      try {
+        const result = await saveCycleObservation(userId, today, { flow });
+        Haptics.selectionAsync().catch(() => undefined);
+        showView(result.view);
+        if (alive.current) {
+          setSexBefore(null);
+          setToastDate(null);
+          setEndToast(null);
         }
       } catch (err) {
         fail(err);
@@ -262,10 +295,16 @@ export function useHomeCycleActions({
     (entry: EndToast) => {
       if (!userId) return;
       setEndToast(null);
-      if (!entry.beforeFlow) return;
+      const undo = entry.undo;
+      if (undo.kind === 'keep') return;
       void (async () => {
         try {
-          const result = await saveCycleObservation(userId, entry.date, { flow: entry.beforeFlow });
+          const result =
+            undo.kind === 'restoreFlow'
+              ? await saveCycleObservation(userId, entry.date, { flow: undo.flow })
+              : undo.kind === 'clearFlow'
+                ? await saveCycleObservation(userId, entry.date, { flow: null })
+                : await queueRemoveCycleLog(userId, entry.date);
           showView(result.view);
         } catch (err) {
           fail(err);
@@ -392,6 +431,9 @@ export function useHomeCycleActions({
         ? {
             kind: 'periodEnd',
             date: endToast.date,
+            hint: endToast.wasBleeding
+              ? undefined
+              : tx('დღე სისხლდენის გარეშე აღირიცხა — გაუქმება აბრუნებს.', 'Today is logged without bleeding — undo takes it back.'),
             onAddFlow: () => {
               setEndToast(null);
               handlers.current.openLog(endToast.date);
@@ -424,6 +466,7 @@ export function useHomeCycleActions({
     sheet,
     startPeriod,
     endPeriod,
+    stillBleeding,
     undoStart,
     addFlow,
     openLog,

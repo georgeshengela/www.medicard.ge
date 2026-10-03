@@ -4,6 +4,7 @@ import { Text, View } from 'react-native';
 import { CycleExpectationLine } from '@/components/cycle/CycleExpectationLine';
 import { CycleExplainSheet } from '@/components/cycle/CycleExplainSheet';
 import { CyclePhaseLegend } from '@/components/cycle/CyclePhaseLegend';
+import { CycleStillBleedingRow } from '@/components/cycle/CycleStillBleedingRow';
 import { CycleStatusGauge, type GaugeCenter } from '@/components/cycle/CycleStatusGauge';
 import { PredictionBadge, ConfidenceHint } from '@/components/cycle/CycleBadges';
 import { formatCycleDateKa } from '@/components/cycle/CycleUI';
@@ -22,6 +23,7 @@ import { cycleCenterText } from '@/lib/cycleCenterCopy';
 import { cycleCenter, cycleHeroActions, cycleSpreadModel, startLeads, type CycleHeroActionId } from '@/lib/home/homeCycle';
 import { addDaysToKey, daysBetween } from '@/lib/cyclePhase';
 import { isBleedFlow } from '@/lib/cycleLogSave';
+import { heroPeriodState, heroPlanWhileAsking } from '@/lib/cyclePeriodStatus';
 import { cycleModeCapabilities } from '@/lib/cycleModes';
 import { bleedingIsUncertain, showFertilityUi, showOvulationUi } from '@/lib/cycleContraception';
 import { confidencePresentation, gaugeA11ySummary } from '@/lib/cyclePresentation.js';
@@ -47,6 +49,10 @@ type Props = {
   onLog: () => void;
   onStart: () => void;
   onEnd: () => void;
+  /** „ჯერ კიდევ გაქვს?“ → „კი“ (period auto-end, brief §9 wave 2 item 3). */
+  onStillBleeding?: () => void;
+  /** A period write is in flight (the question's buttons wait). */
+  busy?: boolean;
   onInfo?: () => void;
   /** One tap: log sex for today (Flo's quick "log sex"); when already logged it opens the details. */
   onSex?: () => void;
@@ -68,6 +74,8 @@ export function CycleHero({
   onLog,
   onStart,
   onEnd,
+  onStillBleeding,
+  busy = false,
   onInfo,
   onSex,
   sexLogged,
@@ -77,7 +85,6 @@ export function CycleHero({
   const next = bundle.predictions?.nextPeriodStart ?? null;
   const confidence = bundle.predictions?.confidence ?? 'low';
   const todayLog = bundle.logs.find((l) => l.date === today);
-  const onPeriod = isBleedFlow(todayLog?.flow);
   const predictedToday = Boolean(
     bundle.predictions?.calendar?.[today]?.period && bundle.predictions.calendar[today].predicted,
   );
@@ -94,9 +101,19 @@ export function CycleHero({
   const hidePredicted = predViz.hidePredictedOverlays || !forecastPresentationAllowed(bundle);
   const hideLengthChrome = suppressCycleLengthChrome(bundle);
   const forecastLearning = isPostpartumReturnLearning(bundle);
+  // Period auto-end (brief §9 wave 2 item 3) — the same rule as Home's hero: an open period stays a
+  // period day through its usual length, the day after asks „ჯერ კიდევ გაქვს?“ once, then back to normal.
+  const periodState = heroPeriodState({
+    status: bundle.periodStatus,
+    statusToday: bundle.meta?.today,
+    today,
+    todayFlow: todayLog?.flow,
+    enabled: caps.showClassicCycleOverview && !hideLengthChrome && !uncertainBleed,
+  });
+  const onPeriod = periodState.onPeriod;
   const phaseHint = hideLengthChrome
     ? ka.cycle.postpartumReturnGathering
-    : displayPhaseLabel(phase ?? 'unknown', phaseKa, { loggedPeriod: onPeriod });
+    : displayPhaseLabel(onPeriod ? 'period' : (phase ?? 'unknown'), phaseKa, { loggedPeriod: periodState.loggedToday });
   /** The ring's fertile-arc explanation — the one cycle explain sheet with the ring's own legend rows. */
   const [explain, setExplain] = useState<{ title: string; range?: string; body: string } | null>(null);
   // Her own pattern, read on the device (brief §9 item 11): one quiet „სავარაუდოა“ line, never a diagnosis.
@@ -167,6 +184,7 @@ export function CycleHero({
   /** Status line (§4.1): estimate wording always; window copy when cautious. */
   const statusLine = useMemo(() => {
     if (onPeriod) {
+      if (!periodState.loggedToday) return ka.cycle.legendPeriodPredicted;
       return uncertainBleed ? ka.cycle.loggedBleedingToday : ka.cycle.currentlyOnPeriod;
     }
     if (caps.showPregnancyOverview) {
@@ -184,7 +202,7 @@ export function CycleHero({
     return uncertainBleed
       ? ka.cycle.statusNextBleedingIn(inDays)
       : ka.cycle.statusNextPeriodIn(inDays);
-  }, [onPeriod, hidePredicted, predictedToday, next, caps, bundle.pregnancy, today, uncertainBleed]);
+  }, [onPeriod, periodState.loggedToday, hidePredicted, predictedToday, next, caps, bundle.pregnancy, today, uncertainBleed]);
 
   const gaugeA11y = hideLengthChrome
     ? gaugeA11ySummary({
@@ -245,7 +263,7 @@ export function CycleHero({
    */
   const leads = startLeads({ onPeriod, forecastOn, predictedToday, inDays });
   const dayOne = bundle.profile.lastPeriodStart === today || (onPeriod && day === 1);
-  const plan = cycleHeroActions({ onPeriod, dayOne, leadsWithStart: leads });
+  const plan = heroPlanWhileAsking(cycleHeroActions({ onPeriod, dayOne, leadsWithStart: leads }), periodState.askStill && Boolean(onStillBleeding));
   const startLabel = uncertainBleed ? ka.cycle.heroBleedingStarted : ka.cycle.heroPeriodStarted;
   const action = (id: CycleHeroActionId, filled: boolean) => {
     if (id === 'start') return <HeroButton key={id} filled={filled} label={startLabel} icon={Droplet} onPress={onStart} />;
@@ -352,6 +370,12 @@ export function CycleHero({
           <Text style={{ color: c.muted, fontSize: 11, lineHeight: 16, textAlign: 'center', marginTop: 10, fontFamily: 'NotoSansGeorgian_400Regular' }}>
             {ka.cycle.pcosFertilityCaution}
           </Text>
+        ) : null}
+
+        {periodState.askStill && onStillBleeding ? (
+          <View style={{ marginTop: 16 }}>
+            <CycleStillBleedingRow onYes={onStillBleeding} onEnded={onEnd} disabled={busy} />
+          </View>
         ) : null}
 
         {/* Home's pattern: the leading action full width, then the other one beside „♥ სექსი“. */}
