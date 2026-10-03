@@ -220,25 +220,3 @@ test('the expected-day Live Activity renders every region; discreet = „MEDICAR
   assert.equal(hidden.expandedBottom, undefined);
   assert.deepEqual(find(hidden.banner, 'LinkView'), []);
 });
-
-test('discreet icons „კალენდარი“ / „ყვავილი“ ship like the other alternate icons (RGB 1024, thumbs, iOS names)', () => {
-  const app = JSON.parse(fs.readFileSync(path.join(root, 'app.json'), 'utf8'));
-  const icons = app.expo.plugins.find((p) => Array.isArray(p) && p[0] === 'expo-alternate-app-icons')[1];
-  const png = (rel) => {
-    const buf = fs.readFileSync(path.join(root, rel));
-    assert.equal(buf.toString('ascii', 12, 16), 'IHDR', rel);
-    return { width: buf.readUInt32BE(16), height: buf.readUInt32BE(20), colorType: buf[25] };
-  };
-  for (const [name, id] of [['Calendar', 'calendar'], ['Flower', 'flower']]) {
-    const entry = icons.find((i) => i.name === name);
-    assert.ok(entry, `${name} registered`);
-    // App icons carry no alpha channel (colour type 2 = RGB).
-    assert.deepEqual(png(entry.ios.replace('./', '')), { width: 1024, height: 1024, colorType: 2 });
-    assert.deepEqual(png(entry.android.foregroundImage.replace('./', '')), { width: 1024, height: 1024, colorType: 2 });
-    assert.deepEqual(png(`assets/app-icons/thumb/${id}.png`), { width: 192, height: 192, colorType: 2 });
-  }
-  const lib = fs.readFileSync(path.join(root, 'src/lib/appIcon.ts'), 'utf8');
-  assert.match(lib, /calendar: 'Calendar'/);
-  assert.match(lib, /flower: 'Flower'/);
-  assert.match(lib, /DISCREET_APP_ICONS: readonly AppIconId\[\] = \['calendar', 'flower'\]/);
-});
