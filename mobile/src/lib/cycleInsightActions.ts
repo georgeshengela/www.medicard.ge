@@ -19,6 +19,11 @@ export type CycleInsightActionPlan = {
   reminderTitle?: string;
   reminderBody?: string;
   route?: { pathname: string; params?: Record<string, string> };
+  /**
+   * A note to start an empty day log with. Never a route param (no health text in URLs): the caller
+   * stages it in memory (`cycleLogNoteParams`, cycleLogHandoff.ts) and the route carries `note=1` only.
+   */
+  logNote?: string;
   chatPrefill?: string;
 };
 
@@ -42,10 +47,8 @@ export function resolveInsightAction(card: CycleInsightCard): CycleInsightAction
       ],
       manualLabel: action || tx('გახსენი აღრიცხვა', 'Open log'),
       autoLabel: tx('გახსენი და შეავსე შენიშვნა', 'Open with a note'),
-      route: {
-        pathname: '/cycle/log',
-        params: { prefillNote: card.action || card.title },
-      },
+      route: { pathname: '/cycle/log' },
+      logNote: card.action || card.title,
     };
   }
 
@@ -60,10 +63,8 @@ export function resolveInsightAction(card: CycleInsightCard): CycleInsightAction
       ],
       manualLabel: action || tx('აღრიცხე BBT / ლორწო', 'Log BBT / mucus'),
       autoLabel: tx('გახსენი BBT ველით', 'Open with BBT field'),
-      route: {
-        pathname: '/cycle/log',
-        params: { tab: 'more', prefillNote: card.action || tx('BBT / ლორწო', 'BBT / mucus') },
-      },
+      route: { pathname: '/cycle/log', params: { tab: 'more' } },
+      logNote: card.action || tx('BBT / ლორწო', 'BBT / mucus'),
     };
   }
 
@@ -89,7 +90,8 @@ export function resolveInsightAction(card: CycleInsightCard): CycleInsightAction
         tx('შეინახე — პროგნოზები განახლდება.', 'Save — estimates will update.'),
       ],
       manualLabel: tx('პარამეტრების გახსნა', 'Open settings'),
-      route: { pathname: '/cycle/settings' },
+      // „ბოლო მენსტრუაციის დასაწყისი“ lives on the profile screen of the split settings (W2-9).
+      route: { pathname: '/cycle/settings/profile' },
     };
   }
 

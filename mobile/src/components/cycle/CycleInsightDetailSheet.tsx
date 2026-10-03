@@ -14,6 +14,7 @@ import { scheduleCycleReminder } from '@/lib/notifications';
 import { ka } from '@/i18n/ka';
 import { useCycleColors } from '@/theme/cycle';
 import { mediPrefillRoute } from '@/lib/mediHandoff';
+import { cycleLogNoteParams } from '@/lib/cycleLogHandoff';
 import { useAuth } from '@/store/AuthContext';
 
 function toneAccent(c: ReturnType<typeof useCycleColors>, tone: string) {
@@ -51,10 +52,12 @@ export function CycleInsightDetailSheet({ visible, card, headline, onClose }: Pr
 
   if (!card || !plan) return null;
 
-  const closeAndNavigate = (pathname: string, params?: Record<string, string>) => {
+  /** A drafted log note waits in memory (cycleLogHandoff); the route carries only `note=1`. */
+  const closeAndNavigate = (pathname: string, params?: Record<string, string>, logNote?: string) => {
     onClose();
     setTimeout(() => {
-      router.push({ pathname, params: { date: todayKey(), ...params } } as never);
+      const note = logNote ? cycleLogNoteParams(user?.id, logNote) : {};
+      router.push({ pathname, params: { date: todayKey(), ...params, ...note } } as never);
     }, 220);
   };
 
@@ -68,7 +71,7 @@ export function CycleInsightDetailSheet({ visible, card, headline, onClose }: Pr
       return;
     }
     if (plan.route) {
-      closeAndNavigate(plan.route.pathname, plan.route.params);
+      closeAndNavigate(plan.route.pathname, plan.route.params, plan.logNote);
       return;
     }
     if (plan.kind === 'open_chat' && plan.chatPrefill) {
@@ -102,7 +105,7 @@ export function CycleInsightDetailSheet({ visible, card, headline, onClose }: Pr
       }
 
       if (plan.route) {
-        closeAndNavigate(plan.route.pathname, plan.route.params);
+        closeAndNavigate(plan.route.pathname, plan.route.params, plan.logNote);
         return;
       }
 

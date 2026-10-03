@@ -11,6 +11,7 @@ import * as Haptics from 'expo-haptics';
 import { CycleLogTabs, type CycleLogForm } from '@/components/cycle/CycleLogTabs';
 import { EMPTY_CYCLE_LOG, formFromCycleLog, persistCycleLog } from '@/lib/cycleLogSave';
 import { lastLoggedBbt } from '@/lib/cycleBbt';
+import { hasCycleLogNoteMarker, takeCycleLogNote } from '@/lib/cycleLogHandoff';
 import { api, ApiError, type CycleCustomTag, type CycleLog } from '@/lib/api';
 import { queueRemoveCycleLog } from '@/lib/cycleOffline';
 import { useCycleView } from '@/lib/cycleViewCache';
@@ -36,10 +37,11 @@ function CycleLogDock({children}:{children:React.ReactNode}) {
   return <View style={{paddingHorizontal:20,paddingTop:12,paddingBottom:open?12:Math.max(insets.bottom,12),backgroundColor:c.cream,borderTopWidth:1,borderTopColor:c.border}}>{children}</View>;
 }
 function CycleLogScreen() {
-  const { date: paramDate, tab: paramTab, prefillNote } = useLocalSearchParams<{
+  // `note=1`: a drafted note waits in memory (cycleLogHandoff) — health text never rides in the URL.
+  const { date: paramDate, tab: paramTab, note: noteMarker } = useLocalSearchParams<{
     date?: string;
     tab?: string;
-    prefillNote?: string;
+    note?: string;
   }>();
   const date = useMemo(() => {
     if (paramDate && /^\d{4}-\d{2}-\d{2}$/.test(paramDate)) return paramDate;
@@ -100,10 +102,12 @@ function CycleLogScreen() {
       setCustomTags(bundle.customTags ?? []);
       const existing = bundle.logs.find((l) => l.date === date) as CycleLog | undefined;
       setHasLog(Boolean(existing));
+      // Consume-once, account-bound: taken (and cleared) here even when the day already has a log.
+      const stagedNote = hasCycleLogNoteMarker(noteMarker) ? takeCycleLogNote(user.id) : null;
       if (existing) {
         setForm(formFromCycleLog(existing));
-      } else if (typeof prefillNote === 'string' && prefillNote.trim()) {
-        setForm({ ...EMPTY_CYCLE_LOG, notes: prefillNote.trim() });
+      } else if (stagedNote) {
+        setForm({ ...EMPTY_CYCLE_LOG, notes: stagedNote });
       }
       setHydrated(true);
       setLoading(false);
@@ -111,7 +115,7 @@ function CycleLogScreen() {
       setError(viewError instanceof ApiError ? viewError.message : ka.common.error);
       setLoading(false);
     }
-  }, [hydrated, viewData, viewIdle, viewError, date, prefillNote, user?.id]);
+  }, [hydrated, viewData, viewIdle, viewError, date, noteMarker, user?.id]);
 
   const patchForm = (patch: Partial<CycleLogForm>) => {
     setForm((prev) => ({ ...prev, ...patch }));
