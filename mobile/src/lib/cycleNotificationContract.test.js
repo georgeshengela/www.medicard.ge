@@ -170,6 +170,59 @@ describe('Cycle candidates', () => {
     assert.equal(CYCLE_CANDIDATE_TYPES.includes('perimenopause'), false);
   });
 
+  it('perimenopause: only „მალე“ before the window opens — no „today“, no late check-in, no late status (W3-4)', () => {
+    const rows = buildCycleCandidates({
+      today,
+      mode: 'PERIMENOPAUSE',
+      predictions: { ...predictions(), nextPeriodStart: '2026-10-01', nextPeriodRange: { from: '2026-09-24', to: '2026-10-14' } },
+      prefs: prefs(),
+      lateStatus: { status: 'late' },
+    });
+    const types = rows.map((row) => row.type);
+    assert.deepEqual(types.filter((t) => t !== 'log_nudge'), ['period_soon']);
+    const soon = rows.find((row) => row.type === 'period_soon');
+    // 2 days before the window's first day, never from the median estimate.
+    assert.equal(soon.eventDate, '2026-09-22');
+    const live = {
+      today,
+      mode: 'PERIMENOPAUSE',
+      nextPeriodStart: '2026-10-01',
+      nextPeriodRange: { from: '2026-09-24', to: '2026-10-14' },
+      periodDaysBefore: 2,
+      logs: [],
+      prefsEnabled: true,
+      globalEnabled: true,
+      forecastAllowed: true,
+      typeEnabled: { period_soon: true, period_start: true, period_late: true },
+    };
+    assert.equal(revalidateCycleCandidate(soon, live).ok, true);
+    // The window moved (a new log changed her cycles) → the old reminder is stale.
+    assert.equal(
+      revalidateCycleCandidate(soon, { ...live, nextPeriodRange: { from: '2026-09-26', to: '2026-10-16' } }).reason,
+      CYCLE_SUPPRESSION.STALE_PREDICTION,
+    );
+    for (const type of ['period_start', 'period_late', 'late']) {
+      assert.equal(revalidateCycleCandidate({ type, eventDate: '2026-10-01' }, live).ok, false, type);
+    }
+  });
+
+  it('perimenopause without a window (< 2 cycles): no period reminder at all', () => {
+    const rows = buildCycleCandidates({
+      today,
+      mode: 'PERIMENOPAUSE',
+      predictions: { ...predictions(), nextPeriodStart: null, nextPeriodRange: null },
+      prefs: prefs(),
+    });
+    assert.equal(rows.some((row) => row.type.startsWith('period')), false);
+    const off = buildCycleCandidates({
+      today,
+      mode: 'PERIMENOPAUSE',
+      predictions: { ...predictions(), nextPeriodRange: { from: '2026-09-24', to: '2026-10-14' } },
+      prefs: prefs({ periodDaysBefore: 0 }),
+    });
+    assert.equal(off.some((row) => row.type === 'period_soon'), false);
+  });
+
   it('picks one candidate per civil day by priority', () => {
     const rows = buildCycleCandidates({
       today: '2026-09-01',

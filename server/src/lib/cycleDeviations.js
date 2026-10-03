@@ -17,6 +17,10 @@
  *   - < 180 days of history counted from max(first logged period start, last factor end), so the
  *     window never reaches back into a pregnancy or postpartum stretch;
  *   - < 3 completed cycles in that history.
+ *
+ * Cycles she hid from averages (`hiddenStarts`, „საშუალოდან დამალვა“) are left out of the cycle count,
+ * the irregular spread, prolonged periods and between-period spotting. The infrequent rule still counts
+ * every logged period start: hiding a cycle never invents „infrequent periods“.
  */
 
 import { addDays, daysBetween, todayInTimeZone } from './cycle.js';
@@ -77,8 +81,10 @@ export function evaluateCycleDeviations({
   periodRanges = [],
   logs = [],
   factors = [],
+  hiddenStarts = [],
 } = {}) {
   const hidden = (reason) => ({ shown: false, reason, deviations: null });
+  const hiddenSet = new Set(Array.isArray(hiddenStarts) ? hiddenStarts : []);
   const day = dateKey(today);
   if (!day) return hidden('no_today');
   if (expectsBleeding === false) return hidden('tracking');
@@ -109,15 +115,17 @@ export function evaluateCycleDeviations({
   if (!usable.length) return hidden('history');
   const historyStart = usable[0].start;
   if (daysBetween(historyStart, day) + 1 < DEVIATION_WINDOW_DAYS) return hidden('history');
-  if (usable.length - 1 < DEVIATION_MIN_CYCLES) return hidden('cycles');
+  const completedShown = usable.slice(0, -1).filter((r) => !hiddenSet.has(r.start)).length;
+  if (completedShown < DEVIATION_MIN_CYCLES) return hidden('cycles');
 
   const windowStart = addDays(day, -(DEVIATION_WINDOW_DAYS - 1));
   const starts = usable.map((r) => r.start);
   const findings = [];
 
-  // irregular — completed cycles that start inside the window.
+  // irregular — completed cycles that start inside the window (hidden cycles left out).
   const lengths = [];
   for (let i = 0; i < starts.length - 1; i += 1) {
+    if (hiddenSet.has(starts[i])) continue;
     if (starts[i] >= windowStart) lengths.push(daysBetween(starts[i], starts[i + 1]));
   }
   const rulesOff = mode === 'PERIMENOPAUSE' ? ['irregular'] : [];
@@ -142,7 +150,7 @@ export function evaluateCycleDeviations({
   }
 
   // prolonged — periods of ≥ 10 days inside the window.
-  const long = inWindow.filter((r) => r.lengthDays >= PROLONGED_PERIOD_DAYS);
+  const long = inWindow.filter((r) => !hiddenSet.has(r.start) && r.lengthDays >= PROLONGED_PERIOD_DAYS);
   if (long.length >= PROLONGED_MIN_PERIODS) {
     findings.push({ id: 'prolonged', periods: long.length, longestDays: Math.max(...long.map((r) => r.lengthDays)) });
   }
@@ -159,7 +167,7 @@ export function evaluateCycleDeviations({
     if (nearPeriod(date)) continue;
     let owner = null;
     for (const s of starts) if (s <= date) owner = s;
-    if (!owner) continue;
+    if (!owner || hiddenSet.has(owner)) continue;
     spotCycles.add(owner);
     spotDays += 1;
   }

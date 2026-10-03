@@ -387,6 +387,9 @@ model CycleProfile {
   expectsBleeding         Boolean   @default(true) @ignore
   /// 'auto' | 'off' — „ნაყოფიერი დღეების ჩვენება“. @ignore: raw SQL only (src/lib/cycleTrackingPrefs.js).
   fertilityDisplay        String    @default("auto") @ignore
+  /// Cycle starts (YYYY-MM-DD) she hid from averages („საშუალოდან დამალვა“). prisma/20261004-cycle-hidden-cycles.sql.
+  /// @ignore: raw SQL only (src/lib/cycleHiddenCycles.js).
+  hiddenCycles            Json      @default("[]") @ignore
   createdAt        DateTime  @default(now())
   updatedAt        DateTime  @updatedAt
 }

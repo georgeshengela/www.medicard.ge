@@ -755,6 +755,8 @@ const DEFINITIONS = [
     doctorSummary: DOCTOR_SUMMARY.REQUIRES_EXPLICIT_USER_OPT_IN,
   }),
 
+  // Fertility tracking (OPK, BBT, mucus, pregnancy test) is private: never AI, partner or analytics
+  // (W3-5). The cycle screens and the opt-in doctor summary still show it.
   def('ovulationTest', {
     category: OBSERVATION_CATEGORIES.FERTILITY,
     valueType: VALUE_TYPES.ENUM,
@@ -763,7 +765,7 @@ const DEFINITIONS = [
     column: 'ovulationTest',
     cardinality: CARDINALITY.ONE,
     sensitivity: SENSITIVITY.SENSITIVE,
-    aiDefaultAllowed: true,
+    aiDefaultAllowed: false,
     partnerDefaultAllowed: false,
     analyticsAllowed: false,
     uiGroup: UI_GROUPS.FERTILITY,
@@ -830,7 +832,7 @@ const DEFINITIONS = [
     column: 'bbt',
     cardinality: CARDINALITY.ONE,
     sensitivity: SENSITIVITY.SENSITIVE,
-    aiDefaultAllowed: true,
+    aiDefaultAllowed: false,
     partnerDefaultAllowed: false,
     analyticsAllowed: false,
     uiGroup: UI_GROUPS.FERTILITY,
@@ -844,7 +846,7 @@ const DEFINITIONS = [
     column: 'cervicalMucus',
     cardinality: CARDINALITY.ONE,
     sensitivity: SENSITIVITY.SENSITIVE,
-    aiDefaultAllowed: true,
+    aiDefaultAllowed: false,
     partnerDefaultAllowed: false,
     analyticsAllowed: false,
     uiGroup: UI_GROUPS.FERTILITY,
@@ -858,7 +860,7 @@ const DEFINITIONS = [
     column: 'pregnancyTest',
     cardinality: CARDINALITY.ONE,
     sensitivity: SENSITIVITY.SENSITIVE,
-    aiDefaultAllowed: true,
+    aiDefaultAllowed: false,
     partnerDefaultAllowed: false,
     analyticsAllowed: false,
     uiGroup: UI_GROUPS.FERTILITY,
@@ -1041,6 +1043,18 @@ export function isHighlySensitiveObservation(key) {
 
 export function observationAiAllowed(key) {
   return Boolean(getObservationDef(key)?.aiDefaultAllowed);
+}
+
+/**
+ * The one rule every cycle → AI path uses (W3-5): a row reaches an AI prompt only when it is everyday
+ * HEALTH data the registry lets AI read. SENSITIVE / HIGHLY_SENSITIVE rows (BBT, ovulation and
+ * pregnancy tests, mucus, the ovulation mark, discharge, sex and sex drive, intimate symptoms, notes,
+ * tags) and unknown keys never do, whatever their `aiDefaultAllowed` says — so a new key is covered
+ * by its registry row, not by a hand list.
+ */
+export function observationAiContextAllowed(key) {
+  const defn = getObservationDef(key);
+  return Boolean(defn && defn.aiDefaultAllowed && defn.sensitivity === SENSITIVITY.HEALTH);
 }
 
 export function observationPartnerAllowed(key) {

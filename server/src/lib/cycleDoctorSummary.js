@@ -4,7 +4,7 @@
  * Facts only. Missing log ≠ negative. Predictions are never historical facts.
  */
 
-import { addDays, daysBetween, inferCycleStats, isPeriodFlow, toDateKey } from './cycle.js';
+import { addDays, daysBetween, effectiveHiddenStarts, inferCycleStats, isPeriodFlow, toDateKey } from './cycle.js';
 import {
   DOCTOR_SUMMARY,
   OBSERVATION_CATEGORIES,
@@ -29,6 +29,7 @@ import {
   POSTPARTUM_EPISODE_ACTIVE,
   postpartumElapsed,
 } from './cyclePostpartum.js';
+import { buildSymptomCycleMap } from './cycleSymptomMap.js';
 
 export const DOCTOR_SUMMARY_QUERY_DAYS = 180;
 export const DOCTOR_SUMMARY_MAX_RANGE_DAYS = 366;
@@ -185,12 +186,13 @@ export function buildDoctorPregnancyContext({ profile, pregnancyEpisode, today }
  * Generation-time snapshot. Not in-range history. Not a diagnosis.
  * Interval range reuses Phase 24 completedCycleIntervals / buildVariabilitySummary.
  */
-export function buildDoctorPerimenopauseContext({ profile, inferred = null, logs = [], today } = {}) {
+export function buildDoctorPerimenopauseContext({ profile, inferred = null, logs = [], today, hiddenCycles = [] } = {}) {
   if (!isPerimenopauseProfileMode(profile?.mode)) return null;
   const todayKey = civilDate(today);
   if (!todayKey) return null;
   const starts = inferred?.periodStarts || inferCycleStats(logs).periodStarts || [];
-  const intervals = completedCycleIntervals(starts, { today: todayKey });
+  const hiddenStarts = inferred?.hiddenStarts ?? effectiveHiddenStarts(starts, hiddenCycles);
+  const intervals = completedCycleIntervals(starts, { today: todayKey, hiddenStarts });
   const summary = buildVariabilitySummary(intervals);
   const variability =
     summary.intervalCount >= 2 && summary.shortestDays != null && summary.longestDays != null
@@ -248,8 +250,13 @@ export function buildDoctorPostpartumContext({ profile, postpartumEpisode, today
  *   inferred?: object,
  *   pregnancyEpisode?: object | null,
  *   postpartumEpisode?: object | null,
+ *   hiddenCycles?: string[],
  *   options?: { includeFertility?: boolean, includeSexual?: boolean, includeNotes?: boolean, from?: string, to?: string }
  * }} input
+ *
+ * `hiddenCycles` — cycle starts she hid from averages. Their periods stay in `episodes`; their lengths
+ * leave `cycleLengths` and every statistic and are listed in `menstrualHistory.excludedCycles`
+ * („გამორიცხული შენი არჩევით“ — never with a reason, she was never asked one).
  */
 export function buildCycleDoctorSummaryData({
   profile = {},
@@ -258,6 +265,7 @@ export function buildCycleDoctorSummaryData({
   inferred = null,
   pregnancyEpisode = null,
   postpartumEpisode = null,
+  hiddenCycles = [],
   options: rawOptions,
 } = {}) {
   const options = normalizeOptions(rawOptions);
@@ -266,7 +274,8 @@ export function buildCycleDoctorSummaryData({
     const date = civilDate(log?.date);
     return date && inWindow(date, from, to);
   });
-  const stats = inferred || inferCycleStats(logs);
+  const stats = inferred || inferCycleStats(logs, undefined, undefined, { hiddenStarts: hiddenCycles });
+  const hiddenSet = new Set(stats.hiddenStarts ?? effectiveHiddenStarts(stats.periodStarts, hiddenCycles));
   const episodes = (stats.periodRanges || [])
     .filter((range) => range?.start && range.end && range.source !== 'predicted')
     .filter((range) => range.end >= from && range.start <= to)
@@ -291,8 +300,21 @@ export function buildCycleDoctorSummaryData({
     .filter(Boolean);
 
   const cycleLengths = [];
+  const excludedCycles = [];
   const starts = (stats.periodStarts || []).filter((d) => d <= to);
+  for (let i = 0; i < starts.length; i += 1) {
+    if (!hiddenSet.has(starts[i])) continue;
+    const next = starts[i + 1] ?? null;
+    if ((next ?? to) < from) continue;
+    excludedCycles.push({
+      start: starts[i],
+      end: next,
+      lengthDays: next ? daysBetween(starts[i], next) : null,
+      source: 'EXCLUDED_BY_USER',
+    });
+  }
   for (let i = 1; i < starts.length; i += 1) {
+    if (hiddenSet.has(starts[i - 1])) continue;
     const gap = daysBetween(starts[i - 1], starts[i]);
     if (gap >= 18 && gap <= 45 && starts[i] >= from && starts[i] <= to) {
       cycleLengths.push({
@@ -426,11 +448,13 @@ export function buildCycleDoctorSummaryData({
       : null;
 
   const menstrualHistory =
-    episodes.length || spottingDates.length || cycleLengths.length
+    episodes.length || spottingDates.length || cycleLengths.length || excludedCycles.length
       ? {
           episodes,
           spottingDates: spottingDates.slice(0, 40),
           cycleLengths: cycleLengths.slice(-12),
+          /** Cycles she hid from averages — listed, never explained. Optional for older readers. */
+          excludedCycles: excludedCycles.slice(-12),
           periodDayCount,
         }
       : null;
@@ -482,6 +506,15 @@ export function buildCycleDoctorSummaryData({
     if (Object.hasOwn(sleepCounts, row.value)) sleepCounts[row.value] += 1;
   }
 
+  // „სიმპტომები ციკლის დღეების მიხედვით“ — last completed, non-hidden cycles inside the range; null when empty.
+  const symptomMap = buildSymptomCycleMap({
+    logs: windowLogs,
+    periodStarts: stats.periodStarts || [],
+    hiddenStarts: [...hiddenSet],
+    from,
+    to,
+  });
+
   const pregnancyContext = buildDoctorPregnancyContext({
     profile,
     pregnancyEpisode,
@@ -490,6 +523,7 @@ export function buildCycleDoctorSummaryData({
   const perimenopauseContext = buildDoctorPerimenopauseContext({
     profile,
     inferred,
+    hiddenCycles,
     logs,
     today: civilDate(today) || to,
   });
@@ -512,6 +546,7 @@ export function buildCycleDoctorSummaryData({
       menstrual: true,
       pain: true,
       symptoms: true,
+      symptomMap: Boolean(symptomMap),
       wellness: true,
       fertility: Boolean(options.includeFertility),
       sexual: Boolean(options.includeSexual),
@@ -526,6 +561,8 @@ export function buildCycleDoctorSummaryData({
     menstrualHistory,
     pain,
     symptoms: symptoms.length ? { rows: symptoms } : null,
+    /** Optional for older readers: HEALTH items only, hidden cycles left out (cycleSymptomMap.js). */
+    symptomMap,
     wellness,
     contraception,
     fertilityObservations: fertilityHasData ? fertilitySection : null,

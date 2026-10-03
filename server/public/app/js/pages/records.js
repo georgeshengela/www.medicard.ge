@@ -7,7 +7,7 @@ import {
 } from '../ui.js';
 import { get, del, request, invalidate, authedBlobUrl } from '../api.js';
 import { donut } from '../charts.js';
-import { withAiConsent } from '../aiConsent.js';
+import { withAiConsent, aiDeclinedSlot } from '../aiConsent.js';
 import { openLabUpload, dropzone, checkFile } from './lab.js';
 import { featureOn } from '../session.js';
 import { t, isEn } from '../i18n.js';
@@ -98,6 +98,7 @@ function openImageUpload(kind, { navigate, onSaved }) {
   let file = null;
   let region = null;
   const err = h('div', { class: 'form-error', hidden: true });
+  const declined = aiDeclinedSlot();
   const preview = h('div', { class: 'rec-pick', hidden: true });
   const ctxInput = textarea({ placeholder: cfg.placeholder, maxlength: 2000, rows: 3 });
   const stage = h('div', { class: 'lab-stage', hidden: true });
@@ -135,12 +136,13 @@ function openImageUpload(kind, { navigate, onSaved }) {
     preview,
     regionChips ? h('div', { class: 'field' }, h('span', { class: 'field-label' }, t('რომელი ნაწილია გადაღებული?', 'Which part of the body is shown?')), regionChips) : null,
     field(cfg.contextLabel, ctxInput, t('არასავალდებულო', 'Optional')),
-    stage, err);
+    stage, declined, err);
 
   const run = async () => {
     if (!file) { showErr(t('ჯერ აირჩიე ფაილი', 'Choose a file first')); return; }
     if (cfg.regions && !region) { showErr(t('აირჩიე სხეულის არე. ბარძაყი და გულმკერდი ერთმანეთს არ უნდა ერეოდეს.', 'Choose the body area, so a thigh isn’t mistaken for a chest.')); return; }
     showErr('');
+    declined.hide();
     const regionContext = region
       ? `AUTHORITATIVE BODY REGION (stated by the patient; do not override with chest/spine unless landmarks clearly contradict): ${region.en} (${region.ka}).`
       : '';
@@ -154,7 +156,9 @@ function openImageUpload(kind, { navigate, onSaved }) {
       if (context) fd.append('context', context);
       return request('/api/ai/analyze-image', { method: 'POST', body: fd, timeoutMs: 150_000 });
     }).finally(() => { stage.hidden = true; });
-    if (!out || out.declined) return;
+    // Declined / closed the AI disclosure: a calm note with „ხელახლა ცდა“; the photo and note stay.
+    if (out?.declined) { declined.show(() => submitBtn.click()); return; }
+    if (!out) return;
     const analysis = String(out.analysis || '').trim();
     invalidate('/api/records');
     onSaved?.();

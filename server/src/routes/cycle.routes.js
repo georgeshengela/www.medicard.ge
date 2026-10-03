@@ -76,7 +76,14 @@ import {
   serializeCarePlanStateForExport,
   validateCarePlanWrite,
 } from '../lib/pregnancyCarePlan.js';
-import { buildPerimenopauseContext, PERIMENOPAUSE_INTERVAL_HORIZON_DAYS } from '../lib/cyclePerimenopause.js';
+import {
+  applyPerimenopauseForecast,
+  buildPerimenopauseContext,
+  completedCycleIntervals,
+  perimenopauseForecast,
+  PERIMENOPAUSE_INTERVAL_HORIZON_DAYS,
+} from '../lib/cyclePerimenopause.js';
+import { buildCycleComparison } from '../lib/cycleComparison.js';
 import {
   applyPostpartumEpisodeTransition,
   buildCyclePostpartumData,
@@ -158,6 +165,12 @@ import {
   readCycleTrackingPrefs,
   writeCycleTrackingPrefs,
 } from '../lib/cycleTrackingPrefs.js';
+import {
+  MAX_HIDDEN_CYCLES,
+  planHiddenCyclesUpdate,
+  readCycleHiddenCycles,
+  writeCycleHiddenCycles,
+} from '../lib/cycleHiddenCycles.js';
 import { FERTILITY_DISPLAY_VALUES, trackingOnlyFor } from '../lib/cycleModeCapabilityMatrix.js';
 import {
   buildObservationInsights,
@@ -381,6 +394,8 @@ async function loadBundle(userId, clock = null, lang = 'ka') {
 
   // „მენსტრუაციას არ ველი“ + „ნაყოფიერი დღეების ჩვენება“ (brief §9 wave 2 item 17); defaults when missing.
   const trackingPrefs = await readCycleTrackingPrefs(prisma, userId);
+  // „საშუალოდან დამალვა“: cycles she left out of averages / forecasts; [] when the column is missing.
+  const hiddenCycles = await readCycleHiddenCycles(prisma, userId);
   const classifiedState = await reconcileUserBleedClassifications(prisma, userId);
   const forecastEligibility = evaluateForecastEligibility({
     forecastGateKind: profile.forecastGateKind,
@@ -403,6 +418,7 @@ async function loadBundle(userId, clock = null, lang = 'ka') {
     forecastLogs,
     profile.avgCycleLength,
     profile.avgPeriodLength,
+    { hiddenStarts: hiddenCycles },
   );
   const averages = resolveForecastAverages(profile, inferred);
 
@@ -412,7 +428,7 @@ async function loadBundle(userId, clock = null, lang = 'ka') {
     lastLoggedBleedDay(inferred),
   );
 
-  const rawPredictions = buildPredictions({
+  const enginePredictions = buildPredictions({
     lastPeriodStart,
     avgCycleLength: averages.usedCycleLength,
     avgPeriodLength: averages.usedPeriodLength,
@@ -426,6 +442,17 @@ async function loadBundle(userId, clock = null, lang = 'ka') {
     // Completed cycles teach the luteal length from her own signals (mark, OPK, temperature).
     periodStarts: (inferred.periodRanges || []).map((r) => r.start),
   });
+  // Perimenopause (brief §9 „მერე“ item 7): never one next-period date — a window from her own recent
+  // cycle lengths (hidden cycles left out), nothing with < 2 cycles, no fertile days, no late state.
+  const periForecast =
+    profile.mode === 'PERIMENOPAUSE'
+      ? perimenopauseForecast({
+          intervals: completedCycleIntervals(inferred.periodStarts || [], { today, hiddenStarts: inferred.hiddenStarts || [] }),
+          lastPeriodStart,
+          logs: shapedLogs,
+          today,
+        })
+      : null;
   const contraception = applyFertilityDisplay(
     interpretContraception(
       {
@@ -446,16 +473,26 @@ async function loadBundle(userId, clock = null, lang = 'ka') {
 
   const historyStart = inferred.periodRanges?.[0]?.start;
   if (lastPeriodStart && historyStart && historyStart < lastPeriodStart) {
-    rawPredictions.calendar = stampCalendarPhases(rawPredictions.calendar, {
+    enginePredictions.calendar = stampCalendarPhases(enginePredictions.calendar, {
       lastPeriodStart,
       avgCycleLength: averages.usedCycleLength,
       avgPeriodLength: averages.usedPeriodLength,
       fromKey: historyStart,
       toKey: lastPeriodStart,
       lang,
-      fertility: rawPredictions.fertility,
+      fertility: enginePredictions.fertility,
     });
   }
+  // After the history stamps, so no past day keeps a fertile / ovulation word in this mode either.
+  const rawPredictions = periForecast
+    ? applyPerimenopauseForecast(enginePredictions, periForecast, {
+        lastPeriodStart,
+        avgPeriodLength: averages.usedPeriodLength,
+        avgCycleLength: averages.usedCycleLength,
+        today,
+        lang,
+      })
+    : enginePredictions;
   // Period auto-end (brief §9 wave 2 item 3): derived here, never written. Older builds ignore the field.
   const periodStatus = derivePeriodStatus({
     ranges: inferred.periodRanges,
@@ -470,6 +507,7 @@ async function loadBundle(userId, clock = null, lang = 'ka') {
     mode: profile.mode,
     expectsBleeding: trackingPrefs.expectsBleeding,
     periodRanges: inferred.periodRanges,
+    hiddenStarts: inferred.hiddenStarts,
     logs: forecastLogs,
     factors: deviationFactors({
       mode: profile.mode,
@@ -556,6 +594,8 @@ async function loadBundle(userId, clock = null, lang = 'ka') {
       contraceptionStartedAt: contraception.startedAt,
       expectsBleeding: trackingPrefs.expectsBleeding,
       fertilityDisplay: trackingPrefs.fertilityDisplay,
+      /** Logged cycle starts she hid from averages (only real starts; older builds ignore it). */
+      hiddenCycles: inferred.hiddenStarts ?? [],
       conditions: Array.isArray(profile.conditions) ? profile.conditions.map(String) : [],
       reminderPrefs: profile.reminderPrefs ?? null,
       aiInsights: profile.aiInsights ?? null,
@@ -626,6 +666,16 @@ async function loadBundle(userId, clock = null, lang = 'ka') {
       inferred,
       logs: shapedLogs,
       predictions,
+      today,
+      lastPeriodStart,
+      forecast: periForecast,
+    }),
+    /** „ბოლო ციკლები“: the last ≤ 6 completed, not hidden cycles + latest vs her median (optional; null = no card). */
+    cycleComparison: buildCycleComparison({
+      mode: profile.mode,
+      periodStarts: inferred.periodStarts,
+      periodRanges: inferred.periodRanges,
+      hiddenStarts: inferred.hiddenStarts,
       today,
     }),
     postpartum: bundlePostpartumView({
@@ -1186,7 +1236,7 @@ cycleRouter.get(
     if (daysBetween(from, to) + 1 > DOCTOR_SUMMARY_MAX_RANGE_DAYS) {
       from = addDays(to, -(DOCTOR_SUMMARY_MAX_RANGE_DAYS - 1));
     }
-    const [rows, profile, pregnancyEpisode, postpartumEpisode] = await Promise.all([
+    const [rows, profile, pregnancyEpisode, postpartumEpisode, hiddenCycles] = await Promise.all([
       prisma.cycleLog.findMany({
         where: { userId: req.user.id, date: { gte: from, lte: to } },
         orderBy: { date: 'asc' },
@@ -1194,6 +1244,7 @@ cycleRouter.get(
       prisma.cycleProfile.findUnique({ where: { userId: req.user.id } }),
       loadActivePregnancyEpisode(prisma, req.user.id),
       loadActivePostpartumEpisode(prisma, req.user.id),
+      readCycleHiddenCycles(prisma, req.user.id),
     ]);
     const logs = rows.map((row) =>
       shapeCycleLog({
@@ -1214,6 +1265,9 @@ cycleRouter.get(
           date: toDateKey(row.date) || row.date,
           flow: row.flow,
         })),
+        undefined,
+        undefined,
+        { hiddenStarts: hiddenCycles },
       );
     }
     return res.json(
@@ -1222,6 +1276,7 @@ cycleRouter.get(
         logs,
         today,
         inferred,
+        hiddenCycles,
         pregnancyEpisode,
         postpartumEpisode,
         options: {
@@ -1318,6 +1373,8 @@ export const profileUpdateSchema = z.object({
     })
     .optional(),
   conditions: z.array(z.enum(['pcos', 'endometriosis', 'perimenopause'])).optional(),
+  /** „საშუალოდან დამალვა“ — the whole list of hidden cycle starts. Older builds never send it. */
+  hiddenCycles: z.array(DATE_KEY).max(MAX_HIDDEN_CYCLES * 2).optional(),
   reminderPrefs: z
     .object({
       enabled: z.boolean().optional(),
@@ -1372,6 +1429,18 @@ async function applyProfileUpdate(req, res) {
   const trackingPatch = cycleTrackingPatch(body);
   // Cached AI cards may talk about fertile days / the next period the person just turned off.
   if (trackingPatch) Object.assign(data, emptyCycleAiCache());
+  // Hidden cycles: only real logged starts (the bundle she is looking at); stale stored dates drop quietly.
+  let hiddenCyclesNext = null;
+  if (body.hiddenCycles !== undefined) {
+    const current = await bundleFor(req);
+    hiddenCyclesNext = planHiddenCyclesUpdate({
+      requested: body.hiddenCycles,
+      stored: await readCycleHiddenCycles(prisma, req.user.id),
+      periodStarts: current?.inferred?.periodStarts ?? [],
+    });
+    // The averages behind cached AI cards just changed.
+    Object.assign(data, emptyCycleAiCache());
+  }
 
   await getOrCreateProfile(req.user.id);
   const current = await prisma.cycleProfile.findUnique({ where: { userId: req.user.id } });
@@ -1411,6 +1480,7 @@ async function applyProfileUpdate(req, res) {
       });
     }
     await writeCycleTrackingPrefs(tx, req.user.id, trackingPatch);
+    if (hiddenCyclesNext) await writeCycleHiddenCycles(tx, req.user.id, hiddenCyclesNext);
   });
 
   if (body.enablePartnerShare === true) {
@@ -1630,6 +1700,7 @@ cycleRouter.get(
     }));
     // Her Tracking / fertile-days display choices (and hormonal contraception) reach the partner too.
     const ownerPrefs = await readCycleTrackingPrefs(prisma, share.ownerUserId);
+    const ownerHiddenCycles = await readCycleHiddenCycles(prisma, share.ownerUserId);
     const ownerContraception = applyFertilityDisplay(
       interpretContraception({
         ...profile,
@@ -1644,6 +1715,7 @@ cycleRouter.get(
       permissions: share.permissions,
       today: ownerClock.today,
       lang: shareLang(req),
+      hiddenCycles: ownerHiddenCycles,
       tracking: {
         trackingOnly: trackingOnlyFor(profile.mode, ownerPrefs),
         hideFertility:

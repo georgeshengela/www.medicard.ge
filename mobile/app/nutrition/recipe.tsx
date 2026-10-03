@@ -24,6 +24,7 @@ import { HubCard, HubSection, MacroLine, ScoreBadge } from "@/components/nutriti
 import { MedicalSourcesLink } from "@/components/health/MedicalSourcesLink";
 import { FoodSearchModal, type FoodPick } from "@/components/nutrition/FoodSearchModal";
 import { DescribeMealModal } from "@/components/nutrition/DescribeMealModal";
+import { aiConsentDeclinedText, isAiConsentDeclined } from "@/lib/aiConsentDecline";
 
 export default function RecipeScreen() {
   const { user } = useAuth();
@@ -53,6 +54,7 @@ function RecipeEditor({ owner, recipeId }: { owner: string; recipeId: string }) 
   const [error, setError] = useState("");
   const [sheet, setSheet] = useState<Sheet>(null);
   const [sheetError, setSheetError] = useState("");
+  const [describeNotice, setDescribeNotice] = useState("");
   const [manual, setManual] = useState<FoodFields>(foodFields());
   const [leave, setLeave] = useState(false);
   const baseline = useRef(snapshot("", 2, []));
@@ -109,6 +111,7 @@ function RecipeEditor({ owner, recipeId }: { owner: string; recipeId: string }) 
     if (busy) return;
     setBusy(true);
     setSheetError("");
+    setDescribeNotice("");
     try {
       const result = await api.nutrition.estimate(null, { mode: "text", description: text });
       if (!result.foodDetected || !result.items.length) throw new Error(tx("ინგრედიენტები ვერ ამოვიცანი. ჩამოწერე რაოდენობებით, მაგ. „500 გ ქათამი, 200 გ ბრინჯი“.", "I couldn't recognize the ingredients. List them with amounts, e.g. \"500 g chicken, 200 g rice\"."));
@@ -116,7 +119,9 @@ function RecipeEditor({ owner, recipeId }: { owner: string; recipeId: string }) 
       if (!name.trim() && result.dishName) setName(result.dishName);
       setSheet(null);
     } catch (e) {
-      setSheetError((e as Error).message);
+      // Declined / closed the AI disclosure: a calm line in the sheet, the text stays for „დათვალე“.
+      if (isAiConsentDeclined(e)) setDescribeNotice(aiConsentDeclinedText());
+      else setSheetError((e as Error).message);
     } finally {
       setBusy(false);
     }
@@ -249,7 +254,7 @@ function RecipeEditor({ owner, recipeId }: { owner: string; recipeId: string }) 
               ].map(([key, label, Icon]) => {
                 const I = Icon as typeof Search;
                 return (
-                  <Pressable key={key as string} accessibilityRole="button" accessibilityLabel={tx(`ინგრედიენტის დამატება: ${label}`, `Add ingredient: ${label}`)} disabled={items.length >= 40} onPress={() => { setSheetError(""); setSheet(key as Sheet); }} style={[s.add, { backgroundColor: c.surface }]}>
+                  <Pressable key={key as string} accessibilityRole="button" accessibilityLabel={tx(`ინგრედიენტის დამატება: ${label}`, `Add ingredient: ${label}`)} disabled={items.length >= 40} onPress={() => { setSheetError(""); setDescribeNotice(""); setSheet(key as Sheet); }} style={[s.add, { backgroundColor: c.surface }]}>
                     <View style={[s.tile, { backgroundColor: hubTint(teal, dark) }]}>
                       <I size={18} color={teal} />
                     </View>
@@ -264,7 +269,7 @@ function RecipeEditor({ owner, recipeId }: { owner: string; recipeId: string }) 
       )}
 
       <FoodSearchModal visible={sheet === "search" || sheet === "saved"} initialTab={sheet === "saved" ? "recent" : "search"} onClose={() => setSheet(null)} onPick={onPick} />
-      <DescribeMealModal visible={sheet === "describe"} owner={owner} busy={busy} error={sheetError} onClose={() => setSheet(null)} onSubmit={(text) => void describe(text)} />
+      <DescribeMealModal visible={sheet === "describe"} owner={owner} busy={busy} error={sheetError} consentNotice={describeNotice} onClose={() => setSheet(null)} onSubmit={(text) => void describe(text)} />
       <Modal visible={sheet === "manual"} {...APP_MODAL_PROPS} onRequestClose={() => setSheet(null)}>
         <Pressable accessibilityRole="button" accessibilityLabel={tx("დახურვა", "Close")} onPress={() => setSheet(null)} style={[StyleSheet.absoluteFill, { backgroundColor: APP_MODAL_OVERLAY }]} />
         <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={{ flex: 1, justifyContent: "flex-end" }} pointerEvents="box-none">

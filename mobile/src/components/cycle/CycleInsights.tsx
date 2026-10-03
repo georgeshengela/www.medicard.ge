@@ -20,6 +20,16 @@ import { CycleInsightDetailSheet } from '@/components/cycle/CycleInsightDetailSh
 import { MedicardLogoMark } from '@/components/ui/MedicardLogoMark';
 import { ka } from '@/i18n/ka';
 import { api, ApiError, type CycleCondition, type CycleInsightCard, type CycleInsights, type CycleLog, type CycleMode } from '@/lib/api';
+import { aiConsentDeclinedText, isAiConsentDeclined } from '@/lib/aiConsentDecline';
+import { hasFreshAiConsent } from '@/lib/aiSharingRoutes.js';
+import {
+  cycleInsightsMountGate,
+  cycleInsightsNeedsConsentRead,
+  cycleInsightsShowsAiCards,
+  type CycleInsightsGate,
+} from '@/lib/cycleInsightsGate';
+import { localAccountId } from '@/lib/localAccount';
+import { tx } from '@/i18n/locale';
 import { buildCycleAdvice, mergeInsightCards } from '@/lib/cycleAdvice';
 import type { CyclePhaseInfo } from '@/lib/cycleCanonical';
 import { useAuth } from '@/store/AuthContext';
@@ -93,9 +103,15 @@ export function CycleInsightsPanel({
   const [loading, setLoading] = useState(!seed);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Declined / closed the AI disclosure: the local tips stay, silently. Only a tap on refresh gets the calm line.
+  const [declinedNote, setDeclinedNote] = useState(false);
   const [, setFromCache] = useState(false);
   const [detailCard, setDetailCard] = useState<CycleInsightCard | null>(null);
   const [quotaBlock, setQuotaBlock] = useState<number | undefined>(undefined);
+  // W3-2: null while the consent state is read quietly. 'ask' = local tips + the quiet „ჩართვა“ row; the
+  // consent sheet opens only from that tap (or refresh), never because the screen opened.
+  const [gate, setGate] = useState<CycleInsightsGate | null>(offline ? 'offline' : null);
+  const showAi = cycleInsightsShowsAiCards(gate);
 
   const localCards = useMemo(
     () => (phase ? buildCycleAdvice({ phase, mode, conditions, log, confidence, isIrregular }) : []),
@@ -103,11 +119,12 @@ export function CycleInsightsPanel({
   );
 
   const cards = useMemo(
-    () => mergeInsightCards(insights?.cards ?? [], localCards),
-    [insights?.cards, localCards],
+    () => mergeInsightCards(showAi ? insights?.cards ?? [] : [], localCards),
+    [showAi, insights?.cards, localCards],
   );
 
-  const load = async (refresh = false) => {
+  /** `asked` = she tapped „ჩართვა“: a decline then shows the calm line (as a refresh tap does). */
+  const load = async (refresh = false, asked = false) => {
     if (offline) {
       setLoading(false);
       setRefreshing(false);
@@ -118,13 +135,17 @@ export function CycleInsightsPanel({
       if (refresh) setRefreshing(true);
       else if (!insights) setLoading(true);
       setError(null);
+      setDeclinedNote(false);
       const res = await api.cycle.insights(refresh);
       setInsights(res.insights);
       setFromCache(Boolean(res.cached));
       if (res.usage) applyUsage(res.usage);
       onLoaded?.(res.insights);
     } catch (err) {
-      if (err instanceof ApiError && err.isQuotaExceeded) {
+      if (isAiConsentDeclined(err)) {
+        if (refresh || asked) setDeclinedNote(true);
+        setGate('ask');
+      } else if (err instanceof ApiError && err.isQuotaExceeded) {
         setQuotaBlock(err.usage?.resetsInMs ?? 0);
         if (err.usage) applyUsage(err.usage);
       } else {
@@ -139,13 +160,68 @@ export function CycleInsightsPanel({
 
   useEffect(() => {
     if (offline) {
+      setGate('offline');
       setLoading(false);
       if (seed) setInsights(seed);
       return;
     }
-    load(false);
+    let alive = true;
+    const start = (next: CycleInsightsGate) => {
+      if (!alive) return;
+      setGate(next);
+      if (next === 'on') void load(false);
+      else setLoading(false);
+    };
+    const owner = localAccountId();
+    const freshConsent = Boolean(owner) && hasFreshAiConsent(owner);
+    if (!cycleInsightsNeedsConsentRead({ offline: Boolean(offline), freshConsent })) {
+      start(cycleInsightsMountGate({ offline: Boolean(offline), freshConsent }));
+    } else {
+      // A quiet read — GET /api/ai-consent never opens the disclosure and sends nothing to the AI.
+      api.aiConsent.read().then(
+        (consent) => start(cycleInsightsMountGate({ offline: Boolean(offline), consent })),
+        () => start(cycleInsightsMountGate({ offline: Boolean(offline), consent: null })),
+      );
+    }
+    return () => {
+      alive = false;
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps -- mount once
   }, [offline]);
+
+  /** The quiet row: only this tap may open the AI disclosure. */
+  const enableAi = () => {
+    Haptics.selectionAsync().catch(() => undefined);
+    setGate('on');
+    void load(false, true);
+  };
+
+  const enableRow = (first: boolean) =>
+    gate === 'ask' && !offline ? (
+      <Pressable
+        onPress={enableAi}
+        accessibilityRole="button"
+        accessibilityLabel={tx('Medi-ს რჩევები ჩანაწერების მიხედვით. ჩართვა', "Medi's tips from your logs. Turn on")}
+        style={{
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: 10,
+          minHeight: 48,
+          paddingHorizontal: 16,
+          paddingVertical: 12,
+          borderTopWidth: first ? 0 : StyleSheet.hairlineWidth,
+          borderTopColor: c.border,
+        }}
+      >
+        <Sparkles size={15} color={c.mutedSoft} strokeWidth={2.2} />
+        <Text style={{ flex: 1, color: c.muted, fontSize: 13, lineHeight: 18, fontFamily: 'NotoSansGeorgian_500Medium' }}>
+          {tx('Medi-ს რჩევები ჩანაწერების მიხედვით', "Medi's tips from your logs")}
+        </Text>
+        <Text style={{ color: c.brand, fontSize: 13, lineHeight: 18, fontFamily: 'NotoSansGeorgian_600SemiBold' }}>
+          {tx('ჩართვა', 'Turn on')}
+        </Text>
+      </Pressable>
+    ) : null;
 
   useEffect(() => {
     if (seed && !insights) setInsights(seed);
@@ -174,20 +250,25 @@ export function CycleInsightsPanel({
                 <Text style={{ color: c.brand, fontSize: 11, lineHeight: 14, fontFamily: 'NotoSansGeorgian_600SemiBold' }}>Medi</Text>
               </View>
             </View>
-            <Pressable
-              onPress={() => {
-                Haptics.selectionAsync().catch(() => undefined);
-                load(true);
-              }}
-              disabled={refreshing || loading || offline}
-              accessibilityRole="button"
-              accessibilityLabel={ka.cycle.aiTips}
-              style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: c.card, alignItems: 'center', justifyContent: 'center', opacity: refreshing ? 0.6 : 1 }}
-            >
-              {refreshing ? <ActivityIndicator size="small" color={c.brand} /> : <RefreshCw size={15} color={c.brand} strokeWidth={2.3} />}
-            </Pressable>
+            {gate === 'on' || gate === 'offline' ? (
+              <Pressable
+                onPress={() => {
+                  Haptics.selectionAsync().catch(() => undefined);
+                  load(true);
+                }}
+                disabled={refreshing || loading || offline}
+                accessibilityRole="button"
+                accessibilityLabel={ka.cycle.aiTips}
+                style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: c.card, alignItems: 'center', justifyContent: 'center', opacity: refreshing ? 0.6 : 1 }}
+              >
+                {refreshing ? <ActivityIndicator size="small" color={c.brand} /> : <RefreshCw size={15} color={c.brand} strokeWidth={2.3} />}
+              </Pressable>
+            ) : null}
           </View>
 
+          {declinedNote ? (
+            <Text accessibilityLiveRegion="polite" style={{ color: c.muted, fontSize: 13, lineHeight: 19, marginBottom: 10, fontFamily: 'NotoSansGeorgian_400Regular' }}>{aiConsentDeclinedText()}</Text>
+          ) : null}
           <View style={{ backgroundColor: c.card, borderRadius: 22, paddingVertical: 6 }}>
             {loading && !tips.length ? <View style={{ padding: 16 }}><InsightCardsSkeleton /></View> : null}
             {error && !tips.length ? (
@@ -217,6 +298,7 @@ export function CycleInsightsPanel({
                 </Pressable>
               );
             })}
+            {enableRow(!tips.length)}
           </View>
           <Text style={{ color: c.mutedSoft, fontSize: 11, lineHeight: 16, marginTop: 8, paddingHorizontal: 4 }}>
             {offline ? ka.cycle.aiStale : ka.cycle.tipsDisclaimer}
@@ -258,10 +340,11 @@ export function CycleInsightsPanel({
               Haptics.selectionAsync().catch(() => undefined);
               load(true);
             }}
-            disabled={refreshing || loading || offline}
+            disabled={refreshing || loading || offline || gate === 'ask'}
             accessibilityRole="button"
             accessibilityLabel={ka.cycle.aiTips}
             style={{
+              display: gate === 'ask' ? 'none' : 'flex',
               width: 36,
               height: 36,
               borderRadius: 18,
@@ -283,6 +366,11 @@ export function CycleInsightsPanel({
         {offline ? (
           <Text style={{ color: c.muted, fontSize: 12, lineHeight: 17, marginBottom: 8 }}>
             {ka.cycle.aiStale}
+          </Text>
+        ) : null}
+        {declinedNote && !offline ? (
+          <Text accessibilityLiveRegion="polite" style={{ color: c.muted, fontSize: 12, lineHeight: 17, marginBottom: 8 }}>
+            {aiConsentDeclinedText()}
           </Text>
         ) : null}
 
@@ -534,6 +622,9 @@ export function CycleInsightsPanel({
               );
             })}
           </View>
+        ) : null}
+        {gate === 'ask' && !offline ? (
+          <View style={{ backgroundColor: c.card, borderRadius: 20, marginTop: featured ? 8 : 0 }}>{enableRow(true)}</View>
         ) : null}
       </View>
 

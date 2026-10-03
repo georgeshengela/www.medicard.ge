@@ -144,9 +144,14 @@ function PartnerShareBody({ payload }: { payload: CyclePartnerPayload }) {
                 : ka.cycle.partnerObservedPeriod
               : ka.cycle.partnerEstimatedNext}
           </Text>
-          {payload.period.nextPeriodStart ? (
+          {payload.period.nextPeriodRange?.from && payload.period.nextPeriodRange?.to ? (
+            // A window (variable cycles, perimenopause — W3-4): never one date.
             <Text style={{ color: c.muted, marginTop: 6 }}>
-              {ka.cycle.estimatedNextPeriod}: {payload.period.nextPeriodStart}
+              {ka.cycle.estimatedNextPeriod}: {shortDateRange(payload.period.nextPeriodRange.from, payload.period.nextPeriodRange.to)}
+            </Text>
+          ) : payload.period.nextPeriodStart ? (
+            <Text style={{ color: c.muted, marginTop: 6 }}>
+              {ka.cycle.estimatedNextPeriod}: {shortDateRange(payload.period.nextPeriodStart, payload.period.nextPeriodStart)}
             </Text>
           ) : null}
         </CycleCard>

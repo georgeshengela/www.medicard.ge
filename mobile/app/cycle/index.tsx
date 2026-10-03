@@ -76,6 +76,7 @@ import { maybeImportCycleTemperature } from '@/lib/cycleTemperatureSync';
 import { api, ApiError, type CycleBundle, type CyclePregnancyPayload, type CyclePostpartumPayload, type CycleTtcPayload } from '@/lib/api';
 import { CyclePregnancyCard } from '@/components/cycle/CyclePregnancyCard';
 import { CyclePerimenopauseCard } from '@/components/cycle/CyclePerimenopauseCard';
+import { CycleComparisonCard } from '@/components/cycle/CycleComparisonCard';
 import { CyclePostpartumCard } from '@/components/cycle/CyclePostpartumCard';
 import { CyclePregnancyTimelinePeek } from '@/components/cycle/CyclePregnancyTimelinePeek';
 import { CyclePregnancyCarePlannerCard } from '@/components/cycle/CyclePregnancyCarePlannerCard';
@@ -1213,6 +1214,9 @@ export default function CycleHome() {
                 ) : modeCaps.showPerimenopauseTracking ? (
                   <CyclePerimenopauseCard
                     peri={bundle.perimenopause}
+                    predictions={bundle.predictions}
+                    today={today}
+                    lastPeriodStart={bundle.profile.lastPeriodStart}
                     onLog={() => openQuickLog(today)}
                   />
                 ) : (
@@ -1251,10 +1255,15 @@ export default function CycleHome() {
               {modeCaps.showClassicCycleOverview && (!suppressCycleLengthChrome(bundle) || isTrackingOnly(bundle)) ? (
                 <>
                   <CycleStatsCard bundle={bundle} onOpen={() => router.push('/cycle/trends' as never)} />
+                  {/* „ბოლო ციკლები“ (W3-4): the same cycles as the stats above, as bars + latest vs her usual. */}
+                  <CycleComparisonCard comparison={bundle.cycleComparison} />
                   {/* Cycle deviations (brief §9 wave 2 item 14): only here, under „ჩემი ციკლი“; nothing at all unless the server found something. */}
                   <CycleDeviationsCard deviations={bundle.deviations} />
                 </>
               ) : null}
+
+              {/* Perimenopause has no stats card: the comparison sits right under the hero's quick tiles. */}
+              {modeCaps.showPerimenopauseTracking ? <CycleComparisonCard comparison={bundle.cycleComparison} /> : null}
 
               <CycleJourneyGuide mode={bundle.profile.mode} />
               <View style={{ paddingHorizontal: 20 }}>

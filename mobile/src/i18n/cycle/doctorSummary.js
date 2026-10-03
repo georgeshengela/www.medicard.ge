@@ -33,6 +33,12 @@ function ruCycles(n) {
   return 'циклов';
 }
 
+/** Genitive after „из N“ / „последние N“: 1, 21… → цикла, otherwise циклов. */
+function ruCyclesGen(n) {
+  const abs = Math.abs(n) % 100;
+  return abs % 10 === 1 && abs !== 11 ? 'цикла' : 'циклов';
+}
+
 const ENUMS = {
   ka: {
     flow: { spotting: 'წვეთოვანი სისხლდენა', light: 'მსუბუქი', medium: 'ზომიერი', heavy: 'ძლიერი' },
@@ -376,6 +382,7 @@ export const DOCTOR_SUMMARY_COPY = {
     end: 'დასასრული',
     duration: 'ხანგრძლივობა',
     cycleLengths: 'აღრიცხული ციკლის სიგრძეები',
+    excludedCycles: 'გამორიცხული შენი არჩევით',
     spotting: 'შუალედური წვეთოვანი სისხლდენა',
     flowHeading: 'სისხლდენა',
     pain: 'აღრიცხული ტკივილი',
@@ -441,6 +448,20 @@ export const DOCTOR_SUMMARY_COPY = {
     postpartumDisclaimer:
       'ეს არის მომხმარებლის არჩეული თვალყურის რეჟიმი, არა გამოჯანმრთელების დიაგნოზი და არ აფიქსირებს ორსულობის შედეგს.',
     weeks: (n) => `${n} კვირა`,
+    symptomMapTitle: 'სიმპტომები ციკლის დღეების მიხედვით',
+    symptomMapItem: 'ჩანაწერი',
+    symptomMapDay: 'დღე',
+    symptomMapLegend: 'ციკლების რაოდენობა',
+    symptomMapPainOther: 'სხვა ტკივილი',
+    symptomMapHint: (n) =>
+      `${n === 1 ? 'ბოლო დასრულებული ციკლი' : `ბოლო ${n} დასრულებული ციკლი`}. დღე 1 — მენსტრუაციის პირველი დღე. რაც უფრო მკვეთრია უჯრა, მით მეტ ციკლში აღინიშნა ეს ამ დღეს. მხოლოდ აღრიცხული დღეები ითვლება.`,
+    symptomMapRow: (label, from, to, n, total) => {
+      const when =
+        from === to && !String(from).includes('+')
+          ? `ციკლის ${Number(from) === 1 ? '1-ლ' : `${from}-ე`} დღეს`
+          : `${from === to ? from : `${from}–${to}`} დღეებში`;
+      return `${label} — ყველაზე ხშირად ${when} (${total}-დან ${n} ციკლში)`;
+    },
     ...ENUMS.ka,
   },
   en: {
@@ -466,6 +487,7 @@ export const DOCTOR_SUMMARY_COPY = {
     end: 'End',
     duration: 'Duration',
     cycleLengths: 'Logged cycle lengths',
+    excludedCycles: 'Excluded by your choice',
     spotting: 'Intermenstrual spotting',
     flowHeading: 'Flow',
     pain: 'Recorded pain',
@@ -534,6 +556,18 @@ export const DOCTOR_SUMMARY_COPY = {
     postpartumDisclaimer:
       'This is a user-selected tracking mode. It is not a recovery diagnosis and does not record a pregnancy outcome.',
     weeks: (n) => (n === 1 ? '1 week' : `${n} weeks`),
+    symptomMapTitle: 'Symptoms by cycle day',
+    symptomMapItem: 'Logged',
+    symptomMapDay: 'Day',
+    symptomMapLegend: 'Number of cycles',
+    symptomMapPainOther: 'Other pain',
+    symptomMapHint: (n) =>
+      `${n === 1 ? 'Last completed cycle' : `Last ${n} completed cycles`}. Day 1 is the first day of the period. The stronger the square, the more cycles it was logged on that day. Only logged days count.`,
+    symptomMapRow: (label, from, to, n, total) => {
+      const when =
+        from === to && !String(from).includes('+') ? `on day ${from}` : `on days ${from === to ? from : `${from}–${to}`}`;
+      return `${label} — most often ${when} (in ${n} of ${total} ${total === 1 ? 'cycle' : 'cycles'})`;
+    },
     ...ENUMS.en,
   },
   fr: {
@@ -560,6 +594,7 @@ export const DOCTOR_SUMMARY_COPY = {
     end: 'Fin',
     duration: 'Durée',
     cycleLengths: 'Durées de cycles enregistrées',
+    excludedCycles: 'Exclus selon votre choix',
     spotting: 'Spotting intermenstruel',
     flowHeading: 'Flux',
     pain: 'Douleurs enregistrées',
@@ -630,6 +665,18 @@ export const DOCTOR_SUMMARY_COPY = {
     postpartumDisclaimer:
       'Il s’agit d’un mode de suivi choisi par l’utilisatrice, et non d’un diagnostic de récupération. Ce document n’enregistre pas d’issue de grossesse.',
     weeks: (n) => (n === 1 ? '1 semaine' : `${n} semaines`),
+    symptomMapTitle: 'Symptômes par jour du cycle',
+    symptomMapItem: 'Relevé',
+    symptomMapDay: 'Jour',
+    symptomMapLegend: 'Nombre de cycles',
+    symptomMapPainOther: 'Autre douleur',
+    symptomMapHint: (n) =>
+      `${n === 1 ? 'Dernier cycle terminé' : `${n} derniers cycles terminés`}. Le jour 1 est le premier jour des règles. Plus la case est marquée, plus le relevé a été noté ce jour-là dans un grand nombre de cycles. Seuls les jours renseignés comptent.`,
+    symptomMapRow: (label, from, to, n, total) => {
+      const when =
+        from === to && !String(from).includes('+') ? `au jour ${from}` : `aux jours ${from === to ? from : `${from}–${to}`}`;
+      return `${label} — le plus souvent ${when} (dans ${n} ${n === 1 ? 'cycle' : 'cycles'} sur ${total})`;
+    },
     ...ENUMS.fr,
   },
   ru: {
@@ -656,6 +703,7 @@ export const DOCTOR_SUMMARY_COPY = {
     end: 'Окончание',
     duration: 'Длительность',
     cycleLengths: 'Зарегистрированная длительность циклов',
+    excludedCycles: 'Исключены по вашему выбору',
     spotting: 'Межменструальные мажущие выделения',
     flowHeading: 'Кровотечение',
     pain: 'Зарегистрированная боль',
@@ -721,6 +769,18 @@ export const DOCTOR_SUMMARY_COPY = {
     postpartumDisclaimer:
       'Это выбранный пользователем режим отслеживания, а не диагноз восстановления и не фиксация исхода беременности.',
     weeks: (n) => `${n} ${ruWeeks(n)}`,
+    symptomMapTitle: 'Симптомы по дням цикла',
+    symptomMapItem: 'Запись',
+    symptomMapDay: 'День',
+    symptomMapLegend: 'Число циклов',
+    symptomMapPainOther: 'Другая боль',
+    symptomMapHint: (n) =>
+      `${n === 1 ? 'Последний завершённый цикл' : `Последние ${n} завершённых ${ruCycles(n)}`}. День 1 — первый день менструации. Чем насыщеннее клетка, тем в большем числе циклов это было отмечено в этот день. Учитываются только дни с записями.`,
+    symptomMapRow: (label, from, to, n, total) => {
+      const when =
+        from === to && !String(from).includes('+') ? `в ${from}-й день цикла` : `в дни ${from === to ? from : `${from}–${to}`} цикла`;
+      return `${label} — чаще всего ${when} (в ${n} из ${total} ${ruCyclesGen(total)})`;
+    },
     ...ENUMS.ru,
   },
 };
@@ -745,6 +805,7 @@ export const DOCTOR_SUMMARY_STRING_KEYS = Object.freeze([
   'end',
   'duration',
   'cycleLengths',
+  'excludedCycles',
   'spotting',
   'flowHeading',
   'pain',
@@ -800,6 +861,11 @@ export const DOCTOR_SUMMARY_STRING_KEYS = Object.freeze([
   'postpartumElapsedLabel',
   'postpartumCurrentNote',
   'postpartumDisclaimer',
+  'symptomMapTitle',
+  'symptomMapItem',
+  'symptomMapDay',
+  'symptomMapLegend',
+  'symptomMapPainOther',
 ]);
 
 export const DOCTOR_SUMMARY_ENUM_KEYS = Object.freeze({

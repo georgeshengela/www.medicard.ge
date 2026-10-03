@@ -830,6 +830,8 @@ export type CyclePartnerPayload = {
     inPeriod: boolean;
     inPeriodEstimated?: boolean;
     nextPeriodStart: string | null;
+    /** The next period as a window (variable cycles, perimenopause); optional. */
+    nextPeriodRange?: { from: string; to: string } | null;
     nextPeriodEstimated?: boolean;
   };
   phase?: { phase: string; phaseKa: string; cycleDay: number | null; estimated?: boolean };
@@ -932,6 +934,8 @@ export type CycleProfile = {
   expectsBleeding?: boolean;
   /** Missing = 'auto'. */
   fertilityDisplay?: 'auto' | 'off';
+  /** Cycle starts she hid from averages („საშუალოდან დამალვა“); missing = an older server (no toggle). */
+  hiddenCycles?: string[];
   aiInsights?: CycleInsights | null;
   aiInsightsAt?: string | null;
 };
@@ -1129,6 +1133,7 @@ export type CycleDoctorSummaryInclusions = {
   menstrual: boolean;
   pain: boolean;
   symptoms: boolean;
+  symptomMap?: boolean;
   wellness: boolean;
   fertility: boolean;
   sexual: boolean;
@@ -1167,6 +1172,23 @@ export type CycleDoctorPostpartumContext = {
   elapsed: { week: number; day: number } | null;
 };
 
+/** Counts per cycle day over the last completed cycles (server cycleSymptomMap.js). */
+export type CycleDoctorSymptomMap = {
+  cycleCount: number;
+  /** Cycle-day columns 1…dayCount; `overflow` adds one „36+“ column at the end of every `counts`. */
+  dayCount: number;
+  overflow: boolean;
+  cycles: { start: string; end: string; lengthDays: number }[];
+  rows: {
+    kind: 'pain' | 'symptom';
+    key: string;
+    loggedDays: number;
+    cyclesWithItem: number;
+    counts: number[];
+    peak: { from: number; to: number; cycles: number } | null;
+  }[];
+};
+
 export type CycleDoctorSummary = {
   version: string;
   generatedAt: string;
@@ -1185,6 +1207,8 @@ export type CycleDoctorSummary = {
     }[];
     spottingDates: string[];
     cycleLengths: { start: string; end: string; lengthDays: number; source: string }[];
+    /** Cycles she hid from averages — listed as „გამორიცხული შენი არჩევით“, never with a reason. */
+    excludedCycles?: { start: string; end: string | null; lengthDays: number | null; source: string }[];
     periodDayCount: number;
   } | null;
   pain: {
@@ -1192,6 +1216,8 @@ export type CycleDoctorSummary = {
     aggregates: { type: string; dayCount: number; severityMode: string | null; source: string }[];
   } | null;
   symptoms: { rows: { key: string; dayCount: number; dates: string[]; source: string }[] } | null;
+  /** „სიმპტომები ციკლის დღეების მიხედვით“ — optional (servers before W3-3 leave it out). */
+  symptomMap?: CycleDoctorSymptomMap | null;
   wellness: {
     energy?: { date: string; value: string; source: string }[];
     sleep?: { date: string; value: string; label?: string; source: string }[];
@@ -1422,6 +1448,8 @@ export type CyclePeriodRange = {
   end: string;
   lengthDays: number;
   source: 'logged';
+  /** The cycle that starts here is hidden from averages (still drawn and listed). */
+  hidden?: boolean;
 };
 
 export type CycleOvulationSource = 'calendar' | 'opk' | 'manual' | 'temperature';
@@ -1883,8 +1911,22 @@ export type CyclePerimenopausePayload = {
     nextPeriodStart: string | null;
     nextPeriodEnd: string | null;
     confidence: 'low' | 'medium' | 'high';
+    /** Range forecast (W3-4; absent on older servers): never one date in this mode. */
+    status?: 'learning' | 'range' | 'long_gap' | 'no_bleeding_12m';
+    range?: { from: string; to: string; minDays: number; maxDays: number; basedOn: number } | null;
+    daysSinceBleeding?: number | null;
   };
   observationSummaries?: CyclePerimenopauseObservationSummariesPayload | null;
+};
+
+/** „ბოლო ციკლები“ (W3-4): the last ≤ 6 completed, not hidden cycles, oldest first; null = no card. */
+export type CycleComparisonPayload = {
+  cycles: Array<{ start: string; end: string; length: number; periodDays: number; latest: boolean }>;
+  latestDays: number;
+  /** Median of the cycles before the latest; null until there are 2 of them. */
+  usualDays: number | null;
+  diffDays: number | null;
+  basedOn: number;
 };
 
 export type CycleBundle = {
@@ -1956,6 +1998,8 @@ export type CycleBundle = {
     topSymptoms90d: { key: string; count: number }[];
     bbtPoints: { date: string; bbt: number }[];
     periodStarts: string[];
+    /** Cycles left out of these numbers by her choice. */
+    hiddenCycleCount?: number;
     shortestCycle?: number | null;
     longestCycle?: number | null;
     variability?: number | null;
@@ -1991,6 +2035,8 @@ export type CycleBundle = {
   periodStatus?: CyclePeriodStatus | null;
   /** Cycle deviations over the last 180 days (brief §9 wave 2 item 14); null = draw nothing; absent on older servers. */
   deviations?: CycleDeviations | null;
+  /** „ბოლო ციკლები“ comparison (W3-4); null = no card; absent on older servers. */
+  cycleComparison?: CycleComparisonPayload | null;
 };
 
 /** Brief §9 wave 2 item 14 (Apple „Cycle Deviations“): server-computed findings, the app writes the words. */
@@ -3333,6 +3379,8 @@ export const api = {
       sharePermissions: Partial<CycleSharePermissions>;
       conditions: CycleCondition[];
       reminderPrefs: CycleReminderPrefsServer;
+      /** The whole list of hidden cycle starts (logged starts only, max 24). */
+      hiddenCycles: string[];
     }>) => request<CycleBundle>('/api/cycle/profile', { method: 'PUT', body }),
     createShare: (permissions?: Partial<CycleSharePermissions>) =>
       request<CycleBundle>('/api/cycle/share', { method: 'POST', body: { permissions } }),

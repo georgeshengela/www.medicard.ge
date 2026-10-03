@@ -1,20 +1,22 @@
 import { CyclePressable as Pressable } from '@/components/cycle/CyclePressable';
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
-import { Check, ChevronDown, ChevronRight, Pencil, Plus, Trash2 } from 'lucide-react-native';
+import { Check, ChevronDown, ChevronRight, Eye, EyeOff, Pencil, Plus, Trash2, Undo2 } from 'lucide-react-native';
 import { CycleCard, CyclePrimaryButton, formatCycleDateKa } from '@/components/cycle/CycleUI';
 import { CycleDateField } from '@/components/cycle/CycleDateField';
 import { CycleExplainSheet } from '@/components/cycle/CycleExplainSheet';
 import { FLOW_OPTIONS } from '@/constants/cycle';
 import { ka } from '@/i18n/ka';
 import { tx } from '@/i18n/locale';
-import type { CycleBundle, CyclePeriodRange } from '@/lib/api';
+import { api, ApiError, type CycleBundle, type CyclePeriodRange } from '@/lib/api';
 import { saveCycleObservation, queueApplyPeriod } from '@/lib/cycleOffline';
+import { canToggleHiddenCycle, hiddenCyclesOf, isCycleHidden, nextHiddenCycles } from '@/lib/cycleHiddenCycles';
+import { putCycleBundle } from '@/lib/cycleViewCache';
 import { cycleHistoryPresentation } from '@/lib/cycleHistoryCopy';
 import { addDaysToKey } from '@/lib/cyclePhase';
 import { useAuth } from '@/store/AuthContext';
-import { useCycleColors } from '@/theme/cycle';
+import { cycleHexAlpha, useCycleColors } from '@/theme/cycle';
 
 type Props = {
   bundle: CycleBundle;
@@ -58,6 +60,16 @@ export function CyclePeriodHistory({ bundle, onChanged }: Props) {
   const [confirmRemove, setConfirmRemove] = useState(false);
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
+  /** „საშუალოდან დამალვა“: the start being saved, the undo pill under its row, and a failed save. */
+  const [hideBusy, setHideBusy] = useState<string | null>(null);
+  const [hideUndo, setHideUndo] = useState<{ start: string; hidden: boolean } | null>(null);
+  const [hideError, setHideError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!hideUndo) return undefined;
+    const timer = setTimeout(() => setHideUndo(null), 6000);
+    return () => clearTimeout(timer);
+  }, [hideUndo]);
 
   const history = cycleHistoryPresentation(bundle.profile?.mode);
   if (!history.showPeriodHistory) return null;
@@ -160,6 +172,24 @@ export function CyclePeriodHistory({ bundle, onChanged }: Props) {
     }
   };
 
+  /** One tap, no confirm, no question why: the whole list goes to PUT /api/cycle/profile (online only). */
+  const toggleHidden = async (start: string, hide: boolean, isUndo = false) => {
+    if (!user?.id || hideBusy) return;
+    setHideBusy(start);
+    setHideError(null);
+    try {
+      const data = await api.cycle.updateProfile({ hiddenCycles: nextHiddenCycles(hiddenCyclesOf(bundle), start, hide) });
+      putCycleBundle(user.id, data);
+      setHideUndo(isUndo ? null : { start, hidden: hide });
+      onChanged();
+    } catch (err) {
+      setHideUndo(null);
+      setHideError(err instanceof ApiError ? err.message : ka.common.error);
+    } finally {
+      setHideBusy(null);
+    }
+  };
+
   const openDay = (date: string) => {
     setConfirmRemove(false);
     setDaySheet(date);
@@ -182,6 +212,9 @@ export function CyclePeriodHistory({ bundle, onChanged }: Props) {
           ranges.map((range, i) => {
             const open = openStart === range.start;
             const dayKeys = daysInRange(range);
+            const hidden = isCycleHidden(bundle, range.start);
+            const canHide = canToggleHiddenCycle(bundle, range.start);
+            const undo = hideUndo?.start === range.start ? hideUndo : null;
             return (
               <View
                 key={`${range.start}-${range.end}`}
@@ -205,9 +238,71 @@ export function CyclePeriodHistory({ bundle, onChanged }: Props) {
                     <Text style={{ color: c.muted, fontSize: 12, marginTop: 3 }}>
                       {ka.cycle.periodLoggedDays(range.lengthDays)}
                     </Text>
+                    {hidden ? (
+                      <View
+                        style={{
+                          alignSelf: 'flex-start',
+                          flexDirection: 'row',
+                          alignItems: 'center',
+                          gap: 5,
+                          marginTop: 6,
+                          paddingHorizontal: 8,
+                          paddingVertical: 3,
+                          borderRadius: 999,
+                          backgroundColor: c.cardSoft,
+                        }}
+                      >
+                        <EyeOff size={12} color={c.muted} strokeWidth={2.2} />
+                        <Text style={{ color: c.muted, fontSize: 11, lineHeight: 15, fontFamily: 'NotoSansGeorgian_600SemiBold' }}>
+                          {tx('დამალულია საშუალოდან', 'Hidden from averages')}
+                        </Text>
+                      </View>
+                    ) : null}
                   </View>
                   <ChevronDown size={18} color={c.muted} style={{ transform: [{ rotate: open ? '180deg' : '0deg' }] }} />
                 </Pressable>
+
+                {undo ? (
+                  <View
+                    accessibilityLiveRegion="polite"
+                    style={{
+                      marginTop: 8,
+                      borderRadius: 16,
+                      backgroundColor: c.ink,
+                      paddingLeft: 14,
+                      paddingRight: 6,
+                      minHeight: 48,
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      gap: 8,
+                    }}
+                  >
+                    <Text style={{ flex: 1, color: c.card, fontSize: 13, lineHeight: 18, fontFamily: 'NotoSansGeorgian_600SemiBold' }}>
+                      {undo.hidden
+                        ? tx('ციკლი საშუალოდან დაიმალა', 'Cycle hidden from averages')
+                        : tx('ციკლი საშუალოში დაბრუნდა', 'Cycle counted again')}
+                    </Text>
+                    <Pressable
+                      onPress={() => void toggleHidden(undo.start, !undo.hidden, true)}
+                      disabled={hideBusy != null}
+                      accessibilityRole="button"
+                      accessibilityLabel={ka.cycle.periodStartedUndo}
+                      style={{
+                        minHeight: 40,
+                        paddingHorizontal: 12,
+                        borderRadius: 12,
+                        flexDirection: 'row',
+                        alignItems: 'center',
+                        gap: 6,
+                        borderWidth: 1,
+                        borderColor: cycleHexAlpha(c.card, 0.4),
+                      }}
+                    >
+                      <Undo2 size={14} color={c.card} strokeWidth={2.3} />
+                      <Text style={{ color: c.card, fontSize: 13, fontFamily: 'NotoSansGeorgian_600SemiBold' }}>{ka.cycle.periodStartedUndo}</Text>
+                    </Pressable>
+                  </View>
+                ) : null}
 
                 {open ? (
                   <View style={{ marginTop: 10, gap: 6 }}>
@@ -280,6 +375,42 @@ export function CyclePeriodHistory({ bundle, onChanged }: Props) {
                         <Text style={{ color: c.brand, fontWeight: '700' }}>{ka.cycle.periodAddDay}</Text>
                       </Pressable>
                     )}
+
+                    {canHide ? (
+                      <View style={{ marginTop: 4, gap: 6 }}>
+                        <Pressable
+                          onPress={() => void toggleHidden(range.start, !hidden)}
+                          disabled={hideBusy != null}
+                          accessibilityRole="button"
+                          accessibilityState={{ disabled: hideBusy != null }}
+                          style={{
+                            minHeight: 44,
+                            borderRadius: 14,
+                            backgroundColor: c.cardSoft,
+                            flexDirection: 'row',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: 8,
+                          }}
+                        >
+                          {hideBusy === range.start ? (
+                            <ActivityIndicator size="small" color={c.brand} />
+                          ) : hidden ? (
+                            <Eye size={16} color={c.ink} strokeWidth={2.2} />
+                          ) : (
+                            <EyeOff size={16} color={c.ink} strokeWidth={2.2} />
+                          )}
+                          <Text style={{ color: c.ink, fontWeight: '700' }}>
+                            {hidden ? tx('დაბრუნება', 'Bring back') : tx('საშუალოდან დამალვა', 'Hide from averages')}
+                          </Text>
+                        </Pressable>
+                        <Text style={{ color: c.mutedSoft, fontSize: 12, lineHeight: 17, textAlign: 'center', paddingHorizontal: 8 }}>
+                          {hidden
+                            ? tx('ეს ციკლი საშუალოსა და პროგნოზში არ ითვლება. დღეები ისტორიაში რჩება.', 'This cycle is left out of your averages and forecast. Its days stay in your history.')
+                            : tx('უჩვეულო ციკლი საშუალოსა და პროგნოზს აღარ შეცვლის. დღეები ისტორიაში რჩება.', 'An unusual cycle stops shaping your averages and forecast. Its days stay in your history.')}
+                        </Text>
+                      </View>
+                    ) : null}
                   </View>
                 ) : null}
               </View>
@@ -380,6 +511,11 @@ export function CyclePeriodHistory({ bundle, onChanged }: Props) {
         </Pressable>
       )}
 
+      {hideError ? (
+        <Text accessibilityLiveRegion="polite" style={{ color: c.danger, fontWeight: '600', textAlign: 'center', paddingVertical: 4 }}>
+          {hideError}
+        </Text>
+      ) : null}
       {msg ? (
         <Text
           style={{

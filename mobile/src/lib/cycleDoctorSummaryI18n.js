@@ -100,8 +100,11 @@ export function doctorReportFactIds(summary) {
     episodeStarts: (summary?.menstrualHistory?.episodes || []).map((e) => e.start),
     spottingDates: [...(summary?.menstrualHistory?.spottingDates || [])],
     cycleLengths: (summary?.menstrualHistory?.cycleLengths || []).map((c) => c.lengthDays),
+    excludedCycleStarts: (summary?.menstrualHistory?.excludedCycles || []).map((c) => c.start),
     painTypes: (summary?.pain?.aggregates || []).map((p) => p.type),
     symptomKeys: (summary?.symptoms?.rows || []).map((r) => r.key),
+    symptomMapItems: (summary?.symptomMap?.rows || []).map((r) => `${r.kind}:${r.key}`),
+    symptomMapCycleCount: summary?.symptomMap?.cycleCount ?? null,
     energyDates: (summary?.wellness?.energy || []).map((r) => r.date),
     sleepDates: (summary?.wellness?.sleep || []).map((r) => r.date),
     stressDates: (summary?.wellness?.stress || []).map((r) => r.date),
@@ -228,6 +231,108 @@ function postpartumContextHtml(summary, loc, copy) {
     <p>${escDoctorHtml(copy.postpartumCurrentNote)}</p>`;
 }
 
+/** „12 ივნისი (44 დღე)“ — one cycle she hid from averages; the length only when it is complete. */
+export function doctorExcludedCycleLabel(cycle, locale) {
+  const loc = resolveDoctorSummaryLocale(locale);
+  const copy = doctorSummaryCopy(loc);
+  const date = formatDoctorCivilDate(cycle?.start, loc);
+  return Number.isFinite(cycle?.lengthDays) ? `${date} (${copy.days(cycle.lengthDays)})` : date;
+}
+
+/** Row label of the symptom map: pain place (`other` → „სხვა ტკივილი“) or symptom; null if unknown. */
+export function doctorSymptomMapLabel(row, locale) {
+  if (!row?.key) return null;
+  if (row.kind === 'pain') {
+    if (row.key === 'other') return doctorSummaryCopy(locale).symptomMapPainOther;
+    return doctorSummaryEnumLabel('painType', row.key, locale);
+  }
+  if (row.kind === 'symptom') return doctorSummaryEnumLabel('symptom', row.key, locale);
+  return null;
+}
+
+/** Column headers: „1“…„dayCount“, then „36+“ when a cycle ran past day 35. */
+export function doctorSymptomMapColumns(map) {
+  const dayCount = Number.isFinite(map?.dayCount) ? map.dayCount : 0;
+  const cols = Array.from({ length: dayCount }, (_, i) => String(i + 1));
+  if (map?.overflow) cols.push(`${dayCount + 1}+`);
+  return cols;
+}
+
+/**
+ * One ink, opacity steps (no rainbow): 0 → empty, 1…total → 0.18…0.9. Shared by the app grid and the
+ * PDF so both read the same.
+ */
+export function doctorSymptomMapOpacity(count, total) {
+  if (!Number.isFinite(count) || count <= 0) return 0;
+  const of = Math.max(1, Number(total) || 1);
+  if (of === 1) return 0.9;
+  const step = (Math.min(count, of) - 1) / (of - 1);
+  return Math.round((0.18 + step * 0.72) * 100) / 100;
+}
+
+/** „სპაზმები — ყველაზე ხშირად 1–3 დღეებში (6-დან 5 ციკლში)“ — the text alternative of one row. */
+export function doctorSymptomMapSentence(row, map, locale) {
+  const label = doctorSymptomMapLabel(row, locale);
+  if (!label || !row?.peak) return null;
+  const cols = doctorSymptomMapColumns(map);
+  const from = cols[row.peak.from - 1];
+  const to = cols[row.peak.to - 1];
+  if (!from || !to) return null;
+  return doctorSummaryCopy(locale).symptomMapRow(label, from, to, row.peak.cycles, map.cycleCount);
+}
+
+/** Rows ready to draw: labelled ones only (an unknown key is dropped, never shown raw). */
+export function doctorSymptomMapRows(summary, locale) {
+  const map = summary?.symptomMap;
+  if (!map || !Array.isArray(map.rows) || !map.cycleCount) return [];
+  const width = doctorSymptomMapColumns(map).length;
+  return map.rows
+    .map((row) => {
+      const label = doctorSymptomMapLabel(row, locale);
+      if (!label) return null;
+      const counts = Array.from({ length: width }, (_, i) => Number(row.counts?.[i]) || 0);
+      return {
+        id: `${row.kind}:${row.key}`,
+        label,
+        counts,
+        sentence: doctorSymptomMapSentence(row, map, locale),
+      };
+    })
+    .filter(Boolean);
+}
+
+function symptomMapHtml(summary, loc, copy) {
+  const map = summary?.symptomMap;
+  const rows = doctorSymptomMapRows(summary, loc);
+  if (!map || !rows.length) return '';
+  const cols = doctorSymptomMapColumns(map);
+  const total = map.cycleCount;
+  const cell = (n) => {
+    const op = doctorSymptomMapOpacity(n, total);
+    if (!op) return '<td class="smap-c"></td>';
+    const fg = op > 0.5 ? '#ffffff' : '#1f2937';
+    return `<td class="smap-c" style="background: rgba(31, 41, 55, ${op}); color: ${fg};">${n}</td>`;
+  };
+  const head = `<tr><th class="smap-l">${escDoctorHtml(copy.symptomMapItem)} / ${escDoctorHtml(copy.symptomMapDay)}</th>${cols
+    .map((c) => `<th class="smap-d">${escDoctorHtml(c)}</th>`)
+    .join('')}</tr>`;
+  const body = rows
+    .map((r) => `<tr><th class="smap-l" scope="row">${escDoctorHtml(r.label)}</th>${r.counts.map(cell).join('')}</tr>`)
+    .join('');
+  const legend = Array.from({ length: total }, (_, i) => i + 1)
+    .map((n) => {
+      const op = doctorSymptomMapOpacity(n, total);
+      return `<span class="smap-sw" style="background: rgba(31, 41, 55, ${op}); color: ${op > 0.5 ? '#ffffff' : '#1f2937'};">${n}</span>`;
+    })
+    .join('');
+  const sentences = rows.map((r) => r.sentence).filter(Boolean).map(escDoctorHtml);
+  return `<h2>${escDoctorHtml(copy.symptomMapTitle)}</h2>
+    <p class="smap-hint">${escDoctorHtml(copy.symptomMapHint(total))}</p>
+    <table class="smap"><thead>${head}</thead><tbody>${body}</tbody></table>
+    <p class="smap-legend">${escDoctorHtml(copy.symptomMapLegend)}: ${legend}</p>
+    ${sentences.length ? `<ul class="smap-sentences">${list(sentences)}</ul>` : ''}`;
+}
+
 export function buildCycleReportHtmlFromSummary(summary, locale) {
   const loc = resolveDoctorSummaryLocale(locale);
   const copy = doctorSummaryCopy(loc);
@@ -242,6 +347,8 @@ export function buildCycleReportHtmlFromSummary(summary, locale) {
     })
     .join('');
   const lengths = (m?.cycleLengths ?? []).map((c) => `${c.lengthDays}`).join(', ');
+  // Cycles she hid from averages: listed by date, never with a reason.
+  const excluded = (m?.excludedCycles ?? []).map((c) => doctorExcludedCycleLabel(c, loc)).join(', ');
   const spotting = (m?.spottingDates ?? []).map((d) => formatDoctorCivilDate(d, loc));
   const painAgg = (summary?.pain?.aggregates ?? [])
     .map((p) => {
@@ -344,6 +451,16 @@ export function buildCycleReportHtmlFromSummary(summary, locale) {
   .preg-ctx dt { font-size: 12px; color: #4b5563; margin-top: 10px; font-weight: 600; }
   .preg-ctx dd { margin: 2px 0 0; font-size: 13px; }
   .disclaimer { margin-top: 32px; font-size: 11px; color: #666; }
+  .smap-hint { color: #4b5563; font-size: 12px; }
+  table.smap { table-layout: fixed; width: 100%; border-collapse: separate; border-spacing: 1px; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  table.smap th, table.smap td { padding: 0; border: 0; text-align: center; font-size: 7px; line-height: 13px; overflow-wrap: normal; white-space: nowrap; }
+  table.smap th.smap-l { width: 118px; text-align: left; font-size: 10px; font-weight: 600; white-space: normal; line-height: 1.25; padding: 2px 4px 2px 0; }
+  table.smap thead th.smap-l { font-weight: 400; color: #6b7280; font-size: 8px; }
+  table.smap th.smap-d { color: #6b7280; font-weight: 400; }
+  table.smap td.smap-c { height: 14px; background: #f3f4f6; border-radius: 2px; }
+  .smap-legend { font-size: 11px; color: #4b5563; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .smap-sw { display: inline-block; width: 16px; height: 14px; line-height: 14px; text-align: center; font-size: 8px; margin-left: 2px; border-radius: 2px; }
+  .smap-sentences li { font-size: 12px; }
 </style>
 </head>
 <body>
@@ -362,12 +479,14 @@ export function buildCycleReportHtmlFromSummary(summary, locale) {
       ? `<h2>${escDoctorHtml(copy.menstrualOn)}</h2>
     <table><thead><tr><th>${escDoctorHtml(copy.start)}</th><th>${escDoctorHtml(copy.end)}</th><th>${escDoctorHtml(copy.duration)}</th><th>${escDoctorHtml(copy.flowHeading)}</th></tr></thead><tbody>${episodes}</tbody></table>
     ${lengths ? `<p>${escDoctorHtml(copy.cycleLengths)}: ${escDoctorHtml(lengths)}</p>` : ''}
+    ${excluded ? `<p>${escDoctorHtml(copy.excludedCycles)}: ${escDoctorHtml(excluded)}</p>` : ''}
     ${spotting.length ? `<p>${escDoctorHtml(copy.spotting)}: ${escDoctorHtml(spotting.join(', '))}</p>` : ''}`
       : ''
   }
   ${contraceptionLabel ? `<p>${escDoctorHtml(copy.contraceptionTitle)}: ${escDoctorHtml(contraceptionLabel)}</p>` : ''}
   ${painAgg.length ? `<h2>${escDoctorHtml(copy.pain)}</h2><ul>${list(painAgg)}</ul><ul>${list(painRows)}</ul>` : ''}
   ${symptoms.length ? `<h2>${escDoctorHtml(copy.symptoms)}</h2><ul>${list(symptoms)}</ul>` : ''}
+  ${symptomMapHtml(summary, loc, copy)}
   ${energy.length ? `<h2>${escDoctorHtml(copy.energyTitle)}</h2><ul>${list(energy)}</ul>` : ''}
   ${sleep.length ? `<h2>${escDoctorHtml(copy.sleepTitle)}</h2><ul>${list(sleep)}</ul>` : ''}
   ${stress.length ? `<h2>${escDoctorHtml(copy.stressTitle)}</h2><ul>${list(stress)}</ul>` : ''}

@@ -150,11 +150,31 @@ export function canContinuePeriod(runStart, lastBleed, nextBleed, byDate) {
   return true;
 }
 
-/** Infer averages and logged period ranges from bleed days (not spotting). */
+/**
+ * „ამ ციკლის დამალვა“ (brief §9, Clue „Hide this cycle“): the starts she excluded that are real logged
+ * period starts. Unknown / stale dates are ignored. Returns a sorted, de-duplicated array.
+ */
+export function effectiveHiddenStarts(periodStarts = [], hiddenStarts = []) {
+  const real = new Set((periodStarts || []).filter(Boolean));
+  return [...new Set((Array.isArray(hiddenStarts) ? hiddenStarts : []).map(String))]
+    .filter((d) => real.has(d))
+    .sort();
+}
+
+/**
+ * Infer averages and logged period ranges from bleed days (not spotting).
+ *
+ * `options.hiddenStarts` — cycle starts she hid from averages („საშუალოდან დამალვა“). A hidden cycle's
+ * length (its start → the next start) and its period length are left out of every average, of
+ * `cycleGaps` and of `cycleCount` (so it never counts toward the 3-cycle fertility gate either). The
+ * period itself stays: `periodStarts` / `periodRanges` keep it (the range is marked `hidden: true`), so
+ * the calendar, history and the last-period anchor are unchanged.
+ */
 export function inferCycleStats(
   logs,
   fallbackCycle = DEFAULT_CYCLE_LENGTH,
   fallbackPeriod = DEFAULT_PERIOD_LENGTH,
+  options = {},
 ) {
   const periodStarts = [];
   const periodRanges = [];
@@ -190,8 +210,15 @@ export function inferCycleStats(
   }
   flushRun();
 
+  const hiddenStarts = effectiveHiddenStarts(periodStarts, options?.hiddenStarts);
+  const hidden = new Set(hiddenStarts);
+  if (hidden.size) {
+    for (const range of periodRanges) if (hidden.has(range.start)) range.hidden = true;
+  }
+
   const gaps = [];
   for (let i = 1; i < periodStarts.length; i += 1) {
+    if (hidden.has(periodStarts[i - 1])) continue;
     const gap = daysBetween(periodStarts[i - 1], periodStarts[i]);
     if (gap >= 18 && gap <= 45) gaps.push(gap);
   }
@@ -202,6 +229,7 @@ export function inferCycleStats(
     : fallbackCycle;
 
   const periodLengths = periodRanges
+    .filter((r) => !r.hidden)
     .map((r) => r.lengthDays)
     .filter((n) => n >= 2 && n <= 10);
   const hasInferredPeriod = periodLengths.length >= 1;
@@ -226,6 +254,7 @@ export function inferCycleStats(
     cycleGaps: gaps,
     cycleCount: gaps.length,
     lastPeriodStart: periodStarts[periodStarts.length - 1] ?? null,
+    hiddenStarts,
   };
 }
 
@@ -954,8 +983,12 @@ export function parseConditions(profile) {
 
 export function buildCycleTrends({ profile, logs, inferred, averages, today }) {
   const periodStarts = inferred?.periodStarts ?? [];
+  const hiddenStarts = inferred?.hiddenStarts ?? [];
+  const hidden = new Set(hiddenStarts);
   const cycleLengths = [];
   for (let i = 1; i < periodStarts.length; i += 1) {
+    // A cycle she hid from averages is not a trend point either (the history list still shows it).
+    if (hidden.has(periodStarts[i - 1])) continue;
     const gap = daysBetween(periodStarts[i - 1], periodStarts[i]);
     if (gap >= 18 && gap <= 45) {
       cycleLengths.push({ start: periodStarts[i], length: gap });
@@ -963,7 +996,7 @@ export function buildCycleTrends({ profile, logs, inferred, averages, today }) {
   }
 
   const todayKey = today || todayInTimeZone();
-  const historicalCycles = segmentHistoricalCycles(inferred?.periodStarts ?? []);
+  const historicalCycles = segmentHistoricalCycles(inferred?.periodStarts ?? [], { hiddenStarts });
   const pmsByDaysBefore = buildPmsByDaysBefore(logs, historicalCycles);
 
   const symptomFreq = {};
@@ -998,6 +1031,8 @@ export function buildCycleTrends({ profile, logs, inferred, averages, today }) {
     topSymptoms90d,
     bbtPoints,
     periodStarts,
+    /** Cycles left out of these numbers by her choice (count only; optional for older builds). */
+    hiddenCycleCount: hiddenStarts.length,
     shortestCycle: stats.shortest,
     longestCycle: stats.longest,
     variability: stats.variability,
@@ -1151,7 +1186,9 @@ export function buildCycleAlerts({ profile, logs, predictions, inferred, today, 
 
   const peri = profile?.mode === 'PERIMENOPAUSE';
   const starts = inferred?.periodStarts ?? [];
-  if (!peri && starts.length >= 2) {
+  // The last completed cycle she hid from averages raises no length alert.
+  const lastHidden = starts.length >= 2 && (inferred?.hiddenStarts ?? []).includes(starts[starts.length - 2]);
+  if (!peri && starts.length >= 2 && !lastHidden) {
     const lastGap = daysBetween(starts[starts.length - 2], starts[starts.length - 1]);
     if (lastGap > 35 || lastGap < 21) {
       alerts.push({
@@ -1239,6 +1276,13 @@ export function buildCycleWellnessContext({
   };
 }
 
+/** The AI prompt's next-period line: a window stays a window (variable cycles, perimenopause), never one date. */
+function nextPeriodPromptText(predictions) {
+  const range = predictions?.nextPeriodRange;
+  if (range?.from && range?.to) return `${formatDateKa(range.from)} – ${formatDateKa(range.to)} (ფანჯარა, არა ერთი თარიღი)`;
+  return formatDateKa(predictions?.nextPeriodStart);
+}
+
 export function buildCycleAiUserPrompt({ profile, logs, predictions, pregnancy, user, averages, today, contraception, analytics, forecastEligibility }) {
   if (!isCycleAiContextSupported(profile?.mode)) return '';
   const todayKey = today || todayInTimeZone();
@@ -1288,9 +1332,7 @@ export function buildCycleAiUserPrompt({ profile, logs, predictions, pregnancy, 
         : `ციკლის დღე: ${phase.day ?? '—'} · სავარაუდო ფაზა: ${phase.phaseKa}`,
     forecastGated
       ? null
-      : limited
-        ? `სავარაუდო შემდეგი სისხლდენა: ${formatDateKa(predictions?.nextPeriodStart)}`
-        : `სავარაუდო შემდეგი მენსტრუაცია: ${formatDateKa(predictions?.nextPeriodStart)}`,
+      : `${limited ? 'სავარაუდო შემდეგი სისხლდენა' : 'სავარაუდო შემდეგი მენსტრუაცია'}: ${nextPeriodPromptText(predictions)}`,
     forecastGated
       ? null
       : limited

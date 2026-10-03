@@ -7,6 +7,7 @@ import { parsePainEntries } from './cycleObservations.js';
 import {
   PAIN_MANAGED_SYMPTOM_IDS,
   PAIN_TYPE_TO_SYMPTOM,
+  observationAiContextAllowed,
   stripPainManagedSymptoms,
 } from './cycleObservationRegistry.js';
 import {
@@ -231,8 +232,9 @@ export function buildHistoricalAnalytics({
   inferred = {},
   contraceptionStartedAt = null,
 } = {}) {
-  const cycles = segmentHistoricalCycles(inferred.periodStarts ?? []);
-  const completed = cycles.filter((c) => c.complete);
+  const cycles = segmentHistoricalCycles(inferred.periodStarts ?? [], { hiddenStarts: inferred.hiddenStarts ?? [] });
+  // A cycle she hid from averages is not counted as history for quality / patterns either.
+  const completed = cycles.filter((c) => c.complete && !c.hidden);
   const eligible = patternCycles(cycles);
   const coverage = loggingCoverage(cycles, logs);
   const quality = insightDataQuality({ completedCount: completed.length, coverage });
@@ -256,6 +258,7 @@ export function buildHistoricalAnalytics({
     loggedBleedDays: bleedDaysInCycle(c, inferred.periodRanges ?? []),
     loggedObservationDays: observationDaysInCycle(c, logs),
     complete: c.complete,
+    ...(c.hidden ? { hidden: true } : {}),
     contraceptionRelation: contraceptionRelation(c.startDate, startedAt),
   }));
 
@@ -335,6 +338,7 @@ export function buildHistoricalAnalytics({
   return {
     insightDataQuality: quality,
     completedCycleCount: completed.length,
+    hiddenCycleCount: cycles.filter((c) => c.hidden).length,
     patternCycleCount: eligible.length,
     loggingCoverage: coverage,
     horizonCycles: eligible.length,
@@ -401,12 +405,15 @@ export function historicalAnalyticsForAi(analytics) {
       `cycleLength avg=${analytics.cycleLengthStats.average} range=${analytics.cycleLengthStats.shortest}-${analytics.cycleLengthStats.longest} n=${analytics.cycleLengthStats.count}`,
     );
   }
-  for (const p of (analytics.painPatterns || []).slice(0, 3)) {
+  // Same registry rule as the daily lines (W3-5): a pattern key that is not everyday AI-readable data
+  // never reaches the prompt, even if a candidate list grows later.
+  const painLines = observationAiContextAllowed('pain') ? analytics.painPatterns || [] : [];
+  for (const p of painLines.slice(0, 3)) {
     lines.push(
       `pain ${p.painType} in ${p.cyclesWithObservation}/${p.eligibleCycles} cycles daysBefore=${p.daysBeforeMin ?? '—'}-${p.daysBeforeMax ?? '—'}`,
     );
   }
-  for (const p of (analytics.symptomPatterns || []).slice(0, 3)) {
+  for (const p of (analytics.symptomPatterns || []).filter((row) => observationAiContextAllowed(row?.key)).slice(0, 3)) {
     lines.push(`symptom ${p.key} in ${p.cyclesWithObservation}/${p.eligibleCycles} cycles`);
   }
   return lines;

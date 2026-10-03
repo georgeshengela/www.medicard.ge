@@ -9,6 +9,7 @@ import * as Sharing from 'expo-sharing';
 import { BarChart3, FileDown, MessageSquareText, Sparkles } from 'lucide-react-native';
 import { CyclePeriodHistory } from '@/components/cycle/CyclePeriodHistory';
 import { CyclePmsHeatmap } from '@/components/cycle/CyclePmsHeatmap';
+import { CycleSymptomMap } from '@/components/cycle/CycleSymptomMap';
 import {
   CycleAtmosphere,
   CycleCard,
@@ -23,6 +24,7 @@ import { ka } from '@/i18n/ka';
 import { ApiError, api, type CycleBundle, type CycleDoctorSummary } from '@/lib/api';
 import { hasPmsPattern } from '@/lib/cycleAnalytics';
 import {
+  doctorExcludedCycleLabel,
   doctorSummaryCopy,
   doctorSummaryEnumLabel,
   formatDoctorCivilDate,
@@ -417,6 +419,11 @@ export default function CycleSummary() {
                       {copy.cycleLengths}: {s.menstrualHistory.cycleLengths.map((x) => x.lengthDays).join(', ')}
                     </Text>
                   ) : null}
+                  {s.menstrualHistory.excludedCycles?.length ? (
+                    <Text style={{ color: c.muted, fontSize: 12, marginTop: 8, lineHeight: 18 }}>
+                      {copy.excludedCycles}: {s.menstrualHistory.excludedCycles.map((x) => doctorExcludedCycleLabel(x, reportLocale)).join(', ')}
+                    </Text>
+                  ) : null}
                   {s.menstrualHistory.spottingDates.length ? (
                     <Text style={{ color: c.muted, fontSize: 12, marginTop: 8, lineHeight: 18 }}>
                       {copy.spotting}: {s.menstrualHistory.spottingDates.map(fmt).join(', ')}
@@ -477,6 +484,12 @@ export default function CycleSummary() {
                     />
                   ))}
                 </CycleCard>
+              </CycleSection>
+            ) : null}
+
+            {s.symptomMap?.rows?.length ? (
+              <CycleSection title={copy.symptomMapTitle} delay={105}>
+                <CycleSymptomMap summary={s} locale={reportLocale} />
               </CycleSection>
             ) : null}
 

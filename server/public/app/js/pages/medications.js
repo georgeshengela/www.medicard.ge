@@ -9,7 +9,7 @@ import {
 } from '../ui.js';
 import { get, put, post, patch, del, ApiError } from '../api.js';
 import { ring, barChart, heatmap } from '../charts.js';
-import { withAiConsent } from '../aiConsent.js';
+import { withAiConsent, aiDeclinedSlot } from '../aiConsent.js';
 import { t, isEn } from '../i18n.js';
 
 const CSS = '/app/css/medications.css';
@@ -445,7 +445,8 @@ function openInteraction(bundle) {
     mount(result, skeleton(4));
     try {
       const res = await withAiConsent(() => post('/api/ai/medication-review', {}, { timeoutMs: 120_000 }));
-      if (res?.declined) { clear(result); return; }
+      // Declined / closed the AI disclosure: a calm note with „ხელახლა ცდა“, not an error.
+      if (res?.declined) { const note = aiDeclinedSlot(); mount(result, note); note.show(() => run.click()); return; }
       mount(result,
         h('div', { class: 'hub-section-head', style: { marginTop: '8px' } }, h('h2', { style: { fontSize: '16px' } }, t('Medi-ს დასკვნა', 'Medi’s review'))),
         h('div', { class: 'card', style: { background: 'var(--bg)' } }, markdown(res?.analysis || '')),

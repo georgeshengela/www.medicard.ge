@@ -9,7 +9,7 @@ import {
 } from '../ui.js';
 import { get, put, request, invalidate } from '../api.js';
 import { sparkline } from '../charts.js';
-import { withAiConsent } from '../aiConsent.js';
+import { withAiConsent, aiDeclinedSlot } from '../aiConsent.js';
 import { featureOn } from '../session.js';
 import { t, isEn } from '../i18n.js';
 
@@ -275,13 +275,15 @@ export function openLabUpload({ onSaved, navigate } = {}) {
   let running = false;
   let batch = null; // resume a partly read batch like the app (same files + context)
   const err = h('div', { class: 'form-error', hidden: true });
+  // Declined / closed the AI disclosure: a calm note with „ხელახლა ცდა“, the picked pages stay.
+  const declined = aiDeclinedSlot();
   const list = h('div', { class: 'lab-files' });
   const ctx = textarea({ placeholder: t('მაგ. ასაკი, სქესი, ჩივილები, მიმდინარე მკურნალობა', 'e.g. age, sex, symptoms, current treatment'), maxlength: 2000, rows: 3 });
   const stage = h('div', { class: 'lab-stage', hidden: true });
   const body = h('div', { class: 'stack', style: { gap: '16px' } });
   let submitBtn;
 
-  const showErr = (m) => { err.textContent = m; err.hidden = !m; };
+  const showErr = (m) => { err.textContent = m; err.hidden = !m; if (m) declined.hide(); };
   const renderFiles = () => {
     clear(list);
     files.forEach((f, i) => list.appendChild(h('div', { class: 'lab-file' },
@@ -309,6 +311,7 @@ export function openLabUpload({ onSaved, navigate } = {}) {
     list,
     field(t('დამატებითი ინფორმაცია', 'Additional information'), ctx, t('არასავალდებულო', 'Optional')),
     stage,
+    declined,
     err);
 
   const resultView = (res) => {
@@ -318,10 +321,11 @@ export function openLabUpload({ onSaved, navigate } = {}) {
       h('p', { class: 'muted', style: { fontSize: '14px' } }, t('ეს ერთი კვლევაა. Medi ერთხელ ახსნის ყველა მაჩვენებელს.', 'This is one test. Medi will explain all of its values at once.')));
     const explainBtn = button(t('გაანალიზე Medi-სთან', 'Analyze with Medi'), { icon: 'sparkles', onClick: async () => {
       showErr('');
+      declined.hide();
       await busy(explainBtn, async () => {
         try {
           const out = await explainPanel({ id: res.panelId, date: res.date, parameters: params, recordIds: res.recordId ? [res.recordId] : [], visionNotes: res.notes, createdAt: res.createdAt }, ctx.value.trim());
-          if (!out) return;
+          if (!out) { declined.show(() => explainBtn.click()); return; }
           const fresh = h('div', { class: 'lab-analysis' }, markdown(out));
           analysisBox.replaceWith(fresh);
           analysisBox = fresh;
@@ -341,6 +345,7 @@ export function openLabUpload({ onSaved, navigate } = {}) {
         flagBadge(p.flag)))) : null,
       params.length ? analysisBox : null,
       params.length ? explainBtn : null,
+      declined,
       err,
       h('p', { class: 'disclaimer' }, icon('info', { size: 15 }), DISCLAIMER));
   };
@@ -348,6 +353,7 @@ export function openLabUpload({ onSaved, navigate } = {}) {
   const run = async () => {
     if (!files.length) { showErr(t('ჯერ აირჩიე ფაილი', 'Choose a file first')); return; }
     showErr('');
+    declined.hide();
     const context = ctx.value.trim();
     const signature = JSON.stringify([files.map((f) => `${f.name}|${f.size}|${f.lastModified}`), context]);
     if (batch?.signature !== signature) batch = { signature, next: 0, last: null };
@@ -368,7 +374,8 @@ export function openLabUpload({ onSaved, navigate } = {}) {
       }
       return batch.last;
     }).finally(() => { running = false; stage.hidden = true; renderFiles(); });
-    if (!out || out.declined) return;
+    if (out?.declined) { declined.show(() => submitBtn.click()); return; }
+    if (!out) return;
     invalidate('/api/account');
     invalidate('/api/records');
     const extract = out.labExtract || { date: null, parameters: [] };
@@ -422,6 +429,7 @@ async function explainPanel(panel, context) {
       recordId: panel.recordIds?.[0],
     },
   }));
+  // null = declined / closed the disclosure (callers show the calm note); nothing was sent.
   if (!res || res.declined) return null;
   const analysis = String(res.analysis || '').trim();
   if (!analysis) throw new Error(t('Medi-მ დასკვნა ვერ დაასრულა. სცადე ხელახლა.', 'Medi couldn’t finish the review. Please try again.'));
@@ -640,20 +648,22 @@ export default async function labPage(root, ctx) {
     const off = panel.parameters.filter((p) => isOff(p.flag)).length;
     const tableHost = h('div');
     const err = h('div', { class: 'form-error', hidden: true });
+    const declined = aiDeclinedSlot();
     const analysisHost = h('div', { class: 'lab-analysis' });
     const paintAnalysis = () => {
       if (panel.analysis?.trim()) { mount(analysisHost, h('div', { class: 'lab-analysis-head' }, tile('sparkles', 'teal', 32), h('strong', null, t('Medi-ს დასკვნა', 'Medi’s review'))), markdown(panel.analysis)); return; }
       const btn = button(t('გაანალიზე Medi-სთან', 'Analyze with Medi'), { icon: 'sparkles', onClick: () => busy(btn, async () => {
         err.hidden = true;
+        declined.hide();
         try {
           const text = await explainPanel(panel);
-          if (!text) return;
+          if (!text) { declined.show(() => btn.click()); return; }
           panel.analysis = text;
           paintAnalysis();
           reload(true);
         } catch (e) { err.textContent = e.message; err.hidden = false; }
       }) });
-      mount(analysisHost, h('p', { class: 'muted', style: { fontSize: '14px', marginBottom: '12px' } }, t('ეს ერთი კვლევაა. Medi ერთხელ ახსნის ყველა მაჩვენებელს.', 'This is one test. Medi will explain all of its values at once.')), btn, err);
+      mount(analysisHost, h('p', { class: 'muted', style: { fontSize: '14px', marginBottom: '12px' } }, t('ეს ერთი კვლევაა. Medi ერთხელ ახსნის ყველა მაჩვენებელს.', 'This is one test. Medi will explain all of its values at once.')), btn, declined, err);
     };
     const paintTable = () => {
       const ql = q.trim().toLowerCase();

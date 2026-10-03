@@ -230,6 +230,17 @@ export function CycleReminderSettings() {
                 {reminders.periodDaysBefore > 0 ? (
                   <ReminderExample type="period_soon" periodDaysBefore={reminders.periodDaysBefore} c={c} />
                 ) : null}
+                {mode === 'PERIMENOPAUSE' ? (
+                  // W3-4: the next period is only a window here — one „მალე“ before it opens, nothing else.
+                  <Text style={{ color: c.muted, fontSize: 12, lineHeight: 17, marginTop: 8 }}>
+                    {tx(
+                      'პერიმენოპაუზის რეჟიმში მოვა მხოლოდ ეს შეხსენება — სავარაუდო ფანჯრის დაწყებამდე. დღის და დაგვიანების შეხსენებები არ მოვა.',
+                      'In perimenopause mode only this reminder comes — before the estimated window opens. No period-day or late reminders.',
+                    )}
+                  </Text>
+                ) : null}
+                {mode !== 'PERIMENOPAUSE' ? (
+                <>
                 <SettingsDivider c={c} />
                 <SettingsRowSwitch icon={Heart} label={ka.cycle.remindersPeriodDay} value c={c} />
                 <ReminderExample type="period_start" c={c} />
@@ -243,6 +254,8 @@ export function CycleReminderSettings() {
                   c={c}
                 />
                 <ReminderExample type="period_late" c={c} />
+                </>
+                ) : null}
               </>
             ) : null}
           </CycleCard>

@@ -24,6 +24,8 @@ import { useFigmaWeight } from '@/constants/figmaWeightLayout';
 import { useHealthMetrics } from '@/hooks/useHealthMetrics';
 import { ka } from '@/i18n/ka';
 import { ApiError, api } from '@/lib/api';
+import { isAiConsentDeclined } from '@/lib/aiConsentDecline';
+import { AiConsentDeclinedNote } from '@/components/ui/AiConsentDeclinedNote';
 import { bmiCategory, bmiFromWeight } from '@/lib/bmi';
 import { usePlanUsage } from '@/lib/planUsage';
 import {
@@ -61,6 +63,8 @@ export default function WeightHubScreen() {
   const [logs, setLogs] = useState<WeightLog[]>([]);
   const [goal, setGoal] = useState<WeightGoal | null>(null);
   const [advice, setAdvice] = useState<CachedWeightAdvice | null>(null);
+  // „ჰკითხე Medi-ს“ after a declined / closed AI disclosure: a calm note + „ხელახლა ცდა“ (local tips stay).
+  const [adviceDeclined, setAdviceDeclined] = useState(false);
   const [sheetOpen, setSheetOpen] = useState(false);
   const [quota, setQuota] = useState<number | undefined>(undefined);
 
@@ -145,6 +149,7 @@ export default function WeightHubScreen() {
       setQuota(plan.usage?.resetsInMs);
       return;
     }
+    setAdviceDeclined(false);
     try {
       const response = await api.ai.weightAdvice({
         weightKg: value,
@@ -158,7 +163,9 @@ export default function WeightHubScreen() {
       setAdvice(next);
       await saveCachedWeightAdvice(next);
     } catch (err) {
-      if (err instanceof ApiError && err.isQuotaExceeded) {
+      if (isAiConsentDeclined(err)) {
+        setAdviceDeclined(true);
+      } else if (err instanceof ApiError && err.isQuotaExceeded) {
         setQuota(err.usage?.resetsInMs);
         if (err.usage) applyUsage(err.usage);
       }
@@ -282,6 +289,7 @@ export default function WeightHubScreen() {
             <Text style={{ fontFamily: 'NotoSansGeorgian_600SemiBold', fontSize: 16, color: T.brand }}>{ka.weight.consultMedi}</Text>
             <MessageCircle size={20} color={T.brand} strokeWidth={2} />
           </Pressable>
+          {adviceDeclined ? <AiConsentDeclinedNote background={T.cardBg} onRetry={() => void fetchAdvice()} /> : null}
           <Pressable onPress={share} style={{ alignItems: 'center', flexDirection: 'row', justifyContent: 'center', gap: 8, paddingTop: 8 }}>
             <Text style={{ fontFamily: 'NotoSansGeorgian_600SemiBold', fontSize: 14, color: T.brand }}>{ka.weight.share}</Text>
             <Share2 size={16} color={T.brand} strokeWidth={2} />

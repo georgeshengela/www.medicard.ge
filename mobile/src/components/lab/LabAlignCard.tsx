@@ -9,6 +9,8 @@ import { APP_MODAL_OVERLAY, APP_MODAL_PROPS, Modal } from '@/components/ui/appMo
 import { useFigmaLab } from '@/constants/figmaLabLayout';
 import { ka } from '@/i18n/ka';
 import { ApiError, api } from '@/lib/api';
+import { isAiConsentDeclined } from '@/lib/aiConsentDecline';
+import { AiConsentDeclinedNote } from '@/components/ui/AiConsentDeclinedNote';
 import { applyLabMaps, uniqueLabAnalytes } from '@/lib/labAlign';
 import { usePlanUsage } from '@/lib/planUsage';
 import { useAuth } from '@/store/AuthContext';
@@ -32,6 +34,8 @@ export function LabAlignCard({
   const [busy, setBusy] = useState(false);
   const [stage, setStage] = useState<string>(ka.lab.alignStageCollect);
   const [error, setError] = useState<string | null>(null);
+  // Declined / closed the AI disclosure: a calm note with „ხელახლა ცდა“ in the sheet, not an error.
+  const [declined, setDeclined] = useState(false);
   const [result, setResult] = useState<Result | null>(null);
 
   useEffect(() => {
@@ -53,12 +57,14 @@ export function LabAlignCard({
     }
     setOpen(true);
     setError(null);
+    setDeclined(false);
     setResult(null);
     void run();
   };
 
   const run = async () => {
     setBusy(true);
+    setDeclined(false);
     setStage(ka.lab.alignStageCollect);
     try {
       const analytes = uniqueLabAnalytes(panels);
@@ -74,6 +80,7 @@ export function LabAlignCard({
       setResult({ joined: response.joined, leftover: response.leftover.length });
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined);
     } catch (err) {
+      if (isAiConsentDeclined(err)) { setDeclined(true); return; }
       if (err instanceof ApiError && err.isQuotaExceeded) {
         setOpen(false);
         setQuota(err.usage?.resetsInMs);
@@ -180,7 +187,7 @@ export function LabAlignCard({
               <Text style={{ fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 20, color: T.textPrimary, textAlign: 'center' }}>
                 {result ? ka.lab.alignDoneTitle : ka.lab.alignHeadline}
               </Text>
-              <Text style={{ fontFamily: 'NotoSansGeorgian_400Regular', fontSize: 14, lineHeight: 20, color: T.textSecondary, textAlign: 'center' }}>
+              {declined && !busy ? null : <Text style={{ fontFamily: 'NotoSansGeorgian_400Regular', fontSize: 14, lineHeight: 20, color: T.textSecondary, textAlign: 'center' }}>
                 {error
                   ? error
                   : result
@@ -191,8 +198,9 @@ export function LabAlignCard({
                         .filter(Boolean)
                         .join(' ')
                     : stage}
-              </Text>
+              </Text>}
             </View>
+            {declined && !busy ? <AiConsentDeclinedNote background={T.pageBg} onRetry={() => void run()} /> : null}
             {busy ? <Text style={{ textAlign: 'center', color: T.textMuted, fontFamily: 'NotoSansGeorgian_400Regular' }}>{ka.lab.alignBusy}</Text> : null}
             {!busy ? (
               <Pressable
