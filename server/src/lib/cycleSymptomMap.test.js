@@ -187,6 +187,17 @@ describe('symptom heat map — numbers', () => {
     assert.ok(!map.rows.some((r) => r.key === 'cold_symptoms'));
   });
 
+  it('on a tie, pain comes before symptoms and symptoms before moods', () => {
+    const logs = merge(
+      bleedLogs(starts),
+      onDay(starts.slice(0, 6), 8, { moods: ['anxious'] }),
+      onDay(starts.slice(0, 6), 9, { symptoms: ['acne'] }),
+      onDay(starts.slice(0, 6), 10, { painEntries: [{ type: 'pelvic', severity: 'mild' }] }),
+    );
+    const map = buildSymptomCycleMap({ logs, periodStarts: starts, from: starts[0], to: TODAY });
+    assert.deepEqual(map.rows.map((r) => r.kind), ['pain', 'symptom', 'mood']);
+  });
+
   it('empty → null (no logs, only sensitive logs, no completed cycle)', () => {
     assert.equal(buildSymptomCycleMap({ logs: [], periodStarts: starts, to: TODAY }), null);
     const sensitive = merge(

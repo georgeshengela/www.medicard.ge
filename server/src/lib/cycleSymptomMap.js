@@ -31,6 +31,9 @@ export const SYMPTOM_MAP_MIN_LOGGED_DAYS = 2;
 /** HEALTH in the registry, but too close to intimacy for a document she hands to someone else. */
 export const SYMPTOM_MAP_EXCLUDED_KEYS = Object.freeze(new Set(['romantic']));
 
+/** On a tie, pain before symptoms before moods — the order a clinician reads them in. */
+const KIND_ORDER = Object.freeze({ pain: 0, symptom: 1, mood: 2 });
+
 function healthItem(id, storage) {
   if (SYMPTOM_MAP_EXCLUDED_KEYS.has(id)) return false;
   const defn = getObservationDef(id);
@@ -184,7 +187,11 @@ export function buildSymptomCycleMap({ logs = [], periodStarts = [], hiddenStart
   const rows = [...rowsByItem.entries()]
     .filter(([, row]) => row.loggedDays >= SYMPTOM_MAP_MIN_LOGGED_DAYS)
     .sort(
-      ([a, ra], [b, rb]) => rb.loggedDays - ra.loggedDays || rb.cycles - ra.cycles || a.localeCompare(b),
+      ([a, ra], [b, rb]) =>
+        rb.loggedDays - ra.loggedDays ||
+        rb.cycles - ra.cycles ||
+        KIND_ORDER[a.split(':')[0]] - KIND_ORDER[b.split(':')[0]] ||
+        a.localeCompare(b),
     )
     .slice(0, SYMPTOM_MAP_MAX_ROWS)
     .map(([item, row]) => {
