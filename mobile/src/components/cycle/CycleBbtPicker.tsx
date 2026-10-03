@@ -42,7 +42,8 @@ const WEB_SNAP_ITEM = Platform.OS === 'web' ? ({ scrollSnapAlign: 'center' } as 
 /**
  * BBT as a wheel (brief §8.3 item 9) instead of a typed number: a header row with the thermometer and the
  * day's value (or „არ გამიზომავს“); opening it starts the wheel at the day's value, else the last BBT she
- * logged, else 36.50, and logs that value — the tap is the choice, nothing is filled in by itself.
+ * logged, else 36.50 — and logs nothing. A value is logged only when she moves the wheel, taps a row or
+ * taps „ეს მნიშვნელობა“ (shown while the day is still empty); closing without any of these leaves the day empty.
  * 35.50–38.00 °C in 0.05 steps, snap scrolling, one selection tick per step (throttled), „არ გამიზომავს“
  * clears the day. Screen readers get one adjustable control (swipe up/down = ±0.05 °C) with the spoken value.
  * Pure RN — no native module.
@@ -114,9 +115,14 @@ export function CycleBbtPicker({
     const start = bbtIndex(wheelStart(value, lastLogged));
     indexRef.current = start;
     setIndex(start);
-    // Opening is the choice: an empty day takes the starting value (the day's own value is kept as typed).
-    if (own == null) onChange(bbtStorage(bbtAt(start)));
+    // Opening only looks: nothing is logged until she moves the wheel, taps a row or confirms.
     setOpen(true);
+  };
+
+  /** „ეს მნიშვნელობა“ — logs the value the wheel shows (only offered while the day is still empty). */
+  const confirm = () => {
+    Haptics.selectionAsync().catch(() => undefined);
+    onChange(bbtStorage(bbtAt(indexRef.current)));
   };
 
   const clear = () => {
@@ -152,11 +158,13 @@ export function CycleBbtPicker({
         </View>
         <View style={{ flex: 1, minWidth: 0 }}>
           <Text style={[s.title, { color: c.ink }]}>{ka.cycle.bbt}</Text>
-          <Text numberOfLines={1} style={[s.sub, { color: c.mutedSoft }]}>
-            {tx('დილით, ადგომამდე', 'In the morning, before getting up')}
+          <Text numberOfLines={2} style={[s.sub, { color: c.mutedSoft }]}>
+            {own != null
+              ? tx('დილით, ადგომამდე', 'In the morning, before getting up')
+              : `${shown} · ${tx('დილით, ადგომამდე', 'in the morning, before getting up')}`}
           </Text>
         </View>
-        <Text style={[s.value, { color: own != null ? c.fertile : c.muted, fontSize: own != null ? 20 : 13 }]}>{shown}</Text>
+        {own != null ? <Text style={[s.value, { color: c.fertile, fontSize: 20 }]}>{shown}</Text> : null}
         {open ? <ChevronDown size={18} color={c.muted} /> : <ChevronRight size={18} color={c.muted} />}
       </Pressable>
 
@@ -195,7 +203,11 @@ export function CycleBbtPicker({
                     key={v}
                     accessible={false}
                     onPress={() => {
-                      commit(i);
+                      // A tap is a choice even on the row already in the middle.
+                      if (i === indexRef.current) {
+                        tick();
+                        onChange(bbtStorage(bbtAt(i)));
+                      } else commit(i);
                       scrollToIndex(i, true);
                     }}
                     style={[s.item, WEB_SNAP_ITEM]}
@@ -221,9 +233,21 @@ export function CycleBbtPicker({
               °C
             </Text>
           </View>
-          <Pressable accessibilityRole="button" accessibilityLabel={tx('არ გამიზომავს — მოხსნა', 'Not measured — clear')} onPress={clear} style={s.clear}>
-            <Text style={[s.clearText, { color: c.brand }]}>{tx('არ გამიზომავს', 'Not measured')}</Text>
-          </Pressable>
+          <View style={s.actions}>
+            {own == null ? (
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={`${tx('ეს მნიშვნელობა', 'Use this value')}, ${spokenBbt(current)}`}
+                onPress={confirm}
+                style={[s.confirm, { backgroundColor: c.fertile }]}
+              >
+                <Text style={[s.confirmText, { color: c.card }]}>{tx('ეს მნიშვნელობა', 'Use this value')}</Text>
+              </Pressable>
+            ) : null}
+            <Pressable accessibilityRole="button" accessibilityLabel={tx('არ გამიზომავს — მოხსნა', 'Not measured — clear')} onPress={clear} style={s.clear}>
+              <Text style={[s.clearText, { color: c.brand }]}>{tx('არ გამიზომავს', 'Not measured')}</Text>
+            </Pressable>
+          </View>
         </View>
       ) : null}
     </View>
@@ -243,6 +267,9 @@ const s = StyleSheet.create({
   item: { height: ITEM_H, alignItems: 'center', justifyContent: 'center' },
   itemText: { fontVariant: ['tabular-nums'] },
   unit: { position: 'absolute', right: 18, height: ITEM_H, lineHeight: ITEM_H, fontFamily: 'NotoSansGeorgian_600SemiBold', fontSize: 14 },
+  actions: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, marginTop: 8 },
+  confirm: { minHeight: 44, borderRadius: 22, paddingHorizontal: 18, alignItems: 'center', justifyContent: 'center' },
+  confirmText: { fontFamily: 'NotoSansGeorgian_600SemiBold', fontSize: 13 },
   clear: { minHeight: 44, paddingHorizontal: 16, alignItems: 'center', justifyContent: 'center' },
   clearText: { fontFamily: 'NotoSansGeorgian_600SemiBold', fontSize: 13 },
 });
