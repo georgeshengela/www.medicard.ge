@@ -1,5 +1,5 @@
 /**
- * MediCard Admin V4 — #/trainers ტრენერები (MEDI COACH, /api/admin/trainers).
+ * MediCard Admin V4 — #/trainers ტრენერები (MEDICOACH, /api/admin/trainers).
  * Verify trainer applications (profile, phone, account age, certificate photos), suspend/restore,
  * curate the Georgian gym directory (approve trainer-proposed gyms, hide, add) and review the
  * reports clients and trainers send about each other.

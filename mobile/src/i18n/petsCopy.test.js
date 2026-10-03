@@ -28,7 +28,7 @@ describe('pets Georgian copy', () => {
     assert.equal(ka.pets.skipOccurrence, 'გამოტოვება');
     assert.match(ka.pets.reminderDeliveryHonesty, /არ ნიშნავს/);
     assert.match(ka.pets.allergiesEmptyBody, /არ ნიშნავს/);
-    assert.equal(ka.pets.vetName, 'Medi Vet');
+    assert.equal(ka.pets.vetName, 'MEDIVET');
     assert.equal(ka.pets.vetDoctor, 'ექიმის სახელი');
     assert.equal(ka.pets.vetDescription, 'შენი ცხოველის ჯანმრთელობის AI ასისტენტი');
     assert.equal(ka.pets.vetStarterSummary, 'მოვლის ისტორიის შეჯამება');

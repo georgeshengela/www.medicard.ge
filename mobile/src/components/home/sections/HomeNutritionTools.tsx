@@ -10,7 +10,7 @@ import { HUB } from '@/theme/hub';
 import { tx } from '@/i18n/locale';
 
 /**
- * „კვების ხელსაწყოები“ — doors into the existing nutrition sub-pages plus MEDI QUEST; everything else is
+ * „კვების ხელსაწყოები“ — doors into the existing nutrition sub-pages plus MEDIQUEST; everything else is
  * in Explore. Each tile disappears while its module is paused. Without a nutrition plan the first tile
  * opens the goal page instead of the meal plan. (Women already have the cycle card on this layout.)
  * (`HubTileGrid` takes a closed `HubInk`, so the nutrition tiles use the hub green.)
@@ -27,7 +27,7 @@ export function HomeNutritionTools({ nutrition, first = false }: { nutrition: Ho
       : { key: 'goal', title: tx('კვების მიზანი', 'Nutrition goal'), detail: tx('დაკლება, შენარჩუნება თუ მომატება', 'Lose, maintain or gain'), href: '/nutrition/goal', icon: Target, ink: 'green' },
     { key: 'progress', title: tx('პროგრესი', 'Progress'), detail: tx('კვირები, წონა და ტენდენცია', 'Weeks, weight and trend'), href: '/nutrition/progress', icon: ChartNoAxesColumn, ink: 'green' },
     { key: 'recipes', title: tx('რეცეპტები', 'Recipes'), detail: tx('შენი კერძები ერთ ადგილას', 'Your dishes in one place'), href: '/nutrition/recipes', icon: ChefHat, ink: 'green' },
-    { key: 'quest', title: 'MEDI QUEST', detail: tx('მისიები, პროგრესი და ჯილდოები', 'Missions, progress and rewards'), href: '/medi-quest', icon: Trophy, ink: 'amber' },
+    { key: 'quest', title: 'MEDIQUEST', detail: tx('მისიები, პროგრესი და ჯილდოები', 'Missions, progress and rewards'), href: '/medi-quest', icon: Trophy, ink: 'amber' },
   ];
   const tiles = all.filter((tile) => isHrefAvailable(tile.href, features));
   if (!tiles.length) return null;

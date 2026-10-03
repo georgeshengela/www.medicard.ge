@@ -3616,7 +3616,7 @@ export const api = {
     rotateQr: () => request<{ token: string; link: string }>('/api/identity/qr/rotate', { method: 'POST' }),
   },
 
-  /** MEDI COACH — trainers, gyms, consented links, sessions, meal plans, progress photos (docs/TRAINER.md). */
+  /** MEDICOACH — trainers, gyms, consented links, sessions, meal plans, progress photos (docs/TRAINER.md). */
   coach: {
     catalog: () => request<import('@/lib/coach').CoachCatalog>('/api/trainer/catalog'),
     gyms: (q = '', city = '') =>

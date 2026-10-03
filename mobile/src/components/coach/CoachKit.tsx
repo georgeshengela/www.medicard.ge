@@ -8,7 +8,7 @@ import { useIsDark, useThemeColors } from '@/theme/colors';
 import { tx } from '@/i18n/locale';
 
 /**
- * MEDI COACH building blocks (2026-09-28 redesign): progress ring, skeletons, segmented control,
+ * MEDICOACH building blocks (2026-09-28 redesign): progress ring, skeletons, segmented control,
  * KPI tiles, quick actions and haptics. They sit on the hub language (flat surface, radius 22,
  * tinted icon tiles) — no borders, no shadows, one spotlight per page.
  */

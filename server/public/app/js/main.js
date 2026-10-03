@@ -25,7 +25,7 @@ const ROUTES = [
   { path: '/health', page: () => import('./pages/health.js'), title: t('მაჩვენებლები', 'Health metrics'), anyOf: TRACKERS },
   { path: '/nutrition', page: () => import('./pages/nutrition.js'), title: t('კვება', 'Nutrition'), feature: 'nutrition' },
   { path: '/cycle', page: () => import('./pages/cycle.js'), title: t('ციკლი', 'Cycle'), feature: 'cycle' },
-  { path: '/quest', page: () => import('./pages/quest.js'), title: 'Medi Quest', feature: 'quest' },
+  { path: '/quest', page: () => import('./pages/quest.js'), title: 'MEDIQUEST', feature: 'quest' },
   { path: '/pets', page: () => import('./pages/pets.js'), title: t('ჩემი ცხოველები', 'My pets'), feature: 'pets' },
   { path: '/pets/:id', page: () => import('./pages/pets.js'), title: t('ცხოველი', 'Pet'), feature: 'pets' },
   { path: '/news/:id', page: () => import('./pages/news.js'), title: t('სიახლე', 'News'), feature: 'news' },
@@ -53,7 +53,7 @@ const NAV = [
   { group: t('ცხოვრების წესი', 'Lifestyle'), items: [
     { href: '/nutrition', label: t('კვება', 'Nutrition'), icon: 'apple', feature: 'nutrition' },
     { href: '/cycle', label: t('ციკლი', 'Cycle'), icon: 'flower', feature: 'cycle', female: true },
-    { href: '/quest', label: 'Medi Quest', icon: 'trophy', feature: 'quest' },
+    { href: '/quest', label: 'MEDIQUEST', icon: 'trophy', feature: 'quest' },
     { href: '/pets', label: t('ჩემი ცხოველები', 'My pets'), icon: 'paw', feature: 'pets' },
     { href: '/trainer', label: t('ჩემი ტრენერი', 'My trainer'), icon: 'dumbbell', feature: 'coach' },
     { href: '/coach', label: t('ტრენერის სივრცე', 'Trainer workspace'), icon: 'users', feature: 'coach', trainer: true },

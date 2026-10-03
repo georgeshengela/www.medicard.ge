@@ -30,6 +30,8 @@ export function FontsProvider({ children }: { children: React.ReactNode }) {
     NotoSansGeorgian_700Bold,
     MediFont: require('../../assets/fonts/medifont.ttf'),
     MediFontBold: require('../../assets/fonts/medifontbold.otf'),
+    // MEDI module wordmarks only (MEDIRUN, MEDICYCLE, …) — never body copy; see theme/moduleBrand.ts.
+    PlusJakartaSans_800ExtraBold: require('../../assets/fonts/plusjakarta-800.ttf'),
   });
 
   const value = useMemo<FontsState>(

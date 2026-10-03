@@ -34,7 +34,7 @@ export function QuestGuideSheet({ visible, onClose, timezone }: { visible: boole
       <Pressable accessibilityLabel={tx('დახურვა', 'Close')} onPress={onClose} style={{ position: 'absolute', inset: 0, backgroundColor: APP_MODAL_OVERLAY }} />
       <View accessibilityViewIsModal style={{ maxHeight: '92%', backgroundColor: c.bg100, borderTopLeftRadius: 28, borderTopRightRadius: 28, paddingBottom: Math.max(insets.bottom, 16) }}>
         <View style={{ padding: 20, flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-          <View style={{ flex: 1 }}><QText size={20} bold>{tx('როგორ მუშაობს?', 'How does it work?')}</QText><QText size={12} muted>{tx('MEDI QUEST · შენი გზამკვლევი', 'MEDI QUEST · your guide')}</QText></View>
+          <View style={{ flex: 1 }}><QText size={20} bold>{tx('როგორ მუშაობს?', 'How does it work?')}</QText><QText size={12} muted>{tx('MEDIQUEST · შენი გზამკვლევი', 'MEDIQUEST · your guide')}</QText></View>
           <Pressable accessibilityRole="button" accessibilityLabel={tx('დახურვა', 'Close')} onPress={onClose} style={{ width: 44, height: 44, alignItems: 'center', justifyContent: 'center', borderRadius: 22, backgroundColor: c.surfaceRaised }}><X size={20} color={c.text100} /></Pressable>
         </View>
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 16, gap: 12 }}>

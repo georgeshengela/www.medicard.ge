@@ -218,7 +218,7 @@ const FAMILY_DESCRIPTIONS = {
 const TEXT = {
   ka: {
     section: 'მიღწევები',
-    subtitle: 'შენი გრძელი გზა Medi Quest-ში',
+    subtitle: 'შენი გრძელი გზა MEDIQUEST-ში',
     preview: 'მიღწევები',
     viewAll: 'ყველა',
     secretTitle: 'საიდუმლო მიღწევა',
@@ -235,7 +235,7 @@ const TEXT = {
   },
   en: {
     section: 'Achievements',
-    subtitle: 'Your long journey in Medi Quest',
+    subtitle: 'Your long journey in MEDIQUEST',
     preview: 'Achievements',
     viewAll: 'View all',
     secretTitle: 'Secret achievement',
@@ -252,7 +252,7 @@ const TEXT = {
   },
   fr: {
     section: 'Succès',
-    subtitle: 'Ton long chemin dans Medi Quest',
+    subtitle: 'Ton long chemin dans MEDIQUEST',
     preview: 'Succès',
     viewAll: 'Tout voir',
     secretTitle: 'Succès secret',
@@ -269,7 +269,7 @@ const TEXT = {
   },
   ru: {
     section: 'Достижения',
-    subtitle: 'Твой длинный путь в Medi Quest',
+    subtitle: 'Твой длинный путь в MEDIQUEST',
     preview: 'Достижения',
     viewAll: 'Все',
     secretTitle: 'Секретное достижение',

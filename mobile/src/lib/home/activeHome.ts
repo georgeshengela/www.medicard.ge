@@ -1,5 +1,5 @@
 /**
- * Pure helpers for the „აქტიური“ Home sections (movement hero, water + outdoors, MEDIRUN, MEDI QUEST).
+ * Pure helpers for the „აქტიური“ Home sections (movement hero, water + outdoors, MEDIRUN, MEDIQUEST).
  * No React Native: node tests load this file (`node --experimental-strip-types --test`).
  *
  * Day keys are always local `YYYY-MM-DD` with zero padding — the format of the stored health rows.
@@ -277,7 +277,7 @@ export function outdoorCopy(view: OutdoorView): { value: string; caption: string
 }
 
 // ---------------------------------------------------------------------------
-// MEDI QUEST summary
+// MEDIQUEST summary
 // ---------------------------------------------------------------------------
 
 export type QuestWeekly = { title: string; progress: number; target: number; ratio: number; coins: number; claimed: boolean };

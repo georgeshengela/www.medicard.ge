@@ -44,7 +44,7 @@ add('medication_open', 'წამლის დეტალების გახ
 add('visit_open', 'ვიზიტის დეტალების გახსნა', 'human', fields({ visitId: id }), null, 'Open an existing visit editor, including reminders.');
 add('consult', 'კონსულტაციის დაწყება', 'human', fields({ mode: z.enum(['DOCTOR', 'CONSILIUM']), message: text(4000) }), null,
   'Start the existing clinical consultation with the user’s exact complaint. For medical advice use this, do not diagnose in planner.');
-add('pet_consult', 'Medi Vet-თან საუბარი', 'pet', fields({ ...petId, message: text(4000) }), null);
+add('pet_consult', 'MEDIVET-თან საუბარი', 'pet', fields({ ...petId, message: text(4000) }), null);
 add('hydration_add', 'წყლის მიღების ჩაწერა', 'human', fields({ date: dateKey, amountMl: z.number().int().min(1).max(5000) }), '/api/health-metrics/sync',
   'One glass is ambiguous: ask millilitres. Record actual intake, never recommend large amounts.');
 add('hydration_goal', 'წყლის მიზანი', 'human', fields({ goalMl: z.number().int().min(500).max(6000) }), '/api/health-metrics/hydration/goal', '', 'PUT');
@@ -111,7 +111,7 @@ export const ASSISTANT_CATALOG = Object.freeze(catalog);
 /** English review/catalog labels (the Georgian `label` stays the default and is what the planner sees). */
 const TOOL_LABELS_EN = Object.freeze({
   open: 'Open a feature', record_open: 'Open a saved result', medication_open: 'Open medication details', visit_open: 'Open visit details',
-  consult: 'Start a consultation', pet_consult: 'Talk to Medi Vet', hydration_add: 'Log water', hydration_goal: 'Water goal',
+  consult: 'Start a consultation', pet_consult: 'Talk to MEDIVET', hydration_add: 'Log water', hydration_goal: 'Water goal',
   metric_record: 'Log a reading', nutrition_goal: 'Choose a nutrition goal', nutrition_eat: 'Log a planned meal', nutrition_log: 'Log food from a description',
   weight_goal: 'Add a weight goal', steps_goal: 'Steps goal', profile_update: 'Update health profile', medication_add: 'Medication reminder',
   medication_update: 'Update medication', medication_stop: 'Pause reminders', dose_record: 'Log a dose', visit_add: 'Visit entry',

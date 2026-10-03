@@ -13,7 +13,7 @@
   const RUN_STATUS = { OPEN: ['მიმდინარე', 'is-info'], COMPLETE: ['დასრულებული', 'is-ok'], ARCHIVED: ['არქივში', 'is-plain'] };
   const METHODS = { MANUAL: 'ხელით შემოწმება', HTTP: 'სერვერი / ბაზა', UNIT: 'ავტომატური ტესტი', EXPO_WEB: 'Expo Web', DEVICE: 'რეალური მოწყობილობა' };
   // Values are the server's module enum (qaRunCreate); only the labels are Georgian.
-  const MODULES = { cycle: 'ციკლი', analysis: 'ანალიზები', chat: 'Medi · საუბარი', pets: 'ცხოველები · Medi Vet', medirun: 'MEDIRUN', quest: 'Medi Quest', other: 'სხვა' };
+  const MODULES = { cycle: 'ციკლი', analysis: 'ანალიზები', chat: 'Medi · საუბარი', pets: 'ცხოველები · MEDIVET', medirun: 'MEDIRUN', quest: 'MEDIQUEST', other: 'სხვა' };
   const request = (p, o) => api('/qa' + p, o);
   const can = (cap) => state.admin?.capabilities == null || state.admin.capabilities.includes(cap);
   const when = (iso, mode = 'datetime') => (V().formatDate ? V().formatDate(iso, mode) : String(iso || '—'));

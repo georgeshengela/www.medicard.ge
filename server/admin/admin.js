@@ -671,7 +671,7 @@ async function switchTab(tab, opts = {}) {
     ai: ['Health & Medi', 'Medi', 'Medi-ს ხარისხი, შეცდომები, სიჩქარე და ხარჯი.', 'medi.page'],
     settings: ['Production', 'აპის რეჟიმი', 'ტექნიკური სამუშაოები, იძულებითი განახლება და რეგისტრაცია.', 'settings.page'],
     features: ['Production', 'მოდულები', 'ჩართე ან შეაჩერე ნებისმიერი მოდული ახალი ბილდის გარეშე.', ''],
-    quests: ['Engagement', 'Medi Quest', 'მისიები, სამიზნეები და Medi Coins ჯილდოები.', ''],
+    quests: ['Engagement', 'MEDIQUEST', 'მისიები, სამიზნეები და Medi Coins ჯილდოები.', ''],
     news: ['Engagement', 'სიახლეები', 'ბარათები აპის მთავარ გვერდზე: ღონისძიებები, საჩუქრები და სიახლეები.', ''],
     campaigns: ['Engagement', 'კამპანიები', 'კამპანიის გეგმა, ყველა პოსტი ტექსტით და ბეჭდვის ფაილები. ჩანს მხოლოდ ადმინში.', ''],
     social: ['Engagement', 'სოციალური ქსელები', 'კამპანიის პოსტები და სთორები: როდის, სად და რა ტექსტით გავიდა.', ''],
@@ -681,7 +681,7 @@ async function switchTab(tab, opts = {}) {
     director: ['Overview', 'დირექტორი', 'დირექტორი მართავს ცვლას, შენ ტელეგრამში ადასტურებ.', ''],
     email: ['Engagement', 'ელფოსტა', 'სისტემური წერილები, კამპანიები და მიწოდება.', ''],
     support: ['Engagement', 'მხარდაჭერა', 'support@medicard.ge-ზე შემოსული წერილები: წაიკითხე და უპასუხე.', ''],
-    trainers: ['ადამიანები', 'ტრენერები', 'MEDI COACH: განაცხადები, დარბაზები და შეტყობინებები.', ''],
+    trainers: ['ადამიანები', 'ტრენერები', 'MEDICOACH: განაცხადები, დარბაზები და შეტყობინებები.', ''],
   };
   setPageHeader(tab, copy);
 
@@ -1113,9 +1113,9 @@ const USER_TABS = [
 const USER_SCREEN_KA = {
   '': 'მთავარი', home: 'მთავარი', explore: 'ყველა სერვისი', profile: 'პროფილი', records: 'ჩანაწერები', record: 'ჩანაწერი',
   medications: 'მედიკამენტები', nutrition: 'კვება', 'nutrition/diary': 'კვების დღიური', assistant: 'Medi', chat: 'Medi',
-  'medi-quest': 'MEDI QUEST', 'medi-companion': 'MEDI QUEST', run: 'MEDIRUN', medipulsi: 'MEDIRUN', pets: 'ჩემი ცხოველები',
+  'medi-quest': 'MEDIQUEST', 'medi-companion': 'MEDIQUEST', run: 'MEDIRUN', medipulsi: 'MEDIRUN', pets: 'ჩემი ცხოველები',
   cycle: 'ციკლი', community: 'ქალების სივრცე', visits: 'ვიზიტები', lab: 'ლაბორატორია', symptoms: 'სიმპტომები',
-  pharmacy: 'ფარმაცია', coach: 'MEDI COACH', trainer: 'ტრენერი', news: 'სიახლეები', weather: 'ამინდი',
+  pharmacy: 'ფარმაცია', coach: 'MEDICOACH', trainer: 'ტრენერი', news: 'სიახლეები', weather: 'ამინდი',
   week: 'კვირის ანგარიში', 'health-metrics': 'ჯანმრთელობის მაჩვენებლები', invite: 'მოწვევა', share: 'გაზიარება',
 };
 const USER_SOURCE_KA = {
@@ -1251,9 +1251,9 @@ const FEATURE_USAGE_LABELS = {
   records: 'შენახული ჩანაწერები',
   pregnancy: 'ორსულობის აღრიცხვა',
   medirun: 'MEDIRUN · სესიები',
-  quest: 'MEDI QUEST · დასრულებული მისიები',
+  quest: 'MEDIQUEST · დასრულებული მისიები',
   pets: 'ჩემი ცხოველები',
-  medi_vet: 'Medi Vet · საუბრები',
+  medi_vet: 'MEDIVET · საუბრები',
   nutrition: 'კვების დღიური',
   community: 'ქალების სივრცე · გაწევრიანება',
   medications: 'მედიკამენტები',
@@ -1681,11 +1681,11 @@ const PUSH_ENGAGE_LABELS = {
   'engage-unfinished': 'დაუსრულებელი საქმე',
   'engage-unfinished-med': 'დაუსრულებელი საქმე · მედიკამენტი',
   'engage-visit-followup': 'ვიზიტის შემდეგ',
-  'engage-quest-near-complete': 'Medi Quest · თითქმის დასრულებული',
-  'engage-quest-weather-window': 'Medi Quest · კარგი ამინდი სასეირნოდ',
-  'engage-quest-comeback': 'Medi Quest · დაბრუნება',
-  'engage-quest-morning-plan': 'Medi Quest · დილის გეგმა',
-  'engage-quest-weekly-progress': 'Medi Quest · კვირის პროგრესი',
+  'engage-quest-near-complete': 'MEDIQUEST · თითქმის დასრულებული',
+  'engage-quest-weather-window': 'MEDIQUEST · კარგი ამინდი სასეირნოდ',
+  'engage-quest-comeback': 'MEDIQUEST · დაბრუნება',
+  'engage-quest-morning-plan': 'MEDIQUEST · დილის გეგმა',
+  'engage-quest-weekly-progress': 'MEDIQUEST · კვირის პროგრესი',
 };
 function pushEngageLabel(t) {
   return PUSH_ENGAGE_LABELS[t?.key] || t?.label || t?.key || '';
@@ -1813,7 +1813,7 @@ async function renderPush() {
     visit: 'ექიმთან ვიზიტი',
     activity: 'აქტივობა',
     admin: 'ადმინი · დისტანციური',
-    pets: 'ცხოველები · Medi Vet',
+    pets: 'ცხოველები · MEDIVET',
     quota: 'ლიმიტები',
     engage: 'ჩართულობა · Medi',
   };
@@ -2515,7 +2515,7 @@ const AI_MODE_LABELS = {
   MEDICATION: 'მედიკამენტები',
   CYCLE_WELLNESS: 'ციკლი',
   WEIGHT_ADVICE: 'წონის რჩევა',
-  VET: 'Medi Vet',
+  VET: 'MEDIVET',
 };
 const aiModeLabel = (mode) => AI_MODE_LABELS[mode] || (!mode || mode === 'UNKNOWN' ? 'უცნობი მოდული' : 'სხვა მოდული');
 const aiNum1 = (n) => Number(n).toLocaleString('ka-GE', { maximumFractionDigits: 1 });

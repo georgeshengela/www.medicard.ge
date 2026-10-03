@@ -1,5 +1,5 @@
 /**
- * MEDI COACH notifications: instant pushes for bookings/changes and the 24 h / 1 h session reminders
+ * MEDICOACH notifications: instant pushes for bookings/changes and the 24 h / 1 h session reminders
  * (job lease `trainer-reminders`). Lock-screen text names the trainer/client and the time only —
  * never calories, weight or other health values.
  */

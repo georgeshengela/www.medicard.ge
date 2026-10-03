@@ -22,7 +22,7 @@
     ['აპი და მოდულები', [
       ['settings.update', 'აპის პარამეტრები · შეცვლა'],
       ['feature.toggle', 'მოდული · ჩართვა / გამორთვა'],
-      ['quest.template.update', 'Medi Quest შაბლონი · შეცვლა'],
+      ['quest.template.update', 'MEDIQUEST შაბლონი · შეცვლა'],
       ['capacity.test_alert', 'სისტემა · სატესტო გაფრთხილება'],
     ]],
     ['Push', [
@@ -86,7 +86,7 @@
       ['TRAINER_REJECT', 'ტრენერი · უარყოფა'],
       ['TRAINER_SUSPEND', 'ტრენერი · შეჩერება'],
       ['TRAINER_RESTORE', 'ტრენერი · აღდგენა'],
-      ['COACH_REPORT_RESOLVE', 'MEDI COACH შეტყობინება · განხილვა'],
+      ['COACH_REPORT_RESOLVE', 'MEDICOACH შეტყობინება · განხილვა'],
       ['GYM_ADD', 'დარბაზი · დამატება'],
       ['GYM_UPDATE', 'დარბაზი · შეცვლა'],
     ]],
@@ -106,7 +106,7 @@
     user: 'მომხმარებელი',
     settings: 'აპის პარამეტრები',
     featureFlag: 'მოდული',
-    questTemplate: 'Medi Quest შაბლონი',
+    questTemplate: 'MEDIQUEST შაბლონი',
     system: 'სისტემა',
     pushTemplate: 'Push შაბლონი',
     announcement: 'სიახლე',
@@ -123,14 +123,14 @@
     rewardCode: 'ჯილდოს კოდი',
     rewardRedemption: 'ჯილდოს გაცვლა',
     TrainerProfile: 'ტრენერი',
-    CoachReport: 'MEDI COACH შეტყობინება',
+    CoachReport: 'MEDICOACH შეტყობინება',
     Gym: 'დარბაზი',
     NutritionSettings: 'კვების პარამეტრები',
     NutritionRecipe: 'რეცეპტი',
   };
   // The admin page where each kind of object lives (the link in the details dialog).
   const PAGES = {
-    settings: ['#/settings', 'აპის რეჟიმი'], features: ['#/features', 'მოდულები'], quests: ['#/quests', 'Medi Quest'],
+    settings: ['#/settings', 'აპის რეჟიმი'], features: ['#/features', 'მოდულები'], quests: ['#/quests', 'MEDIQUEST'],
     capacity: ['#/capacity', 'სერვერის დატვირთვა'], push: ['#/push', 'Push & Brain'], news: ['#/news', 'სიახლეები'],
     email: ['#/email', 'ელფოსტა'], support: ['#/support', 'მხარდაჭერა'], director: ['#/director', 'დირექტორი'],
     rewards: ['#/rewards', 'ჯილდოები'], trainers: ['#/trainers', 'ტრენერები'], nutrition: ['#/nutrition', 'კვების დღიური'],
@@ -144,8 +144,8 @@
   };
   const FEATURE_KA = {
     cycle: 'ციკლი და ორსულობა', nutrition: 'კვების დღიური', nutritionAi: 'კვების AI შეფასება', medi: 'Medi', pets: 'ჩემი ცხოველები',
-    mediVet: 'Medi Vet', medirun: 'MEDIRUN', medirunAutopilot: 'MEDIRUN ავტოპილოტი', quest: 'MEDI QUEST', rewardsStore: 'ჯილდოების გაცვლა',
-    coach: 'MEDI COACH', community: 'ქალების სივრცე', pharmacy: 'აფთიაქი', news: 'სიახლეები', referralRewards: 'მოწვევის ჯილდოები', email: 'ელფოსტა',
+    mediVet: 'MEDIVET', medirun: 'MEDIRUN', medirunAutopilot: 'MEDIRUN ავტოპილოტი', quest: 'MEDIQUEST', rewardsStore: 'ჯილდოების გაცვლა',
+    coach: 'MEDICOACH', community: 'ქალების სივრცე', pharmacy: 'აფთიაქი', news: 'სიახლეები', referralRewards: 'მოწვევის ჯილდოები', email: 'ელფოსტა',
   };
   const EMAIL_TEMPLATE_KA = { welcome: 'მისალმება', password_reset: 'პაროლის აღდგენა', account_deleted: 'ანგარიშის წაშლა' };
   // Objects with one fixed id: the id says nothing, a name does.
@@ -192,7 +192,7 @@
     approve: 'დადასტურება', reject: 'უარყოფა', suspend: 'შეჩერება', restore: 'აღდგენა', archive: 'არქივში გადატანა',
     publish: 'გამოქვეყნება', export: 'ექსპორტი', import: 'იმპორტი', imported: 'იმპორტი', test: 'ტესტი', send: 'გაგზავნა',
     template: 'შაბლონი', campaign: 'კამპანია', email: 'ელფოსტა', push: 'Push', support: 'მხარდაჭერა', reward: 'ჯილდო',
-    partner: 'პარტნიორი', code: 'კოდი', coins: 'Medi Coins', feature: 'მოდული', quest: 'Medi Quest', trainer: 'ტრენერი',
+    partner: 'პარტნიორი', code: 'კოდი', coins: 'Medi Coins', feature: 'მოდული', quest: 'MEDIQUEST', trainer: 'ტრენერი',
     gym: 'დარბაზი', nutrition: 'კვება', recipe: 'რეცეპტი', director: 'დირექტორი', announcement: 'სიახლე', gift: 'საჩუქარი',
     note: 'შენიშვნა', reply: 'პასუხი', changed: 'შეცვლა', resolve: 'განხილვა', paused: 'შეჩერება', activated: 'გააქტიურება',
     community: 'ქალების სივრცე', medirun: 'MEDIRUN', medipulsi: 'MEDIRUN', profile: 'პროფილი', report: 'შეტყობინება',

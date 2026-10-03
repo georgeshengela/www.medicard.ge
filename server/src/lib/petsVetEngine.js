@@ -73,8 +73,8 @@ export function vetUnavailableWithoutOpenRouter() {
   return {
     status: 503,
     code: 'OPENROUTER_UNAVAILABLE',
-    error: 'Medi Vet ამჟამად მიუწვდომელია. სცადე მოგვიანებით.',
-    errorEn: 'Medi Vet is unavailable right now. Please try again later.',
+    error: 'MEDIVET ამჟამად მიუწვდომელია. სცადე მოგვიანებით.',
+    errorEn: 'MEDIVET is unavailable right now. Please try again later.',
   };
 }
 
@@ -166,5 +166,5 @@ export async function askVetAi({
       if (error?.status === 499) throw error;
     }
   }
-  throw lastError ?? new AiEngineError('Medi Vet-თან დაკავშირება ვერ მოხერხდა.', { status: 502, messageEn: 'We couldn’t reach Medi Vet.' });
+  throw lastError ?? new AiEngineError('MEDIVET-თან დაკავშირება ვერ მოხერხდა.', { status: 502, messageEn: 'We couldn’t reach MEDIVET.' });
 }

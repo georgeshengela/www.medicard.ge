@@ -60,7 +60,7 @@ async function ensureFreePackage() {
   });
 }
 
-describe('pets Medi Vet COMPLETE settlement', { timeout: 60_000 }, () => {
+describe('pets MEDIVET COMPLETE settlement', { timeout: 60_000 }, () => {
   it('does not persist COMPLETE when quota commit fails inside the same transaction', async (t) => {
     if (skipUnlessIsolatedPetsDb(t)) return;
     resetAiStartWindowForTests();

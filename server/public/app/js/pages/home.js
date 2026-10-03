@@ -71,7 +71,7 @@ function toolsGrid() {
     featureOn('labs') ? { href: '/lab', icon: 'flask', ink: 'violet', title: t('ანალიზები', 'Lab results'), body: t('შედეგები, ნორმები და მაჩვენებლების დინამიკა ჩარტებზე.', 'Results, reference ranges and trends on charts.') } : null,
     featureOn('visits') ? { href: '/visits', icon: 'stethoscope', ink: 'sky', title: t('ვიზიტები', 'Visits'), body: t('ექიმთან ვიზიტების კალენდარი და ისტორია.', 'Your doctor visit calendar and history.') } : null,
     trackersOn() ? { href: '/health', icon: 'activity', ink: 'green', title: t('მაჩვენებლები', 'Health metrics'), body: t('წონა, ნაბიჯები და წყალი — ტენდენციები დროში.', 'Weight, steps and water: trends over time.') } : null,
-    featureOn('pets') ? { href: '/pets', icon: 'paw', ink: 'amber', title: t('ჩემი ცხოველები', 'My pets'), body: t('მოვლა, წონა და Medi Vet შენი ცხოველებისთვის.', 'Care, weight and Medi Vet for your pets.') } : null,
+    featureOn('pets') ? { href: '/pets', icon: 'paw', ink: 'amber', title: t('ჩემი ცხოველები', 'My pets'), body: t('მოვლა, წონა და MEDIVET შენი ცხოველებისთვის.', 'Care, weight and MEDIVET for your pets.') } : null,
     featureOn('mediDoctor') ? { href: '/medi?mode=doctor', icon: 'stethoscope', ink: 'teal', title: t('ექიმთან', 'Doctor mode'), body: t('კლინიკური შეკითხვა Medi-ს ექიმის რეჟიმში.', 'Ask Medi a clinical question in doctor mode.') } : null,
   ].filter(Boolean);
   return h('div', { class: 'grid grid-3' }, tools.map((tool) => h('a', { class: 'card hover', href: tool.href, 'data-link': '' },
@@ -88,7 +88,7 @@ export default async function home(root, { navigate }) {
     activity: () => trackersOn() ? section(t('აქტიურობა', 'Activity'), lazyCard(() => import('./health.js'), 'homeActivityCard'), { link: { href: '/health', label: t('დეტალურად', 'Details') } }) : null,
     nutrition: () => featureOn('nutrition') ? section(t('კვება', 'Nutrition'), lazyCard(() => import('./nutrition.js'), 'homeCard'), { link: { href: '/nutrition', label: t('დღიური', 'Diary') } }) : null,
     cycle: () => featureOn('cycle') && isFemale() ? section(t('ციკლი', 'Cycle'), lazyCard(() => import('./cycle.js'), 'homeCard'), { link: { href: '/cycle', label: t('გახსნა', 'Open') } }) : null,
-    quest: () => featureOn('quest') ? section('Medi Quest', lazyCard(() => import('./quest.js'), 'homeCard'), { link: { href: '/quest', label: t('მისიები', 'Missions') } }) : null,
+    quest: () => featureOn('quest') ? section('MEDIQUEST', lazyCard(() => import('./quest.js'), 'homeCard'), { link: { href: '/quest', label: t('მისიები', 'Missions') } }) : null,
     coach: () => featureOn('coach') ? section(t('ჩემი ტრენერი', 'My trainer'), lazyCard(() => import('./trainer.js'), 'homeCard'), { link: { href: '/trainer', label: t('გახსნა', 'Open') } }) : null,
   };
 

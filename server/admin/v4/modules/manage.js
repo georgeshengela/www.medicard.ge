@@ -1,7 +1,7 @@
 /**
  * MediCard Admin V4 — management modules backed by /api/admin/manage:
  *   #/features  მოდულები — kill switches with a user-facing message
- *   #/quests    Medi Quest — template targets, rewards, priority, on/off
+ *   #/quests    MEDIQUEST — template targets, rewards, priority, on/off
  *   user profile cards — Medi Coins balance + grant/revoke, quests, AI consent, data export
  */
 (function adminV4Manage(global) {
@@ -227,7 +227,7 @@
     });
   }
 
-  /* ═════════ Medi Quest ═════════ */
+  /* ═════════ MEDIQUEST ═════════ */
   const CADENCE = { DAILY: 'დღიური', WEEKLY: 'კვირის', EVENT: 'ღონისძიება' };
   const UNIT = { STEPS: 'ნაბიჯი', HYDRATION_GOAL_PERCENT: '% წყლის მიზნიდან', MEDI_DAILY_USE: 'საუბარი', COUNT: 'ჯერ' };
 

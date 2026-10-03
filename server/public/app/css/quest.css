@@ -1,4 +1,4 @@
-/* Medi Quest — premium, playful but calm. One spotlight (level hero); everything else flat surface cards. */
+/* MEDIQUEST — premium, playful but calm. One spotlight (level hero); everything else flat surface cards. */
 :root { --q-gold: #b45309; --q-dawn: #fffbeb; --q-garden: #f0fdf4; --q-city: #eff6ff; --q-summit: #f5f3ff; --q-teal: #ccfbf1; }
 :root[data-theme='dark'] { --q-gold: #fbbf24; --q-dawn: #292524; --q-garden: #142c23; --q-city: #172554; --q-summit: #2e1065; --q-teal: #042f2e; }
 

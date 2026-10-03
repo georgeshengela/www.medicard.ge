@@ -91,7 +91,7 @@ export function ProfilePetsSection({ hideTitle = false }: { hideTitle?: boolean 
             <View style={{ flex: 1, minWidth: 0, gap: 2 }}>
               <Text style={[hubText.cardTitle, { color: c.text100 }]}>{tx('ზრუნვა პატარა მეგობრებზე', 'Care for little friends')}</Text>
               <Text numberOfLines={2} style={[hubText.small, { color: c.text300 }]}>
-                {tx('პროფილი, მოვლის გეგმა და Medi Vet — ერთ ადგილას.', 'Profile, care plan and Medi Vet — in one place.')}
+                {tx('პროფილი, მოვლის გეგმა და MEDIVET — ერთ ადგილას.', 'Profile, care plan and MEDIVET — in one place.')}
               </Text>
             </View>
             <Pressable accessibilityRole="button" accessibilityLabel={tx('ცხოველის დამატება', 'Add a pet')} onPress={() => router.push('/pets/new')} style={[s.addSmall, { backgroundColor: '#0D9488' }]}>
@@ -114,7 +114,7 @@ export function ProfilePetsSection({ hideTitle = false }: { hideTitle?: boolean 
                   {tx('ზრუნვის სივრცე', 'Care space')}
                 </Text>
                 <Text numberOfLines={1} style={[hubText.small, { color: c.text300 }]}>
-                  {tx('მოვლის გეგმა, წონა და Medi Vet', 'Care plan, weight and Medi Vet')}
+                  {tx('მოვლის გეგმა, წონა და MEDIVET', 'Care plan, weight and MEDIVET')}
                 </Text>
               </View>
               <ChevronRight size={16} color={c.text300} strokeWidth={2} />

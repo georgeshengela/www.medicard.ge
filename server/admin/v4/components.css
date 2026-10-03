@@ -1290,7 +1290,7 @@ html body .workspace .p4-tabs > .v3-subnav { flex: 0 1 auto; flex-wrap: nowrap; 
 }
 /* #/support lives in its own section above („Support inbox“); #/director in v4/director.css. */
 /* ─── [/P4] ─── */
-/* ─── [P5] Medi · კვება · ქალების სივრცე · MEDIRUN · მოდულები · Medi Quest ─── */
+/* ─── [P5] Medi · კვება · ქალების სივრცე · MEDIRUN · მოდულები · MEDIQUEST ─── */
 /* Shared by these pages: ranked share rows (label · meter · count · %), technical details folded under a record. */
 .s-share-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
 .s-share-list li { display: grid; grid-template-columns: minmax(110px, 38%) minmax(0, 1fr) 52px 40px; align-items: center; gap: 12px; font-size: 13px; color: var(--s-text); }
@@ -1468,7 +1468,7 @@ html body table.s-table.s-run-table td { vertical-align: top; }
   .s-flags-tools .sx-search { flex-basis: 100%; }
 }
 
-/* Medi Quest (#/quests) and the user-page Medi Coins / AI consent cards */
+/* MEDIQUEST (#/quests) and the user-page Medi Coins / AI consent cards */
 .s-quest-body { border-top: 1px solid var(--s-line-soft); }
 html body table.s-quest-table input[type="number"] { width: 84px; min-width: 0; }
 html body table.s-quest-table input[data-f="defaultTarget"] { width: 100px; }

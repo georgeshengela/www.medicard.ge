@@ -71,12 +71,12 @@
   const COUNTRY_KA = { GE: 'საქართველო' };
   /** Built-in rewards keep an app translation key instead of a title (mobile/src/i18n/quest/rewards.js). */
   const BUILTIN_TITLE_KA = {
-    MEDI_THEME_7D: 'Medi Quest სტილი — 7 დღე',
+    MEDI_THEME_7D: 'MEDIQUEST სტილი — 7 დღე',
     MEDI_PROFILE_STYLE_30D: 'პროფილის აქცენტი — 30 დღე',
     MEDI_PREMIUM_DAY: '1 დღე Premium',
     MEDI_PREMIUM_3D: '3 დღე Premium',
     PARTNER_TEST_10: 'სატესტო პარტნიორის ვაუჩერი',
-    'reward.mediTheme7d.title': 'Medi Quest სტილი — 7 დღე',
+    'reward.mediTheme7d.title': 'MEDIQUEST სტილი — 7 დღე',
     'reward.mediProfileStyle30d.title': 'პროფილის აქცენტი — 30 დღე',
     'reward.mediPremiumDay.title': '1 დღე Premium',
     'reward.mediPremium3d.title': '3 დღე Premium',
@@ -468,7 +468,7 @@
       })}
       ${card({
         title: `საჩუქრები · ${fmt(items.length)}`,
-        desc: 'ის, რაც აპის მაღაზიაში ჩანს (Medi Quest → ჯილდოების მაღაზია). 100 მონეტა ≈ 1 ₾.',
+        desc: 'ის, რაც აპის მაღაზიაში ჩანს (MEDIQUEST → ჯილდოების მაღაზია). 100 მონეტა ≈ 1 ₾.',
         action: `<button type="button" class="btn" data-st-new>${ico('plus')} ახალი საჩუქარი</button>`,
         body: items.length ? `<div class="p2-prizes">${itemCards}</div>` : `<div class="s-empty">${ico('gift')}<strong>საჩუქრები ჯერ არ არის</strong></div>`,
       })}

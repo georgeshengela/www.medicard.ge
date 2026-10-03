@@ -48,8 +48,8 @@
   /** App pages a button may open (server allow-list: ROUTE_ROOTS in lib/announcements.js). */
   const ROUTES = [
     ['/run', 'MEDIRUN'],
-    ['/medi-quest', 'MEDI QUEST'],
-    ['/medi-quest/rewards', 'MEDI QUEST — ჯილდოები'],
+    ['/medi-quest', 'MEDIQUEST'],
+    ['/medi-quest/rewards', 'MEDIQUEST — ჯილდოები'],
     ['/nutrition', 'კვება'],
     ['/nutrition/diary', 'კვების დღიური'],
     ['/nutrition/fasting', 'მარხვის ტაიმერი'],

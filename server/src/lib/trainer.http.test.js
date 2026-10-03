@@ -1,4 +1,4 @@
-// MEDI COACH end-to-end over HTTP against a disposable local Postgres (never the hosted database):
+// MEDICOACH end-to-end over HTTP against a disposable local Postgres (never the hosted database):
 //   DATABASE_URL=postgresql://coach@127.0.0.1:55433/medicard_coach_test node --test src/lib/trainer.http.test.js
 // The database must have the Prisma schema plus prisma/20260928-trainer.sql (scripts/install-trainer.mjs).
 import { describe, it } from 'node:test';
@@ -35,7 +35,7 @@ function listen(app) {
   });
 }
 
-describe('MEDI COACH HTTP flow', { timeout: 120_000 }, () => {
+describe('MEDICOACH HTTP flow', { timeout: 120_000 }, () => {
   it('trainer applies, is verified, links clients with consent, schedules, plans, sees scoped data', async (t) => {
     if (!isolatedDb()) {
       t.skip('DATABASE_URL is not the disposable coach database (127.0.0.1/medicard_coach_test)');

@@ -511,7 +511,7 @@ petsChatRouter.post(
           const status = error instanceof AiEngineError ? error.status : error?.status;
           writeSse(res, {
             type: 'error',
-            error: t(req, error?.message, error?.messageEn || error?.message) || t(req, 'Medi Vet-თან დაკავშირება ვერ მოხერხდა.', 'We couldn’t reach Medi Vet.'),
+            error: t(req, error?.message, error?.messageEn || error?.message) || t(req, 'MEDIVET-თან დაკავშირება ვერ მოხერხდა.', 'We couldn’t reach MEDIVET.'),
             status: status && status >= 400 && status < 600 ? status : 502,
             code: cancelled ? 'CANCELLED' : 'PROVIDER_UNAVAILABLE',
           });
@@ -567,7 +567,7 @@ petsChatRouter.post(
         const status = error instanceof AiEngineError ? error.status : error?.status || 502;
         logVetOp({ requestId: clientRequestId, petId: pet.id, userId: req.user.id, status: cancelled ? 'CANCELLED' : 'FAILED' });
         return res.status(status >= 400 && status < 600 ? status : 502).json({
-          error: t(req, error?.message, error?.messageEn || error?.message) || t(req, 'Medi Vet-თან დაკავშირება ვერ მოხერხდა.', 'We couldn’t reach Medi Vet.'),
+          error: t(req, error?.message, error?.messageEn || error?.message) || t(req, 'MEDIVET-თან დაკავშირება ვერ მოხერხდა.', 'We couldn’t reach MEDIVET.'),
           code: cancelled ? 'CANCELLED' : 'PROVIDER_UNAVAILABLE',
           chatSchemaReady: true,
         });

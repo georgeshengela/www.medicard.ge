@@ -53,7 +53,7 @@ export { QuestSignal, refreshQuestProgressForUser } from './questSignals.js';
 export { publicQuest, publicRewardRow, sanitizeQuestJson, QUEST_FORBIDDEN_KEYS } from './questPrivacy.js';
 
 /**
- * Medi Quest Phase 2 — server-authoritative progress engine.
+ * MEDIQUEST Phase 2 — server-authoritative progress engine.
  *
  * Mobile may request the dashboard or claim a reward.
  * Mobile must never submit progress, completed=true, XP, coins, level, streak, or target.

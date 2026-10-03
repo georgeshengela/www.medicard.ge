@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="ka">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>MEDI module family</title>
+<!-- Owner-approved board 2026-10-03. Source of truth for values: mobile/src/theme/moduleBrand.ts -->
+<style>
+@font-face{font-family:"Plus Jakarta Sans";src:url("../../server/public/fonts/plusjakarta/PlusJakartaSans-ExtraBold.ttf");font-weight:800}
+:root{--bg:#F8FAFC;--surface:#fff;--text:#030712;--sub:#475569;--line:#E2E8F0}
+@media (prefers-color-scheme:dark){:root{--bg:#030712;--surface:#111827;--text:#fff;--sub:#94A3B8;--line:#1F2937}}
+body{margin:0;background:var(--bg);color:var(--text);font:400 15px/1.6 system-ui,sans-serif;padding:24px 16px}
+main{max-width:1000px;margin:auto}
+h1{font-size:20px;font-weight:600;margin:0 0 4px}
+p{color:var(--sub);margin:0 0 16px}
+.g{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;margin:0 0 20px}
+.c{position:relative;overflow:hidden;border-radius:22px;padding:18px 16px;min-height:110px;display:flex;flex-direction:column;justify-content:space-between}
+.c:after{content:"";position:absolute;right:-40px;bottom:-60px;width:150px;height:150px;border-radius:50%;border:1px solid rgba(255,255,255,.14);box-shadow:0 0 0 22px rgba(255,255,255,.04),0 0 0 44px rgba(255,255,255,.03)}
+.wm{font-family:"Plus Jakarta Sans",sans-serif;font-weight:800;font-size:26px;letter-spacing:-.035em;line-height:1.2;white-space:nowrap;color:#fff}
+.wm i{font-style:normal;display:inline-block;transform:skewX(-10deg);margin-left:1px}
+.s{font-size:13px;color:rgba(255,255,255,.85);position:relative;z-index:1}
+.h{font:12px ui-monospace,monospace;color:rgba(255,255,255,.8);position:relative;z-index:1}
+.lt{display:flex;flex-wrap:wrap;gap:18px 28px;padding:16px 20px;background:var(--surface);border:1px solid var(--line);border-radius:16px;margin:0 0 20px}
+.lt .wm{color:var(--text)}
+.hdr{display:flex;align-items:center;gap:12px;background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:14px 16px;max-width:380px}
+.btn{width:44px;height:44px;border-radius:16px;background:var(--bg);display:grid;place-items:center;color:var(--sub)}
+.hdr small{display:block;font-size:11px;color:var(--sub)}
+</style>
+</head>
+<body><main>
+<h1>MEDI-ოჯახი</h1>
+<p>„MEDI“ სწორად, მოდულის ნაწილი ფერადად და −10°-ით დახრილი · Plus Jakarta Sans ExtraBold</p>
+
+<div class="g">
+<div class="c" style="background:radial-gradient(120% 90% at 100% 0%,rgba(94,234,212,.35),transparent 55%),linear-gradient(145deg,#0b4d47,#0d9488 60%,#14b8a6)"><div class="wm">MEDI<i style="color:#99F6E4">RUN</i></div><div class="s">თამაში ქალაქში · ბრენდის ტილი</div><div class="h">#0B4D47 → #0D9488 → #14B8A6</div></div>
+<div class="c" style="background:radial-gradient(120% 90% at 100% 0%,rgba(255,143,168,.35),transparent 55%),linear-gradient(145deg,#831843,#c92a55 60%,#f43f5e)"><div class="wm">MEDI<i style="color:#FECDD3">CYCLE</i></div><div class="s">ციკლი</div><div class="h">#831843 → #C92A55 → #F43F5E</div></div>
+<div class="c" style="background:radial-gradient(120% 90% at 100% 0%,rgba(110,231,183,.38),transparent 55%),linear-gradient(145deg,#064e3b,#059669 60%,#34d399)"><div class="wm">MEDI<i style="color:#A7F3D0">FOOD</i></div><div class="s">კვება და წონა</div><div class="h">#064E3B → #059669 → #34D399</div></div>
+<div class="c" style="background:radial-gradient(120% 90% at 100% 0%,rgba(147,197,253,.35),transparent 55%),linear-gradient(145deg,#1e3a8a,#1d4ed8 60%,#3b82f6)"><div class="wm">MEDI<i style="color:#BFDBFE">PILL</i></div><div class="s">წამლები</div><div class="h">#1E3A8A → #1D4ED8 → #3B82F6</div></div>
+<div class="c" style="background:radial-gradient(120% 90% at 100% 0%,rgba(196,181,253,.35),transparent 55%),linear-gradient(145deg,#3b0764,#6d28d9 60%,#8b5cf6)"><div class="wm">MEDI<i style="color:#DDD6FE">QUEST</i></div><div class="s">მისიები, Medi Coins</div><div class="h">#3B0764 → #6D28D9 → #8B5CF6</div></div>
+<div class="c" style="background:radial-gradient(120% 90% at 100% 0%,rgba(125,211,252,.38),transparent 55%),linear-gradient(145deg,#0c4a6e,#0284c7 60%,#38bdf8)"><div class="wm">MEDI<i style="color:#E0F2FE">VET</i></div><div class="s">ჩემი ცხოველები</div><div class="h">#0C4A6E → #0284C7 → #38BDF8</div></div>
+<div class="c" style="background:radial-gradient(120% 90% at 100% 0%,rgba(148,163,184,.3),transparent 55%),linear-gradient(145deg,#0f172a,#1f2937 60%,#475569)"><div class="wm">MEDI<i style="color:#CBD5E1">COACH</i></div><div class="s">ფიტნეს-ტრენერები</div><div class="h">#0F172A → #1F2937 → #475569</div></div>
+<div class="c" style="background:radial-gradient(120% 90% at 100% 0%,rgba(94,234,212,.35),transparent 55%),linear-gradient(145deg,#0b4d47,#0d9488 60%,#14b8a6)"><div class="wm">MEDI</div><div class="s">AI ასისტენტი</div><div class="h">ბრენდის ტილი</div></div>
+</div>
+
+<p>ზედაპირზე (სათაური, Home, ტექსტი):</p>
+<div class="lt">
+<div class="wm">MEDI<i style="color:#0D9488">RUN</i></div>
+<div class="wm">MEDI<i style="color:#C92A55">CYCLE</i></div>
+<div class="wm">MEDI<i style="color:#047857">FOOD</i></div>
+<div class="wm">MEDI<i style="color:#1D4ED8">PILL</i></div>
+<div class="wm">MEDI<i style="color:#6D28D9">QUEST</i></div>
+<div class="wm">MEDI<i style="color:#0369A1">VET</i></div>
+<div class="wm">MEDI<i style="color:#475569">COACH</i></div>
+</div>
+
+<p>გამოყენება — კომპაქტურად, როგორც MEDIRUN-ის ჰაბზე: უკან ღილაკი · ლოგო (25) + ერთი 11px ხაზი · მარჯვენა ღილაკი</p>
+<div class="hdr"><div class="btn">←</div><div style="flex:1"><div class="wm" style="font-size:25px;color:var(--text)">MEDI<i style="color:#C92A55">CYCLE</i></div><small>დღეს · ციკლის მე-14 დღე</small></div><div class="btn">⚙</div></div>
+</main></body>
+</html>

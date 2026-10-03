@@ -1,4 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
+import { ModuleWordmark } from '@/components/brand/ModuleWordmark';
+import type { ModuleBrandId } from '@/theme/moduleBrand';
 import {
   ActivityIndicator,
   Keyboard,
@@ -145,12 +147,15 @@ export function NLink({
 }
 export function NScreen({
   title,
+  brand,
   subtitle,
   children,
   footer,
   onBack,
 }: {
   title: string;
+  /** MEDI module wordmark in place of the title (MEDIFOOD on the nutrition hub). */
+  brand?: ModuleBrandId;
   subtitle?: string;
   children: React.ReactNode;
   footer?: React.ReactNode;
@@ -201,15 +206,19 @@ export function NScreen({
           <ArrowLeft size={22} color={c.text100} />
         </Pressable>
         <View style={{ flex: 1 }}>
-          <NText
-            style={{
-              fontSize: 20,
-              fontFamily: "NotoSansGeorgian_600SemiBold",
-              lineHeight: 29,
-            }}
-          >
-            {title}
-          </NText>
+          {brand ? (
+            <ModuleWordmark module={brand} />
+          ) : (
+            <NText
+              style={{
+                fontSize: 20,
+                fontFamily: "NotoSansGeorgian_600SemiBold",
+                lineHeight: 29,
+              }}
+            >
+              {title}
+            </NText>
+          )}
           {!!subtitle && !keyboard && (
             <NText style={{ fontSize: 12, color: c.text200, lineHeight: 18 }}>
               {subtitle}

@@ -1,4 +1,4 @@
-// Medi Quest → generated 3D artwork (constants/appArt.ts, components/run/runArt.ts).
+// MEDIQUEST → generated 3D artwork (constants/appArt.ts, components/run/runArt.ts).
 // One place maps every Quest concept to its picture; components render it with RN Image.
 import type { ImageSourcePropType } from 'react-native';
 import { COIN_ART, QUEST_ART, REFERRAL_ART } from '@/constants/appArt';

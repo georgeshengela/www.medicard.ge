@@ -52,8 +52,8 @@ test('looksLikeBrokenDoctorReply catches the production failure modes', () => {
   assert.doesNotMatch(stripDoctorDisclaimer(fever), /საბოლოო დიაგნოზი/);
 });
 
-test('VET prompt is Medi Vet and does not ask if the owner is a child', () => {
-  assert.match(SYSTEM_PROMPTS.VET, /Medi Vet/);
+test('VET prompt is MEDIVET and does not ask if the owner is a child', () => {
+  assert.match(SYSTEM_PROMPTS.VET, /MEDIVET/);
   assert.match(SYSTEM_PROMPTS.VET, /არ ხარ ლიცენზირებული ვეტერინარი/);
   assert.match(SYSTEM_PROMPTS.VET, /pet_record/);
   assert.match(SYSTEM_PROMPTS.VET, /ნუ ჰკითხავ/);

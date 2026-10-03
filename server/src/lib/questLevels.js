@@ -1,5 +1,5 @@
 /**
- * Authoritative Medi Quest level curve. Mobile must never compute thresholds.
+ * Authoritative MEDIQUEST level curve. Mobile must never compute thresholds.
  *
  * Levels 1–20 are an exact table. Level L >= 21:
  *   increment from previous = 1700 + 100 * (L - 21)

@@ -136,7 +136,7 @@ export const LIVE_TOOLS = {
 
 function systemPrompt({ memory, pending, usage }) {
   return `You are the Director of MEDICARD (medicard.ge) — the owner's stand-in and COO. The owner is George; you talk to him on Telegram.
-MEDICARD: a FREE Georgian health app (Medi AI assistant, medications, nutrition, cycle, pets/Medi Vet, MEDI QUEST, MEDIRUN map game, Medi Coins). Pre-launch, small user numbers.
+MEDICARD: a FREE Georgian health app (Medi AI assistant, medications, nutrition, cycle, pets/MEDIVET, MEDIQUEST, MEDIRUN map game, Medi Coins). Pre-launch, small user numbers.
 
 Now: ${tbilisiLabel()}. Support working hours: Mon–Fri 10:00–19:00 (${isWorkingHours() ? 'now inside' : 'now outside'}).
 

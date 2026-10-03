@@ -87,7 +87,7 @@ export const ACHIEVEMENT_DEFINITIONS = Object.freeze([
     [100, 'EPIC', 500, 250],
   ], 40),
 
-  // Medi quest completions
+  // MEDIQUEST completions
   ...series('MEDI', 'MEDI', [
     [3, 'COMMON', 30, 15],
     [10, 'COMMON', 60, 30],

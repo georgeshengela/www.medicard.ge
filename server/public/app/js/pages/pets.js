@@ -1,6 +1,6 @@
 // MEDICARD web — ჩემი ცხოველები (/pets, /pets/:id). Replicates mobile/app/pets/** on the same /api/pets endpoints.
 // Product freeze: bug-fix scope only — nothing here that the app does not already do.
-// Isolation: pet data never touches human health records; Medi Vet uses its own endpoint and storage.
+// Isolation: pet data never touches human health records; MEDIVET uses its own endpoint and storage.
 import {
   h, mount, clear, icon, tile, section, button, iconButton, badge, empty, skeleton, errorBox, segmented,
   toast, openModal, confirmDialog, formModal, field, input, textarea, select, fmtDate, fmtNum, ymd, markdown, relDay,
@@ -36,7 +36,7 @@ const T = {
   vetDisclosureBody: t('შესაბამისი ცხოველის ჩანაწერი და შენი შეტყობინებები იგზავნება AI პროვაიდერთან (OpenRouter). ეს არ არის ვეტერინარული დიაგნოზი.', 'The relevant pet’s record and your messages are sent to an AI provider (OpenRouter). This is not a veterinary diagnosis.'),
   vetStarters: t(['მოვლის ისტორიის შეჯამება', 'ვეტერინართან ვიზიტისთვის მომზადება', 'კითხვა ცხოველის მოვლაზე'], ['Summarize the care history', 'Prepare for a vet visit', 'Ask about pet care']),
   vetFailed: t('პასუხი ვერ მოვიდა. სცადე თავიდან.', 'The answer didn’t arrive. Try again.'), vetCancelled: t('მოთხოვნა გაუქმდა.', 'Request cancelled.'), vetPartial: t('პასუხი არ დასრულებულა.', 'The answer didn’t finish.'),
-  vetUnavailable: t('Medi Vet ჯერ მზად არ არის ამ სერვერზე.', 'Medi Vet isn’t ready on this server yet.'),
+  vetUnavailable: t('MEDIVET ჯერ მზად არ არის ამ სერვერზე.', 'MEDIVET isn’t ready on this server yet.'),
   saveError: t('შენახვა ვერ მოხერხდა. შეავსებული ველები შენარჩუნებულია.', 'Couldn’t save. The fields you filled in are kept.'),
   notReady: t('ცხოველების მოდული ჯერ მზად არ არის.', 'The pets module isn’t ready yet.'),
   futureDate: t('ჩანაწერის თარიღი მომავალში ვერ იქნება.', 'The date can’t be in the future.'),
@@ -281,7 +281,7 @@ async function petsHub(root, ctx) {
       section(t('როგორ დავიწყო?', 'How do I start?'), h('div', { class: 'card stack pets-steps' }, [
         [t('01 · შექმენი პროფილი', '01 · Create a profile'), t('თითოეულ ცხოველს თავისი ჩანაწერები და ისტორია აქვს.', 'Each pet has its own records and history.')],
         [t('02 · შეინახე და დაგეგმე', '02 · Save and plan'), t('უკვე ჩატარებული პროცედურა ჩაწერე ისტორიაში, მომავალი კი მოვლის გეგმაში.', 'Log what’s already done in the history, and plan what’s next in the care plan.')],
-        [t('03 · ჰკითხე Medi Vet-ს', '03 · Ask Medi Vet'), t('შენახულ ჩანაწერებზე დაყრდნობით მოვლის კითხვებს გიპასუხებს. ეს არ არის დიაგნოზი.', 'It answers care questions based on your saved records. This is not a diagnosis.')],
+        [t('03 · ჰკითხე MEDIVET-ს', '03 · Ask MEDIVET'), t('შენახულ ჩანაწერებზე დაყრდნობით მოვლის კითხვებს გიპასუხებს. ეს არ არის დიაგნოზი.', 'It answers care questions based on your saved records. This is not a diagnosis.')],
       ].map(([title, b]) => h('div', null, h('b', null, title), h('p', { class: 'muted', style: { fontSize: '13.5px', marginTop: '2px' } }, b)))))));
 
   const draw = async () => {
@@ -316,7 +316,7 @@ async function petsHub(root, ctx) {
       h('div', { class: 'pet-card-links' },
         h('a', { href: `/pets/${p.id}?tab=care`, 'data-link': '', class: 'chip' }, icon('calendarCheck', { size: 14 }), t('მოვლა', 'Care')),
         h('a', { href: `/pets/${p.id}?tab=health`, 'data-link': '', class: 'chip' }, icon('scale', { size: 14 }), t('წონა', 'Weight')),
-        featureOn('mediVet') ? h('a', { href: `/pets/${p.id}?tab=vet`, 'data-link': '', class: 'chip' }, icon('stethoscope', { size: 14 }), 'Medi Vet') : null));
+        featureOn('mediVet') ? h('a', { href: `/pets/${p.id}?tab=vet`, 'data-link': '', class: 'chip' }, icon('stethoscope', { size: 14 }), 'MEDIVET') : null));
   }
 
   await draw();
@@ -375,7 +375,7 @@ async function petDetail(root, ctx) {
   const head = h('div', null, skeleton(2));
   const body = h('div', { class: 'pet-body' });
   const tabItems = [{ value: 'overview', label: t('მიმოხილვა', 'Overview') }, { value: 'health', label: t('ჯანმრთელობა', 'Health') }, { value: 'care', label: t('მოვლა', 'Care') }];
-  if (featureOn('mediVet')) tabItems.push({ value: 'vet', label: 'Medi Vet' });
+  if (featureOn('mediVet')) tabItems.push({ value: 'vet', label: 'MEDIVET' });
   const tabs = segmented(tabItems, tab, (v) => { tab = v; syncUrl(); renderTab(); });
   tabs.classList.add('pet-tabs');
   let chatCleanup = null;
@@ -414,7 +414,7 @@ async function petDetail(root, ctx) {
         setup.some((s) => !s.done) ? h('div', { class: 'chips', style: { marginTop: '10px' } }, setup.filter((s) => !s.done).map((s) =>
           h('button', { type: 'button', class: 'chip', onClick: () => petForm(pet, (p) => { pet = p; drawHead(); renderTab(); }) }, icon('plus', { size: 14 }), s.label))) : null),
       h('div', { class: 'page-head-actions' },
-        featureOn('mediVet') ? button('Medi Vet', { icon: 'stethoscope', variant: 'secondary', onClick: () => selectTab('vet') }) : null,
+        featureOn('mediVet') ? button('MEDIVET', { icon: 'stethoscope', variant: 'secondary', onClick: () => selectTab('vet') }) : null,
         button(T.edit, { icon: 'edit', variant: 'ghost', onClick: () => petForm(pet, (p) => { pet = p; drawHead(); renderTab(); }) }),
         iconButton('archive', { title: T.archive, onClick: () => archivePet(pet, () => ctx.navigate('/pets')) }))));
   }
@@ -454,7 +454,7 @@ async function petDetail(root, ctx) {
       h('div', { class: 'stack', style: { gap: '28px' } },
         section(t('მოვლის კალენდარი', 'Care calendar'), careSlot, { action: h('button', { type: 'button', class: 'link text-btn', onClick: () => selectTab('care') }, t('ყველა', 'All'), icon('chevronRight', { size: 16 })) }),
         section(t('ჯანმრთელობა', 'Health'), healthSlot),
-        featureOn('mediVet') ? section('Medi Vet', h('div', { class: 'card feature' },
+        featureOn('mediVet') ? section('MEDIVET', h('div', { class: 'card feature' },
           tile('stethoscope', 'violet', 42),
           h('h3', null, t(`${pet.name} — უკეთ გავიცნოთ.`, `Let’s get to know ${pet.name} better.`)),
           h('p', null, t('მოვლა, შენახული ჩანაწერები და შეკითხვები შენს ცხოველზე. ეს არ არის ვეტერინარული დიაგნოზი.', 'Care, saved records and questions about your pet. This is not a veterinary diagnosis.')),
@@ -741,7 +741,7 @@ async function petDetail(root, ctx) {
         };
         recSel.addEventListener('change', sync); sync();
         return h('div', { class: 'stack' },
-          draft ? h('div', { class: 'disclaimer', style: { marginTop: 0 } }, icon('info', { size: 16 }), t('Medi Vet-ის წინადადება. ჯერ არ არის შენახული — გადაამოწმე და შეინახე მხოლოდ შენი დადასტურებით.', 'Suggested by Medi Vet. Not saved yet — review it and save only if you confirm.')) : null,
+          draft ? h('div', { class: 'disclaimer', style: { marginTop: 0 } }, icon('info', { size: 16 }), t('MEDIVET-ის წინადადება. ჯერ არ არის შენახული — გადაამოწმე და შეინახე მხოლოდ შენი დადასტურებით.', 'Suggested by MEDIVET. Not saved yet — review it and save only if you confirm.')) : null,
           h('div', { class: 'form-row' }, field(t('რა მოვლაა?', 'What kind of care?'), kindSel), field(t('პროდუქტი', 'Product'), prodSel)),
           field(t('სათაური', 'Title'), input({ name: 'title', maxlength: 120, placeholder: t('მაგ. ცოფის აცრა', 'e.g. Rabies vaccine'), value: draft?.title || '' })),
           h('div', { class: 'form-row' },
@@ -959,14 +959,14 @@ async function petDetail(root, ctx) {
     }
   }
 
-  /* Medi Vet — its own endpoint and storage (never the human Medi). */
+  /* MEDIVET — its own endpoint and storage (never the human Medi). */
   function renderVet(slot, p) {
     let sessionId;
     let alive2 = true;
     let sending = false;
     let abort = null;
     const log = h('div', { class: 'chat-log', 'aria-live': 'polite' });
-    const ta = h('textarea', { rows: 1, placeholder: t('კითხვა ცხოველზე…', 'Ask about your pet…'), 'aria-label': t('კითხვა Medi Vet-ს', 'Ask Medi Vet'), maxlength: 4000 });
+    const ta = h('textarea', { rows: 1, placeholder: t('კითხვა ცხოველზე…', 'Ask about your pet…'), 'aria-label': t('კითხვა MEDIVET-ს', 'Ask MEDIVET'), maxlength: 4000 });
     const sendBtn = h('button', { type: 'button', class: 'btn btn-primary', 'aria-label': t('გაგზავნა', 'Send') }, icon('send', { size: 18 }));
     const cancelBtn = h('button', { type: 'button', class: 'text-btn pet-cancel', hidden: true }, t('გაუქმება', 'Cancel'));
     const errEl = h('div', { class: 'form-error', hidden: true });
@@ -980,7 +980,7 @@ async function petDetail(root, ctx) {
     };
     const intro = h('div', { class: 'stack pet-vet-intro' },
       h('div', { class: 'card hstack', style: { flexWrap: 'nowrap', alignItems: 'flex-start' } }, tile('stethoscope', 'violet', 42),
-        h('div', null, h('div', { class: 'faint', style: { fontSize: '12px', letterSpacing: '.06em' } }, 'MEDI VET · AI'),
+        h('div', null, h('div', { class: 'faint', style: { fontSize: '12px', letterSpacing: '.06em' } }, 'MEDIVET · AI'),
           h('b', null, t(`${p.name} — უკეთ გავიცნოთ.`, `Let’s get to know ${p.name} better.`)),
           h('p', { class: 'muted', style: { fontSize: '13.5px', marginTop: '4px' } }, t('შემიძლია აგიხსნა ჩაწერილი მოვლა, დაგეხმარო ვეტერინართან მოსამზადებლად და ზოგადი მოვლის კითხვებზე ვუპასუხო.', 'I can explain the care you have recorded, help you prepare for a vet visit and answer general care questions.')),
           h('p', { class: 'faint', style: { fontSize: '12.5px', marginTop: '6px' } }, T.vetDisclaimer))),
@@ -994,8 +994,8 @@ async function petDetail(root, ctx) {
 
     mount(slot, h('div', { class: 'card pet-chat' },
       h('div', { class: 'pet-chat-head' }, petPhoto(p, 40),
-        h('div', { style: { flex: 1, minWidth: 0 } }, h('b', null, 'Medi Vet'), h('div', { class: 'faint', style: { fontSize: '12.5px' } }, p.name)),
-        iconButton('info', { title: t('Medi Vet — როგორ მუშაობს', 'Medi Vet — how it works'), onClick: () => disclosure(true) })),
+        h('div', { style: { flex: 1, minWidth: 0 } }, h('b', null, 'MEDIVET'), h('div', { class: 'faint', style: { fontSize: '12.5px' } }, p.name)),
+        iconButton('info', { title: t('MEDIVET — როგორ მუშაობს', 'MEDIVET — how it works'), onClick: () => disclosure(true) })),
       h('div', { class: 'chat pet-chat-body' }, log,
         h('div', null, noteEl, errEl, h('div', { style: { textAlign: 'center' } }, cancelBtn),
           h('div', { class: 'chat-input' }, ta, sendBtn),
@@ -1059,7 +1059,7 @@ async function petDetail(root, ctx) {
       return new Promise((resolve) => {
         let ok = false;
         openModal({
-          title: t('Medi Vet-ის გამოყენება', 'Using Medi Vet'),
+          title: t('MEDIVET-ის გამოყენება', 'Using MEDIVET'),
           size: 'sm',
           body: h('p', { class: 'muted' }, T.vetDisclosureBody),
           footer: (close) => [button(t('გასაგებია', 'Got it'), { onClick: () => { ok = true; try { localStorage.setItem('medicard.web.pets.vetDisclosure.v1', '1'); } catch { /* ignore */ } close(); } })],

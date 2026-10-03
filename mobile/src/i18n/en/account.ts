@@ -434,7 +434,7 @@ export const enAccount: Pick<Strings, 'visits' | 'referral' | 'passport' | 'phon
     unfinished: '⏳ Unfinished',
     visitFollowup: '🩺 After a visit',
     weather: '🌤️ Weather and walks',
-    questSmart: '🎯 Medi Quest — smart reminders',
+    questSmart: '🎯 MEDIQUEST — smart reminders',
     discreet: '🔒 Discreet notifications',
     quiet: '🌙 Quiet hours',
     quietHint: (start: string, end: string) => `Medi won’t disturb you ${start}–${end}.`,

@@ -1,4 +1,4 @@
-// MEDICARD web — MEDI COACH, client side (/trainer, /trainer/:section, /trainer/:section/:id) + Home card.
+// MEDICARD web — MEDICOACH, client side (/trainer, /trainer/:section, /trainer/:section/:id) + Home card.
 // Same endpoints and rules as the app (mobile/app/trainer/**, mobile/src/components/coach/**):
 //   GET  /api/trainer/me | /overview | /catalog | /gyms | /search | /card/:id | /code/:code | /session/:id | /photos
 //   POST /api/trainer/link | /link/accept | /link/goal | /report | /apply | /certificates | /gyms | /photos
@@ -450,7 +450,7 @@ async function hubPage(root, ctx, opts = {}) {
       if (!alive) return;
       draw();
     } catch (e) {
-      if (alive) mount(root, pageHead(t('ჩემი ტრენერი', 'My trainer'), 'MEDI COACH'), errorBox(e, reload));
+      if (alive) mount(root, pageHead(t('ჩემი ტრენერი', 'My trainer'), 'MEDICOACH'), errorBox(e, reload));
     }
   }
 
@@ -502,7 +502,7 @@ async function hubPage(root, ctx, opts = {}) {
         button(t('ტრენერის მოძებნა', 'Find a trainer'), { icon: 'search', onClick: () => search.querySelector('input')?.focus() }),
         button(t('ტრენერის რეგისტრაცია', 'Trainer sign-up'), { variant: 'outline', icon: 'award', href: '/trainer/apply', class: 'tr-on-spot' })));
     return [
-      pageHead(t('ჩემი ტრენერი', 'My trainer'), t('MEDI COACH — იპოვე დადასტურებული ტრენერი ან დაუკავშირდი მის კოდით. შენ წყვეტ, რას დაინახავს.', 'MEDI COACH — find a verified trainer or connect with their code. You decide what they see.')),
+      pageHead(t('ჩემი ტრენერი', 'My trainer'), t('MEDICOACH — იპოვე დადასტურებული ტრენერი ან დაუკავშირდი მის კოდით. შენ წყვეტ, რას დაინახავს.', 'MEDICOACH — find a verified trainer or connect with their code. You decide what they see.')),
       h('div', { class: 'grid grid-main tr-top' },
         hero,
         h('div', { class: 'tr-col' },
@@ -519,7 +519,7 @@ async function hubPage(root, ctx, opts = {}) {
   function inviteView() {
     const trn = ov.trainer;
     return [
-      pageHead(t('ჩემი ტრენერი', 'My trainer'), 'MEDI COACH'),
+      pageHead(t('ჩემი ტრენერი', 'My trainer'), 'MEDICOACH'),
       h('div', { class: 'grid grid-main' },
         h('div', { class: 'tr-col' },
           section(t('ტრენერი გიწვევს', 'A trainer is inviting you'), card({ class: 'spotlight hero-card pad-lg tr-invite' },
@@ -547,7 +547,7 @@ async function hubPage(root, ctx, opts = {}) {
   function pendingView() {
     const trn = ov.trainer;
     return [
-      pageHead(t('ჩემი ტრენერი', 'My trainer'), 'MEDI COACH'),
+      pageHead(t('ჩემი ტრენერი', 'My trainer'), 'MEDICOACH'),
       h('div', { class: 'grid grid-main' },
         h('div', { class: 'tr-col' },
           section(t('მოთხოვნა გაგზავნილია', 'Request sent'), card({ class: 'pad-lg' },
@@ -916,7 +916,7 @@ async function sharingPage(root, ctx) {
 /* ═══ Page: sessions (/trainer/sessions) ═════════════════ */
 async function sessionsPage(root, ctx) {
   ctx.setTitle(t('ვარჯიშები', 'Sessions'));
-  const head = h('div', null, pageHead(t('ვარჯიშები', 'Sessions'), 'MEDI COACH'));
+  const head = h('div', null, pageHead(t('ვარჯიშები', 'Sessions'), 'MEDICOACH'));
   const body = h('div', null, pageSkeleton());
   mount(root, back('/trainer', t('ჩემი ტრენერი', 'My trainer')), head, body);
   let ov = null;

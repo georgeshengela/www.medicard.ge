@@ -74,7 +74,7 @@ export function petsChatSchemaUnavailable() {
     body: {
       schemaReady: false,
       chatSchemaReady: false,
-      error: 'Medi Vet-ის საუბარი ჯერ მზად არ არის.',
+      error: 'MEDIVET-ის საუბარი ჯერ მზად არ არის.',
     },
   };
 }

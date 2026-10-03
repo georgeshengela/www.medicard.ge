@@ -9,7 +9,7 @@ This policy explains how account, health and activity information is processed i
 
 ## Summary (App Review)
 
-MEDICARD is a free consumer health app. There are no paid digital subscriptions, unlocks or in-app purchases for app features. Before any personal data is sent to a third-party AI service, the app asks on a dedicated AI & Privacy screen. That screen names what may be sent and who receives it: OpenRouter, Inc.; Google Cloud Vertex AI; Novita AI; Microsoft Azure, including Azure Speech; and EvidenceMD Inc. The user must tap Allow AI Processing. Not Now, closing, registration, or accepting this policy does not authorize AI sharing. The choice is stored on the account. It is not asked again on later AI requests unless the user withdraws it in Profile → Privacy & Data, or the consent version changes. MEDI COACH (optional): a user may connect to an admin-verified fitness trainer. The trainer always sees the user's name, photo, age, sex, height and their shared session schedule; activity and workouts (including data read from Apple Health / Health Connect), nutrition, weight and progress photos are shared only if the user switches each category on, can be changed or stopped at any time, and stop the moment the connection ends. Health data is never used for advertising or sold. The full policy follows below.
+MEDICARD is a free consumer health app. There are no paid digital subscriptions, unlocks or in-app purchases for app features. Before any personal data is sent to a third-party AI service, the app asks on a dedicated AI & Privacy screen. That screen names what may be sent and who receives it: OpenRouter, Inc.; Google Cloud Vertex AI; Novita AI; Microsoft Azure, including Azure Speech; and EvidenceMD Inc. The user must tap Allow AI Processing. Not Now, closing, registration, or accepting this policy does not authorize AI sharing. The choice is stored on the account. It is not asked again on later AI requests unless the user withdraws it in Profile → Privacy & Data, or the consent version changes. MEDICOACH (optional): a user may connect to an admin-verified fitness trainer. The trainer always sees the user's name, photo, age, sex, height and their shared session schedule; activity and workouts (including data read from Apple Health / Health Connect), nutrition, weight and progress photos are shared only if the user switches each category on, can be changed or stopped at any time, and stop the moment the connection ends. Health data is never used for advertising or sold. The full policy follows below.
 
 # 1. Operator and contact
 
@@ -51,10 +51,10 @@ AI is used to prepare answers to your requests, explanations of health informati
 * age and sex; in the relevant feature, your health profile, conditions, allergies, medications, family history, goals and latest metrics;
 * images or documents you select for analysis, or text extracted from them;
 * the relevant cycle context for cycle AI tips;
-* for Medi Vet, the pet's profile, care information and the conversation;
+* for MEDIVET, the pet's profile, care information and the conversation;
 * for voice Medi, audio recorded with the button — sent through OpenRouter to Google Vertex AI for conversion to text; for spoken replies, the text of the reply — sent to Microsoft Azure Speech for real-time voicing.
 
-Adding your health profile to the symptom check is a separate choice. A person's health profile is not included in a Medi Vet request. The user's name is not added automatically from the account context to what is sent to AI, although a name you write or one contained in a document may be part of the request itself. Before uploading, you can cover identifying details that are not needed.
+Adding your health profile to the symptom check is a separate choice. A person's health profile is not included in a MEDIVET request. The user's name is not added automatically from the account context to what is sent to AI, although a name you write or one contained in a document may be part of the request itself. Before uploading, you can cover identifying details that are not needed.
 
 # 6. Recipients of AI data
 
@@ -62,7 +62,7 @@ Adding your health profile to the symptom check is a separate choice. A person's
 * Google — Google Cloud Vertex AI — processing of Gemini responses; policy: https://cloud.google.com/terms/cloud-privacy-notice
 * Novita AI — processing of Ling model responses; policy: https://novita.ai/legal/privacy-policy
 * Microsoft — Azure — auxiliary AI requests and real-time text-to-speech with Azure Speech; policy: https://privacy.microsoft.com/privacystatement
-* EvidenceMD Inc. — an alternative response when the selected clinical AI or another model fails; not used in Medi Vet; policy: https://evidencemd.ai/privacy-policy
+* EvidenceMD Inc. — an alternative response when the selected clinical AI or another model fails; not used in MEDIVET; policy: https://evidencemd.ai/privacy-policy
 
 Not every request is sent to all recipients at once. The recipient used depends on the selected model and feature; if it fails, the request may be retried with one of the alternative recipients listed.
 
@@ -118,7 +118,7 @@ Declining AI is not grounds for a registration fee or a paid plan. In this relea
 
 # 12. Medical information and changes to this policy
 
-MEDICARD and Medi Vet do not replace the assessment of a doctor or a veterinarian. An AI answer may be wrong or incomplete. In an emergency, contact your local emergency services.
+MEDICARD and MEDIVET do not replace the assessment of a doctor or a veterinarian. An AI answer may be wrong or incomplete. In an emergency, contact your local emergency services.
 
 A new version of the policy is published in the app and on the website. A material change to AI sharing requires separate, renewed consent.
 
@@ -134,9 +134,9 @@ EXIF and location metadata are removed from photos before publication. Posts and
 You can delete your own posts and comments in the space; when an account is deleted, the community records linked to it are deleted too. A minimal moderation history is kept for safety and for accountability of decisions. Turning off push notifications, sending a report, and blocking and unblocking an author are possible from the space's relevant management buttons. Questions: support@medicard.ge.
 
 
-# 14. MEDI COACH — sharing with a trainer
+# 14. MEDICOACH — sharing with a trainer
 
-MEDI COACH is a voluntary feature. You can connect with a fitness trainer whose profile and certificates MEDICARD verifies. Trainers are independent professionals, not MEDICARD employees. A connection is created only by your action — with a trainer's code, by a request from search or by accepting a trainer's invitation — and until then the trainer cannot see your data.
+MEDICOACH is a voluntary feature. You can connect with a fitness trainer whose profile and certificates MEDICARD verifies. Trainers are independent professionals, not MEDICARD employees. A connection is created only by your action — with a trainer's code, by a request from search or by accepting a trainer's invitation — and until then the trainer cannot see your data.
 
 Once connected, the trainer always sees your name, profile photo, age, sex, height and your shared session schedule. The other categories are off by default and are visible to the trainer only if you switch them on yourself: workouts and activity (steps, active minutes, heart rate, sleep and workouts, including those read from Apple Health or Health Connect), nutrition (diary, calories, macros, plan adherence), weight and goal, and progress photos. You switch on reading workouts from Apple Health / Health Connect separately, only with your own button.
 

@@ -6,7 +6,7 @@ import { askVetAi } from './petsVetEngine.js';
 import { AiEngineError } from './evidencemd.js';
 import { setAskOpenRouterPreparedForTests } from './aiEngine.js';
 
-describe('Medi Vet evaluation set (deterministic policy, not clinical proof)', () => {
+describe('MEDIVET evaluation set (deterministic policy, not clinical proof)', () => {
   it('classifies representative Georgian prompts', () => {
     const byId = Object.fromEntries(PETS_VET_EVAL_CASES.map((row) => [row.id, evaluateVetCase(row)]));
     assert.equal(byId['emergency-breathing'].flags.emergency, true);

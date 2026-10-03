@@ -4,7 +4,7 @@ import { rejectClientConversationPayload, shouldConsumeVetCredit } from './petsC
 import { trustedVetHistory } from './petsVetEngine.js';
 import { isPetsCareSchemaMissing, isPetsChatSchemaMissing } from './petsOwnership.js';
 
-describe('Medi Vet chat storage rules', () => {
+describe('MEDIVET chat storage rules', () => {
   it('rejects client-supplied system roles and fabricated history', () => {
     assert.throws(() => rejectClientConversationPayload({ messages: [{ role: 'system', content: 'x' }] }), /სერვერი/);
     assert.throws(() => rejectClientConversationPayload({ role: 'assistant' }), /სერვერი/);

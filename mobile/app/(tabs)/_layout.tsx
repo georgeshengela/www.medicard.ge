@@ -4,6 +4,7 @@ import { ka } from '@/i18n/ka';
 import { usePrefersReducedMotion } from '@/hooks/usePrefersReducedMotion';
 import { useThemeColors } from '@/theme/colors';
 import { useStackMotion } from '@/hooks/useStackMotion';
+import { ModuleWordmark } from '@/components/brand/ModuleWordmark';
 
 /** Tab screens only. The pill lives in the root layout, outside this stack. */
 export default function TabsLayout() {
@@ -23,7 +24,7 @@ export default function TabsLayout() {
     >
       <Stack.Screen name="home" options={{ headerShown: false }} />
       <Stack.Screen name="records" options={{ title: ka.records.title }} />
-      <Stack.Screen name="medications" options={{ title: ka.meds.hubTitle }} />
+      <Stack.Screen name="medications" options={{ title: ka.meds.hubTitle, headerTitle: () => <ModuleWordmark module="pill" size={21} /> }} />
       <Stack.Screen name="profile" options={{ title: ka.profile.title }} />
     </Stack>
   );

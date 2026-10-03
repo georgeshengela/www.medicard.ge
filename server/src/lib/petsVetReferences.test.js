@@ -6,7 +6,7 @@ import {
   retrievePetVetReferences,
 } from './petsVetReferences.js';
 
-describe('Medi Vet reference grounding', () => {
+describe('MEDIVET reference grounding', () => {
   it('retrieves curated source content, not a link list only', () => {
     const rows = retrievePetVetReferences({ speciesId: 'dog', query: 'რწყილი bravecto' });
     assert.ok(rows.length >= 1);

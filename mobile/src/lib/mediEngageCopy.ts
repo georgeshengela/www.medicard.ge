@@ -159,7 +159,7 @@ const ENGAGE_FALLBACKS_KA: Record<string, { title: string; body: string }> = {
   },
   "engage-quest-morning-plan": {
     "title": "დღის პატარა გეგმა მზადაა",
-    "body": "დღევანდელი Medi Quest შენს რიტმს მოვარგე — როცა მოგინდება, იქ დაგხვდება."
+    "body": "დღევანდელი MEDIQUEST შენს რიტმს მოვარგე — როცა მოგინდება, იქ დაგხვდება."
   },
   "engage-quest-weekly-progress": {
     "title": "კვირის მისია კარგად მიდის 💚",
@@ -326,7 +326,7 @@ const ENGAGE_FALLBACKS_EN: Record<string, { title: string; body: string }> = {
   },
   "engage-quest-morning-plan": {
     "title": "Today's small plan is ready",
-    "body": "I've fitted today's Medi Quest to your rhythm — it's there whenever you want it."
+    "body": "I've fitted today's MEDIQUEST to your rhythm — it's there whenever you want it."
   },
   "engage-quest-weekly-progress": {
     "title": "Your weekly mission is going well 💚",

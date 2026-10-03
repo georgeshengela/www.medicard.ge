@@ -80,7 +80,7 @@ function MedirunCard({ first }: { first: boolean }) {
 
   return (
     <View style={[s.section, { marginTop: first ? 22 : HUB.sectionGap }]}>
-      <HomeSectionHeading title="MEDIRUN" linkLabel={tx('ჰაბი', 'Hub')} onLink={() => router.push('/run' as never)} />
+      <HomeSectionHeading title="MEDIRUN" brand="run" linkLabel={tx('ჰაბი', 'Hub')} onLink={() => router.push('/run' as never)} />
       <View style={s.card}>
         <View style={s.hero} accessible={false} importantForAccessibility="no-hide-descendants">
           <Image source={RUN_HERO} accessibilityIgnoresInvertColors resizeMode="cover" style={s.heroImage} />

@@ -1,5 +1,5 @@
 /**
- * Central Medi Quest economy and safety ceilings.
+ * Central MEDIQUEST economy and safety ceilings.
  * Do not scatter reward constants. Admin will own these later.
  *
  * Expected Phase 1.1 earnings (not ceilings):

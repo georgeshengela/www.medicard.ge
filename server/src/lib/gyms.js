@@ -1,5 +1,5 @@
 /**
- * Georgian gym directory for MEDI COACH (brands → branches). The curated list lives in
+ * Georgian gym directory for MEDICOACH (brands → branches). The curated list lives in
  * src/data/gyms-ge.json; install-trainer.mjs inserts rows that are not in the table yet and never
  * touches existing rows. Low-confidence entries start HIDDEN until an admin confirms them.
  */

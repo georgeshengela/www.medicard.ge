@@ -331,7 +331,7 @@ export const PUSH_ENGAGE_TEMPLATE_DEFAULTS = [
     "group": "engage",
     "label": "Quest Smart · morning plan",
     "title": "დღის პატარა გეგმა მზადაა",
-    "body": "დღევანდელი Medi Quest შენს რიტმს მოვარგე — როცა მოგინდება, იქ დაგხვდება.",
+    "body": "დღევანდელი MEDIQUEST შენს რიტმს მოვარგე — როცა მოგინდება, იქ დაგხვდება.",
     "placeholders": [],
     "sample": {}
   },
@@ -383,6 +383,6 @@ export const PUSH_ENGAGE_TEMPLATE_EN = {
   "engage-quest-near-complete": { "title": "Almost there 💚", "body": "If you feel like it, a little movement will be enough." },
   "engage-quest-weather-window": { "title": "Looks like a nice time for a walk ☀️", "body": "If you feel like going outside, {windowStart}–{windowEnd} looks like a good window." },
   "engage-quest-comeback": { "title": "Let's keep it easy today 💚", "body": "No records needed — let's just get back into the rhythm." },
-  "engage-quest-morning-plan": { "title": "Your small plan for the day is ready", "body": "I fitted today's Medi Quest to your rhythm — it's there whenever you want it." },
+  "engage-quest-morning-plan": { "title": "Your small plan for the day is ready", "body": "I fitted today's MEDIQUEST to your rhythm — it's there whenever you want it." },
   "engage-quest-weekly-progress": { "title": "Your weekly mission is going well 💚", "body": "You're close to this week's goal — just a little left." }
 };

@@ -14,7 +14,7 @@ const MESSAGES_EN = Object.freeze({
   'ცხოველების მოდული ჯერ მზად არ არის.': 'My pets is not ready yet.',
   'ცხოველის ჯანმრთელობის ჩანაწერები ჯერ მზად არ არის.': 'Pet health records are not ready yet.',
   'ცხოველის მოვლის ჩანაწერები ჯერ მზად არ არის.': 'Pet care records are not ready yet.',
-  'Medi Vet-ის საუბარი ჯერ მზად არ არის.': 'Medi Vet chat is not ready yet.',
+  'MEDIVET-ის საუბარი ჯერ მზად არ არის.': 'MEDIVET chat is not ready yet.',
   // Pet profile
   'შეიყვანე ცხოველის სახელი.': "Enter your pet's name.",
   'აირჩიე სახეობა.': 'Choose a species.',
