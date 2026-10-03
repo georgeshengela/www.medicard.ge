@@ -1,18 +1,6 @@
-import React from 'react';
-import { FlaskConical } from 'lucide-react-native';
-import { AnalysisModule } from '@/components/AnalysisModule';
-import { ka } from '@/i18n/ka';
+import { Redirect } from 'expo-router';
 
-export default function LabModule() {
-  return (
-    <AnalysisModule
-      kind="LAB"
-      icon={FlaskConical}
-      uploadTitle={ka.modules.lab.uploadTitle}
-      uploadHint={ka.modules.lab.uploadHint}
-      contextLabel={ka.modules.lab.contextLabel}
-      contextPlaceholder={ka.modules.lab.contextPlaceholder}
-      allowPdf
-    />
-  );
+/** Old links, push routes and Medi handoffs: the lab upload now lives in MEDISCAN. */
+export default function Legacy() {
+  return <Redirect href="/scan?type=lab" />;
 }

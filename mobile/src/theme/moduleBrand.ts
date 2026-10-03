@@ -11,7 +11,7 @@
  * Utility areas (records, visits, labs, water, …) keep plain names on purpose.
  * The site (`server/public/js/module-brand.js`) mirrors these values — keep them in sync.
  */
-export type ModuleBrandId = 'run' | 'cycle' | 'food' | 'pill' | 'quest' | 'vet' | 'coach' | 'medi';
+export type ModuleBrandId = 'run' | 'cycle' | 'food' | 'pill' | 'quest' | 'vet' | 'coach' | 'scan' | 'medi';
 
 export type ModuleBrand = {
   id: ModuleBrandId;
@@ -63,6 +63,12 @@ export const MODULE_BRANDS: Record<ModuleBrandId, ModuleBrand> = {
     id: 'coach', suffix: 'COACH', name: 'MEDICOACH',
     ink: { light: '#475569', dark: '#CBD5E1' },
     gradient: ['#0F172A', '#1F2937', '#475569'], glow: 'rgba(148,163,184,0.30)', onHero: '#CBD5E1',
+  },
+  // MEDISCAN (owner 2026-10-03): lab sheets, imaging and skin photos read in one chat. Amber = the scanner's light.
+  scan: {
+    id: 'scan', suffix: 'SCAN', name: 'MEDISCAN',
+    ink: { light: '#B45309', dark: '#FBBF24' },
+    gradient: ['#78350F', '#D97706', '#FBBF24'], glow: 'rgba(251,191,36,0.35)', onHero: '#FDE68A',
   },
   medi: {
     id: 'medi', suffix: '', name: 'MEDI',

@@ -53,16 +53,16 @@ const TYPE_LOOK: Record<string, { icon: LucideIcon; ink: HubInk }> = {
 };
 
 const ADD_TILES: HubTile[] = [
-  { key: 'lab', title: ka.records.addLab, detail: tx('ფოტო ან PDF — ნორმებით', 'Photo or PDF — with reference ranges'), href: '/lab/analyze', icon: FlaskConical, ink: 'blue' },
-  { key: 'imaging', title: ka.records.addImaging, detail: tx('რენტგენი, ექო, MRI', 'X-ray, ultrasound, MRI'), href: '/module/imaging', icon: ScanLine, ink: 'sky' },
-  { key: 'skin', title: tx('კანი', 'Skin'), detail: tx('ფოტოს შეფასება', 'Photo check'), href: '/module/skin', icon: ScanFace, ink: 'rose' },
+  { key: 'lab', title: ka.records.addLab, detail: tx('ფოტო ან PDF — ნორმებით', 'Photo or PDF — with reference ranges'), href: '/scan?type=lab', icon: FlaskConical, ink: 'blue' },
+  { key: 'imaging', title: ka.records.addImaging, detail: tx('რენტგენი, ექო, MRI', 'X-ray, ultrasound, MRI'), href: '/scan?type=imaging', icon: ScanLine, ink: 'sky' },
+  { key: 'skin', title: tx('კანი', 'Skin'), detail: tx('ფოტოს შეფასება', 'Photo check'), href: '/scan?type=skin', icon: ScanFace, ink: 'rose' },
   { key: 'symptoms', title: tx('სიმპტომები', 'Symptoms'), detail: tx('აღწერე, რა გაწუხებს', 'Describe what bothers you'), href: '/symptoms', icon: Stethoscope, ink: 'teal' },
 ];
 
 /** The header „+“ sheet. */
 const UPLOADS = [
-  { text: ka.records.addLab, href: '/lab/analyze' },
-  { text: ka.records.addImaging, href: '/module/imaging' },
+  { text: ka.records.addLab, href: '/scan?type=lab' },
+  { text: ka.records.addImaging, href: '/scan?type=imaging' },
 ];
 
 /** "ჩემი ბარათი" — lab results, saved analyses and every conversation with Medi, in the Home hub language. */

@@ -37,7 +37,7 @@ export const enCare: Pick<Strings, 'upload' | 'records' | 'chats' | 'meds' | 'ph
     emptyHint: 'Upload a lab result or a scan and the report will be saved here',
     addCta: 'Upload',
     addLab: 'Lab result',
-    addImaging: 'Scan',
+    addImaging: 'Imaging',
     filterAll: 'All',
     deleteConfirm: 'Are you sure you want to delete this record?',
     types: {

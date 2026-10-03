@@ -1,20 +1,6 @@
-import React from 'react';
-import { ScanLine } from 'lucide-react-native';
-import { AnalysisModule } from '@/components/AnalysisModule';
-import { ka } from '@/i18n/ka';
+import { Redirect } from 'expo-router';
 
-export default function ImagingModule() {
-  return (
-    <AnalysisModule
-      kind="IMAGING"
-      icon={ScanLine}
-      uploadTitle={ka.modules.imaging.uploadTitle}
-      uploadHint={ka.modules.imaging.uploadHint}
-      contextLabel={ka.modules.imaging.contextLabel}
-      contextPlaceholder={ka.modules.imaging.contextPlaceholder}
-      bodyRegions={[...ka.modules.imaging.regions]}
-      regionLabel={ka.modules.imaging.regionLabel}
-      regionRequired={ka.modules.imaging.regionRequired}
-    />
-  );
+/** Old links, push routes and Medi handoffs: the imaging now lives in MEDISCAN. */
+export default function Legacy() {
+  return <Redirect href="/scan?type=imaging" />;
 }

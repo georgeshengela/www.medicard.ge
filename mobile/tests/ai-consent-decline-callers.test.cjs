@@ -79,7 +79,7 @@ test('every mobile AI caller handles a declined disclosure calmly (isAiConsentDe
   for (const known of [
     'src/components/medi/MediChat.tsx', 'app/symptoms/analyzing.tsx', 'app/nutrition/diary.tsx', 'app/nutrition/recipe.tsx', 'app/module/skincare.tsx',
     'app/medications/interaction.tsx', 'app/health-metrics/weight/index.tsx', 'app/(auth)/profile-setup/results.tsx',
-    'app/pets/[id]/chat.tsx', 'src/components/AnalysisModule.tsx', 'src/components/lab/LabAlignCard.tsx',
+    'app/pets/[id]/chat.tsx', 'src/components/scan/ScanChat.tsx', 'src/components/lab/LabAlignCard.tsx',
     'src/components/cycle/CycleInsights.tsx',
   ]) assert.ok(callers.includes(known), `${known} is still found as an AI caller (update the list if it moved)`);
   assert.ok(/isAiConsentDeclined\(error\)\) \{\s*d\.onNotice\(aiConsentDeclinedText\(\)\)/.test(read(join(mobile, 'src', 'lib', 'assistantVoiceSession.ts'))),
@@ -88,7 +88,7 @@ test('every mobile AI caller handles a declined disclosure calmly (isAiConsentDe
 
 test('the decline branch never shows an error, an error alert or an error haptic', () => {
   for (const rel of [
-    'app/symptoms/analyzing.tsx', 'src/components/AnalysisModule.tsx', 'src/components/lab/LabAlignCard.tsx', 'app/nutrition/diary.tsx',
+    'app/symptoms/analyzing.tsx', 'src/components/scan/ScanChat.tsx', 'src/components/lab/LabAlignCard.tsx', 'app/nutrition/diary.tsx',
     'app/nutrition/recipe.tsx', 'app/module/skincare.tsx', 'app/medications/interaction.tsx', 'app/health-metrics/weight/index.tsx',
     'app/(auth)/profile-setup/results.tsx', 'src/components/cycle/CycleInsights.tsx', 'app/pets/[id]/chat.tsx',
   ]) {
@@ -109,7 +109,7 @@ test('the screens render the shared calm note (or its line) with a neutral â€žáƒ
   assert.match(note, /aiConsentRetryLabel\(\)/);
   assert.doesNotMatch(note, /danger|#DC2626|#F43F5E|Haptics/i, 'the note has no error colours and no haptics');
   for (const rel of [
-    'app/symptoms/analyzing.tsx', 'src/components/AnalysisModule.tsx', 'src/components/lab/LabAlignCard.tsx', 'app/nutrition/diary.tsx',
+    'app/symptoms/analyzing.tsx', 'src/components/scan/ScanChat.tsx', 'src/components/lab/LabAlignCard.tsx', 'app/nutrition/diary.tsx',
     'app/module/skincare.tsx', 'app/medications/interaction.tsx', 'app/health-metrics/weight/index.tsx',
     'app/(auth)/profile-setup/results.tsx', 'app/pets/[id]/chat.tsx',
   ]) assert.match(read(join(mobile, rel)), /<AiConsentDeclinedNote[^>]*onRetry=/, `${rel} renders AiConsentDeclinedNote with a retry`);

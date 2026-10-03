@@ -1,17 +1,6 @@
-import React from 'react';
-import { Stethoscope } from 'lucide-react-native';
-import { AnalysisModule } from '@/components/AnalysisModule';
-import { ka } from '@/i18n/ka';
+import { Redirect } from 'expo-router';
 
-export default function SkinModule() {
-  return (
-    <AnalysisModule
-      kind="SKIN"
-      icon={Stethoscope}
-      uploadTitle={ka.modules.skin.uploadTitle}
-      uploadHint={ka.modules.skin.uploadHint}
-      contextLabel={ka.modules.skin.contextLabel}
-      contextPlaceholder={ka.modules.skin.contextPlaceholder}
-    />
-  );
+/** Old links, push routes and Medi handoffs: the skin photo check now lives in MEDISCAN. */
+export default function Legacy() {
+  return <Redirect href="/scan?type=skin" />;
 }

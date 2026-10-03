@@ -99,6 +99,10 @@ export function featureForPath(segments: readonly string[]): FeatureKey | null {
       return 'medi';
     case 'symptoms':
       return 'symptoms';
+    case 'scan':
+      // MEDISCAN: the choice lives in the query (?type=lab|imaging|skin), see featureForHref. The screen
+      // itself only offers the choices that are on.
+      return null;
     case 'module':
       if (second === 'lab') return 'labs';
       if (second === 'imaging') return 'imaging';
@@ -151,6 +155,10 @@ function mediModeKey(query: string): FeatureKey {
 export function featureForHref(href: string): FeatureKey | null {
   const [path, query = ''] = String(href || '').split('#')[0].split('?');
   const segments = path.split('/').filter((s) => s && !s.startsWith('('));
+  if (segments[0] === 'scan') {
+    const type = (/(?:^|&)type=([^&#]*)/.exec(query)?.[1] ?? '').trim().toLowerCase();
+    return type === 'lab' || type === 'labs' ? 'labs' : type === 'imaging' ? 'imaging' : type === 'skin' ? 'skin' : null;
+  }
   const key = featureForPath(segments);
   if (key !== 'medi') return key;
   if (segments[0] === 'assistant') return mediModeKey(query);

@@ -118,13 +118,13 @@ export const HOME_FEATURE_GROUPS: { title: string; items: Feature[] }[] = [
       {
         title: tx('სამედიცინო გამოსახულება', 'Medical imaging'),
         detail: tx('გამოსახულების AI განხილვა', 'AI review of images'),
-        href: '/module/imaging',
+        href: '/scan?type=imaging',
         icon: ScanLine,
       },
       {
         title: tx('კანის შეფასება', 'Skin check'),
         detail: tx('ფოტოს მიხედვით AI ინფორმაცია', 'AI information from a photo'),
-        href: '/module/skin',
+        href: '/scan?type=skin',
         icon: ShieldCheck,
       },
       {

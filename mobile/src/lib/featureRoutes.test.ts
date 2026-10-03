@@ -139,6 +139,11 @@ describe('module switches in the app', () => {
       assert.equal(hrefAvailableIn(mediOff, href), false, href);
     }
     assert.equal(hrefAvailableIn(mediOff, '/lab'), true);
+    // MEDISCAN: each choice follows its own switch; the screen without a choice stays reachable.
+    assert.equal(hrefAvailableIn(mediOff, '/scan?type=imaging'), false);
+    assert.equal(hrefAvailableIn(mediOff, '/scan?type=skin'), false);
+    assert.equal(hrefAvailableIn(mediOff, '/scan?type=lab'), true);
+    assert.equal(hrefAvailableIn(mediOff, '/scan'), true);
     assert.equal(hrefAvailableIn(mediOff, '/(tabs)/records'), true);
   });
 

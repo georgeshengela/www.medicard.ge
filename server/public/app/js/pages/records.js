@@ -56,7 +56,7 @@ const IMAGING_REGIONS = [
 
 const KINDS = {
   IMAGING: {
-    title: t('ატვირთე სნიმარის ფოტო', 'Upload a photo of your scan'), hint: t('გადაუღე ეკრანს ან ფირს კარგ განათებაზე, ბრჭყვიალის გარეშე', 'Photograph the screen or film in good light, without glare'),
+    title: t('ატვირთე გამოსახულების ფოტო', 'Upload a photo of your scan'), hint: t('გადაუღე ეკრანს ან ფირს კარგ განათებაზე, ბრჭყვიალის გარეშე', 'Photograph the screen or film in good light, without glare'),
     contextLabel: t('დამატებითი ინფორმაცია', 'Additional information'), placeholder: t('მაგ. ტკივილი მარცხენა ბარძაყში, ოპერაციის შემდეგ', 'e.g. pain in the left thigh, after surgery'), regions: true,
   },
   SKIN: {
@@ -191,9 +191,9 @@ function openUploadChooser({ navigate, onSaved }) {
     title: t('ატვირთვა', 'Upload'),
     size: 'sm',
     body: h('div', { class: 'stack', style: { gap: '8px' } },
-      h('p', { class: 'muted', style: { fontSize: '14px', marginBottom: '6px' } }, t('ატვირთე ანალიზი ან სნიმარი და დასკვნა აქ შეინახება.', 'Upload a lab test or a scan and the review is saved here.')),
+      h('p', { class: 'muted', style: { fontSize: '14px', marginBottom: '6px' } }, t('ატვირთე ანალიზი ან გამოსახულება და დასკვნა აქ შეინახება.', 'Upload a lab test or a scan and the review is saved here.')),
       opt('flask', 'blue', t('ანალიზი', 'Lab test'), t('ფოტო ან PDF — ნორმებით', 'Photo or PDF — with reference ranges'), () => { m.close(); openLabUpload({ navigate, onSaved }); }),
-      opt('scanLine', 'sky', t('სნიმარი', 'Scan'), t('რენტგენი, ექო, MRI', 'X-ray, ultrasound, MRI'), () => { m.close(); openImageUpload('IMAGING', { navigate, onSaved }); }),
+      opt('scanLine', 'sky', t('გამოსახულება', 'Imaging'), t('რენტგენი, ექო, MRI', 'X-ray, ultrasound, MRI'), () => { m.close(); openImageUpload('IMAGING', { navigate, onSaved }); }),
       opt('scanFace', 'rose', t('კანი', 'Skin'), t('ფოტოს შეფასება', 'Photo check'), () => { m.close(); openImageUpload('SKIN', { navigate, onSaved }); })),
   });
 }
@@ -235,7 +235,7 @@ async function listPage(root, ctx) {
         card({ class: 'spotlight hero-card pad-lg rec-hero' },
           tile('file', 'teal', 48),
           h('h2', { style: { fontSize: '22px', marginTop: '14px' } }, t('ჩანაწერები ჯერ არ გაქვს', 'No records yet')),
-          h('p', { class: 'muted', style: { marginTop: '6px', maxWidth: '52ch' } }, t('ატვირთე ანალიზი ან სნიმარი და დასკვნა აქ შეინახება. Medi-სთან საუბრებიც აქ გამოჩნდება.', 'Upload a lab test or a scan and the review is saved here. Your Medi conversations show up here too.')),
+          h('p', { class: 'muted', style: { marginTop: '6px', maxWidth: '52ch' } }, t('ატვირთე ანალიზი ან გამოსახულება და დასკვნა აქ შეინახება. Medi-სთან საუბრებიც აქ გამოჩნდება.', 'Upload a lab test or a scan and the review is saved here. Your Medi conversations show up here too.')),
           h('div', { class: 'hstack', style: { marginTop: '18px' } }, button(t('ატვირთვა', 'Upload'), { variant: 'light', icon: 'upload', onClick: () => openUploadChooser({ navigate: ctx.navigate, onSaved: () => refresh().catch(() => {}) }) }))),
         addSection());
       return;
@@ -311,7 +311,7 @@ async function listPage(root, ctx) {
     const rows = state.records.filter((r) => (state.filter === 'ALL' || r.type === state.filter)
       && (!q || `${typeLabel(r.type)} ${r.aiAnalysis || ''}`.toLowerCase().includes(q)));
     if (!state.records.length) {
-      mount(listHost, card(empty(t('დასკვნები ჯერ არ გაქვს', 'You don’t have any reviews yet'), t('ატვირთე ანალიზი ან სნიმარი და დასკვნა აქ შეინახება.', 'Upload a lab test or a scan and the review is saved here.'))));
+      mount(listHost, card(empty(t('დასკვნები ჯერ არ გაქვს', 'You don’t have any reviews yet'), t('ატვირთე ანალიზი ან გამოსახულება და დასკვნა აქ შეინახება.', 'Upload a lab test or a scan and the review is saved here.'))));
       return;
     }
     mount(listHost, card({ class: 'flush' }, rows.length ? h('div', { class: 'list rec-list' }, rows.map((r) => {
@@ -341,7 +341,7 @@ async function listPage(root, ctx) {
       tile(ic, ink, 40), h('div', null, h('div', { class: 'card-title' }, title), h('div', { class: 'card-sub' }, sub)));
     return section(t('დამატება', 'Add'), h('div', { class: 'rec-add-grid' },
       !featureOn('labs') ? null : addTile('flask', 'blue', t('ანალიზი', 'Lab test'), t('ფოტო ან PDF — ნორმებით', 'Photo or PDF — with reference ranges'), () => openLabUpload({ navigate: ctx.navigate, onSaved: () => refresh().catch(() => {}) })),
-      !featureOn('imaging') ? null : addTile('scanLine', 'sky', t('სნიმარი', 'Scan'), t('რენტგენი, ექო, MRI', 'X-ray, ultrasound, MRI'), () => openImageUpload('IMAGING', { navigate: ctx.navigate, onSaved: () => refresh().catch(() => {}) })),
+      !featureOn('imaging') ? null : addTile('scanLine', 'sky', t('გამოსახულება', 'Imaging'), t('რენტგენი, ექო, MRI', 'X-ray, ultrasound, MRI'), () => openImageUpload('IMAGING', { navigate: ctx.navigate, onSaved: () => refresh().catch(() => {}) })),
       !featureOn('skin') ? null : addTile('scanFace', 'rose', t('კანი', 'Skin'), t('ფოტოს შეფასება', 'Photo check'), () => openImageUpload('SKIN', { navigate: ctx.navigate, onSaved: () => refresh().catch(() => {}) })),
       featureOn('medi') ? addTile('sparkles', 'teal', t('ჰკითხე Medi-ს', 'Ask Medi'), t('აღწერე, რა გაწუხებს', 'Describe what’s bothering you'), null, '/medi') : null));
   }

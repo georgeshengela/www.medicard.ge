@@ -93,12 +93,11 @@ import { HomeAccentContext, homeAccentFor } from '@/theme/homeAccent';
 import { useIsDark } from '@/theme/colors';
 import { tx } from '@/i18n/locale';
 
-/** Four AI check-ups, one per question a person actually has. */
+/** Two AI check-ups (owner 2026-10-03): symptoms, and MEDISCAN for anything to read. */
 const CHECKUP_TILES: HubTile[] = [
   { key: 'symptoms', title: tx('სიმპტომები', 'Symptoms'), detail: tx('აღწერე, რა და სად გაწუხებს', 'Describe what bothers you and where'), href: '/symptoms', icon: Stethoscope, ink: 'teal' },
-  { key: 'lab', title: tx('ლაბორატორია', 'Lab results'), detail: tx('ატვირთე ან ნახე შედეგები', 'Upload or view results'), href: '/lab', icon: FlaskConical, ink: 'blue' },
-  { key: 'imaging', title: tx('გამოსახულება', 'Imaging'), detail: tx('რენტგენი, ექო, MRI', 'X-ray, ultrasound, MRI'), href: '/module/imaging', icon: ScanLine, ink: 'sky' },
-  { key: 'skin', title: tx('კანი', 'Skin'), detail: tx('ფოტოს შეფასება და მოვლა', 'Photo check and care'), href: '/module/skin', icon: ScanFace, ink: 'rose' },
+  // MEDISCAN (owner 2026-10-03): lab results, imaging and skin photos in one chat with a choice.
+  { key: 'scan', title: 'MEDISCAN', detail: tx('ანალიზი, გამოსახულება, კანი', 'Lab tests, imaging, skin'), href: '/scan', icon: ScanLine, ink: 'amber' },
 ];
 
 /** Everything else a person manages here, one tile each, no duplicates of the blocks above. */
@@ -174,8 +173,9 @@ export default function Home() {
   const communityEntry = useCommunityEntry(user?.id, female) && isFeatureOn('community', features);
   const news = useAnnouncements();
   // AI check-ups: each tile has its own switch (symptoms, labs, imaging, skin); deep analysis is a Medi mode.
-  const checkupTiles = CHECKUP_TILES.filter((tile) => isHrefAvailable(tile.href, features));
-  const deepOn = isHrefAvailable(mediRoute({ mode: 'deep' }), features);
+  // MEDISCAN stands for three switches (lab, imaging, skin): it shows while any of them is on.
+  const scanOn = ['labs', 'imaging', 'skin'].some((key) => isFeatureOn(key, features));
+  const checkupTiles = CHECKUP_TILES.filter((tile) => (tile.key === 'scan' ? scanOn : isHrefAvailable(tile.href, features)));
   // Women's Home: question chips under „ჰკითხე Medi-ს“ open the consultation with the question typed in.
   const askChips = layout === 'women' && isHrefAvailable(mediRoute({ mode: 'doctor' }), features);
   // Women's Home keeps today's food inside „შენი დღე“ (under steps and water) when that block shows.
@@ -199,7 +199,7 @@ export default function Home() {
       hidden.add('ask');
       hidden.add('checkup');
     }
-    if (!checkupTiles.length && !deepOn) hidden.add('checkup');
+    if (!checkupTiles.length) hidden.add('checkup');
     if (!isFeatureOn('news', features)) hidden.add('news');
     // Reminders keep arriving while medications are paused; only the Home block goes.
     if (!medsOn) hidden.add('nextDose');
@@ -220,7 +220,7 @@ export default function Home() {
     if (!isFeatureOn('weight', features)) hidden.add('weightProgress');
     if (!layoutsOn) hidden.add('customize');
     return hidden;
-  }, [features, checkupTiles.length, deepOn, medsOn, stepsOn, waterOn, showMedsRing, cycleOn, nutritionOn, layoutsOn, foodInDay]);
+  }, [features, checkupTiles.length, medsOn, stepsOn, waterOn, showMedsRing, cycleOn, nutritionOn, layoutsOn, foodInDay]);
 
   // A new layout starts at its top, with a short fade (none under reduced motion).
   const scrollRef = useRef<ScrollView>(null);
@@ -409,27 +409,6 @@ export default function Home() {
       <View style={s.section}>
         {heading(tx('შემოწმება AI-სთან', 'Check with AI'))}
         {checkupTiles.length ? <HubTileGrid tiles={checkupTiles} /> : null}
-        {deepOn ? <View style={{ marginTop: checkupTiles.length ? 12 : 0 }}>
-          <HubFeatureCard
-            tone="spotlight"
-            stackLead
-            accessibilityLabel={tx('ღრმა ანალიზი Medi-სთან — დაწყება', 'Start a deep analysis with Medi')}
-            lead={
-              <View accessible={false} importantForAccessibility="no-hide-descendants" style={s.consiliumLead}>
-                {[Brain, ScanSearch, MessagesSquare].map((Icon, index) => (
-                  <View key={index} style={s.consiliumTile}>
-                    <Icon size={19} color="#99F6E4" strokeWidth={1.7} />
-                  </View>
-                ))}
-              </View>
-            }
-            title={tx('ღრმა ანალიზი', 'Deep analysis')}
-            body={tx('ერთი კითხვა — რამდენიმე სამედიცინო მიმართულების AI პასუხი და საერთო შეჯამება.', 'One question — AI answers from several medical specialties and a shared summary.')}
-            cta={tx('დაიწყე განხილვა', 'Start review')}
-            note={tx('AI განხილვაა, არა ექიმების კონსულტაცია.', 'This is an AI review, not a consultation with doctors.')}
-            onPress={() => open(mediRoute({ mode: 'deep' }))}
-          />
-        </View> : null}
       </View>
     ),
     profileNudge: completion.percent < 100 ? (

@@ -1,6 +1,6 @@
 import { Redirect } from 'expo-router';
 
-/** Old links and push routes: lab upload now lives under the one lab home. */
-export default function LabModuleRedirect() {
-  return <Redirect href="/lab/analyze" />;
+/** Old links, push routes and Medi handoffs: the lab upload now lives in MEDISCAN. */
+export default function Legacy() {
+  return <Redirect href="/scan?type=lab" />;
 }

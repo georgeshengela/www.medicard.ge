@@ -59,7 +59,7 @@ export default function LabHubScreen() {
         </Pressable>
         <View style={{ flex: 1 }} />
         <Pressable
-          onPress={() => router.push('/lab/analyze' as never)}
+          onPress={() => router.push('/scan?type=lab' as never)}
           style={{
             width: 40,
             height: 40,
@@ -162,7 +162,7 @@ export default function LabHubScreen() {
         ) : null}
         {!loading && !dates.length ? (
           <Pressable
-            onPress={() => router.push('/lab/analyze' as never)}
+            onPress={() => router.push('/scan?type=lab' as never)}
             style={{
               borderRadius: 16,
               borderWidth: 1,
