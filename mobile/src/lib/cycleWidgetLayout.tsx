@@ -7,9 +7,15 @@
  * arguments and `@expo/ui/swift-ui` components and modifiers — never module-scope values, hooks or other
  * imports. Every word and colour arrives in props (`cycleWidgetSnapshot.ts`), already in the app's
  * language. Empty props (nothing written yet, the gallery preview, a signed-out phone) draw the
- * neutral tile: „MEDICARD“ and a dot. Required lazily, iOS only (`cycleWidget.ts`).
+ * neutral tile: the logo and „MEDICARD“. Required lazily, iOS only (`cycleWidget.ts`).
+ *
+ * Look (owner pick 2026-10-04, variant A of `brand/cycle/widget/widget-variants.html`): the MEDICARD logo
+ * as a big, soft, tilted ornament cut by the corner — rose on a cycle tile, brand teal on the neutral one.
+ * There is no Path in `@expo/ui`, so the logo is built from two capsules (the cross), two capsules in the
+ * card colour (its hollow) and two ellipses (the leaf); the ornament's softness comes from colours
+ * pre-blended into the card (`markFrom`/`markTo`), because opacity would show the hollow pieces.
  */
-import { Capsule, Circle, HStack, Link, Spacer, Text, VStack, ZStack } from '@expo/ui/swift-ui';
+import { Capsule, Ellipse, HStack, Link, Spacer, Text, VStack, ZStack } from '@expo/ui/swift-ui';
 import {
   accessibilityLabel,
   containerBackground,
@@ -19,9 +25,11 @@ import {
   lineLimit,
   minimumScaleFactor,
   monospacedDigit,
+  offset,
   padding,
   privacySensitive,
-  strokeBorder,
+  rotationEffect,
+  scaleEffect,
   widgetURL,
 } from '@expo/ui/swift-ui/modifiers';
 import { createWidget, type WidgetEnvironment } from 'expo-widgets';
@@ -30,34 +38,79 @@ import type { CycleWidgetProps } from './cycleWidgetSnapshot';
 const MedicardCycleWidget = (props: Partial<CycleWidgetProps>, environment: WidgetEnvironment) => {
   'widget';
   const dark = environment.colorScheme === 'dark';
-  // Fallback = the cycle palette's card / ink / mutedSoft (tests compare them with cyclePalette.ts).
+  // Fallback = the cycle palette's card / ink / mutedSoft and the brand teal (tests compare them).
   const fallback = dark
-    ? { bg: '#17131C', ink: '#F7F0F4', muted: '#CDBFC8', dot: '#B4A5AF', button: '#C92A55', onButton: '#FFFFFF' }
-    : { bg: '#FFFFFF', ink: '#2A1F2D', muted: '#6B5E6E', dot: '#76687A', button: '#C92A55', onButton: '#FFFFFF' };
+    ? {
+        bg: '#17131C',
+        ink: '#F7F0F4',
+        muted: '#CDBFC8',
+        dot: '#B4A5AF',
+        button: '#C92A55',
+        onButton: '#FFFFFF',
+        logoFrom: '#0D9488',
+        logoTo: '#5EEAD4',
+        markFrom: '#152D32',
+        markTo: '#253E41',
+      }
+    : {
+        bg: '#FFFFFF',
+        ink: '#2A1F2D',
+        muted: '#6B5E6E',
+        dot: '#76687A',
+        button: '#C92A55',
+        onButton: '#FFFFFF',
+        logoFrom: '#0D9488',
+        logoTo: '#5EEAD4',
+        markFrom: '#E2F2F1',
+        markTo: '#ECFCFA',
+      };
   const c = (dark ? props.dark : props.light) ?? fallback;
   const brand = props.brand || 'MEDICARD';
   const neutral = !props.state || props.state === 'neutral';
   const medium = environment.widgetFamily === 'systemMedium';
   const openUrl = props.openUrl || 'medicard://';
   const tone = neutral ? 'neutral' : props.tone ?? 'calm';
+  // A timeline written by an older app build has no logo colours: fall back to the dot / no ornament.
+  const logoFrom = c.logoFrom || (neutral ? fallback.logoFrom : c.dot);
+  const logoTo = c.logoTo || (neutral ? fallback.logoTo : c.dot);
 
-  // Solid rose = a period day, dashed rose ring = an expected day, grey = everything else.
-  const Dot = ({ size }: { size: number }) =>
-    tone === 'expected' ? (
-      <Circle
-        modifiers={[
-          foregroundStyle('#00000000'),
-          strokeBorder({ content: c.dot, style: { lineWidth: 2, dash: [3, 2.5] }, shape: 'circle' }),
-          frame({ width: size, height: size }),
-        ]}
-      />
-    ) : (
-      <Circle modifiers={[foregroundStyle(c.dot), frame({ width: size, height: size })]} />
+  // The MEDICARD mark (assets/logo.svg, 36-unit grid): cross, its hollow, the leaf and the leaf's hollow.
+  const Logo = ({ size, from, to }: { size: number; from: string; to: string }) => {
+    const u = size / 36;
+    const fill =
+      from === to ? from : { type: 'linearGradient' as const, colors: [from, to], startPoint: { x: 0, y: 0 }, endPoint: { x: 1, y: 1 } };
+    return (
+      <ZStack modifiers={[frame({ width: size, height: size })]}>
+        <Capsule modifiers={[foregroundStyle(fill), frame({ width: 16.36 * u, height: 36 * u })]} />
+        <Capsule modifiers={[foregroundStyle(fill), frame({ width: 36 * u, height: 16.36 * u })]} />
+        <Capsule modifiers={[foregroundStyle(c.bg), frame({ width: 9.82 * u, height: 29.45 * u })]} />
+        <Capsule modifiers={[foregroundStyle(c.bg), frame({ width: 29.45 * u, height: 9.82 * u })]} />
+        <Ellipse modifiers={[foregroundStyle(fill), frame({ width: 23 * u, height: 10.9 * u }), rotationEffect(-45)]} />
+        <Ellipse modifiers={[foregroundStyle(c.bg), frame({ width: 14 * u, height: 4.6 * u }), rotationEffect(-45)]} />
+      </ZStack>
     );
+  };
+
+  // The ornament: a tilted logo cut by the corner (small: bottom right, medium: top right, behind the
+  // date). Drawn at 100 pt and scaled, so it never changes the layout; offsets assume the 16 pt margins.
+  const Ornament = () =>
+    c.markFrom && c.markTo ? (
+      <ZStack modifiers={[frame({ maxWidth: Infinity, maxHeight: Infinity, alignment: medium ? 'topTrailing' : 'bottomTrailing' })]}>
+        <ZStack
+          modifiers={[
+            frame({ width: 100, height: 100 }),
+            scaleEffect(medium ? 1.84 : 1.18),
+            rotationEffect(-14),
+            offset(medium ? { x: 4, y: 4 } : { x: 33, y: 35 }),
+          ]}>
+          <Logo size={100} from={c.markFrom} to={c.markTo} />
+        </ZStack>
+      </ZStack>
+    ) : null;
 
   const Header = () => (
     <HStack spacing={6}>
-      <Dot size={10} />
+      <Logo size={13} from={logoFrom} to={logoTo} />
       <Text modifiers={[font({ size: 11, weight: 'heavy' }), foregroundStyle(neutral ? c.ink : c.muted), lineLimit(1)]}>{brand}</Text>
       <Spacer />
     </HStack>
@@ -118,43 +171,53 @@ const MedicardCycleWidget = (props: Partial<CycleWidgetProps>, environment: Widg
     widgetURL(openUrl),
     accessibilityLabel(props.a11y || brand),
   ];
+  const fill = frame({ maxWidth: Infinity, maxHeight: Infinity });
 
   if (neutral) {
-    // Nothing about the cycle: the brand and a dot, centred like an app tile.
+    // Nothing about the cycle: the logo and the brand, centred like an app tile.
     return (
-      <VStack spacing={8} modifiers={[...root, frame({ maxWidth: Infinity, maxHeight: Infinity })]}>
-        <Dot size={14} />
-        <Text modifiers={[font({ size: 15, weight: 'heavy' }), foregroundStyle(c.ink), lineLimit(1)]}>{brand}</Text>
-      </VStack>
+      <ZStack modifiers={[...root, fill]}>
+        <Ornament />
+        <VStack spacing={8}>
+          <Logo size={34} from={logoFrom} to={logoTo} />
+          <Text modifiers={[font({ size: 15, weight: 'heavy' }), foregroundStyle(c.ink), lineLimit(1)]}>{brand}</Text>
+        </VStack>
+      </ZStack>
     );
   }
 
   if (!medium) {
     return (
-      <VStack alignment="leading" spacing={0} modifiers={[...root, frame({ maxWidth: Infinity, maxHeight: Infinity, alignment: 'topLeading' })]}>
-        <Header />
-        <Spacer />
-        <Answer />
-      </VStack>
+      <ZStack modifiers={[...root, fill]}>
+        <Ornament />
+        <VStack alignment="leading" spacing={0} modifiers={[frame({ maxWidth: Infinity, maxHeight: Infinity, alignment: 'topLeading' })]}>
+          <Header />
+          <Spacer />
+          <Answer />
+        </VStack>
+      </ZStack>
     );
   }
 
   return (
-    <HStack alignment="center" spacing={12} modifiers={[...root, frame({ maxWidth: Infinity, maxHeight: Infinity })]}>
-      <VStack alignment="leading" spacing={0} modifiers={[frame({ maxWidth: Infinity, maxHeight: Infinity, alignment: 'topLeading' })]}>
-        <Header />
-        <Spacer />
-        <Answer />
-      </VStack>
-      <VStack alignment="trailing" spacing={10} modifiers={[padding({ leading: 4 })]}>
-        {props.detail ? (
-          <Text modifiers={[font({ size: 12, weight: 'semibold' }), foregroundStyle(c.muted), lineLimit(1), privacySensitive()]}>
-            {props.detail}
-          </Text>
-        ) : null}
-        <Start />
-      </VStack>
-    </HStack>
+    <ZStack modifiers={[...root, fill]}>
+      <Ornament />
+      <HStack alignment="center" spacing={12} modifiers={[fill]}>
+        <VStack alignment="leading" spacing={0} modifiers={[frame({ maxWidth: Infinity, maxHeight: Infinity, alignment: 'topLeading' })]}>
+          <Header />
+          <Spacer />
+          <Answer />
+        </VStack>
+        <VStack alignment="trailing" spacing={10} modifiers={[padding({ leading: 4 })]}>
+          {props.detail ? (
+            <Text modifiers={[font({ size: 12, weight: 'semibold' }), foregroundStyle(c.ink), lineLimit(1), privacySensitive()]}>
+              {props.detail}
+            </Text>
+          ) : null}
+          <Start />
+        </VStack>
+      </HStack>
+    </ZStack>
   );
 };
 

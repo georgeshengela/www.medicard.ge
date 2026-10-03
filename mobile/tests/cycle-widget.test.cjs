@@ -160,31 +160,57 @@ test('window, today, period day, learning and tracking each render their words',
       assert.doesNotMatch(shown.join(' '), snap.CYCLE_WIDGET_FORBIDDEN, state);
     }
   }
-  // A period day has no start button; the expected day's dot is a dashed rose ring.
+  // A period day has no start button; the answer is rose on a period / expected day (cycle palette).
   assert.deepEqual(find(render(STATES.period, medium), 'LinkView'), []);
-  const ring = find(render(STATES.today, small), 'CircleView').find((c) => modifiers(c).includes('strokeBorder'));
-  assert.ok(ring, 'dashed ring on the expected day');
-  assert.deepEqual(modifier(ring, 'strokeBorder').style.dash, [3, 2.5]);
-  const solid = find(render(STATES.period, darkSmall), 'CircleView')[0];
-  assert.ok(JSON.stringify(solid).includes(cycleDark.period), 'dark mode period dot from the cycle palette');
+  const answerInk = (out, word) => modifier(find(out, 'TextView').find((t) => t.props.text === word), 'foregroundStyle').style.color;
+  assert.equal(answerInk(render(STATES.period, darkSmall), '3'), cycleDark.period, 'dark mode period answer');
+  assert.equal(answerInk(render(STATES.today, small), 'დღეს'), cycleLight.period, 'expected day answer');
 });
 
-test('discreet and empty props draw the neutral tile: „MEDICARD“, a dot, no cycle word, opens Home', () => {
+test('variant A: the MEDICARD logo in the header and as a tilted rose ornament in the corner', () => {
+  const render = widgetRuntime(shippedLayout('src/lib/cycleWidgetLayout.tsx', 'createWidget').layout);
+  for (const env of [small, medium, darkSmall]) {
+    const out = render(STATES.normal, env);
+    // Two logos (ornament + header), each: 4 capsules (cross + hollow) and 2 ellipses (leaf + hollow).
+    assert.equal(find(out, 'CapsuleView').length, 8 + (env === medium ? 1 : 0), `${env.widgetFamily}: logo capsules (+ the start button)`);
+    assert.equal(find(out, 'EllipseView').length, 4);
+    const ornament = find(out, 'ZStackView').find((z) => modifiers(z).includes('rotationEffect'));
+    assert.ok(ornament, 'the ornament is tilted');
+    assert.equal(modifier(ornament, 'rotationEffect').angle, -14);
+    const json = JSON.stringify(out);
+    const palette = env.colorScheme === 'dark' ? STATES.normal.dark : STATES.normal.light;
+    assert.ok(json.includes(palette.markFrom) && json.includes(palette.markTo), 'ornament colours from the snapshot');
+    assert.ok(!/#0D9488|#5EEAD4/i.test(json), 'no brand teal on a cycle tile');
+  }
+  // The ornament is pre-blended into the card: soft, and never the fertile turquoise.
+  assert.equal(snap.blendHex('#FFFFFF', '#C92A55', 0.17), STATES.normal.light.markTo);
+  // A timeline written by an older build (no logo colours) still renders, without the ornament.
+  const { logoFrom, logoTo, markFrom, markTo, ...oldLight } = STATES.normal.light;
+  const old = render({ ...STATES.normal, light: oldLight }, small);
+  assert.ok(texts(old).includes('მენსტრუაციამდე'));
+  assert.equal(find(old, 'EllipseView').length, 2, 'header logo only');
+});
+
+test('discreet and empty props draw the neutral tile: the teal logo, „MEDICARD“, no cycle word, opens Home', () => {
   const render = widgetRuntime(shippedLayout('src/lib/cycleWidgetLayout.tsx', 'createWidget').layout);
   for (const props of [STATES.discreet, {}, snap.neutralCycleWidget()]) {
     for (const env of [small, medium, darkSmall]) {
       const out = render(props, env);
       assert.deepEqual(texts(out), ['MEDICARD']);
       assert.deepEqual(find(out, 'LinkView'), []);
-      assert.equal(find(out, 'CircleView').length, 1);
+      assert.equal(find(out, 'EllipseView').length, 4, 'centre logo + ornament');
       assert.equal(modifier(out, 'widgetURL').url, 'medicard://');
+      const json = JSON.stringify(out);
+      assert.ok(json.includes('#0D9488'), 'brand teal logo');
+      for (const rose of [cycleLight.period, cycleDark.period, cycleLight.blush]) assert.ok(!json.includes(rose), `no cycle rose ${rose}`);
     }
   }
-  // The built-in fallback colours are the cycle palette's card / ink / mutedSoft.
+  // The built-in fallback colours are the cycle palette's card / ink and the snapshot's neutral ornament.
+  const neutral = snap.neutralCycleWidget();
   const light = JSON.stringify(render({}, small));
-  for (const hex of [cycleLight.card, cycleLight.ink, cycleLight.mutedSoft]) assert.ok(light.includes(hex), `light fallback ${hex}`);
+  for (const hex of [cycleLight.card, cycleLight.ink, neutral.light.markFrom, neutral.light.markTo]) assert.ok(light.includes(hex), `light fallback ${hex}`);
   const dark = JSON.stringify(render({}, darkSmall));
-  for (const hex of [cycleDark.card, cycleDark.ink, cycleDark.mutedSoft]) assert.ok(dark.includes(hex), `dark fallback ${hex}`);
+  for (const hex of [cycleDark.card, cycleDark.ink, neutral.dark.markFrom, neutral.dark.markTo]) assert.ok(dark.includes(hex), `dark fallback ${hex}`);
 });
 
 test('cycle words are privacy-sensitive (redacted on a locked device)', () => {

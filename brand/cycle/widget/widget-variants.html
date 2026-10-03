@@ -1,0 +1,249 @@
+<!doctype html>
+<html lang="ka">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cycle widget variants</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Georgian:wght@400;500;600;700;800&family=Nunito:wght@300;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --page: #F6F2F5;
+    --page-ink: #2A1F2D;
+    --page-muted: #6B5E6E;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--page);
+    color: var(--page-ink);
+    font-family: 'Noto Sans Georgian', system-ui, sans-serif;
+    padding: 40px 16px 64px;
+  }
+  .wrap { max-width: 1240px; margin: 0 auto; }
+  h1 { font-size: 26px; font-weight: 700; margin: 0 0 6px; }
+  .lead { color: var(--page-muted); font-size: 15px; margin: 0 0 32px; max-width: 70ch; line-height: 1.55; }
+
+  .variant { margin-bottom: 44px; }
+  .variant h2 { font-size: 19px; font-weight: 700; margin: 0 0 4px; }
+  .variant p { color: var(--page-muted); font-size: 14px; margin: 0 0 16px; max-width: 72ch; line-height: 1.5; }
+
+  .stage {
+    border-radius: 28px;
+    padding: 28px 24px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 22px;
+    align-items: flex-start;
+  }
+  .stage + .stage { margin-top: 12px; }
+  .stage.light { background: linear-gradient(150deg, #F3D9E3 0%, #E9E1F4 55%, #F7E6DA 100%); }
+  .stage.dark { background: linear-gradient(150deg, #120F22 0%, #1C1431 55%, #0B1220 100%); }
+  .cell { display: flex; flex-direction: column; gap: 8px; align-items: center; }
+  .cap { font-size: 12px; color: #6B5E6E; }
+  .dark .cap { color: #A99EB5; }
+
+  /* iOS widget geometry (iPhone 15 Pro Max), drawn at 1.25× */
+  .w {
+    position: relative;
+    overflow: hidden;
+    border-radius: 23px;
+    width: 170px; height: 170px;
+    zoom: 1.25;
+    font-family: 'Noto Sans Georgian', system-ui, sans-serif;
+    box-shadow: 0 6px 22px rgba(42, 31, 45, .10);
+  }
+  .w.m { width: 364px; }
+  .num { font-family: 'Nunito', system-ui, sans-serif; font-variant-numeric: tabular-nums; }
+  svg { display: block; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>MEDICARD ციკლი — ვიჯეტის 3 ვარიანტი</h1>
+  <p class="lead">ყველა ვარიანტი იხატება SwiftUI-ს ფორმებით, გრადიენტებითა და mask-ით, ამიტომ ახალი build არ სჭირდება — წავა OTA-თი. სიტყვები იგივეა, რაც დღეს (მხოლოდ მენსტრუაციის ოჯახი). დისკრეტულ რეჟიმში ვიჯეტი ნეიტრალურია: ლოგო ბრენდის ფერში და „MEDICARD“, ციკლის არაფერი.</p>
+  <div id="board"></div>
+</div>
+
+<svg width="0" height="0" style="position:absolute">
+  <defs>
+    <symbol id="logo" viewBox="24.75 12.75 36 36">
+      <path fill-rule="evenodd" clip-rule="evenodd" d="M42.75 12.75C47.2687 12.75 50.9318 16.4131 50.9318 20.9318V22.5682H52.5682C57.0869 22.5682 60.75 26.2313 60.75 30.75C60.75 35.2687 57.0869 38.9318 52.5682 38.9318H50.9318V40.5682C50.9318 45.0869 47.2687 48.75 42.75 48.75C38.2313 48.75 34.5682 45.0869 34.5682 40.5682V38.9318H32.9318C28.4131 38.9318 24.75 35.2687 24.75 30.75C24.75 26.2313 28.4131 22.5682 32.9318 22.5682H34.5682V20.9318C34.5682 16.4131 38.2313 12.75 42.75 12.75ZM50.8407 25.8409C50.0861 32.6671 44.6671 38.0861 37.8409 38.8407V40.5682C37.8409 43.2794 40.0388 45.4773 42.75 45.4773C45.4612 45.4773 47.6591 43.2794 47.6591 40.5682V37.2955C47.6591 36.3917 48.3917 35.6591 49.2955 35.6591H52.5682C55.2794 35.6591 57.4773 33.4612 57.4773 30.75C57.4773 28.0388 55.2794 25.8409 52.5682 25.8409H50.8407ZM42.75 16.0227C40.0388 16.0227 37.8409 18.2206 37.8409 20.9318V24.2045C37.8409 25.1083 37.1083 25.8409 36.2045 25.8409H32.9318C30.2206 25.8409 28.0227 28.0388 28.0227 30.75C28.0227 33.4612 30.2206 35.6591 32.9318 35.6591H34.6593C35.4139 28.8329 40.8329 23.4131 47.6591 22.6585V20.9318C47.6591 18.2206 45.4612 16.0227 42.75 16.0227ZM47.5225 25.9767C42.616 26.7391 38.7391 30.616 37.9767 35.5225C42.8838 34.7603 46.7603 30.8838 47.5225 25.9767Z" fill="currentColor"/>
+    </symbol>
+    <linearGradient id="gRoseL" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#F4B8C8"/><stop offset="1" stop-color="#C92A55"/></linearGradient>
+    <linearGradient id="gRoseD" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#FFC2D0"/><stop offset="1" stop-color="#E0567C"/></linearGradient>
+    <linearGradient id="gTeal" x1="0" y1="0" x2="1" y2="1"><stop offset=".2" stop-color="#0D9488"/><stop offset=".4" stop-color="#14B8A6"/><stop offset="1" stop-color="#5EEAD4"/></linearGradient>
+  </defs>
+</svg>
+
+<script>
+const P = {
+  light: { bg: '#FFFFFF', soft: '#FDEEF2', ink: '#2A1F2D', muted: '#6B5E6E', faint: '#E9DFE5', rose: '#C92A55', cta: '#C92A55', grad: 'url(#gRoseL)' },
+  dark:  { bg: '#17131C', soft: '#2A1620', ink: '#F7F0F4', muted: '#CDBFC8', faint: '#3A3140', rose: '#FF8FA8', cta: '#C92A55', grad: 'url(#gRoseD)' },
+};
+
+const STATES = {
+  countdown: { caption: 'მენსტრუაციამდე', value: '3', unit: 'დღე', note: 'სავარაუდოდ', detail: 'ხუთ, 8 ოქტ', start: 'დაიწყო', tone: 'expected', day: 25 },
+  period:    { caption: 'მენსტრუაციის დღე', value: '2', unit: '', note: 'დაიწყო ორშ, 5 ოქტ', detail: '', start: '', tone: 'period', day: 2 },
+};
+
+const PATH = document.querySelector('#logo path').getAttribute('d');
+const logoPath = (size, fill, opacity = 1, style = '') =>
+  `<svg width="${size}" height="${size}" viewBox="24.75 12.75 36 36" style="${style}"><path fill-rule="evenodd" d="${PATH}" fill="${fill}" opacity="${opacity}"/></svg>`;
+
+const cta = (c, label) => label
+  ? `<div style="height:36px;padding:0 20px;border-radius:18px;background:${c.cta};color:#fff;font-weight:700;font-size:13.5px;display:flex;align-items:center;justify-content:center;white-space:nowrap">${label}</div>`
+  : '';
+
+const answer = (c, s, big = 40, weight = 700) => `
+  <div style="font-size:12.5px;font-weight:600;color:${c.muted};line-height:1.25">${s.caption}</div>
+  <div style="display:flex;align-items:baseline;gap:5px;margin-top:1px">
+    <span class="num" style="font-size:${big}px;font-weight:${weight};line-height:1;color:${c.rose};letter-spacing:-.02em">${s.value}</span>
+    ${s.unit ? `<span style="font-size:15px;font-weight:600;color:${c.ink}">${s.unit}</span>` : ''}
+  </div>
+  ${s.note ? `<div style="font-size:11.5px;font-weight:500;color:${c.muted};margin-top:3px">${s.note}</div>` : ''}`;
+
+/* ---------- A · logo ornament ---------- */
+function variantA(theme, size, s) {
+  const c = P[theme];
+  const m = size === 'm';
+  const mark = logoPath(m ? 184 : 118, c.grad, theme === 'light' ? .17 : .28,
+    `position:absolute;${m ? 'right:-30px;top:-22px' : 'right:-26px;bottom:-28px'};transform:rotate(-14deg)`);
+  const head = `<div style="display:flex;align-items:center;gap:6px">${logoPath(13, c.rose)}<span style="font-size:10.5px;font-weight:800;letter-spacing:.02em;color:${c.muted}">MEDICARD</span></div>`;
+  const left = `<div style="position:relative;display:flex;flex-direction:column;justify-content:space-between;height:100%;padding:15px 16px">${head}<div>${answer(c, s, m ? 42 : 40)}</div></div>`;
+  if (!m) return `<div class="w" style="background:${c.bg}">${mark}${left}</div>`;
+  return `<div class="w m" style="background:${c.bg}">${mark}
+    <div style="position:relative;display:flex;height:100%">
+      <div style="flex:1">${left}</div>
+      <div style="display:flex;flex-direction:column;justify-content:flex-end;align-items:flex-end;gap:10px;padding:16px">
+        ${s.detail ? `<div style="font-size:12px;font-weight:600;color:${c.ink};background:${theme === 'light' ? 'rgba(255,255,255,.75)' : 'rgba(23,19,28,.6)'};padding:4px 10px;border-radius:10px">${s.detail}</div>` : ''}
+        ${cta(c, s.start)}
+      </div>
+    </div></div>`;
+}
+
+/* ---------- B · glow ---------- */
+function variantB(theme, size, s) {
+  const c = P[theme];
+  const m = size === 'm';
+  const bloom = theme === 'light'
+    ? 'radial-gradient(circle at 50% 50%, rgba(240,120,150,.55) 0%, rgba(244,184,200,.35) 38%, rgba(253,238,242,0) 70%)'
+    : 'radial-gradient(circle at 50% 50%, rgba(255,110,145,.42) 0%, rgba(201,42,85,.20) 40%, rgba(23,19,28,0) 70%)';
+  const base = theme === 'light' ? 'linear-gradient(160deg,#FFFFFF 0%,#FFF5F8 100%)' : 'linear-gradient(160deg,#1C1622 0%,#140F18 100%)';
+  const orb = `<div style="position:absolute;${m ? 'left:-10px;top:-6px;width:190px;height:190px' : 'left:-14px;top:12px;width:190px;height:190px'};background:${bloom};filter:blur(4px)"></div>`;
+  const head = `<div style="display:flex;align-items:center;gap:6px">${logoPath(12, c.rose)}<span style="font-size:10.5px;font-weight:800;letter-spacing:.02em;color:${c.muted}">MEDICARD</span></div>`;
+  const big = `
+    <div style="font-size:12.5px;font-weight:600;color:${c.ink};opacity:.8">${s.caption}</div>
+    <div style="display:flex;align-items:baseline;gap:6px;margin-top:2px">
+      <span class="num" style="font-size:${m ? 64 : 58}px;font-weight:300;line-height:.95;color:${c.ink};letter-spacing:-.03em">${s.value}</span>
+      ${s.unit ? `<span style="font-size:15px;font-weight:600;color:${c.ink}">${s.unit}</span>` : ''}
+    </div>
+    ${s.note ? `<div style="font-size:11.5px;font-weight:500;color:${c.muted};margin-top:4px">${s.note}</div>` : ''}`;
+  const left = `<div style="position:relative;display:flex;flex-direction:column;justify-content:space-between;height:100%;padding:15px 16px">${head}<div>${big}</div></div>`;
+  if (!m) return `<div class="w" style="background:${base}">${orb}${left}</div>`;
+  return `<div class="w m" style="background:${base}">${orb}
+    <div style="position:relative;display:flex;height:100%">
+      <div style="flex:1">${left}</div>
+      <div style="width:1px;background:${c.faint};margin:22px 0"></div>
+      <div style="display:flex;flex-direction:column;justify-content:space-between;align-items:flex-start;padding:16px 16px 16px 18px;width:150px">
+        <div>
+          <div style="font-size:11px;font-weight:600;color:${c.muted}">${s.detail ? 'სავარაუდო დღე' : 'დღეს'}</div>
+          <div style="font-size:15px;font-weight:700;color:${c.ink};margin-top:2px">${s.detail || 'ხუთ, 6 ოქტ'}</div>
+        </div>
+        ${cta(c, s.start) || `<div style="font-size:12px;font-weight:600;color:${c.rose}">ჩაწერა აპში</div>`}
+      </div>
+    </div></div>`;
+}
+
+/* ---------- C · bead ring ---------- */
+function ring(c, theme, s, d) {
+  const n = 28, r = d / 2 - 7, cx = d / 2, cy = d / 2;
+  let out = '';
+  for (let i = 1; i <= n; i++) {
+    const a = (i - 1) / n * Math.PI * 2 - Math.PI / 2;
+    const x = cx + r * Math.cos(a), y = cy + r * Math.sin(a);
+    const today = i === s.day;
+    const logged = i <= Math.min(5, s.day) && (s.tone === 'period' ? i <= s.day : true);
+    const expected = s.tone === 'period' && i > s.day && i <= 5;
+    const lived = i < s.day;
+    if (today) {
+      out += `<circle cx="${x}" cy="${y}" r="9" fill="${c.rose}" opacity=".18"/>`;
+      out += `<circle cx="${x}" cy="${y}" r="5.4" fill="${theme === 'light' ? '#FFFFFF' : '#F7F0F4'}" stroke="${c.rose}" stroke-width="2.2"/>`;
+    } else if (logged) {
+      out += `<circle cx="${x}" cy="${y}" r="3.4" fill="${c.rose}"/>`;
+    } else if (expected) {
+      out += `<circle cx="${x}" cy="${y}" r="3.2" fill="none" stroke="${c.rose}" stroke-width="1.3" stroke-dasharray="2 1.6"/>`;
+    } else if (lived) {
+      out += `<circle cx="${x}" cy="${y}" r="2.6" fill="${c.muted}" opacity=".55"/>`;
+    } else {
+      out += `<circle cx="${x}" cy="${y}" r="2.6" fill="none" stroke="${c.muted}" stroke-width="1.1" opacity=".7"/>`;
+    }
+  }
+  return `<svg width="${d}" height="${d}">${out}</svg>`;
+}
+function variantC(theme, size, s) {
+  const c = P[theme];
+  const m = size === 'm';
+  const bg = theme === 'light' ? 'radial-gradient(circle at 50% 48%, #FFF4F7 0%, #FFFFFF 62%)' : 'radial-gradient(circle at 50% 48%, #24161F 0%, #17131C 62%)';
+  const d = m ? 146 : 146;
+  const centre = `
+    <div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center">
+      ${logoPath(13, c.rose, 1, 'margin-bottom:4px')}
+      <div class="num" style="font-size:40px;font-weight:700;line-height:1;color:${c.ink};letter-spacing:-.02em">${s.value}</div>
+      <div style="font-size:10.5px;font-weight:600;color:${c.muted};margin-top:3px;line-height:1.2">${s.tone === 'period' ? 'მენსტრუაციის<br>დღე' : 'დღე დარჩა'}</div>
+    </div>`;
+  const dial = `<div style="position:relative;width:${d}px;height:${d}px">${ring(c, theme, s, d)}${centre}</div>`;
+  if (!m) return `<div class="w" style="background:${bg};display:flex;align-items:center;justify-content:center">${dial}</div>`;
+  return `<div class="w m" style="background:${bg};display:flex;align-items:center;padding:0 12px">
+    ${dial}
+    <div style="flex:1;display:flex;flex-direction:column;justify-content:center;gap:12px;padding-left:16px">
+      <div>
+        <div style="font-size:13px;font-weight:600;color:${c.muted}">${s.caption}</div>
+        <div style="font-size:19px;font-weight:700;color:${c.ink};margin-top:2px">${s.value}${s.unit ? ' ' + s.unit : ''}</div>
+        <div style="font-size:12px;font-weight:500;color:${c.muted};margin-top:2px">${s.detail ? s.note + ' · ' + s.detail : s.note}</div>
+      </div>
+      ${s.start ? `<div style="align-self:flex-start">${cta(c, s.start)}</div>` : ''}
+    </div></div>`;
+}
+
+/* ---------- neutral / discreet ---------- */
+function neutral(theme, size, variant) {
+  const c = P[theme];
+  const m = size === 'm';
+  const bg = theme === 'light' ? '#FFFFFF' : '#17131C';
+  const mark = variant === 'A'
+    ? logoPath(m ? 184 : 118, 'url(#gTeal)', theme === 'light' ? .12 : .2, `position:absolute;${m ? 'right:-30px;top:-22px' : 'right:-26px;bottom:-28px'};transform:rotate(-14deg)`)
+    : '';
+  return `<div class="w${m ? ' m' : ''}" style="background:${bg}">${mark}
+    <div style="position:relative;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px">
+      ${logoPath(variant === 'A' ? 34 : 42, 'url(#gTeal)')}
+      <div style="font-size:14px;font-weight:800;letter-spacing:.03em;color:${c.ink}">MEDICARD</div>
+    </div></div>`;
+}
+
+const VARIANTS = [
+  { id: 'A', fn: variantA, title: 'A · ლოგოს ორნამენტი',
+    text: 'ჩვენი ლოგო დიდად, ოდნავ მობრუნებული და კუთხეში ჩაჭრილი — ვარდისფერი გრადიენტით, ძალიან რბილად. ციფრი ვარდისფერია, ზემოთ პატარა ლოგო და MEDICARD. ყველაზე „ბრენდული“ ვარიანტი.' },
+  { id: 'B', fn: variantB, title: 'B · ნათება',
+    text: 'ციფრის უკან რბილი ვარდისფერი ნათება, ციფრი დიდი და თხელი — როგორც Home-ის ციკლის პასუხი. საშუალო ზომაზე მარჯვნივ თარიღი და „დაიწყო“. ყველაზე მშვიდი.' },
+  { id: 'C', fn: variantC, title: 'C · მარცვლების რკალი',
+    text: 'ციკლის ყოველი დღე ერთი მარცვალია: ვარდისფერი = მენსტრუაცია, წყვეტილი = სავარაუდო, მარგალიტი = დღეს. რკალი იხურება — ცენტრში რამდენი დღე დარჩა. ნაყოფიერი დღეები არ ჩანს.' },
+];
+
+const board = document.getElementById('board');
+for (const v of VARIANTS) {
+  let html = `<section class="variant"><h2>${v.title}</h2><p>${v.text}</p>`;
+  for (const theme of ['light', 'dark']) {
+    html += `<div class="stage ${theme}">
+      <div class="cell">${v.fn(theme, 's', STATES.countdown)}<span class="cap">მოლოდინი</span></div>
+      <div class="cell">${v.fn(theme, 'm', STATES.countdown)}<span class="cap">მოლოდინი · საშუალო</span></div>
+      <div class="cell">${v.fn(theme, 's', STATES.period)}<span class="cap">მენსტრუაციის დღე</span></div>
+      <div class="cell">${neutral(theme, 's', v.id)}<span class="cap">დისკრეტული</span></div>
+    </div>`;
+  }
+  html += `</section>`;
+  board.insertAdjacentHTML('beforeend', html);
+}
+</script>
+</body>
+</html>
