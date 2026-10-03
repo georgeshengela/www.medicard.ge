@@ -401,7 +401,7 @@ export function CycleLogTabs({
             </View>
           </View>
 
-          <Group title={ka.cycle.lifestyle} text>
+          <Group title={ka.cycle.lifestyle}>
             <CycleLifestyleFields
               sleepQuality={form.sleepQuality}
               stressLevel={form.stressLevel}

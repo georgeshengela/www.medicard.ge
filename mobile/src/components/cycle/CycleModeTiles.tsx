@@ -3,7 +3,7 @@ import { StyleSheet, Text, View } from 'react-native';
 import { CycleIconTile } from '@/components/cycle/CycleIconTile';
 import { FLOW_OPTIONS, MOOD_OPTIONS, PHYSICAL_SYMPTOMS, PREGNANCY_CHECKLIST, type CycleChip } from '@/constants/cycle';
 import { tx } from '@/i18n/locale';
-import { cycleGlyphFor, flowGlyphStyle, LEVEL_FIELD_GLYPH, levelGlyphOpacity, levelOf } from '@/lib/cycleIconMap';
+import { cycleGlyphFor, flowGlyphStyle, LEVEL_FIELD_GLYPH, levelGlyphOpacity, levelOnScale, type LifestyleField } from '@/lib/cycleIconMap';
 import { useCycleColors } from '@/theme/cycle';
 
 /**
@@ -116,8 +116,9 @@ export function CycleChipTiles({
 }
 
 /**
- * A level field (energy, sleep, stress): one glyph on every tile, the level as dots under the label and
- * a glyph that fades towards the low end; one choice, tapping the chosen one clears it.
+ * A level field (energy, sleep, stress, activity, caffeine, alcohol): one glyph on every tile, the level
+ * as dots under the label and a glyph that fades towards the low end; „none“ options are zero dots
+ * (`levelOnScale`). One choice, tapping the chosen one clears it.
  */
 export function CycleLevelTiles({
   field,
@@ -126,19 +127,20 @@ export function CycleLevelTiles({
   onChange,
   labelFor,
   disabled = false,
+  gap,
 }: {
-  field: keyof typeof LEVEL_FIELD_GLYPH;
+  field: LifestyleField;
   options: readonly string[];
   value: string | null;
   onChange: (next: string | null) => void;
   labelFor: (id: string) => string;
   disabled?: boolean;
+  gap?: number;
 }) {
-  const max = options.length;
   return (
-    <View style={s.row}>
+    <View style={[s.row, gap != null ? { columnGap: gap } : null]}>
       {options.map((id) => {
-        const level = levelOf(options, id) ?? 1;
+        const scale = levelOnScale(options, id) ?? { level: 1, max: options.length };
         return (
           <CycleIconTile
             key={id}
@@ -147,9 +149,9 @@ export function CycleLevelTiles({
             label={labelFor(id)}
             selected={value === id}
             disabled={disabled}
-            glyphOpacity={levelGlyphOpacity(level, max)}
-            level={level}
-            levelMax={max}
+            glyphOpacity={levelGlyphOpacity(scale.level, scale.max)}
+            level={scale.level}
+            levelMax={scale.max}
             levelName={null}
             onPress={() => onChange(value === id ? null : id)}
           />

@@ -33,7 +33,7 @@ export type CycleIconTileProps = {
   glyphScale?: number;
   glyphOpacity?: number;
   hollow?: boolean;
-  /** Strength or level under the label: `level` of `levelMax` dots (pain 1–3 of 3, energy 1–5 of 5). */
+  /** Strength or level under the label: `level` of `levelMax` dots (pain 1–3 of 3, energy 1–5 of 5; 0 = all empty, e.g. no caffeine). */
   level?: number | null;
   levelMax?: number;
   /** Spoken name of the level; pain tiles default to მსუბუქი / ზომიერი / ძლიერი, level tiles carry it in the label. */
@@ -123,7 +123,7 @@ export function CycleIconTile({
       >
         {label}
       </Text>
-      {level ? (
+      {level != null ? (
         <View style={s.dots} accessible={false}>
           {Array.from({ length: dots }, (_, i) => i + 1).map((n) => (
             <View key={n} style={[s.dot, { backgroundColor: n <= level ? ink : c.border }]} />

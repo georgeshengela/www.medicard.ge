@@ -65,6 +65,8 @@ const GLYPHS = {
   noAlcohol: 'nutrition/alcohol_cessation',
   lowBars: 'symbols/low_bars',
   mediumBars: 'symbols/medium_bars',
+  // lifestyle: energy (Health Icons has no battery — a bulb with a bolt)
+  energy: 'symbols/electricity',
   // moods
   calm: 'emotions/calm',
   happy: 'emotions/happy',

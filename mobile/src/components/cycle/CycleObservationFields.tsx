@@ -4,9 +4,10 @@ import { StyleSheet, Text, TextInput, View } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import { Check, X } from 'lucide-react-native';
 import { CycleIconRow, CycleIconTile, levelLabel } from '@/components/cycle/CycleIconTile';
+import { CycleLevelTiles } from '@/components/cycle/CycleModeTiles';
 import { usePainCoachMark } from '@/components/cycle/usePainCoachMark';
 import type { CycleCustomTag, CyclePainEntry, CyclePainSeverity, CyclePainType } from '@/lib/api';
-import { cycleGlyphFor } from '@/lib/cycleIconMap';
+import { cycleGlyphFor, type LifestyleField } from '@/lib/cycleIconMap';
 import {
   ALCOHOL_LEVELS,
   CAFFEINE_LEVELS,
@@ -32,62 +33,6 @@ import { nextPainSeverity, painLevel } from '@/lib/cycleQuickLogCopy';
 import { ka } from '@/i18n/ka';
 import { tx } from '@/i18n/locale';
 import { useCycleColors } from '@/theme/cycle';
-
-function ChipRow<T extends string>({
-  options,
-  value,
-  onChange,
-  labelFor,
-}: {
-  options: readonly T[];
-  value: T | null;
-  onChange: (next: T | null) => void;
-  labelFor: (id: T) => string;
-}) {
-  const c = useCycleColors();
-  return (
-    <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-      {options.map((id) => {
-        const on = value === id;
-        return (
-          <Pressable
-            key={id}
-            onPress={() => {
-              Haptics.selectionAsync().catch(() => undefined);
-              onChange(on ? null : id);
-            }}
-            accessibilityRole="button"
-            accessibilityState={{ selected: on }}
-            accessibilityLabel={on ? `${labelFor(id)}, ${ka.cycle.pregnancySelected}` : labelFor(id)}
-            style={{
-              minHeight: 44,
-              paddingHorizontal: 10,
-              borderRadius: 14,
-              justifyContent: 'center',
-              backgroundColor: on ? c.accentSoft : c.cardSoft,
-              borderWidth: 1,
-              borderColor: on ? c.brand : c.controlBorder,
-              flexDirection: 'row',
-              alignItems: 'center',
-              gap: 4,
-            }}
-          >
-            {on ? <Check size={12} color={c.brand} strokeWidth={2.5} /> : null}
-            <Text
-              style={{
-                color: on ? c.brand : c.ink,
-                fontFamily: 'NotoSansGeorgian_500Medium',
-                fontSize: 12,
-              }}
-            >
-              {labelFor(id)}
-            </Text>
-          </Pressable>
-        );
-      })}
-    </View>
-  );
-}
 
 /**
  * Pain for one day as tiles (brief §8.3, 2026-10-03): one tile per place, several places at once,
@@ -312,6 +257,10 @@ const pill = StyleSheet.create({
   },
 });
 
+/**
+ * „ცხოვრების წესი“ (brief §8.3): six objects — energy, sleep, stress, activity, caffeine, alcohol — each a
+ * row of level tiles with the level as dots under the label (`CycleLevelTiles`), one choice per row.
+ */
 export function CycleLifestyleFields({
   sleepQuality,
   stressLevel,
@@ -320,6 +269,8 @@ export function CycleLifestyleFields({
   alcohol,
   energy,
   onChange,
+  gap = 0,
+  inset = 10,
 }: {
   sleepQuality: string | null;
   stressLevel: string | null;
@@ -335,36 +286,38 @@ export function CycleLifestyleFields({
     alcohol?: string | null;
     energy?: string | null;
   }) => void;
+  /** Column gap of the tiles (0 lets five 70 pt tiles share one card). */
+  gap?: number;
+  /** Side inset of the titles, to line them up with the tiles' labels. */
+  inset?: number;
 }) {
   const c = useCycleColors();
-  const rows = [
-    { key: 'energy' as const, title: ka.cycle.energy, options: ENERGY_LEVELS, value: energy ?? null, labelFor: energyLabel },
-    { key: 'sleepQuality' as const, title: ka.cycle.sleep, options: SLEEP_QUALITIES, value: sleepQuality, labelFor: sleepLabel },
-    { key: 'stressLevel' as const, title: ka.cycle.stress, options: STRESS_LEVELS, value: stressLevel, labelFor: stressLabel },
-    { key: 'exerciseLevel' as const, title: ka.cycle.exercise, options: EXERCISE_LEVELS, value: exerciseLevel, labelFor: exerciseLabel },
-    { key: 'caffeine' as const, title: ka.cycle.caffeine, options: CAFFEINE_LEVELS, value: caffeine, labelFor: caffeineLabel },
-    { key: 'alcohol' as const, title: ka.cycle.alcohol, options: ALCOHOL_LEVELS, value: alcohol, labelFor: alcoholLabel },
+  const rows: { key: LifestyleField; title: string; options: readonly string[]; value: string | null; labelFor: (id: string) => string }[] = [
+    { key: 'energy', title: ka.cycle.energy, options: ENERGY_LEVELS, value: energy ?? null, labelFor: energyLabel },
+    { key: 'sleepQuality', title: ka.cycle.sleep, options: SLEEP_QUALITIES, value: sleepQuality, labelFor: sleepLabel },
+    { key: 'stressLevel', title: ka.cycle.stress, options: STRESS_LEVELS, value: stressLevel, labelFor: stressLabel },
+    { key: 'exerciseLevel', title: ka.cycle.exercise, options: EXERCISE_LEVELS, value: exerciseLevel, labelFor: exerciseLabel },
+    { key: 'caffeine', title: ka.cycle.caffeine, options: CAFFEINE_LEVELS, value: caffeine, labelFor: caffeineLabel },
+    { key: 'alcohol', title: ka.cycle.alcohol, options: ALCOHOL_LEVELS, value: alcohol, labelFor: alcoholLabel },
   ];
   return (
-    <View>
-      <Text style={{ color: c.muted, fontSize: 12, lineHeight: 18, marginBottom: 12 }}>{ka.cycle.lifestyleHint}</Text>
+    <View style={{ gap: 16 }}>
+      <Text style={{ color: c.muted, fontSize: 12, lineHeight: 18, paddingHorizontal: inset }}>{ka.cycle.lifestyleHint}</Text>
       {rows.map((row) => (
-        <View key={row.key} style={{ marginBottom: 14 }}>
+        <View key={row.key} style={{ gap: 10 }}>
           <Text
-            style={{
-              color: c.ink,
-              fontFamily: 'NotoSansGeorgian_700Bold',
-              fontSize: 14,
-              marginBottom: 8,
-            }}
+            accessibilityRole="header"
+            style={{ color: c.ink, fontFamily: 'NotoSansGeorgian_600SemiBold', fontSize: 13, lineHeight: 18, paddingHorizontal: inset }}
           >
             {row.title}
           </Text>
-          <ChipRow
+          <CycleLevelTiles
+            field={row.key}
             options={row.options}
-            value={row.value as never}
+            value={row.value}
             onChange={(next) => onChange({ [row.key]: next })}
             labelFor={row.labelFor}
+            gap={gap}
           />
         </View>
       ))}

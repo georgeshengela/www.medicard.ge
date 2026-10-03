@@ -96,7 +96,7 @@ const SYMPTOM: Record<string, CycleIconGlyph> = {
 const MUCUS: Record<string, CycleIconGlyph> = { dry: 'water', sticky: 'water', creamy: 'water', watery: 'water', eggwhite: 'water' };
 
 const LIFESTYLE: Record<string, CycleIconGlyph> = {
-  energy: 'bars',
+  energy: 'energy',
   sleepQuality: 'sleepy',
   stressLevel: 'nervous',
   exerciseLevel: 'running',
@@ -157,11 +157,28 @@ export function levelGlyphOpacity(level: number, max: number): number {
   return Math.round((0.45 + 0.55 * t) * 100) / 100;
 }
 
+/**
+ * A level on its scale: fields whose first option is „none“ (activity, caffeine, alcohol) count from 0
+ * — „არა“ is no dots filled — the others from 1 (energy 1–5, sleep and stress 1–3).
+ */
+export function levelOnScale(options: readonly string[], id: string | null | undefined): { level: number; max: number } | null {
+  const i = id ? options.indexOf(id) : -1;
+  if (i < 0) return null;
+  return options[0] === 'none' ? { level: i, max: options.length - 1 } : { level: i + 1, max: options.length };
+}
+
+/** The six lifestyle fields of the full log (brief §8.3 „ცხოვრების წესი“), in screen order. */
+export const LIFESTYLE_FIELDS = ['energy', 'sleepQuality', 'stressLevel', 'exerciseLevel', 'caffeine', 'alcohol'] as const;
+export type LifestyleField = (typeof LIFESTYLE_FIELDS)[number];
+
 /** Which glyph stands for a whole level field (one glyph per field, never per option). */
-export const LEVEL_FIELD_GLYPH: Record<'energy' | 'sleepQuality' | 'stressLevel', CycleIconGlyph> = {
-  energy: 'bars',
+export const LEVEL_FIELD_GLYPH: Record<LifestyleField, CycleIconGlyph> = {
+  energy: 'energy',
   sleepQuality: 'sleepy',
   stressLevel: 'nervous',
+  exerciseLevel: 'running',
+  caffeine: 'meal',
+  alcohol: 'alcohol',
 };
 
 /** Bleeding strength as glyph size and opacity (one drop, five amounts — Flo's drops). */

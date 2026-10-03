@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { CYCLE_ICON_SVG } from '../constants/cycleIconSvg.ts';
 import { FLOW_OPTIONS, MOOD_OPTIONS, PHYSICAL_SYMPTOMS, PREGNANCY_CHECKLIST } from '../constants/cycle.ts';
-import { cycleGlyphFor, KNOWN_GLYPH_IDS, LEVEL_FIELD_GLYPH, levelGlyphOpacity, levelOf, type CycleIconKind } from './cycleIconMap.ts';
+import { cycleGlyphFor, KNOWN_GLYPH_IDS, LEVEL_FIELD_GLYPH, LIFESTYLE_FIELDS, levelGlyphOpacity, levelOf, levelOnScale, type CycleIconKind } from './cycleIconMap.ts';
 import {
   PERI_BODY_MORE,
   PERI_HEADACHE_SYMPTOMS,
@@ -69,4 +69,20 @@ test('level tiles: 1-based position, one glyph per field, a readable opacity ram
   assert.equal(levelGlyphOpacity(5, 5), 1);
   assert.equal(levelGlyphOpacity(2, 3), 0.73);
   assert.equal(levelGlyphOpacity(1, 1), 1);
+});
+
+test('lifestyle: six fields, one glyph each, „none“ counts from zero', () => {
+  const EXERCISE = ['none', 'light', 'moderate', 'intense'];
+  assert.deepEqual([...LIFESTYLE_FIELDS], ['energy', 'sleepQuality', 'stressLevel', 'exerciseLevel', 'caffeine', 'alcohol']);
+  for (const field of LIFESTYLE_FIELDS) {
+    assert.ok(glyphs.has(LEVEL_FIELD_GLYPH[field]), field);
+    assert.equal(LEVEL_FIELD_GLYPH[field], cycleGlyphFor('lifestyle', field), `${field}: tile and day sheet share one glyph`);
+  }
+  assert.equal(new Set(LIFESTYLE_FIELDS.map((f) => LEVEL_FIELD_GLYPH[f])).size, 6, 'six different objects');
+  assert.deepEqual(levelOnScale(EXERCISE, 'none'), { level: 0, max: 3 });
+  assert.deepEqual(levelOnScale(EXERCISE, 'intense'), { level: 3, max: 3 });
+  assert.deepEqual(levelOnScale(ENERGY_LEVELS, 'very_low'), { level: 1, max: 5 });
+  assert.deepEqual(levelOnScale(SLEEP_QUALITIES, 'good'), { level: 3, max: 3 });
+  assert.equal(levelOnScale(SLEEP_QUALITIES, 'nope'), null);
+  assert.equal(levelOnScale(SLEEP_QUALITIES, null), null);
 });
