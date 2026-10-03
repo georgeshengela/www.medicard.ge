@@ -29,7 +29,7 @@ export default function AssistantScreen() {
   const { user } = useAuth();
   const router = useRouter();
   const theme = useThemeColors();
-  const params = useLocalSearchParams<{ mode?: string; sessionId?: string; prefill?: string }>();
+  const params = useLocalSearchParams<{ mode?: string; sessionId?: string; prefill?: string; handoff?: string }>();
   const features = useFeatureState();
   if (!user) return null;
   // Doctor and deep analysis can be paused from admin („მოდულები“); Medi itself is covered by ModuleGate.
@@ -43,7 +43,7 @@ export default function AssistantScreen() {
   const mode: MediMode = requestedOn || sessionId ? requested : 'medi';
   const apiMode = apiModeFor(mode);
   if (apiMode) {
-    return <MediConsultation apiMode={apiMode} sessionId={sessionId} prefill={requestedOn && typeof params.prefill === 'string' ? params.prefill : undefined} pausedMessage={pausedMessage}
+    return <MediConsultation apiMode={apiMode} sessionId={sessionId} prefill={requestedOn && typeof params.prefill === 'string' ? params.prefill : undefined} handoff={requestedOn && params.handoff === '1'} pausedMessage={pausedMessage}
       header={() => <MediHeader subtitle={ka.chat.mediModeSubtitles[mode]} mode={mode} modes={MEDI_MODES.filter(m => m === mode || modeOn(m))} onMode={next => router.replace(mediRoute({ mode: next }) as never)}
         onBack={() => (router.canGoBack() ? router.back() : router.replace('/(tabs)/home' as never))}
         right={<Pressable accessibilityRole="button" accessibilityLabel={tx('AI და კონფიდენციალურობა', 'AI and privacy')} onPress={() => router.push('/profile/ai-data' as never)} style={{ width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center' }}><SlidersHorizontal size={21} color={theme.text200} /></Pressable>} />} />;

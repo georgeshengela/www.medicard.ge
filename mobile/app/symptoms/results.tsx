@@ -14,6 +14,7 @@ import { FIGMA_SYMPTOMS, useFigmaSymptoms } from '@/constants/figmaSymptomsLayou
 import { DURATION_OPTIONS, PAIN_LEVELS } from '@/constants/symptomCatalog';
 import { ka } from '@/i18n/ka';
 import { useSymptomChecker } from '@/lib/symptomCheckerStore';
+import { mediPrefillRoute } from '@/lib/mediHandoff';
 import { useAuth } from '@/store/AuthContext';
 import type { SymptomRisk } from '@/types/symptoms';
 
@@ -188,7 +189,8 @@ export default function SymptomResultsScreen() {
         <SymptomCta
           label={ka.symptoms.talkDoctor}
           onPress={() =>
-            router.push(`/assistant?mode=doctor&prefill=${encodeURIComponent(state.symptoms.join(', '))}` as never)
+            // Her symptoms wait in memory (mediHandoff); the route carries only `handoff=1`.
+            router.push(mediPrefillRoute(user?.id, state.symptoms.join(', ')) as never)
           }
         />
         <Pressable onPress={() => router.replace('/symptoms/history' as never)} style={{ alignItems: 'center', marginTop: 12 }}>

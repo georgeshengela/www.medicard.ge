@@ -13,6 +13,8 @@ import { resolveInsightAction } from '@/lib/cycleInsightActions';
 import { scheduleCycleReminder } from '@/lib/notifications';
 import { ka } from '@/i18n/ka';
 import { useCycleColors } from '@/theme/cycle';
+import { mediPrefillRoute } from '@/lib/mediHandoff';
+import { useAuth } from '@/store/AuthContext';
 
 function toneAccent(c: ReturnType<typeof useCycleColors>, tone: string) {
   switch (tone) {
@@ -39,6 +41,7 @@ export function CycleInsightDetailSheet({ visible, card, headline, onClose }: Pr
   const c = useCycleColors();
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  const { user } = useAuth();
   const [busy, setBusy] = useState(false);
   /** Reminder outcome shown inside this sheet (a second native Modal on top is unreliable; no native alerts). */
   const [notice, setNotice] = useState<{ title: string; body: string; tone: 'ok' | 'warn' } | null>(null);
@@ -55,6 +58,9 @@ export function CycleInsightDetailSheet({ visible, card, headline, onClose }: Pr
     }, 220);
   };
 
+  /** The tip's text waits in memory (mediHandoff); the route carries only `handoff=1`. */
+  const openChat = (text: string) => router.push(mediPrefillRoute(user?.id, text) as never);
+
   const runManual = async () => {
     Haptics.selectionAsync().catch(() => undefined);
     if (plan.kind === 'info_only') {
@@ -68,10 +74,7 @@ export function CycleInsightDetailSheet({ visible, card, headline, onClose }: Pr
     if (plan.kind === 'open_chat' && plan.chatPrefill) {
       onClose();
       setTimeout(() => {
-        router.push({
-          pathname: '/assistant',
-          params: { mode: 'doctor', prefill: plan.chatPrefill! },
-        } as never);
+        openChat(plan.chatPrefill!);
       }, 220);
     }
   };
@@ -106,10 +109,7 @@ export function CycleInsightDetailSheet({ visible, card, headline, onClose }: Pr
       if (plan.kind === 'open_chat' && plan.chatPrefill) {
         onClose();
         setTimeout(() => {
-          router.push({
-            pathname: '/assistant',
-            params: { mode: 'doctor', prefill: plan.chatPrefill! },
-          } as never);
+          openChat(plan.chatPrefill!);
         }, 220);
       }
     } finally {

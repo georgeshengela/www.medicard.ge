@@ -7,6 +7,8 @@ import { ka } from '@/i18n/ka';
 import type { CycleBundle } from '@/lib/api';
 import { alertPresentation } from '@/lib/cyclePresentation.js';
 import { useCycleColors } from '@/theme/cycle';
+import { mediPrefillRoute } from '@/lib/mediHandoff';
+import { useAuth } from '@/store/AuthContext';
 
 type Props = {
   bundle: CycleBundle;
@@ -17,6 +19,7 @@ type Props = {
 export function CycleAlertsBanner({ bundle, excludeLate }: Props) {
   const c = useCycleColors();
   const router = useRouter();
+  const { user } = useAuth();
   const alerts = (bundle.alerts ?? []).filter((a) => !(excludeLate && alertPresentation(a).late));
   if (!alerts.length) return null;
 
@@ -29,7 +32,8 @@ export function CycleAlertsBanner({ bundle, excludeLate }: Props) {
     <Pressable
       onPress={() => {
         if (top.action === 'chat') {
-          router.push(`/assistant?mode=doctor&prefill=${encodeURIComponent(top.messageKa)}` as never);
+          // The alert text waits in memory (mediHandoff); the route carries only `handoff=1`.
+          router.push(mediPrefillRoute(user?.id, top.messageKa) as never);
         }
       }}
       style={{

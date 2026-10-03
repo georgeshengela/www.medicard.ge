@@ -20,7 +20,7 @@ import { useThemeColors } from '@/theme/colors';
 import { useAuth } from '@/store/AuthContext';
 import { consumeAssistantLaunch } from '@/lib/assistant';
 import type { CycleMediContext } from '@/lib/cycleMediContext';
-import { takeMediCycleContext } from '@/lib/mediHandoff';
+import { takeMediCycleContext, takeMediPrefill } from '@/lib/mediHandoff';
 import { MediContextChip } from '@/components/chat/MediContextChip';
 import { tx } from '@/i18n/locale';
 
@@ -32,7 +32,10 @@ import { tx } from '@/i18n/locale';
 type Props = {
   apiMode: 'DOCTOR' | 'CONSILIUM';
   sessionId?: string;
+  /** Fixed copy from the route (push notifications, neutral chip questions) — never health text. */
   prefill?: string;
+  /** `handoff=1`: a drafted question waits in memory (mediHandoff), consume-once, for this account. */
+  handoff?: boolean;
   /** Header with the mode switch, supplied by /assistant. */
   header: (profile: { title: string; icon: ReturnType<typeof getConversationalChatProfile>['icon'] }) => React.ReactNode;
   /**
@@ -47,7 +50,7 @@ export function MediConsultation(props: Props) {
   return <MediConsultationContent key={`${user?.id}:${props.apiMode}:${props.sessionId ?? 'new'}`} {...props} />;
 }
 
-function MediConsultationContent({ apiMode, sessionId: initialSessionId, prefill, header, pausedMessage }: Props) {
+function MediConsultationContent({ apiMode, sessionId: initialSessionId, prefill, handoff, header, pausedMessage }: Props) {
   const FIGMA_CHAT = useFigmaChat();
   const params = { mode: apiMode === 'CONSILIUM' ? 'consilium' : 'doctor', sessionId: initialSessionId, prefill };
   const profile = useMemo(() => getConversationalChatProfile(params.mode), [params.mode]);
@@ -81,7 +84,11 @@ function MediConsultationContent({ apiMode, sessionId: initialSessionId, prefill
   cycleContextRef.current = cycleContext;
   useEffect(() => {
     if (!user?.id || params.sessionId || pausedMessage) return;
-    const staged = takeMediCycleContext(user.id, typeof params.prefill === 'string' ? params.prefill : null);
+    // W2-8b: a drafted question (alert, tip, summary, lab, symptoms) arrives in memory, not in the URL.
+    const drafted = handoff ? takeMediPrefill(user.id) : null;
+    if (drafted) setDraft(drafted);
+    const question = drafted ?? (typeof params.prefill === 'string' ? params.prefill : null);
+    const staged = takeMediCycleContext(user.id, question);
     if (staged) setCycleContext(staged);
     // Once per mount: a second read finds nothing (consume-once).
     // eslint-disable-next-line react-hooks/exhaustive-deps

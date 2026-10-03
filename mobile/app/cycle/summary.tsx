@@ -32,6 +32,7 @@ import {
 import { loadCycleView } from '@/lib/cycleOffline';
 import { cycleHistoryPresentation } from '@/lib/cycleHistoryCopy';
 import { buildCycleReportHtmlFromSummary } from '@/lib/cycleReport';
+import { mediPrefillRoute } from '@/lib/mediHandoff';
 import { useAuth } from '@/store/AuthContext';
 import { useCycleColors } from '@/theme/cycle';
 import { appLang } from '@/i18n/locale';
@@ -550,12 +551,8 @@ export default function CycleSummary() {
               </Pressable>
               <CyclePrimaryButton
                 label={ka.cycle.openChat}
-                onPress={() =>
-                  router.push({
-                    pathname: '/assistant',
-                    params: { mode: 'doctor', prefill: chatContext },
-                  } as never)
-                }
+                // Period dates wait in memory (mediHandoff); the route carries only `handoff=1`.
+                onPress={() => router.push(mediPrefillRoute(user?.id, chatContext) as never)}
                 icon={MessageSquareText}
               />
             </View>

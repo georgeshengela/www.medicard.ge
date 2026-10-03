@@ -15,6 +15,8 @@ import { ka } from '@/i18n/ka';
 import { labFlagCounts, labParamMatches, type LabFlagFilter } from '@/lib/labFilter';
 import { summarizeLabMovers } from '@/lib/labMovers';
 import { labMediPrompt } from '@/lib/labMediPrompt';
+import { localAccountId } from '@/lib/localAccount';
+import { mediPrefillRoute } from '@/lib/mediHandoff';
 import { formatLabDateKa, isTodayYmd } from '@/lib/labExtract';
 import { labRowName } from '@/lib/labNames';
 
@@ -85,8 +87,8 @@ export default function LabHubScreen() {
             accessibilityRole="button"
             accessibilityLabel={ka.lab.askMediChat}
             onPress={() => {
-              const prefill = labMediPrompt(panels);
-              router.push({ pathname: '/assistant', params: prefill ? { mode: 'doctor', prefill } : { mode: 'doctor' } } as never);
+              // Lab values wait in memory (mediHandoff); the route carries only `handoff=1`.
+              router.push(mediPrefillRoute(localAccountId(), labMediPrompt(panels)) as never);
             }}
             style={{ flexDirection: 'row', alignItems: 'center', gap: 12, padding: 16, borderRadius: 16, backgroundColor: T.brandSoft }}
           >

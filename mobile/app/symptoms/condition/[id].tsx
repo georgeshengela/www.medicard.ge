@@ -9,6 +9,8 @@ import { SymptomGradientHeader } from '@/components/symptoms/SymptomGradientHead
 import { useFigmaSymptoms } from '@/constants/figmaSymptomsLayout';
 import { ka } from '@/i18n/ka';
 import { useSymptomChecker } from '@/lib/symptomCheckerStore';
+import { localAccountId } from '@/lib/localAccount';
+import { mediPrefillRoute } from '@/lib/mediHandoff';
 
 type Tab = 'overview' | 'treatment';
 
@@ -124,7 +126,8 @@ export default function SymptomConditionScreen() {
         <SymptomCta
           label={ka.symptoms.talkDoctor}
           onPress={() =>
-            router.push(`/assistant?mode=doctor&prefill=${encodeURIComponent(`${condition.nameKa}: ${condition.overviewKa}`)}` as never)
+            // The suggested condition waits in memory (mediHandoff); the route carries only `handoff=1`.
+            router.push(mediPrefillRoute(localAccountId(), `${condition.nameKa}: ${condition.overviewKa}`) as never)
           }
         />
       </SymptomFooter>

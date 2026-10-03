@@ -26,11 +26,16 @@ export function mediModeForSession(mode: string | null | undefined): MediMode {
   return mode === 'CONSILIUM' ? 'deep' : mode === 'DOCTOR' ? 'doctor' : 'medi';
 }
 
-export function mediRoute({ mode = 'medi', sessionId, prefill }: { mode?: MediMode; sessionId?: string | null; prefill?: string | null } = {}): string {
+/**
+ * `prefill` is for fixed copy only (push routes, neutral chip questions) — never text built from her
+ * data. Drafted health text goes through mediHandoff (`handoff: true` → `handoff=1`, no text).
+ */
+export function mediRoute({ mode = 'medi', sessionId, prefill, handoff }: { mode?: MediMode; sessionId?: string | null; prefill?: string | null; handoff?: boolean } = {}): string {
   const q = new URLSearchParams();
   if (mode !== 'medi') q.set('mode', mode);
   if (sessionId) q.set('sessionId', sessionId);
   if (prefill) q.set('prefill', prefill);
+  if (handoff) q.set('handoff', '1');
   const qs = q.toString();
   return '/assistant' + (qs ? '?' + qs : '');
 }

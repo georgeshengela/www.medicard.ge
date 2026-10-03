@@ -18,7 +18,8 @@ import { HUB } from '@/theme/hub';
  * W2-8: the tap also puts today's cycle context aside in memory (`prepareCycleAskMedi` — day, phase
  * estimate, what's ahead, today's pain and moods; never intimate fields, nothing while the cycle lock,
  * privacy mode or discreet notifications are on). The consultation shows it as a removable chip and
- * sends it only with her first question, after AI consent. The route still carries only the question.
+ * sends it only with her first question, after AI consent. The question waits in memory too; the
+ * route carries only the `handoff=1` marker (W2-8b).
  */
 const QUESTIONS: string[] = [
   tx('რა მეხმარება მენსტრუაციის ტკივილისას?', 'What helps with period pain?'),
