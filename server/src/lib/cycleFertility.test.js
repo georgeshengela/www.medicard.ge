@@ -80,8 +80,8 @@ describe('medical honesty — observations do not change the engine', () => {
   });
 });
 
-describe('AI context labels fertility tests as USER_LOGGED', () => {
-  it('puts OPK and pregnancy-test results in USER_LOGGED and keeps honesty rules', () => {
+describe('AI context never carries logged fertility tests (W3-5)', () => {
+  it('keeps OPK, pregnancy test, BBT and mucus out of the prompt; TTC keeps the forecast and honesty rules', () => {
     const predictions = buildPredictions(BASE_PRED);
     const prompt = buildCycleAiUserPrompt({
       profile: {
@@ -112,11 +112,12 @@ describe('AI context labels fertility tests as USER_LOGGED', () => {
     });
     const logged = prompt.slice(prompt.indexOf('USER_LOGGED:'), prompt.indexOf('ESTIMATED:'));
     const estimated = prompt.slice(prompt.indexOf('ESTIMATED:'), prompt.indexOf('CONDITIONS_SELF_REPORTED:'));
-    assert.match(logged, /ოვულაციის ტესტი=დადებითი/);
-    assert.match(logged, /ორსულობის ტესტი=უარყოფითი/);
-    assert.match(logged, /BBT=36.6/);
+    assert.match(logged, /2026-08-14: flow=none/);
+    assert.doesNotMatch(prompt, /ოვულაციის ტესტი|ორსულობის ტესტი=|BBT=|ლორწო=|36\.6|eggwhite|დადებითი|უარყოფითი/);
     assert.doesNotMatch(logged, /sexualActivity|სექსი/);
-    assert.doesNotMatch(estimated, /ოვულაციის ტესტი/);
+    // TTC still gets the calendar forecast (a date range, not a logged value).
+    assert.match(estimated, /სავარაუდო ნაყოფიერი ფანჯარა: /);
+    assert.match(estimated, /სავარაუდო ოვულაცია/);
     assert.match(prompt, /USER_LOGGED:/);
     for (const rule of CYCLE_FERTILITY_AI_RULES) {
       assert.match(prompt, new RegExp(rule.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));

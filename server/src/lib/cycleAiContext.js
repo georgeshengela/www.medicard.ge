@@ -1,13 +1,16 @@
 /**
  * Cycle AI / partner field classification.
  * Unknown keys are excluded by default. Do not pass raw CycleLog to EvidenceMD.
+ * What may travel is decided by the registry (`observationAiContextAllowed`: HEALTH sensitivity and
+ * aiDefaultAllowed), never by a hand list — BBT, ovulation / pregnancy tests, mucus, the ovulation
+ * mark, sex and sex drive, intimate symptoms, notes and tags never reach an AI prompt (W3-5).
  */
 
-import { formatCycleTestKa } from './cycleFertility.js';
 import {
   OBSERVATION_CATEGORIES,
   OBSERVATION_REGISTRY,
   getObservationDef,
+  observationAiContextAllowed,
   stripPainManagedSymptoms,
 } from './cycleObservationRegistry.js';
 import { parsePainEntries } from './cycleObservations.js';
@@ -39,13 +42,13 @@ const SEXUAL_SET = new Set(CYCLE_SEXUAL_SYMPTOM_KEYS);
 /** Physical / wellness chips that may enter CYCLE_WELLNESS. */
 export const CYCLE_AI_SYMPTOM_ALLOWLIST = Object.freeze(
   Object.values(OBSERVATION_REGISTRY)
-    .filter((item) => item.storage === 'symptoms' && item.aiDefaultAllowed)
+    .filter((item) => item.storage === 'symptoms' && observationAiContextAllowed(item.key))
     .map((item) => item.key),
 );
 
 export const CYCLE_AI_MOOD_ALLOWLIST = Object.freeze(
   Object.values(OBSERVATION_REGISTRY)
-    .filter((item) => item.storage === 'moods' && item.aiDefaultAllowed)
+    .filter((item) => item.storage === 'moods' && observationAiContextAllowed(item.key))
     .map((item) => item.key),
 );
 
@@ -78,7 +81,7 @@ export function classifyCycleSymptomKey(key) {
   const defn = getObservationDef(id);
   if (!defn) return CYCLE_FIELD_CATEGORIES.UNKNOWN;
   if (defn.category === OBSERVATION_CATEGORIES.SEXUAL_HEALTH) return CYCLE_FIELD_CATEGORIES.SEXUAL_HEALTH;
-  if (!defn.aiDefaultAllowed) return CYCLE_FIELD_CATEGORIES.UNKNOWN;
+  if (!observationAiContextAllowed(id)) return CYCLE_FIELD_CATEGORIES.UNKNOWN;
   if (defn.storage === 'moods' || defn.category === OBSERVATION_CATEGORIES.MOOD) {
     return CYCLE_FIELD_CATEGORIES.MOOD;
   }
@@ -102,9 +105,82 @@ function addCat(set, cat) {
   if (cat) set.add(cat);
 }
 
+/** Fields the serializer itself formats (each gated by the registry rule). */
+const SERIALIZED_LOG_FIELDS = new Set(['flow', 'symptoms', 'moods', 'painEntries', 'sleepQuality', 'stressLevel']);
+
+/** Row bookkeeping that is not an observation. */
+const NON_OBSERVATION_LOG_FIELDS = new Set([
+  'id',
+  'userId',
+  'date',
+  'createdAt',
+  'updatedAt',
+  'trackingContext',
+  'schemaVersion',
+  'source',
+  'clientUpdatedAt',
+  'user',
+  'observationSchemaVersion',
+  'observationAssessments',
+  'postpartumEpisodeId',
+]);
+
 /**
- * Allowlisted daily line for EvidenceMD. Notes, sex chips, unknown keys, libido,
- * sexualActivity, custom tags, caffeine, alcohol, exercise are omitted.
+ * CycleLog columns that hold fertility-tracking, intimate or private data. The serializer never reads
+ * them; registered ones are SENSITIVE / HIGHLY_SENSITIVE in the registry, and columns without a
+ * registry row (`bbtSource`, `wristTempDelta`) are pinned here explicitly. Tested.
+ */
+export const CYCLE_AI_PROTECTED_LOG_FIELDS = Object.freeze([
+  'bbt',
+  'bbtSource',
+  'wristTempDelta',
+  'ovulationTest',
+  'pregnancyTest',
+  'cervicalMucus',
+  'sexualActivity',
+  'libido',
+  'notes',
+  'customTagIds',
+]);
+
+const UNREGISTERED_FERTILITY_FIELDS = new Set(['bbtSource', 'wristTempDelta']);
+
+function hasValue(value) {
+  if (value == null || value === '') return false;
+  if (Array.isArray(value)) return value.length > 0;
+  if (typeof value === 'object') return Object.keys(value).length > 0;
+  return true;
+}
+
+function observationBag(raw) {
+  return raw && typeof raw === 'object' && !Array.isArray(raw) ? raw : {};
+}
+
+/** Which excluded category a field / bag key reports under (names only — never values). */
+function excludedCategoryFor(key) {
+  if (UNREGISTERED_FERTILITY_FIELDS.has(key)) return CYCLE_FIELD_CATEGORIES.FERTILITY;
+  const defn = getObservationDef(key);
+  if (!defn) return CYCLE_FIELD_CATEGORIES.UNKNOWN;
+  switch (defn.category) {
+    case OBSERVATION_CATEGORIES.FERTILITY:
+    case OBSERVATION_CATEGORIES.PREGNANCY_TEST:
+      return CYCLE_FIELD_CATEGORIES.FERTILITY;
+    case OBSERVATION_CATEGORIES.SEXUAL_HEALTH:
+      return CYCLE_FIELD_CATEGORIES.SEXUAL_HEALTH;
+    case OBSERVATION_CATEGORIES.FREE_TEXT:
+      return CYCLE_FIELD_CATEGORIES.PRIVATE_NOTES;
+    case OBSERVATION_CATEGORIES.LIFESTYLE:
+      return key === 'pregnancyChecklist' ? CYCLE_FIELD_CATEGORIES.PREGNANCY : CYCLE_FIELD_CATEGORIES.GENERAL_WELLNESS;
+    default:
+      return CYCLE_FIELD_CATEGORIES.UNKNOWN;
+  }
+}
+
+/**
+ * Allowlisted daily line for AI prompts: flow, pain, everyday symptoms / moods, sleep and stress —
+ * each only while its registry row passes `observationAiContextAllowed`. Every other field (BBT and
+ * its source, wrist temperature, OPK / pregnancy tests, mucus, the observations bag, sex, libido,
+ * notes, tags, lifestyle, unknown keys) is never read into the line, only counted as excluded.
  */
 export function serializeCycleLogForAi(log) {
   if (!log || typeof log !== 'object') {
@@ -114,9 +190,11 @@ export function serializeCycleLogForAi(log) {
   const excluded = new Set();
   const bits = [];
 
-  const flow = log.flow || 'none';
-  bits.push(`flow=${flow}`);
-  addCat(included, CYCLE_FIELD_CATEGORIES.BLEEDING);
+  if (observationAiContextAllowed('flow')) {
+    const flow = log.flow || 'none';
+    bits.push(`flow=${flow}`);
+    addCat(included, CYCLE_FIELD_CATEGORIES.BLEEDING);
+  }
 
   const painEntries = parsePainEntries(log.painEntries);
   const rawSymptoms = stripPainManagedSymptoms(
@@ -153,7 +231,7 @@ export function serializeCycleLogForAi(log) {
   bits.push(`სიმპტომები=${keptSymptoms.join(', ') || '—'}`);
   bits.push(`განწყობა=${keptMoods.join(', ') || '—'}`);
 
-  const pain = painEntries;
+  const pain = observationAiContextAllowed('pain') ? painEntries : [];
   if (pain.length) {
     const parts = pain
       .filter((p) => p && typeof p === 'object' && p.type && p.severity)
@@ -164,44 +242,26 @@ export function serializeCycleLogForAi(log) {
     }
   }
 
-  if (log.sleepQuality) {
+  if (log.sleepQuality && observationAiContextAllowed('sleepQuality')) {
     bits.push(`ძილი=${log.sleepQuality}`);
     addCat(included, CYCLE_FIELD_CATEGORIES.GENERAL_WELLNESS);
   }
-  if (log.stressLevel) {
+  if (log.stressLevel && observationAiContextAllowed('stressLevel')) {
     bits.push(`სტრესი=${log.stressLevel}`);
     addCat(included, CYCLE_FIELD_CATEGORIES.GENERAL_WELLNESS);
   }
 
-  if (log.ovulationTest) {
-    bits.push(`ოვულაციის ტესტი=${formatCycleTestKa(log.ovulationTest) || log.ovulationTest}`);
-    addCat(included, CYCLE_FIELD_CATEGORIES.FERTILITY);
-  }
-  if (log.pregnancyTest) {
-    bits.push(`ორსულობის ტესტი=${formatCycleTestKa(log.pregnancyTest) || log.pregnancyTest}`);
-    addCat(included, CYCLE_FIELD_CATEGORIES.FERTILITY);
-  }
-  if (log.bbt != null && Number.isFinite(Number(log.bbt))) {
-    bits.push(`BBT=${Number(log.bbt)}`);
-    addCat(included, CYCLE_FIELD_CATEGORIES.FERTILITY);
-  }
-  if (log.cervicalMucus) {
-    bits.push(`ლორწო=${log.cervicalMucus}`);
-    addCat(included, CYCLE_FIELD_CATEGORIES.FERTILITY);
-  }
-
-  if (log.notes) addCat(excluded, CYCLE_FIELD_CATEGORIES.PRIVATE_NOTES);
-  if (log.sexualActivity != null || log.libido != null) {
-    addCat(excluded, CYCLE_FIELD_CATEGORIES.SEXUAL_HEALTH);
-  }
-  if (Array.isArray(log.customTagIds) && log.customTagIds.length) {
-    addCat(excluded, CYCLE_FIELD_CATEGORIES.UNKNOWN);
-  }
-  if (log.exerciseLevel || log.caffeine || log.alcohol) {
-    addCat(excluded, CYCLE_FIELD_CATEGORIES.GENERAL_WELLNESS);
-  }
-  if (log.energy || log.observations?.energy) {
-    addCat(excluded, CYCLE_FIELD_CATEGORIES.UNKNOWN);
+  // Everything else on the row is never read into the line; it is only named as an excluded category.
+  for (const field of Object.keys(log)) {
+    if (SERIALIZED_LOG_FIELDS.has(field) || NON_OBSERVATION_LOG_FIELDS.has(field)) continue;
+    if (!hasValue(log[field])) continue;
+    if (field === 'observations') {
+      for (const [key, value] of Object.entries(observationBag(log.observations))) {
+        if (hasValue(value)) addCat(excluded, excludedCategoryFor(key));
+      }
+      continue;
+    }
+    addCat(excluded, excludedCategoryFor(field));
   }
 
   addCat(included, CYCLE_FIELD_CATEGORIES.GENERAL_CYCLE);
@@ -216,6 +276,7 @@ export function serializeCycleLogForAi(log) {
 export function inspectCycleAiCategories({ logs = [] } = {}) {
   const included = new Set();
   const excluded = new Set([
+    CYCLE_FIELD_CATEGORIES.FERTILITY,
     CYCLE_FIELD_CATEGORIES.SEXUAL_HEALTH,
     CYCLE_FIELD_CATEGORIES.PRIVATE_NOTES,
     CYCLE_FIELD_CATEGORIES.FREE_TEXT,

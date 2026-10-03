@@ -55,6 +55,28 @@ test('protected cycle cannot load observations into context', async () => {
   const result = await loadAssistantContext({ id: owner }, ['cycle'], 'human', db);
   assert.deepEqual(result.cycle.locked, true);
 });
+test('Medi cycle context never carries BBT, tests, mucus or intimate fields (W3-5)', async () => {
+  const row = {
+    id: 'l1', userId: owner, date: '2026-08-14', flow: 'light', symptoms: ['bloating', 'unprotected', 'vaginal_dryness', 'discharge'], moods: ['calm'],
+    painEntries: [], bbt: 36.73, bbtSource: 'apple_watch_wrist', wristTempDelta: 0.42, ovulationTest: 'positive', pregnancyTest: 'positive',
+    cervicalMucus: 'eggwhite', sexualActivity: true, libido: 5, notes: 'zzdiaryzz', customTagIds: ['zztagzz'],
+    observations: { ovulationMarked: true, pregnancyChecklist: ['prenatal_vitamin'], energy: 'very_low' },
+  };
+  const db = {
+    cycleProfile: { findUnique: async () => ({ privacyEnabled: false, mode: 'TRY_TO_CONCEIVE', avgCycleLength: 28, avgPeriodLength: 5, lastPeriodStart: '2026-08-01' }) },
+    cycleLog: { findMany: async q => { assert.equal(q.where.userId, owner); return [row]; } },
+  };
+  const result = await loadAssistantContext({ id: owner }, ['cycle'], 'human', db);
+  const text = JSON.stringify(result.cycle);
+  assert.match(text, /flow=light/);
+  assert.match(text, /შებერილობა/);
+  for (const leak of [/36\.73/, /0\.42/, /wrist/i, /eggwhite/, /positive/, /\bbbt\b|BBT/i, /ovulationTest|pregnancyTest|cervicalMucus|ovulationMarked|pregnancyChecklist/, /sexualActivity|libido/, /unprotected|vaginal_dryness|discharge/, /prenatal_vitamin|very_low/, /zzdiaryzz|zztagzz/]) {
+    assert.doesNotMatch(text, leak);
+  }
+  const keys = result.cycle.observationKeys.map(k => k.key);
+  assert.ok(keys.includes('flow') && keys.includes('cramps'));
+  for (const key of ['bbt', 'ovulationTest', 'pregnancyTest', 'cervicalMucus', 'ovulationMarked', 'sexualActivity', 'libido', 'notes', 'discharge', 'pregnancyChecklist']) assert.equal(keys.includes(key), false, key);
+});
 test('digital silence is detected before generative transcription, speech is not discarded', () => {
   const b = Buffer.alloc(46); b.write('RIFF'); b.writeUInt32LE(38, 4); b.write('WAVEfmt ', 8); b.writeUInt32LE(16, 16);
   b.writeUInt16LE(1, 20); b.writeUInt16LE(1, 22); b.writeUInt32LE(16000, 24); b.writeUInt32LE(32000, 28); b.writeUInt16LE(2, 32); b.writeUInt16LE(16, 34); b.write('data', 36); b.writeUInt32LE(2, 40);

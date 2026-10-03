@@ -19,11 +19,15 @@ export const CYCLE_TEST_RESULT_EN = {
   unclear: 'unclear',
 };
 
+/**
+ * Fertility rules for the cycle AI prompt. Logged tests, temperature, mucus and intimate fields are
+ * never in the prompt (W3-5, registry rule `observationAiContextAllowed`), so the rules only keep the
+ * model from inventing them or over-reading the calendar forecast (no fertile-window wording here:
+ * a gated or hidden forecast must not be brought up by a rule).
+ */
 export const CYCLE_FERTILITY_AI_RULES = [
-  'დადებითი ოვულაციის ტესტი (OPK) არ ადასტურებს, რომ ოვულაცია მოხდა — ეს მომხმარებლის აღრიცხული ტესტის შედეგია.',
-  'BBT-ის ერთი ან რამდენიმე გაზომვა არ ადასტურებს ოვულაციას.',
-  'ცერვიკალური ლორწო დაკვირვებაა, არა ნაყოფიერების დიაგნოზი.',
-  'ორსულობის ტესტის შედეგი მომხმარებლის აღრიცხვაა — ნუ დაისვამ ორსულობის დიაგნოზს და ნუ იტყვი „ორსულად ხარ“.',
+  'ნაყოფიერების პირადი დაკვირვებები და ინტიმური აღრიცხვები ამ პრომპტში არ არის — ნუ ივარაუდებ მათ და ნუ ჰკითხავ მათზე.',
+  'ნუ დაისვამ ორსულობის დიაგნოზს და ნუ იტყვი „ორსულად ხარ“.',
   'ნუ გამოიანგარიშებ ჩასახვის ალბათობას, ნაყოფიერების პროცენტს ან „დადასტურებულ ოვულაციას“.',
 ];
 

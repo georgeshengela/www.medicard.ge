@@ -1,7 +1,7 @@
 import { nutritionDashboard } from './nutritionProgramStore.js';
 import { prisma } from './prisma.js';
 import { serializeCycleLogForAi } from './cycleAiContext.js';
-import { OBSERVATION_REGISTRY } from './cycleObservationRegistry.js';
+import { OBSERVATION_REGISTRY, observationAiContextAllowed } from './cycleObservationRegistry.js';
 import { publicPetsCatalog } from './petsCatalog.js';
 
 export const ASSISTANT_CONTEXT_DOMAINS = ['profile', 'metrics', 'goals', 'medications', 'visits', 'cycle', 'records', 'consultations', 'activity', 'pets', 'nutrition'];
@@ -63,7 +63,7 @@ export async function loadAssistantContext(user, domains, scope, db = prisma, pe
       profile: pick(profile, ['mode', 'avgCycleLength', 'avgPeriodLength', 'lastPeriodStart', 'dueDate', 'isIrregular', 'conditions']),
       logs: (await db.cycleLog.findMany({ where: { userId }, take: 45, orderBy: { date: 'desc' } }))
         .map(r => ({ date: r.date, ...serializeCycleLogForAi(r) })),
-      observationKeys: Object.values(OBSERVATION_REGISTRY).filter(r => r.aiDefaultAllowed).map(r => pick(r, ['key', 'labelKa', 'label', 'storage', 'category'])),
+      observationKeys: Object.values(OBSERVATION_REGISTRY).filter(r => observationAiContextAllowed(r.key)).map(r => pick(r, ['key', 'labelKa', 'label', 'storage', 'category'])),
     };
   }
   if (requested.has('records')) context.records = (await db.medicalRecord.findMany({ where: { userId }, take: 12, orderBy: { createdAt: 'desc' } }))
