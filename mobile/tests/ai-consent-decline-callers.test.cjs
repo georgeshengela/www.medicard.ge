@@ -117,8 +117,8 @@ test('the screens render the shared calm note (or its line) with a neutral „�
   for (const rel of ['app/nutrition/diary.tsx', 'app/nutrition/recipe.tsx']) assert.match(read(join(mobile, rel)), /consentNotice=\{describeNotice\}/, rel);
   const sheet = read(join(mobile, 'src', 'components', 'nutrition', 'DescribeMealModal.tsx'));
   assert.match(sheet, /color: error \|\| voiceError \? c\.danger : c\.text200 \}\]\}>\{error \|\| voiceError \|\| consentNotice \|\| notice\}/, 'consentNotice renders in the neutral colour');
-  // Cycle tips fall back to the local tips silently; only a tap on refresh shows the calm line.
-  assert.match(read(join(mobile, 'src', 'components', 'cycle', 'CycleInsights.tsx')), /isAiConsentDeclined\(err\)\) \{\s*if \(refresh\) setDeclinedNote\(true\);/);
+  // Cycle tips fall back to the local tips silently; only a tap (refresh / „ჩართვა“) shows the calm line.
+  assert.match(read(join(mobile, 'src', 'components', 'cycle', 'CycleInsights.tsx')), /isAiConsentDeclined\(err\)\) \{\s*if \(refresh \|\| asked\) setDeclinedNote\(true\);\s*setGate\('ask'\);/);
 });
 
 test('web portal: every withAiConsent caller shows the calm note on decline, never a bare silent return or an error', () => {

@@ -10,7 +10,7 @@ import {
 } from '../ui.js';
 import { get, post, put, del } from '../api.js';
 import { barChart, ring } from '../charts.js';
-import { withAiConsent, aiDeclinedSlot } from '../aiConsent.js';
+import { withAiConsent, aiDeclinedSlot, readAiConsent } from '../aiConsent.js';
 import { featureOn, isFemale } from '../session.js';
 import { t, isEn, plural } from '../i18n.js';
 
@@ -744,6 +744,8 @@ export default async function cyclePage(root, ctx = {}) {
     pending: { add: new Set(), remove: new Set() },
     firstPaint: true,
     alive: true,
+    /** W3-2: AI consent read quietly (null = not known yet). The tips never open the disclosure on their own. */
+    aiOn: null,
   };
 
   if (!isFemale()) {
@@ -766,6 +768,9 @@ export default async function cyclePage(root, ctx = {}) {
       const tk = cycleToday(b).split('-').map(Number);
       state.cursor = { y: tk[0], m: tk[1] - 1 };
       render();
+      // GET /api/ai-consent only reads the state — it never shows the disclosure or sends anything to the AI.
+      readAiConsent().then((st) => { state.aiOn = st?.accepted === true; }, () => { state.aiOn = false; })
+        .then(() => { if (state.alive && state.bundle) render(); });
     } catch (e) {
       mount(root, pageHead(t('ციკლი', 'Cycle')), errorBox(e, load));
     }
@@ -914,7 +919,10 @@ export default async function cyclePage(root, ctx = {}) {
       action: state.editing ? null : button(t('თარიღების შესწორება', 'Edit dates'), { size: 'sm', variant: 'ghost', icon: 'edit', onClick: () => { state.editing = true; state.pending = { add: new Set(), remove: new Set() }; render(); } }),
     }));
     if (!v.caps.pregnancy) right.push(section(t('ციკლების ისტორია', 'Cycle history'), historyCard(b)));
-    right.push(section(t('დღის რჩევები', 'Tips for today'), tipsBlock(b, v, render)));
+    right.push(section(t('დღის რჩევები', 'Tips for today'), tipsBlock(b, v, render, {
+      on: state.aiOn,
+      set: (on) => { state.aiOn = on; },
+    })));
 
     mount(root, head, h('div', { class: 'cy-layout' }, h('div', { class: 'cy-col' }, left), h('div', { class: 'cy-col' }, right)));
     state.firstPaint = false;
@@ -1418,9 +1426,10 @@ function historyCard(b) {
 }
 
 /* ── Tips (CycleInsightsPanel variant="tips") ────────────────────────────── */
-function tipsBlock(b, v, rerender) {
+function tipsBlock(b, v, rerender, consent = { on: null, set: () => {} }) {
   const ai = b.profile?.aiInsights;
-  const aiCards = ai && ai.source === 'ai' && Array.isArray(ai.cards) ? ai.cards : null;
+  // Cached AI cards only while AI consent is on; otherwise the local tips alone (W3-2, like the app).
+  const aiCards = consent.on === true && ai && ai.source === 'ai' && Array.isArray(ai.cards) ? ai.cards : null;
   const local = b.localInsights?.cards || [];
   const insightCards = (aiCards || local).slice(0, 3).map((c) => ({ ...c, src: aiCards ? 'Medi' : t('შენი ჩანაწერებით', 'From your logs') }));
   const tips = v.caps.pregnancy || v.caps.postpartum || v.caps.peri ? [] : dailyTips(v.phase, v.day).map((tp) => ({ ...tp, src: t('დღის რჩევა', 'Daily tip') }));
@@ -1428,17 +1437,27 @@ function tipsBlock(b, v, rerender) {
   const headline = (aiCards ? ai.headline : b.localInsights?.headline) || null;
 
   const aiAllowed = featureOn('medi') && v.mode !== 'POSTPARTUM';
-  const refresh = aiAllowed ? button(aiCards ? t('Medi-ს რჩევების განახლება', 'Refresh Medi’s tips') : t('პერსონალური რჩევა Medi-სგან', 'Personal tips from Medi'), { size: 'sm', variant: 'ghost', icon: 'sparkles' }) : null;
+  // Consent on → the refresh button as before. Not answered / declined → one quiet row; only its click may
+  // open the disclosure. Still reading → neither.
+  const refresh = aiAllowed && consent.on === true
+    ? button(aiCards ? t('Medi-ს რჩევების განახლება', 'Refresh Medi’s tips') : t('პერსონალური რჩევა Medi-სგან', 'Personal tips from Medi'), { size: 'sm', variant: 'ghost', icon: 'sparkles' })
+    : null;
+  const enableRow = aiAllowed && consent.on === false
+    ? h('button', { type: 'button', class: 'cy-ai-row', 'aria-label': t('Medi-ს რჩევები ჩანაწერების მიხედვით. ჩართვა', 'Medi’s tips from your logs. Turn on') },
+      icon('sparkles', { size: 15 }), h('span', null, t('Medi-ს რჩევები ჩანაწერების მიხედვით', 'Medi’s tips from your logs')), h('b', null, t('ჩართვა', 'Turn on')))
+    : null;
+  const trigger = refresh || enableRow;
   // Declined / closed the AI disclosure: the local tips stay; a calm line with „ხელახლა ცდა“ (only after this tap).
   const declined = aiDeclinedSlot();
-  refresh?.addEventListener('click', () => busy(refresh, async () => {
+  trigger?.addEventListener('click', () => busy(trigger, async () => {
     declined.hide();
     try {
       // POST /api/cycle/insights only reads/computes (the app lists it in READ_ONLY_WRITES); it sends cycle
       // context to the AI provider, so it is wrapped in the voluntary AI consent.
       const res = await withAiConsent(() => post('/api/cycle/insights', { refresh: true }));
-      if (res?.declined) { declined.show(() => refresh.click()); return; }
+      if (res?.declined) { consent.set(false); declined.show(() => trigger.click()); return; }
       if (!res) return;
+      consent.set(true);
       if (res.insights) {
         b.profile.aiInsights = res.insights;
         b.profile.aiInsightsAt = new Date().toISOString();
@@ -1449,7 +1468,7 @@ function tipsBlock(b, v, rerender) {
 
   return h('div', { class: 'stack', style: { gap: '12px' } },
     headline || refresh ? h('div', { class: 'between' }, headline ? h('div', { class: 'muted', style: { fontWeight: 600 } }, headline) : h('span'), refresh) : null,
-    refresh ? declined : null,
+    trigger ? declined : null,
     all.length
       ? h('div', { class: 'cy-tips' }, all.map((c) => h('article', { class: 'cy-tip' },
         h('div', { class: 'between' }, h('span', { class: `cy-tip-tile ${c.tone}` }, icon(TIP_ICON[c.tone] || 'sparkles', { size: 18 })), h('span', { class: 'cy-src' }, c.src)),
@@ -1457,6 +1476,7 @@ function tipsBlock(b, v, rerender) {
         h('p', null, c.body),
         c.action ? h('div', { class: 'cy-tip-act' }, c.action) : null)))
       : card(h('p', { class: 'muted' }, t('რჩევები გამოჩნდება, როცა ციკლის რამდენიმე დღეს აღრიცხავ.', 'Tips will appear once you log a few days of your cycle.'))),
+    enableRow,
     h('p', { class: 'disclaimer', style: { marginTop: '4px' } }, icon('info', { size: 14 }), t('Medi-ს რჩევები ზოგადი ინფორმაციაა შენი ფაზისა და ჩანაწერების მიხედვით — არა დიაგნოზი.', 'Medi’s tips are general information based on your phase and logs — not a diagnosis.')));
 }
 
