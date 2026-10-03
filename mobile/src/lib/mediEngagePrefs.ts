@@ -1,4 +1,5 @@
 import { getScopedPreference, setScopedPreference } from '@/lib/localAccount';
+import { signalCycleWidget } from '@/lib/cycleWidgetPrefs';
 export type { EngageFrequency, EngageOutcome, EngageTopic, MediEngagePrefs } from './mediEngageModel';
 export {
   DEFAULT_ENGAGE_PREFS,
@@ -77,6 +78,8 @@ export async function loadEngagePrefs(): Promise<MediEngagePrefs> {
 
 export async function saveEngagePrefs(prefs: MediEngagePrefs): Promise<void> {
   await setScopedPreference(PREFS_KEY, JSON.stringify(mergePrefs(prefs)));
+  // Discreet notifications also make the cycle widget neutral (train 1.0.0.20).
+  signalCycleWidget();
 }
 
 export async function markEngageAppOpen(at = Date.now()): Promise<void> {

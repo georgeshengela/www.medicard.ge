@@ -1,5 +1,6 @@
 import { useSyncExternalStore } from 'react';
 import { getPreference, setPreference } from '@/lib/storage';
+import { signalCycleWidget } from '@/lib/cycleWidgetPrefs';
 
 import {
   CYCLE_REMINDER_DEFAULTS,
@@ -95,6 +96,8 @@ export async function setCycleReminderPrefs(prefs: Partial<CycleReminderPrefs>):
     tasks.push(setPreference(CYCLE_REMINDER_KEYS.maskStyle, prefs.maskStyle));
   }
   await Promise.all(tasks);
+  // Masked cycle notifications also make the Home-screen widget neutral (train 1.0.0.20).
+  if (prefs.maskNotifications !== undefined) signalCycleWidget();
 }
 
 // Synchronous copy of the Face ID / PIN cycle lock for Home: primed at sign-in so the women's
@@ -121,6 +124,14 @@ export async function setCyclePrivacyLockEnabled(enabled: boolean): Promise<void
 /** Last known lock state without waiting; `null` until the first read. */
 export function peekCyclePrivacyLock(): boolean | null {
   return privacyLockCache;
+}
+
+/** Outside React (the cycle widget controller): called when the Face ID / PIN cycle lock changes. */
+export function subscribeCyclePrivacyLock(listener: () => void): () => void {
+  privacyLockListeners.add(listener);
+  return () => {
+    privacyLockListeners.delete(listener);
+  };
 }
 
 /** Live lock state for Home (re-renders when the cycle settings change it). Starts a read if unknown. */

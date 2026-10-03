@@ -8,7 +8,7 @@ import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from
 import { ScrollView, Text, View } from 'react-native';
 import { useNavigation } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Bell, CalendarClock, EyeOff, Heart, NotebookPen, Sparkles } from 'lucide-react-native';
+import { Bell, CalendarClock, EyeOff, Heart, NotebookPen, Smartphone, Sparkles } from 'lucide-react-native';
 import { CycleNotificationMaskPreview } from '@/components/cycle/CycleNotificationMaskPreview';
 import { CycleAtmosphere, CycleCard, CycleLoading, CycleSection, cycleNavHeader } from '@/components/cycle/CycleUI';
 import { ka } from '@/i18n/ka';
@@ -25,6 +25,15 @@ import { CYCLE_MASK_STYLES, maskStyleLabel } from '@/lib/cycleNotificationMask';
 import { getEffectiveCycleMask } from '@/lib/cycleNotificationContract.js';
 import { cycleTrackingFromBundle } from '@/lib/cycleForecastEligibility';
 import { putCycleBundle } from '@/lib/cycleViewCache';
+import { cycleLockScreenSupported } from '@/lib/cycleWidget';
+import {
+  getCycleExpectedDayActivity,
+  getCycleWidgetDiscreet,
+  readCycleWidgetPrivacy,
+  setCycleExpectedDayActivity,
+  setCycleWidgetDiscreet,
+} from '@/lib/cycleWidgetPrefs';
+import { cycleWidgetDiscreetForced } from '@/lib/cycleWidgetSnapshot';
 import { useCycleColors } from '@/theme/cycle';
 import {
   ReminderExample,
@@ -48,6 +57,28 @@ export function CycleReminderSettings() {
   const [prefs, setPrefs] = useState<CycleReminderPrefs | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
   const [msgTone, setMsgTone] = useState<'success' | 'error'>('success');
+
+  // „MEDICARD ციკლი“ widget + expected-day Live Activity (iOS, train 1.0.0.20): device switches.
+  const [lockScreen] = useState(() => cycleLockScreenSupported());
+  const [widgetDiscreet, setWidgetDiscreet] = useState(false);
+  const [expectedDay, setExpectedDay] = useState(false);
+  const [forcedBy, setForcedBy] = useState<{ lockOn: boolean | null; engageDiscreet: boolean | null }>({ lockOn: null, engageDiscreet: null });
+  useEffect(() => {
+    if (!lockScreen) return;
+    let alive = true;
+    void Promise.all([getCycleWidgetDiscreet(), getCycleExpectedDayActivity(), readCycleWidgetPrivacy(null)]).then(
+      ([own, day, privacy]) => {
+        if (!alive) return;
+        setWidgetDiscreet(own);
+        setExpectedDay(day);
+        setForcedBy({ lockOn: privacy.lockOn, engageDiscreet: privacy.engageDiscreet });
+      },
+      () => undefined,
+    );
+    return () => {
+      alive = false;
+    };
+  }, [lockScreen]);
 
   const prefsRef = useRef<CycleReminderPrefs>(DEFAULT_CYCLE_REMINDER_PREFS);
   const serverDirty = useRef(false);
@@ -131,6 +162,13 @@ export function CycleReminderSettings() {
   const reminders = prefs ?? DEFAULT_CYCLE_REMINDER_PREFS;
   const tracking = cycleTrackingFromBundle(bundle);
   const privacy = Boolean(bundle?.profile.privacyEnabled);
+  // The lock, privacy mode or hidden notifications keep the widget neutral; her own switch only adds to it.
+  const widgetForced = cycleWidgetDiscreetForced({
+    lockOn: forcedBy.lockOn,
+    privacyEnabled: privacy,
+    maskNotifications: reminders.maskNotifications,
+    engageDiscreet: forcedBy.engageDiscreet,
+  });
 
   return (
     <CycleAtmosphere>
@@ -309,6 +347,63 @@ export function CycleReminderSettings() {
           </CycleCard>
         </CycleSection>
 
+        {lockScreen ? (
+          <CycleSection
+            title={tx('ვიჯეტი და ჩაკეტილი ეკრანი', 'Widget and lock screen')}
+            subtitle={tx(
+              '„MEDICARD ციკლი“ ვიჯეტი მხოლოდ მენსტრუაციას აჩვენებს — ნაყოფიერ დღეებს არასდროს.',
+              'The “MEDICARD Cycle” widget shows your period only — never fertile days.',
+            )}
+          >
+            <CycleCard>
+              <SettingsRowSwitch
+                icon={Smartphone}
+                label={tx('ვიჯეტზე ციკლის დამალვა', 'Hide my cycle on the widget')}
+                hint={
+                  widgetForced
+                    ? tx(
+                        'ჩართულია, სანამ ციკლის დაბლოკვა, კონფიდენციალურობის რეჟიმი ან ფარული შეტყობინებები ჩართულია.',
+                        'On while the cycle lock, privacy mode or hidden notifications are on.',
+                      )
+                    : tx('ვიჯეტზე მხოლოდ „MEDICARD“ და წერტილი გამოჩნდება.', 'The widget shows only “MEDICARD” and a dot.')
+                }
+                value={widgetForced || widgetDiscreet}
+                disabled={widgetForced}
+                onChange={(v) => {
+                  setWidgetDiscreet(v);
+                  void setCycleWidgetDiscreet(v).catch(() => undefined);
+                }}
+                c={c}
+              />
+              {!tracking.trackingOnly ? (
+                <>
+                  <SettingsDivider c={c} />
+                  <SettingsRowSwitch
+                    icon={CalendarClock}
+                    label={tx('სავარაუდო დღე ჩაკეტილ ეკრანზე', 'Expected day on the lock screen')}
+                    hint={
+                      widgetForced || widgetDiscreet
+                        ? tx(
+                            'სავარაუდო დღეს, აპის გახსნისას, ჩაკეტილ ეკრანზე მხოლოდ „MEDICARD“ გამოჩნდება. ქრება სისხლდენის აღრიცხვისას ან არაუგვიანეს 24 საათში.',
+                            'On the expected day, once you open the app, your lock screen shows only “MEDICARD”. It goes away when you log bleeding, or within 24 hours.',
+                          )
+                        : tx(
+                            'სავარაუდო დღეს, აპის გახსნისას, ჩაკეტილ ეკრანზე მშვიდი შეხსენება დარჩება. ქრება სისხლდენის აღრიცხვისას ან არაუგვიანეს 24 საათში.',
+                            'On the expected day, once you open the app, a calm note stays on your lock screen. It goes away when you log bleeding, or within 24 hours.',
+                          )
+                    }
+                    value={expectedDay}
+                    onChange={(v) => {
+                      setExpectedDay(v);
+                      void setCycleExpectedDayActivity(v).catch(() => undefined);
+                    }}
+                    c={c}
+                  />
+                </>
+              ) : null}
+            </CycleCard>
+          </CycleSection>
+        ) : null}
       </ScrollView>
     </CycleAtmosphere>
   );

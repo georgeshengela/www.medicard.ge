@@ -5,7 +5,7 @@ import {
   ScrollView,
   Text,
   View} from 'react-native';
-import { useNavigation, useRouter } from 'expo-router';
+import { useLocalSearchParams, useNavigation, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, { FadeInUp } from 'react-native-reanimated';
 import * as Haptics from 'expo-haptics';
@@ -124,6 +124,7 @@ import { cycleSetupTailKey, needsCycleOnboarding, needsCycleSetupTail } from '@/
 import { getPreference, setPreference } from '@/lib/storage';
 import { localAccountId } from '@/lib/localAccount';
 import { trackCyclePeriodStarted } from '@/lib/funnel';
+import { cycleWidgetStartAllowed } from '@/lib/cycleWidgetSnapshot';
 import { cycleSettingsRoute } from '@/lib/cycleSettingsRoutes';
 import { CycleJourneyGuide } from '@/components/cycle/CycleJourneyGuide';
 
@@ -201,6 +202,7 @@ export default function CycleHome() {
   const { user, ready: authReady } = useAuth();
   const router = useRouter();
   const navigation = useNavigation();
+  const widgetParams = useLocalSearchParams<{ periodStart?: string }>();
   const insets = useSafeAreaInsets();
   const c = useCycleColors();
   const [pane, setPane] = useState<CyclePane>('overview');
@@ -727,12 +729,13 @@ export default function CycleHome() {
    * Flo-style one tap: today becomes day 1 immediately (offline-safe queue); the server projects the
    * rest of the period from the usual length. A toast offers "add flow" and "undo".
    */
-  const startPeriodNow = async () => {
+  const startPeriodNow = async (source: 'hero' | 'widget' = 'hero') => {
     if (!user?.id || periodBusy) return;
     setPeriodBusy(true);
     try {
       const result = await queueApplyPeriod(user.id, { action: 'start', date: today });
-      trackCyclePeriodStarted('hero');
+      if (source === 'widget') trackCyclePeriodStarted('widget');
+      else trackCyclePeriodStarted('hero');
       // TTC: a new cycle is not a success to celebrate — a plain selection tick (brief §9 item 16).
       if (periodStartTone(bundle?.profile.mode).haptic === 'selection') Haptics.selectionAsync().catch(() => undefined);
       else Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined);
@@ -744,6 +747,20 @@ export default function CycleHome() {
       setPeriodBusy(false);
     }
   };
+
+  /**
+   * „დაიწყო“ on the Home-screen widget / Live Activity (train 1.0.0.20): the link was claimed once and
+   * opened only after the shell mounted; this screen renders only after the cycle privacy gate let her
+   * in. Same one tap as the hero — no confirm, the toast offers undo — when the hero would offer it.
+   */
+  const widgetStartHandled = useRef(false);
+  useEffect(() => {
+    if (widgetParams.periodStart !== '1' || widgetStartHandled.current || !bundle || !user?.id) return;
+    widgetStartHandled.current = true;
+    router.setParams({ periodStart: undefined } as never);
+    if (cycleWidgetStartAllowed(bundle, today)) void startPeriodNow('widget');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [widgetParams.periodStart, bundle, user?.id]);
 
   const undoPeriodStart = async (date: string) => {
     if (!user?.id) return;

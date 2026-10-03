@@ -33,7 +33,7 @@ export type FunnelHomeLayoutOfferChoice = 'tried' | 'dismissed' | 'other';
  * id, flow or value ever goes with them, and the sex sheet / BBT / tests send nothing.
  */
 export const CYCLE_FUNNEL_LOG_SOURCES = ['quick', 'full', 'home', 'day_sheet'] as const;
-export const CYCLE_FUNNEL_PERIOD_SOURCES = ['hero', 'home', 'strip', 'day_sheet'] as const;
+export const CYCLE_FUNNEL_PERIOD_SOURCES = ['hero', 'home', 'strip', 'day_sheet', 'widget'] as const;
 export const CYCLE_FUNNEL_EXPLAIN_TOPICS = ['ring', 'fertile', 'stats', 'deviation', 'learn_more', 'ttc_signal', 'tracking'] as const;
 export type CycleLogSource = (typeof CYCLE_FUNNEL_LOG_SOURCES)[number];
 export type CyclePeriodStartSource = (typeof CYCLE_FUNNEL_PERIOD_SOURCES)[number];

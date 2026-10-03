@@ -118,7 +118,8 @@ it('home and calendar only show doses inside the inclusive course',()=>{
   it('knows every top-level screen in mobile/app', () => {
     const screens = readdirSync(new URL('../../app/', import.meta.url))
       .map((name) => name.replace(/\.tsx$/, ''))
-      .filter((name) => !['_layout', 'index', '(auth)'].includes(name));
+      // `+native-intent` etc. are expo-router hooks, not screens.
+      .filter((name) => !['_layout', 'index', '(auth)'].includes(name) && !name.startsWith('+'));
     assert.deepEqual([...new Set(screens)].sort(), [...NOTIFICATION_ROUTE_ROOTS].sort());
   });
 

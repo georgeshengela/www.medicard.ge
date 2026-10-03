@@ -136,6 +136,11 @@ function subscribe(listener: () => void) {
   };
 }
 
+/** Outside React (the cycle widget controller): called whenever a module is paused or resumed. */
+export function subscribeFeatureState(listener: () => void): () => void {
+  return subscribe(listener);
+}
+
 export function useFeatureState(): FeatureState {
   return useSyncExternalStore(subscribe, featureState, featureState);
 }

@@ -193,7 +193,18 @@
           "groupIdentifier": "group.ge.medicard.app",
           "enablePushNotifications": false,
           "frequentUpdates": false,
-          "widgets": []
+          "widgets": [
+            {
+              "name": "MedicardCycle",
+              "displayName": "MEDICARD ციკლი",
+              "description": "მენსტრუაციამდე დარჩენილი დღეები · Days until your period",
+              "supportedFamilies": ["systemSmall", "systemMedium"],
+              "contentMarginsDisabled": false,
+              "ios": {
+                "supportedFamilies": ["systemSmall", "systemMedium"]
+              }
+            }
+          ]
         }
       ],
       [

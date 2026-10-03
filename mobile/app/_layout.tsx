@@ -2,7 +2,7 @@ import '../global.css';
 import '@/lib/bootGuard';
 
 import React, { useEffect, useRef, useState } from 'react';
-import { LogBox, Settings, Text, View } from 'react-native';
+import { LogBox, Platform, Settings, Text, View } from 'react-native';
 import { tx } from '@/i18n/locale';
 
 // Expo SDK 57 treats sound: 'default' as a missing custom file in the native client.
@@ -51,6 +51,7 @@ import {
   noteNotificationRouteOpened,
   noteNotificationRoutePending,
 } from '@/lib/notificationTaps';
+import { onCycleWidgetRoute, takeCycleWidgetRoute } from '@/lib/cycleWidgetLink';
 import { savePendingReferralCode } from '@/lib/referral';
 import { startFunnel, trackFunnel } from '@/lib/funnel';
 import { nextProfileSetupHref } from '@/lib/onboarding';
@@ -249,6 +250,10 @@ function AppShell() {
     startFunnel();
     // MEDIRUN on the lock screen / Dynamic Island (iOS); ends activities a previous process left behind.
     startRunLiveActivity();
+    // „MEDICARD ციკლი“ Home-screen widget + the optional expected-day Live Activity (iOS, train 1.0.0.20).
+    if (Platform.OS === 'ios') {
+      void import('@/lib/cycleWidget').then(({ startCycleWidget }) => startCycleWidget()).catch(() => undefined);
+    }
   }, []);
 
   useEffect(() => {
@@ -290,6 +295,14 @@ function AppShell() {
       noteNotificationRoutePending();
       setNotificationTick((tick) => tick + 1);
     };
+    // The cycle widget's „დაიწყო“ (medicard://cycle?periodStart=1, claimed once in +native-intent):
+    // the same queue, so it opens only once the signed-in shell can navigate.
+    const queueWidgetRoute = () => {
+      const next = takeCycleWidgetRoute();
+      if (next) queueRoute(next.route);
+    };
+    queueWidgetRoute();
+    const offWidgetRoute = onCycleWidgetRoute(queueWidgetRoute);
     const handleTap = (response: NotificationResponse) => {
       if (!claimNotificationTap(notificationResponseKey(response))) return;
       try {
@@ -354,6 +367,7 @@ function AppShell() {
     return () => {
       received.remove();
       sub.remove();
+      offWidgetRoute();
     };
   }, []);
 
