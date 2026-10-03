@@ -100,7 +100,7 @@ test('every layout: header first, disclaimer last, switch row, ask Medi and dose
 test('cycle sections are for women only, each layout leads with its own hero', () => {
   for (const layout of LAYOUTS) {
     const order = buildHomeSectionOrder({ layout, includeCycle: false });
-    for (const id of ['cycle', 'cycleHero', 'cycleTips', 'cycleStats'] as const) assert.ok(!order.includes(id), `${layout} ${id}`);
+    for (const id of ['cycle', 'cycleHero', 'cycleAhead', 'cycleTips', 'cycleStats'] as const) assert.ok(!order.includes(id), `${layout} ${id}`);
   }
   assert.equal(buildHomeSectionOrder({ layout: 'women', includeCycle: true })[1], 'cycleHero');
   assert.equal(buildHomeSectionOrder({ layout: 'active', includeCycle: true })[1], 'moveHero');
@@ -108,6 +108,17 @@ test('cycle sections are for women only, each layout leads with its own hero', (
   // Women who pick another layout keep their cycle glance.
   assert.ok(buildHomeSectionOrder({ layout: 'active', includeCycle: true }).includes('cycle'));
   assert.ok(buildHomeSectionOrder({ layout: 'weight', includeCycle: true }).includes('cycle'));
+});
+
+test('women: the cycle, what is ahead and tips come before her day; numbers and check-ups after it', () => {
+  const order = buildHomeSectionOrder({ layout: 'women', includeCycle: true });
+  const at = (id: (typeof order)[number]) => order.indexOf(id);
+  assert.ok(at('cycleHero') < at('cycleAhead') && at('cycleAhead') < at('cycleTips') && at('cycleTips') < at('dayPair'));
+  assert.equal(at('nutritionLite'), at('dayPair') + 1);
+  assert.ok(at('dayPair') < at('cycleStats') && at('cycleStats') < at('womenCare') && at('womenCare') < at('services'));
+  for (const layout of ['standard', 'active', 'weight'] as const) {
+    assert.ok(!HOME_LAYOUT_ORDER[layout].includes('womenCare') && !HOME_LAYOUT_ORDER[layout].includes('cycleAhead'), layout);
+  }
 });
 
 test('the onboarding goal reorders standard only', () => {

@@ -9,7 +9,8 @@ import { tx } from '@/i18n/locale';
 import { suppressCycleLengthChrome } from '@/lib/cycleForecastEligibility';
 import { isFeatureOn, useFeatureState } from '@/lib/featureFlags';
 import { cycleModeCapabilities } from '@/lib/cycleModes';
-import { cycleStatsModel, type CycleStat, type StatTone } from '@/lib/home/homeCycle';
+import { cycleBarsModel, cycleStatsModel, type CycleBar, type CycleStat, type StatTone } from '@/lib/home/homeCycle';
+import { formatYmd } from '@/lib/format';
 import { useThemeColors } from '@/theme/colors';
 import { cycleHexAlpha, useCycleColors } from '@/theme/cycle';
 import { useHomeAccent } from '@/theme/homeAccent';
@@ -25,8 +26,9 @@ export type HomeCycleStatsProps = {
 };
 
 /**
- * „ჩემი ციკლი“ — cycle length, bleeding length and variation against the typical adult ranges
- * (same math as the cycle screen's stats card), only from a real inferred pattern of 2+ cycles.
+ * „ჩემი ციკლი“ — the last cycles as bars (how steady her rhythm is, at a glance), then cycle
+ * length, bleeding length and variation against the typical adult ranges (same math as the cycle
+ * screen's stats card). Only from a real inferred pattern of 2+ cycles.
  * Under it the women's space row when the launch gate lets her in. Neither → null.
  */
 export function HomeCycleStats({ cycle, locked, showCommunity, first }: HomeCycleStatsProps) {
@@ -43,6 +45,8 @@ export function HomeCycleStats({ cycle, locked, showCommunity, first }: HomeCycl
         cycleLengths: bundle.trends?.cycleLengths,
       })
     : null;
+
+  const bars = stats ? cycleBarsModel(bundle?.trends?.cycleLengths) : [];
 
   if (!stats && !showCommunity) return null;
 
@@ -72,6 +76,7 @@ export function HomeCycleStats({ cycle, locked, showCommunity, first }: HomeCycl
           onPress={openTrends}
           style={[s.card, { backgroundColor: theme.surface }]}
         >
+          {bars.length ? <CycleBars bars={bars} /> : null}
           <View style={s.tiles}>
             {tiles.map((t) => (
               <View key={t.key} style={[s.tile, { backgroundColor: accent.soft }]}>
@@ -105,6 +110,41 @@ export function HomeCycleStats({ cycle, locked, showCommunity, first }: HomeCycl
   );
 }
 
+/** One bar per completed cycle, its length above and the month it started below; the latest in rose. */
+function CycleBars({ bars }: { bars: CycleBar[] }) {
+  const theme = useThemeColors();
+  const c = useCycleColors();
+  const accent = useHomeAccent();
+  return (
+    <View importantForAccessibility="no-hide-descendants" accessibilityElementsHidden style={s.bars}>
+      {bars.map((bar, index) => (
+        <View key={`${bar.start}-${index}`} style={s.barCol}>
+          <Text style={[s.barValue, { color: bar.latest ? c.ink : theme.text200 }]}>{bar.length}</Text>
+          <View style={s.barSlot}>
+            <View
+              style={[
+                s.bar,
+                { height: Math.round(BAR_MAX * bar.ratio), backgroundColor: bar.latest ? accent.cta : cycleHexAlpha(c.period, 0.22) },
+              ]}
+            />
+          </View>
+          <Text numberOfLines={1} style={[s.barMonth, { color: theme.text300 }]}>
+            {bar.start ? shortMonth(bar.start) : ''}
+          </Text>
+        </View>
+      ))}
+    </View>
+  );
+}
+
+const BAR_MAX = 52;
+
+/** „8 სექტემბერი“ → „სექ“ (first three letters of the month, both languages). */
+function shortMonth(ymd: string): string {
+  const month = formatYmd(ymd).split(' ').slice(1).join(' ');
+  return month.slice(0, 3);
+}
+
 function toneLabel(tone: StatTone): string {
   if (tone === 'typical') return ka.cycle.statsTypical;
   if (tone === 'longer') return ka.cycle.statsLonger;
@@ -131,7 +171,13 @@ function ToneChip({ tone }: { tone: StatTone }) {
 }
 
 const s = StyleSheet.create({
-  card: { borderRadius: HUB.cardRadius, padding: 16, gap: 12 },
+  card: { borderRadius: HUB.cardRadius, padding: 16, gap: 14 },
+  bars: { flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', paddingHorizontal: 4 },
+  barCol: { flex: 1, alignItems: 'center', gap: 4 },
+  barSlot: { height: BAR_MAX, justifyContent: 'flex-end' },
+  bar: { width: 26, borderRadius: 9 },
+  barValue: { fontFamily: 'NotoSansGeorgian_600SemiBold', fontSize: 12, lineHeight: 16, fontVariant: ['tabular-nums'] },
+  barMonth: { fontFamily: 'NotoSansGeorgian_500Medium', fontSize: 10, lineHeight: 14 },
   tiles: { flexDirection: 'row', gap: 8 },
   tile: { flex: 1, minWidth: 0, borderRadius: 16, padding: 12, gap: 4 },
   valueRow: { flexDirection: 'row', alignItems: 'baseline', gap: 3 },

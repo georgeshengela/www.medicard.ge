@@ -352,6 +352,100 @@ export function cycleStatsModel({
   };
 }
 
+/** One bar per completed cycle for the „ჩემი ციკლი“ chart: newest last, heights relative to the longest. */
+export type CycleBar = { start: string; length: number; ratio: number; latest: boolean };
+
+/**
+ * The last completed cycles as bars (the same six the variation is computed from). Heights start
+ * from a floor so a 27- and a 29-day cycle still read as different, never as "tiny vs huge".
+ */
+export function cycleBarsModel(
+  cycleLengths: { start?: string; length: number }[] | null | undefined,
+  limit = 6,
+): CycleBar[] {
+  const rows = (cycleLengths ?? []).filter((x) => Number.isFinite(x.length) && x.length > 0).slice(-limit);
+  if (rows.length < 2) return [];
+  const lengths = rows.map((x) => x.length);
+  const max = Math.max(...lengths);
+  const min = Math.min(...lengths);
+  // Zoomed scale: the shortest cycle keeps 55 % of the height, the longest fills it.
+  const span = Math.max(1, max - min);
+  return rows.map((x, i) => ({
+    start: x.start ?? '',
+    length: x.length,
+    ratio: max === min ? 0.8 : 0.55 + 0.45 * ((x.length - min) / span),
+    latest: i === rows.length - 1,
+  }));
+}
+
+// ---------- what's ahead ----------
+
+export type AheadKind = 'period' | 'fertile' | 'ovulation';
+
+/** `inDays` 0 = today; `ongoing` = a window that already started (fertile days). */
+export type AheadEvent = { kind: AheadKind; start: string; end: string | null; inDays: number; ongoing: boolean };
+
+/**
+ * „წინ რა გელის“ — the next estimated period, fertile window and ovulation, soonest first.
+ * Everything here is an estimate from `predictions.phases`; the caller passes the same gates the
+ * cycle screen uses (forecast allowed, fertility / ovulation visible) and nothing shows without them.
+ * A late period is never replaced by the cycle after it (the hero says „გვიანია“ instead).
+ */
+export function cycleAheadModel({
+  today,
+  phases,
+  nextPeriodStart,
+  nextPeriodEnd,
+  onPeriod,
+  showPeriod,
+  showFertility,
+  showOvulation,
+  horizonDays = 45,
+}: {
+  today: string;
+  phases:
+    | { periodStart: string; periodEnd: string; ovulation: string; fertileStart: string; fertileEnd: string }[]
+    | null
+    | undefined;
+  nextPeriodStart: string | null | undefined;
+  nextPeriodEnd?: string | null;
+  onPeriod: boolean;
+  showPeriod: boolean;
+  showFertility: boolean;
+  showOvulation: boolean;
+  horizonDays?: number;
+}): AheadEvent[] {
+  const list = phases ?? [];
+  const events: AheadEvent[] = [];
+  const within = (key: string) => daysBetweenKeys(today, key) <= horizonDays;
+
+  if (showPeriod) {
+    const late = Boolean(nextPeriodStart) && daysBetweenKeys(today, nextPeriodStart as string) < 0;
+    if (!late) {
+      // While bleeding, "next" is the period after this one.
+      const fromPhases = list.find((p) => daysBetweenKeys(today, p.periodStart) > (onPeriod ? 0 : -1));
+      const useNext = Boolean(nextPeriodStart) && (!onPeriod || daysBetweenKeys(today, nextPeriodStart as string) > 0);
+      const start = useNext ? (nextPeriodStart as string) : (fromPhases?.periodStart ?? null);
+      const end = useNext ? (nextPeriodEnd ?? null) : (fromPhases?.periodEnd ?? null);
+      if (start && within(start)) events.push({ kind: 'period', start, end, inDays: daysBetweenKeys(today, start), ongoing: false });
+    }
+  }
+  if (showFertility) {
+    const win = list.find((p) => daysBetweenKeys(today, p.fertileEnd) >= 0);
+    if (win && within(win.fertileStart)) {
+      const inDays = Math.max(0, daysBetweenKeys(today, win.fertileStart));
+      events.push({ kind: 'fertile', start: win.fertileStart, end: win.fertileEnd, inDays, ongoing: daysBetweenKeys(today, win.fertileStart) <= 0 });
+    }
+  }
+  if (showFertility && showOvulation) {
+    const next = list.find((p) => daysBetweenKeys(today, p.ovulation) >= 0);
+    if (next && within(next.ovulation)) {
+      events.push({ kind: 'ovulation', start: next.ovulation, end: null, inDays: daysBetweenKeys(today, next.ovulation), ongoing: false });
+    }
+  }
+  return events.sort((a, b) => a.inDays - b.inDays || utc(a.start) - utc(b.start));
+}
+
 // ---------- daily tips ----------
 
 /**

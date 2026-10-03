@@ -13,7 +13,7 @@ export const FLOW_OPTIONS: CycleChip[] = [
 
 /** ფიზიკური სიმპტომები */
 export const PHYSICAL_SYMPTOMS: CycleChip[] = [
-  { id: 'cramps', label: tx('კრუნჩხვები', 'Cramps') },
+  { id: 'cramps', label: tx('სპაზმები', 'Cramps') },
   { id: 'headache', label: tx('თავის ტკივილი', 'Headache') },
   { id: 'migraine', label: tx('მიგრენი', 'Migraine') },
   { id: 'bloating', label: tx('შებერილობა', 'Bloating') },

@@ -2,6 +2,8 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   addDaysKey,
+  cycleAheadModel,
+  cycleBarsModel,
   cycleCenter,
   cycleHeroActions,
   cycleHeroVariant,
@@ -212,11 +214,90 @@ test('tips: daily tips only, and only where the cycle screen would show them', (
   assert.equal(cycleTipsAllowed({ ...ok, phase: 'unknown' }), false);
 });
 
-test('women Home sections never mount the AI tips panel, the stories row or sex logging', async () => {
+test('women Home sections never mount the AI tips panel or the stories row; sex is the hero\u2019s one-tap only', async () => {
   const { readFileSync } = await import('node:fs');
   const dir = new URL('../../components/home/sections/', import.meta.url);
-  for (const file of ['HomeCycleHero.tsx', 'HomeCycleTips.tsx', 'HomeCycleStats.tsx', 'useHomeCycleActions.ts']) {
-    const src = readFileSync(new URL(file, dir), 'utf8');
-    assert.doesNotMatch(src, /CycleInsights|CycleStoriesRow|CycleSexSheet|api\.cycle\.insights|persistCycleLog|hasSex|sexualActivity/, file);
+  const read = (file: string) => readFileSync(new URL(file, dir), 'utf8');
+  const all = ['HomeCycleHero.tsx', 'HomeCycleAhead.tsx', 'HomeCycleTips.tsx', 'HomeCycleStats.tsx', 'useHomeCycleActions.ts'];
+  // No AI insights, no stories row, and never the calendar's private marks (sex, BBT, tests).
+  for (const file of all) {
+    assert.doesNotMatch(read(file), /CycleInsights|CycleStoriesRow|api\.cycle\.insights|hasSex|hasBbt|ovulationTest|pregnancyTest/, file);
   }
+  // Owner 2026-10-03: „♥ სექსი“ on Home like on the cycle screen — in the hero and its actions only.
+  for (const file of all.filter((f) => f !== 'HomeCycleHero.tsx' && f !== 'useHomeCycleActions.ts')) {
+    assert.doesNotMatch(read(file), /CycleSexSheet|persistCycleLog|sexualActivity|sexual\b/, file);
+  }
+  const hero = read('HomeCycleHero.tsx');
+  // The private sheet mounts only for a signed-in user whose cycle is not locked.
+  assert.match(hero, /userId && locked === false \? \(\s*<CycleSexSheet/);
+  // The hero reads the day's sex flag from the unlocked view only (`view` is null while locked).
+  assert.match(hero, /const view = locked === false \? cycle\.view : null;/);
+});
+
+const PHASES = [
+  { periodStart: '2026-09-08', periodEnd: '2026-09-12', ovulation: '2026-09-22', fertileStart: '2026-09-17', fertileEnd: '2026-09-23' },
+  { periodStart: '2026-10-06', periodEnd: '2026-10-10', ovulation: '2026-10-20', fertileStart: '2026-10-15', fertileEnd: '2026-10-21' },
+  { periodStart: '2026-11-03', periodEnd: '2026-11-07', ovulation: '2026-11-17', fertileStart: '2026-11-12', fertileEnd: '2026-11-18' },
+];
+const AHEAD = { phases: PHASES, nextPeriodStart: '2026-10-06', nextPeriodEnd: '2026-10-10', onPeriod: false, showPeriod: true, showFertility: true, showOvulation: true };
+
+test('ahead: next period, fertile days and ovulation, soonest first', () => {
+  const events = cycleAheadModel({ today: '2026-10-03', ...AHEAD });
+  assert.deepEqual(events.map((e) => [e.kind, e.start, e.end, e.inDays, e.ongoing]), [
+    ['period', '2026-10-06', '2026-10-10', 3, false],
+    ['fertile', '2026-10-15', '2026-10-21', 12, false],
+    ['ovulation', '2026-10-20', null, 17, false],
+  ]);
+});
+
+test('ahead: inside the fertile window it is ongoing and leads; ovulation day counts down to 0', () => {
+  const events = cycleAheadModel({ today: '2026-09-21', ...AHEAD });
+  assert.deepEqual(events.map((e) => [e.kind, e.inDays, e.ongoing]), [
+    ['fertile', 0, true],
+    ['ovulation', 1, false],
+    ['period', 15, false],
+  ]);
+  const onDay = cycleAheadModel({ today: '2026-09-22', ...AHEAD }).find((e) => e.kind === 'ovulation');
+  assert.equal(onDay?.inDays, 0);
+});
+
+test('ahead: every gate hides its own rows; ovulation never shows without fertility', () => {
+  assert.deepEqual(cycleAheadModel({ today: '2026-10-03', ...AHEAD, showPeriod: false }).map((e) => e.kind), ['fertile', 'ovulation']);
+  assert.deepEqual(cycleAheadModel({ today: '2026-10-03', ...AHEAD, showFertility: false }).map((e) => e.kind), ['period']);
+  assert.deepEqual(cycleAheadModel({ today: '2026-10-03', ...AHEAD, showOvulation: false }).map((e) => e.kind), ['period', 'fertile']);
+  assert.deepEqual(cycleAheadModel({ today: '2026-10-03', ...AHEAD, showPeriod: false, showFertility: false }), []);
+  assert.deepEqual(cycleAheadModel({ today: '2026-10-03', ...AHEAD, phases: null, nextPeriodStart: null }), []);
+});
+
+test('ahead: a late period is not replaced by the next cycle; while bleeding the next period is the one after', () => {
+  const late = cycleAheadModel({ today: '2026-10-09', ...AHEAD });
+  assert.ok(!late.some((e) => e.kind === 'period'));
+  const bleeding = cycleAheadModel({ today: '2026-10-06', ...AHEAD, onPeriod: true, nextPeriodStart: '2026-11-03', nextPeriodEnd: '2026-11-07' });
+  assert.deepEqual(bleeding.find((e) => e.kind === 'period'), { kind: 'period', start: '2026-11-03', end: '2026-11-07', inDays: 28, ongoing: false });
+  // Predictions not refreshed yet (next still says today): fall back to the following cycle.
+  const stale = cycleAheadModel({ today: '2026-10-06', ...AHEAD, onPeriod: true });
+  assert.equal(stale.find((e) => e.kind === 'period')?.start, '2026-11-03');
+});
+
+test('ahead: nothing beyond the horizon', () => {
+  const events = cycleAheadModel({ today: '2026-10-03', ...AHEAD, horizonDays: 10 });
+  assert.deepEqual(events.map((e) => e.kind), ['period']);
+});
+
+test('bars: last six completed cycles, newest last and marked, heights between the floor and full', () => {
+  const rows = [30, 29, 27, 28, 29, 27, 28].map((length, i) => ({ start: `2026-0${i + 2}-10`, length }));
+  const bars = cycleBarsModel(rows);
+  assert.equal(bars.length, 6);
+  assert.deepEqual(bars.map((b) => b.length), [29, 27, 28, 29, 27, 28]);
+  assert.deepEqual(bars.map((b) => b.latest), [false, false, false, false, false, true]);
+  assert.equal(Math.max(...bars.map((b) => b.ratio)), 1);
+  assert.equal(Math.min(...bars.map((b) => b.ratio)), 0.55);
+  assert.equal(bars[5].start, '2026-08-10');
+});
+
+test('bars: one cycle is not a chart; equal cycles draw equal bars', () => {
+  assert.deepEqual(cycleBarsModel([{ start: '2026-09-08', length: 28 }]), []);
+  assert.deepEqual(cycleBarsModel(null), []);
+  const flat = cycleBarsModel([{ length: 28 }, { length: 28 }, { length: 28 }]);
+  assert.deepEqual(flat.map((b) => b.ratio), [0.8, 0.8, 0.8]);
 });

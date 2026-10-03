@@ -8,13 +8,15 @@ import { useThemeColors } from '@/theme/colors';
 type Props = {
   sourceIds: readonly MedicalSourceId[];
   align?: 'left' | 'center';
+  /** Link colour where the page has its own accent (Home layouts); default is the brand teal. */
+  tint?: string;
 };
 
 /**
  * Inline disclosure so the source list still opens inside an existing sheet.
  * A second native Modal is unreliable on iPad when one sheet is already presented.
  */
-export function MedicalSourcesLink({ sourceIds, align = 'left' }: Props) {
+export function MedicalSourcesLink({ sourceIds, align = 'left', tint }: Props) {
   const [open, setOpen] = useState(false);
   const georgian = !isEn();
   const colors = useThemeColors();
@@ -41,7 +43,7 @@ export function MedicalSourcesLink({ sourceIds, align = 'left' }: Props) {
             fontFamily: 'NotoSansGeorgian_600SemiBold',
             fontSize: 13,
             lineHeight: 18,
-            color: colors.primary100,
+            color: tint ?? colors.primary100,
             textDecorationLine: 'underline',
           }}
         >

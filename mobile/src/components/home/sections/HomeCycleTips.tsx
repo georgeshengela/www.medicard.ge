@@ -33,8 +33,21 @@ const TONE_ICON: Record<string, LucideIcon> = {
   pregnancy: Baby,
 };
 
+/** What part of the day a tip is about — one quiet word beside its icon. */
+const TONE_LABEL: Record<string, string> = {
+  care: tx('მოვლა', 'Care'),
+  calm: tx('სიმშვიდე', 'Calm'),
+  energy: tx('ენერგია', 'Energy'),
+  mood: tx('განწყობა', 'Mood'),
+  fertile: tx('სხეული', 'Body'),
+  pregnancy: tx('ორსულობა', 'Pregnancy'),
+};
+
+const TILE_W = 264;
+const TILE_GAP = 10;
+
 /**
- * „დღის რჩევები“ — three everyday tips for the current phase, built on the device from the cached
+ * „დღეს შენთვის“ — three everyday tips for the current phase, built on the device from the cached
  * view (`buildCycleAdvice` → DAILY_TIPS; no AI route, no consent prompt). Shown only where the cycle
  * screen shows its tips (classic overview, forecast allowed), never as biology under hormonal
  * contraception, never while the cycle is locked or not set up. Nothing honest to show → null.
@@ -76,18 +89,24 @@ export function HomeCycleTips({ cycle, locked, first }: HomeCycleTipsProps) {
   return (
     <View style={{ paddingHorizontal: HUB.gutter, marginTop: first ? 22 : HUB.sectionGap }}>
       <HomeSectionHeading
-        title={tx('დღის რჩევები', "Today's tips")}
+        title={tx('დღეს შენთვის', 'For you today')}
         linkLabel={tx('ციკლში', 'Cycle')}
         onLink={() => router.push('/cycle' as never)}
       />
       <ScrollView
         horizontal
+        nestedScrollEnabled
         showsHorizontalScrollIndicator={false}
+        decelerationRate="fast"
+        snapToInterval={TILE_W + TILE_GAP}
+        snapToAlignment="start"
+        disableIntervalMomentum
         style={s.scroller}
         contentContainerStyle={s.scrollContent}
       >
-        {tips.map((tip) => {
+        {tips.map((tip, index) => {
           const Icon = TONE_ICON[tip.tone] ?? Leaf;
+          const label = TONE_LABEL[tip.tone];
           return (
             <View
               key={tip.id}
@@ -95,13 +114,21 @@ export function HomeCycleTips({ cycle, locked, first }: HomeCycleTipsProps) {
               accessibilityLabel={`${tip.title}. ${tip.body}`}
               style={[s.tile, { backgroundColor: theme.surface }]}
             >
-              <View style={[s.icon, { backgroundColor: accent.tint }]}>
-                <Icon size={21} color={accent.ink} strokeWidth={1.8} />
+              <View style={s.tileHead}>
+                <View style={[s.icon, { backgroundColor: accent.tint }]}>
+                  <Icon size={21} color={accent.ink} strokeWidth={1.8} />
+                </View>
+                {label ? (
+                  <Text numberOfLines={1} style={[s.tone, { color: accent.ink }]}>
+                    {label}
+                  </Text>
+                ) : null}
+                <Text style={[s.count, { color: theme.text300 }]}>{`${index + 1}/${tips.length}`}</Text>
               </View>
               <Text numberOfLines={2} style={[hubText.cardTitle, { color: theme.text100 }]}>
                 {tip.title}
               </Text>
-              <Text numberOfLines={4} style={[hubText.body, { color: theme.text200 }]}>
+              <Text numberOfLines={5} style={[hubText.body, { color: theme.text200 }]}>
                 {tip.body}
               </Text>
             </View>
@@ -117,7 +144,10 @@ export function HomeCycleTips({ cycle, locked, first }: HomeCycleTipsProps) {
 
 const s = StyleSheet.create({
   scroller: { marginHorizontal: -HUB.gutter },
-  scrollContent: { paddingHorizontal: HUB.gutter, gap: 10 },
-  tile: { width: 236, borderRadius: HUB.cardRadius, padding: 16, gap: 10 },
+  scrollContent: { paddingHorizontal: HUB.gutter, gap: TILE_GAP },
+  tile: { width: TILE_W, borderRadius: HUB.cardRadius, padding: 16, gap: 8 },
+  tileHead: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 4 },
+  tone: { flex: 1, minWidth: 0, fontFamily: 'NotoSansGeorgian_600SemiBold', fontSize: 12, lineHeight: 17 },
+  count: { fontFamily: 'NotoSansGeorgian_500Medium', fontSize: 11, lineHeight: 16, fontVariant: ['tabular-nums'] },
   icon: { width: HUB.tile, height: HUB.tile, borderRadius: HUB.tileRadius, alignItems: 'center', justifyContent: 'center' },
 });

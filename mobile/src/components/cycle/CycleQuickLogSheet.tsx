@@ -23,11 +23,12 @@ import { CycleSexSection } from '@/components/cycle/CycleSexSection';
 import { CycleTestResultRow } from '@/components/cycle/CycleTestResultRow';
 import { CycleMoreTracking } from '@/components/cycle/CycleMoreTracking';
 import { CyclePainEditor } from '@/components/cycle/CycleObservationFields';
+import { CycleQuickLogBody } from '@/components/cycle/CycleQuickLogBody';
 import { CyclePregnancyQuickLog } from '@/components/cycle/CyclePregnancyQuickLog';
 import { CyclePerimenopauseQuickLog } from '@/components/cycle/CyclePerimenopauseQuickLog';
 import { CyclePostpartumQuickLog } from '@/components/cycle/CyclePostpartumQuickLog';
 import { formatCycleDateKa } from '@/components/cycle/CycleUI';
-import { MOOD_OPTIONS, MUCUS_OPTIONS, PHYSICAL_SYMPTOMS } from '@/constants/cycle';
+import { MOOD_OPTIONS, PHYSICAL_SYMPTOMS } from '@/constants/cycle';
 import { recentObservationKeys } from '@/lib/cycleObservationRegistry';
 import { PAIN_MANAGED_SYMPTOM_IDS } from '@/lib/cycleObservations';
 import { ka } from '@/i18n/ka';
@@ -37,6 +38,7 @@ import { applySymptomChipToggle } from '@/lib/cycleObservationAssessment';
 import { loadCycleView, type CycleView } from '@/lib/cycleOffline';
 import { cyclePresentationModeKnown } from '@/lib/cycleHistoryCopy';
 import { cycleModeCapabilities } from '@/lib/cycleModes';
+import type { CycleLog } from '@/lib/api';
 import { useAuth } from '@/store/AuthContext';
 import { useCycleColors } from '@/theme/cycle';
 import type { CycleLogForm } from '@/components/cycle/CycleLogTabs';
@@ -78,6 +80,7 @@ export function CycleQuickLogSheet({
   const [mode, setMode] = useState<string | null>(null);
   const caps = cyclePresentationModeKnown(mode) ? cycleModeCapabilities(mode) : null;
   const [recentIds, setRecentIds] = useState<string[]>([]);
+  const [logs, setLogs] = useState<CycleLog[]>([]);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [hydrated, setHydrated] = useState(false);
   const [loadAttempt, setLoadAttempt] = useState(0);
@@ -97,6 +100,7 @@ export function CycleQuickLogSheet({
         setForm(formFromCycleLog(view.display.logs.find((l) => l.date === date)));
         setMode(view.display.profile.mode);
         setRecentIds(recentObservationKeys(view.display.logs, { limit: 4, minDays: 2 }));
+        setLogs(view.display.logs);
         setHydrated(true);
       })
       .catch(() => {
@@ -167,7 +171,7 @@ export function CycleQuickLogSheet({
               <View style={{flexDirection:'row',alignItems:'center',gap:12}}>
               <View style={{width:30,height:34,borderRadius:12,backgroundColor:c.accentSoft,alignItems:'center',justifyContent:'center'}}><CalendarDays size={18} color={c.brand}/></View>
               <Text style={{ flex:1, color: c.ink, fontSize: 18, lineHeight:26, fontFamily: 'NotoSansGeorgian_600SemiBold' }}>
-                {ka.cycle.quickLogTitle}
+                {ka.cycle.logTodayCta}
               </Text>
               <Pressable onPress={onClose} disabled={saving} accessibilityRole="button" accessibilityLabel={ka.common.close}
                 style={{width:44,height:44,borderRadius:22,backgroundColor:c.cardSoft,alignItems:'center',justifyContent:'center'}}><X size={20} color={c.muted}/></Pressable>
@@ -214,168 +218,14 @@ export function CycleQuickLogSheet({
                   assessmentReady={hydrated}
                 />
               ) : (
-                <View>
-              <CycleLogSectionHeading icon={Droplets}>{ka.cycle.flow}</CycleLogSectionHeading>
-              <CycleFlowPicker
-                value={form.flow}
-                disabled={saving}
-                onChange={(id) => setForm((prev) => ({ ...prev, flow: id }))}
-              />
-
-              <CycleSexSection
-                form={form}
-                disabled={saving}
-                onChange={(patch) => setForm((prev) => ({ ...prev, ...patch }))}
-              />
-
-              {caps.showFertilityShortcuts ? (
-                <View style={{ marginTop: 14 }}>
-                  <Text
-                    style={{
-                      color: c.ink,
-                      fontFamily: 'NotoSansGeorgian_700Bold',
-                      fontSize: 13,
-                      marginBottom: 6,
-                    }}
-                  >
-                    {ka.cycle.ttcQuickLogTitle}
-                  </Text>
-                  <Text style={{ color: c.muted, fontSize: 12, lineHeight: 17, marginBottom: 10 }}>
-                    {ka.cycle.ttcOpkHint}
-                  </Text>
-                  <Text
-                    style={{
-                      color: c.ink,
-                      fontFamily: 'NotoSansGeorgian_700Bold',
-                      fontSize: 13,
-                      marginBottom: 8,
-                    }}
-                  >
-                    {ka.cycle.ovulationTest}
-                  </Text>
-                  <CycleTestResultRow
-                    value={form.ovulationTest}
-                    onChange={(ovulationTest) => setForm((prev) => ({ ...prev, ovulationTest }))}
-                  />
-                  <Text
-                    style={{
-                      color: c.ink,
-                      fontFamily: 'NotoSansGeorgian_700Bold',
-                      fontSize: 13,
-                      marginTop: 14,
-                      marginBottom: 8,
-                    }}
-                  >
-                    {ka.cycle.bbt}
-                  </Text>
-                  <TextInput
-                    value={form.bbt}
-                    onChangeText={(bbt) => setForm((prev) => ({ ...prev, bbt }))}
-                    keyboardType="decimal-pad"
-                    placeholder="36.6"
-                    placeholderTextColor={c.mutedSoft}
-                    accessibilityLabel={ka.cycle.bbt}
-                    style={{
-                      minHeight: 44,
-                      borderRadius: 12,
-                      borderWidth: 1,
-                      borderColor: c.controlBorder,
-                      backgroundColor: c.cardSoft,
-                      color: c.ink,
-                      paddingHorizontal: 12,
-                      fontSize: 16,
-                      fontFamily: 'NotoSansGeorgian_700Bold',
-                    }}
-                  />
-                  <Text
-                    style={{
-                      color: c.ink,
-                      fontFamily: 'NotoSansGeorgian_700Bold',
-                      fontSize: 13,
-                      marginTop: 14,
-                      marginBottom: 8,
-                    }}
-                  >
-                    {ka.cycle.mucus}
-                  </Text>
-                  <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-                    {MUCUS_OPTIONS.map((opt) => {
-                      const on = form.mucus === opt.id;
-                      return (
-                        <Pressable
-                          key={opt.id}
-                          onPress={() => {
-                            Haptics.selectionAsync().catch(() => undefined);
-                            setForm((prev) => ({ ...prev, mucus: on ? null : opt.id }));
-                          }}
-                          accessibilityRole="button"
-                          accessibilityState={{ selected: on }}
-                          accessibilityLabel={opt.label}
-                          style={{
-                            minHeight: 44,
-                            paddingHorizontal: 12,
-                            borderRadius: 14,
-                            justifyContent: 'center',
-                            backgroundColor: on ? c.card : c.cardSoft,
-                            borderWidth: 1,
-                            borderColor: on ? c.brand : c.border,
-                          }}
-                        >
-                          <Text style={{ color: c.ink, fontSize: 13 }}>{opt.label}</Text>
-                        </Pressable>
-                      );
-                    })}
-                  </View>
-                  <Text
-                    style={{
-                      color: c.ink,
-                      fontFamily: 'NotoSansGeorgian_700Bold',
-                      fontSize: 13,
-                      marginTop: 14,
-                      marginBottom: 8,
-                    }}
-                  >
-                    {ka.cycle.pregnancyTest}
-                  </Text>
-                  <CycleTestResultRow
-                    value={form.pregnancyTest}
-                    onChange={(pregnancyTest) => setForm((prev) => ({ ...prev, pregnancyTest }))}
-                  />
-                </View>
-              ) : null}
-
-              <CycleLogSectionHeading icon={Activity}>{ka.cycle.pain}</CycleLogSectionHeading>
-              <CyclePainEditor
-                compact
-                entries={form.painEntries}
-                onChange={(painEntries) => setForm((prev) => ({ ...prev, painEntries }))}
-              />
-
-              <CycleLogSectionHeading icon={Smile}>{ka.cycle.moods}</CycleLogSectionHeading>
-              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-                {QUICK_MOODS.map((opt) => {
-                  const on = form.moods.includes(opt.id);
-                  return (
-                    <CycleVisualChoice key={opt.id} id={opt.id} label={opt.label} selected={on} disabled={saving}
-                      onPress={() => setForm((prev) => ({ ...prev, moods: toggle(prev.moods, opt.id) }))} />
-                  );
-                })}
-              </View>
-
-              <CycleLogSectionHeading icon={Heart}>{ka.cycle.symptoms}</CycleLogSectionHeading>
-              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-                {(recentIds.length
-                  ? PHYSICAL_SYMPTOMS.filter((o) => recentIds.includes(o.id) && !PAIN_MANAGED_SYMPTOM_IDS.has(o.id))
-                  : QUICK_SYMPTOMS
-                ).map((opt) => {
-                  const on = form.symptoms.includes(opt.id);
-                  return (
-                    <CycleVisualChoice key={opt.id} id={opt.id} label={opt.label} selected={on} disabled={saving}
-                      onPress={() => setForm((prev) => ({ ...prev, ...applySymptomChipToggle(prev, opt.id) }))} />
-                  );
-                })}
-              </View>
-                </View>
+                <CycleQuickLogBody
+                  form={form}
+                  onChange={(patch) => setForm((prev) => ({ ...prev, ...patch }))}
+                  disabled={saving}
+                  date={date}
+                  logs={logs}
+                  showFertility={Boolean(caps.showFertilityShortcuts)}
+                />
               )}
 
               {/* Other modes have their own quick logs; sex and sex drive follow them there. */}
@@ -387,14 +237,16 @@ export function CycleQuickLogSheet({
                 />
               ) : null}
 
-              <View style={{ marginTop: 16 }}>
-                <CycleMoreTracking
-                  form={form}
-                  onChange={(patch) => setForm((prev) => ({ ...prev, ...patch }))}
-                  compact
-                  mode={mode || undefined}
-                />
-              </View>
+              {caps.showPregnancyObservations || caps.showPostpartumTracking || caps.showPerimenopauseTracking ? (
+                <View style={{ marginTop: 16 }}>
+                  <CycleMoreTracking
+                    form={form}
+                    onChange={(patch) => setForm((prev) => ({ ...prev, ...patch }))}
+                    compact
+                    mode={mode || undefined}
+                  />
+                </View>
+              ) : null}
 
               {saveError ? (
                 <Text

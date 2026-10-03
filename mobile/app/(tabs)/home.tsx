@@ -71,6 +71,9 @@ import { HomeNutritionLite } from '@/components/home/sections/HomeNutritionLite'
 import { HomeEnergyCard } from '@/components/home/sections/HomeEnergyCard';
 import { HomeCycleHero, HomeCycleToastHost } from '@/components/home/sections/HomeCycleHero';
 import { HomeCycleTips } from '@/components/home/sections/HomeCycleTips';
+import { HomeCycleAhead } from '@/components/home/sections/HomeCycleAhead';
+import { HomeCareRow } from '@/components/home/sections/HomeCareRow';
+import { HomeAskChips } from '@/components/home/sections/HomeAskChips';
 import { HomeCycleStats } from '@/components/home/sections/HomeCycleStats';
 import { HomeMoveHero } from '@/components/home/sections/HomeMoveHero';
 import { HomeWaterOutdoor } from '@/components/home/sections/HomeWaterOutdoor';
@@ -173,6 +176,10 @@ export default function Home() {
   // AI check-ups: each tile has its own switch (symptoms, labs, imaging, skin); deep analysis is a Medi mode.
   const checkupTiles = CHECKUP_TILES.filter((tile) => isHrefAvailable(tile.href, features));
   const deepOn = isHrefAvailable(mediRoute({ mode: 'deep' }), features);
+  // Women's Home: question chips under „ჰკითხე Medi-ს“ open the consultation with the question typed in.
+  const askChips = layout === 'women' && isHrefAvailable(mediRoute({ mode: 'doctor' }), features);
+  // Women's Home keeps today's food inside „შენი დღე“ (under steps and water) when that block shows.
+  const foodInDay = layout === 'women' && nutritionOn && (stepsOn || waterOn);
   const serviceTiles = SERVICE_TILES.filter((tile) => isHrefAvailable(tile.href, features));
 
   const today = todayYmd();
@@ -198,7 +205,9 @@ export default function Home() {
     if (!medsOn) hidden.add('nextDose');
     if (!stepsOn && !waterOn && !showMedsRing) hidden.add('hero');
     // Layout sections follow the same switches as the modules they summarise.
-    if (!cycleOn) (['cycleHero', 'cycleTips', 'cycleStats'] as const).forEach((id) => hidden.add(id));
+    if (!cycleOn) (['cycleHero', 'cycleAhead', 'cycleTips', 'cycleStats'] as const).forEach((id) => hidden.add(id));
+    if (!isFeatureOn('medi', features) || !checkupTiles.length) hidden.add('womenCare');
+    if (foodInDay) hidden.add('nutritionLite');
     if (!stepsOn && !waterOn) {
       hidden.add('dayPair');
       hidden.add('waterSteps');
@@ -211,7 +220,7 @@ export default function Home() {
     if (!isFeatureOn('weight', features)) hidden.add('weightProgress');
     if (!layoutsOn) hidden.add('customize');
     return hidden;
-  }, [features, checkupTiles.length, deepOn, medsOn, stepsOn, waterOn, showMedsRing, cycleOn, nutritionOn, layoutsOn]);
+  }, [features, checkupTiles.length, deepOn, medsOn, stepsOn, waterOn, showMedsRing, cycleOn, nutritionOn, layoutsOn, foodInDay]);
 
   // A new layout starts at its top, with a short fade (none under reduced motion).
   const scrollRef = useRef<ScrollView>(null);
@@ -370,6 +379,7 @@ export default function Home() {
     ask: (
       <View style={[s.section, { marginTop: 12 }]}>
         <HomeAskMedi onPress={() => open('/assistant')} />
+        {askChips ? <HomeAskChips /> : null}
       </View>
     ),
     nextDose: <HomeNextDoseSection meds={meds} />,
@@ -426,7 +436,7 @@ export default function Home() {
       <View style={s.section}>
         <HubFeatureCard
           icon={ClipboardCheck}
-          ink="teal"
+          ink={layout === 'women' ? 'rose' : 'teal'}
           title={ka.home.completeProfileTitle(completion.percent)}
           body={ka.home.completeProfileBody}
           cta={ka.home.completeProfileCta}
@@ -467,7 +477,10 @@ export default function Home() {
         title={tx('შენი დღე', 'Your day')}
         linkLabel={tx('ყველა მაჩვენებელი', 'All metrics')}
         linkHref="/health-metrics"
-      />
+        look={layout === 'women' ? 'rings' : 'bars'}
+      >
+        {foodInDay ? <HomeNutritionLite nutrition={nutrition} bare /> : null}
+      </HomeDayPair>
     ),
     waterSteps: (
       <HomeDayPair
@@ -483,7 +496,9 @@ export default function Home() {
     ),
     // ---- women ----
     cycleHero: <HomeCycleHero cycle={cycle} locked={cycleLocked} userId={user?.id} first />,
+    cycleAhead: <HomeCycleAhead cycle={cycle} locked={cycleLocked} />,
     cycleTips: <HomeCycleTips cycle={cycle} locked={cycleLocked} />,
+    womenCare: <HomeCareRow title={tx('შემოწმება AI-სთან', 'Check with AI')} tiles={checkupTiles} />,
     cycleStats: <HomeCycleStats cycle={cycle} locked={cycleLocked} showCommunity={communityEntry} />,
     // ---- active ----
     moveHero: <HomeMoveHero steps={steps} first />,

@@ -3,6 +3,8 @@ import { Alert } from 'react-native';
 import { useRouter } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import { ka } from '@/i18n/ka';
+import type { CycleLogForm } from '@/components/cycle/CycleLogTabs';
+import { formFromCycleLog, persistCycleLog } from '@/lib/cycleLogSave';
 import { queueApplyPeriod, type CycleView } from '@/lib/cycleOffline';
 import { putCycleView } from '@/lib/cycleViewCache';
 import { getCycleReminderPrefs } from '@/lib/cycleReminderPrefs';
@@ -11,15 +13,23 @@ import { localAccountId } from '@/lib/localAccount';
 
 /**
  * Home's one-tap cycle actions — the same library calls as the cycle screen
- * (`app/cycle/index.tsx` startPeriodNow / undoPeriodStart / endPeriod, without the sex one-tap):
+ * (`app/cycle/index.tsx` startPeriodNow / undoPeriodStart / endPeriod / logSexNow / undoSex):
  * offline-safe `queueApplyPeriod`, the returned view goes into the shared cache, an 8 s toast offers
- * „გამონადენი“ and „გაუქმება“. Reminders are rescheduled once the saved view is synced (the cycle
+ * „გამონადენი“ and „გაუქმება“. Sex (owner 2026-10-03, „როგორც ციკლის გვერდზეა“): one tap marks today
+ * and keeps the rest of the day's log, the toast offers details (the private sex sheet) and undo; a
+ * second tap on a logged day opens the sheet. Reminders are rescheduled once the saved view is synced (the cycle
  * screen does that in its view effect; Home only after its own writes).
  */
 
 // ---------- toast bridge (the toast sits outside Home's ScrollView, above the tab bar) ----------
 
-export type HomeCycleToast = { date: string; onAddFlow: () => void; onUndo: () => void };
+export type HomeCycleToast = {
+  kind: 'period' | 'sex';
+  date: string;
+  /** Period: add today's flow. Sex: open the details sheet. */
+  onAddFlow: () => void;
+  onUndo: () => void;
+};
 
 let toastEntry: HomeCycleToast | null = null;
 let hostCount = 0;
@@ -67,6 +77,14 @@ export type HomeCycleActions = {
   error: string | null;
   /** Date of the period start the toast is about (null = no toast). */
   toastDate: string | null;
+  /** The one-tap sex confirmation is showing. */
+  sexToast: boolean;
+  sexBusy: boolean;
+  /** The private sex & sex drive sheet. */
+  sexSheet: boolean;
+  logSex: () => void;
+  openSexSheet: () => void;
+  closeSexSheet: () => void;
   sheet: HomeCycleSheet;
   startPeriod: () => void;
   endPeriod: () => void;
@@ -99,6 +117,11 @@ export function useHomeCycleActions({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [toastDate, setToastDate] = useState<string | null>(null);
+  /** The day's form before the one-tap sex log (kept for undo); null = no sex toast. */
+  const [sexBefore, setSexBefore] = useState<CycleLogForm | null>(null);
+  const [sexBusy, setSexBusy] = useState(false);
+  const [sexSheet, setSexSheet] = useState(false);
+  const sexBusyRef = useRef(false);
   const [sheet, setSheet] = useState<HomeCycleSheet>({ visible: false, date: today, periodStart: false });
   const busyRef = useRef(false);
   const remindersDirty = useRef(false);
@@ -165,7 +188,10 @@ export function useHomeCycleActions({
         const result = await queueApplyPeriod(userId, { action: 'start', date: today });
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined);
         showView(result.view);
-        if (alive.current) setToastDate(today);
+        if (alive.current) {
+          setSexBefore(null);
+          setToastDate(today);
+        }
       } catch (err) {
         fail(err);
       } finally {
@@ -212,6 +238,58 @@ export function useHomeCycleActions({
     ]);
   }, [userId, today, showView, fail]);
 
+  /** Flo-style one tap: mark sex for today, keeping everything else logged that day. */
+  const logSex = useCallback(() => {
+    if (!userId || !view || sexBusyRef.current) return;
+    const before = formFromCycleLog(view.display.logs.find((l) => l.date === today));
+    if (before.sexual === true) {
+      setSexBefore(null);
+      setSexSheet(true);
+      return;
+    }
+    sexBusyRef.current = true;
+    setSexBusy(true);
+    setError(null);
+    void (async () => {
+      try {
+        const result = await persistCycleLog(userId, today, { ...before, sexual: true });
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined);
+        showView(result.view);
+        if (alive.current) {
+          setToastDate(null);
+          setSexBefore(before);
+        }
+      } catch (err) {
+        fail(err);
+      } finally {
+        sexBusyRef.current = false;
+        if (alive.current) setSexBusy(false);
+      }
+    })();
+  }, [userId, view, today, showView, fail]);
+
+  const undoSex = useCallback(
+    (before: CycleLogForm) => {
+      if (!userId) return;
+      setSexBefore(null);
+      void (async () => {
+        try {
+          const result = await persistCycleLog(userId, today, before);
+          showView(result.view);
+        } catch (err) {
+          fail(err);
+        }
+      })();
+    },
+    [userId, today, showView, fail],
+  );
+
+  const openSexSheet = useCallback(() => {
+    setSexBefore(null);
+    setSexSheet(true);
+  }, []);
+  const closeSexSheet = useCallback(() => setSexSheet(false), []);
+
   const openLog = useCallback(
     (date?: string, periodStart = false) => {
       setSheet({ visible: true, date: date ?? today, periodStart });
@@ -242,34 +320,53 @@ export function useHomeCycleActions({
     return () => clearTimeout(t);
   }, [toastDate]);
   useEffect(() => {
+    if (!sexBefore) return;
+    const t = setTimeout(() => setSexBefore(null), TOAST_MS);
+    return () => clearTimeout(t);
+  }, [sexBefore]);
+  useEffect(() => {
     if (!error) return;
     const t = setTimeout(() => setError(null), ERROR_MS);
     return () => clearTimeout(t);
   }, [error]);
 
   // Publish the toast for the host outside the ScrollView; withdraw it when it ends or Home unmounts.
-  const handlers = useRef({ addFlow, undoStart });
-  handlers.current = { addFlow, undoStart };
+  const handlers = useRef({ addFlow, undoStart, undoSex, openSexSheet });
+  handlers.current = { addFlow, undoStart, undoSex, openSexSheet };
   useEffect(() => {
-    if (!toastDate) {
+    if (!toastDate && !sexBefore) {
       setToastEntry(null);
       return;
     }
-    const entry: HomeCycleToast = {
-      date: toastDate,
-      onAddFlow: () => handlers.current.addFlow(toastDate),
-      onUndo: () => handlers.current.undoStart(toastDate),
-    };
+    const entry: HomeCycleToast = sexBefore
+      ? {
+          kind: 'sex',
+          date: today,
+          onAddFlow: () => handlers.current.openSexSheet(),
+          onUndo: () => handlers.current.undoSex(sexBefore),
+        }
+      : {
+          kind: 'period',
+          date: toastDate as string,
+          onAddFlow: () => handlers.current.addFlow(toastDate as string),
+          onUndo: () => handlers.current.undoStart(toastDate as string),
+        };
     setToastEntry(entry);
     return () => {
       if (toastEntry === entry) setToastEntry(null);
     };
-  }, [toastDate]);
+  }, [toastDate, sexBefore, today]);
 
   return {
     busy,
     error,
     toastDate,
+    sexToast: sexBefore != null,
+    sexBusy,
+    sexSheet,
+    logSex,
+    openSexSheet,
+    closeSexSheet,
     sheet,
     startPeriod,
     endPeriod,

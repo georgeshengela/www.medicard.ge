@@ -17,7 +17,14 @@ const groupDigits = (n: number) => Math.round(n).toString().replace(/\B(?=(\d{3}
  * Nutrition in one row for layouts where it is not the lead (women's, active): the same numbers
  * and wording as the standard card (HomeNutritionCard), plus the camera shortcut into the diary.
  */
-export function HomeNutritionLite({ nutrition }: { nutrition: ReturnType<typeof useNutritionDashboard> }) {
+export function HomeNutritionLite({
+  nutrition,
+  bare = false,
+}: {
+  nutrition: ReturnType<typeof useNutritionDashboard>;
+  /** Inside another section (women's „შენი დღე“): no heading and no gutters of its own. */
+  bare?: boolean;
+}) {
   const c = useThemeColors();
   const accent = useHomeAccent();
   const router = useRouter();
@@ -49,8 +56,10 @@ export function HomeNutritionLite({ nutrition }: { nutrition: ReturnType<typeof 
       : tx('ჩაწერე დღის პირველი კვება.', "Log today's first meal.");
 
   return (
-    <View style={s.section}>
-      <HomeSectionHeading title={tx('კვება', 'Nutrition')} linkLabel={tx('ყველა', 'All')} onLink={() => router.push('/nutrition' as never)} />
+    <View style={bare ? s.bare : s.section}>
+      {bare ? null : (
+        <HomeSectionHeading title={tx('კვება', 'Nutrition')} linkLabel={tx('ყველა', 'All')} onLink={() => router.push('/nutrition' as never)} />
+      )}
       {loading && !data ? (
         <MetricCardSkeleton />
       ) : (
@@ -92,6 +101,7 @@ export function HomeNutritionLite({ nutrition }: { nutrition: ReturnType<typeof 
 
 const s = StyleSheet.create({
   section: { paddingHorizontal: HUB.gutter, marginTop: HUB.sectionGap },
+  bare: { marginTop: 12 },
   card: { borderRadius: HUB.cardRadius, padding: 16, flexDirection: 'row', alignItems: 'center', gap: 14 },
   main: { flex: 1, minWidth: 0, flexDirection: 'row', alignItems: 'center', gap: 14 },
   icon: { width: HUB.tile, height: HUB.tile, borderRadius: HUB.tileRadius, alignItems: 'center', justifyContent: 'center' },

@@ -1,13 +1,13 @@
 import React, { useEffect } from 'react';
 import { Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { useRouter } from 'expo-router';
-import Svg, { Circle, Path } from 'react-native-svg';
-import { Baby, CalendarHeart, Check, Droplet, Flower2, Lock, Plus, RotateCcw, type LucideIcon } from 'lucide-react-native';
+import { Baby, CalendarHeart, Check, Droplet, Flower2, Heart, Lock, Plus, RotateCcw, type LucideIcon } from 'lucide-react-native';
 import { HomeSectionHeading } from '@/components/home/HomeSectionHeading';
 import { MedicalSourcesLink } from '@/components/health/MedicalSourcesLink';
 import type { MedicalSourceId } from '@/constants/medicalSources';
 import { CyclePeriodToast } from '@/components/cycle/CyclePeriodToast';
 import { CycleQuickLogSheet } from '@/components/cycle/CycleQuickLogSheet';
+import { CycleSexSheet } from '@/components/cycle/CycleSexSheet';
 import { todayKey } from '@/components/cycle/CycleCalendar';
 import { useTabBarInset } from '@/components/navigation/FloatingTabBar';
 import { WEEKDAYS_KA } from '@/constants/cycle';
@@ -30,28 +30,27 @@ import {
   cycleCenter,
   cycleHeroActions,
   cycleHeroVariant,
-  cycleRingModel,
   cycleWeekStrip,
   daysBetweenKeys,
   fertileDaysInCycle,
-  recordedPeriodDaysInCycle,
   startLeads,
+  weekdayIndex,
   type CycleCenter,
   type CycleHeroActionId,
-  type RingArc,
-  type RingPhaseKind,
   type StripDay,
 } from '@/lib/home/homeCycle';
 import { useThemeColors, useIsDark } from '@/theme/colors';
-import { cycleHexAlpha, useCycleColors } from '@/theme/cycle';
+import { useCycleColors } from '@/theme/cycle';
 import { useHomeAccent } from '@/theme/homeAccent';
 import { HUB, hubText } from '@/theme/hub';
 import {
   registerHomeCycleToastHost,
   useHomeCycleActions,
+  type HomeCycleToast as HomeCycleToastEntry,
   useHomeCycleToastEntry,
   useHomeCycleToastHosted,
 } from './useHomeCycleActions';
+import { LinearGradient } from 'expo-linear-gradient';
 
 /** Shared cycle data from the Home root (`useCycleView` mounted once there). */
 export type HomeCycleData = {
@@ -60,6 +59,8 @@ export type HomeCycleData = {
   failed: boolean;
   retry: () => void;
 };
+
+const STRIP_H = 13 + 4 + 38 + 5;
 
 export type HomeCycleHeroProps = {
   cycle: HomeCycleData;
@@ -70,13 +71,15 @@ export type HomeCycleHeroProps = {
   first?: boolean;
 };
 
-const STRIP_H = 13 + 4 + 38 + 5;
 
 /**
- * „ციკლი დღეს“ — the women's Home hero: a static phase ring, honest status, one-tap actions
- * (same library calls as the cycle screen) and the −3…+3 day strip in the cycle colour grammar.
- * Every gate (lock, mode, forecast, fertility, contraception) mirrors `/cycle`; sex, BBT and test
- * marks never appear here.
+ * „ციკლი დღეს“ — the women's Home hero in Flo's proven shape (owner 2026-10-03, after the real
+ * Flo/Clue screens): the week strip on top, then one big answer on a soft glow in today's phase
+ * colour („მენსტრუაციამდე · 3 დღე · სავარაუდოდ სამ, 6 ოქტ“), the phase under it, and the cycle
+ * screen's one-tap actions: period start / end, the day's log and „♥ სექსი“. No ring here — the
+ * dial lives on /cycle.
+ * Every gate (lock, mode, forecast, fertility, contraception) mirrors `/cycle`. BBT and test marks
+ * never appear here; sex is only the one-tap button (owner 2026-10-03), shown while the cycle is unlocked.
  */
 export function HomeCycleHero({ cycle, locked, userId, first }: HomeCycleHeroProps) {
   const router = useRouter();
@@ -85,14 +88,14 @@ export function HomeCycleHero({ cycle, locked, userId, first }: HomeCycleHeroPro
   const accent = useHomeAccent();
   const { width } = useWindowDimensions();
   const compact = width < 360;
-  const ringSize = compact ? 104 : 132;
-  const heroMinHeight = HUB.cardPad * 2 + ringSize + 16 + 48 + 16 + STRIP_H;
+  const heroMinHeight = HUB.cardPad * 2 + STRIP_H + 16 + 150 + 12 + 60 + 16 + 50 + 10 + 46;
 
   const view = locked === false ? cycle.view : null;
   const bundle: CycleBundle | null = view?.display ?? null;
   const today = cycleToday(bundle, todayKey());
   const actions = useHomeCycleActions({ userId, today, view, retry: cycle.retry });
   const toastHosted = useHomeCycleToastHosted();
+  const toastEntry = useHomeCycleToastEntry();
   const cycleOn = isFeatureOn('cycle', useFeatureState());
 
   const caps = cycleModeCapabilities(bundle?.profile.mode);
@@ -119,7 +122,7 @@ export function HomeCycleHero({ cycle, locked, userId, first }: HomeCycleHeroPro
   if (variant === 'lockUnknown') {
     body = <View style={[card, { height: heroMinHeight }]} />;
   } else if (variant === 'loading') {
-    body = <HeroSkeleton ringSize={ringSize} minHeight={heroMinHeight} />;
+    body = <HeroSkeleton minHeight={heroMinHeight} />;
   } else if (variant === 'locked') {
     body = (
       <View style={card}>
@@ -179,24 +182,14 @@ export function HomeCycleHero({ cycle, locked, userId, first }: HomeCycleHeroPro
           accessibilityRole="button"
           accessibilityLabel={[ka.cycle.pregnancyModeTitle, detail, due].filter(Boolean).join('. ')}
           onPress={openCycle}
-          style={s.row}
+          style={s.stage}
         >
-          <HomeCycleRing
-            size={ringSize}
-            progress={age ? Math.min(1, age.dayOfPregnancy / 280) : 0}
-            progressColor={c.gaugeProgress}
-            center={{ top: null, value: age ? String(age.week) : '—', bottom: ka.cycle.week }}
-          />
-          <StatusColumn
-            title={ka.cycle.pregnancyModeTitle}
-            detail={detail}
-            badge={due}
-            offline={view?.reachable === false}
-          />
+          <GlowAnswer tone={c.gaugeProgress} caption={ka.cycle.pregnancyModeTitle} value={age ? String(age.week) : '—'} unit={age ? ka.cycle.week : null} sub={due} />
+          <StatusStack title={ka.cycle.pregnancyModeTitle} dot={c.gaugeProgress} detail={detail} offline={view?.reachable === false} />
         </Pressable>
         <View style={s.buttons}>
-          <HeroButton label={ka.cycle.storyLogTitle} icon={Plus} filled flex={1.7} onPress={() => actions.openLog()} />
-          <HeroButton label={tx('კვირის გზამკვლევი', "This week's guide")} icon={Baby} flex={1} onPress={openWeek} />
+          <HeroButton label={ka.cycle.storyLogTitle} icon={Plus} filled flex={1.5} onPress={() => actions.openLog()} />
+          <HeroButton label={tx('კვირის გზამკვლევი', "This week's guide")} flex={1} onPress={openWeek} />
         </View>
       </View>
     );
@@ -224,7 +217,7 @@ export function HomeCycleHero({ cycle, locked, userId, first }: HomeCycleHeroPro
         </Pressable>
         <HeroButton label={ka.cycle.storyLogTitle} icon={Plus} filled onPress={() => actions.openLog()} />
         {peri ? (
-          <WeekStrip
+          <WeekTray
             days={cycleWeekStrip({
               today,
               calendar: bundle.predictions?.calendar,
@@ -235,6 +228,7 @@ export function HomeCycleHero({ cycle, locked, userId, first }: HomeCycleHeroPro
             })}
             compact={compact}
             bleedLabel={cycleLoggedBleedLabel(bundle.profile.mode, ka.cycle)}
+            onPress={openCycle}
           />
         ) : null}
       </View>
@@ -246,13 +240,13 @@ export function HomeCycleHero({ cycle, locked, userId, first }: HomeCycleHeroPro
         bundle={bundle}
         today={today}
         offline={view?.reachable === false}
-        ringSize={ringSize}
-        compact={compact}
         dayOne={actions.toastDate === today}
         busy={actions.busy}
+        sexBusy={actions.sexBusy}
         onStart={actions.startPeriod}
         onEnd={actions.endPeriod}
         onLog={() => actions.openLog()}
+        onSex={actions.logSex}
         onOpen={openCycle}
         error={actions.error}
       />
@@ -267,7 +261,7 @@ export function HomeCycleHero({ cycle, locked, userId, first }: HomeCycleHeroPro
         onLink={openCycle}
       />
       {body}
-      {sourceIds ? <MedicalSourcesLink sourceIds={sourceIds} /> : null}
+      {sourceIds ? <MedicalSourcesLink sourceIds={sourceIds} align="center" tint={theme.text200} /> : null}
       {variant !== 'cycle' && actions.error ? (
         <Text accessibilityRole="alert" style={[hubText.caption, { color: theme.danger, marginTop: 6 }]}>
           {actions.error}
@@ -283,13 +277,10 @@ export function HomeCycleHero({ cycle, locked, userId, first }: HomeCycleHeroPro
           onOpenFull={actions.openFullLog}
         />
       ) : null}
-      {actions.toastDate && !toastHosted ? (
-        <CyclePeriodToast
-          bottomInset={0}
-          onAddFlow={() => actions.addFlow(actions.toastDate as string)}
-          onUndo={() => actions.undoStart(actions.toastDate as string)}
-        />
+      {userId && locked === false ? (
+        <CycleSexSheet visible={actions.sexSheet} date={today} onClose={actions.closeSexSheet} onSaved={actions.onSheetSaved} />
       ) : null}
+      {toastEntry && !toastHosted ? <HomeCycleToast entry={toastEntry} bottomInset={0} /> : null}
     </View>
   );
 }
@@ -303,7 +294,25 @@ export function HomeCycleToastHost() {
   const inset = useTabBarInset(0);
   useEffect(() => registerHomeCycleToastHost(), []);
   if (!entry) return null;
-  return <CyclePeriodToast bottomInset={inset} onAddFlow={entry.onAddFlow} onUndo={entry.onUndo} />;
+  return <HomeCycleToast entry={entry} bottomInset={inset} />;
+}
+
+/** „მენსტრუაცია დაფიქსირდა“ (flow / undo) or „სექსი აღირიცხა“ (details / undo) — the cycle screen's toasts. */
+function HomeCycleToast({ entry, bottomInset }: { entry: HomeCycleToastEntry; bottomInset: number }) {
+  if (entry.kind === 'sex') {
+    return (
+      <CyclePeriodToast
+        bottomInset={bottomInset}
+        title={ka.cycle.sexLoggedToast}
+        hint={ka.cycle.sexLoggedToastHint}
+        primaryLabel={ka.cycle.sexLoggedDetails}
+        PrimaryIcon={Heart}
+        onAddFlow={entry.onAddFlow}
+        onUndo={entry.onUndo}
+      />
+    );
+  }
+  return <CyclePeriodToast bottomInset={bottomInset} onAddFlow={entry.onAddFlow} onUndo={entry.onUndo} />;
 }
 
 // ---------- classic cycle card (TRACK_PERIOD / TRY_TO_CONCEIVE) ----------
@@ -312,26 +321,26 @@ function ClassicCycleCard({
   bundle,
   today,
   offline,
-  ringSize,
-  compact,
   dayOne,
   busy,
+  sexBusy,
   onStart,
   onEnd,
   onLog,
+  onSex,
   onOpen,
   error,
 }: {
   bundle: CycleBundle;
   today: string;
   offline: boolean;
-  ringSize: number;
-  compact: boolean;
   dayOne: boolean;
   busy: boolean;
+  sexBusy: boolean;
   onStart: () => void;
   onEnd: () => void;
   onLog: () => void;
+  onSex: () => void;
   onOpen: () => void;
   error: string | null;
 }) {
@@ -353,30 +362,18 @@ function ClassicCycleCard({
   const inDays = next ? daysBetweenKeys(today, next) : null;
   const day = hideLengthChrome ? null : phase.day;
 
-  const ring = cycleRingModel({
-    day,
-    cycleLength: cycleLen,
-    periodLength: bundle.averages?.usedPeriodLength ?? bundle.profile?.avgPeriodLength ?? 5,
-    recordedPeriodDays: hideLengthChrome
-      ? []
-      : recordedPeriodDaysInCycle({
-          today,
-          day,
-          cycleLength: cycleLen,
-          bleedDates: bundle.logs.filter((l) => isBleedFlow(l.flow)).map((l) => l.date),
-        }),
-    fertileDays: fertileDaysInCycle({
-      today,
-      day,
-      cycleLength: cycleLen,
-      window: fertilityVisible && !hidePredicted ? bundle.predictions?.fertileWindow : null,
-    }),
-    hideLengthChrome,
-    capDeg: ringGeometry(ringSize).capDeg,
-  });
-
   const center = cycleCenter({ hideLengthChrome, hidePredicted, onPeriod, predictedToday, forecastOn, inDays, day, cycleLength: cycleLen });
   const centerText = centerCopy(center, uncertainBleed);
+  // Today's colour: bleeding wins; otherwise the phase the cycle screen names.
+  const todayColor = onPeriod
+    ? c.period
+    : phase.phase === 'fertile' || phase.phase === 'ovulation'
+      ? c.fertileFill
+      : phase.phase === 'luteal'
+        ? c.luteal
+        : phase.phase === 'follicular'
+          ? c.follicularFill
+          : c.mutedSoft;
 
   const title = hideLengthChrome
     ? ka.cycle.postpartumReturnGathering
@@ -391,11 +388,12 @@ function ClassicCycleCard({
         : ka.cycle.heroCycleDayOf(phase.day, length)
       : null;
   const late = forecastOn && inDays != null && inDays < 0 && caps.showLatePeriod;
+  // Dashed = an estimate (the calendar's grammar): the expected start with its weekday.
   const badge = forecastOn && next && !onPeriod
     ? late
       ? { text: ka.cycle.lateCalmTitle, calm: true }
-      : inDays != null && inDays >= 0
-        ? { text: `${ka.cycle.heroLikely} · ${formatYmd(next)}`, calm: false }
+      : inDays != null && inDays > 0
+        ? { text: `${ka.cycle.heroLikely} · ${WEEKDAYS_KA[weekdayIndex(next)]}, ${formatYmd(next)}`, calm: false }
         : null
     : null;
 
@@ -403,32 +401,14 @@ function ClassicCycleCard({
   const isDayOne = dayOne || bundle.profile.lastPeriodStart === today || (onPeriod && phase.day === 1);
   const plan = cycleHeroActions({ onPeriod, dayOne: isDayOne, leadsWithStart: leads });
   const startLabel = uncertainBleed ? ka.cycle.heroBleedingStarted : ka.cycle.heroPeriodStarted;
+  const sexLogged = todayLog?.sexualActivity === true;
   const button = (id: CycleHeroActionId, filled: boolean) => {
-    // The tonal button carries no icon, so the filled one keeps its label on one line at 390 pt.
-    const common = { filled, flex: filled ? 1.9 : 1, disabled: busy } as const;
-    if (id === 'start') return <HeroButton key={id} {...common} label={startLabel} icon={filled ? Droplet : undefined} onPress={onStart} />;
+    const common = { filled, disabled: busy, flex: filled ? undefined : 1 } as const;
+    if (id === 'start') return <HeroButton key={id} {...common} label={startLabel} icon={Droplet} onPress={onStart} />;
     if (id === 'end') return <HeroButton key={id} {...common} label={ka.cycle.periodEndCta} icon={filled ? Check : undefined} onPress={onEnd} />;
-    if (id === 'logFlow') return <HeroButton key={id} {...common} label={ka.cycle.logTodayFlow} icon={filled ? Droplet : undefined} onPress={onLog} />;
-    return (
-      <HeroButton
-        key={id}
-        {...common}
-        label={filled ? ka.cycle.logTodayCta : tx('აღრიცხვა', 'Log')}
-        a11y={ka.cycle.logTodayCta}
-        icon={filled ? Plus : undefined}
-        onPress={onLog}
-      />
-    );
+    if (id === 'logFlow') return <HeroButton key={id} {...common} label={ka.cycle.logTodayFlow} icon={Droplet} onPress={onLog} />;
+    return <HeroButton key={id} {...common} label={ka.cycle.logTodayCta} icon={Plus} onPress={onLog} />;
   };
-
-  const strip = cycleWeekStrip({
-    today,
-    calendar: bundle.predictions?.calendar,
-    bleedLogs: bundle.logs,
-    showFertility: fertilityVisible,
-    showOvulation: showOvulationUi(bundle),
-    showPredicted: caps.showFertileEstimates && !hidePredicted,
-  });
 
   const summary = [
     title,
@@ -441,34 +421,62 @@ function ClassicCycleCard({
     .filter(Boolean)
     .join('. ');
 
+  const strip = cycleWeekStrip({
+    today,
+    calendar: bundle.predictions?.calendar,
+    bleedLogs: bundle.logs,
+    showFertility: fertilityVisible,
+    showOvulation: showOvulationUi(bundle),
+    showPredicted: caps.showFertileEstimates && !hidePredicted,
+  });
+  // The big answer: countdown → „3 დღე“ with the date under it; otherwise the centre copy as is.
+  const unit = center.kind === 'countdown' ? tx('დღე', center.days === 1 ? 'day' : 'days') : null;
+  const sub =
+    center.kind === 'countdown'
+      ? badge && !badge.calm && next
+        ? `${ka.cycle.heroLikely} · ${WEEKDAYS_KA[weekdayIndex(next)]}, ${formatYmd(next)}`
+        : ka.cycle.heroLikely
+      : centerText.bottom;
+
   return (
     <View style={[s.card, { backgroundColor: theme.surface }]}>
-      <Pressable accessibilityRole="button" accessibilityLabel={summary} onPress={onOpen} style={s.row}>
-        <HomeCycleRing size={ringSize} arcs={ring.arcs} todayDeg={ring.todayDeg} center={centerText} />
-        <StatusColumn
+      <WeekTray days={strip} compact={false} bleedLabel={cycleLoggedBleedLabel(bundle.profile.mode, ka.cycle)} onPress={onOpen} />
+      <Pressable accessibilityRole="button" accessibilityLabel={summary} onPress={onOpen} style={s.stage}>
+        <GlowAnswer tone={todayColor} caption={centerText.top} value={centerText.value} unit={unit} sub={sub} valueTone={centerText.tone === 'period' ? c.period : c.ink} />
+        <StatusStack
           title={title}
+          dot={todayColor}
           detail={detail}
-          badge={badge?.text ?? null}
-          badgeCalm={badge?.calm}
+          badge={badge?.calm ? badge.text : null}
+          badgeCalm
           note={caps.showTtcOverview ? ka.cycle.homeTtcLabel : null}
           offline={offline}
         />
       </Pressable>
-      <View style={s.buttons}>
+      {/* The cycle screen's pattern: the leading action full width, then the other one beside „♥ სექსი“. */}
+      <View style={s.actions}>
         {button(plan.primary, true)}
-        {plan.secondary ? button(plan.secondary, false) : null}
+        <View style={s.buttons}>
+          {plan.secondary ? button(plan.secondary, false) : null}
+          <SexButton logged={sexLogged} disabled={sexBusy} wide={!plan.secondary} onPress={onSex} />
+        </View>
       </View>
       {error ? (
         <Text accessibilityRole="alert" style={[hubText.caption, { color: theme.danger, marginTop: -6 }]}>
           {error}
         </Text>
       ) : null}
-      <WeekStrip days={strip} compact={compact} bleedLabel={cycleLoggedBleedLabel(bundle.profile.mode, ka.cycle)} />
     </View>
   );
 }
 
 type CenterText = { top: string | null; value: string; bottom: string | null; tone?: 'period' };
+
+/** „6 ოქტომბერი“ → „6 ოქტ“ (the disc has little room). */
+function shortDate(ymd: string): string {
+  const [day, ...month] = formatYmd(ymd).split(' ');
+  return `${day} ${month.join(' ').slice(0, 3)}`;
+}
 
 function centerCopy(center: CycleCenter, uncertainBleed: boolean): CenterText {
   switch (center.kind) {
@@ -482,12 +490,11 @@ function centerCopy(center: CycleCenter, uncertainBleed: boolean): CenterText {
     case 'periodToday':
       return { top: ka.cycle.heroLikely, value: ka.cycle.heroToday, bottom: ka.cycle.legendPeriodPredicted, tone: 'period' };
     case 'countdown':
+      // The same words as the cycle screen's dial: „მენსტრუაციამდე · 3 · დღე · სავარაუდოდ“.
       return {
-        // Short words: the captions sit where the ring is narrow. „სავარაუდოდ“ + the date stay in the
-        // dashed badge beside the ring, so the estimate is still named as one.
-        top: uncertainBleed ? tx('სისხლდენა', 'Bleeding in') : tx('მენსტრუაცია', 'Period in'),
+        top: uncertainBleed ? ka.cycle.heroUntilBleeding : ka.cycle.heroUntilPeriod,
         value: String(center.days),
-        bottom: tx('დღეში', center.days === 1 ? 'day' : 'days'),
+        bottom: ka.cycle.heroDaysEstimated,
       };
     case 'late':
       return { top: ka.cycle.cycleDay, value: String(center.day), bottom: ka.cycle.heroLateBy(center.lateBy) };
@@ -504,129 +511,61 @@ function centerCopy(center: CycleCenter, uncertainBleed: boolean): CenterText {
 
 // ---------- pieces ----------
 
-/** Stroke, marker and radius of the static ring; `capDeg` keeps round caps of neighbouring arcs apart. */
-function ringGeometry(size: number) {
-  const stroke = size >= 120 ? 10 : 8;
-  const marker = stroke * 0.8;
-  const r = size / 2 - marker - 3;
-  return { stroke, marker, r, capDeg: ((stroke / 2 + 1.5) / r) * (180 / Math.PI) };
-}
-
-function polar(cx: number, r: number, deg: number) {
-  const a = ((deg - 90) * Math.PI) / 180;
-  return { x: cx + r * Math.cos(a), y: cx + r * Math.sin(a) };
-}
-
-function arcPath(cx: number, r: number, from: number, to: number) {
-  const end = Math.min(to, from + 359.9);
-  const p0 = polar(cx, r, from);
-  const p1 = polar(cx, r, end);
-  return `M ${p0.x.toFixed(2)} ${p0.y.toFixed(2)} A ${r} ${r} 0 ${end - from > 180 ? 1 : 0} 1 ${p1.x.toFixed(2)} ${p1.y.toFixed(2)}`;
-}
-
-/** Static ring: phase arcs (lived = full colour, ahead = faded), today's marker, one number inside. */
-function HomeCycleRing({
-  size,
-  arcs = [],
-  todayDeg = null,
-  progress,
-  progressColor,
-  center,
+/** Flo's hero: a soft glow in today's colour, one caption, one big number with its word, one line under it. */
+function GlowAnswer({
+  tone,
+  caption,
+  value,
+  unit,
+  sub,
+  valueTone,
 }: {
-  size: number;
-  arcs?: RingArc[];
-  todayDeg?: number | null;
-  /** Single-arc mode (pregnancy weeks). */
-  progress?: number;
-  progressColor?: string;
-  center: CenterText;
+  tone: string;
+  caption: string | null;
+  value: string;
+  unit: string | null;
+  sub: string | null;
+  valueTone?: string;
 }) {
   const theme = useThemeColors();
+  const dark = useIsDark();
   const c = useCycleColors();
-  const { stroke, marker, r } = ringGeometry(size);
-  const cx = size / 2;
-  const phaseColor: Record<RingPhaseKind, string> = {
-    period: c.period,
-    follicular: c.follicularFill,
-    fertile: c.fertileFill,
-    luteal: c.luteal,
-  };
-  const today = todayDeg != null ? polar(cx, r, todayDeg) : null;
-  const inner = (r - stroke / 2) * 2 * 0.86;
-  const valueSize = Math.round(size * 0.26);
-
+  const big = value.length > 2 ? 40 : 60;
   return (
-    <View style={{ width: size, height: size }} importantForAccessibility="no-hide-descendants" accessibilityElementsHidden>
-      <Svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
-        <Circle cx={cx} cy={cx} r={r} stroke={c.gaugeTrack} strokeWidth={stroke} fill="none" />
-        {arcs.map((arc) => (
-          <React.Fragment key={arc.kind}>
-            <Path
-              d={arcPath(cx, r, arc.from, arc.to)}
-              stroke={cycleHexAlpha(phaseColor[arc.kind], 0.3)}
-              strokeWidth={stroke}
-              strokeLinecap="round"
-              fill="none"
-            />
-            {arc.livedTo != null ? (
-              <Path
-                d={arcPath(cx, r, arc.from, arc.livedTo)}
-                stroke={phaseColor[arc.kind]}
-                strokeWidth={stroke}
-                strokeLinecap="round"
-                fill="none"
-              />
-            ) : null}
-          </React.Fragment>
-        ))}
-        {progress != null && progress > 0 ? (
-          <Path
-            d={arcPath(cx, r, 0, Math.max(1, progress * 360))}
-            stroke={progressColor ?? c.gaugeProgress}
-            strokeWidth={stroke}
-            strokeLinecap="round"
-            fill="none"
-          />
-        ) : null}
-        {today ? (
-          <Circle cx={today.x} cy={today.y} r={marker} fill={theme.surface} stroke={c.todayRing} strokeWidth={2.5} />
-        ) : null}
-      </Svg>
-      <View pointerEvents="none" style={s.ringCenter}>
-        {center.top ? (
-          <Text numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7} style={[s.ringCaption, { color: c.muted, maxWidth: inner }]}>
-            {center.top}
-          </Text>
-        ) : null}
+    <View style={s.glowWrap}>
+      <LinearGradient
+        pointerEvents="none"
+        colors={[`${tone}${dark ? '3D' : '2E'}`, `${tone}${dark ? '14' : '0A'}`, `${theme.surface}00`]}
+        locations={[0, 0.6, 1]}
+        start={{ x: 0.5, y: 0 }}
+        end={{ x: 0.5, y: 1 }}
+        style={s.glow}
+      />
+      {caption ? <Text style={[s.glowCaption, { color: c.muted }]}>{caption}</Text> : null}
+      <View style={s.glowValueRow}>
         <Text
           numberOfLines={1}
           adjustsFontSizeToFit
           minimumFontScale={0.6}
-          style={{
-            maxWidth: inner,
-            color: center.tone === 'period' ? c.period : c.ink,
-            fontFamily: 'NotoSansGeorgian_700Bold',
-            fontSize: valueSize,
-            lineHeight: Math.round(valueSize * 1.18),
-            letterSpacing: -0.5,
-            textAlign: 'center',
-            fontVariant: ['tabular-nums'],
-          }}
+          style={[s.glowValue, { color: valueTone ?? c.ink, fontSize: big, lineHeight: Math.round(big * 1.12) }]}
         >
-          {center.value}
+          {value}
         </Text>
-        {center.bottom ? (
-          <Text numberOfLines={2} adjustsFontSizeToFit minimumFontScale={0.7} style={[s.ringCaption, { color: c.muted, maxWidth: inner }]}>
-            {center.bottom}
-          </Text>
-        ) : null}
+        {unit ? <Text style={[s.glowUnit, { color: valueTone ?? c.ink }]}>{unit}</Text> : null}
       </View>
+      {sub ? (
+        <Text numberOfLines={2} style={[s.glowSub, { color: c.muted }]}>
+          {sub}
+        </Text>
+      ) : null}
     </View>
   );
 }
 
-function StatusColumn({
+/** Under the answer, centred: the phase in a pill with today's colour, the day line, the estimate badge. */
+function StatusStack({
   title,
+  dot,
   detail,
   badge = null,
   badgeCalm = false,
@@ -634,6 +573,7 @@ function StatusColumn({
   offline = false,
 }: {
   title: string;
+  dot: string;
   detail: string | null;
   badge?: string | null;
   badgeCalm?: boolean;
@@ -644,19 +584,37 @@ function StatusColumn({
   const dark = useIsDark();
   const c = useCycleColors();
   return (
-    <View style={s.column}>
-      <Text numberOfLines={3} style={[s.title, { color: c.ink }]}>
-        {title}
-      </Text>
-      {detail ? <Text style={[hubText.body, { color: theme.text200 }]}>{detail}</Text> : null}
-      {note ? <Text style={[hubText.caption, { color: theme.text200 }]}>{note}</Text> : null}
+    <View style={s.stack}>
+      <View style={[s.phasePill, { backgroundColor: c.cardSoft }]}>
+        <View style={[s.phaseDot, { backgroundColor: dot }]} />
+        <Text numberOfLines={2} style={[s.phaseText, { color: c.ink }]}>
+          {title}
+        </Text>
+      </View>
+      {detail ? <Text style={[hubText.body, { color: theme.text200, textAlign: 'center' }]}>{detail}</Text> : null}
+      {note ? <Text style={[hubText.caption, { color: theme.text200, textAlign: 'center' }]}>{note}</Text> : null}
       {badge ? (
-        <View style={[s.badge, { borderColor: badgeCalm ? c.border : c.accentBorder }]}>
+        <View style={[s.badge, { borderColor: badgeCalm ? c.controlBorder : c.accentBorder }]}>
           <Text numberOfLines={2} style={[s.badgeText, { color: badgeCalm ? c.muted : dark ? c.brand : c.ctaPressed }]}>
             {badge}
           </Text>
         </View>
       ) : null}
+      {offline ? <Text style={[hubText.small, { color: theme.text300, textAlign: 'center' }]}>{ka.cycle.offlineBanner}</Text> : null}
+    </View>
+  );
+}
+
+/** Left-aligned status beside an icon tile (postpartum, perimenopause). */
+function StatusColumn({ title, detail, offline = false }: { title: string; detail: string | null; offline?: boolean }) {
+  const theme = useThemeColors();
+  const c = useCycleColors();
+  return (
+    <View style={s.column}>
+      <Text numberOfLines={3} style={[s.title, { color: c.ink }]}>
+        {title}
+      </Text>
+      {detail ? <Text style={[hubText.body, { color: theme.text200 }]}>{detail}</Text> : null}
       {offline ? <Text style={[hubText.small, { color: theme.text300 }]}>{ka.cycle.offlineBanner}</Text> : null}
     </View>
   );
@@ -680,7 +638,8 @@ function HeroButton({
   onPress: () => void;
 }) {
   const accent = useHomeAccent();
-  const fg = filled ? accent.onCta : accent.ink;
+  const c = useCycleColors();
+  const fg = filled ? accent.onCta : c.ink;
   return (
     <Pressable
       accessibilityRole="button"
@@ -689,23 +648,74 @@ function HeroButton({
       disabled={disabled}
       onPress={onPress}
       style={[
-        s.button,
-        { backgroundColor: filled ? accent.cta : accent.soft, opacity: disabled ? 0.6 : 1 },
+        filled ? s.button : s.buttonTonal,
+        { backgroundColor: filled ? accent.cta : c.cardSoft, opacity: disabled ? 0.6 : 1 },
         flex != null ? { flex } : null,
       ]}
     >
       {Icon ? <Icon size={17} color={fg} strokeWidth={2.2} /> : null}
-      <Text numberOfLines={2} style={[s.buttonText, { color: fg }]}>
+      <Text
+        numberOfLines={1}
+        adjustsFontSizeToFit
+        minimumFontScale={0.85}
+        style={[s.buttonText, filled ? null : s.buttonTextTonal, { color: fg }]}
+      >
         {label}
       </Text>
     </Pressable>
   );
 }
 
-function WeekStrip({ days, compact, bleedLabel }: { days: StripDay[]; compact: boolean; bleedLabel: string }) {
+/** „♥ სექსი“ — one tap logs it for today; logged, it shows a tick and opens the private details sheet. */
+function SexButton({ logged, disabled, wide, onPress }: { logged: boolean; disabled: boolean; wide: boolean; onPress: () => void }) {
   const c = useCycleColors();
-  const circle = compact ? 28 : 32;
+  const fg = logged ? c.onPeriod : c.period;
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={logged ? ka.cycle.sexLoggedA11y : ka.cycle.sexLogA11y}
+      accessibilityState={{ disabled }}
+      disabled={disabled}
+      onPress={onPress}
+      style={[
+        s.buttonTonal,
+        { backgroundColor: logged ? c.period : c.periodSoft, opacity: disabled ? 0.6 : 1, paddingHorizontal: 16 },
+        wide ? { flex: 1 } : null,
+      ]}
+    >
+      {logged ? <Check size={15} color={fg} strokeWidth={3} /> : <Heart size={16} color={fg} strokeWidth={2.4} fill={fg} />}
+      <Text numberOfLines={1} style={[s.buttonText, s.buttonTextTonal, { color: fg }]}>
+        {ka.cycle.sexShort}
+      </Text>
+    </Pressable>
+  );
+}
+
+type LegendKind = 'logged' | 'predicted' | 'fertile' | 'ovulation';
+
+/**
+ * The week in a soft tray: −3…+3 days, marks in the cycle grammar and — because a mark must explain
+ * itself — one legend line for exactly the marks this week shows. Tapping opens the calendar.
+ */
+function WeekTray({
+  days,
+  compact,
+  bleedLabel,
+  onPress,
+}: {
+  days: StripDay[];
+  compact: boolean;
+  bleedLabel: string;
+  onPress: () => void;
+}) {
+  const c = useCycleColors();
+  const circle = compact ? 30 : 34;
   const outer = circle + 6;
+  const legend: { kind: LegendKind; label: string }[] = [];
+  if (days.some((d) => d.loggedPeriod)) legend.push({ kind: 'logged', label: bleedLabel });
+  if (days.some((d) => d.predictedPeriod)) legend.push({ kind: 'predicted', label: ka.cycle.legendPeriodPredicted });
+  if (days.some((d) => d.fertile && !d.ovulation)) legend.push({ kind: 'fertile', label: ka.cycle.legendFertile });
+  if (days.some((d) => d.ovulation)) legend.push({ kind: 'ovulation', label: ka.cycle.legendOvulation });
   const a11y = days
     .map((d) =>
       [
@@ -723,50 +733,81 @@ function WeekStrip({ days, compact, bleedLabel }: { days: StripDay[]; compact: b
     .join(', ');
 
   return (
-    <View accessible accessibilityLabel={a11y} style={s.strip}>
-      {days.map((d) => {
-        const marked = d.loggedPeriod || d.predictedPeriod || d.fertile || d.ovulation;
-        const fill = d.loggedPeriod ? c.period : d.fertile || d.ovulation ? c.fertilitySoft : 'transparent';
-        const ink = d.loggedPeriod ? c.onPeriod : d.predictedPeriod ? c.period : d.fertile || d.ovulation ? c.fertile : c.ink;
-        const border = d.predictedPeriod
-          ? { borderWidth: 1.5, borderColor: c.period, borderStyle: 'dashed' as const }
-          : d.ovulation
-            ? { borderWidth: 1.5, borderColor: c.fertile }
-            : d.loggedPeriod || d.fertile
-              ? { borderWidth: 0 }
-              : d.today
+    <Pressable accessibilityRole="button" accessibilityLabel={a11y} onPress={onPress} style={[s.tray, { backgroundColor: c.cardSoft }]}>
+      <View style={s.strip}>
+        {days.map((d) => {
+          const marked = d.loggedPeriod || d.predictedPeriod || d.fertile || d.ovulation;
+          const fill = d.loggedPeriod ? c.period : d.fertile || d.ovulation ? c.fertilitySoft : d.today ? c.card : 'transparent';
+          const ink = d.loggedPeriod ? c.onPeriod : d.predictedPeriod ? c.period : d.fertile || d.ovulation ? c.fertile : d.today ? c.ink : c.muted;
+          const border = d.predictedPeriod
+            ? { borderWidth: 1.5, borderColor: c.period, borderStyle: 'dashed' as const }
+            : d.ovulation
+              ? { borderWidth: 1.5, borderColor: c.fertile }
+              : d.today && !marked
                 ? { borderWidth: 2, borderColor: c.todayRing }
-                : { borderWidth: 1, borderColor: c.border };
-        return (
-          <View key={d.key} style={s.stripDay}>
-            <Text
-              style={[
-                s.weekday,
-                { color: d.today ? c.todayRing : c.muted, fontFamily: d.today ? 'NotoSansGeorgian_700Bold' : 'NotoSansGeorgian_500Medium' },
-              ]}
-            >
-              {WEEKDAYS_KA[d.weekday]}
-            </Text>
-            <View
-              style={[
-                s.stripRing,
-                { width: outer, height: outer, borderRadius: outer / 2 },
-                d.today && marked ? { borderWidth: 2, borderColor: c.todayRing } : null,
-              ]}
-            >
-              <View style={[s.stripCircle, { width: circle, height: circle, borderRadius: circle / 2, backgroundColor: fill }, border]}>
-                <Text style={[s.stripNumber, { color: ink }]}>{d.dayOfMonth}</Text>
+                : { borderWidth: 0 };
+          return (
+            <View key={d.key} style={s.stripDay}>
+              <Text
+                numberOfLines={1}
+                style={[
+                  s.weekday,
+                  { color: d.today ? c.ink : c.mutedSoft, fontFamily: d.today ? 'NotoSansGeorgian_700Bold' : 'NotoSansGeorgian_500Medium' },
+                ]}
+              >
+                {d.today ? ka.cycle.jumpToday : WEEKDAYS_KA[d.weekday]}
+              </Text>
+              <View
+                style={[
+                  s.stripRing,
+                  { width: outer, height: outer, borderRadius: outer / 2 },
+                  d.today && marked ? { borderWidth: 2, borderColor: c.todayRing } : null,
+                ]}
+              >
+                <View style={[s.stripCircle, { width: circle, height: circle, borderRadius: circle / 2, backgroundColor: fill }, border]}>
+                  <Text
+                    style={[
+                      s.stripNumber,
+                      { color: ink, fontFamily: d.today || marked ? 'NotoSansGeorgian_700Bold' : 'NotoSansGeorgian_500Medium' },
+                    ]}
+                  >
+                    {d.dayOfMonth}
+                  </Text>
+                </View>
               </View>
+              <View style={[s.spotDot, { backgroundColor: d.spotting ? c.period : 'transparent' }]} />
             </View>
-            <View style={[s.spotDot, { backgroundColor: d.spotting ? c.period : 'transparent' }]} />
-          </View>
-        );
-      })}
-    </View>
+          );
+        })}
+      </View>
+      {legend.length ? (
+        <View style={s.legend}>
+          {legend.map((item) => (
+            <View key={item.kind} style={s.legendItem}>
+              <View
+                style={[
+                  s.legendMark,
+                  item.kind === 'logged'
+                    ? { backgroundColor: c.period }
+                    : item.kind === 'predicted'
+                      ? { borderWidth: 1.5, borderColor: c.period, borderStyle: 'dashed' }
+                      : item.kind === 'fertile'
+                        ? { backgroundColor: c.fertileFill }
+                        : { backgroundColor: c.fertilitySoft, borderWidth: 1.5, borderColor: c.fertile },
+                ]}
+              />
+              <Text numberOfLines={1} style={[s.legendText, { color: c.muted }]}>
+                {item.label}
+              </Text>
+            </View>
+          ))}
+        </View>
+      ) : null}
+    </Pressable>
   );
 }
 
-function HeroSkeleton({ ringSize, minHeight }: { ringSize: number; minHeight: number }) {
+function HeroSkeleton({ minHeight }: { minHeight: number }) {
   const theme = useThemeColors();
   const bone = theme.bg200;
   return (
@@ -775,24 +816,19 @@ function HeroSkeleton({ ringSize, minHeight }: { ringSize: number; minHeight: nu
       accessibilityLabel={ka.common.loading}
       style={[s.card, { backgroundColor: theme.surface, minHeight }]}
     >
-      <View style={s.row}>
-        <View style={{ width: ringSize, height: ringSize, borderRadius: ringSize / 2, borderWidth: 10, borderColor: bone }} />
-        <View style={[s.column, { gap: 10 }]}>
-          <View style={{ height: 16, width: '85%', borderRadius: 8, backgroundColor: bone }} />
-          <View style={{ height: 12, width: '60%', borderRadius: 6, backgroundColor: bone }} />
-          <View style={{ height: 22, width: '55%', borderRadius: 10, backgroundColor: bone }} />
+      <View style={{ height: STRIP_H + 24, borderRadius: 18, backgroundColor: bone }} />
+      <View style={[s.stage, { gap: 12 }]}>
+        <View style={{ height: 14, width: 120, borderRadius: 7, backgroundColor: bone, marginTop: 14 }} />
+        <View style={{ height: 56, width: 150, borderRadius: 16, backgroundColor: bone }} />
+        <View style={{ height: 12, width: 170, borderRadius: 6, backgroundColor: bone }} />
+        <View style={{ height: 30, width: 200, borderRadius: 15, backgroundColor: bone, marginTop: 8 }} />
+      </View>
+      <View style={s.actions}>
+        <View style={{ height: 50, borderRadius: 25, backgroundColor: bone }} />
+        <View style={s.buttons}>
+          <View style={{ flex: 1, height: 46, borderRadius: 23, backgroundColor: bone }} />
+          <View style={{ width: 104, height: 46, borderRadius: 23, backgroundColor: bone }} />
         </View>
-      </View>
-      <View style={s.buttons}>
-        <View style={{ flex: 1.7, height: 48, borderRadius: 16, backgroundColor: bone }} />
-        <View style={{ flex: 1, height: 48, borderRadius: 16, backgroundColor: bone }} />
-      </View>
-      <View style={[s.strip, { height: STRIP_H }]}>
-        {Array.from({ length: 7 }, (_, i) => (
-          <View key={i} style={[s.stripDay, { justifyContent: 'flex-end', paddingBottom: 8 }]}>
-            <View style={{ width: 30, height: 30, borderRadius: 15, backgroundColor: bone }} />
-          </View>
-        ))}
       </View>
     </View>
   );
@@ -800,32 +836,67 @@ function HeroSkeleton({ ringSize, minHeight }: { ringSize: number; minHeight: nu
 
 const s = StyleSheet.create({
   card: { borderRadius: HUB.cardRadius, padding: HUB.cardPad, gap: 16 },
+  stage: { alignItems: 'center', gap: 10, alignSelf: 'stretch' },
+  glowWrap: { alignSelf: 'stretch', alignItems: 'center', paddingTop: 22, paddingBottom: 8, gap: 2, overflow: 'hidden', borderRadius: 18 },
+  glow: { position: 'absolute', left: 0, right: 0, top: 0, height: 200 },
+  glowCaption: { fontFamily: 'NotoSansGeorgian_500Medium', fontSize: 14, lineHeight: 20 },
+  glowValueRow: { flexDirection: 'row', alignItems: 'baseline', gap: 8 },
+  glowValue: { fontFamily: 'NotoSansGeorgian_700Bold', letterSpacing: -1.5, fontVariant: ['tabular-nums'] },
+  glowUnit: { fontFamily: 'NotoSansGeorgian_600SemiBold', fontSize: 24, lineHeight: 30 },
+  glowSub: { fontFamily: 'NotoSansGeorgian_500Medium', fontSize: 13, lineHeight: 18, textAlign: 'center', maxWidth: 280 },
+  stack: { alignItems: 'center', gap: 6, alignSelf: 'stretch' },
   row: { flexDirection: 'row', alignItems: 'center', gap: 16 },
   column: { flex: 1, minWidth: 0, gap: 6 },
   tile: { width: HUB.tile, height: HUB.tile, borderRadius: HUB.tileRadius, alignItems: 'center', justifyContent: 'center' },
   bigTile: { width: 72, height: 72, borderRadius: 24, alignItems: 'center', justifyContent: 'center' },
   title: { fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 16, lineHeight: 23 },
-  badge: { alignSelf: 'flex-start', borderWidth: 1, borderStyle: 'dashed', borderRadius: 10, paddingHorizontal: 8, paddingVertical: 3 },
-  badgeText: { fontFamily: 'NotoSansGeorgian_600SemiBold', fontSize: 11, lineHeight: 16 },
-  buttons: { flexDirection: 'row', gap: 10 },
-  button: {
-    minHeight: 48,
+  phasePill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    maxWidth: '100%',
+    minHeight: 32,
     borderRadius: 16,
+    paddingHorizontal: 14,
+    paddingVertical: 5,
+  },
+  phaseDot: { width: 9, height: 9, borderRadius: 5 },
+  phaseText: { fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 14, lineHeight: 20, flexShrink: 1, textAlign: 'center' },
+  badge: { borderWidth: 1, borderStyle: 'dashed', borderRadius: 11, paddingHorizontal: 10, paddingVertical: 3, marginTop: 2 },
+  badgeText: { fontFamily: 'NotoSansGeorgian_600SemiBold', fontSize: 12, lineHeight: 17, textAlign: 'center' },
+  actions: { gap: 10 },
+  buttons: { flexDirection: 'row', gap: 10 },
+  buttonTonal: {
+    minHeight: 46,
+    borderRadius: 23,
+    paddingHorizontal: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+  },
+  button: {
+    minHeight: 50,
+    borderRadius: 25,
     paddingHorizontal: 10,
     paddingVertical: 6,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 7,
+    gap: 6,
   },
-  buttonText: { fontFamily: 'NotoSansGeorgian_600SemiBold', fontSize: 13, lineHeight: 17, textAlign: 'center', flexShrink: 1 },
-  ringCenter: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, alignItems: 'center', justifyContent: 'center' },
-  ringCaption: { fontFamily: 'NotoSansGeorgian_500Medium', fontSize: 10, lineHeight: 13, textAlign: 'center' },
+  buttonText: { fontFamily: 'NotoSansGeorgian_600SemiBold', fontSize: 14, lineHeight: 19, textAlign: 'center', flexShrink: 1 },
+  buttonTextTonal: { fontSize: 13, lineHeight: 18 },
+  tray: { borderRadius: 18, paddingHorizontal: 8, paddingTop: 12, paddingBottom: 12, gap: 8 },
   strip: { flexDirection: 'row', justifyContent: 'space-between' },
-  stripDay: { flex: 1, maxWidth: 44, alignItems: 'center', gap: 4 },
+  stripDay: { flex: 1, maxWidth: 46, alignItems: 'center', gap: 4 },
   weekday: { fontSize: 10, lineHeight: 13 },
   stripRing: { alignItems: 'center', justifyContent: 'center' },
   stripCircle: { alignItems: 'center', justifyContent: 'center' },
-  stripNumber: { fontFamily: 'NotoSansGeorgian_600SemiBold', fontSize: 12, fontVariant: ['tabular-nums'] },
+  stripNumber: { fontSize: 13, fontVariant: ['tabular-nums'] },
   spotDot: { width: 4, height: 4, borderRadius: 2, marginTop: -3 },
+  legend: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', columnGap: 14, rowGap: 4 },
+  legendItem: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  legendMark: { width: 11, height: 11, borderRadius: 6 },
+  legendText: { fontFamily: 'NotoSansGeorgian_500Medium', fontSize: 11, lineHeight: 16 },
 });

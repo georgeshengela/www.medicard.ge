@@ -37,7 +37,7 @@ const ENUMS = {
   ka: {
     flow: { spotting: 'წვეთოვანი სისხლდენა', light: 'მსუბუქი', medium: 'ზომიერი', heavy: 'ძლიერი' },
     painType: {
-      cramps: 'კრუნჩხვები',
+      cramps: 'სპაზმები',
       pelvic: 'მენჯის ტკივილი',
       lower_back: 'წელის ტკივილი',
       headache: 'თავის ტკივილი',

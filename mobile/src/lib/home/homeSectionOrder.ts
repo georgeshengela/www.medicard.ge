@@ -8,8 +8,9 @@
  *      women's health (opt-in) → news (admin cards) → nutrition → AI check-ups → services → legal
  *    The one personal input is the onboarding goal („რისთვის გჭირდება MEDICARD?“): its section
  *    moves up to sit right after "ask Medi". Nothing is hidden because of it.
- *  - women — the cycle first, then tips, my cycle, the day, nutrition.
- *  - active — today's movement first, then water/outdoors, MEDIRUN, MEDI QUEST.
+ *  - women — the cycle first, then what is ahead, today's tips, her day (steps, water, food),
+ *    her cycle in numbers and the check-ups women reach for.
+ *  - active — today's movement first, then water/outdoors, MEDIRUN, MEDIQUEST.
  *  - weight — the day's budget and logging first, then weight progress and meals.
  *
  * Every layout keeps "ask Medi" and the doses due near the top (a missed dose matters more than
@@ -43,9 +44,11 @@ export type HomeSectionId =
   | 'checkup'
   // women
   | 'cycleHero'
+  | 'cycleAhead'
   | 'cycleTips'
   | 'cycleStats'
   | 'dayPair'
+  | 'womenCare'
   // women + active
   | 'nutritionLite'
   // active
@@ -85,11 +88,13 @@ export const HOME_LAYOUT_ORDER: Record<HomeLayoutId, readonly HomeSectionId[]> =
     'ask',
     'nextDose',
     'coach',
+    'cycleAhead',
     'cycleTips',
-    'cycleStats',
     'dayPair',
-    'news',
     'nutritionLite',
+    'news',
+    'cycleStats',
+    'womenCare',
     'profileNudge',
     'services',
     'customize',
@@ -140,7 +145,7 @@ export const HOME_LAYOUT_SPOTLIGHT: Record<HomeLayoutId, HomeSectionId | null> =
 };
 
 /** Sections shown only to women (the cycle module is female-only on the server). */
-export const FEMALE_ONLY: ReadonlySet<HomeSectionId> = new Set(['cycle', 'cycleHero', 'cycleTips', 'cycleStats']);
+export const FEMALE_ONLY: ReadonlySet<HomeSectionId> = new Set(['cycle', 'cycleHero', 'cycleAhead', 'cycleTips', 'cycleStats']);
 
 export function buildHomeSectionOrder({
   layout = 'standard',
