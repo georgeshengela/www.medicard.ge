@@ -10,14 +10,16 @@
  * neutral tile: the logo and „MEDICARD“. Required lazily, iOS only (`cycleWidget.ts`).
  *
  * Look (owner pick 2026-10-04, variant A of `brand/cycle/widget/widget-variants.html`): the MEDICARD logo
- * as a big, soft, tilted ornament cut by the corner — rose on a cycle tile, brand teal on the neutral one.
- * There is no Path in `@expo/ui`, so the logo is built from two capsules (the cross), two capsules in the
- * card colour (its hollow) and two ellipses (the leaf); the ornament's softness comes from colours
- * pre-blended into the card (`markFrom`/`markTo`), because opacity would show the hollow pieces.
+ * as a big, soft, tilted ornament cut by the corner — rose on a cycle tile, brand teal on the neutral one —
+ * and a small logo beside „MEDICARD“. Both are the real logo as PNGs (`cycleWidgetArt.ts` copies them into
+ * the app group, `props.art` is that folder). The ornament PNG is the whole widget, so it is stretched over
+ * the full tile by undoing the system content margins (negative padding) — the board's exact placement.
+ * Without `art` (older timeline, copy not finished) the widget shows the words only.
  */
-import { Capsule, Ellipse, HStack, Link, Spacer, Text, VStack, ZStack } from '@expo/ui/swift-ui';
+import { Capsule, HStack, Image, Link, Spacer, Text, VStack, ZStack } from '@expo/ui/swift-ui';
 import {
   accessibilityLabel,
+  background,
   containerBackground,
   font,
   foregroundStyle,
@@ -25,11 +27,10 @@ import {
   lineLimit,
   minimumScaleFactor,
   monospacedDigit,
-  offset,
   padding,
   privacySensitive,
-  rotationEffect,
-  scaleEffect,
+  resizable,
+  shapes,
   widgetURL,
 } from '@expo/ui/swift-ui/modifiers';
 import { createWidget, type WidgetEnvironment } from 'expo-widgets';
@@ -38,79 +39,37 @@ import type { CycleWidgetProps } from './cycleWidgetSnapshot';
 const MedicardCycleWidget = (props: Partial<CycleWidgetProps>, environment: WidgetEnvironment) => {
   'widget';
   const dark = environment.colorScheme === 'dark';
-  // Fallback = the cycle palette's card / ink / mutedSoft and the brand teal (tests compare them).
+  // Fallback = the cycle palette's card / ink / mutedSoft (tests compare them with cyclePalette.ts).
   const fallback = dark
-    ? {
-        bg: '#17131C',
-        ink: '#F7F0F4',
-        muted: '#CDBFC8',
-        dot: '#B4A5AF',
-        button: '#C92A55',
-        onButton: '#FFFFFF',
-        logoFrom: '#0D9488',
-        logoTo: '#5EEAD4',
-        markFrom: '#152D32',
-        markTo: '#253E41',
-      }
-    : {
-        bg: '#FFFFFF',
-        ink: '#2A1F2D',
-        muted: '#6B5E6E',
-        dot: '#76687A',
-        button: '#C92A55',
-        onButton: '#FFFFFF',
-        logoFrom: '#0D9488',
-        logoTo: '#5EEAD4',
-        markFrom: '#E2F2F1',
-        markTo: '#ECFCFA',
-      };
+    ? { bg: '#17131C', ink: '#F7F0F4', muted: '#CDBFC8', dot: '#B4A5AF', button: '#C92A55', onButton: '#FFFFFF' }
+    : { bg: '#FFFFFF', ink: '#2A1F2D', muted: '#6B5E6E', dot: '#76687A', button: '#C92A55', onButton: '#FFFFFF' };
   const c = (dark ? props.dark : props.light) ?? fallback;
   const brand = props.brand || 'MEDICARD';
   const neutral = !props.state || props.state === 'neutral';
   const medium = environment.widgetFamily === 'systemMedium';
   const openUrl = props.openUrl || 'medicard://';
   const tone = neutral ? 'neutral' : props.tone ?? 'calm';
-  // A timeline written by an older app build has no logo colours: fall back to the dot / no ornament.
-  const logoFrom = c.logoFrom || (neutral ? fallback.logoFrom : c.dot);
-  const logoTo = c.logoTo || (neutral ? fallback.logoTo : c.dot);
+  const art = props.art || '';
+  const theme = dark ? 'dark' : 'light';
+  // iOS 17+ reports the margins; 16 pt is the iPhone default before that.
+  const m = environment.widgetContentMargins ?? { top: 16, bottom: 16, leading: 16, trailing: 16 };
 
-  // The MEDICARD mark (assets/logo.svg, 36-unit grid): cross, its hollow, the leaf and the leaf's hollow.
-  const Logo = ({ size, from, to }: { size: number; from: string; to: string }) => {
-    const u = size / 36;
-    const fill =
-      from === to ? from : { type: 'linearGradient' as const, colors: [from, to], startPoint: { x: 0, y: 0 }, endPoint: { x: 1, y: 1 } };
-    return (
-      <ZStack modifiers={[frame({ width: size, height: size })]}>
-        <Capsule modifiers={[foregroundStyle(fill), frame({ width: 16.36 * u, height: 36 * u })]} />
-        <Capsule modifiers={[foregroundStyle(fill), frame({ width: 36 * u, height: 16.36 * u })]} />
-        <Capsule modifiers={[foregroundStyle(c.bg), frame({ width: 9.82 * u, height: 29.45 * u })]} />
-        <Capsule modifiers={[foregroundStyle(c.bg), frame({ width: 29.45 * u, height: 9.82 * u })]} />
-        <Ellipse modifiers={[foregroundStyle(fill), frame({ width: 23 * u, height: 10.9 * u }), rotationEffect(-45)]} />
-        <Ellipse modifiers={[foregroundStyle(c.bg), frame({ width: 14 * u, height: 4.6 * u }), rotationEffect(-45)]} />
-      </ZStack>
-    );
-  };
-
-  // The ornament: a tilted logo cut by the corner (small: bottom right, medium: top right, behind the
-  // date). Drawn at 100 pt and scaled, so it never changes the layout; offsets assume the 16 pt margins.
+  // The ornament covers the whole tile (its PNG is drawn at widget size), so undo the content margins.
   const Ornament = () =>
-    c.markFrom && c.markTo ? (
-      <ZStack modifiers={[frame({ maxWidth: Infinity, maxHeight: Infinity, alignment: medium ? 'topTrailing' : 'bottomTrailing' })]}>
-        <ZStack
-          modifiers={[
-            frame({ width: 100, height: 100 }),
-            scaleEffect(medium ? 1.84 : 1.18),
-            rotationEffect(-14),
-            offset(medium ? { x: 4, y: 4 } : { x: 33, y: 35 }),
-          ]}>
-          <Logo size={100} from={c.markFrom} to={c.markTo} />
-        </ZStack>
-      </ZStack>
+    art ? (
+      <Image
+        uiImage={`${art}ornament-${medium ? 'm' : 's'}-${neutral ? 'teal' : 'rose'}-${theme}.png`}
+        modifiers={[
+          resizable(),
+          frame({ maxWidth: Infinity, maxHeight: Infinity }),
+          padding({ top: -m.top, bottom: -m.bottom, leading: -m.leading, trailing: -m.trailing }),
+        ]}
+      />
     ) : null;
 
   const Header = () => (
     <HStack spacing={6}>
-      <Logo size={13} from={logoFrom} to={logoTo} />
+      {art ? <Image uiImage={`${art}logo-rose-${theme}.png`} modifiers={[resizable(), frame({ width: 13, height: 13 })]} /> : null}
       <Text modifiers={[font({ size: 11, weight: 'heavy' }), foregroundStyle(neutral ? c.ink : c.muted), lineLimit(1)]}>{brand}</Text>
       <Spacer />
     </HStack>
@@ -174,43 +133,52 @@ const MedicardCycleWidget = (props: Partial<CycleWidgetProps>, environment: Widg
   const fill = frame({ maxWidth: Infinity, maxHeight: Infinity });
 
   if (neutral) {
-    // Nothing about the cycle: the logo and the brand, centred like an app tile.
+    // Nothing about the cycle: the teal logo and the brand, centred like an app tile.
     return (
       <ZStack modifiers={[...root, fill]}>
         <Ornament />
         <VStack spacing={8}>
-          <Logo size={34} from={logoFrom} to={logoTo} />
+          {art ? <Image uiImage={`${art}logo-teal.png`} modifiers={[resizable(), frame({ width: 34, height: 34 })]} /> : null}
           <Text modifiers={[font({ size: 15, weight: 'heavy' }), foregroundStyle(c.ink), lineLimit(1)]}>{brand}</Text>
         </VStack>
       </ZStack>
     );
   }
 
+  const left = (
+    <VStack alignment="leading" spacing={0} modifiers={[frame({ maxWidth: Infinity, maxHeight: Infinity, alignment: 'topLeading' })]}>
+      <Header />
+      <Spacer />
+      <Answer />
+    </VStack>
+  );
+
   if (!medium) {
     return (
       <ZStack modifiers={[...root, fill]}>
         <Ornament />
-        <VStack alignment="leading" spacing={0} modifiers={[frame({ maxWidth: Infinity, maxHeight: Infinity, alignment: 'topLeading' })]}>
-          <Header />
-          <Spacer />
-          <Answer />
-        </VStack>
+        {left}
       </ZStack>
     );
   }
 
+  // Medium: the date (on a card-coloured label over the ornament) and „დაიწყო“ at the bottom right.
   return (
     <ZStack modifiers={[...root, fill]}>
       <Ornament />
-      <HStack alignment="center" spacing={12} modifiers={[fill]}>
-        <VStack alignment="leading" spacing={0} modifiers={[frame({ maxWidth: Infinity, maxHeight: Infinity, alignment: 'topLeading' })]}>
-          <Header />
-          <Spacer />
-          <Answer />
-        </VStack>
+      <HStack alignment="bottom" spacing={12} modifiers={[fill]}>
+        {left}
         <VStack alignment="trailing" spacing={10} modifiers={[padding({ leading: 4 })]}>
           {props.detail ? (
-            <Text modifiers={[font({ size: 12, weight: 'semibold' }), foregroundStyle(c.ink), lineLimit(1), privacySensitive()]}>
+            <Text
+              modifiers={[
+                font({ size: 12, weight: 'semibold' }),
+                foregroundStyle(c.ink),
+                lineLimit(1),
+                padding({ horizontal: 10, vertical: 4 }),
+                background(c.bg, shapes.roundedRectangle({ cornerRadius: 10 })),
+                privacySensitive(),
+              ]}>
               {props.detail}
             </Text>
           ) : null}

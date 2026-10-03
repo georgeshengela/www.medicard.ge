@@ -167,50 +167,55 @@ test('window, today, period day, learning and tracking each render their words',
   assert.equal(answerInk(render(STATES.today, small), 'დღეს'), cycleLight.period, 'expected day answer');
 });
 
-test('variant A: the MEDICARD logo in the header and as a tilted rose ornament in the corner', () => {
+test('variant A: the real logo (PNG from the app group) in the header and as the full-tile ornament', () => {
   const render = widgetRuntime(shippedLayout('src/lib/cycleWidgetLayout.tsx', 'createWidget').layout);
-  for (const env of [small, medium, darkSmall]) {
-    const out = render(STATES.normal, env);
-    // Two logos (ornament + header), each: 4 capsules (cross + hollow) and 2 ellipses (leaf + hollow).
-    assert.equal(find(out, 'CapsuleView').length, 8 + (env === medium ? 1 : 0), `${env.widgetFamily}: logo capsules (+ the start button)`);
-    assert.equal(find(out, 'EllipseView').length, 4);
-    const ornament = find(out, 'ZStackView').find((z) => modifiers(z).includes('rotationEffect'));
-    assert.ok(ornament, 'the ornament is tilted');
-    assert.equal(modifier(ornament, 'rotationEffect').angle, -14);
-    const json = JSON.stringify(out);
-    const palette = env.colorScheme === 'dark' ? STATES.normal.dark : STATES.normal.light;
-    assert.ok(json.includes(palette.markFrom) && json.includes(palette.markTo), 'ornament colours from the snapshot');
-    assert.ok(!/#0D9488|#5EEAD4/i.test(json), 'no brand teal on a cycle tile');
+  const art = 'file:///private/var/mobile/Containers/Shared/AppGroup/X/ExpoWidgets/cycle-art-v1/';
+  const images = (out) => find(out, 'ImageView').map((i) => i.props.uiImage);
+  const cases = [
+    [small, ['ornament-s-rose-light.png', 'logo-rose-light.png']],
+    [medium, ['ornament-m-rose-light.png', 'logo-rose-light.png']],
+    [darkSmall, ['ornament-s-rose-dark.png', 'logo-rose-dark.png']],
+  ];
+  for (const [env, files] of cases) {
+    const out = render({ ...STATES.normal, art }, env);
+    assert.deepEqual(images(out), files.map((f) => art + f), `${env.widgetFamily} ${env.colorScheme}`);
+    assert.ok(texts(out).includes('მენსტრუაციამდე'));
   }
-  // The ornament is pre-blended into the card: soft, and never the fertile turquoise.
-  assert.equal(snap.blendHex('#FFFFFF', '#C92A55', 0.17), STATES.normal.light.markTo);
-  // A timeline written by an older build (no logo colours) still renders, without the ornament.
-  const { logoFrom, logoTo, markFrom, markTo, ...oldLight } = STATES.normal.light;
-  const old = render({ ...STATES.normal, light: oldLight }, small);
-  assert.ok(texts(old).includes('მენსტრუაციამდე'));
-  assert.equal(find(old, 'EllipseView').length, 2, 'header logo only');
+  // The ornament undoes the content margins the system reports, so it covers the whole tile.
+  const margins = { top: 11, bottom: 12, leading: 13, trailing: 14 };
+  const ornament = find(render({ ...STATES.normal, art }, { ...small, widgetContentMargins: margins }), 'ImageView')[0];
+  assert.ok(modifiers(ornament).includes('resizable'));
+  const pad = modifier(ornament, 'padding');
+  assert.deepEqual([pad.top, pad.bottom, pad.leading, pad.trailing], [-11, -12, -13, -14]);
+  assert.deepEqual(modifier(find(render({ ...STATES.normal, art }, small), 'ImageView')[0], 'padding').top, -16, 'default 16 pt');
+  // The medium date sits on a card-coloured label over the ornament.
+  const date = find(render({ ...STATES.normal, art }, medium), 'TextView').find((t) => t.props.text === 'პარ, 30 ოქტ');
+  assert.ok(modifiers(date).includes('background'));
+  // No art yet (older timeline, copy not finished): the words only, no broken image.
+  const plain = render(STATES.normal, small);
+  assert.deepEqual(find(plain, 'ImageView'), []);
+  assert.ok(texts(plain).includes('მენსტრუაციამდე'));
 });
 
 test('discreet and empty props draw the neutral tile: the teal logo, „MEDICARD“, no cycle word, opens Home', () => {
   const render = widgetRuntime(shippedLayout('src/lib/cycleWidgetLayout.tsx', 'createWidget').layout);
+  const art = 'file:///art/';
   for (const props of [STATES.discreet, {}, snap.neutralCycleWidget()]) {
     for (const env of [small, medium, darkSmall]) {
-      const out = render(props, env);
+      const out = render({ ...props, art }, env);
       assert.deepEqual(texts(out), ['MEDICARD']);
       assert.deepEqual(find(out, 'LinkView'), []);
-      assert.equal(find(out, 'EllipseView').length, 4, 'centre logo + ornament');
       assert.equal(modifier(out, 'widgetURL').url, 'medicard://');
-      const json = JSON.stringify(out);
-      assert.ok(json.includes('#0D9488'), 'brand teal logo');
-      for (const rose of [cycleLight.period, cycleDark.period, cycleLight.blush]) assert.ok(!json.includes(rose), `no cycle rose ${rose}`);
+      const shown = find(out, 'ImageView').map((i) => i.props.uiImage);
+      assert.deepEqual(shown, [`${art}ornament-${env === medium ? 'm' : 's'}-teal-${env.colorScheme}.png`, `${art}logo-teal.png`]);
+      assert.ok(!JSON.stringify(out).includes('rose'), 'no rose art on the neutral tile');
     }
   }
-  // The built-in fallback colours are the cycle palette's card / ink and the snapshot's neutral ornament.
-  const neutral = snap.neutralCycleWidget();
+  // The built-in fallback colours are the cycle palette's card / ink.
   const light = JSON.stringify(render({}, small));
-  for (const hex of [cycleLight.card, cycleLight.ink, neutral.light.markFrom, neutral.light.markTo]) assert.ok(light.includes(hex), `light fallback ${hex}`);
+  for (const hex of [cycleLight.card, cycleLight.ink]) assert.ok(light.includes(hex), `light fallback ${hex}`);
   const dark = JSON.stringify(render({}, darkSmall));
-  for (const hex of [cycleDark.card, cycleDark.ink, neutral.dark.markFrom, neutral.dark.markTo]) assert.ok(dark.includes(hex), `dark fallback ${hex}`);
+  for (const hex of [cycleDark.card, cycleDark.ink]) assert.ok(dark.includes(hex), `dark fallback ${hex}`);
 });
 
 test('cycle words are privacy-sensitive (redacted on a locked device)', () => {

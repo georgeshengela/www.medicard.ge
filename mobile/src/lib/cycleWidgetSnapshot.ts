@@ -68,13 +68,6 @@ export type CycleWidgetColors = {
   dot: string;
   button: string;
   onButton: string;
-  /** The MEDICARD logo (header or the neutral tile's centre): gradient from → to. */
-  logoFrom: string;
-  logoTo: string;
-  /** The big logo ornament in the corner, already blended into `bg` (the layout cannot use opacity:
-   *  the logo's holes are painted in `bg`). */
-  markFrom: string;
-  markTo: string;
 };
 
 export type CycleWidgetProps = {
@@ -101,38 +94,17 @@ export type CycleWidgetProps = {
   openUrl: string;
   light: CycleWidgetColors;
   dark: CycleWidgetColors;
+  /** The app group folder with the logo PNGs (`cycleWidgetArt.ts`), added by the controller; absent =
+   *  no logo art yet, the widget draws the words only. */
+  art?: string;
 };
 
 /** Words that must never reach the widget or the Live Activity (tests scan every snapshot). */
 export const CYCLE_WIDGET_FORBIDDEN =
   /ნაყოფიერ|ოვულაც|სექს|ლიბიდო|ტემპერატურ|ტესტ|ორსულ|მშობიარ|მშობიარობის|ლორწო|fertil|ovulat|\bsex|libido|temperature|\bbbt\b|\btest|pregnan|postpartum|mucus/i;
 
-/** The brand teal of the app icon (`assets/logo.svg`) — only on the neutral tile, which says nothing
- *  about the cycle. Never the fertile turquoise of the cycle palette. */
-const BRAND_TEAL_FROM = '#0D9488';
-const BRAND_TEAL_TO = '#5EEAD4';
-
-function hexRgb(hex: string): [number, number, number] {
-  const n = parseInt(hex.slice(1, 7), 16);
-  return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
-}
-
-/** `top` laid over `bottom` at `alpha`, as an opaque hex. */
-export function blendHex(bottom: string, top: string, alpha: number): string {
-  const a = hexRgb(bottom);
-  const b = hexRgb(top);
-  return `#${a
-    .map((v, i) => Math.round(v + (b[i] - v) * alpha).toString(16).padStart(2, '0'))
-    .join('')
-    .toUpperCase()}`;
-}
-
 function colors(tone: CycleWidgetTone, dark: boolean): CycleWidgetColors {
   const p = dark ? cycleDark : cycleLight;
-  const neutral = tone === 'neutral';
-  // Ornament: rose blush → rose on a cycle tile, brand teal on the neutral one (owner pick 2026-10-04, variant A).
-  const [from, to] = neutral ? [BRAND_TEAL_FROM, BRAND_TEAL_TO] : dark ? ['#FFC2D0', '#E0567C'] : [p.blush, p.period];
-  const alpha = neutral ? (dark ? 0.2 : 0.12) : dark ? 0.28 : 0.17;
   return {
     bg: p.card,
     ink: p.ink,
@@ -140,10 +112,6 @@ function colors(tone: CycleWidgetTone, dark: boolean): CycleWidgetColors {
     dot: tone === 'period' || tone === 'expected' ? p.period : p.mutedSoft,
     button: p.cta,
     onButton: p.onPrimary,
-    logoFrom: neutral ? BRAND_TEAL_FROM : p.period,
-    logoTo: neutral ? BRAND_TEAL_TO : p.period,
-    markFrom: blendHex(p.card, from, alpha),
-    markTo: blendHex(p.card, to, alpha),
   };
 }
 

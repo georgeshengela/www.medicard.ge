@@ -16,6 +16,7 @@ import type { CycleBundle } from '@/lib/api';
 import { onReturnToForeground } from '@/lib/appForeground';
 import { CYCLE_QUERY_KEYS } from '@/lib/cycleQueryKeys';
 import { fetchCycleView, peekCycleView } from '@/lib/cycleViewCache';
+import { cycleWidgetArtDir } from '@/lib/cycleWidgetArt';
 import { getCycleExpectedDayActivity, onCycleWidgetSignal, readCycleWidgetPrivacy } from '@/lib/cycleWidgetPrefs';
 import {
   activityKey,
@@ -59,6 +60,8 @@ let again = false;
 let running: { startedAt: number; dueDay: string; key: string; account: string } | null = null;
 let instance: ActivityInstance | null = null;
 let lastFetchAt = 0;
+/** The app group folder with the logo PNGs, once copied (`cycleWidgetArt.ts`). */
+let artDir: string | null = null;
 
 function localDay(now = new Date()): string {
   return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
@@ -92,12 +95,13 @@ function write(entries: { day: string; props: CycleWidgetProps }[]): void {
   // One entry when every day looks the same (neutral); otherwise the days, then the neutral end.
   const same = entries.every((e) => JSON.stringify(e.props) === JSON.stringify(entries[0].props));
   const list = same ? [entries[0]] : entries;
-  const timeline = list.map((e) => ({ date: civilDayStart(e.day), props: e.props }));
+  const withArt = (props: CycleWidgetProps): CycleWidgetProps => (artDir ? { ...props, art: artDir } : props);
+  const timeline = list.map((e) => ({ date: civilDayStart(e.day), props: withArt(e.props) }));
   if (!same) {
     const last = entries[entries.length - 1];
     const end = civilDayStart(last.day);
     end.setDate(end.getDate() + 1);
-    timeline.push({ date: end, props: neutralCycleWidget() });
+    timeline.push({ date: end, props: withArt(neutralCycleWidget()) });
   }
   const json = JSON.stringify(timeline.map((t) => [t.date.getTime(), t.props]));
   if (json === lastWritten) return;
@@ -187,6 +191,8 @@ async function syncOnce(): Promise<void> {
   // Not known yet (cold start before the session is restored): leave the widget as it is. A real
   // sign-out arrives through the account listener, which clears it.
   if (!owner) return;
+  // The logo art first (a one-time copy into the app group); without it the widget shows words only.
+  artDir = await cycleWidgetArtDir();
   const today = localDay();
   const shown = await writtenBy();
   if (shown && shown !== owner) {
