@@ -7,6 +7,8 @@ import { MedicalSourcesLink } from '@/components/health/MedicalSourcesLink';
 import { APP_MODAL_PROPS, Modal } from '@/components/ui/appModal';
 import type { MedicalSourceId } from '@/constants/medicalSources';
 import { ka } from '@/i18n/ka';
+import { trackCycleExplainOpened } from '@/lib/funnel';
+import type { CycleExplainTopic } from '@/lib/funnelQueue';
 import { useCycleColors } from '@/theme/cycle';
 
 /**
@@ -50,6 +52,8 @@ type Props = {
    * must render it as the last child of a full-screen container.
    */
   embedded?: boolean;
+  /** Funnel topic reported once per opening (an enum only — never which entry or value). */
+  funnelTopic?: CycleExplainTopic;
   onClose: () => void;
 };
 
@@ -65,6 +69,7 @@ export function CycleExplainSheet({
   closeLabel,
   hideClose,
   embedded = false,
+  funnelTopic,
   onClose,
 }: Props) {
   const c = useCycleColors();
@@ -73,6 +78,11 @@ export function CycleExplainSheet({
   const paragraphs = body == null ? [] : typeof body === 'string' ? [body] : [...body];
   const hasActions = Boolean(actions && actions.length > 0);
   const lastLabel = closeLabel ?? (hasActions ? ka.common.cancel : ka.common.close);
+
+  // One event per opening (false → true), never on re-renders while open.
+  React.useEffect(() => {
+    if (visible && funnelTopic) trackCycleExplainOpened(funnelTopic);
+  }, [visible, funnelTopic]);
 
   const sheet = (
     <View style={s.root}>

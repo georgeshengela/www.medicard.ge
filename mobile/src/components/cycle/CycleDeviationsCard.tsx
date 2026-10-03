@@ -61,6 +61,7 @@ export function CycleDeviationsCard({ deviations }: { deviations: CycleDeviation
         body={deviationCopy.explainBody(deviations?.rulesOff ?? [])}
         accent={c.luteal}
         sourceIds={['abnormalBleeding', 'menstrualCycle']}
+        funnelTopic="deviation"
         onClose={() => setExplain(false)}
       />
     </View>

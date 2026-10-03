@@ -2,12 +2,17 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { describe, it } from 'node:test';
 import {
-  ACCOUNT_EVENTS, FEATURE_EVENTS, FUNNEL_EVENT_NAMES, HOME_LAYOUTS, HOME_LAYOUT_SOURCES, MAX_BATCH, batchSchema, buildFunnelReport, ingestFunnelEvents, installHashOf,
+  ACCOUNT_EVENTS, CYCLE_EXPLAIN_TOPICS, CYCLE_LOG_SOURCES, CYCLE_PERIOD_START_SOURCES, FEATURE_EVENTS, FUNNEL_EVENT_NAMES, HOME_LAYOUTS, HOME_LAYOUT_SOURCES, MAX_BATCH, batchSchema, buildFunnelReport, ingestFunnelEvents, installHashOf,
   linkInstallToUser, parseFunnelDays, sanitizeFunnelEvent, sourceKey,
 } from './funnel.js';
 import { funnelStatements } from '../../scripts/install-funnel.mjs';
 import { optionalUserId } from '../routes/funnel.routes.js';
 import jwt from 'jsonwebtoken';
+import {
+  CYCLE_FUNNEL_EXPLAIN_TOPICS,
+  CYCLE_FUNNEL_LOG_SOURCES,
+  CYCLE_FUNNEL_PERIOD_SOURCES,
+} from '../../../mobile/src/lib/funnelQueue.ts';
 
 const now = new Date('2026-09-28T10:00:00Z');
 const at = (iso) => new Date(iso);
@@ -27,6 +32,9 @@ describe('funnel allow-list', () => {
       { name: 'home_layout_picker_opened', props: { source: 'home_header' } },
       { name: 'home_layout_changed', props: { layout: 'women', from: 'standard', source: 'offer' } },
       { name: 'home_layout_offer_answered', props: { choice: 'tried' } },
+      { name: 'cycle_log_saved', props: { source: 'quick' } },
+      { name: 'cycle_period_started', props: { source: 'hero' } },
+      { name: 'cycle_explain_opened', props: { topic: 'ring' } },
     ];
     assert.deepEqual(ok.map((e) => e.name).sort(), [...FUNNEL_EVENT_NAMES].sort());
     for (const e of ok) assert.ok(sanitizeFunnelEvent(e, { now, signedIn: true }), e.name);
@@ -57,6 +65,9 @@ describe('funnel allow-list', () => {
       home_layout_picker_opened: { source: 'profile' },
       home_layout_changed: { layout: 'active', from: 'none', source: 'onboarding' },
       home_layout_offer_answered: { choice: 'dismissed' },
+      cycle_log_saved: { source: 'full' },
+      cycle_period_started: { source: 'home' },
+      cycle_explain_opened: { topic: 'fertile' },
     };
     for (const name of ACCOUNT_EVENTS) {
       const props = valid[name] ?? {};
@@ -89,6 +100,43 @@ describe('funnel allow-list', () => {
       { name: 'home_layout_offer_answered', props: {} },
     ];
     for (const e of bad) assert.equal(sanitizeFunnelEvent(e, { now, signedIn: true }), null, JSON.stringify(e));
+  });
+
+  it('cycle events carry one enum only — never what was logged', () => {
+    assert.deepEqual([...CYCLE_LOG_SOURCES], ['quick', 'full', 'home', 'day_sheet']);
+    assert.deepEqual([...CYCLE_PERIOD_START_SOURCES], ['hero', 'home', 'strip', 'day_sheet']);
+    assert.deepEqual([...CYCLE_EXPLAIN_TOPICS], ['ring', 'fertile', 'stats', 'deviation', 'learn_more', 'ttc_signal', 'tracking']);
+    // The app sends exactly these enums (mobile/src/lib/funnelQueue.ts).
+    assert.deepEqual([...CYCLE_FUNNEL_LOG_SOURCES], [...CYCLE_LOG_SOURCES]);
+    assert.deepEqual([...CYCLE_FUNNEL_PERIOD_SOURCES], [...CYCLE_PERIOD_START_SOURCES]);
+    assert.deepEqual([...CYCLE_FUNNEL_EXPLAIN_TOPICS], [...CYCLE_EXPLAIN_TOPICS]);
+    const okEvents = [
+      ...CYCLE_LOG_SOURCES.map((source) => ({ name: 'cycle_log_saved', props: { source } })),
+      ...CYCLE_PERIOD_START_SOURCES.map((source) => ({ name: 'cycle_period_started', props: { source } })),
+      ...CYCLE_EXPLAIN_TOPICS.map((topic) => ({ name: 'cycle_explain_opened', props: { topic } })),
+    ];
+    for (const e of okEvents) assert.deepEqual(sanitizeFunnelEvent(e, { now, signedIn: true })?.props, e.props, JSON.stringify(e));
+    const bad = [
+      { name: 'cycle_log_saved' },
+      { name: 'cycle_log_saved', props: {} },
+      { name: 'cycle_log_saved', props: { source: 'sex_sheet' } },
+      { name: 'cycle_log_saved', props: { source: 'quick', category: 'bleeding' } },
+      { name: 'cycle_log_saved', props: { source: 'quick', flow: 'heavy' } },
+      { name: 'cycle_log_saved', props: { source: 'quick', id: 'cramps' } },
+      { name: 'cycle_log_saved', props: { source: 'quick', value: '1' } },
+      { name: 'cycle_log_saved', props: { source: 'quick', symptoms: 'cramps' } },
+      { name: 'cycle_period_started', props: { source: 'hero', date: '2026-09-28' } },
+      { name: 'cycle_period_started', props: { source: 'hero', flow: 'medium' } },
+      { name: 'cycle_period_started', props: { source: 'quick' } },
+      { name: 'cycle_explain_opened', props: { topic: 'sex' } },
+      { name: 'cycle_explain_opened', props: { topic: 'learn_more', id: 'discharge' } },
+      { name: 'cycle_explain_opened', props: { topic: 'learn_more', entry: 'pain_sex' } },
+      { name: 'cycle_explain_opened', props: { source: 'ring' } },
+      { name: 'cycle_symptom_logged', props: { source: 'quick' } },
+    ];
+    for (const e of bad) assert.equal(sanitizeFunnelEvent(e, { now, signedIn: true }), null, JSON.stringify(e));
+    // Anonymous copies are refused (cycle data only exists for a signed-in account).
+    for (const e of okEvents) assert.equal(sanitizeFunnelEvent(e, { now, signedIn: false }), null, JSON.stringify(e));
   });
 
   it('clamps future timestamps and drops stale ones', () => {
@@ -201,6 +249,11 @@ describe('funnel report', () => {
     ev('home_layout_changed', 'u2', 'h2', { layout: 'standard', from: 'women', source: 'profile' }, '2026-09-27T13:01:00Z'),
     ev('home_layout_changed', 'u1', 'h1', { layout: 'women', from: 'none', source: 'onboarding' }, '2026-09-25T08:09:00Z'),
     ev('home_layout_offer_answered', 'u1', 'h1', { choice: 'dismissed' }, '2026-09-27T09:00:00Z'),
+    ev('cycle_log_saved', 'u2', 'h2', { source: 'quick' }, '2026-09-27T09:00:00Z'),
+    ev('cycle_log_saved', 'u2', 'h2', { source: 'quick' }, '2026-09-27T10:00:00Z'),
+    ev('cycle_log_saved', 'u2', 'h2', { source: 'day_sheet' }, '2026-09-27T11:00:00Z'),
+    ev('cycle_period_started', 'u2', 'h2', { source: 'home' }, '2026-09-27T08:00:00Z'),
+    ev('cycle_explain_opened', 'u2', 'h2', { topic: 'ring' }, '2026-09-27T08:30:00Z'),
   ];
   const cohortEvents = periodEvents.filter((e) => e.userId);
   const report = buildFunnelReport({
@@ -237,6 +290,10 @@ describe('funnel report', () => {
     assert.deepEqual(report.features.find((f) => f.name === 'home_layout_offer_answered').breakdown, { dismissed: 1 });
     assert.equal(report.features.find((f) => f.name === 'home_layout_picker_opened').breakdown, undefined);
     assert.equal(report.features.find((f) => f.name === 'referral_shared').breakdown, undefined);
+    const logs = report.features.find((f) => f.name === 'cycle_log_saved');
+    assert.deepEqual([logs.events, logs.users, logs.breakdown], [3, 1, { quick: 2, day_sheet: 1 }]);
+    assert.deepEqual(report.features.find((f) => f.name === 'cycle_period_started').breakdown, { home: 1 });
+    assert.deepEqual(report.features.find((f) => f.name === 'cycle_explain_opened').breakdown, { ring: 1 });
     assert.equal(report.trend.installs.length, 7);
   });
 });
@@ -245,7 +302,7 @@ describe('funnel install script', () => {
   it('ships only additive statements on the funnel table', () => {
     const sql = readFileSync(new URL('../../prisma/20260928-funnel.sql', import.meta.url), 'utf8');
     // Repeatable events (home layout picks) must never sit behind a once-per-user/install unique index.
-    for (const name of ['home_layout_picker_opened', 'home_layout_changed', 'home_layout_offer_answered']) assert.ok(!sql.includes(name), name);
+    for (const name of ['home_layout_picker_opened', 'home_layout_changed', 'home_layout_offer_answered', 'cycle_log_saved', 'cycle_period_started', 'cycle_explain_opened']) assert.ok(!sql.includes(name), name);
     assert.ok(funnelStatements(sql).length >= 5);
     assert.throws(() => funnelStatements('DROP TABLE "FunnelEvent";'));
     assert.throws(() => funnelStatements('CREATE TABLE IF NOT EXISTS "User" (id TEXT);'));

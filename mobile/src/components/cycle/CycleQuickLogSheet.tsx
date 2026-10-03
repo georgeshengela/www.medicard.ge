@@ -31,6 +31,8 @@ type Props = {
   onClose: () => void;
   onSaved: (view?: CycleView | null) => void;
   isPeriodStart?: boolean;
+  /** Funnel source: the cycle screen's sheet (`quick`) or the Home hero's (`home`). */
+  funnelSource?: 'quick' | 'home';
   onOpenFull?: () => void;
 };
 
@@ -93,12 +95,13 @@ export function CycleQuickLogSheet({
   onSaved,
   isPeriodStart,
   onOpenFull,
+  funnelSource = 'quick',
 }: Props) {
   const { user } = useAuth();
   const c = useCycleColors();
   const insets = useSafeAreaInsets();
   const { fontScale } = useWindowDimensions();
-  const q = useCycleQuickLog({ active: visible, date, userId: user?.id, onSaved });
+  const q = useCycleQuickLog({ active: visible, date, userId: user?.id, onSaved, funnelSource });
   const { caps, hydrated, saving, saveError } = q;
 
   const save = async (markStart?: boolean) => {

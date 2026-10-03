@@ -57,6 +57,7 @@ export function CycleTrackingHero({ bundle, today, onLog, onStart, onEnd, onSex,
         accent={c.mutedSoft}
         sourceIds={['menstrualCycle']}
         caption={trackingCopy.explainCaption()}
+        funnelTopic="tracking"
         onClose={() => setExplain(false)}
       >
         <CyclePhaseLegend look="plain" marks only={['logged', 'symptom', 'spotting']} loggedBleedLabel={trackingCopy.bleedLegend()} />

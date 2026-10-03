@@ -27,6 +27,14 @@ export const SIGNUP_METHODS = Object.freeze(['email', 'phone', 'google', 'apple'
 export const HOME_LAYOUTS = Object.freeze(['standard', 'women', 'active', 'weight']);
 export const HOME_LAYOUT_SOURCES = Object.freeze(['home_header', 'home_footer', 'profile', 'offer', 'onboarding']);
 export const HOME_LAYOUT_OFFER_CHOICES = Object.freeze(['tried', 'dismissed', 'other']);
+/**
+ * Cycle (brief §9 wave 1 item 7): WHERE something happened, never WHAT. There is no category, id,
+ * flow, symptom or value field — analytics can never learn what was logged. Sex / BBT / tests /
+ * mucus have no event at all.
+ */
+export const CYCLE_LOG_SOURCES = Object.freeze(['quick', 'full', 'home', 'day_sheet']);
+export const CYCLE_PERIOD_START_SOURCES = Object.freeze(['hero', 'home', 'strip', 'day_sheet']);
+export const CYCLE_EXPLAIN_TOPICS = Object.freeze(['ring', 'fertile', 'stats', 'deviation', 'learn_more', 'ttc_signal', 'tracking']);
 
 /** Marketing slug from a URL (utm_source=instagram). Letters, digits, - _ . only. */
 const slug = z.string().trim().toLowerCase().regex(/^[a-z0-9][a-z0-9._-]{0,39}$/);
@@ -54,6 +62,9 @@ const PROPS = {
     source: z.enum(HOME_LAYOUT_SOURCES),
   }).strict(),
   home_layout_offer_answered: z.object({ choice: z.enum(HOME_LAYOUT_OFFER_CHOICES) }).strict(),
+  cycle_log_saved: z.object({ source: z.enum(CYCLE_LOG_SOURCES) }).strict(),
+  cycle_period_started: z.object({ source: z.enum(CYCLE_PERIOD_START_SOURCES) }).strict(),
+  cycle_explain_opened: z.object({ topic: z.enum(CYCLE_EXPLAIN_TOPICS) }).strict(),
 };
 
 export const FUNNEL_EVENT_NAMES = Object.freeze(Object.keys(PROPS));
@@ -62,6 +73,7 @@ export const ACCOUNT_EVENTS = new Set([
   'signup_completed', 'onboarding_completed', 'first_health_action',
   'price_alert_opened', 'health_passport_created', 'referral_shared',
   'home_layout_picker_opened', 'home_layout_changed', 'home_layout_offer_answered',
+  'cycle_log_saved', 'cycle_period_started', 'cycle_explain_opened',
 ]);
 
 export const batchSchema = z.object({
@@ -165,9 +177,16 @@ function activityIndex(activityRows) {
 export const FEATURE_EVENTS = Object.freeze([
   'price_alert_opened', 'health_passport_created', 'referral_shared',
   'home_layout_picker_opened', 'home_layout_changed', 'home_layout_offer_answered',
+  'cycle_log_saved', 'cycle_period_started', 'cycle_explain_opened',
 ]);
 /** Events counted per value of one enum prop (event counts, not people). */
-const FEATURE_BREAKDOWN = Object.freeze({ home_layout_changed: 'layout', home_layout_offer_answered: 'choice' });
+const FEATURE_BREAKDOWN = Object.freeze({
+  home_layout_changed: 'layout',
+  home_layout_offer_answered: 'choice',
+  cycle_log_saved: 'source',
+  cycle_period_started: 'source',
+  cycle_explain_opened: 'topic',
+});
 
 /**
  * Pure: builds the funnel from events (period + cohort history) and AppActivity rows.

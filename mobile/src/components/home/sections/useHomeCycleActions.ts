@@ -13,6 +13,7 @@ import { putCycleView } from '@/lib/cycleViewCache';
 import { getCycleReminderPrefs } from '@/lib/cycleReminderPrefs';
 import { syncCycleReminders } from '@/lib/cycleReminders';
 import { localAccountId } from '@/lib/localAccount';
+import { trackCyclePeriodStarted } from '@/lib/funnel';
 
 /**
  * Home's one-tap cycle actions — the same library calls as the cycle screen
@@ -203,6 +204,7 @@ export function useHomeCycleActions({
     void (async () => {
       try {
         const result = await queueApplyPeriod(userId, { action: 'start', date: today });
+        trackCyclePeriodStarted('home');
         // TTC: a new cycle is not a success to celebrate — a plain selection tick (brief §9 item 16).
         if (periodStartTone(mode).haptic === 'selection') Haptics.selectionAsync().catch(() => undefined);
         else Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined);

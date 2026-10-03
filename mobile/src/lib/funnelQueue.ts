@@ -16,7 +16,10 @@ export type FunnelEventName =
   | 'referral_shared'
   | 'home_layout_picker_opened'
   | 'home_layout_changed'
-  | 'home_layout_offer_answered';
+  | 'home_layout_offer_answered'
+  | 'cycle_log_saved'
+  | 'cycle_period_started'
+  | 'cycle_explain_opened';
 
 export type HealthActionType = 'medication' | 'meal' | 'cycle' | 'weight' | 'visit' | 'record' | 'checkin_manual';
 export type InstallSource = 'organic' | 'invite' | 'utm' | 'deeplink';
@@ -24,6 +27,26 @@ export type InstallSource = 'organic' | 'invite' | 'utm' | 'deeplink';
 export type FunnelHomeLayout = 'standard' | 'women' | 'active' | 'weight';
 export type FunnelHomeLayoutSource = 'home_header' | 'home_footer' | 'profile' | 'offer' | 'onboarding';
 export type FunnelHomeLayoutOfferChoice = 'tried' | 'dismissed' | 'other';
+/**
+ * Cycle events (brief §9 wave 1 item 7) — same enums as server CYCLE_LOG_SOURCES /
+ * CYCLE_PERIOD_START_SOURCES / CYCLE_EXPLAIN_TOPICS. Where it happened, never what: no category,
+ * id, flow or value ever goes with them, and the sex sheet / BBT / tests send nothing.
+ */
+export const CYCLE_FUNNEL_LOG_SOURCES = ['quick', 'full', 'home', 'day_sheet'] as const;
+export const CYCLE_FUNNEL_PERIOD_SOURCES = ['hero', 'home', 'strip', 'day_sheet'] as const;
+export const CYCLE_FUNNEL_EXPLAIN_TOPICS = ['ring', 'fertile', 'stats', 'deviation', 'learn_more', 'ttc_signal', 'tracking'] as const;
+export type CycleLogSource = (typeof CYCLE_FUNNEL_LOG_SOURCES)[number];
+export type CyclePeriodStartSource = (typeof CYCLE_FUNNEL_PERIOD_SOURCES)[number];
+export type CycleExplainTopic = (typeof CYCLE_FUNNEL_EXPLAIN_TOPICS)[number];
+
+/** `{ <key>: value }` only when `value` is one of `allowed`; anything else → null (nothing is sent). */
+export function cycleFunnelProps<K extends 'source' | 'topic'>(
+  key: K,
+  value: unknown,
+  allowed: readonly string[],
+): Record<K, string> | null {
+  return typeof value === 'string' && allowed.includes(value) ? ({ [key]: value } as Record<K, string>) : null;
+}
 
 export type FunnelProps = Record<string, string>;
 

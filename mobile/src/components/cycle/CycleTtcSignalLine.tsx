@@ -52,6 +52,7 @@ export function CycleTtcSignalSheet({
       accent={c.fertile}
       sourceIds={copy?.sourceIds}
       caption={copy?.caption}
+      funnelTopic="ttc_signal"
       onClose={onClose}
     />
   );

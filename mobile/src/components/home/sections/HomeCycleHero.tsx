@@ -310,6 +310,7 @@ export function HomeCycleHero({ cycle, locked, userId, first }: HomeCycleHeroPro
           visible
           date={actions.sheet.date}
           isPeriodStart={actions.sheet.periodStart}
+          funnelSource="home"
           onClose={actions.closeSheet}
           onSaved={actions.onSheetSaved}
           onOpenFull={actions.openFullLog}

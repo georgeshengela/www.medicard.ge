@@ -122,6 +122,7 @@ import { useCycleColors } from '@/theme/cycle';
 import { cycleSetupTailKey, needsCycleOnboarding, needsCycleSetupTail } from '@/lib/cycleExperience';
 import { getPreference, setPreference } from '@/lib/storage';
 import { localAccountId } from '@/lib/localAccount';
+import { trackCyclePeriodStarted } from '@/lib/funnel';
 import { CycleJourneyGuide } from '@/components/cycle/CycleJourneyGuide';
 
 type CyclePane = 'overview' | 'calendar' | 'journal';
@@ -719,6 +720,7 @@ export default function CycleHome() {
     setPeriodBusy(true);
     try {
       const result = await queueApplyPeriod(user.id, { action: 'start', date: today });
+      trackCyclePeriodStarted('hero');
       // TTC: a new cycle is not a success to celebrate — a plain selection tick (brief §9 item 16).
       if (periodStartTone(bundle?.profile.mode).haptic === 'selection') Haptics.selectionAsync().catch(() => undefined);
       else Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined);
@@ -1493,6 +1495,7 @@ export default function CycleHome() {
         visible={explainOpen}
         title={ka.cycle.howCalculated}
         body={ka.cycle.howCalculatedBody}
+        funnelTopic="ring"
         accent={c.brand}
         sourceIds={['menstrualCycle']}
         caption={ka.cycle.gaugeRingCaption}

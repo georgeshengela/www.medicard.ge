@@ -25,6 +25,7 @@ import {
 import { ka } from '@/i18n/ka';
 import { getCycleReminderPrefs } from '@/lib/cycleReminderPrefs';
 import { syncCycleReminders } from '@/lib/cycleReminders';
+import { trackCycleLogSaved } from '@/lib/funnel';
 import { useCycleColors } from '@/theme/cycle';
 
 export default function CycleLogRoute() {
@@ -166,6 +167,7 @@ function CycleLogScreen() {
         setError(ka.cycle.saveNotPersisted);
         return;
       }
+      trackCycleLogSaved('full');
       if (form.pregnancyTest === 'positive' && mode !== 'PREGNANCY') {
         // The app's own sheet instead of a native alert; closing it (any way) returns to the previous screen.
         setPregPrompt(true);

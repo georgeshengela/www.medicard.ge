@@ -8,6 +8,9 @@ import { expectationsFromBundle, type CycleExpectation } from '@/lib/cycleExpect
 import { cyclePresentationModeKnown } from '@/lib/cycleHistoryCopy';
 import { EMPTY_CYCLE_LOG, formFromCycleLog, isBleedFlow, persistCycleLog } from '@/lib/cycleLogSave';
 import { cycleModeCapabilities } from '@/lib/cycleModes';
+import { periodStartFromSave } from '@/lib/cycleFunnelEvents';
+import { trackCycleLogSaved, trackCyclePeriodStarted } from '@/lib/funnel';
+import type { CycleLogSource } from '@/lib/funnelQueue';
 import { loadCycleView, type CycleView } from '@/lib/cycleOffline';
 import { useAnalysisTask } from '@/lib/useAnalysisTask';
 
@@ -44,11 +47,14 @@ export function useCycleQuickLog({
   date,
   userId,
   onSaved,
+  funnelSource,
 }: {
   active: boolean;
   date: string;
   userId: string | undefined;
   onSaved: (view?: CycleView | null) => void;
+  /** Where the save happened, for the funnel (an enum only — never what was logged). */
+  funnelSource: Exclude<CycleLogSource, 'full'>;
 }): CycleQuickLogState {
   const [form, setForm] = useState<CycleLogForm>(EMPTY_CYCLE_LOG);
   const [base, setBase] = useState<CycleLogForm>(EMPTY_CYCLE_LOG);
@@ -114,6 +120,9 @@ export function useCycleQuickLog({
           return false;
         }
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined);
+        trackCycleLogSaved(funnelSource);
+        const started = periodStartFromSave({ source: funnelSource, markStart, date, prevFlow: base.flow, nextFlow: next.flow, logs });
+        if (started) trackCyclePeriodStarted(started);
         setBase(next);
         setForm(next);
         onSavedRef.current(result.view);
@@ -126,7 +135,7 @@ export function useCycleQuickLog({
         ticket.finish();
       }
     },
-    [active, hydrated, saving, userId, form, date, saveTask],
+    [active, hydrated, saving, userId, form, base, logs, date, saveTask, funnelSource],
   );
 
   return { form, patch, dirty, hydrated, saving, saveError, mode, caps, logs, expected, retry, save, reset };

@@ -26,11 +26,19 @@
   const FEATURES = {
     price_alert_opened: 'ფასის კლების შეტყობინება გახსნეს', health_passport_created: 'ჯანმრთელობის პასპორტი შექმნეს', referral_shared: 'მოწვევა გააზიარეს',
     home_layout_picker_opened: 'მთავარი გვერდის არჩევა გაიხსნა', home_layout_changed: 'მთავარი გვერდი შეიცვალა', home_layout_offer_answered: 'ქალის გვერდის შეთავაზებაზე პასუხი',
+    cycle_log_saved: 'ციკლის დღე აღირიცხა', cycle_period_started: 'მენსტრუაციის დაწყება მოინიშნა', cycle_explain_opened: 'ციკლის ახსნა გაიხსნა',
   };
   // Per-value counts the server sends for some events (FEATURE_BREAKDOWN in src/lib/funnel.js). Never show the raw enum.
   const BREAKDOWN = {
     home_layout_changed: { standard: 'სტანდარტული', women: 'ქალის ჯანმრთელობა', active: 'აქტიური', weight: 'კვება და წონა' },
     home_layout_offer_answered: { tried: 'სცადა', dismissed: 'უარი თქვა', other: 'სხვა აირჩია' },
+    // Cycle events say only where it happened — never what was logged (server CYCLE_* enums).
+    cycle_log_saved: { quick: 'სწრაფი აღრიცხვა', full: 'სრული ჩანაწერი', home: 'მთავარი გვერდი', day_sheet: 'დღის ფანჯარა' },
+    cycle_period_started: { hero: 'ციკლის გვერდი', home: 'მთავარი გვერდი', strip: 'დღეების ზოლი', day_sheet: 'დღის ფანჯარა' },
+    cycle_explain_opened: {
+      ring: 'ციკლის რგოლი', fertile: 'ნაყოფიერი დღეები', stats: 'ჩემი ციკლი', deviation: 'გადახრები',
+      learn_more: 'გაიგე მეტი', ttc_signal: 'ნაყოფიერების ნიშნები', tracking: 'მხოლოდ აღრიცხვა',
+    },
   };
   const breakdownBadges = (f) => {
     const names = BREAKDOWN[f.name] || {};

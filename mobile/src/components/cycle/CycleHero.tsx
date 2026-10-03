@@ -324,6 +324,7 @@ function ClassicCycleHero({
         accent={c.fertile}
         sourceIds={['menstrualCycle']}
         caption={ka.cycle.gaugeRingCaption}
+        funnelTopic="fertile"
         onClose={() => setExplain(null)}
       >
         {explain?.range ? (

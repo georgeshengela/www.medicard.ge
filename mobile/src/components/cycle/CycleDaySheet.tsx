@@ -77,7 +77,7 @@ export function CycleDaySheet({
   const insets = useSafeAreaInsets();
   const { fontScale } = useWindowDimensions();
   const { user } = useAuth();
-  const q = useCycleQuickLog({ active: visible, date, userId: user?.id, onSaved });
+  const q = useCycleQuickLog({ active: visible, date, userId: user?.id, onSaved, funnelSource: 'day_sheet' });
   const [pending, setPending] = useState<Pending>(null);
   /** „გაიგე მეტი“ for a fact tile — drawn inside this sheet's Modal, never a second native Modal. */
   const [learn, setLearn] = useState<{ title: string; entry: LearnMoreEntry } | null>(null);

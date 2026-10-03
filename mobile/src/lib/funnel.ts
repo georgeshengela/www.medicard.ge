@@ -12,8 +12,15 @@ import { localAccountId } from '@/lib/localAccount';
 import { petCareInstallId } from '@/lib/petCareReminderPrefs';
 import { getPreference, getToken, setPreference } from '@/lib/storage';
 import {
+  CYCLE_FUNNEL_EXPLAIN_TOPICS,
+  CYCLE_FUNNEL_LOG_SOURCES,
+  CYCLE_FUNNEL_PERIOD_SOURCES,
   createFunnelQueue,
+  cycleFunnelProps,
   installSourceFromUrl,
+  type CycleExplainTopic,
+  type CycleLogSource,
+  type CyclePeriodStartSource,
   type FunnelEventName,
   type FunnelHomeLayout,
   type FunnelHomeLayoutOfferChoice,
@@ -119,6 +126,29 @@ export function trackHomeLayoutChanged(layout: FunnelHomeLayout, from: FunnelHom
 /** Answer to the women's Home offer card: tried it, dismissed it, or picked another layout. */
 export function trackHomeLayoutOfferAnswered(choice: FunnelHomeLayoutOfferChoice): void {
   trackFunnel('home_layout_offer_answered', { choice });
+}
+
+/*
+ * Cycle (brief §9 wave 1 item 7): one enum each — where it happened, never what was logged. These
+ * helpers are the only way cycle code reports anything (cycleFunnel.test.ts checks every call site).
+ */
+
+/** A cycle day saved from the quick log, the full log, Home or the day sheet. */
+export function trackCycleLogSaved(source: CycleLogSource): void {
+  const props = cycleFunnelProps('source', source, CYCLE_FUNNEL_LOG_SOURCES);
+  if (props) trackFunnel('cycle_log_saved', props);
+}
+
+/** „მენსტრუაცია დაიწყო“ from the cycle hero, Home, the day strip or the day sheet. */
+export function trackCyclePeriodStarted(source: CyclePeriodStartSource): void {
+  const props = cycleFunnelProps('source', source, CYCLE_FUNNEL_PERIOD_SOURCES);
+  if (props) trackFunnel('cycle_period_started', props);
+}
+
+/** An explanation sheet opened (ring, fertile days, deviations, „გაიგე მეტი“ …) — the topic, never the entry. */
+export function trackCycleExplainOpened(topic: CycleExplainTopic): void {
+  const props = cycleFunnelProps('topic', topic, CYCLE_FUNNEL_EXPLAIN_TOPICS);
+  if (props) trackFunnel('cycle_explain_opened', props);
 }
 
 const viewedSteps = new Set<string>();

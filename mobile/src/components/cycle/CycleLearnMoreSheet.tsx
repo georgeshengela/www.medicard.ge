@@ -23,7 +23,7 @@ type Props = {
 /**
  * „გაიგე მეტი“ (brief §8.3/§8.4, Clue's per-option Learn more): what it is · ხშირია · როდის მივმართო
  * ექიმს · წყარო, in the cycle module's one explain sheet. Static copy from `i18n/cycle/learnMore.ts`;
- * opening it sends nothing anywhere (no analytics, no ids).
+ * opening it reports only the generic `learn_more` topic — never which entry, id or symptom.
  */
 export function CycleLearnMoreSheet({ visible, title, items, embedded, onClose }: Props) {
   const sourceIds = [...new Set(items.map((item) => item.entry.sourceId))] as MedicalSourceId[];
@@ -34,6 +34,7 @@ export function CycleLearnMoreSheet({ visible, title, items, embedded, onClose }
       sourceIds={sourceIds}
       caption={tx('ზოგადი ინფორმაციაა — შენს ჩანაწერს არ აფასებს.', 'General information — it does not assess your entry.')}
       embedded={embedded}
+      funnelTopic="learn_more"
       onClose={onClose}
     >
       <View style={{ gap: 18 }}>
