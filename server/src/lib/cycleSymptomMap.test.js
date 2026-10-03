@@ -1,0 +1,253 @@
+import { describe, it } from 'node:test';
+import assert from 'node:assert/strict';
+import { addDays } from './cycle.js';
+import { buildCycleDoctorSummaryData, doctorSummaryHasSensitiveLeak } from './cycleDoctorSummary.js';
+import { OBSERVATION_REGISTRY, SENSITIVITY, STORAGE } from './cycleObservationRegistry.js';
+import {
+  SYMPTOM_MAP_MAX_ROWS,
+  buildSymptomCycleMap,
+  isSymptomMapItem,
+  symptomMapItemsForLog,
+} from './cycleSymptomMap.js';
+
+const TODAY = '2026-09-30';
+
+/** Period starts every `len` days, oldest first, the last one before TODAY. */
+function startsEvery(len, count, last = '2026-09-20') {
+  const out = [];
+  for (let i = count - 1; i >= 0; i -= 1) out.push(addDays(last, -len * i));
+  return out;
+}
+
+function bleedLogs(starts) {
+  return starts.flatMap((s) => [0, 1, 2, 3].map((i) => ({ date: addDays(s, i), flow: i ? 'light' : 'medium' })));
+}
+
+function merge(...groups) {
+  const byDate = new Map();
+  for (const log of groups.flat()) {
+    const prev = byDate.get(log.date) || { date: log.date, flow: 'none', symptoms: [], moods: [], painEntries: [] };
+    byDate.set(log.date, {
+      ...prev,
+      flow: log.flow && log.flow !== 'none' ? log.flow : prev.flow,
+      symptoms: [...prev.symptoms, ...(log.symptoms || [])],
+      moods: [...prev.moods, ...(log.moods || [])],
+      painEntries: [...prev.painEntries, ...(log.painEntries || [])],
+    });
+  }
+  return [...byDate.values()].sort((a, b) => a.date.localeCompare(b.date));
+}
+
+/** One extra field on cycle day `day` of each start. */
+function onDay(starts, day, extra) {
+  return starts.map((s) => ({ date: addDays(s, day - 1), ...extra }));
+}
+
+describe('symptom heat map — which items may appear', () => {
+  it('only HEALTH symptoms, moods and pain places; never sex, tests, discharge or intimate symptoms', () => {
+    const log = {
+      date: TODAY,
+      symptoms: ['bloating', 'discharge', 'vaginal_dryness', 'itching_vulva', 'protected', 'orgasm', 'sex', 'cramps'],
+      moods: ['irritable', 'romantic'],
+      painEntries: [{ type: 'lower_back', severity: 'mild' }],
+      bbt: 36.7,
+      ovulationTest: 'positive',
+      cervicalMucus: 'eggwhite',
+      pregnancyTest: 'negative',
+      sexualActivity: true,
+      libido: 3,
+    };
+    assert.deepEqual(symptomMapItemsForLog(log).sort(), [
+      'mood:irritable',
+      'pain:cramps',
+      'pain:lower_back',
+      'symptom:bloating',
+    ]);
+  });
+
+  it('every eligible registry key is HEALTH and every SENSITIVE / HIGHLY_SENSITIVE key is refused', () => {
+    for (const [key, defn] of Object.entries(OBSERVATION_REGISTRY)) {
+      const kind = defn.storage === STORAGE.MOODS ? 'mood' : defn.storage === STORAGE.SYMPTOMS ? 'symptom' : null;
+      if (!kind) continue;
+      if (defn.sensitivity !== SENSITIVITY.HEALTH) {
+        assert.equal(isSymptomMapItem(`${kind}:${key}`), false, key);
+      }
+    }
+    assert.equal(isSymptomMapItem('mood:romantic'), false);
+    assert.equal(isSymptomMapItem('symptom:cramps'), false, 'pain chips fold into their pain type');
+    assert.equal(isSymptomMapItem('pain:cramps'), true);
+    assert.equal(isSymptomMapItem('bbt:36.6'), false);
+  });
+});
+
+describe('symptom heat map — numbers', () => {
+  const starts = startsEvery(28, 7); // 6 completed cycles + the current one
+
+  it('counts in how many cycles an item was logged on each cycle day', () => {
+    const logs = merge(
+      bleedLogs(starts),
+      onDay(starts.slice(0, 6), 1, { painEntries: [{ type: 'cramps', severity: 'moderate' }] }),
+      onDay(starts.slice(1, 6), 2, { symptoms: ['cramps'] }),
+      onDay(starts.slice(2, 6), 3, { symptoms: ['cramps'] }),
+    );
+    const map = buildSymptomCycleMap({ logs, periodStarts: starts, from: starts[0], to: TODAY });
+    assert.equal(map.cycleCount, 6);
+    assert.equal(map.dayCount, 28);
+    assert.equal(map.overflow, false);
+    const cramps = map.rows.find((r) => r.key === 'cramps');
+    assert.equal(cramps.kind, 'pain');
+    assert.deepEqual(cramps.counts.slice(0, 4), [6, 5, 4, 0]);
+    assert.equal(cramps.counts.length, 28);
+    assert.deepEqual(cramps.peak, { from: 1, to: 1, cycles: 6 });
+    assert.equal(cramps.loggedDays, 15);
+    assert.equal(cramps.cyclesWithItem, 6);
+  });
+
+  it('the peak is the longest run of the busiest days', () => {
+    const logs = merge(
+      bleedLogs(starts),
+      ...[1, 2, 3].map((d) => onDay(starts.slice(1, 6), d, { symptoms: ['bloating'] })),
+      onDay(starts.slice(1, 6), 20, { symptoms: ['bloating'] }),
+    );
+    const map = buildSymptomCycleMap({ logs, periodStarts: starts, from: starts[0], to: TODAY });
+    assert.equal(map.cycleCount, 5, 'the cycle with nothing logged does not count');
+    assert.deepEqual(map.rows[0].peak, { from: 1, to: 3, cycles: 5 });
+  });
+
+  it('stretches to the longest cycle up to day 35 and buckets later days into „36+“', () => {
+    const s = ['2026-03-01', '2026-04-02', '2026-05-15', '2026-06-12'];
+    const logs = merge(
+      bleedLogs(s),
+      [
+        { date: '2026-03-30', moods: ['anxious'] }, // day 30 of a 32-day cycle
+        { date: '2026-05-10', moods: ['anxious'] }, // day 39 of a 43-day cycle → 36+
+        { date: '2026-05-13', moods: ['anxious'] }, // day 42, same cycle, same bucket
+        { date: '2026-05-20', moods: ['anxious'] }, // day 6 of the third cycle
+      ],
+    );
+    const map = buildSymptomCycleMap({ logs, periodStarts: s, from: '2026-03-01', to: TODAY });
+    assert.equal(map.dayCount, 35);
+    assert.equal(map.overflow, true);
+    const row = map.rows[0];
+    assert.equal(row.counts.length, 36);
+    assert.equal(row.counts[29], 1);
+    assert.equal(row.counts[35], 1, 'one cycle, however many days past 35');
+    assert.equal(row.counts[5], 1);
+    assert.equal(row.loggedDays, 4);
+  });
+
+  it('a short history keeps 28 columns; a 31-day cycle widens to 31', () => {
+    const s = ['2026-07-01', '2026-08-01', '2026-08-27'];
+    const logs = merge(bleedLogs(s), onDay(s.slice(0, 2), 2, { symptoms: ['fatigue'] }));
+    const map = buildSymptomCycleMap({ logs, periodStarts: s, from: '2026-06-01', to: TODAY });
+    assert.equal(map.dayCount, 31);
+    assert.equal(map.overflow, false);
+  });
+
+  it('hidden cycles are left out', () => {
+    const logs = merge(bleedLogs(starts), onDay(starts.slice(0, 6), 5, { symptoms: ['acne'] }));
+    const all = buildSymptomCycleMap({ logs, periodStarts: starts, from: starts[0], to: TODAY });
+    const hidden = buildSymptomCycleMap({
+      logs,
+      periodStarts: starts,
+      hiddenStarts: [starts[2], starts[4]],
+      from: starts[0],
+      to: TODAY,
+    });
+    assert.equal(all.cycleCount, 6);
+    assert.equal(hidden.cycleCount, 4);
+    assert.equal(hidden.rows[0].counts[4], 4);
+    assert.ok(!hidden.cycles.some((c) => c.start === starts[2] || c.start === starts[4]));
+  });
+
+  it('only the last six completed cycles; the running cycle never counts', () => {
+    const many = startsEvery(28, 10);
+    const logs = merge(bleedLogs(many), onDay(many, 4, { symptoms: ['nausea'] }));
+    const map = buildSymptomCycleMap({ logs, periodStarts: many, from: many[0], to: TODAY });
+    assert.equal(map.cycleCount, 6);
+    assert.deepEqual(
+      map.cycles.map((c) => c.start),
+      many.slice(3, 9),
+    );
+    assert.equal(map.rows[0].counts[3], 6);
+  });
+
+  it('at most ten rows, most frequent first; single sightings are dropped', () => {
+    const keys = ['bloating', 'nausea', 'acne', 'fatigue', 'dizziness', 'migraine', 'gas', 'insomnia', 'chills', 'fever', 'heartburn', 'tinnitus'];
+    const logs = merge(
+      bleedLogs(starts),
+      ...keys.map((k, i) => onDay(starts.slice(0, 6 - (i % 5)), 3 + i, { symptoms: [k] })),
+      [{ date: addDays(starts[1], 9), symptoms: ['cold_symptoms'] }],
+    );
+    const map = buildSymptomCycleMap({ logs, periodStarts: starts, from: starts[0], to: TODAY });
+    assert.equal(map.rows.length, SYMPTOM_MAP_MAX_ROWS);
+    for (let i = 1; i < map.rows.length; i += 1) {
+      assert.ok(map.rows[i - 1].loggedDays >= map.rows[i].loggedDays);
+    }
+    assert.ok(!map.rows.some((r) => r.key === 'cold_symptoms'));
+  });
+
+  it('empty → null (no logs, only sensitive logs, no completed cycle)', () => {
+    assert.equal(buildSymptomCycleMap({ logs: [], periodStarts: starts, to: TODAY }), null);
+    const sensitive = merge(
+      bleedLogs(starts),
+      onDay(starts, 14, { symptoms: ['discharge', 'unprotected'], moods: ['romantic'] }),
+    );
+    assert.equal(buildSymptomCycleMap({ logs: sensitive, periodStarts: starts, from: starts[0], to: TODAY }), null);
+    assert.equal(
+      buildSymptomCycleMap({
+        logs: [{ date: TODAY, symptoms: ['bloating'] }],
+        periodStarts: ['2026-09-20'],
+        to: TODAY,
+      }),
+      null,
+    );
+  });
+
+  it('cycles before the report range are not used', () => {
+    const logs = merge(bleedLogs(starts), onDay(starts.slice(0, 6), 2, { symptoms: ['fatigue'] }));
+    const map = buildSymptomCycleMap({ logs, periodStarts: starts, from: starts[3], to: TODAY });
+    assert.equal(map.cycleCount, 3);
+  });
+});
+
+describe('symptom heat map in the doctor summary', () => {
+  const starts = startsEvery(28, 7);
+  const logs = merge(
+    bleedLogs(starts),
+    onDay(starts.slice(0, 6), 1, { symptoms: ['cramps', 'protected'], moods: ['irritable', 'romantic'] }),
+    onDay(starts.slice(0, 6), 14, { symptoms: ['discharge', 'bloating'] }),
+  ).map((l) => ({ ...l, bbt: 36.6, cervicalMucus: 'eggwhite' }));
+
+  it('is in the payload with HEALTH rows only and no leak', () => {
+    const out = buildCycleDoctorSummaryData({ logs, today: TODAY, options: { from: starts[0] } });
+    assert.ok(out.symptomMap);
+    assert.equal(out.inclusions.symptomMap, true);
+    assert.deepEqual(
+      out.symptomMap.rows.map((r) => `${r.kind}:${r.key}`).sort(),
+      ['mood:irritable', 'pain:cramps', 'symptom:bloating'],
+    );
+    const text = JSON.stringify(out.symptomMap);
+    for (const word of ['protected', 'romantic', 'discharge', 'bbt', 'eggwhite', 'cervicalMucus']) {
+      assert.ok(!text.includes(word), word);
+    }
+    assert.equal(doctorSummaryHasSensitiveLeak(out), false);
+  });
+
+  it('leaves out the cycles she hid', () => {
+    const out = buildCycleDoctorSummaryData({
+      logs,
+      today: TODAY,
+      hiddenCycles: [starts[1]],
+      options: { from: starts[0] },
+    });
+    assert.equal(out.symptomMap.cycleCount, 5);
+    assert.ok(!out.symptomMap.cycles.some((c) => c.start === starts[1]));
+  });
+
+  it('is null when nothing qualifies', () => {
+    const out = buildCycleDoctorSummaryData({ logs: bleedLogs(starts), today: TODAY, options: { from: starts[0] } });
+    assert.equal(out.symptomMap, null);
+    assert.equal(out.inclusions.symptomMap, false);
+  });
+});

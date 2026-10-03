@@ -29,6 +29,7 @@ import {
   POSTPARTUM_EPISODE_ACTIVE,
   postpartumElapsed,
 } from './cyclePostpartum.js';
+import { buildSymptomCycleMap } from './cycleSymptomMap.js';
 
 export const DOCTOR_SUMMARY_QUERY_DAYS = 180;
 export const DOCTOR_SUMMARY_MAX_RANGE_DAYS = 366;
@@ -505,6 +506,15 @@ export function buildCycleDoctorSummaryData({
     if (Object.hasOwn(sleepCounts, row.value)) sleepCounts[row.value] += 1;
   }
 
+  // „სიმპტომები ციკლის დღეების მიხედვით“ — last completed, non-hidden cycles inside the range; null when empty.
+  const symptomMap = buildSymptomCycleMap({
+    logs: windowLogs,
+    periodStarts: stats.periodStarts || [],
+    hiddenStarts: [...hiddenSet],
+    from,
+    to,
+  });
+
   const pregnancyContext = buildDoctorPregnancyContext({
     profile,
     pregnancyEpisode,
@@ -536,6 +546,7 @@ export function buildCycleDoctorSummaryData({
       menstrual: true,
       pain: true,
       symptoms: true,
+      symptomMap: Boolean(symptomMap),
       wellness: true,
       fertility: Boolean(options.includeFertility),
       sexual: Boolean(options.includeSexual),
@@ -550,6 +561,8 @@ export function buildCycleDoctorSummaryData({
     menstrualHistory,
     pain,
     symptoms: symptoms.length ? { rows: symptoms } : null,
+    /** Optional for older readers: HEALTH items only, hidden cycles left out (cycleSymptomMap.js). */
+    symptomMap,
     wellness,
     contraception,
     fertilityObservations: fertilityHasData ? fertilitySection : null,
