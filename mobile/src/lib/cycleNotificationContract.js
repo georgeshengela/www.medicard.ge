@@ -18,6 +18,25 @@ export const LATE_NOTIFY_ELIGIBLE = false;
  */
 export const PERIOD_LATE_AFTER_DAYS = 2;
 
+/**
+ * Variable cycles (server `predictions.nextPeriodRange`, brief §9 item 12): „მალე“ counts from the window's
+ * first day, „გვიანდება“ from its last day + PERIOD_LATE_AFTER_DAYS (owner decision 2026-10-04: 2 days).
+ * Without a window both use the single estimate, as before.
+ */
+export function periodReminderAnchors(nextPeriodStart, nextPeriodRange) {
+  if (!nextPeriodStart) return { soonFrom: null, lateFrom: null, bleedFrom: null };
+  const range = nextPeriodRange && nextPeriodRange.from && nextPeriodRange.to ? nextPeriodRange : null;
+  return {
+    soonFrom: range ? range.from : nextPeriodStart,
+    lateFrom: range ? range.to : nextPeriodStart,
+    // Bleeding logged anywhere in the window means the period came.
+    bleedFrom: range && range.from < nextPeriodStart ? range.from : nextPeriodStart,
+  };
+}
+
+/** Forecast honesty: before 3 completed cycles no fertile / ovulation reminder (server `predictions.fertility`). */
+export const FERTILITY_LEARNING_SKIPS = Object.freeze(['ovulation', 'fertile', 'pms', 'opk']);
+
 export const CYCLE_CANDIDATE_TYPES = Object.freeze([
   'period_start',
   'period_soon',
@@ -84,6 +103,8 @@ export const CYCLE_SUPPRESSION = Object.freeze({
   PERIMENOPAUSE_SUPPRESSED: 'PERIMENOPAUSE_SUPPRESSED',
   POSTPARTUM_SUPPRESSED: 'POSTPARTUM_SUPPRESSED',
   FORECAST_GATE_SUPPRESSED: 'FORECAST_GATE_SUPPRESSED',
+  /** Fewer than 3 completed cycles: no fertile / ovulation reminder yet. */
+  FERTILITY_LEARNING: 'FERTILITY_LEARNING',
   DUPLICATE: 'DUPLICATE',
   COOLDOWN: 'COOLDOWN',
   NOT_ELIGIBLE: 'NOT_ELIGIBLE',
@@ -233,6 +254,8 @@ export function buildCycleCandidates({
   showFertilityMarkers = true,
   lateStatus = null,
   forecastAllowed = true,
+  /** `predictions.fertility.status` (or the mobile mirror): LEARNING skips fertile / ovulation reminders. */
+  fertilityStatus = null,
 } = {}) {
   const candidates = [];
   const estimated = predictions.estimated !== false;
@@ -259,10 +282,11 @@ export function buildCycleCandidates({
 
   if (mode !== 'PREGNANCY' && mode !== 'PERIMENOPAUSE' && mode !== 'POSTPARTUM' && forecastAllowed !== false && predictions.nextPeriodStart) {
     const start = predictions.nextPeriodStart;
+    const anchors = periodReminderAnchors(start, predictions.nextPeriodRange);
     if ((prefs.periodDaysBefore ?? 0) > 0) {
       push({
         type: 'period_soon',
-        eventDate: addDaysUtc(start, -prefs.periodDaysBefore),
+        eventDate: addDaysUtc(anchors.soonFrom, -prefs.periodDaysBefore),
         revalidationKey: 'nextPeriodStart',
         class: 'calendar',
       });
@@ -274,17 +298,23 @@ export function buildCycleCandidates({
       class: 'calendar',
     });
     // Skipped once bleeding is logged on or after the estimated start — the period came, nothing is late.
-    if (prefs.periodLate && !bleedLoggedSince(logs, start)) {
+    if (prefs.periodLate && !bleedLoggedSince(logs, anchors.bleedFrom)) {
       push({
         type: 'period_late',
-        eventDate: addDaysUtc(start, PERIOD_LATE_AFTER_DAYS),
+        eventDate: addDaysUtc(anchors.lateFrom, PERIOD_LATE_AFTER_DAYS),
         revalidationKey: 'nextPeriodStart',
         class: 'calendar',
       });
     }
   }
 
-  const fertilityOk = showFertilityMarkers !== false && mode !== 'PREGNANCY' && mode !== 'PERIMENOPAUSE' && mode !== 'POSTPARTUM' && forecastAllowed !== false;
+  const fertilityOk =
+    showFertilityMarkers !== false &&
+    mode !== 'PREGNANCY' &&
+    mode !== 'PERIMENOPAUSE' &&
+    mode !== 'POSTPARTUM' &&
+    forecastAllowed !== false &&
+    fertilityStatus !== 'LEARNING';
   if (mode === 'TRY_TO_CONCEIVE' && prefs.ovulation && fertilityOk) {
     if (predictions.ovulationDate) {
       push({
@@ -371,12 +401,13 @@ export function pickCycleScheduleSet(candidates, today) {
 
 export function expectedEventDate(type, live = {}) {
   const start = live.nextPeriodStart;
+  const anchors = periodReminderAnchors(start, live.nextPeriodRange);
   if (type === 'period_start') return start || null;
   if (type === 'period_soon') {
     if (!start || !(live.periodDaysBefore > 0)) return null;
-    return addDaysUtc(start, -live.periodDaysBefore);
+    return addDaysUtc(anchors.soonFrom, -live.periodDaysBefore);
   }
-  if (type === 'period_late') return start ? addDaysUtc(start, PERIOD_LATE_AFTER_DAYS) : null;
+  if (type === 'period_late') return start ? addDaysUtc(anchors.lateFrom, PERIOD_LATE_AFTER_DAYS) : null;
   if (type === 'ovulation' || type === 'pms') {
     if (!live.ovulationDate) return null;
     return type === 'pms' ? addDaysUtc(live.ovulationDate, 2) : live.ovulationDate;
@@ -413,13 +444,16 @@ export function revalidateCycleCandidate(candidate, live = {}) {
   if (isFertilityCycleType(type) && live.showFertilityMarkers === false) {
     return { ok: false, reason: CYCLE_SUPPRESSION.CONTRACEPTION_SUPPRESSED };
   }
+  if (FERTILITY_LEARNING_SKIPS.includes(type) && live.fertilityStatus === 'LEARNING') {
+    return { ok: false, reason: CYCLE_SUPPRESSION.FERTILITY_LEARNING };
+  }
   if (live.typeEnabled && live.typeEnabled[type] === false) {
     return { ok: false, reason: CYCLE_SUPPRESSION.USER_DISABLED };
   }
   if (inLoggedBleed(live.logs, live.today) && PREDICTION_CYCLE_TYPES.includes(type)) {
     return { ok: false, reason: CYCLE_SUPPRESSION.PERIOD_STARTED };
   }
-  if (type === 'period_late' && live.nextPeriodStart && bleedLoggedSince(live.logs, live.nextPeriodStart)) {
+  if (type === 'period_late' && live.nextPeriodStart && bleedLoggedSince(live.logs, periodReminderAnchors(live.nextPeriodStart, live.nextPeriodRange).bleedFrom)) {
     return { ok: false, reason: CYCLE_SUPPRESSION.PERIOD_STARTED };
   }
   const expected = expectedEventDate(type, live);

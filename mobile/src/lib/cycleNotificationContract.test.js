@@ -395,3 +395,49 @@ describe('Cycle candidate revalidation', () => {
     assert.equal(CYCLE_CANDIDATE_TYPES.includes('pregnancy_care_plan'), false);
   });
 });
+
+describe('variable cycles and the 3-cycle gate (brief §9 items 12–13)', () => {
+  const range = { from: '2026-09-17', to: '2026-09-24' };
+  const byType = (rows) => Object.fromEntries(rows.map((row) => [row.type, row.eventDate]));
+
+  it('„მალე“ counts from the window start, late from its end + 2 days, „დღეს“ stays on the estimate', () => {
+    const rows = buildCycleCandidates({ today, predictions: { ...predictions(), nextPeriodRange: range }, prefs: prefs() });
+    const at = byType(rows);
+    assert.equal(at.period_soon, '2026-09-15');
+    assert.equal(at.period_start, '2026-09-20');
+    assert.equal(at.period_late, '2026-09-26');
+    // Without a window: the single estimate, as before.
+    const plain = byType(buildCycleCandidates({ today, predictions: predictions(), prefs: prefs() }));
+    assert.equal(plain.period_soon, '2026-09-18');
+    assert.equal(plain.period_late, '2026-09-22');
+  });
+
+  it('bleeding logged inside the window cancels the late check-in, and revalidation agrees', () => {
+    const logs = [{ date: '2026-09-18', flow: 'medium' }];
+    const rows = buildCycleCandidates({ today, predictions: { ...predictions(), nextPeriodRange: range }, prefs: prefs(), logs });
+    assert.equal(rows.some((row) => row.type === 'period_late'), false);
+    const late = buildCycleCandidates({ today, predictions: { ...predictions(), nextPeriodRange: range }, prefs: prefs() }).find((row) => row.type === 'period_late');
+    const live = { today, nextPeriodStart: '2026-09-20', nextPeriodRange: range, logs: [], prefsEnabled: true, globalEnabled: true, periodDaysBefore: 2 };
+    assert.equal(revalidateCycleCandidate(late, live).ok, true);
+    assert.equal(revalidateCycleCandidate(late, { ...live, nextPeriodRange: null }).reason, CYCLE_SUPPRESSION.STALE_PREDICTION);
+    assert.equal(revalidateCycleCandidate(late, { ...live, logs }).reason, CYCLE_SUPPRESSION.PERIOD_STARTED);
+  });
+
+  it('LEARNING (< 3 completed cycles) skips fertile and ovulation reminders, period reminders stay', () => {
+    const rows = buildCycleCandidates({
+      today,
+      mode: 'TRY_TO_CONCEIVE',
+      predictions: predictions(),
+      prefs: prefs({ opk: true }),
+      fertilityStatus: 'LEARNING',
+    });
+    const types = rows.map((row) => row.type);
+    for (const type of ['ovulation', 'fertile', 'pms', 'opk']) assert.equal(types.includes(type), false, type);
+    assert.ok(types.includes('period_start'));
+    const ovulation = buildCycleCandidates({ today, mode: 'TRY_TO_CONCEIVE', predictions: predictions(), prefs: prefs() }).find((row) => row.type === 'ovulation');
+    assert.equal(
+      revalidateCycleCandidate(ovulation, { today, mode: 'TRY_TO_CONCEIVE', ovulationDate: '2026-09-06', fertilityStatus: 'LEARNING' }).reason,
+      CYCLE_SUPPRESSION.FERTILITY_LEARNING,
+    );
+  });
+});

@@ -21,6 +21,7 @@ import {
   revalidateCycleCandidate,
 } from '@/lib/cycleNotificationContract.js';
 import { periodSoonDaysVar, pickCycleReminderCopy } from '@/lib/cycleReminderCopy';
+import { fertilityGateFromBundle } from '@/lib/cycleForecastEligibility';
 
 /**
  * Lock-screen copy for one reminder: the app's own texts (cycleReminderCopy), or the admin's Georgian
@@ -73,6 +74,8 @@ function liveFromBundle(bundle: CycleBundle, prefs: CycleReminderPrefs, today: s
     today,
     mode: bundle.profile.mode,
     nextPeriodStart: bundle.predictions.nextPeriodStart,
+    nextPeriodRange: bundle.predictions.nextPeriodRange ?? null,
+    fertilityStatus: fertilityGateFromBundle(bundle).status,
     ovulationDate: bundle.predictions.ovulationDate,
     fertileWindowStart: bundle.predictions.fertileWindow?.start ?? null,
     periodDaysBefore: prefs.periodDaysBefore,
@@ -119,6 +122,7 @@ export async function syncCycleReminders(
     showFertilityMarkers: bundle.contraception?.presentation?.showFertilityMarkers !== false,
     lateStatus: lateAlert ? { status: 'late' } : null,
     forecastAllowed: bundle.forecastEligibility?.allowed !== false,
+    fertilityStatus: fertilityGateFromBundle(bundle).status,
   } as never);
   const live = liveFromBundle(bundle, prefs, today);
   const chosen = pickCycleScheduleSet(candidates, today);
