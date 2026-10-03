@@ -9,7 +9,7 @@ function contrast(a,b,min,label){const value=ratio(rgb(a),rgb(b));assert.ok(valu
 for(const [name,c] of Object.entries({light:cycleLight,dark:cycleDark})){
  test(name+' cycle text retains AA contrast on every supported neutral surface',()=>{
   for(const fg of ['ink','muted','mutedSoft','brand','period','fertile'])for(const bg of ['cream','card','cardSoft'])contrast(c[fg],c[bg],4.5,`${fg}/${bg}`);
-  for(const [fg,bg] of [['brand','accentSoft'],['period','periodSoft'],['fertile','fertilitySoft'],['onPeriod','period'],['onDisabled','disabledFill'],['card','ink'],['card','fertile'],['fertile','creamDeep']])contrast(c[fg],c[bg],4.5,`${fg}/${bg}`);
+  for(const [fg,bg] of [['brand','accentSoft'],['period','periodSoft'],['fertile','fertilitySoft'],['onPeriod','period'],['onDisabled','disabledFill'],['card','ink'],['card','fertile'],['fertile','creamDeep'],['ink','accentSoft'],['muted','accentSoft']])contrast(c[fg],c[bg],4.5,`${fg}/${bg}`);
  });
  test(name+' buttons, glyphs, inputs and keyboard focus meet AA in default/pressed/hover states',()=>{
   for(const bg of ['cta','ctaPressed','ctaHover','fab']){

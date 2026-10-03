@@ -48,7 +48,8 @@ import {
 import { MONTHS_KA } from '@/constants/cycle';
 import { ka } from '@/i18n/ka';
 import { showHeavyBleedingCard } from '@/lib/cycleHeavyBleeding';
-import { cycleAskMediRoute } from '@/lib/cycleAskMedi';
+import { cycleAskMediQuestion } from '@/lib/cycleAskMedi';
+import { prepareCycleAskMedi } from '@/lib/cycleAskMediLaunch';
 import { periodStartTone } from '@/lib/cycleTone';
 import { parseDateKey } from '@/lib/cyclePhase';
 import { cycleToday, phaseFromBundle, usedCycleLength } from '@/lib/cycleCanonical';
@@ -1198,7 +1199,7 @@ export default function CycleHome() {
 
               {/* Flo order: ring → quick tiles (log · ask Medi) → my cycle → today → Medi's tips. */}
               <View style={{ paddingHorizontal: 20, marginBottom: 28 }}>
-                <CycleStoriesRow onLog={() => openQuickLog(today)} onAskMedi={() => router.push(cycleAskMediRoute() as never)} />
+                <CycleStoriesRow onLog={() => openQuickLog(today)} onAskMedi={() => void prepareCycleAskMedi(user?.id, bundle, cycleAskMediQuestion()).then((route) => router.push(route as never))} />
               </View>
 
               {/* Tracking keeps the stats on whatever she logged (brief §9 wave 2 item 17). */}

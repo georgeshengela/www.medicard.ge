@@ -1,6 +1,7 @@
 import type { CycleBundle, CycleContraceptionContext } from '@/lib/api';
-import { supportsCycleCapability } from '@/lib/cycleModes';
-import { fertilityDisplayOn } from '@/lib/cycleForecastEligibility';
+// Relative so node tests (cycleMediContext.test.ts) can load this module; Metro resolves it the same way.
+import { supportsCycleCapability } from './cycleModes.js';
+import { fertilityDisplayOn } from './cycleForecastEligibility.js';
 
 /** Read-only view of server contraception interpretation. No method switches. */
 export function contraceptionFromBundle(bundle: CycleBundle | null | undefined): CycleContraceptionContext | null {

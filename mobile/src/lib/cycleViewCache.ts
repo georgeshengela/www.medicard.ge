@@ -27,6 +27,14 @@ export function useCycleView(userId: string | null | undefined, enabled = true) 
   });
 }
 
+/**
+ * The cached view of the signed-in account without subscribing (a tap handler on Home reads it once —
+ * Home keeps its single subscriber per key). Undefined when nothing is cached yet.
+ */
+export function peekCycleView(): CycleView | undefined {
+  return queryClient.getQueryData<CycleView>(accountKey(...CYCLE_VIEW_KEY));
+}
+
 /** After a save: show the returned (optimistic or synced) view everywhere at once. Scoped to its owner. */
 export function putCycleView(userId: string, view: CycleView | null | undefined): void {
   if (!view || !userId || localAccountId() !== userId) return;

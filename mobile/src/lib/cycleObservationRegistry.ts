@@ -125,6 +125,34 @@ export const OBSERVATION_BAG_KEYS = Object.freeze({
   ovulationMarked: { sensitivity: 'SENSITIVE', ai: false, partner: false, analytics: false },
 } as const);
 
+/**
+ * What a cycle screen may hand to Medi as context (W2-8, brief §7 pillar 2 [კ-10]): today's pain
+ * (the `pain` row — place + strength) and today's moods. A mirror of the server registry rows
+ * (server/src/lib/cycleObservationRegistry.js) with their sensitivity and AI flag; the context builder
+ * (`cycleMediContext.ts`) keeps only keys for which `isAiContextKey` is true — HEALTH sensitivity with
+ * the server's `aiDefaultAllowed`. Sex and sex drive, intimate symptoms, discharge, mucus, OPK /
+ * pregnancy tests, BBT and notes are SENSITIVE / HIGHLY_SENSITIVE or not here at all, so they can never
+ * travel. Parity with the server is tested in cycleMediContext.test.ts: a mood the server makes
+ * private stops travelling from here too.
+ */
+export const AI_CONTEXT_REGISTRY: Readonly<Record<string, { storage: 'painEntries' | 'moods'; sensitivity: 'HEALTH' | 'SENSITIVE' | 'HIGHLY_SENSITIVE'; ai: boolean }>> =
+  Object.freeze({
+    pain: { storage: 'painEntries', sensitivity: 'HEALTH', ai: true },
+    ...Object.fromEntries(
+      MOOD_OPTIONS.map((o) => [o.id, { storage: 'moods' as const, sensitivity: 'HEALTH' as const, ai: !SENSITIVE_SHORTCUT_IDS.has(o.id) }]),
+    ),
+  });
+
+/** Pain places and strengths (server PAIN_TYPES / PAIN_SEVERITIES — parity tested). */
+export const AI_CONTEXT_PAIN_TYPES = Object.freeze(['cramps', 'pelvic', 'lower_back', 'headache', 'breast', 'ovulation_side', 'other'] as const);
+export const AI_CONTEXT_PAIN_SEVERITIES = Object.freeze(['mild', 'moderate', 'severe'] as const);
+
+/** True only for an everyday (HEALTH) observation the server registry lets AI read. */
+export function isAiContextKey(key: string): boolean {
+  const row = Object.prototype.hasOwnProperty.call(AI_CONTEXT_REGISTRY, key) ? AI_CONTEXT_REGISTRY[key] : null;
+  return Boolean(row && row.ai && row.sensitivity === 'HEALTH' && !SENSITIVE_SHORTCUT_IDS.has(key));
+}
+
 export const OVULATION_MARK_KEY = 'ovulationMarked';
 
 export function isOvulationMarked(observations: { ovulationMarked?: boolean | null } | null | undefined): boolean {

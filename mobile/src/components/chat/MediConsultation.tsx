@@ -19,6 +19,9 @@ import { localAccountId } from '@/lib/localAccount';
 import { useThemeColors } from '@/theme/colors';
 import { useAuth } from '@/store/AuthContext';
 import { consumeAssistantLaunch } from '@/lib/assistant';
+import type { CycleMediContext } from '@/lib/cycleMediContext';
+import { takeMediCycleContext } from '@/lib/mediHandoff';
+import { MediContextChip } from '@/components/chat/MediContextChip';
 import { tx } from '@/i18n/locale';
 
 /**
@@ -71,6 +74,18 @@ function MediConsultationContent({ apiMode, sessionId: initialSessionId, prefill
   const [error, setError] = useState<string | null>(null);
   const [failedMessage, setFailedMessage] = useState<string | null>(null);
   const [quotaBlock, setQuotaBlock] = useState<number | undefined>(undefined);
+  // W2-8: opened from a cycle screen → the context staged in memory for this question (mediHandoff).
+  // Shown as a removable chip; sent once, with the first question, through the consented AI path.
+  const [cycleContext, setCycleContext] = useState<CycleMediContext | null>(null);
+  const cycleContextRef = useRef<CycleMediContext | null>(null);
+  cycleContextRef.current = cycleContext;
+  useEffect(() => {
+    if (!user?.id || params.sessionId || pausedMessage) return;
+    const staged = takeMediCycleContext(user.id, typeof params.prefill === 'string' ? params.prefill : null);
+    if (staged) setCycleContext(staged);
+    // Once per mount: a second read finds nothing (consume-once).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const initials =
     user?.fullName
@@ -142,9 +157,13 @@ function MediConsultationContent({ apiMode, sessionId: initialSessionId, prefill
       };
 
       try {
-        const response = await streamAiQuery({ message, mode, sessionId }, { onDelta, signal: controller.signal });
+        // The cycle context rides only with the first question that goes through (consent runs first
+        // inside streamAiQuery; a decline or failure keeps the chip for the retry).
+        const context = sessionId ? undefined : cycleContextRef.current?.text;
+        const response = await streamAiQuery({ message, mode, sessionId, ...(context ? { context } : {}) }, { onDelta, signal: controller.signal });
         if (!operation.current()) return;
         requireAnalysisText(response.answer);
+        if (context) setCycleContext(null);
         if (flushTimer) clearTimeout(flushTimer);
         flushDeltas();
         setSessionId(response.sessionId);
@@ -212,6 +231,7 @@ function MediConsultationContent({ apiMode, sessionId: initialSessionId, prefill
       <ChatScreenShell
         header={header({ title: profile.title, icon: profile.icon })}
         footer={<ChatInputBar value={draft} onChangeText={setDraft} onSend={() => send(draft)} sending={sending} disabled={historyState !== 'ready' || Boolean(pausedMessage)}
+          accessory={cycleContext && !pausedMessage ? <MediContextChip context={cycleContext} onRemove={() => setCycleContext(null)} /> : null}
           placeholder={pausedMessage ? tx('ეს რეჟიმი დროებით შეჩერებულია', 'This mode is paused for now') : undefined} />}
       >
         <FlatList

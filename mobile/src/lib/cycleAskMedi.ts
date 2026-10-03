@@ -7,6 +7,10 @@ import { mediRoute } from './mediModes.ts';
  * phase, symptoms or anything else she logged never travel in the route (no health values in URLs);
  * the consultation's own consent flow stays the only way anything reaches the model, and nothing is
  * sent until she presses send.
+ *
+ * W2-8: the cycle context (day, phase estimate, what's ahead, today's pain and moods) never rides in
+ * this route either — `prepareCycleAskMedi` (cycleAskMediLaunch.ts) puts it aside in memory
+ * (`mediHandoff.ts`) and the consultation shows it as a removable chip before the first send.
  */
 export function cycleAskMediQuestion(): string {
   return tx('რა ხდება ჩემს ციკლში ახლა?', 'What is happening in my cycle right now?');

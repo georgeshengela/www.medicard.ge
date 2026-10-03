@@ -35,4 +35,14 @@ describe('AI disclosure copy for App Review', () => {
       assert.match(copy.recipients.map((row) => row.name).join(' '), /EvidenceMD/);
     }
   });
+
+  // W2-8 (brief §7 pillar 2 [კ-10]): Medi opened from a cycle screen sends the cycle day, phase estimate,
+  // what is ahead and today's pain / moods. That is this already-named category, so the consent version
+  // stays as it is; if these sentences ever go, the cycle context must stop too (cycleMediContext.ts).
+  it('still names cycle information and keeps intimate / locked cycle fields out (cycle context needs no new consent)', () => {
+    assert.ok(manifest.summaryCategories.includes('ციკლის ან ორსულობის ინფორმაცია, როცა ამ ფუნქციას იყენებ'));
+    assert.ok(manifest.categories.some((row) => row.includes('ნებადართული ციკლის ჩანაწერები') && row.includes('დაცული ციკლი და ინტიმური ველები ზოგად კონტექსტში არ შედის')));
+    assert.ok(manifest.en.categories.some((row) => /cycle records you have permitted/i.test(row) && /intimate fields are not included/i.test(row)));
+    assert.ok(manifest.en.summaryCategories.some((row) => /cycle or pregnancy/i.test(row)));
+  });
 });

@@ -19,6 +19,8 @@ type Props = {
   onCameraPress?: () => void;
   multiline?: boolean;
   showTools?: boolean;
+  /** Shown above the input row inside the bar (e.g. the removable cycle-context chip). */
+  accessory?: React.ReactNode;
 };
 
 export function ChatInputBar({
@@ -32,6 +34,7 @@ export function ChatInputBar({
   onCameraPress,
   multiline = true,
   showTools = true,
+  accessory,
 }: Props) {
   const insets = useSafeAreaInsets();
   const FIGMA_CHAT = useFigmaChat();
@@ -49,6 +52,7 @@ export function ChatInputBar({
         paddingBottom: keyboardOpen ? 8 : Math.max(insets.bottom, 8),
       }}
     >
+      {accessory}
       <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: 8 }}>
         <View
           style={{
