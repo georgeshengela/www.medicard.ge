@@ -98,10 +98,10 @@ test('the drafted-question entry points stage the text in memory', () => {
   for (const [file, pattern] of Object.entries(users)) {
     assert.match(readFileSync(join(root, ...file.split('/')), 'utf8'), pattern, file);
   }
-  // The consultation takes the draft once, only for `handoff=1`, and still accepts a plain prefill.
-  const consult = readFileSync(join(root, 'src', 'components', 'chat', 'MediConsultation.tsx'), 'utf8');
-  assert.match(consult, /handoff \? takeMediPrefill\(user\.id\) : null/);
-  assert.match(consult, /useState\(typeof params\.prefill === 'string' \? params\.prefill : ''\)/);
+  // The Medi chat takes the draft once, only for `handoff=1`, and still accepts a plain prefill.
+  const consult = readFileSync(join(root, 'src', 'components', 'medi', 'MediChat.tsx'), 'utf8');
+  assert.match(consult, /handoff \? takeMediPrefill\(owner\) : null/);
+  assert.match(consult, /useState\(typeof prefill === 'string' \? prefill : ''\)/);
   const screen = readFileSync(join(root, 'app', 'assistant.tsx'), 'utf8');
   assert.match(screen, /handoff=\{requestedOn && params\.handoff === '1'\}/);
 });

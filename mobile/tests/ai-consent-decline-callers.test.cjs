@@ -77,10 +77,10 @@ test('every mobile AI caller handles a declined disclosure calmly (isAiConsentDe
   }
   // The known set; a new caller shows up here and must be handled (the assertion above already ran).
   for (const known of [
-    'app/assistant.tsx', 'app/symptoms/analyzing.tsx', 'app/nutrition/diary.tsx', 'app/nutrition/recipe.tsx', 'app/module/skincare.tsx',
+    'src/components/medi/MediChat.tsx', 'app/symptoms/analyzing.tsx', 'app/nutrition/diary.tsx', 'app/nutrition/recipe.tsx', 'app/module/skincare.tsx',
     'app/medications/interaction.tsx', 'app/health-metrics/weight/index.tsx', 'app/(auth)/profile-setup/results.tsx',
     'app/pets/[id]/chat.tsx', 'src/components/AnalysisModule.tsx', 'src/components/lab/LabAlignCard.tsx',
-    'src/components/cycle/CycleInsights.tsx', 'src/components/chat/MediConsultation.tsx',
+    'src/components/cycle/CycleInsights.tsx',
   ]) assert.ok(callers.includes(known), `${known} is still found as an AI caller (update the list if it moved)`);
   assert.ok(/isAiConsentDeclined\(error\)\) \{\s*d\.onNotice\(aiConsentDeclinedText\(\)\)/.test(read(join(mobile, 'src', 'lib', 'assistantVoiceSession.ts'))),
     'voice capture turns a decline into the calm notice');

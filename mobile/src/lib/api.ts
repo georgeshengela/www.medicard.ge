@@ -193,6 +193,9 @@ export type ChatMessage = {
   interactionId?: string;
   feedbackRating?: 1 | -1;
   streaming?: boolean;
+  /** Medi thread (ASSISTANT session): a clinical answer shown in the thread, and the consultation it came from. */
+  kind?: 'answer' | 'deep';
+  linkedSessionId?: string;
 };
 
 export type ChatSummary = {
@@ -2948,8 +2951,10 @@ export const api = {
       ),
     remove: (id: string) => request<{ deleted: boolean }>(`/api/chats/${id}`, { method: 'DELETE' }),
     /** Save Medi (assistant mode) turns so the conversation reopens from "ჩემი ბარათი". */
-    appendAssistant: (body: { sessionId?: string; turns: Array<{ role: 'user' | 'assistant'; content: string }> }) =>
-      request<{ sessionId: string }>('/api/chats/assistant', { method: 'POST', body: { ...body, turns: body.turns.map((t) => ({ role: t.role, content: t.content.slice(0, 4000) })).filter((t) => t.content.trim()) } }),
+    appendAssistant: (body: { sessionId?: string; turns: Array<{ role: 'user' | 'assistant'; content: string; kind?: 'answer' | 'deep'; linkedSessionId?: string }> }) =>
+      request<{ sessionId: string }>('/api/chats/assistant', { method: 'POST', body: { ...body, turns: body.turns.slice(-40).map((t) => ({
+        role: t.role, content: t.content.slice(0, 12000), ...(t.kind ? { kind: t.kind } : {}), ...(t.linkedSessionId ? { linkedSessionId: t.linkedSessionId } : {}),
+      })).filter((t) => t.content.trim()) } }),
   },
 
   records: {
