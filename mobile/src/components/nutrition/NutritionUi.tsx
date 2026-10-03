@@ -7,6 +7,7 @@ import {
   Flame,
   ImagePlus,
   Keyboard as KeyboardIcon,
+  MessageSquareText,
   Mic,
   ScanBarcode,
   ScanText,
@@ -17,6 +18,7 @@ import { HomeSectionHeading } from "@/components/home/HomeSectionHeading";
 import { healthScoreLabel } from "@/lib/nutrition";
 import type { LogMethod } from "./LogMethodSheet";
 import { useIsDark, useThemeColors } from "@/theme/colors";
+import { useFeature } from "@/lib/featureFlags";
 import { HUB, hubInk, hubText, hubTint, type HubInk } from "@/theme/hub";
 import { tx } from '@/i18n/locale';
 
@@ -44,9 +46,14 @@ export function QuickLogTiles({ tiles = PRIMARY_LOG_TILES, columns = 4, onPick }
   const dark = useIsDark();
   const router = useRouter();
   const wide = columns === 2;
+  // While voice is paused from admin the describe tile stops promising a microphone.
+  const voice = useFeature("voice");
+  const shown = voice ? tiles : tiles.map((tile) => tile.method === "describe"
+    ? { ...tile, title: tx("აღწერე", "Describe"), hint: tx("სიტყვებით", "In words"), icon: MessageSquareText }
+    : tile);
   return (
     <View style={s.grid}>
-      {tiles.map((tile) => {
+      {shown.map((tile) => {
         const ink = hubInk(tile.ink, dark);
         return (
           <Pressable

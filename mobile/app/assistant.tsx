@@ -23,6 +23,7 @@ import { apiModeFor, legacyChatRouteToMedi, MEDI_MODES, mediModeFromParam, mediR
 import { assistantDisplay, assistantFieldLabels, stageAssistantLaunch, type AssistantAction, type AssistantChoices, type AssistantNative, type AssistantPlan, type AssistantReview, type AssistantTool, type AssistantFeature, type AssistantGroup } from '@/lib/assistant';
 import { featureForHref, featureMessage, isFeatureOn, isHrefAvailable, useFeature, useFeatureState } from '@/lib/featureFlags';
 import { tx } from '@/i18n/locale';
+import { refreshFeatureFlags } from '@/lib/featureFlagSync';
 
 type Turn = { role: 'user' | 'assistant'; content: string };
 /** One Medi (2026-09-27): the only Medi screen. ?mode=doctor|deep opens the consultation modes in place. */
@@ -103,7 +104,8 @@ function AssistantSession({ owner, sessionId, modes, pausedMessage }: { owner: s
     onError: setError, onNotice: setNotice,
   });
   useEffect(() => { alive.current = true; return () => { alive.current = false; generation.current++; }; }, []);
-  useFocusEffect(useCallback(() => { focused.current = true; return () => { focused.current = false; generation.current++; }; }, []));
+  // Opening Medi re-checks the admin switches (≤1/min), so a paused voice mode hides here without leaving the app.
+  useFocusEffect(useCallback(() => { focused.current = true; void refreshFeatureFlags(); return () => { focused.current = false; generation.current++; }; }, []));
   function reviewRows(current: AssistantAction) {
     return Object.entries(current.args).map(([key, value]) => {
       const list = key === 'id' ? (current.tool.startsWith('visit_') ? choices.visitId : choices.medicationId)

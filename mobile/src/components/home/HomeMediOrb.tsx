@@ -9,7 +9,7 @@ import Animated, {
   withSequence,
   withTiming,
 } from 'react-native-reanimated';
-import { AudioLines } from 'lucide-react-native';
+import { AudioLines, MessageCircle } from 'lucide-react-native';
 import { usePrefersReducedMotion } from '@/hooks/usePrefersReducedMotion';
 
 const PULSE_MS = 2000;
@@ -20,11 +20,14 @@ export function HomeMediOrb({
   background,
   ringColor,
   iconColor,
+  voice = true,
 }: {
   size?: number;
   background: string;
   ringColor: string;
   iconColor: string;
+  /** false while voice is paused from admin: a chat glyph instead of the sound wave. */
+  voice?: boolean;
 }) {
   const reduceMotion = usePrefersReducedMotion();
   const pulse = useSharedValue(0);
@@ -65,7 +68,7 @@ export function HomeMediOrb({
           backgroundColor: background,
         }}
       >
-        <AudioLines size={size * 0.5} strokeWidth={1.8} color={iconColor} />
+        {voice ? <AudioLines size={size * 0.5} strokeWidth={1.8} color={iconColor} /> : <MessageCircle size={size * 0.46} strokeWidth={1.8} color={iconColor} />}
       </View>
     </View>
   );

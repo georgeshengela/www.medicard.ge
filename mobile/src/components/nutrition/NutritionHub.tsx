@@ -9,6 +9,7 @@ import {
   Droplet,
   Flame,
   Footprints,
+  MessageSquareText,
   Mic,
   Ruler,
   Scale,
@@ -20,7 +21,7 @@ import {
   type LucideIcon,
 } from "lucide-react-native";
 import { useAuth } from "@/store/AuthContext";
-import { isHrefAvailable, useFeatureState } from "@/lib/featureFlags";
+import { isFeatureOn, isHrefAvailable, useFeatureState } from "@/lib/featureFlags";
 import { tx } from "@/i18n/locale";
 import { nutritionDateLabel } from "@/lib/nutritionProgram";
 import { mealLabels } from "@/lib/nutrition";
@@ -257,7 +258,7 @@ function Hub() {
               {link(Flame, "amber", tx("ვარჯიში და ენერგია", "Exercise and energy"), d.activities.length ? tx(`დღეს ${d.activities.length} ვარჯიში · ${d.burned.activities} კკალ`, `${d.activities.length} ${d.activities.length === 1 ? "workout" : "workouts"} today · ${d.burned.activities} kcal`) : tx("სირბილი, ძალოვანი, სიარული — ბიუჯეტში ჩათვლით", "Running, strength, walking — counted in your budget"), "/nutrition/activity")}
               {link(ChartNoAxesCombined, "blue", tx("პროგრესი", "Progress"), tx("კვირის შეჯამება, წონის პროგნოზი, ტენდენციები", "Weekly summary, weight forecast, trends"), "/nutrition/progress")}
               {link(Ruler, "violet", tx("სხეულის ზომები", "Body measurements"), d.measurements[0] ? tx(`ბოლო ჩანაწერი ${nutritionDateLabel(d.measurements[0].date)}`, `Last entry ${nutritionDateLabel(d.measurements[0].date)}`) : tx("წელი, თეძო, მკერდი — სასწორის გარდა", "Waist, hips, chest — beyond the scale"), "/nutrition/measurements")}
-              {link(Mic, "rose", tx("უთხარი Medi-ს", "Tell Medi"), tx("„ორი ხინკალი ვჭამე“ — ჩაწერს და დაითვლის", "“I ate two khinkali” — Medi logs and counts it"), "/assistant")}
+              {isFeatureOn("voice", features) ? link(Mic, "rose", tx("უთხარი Medi-ს", "Tell Medi"), tx("„ორი ხინკალი ვჭამე“ — ჩაწერს და დაითვლის", "“I ate two khinkali” — Medi logs and counts it"), "/assistant") : link(MessageSquareText, "rose", tx("მიწერე Medi-ს", "Message Medi"), tx("„ორი ხინკალი ვჭამე“ — ჩაწერს და დაითვლის", "“I ate two khinkali” — Medi logs and counts it"), "/assistant")}
               {link(Settings2, "neutral", tx("პარამეტრები და შეხსენებები", "Settings and reminders"), tx("ბიუჯეტი, მაკროები, შეხსენებები, Health", "Budget, macros, reminders, Health"), "/nutrition/settings", true)}
             </HubCard>
           </HubSection>

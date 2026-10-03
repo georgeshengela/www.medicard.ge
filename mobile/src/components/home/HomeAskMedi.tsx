@@ -5,6 +5,7 @@ import { HomeMediOrb } from '@/components/home/HomeMediOrb';
 import { useThemeColors } from '@/theme/colors';
 import { tx } from '@/i18n/locale';
 import { useHomeAccent } from '@/theme/homeAccent';
+import { useFeature } from '@/lib/featureFlags';
 
 /**
  * One line to Medi. Reads as an input, behaves as a door: tapping anywhere
@@ -13,6 +14,7 @@ import { useHomeAccent } from '@/theme/homeAccent';
 export function HomeAskMedi({ onPress }: { onPress: () => void }) {
   const c = useThemeColors();
   const accent = useHomeAccent();
+  const voice = useFeature('voice');
   return (
     <Pressable
       accessibilityRole="button"
@@ -26,10 +28,10 @@ export function HomeAskMedi({ onPress }: { onPress: () => void }) {
           {tx('ჰკითხე Medi-ს', 'Ask Medi')}
         </Text>
         <Text numberOfLines={1} style={[s.hint, { color: c.text300 }]}>
-          {tx('ხმით ან ტექსტით', 'By voice or text')}
+          {voice ? tx('ხმით ან ტექსტით', 'By voice or text') : tx('ტექსტით', 'By text')}
         </Text>
       </View>
-      <HomeMediOrb size={46} background={accent.soft} ringColor={accent.ring} iconColor={accent.ink} />
+      <HomeMediOrb size={46} background={accent.soft} ringColor={accent.ring} iconColor={accent.ink} voice={voice} />
     </Pressable>
   );
 }
