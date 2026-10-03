@@ -1280,7 +1280,7 @@ export type CycleLog = {
   caffeine?: CycleCaffeineLevel | null;
   alcohol?: CycleAlcoholLevel | null;
   customTagIds?: string[];
-  observations?: { energy?: CycleEnergyLevel | null; ovulationMarked?: boolean | null } | null;
+  observations?: { energy?: CycleEnergyLevel | null; ovulationMarked?: boolean | null; pregnancyChecklist?: string[] | null } | null;
   energy?: CycleEnergyLevel | null;
   observationSchemaVersion?: number;
   observationAssessments?: Record<string, 'ABSENT'> | null;
@@ -3348,7 +3348,7 @@ export const api = {
         caffeine: CycleCaffeineLevel | null;
         alcohol: CycleAlcoholLevel | null;
         customTagIds: string[];
-        observations: { energy?: CycleEnergyLevel | null; ovulationMarked?: boolean | null } | null;
+        observations: { energy?: CycleEnergyLevel | null; ovulationMarked?: boolean | null; pregnancyChecklist?: string[] | null } | null;
         energy: CycleEnergyLevel | null;
         observationAssessments: Record<string, 'ABSENT'>;
       }>,

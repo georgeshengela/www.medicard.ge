@@ -147,3 +147,8 @@ export function accountIsolationSafe(
   bQueue: number;
   crossLeak: boolean;
 };
+
+export function mergeLocalObservationBag(
+  prevBag: Record<string, unknown> | null | undefined,
+  patchBag: Record<string, unknown> | null | undefined,
+): Record<string, unknown>;

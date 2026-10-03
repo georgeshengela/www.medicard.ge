@@ -3,7 +3,7 @@ import type { CycleLog } from '@/lib/api';
 import { syncCycleLogToHealth } from '@/lib/healthSync';
 import type { CycleLogForm } from '@/components/cycle/CycleLogTabs';
 import { saveCycleObservation, type CycleView } from '@/lib/cycleOffline';
-import { isOvulationMarked, ovulationMarkPatch } from '@/lib/cycleObservationRegistry';
+import { isOvulationMarked, ovulationMarkPatch, pregnancyChecklistFrom, pregnancyChecklistPatch } from '@/lib/cycleObservationRegistry';
 
 const SEX_IDS = new Set(SEXUAL_OPTIONS.map((o) => o.id));
 const SEX_ACTIVITY_IDS = new Set(SEX_ACTIVITY_OPTIONS.map((o) => o.id));
@@ -31,6 +31,7 @@ export const EMPTY_CYCLE_LOG: CycleLogForm = {
   energy: null,
   observationAssessments: {},
   ovulationMarked: null,
+  pregnancyChecklist: null,
 };
 
 export function parseBbt(raw: string): number | null {
@@ -66,6 +67,7 @@ export function formFromCycleLog(log: CycleLog | undefined): CycleLogForm {
     energy: log.energy ?? log.observations?.energy ?? null,
     observationAssessments: { ...(log.observationAssessments || {}) },
     ovulationMarked: isOvulationMarked(log.observations) ? true : null,
+    pregnancyChecklist: pregnancyChecklistFrom(log.observations),
   };
 }
 
@@ -109,7 +111,7 @@ export async function persistCycleLog(
       caffeine: form.caffeine,
       alcohol: form.alcohol,
       customTagIds: form.customTagIds,
-      observations: { energy: form.energy, ...ovulationMarkPatch(form.ovulationMarked) },
+      observations: { energy: form.energy, ...ovulationMarkPatch(form.ovulationMarked), ...pregnancyChecklistPatch(form.pregnancyChecklist) },
       energy: form.energy,
       observationAssessments: form.observationAssessments || {},
     },

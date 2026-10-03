@@ -422,7 +422,7 @@ function logBodyFromPayload(form: {
   caffeine?: string | null;
   alcohol?: string | null;
   customTagIds?: string[];
-  observations?: { energy?: string | null; ovulationMarked?: boolean | null } | null;
+  observations?: { energy?: string | null; ovulationMarked?: boolean | null; pregnancyChecklist?: string[] | null } | null;
   energy?: string | null;
   observationAssessments?: Record<string, 'ABSENT'> | null;
 }) {
@@ -445,7 +445,7 @@ function logBodyFromPayload(form: {
     caffeine: form.caffeine ?? null,
     alcohol: form.alcohol ?? null,
     customTagIds: form.customTagIds ?? [],
-    // Keep every bag key (e.g. ovulationMarked), energy last so the flat field wins.
+    // Keep every bag key (e.g. ovulationMarked, pregnancyChecklist), energy last so the flat field wins.
     observations: { ...(form.observations ?? {}), ...(energy ? { energy } : {}) },
     energy,
     observationAssessments: form.observationAssessments || {},

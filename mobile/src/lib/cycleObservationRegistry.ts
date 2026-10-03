@@ -1,5 +1,5 @@
 // Relative so node tests (`cycleFullLog.test.ts`) can load this module; Metro resolves it the same way.
-import { MOOD_OPTIONS, PHYSICAL_SYMPTOMS, SEXUAL_OPTIONS } from '../constants/cycle.ts';
+import { MOOD_OPTIONS, PHYSICAL_SYMPTOMS, PREGNANCY_CHECKLIST, SEXUAL_OPTIONS } from '../constants/cycle.ts';
 
 export const OBSERVATION_SCHEMA_VERSION = 1;
 
@@ -123,6 +123,8 @@ export const OBSERVATION_BAG_KEYS = Object.freeze({
   energy: { sensitivity: 'HEALTH', ai: false, partner: false, analytics: false },
   // „ოვულაცია ამ დღეს იყო“ — private like OPK / mucus; centres that cycle's ovulation band on the server.
   ovulationMarked: { sensitivity: 'SENSITIVE', ai: false, partner: false, analytics: false },
+  // Pregnancy checklist ticks for the day (W2-12b) — a set of PREGNANCY_CHECKLIST ids.
+  pregnancyChecklist: { sensitivity: 'HEALTH', ai: false, partner: false, analytics: false },
 } as const);
 
 /**
@@ -169,4 +171,39 @@ export function ovulationMarkPatch(value: boolean | null | undefined): { ovulati
 export function observationsEnergy(observations: { energy?: string | null } | null | undefined): string | null {
   const value = observations?.energy;
   return ENERGY_LEVELS.includes(value as CycleEnergyLevel) ? (value as string) : null;
+}
+
+export const PREGNANCY_CHECKLIST_KEY = 'pregnancyChecklist';
+
+/** The checklist ids the server accepts (server PREGNANCY_CHECKLIST_IDS — parity tested), in display order. */
+export const PREGNANCY_CHECKLIST_IDS: readonly string[] = Object.freeze(PREGNANCY_CHECKLIST.map((item) => item.id));
+
+/** Known ids only, deduplicated, in the checklist's order — what a stored or toggled list becomes. */
+export function canonicalPregnancyChecklist(ids: readonly unknown[] | null | undefined): string[] {
+  const picked = new Set((Array.isArray(ids) ? ids : []).filter((id): id is string => typeof id === 'string'));
+  return PREGNANCY_CHECKLIST_IDS.filter((id) => picked.has(id));
+}
+
+/**
+ * The stored ticks of a day for the form: the list when something is ticked, otherwise null
+ * („untouched“ — a save then sends nothing, so other modes and older servers never see the key).
+ */
+export function pregnancyChecklistFrom(observations: { pregnancyChecklist?: readonly string[] | null } | null | undefined): string[] | null {
+  const ids = canonicalPregnancyChecklist(observations?.pregnancyChecklist);
+  return ids.length ? ids : null;
+}
+
+/** Tap on a tile: tick or untick one id. Always returns a list (possibly empty = „everything untaken“). */
+export function togglePregnancyChecklist(current: readonly string[] | null | undefined, id: string): string[] {
+  const set = new Set(current ?? []);
+  if (set.has(id)) set.delete(id);
+  else set.add(id);
+  return canonicalPregnancyChecklist([...set]);
+}
+
+/** What a save sends: untouched (null) → nothing; [] → null (clear); ids → the canonical list. */
+export function pregnancyChecklistPatch(value: readonly string[] | null | undefined): { pregnancyChecklist?: string[] | null } {
+  if (value == null) return {};
+  const ids = canonicalPregnancyChecklist(value);
+  return { pregnancyChecklist: ids.length ? ids : null };
 }

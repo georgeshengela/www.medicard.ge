@@ -2,9 +2,9 @@ import { ka } from '../i18n/ka.ts';
 import { tx } from '../i18n/locale.js';
 import type { CycleLog } from './api';
 import { cycleGlyphFor, flowGlyphStyle, levelGlyphOpacity, levelOf, type CycleIconGroup, type CycleIconKind } from './cycleIconMap.ts';
-import { chipGroup, stripPainManagedSymptoms } from './cycleObservationRegistry.ts';
+import { canonicalPregnancyChecklist, chipGroup, stripPainManagedSymptoms } from './cycleObservationRegistry.ts';
 import { painLevel } from './cycleQuickLogCopy.ts';
-import { CYCLE_TEST_OPTIONS, FLOW_OPTIONS, MOOD_OPTIONS, MUCUS_OPTIONS, PHYSICAL_SYMPTOMS, SEXUAL_OPTIONS } from '../constants/cycle.ts';
+import { CYCLE_TEST_OPTIONS, FLOW_OPTIONS, MOOD_OPTIONS, MUCUS_OPTIONS, PHYSICAL_SYMPTOMS, PREGNANCY_CHECKLIST, SEXUAL_OPTIONS } from '../constants/cycle.ts';
 import type { CycleIconGlyph } from '../constants/cycleIconSvg.ts';
 
 /**
@@ -31,7 +31,7 @@ export type DayFactTile = {
   hollow?: boolean;
 };
 
-export type DayFactSectionId = 'bleeding' | 'pain' | 'mood' | 'symptoms' | 'fertility' | 'lifestyle';
+export type DayFactSectionId = 'bleeding' | 'pain' | 'mood' | 'symptoms' | 'fertility' | 'lifestyle' | 'checklist';
 
 export type DayFactSection = { id: DayFactSectionId; title: string; tiles: DayFactTile[] };
 
@@ -197,6 +197,17 @@ export function dayFactSections(
   pushLevel('caffeine', CAFFEINE_LEVELS, log.caffeine, ka.cycle.caffeine, cy.caffeineLevel ?? {});
   pushLevel('alcohol', ALCOHOL_LEVELS, log.alcohol, ka.cycle.alcohol, cy.alcoholLevel ?? {});
   if (lifestyle.length) sections.push({ id: 'lifestyle', title: tx('ცხოვრების წესი', 'Lifestyle'), tiles: lifestyle });
+
+  // Pregnancy checklist ticks (W2-12b): what she did that day, one tile each, in the checklist's order.
+  const checklist = canonicalPregnancyChecklist(log.observations?.pregnancyChecklist).map<DayFactTile>((id) => ({
+    key: `checklist:${id}`,
+    kind: 'checklist',
+    id,
+    glyph: cycleGlyphFor('checklist', id),
+    label: PREGNANCY_CHECKLIST.find((item) => item.id === id)?.label ?? id,
+    group: 'neutral',
+  }));
+  if (checklist.length) sections.push({ id: 'checklist', title: tx('დღის ჩეკლისტი', 'Checklist for the day'), tiles: checklist });
 
   return sections;
 }

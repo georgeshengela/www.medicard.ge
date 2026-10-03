@@ -80,6 +80,11 @@ export type CycleLogForm = {
    * null/undefined = untouched (not sent, so a stored mark survives every other save).
    */
   ovulationMarked?: boolean | null;
+  /**
+   * Pregnancy checklist ticks for the day (`observations.pregnancyChecklist`): null/undefined =
+   * nothing stored and untouched (not sent); [] = every tick taken off (sent as null to clear).
+   */
+  pregnancyChecklist?: string[] | null;
 };
 
 type Props = {

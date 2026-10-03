@@ -892,6 +892,43 @@ describe('Phase 22 pregnancy observations stay on UPSERT_LOG', () => {
   });
 });
 
+describe('W2-12b pregnancy checklist ticks ride the observations bag', () => {
+  it('overlays the ticks, keeps them when a later save names only energy, clears them with null', () => {
+    const ticked = [
+      createMutation('user-a', 'UPSERT_LOG', {
+        date: '2026-08-30',
+        symptoms: ['nausea'],
+        observations: { energy: 'low', pregnancyChecklist: ['prenatal_vitamin', 'walk'] },
+        energy: 'low',
+      }),
+    ];
+    const first = overlayPendingOnBundle(sampleBundle(), ticked, 'user-a').bundle;
+    const log = first.logs.find((l) => l.date === '2026-08-30');
+    assert.deepEqual(log.observations.pregnancyChecklist, ['prenatal_vitamin', 'walk']);
+    assert.equal(first.predictions.ovulationDate, '2026-08-25');
+
+    // The server already holds the ticks; an older build's save sends only energy.
+    const energyOnly = [createMutation('user-a', 'UPSERT_LOG', { date: '2026-08-30', observations: { energy: 'high' }, energy: 'high' })];
+    const kept = overlayPendingOnBundle(first, energyOnly, 'user-a').bundle.logs.find((l) => l.date === '2026-08-30');
+    assert.deepEqual(kept.observations, { energy: 'high', pregnancyChecklist: ['prenatal_vitamin', 'walk'] });
+
+    const cleared = [createMutation('user-a', 'UPSERT_LOG', { date: '2026-08-30', observations: { energy: 'high', pregnancyChecklist: null } })];
+    const after = overlayPendingOnBundle(first, cleared, 'user-a').bundle.logs.find((l) => l.date === '2026-08-30');
+    assert.deepEqual(after.observations, { energy: 'high' });
+  });
+
+  it('a payload with ticks counts as content and keeps the key on the queued mutation', () => {
+    const account = enqueueMutation(
+      emptyAccount('user-a'),
+      createMutation('user-a', 'UPSERT_LOG', { date: '2026-08-31', observations: { pregnancyChecklist: ['rest'] } }),
+    );
+    assert.equal(account.queue.length, 1);
+    assert.deepEqual(account.queue[0].payload.observations, { pregnancyChecklist: ['rest'] });
+    const log = overlayPendingOnBundle(sampleBundle(), account.queue, 'user-a').bundle.logs.find((l) => l.date === '2026-08-31');
+    assert.deepEqual(log.observations.pregnancyChecklist, ['rest']);
+  });
+});
+
 describe('Phase 11 structured observations stay on UPSERT_LOG', () => {
   it('overlays energy without changing predictions', () => {
     const q = [

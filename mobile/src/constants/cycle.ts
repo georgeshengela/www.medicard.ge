@@ -124,7 +124,8 @@ export const CYCLE_TEST_OPTIONS: CycleChip[] = [
 
 /** ორსულობის შემოწმების ჩეკლისტი */
 export const PREGNANCY_CHECKLIST: CycleChip[] = [
-  { id: 'prenatal_vitamin', label: tx('პრენატალური ვიტამინი', 'Prenatal vitamin') },
+  // „ორსულთა“, not „პრენატალური“: an 11-letter word shrinks the tile label and runs into „ფოლის მჟავა“.
+  { id: 'prenatal_vitamin', label: tx('ორსულთა ვიტამინი', 'Prenatal vitamin') },
   { id: 'folic_acid', label: tx('ფოლის მჟავა', 'Folic acid') },
   { id: 'water_2l', label: tx('2ლ წყალი', '2 L water') },
   { id: 'walk', label: tx('სეირნობა', 'Walk') },

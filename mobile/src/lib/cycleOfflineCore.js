@@ -350,6 +350,21 @@ function attentionItems(account) {
     }));
 }
 
+/**
+ * The `observations` bag merges like the server's (`mergeObservationBag`): keys the patch does not
+ * name stay (e.g. pregnancyChecklist, ovulationMarked), null / '' / an emptied list clears one.
+ */
+function mergeLocalObservationBag(prevBag, patchBag) {
+  const base = prevBag && typeof prevBag === 'object' && !Array.isArray(prevBag) ? { ...prevBag } : {};
+  if (patchBag === undefined) return base;
+  if (patchBag === null || typeof patchBag !== 'object' || Array.isArray(patchBag)) return {};
+  for (const [key, value] of Object.entries(patchBag)) {
+    if (value == null || value === '' || (Array.isArray(value) && value.length === 0)) delete base[key];
+    else base[key] = value;
+  }
+  return base;
+}
+
 function upsertLogOnBundle(bundle, date, patch, userScope) {
   const logs = Array.isArray(bundle.logs) ? bundle.logs.slice() : [];
   const idx = logs.findIndex((l) => l.date === date);
@@ -380,8 +395,7 @@ function upsertLogOnBundle(bundle, date, patch, userScope) {
     caffeine: patch.caffeine !== undefined ? patch.caffeine : prev?.caffeine ?? null,
     alcohol: patch.alcohol !== undefined ? patch.alcohol : prev?.alcohol ?? null,
     customTagIds: patch.customTagIds !== undefined ? patch.customTagIds : prev?.customTagIds || [],
-    observations:
-      patch.observations !== undefined ? patch.observations : prev?.observations || {},
+    observations: mergeLocalObservationBag(prev?.observations, patch.observations),
     energy:
       patch.energy !== undefined
         ? patch.energy
@@ -638,6 +652,7 @@ function accountIsolationSafe(store, userA, userB) {
 }
 
 module.exports = {
+  mergeLocalObservationBag,
   CYCLE_OFFLINE_SCHEMA_VERSION,
   CYCLE_OFFLINE_LEGACY_SCHEMA_VERSION,
   CYCLE_OFFLINE_STORAGE_KEY,

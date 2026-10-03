@@ -7,6 +7,7 @@ import {
   CycleModeNote,
   CycleModeSection,
   CycleModeSubtitle,
+  CyclePregnancyChecklistTiles,
   ONE_CHOICE_HINT,
   PAIN_TAP_HINT,
   symptomChips,
@@ -15,8 +16,10 @@ import { CyclePainEditor } from '@/components/cycle/CycleObservationFields';
 import { CycleObservationAssessment } from '@/components/cycle/CycleObservationAssessment';
 import type { CycleLogForm } from '@/components/cycle/CycleLogTabs';
 import { ka } from '@/i18n/ka';
+import { tx } from '@/i18n/locale';
 import { ENERGY_LEVELS, energyLabel, SLEEP_QUALITIES, sleepLabel, STRESS_LEVELS, stressLabel } from '@/lib/cycleObservations';
 import { applySymptomChipToggle, PREGNANCY_DAILY_ASSESSMENT_KEYS } from '@/lib/cycleObservationAssessment';
+import { togglePregnancyChecklist } from '@/lib/cycleObservationRegistry';
 import {
   PREGNANCY_FLOW_OPTIONS,
   PREGNANCY_PAIN_TYPES,
@@ -27,9 +30,8 @@ import {
 /**
  * Pregnancy quick log on tiles (2026-10-03): bleeding drops → the three daily yes/no observations →
  * pain places with strength by re-tap → digestion → energy / sleep / stress as level tiles → common
- * body changes. The option lists and copy are the pregnancy mode's own; only the look changed.
- * The pregnancy checklist (`CyclePregnancyChecklistTiles`) has no field on the day form yet, so it is
- * not mounted here.
+ * body changes → the day's checklist (vitamins, water, walk, visits — W2-12b, stored on the server as
+ * `observations.pregnancyChecklist`). The option lists and copy are the pregnancy mode's own.
  */
 export function CyclePregnancyQuickLog({
   form,
@@ -74,6 +76,14 @@ export function CyclePregnancyQuickLog({
 
       <CycleModeSection title={ka.cycle.pregnancyCommonBody}>
         <CycleChipTiles kind="symptom" options={symptomChips(PREGNANCY_QUICK_BODY)} selectedIds={form.symptoms} onToggle={(id) => onChange(applySymptomChipToggle(form, id))} disabled={disabled} />
+      </CycleModeSection>
+
+      <CycleModeSection title={tx('დღის ჩეკლისტი', 'Checklist for the day')} hint={tx('რამდენიც გინდა', 'tick any')}>
+        <CyclePregnancyChecklistTiles
+          selectedIds={form.pregnancyChecklist ?? []}
+          onToggle={(id) => onChange({ pregnancyChecklist: togglePregnancyChecklist(form.pregnancyChecklist, id) })}
+          disabled={disabled}
+        />
       </CycleModeSection>
     </View>
   );
