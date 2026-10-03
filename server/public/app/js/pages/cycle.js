@@ -151,12 +151,192 @@ const shortDate = (k) => { const [, m, d] = k.split('-').map(Number); return `${
 
 const isBleed = (flow) => flow === 'light' || flow === 'medium' || flow === 'heavy';
 
+/** „13–15 ოქტ“ inside one month, „30 სექ – 2 ოქტ“ across two (mobile cycleForecastCopy.shortDateRange). */
+function shortRange(a, b) {
+  if (!a || !b || a === b) return shortDate(a || b);
+  if (a.slice(0, 7) === b.slice(0, 7)) return `${Number(a.slice(8, 10))}–${shortDate(b)}`;
+  return `${shortDate(a)} – ${shortDate(b)}`;
+}
+
+/* ── Forecast honesty copy (mobile src/lib/cycleForecastCopy.ts — same words) ─ */
+const FERTILITY_MIN_CYCLES = 3;
+const clampCycles = (n, req) => Math.max(0, Math.min(req, Math.floor(n) || 0));
+const learningBadgeText = (done, req = FERTILITY_MIN_CYCLES) => {
+  const n = clampCycles(done, req);
+  return t(`ვსწავლობთ შენს რიტმს · ${n}/${req} ციკლი`, `Learning your rhythm · ${n}/${req} ${req === 1 ? 'cycle' : 'cycles'}`);
+};
+const learningBadgeExplain = (req = FERTILITY_MIN_CYCLES) => t(
+  `ნაყოფიერ დღეებს და სავარაუდო ოვულაციას ${req} სრული ციკლის აღრიცხვის შემდეგ ვაჩვენებთ — მანამდე ნებისმიერი თარიღი გამოცნობა იქნებოდა.`,
+  `We show fertile days and estimated ovulation after ${req} logged, completed cycles — before that any date would be a guess.`,
+);
+const statsLearningChip = (done, req = FERTILITY_MIN_CYCLES) => {
+  const n = clampCycles(done, req);
+  return t(`ვსწავლობთ · ${n}/${req}`, `Learning · ${n}/${req}`);
+};
+const wideWindowLabel = () => t('ფართო დიაპაზონი, სანამ 3 ციკლს დავითვლით', 'A wide range until we have counted 3 cycles');
+const ovulationSourceLabel = (source) => (source === 'manual' ? t('შენი აღნიშვნით', 'From your own mark') : source === 'opk' ? t('OPK-ის მიხედვით', 'Based on your OPK') : null);
+function ovulationBandLine(range, source) {
+  const base = t(`სავარაუდო ოვულაცია · ${shortRange(range.start, range.end)}`, `Estimated ovulation · ${shortRange(range.start, range.end)}`);
+  const from = ovulationSourceLabel(source);
+  return from ? `${base} · ${from}` : base;
+}
+/** „ან მომდევნო N დღეში“ (mobile cycleCenterCopy.windowOpenTail). */
+const windowOpenTail = (days) => t(`ან მომდევნო ${days} დღეში`, days === 1 ? 'or tomorrow' : `or within the next ${days} days`);
+
+/** The quiet badge where fertile days would be: three progress dots + „ვსწავლობთ შენს რიტმს · N/3 ციკლი“. */
+function learningBadge(gate, { compact = false } = {}) {
+  const req = gate.requiredCycles || FERTILITY_MIN_CYCLES;
+  const done = clampCycles(gate.completedCycles, req);
+  const text = compact ? statsLearningChip(done, req) : learningBadgeText(done, req);
+  return h('span', { class: 'cy-learning', title: learningBadgeExplain(req), 'aria-label': `${text}. ${learningBadgeExplain(req)}` },
+    h('span', { class: 'cy-learning-dots', 'aria-hidden': 'true' }, Array.from({ length: req }, (_, i) => h('i', { class: i < done ? 'on' : '' }))),
+    text);
+}
+
+/* ── Tracking („მენსტრუაციას არ ველი“) copy (mobile src/lib/cycleTrackingCopy.ts) ─ */
+const trackingCopy = {
+  title: () => t('თვალყურის დევნება', 'Tracking'),
+  howAreYou: () => t('როგორ ხარ დღეს?', 'How are you today?'),
+  detail: () => t('პროგნოზებს არ ვაჩვენებთ — მხოლოდ იმას, რასაც აღრიცხავ.', 'No estimates — only what you log.'),
+  newCycle: () => t('ახალი ციკლის დაწყება', 'Start a new cycle'),
+  newCycleShort: () => t('ახალი ციკლი', 'New cycle'),
+  bleedLegend: () => t('სისხლდენა', 'Bleeding'),
+  endBleed: () => t('სისხლდენის დასრულება', 'End bleeding'),
+  ringA11y: (bleedDays, loggedDays) => t(
+    `ბოლო 4 კვირა: სისხლდენა ${bleedDays} დღე, სხვა აღრიცხული დღე ${loggedDays}.`,
+    `Last 4 weeks: bleeding on ${bleedDays} ${bleedDays === 1 ? 'day' : 'days'}, ${loggedDays} other logged ${loggedDays === 1 ? 'day' : 'days'}.`,
+  ),
+  ringHint: () => t('ბოლო 4 კვირა · ვარდისფერი — აღრიცხული სისხლდენა', 'Last 4 weeks · rose = logged bleeding'),
+  explainBody: () => [
+    t('შენ მიუთითე, რომ მენსტრუაციას არ ელი (მაგ. ჰორმონული სპირალი, იმპლანტი, უწყვეტი აბი). ამიტომ შემდეგ მენსტრუაციას, დაგვიანებას და ნაყოფიერ დღეებს არ ვაფასებთ.',
+      "You told us you don't expect periods (e.g. a hormonal IUD, an implant, a continuous pill), so we don't estimate your next period, a late period or fertile days."),
+    t('რგოლზე ბოლო 4 კვირაა: ვარდისფერი — აღრიცხული სისხლდენა, წერტილი — აღრიცხული დღე. მოულოდნელი ან ლაქოვანი სისხლდენისას დააჭირე „ახალი ციკლის დაწყება“ — ჩაიწერება, პროგნოზი კი არ ჩაირთვება.',
+      'The ring shows the last 4 weeks: rose is logged bleeding, a dot is a logged day. For unexpected bleeding or spotting tap “Start a new cycle” — it is logged, estimates stay off.'),
+    t('თუ სისხლდენა მოულოდნელია ან რამე გაწუხებს, ესაუბრე ექიმს.', 'If bleeding is unexpected or something worries you, talk to your doctor.'),
+  ],
+  explainCaption: () => t('შეცვლა: ციკლის პარამეტრები', 'Change it in cycle settings'),
+};
+const trackingSettingsCopy = {
+  section: () => t('მენსტრუაცია და ნაყოფიერი დღეები', 'Periods and fertile days'),
+  expectsLabel: () => t('მენსტრუაციას არ ველი (მაგ. ჰორმონული სპირალი, იმპლანტი, უწყვეტი აბი)', "I don't expect periods (e.g. hormonal IUD, implant, continuous pill)"),
+  expectsHint: () => t('შემდეგი მენსტრუაციის, დაგვიანებისა და ნაყოფიერი დღეების პროგნოზი ითიშება; აღრიცხვა რჩება.', 'Next-period, late and fertile-day estimates turn off; logging stays.'),
+  fertilityLabel: () => t('ნაყოფიერი დღეების ჩვენება', 'Show fertile days'),
+  fertilityHintOn: () => t('სავარაუდო ნაყოფიერი დღეები და ოვულაცია, როცა საკმარისი მონაცემია. კონტრაცეფციის მეთოდი არ არის.', 'Estimated fertile days and ovulation once there is enough data. Not a contraception method.'),
+  fertilityHintOff: () => t('ნაყოფიერი დღეები, ოვულაცია და მათი შეხსენებები არსად გამოჩნდება.', 'Fertile days, ovulation and their reminders are hidden everywhere.'),
+  forced: (forcedBy) => {
+    if (forcedBy === 'ttc') return t('ორსულობის დაგეგმვისას ნაყოფიერი დღეები ყოველთვის ჩანს.', 'Always shown while trying to conceive.');
+    if (forcedBy === 'contraception') return t('ჰორმონული კონტრაცეფციისას ნაყოფიერ დღეებს არ ვაჩვენებთ.', 'Not shown with hormonal contraception.');
+    if (forcedBy === 'tracking') return t('არ ჩანს, სანამ „მენსტრუაციას არ ველი“ ჩართულია.', 'Hidden while “I don’t expect periods” is on.');
+    if (forcedBy === 'mode') return t('ამ რეჟიმში ნაყოფიერ დღეებს არ ვაჩვენებთ.', 'Not shown in this mode.');
+    return null;
+  },
+};
+
+/** Tracking only: she expects no periods (server forecastEligibility NOT_EXPECTING_BLEEDING / bundle.tracking). */
+function isTrackingOnly(b) {
+  if (!b) return false;
+  if (b.forecastEligibility?.reason === 'NOT_EXPECTING_BLEEDING') return true;
+  if (typeof b.tracking?.trackingOnly === 'boolean') return b.tracking.trackingOnly;
+  return b.profile?.expectsBleeding === false && (b.profile?.mode || 'TRACK_PERIOD') === 'TRACK_PERIOD';
+}
+
+/** `predictions.fertility` (server cycleForecastHonesty): READY | LEARNING (< 3 cycles) | WIDE (TTC < 3 cycles). */
+function fertilityGateOf(b) {
+  const sent = b?.predictions?.fertility;
+  if (sent && typeof sent.status === 'string') {
+    return {
+      status: sent.status,
+      completedCycles: Number(sent.completedCycles) || 0,
+      requiredCycles: Number(sent.requiredCycles) || FERTILITY_MIN_CYCLES,
+      window: sent.window ?? null,
+      ovulationSource: sent.ovulationSource ?? null,
+    };
+  }
+  const done = Number(b?.averages?.cycleCount) || 0;
+  const status = done >= FERTILITY_MIN_CYCLES ? 'READY' : b?.profile?.mode === 'TRY_TO_CONCEIVE' ? 'WIDE' : 'LEARNING';
+  return { status, completedCycles: done, requiredCycles: FERTILITY_MIN_CYCLES, window: null, ovulationSource: null };
+}
+
+/** The level „კი“ logs for today: the last bleeding level before today, else light (mobile cyclePeriodStatus.stillBleedingFlow). */
+function stillBleedingFlow(logs, today) {
+  let best = null;
+  for (const l of logs || []) {
+    if (!l?.date || l.date >= today || !isBleed(l.flow)) continue;
+    if (!best || l.date > best.date) best = l;
+  }
+  return best?.flow ?? 'light';
+}
+
+/** Undo of a one-tap end: the day comes back exactly as it was (mobile cyclePeriodStatus.periodEndUndo). */
+function periodEndUndo(before) {
+  if (before && isBleed(before.flow)) return { kind: 'restoreFlow', flow: before.flow };
+  if (before && (before.flow === 'none' || before.flow === 'spotting')) return { kind: 'keep' };
+  return before ? { kind: 'clearFlow' } : { kind: 'removeLog' };
+}
+
+/* ── Deviations copy (mobile src/lib/cycleDeviationCopy.ts) ─────────────── */
+const DEVIATION_RULES = { windowMonths: 6, minCycles: 3, spreadDays: 17, longPeriodDays: 10, factorTailDays: 90 };
+const deviationCopy = {
+  title: () => t('შენს ციკლში ცვლილება შევნიშნეთ', 'We noticed a change in your cycle'),
+  doctorLine: () => t('ეს დიაგნოზი არ არის — ესაუბრე ექიმს, თუ გაწუხებს.', "This isn't a diagnosis — talk to a doctor if it worries you."),
+  explainTitle: () => t('როგორ ვამჩნევთ ცვლილებას', 'How we notice a change'),
+  explainBody: (rulesOff = []) => {
+    const peri = rulesOff.includes('irregular');
+    const rules = [
+      t(`ციკლის სიგრძე: ყველაზე მოკლე და ყველაზე გრძელი ციკლი ${DEVIATION_RULES.spreadDays} ან მეტი დღით განსხვავდება.`, `Cycle length: your shortest and longest cycle differ by ${DEVIATION_RULES.spreadDays} days or more.`),
+      t(`იშვიათი მენსტრუაცია: ${DEVIATION_RULES.windowMonths} თვეში მხოლოდ 1 ან 2 მენსტრუაცია აღირიცხა.`, `Infrequent periods: only 1 or 2 periods were logged in ${DEVIATION_RULES.windowMonths} months.`),
+      t(`გრძელი მენსტრუაცია: მენსტრუაცია ${DEVIATION_RULES.longPeriodDays} ან მეტი დღე გაგრძელდა მინიმუმ ორჯერ.`, `Long periods: a period lasted ${DEVIATION_RULES.longPeriodDays} days or more at least twice.`),
+      t('ლაქები: მენსტრუაციებს შორის ლაქები მინიმუმ 2 ციკლში აღინიშნა.', 'Spotting: spotting between periods was logged in at least 2 cycles.'),
+    ];
+    return [
+      t(`ვუყურებთ მხოლოდ შენს აღრიცხვას ბოლო ${DEVIATION_RULES.windowMonths} თვეში. ბარათი ჩნდება მხოლოდ მაშინ, როცა ისტორია ${DEVIATION_RULES.windowMonths} თვეზე მეტია და მინიმუმ ${DEVIATION_RULES.minCycles} ციკლი დასრულდა.`,
+        `We only look at what you logged in the last ${DEVIATION_RULES.windowMonths} months. The card appears only when your history is longer than ${DEVIATION_RULES.windowMonths} months and at least ${DEVIATION_RULES.minCycles} cycles have finished.`),
+      ...(peri ? rules.slice(1) : rules),
+      t(`ორსულობისას, მშობიარობის შემდგომ პერიოდში და ჰორმონული კონტრაცეფციისას ბარათი არ ჩნდება, ასევე მათი დასრულებიდან ${DEVIATION_RULES.factorTailDays} დღის განმავლობაში — ციკლი ამ დროს ბუნებრივად იცვლება.`,
+        `During pregnancy, after giving birth and with hormonal contraception the card stays off, and for ${DEVIATION_RULES.factorTailDays} days after they end — the cycle naturally changes then.`),
+      ...(peri ? [t('პერიმენოპაუზის რეჟიმში ციკლის სიგრძის წესი გამორთულია — ამ დროს სიგრძე ხშირად იცვლება.', 'In perimenopause mode the cycle-length rule is off — length often changes at this time.')] : []),
+      t('ეს დაკვირვებაა შენი ჩანაწერებიდან და არა დიაგნოზი. გამოტოვებული ჩანაწერიც შეიძლება ცვლილებად გამოჩნდეს. თუ გაწუხებს, ესაუბრე ექიმს.',
+        'This is an observation from your own log, not a diagnosis. A missed log can look like a change too. If it worries you, talk to a doctor.'),
+    ];
+  },
+};
+const numberWordKa = (n) => (n === 1 ? 'ერთი' : n === 2 ? 'ორი' : String(n));
+const numberWordEn = (n) => (n === 1 ? 'one' : n === 2 ? 'two' : String(n));
+function deviationFindingLine(f) {
+  switch (f?.id) {
+    case 'irregular': return t(`ბოლო 6 თვეში ციკლის სიგრძე ${f.shortestDays}-დან ${f.longestDays} დღემდე მერყეობს.`, `In the last 6 months your cycle length ranged from ${f.shortestDays} to ${f.longestDays} days.`);
+    case 'infrequent': return t(`ბოლო 6 თვეში მხოლოდ ${numberWordKa(f.periods)} მენსტრუაცია აღირიცხა.`, `Only ${numberWordEn(f.periods)} ${f.periods === 1 ? 'period was' : 'periods were'} logged in the last 6 months.`);
+    case 'prolonged': return t(`ბოლო 6 თვეში მენსტრუაცია ${f.periods}-ჯერ გაგრძელდა 10 ან მეტი დღე (ყველაზე გრძელი — ${f.longestDays} დღე).`, `In the last 6 months a period lasted 10 days or longer ${f.periods} times (the longest ${f.longestDays} days).`);
+    case 'spotting': return t(`ბოლო 6 თვეში ლაქები მენსტრუაციებს შორის ${f.cycles} ციკლში აღინიშნა.`, `In the last 6 months spotting between periods was logged in ${f.cycles} cycles.`);
+    default: return '';
+  }
+}
+/** Lines in a fixed order; [] = no card (unknown ids from a newer server are skipped). */
+function deviationLines(deviations) {
+  const findings = Array.isArray(deviations?.findings) ? deviations.findings : [];
+  return ['irregular', 'infrequent', 'prolonged', 'spotting'].flatMap((id) => findings.filter((f) => f?.id === id).map(deviationFindingLine)).filter(Boolean);
+}
+
+/** Pregnancy checklist (mobile constants/cycle.ts PREGNANCY_CHECKLIST = server PREGNANCY_CHECKLIST_IDS, same order). */
+const PREGNANCY_CHECKLIST = [
+  ['prenatal_vitamin', t('ორსულთა ვიტამინი', 'Prenatal vitamin')], ['folic_acid', t('ფოლის მჟავა', 'Folic acid')], ['water_2l', t('2ლ წყალი', '2 L water')],
+  ['walk', t('სეირნობა', 'Walk')], ['doctor_appt', t('ექიმის ვიზიტი', 'Doctor visit')], ['ultrasound', t('ულტრაბგერა', 'Ultrasound')],
+  ['blood_test', t('სისხლის ანალიზი', 'Blood test')], ['no_alcohol', t('ალკოჰოლის გარეშე', 'No alcohol')], ['no_smoking', t('მოწევის გარეშე', 'No smoking')],
+  ['rest', t('დასვენება', 'Rest')],
+].map(([id, label]) => ({ id, label }));
+const PREGNANCY_CHECKLIST_IDS = PREGNANCY_CHECKLIST.map((o) => o.id);
+const canonicalChecklist = (ids) => {
+  const picked = new Set((Array.isArray(ids) ? ids : []).filter((id) => typeof id === 'string'));
+  return PREGNANCY_CHECKLIST_IDS.filter((id) => picked.has(id));
+};
+
 function logHasFacts(l) {
   if (!l) return false;
   return Boolean(
     (l.symptoms && l.symptoms.length) || (l.moods && l.moods.length) || l.notes || (l.painEntries && l.painEntries.length)
     || l.sexualActivity === true || l.bbt != null || l.cervicalMucus || l.ovulationTest || l.pregnancyTest
-    || l.sleepQuality || l.stressLevel || l.exerciseLevel || l.caffeine || l.alcohol || l.energy || l.observations?.energy,
+    || l.sleepQuality || l.stressLevel || l.exerciseLevel || l.caffeine || l.alcohol || l.energy || l.observations?.energy
+    || (Array.isArray(l.observations?.pregnancyChecklist) && l.observations.pregnancyChecklist.length),
   );
 }
 
@@ -182,8 +362,9 @@ function derive(b) {
   const mode = b.profile?.mode || 'TRACK_PERIOD';
   const caps = CAPS[mode] || CAPS.TRACK_PERIOD;
   const todayLog = (b.logs || []).find((l) => l.date === today);
-  const onPeriod = isBleed(todayLog?.flow);
+  const loggedToday = isBleed(todayLog?.flow);
   const uncertain = b.contraception?.bleedingLabel === 'bleeding';
+  const tracking = isTrackingOnly(b);
   const pres = b.contraception?.presentation;
   const fertilityVisible = caps.fertile && (!pres || (pres.showFertilityMarkers !== false && pres.showFertileWindow !== false));
   const forecastAllowed = !b.forecastEligibility || b.forecastEligibility.allowed === true;
@@ -201,13 +382,51 @@ function derive(b) {
   const forecastOn = Boolean(next) && caps.forecast && !hidePredicted;
   const inDays = next ? daysBetween(today, next) : null;
   const conditions = (b.profile?.conditions || []).map(String);
-  const needsOnboarding = !['PREGNANCY', 'POSTPARTUM', 'PERIMENOPAUSE'].includes(mode) && !b.profile?.lastPeriodStart;
+  // Tracking never asks for a last period (mobile CycleOnboarding skips the date step).
+  const needsOnboarding = !tracking && !['PREGNANCY', 'POSTPARTUM', 'PERIMENOPAUSE'].includes(mode) && !b.profile?.lastPeriodStart;
 
-  const phaseHint = hideLengthChrome ? t('ციკლის ახალი ისტორია გროვდება', 'Building your new cycle history') : displayPhaseLabel(phase, phaseKa, onPeriod);
+  // Period auto-end (server periodStatus; mobile cyclePeriodStatus.heroPeriodState): an open period stays a
+  // period day through its usual length, the day after asks „ჯერ კიდევ გაქვს?“ once, then back to normal.
+  // A status derived for another day, or anything logged today that is not bleeding, changes nothing.
+  const ps = b.periodStatus;
+  const psEnabled = (mode === 'TRACK_PERIOD' || mode === 'TRY_TO_CONCEIVE') && forecastAllowed && !uncertain && !tracking;
+  let onPeriod = loggedToday;
+  let askStill = false;
+  if (!loggedToday && psEnabled && ps && b.meta?.today === today && !todayLog?.flow) {
+    if (ps.state === 'active') onPeriod = true;
+    else askStill = ps.state === 'askStill';
+  }
+
+  const phaseHint = tracking ? trackingCopy.title()
+    : hideLengthChrome ? t('ციკლის ახალი ისტორია გროვდება', 'Building your new cycle history')
+      : displayPhaseLabel(onPeriod ? 'period' : phase, phaseKa, loggedToday);
+
+  // Variable cycles: the server's next-period window (`nextPeriodRange`) instead of one date; late only after it.
+  const range = b.predictions?.nextPeriodRange;
+  const spread = forecastOn && next && range?.from && range?.to
+    ? { before: Math.max(0, daysBetween(range.from, next)), after: Math.max(0, daysBetween(next, range.to)) }
+    : null;
+  let windowKind = null;
+  let windowFrom = null;
+  let windowTo = null;
+  if (spread && inDays != null && !onPeriod) {
+    windowTo = inDays + spread.after;
+    windowFrom = inDays - spread.before;
+    if (predictedToday) { windowKind = 'open'; windowTo = Math.max(0, windowTo); } else if (windowTo >= 0) windowKind = windowFrom <= 0 ? 'open' : 'countdown';
+  }
 
   let statusLine = null;
-  if (onPeriod) statusLine = uncertain ? t('დღეს აღრიცხული სისხლდენა', 'Bleeding logged today') : t('ახლა აღრიცხული მენსტრუაციაა', 'Period logged right now');
-  else if (caps.pregnancy) {
+  if (onPeriod && !loggedToday) statusLine = t('სავარაუდო მენსტრუაცია', 'Estimated period');
+  else if (onPeriod) statusLine = uncertain ? t('დღეს აღრიცხული სისხლდენა', 'Bleeding logged today') : t('ახლა აღრიცხული მენსტრუაციაა', 'Period logged right now');
+  else if (tracking) statusLine = trackingCopy.howAreYou();
+  else if (windowKind && !hidePredicted) {
+    const what = uncertain ? t('სისხლდენა', 'Bleeding') : t('მენსტრუაცია', 'Period');
+    statusLine = windowKind === 'countdown'
+      ? t(`${what} სავარაუდოდ ${windowFrom}–${windowTo} დღეში`, `${what} likely in ${windowFrom}–${windowTo} days`)
+      : windowTo > 0
+        ? t(`${what} სავარაუდოდ დღეს ან მომდევნო ${windowTo} დღეში`, windowTo === 1 ? `${what} likely today or tomorrow` : `${what} likely today or within the next ${windowTo} days`)
+        : t('დღეს სავარაუდო მენსტრუაციის დღეა — მენსტრუაცია ჯერ არ არის აღრიცხული', 'Today is an estimated period day — no period logged yet');
+  } else if (caps.pregnancy) {
     const age = b.pregnancy?.age;
     statusLine = b.pregnancy?.reviewRequired ? t('საცნობი თარიღი გადასახედია — კვირის შეფასება არ გამოჩნდება.', 'Your reference date needs a review — the week estimate won’t show.')
       : age ? t(`${age.week} კვირა + ${age.day} დღე`, `${plural(age.week, 'week')} + ${plural(age.day, 'day')}`) : t('ორსულობის რეჟიმი', 'Pregnancy mode');
@@ -229,6 +448,9 @@ function derive(b) {
   let center;
   if (!hideLengthChrome) {
     if (onPeriod) center = { top: uncertain ? t('სისხლდენის დღე', 'Bleeding day') : t('მენსტრუაციის დღე', 'Period day'), value: day != null ? String(day) : '—', bottom: null, tone: 'period' };
+    // Variable cycles (mobile cycleCenterText): „მენსტრუაციამდე · 3–7 · დღე · სავარაუდოდ“, or „დღეს“ once the window is open.
+    else if (windowKind === 'countdown') center = { top: uncertain ? t('სისხლდენამდე', 'Until bleeding') : t('მენსტრუაციამდე', 'Until period'), value: `${windowFrom}–${windowTo}`, bottom: t('დღე · სავარაუდოდ', 'days · estimated') };
+    else if (windowKind === 'open') center = { top: t('სავარაუდოდ', 'Likely'), value: t('დღეს', 'Today'), bottom: windowTo > 0 ? windowOpenTail(windowTo) : t('სავარაუდო მენსტრუაცია', 'Estimated period'), tone: 'period', word: true };
     else if (predictedToday || (forecastOn && inDays === 0)) center = { top: t('სავარაუდოდ', 'Likely'), value: t('დღეს', 'Today'), bottom: t('სავარაუდო მენსტრუაცია', 'Estimated period'), tone: 'period', word: true };
     else if (forecastOn && inDays > 0) center = { top: uncertain ? t('სისხლდენამდე', 'Until bleeding') : t('მენსტრუაციამდე', 'Until period'), value: String(inDays), bottom: t('დღე · სავარაუდოდ', inDays === 1 ? 'day · estimated' : 'days · estimated') };
     else if (forecastOn && inDays < 0 && day != null) center = { top: t('ციკლის დღე', 'Cycle day'), value: String(day), bottom: t(`სავარაუდო თარიღიდან ${-inDays} დღე`, `${plural(-inDays, 'day')} past the estimate`) };
@@ -245,12 +467,27 @@ function derive(b) {
   const recordedDays = cycleStart && !hideLengthChrome
     ? (b.logs || []).filter((l) => isBleed(l.flow)).map((l) => daysBetween(cycleStart, l.date) + 1).filter((d) => d >= 1 && d <= Math.max(cycleLen, day ?? 0))
     : [];
-  const startLeads = !onPeriod && (!forecastOn || predictedToday || (inDays != null && inDays <= 3));
+  // Forecast honesty (server predictions.fertility): before 3 cycles no fertile arc — a quiet badge stands in
+  // its place; TTC gets one wide window (no ovulation day); ovulation is a 3-day band with its source.
+  const gate = fertilityGateOf(b);
+  const wideWindow = gate.status === 'WIDE' && gate.window === 'wide';
+  const learning = fertilityVisible && caps.fertile && !hidePredicted && !hideLengthChrome && !fertileDays && Boolean(cycleStart) && gate.status === 'LEARNING';
+  const ovulationRange = fertilityVisible && !hidePredicted && !wideWindow ? b.predictions?.ovulationRange ?? null : null;
+  // No fertile arc (learning, or her display switch off): the ring still turns luteal where the server's phase words do.
+  const fertileHidden = !fertilityVisible && caps.fertile && !hidePredicted && !hideLengthChrome;
+  let lutealFrom = null;
+  if ((learning || fertileHidden) && cycleStart && cycleLen) {
+    for (let d = 1; d <= Math.max(cycleLen, day ?? 0); d += 1) {
+      if (cal[addKey(cycleStart, d - 1)]?.phase === 'luteal') { lutealFrom = d; break; }
+    }
+  }
+  const startLeads = !onPeriod && !askStill && (!forecastOn || predictedToday || (inDays != null && inDays <= 3));
   const startLabel = uncertain ? t('სისხლდენა დაიწყო', 'Bleeding started') : t('მენსტრუაცია დაიწყო', 'Period started');
   const showPredicted = caps.fertile && forecastAllowed; // calendar overlays follow the app (index.tsx showPredicted)
 
   return {
-    today, mode, caps, todayLog, onPeriod, uncertain, fertilityVisible, forecastAllowed, hideLengthChrome, hidePredicted,
+    today, mode, caps, todayLog, onPeriod, loggedToday, askStill, tracking, gate, wideWindow, learning, ovulationRange, lutealFrom,
+    spread, windowKind, uncertain, fertilityVisible, forecastAllowed, hideLengthChrome, hidePredicted,
     cycleLen, periodLen, day, phase, phaseKa, next, inDays, forecastOn, predictedToday, phaseHint, statusLine, center,
     cycleStart, fertileDays, recordedDays, startLeads, startLabel, showPredicted, needsOnboarding,
     pcos: conditions.includes('pcos'),
@@ -326,6 +563,10 @@ function dial(opts) {
       if (fStart - 1 > periodEnd) phases.push({ kind: 'follicular', from: periodEnd + 1, to: fStart - 1 });
       phases.push({ kind: 'fertile', from: fStart, to: Math.min(fEnd, count) });
       if (fEnd < count) phases.push({ kind: 'luteal', from: fEnd + 1, to: count });
+    } else if (opts.lutealFrom && opts.lutealFrom > periodEnd && opts.lutealFrom <= count) {
+      // No fertile arc (learning / display off): follicular → luteal where the server's phase words turn.
+      if (opts.lutealFrom - 1 > periodEnd) phases.push({ kind: 'follicular', from: periodEnd + 1, to: opts.lutealFrom - 1 });
+      phases.push({ kind: 'luteal', from: opts.lutealFrom, to: count });
     } else if (periodEnd < count) {
       phases.push({ kind: 'follicular', from: periodEnd + 1, to: count });
     }
@@ -458,6 +699,7 @@ function dialFor(b, v, extra = {}) {
     hideLength: v.hideLengthChrome,
     recordedDays: v.recordedDays,
     fertileDays: v.fertileDays,
+    lutealFrom: v.lutealFrom,
     center: v.center,
     phase: v.phase,
     periodActive: v.onPeriod,
@@ -467,8 +709,26 @@ function dialFor(b, v, extra = {}) {
   });
 }
 
-function predBadge(date) {
-  return h('span', { class: 'cy-pred', title: t('სავარაუდო თარიღი', 'Estimated date') }, h('i', { class: 'cy-pred-dot' }), t(`სავარაუდო · ${fmtDate(date)}`, `Estimated · ${fmtDate(date)}`));
+/** „სავარაუდო · 6 ოქტომბერი“, or a window „სავარაუდო · 6 – 10 ოქტომბერი“ for variable cycles (mobile PredictionBadge). */
+function predBadge(date, until = null) {
+  let text = fmtDate(date);
+  if (until && until !== date) {
+    const a = fmtDate(date);
+    const z = fmtDate(until);
+    const [dayA, ...restA] = a.split(' ');
+    const [, ...restZ] = z.split(' ');
+    text = restA.join(' ') === restZ.join(' ') ? `${dayA} – ${z}` : `${a} – ${z}`;
+  }
+  return h('span', { class: 'cy-pred', title: t('სავარაუდო თარიღი', 'Estimated date') }, h('i', { class: 'cy-pred-dot' }), t(`სავარაუდო · ${text}`, `Estimated · ${text}`));
+}
+
+/** The estimate badge for the hero / Home: the window's ends for a variable cycle (mobile CycleHero rangeFrom/rangeUntil). */
+function nextBadge(v) {
+  if (!v.next || !v.forecastOn || v.onPeriod) return null;
+  if (v.spread && v.windowKind) {
+    return predBadge(v.windowKind === 'countdown' ? addKey(v.next, -v.spread.before) : v.next, addKey(v.next, v.spread.after));
+  }
+  return predBadge(v.next);
 }
 
 /* ── Page ────────────────────────────────────────────────────────────────── */
@@ -536,6 +796,42 @@ export default async function cyclePage(root, ctx = {}) {
     if (!ok) return;
     try { setBundle(await put('/api/cycle/period', { action: 'end', date: derive(state.bundle).today })); } catch (e) { toast(e.message, 'error'); }
   };
+  /**
+   * „ჯერ კიდევ გაქვს?“ → „დასრულდა“: the one-tap end (same PUT as the app); the server keeps today as
+   * flow „none“. Undo puts the day back exactly as it was (a bleeding level, an empty flow, or no log).
+   */
+  const endPeriodNow = async (btn) => {
+    const v = derive(state.bundle);
+    const date = v.today;
+    const undo = periodEndUndo(v.todayLog ? { flow: v.todayLog.flow } : null);
+    await busy(btn, async () => {
+      try {
+        setBundle(await put('/api/cycle/period', { action: 'end', date }));
+        toast(undo.kind === 'restoreFlow'
+          ? t('მენსტრუაცია დასრულდა — დღევანდელი სისხლდენა მოიხსნა.', 'Period ended — today’s bleeding was removed.')
+          : t('მენსტრუაცია დასრულდა — დღე სისხლდენის გარეშე აღირიცხა.', 'Period ended — today is logged without bleeding.'), 'ok', {
+          ms: 8000,
+          action: undo.kind === 'keep' ? null : { label: t('გაუქმება', 'Undo'), onClick: async () => {
+            try {
+              if (undo.kind === 'removeLog') setBundle(await del(`/api/cycle/logs/${date}`));
+              else setBundle((await put(`/api/cycle/logs/${date}`, { flow: undo.kind === 'restoreFlow' ? undo.flow : null })).bundle);
+            } catch (e) { toast(e.message, 'error'); }
+          } },
+        });
+      } catch (e) { toast(e.message, 'error'); }
+    });
+  };
+  /** „ჯერ კიდევ გაქვს?“ → „კი“: today's flow at her last logged level, else light. */
+  const stillBleeding = async (btn) => {
+    const v = derive(state.bundle);
+    await busy(btn, async () => {
+      try {
+        setBundle((await put(`/api/cycle/logs/${v.today}`, { flow: stillBleedingFlow(state.bundle.logs, v.today) })).bundle);
+        toast(t('შენახულია', 'Saved'));
+      } catch (e) { toast(e.message, 'error'); }
+    });
+  };
+
   /** Flo-style one tap: mark sex for today; the rest of the day's log is untouched (server merges fields). */
   const logSexNow = async (btn) => {
     const v = derive(state.bundle);
@@ -586,16 +882,28 @@ export default async function cyclePage(root, ctx = {}) {
 
     if (v.caps.pregnancy) left.push(section(null, pregnancyCard(b, v, () => openDayLog(v.today))));
     else if (v.caps.postpartum) left.push(section(null, postpartumCard(b, v, () => openDayLog(v.today))));
+    else if (v.tracking) left.push(section(null, trackingCard(b, v)));
     else left.push(section(null, heroCard(b, v)));
 
     if (v.caps.peri) left.push(section(t('პერიმენოპაუზის თვალყური', 'Perimenopause tracking'), periCard(b)));
-    if (v.caps.ttc) left.push(section(null, modeNote('info',t('ციკლის პროგნოზები სავარაუდოა. LH ტესტი, ტემპერატურა და ლორწო შენი აღრიცხვაა. ნაყოფიერების ჩანაწერებს დღის აღრიცხვაში იპოვი.', 'Cycle predictions are estimates. LH tests, temperature and mucus are your own logs. You’ll find fertility logs in the day log.'))));
+    if (v.caps.ttc) {
+      // TTC: the wide window before 3 cycles, else the 3-day ovulation band with its source (mobile CycleTtcCard).
+      const ttcLine = v.wideWindow && b.predictions?.fertileWindow
+        ? `${t('სავარაუდო ნაყოფიერი', 'Estimated fertile')} · ${shortRange(b.predictions.fertileWindow.start, b.predictions.fertileWindow.end)} · ${wideWindowLabel()}`
+        : v.ovulationRange ? ovulationBandLine(v.ovulationRange, v.gate.ovulationSource) : null;
+      left.push(section(null, h('div', { class: 'cy-mode-note' }, icon('info', { size: 18 }), h('div', null,
+        ttcLine ? h('div', { class: 'cy-ttc-line' }, ttcLine) : null,
+        t('ციკლის პროგნოზები სავარაუდოა. LH ტესტი, ტემპერატურა და ლორწო შენი აღრიცხვაა. ნაყოფიერების ჩანაწერებს დღის აღრიცხვაში იპოვი.', 'Cycle predictions are estimates. LH tests, temperature and mucus are your own logs. You’ll find fertility logs in the day log.')))));
+    }
     if (b.contraception?.presentation?.showContextCard) {
       left.push(section(null, modeNote('shield', t('კონტრაცეფციის მეთოდის გამო პროგნოზები შეზღუდულია — ყველაზე ზუსტი შენი აღრიცხვებია. Medicard არ არის კონტრაცეფციის მეთოდი.', 'Because of your contraception method, predictions are limited — your own logs are the most accurate. Medicard is not a method of contraception.'))));
     }
 
     left.push(section(t('დღეს', 'Today'), todayCard(b, v, () => openDayLog(v.today))));
     if (!v.caps.pregnancy && !v.caps.postpartum) left.push(section(t('ჩემი ციკლი', 'My cycle'), statsCard(b)));
+    // „შენს ციკლში ცვლილება შევნიშნეთ“ — only when the server found something; no „not enough data“ state.
+    const deviations = deviationsCard(b);
+    if (deviations) left.push(section(null, deviations));
 
     right.push(section(t('კალენდარი', 'Calendar'), calendarCard(b, v), {
       action: state.editing ? null : button(t('თარიღების შესწორება', 'Edit dates'), { size: 'sm', variant: 'ghost', icon: 'edit', onClick: () => { state.editing = true; state.pending = { add: new Set(), remove: new Set() }; render(); } }),
@@ -628,6 +936,10 @@ export default async function cyclePage(root, ctx = {}) {
     const canStart = v.caps.forecast || v.caps.fertile; // not in pregnancy / postpartum
     if (v.onPeriod) {
       actions.push(logBtn(true), h('div', { class: 'cy-actions-row' }, button(t('მენსტრუაციის დასრულება', 'End period'), { variant: 'ghost', class: 'cy-soft-btn', onClick: endPeriod }), sexBtn));
+    } else if (v.askStill) {
+      // On the question day „მენსტრუაცია დაიწყო“ would only repeat „კი“ (mobile heroPlanWhileAsking).
+      sexBtn.classList.add('wide');
+      actions.push(logBtn(true), h('div', { class: 'cy-actions-row' }, sexBtn));
     } else if (v.startLeads && canStart) {
       actions.push(startBtn(true), h('div', { class: 'cy-actions-row' }, logBtn(false), sexBtn));
     } else {
@@ -642,7 +954,9 @@ export default async function cyclePage(root, ctx = {}) {
         title: t('სავარაუდო ნაყოფიერი დღეები', 'Estimated fertile days'),
         size: 'sm',
         body: h('div', { class: 'stack' },
-          h('strong', null, `${fmtDate(from)} – ${fmtDate(to)}`),
+          h('strong', { class: 'cy-fertile-range' }, `${fmtDate(from)} – ${fmtDate(to)}`),
+          v.wideWindow ? h('div', { class: 'cy-fertile-range' }, wideWindowLabel()) : null,
+          v.ovulationRange ? h('div', { class: 'cy-fertile-range' }, ovulationBandLine(v.ovulationRange, v.gate.ovulationSource)) : null,
           h('p', { class: 'muted' }, cautious
             ? t('ეს დღე შეიძლება ნაყოფიერ ფანჯარაში იყოს. პროგნოზის სანდოობა დაბალია. Medicard არ არის კონტრაცეფციის მეთოდი.', 'These days may be in your fertile window. Prediction confidence is low. Medicard is not a method of contraception.')
             : v.caps.ttc ? t('სავარაუდო ნაყოფიერი ფანჯარა — TTC რეჟიმში ეს დღეები ხშირად უფრო ყურადღებადია. ეს არ ადასტურებს ოვულაციას.', 'Estimated fertile window — in TTC mode these days often get more attention. This does not confirm ovulation.')
@@ -670,18 +984,68 @@ export default async function cyclePage(root, ctx = {}) {
         h('i', { style: { background: glowDot } }), v.phaseHint, v.hideLengthChrome ? null : icon('info', { size: 14 })),
       underLine,
       v.forecastOn || (v.caps.forecast && !v.hidePredicted)
-        ? h('div', { class: 'cy-badges' }, v.next && v.forecastOn && !v.onPeriod ? predBadge(v.next) : null, h('span', { class: 'cy-conf' }, v.confidence))
+        ? h('div', { class: 'cy-badges' }, nextBadge(v), h('span', { class: 'cy-conf' }, v.confidence))
         : null,
       !v.hideLengthChrome && (v.fertileDays || v.cycleStart)
         ? h('div', { class: 'cy-dial-legend', 'aria-hidden': 'true' },
           h('span', null, h('i', { class: 'cy-dot period' }), t('მენსტრუაცია', 'Period')),
           h('span', null, h('i', { class: 'cy-dot follicular' }), t('ფოლიკულური', 'Follicular')),
           v.fertileDays ? h('span', null, h('i', { class: 'cy-dot fertile' }), t('ნაყოფიერი', 'Fertile')) : null,
-          v.fertileDays ? h('span', null, h('i', { class: 'cy-dot luteal' }), t('ლუთეალური', 'Luteal')) : null)
+          v.fertileDays || v.lutealFrom ? h('span', null, h('i', { class: 'cy-dot luteal' }), t('ლუთეალური', 'Luteal')) : null)
         : null,
+      // Before 3 cycles the fertile arc is not drawn — this quiet badge stands in its place.
+      v.learning ? h('div', { class: 'cy-badges' }, learningBadge(v.gate)) : null,
+      v.wideWindow && v.fertileDays ? h('div', { class: 'cy-wide' }, `${t('სავარაუდო ნაყოფიერი', 'Estimated fertile')} · ${wideWindowLabel()}`) : null,
       !v.hideLengthChrome ? h('div', { class: 'cy-hint' }, t('მიიტანე კურსორი რგოლზე — ნახე ნებისმიერი დღე', 'Move your cursor along the ring to see any day')) : null,
       v.pcos && v.fertilityVisible ? h('div', { class: 'cy-caution' }, t('შენ მიუთითე PCOS — სავარაუდო ოვულაცია ნაკლებად საიმედოა. ეს არ არის კონტრაცეფციის რჩევა.', 'You noted PCOS — estimated ovulation is less reliable. This is not contraception advice.')) : null,
+      v.askStill ? stillRow() : null,
       h('div', { class: 'cy-actions' }, actions));
+  }
+
+  /** „ჯერ კიდევ გაქვს?“ [კი · დასრულდა] (mobile CycleStillBleedingRow). No answer → ended tomorrow, never asked again. */
+  function stillRow() {
+    const yes = h('button', { type: 'button', class: 'cy-still-btn yes', 'aria-label': t('კი, ჯერ კიდევ მაქვს — დღევანდელი სისხლდენის აღრიცხვა', 'Yes, still bleeding — log today’s flow') }, t('კი', 'Yes'));
+    const ended = h('button', { type: 'button', class: 'cy-still-btn', 'aria-label': t('მენსტრუაცია დასრულდა', 'My period ended') }, t('დასრულდა', 'It ended'));
+    yes.addEventListener('click', () => stillBleeding(yes));
+    ended.addEventListener('click', () => endPeriodNow(ended));
+    return h('div', { class: 'cy-still' }, h('span', { class: 'cy-still-q' }, t('ჯერ კიდევ გაქვს?', 'Still bleeding?')), h('span', { class: 'cy-still-choices' }, yes, ended));
+  }
+
+  /**
+   * „თვალყურის დევნება“ / Tracking hero (mobile CycleTrackingHero): she expects no periods, so nothing is
+   * estimated. The ring is the last four weeks of what she logged, today's date in the centre, then
+   * „როგორ ხარ დღეს?“ and the log action. A manual new cycle stays and never turns forecasts back on.
+   */
+  function trackingCard(b, v) {
+    const ring = trackingRingDays(v.today, b.logs);
+    const [, mm, dd] = v.today.split('-').map(Number);
+    const explain = () => openModal({
+      title: trackingCopy.title(),
+      size: 'sm',
+      body: h('div', { class: 'stack' }, trackingCopy.explainBody().map((p) => h('p', { class: 'muted' }, p)), trackingLegend(), h('p', { class: 'faint', style: { fontSize: '12px' } }, trackingCopy.explainCaption())),
+    });
+    const startBtn = button(trackingCopy.newCycleShort(), { icon: 'droplet', variant: 'ghost', class: 'cy-soft-btn' });
+    startBtn.setAttribute('aria-label', trackingCopy.newCycle());
+    startBtn.title = trackingCopy.newCycle();
+    startBtn.addEventListener('click', () => startPeriod(startBtn));
+    const endBtn = button(trackingCopy.endBleed(), { variant: 'ghost', class: 'cy-soft-btn', onClick: endPeriod });
+    const sexLogged = v.todayLog?.sexualActivity === true || (v.todayLog?.symptoms || []).some((id) => SEX_ACTIVITY_IDS.has(id));
+    const sexBtn = h('button', {
+      type: 'button', class: `cy-sex-btn${sexLogged ? ' on' : ''}`,
+      'aria-label': sexLogged ? t('სექსი დღეს აღრიცხულია — დეტალების გახსნა', 'Sex logged today — open details') : t('სექსის აღრიცხვა დღეს — ერთი შეხებით', 'Log sex today — one tap'),
+    }, icon(sexLogged ? 'check' : 'heart', { size: 16 }), t('სექსი', 'Sex'));
+    sexBtn.addEventListener('click', () => logSexNow(sexBtn));
+    return card({ class: 'cy-hero' },
+      trackingDial(ring, { top: t('დღეს', 'Today'), value: String(dd), bottom: KA_MONTHS[mm - 1], label: `${trackingCopy.title()}. ${trackingCopy.ringA11y(ring.bleed.length, ring.logged.length + ring.spotting.length)}` }),
+      h('button', { type: 'button', class: 'cy-phase-pill', onClick: explain, title: trackingCopy.title() },
+        h('i', { style: { background: 'var(--cy-muted-soft)' } }), trackingCopy.title(), icon('info', { size: 14 })),
+      h('div', { class: 'cy-status strong' }, trackingCopy.howAreYou()),
+      h('div', { class: 'cy-status cy-status-sub' }, trackingCopy.detail()),
+      trackingLegend(),
+      h('div', { class: 'cy-hint' }, trackingCopy.ringHint()),
+      h('div', { class: 'cy-actions' },
+        button(t('დღის აღრიცხვა', 'Log today'), { icon: 'plus', variant: 'rose', onClick: () => openDayLog(v.today) }),
+        h('div', { class: 'cy-actions-row' }, isBleed(v.todayLog?.flow) ? endBtn : startBtn, sexBtn)));
   }
 
   function calendarCard(b, v) {
@@ -739,6 +1103,9 @@ export default async function cyclePage(root, ctx = {}) {
     const onTodayMonth = tt[0] === y && tt[1] - 1 === m;
 
     const changes = add.size + remove.size;
+    // Before 3 cycles there are no fertile marks: the legend drops those rows and shows the learning badge.
+    const calendarLearning = v.showPredicted && v.fertilityVisible && v.gate.status === 'LEARNING';
+    const fertileLegend = v.showPredicted && v.fertilityVisible && !calendarLearning;
     const saveBtn = button(changes ? t(`შენახვა · ${changes} ცვლილება`, `Save · ${plural(changes, 'change')}`) : t('ცვლილება არ არის', 'No changes'), { size: 'sm', variant: 'rose', disabled: !changes });
     saveBtn.addEventListener('click', () => busy(saveBtn, async () => {
       try {
@@ -765,11 +1132,12 @@ export default async function cyclePage(root, ctx = {}) {
             saveBtn))
         : null,
       h('div', { class: 'cy-legend' },
-        h('span', null, h('i', { class: 'cy-lg logged' }), v.caps.postpartum ? t('სისხლდენა', 'Bleeding') : t('მენსტრუაცია', 'Period')),
+        h('span', null, h('i', { class: 'cy-lg logged' }), v.caps.postpartum || v.tracking ? t('სისხლდენა', 'Bleeding') : t('მენსტრუაცია', 'Period')),
         v.showPredicted ? h('span', null, h('i', { class: 'cy-lg expected' }), t('სავარაუდო მენსტრუაცია', 'Estimated period')) : null,
-        v.showPredicted && v.fertilityVisible ? h('span', null, h('i', { class: 'cy-lg fertile' }), t('სავარაუდო ნაყოფიერი', 'Estimated fertile')) : null,
-        v.showPredicted && v.fertilityVisible ? h('span', null, h('i', { class: 'cy-lg ovulation' }), t('სავარაუდო ოვულაცია', 'Estimated ovulation')) : null,
+        fertileLegend ? h('span', null, h('i', { class: 'cy-lg fertile' }), v.wideWindow ? `${t('სავარაუდო ნაყოფიერი', 'Estimated fertile')} · ${wideWindowLabel()}` : t('სავარაუდო ნაყოფიერი', 'Estimated fertile')) : null,
+        fertileLegend && !v.wideWindow ? h('span', null, h('i', { class: 'cy-lg ovulation' }), t('სავარაუდო ოვულაცია', 'Estimated ovulation')) : null,
         h('span', null, h('i', { class: 'cy-lg sym' }), t('აღრიცხული', 'Logged'))),
+      calendarLearning ? h('div', { class: 'cy-cal-learning' }, learningBadge(v.gate)) : null,
       v.showPredicted ? h('p', { class: 'disclaimer' }, icon('info', { size: 14 }), t('შეფასება ბოლო ციკლების მიხედვით — თარიღები შეიძლება შეიცვალოს.', 'Estimated from your recent cycles — dates may change.')) : null);
   }
 
@@ -777,7 +1145,80 @@ export default async function cyclePage(root, ctx = {}) {
   return () => { state.alive = false; root.classList.remove('cy'); };
 }
 
+/* ── Tracking ring (mobile homeCycle.trackingRingDays + CycleStatusGauge trackingWindow) ── */
+const TRACKING_DAYS = 28;
+/** Slot 1 … 28 = the last four weeks, 28 = today. Bleeding fills its slot, spotting / other logged days are dots. */
+function trackingRingDays(today, logs, days = TRACKING_DAYS) {
+  const bleed = new Set(); const spotting = new Set(); const logged = new Set();
+  for (const l of logs || []) {
+    if (!l?.date) continue;
+    const back = daysBetween(l.date, today);
+    if (back < 0 || back >= days) continue;
+    const pos = days - back;
+    if (isBleed(l.flow)) bleed.add(pos);
+    else if (l.flow === 'spotting') spotting.add(pos);
+    else logged.add(pos);
+  }
+  const sort = (set) => [...set].sort((a, b) => a - b);
+  return { days, bleed: sort(bleed), spotting: sort(spotting), logged: sort(logged) };
+}
+
+function trackingDial(ring, center, { compact = false } = {}) {
+  const count = ring.days;
+  const root = svg('svg', { viewBox: `0 0 ${VB} ${VB}`, role: 'img', 'aria-label': center.label });
+  root.appendChild(svg('circle', { cx: C, cy: C, r: R, class: 'cy-arc empty', 'stroke-width': BAND }));
+  const capDeg = ((BAND / 2 + 2) / R) * (180 / Math.PI);
+  // Consecutive bleeding days are one rose run (the calendar's solid grammar).
+  const runs = [];
+  for (const d of ring.bleed) {
+    const last = runs[runs.length - 1];
+    if (last && d === last.to + 1) last.to = d; else runs.push({ from: d, to: d });
+  }
+  for (const r of runs) {
+    const from = slotDeg(r.from - 1, count) + capDeg;
+    const to = Math.max(from + 0.5, slotDeg(r.to, count) - capDeg);
+    const d = arcPath(from, to);
+    if (d) root.appendChild(svg('path', { d, class: 'cy-arc period', 'stroke-width': BAND }));
+    else { const p = pt(slotDeg(r.from - 0.5, count)); root.appendChild(svg('circle', { cx: p.x, cy: p.y, r: BAND / 2, style: 'fill:var(--cy-period)' })); }
+  }
+  for (const d of ring.spotting) { const p = pt(slotDeg(d - 0.5, count)); root.appendChild(svg('circle', { cx: p.x, cy: p.y, r: 4, style: 'fill:var(--cy-period)' })); }
+  for (const d of ring.logged) { const p = pt(slotDeg(d - 0.5, count)); root.appendChild(svg('circle', { cx: p.x, cy: p.y, r: 3.5, style: 'fill:var(--cy-luteal)' })); }
+  // Today (slot 28): the calm ink knob.
+  const at = pt(slotDeg(count - 0.5, count));
+  root.appendChild(svg('circle', { cx: at.x, cy: at.y, r: BAND / 2 + 5, class: 'cy-knob-bg' }));
+  root.appendChild(svg('circle', { cx: at.x, cy: at.y, r: BAND / 2 + 1, class: 'cy-knob-ring', style: 'stroke:var(--cy-ink)' }));
+  root.appendChild(svg('circle', { cx: at.x, cy: at.y, r: 3, style: 'fill:var(--cy-ink)' }));
+  return h('div', { class: `cy-dial${compact ? ' compact' : ''}` }, root, h('div', { class: 'cy-dial-center' },
+    h('div', { class: 'cy-dial-top' }, center.top), h('div', { class: 'cy-dial-value' }, center.value), h('div', { class: 'cy-dial-bottom' }, center.bottom)));
+}
+
+function trackingLegend() {
+  return h('div', { class: 'cy-dial-legend', 'aria-hidden': 'true' },
+    h('span', null, h('i', { class: 'cy-dot period' }), trackingCopy.bleedLegend()),
+    h('span', null, h('i', { class: 'cy-dot period', style: { width: '6px', height: '6px' } }), t('ლაქები', 'Spotting')),
+    h('span', null, h('i', { class: 'cy-dot luteal', style: { width: '6px', height: '6px' } }), t('აღრიცხული', 'Logged')));
+}
+
+/* ── Deviations card (mobile CycleDeviationsCard): /cycle only, never Home ─── */
+function deviationsCard(b) {
+  const lines = deviationLines(b.deviations);
+  if (!lines.length) return null;
+  const explain = () => openModal({
+    title: deviationCopy.explainTitle(),
+    size: 'sm',
+    body: h('div', { class: 'stack' }, deviationCopy.explainBody(b.deviations?.rulesOff ?? []).map((p) => h('p', { class: 'muted' }, p))),
+  });
+  return card({ class: 'cy-dev' },
+    h('div', { class: 'cy-dev-head' },
+      h('span', { class: 'cy-dev-tile' }, icon('calendar', { size: 19 })),
+      h('h3', null, deviationCopy.title()),
+      iconButton('info', { title: deviationCopy.explainTitle(), onClick: explain })),
+    h('ul', { class: 'cy-dev-lines' }, lines.map((line) => h('li', null, line))),
+    h('p', { class: 'cy-dev-doctor' }, deviationCopy.doctorLine()));
+}
+
 function headerSubtitle(b, v) {
+  if (v.tracking) return trackingCopy.title();
   if (v.caps.pregnancy) {
     const age = b.pregnancy?.age;
     return age ? t(`${age.week} კვირა + ${age.day} დღე`, `${plural(age.week, 'week')} + ${plural(age.day, 'day')}`) : t('ორსულობის რეჟიმი', 'Pregnancy mode');
@@ -885,6 +1326,9 @@ function logFacts(l, { uncertain } = {}) {
   if (l.cervicalMucus) out.push(h('span', { class: 'cy-fact' }, `${t('ლორწო', 'Mucus')}: ${LABEL[l.cervicalMucus] || ''}`));
   if (l.ovulationTest) out.push(h('span', { class: 'cy-fact' }, `${t('ოვულაციის ტესტი', 'Ovulation test')}: ${TESTS.find((x) => x.id === l.ovulationTest)?.label}`));
   if (l.pregnancyTest) out.push(h('span', { class: 'cy-fact' }, `${t('ორსულობის ტესტი', 'Pregnancy test')}: ${TESTS.find((x) => x.id === l.pregnancyTest)?.label}`));
+  for (const id of canonicalChecklist(l.observations?.pregnancyChecklist)) {
+    out.push(h('span', { class: 'cy-fact' }, icon('check', { size: 12 }), PREGNANCY_CHECKLIST.find((o) => o.id === id)?.label));
+  }
   if (l.notes) out.push(h('span', { class: 'cy-fact' }, icon('edit', { size: 12 }), t('ჩანაწერი', 'Note')));
   return out;
 }
@@ -892,7 +1336,7 @@ function logFacts(l, { uncertain } = {}) {
 function todayCard(b, v, onLog) {
   const facts = logFacts(v.todayLog, { uncertain: v.uncertain });
   return card(
-    facts.length ? h('div', { class: 'cy-facts' }, facts) : h('p', { class: 'muted' }, t('დღეს ჯერ არაფერი არ არის აღრიცხული — დაამატე გამონადენი, სიმპტომები ან განწყობა.', 'Nothing logged today yet — add flow, symptoms or mood.')),
+    facts.length ? h('div', { class: 'cy-facts' }, facts) : h('p', { class: 'muted' }, t('დღეს ჯერ არაფერი არ არის აღრიცხული — დაამატე სისხლდენა, სიმპტომები ან განწყობა.', 'Nothing logged today yet — add flow, symptoms or mood.')),
     h('div', { class: 'hstack', style: { marginTop: '14px' } },
       button(facts.length ? t('რედაქტირება', 'Edit') : t('დღის აღრიცხვა', 'Log today'), { size: 'sm', variant: 'ghost', icon: facts.length ? 'edit' : 'plus', onClick: onLog })));
 }
@@ -906,8 +1350,12 @@ function statsCard(b) {
   const variation = lengths.length >= 2 ? Math.max(...lengths) - Math.min(...lengths) : null;
   const inferred = avg.source === 'inferred' && (avg.cycleCount ?? 0) >= 2;
   const rangeTone = (val, lo, hi) => (val == null ? 'unknown' : val < lo ? 'shorter' : val > hi ? 'longer' : 'typical');
+  // Verdicts („✓ ტიპური“ …) only from 3 completed cycles; before that the numbers and „ვსწავლობთ · N/3“.
+  const gate = fertilityGateOf(b);
+  const verdictsReady = gate.completedCycles >= FERTILITY_MIN_CYCLES;
   const tone = (tn) => {
     if (tn === 'unknown') return h('div', { class: 'cy-tone none' }, t('საჭიროა 2+ ციკლი', 'Needs 2+ cycles'));
+    if (!verdictsReady) return h('div', { class: 'cy-tone none' }, statsLearningChip(gate.completedCycles, gate.requiredCycles));
     const label = { typical: t('ტიპური', 'Typical'), longer: t('ტიპურზე გრძელი', 'Longer than typical'), shorter: t('ტიპურზე მოკლე', 'Shorter than typical'), variable: t('ცვალებადი', 'Variable') }[tn];
     return h('div', { class: `cy-tone ${tn === 'typical' ? 'ok' : 'off'}` }, h('i'), label);
   };
@@ -1022,6 +1470,8 @@ function formFromLog(l) {
     caffeine: l?.caffeine ?? null,
     alcohol: l?.alcohol ?? null,
     energy: l?.energy ?? l?.observations?.energy ?? null,
+    // Pregnancy checklist: the stored ticks, or null = untouched (a save then sends nothing).
+    pregnancyChecklist: (() => { const ids = canonicalChecklist(l?.observations?.pregnancyChecklist); return ids.length ? ids : null; })(),
   };
 }
 
@@ -1046,7 +1496,10 @@ function payloadFromForm(f) {
     exerciseLevel: f.exerciseLevel,
     caffeine: f.caffeine,
     alcohol: f.alcohol,
-    observations: { energy: f.energy },
+    // pregnancyChecklist: untouched (null) → not sent; all unticked → null clears; else the canonical list.
+    observations: f.pregnancyChecklist == null
+      ? { energy: f.energy }
+      : { energy: f.energy, pregnancyChecklist: f.pregnancyChecklist.length ? canonicalChecklist(f.pregnancyChecklist) : null },
     energy: f.energy,
   };
 }
@@ -1136,6 +1589,15 @@ function openDayModal(b, date, { only, onBundle }) {
     if (only === 'sex') {
       parts.push(sexSection());
     } else {
+      if (v.caps.pregnancy) {
+        // Pregnancy daily checklist (mobile CyclePregnancyQuickLog „დღის ჩეკლისტი“), saved in the day's observations.
+        const ticked = f.pregnancyChecklist || [];
+        parts.push(sec(t('დღის ჩეკლისტი', 'Checklist for the day'), t('რამდენიც გინდა', 'tick any'),
+          h('div', { class: 'chips' }, PREGNANCY_CHECKLIST.map((o) => chip(o.label, ticked.includes(o.id), () => {
+            f.pregnancyChecklist = canonicalChecklist(ticked.includes(o.id) ? ticked.filter((x) => x !== o.id) : [...ticked, o.id]);
+            paint();
+          })))));
+      }
       parts.push(sec(v.uncertain || v.caps.postpartum ? t('სისხლდენა', 'Bleeding') : t('სისხლდენა', 'Flow'), t('აირჩიე ერთი ვარიანტი', 'Choose one'), single(FLOWS, 'flow')));
       parts.push(sexSection());
       parts.push(sec(t('სიმპტომები', 'Symptoms'), t('შეგიძლია რამდენიმე მონიშნო', 'You can pick several'), multi(visibleSymptoms, 'symptoms'),
@@ -1212,6 +1674,43 @@ function openSettingsModal(b, onBundle) {
   const conds = (p.conditions || []).map(String);
   const check = (name, label, checked) => h('label', { class: 'hstack', style: { gap: '10px', cursor: 'pointer', fontSize: '14px' } },
     h('input', { type: 'checkbox', name, checked }), label);
+
+  // „მენსტრუაცია და ნაყოფიერი დღეები“ (mobile cycle settings, brief §9 wave 2 item 17): live while the form changes.
+  const live = { mode, expects: p.expectsBleeding !== false, display: p.fertilityDisplay === 'off' ? 'off' : 'auto' };
+  const fd = b.contraception?.presentation?.fertilityDisplay;
+  const contraceptionHides = fd && fd.forcedBy !== undefined ? fd.forcedBy === 'contraception' : b.contraception?.presentation?.showFertileWindow === false;
+  /** Same order as the server's resolveFertilityDisplay: contraception → Tracking → TTC → her choice. */
+  const resolveDisplay = () => {
+    if (contraceptionHides) return { effective: 'off', forcedBy: 'contraception', userCanChange: false };
+    if (live.mode === 'TRACK_PERIOD' && !live.expects) return { effective: 'off', forcedBy: 'tracking', userCanChange: false };
+    if (live.mode === 'TRY_TO_CONCEIVE') return { effective: 'on', forcedBy: 'ttc', userCanChange: false };
+    return { effective: live.display === 'off' ? 'off' : 'on', forcedBy: null, userCanChange: true };
+  };
+  const switchRow = ({ name, label, hint, checked, disabled, onChange }) => h('label', { class: `cy-check${disabled ? ' disabled' : ''}` },
+    h('input', { type: 'checkbox', name, checked, disabled, onChange }),
+    h('span', { class: 'cy-check-text' }, h('span', { class: 'cy-check-label' }, label), hint ? h('span', { class: 'field-hint' }, hint) : null));
+  const trackBox = h('div', { class: 'stack', style: { gap: '12px' } });
+  const paintTrack = () => {
+    const showSection = live.mode === 'TRACK_PERIOD' || live.mode === 'TRY_TO_CONCEIVE';
+    trackBox.hidden = !showSection;
+    if (!showSection) { mount(trackBox, []); return; }
+    const display = resolveDisplay();
+    mount(trackBox, [
+      h('div', { class: 'field-label' }, trackingSettingsCopy.section()),
+      live.mode === 'TRACK_PERIOD' ? switchRow({
+        name: 'expectsNone', label: trackingSettingsCopy.expectsLabel(), hint: trackingSettingsCopy.expectsHint(), checked: !live.expects,
+        onChange: (e) => { live.expects = !e.target.checked; paintTrack(); },
+      }) : null,
+      switchRow({
+        name: 'fertilityShow', label: trackingSettingsCopy.fertilityLabel(),
+        hint: trackingSettingsCopy.forced(display.forcedBy) ?? (display.effective === 'on' ? trackingSettingsCopy.fertilityHintOn() : trackingSettingsCopy.fertilityHintOff()),
+        checked: display.effective === 'on', disabled: !display.userCanChange,
+        onChange: (e) => { live.display = e.target.checked ? 'auto' : 'off'; paintTrack(); },
+      }),
+    ]);
+  };
+  paintTrack();
+
   const m = formModal({
     title: t('ციკლის პარამეტრები', 'Cycle settings'),
     size: 'md',
@@ -1219,12 +1718,13 @@ function openSettingsModal(b, onBundle) {
       canSwitch ? field(t('რეჟიმი', 'Mode'), select([
         { value: 'TRACK_PERIOD', label: MODE_LABEL.TRACK_PERIOD },
         { value: 'TRY_TO_CONCEIVE', label: MODE_LABEL.TRY_TO_CONCEIVE },
-      ], mode, { name: 'mode' }), mode === 'TRY_TO_CONCEIVE' ? t('სავარაუდო ნაყოფიერი დღეები კალენდარული შეფასებაა. აპი ორსულობას არ ჰპირდება.', 'Estimated fertile days are a calendar estimate. The app makes no promise about pregnancy.') : null)
+      ], mode, { name: 'mode', onChange: (e) => { live.mode = e.target.value; paintTrack(); } }), mode === 'TRY_TO_CONCEIVE' ? t('სავარაუდო ნაყოფიერი დღეები კალენდარული შეფასებაა. აპი ორსულობას არ ჰპირდება.', 'Estimated fertile days are a calendar estimate. The app makes no promise about pregnancy.') : null)
         : field(t('რეჟიმი', 'Mode'), input({ value: MODE_LABEL[mode] || mode, disabled: true }), t('ამ რეჟიმის შეცვლა MEDICARD აპშია.', 'You can change this mode in the MEDICARD app.')),
       h('div', { class: 'grid grid-2' },
         field(t('საშუალო ციკლი', 'Average cycle'), select(range(21, 45), p.avgCycleLength || 28, { name: 'avgCycleLength' })),
         field(t('საშუალო მენსტრუაცია', 'Average period'), select(range(2, 10), p.avgPeriodLength || 5, { name: 'avgPeriodLength' }))),
       h('p', { class: 'faint', style: { fontSize: '12.5px' } }, t('გამოიყენება მხოლოდ საწყისად — შემდეგ შენი ჩანაწერებით ზუსტდება.', 'Used only as a starting point — your logs refine it over time.')),
+      trackBox,
       check('isIrregular', t('არარეგულარული ციკლი', 'Irregular cycle'), Boolean(p.isIrregular)),
       h('div', { class: 'stack', style: { gap: '8px' } },
         h('div', { class: 'field-label' }, t('ჯანმრთელობა (სურვილისამებრ)', 'Health (optional)')),
@@ -1242,6 +1742,11 @@ function openSettingsModal(b, onBundle) {
         conditions,
       };
       if (canSwitch && vals.mode && vals.mode !== mode) body.mode = vals.mode;
+      // The same PUT the app uses. A forced fertile-days display (TTC, Tracking, contraception) is not her choice, so it is not written.
+      if ((body.mode || mode) === 'TRACK_PERIOD') body.expectsBleeding = !vals.expectsNone;
+      if ((body.mode || mode) === 'TRACK_PERIOD' || (body.mode || mode) === 'TRY_TO_CONCEIVE') {
+        if (resolveDisplay().userCanChange) body.fertilityDisplay = vals.fertilityShow ? 'auto' : 'off';
+      }
       const nb = await put('/api/cycle/profile', body);
       if (nb?.profile && nb.predictions) onBundle(nb);
       else onBundle(await get('/api/cycle'));
@@ -1295,6 +1800,16 @@ function homeContent(b) {
         h('p', null, age ? `${t(`${age.week} კვირა + ${age.day} დღე`, `${plural(age.week, 'week')} + ${plural(age.day, 'day')}`)}${t(' · სავარაუდოდ', ' · estimated')}` : e ? t(`${e.week} კვირა + ${e.day} დღე`, `${plural(e.week, 'week')} + ${plural(e.day, 'day')}`) : t('დღის აღრიცხვა ერთ ადგილას.', 'Your daily log in one place.')),
         h('div', null, open)));
   }
+  if (v.tracking) {
+    const [, mm, dd] = v.today.split('-').map(Number);
+    const tr = trackingRingDays(v.today, b.logs);
+    return h('div', { class: 'cy-home' },
+      trackingDial(tr, { top: t('დღეს', 'Today'), value: String(dd), bottom: KA_MONTHS[mm - 1], label: `${trackingCopy.title()}. ${trackingCopy.ringA11y(tr.bleed.length, tr.logged.length + tr.spotting.length)}` }, { compact: true }),
+      h('div', { class: 'cy-home-main' },
+        h('h3', null, trackingCopy.title()),
+        h('p', null, `${trackingCopy.howAreYou()} ${trackingCopy.detail()}`),
+        h('div', { style: { marginTop: '4px' } }, open)));
+  }
   const cycleLenRound = Math.round(v.cycleLen) || 28;
   const line = v.statusLine || (v.day != null && !v.hideLengthChrome ? t(`ციკლის ${v.day}-ე დღე · ${cycleLenRound}-დან`, `Cycle day ${v.day} · of ${cycleLenRound}`) : t('ვსწავლობთ შენს რიტმს — აღრიცხე შემდეგი მენსტრუაცია', 'Learning your rhythm — log your next period'));
   return h('div', { class: 'cy-home' },
@@ -1302,6 +1817,6 @@ function homeContent(b) {
     h('div', { class: 'cy-home-main' },
       h('h3', null, v.phaseHint),
       h('p', null, line),
-      v.next && v.forecastOn && !v.onPeriod ? h('div', null, predBadge(v.next)) : null,
+      nextBadge(v) ? h('div', null, nextBadge(v)) : null,
       h('div', { style: { marginTop: '4px' } }, open)));
 }

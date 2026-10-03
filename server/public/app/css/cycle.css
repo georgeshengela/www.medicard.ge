@@ -249,3 +249,47 @@
   .cy-home { flex-direction: column; align-items: stretch; gap: 14px; }
   .cy-home > .cy-dial.compact { align-self: center; }
 }
+
+/* ── Forecast honesty (W2-12c): learning badge, wide TTC window, ovulation band ── */
+.cy-learning {
+  display: inline-flex; align-items: center; gap: 8px; max-width: 100%; padding: 7px 12px; border-radius: 999px;
+  background: var(--cy-soft); color: var(--cy-muted); font-size: 12.5px; font-weight: 600; line-height: 1.35;
+}
+.cy-learning-dots { display: inline-flex; gap: 3px; flex: none; }
+.cy-learning-dots i { width: 7px; height: 7px; border-radius: 50%; display: inline-block; border: 1.2px dashed var(--cy-muted-soft); box-sizing: border-box; }
+.cy-learning-dots i.on { background: var(--cy-fertile-fill); border: 0; }
+.cy-wide { margin-top: 8px; text-align: center; font-size: 12px; line-height: 1.4; font-weight: 600; color: var(--cy-fertile); }
+.cy-cal-learning { margin-top: 12px; }
+.cy-ttc-line { font-weight: 600; color: var(--cy-fertile); margin-bottom: 4px; }
+.cy-fertile-range { color: var(--cy-fertile); font-weight: 600; }
+.cy-status.cy-status-sub { margin-top: 4px; font-size: 13px; line-height: 19px; color: var(--cy-muted); }
+
+/* „ჯერ კიდევ გაქვს?“ [კი · დასრულდა] — one quiet line, small flat pills from the cycle palette. */
+.cy-still { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 8px; margin-top: 16px; }
+.cy-still-q { font-size: 14px; line-height: 20px; font-weight: 600; color: var(--text); margin-right: 2px; }
+.cy-still-choices { display: inline-flex; gap: 8px; }
+.cy-still-btn {
+  min-height: 34px; min-width: 52px; padding: 0 14px; border-radius: 17px; border: 0; cursor: pointer; font: inherit;
+  font-size: 13px; font-weight: 600; background: var(--cy-soft); color: var(--text);
+}
+.cy-still-btn.yes { background: var(--cy-period-soft); color: var(--cy-period); }
+.cy-still-btn:disabled { opacity: .6; cursor: default; }
+
+/* Deviations card: calm hub card, lilac tile (a cycle colour, never the danger tokens). */
+.cy-dev { display: flex; flex-direction: column; gap: 12px; }
+.cy-dev-head { display: flex; align-items: center; gap: 12px; }
+.cy-dev-head h3 { flex: 1; min-width: 0; font-size: 15.5px; font-weight: 700; line-height: 1.4; }
+.cy-dev-tile { width: 38px; height: 38px; border-radius: 12px; display: grid; place-items: center; flex: none; background: color-mix(in srgb, var(--cy-luteal) 14%, transparent); color: var(--cy-luteal); }
+.cy-dev-lines { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.cy-dev-lines li { position: relative; padding-left: 16px; font-size: 14px; line-height: 1.55; color: var(--text); }
+.cy-dev-lines li::before { content: ''; position: absolute; left: 0; top: 8px; width: 6px; height: 6px; border-radius: 50%; background: var(--cy-luteal); }
+.cy-dev-doctor { font-size: 13.5px; line-height: 1.5; color: var(--cy-muted); }
+
+/* Settings: switch-like checkbox rows with a hint; a forced row explains why it cannot change. */
+.cy-check { display: flex; gap: 10px; align-items: flex-start; cursor: pointer; font-size: 14px; }
+.cy-check input { margin-top: 3px; flex: none; }
+.cy-check-text { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.cy-check-label { line-height: 1.45; }
+.cy-check.disabled { cursor: default; }
+.cy-check.disabled .cy-check-label { color: var(--text2); }
+.cy-sex-btn.wide { flex: 1; justify-content: center; }
