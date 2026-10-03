@@ -21,7 +21,7 @@ import { CyclePeriodToast, periodToastTitle } from '@/components/cycle/CyclePeri
 import { CycleAlertsBanner } from '@/components/cycle/CycleAlertsBanner';
 import { CycleQuickLogSheet } from '@/components/cycle/CycleQuickLogSheet';
 import { CyclePmsHeatmap } from '@/components/cycle/CyclePmsHeatmap';
-import { CycleOnboarding } from '@/components/cycle/CycleOnboarding';
+import { CycleOnboarding, type CycleRhythmAnswer } from '@/components/cycle/CycleOnboarding';
 import { CycleDayStrip } from '@/components/cycle/CycleDayStrip';
 import { CycleDaySummary } from '@/components/cycle/CycleDaySummary';
 import { CycleDaySheet } from '@/components/cycle/CycleDaySheet';
@@ -104,7 +104,8 @@ import {
 } from '@/lib/cyclePostpartumQuery';
 import { useAuth } from '@/store/AuthContext';
 import { useCycleColors } from '@/theme/cycle';
-import { needsCycleOnboarding } from '@/lib/cycleExperience';
+import { cycleSetupTailKey, needsCycleOnboarding, needsCycleSetupTail } from '@/lib/cycleExperience';
+import { getPreference, setPreference } from '@/lib/storage';
 import { localAccountId } from '@/lib/localAccount';
 import { CycleJourneyGuide } from '@/components/cycle/CycleJourneyGuide';
 
@@ -191,6 +192,31 @@ export default function CycleHome() {
   const [saveError, setSaveError] = useState<string | null>(null);
   const [onboardSaving, setOnboardSaving] = useState(false);
   const [holdOnboarding, setHoldOnboarding] = useState(false);
+  /**
+   * Set-up tail (brief §9 item 19): rhythm + contraception once, when the assessment already saved the
+   * date. `null` = the per-account flag is not read yet (fail closed: nothing is asked until it is).
+   */
+  const [setupTailDone, setSetupTailDone] = useState<boolean | null>(null);
+  useEffect(() => {
+    const owner = user?.id;
+    if (!owner) return;
+    let on = true;
+    setSetupTailDone(null);
+    getPreference(cycleSetupTailKey(owner))
+      .then((value) => {
+        if (on) setSetupTailDone(Boolean(value));
+      })
+      .catch(() => {
+        if (on) setSetupTailDone(true);
+      });
+    return () => {
+      on = false;
+    };
+  }, [user?.id]);
+  const markSetupTailDone = () => {
+    setSetupTailDone(true);
+    if (user?.id) void setPreference(cycleSetupTailKey(user.id), '1');
+  };
   const [ttcConflictOpen, setTtcConflictOpen] = useState(false);
   const [classifyBleed, setClassifyBleed] = useState<{ date: string; classified: boolean } | null>(null);
   const [ttcQuery, setTtcQuery] = useState(() => emptyTtcQueryState());
@@ -477,10 +503,12 @@ export default function CycleHome() {
   }, [viewStamp, cycleView, authReady, user?.id, refreshTtc, refreshPregnancy, refreshPostpartum]);
 
   const lastPeriod = bundle?.profile.lastPeriodStart ?? null;
+  // The tail is due only while the flag is read and unset; `holdOnboarding` keeps the flow on screen after each save.
+  const setupTailDue = setupTailDone === false && needsCycleSetupTail(bundle, false);
   const needsOnboarding =
     Boolean(bundle) &&
     user?.gender === 'FEMALE' &&
-    needsCycleOnboarding(bundle?.profile.mode, lastPeriod, holdOnboarding);
+    (needsCycleOnboarding(bundle?.profile.mode, lastPeriod, holdOnboarding) || setupTailDue);
   const cycleTodayKey = cycleToday(bundle, todayKey());
   const cycleLen = bundle ? usedCycleLength(bundle) : 28;
   const today = cycleTodayKey;
@@ -597,6 +625,39 @@ export default function CycleHome() {
       return true;
     } catch (err) {
       setSaveError(err instanceof ApiError ? err.message : ka.common.error);
+      return false;
+    } finally {
+      setOnboardSaving(false);
+    }
+  };
+
+  /** Rhythm step: only what she answered goes to the server (null keeps the 28 / 5 defaults it learns from later). */
+  const saveRhythm = async ({ avgCycleLength, avgPeriodLength, isIrregular }: CycleRhythmAnswer) => {
+    const owner = user?.id;
+    if (!owner || onboardSaving) return false;
+    setOnboardSaving(true);
+    setSaveError(null);
+    try {
+      const data = await api.cycle.updateProfile({
+        ...(avgCycleLength != null ? { avgCycleLength } : {}),
+        ...(avgPeriodLength != null ? { avgPeriodLength } : {}),
+        isIrregular,
+      });
+      if (localAccountId() !== owner) return false;
+      if (data?.profile) {
+        putCycleBundle(owner, data);
+        try {
+          await cacheCycleBundle(owner, data);
+        } catch {
+          /* Profile is already saved on the server. */
+        }
+      }
+      setHoldOnboarding(true);
+      return true;
+    } catch (err) {
+      setSaveError(
+        err instanceof ApiError && err.status === 0 ? ka.cycle.contraceptionNeedsInternet : err instanceof ApiError ? err.message : ka.common.error,
+      );
       return false;
     } finally {
       setOnboardSaving(false);
@@ -810,6 +871,9 @@ export default function CycleHome() {
     );
   }
 
+  // The per-account flag is still being read for someone the tail may apply to: no overview flash first.
+  if (setupTailDone === null && needsCycleSetupTail(bundle, false) && user?.gender === 'FEMALE') return <CycleLoading />;
+
   if (needsOnboarding) {
     return (
       <CycleOnboarding
@@ -817,8 +881,15 @@ export default function CycleHome() {
         saving={onboardSaving}
         userName={user?.fullName}
         error={saveError}
+        hasLastPeriod={Boolean(lastPeriod) && !holdOnboarding}
         onSave={saveLastPeriod}
-        onBack={() => router.canGoBack() ? router.back() : router.replace('/(tabs)/home')}
+        onSaveRhythm={saveRhythm}
+        onBack={() => {
+          // Leaving the tail counts as answered: she is never asked twice (the full date flow still returns).
+          if (setupTailDue) markSetupTailDone();
+          if (router.canGoBack()) router.back();
+          else router.replace('/(tabs)/home');
+        }}
         onChooseMode={() => router.push('/cycle/settings')}
         onFinishContraception={async ({ method, startedAt }) => {
           setOnboardSaving(true);
@@ -832,6 +903,7 @@ export default function CycleHome() {
               if (data?.profile && user?.id) putCycleBundle(user.id, data);
               if (data?.contraception?.ttcConflict) setTtcConflictOpen(true);
             }
+            markSetupTailDone();
             setHoldOnboarding(false);
           } catch (err) {
             setSaveError(

@@ -7,13 +7,15 @@ import { useCycleColors } from '@/theme/cycle';
 /**
  * PredictionBadge — the only way predicted dates render (§11).
  * Always carries the "სავარაუდო" estimate wording in the same visual unit.
+ * `until` turns it into a date range („სავარაუდო · 6 – 10 ოქტომბერი“) for variable cycles, which never get one date.
  */
-export function PredictionBadge({ date }: { date: string }) {
+export function PredictionBadge({ date, until }: { date: string; until?: string | null }) {
   const c = useCycleColors();
+  const text = until && until !== date ? rangeDates(date, until) : formatCycleDateKa(date);
   return (
     <View
       accessible
-      accessibilityLabel={`${ka.cycle.estimatedSection}, ${formatCycleDateKa(date)}`}
+      accessibilityLabel={`${ka.cycle.estimatedSection}, ${text}`}
       style={{
         flexDirection: 'row',
         alignItems: 'center',
@@ -47,10 +49,19 @@ export function PredictionBadge({ date }: { date: string }) {
           lineHeight: 16,
         }}
       >
-        {ka.cycle.estimatedSection} · {formatCycleDateKa(date)}
+        {ka.cycle.estimatedSection} · {text}
       </Text>
     </View>
   );
+}
+
+/** „6 – 10 ოქტომბერი 2026“ when both dates share a month, else both in full. */
+function rangeDates(from: string, to: string): string {
+  const a = formatCycleDateKa(from);
+  const b = formatCycleDateKa(to);
+  const [dayA, ...restA] = a.split(' ');
+  const [, ...restB] = b.split(' ');
+  return restA.join(' ') === restB.join(' ') ? `${dayA} – ${b}` : `${a} – ${b}`;
 }
 
 /**

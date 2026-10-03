@@ -149,11 +149,54 @@ export type CycleCenter =
   | { kind: 'periodDay'; day: number | null }
   | { kind: 'periodToday' }
   | { kind: 'countdown'; days: number }
+  /** Variable cycles (`isIrregular`): the period is expected between `from` and `to` days from today (both ≥ 1). */
+  | { kind: 'countdownRange'; from: number; to: number }
+  /** Variable cycles: the expected window already includes today and stays open for `to` more days (≥ 0). */
+  | { kind: 'windowOpen'; to: number }
   | { kind: 'late'; day: number; lateBy: number }
   | { kind: 'cycleDay'; day: number | null; length: number | null }
   | { kind: 'none' };
 
-/** One number in the ring: bleeding day → „დღეს“ → countdown („სავარაუდოდ“) → cycle day. */
+/** Days before / after the server's single estimate that the period may realistically start. */
+export type CycleSpread = { before: number; after: number };
+
+/** With no history to measure, a variable cycle is shown as ± this many days (brief §9 item 12, Flo's rule). */
+export const IRREGULAR_DEFAULT_SPREAD = 3;
+/** A spread wider than this is „ვსწავლობთ“ territory — the window never grows past ± a week. */
+export const IRREGULAR_MAX_SPREAD = 7;
+
+/**
+ * How far the period may move around the server's estimate when the person said her cycles vary
+ * (`profile.isIrregular`). The server keeps one date (the forecast engine is unchanged), so the app
+ * widens it from her own last cycles: shortest → days before, longest → days after, each at least one
+ * day (a single confident date is never shown for a variable cycle) and at most a week. With fewer
+ * than two completed cycles it is ± 3 days. Regular cycles return null and keep the single date.
+ */
+export function cycleSpreadModel({
+  isIrregular,
+  usedCycleLength,
+  cycleLengths,
+}: {
+  isIrregular: boolean | null | undefined;
+  usedCycleLength: number | null | undefined;
+  cycleLengths: { length: number | null }[] | null | undefined;
+}): CycleSpread | null {
+  if (!isIrregular) return null;
+  const lengths = (cycleLengths ?? [])
+    .map((x) => x.length)
+    .filter((n): n is number => typeof n === 'number' && Number.isFinite(n) && n > 0)
+    .slice(-6);
+  if (lengths.length < 2) return { before: IRREGULAR_DEFAULT_SPREAD, after: IRREGULAR_DEFAULT_SPREAD };
+  const used = Math.round(usedCycleLength ?? 0) || 28;
+  const clamp = (n: number) => Math.min(IRREGULAR_MAX_SPREAD, Math.max(1, Math.round(n)));
+  return { before: clamp(used - Math.min(...lengths)), after: clamp(Math.max(...lengths) - used) };
+}
+
+/**
+ * One number in the ring: bleeding day → „დღეს“ → countdown („სავარაუდოდ“) → cycle day.
+ * With a `spread` (variable cycles) the countdown becomes a window — „3–7 დღე“, or „დღეს ან მომდევნო
+ * N დღეში“ once the window has opened — and „late“ only begins after the whole window has passed.
+ */
 export function cycleCenter({
   hideLengthChrome,
   hidePredicted,
@@ -163,6 +206,7 @@ export function cycleCenter({
   inDays,
   day,
   cycleLength,
+  spread = null,
 }: {
   hideLengthChrome: boolean;
   hidePredicted: boolean;
@@ -172,9 +216,18 @@ export function cycleCenter({
   inDays: number | null;
   day: number | null;
   cycleLength: number;
+  spread?: CycleSpread | null;
 }): CycleCenter {
   if (hideLengthChrome) return { kind: 'none' };
   if (onPeriod) return { kind: 'periodDay', day };
+  if (spread && forecastOn && !hidePredicted && inDays != null) {
+    const to = inDays + spread.after;
+    const from = inDays - spread.before;
+    // The calendar already paints today as an expected period day: the window is open now.
+    if (predictedToday) return { kind: 'windowOpen', to: Math.max(0, to) };
+    if (to >= 0) return from <= 0 ? { kind: 'windowOpen', to } : { kind: 'countdownRange', from, to };
+    // The whole window has passed: fall through to „late“ (counted from the estimate, like the alerts banner).
+  }
   if (!hidePredicted && (predictedToday || (forecastOn && inDays === 0))) return { kind: 'periodToday' };
   if (forecastOn && inDays != null && inDays > 0) return { kind: 'countdown', days: inDays };
   if (forecastOn && inDays != null && inDays < 0 && day != null) return { kind: 'late', day, lateBy: -inDays };

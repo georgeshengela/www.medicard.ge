@@ -34,18 +34,20 @@ import { formatCycleDateKa } from '@/lib/cycleCivilDateKa';
 import { formatYmd } from '@/lib/format';
 import { isFeatureOn, useFeatureState } from '@/lib/featureFlags';
 import {
+  addDaysKey,
   cycleCenter,
   cycleHeroActions,
   cycleHeroVariant,
+  cycleSpreadModel,
   cycleWeekStrip,
   daysBetweenKeys,
   fertileDaysInCycle,
   startLeads,
   weekdayIndex,
-  type CycleCenter,
   type CycleHeroActionId,
   type StripDay,
 } from '@/lib/home/homeCycle';
+import { CYCLES_VARY_NOTE, cycleCenterText } from '@/lib/cycleCenterCopy';
 import { useThemeColors, useIsDark } from '@/theme/colors';
 import { useCycleColors } from '@/theme/cycle';
 import { useHomeAccent } from '@/theme/homeAccent';
@@ -387,8 +389,10 @@ function ClassicCycleCard({
   const inDays = next ? daysBetweenKeys(today, next) : null;
   const day = hideLengthChrome ? null : phase.day;
 
-  const center = cycleCenter({ hideLengthChrome, hidePredicted, onPeriod, predictedToday, forecastOn, inDays, day, cycleLength: cycleLen });
-  const centerText = centerCopy(center, uncertainBleed);
+  // Variable cycles (brief §9 item 12): the single server date widens into a window from her last cycles.
+  const spread = cycleSpreadModel({ isIrregular: bundle.profile.isIrregular, usedCycleLength: cycleLen, cycleLengths: bundle.trends?.cycleLengths });
+  const center = cycleCenter({ hideLengthChrome, hidePredicted, onPeriod, predictedToday, forecastOn, inDays, day, cycleLength: cycleLen, spread });
+  const centerText = cycleCenterText(center, uncertainBleed);
   // Today's colour: bleeding wins; otherwise the phase the cycle screen names.
   const todayColor = onPeriod
     ? c.period
@@ -457,14 +461,24 @@ function ClassicCycleCard({
     showOvulation: showOvulationUi(bundle),
     showPredicted: caps.showFertileEstimates && !hidePredicted,
   });
-  // The big answer: countdown → „3 დღე“ with the date under it; otherwise the centre copy as is.
-  const unit = center.kind === 'countdown' ? tx('დღე', center.days === 1 ? 'day' : 'days') : null;
+  // The big answer: countdown → „3 დღე“ with the date under it; a variable cycle → „3–7 დღე“ with the
+  // date range (never one date); otherwise the centre copy as is.
+  const unit =
+    center.kind === 'countdown'
+      ? tx('დღე', center.days === 1 ? 'day' : 'days')
+      : center.kind === 'countdownRange'
+        ? tx('დღე', 'days')
+        : null;
   const sub =
     center.kind === 'countdown'
       ? badge && !badge.calm && next
         ? `${ka.cycle.heroLikely} · ${WEEKDAYS_KA[weekdayIndex(next)]}, ${formatYmd(next)}`
         : ka.cycle.heroLikely
-      : centerText.bottom;
+      : center.kind === 'countdownRange'
+        ? `${ka.cycle.heroLikely} · ${shortDate(addDaysKey(today, center.from))} – ${shortDate(addDaysKey(today, center.to))} · ${CYCLES_VARY_NOTE()}`
+        : center.kind === 'windowOpen'
+          ? `${centerText.bottom} · ${CYCLES_VARY_NOTE()}`
+          : centerText.bottom;
 
   return (
     <View style={[s.card, { backgroundColor: theme.surface }]}>
@@ -505,43 +519,10 @@ function ClassicCycleCard({
   );
 }
 
-type CenterText = { top: string | null; value: string; bottom: string | null; tone?: 'period' };
-
 /** „6 ოქტომბერი“ → „6 ოქტ“ (the disc has little room). */
 function shortDate(ymd: string): string {
   const [day, ...month] = formatYmd(ymd).split(' ');
   return `${day} ${month.join(' ').slice(0, 3)}`;
-}
-
-function centerCopy(center: CycleCenter, uncertainBleed: boolean): CenterText {
-  switch (center.kind) {
-    case 'periodDay':
-      return {
-        top: uncertainBleed ? ka.cycle.heroBleedingDay : ka.cycle.heroPeriodDay,
-        value: center.day != null ? String(center.day) : '—',
-        bottom: null,
-        tone: 'period',
-      };
-    case 'periodToday':
-      return { top: ka.cycle.heroLikely, value: ka.cycle.heroToday, bottom: ka.cycle.legendPeriodPredicted, tone: 'period' };
-    case 'countdown':
-      // The same words as the cycle screen's dial: „მენსტრუაციამდე · 3 · დღე · სავარაუდოდ“.
-      return {
-        top: uncertainBleed ? ka.cycle.heroUntilBleeding : ka.cycle.heroUntilPeriod,
-        value: String(center.days),
-        bottom: ka.cycle.heroDaysEstimated,
-      };
-    case 'late':
-      return { top: ka.cycle.cycleDay, value: String(center.day), bottom: ka.cycle.heroLateBy(center.lateBy) };
-    case 'cycleDay':
-      return {
-        top: ka.cycle.cycleDay,
-        value: center.day != null ? String(center.day) : '—',
-        bottom: center.day != null && center.length ? ka.cycle.outOf(center.length) : null,
-      };
-    default:
-      return { top: null, value: '—', bottom: null };
-  }
 }
 
 // ---------- pieces ----------

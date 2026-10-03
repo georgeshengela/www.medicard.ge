@@ -18,6 +18,8 @@ import {
   nextPeriodConfidenceCopy,
 } from '@/lib/cycleHonesty';
 import { expectationLine, expectationsFromBundle } from '@/lib/cycleExpectations';
+import { cycleCenterText } from '@/lib/cycleCenterCopy';
+import { cycleCenter, cycleSpreadModel } from '@/lib/home/homeCycle';
 import { addDaysToKey, daysBetween } from '@/lib/cyclePhase';
 import { isBleedFlow } from '@/lib/cycleLogSave';
 import { cycleModeCapabilities } from '@/lib/cycleModes';
@@ -167,18 +169,22 @@ export function CycleHero({
 
   const inDays = next ? daysBetween(today, next) : null;
   const forecastOn = Boolean(next) && caps.showNextPeriodForecast && !hidePredicted;
-  /** One number in the ring (research brief §1): bleeding day, "today", or the countdown; else cycle day. */
-  const center: GaugeCenter | undefined = hideLengthChrome
-    ? undefined
-    : onPeriod
-      ? { top: uncertainBleed ? ka.cycle.heroBleedingDay : ka.cycle.heroPeriodDay, value: day != null ? String(day) : '—', bottom: null, tone: 'period' }
-      : !hidePredicted && (predictedToday || (forecastOn && inDays === 0))
-        ? { top: ka.cycle.heroLikely, value: ka.cycle.heroToday, bottom: ka.cycle.legendPeriodPredicted, tone: 'period' }
-        : forecastOn && inDays != null && inDays > 0
-          ? { top: uncertainBleed ? ka.cycle.heroUntilBleeding : ka.cycle.heroUntilPeriod, value: String(inDays), bottom: ka.cycle.heroDaysEstimated }
-          : forecastOn && inDays != null && inDays < 0 && day != null
-            ? { top: ka.cycle.cycleDay, value: String(day), bottom: ka.cycle.heroLateBy(-inDays) }
-            : undefined;
+  // Variable cycles (brief §9 item 12): the single server date widens into a window from her last cycles.
+  const spread = cycleSpreadModel({
+    isIrregular: bundle.profile.isIrregular,
+    usedCycleLength: cycleLength,
+    cycleLengths: bundle.trends?.cycleLengths,
+  });
+  /** One number in the ring (research brief §1): bleeding day, "today", the countdown or window; else cycle day. */
+  const centerModel = cycleCenter({ hideLengthChrome, hidePredicted, onPeriod, predictedToday, forecastOn, inDays, day, cycleLength, spread });
+  const center: GaugeCenter | undefined =
+    centerModel.kind === 'none' || centerModel.kind === 'cycleDay' ? undefined : cycleCenterText(centerModel, uncertainBleed);
+  /** The estimate badge's end date — the window's last day for a variable cycle, else nothing. */
+  const rangeUntil =
+    next && spread && (centerModel.kind === 'countdownRange' || centerModel.kind === 'windowOpen')
+      ? addDaysToKey(next, spread.after)
+      : null;
+  const rangeFrom = rangeUntil && next && centerModel.kind === 'countdownRange' ? addDaysToKey(next, -spread!.before) : next;
   /** Finger on the dial → that day's date, cycle day and (estimated or logged) phase. */
   const describeDay = (d: number): GaugeCenter | null => {
     const date = dateForCycleDay(d);
@@ -239,7 +245,7 @@ export function CycleHero({
 
         {forecastOn || (caps.showNextPeriodForecast && !hidePredicted) ? (
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', alignItems: 'center', gap: 4, marginTop: 10 }}>
-            {next && forecastOn && !onPeriod ? <PredictionBadge date={next} /> : null}
+            {next && forecastOn && !onPeriod ? <PredictionBadge date={rangeFrom ?? next} until={rangeUntil} /> : null}
             <ConfidenceHint label={confidenceCopy} />
           </View>
         ) : null}

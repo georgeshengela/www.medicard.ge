@@ -8,6 +8,7 @@ import {
   cycleHeroActions,
   cycleHeroVariant,
   cycleRingModel,
+  cycleSpreadModel,
   cycleStatsModel,
   cycleTipsAllowed,
   cycleWeekStrip,
@@ -99,6 +100,44 @@ test('centre number follows the hero grammar', () => {
   assert.deepEqual(cycleCenter({ ...base, hideLengthChrome: true }), { kind: 'none' });
   // Estimates hidden: an estimated "today" is never shown.
   assert.deepEqual(cycleCenter({ ...base, hidePredicted: true, forecastOn: false, predictedToday: true }), { kind: 'cycleDay', day: 26, length: 28 });
+});
+
+test('variable cycles: the spread comes from her own last cycles, never narrower than a day or wider than a week', () => {
+  // Regular cycles keep the single estimate.
+  assert.equal(cycleSpreadModel({ isIrregular: false, usedCycleLength: 28, cycleLengths: [{ length: 24 }, { length: 33 }] }), null);
+  assert.equal(cycleSpreadModel({ isIrregular: null, usedCycleLength: 28, cycleLengths: [] }), null);
+  // No history yet → ± 3 days.
+  assert.deepEqual(cycleSpreadModel({ isIrregular: true, usedCycleLength: 28, cycleLengths: [] }), { before: 3, after: 3 });
+  assert.deepEqual(cycleSpreadModel({ isIrregular: true, usedCycleLength: null, cycleLengths: [{ length: 30 }] }), { before: 3, after: 3 });
+  // Shortest 25 / longest 34 around an average of 29 → 4 days before, 5 after.
+  assert.deepEqual(
+    cycleSpreadModel({ isIrregular: true, usedCycleLength: 29, cycleLengths: [{ length: 25 }, { length: 34 }, { length: 28 }, { length: 29 }] }),
+    { before: 4, after: 5 },
+  );
+  // Identical cycles still never collapse to one date; a huge spread is capped at a week; nulls and old cycles are ignored.
+  assert.deepEqual(cycleSpreadModel({ isIrregular: true, usedCycleLength: 28, cycleLengths: [{ length: 28 }, { length: 28 }] }), { before: 1, after: 1 });
+  const wide = [{ length: 12 }, { length: 60 }, { length: null }, { length: 28 }];
+  assert.deepEqual(cycleSpreadModel({ isIrregular: true, usedCycleLength: 28, cycleLengths: wide }), { before: 7, after: 7 });
+  const old = [{ length: 10 }, { length: 27 }, { length: 28 }, { length: 29 }, { length: 27 }, { length: 28 }, { length: 29 }];
+  assert.deepEqual(cycleSpreadModel({ isIrregular: true, usedCycleLength: 28, cycleLengths: old }), { before: 1, after: 1 });
+});
+
+test('variable cycles: the centre shows a window, then „today or soon“, and is late only after the window', () => {
+  const base = { hideLengthChrome: false, hidePredicted: false, onPeriod: false, predictedToday: false, forecastOn: true, inDays: 5, day: 24, cycleLength: 28 };
+  const spread = { before: 2, after: 3 };
+  assert.deepEqual(cycleCenter({ ...base, spread }), { kind: 'countdownRange', from: 3, to: 8 });
+  assert.deepEqual(cycleCenter({ ...base, spread, inDays: 2 }), { kind: 'windowOpen', to: 5 });
+  assert.deepEqual(cycleCenter({ ...base, spread, inDays: 0 }), { kind: 'windowOpen', to: 3 });
+  assert.deepEqual(cycleCenter({ ...base, spread, inDays: -3, day: 32 }), { kind: 'windowOpen', to: 0 });
+  assert.deepEqual(cycleCenter({ ...base, spread, inDays: -4, day: 33 }), { kind: 'late', day: 33, lateBy: 4 });
+  // The calendar painting today as expected bleeding opens the window at once.
+  assert.deepEqual(cycleCenter({ ...base, spread, inDays: 9, predictedToday: true }), { kind: 'windowOpen', to: 12 });
+  // Bleeding, hidden estimates and no forecast are untouched by the spread.
+  assert.deepEqual(cycleCenter({ ...base, spread, onPeriod: true, day: 1 }), { kind: 'periodDay', day: 1 });
+  assert.deepEqual(cycleCenter({ ...base, spread, hidePredicted: true, forecastOn: false }), { kind: 'cycleDay', day: 24, length: 28 });
+  assert.deepEqual(cycleCenter({ ...base, spread, forecastOn: false }), { kind: 'cycleDay', day: 24, length: 28 });
+  // Without a spread nothing changes.
+  assert.deepEqual(cycleCenter({ ...base, spread: null }), { kind: 'countdown', days: 5 });
 });
 
 test('buttons mirror the cycle screen: start leads near the estimate, end leads on the period after day 1', () => {

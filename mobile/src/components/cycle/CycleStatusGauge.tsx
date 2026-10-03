@@ -185,6 +185,8 @@ export function CycleStatusGauge({
   const shown = scrubCenter ?? center;
   const valueSize = Math.round(size * 0.24);
   const centerValue = shown?.value ?? (hideLengthChrome ? '—' : day != null ? String(day) : '—');
+  // A word („დღეს“) or a range („3–7“) needs less than a lone numeral; adjustsFontSizeToFit is native-only.
+  const valueFont = /[^\d]/.test(centerValue) ? Math.round(valueSize * (centerValue.length > 3 ? 0.56 : 0.8)) : valueSize;
   const centerTop = shown ? shown.top : ka.cycle.cycleDay;
   const centerBottom = shown ? shown.bottom : hideLengthChrome ? null : ka.cycle.outOf(length);
   const tickR = R - BAND / 2 - 9;
@@ -279,7 +281,7 @@ export function CycleStatusGauge({
             style={{
               color: shown?.tone === 'period' ? c.period : c.ink,
               fontFamily: 'NotoSansGeorgian_700Bold',
-              fontSize: valueSize,
+              fontSize: valueFont,
               lineHeight: Math.round(valueSize * 1.18),
               letterSpacing: -1.5,
               textAlign: 'center',
