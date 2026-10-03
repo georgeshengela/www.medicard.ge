@@ -1,7 +1,13 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Image, Pressable, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { useRouter } from 'expo-router';
-import { CloudSun, LayoutDashboard } from 'lucide-react-native';
+import { CloudSun, Dumbbell, LayoutDashboard } from 'lucide-react-native';
+import { LinearGradient } from 'expo-linear-gradient';
+import * as Haptics from 'expo-haptics';
+import Animated, { Easing, interpolate, runOnJS, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
+import { useTrainerSwitch } from '@/components/coach/CoachEntry';
+import { usePrefersReducedMotion } from '@/hooks/usePrefersReducedMotion';
+import { MODULE_BRANDS } from '@/theme/moduleBrand';
 import { RUN_ICON } from '@/components/run/runArt';
 import { Meteocon, meteoconSlugFor } from '@/components/weather/Meteocon';
 import { AVATAR_SOURCES, isAvatarId } from '@/constants/avatarAssets';
@@ -38,6 +44,48 @@ export function HomeHeader({ firstName, initial, avatarId, streak, dateLabel, on
   const accent = useHomeAccent();
   // Paused from admin („მოდულები“): no pill, and no weather fetch behind it.
   const weatherOn = useFeature('weather');
+  const trainer = useTrainerSwitch(useFeature('coach'));
+  const reduceMotion = usePrefersReducedMotion();
+  const flip = useSharedValue(0);
+  const switching = useRef(false);
+  const resetTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => () => {
+    if (resetTimer.current) clearTimeout(resetTimer.current);
+  }, []);
+  const openCoach = () => {
+    router.push('/coach' as never);
+    // Back on Home later, the avatar shows her own face again.
+    resetTimer.current = setTimeout(() => {
+      flip.value = 0;
+      switching.current = false;
+    }, 700);
+  };
+  /** The avatar turns over to its MEDICOACH side, then the workspace opens. */
+  const switchToCoach = () => {
+    if (switching.current) return;
+    switching.current = true;
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => undefined);
+    if (reduceMotion) {
+      openCoach();
+      return;
+    }
+    flip.value = withTiming(1, { duration: 420, easing: Easing.inOut(Easing.cubic) }, (done) => {
+      if (done) runOnJS(openCoach)();
+    });
+  };
+  const front = useAnimatedStyle(() => ({
+    transform: [{ perspective: 400 }, { rotateY: `${interpolate(flip.value, [0, 1], [0, 180])}deg` }],
+    opacity: flip.value < 0.5 ? 1 : 0,
+  }));
+  const back = useAnimatedStyle(() => ({
+    transform: [{ perspective: 400 }, { rotateY: `${interpolate(flip.value, [0, 1], [180, 360])}deg` }],
+    opacity: flip.value < 0.5 ? 0 : 1,
+  }));
+  const coach = MODULE_BRANDS.coach;
+  const coachLabel =
+    trainer?.today
+      ? tx(`ტრენერის რეჟიმზე გადასვლა · დღეს ${trainer.today} ვარჯიში`, `Switch to trainer mode · ${trainer.today} ${trainer.today === 1 ? 'session' : 'sessions'} today`)
+      : tx('ტრენერის რეჟიმზე გადასვლა', 'Switch to trainer mode');
 
   return (
     <View style={s.wrap}>
@@ -82,20 +130,52 @@ export function HomeHeader({ firstName, initial, avatarId, streak, dateLabel, on
           <LayoutDashboard size={19} color={accent.ink} strokeWidth={2} />
         </Pressable>
       ) : null}
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel={tx('ჩემი პროფილი', 'My profile')}
-        onPress={() => router.push('/(tabs)/profile' as never)}
-        style={[s.avatar, { backgroundColor: accent.soft }]}
-      >
-        {myPhoto && brokenPhoto !== myPhoto ? (
-          <PrivateImage path={myPhoto} label={tx('ჩემი პროფილი', 'My profile')} style={{ width: 48, height: 48, borderRadius: 24 }} onFail={() => setBrokenPhoto(myPhoto)} />
-        ) : isAvatarId(avatarId) ? (
-          <Image source={AVATAR_SOURCES[avatarId]} style={{ width: 48, height: 48, borderRadius: 24 }} />
-        ) : (
-          <Text style={[s.avatarText, { color: accent.ink }]}>{initial}</Text>
-        )}
-      </Pressable>
+      <View style={s.avatarSlot}>
+        <Animated.View style={[s.face, front]}>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={tx('ჩემი პროფილი', 'My profile')}
+            accessibilityHint={trainer ? tx('ხანგრძლივი შეხება — ტრენერის რეჟიმი', 'Long press for trainer mode') : undefined}
+            onPress={() => router.push('/(tabs)/profile' as never)}
+            onLongPress={trainer ? switchToCoach : undefined}
+            style={[s.avatar, { backgroundColor: accent.soft }]}
+          >
+            {myPhoto && brokenPhoto !== myPhoto ? (
+              <PrivateImage path={myPhoto} label={tx('ჩემი პროფილი', 'My profile')} style={{ width: 48, height: 48, borderRadius: 24 }} onFail={() => setBrokenPhoto(myPhoto)} />
+            ) : isAvatarId(avatarId) ? (
+              <Image source={AVATAR_SOURCES[avatarId]} style={{ width: 48, height: 48, borderRadius: 24 }} />
+            ) : (
+              <Text style={[s.avatarText, { color: accent.ink }]}>{initial}</Text>
+            )}
+          </Pressable>
+        </Animated.View>
+        {trainer ? (
+          <>
+            {/* The other side of the avatar: the trainer workspace, in MEDICOACH graphite. */}
+            <Animated.View pointerEvents="none" style={[s.face, s.backFace, back]}>
+              <LinearGradient colors={coach.gradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={s.backFill}>
+                <Dumbbell size={22} color={coach.onHero} strokeWidth={2.2} />
+              </LinearGradient>
+            </Animated.View>
+            {/* The coin tucked under the avatar, like a second account: tap = switch. */}
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={coachLabel}
+              hitSlop={10}
+              onPress={switchToCoach}
+              style={[s.coin, { borderColor: c.bg100 }]}
+            >
+              <LinearGradient colors={coach.gradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={s.coinFill}>
+                {trainer.today ? (
+                  <Text style={[s.coinCount, { color: coach.onHero }]}>{trainer.today > 9 ? '9+' : trainer.today}</Text>
+                ) : (
+                  <Dumbbell size={11} color={coach.onHero} strokeWidth={2.6} />
+                )}
+              </LinearGradient>
+            </Pressable>
+          </>
+        ) : null}
+      </View>
     </View>
   );
 }
@@ -138,7 +218,7 @@ const s = StyleSheet.create({
     paddingHorizontal: 20,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 14,
+    gap: 10,
   },
   meta: {
     flexDirection: 'row',
@@ -173,12 +253,12 @@ const s = StyleSheet.create({
     lineHeight: 16,
   },
   title: {
-    fontFamily: 'NotoSansGeorgian_700Bold',
-    fontSize: 20,
-    lineHeight: 28,
-    letterSpacing: -0.3,
+    fontFamily: 'NotoSansGeorgian_600SemiBold',
+    fontSize: 16,
+    lineHeight: 22,
+    letterSpacing: -0.2,
   },
-  titleNarrow: { fontSize: 18, lineHeight: 26 },
+  titleNarrow: { fontSize: 15, lineHeight: 21 },
   customize: {
     width: 40,
     height: 40,
@@ -187,6 +267,22 @@ const s = StyleSheet.create({
     justifyContent: 'center',
     marginRight: -4,
   },
+  avatarSlot: { width: 48, height: 48 },
+  face: { position: 'absolute', left: 0, top: 0, width: 48, height: 48, backfaceVisibility: 'hidden' },
+  backFace: { borderRadius: 24, overflow: 'hidden' },
+  backFill: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  coin: {
+    position: 'absolute',
+    right: -5,
+    bottom: -5,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    borderWidth: 2,
+    overflow: 'hidden',
+  },
+  coinFill: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  coinCount: { fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 11, lineHeight: 14, fontVariant: ['tabular-nums'] },
   avatar: {
     width: 48,
     height: 48,

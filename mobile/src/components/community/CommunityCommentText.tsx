@@ -1,7 +1,7 @@
 import React from 'react';
 import {Text} from 'react-native';
 import {CommunityMention} from '@/lib/communityMentions';
-import {useThemeColors} from '@/theme/colors';
+import { useCommunityColors as useThemeColors } from '@/components/community/communityPalette';
 export function CommunityCommentText({body,mentions=[],onMention}:{body:string;mentions?:CommunityMention[];onMention:(m:CommunityMention)=>void}){
  const c=useThemeColors(),parts:React.ReactNode[]=[];let end=0;
  for(const mention of [...mentions].sort((a,b)=>a.start-b.start)){

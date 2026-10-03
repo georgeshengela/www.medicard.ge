@@ -1,7 +1,7 @@
 import React from 'react';
 import { View } from 'react-native';
 import Svg, { Circle, Path } from 'react-native-svg';
-import { useThemeColors } from '@/theme/colors';
+import { useCommunityColors as useThemeColors } from '@/components/community/communityPalette';
 import { tx } from '@/i18n/locale';
 
 /** A shared, non-identifying avatar; never derived from the account's photo. */

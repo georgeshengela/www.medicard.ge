@@ -1,7 +1,7 @@
 import React from 'react';
 import {Image,Pressable,Text,View} from 'react-native';
 import {Check,Feather,UserRound} from 'lucide-react-native';
-import {useThemeColors} from '@/theme/colors';
+import { useCommunityColors as useThemeColors } from '@/components/community/communityPalette';
 import {AVATAR_SOURCES,isAvatarId} from '@/constants/avatarAssets';
 import {AnonymousAvatar} from './AnonymousAvatar';
 import { tx } from '@/i18n/locale';

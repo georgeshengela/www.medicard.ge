@@ -41,18 +41,18 @@ type Local = { goal: WeightGoal | null; logs: WeightLog[]; ready: boolean };
  * and source, `facts.weightHistory`, `projection`). No `useHealthMetrics` — it re-reads native data.
  * Tone: no percent text, nothing red, moving away is never a negative number, the ETA is "around".
  */
-export function HomeWeightProgress({ nutrition, first = false }: { nutrition: HomeNutritionState; first?: boolean }) {
-  const c = useThemeColors();
-  const accent = useHomeAccent();
-  const router = useRouter();
-  const features = useFeatureState();
+/**
+ * The weight state Home shows — shared by „წონა და მიზანი“ and the women's MEDIFOOD card: the local
+ * goal and logs (re-read on focus), the dashboard facts, the current weight and goal view, and the
+ * weigh-in sheet's open state and save handler. Null `current` = nothing honest to show yet.
+ */
+export function useHomeWeight(nutrition: HomeNutritionState) {
   const { user, healthProfile, setHealthProfile } = useAuth();
   const accountId = user?.id ?? null;
   const [local, setLocal] = useState<Local>({ goal: null, logs: [], ready: false });
   // A weigh-in saved here, shown until the dashboard answer that includes it replaces `data`.
   const [saved, setSaved] = useState<{ kg: number; date: string; data: unknown } | null>(null);
   const [sheetOpen, setSheetOpen] = useState(false);
-  const [chartWidth, setChartWidth] = useState(0);
 
   useFocusEffect(
     useCallback(() => {
@@ -70,12 +70,7 @@ export function HomeWeightProgress({ nutrition, first = false }: { nutrition: Ho
     }, [accountId]),
   );
 
-  if (!isHrefAvailable('/health-metrics/weight', features)) return null;
-
   const data = nutrition.data;
-  // Nothing honest to show yet: local storage not read and no dashboard (a few ms on cold start).
-  if (!local.ready && !data) return null;
-
   const today = todayYmd();
   const current = pickCurrentWeight({
     server: data?.facts?.current,
@@ -86,20 +81,6 @@ export function HomeWeightProgress({ nutrition, first = false }: { nutrition: Ho
   });
   const goal = local.goal ?? data?.facts?.weightGoal ?? null;
   const view = current ? weightGoalView(goal, current.kg) : null;
-  const series = weightSeries({ history: data?.facts?.weightHistory, logs: local.logs, current });
-  const eta = view ? weightEta(data, view) : null;
-
-  const when = current ? weighInWhen(current, today) : null;
-  const whenLabel =
-    when?.kind === 'profile'
-      ? tx('პროფილიდან', 'From your profile')
-      : when?.kind === 'today'
-        ? tx('ბოლო აწონვა · დღეს', 'Last weigh-in · today')
-        : when?.kind === 'yesterday'
-          ? tx('ბოლო აწონვა · გუშინ', 'Last weigh-in · yesterday')
-          : when?.kind === 'date'
-            ? tx(`ბოლო აწონვა · ${formatYmd(when.date)}`, `Last weigh-in · ${formatYmd(when.date)}`)
-            : '';
 
   const onSaved = () => {
     const dataAtSave = nutrition.data;
@@ -115,6 +96,38 @@ export function HomeWeightProgress({ nutrition, first = false }: { nutrition: Ho
       void nutrition.load();
     })().catch(() => undefined);
   };
+
+  return { ready: local.ready || Boolean(data), logs: local.logs, today, current, view, sheetOpen, setSheetOpen, onSaved, healthProfile };
+}
+
+export function HomeWeightProgress({ nutrition, first = false }: { nutrition: HomeNutritionState; first?: boolean }) {
+  const c = useThemeColors();
+  const accent = useHomeAccent();
+  const router = useRouter();
+  const features = useFeatureState();
+  const { ready, logs, today, current, view, sheetOpen, setSheetOpen, onSaved, healthProfile } = useHomeWeight(nutrition);
+  const [chartWidth, setChartWidth] = useState(0);
+
+  if (!isHrefAvailable('/health-metrics/weight', features)) return null;
+
+  const data = nutrition.data;
+  // Nothing honest to show yet: local storage not read and no dashboard (a few ms on cold start).
+  if (!ready) return null;
+
+  const series = weightSeries({ history: data?.facts?.weightHistory, logs, current });
+  const eta = view ? weightEta(data, view) : null;
+
+  const when = current ? weighInWhen(current, today) : null;
+  const whenLabel =
+    when?.kind === 'profile'
+      ? tx('პროფილიდან', 'From your profile')
+      : when?.kind === 'today'
+        ? tx('ბოლო აწონვა · დღეს', 'Last weigh-in · today')
+        : when?.kind === 'yesterday'
+          ? tx('ბოლო აწონვა · გუშინ', 'Last weigh-in · yesterday')
+          : when?.kind === 'date'
+            ? tx(`ბოლო აწონვა · ${formatYmd(when.date)}`, `Last weigh-in · ${formatYmd(when.date)}`)
+            : '';
 
   const points = chartWidth > 0 && series.length >= SPARKLINE_MIN_POINTS ? sparklinePoints(series.map((p) => p.kg), chartWidth, CHART_H) : [];
   const etaDate = eta ? formatYmd(eta.date, daysBetween(today, eta.date) > 300) : '';

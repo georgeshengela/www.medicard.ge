@@ -9,6 +9,7 @@
  * Older binaries (no native module) and web report `supported: false`, so the setting never shows
  * there — an OTA of this file into train 19 would simply hide the row.
  */
+import { requireOptionalNativeModule } from 'expo';
 import { Platform } from 'react-native';
 import type { ImageSourcePropType } from 'react-native';
 import { tx } from '@/i18n/locale';
@@ -26,6 +27,9 @@ function nativeIcons(): NativeIcons | null {
   if (native !== undefined) return native;
   native = null;
   if (Platform.OS !== 'ios') return native;
+  // Expo Go and binaries before train 20 have no module: ask first, so nothing throws or logs
+  // „Cannot find native module 'ExpoAlternateAppIcons'“ (same check as otaUpdates.ts).
+  if (!requireOptionalNativeModule('ExpoAlternateAppIcons')) return native;
   try {
     // Lazy: a binary without the module throws here instead of at app start.
     // eslint-disable-next-line @typescript-eslint/no-require-imports

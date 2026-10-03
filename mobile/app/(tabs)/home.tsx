@@ -11,20 +11,12 @@ import Animated, { Easing, useAnimatedStyle, useSharedValue, withTiming } from '
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
 import {
-  Activity,
   Brain,
   CalendarCheck,
   ClipboardCheck,
-  FlaskConical,
   HeartHandshake,
   MessagesSquare,
-  PawPrint,
-  Scale,
-  ScanFace,
-  ScanLine,
   ScanSearch,
-  ShoppingBag,
-  Stethoscope,
   Trophy,
 } from 'lucide-react-native';
 import { Disclaimer } from '@/components/Disclaimer';
@@ -38,7 +30,7 @@ import { useAnnouncements } from '@/hooks/useAnnouncements';
 import { isFeatureOn, isHrefAvailable, useFeatureState } from '@/lib/featureFlags';
 import type { HomeSectionId } from '@/lib/home/homeSectionOrder';
 import { HubFeatureCard } from '@/components/home/HubFeatureCard';
-import { HubLinkRow, HubTileGrid, type HubTile } from '@/components/home/HubTiles';
+import { HubLinkRow } from '@/components/home/HubTiles';
 import { HomeHeader } from '@/components/home/HomeHeader';
 import { HomeNextDoseSection } from '@/components/home/HomeNextDoseSection';
 import { HomeSectionHeading } from '@/components/home/HomeSectionHeading';
@@ -58,6 +50,8 @@ import { computeTodayDoses } from '@/lib/home/todayDoses';
 import { todayYmd } from '@/lib/medications.shared';
 import { useAuth } from '@/store/AuthContext';
 import { useCommunityEntry } from '@/lib/communityAccess';
+import { HomeCommunitySection } from '@/components/home/sections/HomeCommunitySection';
+import { HomeScanSection } from '@/components/home/sections/HomeScanSection';
 import { useThemeColors } from '@/theme/colors';
 import { HUB, hubText } from '@/theme/hub';
 import { ka } from '@/i18n/ka';
@@ -72,7 +66,6 @@ import { HomeEnergyCard } from '@/components/home/sections/HomeEnergyCard';
 import { HomeCycleHero, HomeCycleToastHost } from '@/components/home/sections/HomeCycleHero';
 import { HomeCycleTips } from '@/components/home/sections/HomeCycleTips';
 import { HomeCycleAhead } from '@/components/home/sections/HomeCycleAhead';
-import { HomeCareRow } from '@/components/home/sections/HomeCareRow';
 import { HomeAskChips } from '@/components/home/sections/HomeAskChips';
 import { HomeCycleStats } from '@/components/home/sections/HomeCycleStats';
 import { HomeMoveHero } from '@/components/home/sections/HomeMoveHero';
@@ -93,22 +86,7 @@ import { HomeAccentContext, homeAccentFor } from '@/theme/homeAccent';
 import { useIsDark } from '@/theme/colors';
 import { tx } from '@/i18n/locale';
 
-/** Two AI check-ups (owner 2026-10-03): symptoms, and MEDISCAN for anything to read. */
-const CHECKUP_TILES: HubTile[] = [
-  { key: 'symptoms', title: tx('სიმპტომები', 'Symptoms'), detail: tx('აღწერე, რა და სად გაწუხებს', 'Describe what bothers you and where'), href: '/symptoms', icon: Stethoscope, ink: 'teal' },
-  // MEDISCAN (owner 2026-10-03): lab results, imaging and skin photos in one chat with a choice.
-  { key: 'scan', title: 'MEDISCAN', detail: tx('ანალიზი, გამოსახულება, კანი', 'Lab tests, imaging, skin'), href: '/scan', icon: ScanLine, ink: 'cyan' },
-];
 
-/** Everything else a person manages here, one tile each, no duplicates of the blocks above. */
-const SERVICE_TILES: HubTile[] = [
-  { key: 'visits', title: tx('ვიზიტები', 'Visits'), detail: tx('დაგეგმილი შეხვედრები', 'Planned appointments'), href: '/visits', icon: CalendarCheck, ink: 'teal' },
-  { key: 'weight', title: tx('წონა და მიზანი', 'Weight and goal'), detail: tx('ჩანაწერები და პროგრესი', 'Entries and progress'), href: '/health-metrics/weight', icon: Scale, ink: 'violet' },
-  { key: 'pets', title: tx('ჩემი ცხოველები', 'My pets'), detail: tx('მოვლა და MEDIVET', 'Care and MEDIVET'), href: '/pets', icon: PawPrint, ink: 'green' },
-  { key: 'pharmacy', title: tx('აფთიაქი', 'Pharmacy'), detail: tx('პროდუქტების მოძებნა', 'Find products'), href: '/pharmacy', icon: ShoppingBag, ink: 'sky' },
-  { key: 'metrics', title: tx('მაჩვენებლები', 'Metrics'), detail: tx('ყველა გაზომვა ერთად', 'All measurements in one place'), href: '/health-metrics', icon: Activity, ink: 'blue' },
-  { key: 'quest', title: 'MEDIQUEST', detail: tx('მისიები, პროგრესი და ჯილდოები', 'Missions, progress and rewards'), href: '/medi-quest', icon: Trophy, ink: 'amber' },
-];
 
 /** "4 200" — Hermes has no ka-GE grouping, so group by hand. */
 const groupDigits = (n: number) => Math.round(n).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
@@ -173,14 +151,22 @@ export default function Home() {
   const communityEntry = useCommunityEntry(user?.id, female) && isFeatureOn('community', features);
   const news = useAnnouncements();
   // AI check-ups: each tile has its own switch (symptoms, labs, imaging, skin); deep analysis is a Medi mode.
-  // MEDISCAN stands for three switches (lab, imaging, skin): it shows while any of them is on.
-  const scanOn = ['labs', 'imaging', 'skin'].some((key) => isFeatureOn(key, features));
-  const checkupTiles = CHECKUP_TILES.filter((tile) => (tile.key === 'scan' ? scanOn : isHrefAvailable(tile.href, features)));
+  // MEDISCAN stands for three switches (lab, imaging, skin): each choice shows while its switch is on.
+  const scanKinds = (
+    [
+      ['labs', 'LAB'],
+      ['imaging', 'IMAGING'],
+      ['skin', 'SKIN'],
+    ] as const
+  )
+    .filter(([key]) => isFeatureOn(key, features))
+    .map(([, kind]) => kind);
+  const symptomsOn = isHrefAvailable('/symptoms', features);
+  const checkupOn = scanKinds.length > 0 || symptomsOn;
   // Women's Home: question chips under „ჰკითხე Medi-ს“ open the consultation with the question typed in.
   const askChips = layout === 'women' && isHrefAvailable(mediRoute({ mode: 'doctor' }), features);
   // Women's Home keeps today's food inside „შენი დღე“ (under steps and water) when that block shows.
   const foodInDay = layout === 'women' && nutritionOn && (stepsOn || waterOn);
-  const serviceTiles = SERVICE_TILES.filter((tile) => isHrefAvailable(tile.href, features));
 
   const today = todayYmd();
   const doses = useMemo(
@@ -199,14 +185,14 @@ export default function Home() {
       hidden.add('ask');
       hidden.add('checkup');
     }
-    if (!checkupTiles.length) hidden.add('checkup');
+    if (!checkupOn) hidden.add('checkup');
     if (!isFeatureOn('news', features)) hidden.add('news');
     // Reminders keep arriving while medications are paused; only the Home block goes.
     if (!medsOn) hidden.add('nextDose');
     if (!stepsOn && !waterOn && !showMedsRing) hidden.add('hero');
     // Layout sections follow the same switches as the modules they summarise.
     if (!cycleOn) (['cycleHero', 'cycleAhead', 'cycleTips', 'cycleStats'] as const).forEach((id) => hidden.add(id));
-    if (!isFeatureOn('medi', features) || !checkupTiles.length) hidden.add('womenCare');
+    if (!isFeatureOn('medi', features) || !checkupOn) hidden.add('womenCare');
     if (foodInDay) hidden.add('nutritionLite');
     if (!stepsOn && !waterOn) {
       hidden.add('dayPair');
@@ -220,7 +206,7 @@ export default function Home() {
     if (!isFeatureOn('weight', features)) hidden.add('weightProgress');
     if (!layoutsOn) hidden.add('customize');
     return hidden;
-  }, [features, checkupTiles.length, medsOn, stepsOn, waterOn, showMedsRing, cycleOn, nutritionOn, layoutsOn, foodInDay]);
+  }, [features, checkupOn, medsOn, stepsOn, waterOn, showMedsRing, cycleOn, nutritionOn, layoutsOn, foodInDay]);
 
   // A new layout starts at its top, with a short fade (none under reduced motion).
   const scrollRef = useRef<ScrollView>(null);
@@ -379,7 +365,7 @@ export default function Home() {
     ask: (
       <View style={[s.section, { marginTop: 12 }]}>
         <HomeAskMedi onPress={() => open('/assistant')} />
-        {askChips ? <HomeAskChips /> : null}
+        {askChips ? <HomeAskChips community={communityEntry} /> : null}
       </View>
     ),
     nextDose: <HomeNextDoseSection meds={meds} />,
@@ -405,12 +391,8 @@ export default function Home() {
         <HomeNutritionCard />
       </View>
     ),
-    checkup: (
-      <View style={s.section}>
-        {heading(tx('შემოწმება AI-სთან', 'Check with AI'))}
-        {checkupTiles.length ? <HubTileGrid tiles={checkupTiles} /> : null}
-      </View>
-    ),
+    // MEDISCAN (owner 2026-10-04): its own hero card with the three choices; symptoms as a row under it.
+    checkup: <HomeScanSection kinds={scanKinds} symptomsOn={symptomsOn} />,
     profileNudge: completion.percent < 100 ? (
       <View style={s.section}>
         <HubFeatureCard
@@ -423,12 +405,6 @@ export default function Home() {
         />
       </View>
     ) : null,
-    services: (
-      <View style={s.section}>
-        {heading(tx('სერვისები', 'Services'), '/explore', tx('ყველა ფუნქცია', 'All features'))}
-        <HubTileGrid tiles={serviceTiles} />
-      </View>
-    ),
     disclaimer: (
       <View style={s.section}>
         <Disclaimer />
@@ -458,7 +434,13 @@ export default function Home() {
         linkHref="/health-metrics"
         look={layout === 'women' ? 'rings' : 'bars'}
       >
-        {foodInDay ? <HomeNutritionLite nutrition={nutrition} bare /> : null}
+        {foodInDay ? (
+          <HomeNutritionLite
+            nutrition={nutrition}
+            bare
+            hub={layout === 'women' ? { pregnant: cycle.view?.display?.profile.mode === 'PREGNANCY' } : undefined}
+          />
+        ) : null}
       </HomeDayPair>
     ),
     waterSteps: (
@@ -477,8 +459,10 @@ export default function Home() {
     cycleHero: <HomeCycleHero cycle={cycle} locked={cycleLocked} userId={user?.id} first />,
     cycleAhead: <HomeCycleAhead cycle={cycle} locked={cycleLocked} />,
     cycleTips: <HomeCycleTips cycle={cycle} locked={cycleLocked} />,
-    womenCare: <HomeCareRow title={tx('შემოწმება AI-სთან', 'Check with AI')} tiles={checkupTiles} />,
-    cycleStats: <HomeCycleStats cycle={cycle} locked={cycleLocked} showCommunity={communityEntry} />,
+    womenCare: <HomeScanSection kinds={scanKinds} symptomsOn={symptomsOn} />,
+    // The space has its own section on this layout now (`community`), so the stats card drops its link row.
+    cycleStats: <HomeCycleStats cycle={cycle} locked={cycleLocked} showCommunity={false} />,
+    community: <HomeCommunitySection visible={communityEntry} pregnant={cycle.view?.display?.profile.mode === 'PREGNANCY'} />,
     // ---- active ----
     moveHero: <HomeMoveHero steps={steps} first />,
     waterOutdoor: <HomeWaterOutdoor hydration={hydration} onAddWater={addGlass} />,

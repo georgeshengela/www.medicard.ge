@@ -46,6 +46,8 @@ import {
   cycleWeekStrip,
   daysBetweenKeys,
   fertileDaysInCycle,
+  recordedPeriodDaysInCycle,
+  addDaysKey,
   startLeads,
   trackingHeroActions,
   weekdayIndex,
@@ -67,6 +69,8 @@ import {
   useHomeCycleToastHosted,
 } from './useHomeCycleActions';
 import { LinearGradient } from 'expo-linear-gradient';
+import { cycleWaveModel } from '@/lib/home/cycleWave';
+import { CycleWaveStage, type WaveAnswer, type WaveLeaf } from './CycleWaveStage';
 
 /** Shared cycle data from the Home root (`useCycleView` mounted once there). */
 export type HomeCycleData = {
@@ -511,6 +515,30 @@ function ClassicCycleCard({
     showOvulation: showOvulationUi(bundle),
     showPredicted: caps.showFertileEstimates && !hidePredicted,
   });
+  // „ციკლის ტალღა“ (owner 2026-10-03): the whole cycle as one wave whenever the day is known.
+  const cycleStart = day != null && day > 0 ? addDaysKey(today, -(day - 1)) : null;
+  const wave = cycleWaveModel({
+    day,
+    cycleLength: cycleLen,
+    periodLength: bundle.averages?.usedPeriodLength ?? bundle.profile?.avgPeriodLength ?? 5,
+    recordedPeriodDays: recordedPeriodDaysInCycle({
+      today,
+      day,
+      cycleLength: length,
+      bleedDates: bundle.logs.filter((l) => isBleedFlow(l.flow)).map((l) => l.date),
+    }),
+    fertileDays: fertileDaysInCycle({
+      today,
+      day,
+      cycleLength: length,
+      window: fertilityVisible && !hidePredicted ? bundle.predictions?.fertileWindow : null,
+    }),
+    nextInDays: forecastOn && !late ? inDays : null,
+    window:
+      forecastOn && !late && periodWindow
+        ? { from: daysBetweenKeys(today, periodWindow.from), to: daysBetweenKeys(today, periodWindow.to) }
+        : null,
+  });
   // The big answer: countdown → „3 დღე“ with the date under it; a variable cycle → „3–7 დღე“ with the
   // date range (never one date); otherwise the centre copy as is.
   const unit =
@@ -533,15 +561,57 @@ function ClassicCycleCard({
             : periodWindowLine(periodWindow.from, periodWindow.to)
           : centerText.bottom;
 
+  // The leaf carries the date, so the line under the number keeps only the estimate word.
+  const leaf: WaveLeaf | null =
+    center.kind === 'countdown' && next
+      ? { kind: 'day', weekday: WEEKDAYS_KA[weekdayIndex(next)], day: Number(next.slice(8, 10)), month: shortDate(next).split(' ').slice(1).join(' ') }
+      : center.kind === 'countdownRange' && periodWindow
+        ? { kind: 'range', from: shortDate(periodWindow.from), to: shortDate(periodWindow.to) }
+        : null;
+  const waveAnswer: WaveAnswer = {
+    top: centerText.top,
+    value: centerText.value,
+    unit,
+    sub: center.kind === 'countdown' ? ka.cycle.heroLikely : center.kind === 'countdownRange' ? `${ka.cycle.heroLikely} · ${CYCLES_VARY_NOTE()}` : sub,
+    tone: centerText.tone,
+  };
+  /** Finger on the wave → that day's date, cycle day and (logged or estimated) phase — the dial's words. */
+  const describeDay = (d: number): WaveAnswer | null => {
+    if (!cycleStart) return null;
+    const date = addDaysKey(cycleStart, d - 1);
+    const [, mm, dd] = date.split('-').map(Number);
+    const mark = bundle.predictions?.calendar?.[date];
+    const logged = bundle.logs.some((l) => l.date === date && isBleedFlow(l.flow));
+    const phaseText = logged
+      ? ka.cycle.dialLoggedPeriod
+      : !hidePredicted && mark?.phaseKa && mark.phase !== 'unknown'
+        ? ka.cycle.dialEstimated(mark.phaseKa)
+        : null;
+    return {
+      top: `${date === today ? ka.cycle.heroToday : `${dd} ${MONTHS_KA[mm - 1]}`} · ${ka.cycle.cycleDay}`,
+      value: String(d),
+      unit: null,
+      sub: phaseText,
+      tone: logged ? 'period' : 'ink',
+    };
+  };
+
   return (
-    <View style={[s.card, { backgroundColor: theme.surface }]}>
+    <View style={s.open}>
       <WeekTray days={strip} compact={false} bleedLabel={cycleLoggedBleedLabel(bundle.profile.mode, ka.cycle)} onPress={onOpen} />
-      <Pressable accessibilityRole="button" accessibilityLabel={summary} onPress={onOpen} style={s.stage}>
-        <GlowAnswer tone={todayColor} caption={centerText.top} value={centerText.value} unit={unit} sub={sub} valueTone={centerText.tone === 'period' ? c.period : c.ink} />
+      {/* The wave owns its touches (finger preview), so it sits outside the card's open-the-calendar press. */}
+      {wave ? (
+        <CycleWaveStage model={wave} tone={todayColor} answer={waveAnswer} leaf={leaf} title={title} detail={detail} describeDay={describeDay} a11yLabel={summary} onOpen={onOpen} />
+      ) : null}
+      <Pressable accessibilityRole="button" accessibilityLabel={summary} onPress={onOpen} style={[s.stage, wave ? { marginTop: -6 } : null]}>
+        {wave ? null : (
+          <GlowAnswer tone={todayColor} caption={centerText.top} value={centerText.value} unit={unit} sub={sub} valueTone={centerText.tone === 'period' ? c.period : c.ink} />
+        )}
         <StatusStack
           title={title}
           dot={todayColor}
           detail={detail}
+          pill={!wave}
           badge={badge?.calm ? badge.text : null}
           badgeCalm
           note={caps.showTtcOverview ? ka.cycle.homeTtcLabel : null}
@@ -623,7 +693,7 @@ function TrackingCard({
     .filter(Boolean)
     .join('. ');
   return (
-    <View style={[s.card, { backgroundColor: theme.surface }]}>
+    <View style={s.open}>
       <WeekTray days={strip} compact={false} bleedLabel={cycleLoggedBleedLabel(bundle.profile.mode, ka.cycle)} onPress={onOpen} />
       <Pressable accessibilityRole="button" accessibilityLabel={summary} onPress={onOpen} style={s.stage}>
         <GlowAnswer tone={tone} caption={trackingCopy.today()} value={String(dd)} unit={MONTHS_KA[mm - 1] ?? null} sub={trackingCopy.howAreYou()} />
@@ -714,6 +784,7 @@ function StatusStack({
   title,
   dot,
   detail,
+  pill = true,
   badge = null,
   badgeCalm = false,
   note = null,
@@ -722,6 +793,8 @@ function StatusStack({
   title: string;
   dot: string;
   detail: string | null;
+  /** False when the wave stage already shows the phase and the day line. */
+  pill?: boolean;
   badge?: string | null;
   badgeCalm?: boolean;
   note?: string | null;
@@ -730,15 +803,18 @@ function StatusStack({
   const theme = useThemeColors();
   const dark = useIsDark();
   const c = useCycleColors();
+  if (!pill && !note && !badge && !offline) return null;
   return (
     <View style={s.stack}>
-      <View style={[s.phasePill, { backgroundColor: c.cardSoft }]}>
-        <View style={[s.phaseDot, { backgroundColor: dot }]} />
-        <Text numberOfLines={2} style={[s.phaseText, { color: c.ink }]}>
-          {title}
-        </Text>
-      </View>
-      {detail ? <Text style={[hubText.body, { color: theme.text200, textAlign: 'center' }]}>{detail}</Text> : null}
+      {pill ? (
+        <View style={[s.phasePill, { backgroundColor: c.cardSoft }]}>
+          <View style={[s.phaseDot, { backgroundColor: dot }]} />
+          <Text numberOfLines={2} style={[s.phaseText, { color: c.ink }]}>
+            {title}
+          </Text>
+        </View>
+      ) : null}
+      {pill && detail ? <Text style={[hubText.body, { color: theme.text200, textAlign: 'center' }]}>{detail}</Text> : null}
       {note ? <Text style={[hubText.caption, { color: theme.text200, textAlign: 'center' }]}>{note}</Text> : null}
       {badge ? (
         <View style={[s.badge, { borderColor: badgeCalm ? c.controlBorder : c.accentBorder }]}>
@@ -940,7 +1016,7 @@ function HeroSkeleton({ minHeight }: { minHeight: number }) {
     <View
       accessibilityRole="progressbar"
       accessibilityLabel={ka.common.loading}
-      style={[s.card, { backgroundColor: theme.surface, minHeight }]}
+      style={[s.open, { minHeight }]}
     >
       <View style={{ height: STRIP_H + 24, borderRadius: 18, backgroundColor: bone }} />
       <View style={[s.stage, { gap: 12 }]}>
@@ -962,6 +1038,8 @@ function HeroSkeleton({ minHeight }: { minHeight: number }) {
 
 const s = StyleSheet.create({
   card: { borderRadius: HUB.cardRadius, padding: HUB.cardPad, gap: 16 },
+  /** The cycle hero sits on the page itself (owner 2026-10-03: no outer card) — tray, wave and buttons carry their own surfaces. */
+  open: { gap: 16 },
   stage: { alignItems: 'center', gap: 10, alignSelf: 'stretch' },
   glowWrap: { alignSelf: 'stretch', alignItems: 'center', paddingTop: 22, paddingBottom: 8, gap: 2, overflow: 'hidden', borderRadius: 18 },
   glow: { position: 'absolute', left: 0, right: 0, top: 0, height: 200 },

@@ -5,7 +5,7 @@ import { Heart, MessageCircle, X } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
 import { usePrefersReducedMotion } from '@/hooks/usePrefersReducedMotion';
-import { useThemeColors } from '@/theme/colors';
+import { useCommunityColors as useThemeColors } from '@/components/community/communityPalette';
 import { APP_MODAL_PROPS, APP_MODAL_OVERLAY, Modal } from '@/components/ui/appModal';
 import { tx } from '@/i18n/locale';
 

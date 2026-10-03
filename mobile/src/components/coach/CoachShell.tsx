@@ -34,7 +34,7 @@ export function CoachShell({ title, subtitle, right, children, refreshing, onRef
               accessibilityRole="tab"
               accessibilityState={{ selected: false }}
               accessibilityLabel={tx('პირად რეჟიმზე გადასვლა', 'Switch to personal mode')}
-              onPress={() => router.replace('/(tabs)/home' as never)}
+              onPress={() => router.dismissTo('/(tabs)/home' as never)}
               hitSlop={6}
               style={{ paddingHorizontal: 12, minHeight: 30, borderRadius: 15, justifyContent: 'center' }}
             >

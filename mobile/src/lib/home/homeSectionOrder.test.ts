@@ -17,7 +17,9 @@ test('today first, then daily habits, then discovery; every section is unique', 
   assert.ok(order.indexOf('nextDose') < order.indexOf('cycle'));
   assert.ok(order.indexOf('cycle') < order.indexOf('nutrition'));
   assert.ok(order.indexOf('nutrition') < order.indexOf('checkup'));
-  assert.ok(order.indexOf('checkup') < order.indexOf('services'));
+  assert.ok(order.indexOf('checkup') < order.indexOf('customize'));
+  // Owner 2026-10-03: „სერვისები“ left Home — all features open from Profile.
+  assert.ok(!order.includes('services' as never));
   assert.equal(order.at(-1), 'disclaimer');
   assert.equal(new Set(order).size, order.length);
 });
@@ -67,7 +69,7 @@ test('an admin-paused module drops its section and nothing else', () => {
 test('standard keeps today’s Home and only gains the layout switch row before the disclaimer', () => {
   const order = buildHomeSectionOrder({ includeCycle: true });
   assert.deepEqual(order, [
-    'dashboard', 'hero', 'ask', 'nextDose', 'coach', 'cycle', 'news', 'nutrition', 'checkup', 'profileNudge', 'services', 'customize', 'disclaimer',
+    'dashboard', 'hero', 'ask', 'nextDose', 'coach', 'cycle', 'news', 'nutrition', 'checkup', 'profileNudge', 'customize', 'disclaimer',
   ]);
   assert.deepEqual(buildHomeSectionOrder({ layout: 'standard', includeCycle: true }), order);
 });
@@ -115,7 +117,8 @@ test('women: the cycle, what is ahead and tips come before her day; numbers and 
   const at = (id: (typeof order)[number]) => order.indexOf(id);
   assert.ok(at('cycleHero') < at('cycleAhead') && at('cycleAhead') < at('cycleTips') && at('cycleTips') < at('dayPair'));
   assert.equal(at('nutritionLite'), at('dayPair') + 1);
-  assert.ok(at('dayPair') < at('cycleStats') && at('cycleStats') < at('womenCare') && at('womenCare') < at('services'));
+  // MEDISCAN (womenCare) sits right after her day; her cycle numbers follow.
+  assert.ok(at('nutritionLite') < at('womenCare') && at('womenCare') < at('cycleStats') && at('cycleStats') < at('customize'));
   for (const layout of ['standard', 'active', 'weight'] as const) {
     assert.ok(!HOME_LAYOUT_ORDER[layout].includes('womenCare') && !HOME_LAYOUT_ORDER[layout].includes('cycleAhead'), layout);
   }

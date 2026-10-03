@@ -7,6 +7,7 @@ import {
   BellRing,
   FileText,
   Gift,
+  LayoutGrid,
   Link2,
   Lock,
   LogOut,
@@ -287,6 +288,13 @@ export default function Profile() {
       <View style={s.section}>
         <HomeSectionHeading title={tx('აპლიკაცია', 'App')} />
         <View style={[s.list, { backgroundColor: colors.surface }]}>
+          {/* Owner 2026-10-03: Home has no „სერვისები“ block any more — every feature opens from here. */}
+          <ProfileMenuRow
+            icon={LayoutGrid}
+            ink="teal"
+            label={tx('ყველა ფუნქცია', 'All features')}
+            onPress={() => router.push('/explore' as never)}
+          />
           {isFeatureOn('invites', features) ? <ProfileMenuRow icon={Gift} ink="amber" label={ka.referral.profileRow} onPress={() => router.push('/profile/invite' as never)} /> : null}
           <ProfileMenuRow icon={Lock} ink="neutral" label={ka.profile.privacyPolicy} onPress={() => router.push('/profile/privacy')} />
           <ProfileMenuRow icon={FileText} ink="neutral" label={ka.profile.terms} onPress={() => router.push('/profile/terms')} />

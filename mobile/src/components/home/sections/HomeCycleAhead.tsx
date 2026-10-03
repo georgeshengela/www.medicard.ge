@@ -29,8 +29,10 @@ export type HomeCycleAheadProps = {
 
 /**
  * „წინ რა გელის“ — the next estimated period, fertile days and ovulation with their dates, so a
- * woman can plan around them without opening the calendar. Each row carries its day in the cycle
- * grammar (dashed rose = expected period, turquoise = fertile / ovulation) and how soon it is.
+ * woman can plan around them without opening the calendar. A compact list (owner 2026-10-03: the
+ * three columns wrapped and cut their dates): one row per event — its first day in the cycle
+ * grammar (dashed rose = expected period, turquoise = fertile / ovulation), the name, the whole
+ * date range with its source note, and how soon it is as a tinted pill.
  * Same gates as the cycle screen: classic overview only, forecast allowed, fertility and ovulation
  * only where they may be shown; nothing while locked or before the cycle is set up.
  */
@@ -81,44 +83,56 @@ export function HomeCycleAhead({ cycle, locked }: HomeCycleAheadProps) {
         : tx('ოვულაცია', 'Ovulation');
   const openCycle = () => router.push('/cycle' as never);
 
+  // Each source note belongs to its own row (no loose footnotes under the list).
+  const noteOf = (kind: AheadKind) =>
+    kind === 'fertile' && wide ? wideWindowLabel() : kind === 'ovulation' && ovulationSource ? ovulationSource : null;
+
   return (
     <View style={s.section}>
-      <HomeSectionHeading title={tx('წინ რა გელის', 'Coming up')} />
+      <HomeSectionHeading title={tx('წინ რა გელის', 'Coming up')} linkLabel={tx('კალენდარი', 'Calendar')} onLink={openCycle} />
       <Pressable
         accessibilityRole="button"
         accessibilityLabel={`${tx('წინ რა გელის', 'Coming up')}. ${events
-          .map((e) => `${titleOf(e.kind)}, ${ka.cycle.heroLikely} ${dateRange(e)}, ${soonLabel(e)}${e.wide ? `, ${wideWindowLabel()}` : ''}`)
+          .map((e) => `${titleOf(e.kind)}, ${ka.cycle.heroLikely} ${dateRange(e)}, ${soonLabel(e)}${noteOf(e.kind) ? `, ${noteOf(e.kind)}` : ''}`)
           .join('; ')}`}
         onPress={openCycle}
         style={[s.card, { backgroundColor: theme.surface }]}
       >
-        {/* A timeline: the days ahead in order, each on the same line. */}
-        <View style={s.track}>
-          {events.length > 1 ? <View style={[s.line, { backgroundColor: theme.bg300, left: `${50 / events.length}%`, right: `${50 / events.length}%` }]} /> : null}
-          {events.map((event) => (
-            <View key={event.kind} style={s.stop}>
-              <DayGlyph kind={event.kind} date={event.start} surface={theme.surface} />
-              <Text numberOfLines={1} style={[s.soon, { color: event.kind === 'period' ? (dark ? c.brand : c.ctaPressed) : c.fertile }]}>
-                {soonLabel(event)}
-              </Text>
-              <Text numberOfLines={2} style={[s.title, { color: theme.text100 }]}>
-                {titleOf(event.kind)}
-              </Text>
-              <Text numberOfLines={1} style={[hubText.small, { color: theme.text200, textAlign: 'center' }]}>
-                {`~ ${dateRange(event, true)}`}
-              </Text>
+        {events.map((event, i) => {
+          const period = event.kind === 'period';
+          const note = noteOf(event.kind);
+          return (
+            <View key={event.kind}>
+              {i > 0 ? <View style={[s.divider, { backgroundColor: theme.bg200 }]} /> : null}
+              <View style={s.row}>
+                <DayGlyph kind={event.kind} date={event.start} surface={theme.surface} />
+                <View style={s.text}>
+                  <Text numberOfLines={1} style={[s.title, { color: theme.text100 }]}>
+                    {titleOf(event.kind)}
+                  </Text>
+                  {/* „სავარაუდო“ is said once, under the list (and by the dashed / tinted day). */}
+                  <Text numberOfLines={2} style={[s.date, { color: theme.text200 }]}>
+                    {`${dateRange(event)}${note ? ` · ${note}` : ''}`}
+                  </Text>
+                </View>
+                <View style={[s.pill, { backgroundColor: period ? c.periodSoft : c.fertilitySoft }]}>
+                  <Text numberOfLines={1} style={[s.pillText, { color: period ? (dark ? c.period : c.ctaPressed) : c.fertile }]}>
+                    {soonLabel(event)}
+                  </Text>
+                </View>
+              </View>
             </View>
-          ))}
-        </View>
-        {learning ? <CycleLearningBadge done={gate.completedCycles} required={gate.requiredCycles} surface={theme.bg200} /> : null}
-        {wide ? <Text style={[hubText.small, s.note, { color: c.fertile }]}>{`${tx('ნაყოფიერი დღეები', 'Fertile days')}: ${wideWindowLabel()}`}</Text> : null}
-        {ovulationSource ? (
-          <Text style={[hubText.small, s.note, { color: c.fertile }]}>{`${tx('ოვულაცია', 'Ovulation')} · ${ovulationSource}`}</Text>
+          );
+        })}
+        {learning ? (
+          <View style={s.badge}>
+            <CycleLearningBadge done={gate.completedCycles} required={gate.requiredCycles} surface={theme.bg200} />
+          </View>
         ) : null}
-        <Text style={[hubText.small, s.note, { color: c.mutedSoft }]}>
-          {tx('სავარაუდო თარიღებია, ბოლო ციკლების მიხედვით.', 'Estimated dates, based on your recent cycles.')}
-        </Text>
       </Pressable>
+      <Text style={[hubText.small, s.foot, { color: c.mutedSoft }]}>
+        {tx('სავარაუდო თარიღებია, ბოლო ციკლების მიხედვით.', 'Estimated dates, based on your recent cycles.')}
+      </Text>
     </View>
   );
 }
@@ -155,24 +169,24 @@ function DayGlyph({ kind, date, surface }: { kind: AheadKind; date: string; surf
         ? { backgroundColor: c.fertilitySoft, borderWidth: 1.5, borderColor: c.fertile }
         : { backgroundColor: c.fertilitySoft };
   return (
-    <View style={[s.glyphWrap, { backgroundColor: surface }]} importantForAccessibility="no" accessibilityElementsHidden>
-      <View style={[s.glyph, style]}>
-        <Text style={[s.glyphText, { color: kind === 'period' ? c.period : c.fertile }]}>{Number(date.slice(8, 10))}</Text>
-      </View>
+    <View style={[s.glyph, style]} importantForAccessibility="no" accessibilityElementsHidden>
+      <Text style={[s.glyphText, { color: kind === 'period' ? c.period : c.fertile }]}>{Number(date.slice(8, 10))}</Text>
     </View>
   );
 }
 
 const s = StyleSheet.create({
   section: { paddingHorizontal: HUB.gutter, marginTop: HUB.sectionGap },
-  card: { borderRadius: HUB.cardRadius, paddingHorizontal: 10, paddingTop: 18, paddingBottom: 14, gap: 12 },
-  track: { flexDirection: 'row', alignItems: 'flex-start' },
-  line: { position: 'absolute', top: 23, height: 1.5, borderRadius: 1 },
-  stop: { flex: 1, minWidth: 0, alignItems: 'center', gap: 3, paddingHorizontal: 4 },
-  glyphWrap: { paddingHorizontal: 6, marginBottom: 5 },
-  glyph: { width: 46, height: 46, borderRadius: 23, alignItems: 'center', justifyContent: 'center' },
-  glyphText: { fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 16, lineHeight: 21, fontVariant: ['tabular-nums'] },
-  soon: { fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 13, lineHeight: 18, textAlign: 'center' },
-  title: { fontFamily: 'NotoSansGeorgian_500Medium', fontSize: 12.5, lineHeight: 17, textAlign: 'center' },
-  note: { textAlign: 'center' },
+  card: { borderRadius: HUB.cardRadius, paddingHorizontal: 14, paddingVertical: 6 },
+  row: { flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 56, paddingVertical: 6 },
+  divider: { height: StyleSheet.hairlineWidth * 2, marginLeft: 50 },
+  text: { flex: 1, minWidth: 0, gap: 1 },
+  title: { fontFamily: 'NotoSansGeorgian_600SemiBold', fontSize: 14.5, lineHeight: 20 },
+  date: { fontFamily: 'NotoSansGeorgian_400Regular', fontSize: 12.5, lineHeight: 17 },
+  pill: { borderRadius: 12, paddingHorizontal: 10, paddingVertical: 4, flexShrink: 0 },
+  pillText: { fontFamily: 'NotoSansGeorgian_600SemiBold', fontSize: 12.5, lineHeight: 17, fontVariant: ['tabular-nums'] },
+  glyph: { width: 38, height: 38, borderRadius: 19, alignItems: 'center', justifyContent: 'center' },
+  glyphText: { fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 14, lineHeight: 19, fontVariant: ['tabular-nums'] },
+  badge: { paddingVertical: 8, alignItems: 'flex-start' },
+  foot: { marginTop: 6, paddingHorizontal: 4 },
 });

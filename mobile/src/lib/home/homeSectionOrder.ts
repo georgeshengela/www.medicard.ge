@@ -33,7 +33,6 @@ export type HomeSectionId =
   | 'coach'
   | 'news'
   | 'profileNudge'
-  | 'services'
   | 'layoutOffer'
   | 'customize'
   | 'disclaimer'
@@ -49,6 +48,7 @@ export type HomeSectionId =
   | 'cycleStats'
   | 'dayPair'
   | 'womenCare'
+  | 'community'
   // women + active
   | 'nutritionLite'
   // active
@@ -78,7 +78,6 @@ export const HOME_LAYOUT_ORDER: Record<HomeLayoutId, readonly HomeSectionId[]> =
     'nutrition',
     'checkup',
     'profileNudge',
-    'services',
     'customize',
     'disclaimer',
   ],
@@ -89,14 +88,14 @@ export const HOME_LAYOUT_ORDER: Record<HomeLayoutId, readonly HomeSectionId[]> =
     'nextDose',
     'coach',
     'cycleAhead',
+    'community',
     'cycleTips',
     'dayPair',
     'nutritionLite',
+    'womenCare',
     'news',
     'cycleStats',
-    'womenCare',
     'profileNudge',
-    'services',
     'customize',
     'disclaimer',
   ],
@@ -113,7 +112,6 @@ export const HOME_LAYOUT_ORDER: Record<HomeLayoutId, readonly HomeSectionId[]> =
     'news',
     'nutritionLite',
     'profileNudge',
-    'services',
     'customize',
     'disclaimer',
   ],
@@ -145,7 +143,7 @@ export const HOME_LAYOUT_SPOTLIGHT: Record<HomeLayoutId, HomeSectionId | null> =
 };
 
 /** Sections shown only to women (the cycle module is female-only on the server). */
-export const FEMALE_ONLY: ReadonlySet<HomeSectionId> = new Set(['cycle', 'cycleHero', 'cycleAhead', 'cycleTips', 'cycleStats']);
+export const FEMALE_ONLY: ReadonlySet<HomeSectionId> = new Set(['cycle', 'cycleHero', 'cycleAhead', 'cycleTips', 'cycleStats', 'community']);
 
 export function buildHomeSectionOrder({
   layout = 'standard',

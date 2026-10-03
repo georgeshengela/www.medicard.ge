@@ -1,5 +1,6 @@
 import React, { useRef } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text } from 'react-native';
+import { HeartHandshake } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import { prepareCycleAskMedi } from '@/lib/cycleAskMediLaunch';
 import { peekCycleView } from '@/lib/cycleViewCache';
@@ -7,6 +8,7 @@ import { useFeature } from '@/lib/featureFlags';
 import { tx } from '@/i18n/locale';
 import { useAuth } from '@/store/AuthContext';
 import { useThemeColors } from '@/theme/colors';
+import { useHomeAccent } from '@/theme/homeAccent';
 import { HUB } from '@/theme/hub';
 
 /**
@@ -28,8 +30,13 @@ const QUESTIONS: string[] = [
   tx('რა ვჭამო ციკლის სხვადასხვა ფაზაში?', 'What should I eat in each cycle phase?'),
 ];
 
-export function HomeAskChips() {
+/**
+ * `community`: the women's space entry is allowed — the row then starts with „ჰკითხე სხვა ქალებს“,
+ * which opens the space's composer (empty: no question or health text travels between screens).
+ */
+export function HomeAskChips({ community = false }: { community?: boolean } = {}) {
   const c = useThemeColors();
+  const accent = useHomeAccent();
   const router = useRouter();
   const { user } = useAuth();
   const cycleOn = useFeature('cycle');
@@ -54,6 +61,20 @@ export function HomeAskChips() {
       style={s.scroller}
       contentContainerStyle={s.content}
     >
+      {community ? (
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={tx('ჰკითხე სხვა ქალებს — ქალების სივრცე', 'Ask other women — Women’s space')}
+          hitSlop={{ top: 4, bottom: 4 }}
+          onPress={() => router.push('/community?compose=1' as never)}
+          style={[s.chip, s.communityChip, { backgroundColor: accent.soft, borderColor: accent.soft }]}
+        >
+          <HeartHandshake size={15} color={accent.ink} strokeWidth={2} />
+          <Text numberOfLines={1} style={[s.text, { color: accent.ink, fontFamily: 'NotoSansGeorgian_600SemiBold' }]}>
+            {tx('ჰკითხე სხვა ქალებს', 'Ask other women')}
+          </Text>
+        </Pressable>
+      ) : null}
       {QUESTIONS.map((question) => (
         <Pressable
           key={question}
@@ -76,5 +97,6 @@ const s = StyleSheet.create({
   scroller: { marginHorizontal: -HUB.gutter, marginTop: 10 },
   content: { paddingHorizontal: HUB.gutter, gap: 8 },
   chip: { minHeight: 40, borderRadius: 20, borderWidth: 1, paddingHorizontal: 14, alignItems: 'center', justifyContent: 'center' },
+  communityChip: { flexDirection: 'row', gap: 6 },
   text: { fontFamily: 'NotoSansGeorgian_500Medium', fontSize: 13, lineHeight: 18 },
 });

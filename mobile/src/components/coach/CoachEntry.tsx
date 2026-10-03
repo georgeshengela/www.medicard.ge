@@ -32,7 +32,29 @@ function useCoachState(): State | null {
 }
 
 /**
- * Home: shows only for people with a trainer (next session) or verified trainers (workspace shortcut).
+ * The Home header's MEDICOACH coin (owner 2026-10-03: no Home section for trainer mode, a switch
+ * instead): null for everyone but verified trainers; `today` = sessions still ahead today (null until read).
+ */
+export function useTrainerSwitch(enabled: boolean): { today: number | null } | null {
+  const state = useCoachState();
+  const verified = enabled && state?.me.trainerProfile?.status === 'VERIFIED';
+  const today = useAccountQuery<number>({
+    key: ['coach', 'today', 'count'],
+    staleTime: FRESH.SHORT,
+    enabled: verified,
+    fetch: async () => {
+      const day = await api.coach.today();
+      const now = Date.now();
+      return day.sessions.filter((x) => x.status === 'SCHEDULED' && new Date(x.startsAt).getTime() + x.durationMin * 60000 > now).length;
+    },
+  });
+  if (!verified) return null;
+  return { today: today.data ?? null };
+}
+
+/**
+ * Home: shows only for people with a trainer (next session). Verified trainers switch to their
+ * workspace from the avatar's MEDICOACH coin in the header (`HomeHeader`), not from a section.
  * `tone="surface"` on Home layouts that already have their one spotlight (active, nutrition & weight).
  */
 export function HomeCoachSection({ tone = 'spotlight' }: { tone?: 'spotlight' | 'surface' } = {}) {
@@ -42,12 +64,11 @@ export function HomeCoachSection({ tone = 'spotlight' }: { tone?: 'spotlight' | 
   const state = useCoachState();
   const quiet = tone === 'surface';
   if (!state) return null;
-  const trainer = state.me.trainerProfile?.status === 'VERIFIED';
   const next = state.overview?.upcoming?.find((s) => s.status === 'SCHEDULED');
-  if (!trainer && !state.overview?.link) return null;
+  if (!state.overview?.link) return null;
   return (
     <View style={{ paddingHorizontal: HUB.gutter, marginTop: HUB.sectionGap }}>
-      <HomeSectionHeading title={trainer && !state.overview?.link ? tx('ტრენერის რეჟიმი', 'Trainer mode') : tx('ჩემი ტრენერი', 'My trainer')} linkLabel={tx('გახსნა', 'Open')} onLink={() => router.push((trainer && !state.overview?.link ? '/coach' : '/trainer') as never)} />
+      <HomeSectionHeading title={tx('ჩემი ტრენერი', 'My trainer')} linkLabel={tx('გახსნა', 'Open')} onLink={() => router.push('/trainer' as never)} />
       {state.overview?.link ? (
         <Pressable accessibilityRole="button" accessibilityLabel={next ? tx(`შემდეგი ვარჯიში ${next.label}`, `Next workout ${next.label}`) : tx('ჩემი ტრენერი', 'My trainer')} onPress={() => router.push('/trainer' as never)} style={[s.card, { backgroundColor: quiet ? c.surface : HUB.spotlightBg }]}>
           <View style={[s.tile, quiet ? { backgroundColor: accent.tint } : null]}>
@@ -60,18 +81,6 @@ export function HomeCoachSection({ tone = 'spotlight' }: { tone?: 'spotlight' | 
             </Text>
           </View>
           <ChevronRight size={18} color={quiet ? c.text300 : '#99F6E4'} />
-        </Pressable>
-      ) : null}
-      {trainer ? (
-        <Pressable accessibilityRole="button" onPress={() => router.push('/coach' as never)} style={[s.card, { backgroundColor: c.surface, marginTop: state.overview?.link ? 10 : 0 }]}>
-          <View style={[s.tile, { backgroundColor: c.accent100 }]}>
-            <Dumbbell size={21} color={c.primary100} />
-          </View>
-          <View style={{ flex: 1, gap: 2 }}>
-            <Text style={[hubText.cardTitle, { color: c.text100 }]}>{tx('ტრენერის სამუშაო სივრცე', 'Trainer workspace')}</Text>
-            <Text style={[hubText.caption, { color: c.text300 }]}>{tx('დღის განრიგი, კლიენტები, გეგმები', 'Daily schedule, clients, plans')}</Text>
-          </View>
-          <ChevronRight size={18} color={c.text300} />
         </Pressable>
       ) : null}
     </View>

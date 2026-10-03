@@ -1,7 +1,7 @@
 import React from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { Check, ChevronRight, Heart, MessageCircle, Reply, ThumbsDown } from 'lucide-react-native';
-import { useThemeColors } from '@/theme/colors';
+import { useCommunityColors as useThemeColors } from '@/components/community/communityPalette';
 import { tx } from '@/i18n/locale';
 
 const kinds = {

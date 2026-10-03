@@ -122,7 +122,7 @@ export default function CoachProfileScreen() {
           </Section>
 
           <Section title={tx('რეჟიმი', 'Mode')}>
-            <Button label={tx('პირად რეჟიმზე გადასვლა', 'Switch to personal mode')} icon={ArrowLeftRight} kind="secondary" onPress={() => router.replace('/(tabs)/home' as never)} />
+            <Button label={tx('პირად რეჟიმზე გადასვლა', 'Switch to personal mode')} icon={ArrowLeftRight} kind="secondary" onPress={() => router.dismissTo('/(tabs)/home' as never)} />
           </Section>
         </>
       ) : null}

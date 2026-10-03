@@ -5,7 +5,7 @@ import { ChevronDown, ChevronUp, ShieldCheck, Users } from 'lucide-react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AUTH_KEYBOARD_OPEN_PX, authFooterBottomPad } from '@/lib/authChrome';
 import { useKeyboardMetrics } from '@/lib/useKeyboardHeight';
-import { useThemeColors } from '@/theme/colors';
+import { COMMUNITY_CTA, useCommunityColors as useThemeColors } from '@/components/community/communityPalette';
 import { openEmail } from '@/lib/openEmail';
 import { tx } from '@/i18n/locale';
 
@@ -83,7 +83,7 @@ export function CommunityJoinForm({ alias, onAliasChange, accepted, onAcceptedCh
         </View>
 
         <View style={{ flexDirection: 'row', gap: 12, alignItems: 'center' }}>
-          <Switch accessibilityLabel={tx('ვეთანხმები სივრცის წესებს', 'I agree to the space rules')} value={accepted} disabled={busy} onValueChange={onAcceptedChange} trackColor={{ true: '#0D9488', false: c.bg300 }} />
+          <Switch accessibilityLabel={tx('ვეთანხმები სივრცის წესებს', 'I agree to the space rules')} value={accepted} disabled={busy} onValueChange={onAcceptedChange} trackColor={{ true: COMMUNITY_CTA, false: c.bg300 }} />
           <Text style={{ ...copy, flex: 1, color: c.text100 }}>{tx('გავეცანი წესებს და ანონიმურობის პირობებს', 'I’ve read the rules and anonymity terms')}</Text>
         </View>
         <Pressable
@@ -102,7 +102,7 @@ export function CommunityJoinForm({ alias, onAliasChange, accepted, onAcceptedCh
       </ScrollView>
 
       <Animated.View style={[{ paddingHorizontal: 22, paddingTop: 12, borderTopWidth: 1, borderColor: c.bg300, backgroundColor: c.surface }, footerStyle]}>
-        <Pressable accessibilityRole="button" accessibilityLabel={tx('შემოუერთდი სივრცეს', 'Join the space')} accessibilityState={{ disabled, busy }} disabled={disabled} onPress={submit} style={{ minHeight: 50, borderRadius: 16, paddingHorizontal: 16, paddingVertical: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, backgroundColor: '#0F766E', opacity: disabled ? 0.5 : 1 }}>
+        <Pressable accessibilityRole="button" accessibilityLabel={tx('შემოუერთდი სივრცეს', 'Join the space')} accessibilityState={{ disabled, busy }} disabled={disabled} onPress={submit} style={{ minHeight: 50, borderRadius: 16, paddingHorizontal: 16, paddingVertical: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, backgroundColor: COMMUNITY_CTA, opacity: disabled ? 0.5 : 1 }}>
           {busy ? <ActivityIndicator color="#FFFFFF" /> : <Users size={20} color="#FFFFFF" />}
           <Text style={{ fontFamily: 'NotoSansGeorgian_600SemiBold', fontSize: 14, color: '#FFFFFF' }}>{tx('შემოუერთდი სივრცეს', 'Join the space')}</Text>
         </Pressable>

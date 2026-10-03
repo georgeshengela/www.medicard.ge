@@ -4,7 +4,7 @@ import {AVATAR_SOURCES,isAvatarId} from '@/constants/avatarAssets';
 import {AtSign,Send} from 'lucide-react-native';
 import {communityRequest} from '@/lib/api';
 import {CommunityMention,MentionCandidate,editMentionRanges,mentionQuery} from '@/lib/communityMentions';
-import {useThemeColors} from '@/theme/colors';
+import { COMMUNITY_CTA, useCommunityColors as useThemeColors } from '@/components/community/communityPalette';
 import {AnonymousAvatar} from './AnonymousAvatar';
 import { tx } from '@/i18n/locale';
 
@@ -35,7 +35,7 @@ export function CommunityCommentComposer({postId,value,onChangeText,onSend,busy,
   </View>}
   <View style={{flexDirection:'row',alignItems:'flex-end',gap:8}}>
    <TextInput ref={inputRef} accessibilityLabel={tx('კომენტარი', 'Comment')} placeholder={replying?tx('დაწერე პასუხი… @ მონიშვნა', 'Write a reply… @ to mention'):tx('დაწერე კომენტარი… @ მონიშვნა', 'Write a comment… @ to mention')} placeholderTextColor={c.text200} value={value} onChangeText={change} onSelectionChange={e=>setSelection(e.nativeEvent.selection)} selection={selection} multiline maxLength={1500} style={{flex:1,minHeight:46,maxHeight:100,padding:12,borderWidth:1,borderColor:c.bg300,borderRadius:16,color:c.text100,backgroundColor:c.surface,fontFamily:'NotoSansGeorgian_400Regular',fontSize:14}}/>
-   <Pressable accessibilityRole="button" accessibilityLabel={replying?tx('პასუხის გაგზავნა', 'Send reply'):tx('კომენტარის გაგზავნა', 'Send comment')} disabled={busy||!value.trim()} onPress={()=>onSend(mentions.filter(m=>value.slice(m.start,m.end)==='@'+m.label))} style={{width:46,height:46,borderRadius:15,alignItems:'center',justifyContent:'center',backgroundColor:'#0F766E',opacity:busy||!value.trim()?0.4:1}}>{busy?<ActivityIndicator color="white"/>:<Send size={19} color="white"/>}</Pressable>
+   <Pressable accessibilityRole="button" accessibilityLabel={replying?tx('პასუხის გაგზავნა', 'Send reply'):tx('კომენტარის გაგზავნა', 'Send comment')} disabled={busy||!value.trim()} onPress={()=>onSend(mentions.filter(m=>value.slice(m.start,m.end)==='@'+m.label))} style={{width:46,height:46,borderRadius:15,alignItems:'center',justifyContent:'center',backgroundColor:COMMUNITY_CTA,opacity:busy||!value.trim()?0.4:1}}>{busy?<ActivityIndicator color="white"/>:<Send size={19} color="white"/>}</Pressable>
   </View>
  </View>;
 }
