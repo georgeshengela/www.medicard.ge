@@ -970,6 +970,14 @@ async function petDetail(root, ctx) {
     const sendBtn = h('button', { type: 'button', class: 'btn btn-primary', 'aria-label': t('გაგზავნა', 'Send') }, icon('send', { size: 18 }));
     const cancelBtn = h('button', { type: 'button', class: 'text-btn pet-cancel', hidden: true }, t('გაუქმება', 'Cancel'));
     const errEl = h('div', { class: 'form-error', hidden: true });
+    // Declining / closing the AI disclosure is a choice, not an error (App Review 2026-09-22): a calm
+    // note with „ხელახლა ცდა“ that opens the disclosure again; the question goes back to the composer.
+    const noteEl = h('div', { role: 'status', style: { display: 'none', alignItems: 'center', gap: '10px', flexWrap: 'wrap', padding: '10px 12px', borderRadius: '12px', background: 'var(--bg)', color: 'var(--text2)', fontSize: '14px', marginBottom: '8px' } });
+    const showDeclined = (message) => {
+      mount(noteEl, h('span', { style: { flex: 1, minWidth: '180px' } }, t('AI-ს არაფერი გაეგზავნა. როცა გინდა, შეგიძლია ხელახლა სცადო.', 'Nothing was sent to the AI. You can try again whenever you like.')),
+        h('button', { type: 'button', class: 'text-btn', onClick: () => { noteEl.style.display = 'none'; send(ta.value.trim() || message); } }, t('ხელახლა ცდა', 'Try again')));
+      noteEl.style.display = 'flex';
+    };
     const intro = h('div', { class: 'stack pet-vet-intro' },
       h('div', { class: 'card hstack', style: { flexWrap: 'nowrap', alignItems: 'flex-start' } }, tile('stethoscope', 'violet', 42),
         h('div', null, h('div', { class: 'faint', style: { fontSize: '12px', letterSpacing: '.06em' } }, 'MEDI VET · AI'),
@@ -989,7 +997,7 @@ async function petDetail(root, ctx) {
         h('div', { style: { flex: 1, minWidth: 0 } }, h('b', null, 'Medi Vet'), h('div', { class: 'faint', style: { fontSize: '12.5px' } }, p.name)),
         iconButton('info', { title: t('Medi Vet — როგორ მუშაობს', 'Medi Vet — how it works'), onClick: () => disclosure(true) })),
       h('div', { class: 'chat pet-chat-body' }, log,
-        h('div', null, errEl, h('div', { style: { textAlign: 'center' } }, cancelBtn),
+        h('div', null, noteEl, errEl, h('div', { style: { textAlign: 'center' } }, cancelBtn),
           h('div', { class: 'chat-input' }, ta, sendBtn),
           h('p', { class: 'faint', style: { fontSize: '12px', marginTop: '8px', textAlign: 'center' } }, T.vetDisclaimer)))));
 
@@ -1066,10 +1074,12 @@ async function petDetail(root, ctx) {
       if (!(await disclosure())) return;
       sending = true;
       errEl.hidden = true;
+      noteEl.style.display = 'none';
       if (log.contains(intro)) clear(log);
       const userMsg = { role: 'user', content: message };
       const aiMsg = { role: 'assistant', content: '', streaming: true, status: 'PARTIAL' };
-      log.appendChild(bubble(userMsg));
+      const userBubble = bubble(userMsg);
+      log.appendChild(userBubble);
       const aiBubble = bubble(aiMsg);
       log.appendChild(aiBubble);
       ta.value = ''; autosize();
@@ -1096,10 +1106,9 @@ async function petDetail(root, ctx) {
         if (timer) clearTimeout(timer);
         flush();
         if (result?.declined) {
-          aiBubble.remove();
+          aiBubble.remove(); userBubble.remove();
           ta.value = message; autosize();
-          errEl.textContent = t('Medi Vet-ისთვის საჭიროა თანხმობა მონაცემების AI-სთან გაზიარებაზე.', 'Medi Vet needs your consent to share data with AI.');
-          errEl.hidden = false;
+          showDeclined(message);
           return;
         }
         if (result?.sessionId) sessionId = result.sessionId;

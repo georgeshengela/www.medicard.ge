@@ -1,4 +1,5 @@
 import { tx } from '../i18n/locale.js';
+import { aiConsentDeclinedText, isAiConsentDeclined } from './aiConsentDecline.ts';
 export type VoicePhase = 'idle' | 'preparing' | 'recording' | 'transcribing';
 type CaptureDependencies = {
   prepare: (current: () => boolean) => Promise<void>;
@@ -26,8 +27,9 @@ export function createVoiceCapture(d: CaptureDependencies) {
   const clearTimer = () => { if (timer) clearTimeout(timer); timer = null; };
   const current = (id: number) => epoch === id && d.active();
   const reportError = (error: unknown, fallback: string) => {
-    if (error && typeof error === 'object' && 'code' in error && error.code === 'AI_CONSENT_DECLINED') {
-      d.onNotice(tx('AI დამუშავება გამორთულია. არჩევანს პროფილში, „კონფიდენციალობა და მონაცემებში“ შეცვლი.', 'AI processing is off. You can change your choice in Profile, under “Privacy and data”.'));
+    // Declining / closing the disclosure is a choice, not an error: the calm shared line (App Review 2026-09-22).
+    if (isAiConsentDeclined(error)) {
+      d.onNotice(aiConsentDeclinedText());
     } else d.onError(error instanceof Error ? error.message : fallback);
   };
   async function finish(submit: boolean) {

@@ -445,10 +445,15 @@ export default async function mediPage(root, ctx) {
   function renderStatus() {
     clear(status);
     if (st.note) {
+      const again = st.declined;
       status.append(h('div', { class: 'medi-note' }, icon('shield', { size: 16 }),
         h('span', null, st.note),
-        h('a', { href: '/profile', 'data-link': '', class: 'link' }, t('პროფილი', 'Profile')),
-        iconButton('x', { title: t('დახურვა', 'Close'), size: 16, onClick: () => { st.note = null; renderStatus(); } })));
+        again ? h('button', { type: 'button', class: 'medi-retry', onClick: () => {
+          // The question in the composer wins (she may have edited it); else the one she tried to send.
+          const text = ta.value.trim() || again.text;
+          st.note = null; st.declined = null; renderStatus(); send(text, again.petId);
+        } }, t('ხელახლა ცდა', 'Try again')) : null,
+        iconButton('x', { title: t('დახურვა', 'Close'), size: 16, onClick: () => { st.note = null; st.declined = null; renderStatus(); } })));
     }
     if (st.error) {
       status.append(h('div', { class: 'medi-error', role: 'alert' }, icon('alert', { size: 16 }),
@@ -478,7 +483,7 @@ export default async function mediPage(root, ctx) {
     st.conv = { sessionId: sessionId || null, key: (st.conv?.key || 0) + 1 };
     st.messages = [];
     st.review = null; st.draft = null; st.suggestions = []; st.receipt = null;
-    st.error = null; st.failed = null; st.note = null;
+    st.error = null; st.failed = null; st.note = null; st.declined = null;
     st.persistChain = Promise.resolve();
     st.loadState = sessionId ? 'loading' : 'ready';
     ta.placeholder = mode().placeholder;
@@ -550,7 +555,7 @@ export default async function mediPage(root, ctx) {
     const value = String(text || '').trim();
     if (!value) return;
     if (value.length > LIMIT) { st.error = t(t(`შეტყობინება ძალიან გრძელია (მაქს. ${LIMIT} სიმბოლო).`, `Your message is too long (max ${LIMIT} characters).`), `Your message is too long (max ${LIMIT} characters).`); renderStatus(); return; }
-    st.note = null; st.error = null; st.failed = null;
+    st.note = null; st.declined = null; st.error = null; st.failed = null;
     if (st.mode === 'medi') {
       const intent = dialogIntent(value);
       if (st.review && intent === 'confirm') { setComposer('', false); await confirmReview(); return; }
@@ -577,8 +582,10 @@ export default async function mediPage(root, ctx) {
         st.controller = null;
         st.stopRequested = false;
         if (result?.declined) {
-          // Declining is a valid choice: nothing was sent. A quiet note, not an error.
-          st.note = t('შეტყობინება AI-ს არ გაეგზავნა. თანხმობას ნებისმიერ დროს შეცვლი პროფილში.', 'Your message wasn’t sent to the AI. You can change your consent in Profile at any time.');
+          // Declining / closing is a valid choice: nothing was sent. A calm note with „ხელახლა ცდა“
+          // (opens the disclosure again), never an error (App Review 2026-09-22).
+          st.note = t('AI-ს არაფერი გაეგზავნა. როცა გინდა, შეგიძლია ხელახლა სცადო.', 'Nothing was sent to the AI. You can try again whenever you like.');
+          st.declined = { text: value, petId };
           if (!ta.value.trim()) setComposer(value, false);
         }
         renderStatus();

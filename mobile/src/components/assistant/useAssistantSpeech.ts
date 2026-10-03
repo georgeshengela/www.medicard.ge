@@ -7,6 +7,7 @@ import { assistantRequest } from '@/lib/api';
 import { localAccountId } from '@/lib/localAccount';
 import { discardAssistantAudio } from './useAssistantVoice';
 import { tx } from '@/i18n/locale';
+import { aiConsentDeclinedText, isAiConsentDeclined } from '@/lib/aiConsentDecline';
 
 export function useAssistantSpeech(owner: string, available: boolean, onNotice: (text: string) => void) {
   const player = useAudioPlayer(null, { updateInterval: 150 });
@@ -66,8 +67,9 @@ export function useAssistantSpeech(owner: string, available: boolean, onNotice: 
         deadline.current = setTimeout(() => { stop(); if (active()) latest.current.onNotice(tx('ხმა შეწყდა. ტექსტით ან საუბრის ღილაკით გააგრძელე.', 'The audio stopped. Continue by text or with the talk button.')); }, 120000);
         try { player.replace(next); player.play(); } catch (e) { reject(e); }
       });
-    } catch {
-      if (active() && id === epoch.current) { stop(); latest.current.onNotice(tx('ხმოვანი პასუხი ახლა ვერ ჩაირთო. პასუხი ტექსტად რჩება.', "The voice reply couldn't start right now. The reply stays as text.")); }
+    } catch (error) {
+      // Declining the disclosure for speech output is a choice, not a playback failure (App Review 2026-09-22).
+      if (active() && id === epoch.current) { stop(); latest.current.onNotice(isAiConsentDeclined(error) ? aiConsentDeclinedText() : tx('ხმოვანი პასუხი ახლა ვერ ჩაირთო. პასუხი ტექსტად რჩება.', "The voice reply couldn't start right now. The reply stays as text.")); }
       return false;
     }
   }

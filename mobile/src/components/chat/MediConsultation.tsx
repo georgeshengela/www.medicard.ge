@@ -23,6 +23,7 @@ import type { CycleMediContext } from '@/lib/cycleMediContext';
 import { takeMediCycleContext, takeMediPrefill } from '@/lib/mediHandoff';
 import { MediContextChip } from '@/components/chat/MediContextChip';
 import { tx } from '@/i18n/locale';
+import { aiConsentDeclinedText, aiConsentRetryLabel, isAiConsentDeclined } from '@/lib/aiConsentDecline';
 
 /**
  * Medi's clinical conversation ("ექიმთან საუბარი") and deep analysis ("ღრმა ანალიზი").
@@ -76,6 +77,8 @@ function MediConsultationContent({ apiMode, sessionId: initialSessionId, prefill
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [failedMessage, setFailedMessage] = useState<string | null>(null);
+  // W2-8b: she declined or closed the AI disclosure — a choice, not an error. Holds the question for „ხელახლა ცდა“.
+  const [declinedMessage, setDeclinedMessage] = useState<string | null>(null);
   const [quotaBlock, setQuotaBlock] = useState<number | undefined>(undefined);
   // W2-8: opened from a cycle screen → the context staged in memory for this question (mediHandoff).
   // Shown as a removable chip; sent once, with the first question, through the consented AI path.
@@ -133,6 +136,7 @@ function MediConsultationContent({ apiMode, sessionId: initialSessionId, prefill
       const userAt = new Date().toISOString();
       setDraft(current => current.trim() === message ? '' : current);
       setFailedMessage(null);
+      setDeclinedMessage(null);
       setError(null);
       setSending(true);
       setMessages((prev) => [
@@ -194,12 +198,16 @@ function MediConsultationContent({ apiMode, sessionId: initialSessionId, prefill
         if (!operation.current()) return;
         setMessages((prev) => prev.slice(0, -2));
         setDraft(current => current.trim() ? current : message);
-        setFailedMessage(message);
 
-        if (err instanceof ApiError && err.isQuotaExceeded) {
+        if (isAiConsentDeclined(err)) {
+          // Nothing was sent (consent runs before the request). Calm line + „ხელახლა ცდა“, no error.
+          setDeclinedMessage(message);
+        } else if (err instanceof ApiError && err.isQuotaExceeded) {
+          setFailedMessage(message);
           setQuotaBlock(err.usage?.resetsInMs);
           if (err.usage) applyUsage(err.usage);
         } else {
+          setFailedMessage(message);
           setError((err instanceof ApiError || err instanceof IncompleteAnalysisError) ? err.message : ka.common.error);
         }
       } finally {
@@ -300,6 +308,15 @@ function MediConsultationContent({ apiMode, sessionId: initialSessionId, prefill
                 <Text accessibilityRole="alert" style={{ fontSize: 13, lineHeight: 21, color: FIGMA_CHAT.textSecondary, fontFamily: 'NotoSansGeorgian_400Regular', textAlign: 'center', paddingHorizontal: 8 }}>
                   {pausedMessage}
                 </Text>
+              ) : null}
+              {declinedMessage && !error ? (
+                <View accessibilityLiveRegion="polite" style={{ padding: 14, gap: 10, borderRadius: FIGMA_CHAT.bubbleRadius, backgroundColor: FIGMA_CHAT.white }}>
+                  <Text style={{ fontSize: 14, lineHeight: 21, color: FIGMA_CHAT.textSecondary, fontFamily: 'NotoSansGeorgian_400Regular' }}>{aiConsentDeclinedText()}</Text>
+                  <Pressable accessibilityRole="button" disabled={sending} onPress={() => void send(draft.trim().length >= 2 ? draft : declinedMessage)}
+                    style={{ alignSelf: 'flex-start', minHeight: 44, paddingHorizontal: 18, borderRadius: 22, justifyContent: 'center', backgroundColor: FIGMA_CHAT.brandQuaternary }}>
+                    <Text style={{ color: FIGMA_CHAT.brand, fontFamily: 'NotoSansGeorgian_600SemiBold' }}>{aiConsentRetryLabel()}</Text>
+                  </Pressable>
+                </View>
               ) : null}
               {error ? (
                 <View

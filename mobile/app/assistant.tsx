@@ -7,6 +7,7 @@ import { AssistantTalkDock } from '@/components/assistant/AssistantTalkDock';
 import { AssistantVoiceStage } from '@/components/assistant/AssistantVoiceStage';
 import { useAssistantVoice, assistantHaptic } from '@/components/assistant/useAssistantVoice';
 import { useAssistantSpeech } from '@/components/assistant/useAssistantSpeech';
+import { aiConsentDeclinedText, aiConsentRetryLabel, isAiConsentDeclined } from '@/lib/aiConsentDecline';
 import { assistantDialogIntent, spokenAssistantReview, assistantFieldError } from '@/lib/assistantDialog';
 import { ChevronDown, Ellipsis, PawPrint, Check, SlidersHorizontal } from 'lucide-react-native';
 import { useAuth } from '@/store/AuthContext';
@@ -217,10 +218,11 @@ function AssistantSession({ owner, sessionId, modes, pausedMessage }: { owner: s
       if (fromVoice) setVoiceMode(true);
     } catch (e) { if (valid(n)) {
       setDraft(currentDraft); if (!fromVoice) setText(value);
-      if (e instanceof ApiError && e.code === 'AI_CONSENT_DECLINED') {
-        // Declining sharing is a valid choice, not a network failure or a retryable send.
-        const reply = tx('მოთხოვნა AI-ს არ გაეგზავნა. შეგიძლია აპის სხვა ფუნქციებით გააგრძელო. არჩევანს პროფილში, „AI და კონფიდენციალურობაში“ შეცვლი.', 'Your request was not sent to AI. You can keep using the rest of the app. You can change this choice in Profile, under “AI and privacy”.');
-        setHistory(h => [...h, { role: 'assistant', content: reply }].slice(-12) as Turn[]);
+      if (isAiConsentDeclined(e)) {
+        // Declining / closing the disclosure is a valid choice, not a network failure (App Review
+        // 2026-09-22): a calm line and a neutral „ხელახლა ცდა“ that opens the disclosure again. No fake
+        // Medi turn — the history goes to the planner as conversation.
+        retryPlan.current = { value, fromVoice, petId }; setNotice(aiConsentDeclinedText());
       } else {
         retryPlan.current = { value, fromVoice, petId }; setError(errorText(e, tx('კავშირი შეფერხდა.', 'Connection problem.'))); assistantHaptic('error');
       }
@@ -297,6 +299,7 @@ function AssistantSession({ owner, sessionId, modes, pausedMessage }: { owner: s
     </ChatFormScroll> : <AssistantVoiceStage phase={capture.phase} metering={capture.metering} processing={!!busy || capture.phase === 'transcribing'} speaking={speech.phase === 'speaking'}
       reply={review ? reviewSpeech(review) : lastReply} userText={lastUser} error={error} notice={notice ?? (voiceOn ? null : featureMessage('voice'))} hasTask={!!task}>
       {error && !review && retryPlan.current ? <View style={{ width: '100%', gap: 8 }}>{button(tx('ხელახლა ცდა', 'Try again'), () => { const pending = retryPlan.current; if (pending) void send(pending.value, pending.fromVoice, pending.petId); }, true)}</View> : null}
+      {!error && !review && notice === aiConsentDeclinedText() && retryPlan.current ? <View style={{ width: '100%', gap: 8 }}>{button(aiConsentRetryLabel(), () => { const pending = retryPlan.current; if (pending) void send(pending.value, pending.fromVoice, pending.petId); })}</View> : null}
       {suggestions.length ? <View style={{ width: '100%', gap: 10, flexDirection: suggestions.length <= 2 ? 'row' : 'column' }}>{suggestions.map((option, i) => <View key={i} style={suggestions.length <= 2 ? { flex: 1 } : undefined}>{button(option.label, () => void send(option.text, voiceMode, option.petId))}</View>)}</View> : null}
       {review ? <View style={{ width: '100%', borderRadius: 22, padding: 16, backgroundColor: C.surface, borderWidth: 1, borderColor: C.bg300, gap: 12 }}>
         <View style={{ flexDirection: 'row', gap: 7, alignItems: 'center' }}>{review.tool.startsWith('pet_') ? <PawPrint size={16} color={C.primary100} /> : <Check size={16} color={C.primary100} />}<Text style={quiet}>{isHandoff(review.tool) ? tx('მზადაა გასახსნელად', 'Ready to open') : tx('გადაამოწმე შენახვამდე', 'Check before saving')}</Text></View>
