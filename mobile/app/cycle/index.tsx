@@ -19,6 +19,7 @@ import { CycleHeavyBleedingCard } from '@/components/cycle/CycleHeavyBleedingCar
 import { CycleSexSheet } from '@/components/cycle/CycleSexSheet';
 import { CycleStoriesRow } from '@/components/cycle/CycleStoriesRow';
 import { CycleStatsCard } from '@/components/cycle/CycleStatsCard';
+import { CycleDeviationsCard } from '@/components/cycle/CycleDeviationsCard';
 import { CyclePeriodToast, periodToastTitle } from '@/components/cycle/CyclePeriodToast';
 import { CycleAlertsBanner } from '@/components/cycle/CycleAlertsBanner';
 import { CycleQuickLogSheet } from '@/components/cycle/CycleQuickLogSheet';
@@ -1202,7 +1203,11 @@ export default function CycleHome() {
 
               {/* Tracking keeps the stats on whatever she logged (brief §9 wave 2 item 17). */}
               {modeCaps.showClassicCycleOverview && (!suppressCycleLengthChrome(bundle) || isTrackingOnly(bundle)) ? (
-                <CycleStatsCard bundle={bundle} onOpen={() => router.push('/cycle/trends' as never)} />
+                <>
+                  <CycleStatsCard bundle={bundle} onOpen={() => router.push('/cycle/trends' as never)} />
+                  {/* Cycle deviations (brief §9 wave 2 item 14): only here, under „ჩემი ციკლი“; nothing at all unless the server found something. */}
+                  <CycleDeviationsCard deviations={bundle.deviations} />
+                </>
               ) : null}
 
               <CycleJourneyGuide mode={bundle.profile.mode} />

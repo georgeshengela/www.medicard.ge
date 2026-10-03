@@ -1974,6 +1974,25 @@ export type CycleBundle = {
   localInsights?: CycleInsights;
   /** Period auto-end (server-derived at read time; absent on older servers). */
   periodStatus?: CyclePeriodStatus | null;
+  /** Cycle deviations over the last 180 days (brief §9 wave 2 item 14); null = draw nothing; absent on older servers. */
+  deviations?: CycleDeviations | null;
+};
+
+/** Brief §9 wave 2 item 14 (Apple „Cycle Deviations“): server-computed findings, the app writes the words. */
+export type CycleDeviationFinding =
+  | { id: 'irregular'; shortestDays: number; longestDays: number; spreadDays: number; cycles: number }
+  | { id: 'infrequent'; periods: number }
+  | { id: 'prolonged'; periods: number; longestDays: number }
+  | { id: 'spotting'; cycles: number; days: number };
+
+export type CycleDeviations = {
+  version: number;
+  windowDays: number;
+  from: string;
+  to: string;
+  findings: CycleDeviationFinding[];
+  /** Rules switched off for this person (PERIMENOPAUSE → ['irregular']). */
+  rulesOff: string[];
 };
 
 /** Brief §9 wave 2 item 3: whether the latest logged bleeding run is still open on the server's today. */
