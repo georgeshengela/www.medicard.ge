@@ -42,7 +42,9 @@ export function useAccountQuery<T>({ key, fetch, staleTime = FRESH.SHORT, enable
         return;
       }
       if (!enabled || !signedIn) return;
-      void queryClient.refetchQueries({ queryKey: JSON.parse(keyHash), stale: true, exact: true });
+      // cancelRefetch: false — join a refetch already in flight (re-subscribing on focus starts one
+      // too); cancelling it would send the same GET twice on every stale return.
+      void queryClient.refetchQueries({ queryKey: JSON.parse(keyHash), stale: true, exact: true }, { cancelRefetch: false });
       // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [keyHash, enabled, signedIn]),
   );
