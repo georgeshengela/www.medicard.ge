@@ -142,9 +142,12 @@ export function CyclePainEditor({
         })}
         {trailing}
       </View>
-      <Text style={{ color: c.mutedSoft, fontFamily: 'NotoSansGeorgian_400Regular', fontSize: 11.5, lineHeight: 16 }}>
-        {tx('ხელახალი შეხება ინტენსივობას ცვლის: ზომიერი → ძლიერი → მსუბუქი → მოხსნა', 'Tap again to change the strength: moderate → severe → mild → off')}
-      </Text>
+      {/* The quick logs already say „ხელახალი შეხება — ინტენსივობა“ in the section head (same as the classic quick log). */}
+      {!compact ? (
+        <Text style={{ color: c.mutedSoft, fontFamily: 'NotoSansGeorgian_400Regular', fontSize: 11.5, lineHeight: 16 }}>
+          {tx('ხელახალი შეხება ინტენსივობას ცვლის: ზომიერი → ძლიერი → მსუბუქი → მოხსნა', 'Tap again to change the strength: moderate → severe → mild → off')}
+        </Text>
+      ) : null}
     </View>
   );
 }
