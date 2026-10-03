@@ -11,12 +11,14 @@ import {
   View,
 } from 'react-native';
 import { usePrefersReducedMotion } from '@/hooks/usePrefersReducedMotion';
-import { ChevronDown, ChevronRight, Droplets, Heart, Lock, Sparkles } from 'lucide-react-native';
+import { ChevronDown, ChevronRight, Droplets, Heart, Lock, SlidersHorizontal, Sparkles } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
 import type { LucideIcon } from 'lucide-react-native';
 import { CYCLE_TEST_OPTIONS } from '@/constants/cycle';
 import { CycleBbtPicker } from '@/components/cycle/CycleBbtPicker';
 import { CycleIconRow, CycleIconTile } from '@/components/cycle/CycleIconTile';
+import { CycleLogLayoutSheet } from '@/components/cycle/CycleLogLayoutSheet';
+import { useCycleLogLayout } from '@/components/cycle/useCycleLogLayout';
 import { CycleJournalField, CycleLifestyleFields, CyclePainEditor, CycleTagPicker } from '@/components/cycle/CycleObservationFields';
 import { formatCycleDateKa } from '@/components/cycle/CycleUI';
 import { CycleSexSection } from '@/components/cycle/CycleSexSection';
@@ -38,10 +40,12 @@ import {
   mucusTiles,
   symptomTiles,
   tabHasContent,
+  type FullLogGroupId,
   type FullLogTab,
   type SymptomGroupId,
 } from '@/lib/cycleFullLog';
 import { cycleGlyphFor, flowGlyphStyle } from '@/lib/cycleIconMap';
+import { fullLogSections, type LogLayoutGroup } from '@/lib/cycleLogLayout';
 import { ka } from '@/i18n/ka';
 import { tx } from '@/i18n/locale';
 import { useCycleColors } from '@/theme/cycle';
@@ -107,6 +111,8 @@ function toggle(list: string[], id: string) {
  * pain → mood → body → digestion → skin → energy → fertility signs (when the mode logs them) → private
  * (a lock row that unfolds, never pre-filled) → lifestyle → tags → journal. The three tabs on top are
  * jump anchors into that list and light up as the person scrolls; a tab with content carries a dot.
+ * „კატეგორიების მორგება“ at the end switches groups off and reorders them inside their section
+ * (`cycleLogLayout`); a switched-off group that holds something for the day still shows.
  */
 export function CycleLogTabs({
   date,
@@ -127,6 +133,8 @@ export function CycleLogTabs({
   const pending = useRef<TabId | null>(initialTab && initialTab !== 'flow' ? initialTab : null);
   const [tab, setTab] = useState<TabId>(initialTab ?? 'flow');
   const [privateOpen, setPrivateOpen] = useState(false);
+  const [customizing, setCustomizing] = useState(false);
+  const { layout, setLayout } = useCycleLogLayout();
 
   const caps = cycleModeCapabilities(mode);
   const showFertility = Boolean(caps.showFertilityLogging);
@@ -136,6 +144,10 @@ export function CycleLogTabs({
     : caps.showPerimenopauseTracking
       ? PERIMENOPAUSE_DAILY_ASSESSMENT_KEYS
       : [];
+  /** Groups this mode logs at all (fertility signs, or the pregnancy test alone, only where the mode has them). */
+  const available = (g: LogLayoutGroup) => g !== 'fertility' || showFertility || showPregnancyTestOnly;
+  const sections = fullLogSections(layout, form, available);
+  const hiddenCount = layout.hidden.filter(available).length;
 
   const jumpTo = (id: TabId) => {
     Haptics.selectionAsync().catch(() => undefined);
@@ -199,6 +211,184 @@ export function CycleLogTabs({
   );
 
   const privateLogged = hasPrivateContent(form);
+
+  /** One group of the list, by id — the order and switches come from the person's layout. */
+  const groupNode = (id: FullLogGroupId): React.ReactNode => {
+    switch (id) {
+      case 'pain':
+        return (
+          <Group title={ka.cycle.pain} hint={tx('ხელახალი შეხება — ინტენსივობა', 'tap again for strength')}>
+            <CyclePainEditor
+              compact
+              entries={form.painEntries}
+              onChange={(painEntries) => onChange({ painEntries })}
+              visible={FULL_LOG_VISIBLE}
+              gap={0}
+            />
+          </Group>
+        );
+      case 'mood':
+        return (
+          <Group title={ka.cycle.trackGroup.mood} hint={ka.cycle.logMoodHint}>
+            <CycleIconRow
+              items={moodTiles()}
+              visible={FULL_LOG_VISIBLE}
+              gap={0}
+              isSelected={({ id }) => form.moods.includes(id)}
+              renderTile={({ id, label }) => (
+                <CycleIconTile
+                  glyph={cycleGlyphFor('mood', id)}
+                  label={label}
+                  selected={form.moods.includes(id)}
+                  onPress={() => onChange({ moods: toggle(form.moods, id) })}
+                />
+              )}
+            />
+          </Group>
+        );
+      case 'physical':
+        return symptomGroup('physical', ka.cycle.trackGroup.physical, ka.cycle.logSymHint);
+      case 'digestion':
+        return symptomGroup('digestion', ka.cycle.trackGroup.digestion);
+      case 'skin':
+        return symptomGroup('skin', ka.cycle.trackGroup.skin);
+      case 'energy':
+        return symptomGroup('energy', ka.cycle.trackGroup.energy, tx('დონე — ცხოვრების წესში', 'the level sits under lifestyle'));
+      case 'fertility':
+        return (
+          showFertility ? (
+            <Group title={ka.cycle.trackGroup.fertility} note={ka.cycle.fertilityGroupHint}>
+              <Text style={[s.sub, { color: c.ink }]}>{ka.cycle.ovulationTest}</Text>
+              {testTiles(form.ovulationTest, (ovulationTest) => onChange({ ovulationTest }), 'fertility')}
+
+              <View style={[s.subGap, s.bbt]}>
+                <CycleBbtPicker value={form.bbt} onChange={(bbt) => onChange({ bbt })} lastLogged={lastBbt} />
+              </View>
+
+              <Text style={[s.sub, s.subGap, { color: c.ink }]}>{ka.cycle.mucus}</Text>
+              <View style={s.tiles}>
+                {mucusTiles().map((opt, i) => (
+                  <CycleIconTile
+                    key={opt.id}
+                    role="radio"
+                    group="fertility"
+                    glyph={cycleGlyphFor('mucus', opt.id)}
+                    label={opt.label}
+                    selected={form.mucus === opt.id}
+                    glyphScale={0.7 + i * 0.08}
+                    glyphOpacity={0.6 + i * 0.1}
+                    onPress={() => onChange({ mucus: form.mucus === opt.id ? null : opt.id })}
+                  />
+                ))}
+              </View>
+
+              {caps.showPregnancyTestLog ? (
+                <>
+                  <Text style={[s.sub, s.subGap, { color: c.ink }]}>{ka.cycle.pregnancyTest}</Text>
+                  {testTiles(form.pregnancyTest, (pregnancyTest) => onChange({ pregnancyTest }), 'bleeding')}
+                </>
+              ) : null}
+            </Group>
+          ) : showPregnancyTestOnly ? (
+            <Group title={ka.cycle.pregnancyTest} note={ka.cycle.pregnancyTestNotMode}>
+              {testTiles(form.pregnancyTest, (pregnancyTest) => onChange({ pregnancyTest }), 'bleeding')}
+            </Group>
+          ) : null
+        );
+      case 'private':
+        return (
+          <React.Fragment>
+            {/* Private: sex, sex drive and the two intimate symptoms sit behind a lock row. It never
+                unfolds by itself — a logged day only says „აღრიცხულია“ until the person opens it. */}
+            <View style={s.group}>
+              <View style={s.groupHead}>
+                <Text accessibilityRole="header" style={[s.groupTitle, { color: c.ink }]}>
+                  {ka.cycle.trackGroup.private}
+                </Text>
+              </View>
+              <View style={[s.card, { backgroundColor: c.card }]}>
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityState={{ expanded: privateOpen }}
+                  accessibilityLabel={`${ka.cycle.sexSectionTitle}. ${ka.cycle.privateGroupHint}`}
+                  onPress={() => {
+                    Haptics.selectionAsync().catch(() => undefined);
+                    setPrivateOpen((v) => !v);
+                  }}
+                  style={s.lockRow}
+                >
+                  <View style={[s.lockIcon, { backgroundColor: c.periodSoft }]}>
+                    <Lock size={16} color={c.period} strokeWidth={2} />
+                  </View>
+                  <View style={{ flex: 1, minWidth: 0 }}>
+                    <Text style={[s.lockTitle, { color: c.ink }]}>
+                      {tx('სექსი, ლიბიდო და ინტიმური ნიშნები', 'Sex, sex drive and intimate symptoms')}
+                      {privateLogged ? <Text style={{ color: c.period }}>{` · ${tx('აღრიცხულია', 'logged')}`}</Text> : null}
+                    </Text>
+                    <Text numberOfLines={2} style={[s.lockHint, { color: c.mutedSoft }]}>
+                      {ka.cycle.privateGroupHint}
+                    </Text>
+                  </View>
+                  {privateOpen ? <ChevronDown size={18} color={c.muted} /> : <ChevronRight size={18} color={c.muted} />}
+                </Pressable>
+                {privateOpen ? (
+                  <View style={s.lockBody}>
+                    <View style={s.tiles}>
+                      {symptomTiles('private').map(({ id, label }) => (
+                        <CycleIconTile
+                          key={id}
+                          glyph={cycleGlyphFor('symptom', id)}
+                          label={label}
+                          selected={form.symptoms.includes(id)}
+                          onPress={() => onChange(applySymptomChipToggle(form, id))}
+                        />
+                      ))}
+                    </View>
+                    <View style={s.lockSex}>
+                      <CycleSexSection form={form} onChange={onChange} hideHeading hidePrivacyHint />
+                    </View>
+                  </View>
+                ) : null}
+              </View>
+            </View>
+          </React.Fragment>
+        );
+      case 'lifestyle':
+        return (
+          <Group title={ka.cycle.lifestyle}>
+            <CycleLifestyleFields
+              sleepQuality={form.sleepQuality}
+              stressLevel={form.stressLevel}
+              exerciseLevel={form.exerciseLevel}
+              caffeine={form.caffeine}
+              alcohol={form.alcohol}
+              energy={form.energy}
+              onChange={onChange}
+            />
+          </Group>
+        );
+      case 'tags':
+        return (
+          <Group title={ka.cycle.customTags} text>
+            <CycleTagPicker
+              tags={customTags}
+              selectedIds={form.customTagIds}
+              onChange={(customTagIds) => onChange({ customTagIds })}
+              onCreate={onCreateTag}
+              creating={creatingTag}
+            />
+          </Group>
+        );
+      case 'journal':
+        return (
+          <Group title={ka.cycle.journalTitle} note={ka.cycle.logNotesHint} text>
+            <CycleJournalField value={form.notes} onChange={(notes) => onChange({ notes })} />
+          </Group>
+        );
+      default:
+        return null;
+    }
+  };
 
   return (
     <View style={{ flex: 1 }}>
@@ -274,160 +464,42 @@ export function CycleLogTabs({
             </View>
           ) : null}
 
-          <Group title={ka.cycle.pain} hint={tx('ხელახალი შეხება — ინტენსივობა', 'tap again for strength')}>
-            <CyclePainEditor
-              compact
-              entries={form.painEntries}
-              onChange={(painEntries) => onChange({ painEntries })}
-              visible={FULL_LOG_VISIBLE}
-              gap={0}
-            />
-          </Group>
-
-          <Group title={ka.cycle.trackGroup.mood} hint={ka.cycle.logMoodHint}>
-            <CycleIconRow
-              items={moodTiles()}
-              visible={FULL_LOG_VISIBLE}
-              gap={0}
-              isSelected={({ id }) => form.moods.includes(id)}
-              renderTile={({ id, label }) => (
-                <CycleIconTile
-                  glyph={cycleGlyphFor('mood', id)}
-                  label={label}
-                  selected={form.moods.includes(id)}
-                  onPress={() => onChange({ moods: toggle(form.moods, id) })}
-                />
-              )}
-            />
-          </Group>
-
-          {symptomGroup('physical', ka.cycle.trackGroup.physical, ka.cycle.logSymHint)}
-          {symptomGroup('digestion', ka.cycle.trackGroup.digestion)}
-          {symptomGroup('skin', ka.cycle.trackGroup.skin)}
-          {symptomGroup('energy', ka.cycle.trackGroup.energy, tx('დონე — ცხოვრების წესში', 'the level sits under lifestyle'))}
+          {sections.feel.map((id) => (
+            <React.Fragment key={id}>{groupNode(id)}</React.Fragment>
+          ))}
         </View>
 
         <View onLayout={onAnchor('more')} style={s.anchor}>
-          {showFertility ? (
-            <Group title={ka.cycle.trackGroup.fertility} note={ka.cycle.fertilityGroupHint}>
-              <Text style={[s.sub, { color: c.ink }]}>{ka.cycle.ovulationTest}</Text>
-              {testTiles(form.ovulationTest, (ovulationTest) => onChange({ ovulationTest }), 'fertility')}
+          {sections.more.map((id) => (
+            <React.Fragment key={id}>{groupNode(id)}</React.Fragment>
+          ))}
 
-              <View style={[s.subGap, s.bbt]}>
-                <CycleBbtPicker value={form.bbt} onChange={(bbt) => onChange({ bbt })} lastLogged={lastBbt} />
-              </View>
-
-              <Text style={[s.sub, s.subGap, { color: c.ink }]}>{ka.cycle.mucus}</Text>
-              <View style={s.tiles}>
-                {mucusTiles().map((opt, i) => (
-                  <CycleIconTile
-                    key={opt.id}
-                    role="radio"
-                    group="fertility"
-                    glyph={cycleGlyphFor('mucus', opt.id)}
-                    label={opt.label}
-                    selected={form.mucus === opt.id}
-                    glyphScale={0.7 + i * 0.08}
-                    glyphOpacity={0.6 + i * 0.1}
-                    onPress={() => onChange({ mucus: form.mucus === opt.id ? null : opt.id })}
-                  />
-                ))}
-              </View>
-
-              {caps.showPregnancyTestLog ? (
-                <>
-                  <Text style={[s.sub, s.subGap, { color: c.ink }]}>{ka.cycle.pregnancyTest}</Text>
-                  {testTiles(form.pregnancyTest, (pregnancyTest) => onChange({ pregnancyTest }), 'bleeding')}
-                </>
-              ) : null}
-            </Group>
-          ) : showPregnancyTestOnly ? (
-            <Group title={ka.cycle.pregnancyTest} note={ka.cycle.pregnancyTestNotMode}>
-              {testTiles(form.pregnancyTest, (pregnancyTest) => onChange({ pregnancyTest }), 'bleeding')}
-            </Group>
-          ) : null}
-
-          {/* Private: sex, sex drive and the two intimate symptoms sit behind a lock row. It never
-              unfolds by itself — a logged day only says „აღრიცხულია“ until the person opens it. */}
-          <View style={s.group}>
-            <View style={s.groupHead}>
-              <Text accessibilityRole="header" style={[s.groupTitle, { color: c.ink }]}>
-                {ka.cycle.trackGroup.private}
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={tx('კატეგორიების მორგება', 'Customize categories')}
+            accessibilityHint={tx('რა გამოჩნდეს აღრიცხვისას და რა რიგით', 'What shows when you log, and in which order')}
+            onPress={() => {
+              Haptics.selectionAsync().catch(() => undefined);
+              setCustomizing(true);
+            }}
+            style={[s.card, s.customize, { backgroundColor: c.card }]}
+          >
+            <View style={[s.lockIcon, { backgroundColor: c.cardSoft }]}>
+              <SlidersHorizontal size={16} color={c.ink} strokeWidth={2} />
+            </View>
+            <View style={{ flex: 1, minWidth: 0 }}>
+              <Text style={[s.lockTitle, { color: c.ink }]}>{tx('კატეგორიების მორგება', 'Customize categories')}</Text>
+              <Text numberOfLines={1} style={[s.lockHint, { color: c.mutedSoft }]}>
+                {hiddenCount
+                  ? tx(`დამალულია ${hiddenCount} · ჩანაწერი არ იშლება`, `${hiddenCount} hidden · nothing is deleted`)
+                  : tx('ჩართე, გამორთე, გადაალაგე', 'Switch groups off or reorder them')}
               </Text>
             </View>
-            <View style={[s.card, { backgroundColor: c.card }]}>
-              <Pressable
-                accessibilityRole="button"
-                accessibilityState={{ expanded: privateOpen }}
-                accessibilityLabel={`${ka.cycle.sexSectionTitle}. ${ka.cycle.privateGroupHint}`}
-                onPress={() => {
-                  Haptics.selectionAsync().catch(() => undefined);
-                  setPrivateOpen((v) => !v);
-                }}
-                style={s.lockRow}
-              >
-                <View style={[s.lockIcon, { backgroundColor: c.periodSoft }]}>
-                  <Lock size={16} color={c.period} strokeWidth={2} />
-                </View>
-                <View style={{ flex: 1, minWidth: 0 }}>
-                  <Text style={[s.lockTitle, { color: c.ink }]}>
-                    {tx('სექსი, ლიბიდო და ინტიმური ნიშნები', 'Sex, sex drive and intimate symptoms')}
-                    {privateLogged ? <Text style={{ color: c.period }}>{` · ${tx('აღრიცხულია', 'logged')}`}</Text> : null}
-                  </Text>
-                  <Text numberOfLines={2} style={[s.lockHint, { color: c.mutedSoft }]}>
-                    {ka.cycle.privateGroupHint}
-                  </Text>
-                </View>
-                {privateOpen ? <ChevronDown size={18} color={c.muted} /> : <ChevronRight size={18} color={c.muted} />}
-              </Pressable>
-              {privateOpen ? (
-                <View style={s.lockBody}>
-                  <View style={s.tiles}>
-                    {symptomTiles('private').map(({ id, label }) => (
-                      <CycleIconTile
-                        key={id}
-                        glyph={cycleGlyphFor('symptom', id)}
-                        label={label}
-                        selected={form.symptoms.includes(id)}
-                        onPress={() => onChange(applySymptomChipToggle(form, id))}
-                      />
-                    ))}
-                  </View>
-                  <View style={s.lockSex}>
-                    <CycleSexSection form={form} onChange={onChange} hideHeading hidePrivacyHint />
-                  </View>
-                </View>
-              ) : null}
-            </View>
-          </View>
-
-          <Group title={ka.cycle.lifestyle}>
-            <CycleLifestyleFields
-              sleepQuality={form.sleepQuality}
-              stressLevel={form.stressLevel}
-              exerciseLevel={form.exerciseLevel}
-              caffeine={form.caffeine}
-              alcohol={form.alcohol}
-              energy={form.energy}
-              onChange={onChange}
-            />
-          </Group>
-
-          <Group title={ka.cycle.customTags} text>
-            <CycleTagPicker
-              tags={customTags}
-              selectedIds={form.customTagIds}
-              onChange={(customTagIds) => onChange({ customTagIds })}
-              onCreate={onCreateTag}
-              creating={creatingTag}
-            />
-          </Group>
-
-          <Group title={ka.cycle.journalTitle} note={ka.cycle.logNotesHint} text>
-            <CycleJournalField value={form.notes} onChange={(notes) => onChange({ notes })} />
-          </Group>
+            <ChevronRight size={18} color={c.muted} />
+          </Pressable>
         </View>
       </ChatFormScroll>
+      <CycleLogLayoutSheet visible={customizing} layout={layout} onChange={setLayout} onClose={() => setCustomizing(false)} available={available} />
     </View>
   );
 }
@@ -492,5 +564,6 @@ const s = StyleSheet.create({
   lockTitle: { fontFamily: 'NotoSansGeorgian_600SemiBold', fontSize: 14, lineHeight: 20 },
   lockHint: { fontFamily: 'NotoSansGeorgian_400Regular', fontSize: 11.5, lineHeight: 15 },
   lockBody: { paddingTop: 4, paddingBottom: 14, paddingHorizontal: 4 },
+  customize: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 12, paddingHorizontal: 12, minHeight: 60 },
   lockSex: { paddingHorizontal: 10, marginTop: -4 },
 });

@@ -6,6 +6,7 @@ import { CycleBbtPicker } from '@/components/cycle/CycleBbtPicker';
 import { CycleIconRow, CycleIconTile } from '@/components/cycle/CycleIconTile';
 import { CycleMoreTracking } from '@/components/cycle/CycleMoreTracking';
 import { CyclePainEditor } from '@/components/cycle/CycleObservationFields';
+import { useCycleLogLayout } from '@/components/cycle/useCycleLogLayout';
 import { CycleSexSection } from '@/components/cycle/CycleSexSection';
 import { CycleTestResultRow } from '@/components/cycle/CycleTestResultRow';
 import type { CycleLogForm } from '@/components/cycle/CycleLogTabs';
@@ -17,6 +18,7 @@ import { lastLoggedBbt } from '@/lib/cycleBbt';
 import { expectationTileHint, expectedIds, type CycleExpectation } from '@/lib/cycleExpectations';
 import { ALL_FINE_ID, cycleGlyphFor, flowGlyphStyle } from '@/lib/cycleIconMap';
 import { formFromCycleLog } from '@/lib/cycleLogSave';
+import { quickLogGroups, type QuickLogGroup } from '@/lib/cycleLogLayout';
 import { PAIN_MANAGED_SYMPTOM_IDS, PAIN_TYPES } from '@/lib/cycleObservations';
 import { chipGroup, recentObservationKeys, SENSITIVE_SHORTCUT_IDS } from '@/lib/cycleObservationRegistry';
 import { copyFromYesterday, formIsEmpty, hasCopyableContent } from '@/lib/cycleQuickLogCopy';
@@ -55,6 +57,9 @@ export function CycleQuickLogBody({
   const c = useCycleColors();
   const [sexOpen, setSexOpen] = useState(form.sexual === true);
   const [allFine, setAllFine] = useState(false);
+  /** „კატეგორიების მორგება“ from the full log: switches and order for the groups this sheet has. */
+  const { layout } = useCycleLogLayout();
+  const groups = quickLogGroups(layout, form, { fertility: showFertility });
   const expectedPain = useMemo(() => expectedIds(expected, 'pain'), [expected]);
   const expectedMoods = useMemo(() => expectedIds(expected, 'mood'), [expected]);
   const expectedSymptoms = useMemo(() => expectedIds(expected, 'symptom'), [expected]);
@@ -106,6 +111,150 @@ export function CycleQuickLogBody({
     else {
       setAllFine(false);
       onChange({ symptoms: toggle(form.symptoms, id) });
+    }
+  };
+
+  /** The groups after bleeding, in the person's order (`quickLogGroups`); the private lock row stays first. */
+  const quickNode = (id: QuickLogGroup): React.ReactNode => {
+    switch (id) {
+      case 'private':
+        return (
+          <>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityState={{ expanded: sexOpen }}
+              accessibilityLabel={`${ka.cycle.sexSectionTitle}. ${ka.cycle.sexPrivateHint}`}
+              onPress={() => {
+                Haptics.selectionAsync().catch(() => undefined);
+                setSexOpen((v) => !v);
+              }}
+              style={[s.lockRow, { backgroundColor: c.cardSoft }]}
+            >
+              <View style={[s.lockIcon, { backgroundColor: c.periodSoft }]}>
+                <Lock size={16} color={c.period} strokeWidth={2} />
+              </View>
+              <View style={{ flex: 1, minWidth: 0 }}>
+                <Text style={[s.lockTitle, { color: c.ink }]}>
+                  {ka.cycle.sexSectionTitle}
+                  {form.sexual === true ? <Text style={{ color: c.period }}>{` · ${tx('აღრიცხულია', 'logged')}`}</Text> : null}
+                </Text>
+                <Text numberOfLines={1} style={[s.lockHint, { color: c.mutedSoft }]}>
+                  {ka.cycle.sexPrivateHint}
+                </Text>
+              </View>
+              {sexOpen ? <ChevronDown size={18} color={c.muted} /> : <ChevronRight size={18} color={c.muted} />}
+            </Pressable>
+            {sexOpen ? (
+              <View style={{ marginTop: -6 }}>
+                <CycleSexSection form={form} onChange={onChange} disabled={disabled} hideHeading />
+              </View>
+            ) : null}
+          </>
+        );
+      case 'pain':
+        return (
+          <Group title={ka.cycle.pain} hint={tx('ხელახალი შეხება — ინტენსივობა', 'tap again for strength')}>
+            <CyclePainEditor
+              compact
+              entries={form.painEntries}
+              onChange={(painEntries) => onChange({ painEntries })}
+              types={painTypes}
+              visible={4}
+              expected={expectedPain}
+              hintFor={(type) => hintFor('pain', type)}
+              disabled={disabled}
+            />
+          </Group>
+        );
+      case 'mood':
+        return (
+          <Group title={ka.cycle.moods}>
+            <CycleIconRow
+              items={moods}
+              visible={4}
+              isSelected={({ id }) => form.moods.includes(id)}
+              renderTile={({ id, label }) => (
+                <CycleIconTile
+                  glyph={cycleGlyphFor('mood', id)}
+                  label={label}
+                  selected={form.moods.includes(id)}
+                  dashed={expectedMoods.includes(id)}
+                  disabled={disabled}
+                  onPress={() => onChange({ moods: toggle(form.moods, id) })}
+                  accessibilityHint={hintFor('mood', id)}
+                />
+              )}
+            />
+          </Group>
+        );
+      case 'symptoms':
+        return (
+          <Group title={ka.cycle.symptoms}>
+            <CycleIconRow
+              items={[{ id: ALL_FINE_ID, label: tx('ყველაფერი რიგზეა', 'Everything is fine') }, ...symptomPool]}
+              visible={4}
+              isSelected={({ id }) => form.symptoms.includes(id)}
+              renderTile={({ id, label }) =>
+                id === ALL_FINE_ID ? (
+                  <CycleIconTile
+                    glyph="yes"
+                    group="fertility"
+                    label={label}
+                    selected={allFine && form.symptoms.length === 0}
+                    disabled={disabled}
+                    onPress={() => {
+                      setAllFine((v) => !v);
+                      onChange({ symptoms: [] });
+                    }}
+                  />
+                ) : (
+                  <CycleIconTile
+                    glyph={cycleGlyphFor('symptom', id)}
+                    label={label}
+                    selected={form.symptoms.includes(id)}
+                    dashed={expectedSymptoms.includes(id)}
+                    disabled={disabled}
+                    onPress={() => {
+                      setAllFine(false);
+                      onChange({ symptoms: toggle(form.symptoms, id) });
+                    }}
+                    accessibilityHint={hintFor('symptom', id)}
+                  />
+                )
+              }
+            />
+          </Group>
+        );
+      case 'fertility':
+        return (
+          <Group title={ka.cycle.ttcQuickLogTitle} hint={tx('დაკვირვებაა, არა დიაგნოზი', 'observations, not a diagnosis')}>
+            <Text style={[s.sub, { color: c.ink }]}>{ka.cycle.ovulationTest}</Text>
+            <CycleTestResultRow value={form.ovulationTest} onChange={(ovulationTest) => onChange({ ovulationTest })} />
+            <View style={{ height: 12 }} />
+            <CycleBbtPicker value={form.bbt} onChange={(bbt) => onChange({ bbt })} lastLogged={lastBbt} disabled={disabled} />
+            <Text style={[s.sub, { color: c.ink, marginTop: 12 }]}>{ka.cycle.mucus}</Text>
+            <View style={s.row}>
+              {MUCUS_OPTIONS.map((opt, i) => (
+                <CycleIconTile
+                  key={opt.id}
+                  role="radio"
+                  group="fertility"
+                  glyph={cycleGlyphFor('mucus', opt.id)}
+                  label={opt.label}
+                  selected={form.mucus === opt.id}
+                  glyphScale={0.7 + i * 0.08}
+                  glyphOpacity={0.6 + i * 0.1}
+                  disabled={disabled}
+                  onPress={() => onChange({ mucus: form.mucus === opt.id ? null : opt.id })}
+                />
+              ))}
+            </View>
+            <Text style={[s.sub, { color: c.ink, marginTop: 12 }]}>{ka.cycle.pregnancyTest}</Text>
+            <CycleTestResultRow value={form.pregnancyTest} onChange={(pregnancyTest) => onChange({ pregnancyTest })} />
+          </Group>
+        );
+      default:
+        return null;
     }
   };
 
@@ -167,131 +316,9 @@ export function CycleQuickLogBody({
         </View>
       </Group>
 
-      <Pressable
-        accessibilityRole="button"
-        accessibilityState={{ expanded: sexOpen }}
-        accessibilityLabel={`${ka.cycle.sexSectionTitle}. ${ka.cycle.sexPrivateHint}`}
-        onPress={() => {
-          Haptics.selectionAsync().catch(() => undefined);
-          setSexOpen((v) => !v);
-        }}
-        style={[s.lockRow, { backgroundColor: c.cardSoft }]}
-      >
-        <View style={[s.lockIcon, { backgroundColor: c.periodSoft }]}>
-          <Lock size={16} color={c.period} strokeWidth={2} />
-        </View>
-        <View style={{ flex: 1, minWidth: 0 }}>
-          <Text style={[s.lockTitle, { color: c.ink }]}>
-            {ka.cycle.sexSectionTitle}
-            {form.sexual === true ? <Text style={{ color: c.period }}>{` · ${tx('აღრიცხულია', 'logged')}`}</Text> : null}
-          </Text>
-          <Text numberOfLines={1} style={[s.lockHint, { color: c.mutedSoft }]}>
-            {ka.cycle.sexPrivateHint}
-          </Text>
-        </View>
-        {sexOpen ? <ChevronDown size={18} color={c.muted} /> : <ChevronRight size={18} color={c.muted} />}
-      </Pressable>
-      {sexOpen ? (
-        <View style={{ marginTop: -6 }}>
-          <CycleSexSection form={form} onChange={onChange} disabled={disabled} hideHeading />
-        </View>
-      ) : null}
-
-      <Group title={ka.cycle.pain} hint={tx('ხელახალი შეხება — ინტენსივობა', 'tap again for strength')}>
-        <CyclePainEditor
-          compact
-          entries={form.painEntries}
-          onChange={(painEntries) => onChange({ painEntries })}
-          types={painTypes}
-          visible={4}
-          expected={expectedPain}
-          hintFor={(type) => hintFor('pain', type)}
-          disabled={disabled}
-        />
-      </Group>
-
-      <Group title={ka.cycle.moods}>
-        <CycleIconRow
-          items={moods}
-          visible={4}
-          isSelected={({ id }) => form.moods.includes(id)}
-          renderTile={({ id, label }) => (
-            <CycleIconTile
-              glyph={cycleGlyphFor('mood', id)}
-              label={label}
-              selected={form.moods.includes(id)}
-              dashed={expectedMoods.includes(id)}
-              disabled={disabled}
-              onPress={() => onChange({ moods: toggle(form.moods, id) })}
-              accessibilityHint={hintFor('mood', id)}
-            />
-          )}
-        />
-      </Group>
-
-      <Group title={ka.cycle.symptoms}>
-        <CycleIconRow
-          items={[{ id: ALL_FINE_ID, label: tx('ყველაფერი რიგზეა', 'Everything is fine') }, ...symptomPool]}
-          visible={4}
-          isSelected={({ id }) => form.symptoms.includes(id)}
-          renderTile={({ id, label }) =>
-            id === ALL_FINE_ID ? (
-              <CycleIconTile
-                glyph="yes"
-                group="fertility"
-                label={label}
-                selected={allFine && form.symptoms.length === 0}
-                disabled={disabled}
-                onPress={() => {
-                  setAllFine((v) => !v);
-                  onChange({ symptoms: [] });
-                }}
-              />
-            ) : (
-              <CycleIconTile
-                glyph={cycleGlyphFor('symptom', id)}
-                label={label}
-                selected={form.symptoms.includes(id)}
-                dashed={expectedSymptoms.includes(id)}
-                disabled={disabled}
-                onPress={() => {
-                  setAllFine(false);
-                  onChange({ symptoms: toggle(form.symptoms, id) });
-                }}
-                accessibilityHint={hintFor('symptom', id)}
-              />
-            )
-          }
-        />
-      </Group>
-
-      {showFertility ? (
-        <Group title={ka.cycle.ttcQuickLogTitle} hint={tx('დაკვირვებაა, არა დიაგნოზი', 'observations, not a diagnosis')}>
-          <Text style={[s.sub, { color: c.ink }]}>{ka.cycle.ovulationTest}</Text>
-          <CycleTestResultRow value={form.ovulationTest} onChange={(ovulationTest) => onChange({ ovulationTest })} />
-          <View style={{ height: 12 }} />
-          <CycleBbtPicker value={form.bbt} onChange={(bbt) => onChange({ bbt })} lastLogged={lastBbt} disabled={disabled} />
-          <Text style={[s.sub, { color: c.ink, marginTop: 12 }]}>{ka.cycle.mucus}</Text>
-          <View style={s.row}>
-            {MUCUS_OPTIONS.map((opt, i) => (
-              <CycleIconTile
-                key={opt.id}
-                role="radio"
-                group="fertility"
-                glyph={cycleGlyphFor('mucus', opt.id)}
-                label={opt.label}
-                selected={form.mucus === opt.id}
-                glyphScale={0.7 + i * 0.08}
-                glyphOpacity={0.6 + i * 0.1}
-                disabled={disabled}
-                onPress={() => onChange({ mucus: form.mucus === opt.id ? null : opt.id })}
-              />
-            ))}
-          </View>
-          <Text style={[s.sub, { color: c.ink, marginTop: 12 }]}>{ka.cycle.pregnancyTest}</Text>
-          <CycleTestResultRow value={form.pregnancyTest} onChange={(pregnancyTest) => onChange({ pregnancyTest })} />
-        </Group>
-      ) : null}
+      {groups.map((id) => (
+        <React.Fragment key={id}>{quickNode(id)}</React.Fragment>
+      ))}
 
       <View style={{ marginTop: 4 }}>
         <CycleMoreTracking form={form} onChange={onChange} compact lastBbt={lastBbt} />
