@@ -9,7 +9,9 @@ import type { CycleBundle } from '@/lib/api';
 import { cycleToday } from '@/lib/cycleCanonical';
 import { bleedingIsUncertain, showFertilityUi, showOvulationUi } from '@/lib/cycleContraception';
 import { needsCycleOnboarding } from '@/lib/cycleExperience';
-import { forecastPresentationAllowed } from '@/lib/cycleForecastEligibility';
+import { FERTILITY_STATUS, fertilityGateFromBundle, forecastPresentationAllowed } from '@/lib/cycleForecastEligibility';
+import { ovulationSourceLabel, wideWindowLabel } from '@/lib/cycleForecastCopy';
+import { CycleLearningBadge } from '@/components/cycle/CycleLearningBadge';
 import { isBleedFlow } from '@/lib/cycleLogSave';
 import { cycleModeCapabilities } from '@/lib/cycleModes';
 import { isFeatureOn, useFeatureState } from '@/lib/featureFlags';
@@ -55,11 +57,18 @@ export function HomeCycleAhead({ cycle, locked }: HomeCycleAheadProps) {
     phases: bundle.predictions?.phases,
     nextPeriodStart: next,
     nextPeriodEnd: bundle.predictions?.nextPeriodEnd ?? null,
+    nextPeriodRange: bundle.predictions?.nextPeriodRange ?? null,
     onPeriod: isBleedFlow(bundle.logs.find((l) => l.date === today)?.flow),
     showPeriod: Boolean(next) && caps.showNextPeriodForecast && forecastAllowed,
     showFertility: fertility,
     showOvulation: fertility && showOvulationUi(bundle),
   });
+  // Forecast honesty (brief §9 item 13): before 3 cycles the fertile stop is a quiet badge, never a guess.
+  const gate = fertilityGateFromBundle(bundle);
+  const hasFertile = events.some((e) => e.kind === 'fertile');
+  const learning = fertility && gate.status === FERTILITY_STATUS.LEARNING && !hasFertile;
+  const wide = events.some((e) => e.kind === 'fertile' && e.wide);
+  const ovulationSource = events.some((e) => e.kind === 'ovulation') ? ovulationSourceLabel(gate.ovulationSource) : null;
   if (!events.length) return null;
 
   const titleOf = (kind: AheadKind) =>
@@ -78,7 +87,7 @@ export function HomeCycleAhead({ cycle, locked }: HomeCycleAheadProps) {
       <Pressable
         accessibilityRole="button"
         accessibilityLabel={`${tx('წინ რა გელის', 'Coming up')}. ${events
-          .map((e) => `${titleOf(e.kind)}, ${ka.cycle.heroLikely} ${dateRange(e)}, ${soonLabel(e)}`)
+          .map((e) => `${titleOf(e.kind)}, ${ka.cycle.heroLikely} ${dateRange(e)}, ${soonLabel(e)}${e.wide ? `, ${wideWindowLabel()}` : ''}`)
           .join('; ')}`}
         onPress={openCycle}
         style={[s.card, { backgroundColor: theme.surface }]}
@@ -101,6 +110,11 @@ export function HomeCycleAhead({ cycle, locked }: HomeCycleAheadProps) {
             </View>
           ))}
         </View>
+        {learning ? <CycleLearningBadge done={gate.completedCycles} required={gate.requiredCycles} surface={theme.bg200} /> : null}
+        {wide ? <Text style={[hubText.small, s.note, { color: c.fertile }]}>{`${tx('ნაყოფიერი დღეები', 'Fertile days')}: ${wideWindowLabel()}`}</Text> : null}
+        {ovulationSource ? (
+          <Text style={[hubText.small, s.note, { color: c.fertile }]}>{`${tx('ოვულაცია', 'Ovulation')} · ${ovulationSource}`}</Text>
+        ) : null}
         <Text style={[hubText.small, s.note, { color: c.mutedSoft }]}>
           {tx('სავარაუდო თარიღებია, ბოლო ციკლების მიხედვით.', 'Estimated dates, based on your recent cycles.')}
         </Text>

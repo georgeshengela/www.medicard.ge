@@ -9,7 +9,9 @@ import { tx } from '@/i18n/locale';
 import { suppressCycleLengthChrome } from '@/lib/cycleForecastEligibility';
 import { isFeatureOn, useFeatureState } from '@/lib/featureFlags';
 import { cycleModeCapabilities } from '@/lib/cycleModes';
-import { cycleBarsModel, cycleStatsModel, type CycleBar, type CycleStat, type StatTone } from '@/lib/home/homeCycle';
+import { cycleBarsModel, cycleStatsModel, type CycleBar, type CycleStat, type CycleStatsModel, type StatTone } from '@/lib/home/homeCycle';
+import { statsLearningChip } from '@/lib/cycleForecastCopy';
+import { CycleLearningBadge } from '@/components/cycle/CycleLearningBadge';
 import { formatYmd } from '@/lib/format';
 import { useThemeColors } from '@/theme/colors';
 import { cycleHexAlpha, useCycleColors } from '@/theme/cycle';
@@ -71,7 +73,7 @@ export function HomeCycleStats({ cycle, locked, showCommunity, first }: HomeCycl
         <Pressable
           accessibilityRole="button"
           accessibilityLabel={`${ka.cycle.statsTitle}. ${tiles
-            .map((t) => `${t.label} ${valueText(t.stat)} ${ka.cycle.statsDayUnit}, ${toneLabel(t.stat.tone)}`)
+            .map((t) => `${t.label} ${valueText(t.stat)} ${ka.cycle.statsDayUnit}, ${toneLabel(t.stat.tone, stats.learning)}`)
             .join('; ')}. ${ka.cycle.statsBasedOn(stats.cycleCount)}`}
           onPress={openTrends}
           style={[s.card, { backgroundColor: theme.surface }]}
@@ -89,11 +91,15 @@ export function HomeCycleStats({ cycle, locked, showCommunity, first }: HomeCycl
                     <Text style={[s.unit, { color: theme.text200 }]}>{ka.cycle.statsDayUnit}</Text>
                   ) : null}
                 </View>
-                <ToneChip tone={t.stat.tone} />
+                <ToneChip tone={t.stat.tone} learning={stats.learning} />
               </View>
             ))}
           </View>
-          <Text style={[hubText.caption, { color: theme.text200 }]}>{ka.cycle.statsBasedOn(stats.cycleCount)}</Text>
+          {stats.learning ? (
+            <CycleLearningBadge done={stats.learning.done} required={stats.learning.required} align="flex-start" surface={accent.soft} />
+          ) : (
+            <Text style={[hubText.caption, { color: theme.text200 }]}>{ka.cycle.statsBasedOn(stats.cycleCount)}</Text>
+          )}
         </Pressable>
       ) : null}
       {showCommunity ? (
@@ -145,7 +151,10 @@ function shortMonth(ymd: string): string {
   return month.slice(0, 3);
 }
 
-function toneLabel(tone: StatTone): string {
+type Learning = CycleStatsModel['learning'];
+
+function toneLabel(tone: StatTone, learning?: Learning): string {
+  if (tone === 'learning') return statsLearningChip(learning?.done ?? 0, learning?.required ?? 3);
   if (tone === 'typical') return ka.cycle.statsTypical;
   if (tone === 'longer') return ka.cycle.statsLonger;
   if (tone === 'shorter') return ka.cycle.statsShorter;
@@ -154,12 +163,14 @@ function toneLabel(tone: StatTone): string {
 }
 
 /** Calm reference chip: green for typical, lilac otherwise — never red (a range is not a diagnosis). */
-function ToneChip({ tone }: { tone: StatTone }) {
+function ToneChip({ tone, learning }: { tone: StatTone; learning?: Learning }) {
   const theme = useThemeColors();
   const c = useCycleColors();
   if (tone === 'unknown') {
     return <Text style={[hubText.small, { color: theme.text300 }]}>{ka.cycle.statsNeedMore}</Text>;
   }
+  // Before 3 completed cycles: the number without a verdict; one badge under the tiles says why (brief §9 item 13).
+  if (tone === 'learning') return null;
   const color = tone === 'typical' ? c.success : c.luteal;
   return (
     <View style={[s.chip, { backgroundColor: cycleHexAlpha(color, 0.12) }]}>

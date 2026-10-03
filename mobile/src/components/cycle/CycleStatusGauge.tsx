@@ -45,6 +45,11 @@ type Props = {
   recordedPeriodDays?: number[];
   pmsPattern?: boolean;
   fertileDays?: { from: number; to: number } | null;
+  /**
+   * Without a fertile arc (the 3-cycle gate): the first luteal cycle day, so the ring still shows
+   * follicular → luteal like the phase words. Null = everything after bleeding is follicular.
+   */
+  lutealFrom?: number | null;
   a11yLabel?: string;
   center?: GaugeCenter;
   phase?: string;
@@ -76,6 +81,7 @@ export function CycleStatusGauge({
   recordedPeriodDays = [],
   pmsPattern = false,
   fertileDays,
+  lutealFrom = null,
   a11yLabel,
   center,
   phase,
@@ -110,11 +116,14 @@ export function CycleStatusGauge({
       if (fStart - 1 > periodEnd) out.push({ kind: 'follicular', from: periodEnd + 1, to: fStart - 1 });
       out.push({ kind: 'fertile', from: fStart, to: Math.min(fEnd, count) });
       if (fEnd < count) out.push({ kind: 'luteal', from: fEnd + 1, to: count });
+    } else if (lutealFrom != null && lutealFrom > periodEnd + 1 && lutealFrom <= count) {
+      out.push({ kind: 'follicular', from: periodEnd + 1, to: lutealFrom - 1 });
+      out.push({ kind: 'luteal', from: lutealFrom, to: count });
     } else if (periodEnd < count) {
       out.push({ kind: 'follicular', from: periodEnd + 1, to: count });
     }
     return out;
-  }, [length, recordedPeriodDays, periodLength, count, fertileDays]);
+  }, [length, recordedPeriodDays, periodLength, count, fertileDays, lutealFrom]);
 
   const phaseColor = { period: c.period, follicular: c.follicularFill, fertile: c.fertileFill, luteal: c.luteal };
   // Round caps reach half a band past the arc end; pull each end in so neighbours keep a small gap.

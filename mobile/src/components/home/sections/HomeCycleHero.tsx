@@ -389,8 +389,14 @@ function ClassicCycleCard({
   const inDays = next ? daysBetweenKeys(today, next) : null;
   const day = hideLengthChrome ? null : phase.day;
 
-  // Variable cycles (brief §9 item 12): the single server date widens into a window from her last cycles.
-  const spread = cycleSpreadModel({ isIrregular: bundle.profile.isIrregular, usedCycleLength: cycleLen, cycleLengths: bundle.trends?.cycleLengths });
+  // Variable cycles (brief §9 item 12): the server's window (`nextPeriodRange`), else one widened from her last cycles.
+  const spread = cycleSpreadModel({
+    isIrregular: bundle.profile.isIrregular,
+    usedCycleLength: cycleLen,
+    cycleLengths: bundle.trends?.cycleLengths,
+    nextPeriodStart: next,
+    serverRange: bundle.predictions?.nextPeriodRange ?? null,
+  });
   const center = cycleCenter({ hideLengthChrome, hidePredicted, onPeriod, predictedToday, forecastOn, inDays, day, cycleLength: cycleLen, spread });
   const centerText = cycleCenterText(center, uncertainBleed);
   // Today's colour: bleeding wins; otherwise the phase the cycle screen names.
@@ -416,7 +422,8 @@ function ClassicCycleCard({
         ? ka.cycle.heroUsualLength(length)
         : ka.cycle.heroCycleDayOf(phase.day, length)
       : null;
-  const late = forecastOn && inDays != null && inDays < 0 && caps.showLatePeriod;
+  // A variable cycle is late only after its whole window (the centre model already knows when).
+  const late = forecastOn && caps.showLatePeriod && (spread ? center.kind === 'late' : inDays != null && inDays < 0);
   // Dashed = an estimate (the calendar's grammar): the expected start with its weekday.
   const badge = forecastOn && next && !onPeriod
     ? late

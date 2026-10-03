@@ -837,6 +837,8 @@ export type CyclePartnerPayload = {
     start: string | null;
     end: string | null;
     ovulationDate: string | null;
+    /** 3-day band (server 2026-10-04+); null until 3 completed cycles. */
+    ovulationRange?: { start: string; end: string } | null;
     estimated: true;
   };
   symptoms?: { keys: string[] };
@@ -1255,7 +1257,7 @@ export type CycleLog = {
   caffeine?: CycleCaffeineLevel | null;
   alcohol?: CycleAlcoholLevel | null;
   customTagIds?: string[];
-  observations?: { energy?: CycleEnergyLevel | null } | null;
+  observations?: { energy?: CycleEnergyLevel | null; ovulationMarked?: boolean | null } | null;
   energy?: CycleEnergyLevel | null;
   observationSchemaVersion?: number;
   observationAssessments?: Record<string, 'ABSENT'> | null;
@@ -1399,6 +1401,18 @@ export type CyclePeriodRange = {
   source: 'logged';
 };
 
+export type CycleOvulationSource = 'calendar' | 'opk' | 'manual';
+
+export type CycleFertilityGate = {
+  /** READY ≥ 3 completed cycles · LEARNING before (nothing fertile shown) · WIDE trying to conceive before. */
+  status: 'READY' | 'LEARNING' | 'WIDE';
+  completedCycles: number;
+  requiredCycles: number;
+  /** This cycle's window: the usual one, the wide one, or none. */
+  window: 'standard' | 'wide' | null;
+  ovulationSource: CycleOvulationSource | null;
+};
+
 export type CycleDayMark = {
   period?: boolean;
   fertile?: boolean;
@@ -1409,6 +1423,8 @@ export type CycleDayMark = {
   hasNote?: boolean;
   flow?: string;
   ownerClassifiedPeriod?: boolean;
+  /** An expected-period day that is only inside a variable cycle's window (`nextPeriodRange`). */
+  periodRange?: boolean;
   cycleDay?: number | null;
   phase?: CyclePhaseKind;
   phaseKa?: string;
@@ -1860,12 +1876,24 @@ export type CycleBundle = {
     calendar: Record<string, CycleDayMark>;
     confidence: 'low' | 'medium' | 'high';
     estimated: true;
+    /** Variable cycles: the next period is expected over this window (late only after `to`). */
+    nextPeriodRange?: { from: string; to: string } | null;
+    /** Ovulation as a 3-day band; `ovulationDate` stays its centre for older builds. */
+    ovulationRange?: { start: string; end: string } | null;
+    /** Forecast honesty (server cycleForecastHonesty.js): the 3-cycle gate and where ovulation comes from. */
+    fertility?: CycleFertilityGate;
+    late?: boolean;
     phases?: {
       periodStart: string;
       periodEnd: string;
-      ovulation: string;
-      fertileStart: string;
-      fertileEnd: string;
+      /** Null while the 3-cycle gate keeps ovulation unannounced. */
+      ovulation: string | null;
+      ovulationStart?: string | null;
+      ovulationEnd?: string | null;
+      ovulationSource?: CycleOvulationSource | null;
+      fertileStart: string | null;
+      fertileEnd: string | null;
+      fertileWindowKind?: 'standard' | 'wide' | null;
       nextPeriodStart: string;
     }[];
   };
@@ -3258,7 +3286,7 @@ export const api = {
         caffeine: CycleCaffeineLevel | null;
         alcohol: CycleAlcoholLevel | null;
         customTagIds: string[];
-        observations: { energy?: CycleEnergyLevel | null } | null;
+        observations: { energy?: CycleEnergyLevel | null; ovulationMarked?: boolean | null } | null;
         energy: CycleEnergyLevel | null;
         observationAssessments: Record<string, 'ABSENT'>;
       }>,

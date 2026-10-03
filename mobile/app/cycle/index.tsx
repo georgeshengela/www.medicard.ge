@@ -73,7 +73,14 @@ import { CyclePostpartumCard } from '@/components/cycle/CyclePostpartumCard';
 import { CyclePregnancyTimelinePeek } from '@/components/cycle/CyclePregnancyTimelinePeek';
 import { CyclePregnancyCarePlannerCard } from '@/components/cycle/CyclePregnancyCarePlannerCard';
 import { cycleModeCapabilities, supportsCycleCapability } from '@/lib/cycleModes';
-import { forecastPresentationAllowed, suppressCycleLengthChrome } from '@/lib/cycleForecastEligibility';
+import {
+  FERTILITY_STATUS,
+  fertilityGateFromBundle,
+  forecastPresentationAllowed,
+  suppressCycleLengthChrome,
+} from '@/lib/cycleForecastEligibility';
+import { CycleLearningBadge } from '@/components/cycle/CycleLearningBadge';
+import { wideWindowLabel } from '@/lib/cycleForecastCopy';
 import { cycleLoggedBleedLabel } from '@/lib/cycleHistoryCopy';
 import {
   applyTtcFailure,
@@ -580,6 +587,19 @@ export default function CycleHome() {
     && modeCaps.showFertileEstimates
     && forecastPresentationAllowed(bundle)
     && !confidencePresentation(bundle.predictions?.confidence).hidePredictedOverlays,
+  );
+  // Brief §9 item 13: before 3 completed cycles the calendar draws no fertile days — its legend drops
+  // those rows and the quiet „ვსწავლობთ“ badge says why (unless her own OPK / mark opened a band).
+  const fertilityGate = bundle ? fertilityGateFromBundle(bundle) : null;
+  const fertileLearning = Boolean(
+    bundle
+    && fertilityVisible
+    && showPredicted
+    && fertilityGate?.status === FERTILITY_STATUS.LEARNING
+    && !bundle.predictions?.fertileWindow,
+  );
+  const fertileWide = Boolean(
+    bundle && fertilityVisible && showPredicted && fertilityGate?.status === FERTILITY_STATUS.WIDE && fertilityGate.window === 'wide',
   );
 
   const saveLastPeriod = async (iso: string) => {
@@ -1334,9 +1354,18 @@ export default function CycleHome() {
               {/* Brief §8.4: legend = the shared CyclePhaseLegend (marks only — the calendar never draws
                   follicular/luteal) + MedicalSourcesLink. */}
               <View style={{ marginTop: 14, gap: 6 }}>
+                {fertileLearning && fertilityGate ? (
+                  <CycleLearningBadge done={fertilityGate.completedCycles} required={fertilityGate.requiredCycles} align="flex-start" />
+                ) : null}
+                {fertileWide ? (
+                  <Text style={{ color: c.fertile, fontSize: 12.5, lineHeight: 18, fontFamily: 'NotoSansGeorgian_600SemiBold' }}>
+                    {`${ka.cycle.legendFertile} · ${wideWindowLabel()}`}
+                  </Text>
+                ) : null}
                 <CyclePhaseLegend
                   look="card"
-                  showFertility={fertilityVisible}
+                  showFertility={fertilityVisible && !fertileLearning}
+                  showOvulation={!fertileWide}
                   showPredicted={showPredicted}
                   loggedBleedLabel={bleedLegend}
                   showOwnerClassified={Boolean(

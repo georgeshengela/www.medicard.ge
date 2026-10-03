@@ -75,6 +75,11 @@ export type CycleLogForm = {
   customTagIds: string[];
   energy: string | null;
   observationAssessments: Record<string, 'ABSENT'>;
+  /**
+   * „ოვულაცია ამ დღეს იყო“ (day sheet): true = marked, false = un-marked now (sent as null to clear),
+   * null/undefined = untouched (not sent, so a stored mark survives every other save).
+   */
+  ovulationMarked?: boolean | null;
 };
 
 type Props = {

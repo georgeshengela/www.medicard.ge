@@ -39,6 +39,13 @@ export type CycleLegendOptions = {
   marks?: boolean;
   /** Contraception presentation — no fertility anywhere. */
   showFertility?: boolean;
+  /**
+   * The ring's luteal arc without a fertile one (the 3-cycle gate: phases are still estimated, fertile
+   * days are not). Defaults to `showFertility`.
+   */
+  showLuteal?: boolean;
+  /** The ovulation ring row (off while trying to conceive before 3 cycles: a wide window, no ovulation day). */
+  showOvulation?: boolean;
   /** Low confidence — no estimated marks. Logged facts stay. */
   showPredicted?: boolean;
   /** Postpartum: a logged bleed the owner classified as a period (white inner ring). */
@@ -91,14 +98,17 @@ export function cycleLegendItems(opts: CycleLegendOptions = {}): CycleLegendItem
   const keys: CycleLegendKey[] = [];
   if (opts.phases) {
     keys.push('periodPhase', 'follicular');
-    // The ring hides its fertile and luteal arcs together with the fertile window (contraception).
-    if (showFertility) keys.push('fertilePhase', 'luteal');
+    // The ring hides its fertile and luteal arcs together with the fertile window (contraception);
+    // before 3 cycles only the fertile arc is missing (`showLuteal`).
+    if (showFertility) keys.push('fertilePhase');
+    if (opts.showLuteal ?? showFertility) keys.push('luteal');
   }
   if (opts.marks !== false) {
     keys.push('logged');
     if (opts.showOwnerClassified) keys.push('classified');
     if (showPredicted) keys.push('predicted');
-    if (showPredicted && showFertility) keys.push('fertile', 'ovulation');
+    if (showPredicted && showFertility) keys.push('fertile');
+    if (showPredicted && showFertility && opts.showOvulation !== false) keys.push('ovulation');
     keys.push('symptom', 'spotting', 'sex');
   }
   const only = opts.only ? new Set(opts.only) : null;

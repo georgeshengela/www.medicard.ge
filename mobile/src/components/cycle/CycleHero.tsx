@@ -23,13 +23,17 @@ import { cycleCenter, cycleHeroActions, cycleSpreadModel, startLeads, type Cycle
 import { addDaysToKey, daysBetween } from '@/lib/cyclePhase';
 import { isBleedFlow } from '@/lib/cycleLogSave';
 import { cycleModeCapabilities } from '@/lib/cycleModes';
-import { bleedingIsUncertain, showFertilityUi } from '@/lib/cycleContraception';
+import { bleedingIsUncertain, showFertilityUi, showOvulationUi } from '@/lib/cycleContraception';
 import { confidencePresentation, gaugeA11ySummary } from '@/lib/cyclePresentation.js';
 import {
   forecastPresentationAllowed,
   isPostpartumReturnLearning,
   suppressCycleLengthChrome,
+  FERTILITY_STATUS,
+  fertilityGateFromBundle,
 } from '@/lib/cycleForecastEligibility';
+import { ovulationBandLine, wideWindowLabel } from '@/lib/cycleForecastCopy';
+import { CycleLearningBadge } from '@/components/cycle/CycleLearningBadge';
 import { cycleHexAlpha, useCycleColors } from '@/theme/cycle';
 import { hasPmsPattern } from '@/lib/cycleAnalytics';
 
@@ -121,14 +125,41 @@ export function CycleHero({
     };
   }, [bundle.predictions, cycleStart, cycleLength, fertilityVisible, hidePredicted]);
 
+  // Forecast honesty (brief §9 item 13): the 3-cycle gate, TTC's wide window, the ovulation band's source.
+  const fertilityGate = fertilityGateFromBundle(bundle);
+  const wideWindow = fertilityGate.status === FERTILITY_STATUS.WIDE && fertilityGate.window === 'wide';
+  const learningBadge =
+    fertilityVisible &&
+    caps.showFertileEstimates &&
+    !hidePredicted &&
+    !hideLengthChrome &&
+    !overlays.fertileDays &&
+    Boolean(cycleStart) &&
+    fertilityGate.status === FERTILITY_STATUS.LEARNING;
+  const ovulationRange = showOvulationUi(bundle) ? bundle.predictions?.ovulationRange ?? null : null;
+  // No fertile arc yet: the ring still turns luteal where the server's phase words do (never a fertile guess).
+  const lutealFrom = useMemo(() => {
+    if (!learningBadge || !cycleStart || !cycleLength) return null;
+    for (let d = 1; d <= Math.max(cycleLength, day ?? 0); d += 1) {
+      const key = addDaysToKey(cycleStart, d - 1);
+      if (bundle.predictions?.calendar?.[key]?.phase === 'luteal') return d;
+    }
+    return null;
+  }, [learningBadge, cycleStart, cycleLength, day, bundle.predictions?.calendar]);
+
   const openFertile = () => {
     if (!overlays.fertileDays) return;
     const copy = fertileInsightCopy(flags, bundle.profile.mode);
     const from = dateForCycleDay(overlays.fertileDays.from);
     const to = dateForCycleDay(overlays.fertileDays.to);
+    const lines = [
+      from && to ? ka.cycle.gaugeFertileRange(formatCycleDateKa(from), formatCycleDateKa(to)) : null,
+      wideWindow ? wideWindowLabel() : null,
+      ovulationRange ? ovulationBandLine(ovulationRange, fertilityGate.ovulationSource) : null,
+    ].filter(Boolean);
     setExplain({
       title: copy.title,
-      range: from && to ? ka.cycle.gaugeFertileRange(formatCycleDateKa(from), formatCycleDateKa(to)) : undefined,
+      range: lines.length ? lines.join('\n') : undefined,
       body: copy.body,
     });
   };
@@ -174,6 +205,8 @@ export function CycleHero({
     isIrregular: bundle.profile.isIrregular,
     usedCycleLength: cycleLength,
     cycleLengths: bundle.trends?.cycleLengths,
+    nextPeriodStart: next,
+    serverRange: bundle.predictions?.nextPeriodRange ?? null,
   });
   /** One number in the ring (research brief §1): bleeding day, "today", the countdown or window; else cycle day. */
   const centerModel = cycleCenter({ hideLengthChrome, hidePredicted, onPeriod, predictedToday, forecastOn, inDays, day, cycleLength, spread });
@@ -232,6 +265,7 @@ export function CycleHero({
         recordedPeriodDays={cycleStart && !hideLengthChrome ? bundle.logs.filter(log => isBleedFlow(log.flow)).map(log => daysBetween(cycleStart, log.date) + 1).filter(d => d >= 1 && d <= Math.max(cycleLength, day ?? 0)) : []}
         pmsPattern={hasPmsPattern(bundle) && !hidePredicted && phase === 'luteal'}
         fertileDays={overlays.fertileDays}
+        lutealFrom={lutealFrom}
         a11yLabel={gaugeA11y}
         center={center}
         phase={phase}
@@ -255,7 +289,7 @@ export function CycleHero({
           </Text>
         ) : null}
         {/* Same grammar as the ring and the calendar (brief §8.2 item 3): the fertile arc and its day marks. */}
-        <CyclePhaseLegend look="plain" phases only={['fertilePhase', 'fertile', 'ovulation']} showFertility />
+        <CyclePhaseLegend look="plain" phases only={['fertilePhase', 'fertile', 'ovulation']} showFertility showOvulation={!wideWindow} />
       </CycleExplainSheet>
 
       <View style={{ paddingHorizontal: 18, marginTop: 2 }}>
@@ -287,8 +321,27 @@ export function CycleHero({
         {!hideLengthChrome && (overlays.fertileDays || cycleStart) ? (
           <View accessible={false} importantForAccessibility="no-hide-descendants" style={{ marginTop: 12 }}>
             {/* Brief §8.2 items 3 + 10: the shared legend, phases only under the ring, with the closing line. */}
-            <CyclePhaseLegend look="dense" phases marks={false} closingLine showFertility={Boolean(overlays.fertileDays)} />
+            <CyclePhaseLegend
+              look="dense"
+              phases
+              marks={false}
+              closingLine
+              showFertility={Boolean(overlays.fertileDays)}
+              showLuteal={Boolean(overlays.fertileDays) || lutealFrom != null}
+            />
           </View>
+        ) : null}
+
+        {/* Brief §9 item 13: before 3 cycles the fertile arc is not drawn — this quiet badge stands in its place. */}
+        {learningBadge ? (
+          <View style={{ marginTop: 12, alignItems: 'center' }}>
+            <CycleLearningBadge done={fertilityGate.completedCycles} required={fertilityGate.requiredCycles} />
+          </View>
+        ) : null}
+        {wideWindow && overlays.fertileDays ? (
+          <Text style={{ color: c.fertile, fontFamily: 'NotoSansGeorgian_600SemiBold', fontSize: 12, lineHeight: 17, textAlign: 'center', marginTop: 8 }}>
+            {`${ka.cycle.legendFertile} · ${wideWindowLabel()}`}
+          </Text>
         ) : null}
 
         {!hideLengthChrome ? (

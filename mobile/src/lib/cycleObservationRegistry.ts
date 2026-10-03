@@ -114,6 +114,30 @@ export function recentObservationKeys(
     .map(([key]) => key);
 }
 
+/**
+ * Keys of the `observations` JSON bag — mirror of the server registry's STORAGE.OBSERVATIONS rows
+ * (server/src/lib/cycleObservationRegistry.js; parity test in cycleForecastCopy.test.ts). An unknown key
+ * is refused by the server, so a key is added here and there together.
+ */
+export const OBSERVATION_BAG_KEYS = Object.freeze({
+  energy: { sensitivity: 'HEALTH', ai: false, partner: false, analytics: false },
+  // „ოვულაცია ამ დღეს იყო“ — private like OPK / mucus; centres that cycle's ovulation band on the server.
+  ovulationMarked: { sensitivity: 'SENSITIVE', ai: false, partner: false, analytics: false },
+} as const);
+
+export const OVULATION_MARK_KEY = 'ovulationMarked';
+
+export function isOvulationMarked(observations: { ovulationMarked?: boolean | null } | null | undefined): boolean {
+  return observations?.ovulationMarked === true;
+}
+
+/** What a save sends for the mark: true → set, false → clear (null), untouched → nothing. */
+export function ovulationMarkPatch(value: boolean | null | undefined): { ovulationMarked?: true | null } {
+  if (value === true) return { ovulationMarked: true };
+  if (value === false) return { ovulationMarked: null };
+  return {};
+}
+
 export function observationsEnergy(observations: { energy?: string | null } | null | undefined): string | null {
   const value = observations?.energy;
   return ENERGY_LEVELS.includes(value as CycleEnergyLevel) ? (value as string) : null;

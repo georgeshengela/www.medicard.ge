@@ -57,3 +57,12 @@ test('every estimate label says სავარაუდო and the closing line
   assert.match(line, /ლუთეალური/);
   assert.match(line, /რგოლზე/);
 });
+
+test('before 3 cycles the ring keeps its luteal arc without the fertile one (showLuteal)', () => {
+  const keys = (opts: Parameters<typeof cycleLegendItems>[0]) => cycleLegendItems(opts).map((i) => i.key);
+  assert.deepEqual(keys({ phases: true, marks: false, showFertility: false, showLuteal: true }), ['periodPhase', 'follicular', 'luteal']);
+  assert.deepEqual(keys({ phases: true, marks: false, showFertility: false }), ['periodPhase', 'follicular']);
+  assert.deepEqual(keys({ phases: true, marks: false }), ['periodPhase', 'follicular', 'fertilePhase', 'luteal']);
+  // Trying to conceive before 3 cycles: the wide window has no ovulation day, so no ovulation row.
+  assert.deepEqual(keys({ showOvulation: false }), ['logged', 'predicted', 'fertile', 'symptom', 'spotting', 'sex']);
+});

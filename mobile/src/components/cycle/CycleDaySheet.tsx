@@ -26,6 +26,8 @@ import { cycleChipLabel } from '@/lib/cycleLabels';
 import { isBleedFlow } from '@/lib/cycleLogSave';
 import { cycleModeCapabilities } from '@/lib/cycleModes';
 import { explicitAbsentKeys } from '@/lib/cycleObservationAssessment';
+import { isOvulationMarked } from '@/lib/cycleObservationRegistry';
+import { ovulationMarkHint, ovulationMarkLabel } from '@/lib/cycleForecastCopy';
 import type { CycleView } from '@/lib/cycleOffline';
 import { classifyCycleDay } from '@/lib/cyclePresentation.js';
 import { addDaysKey } from '@/lib/home/homeCycle';
@@ -111,6 +113,17 @@ export function CycleDaySheet({
     else if (phase.phase !== 'unknown') phaseLine = displayPhaseLabel(phase.phase, phase.phaseKa, { loggedPeriod: false });
   }
   const estimated = phaseLine != null && phaseLine !== ka.cycle.period;
+
+  // „ოვულაცია ამ დღეს იყო“ (brief §9 item 12): track / TTC, today or a past day, fertility not hidden by
+  // hormonal contraception. Saved with the day like any other field; the server centres that cycle's band on it.
+  const canMarkOvulation =
+    caps.showClassicCycleOverview && caps.showFertileEstimates && showFertilityUi(bundle) && !isFuture && Boolean(q.hydrated && q.caps);
+  const storedMark = isOvulationMarked(log?.observations);
+  const markedNow = q.form.ovulationMarked === true || (q.form.ovulationMarked == null && storedMark);
+  const toggleMark = () => {
+    Haptics.selectionAsync().catch(() => undefined);
+    q.patch({ ovulationMarked: markedNow ? (storedMark ? false : null) : true });
+  };
   const cycleDayLine = caps.showClassicCycleOverview && phase.day != null ? `${ka.cycle.cycleDay} ${phase.day}` : null;
 
   const classifiedDates = postpartum?.classifiedDates || bundle.classifiedDates || [];
@@ -346,6 +359,29 @@ export function CycleDaySheet({
                   ) : (
                     <>
                       <CycleQuickLogFields q={q} date={date} />
+                      {canMarkOvulation ? (
+                        <Pressable
+                          accessibilityRole="switch"
+                          accessibilityState={{ checked: markedNow }}
+                          accessibilityLabel={`${ovulationMarkLabel()}. ${ovulationMarkHint()}`}
+                          onPress={toggleMark}
+                          style={[s.markRow, { backgroundColor: markedNow ? c.fertilitySoft : c.cardSoft }]}
+                        >
+                          <View
+                            style={[
+                              s.markBox,
+                              markedNow ? { backgroundColor: c.fertile, borderColor: c.fertile } : { borderColor: c.fertile },
+                            ]}
+                          >
+                            {markedNow ? <Check size={14} color={c.card} strokeWidth={3} /> : null}
+                          </View>
+                          <View style={s.markText}>
+                            <Text style={[s.markTitle, { color: c.ink }]}>{ovulationMarkLabel()}</Text>
+                            <Text style={[s.markHint, { color: c.muted }]}>{ovulationMarkHint()}</Text>
+                          </View>
+                          <Lock size={14} color={c.mutedSoft} strokeWidth={2} />
+                        </Pressable>
+                      ) : null}
                       {q.saveError ? <Text style={[s.error, { color: c.danger }]}>{q.saveError}</Text> : null}
                     </>
                   )}
@@ -427,6 +463,11 @@ const s = StyleSheet.create({
   logHint: { fontSize: 12, lineHeight: 16, fontFamily: 'NotoSansGeorgian_400Regular' },
   loading: { minHeight: 120, justifyContent: 'center', alignItems: 'center', paddingVertical: 24 },
   error: { fontSize: 13, marginTop: 12, fontFamily: 'NotoSansGeorgian_600SemiBold' },
+  markRow: { flexDirection: 'row', alignItems: 'center', gap: 12, borderRadius: 16, paddingVertical: 12, paddingHorizontal: 14, minHeight: 56 },
+  markBox: { width: 24, height: 24, borderRadius: 12, borderWidth: 1.5, alignItems: 'center', justifyContent: 'center' },
+  markText: { flex: 1, minWidth: 0, gap: 2 },
+  markTitle: { fontSize: 14, lineHeight: 20, fontFamily: 'NotoSansGeorgian_600SemiBold' },
+  markHint: { fontSize: 11.5, lineHeight: 16, fontFamily: 'NotoSansGeorgian_400Regular' },
   pendingBar: { marginHorizontal: 16, marginBottom: 8, borderRadius: 16, borderWidth: 1, padding: 12, gap: 10 },
   pendingText: { fontSize: 13.5, lineHeight: 19, fontFamily: 'NotoSansGeorgian_600SemiBold' },
   pendingActions: { flexDirection: 'row', gap: 8 },

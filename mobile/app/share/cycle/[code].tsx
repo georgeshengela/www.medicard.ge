@@ -13,6 +13,9 @@ import { api, ApiError, type CyclePartnerPayload } from '@/lib/api';
 import { cycleChipLabel } from '@/lib/cycleLabels';
 import { isCycleShareCode } from '@/lib/cycleSharePending';
 import { useCycleColors } from '@/theme/cycle';
+import { tx } from '@/i18n/locale';
+import { ovulationBandLine, shortDateRange } from '@/lib/cycleForecastCopy';
+import { addDaysKey } from '@/lib/home/homeCycle';
 
 export default function PartnerCycleShareScreen() {
   const { code } = useLocalSearchParams<{ code: string }>();
@@ -165,11 +168,18 @@ function PartnerShareBody({ payload }: { payload: CyclePartnerPayload }) {
         <CycleCard>
           <Text style={{ color: c.muted, fontSize: 13, fontWeight: '700' }}>{ka.cycle.estimatedFertileTitle}</Text>
           <Text style={{ color: c.ink, marginTop: 8, fontWeight: '700' }}>
-            {payload.fertileWindow.start ?? '—'} – {payload.fertileWindow.end ?? '—'}
+            {payload.fertileWindow.start && payload.fertileWindow.end
+              ? shortDateRange(payload.fertileWindow.start, payload.fertileWindow.end)
+              : tx('ჯერ არ ფასდება — სავარაუდო დღეები 3 სრული ციკლის შემდეგ ჩანს', 'Not estimated yet — the likely days appear after 3 completed cycles')}
           </Text>
-          {payload.fertileWindow.ovulationDate ? (
+          {payload.fertileWindow.ovulationRange || payload.fertileWindow.ovulationDate ? (
             <Text style={{ color: c.muted, marginTop: 6 }}>
-              {ka.cycle.estimatedOvulationTitle}: {payload.fertileWindow.ovulationDate}
+              {ovulationBandLine(
+                payload.fertileWindow.ovulationRange ?? {
+                  start: addDaysKey(payload.fertileWindow.ovulationDate as string, -1),
+                  end: addDaysKey(payload.fertileWindow.ovulationDate as string, 1),
+                },
+              )}
             </Text>
           ) : null}
         </CycleCard>

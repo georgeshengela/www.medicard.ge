@@ -120,6 +120,15 @@ test('variable cycles: the spread comes from her own last cycles, never narrower
   assert.deepEqual(cycleSpreadModel({ isIrregular: true, usedCycleLength: 28, cycleLengths: wide }), { before: 7, after: 7 });
   const old = [{ length: 10 }, { length: 27 }, { length: 28 }, { length: 29 }, { length: 27 }, { length: 28 }, { length: 29 }];
   assert.deepEqual(cycleSpreadModel({ isIrregular: true, usedCycleLength: 28, cycleLengths: old }), { before: 1, after: 1 });
+  // The server's window wins (also for a spread ≥ 8 days without the irregular flag).
+  assert.deepEqual(
+    cycleSpreadModel({ isIrregular: false, usedCycleLength: 30, cycleLengths: [], nextPeriodStart: '2026-10-01', serverRange: { from: '2026-09-26', to: '2026-10-05' } }),
+    { before: 5, after: 4 },
+  );
+  assert.deepEqual(
+    cycleSpreadModel({ isIrregular: true, usedCycleLength: 28, cycleLengths: [], nextPeriodStart: '2026-10-01', serverRange: null }),
+    { before: 3, after: 3 },
+  );
 });
 
 test('variable cycles: the centre shows a window, then „today or soon“, and is late only after the window', () => {
@@ -237,6 +246,28 @@ test('stats: only an inferred pattern of 2+ cycles, same ranges as the cycle scr
   assert.deepEqual(noTrend?.variation, { value: null, tone: 'unknown' });
 });
 
+test('stats: two cycles show numbers and „ვსწავლობთ · 2/3“, verdicts from the third', () => {
+  const two = cycleStatsModel({
+    eligible: true,
+    averages: { usedCycleLength: 38, usedPeriodLength: 5, source: 'inferred', cycleCount: 2 },
+    cycleLengths: [{ length: 24 }, { length: 38 }],
+  });
+  assert.deepEqual(two, {
+    cycleCount: 2,
+    cycle: { value: 38, tone: 'learning' },
+    period: { value: 5, tone: 'learning' },
+    variation: { value: 14, tone: 'learning' },
+    learning: { done: 2, required: 3 },
+  });
+  const three = cycleStatsModel({
+    eligible: true,
+    averages: { usedCycleLength: 28, usedPeriodLength: 5, source: 'inferred', cycleCount: 3 },
+    cycleLengths: [{ length: 28 }, { length: 27 }, { length: 29 }],
+  });
+  assert.equal(three?.cycle.tone, 'typical');
+  assert.equal(three?.learning, undefined);
+});
+
 test('tips: daily tips only, and only where the cycle screen would show them', () => {
   const cards = [{ id: 'advice_luteal' }, { id: 'advice_pcos' }, { id: 'tip_luteal_1' }, { id: 'tip_luteal_2' }, { id: 'tip_luteal_3' }, { id: 'advice_mood' }];
   assert.deepEqual(homeTipCards(cards).map((c) => c.id), ['tip_luteal_1', 'tip_luteal_2', 'tip_luteal_3']);
@@ -285,7 +316,8 @@ test('ahead: next period, fertile days and ovulation, soonest first', () => {
   assert.deepEqual(events.map((e) => [e.kind, e.start, e.end, e.inDays, e.ongoing]), [
     ['period', '2026-10-06', '2026-10-10', 3, false],
     ['fertile', '2026-10-15', '2026-10-21', 12, false],
-    ['ovulation', '2026-10-20', null, 17, false],
+    // Ovulation as a 3-day band (brief §8.2 item 5), never one day.
+    ['ovulation', '2026-10-19', '2026-10-21', 16, false],
   ]);
 });
 
@@ -293,11 +325,38 @@ test('ahead: inside the fertile window it is ongoing and leads; ovulation day co
   const events = cycleAheadModel({ today: '2026-09-21', ...AHEAD });
   assert.deepEqual(events.map((e) => [e.kind, e.inDays, e.ongoing]), [
     ['fertile', 0, true],
-    ['ovulation', 1, false],
+    ['ovulation', 0, true],
     ['period', 15, false],
   ]);
   const onDay = cycleAheadModel({ today: '2026-09-22', ...AHEAD }).find((e) => e.kind === 'ovulation');
   assert.equal(onDay?.inDays, 0);
+  assert.equal(onDay?.ongoing, true);
+  // The day after the band the next cycle's band is shown.
+  const after = cycleAheadModel({ today: '2026-09-24', ...AHEAD }).find((e) => e.kind === 'ovulation');
+  assert.equal(after?.start, '2026-10-19');
+});
+
+test('ahead: the server band wins; gated cycles (null) are skipped; the TTC window is marked wide', () => {
+  const band = [{ ...PHASES[1], ovulationStart: '2026-10-21', ovulationEnd: '2026-10-23' }];
+  assert.deepEqual(
+    cycleAheadModel({ today: '2026-10-03', ...AHEAD, phases: band }).find((e) => e.kind === 'ovulation'),
+    { kind: 'ovulation', start: '2026-10-21', end: '2026-10-23', inDays: 18, ongoing: false },
+  );
+  const learning = PHASES.map((p) => ({ ...p, ovulation: null, fertileStart: null, fertileEnd: null }));
+  assert.deepEqual(cycleAheadModel({ today: '2026-10-03', ...AHEAD, phases: learning }).map((e) => e.kind), ['period']);
+  const wide = PHASES.map((p) => ({ ...p, ovulation: null, fertileStart: '2026-10-11', fertileEnd: '2026-10-24', fertileWindowKind: 'wide' as const }));
+  const events = cycleAheadModel({ today: '2026-10-03', ...AHEAD, phases: wide });
+  assert.deepEqual(events.map((e) => [e.kind, e.wide ?? false]), [['period', false], ['fertile', true]]);
+});
+
+test('ahead: a variable cycle\u2019s period row spans the server window and is not late inside it', () => {
+  const range = { from: '2026-10-03', to: '2026-10-10' };
+  const before = cycleAheadModel({ today: '2026-10-01', ...AHEAD, nextPeriodRange: range });
+  assert.deepEqual(before.find((e) => e.kind === 'period'), { kind: 'period', start: '2026-10-03', end: '2026-10-10', inDays: 2, ongoing: false });
+  // Past the single estimate (10-06) but inside the window: still „ახლა“, never dropped as late.
+  const open = cycleAheadModel({ today: '2026-10-08', ...AHEAD, nextPeriodRange: range });
+  assert.deepEqual(open.find((e) => e.kind === 'period'), { kind: 'period', start: '2026-10-03', end: '2026-10-10', inDays: 0, ongoing: true });
+  assert.equal(cycleAheadModel({ today: '2026-10-11', ...AHEAD, nextPeriodRange: range }).some((e) => e.kind === 'period'), false);
 });
 
 test('ahead: every gate hides its own rows; ovulation never shows without fertility', () => {

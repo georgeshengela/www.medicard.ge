@@ -8,7 +8,14 @@ import { MUCUS_OPTIONS } from '@/constants/cycle';
 import { showFertilityUi } from '@/lib/cycleContraception';
 import { ttcQueryPending } from '@/lib/cycleTtcQuery';
 import { ka } from '@/i18n/ka';
-import { forecastPresentationAllowed, isPostpartumReturnLearning } from '@/lib/cycleForecastEligibility';
+import {
+  FERTILITY_STATUS,
+  fertilityGateFromBundle,
+  forecastPresentationAllowed,
+  isPostpartumReturnLearning,
+} from '@/lib/cycleForecastEligibility';
+import { ovulationBandLine, wideWindowLabel } from '@/lib/cycleForecastCopy';
+import { addDaysKey, OVULATION_BAND_HALF_DAYS } from '@/lib/home/homeCycle';
 import { useCycleColors } from '@/theme/cycle';
 
 type Props = {
@@ -34,6 +41,12 @@ export function CycleTtcCard({
   const mark = bundle.predictions?.calendar?.[date];
   const window = bundle.predictions?.fertileWindow;
   const ovulation = bundle.predictions?.ovulationDate;
+  // Ovulation as a 3-day band, never one date (brief §8.2 item 5); a server without the band → centre ± 1.
+  const ovulationRange =
+    bundle.predictions?.ovulationRange ??
+    (ovulation ? { start: addDaysKey(ovulation, -OVULATION_BAND_HALF_DAYS), end: addDaysKey(ovulation, OVULATION_BAND_HALF_DAYS) } : null);
+  const gate = fertilityGateFromBundle(bundle);
+  const wide = gate.status === FERTILITY_STATUS.WIDE && gate.window === 'wide';
   const actions = useMemo(() => prioritizeTtcActions(log ?? undefined, mark), [log, mark]);
   const fertilityUi = showFertilityUi(bundle);
   const forecastOk = forecastPresentationAllowed(bundle);
@@ -114,7 +127,8 @@ export function CycleTtcCard({
             : window && forecastOk
               ? `${ka.cycle.estimatedFertileTitle}: ${formatCycleDateKa(window.start)} – ${formatCycleDateKa(window.end)}`
               : ka.cycle.estimatedFertileTitle}
-        {fertilityUi && forecastOk && ovulation ? `\n${ka.cycle.estimatedOvulationTitle}: ${formatCycleDateKa(ovulation)}` : ''}
+        {fertilityUi && forecastOk && window && wide ? `\n${wideWindowLabel()}` : ''}
+        {fertilityUi && forecastOk && ovulationRange ? `\n${ovulationBandLine(ovulationRange, gate.ovulationSource)}` : ''}
         {softened && fertilityUi && forecastOk ? `\n${ka.cycle.ttcLowConfidence}` : ''}
       </Text>
 

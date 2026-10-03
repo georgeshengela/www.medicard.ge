@@ -4,13 +4,15 @@ import { ChevronRight } from 'lucide-react-native';
 import { CyclePressable } from './CyclePressable';
 import type { CycleBundle } from '@/lib/api';
 import { ka } from '@/i18n/ka';
+import { cycleVerdictsReady, FERTILITY_MIN_CYCLES } from '@/lib/cycleForecastEligibility';
+import { CycleLearningBadge } from './CycleLearningBadge';
 import { HomeSectionTitle } from '@/components/home/HomeSectionTitle';
 import { cycleHexAlpha, useCycleColors } from '@/theme/cycle';
 
 /** Typical adult ranges shown as reference, never as a diagnosis (ACOG: cycle 21–35, bleeding 2–7). */
 const TYPICAL = { cycle: [21, 35], period: [2, 7], variation: 7 } as const;
 
-type Tone = 'typical' | 'longer' | 'shorter' | 'variable' | 'unknown';
+type Tone = 'typical' | 'longer' | 'shorter' | 'variable' | 'unknown' | 'learning';
 
 /** Flo's "My cycles": the three numbers people check, right under the ring, with their typical range. */
 export function CycleStatsCard({ bundle, onOpen }: { bundle: CycleBundle; onOpen: () => void }) {
@@ -21,9 +23,12 @@ export function CycleStatsCard({ bundle, onOpen }: { bundle: CycleBundle; onOpen
   const lengths = (bundle.trends?.cycleLengths ?? []).map((x) => x.length).filter((n) => Number.isFinite(n)).slice(-6);
   const variation = lengths.length >= 2 ? Math.max(...lengths) - Math.min(...lengths) : null;
   const inferred = avg?.source === 'inferred' && (avg?.cycleCount ?? 0) >= 2;
+  // Verdicts („✓ ტიპური“ …) only from 3 completed cycles; before that the numbers + „ვსწავლობთ · N/3“.
+  const done = avg?.cycleCount ?? 0;
+  const verdicts = cycleVerdictsReady(done);
 
   const rangeTone = (v: number | null, [lo, hi]: readonly [number, number]): Tone =>
-    v == null ? 'unknown' : v < lo ? 'shorter' : v > hi ? 'longer' : 'typical';
+    v == null ? 'unknown' : !verdicts ? 'learning' : v < lo ? 'shorter' : v > hi ? 'longer' : 'typical';
 
   const tiles: { label: string; value: string; tone: Tone; hint: string }[] = [
     { label: ka.cycle.statsCycle, value: cycle != null ? String(cycle) : '—', tone: rangeTone(cycle, TYPICAL.cycle), hint: ka.cycle.statsTypicalRange(21, 35) },
@@ -31,7 +36,7 @@ export function CycleStatsCard({ bundle, onOpen }: { bundle: CycleBundle; onOpen
     {
       label: ka.cycle.statsVariation,
       value: variation != null ? String(variation) : '—',
-      tone: variation == null ? 'unknown' : variation <= TYPICAL.variation ? 'typical' : 'variable',
+      tone: variation == null ? 'unknown' : !verdicts ? 'learning' : variation <= TYPICAL.variation ? 'typical' : 'variable',
       hint: ka.cycle.statsVariationHint,
     },
   ];
@@ -58,9 +63,15 @@ export function CycleStatsCard({ bundle, onOpen }: { bundle: CycleBundle; onOpen
           ))}
         </View>
         <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 12, gap: 6 }}>
-          <Text style={{ flex: 1, color: c.mutedSoft, fontSize: 12, lineHeight: 17 }}>
-            {inferred ? ka.cycle.statsBasedOn(avg?.cycleCount ?? 0) : ka.cycle.statsFromSettings}
-          </Text>
+          {verdicts ? (
+            <Text style={{ flex: 1, color: c.mutedSoft, fontSize: 12, lineHeight: 17 }}>
+              {inferred ? ka.cycle.statsBasedOn(avg?.cycleCount ?? 0) : ka.cycle.statsFromSettings}
+            </Text>
+          ) : (
+            <View style={{ flex: 1, alignItems: 'flex-start' }}>
+              <CycleLearningBadge done={done} required={FERTILITY_MIN_CYCLES} align="flex-start" compact />
+            </View>
+          )}
           <ChevronRight size={16} color={c.mutedSoft} />
         </View>
       </CyclePressable>
@@ -73,6 +84,8 @@ function ToneChip({ tone }: { tone: Tone }) {
   if (tone === 'unknown') {
     return <Text style={{ color: c.mutedSoft, fontSize: 11, lineHeight: 15, marginTop: 6 }}>{ka.cycle.statsNeedMore}</Text>;
   }
+  // Before 3 completed cycles: the number without a verdict; the badge under the tiles says why.
+  if (tone === 'learning') return null;
   const typical = tone === 'typical';
   const color = typical ? c.success : c.luteal;
   const label =

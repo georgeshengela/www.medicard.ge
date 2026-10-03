@@ -176,11 +176,23 @@ export function cycleSpreadModel({
   isIrregular,
   usedCycleLength,
   cycleLengths,
+  nextPeriodStart = null,
+  serverRange = null,
 }: {
   isIrregular: boolean | null | undefined;
   usedCycleLength: number | null | undefined;
   cycleLengths: { length: number | null }[] | null | undefined;
+  /** The server's single estimate, to place its window around (`predictions.nextPeriodStart`). */
+  nextPeriodStart?: string | null;
+  /** `predictions.nextPeriodRange` — the server's window wins (also for a regular-flag spread ≥ 8 days). */
+  serverRange?: { from: string; to: string } | null;
 }): CycleSpread | null {
+  if (serverRange?.from && serverRange?.to && nextPeriodStart) {
+    return {
+      before: Math.max(0, daysBetweenKeys(serverRange.from, nextPeriodStart)),
+      after: Math.max(0, daysBetweenKeys(nextPeriodStart, serverRange.to)),
+    };
+  }
   if (!isIrregular) return null;
   const lengths = (cycleLengths ?? [])
     .map((x) => x.length)
@@ -366,9 +378,20 @@ export function cycleWeekStrip({
 /** Typical adult ranges shown as reference, never as a diagnosis (ACOG: cycle 21–35, bleeding 2–7). */
 export const TYPICAL_RANGES = { cycle: [21, 35], period: [2, 7], variation: 7 } as const;
 
-export type StatTone = 'typical' | 'longer' | 'shorter' | 'variable' | 'unknown';
+/** `learning`: a number is shown, the verdict waits for 3 completed cycles (brief §9 item 13). */
+export type StatTone = 'typical' | 'longer' | 'shorter' | 'variable' | 'unknown' | 'learning';
 export type CycleStat = { value: number | null; tone: StatTone };
-export type CycleStatsModel = { cycleCount: number; cycle: CycleStat; period: CycleStat; variation: CycleStat };
+export type CycleStatsModel = {
+  cycleCount: number;
+  cycle: CycleStat;
+  period: CycleStat;
+  variation: CycleStat;
+  /** Set while verdicts wait: „ვსწავლობთ · N/3“. */
+  learning?: { done: number; required: number } | null;
+};
+
+/** Completed cycles before „✓ ტიპური“ and the other verdicts (same as the fertility gate). */
+export const STATS_VERDICT_MIN_CYCLES = 3;
 
 const rangeTone = (v: number | null, [lo, hi]: readonly [number, number]): StatTone =>
   v == null ? 'unknown' : v < lo ? 'shorter' : v > hi ? 'longer' : 'typical';
@@ -394,8 +417,20 @@ export function cycleStatsModel({
   if (cycle == null && period == null) return null;
   const lengths = (cycleLengths ?? []).map((x) => x.length).filter((n) => Number.isFinite(n)).slice(-6);
   const variation = lengths.length >= 2 ? Math.max(...lengths) - Math.min(...lengths) : null;
+  const count = averages.cycleCount ?? 0;
+  if (count < STATS_VERDICT_MIN_CYCLES) {
+    // Numbers only: two cycles are too few to call anything „ტიპური“ or „ცვალებადი“.
+    const learn = (value: number | null): CycleStat => ({ value, tone: value == null ? 'unknown' : 'learning' });
+    return {
+      cycleCount: count,
+      cycle: learn(cycle),
+      period: learn(period),
+      variation: learn(variation),
+      learning: { done: count, required: STATS_VERDICT_MIN_CYCLES },
+    };
+  }
   return {
-    cycleCount: averages.cycleCount,
+    cycleCount: count,
     cycle: { value: cycle, tone: rangeTone(cycle, TYPICAL_RANGES.cycle) },
     period: { value: period, tone: rangeTone(period, TYPICAL_RANGES.period) },
     variation: {
@@ -435,8 +470,25 @@ export function cycleBarsModel(
 
 export type AheadKind = 'period' | 'fertile' | 'ovulation';
 
-/** `inDays` 0 = today; `ongoing` = a window that already started (fertile days). */
-export type AheadEvent = { kind: AheadKind; start: string; end: string | null; inDays: number; ongoing: boolean };
+/**
+ * `inDays` 0 = today; `ongoing` = a window that already started (fertile days, the ovulation band, a
+ * variable period's window). `wide` = the trying-to-conceive window before 3 cycles.
+ */
+export type AheadEvent = { kind: AheadKind; start: string; end: string | null; inDays: number; ongoing: boolean; wide?: boolean };
+
+type AheadPhase = {
+  periodStart: string;
+  periodEnd: string;
+  ovulation: string | null;
+  ovulationStart?: string | null;
+  ovulationEnd?: string | null;
+  fertileStart: string | null;
+  fertileEnd: string | null;
+  fertileWindowKind?: 'standard' | 'wide' | null;
+};
+
+/** Ovulation is a 3-day band (brief §8.2 item 5): centre ± this many days when the server sent no band. */
+export const OVULATION_BAND_HALF_DAYS = 1;
 
 /**
  * „წინ რა გელის“ — the next estimated period, fertile window and ovulation, soonest first.
@@ -449,6 +501,7 @@ export function cycleAheadModel({
   phases,
   nextPeriodStart,
   nextPeriodEnd,
+  nextPeriodRange = null,
   onPeriod,
   showPeriod,
   showFertility,
@@ -456,12 +509,11 @@ export function cycleAheadModel({
   horizonDays = 45,
 }: {
   today: string;
-  phases:
-    | { periodStart: string; periodEnd: string; ovulation: string; fertileStart: string; fertileEnd: string }[]
-    | null
-    | undefined;
+  phases: AheadPhase[] | null | undefined;
   nextPeriodStart: string | null | undefined;
   nextPeriodEnd?: string | null;
+  /** Variable cycles: the period row spans the server's window and is late only after its end. */
+  nextPeriodRange?: { from: string; to: string } | null;
   onPeriod: boolean;
   showPeriod: boolean;
   showFertility: boolean;
@@ -472,7 +524,14 @@ export function cycleAheadModel({
   const events: AheadEvent[] = [];
   const within = (key: string) => daysBetweenKeys(today, key) <= horizonDays;
 
-  if (showPeriod) {
+  const range = nextPeriodRange?.from && nextPeriodRange?.to && nextPeriodStart ? nextPeriodRange : null;
+  if (showPeriod && range && !onPeriod) {
+    // Inside the window: „ახლა“ until its last day; after that the hero carries „გვიანია“.
+    if (daysBetweenKeys(today, range.to) >= 0 && within(range.from)) {
+      const toStart = daysBetweenKeys(today, range.from);
+      events.push({ kind: 'period', start: range.from, end: range.to, inDays: Math.max(0, toStart), ongoing: toStart <= 0 });
+    }
+  } else if (showPeriod) {
     const late = Boolean(nextPeriodStart) && daysBetweenKeys(today, nextPeriodStart as string) < 0;
     if (!late) {
       // While bleeding, "next" is the period after this one.
@@ -484,16 +543,33 @@ export function cycleAheadModel({
     }
   }
   if (showFertility) {
-    const win = list.find((p) => daysBetweenKeys(today, p.fertileEnd) >= 0);
-    if (win && within(win.fertileStart)) {
-      const inDays = Math.max(0, daysBetweenKeys(today, win.fertileStart));
-      events.push({ kind: 'fertile', start: win.fertileStart, end: win.fertileEnd, inDays, ongoing: daysBetweenKeys(today, win.fertileStart) <= 0 });
+    // The 3-cycle gate sends cycles without a window (null) — those are skipped, never guessed.
+    const win = list.find((p) => p.fertileStart && p.fertileEnd && daysBetweenKeys(today, p.fertileEnd) >= 0);
+    if (win?.fertileStart && win.fertileEnd && within(win.fertileStart)) {
+      const toStart = daysBetweenKeys(today, win.fertileStart);
+      events.push({
+        kind: 'fertile',
+        start: win.fertileStart,
+        end: win.fertileEnd,
+        inDays: Math.max(0, toStart),
+        ongoing: toStart <= 0,
+        ...(win.fertileWindowKind === 'wide' ? { wide: true } : {}),
+      });
     }
   }
   if (showFertility && showOvulation) {
-    const next = list.find((p) => daysBetweenKeys(today, p.ovulation) >= 0);
-    if (next && within(next.ovulation)) {
-      events.push({ kind: 'ovulation', start: next.ovulation, end: null, inDays: daysBetweenKeys(today, next.ovulation), ongoing: false });
+    // Ovulation as a 3-day band, never one day.
+    const bandOf = (p: AheadPhase) =>
+      p.ovulation
+        ? {
+            start: p.ovulationStart ?? addDaysKey(p.ovulation, -OVULATION_BAND_HALF_DAYS),
+            end: p.ovulationEnd ?? addDaysKey(p.ovulation, OVULATION_BAND_HALF_DAYS),
+          }
+        : null;
+    const next = list.map(bandOf).find((band) => band && daysBetweenKeys(today, band.end) >= 0);
+    if (next && within(next.start)) {
+      const toStart = daysBetweenKeys(today, next.start);
+      events.push({ kind: 'ovulation', start: next.start, end: next.end, inDays: Math.max(0, toStart), ongoing: toStart <= 0 });
     }
   }
   return events.sort((a, b) => a.inDays - b.inDays || utc(a.start) - utc(b.start));
