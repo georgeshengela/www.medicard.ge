@@ -419,7 +419,7 @@ export function CycleLogTabs({
                     ))}
                   </View>
                   <View style={s.lockSex}>
-                    <CycleSexSection form={form} onChange={onChange} hideHeading />
+                    <CycleSexSection form={form} onChange={onChange} hideHeading hidePrivacyHint />
                   </View>
                 </View>
               ) : null}

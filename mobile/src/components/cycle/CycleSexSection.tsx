@@ -23,12 +23,15 @@ export function CycleSexSection({
   onChange,
   disabled,
   hideHeading,
+  hidePrivacyHint,
 }: {
   form: SexForm;
   onChange: (patch: Partial<SexForm>) => void;
   disabled?: boolean;
   /** The dedicated sheet already shows the title. */
   hideHeading?: boolean;
+  /** The full log's lock row already says „მხოლოდ შენ ხედავ“ — do not say it twice. */
+  hidePrivacyHint?: boolean;
 }) {
   const c = useCycleColors();
   const activity = form.sexTags.filter((id) => ACTIVITY_IDS.has(id));
@@ -50,12 +53,23 @@ export function CycleSexSection({
   return (
     <View>
       {hideHeading ? null : <CycleLogSectionHeading icon={Heart}>{ka.cycle.sexSectionTitle}</CycleLogSectionHeading>}
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 10, marginTop: hideHeading ? 16 : 0 }}>
-        <Lock size={12} color={c.mutedSoft} strokeWidth={2.2} />
-        <Text style={{ color: c.mutedSoft, fontSize: 12, lineHeight: 17, flex: 1 }}>{ka.cycle.sexPrivateHint}</Text>
-      </View>
+      {hidePrivacyHint ? null : (
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 10, marginTop: hideHeading ? 16 : 0 }}>
+          <Lock size={12} color={c.mutedSoft} strokeWidth={2.2} />
+          <Text style={{ color: c.mutedSoft, fontSize: 12, lineHeight: 17, flex: 1 }}>{ka.cycle.sexPrivateHint}</Text>
+        </View>
+      )}
 
-      <Text style={{ color: c.muted, fontSize: 12, lineHeight: 17, marginBottom: 8, fontFamily: 'NotoSansGeorgian_600SemiBold' }}>
+      <Text
+        style={{
+          color: c.muted,
+          fontSize: 12,
+          lineHeight: 17,
+          marginTop: hidePrivacyHint && hideHeading ? 12 : 0,
+          marginBottom: 8,
+          fontFamily: 'NotoSansGeorgian_600SemiBold',
+        }}
+      >
         {ka.cycle.sexActivityLabel}
       </Text>
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
