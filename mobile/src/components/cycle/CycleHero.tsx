@@ -1,6 +1,7 @@
 import { CyclePressable as Pressable } from '@/components/cycle/CyclePressable';
 import React, { useMemo, useState } from 'react';
 import { Text, View } from 'react-native';
+import { CycleExpectationLine } from '@/components/cycle/CycleExpectationLine';
 import { CycleGaugeExplainSheet, type GaugeExplain } from '@/components/cycle/CycleGaugeExplainSheet';
 import { CycleStatusGauge, type GaugeCenter } from '@/components/cycle/CycleStatusGauge';
 import { PredictionBadge, ConfidenceHint } from '@/components/cycle/CycleBadges';
@@ -15,6 +16,7 @@ import {
   fertileInsightCopy,
   nextPeriodConfidenceCopy,
 } from '@/lib/cycleHonesty';
+import { expectationLine, expectationsFromBundle } from '@/lib/cycleExpectations';
 import { addDaysToKey, daysBetween } from '@/lib/cyclePhase';
 import { isBleedFlow } from '@/lib/cycleLogSave';
 import { cycleModeCapabilities } from '@/lib/cycleModes';
@@ -89,6 +91,11 @@ export function CycleHero({
     ? ka.cycle.postpartumReturnGathering
     : displayPhaseLabel(phase ?? 'unknown', phaseKa, { loggedPeriod: onPeriod });
   const [explain, setExplain] = useState<GaugeExplain | null>(null);
+  // Her own pattern, read on the device (brief §9 item 11): one quiet „სავარაუდოა“ line, never a diagnosis.
+  const expectation = useMemo(
+    () => (hideLengthChrome ? null : expectationLine(expectationsFromBundle(bundle, today), todayLog)),
+    [bundle, today, todayLog, hideLengthChrome],
+  );
 
   const cycleStart = day != null && day > 0 ? addDaysToKey(today, -(day - 1)) : null;
   const dateForCycleDay = (cycleDay: number) =>
@@ -233,6 +240,12 @@ export function CycleHero({
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', alignItems: 'center', gap: 4, marginTop: 10 }}>
             {next && forecastOn && !onPeriod ? <PredictionBadge date={next} /> : null}
             <ConfidenceHint label={confidenceCopy} />
+          </View>
+        ) : null}
+
+        {expectation ? (
+          <View style={{ marginTop: 12 }}>
+            <CycleExpectationLine text={expectation} />
           </View>
         ) : null}
 

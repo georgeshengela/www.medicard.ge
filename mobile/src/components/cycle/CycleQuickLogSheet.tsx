@@ -21,6 +21,7 @@ import { CyclePostpartumQuickLog } from '@/components/cycle/CyclePostpartumQuick
 import { formatCycleDateKa } from '@/components/cycle/CycleUI';
 import { ka } from '@/i18n/ka';
 import { tx } from '@/i18n/locale';
+import { expectationsFromBundle, type CycleExpectation } from '@/lib/cycleExpectations';
 import { EMPTY_CYCLE_LOG, formFromCycleLog, isBleedFlow, persistCycleLog } from '@/lib/cycleLogSave';
 import { loadCycleView, type CycleView } from '@/lib/cycleOffline';
 import { cyclePresentationModeKnown } from '@/lib/cycleHistoryCopy';
@@ -56,6 +57,7 @@ export function CycleQuickLogSheet({
   const [mode, setMode] = useState<string | null>(null);
   const caps = cyclePresentationModeKnown(mode) ? cycleModeCapabilities(mode) : null;
   const [logs, setLogs] = useState<CycleLog[]>([]);
+  const [expected, setExpected] = useState<CycleExpectation[]>([]);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [hydrated, setHydrated] = useState(false);
   const [loadAttempt, setLoadAttempt] = useState(0);
@@ -75,6 +77,7 @@ export function CycleQuickLogSheet({
         setForm(formFromCycleLog(view.display.logs.find((l) => l.date === date)));
         setMode(view.display.profile.mode);
         setLogs(view.display.logs);
+        setExpected(expectationsFromBundle(view.display, date));
         setHydrated(true);
       })
       .catch(() => {
@@ -199,6 +202,7 @@ export function CycleQuickLogSheet({
                   date={date}
                   logs={logs}
                   showFertility={Boolean(caps.showFertilityShortcuts)}
+                  expected={expected}
                 />
               )}
 

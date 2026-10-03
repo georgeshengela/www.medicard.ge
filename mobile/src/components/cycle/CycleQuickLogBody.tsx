@@ -11,6 +11,7 @@ import { FLOW_OPTIONS, MOOD_OPTIONS, MUCUS_OPTIONS, PHYSICAL_SYMPTOMS } from '@/
 import { ka } from '@/i18n/ka';
 import { tx } from '@/i18n/locale';
 import type { CycleLog, CyclePainSeverity, CyclePainType } from '@/lib/api';
+import { expectationTileHint, expectedIds, type CycleExpectation } from '@/lib/cycleExpectations';
 import { ALL_FINE_ID, cycleGlyphFor, flowGlyphStyle } from '@/lib/cycleIconMap';
 import { formFromCycleLog } from '@/lib/cycleLogSave';
 import { PAIN_MANAGED_SYMPTOM_IDS, PAIN_TYPES, painTypeLabel } from '@/lib/cycleObservations';
@@ -27,7 +28,8 @@ const QUICK_MOODS = ['calm', 'happy', 'energetic', 'sad', 'irritable', 'anxious'
  * our grammar: bleeding (one choice) → sex & sex drive folded behind a lock row → pain (tap again
  * for strength) → mood → symptoms with „ყველაფერი რიგზეა“ first → fertility signs (TTC) → more.
  * Every option is a `CycleIconTile`. „ბოლოს აღნიშნული“ and „იგივე, რაც გუშინ“ sit on top; the
- * copy never touches private or fertility fields (`cycleQuickLogCopy`).
+ * copy never touches private or fertility fields (`cycleQuickLogCopy`). What the local expectation
+ * engine (`cycleExpectations`) expects for this day leads its row as a dashed tile until tapped.
  */
 export function CycleQuickLogBody({
   form,
@@ -36,6 +38,7 @@ export function CycleQuickLogBody({
   date,
   logs,
   showFertility,
+  expected = [],
 }: {
   form: CycleLogForm;
   onChange: (patch: Partial<CycleLogForm>) => void;
@@ -43,10 +46,19 @@ export function CycleQuickLogBody({
   date: string;
   logs: CycleLog[];
   showFertility: boolean;
+  /** Expected for `date` (brief §9 item 11): shown first in their rows, dashed until confirmed. */
+  expected?: CycleExpectation[];
 }) {
   const c = useCycleColors();
   const [sexOpen, setSexOpen] = useState(form.sexual === true);
   const [allFine, setAllFine] = useState(false);
+  const expectedPain = useMemo(() => expectedIds(expected, 'pain'), [expected]);
+  const expectedMoods = useMemo(() => expectedIds(expected, 'mood'), [expected]);
+  const expectedSymptoms = useMemo(() => expectedIds(expected, 'symptom'), [expected]);
+  const hintFor = (kind: CycleExpectation['kind'], id: string) => {
+    const item = expected.find((e) => e.kind === kind && e.id === id);
+    return item ? expectationTileHint(item) : undefined;
+  };
 
   const yesterday = useMemo(() => {
     const log = logs.find((l) => l.date === addDaysKey(date, -1));
@@ -56,19 +68,21 @@ export function CycleQuickLogBody({
   const recents = useMemo(() => recentObservationKeys(logs, { limit: 6, minDays: 2 }), [logs]);
 
   const symptomPool = useMemo(() => {
-    const ids = new Set<string>();
+    const ids = new Set<string>(expectedSymptoms);
     for (const id of recents) if (chipGroup(id) && chipGroup(id) !== 'mood' && !PAIN_MANAGED_SYMPTOM_IDS.has(id)) ids.add(id);
     for (const id of DEFAULT_SYMPTOMS) ids.add(id);
     for (const id of form.symptoms) if (!PAIN_MANAGED_SYMPTOM_IDS.has(id)) ids.add(id);
-    const lead = [...ids].slice(0, 5);
+    const lead = [...ids].slice(0, Math.max(5, expectedSymptoms.length));
     const rest = PHYSICAL_SYMPTOMS.filter((o) => !lead.includes(o.id) && !PAIN_MANAGED_SYMPTOM_IDS.has(o.id) && !SENSITIVE_SHORTCUT_IDS.has(o.id)).map((o) => o.id);
     return [...lead, ...rest].map((id) => ({ id, label: PHYSICAL_SYMPTOMS.find((o) => o.id === id)?.label ?? id }));
-  }, [recents, form.symptoms]);
+  }, [recents, form.symptoms, expectedSymptoms]);
 
   const moods = useMemo(() => {
-    const lead = QUICK_MOODS.concat(form.moods.filter((id) => !QUICK_MOODS.includes(id)));
+    const lead = [...new Set([...expectedMoods, ...QUICK_MOODS, ...form.moods])];
     return [...lead, ...MOOD_OPTIONS.map((o) => o.id).filter((id) => !lead.includes(id))].map((id) => ({ id, label: MOOD_OPTIONS.find((o) => o.id === id)?.label ?? id }));
-  }, [form.moods]);
+  }, [form.moods, expectedMoods]);
+
+  const painTypes = useMemo(() => [...new Set([...expectedPain, ...PAIN_TYPES])] as CyclePainType[], [expectedPain]);
 
   const toggle = (list: string[], id: string) => (list.includes(id) ? list.filter((x) => x !== id) : [...list, id]);
   const painOf = (type: CyclePainType) => form.painEntries.find((e) => e.type === type)?.severity ?? null;
@@ -155,17 +169,19 @@ export function CycleQuickLogBody({
 
       <Group title={ka.cycle.pain} hint={tx('ხელახალი შეხება — ინტენსივობა', 'tap again for strength')}>
         <CycleIconRow
-          items={PAIN_TYPES.map((id) => ({ id }))}
+          items={painTypes.map((id) => ({ id }))}
           visible={4}
+          isSelected={({ id }) => painOf(id) != null}
           renderTile={({ id }) => (
             <CycleIconTile
               glyph={cycleGlyphFor('pain', id)}
               label={painTypeLabel(id)}
-              selected={painOf(id as CyclePainType) != null}
-              level={painLevel(painOf(id as CyclePainType))}
+              selected={painOf(id) != null}
+              level={painLevel(painOf(id))}
+              dashed={expectedPain.includes(id)}
               disabled={disabled}
-              onPress={() => tapPain(id as CyclePainType)}
-              accessibilityHint={tx('ხელახალი შეხება ინტენსივობას ცვლის', 'Tap again to change the strength')}
+              onPress={() => tapPain(id)}
+              accessibilityHint={hintFor('pain', id) ?? tx('ხელახალი შეხება ინტენსივობას ცვლის', 'Tap again to change the strength')}
             />
           )}
         />
@@ -175,8 +191,17 @@ export function CycleQuickLogBody({
         <CycleIconRow
           items={moods}
           visible={4}
+          isSelected={({ id }) => form.moods.includes(id)}
           renderTile={({ id, label }) => (
-            <CycleIconTile glyph={cycleGlyphFor('mood', id)} label={label} selected={form.moods.includes(id)} disabled={disabled} onPress={() => onChange({ moods: toggle(form.moods, id) })} />
+            <CycleIconTile
+              glyph={cycleGlyphFor('mood', id)}
+              label={label}
+              selected={form.moods.includes(id)}
+              dashed={expectedMoods.includes(id)}
+              disabled={disabled}
+              onPress={() => onChange({ moods: toggle(form.moods, id) })}
+              accessibilityHint={hintFor('mood', id)}
+            />
           )}
         />
       </Group>
@@ -185,6 +210,7 @@ export function CycleQuickLogBody({
         <CycleIconRow
           items={[{ id: ALL_FINE_ID, label: tx('ყველაფერი რიგზეა', 'Everything is fine') }, ...symptomPool]}
           visible={4}
+          isSelected={({ id }) => form.symptoms.includes(id)}
           renderTile={({ id, label }) =>
             id === ALL_FINE_ID ? (
               <CycleIconTile
@@ -203,11 +229,13 @@ export function CycleQuickLogBody({
                 glyph={cycleGlyphFor('symptom', id)}
                 label={label}
                 selected={form.symptoms.includes(id)}
+                dashed={expectedSymptoms.includes(id)}
                 disabled={disabled}
                 onPress={() => {
                   setAllFine(false);
                   onChange({ symptoms: toggle(form.symptoms, id) });
                 }}
+                accessibilityHint={hintFor('symptom', id)}
               />
             )
           }

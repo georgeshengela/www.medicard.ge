@@ -8,6 +8,7 @@ import type { MedicalSourceId } from '@/constants/medicalSources';
 import { CyclePeriodToast } from '@/components/cycle/CyclePeriodToast';
 import { CycleQuickLogSheet } from '@/components/cycle/CycleQuickLogSheet';
 import { CycleSexSheet } from '@/components/cycle/CycleSexSheet';
+import { CycleExpectationLine } from '@/components/cycle/CycleExpectationLine';
 import { todayKey } from '@/components/cycle/CycleCalendar';
 import { useTabBarInset } from '@/components/navigation/FloatingTabBar';
 import { WEEKDAYS_KA } from '@/constants/cycle';
@@ -16,6 +17,7 @@ import { tx } from '@/i18n/locale';
 import type { CycleBundle } from '@/lib/api';
 import type { CycleView } from '@/lib/cycleOffline';
 import { cycleToday, phaseFromBundle, usedCycleLength } from '@/lib/cycleCanonical';
+import { expectationLine, expectationsFromBundle } from '@/lib/cycleExpectations';
 import { displayPhaseLabel } from '@/lib/cycleHonesty';
 import { isBleedFlow } from '@/lib/cycleLogSave';
 import { cycleModeCapabilities } from '@/lib/cycleModes';
@@ -402,6 +404,8 @@ function ClassicCycleCard({
   const plan = cycleHeroActions({ onPeriod, dayOne: isDayOne, leadsWithStart: leads });
   const startLabel = uncertainBleed ? ka.cycle.heroBleedingStarted : ka.cycle.heroPeriodStarted;
   const sexLogged = todayLog?.sexualActivity === true;
+  // Her own pattern, read on the device (brief §9 item 11): one quiet „სავარაუდოა“ line, never a diagnosis.
+  const expectation = hideLengthChrome ? null : expectationLine(expectationsFromBundle(bundle, today), todayLog);
   const button = (id: CycleHeroActionId, filled: boolean) => {
     const common = { filled, disabled: busy, flex: filled ? undefined : 1 } as const;
     if (id === 'start') return <HeroButton key={id} {...common} label={startLabel} icon={Droplet} onPress={onStart} />;
@@ -416,6 +420,7 @@ function ClassicCycleCard({
     [centerText.top, centerText.value, centerText.bottom].filter(Boolean).join(' '),
     badge?.text,
     caps.showTtcOverview ? ka.cycle.homeTtcLabel : null,
+    expectation,
     offline ? ka.cycle.offlineBanner : null,
   ]
     .filter(Boolean)
@@ -452,6 +457,11 @@ function ClassicCycleCard({
           note={caps.showTtcOverview ? ka.cycle.homeTtcLabel : null}
           offline={offline}
         />
+        {expectation ? (
+          <View style={s.expectation}>
+            <CycleExpectationLine text={expectation} color={theme.text200} />
+          </View>
+        ) : null}
       </Pressable>
       {/* The cycle screen's pattern: the leading action full width, then the other one beside „♥ სექსი“. */}
       <View style={s.actions}>
@@ -845,6 +855,7 @@ const s = StyleSheet.create({
   glowUnit: { fontFamily: 'NotoSansGeorgian_600SemiBold', fontSize: 24, lineHeight: 30 },
   glowSub: { fontFamily: 'NotoSansGeorgian_500Medium', fontSize: 13, lineHeight: 18, textAlign: 'center', maxWidth: 280 },
   stack: { alignItems: 'center', gap: 6, alignSelf: 'stretch' },
+  expectation: { alignSelf: 'stretch', marginTop: 10, paddingHorizontal: 8 },
   row: { flexDirection: 'row', alignItems: 'center', gap: 16 },
   column: { flex: 1, minWidth: 0, gap: 6 },
   tile: { width: HUB.tile, height: HUB.tile, borderRadius: HUB.tileRadius, alignItems: 'center', justifyContent: 'center' },
