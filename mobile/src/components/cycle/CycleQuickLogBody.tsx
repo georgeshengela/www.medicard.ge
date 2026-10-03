@@ -1,7 +1,8 @@
 import React, { useMemo, useState } from 'react';
-import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import { ChevronDown, ChevronRight, Lock } from 'lucide-react-native';
+import { CycleBbtPicker } from '@/components/cycle/CycleBbtPicker';
 import { CycleIconRow, CycleIconTile } from '@/components/cycle/CycleIconTile';
 import { CycleMoreTracking } from '@/components/cycle/CycleMoreTracking';
 import { CycleSexSection } from '@/components/cycle/CycleSexSection';
@@ -11,6 +12,7 @@ import { FLOW_OPTIONS, MOOD_OPTIONS, MUCUS_OPTIONS, PHYSICAL_SYMPTOMS } from '@/
 import { ka } from '@/i18n/ka';
 import { tx } from '@/i18n/locale';
 import type { CycleLog, CyclePainSeverity, CyclePainType } from '@/lib/api';
+import { lastLoggedBbt } from '@/lib/cycleBbt';
 import { expectationTileHint, expectedIds, type CycleExpectation } from '@/lib/cycleExpectations';
 import { ALL_FINE_ID, cycleGlyphFor, flowGlyphStyle } from '@/lib/cycleIconMap';
 import { formFromCycleLog } from '@/lib/cycleLogSave';
@@ -66,6 +68,8 @@ export function CycleQuickLogBody({
   }, [logs, date]);
   const offerYesterday = Boolean(yesterday && hasCopyableContent(yesterday) && formIsEmpty(form));
   const recents = useMemo(() => recentObservationKeys(logs, { limit: 6, minDays: 2 }), [logs]);
+  /** Where the BBT wheel starts — local, never copied into the form by itself. */
+  const lastBbt = useMemo(() => lastLoggedBbt(logs, date), [logs, date]);
 
   const symptomPool = useMemo(() => {
     const ids = new Set<string>(expectedSymptoms);
@@ -277,16 +281,8 @@ export function CycleQuickLogBody({
         <Group title={ka.cycle.ttcQuickLogTitle} hint={tx('დაკვირვებაა, არა დიაგნოზი', 'observations, not a diagnosis')}>
           <Text style={[s.sub, { color: c.ink }]}>{ka.cycle.ovulationTest}</Text>
           <CycleTestResultRow value={form.ovulationTest} onChange={(ovulationTest) => onChange({ ovulationTest })} />
-          <Text style={[s.sub, { color: c.ink, marginTop: 12 }]}>{ka.cycle.bbt}</Text>
-          <TextInput
-            value={form.bbt}
-            onChangeText={(bbt) => onChange({ bbt })}
-            keyboardType="decimal-pad"
-            placeholder="36.6"
-            placeholderTextColor={c.mutedSoft}
-            accessibilityLabel={ka.cycle.bbt}
-            style={[s.input, { borderColor: c.controlBorder, backgroundColor: c.cardSoft, color: c.ink }]}
-          />
+          <View style={{ height: 12 }} />
+          <CycleBbtPicker value={form.bbt} onChange={(bbt) => onChange({ bbt })} lastLogged={lastBbt} disabled={disabled} />
           <Text style={[s.sub, { color: c.ink, marginTop: 12 }]}>{ka.cycle.mucus}</Text>
           <View style={s.row}>
             {MUCUS_OPTIONS.map((opt, i) => (
@@ -310,7 +306,7 @@ export function CycleQuickLogBody({
       ) : null}
 
       <View style={{ marginTop: 4 }}>
-        <CycleMoreTracking form={form} onChange={onChange} compact />
+        <CycleMoreTracking form={form} onChange={onChange} compact lastBbt={lastBbt} />
       </View>
     </View>
   );
@@ -347,5 +343,4 @@ const s = StyleSheet.create({
   lockTitle: { fontFamily: 'NotoSansGeorgian_600SemiBold', fontSize: 14, lineHeight: 20 },
   lockHint: { fontFamily: 'NotoSansGeorgian_400Regular', fontSize: 11.5, lineHeight: 15 },
   sub: { fontFamily: 'NotoSansGeorgian_600SemiBold', fontSize: 13, lineHeight: 18, marginBottom: 6 },
-  input: { minHeight: 44, borderRadius: 12, borderWidth: 1, paddingHorizontal: 12, fontSize: 16, fontFamily: 'NotoSansGeorgian_700Bold' },
 });

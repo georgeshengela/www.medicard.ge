@@ -20,6 +20,7 @@ import { formatCycleDateKa } from '@/components/cycle/CycleUI';
 import { useCycleQuickLog, type CycleQuickLogState } from '@/components/cycle/useCycleQuickLog';
 import { ka } from '@/i18n/ka';
 import { tx } from '@/i18n/locale';
+import { lastLoggedBbt } from '@/lib/cycleBbt';
 import type { CycleView } from '@/lib/cycleOffline';
 import { useAuth } from '@/store/AuthContext';
 import { useCycleColors } from '@/theme/cycle';
@@ -78,7 +79,7 @@ export function CycleQuickLogFields({ q, date }: { q: CycleQuickLogState; date: 
 
       {other ? (
         <View style={{ marginTop: 16 }}>
-          <CycleMoreTracking form={q.form} onChange={q.patch} compact mode={q.mode || undefined} />
+          <CycleMoreTracking form={q.form} onChange={q.patch} compact mode={q.mode || undefined} lastBbt={lastLoggedBbt(q.logs, date)} />
         </View>
       ) : null}
     </>

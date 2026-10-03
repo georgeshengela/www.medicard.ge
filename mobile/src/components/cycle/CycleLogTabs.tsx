@@ -8,7 +8,6 @@ import {
   ScrollView,
   StyleSheet,
   Text,
-  TextInput,
   View,
 } from 'react-native';
 import { usePrefersReducedMotion } from '@/hooks/usePrefersReducedMotion';
@@ -16,6 +15,7 @@ import { ChevronDown, ChevronRight, Droplets, Heart, Lock, Sparkles } from 'luci
 import * as Haptics from 'expo-haptics';
 import type { LucideIcon } from 'lucide-react-native';
 import { CYCLE_TEST_OPTIONS } from '@/constants/cycle';
+import { CycleBbtPicker } from '@/components/cycle/CycleBbtPicker';
 import { CycleIconRow, CycleIconTile } from '@/components/cycle/CycleIconTile';
 import { CycleJournalField, CycleLifestyleFields, CycleTagPicker } from '@/components/cycle/CycleObservationFields';
 import { formatCycleDateKa } from '@/components/cycle/CycleUI';
@@ -83,6 +83,8 @@ type Props = {
   customTags?: CycleCustomTag[];
   onCreateTag?: (name: string) => Promise<void>;
   creatingTag?: boolean;
+  /** The last BBT logged on another day — where the BBT wheel starts (`lastLoggedBbt`). */
+  lastBbt?: number | null;
 };
 
 const TABS: { id: TabId; label: string; icon: LucideIcon }[] = [
@@ -118,6 +120,7 @@ export function CycleLogTabs({
   customTags = [],
   onCreateTag,
   creatingTag,
+  lastBbt = null,
 }: Props) {
   const c = useCycleColors();
   const reduceMotion = usePrefersReducedMotion();
@@ -328,18 +331,8 @@ export function CycleLogTabs({
               <Text style={[s.sub, { color: c.ink }]}>{ka.cycle.ovulationTest}</Text>
               {testTiles(form.ovulationTest, (ovulationTest) => onChange({ ovulationTest }), 'fertility')}
 
-              <Text style={[s.sub, s.subGap, { color: c.ink }]}>{ka.cycle.bbt}</Text>
-              <View style={s.bbtRow}>
-                <TextInput
-                  value={form.bbt}
-                  accessibilityLabel={ka.cycle.bbt}
-                  onChangeText={(bbt) => onChange({ bbt })}
-                  keyboardType="decimal-pad"
-                  placeholder="36.6"
-                  placeholderTextColor={c.mutedSoft}
-                  style={[s.bbtInput, { backgroundColor: c.cardSoft, color: c.ink }]}
-                />
-                <Text style={[s.bbtUnit, { color: c.muted }]}>°C</Text>
+              <View style={[s.subGap, s.bbt]}>
+                <CycleBbtPicker value={form.bbt} onChange={(bbt) => onChange({ bbt })} lastLogged={lastBbt} />
               </View>
 
               <Text style={[s.sub, s.subGap, { color: c.ink }]}>{ka.cycle.mucus}</Text>
@@ -511,9 +504,7 @@ const s = StyleSheet.create({
   tiles: { flexDirection: 'row', flexWrap: 'wrap', columnGap: 0, rowGap: 12 },
   sub: { fontFamily: 'NotoSansGeorgian_600SemiBold', fontSize: 13, lineHeight: 18, marginBottom: 8, paddingHorizontal: 10 },
   subGap: { marginTop: 16 },
-  bbtRow: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 10 },
-  bbtInput: { flex: 1, minHeight: 46, borderRadius: 14, paddingHorizontal: 14, fontSize: 17, fontFamily: 'NotoSansGeorgian_700Bold' },
-  bbtUnit: { fontFamily: 'NotoSansGeorgian_600SemiBold', fontSize: 15, minWidth: 28 },
+  bbt: { paddingHorizontal: 10 },
   lockRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 12, paddingHorizontal: 12, minHeight: 60 },
   lockIcon: { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center' },
   lockTitle: { fontFamily: 'NotoSansGeorgian_600SemiBold', fontSize: 14, lineHeight: 20 },

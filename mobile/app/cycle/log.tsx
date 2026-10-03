@@ -10,6 +10,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
 import { CycleLogTabs, type CycleLogForm } from '@/components/cycle/CycleLogTabs';
 import { EMPTY_CYCLE_LOG, formFromCycleLog, persistCycleLog } from '@/lib/cycleLogSave';
+import { lastLoggedBbt } from '@/lib/cycleBbt';
 import { api, ApiError, type CycleCustomTag, type CycleLog } from '@/lib/api';
 import { queueRemoveCycleLog } from '@/lib/cycleOffline';
 import { useCycleView } from '@/lib/cycleViewCache';
@@ -84,6 +85,8 @@ function CycleLogScreen() {
   const viewData = viewQuery.data;
   const viewIdle = viewQuery.fetchStatus === 'idle';
   const viewError = viewQuery.error;
+  /** Where the BBT wheel starts (local, inside the cycle screens only — never fills the form by itself). */
+  const lastBbt = useMemo(() => lastLoggedBbt(viewData?.display.logs as CycleLog[] | undefined, date), [viewData, date]);
   useEffect(() => {
     if (hydrated) return;
     if (!user?.id) {
@@ -244,6 +247,7 @@ function CycleLogScreen() {
           customTags={customTags}
           onCreateTag={createTag}
           creatingTag={creatingTag}
+          lastBbt={lastBbt}
         />
 
         <CycleLogDock>

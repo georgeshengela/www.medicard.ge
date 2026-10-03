@@ -3,6 +3,7 @@ import React, { useMemo, useState } from 'react';
 import { Text, TextInput, View } from 'react-native';
 import { ChevronDown, ChevronRight, Lock, Check } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
+import { CycleBbtPicker } from '@/components/cycle/CycleBbtPicker';
 import { CycleTestResultRow } from '@/components/cycle/CycleTestResultRow';
 import { MUCUS_OPTIONS } from '@/constants/cycle';
 import { chipsForGroup, ENERGY_LEVELS, type CycleUiGroup } from '@/lib/cycleObservationRegistry';
@@ -83,9 +84,11 @@ type Props = {
   onChange: (patch: Partial<CycleLogForm>) => void;
   compact?: boolean;
   mode?: string;
+  /** The last BBT logged on another day — where the BBT wheel starts. */
+  lastBbt?: number | null;
 };
 
-export function CycleMoreTracking({ form, onChange, compact, mode }: Props) {
+export function CycleMoreTracking({ form, onChange, compact, mode, lastBbt = null }: Props) {
   const c = useCycleColors();
   const caps = cycleModeCapabilities(mode);
   const groups = caps.showFertilityLogging ? GROUPS : GROUPS.filter((item) => item.id !== 'fertility');
@@ -299,48 +302,8 @@ export function CycleMoreTracking({ form, onChange, compact, mode }: Props) {
                     onChange={(pregnancyTest) => onChange({ pregnancyTest })}
                     accent={c.rose}
                   />
-                  <Text
-                    style={{
-                      color: c.ink,
-                      fontFamily: 'NotoSansGeorgian_700Bold',
-                      fontSize: 13,
-                      marginTop: 14,
-                      marginBottom: 8,
-                    }}
-                  >
-                    {ka.cycle.bbt}
-                  </Text>
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                    <TextInput
-                      value={form.bbt}
-                      onChangeText={(bbt) => onChange({ bbt })}
-                      keyboardType="decimal-pad"
-                      placeholder="36.5"
-                      placeholderTextColor={c.mutedSoft}
-                      accessibilityLabel={ka.cycle.bbt}
-                      style={{
-                        flex: 1,
-                        minHeight: 44,
-                        borderRadius: 12,
-                        borderWidth: 1,
-                        borderColor: c.controlBorder,
-                        backgroundColor: c.cardSoft,
-                        color: c.ink,
-                        paddingHorizontal: 12,
-                        fontSize: 16,
-                        fontFamily: 'NotoSansGeorgian_700Bold',
-                      }}
-                    />
-                    <Text
-                      style={{
-                        color: c.ink,
-                        fontFamily: 'NotoSansGeorgian_700Bold',
-                        fontSize: 16,
-                        minWidth: 36,
-                      }}
-                    >
-                      °C
-                    </Text>
+                  <View style={{ marginTop: 14 }}>
+                    <CycleBbtPicker value={form.bbt} onChange={(bbt) => onChange({ bbt })} lastLogged={lastBbt} />
                   </View>
                   <Text
                     style={{
