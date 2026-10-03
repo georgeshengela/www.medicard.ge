@@ -17,12 +17,11 @@ import type { LucideIcon } from 'lucide-react-native';
 import { CYCLE_TEST_OPTIONS } from '@/constants/cycle';
 import { CycleBbtPicker } from '@/components/cycle/CycleBbtPicker';
 import { CycleIconRow, CycleIconTile } from '@/components/cycle/CycleIconTile';
-import { CycleJournalField, CycleLifestyleFields, CycleTagPicker } from '@/components/cycle/CycleObservationFields';
+import { CycleJournalField, CycleLifestyleFields, CyclePainEditor, CycleTagPicker } from '@/components/cycle/CycleObservationFields';
 import { formatCycleDateKa } from '@/components/cycle/CycleUI';
 import { CycleSexSection } from '@/components/cycle/CycleSexSection';
 import { CycleObservationAssessment } from '@/components/cycle/CycleObservationAssessment';
-import type { CycleCustomTag, CyclePainEntry, CyclePainSeverity, CyclePainType } from '@/lib/api';
-import { PAIN_TYPES, painTypeLabel } from '@/lib/cycleObservations';
+import type { CycleCustomTag, CyclePainEntry } from '@/lib/api';
 import { cycleModeCapabilities } from '@/lib/cycleModes';
 import {
   applySymptomChipToggle,
@@ -43,7 +42,6 @@ import {
   type SymptomGroupId,
 } from '@/lib/cycleFullLog';
 import { cycleGlyphFor, flowGlyphStyle } from '@/lib/cycleIconMap';
-import { nextPainSeverity, painLevel } from '@/lib/cycleQuickLogCopy';
 import { ka } from '@/i18n/ka';
 import { tx } from '@/i18n/locale';
 import { useCycleColors } from '@/theme/cycle';
@@ -159,13 +157,6 @@ export function CycleLogTabs({
     const endReached = contentOffset.y + layoutMeasurement.height >= contentSize.height - 24;
     const next = activeTabForOffset(anchors.current, contentOffset.y, { endReached });
     setTab((prev) => (prev === next ? prev : next));
-  };
-
-  const painOf = (type: CyclePainType) => form.painEntries.find((e) => e.type === type)?.severity ?? null;
-  const tapPain = (type: CyclePainType) => {
-    const next = nextPainSeverity(painOf(type) as CyclePainSeverity | null);
-    const rest = form.painEntries.filter((e) => e.type !== type);
-    onChange({ painEntries: next ? [...rest, { type, severity: next }] : rest });
   };
 
   const symptomGroup = (group: SymptomGroupId, title: string, hint?: string) => (
@@ -284,21 +275,12 @@ export function CycleLogTabs({
           ) : null}
 
           <Group title={ka.cycle.pain} hint={tx('ხელახალი შეხება — ინტენსივობა', 'tap again for strength')}>
-            <CycleIconRow
-              items={PAIN_TYPES.map((id) => ({ id }))}
+            <CyclePainEditor
+              compact
+              entries={form.painEntries}
+              onChange={(painEntries) => onChange({ painEntries })}
               visible={FULL_LOG_VISIBLE}
               gap={0}
-              isSelected={({ id }) => painOf(id) != null}
-              renderTile={({ id }) => (
-                <CycleIconTile
-                  glyph={cycleGlyphFor('pain', id)}
-                  label={painTypeLabel(id)}
-                  selected={painOf(id) != null}
-                  level={painLevel(painOf(id))}
-                  onPress={() => tapPain(id)}
-                  accessibilityHint={tx('ხელახალი შეხება ინტენსივობას ცვლის', 'Tap again to change the strength')}
-                />
-              )}
             />
           </Group>
 

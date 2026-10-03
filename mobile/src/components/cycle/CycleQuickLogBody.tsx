@@ -5,20 +5,21 @@ import { ChevronDown, ChevronRight, Lock } from 'lucide-react-native';
 import { CycleBbtPicker } from '@/components/cycle/CycleBbtPicker';
 import { CycleIconRow, CycleIconTile } from '@/components/cycle/CycleIconTile';
 import { CycleMoreTracking } from '@/components/cycle/CycleMoreTracking';
+import { CyclePainEditor } from '@/components/cycle/CycleObservationFields';
 import { CycleSexSection } from '@/components/cycle/CycleSexSection';
 import { CycleTestResultRow } from '@/components/cycle/CycleTestResultRow';
 import type { CycleLogForm } from '@/components/cycle/CycleLogTabs';
 import { FLOW_OPTIONS, MOOD_OPTIONS, MUCUS_OPTIONS, PHYSICAL_SYMPTOMS } from '@/constants/cycle';
 import { ka } from '@/i18n/ka';
 import { tx } from '@/i18n/locale';
-import type { CycleLog, CyclePainSeverity, CyclePainType } from '@/lib/api';
+import type { CycleLog, CyclePainType } from '@/lib/api';
 import { lastLoggedBbt } from '@/lib/cycleBbt';
 import { expectationTileHint, expectedIds, type CycleExpectation } from '@/lib/cycleExpectations';
 import { ALL_FINE_ID, cycleGlyphFor, flowGlyphStyle } from '@/lib/cycleIconMap';
 import { formFromCycleLog } from '@/lib/cycleLogSave';
-import { PAIN_MANAGED_SYMPTOM_IDS, PAIN_TYPES, painTypeLabel } from '@/lib/cycleObservations';
+import { PAIN_MANAGED_SYMPTOM_IDS, PAIN_TYPES } from '@/lib/cycleObservations';
 import { chipGroup, recentObservationKeys, SENSITIVE_SHORTCUT_IDS } from '@/lib/cycleObservationRegistry';
-import { copyFromYesterday, formIsEmpty, hasCopyableContent, nextPainSeverity, painLevel } from '@/lib/cycleQuickLogCopy';
+import { copyFromYesterday, formIsEmpty, hasCopyableContent } from '@/lib/cycleQuickLogCopy';
 import { addDaysKey } from '@/lib/home/homeCycle';
 import { useCycleColors } from '@/theme/cycle';
 
@@ -106,12 +107,6 @@ export function CycleQuickLogBody({
       setAllFine(false);
       onChange({ symptoms: toggle(form.symptoms, id) });
     }
-  };
-  const painOf = (type: CyclePainType) => form.painEntries.find((e) => e.type === type)?.severity ?? null;
-  const tapPain = (type: CyclePainType) => {
-    const next = nextPainSeverity(painOf(type) as CyclePainSeverity | null);
-    const rest = form.painEntries.filter((e) => e.type !== type);
-    onChange({ painEntries: next ? [...rest, { type, severity: next }] : rest });
   };
 
   return (
@@ -203,22 +198,15 @@ export function CycleQuickLogBody({
       ) : null}
 
       <Group title={ka.cycle.pain} hint={tx('ხელახალი შეხება — ინტენსივობა', 'tap again for strength')}>
-        <CycleIconRow
-          items={painTypes.map((id) => ({ id }))}
+        <CyclePainEditor
+          compact
+          entries={form.painEntries}
+          onChange={(painEntries) => onChange({ painEntries })}
+          types={painTypes}
           visible={4}
-          isSelected={({ id }) => painOf(id) != null}
-          renderTile={({ id }) => (
-            <CycleIconTile
-              glyph={cycleGlyphFor('pain', id)}
-              label={painTypeLabel(id)}
-              selected={painOf(id) != null}
-              level={painLevel(painOf(id))}
-              dashed={expectedPain.includes(id)}
-              disabled={disabled}
-              onPress={() => tapPain(id)}
-              accessibilityHint={hintFor('pain', id) ?? tx('ხელახალი შეხება ინტენსივობას ცვლის', 'Tap again to change the strength')}
-            />
-          )}
+          expected={expectedPain}
+          hintFor={(type) => hintFor('pain', type)}
+          disabled={disabled}
         />
       </Group>
 

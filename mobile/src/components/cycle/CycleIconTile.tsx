@@ -25,6 +25,8 @@ export type CycleIconTileProps = {
   selected: boolean;
   onPress: () => void;
   onLongPress?: () => void;
+  /** Screen-reader name of the long-press action (pain: „ინტენსივობის არჩევა“). */
+  longPressLabel?: string;
   group?: CycleIconGroup;
   disabled?: boolean;
   /** Bleeding amount: the drop's size and opacity; `hollow` draws the „არა“ outline drop. */
@@ -51,6 +53,7 @@ export function CycleIconTile({
   selected,
   onPress,
   onLongPress,
+  longPressLabel,
   group = 'neutral',
   disabled = false,
   glyphScale = 1,
@@ -83,6 +86,14 @@ export function CycleIconTile({
         onPress();
       }}
       onLongPress={readOnly ? undefined : onLongPress}
+      accessibilityActions={!readOnly && onLongPress && longPressLabel ? [{ name: 'longpress', label: longPressLabel }] : undefined}
+      onAccessibilityAction={
+        !readOnly && onLongPress && longPressLabel
+          ? (e) => {
+              if (e.nativeEvent.actionName === 'longpress') onLongPress();
+            }
+          : undefined
+      }
       style={[s.tile, { opacity: disabled && !readOnly ? 0.5 : 1 }]}
     >
       <View
