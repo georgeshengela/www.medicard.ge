@@ -3,6 +3,7 @@ import React, { useMemo, useState } from 'react';
 import { Text, View } from 'react-native';
 import { CycleExpectationLine } from '@/components/cycle/CycleExpectationLine';
 import { CycleGaugeExplainSheet, type GaugeExplain } from '@/components/cycle/CycleGaugeExplainSheet';
+import { CyclePhaseLegend } from '@/components/cycle/CyclePhaseLegend';
 import { CycleStatusGauge, type GaugeCenter } from '@/components/cycle/CycleStatusGauge';
 import { PredictionBadge, ConfidenceHint } from '@/components/cycle/CycleBadges';
 import { CyclePrimaryButton, formatCycleDateKa } from '@/components/cycle/CycleUI';
@@ -250,11 +251,9 @@ export function CycleHero({
         ) : null}
 
         {!hideLengthChrome && (overlays.fertileDays || cycleStart) ? (
-          <View accessible={false} importantForAccessibility="no-hide-descendants" style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', columnGap: 10, rowGap: 4, marginTop: 12 }}>
-            <LegendDot fill={c.period} label={ka.cycle.legendPeriod} />
-            <LegendDot fill={c.follicularFill} label={ka.cycle.dialFollicular} />
-            {overlays.fertileDays ? <LegendDot fill={c.fertileFill} label={ka.cycle.dialFertile} /> : null}
-            {overlays.fertileDays ? <LegendDot fill={c.luteal} label={ka.cycle.dialLuteal} /> : null}
+          <View accessible={false} importantForAccessibility="no-hide-descendants" style={{ marginTop: 12 }}>
+            {/* Brief §8.2 items 3 + 10: the shared legend, phases only under the ring, with the closing line. */}
+            <CyclePhaseLegend look="dense" phases marks={false} closingLine showFertility={Boolean(overlays.fertileDays)} />
           </View>
         ) : null}
 
@@ -296,16 +295,6 @@ export function CycleHero({
           )}
         </View>
       </View>
-    </View>
-  );
-}
-
-function LegendDot({ fill, ring, label }: { fill: string; ring?: string; label: string }) {
-  const c = useCycleColors();
-  return (
-    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
-      <View style={{ width: 9, height: 9, borderRadius: 5, backgroundColor: fill, borderWidth: ring ? 1.5 : 0, borderColor: ring }} />
-      <Text style={{ color: c.mutedSoft, fontFamily: 'NotoSansGeorgian_500Medium', fontSize: 11, lineHeight: 15 }}>{label}</Text>
     </View>
   );
 }

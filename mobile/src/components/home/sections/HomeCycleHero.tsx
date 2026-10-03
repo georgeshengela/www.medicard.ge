@@ -10,6 +10,8 @@ import { CycleHeavyBleedingCard } from '@/components/cycle/CycleHeavyBleedingCar
 import { CycleQuickLogSheet } from '@/components/cycle/CycleQuickLogSheet';
 import { CycleSexSheet } from '@/components/cycle/CycleSexSheet';
 import { CycleExpectationLine } from '@/components/cycle/CycleExpectationLine';
+import { CyclePhaseLegend } from '@/components/cycle/CyclePhaseLegend';
+import type { CycleLegendKey } from '@/lib/cycleLegendItems';
 import { todayKey } from '@/components/cycle/CycleCalendar';
 import { useTabBarInset } from '@/components/navigation/FloatingTabBar';
 import { WEEKDAYS_KA } from '@/constants/cycle';
@@ -724,11 +726,10 @@ function SexButton({ logged, disabled, wide, onPress }: { logged: boolean; disab
   );
 }
 
-type LegendKind = 'logged' | 'predicted' | 'fertile' | 'ovulation';
-
 /**
  * The week in a soft tray: −3…+3 days, marks in the cycle grammar and — because a mark must explain
- * itself — one legend line for exactly the marks this week shows. Tapping opens the calendar.
+ * itself — one legend line for exactly the marks this week shows (the shared `CyclePhaseLegend`, so
+ * the tray and the calendar read the same way). Tapping opens the calendar.
  */
 function WeekTray({
   days,
@@ -744,11 +745,13 @@ function WeekTray({
   const c = useCycleColors();
   const circle = compact ? 30 : 34;
   const outer = circle + 6;
-  const legend: { kind: LegendKind; label: string }[] = [];
-  if (days.some((d) => d.loggedPeriod)) legend.push({ kind: 'logged', label: bleedLabel });
-  if (days.some((d) => d.predictedPeriod)) legend.push({ kind: 'predicted', label: ka.cycle.legendPeriodPredicted });
-  if (days.some((d) => d.fertile && !d.ovulation)) legend.push({ kind: 'fertile', label: ka.cycle.legendFertile });
-  if (days.some((d) => d.ovulation)) legend.push({ kind: 'ovulation', label: ka.cycle.legendOvulation });
+  // Only the marks this week draws — never sex or symptoms (Home shows neither).
+  const legendKeys: CycleLegendKey[] = [];
+  if (days.some((d) => d.loggedPeriod)) legendKeys.push('logged');
+  if (days.some((d) => d.predictedPeriod)) legendKeys.push('predicted');
+  if (days.some((d) => d.fertile && !d.ovulation)) legendKeys.push('fertile');
+  if (days.some((d) => d.ovulation)) legendKeys.push('ovulation');
+  if (days.some((d) => d.spotting)) legendKeys.push('spotting');
   const a11y = days
     .map((d) =>
       [
@@ -813,29 +816,7 @@ function WeekTray({
           );
         })}
       </View>
-      {legend.length ? (
-        <View style={s.legend}>
-          {legend.map((item) => (
-            <View key={item.kind} style={s.legendItem}>
-              <View
-                style={[
-                  s.legendMark,
-                  item.kind === 'logged'
-                    ? { backgroundColor: c.period }
-                    : item.kind === 'predicted'
-                      ? { borderWidth: 1.5, borderColor: c.period, borderStyle: 'dashed' }
-                      : item.kind === 'fertile'
-                        ? { backgroundColor: c.fertileFill }
-                        : { backgroundColor: c.fertilitySoft, borderWidth: 1.5, borderColor: c.fertile },
-                ]}
-              />
-              <Text numberOfLines={1} style={[s.legendText, { color: c.muted }]}>
-                {item.label}
-              </Text>
-            </View>
-          ))}
-        </View>
-      ) : null}
+      {legendKeys.length ? <CyclePhaseLegend look="dense" only={legendKeys} loggedBleedLabel={bleedLabel} /> : null}
     </Pressable>
   );
 }
@@ -929,8 +910,4 @@ const s = StyleSheet.create({
   stripCircle: { alignItems: 'center', justifyContent: 'center' },
   stripNumber: { fontSize: 13, fontVariant: ['tabular-nums'] },
   spotDot: { width: 4, height: 4, borderRadius: 2, marginTop: -3 },
-  legend: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', columnGap: 14, rowGap: 4 },
-  legendItem: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  legendMark: { width: 11, height: 11, borderRadius: 6 },
-  legendText: { fontFamily: 'NotoSansGeorgian_500Medium', fontSize: 11, lineHeight: 16 },
 });

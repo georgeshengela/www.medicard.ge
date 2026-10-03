@@ -1,7 +1,7 @@
 import { CyclePressable as Pressable } from '@/components/cycle/CyclePressable';
 import React, { useMemo } from 'react';
 import { Text, View } from 'react-native';
-import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated';
+import Animated, { FadeIn, FadeInDown, FadeOut } from 'react-native-reanimated';
 import { ChevronLeft, ChevronRight, Heart } from 'lucide-react-native';
 import type { CycleDayMark } from '@/lib/api';
 import { fertilityA11yBits } from '@/lib/cycleFertility';
@@ -110,6 +110,14 @@ export function CycleCalendar({ year, month, marks, selected, onSelect, onPrev, 
         </NavBtn>
       </View>
 
+      {/* Brief §8.4: ◀ ▶ change the month with a 220 ms crossfade (out 120 / in 220) — the key remounts
+          the grid, reanimated fades the old one out on top while the new one fades in. No horizontal
+          swipe (it would fight the week strip's pages); reduced motion → instant. */}
+      <Animated.View
+        key={`${year}-${month}`}
+        entering={reduceMotion ? undefined : FadeIn.duration(220)}
+        exiting={reduceMotion ? undefined : FadeOut.duration(120)}
+      >
       <View style={{ flexDirection: 'row', marginBottom: 8 }}>
         {WEEKDAYS_KA.map((w) => (
           <Text
@@ -261,6 +269,7 @@ export function CycleCalendar({ year, month, marks, selected, onSelect, onPrev, 
           );
         })}
       </View>
+      </Animated.View>
     </Animated.View>
   );
 }

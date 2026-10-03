@@ -25,7 +25,8 @@ import { CycleOnboarding } from '@/components/cycle/CycleOnboarding';
 import { CycleDayStrip } from '@/components/cycle/CycleDayStrip';
 import { CycleDaySummary } from '@/components/cycle/CycleDaySummary';
 import { CycleDaySheet } from '@/components/cycle/CycleDaySheet';
-import { CycleCalendarLegend } from '@/components/cycle/CycleCalendarLegend';
+import { CyclePhaseLegend } from '@/components/cycle/CyclePhaseLegend';
+import { MedicalSourcesLink } from '@/components/health/MedicalSourcesLink';
 import { CycleJournalPane } from '@/components/cycle/CycleJournalPane';
 import { CyclePostpartumBleedClassifySheet } from '@/components/cycle/CyclePostpartumBleedClassifySheet';
 import { CycleInsightsPanel } from '@/components/cycle/CycleInsights';
@@ -1263,8 +1264,11 @@ export default function CycleHome() {
                 }
               />
 
-              <View style={{ marginTop: 14 }}>
-                <CycleCalendarLegend
+              {/* Brief §8.4: legend = the shared CyclePhaseLegend (marks only — the calendar never draws
+                  follicular/luteal) + MedicalSourcesLink. */}
+              <View style={{ marginTop: 14, gap: 6 }}>
+                <CyclePhaseLegend
+                  look="card"
                   showFertility={fertilityVisible}
                   showPredicted={showPredicted}
                   loggedBleedLabel={bleedLegend}
@@ -1274,6 +1278,7 @@ export default function CycleHome() {
                     || bundle?.classifiedDates?.length,
                   )}
                 />
+                {showPredicted || fertilityVisible ? <MedicalSourcesLink sourceIds={['menstrualCycle']} /> : null}
               </View>
             </View>
           ) : null}
@@ -1347,7 +1352,17 @@ export default function CycleHome() {
         sourceIds={['menstrualCycle']}
         caption={ka.cycle.gaugeRingCaption}
         onClose={() => setExplainOpen(false)}
-      />
+      >
+        {/* The ring's explain sheet carries the same legend as the ring and the calendar (brief §8.2 item 3). */}
+        <CyclePhaseLegend
+          look="plain"
+          phases
+          closingLine
+          showFertility={fertilityVisible}
+          showPredicted={showPredicted}
+          loggedBleedLabel={bleedLegend}
+        />
+      </CycleExplainSheet>
 
       {sexToast ? (
         <CyclePeriodToast

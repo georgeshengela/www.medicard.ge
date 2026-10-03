@@ -36,7 +36,7 @@ const PRESENTATION_FILES = [
   'src/components/cycle/CyclePostpartumJournalSection.tsx',
   'src/components/cycle/CyclePostpartumBleedClassifySheet.tsx',
   'src/components/cycle/CycleCalendar.tsx',
-  'src/components/cycle/CycleCalendarLegend.tsx',
+  'src/components/cycle/CyclePhaseLegend.tsx',
   'src/components/cycle/CycleDayStrip.tsx',
   'src/components/home/HomeCyclePreviewCard.tsx',
   'src/lib/cycleAdvice.ts',
