@@ -4,7 +4,9 @@ import { useRouter } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import { ka } from '@/i18n/ka';
 import type { CycleLogForm } from '@/components/cycle/CycleLogTabs';
+import { periodToastTitle } from '@/components/cycle/CyclePeriodToast';
 import { formFromCycleLog, persistCycleLog } from '@/lib/cycleLogSave';
+import { periodStartTone } from '@/lib/cycleTone';
 import { queueApplyPeriod, type CycleView } from '@/lib/cycleOffline';
 import { putCycleView } from '@/lib/cycleViewCache';
 import { getCycleReminderPrefs } from '@/lib/cycleReminderPrefs';
@@ -26,6 +28,8 @@ import { localAccountId } from '@/lib/localAccount';
 export type HomeCycleToast = {
   kind: 'period' | 'sex';
   date: string;
+  /** Period toast title for the cycle mode (neutral „ახალი ციკლი დაიწყო“ while trying to conceive); undefined = default. */
+  title?: string;
   /** Period: add today's flow. Sex: open the details sheet. */
   onAddFlow: () => void;
   onUndo: () => void;
@@ -114,6 +118,8 @@ export function useHomeCycleActions({
   retry: () => void;
 }): HomeCycleActions {
   const router = useRouter();
+  /** Cycle mode drives the tone of the period-start confirmation (TTC: neutral title, selection haptic). */
+  const mode = view?.display.profile.mode;
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [toastDate, setToastDate] = useState<string | null>(null);
@@ -186,7 +192,9 @@ export function useHomeCycleActions({
     void (async () => {
       try {
         const result = await queueApplyPeriod(userId, { action: 'start', date: today });
-        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined);
+        // TTC: a new cycle is not a success to celebrate — a plain selection tick (brief §9 item 16).
+        if (periodStartTone(mode).haptic === 'selection') Haptics.selectionAsync().catch(() => undefined);
+        else Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined);
         showView(result.view);
         if (alive.current) {
           setSexBefore(null);
@@ -199,7 +207,7 @@ export function useHomeCycleActions({
         if (alive.current) setBusy(false);
       }
     })();
-  }, [userId, today, showView, fail]);
+  }, [userId, today, mode, showView, fail]);
 
   const undoStart = useCallback(
     (date: string) => {
@@ -348,6 +356,7 @@ export function useHomeCycleActions({
       : {
           kind: 'period',
           date: toastDate as string,
+          title: periodToastTitle(mode),
           onAddFlow: () => handlers.current.addFlow(toastDate as string),
           onUndo: () => handlers.current.undoStart(toastDate as string),
         };
@@ -355,7 +364,7 @@ export function useHomeCycleActions({
     return () => {
       if (toastEntry === entry) setToastEntry(null);
     };
-  }, [toastDate, sexBefore, today]);
+  }, [toastDate, sexBefore, today, mode]);
 
   return {
     busy,

@@ -6,6 +6,7 @@ import { HomeSectionHeading } from '@/components/home/HomeSectionHeading';
 import { MedicalSourcesLink } from '@/components/health/MedicalSourcesLink';
 import type { MedicalSourceId } from '@/constants/medicalSources';
 import { CyclePeriodToast } from '@/components/cycle/CyclePeriodToast';
+import { CycleHeavyBleedingCard } from '@/components/cycle/CycleHeavyBleedingCard';
 import { CycleQuickLogSheet } from '@/components/cycle/CycleQuickLogSheet';
 import { CycleSexSheet } from '@/components/cycle/CycleSexSheet';
 import { CycleExpectationLine } from '@/components/cycle/CycleExpectationLine';
@@ -19,8 +20,10 @@ import type { CycleView } from '@/lib/cycleOffline';
 import { cycleToday, phaseFromBundle, usedCycleLength } from '@/lib/cycleCanonical';
 import { expectationLine, expectationsFromBundle } from '@/lib/cycleExpectations';
 import { displayPhaseLabel } from '@/lib/cycleHonesty';
+import { showHeavyBleedingCard } from '@/lib/cycleHeavyBleeding';
 import { isBleedFlow } from '@/lib/cycleLogSave';
 import { cycleModeCapabilities } from '@/lib/cycleModes';
+import { POSTPARTUM_OVULATION_NOTE } from '@/lib/cycleTone';
 import { bleedingIsUncertain, showFertilityUi, showOvulationUi } from '@/lib/cycleContraception';
 import { forecastPresentationAllowed, suppressCycleLengthChrome } from '@/lib/cycleForecastEligibility';
 import { cycleLoggedBleedLabel } from '@/lib/cycleHistoryCopy';
@@ -217,6 +220,10 @@ export function HomeCycleHero({ cycle, locked, userId, first }: HomeCycleHeroPro
           </View>
           <StatusColumn title={title} detail={detail} offline={view?.reachable === false} />
         </Pressable>
+        {!peri ? (
+          // Brief §9 item 16: fertility can return before the first bleed — a plain fact, not advice.
+          <Text style={[hubText.body, { color: theme.text100 }]}>{tx(POSTPARTUM_OVULATION_NOTE.ka, POSTPARTUM_OVULATION_NOTE.en)}</Text>
+        ) : null}
         <HeroButton label={ka.cycle.storyLogTitle} icon={Plus} filled onPress={() => actions.openLog()} />
         {peri ? (
           <WeekTray
@@ -236,7 +243,8 @@ export function HomeCycleHero({ cycle, locked, userId, first }: HomeCycleHeroPro
       </View>
     );
   } else if (bundle && variant === 'cycle') {
-    sourceIds = ['menstrualCycle'];
+    // The heavy-bleeding inset card has no link of its own on Home: ACOG joins the hero's one „წყაროები“.
+    sourceIds = showHeavyBleedingCard(bundle.logs, today) ? ['menstrualCycle', 'heavyMenstrualBleeding'] : ['menstrualCycle'];
     body = (
       <ClassicCycleCard
         bundle={bundle}
@@ -314,7 +322,7 @@ function HomeCycleToast({ entry, bottomInset }: { entry: HomeCycleToastEntry; bo
       />
     );
   }
-  return <CyclePeriodToast bottomInset={bottomInset} onAddFlow={entry.onAddFlow} onUndo={entry.onUndo} />;
+  return <CyclePeriodToast bottomInset={bottomInset} title={entry.title} onAddFlow={entry.onAddFlow} onUndo={entry.onUndo} />;
 }
 
 // ---------- classic cycle card (TRACK_PERIOD / TRY_TO_CONCEIVE) ----------
@@ -471,6 +479,8 @@ function ClassicCycleCard({
           <SexButton logged={sexLogged} disabled={sexBusy} wide={!plan.secondary} onPress={onSex} />
         </View>
       </View>
+      {/* Brief §9 item 15: calm card below the actions only while the current bleeding run is heavy (≥ 3 heavy days) or long (> 7 days). */}
+      {showHeavyBleedingCard(bundle.logs, today) ? <CycleHeavyBleedingCard variant="inset" showSources={false} /> : null}
       {error ? (
         <Text accessibilityRole="alert" style={[hubText.caption, { color: theme.danger, marginTop: -6 }]}>
           {error}

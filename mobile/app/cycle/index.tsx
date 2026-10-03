@@ -13,10 +13,11 @@ import * as Haptics from 'expo-haptics';
 import { CalendarHeart, Heart, MessageSquareText, PencilLine } from 'lucide-react-native';
 import { CycleHomeHeader } from '@/components/cycle/CycleHomeHeader';
 import { CycleHero } from '@/components/cycle/CycleHero';
+import { CycleHeavyBleedingCard } from '@/components/cycle/CycleHeavyBleedingCard';
 import { CycleSexSheet } from '@/components/cycle/CycleSexSheet';
 import { CycleStoriesRow } from '@/components/cycle/CycleStoriesRow';
 import { CycleStatsCard } from '@/components/cycle/CycleStatsCard';
-import { CyclePeriodToast } from '@/components/cycle/CyclePeriodToast';
+import { CyclePeriodToast, periodToastTitle } from '@/components/cycle/CyclePeriodToast';
 import { CycleAlertsBanner } from '@/components/cycle/CycleAlertsBanner';
 import { CycleQuickLogSheet } from '@/components/cycle/CycleQuickLogSheet';
 import { CyclePmsHeatmap } from '@/components/cycle/CyclePmsHeatmap';
@@ -41,6 +42,8 @@ import {
 } from '@/components/cycle/CycleUI';
 import { MONTHS_KA } from '@/constants/cycle';
 import { ka } from '@/i18n/ka';
+import { showHeavyBleedingCard } from '@/lib/cycleHeavyBleeding';
+import { periodStartTone } from '@/lib/cycleTone';
 import { parseDateKey } from '@/lib/cyclePhase';
 import { cycleToday, phaseFromBundle, usedCycleLength } from '@/lib/cycleCanonical';
 import { displayPhaseLabel } from '@/lib/cycleHonesty';
@@ -615,7 +618,9 @@ export default function CycleHome() {
     setPeriodBusy(true);
     try {
       const result = await queueApplyPeriod(user.id, { action: 'start', date: today });
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined);
+      // TTC: a new cycle is not a success to celebrate — a plain selection tick (brief §9 item 16).
+      if (periodStartTone(bundle?.profile.mode).haptic === 'selection') Haptics.selectionAsync().catch(() => undefined);
+      else Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined);
       showView(result.view);
       setPeriodToast(today);
     } catch (err) {
@@ -1028,6 +1033,13 @@ export default function CycleHome() {
                 )}
               </Animated.View>
 
+              {/* Brief §9 item 15: a calm card under the hero only while the current bleeding run is heavy (≥ 3 heavy days) or long (> 7 days). */}
+              {modeCaps.showClassicCycleOverview && showHeavyBleedingCard(bundle.logs, today) ? (
+                <View style={{ marginHorizontal: 20, marginBottom: 28, marginTop: -8 }}>
+                  <CycleHeavyBleedingCard />
+                </View>
+              ) : null}
+
               {/* Flo order: ring → quick tiles → my cycle → today → Medi's tips. */}
               <View style={{ paddingHorizontal: 20, marginBottom: 28 }}>
                 <CycleStoriesRow
@@ -1276,6 +1288,7 @@ export default function CycleHome() {
       {periodToast ? (
         <CyclePeriodToast
           bottomInset={insets.bottom}
+          title={periodToastTitle(bundle?.profile.mode)}
           onAddFlow={() => {
             setPeriodToast(null);
             openQuickLog(periodToast);

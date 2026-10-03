@@ -1849,7 +1849,7 @@ const kaStrings = {
     statsFromSettings: 'შენი მითითებით — 2 ციკლის შემდეგ შენი მონაცემებით დავითვლით',
     periodStartedToast: 'მენსტრუაცია დაფიქსირდა — დღეს პირველი დღეა',
     periodStartedToastHint: 'დარჩენილ დღეებს შენი ჩვეული ხანგრძლივობით ვაჩვენებთ',
-    periodStartedAddFlow: 'გამონადენი',
+    periodStartedAddFlow: 'სისხლდენა',
     periodStartedUndo: 'გაუქმება',
     sexPrivateHint: 'მხოლოდ შენ ხედავ — პარტნიორსა და Medi-ს არ ეგზავნება',
     sexActivityLabel: 'სექსი',

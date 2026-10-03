@@ -4,8 +4,19 @@ import Animated, { FadeInDown, FadeOutDown } from 'react-native-reanimated';
 import { Check, Droplet, Undo2 } from 'lucide-react-native';
 import { CyclePressable } from './CyclePressable';
 import { ka } from '@/i18n/ka';
+import { tx } from '@/i18n/locale';
 import { usePrefersReducedMotion } from '@/hooks/usePrefersReducedMotion';
+import { periodStartTone } from '@/lib/cycleTone';
 import { cycleHexAlpha, useCycleColors } from '@/theme/cycle';
+
+/**
+ * Title of the one-tap „მენსტრუაცია დაიწყო“ toast for this cycle mode: neutral „ახალი ციკლი დაიწყო“
+ * while trying to conceive (brief §9 item 16), the regular title everywhere else.
+ */
+export function periodToastTitle(mode: string | null | undefined): string {
+  const { title } = periodStartTone(mode);
+  return title ? tx(title.ka, title.en) : ka.cycle.periodStartedToast;
+}
 
 /** Confirmation after one-tap "period started": what happened, plus add-flow and undo within reach. */
 export function CyclePeriodToast({

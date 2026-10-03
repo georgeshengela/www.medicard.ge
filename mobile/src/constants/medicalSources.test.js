@@ -52,6 +52,7 @@ describe('medical citations', () => {
       medicationInteractions: ['AI', 'medlineplus.gov'],
       airQualityIndex: ['60–79', 'eea.europa.eu'],
       uvIndex: ['6–7', 'who.int'],
+      heavyMenstrualBleeding: ['7 days', 'acog.org/womens-health/faqs/heavy-menstrual-bleeding'],
     };
     for (const [id, [needle, host]] of Object.entries(expected)) {
       const source = medicalSources[id];

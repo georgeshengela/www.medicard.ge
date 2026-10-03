@@ -46,6 +46,17 @@ export const medicalSources = {
       'კალენდარული შეფასება ოვულაციას შემდეგ პერიოდამდე დაახლოებით 14 დღით ადრე დებს. MEDICARD ოვულაციას ითვლის როგორც ციკლის სიგრძე მინუს 14 დღე და ნაყოფიერ ფანჯარას აჩვენებს ამ თარიღამდე 5 დღიდან მომდევნო დღემდე. ეს შეფასებაა, არა კონტრაცეფცია ან დადასტურებული ოვულაცია.',
     url: 'https://www.acog.org/womens-health/faqs/fertility-awareness-based-methods-of-family-planning',
   },
+  heavyMenstrualBleeding: {
+    id: 'heavyMenstrualBleeding',
+    organization: 'American College of Obstetricians and Gynecologists',
+    title: 'Heavy menstrual bleeding',
+    titleKa: 'ძლიერი მენსტრუალური სისხლდენა',
+    description:
+      'ACOG names the signs worth discussing with a clinician: bleeding that lasts more than 7 days, soaking through one or more pads or tampons every hour for several hours in a row, or passing clots larger than a quarter. MEDICARD shows a calm reminder of these signs after 3 consecutive days of heavy flow or a bleeding run longer than 7 days. It is a prompt to talk to a doctor, not a diagnosis.',
+    descriptionKa:
+      'ACOG ასახელებს ნიშნებს, რომლებზეც ექიმთან საუბარი ღირს: სისხლდენა 7 დღეზე მეტ ხანს, საფენის ან ტამპონის გაჟღენთვა ყოველ საათში რამდენიმე საათის განმავლობაში, ან მონეტაზე დიდი კოლტები. MEDICARD ამ ნიშნებს მშვიდად ახსენებს 3 ზედიზედ ძლიერი დღის ან 7 დღეზე გრძელი სისხლდენის შემდეგ. ეს ექიმთან საუბრის შეხსენებაა, არა დიაგნოზი.',
+    url: 'https://www.acog.org/womens-health/faqs/heavy-menstrual-bleeding',
+  },
   pregnancyDueDate: {
     id: 'pregnancyDueDate',
     organization: 'American College of Obstetricians and Gynecologists',

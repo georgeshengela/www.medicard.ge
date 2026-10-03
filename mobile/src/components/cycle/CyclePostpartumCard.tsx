@@ -2,7 +2,9 @@ import { CyclePressable as Pressable } from '@/components/cycle/CyclePressable';
 import React from 'react';
 import { ActivityIndicator, Text, View } from 'react-native';
 import { ka } from '@/i18n/ka';
+import { tx } from '@/i18n/locale';
 import type { CyclePostpartumPayload } from '@/lib/api';
+import { POSTPARTUM_OVULATION_NOTE } from '@/lib/cycleTone';
 import { cycleChipLabel } from '@/lib/cycleLabels';
 import { energyLabel, formatPainEntry, sleepLabel } from '@/lib/cycleObservations';
 import { postpartumEmptyCopyAllowed, postpartumQueryPending } from '@/lib/cyclePostpartumQuery';
@@ -101,6 +103,10 @@ export function CyclePostpartumCard({ postpartum, status, errorKind, onRetry, on
       </Text>
       <Text style={{ color: c.muted, fontSize: 13, lineHeight: 19, marginTop: 6 }}>
         {ka.cycle.postpartumNotDiagnosis}
+      </Text>
+      {/* Brief §9 item 16: fertility can return before the first bleed — said plainly, not as advice. */}
+      <Text style={{ color: c.ink, fontFamily: 'NotoSansGeorgian_500Medium', fontSize: 13, lineHeight: 19, marginTop: 8 }}>
+        {tx(POSTPARTUM_OVULATION_NOTE.ka, POSTPARTUM_OVULATION_NOTE.en)}
       </Text>
 
       {elapsed ? (
