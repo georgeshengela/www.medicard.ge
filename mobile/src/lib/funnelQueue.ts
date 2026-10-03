@@ -97,6 +97,22 @@ export function parseQueue(raw: string | null): QueuedFunnelEvent[] {
 }
 
 /**
+ * Cycle events always travel in a batch of their own. The server stores them anonymously and a
+ * server that does not know them yet must never cost the other funnel events: whatever happens to
+ * a cycle batch (rejected, 4xx → dropped) touches only cycle events.
+ */
+export function funnelBatchGroup(name: string): 'cycle' | 'core' {
+  return name.startsWith('cycle_') ? 'cycle' : 'core';
+}
+
+/** The next batch: events of the oldest event's group only, in queue order, at most `size`. */
+export function nextFunnelBatch<T extends { name: string }>(list: readonly T[], size: number): T[] {
+  if (!list.length) return [];
+  const group = funnelBatchGroup(list[0].name);
+  return list.filter((e) => funnelBatchGroup(e.name) === group).slice(0, size);
+}
+
+/**
  * Offline-tolerant queue: enqueue never throws or blocks; flush sends at most one batch at a time,
  * keeps events on network failure, drops them on a 4xx (a bad batch must not block the queue).
  * Events recorded under another account are discarded, never sent with the wrong token.
@@ -147,7 +163,7 @@ export function createFunnelQueue(deps: FunnelQueueDeps) {
               items = kept;
               await persist();
             }
-            return (items ?? []).slice(0, batchSize);
+            return nextFunnelBatch(items ?? [], batchSize);
           });
           if (!batch.length) break;
           const result = await deps.send(batch.map(({ account: _a, ...event }) => event)).catch((): SendResult => 'retry');

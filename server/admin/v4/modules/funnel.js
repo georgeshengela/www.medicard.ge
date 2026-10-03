@@ -188,7 +188,7 @@
           : empty('ამ პერიოდში ონბორდინგის ნაბიჯები ჯერ არავის უნახავს.')}</div>
       </section>
       ${features.length ? `<div class="s-section-title"><h3>სხვა მოვლენები</h3></div>
-      <div class="s-metrics">${features.map((f) => `<div class="s-metric"><span>${esc(FEATURES[f.name] || f.name)}</span><strong>${fmt(f.users)}</strong><small>ადამიანი · ${fmt(f.events)} ჯერ</small>${breakdownBadges(f)}</div>`).join('')}</div>` : ''}
+      <div class="s-metrics">${features.map((f) => `<div class="s-metric"><span>${esc(FEATURES[f.name] || f.name)}</span>${f.anonymous ? `<strong>${fmt(f.events)}</strong><small>ჯერ · ანონიმური, ადამიანები არ ითვლება</small>` : `<strong>${fmt(f.users)}</strong><small>ადამიანი · ${fmt(f.events)} ჯერ</small>`}${breakdownBadges(f)}</div>`).join('')}</div>` : ''}
     </div>`;
 
     root.querySelectorAll('[data-days]').forEach((btn) => btn.addEventListener('click', () => {

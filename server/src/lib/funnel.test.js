@@ -2,8 +2,8 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { describe, it } from 'node:test';
 import {
-  ACCOUNT_EVENTS, CYCLE_EXPLAIN_TOPICS, CYCLE_LOG_SOURCES, CYCLE_PERIOD_START_SOURCES, FEATURE_EVENTS, FUNNEL_EVENT_NAMES, HOME_LAYOUTS, HOME_LAYOUT_SOURCES, MAX_BATCH, batchSchema, buildFunnelReport, ingestFunnelEvents, installHashOf,
-  linkInstallToUser, parseFunnelDays, sanitizeFunnelEvent, sourceKey,
+  ACCOUNT_EVENTS, ANONYMOUS_EVENTS, CYCLE_EXPLAIN_TOPICS, CYCLE_LOG_SOURCES, CYCLE_PERIOD_START_SOURCES, FEATURE_EVENTS, FUNNEL_EVENT_NAMES, HOME_LAYOUTS, HOME_LAYOUT_SOURCES, MAX_BATCH, batchSchema, buildFunnelReport, ingestFunnelEvents, installHashOf,
+  funnelRowFor, linkInstallToUser, parseFunnelDays, sanitizeFunnelEvent, sourceKey,
 } from './funnel.js';
 import { funnelStatements } from '../../scripts/install-funnel.mjs';
 import { optionalUserId } from '../routes/funnel.routes.js';
@@ -200,6 +200,51 @@ describe('funnel ingest and linking', () => {
     assert.deepEqual(link.values, ['u1', installHashOf('inst_abcdef12')]);
   });
 
+  it('cycle events are stored with no user, install, platform or time of day — only name, enum and Tbilisi day', async () => {
+    assert.deepEqual([...ANONYMOUS_EVENTS].sort(), ['cycle_explain_opened', 'cycle_log_saved', 'cycle_period_started']);
+    for (const name of FUNNEL_EVENT_NAMES.filter((n) => n.startsWith('cycle_'))) assert.ok(ANONYMOUS_EVENTS.has(name), name);
+    const db = fakeDb();
+    const result = await ingestFunnelEvents({
+      userId: 'u1',
+      installId: 'inst_abcdef12',
+      events: [
+        { name: 'cycle_period_started', props: { source: 'hero' }, at: '2026-09-27T21:30:00Z' }, // 01:30 on 28 Sep in Tbilisi
+        { name: 'cycle_log_saved', props: { source: 'quick' } },
+        { name: 'cycle_explain_opened', props: { topic: 'ring' } },
+        { name: 'referral_shared' },
+      ],
+      meta: { platform: 'ios', appVersion: '1.0.0.19.9' },
+    }, { db, now });
+    assert.equal(result.accepted, 4);
+    const inserts = db.calls.filter((c) => c.sql.includes('INSERT INTO "FunnelEvent"'));
+    const cycleRows = inserts.filter((c) => String(c.values[3]).startsWith('cycle_'));
+    assert.equal(cycleRows.length, 3);
+    const day = new Date('2026-09-28T00:00:00+04:00');
+    const identifiers = ['u1', 'inst_abcdef12', installHashOf('inst_abcdef12'), 'ios', '1.0.0.19.9'];
+    for (const row of cycleRows) {
+      const [, userId, installHash, , props, platform, appVersion, createdAt, receivedAt] = row.values;
+      assert.deepEqual([userId, installHash, platform, appVersion], [null, null, null, null]);
+      assert.equal(createdAt.getTime(), day.getTime());
+      assert.equal(receivedAt.getTime(), day.getTime());
+      assert.equal(Object.keys(JSON.parse(props)).length, 1);
+      for (const id of identifiers) assert.ok(!row.values.includes(id), `cycle row carries ${id}`);
+    }
+    // Other events keep their account and install as before.
+    const referral = inserts.find((c) => c.values[3] === 'referral_shared');
+    assert.equal(referral.values[1], 'u1');
+    assert.equal(referral.values[2], installHashOf('inst_abcdef12'));
+    // A cycle row can never be linked later: linking matches the install hash, which cycle rows do not have.
+    assert.match(db.calls.find((c) => c.sql.startsWith('UPDATE "FunnelEvent"')).sql, /"installHash" = /);
+    // The row builder itself, for any event time.
+    const row = funnelRowFor({ name: 'cycle_log_saved', props: { source: 'full' }, createdAt: new Date('2026-09-28T19:59:59Z') }, { userId: 'u1', installHash: 'h', meta: { platform: 'android', appVersion: '1' } });
+    assert.deepEqual({ ...row, createdAt: row.createdAt.toISOString(), receivedAt: row.receivedAt.toISOString() }, {
+      userId: null, installHash: null, name: 'cycle_log_saved', props: { source: 'full' }, platform: null, appVersion: null,
+      createdAt: '2026-09-27T20:00:00.000Z', receivedAt: '2026-09-27T20:00:00.000Z',
+    });
+    // Still signed-in only (spam), even though the row forgets who sent it.
+    assert.equal((await ingestFunnelEvents({ installId: 'inst_abcdef12', events: [{ name: 'cycle_log_saved', props: { source: 'quick' } }] }, { db: fakeDb(), now })).accepted, 0);
+  });
+
   it('anonymous batches never link and drop account events', async () => {
     const db = fakeDb();
     const result = await ingestFunnelEvents({
@@ -249,11 +294,11 @@ describe('funnel report', () => {
     ev('home_layout_changed', 'u2', 'h2', { layout: 'standard', from: 'women', source: 'profile' }, '2026-09-27T13:01:00Z'),
     ev('home_layout_changed', 'u1', 'h1', { layout: 'women', from: 'none', source: 'onboarding' }, '2026-09-25T08:09:00Z'),
     ev('home_layout_offer_answered', 'u1', 'h1', { choice: 'dismissed' }, '2026-09-27T09:00:00Z'),
-    ev('cycle_log_saved', 'u2', 'h2', { source: 'quick' }, '2026-09-27T09:00:00Z'),
-    ev('cycle_log_saved', 'u2', 'h2', { source: 'quick' }, '2026-09-27T10:00:00Z'),
-    ev('cycle_log_saved', 'u2', 'h2', { source: 'day_sheet' }, '2026-09-27T11:00:00Z'),
-    ev('cycle_period_started', 'u2', 'h2', { source: 'home' }, '2026-09-27T08:00:00Z'),
-    ev('cycle_explain_opened', 'u2', 'h2', { topic: 'ring' }, '2026-09-27T08:30:00Z'),
+    ev('cycle_log_saved', null, null, { source: 'quick' }, '2026-09-27T09:00:00Z'),
+    ev('cycle_log_saved', null, null, { source: 'quick' }, '2026-09-27T10:00:00Z'),
+    ev('cycle_log_saved', null, null, { source: 'day_sheet' }, '2026-09-27T11:00:00Z'),
+    ev('cycle_period_started', null, null, { source: 'home' }, '2026-09-27T08:00:00Z'),
+    ev('cycle_explain_opened', null, null, { topic: 'ring' }, '2026-09-27T08:30:00Z'),
   ];
   const cohortEvents = periodEvents.filter((e) => e.userId);
   const report = buildFunnelReport({
@@ -291,7 +336,7 @@ describe('funnel report', () => {
     assert.equal(report.features.find((f) => f.name === 'home_layout_picker_opened').breakdown, undefined);
     assert.equal(report.features.find((f) => f.name === 'referral_shared').breakdown, undefined);
     const logs = report.features.find((f) => f.name === 'cycle_log_saved');
-    assert.deepEqual([logs.events, logs.users, logs.breakdown], [3, 1, { quick: 2, day_sheet: 1 }]);
+    assert.deepEqual([logs.events, logs.users, logs.anonymous, logs.breakdown], [3, null, true, { quick: 2, day_sheet: 1 }]);
     assert.deepEqual(report.features.find((f) => f.name === 'cycle_period_started').breakdown, { home: 1 });
     assert.deepEqual(report.features.find((f) => f.name === 'cycle_explain_opened').breakdown, { ring: 1 });
     assert.equal(report.trend.installs.length, 7);

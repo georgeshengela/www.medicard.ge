@@ -35,6 +35,31 @@ export const HOME_LAYOUT_OFFER_CHOICES = Object.freeze(['tried', 'dismissed', 'o
 export const CYCLE_LOG_SOURCES = Object.freeze(['quick', 'full', 'home', 'day_sheet']);
 export const CYCLE_PERIOD_START_SOURCES = Object.freeze(['hero', 'home', 'strip', 'day_sheet']);
 export const CYCLE_EXPLAIN_TOPICS = Object.freeze(['ring', 'fertile', 'stats', 'deviation', 'learn_more', 'ttc_signal', 'tracking']);
+/**
+ * Anonymous events (owner decision 2026-10-03): a signed-in request is still required to accept
+ * them (spam), but the row keeps only the name, the enum and the Tbilisi DAY — no user id, no
+ * install hash, no platform / app version, no precise time (createdAt and receivedAt = that day's
+ * midnight). Nobody can tell whose period started when.
+ */
+export const ANONYMOUS_EVENTS = new Set(['cycle_log_saved', 'cycle_period_started', 'cycle_explain_opened']);
+
+/** The stored row for one clean event: anonymous events lose every identifier and the time of day. */
+export function funnelRowFor(event, { userId = null, installHash = null, meta = {} } = {}) {
+  if (ANONYMOUS_EVENTS.has(event.name)) {
+    const day = tbilisiMidnight(tbilisiYmd(event.createdAt));
+    return { userId: null, installHash: null, name: event.name, props: event.props, platform: null, appVersion: null, createdAt: day, receivedAt: day };
+  }
+  return {
+    userId,
+    installHash,
+    name: event.name,
+    props: event.props,
+    platform: meta.platform ?? null,
+    appVersion: meta.appVersion ?? null,
+    createdAt: event.createdAt,
+    receivedAt: null,
+  };
+}
 
 /** Marketing slug from a URL (utm_source=instagram). Letters, digits, - _ . only. */
 const slug = z.string().trim().toLowerCase().regex(/^[a-z0-9][a-z0-9._-]{0,39}$/);
@@ -131,9 +156,10 @@ export async function ingestFunnelEvents({ userId = null, installId, events, met
   let linked = 0;
   try {
     for (const event of clean) {
-      stored += await db.$executeRaw`INSERT INTO "FunnelEvent" (id, "userId", "installHash", name, props, platform, "appVersion", "createdAt")
-        VALUES (${randomUUID()}, ${userId}, ${installHash}, ${event.name}, ${JSON.stringify(event.props)}::jsonb,
-          ${meta.platform ?? null}, ${meta.appVersion ?? null}, ${event.createdAt})
+      const row = funnelRowFor(event, { userId, installHash, meta });
+      stored += await db.$executeRaw`INSERT INTO "FunnelEvent" (id, "userId", "installHash", name, props, platform, "appVersion", "createdAt", "receivedAt")
+        VALUES (${randomUUID()}, ${row.userId}, ${row.installHash}, ${row.name}, ${JSON.stringify(row.props)}::jsonb,
+          ${row.platform}, ${row.appVersion}, ${row.createdAt}, ${row.receivedAt ?? now})
         ON CONFLICT DO NOTHING`;
     }
     if (userId && installHash) linked = await linkInstallToUser(userId, installHash, { db });
@@ -289,7 +315,10 @@ export function buildFunnelReport({ periodEvents = [], cohortEvents = [], activi
 
   const features = FEATURE_EVENTS.map((name) => {
     const rows = period.filter((e) => e.name === name);
-    const feature = { name, events: rows.length, users: new Set(rows.map((e) => e.userId).filter(Boolean)).size };
+    // Anonymous events have no people to count: events only (users: null).
+    const feature = ANONYMOUS_EVENTS.has(name)
+      ? { name, events: rows.length, users: null, anonymous: true }
+      : { name, events: rows.length, users: new Set(rows.map((e) => e.userId).filter(Boolean)).size };
     const prop = FEATURE_BREAKDOWN[name];
     if (prop) {
       feature.breakdown = {};

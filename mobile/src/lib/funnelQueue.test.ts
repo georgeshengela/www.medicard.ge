@@ -1,6 +1,6 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { createFunnelQueue, installSourceFromUrl, parseQueue, type SendResult } from './funnelQueue.ts';
+import { createFunnelQueue, funnelBatchGroup, installSourceFromUrl, nextFunnelBatch, parseQueue, type SendResult } from './funnelQueue.ts';
 
 function harness(results: SendResult[] = [], account: { id: string | null } = { id: null }) {
   let stored: string | null = null;
@@ -39,6 +39,38 @@ describe('funnel queue', () => {
     assert.equal(await h.q.size(), 1);
     assert.equal(await h.q.flush(), 1);
     assert.equal(await h.q.size(), 0);
+  });
+
+  it('cycle events never share a batch with other events, so a rejected cycle batch costs nothing else', async () => {
+    // A server that does not know cycle_* yet: any batch holding one is refused (4xx → dropped).
+    let stored: string | null = null;
+    const batches: string[][] = [];
+    const q = createFunnelQueue({
+      load: async () => stored,
+      save: async (raw) => { stored = raw; },
+      send: async (events) => {
+        batches.push(events.map((e) => e.name));
+        return events.some((e) => e.name.startsWith('cycle_')) ? 'drop' : 'ok';
+      },
+      currentAccount: () => 'acct-1',
+      now: () => Date.parse('2026-10-03T10:00:00Z'),
+      batchSize: 25,
+    });
+    await q.enqueue('home_layout_picker_opened', { source: 'home_header' });
+    await q.enqueue('cycle_log_saved', { source: 'quick' });
+    await q.enqueue('referral_shared');
+    await q.enqueue('cycle_period_started', { source: 'hero' });
+    await q.enqueue('cycle_explain_opened', { topic: 'ring' });
+    await q.enqueue('price_alert_opened');
+    assert.equal(await q.flush(), 3);
+    for (const batch of batches) assert.equal(new Set(batch.map(funnelBatchGroup)).size, 1, batch.join(','));
+    assert.deepEqual(batches, [
+      ['home_layout_picker_opened', 'referral_shared', 'price_alert_opened'],
+      ['cycle_log_saved', 'cycle_period_started', 'cycle_explain_opened'],
+    ]);
+    assert.equal(await q.size(), 0);
+    assert.deepEqual(nextFunnelBatch([], 5), []);
+    assert.deepEqual(nextFunnelBatch([{ name: 'cycle_log_saved' }, { name: 'referral_shared' }, { name: 'cycle_explain_opened' }], 1), [{ name: 'cycle_log_saved' }]);
   });
 
   it('drops a rejected batch so it cannot block the queue', async () => {
