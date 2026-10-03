@@ -1178,7 +1178,7 @@ export type CycleDoctorSymptomMap = {
   overflow: boolean;
   cycles: { start: string; end: string; lengthDays: number }[];
   rows: {
-    kind: 'pain' | 'symptom' | 'mood';
+    kind: 'pain' | 'symptom';
     key: string;
     loggedDays: number;
     cyclesWithItem: number;

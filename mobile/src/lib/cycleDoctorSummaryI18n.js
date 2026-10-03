@@ -239,7 +239,7 @@ export function doctorExcludedCycleLabel(cycle, locale) {
   return Number.isFinite(cycle?.lengthDays) ? `${date} (${copy.days(cycle.lengthDays)})` : date;
 }
 
-/** Row label of the symptom map: pain place (`other` → „სხვა ტკივილი“), symptom or mood; null if unknown. */
+/** Row label of the symptom map: pain place (`other` → „სხვა ტკივილი“) or symptom; null if unknown. */
 export function doctorSymptomMapLabel(row, locale) {
   if (!row?.key) return null;
   if (row.kind === 'pain') {
@@ -247,7 +247,6 @@ export function doctorSymptomMapLabel(row, locale) {
     return doctorSummaryEnumLabel('painType', row.key, locale);
   }
   if (row.kind === 'symptom') return doctorSummaryEnumLabel('symptom', row.key, locale);
-  if (row.kind === 'mood') return doctorSummaryEnumLabel('mood', row.key, locale);
   return null;
 }
 

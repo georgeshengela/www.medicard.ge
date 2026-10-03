@@ -24,8 +24,8 @@ type Props = {
 };
 
 /**
- * Doctor summary „სიმპტომები ციკლის დღეების მიხედვით“: rows = her most frequent pain places, symptoms and
- * moods, columns = cycle days, a square's darkness = in how many of the last cycles it was logged that day.
+ * Doctor summary „სიმპტომები ციკლის დღეების მიხედვით“: rows = her most frequent pain places and symptoms
+ * (only what the registry lets into the doctor summary), columns = cycle days, a square's darkness = in how many of the last cycles it was logged that day.
  * One ink with opacity steps (same formula as the PDF). Labels stay pinned; only the day grid scrolls
  * sideways, inside the card, so the page never scrolls horizontally on a phone. Each row is read out as
  * its sentence („სპაზმები — ყველაზე ხშირად 1–3 დღეებში (6-დან 5 ციკლში)“); the grid itself is hidden from

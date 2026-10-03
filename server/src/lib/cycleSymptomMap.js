@@ -2,17 +2,21 @@
  * Doctor report „სიმპტომები ციკლის დღეების მიხედვით“ — a symptom heat map by cycle day (brief §9 „მერე“
  * item 6, Clue's report). Pure: numbers only, labels live in the app's doctor-summary copy.
  *
- * Rows = her most frequent logged pain places, symptoms and moods over the last completed cycles; columns =
+ * Rows = her most frequent logged pain places and symptoms over the last completed cycles; columns =
  * cycle day 1…28 (stretched to her longest cycle, at most 35) plus one „36+“ column when a cycle ran longer;
  * a cell = in how many of those cycles the item was logged on that cycle day.
  *
- * Only HEALTH-sensitivity registry items: never sex, BBT, tests, mucus, discharge or intimate symptoms
- * (SENSITIVE / HIGHLY_SENSITIVE). Cycles she hid from averages („საშუალოდან დამალვა“) are left out, and a
+ * Only items the registry already lets into the doctor summary (`doctorSummary` INCLUDE /
+ * INCLUDE_IF_NONEMPTY) AND of HEALTH sensitivity: never sex, BBT, tests, mucus, discharge or intimate
+ * symptoms (SENSITIVE / HIGHLY_SENSITIVE), never moods or the HEALTH symptoms the registry keeps out of the
+ * doctor summary (heartburn, gas, …), never „romantic“. Cycles she hid from averages („საშუალოდან დამალვა“)
+ * are left out, and a
  * cycle where she logged none of these items does not count — a missing log is not an absent symptom.
  */
 
 import { daysBetween } from './cycle.js';
 import {
+  DOCTOR_SUMMARY,
   OBSERVATION_CATEGORIES,
   PAIN_SYMPTOM_TO_TYPE,
   PAIN_TYPES,
@@ -28,11 +32,17 @@ export const SYMPTOM_MAP_MIN_DAYS = 28;
 export const SYMPTOM_MAP_MAX_DAY = 35;
 /** An item logged once in six cycles is noise in a clinician's grid. */
 export const SYMPTOM_MAP_MIN_LOGGED_DAYS = 2;
-/** HEALTH in the registry, but too close to intimacy for a document she hands to someone else. */
+/** Kept out whatever the registry says — too close to intimacy for a document she hands to someone else. */
 export const SYMPTOM_MAP_EXCLUDED_KEYS = Object.freeze(new Set(['romantic']));
 
-/** On a tie, pain before symptoms before moods — the order a clinician reads them in. */
-const KIND_ORDER = Object.freeze({ pain: 0, symptom: 1, mood: 2 });
+/** On a tie, pain before symptoms — the order a clinician reads them in. */
+const KIND_ORDER = Object.freeze({ pain: 0, symptom: 1 });
+
+/** The registry's own doctor-summary setting: only what it already allows without an opt-in. */
+export function doctorSummaryAllows(key) {
+  const policy = getObservationDef(key)?.doctorSummary;
+  return policy === DOCTOR_SUMMARY.INCLUDE || policy === DOCTOR_SUMMARY.INCLUDE_IF_NONEMPTY;
+}
 
 function healthItem(id, storage) {
   if (SYMPTOM_MAP_EXCLUDED_KEYS.has(id)) return false;
@@ -40,6 +50,7 @@ function healthItem(id, storage) {
   if (!defn || !defn.enabled) return false;
   if (defn.storage !== storage) return false;
   if (defn.sensitivity !== SENSITIVITY.HEALTH) return false;
+  if (!doctorSummaryAllows(id)) return false;
   // Belt and braces: the registry keeps these categories SENSITIVE+, but never let one slip in.
   if (
     defn.category === OBSERVATION_CATEGORIES.SEXUAL_HEALTH ||
@@ -52,16 +63,17 @@ function healthItem(id, storage) {
   return true;
 }
 
-/** Whether a row id may ever appear in the map (`pain:cramps`, `symptom:bloating`, `mood:calm`). */
+/** Whether a row id may ever appear in the map (`pain:cramps`, `symptom:bloating`). Moods never do. */
 export function isSymptomMapItem(item) {
   const [kind, key] = String(item || '').split(':');
-  if (kind === 'pain') return PAIN_TYPES.includes(key) && getObservationDef('pain')?.sensitivity === SENSITIVITY.HEALTH;
+  if (kind === 'pain') {
+    return PAIN_TYPES.includes(key) && getObservationDef('pain')?.sensitivity === SENSITIVITY.HEALTH && doctorSummaryAllows('pain');
+  }
   if (kind === 'symptom') return !PAIN_SYMPTOM_TO_TYPE[key] && healthItem(key, STORAGE.SYMPTOMS);
-  if (kind === 'mood') return healthItem(key, STORAGE.MOODS);
   return false;
 }
 
-/** The map's items on one day's log: pain places (chips folded into their pain type), symptoms, moods. */
+/** The map's items on one day's log: pain places (chips folded into their pain type) and symptoms. */
 export function symptomMapItemsForLog(log) {
   const out = new Set();
   const pain = Array.isArray(log?.painEntries) ? log.painEntries : [];
@@ -72,10 +84,6 @@ export function symptomMapItemsForLog(log) {
   for (const id of symptoms) {
     const mapped = PAIN_SYMPTOM_TO_TYPE[id];
     const item = mapped ? `pain:${mapped}` : `symptom:${id}`;
-    if (isSymptomMapItem(item)) out.add(item);
-  }
-  for (const id of Array.isArray(log?.moods) ? log.moods : []) {
-    const item = `mood:${id}`;
     if (isSymptomMapItem(item)) out.add(item);
   }
   return [...out];
@@ -120,7 +128,7 @@ function peakOf(counts) {
  *   dayCount: number,
  *   overflow: boolean,
  *   cycles: { start: string, end: string, lengthDays: number }[],
- *   rows: { kind: 'pain'|'symptom'|'mood', key: string, loggedDays: number, cyclesWithItem: number,
+ *   rows: { kind: 'pain'|'symptom', key: string, loggedDays: number, cyclesWithItem: number,
  *           counts: number[], peak: { from: number, to: number, cycles: number } }[],
  * }}
  * `counts` has `dayCount` cells (cycle day 1…dayCount) plus one „36+“ cell when `overflow`; in `peak`
