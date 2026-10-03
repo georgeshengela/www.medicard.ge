@@ -49,10 +49,13 @@ import {
   fertileWindowAround,
   fertilityGate,
   hideFertilePhase,
+  learnedLutealDays,
   nextPeriodRange,
   ovulationBand,
+  pastOvulations,
   phaseForMarkedDay,
 } from './cycleForecastHonesty.js';
+import { onlyImportedTemperature } from './cycleTemperature.js';
 
 export { emptyCycleAiCache };
 export { buildDoctorSummary, buildCycleDoctorSummaryData } from './cycleDoctorSummary.js';
@@ -356,6 +359,13 @@ export function buildPredictions({
   mode = null,
   /** Her OPK / manual ovulation mark may centre this cycle's band. Off for the partner view (private signals). */
   useOvulationSignals = true,
+  /**
+   * Logged period starts (oldest first). When given (and signals are on), her own ovulation signals in
+   * completed cycles — mark, OPK, temperature — are listed in `fertility.pastOvulations` and teach the
+   * luteal length the calendar uses for ovulation ahead (`fertility.lutealDays`). The next period is
+   * never moved by them.
+   */
+  periodStarts = null,
 }) {
   const confidence = predictionConfidence({ cycleCount, isIrregular, cycleLengths });
   const gate = fertilityGate({ cycleCount, mode });
@@ -367,7 +377,7 @@ export function buildPredictions({
       ovulationDate: null,
       ovulationRange: null,
       fertileWindow: null,
-      fertility: { ...gate, window: null, ovulationSource: null },
+      fertility: { ...gate, window: null, ovulationSource: null, retrospective: false, lutealDays: null, pastOvulations: [] },
       phases: [],
       calendar: {},
       confidence,
@@ -382,12 +392,18 @@ export function buildPredictions({
   const signal = useOvulationSignals
     ? cycleOvulationSignal(logs, { from: lastPeriodStart, to: today || null })
     : null;
+  // Completed cycles before this one: her own signals teach the luteal length (never the next period).
+  const past = useOvulationSignals && Array.isArray(periodStarts)
+    ? pastOvulations(logs, [...periodStarts.filter((s) => s && s < lastPeriodStart), lastPeriodStart])
+    : [];
+  const learnedLuteal = learnedLutealDays(past);
+  const lutealDays = learnedLuteal ?? LUTEAL_PHASE_DAYS;
   let start = lastPeriodStart;
 
   for (let cycle = 0; cycle < 4; cycle += 1) {
     const periodEnd = addDays(start, avgPeriodLength - 1);
     const nextStart = addDays(start, avgCycleLength);
-    const calendarOvulation = addDays(start, avgCycleLength - LUTEAL_PHASE_DAYS);
+    const calendarOvulation = addDays(start, avgCycleLength - lutealDays);
     const own = cycle === 0 && signal && signal.date > periodEnd && signal.date < nextStart ? signal : null;
     const ovulation = own ? own.date : calendarOvulation;
     // READY (or her own signal) → usual window + 3-day band; WIDE → 14 days, no ovulation day; LEARNING → nothing.
@@ -534,6 +550,10 @@ export function buildPredictions({
       ...gate,
       window: upcoming?.fertileWindowKind ?? null,
       ovulationSource: upcoming?.ovulationSource ?? null,
+      // A temperature shift is only known after ovulation: „რეტროსპექტულად“.
+      retrospective: upcoming?.ovulationSource === OVULATION_SOURCE.TEMPERATURE,
+      lutealDays: learnedLuteal,
+      pastOvulations: past.slice(-6),
     },
     phases,
     calendar: marked,
@@ -635,6 +655,8 @@ export function pickLastPeriodStart(
 export function overlayLogsOnCalendar(calendar, logs) {
   const next = { ...calendar };
   for (const log of logs) {
+    // Temperature the phone imported is not something she logged: no „logged“ dot for it alone.
+    if (onlyImportedTemperature(log)) continue;
     const hasNotes =
       (Array.isArray(log.symptoms) && log.symptoms.length > 0) ||
       (Array.isArray(log.moods) && log.moods.length > 0) ||

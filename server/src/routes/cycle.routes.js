@@ -133,6 +133,13 @@ import {
   planStartPeriod,
 } from '../lib/cyclePeriod.js';
 import { derivePeriodStatus, trimEndedPeriodProjection } from '../lib/cyclePeriodStatus.js';
+import {
+  IMPORT_MAX_READINGS,
+  TEMPERATURE_MODES,
+  bagAfterTypedBbt,
+  planTemperatureImport,
+  withoutImportKeys,
+} from '../lib/cycleTemperature.js';
 import { buildCycleDeviations, deviationFactors, loadDeviationFactorEnds } from '../lib/cycleDeviations.js';
 import { askAi } from '../lib/aiEngine.js';
 import { runTrackedAi } from '../lib/aiTelemetry.js';
@@ -416,6 +423,8 @@ async function loadBundle(userId, clock = null, lang = 'ka') {
     today,
     lang,
     mode: profile.mode,
+    // Completed cycles teach the luteal length from her own signals (mark, OPK, temperature).
+    periodStarts: (inferred.periodRanges || []).map((r) => r.start),
   });
   const contraception = applyFertilityDisplay(
     interpretContraception(
@@ -1786,7 +1795,15 @@ cycleRouter.put(
     const existing = await prisma.cycleLog.findUnique({
       where: { userId_date: { userId: req.user.id, date } },
     });
-    const observations = parseObservationWrite(body, existing || {});
+    // `bbtSource` / `wristTempDelta` are written by the temperature import only (cycleTemperature.js).
+    const typedBody = body.observations ? { ...body, observations: withoutImportKeys(body.observations) } : body;
+    const observations = parseObservationWrite(typedBody, existing || {});
+    // A typed BBT that changes (or clears) the day's value makes it hers: the import flag goes.
+    const typedBag = bagAfterTypedBbt(existing, body.bbt, observations.observations);
+    if (typedBag !== undefined && typedBag !== observations.observations) {
+      observations.observations = typedBag;
+      observations.observationSchemaVersion = observations.observationSchemaVersion ?? 1;
+    }
     if (observations.customTagIds) {
       await assertOwnedTagIds(req.user.id, observations.customTagIds);
     }
@@ -1851,6 +1868,69 @@ cycleRouter.put(
     await syncLastPeriodStart(req.user.id, today, [date]);
 
     return res.json({ log: shapeCycleLog(log), bundle: await bundleFor(req) });
+  }),
+);
+
+/**
+ * Temperature read on the phone from Apple Health / Health Connect (cycle settings → profile, off by
+ * default; the app imports at most every 6 h on /cycle focus). Readings are °C per civil day: `bbt`
+ * (her typed BBT always wins — `planTemperatureImport`) and `wristTempDelta` (a deviation, never BBT).
+ * Cycle tracking and trying to conceive only. Returns the bundle only when something changed.
+ */
+cycleRouter.post(
+  '/temperature/import',
+  asyncHandler(async (req, res) => {
+    assertFemale(req.user);
+    const { today } = await cycleClockForUser(req.user.id, clientTimezoneFromReq(req));
+    const body = z
+      .object({
+        readings: z
+          .array(
+            z.object({
+              date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+              bbt: z.number().min(30).max(45).nullable().optional(),
+              wristTempDelta: z.number().min(-5).max(5).nullable().optional(),
+            }),
+          )
+          .max(IMPORT_MAX_READINGS),
+      })
+      .parse(req.body);
+    const profile = await prisma.cycleProfile.findUnique({ where: { userId: req.user.id }, select: { mode: true } });
+    if (!profile || !TEMPERATURE_MODES.includes(profile.mode) || !body.readings.length) {
+      return res.json({ imported: 0 });
+    }
+    const dates = [...new Set(body.readings.map((r) => r.date))];
+    const existing = await prisma.cycleLog.findMany({
+      where: { userId: req.user.id, date: { in: dates } },
+      select: { date: true, bbt: true, observations: true },
+    });
+    const plan = planTemperatureImport(
+      existing.map((log) => ({ ...log, date: toDateKey(log.date) })),
+      body.readings,
+      { today },
+    );
+    if (!plan.length) return res.json({ imported: 0 });
+    await prisma.$transaction(
+      plan.map((row) =>
+        prisma.cycleLog.upsert({
+          where: { userId_date: { userId: req.user.id, date: row.date } },
+          create: {
+            userId: req.user.id,
+            date: row.date,
+            flow: null,
+            symptoms: [],
+            moods: [],
+            ...(row.bbt !== undefined ? { bbt: row.bbt } : {}),
+            observations: row.observations,
+          },
+          update: {
+            ...(row.bbt !== undefined ? { bbt: row.bbt } : {}),
+            observations: row.observations,
+          },
+        }),
+      ),
+    );
+    return res.json({ imported: plan.length, bundle: await bundleFor(req) });
   }),
 );
 

@@ -193,7 +193,7 @@ function hideFertilityFromPredictions(predictions, { avgCycleLength, lang }) {
     ovulationRange: null,
     fertileWindow: null,
     fertility: predictions.fertility
-      ? { ...predictions.fertility, window: null, ovulationSource: null, hidden: true }
+      ? { ...predictions.fertility, window: null, ovulationSource: null, retrospective: false, pastOvulations: [], hidden: true }
       : predictions.fertility,
     phases: (predictions.phases || []).map((p) => ({
       ...p,
@@ -239,6 +239,8 @@ export function presentPredictions(predictions, contraception, lang = 'ka', { av
     }
     presented.calendar[key] = copy;
   }
+  // Hormonal methods: past cycles' own ovulation signals (temperature included) are not shown either.
+  if (presented.fertility) presented.fertility = { ...presented.fertility, retrospective: false, pastOvulations: [] };
   return presented;
 }
 

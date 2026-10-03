@@ -174,7 +174,7 @@ const statsLearningChip = (done, req = FERTILITY_MIN_CYCLES) => {
   return t(`ვსწავლობთ · ${n}/${req}`, `Learning · ${n}/${req}`);
 };
 const wideWindowLabel = () => t('ფართო დიაპაზონი, სანამ 3 ციკლს დავითვლით', 'A wide range until we have counted 3 cycles');
-const ovulationSourceLabel = (source) => (source === 'manual' ? t('შენი აღნიშვნით', 'From your own mark') : source === 'opk' ? t('OPK-ის მიხედვით', 'Based on your OPK') : null);
+const ovulationSourceLabel = (source) => (source === 'manual' ? t('შენი აღნიშვნით', 'From your own mark') : source === 'opk' ? t('OPK-ის მიხედვით', 'Based on your OPK') : source === 'temperature' ? t('ტემპერატურის მიხედვით · რეტროსპექტულად', 'From your temperature · in hindsight') : null);
 function ovulationBandLine(range, source) {
   const base = t(`სავარაუდო ოვულაცია · ${shortRange(range.start, range.end)}`, `Estimated ovulation · ${shortRange(range.start, range.end)}`);
   const from = ovulationSourceLabel(source);

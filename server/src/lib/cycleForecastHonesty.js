@@ -15,12 +15,20 @@
  *     the gate opens (the source is always named: „OPK-ის მიხედვით“ / „შენი აღნიშვნით“). The next-period
  *     estimate is NOT moved by them: the engine projects the next period from the cycle length and only
  *     derives ovulation from it (start + length − 14), never the other way round.
+ *  4b. Temperature (BBT typed or read from Apple Health / Health Connect, or a wrist deviation —
+ *     `cycleTemperature.js`): a „3 over 6“ thermal shift → ovulation the day before the first high
+ *     reading, source `temperature` („ტემპერატურის მიხედვით · რეტროსპექტულად“). Precedence:
+ *     manual mark > OPK > temperature > calendar. Over completed cycles her own signals teach the
+ *     luteal length (`learnedLutealDays`), which only moves where the calendar puts ovulation in the
+ *     cycles ahead — never the next period itself.
  *  5. Variable cycles get a next-period window (`nextPeriodRange`) instead of one date when the person
  *     said her cycles vary or the last cycles spread ≥ 8 days; late starts only after the window.
  *
  * The mobile mirror of rule 1 lives in `mobile/src/lib/cycleForecastEligibility.js` (same constants,
  * same cases in both test files).
  */
+
+import { temperatureOvulation } from './cycleTemperature.js';
 
 /** Confirmed bleed (same list as cycle.js PERIOD_FLOWS; kept local so cycle.js can import this module). */
 const isPeriodFlow = (flow) => flow === 'light' || flow === 'medium' || flow === 'heavy';
@@ -59,7 +67,20 @@ export const OVULATION_SOURCE = Object.freeze({
   CALENDAR: 'calendar',
   OPK: 'opk',
   MANUAL: 'manual',
+  /** A thermal shift (BBT or wrist temperature) — always known only afterwards. */
+  TEMPERATURE: 'temperature',
 });
+
+/** Completed cycles with her own ovulation signal needed before the luteal length is learned. */
+export const LUTEAL_LEARN_MIN_CYCLES = 2;
+/** How many recent completed cycles the luteal length is learned from. */
+export const LUTEAL_LEARN_CYCLES = 6;
+/** A measured luteal phase outside this range is not used (a mis-logged start or a missed signal). */
+export const LUTEAL_PLAUSIBLE_MIN = 9;
+export const LUTEAL_PLAUSIBLE_MAX = 18;
+/** The learned value is kept inside this range. */
+export const LUTEAL_LEARNED_MIN = 10;
+export const LUTEAL_LEARNED_MAX = 16;
 
 /** Rule 1 — identical to `fertilityGate` in mobile/src/lib/cycleForecastEligibility.js. */
 export function fertilityGate({ cycleCount = 0, mode = null } = {}) {
@@ -125,7 +146,47 @@ export function cycleOvulationSignal(logs, { from, to = null } = {}) {
       logDate: positive.date,
     };
   }
+  const thermal = temperatureOvulation(inCycle, { from, to });
+  if (thermal) {
+    return { date: thermal.date, source: OVULATION_SOURCE.TEMPERATURE, logDate: thermal.logDate, basis: thermal.basis };
+  }
   return null;
+}
+
+/**
+ * Her own ovulation in each completed cycle (consecutive period starts, oldest first): the same
+ * precedence as `cycleOvulationSignal`, with the luteal length it implies (next start − ovulation).
+ * Cycles with no own signal, an implausible gap or an implausible luteal length are left out.
+ */
+export function pastOvulations(logs, periodStarts) {
+  const starts = [...new Set((Array.isArray(periodStarts) ? periodStarts : []).filter((s) => /^\d{4}-\d{2}-\d{2}$/.test(String(s))))].sort();
+  if (starts.length < 2 || !Array.isArray(logs) || !logs.length) return [];
+  const out = [];
+  for (let i = 0; i + 1 < starts.length; i += 1) {
+    const from = starts[i];
+    const next = starts[i + 1];
+    const gap = dayDiff(from, next);
+    if (gap < 18 || gap > 60) continue;
+    const signal = cycleOvulationSignal(logs, { from, to: shiftDay(next, -1) });
+    if (!signal) continue;
+    const lutealDays = dayDiff(signal.date, next);
+    if (lutealDays < LUTEAL_PLAUSIBLE_MIN || lutealDays > LUTEAL_PLAUSIBLE_MAX) continue;
+    out.push({ cycleStart: from, nextStart: next, date: signal.date, source: signal.source, lutealDays });
+  }
+  return out;
+}
+
+/** The luteal length her own signals teach (median of the last 6, kept in 10…16), or null with < 2. */
+export function learnedLutealDays(past) {
+  const days = (Array.isArray(past) ? past : [])
+    .slice(-LUTEAL_LEARN_CYCLES)
+    .map((p) => Number(p?.lutealDays))
+    .filter((n) => Number.isFinite(n));
+  if (days.length < LUTEAL_LEARN_MIN_CYCLES) return null;
+  const sorted = [...days].sort((a, b) => a - b);
+  const mid = sorted.length / 2;
+  const median = sorted.length % 2 ? sorted[Math.floor(mid)] : (sorted[mid - 1] + sorted[mid]) / 2;
+  return Math.min(LUTEAL_LEARNED_MAX, Math.max(LUTEAL_LEARNED_MIN, Math.round(median)));
 }
 
 /**

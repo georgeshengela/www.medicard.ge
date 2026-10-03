@@ -83,7 +83,9 @@ export function ttcWindowBody(predictions, flags, lang = 'ka') {
     ? (en ? ' (from your own mark)' : ' (შენი აღნიშვნით)')
     : source === 'opk'
       ? (en ? ' (based on your OPK)' : ' (OPK-ის მიხედვით)')
-      : '';
+      : source === 'temperature'
+        ? (en ? ' (from your temperature · in hindsight)' : ' (ტემპერატურის მიხედვით · რეტროსპექტულად)')
+        : '';
   if (predictions?.fertility?.window === 'wide') {
     // Trying to conceive before 3 completed cycles: one wide window, no ovulation day (brief §9 item 13).
     return en

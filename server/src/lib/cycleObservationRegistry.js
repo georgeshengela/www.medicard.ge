@@ -175,6 +175,8 @@ function def(key, spec) {
     category: spec.category,
     valueType: spec.valueType,
     allowedValues: spec.allowedValues ? Object.freeze([...spec.allowedValues]) : null,
+    min: typeof spec.min === 'number' ? spec.min : null,
+    max: typeof spec.max === 'number' ? spec.max : null,
     storage: spec.storage,
     column: spec.column || null,
     cardinality: spec.cardinality,
@@ -783,6 +785,44 @@ const DEFINITIONS = [
     modeVisibility: [PRODUCT_MODES.CYCLE_TRACKING, PRODUCT_MODES.TRYING_TO_CONCEIVE],
     doctorSummary: DOCTOR_SUMMARY.EXCLUDE,
   }),
+  // Temperature from Apple Health / Health Connect (cycleTemperature.js, train 1.0.0.20): `bbtSource`
+  // marks a BBT the phone imported (her typed value always wins and clears it); `wristTempDelta` is the
+  // sleeping wrist / skin temperature deviation from her baseline in °C — never stored as BBT, only read
+  // for the retrospective thermal shift. Both are written by the import endpoint only, SENSITIVE, never
+  // AI, a partner, analytics or the doctor summary; older builds ignore them.
+  def('bbtSource', {
+    category: OBSERVATION_CATEGORIES.FERTILITY,
+    valueType: VALUE_TYPES.ENUM,
+    allowedValues: ['health'],
+    storage: STORAGE.OBSERVATIONS,
+    cardinality: CARDINALITY.ONE,
+    sensitivity: SENSITIVITY.SENSITIVE,
+    aiDefaultAllowed: false,
+    partnerDefaultAllowed: false,
+    analyticsAllowed: false,
+    uiVisible: false,
+    uiGroup: UI_GROUPS.FERTILITY,
+    modeVisibility: [PRODUCT_MODES.CYCLE_TRACKING, PRODUCT_MODES.TRYING_TO_CONCEIVE],
+    sourceDefault: 'health',
+    doctorSummary: DOCTOR_SUMMARY.EXCLUDE,
+  }),
+  def('wristTempDelta', {
+    category: OBSERVATION_CATEGORIES.FERTILITY,
+    valueType: VALUE_TYPES.MEASUREMENT,
+    min: -2.5,
+    max: 2.5,
+    storage: STORAGE.OBSERVATIONS,
+    cardinality: CARDINALITY.ONE,
+    sensitivity: SENSITIVITY.SENSITIVE,
+    aiDefaultAllowed: false,
+    partnerDefaultAllowed: false,
+    analyticsAllowed: false,
+    uiVisible: false,
+    uiGroup: UI_GROUPS.FERTILITY,
+    modeVisibility: [PRODUCT_MODES.CYCLE_TRACKING, PRODUCT_MODES.TRYING_TO_CONCEIVE],
+    sourceDefault: 'health',
+    doctorSummary: DOCTOR_SUMMARY.EXCLUDE,
+  }),
   def('bbt', {
     category: OBSERVATION_CATEGORIES.FERTILITY,
     valueType: VALUE_TYPES.MEASUREMENT,
@@ -1092,6 +1132,17 @@ export function parseObservationBag(raw, { strict = false } = {}) {
         continue;
       }
       out[key] = value;
+      continue;
+    }
+    // A measurement in the bag (wristTempDelta): a finite number inside the row's range, 2 decimals.
+    if (defn.valueType === VALUE_TYPES.MEASUREMENT) {
+      const inRange = typeof value === 'number' && Number.isFinite(value)
+        && (defn.min == null || value >= defn.min) && (defn.max == null || value <= defn.max);
+      if (!inRange) {
+        if (strict) throw httpError(400, `არასწორი ${key}.`);
+        continue;
+      }
+      out[key] = Math.round(value * 100) / 100;
       continue;
     }
     if (strict) throw httpError(400, `არასწორი ${key}.`);

@@ -125,7 +125,17 @@ export const OBSERVATION_BAG_KEYS = Object.freeze({
   ovulationMarked: { sensitivity: 'SENSITIVE', ai: false, partner: false, analytics: false },
   // Pregnancy checklist ticks for the day (W2-12b) — a set of PREGNANCY_CHECKLIST ids.
   pregnancyChecklist: { sensitivity: 'HEALTH', ai: false, partner: false, analytics: false },
+  // Temperature from Apple Health / Health Connect (train 1.0.0.20): `bbtSource: 'health'` marks an
+  // imported BBT (her typed value wins and clears it); `wristTempDelta` is a °C deviation, never BBT.
+  // Written by the import endpoint only (`cycleTemperatureImport.ts`).
+  bbtSource: { sensitivity: 'SENSITIVE', ai: false, partner: false, analytics: false },
+  wristTempDelta: { sensitivity: 'SENSITIVE', ai: false, partner: false, analytics: false },
 } as const);
+
+/** The day's BBT came from Apple Health / Health Connect, not typed by her. */
+export function isBbtFromHealth(observations: { bbtSource?: string | null } | null | undefined): boolean {
+  return observations?.bbtSource === 'health';
+}
 
 /**
  * What a cycle screen may hand to Medi as context (W2-8, brief §7 pillar 2 [კ-10]): today's pain
