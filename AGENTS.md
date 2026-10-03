@@ -73,6 +73,10 @@ Applies to Push (`#/push` subnav ↔ panels), user investigation (`#/users/:id` 
 
 Shared hooks: `.v3-tab-shell`, `.v3-push .push-board`, `.v3-user-page .v3-user-board`. Kill legacy inset like `.user-body { padding: 22px }` inside V3 boards.
 
+## Alternate app icons (owner 2026-10-03, train 1.0.0.20 — store build)
+
+Profile → Settings „აპის აიქონი“ switches the home-screen icon like Instagram: კლასიკური (default), ვარდისფერი (for women, „შენთვის“ badge — open to everyone), ღამე, მარგალიტი, ოქრო. Native module `expo-alternate-app-icons` (plugin in app.json, before withMedirunBackground; withIosMarketingVersion stays last), so it ships only with a store build, never by OTA. Icons are rendered from `assets/logo.svg` (1024 PNGs in `assets/app-icons/`, Android foregrounds with the background baked in, 192 px thumbs for the picker — the 1024s are never `require`d from JS). `src/lib/appIcon.ts` loads the module lazily: web, Android and binaries without it report unsupported and the row hides. **iOS only for now:** on Android the library disables MainActivity and enables an activity-alias, which can break `medicard://` deep links and notification taps — enable Android only after verifying those on devices. iOS shows Apple's own „icon changed“ alert; it cannot be hidden.
+
 ## Home hub sections
 
 A home block is **title, then content**. The section name sits **above** the card — never inside it. Match შემდეგი მიღება / წონის კონტროლი / აქტიურობა.
