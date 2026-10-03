@@ -1,6 +1,8 @@
 import { CyclePressable as Pressable } from '@/components/cycle/CyclePressable';
 import React, { useEffect, useLayoutEffect, useMemo, useState } from 'react';
-import { Alert, Platform, Text, View } from 'react-native';
+import { Platform, Text, View } from 'react-native';
+import { Trash2 } from 'lucide-react-native';
+import { CycleExplainSheet } from '@/components/cycle/CycleExplainSheet';
 import { useLocalSearchParams, useNavigation, useRouter } from 'expo-router';
 import { useAnalysisTask } from '@/lib/useAnalysisTask';
 import { ChatScreenShell, useChatKeyboardOpen } from '@/components/chat/ChatScreenShell';
@@ -64,6 +66,9 @@ function CycleLogScreen() {
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState<string | null>(null);
   const [hasLog, setHasLog] = useState(false);
+  /** Delete-log confirmation and the positive-pregnancy-test notice, both in the app's own sheet. */
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [pregPrompt, setPregPrompt] = useState(false);
   const [mode, setMode] = useState('TRACK_PERIOD');
   /** True only once the day's existing log was read — saving before that would overwrite it with blanks. */
   const [hydrated, setHydrated] = useState(false);
@@ -155,9 +160,8 @@ function CycleLogScreen() {
         return;
       }
       if (form.pregnancyTest === 'positive' && mode !== 'PREGNANCY') {
-        Alert.alert(ka.cycle.positivePregTitle, ka.cycle.positivePregBody, [
-          { text: ka.cycle.positivePregConfirm, onPress: () => router.back() },
-        ]);
+        // The app's own sheet instead of a native alert; closing it (any way) returns to the previous screen.
+        setPregPrompt(true);
         return;
       }
       router.back();
@@ -169,38 +173,31 @@ function CycleLogScreen() {
     }
   };
 
-  const remove = () => {
-    Alert.alert(ka.cycle.deleteLog, ka.cycle.deleteLogConfirm, [
-      { text: ka.common.cancel, style: 'cancel' },
-      {
-        text: ka.common.delete,
-        style: 'destructive',
-        onPress: () => {
-          void (async () => {
-            const ticket = task.begin();
-            if (!ticket) return;
-            setSaving(true);
-            setError(null);
-            try {
-              if (!user?.id) throw new ApiError(ka.common.error, 401);
-              const result = await queueRemoveCycleLog(user.id, date);
-              if (!ticket.current()) return;
-              Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined);
-              if (result.synced) setSaved(ka.cycle.deleteLogDone);
-              else if (result.persistedLocally) setSaved(ka.cycle.savedOnDevice);
-              else if (result.sessionOnly) setSaved(ka.cycle.savedSessionOnly);
-              else { setError(ka.cycle.saveNotPersisted); return; }
-              router.back();
-            } catch (err) {
-              if (ticket.current()) setError(err instanceof ApiError ? err.message : ka.common.error);
-            } finally {
-              if (ticket.current()) setSaving(false);
-              ticket.finish();
-            }
-          })();
-        },
-      },
-    ]);
+  /** Opens the delete confirmation sheet (the app's own, not a native alert). */
+  const remove = () => setConfirmDelete(true);
+
+  const runRemove = async () => {
+    setConfirmDelete(false);
+    const ticket = task.begin();
+    if (!ticket) return;
+    setSaving(true);
+    setError(null);
+    try {
+      if (!user?.id) throw new ApiError(ka.common.error, 401);
+      const result = await queueRemoveCycleLog(user.id, date);
+      if (!ticket.current()) return;
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined);
+      if (result.synced) setSaved(ka.cycle.deleteLogDone);
+      else if (result.persistedLocally) setSaved(ka.cycle.savedOnDevice);
+      else if (result.sessionOnly) setSaved(ka.cycle.savedSessionOnly);
+      else { setError(ka.cycle.saveNotPersisted); return; }
+      router.back();
+    } catch (err) {
+      if (ticket.current()) setError(err instanceof ApiError ? err.message : ka.common.error);
+    } finally {
+      if (ticket.current()) setSaving(false);
+      ticket.finish();
+    }
   };
 
   if (loading) return <CycleLoading />;
@@ -275,6 +272,24 @@ function CycleLogScreen() {
           ) : null}
         </CycleLogDock>
       </ChatScreenShell>
+      <CycleExplainSheet
+        visible={confirmDelete}
+        title={ka.cycle.deleteLog}
+        body={ka.cycle.deleteLogConfirm}
+        accent={c.danger}
+        actions={[{ label: ka.common.delete, tone: 'destructive', icon: Trash2, onPress: () => void runRemove(), loading: saving }]}
+        onClose={() => setConfirmDelete(false)}
+      />
+      <CycleExplainSheet
+        visible={pregPrompt}
+        title={ka.cycle.positivePregTitle}
+        body={ka.cycle.positivePregBody}
+        accent={c.rose}
+        sourceIds={['menstrualCycle']}
+        actions={[{ label: ka.cycle.positivePregConfirm, onPress: () => { setPregPrompt(false); router.back(); } }]}
+        closeLabel={ka.cycle.positivePregLater}
+        onClose={() => { setPregPrompt(false); router.back(); }}
+      />
     </CycleAtmosphere>
   );
 }

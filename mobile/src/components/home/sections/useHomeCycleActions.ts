@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react';
-import { Alert } from 'react-native';
 import { useRouter } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import { ka } from '@/i18n/ka';
@@ -7,7 +6,7 @@ import type { CycleLogForm } from '@/components/cycle/CycleLogTabs';
 import { periodToastTitle } from '@/components/cycle/CyclePeriodToast';
 import { formFromCycleLog, persistCycleLog } from '@/lib/cycleLogSave';
 import { periodStartTone } from '@/lib/cycleTone';
-import { queueApplyPeriod, type CycleView } from '@/lib/cycleOffline';
+import { queueApplyPeriod, saveCycleObservation, type CycleView } from '@/lib/cycleOffline';
 import { putCycleView } from '@/lib/cycleViewCache';
 import { getCycleReminderPrefs } from '@/lib/cycleReminderPrefs';
 import { syncCycleReminders } from '@/lib/cycleReminders';
@@ -17,7 +16,8 @@ import { localAccountId } from '@/lib/localAccount';
  * Home's one-tap cycle actions — the same library calls as the cycle screen
  * (`app/cycle/index.tsx` startPeriodNow / undoPeriodStart / endPeriod / logSexNow / undoSex):
  * offline-safe `queueApplyPeriod`, the returned view goes into the shared cache, an 8 s toast offers
- * „გამონადენი“ and „გაუქმება“. Sex (owner 2026-10-03, „როგორც ციკლის გვერდზეა“): one tap marks today
+ * „სისხლდენა“ and „გაუქმება“. Ending the period is one tap too (brief §8.2 item 12): today's bleeding
+ * is removed at once and the toast's undo puts it back. Sex (owner 2026-10-03, „როგორც ციკლის გვერდზეა“): one tap marks today
  * and keeps the rest of the day's log, the toast offers details (the private sex sheet) and undo; a
  * second tap on a logged day opens the sheet. Reminders are rescheduled once the saved view is synced (the cycle
  * screen does that in its view effect; Home only after its own writes).
@@ -26,14 +26,16 @@ import { localAccountId } from '@/lib/localAccount';
 // ---------- toast bridge (the toast sits outside Home's ScrollView, above the tab bar) ----------
 
 export type HomeCycleToast = {
-  kind: 'period' | 'sex';
+  kind: 'period' | 'periodEnd' | 'sex';
   date: string;
   /** Period toast title for the cycle mode (neutral „ახალი ციკლი დაიწყო“ while trying to conceive); undefined = default. */
   title?: string;
-  /** Period: add today's flow. Sex: open the details sheet. */
+  /** Period: add today's flow. Period end: log today. Sex: open the details sheet. */
   onAddFlow: () => void;
   onUndo: () => void;
 };
+
+type EndToast = { date: string; beforeFlow: 'light' | 'medium' | 'heavy' | null };
 
 let toastEntry: HomeCycleToast | null = null;
 let hostCount = 0;
@@ -123,6 +125,8 @@ export function useHomeCycleActions({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [toastDate, setToastDate] = useState<string | null>(null);
+  /** Today's bleeding before the one-tap "period ended" (kept for undo); null = no end toast. */
+  const [endToast, setEndToast] = useState<EndToast | null>(null);
   /** The day's form before the one-tap sex log (kept for undo); null = no sex toast. */
   const [sexBefore, setSexBefore] = useState<CycleLogForm | null>(null);
   const [sexBusy, setSexBusy] = useState(false);
@@ -198,6 +202,7 @@ export function useHomeCycleActions({
         showView(result.view);
         if (alive.current) {
           setSexBefore(null);
+          setEndToast(null);
           setToastDate(today);
         }
       } catch (err) {
@@ -226,25 +231,49 @@ export function useHomeCycleActions({
     [userId, showView, fail],
   );
 
+  /** One tap: the period ends today (the server clears today's logged bleeding); the toast's undo restores it. */
   const endPeriod = useCallback(() => {
-    Alert.alert(ka.cycle.periodEndCta, ka.cycle.periodEndHint, [
-      { text: ka.common.cancel, style: 'cancel' },
-      {
-        text: ka.cycle.periodEndCta,
-        onPress: () => {
-          if (!userId) return;
-          void (async () => {
-            try {
-              const result = await queueApplyPeriod(userId, { action: 'end', date: today });
-              showView(result.view);
-            } catch (err) {
-              fail(err);
-            }
-          })();
-        },
-      },
-    ]);
-  }, [userId, today, showView, fail]);
+    if (!userId || busyRef.current) return;
+    const flowBefore = view?.display.logs.find((l) => l.date === today)?.flow;
+    const beforeFlow = flowBefore === 'light' || flowBefore === 'medium' || flowBefore === 'heavy' ? flowBefore : null;
+    busyRef.current = true;
+    setBusy(true);
+    setError(null);
+    void (async () => {
+      try {
+        const result = await queueApplyPeriod(userId, { action: 'end', date: today });
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined);
+        showView(result.view);
+        if (alive.current) {
+          setSexBefore(null);
+          setToastDate(null);
+          setEndToast({ date: today, beforeFlow });
+        }
+      } catch (err) {
+        fail(err);
+      } finally {
+        busyRef.current = false;
+        if (alive.current) setBusy(false);
+      }
+    })();
+  }, [userId, view, today, showView, fail]);
+
+  const undoEnd = useCallback(
+    (entry: EndToast) => {
+      if (!userId) return;
+      setEndToast(null);
+      if (!entry.beforeFlow) return;
+      void (async () => {
+        try {
+          const result = await saveCycleObservation(userId, entry.date, { flow: entry.beforeFlow });
+          showView(result.view);
+        } catch (err) {
+          fail(err);
+        }
+      })();
+    },
+    [userId, showView, fail],
+  );
 
   /** Flo-style one tap: mark sex for today, keeping everything else logged that day. */
   const logSex = useCallback(() => {
@@ -265,6 +294,7 @@ export function useHomeCycleActions({
         showView(result.view);
         if (alive.current) {
           setToastDate(null);
+          setEndToast(null);
           setSexBefore(before);
         }
       } catch (err) {
@@ -333,16 +363,21 @@ export function useHomeCycleActions({
     return () => clearTimeout(t);
   }, [sexBefore]);
   useEffect(() => {
+    if (!endToast) return;
+    const t = setTimeout(() => setEndToast(null), TOAST_MS);
+    return () => clearTimeout(t);
+  }, [endToast]);
+  useEffect(() => {
     if (!error) return;
     const t = setTimeout(() => setError(null), ERROR_MS);
     return () => clearTimeout(t);
   }, [error]);
 
   // Publish the toast for the host outside the ScrollView; withdraw it when it ends or Home unmounts.
-  const handlers = useRef({ addFlow, undoStart, undoSex, openSexSheet });
-  handlers.current = { addFlow, undoStart, undoSex, openSexSheet };
+  const handlers = useRef({ addFlow, undoStart, undoSex, undoEnd, openSexSheet, openLog });
+  handlers.current = { addFlow, undoStart, undoSex, undoEnd, openSexSheet, openLog };
   useEffect(() => {
-    if (!toastDate && !sexBefore) {
+    if (!toastDate && !sexBefore && !endToast) {
       setToastEntry(null);
       return;
     }
@@ -353,18 +388,28 @@ export function useHomeCycleActions({
           onAddFlow: () => handlers.current.openSexSheet(),
           onUndo: () => handlers.current.undoSex(sexBefore),
         }
-      : {
-          kind: 'period',
-          date: toastDate as string,
-          title: periodToastTitle(mode),
-          onAddFlow: () => handlers.current.addFlow(toastDate as string),
-          onUndo: () => handlers.current.undoStart(toastDate as string),
-        };
+      : endToast
+        ? {
+            kind: 'periodEnd',
+            date: endToast.date,
+            onAddFlow: () => {
+              setEndToast(null);
+              handlers.current.openLog(endToast.date);
+            },
+            onUndo: () => handlers.current.undoEnd(endToast),
+          }
+        : {
+            kind: 'period',
+            date: toastDate as string,
+            title: periodToastTitle(mode),
+            onAddFlow: () => handlers.current.addFlow(toastDate as string),
+            onUndo: () => handlers.current.undoStart(toastDate as string),
+          };
     setToastEntry(entry);
     return () => {
       if (toastEntry === entry) setToastEntry(null);
     };
-  }, [toastDate, sexBefore, today, mode]);
+  }, [toastDate, sexBefore, endToast, today, mode]);
 
   return {
     busy,

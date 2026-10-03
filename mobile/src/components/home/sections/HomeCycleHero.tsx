@@ -1,7 +1,7 @@
 import React, { useEffect } from 'react';
 import { Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { useRouter } from 'expo-router';
-import { Baby, CalendarHeart, Check, Droplet, Flower2, Heart, Lock, Plus, RotateCcw, type LucideIcon } from 'lucide-react-native';
+import { Baby, CalendarHeart, Check, Droplet, Flower2, Heart, Lock, PencilLine, Plus, RotateCcw, type LucideIcon } from 'lucide-react-native';
 import { HomeSectionHeading } from '@/components/home/HomeSectionHeading';
 import { MedicalSourcesLink } from '@/components/health/MedicalSourcesLink';
 import type { MedicalSourceId } from '@/constants/medicalSources';
@@ -307,8 +307,21 @@ export function HomeCycleToastHost() {
   return <HomeCycleToast entry={entry} bottomInset={inset} />;
 }
 
-/** „მენსტრუაცია დაფიქსირდა“ (flow / undo) or „სექსი აღირიცხა“ (details / undo) — the cycle screen's toasts. */
+/** „მენსტრუაცია დაფიქსირდა“ (flow / undo), „მენსტრუაცია დასრულდა“ (log / undo) or „სექსი აღირიცხა“ (details / undo) — the cycle screen's toasts. */
 function HomeCycleToast({ entry, bottomInset }: { entry: HomeCycleToastEntry; bottomInset: number }) {
+  if (entry.kind === 'periodEnd') {
+    return (
+      <CyclePeriodToast
+        bottomInset={bottomInset}
+        title={ka.cycle.periodEndedToast}
+        hint={ka.cycle.periodEndedToastHint}
+        primaryLabel={ka.cycle.logTodayCta}
+        PrimaryIcon={PencilLine}
+        onAddFlow={entry.onAddFlow}
+        onUndo={entry.onUndo}
+      />
+    );
+  }
   if (entry.kind === 'sex') {
     return (
       <CyclePeriodToast

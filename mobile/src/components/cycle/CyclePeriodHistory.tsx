@@ -1,12 +1,14 @@
 import { CyclePressable as Pressable } from '@/components/cycle/CyclePressable';
 import React, { useState } from 'react';
-import { ActivityIndicator, Alert, Text, View } from 'react-native';
+import { ActivityIndicator, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
-import { ChevronDown, Pencil, Plus, Trash2 } from 'lucide-react-native';
+import { Check, ChevronDown, ChevronRight, Pencil, Plus, Trash2 } from 'lucide-react-native';
 import { CycleCard, CyclePrimaryButton, formatCycleDateKa } from '@/components/cycle/CycleUI';
 import { CycleDateField } from '@/components/cycle/CycleDateField';
+import { CycleExplainSheet } from '@/components/cycle/CycleExplainSheet';
 import { FLOW_OPTIONS } from '@/constants/cycle';
 import { ka } from '@/i18n/ka';
+import { tx } from '@/i18n/locale';
 import type { CycleBundle, CyclePeriodRange } from '@/lib/api';
 import { saveCycleObservation, queueApplyPeriod } from '@/lib/cycleOffline';
 import { cycleHistoryPresentation } from '@/lib/cycleHistoryCopy';
@@ -18,6 +20,8 @@ type Props = {
   bundle: CycleBundle;
   onChanged: () => void;
 };
+
+type BleedFlow = 'light' | 'medium' | 'heavy';
 
 const BLEED_FLOWS = FLOW_OPTIONS.filter((o) => o.id === 'light' || o.id === 'medium' || o.id === 'heavy');
 
@@ -31,6 +35,12 @@ function daysInRange(range: CyclePeriodRange) {
   return out;
 }
 
+/**
+ * „მენსტრუაციის ისტორია“ — logged bleeding runs, each unfolding into its days. A day opens one
+ * sheet (`CycleExplainSheet`) with the bleeding intensity, the full log and a delete that confirms
+ * inside the same sheet; adding a missed period confirms there too. No native alerts (brief §6
+ * weakness 6).
+ */
 export function CyclePeriodHistory({ bundle, onChanged }: Props) {
   const { user } = useAuth();
   const c = useCycleColors();
@@ -39,9 +49,13 @@ export function CyclePeriodHistory({ bundle, onChanged }: Props) {
   const [adding, setAdding] = useState(false);
   const [start, setStart] = useState('');
   const [days, setDays] = useState(5);
-  const [fillFlow, setFillFlow] = useState<'light' | 'medium' | 'heavy'>('medium');
+  const [fillFlow, setFillFlow] = useState<BleedFlow>('medium');
+  const [fillConfirm, setFillConfirm] = useState(false);
   const [addDayFor, setAddDayFor] = useState<string | null>(null);
   const [extraDay, setExtraDay] = useState('');
+  /** The day whose sheet is open, and whether its delete step is showing. */
+  const [daySheet, setDaySheet] = useState<string | null>(null);
+  const [confirmRemove, setConfirmRemove] = useState(false);
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
 
@@ -59,18 +73,21 @@ export function CyclePeriodHistory({ bundle, onChanged }: Props) {
         }))),
   ].reverse();
   const logsByDate = new Map((bundle.logs ?? []).map((log) => [log.date, log]));
-  const addMissed = async () => {
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(start)) return;
-    Alert.alert(ka.cycle.missedPeriodFillTitle, ka.cycle.missedPeriodFillConfirm, [
-      { text: ka.common.cancel, style: 'cancel' },
-      {
-        text: ka.cycle.missedPeriodSave,
-        onPress: () => {
-          void commitMissed();
-        },
-      },
-    ]);
+  const loggedFlowOf = (date: string): BleedFlow | null => {
+    const flow = logsByDate.get(date)?.flow;
+    return flow === 'light' || flow === 'medium' || flow === 'heavy' ? flow : null;
   };
+  const flowLabel = (flow: BleedFlow | null) =>
+    flow ? FLOW_OPTIONS.find((o) => o.id === flow)?.label ?? flow : tx('არ არის აღრიცხული', 'Not logged');
+
+  const persistMessage = (result: { synced: boolean; persistedLocally?: boolean; sessionOnly?: boolean }, synced: string | null) =>
+    result.synced
+      ? synced
+      : result.persistedLocally
+        ? ka.cycle.savedOnDevice
+        : result.sessionOnly
+          ? ka.cycle.savedSessionOnly
+          : ka.cycle.saveNotPersisted;
 
   const commitMissed = async () => {
     if (!/^\d{4}-\d{2}-\d{2}$/.test(start)) return;
@@ -81,17 +98,10 @@ export function CyclePeriodHistory({ bundle, onChanged }: Props) {
       const end = addDaysToKey(start, length - 1);
       if (!user?.id) return;
       const result = await queueApplyPeriod(user.id, { action: 'fill', start, end, flow: fillFlow });
+      setFillConfirm(false);
       setAdding(false);
       setStart('');
-      setMsg(
-        result.synced
-          ? ka.cycle.missedPeriodSaved
-          : result.persistedLocally
-            ? ka.cycle.savedOnDevice
-            : result.sessionOnly
-              ? ka.cycle.savedSessionOnly
-              : ka.cycle.saveNotPersisted,
-      );
+      setMsg(persistMessage(result, ka.cycle.missedPeriodSaved));
       onChanged();
     } catch (err) {
       setMsg(err instanceof Error ? err.message : ka.common.error);
@@ -100,21 +110,13 @@ export function CyclePeriodHistory({ bundle, onChanged }: Props) {
     }
   };
 
-  const setDayFlow = async (date: string, flow: 'light' | 'medium' | 'heavy') => {
+  const setDayFlow = async (date: string, flow: BleedFlow) => {
     setBusy(true);
     setMsg(null);
     try {
       if (!user?.id) return;
       const result = await saveCycleObservation(user.id, date, { flow });
-      setMsg(
-        result.synced
-          ? null
-          : result.persistedLocally
-            ? ka.cycle.savedOnDevice
-            : result.sessionOnly
-              ? ka.cycle.savedSessionOnly
-              : ka.cycle.saveNotPersisted,
-      );
+      setMsg(persistMessage(result, null));
       onChanged();
     } catch {
       setMsg(ka.common.error);
@@ -123,34 +125,21 @@ export function CyclePeriodHistory({ bundle, onChanged }: Props) {
     }
   };
 
-  const removeDay = (date: string) => {
-    Alert.alert(ka.cycle.deleteLog, ka.cycle.periodDeleteDay, [
-      { text: ka.common.cancel, style: 'cancel' },
-      {
-        text: ka.common.delete,
-        style: 'destructive',
-        onPress: () => {
-          void (async () => {
-            try {
-              if (!user?.id) return;
-              const result = await saveCycleObservation(user.id, date, { flow: 'none' });
-              setMsg(
-                result.synced
-                  ? ka.cycle.deleteLogDone
-                  : result.persistedLocally
-                    ? ka.cycle.savedOnDevice
-                    : result.sessionOnly
-                      ? ka.cycle.savedSessionOnly
-                      : ka.cycle.saveNotPersisted,
-              );
-              onChanged();
-            } catch {
-              setMsg(ka.common.error);
-            }
-          })();
-        },
-      },
-    ]);
+  const removeDay = async (date: string) => {
+    setBusy(true);
+    setMsg(null);
+    try {
+      if (!user?.id) return;
+      const result = await saveCycleObservation(user.id, date, { flow: 'none' });
+      setMsg(persistMessage(result, ka.cycle.deleteLogDone));
+      setConfirmRemove(false);
+      setDaySheet(null);
+      onChanged();
+    } catch {
+      setMsg(ka.common.error);
+    } finally {
+      setBusy(false);
+    }
   };
 
   const addExtraDay = async () => {
@@ -162,15 +151,7 @@ export function CyclePeriodHistory({ bundle, onChanged }: Props) {
       const result = await queueApplyPeriod(user.id, { action: 'start', date: extraDay, flow: 'medium' });
       setAddDayFor(null);
       setExtraDay('');
-      setMsg(
-        result.synced
-          ? ka.cycle.missedPeriodSaved
-          : result.persistedLocally
-            ? ka.cycle.savedOnDevice
-            : result.sessionOnly
-              ? ka.cycle.savedSessionOnly
-              : ka.cycle.saveNotPersisted,
-      );
+      setMsg(persistMessage(result, ka.cycle.missedPeriodSaved));
       onChanged();
     } catch {
       setMsg(ka.common.error);
@@ -178,6 +159,16 @@ export function CyclePeriodHistory({ bundle, onChanged }: Props) {
       setBusy(false);
     }
   };
+
+  const openDay = (date: string) => {
+    setConfirmRemove(false);
+    setDaySheet(date);
+  };
+  const closeDay = () => {
+    setConfirmRemove(false);
+    setDaySheet(null);
+  };
+  const sheetFlow = daySheet ? loggedFlowOf(daySheet) : null;
 
   return (
     <View style={{ gap: 10 }}>
@@ -202,7 +193,9 @@ export function CyclePeriodHistory({ bundle, onChanged }: Props) {
               >
                 <Pressable
                   onPress={() => setOpenStart(open ? null : range.start)}
-                  style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}
+                  accessibilityRole="button"
+                  accessibilityState={{ expanded: open }}
+                  style={{ flexDirection: 'row', alignItems: 'center', gap: 10, minHeight: 44 }}
                 >
                   <View style={{ flex: 1, minWidth: 0 }}>
                     <Text style={{ color: c.ink, fontWeight: '700', fontSize: 15 }}>
@@ -217,84 +210,46 @@ export function CyclePeriodHistory({ bundle, onChanged }: Props) {
                 </Pressable>
 
                 {open ? (
-                  <View style={{ marginTop: 12, gap: 8 }}>
+                  <View style={{ marginTop: 10, gap: 6 }}>
                     {dayKeys.map((date) => {
-                      const log = logsByDate.get(date);
-                      const flow = log?.flow && log.flow !== 'none' && log.flow !== 'spotting' ? log.flow : 'medium';
+                      const flow = loggedFlowOf(date);
                       return (
-                        <View
+                        <Pressable
                           key={date}
+                          onPress={() => openDay(date)}
+                          accessibilityRole="button"
+                          accessibilityLabel={`${formatCycleDateKa(date)}, ${flowLabel(flow)}`}
+                          accessibilityHint={ka.common.edit}
                           style={{
+                            minHeight: 48,
                             borderRadius: 14,
                             backgroundColor: c.cardSoft,
-                            padding: 10,
-                            gap: 8,
+                            paddingHorizontal: 12,
+                            flexDirection: 'row',
+                            alignItems: 'center',
+                            gap: 10,
                           }}
                         >
-                          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                            <Text style={{ color: c.ink, fontWeight: '700', flex: 1 }}>
-                              {formatCycleDateKa(date)}
-                            </Text>
-                            <Pressable
-                              accessibilityRole="button"
-                              accessibilityLabel={ka.common.edit}
-                              onPress={() => router.push({ pathname: '/cycle/log', params: { date } })}
-                              style={{
-                                width: 40,
-                                height: 40,
-                                borderRadius: 12,
-                                backgroundColor: c.card,
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                              }}
-                            >
-                              <Pencil size={16} color={c.brand} strokeWidth={2.2} />
-                            </Pressable>
-                            <Pressable
-                              accessibilityRole="button"
-                              accessibilityLabel={ka.cycle.deleteLog}
-                              onPress={() => removeDay(date)}
-                              style={{
-                                width: 40,
-                                height: 40,
-                                borderRadius: 12,
-                                backgroundColor: `${c.danger}14`,
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                              }}
-                            >
-                              <Trash2 size={16} color={c.danger} strokeWidth={2.2} />
-                            </Pressable>
-                          </View>
-                          <View style={{ flexDirection: 'row', gap: 6 }}>
-                            {BLEED_FLOWS.map((opt) => {
-                              const on = flow === opt.id;
-                              return (
-                                <Pressable
-                                  key={opt.id}
-                                  onPress={() => void setDayFlow(date, opt.id as 'light' | 'medium' | 'heavy')}
-                                  style={{
-                                    flex: 1,
-                                    height: 36,
-                                    borderRadius: 10,
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
-                                    backgroundColor: on ? c.cta : c.card,
-                                  }}
-                                >
-                                  <Text style={{ color: on ? c.onPrimary : c.ink, fontWeight: '700', fontSize: 12 }}>
-                                    {opt.label}
-                                  </Text>
-                                </Pressable>
-                              );
-                            })}
-                          </View>
-                        </View>
+                          <View
+                            style={{
+                              width: 10,
+                              height: 10,
+                              borderRadius: 5,
+                              backgroundColor: flow ? c.period : 'transparent',
+                              borderWidth: flow ? 0 : 1.5,
+                              borderColor: c.period,
+                              opacity: flow === 'light' ? 0.55 : 1,
+                            }}
+                          />
+                          <Text style={{ color: c.ink, fontWeight: '700', flex: 1 }}>{formatCycleDateKa(date)}</Text>
+                          <Text style={{ color: c.muted, fontSize: 12 }}>{flowLabel(flow)}</Text>
+                          <ChevronRight size={16} color={c.mutedSoft} />
+                        </Pressable>
                       );
                     })}
 
                     {addDayFor === range.start ? (
-                      <View style={{ gap: 10 }}>
+                      <View style={{ gap: 10, marginTop: 4 }}>
                         <CycleDateField label={ka.cycle.periodAddDay} value={extraDay} onChange={setExtraDay} range="past" />
                         <CyclePrimaryButton
                           label={busy ? ka.common.loading : ka.cycle.missedPeriodSave}
@@ -310,15 +265,19 @@ export function CyclePeriodHistory({ bundle, onChanged }: Props) {
                           setAddDayFor(range.start);
                           setExtraDay(addDaysToKey(range.end, 1));
                         }}
+                        accessibilityRole="button"
                         style={{
                           minHeight: 44,
                           borderRadius: 14,
                           alignItems: 'center',
                           justifyContent: 'center',
-                          backgroundColor: c.cardSoft,
+                          flexDirection: 'row',
+                          gap: 6,
+                          marginTop: 2,
                         }}
                       >
-                        <Text style={{ color: c.ink, fontWeight: '700' }}>{ka.cycle.periodAddDay}</Text>
+                        <Plus size={16} color={c.brand} />
+                        <Text style={{ color: c.brand, fontWeight: '700' }}>{ka.cycle.periodAddDay}</Text>
                       </Pressable>
                     )}
                   </View>
@@ -339,7 +298,7 @@ export function CyclePeriodHistory({ bundle, onChanged }: Props) {
               return (
                 <Pressable
                   key={opt.id}
-                  onPress={() => setFillFlow(opt.id as 'light' | 'medium' | 'heavy')}
+                  onPress={() => setFillFlow(opt.id as BleedFlow)}
                   accessibilityRole="button"
                   accessibilityState={{ selected: on }}
                   accessibilityLabel={opt.label}
@@ -350,8 +309,6 @@ export function CyclePeriodHistory({ bundle, onChanged }: Props) {
                     alignItems: 'center',
                     justifyContent: 'center',
                     backgroundColor: on ? c.cta : c.cardSoft,
-                    borderWidth: 1,
-                    borderColor: on ? c.ink : c.border,
                   }}
                 >
                   <Text style={{ color: on ? c.onPrimary : c.ink, fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 12 }}>
@@ -367,6 +324,9 @@ export function CyclePeriodHistory({ bundle, onChanged }: Props) {
               <Pressable
                 key={n}
                 onPress={() => setDays(n)}
+                accessibilityRole="button"
+                accessibilityState={{ selected: days === n }}
+                accessibilityLabel={ka.cycle.periodRangeDays(n)}
                 style={{
                   flex: 1,
                   height: 44,
@@ -382,7 +342,9 @@ export function CyclePeriodHistory({ bundle, onChanged }: Props) {
           </View>
           <CyclePrimaryButton
             label={busy ? ka.common.loading : ka.cycle.missedPeriodSave}
-            onPress={() => void addMissed()}
+            onPress={() => {
+              if (/^\d{4}-\d{2}-\d{2}$/.test(start)) setFillConfirm(true);
+            }}
             loading={busy}
             disabled={busy || !start}
             icon={Plus}
@@ -392,6 +354,7 @@ export function CyclePeriodHistory({ bundle, onChanged }: Props) {
               setAdding(false);
               setStart('');
             }}
+            accessibilityRole="button"
             style={{ alignItems: 'center', minHeight: 44, justifyContent: 'center', marginTop: 4 }}
           >
             <Text style={{ color: c.muted, fontWeight: '700' }}>{ka.common.cancel}</Text>
@@ -400,6 +363,7 @@ export function CyclePeriodHistory({ bundle, onChanged }: Props) {
       ) : (
         <Pressable
           onPress={() => setAdding(true)}
+          accessibilityRole="button"
           style={{
             flexDirection: 'row',
             alignItems: 'center',
@@ -408,8 +372,6 @@ export function CyclePeriodHistory({ bundle, onChanged }: Props) {
             paddingVertical: 14,
             borderRadius: 18,
             backgroundColor: c.cardSoft,
-            borderWidth: 1,
-            borderColor: c.border,
             gap: 8,
           }}
         >
@@ -431,6 +393,86 @@ export function CyclePeriodHistory({ bundle, onChanged }: Props) {
         </Text>
       ) : null}
       {busy ? <ActivityIndicator color={c.brand} /> : null}
+
+      {/* Missed period: the fill confirmation (what gets recorded, as your log — not a prediction). */}
+      <CycleExplainSheet
+        visible={fillConfirm}
+        title={ka.cycle.missedPeriodFillTitle}
+        body={ka.cycle.missedPeriodFillConfirm}
+        accent={c.period}
+        actions={[{ label: ka.cycle.missedPeriodSave, onPress: () => void commitMissed(), loading: busy, icon: Plus }]}
+        onClose={() => setFillConfirm(false)}
+      />
+
+      {/* One day of a logged period: intensity, full log, delete (confirmed in the same sheet). */}
+      {daySheet && !confirmRemove ? (
+        <CycleExplainSheet
+          visible
+          title={formatCycleDateKa(daySheet)}
+          body={ka.cycle.periodDaySheetHint}
+          accent={c.period}
+          closeLabel={ka.common.close}
+          actions={[
+            {
+              label: ka.cycle.fullLog,
+              tone: 'secondary',
+              icon: Pencil,
+              onPress: () => {
+                const date = daySheet;
+                closeDay();
+                router.push({ pathname: '/cycle/log', params: { date } });
+              },
+            },
+            { label: ka.cycle.deleteLog, tone: 'destructive', icon: Trash2, onPress: () => setConfirmRemove(true), disabled: busy },
+          ]}
+          onClose={closeDay}
+        >
+          <Text style={{ color: c.mutedSoft, fontFamily: 'NotoSansGeorgian_600SemiBold', fontSize: 12, marginBottom: 8 }}>
+            {ka.cycle.logStepFlow}
+          </Text>
+          <View style={{ flexDirection: 'row', gap: 8 }}>
+            {BLEED_FLOWS.map((opt) => {
+              const on = sheetFlow === opt.id;
+              return (
+                <Pressable
+                  key={opt.id}
+                  onPress={() => void setDayFlow(daySheet, opt.id as BleedFlow)}
+                  disabled={busy}
+                  accessibilityRole="button"
+                  accessibilityState={{ selected: on, disabled: busy }}
+                  accessibilityLabel={opt.label}
+                  style={{
+                    flex: 1,
+                    minHeight: 44,
+                    borderRadius: 14,
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: 6,
+                    backgroundColor: on ? c.cta : c.cardSoft,
+                  }}
+                >
+                  {on ? <Check size={14} color={c.onPrimary} strokeWidth={3} /> : null}
+                  <Text style={{ color: on ? c.onPrimary : c.ink, fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 12 }}>
+                    {opt.label}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </View>
+        </CycleExplainSheet>
+      ) : null}
+      {daySheet && confirmRemove ? (
+        <CycleExplainSheet
+          visible
+          title={ka.cycle.deleteLog}
+          body={[formatCycleDateKa(daySheet), ka.cycle.periodDeleteDay]}
+          accent={c.danger}
+          closeLabel={ka.common.back}
+          actions={[{ label: ka.common.delete, tone: 'destructive', icon: Trash2, onPress: () => void removeDay(daySheet), loading: busy }]}
+          onClose={() => setConfirmRemove(false)}
+        />
+      ) : null}
     </View>
   );
 }

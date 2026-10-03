@@ -1,6 +1,7 @@
 import { CyclePressable as Pressable } from '@/components/cycle/CyclePressable';
-import React from 'react';
-import { Alert, Text, View } from 'react-native';
+import React, { useState } from 'react';
+import { Text, View } from 'react-native';
+import { CycleExplainSheet } from '@/components/cycle/CycleExplainSheet';
 import { ka } from '@/i18n/ka';
 import {
   formatCycleCachedAtKa,
@@ -33,6 +34,8 @@ function statusLabel(state: CycleSyncState, pending: number): string | null {
 
 export function CycleOfflineBanner({ view, today, onRetry, onDiscard }: Props) {
   const c = useCycleColors();
+  /** The unsynced log whose discard is being confirmed (in the app's own sheet, never a native alert). */
+  const [discarding, setDiscarding] = useState<CycleAttentionItem | null>(null);
   if (!view) return null;
   const attention = view.attention ?? [];
   const showStale = view.reachable === false;
@@ -41,18 +44,10 @@ export function CycleOfflineBanner({ view, today, onRetry, onDiscard }: Props) {
   const when = formatCycleCachedAtKa(view.cachedAt, today);
   const dates = [...new Set(attention.map((item) => item.date).filter(Boolean))].join(', ');
 
-  const confirmDiscard = (item: CycleAttentionItem) => {
-    Alert.alert(ka.cycle.discardPending, ka.cycle.discardPendingConfirm, [
-      { text: ka.common.cancel, style: 'cancel' },
-      {
-        text: ka.cycle.discardPending,
-        style: 'destructive',
-        onPress: () => onDiscard?.(item.id),
-      },
-    ]);
-  };
+  const confirmDiscard = (item: CycleAttentionItem) => setDiscarding(item);
 
   return (
+    <>
     <View
       style={{
         marginHorizontal: 16,
@@ -119,5 +114,24 @@ export function CycleOfflineBanner({ view, today, onRetry, onDiscard }: Props) {
         </Pressable>
       ) : null}
     </View>
+    <CycleExplainSheet
+      visible={Boolean(discarding)}
+      title={ka.cycle.discardPending}
+      body={discarding?.date ? [ka.cycle.discardPendingConfirm, ka.cycle.syncAttentionDates(discarding.date)] : ka.cycle.discardPendingConfirm}
+      accent={c.danger}
+      actions={[
+        {
+          label: ka.cycle.discardPending,
+          tone: 'destructive',
+          onPress: () => {
+            const item = discarding;
+            setDiscarding(null);
+            if (item) onDiscard?.(item.id);
+          },
+        },
+      ]}
+      onClose={() => setDiscarding(null)}
+    />
+    </>
   );
 }

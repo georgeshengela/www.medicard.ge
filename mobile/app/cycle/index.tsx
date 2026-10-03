@@ -1,7 +1,6 @@
 import { CyclePressable as Pressable } from '@/components/cycle/CyclePressable';
 import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import {
-  Alert,
   RefreshControl,
   ScrollView,
   Text,
@@ -13,6 +12,7 @@ import * as Haptics from 'expo-haptics';
 import { CalendarHeart, Heart, MessageSquareText, PencilLine } from 'lucide-react-native';
 import { CycleHomeHeader } from '@/components/cycle/CycleHomeHeader';
 import { CycleHero } from '@/components/cycle/CycleHero';
+import { CycleExplainSheet } from '@/components/cycle/CycleExplainSheet';
 import { CycleHeavyBleedingCard } from '@/components/cycle/CycleHeavyBleedingCard';
 import { CycleSexSheet } from '@/components/cycle/CycleSexSheet';
 import { CycleStoriesRow } from '@/components/cycle/CycleStoriesRow';
@@ -60,6 +60,7 @@ import {
   cacheCycleBundle,
   discardCycleMutation,
   queueApplyPeriod,
+  saveCycleObservation,
   type CycleView,
 } from '@/lib/cycleOffline';
 import { putCycleBundle, putCycleView, useCycleView } from '@/lib/cycleViewCache';
@@ -201,6 +202,10 @@ export default function CycleHome() {
   /** One-tap "period started" confirmation (with undo / add flow). */
   const [periodToast, setPeriodToast] = useState<string | null>(null);
   const [periodBusy, setPeriodBusy] = useState(false);
+  /** One-tap "period ended" confirmation: today's bleeding before the tap, for undo (brief §8.2 item 12). */
+  const [endToast, setEndToast] = useState<{ date: string; beforeFlow: 'light' | 'medium' | 'heavy' | null } | null>(null);
+  /** „როგორ ითვლება?“ — the ring / phase pill explanation sheet (replaces the native alert). */
+  const [explainOpen, setExplainOpen] = useState(false);
   /** Sex and sex drive have their own private sheet (separate from the daily log). */
   const [sexOpen, setSexOpen] = useState(false);
   /** One-tap sex log confirmation: holds the day's form before the tap, for undo. */
@@ -697,28 +702,47 @@ export default function CycleHome() {
     return () => clearTimeout(t);
   }, [sexToast]);
 
-  const endPeriod = () => {
-    Alert.alert(ka.cycle.periodEndCta, ka.cycle.periodEndHint, [
-      { text: ka.common.cancel, style: 'cancel' },
-      {
-        text: ka.cycle.periodEndCta,
-        onPress: () => {
-          void (async () => {
-            if (!user?.id) return;
-            try {
-              const result = await queueApplyPeriod(user.id, {
-                action: 'end',
-                date: today,
-              });
-              showView(result.view);
-            } catch (err) {
-              setError(err instanceof Error ? err.message : ka.common.error);
-            }
-          })();
-        },
-      },
-    ]);
+  /**
+   * Flo-style one tap: the period ends today at once (offline-safe queue); a toast offers undo and
+   * today's log instead of a confirmation (brief §8.2 item 12, §6 weakness 6).
+   */
+  const endPeriod = async () => {
+    if (!user?.id || periodBusy) return;
+    const flowBefore = bundle?.logs.find((l) => l.date === today)?.flow;
+    const beforeFlow = flowBefore === 'light' || flowBefore === 'medium' || flowBefore === 'heavy' ? flowBefore : null;
+    setPeriodBusy(true);
+    try {
+      const result = await queueApplyPeriod(user.id, { action: 'end', date: today });
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined);
+      showView(result.view);
+      setPeriodToast(null);
+      setSexToast(null);
+      setEndToast({ date: today, beforeFlow });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : ka.common.error);
+    } finally {
+      setPeriodBusy(false);
+    }
   };
+
+  /** Undo of "period ended": today's bleeding comes back exactly as it was logged. */
+  const undoPeriodEnd = async (entry: { date: string; beforeFlow: 'light' | 'medium' | 'heavy' | null }) => {
+    if (!user?.id) return;
+    setEndToast(null);
+    if (!entry.beforeFlow) return;
+    try {
+      const result = await saveCycleObservation(user.id, entry.date, { flow: entry.beforeFlow });
+      showView(result.view);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : ka.common.error);
+    }
+  };
+
+  useEffect(() => {
+    if (!endToast) return;
+    const t = setTimeout(() => setEndToast(null), 8000);
+    return () => clearTimeout(t);
+  }, [endToast]);
 
   if (user?.gender !== 'FEMALE') {
     return (
@@ -1025,10 +1049,8 @@ export default function CycleHome() {
                     onStart={() => void startPeriodNow()}
                     onSex={() => void logSexNow()}
                     sexLogged={todayLog?.sexualActivity === true}
-                    onEnd={endPeriod}
-                    onInfo={() =>
-                      Alert.alert(ka.cycle.howCalculated, ka.cycle.howCalculatedBody)
-                    }
+                    onEnd={() => void endPeriod()}
+                    onInfo={() => setExplainOpen(true)}
                   />
                 )}
               </Animated.View>
@@ -1047,7 +1069,7 @@ export default function CycleHome() {
                   sexLogged={Boolean(todayLog?.sexualActivity)}
                   onLog={() => openQuickLog(today)}
                   onSex={() => setSexOpen(true)}
-                  onPhase={() => Alert.alert(ka.cycle.howCalculated, ka.cycle.howCalculatedBody)}
+                  onPhase={() => setExplainOpen(true)}
                   onAskMedi={() => router.push('/assistant?mode=doctor' as never)}
                 />
               </View>
@@ -1301,6 +1323,31 @@ export default function CycleHome() {
           onUndo={() => void undoPeriodStart(periodToast)}
         />
       ) : null}
+
+      {endToast ? (
+        <CyclePeriodToast
+          bottomInset={insets.bottom}
+          title={ka.cycle.periodEndedToast}
+          hint={ka.cycle.periodEndedToastHint}
+          primaryLabel={ka.cycle.logTodayCta}
+          PrimaryIcon={PencilLine}
+          onAddFlow={() => {
+            setEndToast(null);
+            openQuickLog(endToast.date);
+          }}
+          onUndo={() => void undoPeriodEnd(endToast)}
+        />
+      ) : null}
+
+      <CycleExplainSheet
+        visible={explainOpen}
+        title={ka.cycle.howCalculated}
+        body={ka.cycle.howCalculatedBody}
+        accent={c.brand}
+        sourceIds={['menstrualCycle']}
+        caption={ka.cycle.gaugeRingCaption}
+        onClose={() => setExplainOpen(false)}
+      />
 
       {sexToast ? (
         <CyclePeriodToast

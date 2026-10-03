@@ -1,12 +1,13 @@
 import { CyclePressable as Pressable } from '@/components/cycle/CyclePressable';
 import React, { useEffect, useLayoutEffect, useState } from 'react';
-import { Alert, Platform, ScrollView, Share, Switch, Text, View } from 'react-native';
+import { Platform, ScrollView, Share, Switch, Text, View } from 'react-native';
 import { useNavigation } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, { FadeInUp } from 'react-native-reanimated';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
 import { Baby, Bell, CalendarClock, CalendarPlus, Check, Download, EyeOff, Flame, Heart, HeartPulse, Link2, Lock, NotebookPen, Sparkles, Trash2 } from 'lucide-react-native';
+import { CycleExplainSheet } from '@/components/cycle/CycleExplainSheet';
 import { CycleNotificationMaskPreview } from '@/components/cycle/CycleNotificationMaskPreview';
 import { CycleDateField } from '@/components/cycle/CycleDateField';
 import { CycleHealthConnectCard } from '@/components/cycle/CycleHealthConnectCard';
@@ -131,6 +132,9 @@ export default function CycleSettings() {
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
   const [msgTone, setMsgTone] = useState<'success' | 'error'>('success');
+  /** Delete cycle data: 0 = closed, 1 = first confirmation, 2 = second confirmation (same sheet, two steps). */
+  const [wipeStep, setWipeStep] = useState<0 | 1 | 2>(0);
+  const [wiping, setWiping] = useState(false);
 
   const [mode, setMode] = useState<CycleMode>('TRACK_PERIOD');
   const [avgCycle, setAvgCycle] = useState('28');
@@ -365,48 +369,36 @@ export default function CycleSettings() {
     }
   };
 
-  const wipeCycleData = () => {
-    Alert.alert(ka.cycle.deleteCycleTitle, ka.cycle.deleteCycleBody, [
-      { text: ka.common.cancel, style: 'cancel' },
-      {
-        text: ka.cycle.deleteCycleConfirm,
-        style: 'destructive',
-        onPress: () => {
-          Alert.alert(ka.cycle.deleteCycleAgain, ka.cycle.deleteCycleBody, [
-            { text: ka.common.cancel, style: 'cancel' },
-            {
-              text: ka.cycle.deleteCycleConfirm,
-              style: 'destructive',
-              onPress: () => {
-                void (async () => {
-                  try {
-                    const result = await api.cycle.wipeData();
-                    if (user?.id) {
-                      await destroyCycleOfflineAccount(user.id);
-                      const { wipePregnancyCareCalendarOwnership } = await import('@/lib/pregnancyCareCalendar');
-                      await wipePregnancyCareCalendarOwnership(user.id);
-                    }
-                    const next = applyProfile(result.bundle);
-                    setBundle(result.bundle);
-                    setCanonical(result.bundle);
-                    setPendingCount(0);
-                    setMode(next.mode);
-                    setLastPeriod(next.lastPeriod);
-                    setContraceptionMethod(next.contraceptionMethod);
-                    setContraceptionStartedAt(next.contraceptionStartedAt);
-                    setMsgTone('success');
-                    setMsg(ka.cycle.deleteCycleDone);
-                  } catch (err) {
-                    setMsgTone('error');
-                    setMsg(err instanceof ApiError ? err.message : ka.common.error);
-                  }
-                })();
-              },
-            },
-          ]);
-        },
-      },
-    ]);
+  /** Opens the two-step delete confirmation (the app's own sheet replaces the former double native alert). */
+  const wipeCycleData = () => setWipeStep(1);
+
+  const runWipeCycleData = async () => {
+    if (wiping) return;
+    setWiping(true);
+    try {
+      const result = await api.cycle.wipeData();
+      if (user?.id) {
+        await destroyCycleOfflineAccount(user.id);
+        const { wipePregnancyCareCalendarOwnership } = await import('@/lib/pregnancyCareCalendar');
+        await wipePregnancyCareCalendarOwnership(user.id);
+      }
+      const next = applyProfile(result.bundle);
+      setBundle(result.bundle);
+      setCanonical(result.bundle);
+      setPendingCount(0);
+      setMode(next.mode);
+      setLastPeriod(next.lastPeriod);
+      setContraceptionMethod(next.contraceptionMethod);
+      setContraceptionStartedAt(next.contraceptionStartedAt);
+      setMsgTone('success');
+      setMsg(ka.cycle.deleteCycleDone);
+    } catch (err) {
+      setMsgTone('error');
+      setMsg(err instanceof ApiError ? err.message : ka.common.error);
+    } finally {
+      setWiping(false);
+      setWipeStep(0);
+    }
   };
 
   const togglePrivacyLock = async (on: boolean) => {
@@ -1248,6 +1240,28 @@ export default function CycleSettings() {
             setBundle(data);
             setCanonical(data);
           }).catch(() => undefined);
+        }}
+      />
+      {/* Delete cycle data: two confirmations in the app's own sheet (was a double native alert). */}
+      <CycleExplainSheet
+        visible={wipeStep > 0}
+        title={wipeStep === 2 ? ka.cycle.deleteCycleAgain : ka.cycle.deleteCycleTitle}
+        body={ka.cycle.deleteCycleBody}
+        accent={c.danger}
+        actions={[
+          {
+            label: ka.cycle.deleteCycleConfirm,
+            tone: 'destructive',
+            icon: Trash2,
+            loading: wiping,
+            onPress: () => {
+              if (wipeStep === 1) setWipeStep(2);
+              else void runWipeCycleData();
+            },
+          },
+        ]}
+        onClose={() => {
+          if (!wiping) setWipeStep(0);
         }}
       />
     </CycleAtmosphere>

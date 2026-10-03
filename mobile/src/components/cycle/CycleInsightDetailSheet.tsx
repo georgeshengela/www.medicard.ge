@@ -1,6 +1,6 @@
 import { CyclePressable as Pressable } from '@/components/cycle/CyclePressable';
 import React, { useMemo, useState } from 'react';
-import { Alert, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Bell, Sparkles, X } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
@@ -40,6 +40,8 @@ export function CycleInsightDetailSheet({ visible, card, headline, onClose }: Pr
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const [busy, setBusy] = useState(false);
+  /** Reminder outcome shown inside this sheet (a second native Modal on top is unreliable; no native alerts). */
+  const [notice, setNotice] = useState<{ title: string; body: string; tone: 'ok' | 'warn' } | null>(null);
 
   const plan = useMemo(() => (card ? resolveInsightAction(card) : null), [card]);
   const accent = card ? toneAccent(c, card.tone) : c.rose;
@@ -85,10 +87,13 @@ export function CycleInsightDetailSheet({ visible, card, headline, onClose }: Pr
           minutesFromNow: plan.autoMinutes,
         });
         if (ok) {
-          Alert.alert(ka.cycle.aiReminderSet, ka.cycle.aiReminderSetBody(plan.autoMinutes));
-          onClose();
+          setNotice({ title: ka.cycle.aiReminderSet, body: ka.cycle.aiReminderSetBody(plan.autoMinutes), tone: 'ok' });
+          setTimeout(() => {
+            setNotice(null);
+            onClose();
+          }, 1600);
         } else {
-          Alert.alert(ka.cycle.aiReminderDenied, ka.meds.notificationsDenied);
+          setNotice({ title: ka.cycle.aiReminderDenied, body: ka.meds.notificationsDenied, tone: 'warn' });
         }
         return;
       }
@@ -291,6 +296,30 @@ export function CycleInsightDetailSheet({ visible, card, headline, onClose }: Pr
             </Text>
           </ScrollView>
 
+          {notice ? (
+            <View
+              accessibilityLiveRegion="polite"
+              accessibilityRole="alert"
+              style={{
+                borderRadius: 16,
+                paddingHorizontal: 14,
+                paddingVertical: 12,
+                marginBottom: 12,
+                backgroundColor: notice.tone === 'ok' ? `${c.success}18` : c.dangerSoft,
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: 10,
+              }}
+            >
+              <Bell size={16} color={notice.tone === 'ok' ? c.success : c.danger} strokeWidth={2.2} />
+              <View style={{ flex: 1 }}>
+                <Text style={{ color: notice.tone === 'ok' ? c.success : c.danger, fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 13 }}>
+                  {notice.title}
+                </Text>
+                <Text style={{ color: c.muted, fontSize: 12, lineHeight: 17, marginTop: 2 }}>{notice.body}</Text>
+              </View>
+            </View>
+          ) : null}
           <View style={{ gap: 10, marginTop: 4 }}>
             <CyclePrimaryButton
               label={plan.manualLabel}
