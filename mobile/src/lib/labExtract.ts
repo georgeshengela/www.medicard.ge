@@ -245,3 +245,30 @@ export function isTodayYmd(ymd: string): boolean {
   const stamp = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
   return ymd === stamp;
 }
+
+/**
+ * Lab values in the exact shape POST /api/ai/explain-lab accepts. A real sheet can yield a value or unit
+ * longer than the server's limits, a lone NaN or an unknown flag; any of those made the whole
+ * „ამიხსენი შედეგები“ request fail as „შევსებული მონაცემები არასწორია“ (owner 2026-10-04).
+ */
+export function explainLabParameters(parameters: readonly LabParameter[]): LabParameter[] {
+  const clip = (v: unknown, max: number) => String(v ?? '').replace(/\s+/g, ' ').trim().slice(0, max);
+  const finite = (v: unknown) => (typeof v === 'number' && Number.isFinite(v) ? v : null);
+  return parameters.slice(0, 80).map((p) => {
+    const value = finite(p.value);
+    const nameEn = clip(p.nameEn, 160);
+    const key = clip(p.key, 80) || clip(nameEn || p.nameKa, 80) || 'analyte';
+    const row = {
+      key,
+      nameKa: clip(p.nameKa, 160) || nameEn || key,
+      nameEn,
+      display: clip(p.display, 40) || (value != null ? String(value).slice(0, 40) : '—'),
+      unit: clip(p.unit, 40),
+      refLow: finite(p.refLow),
+      refHigh: finite(p.refHigh),
+      flag: (['N', 'H', 'L', 'U'] as const).includes(p.flag) ? p.flag : 'U',
+    };
+    // A value that is not a finite number is left out (the server accepts it missing, never NaN/null).
+    return (value != null ? { ...row, value } : row) as LabParameter;
+  });
+}

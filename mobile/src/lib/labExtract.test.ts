@@ -84,3 +84,18 @@ describe('labExtract', () => {
     assert.match(stripLabJson('hello\n```labjson\n{"parameters":[]}\n```'), /hello/);
   });
 });
+
+it('explain-lab gets values in the shape the server accepts', async () => {
+  const { explainLabParameters } = await import('./labExtract.ts');
+  const [row, nan] = explainLabParameters([
+    { key: 'x'.repeat(120), nameKa: '', nameEn: 'Specific gravity of the urine sample', value: 1.02, display: '1.020 (reference 1.015 – 1.025, morning sample)', unit: 'g/mL '.repeat(12), refLow: 1.015, refHigh: Number.NaN, flag: 'N' },
+    { key: 'crp', nameKa: 'CRP', nameEn: 'CRP', value: Number.NaN, display: '', unit: 'mg/L', refLow: null, refHigh: 5, flag: 'Z' as never },
+  ]);
+  assert.equal(row.key.length, 80);
+  assert.equal(row.nameKa, 'Specific gravity of the urine sample');
+  assert.ok(row.display.length <= 40 && row.unit.length <= 40);
+  assert.equal(row.refHigh, null);
+  assert.equal('value' in nan, false);
+  assert.equal(nan.display, '—');
+  assert.equal(nan.flag, 'U');
+});

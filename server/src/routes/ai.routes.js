@@ -595,27 +595,32 @@ aiRouter.post(
  * POST /api/ai/explain-lab — one EvidenceMD write-up for a saved test
  * ──────────────────────────────────────────────────────────────── */
 
+// Lenient on purpose (owner 2026-10-04): a real lab sheet can yield a long value, unit or name, a NaN
+// or an unknown flag. Those are trimmed or dropped instead of failing the whole explanation with
+// „შევსებული მონაცემები არასწორია“; only the table text built from them reaches the model.
+const clipped = (max) => z.coerce.string().trim().transform((v) => v.slice(0, max));
+const finiteOrNull = z.preprocess((v) => (typeof v === 'number' && Number.isFinite(v) ? v : null), z.number().nullable());
 const explainLabSchema = z.object({
   parameters: z
     .array(
       z.object({
-        key: z.string().trim().min(1).max(80),
-        nameKa: z.string().trim().min(1).max(160),
-        nameEn: z.string().trim().max(160).optional().default(''),
-        display: z.string().trim().min(1).max(40),
-        unit: z.string().trim().max(40).optional().default(''),
-        value: z.number().finite().optional(),
-        refLow: z.number().finite().nullable().optional(),
-        refHigh: z.number().finite().nullable().optional(),
-        flag: z.enum(['N', 'H', 'L', 'U']).optional(),
+        key: clipped(80),
+        nameKa: clipped(160),
+        nameEn: clipped(160).optional().default(''),
+        display: clipped(40),
+        unit: clipped(40).optional().default(''),
+        value: finiteOrNull.optional(),
+        refLow: finiteOrNull.optional(),
+        refHigh: finiteOrNull.optional(),
+        flag: z.preprocess((v) => (['N', 'H', 'L', 'U'].includes(v) ? v : 'U'), z.enum(['N', 'H', 'L', 'U'])).optional(),
       }),
     )
-    .min(1)
-    .max(80),
-  visionNotes: z.string().trim().max(40000).optional(),
-  date: z.string().trim().max(32).optional(),
-  context: z.string().trim().max(2000).optional(),
-  recordId: z.string().trim().max(80).optional(),
+    .transform((rows) => rows.filter((row) => (row.nameKa || row.nameEn) && row.display).slice(0, 80))
+    .pipe(z.array(z.any()).min(1)),
+  visionNotes: clipped(40000).optional(),
+  date: clipped(32).optional(),
+  context: clipped(2000).optional(),
+  recordId: clipped(80).optional(),
 });
 
 aiRouter.post(

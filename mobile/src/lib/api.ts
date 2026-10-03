@@ -2897,10 +2897,18 @@ export const api = {
       context?: string;
       recordId?: string;
     }) =>
-      request<{ analysis: string; interactionId: string; usage: Usage }>('/api/ai/explain-lab', {
-        method: 'POST',
-        body,
-      }),
+      // Sent in the exact shape the server accepts: one over-long value or unit must not fail the whole request.
+      import('@/lib/labExtract').then(({ explainLabParameters }) =>
+        request<{ analysis: string; interactionId: string; usage: Usage }>('/api/ai/explain-lab', {
+          method: 'POST',
+          body: {
+            parameters: explainLabParameters(body.parameters),
+            ...(body.visionNotes?.trim() ? { visionNotes: body.visionNotes.trim().slice(0, 40000) } : {}),
+            ...(body.date ? { date: body.date.slice(0, 32) } : {}),
+            ...(body.context?.trim() ? { context: body.context.trim().slice(0, 2000) } : {}),
+            ...(body.recordId ? { recordId: body.recordId.slice(0, 80) } : {}),
+          },
+        })),
 
     analyzeImage: async (params: {
       uri: string;
