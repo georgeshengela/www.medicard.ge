@@ -40,6 +40,8 @@ export type CycleIconTileProps = {
   dashed?: boolean;
   role?: 'checkbox' | 'radio';
   accessibilityHint?: string;
+  /** A fact, not a choice (day sheet): drawn selected, no press, no haptic, read as text. */
+  readOnly?: boolean;
 };
 
 export function CycleIconTile({
@@ -59,6 +61,7 @@ export function CycleIconTile({
   dashed = false,
   role = 'checkbox',
   accessibilityHint,
+  readOnly = false,
 }: CycleIconTileProps) {
   const c = useCycleColors();
   const ink = group === 'bleeding' ? c.period : group === 'fertility' ? c.fertile : c.ink;
@@ -68,17 +71,18 @@ export function CycleIconTile({
   const dots = Math.max(1, Math.min(6, Math.round(levelMax)));
   return (
     <Pressable
-      accessibilityRole={role}
-      accessibilityState={role === 'radio' ? { selected, disabled } : { checked: selected, disabled }}
+      accessibilityRole={readOnly ? 'text' : role}
+      accessibilityState={readOnly ? undefined : role === 'radio' ? { selected, disabled } : { checked: selected, disabled }}
       accessibilityLabel={spokenLevel ? `${label}, ${spokenLevel}` : label}
-      accessibilityHint={accessibilityHint}
-      disabled={disabled}
+      accessibilityHint={readOnly ? undefined : accessibilityHint}
+      disabled={disabled || readOnly}
       onPress={() => {
+        if (readOnly) return;
         Haptics.selectionAsync().catch(() => undefined);
         onPress();
       }}
-      onLongPress={onLongPress}
-      style={[s.tile, { opacity: disabled ? 0.5 : 1 }]}
+      onLongPress={readOnly ? undefined : onLongPress}
+      style={[s.tile, { opacity: disabled && !readOnly ? 0.5 : 1 }]}
     >
       <View
         style={[

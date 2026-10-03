@@ -24,7 +24,7 @@ import { CyclePmsHeatmap } from '@/components/cycle/CyclePmsHeatmap';
 import { CycleOnboarding } from '@/components/cycle/CycleOnboarding';
 import { CycleDayStrip } from '@/components/cycle/CycleDayStrip';
 import { CycleDaySummary } from '@/components/cycle/CycleDaySummary';
-import { CycleDayDetailsSheet } from '@/components/cycle/CycleDayDetailsSheet';
+import { CycleDaySheet } from '@/components/cycle/CycleDaySheet';
 import { CycleCalendarLegend } from '@/components/cycle/CycleCalendarLegend';
 import { CycleJournalPane } from '@/components/cycle/CycleJournalPane';
 import { CyclePostpartumBleedClassifySheet } from '@/components/cycle/CyclePostpartumBleedClassifySheet';
@@ -1280,7 +1280,12 @@ export default function CycleHome() {
         <View style={{ position: 'absolute', right: 16, bottom: insets.bottom + 18 }}>
           <CycleFab
             label={ka.cycle.logFab}
-            onPress={() => openQuickLog(pane === 'calendar' ? selected : today)}
+            onPress={() => {
+              // Calendar: the selected day's sheet is the one place to see and log a day.
+              setStartIntent(false);
+              setQuickOpen(false);
+              setDaySheetOpen(true);
+            }}
           />
         </View>
       ) : null}
@@ -1330,14 +1335,15 @@ export default function CycleHome() {
       />
 
       {bundle ? (
-        <CycleDayDetailsSheet
+        <CycleDaySheet
           visible={daySheetOpen}
           date={selected}
           bundle={bundle}
-          mark={marks[selected]}
+          marks={marks}
           onClose={() => setDaySheetOpen(false)}
+          onDateChange={setSelected}
+          onSaved={handleSaved}
           showPredicted={showPredicted}
-          onLog={(date) => openQuickLog(date)}
           onFullLog={(date) => {
             setDaySheetOpen(false);
             router.push({ pathname: '/cycle/log', params: { date } } as never);
