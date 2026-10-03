@@ -50,7 +50,7 @@ describe('cycle AI allowlist', () => {
     };
     const { line, included, excluded } = serializeCycleLogForAi(log);
     assert.match(line, /flow=medium/);
-    assert.match(line, /კრუნჩხვები|cramps/);
+    assert.match(line, /სპაზმები|cramps/);
     assert.match(line, /თავის ტკივილი|headache/);
     assert.match(line, /შფოთვა|anxious/);
     assert.equal(line.includes('unprotected'), false);
@@ -70,7 +70,7 @@ describe('cycle AI allowlist', () => {
     const prompt = promptFor([log]);
     assert.equal(prompt.includes('unprotected'), false);
     assert.equal(prompt.includes('secret journal'), false);
-    assert.match(prompt, /cramps|კრუნჩხვები/);
+    assert.match(prompt, /cramps|სპაზმები/);
     assert.match(prompt, /anxious|შფოთვა/);
   });
 

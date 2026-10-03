@@ -210,3 +210,47 @@ describe('cycle copy in English', () => {
     assert.doesNotMatch(body, /\d{4}-\d{2}-\d{2}/);
   });
 });
+
+describe('server cycle copy wording (W2-12a)', () => {
+  const base = {
+    profile: { mode: 'TRACK_PERIOD', lastPeriodStart: '2026-03-01', avgCycleLength: 28, avgPeriodLength: 5 },
+    pregnancy: null,
+    averages: { usedCycleLength: 28, usedPeriodLength: 5, source: 'inferred' },
+    today: '2026-03-03',
+  };
+  const predictions = buildPredictions({ lastPeriodStart: '2026-03-01', avgCycleLength: 28, avgPeriodLength: 5, cycleCount: 6 });
+
+  it('cards never open with the cycle day and call cramps „სპაზმები“', () => {
+    for (const lang of ['ka', 'en']) {
+      const { cards } = buildLocalInsights({
+        ...base,
+        logs: [{ date: '2026-03-02', flow: 'medium', symptoms: ['cramps'] }],
+        predictions,
+        lang,
+      });
+      const phase = cards.find((c) => c.id === 'phase_today');
+      assert.ok(phase, lang);
+      assert.doesNotMatch(phase.body, /ციკლის\s+\d+-ე დღეა|day \d+ of your cycle/i, lang);
+      assert.match(phase.body, lang === 'en' ? /Likely phase/ : /სავარაუდო ფაზა/);
+      const cramps = cards.find((c) => c.id === 'cramps_care');
+      assert.ok(cramps, lang);
+      if (lang === 'ka') assert.equal(cramps.title, 'სპაზმების შემსუბუქება');
+      for (const card of cards) assert.doesNotMatch(`${card.title} ${card.body}`, /კრუნჩხვ/);
+    }
+  });
+
+  it('the long heavy-bleeding alert says „სისხლდენა“, never „გამონადენი“', () => {
+    const logs = Array.from({ length: 8 }, (_, i) => ({ date: `2026-03-${String(10 - i).padStart(2, '0')}`, flow: 'heavy' }));
+    const alerts = buildCycleAlerts({
+      profile: { mode: 'TRACK_PERIOD', isIrregular: false, conditions: [] },
+      logs,
+      predictions: {},
+      inferred: { periodStarts: ['2026-03-03'] },
+      today: '2026-03-10',
+    });
+    const heavy = alerts.find((a) => a.messageKa.startsWith('8+'));
+    assert.ok(heavy);
+    assert.match(heavy.messageKa, /სისხლდენა/);
+    assert.doesNotMatch(heavy.messageKa, /გამონადენ/);
+  });
+});

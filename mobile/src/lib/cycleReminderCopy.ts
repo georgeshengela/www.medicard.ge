@@ -5,9 +5,11 @@
  * or discharge — those words may appear only in the optional reminders the person switched on herself.
  * Every estimate says „სავარაუდოდ“ / "estimated"; nothing here is a diagnosis.
  *
- * Georgian copy can be edited by the admin (push templates). The server still ships the pre-brief
- * texts as its code defaults, so a template that still equals that old default is treated as
- * "not customised" and the texts below win; a template the admin actually changed is honoured.
+ * Georgian copy can be edited by the admin (push templates). The server's code defaults mirror the
+ * texts below (server/src/lib/pushTemplates.js, test keeps them equal); a served template that is
+ * the server default (`custom: false`), equals these texts, or equals the pre-brief server default
+ * is treated as "not customised" and the texts below win (cautious body included); a template the
+ * admin actually changed is honoured.
  * Pure (no app imports): node tests load it.
  */
 
@@ -128,7 +130,12 @@ export const CYCLE_REMINDER_COPY_EN: Record<CycleReminderTemplateKey, ReminderCo
 /**
  * The server's pre-brief code defaults (server/src/lib/pushTemplates.js, 2026-09). A cached admin
  * template equal to one of these was never customised, so the app copy above replaces it.
- * Drop this map once the server templates carry the new texts.
+ *
+ * Kept on purpose after the server got the new texts (W2-12a): the app keeps talking to the
+ * production server that still ships these defaults until that deploy lands, and an admin who once
+ * pressed „შენახვა“ on an untouched template stored the old text as a PushTemplate row (served with
+ * `custom: true`). A string compare is free and safe. Remove it only when the server deploy is live
+ * AND no PushTemplate row equals these texts (admin → Push → Medi ტექსტები shows none as edited).
  */
 export const LEGACY_SERVER_CYCLE_COPY: Partial<Record<CycleReminderTemplateKey, { title: string; body: string }>> = {
   'cycle-period-soon': {
@@ -155,15 +162,20 @@ export const LEGACY_SERVER_CYCLE_COPY: Partial<Record<CycleReminderTemplateKey, 
 
 const norm = (s: string | undefined | null) => String(s ?? '').replace(/\s+/g, ' ').trim();
 
-/** True when an admin template differs from the server's old code default (i.e. the admin wrote it). */
-export function isCustomisedCycleTemplate(
-  key: string,
-  cached: { title?: string | null; body?: string | null } | null | undefined,
-): boolean {
+type CachedTemplate = { title?: string | null; body?: string | null; custom?: boolean | null };
+
+const sameCopy = (cached: CachedTemplate, copy: { title: string; body: string } | undefined) =>
+  Boolean(copy) && norm(cached.title) === norm(copy!.title) && norm(cached.body) === norm(copy!.body);
+
+/** True only when the admin actually wrote the template (not a server default, old or new). */
+export function isCustomisedCycleTemplate(key: string, cached: CachedTemplate | null | undefined): boolean {
   if (!cached) return false;
-  const legacy = LEGACY_SERVER_CYCLE_COPY[key as CycleReminderTemplateKey];
-  if (!legacy) return true;
-  return norm(cached.title) !== norm(legacy.title) || norm(cached.body) !== norm(legacy.body);
+  // The server marks its own code default; older servers send the flag too.
+  if (cached.custom === false) return false;
+  const k = key as CycleReminderTemplateKey;
+  if (sameCopy(cached, LEGACY_SERVER_CYCLE_COPY[k])) return false;
+  if (sameCopy(cached, CYCLE_REMINDER_COPY_KA[k])) return false;
+  return true;
 }
 
 /**
@@ -172,7 +184,7 @@ export function isCustomisedCycleTemplate(
  */
 export function pickCycleReminderCopy(
   key: string,
-  opts: { en: boolean; cautious?: boolean; cached?: { title?: string | null; body?: string | null } | null },
+  opts: { en: boolean; cautious?: boolean; cached?: CachedTemplate | null },
 ): { title: string; body: string } {
   const table = opts.en ? CYCLE_REMINDER_COPY_EN : CYCLE_REMINDER_COPY_KA;
   const own = table[key as CycleReminderTemplateKey] ?? table['cycle-masked'];

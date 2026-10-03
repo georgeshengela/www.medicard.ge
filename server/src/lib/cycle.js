@@ -814,8 +814,9 @@ export function buildLocalInsights({ profile, logs, predictions, pregnancy, aver
     body:
       phase.day != null
         ? en
-          ? `Today is day ${phase.day} of your cycle. Likely phase: ${phase.phaseKa}. This is a calendar estimate, not a hormone measurement.`
-          : `დღეს ციკლის ${phase.day}-ე დღეა. სავარაუდო ფაზა: ${phase.phaseKa}. ეს კალენდარული შეფასებაა, არა ჰორმონის გაზომვა.`
+          ? // No "Today is day N" opener: the ring, strip and tips header already show the cycle day.
+            `Likely phase: ${phase.phaseKa}. This is a calendar estimate, not a hormone measurement.`
+          : `სავარაუდო ფაზა: ${phase.phaseKa}. ეს კალენდარული შეფასებაა, არა ჰორმონის გაზომვა.`
         : en
           ? 'Mark when your last period started for more accurate estimates.'
           : 'მონიშნე ბოლო მენსტრუაციის დასაწყისი უფრო ზუსტი პროგნოზებისთვის.',
@@ -826,7 +827,7 @@ export function buildLocalInsights({ profile, logs, predictions, pregnancy, aver
     cards.push({
       id: 'cramps_care',
       tone: 'care',
-      title: en ? 'Easing cramps' : 'კრუნჩხვების შემსუბუქება',
+      title: en ? 'Easing cramps' : 'სპაზმების შემსუბუქება',
       body: en
         ? 'Warmth on your belly, gentle stretching and staying hydrated often help. If the pain is severe, see a doctor.'
         : 'სითბო მუცელზე, მსუბუქი გაჭიმვა და ჰიდრატაცია ხშირად ეხმარება. ძლიერი ტკივილისას მიმართე ექიმს.',
@@ -1121,7 +1122,7 @@ export function buildCycleAlerts({ profile, logs, predictions, inferred, today, 
       level: 'urgent',
       messageKa: en
         ? 'You have logged heavy flow for 8 or more days. Please see a gynecologist.'
-        : '8+ დღეა ძლიერი გამონადენი აღრიცხულია — მიმართე გინეკოლოგს.',
+        : '8+ დღეა ძლიერი სისხლდენა აღრიცხულია — მიმართე გინეკოლოგს.',
       action: 'chat',
     });
   }

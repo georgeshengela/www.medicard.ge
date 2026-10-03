@@ -21,12 +21,14 @@ export const PUSH_TEMPLATE_DEFAULTS = [
     placeholders: ['name'],
     sample: { name: 'ასპირინი' },
   },
+  // Period family = the default-on reminders: lock-screen safe (never fertile / ovulation / sex /
+  // libido / discharge). Texts mirror mobile/src/lib/cycleReminderCopy.ts (test keeps them equal).
   {
     key: 'cycle-period-soon',
     group: 'cycle',
     label: '🩸 მენსტრუაციის მოახლოება',
-    title: 'სავარაუდო მენსტრუაცია ახლოვდება 🌸',
-    body: 'შენი ციკლის მიხედვით, მენსტრუაცია დაახლოებით {days} დღეშია მოსალოდნელი. ეს შეფასებაა — Medi მხოლოდ შეგახსენებს 💗',
+    title: 'მენსტრუაცია სავარაუდოდ {days} დღეში 🌸',
+    body: 'შენი ბოლო ციკლების მიხედვით. ეს შეფასებაა — Medi მხოლოდ შეგახსენებს 💗',
     placeholders: ['days'],
     sample: { days: '2' },
   },
@@ -34,8 +36,17 @@ export const PUSH_TEMPLATE_DEFAULTS = [
     key: 'cycle-period-start',
     group: 'cycle',
     label: '🌷 მენსტრუაციის სავარაუდო დაწყება',
-    title: 'დღეს შეიძლება დაიწყოს 🌷',
-    body: 'Medi-ს გამოთვლებით, მენსტრუაცია სავარაუდოდ დღეს დაიწყება. თუ სხვაგვარად იქნება, არაფერი — ციკლი ყოველთვის ზუსტად კალენდარს არ მიჰყვება 🤍',
+    title: 'მენსტრუაცია სავარაუდოდ დღეს 🌷',
+    body: 'თუ დღეს არ დაიწყო, არაფერი — ციკლი ყოველთვის ზუსტად კალენდარს არ მიჰყვება 🤍',
+    placeholders: [],
+    sample: {},
+  },
+  {
+    key: 'cycle-period-late',
+    group: 'cycle',
+    label: '🤍 სავარაუდო თარიღი გავიდა',
+    title: 'სავარაუდო თარიღი გავიდა — ყველაფერი რიგზეა? 🤍',
+    body: 'მენსტრუაცია ჯერ არ აღნიშნულა. თუ დაიწყო, მონიშნე ერთი შეხებით — თუ არა, ეს ციკლი შეიძლება უბრალოდ გრძელი იყოს 🤍',
     placeholders: [],
     sample: {},
   },
@@ -218,12 +229,16 @@ export const PUSH_TEMPLATE_EN = {
     body: 'It might be time to check your {name} supply. Take a look so you have it when you need it 💚',
   },
   'cycle-period-soon': {
-    title: 'Your estimated period is coming up 🌸',
-    body: 'Based on your cycle, your period is expected in about {days} days. This is an estimate — Medi is just reminding you 💗',
+    title: 'Period estimated in {days} 🌸',
+    body: 'Based on your recent cycles. This is an estimate — Medi is just reminding you 💗',
   },
   'cycle-period-start': {
-    title: 'It may start today 🌷',
-    body: "By Medi's estimate, your period may start today. If it doesn't, that's okay — cycles don't always follow the calendar exactly 🤍",
+    title: 'Period estimated today 🌷',
+    body: 'If it doesn’t start today, that’s okay — cycles don’t always follow the calendar exactly 🤍',
+  },
+  'cycle-period-late': {
+    title: 'The estimated date has passed — everything okay? 🤍',
+    body: 'No period logged yet. If it started, log it with one tap — if not, this cycle may simply be longer.',
   },
   'cycle-ovulation': {
     title: 'Estimated ovulation is coming up ✨',

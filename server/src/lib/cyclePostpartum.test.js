@@ -327,7 +327,7 @@ describe('Read model / fire walls', () => {
     assert.equal(prompt.includes('3 კვირა'), false);
     assert.equal(prompt.includes('fatigue'), false);
     assert.equal(prompt.includes('სევდიანი'), false);
-    assert.equal(prompt.includes('კრუნჩხვები'), false);
+    assert.equal(prompt.includes('სპაზმები'), false);
     assert.equal(prompt.includes('2026-09-29'), false);
     assert.equal(prompt.includes('2026-09-15'), false);
     assert.equal(prompt.includes('2026-09-10'), false);

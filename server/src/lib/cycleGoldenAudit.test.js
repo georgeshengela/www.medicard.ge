@@ -466,7 +466,7 @@ describe('golden — AI prompt current minimization', () => {
       today: '2025-03-02',
     });
     assert.equal(prompt.includes('unprotected'), false);
-    assert.match(prompt, /cramps|კრუნჩხვები/);
+    assert.match(prompt, /cramps|სპაზმები/);
     assert.equal(prompt.includes('secret journal'), false);
     assert.equal(prompt.includes('libido'), false);
     assert.equal(prompt.includes('sexualActivity'), false);

@@ -11,6 +11,8 @@ export type PushTemplate = {
   title: string;
   body: string;
   placeholders: string[];
+  /** False when the server sends its own code default (no admin edit). */
+  custom?: boolean;
 };
 
 const FALLBACKS_KA: Record<string, { title: string; body: string }> = {

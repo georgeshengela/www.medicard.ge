@@ -28,14 +28,14 @@ const FLOWS = [
   { id: 'medium', label: t('ზომიერი', 'Medium') }, { id: 'heavy', label: t('ძლიერი', 'Heavy') },
 ];
 const SYMPTOMS = [
-  ['cramps', t('კრუნჩხვები', 'Cramps')], ['headache', t('თავის ტკივილი', 'Headache')], ['bloating', t('შებერილობა', 'Bloating')], ['fatigue', t('დაღლილობა', 'Fatigue')],
+  ['cramps', t('სპაზმები', 'Cramps')], ['headache', t('თავის ტკივილი', 'Headache')], ['bloating', t('შებერილობა', 'Bloating')], ['fatigue', t('დაღლილობა', 'Fatigue')],
   ['back_pain', t('წელის ტკივილი', 'Lower back pain')], ['breast_tenderness', t('მკერდის მგრძნობელობა', 'Tender breasts')], ['acne', t('აკნე', 'Acne')], ['nausea', t('გულისრევა', 'Nausea')],
   ['cravings', t('საკვების ლტოლვა', 'Cravings')], ['insomnia', t('უძილობა', 'Insomnia')], ['migraine', t('მიგრენი', 'Migraine')], ['dizziness', t('თავბრუსხვევა', 'Dizziness')],
   ['pelvic_pain', t('მენჯის ტკივილი', 'Pelvic pain')], ['ovulation_pain', t('ოვულაციის ტკივილი', 'Ovulation pain')],
   ['breast_swelling', t('მკერდის შეშუპება', 'Breast swelling')], ['vomiting', t('ღებინება', 'Vomiting')], ['heartburn', t('გულძმარვა', 'Heartburn')], ['oversleep', t('ძილიანობა', 'Sleepiness')],
   ['appetite_up', t('მადის მატება', 'More appetite')], ['appetite_down', t('მადის კლება', 'Less appetite')], ['hot_flashes', t('ცხელი ტალღები', 'Hot flashes')], ['night_sweats', t('ღამის ოფლიანობა', 'Night sweats')],
   ['chills', t('შეცივება', 'Chills')], ['sweating', t('ოფლიანობა', 'Sweating')], ['constipation', t('ყაბზობა', 'Constipation')], ['diarrhea', t('დიარეა', 'Diarrhea')], ['gas', t('გაზები', 'Gas')],
-  ['joint_pain', t('სახსრების ტკივილი', 'Joint pain')], ['muscle_pain', t('კუნთების ტკივილი', 'Muscle pain')], ['leg_cramps', t('ფეხის კრუნჩხვები', 'Leg cramps')], ['swelling', t('შეშუპება', 'Swelling')],
+  ['joint_pain', t('სახსრების ტკივილი', 'Joint pain')], ['muscle_pain', t('კუნთების ტკივილი', 'Muscle pain')], ['leg_cramps', t('ფეხის სპაზმები', 'Leg cramps')], ['swelling', t('შეშუპება', 'Swelling')],
   ['water_retention', t('წყლის შეკავება', 'Water retention')], ['dry_skin', t('მშრალი კანი', 'Dry skin')], ['oily_skin', t('ცხიმიანი კანი', 'Oily skin')], ['itchy_skin', t('ქავილი', 'Itchy skin')],
   ['hair_loss', t('თმის ცვენა', 'Hair loss')], ['sensitive_smell', t('სუნის მგრძნობელობა', 'Sensitive to smells')], ['tinnitus', t('ყურებში ხმაური', 'Ringing in ears')], ['palpitations', t('გულისცემა', 'Palpitations')],
   ['short_breath', t('სუნთქვის სიმძიმე', 'Short of breath')], ['frequent_urination', t('ხშირი შარდვა', 'Frequent urination')], ['uti_feel', t('შარდის დისკომფორტი', 'Urinary discomfort')],
@@ -64,7 +64,7 @@ const MUCUS = [
 ];
 const TESTS = [{ id: 'negative', label: t('უარყოფითი', 'Negative') }, { id: 'positive', label: t('დადებითი', 'Positive') }, { id: 'unclear', label: t('გაურკვეველი', 'Unclear') }];
 const PAIN_TYPES = [
-  { id: 'cramps', label: t('კრუნჩხვები', 'Cramps') }, { id: 'pelvic', label: t('მენჯის ტკივილი', 'Pelvic pain') }, { id: 'lower_back', label: t('წელის ტკივილი', 'Lower back pain') },
+  { id: 'cramps', label: t('სპაზმები', 'Cramps') }, { id: 'pelvic', label: t('მენჯის ტკივილი', 'Pelvic pain') }, { id: 'lower_back', label: t('წელის ტკივილი', 'Lower back pain') },
   { id: 'headache', label: t('თავის ტკივილი', 'Headache') }, { id: 'breast', label: t('მკერდის ტკივილი', 'Breast pain') }, { id: 'ovulation_side', label: t('ცალმხრივი ტკივილი', 'One-sided pain') },
   { id: 'other', label: t('სხვა', 'Other') },
 ];
@@ -98,7 +98,7 @@ const LABEL = Object.fromEntries([...FLOWS, ...SYMPTOMS, ...MOODS, ...SEX_ACTIVI
 /** cycleAdvice.ts DAILY_TIPS — soft, non-medical wording; three a day, rotating with the cycle day. */
 const DAILY_TIPS = {
   period: [
-    ['care', t('სითბო ამშვიდებს', 'Warmth soothes'), t('თბილი კომპრესი მუცელზე ან თბილი შხაპი კრუნჩხვისას ბევრს ეხმარება.', 'A warm pad on your belly or a warm shower helps many people with cramps.')],
+    ['care', t('სითბო ამშვიდებს', 'Warmth soothes'), t('თბილი კომპრესი მუცელზე ან თბილი შხაპი სპაზმებისას ბევრს ეხმარება.', 'A warm pad on your belly or a warm shower helps many people with cramps.')],
     ['care', t('რკინით მდიდარი საკვები', 'Iron-rich foods'), t('ლობიო, ისპანახი, წითელი ხორცი ან თხილი რკინის მარაგის შენარჩუნებაში გეხმარება.', 'Beans, spinach, red meat or nuts help keep your iron up.')],
     ['energy', t('მსუბუქი მოძრაობა', 'Gentle movement'), t('ნელი სეირნობა ან გაწელვა ზოგს ტკივილს უმსუბუქებს — მოუსმინე სხეულს.', 'A slow walk or stretching eases pain for some people — listen to your body.')],
     ['calm', t('წყალი და თბილი ჩაი', 'Water and warm tea'), t('საკმარისი სითხე შებერილობას ამცირებს, თბილი ჩაი კი სიმშვიდეს გმატებს.', 'Enough fluids ease bloating, and warm tea adds a little calm.')],
@@ -114,7 +114,7 @@ const DAILY_TIPS = {
   fertile: [
     ['energy', t('აქტიური დღეები', 'Active days'), t('ბევრი ქალი ამ დღეებში ყველაზე ენერგიულად და თავდაჯერებულად გრძნობს თავს.', 'Many women feel their most energetic and confident these days.')],
     ['calm', t('საკმარისი წყალი', 'Enough water'), t('დღეში 6–8 ჭიქა სითხე ენერგიასა და კონცენტრაციას ეხმარება.', '6–8 glasses of fluids a day help your energy and focus.')],
-    ['care', t('სხეულის ნიშნები', 'Body signs'), t('გამონადენის ცვლილებები ამ დღეებში ჩვეულებრივია — შეგიძლია აღრიცხო და პატერნს დაინახავ.', 'Changes in discharge are common these days — log them and you’ll see your pattern.')],
+    ['care', t('სხეულის ნიშნები', 'Body signs'), t('გამონადენის ცვლილებები ამ დღეებში ჩვეულებრივია — შეგიძლია აღრიცხო და შენს რიტმს დაინახავ.', 'Changes in discharge are common these days — log them and you’ll see your pattern.')],
     ['mood', t('სოციალური დღეები', 'Social days'), t('ურთიერთობები ახლა ხშირად უფრო მარტივია — კარგი დროა შეხვედრებისთვის.', 'Connecting with people often feels easier now — a good time to meet up.')],
   ],
   luteal: [
@@ -532,7 +532,7 @@ export default async function cyclePage(root, ctx = {}) {
     } catch (e) { toast(e.message, 'error'); }
   };
   const endPeriod = async () => {
-    const ok = await confirmDialog({ title: t('მენსტრუაციის დასრულება', 'End period'), body: t('დღევანდელი გამონადენი წაიშლება. გამოტოვებული დღეები არ შეივსება.', 'Today’s flow will be removed. Missed days won’t be filled in.'), confirm: t('მენსტრუაციის დასრულება', 'End period') });
+    const ok = await confirmDialog({ title: t('მენსტრუაციის დასრულება', 'End period'), body: t('დღევანდელი სისხლდენა წაიშლება. გამოტოვებული დღეები არ შეივსება.', 'Today’s flow will be removed. Missed days won’t be filled in.'), confirm: t('მენსტრუაციის დასრულება', 'End period') });
     if (!ok) return;
     try { setBundle(await put('/api/cycle/period', { action: 'end', date: derive(state.bundle).today })); } catch (e) { toast(e.message, 'error'); }
   };
@@ -609,7 +609,7 @@ export default async function cyclePage(root, ctx = {}) {
 
   function heroCard(b, v) {
     const actions = [];
-    const logBtn = (primary) => button(v.onPeriod ? t('დღევანდელი გამონადენი', 'Today’s flow') : t('დღის აღრიცხვა', 'Log today'), {
+    const logBtn = (primary) => button(v.onPeriod ? t('დღევანდელი სისხლდენა', 'Today’s flow') : t('დღის აღრიცხვა', 'Log today'), {
       icon: v.onPeriod ? 'droplet' : 'plus', variant: primary ? 'rose' : 'ghost', class: primary ? '' : 'cy-soft-btn', onClick: () => openDayLog(v.today),
     });
     const startBtn = (primary) => {
@@ -871,7 +871,7 @@ function periCard(b) {
 function logFacts(l, { uncertain } = {}) {
   const out = [];
   if (!l) return out;
-  if (isBleed(l.flow)) out.push(h('span', { class: 'cy-fact period' }, icon('droplet', { size: 13 }), `${uncertain ? t('სისხლდენა', 'Bleeding') : t('გამონადენი', 'Flow')}: ${LABEL[l.flow]}`));
+  if (isBleed(l.flow)) out.push(h('span', { class: 'cy-fact period' }, icon('droplet', { size: 13 }), `${uncertain ? t('სისხლდენა', 'Bleeding') : t('სისხლდენა', 'Flow')}: ${LABEL[l.flow]}`));
   else if (l.flow === 'spotting') out.push(h('span', { class: 'cy-fact period' }, t('ლაქები', 'Spotting')));
   const sym = (l.symptoms || []).filter((id) => !SEX_IDS.has(id) && LABEL[id]);
   sym.slice(0, 6).forEach((id) => out.push(h('span', { class: 'cy-fact' }, LABEL[id])));
@@ -1136,7 +1136,7 @@ function openDayModal(b, date, { only, onBundle }) {
     if (only === 'sex') {
       parts.push(sexSection());
     } else {
-      parts.push(sec(v.uncertain || v.caps.postpartum ? t('სისხლდენა', 'Bleeding') : t('გამონადენი', 'Flow'), t('აირჩიე ერთი ვარიანტი', 'Choose one'), single(FLOWS, 'flow')));
+      parts.push(sec(v.uncertain || v.caps.postpartum ? t('სისხლდენა', 'Bleeding') : t('სისხლდენა', 'Flow'), t('აირჩიე ერთი ვარიანტი', 'Choose one'), single(FLOWS, 'flow')));
       parts.push(sexSection());
       parts.push(sec(t('სიმპტომები', 'Symptoms'), t('შეგიძლია რამდენიმე მონიშნო', 'You can pick several'), multi(visibleSymptoms, 'symptoms'),
         h('button', { type: 'button', class: 'link', style: { marginTop: '10px', background: 'none', border: 0, padding: 0, cursor: 'pointer', font: 'inherit', fontSize: '13px' }, onClick: () => { showAllSymptoms = !showAllSymptoms; paint(); } },

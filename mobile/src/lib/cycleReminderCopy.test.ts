@@ -80,6 +80,22 @@ test('Georgian: a template the admin actually wrote is honoured', () => {
   assert.deepEqual(picked, custom);
   // A key without a legacy default (the new late reminder) is customised whenever the admin has one.
   assert.equal(isCustomisedCycleTemplate('cycle-period-late', { title: 'x', body: 'y' }), true);
+  assert.equal(isCustomisedCycleTemplate('cycle-period-late', { title: 'x', body: 'y', custom: true }), true);
+});
+
+test('Georgian: the server default (new texts or custom:false) keeps the app copy and its cautious body', () => {
+  const own = CYCLE_REMINDER_COPY_KA['cycle-period-soon'];
+  assert.equal(isCustomisedCycleTemplate('cycle-period-soon', { title: own.title, body: own.body }), false);
+  assert.equal(isCustomisedCycleTemplate('cycle-period-soon', { title: 'x', body: 'y', custom: false }), false);
+  const cautious = pickCycleReminderCopy('cycle-period-soon', {
+    en: false,
+    cautious: true,
+    cached: { title: own.title, body: own.body, custom: false },
+  });
+  assert.equal(cautious.body, own.bodyCautious);
+  // An old-text row the admin once saved (custom: true) is still not treated as written by the admin.
+  const legacy = LEGACY_SERVER_CYCLE_COPY['cycle-period-soon']!;
+  assert.equal(isCustomisedCycleTemplate('cycle-period-soon', { ...legacy, custom: true }), false);
 });
 
 test('cautious forecasts pick the cautious body where one exists', () => {

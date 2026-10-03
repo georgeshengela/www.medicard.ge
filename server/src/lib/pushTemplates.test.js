@@ -12,7 +12,17 @@ import {
   validateFertilityPushCopy,
   validatePushTemplatePlaceholders,
 } from './pushTemplates.js';
-import { maskedCopyIsSafe, redactCyclePushLog } from '../../../mobile/src/lib/cycleNotificationContract.js';
+import {
+  CYCLE_TEMPLATE_BY_TYPE,
+  maskedCopyIsSafe,
+  redactCyclePushLog,
+} from '../../../mobile/src/lib/cycleNotificationContract.js';
+import {
+  CYCLE_REMINDER_COPY_EN,
+  CYCLE_REMINDER_COPY_KA,
+  isCustomisedCycleTemplate,
+} from '../../../mobile/src/lib/cycleReminderCopy.ts';
+import { CYCLE_DEFAULT_ON_TYPES } from '../../../mobile/src/lib/cycleReminderDefaults.ts';
 
 const FORBIDDEN_MASK = ['მენსტრუაცია', 'ოვულაცია', 'PMS', 'ორსულობა', 'მედიკამენტ'];
 
@@ -219,5 +229,44 @@ describe('push templates in English', () => {
     const masked = PUSH_TEMPLATE_EN['cycle-masked'];
     assert.equal(/period|ovulat|fertile|PMS|pregnan|medic/i.test(`${masked.title} ${masked.body}`), false);
     assert.equal(maskedCopyIsSafe(masked.title, masked.body), true);
+  });
+});
+
+describe('cycle period reminders (default-on family)', () => {
+  const PERIOD_KEYS = ['cycle-period-soon', 'cycle-period-start', 'cycle-period-late'];
+  const SENSITIVE_KA = ['ნაყოფიერ', 'ოვულაც', 'სექს', 'ლიბიდო', 'გამონადენ'];
+  const SENSITIVE_EN = ['fertil', 'ovulat', 'sex', 'libido', 'discharge'];
+
+  it('ships cycle-period-late in the cycle group, ka + en', () => {
+    const late = templateByKey(PUSH_TEMPLATE_DEFAULTS, 'cycle-period-late');
+    assert.ok(late);
+    assert.equal(late.group, 'cycle');
+    assert.equal(late.title.startsWith('სავარაუდო თარიღი გავიდა — ყველაფერი რიგზეა?'), true);
+    assert.ok(PUSH_TEMPLATE_EN['cycle-period-late']);
+  });
+
+  it('mirrors the app lock-screen copy exactly (ka + en)', () => {
+    for (const key of PERIOD_KEYS) {
+      const def = templateByKey(PUSH_TEMPLATE_DEFAULTS, key);
+      assert.equal(def.title, CYCLE_REMINDER_COPY_KA[key].title, `ka title ${key}`);
+      assert.equal(def.body, CYCLE_REMINDER_COPY_KA[key].body, `ka body ${key}`);
+      assert.equal(PUSH_TEMPLATE_EN[key].title, CYCLE_REMINDER_COPY_EN[key].title, `en title ${key}`);
+      assert.equal(PUSH_TEMPLATE_EN[key].body, CYCLE_REMINDER_COPY_EN[key].body, `en body ${key}`);
+      // The app reads an untouched server default as "not customised", so its cautious body still wins.
+      assert.equal(isCustomisedCycleTemplate(key, { title: def.title, body: def.body }), false, key);
+    }
+  });
+
+  it('default-on templates never mention fertile / ovulation / sex / libido / discharge', () => {
+    const defaultOnKeys = CYCLE_DEFAULT_ON_TYPES.map((type) => CYCLE_TEMPLATE_BY_TYPE[type]);
+    assert.deepEqual([...defaultOnKeys].sort(), [...PERIOD_KEYS].sort());
+    for (const key of defaultOnKeys) {
+      const def = templateByKey(PUSH_TEMPLATE_DEFAULTS, key);
+      const ka = `${def.label} ${def.title} ${def.body}`;
+      const en = `${PUSH_TEMPLATE_EN[key].title} ${PUSH_TEMPLATE_EN[key].body}`.toLowerCase();
+      for (const word of SENSITIVE_KA) assert.equal(ka.includes(word), false, `${key} ka ${word}`);
+      for (const word of SENSITIVE_EN) assert.equal(en.includes(word), false, `${key} en ${word}`);
+      assert.match(`${def.title} ${def.body}`, /სავარაუდო/);
+    }
   });
 });

@@ -53,7 +53,7 @@ const SYMPTOM_SET = new Set(CYCLE_AI_SYMPTOM_ALLOWLIST);
 const MOOD_SET = new Set(CYCLE_AI_MOOD_ALLOWLIST);
 
 const SYMPTOM_KA = {
-  cramps: 'კრუნჩხვები',
+  cramps: 'სპაზმები',
   headache: 'თავის ტკივილი',
   bloating: 'შებერილობა',
   acne: 'აკნე',
