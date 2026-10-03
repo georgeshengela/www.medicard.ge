@@ -33,7 +33,8 @@ describe('cycleInsightsMountGate', () => {
 });
 
 describe('CycleInsights.tsx mounts without asking for consent', () => {
-  const src = readFileSync(new URL('../components/cycle/CycleInsights.tsx', import.meta.url), 'utf8');
+  // Windows checkouts may carry CRLF; the slices below match LF source.
+  const src = readFileSync(new URL('../components/cycle/CycleInsights.tsx', import.meta.url), 'utf8').replace(/\r\n/g, '\n');
   const effect = src.slice(src.indexOf('useEffect(() => {\n    if (offline) {'), src.indexOf('// eslint-disable-next-line react-hooks/exhaustive-deps -- mount once'));
 
   it('the mount effect reads consent quietly and loads only when the gate is on', () => {
