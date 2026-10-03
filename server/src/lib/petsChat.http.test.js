@@ -37,7 +37,7 @@ async function json(res) {
   }
 }
 
-describe('pets Medi Vet HTTP isolation', { timeout: 90_000 }, () => {
+describe('pets MEDIVET HTTP isolation', { timeout: 90_000 }, () => {
   it('isolates sessions across accounts and pets and ignores client history', async (t) => {
     if (skipUnlessIsolatedPetsDb(t)) return;
 

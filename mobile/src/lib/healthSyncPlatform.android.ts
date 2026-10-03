@@ -446,7 +446,7 @@ export async function deleteMealNative(mealId: string): Promise<void> {
   await HC.deleteRecordsByUuids('Nutrition', [], [clientId(mealId)]);
 }
 
-// ——— MEDI COACH: workouts (read-only summary) ———
+// ——— MEDICOACH: workouts (read-only summary) ———
 
 export type NativeWorkout = {
   externalId: string;

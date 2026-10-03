@@ -1,4 +1,5 @@
 import { CyclePressable as Pressable } from '@/components/cycle/CyclePressable';
+import { ModuleWordmark } from '@/components/brand/ModuleWordmark';
 import React from 'react';
 import { Text, View } from 'react-native';
 import * as Haptics from 'expo-haptics';
@@ -68,13 +69,7 @@ export function CycleHomeHeader({
           <ChevronLeft size={21} color={c.ink} strokeWidth={2.1} />
         </IconBtn>
         <View style={{ flex: 1, minWidth: 0 }}>
-          <Text
-            accessibilityRole="header"
-            numberOfLines={1}
-            style={{ color: c.ink, fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 20, lineHeight: 27, letterSpacing: -0.3 }}
-          >
-            {ka.cycle.title}
-          </Text>
+          <ModuleWordmark module="cycle" color={c.ink} />
           <Text
             numberOfLines={1}
             accessibilityLabel={subtitle ? `${monthLabel}. ${subtitle}` : monthLabel}

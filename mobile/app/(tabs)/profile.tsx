@@ -233,7 +233,7 @@ export default function Profile() {
       {/* Quest — each module block disappears while an admin has it paused (admin „მოდულები“) */}
       {isFeatureOn('quest', features) ? (
         <View style={s.section}>
-          <HomeSectionHeading title="MEDI QUEST" />
+          <HomeSectionHeading title="MEDIQUEST" brand="quest" />
           <HomeMediQuestSection edgeInset={0} hideTitle />
         </View>
       ) : null}
@@ -246,7 +246,7 @@ export default function Profile() {
         </View>
       ) : null}
 
-      {/* MEDI COACH: trainer link, progress photos, trainer registration */}
+      {/* MEDICOACH: trainer link, progress photos, trainer registration */}
       {isFeatureOn('coach', features) ? (
         <View style={{ paddingHorizontal: HUB.gutter }}>
           <ProfileCoachSection />

@@ -1,13 +1,16 @@
 import React from 'react';
-import { Text, type StyleProp, type TextStyle } from 'react-native';
+import { Text, View, type StyleProp, type TextStyle } from 'react-native';
 import { useThemeColors } from '@/theme/colors';
+import { ModuleWordmark } from '@/components/brand/ModuleWordmark';
+import type { ModuleBrandId } from '@/theme/moduleBrand';
 
 /**
  * Home hub section label. Always **outside** the card: title, then content.
  * Same type as შემდეგი მიღება / წონის კონტროლი / აქტიურობა.
  */
-export function HomeSectionTitle({ title, style }: { title: string; style?: StyleProp<TextStyle> }) {
+export function HomeSectionTitle({ title, brand, style }: { title: string; brand?: ModuleBrandId; style?: StyleProp<TextStyle> }) {
   const colors = useThemeColors();
+  if (brand) return <View style={{ marginBottom: 8 }}><ModuleWordmark module={brand} size={16} /></View>;
   return (
     <Text
       style={[

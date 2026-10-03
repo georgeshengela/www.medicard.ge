@@ -65,10 +65,10 @@ export function featureOnIn(state: FeatureState, key: string): boolean {
 
 /**
  * Which switch owns a route (expo-router segments). The most specific rule wins
- * (pets/[id]/chat → Medi Vet, health-metrics/steps → steps). Groups such as `(tabs)` are not part
+ * (pets/[id]/chat → MEDIVET, health-metrics/steps → steps). Groups such as `(tabs)` are not part
  * of the URL and are skipped. The gate is the safety net for deep links, notification taps and
  * anything that still links to a paused module. The server reports a child as off whenever its
- * parent is off (Medi → symptoms, pets → Medi Vet), so one key per route is enough.
+ * parent is off (Medi → symptoms, pets → MEDIVET), so one key per route is enough.
  */
 export function featureForPath(segments: readonly string[]): FeatureKey | null {
   const [first, second, third] = segments.filter((s) => s && !s.startsWith('('));

@@ -470,7 +470,7 @@ export async function writeMealNative(meal: HealthMeal): Promise<void> {
   }
 }
 
-// ——— MEDI COACH: workouts (read-only summary) ———
+// ——— MEDICOACH: workouts (read-only summary) ———
 
 export type NativeWorkout = {
   externalId: string;

@@ -1,5 +1,5 @@
 /**
- * MEDI COACH (2026-09-28) — shared types and pure helpers for the client screens (`/trainer/*`)
+ * MEDICOACH (2026-09-28) — shared types and pure helpers for the client screens (`/trainer/*`)
  * and the trainer workspace (`/coach/*`). Server: /api/trainer, docs/TRAINER.md.
  */
 

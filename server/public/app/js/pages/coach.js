@@ -1,4 +1,4 @@
-// MEDICARD web — MEDI COACH trainer workspace (/coach, /coach/:section, /coach/:section/:id).
+// MEDICARD web — MEDICOACH trainer workspace (/coach, /coach/:section, /coach/:section/:id).
 // Mirrors mobile/app/coach/** (index, clients, client/[id], calendar, session-new, session/[id], plan/[clientId],
 // goal/[clientId], profile, scan) and server/src/routes/trainer.routes.js (`coach` router) +
 // lib/trainerStore.js. Only VERIFIED trainers get the workspace (requireVerifiedTrainer); a trainer sees a
@@ -243,7 +243,7 @@ function renderGate(env, me) {
   const root = env.root;
   if (!p) {
     mount(root, h('div', { class: 'co' },
-      pageHead(t('ტრენერის სივრცე', 'Trainer workspace'), t('MEDI COACH — ვერიფიცირებული ფიტნეს ტრენერებისთვის', 'MEDI COACH — for verified fitness trainers')),
+      pageHead(t('ტრენერის სივრცე', 'Trainer workspace'), t('MEDICOACH — ვერიფიცირებული ფიტნეს ტრენერებისთვის', 'MEDICOACH — for verified fitness trainers')),
       card({ class: 'pad-lg co-gate' },
         tile('dumbbell', 'teal', 52),
         h('h2', null, t('ტრენერის პროფილი არ გაქვს', 'You don’t have a trainer profile')),

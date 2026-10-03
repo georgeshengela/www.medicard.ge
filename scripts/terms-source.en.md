@@ -21,7 +21,7 @@ If you do not agree to them, you should not use MEDICARD.
 
 MEDICARD's features may include:
 
-* **Medi Vet** — a text-based AI assistant for pets (not a veterinary diagnosis);
+* **MEDIVET** — a text-based AI assistant for pets (not a veterinary diagnosis);
 * managing your health history;
 * storing and organizing medical test results;
 * informational explanations of test results;
@@ -358,9 +358,9 @@ By uploading information to MEDICARD, you grant us only the rights that are nece
 
 **Your health information remains your information.**
 
-## MEDI COACH — trainers and clients
+## MEDICOACH — trainers and clients
 
-In MEDI COACH, trainers are independent professionals and not employees or representatives of MEDICARD. MEDICARD verifies a trainer's profile and certificates, but does not guarantee the quality of the service and is not a party to any arrangement between the trainer and the client, including about payment. A trainer's advice, workout or meal plan is not medical advice; if you have a health problem, agree the plan with a doctor.
+In MEDICOACH, trainers are independent professionals and not employees or representatives of MEDICARD. MEDICARD verifies a trainer's profile and certificates, but does not guarantee the quality of the service and is not a party to any arrangement between the trainer and the client, including about payment. A trainer's advice, workout or meal plan is not medical advice; if you have a health problem, agree the plan with a doctor.
 
 The following are prohibited between a trainer and a client: insults, harassment, discrimination, sexual or inappropriate content, spam and advertising, a fake profile or certificate, dangerous advice, spreading another person's data and using shared health data for any purpose other than training. The trainer must protect the information shared by the client and must not pass it to third parties.
 

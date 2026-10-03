@@ -1,16 +1,13 @@
 import React,{useEffect,useRef} from 'react';
-import {Animated,Text,View} from 'react-native';
+import {Animated,View} from 'react-native';
 import Svg,{Circle,G,Path,Rect} from 'react-native-svg';
 import {useThemeColors} from '@/theme/colors';
 import {usePrefersReducedMotion} from '@/hooks/usePrefersReducedMotion';
-import {BOLD} from './PulseUi';
+import {ModuleWordmark} from '@/components/brand/ModuleWordmark';
 
+/** MEDIRUN wordmark — the shared MEDI module wordmark (theme/moduleBrand.ts). */
 export function MediRunLogo({size=25,color}:{size?:number;color?:string}){
- const c=useThemeColors();
- return <View accessible accessibilityLabel="MEDIRUN" style={{flexDirection:'row',alignItems:'center',paddingRight:4}}>
-  <Text style={{fontFamily:BOLD,fontSize:size,lineHeight:size*1.3,letterSpacing:-1.1,color:color||c.text100}}>MEDI</Text>
-  <Text style={{fontFamily:BOLD,fontSize:size,lineHeight:size*1.3,letterSpacing:-1.1,color:'#14B8A6',transform:[{skewX:'-10deg'}],marginLeft:1}}>RUN</Text>
- </View>;
+ return <ModuleWordmark module="run" size={size} color={color}/>;
 }
 
 /** Editorial city illustration, unrelated to live gift locations. `spotlight` sits on the dark hero card. */

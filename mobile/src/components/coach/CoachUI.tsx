@@ -14,11 +14,13 @@ import { dayStatusColor, type DayStatus } from '@/lib/coach';
 import { HUB, hubInk, hubText, hubTint, type HubInk } from '@/theme/hub';
 import { useIsDark, useThemeColors } from '@/theme/colors';
 import { tx } from '@/i18n/locale';
+import { ModuleWordmark } from '@/components/brand/ModuleWordmark';
+import type { ModuleBrandId } from '@/theme/moduleBrand';
 
 /** Filled CTA colour on dark (AGENTS.md: FIGMA_AUTH_DARK.primaryBg). */
 export const CTA = '#0D9488';
 
-export function CoachHeader({ title, subtitle, right, onBack, fallback = '/(tabs)/profile' }: { title: string; subtitle?: string; right?: React.ReactNode; onBack?: () => void; fallback?: string }) {
+export function CoachHeader({ title, brand, subtitle, right, onBack, fallback = '/(tabs)/profile' }: { title: string; brand?: ModuleBrandId; subtitle?: string; right?: React.ReactNode; onBack?: () => void; fallback?: string }) {
   const c = useThemeColors();
   const insets = useSafeAreaInsets();
   const router = useRouter();
@@ -34,7 +36,7 @@ export function CoachHeader({ title, subtitle, right, onBack, fallback = '/(tabs
           <ArrowLeft size={20} color={c.text100} strokeWidth={2.2} />
         </Pressable>
         <View style={{ flex: 1, minWidth: 0 }}>
-          <Text numberOfLines={1} accessibilityRole="header" style={[s.headerTitle, { color: c.text100 }]}>{title}</Text>
+          {brand ? <ModuleWordmark module={brand} /> : <Text numberOfLines={1} accessibilityRole="header" style={[s.headerTitle, { color: c.text100 }]}>{title}</Text>}
           {subtitle ? <Text numberOfLines={1} style={[hubText.caption, { color: c.text300 }]}>{subtitle}</Text> : null}
         </View>
         {right ?? <View style={{ width: 40 }} />}

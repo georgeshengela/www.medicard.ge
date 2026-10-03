@@ -14,7 +14,7 @@ export const PRIVACY_POLICY_KA: { title: string; effectiveDate: string; intro: s
   "sections": [
     {
       "title": "English summary (App Review)",
-      "intro": "MEDICARD is a free consumer health app. There are no paid digital subscriptions, unlocks or in-app purchases for app features. Before any personal data is sent to a third-party AI service, the app asks on a dedicated AI & Privacy screen. That screen names what may be sent and who receives it: OpenRouter, Inc.; Google Cloud Vertex AI; Novita AI; Microsoft Azure, including Azure Speech; and EvidenceMD Inc. The user must tap Allow AI Processing. Not Now, closing, registration, or accepting this policy does not authorize AI sharing. The choice is stored on the account. It is not asked again on later AI requests unless the user withdraws it in Profile → Privacy & Data, or the consent version changes. MEDI COACH (optional): a user may connect to an admin-verified fitness trainer. The trainer always sees the user's name, photo, age, sex, height and their shared session schedule; activity and workouts (including data read from Apple Health / Health Connect), nutrition, weight and progress photos are shared only if the user switches each category on, can be changed or stopped at any time, and stop the moment the connection ends. Health data is never used for advertising or sold. Details below are the full Georgian policy."
+      "intro": "MEDICARD is a free consumer health app. There are no paid digital subscriptions, unlocks or in-app purchases for app features. Before any personal data is sent to a third-party AI service, the app asks on a dedicated AI & Privacy screen. That screen names what may be sent and who receives it: OpenRouter, Inc.; Google Cloud Vertex AI; Novita AI; Microsoft Azure, including Azure Speech; and EvidenceMD Inc. The user must tap Allow AI Processing. Not Now, closing, registration, or accepting this policy does not authorize AI sharing. The choice is stored on the account. It is not asked again on later AI requests unless the user withdraws it in Profile → Privacy & Data, or the consent version changes. MEDICOACH (optional): a user may connect to an admin-verified fitness trainer. The trainer always sees the user's name, photo, age, sex, height and their shared session schedule; activity and workouts (including data read from Apple Health / Health Connect), nutrition, weight and progress photos are shared only if the user switches each category on, can be changed or stopped at any time, and stop the moment the connection ends. Health data is never used for advertising or sold. Details below are the full Georgian policy."
     },
     {
       "title": "1. ოპერატორი და კონტაქტი",
@@ -53,14 +53,14 @@ export const PRIVACY_POLICY_KA: { title: string; effectiveDate: string; intro: s
       "title": "5. AI-სთვის გასაზიარებელი მონაცემები და მიზანი",
       "intro": "AI გამოიყენება მოთხოვნის პასუხის, ჯანმრთელობის ინფორმაციის განმარტების, სიმპტომების შეფასებისა და მოვლის რჩევების მოსამზადებლად. გაგზავნამდე აპი აჩვენებს კატეგორიებს, მიმღებებს და თანხმობისა თუ უარის არჩევანს.",
       "paragraphs": [
-        "სიმპტომების შემოწმებაში ჯანმრთელობის პროფილის დამატება ცალკე არჩევანია. ადამიანის ჯანმრთელობის პროფილი Medi Vet-ის მოთხოვნაში არ შედის. მომხმარებლის სახელი ანგარიშის კონტექსტიდან AI-სთვის ავტომატურად არ ემატება, თუმცა შენ მიერ დაწერილი ან დოკუმენტში არსებული სახელი შეიძლება თავად მოთხოვნის ნაწილი იყოს. ატვირთვამდე შეგიძლია დაფარო არასაჭირო საიდენტიფიკაციო მონაცემები."
+        "სიმპტომების შემოწმებაში ჯანმრთელობის პროფილის დამატება ცალკე არჩევანია. ადამიანის ჯანმრთელობის პროფილი MEDIVET-ის მოთხოვნაში არ შედის. მომხმარებლის სახელი ანგარიშის კონტექსტიდან AI-სთვის ავტომატურად არ ემატება, თუმცა შენ მიერ დაწერილი ან დოკუმენტში არსებული სახელი შეიძლება თავად მოთხოვნის ნაწილი იყოს. ატვირთვამდე შეგიძლია დაფარო არასაჭირო საიდენტიფიკაციო მონაცემები."
       ],
       "bullets": [
         "შენი შეტყობინება, საუბრის შესაბამისი ისტორია და აღწერილი სიმპტომები;",
         "ასაკი და სქესი; შესაბამის ფუნქციაში ჯანმრთელობის პროფილი, დაავადებები, ალერგიები, მედიკამენტები, ოჯახური ისტორია, მიზნები და ბოლო მაჩვენებლები;",
         "ანალიზისთვის არჩეული სურათები, დოკუმენტები ან მათგან ამოღებული ტექსტი;",
         "ციკლის AI რჩევისთვის შესაბამისი ციკლის კონტექსტი;",
-        "Medi Vet-ისთვის ცხოველის პროფილი, მოვლის ინფორმაცია და საუბარი;",
+        "MEDIVET-ისთვის ცხოველის პროფილი, მოვლის ინფორმაცია და საუბარი;",
         "ხმოვანი Medi-სთვის ღილაკით ჩაწერილი ხმა — OpenRouter-ის გავლით Google Vertex AI-ს ტექსტად გარდაქმნისთვის; ხმოვანი პასუხისას პასუხის ტექსტი — Microsoft Azure Speech-ს რეალურ დროში გასახმოვანებლად."
       ]
     },
@@ -77,7 +77,7 @@ export const PRIVACY_POLICY_KA: { title: string; effectiveDate: string; intro: s
         "Google — Google Cloud Vertex AI — Gemini პასუხების დამუშავება; პოლიტიკა: https://cloud.google.com/terms/cloud-privacy-notice",
         "Novita AI — Ling მოდელის პასუხების დამუშავება; პოლიტიკა: https://novita.ai/legal/privacy-policy",
         "Microsoft — Azure — დამხმარე AI მოთხოვნები და Azure Speech-ის რეალურ დროში ტექსტის ხმად გარდაქმნა; პოლიტიკა: https://privacy.microsoft.com/privacystatement",
-        "EvidenceMD Inc. — შერჩეული კლინიკური AI ან სხვა მოდელის წარუმატებლობისას ალტერნატიული პასუხი; Medi Vet-ში არ გამოიყენება; პოლიტიკა: https://evidencemd.ai/privacy-policy"
+        "EvidenceMD Inc. — შერჩეული კლინიკური AI ან სხვა მოდელის წარუმატებლობისას ალტერნატიული პასუხი; MEDIVET-ში არ გამოიყენება; პოლიტიკა: https://evidencemd.ai/privacy-policy"
       ]
     },
     {
@@ -124,7 +124,7 @@ export const PRIVACY_POLICY_KA: { title: string; effectiveDate: string; intro: s
     },
     {
       "title": "12. სამედიცინო ინფორმაცია და პოლიტიკის ცვლილება",
-      "intro": "MEDICARD და Medi Vet არ ანაცვლებს ექიმის ან ვეტერინარის შეფასებას. AI-ს პასუხი შეიძლება მცდარი ან არასრული იყოს. გადაუდებელი მდგომარეობისას დაუკავშირდი ადგილობრივ გადაუდებელ დახმარებას.",
+      "intro": "MEDICARD და MEDIVET არ ანაცვლებს ექიმის ან ვეტერინარის შეფასებას. AI-ს პასუხი შეიძლება მცდარი ან არასრული იყოს. გადაუდებელი მდგომარეობისას დაუკავშირდი ადგილობრივ გადაუდებელ დახმარებას.",
       "paragraphs": [
         "პოლიტიკის ახალი ვერსია ქვეყნდება აპსა და ვებგვერდზე. AI გაზიარების არსებითი ცვლილება ცალკე განახლებულ თანხმობას მოითხოვს."
       ]
@@ -139,8 +139,8 @@ export const PRIVACY_POLICY_KA: { title: string; effectiveDate: string; intro: s
       ]
     },
     {
-      "title": "14. MEDI COACH — ტრენერთან გაზიარება",
-      "intro": "MEDI COACH ნებაყოფლობითი ფუნქციაა. შეგიძლია დაუკავშირდე ფიტნეს-ტრენერს, რომლის პროფილსა და სერტიფიკატებს MEDICARD ამოწმებს. ტრენერები დამოუკიდებელი პროფესიონალები არიან და არა MEDICARD-ის თანამშრომლები. კავშირი იქმნება მხოლოდ შენი მოქმედებით — ტრენერის კოდით, ძიებიდან მოთხოვნით ან ტრენერის მოწვევის მიღებით — და მანამდე ტრენერი შენს მონაცემებს ვერ ხედავს.",
+      "title": "14. MEDICOACH — ტრენერთან გაზიარება",
+      "intro": "MEDICOACH ნებაყოფლობითი ფუნქციაა. შეგიძლია დაუკავშირდე ფიტნეს-ტრენერს, რომლის პროფილსა და სერტიფიკატებს MEDICARD ამოწმებს. ტრენერები დამოუკიდებელი პროფესიონალები არიან და არა MEDICARD-ის თანამშრომლები. კავშირი იქმნება მხოლოდ შენი მოქმედებით — ტრენერის კოდით, ძიებიდან მოთხოვნით ან ტრენერის მოწვევის მიღებით — და მანამდე ტრენერი შენს მონაცემებს ვერ ხედავს.",
       "paragraphs": [
         "დაკავშირებისას ტრენერი ყოველთვის ხედავს შენს სახელს, პროფილის ფოტოს, ასაკს, სქესს, სიმაღლეს და თქვენს საერთო ვარჯიშების განრიგს. დანარჩენი კატეგორიები ნაგულისხმევად გამორთულია და ტრენერისთვის ჩანს მხოლოდ მაშინ, თუ თავად ჩართავ: ვარჯიშები და აქტივობა (ნაბიჯები, აქტიური წუთები, პულსი, ძილი და ვარჯიშები, მათ შორის Apple Health-იდან ან Health Connect-იდან წაკითხული), კვება (დღიური, კალორიები, მაკროები, გეგმის დაცვა), წონა და მიზანი, პროგრეს-ფოტოები. Apple Health-იდან / Health Connect-იდან ვარჯიშების წაკითხვას ცალკე ჩართავ, მხოლოდ შენი ღილაკით.",
         "გაზიარებული კატეგორიის შეცვლა ან კავშირის დასრულება ნებისმიერ დროს შეგიძლია „ჩემი ტრენერი“-დან. გამორთული კატეგორია ტრენერისთვის მაშინვე ქრება, ისტორიის ჩათვლით; კავშირის დასრულებისას წვდომა სრულად წყდება და მომავალი ვარჯიშები უქმდება. ტრენერი ვერ ხედავს სამედიცინო ჩანაწერებს, ანალიზებს, წამლებს, ციკლს და Medi-სთან საუბრებს. ჯანმრთელობის მონაცემები რეკლამისთვის არ გამოიყენება და არ იყიდება.",

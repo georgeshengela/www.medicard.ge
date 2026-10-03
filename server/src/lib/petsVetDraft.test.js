@@ -2,7 +2,7 @@ import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import { modelCannotMutateCare, shouldInventMissingDose, validateCareDraft } from './petsVetDraft.js';
 
-describe('Medi Vet care drafts', () => {
+describe('MEDIVET care drafts', () => {
   it('requires confirmation-shaped drafts and does not invent doses', () => {
     const draft = validateCareDraft(
       { kind: 'FLEA_TICK', title: 'რწყილი', startOn: '2026-09-20', provenance: 'owner_instruction' },

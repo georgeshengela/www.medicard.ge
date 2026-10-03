@@ -1,4 +1,4 @@
-// MEDICARD web — Medi Quest (/quest): missions, progress (journey, achievements, history), rewards (wallet,
+// MEDICARD web — MEDIQUEST (/quest): missions, progress (journey, achievements, history), rewards (wallet,
 // store, my rewards, collection) and the invite card. Same endpoints as the app (mobile/app/medi-quest/**).
 // Journey math, XP, levels and coin balances always come from the server — never recomputed here.
 import {
@@ -202,30 +202,30 @@ const RARITY_INK = { COMMON: 'teal', UNCOMMON: 'sky', RARE: 'blue', EPIC: 'viole
 
 /* Rewards copy (i18n/quest/rewards.js). */
 const REWARD_TITLES = isEn ? {
-  'reward.mediTheme7d.title': 'Medi Quest style — 7 days', 'reward.mediProfileStyle30d.title': 'Profile accent — 30 days',
+  'reward.mediTheme7d.title': 'MEDIQUEST style — 7 days', 'reward.mediProfileStyle30d.title': 'Profile accent — 30 days',
   'reward.mediPremiumDay.title': '1 day Premium', 'reward.mediPremium3d.title': '3 days Premium', 'reward.partnerTest10.title': 'Partner test',
 } : {
-  'reward.mediTheme7d.title': 'Medi Quest სტილი — 7 დღე', 'reward.mediProfileStyle30d.title': 'პროფილის აქცენტი — 30 დღე',
+  'reward.mediTheme7d.title': 'MEDIQUEST სტილი — 7 დღე', 'reward.mediProfileStyle30d.title': 'პროფილის აქცენტი — 30 დღე',
   'reward.mediPremiumDay.title': '1 დღე Premium', 'reward.mediPremium3d.title': '3 დღე Premium', 'reward.partnerTest10.title': 'Partner test',
 };
 const REWARD_DESCRIPTIONS = isEn ? {
-  'reward.mediTheme7d.description': 'A gold accent on the Medi Quest hub for 7 days. Cosmetic only — XP and Coins don’t change.',
+  'reward.mediTheme7d.description': 'A gold accent on the MEDIQUEST hub for 7 days. Cosmetic only — XP and Coins don’t change.',
   'reward.mediProfileStyle30d.description': 'A gold frame around your profile avatar for 30 days. Cosmetic only — no gameplay advantage.',
   'reward.mediPremiumDay.description': '1 day of Medicard Premium.', 'reward.mediPremium3d.description': '3 days of Medicard Premium.',
   'reward.partnerTest10.description': 'DEV/QA architecture test.',
 } : {
-  'reward.mediTheme7d.description': 'ოქროსფერი აქცენტი Medi Quest ჰაბზე 7 დღით. მხოლოდ კოსმეტიკა — XP/Coins არ იცვლება.',
+  'reward.mediTheme7d.description': 'ოქროსფერი აქცენტი MEDIQUEST ჰაბზე 7 დღით. მხოლოდ კოსმეტიკა — XP/Coins არ იცვლება.',
   'reward.mediProfileStyle30d.description': 'ოქროსფერი ჩარჩო პროფილის ავატარზე 30 დღით. მხოლოდ კოსმეტიკა — თამაშის უპირატესობა არ აქვს.',
   'reward.mediPremiumDay.description': '1 დღე Medicard Premium.', 'reward.mediPremium3d.description': '3 დღე Medicard Premium.',
   'reward.partnerTest10.description': 'DEV/QA არქიტექტურის ტესტი.',
 };
 const REWARD_TERMS = isEn ? {
-  'reward.mediTheme7d.terms': 'Loyalty points — not money. Once every 14 days. Changes only the look of the Medi Quest hub. The style ends when it expires. Coins are not refunded.',
+  'reward.mediTheme7d.terms': 'Loyalty points — not money. Once every 14 days. Changes only the look of the MEDIQUEST hub. The style ends when it expires. Coins are not refunded.',
   'reward.mediProfileStyle30d.terms': 'Cosmetic, on the profile avatar only. One active accent at a time. Doesn’t change XP, Coins or quests.',
   'reward.mediPremiumDay.terms': 'Only when a Premium entitlement system exists.', 'reward.mediPremium3d.terms': 'Only when a Premium entitlement system exists.',
   'reward.partnerTest10.terms': 'Not a real partner offer.',
 } : {
-  'reward.mediTheme7d.terms': 'ლოიალობის ქულები — არა ფული. 14 დღეში ერთხელ. იცვლის მხოლოდ Medi Quest ჰაბის ვიზუალს. ვადის გასვლის შემდეგ სტილი ქრება. Coins არ ბრუნდება.',
+  'reward.mediTheme7d.terms': 'ლოიალობის ქულები — არა ფული. 14 დღეში ერთხელ. იცვლის მხოლოდ MEDIQUEST ჰაბის ვიზუალს. ვადის გასვლის შემდეგ სტილი ქრება. Coins არ ბრუნდება.',
   'reward.mediProfileStyle30d.terms': 'კოსმეტიკა მხოლოდ პროფილის ავატარზე. ერთდროულად ერთი აქტიური აქცენტი. არ ცვლის XP, Coins ან ქვესტებს.',
   'reward.mediPremiumDay.terms': 'მხოლოდ როცა Premium უფლების სისტემა არსებობს.', 'reward.mediPremium3d.terms': 'მხოლოდ როცა Premium უფლების სისტემა არსებობს.',
   'reward.partnerTest10.terms': 'არ არის რეალური პარტნიორის შეთავაზება.',
@@ -1200,7 +1200,7 @@ export function homeCard() {
             h('div', { class: 'card-title' }, rankLabel(p.rankKey || rankKeyFromLevel(p.level))),
             h('div', { class: 'faint', style: { fontSize: '12.5px' } }, lr.remaining != null ? t(`შემდეგ დონემდე ${fmtNum(lr.remaining)} XP`, `${fmtNum(lr.remaining)} XP to next level`) : t('უმაღლესი დონე მიღწეულია', 'Top level reached'))),
           h('div', { class: 'q-home-coins' }, coin(p.coinBalance), h('span', { class: 'faint' }, t(`${fmtNum(p.currentStreak)} დღე სერია`, `${fmtNum(p.currentStreak)}-day streak`)))),
-        ready ? h('div', { class: 'q-notice' }, icon('gift', { size: 16 }), h('span', null, t('ჯილდო მზადაა — მიიღე Medi Quest-ში.', 'A reward is ready — claim it in Medi Quest.'))) : null,
+        ready ? h('div', { class: 'q-notice' }, icon('gift', { size: 16 }), h('span', null, t('ჯილდო მზადაა — მიიღე MEDIQUEST-ში.', 'A reward is ready — claim it in MEDIQUEST.'))) : null,
         daily.length ? h('div', { class: 'q-home-list' }, daily.map((q) => {
           const look = KIND_LOOK[questKind(q)] || KIND_LOOK.movement;
           const claimed = q.status === 'CLAIMED';
@@ -1211,7 +1211,7 @@ export function homeCard() {
                 q.claimable ? badge(t('ჯილდო მზადაა', 'Reward ready'), 'brand') : h('span', { class: 'faint num', style: { fontSize: '12.5px' } }, claimed ? t('მიღებულია', 'Claimed') : progressLabel(q))),
               claimed ? null : progress(pct(q.progressPercent), 100, { ink: q.claimable ? 'green' : look.ink })));
         })) : h('p', { class: 'muted', style: { fontSize: '13.5px' } }, t('დღეს Medi ჯერ არ მოამზადა მისიები.', 'Medi hasn’t prepared missions yet today.')),
-        h('a', { class: 'link q-home-link', href: '/quest', 'data-link': '' }, t('გახსენი Medi Quest', 'Open Medi Quest'), icon('chevronRight', { size: 16 })));
+        h('a', { class: 'link q-home-link', href: '/quest', 'data-link': '' }, t('გახსენი MEDIQUEST', 'Open MEDIQUEST'), icon('chevronRight', { size: 16 })));
     } catch (e) {
       mount(el, errorBox(e, () => { const next = homeCard(); el.replaceWith(next); }));
     }

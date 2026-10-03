@@ -6,7 +6,7 @@ import { localAccountId } from '@/lib/localAccount';
 import type { HealthConnectResult } from '@/lib/healthSync.shared';
 
 /**
- * MEDI COACH: workout summaries from Apple Health / Health Connect, uploaded only while the person
+ * MEDICOACH: workout summaries from Apple Health / Health Connect, uploaded only while the person
  * shares "workouts" with an active trainer (the server drops them otherwise). Per account + device.
  * Permission is requested only from a button press (iOS 26 rule, AGENTS.md).
  */

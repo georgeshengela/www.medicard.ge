@@ -140,7 +140,7 @@ async function main() {
   console.log('Pharmacy sources and drug categories seeded.');
 
   const quests = await ensureQuestTemplates(prisma);
-  console.log(`Medi Quest templates seeded: ${quests.upserted} (daily_steps, daily_hydration, daily_medi, weekly_steps).`);
+  console.log(`MEDIQUEST templates seeded: ${quests.upserted} (daily_steps, daily_hydration, daily_medi, weekly_steps).`);
 
   const rewards = await ensureRewardDefinitions(prisma);
   console.log(`Medi Rewards Store catalog seeded: ${rewards.length} definitions.`);

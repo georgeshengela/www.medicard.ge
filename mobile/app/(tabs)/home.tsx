@@ -105,10 +105,10 @@ const CHECKUP_TILES: HubTile[] = [
 const SERVICE_TILES: HubTile[] = [
   { key: 'visits', title: tx('ვიზიტები', 'Visits'), detail: tx('დაგეგმილი შეხვედრები', 'Planned appointments'), href: '/visits', icon: CalendarCheck, ink: 'teal' },
   { key: 'weight', title: tx('წონა და მიზანი', 'Weight and goal'), detail: tx('ჩანაწერები და პროგრესი', 'Entries and progress'), href: '/health-metrics/weight', icon: Scale, ink: 'violet' },
-  { key: 'pets', title: tx('ჩემი ცხოველები', 'My pets'), detail: tx('მოვლა და Medi Vet', 'Care and Medi Vet'), href: '/pets', icon: PawPrint, ink: 'green' },
+  { key: 'pets', title: tx('ჩემი ცხოველები', 'My pets'), detail: tx('მოვლა და MEDIVET', 'Care and MEDIVET'), href: '/pets', icon: PawPrint, ink: 'green' },
   { key: 'pharmacy', title: tx('აფთიაქი', 'Pharmacy'), detail: tx('პროდუქტების მოძებნა', 'Find products'), href: '/pharmacy', icon: ShoppingBag, ink: 'sky' },
   { key: 'metrics', title: tx('მაჩვენებლები', 'Metrics'), detail: tx('ყველა გაზომვა ერთად', 'All measurements in one place'), href: '/health-metrics', icon: Activity, ink: 'blue' },
-  { key: 'quest', title: 'MEDI QUEST', detail: tx('მისიები, პროგრესი და ჯილდოები', 'Missions, progress and rewards'), href: '/medi-quest', icon: Trophy, ink: 'amber' },
+  { key: 'quest', title: 'MEDIQUEST', detail: tx('მისიები, პროგრესი და ჯილდოები', 'Missions, progress and rewards'), href: '/medi-quest', icon: Trophy, ink: 'amber' },
 ];
 
 /** "4 200" — Hermes has no ka-GE grouping, so group by hand. */

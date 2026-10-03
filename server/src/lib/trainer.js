@@ -1,5 +1,5 @@
 /**
- * MEDI COACH — pure rules for trainers, consented client links, sessions, meal-plan adherence and
+ * MEDICOACH — pure rules for trainers, consented client links, sessions, meal-plan adherence and
  * trainer alerts (2026-09-28). No database access here; see trainerStore.js. docs/TRAINER.md.
  */
 import { z } from 'zod';
@@ -464,7 +464,7 @@ const ENDED_REASON_KA = 'კავშირი დასრულდა'; // wri
 const LABEL_MAPS = [[SPECIALTIES, SPECIALTIES_EN], [SESSION_KINDS, SESSION_KINDS_EN], [MEAL_SLOTS, MEAL_SLOTS_EN]];
 
 /**
- * English copy of a MEDI COACH response: session labels and kinds, `{ key, label }` catalogue entries
+ * English copy of a MEDICOACH response: session labels and kinds, `{ key, label }` catalogue entries
  * and the nameless-client fallback. Gym names and cities are data (the city filter matches them) and stay. Georgian requests get the value back unchanged; never mutates.
  */
 export function localizeCoachPayload(value, lang = 'ka') {

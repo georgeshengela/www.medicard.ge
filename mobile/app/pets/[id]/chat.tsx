@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { ModuleWordmark } from '@/components/brand/ModuleWordmark';
 import { FlatList, Image, Linking, Pressable, Text, View } from 'react-native';
 import { Stack, useLocalSearchParams, useNavigation, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -281,14 +282,12 @@ function PetVetChat({ petId, owner }: { petId: string; owner: string }) {
             </Pressable>
             <PetPhoto photoUrl={pet?.photoUrl || null} name={pet?.name || 'M'} speciesId={pet?.speciesId ?? null} size={40} />
             <View style={{ flex: 1 }}>
-              <Text style={{ fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 16, lineHeight: 22, color: FIGMA_CHAT.textPrimary }}>
-                {ka.pets.vetName}
-              </Text>
+              <ModuleWordmark module="vet" size={18} color={FIGMA_CHAT.textPrimary} />
               <Text style={{ fontFamily: 'NotoSansGeorgian_400Regular', fontSize: 13, lineHeight: 18, color: FIGMA_CHAT.textSecondary }}>
                 {pet?.name || titledProfile.subtitle}
               </Text>
             </View>
-            <Pressable accessibilityRole="button" accessibilityLabel={tx('Medi Vet — როგორ მუშაობს', 'Medi Vet — how it works')} onPress={() => setDisclosure(true)} style={{ minWidth: 44, minHeight: 44, alignItems: "center", justifyContent: "center" }}><Info size={21} color={colors.primary100} /></Pressable>
+            <Pressable accessibilityRole="button" accessibilityLabel={tx('MEDIVET — როგორ მუშაობს', 'MEDIVET — how it works')} onPress={() => setDisclosure(true)} style={{ minWidth: 44, minHeight: 44, alignItems: "center", justifyContent: "center" }}><Info size={21} color={colors.primary100} /></Pressable>
           </View>
         }
         footer={
@@ -325,7 +324,7 @@ function PetVetChat({ petId, owner }: { petId: string; owner: string }) {
           ListEmptyComponent={
             <View style={{ gap: FIGMA_CHAT.messageGap }}>
 <Image source={PETS_ART.vet} resizeMode="contain" accessibilityIgnoresInvertColors style={{ width: 72, height: 72 }} />
-<PetIntro icon={Stethoscope} eyebrow="MEDI VET · AI" title={pet?.name ? tx(`${pet.name} — უკეთ გავიცნოთ.`, `${pet.name} — let’s get to know them.`) : tx('მისთვისაც აქ ვართ.', 'We’re here for them too.')} body={tx('მოვლა, შენახული ჩანაწერები და შეკითხვები შენს ცხოველზე. აღწერე, რისი გაგება გინდა.', 'Care, saved records and questions about your pet. Describe what you’d like to know.')} />
+<PetIntro icon={Stethoscope} eyebrow="MEDIVET · AI" title={pet?.name ? tx(`${pet.name} — უკეთ გავიცნოთ.`, `${pet.name} — let’s get to know them.`) : tx('მისთვისაც აქ ვართ.', 'We’re here for them too.')} body={tx('მოვლა, შენახული ჩანაწერები და შეკითხვები შენს ცხოველზე. აღწერე, რისი გაგება გინდა.', 'Care, saved records and questions about your pet. Describe what you’d like to know.')} />
               <Card><PetText bold>{tx('აქ საუბარი შენს ცხოველს ეხება', 'This conversation is about your pet')}</PetText><PetText size={13} muted>{ka.pets.vetDisclaimer}</PetText></Card>
               {!loaded && !error ? <PetText muted>{tx('ისტორია იტვირთება…', 'Loading history…')}</PetText> : null}
               {loaded && titledProfile.suggestions.map((suggestion) => (

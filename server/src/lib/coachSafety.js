@@ -1,5 +1,5 @@
 /**
- * MEDI COACH safety (App Review 1.2, 2026-09-28): people can report the other side of a coach
+ * MEDICOACH safety (App Review 1.2, 2026-09-28): people can report the other side of a coach
  * relationship and block it. Reports reach the owner (admin #/trainers + Director Telegram);
  * a client's block ends the link and stops the trainer from inviting again. Additive raw-SQL
  * tables, created lazily. Report text is stored for moderation only.
@@ -95,7 +95,7 @@ export async function reportCoach(reporter, input, { endLink, notify } = {}, db 
     if (open && endLink) await endLink({ linkId: open.id, by: role, actorId: reporter.id }, db);
   }
   if (notify) {
-    Promise.resolve(notify(`⚠️ MEDI COACH შეტყობინება: ${REPORT_REASONS[body.reason]} (${role === 'CLIENT' ? 'კლიენტი ტრენერზე' : 'ტრენერი კლიენტზე'})${body.block ? ', დაბლოკა' : ''}.\nადმინი → ტრენერები → შეტყობინებები.`)).catch(() => {});
+    Promise.resolve(notify(`⚠️ MEDICOACH შეტყობინება: ${REPORT_REASONS[body.reason]} (${role === 'CLIENT' ? 'კლიენტი ტრენერზე' : 'ტრენერი კლიენტზე'})${body.block ? ', დაბლოკა' : ''}.\nადმინი → ტრენერები → შეტყობინებები.`)).catch(() => {});
   }
   return { id, blocked: body.block };
 }

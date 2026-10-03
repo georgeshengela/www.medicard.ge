@@ -51,7 +51,7 @@ import { notifyOwner } from '../lib/director/service.js';
 import { isEnglish, t } from '../lib/i18n.js';
 
 /**
- * MEDI COACH (2026-09-28): gyms, trainer applications, consented client links, sessions, meal plans,
+ * MEDICOACH (2026-09-28): gyms, trainer applications, consented client links, sessions, meal plans,
  * progress photos and Health workouts. `/coach/*` is the verified trainer's workspace. docs/TRAINER.md
  */
 export const trainerRouter = Router();

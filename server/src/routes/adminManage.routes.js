@@ -1,6 +1,6 @@
 /**
  * Admin management endpoints added with the V4 console:
- *   module kill switches, Medi Quest templates, per-user Medi Coins and
+ *   module kill switches, MEDIQUEST templates, per-user Medi Coins and
  *   consent history, AI-consent rollout, and a per-user data export.
  * Every write is audited (AdminAuditLog).
  */
@@ -41,7 +41,7 @@ adminManageRouter.put('/features/:key', asyncHandler(async (req, res) => {
   res.json({ feature });
 }));
 
-/* ───────── Medi Quest templates ───────── */
+/* ───────── MEDIQUEST templates ───────── */
 const QUEST_LABELS = {
   daily_steps: 'დღიური ნაბიჯები',
   daily_hydration: 'დღიური წყალი',

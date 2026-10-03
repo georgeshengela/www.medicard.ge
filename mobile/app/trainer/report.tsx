@@ -18,7 +18,7 @@ const REASONS: { key: string; label: string }[] = [
 ];
 
 /**
- * Report the other side of a MEDI COACH relationship (App Review 1.2). A client may also block the
+ * Report the other side of a MEDICOACH relationship (App Review 1.2). A client may also block the
  * trainer: the link ends at once and the trainer cannot invite again. MEDICARD reviews every report.
  */
 export default function CoachReportScreen() {

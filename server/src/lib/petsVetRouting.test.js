@@ -13,7 +13,7 @@ import {
 
 const here = dirname(fileURLToPath(import.meta.url));
 
-describe('Medi Vet routing isolation', () => {
+describe('MEDIVET routing isolation', () => {
   it('never includes EvidenceMD in the VET fallback chain, including evidencemd users', () => {
     for (const user of [{}, { aiEngine: 'gemini_flash' }, { aiEngine: 'ling_free' }, { aiEngine: 'evidencemd' }]) {
       const routing = describeVetRouting(user);
@@ -44,7 +44,7 @@ describe('Medi Vet routing isolation', () => {
     });
     const blob = JSON.stringify(messages);
     assert.equal(messages[0].role, 'system');
-    assert.match(messages[0].content, /Medi Vet/);
+    assert.match(messages[0].content, /MEDIVET/);
     assert.doesNotMatch(messages[0].content, /ნუკრი/);
     assert.doesNotMatch(messages[0].content, /დამატებითი კლინიკური კონტექსტი/);
     assert.doesNotMatch(messages[0].content, /withPatientAiContext/);

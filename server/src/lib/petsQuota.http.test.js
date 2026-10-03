@@ -363,7 +363,7 @@ describe('pets Phase 7 concurrency and AI quota', { timeout: 120_000 }, () => {
     }
   });
 
-  it('shares one remaining daily credit between concurrent human Medi and Medi Vet', async (t) => {
+  it('shares one remaining daily credit between concurrent human Medi and MEDIVET', async (t) => {
     if (skipUnlessIsolatedPetsDb(t)) return;
     resetAiStartWindowForTests();
     const stamp = Date.now();
@@ -435,7 +435,7 @@ describe('pets Phase 7 concurrency and AI quota', { timeout: 120_000 }, () => {
     }
   });
 
-  it('does not consume when the client disconnects a streaming Medi Vet request', async (t) => {
+  it('does not consume when the client disconnects a streaming MEDIVET request', async (t) => {
     if (skipUnlessIsolatedPetsDb(t)) return;
     resetAiStartWindowForTests();
     const stamp = Date.now();

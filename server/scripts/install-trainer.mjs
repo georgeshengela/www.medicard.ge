@@ -1,4 +1,4 @@
-// Additive only; installs the MEDI COACH tables on the configured main database and adds any gym from
+// Additive only; installs the MEDICOACH tables on the configured main database and adds any gym from
 // server/src/data/gyms-ge.json that is not there yet. Existing rows (including admin edits) are never
 // changed or deleted.
 import 'dotenv/config';

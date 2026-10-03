@@ -305,7 +305,7 @@ const BRAIN_FAMILY_KA = {
   petCareReminder: 'ცხოველის მოვლა',
   pregnancyCareReminder: 'ორსულობის შეხსენება',
   question: 'Medi-ს კითხვა',
-  questSmart: 'Medi Quest',
+  questSmart: 'MEDIQUEST',
   quotaReset: 'ლიმიტის განახლება',
   reengage: 'დაბრუნების მოწვევა',
   sleep: 'ძილი',

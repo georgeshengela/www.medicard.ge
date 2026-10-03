@@ -1,4 +1,5 @@
 import React, { useRef, useState } from 'react';
+import { ModuleWordmark } from '@/components/brand/ModuleWordmark';
 import { Pressable, RefreshControl, ScrollView, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ArrowLeft, CircleHelp, Sparkles } from 'lucide-react-native';
@@ -57,8 +58,8 @@ export function QuestHubView(p: QuestHubViewProps) {
   return <View style={{ flex: 1, backgroundColor: c.bg100, paddingTop: insets.top }}>
     <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 10, gap: 12 }}>
       <Pressable accessibilityRole="button" accessibilityLabel={tx('უკან', 'Back')} onPress={p.onBack} style={{ width: 44, height: 44, borderRadius: 17, backgroundColor: c.surface, borderWidth: 1, borderColor: c.bg300, alignItems: 'center', justifyContent: 'center' }}><ArrowLeft size={20} color={c.text100} /></Pressable>
-      <Text accessibilityRole="header" style={{ flex: 1, fontFamily: QF.bold, fontSize: 19, letterSpacing: -.4, color: c.text100 }}>MEDI <Text style={{ color: ink }}>QUEST</Text></Text>
-      <Pressable accessibilityRole="button" accessibilityLabel={tx('როგორ მუშაობს MEDI QUEST', 'How MEDI QUEST works')} onPress={() => setGuide(true)} style={{ width: 44, height: 44, borderRadius: 17, backgroundColor: c.surfaceRaised, alignItems: 'center', justifyContent: 'center' }}><CircleHelp size={21} color={ink} /></Pressable>
+      <View style={{ flex: 1 }}><ModuleWordmark module="quest" /></View>
+      <Pressable accessibilityRole="button" accessibilityLabel={tx('როგორ მუშაობს MEDIQUEST', 'How MEDIQUEST works')} onPress={() => setGuide(true)} style={{ width: 44, height: 44, borderRadius: 17, backgroundColor: c.surfaceRaised, alignItems: 'center', justifyContent: 'center' }}><CircleHelp size={21} color={ink} /></Pressable>
     </View>
     <View style={{ flexDirection: 'row', marginHorizontal: 16, marginTop: 2, marginBottom: 8, padding: 4, borderRadius: 19, backgroundColor: c.surfaceRaised }}>
       {TABS.map(tab => <Pressable key={tab.key} accessibilityRole="tab" accessibilityState={{ selected: p.tab === tab.key }} onPress={() => { p.onTab(tab.key); scroll.current?.scrollTo({ y: 0, animated: false }); }} style={{ flex: 1, minHeight: 44, borderRadius: 15, alignItems: 'center', justifyContent: 'center', backgroundColor: p.tab === tab.key ? c.surface : 'transparent', borderWidth: p.tab === tab.key ? 1 : 0, borderColor: c.bg300 }}><QText bold size={13} color={p.tab === tab.key ? ink : c.text200}>{tab.label}</QText></Pressable>)}
@@ -66,7 +67,7 @@ export function QuestHubView(p: QuestHubViewProps) {
     <ScrollView ref={scroll} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 14, paddingBottom: insets.bottom + 28, gap: 20 }} refreshControl={<RefreshControl refreshing={p.refreshing} onRefresh={p.onRefresh} tintColor={c.primary200} />}>
       {p.offline || p.stale ? <QNotice text={p.offline ? tx('ოფლაინი · ბოლო შენახული მონაცემები', 'Offline · last saved data') : tx('მონაცემები ვერ განახლდა · შენახული ვერსია', 'Couldn’t refresh · saved version')} action={p.offline ? undefined : tx('განახლება', 'Refresh')} onPress={p.onRefresh} /> : null}
       {p.loading && !p.dashboard ? <><Bone height={230} radius={24} /><Bone height={140} radius={24} /><Bone height={140} radius={24} /></> : p.error && !p.dashboard || unavailable ? <QCard>
-        <Sparkles size={30} color={ink} /><QText size={20} bold>{unavailable ? tx('მისიები დროებით მიუწვდომელია', 'Missions are temporarily unavailable') : tx('MEDI QUEST ვერ ჩაიტვირთა', 'Couldn’t load MEDI QUEST')}</QText><QText muted>{tx('სცადე გვერდის განახლება. შენი დაგროვილი მონაცემები ანგარიშზე რჩება.', 'Try refreshing the page. Everything you’ve earned stays on your account.')}</QText><QButton label={tx('ხელახლა ცდა', 'Try again')} onPress={p.onRefresh} /><QButton secondary label={tx('როგორ მუშაობს?', 'How does it work?')} onPress={() => setGuide(true)} />
+        <Sparkles size={30} color={ink} /><QText size={20} bold>{unavailable ? tx('მისიები დროებით მიუწვდომელია', 'Missions are temporarily unavailable') : tx('MEDIQUEST ვერ ჩაიტვირთა', 'Couldn’t load MEDIQUEST')}</QText><QText muted>{tx('სცადე გვერდის განახლება. შენი დაგროვილი მონაცემები ანგარიშზე რჩება.', 'Try refreshing the page. Everything you’ve earned stays on your account.')}</QText><QButton label={tx('ხელახლა ცდა', 'Try again')} onPress={p.onRefresh} /><QButton secondary label={tx('როგორ მუშაობს?', 'How does it work?')} onPress={() => setGuide(true)} />
       </QCard> : p.dashboard ? <>
         {p.tab === 'missions' ? <>
           <View style={{ gap: 4 }}><QText size={25} bold>{tx('პატარა ნაბიჯები.\nშენი დიდი პროგრესი.', 'Small steps.\nBig progress.')}</QText><QText size={13} muted>{tx('შეასრულე მისია, მიიღე ჯილდო და გახსენი ახალი ეტაპი.', 'Complete a mission, collect your reward and unlock the next stage.')}</QText></View>
@@ -105,7 +106,7 @@ export function QuestHubView(p: QuestHubViewProps) {
           <QLink title={tx('ბალანსის ისტორია', 'Balance history')} body={tx('საიდან მიიღე და რაში გამოიყენე მონეტები.', 'Where your coins came from and what you spent them on.')} art={QUEST_ART.wallet} onPress={() => open('/medi-quest/wallet')} />
           {companionBody(p.companion ? <QuestCollectionPanel overview={p.companion} onEquip={p.onEquip} busyKey={p.equipBusy} error={p.equipError} offline={p.offline || p.companionStale} /> : null)}
         </>}
-        <Pressable accessibilityRole="button" onPress={() => setGuide(true)} style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, minHeight: 48 }}><CircleHelp size={17} color={ink} /><QText bold size={13} color={ink}>{tx('როგორ მუშაობს MEDI QUEST?', 'How does MEDI QUEST work?')}</QText></Pressable>
+        <Pressable accessibilityRole="button" onPress={() => setGuide(true)} style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, minHeight: 48 }}><CircleHelp size={17} color={ink} /><QText bold size={13} color={ink}>{tx('როგორ მუშაობს MEDIQUEST?', 'How does MEDIQUEST work?')}</QText></Pressable>
       </> : null}
     </ScrollView>
     <QuestGuideSheet visible={guide} onClose={() => setGuide(false)} timezone={p.dashboard?.daily.timezone ?? profile?.timezone} />

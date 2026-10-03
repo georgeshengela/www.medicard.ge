@@ -12,7 +12,7 @@ import { useAuth } from '@/store/AuthContext';
 /**
  * Shows the streak screen when `/api/auth/me` claims today's daily login.
  * Relogin is not required — a normal app open hydrates and claims.
- * Legacy +5 "ქულა" is retired; Medi Coins live in Medi Quest.
+ * Legacy +5 "ქულა" is retired; Medi Coins live in MEDIQUEST.
  */
 export function DailyCheckInHost() {
   const { user, pendingDailyBonus, consumeDailyBonus, refresh } = useAuth();

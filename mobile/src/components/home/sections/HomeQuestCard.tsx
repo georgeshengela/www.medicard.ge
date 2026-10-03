@@ -20,7 +20,7 @@ const MAX_SEGMENTS = 6;
 type Props = { first?: boolean };
 
 /**
- * „MEDI QUEST“ — coins, level, today's missions and the weekly steps mission in one compact card.
+ * „MEDIQUEST“ — coins, level, today's missions and the weekly steps mission in one compact card.
  * Steps and water are not repeated (the hero and the water tile show them). Tapping opens the hub.
  */
 export function HomeQuestCard({ first = false }: Props) {
@@ -42,7 +42,7 @@ function QuestCard({ first }: { first: boolean }) {
 
   return (
     <View style={[s.section, { marginTop: first ? 22 : HUB.sectionGap }]}>
-      <HomeSectionHeading title="MEDI QUEST" linkLabel={tx('ყველა მისია', 'All missions')} onLink={open} />
+      <HomeSectionHeading title="MEDIQUEST" brand="quest" linkLabel={tx('ყველა მისია', 'All missions')} onLink={open} />
       {summary ? <QuestBody summary={summary} onOpen={open} /> : <QuestSkeleton surface={c.surface} />}
     </View>
   );
@@ -70,7 +70,7 @@ function QuestBody({ summary, onOpen }: { summary: QuestSummary; onOpen: () => v
     .join('. ');
 
   return (
-    <Pressable accessibilityRole="button" accessibilityLabel={label} accessibilityHint={tx('MEDI QUEST-ის გვერდი', 'Opens MEDI QUEST')} onPress={onOpen} style={[s.card, { backgroundColor: c.surface }]}>
+    <Pressable accessibilityRole="button" accessibilityLabel={label} accessibilityHint={tx('MEDIQUEST-ის გვერდი', 'Opens MEDIQUEST')} onPress={onOpen} style={[s.card, { backgroundColor: c.surface }]}>
       <View style={s.head}>
         <View style={[s.icon, { backgroundColor: hubTint(amber, dark) }]}>
           <Coins size={21} color={amber} strokeWidth={1.8} />

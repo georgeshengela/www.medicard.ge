@@ -1,5 +1,5 @@
 /**
- * MEDI COACH database layer (raw SQL over the tables in prisma/20260928-trainer.sql).
+ * MEDICOACH database layer (raw SQL over the tables in prisma/20260928-trainer.sql).
  * Every read of a client's data by a trainer goes through `requireClientAccess`, which checks the
  * ACTIVE link and the scope the client granted. docs/TRAINER.md.
  */

@@ -1,5 +1,5 @@
 /**
- * Medi Quest visual system — keep these the only Quest-specific numbers.
+ * MEDIQUEST visual system — keep these the only Quest-specific numbers.
  * Colors come from MediCard theme tokens (`useThemeColors`) except the
  * teal-family accents and washes below.
  *

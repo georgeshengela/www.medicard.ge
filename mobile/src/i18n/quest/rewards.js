@@ -72,10 +72,10 @@ const REWARD_TITLES = {
     ru: "Apple Watch SE 3",
   },
   'reward.mediTheme7d.title': {
-    ka: 'Medi Quest სტილი — 7 დღე',
-    en: 'Medi Quest style — 7 days',
-    fr: 'Style Medi Quest — 7 jours',
-    ru: 'Стиль Medi Quest — 7 дней',
+    ka: 'MEDIQUEST სტილი — 7 დღე',
+    en: 'MEDIQUEST style — 7 days',
+    fr: 'Style MEDIQUEST — 7 jours',
+    ru: 'Стиль MEDIQUEST — 7 дней',
   },
   'reward.mediProfileStyle30d.title': {
     ka: 'პროფილის აქცენტი — 30 დღე',
@@ -171,10 +171,10 @@ const REWARD_DESCRIPTIONS = {
     ru: "Apple Watch SE 3 GPS: activity, sleep and workouts on your wrist.",
   },
   'reward.mediTheme7d.description': {
-    ka: 'ოქროსფერი აქცენტი Medi Quest ჰაბზე 7 დღით. მხოლოდ კოსმეტიკა — XP/Coins არ იცვლება.',
-    en: 'A gold accent on the Medi Quest hub for 7 days. Cosmetic only — XP/Coins unchanged.',
-    fr: 'Accent doré sur le hub Medi Quest pendant 7 jours. Cosmétique uniquement.',
-    ru: 'Золотой акцент на Medi Quest хабе на 7 дней. Только косметика.',
+    ka: 'ოქროსფერი აქცენტი MEDIQUEST ჰაბზე 7 დღით. მხოლოდ კოსმეტიკა — XP/Coins არ იცვლება.',
+    en: 'A gold accent on the MEDIQUEST hub for 7 days. Cosmetic only — XP/Coins unchanged.',
+    fr: 'Accent doré sur le hub MEDIQUEST pendant 7 jours. Cosmétique uniquement.',
+    ru: 'Золотой акцент на MEDIQUEST хабе на 7 дней. Только косметика.',
   },
   'reward.mediProfileStyle30d.description': {
     ka: 'ოქროსფერი ჩარჩო პროფილის ავატარზე 30 დღით. მხოლოდ კოსმეტიკა — თამაშის უპირატესობა არ აქვს.',
@@ -216,10 +216,10 @@ const REWARD_TERMS = {
     ru: "New, with the official warranty. We hand it over in Tbilisi within 14 days and call the phone on your account. Not exchangeable for cash or another item; colour depends on stock. Limited stock. If the hand-over fails, your Medi Coins are refunded in full. Apple and Xiaomi are not sponsors of these rewards.",
   },
   'reward.mediTheme7d.terms': {
-    ka: 'ლოიალობის ქულები — არა ფული. 14 დღეში ერთხელ. იცვლის მხოლოდ Medi Quest ჰაბის ვიზუალს. ვადის გასვლის შემდეგ სტილი ქრება. Coins არ ბრუნდება.',
-    en: 'Loyalty points — not money. Once every 14 days. Changes only the Medi Quest hub look. After expiry the style ends. Coins are not refunded.',
-    fr: 'Points de fidélité — pas d’argent. Une fois / 14 jours. Change uniquement le hub Medi Quest. Après expiration, le style disparaît. Pas de remboursement.',
-    ru: 'Баллы лояльности — не деньги. Раз в 14 дней. Меняет только вид Medi Quest хаба. После срока стиль исчезает. Coins не возвращаются.',
+    ka: 'ლოიალობის ქულები — არა ფული. 14 დღეში ერთხელ. იცვლის მხოლოდ MEDIQUEST ჰაბის ვიზუალს. ვადის გასვლის შემდეგ სტილი ქრება. Coins არ ბრუნდება.',
+    en: 'Loyalty points — not money. Once every 14 days. Changes only the MEDIQUEST hub look. After expiry the style ends. Coins are not refunded.',
+    fr: 'Points de fidélité — pas d’argent. Une fois / 14 jours. Change uniquement le hub MEDIQUEST. Après expiration, le style disparaît. Pas de remboursement.',
+    ru: 'Баллы лояльности — не деньги. Раз в 14 дней. Меняет только вид MEDIQUEST хаба. После срока стиль исчезает. Coins не возвращаются.',
   },
   'reward.mediProfileStyle30d.terms': {
     ka: 'კოსმეტიკა მხოლოდ პროფილის ავატარზე. ერთდროულად ერთი აქტიური აქცენტი. არ ცვლის XP, Coins ან ქვესტებს.',

@@ -9,7 +9,7 @@ const LIVE = process.env.PETS_VET_LIVE_EVAL === '1';
 const MAX_REQUESTS = 12;
 const MAX_TOKENS = 180;
 
-describe('Medi Vet live OpenRouter eval', { timeout: 180_000 }, () => {
+describe('MEDIVET live OpenRouter eval', { timeout: 180_000 }, () => {
   it('is opt-in with synthetic pets and a bounded budget', async (t) => {
     if (!LIVE) {
       t.skip('live OpenRouter eval is opt-in (PETS_VET_LIVE_EVAL=1); unit tests do not prove clinical correctness');

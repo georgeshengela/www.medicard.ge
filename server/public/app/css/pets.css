@@ -1,4 +1,4 @@
-/* ჩემი ცხოველები + Medi Vet. Flat surface cards, tinted tiles; no spotlight on these pages. */
+/* ჩემი ცხოველები + MEDIVET. Flat surface cards, tinted tiles; no spotlight on these pages. */
 .modal .field[hidden], .modal [hidden].stack, .pet-body [hidden], .pet-chat [hidden] { display: none !important; }
 
 .pet-photo { display: inline-grid; place-items: center; flex: none; border-radius: 30%; overflow: hidden; font-weight: 700;
@@ -54,7 +54,7 @@
 .pet-details summary > .ic { transition: transform .2s; color: var(--text3); }
 .pet-details[open] summary > .ic { transform: rotate(180deg); }
 
-/* Medi Vet chat */
+/* MEDIVET chat */
 .pet-chat { padding: 0; overflow: hidden; display: flex; flex-direction: column; }
 .pet-chat-head { display: flex; align-items: center; gap: 12px; padding: 14px 18px; border-bottom: 1px solid var(--line); }
 .pet-chat-body { height: calc(100vh - 330px); min-height: 460px; padding: 12px 16px 16px; background: var(--surface2); }

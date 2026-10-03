@@ -180,7 +180,7 @@ export const HOME_FEATURE_GROUPS: { title: string; items: Feature[] }[] = [
         icon: Footprints,
       },
       {
-        title: 'MEDI QUEST',
+        title: 'MEDIQUEST',
         detail: tx('მისიები, მიღწევები და ჯილდოები', 'Missions, achievements and rewards'),
         href: '/medi-quest',
         icon: Trophy,
@@ -192,7 +192,7 @@ export const HOME_FEATURE_GROUPS: { title: string; items: Feature[] }[] = [
     items: [
       {
         title: tx('ჩემი ცხოველები', 'My pets'),
-        detail: tx('მოვლა, ჩანაწერები და Medi Vet', 'Care, records and Medi Vet'),
+        detail: tx('მოვლა, ჩანაწერები და MEDIVET', 'Care, records and MEDIVET'),
         href: '/pets',
         icon: PawPrint,
       },

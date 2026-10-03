@@ -130,7 +130,7 @@ export default function MyTrainerScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: c.bg100 }}>
-      <CoachHeader title={tx('ჩემი ტრენერი', 'My trainer')} subtitle="MEDI COACH" />
+      <CoachHeader brand="coach" title="MEDICOACH" subtitle={tx('ჩემი ტრენერი', 'My trainer')} />
       <Screen refreshControl={<RefreshControl refreshing={refreshing} onRefresh={async () => { setRefreshing(true); await load(); setRefreshing(false); }} tintColor={c.primary200} />}>
         {error ? <ErrorBox message={error} onRetry={load} /> : null}
         {!ov && !error ? <Loading /> : null}

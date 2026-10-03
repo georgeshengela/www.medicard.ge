@@ -16,7 +16,7 @@ import { isEnglish } from './i18n.js';
 /**
  * `group`: module = a whole product area, ai = one AI feature, system = background
  * behaviour with no screen of its own.
- * `parent`: a child is effectively off while its parent is off (pets → Medi Vet).
+ * `parent`: a child is effectively off while its parent is off (pets → MEDIVET).
  */
 export const FEATURES = Object.freeze([
   {
@@ -166,7 +166,7 @@ export const FEATURES = Object.freeze([
     key: 'pets',
     group: 'module',
     label: 'ჩემი ცხოველები',
-    description: 'ცხოველების პროფილები, მოვლა, წონა, ალერგიები და Medi Vet. ცვლილებები ჩერდება.',
+    description: 'ცხოველების პროფილები, მოვლა, წონა, ალერგიები და MEDIVET. ცვლილებები ჩერდება.',
     defaultMessage: 'ცხოველების მოდული დროებით შეჩერებულია. შენი მონაცემები შენახულია.',
     defaultMessageEn: 'Pets is paused for a moment. Your data is saved.',
   },
@@ -174,10 +174,10 @@ export const FEATURES = Object.freeze([
     key: 'mediVet',
     group: 'ai',
     parent: 'pets',
-    label: 'Medi Vet (ცხოველების AI)',
+    label: 'MEDIVET (ცხოველების AI)',
     description: 'ცხოველების AI საუბარი. ცხოველების პროფილები და მოვლა მუშაობას აგრძელებს.',
-    defaultMessage: 'Medi Vet დროებით მიუწვდომელია.',
-    defaultMessageEn: 'Medi Vet is unavailable for a moment.',
+    defaultMessage: 'MEDIVET დროებით მიუწვდომელია.',
+    defaultMessageEn: 'MEDIVET is unavailable for a moment.',
   },
   {
     key: 'medirun',
@@ -199,10 +199,10 @@ export const FEATURES = Object.freeze([
   {
     key: 'quest',
     group: 'module',
-    label: 'MEDI QUEST',
+    label: 'MEDIQUEST',
     description: 'მისიები, პროგრესი, Medi Coins-ის აღება და ჯილდოები. მისიების დასრულება და coin-ის აღება ჩერდება.',
-    defaultMessage: 'MEDI QUEST დროებით შეჩერებულია. შენი coin-ები და პროგრესი შენახულია.',
-    defaultMessageEn: 'MEDI QUEST is paused for a moment. Your coins and progress are saved.',
+    defaultMessage: 'MEDIQUEST დროებით შეჩერებულია. შენი coin-ები და პროგრესი შენახულია.',
+    defaultMessageEn: 'MEDIQUEST is paused for a moment. Your coins and progress are saved.',
   },
   {
     key: 'rewardsStore',
@@ -216,10 +216,10 @@ export const FEATURES = Object.freeze([
   {
     key: 'coach',
     group: 'module',
-    label: 'MEDI COACH (ფიტნეს ტრენერები)',
+    label: 'MEDICOACH (ფიტნეს ტრენერები)',
     description: 'ტრენერის განაცხადი, კლიენტის დაკავშირება, ვარჯიშების დანიშვნა, კვების გეგმა და პროგრეს-ფოტოები. ნახვა რჩება, ცვლილებები ჩერდება.',
     defaultMessage: 'ტრენერის ფუნქცია დროებით შეჩერებულია. შენი მონაცემები შენახულია.',
-    defaultMessageEn: 'MEDI COACH is paused for a moment. Your data is saved.',
+    defaultMessageEn: 'MEDICOACH is paused for a moment. Your data is saved.',
   },
   {
     key: 'community',

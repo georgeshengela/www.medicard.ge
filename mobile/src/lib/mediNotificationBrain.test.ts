@@ -471,7 +471,7 @@ describe('mediNotificationBrain', () => {
     assert.equal(fallbackNotificationRoute('/chat/DOCTOR?sessionId=gone', false), '/assistant?mode=doctor');
   });
 
-  it('Phase 6: schedules at most one questSmart candidate and deep-links to Medi Quest', () => {
+  it('Phase 6: schedules at most one questSmart candidate and deep-links to MEDIQUEST', () => {
     const now = new Date('2026-09-06T14:00:00');
     const quiet = snap({
       now,

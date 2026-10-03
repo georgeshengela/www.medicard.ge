@@ -73,7 +73,7 @@ function Hub() {
     );
   };
   return (
-    <NScreen title={tx("კვება", "Nutrition")} subtitle={tx("ჩაწერე, გადაამოწმე, გაიგე", "Log it, check it, understand it")}>
+    <NScreen brand="food" title={tx("კვება", "Nutrition")} subtitle={tx("ჩაწერე, გადაამოწმე, გაიგე", "Log it, check it, understand it")}>
       {error ? <NError message={error} retry={() => void load()} /> : loading && !d ? <NLoading /> : null}
       {d && (
         <>

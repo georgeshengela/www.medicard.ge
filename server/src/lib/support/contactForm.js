@@ -18,7 +18,7 @@ export const CONTACT_TOPICS = Object.freeze({
   app: { ka: 'დახმარება აპში', en: 'Help with the app' },
   privacy: { ka: 'მონაცემები და კონფიდენციალურობა', en: 'Data and privacy' },
   partnership: { ka: 'პარტნიორობა', en: 'Partnerships' },
-  coach: { ka: 'ტრენერისთვის (MEDI COACH)', en: 'For trainers (MEDI COACH)' },
+  coach: { ka: 'ტრენერისთვის (MEDICOACH)', en: 'For trainers (MEDICOACH)' },
   other: { ka: 'სხვა', en: 'Other' },
 });
 
