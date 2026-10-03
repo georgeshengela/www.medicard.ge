@@ -23,6 +23,7 @@ import { ka } from '@/i18n/ka';
 import { ApiError, api, type CycleBundle, type CycleDoctorSummary } from '@/lib/api';
 import { hasPmsPattern } from '@/lib/cycleAnalytics';
 import {
+  doctorExcludedCycleLabel,
   doctorSummaryCopy,
   doctorSummaryEnumLabel,
   formatDoctorCivilDate,
@@ -415,6 +416,11 @@ export default function CycleSummary() {
                   {s.menstrualHistory.cycleLengths.length ? (
                     <Text style={{ color: c.muted, fontSize: 12, marginTop: 8, lineHeight: 18 }}>
                       {copy.cycleLengths}: {s.menstrualHistory.cycleLengths.map((x) => x.lengthDays).join(', ')}
+                    </Text>
+                  ) : null}
+                  {s.menstrualHistory.excludedCycles?.length ? (
+                    <Text style={{ color: c.muted, fontSize: 12, marginTop: 8, lineHeight: 18 }}>
+                      {copy.excludedCycles}: {s.menstrualHistory.excludedCycles.map((x) => doctorExcludedCycleLabel(x, reportLocale)).join(', ')}
                     </Text>
                   ) : null}
                   {s.menstrualHistory.spottingDates.length ? (

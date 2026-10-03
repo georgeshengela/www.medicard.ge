@@ -192,6 +192,10 @@
 @media (max-width: 420px) { .cy-stat-value b { font-size: 22px; } .cy-stat { padding: 10px; } }
 
 .cy-period-list .row-title { font-variant-numeric: tabular-nums; }
+/* W3-2: a cycle hidden from averages stays in the list with a small mark. */
+.cy-period-list .row-sub > span { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; }
+.cy-hidden-tag { display: inline-flex; align-items: center; gap: 4px; padding: 1px 8px; border-radius: 999px; background: var(--cy-soft); color: var(--cy-muted); font-size: 11.5px; font-weight: 600; white-space: nowrap; }
+.cy-hide-btn { white-space: nowrap; }
 
 /* ── Today / tips ───────────────────────────────────── */
 .cy-facts { display: flex; flex-wrap: wrap; gap: 6px; }

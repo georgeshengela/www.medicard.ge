@@ -932,6 +932,8 @@ export type CycleProfile = {
   expectsBleeding?: boolean;
   /** Missing = 'auto'. */
   fertilityDisplay?: 'auto' | 'off';
+  /** Cycle starts she hid from averages („საშუალოდან დამალვა“); missing = an older server (no toggle). */
+  hiddenCycles?: string[];
   aiInsights?: CycleInsights | null;
   aiInsightsAt?: string | null;
 };
@@ -1185,6 +1187,8 @@ export type CycleDoctorSummary = {
     }[];
     spottingDates: string[];
     cycleLengths: { start: string; end: string; lengthDays: number; source: string }[];
+    /** Cycles she hid from averages — listed as „გამორიცხული შენი არჩევით“, never with a reason. */
+    excludedCycles?: { start: string; end: string | null; lengthDays: number | null; source: string }[];
     periodDayCount: number;
   } | null;
   pain: {
@@ -1422,6 +1426,8 @@ export type CyclePeriodRange = {
   end: string;
   lengthDays: number;
   source: 'logged';
+  /** The cycle that starts here is hidden from averages (still drawn and listed). */
+  hidden?: boolean;
 };
 
 export type CycleOvulationSource = 'calendar' | 'opk' | 'manual';
@@ -1941,6 +1947,8 @@ export type CycleBundle = {
     topSymptoms90d: { key: string; count: number }[];
     bbtPoints: { date: string; bbt: number }[];
     periodStarts: string[];
+    /** Cycles left out of these numbers by her choice. */
+    hiddenCycleCount?: number;
     shortestCycle?: number | null;
     longestCycle?: number | null;
     variability?: number | null;
@@ -3318,6 +3326,8 @@ export const api = {
       sharePermissions: Partial<CycleSharePermissions>;
       conditions: CycleCondition[];
       reminderPrefs: CycleReminderPrefsServer;
+      /** The whole list of hidden cycle starts (logged starts only, max 24). */
+      hiddenCycles: string[];
     }>) => request<CycleBundle>('/api/cycle/profile', { method: 'PUT', body }),
     createShare: (permissions?: Partial<CycleSharePermissions>) =>
       request<CycleBundle>('/api/cycle/share', { method: 'POST', body: { permissions } }),

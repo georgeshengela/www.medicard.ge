@@ -866,6 +866,28 @@ export default async function cyclePage(root, ctx = {}) {
 
   const openDayLog = (date, opts = {}) => openDayModal(state.bundle, date, { ...opts, onBundle: setBundle });
 
+  /**
+   * „საშუალოდან დამალვა“ (W3-2, like the app's history list): one click, no confirmation, never asks why.
+   * The whole list goes to PUT /api/cycle/profile; the toast offers „გაუქმება“.
+   */
+  const toggleHidden = async (start, hide, btn = null, isUndo = false) => {
+    const list = new Set(state.bundle?.profile?.hiddenCycles || []);
+    if (hide) list.add(start);
+    else list.delete(start);
+    const run = async () => {
+      try {
+        setBundle(await put('/api/cycle/profile', { hiddenCycles: [...list].sort() }));
+        if (isUndo) return;
+        toast(hide ? t('ციკლი საშუალოდან დაიმალა', 'Cycle hidden from averages') : t('ციკლი საშუალოში დაბრუნდა', 'Cycle counted again'), 'ok', {
+          ms: 6000,
+          action: { label: t('გაუქმება', 'Undo'), onClick: () => toggleHidden(start, !hide, null, true) },
+        });
+      } catch (e) { toast(e.message, 'error'); }
+    };
+    if (btn) await busy(btn, run);
+    else await run();
+  };
+
   const openSettings = () => openSettingsModal(state.bundle, setBundle);
 
   /* Render ------------------------------------------------------------- */
@@ -918,7 +940,7 @@ export default async function cyclePage(root, ctx = {}) {
     right.push(section(t('კალენდარი', 'Calendar'), calendarCard(b, v), {
       action: state.editing ? null : button(t('თარიღების შესწორება', 'Edit dates'), { size: 'sm', variant: 'ghost', icon: 'edit', onClick: () => { state.editing = true; state.pending = { add: new Set(), remove: new Set() }; render(); } }),
     }));
-    if (!v.caps.pregnancy) right.push(section(t('ციკლების ისტორია', 'Cycle history'), historyCard(b)));
+    if (!v.caps.pregnancy) right.push(section(t('ციკლების ისტორია', 'Cycle history'), historyCard(b, toggleHidden)));
     right.push(section(t('დღის რჩევები', 'Tips for today'), tipsBlock(b, v, render, {
       on: state.aiOn,
       set: (on) => { state.aiOn = on; },
@@ -1365,6 +1387,8 @@ function statsCard(b) {
   const lengths = (b.trends?.cycleLengths || []).map((x) => x.length).filter((n) => Number.isFinite(n)).slice(-6);
   const variation = lengths.length >= 2 ? Math.max(...lengths) - Math.min(...lengths) : null;
   const inferred = avg.source === 'inferred' && (avg.cycleCount ?? 0) >= 2;
+  // „საშუალოდან დამალვა“: these numbers already leave them out; say how many, never why.
+  const hiddenCount = Array.isArray(b.profile?.hiddenCycles) ? b.profile.hiddenCycles.length : 0;
   const rangeTone = (val, lo, hi) => (val == null ? 'unknown' : val < lo ? 'shorter' : val > hi ? 'longer' : 'typical');
   // Verdicts („✓ ტიპური“ …) only from 3 completed cycles; before that the numbers and „ვსწავლობთ · N/3“.
   const gate = fertilityGateOf(b);
@@ -1388,10 +1412,14 @@ function statsCard(b) {
       h('div', { class: 'cy-stat-hint' }, tl.hint)))),
     h('p', { class: 'faint', style: { fontSize: '12px', marginTop: '12px' } },
       inferred ? t(`ბოლო ${avg.cycleCount} ციკლის მიხედვით`, `Based on your last ${plural(avg.cycleCount, 'cycle')}`) : t('შენი მითითებით — 2 ციკლის შემდეგ შენი მონაცემებით დავითვლით', 'From your settings — after 2 cycles we’ll use your own data')),
+    hiddenCount ? h('p', { class: 'faint', style: { fontSize: '12px', marginTop: '4px' } }, t(`${hiddenCount} ციკლი დამალულია`, `${plural(hiddenCount, 'cycle')} hidden`)) : null,
     h('p', { class: 'disclaimer', style: { marginTop: '8px' } }, icon('info', { size: 14 }), t('ტიპური დიაპაზონი საორიენტაციოა და არა დიაგნოზი. თუ რამე გაწუხებს, მიმართე ექიმს.', 'Typical ranges are for reference, not a diagnosis. If something worries you, see a doctor.')));
 }
 
-function historyCard(b) {
+function historyCard(b, onToggleHidden = null) {
+  // Hidden cycles (W3-2): drawn and listed as usual, marked, and left out of the bars above (server trends).
+  const hiddenList = Array.isArray(b.profile?.hiddenCycles) ? b.profile.hiddenCycles : null;
+  const starts = b.inferred?.periodStarts || (b.periodRanges || []).map((r) => r.start);
   const lengths = (b.trends?.cycleLengths?.length ? b.trends.cycleLengths.map((x) => ({ start: x.start, length: x.length }))
     : (b.analytics?.cycleLengths || []).map((x) => ({ start: x.startDate, length: x.length })))
     .filter((x) => x.start && Number.isFinite(x.length)).slice(-12);
@@ -1417,11 +1445,22 @@ function historyCard(b) {
       : empty(t('ისტორია ჯერ მცირეა', 'Not much history yet'), t('ციკლების ხანგრძლივობა გამოჩნდება, როცა ორ მენსტრუაციას მაინც აღრიცხავ.', 'Cycle lengths will show once you log at least two periods.')),
     h('div', { class: 'hub-section-head', style: { marginTop: '18px', marginBottom: '4px' } }, h('h2', { style: { fontSize: '15px' } }, t('მენსტრუაციის ისტორია', 'Period history'))),
     ranges.length
-      ? h('div', { class: 'list cy-period-list' }, ranges.map((r) => row({
-        icon: 'droplet', ink: 'rose',
-        title: r.start === r.end ? fmtDate(r.start) : `${fmtDate(r.start)} – ${fmtDate(r.end)}`,
-        sub: t(`${r.lengthDays} აღრიცხული დღე`, plural(r.lengthDays, 'logged day')),
-      })))
+      ? h('div', { class: 'list cy-period-list' }, ranges.map((r) => {
+        const hidden = r.hidden === true || Boolean(hiddenList?.includes(r.start));
+        // Older servers send no hiddenCycles → no toggle; a new hide stays within the server's cap of 24.
+        const canToggle = onToggleHidden && hiddenList && starts.includes(r.start) && (hidden || hiddenList.length < 24);
+        const toggle = canToggle
+          ? button(hidden ? t('დაბრუნება', 'Bring back') : t('საშუალოდან დამალვა', 'Hide from averages'), { size: 'sm', variant: 'ghost', icon: hidden ? 'eye' : 'eyeOff', class: 'cy-hide-btn' })
+          : null;
+        toggle?.addEventListener('click', () => onToggleHidden(r.start, !hidden, toggle));
+        return row({
+          icon: 'droplet', ink: 'rose',
+          title: r.start === r.end ? fmtDate(r.start) : `${fmtDate(r.start)} – ${fmtDate(r.end)}`,
+          sub: h('span', null, t(`${r.lengthDays} აღრიცხული დღე`, plural(r.lengthDays, 'logged day')),
+            hidden ? h('span', { class: 'cy-hidden-tag' }, icon('eyeOff', { size: 12 }), t('დამალულია საშუალოდან', 'Hidden from averages')) : null),
+          trailing: toggle ?? undefined,
+        });
+      }))
       : h('p', { class: 'muted', style: { fontSize: '13.5px' } }, t('ჯერ არ არის აღრიცხული მენსტრუაცია.', 'No periods logged yet.')));
 }
 

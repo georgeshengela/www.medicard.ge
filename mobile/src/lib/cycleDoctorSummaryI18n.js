@@ -100,6 +100,7 @@ export function doctorReportFactIds(summary) {
     episodeStarts: (summary?.menstrualHistory?.episodes || []).map((e) => e.start),
     spottingDates: [...(summary?.menstrualHistory?.spottingDates || [])],
     cycleLengths: (summary?.menstrualHistory?.cycleLengths || []).map((c) => c.lengthDays),
+    excludedCycleStarts: (summary?.menstrualHistory?.excludedCycles || []).map((c) => c.start),
     painTypes: (summary?.pain?.aggregates || []).map((p) => p.type),
     symptomKeys: (summary?.symptoms?.rows || []).map((r) => r.key),
     energyDates: (summary?.wellness?.energy || []).map((r) => r.date),
@@ -228,6 +229,14 @@ function postpartumContextHtml(summary, loc, copy) {
     <p>${escDoctorHtml(copy.postpartumCurrentNote)}</p>`;
 }
 
+/** „12 ივნისი (44 დღე)“ — one cycle she hid from averages; the length only when it is complete. */
+export function doctorExcludedCycleLabel(cycle, locale) {
+  const loc = resolveDoctorSummaryLocale(locale);
+  const copy = doctorSummaryCopy(loc);
+  const date = formatDoctorCivilDate(cycle?.start, loc);
+  return Number.isFinite(cycle?.lengthDays) ? `${date} (${copy.days(cycle.lengthDays)})` : date;
+}
+
 export function buildCycleReportHtmlFromSummary(summary, locale) {
   const loc = resolveDoctorSummaryLocale(locale);
   const copy = doctorSummaryCopy(loc);
@@ -242,6 +251,8 @@ export function buildCycleReportHtmlFromSummary(summary, locale) {
     })
     .join('');
   const lengths = (m?.cycleLengths ?? []).map((c) => `${c.lengthDays}`).join(', ');
+  // Cycles she hid from averages: listed by date, never with a reason.
+  const excluded = (m?.excludedCycles ?? []).map((c) => doctorExcludedCycleLabel(c, loc)).join(', ');
   const spotting = (m?.spottingDates ?? []).map((d) => formatDoctorCivilDate(d, loc));
   const painAgg = (summary?.pain?.aggregates ?? [])
     .map((p) => {
@@ -362,6 +373,7 @@ export function buildCycleReportHtmlFromSummary(summary, locale) {
       ? `<h2>${escDoctorHtml(copy.menstrualOn)}</h2>
     <table><thead><tr><th>${escDoctorHtml(copy.start)}</th><th>${escDoctorHtml(copy.end)}</th><th>${escDoctorHtml(copy.duration)}</th><th>${escDoctorHtml(copy.flowHeading)}</th></tr></thead><tbody>${episodes}</tbody></table>
     ${lengths ? `<p>${escDoctorHtml(copy.cycleLengths)}: ${escDoctorHtml(lengths)}</p>` : ''}
+    ${excluded ? `<p>${escDoctorHtml(copy.excludedCycles)}: ${escDoctorHtml(excluded)}</p>` : ''}
     ${spotting.length ? `<p>${escDoctorHtml(copy.spotting)}: ${escDoctorHtml(spotting.join(', '))}</p>` : ''}`
       : ''
   }

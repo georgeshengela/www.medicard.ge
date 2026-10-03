@@ -6,6 +6,8 @@ import type { CycleBundle } from '@/lib/api';
 import { ka } from '@/i18n/ka';
 import { cycleVerdictsReady, FERTILITY_MIN_CYCLES } from '@/lib/cycleForecastEligibility';
 import { CycleLearningBadge } from './CycleLearningBadge';
+import { hiddenCycleCount } from '@/lib/cycleHiddenCycles';
+import { tx } from '@/i18n/locale';
 import { HomeSectionTitle } from '@/components/home/HomeSectionTitle';
 import { cycleHexAlpha, useCycleColors } from '@/theme/cycle';
 
@@ -26,6 +28,9 @@ export function CycleStatsCard({ bundle, onOpen }: { bundle: CycleBundle; onOpen
   // Verdicts („✓ ტიპური“ …) only from 3 completed cycles; before that the numbers + „ვსწავლობთ · N/3“.
   const done = avg?.cycleCount ?? 0;
   const verdicts = cycleVerdictsReady(done);
+  // „საშუალოდან დამალვა“: the numbers above already leave these out; say so, never why.
+  const hidden = hiddenCycleCount(bundle);
+  const hiddenNote = hidden > 0 ? tx(`${hidden} ციკლი დამალულია`, `${hidden} ${hidden === 1 ? 'cycle' : 'cycles'} hidden`) : null;
 
   const rangeTone = (v: number | null, [lo, hi]: readonly [number, number]): Tone =>
     v == null ? 'unknown' : !verdicts ? 'learning' : v < lo ? 'shorter' : v > hi ? 'longer' : 'typical';
@@ -47,7 +52,7 @@ export function CycleStatsCard({ bundle, onOpen }: { bundle: CycleBundle; onOpen
       <CyclePressable
         onPress={onOpen}
         accessibilityRole="button"
-        accessibilityLabel={`${ka.cycle.statsTitle}. ${tiles.map((t) => `${t.label} ${t.value} ${ka.cycle.statsDayUnit}`).join(', ')}`}
+        accessibilityLabel={`${ka.cycle.statsTitle}. ${tiles.map((t) => `${t.label} ${t.value} ${ka.cycle.statsDayUnit}`).join(', ')}${hiddenNote ? `. ${hiddenNote}` : ''}`}
         style={{ backgroundColor: c.card, borderRadius: 22, padding: 16, marginTop: 12 }}
       >
         <View style={{ flexDirection: 'row', gap: 8 }}>
@@ -74,6 +79,9 @@ export function CycleStatsCard({ bundle, onOpen }: { bundle: CycleBundle; onOpen
           )}
           <ChevronRight size={16} color={c.mutedSoft} />
         </View>
+        {hiddenNote ? (
+          <Text style={{ color: c.mutedSoft, fontSize: 12, lineHeight: 17, marginTop: 4 }}>{hiddenNote}</Text>
+        ) : null}
       </CyclePressable>
     </View>
   );
