@@ -18,7 +18,7 @@ import {
   fmtDate, fmtTime, fmtNum, ymd, addDays, parseDate, relDay, debounce, KA_DAYS_SHORT,
 } from '../ui.js';
 import { ring, donut, meters, barChart, lineChart } from '../charts.js';
-import { withAiConsent } from '../aiConsent.js';
+import { withAiConsent, aiDeclinedSlot } from '../aiConsent.js';
 import { featureOn } from '../session.js';
 import { t } from '../i18n.js';
 
@@ -721,13 +721,16 @@ export default async function nutritionPage(root, ctx) {
       const fixIn = input({ placeholder: t('მაგ: ნახევარი პორცია იყო, სოუსის გარეშე', 'e.g. It was half a portion, no sauce'), maxlength: '500' });
       const fixBtn = button(t('შესწორება', 'Correct'), { variant: 'secondary', size: 'sm', icon: 'sparkles' });
       const err = h('div', { class: 'form-error', hidden: true });
+      // Declined / closed the AI disclosure: a calm note with „ხელახლა ცდა“, never the red error.
+      const declined = aiDeclinedSlot();
       const run = () => busy(fixBtn, async () => {
         err.hidden = true;
+        declined.hide();
         const text = fixIn.value.trim();
         if (text.length < 2) { err.textContent = t('დაწერე, რა უნდა შესწორდეს.', 'Write what should be corrected.'); err.hidden = false; return; }
         try {
           const res = await estimateRequest('fix', { correction: text, description: draft.note, previous: draft.items.map(cleanItem) }, photo);
-          if (res?.declined) return;
+          if (res?.declined) { declined.show(run); return; }
           applyEstimate(res, draft.source, true);
         } catch (e) { err.textContent = e.message; err.hidden = false; }
       });
@@ -737,6 +740,7 @@ export default async function nutritionPage(root, ctx) {
         h('div', { class: 'hstack' }, icon('sparkles', { size: 16 }), h('b', null, UNCERTAINTY[estimate.uncertainty] || UNCERTAINTY.medium)),
         estimate.explanation ? h('p', null, estimate.explanation) : null,
         h('div', { class: 'nu-fix' }, fixIn, fixBtn),
+        declined,
         err));
     }
 
@@ -889,13 +893,15 @@ export default async function nutritionPage(root, ctx) {
       const ta = textarea({ placeholder: t('მაგ: ორი ხინკალი, ქართული სალათი და ჭიქა ლიმონათი', 'e.g. Two khinkali, a Georgian salad and a glass of lemonade'), maxlength: '500', rows: 3, value: draft.note || '' });
       const go = button(t('შეფასება', 'Estimate'), { icon: 'sparkles', size: 'sm' });
       const err = h('div', { class: 'form-error', hidden: true });
+      const declined = aiDeclinedSlot();
       go.addEventListener('click', () => busy(go, async () => {
         err.hidden = true;
+        declined.hide();
         const text = ta.value.trim();
         if (text.length < 3) { err.textContent = t('აღწერე რა მიირთვი — მაგ. „ორი ხინკალი და სალათი“.', 'Describe what you ate — e.g. “two khinkali and a salad”.'); err.hidden = false; return; }
         try {
           const res = await estimateRequest('text', { description: text });
-          if (res?.declined) return;
+          if (res?.declined) { declined.show(() => go.click()); return; }
           applyEstimate(res, 'text', !draft.items.length);
           if (!draft.note) draft.note = text.slice(0, 500);
           toast(t('შეფასება მზადაა — გადაამოწმე და შეინახე', 'Estimate ready — check it and save'));
@@ -903,7 +909,7 @@ export default async function nutritionPage(root, ctx) {
       }));
       mount(panel, h('div', { class: 'stack', style: { gap: '10px' } },
         h('p', { class: 'faint nu-hint' }, t('აღწერე სიტყვებით — Medi შეაფასებს პორციას და კალორიებს. რაოდენობა თუ იცი, მიუთითე.', 'Describe it in words — Medi will estimate the portion and calories. Add amounts if you know them.')),
-        ta, h('div', { class: 'hstack' }, go), err));
+        ta, h('div', { class: 'hstack' }, go), declined, err));
       ta.focus();
     }
 
@@ -911,6 +917,7 @@ export default async function nutritionPage(root, ctx) {
       const fileIn = h('input', { type: 'file', accept: 'image/jpeg,image/png,image/webp,image/heic,image/heif', hidden: true });
       const note = input({ placeholder: photoMode === 'label' ? t('რამდენი მიირთვი? მაგ: ნახევარი შეკვრა', 'How much did you eat? e.g. half a pack') : t('შენიშვნა (არასავალდებულო): მაგ. ზეთის გარეშე', 'Note (optional): e.g. no oil'), maxlength: '500', value: draft.note || '' });
       const err = h('div', { class: 'form-error', hidden: true });
+      const declined = aiDeclinedSlot();
       const go = button(t('შეფასება', 'Estimate'), { icon: 'sparkles', size: 'sm', disabled: !photo });
       const drop = h('div', { class: 'dropzone nu-drop', tabindex: '0', role: 'button', 'aria-label': t('ფოტოს არჩევა', 'Choose a photo') });
       const paintDrop = () => mount(drop, photoUrl
@@ -935,11 +942,12 @@ export default async function nutritionPage(root, ctx) {
       fileIn.addEventListener('change', () => take(fileIn.files?.[0]));
       go.addEventListener('click', () => busy(go, async () => {
         err.hidden = true;
+        declined.hide();
         if (!photo) return;
         try {
           const text = note.value.trim().slice(0, 500);
           const res = await estimateRequest(photoMode, { description: text }, photo);
-          if (res?.declined) return;
+          if (res?.declined) { declined.show(() => go.click()); return; }
           applyEstimate(res, photoMode === 'label' ? 'label' : 'photo', !draft.items.length);
           if (text && !draft.note) draft.note = text;
           toast(t('შეფასება მზადაა — გადაამოწმე და შეინახე', 'Estimate ready — check it and save'));
@@ -948,7 +956,7 @@ export default async function nutritionPage(root, ctx) {
       paintDrop();
       mount(panel, h('div', { class: 'stack', style: { gap: '10px' } },
         segmented([{ value: 'photo', label: t('კერძი', 'Meal') }, { value: 'label', label: t('კვებითი ეტიკეტი', 'Nutrition label') }], photoMode, (v) => { photoMode = v; note.placeholder = v === 'label' ? t('რამდენი მიირთვი? მაგ: ნახევარი შეკვრა', 'How much did you eat? e.g. half a pack') : t('შენიშვნა (არასავალდებულო): მაგ. ზეთის გარეშე', 'Note (optional): e.g. no oil'); }),
-        drop, fileIn, note, h('div', { class: 'hstack' }, go), err,
+        drop, fileIn, note, h('div', { class: 'hstack' }, go), declined, err,
         h('p', { class: 'faint', style: { fontSize: '12px' } }, t('გადაეცემა მხოლოდ არჩეული ფოტო და შენიშვნა. ფოტო სერვერზე არ ინახება.', 'Only the selected photo and note are sent. The photo isn’t stored on the server.'))));
     }
 

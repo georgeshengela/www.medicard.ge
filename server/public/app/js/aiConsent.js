@@ -2,7 +2,7 @@
 // Before ANY request that sends data to an AI provider, call `await ensureAiConsent()`.
 // It shows the named recipients / data categories and returns true only after an explicit "allow".
 // Declining or closing blocks the request quietly — it is not an error.
-import { h, icon, button, openModal, busy } from './ui.js';
+import { h, icon, button, openModal, busy, mount, clear } from './ui.js';
 import { get, put, ApiError } from './api.js';
 import { t, isEn } from './i18n.js';
 
@@ -92,8 +92,35 @@ export async function withAiConsent(fn) {
     if (e instanceof ApiError && (e.code === 'AI_CONSENT_REQUIRED' || e.code === 'AI_CONSENT_VERSION_CHANGED')) {
       status = null;
       if (!(await ensureAiConsent())) return { declined: true };
-      return fn();
+      try {
+        return await fn();
+      } catch (again) {
+        // Still no consent on the server: nothing reached the AI — a declined choice, not an error.
+        if (again instanceof ApiError && again.code === 'AI_CONSENT_REQUIRED') return { declined: true };
+        throw again;
+      }
     }
     throw e;
   }
+}
+
+/** The calm line after a declined / closed disclosure (same copy as the app's aiConsentDecline.ts). */
+export function aiDeclinedText() {
+  return t('AI-ს არაფერი გაეგზავნა. როცა გინდა, შეგიძლია ხელახლა სცადო.', 'Nothing was sent to the AI. You can try again whenever you like.');
+}
+
+/**
+ * A slot for the calm declined note: neutral line + neutral „ხელახლა ცდა“ (runs the same action again,
+ * so the disclosure opens again). Never the red `.form-error`, never an error toast.
+ * `slot.show(onRetry)` / `slot.hide()`.
+ */
+export function aiDeclinedSlot() {
+  const el = h('div', { class: 'ai-declined', role: 'status', hidden: true });
+  el.show = (onRetry) => {
+    mount(el, h('span', null, aiDeclinedText()),
+      onRetry ? h('button', { type: 'button', class: 'text-btn', onClick: () => { el.hide(); onRetry(); } }, t('ხელახლა ცდა', 'Try again')) : null);
+    el.hidden = false;
+  };
+  el.hide = () => { clear(el); el.hidden = true; };
+  return el;
 }

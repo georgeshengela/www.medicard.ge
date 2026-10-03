@@ -10,7 +10,7 @@ import {
 } from '../ui.js';
 import { get, post, put, del } from '../api.js';
 import { barChart, ring } from '../charts.js';
-import { withAiConsent } from '../aiConsent.js';
+import { withAiConsent, aiDeclinedSlot } from '../aiConsent.js';
 import { featureOn, isFemale } from '../session.js';
 import { t, isEn, plural } from '../i18n.js';
 
@@ -1429,12 +1429,16 @@ function tipsBlock(b, v, rerender) {
 
   const aiAllowed = featureOn('medi') && v.mode !== 'POSTPARTUM';
   const refresh = aiAllowed ? button(aiCards ? t('Medi-ს რჩევების განახლება', 'Refresh Medi’s tips') : t('პერსონალური რჩევა Medi-სგან', 'Personal tips from Medi'), { size: 'sm', variant: 'ghost', icon: 'sparkles' }) : null;
+  // Declined / closed the AI disclosure: the local tips stay; a calm line with „ხელახლა ცდა“ (only after this tap).
+  const declined = aiDeclinedSlot();
   refresh?.addEventListener('click', () => busy(refresh, async () => {
+    declined.hide();
     try {
       // POST /api/cycle/insights only reads/computes (the app lists it in READ_ONLY_WRITES); it sends cycle
       // context to the AI provider, so it is wrapped in the voluntary AI consent.
       const res = await withAiConsent(() => post('/api/cycle/insights', { refresh: true }));
-      if (!res || res.declined) return;
+      if (res?.declined) { declined.show(() => refresh.click()); return; }
+      if (!res) return;
       if (res.insights) {
         b.profile.aiInsights = res.insights;
         b.profile.aiInsightsAt = new Date().toISOString();
@@ -1445,6 +1449,7 @@ function tipsBlock(b, v, rerender) {
 
   return h('div', { class: 'stack', style: { gap: '12px' } },
     headline || refresh ? h('div', { class: 'between' }, headline ? h('div', { class: 'muted', style: { fontWeight: 600 } }, headline) : h('span'), refresh) : null,
+    refresh ? declined : null,
     all.length
       ? h('div', { class: 'cy-tips' }, all.map((c) => h('article', { class: 'cy-tip' },
         h('div', { class: 'between' }, h('span', { class: `cy-tip-tile ${c.tone}` }, icon(TIP_ICON[c.tone] || 'sparkles', { size: 18 })), h('span', { class: 'cy-src' }, c.src)),
