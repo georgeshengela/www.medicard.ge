@@ -444,15 +444,6 @@ async function loadBundle(userId, clock = null, lang = 'ka') {
           today,
         })
       : null;
-  const rawPredictions = periForecast
-    ? applyPerimenopauseForecast(enginePredictions, periForecast, {
-        lastPeriodStart,
-        avgPeriodLength: averages.usedPeriodLength,
-        avgCycleLength: averages.usedCycleLength,
-        today,
-        lang,
-      })
-    : enginePredictions;
   const contraception = applyFertilityDisplay(
     interpretContraception(
       {
@@ -473,16 +464,26 @@ async function loadBundle(userId, clock = null, lang = 'ka') {
 
   const historyStart = inferred.periodRanges?.[0]?.start;
   if (lastPeriodStart && historyStart && historyStart < lastPeriodStart) {
-    rawPredictions.calendar = stampCalendarPhases(rawPredictions.calendar, {
+    enginePredictions.calendar = stampCalendarPhases(enginePredictions.calendar, {
       lastPeriodStart,
       avgCycleLength: averages.usedCycleLength,
       avgPeriodLength: averages.usedPeriodLength,
       fromKey: historyStart,
       toKey: lastPeriodStart,
       lang,
-      fertility: rawPredictions.fertility,
+      fertility: enginePredictions.fertility,
     });
   }
+  // After the history stamps, so no past day keeps a fertile / ovulation word in this mode either.
+  const rawPredictions = periForecast
+    ? applyPerimenopauseForecast(enginePredictions, periForecast, {
+        lastPeriodStart,
+        avgPeriodLength: averages.usedPeriodLength,
+        avgCycleLength: averages.usedCycleLength,
+        today,
+        lang,
+      })
+    : enginePredictions;
   // Period auto-end (brief §9 wave 2 item 3): derived here, never written. Older builds ignore the field.
   const periodStatus = derivePeriodStatus({
     ranges: inferred.periodRanges,

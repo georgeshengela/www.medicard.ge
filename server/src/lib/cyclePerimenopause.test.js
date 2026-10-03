@@ -1,6 +1,6 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { addDays, buildCycleAiUserPrompt, buildCycleAlerts, buildPredictions, detectLatePeriod, inferCycleStats } from './cycle.js';
+import { addDays, buildCycleAiUserPrompt, buildCycleAlerts, buildPredictions, detectLatePeriod, inferCycleStats, stampCalendarPhases } from './cycle.js';
 import { capabilitiesForProfileMode, isLiveProductMode, PRODUCT_MODES, profileModeForAiPrompt } from './cycleModes.js';
 import { buildCycleDoctorSummaryData } from './cycleDoctorSummary.js';
 import { buildCycleExportPayload } from './cycleLifecycle.js';
@@ -329,6 +329,16 @@ describe('Perimenopause range forecast (brief §9 „მერე“ item 7)', (
       today,
     });
     assert.ok(engine.fertileWindow, 'the engine alone would draw fertile days');
+    // History stamps (as loadBundle does before the peri step) carry fertile words for past days.
+    engine.calendar = stampCalendarPhases(engine.calendar, {
+      lastPeriodStart: last,
+      avgCycleLength: 28,
+      avgPeriodLength: 4,
+      fromKey: starts[0],
+      toKey: last,
+      fertility: engine.fertility,
+    });
+    assert.ok(Object.values(engine.calendar).some((m) => m.phase === 'fertile' || m.phase === 'ovulation'));
     const forecast = perimenopauseForecast({ intervals: completedCycleIntervals(inferred.periodStarts, { today }), lastPeriodStart: last, logs, today });
     const p = applyPerimenopauseForecast(engine, forecast, { lastPeriodStart: last, avgPeriodLength: 4, avgCycleLength: 28, today });
     assert.deepEqual(p.nextPeriodRange, { from: addDays(last, 22), to: addDays(last, 45) });
