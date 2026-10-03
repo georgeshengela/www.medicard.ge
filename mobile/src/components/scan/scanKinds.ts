@@ -3,6 +3,11 @@ import { ka } from '@/i18n/ka';
 import { tx } from '@/i18n/locale';
 import type { ScanKind } from '@/lib/scanThread';
 
+/** Small text in MEDISCAN's colour: the bright brand cyan, one step deeper on light so it stays readable. */
+export function scanTextInk(dark: boolean): string {
+  return dark ? '#67E8F9' : '#0891B2';
+}
+
 export type ScanKindInfo = {
   kind: ScanKind;
   icon: LucideIcon;

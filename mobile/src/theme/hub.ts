@@ -33,7 +33,7 @@ const INK: Record<HubInk, { light: string; dark: string }> = {
   green: { light: '#15803D', dark: '#86EFAC' },
   sky: { light: '#0369A1', dark: '#7DD3FC' },
   // MEDISCAN's signature (moduleBrand `scan`).
-  cyan: { light: '#0E7490', dark: '#67E8F9' },
+  cyan: { light: '#06B6D4', dark: '#67E8F9' },
   neutral: { light: '#374151', dark: '#D1D5DB' },
 };
 

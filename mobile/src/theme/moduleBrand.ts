@@ -68,7 +68,8 @@ export const MODULE_BRANDS: Record<ModuleBrandId, ModuleBrand> = {
   // box (owner rejected amber in both themes; fuchsia was the offered alternative).
   scan: {
     id: 'scan', suffix: 'SCAN', name: 'MEDISCAN',
-    ink: { light: '#0E7490', dark: '#67E8F9' },
+    // Owner 2026-10-04: the light theme uses the same bright cyan as the dark one (small text: scanTextInk).
+    ink: { light: '#22D3EE', dark: '#67E8F9' },
     gradient: ['#083344', '#0891B2', '#22D3EE'], glow: 'rgba(103,232,249,0.35)', onHero: '#CFFAFE',
   },
   medi: {

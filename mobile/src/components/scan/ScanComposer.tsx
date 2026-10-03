@@ -8,7 +8,7 @@ import type { ScanFile, ScanKind } from '@/lib/scanThread';
 import { MODULE_BRANDS } from '@/theme/moduleBrand';
 import { useIsDark, useThemeColors } from '@/theme/colors';
 import { tx } from '@/i18n/locale';
-import { scanKindInfo } from './scanKinds';
+import { scanKindInfo, scanTextInk } from './scanKinds';
 
 type Region = { id: string; ka: string; en: string };
 
@@ -98,7 +98,7 @@ export function ScanComposer({
 
         {reading && regions?.length ? (
           <View style={{ gap: 6, paddingTop: 2 }}>
-            <Text style={{ paddingHorizontal: 8, color: needsRegion ? ink : c.text200, fontSize: 12, fontFamily: 'NotoSansGeorgian_600SemiBold' }}>{tx('რომელი ნაწილია გადაღებული?', 'Which part is shown?')}</Text>
+            <Text style={{ paddingHorizontal: 8, color: needsRegion ? scanTextInk(dark) : c.text200, fontSize: 12, fontFamily: 'NotoSansGeorgian_600SemiBold' }}>{tx('რომელი ნაწილია გადაღებული?', 'Which part is shown?')}</Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} keyboardShouldPersistTaps="handled" contentContainerStyle={{ gap: 6, paddingHorizontal: 4 }}>
               {regions.map(region => {
                 const on = region.id === regionId;

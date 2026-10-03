@@ -32,7 +32,7 @@ import { tx } from '@/i18n/locale';
 import { ScanComposer } from './ScanComposer';
 import { scanKindInfo } from './scanKinds';
 import { LabTurn, ResultTurn, ScanProgress, UploadTurn } from './ScanTurns';
-import { ScanViewfinder } from './ScanViewfinder';
+import { ScanLens } from './ScanLens';
 
 const MAX_BYTES = 12 * 1024 * 1024;
 const MAX_LAB_FILES = 8;
@@ -337,9 +337,9 @@ export function ScanChat({ owner, initialKind }: { owner: string; initialKind: S
   );
 
   const welcome = (
-    <View style={{ flexGrow: 1, justifyContent: 'center', paddingVertical: 20, gap: 26 }}>
-      <View style={{ alignItems: 'center', gap: 16 }}>
-        <ScanViewfinder icon={info.icon} scanning={!!busy} />
+    <View style={{ flexGrow: 1, justifyContent: 'center', paddingVertical: 12, gap: 22 }}>
+      <View style={{ alignItems: 'center', gap: 4 }}>
+        <ScanLens scanning={!!busy || preparing} />
         <View style={{ alignItems: 'center', gap: 6, paddingHorizontal: 12 }}>
           <Text style={{ color: c.text100, fontSize: 23, lineHeight: 32, textAlign: 'center', fontFamily: 'NotoSansGeorgian_600SemiBold' }}>{tx('რა წავიკითხოთ?', 'What shall we read?')}</Text>
           <Text style={{ color: c.text200, fontSize: 14, lineHeight: 22, textAlign: 'center', fontFamily: 'NotoSansGeorgian_400Regular', maxWidth: 310 }}>

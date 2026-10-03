@@ -9,7 +9,7 @@ import type { LabParameter } from '@/types/lab';
 import { MODULE_BRANDS } from '@/theme/moduleBrand';
 import { useIsDark, useThemeColors } from '@/theme/colors';
 import { tx } from '@/i18n/locale';
-import { scanKindInfo } from './scanKinds';
+import { scanKindInfo, scanTextInk } from './scanKinds';
 
 function useScanInk() {
   const dark = useIsDark();
@@ -28,11 +28,11 @@ export function ScanAvatar({ size = 26 }: { size?: number }) {
 }
 
 function Header({ title }: { title: string }) {
-  const ink = useScanInk();
+  const dark = useIsDark();
   return (
     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
       <ScanAvatar />
-      <Text style={{ color: ink, fontSize: 12, lineHeight: 16, fontFamily: 'NotoSansGeorgian_600SemiBold' }}>{title}</Text>
+      <Text style={{ color: scanTextInk(dark), fontSize: 12, lineHeight: 16, fontFamily: 'NotoSansGeorgian_600SemiBold' }}>{title}</Text>
     </View>
   );
 }
