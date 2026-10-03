@@ -406,6 +406,15 @@ function derive(b) {
   const spread = forecastOn && next && range?.from && range?.to
     ? { before: Math.max(0, daysBetween(range.from, next)), after: Math.max(0, daysBetween(next, range.to)) }
     : null;
+  // The whole window as dates (mobile homeCycle.cyclePeriodWindow): every badge / caption prints from – to,
+  // also once it is open — never from the single estimate.
+  const periodWindow = spread
+    ? (() => {
+      const from = addKey(next, -spread.before);
+      const to = addKey(next, spread.after);
+      return { from, to, state: daysBetween(today, from) > 0 ? 'before' : daysBetween(today, to) >= 0 ? 'open' : 'late' };
+    })()
+    : null;
   let windowKind = null;
   let windowFrom = null;
   let windowTo = null;
@@ -487,7 +496,7 @@ function derive(b) {
 
   return {
     today, mode, caps, todayLog, onPeriod, loggedToday, askStill, tracking, gate, wideWindow, learning, ovulationRange, lutealFrom,
-    spread, windowKind, uncertain, fertilityVisible, forecastAllowed, hideLengthChrome, hidePredicted,
+    spread, periodWindow, windowKind, uncertain, fertilityVisible, forecastAllowed, hideLengthChrome, hidePredicted,
     cycleLen, periodLen, day, phase, phaseKa, next, inDays, forecastOn, predictedToday, phaseHint, statusLine, center,
     cycleStart, fertileDays, recordedDays, startLeads, startLabel, showPredicted, needsOnboarding,
     pcos: conditions.includes('pcos'),
@@ -711,23 +720,16 @@ function dialFor(b, v, extra = {}) {
 
 /** „სავარაუდო · 6 ოქტომბერი“, or a window „სავარაუდო · 6 – 10 ოქტომბერი“ for variable cycles (mobile PredictionBadge). */
 function predBadge(date, until = null) {
-  let text = fmtDate(date);
-  if (until && until !== date) {
-    const a = fmtDate(date);
-    const z = fmtDate(until);
-    const [dayA, ...restA] = a.split(' ');
-    const [, ...restZ] = z.split(' ');
-    text = restA.join(' ') === restZ.join(' ') ? `${dayA} – ${z}` : `${a} – ${z}`;
-  }
-  return h('span', { class: 'cy-pred', title: t('სავარაუდო თარიღი', 'Estimated date') }, h('i', { class: 'cy-pred-dot' }), t(`სავარაუდო · ${text}`, `Estimated · ${text}`));
+  // A window reads like the app's badge and the calendar legend: „30 სექ – 9 ოქტ“ (full dates in the tooltip).
+  const range = Boolean(until && until !== date);
+  const text = range ? shortRange(date, until) : fmtDate(date);
+  return h('span', { class: 'cy-pred', title: range ? `${t('სავარაუდო თარიღი', 'Estimated date')}: ${fmtDate(date)} – ${fmtDate(until)}` : t('სავარაუდო თარიღი', 'Estimated date') }, h('i', { class: 'cy-pred-dot' }), t(`სავარაუდო · ${text}`, `Estimated · ${text}`));
 }
 
-/** The estimate badge for the hero / Home: the window's ends for a variable cycle (mobile CycleHero rangeFrom/rangeUntil). */
+/** The estimate badge for the hero / Home: a variable cycle's whole window (mobile CycleHero + cyclePeriodWindow). */
 function nextBadge(v) {
   if (!v.next || !v.forecastOn || v.onPeriod) return null;
-  if (v.spread && v.windowKind) {
-    return predBadge(v.windowKind === 'countdown' ? addKey(v.next, -v.spread.before) : v.next, addKey(v.next, v.spread.after));
-  }
+  if (v.periodWindow && v.windowKind) return predBadge(v.periodWindow.from, v.periodWindow.to);
   return predBadge(v.next);
 }
 
@@ -791,14 +793,11 @@ export default async function cyclePage(root, ctx = {}) {
       toast(t('გაუქმდა', 'Undone'), 'info');
     } catch (e) { toast(e.message, 'error'); }
   };
-  const endPeriod = async () => {
-    const ok = await confirmDialog({ title: t('მენსტრუაციის დასრულება', 'End period'), body: t('დღევანდელი სისხლდენა წაიშლება. გამოტოვებული დღეები არ შეივსება.', 'Today’s flow will be removed. Missed days won’t be filled in.'), confirm: t('მენსტრუაციის დასრულება', 'End period') });
-    if (!ok) return;
-    try { setBundle(await put('/api/cycle/period', { action: 'end', date: derive(state.bundle).today })); } catch (e) { toast(e.message, 'error'); }
-  };
   /**
-   * „ჯერ კიდევ გაქვს?“ → „დასრულდა“: the one-tap end (same PUT as the app); the server keeps today as
-   * flow „none“. Undo puts the day back exactly as it was (a bleeding level, an empty flow, or no log).
+   * One-tap end (the app's Flo-style end, no confirmation): „მენსტრუაციის დასრულება“ in the hero, the
+   * Tracking card's end and „ჯერ კიდევ გაქვს?“ → „დასრულდა“ all use it. Same PUT as the app; the server
+   * keeps today as flow „none“. Undo puts the day back exactly as it was (a bleeding level, an empty flow,
+   * or no log).
    */
   const endPeriodNow = async (btn) => {
     const v = derive(state.bundle);
@@ -820,6 +819,12 @@ export default async function cyclePage(root, ctx = {}) {
         });
       } catch (e) { toast(e.message, 'error'); }
     });
+  };
+  /** A soft „…დასრულება“ button wired to the one-tap end (busy while the PUT runs). */
+  const endButton = (label) => {
+    const btn = button(label, { variant: 'ghost', class: 'cy-soft-btn' });
+    btn.addEventListener('click', () => endPeriodNow(btn));
+    return btn;
   };
   /** „ჯერ კიდევ გაქვს?“ → „კი“: today's flow at her last logged level, else light. */
   const stillBleeding = async (btn) => {
@@ -935,7 +940,7 @@ export default async function cyclePage(root, ctx = {}) {
 
     const canStart = v.caps.forecast || v.caps.fertile; // not in pregnancy / postpartum
     if (v.onPeriod) {
-      actions.push(logBtn(true), h('div', { class: 'cy-actions-row' }, button(t('მენსტრუაციის დასრულება', 'End period'), { variant: 'ghost', class: 'cy-soft-btn', onClick: endPeriod }), sexBtn));
+      actions.push(logBtn(true), h('div', { class: 'cy-actions-row' }, endButton(t('მენსტრუაციის დასრულება', 'End period')), sexBtn));
     } else if (v.askStill) {
       // On the question day „მენსტრუაცია დაიწყო“ would only repeat „კი“ (mobile heroPlanWhileAsking).
       sexBtn.classList.add('wide');
@@ -1028,7 +1033,7 @@ export default async function cyclePage(root, ctx = {}) {
     startBtn.setAttribute('aria-label', trackingCopy.newCycle());
     startBtn.title = trackingCopy.newCycle();
     startBtn.addEventListener('click', () => startPeriod(startBtn));
-    const endBtn = button(trackingCopy.endBleed(), { variant: 'ghost', class: 'cy-soft-btn', onClick: endPeriod });
+    const endBtn = endButton(trackingCopy.endBleed());
     const sexLogged = v.todayLog?.sexualActivity === true || (v.todayLog?.symptoms || []).some((id) => SEX_ACTIVITY_IDS.has(id));
     const sexBtn = h('button', {
       type: 'button', class: `cy-sex-btn${sexLogged ? ' on' : ''}`,
@@ -1133,7 +1138,10 @@ export default async function cyclePage(root, ctx = {}) {
         : null,
       h('div', { class: 'cy-legend' },
         h('span', null, h('i', { class: 'cy-lg logged' }), v.caps.postpartum || v.tracking ? t('სისხლდენა', 'Bleeding') : t('მენსტრუაცია', 'Period')),
-        v.showPredicted ? h('span', null, h('i', { class: 'cy-lg expected' }), t('სავარაუდო მენსტრუაცია', 'Estimated period')) : null,
+        // A variable cycle: the calendar paints the whole window — the legend names the same range as the hero badge.
+        v.showPredicted ? h('span', null, h('i', { class: 'cy-lg expected' }), v.periodWindow && v.periodWindow.state !== 'late' && v.caps.forecast
+          ? `${t('სავარაუდო მენსტრუაცია', 'Estimated period')} · ${shortRange(v.periodWindow.from, v.periodWindow.to)}`
+          : t('სავარაუდო მენსტრუაცია', 'Estimated period')) : null,
         fertileLegend ? h('span', null, h('i', { class: 'cy-lg fertile' }), v.wideWindow ? `${t('სავარაუდო ნაყოფიერი', 'Estimated fertile')} · ${wideWindowLabel()}` : t('სავარაუდო ნაყოფიერი', 'Estimated fertile')) : null,
         fertileLegend && !v.wideWindow ? h('span', null, h('i', { class: 'cy-lg ovulation' }), t('სავარაუდო ოვულაცია', 'Estimated ovulation')) : null,
         h('span', null, h('i', { class: 'cy-lg sym' }), t('აღრიცხული', 'Logged'))),
