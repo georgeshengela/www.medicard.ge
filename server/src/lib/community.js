@@ -39,7 +39,10 @@ export const commentInput = z.object({ body:z.string().min(1).max(1500).refine(v
 export function validMentionRanges(body,mentions){let end=0;for(const m of [...mentions].sort((a,b)=>a.start-b.start)){if(m.start<end||m.end>body.length||body.slice(m.start,m.end)!=='@'+m.label)return false;end=m.end;}return true;}
 export function fail(status,message,messageEn) { throw Object.assign(new Error(message),messageEn?{status,messageEn}:{status}); }
 export function eligible(user) { return user?.gender === 'FEMALE' && user?.status === 'ACTIVE'; }
-export function publicAuthor(row){return row.anonymous?row.anonymousAlias||anonymousName(row.postId||row.id,row.authorId):row.publicName||row.alias;}
+// Nickname posts follow the member's current nickname (renaming in „შენი სივრცე“ renames her old
+// posts too); a profile-name post keeps the name it was published under; anonymous stays anonymous.
+export function namedAuthor(row){return row.identityMode==='nickname'&&row.alias?row.alias:row.publicName||row.alias;}
+export function publicAuthor(row){return row.anonymous?row.anonymousAlias||anonymousName(row.postId||row.id,row.authorId):namedAuthor(row);}
 export function resolveIdentity(input,member,forceAnonymous=false){
  if(forceAnonymous||input.anonymous===true)return 'anonymous';
  return input.identityMode||(input.anonymous===false?'nickname':member.defaultIdentity||'nickname');
@@ -50,7 +53,7 @@ export function publicContent(row, viewer) {
   author:publicAuthor(row), identityMode:row.anonymous?'anonymous':row.identityMode||'nickname', avatarId:!row.anonymous&&row.identityMode==='original'&&/^avatar-(?:[1-9]|1[0-2])$/.test(row.publicAvatarId||'')?row.publicAvatarId:null,
   mine:row.authorId===viewer, status:row.status, createdAt:row.createdAt,
   hasImage:!!row.hasImage, likes:Number(row.likes||0), dislikes:Number(row.dislikes||0),
-  comments:Number(row.comments||0), reaction:Number(row.reaction||0), reactions:row.reactions||{}, myReaction:row.myReaction||null, parentId:row.parentId||null, replyTo:row.replyIdentity ? (row.replyIdentity.anonymous ? row.replyIdentity.anonymousAlias||anonymousName(row.postId,row.replyIdentity.authorId) : row.replyIdentity.publicName||row.replyIdentity.alias) : row.replyTo||null, liked:!!row.liked,
+  comments:Number(row.comments||0), reaction:Number(row.reaction||0), reactions:row.reactions||{}, myReaction:row.myReaction||null, parentId:row.parentId||null, replyTo:row.replyIdentity ? (row.replyIdentity.anonymous ? row.replyIdentity.anonymousAlias||anonymousName(row.postId,row.replyIdentity.authorId) : namedAuthor(row.replyIdentity)) : row.replyTo||null, liked:!!row.liked,
   mentions:(row.mentions||[]).map(m=>({label:m.label,start:m.start,end:m.end,targetId:m.targetId,kind:m.kind})) };
 }
 export async function cleanImage(encoded) {

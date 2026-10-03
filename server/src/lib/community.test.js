@@ -68,6 +68,10 @@ test('original profile snapshots show only name/avatar; nickname and anonymous n
  assert.equal(hidden.avatarId,null);assert.equal(hidden.identityMode,'anonymous');assert.equal(JSON.stringify(hidden).includes('Original Name'),false);
  const nickname=publicContent({...row,identityMode:'nickname',publicName:'nickname'},'other');
  assert.equal(nickname.avatarId,null);assert.equal(nickname.author,'nickname');
+ // A renamed nickname shows on her older nickname posts; a profile-name post keeps its snapshot.
+ assert.equal(publicContent({...row,identityMode:'nickname',publicName:'old nickname',alias:'new nickname'},'other').author,'new nickname');
+ assert.equal(publicContent({...row,alias:'new nickname'},'other').author,'Original Name');
+ assert.equal(publicContent({...row,parentId:'p',replyIdentity:{anonymous:false,identityMode:'nickname',publicName:'old',alias:'new'}},'other').replyTo,'new');
  assert.equal(publicContent({...row,publicAvatarId:'https://private/image'},'other').avatarId,null);
  assert.equal(postInput.safeParse({body:'test',topic:'everyday',identityMode:'original',publicName:'Impersonation',requestId:'12345678-1234-4234-8234-123456789abc'}).success,false);
 });
