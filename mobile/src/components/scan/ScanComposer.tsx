@@ -35,7 +35,8 @@ export function ScanComposer({
   const insets = useSafeAreaInsets();
   const keyboardOpen = useChatKeyboardOpen();
   const ink = dark ? MODULE_BRANDS.scan.ink.dark : MODULE_BRANDS.scan.ink.light;
-  const amber = '#D97706';
+  // The brand's signature tone fills the one action that reads a file.
+  const accent = MODULE_BRANDS.scan.gradient[1];
   const reading = files.length > 0;
   const needsRegion = reading && !!regions?.length && !regionId;
   const trimmed = text.trim();
@@ -55,7 +56,7 @@ export function ScanComposer({
     <View style={{ paddingHorizontal: 12, paddingTop: 6, paddingBottom: keyboardOpen ? 8 : Math.max(insets.bottom, 10), backgroundColor: c.bg100 }}>
       <View style={{
         borderRadius: 26, backgroundColor: c.surface, borderWidth: 1, borderColor: reading ? `${ink}88` : c.bg300, padding: 6, gap: 6,
-        shadowColor: reading ? amber : '#0F172A', shadowOpacity: reading ? 0.16 : 0.06, shadowRadius: 14, shadowOffset: { width: 0, height: 4 }, elevation: 3,
+        shadowColor: reading ? accent : '#0F172A', shadowOpacity: reading ? 0.16 : 0.06, shadowRadius: 14, shadowOffset: { width: 0, height: 4 }, elevation: 3,
       }}>
         {showChoice && kinds.length > 1 ? (
           <View accessibilityRole="radiogroup" style={{ flexDirection: 'row', backgroundColor: c.bg200, borderRadius: 20, padding: 3 }}>
@@ -103,7 +104,7 @@ export function ScanComposer({
                 const on = region.id === regionId;
                 return (
                   <Pressable key={region.id} accessibilityRole="radio" accessibilityState={{ checked: on }} onPress={() => onRegion(region.id)} disabled={busy}
-                    style={{ height: 34, paddingHorizontal: 12, borderRadius: 17, justifyContent: 'center', backgroundColor: on ? amber : c.bg200 }}>
+                    style={{ height: 34, paddingHorizontal: 12, borderRadius: 17, justifyContent: 'center', backgroundColor: on ? accent : c.bg200 }}>
                     <Text style={{ color: on ? '#FFFFFF' : c.text100, fontSize: 12.5, fontFamily: 'NotoSansGeorgian_600SemiBold' }}>{tx(region.ka, region.en)}</Text>
                   </Pressable>
                 );
@@ -129,10 +130,10 @@ export function ScanComposer({
           {tool(tx('გალერეიდან', 'From gallery'), onGallery, <ImageIcon size={18} color={c.text100} />)}
           {onPdf ? tool(tx('PDF ფაილი', 'PDF file'), onPdf, <FileText size={18} color={c.text100} />) : null}
           <View style={{ flex: 1 }} />
-          {preparing ? <ActivityIndicator size="small" color={amber} /> : null}
+          {preparing ? <ActivityIndicator size="small" color={accent} /> : null}
           {reading ? (
             <Pressable accessibilityRole="button" accessibilityState={{ disabled: !canSend, busy }} onPress={onSubmit} disabled={!canSend}
-              style={{ height: 40, paddingHorizontal: 16, borderRadius: 20, flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: canSend || busy ? amber : c.bg200 }}>
+              style={{ height: 40, paddingHorizontal: 16, borderRadius: 20, flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: canSend || busy ? accent : c.bg200 }}>
               {busy ? <ActivityIndicator size="small" color="#FFFFFF" /> : <Sparkles size={16} color={canSend ? '#FFFFFF' : c.text300} />}
               <Text style={{ color: canSend || busy ? '#FFFFFF' : c.text300, fontSize: 13.5, fontFamily: 'NotoSansGeorgian_700Bold' }}>{tx('წაკითხვა', 'Read it')}</Text>
             </Pressable>

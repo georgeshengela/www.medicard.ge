@@ -64,11 +64,12 @@ export const MODULE_BRANDS: Record<ModuleBrandId, ModuleBrand> = {
     ink: { light: '#475569', dark: '#CBD5E1' },
     gradient: ['#0F172A', '#1F2937', '#475569'], glow: 'rgba(148,163,184,0.30)', onHero: '#CBD5E1',
   },
-  // MEDISCAN (owner 2026-10-03): lab sheets, imaging and skin photos read in one chat. Amber = the scanner's light.
+  // MEDISCAN (owner 2026-10-03): lab sheets, imaging and skin photos read in one chat. Cyan = the radiology light
+  // box (owner rejected amber in both themes; fuchsia was the offered alternative).
   scan: {
     id: 'scan', suffix: 'SCAN', name: 'MEDISCAN',
-    ink: { light: '#B45309', dark: '#FBBF24' },
-    gradient: ['#78350F', '#D97706', '#FBBF24'], glow: 'rgba(251,191,36,0.35)', onHero: '#FDE68A',
+    ink: { light: '#0E7490', dark: '#67E8F9' },
+    gradient: ['#083344', '#0891B2', '#22D3EE'], glow: 'rgba(103,232,249,0.35)', onHero: '#CFFAFE',
   },
   medi: {
     id: 'medi', suffix: '', name: 'MEDI',

@@ -16,7 +16,7 @@ function useScanInk() {
   return dark ? MODULE_BRANDS.scan.ink.dark : MODULE_BRANDS.scan.ink.light;
 }
 
-/** MEDISCAN's avatar in the thread: the amber scan glyph on its tint. */
+/** MEDISCAN's avatar in the thread: the scan glyph in the brand ink on its tint. */
 export function ScanAvatar({ size = 26 }: { size?: number }) {
   const ink = useScanInk();
   const dark = useIsDark();
@@ -170,7 +170,7 @@ export function ScanProgress({ label }: { label: string }) {
     <View accessibilityLiveRegion="polite" style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
       <ScanAvatar />
       <Text style={{ color: c.text200, fontSize: 14, fontFamily: 'NotoSansGeorgian_400Regular' }}>{label}</Text>
-      <ActivityIndicator size="small" color="#D97706" />
+      <ActivityIndicator size="small" color={MODULE_BRANDS.scan.gradient[1]} />
     </View>
   );
 }

@@ -97,7 +97,7 @@ import { tx } from '@/i18n/locale';
 const CHECKUP_TILES: HubTile[] = [
   { key: 'symptoms', title: tx('სიმპტომები', 'Symptoms'), detail: tx('აღწერე, რა და სად გაწუხებს', 'Describe what bothers you and where'), href: '/symptoms', icon: Stethoscope, ink: 'teal' },
   // MEDISCAN (owner 2026-10-03): lab results, imaging and skin photos in one chat with a choice.
-  { key: 'scan', title: 'MEDISCAN', detail: tx('ანალიზი, გამოსახულება, კანი', 'Lab tests, imaging, skin'), href: '/scan', icon: ScanLine, ink: 'amber' },
+  { key: 'scan', title: 'MEDISCAN', detail: tx('ანალიზი, გამოსახულება, კანი', 'Lab tests, imaging, skin'), href: '/scan', icon: ScanLine, ink: 'cyan' },
 ];
 
 /** Everything else a person manages here, one tile each, no duplicates of the blocks above. */

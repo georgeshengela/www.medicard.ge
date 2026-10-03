@@ -22,7 +22,7 @@ export const HUB = {
   spotlightBg: '#102C35',
 } as const;
 
-export type HubInk = 'teal' | 'blue' | 'violet' | 'rose' | 'amber' | 'green' | 'sky' | 'neutral';
+export type HubInk = 'teal' | 'blue' | 'violet' | 'rose' | 'amber' | 'green' | 'sky' | 'cyan' | 'neutral';
 
 const INK: Record<HubInk, { light: string; dark: string }> = {
   teal: { light: '#0F766E', dark: '#5EEAD4' },
@@ -32,6 +32,8 @@ const INK: Record<HubInk, { light: string; dark: string }> = {
   amber: { light: '#B45309', dark: '#FCD34D' },
   green: { light: '#15803D', dark: '#86EFAC' },
   sky: { light: '#0369A1', dark: '#7DD3FC' },
+  // MEDISCAN's signature (moduleBrand `scan`).
+  cyan: { light: '#0E7490', dark: '#67E8F9' },
   neutral: { light: '#374151', dark: '#D1D5DB' },
 };
 

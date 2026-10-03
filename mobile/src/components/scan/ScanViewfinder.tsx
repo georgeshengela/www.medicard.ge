@@ -8,7 +8,7 @@ import { MODULE_BRANDS } from '@/theme/moduleBrand';
 import { useIsDark, useThemeColors } from '@/theme/colors';
 
 /**
- * MEDISCAN's one bold element: a viewfinder with amber corners and a light sweeping over whatever is
+ * MEDISCAN's one bold element: a viewfinder with corners in the brand ink and a light sweeping over whatever is
  * being read (the chosen kind's glyph). `scanning` speeds the sweep up while a result is being read.
  */
 export function ScanViewfinder({ size = 120, icon: Icon, scanning = false }: { size?: number; icon: LucideIcon; scanning?: boolean }) {
