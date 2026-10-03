@@ -456,7 +456,18 @@ async function deliverCycleReminder(data: Record<string, unknown>): Promise<{
 }> {
   const { cycleDeliveryDecision, getEffectiveCycleMask } = await import('./cycleNotificationContract.js');
   const { getCycleReminderPrefs } = await import('./cycleReminderPrefs');
-  const prefs = await getCycleReminderPrefs();
+  let prefs = await getCycleReminderPrefs();
+  const typeEnabledFrom = (p: typeof prefs) => ({
+    period_soon: p.periodDaysBefore > 0,
+    period_start: true,
+    period_late: p.periodLate,
+    ovulation: p.ovulation,
+    fertile: p.ovulation,
+    pms: p.pms,
+    opk: p.opk,
+    bbt: p.bbt,
+    log_nudge: p.dailyLog,
+  });
   const engage = await loadEngagePrefs().catch(() => null);
   let today = `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}-${String(new Date().getDate()).padStart(2, '0')}`;
   let live: Record<string, unknown> = {
@@ -464,16 +475,7 @@ async function deliverCycleReminder(data: Record<string, unknown>): Promise<{
     prefsEnabled: prefs.enabled,
     globalEnabled: true,
     privacyEnabled: false,
-    typeEnabled: {
-      period_soon: prefs.periodDaysBefore > 0,
-      period_start: true,
-      ovulation: prefs.ovulation,
-      fertile: prefs.ovulation,
-      pms: prefs.pms,
-      opk: prefs.opk,
-      bbt: prefs.bbt,
-      log_nudge: prefs.dailyLog,
-    },
+    typeEnabled: typeEnabledFrom(prefs),
     periodDaysBefore: prefs.periodDaysBefore,
     logs: [],
   };
@@ -485,9 +487,12 @@ async function deliverCycleReminder(data: Record<string, unknown>): Promise<{
       const view = await loadCycleView(userId);
       const bundle = view.canonical;
       today = cycleToday(bundle, today);
+      // TTC profiles default ovulation/fertile reminders on — re-read the prefs with the mode known.
+      prefs = await getCycleReminderPrefs({ mode: bundle.profile.mode });
       live = {
         ...live,
         today,
+        typeEnabled: typeEnabledFrom(prefs),
         mode: bundle.profile.mode,
         privacyEnabled: Boolean(bundle.profile.privacyEnabled),
         nextPeriodStart: bundle.predictions.nextPeriodStart,

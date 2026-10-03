@@ -719,6 +719,13 @@ export const enCycle: Pick<Strings, 'cycle'> = {
     remindersHint: 'Local notifications at 09:00',
     remindersEnabled: 'Reminders on',
     remindersPeriodBefore: 'Before period (days)',
+    remindersPeriodDay: 'Estimated period day',
+    remindersPeriodLate: 'If the estimated date passes',
+    remindersPeriodLateHint: 'A check-in 2 days later if no period was logged.',
+    remindersLockText: 'On the lock screen:',
+    remindersOptionalTitle: 'Optional reminders',
+    remindersOptionalHint:
+      'Off by default — ovulation or PMS appears on your screen only if you turn it on.',
     remindersOvulation: 'Ovulation and fertile window',
     remindersDailyLog: 'Daily log reminder',
     remindersPms: 'PMS phase tip',

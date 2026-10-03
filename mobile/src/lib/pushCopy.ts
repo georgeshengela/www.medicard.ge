@@ -304,6 +304,11 @@ export async function loadPushTemplates(opts: { force?: boolean } = {}): Promise
   return templatesInFlight;
 }
 
+/** The admin template as last loaded from the server, or null while none is cached. */
+export function getCachedPushTemplate(key: string): PushTemplate | null {
+  return cache?.[key] ?? null;
+}
+
 export function applyPushCopy(
   key: string,
   vars: Record<string, string | number | undefined> = {},

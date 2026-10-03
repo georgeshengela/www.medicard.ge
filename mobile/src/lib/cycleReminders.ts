@@ -8,7 +8,7 @@ import {
 } from '@/lib/notifications';
 import type { CycleReminderPrefs } from '@/lib/cycleReminderPrefs';
 import { cycleHonestyFlags } from '@/lib/cycleHonesty';
-import { applyPushCopy, interpolatePushCopy } from '@/lib/pushCopy';
+import { getCachedPushTemplate, interpolatePushCopy } from '@/lib/pushCopy';
 import { isEn } from '../i18n/locale.js';
 import { bumpOutOfQuiet } from '@/lib/mediEngageModel';
 import { loadEngagePrefs } from '@/lib/mediEngagePrefs';
@@ -16,63 +16,50 @@ import {
   buildCycleCandidates,
   CYCLE_REMINDER_HOUR,
   CYCLE_REMINDER_MINUTE,
+  CYCLE_TEMPLATE_BY_TYPE,
   pickCycleScheduleSet,
   revalidateCycleCandidate,
 } from '@/lib/cycleNotificationContract.js';
+import { periodSoonDaysVar, pickCycleReminderCopy } from '@/lib/cycleReminderCopy';
 
 /**
- * English reminder copy for English users. Admin push templates and the pushCopy fallbacks are
- * Georgian; same honesty as the Georgian (estimates stay "likely" / "estimated").
+ * Lock-screen copy for one reminder: the app's own texts (cycleReminderCopy), or the admin's Georgian
+ * template when the admin actually changed it. Estimates stay „სავარაუდოდ“ / "estimated".
  */
-const EN_CYCLE_COPY: Record<string, { title: string; body: string }> = {
-  'cycle-period-soon': {
-    title: 'Your estimated period is coming up 🌸',
-    body: 'Based on your cycle, your period is likely in {days}. This is an estimate — Medi is just reminding you 💗',
-  },
-  'cycle-period-start': {
-    title: 'It might start today 🌷',
-    body: 'By Medi’s estimate, your period is likely to start today. If it doesn’t, that’s okay — cycles don’t always follow the calendar exactly 🤍',
-  },
-  'cycle-ovulation': {
-    title: 'Estimated ovulation is coming up ✨',
-    body: 'Based on the calendar, your estimated ovulation day is getting close. This is an estimate — cycles don’t always follow the calendar exactly 🤍',
-  },
-  'cycle-fertile': {
-    title: 'Estimated fertile window 🌱',
-    body: 'Your estimated fertile window may be starting. This is a calendar estimate — the prediction can change 🤍',
-  },
-  'cycle-pms': {
-    title: 'PMS may be coming up 🌙',
-    body: 'If you feel a little different today, your cycle suggests PMS may be coming up. Listen to your body 🤍',
-  },
-  'cycle-opk': {
-    title: 'Time for your OPK test 🧪',
-    body: 'If you’re using ovulation tests this cycle, don’t forget today’s OPK 💗',
-  },
-  'cycle-bbt': {
-    title: 'Good morning ☀️ BBT?',
-    body: 'Before you get up and start your day, remember to take your basal temperature 🌡️',
-  },
-  'cycle-log': {
-    title: 'How are you today? 💚',
-    body: 'A minute for Medi? Note how your day went — symptoms, mood and whatever matters to you.',
-  },
-  'cycle-masked': {
-    title: 'A reminder from Medi',
-    body: 'Stop by when you have a moment 💚',
-  },
-};
-
-function reminderCopy(key: string, vars: Record<string, string | undefined>): { title: string; body: string } {
-  const en = isEn() ? EN_CYCLE_COPY[key] : undefined;
-  if (!en) return applyPushCopy(key, vars);
-  return { title: interpolatePushCopy(en.title, vars), body: interpolatePushCopy(en.body, vars) };
+function reminderCopy(
+  key: string,
+  vars: Record<string, string | undefined>,
+  cautious: boolean,
+): { title: string; body: string } {
+  const raw = pickCycleReminderCopy(key, { en: isEn(), cautious, cached: getCachedPushTemplate(key) });
+  return { title: interpolatePushCopy(raw.title, vars), body: interpolatePushCopy(raw.body, vars) };
 }
 
-function periodDaysVar(days: number, cautious: boolean): string {
-  if (!isEn()) return cautious ? `დაახლოებით ${days}` : String(days);
-  const unit = days === 1 ? 'day' : 'days';
-  return cautious ? `about ${days} ${unit}` : `${days} ${unit}`;
+export type CycleReminderPreviewType =
+  | 'period_soon'
+  | 'period_start'
+  | 'period_late'
+  | 'ovulation'
+  | 'fertile'
+  | 'pms'
+  | 'opk'
+  | 'bbt'
+  | 'log_nudge';
+
+/**
+ * Exactly the text a reminder of this type would put on the lock screen (unmasked), for the settings
+ * screen to show beside each switch before it is turned on.
+ */
+export function cycleReminderPreview(
+  type: CycleReminderPreviewType,
+  opts: { periodDaysBefore?: number; cautious?: boolean } = {},
+): { title: string; body: string } {
+  const key = CYCLE_TEMPLATE_BY_TYPE[type] ?? 'cycle-masked';
+  const vars =
+    type === 'period_soon'
+      ? { days: periodSoonDaysVar(Math.max(1, Number(opts.periodDaysBefore ?? 2)), isEn()) }
+      : {};
+  return reminderCopy(key, vars, Boolean(opts.cautious));
 }
 
 function reminderDate(ymd: string, quietStart: string, quietEnd: string): Date {
@@ -97,6 +84,7 @@ function liveFromBundle(bundle: CycleBundle, prefs: CycleReminderPrefs, today: s
     typeEnabled: {
       period_soon: prefs.periodDaysBefore > 0,
       period_start: true,
+      period_late: prefs.periodLate,
       ovulation: prefs.ovulation,
       fertile: prefs.ovulation,
       pms: prefs.pms,
@@ -143,9 +131,9 @@ export async function syncCycleReminders(
     if (date.getTime() <= Date.now()) continue;
     const vars =
       candidate.type === 'period_soon'
-        ? { days: periodDaysVar(Number(prefs.periodDaysBefore), Boolean(flags.cautious)) }
+        ? { days: periodSoonDaysVar(Number(prefs.periodDaysBefore), isEn()) }
         : {};
-    const copy = reminderCopy(candidate.templateKey, vars);
+    const copy = reminderCopy(candidate.templateKey, vars, Boolean(flags.cautious));
     const ok = await scheduleCycleDateNotification({
       identifier: `${candidate.type}:${candidate.eventDate}`,
       title: copy.title,
@@ -190,7 +178,7 @@ export async function reconcileCycleReminders(userId: string, opts: { force?: bo
     const { getCycleReminderPrefs } = await import('@/lib/cycleReminderPrefs');
     const view = await loadCycleView(userId);
     if (!view?.canonical?.profile) return 0;
-    const prefs = await getCycleReminderPrefs();
+    const prefs = await getCycleReminderPrefs({ mode: view.canonical.profile.mode });
     const count = await syncCycleReminders(view.canonical, prefs);
     // Pregnancy care reminders used to be scheduled only when the cycle screen opened.
     try {

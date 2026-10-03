@@ -140,7 +140,7 @@ function CycleLogScreen() {
       if (!ticket.current()) return;
       if (result.view && !result.view.stale && result.view.pendingCount === 0) {
         try {
-          const prefs = await getCycleReminderPrefs();
+          const prefs = await getCycleReminderPrefs({ mode: result.view.canonical.profile.mode });
           if (!ticket.current()) return;
           await syncCycleReminders(result.view.canonical, prefs);
         } catch { /* A reminder failure does not undo the saved journal entry. */ }

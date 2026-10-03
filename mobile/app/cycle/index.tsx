@@ -448,7 +448,7 @@ export default function CycleHome() {
       await refreshPostpartum(view, userId, gen);
       if (gen !== ttcGen.current || view.stale || view.pendingCount > 0) return;
       try {
-        const prefs = await getCycleReminderPrefs();
+        const prefs = await getCycleReminderPrefs({ mode: view.canonical.profile.mode });
         await syncCycleReminders(view.canonical, prefs);
         if (supportsCycleCapability(view.canonical.profile.mode, 'showPregnancyCarePlanner')) {
           const carePlan = await api.cycle.pregnancyCarePlan();

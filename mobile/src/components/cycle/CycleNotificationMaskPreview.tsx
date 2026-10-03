@@ -6,6 +6,7 @@ import {
   getMaskPreset,
   type CycleNotificationMaskStyle,
 } from '@/lib/cycleNotificationMask';
+import { cycleReminderPreview } from '@/lib/cycleReminders';
 import { useCycleColors } from '@/theme/cycle';
 
 type Props = {
@@ -47,8 +48,10 @@ function NotifBubble({
 export function CycleNotificationMaskPreview({ maskEnabled, maskStyle }: Props) {
   const c = useCycleColors();
   const hidden = getMaskPreset(maskStyle);
-  const realTitle = ka.cycle.remPeriodSoon;
-  const realBody = ka.cycle.remPeriodSoonBody(2);
+  // The same text the period-soon reminder really puts on the lock screen.
+  const real = cycleReminderPreview('period_soon', { periodDaysBefore: 2 });
+  const realTitle = real.title;
+  const realBody = real.body;
 
   return (
     <View style={{ marginTop: 12, gap: 10 }}>

@@ -1,23 +1,18 @@
 import { useSyncExternalStore } from 'react';
 import { getPreference, setPreference } from '@/lib/storage';
 
-import type { CycleNotificationMaskStyle } from '@/lib/cycleNotificationMask';
+import {
+  CYCLE_REMINDER_DEFAULTS,
+  resolveCycleReminderPrefs,
+  type CycleReminderPrefsShape,
+} from './cycleReminderDefaults';
 
-export type CycleReminderPrefs = {
-  enabled: boolean;
-  periodDaysBefore: number;
-  ovulation: boolean;
-  dailyLog: boolean;
-  pms: boolean;
-  opk: boolean;
-  bbt: boolean;
-  maskNotifications: boolean;
-  maskStyle: CycleNotificationMaskStyle;
-};
+export type CycleReminderPrefs = CycleReminderPrefsShape;
 
 export const CYCLE_REMINDER_KEYS = {
   enabled: 'medicard.cycle.reminders.enabled',
   periodDaysBefore: 'medicard.cycle.reminders.periodDaysBefore',
+  periodLate: 'medicard.cycle.reminders.periodLate',
   ovulation: 'medicard.cycle.reminders.ovulation',
   dailyLog: 'medicard.cycle.reminders.dailyLog',
   pms: 'medicard.cycle.reminders.pms',
@@ -29,53 +24,35 @@ export const CYCLE_REMINDER_KEYS = {
 } as const;
 
 /**
- * On by default (owner 2026-09-29: women received no cycle notifications because this started off and
- * lived only in cycle settings). Copy stays masked by default; one switch in cycle settings turns it off.
+ * Reminders are on by default (owner 2026-09-29: women received none while this started off). Which
+ * reminders: only the period family (soon / today / late) — brief §9 item 5, so a lock screen never
+ * talks about ovulation or libido unless the person asked for it. Defaults live in cycleReminderDefaults.
  */
-const DEFAULTS: CycleReminderPrefs = {
-  enabled: true,
-  periodDaysBefore: 2,
-  ovulation: true,
-  dailyLog: false,
-  pms: true,
-  opk: false,
-  bbt: false,
-  // Real text by default (like Flo / Apple Health) — a masked "Medi reminder" read as "no cycle notifications".
-  maskNotifications: false,
-  maskStyle: 'neutral',
-};
+export const DEFAULT_CYCLE_REMINDER_PREFS: CycleReminderPrefs = CYCLE_REMINDER_DEFAULTS;
 
-export async function getCycleReminderPrefs(): Promise<CycleReminderPrefs> {
-  const [enabled, periodDaysBefore, ovulation, dailyLog, pms, opk, bbt, maskNotifications, maskStyle] =
+/**
+ * `mode` = the cycle profile mode when known: a TRY_TO_CONCEIVE profile defaults ovulation + fertile
+ * reminders ON. A value the person saved always wins over the default.
+ */
+export async function getCycleReminderPrefs(opts: { mode?: string | null } = {}): Promise<CycleReminderPrefs> {
+  const [enabled, periodDaysBefore, periodLate, ovulation, dailyLog, pms, opk, bbt, maskNotifications, maskStyle] =
     await Promise.all([
-    getPreference(CYCLE_REMINDER_KEYS.enabled),
-    getPreference(CYCLE_REMINDER_KEYS.periodDaysBefore),
-    getPreference(CYCLE_REMINDER_KEYS.ovulation),
-    getPreference(CYCLE_REMINDER_KEYS.dailyLog),
-    getPreference(CYCLE_REMINDER_KEYS.pms),
-    getPreference(CYCLE_REMINDER_KEYS.opk),
-    getPreference(CYCLE_REMINDER_KEYS.bbt),
-    getPreference(CYCLE_REMINDER_KEYS.maskNotifications),
-    getPreference(CYCLE_REMINDER_KEYS.maskStyle),
-  ]);
+      getPreference(CYCLE_REMINDER_KEYS.enabled),
+      getPreference(CYCLE_REMINDER_KEYS.periodDaysBefore),
+      getPreference(CYCLE_REMINDER_KEYS.periodLate),
+      getPreference(CYCLE_REMINDER_KEYS.ovulation),
+      getPreference(CYCLE_REMINDER_KEYS.dailyLog),
+      getPreference(CYCLE_REMINDER_KEYS.pms),
+      getPreference(CYCLE_REMINDER_KEYS.opk),
+      getPreference(CYCLE_REMINDER_KEYS.bbt),
+      getPreference(CYCLE_REMINDER_KEYS.maskNotifications),
+      getPreference(CYCLE_REMINDER_KEYS.maskStyle),
+    ]);
 
-  const style = (['neutral', 'wellness', 'calendar', 'notes'] as const).includes(
-    maskStyle as CycleNotificationMaskStyle,
-  )
-    ? (maskStyle as CycleNotificationMaskStyle)
-    : DEFAULTS.maskStyle;
-
-  return {
-    enabled: enabled !== '0',
-    periodDaysBefore: Math.min(5, Math.max(0, Number(periodDaysBefore) || DEFAULTS.periodDaysBefore)),
-    ovulation: ovulation !== '0',
-    dailyLog: dailyLog === '1',
-    pms: pms !== '0',
-    opk: opk === '1',
-    bbt: bbt === '1',
-    maskNotifications: maskNotifications === '1',
-    maskStyle: style,
-  };
+  return resolveCycleReminderPrefs(
+    { enabled, periodDaysBefore, periodLate, ovulation, dailyLog, pms, opk, bbt, maskNotifications, maskStyle },
+    opts.mode ?? null,
+  );
 }
 
 export async function setCycleReminderPrefs(prefs: Partial<CycleReminderPrefs>): Promise<void> {
@@ -90,6 +67,9 @@ export async function setCycleReminderPrefs(prefs: Partial<CycleReminderPrefs>):
         String(Math.min(5, Math.max(0, prefs.periodDaysBefore))),
       ),
     );
+  }
+  if (prefs.periodLate !== undefined) {
+    tasks.push(setPreference(CYCLE_REMINDER_KEYS.periodLate, prefs.periodLate ? '1' : '0'));
   }
   if (prefs.ovulation !== undefined) {
     tasks.push(setPreference(CYCLE_REMINDER_KEYS.ovulation, prefs.ovulation ? '1' : '0'));

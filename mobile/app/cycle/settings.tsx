@@ -6,7 +6,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, { FadeInUp } from 'react-native-reanimated';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
-import { Baby, Bell, CalendarPlus, Check, Download, EyeOff, Flame, Heart, HeartPulse, Link2, Lock, Sparkles, Trash2 } from 'lucide-react-native';
+import { Baby, Bell, CalendarClock, CalendarPlus, Check, Download, EyeOff, Flame, Heart, HeartPulse, Link2, Lock, NotebookPen, Sparkles, Trash2 } from 'lucide-react-native';
 import { CycleNotificationMaskPreview } from '@/components/cycle/CycleNotificationMaskPreview';
 import { CycleDateField } from '@/components/cycle/CycleDateField';
 import { CycleHealthConnectCard } from '@/components/cycle/CycleHealthConnectCard';
@@ -33,13 +33,14 @@ import { useAuth } from '@/store/AuthContext';
 import { normalizeIsoDate } from '@/lib/birthdate';
 import { buildCycleIcs } from '@/lib/cycleCalendarExport';
 import {
+  DEFAULT_CYCLE_REMINDER_PREFS,
   getCycleReminderPrefs,
   setCyclePrivacyLockEnabled,
   setCycleReminderPrefs,
   isCyclePrivacyLockEnabled,
   type CycleReminderPrefs,
 } from '@/lib/cycleReminderPrefs';
-import { syncCycleReminders } from '@/lib/cycleReminders';
+import { cycleReminderPreview, syncCycleReminders, type CycleReminderPreviewType } from '@/lib/cycleReminders';
 import {
   CYCLE_MASK_STYLES,
   maskStyleLabel,
@@ -141,17 +142,7 @@ export default function CycleSettings() {
   const [privacy, setPrivacy] = useState(false);
   const [privacyLock, setPrivacyLock] = useState(false);
   const [conditions, setConditions] = useState<CycleCondition[]>([]);
-  const [reminders, setReminders] = useState<CycleReminderPrefs>({
-    enabled: true,
-    periodDaysBefore: 2,
-    ovulation: true,
-    dailyLog: false,
-    pms: true,
-    opk: false,
-    bbt: false,
-    maskNotifications: false,
-    maskStyle: 'neutral',
-  });
+  const [reminders, setReminders] = useState<CycleReminderPrefs>(DEFAULT_CYCLE_REMINDER_PREFS);
   const [pregnancySheet, setPregnancySheet] = useState(false);
   const [contraceptionMethod, setContraceptionMethod] = useState<CycleContraceptionMethod | null>(null);
   const [contraceptionStartedAt, setContraceptionStartedAt] = useState('');
@@ -171,7 +162,15 @@ export default function CycleSettings() {
       setLoading(false);
       return;
     }
-    Promise.all([loadCycleView(user.id), getCycleReminderPrefs(), isCyclePrivacyLockEnabled()])
+    loadCycleView(user.id)
+      .then((view) =>
+        Promise.all([
+          view,
+          // TTC profiles default ovulation/fertile reminders on; the mode must be known first.
+          getCycleReminderPrefs({ mode: view.canonical?.profile?.mode ?? view.display?.profile?.mode ?? null }),
+          isCyclePrivacyLockEnabled(),
+        ]),
+      )
       .then(([view, remPrefs, lockOn]) => {
         const data = view.display;
         setBundle(data);
@@ -793,6 +792,36 @@ export default function CycleSettings() {
                   onChange={(n) => updateReminders({ periodDaysBefore: n })}
                   c={c}
                 />
+                {reminders.periodDaysBefore > 0 ? (
+                  <ReminderExample type="period_soon" periodDaysBefore={reminders.periodDaysBefore} c={c} />
+                ) : null}
+                <View style={{ height: 1, backgroundColor: c.border, marginVertical: 12 }} />
+                <RowSwitch icon={Heart} label={ka.cycle.remindersPeriodDay} value c={c} />
+                <ReminderExample type="period_start" c={c} />
+                <View style={{ height: 1, backgroundColor: c.border, marginVertical: 12 }} />
+                <RowSwitch
+                  icon={CalendarClock}
+                  label={ka.cycle.remindersPeriodLate}
+                  hint={ka.cycle.remindersPeriodLateHint}
+                  value={reminders.periodLate}
+                  onChange={(v) => updateReminders({ periodLate: v })}
+                  c={c}
+                />
+                <ReminderExample type="period_late" c={c} />
+              </>
+            ) : null}
+          </CycleCard>
+
+          {reminders.enabled ? (
+            <>
+              <View style={{ height: 12 }} />
+              <CycleCard delay={0}>
+                <Text style={{ color: c.ink, fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 15 }}>
+                  {ka.cycle.remindersOptionalTitle}
+                </Text>
+                <Text style={{ color: c.muted, fontSize: 12, lineHeight: 17, marginTop: 4 }}>
+                  {ka.cycle.remindersOptionalHint}
+                </Text>
                 <View style={{ height: 1, backgroundColor: c.border, marginVertical: 12 }} />
                 <RowSwitch
                   icon={Sparkles}
@@ -801,14 +830,7 @@ export default function CycleSettings() {
                   onChange={(v) => updateReminders({ ovulation: v })}
                   c={c}
                 />
-                <View style={{ height: 1, backgroundColor: c.border, marginVertical: 12 }} />
-                <RowSwitch
-                  icon={Heart}
-                  label={ka.cycle.remindersDailyLog}
-                  value={reminders.dailyLog}
-                  onChange={(v) => updateReminders({ dailyLog: v })}
-                  c={c}
-                />
+                <ReminderExample type="ovulation" c={c} />
                 <View style={{ height: 1, backgroundColor: c.border, marginVertical: 12 }} />
                 <RowSwitch
                   icon={Heart}
@@ -817,19 +839,28 @@ export default function CycleSettings() {
                   onChange={(v) => updateReminders({ pms: v })}
                   c={c}
                 />
+                <ReminderExample type="pms" c={c} />
+                <View style={{ height: 1, backgroundColor: c.border, marginVertical: 12 }} />
+                <RowSwitch
+                  icon={NotebookPen}
+                  label={ka.cycle.remindersDailyLog}
+                  value={reminders.dailyLog}
+                  onChange={(v) => updateReminders({ dailyLog: v })}
+                  c={c}
+                />
+                <ReminderExample type="log_nudge" c={c} />
                 {mode === 'TRY_TO_CONCEIVE' ? (
                   <>
                     <View style={{ height: 1, backgroundColor: c.border, marginVertical: 12 }} />
                     <RowSwitch
                       icon={Sparkles}
                       label={ka.cycle.remindersOpk}
+                      hint={ka.cycle.remindersOpkHint}
                       value={reminders.opk}
                       onChange={(v) => updateReminders({ opk: v })}
                       c={c}
                     />
-                    <Text style={{ color: c.muted, fontSize: 12, lineHeight: 16, marginTop: 6 }}>
-                      {ka.cycle.remindersOpkHint}
-                    </Text>
+                    <ReminderExample type="opk" c={c} />
                     <View style={{ height: 1, backgroundColor: c.border, marginVertical: 12 }} />
                     <RowSwitch
                       icon={Heart}
@@ -838,11 +869,12 @@ export default function CycleSettings() {
                       onChange={(v) => updateReminders({ bbt: v })}
                       c={c}
                     />
+                    <ReminderExample type="bbt" c={c} />
                   </>
                 ) : null}
-              </>
-            ) : null}
-          </CycleCard>
+              </CycleCard>
+            </>
+          ) : null}
         </CycleSection>
 
         {/* §45 — კონფიდენციალურობა: privacy, mask, lock, sharing together. */}
@@ -1161,6 +1193,8 @@ export default function CycleSettings() {
         onConfirm={() => {
           setTtcOnboarding(false);
           setMode('TRY_TO_CONCEIVE');
+          // TTC onboarding turns ovulation + fertile-window reminders on (brief §9 item 5); saved with the profile.
+          setReminders((cur) => ({ ...cur, ovulation: true }));
         }}
       />
       <CyclePerimenopauseOnboarding
@@ -1285,17 +1319,59 @@ function Stepper({
   );
 }
 
+/**
+ * The exact lock-screen text of one reminder (unmasked), shown under its switch so the person sees what
+ * would appear before turning it on (brief §9 item 5). Same copy path as the scheduler.
+ */
+function ReminderExample({
+  type,
+  periodDaysBefore,
+  c,
+}: {
+  type: CycleReminderPreviewType;
+  periodDaysBefore?: number;
+  c: ReturnType<typeof useCycleColors>;
+}) {
+  const copy = cycleReminderPreview(type, { periodDaysBefore });
+  return (
+    <View
+      style={{
+        marginTop: 4,
+        marginLeft: 28,
+        borderRadius: 14,
+        backgroundColor: c.cardSoft,
+        paddingHorizontal: 12,
+        paddingVertical: 9,
+      }}
+      accessibilityLabel={`${ka.cycle.remindersLockText} ${copy.title}. ${copy.body}`}
+    >
+      <Text style={{ color: c.mutedSoft, fontSize: 10.5, fontFamily: 'NotoSansGeorgian_700Bold', letterSpacing: 0.3 }}>
+        {ka.cycle.remindersLockText}
+      </Text>
+      <Text style={{ color: c.ink, fontSize: 12.5, fontFamily: 'NotoSansGeorgian_700Bold', marginTop: 3, lineHeight: 17 }}>
+        {copy.title}
+      </Text>
+      <Text style={{ color: c.muted, fontSize: 12, lineHeight: 16, marginTop: 2 }} numberOfLines={4}>
+        {copy.body}
+      </Text>
+    </View>
+  );
+}
+
 function RowSwitch({
   icon: Icon,
   label,
+  hint,
   value,
   onChange,
   c,
 }: {
   icon: typeof Lock;
   label: string;
+  hint?: string;
   value: boolean;
-  onChange: (v: boolean) => void;
+  /** Omitted = an always-on row: the switch is shown on and disabled. */
+  onChange?: (v: boolean) => void;
   c: ReturnType<typeof useCycleColors>;
 }) {
   return (
@@ -1310,25 +1386,36 @@ function RowSwitch({
     >
       <View style={{ flexDirection: 'row', alignItems: 'flex-start', flex: 1, minWidth: 0, paddingRight: 12 }}>
         <Icon size={18} color={c.brand} strokeWidth={2.1} style={{ marginTop: 2 }} />
-        <Text
+        <View style={{ marginLeft: 10, flex: 1, flexShrink: 1 }}>
+          <Text style={{ color: c.ink, fontWeight: '700' }}>{label}</Text>
+          {hint ? (
+            <Text style={{ color: c.muted, fontSize: 12, lineHeight: 16, marginTop: 2 }}>{hint}</Text>
+          ) : null}
+        </View>
+      </View>
+      {onChange ? (
+        <Switch
+          value={value}
+          accessibilityLabel={label}
+          onValueChange={onChange}
+          trackColor={{ true: c.cta, false: c.controlBorder }}
+          thumbColor={c.onPrimary}
+        />
+      ) : (
+        <View
+          accessibilityLabel={`${label} — ${tx('ყოველთვის ჩართული', 'always on')}`}
           style={{
-            color: c.ink,
-            fontWeight: '700',
-            marginLeft: 10,
-            flex: 1,
-            flexShrink: 1,
+            width: 28,
+            height: 28,
+            borderRadius: 14,
+            backgroundColor: c.cta,
+            alignItems: 'center',
+            justifyContent: 'center',
           }}
         >
-          {label}
-        </Text>
-      </View>
-      <Switch
-        value={value}
-        accessibilityLabel={label}
-        onValueChange={onChange}
-        trackColor={{ true: c.cta, false: c.controlBorder }}
-        thumbColor={c.onPrimary}
-      />
+          <Check size={16} color={c.onPrimary} strokeWidth={3} />
+        </View>
+      )}
     </View>
   );
 }

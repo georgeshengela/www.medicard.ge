@@ -2139,6 +2139,13 @@ const kaStrings = {
     remindersHint: 'ლოკალური შეტყობინებები 09:00-ზე',
     remindersEnabled: 'შეხსენებები ჩართული',
     remindersPeriodBefore: 'მენსტრუაციამდე (დღე)',
+    remindersPeriodDay: 'მენსტრუაციის სავარაუდო დღე',
+    remindersPeriodLate: 'თუ სავარაუდო თარიღი გავიდა',
+    remindersPeriodLateHint: 'შეკითხვა 2 დღის შემდეგ, თუ მენსტრუაცია არ აღნიშნულა.',
+    remindersLockText: 'ლოკ-ეკრანზე:',
+    remindersOptionalTitle: 'არჩევითი შეხსენებები',
+    remindersOptionalHint:
+      'ნაგულისხმევად გამორთულია — ეკრანზე ოვულაციასა თუ PMS-ზე მხოლოდ მაშინ გამოჩნდება, თუ შენ ჩართავ.',
     remindersOvulation: 'ოვულაცია და ნაყოფიერი ფანჯარა',
     remindersDailyLog: 'დღის აღრიცხვის შეხსენება',
     remindersPms: 'PMS ფაზის რჩევა',

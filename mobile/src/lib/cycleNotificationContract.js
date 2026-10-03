@@ -11,9 +11,17 @@ export const CYCLE_REMINDER_HOUR = 9;
 export const CYCLE_REMINDER_MINUTE = 0;
 export const LATE_NOTIFY_ELIGIBLE = false;
 
+/**
+ * `period_late` (brief §9 item 5): a scheduled check-in N days after the estimated start when no bleeding
+ * was logged — „სავარაუდო თარიღი გავიდა — ყველაფერი რიგზეა?“. It is a calendar reminder like period_start,
+ * not the `late` status (which stays represent-only).
+ */
+export const PERIOD_LATE_AFTER_DAYS = 2;
+
 export const CYCLE_CANDIDATE_TYPES = Object.freeze([
   'period_start',
   'period_soon',
+  'period_late',
   'ovulation',
   'fertile',
   'pms',
@@ -26,6 +34,7 @@ export const CYCLE_CANDIDATE_TYPES = Object.freeze([
 /** Higher wins when several Cycle reminders share a civil date. */
 export const CYCLE_SAME_DAY_PRIORITY = Object.freeze({
   period_start: 100,
+  period_late: 95,
   period_soon: 90,
   ovulation: 80,
   fertile: 70,
@@ -37,11 +46,12 @@ export const CYCLE_SAME_DAY_PRIORITY = Object.freeze({
 });
 
 export const FERTILITY_CYCLE_TYPES = Object.freeze(['ovulation', 'fertile', 'pms', 'opk', 'bbt']);
-export const PREDICTION_CYCLE_TYPES = Object.freeze(['period_start', 'period_soon', 'ovulation', 'fertile', 'pms']);
+export const PREDICTION_CYCLE_TYPES = Object.freeze(['period_start', 'period_soon', 'period_late', 'ovulation', 'fertile', 'pms']);
 
 export const CYCLE_TEMPLATE_BY_TYPE = Object.freeze({
   period_start: 'cycle-period-start',
   period_soon: 'cycle-period-soon',
+  period_late: 'cycle-period-late',
   ovulation: 'cycle-ovulation',
   fertile: 'cycle-fertile',
   pms: 'cycle-pms',
@@ -54,6 +64,7 @@ export const CYCLE_TEMPLATE_BY_TYPE = Object.freeze({
 export const CYCLE_ROUTE_BY_TYPE = Object.freeze({
   period_start: '/cycle/log',
   period_soon: '/cycle',
+  period_late: '/cycle',
   ovulation: '/cycle/log',
   fertile: '/cycle',
   pms: '/cycle',
@@ -205,6 +216,10 @@ function hasLogOn(logs, date) {
   return (logs || []).some((row) => row.date === date);
 }
 
+function bleedLoggedSince(logs, fromDate) {
+  return (logs || []).some((row) => row.date >= fromDate && isBleedFlow(row.flow));
+}
+
 /**
  * Structured Cycle facts for Brain / local scheduler.
  * notifyEligible false means "represent, do not send".
@@ -258,6 +273,15 @@ export function buildCycleCandidates({
       revalidationKey: 'nextPeriodStart',
       class: 'calendar',
     });
+    // Skipped once bleeding is logged on or after the estimated start — the period came, nothing is late.
+    if (prefs.periodLate && !bleedLoggedSince(logs, start)) {
+      push({
+        type: 'period_late',
+        eventDate: addDaysUtc(start, PERIOD_LATE_AFTER_DAYS),
+        revalidationKey: 'nextPeriodStart',
+        class: 'calendar',
+      });
+    }
   }
 
   const fertilityOk = showFertilityMarkers !== false && mode !== 'PREGNANCY' && mode !== 'PERIMENOPAUSE' && mode !== 'POSTPARTUM' && forecastAllowed !== false;
@@ -352,6 +376,7 @@ export function expectedEventDate(type, live = {}) {
     if (!start || !(live.periodDaysBefore > 0)) return null;
     return addDaysUtc(start, -live.periodDaysBefore);
   }
+  if (type === 'period_late') return start ? addDaysUtc(start, PERIOD_LATE_AFTER_DAYS) : null;
   if (type === 'ovulation' || type === 'pms') {
     if (!live.ovulationDate) return null;
     return type === 'pms' ? addDaysUtc(live.ovulationDate, 2) : live.ovulationDate;
@@ -392,6 +417,9 @@ export function revalidateCycleCandidate(candidate, live = {}) {
     return { ok: false, reason: CYCLE_SUPPRESSION.USER_DISABLED };
   }
   if (inLoggedBleed(live.logs, live.today) && PREDICTION_CYCLE_TYPES.includes(type)) {
+    return { ok: false, reason: CYCLE_SUPPRESSION.PERIOD_STARTED };
+  }
+  if (type === 'period_late' && live.nextPeriodStart && bleedLoggedSince(live.logs, live.nextPeriodStart)) {
     return { ok: false, reason: CYCLE_SUPPRESSION.PERIOD_STARTED };
   }
   const expected = expectedEventDate(type, live);

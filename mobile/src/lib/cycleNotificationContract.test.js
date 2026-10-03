@@ -21,6 +21,7 @@ function prefs(over = {}) {
   return {
     enabled: true,
     periodDaysBefore: 2,
+    periodLate: true,
     ovulation: true,
     dailyLog: true,
     pms: true,
@@ -104,6 +105,34 @@ describe('Cycle candidates', () => {
     assert.equal(start.candidateId, 'cycle:period_start:2026-09-20');
     assert.equal(start.estimated, true);
     assert.equal(start.predicted, true);
+  });
+
+  it('period_late: a check-in two days after the estimated start, unless bleeding was logged since', () => {
+    const rows = buildCycleCandidates({ today, mode: 'TRACK_PERIOD', predictions: predictions(), prefs: prefs() });
+    const late = rows.find((row) => row.type === 'period_late');
+    assert.ok(late);
+    assert.equal(late.eventDate, '2026-09-22');
+    assert.equal(late.templateKey, 'cycle-period-late');
+    assert.equal(late.route, '/cycle');
+    assert.equal(late.predicted, true);
+    assert.equal(late.notifyEligible, true);
+
+    const logged = buildCycleCandidates({
+      today: '2026-09-21',
+      mode: 'TRACK_PERIOD',
+      predictions: predictions(),
+      prefs: prefs(),
+      logs: [{ date: '2026-09-20', flow: 'medium' }],
+    });
+    assert.equal(logged.some((row) => row.type === 'period_late'), false);
+
+    const off = buildCycleCandidates({ today, mode: 'TRACK_PERIOD', predictions: predictions(), prefs: prefs({ periodLate: false }) });
+    assert.equal(off.some((row) => row.type === 'period_late'), false);
+
+    const ttc = buildCycleCandidates({ today, mode: 'TRY_TO_CONCEIVE', predictions: predictions(), prefs: prefs() });
+    assert.ok(ttc.some((row) => row.type === 'period_late'));
+    const pregnant = buildCycleCandidates({ today, mode: 'PREGNANCY', predictions: predictions(), prefs: prefs() });
+    assert.equal(pregnant.some((row) => row.type === 'period_late'), false);
   });
 
   it('does not emit fertility candidates when markers are suppressed', () => {
@@ -219,6 +248,23 @@ describe('Cycle candidate revalidation', () => {
       { ...live, logs: [{ date: today, flow: 'medium' }] },
     );
     assert.equal(check.reason, CYCLE_SUPPRESSION.PERIOD_STARTED);
+  });
+
+  it('C2: period_late is stale when the estimate moved, started when bleeding was logged after the estimate, off when switched off', () => {
+    const base = { type: 'period_late', eventDate: '2026-09-22', candidateId: cycleCandidateId('period_late', '2026-09-22') };
+    assert.equal(revalidateCycleCandidate(base, { ...live, typeEnabled: { ...live.typeEnabled, period_late: true } }).ok, true);
+    assert.equal(
+      revalidateCycleCandidate(base, { ...live, nextPeriodStart: '2026-10-18', today: '2026-09-22' }).reason,
+      CYCLE_SUPPRESSION.STALE_PREDICTION,
+    );
+    assert.equal(
+      revalidateCycleCandidate(base, { ...live, today: '2026-09-22', logs: [{ date: '2026-09-21', flow: 'light' }] }).reason,
+      CYCLE_SUPPRESSION.PERIOD_STARTED,
+    );
+    assert.equal(
+      revalidateCycleCandidate(base, { ...live, typeEnabled: { ...live.typeEnabled, period_late: false } }).reason,
+      CYCLE_SUPPRESSION.USER_DISABLED,
+    );
   });
 
   it('D: LIMITED contraception suppresses fertility candidates', () => {

@@ -150,7 +150,7 @@ export function useHomeCycleActions({
       }
       remindersDirty.current = false;
       try {
-        await syncCycleReminders(next.canonical, await getCycleReminderPrefs());
+        await syncCycleReminders(next.canonical, await getCycleReminderPrefs({ mode: next.canonical.profile.mode }));
       } catch {
         /* A reminder failure must not undo a saved day. */
       }
