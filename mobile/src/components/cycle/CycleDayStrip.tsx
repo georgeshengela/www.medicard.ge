@@ -79,7 +79,7 @@ export function CycleDayStrip({
       ignoreSnapRef.current = false;
     }, 350);
     return () => clearTimeout(t);
-  }, [anchor, screenWidth]);
+  }, [anchor, itemWidth]);
 
   const dates = useMemo(() => {
     const start = mondayOf(anchor);
@@ -117,6 +117,16 @@ export function CycleDayStrip({
     }
     requestAnimationFrame(() => scrollToSelectedWeek(true));
   }, [selected, dates, scrollToSelectedWeek]);
+
+  // A width change (rotation, split screen, web resize) keeps the same list and only re-aligns it.
+  // The list used to be keyed by the width: every resize remounted it, and until the new list had
+  // laid out its far-away initial index the card showed no days at all (the „empty white strip“).
+  const lastWidthRef = useRef(itemWidth);
+  useEffect(() => {
+    if (lastWidthRef.current === itemWidth) return;
+    lastWidthRef.current = itemWidth;
+    requestAnimationFrame(() => scrollToSelectedWeek(false));
+  }, [itemWidth, scrollToSelectedWeek]);
 
   const pickDate = useCallback(
     (date: string, fromStrip = true) => {
@@ -161,7 +171,7 @@ export function CycleDayStrip({
     <View style={{ borderRadius: 22, backgroundColor: c.card, overflow: 'hidden', paddingVertical: 6 }}>
       <FlatList
         ref={listRef}
-        key={`${anchor}-${screenWidth}`}
+        key={anchor}
         data={dates}
         horizontal
         keyExtractor={(item) => item}

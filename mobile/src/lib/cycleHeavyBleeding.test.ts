@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { HEAVY_STREAK_DAYS, LONG_RUN_DAYS, heavyBleedingSignal, showHeavyBleedingCard } from './cycleHeavyBleeding.ts';
+import { HEAVY_STREAK_DAYS, LONG_RUN_DAYS, heavyBleedingSignal, heavyBleedingSignalForDay, showHeavyBleedingCard } from './cycleHeavyBleeding.ts';
 
 function addDays(key: string, n: number): string {
   const [y, m, d] = key.split('-').map(Number);
@@ -84,4 +84,38 @@ test('future dates and malformed input are ignored', () => {
   assert.equal(heavyBleedingSignal([], today).show, false);
   assert.equal(showHeavyBleedingCard(null, today), false);
   assert.equal(showHeavyBleedingCard(undefined, today), false);
+});
+
+test('day sheet: any bleed day of a qualifying run shows the card, both directions', () => {
+  // four heavy days that ended five days ago, then nothing
+  const end = addDays(today, -5);
+  const logs = run(['medium', 'heavy', 'heavy', 'heavy', 'light'], end);
+  const day2 = addDays(end, -3); // the first heavy day: two more heavy days follow it
+  assert.equal(heavyBleedingSignalForDay(logs, day2, today).show, true);
+  assert.equal(heavyBleedingSignalForDay(logs, day2, today).heavyStreak, 3);
+  assert.equal(heavyBleedingSignalForDay(logs, addDays(end, -4), today).show, true); // the medium first day
+  assert.equal(heavyBleedingSignalForDay(logs, end, today).runDays, 5);
+  // the run is long ago, so the „current run“ rule (cycle screen) stays quiet
+  assert.equal(heavyBleedingSignal(logs, today).show, false);
+});
+
+test('day sheet: a day outside the run, spotting or a normal period never shows it', () => {
+  const end = addDays(today, -5);
+  const logs = run(['heavy', 'heavy', 'heavy'], end);
+  assert.equal(heavyBleedingSignalForDay(logs, addDays(end, 1), today).show, false); // the day after
+  assert.equal(heavyBleedingSignalForDay(logs, addDays(end, -3), today).show, false); // the day before
+  const spot = [...logs, { date: addDays(end, 1), flow: 'spotting' }];
+  assert.equal(heavyBleedingSignalForDay(spot, addDays(end, 1), today).show, false);
+  const normal = run(['medium', 'heavy', 'medium', 'light', 'light']);
+  for (let i = 0; i < 5; i += 1) assert.equal(heavyBleedingSignalForDay(normal, addDays(today, -i), today).show, false);
+});
+
+test('day sheet: a long run (> 7 days) counts from any of its days; future days never count', () => {
+  const logs = run(Array(8).fill('light'));
+  assert.equal(heavyBleedingSignalForDay(logs, addDays(today, -7), today).reason, 'long');
+  const future = [...run(['heavy', 'heavy']), { date: addDays(today, 1), flow: 'heavy' }];
+  assert.equal(heavyBleedingSignalForDay(future, today, today).show, false);
+  assert.equal(heavyBleedingSignalForDay(future, addDays(today, 1), today).show, false);
+  assert.equal(heavyBleedingSignalForDay(null, today, today).show, false);
+  assert.equal(heavyBleedingSignalForDay(logs, 'x', today).show, false);
 });

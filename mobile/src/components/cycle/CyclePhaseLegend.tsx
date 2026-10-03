@@ -14,7 +14,7 @@ import { cycleHexAlpha, useCycleColors } from '@/theme/cycle';
  * The one cycle legend (brief §8.2 item 3, §8.4). Three surfaces, one text:
  *  - under the ring on /cycle (`look="dense"`, phases only) with the closing line,
  *  - the calendar legend (`look="card"`, marks as tiny day cells — the legend shows exactly what the cells look like),
- *  - the ring's explain sheet (`look="plain"`, phases + marks + closing line),
+ *  - the ring's explain sheets (`look="plain"`: „როგორ ითვლება“ = phases + marks + closing line; the fertile arc = `only` its three rows),
  *  - the Home week tray (`look="dense"`, `only` = the marks that week shows).
  * Grammar: solid rose = logged, dashed rose = expected, soft turquoise = fertile, turquoise ring =
  * ovulation, grey dot = logged, rose dot = spotting, heart = sex. Phase dots are the ring's arc colours.

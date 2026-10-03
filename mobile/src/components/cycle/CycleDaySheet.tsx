@@ -18,7 +18,7 @@ import type { CycleBundle, CycleDayMark, CyclePostpartumPayload } from '@/lib/ap
 import { cycleToday, phaseFromBundle } from '@/lib/cycleCanonical';
 import { showFertilityUi, showPhaseAsBiological } from '@/lib/cycleContraception';
 import { dayFactSections, privateFactCount, privateFactsLine } from '@/lib/cycleDayFacts';
-import { showHeavyBleedingCard } from '@/lib/cycleHeavyBleeding';
+import { heavyBleedingSignalForDay } from '@/lib/cycleHeavyBleeding';
 import { displayPhaseLabel } from '@/lib/cycleHonesty';
 import { cycleChipLabel } from '@/lib/cycleLabels';
 import { isBleedFlow } from '@/lib/cycleLogSave';
@@ -88,6 +88,11 @@ export function CycleDaySheet({
   const sections = useMemo(() => dayFactSections(log, { showFertility: fertilityFacts }), [log, fertilityFacts]);
   const privateCount = privateFactCount(log, { showFertility: fertilityFacts });
   const assessed = explicitAbsentKeys(log).map((key) => ka.cycle.assessmentAbsentBit(cycleChipLabel(key)));
+  // Classic overview only (track / TTC): pregnancy, postpartum and perimenopause never get this card.
+  const heavyRun = useMemo(
+    () => caps.showClassicCycleOverview && heavyBleedingSignalForDay(bundle.logs, date, today).show,
+    [caps.showClassicCycleOverview, bundle.logs, date, today],
+  );
 
   // Phase in words: logged bleeding is a fact; everything else is an estimate and says so.
   let phaseLine: string | null = null;
@@ -266,7 +271,8 @@ export function CycleDaySheet({
                 </Text>
               ) : null}
 
-              {caps.showClassicCycleOverview && log && showHeavyBleedingCard(bundle.logs, date) ? (
+              {/* Brief §9 item 15: the calm card also on any day of a run that qualifies (not in postpartum / perimenopause). */}
+              {heavyRun ? (
                 <View style={{ marginTop: 14 }}>
                   <CycleHeavyBleedingCard variant="inset" />
                 </View>

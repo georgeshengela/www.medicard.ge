@@ -2,7 +2,7 @@ import { CyclePressable as Pressable } from '@/components/cycle/CyclePressable';
 import React, { useMemo, useState } from 'react';
 import { Text, View } from 'react-native';
 import { CycleExpectationLine } from '@/components/cycle/CycleExpectationLine';
-import { CycleGaugeExplainSheet, type GaugeExplain } from '@/components/cycle/CycleGaugeExplainSheet';
+import { CycleExplainSheet } from '@/components/cycle/CycleExplainSheet';
 import { CyclePhaseLegend } from '@/components/cycle/CyclePhaseLegend';
 import { CycleStatusGauge, type GaugeCenter } from '@/components/cycle/CycleStatusGauge';
 import { PredictionBadge, ConfidenceHint } from '@/components/cycle/CycleBadges';
@@ -93,7 +93,8 @@ export function CycleHero({
   const phaseHint = hideLengthChrome
     ? ka.cycle.postpartumReturnGathering
     : displayPhaseLabel(phase ?? 'unknown', phaseKa, { loggedPeriod: onPeriod });
-  const [explain, setExplain] = useState<GaugeExplain | null>(null);
+  /** The ring's fertile-arc explanation — the one cycle explain sheet with the ring's own legend rows. */
+  const [explain, setExplain] = useState<{ title: string; range?: string; body: string } | null>(null);
   // Her own pattern, read on the device (brief §9 item 11): one quiet „სავარაუდოა“ line, never a diagnosis.
   const expectation = useMemo(
     () => (hideLengthChrome ? null : expectationLine(expectationsFromBundle(bundle, today), todayLog)),
@@ -129,7 +130,6 @@ export function CycleHero({
       title: copy.title,
       range: from && to ? ka.cycle.gaugeFertileRange(formatCycleDateKa(from), formatCycleDateKa(to)) : undefined,
       body: copy.body,
-      accent: 'purple',
     });
   };
 
@@ -240,7 +240,23 @@ export function CycleHero({
         onInfo={hideLengthChrome ? undefined : onInfo}
         onPressFertile={overlays.fertileDays ? openFertile : undefined}
       />
-      <CycleGaugeExplainSheet visible={Boolean(explain)} explain={explain} onClose={() => setExplain(null)} />
+      <CycleExplainSheet
+        visible={Boolean(explain)}
+        title={explain?.title ?? ''}
+        body={explain?.body}
+        accent={c.fertile}
+        sourceIds={['menstrualCycle']}
+        caption={ka.cycle.gaugeRingCaption}
+        onClose={() => setExplain(null)}
+      >
+        {explain?.range ? (
+          <Text style={{ color: c.fertile, fontFamily: 'NotoSansGeorgian_600SemiBold', fontSize: 15, lineHeight: 22, marginBottom: 12 }}>
+            {explain.range}
+          </Text>
+        ) : null}
+        {/* Same grammar as the ring and the calendar (brief §8.2 item 3): the fertile arc and its day marks. */}
+        <CyclePhaseLegend look="plain" phases only={['fertilePhase', 'fertile', 'ovulation']} showFertility />
+      </CycleExplainSheet>
 
       <View style={{ paddingHorizontal: 18, marginTop: 2 }}>
         {center && day != null ? (

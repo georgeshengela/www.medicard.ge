@@ -38,7 +38,8 @@ export type CycleIconTileProps = {
   levelName?: string | null;
   /** Pre-filled from a device or an expectation — a dashed ring until confirmed. */
   dashed?: boolean;
-  role?: 'checkbox' | 'radio';
+  /** `button` = an action tile (e.g. „იგივე, რაც გუშინ“), not a choice that stays selected. */
+  role?: 'checkbox' | 'radio' | 'button';
   accessibilityHint?: string;
   /** A fact, not a choice (day sheet): drawn selected, no press, no haptic, read as text. */
   readOnly?: boolean;
@@ -72,7 +73,7 @@ export function CycleIconTile({
   return (
     <Pressable
       accessibilityRole={readOnly ? 'text' : role}
-      accessibilityState={readOnly ? undefined : role === 'radio' ? { selected, disabled } : { checked: selected, disabled }}
+      accessibilityState={readOnly ? undefined : role === 'radio' ? { selected, disabled } : role === 'button' ? { disabled } : { checked: selected, disabled }}
       accessibilityLabel={spokenLevel ? `${label}, ${spokenLevel}` : label}
       accessibilityHint={readOnly ? undefined : accessibilityHint}
       disabled={disabled || readOnly}

@@ -83,3 +83,43 @@ export function showHeavyBleedingCard(logs: ReadonlyArray<BleedLogLike> | null |
   if (!logs?.length) return false;
   return heavyBleedingSignal(logs, today).show;
 }
+
+/**
+ * The bleeding run a tapped calendar day belongs to (day sheet, brief §9 item 15): the day itself must
+ * be a logged bleed day (light / medium / heavy, never after `today`), and the run is followed both
+ * ways from it — so day 2 of a four-day heavy run already counts the two heavy days after it. Same
+ * rule as the cycle screen: ≥ 3 consecutive heavy days or longer than 7 days.
+ */
+export function heavyBleedingSignalForDay(
+  logs: ReadonlyArray<BleedLogLike> | null | undefined,
+  date: string,
+  today: string,
+): HeavyBleedingSignal {
+  if (!logs?.length || !/^\d{4}-\d{2}-\d{2}$/.test(date || '') || !/^\d{4}-\d{2}-\d{2}$/.test(today || '')) return NONE;
+  if (date > today) return NONE;
+  const flowByDate = new Map<string, string>();
+  for (const log of logs) {
+    if (!log || typeof log.date !== 'string' || log.date > today) continue;
+    if (log.flow) flowByDate.set(log.date, log.flow);
+  }
+  const bleedOn = (key: string) => key <= today && isBleed(flowByDate.get(key));
+  if (!bleedOn(date)) return NONE;
+
+  let start = date;
+  for (let i = 0; i < 400 && bleedOn(shiftKey(start, -1)); i += 1) start = shiftKey(start, -1);
+  let runDays = 0;
+  let heavyStreak = 0;
+  let streak = 0;
+  for (let cursor = start; bleedOn(cursor) && runDays <= 400; cursor = shiftKey(cursor, 1)) {
+    runDays += 1;
+    if (flowByDate.get(cursor) === 'heavy') {
+      streak += 1;
+      if (streak > heavyStreak) heavyStreak = streak;
+    } else {
+      streak = 0;
+    }
+  }
+  const heavy = heavyStreak >= HEAVY_STREAK_DAYS;
+  const long = runDays > LONG_RUN_DAYS;
+  return { show: heavy || long, runDays, heavyStreak, reason: heavy ? 'heavy' : long ? 'long' : null };
+}

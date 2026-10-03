@@ -27,7 +27,7 @@ const QUICK_MOODS = ['calm', 'happy', 'energetic', 'sad', 'irritable', 'anxious'
  * The classic quick log (track period / trying to conceive), row by row — Flo's and Clue's order,
  * our grammar: bleeding (one choice) → sex & sex drive folded behind a lock row → pain (tap again
  * for strength) → mood → symptoms with „ყველაფერი რიგზეა“ first → fertility signs (TTC) → more.
- * Every option is a `CycleIconTile`. „ბოლოს აღნიშნული“ and „იგივე, რაც გუშინ“ sit on top; the
+ * Every option is a `CycleIconTile` — „ბოლოს აღნიშნული“ too, led by a dashed „იგივე, რაც გუშინ“ tile; the
  * copy never touches private or fertility fields (`cycleQuickLogCopy`). What the local expectation
  * engine (`cycleExpectations`) expects for this day leads its row as a dashed tile until tapped.
  */
@@ -85,6 +85,24 @@ export function CycleQuickLogBody({
   const painTypes = useMemo(() => [...new Set([...expectedPain, ...PAIN_TYPES])] as CyclePainType[], [expectedPain]);
 
   const toggle = (list: string[], id: string) => (list.includes(id) ? list.filter((x) => x !== id) : [...list, id]);
+  /** „ბოლოს აღნიშნული“: what she logged on ≥ 2 recent days (never private ids — `recentObservationKeys` filters them). */
+  const recentTiles = useMemo(() => {
+    const out: { id: string; label: string; kind: 'yesterday' | 'mood' | 'symptom' }[] = [];
+    if (offerYesterday) out.push({ id: '__yesterday', label: tx('იგივე, რაც გუშინ', 'Same as yesterday'), kind: 'yesterday' });
+    for (const id of recents.slice(0, 6)) {
+      const mood = chipGroup(id) === 'mood';
+      out.push({ id, kind: mood ? 'mood' : 'symptom', label: (mood ? MOOD_OPTIONS : PHYSICAL_SYMPTOMS).find((o) => o.id === id)?.label ?? id });
+    }
+    return out;
+  }, [offerYesterday, recents]);
+  const isRecentOn = (id: string) => (chipGroup(id) === 'mood' ? form.moods.includes(id) : form.symptoms.includes(id));
+  const toggleRecent = (id: string) => {
+    if (chipGroup(id) === 'mood') onChange({ moods: toggle(form.moods, id) });
+    else {
+      setAllFine(false);
+      onChange({ symptoms: toggle(form.symptoms, id) });
+    }
+  };
   const painOf = (type: CyclePainType) => form.painEntries.find((e) => e.type === type)?.severity ?? null;
   const tapPain = (type: CyclePainType) => {
     const next = nextPainSeverity(painOf(type) as CyclePainSeverity | null);
@@ -94,23 +112,36 @@ export function CycleQuickLogBody({
 
   return (
     <View style={s.body}>
-      {recents.length || offerYesterday ? (
+      {recentTiles.length ? (
         <Group title={tx('ბოლოს აღნიშნული', 'Logged recently')}>
-          <View style={s.chips}>
-            {offerYesterday && yesterday ? (
-              <Chip
-                dashed
-                label={tx('იგივე, რაც გუშინ', 'Same as yesterday')}
-                onPress={() => onChange(copyFromYesterday(yesterday))}
-              />
-            ) : null}
-            {recents.map((id) => {
-              const mood = chipGroup(id) === 'mood';
-              const label = (mood ? MOOD_OPTIONS : PHYSICAL_SYMPTOMS).find((o) => o.id === id)?.label ?? id;
-              const on = mood ? form.moods.includes(id) : form.symptoms.includes(id);
-              return <Chip key={id} label={label} selected={on} onPress={() => onChange(mood ? { moods: toggle(form.moods, id) } : { symptoms: toggle(form.symptoms, id) })} />;
-            })}
-          </View>
+          {/* Same tiles as every row below; „იგივე, რაც გუშინ“ leads as one dashed action tile. */}
+          <CycleIconRow
+            items={recentTiles}
+            visible={4}
+            isSelected={(item) => item.kind !== 'yesterday' && isRecentOn(item.id)}
+            renderTile={(item) =>
+              item.kind === 'yesterday' && yesterday ? (
+                <CycleIconTile
+                  role="button"
+                  glyph="calendar"
+                  label={item.label}
+                  selected={false}
+                  dashed
+                  disabled={disabled}
+                  onPress={() => onChange(copyFromYesterday(yesterday))}
+                  accessibilityHint={tx('გუშინდელი სიმპტომები, განწყობა, ტკივილი და სისხლდენა დღევანდელ დღეზე', 'Copies yesterday’s symptoms, mood, pain and bleeding to today')}
+                />
+              ) : (
+                <CycleIconTile
+                  glyph={cycleGlyphFor(item.kind === 'mood' ? 'mood' : 'symptom', item.id)}
+                  label={item.label}
+                  selected={isRecentOn(item.id)}
+                  disabled={disabled}
+                  onPress={() => toggleRecent(item.id)}
+                />
+              )
+            }
+          />
         </Group>
       ) : null}
 
@@ -304,27 +335,6 @@ function Group({ title, hint, children }: { title: string; hint?: string; childr
   );
 }
 
-function Chip({ label, selected = false, dashed = false, onPress }: { label: string; selected?: boolean; dashed?: boolean; onPress: () => void }) {
-  const c = useCycleColors();
-  return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityState={{ selected }}
-      accessibilityLabel={label}
-      onPress={() => {
-        Haptics.selectionAsync().catch(() => undefined);
-        onPress();
-      }}
-      style={[
-        s.chip,
-        { borderColor: selected ? c.ink : dashed ? c.controlBorder : c.border, backgroundColor: selected ? c.ink : c.card, borderStyle: dashed ? 'dashed' : 'solid' },
-      ]}
-    >
-      <Text style={[s.chipText, { color: selected ? c.card : c.ink }]}>{label}</Text>
-    </Pressable>
-  );
-}
-
 const s = StyleSheet.create({
   body: { gap: 18 },
   group: { gap: 10 },
@@ -332,9 +342,6 @@ const s = StyleSheet.create({
   groupTitle: { fontFamily: 'NotoSansGeorgian_600SemiBold', fontSize: 14, lineHeight: 20 },
   groupHint: { fontFamily: 'NotoSansGeorgian_400Regular', fontSize: 12, lineHeight: 16, flexShrink: 1 },
   row: { flexDirection: 'row', flexWrap: 'wrap', columnGap: 2, rowGap: 12 },
-  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  chip: { minHeight: 40, borderRadius: 20, borderWidth: 1, paddingHorizontal: 14, justifyContent: 'center' },
-  chipText: { fontFamily: 'NotoSansGeorgian_500Medium', fontSize: 13, lineHeight: 18 },
   lockRow: { flexDirection: 'row', alignItems: 'center', gap: 12, borderRadius: 16, paddingVertical: 10, paddingHorizontal: 12 },
   lockIcon: { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center' },
   lockTitle: { fontFamily: 'NotoSansGeorgian_600SemiBold', fontSize: 14, lineHeight: 20 },
