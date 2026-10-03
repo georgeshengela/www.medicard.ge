@@ -18,6 +18,8 @@ test('registry covers app entry workflows without exposing wizard completion or 
     assert.ok(!/completed|analyzing|results|tbilisi-moves|medi-companion|run\/active/.test(f.route));
   }
   for(const id of ['cycle_journal','cycle_trends','pregnancy_timeline','lab_history','quest_wallet','permissions','medication_interactions','week','weather'])assert.ok(assistantFeatures('human').some(f=>f.id===id));
+  // Cycle settings are a hub with four screens (1b977e0a): „ციკლის რეჟიმები“ opens the profile screen that holds the mode.
+  assert.equal(ASSISTANT_FEATURES.find(f=>f.id==='cycle_settings').route,'/cycle/settings/profile');
 });
 test('pet navigation schema and validator both exclude human health pages',()=>{
   const open=publicAssistantCatalog('pet').find(t=>t.name==='open');

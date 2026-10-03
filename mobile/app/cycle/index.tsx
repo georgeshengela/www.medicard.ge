@@ -123,6 +123,7 @@ import { cycleSetupTailKey, needsCycleOnboarding, needsCycleSetupTail } from '@/
 import { getPreference, setPreference } from '@/lib/storage';
 import { localAccountId } from '@/lib/localAccount';
 import { trackCyclePeriodStarted } from '@/lib/funnel';
+import { cycleSettingsRoute } from '@/lib/cycleSettingsRoutes';
 import { CycleJourneyGuide } from '@/components/cycle/CycleJourneyGuide';
 
 type CyclePane = 'overview' | 'calendar' | 'journal';
@@ -950,7 +951,7 @@ export default function CycleHome() {
           if (router.canGoBack()) router.back();
           else router.replace('/(tabs)/home');
         }}
-        onChooseMode={() => router.push('/cycle/settings')}
+        onChooseMode={() => router.push(cycleSettingsRoute('profile') as never)}
         onFinishContraception={async ({ method, startedAt, expectsBleeding }) => {
           setOnboardSaving(true);
           setSaveError(null);

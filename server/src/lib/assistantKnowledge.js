@@ -43,7 +43,7 @@ export const ASSISTANT_FEATURES = Object.freeze([
   feature('cycle_journal', 'ციკლის ჟურნალი', '/cycle/journal', 'cycle', 'შენახული ჩანაწერები და ისტორია.'),
   feature('cycle_trends', 'ციკლის ტენდენციები', '/cycle/trends', 'cycle', 'შენახულ დაკვირვებებზე დაფუძნებული ტენდენციები, არა დიაგნოზი.'),
   feature('cycle_summary', 'ციკლის ანგარიში', '/cycle/summary', 'cycle', 'შეჯამება, ექსპორტი და გაზიარება შენი არჩევანით.'),
-  feature('cycle_settings', 'ციკლის რეჟიმები', '/cycle/settings', 'cycle', 'ციკლის აღრიცხვა, დაორსულების მცდელობა, ორსულობა, პერიმენოპაუზა და მშობიარობის შემდგომი რეჟიმი.'),
+  feature('cycle_settings', 'ციკლის რეჟიმები', '/cycle/settings/profile', 'cycle', 'ციკლის აღრიცხვა, დაორსულების მცდელობა, ორსულობა, პერიმენოპაუზა და მშობიარობის შემდგომი რეჟიმი.'),
   feature('pregnancy', 'ორსულობა', '/cycle/pregnancy', 'cycle', 'არსებული ორსულობის რეჟიმის მიმოხილვა; რეჟიმის ჩართვა შენს დადასტურებას მოითხოვს.'),
   feature('pregnancy_timeline', 'ორსულობის კვირები', '/cycle/pregnancy/timeline', 'cycle', 'ორსულობის ეტაპების მიმოხილვა.'),
   feature('pregnancy_care', 'ორსულობის მოვლის გეგმა', '/cycle/pregnancy/care-plan', 'cycle', 'ვიზიტების, მოვლის ეტაპებისა და შეხსენებების მართვა.'),
