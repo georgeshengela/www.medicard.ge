@@ -16,7 +16,7 @@
       "bundleIdentifier": "ge.medicard.app",
       "usesAppleSignIn": true,
       "version": "1.11.30",
-      "buildNumber": "30",
+      "buildNumber": "32",
       "infoPlist": {
         "CFBundleDisplayName": "MEDICARD AI",
         "NSCameraUsageDescription": "კამერა საჭიროა კერძის, საკვების ეტიკეტისა და შტრიხკოდის სკანირებისთვის კვების დღიურში, ანალიზების, რენტგენის, კანის და ცხოველის ფოტოსთვის, პროფილისა და MEDI COACH-ის პროგრეს-ფოტოებისა და ტრენერის სერტიფიკატისთვის, QR კოდის წასაკითხად, ასევე MEDIRUN-ში ვირტუალური საჩუქრის აღმოსაჩენად.",
@@ -199,10 +199,16 @@
               "name": "MedicardCycle",
               "displayName": "MEDICARD ციკლი",
               "description": "მენსტრუაციამდე დარჩენილი დღეები · Days until your period",
-              "supportedFamilies": ["systemSmall", "systemMedium"],
+              "supportedFamilies": [
+                "systemSmall",
+                "systemMedium"
+              ],
               "contentMarginsDisabled": false,
               "ios": {
-                "supportedFamilies": ["systemSmall", "systemMedium"]
+                "supportedFamilies": [
+                  "systemSmall",
+                  "systemMedium"
+                ]
               }
             }
           ]

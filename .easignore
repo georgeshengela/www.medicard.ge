@@ -59,7 +59,7 @@ yarn-error.log*
 
 # EAS build archive only (.easignore replaces .gitignore for uploads): marketing/brand
 # sources and local tooling are not part of the app and pushed the archive over 2 GB.
-brand/
-game-studio/
+/brand/
+/game-studio/
 .claude/
 /index.html
