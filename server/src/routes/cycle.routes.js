@@ -133,6 +133,7 @@ import {
   planStartPeriod,
 } from '../lib/cyclePeriod.js';
 import { derivePeriodStatus, trimEndedPeriodProjection } from '../lib/cyclePeriodStatus.js';
+import { buildCycleDeviations, deviationFactors, loadDeviationFactorEnds } from '../lib/cycleDeviations.js';
 import { askAi } from '../lib/aiEngine.js';
 import { runTrackedAi } from '../lib/aiTelemetry.js';
 import { enforceAiQuota } from '../middleware/aiLimiter.js';
@@ -345,7 +346,7 @@ async function clearBleedDay(userId, date) {
 async function loadBundle(userId, clock = null, lang = 'ka') {
   const today = clock?.today || todayInTimeZone();
   const timezone = clock?.timezone || CYCLE_TIMEZONE;
-  const [profile, engineLogs, displayLogs, pregnancyLogs, customTags, dailyMetrics, activeEpisode, activePostpartum] = await Promise.all([
+  const [profile, engineLogs, displayLogs, pregnancyLogs, customTags, dailyMetrics, activeEpisode, activePostpartum, factorEnds] = await Promise.all([
     getOrCreateProfile(userId),
     prisma.cycleLog.findMany({
       where: engineLogWhere(userId, today),
@@ -366,6 +367,7 @@ async function loadBundle(userId, clock = null, lang = 'ka') {
     loadDailyMetrics(userId),
     loadActivePregnancyEpisode(prisma, userId),
     loadActivePostpartumEpisode(prisma, userId),
+    loadDeviationFactorEnds(prisma, userId, timezone),
   ]);
 
   const shapedLogs = displayLogs.map(shapeCycleLog);
@@ -452,6 +454,19 @@ async function loadBundle(userId, clock = null, lang = 'ka') {
     today,
     typicalLength: averages.usedPeriodLength,
     mode: profile.mode,
+  });
+  // Cycle deviations card (brief §9 wave 2 item 14): null unless ≥ 180 days + 3 cycles, no factor, ≥ 1 finding.
+  const deviations = buildCycleDeviations({
+    today,
+    mode: profile.mode,
+    expectsBleeding: trackingPrefs.expectsBleeding,
+    periodRanges: inferred.periodRanges,
+    logs: forecastLogs,
+    factors: deviationFactors({
+      mode: profile.mode,
+      contraceptionMethod: profile.contraceptionMethod,
+      ...factorEnds,
+    }),
   });
   const presentedPredictions = applyForecastEligibilityToPredictions(
     presentPredictions(rawPredictions, contraception, lang, { avgCycleLength: averages.usedCycleLength }),
@@ -614,6 +629,8 @@ async function loadBundle(userId, clock = null, lang = 'ka') {
     classifiedDates: classifiedState.classifiedDates,
     forecastEligibility: publicForecastEligibility(forecastEligibility),
     periodStatus,
+    /** `{ version, windowDays, from, to, findings: [{ id, … }], rulesOff }` or null — the app draws nothing for null. */
+    deviations,
     /** `{ expectsBleeding, fertilityDisplay, trackingOnly, fertility: { setting, effective, forcedBy, userCanChange } }`. */
     tracking,
   };
