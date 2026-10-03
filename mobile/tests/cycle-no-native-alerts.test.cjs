@@ -38,7 +38,7 @@ test('every cycle explanation / confirmation goes through CycleExplainSheet or a
   const users = {
     'app/cycle/index.tsx': [/CycleExplainSheet/, /howCalculated\b/, /periodEndedToast/, /undoPeriodEnd/],
     'app/cycle/log.tsx': [/CycleExplainSheet/, /deleteLogConfirm/, /positivePregBody/],
-    'app/cycle/settings.tsx': [/CycleExplainSheet/, /deleteCycleAgain/],
+    'src/components/cycle/settings/CycleDataSettings.tsx': [/CycleExplainSheet/, /deleteCycleAgain/],
     'src/components/cycle/CyclePeriodHistory.tsx': [/CycleExplainSheet/, /periodDeleteDay/, /missedPeriodFillConfirm/],
     'src/components/cycle/CycleOfflineBanner.tsx': [/CycleExplainSheet/, /discardPendingConfirm/],
     'src/components/home/sections/useHomeCycleActions.ts': [/'periodEnd'/, /undoEnd/, /saveCycleObservation/],
