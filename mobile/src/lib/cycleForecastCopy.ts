@@ -20,6 +20,15 @@ export function shortDateRange(start: string, end: string, en: boolean = isEn())
   return `${dayMonth(start, en)} – ${dayMonth(end, en)}`;
 }
 
+/**
+ * A variable cycle's whole next-period window — „სავარაუდო · 3–12 ოქტ“, „სავარაუდო · 30 სექ – 11 ოქტ“.
+ * Always the server's full `nextPeriodRange` (via `cyclePeriodWindow`), never from the single estimate.
+ */
+export function periodWindowLine(from: string, to: string, en: boolean = isEn()): string {
+  const range = shortDateRange(from, to, en);
+  return en ? `Estimated · ${range}` : `სავარაუდო · ${range}`;
+}
+
 /** The quiet badge where fertile days would be: „ვსწავლობთ შენს რიტმს · 2/3 ციკლი“. */
 export function learningBadgeText(done: number, required = 3): string {
   const n = Math.max(0, Math.min(required, Math.floor(done) || 0));

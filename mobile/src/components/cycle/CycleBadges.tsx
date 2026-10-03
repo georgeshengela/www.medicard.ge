@@ -2,20 +2,23 @@ import React from 'react';
 import { Text, View } from 'react-native';
 import { ka } from '@/i18n/ka';
 import { formatCycleDateKa } from '@/components/cycle/CycleUI';
+import { shortDateRange } from '@/lib/cycleForecastCopy';
 import { useCycleColors } from '@/theme/cycle';
 
 /**
  * PredictionBadge — the only way predicted dates render (§11).
  * Always carries the "სავარაუდო" estimate wording in the same visual unit.
- * `until` turns it into a date range („სავარაუდო · 6 – 10 ოქტომბერი“) for variable cycles, which never get one date.
+ * `until` turns it into a date range („სავარაუდო · 30 სექ – 9 ოქტ“) for variable cycles, which never get one date.
  */
 export function PredictionBadge({ date, until }: { date: string; until?: string | null }) {
   const c = useCycleColors();
-  const text = until && until !== date ? rangeDates(date, until) : formatCycleDateKa(date);
+  const range = Boolean(until && until !== date);
+  // A window reads like Home and the calendar caption („30 სექ – 9 ოქტ“); the screen reader gets full dates.
+  const text = range ? shortDateRange(date, until as string) : formatCycleDateKa(date);
   return (
     <View
       accessible
-      accessibilityLabel={`${ka.cycle.estimatedSection}, ${text}`}
+      accessibilityLabel={`${ka.cycle.estimatedSection}, ${range ? rangeDates(date, until as string) : text}`}
       style={{
         flexDirection: 'row',
         alignItems: 'center',

@@ -204,6 +204,43 @@ export function cycleSpreadModel({
   return { before: clamp(used - Math.min(...lengths)), after: clamp(Math.max(...lengths) - used) };
 }
 
+/** A variable cycle's whole window as dates, and where today sits in it. */
+export type CyclePeriodWindow = {
+  /** First and last day the period may start (the server's `nextPeriodRange.from` / `.to`). */
+  from: string;
+  to: string;
+  /** `before` = still ahead, `open` = today is inside it, `late` = the whole window has passed. */
+  state: 'before' | 'open' | 'late';
+  /** Days from today to the window's first day (0 once open). */
+  startsIn: number;
+  /** Days after today the window stays open (0 on its last day, and once late). */
+  daysLeft: number;
+};
+
+/**
+ * The window every surface prints (Home glow, „წინ რა გელის“, the /cycle badge, the calendar caption,
+ * the portal): always the full range around the estimate — `spread` comes from the server's
+ * `nextPeriodRange` — never „from the single estimate to the window's end“, which under-stated an open
+ * window (the ring said „დღეს“ while the badge started days later). Null without a window.
+ */
+export function cyclePeriodWindow({
+  today,
+  nextPeriodStart,
+  spread,
+}: {
+  today: string;
+  nextPeriodStart: string | null | undefined;
+  spread: CycleSpread | null | undefined;
+}): CyclePeriodWindow | null {
+  if (!spread || !nextPeriodStart) return null;
+  const from = addDaysKey(nextPeriodStart, -spread.before);
+  const to = addDaysKey(nextPeriodStart, spread.after);
+  const startsIn = daysBetweenKeys(today, from);
+  const left = daysBetweenKeys(today, to);
+  const state = startsIn > 0 ? 'before' : left >= 0 ? 'open' : 'late';
+  return { from, to, state, startsIn: Math.max(0, startsIn), daysLeft: Math.max(0, left) };
+}
+
 /**
  * One number in the ring: bleeding day → „დღეს“ → countdown („სავარაუდოდ“) → cycle day.
  * With a `spread` (variable cycles) the countdown becomes a window — „3–7 დღე“, or „დღეს ან მომდევნო

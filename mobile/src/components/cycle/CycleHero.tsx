@@ -20,7 +20,7 @@ import {
 } from '@/lib/cycleHonesty';
 import { expectationLine, expectationsFromBundle } from '@/lib/cycleExpectations';
 import { cycleCenterText } from '@/lib/cycleCenterCopy';
-import { cycleCenter, cycleHeroActions, cycleSpreadModel, startLeads, type CycleHeroActionId } from '@/lib/home/homeCycle';
+import { cycleCenter, cycleHeroActions, cyclePeriodWindow, cycleSpreadModel, startLeads, type CycleHeroActionId } from '@/lib/home/homeCycle';
 import { addDaysToKey, daysBetween } from '@/lib/cyclePhase';
 import { isBleedFlow } from '@/lib/cycleLogSave';
 import { heroPeriodState, heroPlanWhileAsking } from '@/lib/cyclePeriodStatus';
@@ -255,12 +255,14 @@ function ClassicCycleHero({
   const centerModel = cycleCenter({ hideLengthChrome, hidePredicted, onPeriod, predictedToday, forecastOn, inDays, day, cycleLength, spread });
   const center: GaugeCenter | undefined =
     centerModel.kind === 'none' || centerModel.kind === 'cycleDay' ? undefined : cycleCenterText(centerModel, uncertainBleed);
-  /** The estimate badge's end date — the window's last day for a variable cycle, else nothing. */
-  const rangeUntil =
-    next && spread && (centerModel.kind === 'countdownRange' || centerModel.kind === 'windowOpen')
-      ? addDaysToKey(next, spread.after)
+  /**
+   * The estimate badge for a variable cycle: the server's whole window (`nextPeriodRange.from – to`),
+   * also once it is open — never from the single estimate, which under-stated it while the ring said „დღეს“.
+   */
+  const periodWindow =
+    centerModel.kind === 'countdownRange' || centerModel.kind === 'windowOpen'
+      ? cyclePeriodWindow({ today, nextPeriodStart: next, spread })
       : null;
-  const rangeFrom = rangeUntil && next && centerModel.kind === 'countdownRange' ? addDaysToKey(next, -spread!.before) : next;
   /** Finger on the dial → that day's date, cycle day and (estimated or logged) phase. */
   const describeDay = (d: number): GaugeCenter | null => {
     const date = dateForCycleDay(d);
@@ -351,7 +353,7 @@ function ClassicCycleHero({
 
         {forecastOn || (caps.showNextPeriodForecast && !hidePredicted) ? (
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', alignItems: 'center', gap: 4, marginTop: 10 }}>
-            {next && forecastOn && !onPeriod ? <PredictionBadge date={rangeFrom ?? next} until={rangeUntil} /> : null}
+            {next && forecastOn && !onPeriod ? <PredictionBadge date={periodWindow?.from ?? next} until={periodWindow?.to ?? null} /> : null}
             <ConfidenceHint label={confidenceCopy} />
           </View>
         ) : null}

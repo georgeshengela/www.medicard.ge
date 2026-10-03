@@ -5,6 +5,7 @@ import {
   ovulationBandLine,
   ovulationMarkLabel,
   ovulationSourceLabel,
+  periodWindowLine,
   shortDateRange,
   statsLearningChip,
   wideWindowLabel,
@@ -51,4 +52,10 @@ test('ovulationMarked: a save sends true / null, never touches a mark it did not
   assert.equal(isOvulationMarked({ ovulationMarked: true }), true);
   assert.equal(isOvulationMarked({ ovulationMarked: null }), false);
   assert.equal(isOvulationMarked(null), false);
+});
+
+test("a variable cycle's period window is one „სავარაუდო“ range", () => {
+  assert.equal(periodWindowLine('2026-10-03', '2026-10-12', false), 'სავარაუდო · 3–12 ოქტ');
+  assert.equal(periodWindowLine('2026-09-30', '2026-10-11', false), 'სავარაუდო · 30 სექ – 11 ოქტ');
+  assert.equal(periodWindowLine('2026-09-30', '2026-10-11', true), 'Estimated · 30 Sep – 11 Oct');
 });

@@ -38,10 +38,10 @@ import { formatCycleDateKa } from '@/lib/cycleCivilDateKa';
 import { formatYmd } from '@/lib/format';
 import { isFeatureOn, useFeatureState } from '@/lib/featureFlags';
 import {
-  addDaysKey,
   cycleCenter,
   cycleHeroActions,
   cycleHeroVariant,
+  cyclePeriodWindow,
   cycleSpreadModel,
   cycleWeekStrip,
   daysBetweenKeys,
@@ -52,7 +52,8 @@ import {
   type CycleHeroActionId,
   type StripDay,
 } from '@/lib/home/homeCycle';
-import { CYCLES_VARY_NOTE, cycleCenterText } from '@/lib/cycleCenterCopy';
+import { CYCLES_VARY_NOTE, cycleCenterText, windowOpenTail } from '@/lib/cycleCenterCopy';
+import { periodWindowLine } from '@/lib/cycleForecastCopy';
 import { useThemeColors, useIsDark } from '@/theme/colors';
 import { useCycleColors } from '@/theme/cycle';
 import { useHomeAccent } from '@/theme/homeAccent';
@@ -434,6 +435,8 @@ function ClassicCycleCard({
     serverRange: bundle.predictions?.nextPeriodRange ?? null,
   });
   const center = cycleCenter({ hideLengthChrome, hidePredicted, onPeriod, predictedToday, forecastOn, inDays, day, cycleLength: cycleLen, spread });
+  // The dates under a window are always the server's whole range (never from the single estimate).
+  const periodWindow = cyclePeriodWindow({ today, nextPeriodStart: next, spread });
   const centerText = cycleCenterText(center, uncertainBleed);
   // Today's colour: bleeding wins; otherwise the phase the cycle screen names.
   const todayColor = onPeriod
@@ -517,10 +520,13 @@ function ClassicCycleCard({
       ? badge && !badge.calm && next
         ? `${ka.cycle.heroLikely} · ${WEEKDAYS_KA[weekdayIndex(next)]}, ${formatYmd(next)}`
         : ka.cycle.heroLikely
-      : center.kind === 'countdownRange'
-        ? `${ka.cycle.heroLikely} · ${shortDate(addDaysKey(today, center.from))} – ${shortDate(addDaysKey(today, center.to))} · ${CYCLES_VARY_NOTE()}`
-        : center.kind === 'windowOpen'
-          ? `${centerText.bottom} · ${CYCLES_VARY_NOTE()}`
+      : center.kind === 'countdownRange' && periodWindow
+        ? `${ka.cycle.heroLikely} · ${shortDate(periodWindow.from)} – ${shortDate(periodWindow.to)} · ${CYCLES_VARY_NOTE()}`
+        : center.kind === 'windowOpen' && periodWindow
+          ? // Open: „ან მომდევნო N დღეში“, then „სავარაუდო · 30 სექ – 9 ოქტ“ — the whole window, from its first day.
+            center.to > 0
+            ? `${windowOpenTail(center.to)}\n${periodWindowLine(periodWindow.from, periodWindow.to)}`
+            : periodWindowLine(periodWindow.from, periodWindow.to)
           : centerText.bottom;
 
   return (

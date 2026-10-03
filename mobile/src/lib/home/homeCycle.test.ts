@@ -7,6 +7,7 @@ import {
   cycleCenter,
   cycleHeroActions,
   cycleHeroVariant,
+  cyclePeriodWindow,
   trackingHeroActions,
   trackingRingDays,
   cycleRingModel,
@@ -131,6 +132,38 @@ test('variable cycles: the spread comes from her own last cycles, never narrower
     cycleSpreadModel({ isIrregular: true, usedCycleLength: 28, cycleLengths: [], nextPeriodStart: '2026-10-01', serverRange: null }),
     { before: 3, after: 3 },
   );
+});
+
+test("variable cycles: every surface prints the server's whole window — before, open, after (late)", () => {
+  // The irregular persona: estimate 8 Oct, server window 3–12 Oct → spread 5 before / 4 after.
+  const serverRange = { from: '2026-10-03', to: '2026-10-12' };
+  const spread = cycleSpreadModel({ isIrregular: true, usedCycleLength: 30, cycleLengths: [], nextPeriodStart: '2026-10-08', serverRange });
+  assert.deepEqual(spread, { before: 5, after: 4 });
+  const at = (today: string) => {
+    const inDays = daysBetweenKeys(today, '2026-10-08');
+    const center = cycleCenter({ hideLengthChrome: false, hidePredicted: false, onPeriod: false, predictedToday: false, forecastOn: true, inDays, day: 30 - inDays, cycleLength: 30, spread });
+    return { center, window: cyclePeriodWindow({ today, nextPeriodStart: '2026-10-08', spread }) };
+  };
+  // Before: a countdown range, and the dates are the window's first and last day.
+  const before = at('2026-09-30');
+  assert.deepEqual(before.center, { kind: 'countdownRange', from: 3, to: 12 });
+  assert.deepEqual(before.window, { from: '2026-10-03', to: '2026-10-12', state: 'before', startsIn: 3, daysLeft: 12 });
+  // Open (the bug): the ring says „დღეს“ — the dates still start at the window's first day (3 Oct),
+  // not at the single estimate (8 Oct).
+  const open = at('2026-10-05');
+  assert.deepEqual(open.center, { kind: 'windowOpen', to: 7 });
+  assert.deepEqual(open.window, { from: '2026-10-03', to: '2026-10-12', state: 'open', startsIn: 0, daysLeft: 7 });
+  assert.equal(at('2026-10-03').window?.state, 'open');
+  assert.deepEqual(at('2026-10-12').center, { kind: 'windowOpen', to: 0 });
+  assert.equal(at('2026-10-12').window?.state, 'open');
+  // After the whole window: late, counted from the estimate (the alerts banner's grammar).
+  const after = at('2026-10-13');
+  assert.deepEqual(after.center, { kind: 'late', day: 35, lateBy: 5 });
+  assert.equal(after.window?.state, 'late');
+  assert.equal(after.window?.daysLeft, 0);
+  // No window without a spread or an estimate.
+  assert.equal(cyclePeriodWindow({ today: '2026-10-05', nextPeriodStart: '2026-10-08', spread: null }), null);
+  assert.equal(cyclePeriodWindow({ today: '2026-10-05', nextPeriodStart: null, spread }), null);
 });
 
 test('variable cycles: the centre shows a window, then „today or soon“, and is late only after the window', () => {

@@ -87,7 +87,8 @@ import {
   suppressCycleLengthChrome,
 } from '@/lib/cycleForecastEligibility';
 import { CycleLearningBadge } from '@/components/cycle/CycleLearningBadge';
-import { wideWindowLabel } from '@/lib/cycleForecastCopy';
+import { shortDateRange, wideWindowLabel } from '@/lib/cycleForecastCopy';
+import { cyclePeriodWindow, cycleSpreadModel } from '@/lib/home/homeCycle';
 import { cycleLoggedBleedLabel } from '@/lib/cycleHistoryCopy';
 import {
   applyTtcFailure,
@@ -615,6 +616,16 @@ export default function CycleHome() {
   const fertileWide = Boolean(
     bundle && fertilityVisible && showPredicted && fertilityGate?.status === FERTILITY_STATUS.WIDE && fertilityGate.window === 'wide',
   );
+  // A variable cycle's window (server `nextPeriodRange`): the calendar paints all of it as expected days,
+  // and its caption names the same whole range as the hero badge — until the window has passed.
+  const periodWindowCaption = (() => {
+    const range = bundle?.predictions?.nextPeriodRange;
+    const next = bundle?.predictions?.nextPeriodStart ?? null;
+    if (!bundle || !showPredicted || !modeCaps.showNextPeriodForecast || !range?.from || !range?.to || !next) return null;
+    const spread = cycleSpreadModel({ isIrregular: bundle.profile.isIrregular, usedCycleLength: null, cycleLengths: null, nextPeriodStart: next, serverRange: range });
+    const win = cyclePeriodWindow({ today, nextPeriodStart: next, spread });
+    return win && win.state !== 'late' ? `${ka.cycle.legendPeriodPredicted} · ${shortDateRange(win.from, win.to)}` : null;
+  })();
 
   const saveLastPeriod = async (iso: string) => {
     const owner = user?.id;
@@ -1408,6 +1419,11 @@ export default function CycleHome() {
                 {fertileWide ? (
                   <Text style={{ color: c.fertile, fontSize: 12.5, lineHeight: 18, fontFamily: 'NotoSansGeorgian_600SemiBold' }}>
                     {`${ka.cycle.legendFertile} · ${wideWindowLabel()}`}
+                  </Text>
+                ) : null}
+                {periodWindowCaption ? (
+                  <Text style={{ color: c.period, fontSize: 12.5, lineHeight: 18, fontFamily: 'NotoSansGeorgian_600SemiBold' }}>
+                    {periodWindowCaption}
                   </Text>
                 ) : null}
                 <CyclePhaseLegend
