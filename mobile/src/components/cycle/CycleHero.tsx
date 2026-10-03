@@ -6,8 +6,8 @@ import { CycleGaugeExplainSheet, type GaugeExplain } from '@/components/cycle/Cy
 import { CyclePhaseLegend } from '@/components/cycle/CyclePhaseLegend';
 import { CycleStatusGauge, type GaugeCenter } from '@/components/cycle/CycleStatusGauge';
 import { PredictionBadge, ConfidenceHint } from '@/components/cycle/CycleBadges';
-import { CyclePrimaryButton, formatCycleDateKa } from '@/components/cycle/CycleUI';
-import { Check, Droplet, Heart, Plus } from 'lucide-react-native';
+import { formatCycleDateKa } from '@/components/cycle/CycleUI';
+import { Check, Droplet, Heart, Plus, type LucideIcon } from 'lucide-react-native';
 import { ka } from '@/i18n/ka';
 import { MONTHS_KA } from '@/constants/cycle';
 import type { CycleBundle } from '@/lib/api';
@@ -19,7 +19,7 @@ import {
 } from '@/lib/cycleHonesty';
 import { expectationLine, expectationsFromBundle } from '@/lib/cycleExpectations';
 import { cycleCenterText } from '@/lib/cycleCenterCopy';
-import { cycleCenter, cycleSpreadModel } from '@/lib/home/homeCycle';
+import { cycleCenter, cycleHeroActions, cycleSpreadModel, startLeads, type CycleHeroActionId } from '@/lib/home/homeCycle';
 import { addDaysToKey, daysBetween } from '@/lib/cyclePhase';
 import { isBleedFlow } from '@/lib/cycleLogSave';
 import { cycleModeCapabilities } from '@/lib/cycleModes';
@@ -205,12 +205,24 @@ export function CycleHero({
     };
   };
 
-  /** "Period started" leads when it is plausible soon (or the rhythm is still unknown / late). */
-  const startLeads = !onPeriod && (!forecastOn || predictedToday || (inDays != null && inDays <= 3));
+  /**
+   * The same action plan as Home's hero (brief §8.2 item 12): „მენსტრუაცია დაიწყო“ leads when it is
+   * plausible soon (or the rhythm is unknown / late); on bleeding days „დასრულება“ leads, except on
+   * day 1 where today's flow is the only action (ending day 1 would erase the start — undo is in the toast).
+   */
+  const leads = startLeads({ onPeriod, forecastOn, predictedToday, inDays });
+  const dayOne = bundle.profile.lastPeriodStart === today || (onPeriod && day === 1);
+  const plan = cycleHeroActions({ onPeriod, dayOne, leadsWithStart: leads });
   const startLabel = uncertainBleed ? ka.cycle.heroBleedingStarted : ka.cycle.heroPeriodStarted;
+  const action = (id: CycleHeroActionId, filled: boolean) => {
+    if (id === 'start') return <HeroButton key={id} filled={filled} label={startLabel} icon={Droplet} onPress={onStart} />;
+    if (id === 'end') return <HeroButton key={id} filled={filled} label={ka.cycle.periodEndCta} icon={filled ? Check : undefined} onPress={onEnd} />;
+    if (id === 'logFlow') return <HeroButton key={id} filled={filled} label={ka.cycle.logTodayFlow} icon={Droplet} onPress={onLog} />;
+    return <HeroButton key={id} filled={filled} label={ka.cycle.logTodayCta} icon={Plus} onPress={onLog} />;
+  };
 
   return (
-    <View style={{ paddingTop: 18, paddingBottom: 16, borderRadius: 28, backgroundColor: c.card }}>
+    <View style={{ paddingTop: 18, paddingBottom: 18, borderRadius: 22, backgroundColor: c.card }}>
       <CycleStatusGauge
         day={hideLengthChrome ? null : day}
         cycleLength={cycleLength}
@@ -273,67 +285,79 @@ export function CycleHero({
           </Text>
         ) : null}
 
-        <View style={{ marginTop: 16, gap: 8 }}>
-          {onPeriod ? (
-            <>
-              <CyclePrimaryButton label={ka.cycle.logTodayFlow} onPress={onLog} icon={Droplet} />
-              <View style={{ flexDirection: 'row', gap: 8 }}>
-                <View style={{ flex: 1 }}><HeroSecondary label={ka.cycle.periodEndCta} onPress={onEnd} /></View>
-                {onSex ? <SexButton logged={Boolean(sexLogged)} onPress={onSex} /> : null}
-              </View>
-            </>
-          ) : startLeads ? (
-            <>
-              <CyclePrimaryButton label={startLabel} onPress={onStart} icon={Droplet} />
-              <View style={{ flexDirection: 'row', gap: 8 }}>
-                <View style={{ flex: 1 }}><HeroSecondary label={ka.cycle.logTodayCta} onPress={onLog} icon={Plus} /></View>
-                {onSex ? <SexButton logged={Boolean(sexLogged)} onPress={onSex} /> : null}
-              </View>
-            </>
-          ) : (
-            <>
-              <CyclePrimaryButton label={ka.cycle.logTodayCta} onPress={onLog} icon={Plus} />
-              <View style={{ flexDirection: 'row', gap: 8 }}>
-                <View style={{ flex: 1 }}><HeroSecondary label={startLabel} onPress={onStart} icon={Droplet} /></View>
-                {onSex ? <SexButton logged={Boolean(sexLogged)} onPress={onSex} /> : null}
-              </View>
-            </>
-          )}
+        {/* Home's pattern: the leading action full width, then the other one beside „♥ სექსი“. */}
+        <View style={{ marginTop: 16, gap: 10 }}>
+          {action(plan.primary, true)}
+          {plan.secondary || onSex ? (
+            <View style={{ flexDirection: 'row', gap: 10 }}>
+              {plan.secondary ? action(plan.secondary, false) : null}
+              {onSex ? <SexButton logged={Boolean(sexLogged)} wide={!plan.secondary} onPress={onSex} /> : null}
+            </View>
+          ) : null}
         </View>
       </View>
     </View>
   );
 }
 
-/** Rose heart button next to the secondary action — one tap logs sex for today. */
-function SexButton({ logged, onPress }: { logged: boolean; onPress: () => void }) {
+/** The hero's buttons in Home's sizes: filled 50 pt rose pill, tonal 46 pt (flat, no border, no shadow). */
+function HeroButton({ label, icon: Icon, filled, onPress }: { label: string; icon?: LucideIcon; filled: boolean; onPress: () => void }) {
   const c = useCycleColors();
+  const fg = filled ? c.onPrimary : c.ink;
+  return (
+    <Pressable
+      onPress={onPress}
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      style={{
+        flex: filled ? undefined : 1,
+        minHeight: filled ? 50 : 46,
+        borderRadius: filled ? 25 : 23,
+        paddingHorizontal: filled ? 10 : 12,
+        paddingVertical: filled ? 6 : 0,
+        backgroundColor: filled ? c.cta : c.cardSoft,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 6,
+      }}
+    >
+      {Icon ? <Icon size={17} color={fg} strokeWidth={2.2} /> : null}
+      <Text
+        numberOfLines={1}
+        adjustsFontSizeToFit
+        minimumFontScale={0.85}
+        style={{ color: fg, fontFamily: 'NotoSansGeorgian_600SemiBold', fontSize: filled ? 14 : 13, lineHeight: filled ? 19 : 18, textAlign: 'center', flexShrink: 1 }}
+      >
+        {label}
+      </Text>
+    </Pressable>
+  );
+}
+
+/** „♥ სექსი“ — one tap logs it for today; logged, it shows a tick and opens the private details sheet. */
+function SexButton({ logged, wide, onPress }: { logged: boolean; wide: boolean; onPress: () => void }) {
+  const c = useCycleColors();
+  const fg = logged ? c.onPeriod : c.period;
   return (
     <Pressable
       onPress={onPress}
       accessibilityRole="button"
       accessibilityLabel={logged ? ka.cycle.sexLoggedA11y : ka.cycle.sexLogA11y}
-      style={{ minHeight: 46, borderRadius: 23, paddingHorizontal: 14, backgroundColor: logged ? c.period : c.periodSoft, flexDirection: 'row', alignItems: 'center', gap: 6 }}
+      style={{
+        flex: wide ? 1 : undefined,
+        minHeight: 46,
+        borderRadius: 23,
+        paddingHorizontal: 16,
+        backgroundColor: logged ? c.period : c.periodSoft,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 6,
+      }}
     >
-      {logged ? <Check size={15} color={c.onPeriod} strokeWidth={3} /> : <Heart size={16} color={c.period} strokeWidth={2.4} fill={c.period} />}
-      <Text style={{ color: logged ? c.onPeriod : c.period, fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 14 }}>{ka.cycle.sexShort}</Text>
-    </Pressable>
-  );
-}
-
-function HeroSecondary({ label, a11y, onPress, icon: Icon }: { label: string; a11y?: string; onPress: () => void; icon?: typeof Plus }) {
-  const c = useCycleColors();
-  return (
-    <Pressable
-      onPress={onPress}
-      accessibilityRole="button"
-      accessibilityLabel={a11y ?? label}
-      style={{ minHeight: 46, borderRadius: 23, backgroundColor: c.cardSoft, alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 6, paddingHorizontal: 10 }}
-    >
-      {Icon ? <Icon size={16} color={c.ink} strokeWidth={2.3} /> : null}
-      <Text numberOfLines={2} style={{ color: c.ink, fontFamily: 'NotoSansGeorgian_600SemiBold', fontSize: 13, lineHeight: 17, textAlign: 'center', flexShrink: 1 }}>
-        {label}
-      </Text>
+      {logged ? <Check size={15} color={fg} strokeWidth={3} /> : <Heart size={16} color={fg} strokeWidth={2.4} fill={fg} />}
+      <Text numberOfLines={1} style={{ color: fg, fontFamily: 'NotoSansGeorgian_600SemiBold', fontSize: 13, lineHeight: 18 }}>{ka.cycle.sexShort}</Text>
     </Pressable>
   );
 }

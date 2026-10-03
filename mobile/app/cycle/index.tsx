@@ -44,6 +44,7 @@ import {
 import { MONTHS_KA } from '@/constants/cycle';
 import { ka } from '@/i18n/ka';
 import { showHeavyBleedingCard } from '@/lib/cycleHeavyBleeding';
+import { cycleAskMediRoute } from '@/lib/cycleAskMedi';
 import { periodStartTone } from '@/lib/cycleTone';
 import { parseDateKey } from '@/lib/cyclePhase';
 import { cycleToday, phaseFromBundle, usedCycleLength } from '@/lib/cycleCanonical';
@@ -542,10 +543,11 @@ export default function CycleHome() {
     if (suppressCycleLengthChrome(bundle)) {
       return ka.cycle.postpartumReturnGathering;
     }
+    // The cycle day is said once on the screen — in the dial or its status line — never here (brief §8.2 item 7).
     if (todayPhase.day != null) {
-      return `${ka.cycle.cycleDay} ${todayPhase.day} · ${displayPhaseLabel(todayPhase.phase, todayPhase.phaseKa, {
+      return displayPhaseLabel(todayPhase.phase, todayPhase.phaseKa, {
         loggedPeriod: isBleedFlow(bundle?.logs.find((l) => l.date === today)?.flow),
-      })}`;
+      });
     }
     return ka.cycle.statusLearning;
   }, [todayPhase, bundle, today, pregnancyQuery.data, postpartumQuery.data]);
@@ -1135,16 +1137,9 @@ export default function CycleHome() {
                 </View>
               ) : null}
 
-              {/* Flo order: ring → quick tiles → my cycle → today → Medi's tips. */}
+              {/* Flo order: ring → quick tiles (log · ask Medi) → my cycle → today → Medi's tips. */}
               <View style={{ paddingHorizontal: 20, marginBottom: 28 }}>
-                <CycleStoriesRow
-                  phase={suppressCycleLengthChrome(bundle) ? null : todayPhase}
-                  sexLogged={Boolean(todayLog?.sexualActivity)}
-                  onLog={() => openQuickLog(today)}
-                  onSex={() => setSexOpen(true)}
-                  onPhase={() => setExplainOpen(true)}
-                  onAskMedi={() => router.push('/assistant?mode=doctor' as never)}
-                />
+                <CycleStoriesRow onLog={() => openQuickLog(today)} onAskMedi={() => router.push(cycleAskMediRoute() as never)} />
               </View>
 
               {modeCaps.showClassicCycleOverview && !suppressCycleLengthChrome(bundle) ? (
