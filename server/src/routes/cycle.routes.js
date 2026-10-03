@@ -140,10 +140,17 @@ import { calculateAge, withPatientAiContext } from '../lib/patient.js';
 import { CYCLE_TEST_RESULTS } from '../lib/cycleFertility.js';
 import {
   CONTRACEPTION_METHODS,
+  applyFertilityDisplay,
   interpretContraception,
   presentPredictions,
   presentTodayPhase,
 } from '../lib/cycleContraception.js';
+import {
+  cycleTrackingPatch,
+  readCycleTrackingPrefs,
+  writeCycleTrackingPrefs,
+} from '../lib/cycleTrackingPrefs.js';
+import { FERTILITY_DISPLAY_VALUES, trackingOnlyFor } from '../lib/cycleModeCapabilityMatrix.js';
 import {
   buildObservationInsights,
   CYCLE_TAG_ACTIVE_MAX,
@@ -363,11 +370,15 @@ async function loadBundle(userId, clock = null, lang = 'ka') {
 
   const shapedLogs = displayLogs.map(shapeCycleLog);
 
+  // „მენსტრუაციას არ ველი“ + „ნაყოფიერი დღეების ჩვენება“ (brief §9 wave 2 item 17); defaults when missing.
+  const trackingPrefs = await readCycleTrackingPrefs(prisma, userId);
   const classifiedState = await reconcileUserBleedClassifications(prisma, userId);
   const forecastEligibility = evaluateForecastEligibility({
     forecastGateKind: profile.forecastGateKind,
     forecastGateEpisodeId: profile.forecastGateEpisodeId,
     classifications: classifiedState.keep,
+    mode: profile.mode,
+    expectsBleeding: trackingPrefs.expectsBleeding,
   });
   let forecastLogs = engineLogs;
   if (profile.mode !== 'POSTPARTUM' && profile.mode !== 'PREGNANCY' && classifiedState.classifiedDates.length) {
@@ -404,15 +415,23 @@ async function loadBundle(userId, clock = null, lang = 'ka') {
     lang,
     mode: profile.mode,
   });
-  const contraception = interpretContraception(
-    {
-      ...profile,
-      contraceptionMethod: profile.contraceptionMethod,
-      contraceptionStartedAt: toDateKey(profile.contraceptionStartedAt),
-      mode: profile.mode,
-    },
-    { todayLog: shapedLogs.find((l) => l.date === today), lang },
+  const contraception = applyFertilityDisplay(
+    interpretContraception(
+      {
+        ...profile,
+        contraceptionMethod: profile.contraceptionMethod,
+        contraceptionStartedAt: toDateKey(profile.contraceptionStartedAt),
+        mode: profile.mode,
+      },
+      { todayLog: shapedLogs.find((l) => l.date === today), lang },
+    ),
+    { mode: profile.mode, prefs: trackingPrefs },
   );
+  const tracking = {
+    ...trackingPrefs,
+    trackingOnly: trackingOnlyFor(profile.mode, trackingPrefs),
+    fertility: contraception.presentation.fertilityDisplay,
+  };
 
   const historyStart = inferred.periodRanges?.[0]?.start;
   if (lastPeriodStart && historyStart && historyStart < lastPeriodStart) {
@@ -435,7 +454,7 @@ async function loadBundle(userId, clock = null, lang = 'ka') {
     mode: profile.mode,
   });
   const presentedPredictions = applyForecastEligibilityToPredictions(
-    presentPredictions(rawPredictions, contraception, lang),
+    presentPredictions(rawPredictions, contraception, lang, { avgCycleLength: averages.usedCycleLength }),
     forecastEligibility,
   );
   const predictions =
@@ -464,6 +483,7 @@ async function loadBundle(userId, clock = null, lang = 'ka') {
       ),
       contraception,
       lang,
+      { avgCycleLength: averages.usedCycleLength },
     ),
     forecastEligibility,
   );
@@ -510,6 +530,8 @@ async function loadBundle(userId, clock = null, lang = 'ka') {
       dueDate: pregnancy?.dueDate ?? due,
       contraceptionMethod: contraception.method,
       contraceptionStartedAt: contraception.startedAt,
+      expectsBleeding: trackingPrefs.expectsBleeding,
+      fertilityDisplay: trackingPrefs.fertilityDisplay,
       conditions: Array.isArray(profile.conditions) ? profile.conditions.map(String) : [],
       reminderPrefs: profile.reminderPrefs ?? null,
       aiInsights: profile.aiInsights ?? null,
@@ -592,6 +614,8 @@ async function loadBundle(userId, clock = null, lang = 'ka') {
     classifiedDates: classifiedState.classifiedDates,
     forecastEligibility: publicForecastEligibility(forecastEligibility),
     periodStatus,
+    /** `{ expectsBleeding, fertilityDisplay, trackingOnly, fertility: { setting, effective, forcedBy, userCanChange } }`. */
+    tracking,
   };
 
   try {
@@ -1239,13 +1263,17 @@ cycleRouter.post(
 
 const DATE_KEY = z.string().refine(isValidCycleDateKey, 'თარიღი არასწორია.');
 
-const profileUpdateSchema = z.object({
+export const profileUpdateSchema = z.object({
   mode: z.enum(MODES).optional(),
   avgCycleLength: z.number().int().min(21).max(45).optional(),
   avgPeriodLength: z.number().int().min(2).max(10).optional(),
   lastPeriodStart: DATE_KEY.nullable().optional(),
   contraceptionMethod: z.enum(CONTRACEPTION_METHODS).nullable().optional(),
   contraceptionStartedAt: DATE_KEY.nullable().optional(),
+  /** false = „მენსტრუაციას არ ველი“ (Tracking in TRACK_PERIOD). Older builds never send it. */
+  expectsBleeding: z.boolean().optional(),
+  /** „ნაყოფიერი დღეების ჩვენება“. Ignored while trying to conceive / hidden by contraception. */
+  fertilityDisplay: z.enum(FERTILITY_DISPLAY_VALUES).optional(),
   isIrregular: z.boolean().optional(),
   dueDate: DATE_KEY.nullable().optional(),
   pregnancyReferenceDate: DATE_KEY.optional(),
@@ -1315,6 +1343,9 @@ async function applyProfileUpdate(req, res) {
   if (body.contraceptionMethod === 'NONE' && body.contraceptionStartedAt === undefined) {
     data.contraceptionStartedAt = null;
   }
+  const trackingPatch = cycleTrackingPatch(body);
+  // Cached AI cards may talk about fertile days / the next period the person just turned off.
+  if (trackingPatch) Object.assign(data, emptyCycleAiCache());
 
   await getOrCreateProfile(req.user.id);
   const current = await prisma.cycleProfile.findUnique({ where: { userId: req.user.id } });
@@ -1353,6 +1384,7 @@ async function applyProfileUpdate(req, res) {
         data,
       });
     }
+    await writeCycleTrackingPrefs(tx, req.user.id, trackingPatch);
   });
 
   if (body.enablePartnerShare === true) {
@@ -1570,12 +1602,28 @@ cycleRouter.get(
         ? (Array.isArray(todayRow.symptoms) ? todayRow.symptoms.map(String) : [])
         : [],
     }));
+    // Her Tracking / fertile-days display choices (and hormonal contraception) reach the partner too.
+    const ownerPrefs = await readCycleTrackingPrefs(prisma, share.ownerUserId);
+    const ownerContraception = applyFertilityDisplay(
+      interpretContraception({
+        ...profile,
+        contraceptionStartedAt: toDateKey(profile.contraceptionStartedAt),
+        mode: profile.mode,
+      }),
+      { mode: profile.mode, prefs: ownerPrefs },
+    );
     const payload = buildPartnerPayload({
       profile,
       logs: shaped,
       permissions: share.permissions,
       today: ownerClock.today,
       lang: shareLang(req),
+      tracking: {
+        trackingOnly: trackingOnlyFor(profile.mode, ownerPrefs),
+        hideFertility:
+          ownerContraception.presentation.showFertileWindow === false
+          || ownerContraception.presentation.fertilityDisplay?.effective === 'off',
+      },
     });
     securityShareLog('peek_ok', { partner: true });
     return res.json(payload);

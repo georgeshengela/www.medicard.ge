@@ -14,7 +14,7 @@ import {
   CYCLE_SEXUAL_SYMPTOM_KEYS,
   partnerSafeSymptomKeys,
 } from './cycleAiContext.js';
-import { alignPhaseWithForecast } from './cycleForecastHonesty.js';
+import { alignPhaseWithForecast, hideFertilePhase } from './cycleForecastHonesty.js';
 
 /** 32 bytes → 64 hex chars. 12-hex legacy codes are rejected. */
 export const SHARE_TOKEN_BYTES = 32;
@@ -200,7 +200,15 @@ export function ownerShareView(share, plaintextToken = null) {
   };
 }
 
-export function buildPartnerPayload({ profile, logs, permissions, today = todayInTimeZone(), lang = 'ka' }) {
+/**
+ * `tracking` (brief §9 wave 2 item 17, optional — omitted = today's behaviour):
+ * `{ trackingOnly, hideFertility }`. Tracking shares no next period and no phase; a hidden fertile-days
+ * display (her „off“, Tracking, hormonal contraception, a mode without fertile days) shares no fertile
+ * window / ovulation and never says „ნაყოფიერი“ / „ოვულაცია“ as the phase.
+ */
+export function buildPartnerPayload({ profile, logs, permissions, today = todayInTimeZone(), lang = 'ka', tracking = null }) {
+  const trackingOnly = tracking?.trackingOnly === true;
+  const hideFertility = trackingOnly || tracking?.hideFertility === true;
   const allowed = normalizeSharePermissions(permissions);
   const inferred = inferCycleStats(logs, profile.avgCycleLength, profile.avgPeriodLength);
   const averages = resolveForecastAverages(profile, inferred);
@@ -222,7 +230,7 @@ export function buildPartnerPayload({ profile, logs, permissions, today = todayI
     // OPK and her own ovulation mark are private (partner: false) — the partner sees the calendar estimate only.
     useOvulationSignals: false,
   });
-  const phase = alignPhaseWithForecast(
+  const alignedPhase = alignPhaseWithForecast(
     detectCyclePhase({
       lastPeriodStart,
       avgCycleLength: averages.usedCycleLength,
@@ -233,6 +241,11 @@ export function buildPartnerPayload({ profile, logs, permissions, today = todayI
     predictions,
     today,
   );
+  const phase = trackingOnly
+    ? { ...alignedPhase, phase: 'unknown', phaseKa: lang === 'en' ? 'Unknown phase' : 'უცნობი ფაზა' }
+    : hideFertility
+      ? hideFertilePhase(alignedPhase, { avgCycleLength: averages.usedCycleLength, lang })
+      : alignedPhase;
 
   const payload = {
     estimated: true,
@@ -244,9 +257,10 @@ export function buildPartnerPayload({ profile, logs, permissions, today = todayI
 
   if (allowed.period) {
     payload.period = {
-      inPeriod: phase.phase === 'period',
-      inPeriodEstimated: phase.phase === 'period' ? !loggedBleed : true,
-      nextPeriodStart: predictions.nextPeriodStart,
+      // Tracking: only a bleed she logged today counts — nothing is estimated.
+      inPeriod: trackingOnly ? loggedBleed : phase.phase === 'period',
+      inPeriodEstimated: trackingOnly ? false : phase.phase === 'period' ? !loggedBleed : true,
+      nextPeriodStart: trackingOnly ? null : predictions.nextPeriodStart,
       nextPeriodEstimated: true,
     };
   }
@@ -259,14 +273,16 @@ export function buildPartnerPayload({ profile, logs, permissions, today = todayI
     };
   }
   if (allowed.fertileWindow) {
-    payload.fertileWindow = {
-      start: predictions.fertileWindow?.start ?? null,
-      end: predictions.fertileWindow?.end ?? null,
-      ovulationDate: predictions.ovulationDate,
-      // A 3-day band, never one date (null until 3 completed cycles).
-      ovulationRange: predictions.ovulationRange ?? null,
-      estimated: true,
-    };
+    payload.fertileWindow = hideFertility
+      ? { start: null, end: null, ovulationDate: null, ovulationRange: null, estimated: true }
+      : {
+          start: predictions.fertileWindow?.start ?? null,
+          end: predictions.fertileWindow?.end ?? null,
+          ovulationDate: predictions.ovulationDate,
+          // A 3-day band, never one date (null until 3 completed cycles).
+          ovulationRange: predictions.ovulationRange ?? null,
+          estimated: true,
+        };
   }
   if (allowed.symptoms) {
     const dayLog = (logs || []).find((l) => l.date === today);

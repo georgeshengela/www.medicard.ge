@@ -382,6 +382,11 @@ model CycleProfile {
   forecastGateKind        String?
   /// Ended CyclePostpartumEpisode that scopes post-postpartum forecast evidence.
   forecastGateEpisodeId   String?
+  /// false = „მენსტრუაციას არ ველი“ (TRACK_PERIOD Tracking: no forecasts). prisma/20261003-cycle-tracking.sql.
+  /// @ignore: raw SQL only (src/lib/cycleTrackingPrefs.js), so a database without the column keeps working.
+  expectsBleeding         Boolean   @default(true) @ignore
+  /// 'auto' | 'off' — „ნაყოფიერი დღეების ჩვენება“. @ignore: raw SQL only (src/lib/cycleTrackingPrefs.js).
+  fertilityDisplay        String    @default("auto") @ignore
   createdAt        DateTime  @default(now())
   updatedAt        DateTime  @updatedAt
 }

@@ -9,6 +9,7 @@
  */
 
 import { inferCycleStats } from './cycle.js';
+import { trackingOnlyFor } from './cycleModeCapabilityMatrix.js';
 import {
   CLASSIFICATION_SOURCE_OWNER,
   MENSTRUAL_PERIOD_CLASSIFICATION,
@@ -20,6 +21,8 @@ export const FORECAST_ELIGIBILITY_REASON = Object.freeze({
   STANDARD: 'STANDARD',
   POSTPARTUM_HISTORY_INSUFFICIENT: 'POSTPARTUM_HISTORY_INSUFFICIENT',
   POSTPARTUM_HISTORY_READY: 'POSTPARTUM_HISTORY_READY',
+  /** „მენსტრუაციას არ ველი“ (`expectsBleeding: false`, TRACK_PERIOD): Tracking, nothing is forecast. */
+  NOT_EXPECTING_BLEEDING: 'NOT_EXPECTING_BLEEDING',
 });
 
 /** Same as inferCycleStats hasInferredCycle (gaps.length >= 2). Never weaken. */
@@ -64,7 +67,18 @@ export function evaluateForecastEligibility({
   forecastGateKind,
   forecastGateEpisodeId,
   classifications = [],
+  /** Profile mode + `expectsBleeding` (brief §9 wave 2 item 17). Omitted = expects bleeding. */
+  mode = null,
+  expectsBleeding = true,
 } = {}) {
+  // Tracking wins over every other gate: she told us no period is expected, so nothing is forecast —
+  // a manual „ახალი ციკლის დაწყება“ (spotting / withdrawal bleed) is logged but never re-opens it.
+  if (trackingOnlyFor(mode, { expectsBleeding })) {
+    return {
+      allowed: false,
+      reason: FORECAST_ELIGIBILITY_REASON.NOT_EXPECTING_BLEEDING,
+    };
+  }
   if (forecastGateKind !== FORECAST_GATE_KIND_POSTPARTUM_RETURN) {
     return {
       allowed: true,

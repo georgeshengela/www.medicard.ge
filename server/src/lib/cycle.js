@@ -1016,7 +1016,10 @@ export function detectLatePeriod({
   if (profile?.mode === 'PERIMENOPAUSE') return { ...empty, reason: 'perimenopause_mode' };
   if (profile?.mode === 'POSTPARTUM') return { ...empty, reason: 'postpartum_mode' };
   if (forecastEligibility?.allowed === false) {
-    return { ...empty, reason: 'postpartum_return_insufficient' };
+    return {
+      ...empty,
+      reason: forecastEligibility.reason === 'NOT_EXPECTING_BLEEDING' ? 'not_expecting_bleeding' : 'postpartum_return_insufficient',
+    };
   }
 
   const ranges = inferred?.periodRanges ?? [];
@@ -1238,6 +1241,8 @@ export function buildCycleAiUserPrompt({ profile, logs, predictions, pregnancy, 
       contraceptionStartedAt: toDateKey(profile.contraceptionStartedAt),
     });
   const limited = contra.predictionAvailability === 'LIMITED';
+  // „ნაყოფიერი დღეების ჩვენება“ off (brief §9 wave 2 item 17): the AI never brings fertile days up either.
+  const fertilityHidden = contra.presentation?.fertilityHidden === true;
   const recent = [...logs]
     .filter((l) => l?.trackingContext !== 'POSTPARTUM')
     .sort((a, b) => b.date.localeCompare(a.date))
@@ -1267,14 +1272,16 @@ export function buildCycleAiUserPrompt({ profile, logs, predictions, pregnancy, 
       ? null
       : limited
         ? 'ოვულაცია / ნაყოფიერი ფანჯარა: ნუ ხაზს უსვამ — კონტრაცეფციის კონტექსტში შეიძლება შეცდომაში შემყვანი იყოს.'
-        : predictions?.ovulationRange
+        : fertilityHidden
+          ? 'ოვულაცია / ნაყოფიერი ფანჯარა: მომხმარებელმა ნაყოფიერი დღეების ჩვენება გამორთო — ნუ ახსენებ.'
+          : predictions?.ovulationRange
           ? `სავარაუდო ოვულაცია: ${formatDateKa(predictions.ovulationRange.start)} – ${formatDateKa(predictions.ovulationRange.end)} (3 დღიანი ზოლი)`
           : predictions?.fertility && predictions.fertility.status !== 'READY'
             ? `სავარაუდო ოვულაცია: არ ფასდება — ${predictions.fertility.completedCycles}/${predictions.fertility.requiredCycles} სრული ციკლი აღრიცხულია`
             : `სავარაუდო ოვულაცია: ${formatDateKa(predictions?.ovulationDate)}`,
     forecastGated
       ? null
-      : limited
+      : limited || fertilityHidden
         ? null
         : predictions?.fertileWindow
           ? `სავარაუდო ნაყოფიერი ფანჯარა: ${formatDateKa(predictions.fertileWindow.start)} – ${formatDateKa(predictions.fertileWindow.end)}`

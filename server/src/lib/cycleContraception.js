@@ -6,6 +6,9 @@
  * method NONE  = user said they use no contraception
  */
 
+import { hideFertilePhase } from './cycleForecastHonesty.js';
+import { resolveCycleTracking } from './cycleModeCapabilityMatrix.js';
+
 export const CONTRACEPTION_METHODS = [
   'NONE',
   'COMBINED_PILL',
@@ -119,14 +122,105 @@ export function interpretContraception(profile = {}, { todayLog = null, lang = '
   };
 }
 
+/**
+ * „ნაყოფიერი დღეების ჩვენება“ + Tracking (brief §9 wave 2 item 17) on top of the contraception rules.
+ * `prefs` = `{ expectsBleeding, fertilityDisplay }` (missing = defaults). The contraception rules stay the
+ * single source of „hormonal contraception hides fertility“: when they already hide it the display is
+ * forced off; otherwise her own „off“ (TRACK_PERIOD) or Tracking turns the same three presentation flags
+ * off, so every reader of `presentation.showFertileWindow` — this app, older builds, the web portal,
+ * insights — hides fertile days without knowing the new preference. TTC forces the display on.
+ * Adds `presentation.fertilityDisplay` (`{ setting, effective, forcedBy, userCanChange }`) and
+ * `presentation.fertilityHidden` (true only when this step hid fertility). Input is not mutated.
+ */
+export function applyFertilityDisplay(contraception, { mode = null, prefs = null } = {}) {
+  if (!contraception || typeof contraception !== 'object') return contraception;
+  const presentation = contraception.presentation || {};
+  const tracking = resolveCycleTracking(mode, prefs, {
+    contraceptionHidesFertility: presentation.showFertileWindow === false,
+  });
+  const fertilityDisplay = {
+    setting: tracking.fertilityDisplay,
+    effective: tracking.fertility.effective,
+    forcedBy: tracking.fertility.forcedBy,
+    userCanChange: tracking.fertility.userCanChange,
+  };
+  // Only her choice and Tracking hide anything here; modes without fertile days are gated by the
+  // capability matrix already, and contraception has hidden it above.
+  const hide =
+    tracking.fertility.effective === 'off' &&
+    (tracking.fertility.forcedBy === null || tracking.fertility.forcedBy === 'tracking');
+  return {
+    ...contraception,
+    presentation: {
+      ...presentation,
+      ...(hide
+        ? {
+            showFertilityMarkers: false,
+            showOvulationDate: false,
+            showFertileWindow: false,
+            emphasizeFertility: false,
+          }
+        : {}),
+      fertilityHidden: hide,
+      fertilityDisplay,
+    },
+  };
+}
+
+/** Fertile / ovulation days and words gone, follicular / luteal kept (her „off“ or Tracking). */
+function hideFertilityFromPredictions(predictions, { avgCycleLength, lang }) {
+  const calendar = {};
+  for (const [key, mark] of Object.entries(predictions.calendar || {})) {
+    if (!mark || typeof mark !== 'object') {
+      calendar[key] = mark;
+      continue;
+    }
+    const { fertile, ovulation, ...rest } = mark;
+    let copy = rest;
+    if (copy.phase === 'fertile' || copy.phase === 'ovulation') {
+      const info = hideFertilePhase({ day: copy.cycleDay ?? null, phase: copy.phase, phaseKa: copy.phaseKa }, { avgCycleLength, lang });
+      copy = { ...copy, phase: info.phase, phaseKa: info.phaseKa };
+    }
+    // A day that was only a fertile estimate is no longer an estimate of anything.
+    if ((fertile || ovulation) && !copy.period && copy.predicted !== false && copy.estimated) {
+      copy = { ...copy, estimated: Boolean(copy.predicted) };
+    }
+    calendar[key] = copy;
+  }
+  return {
+    ...predictions,
+    ovulationDate: null,
+    ovulationRange: null,
+    fertileWindow: null,
+    fertility: predictions.fertility
+      ? { ...predictions.fertility, window: null, ovulationSource: null, hidden: true }
+      : predictions.fertility,
+    phases: (predictions.phases || []).map((p) => ({
+      ...p,
+      ovulation: null,
+      ovulationStart: null,
+      ovulationEnd: null,
+      ovulationSource: null,
+      fertileStart: null,
+      fertileEnd: null,
+      fertileWindowKind: null,
+    })),
+    calendar,
+  };
+}
+
 /** Strip fertility emphasis from a predictions calendar. Engine output is not mutated. */
-export function presentPredictions(predictions, contraception, lang = 'ka') {
+export function presentPredictions(predictions, contraception, lang = 'ka', { avgCycleLength = 28 } = {}) {
   if (!predictions) return predictions;
   const presented = {
     ...predictions,
     calendar: { ...(predictions.calendar || {}) },
   };
-  if (contraception?.predictionAvailability !== 'LIMITED') return presented;
+  if (contraception?.predictionAvailability !== 'LIMITED') {
+    return contraception?.presentation?.fertilityHidden === true
+      ? hideFertilityFromPredictions(presented, { avgCycleLength, lang })
+      : presented;
+  }
 
   const override = contraception.presentation?.phaseLabelOverride || limitedPhaseLabel(lang);
   for (const [key, mark] of Object.entries(presented.calendar)) {
@@ -148,9 +242,13 @@ export function presentPredictions(predictions, contraception, lang = 'ka') {
   return presented;
 }
 
-export function presentTodayPhase(todayPhase, contraception, lang = 'ka') {
+export function presentTodayPhase(todayPhase, contraception, lang = 'ka', { avgCycleLength = 28 } = {}) {
   if (!todayPhase) return { day: null, phase: 'unknown', phaseKa: lang === 'en' ? 'Unknown phase' : 'უცნობი ფაზა' };
-  if (contraception?.predictionAvailability !== 'LIMITED') return todayPhase;
+  if (contraception?.predictionAvailability !== 'LIMITED') {
+    return contraception?.presentation?.fertilityHidden === true
+      ? hideFertilePhase(todayPhase, { avgCycleLength, lang })
+      : todayPhase;
+  }
   if (todayPhase.phase === 'period' || contraception.presentation?.loggedBleedKeepsPeriod) {
     return todayPhase;
   }
@@ -163,6 +261,9 @@ export function presentTodayPhase(todayPhase, contraception, lang = 'ka') {
 
 export function contraceptionInsightsFilter(cards, contraception) {
   const list = Array.isArray(cards) ? cards : [];
+  if (contraception?.presentation?.fertilityHidden === true) {
+    return list.filter((card) => String(card?.id || '') !== 'ttc_window');
+  }
   if (contraception?.predictionAvailability !== 'LIMITED') return list;
   return list.filter((card) => {
     const id = String(card?.id || '');
