@@ -1254,6 +1254,13 @@ export function buildCycleWellnessContext({
   };
 }
 
+/** The AI prompt's next-period line: a window stays a window (variable cycles, perimenopause), never one date. */
+function nextPeriodPromptText(predictions) {
+  const range = predictions?.nextPeriodRange;
+  if (range?.from && range?.to) return `${formatDateKa(range.from)} – ${formatDateKa(range.to)} (ფანჯარა, არა ერთი თარიღი)`;
+  return formatDateKa(predictions?.nextPeriodStart);
+}
+
 export function buildCycleAiUserPrompt({ profile, logs, predictions, pregnancy, user, averages, today, contraception, analytics, forecastEligibility }) {
   if (!isCycleAiContextSupported(profile?.mode)) return '';
   const todayKey = today || todayInTimeZone();
@@ -1303,9 +1310,7 @@ export function buildCycleAiUserPrompt({ profile, logs, predictions, pregnancy, 
         : `ციკლის დღე: ${phase.day ?? '—'} · სავარაუდო ფაზა: ${phase.phaseKa}`,
     forecastGated
       ? null
-      : limited
-        ? `სავარაუდო შემდეგი სისხლდენა: ${formatDateKa(predictions?.nextPeriodStart)}`
-        : `სავარაუდო შემდეგი მენსტრუაცია: ${formatDateKa(predictions?.nextPeriodStart)}`,
+      : `${limited ? 'სავარაუდო შემდეგი სისხლდენა' : 'სავარაუდო შემდეგი მენსტრუაცია'}: ${nextPeriodPromptText(predictions)}`,
     forecastGated
       ? null
       : limited

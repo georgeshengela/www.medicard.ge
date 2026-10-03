@@ -76,7 +76,14 @@ import {
   serializeCarePlanStateForExport,
   validateCarePlanWrite,
 } from '../lib/pregnancyCarePlan.js';
-import { buildPerimenopauseContext, PERIMENOPAUSE_INTERVAL_HORIZON_DAYS } from '../lib/cyclePerimenopause.js';
+import {
+  applyPerimenopauseForecast,
+  buildPerimenopauseContext,
+  completedCycleIntervals,
+  perimenopauseForecast,
+  PERIMENOPAUSE_INTERVAL_HORIZON_DAYS,
+} from '../lib/cyclePerimenopause.js';
+import { buildCycleComparison } from '../lib/cycleComparison.js';
 import {
   applyPostpartumEpisodeTransition,
   buildCyclePostpartumData,
@@ -414,7 +421,7 @@ async function loadBundle(userId, clock = null, lang = 'ka') {
     lastLoggedBleedDay(inferred),
   );
 
-  const rawPredictions = buildPredictions({
+  const enginePredictions = buildPredictions({
     lastPeriodStart,
     avgCycleLength: averages.usedCycleLength,
     avgPeriodLength: averages.usedPeriodLength,
@@ -426,6 +433,26 @@ async function loadBundle(userId, clock = null, lang = 'ka') {
     lang,
     mode: profile.mode,
   });
+  // Perimenopause (brief §9 „მერე“ item 7): never one next-period date — a window from her own recent
+  // cycle lengths (hidden cycles left out), nothing with < 2 cycles, no fertile days, no late state.
+  const periForecast =
+    profile.mode === 'PERIMENOPAUSE'
+      ? perimenopauseForecast({
+          intervals: completedCycleIntervals(inferred.periodStarts || [], { today, hiddenStarts: inferred.hiddenStarts || [] }),
+          lastPeriodStart,
+          logs: shapedLogs,
+          today,
+        })
+      : null;
+  const rawPredictions = periForecast
+    ? applyPerimenopauseForecast(enginePredictions, periForecast, {
+        lastPeriodStart,
+        avgPeriodLength: averages.usedPeriodLength,
+        avgCycleLength: averages.usedCycleLength,
+        today,
+        lang,
+      })
+    : enginePredictions;
   const contraception = applyFertilityDisplay(
     interpretContraception(
       {
@@ -629,6 +656,16 @@ async function loadBundle(userId, clock = null, lang = 'ka') {
       inferred,
       logs: shapedLogs,
       predictions,
+      today,
+      lastPeriodStart,
+      forecast: periForecast,
+    }),
+    /** „ბოლო ციკლები“: the last ≤ 6 completed, not hidden cycles + latest vs her median (optional; null = no card). */
+    cycleComparison: buildCycleComparison({
+      mode: profile.mode,
+      periodStarts: inferred.periodStarts,
+      periodRanges: inferred.periodRanges,
+      hiddenStarts: inferred.hiddenStarts,
       today,
     }),
     postpartum: bundlePostpartumView({

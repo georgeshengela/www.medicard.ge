@@ -374,3 +374,36 @@ describe('owner view', () => {
     assert.ok(view.expiresAt);
   });
 });
+
+describe('partner view in perimenopause (brief §9 „მერე“ item 7)', () => {
+  const day = (start, i) => {
+    const [y, m, d] = start.split('-').map(Number);
+    const dt = new Date(Date.UTC(y, m - 1, d + i));
+    return dt.toISOString().slice(0, 10);
+  };
+  const periStarts = ['2026-01-01', '2026-01-25', '2026-02-25', '2026-04-12', '2026-05-11'];
+  const periLogs = periStarts.flatMap((s) => [0, 1, 2].map((i) => ({ date: day(s, i), flow: i === 0 ? 'medium' : 'light' })));
+
+  it('shares the window, never one next-period date, and never names the mode', () => {
+    const payload = buildPartnerPayload({
+      profile: { mode: 'PERIMENOPAUSE', avgCycleLength: 28, avgPeriodLength: 5 },
+      logs: periLogs,
+      permissions: { period: true, cyclePhase: true, fertileWindow: false, symptoms: false },
+      today: '2026-05-20',
+    });
+    assert.equal(payload.period.nextPeriodStart, null);
+    assert.ok(payload.period.nextPeriodRange.from < payload.period.nextPeriodRange.to);
+    assert.equal(JSON.stringify(payload).includes('PERIMENOPAUSE'), false);
+    assert.equal(partnerPayloadHasLeak(payload), false);
+  });
+
+  it('other modes keep the single estimate (and a window only for a variable cycle)', () => {
+    const payload = buildPartnerPayload({
+      profile: { mode: 'TRACK_PERIOD', avgCycleLength: 28, avgPeriodLength: 5 },
+      logs: periLogs,
+      permissions: { period: true, cyclePhase: true, fertileWindow: false, symptoms: false },
+      today: '2026-05-20',
+    });
+    assert.ok(payload.period.nextPeriodStart);
+  });
+});

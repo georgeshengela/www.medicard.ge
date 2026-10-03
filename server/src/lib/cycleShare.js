@@ -15,6 +15,7 @@ import {
   partnerSafeSymptomKeys,
 } from './cycleAiContext.js';
 import { alignPhaseWithForecast, hideFertilePhase } from './cycleForecastHonesty.js';
+import { completedCycleIntervals, perimenopauseForecast } from './cyclePerimenopause.js';
 
 /** 32 bytes → 64 hex chars. 12-hex legacy codes are rejected. */
 export const SHARE_TOKEN_BYTES = 32;
@@ -257,11 +258,24 @@ export function buildPartnerPayload({ profile, logs, permissions, today = todayI
   const loggedBleed = isPeriodFlow(todayLog?.flow);
 
   if (allowed.period) {
+    // Perimenopause: never one date — the same window she sees (null with < 2 cycles). The mode is not named.
+    const peri =
+      profile.mode === 'PERIMENOPAUSE'
+        ? perimenopauseForecast({
+            intervals: completedCycleIntervals(inferred.periodStarts || [], { today, hiddenStarts: inferred.hiddenStarts || [] }),
+            lastPeriodStart,
+            logs,
+            today,
+          })
+        : null;
+    const range = peri ? peri.range : predictions.nextPeriodRange;
     payload.period = {
       // Tracking: only a bleed she logged today counts — nothing is estimated.
       inPeriod: trackingOnly ? loggedBleed : phase.phase === 'period',
       inPeriodEstimated: trackingOnly ? false : phase.phase === 'period' ? !loggedBleed : true,
-      nextPeriodStart: trackingOnly ? null : predictions.nextPeriodStart,
+      nextPeriodStart: trackingOnly || peri ? null : predictions.nextPeriodStart,
+      /** `{ from, to }` when the next period is a window (variable cycles, perimenopause); optional. */
+      nextPeriodRange: !trackingOnly && range ? { from: range.from, to: range.to } : null,
       nextPeriodEstimated: true,
     };
   }

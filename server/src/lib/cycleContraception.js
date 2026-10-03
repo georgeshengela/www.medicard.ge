@@ -168,7 +168,7 @@ export function applyFertilityDisplay(contraception, { mode = null, prefs = null
 }
 
 /** Fertile / ovulation days and words gone, follicular / luteal kept (her „off“ or Tracking). */
-function hideFertilityFromPredictions(predictions, { avgCycleLength, lang }) {
+export function hideFertilityFromPredictions(predictions, { avgCycleLength, lang }) {
   const calendar = {};
   for (const [key, mark] of Object.entries(predictions.calendar || {})) {
     if (!mark || typeof mark !== 'object') {
