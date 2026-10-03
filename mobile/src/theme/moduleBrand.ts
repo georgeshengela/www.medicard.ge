@@ -1,6 +1,6 @@
 /**
  * The MEDI module family (owner 2026-10-03): every flagship module is written as one wordmark —
- * „MEDI“ upright, the module part in its own colour and skewed −10°, Plus Jakarta Sans ExtraBold —
+ * „MEDI“ upright, the module part in its own colour and skewed −16°, Exo 2 ExtraBold (owner's pick) —
  * the way MEDIRUN always was. Each module owns one signature colour; MEDIRUN and the Medi assistant
  * keep the brand teal.
  *
@@ -72,7 +72,9 @@ export const MODULE_BRANDS: Record<ModuleBrandId, ModuleBrand> = {
 };
 
 /** Font family registered in FontsContext for every wordmark. */
-export const WORDMARK_FONT = 'PlusJakartaSans_800ExtraBold';
+export const WORDMARK_FONT = 'Exo2_800ExtraBold';
+/** Skew of the module part (owner 2026-10-03: Exo 2 with a 16° lean). */
+export const WORDMARK_SKEW = '-16deg';
 
 export function moduleInk(id: ModuleBrandId, dark: boolean): string {
   return dark ? MODULE_BRANDS[id].ink.dark : MODULE_BRANDS[id].ink.light;

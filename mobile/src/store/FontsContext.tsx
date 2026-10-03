@@ -31,7 +31,7 @@ export function FontsProvider({ children }: { children: React.ReactNode }) {
     MediFont: require('../../assets/fonts/medifont.ttf'),
     MediFontBold: require('../../assets/fonts/medifontbold.otf'),
     // MEDI module wordmarks only (MEDIRUN, MEDICYCLE, …) — never body copy; see theme/moduleBrand.ts.
-    PlusJakartaSans_800ExtraBold: require('../../assets/fonts/plusjakarta-800.ttf'),
+    Exo2_800ExtraBold: require('../../assets/fonts/exo2-800.ttf'),
   });
 
   const value = useMemo<FontsState>(
