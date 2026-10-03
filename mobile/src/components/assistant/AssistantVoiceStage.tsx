@@ -48,17 +48,19 @@ function VoiceWave({ active, metering, processing, compact }: { active: boolean;
 }
 
 /** One conversation canvas for questions, listening, replies and the next action. */
-export function AssistantVoiceStage({ phase, metering, processing, speaking, reply, userText, error, notice, hasTask, children }: {
+export function AssistantVoiceStage({ phase, metering, processing, speaking, reply, userText, error, notice, hasTask, voice = true, children }: {
+  /** false while voice is paused from admin: no sound wave and text-only wording. */
+  voice?: boolean;
   phase: VoicePhase; metering?: number; processing: boolean; speaking: boolean; reply?: string; userText?: string;
   error: string | null; notice: string | null; hasTask: boolean; children?: React.ReactNode;
 }) {
   const C = useThemeColors(), listening = phase === 'recording', compact = useWindowDimensions().height < 760;
   const active = listening || processing || phase === 'preparing';
-  const title = listening ? tx('გისმენ.', "I'm listening.") : phase === 'preparing' ? tx('ერთი წამით…', 'One moment…') : processing ? tx('ვუსმენ შენს ნათქვამს…', 'Listening to what you said…') : error ? tx('კავშირი შეფერხდა', 'Connection problem') : reply || tx('აქ ვარ.\nმომიყევი.', 'I\'m here.\nTell me.');
+  const title = listening ? tx('გისმენ.', "I'm listening.") : phase === 'preparing' ? tx('ერთი წამით…', 'One moment…') : processing ? (voice ? tx('ვუსმენ შენს ნათქვამს…', 'Listening to what you said…') : tx('ვფიქრობ…', 'Thinking…')) : error ? tx('კავშირი შეფერხდა', 'Connection problem') : reply || (voice ? tx('აქ ვარ.\nმომიყევი.', 'I\'m here.\nTell me.') : tx('აქ ვარ.\nმომწერე.', 'I\'m here.\nWrite to me.'));
   return <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled" contentContainerStyle={{ flexGrow: 1, paddingHorizontal: 24, paddingTop: compact ? 12 : 30, paddingBottom: 18, alignItems: 'center', justifyContent: !userText && !hasTask ? 'center' : 'flex-start', gap: 20 }}>
     {!active && userText ? <Text numberOfLines={3} selectable style={{ alignSelf: 'flex-end', maxWidth: '90%', color: C.text200, fontSize: 12, lineHeight: 21, fontFamily: 'NotoSansGeorgian_400Regular', textAlign: 'right' }}>{userText}</Text> : null}
     <View style={{ width: '100%', maxWidth: 520, alignItems: 'center', gap: 12 }}>
-      <VoiceWave compact active={listening} metering={metering} processing={processing || speaking} />
+      {voice ? <VoiceWave compact active={listening} metering={metering} processing={processing || speaking} /> : null}
       <Text accessibilityLiveRegion="polite" selectable style={{ color: C.text100, fontSize: !reply && !error ? 30 : hasTask ? 18 : 20, lineHeight: !reply && !error ? 44 : 29, textAlign: 'center', fontFamily: 'NotoSansGeorgian_400Regular' }}>{title}</Text>
       {!reply && !active && !error ? <Text style={{ maxWidth: 270, color: C.text200, fontSize: 13, lineHeight: 23, textAlign: 'center', fontFamily: 'NotoSansGeorgian_400Regular' }}>{tx('შენი სიტყვებით — შენზე, შენს გეგმებზე ან შენს ცხოველზე.', 'In your own words — about you, your plans or your pet.')}</Text> : null}
     </View>

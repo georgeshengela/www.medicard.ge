@@ -279,7 +279,7 @@ function AssistantSession({ owner, sessionId, modes, pausedMessage }: { owner: s
   return <ChatScreenShell style={{ backgroundColor: C.bg100 }} header={header}
     footer={picker || menu || historyOpen ? undefined : <AssistantTalkDock voice={voiceIn} voiceOutput={voiceOut} phase={capture.phase} duration={capture.duration} metering={capture.metering}
       speechPhase={speech.phase} muted={speech.muted} busy={busy} reviewing={!!review} text={text} onText={setText} onSend={() => void send()} tapMode={tapMode}
-      voiceStage={voiceMode && !manual} formActive={!!draft && manual} formEditing={formEditing} onTextFocus={() => setFormEditing(false)} onSave={() => void prepare(true)} onMode={typing => { setVoiceMode(!typing); if (!typing) setManual(false); }}
+      voiceStage={voiceMode && !manual && voiceOn} formActive={!!draft && manual} formEditing={formEditing} onTextFocus={() => setFormEditing(false)} onSave={() => void prepare(true)} onMode={typing => { setVoiceMode(!typing); if (!typing) setManual(false); }}
       start={capture.start} release={capture.release} cancel={capture.cancel} stopSpeech={speech.stop} toggleSpeech={speech.toggle} />}>
     {menu ? <ChatFormScroll contentContainerStyle={{ padding: 24, gap: 14 }}>
       <Text style={{ color: C.text100, fontSize: 22, fontFamily: 'NotoSansGeorgian_700Bold', marginBottom: 8 }}>{tx('შენი საუბარი', 'Your conversation')}</Text>
@@ -299,7 +299,7 @@ function AssistantSession({ owner, sessionId, modes, pausedMessage }: { owner: s
       {button(tx('გადამოწმება', 'Review'), () => void prepare(), true)}
       {voiceIn ? button(tx('ხმით გაგრძელება', 'Continue by voice'), () => { Keyboard.dismiss(); setManual(false); setVoiceMode(true); }) : null}
     </ChatFormScroll> : <AssistantVoiceStage phase={capture.phase} metering={capture.metering} processing={!!busy || capture.phase === 'transcribing'} speaking={speech.phase === 'speaking'}
-      reply={review ? reviewSpeech(review) : lastReply} userText={lastUser} error={error} notice={notice ?? (voiceOn ? null : featureMessage('voice'))} hasTask={!!task}>
+      reply={review ? reviewSpeech(review) : lastReply} userText={lastUser} error={error} notice={notice ?? (voiceOn ? null : featureMessage('voice'))} hasTask={!!task} voice={voiceOn}>
       {error && !review && retryPlan.current ? <View style={{ width: '100%', gap: 8 }}>{button(tx('ხელახლა ცდა', 'Try again'), () => { const pending = retryPlan.current; if (pending) void send(pending.value, pending.fromVoice, pending.petId); }, true)}</View> : null}
       {!error && !review && notice === aiConsentDeclinedText() && retryPlan.current ? <View style={{ width: '100%', gap: 8 }}>{button(aiConsentRetryLabel(), () => { const pending = retryPlan.current; if (pending) void send(pending.value, pending.fromVoice, pending.petId); })}</View> : null}
       {suggestions.length ? <View style={{ width: '100%', gap: 10, flexDirection: suggestions.length <= 2 ? 'row' : 'column' }}>{suggestions.map((option, i) => <View key={i} style={suggestions.length <= 2 ? { flex: 1 } : undefined}>{button(option.label, () => void send(option.text, voiceMode, option.petId))}</View>)}</View> : null}
