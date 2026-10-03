@@ -1,4 +1,4 @@
-import { addDays, isPeriodFlow, todayInTimeZone } from './cycle.js';
+import { addDays, daysBetween, isPeriodFlow, todayInTimeZone } from './cycle.js';
 
 export const CYCLE_DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 export const MAX_PERIOD_SPAN_DAYS = 14;
@@ -71,7 +71,20 @@ export function planEndPeriod({ ranges = [], logs = [], endDate }) {
     oldEnd >= endDate
       ? eachDateKey(endDate, oldEnd).filter((key) => isPeriodFlow(map[key]?.flow))
       : [];
-  return { start, end: endDate, fill: [], clear, unlogged };
+  // Period auto-end (brief §9 wave 2 item 3): „დასრულდა“ is an observation — that day had no bleeding.
+  // It is kept as flow „none“ so a derived „still bleeding?“ never asks again about a period she ended.
+  // Not on the run's first day (that is the undo of a one-tap start: the day is cleared as before) and
+  // never for a date far past the run.
+  const flowOnEnd = map[endDate]?.flow;
+  const markNone =
+    range &&
+    endDate > range.start &&
+    daysBetween(range.start, endDate) < MAX_PERIOD_SPAN_DAYS &&
+    flowOnEnd !== 'none' &&
+    flowOnEnd !== 'spotting'
+      ? endDate
+      : null;
+  return { start, end: endDate, fill: [], clear, unlogged, markNone };
 }
 
 /** Dates HealthKit / Health Connect would receive as observed flow (not predictions). */
@@ -90,12 +103,23 @@ export function applyEndPeriodToLogs(logs = [], plan) {
   }
   const keep = [];
   const cleared = new Set(plan.clear || []);
+  const markNone = plan.markNone || null;
+  let marked = false;
   for (const log of logs) {
+    if (log.date === markNone) {
+      keep.push({ ...log, flow: 'none' });
+      marked = true;
+      continue;
+    }
     if (!cleared.has(log.date)) {
       keep.push(log);
       continue;
     }
     if (logHasExtras(log)) keep.push({ ...log, flow: 'none' });
+  }
+  if (markNone && !marked) {
+    keep.push({ date: markNone, flow: 'none', symptoms: [], moods: [] });
+    keep.sort((a, b) => a.date.localeCompare(b.date));
   }
   return keep;
 }

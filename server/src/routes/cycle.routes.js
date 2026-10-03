@@ -132,6 +132,7 @@ import {
   planFillRange,
   planStartPeriod,
 } from '../lib/cyclePeriod.js';
+import { derivePeriodStatus, trimEndedPeriodProjection } from '../lib/cyclePeriodStatus.js';
 import { askAi } from '../lib/aiEngine.js';
 import { runTrackedAi } from '../lib/aiTelemetry.js';
 import { enforceAiQuota } from '../middleware/aiLimiter.js';
@@ -425,10 +426,28 @@ async function loadBundle(userId, clock = null, lang = 'ka') {
       fertility: rawPredictions.fertility,
     });
   }
-  const predictions = applyForecastEligibilityToPredictions(
+  // Period auto-end (brief §9 wave 2 item 3): derived here, never written. Older builds ignore the field.
+  const periodStatus = derivePeriodStatus({
+    ranges: inferred.periodRanges,
+    logs: forecastLogs,
+    today,
+    typicalLength: averages.usedPeriodLength,
+    mode: profile.mode,
+  });
+  const presentedPredictions = applyForecastEligibilityToPredictions(
     presentPredictions(rawPredictions, contraception, lang),
     forecastEligibility,
   );
+  const predictions =
+    periodStatus?.state === 'ended' && presentedPredictions?.calendar
+      ? {
+          ...presentedPredictions,
+          calendar: trimEndedPeriodProjection(presentedPredictions.calendar, periodStatus, {
+            lastPeriodStart,
+            periodLength: averages.usedPeriodLength,
+          }),
+        }
+      : presentedPredictions;
 
   const todayPhase = applyForecastEligibilityToTodayPhase(
     presentTodayPhase(
@@ -572,6 +591,7 @@ async function loadBundle(userId, clock = null, lang = 'ka') {
     }),
     classifiedDates: classifiedState.classifiedDates,
     forecastEligibility: publicForecastEligibility(forecastEligibility),
+    periodStatus,
   };
 
   try {
@@ -1601,8 +1621,14 @@ cycleRouter.put(
         endDate: date,
       });
       for (const key of plan.clear) {
+        if (key === plan.markNone) continue;
         await clearBleedDay(req.user.id, key);
         touched.push(key);
+      }
+      if (plan.markNone) {
+        // „დასრულდა“ = no bleeding that day (an observation), so the derived period status stays ended.
+        await upsertBleedDay(req.user.id, plan.markNone, 'none');
+        touched.push(plan.markNone);
       }
     } else {
       const start = assertCycleDateKey(body.start, today);

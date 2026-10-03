@@ -95,9 +95,11 @@ describe('end period plan', () => {
     assert.deepEqual(plan.fill, []);
     assert.deepEqual(plan.clear, []);
     assert.deepEqual(plan.unlogged, ['2026-08-11', '2026-08-12', '2026-08-13', '2026-08-14']);
+    // „დასრულდა“ is kept as an observation: that day had no bleeding (period auto-end, brief §9 w2 item 3).
+    assert.equal(plan.markNone, '2026-08-14');
     assert.deepEqual(
       next.map((l) => [l.date, l.flow]),
-      [['2026-08-10', 'medium']],
+      [['2026-08-10', 'medium'], ['2026-08-14', 'none']],
     );
     assert.deepEqual(inferCycleStats(next).periodRanges, [
       { start: '2026-08-10', end: '2026-08-10', lengthDays: 1, source: 'logged' },
@@ -116,6 +118,7 @@ describe('end period plan', () => {
       [
         ['2026-08-10', 'light'],
         ['2026-08-11', 'heavy'],
+        ['2026-08-14', 'none'],
       ],
     );
   });
@@ -137,6 +140,7 @@ describe('end period plan', () => {
         ['2026-08-10', 'light'],
         ['2026-08-11', 'medium'],
         ['2026-08-12', 'heavy'],
+        ['2026-08-13', 'none'],
       ],
     );
   });
@@ -155,6 +159,7 @@ describe('end period plan', () => {
       [
         ['2026-08-10', 'medium'],
         ['2026-08-11', 'medium'],
+        ['2026-08-12', 'none'],
       ],
     );
   });
@@ -193,7 +198,8 @@ describe('end period does not leak synthetic flow', () => {
       predictions,
     });
     assert.equal(summary.periodDaysLogged, 1);
-    assert.equal(summary.loggedDays, 1);
+    // The end day is a logged „none“ (no bleeding) — an observation, never a bleeding day.
+    assert.equal(summary.loggedDays, 2);
 
     const inferred = inferCycleStats(next);
     const trends = buildCycleTrends({
@@ -218,7 +224,8 @@ describe('end period does not leak synthetic flow', () => {
     assert.doesNotMatch(ai, /2026-08-11: flow=/);
     assert.doesNotMatch(ai, /2026-08-12: flow=/);
     assert.doesNotMatch(ai, /2026-08-13: flow=/);
-    assert.doesNotMatch(ai, /2026-08-14: flow=/);
+    // The end day reaches the prompt only as the „none“ she recorded, never as bleeding.
+    assert.doesNotMatch(ai, /2026-08-14: flow=(light|medium|heavy)/);
 
     assert.deepEqual(observedFlowSamples(next), [{ date: '2026-08-10', flow: 'medium' }]);
   });
