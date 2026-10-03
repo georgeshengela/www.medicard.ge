@@ -375,8 +375,10 @@ function derive(b) {
   const day = b.cycleDay ?? null;
   const phase = b.phase || 'unknown';
   const phaseKa = b.phaseKa || t('უცნობი ფაზა', 'Unknown phase');
-  // Perimenopause: a precise next date only when the server says the recent history supports it.
-  const next = caps.peri && b.perimenopause?.forecast?.showPreciseNextPeriod === false ? null : b.predictions?.nextPeriodStart || null;
+  // Perimenopause (W3-4): only the server's window, never one date (none with < 2 cycles or on an older server).
+  const next = caps.peri
+    ? (b.predictions?.nextPeriodRange?.from ? b.predictions?.nextPeriodStart || null : null)
+    : b.predictions?.nextPeriodStart || null;
   const cal = b.predictions?.calendar || {};
   const predictedToday = Boolean(cal[today]?.period && cal[today]?.predicted);
   const forecastOn = Boolean(next) && caps.forecast && !hidePredicted;
@@ -453,6 +455,9 @@ function derive(b) {
     }
   }
 
+  // Perimenopause without a live window: the calm line of its state (learning / passed / long gap / 12 months).
+  if (caps.peri && !onPeriod && !windowKind) statusLine = periStatusNote(b, { periodWindow })?.title || statusLine;
+
   /** One number in the ring: bleeding day → „დღეს“ → countdown („სავარაუდოდ“) → cycle day. */
   let center;
   if (!hideLengthChrome) {
@@ -462,7 +467,8 @@ function derive(b) {
     else if (windowKind === 'open') center = { top: t('სავარაუდოდ', 'Likely'), value: t('დღეს', 'Today'), bottom: windowTo > 0 ? windowOpenTail(windowTo) : t('სავარაუდო მენსტრუაცია', 'Estimated period'), tone: 'period', word: true };
     else if (predictedToday || (forecastOn && inDays === 0)) center = { top: t('სავარაუდოდ', 'Likely'), value: t('დღეს', 'Today'), bottom: t('სავარაუდო მენსტრუაცია', 'Estimated period'), tone: 'period', word: true };
     else if (forecastOn && inDays > 0) center = { top: uncertain ? t('სისხლდენამდე', 'Until bleeding') : t('მენსტრუაციამდე', 'Until period'), value: String(inDays), bottom: t('დღე · სავარაუდოდ', inDays === 1 ? 'day · estimated' : 'days · estimated') };
-    else if (forecastOn && inDays < 0 && day != null) center = { top: t('ციკლის დღე', 'Cycle day'), value: String(day), bottom: t(`სავარაუდო თარიღიდან ${-inDays} დღე`, `${plural(-inDays, 'day')} past the estimate`) };
+    // Perimenopause never counts days „past the estimate“ (late alerts are noise there): the cycle day stays.
+    else if (forecastOn && inDays < 0 && day != null && !caps.peri) center = { top: t('ციკლის დღე', 'Cycle day'), value: String(day), bottom: t(`სავარაუდო თარიღიდან ${-inDays} დღე`, `${plural(-inDays, 'day')} past the estimate`) };
   }
 
   const cycleStart = day != null && day > 0 ? addKey(today, -(day - 1)) : null;
@@ -500,8 +506,81 @@ function derive(b) {
     cycleLen, periodLen, day, phase, phaseKa, next, inDays, forecastOn, predictedToday, phaseHint, statusLine, center,
     cycleStart, fertileDays, recordedDays, startLeads, startLabel, showPredicted, needsOnboarding,
     pcos: conditions.includes('pcos'),
-    confidence: confidenceCopy(b),
+    confidence: caps.peri ? periBasisLine(b) : confidenceCopy(b),
   };
+}
+
+/* ── Perimenopause forecast (W3-4; mobile src/lib/cyclePerimenopauseForecast.ts — same words) ── */
+function periBasisLine(b) {
+  const n = Math.max(2, Number(b.perimenopause?.forecast?.range?.basedOn) || 0);
+  return t(`შენი ბოლო ${n} ციკლის მიხედვით · ერთ თარიღს არ ვამბობთ`, `From your last ${n} cycles · we don’t name one date`);
+}
+
+/** The calm line for the states without a live window; null while a window is ahead or open. */
+function periStatusNote(b, v) {
+  const f = b.perimenopause?.forecast || {};
+  const since = f.daysSinceBleeding;
+  if (f.status === 'no_bleeding_12m') {
+    return { title: t('12 თვეა სისხლდენა არ აღგირიცხავს', 'No bleeding logged for 12 months'),
+      body: t('ექიმს შეუძლია დაადასტუროს, დადგა თუ არა მენოპაუზა. თუ სისხლდენა ისევ გამოჩნდება, ესაუბრე ექიმს.', 'A doctor can confirm whether this is menopause. If bleeding comes back, talk to a doctor.') };
+  }
+  if (f.status === 'long_gap') {
+    return { title: t('დიდი ხანია მენსტრუაცია არ ყოფილა', 'It has been a while since your last period'),
+      body: since != null
+        ? t(`ბოლო სისხლდენიდან ${since} დღე გავიდა. ესაუბრე ექიმს, თუ გაწუხებს.`, `${since} days since your last bleeding. Talk to a doctor if it worries you.`)
+        : t('ესაუბრე ექიმს, თუ გაწუხებს.', 'Talk to a doctor if it worries you.') };
+  }
+  if (f.status !== 'range' || !v.periodWindow) {
+    return { title: t('ვსწავლობთ შენს რიტმს', 'Learning your rhythm'),
+      body: t('სანამ რამდენიმე ციკლს არ დავითვლით, თარიღს არ ვამბობთ.', 'Until we have counted a few cycles, we don’t give a date.') };
+  }
+  if (v.periodWindow.state === 'late') {
+    return { title: t('სავარაუდო ფანჯარა გავიდა', 'The estimated window has passed'),
+      body: t(`${shortRange(v.periodWindow.from, v.periodWindow.to)} · როცა დაიწყება, უბრალოდ აღნიშნე.`, `${shortRange(v.periodWindow.from, v.periodWindow.to)} · When it starts, just log it.`) };
+  }
+  return null;
+}
+
+/* ── „ბოლო ციკლები“ (W3-4; mobile src/lib/cycleComparisonCopy.ts — same words) ── */
+function comparisonLine(cmp) {
+  if (!cmp || !Number.isFinite(cmp.latestDays) || (cmp.cycles?.length ?? 0) < 2) return null;
+  const latest = cmp.latestDays;
+  const usual = cmp.usualDays;
+  if (usual == null) return t(`ბოლო ციკლი ${latest} დღე იყო. შენს ჩვეულს 3 ციკლიდან შევადარებთ.`, `Your last cycle was ${latest} days. We compare it with your usual from 3 cycles on.`);
+  const diff = latest - usual;
+  if (diff === 0) return t(`ბოლო ციკლი ${latest} დღე იყო — შენი ჩვეულის (${usual}) ტოლი`, `Your last cycle was ${latest} days — the same as your usual (${usual})`);
+  const n = Math.abs(diff);
+  const daysKa = `${n} დღით`;
+  const daysEn = n === 1 ? '1 day' : `${n} days`;
+  return diff > 0
+    ? t(`ბოლო ციკლი ${latest} დღე იყო — შენს ჩვეულზე (${usual}) ${daysKa} გრძელი`, `Your last cycle was ${latest} days — ${daysEn} longer than your usual (${usual})`)
+    : t(`ბოლო ციკლი ${latest} დღე იყო — შენს ჩვეულზე (${usual}) ${daysKa} მოკლე`, `Your last cycle was ${latest} days — ${daysEn} shorter than your usual (${usual})`);
+}
+
+/** Bars of the last ≤ 6 completed, not hidden cycles (server `cycleComparison`), newest on top; null = nothing. */
+function comparisonCard(b) {
+  const cmp = b.cycleComparison;
+  const cycles = (cmp?.cycles || []).filter((c) => Number.isFinite(c.length) && c.length > 0).slice(-6);
+  if (cycles.length < 2) return null;
+  const max = Math.max(...cycles.map((c) => c.length));
+  const rows = cycles.map((c, i) => ({ ...c, latest: i === cycles.length - 1 })).reverse();
+  const line = comparisonLine(cmp);
+  return card(
+    h('div', { class: 'cy-cmp', role: 'list' }, rows.map((r) => {
+      const period = Math.max(0, Math.min(r.length, Math.round(r.periodDays || 0)));
+      return h('div', { class: `cy-cmp-row${r.latest ? ' latest' : ''}`, role: 'listitem',
+        'aria-label': t(`${shortDate(r.start)}: ${r.length} დღე, მენსტრუაცია ${period} დღე`, `${shortDate(r.start)}: ${r.length} days, period ${period} days`) },
+      h('span', { class: 'cy-cmp-date' }, shortDate(r.start)),
+      h('span', { class: 'cy-cmp-track' },
+        h('span', { class: 'cy-cmp-bar', style: { width: `${Math.round((r.length / max) * 86)}%` } },
+          h('i', { style: { width: `${Math.round((period / r.length) * 100)}%` } })),
+        h('b', null, String(r.length))));
+    })),
+    h('div', { class: 'cy-cmp-legend', 'aria-hidden': 'true' },
+      h('span', null, h('i', { class: 'period' }), t('მენსტრუაცია', 'Period')),
+      h('span', null, h('i'), t('ციკლის დანარჩენი დღეები', 'Rest of the cycle'))),
+    line ? h('p', { class: 'cy-cmp-line' }, line) : null,
+    cmp?.usualDays != null ? h('p', { class: 'faint', style: { fontSize: '12px', marginTop: '4px' } }, t('ჩვეული — შენი წინა ციკლების შუა მნიშვნელობა (მედიანა)', 'Usual = the middle value of your earlier cycles (median)')) : null);
 }
 
 /** Calendar marks: server predictions + logged flow / facts (cycleFertility.mergeFertilityMarks). */
@@ -729,6 +808,8 @@ function predBadge(date, until = null) {
 /** The estimate badge for the hero / Home: a variable cycle's whole window (mobile CycleHero + cyclePeriodWindow). */
 function nextBadge(v) {
   if (!v.next || !v.forecastOn || v.onPeriod) return null;
+  // Perimenopause: the window while it is ahead or open — never the single estimate, nothing once it passed.
+  if (v.caps.peri) return v.periodWindow && v.windowKind ? predBadge(v.periodWindow.from, v.periodWindow.to) : null;
   if (v.periodWindow && v.windowKind) return predBadge(v.periodWindow.from, v.periodWindow.to);
   return predBadge(v.next);
 }
@@ -917,7 +998,7 @@ export default async function cyclePage(root, ctx = {}) {
     else if (v.tracking) left.push(section(null, trackingCard(b, v)));
     else left.push(section(null, heroCard(b, v)));
 
-    if (v.caps.peri) left.push(section(t('პერიმენოპაუზის თვალყური', 'Perimenopause tracking'), periCard(b)));
+    if (v.caps.peri) left.push(section(t('პერიმენოპაუზის თვალყური', 'Perimenopause tracking'), periCard(b, v)));
     if (v.caps.ttc) {
       // TTC: the wide window before 3 cycles, else the 3-day ovulation band with its source (mobile CycleTtcCard).
       const ttcLine = v.wideWindow && b.predictions?.fertileWindow
@@ -933,6 +1014,9 @@ export default async function cyclePage(root, ctx = {}) {
 
     left.push(section(t('დღეს', 'Today'), todayCard(b, v, () => openDayLog(v.today))));
     if (!v.caps.pregnancy && !v.caps.postpartum) left.push(section(t('ჩემი ციკლი', 'My cycle'), statsCard(b)));
+    // „ბოლო ციკლები“ (W3-4): the same cycles as the numbers above, as bars + the latest vs her usual.
+    const comparison = !v.caps.pregnancy && !v.caps.postpartum ? comparisonCard(b) : null;
+    if (comparison) left.push(section(t('ბოლო ციკლები', 'Recent cycles'), comparison));
     // „შენს ციკლში ცვლილება შევნიშნეთ“ — only when the server found something; no „not enough data“ state.
     const deviations = deviationsCard(b);
     if (deviations) left.push(section(null, deviations));
@@ -1018,7 +1102,7 @@ export default async function cyclePage(root, ctx = {}) {
       h('button', { type: 'button', class: `cy-phase-pill${v.onPeriod ? ' period' : ''}`, onClick: v.hideLengthChrome ? null : explainPhase, title: t('როგორ ითვლება?', 'How is this calculated?') },
         h('i', { style: { background: glowDot } }), v.phaseHint, v.hideLengthChrome ? null : icon('info', { size: 14 })),
       underLine,
-      v.forecastOn || (v.caps.forecast && !v.hidePredicted)
+      (v.caps.peri ? Boolean(v.windowKind) && !v.onPeriod : v.forecastOn || (v.caps.forecast && !v.hidePredicted))
         ? h('div', { class: 'cy-badges' }, nextBadge(v), h('span', { class: 'cy-conf' }, v.confidence))
         : null,
       !v.hideLengthChrome && (v.fertileDays || v.cycleStart)
@@ -1331,13 +1415,15 @@ function postpartumCard(b, v, onLog) {
     h('div', { class: 'cy-actions' }, button(t('დღის აღრიცხვა', 'Log today'), { icon: 'plus', variant: 'rose', onClick: onLog }), appHint(t('სისხლდენის კლასიფიკაცია და საწყისი თარიღის შეცვლა MEDICARD აპშია.', 'Bleeding classification and changing the start date are in the MEDICARD app.'))));
 }
 
-function periCard(b) {
+function periCard(b, v = null) {
   const p = b.perimenopause;
+  const note = v ? periStatusNote(b, v) : null;
   if (!p) return card(h('p', { class: 'muted' }, t('ეს თვალყურის რეჟიმია, რომელსაც შენ ირჩევ. ეს არ არის პერიმენოპაუზის ან მენოპაუზის დიაგნოზი.', 'This is a tracking mode you choose. It is not a diagnosis of perimenopause or menopause.')));
   const vs = p.variabilitySummary || {};
   const st = (label, val) => h('div', { class: 'cy-stat' }, h('div', { class: 'cy-stat-label' }, label),
     h('div', { class: 'cy-stat-value' }, h('b', null, val != null ? String(val) : '—'), val != null ? h('small', null, t('დღე', val === 1 ? 'day' : 'days')) : null));
   return card(
+    note ? h('div', { class: 'cy-peri-note' }, h('b', null, note.title), h('p', null, note.body)) : null,
     h('div', { class: 'cy-stats' }, st(t('უმოკლესი ინტერვალი', 'Shortest interval'), vs.shortestDays), st(t('უგრძესი ინტერვალი', 'Longest interval'), vs.longestDays), st(t('ბოლო ინტერვალი', 'Latest interval'), vs.recentIntervalDays)),
     vs.intervalCount != null ? h('p', { class: 'faint', style: { fontSize: '12px', marginTop: '10px' } }, t(`${vs.intervalCount} აღრიცხული ინტერვალის მიხედვით`, `Based on ${plural(vs.intervalCount, 'logged interval')}`)) : null,
     p.lastRecordedBleeding ? h('p', { class: 'muted', style: { fontSize: '13.5px', marginTop: '10px' } }, t(`ბოლო აღრიცხული სისხლდენა: ${fmtDate(p.lastRecordedBleeding.date)}`, `Last logged bleeding: ${fmtDate(p.lastRecordedBleeding.date)}`)) : null,

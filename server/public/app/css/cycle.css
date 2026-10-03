@@ -191,6 +191,25 @@
 .cy-tone.none { color: var(--cy-muted-soft); padding: 0; }
 @media (max-width: 420px) { .cy-stat-value b { font-size: 22px; } .cy-stat { padding: 10px; } }
 
+/* ── „ბოლო ციკლები“ (W3-4): bars on one scale, logged period days rose, the rest neutral ── */
+.cy-cmp { display: flex; flex-direction: column; gap: 10px; }
+.cy-cmp-row { display: grid; grid-template-columns: 56px minmax(0, 1fr); align-items: center; gap: 10px; }
+.cy-cmp-date { font-size: 12px; color: var(--cy-muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.cy-cmp-track { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.cy-cmp-bar { display: flex; height: 12px; border-radius: 6px; overflow: hidden; background: color-mix(in srgb, var(--cy-muted-soft) 30%, transparent); }
+.cy-cmp-bar i { display: block; height: 100%; background: var(--cy-period); }
+.cy-cmp-track b { font-size: 13px; font-weight: 500; color: var(--cy-muted); font-variant-numeric: tabular-nums; }
+.cy-cmp-row.latest .cy-cmp-date { color: var(--text); font-weight: 600; }
+.cy-cmp-row.latest .cy-cmp-track b { color: var(--text); font-weight: 700; }
+.cy-cmp-legend { display: flex; flex-wrap: wrap; gap: 6px 14px; margin-top: 12px; font-size: 11.5px; color: var(--cy-muted); }
+.cy-cmp-legend span { display: inline-flex; align-items: center; gap: 6px; }
+.cy-cmp-legend i { width: 10px; height: 10px; border-radius: 50%; background: color-mix(in srgb, var(--cy-muted-soft) 30%, transparent); }
+.cy-cmp-legend i.period { background: var(--cy-period); }
+.cy-cmp-line { margin-top: 12px; font-size: 14px; line-height: 1.5; color: var(--text); }
+.cy-peri-note { margin-bottom: 14px; }
+.cy-peri-note b { display: block; font-size: 15px; color: var(--text); }
+.cy-peri-note p { margin-top: 4px; font-size: 13.5px; line-height: 1.5; color: var(--cy-muted); }
+
 .cy-period-list .row-title { font-variant-numeric: tabular-nums; }
 /* W3-2: a cycle hidden from averages stays in the list with a small mark. */
 .cy-period-list .row-sub > span { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; }
