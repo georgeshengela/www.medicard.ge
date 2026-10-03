@@ -19,7 +19,7 @@ export function SymptomGradientHeader({ title, subtitle, onBack, trailing, child
   const insets = useSafeAreaInsets();
 
   return (
-    <LinearGradient colors={['#14B8A6', 'rgba(20,184,166,0)']} locations={[0, 1]} style={{ paddingTop: insets.top }}>
+    <LinearGradient colors={['rgba(20,184,166,0.32)', 'rgba(20,184,166,0)']} locations={[0, 1]} style={{ paddingTop: insets.top }}>
       <View style={{ minHeight: compact ? 48 : 56, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 8, gap: 12 }}>
         {onBack ? (
           <Pressable onPress={onBack} hitSlop={12} style={{ width: 32, height: 32, alignItems: 'center', justifyContent: 'center' }}>
@@ -39,8 +39,8 @@ export function SymptomGradientHeader({ title, subtitle, onBack, trailing, child
       </View>
       {!compact ? (
         <View style={{ paddingHorizontal: 16, paddingBottom: 16, paddingTop: 4, gap: 8 }}>
-          <Text style={{ fontSize: 30, lineHeight: 38, fontWeight: '700', color: T.textPrimary, letterSpacing: -0.25 }}>{title}</Text>
-          {subtitle ? <Text style={{ fontSize: 16, lineHeight: 26, color: T.textSecondary }}>{subtitle}</Text> : null}
+          <Text style={{ fontSize: 24, lineHeight: 32, fontFamily: 'NotoSansGeorgian_700Bold', color: T.textPrimary, letterSpacing: -0.3 }}>{title}</Text>
+          {subtitle ? <Text style={{ fontSize: 14, lineHeight: 21, color: T.textSecondary }}>{subtitle}</Text> : null}
         </View>
       ) : null}
       {children}

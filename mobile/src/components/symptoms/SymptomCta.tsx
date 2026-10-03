@@ -24,7 +24,7 @@ export function SymptomCta({ label, onPress, disabled, loading }: Props) {
         minHeight: T.btnH,
         paddingVertical: 12,
         borderRadius: T.btnRadius,
-        backgroundColor: T.brand,
+        backgroundColor: T.brandDark,
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'center',
@@ -38,7 +38,7 @@ export function SymptomCta({ label, onPress, disabled, loading }: Props) {
         <ActivityIndicator color={T.textOnBrand} />
       ) : (
         <>
-          <Text style={{ color: T.textOnBrand, fontSize: 16, lineHeight: 22, fontWeight: '600', flexShrink: 1, textAlign: 'center' }}>{label}</Text>
+          <Text style={{ color: T.textOnBrand, fontSize: 15, lineHeight: 21, fontFamily: 'NotoSansGeorgian_600SemiBold', flexShrink: 1, textAlign: 'center' }}>{label}</Text>
           <ArrowRight size={20} color={T.textOnBrand} strokeWidth={2.2} />
         </>
       )}
@@ -48,5 +48,5 @@ export function SymptomCta({ label, onPress, disabled, loading }: Props) {
 
 export function SymptomFooter({ children }: { children: React.ReactNode }) {
   const T = useFigmaSymptoms();
-  return <View style={{ padding: T.pad, backgroundColor: T.white }}>{children}</View>;
+  return <View style={{ paddingHorizontal: T.pad, paddingTop: 10, paddingBottom: T.pad, backgroundColor: T.canvas }}>{children}</View>;
 }

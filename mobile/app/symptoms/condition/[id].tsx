@@ -16,7 +16,7 @@ type Tab = 'overview' | 'treatment';
 
 export default function SymptomConditionScreen() {
   const T = useFigmaSymptoms();
-  const chip = { backgroundColor: T.cardBg, borderRadius: 10, paddingHorizontal: 10, paddingVertical: 6, borderWidth: 1, borderColor: T.border };
+  const chip = { backgroundColor: T.cardBg, borderRadius: 14, paddingHorizontal: 10, paddingVertical: 6 };
   const styles = {
     kicker: { fontSize: 13, color: T.textSecondary, marginBottom: 4 },
     body: { fontSize: 15, lineHeight: 24, color: T.textSecondary },
@@ -138,7 +138,7 @@ export default function SymptomConditionScreen() {
 function Badge({ icon: Icon, label }: { icon: typeof Heart; label: string }) {
   const T = useFigmaSymptoms();
   return (
-    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 10, paddingVertical: 6, borderRadius: 10, borderWidth: 1, borderColor: T.borderTertiary, backgroundColor: T.cardBg, ...T.shadowXs }}>
+    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 10, paddingVertical: 6, borderRadius: 14, backgroundColor: T.cardBg }}>
       <Icon size={18} color={T.textSecondary} strokeWidth={2} />
       <Text style={{ fontSize: 14, fontWeight: '500', color: T.textPrimary }}>{label}</Text>
     </View>
@@ -157,7 +157,7 @@ function TabBtn({ active, icon: Icon, label, onPress }: { active: boolean; icon:
 
 function Card({ children }: { children: React.ReactNode }) {
   const T = useFigmaSymptoms();
-  return <View style={{ borderRadius: 20, borderWidth: 1, borderColor: T.border, padding: 16, backgroundColor: T.white, ...T.shadowXs }}>{children}</View>;
+  return <View style={{ borderRadius: 22, padding: 16, backgroundColor: T.white }}>{children}</View>;
 }
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {

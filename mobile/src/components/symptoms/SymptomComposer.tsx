@@ -1,96 +1,58 @@
 import React from 'react';
 import { Pressable, Text, View } from 'react-native';
-import { PersonStanding, Search, Settings, Sparkles } from 'lucide-react-native';
+import { ArrowRight, PersonStanding } from 'lucide-react-native';
 import { useFigmaSymptoms } from '@/constants/figmaSymptomsLayout';
 import { ka } from '@/i18n/ka';
+import { tx } from '@/i18n/locale';
 
 type Props = {
-  score: number;
+  /** How many symptoms are picked (shown on the button). */
+  count: number;
   onFocusInput: () => void;
-  onSend: () => void;
+  /** Moves on to the details (duration, pain …) before the analysis. */
+  onContinue: () => void;
   onAnatomy: () => void;
-  onSettings?: () => void;
-  sendDisabled?: boolean;
+  disabled?: boolean;
 };
 
-export function SymptomComposer({ score, onFocusInput, onSend, onAnatomy, onSettings, sendDisabled }: Props) {
+/**
+ * The typed path's footer (owner 2026-10-04: compact): the body map one tap away, then
+ * „გაგრძელება · N“. With nothing picked yet the button puts the cursor in the search field.
+ */
+export function SymptomComposer({ count, onFocusInput, onContinue, onAnatomy, disabled }: Props) {
   const T = useFigmaSymptoms();
-  const fill = Math.max(2.5, Math.min(100, score));
-
+  const label = count ? `${ka.common.continue} · ${count}` : tx('ჩაწერე ან აირჩიე სიმპტომი', 'Type or pick a symptom');
   return (
-    <View style={{ backgroundColor: T.white }}>
-      <View style={{ padding: 16, gap: 16, alignItems: 'center' }}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
-          <Sparkles size={24} color={T.sparkle} fill={T.sparkle} strokeWidth={1.6} />
-          <Text style={{ fontSize: 14, lineHeight: 20, fontWeight: '600', color: T.textPrimary, textAlign: 'center' }}>
-            {ka.symptoms.findingScore}
-          </Text>
-        </View>
-
-        <View style={{ width: '100%', height: 8, borderRadius: 999, backgroundColor: T.track, overflow: 'hidden' }}>
-          <View style={{ width: `${fill}%`, height: '100%', backgroundColor: T.brand, borderRadius: 999 }} />
-        </View>
-
-        <Text style={{ fontSize: 14, lineHeight: 22, color: T.textSecondary, textAlign: 'center', width: '100%' }}>
-          {ka.symptoms.findingHint}
+    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 16, paddingTop: 10, paddingBottom: 12, backgroundColor: T.canvas }}>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={ka.symptoms.browseAnatomy}
+        onPress={onAnatomy}
+        style={{ width: 48, height: 48, borderRadius: 24, backgroundColor: T.white, alignItems: 'center', justifyContent: 'center' }}
+      >
+        <PersonStanding size={22} color={T.brand} strokeWidth={1.9} />
+      </Pressable>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={label}
+        onPress={disabled ? onFocusInput : onContinue}
+        style={{
+          flex: 1,
+          minHeight: 48,
+          borderRadius: 24,
+          paddingHorizontal: 16,
+          flexDirection: 'row',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: 8,
+          backgroundColor: disabled ? T.white : T.brandDark,
+        }}
+      >
+        <Text numberOfLines={1} style={{ fontFamily: 'NotoSansGeorgian_600SemiBold', fontSize: 15, color: disabled ? T.textSecondary : '#FFFFFF', flexShrink: 1 }}>
+          {label}
         </Text>
-      </View>
-
-      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 32, padding: 16 }}>
-        <CircleBtn size={48} onPress={onAnatomy} label={ka.symptoms.browseAnatomy}>
-          <PersonStanding size={24} color={T.textPrimary} strokeWidth={1.8} />
-        </CircleBtn>
-        <CircleBtn size={64} primary onPress={sendDisabled ? onFocusInput : onSend} label={ka.common.continue}>
-          <Search size={32} color={T.textPrimary} strokeWidth={1.8} />
-        </CircleBtn>
-        <CircleBtn
-          size={48}
-          onPress={onSettings ?? onSend}
-          disabled={onSettings ? false : sendDisabled}
-          label={ka.symptoms.detailsTitle}
-        >
-          <Settings size={24} color={T.textPrimary} strokeWidth={1.8} />
-        </CircleBtn>
-      </View>
+        {disabled ? null : <ArrowRight size={18} color="#FFFFFF" strokeWidth={2.2} />}
+      </Pressable>
     </View>
-  );
-}
-
-function CircleBtn({
-  size,
-  onPress,
-  children,
-  primary,
-  disabled,
-  label,
-}: {
-  size: number;
-  onPress: () => void;
-  children: React.ReactNode;
-  primary?: boolean;
-  disabled?: boolean;
-  label: string;
-}) {
-  const T = useFigmaSymptoms();
-  return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityLabel={label}
-      onPress={disabled ? undefined : onPress}
-      style={{
-        width: size,
-        height: size,
-        borderRadius: size / 2,
-        backgroundColor: primary ? T.composerPrimary : T.cardBg,
-        borderWidth: primary ? 0 : 1,
-        borderColor: T.borderTertiary,
-        alignItems: 'center',
-        justifyContent: 'center',
-        opacity: disabled ? 0.4 : 1,
-        ...T.shadowXs,
-      }}
-    >
-      {children}
-    </Pressable>
   );
 }

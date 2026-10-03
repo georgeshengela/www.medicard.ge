@@ -16,9 +16,7 @@ export function SymptomResultSummaryCard({ symptoms, durationLabel, painLabel, o
   return (
     <View
       style={{
-        borderRadius: T.cardRadius,
-        borderWidth: 1,
-        borderColor: T.border,
+        borderRadius: 22,
         backgroundColor: T.white,
         overflow: 'hidden',
         ...T.shadowCard,
@@ -41,10 +39,8 @@ export function SymptomResultSummaryCard({ symptoms, durationLabel, painLabel, o
             <View
               key={s}
               style={{
-                borderRadius: 8,
-                borderWidth: 1,
-                borderColor: T.borderTertiary,
-                backgroundColor: T.white,
+                borderRadius: 14,
+                backgroundColor: T.cardBg,
                 paddingHorizontal: 8,
                 paddingVertical: 4,
                 ...T.shadowXs,

@@ -46,6 +46,7 @@ function Preview() {
       onToggleSide={() => updateSymptomChecker({ side: s.side === 'front' ? 'back' : 'front' })}
       onSelectPart={id => { updateSymptomChecker({ selectedPartId: id }); setOpen(true); }}
       onSelectOrgan={id => { updateSymptomChecker({ selectedOrganId: id }); setOpen(true); }}
+      onToggleSymptom={label => (s.symptoms.includes(label) ? removeSymptom(label) : addSymptom(label))}
       onOpenList={() => setOpen(true)} onRemoveSymptom={removeSymptom} onContinue={() => setOpen(true)} />
     <SymptomSheet visible={open} title={bodyPartById(s.selectedPartId)?.labelKa || organById(s.selectedOrganId)?.labelKa || 'სიმპტომები'} onClose={() => setOpen(false)} ctaLabel="გაგრძელება" onCta={() => setOpen(false)}>
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>{symptomsForSelection(s.mode, s.selectedPartId, s.selectedOrganId).map(label => <SymptomChip key={label} label={label} selected={s.symptoms.includes(label)} onPress={() => s.symptoms.includes(label) ? removeSymptom(label) : addSymptom(label)} />)}</View>

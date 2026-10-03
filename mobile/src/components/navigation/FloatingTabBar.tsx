@@ -196,8 +196,9 @@ export function FloatingTabBar({ visible = true }: { visible?: boolean }) {
         </View>
       </View>
 
+      {/* Hidden bar: the RUN overlay must drop touches too — on web a child's „box-none“ re-enables them under a „none“ parent. */}
       <View
-        pointerEvents="box-none"
+        pointerEvents={visible ? 'box-none' : 'none'}
         style={{
           position: 'absolute',
           left: 0,

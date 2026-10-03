@@ -1,15 +1,14 @@
 import { tx } from '@/i18n/locale';
-import React, { useCallback, useRef, useState } from 'react';
-import { Image, KeyboardAvoidingView, Platform, Pressable, ScrollView, Switch, Text, TextInput, View } from 'react-native';
+import React, { useCallback, useRef } from 'react';
+import { KeyboardAvoidingView, Platform, Pressable, ScrollView, Switch, Text, TextInput, View } from 'react-native';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Calendar, ChevronDown, Pencil, Pill, Search, Stethoscope } from 'lucide-react-native';
+import { ChevronRight, Pill, Plus, Search, ShieldCheck } from 'lucide-react-native';
 import { SymptomNavHeader } from '@/components/symptoms/SymptomNavHeader';
 import { SymptomFooter } from '@/components/symptoms/SymptomCta';
+import { SymptomChip } from '@/components/symptoms/SymptomChip';
 import { SymptomPainScale } from '@/components/symptoms/SymptomPainScale';
-import { SymptomSheet } from '@/components/symptoms/SymptomSheet';
 import { KEYBOARD_DONE_ACCESSORY_ID, KeyboardDoneAccessory } from '@/components/ui/KeyboardDoneAccessory';
-import { SYMPTOM_INTRO_ILLUSTRATION } from '@/constants/symptomAssets';
 import { useFigmaSymptoms } from '@/constants/figmaSymptomsLayout';
 import { DURATION_OPTIONS } from '@/constants/symptomCatalog';
 import { useMedications } from '@/hooks/useMedications';
@@ -18,9 +17,13 @@ import { updateSymptomChecker, useSymptomChecker } from '@/lib/symptomCheckerSto
 import { useAuth } from '@/store/AuthContext';
 import { useFeature } from '@/lib/featureFlags';
 
+/**
+ * A few details before the analysis (owner 2026-10-04 redesign): grouped cards on the canvas — what
+ * bothers most, since when (chips, no sheet), how strong, then the optional context — and one
+ * „სიმპტომის ანალიზი“ pinned at the bottom. Only the symptoms are required; everything else helps.
+ */
 export default function SymptomDetailsScreen() {
   const T = useFigmaSymptoms();
-  const { labelStyle, hintStyle, fieldBox } = useSymptomFieldStyles();
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const state = useSymptomChecker();
@@ -29,10 +32,8 @@ export default function SymptomDetailsScreen() {
   // While medications are paused from admin the list still shows here, it just does not open the module.
   const medsOn = useFeature('medications');
   const firstName = user?.fullName?.split(' ')[0] ?? '';
-  const [durationOpen, setDurationOpen] = useState(false);
   const navigating = useRef(false);
   useFocusEffect(useCallback(() => { navigating.current = false; }, []));
-  const durationLabel = DURATION_OPTIONS.find((d) => d.id === state.durationId)?.labelKa;
 
   const medSummary =
     medications.length === 0
@@ -44,257 +45,177 @@ export default function SymptomDetailsScreen() {
             .map((m) => m.medName)
             .join(', ')}, +${medications.length - 2}`;
 
+  const analyze = () => {
+    if (navigating.current) return;
+    if (state.symptoms.length === 0) {
+      router.push('/symptoms/search' as never);
+      return;
+    }
+    if (!state.primarySymptom) updateSymptomChecker({ primarySymptom: state.symptoms[0] });
+    navigating.current = true;
+    router.push('/symptoms/analyzing' as never);
+  };
+
+  const input = {
+    flex: 1,
+    fontFamily: 'NotoSansGeorgian_400Regular',
+    fontSize: 15,
+    lineHeight: 22,
+    color: T.textPrimary,
+    paddingVertical: 0,
+  } as const;
+
   return (
-    <View style={{ flex: 1, backgroundColor: T.white }}>
-      <KeyboardAvoidingView
-        style={{ flex: 1 }}
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? 8 : 0}
-      >
-      <SymptomNavHeader onBack={() => router.back()} />
-      <ScrollView
-        style={{ flex: 1 }}
-        contentContainerStyle={{ paddingBottom: 32 }}
-        keyboardShouldPersistTaps="handled"
-      >
-        <View style={{ paddingHorizontal: 16, paddingTop: 8, paddingBottom: 16, gap: 8 }}>
-          <Text style={{ fontSize: 30, lineHeight: 38, fontWeight: '700', color: T.textPrimary, letterSpacing: -0.25 }}>
-            {ka.symptoms.detailsHeading(firstName)}
-          </Text>
-          <Text style={{ fontSize: 16, lineHeight: 26, color: T.textSecondary }}>{ka.symptoms.detailsSubtitle}</Text>
-        </View>
-
-        <FieldBlock label={ka.symptoms.currentMedication}>
-          <Pressable disabled={!medsOn} onPress={() => router.push('/(tabs)/medications' as never)} style={fieldBox}>
-            <Pill size={20} color={T.textSecondary} strokeWidth={1.8} />
-            <Text style={{ flex: 1, fontSize: 16, lineHeight: 22, color: T.textSecondary }} numberOfLines={1}>
-              {medSummary}
+    <View style={{ flex: 1, backgroundColor: T.canvas }}>
+      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'} keyboardVerticalOffset={Platform.OS === 'ios' ? 8 : 0}>
+        <SymptomNavHeader onBack={() => router.back()} />
+        <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 24, gap: 12 }} keyboardShouldPersistTaps="handled">
+          <View style={{ paddingHorizontal: 4, paddingBottom: 4, gap: 6 }}>
+            <Text style={{ fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 22, lineHeight: 30, color: T.textPrimary, letterSpacing: -0.3 }}>
+              {ka.symptoms.detailsHeading(firstName)}
             </Text>
-            {medsOn ? <Pencil size={20} color={T.textSecondary} strokeWidth={1.8} /> : null}
-          </Pressable>
-        </FieldBlock>
+            <Text style={{ fontFamily: 'NotoSansGeorgian_400Regular', fontSize: 14, lineHeight: 21, color: T.textSecondary }}>{ka.symptoms.detailsSubtitle}</Text>
+          </View>
 
-        <View style={{ paddingHorizontal: 16, paddingVertical: 8, gap: 4 }}>
-          <Text style={labelStyle}>{ka.symptoms.primarySymptom}</Text>
-          <Text style={hintStyle}>{ka.symptoms.primarySymptomHint}</Text>
-          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 8 }}>
-            {state.symptoms.map((s) => {
-              const on = state.primarySymptom === s;
-              return (
-                <Pressable
+          <Card title={ka.symptoms.primarySymptom} hint={state.symptoms.length > 1 ? ka.symptoms.primarySymptomHint : undefined}>
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+              {state.symptoms.map((s) => (
+                <SymptomChip
                   key={s}
+                  label={s}
+                  selected={(state.primarySymptom ?? state.symptoms[0]) === s}
                   onPress={() => updateSymptomChecker({ primarySymptom: s })}
-                  style={{
-                    minHeight: 40,
-                    paddingHorizontal: 12,
-                    paddingVertical: 6,
-                    borderRadius: 14,
-                    borderWidth: 1,
-                    borderColor: on ? T.brand : T.borderTertiary,
-                    backgroundColor: on ? T.brandSoft : T.white,
-                    ...T.shadowXs,
-                  }}
-                >
-                  <Text style={{ fontSize: 16, lineHeight: 22, fontWeight: '500', color: on ? T.brand : T.textPrimary }}>
-                    {s}
-                  </Text>
-                </Pressable>
-              );
-            })}
-          </View>
-        </View>
+                />
+              ))}
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={tx('სიმპტომის დამატება', 'Add a symptom')}
+                onPress={() => router.back()}
+                style={{ minHeight: 36, borderRadius: 18, paddingHorizontal: 12, flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: T.brandSoft }}
+              >
+                <Plus size={15} color={T.brand} strokeWidth={2.4} />
+                <Text style={{ fontFamily: 'NotoSansGeorgian_600SemiBold', fontSize: 13, color: T.brand }}>{tx('დამატება', 'Add')}</Text>
+              </Pressable>
+            </View>
+          </Card>
 
-        <FieldBlock label={ka.symptoms.pastConditions}>
-          <View style={fieldBox}>
-            <Stethoscope size={20} color={T.textSecondary} strokeWidth={1.8} />
-            <TextInput
-              value={state.pastConditions}
-              maxLength={800}
-              onChangeText={(pastConditions) => updateSymptomChecker({ pastConditions })}
-              placeholder={ka.symptoms.pastConditionsPlaceholder}
-              placeholderTextColor={T.textMuted}
-              style={{ flex: 1, fontSize: 16, lineHeight: 22, color: T.textPrimary, paddingVertical: 0 }}
-              inputAccessoryViewID={KEYBOARD_DONE_ACCESSORY_ID}
-            />
-            <Pencil size={20} color={T.textSecondary} strokeWidth={1.8} />
-          </View>
-        </FieldBlock>
+          {/* Since when — chips right here (was a field that opened a sheet). */}
+          <Card title={ka.symptoms.durationQuestion}>
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+              {DURATION_OPTIONS.map((opt) => (
+                <SymptomChip
+                  key={opt.id}
+                  label={opt.labelKa}
+                  selected={state.durationId === opt.id}
+                  onPress={() => updateSymptomChecker({ durationId: state.durationId === opt.id ? null : opt.id })}
+                />
+              ))}
+            </View>
+          </Card>
 
-        <FieldBlock label={ka.symptoms.durationQuestion}>
-          <Pressable onPress={() => setDurationOpen(true)} style={fieldBox}>
-            <Calendar size={20} color={T.textSecondary} strokeWidth={1.8} />
-            <Text style={{ flex: 1, fontSize: 16, lineHeight: 22, color: durationLabel ? T.textPrimary : T.textSecondary }}>
-              {durationLabel ?? ka.symptoms.duration}
-            </Text>
-            <ChevronDown size={20} color={T.textSecondary} strokeWidth={1.8} />
+          <Card title={ka.symptoms.pain}>
+            <SymptomPainScale value={state.painLevel} onChange={(painLevel) => updateSymptomChecker({ painLevel })} />
+          </Card>
+
+          <Card title={tx('დამატებით', 'More context')} hint={tx('არასავალდებულოა — ორიენტირს აზუსტებს', 'Optional — makes the guide more precise')}>
+            <Pressable
+              accessibilityRole={medsOn ? 'button' : undefined}
+              disabled={!medsOn}
+              onPress={() => router.push('/(tabs)/medications' as never)}
+              style={[fieldRow, { backgroundColor: T.cardBg }]}
+            >
+              <Pill size={18} color={T.brand} strokeWidth={1.9} />
+              <View style={{ flex: 1, minWidth: 0 }}>
+                <Text style={{ fontFamily: 'NotoSansGeorgian_500Medium', fontSize: 12, color: T.textSecondary }}>{ka.symptoms.currentMedication}</Text>
+                <Text numberOfLines={1} style={{ fontFamily: 'NotoSansGeorgian_500Medium', fontSize: 14.5, lineHeight: 20, color: T.textPrimary }}>
+                  {medSummary}
+                </Text>
+              </View>
+              {medsOn ? <ChevronRight size={17} color={T.textMuted} /> : null}
+            </Pressable>
+            <View style={[fieldRow, { backgroundColor: T.cardBg }]}>
+              <TextInput
+                value={state.pastConditions}
+                maxLength={800}
+                onChangeText={(pastConditions) => updateSymptomChecker({ pastConditions })}
+                placeholder={`${ka.symptoms.pastConditions} — ${ka.symptoms.pastConditionsPlaceholder}`}
+                placeholderTextColor={T.textMuted}
+                style={input}
+                inputAccessoryViewID={KEYBOARD_DONE_ACCESSORY_ID}
+              />
+            </View>
+            <View style={[fieldRow, { backgroundColor: T.cardBg, alignItems: 'flex-start', minHeight: 96 }]}>
+              <TextInput
+                value={state.notes}
+                onChangeText={(notes) => updateSymptomChecker({ notes: notes.slice(0, 300) })}
+                placeholder={ka.symptoms.notesPlaceholder}
+                placeholderTextColor={T.textMuted}
+                multiline
+                style={[input, { minHeight: 72, textAlignVertical: 'top' }]}
+                inputAccessoryViewID={KEYBOARD_DONE_ACCESSORY_ID}
+              />
+            </View>
+            {state.notes.length ? (
+              <Text style={{ alignSelf: 'flex-end', fontSize: 11.5, color: T.textMuted, marginTop: -4 }}>{state.notes.length}/300</Text>
+            ) : null}
+          </Card>
+
+          <View style={{ borderRadius: 22, backgroundColor: T.white, padding: 16, gap: 10 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+              <Text style={{ flex: 1, fontFamily: 'NotoSansGeorgian_600SemiBold', fontSize: 14, lineHeight: 20, color: T.textPrimary }}>
+                {tx('ჩემი ჯანმრთელობის პროფილის გათვალისწინება', 'Consider my health profile')}
+              </Text>
+              <Switch
+                value={state.shareToNightingale}
+                onValueChange={(shareToNightingale) => updateSymptomChecker({ shareToNightingale })}
+                trackColor={{ false: T.track, true: T.brand }}
+                thumbColor="#FFFFFF"
+              />
+            </View>
+            <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 8 }}>
+              <ShieldCheck size={16} color={T.textMuted} strokeWidth={2} style={{ marginTop: 2 }} />
+              <Text style={{ flex: 1, fontFamily: 'NotoSansGeorgian_400Regular', fontSize: 12.5, lineHeight: 19, color: T.textSecondary }}>{ka.symptoms.privacyNote}</Text>
+            </View>
+          </View>
+        </ScrollView>
+
+        <SymptomFooter>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={ka.symptoms.analyzeSymptom}
+            onPress={analyze}
+            style={{ height: 52, borderRadius: 26, backgroundColor: T.brandDark, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10 }}
+          >
+            <Search size={19} color="#FFFFFF" strokeWidth={2.3} />
+            <Text style={{ color: '#FFFFFF', fontSize: 15.5, fontFamily: 'NotoSansGeorgian_600SemiBold' }}>{ka.symptoms.analyzeSymptom}</Text>
           </Pressable>
-        </FieldBlock>
-
-        <View style={{ paddingHorizontal: 16, paddingVertical: 8 }}>
-          <Text style={[labelStyle, { marginBottom: 8 }]}>{ka.symptoms.pain}</Text>
-          <SymptomPainScale value={state.painLevel} onChange={(painLevel) => updateSymptomChecker({ painLevel })} />
-        </View>
-
-        <FieldBlock label={ka.symptoms.notes}>
-          <View
-            style={{
-              minHeight: 148,
-              borderRadius: 16,
-              borderWidth: 1,
-              borderColor: T.borderTertiary,
-              backgroundColor: T.white,
-              padding: 12,
-              ...T.shadowXs,
-            }}
-          >
-            <TextInput
-              value={state.notes}
-              onChangeText={(notes) => updateSymptomChecker({ notes: notes.slice(0, 300) })}
-              placeholder={ka.symptoms.notesPlaceholder}
-              placeholderTextColor={T.textSecondary}
-              multiline
-              style={{ flex: 1, minHeight: 100, fontSize: 16, lineHeight: 26, color: T.textPrimary, textAlignVertical: 'top' }}
-              inputAccessoryViewID={KEYBOARD_DONE_ACCESSORY_ID}
-            />
-            <Text style={{ fontSize: 12, lineHeight: 16, color: T.textMuted }}>{state.notes.length}/300</Text>
-          </View>
-        </FieldBlock>
-
-        <View
-          style={{
-            marginHorizontal: 16,
-            marginTop: 8,
-            borderRadius: 24,
-            backgroundColor: T.cardBg,
-            borderWidth: 1,
-            borderColor: T.border,
-            overflow: 'hidden',
-            ...T.shadowXs,
-          }}
-        >
-          <View
-            style={{
-              flexDirection: 'row',
-              alignItems: 'center',
-              padding: 16,
-              borderBottomWidth: 1,
-              borderBottomColor: T.border,
-              gap: 16,
-            }}
-          >
-            <Text style={{ flex: 1, fontSize: 14, lineHeight: 20, fontWeight: '600', color: T.textPrimary }}>
-              {tx('ჩემი ჯანმრთელობის პროფილის გათვალისწინება', 'Consider my health profile')}
-            </Text>
-            <Switch
-              value={state.shareToNightingale}
-              onValueChange={(shareToNightingale) => updateSymptomChecker({ shareToNightingale })}
-              trackColor={{ false: T.track, true: T.brand }}
-              thumbColor={T.white}
-            />
-          </View>
-          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-            <Text style={{ flex: 1, padding: 16, fontSize: 14, lineHeight: 22, color: T.textSecondary }}>
-              {ka.symptoms.privacyNote}
-            </Text>
-            <Image source={SYMPTOM_INTRO_ILLUSTRATION} style={{ width: 96, height: 96 }} resizeMode="contain" />
-          </View>
-        </View>
-      </ScrollView>
-
-      <SymptomFooter>
-        <Pressable
-          accessibilityRole="button"
-          onPress={() => {
-            if (navigating.current) return;
-            if (state.symptoms.length === 0) {
-              router.push('/symptoms/search' as never);
-              return;
-            }
-            if (!state.primarySymptom) {
-              updateSymptomChecker({ primarySymptom: state.symptoms[0] });
-            }
-            navigating.current = true;
-            router.push('/symptoms/analyzing' as never);
-          }}
-          style={{
-            height: T.btnH,
-            borderRadius: T.btnRadius,
-            backgroundColor: T.brand,
-            flexDirection: 'row',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: 10,
-            ...T.shadowXs,
-          }}
-        >
-          <Text style={{ color: T.textOnBrand, fontSize: 16, lineHeight: 22, fontWeight: '600' }}>{ka.symptoms.analyzeSymptom}</Text>
-          <Search size={20} color={T.textOnBrand} strokeWidth={2.2} />
-        </Pressable>
-      </SymptomFooter>
+        </SymptomFooter>
       </KeyboardAvoidingView>
       <KeyboardDoneAccessory />
-      <View style={{ height: insets.bottom, backgroundColor: T.white }} />
-
-      <SymptomSheet
-        visible={durationOpen}
-        title={ka.symptoms.durationQuestion}
-        onClose={() => setDurationOpen(false)}
-        ctaLabel={ka.common.done}
-        onCta={() => setDurationOpen(false)}
-      >
-        {DURATION_OPTIONS.map((opt) => {
-          const on = state.durationId === opt.id;
-          return (
-            <Pressable
-              key={opt.id}
-              onPress={() => {
-                updateSymptomChecker({ durationId: opt.id });
-                setDurationOpen(false);
-              }}
-              style={{
-                ...fieldBox,
-                marginBottom: 8,
-                borderColor: on ? T.brand : T.borderTertiary,
-                backgroundColor: on ? T.brandSoft : T.white,
-              }}
-            >
-              <Calendar size={20} color={on ? T.brand : T.textSecondary} strokeWidth={1.8} />
-              <Text style={{ flex: 1, fontSize: 16, lineHeight: 22, color: T.textPrimary }}>{opt.labelKa}</Text>
-            </Pressable>
-          );
-        })}
-      </SymptomSheet>
+      <View style={{ height: insets.bottom, backgroundColor: T.canvas }} />
     </View>
   );
 }
 
-function FieldBlock({ label, children }: { label: string; children: React.ReactNode }) {
-  const { labelStyle } = useSymptomFieldStyles();
+const fieldRow = {
+  flexDirection: 'row' as const,
+  alignItems: 'center' as const,
+  gap: 12,
+  minHeight: 52,
+  paddingHorizontal: 14,
+  paddingVertical: 12,
+  borderRadius: 16,
+};
+
+function Card({ title, hint, children }: { title: string; hint?: string; children: React.ReactNode }) {
+  const T = useFigmaSymptoms();
   return (
-    <View style={{ paddingHorizontal: 16, paddingVertical: 8, gap: 8 }}>
-      <Text style={labelStyle}>{label}</Text>
+    <View style={{ borderRadius: 22, backgroundColor: T.white, padding: 16, gap: 12 }}>
+      <View style={{ gap: 2 }}>
+        <Text style={{ fontFamily: 'NotoSansGeorgian_600SemiBold', fontSize: 15, lineHeight: 21, color: T.textPrimary }}>{title}</Text>
+        {hint ? <Text style={{ fontFamily: 'NotoSansGeorgian_400Regular', fontSize: 12.5, lineHeight: 18, color: T.textSecondary }}>{hint}</Text> : null}
+      </View>
       {children}
     </View>
   );
-}
-
-function useSymptomFieldStyles() {
-  const T = useFigmaSymptoms();
-  return {
-    labelStyle: { fontSize: 14, lineHeight: 20, fontWeight: '600' as const, color: T.textPrimary },
-    hintStyle: { fontSize: 14, lineHeight: 22, color: T.textSecondary },
-    fieldBox: {
-      flexDirection: 'row' as const,
-      alignItems: 'center' as const,
-      gap: 12,
-      minHeight: 48,
-      paddingHorizontal: 12,
-      paddingVertical: 10,
-      borderRadius: 14,
-      borderWidth: 1,
-      borderColor: T.borderTertiary,
-      backgroundColor: T.white,
-      ...T.shadowXs,
-    },
-  };
 }

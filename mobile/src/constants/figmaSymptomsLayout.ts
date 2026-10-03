@@ -15,9 +15,10 @@ export const FIGMA_SYMPTOMS = {
   track: '#E5E7EB',
   sparkle: '#F59E0B',
   composerPrimary: '#99F6E4',
-  cardBg: '#F9FAFB',
+  // Hub canvas (a step darker than the white cards) so cards read without borders or shadows.
+  cardBg: '#F1F4F5',
   white: '#FFFFFF',
-  canvas: '#F9FAFB',
+  canvas: '#F1F4F5',
   inverse: '#1F2937',
   danger: '#F43F5E',
   warning: '#F59E0B',
@@ -26,25 +27,14 @@ export const FIGMA_SYMPTOMS = {
   pad: 16,
   barH: 56,
   btnH: 48,
-  btnRadius: 16,
+  btnRadius: 24,
   cardRadius: 24,
   itemRadius: 14,
   chipRadius: 12,
   iconBtn: 48,
-  shadowXs: {
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 1,
-  },
-  shadowCard: {
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 6,
-    elevation: 2,
-  },
+  // Owner 2026-10-04: the symptom flow speaks the hub language — flat cards, no shadows.
+  shadowXs: {},
+  shadowCard: {},
 } as const;
 
 export const FIGMA_SYMPTOMS_DARK = {

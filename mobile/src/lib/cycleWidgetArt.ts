@@ -9,6 +9,7 @@
  * files a running widget may be reading. iOS only; anything missing → `null` and the widget draws no logo.
  */
 import { Platform } from 'react-native';
+import { expoWidgetsAvailable } from '@/lib/nativeWidgets';
 
 /** Bump when the PNGs change. */
 export const CYCLE_WIDGET_ART_FOLDER = 'cycle-art-v1';
@@ -32,6 +33,7 @@ let installed: string | null = null;
 
 async function install(): Promise<string | null> {
   if (Platform.OS !== 'ios') return null;
+  if (!expoWidgetsAvailable()) return null;
   try {
     const base = (require('expo-widgets') as { widgetsDirectory?: string | null }).widgetsDirectory;
     if (!base) return null;

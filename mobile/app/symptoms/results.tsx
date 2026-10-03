@@ -124,17 +124,17 @@ export default function SymptomResultsScreen() {
               <Pressable
                 key={key}
                 onPress={() => setFilter(key)}
+                accessibilityRole="tab"
+                accessibilityState={{ selected: on }}
                 style={{
                   minHeight: 36,
                   paddingHorizontal: 14,
-                  borderRadius: 12,
-                  borderWidth: 1,
-                  borderColor: on ? T.brand : T.borderTertiary,
-                  backgroundColor: on ? T.brandSoft : T.white,
+                  borderRadius: 18,
+                  backgroundColor: on ? T.brandDark : T.white,
                   justifyContent: 'center',
                 }}
               >
-                <Text style={{ fontSize: 14, fontWeight: '600', color: on ? T.brand : T.textPrimary }}>{ka.symptoms.filters[key]}</Text>
+                <Text style={{ fontSize: 13.5, fontFamily: 'NotoSansGeorgian_600SemiBold', color: on ? '#FFFFFF' : T.textPrimary }}>{ka.symptoms.filters[key]}</Text>
               </Pressable>
             );
           })}
@@ -151,16 +151,14 @@ export default function SymptomResultsScreen() {
               key={c.id}
               onPress={() => router.push(`/symptoms/condition/${c.id}` as never)}
               style={{
-                borderRadius: 20,
-                borderWidth: 1,
-                borderColor: T.border,
+                borderRadius: 22,
                 backgroundColor: T.white,
                 padding: 16,
                 ...T.shadowXs,
               }}
             >
               <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                <Text style={{ flex: 1, fontSize: 16, fontWeight: '700', color: T.textPrimary, paddingRight: 8 }}>{c.nameKa}</Text>
+                <Text style={{ flex: 1, fontSize: 15.5, lineHeight: 22, fontFamily: 'NotoSansGeorgian_700Bold', color: T.textPrimary, paddingRight: 8 }}>{c.nameKa}</Text>
                 <RiskBadge risk={c.risk} />
               </View>
               <View style={{ height: 8, borderRadius: 99, backgroundColor: T.cardBg, overflow: 'hidden', marginTop: 12 }}>

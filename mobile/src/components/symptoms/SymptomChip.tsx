@@ -12,29 +12,30 @@ type Props = {
 
 export function SymptomChip({ label, selected, onPress, onRemove }: Props) {
   const T = useFigmaSymptoms();
+  // A removable chip without its own tap is a plain View, so its ✕ is not a button inside a button.
+  const Outer: React.ElementType = onPress ? Pressable : View;
   return (
-    <Pressable
+    <Outer
       onPress={onPress}
+      accessibilityRole={onPress ? 'button' : undefined}
+      accessibilityState={onPress ? { selected: !!selected } : undefined}
       style={{
-        minHeight: 32,
-        borderRadius: T.chipRadius,
-        borderWidth: 1,
-        borderColor: selected ? T.brand : T.borderTertiary,
-        backgroundColor: selected ? T.brandSoft : T.cardBg,
-        paddingHorizontal: 10,
-        paddingVertical: 4,
+        minHeight: 36,
+        borderRadius: 18,
+        backgroundColor: selected ? T.brandDark : T.cardBg,
+        paddingHorizontal: 13,
+        paddingVertical: 6,
         flexDirection: 'row',
         alignItems: 'center',
         gap: 6,
-        ...T.shadowXs,
       }}
     >
-      <Text style={{ fontSize: 14, lineHeight: 20, fontWeight: '500', color: selected ? T.brand : T.textPrimary }}>{label}</Text>
+      <Text style={{ fontFamily: selected ? 'NotoSansGeorgian_600SemiBold' : 'NotoSansGeorgian_500Medium', fontSize: 13.5, lineHeight: 19, color: selected ? '#FFFFFF' : T.textPrimary }}>{label}</Text>
       {onRemove ? (
-        <Pressable onPress={onRemove} hitSlop={8}>
-          <X size={16} color={T.textSecondary} strokeWidth={2.2} />
+        <Pressable accessibilityRole="button" accessibilityLabel={label} onPress={onRemove} hitSlop={8}>
+          <X size={15} color={selected ? '#FFFFFF' : T.textSecondary} strokeWidth={2.4} />
         </Pressable>
       ) : null}
-    </Pressable>
+    </Outer>
   );
 }

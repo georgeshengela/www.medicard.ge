@@ -2,9 +2,8 @@ import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Stethoscope } from 'lucide-react-native';
 import { HomeSectionHeading } from '@/components/home/HomeSectionHeading';
-import { HubLinkRow } from '@/components/home/HubTiles';
+import { HomeSymptomsCard } from '@/components/home/sections/HomeSymptomsCard';
 import { ScanLens } from '@/components/scan/ScanLens';
 import { scanKindInfo } from '@/components/scan/scanKinds';
 import { tx } from '@/i18n/locale';
@@ -19,8 +18,8 @@ const PARAM: Record<ScanKind, string> = { LAB: 'lab', IMAGING: 'imaging', SKIN: 
  * MEDISCAN on Home (owner 2026-10-04: its own section, beautiful and handy). One compact hero card
  * in the module's cyan — the glass lens, what it reads in one line, and a glass chip per choice
  * (lab sheet, imaging, skin) that opens /scan with that choice already picked; a tap anywhere else
- * opens the chat with the choice open. Each chip follows its own admin switch. Symptoms keep a quiet
- * row under the card, so the AI check-ups stay in one place. Nothing is sent from here: the scan
+ * opens the chat with the choice open. Each chip follows its own admin switch. „სიმპტომები“ follows as
+ * its own card (HomeSymptomsCard), so the AI check-ups stay together. Nothing is sent from here: the scan
  * screen's own AI consent and upload flow is the only path.
  */
 export function HomeScanSection({ kinds, symptomsOn }: { kinds: ScanKind[]; symptomsOn: boolean }) {
@@ -30,24 +29,21 @@ export function HomeScanSection({ kinds, symptomsOn }: { kinds: ScanKind[]; symp
 
   return (
     <View style={s.section}>
+      {kinds.length ? <HomeSectionHeading title="MEDISCAN" brand="scan" /> : null}
       {kinds.length ? (
-        <HomeSectionHeading title="MEDISCAN" brand="scan" />
-      ) : (
-        <HomeSectionHeading title={tx('შემოწმება AI-სთან', 'Check with AI')} />
-      )}
-      {kinds.length ? (
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={tx('MEDISCAN — ანალიზის, გამოსახულების ან კანის ფოტოს წაკითხვა', 'MEDISCAN — read a lab sheet, an imaging scan or a skin photo')}
-          onPress={() => open()}
-          style={s.cardWrap}
-        >
+        // A View, not a Pressable: the chips are buttons of their own (no button inside a button).
+        <View style={s.cardWrap}>
           <LinearGradient colors={[BRAND.gradient[0], '#0E7490', BRAND.gradient[1]]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={s.card}>
             {/* Corner glow and two thin rings — the module hero's light, kept small. */}
             <View pointerEvents="none" style={[s.glow, { backgroundColor: BRAND.glow }]} />
             <View pointerEvents="none" style={[s.ring, s.ringOuter]} />
             <View pointerEvents="none" style={[s.ring, s.ringInner]} />
-            <View style={s.top}>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={tx('MEDISCAN — ანალიზის, გამოსახულების ან კანის ფოტოს წაკითხვა', 'MEDISCAN — read a lab sheet, an imaging scan or a skin photo')}
+              onPress={() => open()}
+              style={s.top}
+            >
               <View style={s.lens}>
                 <ScanLens size={34} />
               </View>
@@ -55,7 +51,7 @@ export function HomeScanSection({ kinds, symptomsOn }: { kinds: ScanKind[]; symp
                 <Text numberOfLines={1} style={s.title}>{tx('გადაიღე ან ატვირთე', 'Snap or upload')}</Text>
                 <Text numberOfLines={2} style={[s.sub, { color: BRAND.onHero }]}>{tx('Medi წაიკითხავს და აგიხსნის', 'Medi reads it and explains')}</Text>
               </View>
-            </View>
+            </Pressable>
             <View style={s.chips}>
               {kinds.map((kind) => {
                 const info = scanKindInfo(kind);
@@ -78,18 +74,9 @@ export function HomeScanSection({ kinds, symptomsOn }: { kinds: ScanKind[]; symp
               })}
             </View>
           </LinearGradient>
-        </Pressable>
+        </View>
       ) : null}
-      {symptomsOn ? (
-        <HubLinkRow
-          icon={Stethoscope}
-          ink="teal"
-          title={tx('სიმპტომები', 'Symptoms')}
-          detail={tx('აღწერე, რა და სად გაწუხებს', 'Describe what bothers you and where')}
-          href="/symptoms"
-          style={kinds.length ? { marginTop: 10 } : undefined}
-        />
-      ) : null}
+      {symptomsOn ? <HomeSymptomsCard first={!kinds.length} /> : null}
     </View>
   );
 }

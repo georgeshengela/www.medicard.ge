@@ -89,7 +89,7 @@ export default function SymptomHistoryScreen() {
   };
 
   return (
-    <View style={{ flex: 1, backgroundColor: T.white, paddingBottom: insets.bottom }}>
+    <View style={{ flex: 1, backgroundColor: T.canvas, paddingBottom: insets.bottom }}>
       <SymptomNavHeader title={ka.symptoms.historyTitle} onBack={() => router.back()} />
       {error ? <Text accessibilityRole="alert" style={{ color: T.danger, padding: 16 }}>{error}</Text> : null}
       {loading ? (
@@ -114,10 +114,8 @@ export default function SymptomHistoryScreen() {
               key={item.recordId}
               onPress={() => open(item.recordId)}
               style={{
-                borderRadius: 16,
-                borderWidth: 1,
-                borderColor: T.border,
-                backgroundColor: T.cardBg,
+                borderRadius: 22,
+                backgroundColor: T.white,
                 padding: 16,
                 flexDirection: 'row',
                 alignItems: 'center',

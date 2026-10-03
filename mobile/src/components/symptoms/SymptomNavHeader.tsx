@@ -3,6 +3,7 @@ import { Pressable, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ChevronLeft } from 'lucide-react-native';
 import { useFigmaSymptoms } from '@/constants/figmaSymptomsLayout';
+import { tx } from '@/i18n/locale';
 
 type Props = {
   title?: string;
@@ -16,7 +17,8 @@ type Props = {
 export function SymptomNavHeader({ title, onBack, right, bordered, navy }: Props) {
   const T = useFigmaSymptoms();
   const insets = useSafeAreaInsets();
-  const bg = navy ? '#030712' : T.white;
+  // Transparent by default: the screen's canvas runs under the header (no band of another white).
+  const bg = navy ? '#030712' : 'transparent';
   const fg = navy ? '#FFFFFF' : T.textPrimary;
   const line = navy ? '#374151' : T.borderTertiary;
 
@@ -32,7 +34,7 @@ export function SymptomNavHeader({ title, onBack, right, bordered, navy }: Props
           gap: 12,
         }}
       >
-        <Pressable onPress={onBack} hitSlop={12} style={{ width: 24, height: 24, justifyContent: 'center' }}>
+        <Pressable accessibilityRole="button" accessibilityLabel={tx('უკან', 'Back')} onPress={onBack} hitSlop={12} style={{ width: 24, height: 24, justifyContent: 'center' }}>
           <ChevronLeft size={24} color={fg} strokeWidth={2} />
         </Pressable>
         <Text
@@ -42,7 +44,7 @@ export function SymptomNavHeader({ title, onBack, right, bordered, navy }: Props
             textAlign: 'center',
             fontSize: 16,
             lineHeight: 22,
-            fontWeight: '600',
+            fontFamily: 'NotoSansGeorgian_600SemiBold',
             color: fg,
           }}
         >

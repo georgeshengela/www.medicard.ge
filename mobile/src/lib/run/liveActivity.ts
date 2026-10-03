@@ -8,6 +8,7 @@
  * iOS 16.2+ only; anywhere else (and in binaries without the widget extension) every call is a no-op.
  */
 import { AppState, Platform } from 'react-native';
+import { expoWidgetsAvailable } from '@/lib/nativeWidgets';
 import { tx } from '@/i18n/locale';
 import { formatClock } from '@/lib/run/geo';
 import { getRunState, pauseRun, subscribeRunState, type RunState } from '@/lib/run/store';
@@ -45,6 +46,7 @@ let heartbeat: ReturnType<typeof setInterval> | null = null;
 function load(): boolean {
   if (factory) return true;
   if (Platform.OS !== 'ios') return false;
+  if (!expoWidgetsAvailable()) return false;
   try {
     // Missing native module (older binary) or Live Activities unsupported: stay silent.
     factory = require('./runActivityLayout').default as Factory;

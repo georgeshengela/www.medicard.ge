@@ -12,6 +12,7 @@
  * Every call is a no-op on Android, web and binaries without the widget extension.
  */
 import { AppState, Platform } from 'react-native';
+import { expoWidgetsAvailable } from '@/lib/nativeWidgets';
 import type { CycleBundle } from '@/lib/api';
 import { onReturnToForeground } from '@/lib/appForeground';
 import { CYCLE_QUERY_KEYS } from '@/lib/cycleQueryKeys';
@@ -70,6 +71,7 @@ function localDay(now = new Date()): string {
 function load(): boolean {
   if (widget) return true;
   if (Platform.OS !== 'ios') return false;
+  if (!expoWidgetsAvailable()) return false;
   try {
     // A binary without the widget extension / native module throws here: stay silent.
     widget = require('./cycleWidgetLayout').default as WidgetHandle;

@@ -1,7 +1,7 @@
 import { tx } from '@/i18n/locale';
-import React, { useCallback, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { KeyboardAvoidingView, Platform, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
-import { useFocusEffect, useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Plus, Search } from 'lucide-react-native';
 import { SymptomNavHeader } from '@/components/symptoms/SymptomNavHeader';
@@ -15,6 +15,7 @@ import {
   addSymptom,
   getSymptomCheckerState,
   removeSymptom,
+  resetSymptomChecker,
   toggleSymptom,
   updateSymptomChecker,
   useSymptomChecker,
@@ -27,11 +28,20 @@ export default function SymptomSearchScreen() {
   const insets = useSafeAreaInsets();
   const { user } = useAuth();
   const state = useSymptomChecker();
+  const params = useLocalSearchParams<{ start?: string }>();
+  // Entered from Home („აღწერე სიტყვებით“): a fresh check, not the last one still in memory.
+  const started = useRef(false);
+  useEffect(() => {
+    if (started.current) return;
+    started.current = true;
+    if (params.start === '1') {
+      resetSymptomChecker(user?.gender);
+      updateSymptomChecker({ method: 'manual' });
+    }
+  }, [params.start, user?.gender]);
   const [query, setQuery] = useState('');
   const [inputError, setInputError] = useState<string | null>(null);
   const inputRef = useRef<TextInput>(null);
-  const navigating = useRef(false);
-  useFocusEffect(useCallback(() => { navigating.current = false; }, []));
   const firstName = user?.fullName?.split(' ')[0] ?? '';
   const typed = query.trim();
 
@@ -43,7 +53,6 @@ export default function SymptomSearchScreen() {
 
   const alreadyAdded = state.symptoms.some((s) => s.toLowerCase() === typed.toLowerCase());
   const showCustom = typed.length > 0 && !POPULAR_SYMPTOMS.some((s) => s.toLowerCase() === typed.toLowerCase());
-  const score = Math.min(92, 28 + state.symptoms.length * 12 + (typed && !alreadyAdded ? 12 : 0));
 
   const commitTyped = () => {
     if (typed && !addSymptom(typed)) { setInputError(tx('ერთ შემოწმებაში მაქსიმუმ 16 სიმპტომი შეგიძლია დაამატო.', 'You can add up to 16 symptoms in one check.')); return false; }
@@ -61,19 +70,9 @@ export default function SymptomSearchScreen() {
     router.push('/symptoms/details' as never);
   };
 
-  const goAnalyze = () => {
-    if (navigating.current) return;
-    if (!commitTyped()) return;
-    if (getSymptomCheckerState().symptoms.length === 0) {
-      inputRef.current?.focus();
-      return;
-    }
-    navigating.current = true;
-    router.push('/symptoms/analyzing' as never);
-  };
 
   return (
-    <View style={{ flex: 1, backgroundColor: T.white }}>
+    <View style={{ flex: 1, backgroundColor: T.canvas }}>
       <KeyboardAvoidingView
         style={{ flex: 1 }}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -87,14 +86,14 @@ export default function SymptomSearchScreen() {
         >
           <Text
             style={{
-              paddingHorizontal: 16,
-              paddingVertical: 16,
-              fontSize: 30,
-              lineHeight: 38,
-              fontWeight: '700',
+              paddingHorizontal: 20,
+              paddingTop: 4,
+              paddingBottom: 4,
+              fontSize: 24,
+              lineHeight: 32,
+              fontFamily: 'NotoSansGeorgian_700Bold',
               color: T.textPrimary,
-              letterSpacing: -0.25,
-              textAlign: 'center',
+              letterSpacing: -0.3,
             }}
           >
             {ka.symptoms.askName(firstName)}
@@ -104,9 +103,9 @@ export default function SymptomSearchScreen() {
             <View
               style={{
                 minHeight: 56,
-                borderRadius: 14,
-                borderWidth: 1,
-                borderColor: typed ? T.brand : T.borderTertiary,
+                borderRadius: 20,
+                borderWidth: 1.5,
+                borderColor: typed ? T.brand : 'transparent',
                 backgroundColor: T.white,
                 paddingLeft: 12,
                 paddingRight: 8,
@@ -201,16 +200,15 @@ export default function SymptomSearchScreen() {
 
         {inputError ? <Text accessibilityRole="alert" style={{ color: T.danger, paddingHorizontal: 16, paddingVertical: 8 }}>{inputError}</Text> : null}
         <SymptomComposer
-          score={score}
+          count={state.symptoms.length + (typed && !alreadyAdded ? 1 : 0)}
           onFocusInput={() => inputRef.current?.focus()}
           onAnatomy={() => { updateSymptomChecker({ method: 'anatomy' }); router.push('/symptoms/body' as never); }}
-          onSettings={goDetails}
-          sendDisabled={state.symptoms.length === 0 && !typed}
-          onSend={goAnalyze}
+          onContinue={goDetails}
+          disabled={state.symptoms.length === 0 && !typed}
         />
       </KeyboardAvoidingView>
       <KeyboardDoneAccessory />
-      <View style={{ height: insets.bottom, backgroundColor: T.white }} />
+      <View style={{ height: insets.bottom, backgroundColor: T.canvas }} />
     </View>
   );
 }

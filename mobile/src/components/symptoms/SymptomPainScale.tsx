@@ -4,8 +4,10 @@ import Svg, { Path } from 'react-native-svg';
 import { useFigmaSymptoms } from '@/constants/figmaSymptomsLayout';
 import { PAIN_LEVELS } from '@/constants/symptomCatalog';
 
-/** Figma order: emotion-depressed → overjoyed (worst pain on the left). */
-const VISUAL_LEVELS = [5, 4, 3, 2, 1] as const;
+/** Mild on the left, worst on the right (owner 2026-10-04 redesign: reads like any scale). */
+const VISUAL_LEVELS = [1, 2, 3, 4, 5] as const;
+/** One calm colour per level: teal → lime → amber → orange → rose. */
+const LEVEL_COLOR: Record<number, string> = { 1: '#0D9488', 2: '#65A30D', 3: '#D97706', 4: '#EA580C', 5: '#E11D48' };
 
 type Props = {
   value: number | null;
@@ -18,33 +20,34 @@ export function SymptomPainScale({ value, onChange }: Props) {
 
   return (
     <View>
-      <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center' }}>
+      <View style={{ flexDirection: 'row', gap: 6, alignItems: 'center' }}>
         {VISUAL_LEVELS.map((level) => {
           const on = value === level;
+          const color = LEVEL_COLOR[level];
           return (
             <Pressable
               key={level}
               onPress={() => onChange(level)}
               accessibilityRole="button"
+              accessibilityState={{ selected: on }}
               accessibilityLabel={PAIN_LEVELS.find((p) => p.level === level)?.labelKa}
               style={{
-                width: 48,
-                height: 48,
-                borderRadius: 999,
-                borderWidth: 1,
-                borderColor: on ? T.brand : T.borderTertiary,
-                backgroundColor: on ? T.brandSoft : T.cardBg,
+                flex: 1,
+                height: 52,
+                borderRadius: 16,
+                borderWidth: 1.5,
+                borderColor: on ? color : 'transparent',
+                backgroundColor: on ? `${color}1F` : T.cardBg,
                 alignItems: 'center',
                 justifyContent: 'center',
-                ...T.shadowXs,
               }}
             >
-              <PainFace kind={level} color={on ? T.brand : T.textSecondary} />
+              <PainFace kind={level} color={on ? color : T.textSecondary} />
             </Pressable>
           );
         })}
       </View>
-      <Text style={{ marginTop: 4, fontSize: 14, lineHeight: 22, color: T.textSecondary }}>
+      <Text style={{ marginTop: 8, fontFamily: 'NotoSansGeorgian_600SemiBold', fontSize: 13, lineHeight: 18, color: active ? LEVEL_COLOR[active.level] : T.textMuted }}>
         {active?.labelKa ?? '—'}
       </Text>
     </View>
