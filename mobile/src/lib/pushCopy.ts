@@ -22,13 +22,18 @@ const FALLBACKS_KA: Record<string, { title: string; body: string }> = {
     title: '{name} ხომ არ გვითავდება? 👀',
     body: 'მგონი {name}-ის მარაგის შემოწმების დროა. გადაავლე თვალი, რომ საჭირო დროს ხელთ გქონდეს 💚',
   },
+  // Cycle reminders are scheduled from cycleReminderCopy.ts; these fallbacks mirror it (brief §9 item 5).
   'cycle-period-soon': {
-    title: 'სავარაუდო მენსტრუაცია ახლოვდება 🌸',
-    body: 'შენი ციკლის მიხედვით, მენსტრუაცია დაახლოებით {days} დღეშია მოსალოდნელი. ეს შეფასებაა — Medi მხოლოდ შეგახსენებს 💗',
+    title: 'მენსტრუაცია სავარაუდოდ {days} დღეში 🌸',
+    body: 'შენი ბოლო ციკლების მიხედვით. ეს შეფასებაა — Medi მხოლოდ შეგახსენებს 💗',
   },
   'cycle-period-start': {
-    title: 'დღეს შეიძლება დაიწყოს 🌷',
-    body: 'Medi-ს გამოთვლებით, მენსტრუაცია სავარაუდოდ დღეს დაიწყება. თუ სხვაგვარად იქნება, არაფერი — ციკლი ყოველთვის ზუსტად კალენდარს არ მიჰყვება 🤍',
+    title: 'მენსტრუაცია სავარაუდოდ დღეს 🌷',
+    body: 'თუ დღეს არ დაიწყო, არაფერი — ციკლი ყოველთვის ზუსტად კალენდარს არ მიჰყვება 🤍',
+  },
+  'cycle-period-late': {
+    title: 'სავარაუდო თარიღი გავიდა — ყველაფერი რიგზეა? 🤍',
+    body: 'მენსტრუაცია ჯერ არ აღნიშნულა. თუ დაიწყო, მონიშნე ერთი შეხებით — თუ არა, ეს ციკლი შეიძლება უბრალოდ გრძელი იყოს 🤍',
   },
   'cycle-ovulation': {
     title: 'სავარაუდო ოვულაცია ახლოვდება ✨',
@@ -130,12 +135,16 @@ const FALLBACKS_EN: Record<string, { title: string; body: string }> = {
     body: "It might be time to check your {name} supply. Take a look so you have it when you need it 💚",
   },
   'cycle-period-soon': {
-    title: 'Your period may be coming soon 🌸',
-    body: 'Based on your cycle, your period is expected in about {days} days. This is an estimate — Medi is just reminding you 💗',
+    title: 'Period estimated in {days} 🌸',
+    body: 'Based on your recent cycles. This is an estimate — Medi is just reminding you 💗',
   },
   'cycle-period-start': {
-    title: 'It may start today 🌷',
-    body: "By Medi's estimate, your period will probably start today. If it doesn't, that's okay — cycles don't always follow the calendar exactly 🤍",
+    title: 'Period estimated today 🌷',
+    body: "If it doesn't start today, that's okay — cycles don't always follow the calendar exactly 🤍",
+  },
+  'cycle-period-late': {
+    title: 'The estimated date has passed — everything okay? 🤍',
+    body: 'No period logged yet. If it started, log it with one tap — if not, this cycle may simply be longer.',
   },
   'cycle-ovulation': {
     title: 'Estimated ovulation is coming up ✨',
