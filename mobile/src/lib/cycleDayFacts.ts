@@ -9,7 +9,7 @@ import type { CycleIconGlyph } from '../constants/cycleIconSvg.ts';
 
 /**
  * What a day holds, as read-only tiles for the day sheet (brief §8.4: facts as tiles, not
- * „გამონადენი: ზომიერი · სიმპტომები: 3“). Everything private — sex, sex drive, intimate symptoms,
+ * „სისხლდენა: ზომიერი · სიმპტომები: 3“). Everything private — sex, sex drive, intimate symptoms,
  * the journal, tags — never becomes a tile; `privateFactCount` folds it into one line
  * („პირადი ჩანაწერი · მხოლოდ შენ“). Fertility signs (mucus, tests, BBT) are tiles only where the
  * mode shows fertility; otherwise they join the private line.

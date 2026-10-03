@@ -231,6 +231,17 @@ describe('doctor-summary locale rendering', () => {
     assert.equal(html.includes('კრუნჩხვები'), false);
     assert.match(html, /Ballonnements|Crampes menstruelles/);
   });
+
+  it('heads the flow column „სისხლდენა“ — „გამონადენი“ is the discharge symptom, never the bleeding', () => {
+    const payload = summary();
+    assert.equal(DOCTOR_SUMMARY_COPY.ka.flowHeading, 'სისხლდენა');
+    assert.equal(DOCTOR_SUMMARY_COPY.en.flowHeading, 'Flow');
+    assert.equal(DOCTOR_SUMMARY_COPY.ru.flowHeading, 'Кровотечение');
+    const ka = buildCycleReportHtmlFromSummary(payload, 'ka');
+    assert.match(ka, /<th>სისხლდენა<\/th>/);
+    assert.equal(ka.includes('<th>გამონადენი</th>'), false);
+    assert.match(buildCycleReportHtmlFromSummary(payload, 'ru'), /<th>Кровотечение<\/th>/);
+  });
 });
 
 describe('doctor-summary locale firewalls', () => {

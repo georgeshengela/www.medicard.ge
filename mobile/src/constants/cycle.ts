@@ -42,7 +42,7 @@ export const PHYSICAL_SYMPTOMS: CycleChip[] = [
   { id: 'muscle_pain', label: tx('კუნთების ტკივილი', 'Muscle pain') },
   { id: 'pelvic_pain', label: tx('მენჯის ტკივილი', 'Pelvic pain') },
   { id: 'ovulation_pain', label: tx('ოვულაციის ტკივილი', 'Ovulation pain') },
-  { id: 'leg_cramps', label: tx('ფეხის კრუნჩხვები', 'Leg cramps') },
+  { id: 'leg_cramps', label: tx('ფეხის სპაზმები', 'Leg cramps') },
   { id: 'swelling', label: tx('შეშუპება', 'Swelling') },
   { id: 'water_retention', label: tx('წყლის შეკავება', 'Water retention') },
   { id: 'dry_skin', label: tx('მშრალი კანი', 'Dry skin') },

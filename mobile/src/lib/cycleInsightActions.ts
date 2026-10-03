@@ -99,7 +99,7 @@ export function resolveInsightAction(card: CycleInsightCard): CycleInsightAction
       steps: [
         tx('დალიე 1–2 ჭიქა წყალი ნელა.', 'Slowly drink 1–2 glasses of water.'),
         tx('დაჯექი ან დაწექი ზურგზე 10–15 წუთით.', 'Sit or lie on your back for 10–15 minutes.'),
-        tx('თბილი პაკი მუცელზე დაგეხმარება კრუნჩხვებისას.', 'A warm pack on your belly can help with cramps.'),
+        tx('თბილი პაკი მუცელზე დაგეხმარება სპაზმებისას.', 'A warm pack on your belly can help with cramps.'),
       ],
       manualLabel: action || tx('გავაკეთო ახლა', 'Do it now'),
       autoLabel: tx('30 წუთში შემახსენე', 'Remind me in 30 min'),

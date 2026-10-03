@@ -1,5 +1,6 @@
 import { ka } from '@/i18n/ka';
 import { isEn, tx } from '../i18n/locale.js';
+import { withoutCycleDayOpener } from './cycleTipCopy.ts';
 import type { CycleCondition, CycleInsightCard, CycleLog, CycleMode } from '@/lib/api';
 import type { CyclePhaseInfo } from '@/lib/cycleCanonical';
 import { cycleHonestyFlags, fertileInsightCopy, type CycleHonestyConfidence } from '@/lib/cycleHonesty';
@@ -21,7 +22,7 @@ type AdviceCtx = {
  */
 const DAILY_TIPS: Record<string, { tone: string; title: string; body: string }[]> = {
   period: [
-    { tone: 'care', title: tx('სითბო ამშვიდებს', 'Warmth soothes'), body: tx('თბილი კომპრესი მუცელზე ან თბილი შხაპი კრუნჩხვისას ბევრს ეხმარება.', 'A warm pad on your belly or a warm shower helps many people with cramps.') },
+    { tone: 'care', title: tx('სითბო ამშვიდებს', 'Warmth soothes'), body: tx('თბილი კომპრესი მუცელზე ან თბილი შხაპი სპაზმებისას ბევრს ეხმარება.', 'A warm pad on your belly or a warm shower helps many people with cramps.') },
     { tone: 'care', title: tx('რკინით მდიდარი საკვები', 'Iron-rich foods'), body: tx('ლობიო, ისპანახი, წითელი ხორცი ან თხილი რკინის მარაგის შენარჩუნებაში გეხმარება.', 'Beans, spinach, red meat or nuts help keep your iron up.') },
     { tone: 'energy', title: tx('მსუბუქი მოძრაობა', 'Gentle movement'), body: tx('ნელი სეირნობა ან გაწელვა ზოგს ტკივილს უმსუბუქებს — მოუსმინე სხეულს.', 'A slow walk or stretching eases pain for some people — listen to your body.') },
     { tone: 'calm', title: tx('წყალი და თბილი ჩაი', 'Water and warm tea'), body: tx('საკმარისი სითხე შებერილობას ამცირებს, თბილი ჩაი კი სიმშვიდეს გმატებს.', 'Enough fluids ease bloating, and warm tea adds a little calm.') },
@@ -37,7 +38,7 @@ const DAILY_TIPS: Record<string, { tone: string; title: string; body: string }[]
   fertile: [
     { tone: 'energy', title: tx('აქტიური დღეები', 'Active days'), body: tx('ბევრი ქალი ამ დღეებში ყველაზე ენერგიულად და თავდაჯერებულად გრძნობს თავს.', 'Many women feel their most energetic and confident these days.') },
     { tone: 'calm', title: tx('საკმარისი წყალი', 'Enough water'), body: tx('დღეში 6–8 ჭიქა სითხე ენერგიასა და კონცენტრაციას ეხმარება.', '6–8 glasses of fluids a day help your energy and focus.') },
-    { tone: 'care', title: tx('სხეულის ნიშნები', 'Body signs'), body: tx('გამონადენის ცვლილებები ამ დღეებში ჩვეულებრივია — შეგიძლია აღრიცხო და პატერნს დაინახავ.', 'Changes in discharge are common these days — log them and you’ll see your pattern.') },
+    { tone: 'care', title: tx('სხეულის ნიშნები', 'Body signs'), body: tx('გამონადენის ცვლილებები ამ დღეებში ჩვეულებრივია — შეგიძლია აღრიცხო და შენს რიტმს დაინახავ.', 'Changes in discharge are common these days — log them and you’ll see your pattern.') },
     { tone: 'mood', title: tx('სოციალური დღეები', 'Social days'), body: tx('ურთიერთობები ახლა ხშირად უფრო მარტივია — კარგი დროა შეხვედრებისთვის.', 'Connecting with people often feels easier now — a good time to meet up.') },
   ],
   luteal: [
@@ -71,7 +72,6 @@ export function buildCycleAdvice({
 }: AdviceCtx): CycleInsightCard[] {
   if (supportsCycleCapability(mode, 'showPerimenopauseTracking')) return [];
   const cards: CycleInsightCard[] = [];
-  const dayBit = phase.day != null ? ka.cycle.cycleDayBit(phase.day) : ka.cycle.thisDayBit;
   const flags = cycleHonestyFlags({ confidence, isIrregular, conditions });
 
   if (phase.phase === 'period') {
@@ -79,7 +79,7 @@ export function buildCycleAdvice({
       id: 'advice_period',
       tone: 'care',
       title: ka.cycle.advicePeriodTitle,
-      body: ka.cycle.advicePeriodBody(dayBit),
+      body: ka.cycle.advicePeriodBody,
       action: tx('დალიე წყალი და დაისვენე', 'Drink water and rest'),
     });
   } else if (phase.phase === 'follicular') {
@@ -87,7 +87,7 @@ export function buildCycleAdvice({
       id: 'advice_follicular',
       tone: 'energy',
       title: ka.cycle.adviceFollicularTitle,
-      body: ka.cycle.adviceFollicularBody(dayBit),
+      body: ka.cycle.adviceFollicularBody,
       action: tx('მოკლე სეირნობა', 'Short walk'),
     });
   } else if (phase.phase === 'fertile' || phase.phase === 'ovulation') {
@@ -96,7 +96,7 @@ export function buildCycleAdvice({
       id: 'advice_fertile',
       tone: 'fertile',
       title: copy.title,
-      body: `${dayBit}. ${copy.body}`,
+      body: copy.body,
       action: supportsCycleCapability(mode, 'showFertilityShortcuts')
         ? tx('აღრიცხე BBT ან ლორწო', 'Add BBT or mucus')
         : tx('გახსენი დღის აღრიცხვა', 'Open today’s log'),
@@ -106,7 +106,7 @@ export function buildCycleAdvice({
       id: 'advice_luteal',
       tone: 'calm',
       title: ka.cycle.adviceLutealTitle,
-      body: ka.cycle.adviceLutealBody(dayBit),
+      body: ka.cycle.adviceLutealBody,
       action: tx('5 წუთი ღრმა სუნთქვა', '5 min deep breathing'),
     });
   } else {
@@ -217,7 +217,8 @@ export function mergeInsightCards(ai: CycleInsightCard[], local: CycleInsightCar
     seen.add(card.id);
     seen.add(key);
     seen.add(title);
-    out.push({ ...card, title: humanizeDatesKa(card.title), body: humanizeDatesKa(card.body) });
+    // The screen already shows the cycle day (strip, ring, context line): tip prose never repeats it.
+    out.push({ ...card, title: humanizeDatesKa(card.title), body: humanizeDatesKa(withoutCycleDayOpener(card.body)) });
     if (out.length >= 5) break;
   }
   return out;

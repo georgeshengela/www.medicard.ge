@@ -613,14 +613,14 @@ export const enCycle: Pick<Strings, 'cycle'> = {
     trendsSymptomsHint: 'How often you logged these symptoms in the last 90 days.',
     trendsBbtHint: 'Logged BBT. This does not confirm ovulation.',
     advicePeriodTitle: 'Warmth, hydration',
-    advicePeriodBody: (dayBit: string) =>
-      `${dayBit} · Period. Warmth, hydration and gentle movement often help. If the pain is severe, see a doctor.`,
+    advicePeriodBody:
+      'During your period, warmth, hydration and gentle movement often help. If the pain is severe, see a doctor.',
     adviceFollicularTitle: 'Follicular phase',
-    adviceFollicularBody: (dayBit: string) =>
-      `${dayBit} · Estimated follicular phase. Some people have more energy on these days. This is general information.`,
+    adviceFollicularBody:
+      'The phase is an estimate. Some people have more energy on these days. This is general information.',
     adviceLutealTitle: 'Luteal phase',
-    adviceLutealBody: (dayBit: string) =>
-      `${dayBit} · Estimated luteal phase. Some people may notice bloating or mood changes.`,
+    adviceLutealBody:
+      'The phase is an estimate. Some people may notice bloating or mood changes on these days.',
     adviceUnknownTitle: 'Unknown phase',
     adviceUnknownBody: 'Mark the start of your last period for more accurate predictions.',
     advicePcosTitle: 'PCOS',
@@ -640,8 +640,6 @@ export const enCycle: Pick<Strings, 'cycle'> = {
       'A short walk, a breathing exercise or a talk with someone you love can help ease tension.',
     advicePregnancyTitle: 'Pregnancy mode',
     advicePregnancyBody: 'This mode changes how your cycle is shown. Estimates are approximate and not a diagnosis.',
-    cycleDayBit: (day: number) => `Cycle day ${day}`,
-    thisDayBit: 'This day',
     mediInsightLabel: 'Medi',
     partnerShareAccepted: 'Partner connected',
     dueDateHint: 'Pick from the calendar',
