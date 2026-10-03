@@ -230,6 +230,22 @@
               "foregroundImage": "./assets/app-icons/gold-android.png",
               "backgroundColor": "#06211F"
             }
+          },
+          {
+            "name": "Calendar",
+            "ios": "./assets/app-icons/calendar.png",
+            "android": {
+              "foregroundImage": "./assets/app-icons/calendar-android.png",
+              "backgroundColor": "#EEF3F6"
+            }
+          },
+          {
+            "name": "Flower",
+            "ios": "./assets/app-icons/flower.png",
+            "android": {
+              "foregroundImage": "./assets/app-icons/flower-android.png",
+              "backgroundColor": "#DCE8DC"
+            }
           }
         ]
       ],

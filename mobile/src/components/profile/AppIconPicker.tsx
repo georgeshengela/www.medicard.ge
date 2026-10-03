@@ -4,7 +4,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
 import { Check, X } from 'lucide-react-native';
 import { APP_MODAL_OVERLAY, APP_MODAL_PROPS, Modal } from '@/components/ui/appModal';
-import { APP_ICONS, currentAppIcon, setAppIcon, type AppIconId } from '@/lib/appIcon';
+import { APP_ICONS, DISCREET_APP_ICONS, currentAppIcon, setAppIcon, type AppIconId } from '@/lib/appIcon';
 import { useAuth } from '@/store/AuthContext';
 import { tx } from '@/i18n/locale';
 import { HUB, hubText } from '@/theme/hub';
@@ -88,6 +88,7 @@ export function AppIconPicker({
               {APP_ICONS.map((icon) => {
                 const selected = icon.id === current;
                 const forYou = female && icon.id === 'rose';
+                const discreet = DISCREET_APP_ICONS.includes(icon.id);
                 const rose = dark ? ROSE.dark : ROSE.light;
                 return (
                   <Pressable
@@ -111,11 +112,18 @@ export function AppIconPicker({
                       {icon.name}
                     </Text>
                     {forYou ? <Text style={[s.badge, { color: rose }]}>{tx('შენთვის', 'For you')}</Text> : null}
+                    {discreet ? <Text style={[s.badge, { color: c.text200 }]}>{tx('შეუმჩნეველი', 'Discreet')}</Text> : null}
                   </Pressable>
                 );
               })}
             </View>
             <Text style={[hubText.small, { color: c.text200, marginTop: 14 }]}>
+              {tx(
+                '„კალენდარი“ და „ყვავილი“ ეკრანზე არ ამჟღავნებს, რომ ეს ჯანმრთელობის აპია.',
+                '“Calendar” and “Flower” don’t show on your home screen that this is a health app.',
+              )}
+            </Text>
+            <Text style={[hubText.small, { color: c.text200, marginTop: 8 }]}>
               {tx(
                 'შეცვლისას iPhone მოკლე შეტყობინებას აჩვენებს — ეს Apple-ის წესია. აპი და მონაცემები იგივე რჩება.',
                 'iPhone shows a short notice when the icon changes — that is Apple’s rule. The app and your data stay the same.',

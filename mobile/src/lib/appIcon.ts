@@ -13,7 +13,7 @@ import { Platform } from 'react-native';
 import type { ImageSourcePropType } from 'react-native';
 import { tx } from '@/i18n/locale';
 
-export type AppIconId = 'classic' | 'midnight' | 'rose' | 'pearl' | 'gold';
+export type AppIconId = 'classic' | 'midnight' | 'rose' | 'pearl' | 'gold' | 'calendar' | 'flower';
 
 type NativeIcons = {
   supportsAlternateIcons: boolean;
@@ -44,7 +44,15 @@ const NATIVE_NAME: Record<AppIconId, string | null> = {
   rose: 'Rose',
   pearl: 'Pearl',
   gold: 'Gold',
+  calendar: 'Calendar',
+  flower: 'Flower',
 };
+
+/**
+ * „კალენდარი“ and „ყვავილი“ are the discreet pair (cycle brief [კ-32], train 1.0.0.20): neutral pictures
+ * with no cycle symbol and no brand text, so the phone does not say which app it is.
+ */
+export const DISCREET_APP_ICONS: readonly AppIconId[] = ['calendar', 'flower'];
 
 export const APP_ICONS: { id: AppIconId; name: string; thumb: ImageSourcePropType }[] = [
   { id: 'classic', name: tx('კლასიკური', 'Classic'), thumb: require('../../assets/app-icons/thumb/classic.png') },
@@ -52,6 +60,8 @@ export const APP_ICONS: { id: AppIconId; name: string; thumb: ImageSourcePropTyp
   { id: 'midnight', name: tx('ღამე', 'Midnight'), thumb: require('../../assets/app-icons/thumb/midnight.png') },
   { id: 'pearl', name: tx('მარგალიტი', 'Pearl'), thumb: require('../../assets/app-icons/thumb/pearl.png') },
   { id: 'gold', name: tx('ოქრო', 'Gold'), thumb: require('../../assets/app-icons/thumb/gold.png') },
+  { id: 'calendar', name: tx('კალენდარი', 'Calendar'), thumb: require('../../assets/app-icons/thumb/calendar.png') },
+  { id: 'flower', name: tx('ყვავილი', 'Flower'), thumb: require('../../assets/app-icons/thumb/flower.png') },
 ];
 
 export function appIconsSupported(): boolean {
