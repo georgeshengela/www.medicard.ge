@@ -1,9 +1,8 @@
 import React from 'react';
 import { Text, View } from 'react-native';
 import * as Haptics from 'expo-haptics';
-import { Check, Heart, Lock } from 'lucide-react-native';
+import { Check, Heart, Lock, type LucideIcon } from 'lucide-react-native';
 import { CyclePressable } from './CyclePressable';
-import { CycleLogSectionHeading } from './CycleVisualChoice';
 import { SEX_ACTIVITY_OPTIONS, SEX_DRIVE_OPTIONS } from '@/constants/cycle';
 import { ka } from '@/i18n/ka';
 import { useCycleColors } from '@/theme/cycle';
@@ -73,6 +72,22 @@ export function CycleSexSection({
         {SEX_DRIVE_OPTIONS.map((opt) => (
           <Pill key={opt.id} radio label={opt.label} selected={drive === opt.id} onPress={() => pickDrive(opt.id)} disabled={disabled} grow />
         ))}
+      </View>
+    </View>
+  );
+}
+
+/** Section heading with an icon tile — used only by the sex section's standalone form. */
+export function CycleLogSectionHeading({ icon: Icon, children, hint }: { icon: LucideIcon; children: string; hint?: string }) {
+  const c = useCycleColors();
+  return (
+    <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center', marginTop: 16, marginBottom: 8 }}>
+      <View style={{ width: 24, height: 28, borderRadius: 8, backgroundColor: c.accentSoft, alignItems: 'center', justifyContent: 'center' }}>
+        <Icon size={16} color={c.brand} strokeWidth={1.8} />
+      </View>
+      <View style={{ flex: 1 }}>
+        <Text style={{ color: c.ink, fontSize: 14, lineHeight: 20, fontFamily: 'NotoSansGeorgian_600SemiBold' }}>{children}</Text>
+        {hint ? <Text style={{ color: c.muted, fontSize: 12, lineHeight: 18, marginTop: 2 }}>{hint}</Text> : null}
       </View>
     </View>
   );

@@ -139,3 +139,23 @@ export function flowGlyphStyle(id: string): { scale: number; opacity: number; ho
 }
 
 export const KNOWN_GLYPH_IDS = { FLOW, PAIN, MOOD, SYMPTOM, MUCUS, LIFESTYLE, TESTS };
+
+/**
+ * Georgian words like „კონცენტრირებული“ or „თავბრუსხვევა“ are longer than a 76 pt label at 10.5 pt and
+ * would break mid-word (Georgian has no hyphenation). The label shrinks with its longest word — a
+ * Georgian glyph is ≈ 0.78 em wide — and a long one may spill 4 pt past the tile on each side;
+ * neighbours' labels are centred, so they never meet. Pure, so the fit is tested in node.
+ */
+export function tileLabelFit(
+  label: string,
+  tileWidth: number,
+): { fontSize: number; lineHeight: number; width: number; maxWidth: number; marginHorizontal: number; letterSpacing?: number } {
+  const longest = Math.max(0, ...label.split(/\s+/).map((w) => w.length));
+  // `maxWidth` overrides react-native-web's default 100 % cap on Text, so web matches native.
+  if (longest <= 8) return { fontSize: 10.5, lineHeight: 13, width: tileWidth + 6, maxWidth: tileWidth + 6, marginHorizontal: -3 };
+  // Measured in NotoSansGeorgian 500: 0.58–0.69 em per glyph, „დაღლილობა“ 0.78 — the fit assumes 0.8.
+  const width = longest >= 14 ? tileWidth + 18 : tileWidth + 14;
+  const letterSpacing = longest >= 14 ? -0.4 : undefined;
+  const fontSize = Math.max(7.5, Math.min(10.5, Math.floor((width / (0.8 * longest)) * 2) / 2));
+  return { fontSize, lineHeight: Math.round(fontSize + 2.5), width, maxWidth: width, marginHorizontal: -(width - tileWidth) / 2, letterSpacing };
+}

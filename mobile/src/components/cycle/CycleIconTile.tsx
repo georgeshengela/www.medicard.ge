@@ -5,7 +5,8 @@ import { SvgXml } from 'react-native-svg';
 import { Check } from 'lucide-react-native';
 import { CYCLE_ICON_SVG, type CycleIconGlyph } from '@/constants/cycleIconSvg';
 import { tx } from '@/i18n/locale';
-import type { CycleIconGroup } from '@/lib/cycleIconMap';
+import { foldTiles } from '@/lib/cycleFullLog';
+import { tileLabelFit, type CycleIconGroup } from '@/lib/cycleIconMap';
 import { useCycleColors } from '@/theme/cycle';
 
 /**
@@ -95,7 +96,7 @@ export function CycleIconTile({
       </View>
       <Text
         numberOfLines={2}
-        style={[s.label, { color: selected ? c.ink : c.muted, fontFamily: selected ? 'NotoSansGeorgian_600SemiBold' : 'NotoSansGeorgian_500Medium' }]}
+        style={[s.label, labelFit(label), { color: selected ? c.ink : c.muted, fontFamily: selected ? 'NotoSansGeorgian_600SemiBold' : 'NotoSansGeorgian_500Medium' }]}
       >
         {label}
       </Text>
@@ -108,6 +109,10 @@ export function CycleIconTile({
       ) : null}
     </Pressable>
   );
+}
+
+function labelFit(label: string) {
+  return tileLabelFit(label, TILE_W);
 }
 
 export function levelLabel(level: 1 | 2 | 3): string {
@@ -130,29 +135,35 @@ export function CycleMoreTile({ count, onPress, label }: { count: number; onPres
 }
 
 /**
- * A row of tiles: the first `visible` ones and a „+N“ tile; tapping it unfolds the whole group as a
- * wrapped grid (same tiles, same order). Rendering is left to `renderTile` so rows stay dumb.
+ * A row of tiles: the first `visible` ones (plus every selected one, so an edited day never hides what
+ * it holds) and a „+N“ tile; tapping it unfolds the whole group as a wrapped grid (same tiles, same
+ * order). Rendering is left to `renderTile` so rows stay dumb. `gap` is the column gap: 0 lets five
+ * 70 pt tiles share a 350 pt card.
  */
 export function CycleIconRow<T extends { id: string }>({
   items,
   visible = 5,
   renderTile,
   expandedByDefault = false,
+  isSelected,
+  gap = 2,
 }: {
   items: T[];
   visible?: number;
   renderTile: (item: T) => React.ReactNode;
   expandedByDefault?: boolean;
+  isSelected?: (item: T) => boolean;
+  gap?: number;
 }) {
   const [expanded, setExpanded] = useState(expandedByDefault);
-  const hidden = Math.max(0, items.length - visible);
-  const shown = expanded || hidden === 0 ? items : items.slice(0, visible);
+  const folded = foldTiles(items, visible, isSelected ?? (() => false));
+  const shown = expanded ? items : folded.shown;
   return (
-    <View style={s.row}>
+    <View style={[s.row, { columnGap: gap }]}>
       {shown.map((item) => (
         <React.Fragment key={item.id}>{renderTile(item)}</React.Fragment>
       ))}
-      {!expanded && hidden > 0 ? <CycleMoreTile count={hidden} onPress={() => setExpanded(true)} /> : null}
+      {!expanded && folded.hidden > 0 ? <CycleMoreTile count={folded.hidden} onPress={() => setExpanded(true)} /> : null}
     </View>
   );
 }

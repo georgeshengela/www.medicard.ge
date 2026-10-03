@@ -4,37 +4,24 @@ import { ChatScreenShell, ChatFormScroll } from '@/components/chat/ChatScreenShe
 import React, { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
-  KeyboardAvoidingView,
-  Platform,
-  ScrollView,
   Text,
-  TextInput,
   useWindowDimensions,
   View} from 'react-native';
 import * as Haptics from 'expo-haptics';
-import { X, Activity, CalendarDays, Check, Droplets, Heart, Smile } from 'lucide-react-native';
-import { CycleVisualChoice, CycleLogSectionHeading } from './CycleVisualChoice';
+import { X, CalendarDays, Check } from 'lucide-react-native';
 import { CyclePrimaryButton } from './CycleUI';
-import { CycleObservationIcon } from './CycleObservationIcon';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { APP_MODAL_PROPS, Modal } from '@/components/ui/appModal';
-import { CycleFlowPicker } from '@/components/cycle/CycleFlowPicker';
 import { CycleSexSection } from '@/components/cycle/CycleSexSection';
-import { CycleTestResultRow } from '@/components/cycle/CycleTestResultRow';
 import { CycleMoreTracking } from '@/components/cycle/CycleMoreTracking';
-import { CyclePainEditor } from '@/components/cycle/CycleObservationFields';
 import { CycleQuickLogBody } from '@/components/cycle/CycleQuickLogBody';
 import { CyclePregnancyQuickLog } from '@/components/cycle/CyclePregnancyQuickLog';
 import { CyclePerimenopauseQuickLog } from '@/components/cycle/CyclePerimenopauseQuickLog';
 import { CyclePostpartumQuickLog } from '@/components/cycle/CyclePostpartumQuickLog';
 import { formatCycleDateKa } from '@/components/cycle/CycleUI';
-import { MOOD_OPTIONS, PHYSICAL_SYMPTOMS } from '@/constants/cycle';
-import { recentObservationKeys } from '@/lib/cycleObservationRegistry';
-import { PAIN_MANAGED_SYMPTOM_IDS } from '@/lib/cycleObservations';
 import { ka } from '@/i18n/ka';
 import { tx } from '@/i18n/locale';
 import { EMPTY_CYCLE_LOG, formFromCycleLog, isBleedFlow, persistCycleLog } from '@/lib/cycleLogSave';
-import { applySymptomChipToggle } from '@/lib/cycleObservationAssessment';
 import { loadCycleView, type CycleView } from '@/lib/cycleOffline';
 import { cyclePresentationModeKnown } from '@/lib/cycleHistoryCopy';
 import { cycleModeCapabilities } from '@/lib/cycleModes';
@@ -42,13 +29,6 @@ import type { CycleLog } from '@/lib/api';
 import { useAuth } from '@/store/AuthContext';
 import { useCycleColors } from '@/theme/cycle';
 import type { CycleLogForm } from '@/components/cycle/CycleLogTabs';
-
-const QUICK_SYMPTOMS = PHYSICAL_SYMPTOMS.filter((o) =>
-  ['bloating', 'fatigue', 'nausea'].includes(o.id) && !PAIN_MANAGED_SYMPTOM_IDS.has(o.id),
-);
-const QUICK_MOODS = MOOD_OPTIONS.filter((o) =>
-  ['calm', 'happy', 'irritable', 'tired_mood'].includes(o.id),
-);
 
 type Props = {
   visible: boolean;
@@ -58,10 +38,6 @@ type Props = {
   isPeriodStart?: boolean;
   onOpenFull?: () => void;
 };
-
-function toggle(list: string[], id: string) {
-  return list.includes(id) ? list.filter((x) => x !== id) : [...list, id];
-}
 
 export function CycleQuickLogSheet({
   visible,
@@ -79,7 +55,6 @@ export function CycleQuickLogSheet({
   const [saving, setSaving] = useState(false);
   const [mode, setMode] = useState<string | null>(null);
   const caps = cyclePresentationModeKnown(mode) ? cycleModeCapabilities(mode) : null;
-  const [recentIds, setRecentIds] = useState<string[]>([]);
   const [logs, setLogs] = useState<CycleLog[]>([]);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [hydrated, setHydrated] = useState(false);
@@ -99,7 +74,6 @@ export function CycleQuickLogSheet({
         if (!alive) return;
         setForm(formFromCycleLog(view.display.logs.find((l) => l.date === date)));
         setMode(view.display.profile.mode);
-        setRecentIds(recentObservationKeys(view.display.logs, { limit: 4, minDays: 2 }));
         setLogs(view.display.logs);
         setHydrated(true);
       })

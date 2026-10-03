@@ -1,4 +1,5 @@
-import { MOOD_OPTIONS, PHYSICAL_SYMPTOMS, SEXUAL_OPTIONS } from '@/constants/cycle';
+// Relative so node tests (`cycleFullLog.test.ts`) can load this module; Metro resolves it the same way.
+import { MOOD_OPTIONS, PHYSICAL_SYMPTOMS, SEXUAL_OPTIONS } from '../constants/cycle.ts';
 
 export const OBSERVATION_SCHEMA_VERSION = 1;
 

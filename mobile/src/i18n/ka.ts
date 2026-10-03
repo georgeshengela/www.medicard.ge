@@ -1451,7 +1451,7 @@ const kaStrings = {
     logHubHint: 'აირჩიე რას აღრიცხავ დღეს — ყველაფერი ამ ციკლის ჩანაწერში რჩება.',
     logHeroEyebrow: 'დღის ჩანაწერი',
     logHeroHint: 'მონიშნე რას გრძნობ — რაც მეტია მონაცემი, მით ზუსტია პროგნოზი.',
-    logStepFlow: 'გამონადენი',
+    logStepFlow: 'სისხლდენა',
     logStepFeel: 'შეგრძნება',
     logStepMore: 'დეტალები',
     logSelected: 'მონიშნული',

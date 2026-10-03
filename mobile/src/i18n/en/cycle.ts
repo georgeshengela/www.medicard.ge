@@ -29,7 +29,7 @@ export const enCycle: Pick<Strings, 'cycle'> = {
     logHubHint: 'Choose what to log today — everything stays in this cycle’s record.',
     logHeroEyebrow: 'Today’s log',
     logHeroHint: 'Tap what you feel — the more you log, the better the estimates get.',
-    logStepFlow: 'Flow',
+    logStepFlow: 'Bleeding',
     logStepFeel: 'Feelings',
     logStepMore: 'Details',
     logSelected: 'Selected',
