@@ -11,6 +11,7 @@ import { CycleHeavyBleedingCard } from '@/components/cycle/CycleHeavyBleedingCar
 import { CycleIconTile } from '@/components/cycle/CycleIconTile';
 import { CycleLearnMoreSheet } from '@/components/cycle/CycleLearnMoreSheet';
 import { CycleQuickLogFields, quickLogModeHint } from '@/components/cycle/CycleQuickLogSheet';
+import { CycleTtcSignalLine, CycleTtcSignalSheet } from '@/components/cycle/CycleTtcSignalLine';
 import { CyclePrimaryButton, formatCycleDateKa } from '@/components/cycle/CycleUI';
 import { useCycleQuickLog } from '@/components/cycle/useCycleQuickLog';
 import { learnMoreFor, type LearnMoreEntry, type LearnMoreKind } from '@/i18n/cycle/learnMore';
@@ -30,6 +31,7 @@ import { isOvulationMarked } from '@/lib/cycleObservationRegistry';
 import { ovulationMarkHint, ovulationMarkLabel } from '@/lib/cycleForecastCopy';
 import type { CycleView } from '@/lib/cycleOffline';
 import { classifyCycleDay } from '@/lib/cyclePresentation.js';
+import { ttcSignalFromBundle } from '@/lib/cycleTtcSignals';
 import { addDaysKey } from '@/lib/home/homeCycle';
 import { useAuth } from '@/store/AuthContext';
 import { useCycleColors } from '@/theme/cycle';
@@ -79,12 +81,21 @@ export function CycleDaySheet({
   const [pending, setPending] = useState<Pending>(null);
   /** „გაიგე მეტი“ for a fact tile — drawn inside this sheet's Modal, never a second native Modal. */
   const [learn, setLearn] = useState<{ title: string; entry: LearnMoreEntry } | null>(null);
+  /** The TTC fertility-sign explanation — also drawn inside this sheet's Modal. */
+  const [signalOpen, setSignalOpen] = useState(false);
   useEffect(() => {
     setLearn(null);
+    setSignalOpen(false);
   }, [visible, date]);
 
   const today = cycleToday(bundle, todayKey());
   const isFuture = date > today;
+  // TTC: one hedged line from her BBT / OPK / mucus, on today's sheet only (brief §9 wave 2 item 4).
+  // The /cycle stack renders only after `requireCycleUnlock`, so the cycle is never locked here.
+  const ttcSignal = useMemo(
+    () => (date === today ? ttcSignalFromBundle(bundle, today, { locked: false }) : null),
+    [bundle, date, today],
+  );
   const caps = cycleModeCapabilities(bundle.profile?.mode);
   const showFertility = caps.showFertileEstimates && showFertilityUi(bundle);
   const fertilityFacts = Boolean(caps.showFertilityShortcuts) && showFertilityUi(bundle);
@@ -135,6 +146,7 @@ export function CycleDaySheet({
   const run = (next: Exclude<Pending, null>) => {
     setPending(null);
     setLearn(null);
+    setSignalOpen(false);
     if (next.kind === 'move') onDateChange(next.date);
     else if (next.kind === 'full') onFullLog(date);
     else onClose();
@@ -167,7 +179,11 @@ export function CycleDaySheet({
   const explainable = sections.some((section) => section.tiles.some((tile) => learnMoreFor(tile.kind as LearnMoreKind, tile.id)));
 
   return (
-    <Modal visible={visible} {...APP_MODAL_PROPS} onRequestClose={learn ? () => setLearn(null) : close}>
+    <Modal
+      visible={visible}
+      {...APP_MODAL_PROPS}
+      onRequestClose={learn ? () => setLearn(null) : signalOpen ? () => setSignalOpen(false) : close}
+    >
       <ChatScreenShell header={null} style={{ backgroundColor: c.overlay }}>
         <View style={s.root}>
           <Pressable accessibilityRole="button" accessibilityLabel={ka.common.close} onPress={close} style={StyleSheet.absoluteFill} />
@@ -246,6 +262,11 @@ export function CycleDaySheet({
               ) : null}
               {estimated ? (
                 <Text style={[s.fine, { color: c.mutedSoft }]}>{ka.cycle.estimatedDisclaimer}</Text>
+              ) : null}
+              {ttcSignal ? (
+                <View style={{ marginTop: 12 }}>
+                  <CycleTtcSignalLine signal={ttcSignal} onPress={() => setSignalOpen(true)} />
+                </View>
               ) : null}
 
               {/* Facts as tiles */}
@@ -425,6 +446,12 @@ export function CycleDaySheet({
             title={learn?.title ?? ''}
             items={learn ? [{ entry: learn.entry }] : []}
             onClose={() => setLearn(null)}
+          />
+          <CycleTtcSignalSheet
+            embedded
+            kind={ttcSignal?.kind ?? null}
+            visible={visible && signalOpen}
+            onClose={() => setSignalOpen(false)}
           />
         </View>
       </ChatScreenShell>

@@ -318,9 +318,9 @@ test('women Home sections never mount the AI tips panel or the stories row; sex 
   const dir = new URL('../../components/home/sections/', import.meta.url);
   const read = (file: string) => readFileSync(new URL(file, dir), 'utf8');
   const all = ['HomeCycleHero.tsx', 'HomeCycleAhead.tsx', 'HomeCycleTips.tsx', 'HomeCycleStats.tsx', 'useHomeCycleActions.ts'];
-  // No AI insights, no stories row, and never the calendar's private marks (sex, BBT, tests).
+  // No AI insights, no stories row, and never the calendar's private marks (sex, BBT, tests) or the TTC signs line.
   for (const file of all) {
-    assert.doesNotMatch(read(file), /CycleInsights|CycleStoriesRow|api\.cycle\.insights|hasSex|hasBbt|ovulationTest|pregnancyTest/, file);
+    assert.doesNotMatch(read(file), /CycleInsights|CycleStoriesRow|api\.cycle\.insights|hasSex|hasBbt|ovulationTest|pregnancyTest|cycleTtcSignals|CycleTtcSignal/, file);
   }
   // Owner 2026-10-03: „♥ სექსი“ on Home like on the cycle screen — in the hero and its actions only.
   for (const file of all.filter((f) => f !== 'HomeCycleHero.tsx' && f !== 'useHomeCycleActions.ts')) {

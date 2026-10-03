@@ -1,5 +1,5 @@
 import { CyclePressable as Pressable } from '@/components/cycle/CyclePressable';
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { ActivityIndicator, Text, View } from 'react-native';
 import type { CycleBundle, CycleLog } from '@/lib/api';
 import { isCycleTestResult, prioritizeTtcActions } from '@/lib/cycleFertility';
@@ -7,6 +7,8 @@ import { formatCycleDateKa } from '@/components/cycle/CycleUI';
 import { MUCUS_OPTIONS } from '@/constants/cycle';
 import { showFertilityUi } from '@/lib/cycleContraception';
 import { ttcQueryPending } from '@/lib/cycleTtcQuery';
+import { ttcSignalFromBundle } from '@/lib/cycleTtcSignals';
+import { CycleTtcSignalLine, CycleTtcSignalSheet } from '@/components/cycle/CycleTtcSignalLine';
 import { ka } from '@/i18n/ka';
 import {
   FERTILITY_STATUS,
@@ -52,6 +54,10 @@ export function CycleTtcCard({
   const forecastOk = forecastPresentationAllowed(bundle);
   const learning = isPostpartumReturnLearning(bundle);
   const softened = bundle.predictions?.confidence === 'low' || Boolean(bundle.profile.isIrregular);
+  // One hedged line from her own BBT / OPK / mucus (brief §9 wave 2 item 4). On-device only; the /cycle
+  // stack renders only after `requireCycleUnlock`, so the cycle is never locked here.
+  const signal = useMemo(() => ttcSignalFromBundle(bundle, date, { locked: false }), [bundle, date]);
+  const [explainOpen, setExplainOpen] = useState(false);
   const observed: string[] = [];
   if (isCycleTestResult(log?.ovulationTest)) {
     observed.push(ka.cycle.loggedOpk(ka.cycle.testResult[log.ovulationTest]));
@@ -174,6 +180,11 @@ export function CycleTtcCard({
       ) : (
         <Text style={{ color: c.muted, fontSize: 13, lineHeight: 18 }}>{ka.cycle.ttcHistoryEmpty}</Text>
       )}
+      {signal ? (
+        <View style={{ marginTop: 10 }}>
+          <CycleTtcSignalLine signal={signal} onPress={() => setExplainOpen(true)} />
+        </View>
+      ) : null}
       {log?.pregnancyTest === 'positive' ? (
         <Text style={{ color: c.ink, fontSize: 13, lineHeight: 19, marginTop: 8 }}>
           {ka.cycle.positivePregBody}
@@ -203,6 +214,7 @@ export function CycleTtcCard({
           </Pressable>
         ))}
       </View>
+      <CycleTtcSignalSheet kind={signal?.kind ?? null} visible={explainOpen} onClose={() => setExplainOpen(false)} />
     </View>
   );
 }
