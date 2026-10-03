@@ -122,6 +122,24 @@ export const PAIN_TYPES = Object.freeze([
 ]);
 export const PAIN_SEVERITIES = Object.freeze(['mild', 'moderate', 'severe']);
 
+/**
+ * The pregnancy day checklist (mobile `PREGNANCY_CHECKLIST`): habits and appointments ticked for one
+ * day, stored as `observations.pregnancyChecklist` — a set of these ids, canonical order. Owner
+ * decision 2026-10-04: ticks live on the server with the day's log.
+ */
+export const PREGNANCY_CHECKLIST_IDS = Object.freeze([
+  'prenatal_vitamin',
+  'folic_acid',
+  'water_2l',
+  'walk',
+  'doctor_appt',
+  'ultrasound',
+  'blood_test',
+  'no_alcohol',
+  'no_smoking',
+  'rest',
+]);
+
 export const PAIN_MANAGED_SYMPTOM_IDS = Object.freeze([
   'cramps',
   'headache',
@@ -850,6 +868,21 @@ const DEFINITIONS = [
     enabled: true,
     doctorSummary: DOCTOR_SUMMARY.INCLUDE_IF_NONEMPTY,
   }),
+  // Pregnancy checklist ticks for the day (W2-12b). Everyday habits and appointments, still health
+  // data: HEALTH, never AI, a partner, analytics or the doctor summary; shown in pregnancy only.
+  def('pregnancyChecklist', {
+    category: OBSERVATION_CATEGORIES.LIFESTYLE,
+    valueType: VALUE_TYPES.ENUM,
+    allowedValues: PREGNANCY_CHECKLIST_IDS,
+    storage: STORAGE.OBSERVATIONS,
+    cardinality: CARDINALITY.SET,
+    sensitivity: SENSITIVITY.HEALTH,
+    aiDefaultAllowed: false,
+    partnerDefaultAllowed: false,
+    analyticsAllowed: false,
+    modeVisibility: [PRODUCT_MODES.PREGNANCY],
+    doctorSummary: DOCTOR_SUMMARY.EXCLUDE,
+  }),
   def('missed_pill', {
     category: OBSERVATION_CATEGORIES.MEDICATION,
     valueType: VALUE_TYPES.BOOLEAN,
@@ -1015,6 +1048,20 @@ export function parseEnumValue(value, allowed, { strict = false, field = 'value'
   return null;
 }
 
+/** A set of allowed ids → deduplicated, in the allow-list's order. Anything else is refused (strict) or dropped. */
+export function parseEnumSet(value, allowed, { strict = false, field = 'value' } = {}) {
+  if (!Array.isArray(value)) {
+    if (strict) throw httpError(400, `არასწორი ${field}.`);
+    return [];
+  }
+  const picked = new Set();
+  for (const item of value) {
+    if (typeof item === 'string' && allowed.includes(item)) picked.add(item);
+    else if (strict) throw httpError(400, `არასწორი ${field}.`);
+  }
+  return allowed.filter((id) => picked.has(id));
+}
+
 export function parseObservationBag(raw, { strict = false } = {}) {
   if (raw == null || raw === '') return {};
   if (typeof raw !== 'object' || Array.isArray(raw)) {
@@ -1029,6 +1076,11 @@ export function parseObservationBag(raw, { strict = false } = {}) {
       continue;
     }
     if (value == null || value === '') continue;
+    if (defn.cardinality === CARDINALITY.SET) {
+      const parsed = parseEnumSet(value, defn.allowedValues, { strict, field: key });
+      if (parsed.length) out[key] = parsed;
+      continue;
+    }
     if (defn.valueType === VALUE_TYPES.ENUM) {
       const parsed = parseEnumValue(value, defn.allowedValues, { strict, field: key });
       if (parsed) out[key] = parsed;
@@ -1067,6 +1119,8 @@ export function mergeObservationBag(existing, incoming, { strict = false } = {})
     }
     const parsed = parseObservationBag({ [key]: value }, { strict });
     if (parsed[key] !== undefined) base[key] = parsed[key];
+    // An emptied set (every tick taken off) clears the key, like null.
+    else if (defn.cardinality === CARDINALITY.SET && Array.isArray(value) && value.length === 0) delete base[key];
   }
   return base;
 }

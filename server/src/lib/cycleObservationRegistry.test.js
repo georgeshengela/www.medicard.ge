@@ -334,3 +334,81 @@ describe('recent observation ordering', () => {
     assert.deepEqual(keys, ['bloating', 'anxious']);
   });
 });
+
+describe('pregnancy checklist (observations.pregnancyChecklist, W2-12b)', () => {
+  it('is registered: a HEALTH set of the ten checklist ids, never AI / partner / analytics / doctor summary', async () => {
+    const { PREGNANCY_CHECKLIST_IDS, STORAGE, CARDINALITY, DOCTOR_SUMMARY } = await import('./cycleObservationRegistry.js');
+    const def = getObservationDef('pregnancyChecklist');
+    assert.ok(def);
+    assert.equal(def.storage, STORAGE.OBSERVATIONS);
+    assert.equal(def.cardinality, CARDINALITY.SET);
+    assert.equal(def.sensitivity, SENSITIVITY.HEALTH);
+    assert.deepEqual([...def.allowedValues], [...PREGNANCY_CHECKLIST_IDS]);
+    assert.equal(PREGNANCY_CHECKLIST_IDS.length, 10);
+    assert.equal(observationAiAllowed('pregnancyChecklist'), false);
+    assert.equal(observationPartnerAllowed('pregnancyChecklist'), false);
+    assert.equal(def.analyticsAllowed, false);
+    assert.equal(def.doctorSummary, DOCTOR_SUMMARY.EXCLUDE);
+    assert.deepEqual([...def.modeVisibility], [PRODUCT_MODES.PREGNANCY]);
+  });
+
+  it('accepts allowed ids (deduplicated, canonical order) and rejects unknown ids or a non-list', () => {
+    assert.deepEqual(parseObservationBag({ pregnancyChecklist: ['walk', 'prenatal_vitamin', 'walk'] }, { strict: true }), {
+      pregnancyChecklist: ['prenatal_vitamin', 'walk'],
+    });
+    assert.throws(() => parseObservationBag({ pregnancyChecklist: ['walk', 'tequila'] }, { strict: true }), (err) => err.status === 400);
+    assert.throws(() => parseObservationBag({ pregnancyChecklist: 'walk' }, { strict: true }), (err) => err.status === 400);
+    assert.throws(() => parseObservationBag({ pregnancyChecklist: [1] }, { strict: true }), (err) => err.status === 400);
+    assert.throws(() => parseObservationWrite({ observations: { pregnancyChecklist: ['nope'] } }), (err) => err.status === 400);
+    // Reading a stored row never throws: unknown ids are dropped.
+    assert.deepEqual(parseObservationBag({ pregnancyChecklist: ['rest', 'nope'] }), { pregnancyChecklist: ['rest'] });
+  });
+
+  it('writes merge with the day: set, replace, clear with [] or null; older builds keep the ticks', () => {
+    const set = parseObservationWrite({ observations: { energy: 'low', pregnancyChecklist: ['walk', 'rest'] } }, {});
+    assert.deepEqual(set.observations, { energy: 'low', pregnancyChecklist: ['walk', 'rest'] });
+    const replaced = parseObservationWrite({ observations: { pregnancyChecklist: ['folic_acid'] } }, set);
+    assert.deepEqual(replaced.observations, { energy: 'low', pregnancyChecklist: ['folic_acid'] });
+    const emptied = parseObservationWrite({ observations: { pregnancyChecklist: [] } }, set);
+    assert.deepEqual(emptied.observations, { energy: 'low' });
+    const nulled = parseObservationWrite({ observations: { pregnancyChecklist: null } }, set);
+    assert.deepEqual(nulled.observations, { energy: 'low' });
+    // An older build sends only energy: the stored ticks stay.
+    const older = parseObservationWrite({ observations: { energy: 'high' } }, set);
+    assert.deepEqual(older.observations, { energy: 'high', pregnancyChecklist: ['walk', 'rest'] });
+  });
+
+  it('never reaches the AI line or the partner payload', () => {
+    const log = {
+      date: '2026-08-14',
+      flow: null,
+      symptoms: ['nausea'],
+      moods: [],
+      observations: { pregnancyChecklist: ['prenatal_vitamin', 'doctor_appt'] },
+    };
+    const { line } = serializeCycleLogForAi(log);
+    assert.doesNotMatch(line, /prenatal|doctor_appt|checklist|ვიტამინ/i);
+    const payload = buildPartnerPayload({
+      today: '2026-08-14',
+      permissions: { period: true, cyclePhase: true, fertileWindow: false, symptoms: true },
+      profile: { lastPeriodStart: LMP, avgCycleLength: 28, avgPeriodLength: 5, mode: 'TRACK_PERIOD' },
+      logs: [log],
+      predictions: buildPredictions({ lastPeriodStart: LMP, avgCycleLength: 28, avgPeriodLength: 5 }),
+    });
+    assert.equal(partnerPayloadHasLeak(payload), false);
+    assert.equal(JSON.stringify(payload).includes('prenatal_vitamin'), false);
+    assert.equal(partnerPayloadHasLeak({ ...payload, x: { pregnancyChecklist: ['walk'] } }), true);
+  });
+
+  it('does not change the forecast', () => {
+    const base = bleedLogs();
+    const withTicks = base.map((l, i) => (i === 0 ? { ...l, observations: { pregnancyChecklist: ['walk', 'rest'] } } : l));
+    const opts = { lastPeriodStart: LMP, avgCycleLength: 28, avgPeriodLength: 5, cycleCount: 3 };
+    const predA = buildPredictions({ ...opts, logs: base });
+    const predB = buildPredictions({ ...opts, logs: withTicks });
+    assert.equal(predA.nextPeriodStart, predB.nextPeriodStart);
+    assert.equal(predA.ovulationDate, predB.ovulationDate);
+    assert.deepEqual(predA.fertileWindow, predB.fertileWindow);
+    assert.deepEqual(inferCycleStats(base, 28, 5).periodRanges, inferCycleStats(withTicks, 28, 5).periodRanges);
+  });
+});

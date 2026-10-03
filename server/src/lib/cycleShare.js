@@ -361,6 +361,7 @@ export function partnerPayloadHasLeak(payload) {
     'Authorization',
     'ovulationTest',
     'ovulationMarked',
+    'pregnancyChecklist',
     'pregnancyTest',
     'bbt',
     'cervicalMucus',
