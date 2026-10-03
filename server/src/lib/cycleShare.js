@@ -14,6 +14,7 @@ import {
   CYCLE_SEXUAL_SYMPTOM_KEYS,
   partnerSafeSymptomKeys,
 } from './cycleAiContext.js';
+import { alignPhaseWithForecast } from './cycleForecastHonesty.js';
 
 /** 32 bytes → 64 hex chars. 12-hex legacy codes are rejected. */
 export const SHARE_TOKEN_BYTES = 32;
@@ -217,14 +218,21 @@ export function buildPartnerPayload({ profile, logs, permissions, today = todayI
     cycleLengths: inferred.cycleGaps,
     logs,
     today,
-  });
-  const phase = detectCyclePhase({
-    lastPeriodStart,
-    avgCycleLength: averages.usedCycleLength,
-    avgPeriodLength: averages.usedPeriodLength,
-    today,
     lang,
+    // OPK and her own ovulation mark are private (partner: false) — the partner sees the calendar estimate only.
+    useOvulationSignals: false,
   });
+  const phase = alignPhaseWithForecast(
+    detectCyclePhase({
+      lastPeriodStart,
+      avgCycleLength: averages.usedCycleLength,
+      avgPeriodLength: averages.usedPeriodLength,
+      today,
+      lang,
+    }),
+    predictions,
+    today,
+  );
 
   const payload = {
     estimated: true,
@@ -255,6 +263,8 @@ export function buildPartnerPayload({ profile, logs, permissions, today = todayI
       start: predictions.fertileWindow?.start ?? null,
       end: predictions.fertileWindow?.end ?? null,
       ovulationDate: predictions.ovulationDate,
+      // A 3-day band, never one date (null until 3 completed cycles).
+      ovulationRange: predictions.ovulationRange ?? null,
       estimated: true,
     };
   }
@@ -334,6 +344,7 @@ export function partnerPayloadHasLeak(payload) {
     'email',
     'Authorization',
     'ovulationTest',
+    'ovulationMarked',
     'pregnancyTest',
     'bbt',
     'cervicalMucus',

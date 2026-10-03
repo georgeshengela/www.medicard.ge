@@ -87,7 +87,16 @@ describe('golden B — regular 30-day', () => {
       cycleCount: inferred.cycleCount,
     });
     assert.equal(pred.nextPeriodStart, '2025-04-01');
-    assert.equal(pred.ovulationDate, '2025-03-18');
+    // Two completed cycles: the 3-cycle gate keeps ovulation unannounced (brief §9 item 13).
+    assert.equal(pred.ovulationDate, null);
+    assert.equal(pred.fertility.status, 'LEARNING');
+    const ready = buildPredictions({
+      lastPeriodStart: inferred.lastPeriodStart,
+      avgCycleLength: inferred.inferredCycleLength,
+      avgPeriodLength: inferred.avgPeriodLength,
+      cycleCount: 3,
+    });
+    assert.equal(ready.ovulationDate, '2025-03-18');
   });
 });
 

@@ -245,8 +245,8 @@ describe('Phase 42 prediction / late / snapshot / AI stripping', () => {
       lastPeriodStart: '2026-06-26',
       avgCycleLength: 28,
       avgPeriodLength: 5,
-      cycleCount: 2,
-      cycleLengths: [28, 28],
+      cycleCount: 3,
+      cycleLengths: [28, 28, 28],
     });
     const ovulation = addDays('2026-06-26', 28 - 14);
     assert.equal(predictions.ovulationDate, ovulation);

@@ -40,6 +40,19 @@ import {
 import { buildPmsByDaysBefore, historicalAnalyticsForAi } from './cycleHistoryAnalytics.js';
 import { segmentHistoricalCycles } from './cycleHistory.js';
 import { isCycleAiContextSupported, profileModeForAiPrompt } from './cycleModes.js';
+import {
+  FERTILITY_STATUS,
+  LUTEAL_PHASE_DAYS,
+  OVULATION_SOURCE,
+  alignPhaseWithForecast,
+  cycleOvulationSignal,
+  fertileWindowAround,
+  fertilityGate,
+  hideFertilePhase,
+  nextPeriodRange,
+  ovulationBand,
+  phaseForMarkedDay,
+} from './cycleForecastHonesty.js';
 
 export { emptyCycleAiCache };
 export { buildDoctorSummary, buildCycleDoctorSummaryData } from './cycleDoctorSummary.js';
@@ -320,7 +333,10 @@ export function predictionConfidence({
 
 /**
  * Build predictions from last period start + averages.
- * Fertile window ≈ ovulation −5 … ovulation +1; ovulation ≈ cycleLength − 14.
+ * Fertile window ≈ ovulation −5 … ovulation +1; ovulation ≈ cycleLength − 14, drawn as a 3-day band.
+ * Forecast honesty (cycleForecastHonesty.js): fertile days and ovulation only after 3 completed cycles
+ * (a wide window while trying to conceive), her OPK / manual mark centres this cycle's band, and a
+ * variable history turns the next period into a window (`nextPeriodRange`).
  * Forecast object is always estimated. Logs must overlay predicted:false separately.
  */
 export function buildPredictions({
@@ -336,14 +352,22 @@ export function buildPredictions({
   today = null,
   /** Language of calendar `phaseKa` labels ('ka' default). */
   lang = 'ka',
+  /** Profile mode: TRY_TO_CONCEIVE gets the wide window before the 3-cycle gate opens. */
+  mode = null,
+  /** Her OPK / manual ovulation mark may centre this cycle's band. Off for the partner view (private signals). */
+  useOvulationSignals = true,
 }) {
   const confidence = predictionConfidence({ cycleCount, isIrregular, cycleLengths });
+  const gate = fertilityGate({ cycleCount, mode });
   if (!lastPeriodStart) {
     return {
       nextPeriodStart: null,
       nextPeriodEnd: null,
+      nextPeriodRange: null,
       ovulationDate: null,
+      ovulationRange: null,
       fertileWindow: null,
+      fertility: { ...gate, window: null, ovulationSource: null },
       phases: [],
       calendar: {},
       confidence,
@@ -353,24 +377,39 @@ export function buildPredictions({
 
   const calendar = {};
   const phases = [];
+  /** The engine's own ovulation centre per projected cycle, also when it is not shown (phase words). */
+  const centers = [];
+  const signal = useOvulationSignals
+    ? cycleOvulationSignal(logs, { from: lastPeriodStart, to: today || null })
+    : null;
   let start = lastPeriodStart;
 
   for (let cycle = 0; cycle < 4; cycle += 1) {
     const periodEnd = addDays(start, avgPeriodLength - 1);
-    const ovulation = addDays(start, avgCycleLength - 14);
-    // Short cycles: never paint the fertile window over the projected period days.
-    const rawFertileStart = addDays(ovulation, -5);
-    const fertileEnd = addDays(ovulation, 1);
-    const clampedStart = rawFertileStart <= periodEnd ? addDays(periodEnd, 1) : rawFertileStart;
-    const fertileStart = clampedStart > fertileEnd ? fertileEnd : clampedStart;
     const nextStart = addDays(start, avgCycleLength);
+    const calendarOvulation = addDays(start, avgCycleLength - LUTEAL_PHASE_DAYS);
+    const own = cycle === 0 && signal && signal.date > periodEnd && signal.date < nextStart ? signal : null;
+    const ovulation = own ? own.date : calendarOvulation;
+    // READY (or her own signal) → usual window + 3-day band; WIDE → 14 days, no ovulation day; LEARNING → nothing.
+    const kind = own || gate.status === FERTILITY_STATUS.READY
+      ? 'standard'
+      : gate.status === FERTILITY_STATUS.WIDE
+        ? 'wide'
+        : null;
+    const window = kind ? fertileWindowAround(ovulation, { periodEnd, nextStart, wide: kind === 'wide' }) : null;
+    const band = kind === 'standard' ? ovulationBand(ovulation) : null;
+    centers.push(ovulation);
 
     phases.push({
       periodStart: start,
       periodEnd,
-      ovulation,
-      fertileStart,
-      fertileEnd,
+      ovulation: band ? ovulation : null,
+      ovulationStart: band ? band.start : null,
+      ovulationEnd: band ? band.end : null,
+      ovulationSource: band ? (own ? own.source : OVULATION_SOURCE.CALENDAR) : null,
+      fertileStart: window ? window.start : null,
+      fertileEnd: window ? window.end : null,
+      fertileWindowKind: kind,
       nextPeriodStart: nextStart,
     });
 
@@ -383,16 +422,25 @@ export function buildPredictions({
         estimated: true,
       };
     }
-    for (let i = 0; i <= daysBetween(fertileStart, fertileEnd); i += 1) {
-      const key = addDays(fertileStart, i);
-      calendar[key] = { ...(calendar[key] || {}), fertile: true, estimated: true };
+    if (window) {
+      for (let i = 0; i <= daysBetween(window.start, window.end); i += 1) {
+        const key = addDays(window.start, i);
+        calendar[key] = { ...(calendar[key] || {}), fertile: true, estimated: true };
+      }
     }
-    calendar[ovulation] = {
-      ...(calendar[ovulation] || {}),
-      ovulation: true,
-      fertile: true,
-      estimated: true,
-    };
+    if (band) {
+      for (let i = 0; i <= daysBetween(band.start, band.end); i += 1) {
+        const key = addDays(band.start, i);
+        // The band never covers a projected period day (very short cycles).
+        if (calendar[key]?.period) continue;
+        calendar[key] = {
+          ...(calendar[key] || {}),
+          ovulation: true,
+          fertile: true,
+          estimated: true,
+        };
+      }
+    }
 
     start = nextStart;
     if (daysBetween(lastPeriodStart, start) > horizonDays) break;
@@ -401,39 +449,92 @@ export function buildPredictions({
   const upcoming = phases.find((p) => p.periodStart >= lastPeriodStart) || phases[0];
   const next = phases.find((p) => p.periodStart > lastPeriodStart) || phases[1] || upcoming;
 
+  // Variable cycles: the next period is a window, drawn as expected days over all of it.
+  const range = next?.periodStart
+    ? nextPeriodRange({
+        nextPeriodStart: next.periodStart,
+        isIrregular,
+        cycleLengths: Array.isArray(cycleLengths) ? cycleLengths : [],
+        usedCycleLength: avgCycleLength,
+      })
+    : null;
+  if (range) {
+    for (let key = range.from; key <= range.to; key = addDays(key, 1)) {
+      const prev = calendar[key] || {};
+      if (prev.period || prev.fertile || prev.ovulation) continue;
+      calendar[key] = { ...prev, period: true, predicted: true, estimated: true, periodRange: true };
+    }
+  }
+
   let marked = calendar;
   if (logs.length) marked = overlayLogsOnCalendar(marked, logs);
-  // Late: the projected start passed and no bleed was logged (a logged bleed would have moved the LMP).
-  // Everything projected from that missed start is no longer a forecast — past days must not keep
-  // painting "expected period", and later cycles must not be built on a period that never came.
-  const late = Boolean(today && next?.periodStart && today > next.periodStart);
+  // Late: the projected start (the window's last day for a variable cycle) passed and no bleed was
+  // logged (a logged bleed would have moved the LMP). Everything projected from that missed start is no
+  // longer a forecast — past days must not keep painting "expected period", and later cycles must not
+  // be built on a period that never came.
+  const lateAfter = range ? range.to : next?.periodStart;
+  const late = Boolean(today && lateAfter && today > lateAfter);
+  // Inside an open window (after the single estimate, before its end) today still belongs to this cycle.
+  const overdue = Boolean(today && next?.periodStart && today > next.periodStart);
   if (late) {
+    const stripFrom = range && range.from < next.periodStart ? range.from : next.periodStart;
     marked = { ...marked };
     for (const key of Object.keys(marked)) {
-      if (key < next.periodStart || marked[key].predicted === false) continue;
-      const { period, predicted, fertile, ovulation, estimated, ...rest } = marked[key];
+      if (key < stripFrom || marked[key].predicted === false) continue;
+      const { period, predicted, fertile, ovulation, estimated, periodRange, ...rest } = marked[key];
       if (Object.keys(rest).length) marked[key] = rest;
       else delete marked[key];
     }
   }
-  marked = stampCalendarPhases(marked, {
-    lastPeriodStart,
-    avgCycleLength,
-    avgPeriodLength,
-    fromKey: lastPeriodStart,
+  const stampOpts = { lastPeriodStart, avgCycleLength, avgPeriodLength, lang };
+  if (late) {
     // A late cycle is stamped as one continuing cycle up to today (no invented next cycles).
-    toKey: late ? today : addDays(lastPeriodStart, horizonDays),
-    wrap: !late,
-    lang,
+    marked = stampCalendarPhases(marked, { ...stampOpts, fromKey: lastPeriodStart, toKey: today, wrap: false });
+  } else if (overdue) {
+    marked = stampCalendarPhases(marked, { ...stampOpts, fromKey: lastPeriodStart, toKey: today, wrap: false });
+    marked = stampCalendarPhases(marked, {
+      ...stampOpts,
+      fromKey: addDays(today, 1),
+      toKey: addDays(lastPeriodStart, horizonDays),
+      wrap: true,
+    });
+  } else {
+    marked = stampCalendarPhases(marked, {
+      ...stampOpts,
+      fromKey: lastPeriodStart,
+      toKey: addDays(lastPeriodStart, horizonDays),
+      wrap: true,
+    });
+  }
+
+  // Phase words follow the marks: a 3-day ovulation band reads „ოვულაცია“, a gated cycle never says
+  // „ნაყოფიერი ფანჯარა“ (cycleForecastHonesty.phaseForMarkedDay).
+  phases.forEach((p, index) => {
+    if (late && index > 0) return;
+    for (let key = p.periodStart; key < p.nextPeriodStart; key = addDays(key, 1)) {
+      if (overdue && index > 0 && key <= today) continue;
+      const mark = marked[key];
+      if (!mark?.phase) continue;
+      const word = phaseForMarkedDay({ key, phase: mark.phase, mark, ovulationCenter: centers[index], lang });
+      if (word && word.phase !== mark.phase) marked[key] = { ...mark, ...word };
+    }
   });
 
+  const shownWindow = upcoming?.fertileStart && upcoming?.fertileEnd
+    ? { start: upcoming.fertileStart, end: upcoming.fertileEnd }
+    : null;
   return {
     nextPeriodStart: next?.periodStart ?? null,
     nextPeriodEnd: next?.periodEnd ?? null,
+    nextPeriodRange: range ? { from: range.from, to: range.to } : null,
     ovulationDate: upcoming?.ovulation ?? null,
-    fertileWindow: upcoming
-      ? { start: upcoming.fertileStart, end: upcoming.fertileEnd }
-      : null,
+    ovulationRange: upcoming?.ovulation ? { start: upcoming.ovulationStart, end: upcoming.ovulationEnd } : null,
+    fertileWindow: shownWindow,
+    fertility: {
+      ...gate,
+      window: upcoming?.fertileWindowKind ?? null,
+      ovulationSource: upcoming?.ovulationSource ?? null,
+    },
     phases,
     calendar: marked,
     confidence,
@@ -451,12 +552,15 @@ export function stampCalendarPhases(calendar, {
   toKey,
   wrap = true,
   lang = 'ka',
+  /** `predictions.fertility`: unless READY, history days never read „ნაყოფიერი“ / „ოვულაცია“. */
+  fertility = null,
 }) {
   if (!lastPeriodStart || !fromKey || !toKey) return calendar;
   const next = { ...calendar };
+  const hide = Boolean(fertility && fertility.status !== FERTILITY_STATUS.READY);
   let key = fromKey;
   for (let i = 0; i < 500 && key <= toKey; i += 1) {
-    const info = detectCyclePhase({
+    const raw = detectCyclePhase({
       lastPeriodStart,
       avgCycleLength,
       avgPeriodLength,
@@ -464,6 +568,7 @@ export function stampCalendarPhases(calendar, {
       wrap,
       lang,
     });
+    const info = hide ? hideFertilePhase(raw, { avgCycleLength, lang }) : raw;
     const prev = next[key] || {};
     const loggedActual = prev.predicted === false;
     next[key] = {
@@ -680,13 +785,18 @@ export function detectCyclePhase({
 /** Instant Flo-like tips (no AI) — shown while / as fallback to EvidenceMD. */
 export function buildLocalInsights({ profile, logs, predictions, pregnancy, averages, today, contraception, lang = 'ka' }) {
   const en = lang === 'en';
-  const phase = detectCyclePhase({
-    lastPeriodStart: toDateKey(profile.lastPeriodStart),
-    avgCycleLength: averages?.usedCycleLength ?? profile.avgCycleLength,
-    avgPeriodLength: averages?.usedPeriodLength ?? profile.avgPeriodLength,
-    today: today || todayInTimeZone(),
-    lang,
-  });
+  const todayKey = today || todayInTimeZone();
+  const phase = alignPhaseWithForecast(
+    detectCyclePhase({
+      lastPeriodStart: toDateKey(profile.lastPeriodStart),
+      avgCycleLength: averages?.usedCycleLength ?? profile.avgCycleLength,
+      avgPeriodLength: averages?.usedPeriodLength ?? profile.avgPeriodLength,
+      today: todayKey,
+      lang,
+    }),
+    predictions,
+    todayKey,
+  );
   const flags = cycleHonestyFlags({
     confidence: predictions?.confidence,
     isIrregular: profile.isIrregular,
@@ -925,6 +1035,18 @@ export function detectLatePeriod({
   const predicted = predictions?.nextPeriodStart || null;
   const irregular = Boolean(profile?.isIrregular);
 
+  // A variable cycle's period is expected over a window: nothing is late before the window has ended.
+  const range = predictions?.nextPeriodRange;
+  if (range?.to && todayKey <= range.to) {
+    return {
+      status: 'on_time',
+      reason: 'within_range',
+      daysPastPredicted: predicted ? daysBetween(predicted, todayKey) : null,
+      graceDays: null,
+      notifyEligible: false,
+    };
+  }
+
   if (cycleCount >= 2 && predicted && !irregular && confidence !== 'low') {
     const grace = confidence === 'high' ? LATE_GRACE_HIGH_DAYS : LATE_GRACE_MEDIUM_DAYS;
     const daysPast = daysBetween(predicted, todayKey);
@@ -1093,12 +1215,17 @@ export function buildCycleWellnessContext({
 
 export function buildCycleAiUserPrompt({ profile, logs, predictions, pregnancy, user, averages, today, contraception, analytics, forecastEligibility }) {
   if (!isCycleAiContextSupported(profile?.mode)) return '';
-  const phase = detectCyclePhase({
-    lastPeriodStart: toDateKey(profile.lastPeriodStart),
-    avgCycleLength: averages?.usedCycleLength ?? profile.avgCycleLength,
-    avgPeriodLength: averages?.usedPeriodLength ?? profile.avgPeriodLength,
-    today: today || todayInTimeZone(),
-  });
+  const todayKey = today || todayInTimeZone();
+  const phase = alignPhaseWithForecast(
+    detectCyclePhase({
+      lastPeriodStart: toDateKey(profile.lastPeriodStart),
+      avgCycleLength: averages?.usedCycleLength ?? profile.avgCycleLength,
+      avgPeriodLength: averages?.usedPeriodLength ?? profile.avgPeriodLength,
+      today: todayKey,
+    }),
+    predictions,
+    todayKey,
+  );
   const flags = cycleHonestyFlags({
     confidence: predictions?.confidence,
     isIrregular: profile.isIrregular,
@@ -1140,7 +1267,11 @@ export function buildCycleAiUserPrompt({ profile, logs, predictions, pregnancy, 
       ? null
       : limited
         ? 'ოვულაცია / ნაყოფიერი ფანჯარა: ნუ ხაზს უსვამ — კონტრაცეფციის კონტექსტში შეიძლება შეცდომაში შემყვანი იყოს.'
-        : `სავარაუდო ოვულაცია: ${formatDateKa(predictions?.ovulationDate)}`,
+        : predictions?.ovulationRange
+          ? `სავარაუდო ოვულაცია: ${formatDateKa(predictions.ovulationRange.start)} – ${formatDateKa(predictions.ovulationRange.end)} (3 დღიანი ზოლი)`
+          : predictions?.fertility && predictions.fertility.status !== 'READY'
+            ? `სავარაუდო ოვულაცია: არ ფასდება — ${predictions.fertility.completedCycles}/${predictions.fertility.requiredCycles} სრული ციკლი აღრიცხულია`
+            : `სავარაუდო ოვულაცია: ${formatDateKa(predictions?.ovulationDate)}`,
     forecastGated
       ? null
       : limited

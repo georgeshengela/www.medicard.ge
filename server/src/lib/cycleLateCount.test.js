@@ -68,12 +68,12 @@ describe('last period start: manual vs logged (2026-09-29 audit)', () => {
 
 describe('short cycles (2026-09-29 audit)', () => {
   it('the fertile window never overlaps the projected period', () => {
-    const p = buildPredictions({ lastPeriodStart: '2026-09-01', avgCycleLength: 21, avgPeriodLength: 7 });
+    const p = buildPredictions({ lastPeriodStart: '2026-09-01', avgCycleLength: 21, avgPeriodLength: 7, cycleCount: 3 });
     assert.equal(p.fertileWindow.start, '2026-09-08');
     assert.equal(p.calendar['2026-09-04']?.fertile, undefined);
   });
   it('a 28-day cycle keeps the classic ovulation −5 … +1 window', () => {
-    const p = buildPredictions({ lastPeriodStart: '2026-09-01', avgCycleLength: 28, avgPeriodLength: 5 });
+    const p = buildPredictions({ lastPeriodStart: '2026-09-01', avgCycleLength: 28, avgPeriodLength: 5, cycleCount: 3 });
     assert.deepEqual(p.fertileWindow, { start: '2026-09-10', end: '2026-09-16' });
   });
 });

@@ -46,6 +46,7 @@ import {
   isPeriodFlow,
 } from '../lib/cycle.js';
 import { isCycleAiContextSupported } from '../lib/cycleModes.js';
+import { alignPhaseWithForecast } from '../lib/cycleForecastHonesty.js';
 import { clientTimezoneFromReq, resolveCycleClock } from '../lib/cycleCivilDate.js';
 import {
   CYCLE_DISPLAY_LOG_LIMIT,
@@ -400,6 +401,7 @@ async function loadBundle(userId, clock = null, lang = 'ka') {
     logs: shapedLogs,
     today,
     lang,
+    mode: profile.mode,
   });
   const contraception = interpretContraception(
     {
@@ -420,6 +422,7 @@ async function loadBundle(userId, clock = null, lang = 'ka') {
       fromKey: historyStart,
       toKey: lastPeriodStart,
       lang,
+      fertility: rawPredictions.fertility,
     });
   }
   const predictions = applyForecastEligibilityToPredictions(
@@ -429,13 +432,17 @@ async function loadBundle(userId, clock = null, lang = 'ka') {
 
   const todayPhase = applyForecastEligibilityToTodayPhase(
     presentTodayPhase(
-      detectCyclePhase({
-        lastPeriodStart,
-        avgCycleLength: averages.usedCycleLength,
-        avgPeriodLength: averages.usedPeriodLength,
+      alignPhaseWithForecast(
+        detectCyclePhase({
+          lastPeriodStart,
+          avgCycleLength: averages.usedCycleLength,
+          avgPeriodLength: averages.usedPeriodLength,
+          today,
+          lang,
+        }),
+        rawPredictions,
         today,
-        lang,
-      }),
+      ),
       contraception,
       lang,
     ),

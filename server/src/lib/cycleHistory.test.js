@@ -287,7 +287,8 @@ describe('prediction engine regression', () => {
       lastPeriodStart: inferred.lastPeriodStart,
       avgCycleLength: 28,
       avgPeriodLength: 5,
-      cycleCount: inferred.cycleCount,
+      // Arithmetic regression: the 3-cycle fertility gate is opened explicitly (two gaps here).
+      cycleCount: Math.max(inferred.cycleCount, 3),
       logs,
     });
     assert.deepEqual(inferred.periodStarts, ['2026-01-01', '2026-01-29', '2026-02-26']);
@@ -304,7 +305,7 @@ describe('prediction engine regression', () => {
       lastPeriodStart: inferred.lastPeriodStart,
       avgCycleLength: 28,
       avgPeriodLength: 5,
-      cycleCount: inferred.cycleCount,
+      cycleCount: Math.max(inferred.cycleCount, 3),
       logs,
     });
     assert.deepEqual(again.nextPeriodStart, predictions.nextPeriodStart);

@@ -71,15 +71,33 @@ export function ttcWindowBody(predictions, flags, lang = 'ka') {
   const en = isEn(lang);
   const start = predictions?.fertileWindow?.start ? formatCycleDate(predictions.fertileWindow.start, lang) : '—';
   const end = predictions?.fertileWindow?.end ? formatCycleDate(predictions.fertileWindow.end, lang) : '—';
-  const ovulation = predictions?.ovulationDate ? formatCycleDate(predictions.ovulationDate, lang) : '—';
+  // Ovulation is a 3-day band (brief §8.2 item 5), never one date.
+  const band = predictions?.ovulationRange;
+  const ovulation = band?.start && band?.end
+    ? `${formatCycleDate(band.start, lang)} – ${formatCycleDate(band.end, lang)}`
+    : predictions?.ovulationDate
+      ? formatCycleDate(predictions.ovulationDate, lang)
+      : '—';
+  const source = predictions?.fertility?.ovulationSource;
+  const sourceNote = source === 'manual'
+    ? (en ? ' (from your own mark)' : ' (შენი აღნიშვნით)')
+    : source === 'opk'
+      ? (en ? ' (based on your OPK)' : ' (OPK-ის მიხედვით)')
+      : '';
+  if (predictions?.fertility?.window === 'wide') {
+    // Trying to conceive before 3 completed cycles: one wide window, no ovulation day (brief §9 item 13).
+    return en
+      ? `Estimated fertile days: around ${start} – ${end}. A wide range until we have counted 3 cycles — it narrows as you log. This is a calendar estimate, not confirmed fertility.`
+      : `სავარაუდო ნაყოფიერი დღეები დაახლოებით ${start} – ${end}. ფართო დიაპაზონი, სანამ 3 ციკლს დავითვლით — აღრიცხვასთან ერთად დავიწროვდება. ეს კალენდარული შეფასებაა, არა დადგენილი ნაყოფიერება.`;
+  }
   if (flags.pcos || flags.cautious) {
     return en
-      ? `Estimated fertile window: around ${start} – ${end}. The ovulation estimate (${ovulation}) is less reliable. This does not confirm ovulation and is not contraception.`
-      : `სავარაუდო ნაყოფიერი ფანჯარა დაახლოებით ${start} – ${end}. ოვულაციის შეფასება (${ovulation}) ნაკლებად საიმედოა. ეს არ ადასტურებს ოვულაციას და არ არის კონტრაცეფცია.`;
+      ? `Estimated fertile window: around ${start} – ${end}. The ovulation estimate (${ovulation}${sourceNote}) is less reliable. This does not confirm ovulation and is not contraception.`
+      : `სავარაუდო ნაყოფიერი ფანჯარა დაახლოებით ${start} – ${end}. ოვულაციის შეფასება (${ovulation}${sourceNote}) ნაკლებად საიმედოა. ეს არ ადასტურებს ოვულაციას და არ არის კონტრაცეფცია.`;
   }
   return en
-    ? `Estimated fertile window: around ${start} – ${end}. Likely ovulation: ${ovulation}. This is a calendar estimate, not confirmed fertility.`
-    : `სავარაუდო ნაყოფიერი ფანჯარა დაახლოებით ${start} – ${end}. სავარაუდო ოვულაცია: ${ovulation}. ეს კალენდარული შეფასებაა, არა დადგენილი ნაყოფიერება.`;
+    ? `Estimated fertile window: around ${start} – ${end}. Likely ovulation: ${ovulation}${sourceNote}. This is a calendar estimate, not confirmed fertility.`
+    : `სავარაუდო ნაყოფიერი ფანჯარა დაახლოებით ${start} – ${end}. სავარაუდო ოვულაცია: ${ovulation}${sourceNote}. ეს კალენდარული შეფასებაა, არა დადგენილი ნაყოფიერება.`;
 }
 
 export function latePeriodAlertKa(lang = 'ka') {

@@ -749,6 +749,22 @@ const DEFINITIONS = [
     uiGroup: UI_GROUPS.FERTILITY,
     doctorSummary: DOCTOR_SUMMARY.REQUIRES_EXPLICIT_USER_OPT_IN,
   }),
+  // „ოვულაცია ამ დღეს იყო“ (day sheet, track / TTC): her own mark centres that cycle's ovulation band
+  // (cycleForecastHonesty.cycleOvulationSignal) and wins over OPK. Private like OPK and mucus, and
+  // never sent to AI, a partner or analytics.
+  def('ovulationMarked', {
+    category: OBSERVATION_CATEGORIES.FERTILITY,
+    valueType: VALUE_TYPES.BOOLEAN,
+    storage: STORAGE.OBSERVATIONS,
+    cardinality: CARDINALITY.ONE,
+    sensitivity: SENSITIVITY.SENSITIVE,
+    aiDefaultAllowed: false,
+    partnerDefaultAllowed: false,
+    analyticsAllowed: false,
+    uiGroup: UI_GROUPS.FERTILITY,
+    modeVisibility: [PRODUCT_MODES.CYCLE_TRACKING, PRODUCT_MODES.TRYING_TO_CONCEIVE],
+    doctorSummary: DOCTOR_SUMMARY.EXCLUDE,
+  }),
   def('bbt', {
     category: OBSERVATION_CATEGORIES.FERTILITY,
     valueType: VALUE_TYPES.MEASUREMENT,

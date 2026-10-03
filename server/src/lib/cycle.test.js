@@ -184,6 +184,7 @@ describe('buildPredictions', () => {
       lastPeriodStart: '2026-03-01',
       avgCycleLength: 28,
       avgPeriodLength: 5,
+      cycleCount: 3,
     });
     assert.equal(pred.calendar['2026-03-01'].period, true);
     assert.equal(pred.calendar['2026-03-01'].predicted, true);
@@ -208,6 +209,7 @@ describe('buildPredictions', () => {
       lastPeriodStart: '2026-03-01',
       avgCycleLength: 32,
       avgPeriodLength: 5,
+      cycleCount: 3,
     });
     assert.equal(pred.nextPeriodStart, '2026-04-02');
     assert.equal(pred.ovulationDate, '2026-03-19');
@@ -532,6 +534,7 @@ describe('canonical predictions', () => {
       lastPeriodStart: '2026-03-01',
       avgCycleLength: 28,
       avgPeriodLength: 5,
+      cycleCount: 3,
     });
     assert.equal(pred.calendar['2026-03-01'].cycleDay, 1);
     assert.equal(pred.calendar['2026-03-01'].phase, 'period');
