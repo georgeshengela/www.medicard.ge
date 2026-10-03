@@ -6,11 +6,12 @@
  */
 import type { CycleBundle } from '@/lib/api';
 import { loadCycleView, type CycleView } from '@/lib/cycleOffline';
+import { CYCLE_QUERY_KEYS } from '@/lib/cycleQueryKeys';
 import { localAccountId } from '@/lib/localAccount';
 import { accountKey, FRESH, queryClient } from '@/lib/queryClient';
 import { useAccountQuery } from '@/hooks/useAccountQuery';
 
-export const CYCLE_VIEW_KEY = ['cycle', 'view'] as const;
+export const CYCLE_VIEW_KEY = CYCLE_QUERY_KEYS.view;
 
 /** Same data for every reader of CYCLE_VIEW_KEY (Home card, cycle screens). */
 export function fetchCycleView(userId: string): Promise<CycleView> {

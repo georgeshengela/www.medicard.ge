@@ -1,5 +1,5 @@
 import { CyclePressable as Pressable } from '@/components/cycle/CyclePressable';
-import React, { useEffect, useLayoutEffect, useState } from 'react';
+import React, { useLayoutEffect, useState } from 'react';
 import { Platform, ScrollView, Share, Switch, Text, View } from 'react-native';
 import { useNavigation, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -29,7 +29,7 @@ import {
   formatDoctorGestationalAge,
   formatDoctorPregnancyReference,
 } from '@/lib/cycleDoctorSummaryI18n';
-import { loadCycleView } from '@/lib/cycleOffline';
+import { useCycleView } from '@/lib/cycleViewCache';
 import { cycleHistoryPresentation } from '@/lib/cycleHistoryCopy';
 import { buildCycleReportHtmlFromSummary } from '@/lib/cycleReport';
 import { mediPrefillRoute } from '@/lib/mediHandoff';
@@ -43,10 +43,7 @@ export default function CycleSummary() {
   const navigation = useNavigation();
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const [bundle, setBundle] = useState<CycleBundle | null>(null);
-  const [pendingCount, setPendingCount] = useState(0);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [actionError, setError] = useState<string | null>(null);
   const [pdfBusy, setPdfBusy] = useState(false);
   const [includeFertility, setIncludeFertility] = useState(false);
   const [includeSexual, setIncludeSexual] = useState(false);
@@ -72,23 +69,23 @@ export default function CycleSummary() {
     });
   }, [navigation, c, copy.title, reportLocale, reportTitleFont]);
 
+  // Shared cached view (['cycle','view'], offline overlay included): the summary is part of the bundle,
+  // so a revisit shows it at once and a cycle write anywhere refreshes it (invalidates 'cycle').
+  const viewQuery = useCycleView(user?.id);
+  const bundle: CycleBundle | null = viewQuery.data?.display ?? null;
+  const pendingCount = viewQuery.data?.pendingCount ?? 0;
+  const loading = Boolean(user?.id) && viewQuery.data === undefined && !viewQuery.isError;
+  const loadError =
+    !viewQuery.data && viewQuery.error
+      ? viewQuery.error instanceof ApiError
+        ? viewQuery.error.message
+        : ka.common.error
+      : null;
+  const error = actionError ?? loadError;
+  const { refetch } = viewQuery;
   const reload = () => {
-    if (!user?.id) {
-      setLoading(false);
-      return;
-    }
-    loadCycleView(user.id)
-      .then((view) => {
-        setBundle(view.display);
-        setPendingCount(view.pendingCount);
-      })
-      .catch((err) => setError(err instanceof ApiError ? err.message : ka.common.error))
-      .finally(() => setLoading(false));
+    void refetch();
   };
-
-  useEffect(() => {
-    reload();
-  }, [user?.id]);
 
   if (loading) return <CycleLoading />;
 

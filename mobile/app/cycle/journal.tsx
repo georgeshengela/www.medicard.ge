@@ -1,5 +1,5 @@
 import { CyclePressable as Pressable } from '@/components/cycle/CyclePressable';
-import React, { useEffect, useLayoutEffect, useMemo, useState } from 'react';
+import React, { useLayoutEffect, useMemo, useState } from 'react';
 import { ScrollView, Text, TextInput, View } from 'react-native';
 import { useNavigation, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -7,7 +7,7 @@ import { CycleAtmosphere, CycleLoading, cycleNavHeader, formatCycleDateKa } from
 import { ka } from '@/i18n/ka';
 import { tx } from '@/i18n/locale';
 import { ApiError, type CycleBundle } from '@/lib/api';
-import { loadCycleView } from '@/lib/cycleOffline';
+import { useCycleView } from '@/lib/cycleViewCache';
 import { useAuth } from '@/store/AuthContext';
 import { useCycleColors } from '@/theme/cycle';
 import { ChatFormScroll, ChatScreenShell } from '@/components/chat/ChatScreenShell';
@@ -23,30 +23,23 @@ function CycleJournalContent() {
   const navigation = useNavigation();
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const [bundle, setBundle] = useState<CycleBundle | null>(null);
   const [query, setQuery] = useState('');
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [retry, setRetry] = useState(0);
 
   useLayoutEffect(() => {
     navigation.setOptions(cycleNavHeader(c, ka.cycle.journalTitle));
   }, [navigation, c]);
 
-  useEffect(() => {
-    let active = true;
-    setLoading(true);
-    setError(null);
-    if (!user?.id) {
-      setLoading(false);
-      return;
-    }
-    loadCycleView(user.id)
-      .then((view) => { if (active) setBundle(view.display); })
-      .catch((err) => { if (active) setError(err instanceof ApiError ? err.message : ka.common.error); })
-      .finally(() => { if (active) setLoading(false); });
-    return () => { active = false; };
-  }, [user?.id, retry]);
+  // Shared cached view (['cycle','view'], offline overlay included): notes show at once on a revisit;
+  // a note saved in /cycle/log invalidates 'cycle', so the list follows without a manual reload.
+  const viewQuery = useCycleView(user?.id);
+  const bundle: CycleBundle | null = viewQuery.data?.display ?? null;
+  const loading = Boolean(user?.id) && viewQuery.data === undefined && !viewQuery.isError;
+  const error =
+    !viewQuery.data && viewQuery.error
+      ? viewQuery.error instanceof ApiError
+        ? viewQuery.error.message
+        : ka.common.error
+      : null;
 
   const entries = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -87,7 +80,7 @@ function CycleJournalContent() {
         />
         {error ? <View style={{ marginBottom: 12 }}>
           <Text accessibilityRole="alert" style={{ color: c.danger }}>{error}</Text>
-          <Pressable accessibilityRole="button" onPress={() => setRetry((n) => n + 1)} style={{ minHeight: 44, justifyContent: 'center' }}>
+          <Pressable accessibilityRole="button" onPress={() => void viewQuery.refetch()} style={{ minHeight: 44, justifyContent: 'center' }}>
             <Text style={{ color: c.brand }}>{ka.common.retry}</Text>
           </Pressable>
         </View> : null}

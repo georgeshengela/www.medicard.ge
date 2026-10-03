@@ -115,7 +115,6 @@ export function CycleJournalPane({
         {history.showPredictionHistory ? (
           <CyclePredictionHistoryCard
             currentEstimateActive={caps.showFertileEstimates}
-            refreshKey={(bundle.inferred?.periodStarts || []).join('|')}
           />
         ) : null}
       </View>
@@ -230,7 +229,6 @@ export function CycleJournalPane({
       {history.showPredictionHistory ? (
         <CyclePredictionHistoryCard
           currentEstimateActive={caps.showFertileEstimates}
-          refreshKey={(bundle.inferred?.periodStarts || []).join('|')}
         />
       ) : null}
 
@@ -242,13 +240,6 @@ export function CycleJournalPane({
 
       <CycleSection title={ka.cycle.trendsTitle} delay={80}>
         <CycleObservationTrends
-          refreshKey={(bundle.logs || [])
-            .slice(-40)
-            .map(
-              (l) =>
-                `${l.date}:${(l.symptoms || []).join(',')}:${l.energy || l.observations?.energy || ''}:${(l.painEntries || []).map((p) => p.type).join(',')}`,
-            )
-            .join('|')}
           excludePeriodAssociation={caps.showPregnancyOverview || caps.showPostpartumTracking}
           showEmpty={
             (canonical?.analytics?.completedCycleCount ?? 0) < 2 &&

@@ -1,10 +1,11 @@
 import { CyclePressable as Pressable } from '@/components/cycle/CyclePressable';
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { Text, View } from 'react-native';
 import { CycleSection } from '@/components/cycle/CycleUI';
 import { ka } from '@/i18n/ka';
 import { tx } from '@/i18n/locale';
-import { api, type CyclePredictionHistory, type CyclePredictionHistoryEpisode } from '@/lib/api';
+import { type CyclePredictionHistory, type CyclePredictionHistoryEpisode } from '@/lib/api';
+import { useCyclePredictionHistory } from '@/lib/cycleQueries';
 import {
   aggregateTypicalDays,
   differenceAbsDays,
@@ -150,34 +151,15 @@ function EpisodeRow({ episode }: { episode: CyclePredictionHistoryEpisode }) {
   );
 }
 
-export function CyclePredictionHistoryCard({ refreshKey = '', currentEstimateActive = true }: { refreshKey?: string; currentEstimateActive?: boolean }) {
+export function CyclePredictionHistoryCard({ currentEstimateActive = true }: { currentEstimateActive?: boolean }) {
   const c = useCycleColors();
-  const [history, setHistory] = useState<CyclePredictionHistory | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [failed, setFailed] = useState(false);
   const [showAll, setShowAll] = useState(false);
-
-  useEffect(() => {
-    let alive = true;
-    setLoading(true);
-    setFailed(false);
-    api.cycle
-      .predictionHistory()
-      .then((res) => {
-        if (!alive) return;
-        setHistory(res);
-        setLoading(false);
-      })
-      .catch(() => {
-        if (!alive) return;
-        setHistory(null);
-        setFailed(true);
-        setLoading(false);
-      });
-    return () => {
-      alive = false;
-    };
-  }, [refreshKey]);
+  // Cached (['cycle','prediction-history'], SHORT): every /api/cycle write and queued offline write
+  // invalidates 'cycle', so a new period refreshes it without a refresh key.
+  const query = useCyclePredictionHistory();
+  const history: CyclePredictionHistory | null = query.data ?? null;
+  const loading = query.data === undefined && !query.isError;
+  const failed = query.data === undefined && query.isError;
 
   const state = historySectionState(history, { failed, loading });
   if (state === 'hidden') return null;

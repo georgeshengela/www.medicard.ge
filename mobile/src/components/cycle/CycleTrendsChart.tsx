@@ -6,6 +6,7 @@ import { CyclePmsHeatmap } from '@/components/cycle/CyclePmsHeatmap';
 import { ka } from '@/i18n/ka';
 import type { CycleBundle } from '@/lib/api';
 import { hasPmsPattern } from '@/lib/cycleAnalytics';
+import { cycleTrendsHasCharts } from '@/lib/cycleTrendsState';
 import { useCycleColors } from '@/theme/cycle';
 
 type Props = {
@@ -22,8 +23,6 @@ export function CycleTrendsCharts({ bundle }: Props) {
   const bleed = analytics?.bleedDurations;
   const quality = analytics?.insightDataQuality ?? 'LOW';
   const hasCycleStats = (analytics?.completedCycleCount ?? 0) >= 2 && Boolean(stats?.count);
-  const hasLifestyle =
-    Boolean(analytics?.lifestylePatterns?.length) || Boolean(insights?.lifestyle.patterns?.length);
   const showPms = hasPmsPattern(bundle);
 
   const cycleA11y = useMemo(() => {
@@ -31,8 +30,8 @@ export function CycleTrendsCharts({ bundle }: Props) {
     return lengths.length ? ka.cycle.cycleLengthsA11y(lengths.join(', ')) : null;
   }, [cycles]);
 
-  if (!trends && !analytics) return null;
-  if (!hasCycleStats && cycles.length < 3 && !showPms && !hasLifestyle) return null;
+  // One rule for „is there anything to draw“, shared with the trends screen's empty state.
+  if (!cycleTrendsHasCharts(bundle)) return null;
 
   return (
     <View style={{ gap: 22 }}>

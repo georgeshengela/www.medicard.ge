@@ -10,6 +10,10 @@ export const WRITE_INVALIDATES: ReadonlyArray<readonly [prefix: string, keys: re
   // value; invalidating on them would re-read → re-sync (the 2026-09-29 loop). Health hooks
   // refresh through subscribeHealthRefresh instead.
   ['/api/nutrition', ['nutrition', 'home', 'quest']],
+  // Every cycle write: logs, period start/end/fill and period-day edits, profile (mode, privacy,
+  // partner sharing, reminders), last period, tags, journal notes (they ride on the day log),
+  // pregnancy logs, the care plan, postpartum reference/bleed classification, owner share
+  // create/update/revoke and the wipe. All cycle cache keys start with 'cycle' (cycleQueryKeys.ts).
   ['/api/cycle', ['cycle', 'home']],
   ['/api/announcements', ['announcements']],
   ['/api/trainer', ['coach']],
@@ -33,8 +37,9 @@ export const WRITE_INVALIDATES: ReadonlyArray<readonly [prefix: string, keys: re
  * (e.g. the cycle screen asks for insights once its view arrives).
  */
 export const READ_ONLY_WRITES: readonly string[] = [
+  // Cycle insights are computed (and cached on the server) from data the screen already has; the
+  // cycle screen asks for them once its view arrives.
   '/api/cycle/insights',
-  '/api/cycle/share',
   '/api/nutrition/estimate',
   '/api/nutrition/foods/used',
   '/api/quests/timezone',
@@ -42,12 +47,20 @@ export const READ_ONLY_WRITES: readonly string[] = [
   '/api/ai/feedback',
 ];
 
+/**
+ * Read-like writes whose path carries an id. A partner opening a share link accepts it on every
+ * focus; that binds the partner on the owner's account and changes nothing this account caches.
+ * (The owner's own POST/PATCH/DELETE /api/cycle/share is a real write and does invalidate.)
+ */
+export const READ_ONLY_WRITE_PATTERNS: readonly RegExp[] = [/^\/api\/cycle\/share\/[^/]+\/accept$/];
+
 /** Pure: which cache keys a successful write to `path` makes stale. */
 export function keysForWrite(method: string, path: string): string[] {
   const m = String(method || 'GET').toUpperCase();
   if (m === 'GET' || m === 'HEAD') return [];
   const bare = String(path || '').split('?')[0];
   if (READ_ONLY_WRITES.some((p) => bare === p || bare.startsWith(p + '/'))) return [];
+  if (READ_ONLY_WRITE_PATTERNS.some((re) => re.test(bare))) return [];
   const out = new Set<string>();
   for (const [prefix, keys] of WRITE_INVALIDATES) {
     if (bare === prefix || bare.startsWith(prefix + '/')) keys.forEach((k) => out.add(k));

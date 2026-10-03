@@ -1,10 +1,11 @@
 import { CyclePressable as Pressable } from '@/components/cycle/CyclePressable';
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { Text, View } from 'react-native';
 import { CycleCard } from '@/components/cycle/CycleUI';
 import { formatCycleDateKa } from '@/components/cycle/CycleUI';
 import { ka } from '@/i18n/ka';
-import { api, type CycleObservationTrend, type CycleObservationTrendsPayload } from '@/lib/api';
+import { type CycleObservationTrend, type CycleObservationTrendsPayload } from '@/lib/api';
+import { useCycleObservationTrends } from '@/lib/cycleQueries';
 import {
   formatObservationTrendSummary,
   observationTrendA11y,
@@ -15,45 +16,20 @@ import { useCycleColors } from '@/theme/cycle';
 const UI_LIMIT = 5;
 
 export function CycleObservationTrends({
-  refreshKey,
   showEmpty,
   excludePeriodAssociation,
 }: {
-  refreshKey: string;
   showEmpty?: boolean;
   excludePeriodAssociation?: boolean;
 }) {
   const c = useCycleColors();
-  const [payload, setPayload] = useState<CycleObservationTrendsPayload | null>(null);
-  const [failed, setFailed] = useState(false);
   const [expandedKey, setExpandedKey] = useState<string | null>(null);
   const [showAll, setShowAll] = useState(false);
+  // Cached (['cycle','observation-trends'], SHORT); cycle writes invalidate 'cycle', so a new log
+  // refreshes it. A failed refresh keeps the last answer on screen.
+  const query = useCycleObservationTrends();
+  const payload: CycleObservationTrendsPayload | null = query.data ?? null;
 
-  const load = useCallback(() => {
-    let cancelled = false;
-    setFailed(false);
-    api.cycle
-      .observationTrends()
-      .then((data) => {
-        if (!cancelled) setPayload(data);
-      })
-      .catch(() => {
-        if (!cancelled) {
-          setFailed(true);
-          setPayload(null);
-        }
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  useEffect(() => {
-    const cancel = load();
-    return cancel;
-  }, [load, refreshKey]);
-
-  if (failed) return null;
   if (!payload) return null;
 
   const trends = (payload.trends || []).filter((trend) =>

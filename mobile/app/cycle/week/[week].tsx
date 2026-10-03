@@ -1,5 +1,5 @@
 import { CyclePressable as Pressable } from '@/components/cycle/CyclePressable';
-import React, { useEffect, useLayoutEffect, useMemo, useState } from 'react';
+import React, { useEffect, useLayoutEffect, useMemo } from 'react';
 import { ScrollView, Text, View } from 'react-native';
 import { useLocalSearchParams, useNavigation, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -10,8 +10,8 @@ import { CyclePregnancyWeekSelector } from '@/components/cycle/CyclePregnancyWee
 import { MedicalSourcesLink } from '@/components/health/MedicalSourcesLink';
 import { PregnancySizeIllustration, PregnancyWeekMetrics } from '@/components/cycle/CyclePregnancyWeekVisual';
 import { ka } from '@/i18n/ka';
-import { api, ApiError } from '@/lib/api';
-import { loadCycleView } from '@/lib/cycleOffline';
+import { useCyclePregnancy } from '@/lib/cycleQueries';
+import { useCycleView } from '@/lib/cycleViewCache';
 import { supportsCycleCapability } from '@/lib/cycleModes';
 import { pregnancyFactText } from '@/lib/pregnancyWeekCopy.js';
 import { pregnancyDevelopmentAsset } from '@/lib/pregnancyDevelopmentAssets';
@@ -50,7 +50,6 @@ export default function CyclePregnancyWeekScreen() {
   const params = useLocalSearchParams<{ week?: string }>();
   const week = clampWeek(params.week) ?? 8;
   const { user } = useAuth();
-  const [currentWeek, setCurrentWeek] = useState<number | null>(null);
 
   const development = useMemo(() => weekDevelopmentForCompletedWeek(week), [week]);
 
@@ -62,30 +61,19 @@ export default function CyclePregnancyWeekScreen() {
     preloadNeighbors(week);
   }, [week]);
 
+  // Shared cached view decides the mode; the pregnancy payload is cached under ['cycle','pregnancy']
+  // (same answer as the timeline), so paging week → week never re-reads it.
+  const viewQuery = useCycleView(user?.id);
+  const mode = viewQuery.data?.display?.profile?.mode;
+  const pregnancyMode = viewQuery.data ? supportsCycleCapability(mode, 'showPregnancyOverview') : false;
   useEffect(() => {
-    let alive = true;
-    if (!user?.id) return undefined;
-    loadCycleView(user.id)
-      .then((view) => {
-        if (!alive) return null;
-        if (!supportsCycleCapability(view.display?.profile?.mode, 'showPregnancyOverview')) {
-          router.replace('/cycle');
-          return null;
-        }
-        return api.cycle.pregnancy();
-      })
-      .then((payload) => {
-        if (!alive || !payload) return;
-        const age = payload.estimatedGestationalAge;
-        setCurrentWeek(age && !payload.reviewRequired ? age.week : null);
-      })
-      .catch((err) => {
-        if (err instanceof ApiError && err.status === 404) setCurrentWeek(null);
-      });
-    return () => {
-      alive = false;
-    };
-  }, [router, user?.id]);
+    if (viewQuery.data && !pregnancyMode) router.replace('/cycle');
+  }, [viewQuery.data, pregnancyMode, router]);
+  const pregnancy = useCyclePregnancy(pregnancyMode);
+  const payload = pregnancy.data;
+  // 404 (no active pregnancy) or no answer yet: no „you are here“ marker.
+  const age = payload?.estimatedGestationalAge;
+  const currentWeek = payload && age && !payload.reviewRequired ? age.week : null;
 
   const isCurrent = currentWeek != null && week === currentWeek;
   const isFuture = currentWeek != null && week > currentWeek;

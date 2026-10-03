@@ -1,5 +1,5 @@
 import { CyclePressable as Pressable } from '@/components/cycle/CyclePressable';
-import React, { useEffect, useLayoutEffect, useMemo, useState } from 'react';
+import React, { useEffect, useLayoutEffect, useMemo } from 'react';
 import { ScrollView, Text, View } from 'react-native';
 import { useNavigation, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -17,8 +17,9 @@ import {
   timelineStatusLabel,
   timelineTrimesterLabel,
 } from '@/i18n/cycle/pregnancyTimeline.js';
-import { api, ApiError, type CyclePregnancyPayload, type CyclePregnancyTimelineMilestone } from '@/lib/api';
-import { loadCycleView } from '@/lib/cycleOffline';
+import { ApiError, type CyclePregnancyPayload, type CyclePregnancyTimelineMilestone } from '@/lib/api';
+import { useCyclePregnancy } from '@/lib/cycleQueries';
+import { useCycleView } from '@/lib/cycleViewCache';
 import { supportsCycleCapability } from '@/lib/cycleModes';
 import { presentPregnancyTimeline } from '@/lib/pregnancyTimelinePresent.js';
 import { useAuth } from '@/store/AuthContext';
@@ -104,53 +105,37 @@ export default function CyclePregnancyTimelineScreen() {
   const insets = useSafeAreaInsets();
   const reduced = usePrefersReducedMotion();
   const { user } = useAuth();
-  const [payload, setPayload] = useState<CyclePregnancyPayload | null>(null);
-  const [offlineTimeline, setOfflineTimeline] = useState<CyclePregnancyPayload['timeline']>(null);
   const copy = ka.cycle.timeline;
 
   useLayoutEffect(() => {
     navigation.setOptions(cycleNavHeader(c, copy.journey));
   }, [navigation, c, copy.journey]);
 
+  // Shared cached view decides the mode; the pregnancy payload is cached under ['cycle','pregnancy']
+  // (SHORT), shared with the week screens. Offline, the timeline is drawn from the cached bundle.
+  const viewQuery = useCycleView(user?.id);
+  const view = viewQuery.data;
+  const pregnancyMode = view ? supportsCycleCapability(view.display?.profile?.mode, 'showPregnancyOverview') : false;
+  const pregnancy = useCyclePregnancy(pregnancyMode);
+  const notFound = pregnancy.error instanceof ApiError && pregnancy.error.status === 404;
   useEffect(() => {
-    let alive = true;
-    if (!user?.id) return undefined;
-    loadCycleView(user.id)
-      .then((view) => {
-        if (!alive) return null;
-        if (!supportsCycleCapability(view.display?.profile?.mode, 'showPregnancyOverview')) {
-          router.replace('/cycle');
-          return null;
-        }
-        const cachedAge = view.display?.pregnancy?.age;
-        if (view.reachable === false && view.display?.pregnancy) {
-          setOfflineTimeline(
-            presentPregnancyTimeline({
-              mode: 'PREGNANCY',
-              pregnancyActive: true,
-              dating: {
-                reviewRequired: Boolean(view.display.pregnancy.reviewRequired),
-                estimatedGestationalAge: cachedAge || null,
-                estimatedDueDate: view.display.pregnancy.dueDate
-                  ? { date: view.display.pregnancy.dueDate, estimated: true }
-                  : null,
-              },
-            }),
-          );
-        }
-        return api.cycle.pregnancy();
-      })
-      .then((next) => {
-        if (!alive || !next) return;
-        setPayload(next);
-      })
-      .catch((err) => {
-        if (err instanceof ApiError && err.status === 404) router.replace('/cycle');
-      });
-    return () => {
-      alive = false;
-    };
-  }, [user?.id, router]);
+    if ((view && !pregnancyMode) || notFound) router.replace('/cycle');
+  }, [view, pregnancyMode, notFound, router]);
+  const payload: CyclePregnancyPayload | null = pregnancy.data ?? null;
+  const offlineTimeline = useMemo<CyclePregnancyPayload['timeline']>(() => {
+    if (!view || view.reachable !== false || !view.display?.pregnancy) return null;
+    return presentPregnancyTimeline({
+      mode: 'PREGNANCY',
+      pregnancyActive: true,
+      dating: {
+        reviewRequired: Boolean(view.display.pregnancy.reviewRequired),
+        estimatedGestationalAge: view.display.pregnancy.age || null,
+        estimatedDueDate: view.display.pregnancy.dueDate
+          ? { date: view.display.pregnancy.dueDate, estimated: true }
+          : null,
+      },
+    });
+  }, [view]);
 
   const timeline = payload ? payload.timeline : offlineTimeline;
   const pregnancyActive = payload ? payload.pregnancyActive : true;

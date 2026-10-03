@@ -1,6 +1,6 @@
 import { CyclePressable as Pressable } from '@/components/cycle/CyclePressable';
 import { ChatScreenShell, ChatFormScroll } from '@/components/chat/ChatScreenShell';
-import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import {
   Linking,
   ScrollView,
@@ -19,6 +19,8 @@ import {
 import { api, ApiError, type CyclePregnancyCarePlan, type CyclePregnancyCarePlanItem } from '@/lib/api';
 import { supportsCycleCapability } from '@/lib/cycleModes';
 import { loadCycleView } from '@/lib/cycleOffline';
+import { putCyclePregnancyCarePlan, useCyclePregnancyCarePlan } from '@/lib/cycleQueries';
+import { useCycleView } from '@/lib/cycleViewCache';
 import { todayKey } from '@/components/cycle/CycleCalendar';
 import { cycleToday } from '@/lib/cycleCanonical';
 import { getNotificationPermissionStatus, requestNotificationPermission } from '@/lib/notifications';
@@ -172,8 +174,6 @@ export default function CyclePregnancyCarePlanScreen() {
   const { user } = useAuth();
   const params = useLocalSearchParams<{ item?: string }>();
   const copy = ka.cycle.carePlan;
-  const [plan, setPlan] = useState<CyclePregnancyCarePlan | null>(null);
-  const [offline, setOffline] = useState(false);
   const [detail, setDetail] = useState<CyclePregnancyCarePlanItem | null>(null);
   const [sourcesItem, setSourcesItem] = useState<CyclePregnancyCarePlanItem | null>(null);
   const [plannedDate, setPlannedDate] = useState('');
@@ -192,39 +192,25 @@ export default function CyclePregnancyCarePlanScreen() {
     navigation.setOptions(cycleNavHeader(c, copy.title));
   }, [navigation, c, copy.title]);
 
-  const load = useCallback(() => {
-    if (!user?.id) return;
-    loadCycleView(user.id)
-      .then((view) => {
-        if (!supportsCycleCapability(view.display?.profile?.mode, 'showPregnancyCarePlanner')) {
-          router.replace('/cycle');
-          return null;
-        }
-        if (view.reachable === false) {
-          setOffline(true);
-          setPlan(educationalPlan());
-          return null;
-        }
-        return api.cycle.pregnancyCarePlan();
-      })
-      .then((next) => {
-        if (!next) return;
-        setOffline(false);
-        setPlan(next);
-      })
-      .catch((err) => {
-        if (err instanceof ApiError && (err.status === 404 || err.status === 401)) {
-          router.replace('/cycle');
-          return;
-        }
-        setOffline(true);
-        setPlan(educationalPlan());
-      });
-  }, [user?.id, router]);
-
+  // Shared cached view decides the mode and reachability; the personal plan is cached under
+  // ['cycle','pregnancy-care-plan'] (SHORT). Offline, or when the plan cannot be read, the
+  // educational plan is shown read-only (writes need the internet).
+  const viewQuery = useCycleView(user?.id);
+  const view = viewQuery.data;
+  const plannerMode = view ? supportsCycleCapability(view.display?.profile?.mode, 'showPregnancyCarePlanner') : false;
+  const reachable = view?.reachable !== false;
+  const planQuery = useCyclePregnancyCarePlan(plannerMode && reachable);
+  const planError = planQuery.error;
+  const gone = planError instanceof ApiError && (planError.status === 404 || planError.status === 401);
   useEffect(() => {
-    load();
-  }, [load]);
+    if ((view && !plannerMode) || gone) router.replace('/cycle');
+  }, [view, plannerMode, gone, router]);
+  const educational = useMemo(() => educationalPlan(), []);
+  const offline = Boolean(view) && plannerMode && (!reachable || (!planQuery.data && Boolean(planError) && !gone));
+  const plan: CyclePregnancyCarePlan | null = offline ? educational : (planQuery.data ?? null);
+  const setPlan = (next: CyclePregnancyCarePlan) => {
+    if (user?.id) putCyclePregnancyCarePlan(user.id, next);
+  };
 
   useEffect(() => {
     if (!plan || openedFromLink.current) return;
