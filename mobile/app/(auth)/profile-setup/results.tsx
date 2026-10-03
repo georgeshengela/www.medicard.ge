@@ -28,6 +28,9 @@ import {
 } from '@/constants/figmaAssessmentResultLayout';
 import { ka } from '@/i18n/ka';
 import { api } from '@/lib/api';
+import { isAiConsentDeclined } from '@/lib/aiConsentDecline';
+import { AiConsentDeclinedNote } from '@/components/ui/AiConsentDeclinedNote';
+import { useThemeColors } from '@/theme/colors';
 import { useOnboardingDevPreview, onboardingScreenBlocked } from '@/lib/onboardingDevPreview';
 import { HEALTH_SCORE_BANDS, healthScoreLabelKa } from '@/lib/healthScore';
 import { finishOnboarding } from '@/lib/profileSetupFlow';
@@ -143,6 +146,9 @@ export default function ProfileSetupResultsScreen() {
   const [expandedRange, setExpandedRange] = useState<number | null>(0);
   const [busy, setBusy] = useState(false);
   const [reanalyzing, setReanalyzing] = useState(false);
+  // Declined / closed the AI disclosure on „ხელახლა გაანალიზება“: a calm note, never the network-error alert.
+  const [declined, setDeclined] = useState(false);
+  const themeColors = useThemeColors();
 
   if (!ready) {
     return (
@@ -201,11 +207,13 @@ export default function ProfileSetupResultsScreen() {
   const reanalyze = async () => {
     if (reanalyzing || busy) return;
     setReanalyzing(true);
+    setDeclined(false);
     try {
       const res = await api.healthProfile.onboardingAnalysis({ force: true });
       setHealthProfile(res.profile);
-    } catch {
-      Alert.alert(ka.common.error, ka.auth.networkError);
+    } catch (err) {
+      if (isAiConsentDeclined(err)) setDeclined(true);
+      else Alert.alert(ka.common.error, ka.auth.networkError);
     } finally {
       setReanalyzing(false);
     }
@@ -463,6 +471,7 @@ export default function ProfileSetupResultsScreen() {
         }}
       >
         <View style={{ gap: 16 }}>
+          {declined && !reanalyzing ? <AiConsentDeclinedNote background={themeColors.bg200} onRetry={() => void reanalyze()} /> : null}
           <ProfileSetupPrimaryButton
             label={ka.profileSetup.startUsingApp}
             onPress={() => void finish()}

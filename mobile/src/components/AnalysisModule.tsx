@@ -37,6 +37,8 @@ import { useThemeColors } from '@/theme/colors';
 import { AuthPrimaryButton } from '@/components/auth/AuthPrimaryButton';
 import { ka } from '@/i18n/ka';
 import { ApiError, api, type MedicalRecord } from '@/lib/api';
+import { isAiConsentDeclined } from '@/lib/aiConsentDecline';
+import { AiConsentDeclinedNote } from '@/components/ui/AiConsentDeclinedNote';
 import { getAnalysisChatProfile, type AnalysisChatKind } from '@/lib/chatUiConfig';
 import { IMAGE_PICKER_OPTIONS, prepareLabImage, toUploadableImage } from '@/lib/imageUpload';
 import { formatLabDateKa, mergeLabExtracts, parseLabExtract, stripLabJson } from '@/lib/labExtract';
@@ -109,6 +111,8 @@ function AnalysisModuleContent({
     visionNotes?: string;
   } | null>(null);
   const [error, setError] = useState<string | null>(null);
+  // Declined / closed the AI disclosure — a choice, not an error. Which step „ხელახლა ცდა“ runs again.
+  const [declined, setDeclined] = useState<'analyze' | 'explain' | null>(null);
   const [quotaBlock, setQuotaBlock] = useState<number | undefined>(undefined);
   const [submitted, setSubmitted] = useState(false);
   const [askDate, setAskDate] = useState(false);
@@ -129,6 +133,7 @@ function AnalysisModuleContent({
     if (!operation) return;
     setPreparing(true);
     setError(null);
+    setDeclined(null);
     type Asset = { uri: string; name?: string; fileName?: string | null; mimeType?: string | null; size?: number | null; fileSize?: number | null };
     try {
       let assets: Asset[] = [];
@@ -228,6 +233,7 @@ function AnalysisModuleContent({
     Keyboard.dismiss();
     setBusy(true);
     setError(null);
+    setDeclined(null);
     setSubmitted(true);
     setSavedMeta(null);
     setShowAnotherShot(false);
@@ -315,7 +321,10 @@ function AnalysisModuleContent({
       setResult({ analysis, record: response.record });
     } catch (err) {
       if (!operation.current()) return;
-      if (err instanceof ApiError && err.isQuotaExceeded) {
+      if (isAiConsentDeclined(err)) {
+        // Nothing was sent; the picked files, region and note stay for „ხელახლა ცდა“.
+        setDeclined('analyze');
+      } else if (err instanceof ApiError && err.isQuotaExceeded) {
         setQuotaBlock(err.usage?.resetsInMs);
         if (err.usage) applyUsage(err.usage);
       } else {
@@ -341,6 +350,7 @@ function AnalysisModuleContent({
     if (!operation) return;
     setExplaining(true);
     setError(null);
+    setDeclined(null);
     try {
       const response = await api.ai.explainLab({
         parameters: extract.parameters,
@@ -361,7 +371,9 @@ function AnalysisModuleContent({
       }
     } catch (err) {
       if (!operation.current()) return;
-      if (err instanceof ApiError && err.isQuotaExceeded) {
+      if (isAiConsentDeclined(err)) {
+        setDeclined('explain');
+      } else if (err instanceof ApiError && err.isQuotaExceeded) {
         setQuotaBlock(err.usage?.resetsInMs);
         if (err.usage) applyUsage(err.usage);
       } else {
@@ -381,6 +393,7 @@ function AnalysisModuleContent({
     setContext('');
     setResult(null);
     setError(null);
+    setDeclined(null);
     setSubmitted(false);
     setSavedMeta(null);
     setPendingExtract(null);
@@ -668,6 +681,11 @@ function AnalysisModuleContent({
               </Pressable>
             </ChatBubbleAssistant>
             )
+          ) : null}
+
+          {declined && !error ? (
+            <AiConsentDeclinedNote background={FIGMA_CHAT.white} busy={busy || explaining}
+              onRetry={() => void (declined === 'explain' ? askMedi() : analyze())} />
           ) : null}
 
           {error ? (

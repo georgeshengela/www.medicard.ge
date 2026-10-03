@@ -11,6 +11,8 @@ import { QuotaSheet } from '@/components/QuotaSheet';
 import { useMedications } from '@/hooks/useMedications';
 import { ka } from '@/i18n/ka';
 import { ApiError, api } from '@/lib/api';
+import { isAiConsentDeclined } from '@/lib/aiConsentDecline';
+import { AiConsentDeclinedNote } from '@/components/ui/AiConsentDeclinedNote';
 import { useAuth } from '@/store/AuthContext';
 import { useThemeColors } from '@/theme/colors';
 import { HUB, hubText } from '@/theme/hub';
@@ -24,17 +26,22 @@ export default function MedicationInteractionScreen() {
   const { medications } = useMedications();
   const [review, setReview] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  // Declined / closed the AI disclosure: a choice, not an error alert — calm note + „ხელახლა ცდა“.
+  const [declined, setDeclined] = useState(false);
   const [quotaBlock, setQuotaBlock] = useState<number | undefined>(undefined);
   const activeMeds = medications.filter((med) => med.active);
 
   const runReview = async () => {
     setBusy(true);
+    setDeclined(false);
     try {
       const response = await api.ai.medicationReview();
       setReview(response.analysis);
       applyUsage(response.usage);
     } catch (err) {
-      if (err instanceof ApiError && err.isQuotaExceeded) {
+      if (isAiConsentDeclined(err)) {
+        setDeclined(true);
+      } else if (err instanceof ApiError && err.isQuotaExceeded) {
         setQuotaBlock(err.usage?.resetsInMs);
         if (err.usage) applyUsage(err.usage);
       } else {
@@ -63,6 +70,8 @@ export default function MedicationInteractionScreen() {
           </View>
           <MedsButton label={ka.meds.reviewCta} icon={ShieldCheck} loading={busy} disabled={activeMeds.length === 0} onPress={runReview} />
         </MedsCard>
+
+        {declined && !busy ? <AiConsentDeclinedNote onRetry={() => void runReview()} /> : null}
 
         <View>
           <HomeSectionHeading title={ka.meds.reviewChecks} />

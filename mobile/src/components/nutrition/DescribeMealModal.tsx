@@ -21,6 +21,7 @@ export function DescribeMealModal({
   owner,
   busy,
   error,
+  consentNotice = "",
   onClose,
   onSubmit,
 }: {
@@ -28,6 +29,8 @@ export function DescribeMealModal({
   owner: string;
   busy: boolean;
   error: string;
+  /** The calm line after a declined AI disclosure (neutral, not an error); the text stays for „დათვალე“. */
+  consentNotice?: string;
   onClose: () => void;
   onSubmit: (text: string, voice: boolean) => void;
 }) {
@@ -121,8 +124,8 @@ export function DescribeMealModal({
               ))}
             </View>
           )}
-          {!!(notice || voiceError || error) && (
-            <Text accessibilityRole={error || voiceError ? "alert" : "text"} style={[txt, { fontSize: 12, lineHeight: 19, color: error || voiceError ? c.danger : c.text200 }]}>{error || voiceError || notice}</Text>
+          {!!(notice || voiceError || error || consentNotice) && (
+            <Text accessibilityRole={error || voiceError ? "alert" : "text"} style={[txt, { fontSize: 12, lineHeight: 19, color: error || voiceError ? c.danger : c.text200 }]}>{error || voiceError || consentNotice || notice}</Text>
           )}
           <View style={s.actions}>
             {voiceOn ? <Pressable

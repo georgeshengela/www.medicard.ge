@@ -20,6 +20,7 @@ import { CycleInsightDetailSheet } from '@/components/cycle/CycleInsightDetailSh
 import { MedicardLogoMark } from '@/components/ui/MedicardLogoMark';
 import { ka } from '@/i18n/ka';
 import { api, ApiError, type CycleCondition, type CycleInsightCard, type CycleInsights, type CycleLog, type CycleMode } from '@/lib/api';
+import { aiConsentDeclinedText, isAiConsentDeclined } from '@/lib/aiConsentDecline';
 import { buildCycleAdvice, mergeInsightCards } from '@/lib/cycleAdvice';
 import type { CyclePhaseInfo } from '@/lib/cycleCanonical';
 import { useAuth } from '@/store/AuthContext';
@@ -93,6 +94,8 @@ export function CycleInsightsPanel({
   const [loading, setLoading] = useState(!seed);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Declined / closed the AI disclosure: the local tips stay, silently. Only a tap on refresh gets the calm line.
+  const [declinedNote, setDeclinedNote] = useState(false);
   const [, setFromCache] = useState(false);
   const [detailCard, setDetailCard] = useState<CycleInsightCard | null>(null);
   const [quotaBlock, setQuotaBlock] = useState<number | undefined>(undefined);
@@ -118,13 +121,16 @@ export function CycleInsightsPanel({
       if (refresh) setRefreshing(true);
       else if (!insights) setLoading(true);
       setError(null);
+      setDeclinedNote(false);
       const res = await api.cycle.insights(refresh);
       setInsights(res.insights);
       setFromCache(Boolean(res.cached));
       if (res.usage) applyUsage(res.usage);
       onLoaded?.(res.insights);
     } catch (err) {
-      if (err instanceof ApiError && err.isQuotaExceeded) {
+      if (isAiConsentDeclined(err)) {
+        if (refresh) setDeclinedNote(true);
+      } else if (err instanceof ApiError && err.isQuotaExceeded) {
         setQuotaBlock(err.usage?.resetsInMs ?? 0);
         if (err.usage) applyUsage(err.usage);
       } else {
@@ -188,6 +194,9 @@ export function CycleInsightsPanel({
             </Pressable>
           </View>
 
+          {declinedNote ? (
+            <Text accessibilityLiveRegion="polite" style={{ color: c.muted, fontSize: 13, lineHeight: 19, marginBottom: 10, fontFamily: 'NotoSansGeorgian_400Regular' }}>{aiConsentDeclinedText()}</Text>
+          ) : null}
           <View style={{ backgroundColor: c.card, borderRadius: 22, paddingVertical: 6 }}>
             {loading && !tips.length ? <View style={{ padding: 16 }}><InsightCardsSkeleton /></View> : null}
             {error && !tips.length ? (
@@ -283,6 +292,11 @@ export function CycleInsightsPanel({
         {offline ? (
           <Text style={{ color: c.muted, fontSize: 12, lineHeight: 17, marginBottom: 8 }}>
             {ka.cycle.aiStale}
+          </Text>
+        ) : null}
+        {declinedNote && !offline ? (
+          <Text accessibilityLiveRegion="polite" style={{ color: c.muted, fontSize: 12, lineHeight: 17, marginBottom: 8 }}>
+            {aiConsentDeclinedText()}
           </Text>
         ) : null}
 

@@ -18,6 +18,8 @@ import { KEYBOARD_DONE_ACCESSORY_ID, KeyboardDoneAccessory } from '@/components/
 import { useFigmaChat } from '@/constants/figmaChatLayout';
 import { ka } from '@/i18n/ka';
 import { ApiError, api } from '@/lib/api';
+import { isAiConsentDeclined } from '@/lib/aiConsentDecline';
+import { AiConsentDeclinedNote } from '@/components/ui/AiConsentDeclinedNote';
 import { SKINCARE_PRODUCTS_LIMIT, requireAnalysisText, IncompleteAnalysisError } from '@/lib/analysisFlow';
 import { localAccountId } from '@/lib/localAccount';
 import { useAnalysisTask } from '@/lib/useAnalysisTask';
@@ -55,6 +57,8 @@ function SkincareModuleContent() {
   const [result, setResult] = useState<SavedSkincareRoutine | null>(null);
   const [lastRoutine, setLastRoutine] = useState<SavedSkincareRoutine | null>(null);
   const [error, setError] = useState<string | null>(null);
+  // Declined / closed the AI disclosure: a calm note + „ხელახლა ცდა“; the chosen concerns stay.
+  const [declined, setDeclined] = useState(false);
   const [quotaBlock, setQuotaBlock] = useState<number | undefined>(undefined);
 
   useFocusEffect(
@@ -132,6 +136,7 @@ function SkincareModuleContent() {
     Keyboard.dismiss();
     setBusy(true);
     setError(null);
+    setDeclined(false);
     try {
       const response = await api.ai.skincare({
         skinType,
@@ -156,7 +161,9 @@ function SkincareModuleContent() {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined);
     } catch (err) {
       if (!operation.current()) return;
-      if (err instanceof ApiError && err.isQuotaExceeded) {
+      if (isAiConsentDeclined(err)) {
+        setDeclined(true);
+      } else if (err instanceof ApiError && err.isQuotaExceeded) {
         setQuotaBlock(err.usage?.resetsInMs);
         if (err.usage) applyUsage(err.usage);
       } else {
@@ -407,6 +414,8 @@ function SkincareModuleContent() {
               }}
             />
           </View>
+
+          {declined && !error ? <AiConsentDeclinedNote background={FIGMA.white} onRetry={() => void build()} /> : null}
 
           {error ? (
             <View

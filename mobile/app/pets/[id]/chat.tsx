@@ -20,6 +20,8 @@ import { Markdown } from '@/components/ui/Markdown';
 import { useFigmaChat } from '@/constants/figmaChatLayout';
 import { ka } from '@/i18n/ka';
 import { ApiError, api, type Pet, type PetChatMessage, type PetCareDraft } from '@/lib/api';
+import { isAiConsentDeclined } from '@/lib/aiConsentDecline';
+import { AiConsentDeclinedNote } from '@/components/ui/AiConsentDeclinedNote';
 import { getPetVetChatProfile } from '@/lib/chatUiConfig';
 import { getScopedPreference, localAccountId, setScopedPreference } from '@/lib/localAccount';
 import { newPetsRequestId } from '@/lib/petsHealth';
@@ -97,6 +99,8 @@ function PetVetChat({ petId, owner }: { petId: string; owner: string }) {
   const [draft, setDraft] = useState('');
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Declined / closed the AI disclosure — a choice, not an error. Holds the question for „ხელახლა ცდა“.
+  const [declinedMessage, setDeclinedMessage] = useState<string | null>(null);
   const [quotaBlock, setQuotaBlock] = useState<number | undefined>(undefined);
   const [disclosure, setDisclosure] = useState(false);
   const [disclosureSeen, setDisclosureSeen] = useState(false);
@@ -144,6 +148,7 @@ function PetVetChat({ petId, owner }: { petId: string; owner: string }) {
       const requestId = newPetsRequestId();
       setDraft('');
       setError(null);
+      setDeclinedMessage(null);
       setSending(true);
       setMessages((prev) => [
         ...prev,
@@ -205,6 +210,13 @@ function PetVetChat({ petId, owner }: { petId: string; owner: string }) {
       } catch (err) {
         if (flushTimer) clearTimeout(flushTimer);
         if (!current()) return;
+        if (isAiConsentDeclined(err)) {
+          // Nothing was sent (consent runs before the request): drop the unsent bubbles, keep the question.
+          setMessages((prev) => prev.slice(0, -2));
+          setDraft((currentDraft) => (currentDraft.trim() ? currentDraft : message));
+          setDeclinedMessage(message);
+          return;
+        }
         const apiErr = err instanceof ApiError ? err : null;
         if (apiErr?.status === 429) {
           setQuotaBlock(Number(apiErr.usage?.resetsInMs) || plan.usage?.resetsInMs);
@@ -359,6 +371,10 @@ function PetVetChat({ petId, owner }: { petId: string; owner: string }) {
           }
           ListFooterComponent={
             <View style={{ gap: FIGMA_CHAT.messageGap, paddingTop: messages.length ? FIGMA_CHAT.messageGap : 0 }}>
+              {declinedMessage && !error ? (
+                <AiConsentDeclinedNote background={FIGMA_CHAT.white} busy={sending}
+                  onRetry={() => void send(draft.trim().length >= 2 ? draft : declinedMessage)} />
+              ) : null}
               {error ? <PetErrorText message={error} /> : null}
               {!loaded && error ? <Button variant="secondary" label={tx('ისტორიის ხელახლა ჩატვირთვა', 'Reload history')} onPress={() => setReload(value => value + 1)} /> : null}
               {messages.length > 0 ? (

@@ -16,6 +16,9 @@ import { buildSymptomRequest } from '@/lib/symptomRequest';
 import { ka } from '@/i18n/ka';
 
 import { api, ApiError } from '@/lib/api';
+import { isAiConsentDeclined } from '@/lib/aiConsentDecline';
+import { AiConsentDeclinedNote } from '@/components/ui/AiConsentDeclinedNote';
+import { SymptomNavHeader } from '@/components/symptoms/SymptomNavHeader';
 import { localAccountId } from '@/lib/localAccount';
 
 import { saveSymptomSession } from '@/lib/symptomResultStorage';
@@ -41,7 +44,10 @@ export default function SymptomAnalyzingScreen() {
     return () => { alive.current = false; };
   }, []));
 
-  const started = useRef(false);
+  // One run per attempt; „ხელახლა ცდა“ after a declined AI disclosure starts the next attempt.
+  const started = useRef(-1);
+  const [attempt, setAttempt] = useState(0);
+  const [declined, setDeclined] = useState(false);
 
   const [step, setStep] = useState(0);
 
@@ -63,9 +69,9 @@ export default function SymptomAnalyzingScreen() {
 
   useEffect(() => {
 
-    if (started.current) return;
+    if (started.current === attempt) return;
 
-    started.current = true;
+    started.current = attempt;
     const owner = user?.id;
     const current = () => alive.current && !!owner && owner === localAccountId();
     if (!owner || !input.symptoms.length) { router.replace('/symptoms/search' as never); return; }
@@ -122,6 +128,9 @@ export default function SymptomAnalyzingScreen() {
 
       } catch (err) {
         if (!current()) return;
+        // Declined / closed the AI disclosure: nothing was sent. A calm note on this screen, not the
+        // error screen; the answers stay in the symptom store for „ხელახლა ცდა“.
+        if (isAiConsentDeclined(err)) { setDeclined(true); return; }
         if (err instanceof ApiError && err.isQuotaExceeded && err.usage) applyUsage(err.usage);
         const message =
           err instanceof ApiError
@@ -135,7 +144,18 @@ export default function SymptomAnalyzingScreen() {
 
     })();
 
-  }, [router, input, applyUsage, user?.id]);
+  }, [router, input, applyUsage, user?.id, attempt]);
+
+  if (declined) {
+    return (
+      <View style={{ flex: 1, backgroundColor: T.white }}>
+        <SymptomNavHeader onBack={() => router.back()} />
+        <View style={{ flex: 1, padding: 24, justifyContent: 'center' }}>
+          <AiConsentDeclinedNote background={T.cardBg} onRetry={() => { setDeclined(false); setAttempt(n => n + 1); }} />
+        </View>
+      </View>
+    );
+  }
 
   return (
 

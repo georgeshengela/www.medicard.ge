@@ -80,6 +80,8 @@ import { APP_MODAL_PROPS, APP_MODAL_OVERLAY, Modal } from "@/components/ui/appMo
 import { useAuth } from "@/store/AuthContext";
 import { useAccountQuery } from "@/hooks/useAccountQuery";
 import { accountKey, FRESH, queryClient } from "@/lib/queryClient";
+import { aiConsentDeclinedText, isAiConsentDeclined } from "@/lib/aiConsentDecline";
+import { AiConsentDeclinedNote } from "@/components/ui/AiConsentDeclinedNote";
 
 type DayMeals = { meals: Meal[]; truncated: boolean };
 const EMPTY_MEALS: Meal[] = [];
@@ -146,6 +148,10 @@ function NutritionScreen({ owner }: { owner: string }) {
   const [uncertainty, setUncertainty] = useState<"low" | "medium" | "high" | null>(null);
   const [sheet, setSheet] = useState<Sheet>(null);
   const [sheetError, setSheetError] = useState("");
+  // Declined / closed the AI disclosure — a choice, not an error (App Review 2026-09-22). Which estimate
+  // „ხელახლა ცდა“ runs again; the photo, note and correction stay. The describe sheet gets a calm line.
+  const [aiDeclined, setAiDeclined] = useState<"analyze" | "fix" | null>(null);
+  const [describeNotice, setDescribeNotice] = useState("");
   const [product, setProduct] = useState<SavedFood | null>(null);
   const [correction, setCorrection] = useState("");
   const [savedItems, setSavedItems] = useState<Record<string, boolean>>({});
@@ -185,10 +191,11 @@ function NutritionScreen({ owner }: { owner: string }) {
     lock.current = true;
     setBusy(true);
     setError("");
+    setAiDeclined(null);
     try {
       await work();
     } catch (e) {
-      if (alive.current) setError((e as Error).message);
+      if (alive.current && !isAiConsentDeclined(e)) setError((e as Error).message);
     } finally {
       lock.current = false;
       if (alive.current) setBusy(false);
@@ -330,6 +337,7 @@ function NutritionScreen({ owner }: { owner: string }) {
         if (!alive.current) return;
         applyEstimate(result, photoMode === "label" ? "label" : "photo", !draft.items.length);
       } catch (e) {
+        if (isAiConsentDeclined(e)) { if (alive.current) setAiDeclined("analyze"); return; }
         void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error).catch(() => {});
         throw e;
       } finally {
@@ -340,6 +348,7 @@ function NutritionScreen({ owner }: { owner: string }) {
     run(async () => {
       if (!draft) return;
       setSheetError("");
+      setDescribeNotice("");
       try {
         const result = await api.nutrition.estimate(null, { mode: "text", description: text });
         if (!alive.current) return;
@@ -347,6 +356,8 @@ function NutritionScreen({ owner }: { owner: string }) {
         setDraft((current) => (current ? { ...current, note: current.note || text } : current));
         setSheet(null);
       } catch (e) {
+        // The sheet stays open with the text; „დათვალე“ asks again.
+        if (isAiConsentDeclined(e)) { if (alive.current) setDescribeNotice(aiConsentDeclinedText()); return; }
         setSheetError((e as Error).message);
         throw e;
       }
@@ -362,6 +373,9 @@ function NutritionScreen({ owner }: { owner: string }) {
         if (!alive.current) return;
         applyEstimate(result, draft.source, true);
         setCorrection("");
+      } catch (e) {
+        if (isAiConsentDeclined(e)) { if (alive.current) setAiDeclined("fix"); return; }
+        throw e;
       } finally {
         if (alive.current) setScanning(false);
       }
@@ -380,6 +394,7 @@ function NutritionScreen({ owner }: { owner: string }) {
   const pickMethod = (method: LogMethod) => {
     setSheet(null);
     setSheetError("");
+    setDescribeNotice("");
     if (method === "camera") void pick(true, "photo");
     else if (method === "gallery") void pick(false, "photo");
     else if (method === "label") void pick(true, "label");
@@ -551,6 +566,9 @@ function NutritionScreen({ owner }: { owner: string }) {
             <Text style={[txt, { color: c.danger }]}>{error}</Text>
             {!draft && button(tx("ხელახლა ცდა", "Try again"), () => void load())}
           </View>
+        )}
+        {!!aiDeclined && !error && !!draft && (
+          <AiConsentDeclinedNote busy={busy} onRetry={() => void (aiDeclined === "fix" ? fix() : analyze())} />
         )}
         {!!message && !draft && (
           <Text accessibilityLiveRegion="polite" style={[txt, { color: c.success }]}>{message}</Text>
@@ -891,7 +909,7 @@ function NutritionScreen({ owner }: { owner: string }) {
         }}
       />
       <FoodSearchModal visible={sheet === "search" || sheet === "saved"} initialTab={sheet === "saved" ? "recent" : "search"} onClose={() => setSheet(null)} onPick={onFoodPick} />
-      <DescribeMealModal visible={sheet === "describe"} owner={owner} busy={busy} error={sheetError} onClose={() => setSheet(null)} onSubmit={(text, voice) => void describe(text, voice)} />
+      <DescribeMealModal visible={sheet === "describe"} owner={owner} busy={busy} error={sheetError} consentNotice={describeNotice} onClose={() => setSheet(null)} onSubmit={(text, voice) => void describe(text, voice)} />
       <Modal visible={!!confirmation} {...APP_MODAL_PROPS} onRequestClose={() => setConfirmation(null)}>
         <View style={{ flex: 1, justifyContent: "center", padding: 24 }}>
           <View style={[StyleSheet.absoluteFill, { backgroundColor: APP_MODAL_OVERLAY }]} />
