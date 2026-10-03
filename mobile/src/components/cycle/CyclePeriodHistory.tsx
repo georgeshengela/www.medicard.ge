@@ -404,75 +404,86 @@ export function CyclePeriodHistory({ bundle, onChanged }: Props) {
         onClose={() => setFillConfirm(false)}
       />
 
-      {/* One day of a logged period: intensity, full log, delete (confirmed in the same sheet). */}
-      {daySheet && !confirmRemove ? (
-        <CycleExplainSheet
-          visible
-          title={formatCycleDateKa(daySheet)}
-          body={ka.cycle.periodDaySheetHint}
-          accent={c.period}
-          closeLabel={ka.common.close}
-          actions={[
-            {
-              label: ka.cycle.fullLog,
-              tone: 'secondary',
-              icon: Pencil,
-              onPress: () => {
-                const date = daySheet;
-                closeDay();
-                router.push({ pathname: '/cycle/log', params: { date } });
-              },
-            },
-            { label: ka.cycle.deleteLog, tone: 'destructive', icon: Trash2, onPress: () => setConfirmRemove(true), disabled: busy },
-          ]}
-          onClose={closeDay}
-        >
-          <Text style={{ color: c.mutedSoft, fontFamily: 'NotoSansGeorgian_600SemiBold', fontSize: 12, marginBottom: 8 }}>
-            {ka.cycle.logStepFlow}
-          </Text>
-          <View style={{ flexDirection: 'row', gap: 8 }}>
-            {BLEED_FLOWS.map((opt) => {
-              const on = sheetFlow === opt.id;
-              return (
-                <Pressable
-                  key={opt.id}
-                  onPress={() => void setDayFlow(daySheet, opt.id as BleedFlow)}
-                  disabled={busy}
-                  accessibilityRole="button"
-                  accessibilityState={{ selected: on, disabled: busy }}
-                  accessibilityLabel={opt.label}
-                  style={{
-                    flex: 1,
-                    minHeight: 44,
-                    borderRadius: 14,
-                    flexDirection: 'row',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: 6,
-                    backgroundColor: on ? c.cta : c.cardSoft,
-                  }}
-                >
-                  {on ? <Check size={14} color={c.onPrimary} strokeWidth={3} /> : null}
-                  <Text style={{ color: on ? c.onPrimary : c.ink, fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 12 }}>
-                    {opt.label}
-                  </Text>
-                </Pressable>
-              );
-            })}
-          </View>
-        </CycleExplainSheet>
-      ) : null}
-      {daySheet && confirmRemove ? (
-        <CycleExplainSheet
-          visible
-          title={ka.cycle.deleteLog}
-          body={[formatCycleDateKa(daySheet), ka.cycle.periodDeleteDay]}
-          accent={c.danger}
-          closeLabel={ka.common.back}
-          actions={[{ label: ka.common.delete, tone: 'destructive', icon: Trash2, onPress: () => void removeDay(daySheet), loading: busy }]}
-          onClose={() => setConfirmRemove(false)}
-        />
-      ) : null}
+      {/*
+        One day of a logged period: intensity, full log, delete — and the delete confirmation is the
+        SAME Modal with its content switched (two Modals swapped back-to-back do not present reliably
+        on iOS, and one instance keeps the fade in/out).
+      */}
+      <CycleExplainSheet
+        visible={Boolean(daySheet)}
+        title={daySheet ? (confirmRemove ? ka.cycle.deleteLog : formatCycleDateKa(daySheet)) : ''}
+        body={
+          daySheet && confirmRemove ? [formatCycleDateKa(daySheet), ka.cycle.periodDeleteDay] : ka.cycle.periodDaySheetHint
+        }
+        accent={confirmRemove ? c.danger : c.period}
+        closeLabel={confirmRemove ? ka.common.back : ka.common.close}
+        actions={
+          confirmRemove
+            ? [
+                {
+                  label: ka.common.delete,
+                  tone: 'destructive',
+                  icon: Trash2,
+                  onPress: () => {
+                    if (daySheet) void removeDay(daySheet);
+                  },
+                  loading: busy,
+                },
+              ]
+            : [
+                {
+                  label: ka.cycle.fullLog,
+                  tone: 'secondary',
+                  icon: Pencil,
+                  onPress: () => {
+                    const date = daySheet;
+                    closeDay();
+                    if (date) router.push({ pathname: '/cycle/log', params: { date } });
+                  },
+                },
+                { label: ka.cycle.deleteLog, tone: 'destructive', icon: Trash2, onPress: () => setConfirmRemove(true), disabled: busy },
+              ]
+        }
+        onClose={confirmRemove ? () => setConfirmRemove(false) : closeDay}
+      >
+        {daySheet && !confirmRemove ? (
+          <>
+            <Text style={{ color: c.mutedSoft, fontFamily: 'NotoSansGeorgian_600SemiBold', fontSize: 12, marginBottom: 8 }}>
+              {ka.cycle.logStepFlow}
+            </Text>
+            <View style={{ flexDirection: 'row', gap: 8 }}>
+              {BLEED_FLOWS.map((opt) => {
+                const on = sheetFlow === opt.id;
+                return (
+                  <Pressable
+                    key={opt.id}
+                    onPress={() => void setDayFlow(daySheet, opt.id as BleedFlow)}
+                    disabled={busy}
+                    accessibilityRole="button"
+                    accessibilityState={{ selected: on, disabled: busy }}
+                    accessibilityLabel={opt.label}
+                    style={{
+                      flex: 1,
+                      minHeight: 44,
+                      borderRadius: 14,
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: 6,
+                      backgroundColor: on ? c.cta : c.cardSoft,
+                    }}
+                  >
+                    {on ? <Check size={14} color={c.onPrimary} strokeWidth={3} /> : null}
+                    <Text style={{ color: on ? c.onPrimary : c.ink, fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 12 }}>
+                      {opt.label}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+          </>
+        ) : null}
+      </CycleExplainSheet>
     </View>
   );
 }
