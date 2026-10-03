@@ -1131,6 +1131,7 @@ export type CycleDoctorSummaryInclusions = {
   menstrual: boolean;
   pain: boolean;
   symptoms: boolean;
+  symptomMap?: boolean;
   wellness: boolean;
   fertility: boolean;
   sexual: boolean;
@@ -1169,6 +1170,23 @@ export type CycleDoctorPostpartumContext = {
   elapsed: { week: number; day: number } | null;
 };
 
+/** Counts per cycle day over the last completed cycles (server cycleSymptomMap.js). */
+export type CycleDoctorSymptomMap = {
+  cycleCount: number;
+  /** Cycle-day columns 1…dayCount; `overflow` adds one „36+“ column at the end of every `counts`. */
+  dayCount: number;
+  overflow: boolean;
+  cycles: { start: string; end: string; lengthDays: number }[];
+  rows: {
+    kind: 'pain' | 'symptom' | 'mood';
+    key: string;
+    loggedDays: number;
+    cyclesWithItem: number;
+    counts: number[];
+    peak: { from: number; to: number; cycles: number } | null;
+  }[];
+};
+
 export type CycleDoctorSummary = {
   version: string;
   generatedAt: string;
@@ -1196,6 +1214,8 @@ export type CycleDoctorSummary = {
     aggregates: { type: string; dayCount: number; severityMode: string | null; source: string }[];
   } | null;
   symptoms: { rows: { key: string; dayCount: number; dates: string[]; source: string }[] } | null;
+  /** „სიმპტომები ციკლის დღეების მიხედვით“ — optional (servers before W3-3 leave it out). */
+  symptomMap?: CycleDoctorSymptomMap | null;
   wellness: {
     energy?: { date: string; value: string; source: string }[];
     sleep?: { date: string; value: string; label?: string; source: string }[];

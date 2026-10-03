@@ -16,6 +16,11 @@ import {
   doctorReportFactIds,
   doctorSummaryCopy,
   doctorSummaryEnumLabel,
+  doctorSymptomMapColumns,
+  doctorSymptomMapLabel,
+  doctorSymptomMapOpacity,
+  doctorSymptomMapRows,
+  doctorSymptomMapSentence,
   formatDoctorCivilDate,
   formatDoctorGestationalAge,
   resolveDoctorSummaryLocale,
@@ -96,7 +101,7 @@ describe('doctor-summary locale catalog coverage', () => {
 
   it('unknown enums are excluded, never shown as raw keys', () => {
     assert.equal(doctorSummaryEnumLabel('flow', 'future_flow', 'fr'), null);
-    assert.equal(doctorSummaryEnumLabel('symptom', 'gas', 'en'), null);
+    assert.equal(doctorSummaryEnumLabel('symptom', 'future_symptom', 'en'), null);
     const html = buildCycleReportHtmlFromSummary(
       buildCycleDoctorSummaryData({
         today: TODAY,
@@ -683,3 +688,151 @@ describe('doctor-summary postpartum header locales', () => {
   });
 });
 
+
+describe('doctor-summary symptom map („სიმპტომები ციკლის დღეების მიხედვით“)', () => {
+  const MAP_TODAY = '2026-09-30';
+  const starts = [6, 5, 4, 3, 2, 1, 0].map((i) => addDays('2026-09-20', -28 * i));
+  function mapLogs() {
+    const rows = new Map();
+    const put = (date, extra) => {
+      const prev = rows.get(date) || { date, flow: 'none', symptoms: [], moods: [], painEntries: [] };
+      rows.set(date, {
+        ...prev,
+        ...(extra.flow ? { flow: extra.flow } : {}),
+        symptoms: [...prev.symptoms, ...(extra.symptoms || [])],
+        moods: [...prev.moods, ...(extra.moods || [])],
+        painEntries: [...prev.painEntries, ...(extra.painEntries || [])],
+      });
+    };
+    for (const s of starts) for (let i = 0; i < 4; i += 1) put(addDays(s, i), { flow: i ? 'light' : 'medium' });
+    starts.slice(0, 6).forEach((s, idx) => {
+      put(s, { painEntries: [{ type: 'cramps', severity: 'moderate' }], symptoms: ['protected'] });
+      if (idx > 0) {
+        put(addDays(s, 1), { symptoms: ['cramps'] });
+        put(addDays(s, 2), { symptoms: ['cramps'] });
+      }
+      put(addDays(s, 25), { moods: ['irritable', 'romantic'], symptoms: ['discharge', 'bloating'] });
+    });
+    return [...rows.values()].sort((a, b) => a.date.localeCompare(b.date));
+  }
+  const mapSummary = (extra = {}) =>
+    buildCycleDoctorSummaryData({
+      today: MAP_TODAY,
+      profile: { mode: 'TRACK_PERIOD' },
+      logs: mapLogs(),
+      options: { from: starts[0] },
+      ...extra,
+    });
+
+  it('every symptom / mood the server may send has a label in ka/en/fr/ru', async () => {
+    const { OBSERVATION_REGISTRY, STORAGE } = await import('../../../server/src/lib/cycleObservationRegistry.js');
+    const { isSymptomMapItem } = await import('../../../server/src/lib/cycleSymptomMap.js');
+    const items = [];
+    for (const [key, defn] of Object.entries(OBSERVATION_REGISTRY)) {
+      if (defn.storage === STORAGE.SYMPTOMS && isSymptomMapItem(`symptom:${key}`)) items.push(['symptom', key]);
+      if (defn.storage === STORAGE.MOODS && isSymptomMapItem(`mood:${key}`)) items.push(['mood', key]);
+    }
+    assert.ok(items.length > 40);
+    for (const loc of DOCTOR_SUMMARY_LOCALES) {
+      for (const [group, key] of items) {
+        assert.ok(doctorSummaryEnumLabel(group, key, loc), `${loc} ${group}.${key}`);
+      }
+      for (const type of ['cramps', 'pelvic', 'lower_back', 'headache', 'breast', 'ovulation_side', 'other']) {
+        assert.ok(doctorSymptomMapLabel({ kind: 'pain', key: type }, loc), `${loc} pain.${type}`);
+      }
+    }
+    assert.equal(doctorSummaryEnumLabel('mood', 'romantic', 'en'), null);
+  });
+
+  it('the payload carries HEALTH rows only; the sentence reads like the brief', () => {
+    const s = mapSummary();
+    assert.equal(s.symptomMap.cycleCount, 6);
+    const rows = doctorSymptomMapRows(s, 'ka');
+    assert.deepEqual(rows.map((r) => r.id).sort(), ['mood:irritable', 'pain:cramps', 'symptom:bloating']);
+    const cramps = rows.find((r) => r.id === 'pain:cramps');
+    assert.equal(cramps.label, 'სპაზმები');
+    assert.equal(cramps.sentence, 'სპაზმები — ყველაზე ხშირად ციკლის 1-ლ დღეს (6-დან 6 ციკლში)');
+    assert.deepEqual(cramps.counts.slice(0, 4), [6, 5, 5, 0]);
+    const en = doctorSymptomMapRows(s, 'en').find((r) => r.id === 'mood:irritable');
+    assert.equal(en.sentence, 'Irritable — most often on day 26 (in 6 of 6 cycles)');
+  });
+
+  it('a run of busiest days reads as a range', () => {
+    const map = {
+      cycleCount: 6,
+      dayCount: 28,
+      overflow: false,
+      rows: [{ kind: 'pain', key: 'cramps', counts: [5, 5, 5], peak: { from: 1, to: 3, cycles: 5 } }],
+    };
+    assert.equal(
+      doctorSymptomMapSentence(map.rows[0], map, 'ka'),
+      'სპაზმები — ყველაზე ხშირად 1–3 დღეებში (6-დან 5 ციკლში)',
+    );
+    assert.equal(
+      doctorSymptomMapSentence(map.rows[0], map, 'ru'),
+      'Менструальные спазмы — чаще всего в дни 1–3 цикла (в 5 из 6 циклов)',
+    );
+    const late = { ...map, dayCount: 35, overflow: true };
+    assert.deepEqual(doctorSymptomMapColumns(late).slice(-2), ['35', '36+']);
+    assert.equal(
+      doctorSymptomMapSentence({ kind: 'mood', key: 'sad', peak: { from: 36, to: 36, cycles: 2 } }, late, 'en'),
+      'Sad — most often on days 36+ (in 2 of 6 cycles)',
+    );
+  });
+
+  it('one ink, opacity steps from light to dark; zero is empty', () => {
+    assert.equal(doctorSymptomMapOpacity(0, 6), 0);
+    const steps = [1, 2, 3, 4, 5, 6].map((n) => doctorSymptomMapOpacity(n, 6));
+    for (let i = 1; i < steps.length; i += 1) assert.ok(steps[i] > steps[i - 1]);
+    assert.equal(steps[0], 0.18);
+    assert.equal(steps[5], 0.9);
+    assert.equal(doctorSymptomMapOpacity(1, 1), 0.9);
+  });
+
+  it('the PDF has the same table in every locale, with print colours and no sensitive item', () => {
+    const s = mapSummary();
+    const facts = doctorReportFactIds(s);
+    assert.deepEqual([...facts.symptomMapItems].sort(), ['mood:irritable', 'pain:cramps', 'symptom:bloating']);
+    for (const loc of DOCTOR_SUMMARY_LOCALES) {
+      const html = buildCycleReportHtmlFromSummary(s, loc);
+      const copy = doctorSummaryCopy(loc);
+      assert.ok(html.includes(copy.symptomMapTitle), loc);
+      assert.ok(html.includes('<table class="smap">'), loc);
+      assert.ok(html.includes('print-color-adjust: exact'), loc);
+      assert.equal((html.match(/<th class="smap-l" scope="row">/g) || []).length, 3, loc);
+      assert.equal((html.match(/<th class="smap-d">/g) || []).length, 28, loc);
+      assert.ok(html.includes('rgba(31, 41, 55, 0.9)'), loc);
+      // The map section only (the older „Recorded symptoms“ list may name discharge — doctor INCLUDE).
+      const section = html.slice(html.indexOf(`<h2>${copy.symptomMapTitle}`), html.indexOf('class="disclaimer"'));
+      for (const word of ['romantic', 'protected', 'discharge', copy.symptom.discharge, 'irritable', 'symptom:', 'mood:']) {
+        assert.equal(section.includes(word), false, `${loc} ${word}`);
+      }
+      assert.deepEqual(doctorReportFactIds(s), facts);
+    }
+    const ka = buildCycleReportHtmlFromSummary(s, 'ka');
+    assert.ok(ka.includes('სპაზმები — ყველაზე ხშირად ციკლის 1-ლ დღეს (6-დან 6 ციკლში)'));
+    assert.ok(ka.includes('გაღიზიანება'));
+  });
+
+  it('hidden cycles leave the map; nothing to show → no section', () => {
+    const hidden = mapSummary({ hiddenCycles: [starts[2]] });
+    assert.equal(hidden.symptomMap.cycleCount, 5);
+    assert.ok(buildCycleReportHtmlFromSummary(hidden, 'en').includes('in 5 of 5 cycles'));
+    const empty = buildCycleDoctorSummaryData({
+      today: MAP_TODAY,
+      profile: { mode: 'TRACK_PERIOD' },
+      logs: mapLogs().map((l) => ({ ...l, symptoms: [], moods: [], painEntries: [] })),
+      options: { from: starts[0] },
+    });
+    assert.equal(empty.symptomMap, null);
+    for (const loc of DOCTOR_SUMMARY_LOCALES) {
+      const html = buildCycleReportHtmlFromSummary(empty, loc);
+      assert.equal(html.includes('class="smap"'), false, loc);
+      assert.equal(html.includes(doctorSummaryCopy(loc).symptomMapTitle), false, loc);
+    }
+    // An older server without the field renders exactly as before.
+    const legacy = { ...mapSummary(), symptomMap: undefined };
+    assert.equal(buildCycleReportHtmlFromSummary(legacy, 'ka').includes('class="smap"'), false);
+    assert.deepEqual(doctorSymptomMapRows(legacy, 'ka'), []);
+  });
+});

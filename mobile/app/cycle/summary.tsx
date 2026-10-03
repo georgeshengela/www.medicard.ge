@@ -9,6 +9,7 @@ import * as Sharing from 'expo-sharing';
 import { BarChart3, FileDown, MessageSquareText, Sparkles } from 'lucide-react-native';
 import { CyclePeriodHistory } from '@/components/cycle/CyclePeriodHistory';
 import { CyclePmsHeatmap } from '@/components/cycle/CyclePmsHeatmap';
+import { CycleSymptomMap } from '@/components/cycle/CycleSymptomMap';
 import {
   CycleAtmosphere,
   CycleCard,
@@ -483,6 +484,12 @@ export default function CycleSummary() {
                     />
                   ))}
                 </CycleCard>
+              </CycleSection>
+            ) : null}
+
+            {s.symptomMap?.rows?.length ? (
+              <CycleSection title={copy.symptomMapTitle} delay={105}>
+                <CycleSymptomMap summary={s} locale={reportLocale} />
               </CycleSection>
             ) : null}
 
