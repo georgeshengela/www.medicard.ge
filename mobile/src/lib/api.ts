@@ -830,6 +830,8 @@ export type CyclePartnerPayload = {
     inPeriod: boolean;
     inPeriodEstimated?: boolean;
     nextPeriodStart: string | null;
+    /** The next period as a window (variable cycles, perimenopause); optional. */
+    nextPeriodRange?: { from: string; to: string } | null;
     nextPeriodEstimated?: boolean;
   };
   phase?: { phase: string; phaseKa: string; cycleDay: number | null; estimated?: boolean };
@@ -1894,8 +1896,22 @@ export type CyclePerimenopausePayload = {
     nextPeriodStart: string | null;
     nextPeriodEnd: string | null;
     confidence: 'low' | 'medium' | 'high';
+    /** Range forecast (W3-4; absent on older servers): never one date in this mode. */
+    status?: 'learning' | 'range' | 'long_gap' | 'no_bleeding_12m';
+    range?: { from: string; to: string; minDays: number; maxDays: number; basedOn: number } | null;
+    daysSinceBleeding?: number | null;
   };
   observationSummaries?: CyclePerimenopauseObservationSummariesPayload | null;
+};
+
+/** „ბოლო ციკლები“ (W3-4): the last ≤ 6 completed, not hidden cycles, oldest first; null = no card. */
+export type CycleComparisonPayload = {
+  cycles: Array<{ start: string; end: string; length: number; periodDays: number; latest: boolean }>;
+  latestDays: number;
+  /** Median of the cycles before the latest; null until there are 2 of them. */
+  usualDays: number | null;
+  diffDays: number | null;
+  basedOn: number;
 };
 
 export type CycleBundle = {
@@ -2004,6 +2020,8 @@ export type CycleBundle = {
   periodStatus?: CyclePeriodStatus | null;
   /** Cycle deviations over the last 180 days (brief §9 wave 2 item 14); null = draw nothing; absent on older servers. */
   deviations?: CycleDeviations | null;
+  /** „ბოლო ციკლები“ comparison (W3-4); null = no card; absent on older servers. */
+  cycleComparison?: CycleComparisonPayload | null;
 };
 
 /** Brief §9 wave 2 item 14 (Apple „Cycle Deviations“): server-computed findings, the app writes the words. */

@@ -54,6 +54,7 @@ import {
 } from '@/lib/home/homeCycle';
 import { CYCLES_VARY_NOTE, cycleCenterText, windowOpenTail } from '@/lib/cycleCenterCopy';
 import { periodWindowLine } from '@/lib/cycleForecastCopy';
+import { periForecastView, periNextPeriodLabel } from '@/lib/cyclePerimenopauseForecast';
 import { useThemeColors, useIsDark } from '@/theme/colors';
 import { useCycleColors } from '@/theme/cycle';
 import { useHomeAccent } from '@/theme/homeAccent';
@@ -214,10 +215,13 @@ export function HomeCycleHero({ cycle, locked, userId, first }: HomeCycleHeroPro
     const elapsed = bundle.postpartum?.elapsed;
     const lastBleed = bundle.perimenopause?.lastRecordedBleeding?.date;
     const title = peri ? ka.cycle.homePeriLabel : ka.cycle.homePostpartumLabel;
+    // Perimenopause (W3-4): the next period only as a window (or the honest / calm line), then the last bleed.
+    const periView = peri ? periForecastView({ forecast: bundle.perimenopause?.forecast, predictions: bundle.predictions, today }) : null;
+    const periForecast = periView
+      ? `${periNextPeriodLabel()}: ${periView.short}`
+      : null;
     const detail = peri
-      ? lastBleed
-        ? ka.cycle.periLastBleeding(formatCycleDateKa(lastBleed))
-        : ka.cycle.periNoBleeding
+      ? `${periForecast}\n${lastBleed ? ka.cycle.periLastBleeding(formatCycleDateKa(lastBleed)) : ka.cycle.periNoBleeding}`
       : elapsed
         ? ka.cycle.postpartumElapsed(elapsed.week, elapsed.day)
         : ka.cycle.postpartumNoReference;

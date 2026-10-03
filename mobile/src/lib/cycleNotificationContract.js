@@ -34,6 +34,16 @@ export function periodReminderAnchors(nextPeriodStart, nextPeriodRange) {
   };
 }
 
+/**
+ * Perimenopause (W3-4, brief §9 „მერე“ item 7): the next period is only a window, so the one period
+ * reminder is „მალე“ — `periodDaysBefore` before the window's first day. No „today“ (that would be a
+ * single date), no „late“ check-in and no late status (late alerts are noise in this mode).
+ */
+export function perimenopausePeriodSoonDate(nextPeriodRange, periodDaysBefore) {
+  if (!nextPeriodRange?.from || !nextPeriodRange?.to || !(periodDaysBefore > 0)) return null;
+  return addDaysUtc(nextPeriodRange.from, -periodDaysBefore);
+}
+
 /** Forecast honesty: before 3 completed cycles no fertile / ovulation reminder (server `predictions.fertility`). */
 export const FERTILITY_LEARNING_SKIPS = Object.freeze(['ovulation', 'fertile', 'pms', 'opk']);
 
@@ -308,6 +318,13 @@ export function buildCycleCandidates({
     }
   }
 
+  if (mode === 'PERIMENOPAUSE' && forecastAllowed !== false) {
+    const soon = perimenopausePeriodSoonDate(predictions.nextPeriodRange, prefs.periodDaysBefore ?? 0);
+    if (soon) {
+      push({ type: 'period_soon', eventDate: soon, revalidationKey: 'nextPeriodRange.from', class: 'calendar' });
+    }
+  }
+
   const fertilityOk =
     showFertilityMarkers !== false &&
     mode !== 'PREGNANCY' &&
@@ -404,6 +421,7 @@ export function expectedEventDate(type, live = {}) {
   const anchors = periodReminderAnchors(start, live.nextPeriodRange);
   if (type === 'period_start') return start || null;
   if (type === 'period_soon') {
+    if (live.mode === 'PERIMENOPAUSE') return perimenopausePeriodSoonDate(live.nextPeriodRange, live.periodDaysBefore);
     if (!start || !(live.periodDaysBefore > 0)) return null;
     return addDaysUtc(anchors.soonFrom, -live.periodDaysBefore);
   }
@@ -432,7 +450,7 @@ export function revalidateCycleCandidate(candidate, live = {}) {
   if (live.mode === 'PREGNANCY' && type !== 'log_nudge') {
     return { ok: false, reason: CYCLE_SUPPRESSION.PREGNANCY_SUPPRESSED };
   }
-  if (live.mode === 'PERIMENOPAUSE' && type !== 'log_nudge') {
+  if (live.mode === 'PERIMENOPAUSE' && type !== 'log_nudge' && type !== 'period_soon') {
     return { ok: false, reason: CYCLE_SUPPRESSION.PERIMENOPAUSE_SUPPRESSED };
   }
   if (live.mode === 'POSTPARTUM' && type !== 'log_nudge') {
