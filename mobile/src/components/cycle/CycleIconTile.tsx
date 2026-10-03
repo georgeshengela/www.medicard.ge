@@ -45,6 +45,8 @@ export type CycleIconTileProps = {
   accessibilityHint?: string;
   /** A fact, not a choice (day sheet): drawn selected, no press, no haptic, read as text. */
   readOnly?: boolean;
+  /** Read-only tiles only: a tap opens „გაიგე მეტი“ for the fact (day sheet) instead of doing nothing. */
+  onExplain?: () => void;
 };
 
 export function CycleIconTile({
@@ -66,6 +68,7 @@ export function CycleIconTile({
   role = 'checkbox',
   accessibilityHint,
   readOnly = false,
+  onExplain,
 }: CycleIconTileProps) {
   const c = useCycleColors();
   const ink = group === 'bleeding' ? c.period : group === 'fertility' ? c.fertile : c.ink;
@@ -73,15 +76,19 @@ export function CycleIconTile({
   const size = Math.round(GLYPH * glyphScale);
   const spokenLevel = level ? (levelName === undefined ? (levelMax === 3 ? levelLabel(level as 1 | 2 | 3) : null) : levelName) : null;
   const dots = Math.max(1, Math.min(6, Math.round(levelMax)));
+  const explainable = readOnly && Boolean(onExplain);
   return (
     <Pressable
-      accessibilityRole={readOnly ? 'text' : role}
+      accessibilityRole={explainable ? 'button' : readOnly ? 'text' : role}
       accessibilityState={readOnly ? undefined : role === 'radio' ? { selected, disabled } : role === 'button' ? { disabled } : { checked: selected, disabled }}
       accessibilityLabel={spokenLevel ? `${label}, ${spokenLevel}` : label}
-      accessibilityHint={readOnly ? undefined : accessibilityHint}
-      disabled={disabled || readOnly}
+      accessibilityHint={explainable ? tx('გაიგე მეტი', 'Learn more') : readOnly ? undefined : accessibilityHint}
+      disabled={disabled || (readOnly && !explainable)}
       onPress={() => {
-        if (readOnly) return;
+        if (readOnly) {
+          onExplain?.();
+          return;
+        }
         Haptics.selectionAsync().catch(() => undefined);
         onPress();
       }}

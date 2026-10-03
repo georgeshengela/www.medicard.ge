@@ -10,6 +10,8 @@ export type MedicalSource = {
   description: string;
   descriptionKa: string;
   url: string | null;
+  /** When the link was last opened and found to still say what the description claims (YYYY-MM-DD). */
+  checkedAt?: string;
 };
 
 export const medicalSources = {
@@ -309,6 +311,235 @@ export const medicalSources = {
     descriptionKa:
       'WHO-ს UV ინდექსის კატეგორიები: 0–2 დაბალი, 3–5 ზომიერი, 6–7 მაღალი, 8–10 ძალიან მაღალი, 11 და მეტი უკიდურესი; მზისგან დაცვა 3-დან არის რეკომენდებული. MEDICARD გარეთ ყოფნისთვის UV 2-ს ან ნაკლებს ამჯობინებს, 6–7-ს მაღალად, 8-ს და მეტს ძალიან მაღალად აჩვენებს.',
     url: 'https://www.who.int/news-room/questions-and-answers/item/radiation-the-ultraviolet-(uv)-index',
+  },
+  // Cycle „გაიგე მეტი“ (src/i18n/cycle/learnMore.ts): plain explanations of what a woman logs.
+  cycleBasics: {
+    id: 'cycleBasics',
+    organization: 'Office on Women’s Health (womenshealth.gov)',
+    title: 'Your menstrual cycle',
+    titleKa: 'შენი მენსტრუალური ციკლი',
+    description:
+      'Explains how a typical cycle works, how long periods usually last and what can change a cycle, such as stress or heavy exercise. MEDICARD’s „Learn more“ notes on bleeding and lifestyle are general information drawn from pages like this one, not advice about your own cycle.',
+    descriptionKa:
+      'აღწერს, როგორ მუშაობს ციკლი, რამდენ ხანს გრძელდება მენსტრუაცია და რა შეიძლება ცვლიდეს ციკლს, მაგალითად სტრესი ან ძლიერი დატვირთვა. MEDICARD-ის „გაიგე მეტი“ სისხლდენასა და ცხოვრების წესზე ზოგადი ინფორმაციაა, არა რჩევა შენს ციკლზე.',
+    url: 'https://womenshealth.gov/menstrual-cycle/your-menstrual-cycle',
+    checkedAt: '2026-10-04',
+  },
+  periodsNhs: {
+    id: 'periodsNhs',
+    organization: 'National Health Service',
+    title: 'Periods — what is usual',
+    titleKa: 'მენსტრუაცია',
+    description:
+      'NHS overview of periods: what is usual for flow, length and symptoms, and when to see a GP. MEDICARD uses it for the plain notes on logged bleeding and the signs that are worth a doctor’s visit.',
+    descriptionKa:
+      'NHS-ის მიმოხილვა მენსტრუაციაზე: რა არის ჩვეულებრივი სისხლდენის, ხანგრძლივობისა და ნიშნებისთვის და როდის მიმართო ექიმს. MEDICARD მას სისხლდენის ახსნებში იყენებს.',
+    url: 'https://www.nhs.uk/conditions/periods/',
+    checkedAt: '2026-10-04',
+  },
+  abnormalBleeding: {
+    id: 'abnormalBleeding',
+    organization: 'American College of Obstetricians and Gynecologists',
+    title: 'Abnormal uterine bleeding',
+    titleKa: 'არატიპური სისხლდენა',
+    description:
+      'ACOG lists bleeding that is worth discussing with a clinician: bleeding or spotting between periods, after sex, periods longer or heavier than usual, and bleeding after menopause. MEDICARD repeats these signs next to spotting; it does not judge what causes them.',
+    descriptionKa:
+      'ACOG ასახელებს სისხლდენას, რომელზეც ექიმთან საუბარი ღირს: სისხლდენა ან ლაქები მენსტრუაციებს შორის, სქესობრივი კავშირის შემდეგ, ჩვეულზე გრძელი ან ძლიერი მენსტრუაცია და სისხლდენა მენოპაუზის შემდეგ. MEDICARD ამ ნიშნებს ლაქების გვერდით იმეორებს და მიზეზს არ აფასებს.',
+    url: 'https://www.acog.org/womens-health/faqs/abnormal-uterine-bleeding',
+    checkedAt: '2026-10-04',
+  },
+  periodPain: {
+    id: 'periodPain',
+    organization: 'American College of Obstetricians and Gynecologists',
+    title: 'Dysmenorrhea: painful periods',
+    titleKa: 'მტკივნეული მენსტრუაცია',
+    description:
+      'ACOG explains period cramps: they usually start a day or two before or at the start of a period, can spread to the lower back and legs, may come with nausea or loose stools, and often ease within 1–3 days. Pain that disrupts daily life or gets worse over time is a reason to see a clinician.',
+    descriptionKa:
+      'ACOG აღწერს მენსტრუალურ სპაზმებს: ხშირად მენსტრუაციამდე ერთი-ორი დღით ადრე ან დაწყებისას იწყება, შეიძლება წელსა და ფეხებში გადაეცეს, გულისრევა ან თხელი განავალი ახლდეს და 1–3 დღეში მსუბუქდება. ტკივილი, რომელიც ყოველდღიურობას გიშლის ან დროთა განმავლობაში ძლიერდება, ექიმთან მისვლის მიზეზია.',
+    url: 'https://www.acog.org/womens-health/faqs/dysmenorrhea-painful-periods',
+    checkedAt: '2026-10-04',
+  },
+  pelvicPain: {
+    id: 'pelvicPain',
+    organization: 'American College of Obstetricians and Gynecologists',
+    title: 'Chronic pelvic pain',
+    titleKa: 'ხანგრძლივი მენჯის ტკივილი',
+    description:
+      'ACOG describes pelvic pain that lasts 6 months or longer, can come and go with the cycle or be constant, and why it deserves a clinician’s visit. MEDICARD uses it for the notes on pelvic and one-sided pain.',
+    descriptionKa:
+      'ACOG აღწერს მენჯის ტკივილს, რომელიც 6 თვე ან მეტხანს გრძელდება, ციკლთან ერთად მოდის ან მუდმივია, და რატომ ღირს ექიმთან მისვლა. MEDICARD მას მენჯისა და ცალმხრივი ტკივილის ახსნებში იყენებს.',
+    url: 'https://www.acog.org/womens-health/faqs/chronic-pelvic-pain',
+    checkedAt: '2026-10-04',
+  },
+  premenstrualSymptoms: {
+    id: 'premenstrualSymptoms',
+    organization: 'American College of Obstetricians and Gynecologists',
+    title: 'Premenstrual syndrome (PMS)',
+    titleKa: 'მენსტრუაციამდელი ნიშნები',
+    description:
+      'ACOG lists the body and mood changes many people notice in the 5 days or so before a period — tender breasts, bloating, tiredness, food cravings, irritability, sadness — and which ones are worth raising with a clinician. MEDICARD uses it for the notes on mood and body tiles.',
+    descriptionKa:
+      'ACOG ჩამოთვლის სხეულისა და განწყობის ცვლილებებს, რომლებსაც ბევრი ამჩნევს მენსტრუაციამდე დაახლოებით 5 დღით ადრე — მკერდის მგრძნობელობა, შებერილობა, დაღლილობა, საკვების ლტოლვა, გაღიზიანება, სევდა — და რომელზე ღირს ექიმთან საუბარი. MEDICARD მას განწყობისა და სხეულის ახსნებში იყენებს.',
+    url: 'https://www.acog.org/womens-health/faqs/premenstrual-syndrome',
+    checkedAt: '2026-10-04',
+  },
+  vaginalHealth: {
+    id: 'vaginalHealth',
+    organization: 'American College of Obstetricians and Gynecologists',
+    title: 'Vaginitis — vaginal health',
+    titleKa: 'საშოს ანთება',
+    description:
+      'ACOG explains that some vaginal discharge is normal and changes during the cycle, and which changes — itching, burning, an unusual colour or smell — are worth a clinician’s visit. MEDICARD uses it for the notes on discharge and genital itching.',
+    descriptionKa:
+      'ACOG განმარტავს, რომ გარკვეული გამონადენი ნორმაა და ციკლთან ერთად იცვლება, და რომელი ცვლილება — ქავილი, წვა, უჩვეულო ფერი ან სუნი — ღირს ექიმთან მისვლად. MEDICARD მას გამონადენისა და ქავილის ახსნებში იყენებს.',
+    url: 'https://www.acog.org/womens-health/faqs/vaginitis',
+    checkedAt: '2026-10-04',
+  },
+  vaginalDischarge: {
+    id: 'vaginalDischarge',
+    organization: 'National Health Service',
+    title: 'Vaginal discharge',
+    titleKa: 'საშოს გამონადენი',
+    description:
+      'NHS describes how discharge normally changes through the cycle (thicker, then clearer and wetter around ovulation) and the changes to see a GP about. MEDICARD uses it for the discharge note.',
+    descriptionKa:
+      'NHS აღწერს, როგორ იცვლება გამონადენი ციკლის განმავლობაში (სქელი, ოვულაციისას უფრო გამჭვირვალე და სველი) და რა ცვლილებისას მიმართო ექიმს. MEDICARD მას გამონადენის ახსნაში იყენებს.',
+    url: 'https://www.nhs.uk/symptoms/vaginal-discharge/',
+    checkedAt: '2026-10-04',
+  },
+  vaginalConditions: {
+    id: 'vaginalConditions',
+    organization: 'MedlinePlus (U.S. National Library of Medicine)',
+    title: 'Vaginal diseases',
+    titleKa: 'საშოს პრობლემები',
+    description:
+      'MedlinePlus overview of common vaginal problems, including dryness and itching, and links to when to see a clinician. MEDICARD uses it for the private dryness note, shown only inside the unlocked private group.',
+    descriptionKa:
+      'MedlinePlus-ის მიმოხილვა საშოს ხშირ პრობლემებზე, მათ შორის სიმშრალესა და ქავილზე. MEDICARD მას სიმშრალის პირად ახსნაში იყენებს, რომელიც მხოლოდ გახსნილ პირად ჯგუფში ჩანს.',
+    url: 'https://medlineplus.gov/vaginaldiseases.html',
+    checkedAt: '2026-10-04',
+  },
+  menopauseSymptoms: {
+    id: 'menopauseSymptoms',
+    organization: 'MedlinePlus (U.S. National Library of Medicine)',
+    title: 'Menopause — health topic',
+    titleKa: 'მენოპაუზა',
+    description:
+      'MedlinePlus explains the years around menopause and common changes such as hot flashes, night sweats and sleep problems. MEDICARD uses it for the hot flash and night sweat notes.',
+    descriptionKa:
+      'MedlinePlus აღწერს მენოპაუზის გარშემო წლებს და ხშირ ცვლილებებს — ცხელ ტალღებს, ღამის ოფლიანობას, ძილის პრობლემებს. MEDICARD მას ცხელი ტალღებისა და ღამის ოფლიანობის ახსნებში იყენებს.',
+    url: 'https://medlineplus.gov/menopause.html',
+    checkedAt: '2026-10-04',
+  },
+  digestiveHealth: {
+    id: 'digestiveHealth',
+    organization: 'MedlinePlus (U.S. National Library of Medicine)',
+    title: 'Digestive diseases',
+    titleKa: 'საჭმლის მონელება',
+    description:
+      'MedlinePlus overview of digestive symptoms such as heartburn, constipation and gas, with links to when to get care. MEDICARD uses it for the digestion notes that are not tied to the cycle.',
+    descriptionKa:
+      'MedlinePlus-ის მიმოხილვა მონელების ნიშნებზე — გულძმარვა, ყაბზობა, გაზები — და როდის მიმართო ექიმს. MEDICARD მას მონელების ახსნებში იყენებს.',
+    url: 'https://medlineplus.gov/digestivediseases.html',
+    checkedAt: '2026-10-04',
+  },
+  headache: {
+    id: 'headache',
+    organization: 'MedlinePlus (U.S. National Library of Medicine)',
+    title: 'Headache — health topic',
+    titleKa: 'თავის ტკივილი',
+    description:
+      'MedlinePlus describes common headaches and the warning signs that need urgent care, such as a sudden, very severe headache or one with weakness or vision changes. MEDICARD repeats those signs in the headache and migraine notes.',
+    descriptionKa:
+      'MedlinePlus აღწერს ხშირ თავის ტკივილებს და საგანგაშო ნიშნებს, რომლებიც სასწრაფო დახმარებას საჭიროებს — უეცარი, უძლიერესი ტკივილი ან ტკივილი სისუსტით, მხედველობის ცვლილებით. MEDICARD ამ ნიშნებს თავის ტკივილისა და მიგრენის ახსნებში იმეორებს.',
+    url: 'https://medlineplus.gov/headache.html',
+    checkedAt: '2026-10-04',
+  },
+  skinAcne: {
+    id: 'skinAcne',
+    organization: 'MedlinePlus (U.S. National Library of Medicine)',
+    title: 'Acne — health topic',
+    titleKa: 'აკნე და გამონაყარი',
+    description:
+      'MedlinePlus explains acne, why hormones can make it flare, and when to see a clinician. MEDICARD uses it for the skin notes.',
+    descriptionKa:
+      'MedlinePlus აღწერს აკნეს, რატომ შეიძლება ჰორმონებმა გაამძაფროს და როდის მიმართო ექიმს. MEDICARD მას კანის ახსნებში იყენებს.',
+    url: 'https://medlineplus.gov/acne.html',
+    checkedAt: '2026-10-04',
+  },
+  hairLoss: {
+    id: 'hairLoss',
+    organization: 'MedlinePlus (U.S. National Library of Medicine)',
+    title: 'Hair loss — health topic',
+    titleKa: 'თმის ცვენა',
+    description:
+      'MedlinePlus explains everyday hair shedding, what can increase it (stress, illness, hormonal changes) and when to see a clinician. MEDICARD uses it for the hair loss note.',
+    descriptionKa:
+      'MedlinePlus აღწერს ყოველდღიურ თმის ცვენას, რა შეიძლება ზრდიდეს მას (სტრესი, ავადმყოფობა, ჰორმონული ცვლილებები) და როდის მიმართო ექიმს. MEDICARD მას თმის ცვენის ახსნაში იყენებს.',
+    url: 'https://medlineplus.gov/hairloss.html',
+    checkedAt: '2026-10-04',
+  },
+  stress: {
+    id: 'stress',
+    organization: 'MedlinePlus (U.S. National Library of Medicine)',
+    title: 'Stress — health topic',
+    titleKa: 'სტრესი',
+    description:
+      'MedlinePlus explains how long-lasting stress affects sleep, mood and the body, and when to ask for help. MEDICARD uses it for the stress, anxiety and stress-level notes.',
+    descriptionKa:
+      'MedlinePlus აღწერს, როგორ მოქმედებს ხანგრძლივი სტრესი ძილზე, განწყობასა და სხეულზე და როდის ითხოვო დახმარება. MEDICARD მას სტრესისა და შფოთვის ახსნებში იყენებს.',
+    url: 'https://medlineplus.gov/stress.html',
+    checkedAt: '2026-10-04',
+  },
+  caffeine: {
+    id: 'caffeine',
+    organization: 'MedlinePlus (U.S. National Library of Medicine)',
+    title: 'Caffeine — health topic',
+    titleKa: 'კოფეინი',
+    description:
+      'MedlinePlus explains where caffeine is found and how too much of it can cause jitters, a fast heartbeat and poor sleep. MEDICARD uses it for the caffeine note.',
+    descriptionKa:
+      'MedlinePlus აღწერს, სად არის კოფეინი და როგორ შეიძლება ზედმეტმა კოფეინმა გამოიწვიოს კანკალი, გულის აჩქარება და ცუდი ძილი. MEDICARD მას კოფეინის ახსნაში იყენებს.',
+    url: 'https://medlineplus.gov/caffeine.html',
+    checkedAt: '2026-10-04',
+  },
+  alcohol: {
+    id: 'alcohol',
+    organization: 'MedlinePlus (U.S. National Library of Medicine)',
+    title: 'Alcohol — health topic',
+    titleKa: 'ალკოჰოლი',
+    description:
+      'MedlinePlus explains how alcohol affects sleep, mood and health, and where to get help when cutting down is hard. MEDICARD uses it for the alcohol note.',
+    descriptionKa:
+      'MedlinePlus აღწერს, როგორ მოქმედებს ალკოჰოლი ძილზე, განწყობასა და ჯანმრთელობაზე და სად მიიღო დახმარება, თუ შემცირება გიჭირს. MEDICARD მას ალკოჰოლის ახსნაში იყენებს.',
+    url: 'https://medlineplus.gov/alcohol.html',
+    checkedAt: '2026-10-04',
+  },
+  pregnancyTest: {
+    id: 'pregnancyTest',
+    organization: 'MedlinePlus (U.S. National Library of Medicine)',
+    title: 'Pregnancy test',
+    titleKa: 'ორსულობის ტესტი',
+    description:
+      'MedlinePlus explains that home pregnancy tests look for the hormone hCG in urine, are most reliable from the day a period is due, and why an early test can be negative. MEDICARD uses it for the pregnancy test note.',
+    descriptionKa:
+      'MedlinePlus განმარტავს, რომ სახლის ტესტი შარდში hCG ჰორმონს ეძებს, ყველაზე სანდოა მოსალოდნელი მენსტრუაციის დღიდან და რატომ შეიძლება ადრეული ტესტი უარყოფითი იყოს. MEDICARD მას ორსულობის ტესტის ახსნაში იყენებს.',
+    url: 'https://medlineplus.gov/lab-tests/pregnancy-test/',
+    checkedAt: '2026-10-04',
+  },
+  healthTopics: {
+    id: 'healthTopics',
+    organization: 'MedlinePlus (U.S. National Library of Medicine)',
+    title: 'Health topics A–Z',
+    titleKa: 'ჯანმრთელობის თემები A–Z',
+    description:
+      'MedlinePlus health topics describe common symptoms such as dizziness, palpitations, fever or swelling, and when to get care. MEDICARD’s notes on these body tiles are general information, not an assessment of your symptoms.',
+    descriptionKa:
+      'MedlinePlus-ის თემები აღწერს ხშირ ნიშნებს — თავბრუსხვევა, გულის ფრიალი, ცხელება, შეშუპება — და როდის მიმართო ექიმს. MEDICARD-ის ახსნები ზოგადი ინფორმაციაა და შენს ნიშნებს არ აფასებს.',
+    url: 'https://medlineplus.gov/healthtopics.html',
+    checkedAt: '2026-10-04',
   },
 } as const satisfies Record<string, MedicalSource>;
 

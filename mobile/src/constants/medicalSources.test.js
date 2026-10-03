@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { medicalSources, sourcesFor } from './medicalSources.ts';
 
 const ALLOWED_HOSTS =
-  /^https:\/\/(www\.)?(who\.int|cdc\.gov|acog\.org|pubmed\.ncbi\.nlm\.nih\.gov|journals\.plos\.org|nhs\.uk|heart\.org|efsa\.europa\.eu|airindex\.eea\.europa\.eu|niddk\.nih\.gov|nia\.nih\.gov|medlineplus\.gov|canada\.ca)\//;
+  /^https:\/\/(www\.)?(who\.int|cdc\.gov|acog\.org|pubmed\.ncbi\.nlm\.nih\.gov|journals\.plos\.org|nhs\.uk|heart\.org|efsa\.europa\.eu|airindex\.eea\.europa\.eu|niddk\.nih\.gov|nia\.nih\.gov|medlineplus\.gov|canada\.ca|womenshealth\.gov)\//;
 
 describe('medical citations', () => {
   it('exposes a working https source for every cited calculation', () => {
@@ -20,6 +20,7 @@ describe('medical citations', () => {
       assert.ok(source.descriptionKa.length > 20);
       assert.match(source.url, ALLOWED_HOSTS);
       assert.doesNotMatch(source.url, /example\.com|placeholder|todo/i);
+      if ('checkedAt' in source) assert.match(source.checkedAt, /^\d{4}-\d{2}-\d{2}$/);
     }
   });
 

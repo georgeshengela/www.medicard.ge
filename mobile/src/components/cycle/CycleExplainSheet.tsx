@@ -44,6 +44,12 @@ type Props = {
   closeLabel?: string;
   /** Hide the close button (the actions already cover every exit); the scrim still closes. */
   hideClose?: boolean;
+  /**
+   * Draw inside the parent's own Modal (an absolute-fill layer) instead of presenting a second
+   * native Modal — for sheets opened from another sheet (the day sheet's „გაიგე მეტი“). The parent
+   * must render it as the last child of a full-screen container.
+   */
+  embedded?: boolean;
   onClose: () => void;
 };
 
@@ -58,6 +64,7 @@ export function CycleExplainSheet({
   actions,
   closeLabel,
   hideClose,
+  embedded = false,
   onClose,
 }: Props) {
   const c = useCycleColors();
@@ -67,58 +74,63 @@ export function CycleExplainSheet({
   const hasActions = Boolean(actions && actions.length > 0);
   const lastLabel = closeLabel ?? (hasActions ? ka.common.cancel : ka.common.close);
 
-  return (
-    <Modal visible={visible} {...APP_MODAL_PROPS} onRequestClose={onClose}>
-      <View style={s.root}>
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={ka.common.close}
-          onPress={onClose}
-          style={[StyleSheet.absoluteFill, { backgroundColor: c.overlay }]}
-        />
-        <View
-          accessibilityViewIsModal
-          accessibilityLabel={title}
-          style={[s.sheet, { backgroundColor: c.card, paddingBottom: insets.bottom + 18, maxHeight: height * 0.88 }]}
+  const sheet = (
+    <View style={s.root}>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={ka.common.close}
+        onPress={onClose}
+        style={[StyleSheet.absoluteFill, { backgroundColor: c.overlay }]}
+      />
+      <View
+        accessibilityViewIsModal
+        accessibilityLabel={title}
+        style={[s.sheet, { backgroundColor: c.card, paddingBottom: insets.bottom + 18, maxHeight: height * 0.88 }]}
+      >
+        <View style={[s.handle, { backgroundColor: c.border }]} />
+        <View style={s.titleRow}>
+          {accent ? <View style={[s.dot, { backgroundColor: accent }]} /> : null}
+          <Text accessibilityRole="header" style={[s.title, { color: c.ink }]}>
+            {title}
+          </Text>
+        </View>
+        <ScrollView
+          bounces={false}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+          style={{ flexGrow: 0 }}
+          contentContainerStyle={{ paddingBottom: 4 }}
         >
-          <View style={[s.handle, { backgroundColor: c.border }]} />
-          <View style={s.titleRow}>
-            {accent ? <View style={[s.dot, { backgroundColor: accent }]} /> : null}
-            <Text accessibilityRole="header" style={[s.title, { color: c.ink }]}>
-              {title}
+          {paragraphs.map((text, i) => (
+            <Text key={i} style={[s.body, { color: c.muted, marginTop: i === 0 ? 0 : 10 }]}>
+              {text}
             </Text>
-          </View>
-          <ScrollView
-            bounces={false}
-            showsVerticalScrollIndicator={false}
-            keyboardShouldPersistTaps="handled"
-            style={{ flexGrow: 0 }}
-            contentContainerStyle={{ paddingBottom: 4 }}
-          >
-            {paragraphs.map((text, i) => (
-              <Text key={i} style={[s.body, { color: c.muted, marginTop: i === 0 ? 0 : 10 }]}>
-                {text}
-              </Text>
-            ))}
-            {children ? <View style={{ marginTop: paragraphs.length ? 16 : 0 }}>{children}</View> : null}
-            {sourceIds && sourceIds.length ? <MedicalSourcesLink sourceIds={sourceIds} /> : null}
-            {caption ? <Text style={[s.caption, { color: c.mutedSoft }]}>{caption}</Text> : null}
-          </ScrollView>
-          <View style={{ gap: 10, marginTop: 18 }}>
-            {actions?.map((action) => <ActionButton key={action.label} action={action} />)}
-            {hideClose ? null : (
-              <Pressable
-                onPress={onClose}
-                accessibilityRole="button"
-                accessibilityLabel={lastLabel}
-                style={[s.button, { backgroundColor: hasActions ? 'transparent' : c.cardSoft }]}
-              >
-                <Text style={[s.buttonLabel, { color: hasActions ? c.muted : c.ink }]}>{lastLabel}</Text>
-              </Pressable>
-            )}
-          </View>
+          ))}
+          {children ? <View style={{ marginTop: paragraphs.length ? 16 : 0 }}>{children}</View> : null}
+          {sourceIds && sourceIds.length ? <MedicalSourcesLink sourceIds={sourceIds} /> : null}
+          {caption ? <Text style={[s.caption, { color: c.mutedSoft }]}>{caption}</Text> : null}
+        </ScrollView>
+        <View style={{ gap: 10, marginTop: 18 }}>
+          {actions?.map((action) => <ActionButton key={action.label} action={action} />)}
+          {hideClose ? null : (
+            <Pressable
+              onPress={onClose}
+              accessibilityRole="button"
+              accessibilityLabel={lastLabel}
+              style={[s.button, { backgroundColor: hasActions ? 'transparent' : c.cardSoft }]}
+            >
+              <Text style={[s.buttonLabel, { color: hasActions ? c.muted : c.ink }]}>{lastLabel}</Text>
+            </Pressable>
+          )}
         </View>
       </View>
+    </View>
+  );
+
+  if (embedded) return visible ? <View style={StyleSheet.absoluteFill}>{sheet}</View> : null;
+  return (
+    <Modal visible={visible} {...APP_MODAL_PROPS} onRequestClose={onClose}>
+      {sheet}
     </Modal>
   );
 }

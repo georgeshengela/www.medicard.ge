@@ -11,12 +11,13 @@ import {
   View,
 } from 'react-native';
 import { usePrefersReducedMotion } from '@/hooks/usePrefersReducedMotion';
-import { ChevronDown, ChevronRight, Droplets, Heart, Lock, SlidersHorizontal, Sparkles } from 'lucide-react-native';
+import { ChevronDown, ChevronRight, Droplets, Heart, Info, Lock, SlidersHorizontal, Sparkles } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
 import type { LucideIcon } from 'lucide-react-native';
 import { CYCLE_TEST_OPTIONS } from '@/constants/cycle';
 import { CycleBbtPicker } from '@/components/cycle/CycleBbtPicker';
 import { CycleIconRow, CycleIconTile } from '@/components/cycle/CycleIconTile';
+import { CycleInfoButton, CycleLearnMoreSheet, type LearnMoreItem } from '@/components/cycle/CycleLearnMoreSheet';
 import { CycleLogLayoutSheet } from '@/components/cycle/CycleLogLayoutSheet';
 import { useCycleLogLayout } from '@/components/cycle/useCycleLogLayout';
 import { CycleJournalField, CycleLifestyleFields, CyclePainEditor, CycleTagPicker } from '@/components/cycle/CycleObservationFields';
@@ -46,6 +47,7 @@ import {
 } from '@/lib/cycleFullLog';
 import { cycleGlyphFor, flowGlyphStyle } from '@/lib/cycleIconMap';
 import { fullLogSections, type LogLayoutGroup } from '@/lib/cycleLogLayout';
+import { LEARN_MORE_GROUPS, learnMoreFor, type LearnMoreEntry } from '@/i18n/cycle/learnMore';
 import { ka } from '@/i18n/ka';
 import { tx } from '@/i18n/locale';
 import { useCycleColors } from '@/theme/cycle';
@@ -134,7 +136,11 @@ export function CycleLogTabs({
   const [tab, setTab] = useState<TabId>(initialTab ?? 'flow');
   const [privateOpen, setPrivateOpen] = useState(false);
   const [customizing, setCustomizing] = useState(false);
+  /** „გაიგე მეტი“ sheet from a group's ⓘ (static copy; nothing is logged or sent). */
+  const [learn, setLearn] = useState<{ title: string; items: LearnMoreItem[] } | null>(null);
   const { layout, setLayout } = useCycleLogLayout();
+  const explain = (title: string, entry: LearnMoreEntry | null) =>
+    entry ? () => setLearn({ title, items: [{ entry }] }) : undefined;
 
   const caps = cycleModeCapabilities(mode);
   const showFertility = Boolean(caps.showFertilityLogging);
@@ -171,8 +177,8 @@ export function CycleLogTabs({
     setTab((prev) => (prev === next ? prev : next));
   };
 
-  const symptomGroup = (group: SymptomGroupId, title: string, hint?: string) => (
-    <Group key={group} title={title} hint={hint}>
+  const symptomGroup = (group: Exclude<SymptomGroupId, 'private'>, title: string, hint?: string) => (
+    <Group key={group} title={title} hint={hint} onInfo={explain(title, LEARN_MORE_GROUPS[group])}>
       <CycleIconRow
         items={symptomTiles(group)}
         visible={FULL_LOG_VISIBLE}
@@ -217,7 +223,11 @@ export function CycleLogTabs({
     switch (id) {
       case 'pain':
         return (
-          <Group title={ka.cycle.pain} hint={tx('ხელახალი შეხება — ინტენსივობა', 'tap again for strength')}>
+          <Group
+            title={ka.cycle.pain}
+            hint={tx('ხელახალი შეხება — ინტენსივობა', 'tap again for strength')}
+            onInfo={explain(ka.cycle.pain, LEARN_MORE_GROUPS.pain)}
+          >
             <CyclePainEditor
               compact
               entries={form.painEntries}
@@ -229,7 +239,7 @@ export function CycleLogTabs({
         );
       case 'mood':
         return (
-          <Group title={ka.cycle.trackGroup.mood} hint={ka.cycle.logMoodHint}>
+          <Group title={ka.cycle.trackGroup.mood} hint={ka.cycle.logMoodHint} onInfo={explain(ka.cycle.trackGroup.mood, LEARN_MORE_GROUPS.mood)}>
             <CycleIconRow
               items={moodTiles()}
               visible={FULL_LOG_VISIBLE}
@@ -257,7 +267,11 @@ export function CycleLogTabs({
       case 'fertility':
         return (
           showFertility ? (
-            <Group title={ka.cycle.trackGroup.fertility} note={ka.cycle.fertilityGroupHint}>
+            <Group
+              title={ka.cycle.trackGroup.fertility}
+              note={ka.cycle.fertilityGroupHint}
+              onInfo={explain(ka.cycle.trackGroup.fertility, LEARN_MORE_GROUPS.fertility)}
+            >
               <Text style={[s.sub, { color: c.ink }]}>{ka.cycle.ovulationTest}</Text>
               {testTiles(form.ovulationTest, (ovulationTest) => onChange({ ovulationTest }), 'fertility')}
 
@@ -290,7 +304,11 @@ export function CycleLogTabs({
               ) : null}
             </Group>
           ) : showPregnancyTestOnly ? (
-            <Group title={ka.cycle.pregnancyTest} note={ka.cycle.pregnancyTestNotMode}>
+            <Group
+              title={ka.cycle.pregnancyTest}
+              note={ka.cycle.pregnancyTestNotMode}
+              onInfo={explain(ka.cycle.pregnancyTest, learnMoreFor('test', 'pregnancyTest'))}
+            >
               {testTiles(form.pregnancyTest, (pregnancyTest) => onChange({ pregnancyTest }), 'bleeding')}
             </Group>
           ) : null
@@ -344,6 +362,26 @@ export function CycleLogTabs({
                         />
                       ))}
                     </View>
+                    {/* Only the two intimate symptoms are explained, and only while unlocked; sex never is. */}
+                    <Pressable
+                      accessibilityRole="button"
+                      accessibilityLabel={tx('გაიგე მეტი: სიმშრალე და ქავილი', 'Learn more: dryness and itching')}
+                      onPress={() =>
+                        setLearn({
+                          title: tx('ინტიმური ნიშნები', 'Intimate symptoms'),
+                          items: symptomTiles('private').flatMap(({ id, label }) => {
+                            const entry = learnMoreFor('symptom', id, { allowPrivate: true });
+                            return entry ? [{ title: label, entry }] : [];
+                          }),
+                        })
+                      }
+                      style={s.privateInfo}
+                    >
+                      <Info size={14} color={c.muted} strokeWidth={2.2} />
+                      <Text style={[s.privateInfoText, { color: c.muted }]}>
+                        {tx('გაიგე მეტი — სიმშრალე და ქავილი', 'Learn more — dryness and itching')}
+                      </Text>
+                    </Pressable>
                     <View style={s.lockSex}>
                       <CycleSexSection form={form} onChange={onChange} hideHeading hidePrivacyHint />
                     </View>
@@ -355,7 +393,7 @@ export function CycleLogTabs({
         );
       case 'lifestyle':
         return (
-          <Group title={ka.cycle.lifestyle}>
+          <Group title={ka.cycle.lifestyle} onInfo={explain(ka.cycle.lifestyle, LEARN_MORE_GROUPS.lifestyle)}>
             <CycleLifestyleFields
               sleepQuality={form.sleepQuality}
               stressLevel={form.stressLevel}
@@ -434,7 +472,11 @@ export function CycleLogTabs({
         showsVerticalScrollIndicator={false}
       >
         <View onLayout={onAnchor('flow')} style={s.anchor}>
-          <Group title={tx('სისხლდენა', 'Bleeding')} hint={ka.cycle.logFlowHint}>
+          <Group
+            title={tx('სისხლდენა', 'Bleeding')}
+            hint={ka.cycle.logFlowHint}
+            onInfo={explain(tx('სისხლდენა', 'Bleeding'), LEARN_MORE_GROUPS.flow)}
+          >
             <View style={s.tiles}>
               {flowTiles().map((opt) => {
                 const look = flowGlyphStyle(opt.id);
@@ -499,6 +541,7 @@ export function CycleLogTabs({
           </Pressable>
         </View>
       </ChatFormScroll>
+      <CycleLearnMoreSheet visible={learn != null} title={learn?.title ?? ''} items={learn?.items ?? []} onClose={() => setLearn(null)} />
       <CycleLogLayoutSheet visible={customizing} layout={layout} onChange={setLayout} onClose={() => setCustomizing(false)} available={available} />
     </View>
   );
@@ -510,21 +553,27 @@ function Group({
   hint,
   note,
   text = false,
+  onInfo,
   children,
 }: {
   title: string;
   hint?: string;
   note?: string;
   text?: boolean;
+  /** The ⓘ beside the title → „გაიგე მეტი“ for the group. */
+  onInfo?: () => void;
   children: React.ReactNode;
 }) {
   const c = useCycleColors();
   return (
     <View style={s.group}>
       <View style={s.groupHead}>
-        <Text accessibilityRole="header" style={[s.groupTitle, { color: c.ink }]}>
-          {title}
-        </Text>
+        <View style={s.groupTitleRow}>
+          <Text accessibilityRole="header" style={[s.groupTitle, { color: c.ink }]}>
+            {title}
+          </Text>
+          {onInfo ? <CycleInfoButton label={title} onPress={onInfo} /> : null}
+        </View>
         {hint ? (
           <Text numberOfLines={1} style={[s.groupHint, { color: c.mutedSoft }]}>
             {hint}
@@ -548,7 +597,8 @@ const s = StyleSheet.create({
   list: { paddingHorizontal: 16, paddingTop: 2 },
   anchor: { gap: 22, paddingBottom: 22 },
   group: { gap: 10 },
-  groupHead: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', gap: 10, paddingHorizontal: 4 },
+  groupHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10, paddingHorizontal: 4, minHeight: 28 },
+  groupTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 2, flexShrink: 0 },
   groupTitle: { fontFamily: 'NotoSansGeorgian_600SemiBold', fontSize: 15, lineHeight: 21 },
   groupHint: { fontFamily: 'NotoSansGeorgian_400Regular', fontSize: 12, lineHeight: 16, flexShrink: 1 },
   groupNote: { fontFamily: 'NotoSansGeorgian_400Regular', fontSize: 12, lineHeight: 17, paddingHorizontal: 4, marginTop: -4 },
@@ -566,4 +616,6 @@ const s = StyleSheet.create({
   lockBody: { paddingTop: 4, paddingBottom: 14, paddingHorizontal: 4 },
   customize: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 12, paddingHorizontal: 12, minHeight: 60 },
   lockSex: { paddingHorizontal: 10, marginTop: -4 },
+  privateInfo: { flexDirection: 'row', alignItems: 'center', gap: 6, minHeight: 44, paddingHorizontal: 12, alignSelf: 'flex-start' },
+  privateInfoText: { fontFamily: 'NotoSansGeorgian_500Medium', fontSize: 12.5, lineHeight: 17, textDecorationLine: 'underline' },
 });

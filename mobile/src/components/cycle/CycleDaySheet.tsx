@@ -1,17 +1,19 @@
 import { CyclePressable as Pressable } from '@/components/cycle/CyclePressable';
 import { ChatFormScroll, ChatScreenShell } from '@/components/chat/ChatScreenShell';
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
-import { Check, ChevronLeft, ChevronRight, Lock, X } from 'lucide-react-native';
+import { Check, ChevronLeft, ChevronRight, Info, Lock, X } from 'lucide-react-native';
 import { APP_MODAL_PROPS, Modal } from '@/components/ui/appModal';
 import { todayKey } from '@/components/cycle/CycleCalendar';
 import { CycleHeavyBleedingCard } from '@/components/cycle/CycleHeavyBleedingCard';
 import { CycleIconTile } from '@/components/cycle/CycleIconTile';
+import { CycleLearnMoreSheet } from '@/components/cycle/CycleLearnMoreSheet';
 import { CycleQuickLogFields, quickLogModeHint } from '@/components/cycle/CycleQuickLogSheet';
 import { CyclePrimaryButton, formatCycleDateKa } from '@/components/cycle/CycleUI';
 import { useCycleQuickLog } from '@/components/cycle/useCycleQuickLog';
+import { learnMoreFor, type LearnMoreEntry, type LearnMoreKind } from '@/i18n/cycle/learnMore';
 import { ka } from '@/i18n/ka';
 import { tx } from '@/i18n/locale';
 import type { CycleBundle, CycleDayMark, CyclePostpartumPayload } from '@/lib/api';
@@ -73,6 +75,11 @@ export function CycleDaySheet({
   const { user } = useAuth();
   const q = useCycleQuickLog({ active: visible, date, userId: user?.id, onSaved });
   const [pending, setPending] = useState<Pending>(null);
+  /** „გაიგე მეტი“ for a fact tile — drawn inside this sheet's Modal, never a second native Modal. */
+  const [learn, setLearn] = useState<{ title: string; entry: LearnMoreEntry } | null>(null);
+  useEffect(() => {
+    setLearn(null);
+  }, [visible, date]);
 
   const today = cycleToday(bundle, todayKey());
   const isFuture = date > today;
@@ -114,6 +121,7 @@ export function CycleDaySheet({
 
   const run = (next: Exclude<Pending, null>) => {
     setPending(null);
+    setLearn(null);
     if (next.kind === 'move') onDateChange(next.date);
     else if (next.kind === 'full') onFullLog(date);
     else onClose();
@@ -142,9 +150,11 @@ export function CycleDaySheet({
 
   const title = formatCycleDateKa(date);
   const subtitle = [date === today ? ka.cycle.jumpToday : null, cycleDayLine].filter(Boolean).join(' · ');
+  // Public fact tiles only; private things stay one line and are never explained here.
+  const explainable = sections.some((section) => section.tiles.some((tile) => learnMoreFor(tile.kind as LearnMoreKind, tile.id)));
 
   return (
-    <Modal visible={visible} {...APP_MODAL_PROPS} onRequestClose={close}>
+    <Modal visible={visible} {...APP_MODAL_PROPS} onRequestClose={learn ? () => setLearn(null) : close}>
       <ChatScreenShell header={null} style={{ backgroundColor: c.overlay }}>
         <View style={s.root}>
           <Pressable accessibilityRole="button" accessibilityLabel={ka.common.close} onPress={close} style={StyleSheet.absoluteFill} />
@@ -228,30 +238,44 @@ export function CycleDaySheet({
               {/* Facts as tiles */}
               {sections.length || privateCount || assessed.length ? (
                 <View style={s.facts}>
-                  <Text accessibilityRole="header" style={[s.sectionTitle, { color: c.mutedSoft }]}>
-                    {ka.cycle.logged}
-                  </Text>
+                  <View style={s.factsHead}>
+                    <Text accessibilityRole="header" style={[s.sectionTitle, { color: c.mutedSoft }]}>
+                      {ka.cycle.logged}
+                    </Text>
+                    {explainable ? (
+                      <View style={s.learnHint} accessible={false}>
+                        <Info size={13} color={c.mutedSoft} strokeWidth={2.2} />
+                        <Text style={[s.learnHintText, { color: c.mutedSoft }]}>
+                          {tx('შეეხე — გაიგე მეტი', 'Tap to learn more')}
+                        </Text>
+                      </View>
+                    ) : null}
+                  </View>
                   {sections.map((section) => (
                     <View key={section.id} style={s.factGroup}>
                       <Text style={[s.factTitle, { color: c.muted }]}>{section.title}</Text>
                       <View style={s.tiles}>
-                        {section.tiles.map((tile) => (
-                          <CycleIconTile
-                            key={tile.key}
-                            readOnly
-                            selected
-                            onPress={() => undefined}
-                            glyph={tile.glyph}
-                            label={tile.label}
-                            group={tile.group}
-                            level={tile.level}
-                            levelMax={tile.levelMax}
-                            levelName={tile.levelName}
-                            glyphScale={tile.glyphScale}
-                            glyphOpacity={tile.glyphOpacity}
-                            hollow={tile.hollow}
-                          />
-                        ))}
+                        {section.tiles.map((tile) => {
+                          const entry = learnMoreFor(tile.kind as LearnMoreKind, tile.id);
+                          return (
+                            <CycleIconTile
+                              key={tile.key}
+                              readOnly
+                              selected
+                              onPress={() => undefined}
+                              onExplain={entry ? () => setLearn({ title: tile.label, entry }) : undefined}
+                              glyph={tile.glyph}
+                              label={tile.label}
+                              group={tile.group}
+                              level={tile.level}
+                              levelMax={tile.levelMax}
+                              levelName={tile.levelName}
+                              glyphScale={tile.glyphScale}
+                              glyphOpacity={tile.glyphOpacity}
+                              hollow={tile.hollow}
+                            />
+                          );
+                        })}
                       </View>
                     </View>
                   ))}
@@ -359,6 +383,13 @@ export function CycleDaySheet({
               </View>
             ) : null}
           </View>
+          <CycleLearnMoreSheet
+            embedded
+            visible={visible && learn != null}
+            title={learn?.title ?? ''}
+            items={learn ? [{ entry: learn.entry }] : []}
+            onClose={() => setLearn(null)}
+          />
         </View>
       </ChatScreenShell>
     </Modal>
@@ -380,6 +411,9 @@ const s = StyleSheet.create({
   phaseText: { flex: 1, fontSize: 14, lineHeight: 20, fontFamily: 'NotoSansGeorgian_600SemiBold' },
   fine: { fontSize: 11.5, lineHeight: 16, marginTop: 8, fontFamily: 'NotoSansGeorgian_400Regular' },
   facts: { marginTop: 16, gap: 12 },
+  factsHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
+  learnHint: { flexDirection: 'row', alignItems: 'center', gap: 4, flexShrink: 1 },
+  learnHintText: { fontSize: 11.5, lineHeight: 16, fontFamily: 'NotoSansGeorgian_500Medium' },
   sectionTitle: { fontSize: 11, lineHeight: 16, letterSpacing: 0.4, fontFamily: 'NotoSansGeorgian_700Bold', textTransform: 'uppercase' },
   factGroup: { gap: 6 },
   factTitle: { fontSize: 12.5, lineHeight: 18, fontFamily: 'NotoSansGeorgian_600SemiBold' },
