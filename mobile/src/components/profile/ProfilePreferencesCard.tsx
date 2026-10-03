@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Animated, Pressable, Text, View } from 'react-native';
-import { ChevronRight, Languages, LayoutDashboard, Moon, Palette, Sun, SunMoon, type LucideIcon } from 'lucide-react-native';
+import { Animated, Image, Pressable, Text, View } from 'react-native';
+import { ChevronRight, Languages, LayoutDashboard, Moon, Palette, Smartphone, Sun, SunMoon, type LucideIcon } from 'lucide-react-native';
 import { confirmLanguageSwitch } from '@/components/ui/LanguageSelect';
 import { ka } from '@/i18n/ka';
 import { appLang, setLanguageAndReload, tx, type AppLang } from '@/i18n/locale';
@@ -8,6 +8,8 @@ import { HomeLayoutPicker } from '@/components/home/layout/HomeLayoutPicker';
 import { useHomeLayout } from '@/hooks/useHomeLayout';
 import { isFeatureOn, useFeatureState } from '@/lib/featureFlags';
 import { HOME_LAYOUT_NAMES } from '@/lib/home/homeLayout';
+import { AppIconPicker } from '@/components/profile/AppIconPicker';
+import { APP_ICONS, appIconsSupported, currentAppIcon, type AppIconId } from '@/lib/appIcon';
 import { useIsDark, useThemeColors } from '@/theme/colors';
 import { hubInk, hubText, hubTint, type HubInk } from '@/theme/hub';
 import { useTheme, type ThemePreference } from '@/store/ThemeContext';
@@ -143,7 +145,7 @@ const LANG_OPTIONS: SegOption<AppLang>[] = [
   { value: 'en', label: 'English', text: 'EN' },
 ];
 
-/** Profile → Settings: the Home layout, appearance and language in one compact card. */
+/** Profile → Settings: the Home layout, app icon (iOS), appearance and language in one compact card. */
 export function ProfilePreferencesCard() {
   const colors = useThemeColors();
   const { preference, setPreference } = useTheme();
@@ -152,6 +154,10 @@ export function ProfilePreferencesCard() {
   const [pickerOpen, setPickerOpen] = useState(false);
   const layoutsOn = isFeatureOn('homeLayouts', useFeatureState());
   const { layout } = useHomeLayout();
+  const iconsOn = appIconsSupported();
+  const [iconOpen, setIconOpen] = useState(false);
+  const [appIcon, setAppIconState] = useState<AppIconId>(() => (iconsOn ? currentAppIcon() : 'classic'));
+  const iconInfo = APP_ICONS.find((icon) => icon.id === appIcon) ?? APP_ICONS[0];
 
   const lang = pendingLang ?? current;
   const chooseLang = (next: AppLang) => {
@@ -177,13 +183,27 @@ export function ProfilePreferencesCard() {
           <ChevronRight size={17} color={colors.text300} />
         </PrefRow>
       ) : null}
-      <PrefRow icon={Palette} ink="violet" title={ka.profile.appearance} value={themeLabel} divider={layoutsOn}>
+      {iconsOn ? (
+        <PrefRow
+          icon={Smartphone}
+          ink="rose"
+          title={tx('აპის აიქონი', 'App icon')}
+          value={iconInfo.name}
+          onPress={() => setIconOpen(true)}
+          divider={layoutsOn}
+        >
+          <Image source={iconInfo.thumb} style={{ width: 30, height: 30, borderRadius: 8 }} accessibilityIgnoresInvertColors />
+          <ChevronRight size={17} color={colors.text300} />
+        </PrefRow>
+      ) : null}
+      <PrefRow icon={Palette} ink="violet" title={ka.profile.appearance} value={themeLabel} divider={layoutsOn || iconsOn}>
         <MiniSegment label={ka.profile.appearance} value={preference} options={THEME_OPTIONS} onChange={setPreference} />
       </PrefRow>
       <PrefRow icon={Languages} ink="sky" title={tx('ენა', 'Language')} value={lang === 'ka' ? 'ქართული' : 'English'} divider>
         <MiniSegment label={tx('ენა', 'Language')} value={lang} options={LANG_OPTIONS} onChange={chooseLang} />
       </PrefRow>
       {layoutsOn ? <HomeLayoutPicker visible={pickerOpen} onClose={() => setPickerOpen(false)} source="profile" /> : null}
+      {iconsOn ? <AppIconPicker visible={iconOpen} onClose={() => setIconOpen(false)} onChanged={setAppIconState} /> : null}
     </View>
   );
 }

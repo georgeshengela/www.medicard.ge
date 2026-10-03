@@ -3,7 +3,7 @@
     "name": "MEDICARD AI",
     "slug": "medicard-ge",
     "scheme": "medicard",
-    "version": "1.0.0.19.6",
+    "version": "1.0.0.20.0",
     "assetBundlePatterns": [
       "assets/**"
     ],
@@ -195,6 +195,43 @@
           "frequentUpdates": false,
           "widgets": []
         }
+      ],
+      [
+        "expo-alternate-app-icons",
+        [
+          {
+            "name": "Midnight",
+            "ios": "./assets/app-icons/midnight.png",
+            "android": {
+              "foregroundImage": "./assets/app-icons/midnight-android.png",
+              "backgroundColor": "#050B16"
+            }
+          },
+          {
+            "name": "Rose",
+            "ios": "./assets/app-icons/rose.png",
+            "android": {
+              "foregroundImage": "./assets/app-icons/rose-android.png",
+              "backgroundColor": "#D23A63"
+            }
+          },
+          {
+            "name": "Pearl",
+            "ios": "./assets/app-icons/pearl.png",
+            "android": {
+              "foregroundImage": "./assets/app-icons/pearl-android.png",
+              "backgroundColor": "#F4F8F8"
+            }
+          },
+          {
+            "name": "Gold",
+            "ios": "./assets/app-icons/gold.png",
+            "android": {
+              "foregroundImage": "./assets/app-icons/gold-android.png",
+              "backgroundColor": "#06211F"
+            }
+          }
+        ]
       ],
       "./plugins/withMedirunBackground",
       "./plugins/withIosMarketingVersion"
