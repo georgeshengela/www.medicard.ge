@@ -23,7 +23,8 @@ describe('Medicard five-part version', () => {
     assert.equal(resolved.extra.medicardInternalVersion, appJson.expo.version);
     assert.equal(resolved.ios.version, iosMarketingVersion(appJson.expo.version));
     assert.ok(Number(appJson.expo.ios.buildNumber) > 0);
-    assert.equal(Number(appJson.expo.ios.buildNumber), appJson.expo.android.versionCode);
+    // iOS buildNumber follows the EAS remote counter (`npm run build:ios`); Android versionCode is a local floor — they need not match.
+    assert.ok(Number(appJson.expo.android.versionCode) > 0);
     assert.equal(parseMedicardVersion(DEFAULT_MEDICARD_VERSION)?.kind, 'five');
   });
 
