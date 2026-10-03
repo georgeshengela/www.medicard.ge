@@ -36,7 +36,7 @@ export function resolveInsightAction(card: CycleInsightCard): CycleInsightAction
       kind: 'open_log',
       steps: [
         tx('გახსენი დღის აღრიცხვის ეკრანი.', 'Open the daily log screen.'),
-        tx('მონიშნე გამონადენის სიძლიერე (თუ არის).', 'Mark your flow (if any).'),
+        tx('მონიშნე სისხლდენის სიძლიერე (თუ არის).', 'Mark your flow (if any).'),
         tx('დაამატე სიმპტომები და განწყობა — რაც უკეთესია მონაცემი, მით უფრო ზუსტია პროგნოზი.', 'Add symptoms and mood — the better the data, the more accurate the estimate.'),
         tx('დააჭირე „შენახვა“.', 'Tap “Save”.'),
       ],
