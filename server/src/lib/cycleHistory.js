@@ -50,17 +50,24 @@ export function historicalCycleDay(cycleStart, observationDate) {
  *   cycleLength: number | null,
  *   complete: boolean,
  *   validForPatterns: boolean,
+ *   hidden: boolean,
  * }>}
+ *
+ * `hiddenStarts`: cycles she hid from averages („საშუალოდან დამალვა“) — kept in the list (`hidden: true`)
+ * but never valid for patterns, so no average / recurring pattern / PMS window reads them.
  */
-export function segmentHistoricalCycles(periodStarts = []) {
+export function segmentHistoricalCycles(periodStarts = [], { hiddenStarts = [] } = {}) {
   const starts = [...periodStarts].filter(Boolean).sort((a, b) => a.localeCompare(b));
+  const hidden = new Set(Array.isArray(hiddenStarts) ? hiddenStarts : []);
   const cycles = [];
   for (let i = 0; i < starts.length; i += 1) {
     const startDate = starts[i];
     const nextPeriodStart = starts[i + 1] ?? null;
     const complete = Boolean(nextPeriodStart);
     const cycleLength = complete ? daysBetween(startDate, nextPeriodStart) : null;
+    const isHidden = hidden.has(startDate);
     const validForPatterns =
+      !isHidden &&
       complete &&
       cycleLength != null &&
       cycleLength >= PATTERN_LENGTH_MIN &&
@@ -71,6 +78,7 @@ export function segmentHistoricalCycles(periodStarts = []) {
       cycleLength,
       complete,
       validForPatterns,
+      hidden: isHidden,
     });
   }
   return cycles;

@@ -231,8 +231,9 @@ export function buildHistoricalAnalytics({
   inferred = {},
   contraceptionStartedAt = null,
 } = {}) {
-  const cycles = segmentHistoricalCycles(inferred.periodStarts ?? []);
-  const completed = cycles.filter((c) => c.complete);
+  const cycles = segmentHistoricalCycles(inferred.periodStarts ?? [], { hiddenStarts: inferred.hiddenStarts ?? [] });
+  // A cycle she hid from averages is not counted as history for quality / patterns either.
+  const completed = cycles.filter((c) => c.complete && !c.hidden);
   const eligible = patternCycles(cycles);
   const coverage = loggingCoverage(cycles, logs);
   const quality = insightDataQuality({ completedCount: completed.length, coverage });
@@ -256,6 +257,7 @@ export function buildHistoricalAnalytics({
     loggedBleedDays: bleedDaysInCycle(c, inferred.periodRanges ?? []),
     loggedObservationDays: observationDaysInCycle(c, logs),
     complete: c.complete,
+    ...(c.hidden ? { hidden: true } : {}),
     contraceptionRelation: contraceptionRelation(c.startDate, startedAt),
   }));
 
@@ -335,6 +337,7 @@ export function buildHistoricalAnalytics({
   return {
     insightDataQuality: quality,
     completedCycleCount: completed.length,
+    hiddenCycleCount: cycles.filter((c) => c.hidden).length,
     patternCycleCount: eligible.length,
     loggingCoverage: coverage,
     horizonCycles: eligible.length,

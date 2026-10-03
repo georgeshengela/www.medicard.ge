@@ -206,11 +206,12 @@ export function ownerShareView(share, plaintextToken = null) {
  * display (her „off“, Tracking, hormonal contraception, a mode without fertile days) shares no fertile
  * window / ovulation and never says „ნაყოფიერი“ / „ოვულაცია“ as the phase.
  */
-export function buildPartnerPayload({ profile, logs, permissions, today = todayInTimeZone(), lang = 'ka', tracking = null }) {
+export function buildPartnerPayload({ profile, logs, permissions, today = todayInTimeZone(), lang = 'ka', tracking = null, hiddenCycles = [] }) {
   const trackingOnly = tracking?.trackingOnly === true;
   const hideFertility = trackingOnly || tracking?.hideFertility === true;
   const allowed = normalizeSharePermissions(permissions);
-  const inferred = inferCycleStats(logs, profile.avgCycleLength, profile.avgPeriodLength);
+  // Cycles she hid from averages shape the partner's estimate exactly as they shape hers (never named).
+  const inferred = inferCycleStats(logs, profile.avgCycleLength, profile.avgPeriodLength, { hiddenStarts: hiddenCycles });
   const averages = resolveForecastAverages(profile, inferred);
   const lastPeriodStart = resolveLastPeriodStart(
     toDateKey(profile.lastPeriodStart),

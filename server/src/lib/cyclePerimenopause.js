@@ -52,8 +52,13 @@ function isRecordedBleedingFlow(flow) {
  * Does not use the engine's 18–45 day clamp. Gaps <1 or >365 are skipped
  * as logging holes, not as cycle lengths.
  */
-export function completedCycleIntervals(periodStarts = [], { today, window = PERIMENOPAUSE_INTERVAL_WINDOW } = {}) {
+export function completedCycleIntervals(
+  periodStarts = [],
+  { today, window = PERIMENOPAUSE_INTERVAL_WINDOW, hiddenStarts = [] } = {},
+) {
   const starts = [...periodStarts].filter(Boolean).sort();
+  // Cycles she hid from averages („საშუალოდან დამალვა“) are not intervals for the variability range.
+  const hidden = new Set(Array.isArray(hiddenStarts) ? hiddenStarts : []);
   if (starts.length < 2 || !today) return [];
   const horizon = addDays(today, -PERIMENOPAUSE_INTERVAL_HORIZON_DAYS);
   const rows = [];
@@ -61,6 +66,7 @@ export function completedCycleIntervals(periodStarts = [], { today, window = PER
     const from = starts[i - 1];
     const to = starts[i];
     if (to < horizon) break;
+    if (hidden.has(from)) continue;
     const days = daysBetween(from, to);
     if (!Number.isFinite(days) || days < 1 || days > PERIMENOPAUSE_INTERVAL_HORIZON_DAYS) continue;
     rows.unshift({ from, to, days });
@@ -183,7 +189,7 @@ export function buildPerimenopauseContext({
   today,
 } = {}) {
   if (!isPerimenopauseProfileMode(mode) || !today) return null;
-  const intervals = completedCycleIntervals(inferred.periodStarts || [], { today });
+  const intervals = completedCycleIntervals(inferred.periodStarts || [], { today, hiddenStarts: inferred.hiddenStarts || [] });
   const recentBleedingEpisodes = presentBleedingEpisodes(inferred.periodRanges || [], logs);
   return {
     mode: 'PERIMENOPAUSE',

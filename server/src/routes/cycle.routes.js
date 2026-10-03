@@ -151,6 +151,12 @@ import {
   readCycleTrackingPrefs,
   writeCycleTrackingPrefs,
 } from '../lib/cycleTrackingPrefs.js';
+import {
+  MAX_HIDDEN_CYCLES,
+  planHiddenCyclesUpdate,
+  readCycleHiddenCycles,
+  writeCycleHiddenCycles,
+} from '../lib/cycleHiddenCycles.js';
 import { FERTILITY_DISPLAY_VALUES, trackingOnlyFor } from '../lib/cycleModeCapabilityMatrix.js';
 import {
   buildObservationInsights,
@@ -374,6 +380,8 @@ async function loadBundle(userId, clock = null, lang = 'ka') {
 
   // „მენსტრუაციას არ ველი“ + „ნაყოფიერი დღეების ჩვენება“ (brief §9 wave 2 item 17); defaults when missing.
   const trackingPrefs = await readCycleTrackingPrefs(prisma, userId);
+  // „საშუალოდან დამალვა“: cycles she left out of averages / forecasts; [] when the column is missing.
+  const hiddenCycles = await readCycleHiddenCycles(prisma, userId);
   const classifiedState = await reconcileUserBleedClassifications(prisma, userId);
   const forecastEligibility = evaluateForecastEligibility({
     forecastGateKind: profile.forecastGateKind,
@@ -396,6 +404,7 @@ async function loadBundle(userId, clock = null, lang = 'ka') {
     forecastLogs,
     profile.avgCycleLength,
     profile.avgPeriodLength,
+    { hiddenStarts: hiddenCycles },
   );
   const averages = resolveForecastAverages(profile, inferred);
 
@@ -461,6 +470,7 @@ async function loadBundle(userId, clock = null, lang = 'ka') {
     mode: profile.mode,
     expectsBleeding: trackingPrefs.expectsBleeding,
     periodRanges: inferred.periodRanges,
+    hiddenStarts: inferred.hiddenStarts,
     logs: forecastLogs,
     factors: deviationFactors({
       mode: profile.mode,
@@ -547,6 +557,8 @@ async function loadBundle(userId, clock = null, lang = 'ka') {
       contraceptionStartedAt: contraception.startedAt,
       expectsBleeding: trackingPrefs.expectsBleeding,
       fertilityDisplay: trackingPrefs.fertilityDisplay,
+      /** Logged cycle starts she hid from averages (only real starts; older builds ignore it). */
+      hiddenCycles: inferred.hiddenStarts ?? [],
       conditions: Array.isArray(profile.conditions) ? profile.conditions.map(String) : [],
       reminderPrefs: profile.reminderPrefs ?? null,
       aiInsights: profile.aiInsights ?? null,
@@ -1177,7 +1189,7 @@ cycleRouter.get(
     if (daysBetween(from, to) + 1 > DOCTOR_SUMMARY_MAX_RANGE_DAYS) {
       from = addDays(to, -(DOCTOR_SUMMARY_MAX_RANGE_DAYS - 1));
     }
-    const [rows, profile, pregnancyEpisode, postpartumEpisode] = await Promise.all([
+    const [rows, profile, pregnancyEpisode, postpartumEpisode, hiddenCycles] = await Promise.all([
       prisma.cycleLog.findMany({
         where: { userId: req.user.id, date: { gte: from, lte: to } },
         orderBy: { date: 'asc' },
@@ -1185,6 +1197,7 @@ cycleRouter.get(
       prisma.cycleProfile.findUnique({ where: { userId: req.user.id } }),
       loadActivePregnancyEpisode(prisma, req.user.id),
       loadActivePostpartumEpisode(prisma, req.user.id),
+      readCycleHiddenCycles(prisma, req.user.id),
     ]);
     const logs = rows.map((row) =>
       shapeCycleLog({
@@ -1205,6 +1218,9 @@ cycleRouter.get(
           date: toDateKey(row.date) || row.date,
           flow: row.flow,
         })),
+        undefined,
+        undefined,
+        { hiddenStarts: hiddenCycles },
       );
     }
     return res.json(
@@ -1213,6 +1229,7 @@ cycleRouter.get(
         logs,
         today,
         inferred,
+        hiddenCycles,
         pregnancyEpisode,
         postpartumEpisode,
         options: {
@@ -1309,6 +1326,8 @@ export const profileUpdateSchema = z.object({
     })
     .optional(),
   conditions: z.array(z.enum(['pcos', 'endometriosis', 'perimenopause'])).optional(),
+  /** „საშუალოდან დამალვა“ — the whole list of hidden cycle starts. Older builds never send it. */
+  hiddenCycles: z.array(DATE_KEY).max(MAX_HIDDEN_CYCLES * 2).optional(),
   reminderPrefs: z
     .object({
       enabled: z.boolean().optional(),
@@ -1363,6 +1382,18 @@ async function applyProfileUpdate(req, res) {
   const trackingPatch = cycleTrackingPatch(body);
   // Cached AI cards may talk about fertile days / the next period the person just turned off.
   if (trackingPatch) Object.assign(data, emptyCycleAiCache());
+  // Hidden cycles: only real logged starts (the bundle she is looking at); stale stored dates drop quietly.
+  let hiddenCyclesNext = null;
+  if (body.hiddenCycles !== undefined) {
+    const current = await bundleFor(req);
+    hiddenCyclesNext = planHiddenCyclesUpdate({
+      requested: body.hiddenCycles,
+      stored: await readCycleHiddenCycles(prisma, req.user.id),
+      periodStarts: current?.inferred?.periodStarts ?? [],
+    });
+    // The averages behind cached AI cards just changed.
+    Object.assign(data, emptyCycleAiCache());
+  }
 
   await getOrCreateProfile(req.user.id);
   const current = await prisma.cycleProfile.findUnique({ where: { userId: req.user.id } });
@@ -1402,6 +1433,7 @@ async function applyProfileUpdate(req, res) {
       });
     }
     await writeCycleTrackingPrefs(tx, req.user.id, trackingPatch);
+    if (hiddenCyclesNext) await writeCycleHiddenCycles(tx, req.user.id, hiddenCyclesNext);
   });
 
   if (body.enablePartnerShare === true) {
@@ -1621,6 +1653,7 @@ cycleRouter.get(
     }));
     // Her Tracking / fertile-days display choices (and hormonal contraception) reach the partner too.
     const ownerPrefs = await readCycleTrackingPrefs(prisma, share.ownerUserId);
+    const ownerHiddenCycles = await readCycleHiddenCycles(prisma, share.ownerUserId);
     const ownerContraception = applyFertilityDisplay(
       interpretContraception({
         ...profile,
@@ -1635,6 +1668,7 @@ cycleRouter.get(
       permissions: share.permissions,
       today: ownerClock.today,
       lang: shareLang(req),
+      hiddenCycles: ownerHiddenCycles,
       tracking: {
         trackingOnly: trackingOnlyFor(profile.mode, ownerPrefs),
         hideFertility:
