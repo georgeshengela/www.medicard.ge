@@ -23,6 +23,7 @@ import { CyclePeriodToast, periodToastTitle } from '@/components/cycle/CyclePeri
 import { CycleAlertsBanner } from '@/components/cycle/CycleAlertsBanner';
 import { CycleQuickLogSheet } from '@/components/cycle/CycleQuickLogSheet';
 import { CyclePmsHeatmap } from '@/components/cycle/CyclePmsHeatmap';
+import { trackingCopy } from '@/lib/cycleTrackingCopy';
 import { CycleOnboarding, type CycleRhythmAnswer } from '@/components/cycle/CycleOnboarding';
 import { CycleDayStrip } from '@/components/cycle/CycleDayStrip';
 import { CycleDaySummary } from '@/components/cycle/CycleDaySummary';
@@ -80,6 +81,7 @@ import {
   FERTILITY_STATUS,
   fertilityGateFromBundle,
   forecastPresentationAllowed,
+  isTrackingOnly,
   suppressCycleLengthChrome,
 } from '@/lib/cycleForecastEligibility';
 import { CycleLearningBadge } from '@/components/cycle/CycleLearningBadge';
@@ -520,7 +522,8 @@ export default function CycleHome() {
   const needsOnboarding =
     Boolean(bundle) &&
     user?.gender === 'FEMALE' &&
-    (needsCycleOnboarding(bundle?.profile.mode, lastPeriod, holdOnboarding) || setupTailDue);
+    // Tracking (no periods expected) never asks for a last period date (brief §9 wave 2 item 17).
+    ((needsCycleOnboarding(bundle?.profile.mode, lastPeriod, holdOnboarding) && !isTrackingOnly(bundle)) || setupTailDue);
   const cycleTodayKey = cycleToday(bundle, todayKey());
   const cycleLen = bundle ? usedCycleLength(bundle) : 28;
   const today = cycleTodayKey;
@@ -550,6 +553,9 @@ export default function CycleHome() {
       const elapsed = (postpartumQuery.data as CyclePostpartumPayload | null)?.elapsed ?? bundle?.postpartum?.elapsed;
       if (elapsed) return ka.cycle.postpartumElapsed(elapsed.week, elapsed.day);
       return ka.cycle.postpartumModeTitle;
+    }
+    if (isTrackingOnly(bundle)) {
+      return trackingCopy.title();
     }
     if (suppressCycleLengthChrome(bundle)) {
       return ka.cycle.postpartumReturnGathering;
@@ -941,7 +947,7 @@ export default function CycleHome() {
           else router.replace('/(tabs)/home');
         }}
         onChooseMode={() => router.push('/cycle/settings')}
-        onFinishContraception={async ({ method, startedAt }) => {
+        onFinishContraception={async ({ method, startedAt, expectsBleeding }) => {
           setOnboardSaving(true);
           setSaveError(null);
           try {
@@ -949,6 +955,8 @@ export default function CycleHome() {
               const data = await api.cycle.updateProfile({
                 contraceptionMethod: method,
                 contraceptionStartedAt: startedAt,
+                // Only when she ticked „მენსტრუაციას არ ველი“ (brief §9 wave 2 item 17).
+                ...(expectsBleeding === false ? { expectsBleeding: false } : {}),
               });
               if (data?.profile && user?.id) putCycleBundle(user.id, data);
               if (data?.contraception?.ttcConflict) setTtcConflictOpen(true);
@@ -1192,7 +1200,8 @@ export default function CycleHome() {
                 <CycleStoriesRow onLog={() => openQuickLog(today)} onAskMedi={() => router.push(cycleAskMediRoute() as never)} />
               </View>
 
-              {modeCaps.showClassicCycleOverview && !suppressCycleLengthChrome(bundle) ? (
+              {/* Tracking keeps the stats on whatever she logged (brief §9 wave 2 item 17). */}
+              {modeCaps.showClassicCycleOverview && (!suppressCycleLengthChrome(bundle) || isTrackingOnly(bundle)) ? (
                 <CycleStatsCard bundle={bundle} onOpen={() => router.push('/cycle/trends' as never)} />
               ) : null}
 

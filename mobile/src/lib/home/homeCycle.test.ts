@@ -7,6 +7,8 @@ import {
   cycleCenter,
   cycleHeroActions,
   cycleHeroVariant,
+  trackingHeroActions,
+  trackingRingDays,
   cycleRingModel,
   cycleSpreadModel,
   cycleStatsModel,
@@ -173,6 +175,33 @@ test('hero variant: the privacy lock wins and fails closed while unknown', () =>
   assert.equal(cycleHeroVariant({ ...base, postpartum: true }), 'postpartum');
   assert.equal(cycleHeroVariant({ ...base, peri: true }), 'peri');
   assert.equal(cycleHeroVariant(base), 'cycle');
+  // Tracking: after the special modes, before „add your last period“ (she may not have one).
+  assert.equal(cycleHeroVariant({ ...base, tracking: true }), 'tracking');
+  assert.equal(cycleHeroVariant({ ...base, tracking: true, setupNeeded: true }), 'tracking');
+  assert.equal(cycleHeroVariant({ ...base, tracking: true, locked: true }), 'locked');
+});
+
+test('Tracking hero: log leads, then a new cycle start or the end of a bleed', () => {
+  assert.deepEqual(trackingHeroActions({ bleedingToday: false }), { primary: 'log', secondary: 'newCycle' });
+  assert.deepEqual(trackingHeroActions({ bleedingToday: true }), { primary: 'log', secondary: 'end' });
+});
+
+test('Tracking ring: logged bleeding ticks and logged-day dots over the last 28 days only', () => {
+  const ring = trackingRingDays({
+    today: '2026-10-03',
+    logs: [
+      { date: '2026-10-03', flow: 'light' },
+      { date: '2026-10-01', flow: null },
+      { date: '2026-09-30', flow: 'spotting' },
+      { date: '2026-09-06', flow: 'medium' },
+      { date: '2026-09-05', flow: 'heavy' },
+      { date: '2026-10-04', flow: 'heavy' },
+    ],
+  });
+  assert.equal(ring.days, 28);
+  assert.deepEqual(ring.bleed, [1, 28]);
+  assert.deepEqual(ring.spotting, [25]);
+  assert.deepEqual(ring.logged, [26]);
 });
 
 const calendar = {

@@ -30,12 +30,14 @@ import { confidencePresentation, gaugeA11ySummary } from '@/lib/cyclePresentatio
 import {
   forecastPresentationAllowed,
   isPostpartumReturnLearning,
+  isTrackingOnly,
   suppressCycleLengthChrome,
   FERTILITY_STATUS,
   fertilityGateFromBundle,
 } from '@/lib/cycleForecastEligibility';
 import { ovulationBandLine, wideWindowLabel } from '@/lib/cycleForecastCopy';
 import { CycleLearningBadge } from '@/components/cycle/CycleLearningBadge';
+import { CycleTrackingHero } from '@/components/cycle/CycleTrackingHero';
 import { cycleHexAlpha, useCycleColors } from '@/theme/cycle';
 import { hasPmsPattern } from '@/lib/cycleAnalytics';
 
@@ -60,11 +62,32 @@ type Props = {
 };
 
 /**
+ * „მენსტრუაციას არ ველი“ (brief §9 wave 2 item 17) draws the neutral Tracking hero; everyone else the
+ * classic dial. Two component types, so switching the setting never changes one component's hooks.
+ */
+export function CycleHero(props: Props) {
+  if (isTrackingOnly(props.bundle)) {
+    return (
+      <CycleTrackingHero
+        bundle={props.bundle}
+        today={props.today}
+        onLog={props.onLog}
+        onStart={props.onStart}
+        onEnd={props.onEnd}
+        onSex={props.onSex}
+        sexLogged={props.sexLogged}
+      />
+    );
+  }
+  return <ClassicCycleHero {...props} />;
+}
+
+/**
  * Overview hero (2026-09-28 redesign): bead ring with one number in the centre → cycle-day line →
  * PredictionBadge + ConfidenceHint → two contextual actions ("period started" leads when it is near).
  * All facts are server-derived; this component only maps them to visuals.
  */
-export function CycleHero({
+function ClassicCycleHero({
   bundle,
   day,
   cycleLength,
@@ -155,14 +178,16 @@ export function CycleHero({
     fertilityGate.status === FERTILITY_STATUS.LEARNING;
   const ovulationRange = showOvulationUi(bundle) ? bundle.predictions?.ovulationRange ?? null : null;
   // No fertile arc yet: the ring still turns luteal where the server's phase words do (never a fertile guess).
+  // Same when she turned the fertile-days display off (brief §9 wave 2 item 17): follicular → luteal only.
+  const fertileHidden = !fertilityVisible && caps.showFertileEstimates && !hidePredicted && !hideLengthChrome;
   const lutealFrom = useMemo(() => {
-    if (!learningBadge || !cycleStart || !cycleLength) return null;
+    if ((!learningBadge && !fertileHidden) || !cycleStart || !cycleLength) return null;
     for (let d = 1; d <= Math.max(cycleLength, day ?? 0); d += 1) {
       const key = addDaysToKey(cycleStart, d - 1);
       if (bundle.predictions?.calendar?.[key]?.phase === 'luteal') return d;
     }
     return null;
-  }, [learningBadge, cycleStart, cycleLength, day, bundle.predictions?.calendar]);
+  }, [learningBadge, fertileHidden, cycleStart, cycleLength, day, bundle.predictions?.calendar]);
 
   const openFertile = () => {
     if (!overlays.fertileDays) return;

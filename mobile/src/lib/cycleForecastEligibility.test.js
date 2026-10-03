@@ -1,6 +1,15 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
+import { buildCycleCandidates, revalidateCycleCandidate } from './cycleNotificationContract.js';
+import { cycleBundleCapabilities } from './cycleModes.js';
 import {
+  contraceptionHidesFertility,
+  cycleReminderGates,
+  cycleTrackingFromBundle,
+  fertilityDisplayOn,
+  FORECAST_ELIGIBILITY_REASON,
+  isTrackingOnly,
+  suggestNotExpectingBleeding,
   cycleVerdictsReady,
   FERTILITY_MIN_CYCLES,
   fertilityGate,
@@ -102,5 +111,119 @@ describe('3-cycle gate — shared cases (mobile mirror)', () => {
     assert.equal(cycleVerdictsReady(2), false);
     assert.equal(cycleVerdictsReady(3), true);
     assert.equal(cycleVerdictsReady(undefined), false);
+  });
+});
+
+/* „თვალყურის დევნება“ / Tracking + „ნაყოფიერი დღეების ჩვენება“ (brief §9 wave 2 item 17). */
+describe('Tracking mirror', () => {
+  const tracking = {
+    profile: { mode: 'TRACK_PERIOD', expectsBleeding: false },
+    forecastEligibility: { allowed: false, reason: 'NOT_EXPECTING_BLEEDING' },
+  };
+
+  it('the server reason and a just-saved profile both mean Tracking (no forecast, no length chrome)', () => {
+    assert.equal(FORECAST_ELIGIBILITY_REASON.NOT_EXPECTING_BLEEDING, 'NOT_EXPECTING_BLEEDING');
+    assert.equal(isTrackingOnly(tracking), true);
+    assert.equal(forecastPresentationAllowed(tracking), false);
+    assert.equal(isPostpartumReturnLearning(tracking), false);
+    assert.equal(suppressCycleLengthChrome(tracking), true);
+    // A cached bundle from before the server answered: the profile alone decides.
+    const cached = { profile: { mode: 'TRACK_PERIOD', expectsBleeding: false }, forecastEligibility: { allowed: true, reason: 'STANDARD' } };
+    assert.equal(isTrackingOnly(cached), true);
+    assert.equal(forecastPresentationAllowed(cached), false);
+  });
+
+  it('older bundles (no fields) and other modes are never Tracking', () => {
+    assert.equal(isTrackingOnly({ profile: { mode: 'TRACK_PERIOD' } }), false);
+    assert.equal(isTrackingOnly({ profile: { mode: 'TRY_TO_CONCEIVE', expectsBleeding: false } }), false);
+    assert.equal(isTrackingOnly(null), false);
+    assert.equal(fertilityDisplayOn({ profile: { mode: 'TRACK_PERIOD' } }), true);
+  });
+
+  it('fertile-days display: her off, contraception, TTC, Tracking', () => {
+    assert.equal(fertilityDisplayOn({ profile: { mode: 'TRACK_PERIOD', fertilityDisplay: 'off' } }), false);
+    assert.equal(fertilityDisplayOn({ profile: { mode: 'TRY_TO_CONCEIVE', fertilityDisplay: 'off' } }), true);
+    assert.equal(fertilityDisplayOn(tracking), false);
+    const pill = { profile: { mode: 'TRACK_PERIOD' }, contraception: { presentation: { showFertileWindow: false } } };
+    assert.equal(contraceptionHidesFertility(pill), true);
+    assert.equal(cycleTrackingFromBundle(pill).fertility.forcedBy, 'contraception');
+    // Her own „off“ on a new server is not „contraception“.
+    const own = {
+      profile: { mode: 'TRACK_PERIOD', fertilityDisplay: 'off' },
+      contraception: { presentation: { showFertileWindow: false, fertilityDisplay: { effective: 'off', forcedBy: null, userCanChange: true } } },
+    };
+    assert.equal(contraceptionHidesFertility(own), false);
+    assert.equal(cycleTrackingFromBundle(own).fertility.userCanChange, true);
+    // Unsaved settings override the saved profile.
+    assert.equal(cycleTrackingFromBundle(own, { fertilityDisplay: 'auto' }).fertility.effective, 'on');
+    assert.equal(cycleTrackingFromBundle(own, { mode: 'TRY_TO_CONCEIVE' }).fertility.forcedBy, 'ttc');
+  });
+
+  it('the server’s tracking block wins over the mirror', () => {
+    const sent = {
+      profile: { mode: 'TRACK_PERIOD' },
+      tracking: {
+        expectsBleeding: true,
+        fertilityDisplay: 'off',
+        trackingOnly: false,
+        fertility: { setting: 'off', effective: 'off', forcedBy: null, userCanChange: true },
+      },
+    };
+    assert.equal(fertilityDisplayOn(sent), false);
+    assert.equal(cycleBundleCapabilities(sent).showFertileEstimates, false);
+    assert.equal(cycleBundleCapabilities(sent).showNextPeriodForecast, true);
+    assert.equal(cycleBundleCapabilities(tracking).showTrackingOverview, true);
+    assert.equal(cycleBundleCapabilities({ profile: { mode: 'TRACK_PERIOD' } }).showTrackingOverview, false);
+  });
+
+  it('onboarding suggests the switch only for methods that often stop bleeding', () => {
+    for (const m of ['HORMONAL_IUD', 'IMPLANT', 'COMBINED_PILL', 'PROGESTIN_PILL']) assert.equal(suggestNotExpectingBleeding(m), true, m);
+    for (const m of ['NONE', 'COPPER_IUD', 'BARRIER', null]) assert.equal(suggestNotExpectingBleeding(m), false, String(m));
+  });
+});
+
+describe('Tracking / fertile-days display: reminder suppression', () => {
+  const today = '2026-09-10';
+  const predictions = {
+    nextPeriodStart: '2026-09-20',
+    ovulationDate: '2026-09-06',
+    fertileWindow: { start: '2026-09-12', end: '2026-09-16' },
+    estimated: true,
+  };
+  const prefs = { periodDaysBefore: 2, periodLate: true, ovulation: true, pms: true, opk: true, bbt: false, dailyLog: false };
+  const types = (bundle, mode = 'TRACK_PERIOD') => {
+    const gates = cycleReminderGates(bundle);
+    return buildCycleCandidates({ today, mode, predictions, logs: [], prefs, fertilityStatus: 'READY', ...gates }).map((r) => r.type);
+  };
+
+  it('defaults keep period and PMS reminders', () => {
+    const t = types({ profile: { mode: 'TRACK_PERIOD' } });
+    assert.ok(t.includes('period_soon') && t.includes('period_start') && t.includes('period_late') && t.includes('pms'));
+  });
+
+  it('Tracking schedules no period (soon / today / late) and no fertile-based reminder', () => {
+    const t = types({ profile: { mode: 'TRACK_PERIOD', expectsBleeding: false } });
+    for (const type of ['period_soon', 'period_start', 'period_late', 'ovulation', 'fertile', 'pms', 'opk']) {
+      assert.equal(t.includes(type), false, type);
+    }
+  });
+
+  it('fertile-days display off keeps period reminders, drops fertile / ovulation / OPK / PMS', () => {
+    const off = { profile: { mode: 'TRACK_PERIOD', fertilityDisplay: 'off' } };
+    const t = types(off);
+    assert.ok(t.includes('period_start'));
+    for (const type of ['ovulation', 'fertile', 'pms', 'opk']) assert.equal(t.includes(type), false, type);
+    // An already-scheduled fertile reminder is dropped at delivery too.
+    const gates = cycleReminderGates(off);
+    const check = revalidateCycleCandidate(
+      { type: 'fertile', eventDate: '2026-09-12', candidateId: 'cycle:fertile:2026-09-12' },
+      { today, mode: 'TRACK_PERIOD', ...gates, prefsEnabled: true, globalEnabled: true, logs: [] },
+    );
+    assert.equal(check.ok, false);
+  });
+
+  it('trying to conceive keeps fertile reminders even with a stored „off“', () => {
+    const t = types({ profile: { mode: 'TRY_TO_CONCEIVE', fertilityDisplay: 'off' } }, 'TRY_TO_CONCEIVE');
+    assert.ok(t.includes('fertile') && t.includes('ovulation'));
   });
 });

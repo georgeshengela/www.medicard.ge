@@ -21,7 +21,7 @@ import {
   revalidateCycleCandidate,
 } from '@/lib/cycleNotificationContract.js';
 import { periodSoonDaysVar, pickCycleReminderCopy } from '@/lib/cycleReminderCopy';
-import { fertilityGateFromBundle } from '@/lib/cycleForecastEligibility';
+import { cycleReminderGates, fertilityGateFromBundle } from '@/lib/cycleForecastEligibility';
 
 /**
  * Lock-screen copy for one reminder: the app's own texts (cycleReminderCopy), or the admin's Georgian
@@ -70,6 +70,8 @@ function reminderDate(ymd: string, quietStart: string, quietEnd: string): Date {
 }
 
 function liveFromBundle(bundle: CycleBundle, prefs: CycleReminderPrefs, today: string) {
+  // Tracking / „ნაყოფიერი დღეების ჩვენება“ off (brief §9 wave 2 item 17): those families are never scheduled.
+  const gates = cycleReminderGates(bundle);
   return {
     today,
     mode: bundle.profile.mode,
@@ -79,11 +81,11 @@ function liveFromBundle(bundle: CycleBundle, prefs: CycleReminderPrefs, today: s
     ovulationDate: bundle.predictions.ovulationDate,
     fertileWindowStart: bundle.predictions.fertileWindow?.start ?? null,
     periodDaysBefore: prefs.periodDaysBefore,
-    showFertilityMarkers: bundle.contraception?.presentation?.showFertilityMarkers !== false,
+    showFertilityMarkers: gates.showFertilityMarkers,
     logs: bundle.logs,
     prefsEnabled: prefs.enabled,
     globalEnabled: true,
-    forecastAllowed: bundle.forecastEligibility?.allowed !== false,
+    forecastAllowed: gates.forecastAllowed,
     typeEnabled: {
       period_soon: prefs.periodDaysBefore > 0,
       period_start: true,
@@ -113,15 +115,17 @@ export async function syncCycleReminders(
     conditions: bundle.profile.conditions,
   });
   const lateAlert = (bundle.alerts ?? []).find((row) => Boolean((row as { late?: { status?: string } }).late));
+  // cancelCycleReminders() above already removed every family; the gates keep the hidden ones out.
+  const gates = cycleReminderGates(bundle);
   const candidates = buildCycleCandidates({
     today,
     mode: bundle.profile.mode,
     predictions: bundle.predictions,
     logs: bundle.logs,
     prefs,
-    showFertilityMarkers: bundle.contraception?.presentation?.showFertilityMarkers !== false,
+    showFertilityMarkers: gates.showFertilityMarkers,
     lateStatus: lateAlert ? { status: 'late' } : null,
-    forecastAllowed: bundle.forecastEligibility?.allowed !== false,
+    forecastAllowed: gates.forecastAllowed,
     fertilityStatus: fertilityGateFromBundle(bundle).status,
   } as never);
   const live = liveFromBundle(bundle, prefs, today);

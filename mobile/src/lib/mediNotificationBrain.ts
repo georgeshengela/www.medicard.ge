@@ -484,8 +484,11 @@ async function deliverCycleReminder(data: Record<string, unknown>): Promise<{
     try {
       const { loadCycleView } = await import('@/lib/cycleOffline');
       const { cycleToday } = await import('@/lib/cycleCanonical');
+      const { cycleReminderGates } = await import('@/lib/cycleForecastEligibility');
       const view = await loadCycleView(userId);
       const bundle = view.canonical;
+      // Tracking / fertile-days display off (brief §9 wave 2 item 17): a delivered reminder of a hidden family is dropped.
+      const gates = cycleReminderGates(bundle);
       today = cycleToday(bundle, today);
       // TTC profiles default ovulation/fertile reminders on — re-read the prefs with the mode known.
       prefs = await getCycleReminderPrefs({ mode: bundle.profile.mode });
@@ -498,9 +501,9 @@ async function deliverCycleReminder(data: Record<string, unknown>): Promise<{
         nextPeriodStart: bundle.predictions.nextPeriodStart,
         ovulationDate: bundle.predictions.ovulationDate,
         fertileWindowStart: bundle.predictions.fertileWindow?.start ?? null,
-        showFertilityMarkers: bundle.contraception?.presentation?.showFertilityMarkers !== false,
+        showFertilityMarkers: gates.showFertilityMarkers,
         logs: bundle.logs,
-        forecastAllowed: bundle.forecastEligibility?.allowed !== false,
+        forecastAllowed: gates.forecastAllowed,
       };
     } catch {
       /* prefs + mask still apply */

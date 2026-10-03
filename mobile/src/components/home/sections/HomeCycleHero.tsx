@@ -15,7 +15,7 @@ import { CyclePhaseLegend } from '@/components/cycle/CyclePhaseLegend';
 import type { CycleLegendKey } from '@/lib/cycleLegendItems';
 import { todayKey } from '@/components/cycle/CycleCalendar';
 import { useTabBarInset } from '@/components/navigation/FloatingTabBar';
-import { WEEKDAYS_KA } from '@/constants/cycle';
+import { MONTHS_KA, WEEKDAYS_KA } from '@/constants/cycle';
 import { ka } from '@/i18n/ka';
 import { tx } from '@/i18n/locale';
 import type { CycleBundle } from '@/lib/api';
@@ -29,6 +29,9 @@ import { cycleModeCapabilities } from '@/lib/cycleModes';
 import { POSTPARTUM_OVULATION_NOTE } from '@/lib/cycleTone';
 import { bleedingIsUncertain, showFertilityUi, showOvulationUi } from '@/lib/cycleContraception';
 import { forecastPresentationAllowed, suppressCycleLengthChrome } from '@/lib/cycleForecastEligibility';
+import { cycleBundleCapabilities } from '@/lib/cycleModes';
+import { trackingCopy } from '@/lib/cycleTrackingCopy';
+import { isBleedFlow } from '@/lib/cycleLogSave';
 import { cycleLoggedBleedLabel } from '@/lib/cycleHistoryCopy';
 import { needsCycleOnboarding } from '@/lib/cycleExperience';
 import { formatCycleDateKa } from '@/lib/cycleCivilDateKa';
@@ -44,6 +47,7 @@ import {
   daysBetweenKeys,
   fertileDaysInCycle,
   startLeads,
+  trackingHeroActions,
   weekdayIndex,
   type CycleHeroActionId,
   type StripDay,
@@ -117,6 +121,7 @@ export function HomeCycleHero({ cycle, locked, userId, first }: HomeCycleHeroPro
     pregnancy: caps.showPregnancyOverview,
     postpartum: caps.showPostpartumOverview,
     peri: caps.showPerimenopauseTracking,
+    tracking: Boolean(bundle) && cycleBundleCapabilities(bundle).showTrackingOverview,
   });
 
   // The women's layout already falls back to standard while the module is paused; never show it anyway.
@@ -247,6 +252,23 @@ export function HomeCycleHero({ cycle, locked, userId, first }: HomeCycleHeroPro
         ) : null}
       </View>
     );
+  } else if (bundle && variant === 'tracking') {
+    sourceIds = ['menstrualCycle'];
+    body = (
+      <TrackingCard
+        bundle={bundle}
+        today={today}
+        offline={view?.reachable === false}
+        busy={actions.busy}
+        sexBusy={actions.sexBusy}
+        onStart={actions.startPeriod}
+        onEnd={actions.endPeriod}
+        onLog={() => actions.openLog()}
+        onSex={actions.logSex}
+        onOpen={openCycle}
+        error={actions.error}
+      />
+    );
   } else if (bundle && variant === 'cycle') {
     // The heavy-bleeding inset card has no link of its own on Home: ACOG joins the hero's one „წყაროები“.
     sourceIds = showHeavyBleedingCard(bundle.logs, today) ? ['menstrualCycle', 'heavyMenstrualBleeding'] : ['menstrualCycle'];
@@ -278,7 +300,7 @@ export function HomeCycleHero({ cycle, locked, userId, first }: HomeCycleHeroPro
       />
       {body}
       {sourceIds ? <MedicalSourcesLink sourceIds={sourceIds} align="center" tint={theme.text200} /> : null}
-      {variant !== 'cycle' && actions.error ? (
+      {variant !== 'cycle' && variant !== 'tracking' && actions.error ? (
         <Text accessibilityRole="alert" style={[hubText.caption, { color: theme.danger, marginTop: 6 }]}>
           {actions.error}
         </Text>
@@ -530,6 +552,83 @@ function ClassicCycleCard({
         </View>
       </View>
       {/* Brief §9 item 15: calm card below the actions only while the current bleeding run is heavy (≥ 3 heavy days) or long (> 7 days). */}
+      {showHeavyBleedingCard(bundle.logs, today) ? <CycleHeavyBleedingCard variant="inset" showSources={false} /> : null}
+      {error ? (
+        <Text accessibilityRole="alert" style={[hubText.caption, { color: theme.danger, marginTop: -6 }]}>
+          {error}
+        </Text>
+      ) : null}
+    </View>
+  );
+}
+
+// ---------- Tracking card (TRACK_PERIOD + „მენსტრუაციას არ ველი“, brief §9 wave 2 item 17) ----------
+
+/**
+ * Nothing estimated: the week tray with logged bleeding only, today's date on the glow, „როგორ ხარ
+ * დღეს?“, the day's log first, then „ახალი ციკლის დაწყება“ (or ending a logged bleed) beside „♥ სექსი“.
+ */
+function TrackingCard({
+  bundle,
+  today,
+  offline,
+  busy,
+  sexBusy,
+  onStart,
+  onEnd,
+  onLog,
+  onSex,
+  onOpen,
+  error,
+}: {
+  bundle: CycleBundle;
+  today: string;
+  offline: boolean;
+  busy: boolean;
+  sexBusy: boolean;
+  onStart: () => void;
+  onEnd: () => void;
+  onLog: () => void;
+  onSex: () => void;
+  onOpen: () => void;
+  error: string | null;
+}) {
+  const theme = useThemeColors();
+  const c = useCycleColors();
+  const todayLog = bundle.logs.find((l) => l.date === today);
+  const plan = trackingHeroActions({ bleedingToday: isBleedFlow(todayLog?.flow) });
+  const [, mm, dd] = today.split('-').map(Number);
+  const title = trackingCopy.title();
+  const tone = isBleedFlow(todayLog?.flow) ? c.period : c.mutedSoft;
+  const strip = cycleWeekStrip({
+    today,
+    calendar: bundle.predictions?.calendar,
+    bleedLogs: bundle.logs,
+    showFertility: false,
+    showOvulation: false,
+    showPredicted: false,
+  });
+  const summary = [title, `${trackingCopy.today()} ${dd} ${MONTHS_KA[mm - 1] ?? ''}`, trackingCopy.howAreYou(), offline ? ka.cycle.offlineBanner : null]
+    .filter(Boolean)
+    .join('. ');
+  return (
+    <View style={[s.card, { backgroundColor: theme.surface }]}>
+      <WeekTray days={strip} compact={false} bleedLabel={cycleLoggedBleedLabel(bundle.profile.mode, ka.cycle)} onPress={onOpen} />
+      <Pressable accessibilityRole="button" accessibilityLabel={summary} onPress={onOpen} style={s.stage}>
+        <GlowAnswer tone={tone} caption={trackingCopy.today()} value={String(dd)} unit={MONTHS_KA[mm - 1] ?? null} sub={trackingCopy.howAreYou()} />
+        <StatusStack title={title} dot={tone} detail={trackingCopy.detail()} offline={offline} />
+      </Pressable>
+      <View style={s.actions}>
+        <HeroButton label={ka.cycle.logTodayCta} icon={Plus} filled disabled={busy} onPress={onLog} />
+        <View style={s.buttons}>
+          {plan.secondary === 'end' ? (
+            <HeroButton label={trackingCopy.endBleed()} flex={1} disabled={busy} onPress={onEnd} />
+          ) : (
+            <HeroButton label={trackingCopy.newCycleShort()} a11y={trackingCopy.newCycle()} icon={Droplet} flex={1} disabled={busy} onPress={onStart} />
+          )}
+          <SexButton logged={todayLog?.sexualActivity === true} disabled={sexBusy} wide={false} onPress={onSex} />
+        </View>
+      </View>
       {showHeavyBleedingCard(bundle.logs, today) ? <CycleHeavyBleedingCard variant="inset" showSources={false} /> : null}
       {error ? (
         <Text accessibilityRole="alert" style={[hubText.caption, { color: theme.danger, marginTop: -6 }]}>

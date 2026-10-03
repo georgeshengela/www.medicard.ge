@@ -57,6 +57,11 @@ type Props = {
   describeDay?: (d: number) => GaugeCenter | null;
   onInfo?: () => void;
   onPressFertile?: () => void;
+  /**
+   * Tracking (brief §9 wave 2 item 17): no cycle, no phases — the last `days` days as a neutral scale
+   * (today = the last slot), logged bleeding as rose ticks, other logged days as small dots.
+   */
+  trackingWindow?: { days: number; bleed: number[]; spotting?: number[]; logged: number[] } | null;
 };
 
 const toRad = (deg: number) => (deg * Math.PI) / 180;
@@ -88,22 +93,29 @@ export function CycleStatusGauge({
   describeDay,
   onInfo,
   onPressFertile,
+  trackingWindow = null,
 }: Props) {
   const c = useCycleColors();
   const reduceMotion = usePrefersReducedMotion();
   const { width: screenW, height: screenH, fontScale } = useWindowDimensions();
   const compact = fontScale >= 1.25 || screenH < 720;
   const size = Math.min(screenW - 72, compact ? 220 : 252);
-  const length = hideLengthChrome ? 0 : Math.max(14, Math.round(cycleLength) || 28);
+  const tracking = Boolean(trackingWindow);
+  const length = tracking ? Math.max(7, trackingWindow!.days) : hideLengthChrome ? 0 : Math.max(14, Math.round(cycleLength) || 28);
   // A late cycle grows the dial instead of wrapping today back onto day 1.
-  const count = length ? Math.max(length, day ?? 0) : 28;
-  const recorded = useMemo(() => new Set(recordedPeriodDays), [recordedPeriodDays]);
+  const count = tracking ? length : length ? Math.max(length, day ?? 0) : 28;
+  const recorded = useMemo(
+    () => new Set(trackingWindow ? trackingWindow.bleed : recordedPeriodDays),
+    [recordedPeriodDays, trackingWindow],
+  );
+  const loggedDots = useMemo(() => new Set(trackingWindow?.logged ?? []), [trackingWindow]);
+  const spottingDots = useMemo(() => new Set(trackingWindow?.spotting ?? []), [trackingWindow]);
   const [scrub, setScrub] = useState<number | null>(null);
   const scrubRef = useRef<number | null>(null);
 
   /** Phase runs over cycle days (bleeding uses logged days when present, else the usual length). */
   const phases = useMemo(() => {
-    if (!length) return [];
+    if (!length || tracking) return [];
     const early = recordedPeriodDays.filter((d) => d <= 12);
     const loggedMax = early.length ? Math.max(...early) : 0;
     const periodEnd = Math.max(1, Math.min(loggedMax || periodLength, count));
@@ -123,13 +135,13 @@ export function CycleStatusGauge({
       out.push({ kind: 'follicular', from: periodEnd + 1, to: count });
     }
     return out;
-  }, [length, recordedPeriodDays, periodLength, count, fertileDays, lutealFrom]);
+  }, [length, tracking, recordedPeriodDays, periodLength, count, fertileDays, lutealFrom]);
 
   const phaseColor = { period: c.period, follicular: c.follicularFill, fertile: c.fertileFill, luteal: c.luteal };
   // Round caps reach half a band past the arc end; pull each end in so neighbours keep a small gap.
   const capDeg = ((BAND / 2 + 2) / R) * (180 / Math.PI);
 
-  const knobDay = scrub ?? (hideLengthChrome ? null : day);
+  const knobDay = scrub ?? (tracking ? count : hideLengthChrome ? null : day);
   const knobAt = knobDay != null ? point(slotDeg(knobDay - 0.5, count)) : null;
   const knobPhase = knobDay != null ? phases.find((p) => knobDay >= p.from && knobDay <= p.to)?.kind : undefined;
   const knobColor = knobDay != null && recorded.has(knobDay) ? c.period : knobPhase ? phaseColor[knobPhase] : c.todayRing;
@@ -175,7 +187,7 @@ export function CycleStatusGauge({
   const pan = useMemo(
     () =>
       PanResponder.create({
-        onStartShouldSetPanResponder: (e) => Boolean(length && describeDay && dayAt(e.nativeEvent.locationX, e.nativeEvent.locationY) != null),
+        onStartShouldSetPanResponder: (e) => Boolean(length && !tracking && describeDay && dayAt(e.nativeEvent.locationX, e.nativeEvent.locationY) != null),
         onMoveShouldSetPanResponder: () => false,
         onPanResponderTerminationRequest: () => false,
         onPanResponderGrant: (e) => setScrubDay(dayAt(e.nativeEvent.locationX, e.nativeEvent.locationY)),
@@ -187,7 +199,7 @@ export function CycleStatusGauge({
         onPanResponderTerminate: () => setScrubDay(null),
       }),
     // eslint-disable-next-line react-hooks/exhaustive-deps -- geometry inputs only
-    [size, count, length, describeDay],
+    [size, count, length, tracking, describeDay],
   );
 
   const scrubCenter = scrub != null && describeDay ? describeDay(scrub) : null;
@@ -197,7 +209,7 @@ export function CycleStatusGauge({
   // A word („დღეს“) or a range („3–7“) needs less than a lone numeral; adjustsFontSizeToFit is native-only.
   const valueFont = /[^\d]/.test(centerValue) ? Math.round(valueSize * (centerValue.length > 3 ? 0.56 : 0.8)) : valueSize;
   const centerTop = shown ? shown.top : ka.cycle.cycleDay;
-  const centerBottom = shown ? shown.bottom : hideLengthChrome ? null : ka.cycle.outOf(length);
+  const centerBottom = shown ? shown.bottom : hideLengthChrome || tracking ? null : ka.cycle.outOf(length);
   const tickR = R - BAND / 2 - 9;
 
   return (
@@ -260,7 +272,23 @@ export function CycleStatusGauge({
                 </G>
               );
             })}
-            {!length ? <Circle cx={C} cy={C} r={R} fill="none" stroke={cycleHexAlpha(c.ink, 0.06)} strokeWidth={BAND} /> : null}
+            {!length || tracking ? <Circle cx={C} cy={C} r={R} fill="none" stroke={cycleHexAlpha(c.ink, 0.06)} strokeWidth={BAND} /> : null}
+            {/* Tracking: a logged bleed fills its slot on the band; spotting / any other logged day is a dot inside the scale (calendar grammar). */}
+            {tracking
+              ? Array.from({ length: count }, (_, i) => {
+                  const d = i + 1;
+                  if (recorded.has(d)) {
+                    const from = slotDeg(i, count) + 1.2;
+                    const to = slotDeg(i + 1, count) - 1.2;
+                    const path = arc(from, to);
+                    return path ? <Path key={`b${d}`} d={path} stroke={c.period} strokeWidth={BAND} strokeLinecap="butt" fill="none" /> : null;
+                  }
+                  const spot = spottingDots.has(d);
+                  if (!spot && !loggedDots.has(d)) return null;
+                  const at = point(slotDeg(i + 0.5, count), tickR - 13);
+                  return <Circle key={`l${d}`} cx={at.x} cy={at.y} r={spot ? 3.2 : 2.6} fill={spot ? c.period : c.mutedSoft} />;
+                })
+              : null}
 
             {knobAt ? (
               <G>

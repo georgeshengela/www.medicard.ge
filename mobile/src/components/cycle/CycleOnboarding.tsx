@@ -7,6 +7,8 @@ import { CycleCalendar } from './CycleCalendar';
 import { CycleAtmosphere, CyclePrimaryButton, formatCycleDateKa } from './CycleUI';
 import { KeyboardFormShell } from '@/components/ui/KeyboardFormShell';
 import { cycleDatePickable } from '@/lib/cycleExperience';
+import { suggestNotExpectingBleeding } from '@/lib/cycleForecastEligibility';
+import { trackingOnboardingCopy } from '@/lib/cycleTrackingCopy';
 import type { CycleContraceptionMethod } from '@/lib/api';
 import { ka } from '@/i18n/ka';
 import { tx } from '@/i18n/locale';
@@ -38,7 +40,15 @@ type Props = {
   onSaveRhythm?: (answer: CycleRhythmAnswer) => Promise<boolean>;
   onBack?: () => void;
   onChooseMode?: () => void;
-  onFinishContraception?: (input: { method: CycleContraceptionMethod | null; startedAt: string | null }) => void | Promise<void>;
+  /**
+   * `expectsBleeding: false` only when she ticked the suggestion row („მენსტრუაციას არ ველი“, brief §9
+   * wave 2 item 17) — never set automatically from the method.
+   */
+  onFinishContraception?: (input: {
+    method: CycleContraceptionMethod | null;
+    startedAt: string | null;
+    expectsBleeding?: false;
+  }) => void | Promise<void>;
 };
 
 /**
@@ -61,6 +71,7 @@ export function CycleOnboarding({ visible, saving, userName, error, hasLastPerio
   const [periodLength, setPeriodLength] = useState<number | null>(null);
   const [irregular, setIrregular] = useState(false);
   const [method, setMethod] = useState<CycleContraceptionMethod | null>(null);
+  const [noBleeding, setNoBleeding] = useState(false);
   const [cursor, setCursor] = useState(() => ({ y: now.getFullYear(), m: now.getMonth() }));
   const [localError, setLocalError] = useState<string | null>(null);
   const busy = useRef(false);
@@ -110,7 +121,12 @@ export function CycleOnboarding({ visible, saving, userName, error, hasLastPerio
     busy.current = true;
     setLocalError(null);
     try {
-      await onFinishContraception?.({ method: skip ? null : method, startedAt: null });
+      const tracking = !skip && noBleeding && suggestNotExpectingBleeding(method);
+      await onFinishContraception?.({
+        method: skip ? null : method,
+        startedAt: null,
+        ...(tracking ? { expectsBleeding: false as const } : {}),
+      });
     } catch {
       if (alive.current) setLocalError(ka.common.error);
     } finally {
@@ -295,6 +311,47 @@ export function CycleOnboarding({ visible, saving, userName, error, hasLastPerio
                 <Text style={{ flex: 1, color: c.ink, fontSize: 13, lineHeight: 20, fontFamily: 'NotoSansGeorgian_600SemiBold' }}>{ka.cycle.contraceptionMethod[id]}</Text>
               </Pressable>
             ))}
+            {/* Brief §9 wave 2 item 17: a suggestion for methods that often stop bleeding — never automatic. */}
+            {suggestNotExpectingBleeding(method) ? (
+              <Pressable
+                onPress={() => setNoBleeding((v) => !v)}
+                accessibilityRole="checkbox"
+                accessibilityState={{ checked: noBleeding }}
+                accessibilityLabel={`${trackingOnboardingCopy.title()}. ${trackingOnboardingCopy.body()}`}
+                style={{
+                  marginTop: 4,
+                  minHeight: 52,
+                  borderRadius: 16,
+                  padding: 14,
+                  backgroundColor: c.cardSoft,
+                  flexDirection: 'row',
+                  alignItems: 'flex-start',
+                  gap: 12,
+                }}
+              >
+                <View
+                  style={{
+                    width: 20,
+                    height: 20,
+                    borderRadius: 6,
+                    marginTop: 1,
+                    borderWidth: 2,
+                    borderColor: noBleeding ? c.period : c.controlBorder,
+                    backgroundColor: noBleeding ? c.period : 'transparent',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
+                  {noBleeding ? <Check size={13} color={c.onPeriod} strokeWidth={3} /> : null}
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={{ color: c.ink, fontSize: 13, lineHeight: 20, fontFamily: 'NotoSansGeorgian_600SemiBold' }}>
+                    {trackingOnboardingCopy.title()}
+                  </Text>
+                  <Text style={{ color: c.muted, fontSize: 12, lineHeight: 18, marginTop: 2 }}>{trackingOnboardingCopy.body()}</Text>
+                </View>
+              </Pressable>
+            ) : null}
           </View>
         )}
         <View style={{ flexDirection: 'row', gap: 8, marginTop: 14, alignItems: 'flex-start' }}>

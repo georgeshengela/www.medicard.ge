@@ -6,7 +6,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, { FadeInUp } from 'react-native-reanimated';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
-import { Baby, Bell, CalendarClock, CalendarPlus, Check, Download, EyeOff, Flame, Heart, HeartPulse, Link2, Lock, NotebookPen, Sparkles, Trash2 } from 'lucide-react-native';
+import { Baby, Bell, CalendarClock, CalendarPlus, Check, Download, Droplet, EyeOff, Flame, Heart, HeartPulse, Link2, Lock, NotebookPen, Sparkles, Trash2 } from 'lucide-react-native';
 import { CycleExplainSheet } from '@/components/cycle/CycleExplainSheet';
 import { CycleNotificationMaskPreview } from '@/components/cycle/CycleNotificationMaskPreview';
 import { CycleDateField } from '@/components/cycle/CycleDateField';
@@ -47,7 +47,8 @@ import {
   maskStyleLabel,
 } from '@/lib/cycleNotificationMask';
 import { getEffectiveCycleMask } from '@/lib/cycleNotificationContract.js';
-import { isPostpartumReturnLearning } from '@/lib/cycleForecastEligibility';
+import { cycleTrackingFromBundle, isPostpartumReturnLearning } from '@/lib/cycleForecastEligibility';
+import { trackingSettingsCopy } from '@/lib/cycleTrackingCopy';
 import { importLatestPeriodStart, syncPeriodStartToHealth } from '@/lib/healthSync';
 import { useCycleColors } from '@/theme/cycle';
 
@@ -105,6 +106,9 @@ function applyProfile(data: CycleBundle) {
     contraceptionMethod: (profile.contraceptionMethod ?? null) as CycleContraceptionMethod | null,
     contraceptionStartedAt: normalizeIsoDate(profile.contraceptionStartedAt),
     postpartumReference: normalizeIsoDate(data?.postpartum?.referenceDate),
+    // Brief §9 wave 2 item 17 — missing on older servers = the defaults.
+    expectsBleeding: profile.expectsBleeding !== false,
+    fertilityDisplay: (profile.fertilityDisplay === 'off' ? 'off' : 'auto') as 'auto' | 'off',
   };
 }
 
@@ -156,6 +160,10 @@ export default function CycleSettings() {
   const [postpartumOnboarding, setPostpartumOnboarding] = useState(false);
   const [postpartumReference, setPostpartumReference] = useState('');
   const [postpartumReturnSheet, setPostpartumReturnSheet] = useState(false);
+  const [expectsBleeding, setExpectsBleeding] = useState(true);
+  const [fertilityDisplay, setFertilityDisplay] = useState<'auto' | 'off'>('auto');
+  // Live (unsaved) Tracking / fertile-days state: the saved contraception rules + the form's choices.
+  const liveTracking = cycleTrackingFromBundle(bundle, { mode, expectsBleeding, fertilityDisplay });
 
   useLayoutEffect(() => {
     navigation.setOptions(cycleNavHeader(c, ka.cycle.settings));
@@ -193,6 +201,8 @@ export default function CycleSettings() {
         setContraceptionMethod(next.contraceptionMethod);
         setContraceptionStartedAt(next.contraceptionStartedAt);
         setPostpartumReference(next.postpartumReference);
+        setExpectsBleeding(next.expectsBleeding);
+        setFertilityDisplay(next.fertilityDisplay);
         setReminders(remPrefs);
         setPrivacyLock(lockOn);
       })
@@ -238,6 +248,8 @@ export default function CycleSettings() {
         contraceptionStartedAt: /^\d{4}-\d{2}-\d{2}$/.test(contraceptionStartedAt)
           ? contraceptionStartedAt
           : null,
+        expectsBleeding,
+        fertilityDisplay,
       });
       if (data.contraception?.ttcConflict) setTtcConflictOpen(true);
       setBundle(data);
@@ -251,6 +263,8 @@ export default function CycleSettings() {
       }
       const next = applyProfile(data);
       setLastPeriod(next.lastPeriod);
+      setExpectsBleeding(next.expectsBleeding);
+      setFertilityDisplay(next.fertilityDisplay);
       setDueDate(next.dueDate);
       setReferenceDate(next.referenceDate);
       setPostpartumReference(next.postpartumReference);
@@ -632,6 +646,41 @@ export default function CycleSettings() {
           </CycleCard>
         </CycleSection>
 
+        {/* Brief §9 wave 2 item 17: Tracking (no periods expected) + the fertile-days display switch. */}
+        {mode === 'TRACK_PERIOD' || mode === 'TRY_TO_CONCEIVE' ? (
+          <CycleSection title={trackingSettingsCopy.section()} delay={100}>
+            <CycleCard>
+              {mode === 'TRACK_PERIOD' ? (
+                <>
+                  <RowSwitch
+                    icon={Droplet}
+                    label={trackingSettingsCopy.expectsLabel()}
+                    hint={trackingSettingsCopy.expectsHint()}
+                    value={!expectsBleeding}
+                    onChange={(v) => setExpectsBleeding(!v)}
+                    c={c}
+                  />
+                  <View style={{ height: 1, backgroundColor: c.border, marginVertical: 12 }} />
+                </>
+              ) : null}
+              <RowSwitch
+                icon={Sparkles}
+                label={trackingSettingsCopy.fertilityLabel()}
+                hint={
+                  trackingSettingsCopy.forced(liveTracking.fertility.forcedBy)
+                  ?? (liveTracking.fertility.effective === 'on'
+                    ? trackingSettingsCopy.fertilityHintOn()
+                    : trackingSettingsCopy.fertilityHintOff())
+                }
+                value={liveTracking.fertility.effective === 'on'}
+                disabled={!liveTracking.fertility.userCanChange}
+                onChange={(v) => setFertilityDisplay(v ? 'auto' : 'off')}
+                c={c}
+              />
+            </CycleCard>
+          </CycleSection>
+        ) : null}
+
         {mode === 'PREGNANCY' ? (
           <CycleSection
             title={ka.cycle.pregnancySettingsReference}
@@ -773,7 +822,15 @@ export default function CycleSettings() {
               onChange={(v) => updateReminders({ enabled: v })}
               c={c}
             />
-            {reminders.enabled ? (
+            {reminders.enabled && liveTracking.trackingOnly ? (
+              <Text style={{ color: c.muted, fontSize: 12, lineHeight: 17, marginTop: 8 }}>
+                {tx(
+                  'მენსტრუაციის შეხსენებები არ მოვა, სანამ „მენსტრუაციას არ ველი“ ჩართულია.',
+                  'Period reminders are off while “I don’t expect periods” is on.',
+                )}
+              </Text>
+            ) : null}
+            {reminders.enabled && !liveTracking.trackingOnly ? (
               <>
                 <View style={{ height: 1, backgroundColor: c.border, marginVertical: 12 }} />
                 <Stepper
@@ -814,24 +871,29 @@ export default function CycleSettings() {
                 <Text style={{ color: c.muted, fontSize: 12, lineHeight: 17, marginTop: 4 }}>
                   {ka.cycle.remindersOptionalHint}
                 </Text>
-                <View style={{ height: 1, backgroundColor: c.border, marginVertical: 12 }} />
-                <RowSwitch
-                  icon={Sparkles}
-                  label={ka.cycle.remindersOvulation}
-                  value={reminders.ovulation}
-                  onChange={(v) => updateReminders({ ovulation: v })}
-                  c={c}
-                />
-                <ReminderExample type="ovulation" c={c} />
-                <View style={{ height: 1, backgroundColor: c.border, marginVertical: 12 }} />
-                <RowSwitch
-                  icon={Heart}
-                  label={ka.cycle.remindersPms}
-                  value={reminders.pms}
-                  onChange={(v) => updateReminders({ pms: v })}
-                  c={c}
-                />
-                <ReminderExample type="pms" c={c} />
+                {/* Fertile-days display off: ovulation and the ovulation-based PMS reminder are never scheduled. */}
+                {liveTracking.fertility.effective === 'on' ? (
+                  <>
+                    <View style={{ height: 1, backgroundColor: c.border, marginVertical: 12 }} />
+                    <RowSwitch
+                      icon={Sparkles}
+                      label={ka.cycle.remindersOvulation}
+                      value={reminders.ovulation}
+                      onChange={(v) => updateReminders({ ovulation: v })}
+                      c={c}
+                    />
+                    <ReminderExample type="ovulation" c={c} />
+                    <View style={{ height: 1, backgroundColor: c.border, marginVertical: 12 }} />
+                    <RowSwitch
+                      icon={Heart}
+                      label={ka.cycle.remindersPms}
+                      value={reminders.pms}
+                      onChange={(v) => updateReminders({ pms: v })}
+                      c={c}
+                    />
+                    <ReminderExample type="pms" c={c} />
+                  </>
+                ) : null}
                 <View style={{ height: 1, backgroundColor: c.border, marginVertical: 12 }} />
                 <RowSwitch
                   icon={NotebookPen}
@@ -1378,6 +1440,7 @@ function RowSwitch({
   hint,
   value,
   onChange,
+  disabled = false,
   c,
 }: {
   icon: typeof Lock;
@@ -1386,6 +1449,8 @@ function RowSwitch({
   value: boolean;
   /** Omitted = an always-on row: the switch is shown on and disabled. */
   onChange?: (v: boolean) => void;
+  /** Forced by another setting: the switch shows the value but cannot change it (the hint says why). */
+  disabled?: boolean;
   c: ReturnType<typeof useCycleColors>;
 }) {
   return (
@@ -1411,6 +1476,9 @@ function RowSwitch({
         <Switch
           value={value}
           accessibilityLabel={label}
+          accessibilityHint={disabled ? hint : undefined}
+          accessibilityState={{ disabled }}
+          disabled={disabled}
           onValueChange={onChange}
           trackColor={{ true: c.cta, false: c.controlBorder }}
           thumbColor={c.onPrimary}

@@ -4,15 +4,106 @@
  * field on a pre-Phase-42 cache remains allowed.
  */
 
+import { resolveCycleTracking, trackingOnlyFor } from './cycleModeCapabilityMatrix.js';
+
 export const FORECAST_ELIGIBILITY_REASON = Object.freeze({
   STANDARD: 'STANDARD',
   POSTPARTUM_HISTORY_INSUFFICIENT: 'POSTPARTUM_HISTORY_INSUFFICIENT',
   POSTPARTUM_HISTORY_READY: 'POSTPARTUM_HISTORY_READY',
+  /** „მენსტრუაციას არ ველი“ (brief §9 wave 2 item 17) — same as the server. */
+  NOT_EXPECTING_BLEEDING: 'NOT_EXPECTING_BLEEDING',
 });
+
+/*
+ * „თვალყურის დევნება“ / Tracking and the fertile-days display (brief §9 wave 2 item 17).
+ * The server decides (`bundle.tracking`, `forecastEligibility`, `contraception.presentation`); these
+ * mirrors cover a cached bundle from before the server sent them and a profile saved a moment ago.
+ */
+
+/** True while she said she expects no periods (TRACK_PERIOD): the neutral Tracking state, nothing forecast. */
+export function isTrackingOnly(bundle) {
+  if (!bundle) return false;
+  if (bundle.forecastEligibility?.reason === FORECAST_ELIGIBILITY_REASON.NOT_EXPECTING_BLEEDING) return true;
+  if (typeof bundle.tracking?.trackingOnly === 'boolean') return bundle.tracking.trackingOnly;
+  return trackingOnlyFor(bundle.profile?.mode ?? null, bundle.profile);
+}
+
+/** The saved contraception rules hide fertile days (pill, implant, …) — never her own „off“. */
+export function contraceptionHidesFertility(bundle) {
+  const presentation = bundle?.contraception?.presentation;
+  if (!presentation) return false;
+  const forcedBy = presentation.fertilityDisplay?.forcedBy;
+  if (forcedBy !== undefined) return forcedBy === 'contraception';
+  return presentation.showFertileWindow === false;
+}
+
+/**
+ * `{ expectsBleeding, fertilityDisplay, trackingOnly, fertility: { effective, forcedBy, userCanChange } }`
+ * for a bundle — the server's when it sent one, else the shared matrix with the same inputs.
+ * `overrides` = unsaved settings (mode / expectsBleeding / fertilityDisplay) for the settings screen.
+ * @param {any} bundle
+ * @param {{ mode?: string | null, expectsBleeding?: boolean, fertilityDisplay?: string } | null} [overrides]
+ */
+export function cycleTrackingFromBundle(bundle, overrides = null) {
+  const mode = overrides?.mode ?? bundle?.profile?.mode ?? null;
+  const prefs = {
+    expectsBleeding: overrides && 'expectsBleeding' in overrides ? overrides.expectsBleeding : bundle?.profile?.expectsBleeding,
+    fertilityDisplay: overrides && 'fertilityDisplay' in overrides ? overrides.fertilityDisplay : bundle?.profile?.fertilityDisplay,
+  };
+  const sent = bundle?.tracking;
+  if (!overrides && sent && typeof sent.trackingOnly === 'boolean' && sent.fertility?.effective) {
+    return {
+      expectsBleeding: sent.expectsBleeding !== false,
+      fertilityDisplay: sent.fertilityDisplay === 'off' ? 'off' : 'auto',
+      trackingOnly: sent.trackingOnly,
+      fertility: {
+        effective: sent.fertility.effective === 'off' ? 'off' : 'on',
+        forcedBy: sent.fertility.forcedBy ?? null,
+        userCanChange: sent.fertility.userCanChange === true,
+      },
+    };
+  }
+  return resolveCycleTracking(mode, prefs, { contraceptionHidesFertility: contraceptionHidesFertility(bundle) });
+}
+
+/** False when her fertile-days display is off (her choice, Tracking, contraception or the mode). */
+export function fertilityDisplayOn(bundle) {
+  if (!bundle) return true;
+  return cycleTrackingFromBundle(bundle).fertility.effective !== 'off';
+}
+
+/**
+ * The two gates the local reminder scheduler and the notification brain pass to
+ * `buildCycleCandidates` / `revalidateCycleCandidate`: Tracking drops period soon / today / late, a
+ * hidden fertile-days display drops fertile / ovulation / OPK / PMS (cycleNotificationContract).
+ */
+export function cycleReminderGates(bundle) {
+  return {
+    forecastAllowed: forecastPresentationAllowed(bundle),
+    showFertilityMarkers:
+      bundle?.contraception?.presentation?.showFertilityMarkers !== false && fertilityDisplayOn(bundle),
+  };
+}
+
+/**
+ * Onboarding's contraception step may offer „მენსტრუაციას არ ველი“ for these (a suggestion row, never
+ * automatic): many people on a hormonal IUD, an implant or a continuous pill stop bleeding.
+ */
+export const SUGGEST_NOT_EXPECTING_BLEEDING_METHODS = Object.freeze([
+  'HORMONAL_IUD',
+  'IMPLANT',
+  'COMBINED_PILL',
+  'PROGESTIN_PILL',
+]);
+
+export function suggestNotExpectingBleeding(method) {
+  return SUGGEST_NOT_EXPECTING_BLEEDING_METHODS.includes(method);
+}
 
 export function forecastPresentationAllowed(bundle, { hydrating = false } = {}) {
   if (hydrating && !bundle) return false;
   if (!bundle) return false;
+  if (isTrackingOnly(bundle)) return false;
   const eligibility = bundle.forecastEligibility;
   if (!eligibility) return true;
   return eligibility.allowed === true;

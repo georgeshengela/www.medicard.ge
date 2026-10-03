@@ -891,7 +891,26 @@ export type CycleContraceptionContext = {
     famNotCertified: boolean;
     showContextCard: boolean;
     contextKind: 'limited' | 'caution' | null;
+    /** Her „off“ or Tracking hid fertile days here (brief §9 wave 2 item 17; absent on older servers). */
+    fertilityHidden?: boolean;
+    fertilityDisplay?: CycleFertilityDisplayState;
   };
+};
+
+/** „ნაყოფიერი დღეების ჩვენება“: stored setting + what applies now and why (absent on older servers). */
+export type CycleFertilityDisplayState = {
+  setting?: 'auto' | 'off';
+  effective: 'on' | 'off';
+  forcedBy: 'mode' | 'contraception' | 'tracking' | 'ttc' | null;
+  userCanChange: boolean;
+};
+
+/** Brief §9 wave 2 item 17: „მენსტრუაციას არ ველი“ + the fertile-days display. */
+export type CycleTrackingState = {
+  expectsBleeding: boolean;
+  fertilityDisplay: 'auto' | 'off';
+  trackingOnly: boolean;
+  fertility: CycleFertilityDisplayState;
 };
 
 export type CycleProfile = {
@@ -909,6 +928,10 @@ export type CycleProfile = {
   reminderPrefs: CycleReminderPrefsServer | null;
   contraceptionMethod?: CycleContraceptionMethod | null;
   contraceptionStartedAt?: string | null;
+  /** false = „მენსტრუაციას არ ველი“ (Tracking). Missing = true. */
+  expectsBleeding?: boolean;
+  /** Missing = 'auto'. */
+  fertilityDisplay?: 'auto' | 'off';
   aiInsights?: CycleInsights | null;
   aiInsightsAt?: string | null;
 };
@@ -1934,8 +1957,10 @@ export type CycleBundle = {
   classifiedDates?: string[];
   forecastEligibility?: {
     allowed: boolean;
-    reason: 'STANDARD' | 'POSTPARTUM_HISTORY_INSUFFICIENT' | 'POSTPARTUM_HISTORY_READY';
+    reason: 'STANDARD' | 'POSTPARTUM_HISTORY_INSUFFICIENT' | 'POSTPARTUM_HISTORY_READY' | 'NOT_EXPECTING_BLEEDING';
   };
+  /** Tracking + fertile-days display (absent on older servers). */
+  tracking?: CycleTrackingState | null;
   postpartum?: {
     version: string;
     active: boolean;
@@ -3260,6 +3285,8 @@ export const api = {
       lastPeriodStart: string | null;
       contraceptionMethod: CycleContraceptionMethod | null;
       contraceptionStartedAt: string | null;
+      expectsBleeding: boolean;
+      fertilityDisplay: 'auto' | 'off';
       isIrregular: boolean;
       dueDate: string | null;
       pregnancyReferenceDate: string;

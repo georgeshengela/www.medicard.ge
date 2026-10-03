@@ -289,6 +289,8 @@ export type CycleHeroVariant =
   | 'pregnancy'
   | 'postpartum'
   | 'peri'
+  /** „მენსტრუაციას არ ველი“ (brief §9 wave 2 item 17): today's date, „როგორ ხარ დღეს?“, log. */
+  | 'tracking'
   | 'cycle';
 
 /** Which hero to draw. The privacy lock wins over everything (fail-closed while unknown). */
@@ -300,6 +302,7 @@ export function cycleHeroVariant({
   pregnancy,
   postpartum,
   peri,
+  tracking = false,
 }: {
   locked: boolean | null;
   hasView: boolean;
@@ -308,6 +311,8 @@ export function cycleHeroVariant({
   pregnancy: boolean;
   postpartum: boolean;
   peri: boolean;
+  /** Tracking (TRACK_PERIOD + expectsBleeding false) — never asks for a last period. */
+  tracking?: boolean;
 }): CycleHeroVariant {
   if (locked === null) return 'lockUnknown';
   if (locked) return 'locked';
@@ -315,6 +320,7 @@ export function cycleHeroVariant({
   if (pregnancy) return 'pregnancy';
   if (postpartum) return 'postpartum';
   if (peri) return 'peri';
+  if (tracking) return 'tracking';
   if (setupNeeded) return 'setup';
   return 'cycle';
 }
@@ -605,4 +611,49 @@ export function cycleTipsAllowed({
   phase: string;
 }): boolean {
   return locked === false && classicOverview && forecastAllowed && phaseBiological && !setupNeeded && phase !== 'unknown';
+}
+
+// ---------- Tracking (brief §9 wave 2 item 17) ----------
+
+const TRACKING_BLEED_FLOWS = new Set(['light', 'medium', 'heavy']);
+
+/**
+ * Tracking hero actions: the day's log leads; beside it „ახალი ციკლის დაწყება“ (a spotting or
+ * withdrawal bleed — logged, never a forecast) or, on a bleeding day, „დასრულება“.
+ */
+export function trackingHeroActions({ bleedingToday }: { bleedingToday: boolean }): {
+  primary: 'log';
+  secondary: 'newCycle' | 'end';
+} {
+  return { primary: 'log', secondary: bleedingToday ? 'end' : 'newCycle' };
+}
+
+/**
+ * The Tracking ring on /cycle: the last `days` days (position `days` = today, at 12 o'clock's left
+ * edge): logged bleeding fills its slot in rose, spotting is a rose dot, any other logged day a muted dot
+ * (the calendar's grammar). Nothing estimated.
+ */
+export function trackingRingDays({
+  today,
+  logs,
+  days = 28,
+}: {
+  today: string;
+  logs: { date: string; flow?: string | null }[] | null | undefined;
+  days?: number;
+}): { days: number; bleed: number[]; spotting: number[]; logged: number[] } {
+  const bleed = new Set<number>();
+  const spotting = new Set<number>();
+  const logged = new Set<number>();
+  for (const log of logs ?? []) {
+    if (!log?.date) continue;
+    const back = daysBetweenKeys(log.date, today);
+    if (back < 0 || back >= days) continue;
+    const pos = days - back;
+    if (TRACKING_BLEED_FLOWS.has(String(log.flow ?? ''))) bleed.add(pos);
+    else if (log.flow === 'spotting') spotting.add(pos);
+    else logged.add(pos);
+  }
+  const sort = (set: Set<number>) => [...set].sort((a, b) => a - b);
+  return { days, bleed: sort(bleed), spotting: sort(spotting), logged: sort(logged) };
 }

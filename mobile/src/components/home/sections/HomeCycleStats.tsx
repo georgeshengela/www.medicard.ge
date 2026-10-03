@@ -6,7 +6,7 @@ import { HomeSectionHeading } from '@/components/home/HomeSectionHeading';
 import { HubLinkRow } from '@/components/home/HubTiles';
 import { ka } from '@/i18n/ka';
 import { tx } from '@/i18n/locale';
-import { suppressCycleLengthChrome } from '@/lib/cycleForecastEligibility';
+import { isTrackingOnly, suppressCycleLengthChrome } from '@/lib/cycleForecastEligibility';
 import { isFeatureOn, useFeatureState } from '@/lib/featureFlags';
 import { cycleModeCapabilities } from '@/lib/cycleModes';
 import { cycleBarsModel, cycleStatsModel, type CycleBar, type CycleStat, type CycleStatsModel, type StatTone } from '@/lib/home/homeCycle';
@@ -42,7 +42,8 @@ export function HomeCycleStats({ cycle, locked, showCommunity, first }: HomeCycl
   const bundle = locked === false && cycleOn ? (cycle.view?.display ?? null) : null;
   const stats = bundle
     ? cycleStatsModel({
-        eligible: cycleModeCapabilities(bundle.profile.mode).showClassicCycleOverview && !suppressCycleLengthChrome(bundle),
+        // Tracking keeps the stats on whatever she logged (brief §9 wave 2 item 17).
+        eligible: cycleModeCapabilities(bundle.profile.mode).showClassicCycleOverview && (!suppressCycleLengthChrome(bundle) || isTrackingOnly(bundle)),
         averages: bundle.averages,
         cycleLengths: bundle.trends?.cycleLengths,
       })
