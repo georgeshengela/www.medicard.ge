@@ -56,6 +56,15 @@ const GLYPHS = {
   yes: 'symbols/yes',
   rdt: 'diagnostics/rdt_result',
   rdtPositive: 'diagnostics/rdt_result_positive',
+  // pregnancy checklist (PREGNANCY_CHECKLIST) + level tiles
+  pill: 'medications/pill_1',
+  walking: 'exercise/walking',
+  stethoscope: 'devices/stethoscope',
+  sonogram: 'devices/sonogram',
+  noSmoking: 'symbols/smoking_cessation',
+  noAlcohol: 'nutrition/alcohol_cessation',
+  lowBars: 'symbols/low_bars',
+  mediumBars: 'symbols/medium_bars',
   // moods
   calm: 'emotions/calm',
   happy: 'emotions/happy',

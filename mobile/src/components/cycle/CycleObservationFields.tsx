@@ -2,8 +2,10 @@ import { CyclePressable as Pressable } from '@/components/cycle/CyclePressable';
 import React, { useState } from 'react';
 import { Text, TextInput, View } from 'react-native';
 import * as Haptics from 'expo-haptics';
-import { Check, X } from 'lucide-react-native';
+import { Check } from 'lucide-react-native';
+import { CycleIconTile } from '@/components/cycle/CycleIconTile';
 import type { CycleCustomTag, CyclePainEntry, CyclePainSeverity, CyclePainType } from '@/lib/api';
+import { cycleGlyphFor } from '@/lib/cycleIconMap';
 import {
   ALCOHOL_LEVELS,
   CAFFEINE_LEVELS,
@@ -11,7 +13,6 @@ import {
   CYCLE_TAG_NAME_MAX,
   ENERGY_LEVELS,
   EXERCISE_LEVELS,
-  PAIN_SEVERITIES,
   PAIN_TYPES,
   SLEEP_QUALITIES,
   STRESS_LEVELS,
@@ -20,13 +21,13 @@ import {
   caffeineLabel,
   energyLabel,
   exerciseLabel,
-  painSeverityLabel,
   painTypeLabel,
   removePainEntry,
   sleepLabel,
   stressLabel,
   upsertPainEntry,
 } from '@/lib/cycleObservations';
+import { nextPainSeverity, painLevel } from '@/lib/cycleQuickLogCopy';
 import { ka } from '@/i18n/ka';
 import { tx } from '@/i18n/locale';
 import { useCycleColors } from '@/theme/cycle';
@@ -87,174 +88,63 @@ function ChipRow<T extends string>({
   );
 }
 
-/** Chips where several can be on at once (pain locations). */
-function ChipMulti<T extends string>({
-  options,
-  values,
-  onToggle,
-  labelFor,
-}: {
-  options: readonly T[];
-  values: readonly T[];
-  onToggle: (id: T) => void;
-  labelFor: (id: T) => string;
-}) {
-  const c = useCycleColors();
-  return (
-    <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-      {options.map((id) => {
-        const on = values.includes(id);
-        return (
-          <Pressable
-            key={id}
-            onPress={() => {
-              Haptics.selectionAsync().catch(() => undefined);
-              onToggle(id);
-            }}
-            accessibilityRole="checkbox"
-            accessibilityState={{ checked: on }}
-            accessibilityLabel={labelFor(id)}
-            style={{
-              minHeight: 44,
-              paddingHorizontal: 10,
-              borderRadius: 14,
-              justifyContent: 'center',
-              backgroundColor: on ? c.accentSoft : c.cardSoft,
-              borderWidth: 1,
-              borderColor: on ? c.brand : c.controlBorder,
-              flexDirection: 'row',
-              alignItems: 'center',
-              gap: 4,
-            }}
-          >
-            {on ? <Check size={12} color={c.brand} strokeWidth={2.5} /> : null}
-            <Text
-              style={{
-                color: on ? c.brand : c.ink,
-                fontFamily: 'NotoSansGeorgian_500Medium',
-                fontSize: 12,
-              }}
-            >
-              {labelFor(id)}
-            </Text>
-          </Pressable>
-        );
-      })}
-    </View>
-  );
-}
-
 /**
- * Pain for one day. A day can hurt in several places, so locations are always multi-select
- * (owner 2026-10-03) — in the quick logs (`compact`: one strength for the day, then where) and in
- * the full log (each place keeps its own strength). The last place cannot be unticked while a
- * strength is chosen; „არა“ / untapping the strength clears the day's pain.
+ * Pain for one day as tiles (brief §8.3, 2026-10-03): one tile per place, several places at once,
+ * each with its own strength by re-tap — nothing → ზომიერი (●●○) → ძლიერი (●●●) → მსუბუქი (●○○) →
+ * off (`nextPainSeverity`). The same tiles in every quick log and in the full log, so pain looks the
+ * same wherever it is logged. Stored in the existing `painEntries[].severity`.
+ *
+ * `compact` and `typesFirst` are kept for callers; both render the same row (the full log adds the
+ * owner's „არა დიაგნოზი“ hint above it).
  */
 export function CyclePainEditor({
   entries,
   onChange,
   compact,
   types,
-  typesFirst,
+  disabled = false,
+  trailing,
 }: {
   entries: CyclePainEntry[];
   onChange: (next: CyclePainEntry[]) => void;
   compact?: boolean;
-  types?: CyclePainType[];
+  types?: readonly CyclePainType[];
   typesFirst?: boolean;
+  disabled?: boolean;
+  /** Extra tiles that belong in the same row (perimenopause keeps „მიგრენი“ beside the pain places). */
+  trailing?: React.ReactNode;
 }) {
   const c = useCycleColors();
   const typeOptions = types?.length ? types : PAIN_TYPES;
-  /** Places ticked before a strength is chosen (compact, places first). */
-  const [draftTypes, setDraftTypes] = useState<CyclePainType[]>([typeOptions[0] ?? 'cramps']);
-  const multiHint = tx('შეგიძლია რამდენიმე მონიშნო', 'You can pick more than one');
-  const whereLabel = (
-    <Text style={{ color: c.muted, fontSize: 12, marginBottom: 8 }}>
-      {ka.cycle.painLocation} · {multiHint}
-    </Text>
-  );
-
-  if (compact) {
-    const severity = entries[0]?.severity ?? null;
-    const selected = entries.length ? entries.map((e) => e.type) : draftTypes;
-    const toggleType = (type: CyclePainType) => {
-      if (!entries.length) {
-        setDraftTypes((prev) => (prev.includes(type) ? (prev.length > 1 ? prev.filter((t) => t !== type) : prev) : [...prev, type]));
-        return;
-      }
-      const has = entries.some((e) => e.type === type);
-      if (has) {
-        if (entries.length > 1) onChange(removePainEntry(entries, type));
-        return;
-      }
-      onChange([...entries, { type, severity: severity ?? 'moderate' }]);
-    };
-    const setSeverity = (next: CyclePainSeverity | null) => {
-      if (!next) {
-        // Remember where it hurt, in case the strength is tapped again.
-        if (entries.length) setDraftTypes(entries.map((e) => e.type));
-        onChange([]);
-        return;
-      }
-      onChange(selected.map((type) => ({ type, severity: next })));
-    };
-    const places = (
-      <View>
-        {whereLabel}
-        <ChipMulti options={typeOptions} values={selected} onToggle={toggleType} labelFor={painTypeLabel} />
-      </View>
-    );
-    return (
-      <View>
-        {typesFirst ? <View style={{ marginBottom: 10 }}>{places}</View> : null}
-        <ChipRow
-          options={['none', ...PAIN_SEVERITIES] as const}
-          value={severity ?? 'none'}
-          onChange={(next) => setSeverity(next === 'none' || next == null ? null : next)}
-          labelFor={(id) => (id === 'none' ? ka.cycle.painNone : painSeverityLabel(id))}
-        />
-        {entries.length && !typesFirst ? <View style={{ marginTop: 10 }}>{places}</View> : null}
-      </View>
-    );
-  }
-
-  const toggleEntry = (type: CyclePainType) => {
-    if (entries.some((e) => e.type === type)) onChange(removePainEntry(entries, type));
-    else onChange(upsertPainEntry(entries, type, 'moderate'));
+  const severityOf = (type: CyclePainType): CyclePainSeverity | null => entries.find((e) => e.type === type)?.severity ?? null;
+  const tap = (type: CyclePainType) => {
+    const next = nextPainSeverity(severityOf(type));
+    onChange(next ? upsertPainEntry(entries, type, next) : removePainEntry(entries, type));
   };
-
   return (
-    <View>
-      <Text style={{ color: c.muted, fontSize: 12, lineHeight: 18, marginBottom: 12 }}>{ka.cycle.painHint}</Text>
-      {whereLabel}
-      <ChipMulti options={typeOptions} values={entries.map((e) => e.type)} onToggle={toggleEntry} labelFor={painTypeLabel} />
-      {entries.map((entry) => (
-        <View key={`${entry.type}-sev`} style={{ marginTop: 14 }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 6 }}>
-            <Text style={{ flex: 1, color: c.ink, fontFamily: 'NotoSansGeorgian_600SemiBold', fontSize: 13 }}>
-              {painTypeLabel(entry.type)} · <Text style={{ color: c.muted, fontFamily: 'NotoSansGeorgian_500Medium' }}>{ka.cycle.painSeverityTitle}</Text>
-            </Text>
-            <Pressable
-              onPress={() => onChange(removePainEntry(entries, entry.type))}
-              accessibilityRole="button"
-              accessibilityLabel={`${ka.cycle.painRemove} ${painTypeLabel(entry.type)}`}
-              hitSlop={8}
-              style={{ width: 36, height: 36, alignItems: 'center', justifyContent: 'center' }}
-            >
-              <X size={18} color={c.muted} />
-            </Pressable>
-          </View>
-          <ChipRow
-            options={PAIN_SEVERITIES}
-            value={entry.severity}
-            onChange={(severity) => {
-              if (!severity) onChange(removePainEntry(entries, entry.type));
-              else onChange(entries.map((e) => (e.type === entry.type ? { ...e, severity } : e)));
-            }}
-            labelFor={painSeverityLabel}
-          />
-        </View>
-      ))}
+    <View style={{ gap: 8 }}>
+      {!compact ? <Text style={{ color: c.muted, fontSize: 12, lineHeight: 18, marginBottom: 4 }}>{ka.cycle.painHint}</Text> : null}
+      <View style={{ flexDirection: 'row', flexWrap: 'wrap', columnGap: 2, rowGap: 12 }}>
+        {typeOptions.map((type) => {
+          const severity = severityOf(type);
+          return (
+            <CycleIconTile
+              key={type}
+              glyph={cycleGlyphFor('pain', type)}
+              label={painTypeLabel(type)}
+              selected={severity != null}
+              level={painLevel(severity)}
+              disabled={disabled}
+              onPress={() => tap(type)}
+              accessibilityHint={tx('ხელახალი შეხება ინტენსივობას ცვლის', 'Tap again to change the strength')}
+            />
+          );
+        })}
+        {trailing}
+      </View>
+      <Text style={{ color: c.mutedSoft, fontFamily: 'NotoSansGeorgian_400Regular', fontSize: 11.5, lineHeight: 16 }}>
+        {tx('ხელახალი შეხება ინტენსივობას ცვლის: ზომიერი → ძლიერი → მსუბუქი → მოხსნა', 'Tap again to change the strength: moderate → severe → mild → off')}
+      </Text>
     </View>
   );
 }

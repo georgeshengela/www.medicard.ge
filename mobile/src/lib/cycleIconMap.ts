@@ -106,21 +106,63 @@ const LIFESTYLE: Record<string, CycleIconGlyph> = {
 
 const TESTS: Record<string, CycleIconGlyph> = { ovulationTest: 'rdt', pregnancyTest: 'rdtPositive', bbt: 'thermometer' };
 
+/** `PREGNANCY_CHECKLIST` (constants/cycle.ts) — habits and appointments, one object each. */
+const CHECKLIST: Record<string, CycleIconGlyph> = {
+  prenatal_vitamin: 'pill',
+  folic_acid: 'pill',
+  water_2l: 'water',
+  walk: 'walking',
+  doctor_appt: 'stethoscope',
+  ultrasound: 'sonogram',
+  blood_test: 'drop',
+  no_alcohol: 'noAlcohol',
+  no_smoking: 'noSmoking',
+  rest: 'sleepy',
+};
+
 export const ALL_FINE_ID = 'all_fine';
 
+export type CycleIconKind = 'flow' | 'pain' | 'mood' | 'symptom' | 'mucus' | 'lifestyle' | 'test' | 'checklist';
+
 /** The glyph for a logged thing. `kind` disambiguates ids shared by groups (e.g. `headache` is a pain type and a symptom). */
-export function cycleGlyphFor(kind: 'flow' | 'pain' | 'mood' | 'symptom' | 'mucus' | 'lifestyle' | 'test', id: string): CycleIconGlyph {
+export function cycleGlyphFor(kind: CycleIconKind, id: string): CycleIconGlyph {
   if (id === ALL_FINE_ID) return 'yes';
-  const table = kind === 'flow' ? FLOW : kind === 'pain' ? PAIN : kind === 'mood' ? MOOD : kind === 'symptom' ? SYMPTOM : kind === 'mucus' ? MUCUS : kind === 'lifestyle' ? LIFESTYLE : TESTS;
+  const table =
+    kind === 'flow' ? FLOW : kind === 'pain' ? PAIN : kind === 'mood' ? MOOD : kind === 'symptom' ? SYMPTOM : kind === 'mucus' ? MUCUS : kind === 'lifestyle' ? LIFESTYLE : kind === 'checklist' ? CHECKLIST : TESTS;
   return table[id] ?? 'pain';
 }
 
 /** Which ink a group takes: bleeding rose, fertility turquoise, everything else the plain ink. */
-export function cycleIconGroup(kind: 'flow' | 'pain' | 'mood' | 'symptom' | 'mucus' | 'lifestyle' | 'test'): CycleIconGroup {
+export function cycleIconGroup(kind: CycleIconKind): CycleIconGroup {
   if (kind === 'flow') return 'bleeding';
   if (kind === 'mucus' || kind === 'test') return 'fertility';
   return 'neutral';
 }
+
+/**
+ * Level fields (energy, sleep, stress) are one row of tiles: the same glyph on every tile, the level
+ * as dots under the label (1 of N … N of N) and a glyph that fades towards the low end. `levelOf` is
+ * the 1-based position of `id` in the field's ordered options, or null when it is not an option.
+ */
+export function levelOf(options: readonly string[], id: string | null | undefined): number | null {
+  if (!id) return null;
+  const i = options.indexOf(id);
+  return i < 0 ? null : i + 1;
+}
+
+/** Glyph opacity for level `level` of `max`: 0.45 at the lowest, 1 at the top (a ramp a glance can read). */
+export function levelGlyphOpacity(level: number, max: number): number {
+  if (max <= 1) return 1;
+  const t = Math.min(1, Math.max(0, (level - 1) / (max - 1)));
+  return Math.round((0.45 + 0.55 * t) * 100) / 100;
+}
+
+/** Which glyph stands for a whole level field (one glyph per field, never per option). */
+export const LEVEL_FIELD_GLYPH: Record<'energy' | 'sleepQuality' | 'stressLevel', CycleIconGlyph> = {
+  energy: 'bars',
+  sleepQuality: 'sleepy',
+  stressLevel: 'nervous',
+};
 
 /** Bleeding strength as glyph size and opacity (one drop, five amounts — Flo's drops). */
 export function flowGlyphStyle(id: string): { scale: number; opacity: number; hollow: boolean } {
@@ -138,7 +180,7 @@ export function flowGlyphStyle(id: string): { scale: number; opacity: number; ho
   }
 }
 
-export const KNOWN_GLYPH_IDS = { FLOW, PAIN, MOOD, SYMPTOM, MUCUS, LIFESTYLE, TESTS };
+export const KNOWN_GLYPH_IDS = { FLOW, PAIN, MOOD, SYMPTOM, MUCUS, LIFESTYLE, TESTS, CHECKLIST };
 
 /**
  * Georgian words like „კონცენტრირებული“ or „თავბრუსხვევა“ are longer than a 76 pt label at 10.5 pt and

@@ -31,8 +31,11 @@ export type CycleIconTileProps = {
   glyphScale?: number;
   glyphOpacity?: number;
   hollow?: boolean;
-  /** Pain strength under the label: 1–3 of 3 dots. */
-  level?: 1 | 2 | 3 | null;
+  /** Strength or level under the label: `level` of `levelMax` dots (pain 1–3 of 3, energy 1–5 of 5). */
+  level?: number | null;
+  levelMax?: number;
+  /** Spoken name of the level; pain tiles default to მსუბუქი / ზომიერი / ძლიერი, level tiles carry it in the label. */
+  levelName?: string | null;
   /** Pre-filled from a device or an expectation — a dashed ring until confirmed. */
   dashed?: boolean;
   role?: 'checkbox' | 'radio';
@@ -51,6 +54,8 @@ export function CycleIconTile({
   glyphOpacity = 1,
   hollow = false,
   level = null,
+  levelMax = 3,
+  levelName,
   dashed = false,
   role = 'checkbox',
   accessibilityHint,
@@ -59,11 +64,13 @@ export function CycleIconTile({
   const ink = group === 'bleeding' ? c.period : group === 'fertility' ? c.fertile : c.ink;
   const onInk = group === 'neutral' ? c.card : c.onPeriod;
   const size = Math.round(GLYPH * glyphScale);
+  const spokenLevel = level ? (levelName === undefined ? (levelMax === 3 ? levelLabel(level as 1 | 2 | 3) : null) : levelName) : null;
+  const dots = Math.max(1, Math.min(6, Math.round(levelMax)));
   return (
     <Pressable
       accessibilityRole={role}
       accessibilityState={role === 'radio' ? { selected, disabled } : { checked: selected, disabled }}
-      accessibilityLabel={level ? `${label}, ${levelLabel(level)}` : label}
+      accessibilityLabel={spokenLevel ? `${label}, ${spokenLevel}` : label}
       accessibilityHint={accessibilityHint}
       disabled={disabled}
       onPress={() => {
@@ -102,7 +109,7 @@ export function CycleIconTile({
       </Text>
       {level ? (
         <View style={s.dots} accessible={false}>
-          {[1, 2, 3].map((n) => (
+          {Array.from({ length: dots }, (_, i) => i + 1).map((n) => (
             <View key={n} style={[s.dot, { backgroundColor: n <= level ? ink : c.border }]} />
           ))}
         </View>

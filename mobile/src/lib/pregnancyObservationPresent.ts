@@ -1,5 +1,4 @@
 import type { CyclePregnancyDayObservations } from '@/lib/api';
-import { tx } from '../i18n/locale.js';
 import { cycleChipLabel } from '@/lib/cycleLabels';
 import {
   energyLabel,
@@ -9,41 +8,14 @@ import {
 } from '@/lib/cycleObservations';
 import { ka } from '@/i18n/ka';
 
-export const PREGNANCY_QUICK_DIGESTION = [
-  'nausea',
-  'vomiting',
-  'bloating',
-  'constipation',
-  'diarrhea',
-  'heartburn',
-] as const;
-
-export const PREGNANCY_QUICK_BODY = [
-  'dizziness',
-  'swelling',
-  'short_breath',
-  'frequent_urination',
-  'leg_cramps',
-] as const;
-
-export const PREGNANCY_QUICK_ENERGY_CHIPS = ['fatigue'] as const;
-
-export const PREGNANCY_PAIN_TYPES = [
-  'cramps',
-  'pelvic',
-  'lower_back',
-  'headache',
-  'breast',
-  'other',
-] as const;
-
-export const PREGNANCY_FLOW_OPTIONS = [
-  { id: 'none', label: tx('არა', 'None') },
-  { id: 'spotting', label: tx('ლაქები', 'Spotting') },
-  { id: 'light', label: tx('მსუბუქი', 'Light') },
-  { id: 'medium', label: tx('ზომიერი', 'Medium') },
-  { id: 'heavy', label: tx('ძლიერი', 'Heavy') },
-] as const;
+// The pregnancy quick-log option lists live in the node-testable `cycleModeQuickLogOptions.ts`.
+export {
+  PREGNANCY_FLOW_OPTIONS,
+  PREGNANCY_PAIN_TYPES,
+  PREGNANCY_QUICK_BODY,
+  PREGNANCY_QUICK_DIGESTION,
+  PREGNANCY_QUICK_ENERGY_CHIPS,
+} from '@/lib/cycleModeQuickLogOptions';
 
 function bleedingBit(row: CyclePregnancyDayObservations): string | null {
   if (!row.bleeding) return null;
