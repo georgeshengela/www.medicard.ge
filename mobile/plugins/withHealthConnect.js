@@ -16,6 +16,7 @@ const HEALTH_PERMISSIONS = [
   'android.permission.health.WRITE_INTERMENSTRUAL_BLEEDING',
   'android.permission.health.READ_BASAL_BODY_TEMPERATURE',
   'android.permission.health.WRITE_BASAL_BODY_TEMPERATURE',
+  'android.permission.health.READ_SKIN_TEMPERATURE',
   'android.permission.health.READ_CERVICAL_MUCUS',
   'android.permission.health.WRITE_CERVICAL_MUCUS',
   'android.permission.health.READ_HEALTH_DATA_HISTORY',

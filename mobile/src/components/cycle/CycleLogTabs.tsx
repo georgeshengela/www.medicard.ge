@@ -85,6 +85,11 @@ export type CycleLogForm = {
    * nothing stored and untouched (not sent); [] = every tick taken off (sent as null to clear).
    */
   pregnancyChecklist?: string[] | null;
+  /**
+   * The BBT this day already had from Apple Health / Health Connect (`observations.bbtSource`), or
+   * null. Saving the same value never writes it back to Health (it came from there).
+   */
+  bbtFromHealth?: number | null;
 };
 
 type Props = {

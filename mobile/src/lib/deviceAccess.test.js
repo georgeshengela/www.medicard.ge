@@ -52,10 +52,12 @@ describe('device access bootstrap', () => {
   // "Continue" button that always opens the sheet. No Allow wording, no Not now/Later/Skip.
   it('permission primers only continue to the OS sheet', () => {
     const primer = readFileSync(join(here, 'permissionPrimer.ts'), 'utf8');
-    assert.equal((primer.match(/cta: 'Continue'/g) || []).length, 3);
-    assert.equal((primer.match(/cta: 'გაგრძელება'/g) || []).length, 3);
+    // notifications, health, location, temperature (cycle settings, train 1.0.0.20)
+    assert.equal((primer.match(/cta: 'Continue'/g) || []).length, 4);
+    assert.equal((primer.match(/cta: 'გაგრძელება'/g) || []).length, 4);
     assert.doesNotMatch(primer, /cta: '(Allow|ნებართვის მიცემა)/);
     const screens = [
+      '../components/cycle/settings/CycleTemperatureRow.tsx',
       '../components/permissions/PermissionGateHost.tsx',
       '../../app/(auth)/profile-setup/notifications.tsx',
       '../../app/(auth)/profile-setup/location.tsx',

@@ -18,6 +18,7 @@ import { CyclePerimenopauseOnboarding } from '@/components/cycle/CyclePerimenopa
 import { CyclePostpartumOnboarding } from '@/components/cycle/CyclePostpartumOnboarding';
 import { CyclePostpartumReturnSheet } from '@/components/cycle/CyclePostpartumReturnSheet';
 import { CycleTtcConflictSheet } from '@/components/cycle/CycleTtcConflictSheet';
+import { useCycleTemperatureSetting } from './CycleTemperatureRow';
 import {
   CycleCard,
   CycleLoading,
@@ -97,6 +98,9 @@ export function CycleProfileSettings() {
   const [periOnboarding, setPeriOnboarding] = useState(false);
   const [postpartumOnboarding, setPostpartumOnboarding] = useState(false);
   const [postpartumReturnSheet, setPostpartumReturnSheet] = useState(false);
+
+  // „ტემპერატურა Apple Health-იდან“ (train 1.0.0.20): acts at once; asks the OS only from its switch.
+  const temperature = useCycleTemperatureSetting(userId);
 
   // Live (unsaved) Tracking / fertile-days state: the saved contraception rules + the form's choices.
   const liveTracking = cycleTrackingFromBundle(bundle, { mode, expectsBleeding, fertilityDisplay });
@@ -421,6 +425,8 @@ export function CycleProfileSettings() {
                 c={c}
               />
             </CycleCard>
+            {temperature.card ? <View style={{ height: 12 }} /> : null}
+            {temperature.card}
           </CycleSection>
         ) : null}
 
@@ -527,6 +533,7 @@ export function CycleProfileSettings() {
           </CycleCard>
         </CycleSection>
       </KeyboardFormShell>
+      {temperature.primer}
 
       <CyclePregnancyTransitionSheet
         visible={pregnancySheet}

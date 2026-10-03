@@ -1,6 +1,6 @@
 import { CyclePressable as Pressable } from '@/components/cycle/CyclePressable';
 import React, { useMemo, useState } from 'react';
-import { ActivityIndicator, Text, View } from 'react-native';
+import { ActivityIndicator, Platform, Text, View } from 'react-native';
 import type { CycleBundle, CycleLog } from '@/lib/api';
 import { isCycleTestResult, prioritizeTtcActions } from '@/lib/cycleFertility';
 import { formatCycleDateKa } from '@/components/cycle/CycleUI';
@@ -16,7 +16,9 @@ import {
   forecastPresentationAllowed,
   isPostpartumReturnLearning,
 } from '@/lib/cycleForecastEligibility';
-import { ovulationBandLine, wideWindowLabel } from '@/lib/cycleForecastCopy';
+import { ovulationBandLine, pastTemperatureOvulationLine, wideWindowLabel } from '@/lib/cycleForecastCopy';
+import { isBbtFromHealth } from '@/lib/cycleObservationRegistry';
+import { healthBbtSourceLabel } from '@/lib/cycleTemperatureImport';
 import { addDaysKey, OVULATION_BAND_HALF_DAYS } from '@/lib/home/homeCycle';
 import { useCycleColors } from '@/theme/cycle';
 
@@ -54,6 +56,8 @@ export function CycleTtcCard({
   const forecastOk = forecastPresentationAllowed(bundle);
   const learning = isPostpartumReturnLearning(bundle);
   const softened = bundle.predictions?.confidence === 'low' || Boolean(bundle.profile.isIrregular);
+  // Her temperature showed ovulation in the last completed cycle (train 1.0.0.20 servers only).
+  const pastLine = pastTemperatureOvulationLine(bundle.predictions?.fertility?.pastOvulations);
   // One hedged line from her own BBT / OPK / mucus (brief §9 wave 2 item 4). On-device only; the /cycle
   // stack renders only after `requireCycleUnlock`, so the cycle is never locked here.
   const signal = useMemo(() => ttcSignalFromBundle(bundle, date, { locked: false }), [bundle, date]);
@@ -62,7 +66,11 @@ export function CycleTtcCard({
   if (isCycleTestResult(log?.ovulationTest)) {
     observed.push(ka.cycle.loggedOpk(ka.cycle.testResult[log.ovulationTest]));
   }
-  if (log?.bbt != null) observed.push(ka.cycle.loggedBbt(String(log.bbt)));
+  if (log?.bbt != null) {
+    const line = ka.cycle.loggedBbt(String(log.bbt));
+    // A BBT read from Apple Health / Health Connect says so; her typed value needs no label.
+    observed.push(isBbtFromHealth(log.observations) ? `${line} · ${healthBbtSourceLabel(Platform.OS)}` : line);
+  }
   if (log?.cervicalMucus) {
     observed.push(
       ka.cycle.loggedMucus(MUCUS_OPTIONS.find((opt) => opt.id === log.cervicalMucus)?.label ?? log.cervicalMucus),
@@ -135,6 +143,7 @@ export function CycleTtcCard({
               : ka.cycle.estimatedFertileTitle}
         {fertilityUi && forecastOk && window && wide ? `\n${wideWindowLabel()}` : ''}
         {fertilityUi && forecastOk && ovulationRange ? `\n${ovulationBandLine(ovulationRange, gate.ovulationSource)}` : ''}
+        {fertilityUi && forecastOk && pastLine ? `\n${pastLine}` : ''}
         {softened && fertilityUi && forecastOk ? `\n${ka.cycle.ttcLowConfidence}` : ''}
       </Text>
 

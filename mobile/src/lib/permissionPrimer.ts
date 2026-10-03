@@ -11,7 +11,7 @@ import { Platform } from 'react-native';
 import { appLang, type AppLang } from '../i18n/locale.js';
 import { getPreference, setPreference } from '@/lib/storage';
 
-export type PrimerKind = 'notifications' | 'health' | 'location';
+export type PrimerKind = 'notifications' | 'health' | 'location' | 'temperature';
 
 type PrimerCopy = { title: string; body: string; cta: string };
 
@@ -29,6 +29,12 @@ const KA: Record<PrimerKind, PrimerCopy> = {
   location: {
     title: 'რომელ ქალაქში ხარ?',
     body: 'მდებარეობით განვსაზღვრავთ შენს ქალაქს, რომ ადგილობრივი ამინდი და ახლომახლო აფთიაქები გაჩვენოთ. GPS-ს მხოლოდ აპის გამოყენებისას ვიყენებთ. შემდეგ ტელეფონი გკითხავს, გინდა თუ არა წვდომის მიცემა.',
+    cta: 'გაგრძელება',
+  },
+  // Cycle settings → პროფილი (train 1.0.0.20): BBT + wrist / skin temperature, read only.
+  temperature: {
+    title: 'ტემპერატურა Apple Health-იდან',
+    body: 'MEDICARD-ს შეუძლია Apple Health-იდან წაიკითხოს საბაზისო ტემპერატურა (BBT) და ძილის დროს მაჯის ტემპერატურა ბოლო 40 დღიდან, რომ ციკლის გვერდზე ოვულაცია სავარაუდოდ, რეტროსპექტულად გაჩვენოს. ისინი მხოლოდ შენს ციკლის ჩანაწერებში ინახება და Medi-ს, პარტნიორს ან ანალიტიკას არ გადაეცემა. შემდეგ Apple Health გაჩვენებს ფანჯარას, სადაც თავად აირჩევ, რა გააზიარო, ან არაფერი.',
     cta: 'გაგრძელება',
   },
 };
@@ -49,11 +55,25 @@ const EN: Record<PrimerKind, PrimerCopy> = {
     body: 'Your location sets your city so we can show local weather and nearby pharmacies. It is used only while you use the app. Next, your device will ask whether MEDICARD may access your location.',
     cta: 'Continue',
   },
+  temperature: {
+    title: 'Temperature from Apple Health',
+    body: 'MEDICARD can read your basal body temperature (BBT) and sleeping wrist temperature from the last 40 days in Apple Health to show a likely, in-hindsight ovulation estimate on the cycle page. They are kept only in your cycle log and never shared with Medi, a partner or analytics. Next, Apple Health will show a screen where you choose what to share, or nothing.',
+    cta: 'Continue',
+  },
 };
 
 export function primerCopy(kind: PrimerKind, lang: AppLang = appLang()): PrimerCopy {
   const copy = (lang === 'en' ? EN : KA)[kind];
-  if (kind !== 'health' || Platform.OS !== 'android') return copy;
+  if ((kind !== 'health' && kind !== 'temperature') || Platform.OS !== 'android') return copy;
+  if (kind === 'temperature') {
+    // Health Connect has skin temperature (a deviation), not Apple's sleeping wrist temperature.
+    return {
+      ...copy,
+      title: copy.title.replace('Apple Health', 'Health Connect'),
+      body: copy.body.replace(/Apple Health-იდან/g, 'Health Connect-იდან').replace(/Apple Health/g, 'Health Connect')
+        .replace('ძილის დროს მაჯის ტემპერატურა', 'კანის ტემპერატურა').replace('sleeping wrist temperature', 'skin temperature'),
+    };
+  }
   // Same wording, Android's store: Health Connect instead of Apple Health / the Health app.
   return {
     ...copy,

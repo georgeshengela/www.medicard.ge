@@ -3,7 +3,8 @@ import type { CycleLog } from '@/lib/api';
 import { syncCycleLogToHealth } from '@/lib/healthSync';
 import type { CycleLogForm } from '@/components/cycle/CycleLogTabs';
 import { saveCycleObservation, type CycleView } from '@/lib/cycleOffline';
-import { isOvulationMarked, ovulationMarkPatch, pregnancyChecklistFrom, pregnancyChecklistPatch } from '@/lib/cycleObservationRegistry';
+import { bbtForHealthWrite } from '@/lib/cycleTemperatureImport';
+import { isBbtFromHealth, isOvulationMarked, ovulationMarkPatch, pregnancyChecklistFrom, pregnancyChecklistPatch } from '@/lib/cycleObservationRegistry';
 
 const SEX_IDS = new Set(SEXUAL_OPTIONS.map((o) => o.id));
 const SEX_ACTIVITY_IDS = new Set(SEX_ACTIVITY_OPTIONS.map((o) => o.id));
@@ -68,8 +69,10 @@ export function formFromCycleLog(log: CycleLog | undefined): CycleLogForm {
     observationAssessments: { ...(log.observationAssessments || {}) },
     ovulationMarked: isOvulationMarked(log.observations) ? true : null,
     pregnancyChecklist: pregnancyChecklistFrom(log.observations),
+    bbtFromHealth: log.bbt != null && isBbtFromHealth(log.observations) ? log.bbt : null,
   };
 }
+
 
 export function isBleedFlow(flow: string | null | undefined): boolean {
   return flow === 'light' || flow === 'medium' || flow === 'heavy';
@@ -121,7 +124,7 @@ export async function persistCycleLog(
     await syncCycleLogToHealth({
       date,
       flow: form.flow,
-      bbt: bbtNum,
+      bbt: bbtForHealthWrite(bbtNum, form.bbtFromHealth),
       cervicalMucus: form.mucus,
       isPeriodStart: options?.markStart || isBleedFlow(form.flow),
     });

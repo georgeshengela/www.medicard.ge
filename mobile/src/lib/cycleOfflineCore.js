@@ -365,6 +365,27 @@ function mergeLocalObservationBag(prevBag, patchBag) {
   return base;
 }
 
+/**
+ * Temperature import keys (`bbtSource`, `wristTempDelta`) are written by the server import only — a queued
+ * log write never sets them. Like the server (`cycleTemperature.bagAfterTypedBbt`): a typed BBT that
+ * changes or clears the day's value makes it hers, so the „from Health“ flag goes.
+ */
+function withoutImportKeys(bag) {
+  if (!bag || typeof bag !== 'object' || Array.isArray(bag)) return bag;
+  if (!('bbtSource' in bag) && !('wristTempDelta' in bag)) return bag;
+  const { bbtSource, wristTempDelta, ...rest } = bag;
+  return rest;
+}
+
+function typedBbtBag(prev, patch, bag) {
+  if (patch.bbt === undefined || bag?.bbtSource == null) return bag;
+  const before = prev?.bbt != null ? Math.round(Number(prev.bbt) * 100) : null;
+  const after = patch.bbt != null ? Math.round(Number(patch.bbt) * 100) : null;
+  if (after != null && after === before) return bag;
+  const { bbtSource, ...rest } = bag;
+  return rest;
+}
+
 function upsertLogOnBundle(bundle, date, patch, userScope) {
   const logs = Array.isArray(bundle.logs) ? bundle.logs.slice() : [];
   const idx = logs.findIndex((l) => l.date === date);
@@ -395,7 +416,7 @@ function upsertLogOnBundle(bundle, date, patch, userScope) {
     caffeine: patch.caffeine !== undefined ? patch.caffeine : prev?.caffeine ?? null,
     alcohol: patch.alcohol !== undefined ? patch.alcohol : prev?.alcohol ?? null,
     customTagIds: patch.customTagIds !== undefined ? patch.customTagIds : prev?.customTagIds || [],
-    observations: mergeLocalObservationBag(prev?.observations, patch.observations),
+    observations: typedBbtBag(prev, patch, mergeLocalObservationBag(prev?.observations, withoutImportKeys(patch.observations))),
     energy:
       patch.energy !== undefined
         ? patch.energy
@@ -653,6 +674,8 @@ function accountIsolationSafe(store, userA, userB) {
 
 module.exports = {
   mergeLocalObservationBag,
+  typedBbtBag,
+  withoutImportKeys,
   CYCLE_OFFLINE_SCHEMA_VERSION,
   CYCLE_OFFLINE_LEGACY_SCHEMA_VERSION,
   CYCLE_OFFLINE_STORAGE_KEY,

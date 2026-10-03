@@ -123,3 +123,31 @@ export async function syncPeriodStartToHealth(ymd: string): Promise<void> {
     // Best-effort only.
   }
 }
+
+/**
+ * Cycle temperature (train 1.0.0.20): asks the OS for read access to BBT and wrist / skin temperature.
+ * Only from the cycle settings switch, after the one-button primer (iOS 26 rule, App Review 5.1.1(iv)).
+ * Independent of the general Health sync switch.
+ */
+export async function connectHealthTemperature(): Promise<HealthConnectResult> {
+  if (!isHealthPlatformSupported()) return { ok: false, reason: 'unavailable' };
+  if (isExpoGo()) return { ok: false, reason: 'expo_go' };
+  const impl = await nativeImpl();
+  if (!impl || typeof impl.connectTemperatureNative !== 'function') return { ok: false, reason: 'unavailable' };
+  return impl.connectTemperatureNative();
+}
+
+/** Reads temperature since `since` — never requests access (empty when not allowed or unavailable). */
+export async function readHealthTemperature(
+  since: Date,
+): Promise<import('@/lib/cycleTemperatureImport').HealthTemperatureRead> {
+  const empty = { bbt: [], wrist: [], wristDeltas: [] };
+  if (!isHealthPlatformSupported() || isExpoGo()) return empty;
+  const impl = await nativeImpl();
+  if (!impl || typeof impl.fetchTemperatureNative !== 'function') return empty;
+  try {
+    return await impl.fetchTemperatureNative(since);
+  } catch {
+    return empty;
+  }
+}

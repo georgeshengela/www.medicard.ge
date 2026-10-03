@@ -525,3 +525,54 @@ export async function fetchWorkoutsNative(since: Date): Promise<NativeWorkout[]>
   }
   return out;
 }
+
+// ——— Cycle: temperature for the retrospective ovulation estimate (train 1.0.0.20) ———
+
+const TEMPERATURE_BBT = 'HKQuantityTypeIdentifierBasalBodyTemperature' as const;
+const TEMPERATURE_WRIST = 'HKQuantityTypeIdentifierAppleSleepingWristTemperature' as const;
+/** Our own samples (BBT she typed and Medicard wrote to Health) are never read back as imports. */
+const OWN_BUNDLE_PREFIX = 'ge.medicard.app';
+
+/**
+ * Must be called from the cycle settings switch (after the „გაგრძელება“ primer): it shows the system
+ * sheet (iOS 26 rule). Sleeping wrist temperature needs iOS 16 / a recent Watch; without it BBT alone.
+ */
+export async function connectTemperatureNative(): Promise<HealthConnectResult> {
+  try {
+    const HealthKit = kitMod || (await loadHealthKit());
+    let granted: boolean;
+    try {
+      granted = await HealthKit.requestAuthorization({ toRead: [TEMPERATURE_BBT, TEMPERATURE_WRIST] as never });
+    } catch {
+      granted = await HealthKit.requestAuthorization({ toRead: [TEMPERATURE_BBT] as never });
+    }
+    return granted ? { ok: true } : { ok: false, reason: 'denied' };
+  } catch (err) {
+    return { ok: false, reason: 'error', message: err instanceof Error ? err.message : undefined };
+  }
+}
+
+function fromOtherSource(sample: { sourceRevision?: { source?: { bundleIdentifier?: string } } }): boolean {
+  const id = sample.sourceRevision?.source?.bundleIdentifier ?? '';
+  return !id.startsWith(OWN_BUNDLE_PREFIX);
+}
+
+/** BBT and sleeping wrist temperature since `since` (°C). Never requests authorization. */
+export async function fetchTemperatureNative(since: Date): Promise<import('@/lib/cycleTemperatureImport').HealthTemperatureRead> {
+  const HealthKit = kitMod || (await loadHealthKit());
+  const filter = { date: { startDate: since, endDate: new Date() } };
+  const read = async (id: typeof TEMPERATURE_BBT | typeof TEMPERATURE_WRIST) => {
+    try {
+      return await HealthKit.queryQuantitySamples(id, { limit: 400, ascending: true, unit: 'degC', filter } as never);
+    } catch {
+      return [];
+    }
+  };
+  const [bbt, wrist] = await Promise.all([read(TEMPERATURE_BBT), read(TEMPERATURE_WRIST)]);
+  return {
+    bbt: bbt.filter(fromOtherSource).map((s) => ({ at: s.startDate, value: s.quantity, unit: 'degC' as const })),
+    // A night's sample belongs to the morning it ends on.
+    wrist: wrist.filter(fromOtherSource).map((s) => ({ at: s.endDate, value: s.quantity, unit: 'degC' as const })),
+    wristDeltas: [],
+  };
+}

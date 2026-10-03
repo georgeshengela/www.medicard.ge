@@ -10,6 +10,12 @@
  *  3. Egg-white or watery mucus logged today, no thermal shift yet → „ლორწო ნაყოფიერ დღეებს ჰგავს“.
  *  Priority: thermal shift > OPK > mucus.
  *
+ * Temperature read from Apple Health / Health Connect (train 1.0.0.20, `cycleTemperatureImport.ts`)
+ * arrives as ordinary BBT on the day (manual always wins) or as `observations.wristTempDelta`, a °C
+ * deviation that is never BBT. The same rule runs on the wrist deviations only when BBT shows no shift
+ * („მაჯის ტემპერატურა N ღამეა მომატებულია …“). The server mirror is `server/src/lib/cycleTemperature.js`;
+ * both run the table in `server/src/lib/cycleTemperature.cases.js`.
+ *
  * The „3 over 6“ rule as implemented here:
  *  - Only this cycle's readings count: logs from the last period start on or before `date` up to `date`,
  *    one per day, with a plausible value (35.0–39.0 °C; anything else is a typo and is skipped).
@@ -49,6 +55,8 @@ export type TtcSignal = {
   days?: number;
   /** OPK: whether the positive test was today or yesterday. */
   opkWhen?: 'today' | 'yesterday';
+  /** Thermal shift: read from BBT or from the wrist temperature deviation. */
+  basis?: 'bbt' | 'wrist';
 };
 
 export type TtcSignalLog = {
@@ -56,6 +64,7 @@ export type TtcSignalLog = {
   bbt?: number | null;
   ovulationTest?: string | null;
   cervicalMucus?: string | null;
+  observations?: { wristTempDelta?: number | null } | null;
 };
 
 export type TtcSignalInput = {
@@ -96,6 +105,8 @@ export const FERTILE_MUCUS = new Set(['eggwhite', 'watery']);
 
 const BBT_PLAUSIBLE_MIN = 35;
 const BBT_PLAUSIBLE_MAX = 39;
+/** Wrist / skin temperature deviation from her baseline, °C (server WRIST_DELTA_MAX). */
+const WRIST_DELTA_MAX = 2.5;
 const DATE_KEY = /^\d{4}-\d{2}-\d{2}$/;
 
 function daysBetween(fromKey: string, toKey: string): number {
@@ -128,6 +139,21 @@ export function cycleBbtReadings(logs: readonly TtcSignalLog[], cycleStart: stri
   return [...byDate.entries()].sort((a, b) => a[0].localeCompare(b[0])).map(([d, bbt]) => ({ date: d, bbt }));
 }
 
+/**
+ * This cycle's wrist temperature deviations up to `date`, in the same `{ date, bbt }` shape (the value is
+ * a deviation, not a body temperature — the shift rule only compares readings with each other).
+ */
+export function cycleWristReadings(logs: readonly TtcSignalLog[], cycleStart: string, date: string): BbtReading[] {
+  const byDate = new Map<string, number>();
+  for (const log of logs) {
+    if (!log || !DATE_KEY.test(log.date) || log.date < cycleStart || log.date > date) continue;
+    const delta = log.observations?.wristTempDelta;
+    if (typeof delta !== 'number' || !Number.isFinite(delta) || Math.abs(delta) > WRIST_DELTA_MAX) continue;
+    byDate.set(log.date, delta);
+  }
+  return [...byDate.entries()].sort((a, b) => a[0].localeCompare(b[0])).map(([d, bbt]) => ({ date: d, bbt }));
+}
+
 /** The „3 over 6“ thermal shift in a cycle's readings (see the header for the exact rule), or null. */
 export function findThermalShift(readings: readonly BbtReading[]): ThermalShift | null {
   for (let i = SHIFT_PRIOR_READINGS; i + SHIFT_HIGH_READINGS <= readings.length; i += 1) {
@@ -154,6 +180,13 @@ export function thermalShiftLine(days: number): string {
   );
 }
 
+export function wristShiftLine(days: number): string {
+  return tx(
+    `მაჯის ტემპერატურა ${days} ღამეა მომატებულია — სავარაუდოდ ოვულაცია უკვე მოხდა`,
+    `Your wrist temperature has been higher for ${days} nights — ovulation has likely already happened`,
+  );
+}
+
 export function opkLine(when: 'today' | 'yesterday'): string {
   return when === 'today'
     ? tx('OPK დადებითია — ოვულაცია სავარაუდოდ მომდევნო 1–2 დღეშია', 'Your OPK is positive — ovulation is likely in the next 1–2 days')
@@ -175,11 +208,15 @@ export function ttcSignal(input: TtcSignalInput): TtcSignal | null {
   const start = currentCycleStart(periodStarts, date);
   if (!start) return null;
 
-  const shift = findThermalShift(cycleBbtReadings(logs, start, date));
+  const bbtShift = findThermalShift(cycleBbtReadings(logs, start, date));
+  // BBT first; the wrist deviation only when BBT shows no shift (it is never BBT itself).
+  const shift = bbtShift ?? findThermalShift(cycleWristReadings(logs, start, date));
   if (shift) {
     // A shift means ovulation has likely passed: OPK and mucus no longer speak, even if the run went stale.
     if (shift.ongoing && daysBetween(shift.last, date) <= SHIFT_MAX_AGE_DAYS) {
-      return { kind: 'thermalShift', text: thermalShiftLine(shift.days), days: shift.days };
+      const basis = bbtShift ? 'bbt' : 'wrist';
+      const text = basis === 'bbt' ? thermalShiftLine(shift.days) : wristShiftLine(shift.days);
+      return { kind: 'thermalShift', text, days: shift.days, basis };
     }
     return null;
   }

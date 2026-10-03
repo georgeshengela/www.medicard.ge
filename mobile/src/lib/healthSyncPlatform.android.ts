@@ -548,3 +548,79 @@ export async function fetchWorkoutsNative(since: Date): Promise<NativeWorkout[]>
   }
   return out;
 }
+
+// ——— Cycle: temperature for the retrospective ovulation estimate (train 1.0.0.20) ———
+
+const TEMPERATURE_PERMISSIONS = [
+  { accessType: 'read' as const, recordType: 'BasalBodyTemperature' as const },
+  { accessType: 'read' as const, recordType: 'SkinTemperature' as const },
+];
+/** Records Medicard wrote itself (her typed BBT) are never read back as imports. */
+const OWN_PACKAGE = 'ge.medicard.app';
+
+/**
+ * Must be called from the cycle settings switch (after the „გაგრძელება“ primer): it shows the Health
+ * Connect sheet. Skin temperature needs a recent Health Connect; without it BBT alone. History access
+ * lets the first import reach 40 days back.
+ */
+export async function connectTemperatureNative(): Promise<HealthConnectResult> {
+  try {
+    const ready = readyCache || (await ensureReady());
+    readyCache = ready;
+    if (!ready.ok) {
+      if (ready.reason === 'not_installed') await openHealthConnectStore();
+      return ready;
+    }
+    const HC = await loadHealthConnect();
+    try {
+      await HC.requestPermission([...TEMPERATURE_PERMISSIONS, HISTORY_PERMISSION] as never);
+    } catch {
+      await HC.requestPermission([TEMPERATURE_PERMISSIONS[0], HISTORY_PERMISSION] as never);
+    }
+    const granted = await HC.getGrantedPermissions().catch(() => []);
+    return granted.some(
+      (p: { accessType?: string; recordType?: string }) =>
+        p.accessType === 'read' && (p.recordType === 'BasalBodyTemperature' || p.recordType === 'SkinTemperature'),
+    )
+      ? { ok: true }
+      : { ok: false, reason: 'denied' };
+  } catch (err) {
+    return { ok: false, reason: 'error', message: err instanceof Error ? err.message : undefined };
+  }
+}
+
+/** BBT and skin temperature deltas since `since` (°C). Never requests permissions. */
+export async function fetchTemperatureNative(since: Date): Promise<import('@/lib/cycleTemperatureImport').HealthTemperatureRead> {
+  const empty = { bbt: [], wrist: [], wristDeltas: [] };
+  if (!readyCache?.ok) {
+    readyCache = await ensureReady();
+    if (!readyCache.ok) return empty;
+  }
+  const HC = await loadHealthConnect();
+  const timeRangeFilter = { operator: 'between' as const, startTime: since.toISOString(), endTime: new Date().toISOString() };
+  const own = (r: { metadata?: { dataOrigin?: string } }) => r.metadata?.dataOrigin === OWN_PACKAGE;
+  let bbt: { at: string; value: number; unit: 'degC' }[] = [];
+  try {
+    const { records } = await HC.readRecords('BasalBodyTemperature', { timeRangeFilter, pageSize: 400 });
+    bbt = records
+      .filter((r) => !own(r))
+      .map((r) => ({ at: r.time, value: r.temperature.inCelsius, unit: 'degC' as const }));
+  } catch {
+    bbt = [];
+  }
+  let wristDeltas: { at: string; delta: number; unit: 'degC' }[] = [];
+  try {
+    const { records } = await HC.readRecords('SkinTemperature', { timeRangeFilter, pageSize: 400 });
+    wristDeltas = records
+      .filter((r) => !own(r) && Array.isArray(r.deltas) && r.deltas.length > 0)
+      .map((r) => ({
+        // A night's record belongs to the morning it ends on; one mean deviation per record.
+        at: r.endTime,
+        delta: r.deltas.reduce((sum, d) => sum + d.delta.inCelsius, 0) / r.deltas.length,
+        unit: 'degC' as const,
+      }));
+  } catch {
+    wristDeltas = [];
+  }
+  return { bbt, wrist: [], wristDeltas };
+}

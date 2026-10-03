@@ -5,6 +5,7 @@ import { join, relative, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
   cycleBbtReadings,
+  cycleWristReadings,
   findThermalShift,
   ttcSignal,
   ttcSignalExplain,
@@ -12,6 +13,9 @@ import {
   type TtcSignalInput,
   type TtcSignalLog,
 } from './cycleTtcSignals.ts';
+// One table for the app rule and its server mirror (server/src/lib/cycleTemperature.js).
+import { SHIFT_CASES } from '../../../server/src/lib/cycleTemperature.cases.js';
+import { findThermalShift as serverFindThermalShift } from '../../../server/src/lib/cycleTemperature.js';
 
 function addDays(key: string, n: number): string {
   const [y, m, d] = key.split('-').map(Number);
@@ -218,4 +222,41 @@ test('privacy: only the cycle TTC card, the line/sheet component and the day she
   for (const file of hits) assert.ok(allowed.has(file), `${file} must not read the TTC signs (AI / partner / analytics / push / Home)`);
   assert.ok(hits.includes('src/components/cycle/CycleTtcCard.tsx'));
   assert.ok(hits.includes('src/components/cycle/CycleDaySheet.tsx'));
+});
+
+test('thermal shift: the shared table — the app rule and the server mirror agree case by case', () => {
+  for (const c of SHIFT_CASES as readonly { name: string; readings: [number, number][]; expect: null | { startDay: number; days: number; coverline: number; ongoing: boolean } }[]) {
+    const mine = findThermalShift(c.readings.map(([d, bbt]) => ({ date: day(d), bbt })));
+    const server = serverFindThermalShift(c.readings.map(([d, value]) => ({ date: day(d), value })));
+    assert.deepEqual(mine, server, c.name);
+    if (!c.expect) {
+      assert.equal(mine, null, c.name);
+      continue;
+    }
+    assert.equal(mine?.start, day(c.expect.startDay), c.name);
+    assert.equal(mine?.days, c.expect.days, c.name);
+    assert.equal(mine?.coverline, c.expect.coverline, c.name);
+    assert.equal(mine?.ongoing, c.expect.ongoing, c.name);
+  }
+});
+
+test('wrist temperature (from Health): its own line when BBT shows no shift — never read as BBT', () => {
+  const deltas = [-0.3, -0.25, -0.2, -0.3, -0.15, -0.25, 0.1, 0.15, 0.2];
+  const logs: TtcSignalLog[] = deltas.map((delta, i) => ({ date: day(7 + i), observations: { wristTempDelta: delta } }));
+  assert.deepEqual(cycleBbtReadings(logs, start, day(15)), []);
+  assert.equal(cycleWristReadings(logs, start, day(15)).length, 9);
+  const signal = ttcSignal(input({ logs, date: day(15) }));
+  assert.equal(signal?.kind, 'thermalShift');
+  assert.equal(signal?.basis, 'wrist');
+  assert.equal(signal?.text, 'მაჯის ტემპერატურა 3 ღამეა მომატებულია — სავარაუდოდ ოვულაცია უკვე მოხდა');
+  // BBT wins when both show a shift.
+  const both = [...logs, ...temps(7, [...LOW6, 36.65, 36.7, 36.68])].reduce<TtcSignalLog[]>((acc, l) => {
+    const prev = acc.find((x) => x.date === l.date);
+    if (prev) Object.assign(prev, l.bbt != null ? { bbt: l.bbt } : {}, l.observations ? { observations: l.observations } : {});
+    else acc.push({ ...l });
+    return acc;
+  }, []);
+  assert.equal(ttcSignal(input({ logs: both, date: day(15) }))?.basis, 'bbt');
+  // Implausible deviations are skipped.
+  assert.deepEqual(cycleWristReadings([{ date: day(8), observations: { wristTempDelta: 4 } }], start, day(15)), []);
 });

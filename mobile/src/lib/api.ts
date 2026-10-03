@@ -1280,7 +1280,7 @@ export type CycleLog = {
   caffeine?: CycleCaffeineLevel | null;
   alcohol?: CycleAlcoholLevel | null;
   customTagIds?: string[];
-  observations?: { energy?: CycleEnergyLevel | null; ovulationMarked?: boolean | null; pregnancyChecklist?: string[] | null } | null;
+  observations?: { energy?: CycleEnergyLevel | null; ovulationMarked?: boolean | null; pregnancyChecklist?: string[] | null; bbtSource?: 'health' | null; wristTempDelta?: number | null } | null;
   energy?: CycleEnergyLevel | null;
   observationSchemaVersion?: number;
   observationAssessments?: Record<string, 'ABSENT'> | null;
@@ -1424,7 +1424,16 @@ export type CyclePeriodRange = {
   source: 'logged';
 };
 
-export type CycleOvulationSource = 'calendar' | 'opk' | 'manual';
+export type CycleOvulationSource = 'calendar' | 'opk' | 'manual' | 'temperature';
+
+/** A completed cycle's own ovulation signal (train 1.0.0.20 servers; older servers send none). */
+export type CyclePastOvulation = {
+  cycleStart: string;
+  nextStart: string;
+  date: string;
+  source: Exclude<CycleOvulationSource, 'calendar'>;
+  lutealDays: number;
+};
 
 export type CycleFertilityGate = {
   /** READY ≥ 3 completed cycles · LEARNING before (nothing fertile shown) · WIDE trying to conceive before. */
@@ -1434,6 +1443,12 @@ export type CycleFertilityGate = {
   /** This cycle's window: the usual one, the wide one, or none. */
   window: 'standard' | 'wide' | null;
   ovulationSource: CycleOvulationSource | null;
+  /** True when this cycle's band comes from a temperature shift („რეტროსპექტულად“). */
+  retrospective?: boolean;
+  /** Luteal length learned from her own signals in completed cycles (null = the usual 14). */
+  lutealDays?: number | null;
+  /** Her own ovulation signal in up to 6 completed cycles, oldest first. Hidden with fertility. */
+  pastOvulations?: CyclePastOvulation[];
 };
 
 export type CycleDayMark = {
@@ -3358,6 +3373,17 @@ export const api = {
         method: 'PUT',
         body,
         timeoutMs: opts?.timeoutMs ?? 30_000,
+      }),
+    /**
+     * Temperature read from Apple Health / Health Connect (train 1.0.0.20, `cycleTemperatureSync.ts`):
+     * °C per day — `bbt` (her typed BBT wins on the server) and `wristTempDelta` (never BBT). The bundle
+     * comes back only when something changed. Older servers answer 404 — the caller ignores it.
+     */
+    importTemperature: (readings: { date: string; bbt?: number; wristTempDelta?: number }[]) =>
+      request<{ imported: number; bundle?: CycleBundle }>('/api/cycle/temperature/import', {
+        method: 'POST',
+        body: { readings },
+        timeoutMs: 30_000,
       }),
     removeLog: (date: string, opts?: { timeoutMs?: number }) =>
       request<CycleBundle>(`/api/cycle/logs/${date}`, {

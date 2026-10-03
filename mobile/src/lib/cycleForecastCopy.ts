@@ -58,7 +58,25 @@ export function wideWindowLabel(): string {
 export function ovulationSourceLabel(source: string | null | undefined): string | null {
   if (source === 'manual') return tx('შენი აღნიშვნით', 'From your own mark');
   if (source === 'opk') return tx('OPK-ის მიხედვით', 'Based on your OPK');
+  // A temperature shift shows ovulation only after it happened (Apple's „retrospective“ estimate).
+  if (source === 'temperature') return tx('ტემპერატურის მიხედვით · რეტროსპექტულად', 'From your temperature · in hindsight');
   return null;
+}
+
+/**
+ * The last completed cycle's ovulation from her temperature: „წინა ციკლში ოვულაცია სავარაუდოდ 12 სექ
+ * იყო · ტემპერატურის მიხედვით · რეტროსპექტულად“. Null unless the newest past cycle's source is temperature.
+ */
+export function pastTemperatureOvulationLine(
+  past: readonly { date: string; source: string }[] | null | undefined,
+): string | null {
+  const last = Array.isArray(past) && past.length ? past[past.length - 1] : null;
+  if (!last || last.source !== 'temperature' || !/^\d{4}-\d{2}-\d{2}$/.test(last.date)) return null;
+  const when = shortDateRange(last.date, last.date);
+  return tx(
+    `წინა ციკლში ოვულაცია სავარაუდოდ ${when} იყო · ${ovulationSourceLabel('temperature')}`,
+    `Last cycle, ovulation was likely around ${when} · ${ovulationSourceLabel('temperature')}`,
+  );
 }
 
 /** „სავარაუდო ოვულაცია · 13–15 ოქტ“ (+ „ · OPK-ის მიხედვით“) — a band, never one date. */

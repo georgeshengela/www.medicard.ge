@@ -77,6 +77,7 @@
         "android.permission.health.WRITE_INTERMENSTRUAL_BLEEDING",
         "android.permission.health.READ_BASAL_BODY_TEMPERATURE",
         "android.permission.health.WRITE_BASAL_BODY_TEMPERATURE",
+        "android.permission.health.READ_SKIN_TEMPERATURE",
         "android.permission.health.READ_CERVICAL_MUCUS",
         "android.permission.health.WRITE_CERVICAL_MUCUS",
         "android.permission.health.READ_HEALTH_DATA_HISTORY",
@@ -136,7 +137,7 @@
       [
         "@kingstinct/react-native-healthkit",
         {
-          "NSHealthShareUsageDescription": "Medicard-ს Apple Health-ის წაკითხვა სჭირდება ნაბიჯების, წონის, წნევის, პულსის, ძილის, კვების, ჰიდრატაციის, ციკლისა და ვარჯიშების (ხანგრძლივობა, კალორია, პულსი) სინქრონიზაციისთვის. თუ შენ ჩართავ, აქტივობა და ვარჯიშები შენ მიერ არჩეულ ტრენერს გაუზიარდება MEDI COACH-ში; რეკლამისთვის არასოდეს გამოიყენება.",
+          "NSHealthShareUsageDescription": "Medicard-ს Apple Health-ის წაკითხვა სჭირდება ნაბიჯების, წონის, წნევის, პულსის, ძილის, კვების, ჰიდრატაციის, ციკლისა და ვარჯიშების (ხანგრძლივობა, კალორია, პულსი) სინქრონიზაციისთვის, ხოლო თუ ციკლის პარამეტრებში ჩართავ — საბაზისო და ძილის დროს მაჯის ტემპერატურის, რომ ოვულაცია სავარაუდოდ, რეტროსპექტულად გაჩვენოს. თუ შენ ჩართავ, აქტივობა და ვარჯიშები შენ მიერ არჩეულ ტრენერს გაუზიარდება MEDI COACH-ში; რეკლამისთვის არასოდეს გამოიყენება.",
           "NSHealthUpdateUsageDescription": "Medicard-ს Apple Health-ში შენახვა სჭირდება შენ მიერ ჩართული სინქრონიზაციისთვის: ციკლის ჩანაწერები (მენსტრუაცია, ლაქები, BBT, ლორწო) და კვების დღიურის კალორია, ცილა, ნახშირწყლები და ცხიმი.",
           "background": false
         }

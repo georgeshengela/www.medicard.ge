@@ -5,7 +5,7 @@ import {
   ScrollView,
   Text,
   View} from 'react-native';
-import { useLocalSearchParams, useNavigation, useRouter } from 'expo-router';
+import { useIsFocused, useLocalSearchParams, useNavigation, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, { FadeInUp } from 'react-native-reanimated';
 import * as Haptics from 'expo-haptics';
@@ -72,6 +72,7 @@ import {
   type CycleView,
 } from '@/lib/cycleOffline';
 import { putCycleBundle, putCycleView, useCycleView } from '@/lib/cycleViewCache';
+import { maybeImportCycleTemperature } from '@/lib/cycleTemperatureSync';
 import { api, ApiError, type CycleBundle, type CyclePregnancyPayload, type CyclePostpartumPayload, type CycleTtcPayload } from '@/lib/api';
 import { CyclePregnancyCard } from '@/components/cycle/CyclePregnancyCard';
 import { CyclePerimenopauseCard } from '@/components/cycle/CyclePerimenopauseCard';
@@ -522,6 +523,19 @@ export default function CycleHome() {
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [viewStamp, cycleView, authReady, user?.id, refreshTtc, refreshPregnancy, refreshPostpartum]);
+
+  // Temperature from Apple Health / Health Connect (train 1.0.0.20): when she switched it on, a focus of
+  // this screen imports at most every 6 h (cycleTemperatureSync). Only reads — the OS is asked from the
+  // settings switch alone. Booleans as deps: a refreshed view never re-runs it (the throttle guards too).
+  const screenFocused = useIsFocused();
+  const canonicalReady = Boolean(cycleView?.canonical);
+  const temperatureView = useRef<CycleView | null>(null);
+  temperatureView.current = cycleView;
+  useEffect(() => {
+    if (!screenFocused || !canonicalReady || !user?.id) return;
+    const canonical = temperatureView.current?.canonical ?? null;
+    void maybeImportCycleTemperature({ userId: user.id, bundle: canonical, today: cycleToday(canonical, todayKey()) });
+  }, [screenFocused, canonicalReady, user?.id]);
 
   const lastPeriod = bundle?.profile.lastPeriodStart ?? null;
   // The tail is due only while the flag is read and unset; `holdOnboarding` keeps the flow on screen after each save.

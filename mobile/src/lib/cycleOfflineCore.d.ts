@@ -148,6 +148,14 @@ export function accountIsolationSafe(
   crossLeak: boolean;
 };
 
+/** Drops the temperature import keys (`bbtSource`, `wristTempDelta`) from a queued write's bag. */
+export function withoutImportKeys<T>(bag: T): T;
+/** A typed BBT that changes or clears the day's value clears `bbtSource` (server `bagAfterTypedBbt`). */
+export function typedBbtBag(
+  prev: { bbt?: number | null } | null | undefined,
+  patch: { bbt?: number | null },
+  bag: Record<string, unknown>,
+): Record<string, unknown>;
 export function mergeLocalObservationBag(
   prevBag: Record<string, unknown> | null | undefined,
   patchBag: Record<string, unknown> | null | undefined,
