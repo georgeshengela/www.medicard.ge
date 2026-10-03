@@ -34,7 +34,7 @@
     home_layout_offer_answered: { tried: 'სცადა', dismissed: 'უარი თქვა', other: 'სხვა აირჩია' },
     // Cycle events say only where it happened — never what was logged (server CYCLE_* enums).
     cycle_log_saved: { quick: 'სწრაფი აღრიცხვა', full: 'სრული ჩანაწერი', home: 'მთავარი გვერდი', day_sheet: 'დღის ფანჯარა' },
-    cycle_period_started: { hero: 'ციკლის გვერდი', home: 'მთავარი გვერდი', strip: 'დღეების ზოლი', day_sheet: 'დღის ფანჯარა' },
+    cycle_period_started: { hero: 'ციკლის გვერდი', home: 'მთავარი გვერდი', strip: 'დღეების ზოლი', day_sheet: 'დღის ფანჯარა', widget: 'ვიჯეტი' },
     cycle_explain_opened: {
       ring: 'ციკლის რგოლი', fertile: 'ნაყოფიერი დღეები', stats: 'ჩემი ციკლი', deviation: 'გადახრები',
       learn_more: 'გაიგე მეტი', ttc_signal: 'ნაყოფიერების ნიშნები', tracking: 'მხოლოდ აღრიცხვა',

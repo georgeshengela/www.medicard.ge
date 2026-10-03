@@ -33,7 +33,8 @@ export const HOME_LAYOUT_OFFER_CHOICES = Object.freeze(['tried', 'dismissed', 'o
  * mucus have no event at all.
  */
 export const CYCLE_LOG_SOURCES = Object.freeze(['quick', 'full', 'home', 'day_sheet']);
-export const CYCLE_PERIOD_START_SOURCES = Object.freeze(['hero', 'home', 'strip', 'day_sheet']);
+/** `widget` = „დაიწყო“ on the iOS Home-screen widget / expected-day Live Activity (train 1.0.0.20). */
+export const CYCLE_PERIOD_START_SOURCES = Object.freeze(['hero', 'home', 'strip', 'day_sheet', 'widget']);
 export const CYCLE_EXPLAIN_TOPICS = Object.freeze(['ring', 'fertile', 'stats', 'deviation', 'learn_more', 'ttc_signal', 'tracking']);
 /**
  * Anonymous events (owner decision 2026-10-03): a signed-in request is still required to accept

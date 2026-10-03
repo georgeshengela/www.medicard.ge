@@ -104,7 +104,7 @@ describe('funnel allow-list', () => {
 
   it('cycle events carry one enum only — never what was logged', () => {
     assert.deepEqual([...CYCLE_LOG_SOURCES], ['quick', 'full', 'home', 'day_sheet']);
-    assert.deepEqual([...CYCLE_PERIOD_START_SOURCES], ['hero', 'home', 'strip', 'day_sheet']);
+    assert.deepEqual([...CYCLE_PERIOD_START_SOURCES], ['hero', 'home', 'strip', 'day_sheet', 'widget']);
     assert.deepEqual([...CYCLE_EXPLAIN_TOPICS], ['ring', 'fertile', 'stats', 'deviation', 'learn_more', 'ttc_signal', 'tracking']);
     // The app sends exactly these enums (mobile/src/lib/funnelQueue.ts).
     assert.deepEqual([...CYCLE_FUNNEL_LOG_SOURCES], [...CYCLE_LOG_SOURCES]);
