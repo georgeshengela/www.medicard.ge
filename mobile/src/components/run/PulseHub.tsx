@@ -2,7 +2,7 @@ import React,{useCallback,useMemo,useState} from 'react';
 import {Image,Pressable,ScrollView,View} from 'react-native';
 import {useFocusEffect,useRouter} from 'expo-router';
 import * as Location from 'expo-location';
-import {ArrowUpRight,BookOpen,ChevronRight,Compass,Landmark,Mountain,Settings2,Trees,Waves} from 'lucide-react-native';
+import {ArrowUpRight,ChevronRight,Compass,Landmark,Mountain,Settings2,Trees,Waves} from 'lucide-react-native';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {useAuth} from '@/store/AuthContext';
 import {useThemeColors} from '@/theme/colors';
@@ -30,6 +30,7 @@ import {RunDropsCard} from './RunDrops';
 import {RunWallet} from './RunWallet';
 import {RunHero} from './RunHero';
 import {RunPrizeGoal} from './RunPrizeGoal';
+import {RunRaceCard} from './RunRaceCard';
 import { tx } from '@/i18n/locale';
 
 export const MISSION_ICONS={trees:Trees,landmark:Landmark,waves:Waves,mountain:Mountain,bridge:Compass,flower:Trees};
@@ -93,23 +94,26 @@ export default function PulseHub(){
 
   {error&&!pulse.snapshot?<Card><Copy bold size={15}>{tx('MEDIRUN-თან კავშირი ვერ დამყარდა', 'Couldn’t reach MEDIRUN')}</Copy><Copy muted size={12}>{tx('შეამოწმე ინტერნეტი. გასეირნება მაინც შეგიძლია — გზა შენახული დარჩება.', 'Check your connection. You can still walk — the route is saved.')}</Copy><Action secondary label={tx('ხელახლა ცდა', 'Try again')} onPress={()=>{setError('');void getPulseClient().refresh().catch(e=>setError(e.message));}}/></Card>:null}
 
-  {/* Owner 2026-10-04 (second pass): the hub says what MEDIRUN is for — boxes now (in the hero), the prize
-      you are saving for, the Tbilisi campaign — then your week, the passport and your walks. */}
+  {/* Owner 2026-10-05 (third pass, by what moves people): where the boxes are, this week's race for the Monday
+      prizes, the prize you are saving for and the coins that feed it, the Tbilisi campaign — then your last
+      seven days, the passport and your walks. */}
   <RunDropsCard/>
+
+  <RunRaceCard optedIn={Boolean(pulse.snapshot?.leaderboardOptIn)} onOpen={()=>setPanel('leaderboard')}/>
+
+  <RunPrizeGoal/>
 
   {/* Owner 2026-10-04: the coins the boxes paid — balance and every movement — live on the MEDIRUN page too. */}
   <RunWallet/>
-
-  <RunPrizeGoal/>
 
   <Section title={tx('გაანათე თბილისი','Light up Tbilisi')}>
    <GrandPrizeCard/>
   </Section>
   <PulseTerritory totalKm={lifetimeKm} walks={lifetimeWalks} weekNewKm={weekNewKm}/>
 
-  <Section title={tx('ეს კვირა', 'This week')}>
+  <Section title={tx('ბოლო 7 დღე', 'Last 7 days')}>
    <Card style={{gap:18}}>
-    <View style={{flexDirection:'row',alignItems:'baseline',gap:6}}><Copy bold size={34} style={{lineHeight:42,letterSpacing:-1,fontVariant:['tabular-nums']}}>{weekKm.toFixed(1)}</Copy><Copy bold size={14} style={{color:c.primary100}}>{tx('კმ', 'km')}</Copy><View style={{flex:1}}/><Copy muted size={12}>{weekDays?tx(`${weekDays} აქტიური დღე`, `${weekDays} active ${weekDays===1?'day':'days'}`):tx('ამ კვირაში ჯერ არ გაგისეირნია', 'No walks this week yet')}</Copy></View>
+    <View style={{flexDirection:'row',alignItems:'baseline',gap:6}}><Copy bold size={34} style={{lineHeight:42,letterSpacing:-1,fontVariant:['tabular-nums']}}>{weekKm.toFixed(1)}</Copy><Copy bold size={14} style={{color:c.primary100}}>{tx('კმ', 'km')}</Copy><View style={{flex:1}}/><Copy muted size={12}>{weekDays?tx(`${weekDays} აქტიური დღე`, `${weekDays} active ${weekDays===1?'day':'days'}`):tx('ბოლო 7 დღეში ჯერ არ გაგისეირნია', 'No walks in the last 7 days')}</Copy></View>
     <WeekBars days={week}/>
     <View style={{flexDirection:'row',borderTopWidth:1,borderColor:c.bg200,paddingTop:14}}>
      {[{value:String(thisWeek.length),label:tx('გასეირნება', 'Walks')},{value:weekNewKm.toFixed(1),label:tx('ახალი ქუჩა, კმ', 'New streets, km')},{value:String(weekMin),label:tx('აქტიური წთ', 'Active min')}].map((st,i)=><View key={st.label} style={{flex:1,alignItems:'center',borderLeftWidth:i?1:0,borderColor:c.bg200}}><Copy bold size={17} style={{fontVariant:['tabular-nums']}}>{st.value}</Copy><Copy muted size={11} numberOfLines={1}>{st.label}</Copy></View>)}
@@ -154,10 +158,8 @@ export default function PulseHub(){
    </Pressable>)}</Card>
   </Section>:null}
 
-  <View style={{flexDirection:'row',gap:12}}>{[{id:'collection' as const,label:tx('კოლექცია', 'Collection'),detail:tx(`${pulse.snapshot?.claims.length||0} საჩუქარი · ${stamps} შტამპი`, `${pulse.snapshot?.claims.length||0} ${(pulse.snapshot?.claims.length||0)===1?'gift':'gifts'} · ${stamps} ${stamps===1?'stamp':'stamps'}`),art:RUN_GIFT,ink:'amber' as const},{id:'leaderboard' as const,label:tx('ლიდერბორდი', 'Leaderboard'),detail:pulse.snapshot?.leaderboardOptIn?tx('შენ სიაში ხარ', 'You’re on the list'):tx('ერთად უფრო შორს', 'Further together'),art:RUN_ICON.trophy,ink:'violet' as const}].map(item=><Pressable key={item.id} accessibilityRole="button" accessibilityLabel={`${item.label}. ${item.detail}`} onPress={()=>setPanel(item.id)} style={{flex:1}}>
-   <Card style={{minHeight:120,gap:10}}><View style={{flexDirection:'row',justifyContent:'space-between'}}><ArtTile source={item.art} ink={item.ink} size={48}/><ArrowUpRight size={17} color={c.text300}/></View><View><Copy bold size={15}>{item.label}</Copy><Copy muted size={11} numberOfLines={1}>{item.detail}</Copy></View></Card>
+  <View style={{flexDirection:'row',gap:12}}>{[{id:'collection' as const,label:tx('კოლექცია', 'Collection'),detail:tx(`${pulse.snapshot?.claims.length||0} საჩუქარი · ${stamps} შტამპი`, `${pulse.snapshot?.claims.length||0} ${(pulse.snapshot?.claims.length||0)===1?'gift':'gifts'} · ${stamps} ${stamps===1?'stamp':'stamps'}`),art:RUN_GIFT,ink:'amber' as const},{id:'help' as const,label:tx('წესები', 'Rules'),detail:tx('როგორ მუშაობს', 'How it works'),art:RUN_ICON.atlas,ink:'teal' as const}].map(item=><Pressable key={item.id} accessibilityRole="button" accessibilityLabel={`${item.label}. ${item.detail}`} onPress={()=>setPanel(item.id)} style={{flex:1}}>
+   <Card style={{minHeight:120,gap:10}}><View style={{flexDirection:'row',justifyContent:'space-between'}}><ArtTile source={item.art} ink={item.ink} size={48}/><ArrowUpRight size={17} color={c.text300}/></View><View><Copy bold size={15} numberOfLines={1}>{item.label}</Copy><Copy muted size={11} numberOfLines={1}>{item.detail}</Copy></View></Card>
   </Pressable>)}</View>
-
-  <Pressable accessibilityRole="button" onPress={()=>setPanel('help')} style={{minHeight:44,flexDirection:'row',alignItems:'center',justifyContent:'center',gap:9}}><BookOpen size={16} color={c.text200}/><Copy muted size={12}>{tx('როგორ მუშაობს MEDIRUN?', 'How does MEDIRUN work?')}</Copy><ChevronRight size={15} color={c.text300}/></Pressable>
  </ScrollView><RunTargetSheet visible={targetSheet} onClose={()=>setTargetSheet(false)} onConfirm={start} weightKg={healthProfile?.weightKg} heightCm={healthProfile?.heightCm}/><PulsePanels panel={panel} onClose={()=>setPanel(null)} onTestPulse={()=>void testPulse()}/></View>;
 }

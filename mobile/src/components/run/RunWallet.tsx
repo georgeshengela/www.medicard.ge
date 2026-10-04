@@ -12,6 +12,7 @@ import {useIsDark,useThemeColors} from '@/theme/colors';
 import {hubTint} from '@/theme/hub';
 import {Card,Copy,Section,runInk} from './PulseUi';
 import {num} from './RunDrops';
+import {shortDay} from '@/lib/medipulsi/leaderboard';
 
 const AMBER_LIGHT='#B45309',AMBER_DARK='#FCD34D';
 const clock=(iso:string)=>{const d=new Date(iso);return Number.isFinite(d.getTime())?`${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`:'';};
@@ -53,10 +54,11 @@ export function RunWallet(){
     </View>
     {storeOn?<Pressable accessibilityRole="button" accessibilityLabel={tx('მაღაზია','Store')} onPress={toStore} style={{minHeight:40,paddingHorizontal:14,borderRadius:14,backgroundColor:hubTint(teal,dark),flexDirection:'row',alignItems:'center',gap:6}}><Store size={15} color={teal}/><Copy bold size={12} style={{color:teal}}>{tx('მაღაზია','Store')}</Copy></Pressable>:null}
    </View>
+   {data?<Copy muted size={11} style={{marginBottom:-6}}>{tx(`სეზონი · ${shortDay(data.season.start)} – ${shortDay(data.season.end)}`,`Season · ${shortDay(data.season.start)} – ${shortDay(data.season.end)}`)}</Copy>:null}
    <View style={{flexDirection:'row',gap:8}}>
     {[
-     {label:tx('ამ სეზონზე','This season'),value:data?`+${num(data.season.earned)}`:'—',tone:teal},
-     {label:tx('ყუთი გახსნილი','Boxes opened'),value:data?num(data.season.boxes):'—',tone:c.text100},
+     {label:tx('ქოინი','Coins'),value:data?`+${num(data.season.earned)}`:'—',tone:teal},
+     {label:tx('ყუთი','Boxes'),value:data?num(data.season.boxes):'—',tone:c.text100},
      {label:tx('პირველი','First finds'),value:data?num(data.season.firsts):'—',tone:amber},
     ].map(stat=><View key={stat.label} style={{flex:1,borderRadius:14,paddingVertical:10,paddingHorizontal:10,backgroundColor:c.bg200}}><Copy bold size={16} style={{color:stat.tone,fontVariant:['tabular-nums']}}>{stat.value}</Copy><Copy muted size={11} numberOfLines={1}>{stat.label}</Copy></View>)}
    </View>

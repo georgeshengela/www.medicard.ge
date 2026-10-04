@@ -163,7 +163,7 @@ export function PulseTerritory({totalKm,walks,weekNewKm=0}:{totalKm:number;walks
     </View>
     <View style={{gap:4,borderTopWidth:1,borderColor:c.bg200,paddingTop:12}}>
      <Copy bold size={13} numberOfLines={1}>{areaWords(main!.paintedKm2)}</Copy>
-     {weekNewKm>0?<Copy muted size={12}>{tx(`ამ კვირაში ${weekNewKm.toFixed(1)} კმ ახალი ქუჩა`,`${weekNewKm.toFixed(1)} km of new streets this week`)}</Copy>:null}
+     {weekNewKm>0?<Copy muted size={12}>{tx(`ბოლო 7 დღეში ${weekNewKm.toFixed(1)} კმ ახალი ქუჩა`,`${weekNewKm.toFixed(1)} km of new streets in the last 7 days`)}</Copy>:null}
      <Copy muted size={11}>{howTo}</Copy>
      {data!.pending?<Copy muted size={11}>{tx('ზოგი ადგილი ჯერ ითვლება — რამდენიმე წამში განახლდება.','Some places are still being counted — this updates in a few seconds.')}</Copy>:null}
     </View>

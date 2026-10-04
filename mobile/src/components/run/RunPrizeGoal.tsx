@@ -3,6 +3,7 @@ import {Image,Pressable,ScrollView,View} from 'react-native';
 import {useRouter} from 'expo-router';
 import {Check,ChevronRight,Target} from 'lucide-react-native';
 import {useAccountQuery} from '@/hooks/useAccountQuery';
+import {useDrops} from '@/lib/medipulsi/drops';
 import {FRESH} from '@/lib/queryClient';
 import {REWARDS_CATALOG_KEY,rewardsApi,type StoreCatalog,type StoreReward} from '@/lib/quest/rewardsApi';
 import {getMediCoinBalanceHint,subscribeMediCoinBalance} from '@/lib/quest/cache';
@@ -90,8 +91,16 @@ export function RunPrizeGoal(){
  </Section>;
 }
 
+/** „ყუთში 20–120 ქოინი“ from today's real schedule (economy 2 changed the amounts; never hard-code them). */
+function useBoxRange(){
+ const drops=useDrops().data;
+ const rows=(drops?.schedule||[]).map(r=>r.coins).filter((r):r is NonNullable<typeof r>=>Boolean(r));
+ if(!rows.length)return null;
+ return {min:Math.min(...rows.map(r=>r.min)),max:Math.max(...rows.map(r=>r.max))};
+}
+
 function GoalBody({goal,balance,title,onOpen}:{goal:StoreReward;balance:number;title:string;onOpen:()=>void}){
- const c=useThemeColors(),need=Math.max(0,goal.coinCost-balance),ready=need===0;
+ const c=useThemeColors(),need=Math.max(0,goal.coinCost-balance),ready=need===0,range=useBoxRange();
  return <View style={{gap:12}}>
   <Pressable accessibilityRole="button" accessibilityLabel={tx(`შენი მიზანი: ${title}. ${ready?'საკმარისი ქოინი გაქვს':`აკლია ${num(need)} ქოინი`}`,`Your goal: ${title}. ${ready?'You have enough coins':`${num(need)} coins to go`}`)} onPress={onOpen} style={{flexDirection:'row',gap:14,alignItems:'center'}}>
    <Stage reward={goal} size={76}/>
@@ -108,7 +117,7 @@ function GoalBody({goal,balance,title,onOpen}:{goal:StoreReward;balance:number;t
    <View style={{flexDirection:'row',alignItems:'center',gap:6}}>
     <QuestCoinMark size={14}/>
     <Copy muted size={11} style={{flex:1,fontVariant:['tabular-nums']}}>{num(Math.min(balance,goal.coinCost))} / {num(goal.coinCost)}</Copy>
-    <Copy muted size={11}>{tx('ყუთში 50-დან 1 500-მდე','A box holds 50 to 1,500')}</Copy>
+    {range?<Copy muted size={11}>{tx(`ყუთში ${num(range.min)}–${num(range.max)}`,`A box holds ${num(range.min)}–${num(range.max)}`)}</Copy>:null}
    </View>
   </View>
   {ready?<Action label={tx('აიღე საჩუქარი','Get the prize')} onPress={onOpen}/>:null}
