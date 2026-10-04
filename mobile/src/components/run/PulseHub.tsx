@@ -63,6 +63,7 @@ export default function PulseHub(){
  const weekKm=week.reduce((s,d)=>s+d.meters,0)/1000,weekWalks=week.filter(d=>d.meters>0).length;
  const lifetimeKm=walks.reduce((s,w)=>s+w.meters,0)/1000;
  const newKm=saved.reduce((sum,w)=>sum+(w.newMeters||0),0)/1000;
+ const weekStart=Date.now()-7*86_400_000,weekNewKm=saved.filter(w=>Date.parse(w.startedAt)>=weekStart).reduce((sum,w)=>sum+(w.newMeters||0),0)/1000;
  const records=useMemo(()=>personalRecords(history),[history]);
  const missions=pulse.snapshot?.missions||[],missionCount=missions.length||24;
  const stamps=Object.values(pulse.book.progress).filter(p=>p.completedAt).length;
@@ -142,7 +143,7 @@ export default function PulseHub(){
    </Card>
   </Section>
 
-  <PulseTerritory totalKm={lifetimeKm} walks={walks.length}/>
+  <PulseTerritory totalKm={lifetimeKm} walks={walks.length} weekNewKm={weekNewKm}/>
 
   {history.length?<Section title={tx('შენი გასეირნებები', 'Your walks')} link={history.length>3?(allWalks?tx('ნაკლები', 'Less'):tx(`ყველა · ${history.length}`, `All · ${history.length}`)):undefined} onLink={()=>setAllWalks(v=>!v)}>
    {recordTiles.length?<View style={{flexDirection:'row',gap:8,marginBottom:10}}>{recordTiles.map(r=><Pressable key={r.label} accessibilityRole="button" accessibilityLabel={`${r.label}: ${r.value} ${r.unit}`} onPress={()=>router.push(`/run/${r.id}` as never)} style={{flex:1,backgroundColor:c.surface,borderRadius:18,paddingVertical:12,paddingHorizontal:10,gap:6}}>
