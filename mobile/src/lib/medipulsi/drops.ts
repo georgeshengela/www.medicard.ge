@@ -7,6 +7,8 @@ export type DropWaveKind='regular'|'evening'|'saturday'|'lantern';
 export type Drops={
  enabled:boolean;
  campaign:{id:string;name:string;status:'upcoming'|'live'|'ended';start:string;end:string;rulesUrl:string};
+ /** The reader's city (servers before 2026-10-04 send none = Tbilisi). `pending` = its spots are still being found. */
+ city?:{id:string;name:string;campaignCity:boolean;pending:boolean};
  now:{boxes:number;openingsLeft:number;endsAt:string|null;coins:CoinRange;lanternBoxes:number;districts:{name:string;boxes:number}[]};
  today:{opened:number;coins:number};
  me:{opened:number;coins:number};

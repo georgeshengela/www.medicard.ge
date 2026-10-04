@@ -84,6 +84,7 @@
     ['push', 'devices', 'მოწყობილობები', 'devices tokens'],
     ['rewards', 'campaigns', 'კამპანიები', 'campaigns'],
     ['medirun-boxes', 'today', 'MEDIRUN ყუთები — დღეს', 'medirun boxes drops today live ყუთი დაგდება'],
+    ['medirun-boxes', 'cities', 'MEDIRUN ქალაქები', 'medirun cities abroad liege city ქალაქები ქალაქი'],
     ['medirun-boxes', 'rules', 'MEDIRUN ყუთების წესები', 'medirun boxes rules waves coins schedule წესები ტალღა ქოინი'],
     ['medirun-boxes', 'calendar', 'MEDIRUN ყუთების კალენდარი', 'medirun boxes calendar days კალენდარი დღე'],
     ['medirun-boxes', 'spots', 'MEDIRUN ადგილები', 'medirun spots parks places ადგილები პარკი'],

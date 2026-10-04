@@ -26,6 +26,8 @@ const saturday=z.object({time:hhmm,hours:z.number().min(.5).max(12),points:int(1
 const week=z.object({from:ymd,to:ymd,theme:z.string().trim().min(1).max(40),anchors:z.array(z.tuple([z.number().min(44.5).max(45.2),z.number().min(41.5).max(41.95),int(50,5000)])).max(10).optional(),districts:z.array(z.string().min(1).max(40)).max(10).optional(),kinds:z.array(z.string().min(1).max(30)).max(10).optional()}).refine(w=>w.from<=w.to,'კვირის დასაწყისი დასასრულზე გვიან ვერ იქნება');
 const level=z.object({id:z.string().regex(/^[a-z0-9-]{1,20}$/),percent:z.number().min(.001).max(100),name:words(60),unlocks:words(300)});
 const grand=z.object({id:z.string().regex(/^[a-zA-Z0-9_-]{1,80}$/),dropAt:z.string().regex(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2})?\+04:00$/,'დიდი საჩუქრის დრო თბილისის დროით'),hours:z.number().min(.5).max(24),minPercent:z.number().min(0).max(100),prize:words(80),detail:words(80),pulseRadius:int(40,500),revealRadius:int(10,50),spot:z.string().max(80).nullable()}).refine(radii,'დიდი საჩუქრის პულსის რადიუსი გახსნის რადიუსზე დიდი უნდა იყოს');
+const simpleWave=z.object({id:z.string().regex(/^[a-z0-9]{1,8}$/).refine(v=>!['sat','lan','x'].includes(v),'ტალღის ეს კოდი დაკავებულია'),time:hhmm,hours:z.number().min(.5).max(16)});
+const cities=z.object({enabled:z.boolean(),minPlayers:int(1,10000),waves:z.array(simpleWave).max(6).refine(list=>new Set(list.map(w=>w.id)).size===list.length,'ტალღების კოდები არ უნდა მეორდებოდეს'),boxesPerWave:z.object({base:int(0,30),perPlayers:int(1,100000),max:int(0,30)}),weekendExtra:int(0,10),coins,weekendCoins:coins.optional(),stock:z.tuple([int(1,1000),int(1,1000)]).refine(([lo,hi])=>lo<=hi,'მარაგის „დან“ „მდე“-ზე დიდი ვერ იქნება'),pulseRadius:int(40,500),revealRadius:int(10,50),overrides:z.record(z.string().regex(/^[a-z]\d+$/),z.object({off:z.boolean().optional(),boxesPerWave:int(0,30).optional(),note:z.string().max(300).optional()})).optional()}).refine(radii,'ქალაქების პულსის რადიუსი გახსნის რადიუსზე დიდი უნდა იყოს');
 const override=z.object({off:z.boolean().optional(),as:z.enum(['weekday','weekend']).optional(),day:dayPatch.optional(),note:z.string().max(300).optional()});
 
 export const campaignSchema=z.object({
@@ -42,6 +44,7 @@ export const campaignSchema=z.object({
  grand,
  dayOverrides:z.record(ymd,override).optional(),
  excludedSpots:z.array(z.string().min(1).max(80)).max(400).optional(),
+ cities:cities.optional(),
 }).refine(c=>c.start<=c.end,'კამპანიის დასაწყისი დასასრულზე გვიან ვერ იქნება');
 
 /** Parses a draft; throws a 400 with the first problem in Georgian. */

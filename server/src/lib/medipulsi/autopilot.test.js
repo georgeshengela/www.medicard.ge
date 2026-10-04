@@ -196,3 +196,74 @@ test('rules: an excluded spot never gets a box',()=>{
  const c=withRules({excludedSpots:[out]});
  for(let d='2026-10-05';d<='2026-10-12';d=dateAdd(d,1))assert.ok(!planDay(d,{campaign:c,spots,golden}).some(p=>p.rule.meta.spot===out));
 });
+
+/* ───────── every other city (cities.js + citySpotsMath.js) ───────── */
+import {planCityDay,boxesPerWave,cityRulesOf} from './cities.js';
+import {CITY_HELPERS} from './autopilot.js';
+import {harvestSpots,zonedTime,timezoneFor} from './citySpotsMath.js';
+const liege={cityId:'r19956604',nameKa:'ლიეჟი',nameEn:'Liège',timezone:'Europe/Brussels',players:1,enabled:true,source:'auto'};
+const liegeSpots=Array.from({length:12},(_,i)=>({id:`r19956604-parc-${i}`,place:`Parc ${i%4}`,district:`Parc ${i%4}`,kind:'park',lng:5.57+i*0.002,lat:50.63+(i%3)*0.002,depthM:60}));
+const cityPlan=(date,patch={},city=liege)=>planCityDay(city,date,{campaign:{...structuredClone(FILE_CAMPAIGN),...patch},spots:liegeSpots,helpers:CITY_HELPERS});
+test('cities: one player gets boxes at local time, with the city on every box',()=>{
+ const p=cityPlan('2026-10-06');
+ assert.equal(p.length,2);
+ assert.equal(+p[0].gift.startsAt,+new Date('2026-10-06T07:00:00Z'));
+ assert.ok(p.every(x=>x.gift.id.startsWith('glow-2026-10-06-r19956604-')&&x.rule.meta.cityId==='r19956604'&&x.rule.meta.city==='ლიეჟი'));
+ assert.equal(new Set(p.map(x=>x.rule.meta.spot)).size,p.length);
+});
+test('cities: more players, more boxes; weekends add one and pay more; the cap holds',()=>{
+ const rules=cityRulesOf(FILE_CAMPAIGN);
+ assert.equal(boxesPerWave(rules,{...liege,players:1},false),1);
+ assert.equal(boxesPerWave(rules,{...liege,players:25},false),3);
+ assert.equal(boxesPerWave(rules,{...liege,players:1},true),2);
+ assert.equal(boxesPerWave(rules,{...liege,players:5000},true),5);
+ assert.ok(cityPlan('2026-10-10').every(x=>x.rule.coins>=150));
+});
+test('cities: off, disabled, no players, outside the campaign → nothing',()=>{
+ const rules=cityRulesOf(FILE_CAMPAIGN);
+ assert.equal(cityPlan('2026-10-06',{cities:{...rules,overrides:{r19956604:{off:true}}}}).length,0);
+ assert.equal(cityPlan('2026-10-06',{cities:{...rules,enabled:false}}).length,0);
+ assert.equal(cityPlan('2026-10-06',{},{...liege,players:0}).length,0);
+ assert.equal(cityPlan('2026-10-06',{},{...liege,players:0,source:'manual'}).length,2);
+ assert.equal(cityPlan('2027-01-02').length,0);
+});
+test('cities: local time follows summer / winter time',()=>{
+ assert.equal(zonedTime('2026-10-05','09:00','Europe/Brussels').toISOString(),'2026-10-05T07:00:00.000Z');
+ assert.equal(zonedTime('2026-11-02','09:00','Europe/Brussels').toISOString(),'2026-11-02T08:00:00.000Z');
+ assert.equal(timezoneFor('BE',5.5),'Europe/Brussels');
+ assert.equal(timezoneFor('US',-74),'Etc/GMT+5');
+});
+test('cities: spots only on park paths, away from roads and schools, deep enough and 150 m apart',()=>{
+ // A 400 × 400 m park at the origin, a road along its south edge, a school node in the north-east, paths across.
+ const deg=m=>m/111320,lat0=50.63,lng0=5.57,k=Math.cos(lat0*Math.PI/180);
+ const pt=(x,y)=>({lon:lng0+deg(x)/k,lat:lat0+deg(y)});
+ const ring=[pt(0,0),pt(400,0),pt(400,400),pt(0,400),pt(0,0)];
+ const elements=[
+  {type:'way',id:1,tags:{leisure:'park',name:'Parc Test'},geometry:ring},
+  {type:'way',id:2,tags:{highway:'footway'},geometry:[pt(20,5),pt(380,5)]},           // 5 m from the edge and the road
+  {type:'way',id:3,tags:{highway:'footway'},geometry:[pt(200,20),pt(200,380)]},
+  {type:'way',id:4,tags:{highway:'footway'},geometry:[pt(20,200),pt(380,200)]},
+  {type:'way',id:5,tags:{highway:'footway',bridge:'yes'},geometry:[pt(100,100),pt(120,120)]},
+  {type:'way',id:6,tags:{highway:'residential'},geometry:[pt(-50,-3),pt(450,-3)]},
+  {type:'node',id:7,tags:{amenity:'school'},...pt(360,360)},
+ ];
+ const spots=harvestSpots(elements,{cityId:'r1',geometry:null,center:[lng0,lat0]});
+ assert.ok(spots.length>=2&&spots.length<=5);
+ const m=s=>[(s.lng-lng0)*111320*k,(s.lat-lat0)*111320];
+ for(const s of spots){const [x,y]=m(s);assert.ok(y>15,'not on the edge path / near the road');assert.ok(Math.hypot(x-360,y-360)>30,'away from the school');assert.ok(s.depthM>=12);}
+ for(let i=0;i<spots.length;i++)for(let j=i+1;j<spots.length;j++){const [a,b]=[m(spots[i]),m(spots[j])];assert.ok(Math.hypot(a[0]-b[0],a[1]-b[1])>=149);}
+ assert.ok(spots.every(s=>s.place==='Parc Test'&&s.id.startsWith('r1-parc-test-')));
+});
+test('drops: a Liège reader sees only Liège boxes, with the park as the place',()=>{
+ const tb=rowsOf('2026-10-06');
+ const lp=cityPlan('2026-10-06');
+ const gifts=[...tb.gifts,...lp.map(x=>({id:x.gift.id,stock:x.gift.stock,allocated:0,startsAt:x.gift.startsAt,endsAt:x.gift.endsAt,rewardKind:'DIGITAL'}))];
+ const rules=new Map([...tb.rules,...lp.map(x=>[x.rule.giftId,x.rule])]);
+ const at=T('2026-10-06T10:00:00+02:00');
+ const v=dropsView({gifts,rules,now:at,city:{id:'r19956604',name:'ლიეჟი'}});
+ assert.equal(v.city.campaignCity,false);
+ assert.equal(v.now.boxes,lp.filter(x=>+x.gift.startsAt<=at&&+x.gift.endsAt>at).length);
+ assert.ok(v.now.districts.every(d=>d.name.startsWith('Parc')));
+ const t=dropsView({gifts,rules,now:at});
+ assert.ok(t.city.campaignCity&&t.now.districts.every(d=>!d.name.startsWith('Parc')));
+});

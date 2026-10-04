@@ -54,6 +54,8 @@ export function RunHero({streak,onStart,onGoal}:{streak:number;onStart:()=>void;
  const {width}=useWindowDimensions(),reduced=usePrefersReducedMotion(),drift=useDrift(reduced),dot=usePulseDot(reduced);
  const drops=useDrops(),data=drops.data?.enabled?drops.data:null;
  const live=Boolean(data&&data.now.boxes>0),next=!live?data?.next||null:null;
+ // Every city with a player has boxes; Tbilisi keeps its campaign name.
+ const city=data?.city&&!data.city.campaignCity?data.city:null;
  const left=useCountdown(next?.startsAt,()=>void drops.refetch());
  const cw=width-2*HUB.gutter,h=Math.round(Math.min(640,Math.max(520,cw*1.6)));
  // The art is landscape (1200 × 670): fill the height and centre on the lit street, not the river.
@@ -76,8 +78,8 @@ export function RunHero({streak,onStart,onGoal}:{streak:number;onStart:()=>void;
   </View>
 
   <View style={{paddingHorizontal:HUB.cardPad,marginTop:2}}>
-   <Copy bold size={36} style={{color:'#fff',lineHeight:44,letterSpacing:-.5}}>{live?tx('ყუთები\nგელოდება.','The boxes\nare waiting.'):tx('გაანათე\nთბილისი.','Light up\nTbilisi.')}</Copy>
-   <Copy size={13} style={{color:MINT,marginTop:4}}>{live&&data?.now.coins?tx(`თითოში ${coinsText(data.now.coins)}`,`${coinsText(data.now.coins)} in each`):tx('იარე. იპოვე ყუთი. აიღე საჩუქარი.','Walk. Find a box. Get a prize.')}</Copy>
+   <Copy bold size={36} style={{color:'#fff',lineHeight:44,letterSpacing:-.5}}>{live?tx('ყუთები\nგელოდება.','The boxes\nare waiting.'):city?tx(`გაანათე\n${city.name}.`,`Light up\n${city.name}.`):tx('გაანათე\nთბილისი.','Light up\nTbilisi.')}</Copy>
+   <Copy size={13} style={{color:MINT,marginTop:4}}>{live&&data?.now.coins?tx(`თითოში ${coinsText(data.now.coins)}`,`${coinsText(data.now.coins)} in each`):city?.pending&&!next?tx('შენს ქალაქში ყუთებს ვამზადებთ — მალე გამოჩნდება.','We’re setting up boxes in your city — they appear soon.'):tx('იარე. იპოვე ყუთი. აიღე საჩუქარი.','Walk. Find a box. Get a prize.')}</Copy>
   </View>
 
   {/* The middle stays free: the lit street is the picture. */}

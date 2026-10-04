@@ -2,6 +2,7 @@
  * MediCard Admin V4 — #/medirun-boxes „MEDIRUN ყუთები“ (/api/admin/medipulsi/drops*).
  * Owner 2026-10-04: one place to run the „გაანათე თბილისი“ boxes — when they drop, how many, where, with what.
  *   დღეს       live numbers, today's / tomorrow's / any date's boxes, manual drop, per-box actions, rebuild / cancel a day
+ *   ქალაქები   every other city with a player: spots from OpenStreetMap, players, local time, on/off, boxes
  *   წესები     the weekly rules: weekday / weekend waves, coins table, stock, radii, Saturday rain + lanterns,
  *              the grand prize, weekly themes and levels — a draft with preview before saving
  *   კალენდარი  every campaign date: what the rules place, a day switched off / run as a weekend / own rules
@@ -31,7 +32,7 @@
     ICONS.pin = ICONS.pin || '<path d="M12 21s-7-6.2-7-11a7 7 0 0 1 14 0c0 4.8-7 11-7 11Z"/><circle cx="12" cy="10" r="2.5"/>';
   }
 
-  const SUBS = [['today', 'დღეს'], ['rules', 'წესები'], ['calendar', 'კალენდარი'], ['spots', 'ადგილები'], ['stats', 'ციფრები'], ['log', 'ჟურნალი']];
+  const SUBS = [['today', 'დღეს'], ['cities', 'ქალაქები'], ['rules', 'წესები'], ['calendar', 'კალენდარი'], ['spots', 'ადგილები'], ['stats', 'ციფრები'], ['log', 'ჟურნალი']];
   const WEEKDAYS = ['კვ', 'ორშ', 'სამ', 'ოთხ', 'ხუთ', 'პარ', 'შაბ'];
   const MONTHS = ['იან', 'თებ', 'მარ', 'აპრ', 'მაი', 'ივნ', 'ივლ', 'აგვ', 'სექ', 'ოქტ', 'ნოე', 'დეკ'];
   const STATUS = { planned: ['დაგეგმილი', 'is-info'], live: ['ქალაქშია', 'is-ok'], empty: ['ამოიწურა', 'is-warn'], ended: ['დასრულდა', 'is-plain'], canceled: ['გაუქმდა', 'is-bad'], hidden: ['დამალული', 'is-plain'] };
@@ -42,6 +43,7 @@
     DROP_RULES_SAVE: 'წესები შეინახა', DROP_RULES_RESET: 'წესები ფაილის მნიშვნელობებზე დაბრუნდა', DROP_DAY_RULE: 'დღის წესი შეიცვალა', DROP_SPOT_EXCLUDE: 'ადგილი გამოირიცხა', DROP_SPOT_RESTORE: 'ადგილი დაბრუნდა',
     DROP_DAY_APPLY: 'დღის ყუთები შეიქმნა', DROP_DAY_REBUILD: 'დღე ხელახლა აეწყო', DROP_DAY_CANCEL: 'დღის ყუთები გაუქმდა', DROP_MANUAL: 'ყუთი ხელით დაიგდო',
     DROP_BOX_END: 'ყუთი დასრულდა', DROP_BOX_CANCEL: 'ყუთი გაუქმდა', DROP_BOX_RESTORE: 'ყუთი აღდგა', DROP_BOX_STOCK: 'მარაგი შეიცვალა', DROP_BOX_COINS: 'ქოინები შეიცვალა', DROP_BOX_TIME: 'დრო შეიცვალა',
+    DROP_CITY_ADD: 'ქალაქი დაემატა', DROP_CITY_RULE: 'ქალაქის წესი შეიცვალა', DROP_CITY_HARVEST: 'ქალაქის ადგილები განახლდა', DROP_CITY_APPLY: 'ქალაქის ყუთები შეიქმნა',
     DROP_AUTOPILOT_ON: 'ავტოპილოტი ჩაირთო', DROP_AUTOPILOT_OFF: 'ავტოპილოტი გამოირთო', GIFT_SAVE: 'საჩუქარი შეიცვალა (MEDIRUN გვერდიდან)',
   };
 
@@ -164,6 +166,7 @@
     body.innerHTML = skel();
     try {
       if (st.sub === 'today') await paintToday(body);
+      else if (st.sub === 'cities') await paintCities(body);
       else if (st.sub === 'rules') paintRules(body);
       else if (st.sub === 'calendar') await paintCalendar(body);
       else if (st.sub === 'spots') await paintSpots(body);
@@ -231,7 +234,7 @@
     const can = { end: b.status === 'live' || b.status === 'empty', cancel: ['planned', 'live', 'empty', 'hidden'].includes(b.status), restore: b.status === 'canceled', edit: b.status !== 'canceled' && b.status !== 'ended' };
     return `<tr data-mb-box="${esc(b.id)}">
       <td data-label="დრო"><b>${esc(clock(b.startsAt))}–${esc(clock(b.endsAt))}</b>${ymdOf(b.endsAt) !== ymdOf(b.startsAt) ? `<small class="s-muted"> (${esc(dayLabel(ymdOf(b.endsAt)))})</small>` : ''}</td>
-      <td data-label="ადგილი"><div class="mb-place"><b>${esc(b.place || 'კოორდინატი')}</b><span>${esc(b.district || '—')}</span></div></td>
+      <td data-label="ადგილი"><div class="mb-place"><b>${esc(b.place || 'კოორდინატი')}</b><span>${esc(b.city ? `${b.city}${b.district && b.district !== b.place ? ` · ${b.district}` : ''}` : (b.district || '—'))}</span></div></td>
       <td data-label="ტიპი"><span class="s-badge is-plain">${esc(kindLabel(b.kind))}</span>${b.minPercent ? `<small class="s-muted"> ${esc(String(b.minPercent))}%-დან</small>` : ''}</td>
       <td data-label="ქოინი" class="num"><b>${b.kind === 'grand' || b.rewardKind === 'PHYSICAL' ? 'პრიზი' : num(b.coins)}</b></td>
       <td data-label="გახსნა"><div class="mb-open"><div class="s-meter${pct >= 100 ? ' is-warn' : ''}" role="img" aria-label="${pct}%"><i style="width:${pct}%"></i></div><small>${num(b.allocated)} / ${num(b.stock)}</small></div></td>
@@ -429,7 +432,37 @@
         </div>
       </div></section>`;
   }
+  const CITY_DEFAULTS = { enabled: true, minPlayers: 1, waves: [{ id: 'am', time: '09:00', hours: 5 }, { id: 'ev', time: '18:00', hours: 3 }], boxesPerWave: { base: 1, perPlayers: 10, max: 5 }, weekendExtra: 1, coins: [{ amount: 50, weight: 60 }, { amount: 100, weight: 35 }, { amount: 250, weight: 5 }], weekendCoins: [{ amount: 150, weight: 50 }, { amount: 250, weight: 35 }, { amount: 500, weight: 15 }], stock: [2, 3], pulseRadius: 250, revealRadius: 20, overrides: {} };
+  function citiesCard() {
+    const r = st.draft.cities;
+    const b = r.boxesPerWave;
+    return `<section class="s-card"><header class="s-card-head"><div><h3>სხვა ქალაქები</h3><p>ყველა ქალაქი თბილისის გარდა, სადაც ერთი მოთამაშე მაინც ცხოვრობს (ლოკაცია) ან ხელით დაამატე „ქალაქები“ ტაბში. დრო — ქალაქის ადგილობრივი. ადგილებს სისტემა თავად პოულობს OpenStreetMap-ზე, იგივე წესებით, რაც თბილისში.</p></div></header>
+      <div class="s-card-body s-stack">
+        <label class="mb-check"><input type="checkbox" class="s-switch" data-p="cities.enabled" ${r.enabled ? 'checked' : ''}> ყუთები სხვა ქალაქებშიც</label>
+        <div class="mb-sum">ერთ ტალღაში: ${num(b.base)} ყუთი + 1 ყოველ ${num(b.perPlayers)} მოთამაშეზე (მაქს. ${num(b.max)})${r.weekendExtra ? `, შაბათ-კვირას +${num(r.weekendExtra)}` : ''} · ${num(r.waves.length)} ტალღა დღეში</div>
+        <h4 class="mb-h4">ტალღები (ადგილობრივი დრო)</h4>
+        <table class="s-table mb-mini"><thead><tr><th>დაწყება</th><th>საათი</th><th></th></tr></thead><tbody>
+          ${r.waves.map((w, i) => `<tr><td><input type="time" value="${esc(w.time)}" data-p="cities.waves.${i}.time" aria-label="დაწყება"></td><td><input type="number" min="0.5" max="16" step="0.5" value="${w.hours}" data-p="cities.waves.${i}.hours" aria-label="საათი"></td><td>${r.waves.length > 1 ? `<button type="button" class="btn compact" data-del="cities.waves.${i}" aria-label="წაშლა">${ico('trash')}</button>` : ''}</td></tr>`).join('')}
+        </tbody></table>
+        <button type="button" class="btn compact" data-add-cwave>${ico('plus')} ტალღა</button>
+        <div class="s-form-grid">
+          <label class="s-field"><span>ყუთი ტალღაში — საბაზო</span><input type="number" min="0" max="30" value="${b.base}" data-p="cities.boxesPerWave.base"></label>
+          <label class="s-field"><span>+1 ყუთი ყოველ … მოთამაშეზე</span><input type="number" min="1" max="100000" value="${b.perPlayers}" data-p="cities.boxesPerWave.perPlayers"></label>
+          <label class="s-field"><span>მაქს. ყუთი ტალღაში</span><input type="number" min="0" max="30" value="${b.max}" data-p="cities.boxesPerWave.max"></label>
+          <label class="s-field"><span>შაბათ-კვირას დამატებით</span><input type="number" min="0" max="10" value="${r.weekendExtra}" data-p="cities.weekendExtra"></label>
+          <label class="s-field"><span>მინ. მოთამაშე ქალაქში</span><input type="number" min="1" max="10000" value="${r.minPlayers}" data-p="cities.minPlayers"><small>ხელით დამატებულ ქალაქზე არ მოქმედებს</small></label>
+          <label class="s-field"><span>ერთი ყუთი იხსნება — მინ.</span><input type="number" min="1" max="1000" value="${r.stock[0]}" data-p="cities.stock.0"></label>
+          <label class="s-field"><span>მაქს.</span><input type="number" min="1" max="1000" value="${r.stock[1]}" data-p="cities.stock.1"></label>
+          <label class="s-field"><span>პულსის რადიუსი, მ</span><input type="number" min="40" max="500" value="${r.pulseRadius}" data-p="cities.pulseRadius"></label>
+          <label class="s-field"><span>გახსნის რადიუსი, მ</span><input type="number" min="10" max="50" value="${r.revealRadius}" data-p="cities.revealRadius"></label>
+        </div>
+        <h4 class="mb-h4">შიგთავსი — სამუშაო დღე</h4>${coinsTable('cities.coins', r.coins)}
+        <h4 class="mb-h4">შიგთავსი — შაბათ-კვირა</h4>${coinsTable('cities.weekendCoins', r.weekendCoins || r.coins)}
+      </div></section>`;
+  }
   function paintRules(body) {
+    if (!st.draft.cities) st.draft.cities = structuredClone(CITY_DEFAULTS);
+    if (!st.draft.cities.weekendCoins) st.draft.cities.weekendCoins = structuredClone(st.draft.cities.coins);
     const c = st.draft, sat = c.saturday, g = c.grand;
     const parks = ['rike', 'vake', 'lisi', 'april9', 'finale'];
     const parkName = { rike: 'რიყის პარკი', vake: 'ვაკის პარკი', lisi: 'ლისის ტბა', april9: '9 აპრილის ბაღი', finale: 'ფინალის ადგილი' };
@@ -439,6 +472,7 @@
       <div class="s-callout">${ico('info')}<p><b>ცვლილება ეხება მხოლოდ ჯერ შეუქმნელ ყუთებს.</b> ავტოპილოტი ყუთებს დღით ადრე ქმნის — დღევანდელისა და ხვალინდელისთვის „დღეს“ ტაბში დააჭირე „ხელახლა აწყობა“. შენახვამდე „გადახედვა“ გაჩვენებს, რა შეიცვლება.</p></div>
       ${dayCard('weekday', 'სამუშაო დღე (ორშაბათი–პარასკევი)', 'ნაკლები და მცირე ყუთები, პარკების სიღრმეში.')}
       ${dayCard('weekend', 'შაბათ-კვირა', 'მეტი და უკეთესი ყუთები.')}
+      ${citiesCard()}
       <section class="s-card"><header class="s-card-head"><div><h3>შაბათის ქოინების წვიმა</h3><p>ერთ პარკში ბევრი ყუთი ერთად. პარკს სთორიში გამოცანით ამხელთ, ამიტომ აპში პარკი წინასწარ არ ჩანს.</p></div></header>
         <div class="s-card-body s-stack">
           <div class="s-form-grid">
@@ -520,7 +554,7 @@
   }
 
   /* draft helpers: data-p="a.b.0.c" paths into st.draft */
-  const NUMERIC = /(\.amount|\.weight|\.hours|\.rotation|\.focus|\.stock(\.\d)?|Radius|minDepthM|\.points|radiusM|\.coins|minPercent|\.percent)$/;
+  const NUMERIC = /(\.amount|\.weight|\.hours|\.rotation|\.focus|\.stock(\.\d)?|Radius|minDepthM|\.points|radiusM|\.coins|minPercent|\.percent|\.base|\.perPlayers|\.max|weekendExtra|minPlayers)$/;
   function setPath(obj, path, value) {
     const keys = path.split('.');
     let o = obj;
@@ -546,6 +580,7 @@
         setPath(st.draft, el.dataset.p, el.type === 'checkbox' && !v ? undefined : v);
         markDirty(body);
         const sum = el.closest('.s-card')?.querySelector('.mb-sum');
+        if (/^cities\./.test(el.dataset.p) && sum) { const b = st.draft.cities.boxesPerWave; sum.textContent = `ერთ ტალღაში: ${num(b.base)} ყუთი + 1 ყოველ ${num(b.perPlayers)} მოთამაშეზე (მაქს. ${num(b.max)})${st.draft.cities.weekendExtra ? `, შაბათ-კვირას +${num(st.draft.cities.weekendExtra)}` : ''} · ${num(st.draft.cities.waves.length)} ტალღა დღეში`; }
         const key = el.dataset.p.match(/^days\.(weekday|weekend)/)?.[1];
         if (sum && key) sum.textContent = daySummary(st.draft.days[key]);
       } else if (el.dataset.weekList) {
@@ -579,6 +614,7 @@
         const keys = b.dataset.del.split('.'), idx = Number(keys.pop()), list = getPath(st.draft, keys.join('.'));
         list.splice(idx, 1); markDirty(body); rerender();
       } else if (b.dataset.addCoin) { getPath(st.draft, b.dataset.addCoin).push({ amount: 100, weight: 10 }); markDirty(body); rerender(); }
+      else if (b.matches('[data-add-cwave]')) { const w = st.draft.cities.waves; let n = 1; while (w.some((x) => x.id === `w${n}`)) n += 1; w.push({ id: `w${n}`, time: '13:00', hours: 3 }); markDirty(body); rerender(); }
       else if (b.dataset.addWave) {
         const waves = getPath(st.draft, b.dataset.addWave);
         let n = 1; while (waves.some((w) => w.id === `w${n}`)) n += 1;
@@ -734,6 +770,67 @@
       } catch (err) { btn.disabled = false; panel.querySelector('[role=alert]').textContent = say(err, 'ვერ შეინახა.'); }
     };
     await paint();
+  }
+
+  /* ═════════ ქალაქები ═════════ */
+  const CITY_STATUS = { ready: ['მზადაა', 'is-ok'], pending: ['ადგილებს ვეძებთ…', 'is-info'], failed: ['ვერ მოიძებნა — ხელახლა ვცდით', 'is-bad'], empty: ['პარკის ბილიკი ვერ მოიძებნა', 'is-warn'] };
+  async function paintCities(body) {
+    const data = await api('/cities');
+    const r = data.rules;
+    const totalPlayers = data.cities.reduce((n, c) => n + c.players, 0);
+    body.innerHTML = `<div class="s-stack">
+      <div class="s-callout">${ico('info')}<p><b>ყუთები ყველა ქალაქში, სადაც ერთი მოთამაშე მაინც ცხოვრობს.</b> ქალაქს სისტემა თავად პოულობს მოთამაშის ლოკაციით (იგივე ქალაქი, რაც აპში ჩანს), შემდეგ OpenStreetMap-ზე ეძებს საჯარო პარკების ბილიკებს — გზიდან, წყლიდან, სკოლიდან, საავადმყოფოდან, ტაძრიდან და სასაფლაოდან მოშორებით, პარკის სიღრმეში — და ყუთებს ქალაქის ადგილობრივი დროით აგდებს. თბილისს თავისი კამპანია აქვს (შაბათის წვიმა, ფარანი, დიდი საჩუქარი).${r.enabled ? '' : ' <b>ახლა გამორთულია „წესები → სხვა ქალაქები“-ში.</b>'}</p></div>
+      <div class="s-metrics">
+        <div class="s-metric"><span>ქალაქი</span><strong>${num(data.cities.length)}</strong><small>${num(data.cities.filter((c) => c.status === 'ready' && c.enabled).length)} მზადაა და ჩართულია</small></div>
+        <div class="s-metric"><span>მოთამაშე ამ ქალაქებში</span><strong>${num(totalPlayers)}</strong><small>ლოკაციით</small></div>
+        <div class="s-metric"><span>ყუთი ახლა</span><strong>${num(data.cities.reduce((n, c) => n + c.live, 0))}</strong><small>${num(data.cities.reduce((n, c) => n + c.planned, 0))} დაგეგმილი</small></div>
+        <div class="s-metric"><span>გაიხსნა (ბოლო დღე)</span><strong>${num(data.cities.reduce((n, c) => n + c.opened, 0))}</strong><small>ამ ქალაქების ყუთებში</small></div>
+      </div>
+      <section class="s-card"><header class="s-card-head"><div><h3>ქალაქები</h3><p>„ყუთი ტალღაში“ — ცარიელი = მოთამაშეების მიხედვით (${num(r.boxesPerWave.base)} + 1 ყოველ ${num(r.boxesPerWave.perPlayers)}-ზე, მაქს. ${num(r.boxesPerWave.max)}); რიცხვი = ზუსტად ამდენი.</p></div>
+        ${data.known.length ? `<div class="p4-actions"><select data-city-add aria-label="ქალაქის დამატება"><option value="">ქალაქის დამატება…</option>${data.known.map((k) => `<option value="${esc(k.id)}">${esc(k.nameKa || k.nameEn)}${k.nameEn && k.nameEn !== k.nameKa ? ` (${esc(k.nameEn)})` : ''} · ${esc(k.countryCode || '')}</option>`).join('')}</select><button type="button" class="btn compact" data-city-add-go>${ico('plus')} დამატება</button></div>` : ''}
+        </header>
+        <div class="s-card-body is-flush">${data.cities.length ? `<div class="s-table-wrap"><table class="s-table mb-table">
+          <thead><tr><th>ქალაქი</th><th class="num">მოთამაშე</th><th>ადგილობრივი დრო</th><th>ადგილები</th><th>ყუთი ტალღაში</th><th class="num">ახლა / დაგეგმ.</th><th>ჩართული</th><th aria-label="მოქმედებები"></th></tr></thead>
+          <tbody>${data.cities.map((c) => { const [label, tone] = CITY_STATUS[c.status] || [c.status, 'is-plain']; return `<tr data-city="${esc(c.cityId)}"${c.enabled ? '' : ' class="is-past"'}>
+            <td><b>${esc(c.nameKa || c.nameEn)}</b><br><small class="s-muted">${esc(c.nameEn && c.nameEn !== c.nameKa ? `${c.nameEn} · ` : '')}${esc(c.countryCode || '')}${c.source === 'manual' ? ' · ხელით' : ''}</small></td>
+            <td class="num">${num(c.players)}</td>
+            <td>${esc(c.localTime)} <small class="s-muted">${esc(c.timezone)}</small></td>
+            <td><span class="s-badge ${tone}" title="${esc(c.error || '')}">${esc(label)}</span>${c.status === 'ready' ? ` <small class="s-muted">${num(c.spotCount)}</small>` : ''}</td>
+            <td><input type="number" class="mb-num" min="0" max="30" placeholder="${num(c.boxesPerWave)}" value="${c.override ?? ''}" data-city-per aria-label="ყუთი ტალღაში"></td>
+            <td class="num">${num(c.live)} / ${num(c.planned)}</td>
+            <td><input type="checkbox" class="s-switch" data-city-on ${c.enabled ? 'checked' : ''} aria-label="ქალაქი ჩართულია"></td>
+            <td><div class="p4-actions is-end">
+              ${c.status === 'ready' ? '<button type="button" class="btn compact" data-city-spots>ადგილები</button><button type="button" class="btn compact" data-city-apply title="ადგილობრივი დღევანდელი და ხვალინდელი ყუთები ახლავე">ყუთების შექმნა</button>' : ''}
+              <button type="button" class="btn compact" data-city-harvest title="ადგილების ხელახლა ძებნა OpenStreetMap-ზე">განახლება</button>
+            </div></td></tr>`; }).join('')}</tbody></table></div>`
+          : `<div class="s-empty">${ico('globe')}<strong>სხვა ქალაქში მოთამაშე ჯერ არ არის</strong><span>როცა ვინმე, ვისაც ლოკაცია ჩართული აქვს, სხვა ქალაქში იქნება, ის აქ თავისით გამოჩნდება (ავტოპილოტი ყოველ 10 წუთში ამოწმებს).</span></div>`}</div></section>
+    </div>`;
+    const rowOf = (el) => el.closest('[data-city]')?.dataset.city;
+    const send = async (path, opts, ok) => { try { const res = await api(path, opts); toast(ok, 'ok'); return res; } catch (err) { toast(say(err, 'ვერ შესრულდა.'), 'bad'); return null; } };
+    body.querySelector('[data-city-add-go]')?.addEventListener('click', async () => {
+      const id = body.querySelector('[data-city-add]').value;
+      if (!id) { toast('აირჩიე ქალაქი', 'warn'); return; }
+      if (await send('/cities', { method: 'POST', body: { cityId: id } }, 'ქალაქი დაემატა — ადგილებს რამდენიმე წუთში იპოვის')) await paintCities(body);
+    });
+    body.querySelectorAll('[data-city-on]').forEach((sw) => sw.addEventListener('change', async () => {
+      sw.disabled = true;
+      if (!(await send(`/cities/${rowOf(sw)}`, { method: 'PUT', body: { enabled: sw.checked } }, sw.checked ? 'ქალაქი ჩაირთო' : 'ქალაქი გამოირთო — ახალი ყუთები აქ აღარ ჩნდება'))) sw.checked = !sw.checked;
+      await paintCities(body);
+    }));
+    body.querySelectorAll('[data-city-per]').forEach((inp) => inp.addEventListener('change', async () => {
+      const v = inp.value === '' ? null : Number(inp.value);
+      if (await send(`/cities/${rowOf(inp)}`, { method: 'PUT', body: { boxesPerWave: v } }, v == null ? 'ყუთები ისევ მოთამაშეების მიხედვით' : `ტალღაში ${v} ყუთი`)) { st.o = await api(''); if (!st.dirty) st.draft = structuredClone(st.o.campaign); await paintCities(body); }
+    }));
+    body.querySelectorAll('[data-city-harvest]').forEach((b) => b.addEventListener('click', async () => { b.disabled = true; if (await send(`/cities/${rowOf(b)}/harvest`, { method: 'POST' }, 'ადგილების ძებნა დაიწყო — 1–3 წუთი')) setTimeout(() => { if (st.sub === 'cities') void paintCities(body); }, 60_000); await paintCities(body); }));
+    body.querySelectorAll('[data-city-apply]').forEach((b) => b.addEventListener('click', async () => { b.disabled = true; const r2 = await send(`/cities/${rowOf(b)}/apply`, { method: 'POST' }, 'ყუთები შეიქმნა'); if (r2) toast(`შეიქმნა ${num(r2.created)} ყუთი`, 'ok'); await paintCities(body); }));
+    body.querySelectorAll('[data-city-spots]').forEach((b) => b.addEventListener('click', async () => {
+      const city = data.cities.find((c) => c.cityId === rowOf(b));
+      const { spots } = await api(`/cities/${city.cityId}/spots`);
+      const d = V().openDialog?.({ title: `ადგილები · ${city.nameKa || city.nameEn}`, description: `${num(spots.length)} ადგილი საჯარო პარკების ბილიკებზე (OpenStreetMap).`, wide: true, watchDirty: false,
+        body: `<div class="s-table-wrap"><table class="s-table mb-mini"><thead><tr><th>პარკი</th><th class="num">სიღრმე</th><th class="num">პარკის ფართობი</th><th></th></tr></thead><tbody>${spots.map((sp) => `<tr><td>${esc(sp.place || '—')}</td><td class="num">${num(Math.round(sp.depthM))} მ</td><td class="num">${num(Math.round((sp.areaM2 || 0) / 10000))} ჰა</td><td><a class="btn compact" href="https://www.google.com/maps?q=${sp.lat},${sp.lng}" target="_blank" rel="noopener" aria-label="რუკაზე ნახვა">${ico('pin')}</a></td></tr>`).join('')}</tbody></table></div>`,
+        footer: '<button type="button" class="btn" data-no>დახურვა</button>' });
+      doc.querySelector('#v3-dialog [data-no]').onclick = () => void d.close();
+    }));
   }
 
   /* ═════════ ადგილები ═════════ */

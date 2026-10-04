@@ -9,6 +9,9 @@ import {planDay,applyDay,loadSpots,tbilisiDate,dateAdd,dayOf,autopilotEnabled} f
 import {campaignRecord,getCampaign,saveCampaign,parseCampaign,clearCampaignCache} from './campaignStore.js';
 import {giftRules,upsertGiftRule,ensureGiftRuleTable,clearGiftRuleCache} from './giftRules.js';
 import {isFeatureEnabled,setFeatureFlag} from '../featureFlags.js';
+import {listCities,citySpots,addCity,setCityEnabled,requeueCity,harvestCity,planCityDay,cityDates,ensureCityTable,cityRulesOf,boxesPerWave} from './cities.js';
+import {CITY_HELPERS,dayKind} from './autopilot.js';
+import {localDate} from './citySpotsMath.js';
 
 const HOUR=3600_000,DAY=24*HOUR,OFFSET='+04:00';
 const bad=(status,message,code='DROPS_ERROR')=>{throw Object.assign(new Error(message),{status,code});};
@@ -20,7 +23,7 @@ const isGrand=(g,campaign)=>g.id===campaign.grand.id;
 export function boxRow(g,rule,now=Date.now()){
  const status=g.archived?'canceled':!g.published?'hidden':+g.startsAt>now?'planned':+g.endsAt<=now?'ended':g.allocated>=g.stock?'empty':'live';
  return {id:g.id,title:g.title,startsAt:g.startsAt,endsAt:g.endsAt,stock:g.stock,allocated:g.allocated,status,revision:g.revision,
-  coins:rule?.coins||0,kind:rule?.meta?.kind||(g.rewardKind==='PHYSICAL'?'prize':'admin'),district:rule?.meta?.district||null,place:rule?.meta?.place||null,spot:rule?.meta?.spot||null,
+  coins:rule?.coins||0,kind:rule?.meta?.kind||(g.rewardKind==='PHYSICAL'?'prize':'admin'),cityId:rule?.meta?.cityId||null,city:rule?.meta?.city||null,district:rule?.meta?.district||null,place:rule?.meta?.place||null,spot:rule?.meta?.spot||null,
   minPercent:rule?.minPercent||null,latitude:g.latitude,longitude:g.longitude,pulseRadius:g.pulseRadius,revealRadius:g.revealRadius,rewardKind:g.rewardKind};
 }
 
@@ -181,7 +184,8 @@ export async function regenerateDate(date,{adminId,db=prisma,now=Date.now()}){
  clearCampaignCache();
  const campaign=await getCampaign(db,now);
  const candidates=await db.medipulsiGift.findMany({where:{id:{startsWith:`glow-${date}-`},startsAt:{gt:new Date(now)},allocated:0},select:{id:true}});
- const ids=candidates.map(g=>g.id).filter(id=>id!==campaign.grand.id&&!id.startsWith(`glow-${date}-x-`));
+ // Tbilisi's boxes only: other cities' (glow-<date>-<cityId>-…) are rebuilt from the „ქალაქები“ tab.
+ const ids=candidates.map(g=>g.id).filter(id=>id!==campaign.grand.id&&!id.startsWith(`glow-${date}-x-`)&&!/^glow-\d{4}-\d{2}-\d{2}-[a-z]\d+-/.test(id));
  const claimed=new Set(ids.length?(await db.medipulsiClaim.findMany({where:{giftId:{in:ids}},select:{giftId:true}})).map(c=>c.giftId):[]);
  const remove=ids.filter(id=>!claimed.has(id));
  if(remove.length){
@@ -274,6 +278,62 @@ export async function boxAction(id,input,{adminId,db=prisma,now=Date.now()}){
  clearGiftRuleCache();
  return boxRow(row,(await giftRules(db)).get(id),now);
 }
+
+/* ───────── other cities ───────── */
+/** Cities with boxes, their players, spots and today's boxes, plus known cities not added yet. */
+export async function citiesOverview({db=prisma,now=Date.now()}={}){
+ const campaign=await getCampaign(db,now),rules=cityRulesOf(campaign),list=await listCities({db});
+ const ids=list.map(c=>c.cityId);
+ const live=ids.length?await db.$queryRaw`SELECT split_part("id",'-',5) AS city, count(*) FILTER (WHERE "startsAt"<=now() AND "endsAt">now() AND "allocated"<"stock")::int AS live, count(*) FILTER (WHERE "startsAt">now())::int AS planned, coalesce(sum("allocated"),0)::int AS opened FROM "MedipulsiGift" WHERE "archived"=false AND "endsAt">now()-interval '1 day' AND "id" ~ '^glow-[0-9]{4}-[0-9]{2}-[0-9]{2}-[a-z][0-9]+-' GROUP BY 1`:[];
+ const byCity=new Map(live.map(r=>[r.city,r]));
+ const known=await db.$queryRaw`SELECT "id","countryCode","nameKa","nameEn","areaKm2" FROM "MedipulsiArea" WHERE "kind"='city' AND "id"<>${campaign.area.id} ORDER BY "nameEn" ASC LIMIT 500`.catch(()=>[]);
+ return {
+  rules,
+  cities:list.map(c=>{const o=rules.overrides?.[c.cityId]||{},b=byCity.get(c.cityId)||{};return {...c,localDate:localDate(now,c.timezone),localTime:new Intl.DateTimeFormat('en-GB',{timeZone:c.timezone,hour:'2-digit',minute:'2-digit',hourCycle:'h23'}).format(new Date(now)),boxesPerWave:boxesPerWave(rules,c,dayKind(localDate(now,c.timezone))==='weekend'),override:o.boxesPerWave??null,note:o.note||null,live:b.live||0,planned:b.planned||0,opened:b.opened||0};}),
+  known:known.filter(a=>!ids.includes(a.id)),
+ };
+}
+export async function addCityByAdmin(cityId,{adminId,db=prisma}){
+ await addCity(cityId,{db});
+ await audit(db,adminId,'DROP_CITY_ADD',cityId);
+ return citiesOverview({db});
+}
+/** On/off, a fixed number of boxes per wave (null = by players) and a note for one city. */
+export async function setCityRules(cityId,input,{adminId,db=prisma}){
+ await ensureCityTable(db);
+ if(input.enabled!=null)await setCityEnabled(cityId,input.enabled,{db});
+ if('boxesPerWave' in input||'note' in input){
+  await patchRules(c=>{
+   const rules={...cityRulesOf(c)},o={...(rules.overrides?.[cityId]||{})};
+   if('boxesPerWave' in input){if(input.boxesPerWave==null)delete o.boxesPerWave;else o.boxesPerWave=input.boxesPerWave;}
+   if('note' in input){if(input.note)o.note=input.note;else delete o.note;}
+   rules.overrides={...(rules.overrides||{})};
+   if(Object.keys(o).length)rules.overrides[cityId]=o;else delete rules.overrides[cityId];
+   c.cities=rules;
+  },{adminId,db,action:'DROP_CITY_RULE',entityId:cityId,details:input});
+ }else await audit(db,adminId,'DROP_CITY_RULE',cityId,input);
+ return citiesOverview({db});
+}
+/** Looks the city's spots up again on OpenStreetMap (runs in the background; the list shows the state). */
+export async function reharvestCity(cityId,{adminId,db=prisma}){
+ await requeueCity(cityId,{db});
+ await audit(db,adminId,'DROP_CITY_HARVEST',cityId);
+ void harvestCity(cityId,{db}).catch(()=>{});
+ return {queued:true};
+}
+/** Places the city's missing boxes for its local today and tomorrow now. */
+export async function applyCity(cityId,{adminId,db=prisma,now=Date.now()}){
+ clearCampaignCache();
+ const campaign=await getCampaign(db,now),city=(await listCities({db})).find(c=>c.cityId===cityId);
+ if(!city)bad(404,'ქალაქი ვერ მოიძებნა.');
+ if(city.status!=='ready')bad(409,'ამ ქალაქის ადგილები ჯერ არ არის მზად.');
+ const spots=await citySpots(cityId,{db});
+ let created=0,total=0;
+ for(const date of cityDates(city,now)){const r=await applyDay(date,{db,plan:planCityDay(city,date,{campaign,spots,helpers:CITY_HELPERS}).filter(p=>+p.gift.endsAt>now)});created+=r.created||0;total+=r.total||0;}
+ await audit(db,adminId,'DROP_CITY_APPLY',cityId,{created});
+ return {created,total};
+}
+export async function citySpotList(cityId,{db=prisma}={}){return citySpots(cityId,{db});}
 
 export async function setAutopilot(enabled,{admin,db=prisma}){
  await setFeatureFlag('medirunAutopilot',{enabled,message:null},{admin,db});

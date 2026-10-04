@@ -57,6 +57,13 @@ async function resolveTile(tile){
  return {tile,cityId,countryCode};
 }
 
+/** The OSM city / country of one ~2 km tile, cached for everyone (MEDIRUN cities use it for home places). */
+export async function resolveTilePlace(tile){
+ await ensureTables();
+ const [row]=await prisma.$queryRaw`SELECT "tile","cityId","countryCode" FROM "MedipulsiPlaceTile" WHERE "tile"=${tile}`;
+ return row||resolveTile(tile);
+}
+
 const memo=new Map();
 export async function territory(userId,lang='ka'){
  const player=await prisma.medipulsiPlayer.findUnique({where:{userId},select:{state:true}});

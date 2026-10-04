@@ -314,5 +314,63 @@
     "pulseRadius": 500,
     "revealRadius": 20,
     "spot": null
+  },
+  "cities": {
+    "note": "ყველა სხვა ქალაქი, სადაც ერთი მოთამაშე მაინც ცხოვრობს (owner 2026-10-04). დრო — ქალაქის ადგილობრივი.",
+    "enabled": true,
+    "minPlayers": 1,
+    "waves": [
+      {
+        "id": "am",
+        "time": "09:00",
+        "hours": 5
+      },
+      {
+        "id": "ev",
+        "time": "18:00",
+        "hours": 3
+      }
+    ],
+    "boxesPerWave": {
+      "base": 1,
+      "perPlayers": 10,
+      "max": 5
+    },
+    "weekendExtra": 1,
+    "coins": [
+      {
+        "amount": 50,
+        "weight": 60
+      },
+      {
+        "amount": 100,
+        "weight": 35
+      },
+      {
+        "amount": 250,
+        "weight": 5
+      }
+    ],
+    "weekendCoins": [
+      {
+        "amount": 150,
+        "weight": 50
+      },
+      {
+        "amount": 250,
+        "weight": 35
+      },
+      {
+        "amount": 500,
+        "weight": 15
+      }
+    ],
+    "stock": [
+      2,
+      3
+    ],
+    "pulseRadius": 250,
+    "revealRadius": 20,
+    "overrides": {}
   }
 }

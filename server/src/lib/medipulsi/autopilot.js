@@ -14,6 +14,7 @@ import {isFeatureEnabled} from '../featureFlags.js';
 import {acquireJobLease} from '../jobLease.js';
 import {upsertGiftRule,giftRules,ensureGiftRuleTable} from './giftRules.js';
 import {FILE_CAMPAIGN,getCampaign} from './campaignStore.js';
+import {detectCities,nextHarvest,harvestCity,listCities,citySpots,planCityDay,cityDates} from './cities.js';
 
 const DATA=new URL('../../data/',import.meta.url);
 /** The repo default; the live rules come from getCampaign() (admin #/medirun-boxes can change them). */
@@ -57,7 +58,7 @@ function inFocus(week,spot){
  return false;
 }
 
-function coinGift(campaign,{id,spot,start,end,coins,stock,pulseRadius,revealRadius,kind,minPercent=null}){
+export function coinGift(campaign,{id,spot,start,end,coins,stock,pulseRadius,revealRadius,kind,minPercent=null}){
  const lantern=Boolean(minPercent);
  return {
   gift:{id,title:`${coins} Medi Coins`,description:lantern?`ფარნის ყუთი: მხოლოდ მათთვის, ვისაც თბილისის ${String(minPercent).replace('.',',')}% აქვს განათებული. გახსენი და ${coins} Medi Coins ავტომატურად ჩაირიცხება შენს ანგარიშზე.`:`გახსენი ყუთი და ${coins} Medi Coins ავტომატურად ჩაირიცხება შენს ანგარიშზე. დააგროვე და გადაცვალე ჯილდოებზე.`,
@@ -67,6 +68,7 @@ function coinGift(campaign,{id,spot,start,end,coins,stock,pulseRadius,revealRadi
  };
 }
 
+export const CITY_HELPERS={get rng(){return rng;},get rotationOrder(){return rotationOrder;},get coinGift(){return coinGift;},get dayKind(){return dayKind;},get daysBetween(){return daysBetween;}};
 export const dayKind=date=>{const d=new Date(`${date}T00:00:00Z`).getUTCDay();return d===0||d===6?'weekend':'weekday';};
 /**
  * The rules of one date: the weekday/weekend template, or the admin's override for that date
@@ -175,6 +177,16 @@ export async function runAutopilot({db=prisma,now=Date.now(),force=false}={}){
  const campaign=await getCampaign(db,now);
  const today=tbilisiDate(now),dates=[today,dateAdd(today,1)].filter(d=>d>=campaign.start&&d<=campaign.end);
  const results=[];for(const date of dates)results.push(await applyDay(date,{db,plan:planDay(date,{campaign})}));
+ // Every other city with a player: detect, harvest one city's spots per tick, then place its local today / tomorrow.
+ try{
+  await detectCities({db,campaign});
+  const pending=await nextHarvest(db);
+  if(pending)results.push({city:pending,harvest:await harvestCity(pending,{db})});
+  for(const city of (await listCities({db})).filter(c=>c.enabled&&c.status==='ready')){
+   const spots=await citySpots(city.cityId,{db});
+   for(const date of cityDates(city,now))results.push({city:city.cityId,...await applyDay(date,{db,plan:planCityDay(city,date,{campaign,spots,helpers:CITY_HELPERS})})});
+  }
+ }catch(error){console.warn('[medirun-autopilot] cities failed',error?.message);}
  return {results};
 }
 

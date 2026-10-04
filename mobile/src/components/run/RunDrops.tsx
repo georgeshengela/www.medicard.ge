@@ -70,8 +70,9 @@ export function RunDropsCard(){
 function ScheduleSheet({visible,onClose,data}:{visible:boolean;onClose:()=>void;data:Drops}){
  const c=useThemeColors();
  const period=`${formatYmd(data.campaign.start)} – ${formatYmd(data.campaign.end)}`;
+ const city=data.city&&!data.city.campaignCity?data.city.name:null;
  return <Sheet title={tx('ყუთების განრიგი','Box schedule')} visible={visible} onClose={onClose}>
-  <Copy muted size={13}>{tx(`„${data.campaign.name}“ · ${period}. ყუთები თავისით ჩნდება თბილისის პარკებში, ყოველდღე სხვა უბნებში.`,`„${data.campaign.name}“ · ${period}. Boxes appear by themselves in Tbilisi parks, in different districts every day.`)}</Copy>
+  <Copy muted size={13}>{city?tx(`${city} · ${period}. ყუთები თავისით ჩნდება ქალაქის პარკებში, ყოველდღე სხვა ადგილას. დრო — ადგილობრივი.`,`${city} · ${period}. Boxes appear by themselves in the city’s parks, in a different place every day. Local time.`):tx(`„${data.campaign.name}“ · ${period}. ყუთები თავისით ჩნდება თბილისის პარკებში, ყოველდღე სხვა უბნებში.`,`„${data.campaign.name}“ · ${period}. Boxes appear by themselves in Tbilisi parks, in different districts every day.`)}</Copy>
   <Card style={{paddingVertical:4,gap:0}}>
    {data.schedule.map((row,i)=><View key={row.id} style={{flexDirection:'row',alignItems:'center',gap:12,minHeight:60,paddingVertical:10,borderTopWidth:i?1:0,borderColor:c.bg200}}>
     <View style={{flex:1,minWidth:0}}><Copy bold size={14}>{row.label}</Copy><Copy muted size={12}>{coinsText(row.coins)} {tx('თითო ყუთში','per box')}</Copy></View>
@@ -83,8 +84,8 @@ function ScheduleSheet({visible,onClose,data}:{visible:boolean;onClose:()=>void;
    <Copy muted size={12}>{tx('1. დაიწყე გასეირნება MEDIRUN-ში. 2. ყუთიდან 250–350 მ-ზე პულსი ჩაგერთვება — რაც ახლოს ხარ, მით ჩქარია. 3. 20–25 მ-ზე ყუთი კამერაში გამოჩნდება — შეეხე და ქოინები მაშინვე ჩაგერიცხება. ერთ ყუთს რამდენიმე ადამიანი ხსნის, სანამ მარაგი არ ამოიწურება.','1. Start a walk in MEDIRUN. 2. 250–350 m from a box a pulse starts — the closer you are, the faster it beats. 3. At 20–25 m the box shows up in the camera — tap it and the coins land at once. Several people can open one box until it runs out.')}</Copy>
    <Copy muted size={12}>{tx('ქოინებს MEDIQUEST-ის მაღაზიაში ცვლი სასაჩუქრე ბარათებსა და გაჯეტებზე.','You swap the coins for gift cards and gadgets in the MEDIQUEST store.')}</Copy>
   </Card>
-  <Pressable accessibilityRole="link" onPress={()=>void Linking.openURL(data.campaign.rulesUrl)} style={{minHeight:44,flexDirection:'row',alignItems:'center',justifyContent:'center',gap:6}}>
+  {city?null:<Pressable accessibilityRole="link" onPress={()=>void Linking.openURL(data.campaign.rulesUrl)} style={{minHeight:44,flexDirection:'row',alignItems:'center',justifyContent:'center',gap:6}}>
    <Copy bold size={13} style={{color:c.primary100}}>{tx('კამპანიის წესები','Campaign rules')}</Copy><ChevronRight size={14} color={c.primary100}/>
-  </Pressable>
+  </Pressable>}
  </Sheet>;
 }
