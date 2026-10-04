@@ -10,7 +10,9 @@ import { shouldCompleteLocation } from '@/lib/locationCompletion';
 import { localAccountId } from '@/lib/localAccount';
 import { useAuth } from '@/store/AuthContext';
 
-const LOCATION_SCREENS = new Set(['weather', 'pharmacy']);
+// Only screens that really use her city. Pharmacy prices are national (no nearby-pharmacy feature), so
+// the catalogue and product pages never ask (owner 2026-10-04: „რა უნდა მოდალს მედიპილზე?“).
+const LOCATION_SCREENS = new Set(['weather']);
 
 export function LocationAskHost() {
   const { user } = useAuth();

@@ -28,7 +28,7 @@ const KA: Record<PrimerKind, PrimerCopy> = {
   },
   location: {
     title: 'რომელ ქალაქში ხარ?',
-    body: 'მდებარეობით განვსაზღვრავთ შენს ქალაქს, რომ ადგილობრივი ამინდი და ახლომახლო აფთიაქები გაჩვენოთ. GPS-ს მხოლოდ აპის გამოყენებისას ვიყენებთ. შემდეგ ტელეფონი გკითხავს, გინდა თუ არა წვდომის მიცემა.',
+    body: 'მდებარეობით განვსაზღვრავთ შენს ქალაქს, რომ ადგილობრივი ამინდი გაჩვენოთ. GPS-ს მხოლოდ აპის გამოყენებისას ვიყენებთ. შემდეგ ტელეფონი გკითხავს, გინდა თუ არა წვდომის მიცემა.',
     cta: 'გაგრძელება',
   },
   // Cycle settings → პროფილი (train 1.0.0.20): BBT + wrist / skin temperature, read only.
@@ -52,7 +52,7 @@ const EN: Record<PrimerKind, PrimerCopy> = {
   },
   location: {
     title: 'Which city are you in?',
-    body: 'Your location sets your city so we can show local weather and nearby pharmacies. It is used only while you use the app. Next, your device will ask whether MEDICARD may access your location.',
+    body: 'Your location sets your city so we can show local weather. It is used only while you use the app. Next, your device will ask whether MEDICARD may access your location.',
     cta: 'Continue',
   },
   temperature: {
