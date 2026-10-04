@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {allowedApi} from './bridgePolicy';
+import {allowedApi} from './bridgePolicy.ts';
 
 // Every path the hub and the run screen call must be on the allow-list — a missing one surfaces in the app as
 // „მოთხოვნა დაუშვებელია“ (the 2026-10-04 wallet / leaderboard-board outage).
