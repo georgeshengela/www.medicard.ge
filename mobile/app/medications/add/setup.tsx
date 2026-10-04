@@ -1,6 +1,5 @@
 import React from 'react';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
-import { MedicationHeaderPlus } from '@/components/medications/MedicationNavHeader';
 import { MedicationSetupForm } from '@/components/medications/MedicationSetupForm';
 import { ka } from '@/i18n/ka';
 
@@ -28,14 +27,7 @@ export default function MedicationSetupScreen() {
 
   return (
     <>
-      <Stack.Screen
-        options={{
-          title: ka.meds.addMedicationScreenTitle,
-          headerRight: () => (
-            <MedicationHeaderPlus onPress={() => router.push('/medications/add/search')} />
-          ),
-        }}
-      />
+      <Stack.Screen options={{ title: ka.meds.addMedicationScreenTitle }} />
       <MedicationSetupForm
         initialName={paramStr(params.name)}
         initialGeneric={paramStr(params.generic) || undefined}

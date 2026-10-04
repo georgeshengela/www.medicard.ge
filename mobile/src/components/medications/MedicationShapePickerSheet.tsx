@@ -8,6 +8,7 @@ import { ka } from '@/i18n/ka';
 import { useIsDark, useThemeColors } from '@/theme/colors';
 import { hubInk, hubText, hubTint } from '@/theme/hub';
 import type { PillShape } from '@/types/medications';
+import { medsInk } from '@/components/medications/MedsHubUI';
 
 type Props = {
   visible: boolean;
@@ -19,7 +20,7 @@ type Props = {
 export function MedicationShapePickerSheet({ visible, value, onClose, onApply }: Props) {
   const c = useThemeColors();
   const dark = useIsDark();
-  const teal = hubInk('teal', dark);
+  const accent = medsInk(dark);
   const [draft, setDraft] = useState<PillShape>(value);
 
   useEffect(() => {
@@ -59,11 +60,11 @@ export function MedicationShapePickerSheet({ visible, value, onClose, onApply }:
                 gap: 8,
                 paddingVertical: 12,
                 borderRadius: 18,
-                backgroundColor: active ? hubTint(teal, dark) : c.bg200,
+                backgroundColor: active ? hubTint(accent, dark) : c.bg200,
               }}
             >
               <MedicationPillIcon shape={shape} size={52} />
-              <Text numberOfLines={1} style={[hubText.small, { color: active ? teal : c.text200, fontFamily: active ? 'NotoSansGeorgian_600SemiBold' : 'NotoSansGeorgian_400Regular' }]}>
+              <Text numberOfLines={1} style={[hubText.small, { color: active ? accent : c.text200, fontFamily: active ? 'NotoSansGeorgian_600SemiBold' : 'NotoSansGeorgian_400Regular' }]}>
                 {label}
               </Text>
             </Pressable>

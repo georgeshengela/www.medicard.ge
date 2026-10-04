@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { Image, View, type ImageStyle, type StyleProp } from 'react-native';
 import { Pill } from 'lucide-react-native';
-import { useThemeColors } from '@/theme/colors';
+import { medsInk } from '@/components/medications/MedsHubUI';
+import { useIsDark, useThemeColors } from '@/theme/colors';
 
 type Props = {
   uri: string | null | undefined;
@@ -14,6 +15,7 @@ type Props = {
 
 export function PharmacyProductImage({ uri, size = 88, style, rounded = 16, fit = 'contain' }: Props) {
   const colors = useThemeColors();
+  const dark = useIsDark();
   const [failed, setFailed] = useState(false);
   const showImage = uri && !failed;
   const fill = fit === 'cover';
@@ -40,7 +42,7 @@ export function PharmacyProductImage({ uri, size = 88, style, rounded = 16, fit 
           style={[{ width: fill ? size : size - 8, height: fill ? size : size - 8 }, style]}
         />
       ) : (
-        <Pill size={Math.round(size * 0.32)} color={colors.primary200} strokeWidth={2.2} />
+        <Pill size={Math.round(size * 0.32)} color={medsInk(dark)} strokeWidth={2.2} />
       )}
     </View>
   );

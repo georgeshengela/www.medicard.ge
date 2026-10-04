@@ -2,20 +2,11 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
-import { Calendar, Check, ChevronLeft, ChevronRight, Clock, Pill, Plus, Search } from 'lucide-react-native';
+import { Calendar, Check, ChevronLeft, ChevronRight, Clock, Pill, Plus, Search, X } from 'lucide-react-native';
 import { MedicationHeaderAction } from '@/components/medications/MedicationNavHeader';
 import { MedicationPillIcon } from '@/components/medications/MedicationPillIcon';
 import { MedicationRescheduleSheet } from '@/components/medications/MedicationRescheduleSheet';
-import {
-  MedsButton,
-  MedsCard,
-  MedsChip,
-  MedsEmptyState,
-  MedsProgressBar,
-  MedsRoundAction,
-  MedsStatusPill,
-  medsPrimaryFill,
-} from '@/components/medications/MedsHubUI';
+import { MedsButton, MedsCard, MedsChip, MedsEmptyState, MedsProgressBar, MedsRoundAction, MedsStatusPill, medsPrimaryFill, medsInk } from '@/components/medications/MedsHubUI';
 import { ListRowsSkeleton } from '@/components/ui/Skeleton';
 import { MONTHS_KA } from '@/constants/cycle';
 import { useMedicationImages } from '@/hooks/useMedicationImages';
@@ -149,7 +140,7 @@ export default function MedicationRemindersScreen() {
 
   const isToday = sameDay(selectedDate, today);
   const monthLabel = `${MONTHS_KA[selectedDate.getMonth()]} ${selectedDate.getFullYear()}`;
-  const teal = hubInk('teal', dark);
+  const accent = medsInk(dark);
   const primary = medsPrimaryFill(c, dark);
 
   return (
@@ -158,10 +149,7 @@ export default function MedicationRemindersScreen() {
         options={{
           title: ka.meds.remindersScreenTitle,
           headerRight: () => (
-            <View style={{ flexDirection: 'row', gap: 8 }}>
-              <MedicationHeaderAction icon={Calendar} onPress={() => router.push('/medications/reminders/calendar')} accessibilityLabel={ka.meds.calendarTitle} />
-              <MedicationHeaderAction icon={Plus} onPress={() => router.push('/medications/add/search')} accessibilityLabel={ka.meds.quickAdd} />
-            </View>
+            <MedicationHeaderAction icon={Calendar} onPress={() => router.push('/medications/reminders/calendar')} accessibilityLabel={ka.meds.calendarTitle} />
           ),
         }}
       />
@@ -195,7 +183,7 @@ export default function MedicationRemindersScreen() {
                         ? c.danger
                         : tone === 'pending'
                           ? c.warning
-                          : teal;
+                          : accent;
               return (
                 <Pressable
                   key={key}
@@ -208,7 +196,7 @@ export default function MedicationRemindersScreen() {
                   <Text style={[hubText.small, { color: active ? 'rgba(255,255,255,0.82)' : c.text300 }]}>
                     {DAY_LETTERS[weekdayIndex(day)]}
                   </Text>
-                  <Text style={[hubText.value, { fontSize: 16, color: active ? '#FFFFFF' : isTodayCell ? teal : c.text100 }]}>
+                  <Text style={[hubText.value, { fontSize: 16, color: active ? '#FFFFFF' : isTodayCell ? accent : c.text100 }]}>
                     {day.getDate()}
                   </Text>
                   <View style={{ width: 5, height: 5, borderRadius: 3, backgroundColor: dot }} />
@@ -233,7 +221,7 @@ export default function MedicationRemindersScreen() {
                 title={isToday ? ka.meds.scheduleEmptyTitle : ka.meds.scheduleEmptyTitleOther}
                 body={ka.meds.scheduleEmptyBody}
               >
-                <MedsButton label={ka.meds.addMedicationCta} icon={Plus} onPress={() => router.push('/medications/add/search')} />
+                <MedsButton label={ka.meds.addMedicationCta} icon={Plus} onPress={() => router.push('/medications/add')} />
                 <MedsButton label={ka.meds.quickSearch} icon={Search} tone="tonal" onPress={() => router.push('/medications/add/search')} />
               </MedsEmptyState>
             </View>
@@ -260,8 +248,8 @@ export default function MedicationRemindersScreen() {
                   return (
                     <View key={time} style={{ flexDirection: 'row', gap: 12 }}>
                       <View style={{ width: 48, alignItems: 'center' }}>
-                        <View style={[s.timeBadge, { backgroundColor: hubTint(teal, dark) }]}>
-                          <Text style={[hubText.value, { fontSize: 12, lineHeight: 16, color: teal }]}>{formatTime24h(time)}</Text>
+                        <View style={[s.timeBadge, { backgroundColor: hubTint(accent, dark) }]}>
+                          <Text style={[hubText.value, { fontSize: 12, lineHeight: 16, color: accent }]}>{formatTime24h(time)}</Text>
                         </View>
                         {last ? null : <View style={{ flex: 1, width: 2, borderRadius: 1, backgroundColor: c.bg300, marginVertical: 6 }} />}
                       </View>
@@ -271,7 +259,8 @@ export default function MedicationRemindersScreen() {
                           const cfg = parseMedicationConfig(med?.config);
                           const log = findDoseLog(doseLogs, dose.medicationId, selectedYmd, dose.time);
                           const meal = cfg.mealTiming && cfg.mealTiming !== 'any' ? ka.meds.mealTiming[cfg.mealTiming] : null;
-                          const meta = [dose.dosage, meal, cfg.genericName].filter(Boolean).join(' · ');
+                          // One line that fits: the amount and how to take it (the time is the rail's badge).
+                          const meta = [dose.dosage, meal].filter(Boolean).join(' · ');
                           return (
                             <MedsCard key={`${dose.medicationId}-${dose.time}`} style={{ padding: 14, gap: 12 }}>
                               <Pressable
@@ -286,18 +275,18 @@ export default function MedicationRemindersScreen() {
                                     {dose.medName}
                                   </Text>
                                   {meta ? (
-                                    <Text numberOfLines={1} style={[hubText.caption, { color: c.text200 }]}>
+                                    <Text numberOfLines={2} style={[hubText.caption, { color: c.text200 }]}>
                                       {meta}
                                     </Text>
                                   ) : null}
                                 </View>
-                                {log ? <MedsStatusPill status={log.status} small /> : <ChevronRight size={18} color={c.text300} strokeWidth={2} />}
+                                {log ? <StatusDot status={log.status} /> : <ChevronRight size={18} color={c.text300} strokeWidth={2} />}
                               </Pressable>
                               {!log ? (
                                 <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center' }}>
-                                  <MedsButton compact label={ka.meds.actionTake} icon={Check} onPress={() => void markDose(dose.medicationId, dose.time, 'taken')} style={{ flex: 1.3 }} />
-                                  <MedsButton compact tone="quiet" label={ka.meds.actionSkip} onPress={() => void markDose(dose.medicationId, dose.time, 'skipped')} style={{ flex: 1 }} />
-                                  <MedsRoundAction icon={Clock} tone="tonal" onPress={() => setReschedule({ medicationId: dose.medicationId, time: dose.time })} accessibilityLabel={ka.meds.actionReschedule} />
+                                  <MedsButton compact label={ka.meds.actionTake} icon={Check} onPress={() => void markDose(dose.medicationId, dose.time, 'taken')} style={{ flex: 1 }} />
+                                  <MedsRoundAction icon={Clock} tone="tonal" onPress={() => setReschedule({ medicationId: dose.medicationId, time: dose.time })} accessibilityLabel={`${ka.meds.actionReschedule}: ${dose.medName}`} />
+                                  <MedsRoundAction icon={X} tone="quiet" onPress={() => void markDose(dose.medicationId, dose.time, 'skipped')} accessibilityLabel={`${ka.meds.actionSkip}: ${dose.medName}`} />
                                 </View>
                               ) : null}
                             </MedsCard>
@@ -323,6 +312,20 @@ export default function MedicationRemindersScreen() {
         }}
       />
     </>
+  );
+}
+
+/** A logged dose as a small round mark (✓ taken, ✕ skipped) — the name keeps the room a text pill took. */
+function StatusDot({ status }: { status: DoseStatus }) {
+  const c = useThemeColors();
+  const dark = useIsDark();
+  const color = status === 'taken' ? c.success : status === 'skipped' ? c.danger : c.warning;
+  const Icon = status === 'skipped' ? X : status === 'taken' ? Check : Clock;
+  const label = status === 'taken' ? ka.meds.statusTaken : status === 'skipped' ? ka.meds.statusSkipped : ka.meds.statusPending;
+  return (
+    <View accessibilityLabel={label} style={{ width: 30, height: 30, borderRadius: 15, alignItems: 'center', justifyContent: 'center', backgroundColor: hubTint(color, dark) }}>
+      <Icon size={16} color={color} strokeWidth={2.8} />
+    </View>
   );
 }
 

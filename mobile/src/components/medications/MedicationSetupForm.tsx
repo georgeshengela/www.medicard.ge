@@ -16,6 +16,7 @@ import {
   Bell,
   Calendar,
   Clock,
+  Minus,
   Pencil,
   Pill,
   Plus,
@@ -27,13 +28,14 @@ import { MedicationFrequencySheet } from '@/components/medications/MedicationFre
 import { MedicationPillIcon } from '@/components/medications/MedicationPillIcon';
 import { MedicationShapePickerSheet } from '@/components/medications/MedicationShapePickerSheet';
 import { MedicationTimePickerSheet } from '@/components/medications/MedicationTimePickerSheet';
-import { DAY_TILE, MedsButton, MedsCard, PILL_COLORS } from '@/components/medications/MedsHubUI';
+import { MedsButton, MedsCard, MedsRoundAction, PILL_COLORS, medsInk, medsPrimaryFill } from '@/components/medications/MedsHubUI';
 import { ProfileMenuRow } from '@/components/profile/ProfileMenuRow';
 import { HomeSectionHeading } from '@/components/home/HomeSectionHeading';
 import { ka } from '@/i18n/ka';
 import { ApiError, api } from '@/lib/api';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
+  DAY_LABELS_FULL_KA,
   DAY_LETTERS,
   addYearsToIso,
   daysSummaryKa,
@@ -45,6 +47,7 @@ import {
 import type { MedicationForm, PillShape } from '@/types/medications';
 import { useIsDark, useThemeColors } from '@/theme/colors';
 import { HUB, hubInk, hubText, hubTint } from '@/theme/hub';
+import { tx } from '@/i18n/locale';
 
 type Props = {
   initialName?: string;
@@ -79,7 +82,9 @@ export function MedicationSetupForm({
   const isAndroid = Platform.OS === 'android';
   const androidSpacer = useAnimatedStyle(() => ({ height: isAndroid ? Math.max(0, keyboardPad.value - bottomClearance) : 0 }));
   const ctaHeight = 80;
-  const [medName] = useState(initialName);
+  const [medName, setMedName] = useState(initialName);
+  // Opened without a catalogue pick („ხელით დამატება“): she types the name herself.
+  const [editableName] = useState(() => !initialName.trim());
   const [form, setForm] = useState<MedicationForm>('pills');
   const [amount, setAmount] = useState(1);
   const [timesPerDay, setTimesPerDay] = useState(1);
@@ -112,13 +117,13 @@ export function MedicationSetupForm({
   }, [medName]);
 
   const dosageLabel = useMemo(() => `${amount} ${ka.meds.formLabels[form]}`, [amount, form]);
-  const genericLine =
-    [manufacturer || initialGeneric, strength, formLabel].filter(Boolean).join(' · ') ||
-    (initialGeneric ? ka.meds.knownAs(initialGeneric, medName) : ka.meds.knownAsFallback(medName));
+  const genericLine = editableName
+    ? tx('ჩაწერე სახელი ისე, როგორც შეფუთვაზეა', 'Type the name as it reads on the box')
+    : [manufacturer || initialGeneric, strength, formLabel].filter((v) => v && v !== medName).join(' · ');
 
   const minEndDate = startDate;
   const maxStartDate = endDate;
-  const teal = hubInk('teal', dark);
+  const accent = medsInk(dark);
 
   const toggleDay = (d: number) => {
     setDays((prev) => (prev.includes(d) ? prev.filter((x) => x !== d) : [...prev, d].sort()));
@@ -143,7 +148,7 @@ export function MedicationSetupForm({
 
   const save = async () => {
     if (medName.trim().length < 2) {
-      Alert.alert(ka.common.error, ka.meds.nameLabel);
+      Alert.alert(ka.common.error, tx('ჩაწერე წამლის სახელი', 'Enter the medication name'));
       return;
     }
     if (endDate < startDate) {
@@ -200,7 +205,7 @@ export function MedicationSetupForm({
               width: 76,
               height: 76,
               borderRadius: 22,
-              backgroundColor: hubTint(teal, dark),
+              backgroundColor: hubTint(accent, dark),
               alignItems: 'center',
               justifyContent: 'center',
             }}
@@ -216,20 +221,36 @@ export function MedicationSetupForm({
               </Pressable>
             )}
           </View>
-          <View style={{ alignItems: 'center', gap: 6 }}>
-            <Text style={{ fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 20, lineHeight: 26, color: c.text100 }}>
-              {medName || ka.meds.namePlaceholder}
-            </Text>
-            <Text style={[hubText.body, { fontSize: 15, lineHeight: 21, color: c.text200, textAlign: 'center' }]}>
-              {genericLine}
-            </Text>
+          <View style={{ alignItems: 'center', gap: 6, alignSelf: 'stretch' }}>
+            {editableName ? (
+              <TextInput
+                value={medName}
+                onChangeText={setMedName}
+                placeholder={ka.meds.namePlaceholder}
+                placeholderTextColor={c.text300}
+                accessibilityLabel={ka.meds.nameLabel}
+                autoFocus
+                autoCapitalize="sentences"
+                returnKeyType="done"
+                style={[styles.nameInput, { backgroundColor: c.surface, color: c.text100 }]}
+              />
+            ) : (
+              <Text style={{ fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 20, lineHeight: 26, color: c.text100, textAlign: 'center' }}>
+                {medName || ka.meds.namePlaceholder}
+              </Text>
+            )}
+            {genericLine ? (
+              <Text style={[hubText.body, { fontSize: 15, lineHeight: 21, color: c.text200, textAlign: 'center' }]}>
+                {genericLine}
+              </Text>
+            ) : null}
           </View>
         </View>
 
         <View style={{ paddingHorizontal: HUB.gutter, marginTop: HUB.sectionGap - 12 }}>
           <HomeSectionHeading title={ka.meds.sectionGeneral} />
           <View style={[styles.card, { backgroundColor: c.surface }]}>
-            <ProfileMenuRow icon={Pill} label={ka.meds.doseAmountLabel} value={dosageLabel} onPress={() => setDosageSheet(true)} ink="teal" />
+            <ProfileMenuRow icon={Pill} label={tx('ერთ მიღებაზე', 'Per dose')} value={dosageLabel} onPress={() => setDosageSheet(true)} ink="blue" />
             <Divider color={c.bg300} />
             <ProfileMenuRow icon={RefreshCw} label={ka.meds.frequencyLabel} value={ka.meds.timesPerDayLabel(timesPerDay)} onPress={() => setFreqSheet(true)} ink="sky" />
             {times.slice(0, timesPerDay).map((time, index) => (
@@ -256,34 +277,45 @@ export function MedicationSetupForm({
 
         <View style={{ paddingHorizontal: HUB.gutter, marginTop: HUB.sectionGap }}>
           <HomeSectionHeading title={ka.meds.sectionTakeEvery} />
-          <View style={[styles.card, { backgroundColor: c.surface, gap: 14 }]}>
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+          {/* Padded like every other card: presets first (one tap for the usual weeks), then the days. */}
+          <MedsCard style={{ gap: 16 }}>
+            {/* One segmented row on every phone: three equal parts, short labels. */}
+            <View style={[styles.presets, { backgroundColor: c.bg200 }]}>
+              {DAY_PRESETS.map((preset) => {
+                const selected = sameDays(days, preset.days);
+                return (
+                  <Pressable
+                    key={preset.key}
+                    accessibilityRole="button"
+                    accessibilityState={{ selected }}
+                    accessibilityLabel={preset.summary}
+                    onPress={() => setDays([...preset.days])}
+                    style={[styles.preset, selected && { backgroundColor: c.surface }]}
+                  >
+                    <Text numberOfLines={1} style={[hubText.link, { color: selected ? accent : c.text200 }]}>{preset.label}</Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+            <View style={{ flexDirection: 'row', gap: 6 }}>
               {DAY_LETTERS.map((letter, idx) => {
                 const active = days.includes(idx);
                 return (
                   <Pressable
                     key={`${letter}-${idx}`}
                     onPress={() => toggleDay(idx)}
-                    style={{
-                      width: DAY_TILE,
-                      height: DAY_TILE,
-                      borderRadius: 999,
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      backgroundColor: active ? hubTint(teal, dark) : c.bg200,
-                    }}
+                    style={[styles.day, { backgroundColor: active ? medsPrimaryFill(c, dark) : c.bg200 }]}
                     accessibilityRole="button"
                     accessibilityState={{ selected: active }}
-                    accessibilityLabel={letter}
+                    accessibilityLabel={DAY_LABELS_FULL_KA[idx] ?? letter}
                   >
-                    <Text style={{ fontFamily: 'NotoSansGeorgian_700Bold', color: active ? teal : c.text100 }}>{letter}</Text>
+                    <Text style={{ fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 15, color: active ? '#FFFFFF' : c.text100 }}>{letter}</Text>
                   </Pressable>
                 );
               })}
             </View>
-            <Divider color={c.bg300} />
-            <Text style={[hubText.body, { color: c.text200 }]}>{daysSummaryKa(days) || ka.meds.noDaysSelected}</Text>
-          </View>
+            <Text style={[hubText.caption, { color: days.length ? c.text200 : c.danger }]}>{daysLine(days)}</Text>
+          </MedsCard>
         </View>
 
         <View style={{ paddingHorizontal: HUB.gutter, marginTop: HUB.sectionGap }}>
@@ -296,23 +328,19 @@ export function MedicationSetupForm({
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 16, paddingVertical: 12 }}>
                   <View style={{ flex: 1 }}>
                     <Text style={[hubText.cardTitle, { color: c.text100 }]}>{ka.meds.refillThresholdLabel}</Text>
-                    <Text style={[hubText.caption, { color: c.text200, marginTop: 4 }]}>{ka.meds.refillThresholdHint}</Text>
+                    <Text style={[hubText.caption, { color: c.text200, marginTop: 2 }]}>{tx('შეგახსენებთ, როცა ამდენი დარჩება', 'We remind you when this many are left')}</Text>
                   </View>
-                  <View style={[styles.stepper, { backgroundColor: c.bg200 }]}>
+                  {/* − value + : the number stays typeable, the buttons step it by one. */}
+                  <View style={styles.stepper}>
+                    <MedsRoundAction icon={Minus} tone="quiet" size={34} onPress={() => stepThreshold(-1)} accessibilityLabel={tx('ნაკლები', 'Fewer')} />
                     <TextInput
                       value={refillThreshold}
-                      onChangeText={setRefillThreshold}
-                      keyboardType="numeric"
-                      style={[hubText.value, { flex: 1, fontSize: 15, color: c.text100, padding: 0, textAlign: 'center' }]}
+                      onChangeText={(v) => setRefillThreshold(v.replace(/\D/g, '').slice(0, 3))}
+                      keyboardType="number-pad"
+                      accessibilityLabel={ka.meds.refillThresholdLabel}
+                      style={[hubText.value, styles.stepperValue, { color: c.text100 }]}
                     />
-                    <View style={{ gap: 2 }}>
-                      <Pressable onPress={() => stepThreshold(1)} hitSlop={6}>
-                        <Text style={[hubText.caption, { color: c.text300 }]}>+</Text>
-                      </Pressable>
-                      <Pressable onPress={() => stepThreshold(-1)} hitSlop={6}>
-                        <Text style={[hubText.caption, { color: c.text300 }]}>−</Text>
-                      </Pressable>
-                    </View>
+                    <MedsRoundAction icon={Plus} tone="quiet" size={34} onPress={() => stepThreshold(1)} accessibilityLabel={tx('მეტი', 'More')} />
                   </View>
                 </View>
               </>
@@ -339,7 +367,7 @@ export function MedicationSetupForm({
                       borderRadius: 20,
                       alignItems: 'center',
                       justifyContent: 'center',
-                      backgroundColor: active ? hubTint(teal, dark) : 'transparent',
+                      backgroundColor: active ? hubTint(accent, dark) : 'transparent',
                     }}
                   >
                     <View style={{ width: 26, height: 26, borderRadius: 13, backgroundColor: color, borderWidth: color === '#E5E7EB' ? 1 : 0, borderColor: c.bg300 }} />
@@ -393,6 +421,23 @@ export function MedicationSetupForm({
   );
 }
 
+const DAY_PRESETS = [
+  { key: 'all', label: tx('ყოველდღე', 'Every day'), summary: tx('ყოველდღე', 'Every day'), days: [0, 1, 2, 3, 4, 5, 6] },
+  { key: 'weekdays', label: tx('ორშ–პარ', 'Mon–Fri'), summary: tx('სამუშაო დღეებში', 'On weekdays'), days: [0, 1, 2, 3, 4] },
+  { key: 'weekend', label: tx('შაბ–კვ', 'Sat–Sun'), summary: tx('შაბათ-კვირას', 'At weekends'), days: [5, 6] },
+] as const;
+
+function sameDays(a: number[], b: readonly number[]) {
+  return a.length === b.length && b.every((day) => a.includes(day));
+}
+
+/** The chosen days in words — „ყოველდღე“ / „სამუშაო დღეები“ instead of seven names. */
+function daysLine(days: number[]): string {
+  if (!days.length) return ka.meds.noDaysSelected;
+  const preset = DAY_PRESETS.find((p) => sameDays(days, p.days));
+  return preset ? preset.summary : daysSummaryKa(days);
+}
+
 function Divider({ color }: { color: string }) {
   return <View style={{ height: StyleSheet.hairlineWidth, backgroundColor: color, marginLeft: 16 }} />;
 }
@@ -421,13 +466,23 @@ function ProfileMenuRowSwitch({
         <Icon size={19} color={tint} strokeWidth={1.9} />
       </View>
       <Text style={[hubText.cardTitle, { flex: 1, color: c.text100 }]}>{label}</Text>
-      <Switch value={value} onValueChange={onChange} trackColor={{ true: c.primary200, false: c.bg300 }} thumbColor="#fff" />
+      <Switch value={value} onValueChange={onChange} trackColor={{ true: medsInk(dark), false: c.bg300 }} thumbColor="#fff" />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   card: { borderRadius: HUB.cardRadius, overflow: 'hidden' },
+  day: { flex: 1, maxWidth: 46, aspectRatio: 1, borderRadius: 999, alignItems: 'center', justifyContent: 'center' },
+  nameInput: {
+    alignSelf: 'stretch',
+    minHeight: 52,
+    borderRadius: HUB.tileRadius,
+    paddingHorizontal: 16,
+    fontFamily: 'NotoSansGeorgian_700Bold',
+    fontSize: 18,
+    textAlign: 'center',
+  },
   editBadge: {
     position: 'absolute',
     bottom: -4,
@@ -435,15 +490,10 @@ const styles = StyleSheet.create({
     borderRadius: 999,
     padding: 4,
   },
-  stepper: {
-    width: 76,
-    height: 40,
-    borderRadius: 12,
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 10,
-    gap: 6,
-  },
+  stepper: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  presets: { flexDirection: 'row', borderRadius: 14, padding: 3, gap: 3 },
+  preset: { flex: 1, minHeight: 38, borderRadius: 11, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 4 },
+  stepperValue: { width: 38, fontSize: 16, padding: 0, textAlign: 'center' },
   footer: {
     position: 'absolute',
     left: 0,

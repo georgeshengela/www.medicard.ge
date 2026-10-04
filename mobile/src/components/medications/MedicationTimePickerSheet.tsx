@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { Minus, Plus } from 'lucide-react-native';
-import { MedsChip, MedsRoundAction } from '@/components/medications/MedsHubUI';
+import { MedsChip, MedsRoundAction, medsInk } from '@/components/medications/MedsHubUI';
 import { MedicationSheetApplyButton, MedicationSheetModal } from '@/components/medications/MedicationSheetUI';
 import { ka } from '@/i18n/ka';
 import { formatTime24h } from '@/lib/medications.shared';
@@ -30,7 +30,7 @@ function parseTime24(value: string) {
 function TimeBox({ label, value, active, onPress }: { label: string; value: string; active: boolean; onPress: () => void }) {
   const c = useThemeColors();
   const dark = useIsDark();
-  const teal = hubInk('teal', dark);
+  const accent = medsInk(dark);
   return (
     <Pressable
       accessibilityRole="button"
@@ -44,7 +44,7 @@ function TimeBox({ label, value, active, onPress }: { label: string; value: stri
           alignSelf: 'stretch',
           minHeight: 88,
           borderRadius: 20,
-          backgroundColor: active ? hubTint(teal, dark) : c.bg200,
+          backgroundColor: active ? hubTint(accent, dark) : c.bg200,
           alignItems: 'center',
           justifyContent: 'center',
         }}
@@ -55,13 +55,13 @@ function TimeBox({ label, value, active, onPress }: { label: string; value: stri
             fontSize: 46,
             lineHeight: 54,
             letterSpacing: -1,
-            color: active ? teal : c.text100,
+            color: active ? accent : c.text100,
           }}
         >
           {value}
         </Text>
       </View>
-      <Text style={[hubText.caption, { color: active ? teal : c.text200 }]}>{label}</Text>
+      <Text style={[hubText.caption, { color: active ? accent : c.text200 }]}>{label}</Text>
     </Pressable>
   );
 }

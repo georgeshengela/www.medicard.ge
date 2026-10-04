@@ -1,15 +1,16 @@
 import React from 'react';
-import { Pressable, Text, View } from 'react-native';
+import { Pressable, ScrollView, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Stack, useRouter } from 'expo-router';
-import { ChevronLeft, Pill, ScanLine, Search } from 'lucide-react-native';
+import { PenLine, Pill, Search } from 'lucide-react-native';
 import { HubLinkRow } from '@/components/home/HubTiles';
 import { MedsIconTile } from '@/components/medications/MedsHubUI';
 import { ka } from '@/i18n/ka';
+import { tx } from '@/i18n/locale';
 import { useThemeColors } from '@/theme/colors';
 import { HUB, hubText } from '@/theme/hub';
 
-/** First step of adding a medication: pick how to find it. */
+/** First step of adding a medication: find it in the catalogue, or type it in by hand. */
 export default function AddMedicationIntroScreen() {
   const c = useThemeColors();
   const router = useRouter();
@@ -17,28 +18,25 @@ export default function AddMedicationIntroScreen() {
 
   return (
     <>
-      <Stack.Screen options={{ headerShown: false }} />
-      <View style={{ flex: 1, backgroundColor: c.bg100, paddingTop: insets.top + 8 }}>
-        <View style={{ paddingHorizontal: HUB.gutter - 4 }}>
-          <Pressable
-            onPress={() => (router.canGoBack() ? router.back() : router.replace('/(tabs)/medications'))}
-            hitSlop={8}
-            accessibilityRole="button"
-            accessibilityLabel={ka.common.back}
-            style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: c.surface, alignItems: 'center', justifyContent: 'center' }}
-          >
-            <ChevronLeft size={22} color={c.text100} strokeWidth={2.2} />
-          </Pressable>
-        </View>
-
-        <View style={{ flex: 1, justifyContent: 'center', paddingHorizontal: HUB.gutter, gap: 28 }}>
+      <Stack.Screen options={{ title: ka.meds.addMedicationScreenTitle }} />
+      <ScrollView
+        style={{ flex: 1, backgroundColor: c.bg100 }}
+        contentContainerStyle={{ flexGrow: 1, paddingHorizontal: HUB.gutter, paddingBottom: Math.max(insets.bottom, 16) + 12 }}
+        showsVerticalScrollIndicator={false}
+      >
+        <View style={{ flex: 1, justifyContent: 'center', gap: 28, paddingVertical: 24 }}>
           <View style={{ alignItems: 'center', gap: 20 }}>
-            <MedsIconTile icon={Pill} ink="teal" size={84} iconSize={40} style={{ borderRadius: 26 }} />
+            <MedsIconTile icon={Pill} size={84} iconSize={40} style={{ borderRadius: 26 }} />
             <View style={{ gap: 10, alignItems: 'center' }}>
-              <Text style={{ fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 26, lineHeight: 33, color: c.text100, textAlign: 'center' }}>
+              <Text accessibilityRole="header" style={{ fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 26, lineHeight: 33, color: c.text100, textAlign: 'center' }}>
                 {ka.meds.addIntroTitle}
               </Text>
-              <Text style={[hubText.body, { fontSize: 15, lineHeight: 23, color: c.text200, textAlign: 'center' }]}>{ka.meds.addIntroBody}</Text>
+              <Text style={[hubText.body, { fontSize: 15, lineHeight: 23, color: c.text200, textAlign: 'center' }]}>
+                {tx(
+                  'მოძებნე კატალოგში ან ჩაწერე სახელი ხელით — დროზე შეგახსენებთ და ყოველ მიღებას აღვნიშნავთ.',
+                  'Find it in the catalogue or type the name yourself — we remind you on time and keep track of every dose.',
+                )}
+              </Text>
             </View>
           </View>
 
@@ -61,11 +59,17 @@ export default function AddMedicationIntroScreen() {
           </Pressable>
         </View>
 
-        <View style={{ paddingHorizontal: HUB.gutter, paddingBottom: Math.max(insets.bottom, 16) + 12, gap: 10 }}>
-          <HubLinkRow icon={Search} ink="teal" title={ka.meds.addOptionSearch} detail={ka.meds.addOptionSearchHint} href="/medications/add/search" />
-          <HubLinkRow icon={ScanLine} ink="sky" title={ka.meds.scanWithAi} detail={ka.meds.addOptionScanHint} href="/medications/add/search" />
+        <View style={{ gap: 10 }}>
+          <HubLinkRow icon={Search} ink="blue" title={ka.meds.addOptionSearch} detail={ka.meds.addOptionSearchHint} href="/medications/add/search" />
+          <HubLinkRow
+            icon={PenLine}
+            ink="violet"
+            title={ka.meds.addCustom}
+            detail={tx('კატალოგში თუ ვერ იპოვე', 'If it is not in the catalogue')}
+            href="/medications/add/setup"
+          />
         </View>
-      </View>
+      </ScrollView>
     </>
   );
 }

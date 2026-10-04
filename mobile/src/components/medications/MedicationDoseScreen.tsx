@@ -20,12 +20,13 @@ import { HomeSectionHeading } from '@/components/home/HomeSectionHeading';
 import { MedicationHeaderAction } from '@/components/medications/MedicationNavHeader';
 import { MedicationPillIcon } from '@/components/medications/MedicationPillIcon';
 import { MedicationRescheduleSheet } from '@/components/medications/MedicationRescheduleSheet';
-import { MedsCard, MedsChip, MedsInfoRow, MedsStatusPill, medsPrimaryFill } from '@/components/medications/MedsHubUI';
+import { MedsCard, MedsChip, MedsInfoRow, MedsStatusPill, medsPrimaryFill, medsInk } from '@/components/medications/MedsHubUI';
 import { ProfileMenuRow } from '@/components/profile/ProfileMenuRow';
 import { DetailCardSkeleton } from '@/components/ui/Skeleton';
 import { useMedicationImages } from '@/hooks/useMedicationImages';
 import { useMedications } from '@/hooks/useMedications';
 import { ka } from '@/i18n/ka';
+import { tx } from '@/i18n/locale';
 import { api } from '@/lib/api';
 import {
   daysSummaryKa,
@@ -39,10 +40,11 @@ import {
 import { useIsDark, useThemeColors } from '@/theme/colors';
 import { HUB, hubInk, hubText, hubTint } from '@/theme/hub';
 
+/** 04.09.26 — short enough for „დაწყება – დასრულება“ on one line. */
 function shortDate(iso?: string) {
-  if (!iso) return '';
+  if (!iso) return '…';
   const [y, m, d] = iso.split('-');
-  return `${d}.${m}.${y}`;
+  return `${d}.${m}.${y.slice(2)}`;
 }
 
 export function MedicationDoseScreen() {
@@ -112,7 +114,7 @@ export function MedicationDoseScreen() {
   const form = ka.meds.formLabels[cfg.form ?? 'pills'];
   const amount = cfg.amount ?? 1;
   const remaining = cfg.remainingCount;
-  const knownAs = cfg.genericName ? ka.meds.knownAs(cfg.genericName, med.medName) : med.dosage || null;
+  const knownAs = [cfg.genericName, cfg.strength].filter((v) => v && v !== med.medName).join(' · ') || null;
   const freqLabel =
     cfg.frequencyKind === 'weekly'
       ? ka.meds.frequencyWeekly
@@ -124,14 +126,15 @@ export function MedicationDoseScreen() {
   const meal = cfg.mealTiming && cfg.mealTiming !== 'any' ? ka.meds.mealTiming[cfg.mealTiming] : null;
   const daysLabel = cfg.daysOfWeek?.length && cfg.daysOfWeek.length < 7 ? daysSummaryKa(cfg.daysOfWeek) : ka.meds.frequencyDaily;
   const course = cfg.startDate || cfg.endDate ? `${shortDate(cfg.startDate)} – ${shortDate(cfg.endDate)}` : null;
-  const teal = hubInk('teal', dark);
+  const accent = medsInk(dark);
   const primary = medsPrimaryFill(c, dark);
 
   return (
     <>
       <Stack.Screen
         options={{
-          title: ka.meds.scheduleScreenTitle,
+          // Opened from a dose → „მიღება · 09:00“; from her list of medications → „მედიკამენტი“.
+          title: time ? `${ka.meds.scheduleScreenTitle} · ${formatTime24h(doseTime)}` : ka.meds.detailTitle,
           headerRight: () => <MedicationHeaderAction icon={Trash2} onPress={remove} accessibilityLabel={ka.meds.deleteFromSchedule} />,
         }}
       />
@@ -142,7 +145,7 @@ export function MedicationDoseScreen() {
         showsVerticalScrollIndicator={false}
       >
         <MedsCard style={{ alignItems: 'center', gap: 14, paddingVertical: 26 }}>
-          <View style={[s.hero, { backgroundColor: hubTint(teal, dark) }]}>
+          <View style={[s.hero, { backgroundColor: hubTint(accent, dark) }]}>
             <MedicationPillIcon color={cfg.pillColor} shape={cfg.pillShape ?? 'long'} size={72} imageUrl={images[id] ?? cfg.imageUrl} />
           </View>
           <View style={{ alignItems: 'center', gap: 4 }}>
@@ -164,8 +167,8 @@ export function MedicationDoseScreen() {
         <View>
           <HomeSectionHeading title={ka.meds.doseActionsTitle} />
           <MedsCard style={{ flexDirection: 'row', gap: 10, paddingVertical: 20 }}>
-            <DoseAction label={ka.meds.actionTake} fill={primary} color={c.onPrimary} icon={Check} onPress={() => void markDose('taken')} />
-            <DoseAction label={ka.meds.actionReschedule} fill={hubTint(teal, dark)} color={teal} icon={Clock} onPress={() => setRescheduleOpen(true)} />
+            <DoseAction label={ka.meds.actionTake} fill={primary} color="#FFFFFF" icon={Check} onPress={() => void markDose('taken')} />
+            <DoseAction label={ka.meds.actionReschedule} fill={hubTint(accent, dark)} color={accent} icon={Clock} onPress={() => setRescheduleOpen(true)} />
             <DoseAction label={ka.meds.actionSkip} fill={c.dangerBg} color={c.danger} icon={X} onPress={() => void markDose('skipped')} />
           </MedsCard>
         </View>
@@ -173,7 +176,7 @@ export function MedicationDoseScreen() {
         <View>
           <HomeSectionHeading title={ka.meds.detailsTitle} />
           <MedsCard padded={false}>
-            <MedsInfoRow icon={Pill} ink="teal" label={ka.meds.doseAmountLabel} value={ka.meds.doseAmountLine(amount, form)} />
+            <MedsInfoRow icon={Pill} label={tx('ერთ მიღებაზე', 'Per dose')} value={ka.meds.doseAmountLine(amount, form)} />
             {remaining != null ? <MedsInfoRow icon={Boxes} ink="sky" label={ka.meds.remainingLabel} value={ka.meds.pillsLeft(remaining)} /> : null}
             <MedsInfoRow icon={CalendarDays} ink="blue" label={ka.meds.daysOfWeekLabel} value={daysLabel} />
             {course ? <MedsInfoRow icon={CalendarRange} ink="violet" label={ka.meds.courseLabel} value={course} /> : null}

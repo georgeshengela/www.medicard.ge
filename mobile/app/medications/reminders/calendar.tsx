@@ -2,7 +2,7 @@ import React, { useCallback, useMemo, useRef } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View, type LayoutChangeEvent } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Stack, useRouter } from 'expo-router';
-import { ListChecks, Plus } from 'lucide-react-native';
+import { ListChecks } from 'lucide-react-native';
 import { MedicationHeaderAction } from '@/components/medications/MedicationNavHeader';
 import { MedsCard, medsPrimaryFill } from '@/components/medications/MedsHubUI';
 import { MONTHS_KA, WEEKDAYS_KA } from '@/constants/cycle';
@@ -142,10 +142,7 @@ export default function MedicationCalendarScreen() {
         options={{
           title: ka.meds.calendarTitle,
           headerRight: () => (
-            <View style={{ flexDirection: 'row', gap: 8 }}>
-              <MedicationHeaderAction icon={ListChecks} onPress={() => router.push('/medications/reminders')} accessibilityLabel={ka.meds.calendarOpenSchedule} />
-              <MedicationHeaderAction icon={Plus} onPress={() => router.push('/medications/add/search')} accessibilityLabel={ka.meds.quickAdd} />
-            </View>
+            <MedicationHeaderAction icon={ListChecks} onPress={() => router.push('/medications/reminders')} accessibilityLabel={ka.meds.calendarOpenSchedule} />
           ),
         }}
       />
@@ -189,12 +186,9 @@ export default function MedicationCalendarScreen() {
               if (status === 'skipped' || status === 'mixed') skipped += 1;
               if (status === 'planned' && cell.date >= today) planned += 1;
             }
+            // Counts as coloured marks (● 4 · ● 1) so the line never truncates next to the month name.
             const summary =
-              taken + skipped > 0
-                ? [taken ? ka.meds.calendarTakenCount(taken) : null, skipped ? ka.meds.calendarSkippedCount(skipped) : null].filter(Boolean).join(' · ')
-                : planned > 0
-                  ? ka.meds.calendarPlannedCount(planned)
-                  : ka.meds.calendarNoStatus;
+              taken + skipped > 0 ? null : planned > 0 ? ka.meds.calendarPlannedCount(planned) : ka.meds.calendarNoStatus;
 
             return (
               <View key={key} onLayout={onMonthLayout(key)}>
@@ -204,9 +198,20 @@ export default function MedicationCalendarScreen() {
                       {MONTHS_KA[month]}
                     </Text>
                     <Text style={[hubText.caption, { color: c.text300, flex: 1 }]}>{year}</Text>
-                    <Text numberOfLines={1} style={[hubText.small, { color: c.text200 }]}>
-                      {summary}
-                    </Text>
+                    {summary ? (
+                      <Text numberOfLines={1} style={[hubText.small, { color: c.text200 }]}>
+                        {summary}
+                      </Text>
+                    ) : (
+                      <View
+                        style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}
+                        accessible
+                        accessibilityLabel={[taken ? ka.meds.calendarTakenCount(taken) : null, skipped ? ka.meds.calendarSkippedCount(skipped) : null].filter(Boolean).join(', ')}
+                      >
+                        {taken ? <CountMark color={c.success} count={taken} /> : null}
+                        {skipped ? <CountMark color={c.danger} count={skipped} /> : null}
+                      </View>
+                    )}
                   </View>
 
                   {Array.from({ length: cells.length / 7 }, (_, week) => (
@@ -249,6 +254,16 @@ export default function MedicationCalendarScreen() {
         </ScrollView>
       </View>
     </>
+  );
+}
+
+function CountMark({ color, count }: { color: string; count: number }) {
+  const c = useThemeColors();
+  return (
+    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
+      <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: color }} />
+      <Text style={[hubText.value, { fontSize: 13, color: c.text100 }]}>{count}</Text>
+    </View>
   );
 }
 

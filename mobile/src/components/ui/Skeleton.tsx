@@ -241,25 +241,10 @@ export function MedsHubSkeleton() {
       <View
         accessibilityRole="progressbar"
         accessibilityLabel={ka.common.loading}
-        style={{ flex: 1, paddingHorizontal: 16, paddingTop: 8 }}
+        style={{ flex: 1, paddingHorizontal: 20 }}
       >
-        <SkeletonSurface style={{ marginBottom: 16 }}>
-          <View style={{ flexDirection: 'row', gap: 16 }}>
-            <View style={{ flex: 1, alignItems: 'center', gap: 8 }}>
-              <Bone width={48} height={22} />
-              <Bone width="70%" height={10} />
-            </View>
-            <View style={{ flex: 1, alignItems: 'center', gap: 8 }}>
-              <Bone width={48} height={22} />
-              <Bone width="70%" height={10} />
-            </View>
-            <View style={{ flex: 1, alignItems: 'center', gap: 8 }}>
-              <Bone width={48} height={22} />
-              <Bone width="70%" height={10} />
-            </View>
-          </View>
-          <Bone height={88} radius={16} style={{ marginTop: 16 }} />
-        </SkeletonSurface>
+        {/* MEDIPILL hero: ring + title, next dose, the week's seven compartments. */}
+        <Bone height={232} radius={22} style={{ marginBottom: 28 }} />
         <Bone width="36%" height={14} style={{ marginBottom: 10, marginLeft: 4 }} />
         <ListRowsSkeleton rows={3} padded={false} />
       </View>

@@ -1,4 +1,3 @@
-import { brandHex } from '@/theme/brandTone';
 import React from 'react';
 import { ActivityIndicator, Image, Pressable, StyleSheet, Text, View, type ImageSourcePropType, type StyleProp, type ViewStyle } from 'react-native';
 import Svg, { Circle } from 'react-native-svg';
@@ -6,6 +5,7 @@ import { Check, Clock, X, type LucideIcon } from 'lucide-react-native';
 import { ka } from '@/i18n/ka';
 import { useIsDark, useThemeColors, type Palette } from '@/theme/colors';
 import { HUB, hubInk, hubText, hubTint, type HubInk } from '@/theme/hub';
+import { moduleInk } from '@/theme/moduleBrand';
 import type { DoseStatus } from '@/types/medications';
 
 /**
@@ -14,13 +14,27 @@ import type { DoseStatus } from '@/types/medications';
  * Nothing here draws a border or a shadow.
  */
 
-/** Filled CTA colour — dark uses the deeper teal so white text keeps contrast. */
-export function medsPrimaryFill(c: Palette, dark: boolean): string {
-  return dark ? brandHex('#0D9488') : c.primary200;
+/**
+ * MEDIPILL's accent (owner 2026-10-04: the module in its own blue, like MEDILAB's indigo): selected
+ * chips, today markers, tonal buttons. Module signature colours never follow the women's rose tone.
+ */
+export function medsInk(dark: boolean): string {
+  return moduleInk('pill', dark);
+}
+
+/** Filled CTA colour — the signature blue; dark uses a deeper step so white text keeps contrast. */
+export function medsPrimaryFill(_c: Palette, dark: boolean): string {
+  return dark ? '#2563EB' : '#1D4ED8';
+}
+
+/** A hub ink by name, or MEDIPILL's blue when none is given. */
+function inkOf(ink: HubInk | undefined, dark: boolean): string {
+  return ink ? hubInk(ink, dark) : medsInk(dark);
 }
 
 /** Pill colour swatches offered in the add-medication form. */
 export const PILL_COLORS = [
+  '#3B82F6',
   '#14B8A6',
   '#1E3A8A',
   '#E5E7EB',
@@ -52,7 +66,7 @@ export function MedsCard({
 
 export function MedsIconTile({
   icon: Icon,
-  ink = 'teal',
+  ink,
   size = HUB.tile,
   iconSize = 21,
   style,
@@ -64,7 +78,7 @@ export function MedsIconTile({
   style?: StyleProp<ViewStyle>;
 }) {
   const dark = useIsDark();
-  const inkHex = hubInk(ink, dark);
+  const inkHex = inkOf(ink, dark);
   return (
     <View
       style={[
@@ -94,7 +108,7 @@ export function MedsButton({
   disabled,
   loading,
   compact,
-  ink = 'teal',
+  ink,
   style,
   accessibilityLabel,
 }: {
@@ -111,9 +125,9 @@ export function MedsButton({
 }) {
   const c = useThemeColors();
   const dark = useIsDark();
-  const inkHex = hubInk(ink, dark);
+  const inkHex = inkOf(ink, dark);
   const palette = {
-    primary: { bg: medsPrimaryFill(c, dark), fg: c.onPrimary },
+    primary: { bg: medsPrimaryFill(c, dark), fg: '#FFFFFF' },
     tonal: { bg: hubTint(inkHex, dark), fg: inkHex },
     quiet: { bg: c.bg200, fg: c.text100 },
     danger: { bg: c.dangerBg, fg: c.danger },
@@ -159,7 +173,7 @@ export function MedsRoundAction({
   accessibilityLabel,
   tone = 'quiet',
   size = 40,
-  ink = 'teal',
+  ink,
 }: {
   icon: LucideIcon;
   onPress: () => void;
@@ -170,9 +184,9 @@ export function MedsRoundAction({
 }) {
   const c = useThemeColors();
   const dark = useIsDark();
-  const inkHex = hubInk(ink, dark);
+  const inkHex = inkOf(ink, dark);
   const palette = {
-    primary: { bg: medsPrimaryFill(c, dark), fg: c.onPrimary },
+    primary: { bg: medsPrimaryFill(c, dark), fg: '#FFFFFF' },
     tonal: { bg: hubTint(inkHex, dark), fg: inkHex },
     quiet: { bg: c.bg200, fg: c.text100 },
     danger: { bg: c.dangerBg, fg: c.danger },
@@ -201,7 +215,7 @@ export function MedsChip({
   label,
   active,
   onPress,
-  ink = 'teal',
+  ink,
   style,
 }: {
   label: string;
@@ -212,7 +226,7 @@ export function MedsChip({
 }) {
   const c = useThemeColors();
   const dark = useIsDark();
-  const inkHex = hubInk(ink, dark);
+  const inkHex = inkOf(ink, dark);
   return (
     <Pressable
       accessibilityRole={onPress ? 'button' : undefined}
@@ -319,7 +333,7 @@ export function MedsProgressBar({ progress, color, track, height = 6 }: { progre
 /** Label / value row for a details card (static, no chevron). */
 export function MedsInfoRow({
   icon,
-  ink = 'teal',
+  ink,
   label,
   value,
   isLast,
@@ -349,7 +363,7 @@ export function MedsInfoRow({
 
 export function MedsEmptyState({
   icon,
-  ink = 'teal',
+  ink,
   art,
   title,
   body,

@@ -60,36 +60,46 @@ export default function MedicationInteractionScreen() {
         contentContainerStyle={{ paddingHorizontal: HUB.gutter, paddingTop: 4, paddingBottom: insets.bottom + 32, gap: HUB.sectionGap - 6 }}
         showsVerticalScrollIndicator={false}
       >
+        {/* One card: what Medi checks, which medications go in, and the button. */}
         <MedsCard style={{ gap: 16 }}>
-          <View style={{ flexDirection: 'row', gap: 14, alignItems: 'flex-start' }}>
+          <View style={{ flexDirection: 'row', gap: 14, alignItems: 'center' }}>
             <MedsIconTile icon={ShieldCheck} ink="violet" size={48} iconSize={24} />
-            <View style={{ flex: 1, gap: 4 }}>
-              <Text style={[hubText.cardTitle, { fontSize: 16, lineHeight: 23, color: c.text100 }]}>{ka.meds.interactionScreenTitle}</Text>
-              <Text style={[hubText.body, { color: c.text200 }]}>{ka.meds.interactionScreenBody}</Text>
-            </View>
+            <Text style={[hubText.cardTitle, { flex: 1, fontSize: 16, lineHeight: 23, color: c.text100 }]}>
+              {tx('როგორ მოქმედებენ ერთმანეთზე', 'How they work together')}
+            </Text>
           </View>
-          <MedsButton label={ka.meds.reviewCta} icon={ShieldCheck} loading={busy} disabled={activeMeds.length === 0} onPress={runReview} />
+          <Text style={[hubText.body, { color: c.text200 }]}>
+            {tx(
+              'Medi შენს აქტიურ წამლებს ერთად გადახედავს და გეტყვის, რას მიაქციო ყურადღება. საბოლოო სიტყვა ექიმისა და ფარმაცევტისაა.',
+              'Medi looks at your active medications together and tells you what to watch for. The final word is your doctor’s and pharmacist’s.',
+            )}
+          </Text>
+          {activeMeds.length === 0 ? (
+            <>
+              <Text style={[hubText.body, { color: c.text200 }]}>{ka.meds.reviewNoMeds}</Text>
+              <MedsButton label={ka.meds.addMedicationCta} icon={Plus} tone="tonal" onPress={() => router.push('/medications/add')} />
+            </>
+          ) : (
+            <>
+              <View style={{ gap: 8 }}>
+                <Text style={[hubText.caption, { color: c.text300 }]}>{`${ka.meds.reviewChecks} · ${activeMeds.length}`}</Text>
+                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+                  {activeMeds.map((med) => (
+                    <MedsChip key={med.id} label={med.medName} />
+                  ))}
+                </View>
+              </View>
+              <MedsButton
+                label={review ? tx('თავიდან შემოწმება', 'Check again') : tx('შემოწმება', 'Check')}
+                icon={ShieldCheck}
+                loading={busy}
+                onPress={runReview}
+              />
+            </>
+          )}
         </MedsCard>
 
         {declined && !busy ? <AiConsentDeclinedNote onRetry={() => void runReview()} /> : null}
-
-        <View>
-          <HomeSectionHeading title={ka.meds.reviewChecks} />
-          <MedsCard style={{ gap: 12 }}>
-            {activeMeds.length === 0 ? (
-              <>
-                <Text style={[hubText.body, { color: c.text200 }]}>{ka.meds.reviewNoMeds}</Text>
-                <MedsButton label={ka.meds.addMedicationCta} icon={Plus} tone="tonal" onPress={() => router.push('/medications/add/search')} />
-              </>
-            ) : (
-              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-                {activeMeds.map((med) => (
-                  <MedsChip key={med.id} label={med.medName} />
-                ))}
-              </View>
-            )}
-          </MedsCard>
-        </View>
 
         {review ? (
           <View>

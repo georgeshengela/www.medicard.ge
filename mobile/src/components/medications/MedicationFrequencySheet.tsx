@@ -4,6 +4,7 @@ import { MedicationSheetApplyButton, MedicationSheetModal } from '@/components/m
 import { ka } from '@/i18n/ka';
 import { useIsDark, useThemeColors } from '@/theme/colors';
 import { hubInk, hubText, hubTint } from '@/theme/hub';
+import { medsInk } from '@/components/medications/MedsHubUI';
 
 const OPTIONS = Array.from({ length: 12 }, (_, i) => i + 1);
 
@@ -18,7 +19,7 @@ type Props = {
 export function MedicationFrequencySheet({ visible, value, onClose, onApply }: Props) {
   const c = useThemeColors();
   const dark = useIsDark();
-  const teal = hubInk('teal', dark);
+  const accent = medsInk(dark);
   const [draft, setDraft] = useState(value);
 
   useEffect(() => {
@@ -58,7 +59,7 @@ export function MedicationFrequencySheet({ visible, value, onClose, onApply }: P
                   borderRadius: 16,
                   alignItems: 'center',
                   justifyContent: 'center',
-                  backgroundColor: active ? hubTint(teal, dark) : c.bg200,
+                  backgroundColor: active ? hubTint(accent, dark) : c.bg200,
                 }}
               >
                 <Text
@@ -66,7 +67,7 @@ export function MedicationFrequencySheet({ visible, value, onClose, onApply }: P
                     fontFamily: 'NotoSansGeorgian_700Bold',
                     fontSize: 22,
                     lineHeight: 28,
-                    color: active ? teal : c.text100,
+                    color: active ? accent : c.text100,
                   }}
                 >
                   {n}

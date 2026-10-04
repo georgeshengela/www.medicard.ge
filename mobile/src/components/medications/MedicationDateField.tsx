@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Calendar, ChevronDown, ChevronLeft, ChevronRight } from 'lucide-react-native';
 import { MedicationSheetApplyButton, MedicationSheetModal } from '@/components/medications/MedicationSheetUI';
-import { MedsIconTile, MedsRoundAction, medsPrimaryFill } from '@/components/medications/MedsHubUI';
+import { MedsIconTile, MedsRoundAction, medsPrimaryFill, medsInk } from '@/components/medications/MedsHubUI';
 import { MONTHS_KA, WEEKDAYS_KA } from '@/constants/cycle';
 import { ka } from '@/i18n/ka';
 import { digitsToYmd, isoToDigits, toDigits, ymdToDigits } from '@/lib/birthdate';
@@ -142,7 +142,7 @@ function MedicationCalendarModal({
 }) {
   const c = useThemeColors();
   const dark = useIsDark();
-  const teal = hubInk('teal', dark);
+  const accent = medsInk(dark);
   const primary = medsPrimaryFill(c, dark);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const now = useMemo(() => new Date(), [visible]);
@@ -230,10 +230,10 @@ function MedicationCalendarModal({
                       paddingVertical: 14,
                       borderRadius: 14,
                       alignItems: 'center',
-                      backgroundColor: selected ? hubTint(teal, dark) : c.bg200,
+                      backgroundColor: selected ? hubTint(accent, dark) : c.bg200,
                     }}
                   >
-                    <Text style={[hubText.value, { color: selected ? teal : c.text100 }]}>{year}</Text>
+                    <Text style={[hubText.value, { color: selected ? accent : c.text100 }]}>{year}</Text>
                   </Pressable>
                 );
               })}
@@ -268,14 +268,14 @@ function MedicationCalendarModal({
                         borderRadius: 999,
                         alignItems: 'center',
                         justifyContent: 'center',
-                        backgroundColor: selected ? primary : cell.isToday ? hubTint(teal, dark) : 'transparent',
+                        backgroundColor: selected ? primary : cell.isToday ? hubTint(accent, dark) : 'transparent',
                         opacity: cell.disabled ? 0.28 : 1,
                       }}
                     >
                       <Text
                         style={[
                           hubText.value,
-                          { fontSize: 14, color: selected ? '#FFFFFF' : cell.isToday ? teal : cell.inMonth ? c.text100 : c.text300 },
+                          { fontSize: 14, color: selected ? '#FFFFFF' : cell.isToday ? accent : cell.inMonth ? c.text100 : c.text300 },
                         ]}
                       >
                         {cell.day}
