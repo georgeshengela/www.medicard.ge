@@ -8,7 +8,7 @@ import { EmptyState } from '@/components/EmptyState';
 import { PETS_ART } from '@/constants/appArt';
 import { PetHealthStatus } from '@/components/pets/PetHealthStatus';
 import { allergyCategoryIcon } from '@/components/pets/PetHealthForms';
-import { PetListRow, PetPageScroll } from '@/components/pets/PetScreen';
+import { PetListGroup, PetListRow, PetPageScroll } from '@/components/pets/PetScreen';
 import { ka } from '@/i18n/ka';
 import { api, type Pet, type PetAllergy } from '@/lib/api';
 import { formatCycleDateKa } from '@/lib/cycleCivilDateKa';
@@ -58,7 +58,8 @@ export default function PetAllergiesScreen() {
         {items.length === 0 ? (
           <EmptyState art={PETS_ART.allergy} title={ka.pets.allergiesEmpty} body={ka.pets.allergiesEmptyBody} />
         ) : (
-          items.map((row) => (
+          <PetListGroup>
+          {items.map((row) => (
             <PetListRow
               key={row.id}
               title={row.name}
@@ -68,7 +69,8 @@ export default function PetAllergiesScreen() {
               icon={allergyCategoryIcon(row.category)}
               onPress={() => router.push(`/pets/${id}/allergies/${row.id}`)}
             />
-          ))
+          ))}
+          </PetListGroup>
         )}
         <Button icon={ShieldAlert} label={ka.pets.allergyAdd} onPress={() => router.push(`/pets/${id}/allergies/new`)} />
       </PetPageScroll>

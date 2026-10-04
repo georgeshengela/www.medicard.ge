@@ -3,7 +3,7 @@ import {Image,Pressable,ScrollView,View} from 'react-native';
 import Svg,{Defs,LinearGradient,Rect,Stop} from 'react-native-svg';
 import {useFocusEffect,useRouter} from 'expo-router';
 import * as Location from 'expo-location';
-import {ArrowLeft,ArrowUpRight,BookOpen,ChevronRight,Compass,Flame,Gauge,Gift,Landmark,MapPin,Mountain,Play,Route,Settings2,Target,Timer,Trees,Trophy,Volume2,Waves} from 'lucide-react-native';
+import {ArrowUpRight,BookOpen,ChevronRight,Compass,Flame,Gauge,Gift,Landmark,MapPin,Mountain,Play,Route,Settings2,Target,Timer,Trees,Trophy,Volume2,Waves} from 'lucide-react-native';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {useAuth} from '@/store/AuthContext';
 import {useThemeColors} from '@/theme/colors';
@@ -20,9 +20,10 @@ import {useHeartbeat} from '@/lib/medipulsi/useHeartbeat';
 import {EMPTY_SIGNAL} from '@/lib/medipulsi/types';
 import {RunTargetSheet} from './RunTargetSheet';
 import {PulsePanels,type PulsePanel} from './PulsePanels';
-import {Action,ArtTile,Bar,Card,Copy,IconButton,RUN_CTA,Section,useRunInk} from './PulseUi';
+import {Action,ArtTile,Bar,Card,Copy,RUN_CTA,Section,useRunInk} from './PulseUi';
 import {MISSION_ART,RUN_GIFT,RUN_HERO,RUN_ICON} from './runArt';
-import {MediRunLogo,PulseGlyph} from './PulseIdentity';
+import {PulseGlyph} from './PulseIdentity';
+import {ModuleHeader,ModuleHeaderButton} from '@/components/brand/ModuleHeader';
 import {RouteThumb,WeekBars} from './RunVisuals';
 import {PulseTerritory} from './PulseTerritory';
 import {GrandPrizeCard} from './GrandPrizeCard';
@@ -74,11 +75,8 @@ export default function PulseHub(){
  const shown=allWalks?history:history.slice(0,3);
 
  return <View style={{flex:1,backgroundColor:c.bg100}}><ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{paddingTop:insets.top+12,paddingBottom:insets.bottom+32,paddingHorizontal:HUB.gutter,gap:HUB.sectionGap}}>
-  <View style={{flexDirection:'row',alignItems:'center',gap:12}}>
-   <IconButton label={tx('MEDICARD-ში დაბრუნება', 'Back to MEDICARD')} icon={ArrowLeft} onPress={leave}/>
-   <View style={{flex:1}}><MediRunLogo/><Copy muted size={11}>{dayMoment()} {tx('· შენი ქალაქის პულსი', '· your city’s pulse')}</Copy></View>
-   <IconButton label={tx('პარამეტრები', 'Settings')} icon={Settings2} onPress={()=>setPanel('settings')}/>
-  </View>
+  <ModuleHeader module="run" backLabel={tx('MEDICARD-ში დაბრუნება', 'Back to MEDICARD')} onBack={leave} subtitle={`${dayMoment()} ${tx('· შენი ქალაქის პულსი', '· your city’s pulse')}`}
+   right={<ModuleHeaderButton label={tx('პარამეტრები', 'Settings')} icon={Settings2} onPress={()=>setPanel('settings')}/>}/>
 
   {/* The page's one spotlight. */}
   <View style={{backgroundColor:HUB.spotlightBg,borderRadius:HUB.cardRadius,overflow:'hidden'}}>

@@ -1,3 +1,5 @@
+import { TimeField } from '@/components/ui/TimePickerSheet';
+import { MODULE_BRANDS } from '@/theme/moduleBrand';
 import React, { useCallback, useRef, useState } from 'react';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { Check, Clock, Package, Pencil, Pill } from 'lucide-react-native';
@@ -115,9 +117,8 @@ export default function PetCareRecordScreen() {
             disabled={saving}
             onPress={() => void save()}
           />
-          {mode === 'given' && kind ? (
-            <Button label={ka.pets.alsoPlanNext} variant="ghost" onPress={goPlan} />
-          ) : null}
+          {/* An optional next step, not an alternative to saving — so it sits under it as a link. */}
+          {mode === 'given' && kind ? <Button label={ka.pets.alsoPlanNext} variant="ghost" size="sm" onPress={goPlan} /> : null}
         </>
       }
     >
@@ -154,15 +155,7 @@ export default function PetCareRecordScreen() {
       {mode === 'given' ? (
         <>
           <DateField figma label={ka.pets.administeredOn} value={dateDigits} onChangeText={setDateDigits} showAge={false} />
-          <Input
-            figma
-            icon={Clock}
-            label={ka.pets.administeredTime}
-            value={time}
-            onChangeText={setTime}
-            placeholder="09:00"
-            hint={ka.pets.timeUnknown}
-          />
+          <TimeField label={ka.pets.administeredTime} value={time} onChange={setTime} hint={ka.pets.timeUnknown} fill={MODULE_BRANDS.vet.ink.light} />
           <Input figma icon={Pill} label={ka.pets.dose} value={dose} onChangeText={setDose} />
           <Input
             figma

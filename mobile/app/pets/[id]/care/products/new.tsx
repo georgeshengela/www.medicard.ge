@@ -7,7 +7,7 @@ import { PetButton as Button } from '@/components/pets/PetUi';
 import { PetDateField as DateField } from '@/components/pets/PetDateField';
 import { PetInput as Input } from '@/components/pets/PetUi';
 import { CareKindChips } from '@/components/pets/PetCareChips';
-import { PetErrorText, PetFormScroll } from '@/components/pets/PetScreen';
+import { PetErrorText, PetFormScroll, PetFormActions } from '@/components/pets/PetScreen';
 import { ka } from '@/i18n/ka';
 import { api, type PetCareKind, type PetProduct } from '@/lib/api';
 import { isoToDigits } from '@/lib/birthdate';
@@ -54,19 +54,20 @@ export function PetProductForm({
       footer={
         <>
           <PetErrorText message={fieldError || error} />
-          <Button
-            icon={Check}
-            label={saving ? ka.pets.saving : ka.pets.save}
-            loading={saving}
-            onPress={() => {
-              if (saving) return;
-              if (!name.trim()) { setFieldError(tx('მიუთითე პროდუქტის სახელი.', 'Enter the product name.')); return; }
-              if (expires && !digitsToIso(expires)) { setFieldError(tx('შეამოწმე ვარგისიანობის თარიღი.', 'Check the expiry date.')); return; }
-              setFieldError(null);
-              onSubmit({ kind, name: name.trim(), formulation: formulation.trim() || null, batchId: batchId.trim() || null, notes: notes.trim() || null, expiresOn: digitsToIso(expires) });
-            }}
-          />
-          {footer}
+          <PetFormActions secondary={footer}>
+            <Button
+              icon={Check}
+              label={saving ? ka.pets.saving : ka.pets.save}
+              loading={saving}
+              onPress={() => {
+                if (saving) return;
+                if (!name.trim()) { setFieldError(tx('მიუთითე პროდუქტის სახელი.', 'Enter the product name.')); return; }
+                if (expires && !digitsToIso(expires)) { setFieldError(tx('შეამოწმე ვარგისიანობის თარიღი.', 'Check the expiry date.')); return; }
+                setFieldError(null);
+                onSubmit({ kind, name: name.trim(), formulation: formulation.trim() || null, batchId: batchId.trim() || null, notes: notes.trim() || null, expiresOn: digitsToIso(expires) });
+              }}
+            />
+          </PetFormActions>
         </>
       }
     >

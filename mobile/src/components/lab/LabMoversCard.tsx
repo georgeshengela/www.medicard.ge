@@ -1,14 +1,18 @@
 import React, { useId } from 'react';
-import { Pressable, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import Svg, { Circle, Defs, LinearGradient, Path, Stop } from 'react-native-svg';
-import { useFigmaLab } from '@/constants/figmaLabLayout';
-import { ka } from '@/i18n/ka';
+import { FlagPill, useMedilab } from '@/components/lab/MedilabUI';
+import { HUB, hubText } from '@/theme/hub';
 import { moverChangeLabel, type LabMover } from '@/lib/labMovers';
-import type { LabFlag } from '@/types/lab';
 
 const SPARK_W = 52;
 const SPARK_H = 26;
 
+/**
+ * „რა შეიცვალა“ — the biggest moves between her last two tests, one flat card. The spark is in the
+ * module indigo; the status pill (amber outside the range, green inside) carries the meaning, so a
+ * rise is never painted „bad“ just for going up.
+ */
 export function LabMoversCard({
   movers,
   onOpen,
@@ -16,89 +20,49 @@ export function LabMoversCard({
   movers: LabMover[];
   onOpen: (key: string) => void;
 }) {
-  const T = useFigmaLab();
+  const M = useMedilab();
   if (!movers.length) return null;
 
   return (
-    <View style={{ gap: 8 }}>
-      <Text style={{ fontFamily: 'NotoSansGeorgian_600SemiBold', fontSize: 18, color: T.textPrimary }}>{ka.lab.movers}</Text>
-      <View
-        style={{
-          backgroundColor: T.cardBg,
-          borderWidth: 1,
-          borderColor: T.border,
-          borderRadius: 16,
-          overflow: 'hidden',
-        }}
-      >
-        {movers.map((row, index) => {
-          const ink = row.up ? T.destructive : T.brand;
-          const soft = row.up ? T.destructiveSoft : T.brandSoft;
-          return (
-            <Pressable
-              key={row.key}
-              onPress={() => onOpen(row.key)}
-              style={{
-                minHeight: 52,
-                paddingHorizontal: 12,
-                paddingVertical: 8,
-                flexDirection: 'row',
-                alignItems: 'center',
-                gap: 10,
-                borderTopWidth: index ? 1 : 0,
-                borderTopColor: T.border,
-              }}
-            >
-              <View style={{ width: 3, height: 28, borderRadius: 2, backgroundColor: ink }} />
-              <View style={{ width: SPARK_W, height: SPARK_H, borderRadius: 8, backgroundColor: soft, overflow: 'hidden' }}>
-                <LabMoverSpark values={row.values} color={ink} />
-              </View>
-              <View style={{ flex: 1, minWidth: 0 }}>
-                <Text
-                  numberOfLines={1}
-                  style={{ fontFamily: 'NotoSansGeorgian_600SemiBold', fontSize: 13, lineHeight: 18, color: T.textPrimary }}
-                >
-                  {row.name}
-                </Text>
-                <Text
-                  numberOfLines={1}
-                  style={{ fontFamily: 'NotoSansGeorgian_400Regular', fontSize: 11, lineHeight: 15, color: T.textSecondary }}
-                >
-                  {row.prevDisplay} → {row.lastDisplay}
-                  {row.unit ? ` ${row.unit}` : ''}
-                </Text>
-              </View>
-              <View style={{ alignItems: 'flex-end', gap: 3 }}>
-                <Text style={{ fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 13, lineHeight: 16, color: ink }}>
-                  {moverChangeLabel(row)}
-                </Text>
-                <View
-                  style={{
-                    backgroundColor: flagTone(row.flag, T).bg,
-                    borderRadius: 6,
-                    paddingHorizontal: 5,
-                    paddingVertical: 1,
-                  }}
-                >
-                  <Text
-                    numberOfLines={1}
-                    style={{
-                      fontFamily: 'NotoSansGeorgian_500Medium',
-                      fontSize: 10,
-                      lineHeight: 14,
-                      color: flagTone(row.flag, T).fg,
-                    }}
-                  >
-                    {row.prevFlag !== row.flag
-                      ? `${flagWord(row.prevFlag)} → ${flagWord(row.flag)}`
-                      : flagWord(row.flag)}
-                  </Text>
-                </View>
-              </View>
-            </Pressable>
-          );
-        })}
-      </View>
+    <View style={{ backgroundColor: M.c.surface, borderRadius: HUB.cardRadius, overflow: 'hidden' }}>
+      {movers.map((row, index) => (
+        <Pressable
+          key={row.key}
+          accessibilityRole="button"
+          accessibilityLabel={`${row.name}: ${row.prevDisplay} → ${row.lastDisplay} ${row.unit}, ${moverChangeLabel(row)}`}
+          onPress={() => onOpen(row.key)}
+          style={{ flexDirection: 'row', alignItems: 'center', gap: 12, paddingLeft: 14 }}
+        >
+          <View style={{ width: SPARK_W, height: SPARK_H + 6, borderRadius: 10, backgroundColor: M.inkSoft, alignItems: 'center', justifyContent: 'center' }}>
+            <LabMoverSpark values={row.values} color={M.ink} />
+          </View>
+          <View
+            style={{
+              flex: 1,
+              minWidth: 0,
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: 10,
+              paddingVertical: 12,
+              paddingRight: 14,
+              borderTopWidth: index ? StyleSheet.hairlineWidth : 0,
+              borderTopColor: M.c.bg300,
+            }}
+          >
+            <View style={{ flex: 1, minWidth: 0 }}>
+              <Text numberOfLines={1} style={[hubText.cardTitle, { fontSize: 14, color: M.c.text100 }]}>{row.name}</Text>
+              <Text numberOfLines={1} style={[hubText.caption, { color: M.c.text200 }]}>
+                {row.prevDisplay} → {row.lastDisplay}
+                {row.unit ? ` ${row.unit}` : ''}
+              </Text>
+            </View>
+            <View style={{ alignItems: 'flex-end', gap: 3 }}>
+              <Text style={{ fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 14, lineHeight: 18, color: M.c.text100 }}>{moverChangeLabel(row)}</Text>
+              <FlagPill flag={row.flag} />
+            </View>
+          </View>
+        </Pressable>
+      ))}
     </View>
   );
 }
@@ -145,17 +109,4 @@ export function LabMoverSpark({
       <Circle cx={lastX} cy={lastY} r={2.2} fill={color} />
     </Svg>
   );
-}
-
-function flagWord(flag: LabFlag): string {
-  if (flag === 'H') return ka.lab.above;
-  if (flag === 'L') return ka.lab.below;
-  if (flag === 'N') return ka.lab.normal;
-  return ka.lab.unknown;
-}
-
-function flagTone(flag: LabFlag, T: ReturnType<typeof useFigmaLab>) {
-  if (flag === 'H' || flag === 'L') return { bg: T.destructiveSoft, fg: T.destructive };
-  if (flag === 'N') return { bg: T.brandSoft, fg: T.brand };
-  return { bg: T.tabTrack, fg: T.textSecondary };
 }

@@ -1,5 +1,5 @@
 import { toned } from '@/theme/brandTone';
-import { useIsDark } from '@/theme/colors';
+import { useIsDark, useModuleTone, type ModuleTone } from '@/theme/colors';
 
 /** Figma 11369:93993 — AI Health Assistant chat tokens. */
 export const FIGMA_CHAT = toned({
@@ -10,6 +10,8 @@ export const FIGMA_CHAT = toned({
   textSecondary: '#4B5563',
   textMuted: '#6B7A80',
   textOnBrand: '#FFFFFF',
+  /** Filled send button. */
+  sendBg: '#0D9488',
   border: '#E5E7EB',
   borderTertiary: '#D1D5DB',
   cardBg: '#F5F7F7',
@@ -62,7 +64,22 @@ export const FIGMA_CHAT_DARK = toned({
   successBorder: '#166534',
 } as const);
 
+/** Inside a MEDI module with its own tone (ModuleToneProvider) the chat speaks that colour. */
+const MODULE_CHAT: Partial<Record<ModuleTone, { light: Record<string, string>; dark: Record<string, string> }>> = {
+  vet: {
+    light: { brand: '#0369A1', brandQuaternary: '#E0F2FE', brandBorderLight: '#BAE6FD', sendBg: '#0369A1' },
+    dark: { brand: '#0284C7', brandQuaternary: '#0C2A3D', brandBorderLight: '#075985', sendBg: '#0369A1' },
+  },
+  food: {
+    light: { brand: '#047857', brandQuaternary: '#D1FAE5', brandBorderLight: '#A7F3D0', sendBg: '#047857' },
+    dark: { brand: '#059669', brandQuaternary: '#022C22', brandBorderLight: '#065F46', sendBg: '#047857' },
+  },
+};
+
 export function useFigmaChat() {
   const dark = useIsDark();
-  return dark ? { ...FIGMA_CHAT, ...FIGMA_CHAT_DARK } : FIGMA_CHAT;
+  const tone = useModuleTone();
+  const base = dark ? { ...FIGMA_CHAT, ...FIGMA_CHAT_DARK } : FIGMA_CHAT;
+  const toned = tone ? MODULE_CHAT[tone] : undefined;
+  return toned ? { ...base, ...toned[dark ? 'dark' : 'light'] } : base;
 }

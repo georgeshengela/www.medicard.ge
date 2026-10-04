@@ -91,7 +91,8 @@ test('the drafted-question entry points stage the text in memory', () => {
     'src/components/cycle/CycleInsightDetailSheet.tsx': /mediPrefillRoute\(user\?\.id, text\)/,
     'app/cycle/summary.tsx': /mediPrefillRoute\(user\?\.id, chatContext\)/,
     'src/lib/cycleAskMediLaunch.ts': /mediPrefillRoute\(owner, question, 'doctor'\)/,
-    'app/lab/index.tsx': /mediPrefillRoute\(localAccountId\(\), labMediPrompt\(panels\)\)/,
+    'app/lab/index.tsx': /mediPrefillRoute\(localAccountId\(\), labMediPrompt\(shownPanels\)\)/,
+    'app/lab/[date].tsx': /mediPrefillRoute\(localAccountId\(\), prompt\)/,
     'app/symptoms/results.tsx': /mediPrefillRoute\(user\?\.id, state\.symptoms\.join/,
     'app/symptoms/condition/[id].tsx': /mediPrefillRoute\(localAccountId\(\),/,
   };

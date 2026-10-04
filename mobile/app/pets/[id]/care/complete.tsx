@@ -7,7 +7,7 @@ import { PetButton as Button } from '@/components/pets/PetUi';
 import { PetPanel as Card } from '@/components/pets/PetUi';
 import { PetDateField as DateField } from '@/components/pets/PetDateField';
 import { careKindArt } from '@/components/pets/PetCareChips';
-import { PetErrorText, PetFactRow, PetIconWell, PetPageScroll } from '@/components/pets/PetScreen';
+import { PetErrorText, PetFactRow, PetIconWell, PetPageScroll, PetFormScroll, PetFormActions } from '@/components/pets/PetScreen';
 import { ka } from '@/i18n/ka';
 import { ApiError, api, type Pet, type PetCareSchedule } from '@/lib/api';
 import { isoToDigits, parseCivilDate } from '@/lib/birthdate';
@@ -149,7 +149,19 @@ export default function PetCareCompleteScreen() {
   return (
     <>
       <Stack.Screen options={{ title: skip ? ka.pets.skipOccurrence : ka.pets.confirmCare }} />
-      <PetPageScroll>
+      <PetFormScroll
+        footer={schedule ? (
+          <PetFormActions secondary={<Button label={ka.common.cancel} variant="secondary" onPress={() => router.back()} />}>
+            <Button
+              icon={Check}
+              label={skip ? ka.pets.skipOccurrence : completeLabel(schedule.kind, ka.pets)}
+              loading={saving}
+              disabled={Boolean(stale)}
+              onPress={() => void submit(skip ? 'skip' : 'complete')}
+            />
+          </PetFormActions>
+        ) : undefined}
+      >
         <PetErrorText message={error} />
         <PetErrorText message={stale} />
         {stale ? <Button variant="secondary" label={tx('განახლებული გეგმის ნახვა', 'View updated plan')} onPress={() => router.replace(`/pets/${params.id}/care`)} /> : !schedule && error ? <Button label={tx('ხელახლა ცდა', 'Try again')} onPress={() => void load()} /> : null}
@@ -177,17 +189,8 @@ export default function PetCareCompleteScreen() {
         ) : (
           <Text className="text-sm text-text-300">{ka.pets.skipDoesNotAdminister}</Text>
         )}
-        {schedule ? (
-          <Button
-            icon={Check}
-            label={skip ? ka.pets.skipOccurrence : completeLabel(schedule.kind, ka.pets)}
-            loading={saving}
-            disabled={Boolean(stale)}
-            onPress={() => void submit(skip ? 'skip' : 'complete')}
-          />
-        ) : null}
-        <Button label={ka.common.cancel} variant="ghost" onPress={() => router.back()} />
-      </PetPageScroll>
+        {!schedule ? <Button label={ka.common.cancel} variant="ghost" onPress={() => router.back()} /> : null}
+      </PetFormScroll>
     </>
   );
 }

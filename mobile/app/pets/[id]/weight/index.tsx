@@ -9,7 +9,7 @@ import { EmptyState } from '@/components/EmptyState';
 import { PETS_ART } from '@/constants/appArt';
 import { HomeSectionTitle } from '@/components/home/HomeSectionTitle';
 import { PetHealthStatus } from '@/components/pets/PetHealthStatus';
-import { PetListRow, PetPageScroll } from '@/components/pets/PetScreen';
+import { PetListGroup, PetListRow, PetPageScroll } from '@/components/pets/PetScreen';
 import { PetWeightTrend } from '@/components/pets/PetWeightTrend';
 import { PetIconWell } from '@/components/pets/PetScreen';
 import { PetIntro } from '@/components/pets/PetUi';
@@ -63,8 +63,8 @@ export default function PetWeightHistoryScreen() {
     <>
       <Stack.Screen options={{ title: pet ? `${ka.pets.weightTitle} · ${pet.name}` : ka.pets.weightTitle }} />
       <PetPageScroll>
-        <PetIntro title={tx('პატარა ცვლილებებიც ჩანს.', 'Even small changes show.')} body={tx('ჩაწერე რეალური გაზომვები. წონის ცვლილება ვეტერინართან ერთად შეაფასე.', 'Log real measurements. Review weight changes together with your vet.')} icon={Scale} />
-        {latest ? (
+        {/* With measurements the trend card already leads with the latest value; this card only for a single one. */}
+        {latest && items.length < 2 ? (
           <Card>
             <View className="flex-row items-center">
               <PetIconWell art={PETS_ART.weight} size={56} />
@@ -77,24 +77,34 @@ export default function PetWeightHistoryScreen() {
               </View>
             </View>
           </Card>
-        ) : (
+        ) : !latest ? (
           <EmptyState art={PETS_ART.weight} title={ka.pets.weightEmpty} body={ka.pets.weightEmptyBody} />
-        )}
+        ) : null}
         {items.length ? (
           <View>
             <HomeSectionTitle title={ka.pets.weightTrendLabel} />
             <PetWeightTrend items={items} pet={pet} />
           </View>
         ) : null}
-        {items.map((row) => (
-          <PetListRow
-            key={row.id}
-            title={formatPetWeight(row, ka.pets)}
-            subtitle={[formatCycleDateKa(row.recordedOn), row.note].filter(Boolean).join(' · ')}
-            icon={Scale}
-            onPress={() => router.push(`/pets/${id}/weight/${row.id}`)}
-          />
-        ))}
+        {items.length ? (
+          <View>
+            <HomeSectionTitle title={tx('ყველა გაზომვა', 'All measurements')} />
+            <PetListGroup>
+              {items.map((row) => (
+                <PetListRow
+                  key={row.id}
+                  title={formatCycleDateKa(row.recordedOn)}
+                  subtitle={row.note ?? undefined}
+                  right={formatPetWeight(row, ka.pets)}
+                  onPress={() => router.push(`/pets/${id}/weight/${row.id}`)}
+                />
+              ))}
+            </PetListGroup>
+            <Text style={{ marginTop: 10, marginHorizontal: 4, fontFamily: 'NotoSansGeorgian_400Regular', fontSize: 12, lineHeight: 17, color: colors.text300 }}>
+              {tx('წონის ცვლილება ვეტერინართან ერთად შეაფასე.', 'Review weight changes together with your vet.')}
+            </Text>
+          </View>
+        ) : null}
         <Button icon={Scale} label={ka.pets.weightAdd} onPress={() => router.push(`/pets/${id}/weight/new`)} />
       </PetPageScroll>
     </>

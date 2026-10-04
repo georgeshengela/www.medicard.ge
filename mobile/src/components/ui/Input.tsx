@@ -2,7 +2,7 @@ import React, { forwardRef, useState } from 'react';
 import { Platform, Pressable, Text, TextInput, View, type TextInputProps } from 'react-native';
 import { Eye, EyeOff, type LucideIcon } from 'lucide-react-native';
 import { FIGMA_AUTH_SHADOW, useFigmaAuth } from '@/constants/figmaAuthLayout';
-import { useThemeColors } from '@/theme/colors';
+import { useThemeColors, useModuleTone } from '@/theme/colors';
 import { tx } from '@/i18n/locale';
 
 type Props = TextInputProps & {
@@ -22,9 +22,12 @@ export const Input = forwardRef<TextInput, Props>(function Input(
   const colors = useThemeColors();
   const auth = useFigmaAuth();
   const [focused, setFocused] = useState(false);
+  const moduleTone = useModuleTone();
   const [revealed, setRevealed] = useState(false);
 
-  const borderColor = error ? colors.danger : focused ? auth.primaryBg : figma ? auth.inputBorder : colors.bg300;
+  // Inside a module with its own tone (MEDIVET …) the focus ring follows that tone.
+  const focusColor = moduleTone ? colors.primary200 : auth.primaryBg;
+  const borderColor = error ? colors.danger : focused ? focusColor : figma ? auth.inputBorder : colors.bg300;
 
   const fieldStyle = figma
     ? {
@@ -63,7 +66,7 @@ export const Input = forwardRef<TextInput, Props>(function Input(
 
       <View style={[{ flexDirection: 'row', alignItems: 'center' }, fieldStyle]}>
         {Icon ? (
-          <Icon size={20} color={focused ? auth.primaryBg : auth.iconMuted} strokeWidth={2} />
+          <Icon size={20} color={focused ? focusColor : auth.iconMuted} strokeWidth={2} />
         ) : null}
 
         <TextInput

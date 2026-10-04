@@ -1,13 +1,12 @@
-import { brandHex } from '@/theme/brandTone';
 import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, Text, View } from 'react-native';
-import { useRouter } from 'expo-router';
 import * as Haptics from 'expo-haptics';
-import { Sparkles } from 'lucide-react-native';
+import { Link2 } from 'lucide-react-native';
 import { QuotaSheet } from '@/components/QuotaSheet';
 import { MedicardLogoMark } from '@/components/ui/MedicardLogoMark';
 import { APP_MODAL_OVERLAY, APP_MODAL_PROPS, Modal } from '@/components/ui/appModal';
-import { useFigmaLab } from '@/constants/figmaLabLayout';
+import { MedilabActionRow, useMedilab } from '@/components/lab/MedilabUI';
+import { tx } from '@/i18n/locale';
 import { ka } from '@/i18n/ka';
 import { ApiError, api } from '@/lib/api';
 import { isAiConsentDeclined } from '@/lib/aiConsentDecline';
@@ -26,8 +25,7 @@ export function LabAlignCard({
   panels: LabPanel[];
   onApplied: (next: LabPanel[]) => Promise<void>;
 }) {
-  const T = useFigmaLab();
-  const router = useRouter();
+  const M = useMedilab();
   const plan = usePlanUsage();
   const { applyUsage } = useAuth();
   const [quota, setQuota] = useState<number | undefined>(undefined);
@@ -96,64 +94,13 @@ export function LabAlignCard({
 
   return (
     <>
-      <View>
-        <Text style={{ fontFamily: 'NotoSansGeorgian_600SemiBold', fontSize: 18, color: T.textPrimary, marginBottom: 8 }}>
-          {ka.lab.alignTitle}
-        </Text>
-        <View
-          style={{
-            backgroundColor: T.cardBg,
-            borderWidth: 1,
-            borderColor: T.brand,
-            borderRadius: 16,
-            padding: 16,
-            gap: 14,
-            opacity: panels.length ? 1 : 0.55,
-            ...T.shadowXs,
-          }}
-        >
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
-            <View
-              style={{
-                width: 52,
-                height: 52,
-                borderRadius: 16,
-                backgroundColor: T.brandSoft,
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}
-            >
-              <MedicardLogoMark size={28} />
-            </View>
-            <View style={{ flex: 1, gap: 4 }}>
-              <Text style={{ fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 16, lineHeight: 22, color: T.textPrimary }}>
-                {ka.lab.alignHeadline}
-              </Text>
-              <Text style={{ fontFamily: 'NotoSansGeorgian_400Regular', fontSize: 13, lineHeight: 18, color: T.textSecondary }}>
-                {ka.lab.alignBody}
-              </Text>
-            </View>
-          </View>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel={ka.lab.alignCta}
-            onPress={start}
-            disabled={!panels.length}
-            style={{
-              height: 48,
-              borderRadius: 14,
-              backgroundColor: brandHex('#0D9488'),
-              flexDirection: 'row',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: 8,
-            }}
-          >
-            <Sparkles size={16} color="#FFFFFF" />
-            <Text style={{ fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 16, color: '#FFFFFF' }}>{ka.lab.alignCta}</Text>
-          </Pressable>
-        </View>
-      </View>
+      {/* A maintenance tool, so a quiet row — not a second hero on the page. */}
+      <MedilabActionRow
+        icon={Link2}
+        title={tx('სახელების გაერთიანება', 'Join names')}
+        body={tx('ერთ მაჩვენებელს ერთ გრაფიკზე აერთიანებს', 'Puts one value on one chart')}
+        onPress={start}
+      />
 
       <Modal visible={open} {...APP_MODAL_PROPS} onRequestClose={() => (busy ? undefined : setOpen(false))}>
         <View style={{ flex: 1, justifyContent: 'flex-end' }}>
@@ -163,7 +110,7 @@ export function LabAlignCard({
           />
           <View
             style={{
-              backgroundColor: T.cardBg,
+              backgroundColor: M.c.surface,
               borderTopLeftRadius: 24,
               borderTopRightRadius: 24,
               paddingHorizontal: 20,
@@ -178,17 +125,17 @@ export function LabAlignCard({
                   width: 64,
                   height: 64,
                   borderRadius: 20,
-                  backgroundColor: T.brandSoft,
+                  backgroundColor: M.inkSoft,
                   alignItems: 'center',
                   justifyContent: 'center',
                 }}
               >
-                {busy ? <ActivityIndicator color={T.brand} /> : <MedicardLogoMark size={34} />}
+                {busy ? <ActivityIndicator color={M.ink} /> : <MedicardLogoMark size={34} />}
               </View>
-              <Text style={{ fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 20, color: T.textPrimary, textAlign: 'center' }}>
+              <Text style={{ fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 20, color: M.c.text100, textAlign: 'center' }}>
                 {result ? ka.lab.alignDoneTitle : ka.lab.alignHeadline}
               </Text>
-              {declined && !busy ? null : <Text style={{ fontFamily: 'NotoSansGeorgian_400Regular', fontSize: 14, lineHeight: 20, color: T.textSecondary, textAlign: 'center' }}>
+              {declined && !busy ? null : <Text style={{ fontFamily: 'NotoSansGeorgian_400Regular', fontSize: 14, lineHeight: 20, color: M.c.text200, textAlign: 'center' }}>
                 {error
                   ? error
                   : result
@@ -201,20 +148,20 @@ export function LabAlignCard({
                     : stage}
               </Text>}
             </View>
-            {declined && !busy ? <AiConsentDeclinedNote background={T.pageBg} onRetry={() => void run()} /> : null}
-            {busy ? <Text style={{ textAlign: 'center', color: T.textMuted, fontFamily: 'NotoSansGeorgian_400Regular' }}>{ka.lab.alignBusy}</Text> : null}
+            {declined && !busy ? <AiConsentDeclinedNote background={M.c.bg100} onRetry={() => void run()} /> : null}
+            {busy ? <Text style={{ textAlign: 'center', color: M.c.text300, fontFamily: 'NotoSansGeorgian_400Regular' }}>{ka.lab.alignBusy}</Text> : null}
             {!busy ? (
               <Pressable
                 onPress={() => setOpen(false)}
                 style={{
                   height: 48,
                   borderRadius: 14,
-                  backgroundColor: brandHex('#0D9488'),
+                  backgroundColor: M.ink,
                   alignItems: 'center',
                   justifyContent: 'center',
                 }}
               >
-                <Text style={{ fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 16, color: '#FFFFFF' }}>{ka.lab.alignClose}</Text>
+                <Text style={{ fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 16, color: M.onInk }}>{ka.lab.alignClose}</Text>
               </Pressable>
             ) : null}
           </View>

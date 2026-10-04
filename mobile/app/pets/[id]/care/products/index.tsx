@@ -1,4 +1,7 @@
 import { PetLoading } from '@/components/pets/PetUi';
+import { PetHeaderButton } from '@/components/pets/PetUi';
+import { formatCycleDateKa } from '@/lib/cycleCivilDateKa';
+import { tx } from '@/i18n/locale';
 import React, { useCallback, useState } from 'react';
 import { Pressable, View } from 'react-native';
 import { Stack, useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
@@ -7,7 +10,7 @@ import { PetButton as Button } from '@/components/pets/PetUi';
 import { EmptyState } from '@/components/EmptyState';
 import { PETS_ART } from '@/constants/appArt';
 import { careKindArt } from '@/components/pets/PetCareChips';
-import { PetListRow, PetPageScroll } from '@/components/pets/PetScreen';
+import { PetListGroup, PetListRow, PetPageScroll } from '@/components/pets/PetScreen';
 import { ka } from '@/i18n/ka';
 import { api, type PetProduct } from '@/lib/api';
 import { kindLabel } from '@/lib/petsCare';
@@ -45,17 +48,7 @@ export default function PetProductsScreen() {
       <Stack.Screen
         options={{
           title: ka.pets.productsTitle,
-          headerRight: () => (
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel={ka.pets.productAdd}
-              onPress={goNew}
-              hitSlop={12}
-              className="active:opacity-70"
-            >
-              <Plus size={22} color={colors.primary200} strokeWidth={2.2} />
-            </Pressable>
-          ),
+          headerRight: () => <PetHeaderButton label={ka.pets.productAdd} icon={Plus} onPress={goNew} />,
         }}
       />
       <PetPageScroll>
@@ -64,15 +57,15 @@ export default function PetProductsScreen() {
             <Button icon={Plus} label={ka.pets.productAdd} onPress={goNew} />
           </EmptyState>
         ) : null}
-        {items.map((row) => (
+        {items.length ? <PetListGroup>{items.map((row) => (
           <PetListRow
             key={row.id}
             art={careKindArt(row.kind)}
             title={row.name}
-            subtitle={[kindLabel(row.kind, ka.pets), row.expiresOn].filter(Boolean).join(' · ')}
+            subtitle={[kindLabel(row.kind, ka.pets), row.expiresOn ? tx(`ვადა ${formatCycleDateKa(row.expiresOn)}`, `Expires ${formatCycleDateKa(row.expiresOn)}`) : null].filter(Boolean).join(' · ')}
             onPress={() => router.push(`/pets/${id}/care/products/${row.id}`)}
           />
-        ))}
+        ))}</PetListGroup> : null}
         {items.length ? <Button icon={Plus} label={ka.pets.productAdd} onPress={goNew} /> : null}
       </PetPageScroll>
     </>

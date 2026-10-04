@@ -1,7 +1,10 @@
+import { tx } from '@/i18n/locale';
+import { TimePickerSheet } from '@/components/ui/TimePickerSheet';
+import { MODULE_BRANDS } from '@/theme/moduleBrand';
 import React from 'react';
 import { Linking, Pressable, Text, View } from 'react-native';
 import { Switch } from '@/components/ui/AppSwitch';
-import { Clock } from 'lucide-react-native';
+import { ChevronRight, Clock } from 'lucide-react-native';
 import { PetButton as Button } from '@/components/pets/PetUi';
 import { PetInput as Input } from '@/components/pets/PetUi';
 import { ka } from '@/i18n/ka';
@@ -61,6 +64,7 @@ export function PetCareReminderCard({
   const [saving, setSaving] = React.useState(false);
   const [hour, setHour] = React.useState('09:00');
   const [followUp, setFollowUp] = React.useState(true);
+  const [clockOpen, setClockOpen] = React.useState(false);
 
   const load = React.useCallback(async () => {
     const prefs = await loadPetCareReminderPrefs();
@@ -121,8 +125,8 @@ export function PetCareReminderCard({
     }
   };
 
-  const saveClock = async () => {
-    const match = /^([01]\d|2[0-3]):([0-5]\d)$/.exec(hour.trim());
+  const saveClock = async (value: string = hour) => {
+    const match = /^([01]\d|2[0-3]):([0-5]\d)$/.exec(value.trim());
     if (!match) {
       onError(ka.pets.reminderTimeInvalid);
       return;
@@ -155,9 +159,35 @@ export function PetCareReminderCard({
         disabled={saving}
       />
       {schedule.timeMode !== 'EXACT_TIME' ? (
-        <View className="gap-3">
-          <Input figma icon={Clock} label={ka.pets.reminderClock} value={hour} onChangeText={setHour} placeholder="09:00" hint={ka.pets.reminderClockHint} keyboardType="numbers-and-punctuation" />
-          <Button label={ka.pets.reminderClockSave} variant="secondary" onPress={() => void saveClock()} />
+        <View style={{ gap: 6 }}>
+          {/* A tap opens the wheel sheet — no keyboard, saved as soon as she confirms. */}
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={`${ka.pets.reminderClock}: ${hour}`}
+            onPress={() => setClockOpen(true)}
+            style={{ flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 56, paddingHorizontal: 14, borderRadius: 16, backgroundColor: colors.bg100 }}
+          >
+            <View style={{ width: 36, height: 36, borderRadius: 12, backgroundColor: colors.accent100, alignItems: 'center', justifyContent: 'center' }}>
+              <Clock size={18} color={colors.primary100} strokeWidth={2.2} />
+            </View>
+            <Text style={{ flex: 1, fontFamily: 'NotoSansGeorgian_600SemiBold', fontSize: 14, lineHeight: 20, color: colors.text100 }}>{tx('შეხსენების საათი', 'Reminder time')}</Text>
+            <Text style={{ fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 20, lineHeight: 26, color: colors.primary100 }}>{hour}</Text>
+            <ChevronRight size={18} color={colors.text300} strokeWidth={2.2} />
+          </Pressable>
+          <Text style={{ fontFamily: 'NotoSansGeorgian_400Regular', fontSize: 12, lineHeight: 17, color: colors.text300, marginHorizontal: 4 }}>{ka.pets.reminderClockHint}</Text>
+          <TimePickerSheet
+            visible={clockOpen}
+            title={ka.pets.reminderClock}
+            subtitle={ka.pets.reminderClockHint}
+            value={hour}
+            fill={MODULE_BRANDS.vet.ink.light}
+            onClose={() => setClockOpen(false)}
+            onApply={(next) => {
+              setClockOpen(false);
+              setHour(next);
+              void saveClock(next);
+            }}
+          />
         </View>
       ) : (
         <Text className="text-sm text-text-300">{ka.pets.reminderExactTimeHint}</Text>
@@ -170,7 +200,7 @@ export function PetCareReminderCard({
       ) : null}
       {!permissionGranted ? (
         <Pressable onPress={() => void Linking.openSettings()} className="min-h-11 justify-center active:opacity-80">
-          <Text className="font-semibold text-primary-200">{ka.pets.reminderOpenSettings}</Text>
+          <Text className="font-semibold" style={{ color: colors.primary100 }}>{ka.pets.reminderOpenSettings}</Text>
         </Pressable>
       ) : null}
       <Text className="text-xs text-text-300">{ka.pets.reminderDeliveryHonesty}</Text>

@@ -8,7 +8,7 @@ import { EmptyState } from '@/components/EmptyState';
 import { PETS_ART } from '@/constants/appArt';
 import { HomeSectionTitle } from '@/components/home/HomeSectionTitle';
 import { PetHealthStatus } from '@/components/pets/PetHealthStatus';
-import { PetListRow, PetPageScroll } from '@/components/pets/PetScreen';
+import { PetListGroup, PetListRow, PetPageScroll } from '@/components/pets/PetScreen';
 import { ka } from '@/i18n/ka';
 import { api, type Pet, type PetCondition } from '@/lib/api';
 import { formatCycleDateKa } from '@/lib/cycleCivilDateKa';
@@ -68,7 +68,7 @@ export default function PetConditionsScreen() {
           <EmptyState art={PETS_ART.condition} title={ka.pets.conditionsEmpty} body={ka.pets.conditionsEmptyBody} />
         ) : (
           <>
-            {active.map((row) => (
+            {active.length ? <PetListGroup>{active.map((row) => (
               <PetListRow
                 key={row.id}
                 title={row.name}
@@ -78,9 +78,8 @@ export default function PetConditionsScreen() {
                 art={PETS_ART.condition}
                 onPress={() => router.push(`/pets/${id}/conditions/${row.id}`)}
               />
-            ))}
-            {resolved.length ? <HomeSectionTitle title={ka.pets.conditionHistory} /> : null}
-            {resolved.map((row) => (
+            ))}</PetListGroup> : null}
+            {resolved.length ? <View><HomeSectionTitle title={ka.pets.conditionHistory} /><PetListGroup>{resolved.map((row) => (
               <PetListRow
                 key={row.id}
                 title={row.name}
@@ -90,7 +89,7 @@ export default function PetConditionsScreen() {
                 art={PETS_ART.condition}
                 onPress={() => router.push(`/pets/${id}/conditions/${row.id}`)}
               />
-            ))}
+            ))}</PetListGroup></View> : null}
           </>
         )}
         <Button icon={Stethoscope} label={ka.pets.conditionAdd} onPress={() => router.push(`/pets/${id}/conditions/new`)} />

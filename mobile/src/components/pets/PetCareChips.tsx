@@ -1,3 +1,4 @@
+import { useThemeColors } from '@/theme/colors';
 import React, { useState } from 'react';
 import { Pressable, ScrollView, Text, View, type ImageSourcePropType } from 'react-native';
 import {
@@ -275,6 +276,7 @@ export function CareProductPicker({
   onChange: (id: string | null, product?: PetProduct) => void;
   onAddNew?: () => void;
 }) {
+  const colors = useThemeColors();
   const [open, setOpen] = useState(false);
   const selected = products.find((row) => row.id === value);
 
@@ -294,7 +296,7 @@ export function CareProductPicker({
           onPress={onAddNew}
           className="min-h-11 justify-center active:opacity-80"
         >
-          <Text className="text-base font-semibold text-primary-200">{ka.pets.productAdd}</Text>
+          <Text className="text-base font-semibold" style={{ color: colors.primary100 }}>{ka.pets.productAdd}</Text>
         </Pressable>
       ) : null}
       <PetSheet visible={open} title={ka.pets.productsTitle} onClose={() => setOpen(false)}>

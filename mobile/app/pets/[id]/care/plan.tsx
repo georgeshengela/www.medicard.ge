@@ -1,3 +1,5 @@
+import { TimeField, TimesField } from '@/components/ui/TimePickerSheet';
+import { MODULE_BRANDS } from '@/theme/moduleBrand';
 import { parsePetDate, petCarePlanError } from '@/lib/petsPresentation';
 import React, { useCallback, useRef, useState } from 'react';
 import { Text } from 'react-native';
@@ -195,14 +197,9 @@ export default function PetCarePlanScreen() {
       />
 
       <DateField allowFuture figma label={ka.pets.firstDate} value={dateDigits} onChangeText={setDateDigits} showAge={false} />
-      <Input
-        figma
-        icon={Clock}
-        label={ka.pets.administeredTime}
-        value={dueTime}
-        onChangeText={setDueTime}
-        placeholder="09:00"
-      />
+      {recurrenceKind !== 'DAILY_COURSE' ? (
+        <TimeField label={ka.pets.administeredTime} value={dueTime} onChange={setDueTime} hint={ka.pets.timeUnknown} fill={MODULE_BRANDS.vet.ink.light} />
+      ) : null}
 
       <RecurrenceChips value={recurrenceKind} onChange={setRecurrenceKind} />
       {recurrenceKind !== 'ONCE' && recurrenceKind !== 'DAILY_COURSE' ? (
@@ -219,7 +216,7 @@ export default function PetCarePlanScreen() {
         </>
       ) : null}
       {recurrenceKind === 'DAILY_COURSE' ? (
-        <Input figma icon={Clock} label={ka.pets.times} value={times} onChangeText={setTimes} placeholder="08:00,20:00" />
+        <TimesField label={ka.pets.times} value={times} onChange={setTimes} fill={MODULE_BRANDS.vet.ink.light} />
       ) : null}
       <DateField allowFuture figma label={ka.pets.courseEndsOn} value={courseEnds} onChangeText={setCourseEnds} showAge={false} />
       <Input

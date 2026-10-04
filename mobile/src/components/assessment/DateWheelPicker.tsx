@@ -51,8 +51,8 @@ function clampIndex(index: number, length: number) {
   return Math.max(0, Math.min(length - 1, index));
 }
 
-function textColorForDistance(distance: number, nearText: string, farText: string) {
-  if (distance === 0) return FIGMA_PICKER.selectedText;
+function textColorForDistance(distance: number, nearText: string, farText: string, selectedText: string = FIGMA_PICKER.selectedText) {
+  if (distance === 0) return selectedText;
   if (distance === 1) return nearText;
   return farText;
 }
@@ -147,18 +147,23 @@ export function DateWheelPicker({ month, day, year, onChange, minYear, maxYear }
   );
 }
 
-function ColumnWheel({
+/** One snapping wheel column (also used by the time picker — `selectedColor` follows the caller's tone). */
+export function ColumnWheel({
   values,
   selected,
   onSelect,
   flex,
   format = (v) => String(v),
+  selectedColor,
+  fontSize = FIGMA_PICKER.fontSize,
 }: {
   values: (string | number)[];
   selected: string | number;
   onSelect: (v: string | number) => void;
   flex: number;
   format?: (v: string | number) => string;
+  selectedColor?: string;
+  fontSize?: number;
 }) {
   const dark = useIsDark();
   const picker = dark ? { ...FIGMA_PICKER, ...FIGMA_PICKER_DARK } : FIGMA_PICKER;
@@ -284,11 +289,11 @@ function ColumnWheel({
               <Text
                 numberOfLines={1}
                 style={{
-                  fontFamily: 'NotoSansGeorgian_400Regular',
-                  fontSize: FIGMA_PICKER.fontSize,
+                  fontFamily: distance === 0 && selectedColor ? 'NotoSansGeorgian_600SemiBold' : 'NotoSansGeorgian_400Regular',
+                  fontSize,
                   lineHeight: FIGMA_PICKER.lineHeight,
                   letterSpacing: FIGMA_PICKER.letterSpacing,
-                  color: textColorForDistance(distance, picker.nearText, picker.farText),
+                  color: textColorForDistance(distance, picker.nearText, picker.farText, selectedColor),
                   textAlign: 'center',
                 }}
               >
@@ -327,3 +332,5 @@ export function ageFromBirthDate(month: number, day: number, year: number): numb
 }
 
 export const DATE_PICKER_HEIGHT = PICKER_HEIGHT;
+export const WHEEL_ITEM_HEIGHT = ITEM_HEIGHT;
+export const WHEEL_PAD = PAD;

@@ -1,7 +1,9 @@
-import { brandHex } from '@/theme/brandTone';
 import React, { useCallback, useMemo, useState } from 'react';
 import { Linking, Pressable, Text, View } from 'react-native';
 import { useFocusEffect } from 'expo-router';
+import { HomeSectionHeading } from '@/components/home/HomeSectionHeading';
+import { HUB } from '@/theme/hub';
+import { MODULE_BRANDS } from '@/theme/moduleBrand';
 import { ChevronDown, MapPin, Phone, Stethoscope } from 'lucide-react-native';
 import { ka } from '@/i18n/ka';
 import { api, type PetClinic } from '@/lib/api';
@@ -83,12 +85,12 @@ function FilterChip({
         borderRadius: 999,
         borderWidth: 1,
         borderColor: selected ? colors.primary200 : colors.bg300,
-        backgroundColor: selected ? colors.accent100 : dark ? colors.surfaceRaised : colors.bg100,
+        backgroundColor: selected ? colors.accent100 : colors.surface,
         alignItems: 'center',
         justifyContent: 'center',
       }}
     >
-      <Text style={{ fontFamily: GEO.semibold, fontSize: 13, color: selected ? colors.primary200 : colors.text200 }}>
+      <Text style={{ fontFamily: GEO.semibold, fontSize: 13, color: selected ? colors.primary100 : colors.text200 }}>
         {label}
       </Text>
     </Pressable>
@@ -116,9 +118,7 @@ function ClinicRow({
   return (
     <View
       style={{
-        borderRadius: 20,
-        borderWidth: 1,
-        borderColor: colors.bg300,
+        borderRadius: HUB.cardRadius,
         backgroundColor: colors.surface,
         overflow: 'hidden',
       }}
@@ -142,10 +142,10 @@ function ClinicRow({
               justifyContent: 'center',
             }}
           >
-            <Stethoscope size={18} color={colors.primary200} strokeWidth={2.2} />
+            <Stethoscope size={18} color={colors.primary100} strokeWidth={2.2} />
           </View>
           <View style={{ flex: 1, minWidth: 0, gap: 4 }}>
-            <Text numberOfLines={1} style={{ fontFamily: GEO.title, fontSize: 15, color: colors.text100 }}>
+            <Text numberOfLines={2} style={{ fontFamily: GEO.title, fontSize: 15, lineHeight: 21, color: colors.text100 }}>
               {clinic.name}
             </Text>
             {clinic.location ? (
@@ -184,8 +184,6 @@ function ClinicRow({
           <View
             style={{
               borderRadius: 14,
-              borderWidth: 1,
-              borderColor: colors.bg300,
               backgroundColor: dark ? colors.surfaceRaised : colors.bg100,
               paddingHorizontal: 10,
               paddingVertical: 8,
@@ -238,7 +236,7 @@ function ClinicRow({
                   flexGrow: 1,
                   minHeight: 44,
                   borderRadius: 14,
-                  backgroundColor: dark ? brandHex('#0D9488') : colors.primary200,
+                  backgroundColor: MODULE_BRANDS.vet.ink.light,
                   paddingHorizontal: 12,
                   flexDirection: 'row',
                   alignItems: 'center',
@@ -326,9 +324,7 @@ export function PetsClinicsSection() {
 
   return (
     <View style={{ gap: 10 }}>
-      <Text style={{ fontFamily: GEO.title, fontSize: 14, lineHeight: 20, color: colors.text100 }}>
-        {ka.pets.clinicsTitle}
-      </Text>
+      <HomeSectionHeading title={ka.pets.clinicsTitle} />
       <View style={{ flexDirection: 'row', gap: 8 }}>
         <FilterChip label={ka.pets.clinicsAll} selected={!openOnly} onPress={() => setOpenOnly(false)} />
         <FilterChip label={ka.pets.clinicsOpenNow} selected={openOnly} onPress={() => setOpenOnly(true)} />
@@ -358,7 +354,7 @@ export function PetsClinicsSection() {
         onPress={() => void Linking.openURL(sourceUrl)}
         className="active:opacity-80"
       >
-        <Text style={{ fontFamily: GEO.regular, fontSize: 12, color: colors.primary200 }}>{ka.pets.clinicsSource}</Text>
+        <Text style={{ fontFamily: GEO.regular, fontSize: 12, color: colors.primary100 }}>{ka.pets.clinicsSource}</Text>
       </Pressable>
     </View>
   );

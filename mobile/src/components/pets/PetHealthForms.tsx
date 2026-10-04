@@ -25,6 +25,7 @@ import {
   PetFilterChip,
   PetFormScroll,
   PetSectionLabel,
+  PetFormActions,
 } from '@/components/pets/PetScreen';
 import { ka } from '@/i18n/ka';
 import { isoToDigits, parseCivilDate } from '@/lib/birthdate';
@@ -120,13 +121,14 @@ export function PetWeightForm({
       footer={
         <>
           <PetErrorText message={weightInvalid ? error : fieldError || error} />
-          <Button
-            icon={Check}
-            label={saving ? ka.pets.saving : ka.pets.save}
-            loading={saving}
-            onPress={submit}
-          />
-          {footer}
+          <PetFormActions secondary={footer}>
+            <Button
+              icon={Check}
+              label={saving ? ka.pets.saving : ka.pets.save}
+              loading={saving}
+              onPress={submit}
+            />
+          </PetFormActions>
         </>
       }
     >
@@ -228,13 +230,14 @@ export function PetAllergyForm({
       footer={
         <>
           <PetErrorText message={nameInvalid ? error : fieldError || error} />
-          <Button
-            icon={Check}
-            label={saving ? ka.pets.saving : ka.pets.save}
-            loading={saving}
-            onPress={submit}
-          />
-          {footer}
+          <PetFormActions secondary={footer}>
+            <Button
+              icon={Check}
+              label={saving ? ka.pets.saving : ka.pets.save}
+              loading={saving}
+              onPress={submit}
+            />
+          </PetFormActions>
         </>
       }
     >
@@ -362,13 +365,14 @@ export function PetConditionForm({
       footer={
         <>
           <PetErrorText message={nameInvalid ? error : fieldError || error} />
-          <Button
-            icon={Check}
-            label={saving ? ka.pets.saving : ka.pets.save}
-            loading={saving}
-            onPress={submit}
-          />
-          {footer}
+          <PetFormActions secondary={footer}>
+            <Button
+              icon={Check}
+              label={saving ? ka.pets.saving : ka.pets.save}
+              loading={saving}
+              onPress={submit}
+            />
+          </PetFormActions>
         </>
       }
     >

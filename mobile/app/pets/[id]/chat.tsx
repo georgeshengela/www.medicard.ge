@@ -1,9 +1,8 @@
 import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import { ModuleWordmark } from '@/components/brand/ModuleWordmark';
+import { ModuleHeaderButton, ModuleStackHeader } from '@/components/brand/ModuleHeader';
 import { FlatList, Image, Linking, Pressable, Text, View } from 'react-native';
 import { Stack, useLocalSearchParams, useNavigation, useRouter } from 'expo-router';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { ChevronLeft, Info, Stethoscope } from 'lucide-react-native';
+import { Info, Stethoscope } from 'lucide-react-native';
 import { PETS_ART } from '@/constants/appArt';
 import { ChatBubbleAssistant, ChatBubbleUser } from '@/components/chat/ChatBubble';
 import { ChatEmptyHero, ChatSuggestionChip } from '@/components/chat/ChatExtras';
@@ -83,7 +82,6 @@ export default function PetVetChatScreen() {
 function PetVetChat({ petId, owner }: { petId: string; owner: string }) {
   const FIGMA_CHAT = useFigmaChat();
   const colors = useThemeColors();
-  const insets = useSafeAreaInsets();
   const router = useRouter();
   const navigation = useNavigation();
   const { applyUsage } = useAuth();
@@ -264,31 +262,12 @@ function PetVetChat({ petId, owner }: { petId: string; owner: string }) {
       <Stack.Screen options={{ headerShown: false }} />
       <ChatScreenShell
         header={
-          <View
-            style={{
-              backgroundColor: FIGMA_CHAT.white,
-              borderBottomWidth: 1,
-              borderBottomColor: FIGMA_CHAT.border,
-              paddingTop: insets.top,
-              paddingHorizontal: 16,
-              paddingBottom: 12,
-              flexDirection: 'row',
-              alignItems: 'center',
-              gap: 12,
-            }}
-          >
-            <Pressable onPress={() => router.back()} hitSlop={12} accessibilityLabel={ka.common.back} accessibilityRole="button" style={{ minWidth: 44, minHeight: 44, alignItems: "center", justifyContent: "center" }}>
-              <ChevronLeft size={24} color={FIGMA_CHAT.textPrimary} />
-            </Pressable>
-            <PetPhoto photoUrl={pet?.photoUrl || null} name={pet?.name || 'M'} speciesId={pet?.speciesId ?? null} size={40} />
-            <View style={{ flex: 1 }}>
-              <ModuleWordmark module="vet" size={18} color={FIGMA_CHAT.textPrimary} />
-              <Text style={{ fontFamily: 'NotoSansGeorgian_400Regular', fontSize: 13, lineHeight: 18, color: FIGMA_CHAT.textSecondary }}>
-                {pet?.name || titledProfile.subtitle}
-              </Text>
-            </View>
-            <Pressable accessibilityRole="button" accessibilityLabel={tx('MEDIVET — როგორ მუშაობს', 'MEDIVET — how it works')} onPress={() => setDisclosure(true)} style={{ minWidth: 44, minHeight: 44, alignItems: "center", justifyContent: "center" }}><Info size={21} color={colors.primary100} /></Pressable>
-          </View>
+          // The standard MEDI module header, pinned above the conversation.
+          <ModuleStackHeader
+            module="vet"
+            subtitle={pet?.name ? tx(`${pet.name} · AI დამხმარე`, `${pet.name} · AI helper`) : titledProfile.subtitle}
+            right={<ModuleHeaderButton label={tx('MEDIVET — როგორ მუშაობს', 'MEDIVET — how it works')} icon={Info} onPress={() => setDisclosure(true)} />}
+          />
         }
         footer={
           <View>
@@ -357,7 +336,7 @@ function PetVetChat({ petId, owner }: { petId: string; owner: string }) {
                     <Text style={{ fontWeight: '600', color: colors.text200 }}>{ka.pets.vetSources}</Text>
                     {item.citations.map((source) => (
                       <Pressable key={source.id} onPress={() => void Linking.openURL(source.url)}>
-                        <Text style={{ color: colors.primary200, textDecorationLine: 'underline' }}>
+                        <Text style={{ color: colors.primary100, textDecorationLine: 'underline' }}>
                           {source.title} — {source.publisher}
                         </Text>
                       </Pressable>

@@ -1,26 +1,24 @@
-import { brandHex } from '@/theme/brandTone';
-import React, { useEffect, useRef, useState } from 'react';
-import { Image, Keyboard, KeyboardAvoidingView, Platform, Pressable, ScrollView, Text, View, type ImageSourcePropType } from 'react-native';
+import React, { useCallback, useRef } from 'react';
+import { Image, Keyboard, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View, type ImageSourcePropType, type NativeScrollEvent, type NativeSyntheticEvent } from 'react-native';
+import Animated, { useAnimatedStyle } from 'react-native-reanimated';
+import { useKeyboardPad } from '@/components/ui/KeyboardFormShell';
+import { petFocusScrollOffset } from '@/lib/petKeyboardLayout';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Check, ChevronRight, Keyboard as KeyboardIcon, X, type LucideIcon } from 'lucide-react-native';
-import { usePetFormKeyboard } from './usePetFormKeyboard';
+import { Check, ChevronRight, X, type LucideIcon } from 'lucide-react-native';
 import { APP_MODAL_OVERLAY, APP_MODAL_PROPS, Modal } from '@/components/ui/appModal';
 import { PetPanel as Card, PetText } from './PetUi';
 import { FIGMA_AUTH_SHADOW, useFigmaAuth } from '@/constants/figmaAuthLayout';
 import { ka } from '@/i18n/ka';
 import { useIsDark, useThemeColors } from '@/theme/colors';
 import { tx } from '@/i18n/locale';
+import { HUB } from '@/theme/hub';
 
-function usePetKeyboard() {
-  const [open, setOpen] = useState(false);
-  useEffect(() => {
-    const show = Keyboard.addListener(Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow', () => setOpen(true));
-    const hide = Keyboard.addListener(Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide', () => setOpen(false));
-    return () => { show.remove(); hide.remove(); };
-  }, []);
-  return open;
-}
-
+/**
+ * MEDIVET form page = the sign-in keyboard standard (KeyboardFormShell, AGENTS.md "Keyboard comfort"):
+ * the footer's bottom padding animates to the MEASURED keyboard overlap with the keyboard's own curve,
+ * so the actions ride just above the keyboard; the fields scroll and the focused one is brought into
+ * view; a tap on empty space or a drag closes the keyboard. Never combined with another inset mechanism.
+ */
 export function PetFormScroll({
   children,
   footer,
@@ -34,59 +32,69 @@ export function PetFormScroll({
   const colors = useThemeColors();
   const localScrollRef = useRef<ScrollView>(null);
   const formScrollRef = scrollRef ?? localScrollRef;
-  const keyboard = usePetFormKeyboard(formScrollRef);
+  const offset = useRef(0);
+  const revealFocus = useCallback(() => {
+    if (Platform.OS === 'web') return;
+    requestAnimationFrame(() => {
+      const input = TextInput.State.currentlyFocusedInput();
+      const scroll = formScrollRef.current;
+      if (!input || !scroll) return;
+      scroll.getNativeScrollRef?.()?.measureInWindow((_x, top, _w, height) => {
+        input.measureInWindow((_ix, inputTop, _iw, inputHeight) => {
+          if (TextInput.State.currentlyFocusedInput() !== input) return;
+          const next = petFocusScrollOffset(offset.current, top, height, inputTop, inputHeight);
+          if (Math.abs(next - offset.current) > 1) scroll.scrollTo({ y: next, animated: true });
+        });
+      });
+    });
+  }, [formScrollRef]);
+  const { frameRef, onLayout, pad } = useKeyboardPad(Math.max(insets.bottom, 12), revealFocus);
+  const footerStyle = useAnimatedStyle(() => ({ paddingBottom: pad.value }));
+  const spacerStyle = useAnimatedStyle(() => ({ height: pad.value }));
 
   return (
-    <View
-      ref={keyboard.frameRef}
-      collapsable={false}
-      onLayout={keyboard.measureFrame}
-      style={{ flex: 1, minHeight: 0, backgroundColor: colors.bg100 }}
-    >
-    {/* Only this inner region shrinks. Android already resizes the window. */}
-    <View style={{ flex: 1, minHeight: 0, paddingBottom: keyboard.bottom }}>
-      <ScrollView
-        ref={formScrollRef}
-        style={{ flex: 1, minHeight: 0 }}
-        onLayout={keyboard.revealFocus}
-        onFocus={keyboard.onFocus}
-        onBlur={keyboard.onBlur}
-        onScroll={keyboard.onScroll}
-        scrollEventThrottle={16}
-        contentInsetAdjustmentBehavior="never"
-        automaticallyAdjustContentInsets={false}
-        automaticallyAdjustKeyboardInsets={false}
-        keyboardShouldPersistTaps="handled"
-        keyboardDismissMode="on-drag"
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={{
-          padding: 16,
-          paddingBottom: footer ? 16 : insets.bottom + 28,
-          gap: 20,
-        }}
-      >
-        {children}
-      </ScrollView>
-      {footer ? (
-        <View
-          style={{
-            flexShrink: 0,
-            paddingHorizontal: 16,
-            paddingTop: 12,
-            paddingBottom: keyboard.open ? 8 : Math.max(insets.bottom, 12),
-            backgroundColor: colors.bg100,
-            borderTopWidth: 1,
-            borderTopColor: colors.bg300,
-            flexDirection: 'row',
-            alignItems: 'flex-end',
-            gap: 10,
+    <View style={{ flex: 1, minHeight: 0, backgroundColor: colors.bg100 }}>
+      <View ref={frameRef} collapsable={false} onLayout={onLayout} style={{ flex: 1, minHeight: 0 }}>
+        <ScrollView
+          ref={formScrollRef}
+          style={{ flex: 1, minHeight: 0 }}
+          contentContainerStyle={{ flexGrow: 1, paddingHorizontal: HUB.gutter, paddingTop: 8, paddingBottom: footer ? 16 : 0, gap: 20 }}
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'}
+          contentInsetAdjustmentBehavior="never"
+          automaticallyAdjustContentInsets={false}
+          automaticallyAdjustKeyboardInsets={false}
+          showsVerticalScrollIndicator={false}
+          onFocus={() => setTimeout(revealFocus, 60)}
+          onScroll={(e: NativeSyntheticEvent<NativeScrollEvent>) => {
+            offset.current = e.nativeEvent.contentOffset.y;
           }}
+          scrollEventThrottle={32}
         >
-          <View style={{ flex: 1, minWidth: 0, gap: 8 }}>{footer}</View>
-          {keyboard.open ? <Pressable accessibilityRole="button" accessibilityLabel={tx('კლავიატურის დამალვა', 'Hide keyboard')} onPress={Keyboard.dismiss} style={{ width: 48, height: 52, borderRadius: 17, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.surfaceRaised }}><KeyboardIcon size={22} color={colors.primary100} /></Pressable> : null}
-        </View>
-      ) : null}
+          {children}
+          {/* Empty space below the fields: a tap closes the keyboard. */}
+          <Pressable onPress={Keyboard.dismiss} accessible={false} style={{ flexGrow: 1, minHeight: 12 }} />
+          {!footer ? <Animated.View style={spacerStyle} /> : null}
+        </ScrollView>
+        {footer ? (
+          <Animated.View style={[{ paddingTop: 10, paddingHorizontal: HUB.gutter, backgroundColor: colors.bg100, gap: 8 }, footerStyle]}>
+            {footer}
+          </Animated.View>
+        ) : null}
+      </View>
     </View>
+  );
+}
+
+/**
+ * A form's actions in one row: the secondary one (delete, archive, back, cancel) on the left at its own
+ * width, the primary one filling the rest — the way iOS puts a destructive action beside „Save“.
+ */
+export function PetFormActions({ children, secondary }: { children: React.ReactNode; secondary?: React.ReactNode }) {
+  return (
+    <View style={{ flexDirection: 'row', alignItems: 'stretch', gap: 10 }}>
+      {secondary ? <View style={{ flexShrink: 0, maxWidth: '50%' }}>{secondary}</View> : null}
+      <View style={{ flex: 1, minWidth: 0 }}>{children}</View>
     </View>
   );
 }
@@ -97,7 +105,7 @@ export function PetPageScroll({ children }: { children: React.ReactNode }) {
   return (
     <ScrollView
       style={{ flex: 1, backgroundColor: colors.bg100 }}
-      contentContainerStyle={{ padding: 16, paddingBottom: insets.bottom + 32, gap: 20 }}
+      contentContainerStyle={{ paddingHorizontal: HUB.gutter, paddingTop: 8, paddingBottom: insets.bottom + 32, gap: 20 }}
       keyboardShouldPersistTaps="handled"
       showsVerticalScrollIndicator={false}
     >
@@ -143,7 +151,7 @@ export function PetSectionLabel({ label }: { label: string }) {
 export function PetIconWell({
   icon: Icon,
   art,
-  size = 44,
+  size = HUB.tile,
 }: {
   icon?: LucideIcon;
   /** 3D artwork rendered at the well's size instead of the tinted icon tile. */
@@ -151,8 +159,7 @@ export function PetIconWell({
   size?: number;
 }) {
   const colors = useThemeColors();
-  const dark = useIsDark();
-  const iconSize = size >= 56 ? 26 : 22;
+  const iconSize = size >= 56 ? 26 : 20;
   if (art) {
     return (
       <Image
@@ -168,13 +175,27 @@ export function PetIconWell({
       style={{
         width: size,
         height: size,
-        borderRadius: 14,
-        backgroundColor: dark ? colors.accent100 : brandHex('#F0FDFA'),
+        borderRadius: HUB.tileRadius,
+        backgroundColor: colors.accent100,
         alignItems: 'center',
         justifyContent: 'center',
       }}
     >
-      {Icon ? <Icon size={iconSize} color={dark ? colors.primary100 : colors.primary200} strokeWidth={2} /> : null}
+      {Icon ? <Icon size={iconSize} color={colors.primary100} strokeWidth={2} /> : null}
+    </View>
+  );
+}
+
+/**
+ * A list in one flat card (the hub list look): rows sit edge to edge with a hairline between them.
+ * Put `PetListRow`s inside; a single row may also stand alone.
+ */
+export function PetListGroup({ children }: { children: React.ReactNode }) {
+  const colors = useThemeColors();
+  const rows = React.Children.toArray(children).filter(React.isValidElement);
+  return (
+    <View style={{ borderRadius: HUB.cardRadius, backgroundColor: colors.surface, overflow: 'hidden' }}>
+      {rows.map((row, index) => React.cloneElement(row as React.ReactElement<{ grouped?: boolean; first?: boolean }>, { grouped: true, first: index === 0 }))}
     </View>
   );
 }
@@ -186,6 +207,9 @@ export function PetListRow({
   tone = 'default',
   icon,
   art,
+  right,
+  grouped,
+  first,
 }: {
   title: string;
   subtitle?: string;
@@ -193,29 +217,53 @@ export function PetListRow({
   tone?: 'default' | 'muted';
   icon?: LucideIcon;
   art?: ImageSourcePropType;
+  /** Short value on the right (e.g. „31.4 კგ“). */
+  right?: string;
+  /** Set by PetListGroup. */
+  grouped?: boolean;
+  first?: boolean;
 }) {
   const leading = Boolean(icon || art);
   const colors = useThemeColors();
-  return (
-    <Card onPress={onPress}>
-      <View className="flex-row items-center">
-        {leading ? <PetIconWell icon={icon} art={art} /> : null}
-        <View className={leading ? 'flex-1 px-3' : 'flex-1 pr-3'}>
+  const body = (
+    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+      {leading ? <PetIconWell icon={icon} art={art} /> : null}
+      <View
+        style={{
+          flex: 1,
+          minWidth: 0,
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: 10,
+          paddingVertical: grouped ? 14 : 0,
+          paddingRight: grouped ? 14 : 0,
+          borderTopWidth: grouped && !first ? StyleSheet.hairlineWidth : 0,
+          borderTopColor: colors.bg300,
+          alignSelf: 'stretch',
+        }}
+      >
+        <View style={{ flex: 1, minWidth: 0, gap: 2 }}>
           <Text
-            className="text-base font-semibold"
-            style={{
-              color: tone === 'muted' ? colors.text300 : colors.text100,
-              fontFamily: 'NotoSansGeorgian_600SemiBold',
-            }}
+            numberOfLines={2}
+            style={{ fontFamily: 'NotoSansGeorgian_600SemiBold', fontSize: 15, lineHeight: 21, color: tone === 'muted' ? colors.text300 : colors.text100 }}
           >
             {title}
           </Text>
-          {subtitle ? <Text className="mt-1 text-sm text-text-300">{subtitle}</Text> : null}
+          {subtitle ? <Text numberOfLines={2} style={{ fontFamily: 'NotoSansGeorgian_400Regular', fontSize: 12.5, lineHeight: 18, color: colors.text300 }}>{subtitle}</Text> : null}
         </View>
+        {right ? <Text numberOfLines={1} style={{ fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 15, lineHeight: 21, color: colors.text100 }}>{right}</Text> : null}
         <ChevronRight size={18} color={colors.text300} strokeWidth={2} />
       </View>
-    </Card>
+    </View>
   );
+  if (grouped) {
+    return (
+      <Pressable accessibilityRole="button" accessibilityLabel={[title, right, subtitle].filter(Boolean).join('. ')} onPress={onPress} style={{ paddingLeft: 14, backgroundColor: colors.surface }}>
+        {body}
+      </Pressable>
+    );
+  }
+  return <Card onPress={onPress}>{body}</Card>;
 }
 
 export function PetChoiceRows<T extends string>({
@@ -286,7 +334,6 @@ export function PetFilterChip({
   fill?: boolean;
 }) {
   const colors = useThemeColors();
-  const dark = useIsDark();
 
   return (
     <Pressable
@@ -306,8 +353,8 @@ export function PetFilterChip({
         gap: 8,
         alignSelf: fill ? 'stretch' : 'flex-start',
         width: fill ? '100%' : undefined,
-        backgroundColor: selected ? (dark ? colors.accent100 : brandHex('#F0FDFA')) : dark ? colors.bg200 : '#F9FAFB',
-        borderColor: selected ? colors.primary200 : dark ? colors.bg300 : '#D1D5DB',
+        backgroundColor: selected ? colors.accent100 : colors.surface,
+        borderColor: selected ? colors.primary200 : colors.bg300,
         maxWidth: '100%',
       }}
     >
@@ -316,7 +363,7 @@ export function PetFilterChip({
       ) : Icon ? (
         <Icon
           size={24}
-          color={selected ? (dark ? colors.primary100 : colors.primary200) : colors.text100}
+          color={selected ? colors.primary100 : colors.text100}
           strokeWidth={2}
         />
       ) : null}
@@ -327,7 +374,7 @@ export function PetFilterChip({
           fontFamily: 'NotoSansGeorgian_500Medium',
           fontSize: 14,
           lineHeight: 22,
-          color: selected ? (dark ? colors.primary100 : colors.primary200) : colors.text100,
+          color: selected ? colors.primary100 : colors.text100,
         }}
       >
         {label}
@@ -356,24 +403,27 @@ export function PetSheet({
   const colors = useThemeColors();
   const dark = useIsDark();
   const insets = useSafeAreaInsets();
-  const keyboard = usePetKeyboard();
+  // The keyboard standard (useKeyboardPad): the sheet rides on the measured keyboard top.
+  const { frameRef, onLayout, pad } = useKeyboardPad(Math.max(insets.bottom, 16));
+  const sheetPad = useAnimatedStyle(() => ({ paddingBottom: pad.value }));
 
   return (
     <Modal visible={visible} {...APP_MODAL_PROPS} onRequestClose={onClose}>
-      <KeyboardAvoidingView
+      <View
+        ref={frameRef}
+        collapsable={false}
+        onLayout={onLayout}
         style={{ flex: 1, justifyContent: 'flex-end', paddingTop: insets.top + 12 }}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
         <Pressable accessibilityRole="button" accessibilityLabel={ka.common.close} style={{ position: 'absolute', top: 0, bottom: 0, left: 0, right: 0, backgroundColor: APP_MODAL_OVERLAY }} onPress={onClose} />
-          <View
+          <Animated.View
             accessibilityViewIsModal
-            style={{
+            style={[{
               backgroundColor: colors.surface,
               borderTopLeftRadius: 24,
               borderTopRightRadius: 24,
               maxHeight: '94%',
-              paddingBottom: keyboard ? 12 : Math.max(insets.bottom, 16),
-            }}
+            }, sheetPad]}
           >
             <View
               style={{
@@ -422,8 +472,8 @@ export function PetSheet({
               </Pressable>
             </View>
             <View style={{ paddingHorizontal: 16, paddingTop: 20, flexShrink: 1 }}>{children}</View>
-          </View>
-      </KeyboardAvoidingView>
+          </Animated.View>
+      </View>
     </Modal>
   );
 }

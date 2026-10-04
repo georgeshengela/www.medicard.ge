@@ -52,7 +52,7 @@ export function PetCareSummary({ pet }: { pet: Pet }) {
     }, [load]),
   );
 
-  if (!ready) return <Bone height={110} radius={24} />;
+  if (!ready) return <Bone height={110} radius={22} />;
 
   if (error) {
     const kind = petsCareErrorKind(error);
@@ -70,7 +70,7 @@ export function PetCareSummary({ pet }: { pet: Pet }) {
             <PetIconWell icon={AlertTriangle} />
             <View className="flex-1 px-3">
               <Text className="text-base text-text-200">{message}</Text>
-              <Text className="mt-1 text-sm font-semibold text-primary-200">{ka.pets.retry}</Text>
+              <Text className="mt-1 text-sm font-semibold" style={{ color: colors.primary100 }}>{ka.pets.retry}</Text>
             </View>
           </View>
         </Card>
@@ -107,7 +107,7 @@ export function PetCareSummary({ pet }: { pet: Pet }) {
             </Text>
             {next?.title ? <Text className="mt-1 text-sm text-text-300">{next.title}</Text> : null}
             {empty ? (
-              <Text className="mt-1 text-sm font-semibold text-primary-200">{ka.pets.careAdd}</Text>
+              <Text className="mt-1 text-sm font-semibold" style={{ color: colors.primary100 }}>{ka.pets.careAdd}</Text>
             ) : overdue.length || due.length ? (
               <Text className="mt-1 text-sm text-text-200">{completeLabel(next?.kind, ka.pets)}</Text>
             ) : null}

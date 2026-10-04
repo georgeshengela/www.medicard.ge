@@ -22,6 +22,7 @@ export function ModuleHeader({
   backLabel = tx('უკან', 'Back'),
   right,
   style,
+  fallbackHref = '/(tabs)/home',
 }: {
   module: ModuleBrandId;
   subtitle?: string;
@@ -31,10 +32,12 @@ export function ModuleHeader({
   /** Usually one `ModuleHeaderButton`; an empty 44 px slot keeps the wordmark in place when omitted. */
   right?: React.ReactNode;
   style?: StyleProp<ViewStyle>;
+  /** Where back leads when there is no history (a cold start from a link or notification). */
+  fallbackHref?: string;
 }) {
   const c = useThemeColors();
   const router = useRouter();
-  const back = onBack ?? (() => (router.canGoBack() ? router.back() : router.replace('/(tabs)/home' as never)));
+  const back = onBack ?? (() => (router.canGoBack() ? router.back() : router.replace(fallbackHref as never)));
   return (
     <View style={[{ flexDirection: 'row', alignItems: 'center', gap: 12 }, style]}>
       <ModuleHeaderButton label={backLabel} icon={ArrowLeft} onPress={back} />

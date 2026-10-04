@@ -3,7 +3,7 @@ import { Pressable, ScrollView, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { APP_MODAL_OVERLAY, APP_MODAL_PROPS, Modal } from '@/components/ui/appModal';
 import { LabFlaskTriangle } from '@/components/lab/LabIcons';
-import { useFigmaLab } from '@/constants/figmaLabLayout';
+import { useMedilab } from '@/components/lab/MedilabUI';
 import { ka } from '@/i18n/ka';
 import { explainLabParam, formatPrintedNorm } from '@/lib/labExplain';
 import type { LabParameter } from '@/types/lab';
@@ -15,7 +15,7 @@ type Props = {
 };
 
 export function LabParamExplainSheet({ visible, param, onClose }: Props) {
-  const T = useFigmaLab();
+  const M = useMedilab();
   const insets = useSafeAreaInsets();
   const copy = useMemo(() => (param ? explainLabParam(param) : null), [param]);
   const printed = param ? formatPrintedNorm(param) : null;
@@ -23,7 +23,7 @@ export function LabParamExplainSheet({ visible, param, onClose }: Props) {
 
   const flag = param.flag;
   const flagLabel = flag === 'H' ? ka.lab.above : flag === 'L' ? ka.lab.below : flag === 'N' ? ka.lab.normal : ka.lab.unknown;
-  const flagColor = flag === 'N' ? T.brand : flag === 'U' ? T.textSecondary : T.destructive;
+  const flagColor = flag === 'N' ? M.normal : flag === 'U' ? M.c.text200 : M.attention;
 
   const blocks = [
     { title: ka.lab.explainWhat, body: copy.what },
@@ -41,7 +41,7 @@ export function LabParamExplainSheet({ visible, param, onClose }: Props) {
         <Pressable style={{ position: 'absolute', top: 0, right: 0, bottom: 0, left: 0, backgroundColor: APP_MODAL_OVERLAY }} onPress={onClose} />
         <View
           style={{
-            backgroundColor: T.pageBg,
+            backgroundColor: M.c.surface,
             borderTopLeftRadius: 24,
             borderTopRightRadius: 24,
             maxHeight: '88%',
@@ -49,7 +49,7 @@ export function LabParamExplainSheet({ visible, param, onClose }: Props) {
             paddingBottom: Math.max(insets.bottom, 16),
           }}
         >
-          <View style={{ width: 40, height: 4, borderRadius: 2, backgroundColor: T.border, alignSelf: 'center', marginBottom: 16 }} />
+          <View style={{ width: 40, height: 4, borderRadius: 2, backgroundColor: M.c.bg300, alignSelf: 'center', marginBottom: 16 }} />
           <ScrollView contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 8, gap: 16 }} showsVerticalScrollIndicator={false}>
             <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 12 }}>
               <View
@@ -57,21 +57,21 @@ export function LabParamExplainSheet({ visible, param, onClose }: Props) {
                   width: 48,
                   height: 48,
                   borderRadius: 16,
-                  backgroundColor: T.iconWell,
+                  backgroundColor: M.inkSoft,
                   alignItems: 'center',
                   justifyContent: 'center',
                 }}
               >
-                <LabFlaskTriangle color={T.chartViolet} />
+                <LabFlaskTriangle color={M.ink} />
               </View>
               <View style={{ flex: 1, gap: 4 }}>
-                <Text style={{ fontFamily: 'NotoSansGeorgian_500Medium', fontSize: 12, lineHeight: 16, color: T.textSecondary }}>
+                <Text style={{ fontFamily: 'NotoSansGeorgian_500Medium', fontSize: 12, lineHeight: 16, color: M.c.text200 }}>
                   {ka.lab.explainKicker}
                 </Text>
-                <Text style={{ fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 22, lineHeight: 28, letterSpacing: -0.3, color: T.textPrimary }}>
+                <Text style={{ fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 22, lineHeight: 28, letterSpacing: -0.3, color: M.c.text100 }}>
                   {copy.title}
                 </Text>
-                <Text style={{ fontFamily: 'NotoSansGeorgian_500Medium', fontSize: 14, lineHeight: 20, color: T.chartViolet }}>
+                <Text style={{ fontFamily: 'NotoSansGeorgian_500Medium', fontSize: 14, lineHeight: 20, color: M.ink }}>
                   {copy.alsoKnown}
                 </Text>
               </View>
@@ -79,23 +79,23 @@ export function LabParamExplainSheet({ visible, param, onClose }: Props) {
 
             <View
               style={{
-                backgroundColor: T.cardBg,
+                backgroundColor: M.c.bg100,
                 borderRadius: 16,
                 borderWidth: 1,
-                borderColor: T.border,
+                borderColor: M.c.bg300,
                 padding: 16,
                 gap: 8,
               }}
             >
-              <Text style={{ fontFamily: 'NotoSansGeorgian_500Medium', fontSize: 12, lineHeight: 16, color: T.textSecondary }}>
+              <Text style={{ fontFamily: 'NotoSansGeorgian_500Medium', fontSize: 12, lineHeight: 16, color: M.c.text200 }}>
                 {ka.lab.yourValue}
               </Text>
               <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: 6 }}>
-                <Text style={{ fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 28, lineHeight: 34, color: T.textPrimary }}>
+                <Text style={{ fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 28, lineHeight: 34, color: M.c.text100 }}>
                   {param.display}
                 </Text>
                 {param.unit ? (
-                  <Text style={{ fontFamily: 'NotoSansGeorgian_400Regular', fontSize: 16, lineHeight: 24, color: T.textSecondary, paddingBottom: 2 }}>
+                  <Text style={{ fontFamily: 'NotoSansGeorgian_400Regular', fontSize: 16, lineHeight: 24, color: M.c.text200, paddingBottom: 2 }}>
                     {param.unit}
                   </Text>
                 ) : null}
@@ -108,23 +108,23 @@ export function LabParamExplainSheet({ visible, param, onClose }: Props) {
 
             {blocks.map((block) => (
               <View key={block.title} style={{ gap: 6 }}>
-                <Text style={{ fontFamily: 'NotoSansGeorgian_600SemiBold', fontSize: 14, lineHeight: 20, color: T.brand }}>
+                <Text style={{ fontFamily: 'NotoSansGeorgian_600SemiBold', fontSize: 14, lineHeight: 20, color: M.ink }}>
                   {block.title}
                 </Text>
-                <Text style={{ fontFamily: 'NotoSansGeorgian_400Regular', fontSize: 15, lineHeight: 22, color: T.textPrimary }}>
+                <Text style={{ fontFamily: 'NotoSansGeorgian_400Regular', fontSize: 15, lineHeight: 22, color: M.c.text100 }}>
                   {block.body}
                 </Text>
               </View>
             ))}
 
-            <Text style={{ fontFamily: 'NotoSansGeorgian_400Regular', fontSize: 12, lineHeight: 18, color: T.textMuted }}>
+            <Text style={{ fontFamily: 'NotoSansGeorgian_400Regular', fontSize: 12, lineHeight: 18, color: M.c.text300 }}>
               {ka.lab.explainDisclaimer}
             </Text>
 
             <Pressable
               onPress={onClose}
               style={{
-                backgroundColor: T.brand,
+                backgroundColor: M.ink,
                 minHeight: 52,
                 borderRadius: 14,
                 alignItems: 'center',

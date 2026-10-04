@@ -467,7 +467,7 @@ function AppShell() {
               <Stack.Screen name="symptoms" options={{ headerShown: false }} />
               <Stack.Screen name="pharmacy" options={{ headerShown: false }} />
               <Stack.Screen name="run" options={{ headerShown: false }} />
-              <Stack.Screen name="record/[id]" options={{ headerBackTitle: tx('უკან', 'Back') }} />
+              <Stack.Screen name="record/[id]" options={{ headerShown: false }} />
               <Stack.Screen name="news/[id]" options={{ headerShown: false }} />
             </Stack>
             {user ? <ModuleGate /> : null}

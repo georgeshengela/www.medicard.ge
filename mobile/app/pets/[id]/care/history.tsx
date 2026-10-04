@@ -1,4 +1,5 @@
 import { PetLoading } from '@/components/pets/PetUi';
+import { PetHeaderButton } from '@/components/pets/PetUi';
 import React, { useCallback, useState } from 'react';
 import { Pressable, View } from 'react-native';
 import { Stack, useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
@@ -7,7 +8,7 @@ import { PetButton as Button } from '@/components/pets/PetUi';
 import { EmptyState } from '@/components/EmptyState';
 import { PETS_ART } from '@/constants/appArt';
 import { careKindArt } from '@/components/pets/PetCareChips';
-import { PetListRow, PetPageScroll } from '@/components/pets/PetScreen';
+import { PetListGroup, PetListRow, PetPageScroll } from '@/components/pets/PetScreen';
 import { ka } from '@/i18n/ka';
 import { api, type PetCareEvent } from '@/lib/api';
 import { formatCycleDateKa } from '@/lib/cycleCivilDateKa';
@@ -58,17 +59,7 @@ export default function PetCareHistoryScreen() {
       <Stack.Screen
         options={{
           title: ka.pets.careHistory,
-          headerRight: () => (
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel={ka.pets.recordAdmin}
-              onPress={() => router.push(`/pets/${id}/care/record`)}
-              hitSlop={12}
-              className="active:opacity-70"
-            >
-              <Plus size={22} color={colors.primary200} strokeWidth={2.2} />
-            </Pressable>
-          ),
+          headerRight: () => <PetHeaderButton label={ka.pets.recordAdmin} icon={Plus} onPress={() => router.push(`/pets/${id}/care/record`)} />,
         }}
       />
       <PetPageScroll>
@@ -77,7 +68,7 @@ export default function PetCareHistoryScreen() {
             <Button icon={Plus} label={ka.pets.recordAdmin} onPress={() => router.push(`/pets/${id}/care/record`)} />
           </EmptyState>
         ) : null}
-        {items.map((row) => (
+        {items.length ? <PetListGroup>{items.map((row) => (
           <PetListRow
             key={row.id}
             art={careKindArt(row.kind)}
@@ -93,7 +84,7 @@ export default function PetCareHistoryScreen() {
             onPress={() => router.push(`/pets/${id}/care/event/${row.id}`)}
             tone={row.status === 'VOIDED' ? 'muted' : 'default'}
           />
-        ))}
+        ))}</PetListGroup> : null}
         {items.length ? (
           <Button icon={Plus} label={ka.pets.recordAdmin} onPress={() => router.push(`/pets/${id}/care/record`)} />
         ) : null}

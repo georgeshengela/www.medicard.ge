@@ -1,9 +1,9 @@
-import { dateLocale } from '@/i18n/locale';
 import React, { useId, useMemo, useRef, useState } from 'react';
 import { LayoutChangeEvent, Pressable, Text, View } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Svg, { Circle, ClipPath, Defs, LinearGradient, Path, Rect, Stop } from 'react-native-svg';
-import { useFigmaLab } from '@/constants/figmaLabLayout';
+import { useMedilab } from '@/components/lab/MedilabUI';
+import { shortYmd } from '@/lib/recordsList';
 import { LAB_CHART_INSET, makeLabChartScale } from '@/lib/labChartScale';
 import { formatLabDateKa } from '@/lib/labExtract';
 import { ka } from '@/i18n/ka';
@@ -22,7 +22,7 @@ const MIN_SPAN = 0.14;
 const FULL: Win = { start: 0, end: 1 };
 
 export function LabParamChart({ points }: { points: Point[] }) {
-  const T = useFigmaLab();
+  const M = useMedilab();
   const [period, setPeriod] = useState<Period>('all');
   const [plotW, setPlotW] = useState(0);
   const [selected, setSelected] = useState<number | null>(null);
@@ -132,7 +132,7 @@ export function LabParamChart({ points }: { points: Point[] }) {
       <View
         style={{
           flexDirection: 'row',
-          backgroundColor: T.tabTrack,
+          backgroundColor: M.c.surface,
           borderRadius: 14,
           padding: 4,
         }}
@@ -153,10 +153,10 @@ export function LabParamChart({ points }: { points: Point[] }) {
                 borderRadius: 10,
                 alignItems: 'center',
                 justifyContent: 'center',
-                backgroundColor: on ? T.tabSelected : 'transparent',
+                backgroundColor: on ? M.inkSoft : 'transparent',
               }}
             >
-              <Text style={{ fontFamily: 'NotoSansGeorgian_600SemiBold', fontSize: 13, lineHeight: 18, color: on ? T.textPrimary : T.textSecondary }}>
+              <Text style={{ fontFamily: 'NotoSansGeorgian_600SemiBold', fontSize: 13, lineHeight: 18, color: on ? M.ink : M.c.text200 }}>
                 {ka.lab.periods[item]}
               </Text>
             </Pressable>
@@ -166,18 +166,16 @@ export function LabParamChart({ points }: { points: Point[] }) {
 
       <View
         style={{
-          backgroundColor: T.cardBg,
-          borderRadius: 20,
+          backgroundColor: M.c.surface,
+          borderRadius: 22,
           paddingTop: 14,
           paddingBottom: 10,
           paddingHorizontal: 8,
-          borderWidth: 1,
-          borderColor: T.border,
           overflow: 'hidden',
         }}
       >
         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 8, paddingBottom: 8 }}>
-          <Text style={{ flex: 1, fontFamily: 'NotoSansGeorgian_400Regular', fontSize: 12, lineHeight: 16, color: T.textMuted }}>
+          <Text style={{ flex: 1, fontFamily: 'NotoSansGeorgian_400Regular', fontSize: 12, lineHeight: 16, color: M.c.text300 }}>
             {ka.lab.chartHint}
           </Text>
           {zoomed ? (
@@ -186,9 +184,9 @@ export function LabParamChart({ points }: { points: Point[] }) {
                 setWin(FULL);
                 setSelected(null);
               }}
-              style={{ backgroundColor: T.brandSoft, borderRadius: 8, paddingHorizontal: 10, paddingVertical: 5 }}
+              style={{ backgroundColor: M.inkSoft, borderRadius: 8, paddingHorizontal: 10, paddingVertical: 5 }}
             >
-              <Text style={{ fontFamily: 'NotoSansGeorgian_600SemiBold', fontSize: 12, color: T.brand }}>{ka.lab.resetZoom}</Text>
+              <Text style={{ fontFamily: 'NotoSansGeorgian_600SemiBold', fontSize: 12, color: M.ink }}>{ka.lab.resetZoom}</Text>
             </Pressable>
           ) : null}
         </View>
@@ -207,7 +205,7 @@ export function LabParamChart({ points }: { points: Point[] }) {
                   fontFamily: 'NotoSansGeorgian_400Regular',
                   fontSize: 11,
                   lineHeight: 14,
-                  color: T.textSecondary,
+                  color: M.c.text200,
                   textAlign: 'right',
                 }}
               >
@@ -226,17 +224,17 @@ export function LabParamChart({ points }: { points: Point[] }) {
                         <Rect x={0} y={0} width={plotW} height={PLOT_H} rx={14} />
                       </ClipPath>
                       <LinearGradient id={`${uid}-main`} x1="0" y1="0" x2="0" y2="1">
-                        <Stop offset="0" stopColor={T.brand} stopOpacity="0.38" />
-                        <Stop offset="0.55" stopColor={T.brand} stopOpacity="0.12" />
-                        <Stop offset="1" stopColor={T.brand} stopOpacity="0" />
+                        <Stop offset="0" stopColor={M.ink} stopOpacity="0.38" />
+                        <Stop offset="0.55" stopColor={M.ink} stopOpacity="0.12" />
+                        <Stop offset="1" stopColor={M.ink} stopOpacity="0" />
                       </LinearGradient>
                     </Defs>
-                    <Rect x={0} y={0} width={plotW} height={PLOT_H} rx={14} fill={T.cardBg} />
+                    <Rect x={0} y={0} width={plotW} height={PLOT_H} rx={14} fill={M.c.surface} />
                     {scale.ticks.map((tick) => (
                       <Path
                         key={`grid-${tick}`}
                         d={`M ${INSET} ${scale.y(tick)} H ${plotW - INSET}`}
-                        stroke={T.chartGrid}
+                        stroke={M.c.bg300}
                         strokeWidth={1}
                         strokeLinecap="round"
                         clipPath={`url(#${clipId})`}
@@ -249,8 +247,8 @@ export function LabParamChart({ points }: { points: Point[] }) {
                         width={Math.max(0, plotW - INSET * 2)}
                         height={bandH}
                         rx={6}
-                        fill={T.brand}
-                        fillOpacity={0.1}
+                        fill={M.normal}
+                        fillOpacity={0.12}
                         clipPath={`url(#${clipId})`}
                       />
                     ) : null}
@@ -259,7 +257,7 @@ export function LabParamChart({ points }: { points: Point[] }) {
                         <Path d={areaPath(main)} fill={`url(#${uid}-main)`} clipPath={`url(#${clipId})`} />
                         <Path
                           d={smoothPath(main)}
-                          stroke={T.brand}
+                          stroke={M.ink}
                           strokeWidth={3}
                           fill="none"
                           strokeLinecap="round"
@@ -279,8 +277,8 @@ export function LabParamChart({ points }: { points: Point[] }) {
                           cx={pt.x}
                           cy={pt.y}
                           r={lastDot ? 7 : on ? 6 : 3.5}
-                          fill={lastDot || on ? T.brand : T.cardBg}
-                          stroke={T.brand}
+                          fill={lastDot || on ? M.ink : M.c.surface}
+                          stroke={M.ink}
                           strokeWidth={lastDot || on ? 0 : 2}
                           clipPath={`url(#${clipId})`}
                         />
@@ -289,7 +287,7 @@ export function LabParamChart({ points }: { points: Point[] }) {
                     {active ? (
                       <Path
                         d={`M ${active.x} 8 V ${PLOT_H - 8}`}
-                        stroke={T.brand}
+                        stroke={M.ink}
                         strokeWidth={1.5}
                         strokeDasharray="4 5"
                         strokeOpacity={0.7}
@@ -311,7 +309,7 @@ export function LabParamChart({ points }: { points: Point[] }) {
                     >
                       <View
                         style={{
-                          backgroundColor: T.tooltipBg,
+                          backgroundColor: M.c.text100,
                           borderRadius: 14,
                           paddingHorizontal: 10,
                           paddingVertical: 8,
@@ -320,10 +318,10 @@ export function LabParamChart({ points }: { points: Point[] }) {
                           gap: 2,
                         }}
                       >
-                        <Text style={{ fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 16, lineHeight: 20, color: T.tooltipText }}>
+                        <Text style={{ fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 16, lineHeight: 20, color: M.c.bg100 }}>
                           {fmt(active.value)}
                         </Text>
-                        <Text style={{ fontFamily: 'NotoSansGeorgian_400Regular', fontSize: 11, lineHeight: 14, color: T.tooltipText, opacity: 0.75 }}>
+                        <Text style={{ fontFamily: 'NotoSansGeorgian_400Regular', fontSize: 11, lineHeight: 14, color: M.c.bg100, opacity: 0.75 }}>
                           {formatLabDateKa(filtered[activeIndex]?.date ?? '')}
                         </Text>
                       </View>
@@ -341,7 +339,7 @@ export function LabParamChart({ points }: { points: Point[] }) {
                           fontFamily: 'NotoSansGeorgian_400Regular',
                           fontSize: 11,
                           lineHeight: 14,
-                          color: T.textSecondary,
+                          color: M.c.text200,
                         }}
                       >
                         {label}
@@ -428,13 +426,12 @@ function axisLabels(points: Point[], win: Win): string[] {
     const i = Math.round(t * lastI);
     return shortDate(points[Math.min(Math.max(i, 0), points.length - 1)].date);
   });
-  return picks;
+  // Few points: the middle often lands on an end date — never print the same date twice.
+  return picks.map((label, i) => (i > 0 && picks.slice(0, i).includes(label) ? '' : label));
 }
 
 function shortDate(ymd: string): string {
-  const [y, m, d] = ymd.split('-').map(Number);
-  if (!y || !m || !d) return ymd;
-  return new Date(y, m - 1, d).toLocaleDateString(dateLocale(), { day: 'numeric', month: 'short' });
+  return shortYmd(ymd);
 }
 
 function fmt(n: number): string {

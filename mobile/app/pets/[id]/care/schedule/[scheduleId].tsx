@@ -7,7 +7,7 @@ import { PetButton as Button } from '@/components/pets/PetUi';
 import { PetPanel as Card } from '@/components/pets/PetUi';
 import { PetCareReminderCard } from '@/components/pets/PetCareReminderCard';
 import { careKindArt } from '@/components/pets/PetCareChips';
-import { PetErrorText, PetFactRow, PetIconWell, PetPageScroll } from '@/components/pets/PetScreen';
+import { PetErrorText, PetFactRow, PetIconWell, PetPageScroll, PetFormActions } from '@/components/pets/PetScreen';
 import { ka } from '@/i18n/ka';
 import { api, type Pet, type PetCareSchedule } from '@/lib/api';
 import { formatCycleDateKa } from '@/lib/cycleCivilDateKa';
@@ -92,11 +92,12 @@ export default function PetScheduleDetailScreen() {
         <Card>
           <PetCareReminderCard petId={id} schedule={schedule} onSchedule={setSchedule} onError={setError} />
         </Card>
-        {schedule.status === 'ACTIVE' && schedule.nextDueOn ? (
-          <Button icon={Check} label={completeLabel(schedule.kind, ka.pets)} loading={saving} onPress={() => void complete()} />
-        ) : null}
         {schedule.status === 'ACTIVE' ? (
-          <Button label={ka.pets.cancelSchedule} variant="danger" onPress={cancel} />
+          <PetFormActions secondary={<Button label={ka.pets.cancelSchedule} variant="danger" onPress={cancel} />}>
+            {schedule.nextDueOn ? (
+              <Button icon={Check} label={completeLabel(schedule.kind, ka.pets)} loading={saving} onPress={() => void complete()} />
+            ) : null}
+          </PetFormActions>
         ) : (
           <Text className="text-sm text-text-300">{ka.pets.scheduleCancelled}</Text>
         )}
