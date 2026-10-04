@@ -132,7 +132,7 @@ export function ModulesSheet({ visible, onClose, onCustomize }: {
             </Pressable>
           </View>
 
-          <ScrollView style={{ flexShrink: 1 }} bounces={false} showsVerticalScrollIndicator={false} contentContainerStyle={{ gap: 10, paddingBottom: 4 }}>
+          <ScrollView style={{ flexShrink: 1 }} bounces={false} showsVerticalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingBottom: 4 }}>
             {mediOn ? (
               <Animated.View entering={enter(0)}>
                 <Pressable
@@ -141,10 +141,10 @@ export function ModulesSheet({ visible, onClose, onCustomize }: {
                   onPress={() => go(mediRoute())}
                   style={[s.medi, { backgroundColor: alpha(moduleInk('medi', dark), dark ? 0.07 : 0.04), borderColor: alpha(moduleInk('medi', dark), dark ? 0.42 : 0.3) }]}
                 >
-                  <Rings ink={moduleInk('medi', dark)} dark={dark} size={120} />
-                  <MediOrb size={40} />
+                  <Rings ink={moduleInk('medi', dark)} dark={dark} size={110} />
+                  <MediOrb size={34} />
                   <View style={{ flex: 1, minWidth: 0 }}>
-                    <ModuleWordmark module="medi" size={19} />
+                    <ModuleWordmark module="medi" size={17} />
                     <Text numberOfLines={1} style={[hubText.small, { color: c.text200 }]}>
                       {tx('ჰკითხე ნებისმიერი რამ', 'Ask anything')}
                     </Text>
@@ -158,22 +158,26 @@ export function ModulesSheet({ visible, onClose, onCustomize }: {
               {modules.map((m, index) => {
                 const ink = moduleInk(m.id, dark);
                 const Icon = m.icon;
+                // Symmetry (owner 2026-10-04): with an odd count (MEDICYCLE for women, a paused module) the
+                // last module closes the grid as one full-width row instead of a lone half tile.
+                const wide = modules.length % 2 === 1 && index === modules.length - 1;
                 return (
-                  <Animated.View key={m.id} entering={enter(index + 1)} style={s.cell}>
+                  <Animated.View key={m.id} entering={enter(index + 1)} style={wide ? s.cellWide : s.cell}>
                     <Pressable
                       accessibilityRole="button"
                       accessibilityLabel={`${MODULE_BRANDS[m.id].name} — ${m.line}`}
                       onPress={() => go(m.href)}
-                      style={[s.tile, { backgroundColor: alpha(ink, dark ? 0.07 : 0.04), borderColor: alpha(ink, dark ? 0.42 : 0.3) }]}
+                      style={[wide ? s.row : s.tile, { backgroundColor: alpha(ink, dark ? 0.07 : 0.04), borderColor: alpha(ink, dark ? 0.42 : 0.3) }]}
                     >
-                      <Rings ink={ink} dark={dark} size={96} />
+                      <Rings ink={ink} dark={dark} size={wide ? 96 : 84} />
                       <View style={[s.iconRing, { borderColor: alpha(ink, dark ? 0.7 : 0.55) }]}>
-                        <Icon size={17} color={ink} strokeWidth={2} />
+                        <Icon size={15} color={ink} strokeWidth={2} />
                       </View>
-                      <View style={{ gap: 1 }}>
-                        <ModuleWordmark module={m.id} size={16} />
+                      <View style={{ gap: 1, flex: wide ? 1 : undefined, minWidth: 0 }}>
+                        <ModuleWordmark module={m.id} size={15} />
                         <Text numberOfLines={1} style={[hubText.small, { color: c.text200 }]}>{m.line}</Text>
                       </View>
+                      {wide ? <ChevronRight size={16} color={c.text300} /> : null}
                     </Pressable>
                   </Animated.View>
                 );
@@ -267,23 +271,34 @@ const s = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 14,
-    minHeight: 76,
-    paddingHorizontal: 16,
+    minHeight: 66,
+    paddingHorizontal: 14,
     borderRadius: 20,
     borderWidth: 1,
     overflow: 'hidden',
   },
-  grid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', rowGap: 10 },
+  grid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', rowGap: 8 },
   cell: { width: '48.5%' },
+  cellWide: { width: '100%' },
   tile: {
-    minHeight: 112,
-    padding: 14,
+    minHeight: 96,
+    padding: 12,
     borderRadius: 20,
     borderWidth: 1,
     justifyContent: 'space-between',
     overflow: 'hidden',
   },
-  iconRing: { width: 36, height: 36, borderRadius: 18, borderWidth: 1.5, alignItems: 'center', justifyContent: 'center' },
+  row: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    minHeight: 60,
+    paddingHorizontal: 12,
+    borderRadius: 20,
+    borderWidth: 1,
+    overflow: 'hidden',
+  },
+  iconRing: { width: 32, height: 32, borderRadius: 16, borderWidth: 1.5, alignItems: 'center', justifyContent: 'center' },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   chip: {
     flexDirection: 'row',
