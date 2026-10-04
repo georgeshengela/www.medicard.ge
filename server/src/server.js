@@ -414,6 +414,9 @@ if (serveLanding) {
         if (filePath.endsWith('.html')) res.setHeader('Cache-Control', 'no-store');
         // Web app modules import each other without version stamps: revalidate every load.
         else if (/[\\/]app[\\/]/.test(filePath)) res.setHeader('Cache-Control', 'no-cache');
+        // MEDIRUN Glow engine + runner models: the app's map WebView loads them by URL, so a new engine build
+        // must reach phones on their next run without an app update (a 304 costs nothing when unchanged).
+        else if (/[\\/]medirun[\\/]glow[\\/]/.test(filePath)) res.setHeader('Cache-Control', 'no-cache');
         else if (filePath.endsWith('.css')) res.setHeader('Cache-Control', 'public, max-age=3600');
         else if (/\.(woff2|woff|ttf|otf)$/i.test(filePath)) {
           res.setHeader('Access-Control-Allow-Origin', '*');

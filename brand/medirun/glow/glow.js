@@ -1,7 +1,7 @@
 // MEDIRUN Glow — prototype shell. Simulates a run along route.json and feeds the shared engine
 // (engine/glow-engine.js) exactly the way the app's map WebView does: setTrail / setRunner / setActivity.
 // The screen chrome mirrors mobile/src/components/run/PulseActive.tsx; the only new element is the lit pill.
-import { createGlow, glowStyle } from './engine/glow-engine.js';
+import { createGlow, glowStyle } from './engine/glow-engine.js?v=2';
 
 const $ = (id) => document.getElementById(id);
 const params = new URLSearchParams(location.search);

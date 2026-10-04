@@ -5,6 +5,18 @@
 // WebGL context: buildings and trees from Mapbox streets-v8 z16 tiles streamed around the camera, the
 // current trail, street lamps, sparks and the rigged runner. Lighting is time based: a building lights
 // when a trail point (or an earlier walk) passes within LIGHT_R, delayed by distance / WAVE.
+// The lighting pass (owner-approved 2026-10-04, live in the browser and on the phone):
+//   · post-process: the finished frame is copied once, the lights are blurred at 1/4 and 1/8 size and added
+//     back (bloom), with a soft shoulder instead of clipping and a gentle vignette — the night haze around
+//     every light. No second geometry pass; the pass drops itself on a phone that cannot hold the frame rate.
+//   · facades: plaster colours, lit by the nearest stretch of the trail as a street light with real falloff
+//     (bright at the pavement, dark at the cornice); the windows come on from the street upward
+//   · windows: tungsten / warm white / cool LED / TV flicker / curtains / balcony doors, light spilling onto
+//     the sill, neon shop signs on some ground floors, a few sleepless windows in the dark city
+//   · street lamps: a real post (plinth, pole, arm, hanging lantern with glass) that warms up like a sodium
+//     lamp, a soft light cone and a pool on the pavement; a post never stands inside a building
+//   · ignition: golden motes rise from a facade the moment it lights; red aviation beacons on tall buildings
+//   · ground: road casings (curbs) in the Mapbox style
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
@@ -15,7 +27,8 @@ const Z = 16, NT = 2 ** Z;
 const MIN_RADIUS = 650, MAX_RADIUS = 1600, MAX_TILES = 72;
 const LIGHT_R = 72, WAVE = 26, CELL = 50;
 const NEVER = 1e7, ALWAYS = -1e4;
-const MAX_LAMPS = 1500;
+const MAX_LAMPS = 1500, LAMP_EVERY = 26, LAMP_SIDE = 3.6, LANTERN_Z = 4.52, SEG_MAX = 60;
+const MOTES = 700, BEACON_H = 32;
 
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 const smooth = (a, b, x) => { const t = clamp((x - a) / (b - a), 0, 1); return t * t * (3 - 2 * t); };
@@ -25,6 +38,10 @@ function rng(seed) { let a = seed >>> 0; return () => { a = (a + 0x6D2B79F5) >>>
 
 /** The ground: night streets, water, parks and flat footprints under the 3D city. */
 export function glowStyle() {
+  const roadWidth = ['interpolate', ['exponential', 1.7], ['zoom'],
+    13, ['match', ['get', 'class'], ['motorway', 'trunk', 'primary'], 2.2, ['secondary', 'tertiary'], 1.6, 0.6],
+    18, ['match', ['get', 'class'], ['motorway', 'trunk', 'primary'], 34, ['secondary', 'tertiary'], 26, ['street', 'street_limited', 'service'], 16, 7]];
+  const roadFilter = ['all', ['==', ['geometry-type'], 'LineString'], ['!', ['match', ['get', 'class'], ['major_rail', 'minor_rail', 'service_rail', 'ferry', 'aerialway', 'golf', 'construction'], true, false]]];
   return {
     version: 8,
     glyphs: 'mapbox://fonts/mapbox/{fontstack}/{range}.pbf',
@@ -35,16 +52,16 @@ export function glowStyle() {
       { id: 'green', type: 'fill', source: 'streets', 'source-layer': 'landuse', filter: ['match', ['get', 'class'], ['park', 'grass', 'wood', 'scrub', 'cemetery', 'pitch'], true, false], paint: { 'fill-color': '#15211D' } },
       { id: 'water', type: 'fill', source: 'streets', 'source-layer': 'water', paint: { 'fill-color': '#1D2B42' } },
       { id: 'water-edge', type: 'line', source: 'streets', 'source-layer': 'water', paint: { 'line-color': '#3A4C68', 'line-width': 1.2, 'line-blur': 1 } },
+      // curbs: a hairline either side of every street, so roads read as streets instead of fat lines
       {
-        id: 'roads', type: 'line', source: 'streets', 'source-layer': 'road',
-        filter: ['all', ['==', ['geometry-type'], 'LineString'], ['!', ['match', ['get', 'class'], ['major_rail', 'minor_rail', 'service_rail', 'ferry', 'aerialway', 'golf', 'construction'], true, false]]],
+        id: 'roads-casing', type: 'line', source: 'streets', 'source-layer': 'road', filter: roadFilter,
         layout: { 'line-cap': 'round', 'line-join': 'round' },
-        paint: {
-          'line-color': ['match', ['get', 'class'], ['path', 'pedestrian', 'track'], '#19212E', '#212A39'],
-          'line-width': ['interpolate', ['exponential', 1.7], ['zoom'],
-            13, ['match', ['get', 'class'], ['motorway', 'trunk', 'primary'], 2.2, ['secondary', 'tertiary'], 1.6, 0.6],
-            18, ['match', ['get', 'class'], ['motorway', 'trunk', 'primary'], 34, ['secondary', 'tertiary'], 26, ['street', 'street_limited', 'service'], 16, 7]],
-        },
+        paint: { 'line-color': '#2C3649', 'line-gap-width': roadWidth, 'line-width': ['interpolate', ['linear'], ['zoom'], 15, 0.4, 18, 1.4], 'line-opacity': ['interpolate', ['linear'], ['zoom'], 15, 0, 16.5, 0.9] },
+      },
+      {
+        id: 'roads', type: 'line', source: 'streets', 'source-layer': 'road', filter: roadFilter,
+        layout: { 'line-cap': 'round', 'line-join': 'round' },
+        paint: { 'line-color': ['match', ['get', 'class'], ['path', 'pedestrian', 'track'], '#19212E', '#212A39'], 'line-width': roadWidth },
       },
       { id: 'footprints', type: 'fill', source: 'streets', 'source-layer': 'building', paint: { 'fill-color': '#151C28' } },
     ],
@@ -57,23 +74,35 @@ const FOGFN = 'uniform float uRefW; uniform vec3 uFog; vec3 fogged(vec3 c, float
 const MOON = 'normalize(vec3(-0.45, 0.55, 0.72))';
 const sizeFromMetres = 'uPxM * uPR * uRefW / gl_Position.w';
 const additive = { transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide };
+// sodium-lamp warm-up: a short flicker, then amber ramping to warm white over ~2 s
+const WARMUP = `
+  float warmFlick(float since, float seed){ return since < 0.4 ? step(0.5, fract(since * 16.0 + seed * 7.0)) : 1.0; }
+  float warmRamp(float since){ return smoothstep(0.0, 1.8, since); }
+  vec3 lampColour(float ramp){ return mix(vec3(1.0, 0.52, 0.18), vec3(1.0, 0.80, 0.50), ramp); }`;
 
 function materials(U) {
   const building = new THREE.ShaderMaterial({
     uniforms: U, side: THREE.DoubleSide,
     vertexShader: `
-      attribute vec3 aFace; attribute vec2 aLit; attribute vec2 aBld;
-      varying vec3 vN; varying vec3 vFace; varying vec2 vLit; varying vec2 vBld; varying float vW; varying vec3 vPos;
+      attribute vec3 aFace; attribute vec2 aLit; attribute vec4 aSeg; attribute vec2 aBld;
+      varying vec3 vN; varying vec3 vFace; varying vec2 vLit; varying vec4 vSeg; varying vec2 vBld; varying float vW; varying vec3 vPos;
       void main(){
-        vN = normal; vFace = aFace; vLit = aLit; vBld = aBld; vPos = position;
+        vN = normal; vFace = aFace; vLit = aLit; vSeg = aSeg; vBld = aBld; vPos = position;
         gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
         vW = gl_Position.w;
       }`,
     fragmentShader: `
       uniform float uTime; uniform vec3 uRunner; uniform float uCut;
       ${FOGFN}
-      varying vec3 vN; varying vec3 vFace; varying vec2 vLit; varying vec2 vBld; varying float vW; varying vec3 vPos;
+      varying vec3 vN; varying vec3 vFace; varying vec2 vLit; varying vec4 vSeg; varying vec2 vBld; varying float vW; varying vec3 vPos;
       ${HASH}
+      // Tbilisi plaster: cream, ochre, terracotta, dusty rose, sage, grey — one per building
+      vec3 plaster(float s){
+        float k = floor(s * 6.0);
+        vec3 c = k < 1.0 ? vec3(0.91, 0.84, 0.70) : k < 2.0 ? vec3(0.85, 0.66, 0.42) : k < 3.0 ? vec3(0.78, 0.51, 0.37)
+               : k < 4.0 ? vec3(0.80, 0.64, 0.58) : k < 5.0 ? vec3(0.68, 0.72, 0.60) : vec3(0.76, 0.76, 0.78);
+        return c * (0.92 + 0.16 * hash(vec2(s, 8.8)));
+      }
       void main(){
         // See-through: walls between the camera and the runner open up around it; the hole is filled with faint glass.
         float cutFade = 0.0;
@@ -92,45 +121,89 @@ function materials(U) {
         float roof = vFace.z, v = vFace.y, seed = vBld.x, top = vBld.y, strength = vLit.y;
         float since = uTime - vLit.x;
         float on = step(0.0, since) * strength;
-        float lit = on * smoothstep(0.0, 1.4, since);
+        float lit = on * smoothstep(0.0, 1.6, since);
         float moon = max(dot(n, ${MOON}), 0.0);
 
-        vec3 slate = mix(vec3(0.13, 0.16, 0.22), vec3(0.19, 0.22, 0.29), hash(vec2(seed, 1.7)));
-        if (roof > 0.5) slate *= 1.3;
-        vec3 col = slate * (0.4 + 0.85 * moon);
+        // The street light: the nearest point of the stretch of trail that lit this building, at lantern height.
+        vec2 ba = vSeg.zw - vSeg.xy;
+        float hh = clamp(dot(vPos.xy - vSeg.xy, ba) / max(dot(ba, ba), 1e-3), 0.0, 1.0);
+        vec3 Lp = vec3(vSeg.xy + ba * hh, 4.6);
+        vec3 toL = Lp - vPos;
+        float d = length(toL);
+        vec3 ldir = toL / max(d, 1e-3);
+        float atten = 1.0 / (1.0 + d * d / 90.0);
+        float lam = clamp(dot(n, ldir) * 0.8 + 0.25, 0.0, 1.0);
+
+        vec3 albedo = plaster(seed);
+        vec3 sky = vec3(0.16, 0.20, 0.29) * (0.5 + 0.6 * moon);
+        if (roof > 0.5) { sky *= 1.35; albedo = mix(albedo, vec3(0.62, 0.64, 0.70), 0.6); }
+        vec3 col = albedo * sky;
         float g = (v - 0.5) / 3.3, fl = floor(g), fy = fract(g);
         if (roof < 0.5) {
-          col *= mix(0.42, 1.0, smoothstep(0.0, 9.0, v));
+          col *= mix(0.55, 1.0, smoothstep(0.0, 9.0, v));   // the sky lights the upper floors first
           if (fl >= 1.0 && v < top - 0.6) col *= 1.0 - (1.0 - smoothstep(0.0, 0.05, fy)) * 0.22 * (1.0 - smoothstep(0.1, 0.3, fwidth(g)));
         }
-        vec3 warmWall = mix(vec3(0.60, 0.29, 0.13), vec3(0.84, 0.50, 0.25), hash(vec2(seed, 4.2)));
-        float street = mix(1.25, 0.55, smoothstep(0.0, 16.0, v));
-        vec3 warm = roof > 0.5 ? vec3(0.34, 0.25, 0.21) * (0.8 + 0.4 * moon) : warmWall * street * (0.72 + 0.38 * moon);
-        col = mix(col, warm, lit * (roof > 0.5 ? 0.75 : 0.92));
-        col += vec3(1.0, 0.62, 0.3) * on * exp(-max(since, 0.0) * 2.4) * 0.45;
+        // warm light: the lamp with falloff, plus a soft bounce from the pavement that fades up the wall
+        vec3 warmL = vec3(1.0, 0.70, 0.42);
+        float street = roof > 0.5 ? 0.0 : 1.15 * atten * lam;
+        float bounce = roof > 0.5 ? 0.08 : 0.38 * exp(-v / 15.0);
+        col += albedo * warmL * min(street + bounce, 1.1) * lit;
+        if (roof < 0.5 && v > top - 0.5) col *= 1.0 + 0.3 * lit;              // the cornice catches the light
+        col += vec3(1.0, 0.62, 0.3) * on * exp(-max(since, 0.0) * 2.4) * 0.4;  // the ignition flash
+        if (roof > 0.5 && hash(floor(vPos.xy / 2.5) + seed) > 0.94) col *= 0.86;   // roof clutter (vents, skylights)
 
         if (roof < 0.5 && vFace.x >= 0.0 && fl >= 0.0 && v < top - 1.0) {
           float cx = floor(vFace.x), fx = fract(vFace.x);
           bool shop = fl < 0.5;
-          vec2 hs = shop ? vec2(0.38, 0.36) : vec2(0.17, 0.27);
-          vec2 c = vec2(fx - 0.5, fy - 0.48);
+          float h = hash(vec2(cx + seed * 97.0, fl + seed * 31.0));
+          float kind = hash(vec2(cx * 3.1 + seed * 13.0, fl * 1.7 + seed * 5.0));
+          bool door = !shop && kind > 0.86;                       // balcony door: tall, down to the floor
+          bool tv = !shop && kind < 0.07;
+          bool cool = !shop && kind >= 0.07 && kind < 0.19;
+          bool curtain = !shop && kind >= 0.19 && kind < 0.40;
+          vec2 hs = shop ? vec2(0.38, 0.36) : door ? vec2(0.14, 0.36) : vec2(0.17, 0.27);
+          vec2 c = vec2(fx - 0.5, fy - (door ? 0.40 : 0.48));
           vec2 aa = fwidth(vec2(vFace.x, g)) * 1.2;
           float lod = 1.0 - smoothstep(0.12, 0.35, max(aa.x, aa.y));
           float win = (1.0 - smoothstep(hs.x - aa.x, hs.x + aa.x, abs(c.x))) * (1.0 - smoothstep(hs.y - aa.y, hs.y + aa.y, abs(c.y))) * lod;
-          float h = hash(vec2(cx + seed * 97.0, fl + seed * 31.0));
-          float order = (shop ? 0.0 : 0.25) + h * 1.8 + fl * 0.12;
-          float wOn = on * step(order, since) * step(h, 0.3 + 0.65 * strength);
+          // the windows come on from the street upward: nearest the runner's path first, floor by floor
+          float order = d / 13.0 + h * 1.1 + fl * 0.18 + (shop ? 0.0 : 0.3);
+          // most shops are shut at night: fewer ground-floor windows, and dimmer than the homes above
+          float wOn = on * step(order, since) * step(h, shop ? 0.2 + 0.4 * strength : 0.3 + 0.65 * strength);
           float age = since - order;
-          float flick = age < 0.35 ? step(0.45, fract(age * 18.0 + h)) : 1.0;
-          float level = 0.75 + 0.5 * hash(vec2(h, 3.3));
-          vec3 glow = (shop ? vec3(1.0, 0.74, 0.40) : mix(vec3(1.0, 0.62, 0.27), vec3(1.0, 0.86, 0.56), hash(vec2(h, 9.1)))) * level;
-          float mull = shop ? 1.0 : 1.0 - (1.0 - smoothstep(0.01, 0.03, abs(c.x))) * 0.55;
-          vec3 off = mix(vec3(0.07, 0.09, 0.13), vec3(0.30, 0.42, 0.58), step(0.975, h) * 0.8);
+          float flick = age < 0.3 ? step(0.45, fract(age * 18.0 + h)) : 1.0;
+          float level = (0.75 + 0.5 * hash(vec2(h, 3.3))) * (shop ? 0.55 : 1.0);
+          vec3 glow = shop ? vec3(1.0, 0.74, 0.40)
+            : tv ? mix(vec3(0.45, 0.68, 1.0), vec3(0.85, 0.90, 1.0), hash(vec2(floor(uTime * 2.3) + h * 17.0, 1.0)))
+            : cool ? vec3(0.80, 0.89, 1.0)
+            : mix(vec3(1.0, 0.62, 0.27), vec3(1.0, 0.86, 0.56), hash(vec2(h, 9.1)));
+          glow *= level;
+          if (tv) glow *= 0.55 + 0.45 * hash(vec2(floor(uTime * 3.7) + h * 23.0, 2.0));
+          float shade = curtain ? 0.45 + 0.55 * (1.0 - smoothstep(0.0, hs.x, abs(c.x))) : 1.0;   // light through a curtain
+          float mull = (shop || door) ? 1.0 : 1.0 - (1.0 - smoothstep(0.01, 0.03, abs(c.x))) * 0.55;
+          // a few windows are lit in the dark city too — someone is up
+          float sleepless = step(0.965, h) * 0.5;
+          vec3 off = mix(vec3(0.05, 0.07, 0.11), mix(vec3(1.0, 0.72, 0.40), vec3(0.50, 0.70, 1.0), step(0.5, hash(vec2(h, 5.5)))) * 0.9, sleepless);
           float light = wOn * flick;
-          col = mix(col, mix(off, glow * 1.8 * mull, light), win * 0.95);
+          col = mix(col, mix(off, glow * 1.6 * mull * shade, light), win * 0.95);
+          // light spills onto the wall around the window, strongest on the sill below it
           vec2 outside = max(abs(c) - hs, 0.0) * vec2(3.1, 3.3);
-          col += glow * exp(-length(outside) * (shop ? 1.3 : 1.8)) * (1.0 - win) * light * 0.38 * lod;
+          float below = max(-c.y - hs.y, 0.0);
+          float spill = exp(-length(outside) * (shop ? 1.3 : 2.0)) * 0.25 + exp(-below * 6.0) * (1.0 - smoothstep(hs.x, hs.x + 0.12, abs(c.x))) * step(0.001, below) * 0.4;
+          col += glow * spill * (1.0 - win) * light * lod;
           col += glow * light * (1.0 - lod) * 0.35;
+          // a neon sign above some shop fronts
+          if (shop) {
+            float sg = hash(vec2(cx * 7.7 + seed * 41.0, 2.5));
+            if (sg > 0.72) {
+              float sy = c.y - 0.36;
+              float band = (1.0 - smoothstep(0.045 - aa.y, 0.045 + aa.y, abs(sy))) * (1.0 - smoothstep(0.42 - aa.x, 0.42 + aa.x, abs(c.x))) * lod;
+              vec3 neon = sg > 0.93 ? vec3(0.98, 0.45, 0.55) : sg > 0.86 ? vec3(0.37, 0.65, 1.0) : sg > 0.79 ? vec3(1.0, 0.76, 0.26) : vec3(0.25, 0.86, 0.78);
+              float signOn = on * step(order + 0.4, since);
+              col = mix(col, neon * mix(0.12, 2.2, signOn), band * 0.9);
+              col += neon * exp(-abs(sy) * 9.0) * signOn * 0.25 * lod;
+            }
+          }
         }
         #ifdef GHOST
           gl_FragColor = vec4(fogged(col, vW) * 1.15, 0.2 * cutFade);
@@ -170,14 +243,14 @@ function materials(U) {
       fragmentShader: `
         uniform float uHead; varying float vAlong; varying float vAcross;
         void main(){ float behind = uHead - vAlong; if (behind < 0.0) discard;
-          gl_FragColor = vec4(vec3(0.16, 0.85, 0.72), pow(1.0 - abs(vAcross), 2.4) * (0.30 + 0.6 * exp(-behind / 30.0))); }`,
+          gl_FragColor = vec4(vec3(0.16, 0.85, 0.72), pow(1.0 - abs(vAcross), 2.4) * (0.18 + 0.5 * exp(-behind / 30.0))); }`,
     }),
     warm: new THREE.ShaderMaterial({
       ...additive, uniforms: U, vertexShader: ribbonVert,
       fragmentShader: `
         uniform float uHead; varying float vAlong; varying float vAcross;
         void main(){ float behind = uHead - vAlong; if (behind < 0.0) discard;
-          gl_FragColor = vec4(vec3(1.0, 0.55, 0.22), pow(1.0 - abs(vAcross), 1.6) * smoothstep(4.0, 60.0, behind) * 0.2); }`,
+          gl_FragColor = vec4(vec3(1.0, 0.55, 0.22), pow(1.0 - abs(vAcross), 1.6) * smoothstep(4.0, 60.0, behind) * 0.16); }`,
     }),
     curtain: new THREE.ShaderMaterial({
       ...additive, uniforms: U,
@@ -199,27 +272,71 @@ function materials(U) {
           gl_FragColor = vec4(vec3(0.45, 0.6, 0.82), smoothstep(0.35, 1.0, n) * 0.11 * (1.0 - smoothstep(1.7, 5.0, vW / uRefW)));
         }`,
     }),
+    // the bulb: a small bright core (bloom draws the halo)
     lamp: new THREE.ShaderMaterial({
       ...additive, uniforms: U,
       vertexShader: `
-        attribute float aT; attribute float aSeed; uniform float uTime, uRefW, uPxM, uPR; varying float vOn;
+        attribute float aT; attribute float aSeed; uniform float uTime, uRefW, uPxM, uPR; varying float vOn; varying float vRamp;
+        ${WARMUP}
         void main(){
           float since = uTime - aT;
-          vOn = step(0.0, since) * (since < 0.45 ? step(0.5, fract(since * 14.0 + aSeed)) : 1.0);
+          vRamp = warmRamp(since);
+          vOn = step(0.0, since) * warmFlick(since, aSeed) * (0.35 + 0.65 * vRamp);
           gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
-          gl_PointSize = 2.6 * ${sizeFromMetres};
+          gl_PointSize = 2.4 * ${sizeFromMetres};
         }`,
       fragmentShader: `
-        varying float vOn;
+        varying float vOn; varying float vRamp;
+        ${WARMUP}
         void main(){ float r = length(gl_PointCoord - 0.5) * 2.0; if (r > 1.0) discard;
-          float core = 1.0 - smoothstep(0.0, 0.3, r), halo = pow(1.0 - r, 2.2);
-          gl_FragColor = vec4(vec3(1.0, 0.8, 0.5) * (core * 1.7 + halo * 0.7), (core + halo * 0.6) * mix(0.05, 1.0, vOn)); }`,
+          float core = 1.0 - smoothstep(0.0, 0.32, r), halo = pow(1.0 - r, 2.4);
+          gl_FragColor = vec4(lampColour(vRamp) * (core * 1.8 + halo * 0.5), (core + halo * 0.5) * vOn); }`,
     }),
-    pole: new THREE.ShaderMaterial({
+    // the post: dark metal under the moon, the lantern glass glowing when on, the top of the pole warmed by its own lamp
+    post: new THREE.ShaderMaterial({
       uniforms: U,
-      vertexShader: 'varying vec3 vN; varying float vW; void main(){ vN = mat3(instanceMatrix) * normal; gl_Position = projectionMatrix * modelViewMatrix * instanceMatrix * vec4(position, 1.0); vW = gl_Position.w; }',
-      fragmentShader: `${FOGFN} varying vec3 vN; varying float vW;
-        void main(){ float m = max(dot(normalize(vN), ${MOON}), 0.0); gl_FragColor = vec4(fogged(vec3(0.09, 0.11, 0.15) * (0.6 + 0.8 * m), vW), 1.0); }`,
+      vertexShader: `
+        attribute float aGlass; attribute float iT; attribute float iSeed; uniform float uTime;
+        varying vec3 vN; varying float vW; varying float vGlass; varying float vOn; varying float vRamp; varying float vZ;
+        ${WARMUP}
+        void main(){
+          float since = uTime - iT;
+          vRamp = warmRamp(since);
+          vOn = step(0.0, since) * warmFlick(since, iSeed) * (0.35 + 0.65 * vRamp);
+          vGlass = aGlass; vZ = position.z;
+          vN = normalize(mat3(instanceMatrix) * normal);
+          gl_Position = projectionMatrix * modelViewMatrix * instanceMatrix * vec4(position, 1.0); vW = gl_Position.w; }`,
+      fragmentShader: `${FOGFN} varying vec3 vN; varying float vW; varying float vGlass; varying float vOn; varying float vRamp; varying float vZ;
+        ${WARMUP}
+        void main(){
+          vec3 n = normalize(vN); float moon = max(dot(n, ${MOON}), 0.0);
+          vec3 col;
+          if (vGlass > 0.5) col = mix(vec3(0.12, 0.14, 0.19) * (0.5 + moon), lampColour(vRamp) * 2.6, vOn);
+          else col = vec3(0.10, 0.11, 0.14) * (0.45 + 0.9 * moon) + vec3(1.0, 0.70, 0.42) * vOn * exp(-abs(vZ - 4.5) * 1.3) * 0.8;
+          gl_FragColor = vec4(fogged(col, vW), 1.0); }`,
+    }),
+    // the light cone under the lantern: brightest where you look through the most of it, fading to the ground
+    cone: new THREE.ShaderMaterial({
+      ...additive, uniforms: U, depthTest: true,
+      vertexShader: `
+        attribute float iT; attribute float iSeed; uniform float uTime;
+        varying vec3 vN; varying vec3 vP; varying float vH; varying float vOn;
+        ${WARMUP}
+        void main(){
+          float since = uTime - iT;
+          vOn = step(0.0, since) * warmFlick(since, iSeed) * (0.35 + 0.65 * warmRamp(since));
+          vH = clamp((position.z - 0.1) / 4.3, 0.0, 1.0);
+          vec4 wp = instanceMatrix * vec4(position, 1.0); vP = wp.xyz;
+          vN = normalize(mat3(instanceMatrix) * normal);
+          gl_Position = projectionMatrix * modelViewMatrix * wp; }`,
+      fragmentShader: `
+        varying vec3 vN; varying vec3 vP; varying float vH; varying float vOn;
+        void main(){
+          vec3 V = normalize(cameraPosition - vP);
+          float cen = pow(abs(dot(normalize(vN), V)), 1.3);
+          float fall = smoothstep(0.0, 0.1, vH) * pow(vH, 1.4) * (1.0 - smoothstep(0.93, 1.0, vH));
+          float a = fall * (0.42 * cen + 0.08) * vOn;
+          gl_FragColor = vec4(vec3(1.0, 0.68, 0.38), a); }`,
     }),
     // Ground pools: under lamps and in front of lit buildings. Unlit quads collapse to nothing.
     pool: new THREE.ShaderMaterial({
@@ -233,7 +350,7 @@ function materials(U) {
           gl_Position = projectionMatrix * modelViewMatrix * vec4(p, 1.0);
         }`,
       fragmentShader: `varying vec2 vUV; varying float vOn;
-        void main(){ float r = length(vUV); if (r > 1.0) discard; gl_FragColor = vec4(vec3(1.0, 0.64, 0.32), pow(1.0 - r, 2.0) * vOn); }`,
+        void main(){ float r = length(vUV); if (r > 1.0) discard; gl_FragColor = vec4(vec3(1.0, 0.64, 0.32), (pow(1.0 - r, 2.2) * 0.6 + pow(1.0 - r, 7.0) * 0.4) * vOn); }`,
     }),
     haze: new THREE.ShaderMaterial({
       ...additive, uniforms: U,
@@ -245,7 +362,7 @@ function materials(U) {
           gl_PointSize = vOn < 0.01 ? 0.0 : min(aSize * ${sizeFromMetres}, 420.0);
         }`,
       fragmentShader: `varying float vOn;
-        void main(){ float r = length(gl_PointCoord - 0.5) * 2.0; if (r > 1.0) discard; gl_FragColor = vec4(vec3(1.0, 0.6, 0.28), pow(1.0 - r, 2.6) * 0.12 * vOn); }`,
+        void main(){ float r = length(gl_PointCoord - 0.5) * 2.0; if (r > 1.0) discard; gl_FragColor = vec4(vec3(1.0, 0.6, 0.28), pow(1.0 - r, 2.6) * 0.07 * vOn); }`,
     }),
     spark: new THREE.ShaderMaterial({
       ...additive, uniforms: U,
@@ -260,6 +377,38 @@ function materials(U) {
         }`,
       fragmentShader: `varying float vLife;
         void main(){ float r = length(gl_PointCoord - 0.5) * 2.0; if (r > 1.0) discard; gl_FragColor = vec4(vec3(0.6, 1.0, 0.92), pow(1.0 - r, 1.8) * vLife); }`,
+    }),
+    // golden motes that rise from a facade the moment it lights
+    mote: new THREE.ShaderMaterial({
+      ...additive, uniforms: U,
+      vertexShader: `
+        attribute vec3 aVel; attribute float aBirth; attribute float aLife; attribute float aSize; attribute float aSeed;
+        uniform float uTime, uRefW, uPxM, uPR; varying float vA;
+        void main(){
+          float age = uTime - aBirth, t = clamp(age / aLife, 0.0, 1.0);
+          vA = (age < 0.0 || t >= 1.0) ? 0.0 : smoothstep(0.0, 0.12, t) * (1.0 - smoothstep(0.55, 1.0, t));
+          vec3 p = position + aVel * age + vec3(sin(age * 1.6 + aSeed * 6.3) * 0.35, cos(age * 1.1 + aSeed * 9.1) * 0.35, 0.0);
+          gl_Position = projectionMatrix * modelViewMatrix * vec4(p, 1.0);
+          gl_PointSize = vA <= 0.0 ? 0.0 : aSize * ${sizeFromMetres} * (0.7 + 0.3 * (1.0 - t));
+        }`,
+      fragmentShader: `varying float vA;
+        void main(){ float r = length(gl_PointCoord - 0.5) * 2.0; if (r > 1.0) discard; float core = pow(1.0 - r, 1.6);
+          gl_FragColor = vec4(vec3(1.0, 0.86, 0.55) * (0.8 + 0.6 * core), core * vA); }`,
+    }),
+    // red aviation beacons on the tallest buildings — on all night, lit city or not
+    beacon: new THREE.ShaderMaterial({
+      ...additive, uniforms: U,
+      vertexShader: `
+        attribute float aPhase; uniform float uTime, uRefW, uPxM, uPR; varying float vB;
+        void main(){
+          vB = smoothstep(0.3, 0.5, 0.5 + 0.5 * sin(uTime * 2.4 + aPhase * 6.2832));
+          gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+          gl_PointSize = max(1.1 * ${sizeFromMetres}, 3.0 * uPR);
+        }`,
+      fragmentShader: `varying float vB;
+        void main(){ float r = length(gl_PointCoord - 0.5) * 2.0; if (r > 1.0) discard;
+          float core = 1.0 - smoothstep(0.0, 0.35, r), halo = pow(1.0 - r, 2.5);
+          gl_FragColor = vec4(vec3(1.0, 0.25, 0.2) * (core * 1.6 + halo * 0.6), (core + halo * 0.5) * (0.15 + 0.85 * vB)); }`,
     }),
     tree: new THREE.ShaderMaterial({
       uniforms: U,
@@ -285,7 +434,7 @@ function materials(U) {
           vec3 base = canopy ? mix(vec3(0.07, 0.13, 0.12), vec3(0.11, 0.18, 0.14), hash(vec2(vSeed, 2.0))) : vec3(0.11, 0.09, 0.08);
           vec3 col = base * (0.5 + 0.9 * moon);
           float under = clamp(0.5 - n.z * 0.5, 0.0, 1.0);
-          col += lit * (vec3(0.95, 0.52, 0.22) * 0.32 * (0.4 + under) + vec3(0.2, 0.9, 0.75) * 0.3 * exp(-vLit.z / 9.0));
+          col += lit * (vec3(0.95, 0.52, 0.22) * 0.34 * (0.4 + under) + vec3(0.2, 0.9, 0.75) * 0.3 * exp(-vLit.z / 9.0));
           gl_FragColor = vec4(fogged(col, vW), 1.0);
         }`,
     }),
@@ -359,12 +508,30 @@ const TREE = (() => {
   return mergeGeometries([canopy, trunk]);
 })();
 const TREE_CLASSES = { park: 110, wood: 70, scrub: 140, cemetery: 120, grass: 420 };
+// The street lamp: plinth, tapered pole, a short arm toward the street and a hanging hexagonal lantern.
+// Local +y points at the path; aGlass marks the lantern glass for the shader.
+const POST = (() => {
+  const parts = [];
+  const up = (g) => g.rotateX(Math.PI / 2);          // cylinder axis Y → Z
+  const add = (g, glass) => { g.setAttribute('aGlass', new THREE.Float32BufferAttribute(new Float32Array(g.attributes.position.count).fill(glass), 1)); parts.push(g); };
+  add(up(new THREE.CylinderGeometry(0.2, 0.27, 0.45, 8)).translate(0, 0, 0.225), 0);       // plinth
+  add(up(new THREE.CylinderGeometry(0.055, 0.085, 4.55, 8)).translate(0, 0, 2.725), 0);    // pole, up to 5.0 m
+  add(new THREE.SphereGeometry(0.1, 8, 6).translate(0, 0, 5.02), 0);                        // knob
+  add(new THREE.CylinderGeometry(0.035, 0.045, 0.85, 6).translate(0, 0.42, 4.95), 0);       // the arm (axis Y = toward the street)
+  add(up(new THREE.CylinderGeometry(0.03, 0.03, 0.26, 5)).translate(0, 0.8, 4.84), 0);       // hanger
+  add(up(new THREE.ConeGeometry(0.27, 0.2, 6)).translate(0, 0.8, 4.83), 0);                 // cap
+  add(up(new THREE.CylinderGeometry(0.2, 0.17, 0.42, 6)).translate(0, 0.8, LANTERN_Z), 1);   // the glass
+  add(up(new THREE.CylinderGeometry(0.17, 0.11, 0.07, 6)).translate(0, 0.8, 4.28), 0);       // lantern base
+  return mergeGeometries(parts);
+})();
+// The light cone: open, from the lantern down to the ground (local z 4.4 → 0.1).
+const CONE = new THREE.CylinderGeometry(0.22, 3.4, 4.3, 16, 1, true).rotateX(Math.PI / 2).translate(0, 0.8, 2.25);
 
 /**
- * createGlow({ mapboxgl, map, token, assetBase, hero, onLit, lite }) — call after the map's 'load'.
- * Returns { setTrail, setPaint, setRunner, setActivity, setHero, setRunnerVisible, runner(), litCount(), dispose }.
+ * createGlow({ mapboxgl, map, token, assetBase, hero, onLit, lite, bloom, adaptive, onQuality }) — call after the map's 'load'.
+ * Returns { setTrail, setPaint, setRunner, setActivity, setHero, setRunnerVisible, setBloom, runner(), litCount(), dispose }.
  */
-export function createGlow({ mapboxgl, map, token, assetBase = '', hero = 'm', onLit, lite = false }) {
+export function createGlow({ mapboxgl, map, token, assetBase = '', hero = 'm', onLit, lite = false, bloom = true, adaptive = true, onQuality }) {
   const start = map.getCenter();
   const ORIGIN = mapboxgl.MercatorCoordinate.fromLngLat([start.lng, start.lat], 0);
   const S = ORIGIN.meterInMercatorCoordinateUnits();
@@ -388,12 +555,14 @@ export function createGlow({ mapboxgl, map, token, assetBase = '', hero = 'm', o
   const faceLight = new THREE.DirectionalLight(0xe6f2ff, 0.5); scene.add(faceLight);
   let heroView = false;
   const now = () => U.uTime.value;
+  let postOn = bloom && !lite;
 
   // ---------- spatial index of lightable things (buildings, trees) and of walked points ----------
   const grid = new Map();             // cell → records
   const walkedTrail = new Map(), walkedPaint = new Map();   // cell → [x, y, ...] of this session / earlier walks
   const cellKey = (x, y) => Math.floor(x / CELL) + ',' + Math.floor(y / CELL);
   const litKeys = new Set();          // buildings lit by this session's trail (the pill count)
+  const ignitions = [];               // records whose light moment is still ahead (motes rise when it comes)
   function addRecord(rec) { const k = cellKey(rec.cx, rec.cy); rec.cell = k; if (!grid.has(k)) grid.set(k, []); grid.get(k).push(rec); }
   function recDist(rec, x, y) {
     let d = Math.hypot(rec.cx - x, rec.cy - y);
@@ -409,11 +578,36 @@ export function createGlow({ mapboxgl, map, token, assetBase = '', hero = 'm', o
       r.attr.needsUpdate = true;
     }
   }
-  function light(rec, time, d, fromTrail) {
+  // The stretch of trail nearest a building is its street light (the shader lights the facade from there).
+  function writeSeg(rec) {
+    const s = rec.seg;
+    for (const r of rec.segRanges) {
+      const a = r.attr.array;
+      for (let i = r.start; i < r.start + r.count; i++) { a[i * 4] = s[0]; a[i * 4 + 1] = s[1]; a[i * 4 + 2] = s[2]; a[i * 4 + 3] = s[3]; }
+      r.attr.addUpdateRange(r.start * 4, r.count * 4);
+      r.attr.needsUpdate = true;
+    }
+    rec.segWritten = [s[2], s[3]];
+  }
+  function touchSeg(rec, px, py) {
+    if (!rec.segRanges || px == null) return;
+    let s = rec.seg, fresh = false;
+    if (!s || Math.hypot(px - s[2], py - s[3]) > 40) { s = rec.seg = [px, py, px, py]; fresh = true; }
+    else {
+      s[2] = px; s[3] = py;
+      const L = Math.hypot(s[2] - s[0], s[3] - s[1]);
+      if (L > SEG_MAX) { s[0] = s[2] - ((s[2] - s[0]) * SEG_MAX) / L; s[1] = s[3] - ((s[3] - s[1]) * SEG_MAX) / L; }
+    }
+    const w = rec.segWritten;
+    if (fresh || !w || Math.hypot(s[2] - w[0], s[3] - w[1]) > 2) writeSeg(rec);
+  }
+  function light(rec, time, d, fromTrail, px, py) {
     const strength = 1 - smooth(rec.tree ? 10 : 14, rec.tree ? 60 : LIGHT_R, d);
     if (fromTrail && rec.key && strength > 0.25 && !litKeys.has(rec.key)) { litKeys.add(rec.key); litDirty = true; }
-    if (strength <= 0.02 || strength <= rec.strength + 0.08) return;
-    if (rec.strength <= 0) rec.time = time;
+    if (strength <= 0.02) return;
+    touchSeg(rec, px, py);
+    if (strength <= rec.strength + 0.08) return;
+    if (rec.strength <= 0) { rec.time = time; if (time > ALWAYS + 1 && ignitions.length < 600) ignitions.push(rec); }
     rec.strength = strength; rec.dist = Math.min(rec.dist ?? 1e9, d);
     writeLit(rec);
   }
@@ -422,23 +616,23 @@ export function createGlow({ mapboxgl, map, token, assetBase = '', hero = 'm', o
     for (let i = -span; i <= span; i++) for (let j = -span; j <= span; j++) {
       const list = grid.get(cx + i + ',' + (cy + j));
       if (!list) continue;
-      for (const rec of list) { const d = recDist(rec, x, y); if (d < LIGHT_R) light(rec, instant ? ALWAYS : time + d / WAVE, d, fromTrail); }
+      for (const rec of list) { const d = recDist(rec, x, y); if (d < LIGHT_R) light(rec, instant ? ALWAYS : time + d / WAVE, d, fromTrail, x, y); }
     }
   }
   function addWalked(store, x, y) { const k = cellKey(x, y); if (!store.has(k)) store.set(k, []); store.get(k).push(x, y); }
   function nearestWalked(store, rec) {
     const cx = Math.floor(rec.cx / CELL), cy = Math.floor(rec.cy / CELL), span = Math.ceil(LIGHT_R / CELL);
-    let best = 1e9;
+    const best = { d: 1e9, x: 0, y: 0 };
     for (let i = -span; i <= span; i++) for (let j = -span; j <= span; j++) {
       const p = store.get(cx + i + ',' + (cy + j));
-      if (p) for (let k = 0; k < p.length; k += 2) best = Math.min(best, recDist(rec, p[k], p[k + 1]));
+      if (p) for (let k = 0; k < p.length; k += 2) { const d = recDist(rec, p[k], p[k + 1]); if (d < best.d) { best.d = d; best.x = p[k]; best.y = p[k + 1]; } }
     }
     return best;
   }
   function lightFromHistory(rec) {      // a tile arriving after we walked there lights at once
     const t = nearestWalked(walkedTrail, rec), p = nearestWalked(walkedPaint, rec);
-    if (t < LIGHT_R) light(rec, ALWAYS, t, true);
-    if (p < LIGHT_R) light(rec, ALWAYS, p, false);
+    if (t.d < LIGHT_R) light(rec, ALWAYS, t.d, true, t.x, t.y);
+    if (p.d < LIGHT_R) light(rec, ALWAYS, p.d, false, p.x, p.y);
   }
 
   // ---------- tiles ----------
@@ -505,11 +699,11 @@ export function createGlow({ mapboxgl, map, token, assetBase = '', hero = 'm', o
         for (let i = 0; i < mats.length; i++) recs.push({ tree: true, cx: spots[i * 2], cy: spots[i * 2 + 1], strength: 0, time: NEVER, ranges: [{ attr: lit, start: i, count: 1 }] });
       }
     }
-    // buildings (+ a spill pool and a haze point each)
+    // buildings (+ a spill pool and a haze point each, a beacon on the tall ones)
     if (tile.layers.building) {
       const layer = tile.layers.building;
       const P = [], N = [], F = [], B = [], idx = [], owners = [];
-      const poolP = [], poolUV = [], poolC = [], poolIdx = [], hazeP = [], hazeS = [];
+      const poolP = [], poolUV = [], poolC = [], poolIdx = [], hazeP = [], hazeS = [], beaconP = [], beaconPh = [];
       let n = 0;
       const vert = (x, y, z, nx, ny, nz, u, v, roof, seed, h) => { P.push(x, y, z); N.push(nx, ny, nz); F.push(u, v, roof); B.push(seed, h); return n++; };
       for (let i = 0; i < layer.length; i++) {
@@ -554,6 +748,7 @@ export function createGlow({ mapboxgl, map, token, assetBase = '', hero = 'm', o
           [[-1, -1], [1, -1], [1, 1], [-1, 1]].forEach(([u, v]) => { poolP.push(cx + u * R, cy + v * R, 0.15); poolUV.push(u, v); poolC.push(cx, cy, 0.15); });
           poolIdx.push(pool, pool + 1, pool + 2, pool, pool + 2, pool + 3);
           hazeP.push(cx, cy, Math.min(h, 18) * 0.8); hazeS.push(clamp(r * 2.6, 16, 46));
+          if (h >= BEACON_H) { beaconP.push(cx, cy, h + 1.2); beaconPh.push(seed); }
           owners.push({ key: f.id != null ? 'id' + f.id : null, cx, cy, pts, h, first, count: n - first, pool, haze: hazeS.length - 1 });
         }
       }
@@ -561,11 +756,14 @@ export function createGlow({ mapboxgl, map, token, assetBase = '', hero = 'm', o
         const geo = new THREE.BufferGeometry();
         const lit = new THREE.Float32BufferAttribute(new Float32Array(n * 2).map((_, i) => (i % 2 ? 0 : NEVER)), 2);
         lit.setUsage(THREE.DynamicDrawUsage);
+        const seg = new THREE.Float32BufferAttribute(new Float32Array(n * 4), 4);
+        seg.setUsage(THREE.DynamicDrawUsage);
         geo.setAttribute('position', new THREE.Float32BufferAttribute(P, 3));
         geo.setAttribute('normal', new THREE.Float32BufferAttribute(N, 3));
         geo.setAttribute('aFace', new THREE.Float32BufferAttribute(F, 3));
         geo.setAttribute('aBld', new THREE.Float32BufferAttribute(B, 2));
         geo.setAttribute('aLit', lit);
+        geo.setAttribute('aSeg', seg);
         geo.setIndex(idx);
         const mesh = new THREE.Mesh(geo, M.building); mesh.renderOrder = 1; mesh.frustumCulled = false; g.add(mesh);
         const glass = new THREE.Mesh(geo, M.buildingGhost); glass.renderOrder = 4; glass.frustumCulled = false; glass.visible = U.uCut.value > 0; g.add(glass); glassMeshes.add(glass);
@@ -590,12 +788,18 @@ export function createGlow({ mapboxgl, map, token, assetBase = '', hero = 'm', o
           hg.setAttribute('aLit', hlit);
           const hz = new THREE.Points(hg, M.haze); hz.renderOrder = 10; hz.frustumCulled = false; g.add(hz);
         }
+        if (beaconP.length) {
+          const bg = new THREE.BufferGeometry();
+          bg.setAttribute('position', new THREE.Float32BufferAttribute(beaconP, 3));
+          bg.setAttribute('aPhase', new THREE.Float32BufferAttribute(beaconPh, 1));
+          const bp = new THREE.Points(bg, M.beacon); bp.renderOrder = 9; bp.frustumCulled = false; g.add(bp);
+        }
         for (const o of owners) {
           const ranges = [{ attr: lit, start: o.first, count: o.count }, { attr: plit, start: o.pool, count: 4 }];
           if (hlit) ranges.push({ attr: hlit, start: o.haze, count: 1 });
           let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
           for (let k = 0; k < o.pts.length; k += 2) { x0 = Math.min(x0, o.pts[k]); x1 = Math.max(x1, o.pts[k]); y0 = Math.min(y0, o.pts[k + 1]); y1 = Math.max(y1, o.pts[k + 1]); }
-          recs.push({ key: o.key, cx: o.cx, cy: o.cy, pts: o.pts, h: o.h, bb: [x0, y0, x1, y1], strength: 0, time: NEVER, ranges });
+          recs.push({ key: o.key, cx: o.cx, cy: o.cy, pts: o.pts, h: o.h, bb: [x0, y0, x1, y1], strength: 0, time: NEVER, ranges, segRanges: [{ attr: seg, start: o.first, count: o.count }], seg: null, segWritten: null });
         }
       }
     }
@@ -728,15 +932,23 @@ export function createGlow({ mapboxgl, map, token, assetBase = '', hero = 'm', o
     trail.path = path;
   }
 
-  // Lamps: preallocated, filled as the trail grows.
+  // Lamps: preallocated, filled as the trail grows. Each lamp = bulb sprite + post + light cone + ground pool.
   const lampGeo = new THREE.BufferGeometry();
   lampGeo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(MAX_LAMPS * 3), 3));
   lampGeo.setAttribute('aT', new THREE.BufferAttribute(new Float32Array(MAX_LAMPS).fill(NEVER), 1));
   lampGeo.setAttribute('aSeed', new THREE.BufferAttribute(new Float32Array(MAX_LAMPS).map((_, i) => hash1(i)), 1));
   lampGeo.setDrawRange(0, 0);
   const lamps = new THREE.Points(lampGeo, M.lamp); lamps.renderOrder = 8; lamps.frustumCulled = false; scene.add(lamps);
-  const postGeo = mergeGeometries([new THREE.BoxGeometry(0.16, 0.16, 4.4).translate(0, 0, 2.2), new THREE.BoxGeometry(0.5, 0.5, 0.25).translate(0, 0, 4.5)]);
-  const posts = new THREE.InstancedMesh(postGeo, M.pole, MAX_LAMPS); posts.count = 0; posts.renderOrder = 1; posts.frustumCulled = false; scene.add(posts);
+  const instancedTimes = (geo) => {
+    const g = geo.clone();
+    const iT = new THREE.InstancedBufferAttribute(new Float32Array(MAX_LAMPS).fill(NEVER), 1); iT.setUsage(THREE.DynamicDrawUsage);
+    const iSeed = new THREE.InstancedBufferAttribute(new Float32Array(MAX_LAMPS).map((_, i) => hash1(i + 7)), 1);
+    g.setAttribute('iT', iT); g.setAttribute('iSeed', iSeed);
+    return g;
+  };
+  const postGeo = instancedTimes(POST), coneGeo = instancedTimes(CONE);
+  const posts = new THREE.InstancedMesh(postGeo, M.post, MAX_LAMPS); posts.count = 0; posts.renderOrder = 1; posts.frustumCulled = false; scene.add(posts);
+  const cones = new THREE.InstancedMesh(coneGeo, M.cone, MAX_LAMPS); cones.count = 0; cones.renderOrder = 3; cones.frustumCulled = false; scene.add(cones);
   const lampPoolGeo = new THREE.BufferGeometry();
   lampPoolGeo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(MAX_LAMPS * 12), 3));
   lampPoolGeo.setAttribute('aUV', new THREE.BufferAttribute(new Float32Array(MAX_LAMPS * 8), 2));
@@ -746,18 +958,24 @@ export function createGlow({ mapboxgl, map, token, assetBase = '', hero = 'm', o
   lampPoolGeo.setDrawRange(0, 0);
   const lampPools = new THREE.Mesh(lampPoolGeo, M.pool); lampPools.renderOrder = 2; lampPools.frustumCulled = false; scene.add(lampPools);
   const tmpM = new THREE.Matrix4();
-  function addLamp(x, y, t) {
+  /** A lamp at (x, y); (ax, ay) is the unit direction from the post to the path — the arm and lantern reach that way. */
+  function addLamp(x, y, t, ax, ay) {
     const i = trail.lampCount++;
-    lampGeo.attributes.position.setXYZ(i, x, y, 4.5); lampGeo.attributes.aT.setX(i, t);
+    const lx = x + ax * 0.8, ly = y + ay * 0.8;                 // the lantern hangs at the end of the arm
+    lampGeo.attributes.position.setXYZ(i, lx, ly, LANTERN_Z); lampGeo.attributes.aT.setX(i, t);
     lampGeo.attributes.position.needsUpdate = lampGeo.attributes.aT.needsUpdate = true;
     lampGeo.setDrawRange(0, trail.lampCount);
-    posts.setMatrixAt(i, tmpM.makeTranslation(x, y, 0)); posts.count = trail.lampCount; posts.instanceMatrix.needsUpdate = true;
-    const P = lampPoolGeo.attributes.position, UV = lampPoolGeo.attributes.aUV, C = lampPoolGeo.attributes.aC, LT = lampPoolGeo.attributes.aLit, R = 7.5;
-    [[-1, -1], [1, -1], [1, 1], [-1, 1]].forEach(([u, v], k) => { P.setXYZ(i * 4 + k, x + u * R, y + v * R, 0.15); UV.setXY(i * 4 + k, u, v); C.setXYZ(i * 4 + k, x, y, 0.15); LT.setXY(i * 4 + k, t, 0.32); });
+    tmpM.makeRotationZ(Math.atan2(-ax, ay)).setPosition(x, y, 0);  // local +y → (ax, ay)
+    posts.setMatrixAt(i, tmpM); posts.count = trail.lampCount; posts.instanceMatrix.needsUpdate = true;
+    cones.setMatrixAt(i, tmpM); cones.count = trail.lampCount; cones.instanceMatrix.needsUpdate = true;
+    postGeo.attributes.iT.setX(i, t); postGeo.attributes.iT.needsUpdate = true;
+    coneGeo.attributes.iT.setX(i, t); coneGeo.attributes.iT.needsUpdate = true;
+    const P = lampPoolGeo.attributes.position, UV = lampPoolGeo.attributes.aUV, C = lampPoolGeo.attributes.aC, LT = lampPoolGeo.attributes.aLit, R = 8;
+    [[-1, -1], [1, -1], [1, 1], [-1, 1]].forEach(([u, v], k) => { P.setXYZ(i * 4 + k, lx + u * R, ly + v * R, 0.15); UV.setXY(i * 4 + k, u, v); C.setXYZ(i * 4 + k, lx, ly, 0.15); LT.setXY(i * 4 + k, t, 0.36); });
     P.needsUpdate = UV.needsUpdate = C.needsUpdate = LT.needsUpdate = true;
     lampPoolGeo.setDrawRange(0, trail.lampCount * 6);
   }
-  function clearLamps() { trail.lampCount = 0; trail.lampNext = 12; lampGeo.setDrawRange(0, 0); posts.count = 0; lampPoolGeo.setDrawRange(0, 0); }
+  function clearLamps() { trail.lampCount = 0; trail.lampNext = 12; lampGeo.setDrawRange(0, 0); posts.count = 0; cones.count = 0; lampPoolGeo.setDrawRange(0, 0); }
 
   /** The session's trail, oldest first, as [lng, lat] pairs. Growing it lights the city; a shorter or new list starts over. */
   function setTrail(coords) {
@@ -782,7 +1000,7 @@ export function createGlow({ mapboxgl, map, token, assetBase = '', hero = 'm', o
     for (let i = -span; i <= span; i++) for (let j = -span; j <= span; j++) {
       const list = grid.get(cx + i + ',' + (cy + j));
       if (!list) continue;
-      for (const rec of list) { const d = recDist(rec, x, y); if (d < LIGHT_R) light(rec, t + d / WAVE, d, true); }
+      for (const rec of list) { const d = recDist(rec, x, y); if (d < LIGHT_R) light(rec, t + d / WAVE, d, true, x, y); }
     }
   }
   /** Earlier walks ([[lng, lat], ...] per line): their streets are simply lit, no animation. */
@@ -800,7 +1018,7 @@ export function createGlow({ mapboxgl, map, token, assetBase = '', hero = 'm', o
     }
   }
 
-  // ---------- sparks and the heartbeat ring ----------
+  // ---------- sparks, motes and the heartbeat ring ----------
   const SPARKS = 500;
   const sparkGeo = new THREE.BufferGeometry();
   sparkGeo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(SPARKS * 3), 3));
@@ -817,6 +1035,36 @@ export function createGlow({ mapboxgl, map, token, assetBase = '', hero = 'm', o
       B.setX(k, now() - Math.random() * 0.05);
     }
     P.needsUpdate = V.needsUpdate = B.needsUpdate = true;
+  }
+  const moteGeo = new THREE.BufferGeometry();
+  moteGeo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(MOTES * 3), 3));
+  moteGeo.setAttribute('aVel', new THREE.BufferAttribute(new Float32Array(MOTES * 3), 3));
+  moteGeo.setAttribute('aBirth', new THREE.BufferAttribute(new Float32Array(MOTES).fill(-99), 1));
+  moteGeo.setAttribute('aLife', new THREE.BufferAttribute(new Float32Array(MOTES).fill(1), 1));
+  moteGeo.setAttribute('aSize', new THREE.BufferAttribute(new Float32Array(MOTES), 1));
+  moteGeo.setAttribute('aSeed', new THREE.BufferAttribute(new Float32Array(MOTES), 1));
+  const motes = new THREE.Points(moteGeo, M.mote); motes.renderOrder = 9; motes.frustumCulled = false; scene.add(motes);
+  let moteNext = 0;
+  function emitMotes(x, y, zMax, n, spread) {
+    const P = moteGeo.attributes.position, V = moteGeo.attributes.aVel, B = moteGeo.attributes.aBirth, L = moteGeo.attributes.aLife, SZ = moteGeo.attributes.aSize, SD = moteGeo.attributes.aSeed;
+    for (let i = 0; i < n; i++) {
+      const k = moteNext; moteNext = (moteNext + 1) % MOTES;
+      P.setXYZ(k, x + (Math.random() - 0.5) * spread * 2, y + (Math.random() - 0.5) * spread * 2, 0.6 + Math.random() * zMax);
+      V.setXYZ(k, (Math.random() - 0.5) * 0.3, (Math.random() - 0.5) * 0.3, 0.5 + Math.random() * 0.7);
+      B.setX(k, now() + Math.random() * 0.8); L.setX(k, 3 + Math.random() * 2.5); SZ.setX(k, 0.22 + Math.random() * 0.22); SD.setX(k, Math.random());
+    }
+    P.needsUpdate = V.needsUpdate = B.needsUpdate = L.needsUpdate = SZ.needsUpdate = SD.needsUpdate = true;
+  }
+  /** The moment a building lights: a handful of golden motes rise from the facade nearest the trail. */
+  function ignite(rec) {
+    if (rec.tree) { emitMotes(rec.cx, rec.cy, 3.5, 2, 1.5); return; }
+    let lx = rec.cx, ly = rec.cy;
+    const s = rec.seg;
+    if (s) {
+      const bx = s[2] - s[0], by = s[3] - s[1], bb = bx * bx + by * by || 1e-3, t = clamp(((rec.cx - s[0]) * bx + (rec.cy - s[1]) * by) / bb, 0, 1);
+      lx = s[0] + bx * t; ly = s[1] + by * t;
+    }
+    emitMotes(lx + (rec.cx - lx) * 0.6, ly + (rec.cy - ly) * 0.6, Math.min(rec.h, 9), 5 + Math.min(6, Math.floor(rec.h / 6)), 4);
   }
   const ring = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), M.ring); ring.renderOrder = 7; ring.frustumCulled = false; ring.scale.setScalar(22); scene.add(ring);
 
@@ -984,12 +1232,86 @@ export function createGlow({ mapboxgl, map, token, assetBase = '', hero = 'm', o
   /** 'auto' (speed decides) | 'idle' | 'walk' | 'run' | 'dance' */
   function setActivity(a) { runner.forced = a === 'auto' ? null : a; }
 
+  // ---------- post: bloom, a soft shoulder and a vignette on the finished frame ----------
+  // The frame (Mapbox ground + the 3D city) is copied once; the lights are kept by a soft threshold, blurred at
+  // 1/4 and 1/8 size and added back. One full-screen pass writes the result — no second geometry pass.
+  function createPost(renderer) {
+    const vs = 'varying vec2 vUv; void main(){ vUv = uv; gl_Position = vec4(position.xy, 0.0, 1.0); }';
+    const mk = (fs, uniforms) => new THREE.ShaderMaterial({ uniforms, vertexShader: vs, fragmentShader: fs, depthTest: false, depthWrite: false, blending: THREE.NoBlending });
+    const bright = mk(`uniform sampler2D tSrc; uniform vec2 uTexel; varying vec2 vUv;
+      void main(){
+        vec3 c = texture2D(tSrc, vUv + uTexel * vec2(-1.0, -1.0)).rgb + texture2D(tSrc, vUv + uTexel * vec2(1.0, -1.0)).rgb
+               + texture2D(tSrc, vUv + uTexel * vec2(-1.0, 1.0)).rgb + texture2D(tSrc, vUv + uTexel * vec2(1.0, 1.0)).rgb;
+        c *= 0.25;
+        float l = dot(c, vec3(0.299, 0.587, 0.114));
+        gl_FragColor = vec4(c * smoothstep(0.55, 0.95, l), 1.0); }`, { tSrc: { value: null }, uTexel: { value: new THREE.Vector2() } });
+    const blur = mk(`uniform sampler2D tSrc; uniform vec2 uDir; varying vec2 vUv;
+      void main(){ vec3 c = texture2D(tSrc, vUv).rgb * 0.2270270270;
+        c += (texture2D(tSrc, vUv + uDir * 1.3846153846).rgb + texture2D(tSrc, vUv - uDir * 1.3846153846).rgb) * 0.3162162162;
+        c += (texture2D(tSrc, vUv + uDir * 3.2307692308).rgb + texture2D(tSrc, vUv - uDir * 3.2307692308).rgb) * 0.0702702703;
+        gl_FragColor = vec4(c, 1.0); }`, { tSrc: { value: null }, uDir: { value: new THREE.Vector2() } });
+    const composite = mk(`uniform sampler2D tFrame; uniform sampler2D tB1; uniform sampler2D tB2; uniform float uBloom; uniform float uVignette; varying vec2 vUv;
+      void main(){ vec3 c = texture2D(tFrame, vUv).rgb;
+        vec3 b = texture2D(tB1, vUv).rgb * 0.55 + texture2D(tB2, vUv).rgb * 0.45;
+        c += b * vec3(1.0, 0.95, 0.88) * uBloom;
+        c = c / (1.0 + max(c - 0.85, 0.0) * 1.6);
+        float vig = smoothstep(1.35, 0.35, length((vUv - 0.5) * vec2(1.0, 1.15)) * 1.7);
+        c *= mix(1.0 - uVignette, 1.0, vig);
+        gl_FragColor = vec4(c, 1.0); }`, { tFrame: { value: null }, tB1: { value: null }, tB2: { value: null }, uBloom: { value: 1.0 }, uVignette: { value: 0.18 } });
+    const quad = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), bright); quad.frustumCulled = false;
+    const qs = new THREE.Scene(); qs.add(quad);
+    const qc = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
+    const rt = () => new THREE.WebGLRenderTarget(1, 1, { depthBuffer: false, stencilBuffer: false });
+    const p = { w: 0, h: 0, frame: null, a4: rt(), b4: rt(), a8: rt(), b8: rt(), d4: [1, 1], d8: [1, 1], composite };
+    function resize(w, h) {
+      p.w = w; p.h = h;
+      if (p.frame) p.frame.dispose();
+      p.frame = new THREE.FramebufferTexture(w, h); p.frame.minFilter = p.frame.magFilter = THREE.LinearFilter;
+      p.d4 = [Math.max(1, Math.round(w / 4)), Math.max(1, Math.round(h / 4))]; p.d8 = [Math.max(1, Math.round(w / 8)), Math.max(1, Math.round(h / 8))];
+      p.a4.setSize(p.d4[0], p.d4[1]); p.b4.setSize(p.d4[0], p.d4[1]); p.a8.setSize(p.d8[0], p.d8[1]); p.b8.setSize(p.d8[0], p.d8[1]);
+    }
+    function pass(mat, src, dst, dir) { quad.material = mat; mat.uniforms.tSrc.value = src; if (dir) mat.uniforms.uDir.value.set(dir[0], dir[1]); renderer.setRenderTarget(dst); renderer.render(qs, qc); }
+    // The first frames are checked: a GL error on the copy, or a black centre pixel after the composite
+    // (the ground is never black), means this WebView cannot do the pass — it is switched off for good.
+    let checks = 0, black = 0;
+    const px = new Uint8Array(4);
+    p.verify = (gl) => {
+      if (checks >= 20) return true;
+      checks++;
+      if (gl.getError() !== gl.NO_ERROR) return false;
+      gl.readPixels(Math.floor(p.w / 2), Math.floor(p.h / 2), 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, px);
+      black = px[0] + px[1] + px[2] === 0 ? black + 1 : 0;
+      return black < 4;
+    };
+    p.run = (gl) => {
+      const w = gl.drawingBufferWidth, h = gl.drawingBufferHeight;
+      if (w !== p.w || h !== p.h) resize(w, h);
+      const fbo = gl.getParameter(gl.FRAMEBUFFER_BINDING);
+      renderer.copyFramebufferToTexture(p.frame);
+      bright.uniforms.uTexel.value.set(1 / w, 1 / h);
+      pass(bright, p.frame, p.a4);
+      pass(blur, p.a4.texture, p.b4, [1 / p.d4[0], 0]);
+      pass(blur, p.b4.texture, p.a4, [0, 1 / p.d4[1]]);
+      pass(blur, p.a4.texture, p.b8, [1 / p.d8[0], 0]);
+      pass(blur, p.b8.texture, p.a8, [0, 1 / p.d8[1]]);
+      renderer.setRenderTarget(null);
+      if (fbo) gl.bindFramebuffer(gl.FRAMEBUFFER, fbo);     // Mapbox may be drawing into its own framebuffer
+      renderer.setViewport(0, 0, w, h);
+      quad.material = composite;
+      composite.uniforms.tFrame.value = p.frame; composite.uniforms.tB1.value = p.a4.texture; composite.uniforms.tB2.value = p.a8.texture;
+      renderer.render(qs, qc);
+    };
+    p.dispose = () => { for (const r of [p.a4, p.b4, p.a8, p.b8]) r.dispose(); if (p.frame) p.frame.dispose(); };
+    return p;
+  }
+
   // ---------- render ----------
   const P = new THREE.Matrix4(), PI = new THREE.Matrix4(), TC = new THREE.Matrix4(), EYE = new THREE.Vector4();
-  let renderer = null, disposed = false, litDirty = false, lastLit = -1, raf = 0, last = performance.now(), streamAt = 0;
+  let renderer = null, post = null, disposed = false, litDirty = false, lastLit = -1, raf = 0, last = performance.now(), streamAt = 0;
+  let frameEma = 16, slowSince = 0;
   map.addLayer({
     id: 'medirun-glow', type: 'custom', renderingMode: '3d',
-    onAdd(m, gl) { renderer = new THREE.WebGLRenderer({ canvas: m.getCanvas(), context: gl, antialias: true }); renderer.autoClear = false; },
+    onAdd(m, gl) { renderer = new THREE.WebGLRenderer({ canvas: m.getCanvas(), context: gl, antialias: true }); renderer.autoClear = false; post = createPost(renderer); },
     render(gl, matrix) {
       if (disposed) return;
       P.fromArray(matrix).multiply(MODEL);
@@ -1002,7 +1324,14 @@ export function createGlow({ mapboxgl, map, token, assetBase = '', hero = 'm', o
       const c = map.getCenter(), f = toLocal(c.lng, c.lat), e = P.elements;
       U.uRefW.value = Math.max(1e-6, e[3] * f[0] + e[7] * f[1] + e[15]);
       renderer.resetState();
+      renderer.setViewport(0, 0, gl.drawingBufferWidth, gl.drawingBufferHeight);
       renderer.render(scene, camera);
+      if (postOn && post) {
+        try {
+          post.run(gl);
+          if (!post.verify(gl)) { postOn = false; if (onQuality) onQuality('lite', 'post pass unverified'); }
+        } catch (err) { postOn = false; if (onQuality) onQuality('lite', err); }
+      }
       map.triggerRepaint();
     },
   });
@@ -1010,8 +1339,14 @@ export function createGlow({ mapboxgl, map, token, assetBase = '', hero = 'm', o
   function tick(nowMs) {
     if (disposed) return;
     const dt = Math.min(0.1, (nowMs - last) / 1000);
+    frameEma += ((nowMs - last) - frameEma) * 0.08;
     last = nowMs;
     U.uTime.value += dt;
+    // A phone that cannot hold the frame rate drops the post pass for good (the city itself stays).
+    if (adaptive && postOn) {
+      if (frameEma > 30) { if (!slowSince) slowSince = nowMs; else if (nowMs - slowSince > 3000) { postOn = false; if (onQuality) onQuality('lite'); } }
+      else slowSince = 0;
+    }
     const c = map.getCenter(), cl = toLocal(c.lng, c.lat);
     if (nowMs - streamAt > 500) {
       // load what the camera can see: from the centre to a point high on the screen, within limits
@@ -1067,7 +1402,7 @@ export function createGlow({ mapboxgl, map, token, assetBase = '', hero = 'm', o
       const moving = activity === 'run' || activity === 'walk';
       U.uRun.value += ((moving ? 1 : 0) - U.uRun.value) * Math.min(1, dt * 3);
       warmLight.position.set(x + 4, y - 3, 6); warmLight.intensity = 30 * U.uRun.value;
-      if (moving && runner.visible) { sparkDebt += dt * (activity === 'run' ? 40 + 12 * v : 12); const n = Math.floor(sparkDebt); sparkDebt -= n; if (n) emitSparks(n, x, y); }
+      if (moving && runner.visible) { sparkDebt += dt * (activity === 'run' ? 30 + 10 * v : 10); const n = Math.floor(sparkDebt); sparkDebt -= n; if (n) emitSparks(n, x, y); }
       const h = heroes[heroKey];
       if (h && h.mixer) {
         play(h, activity, activity === 'idle' || h.current === h.actions.idle ? 0.5 : 0.35);
@@ -1084,12 +1419,26 @@ export function createGlow({ mapboxgl, map, token, assetBase = '', hero = 'm', o
       const want = clamp(trail.total - (behind < 40 ? behind : 0), 0, trail.total);
       trail.head = Math.max(trail.head, want);
       U.uHead.value = trail.head;
-      // a street lamp every 26 m, switched on as the runner reaches it
+      // a street lamp every 26 m, switched on as the runner reaches it; it stands on the pavement, never in a wall
       while (trail.path && trail.lampNext < trail.head && trail.lampCount < MAX_LAMPS) {
         const p = sampleAt(trail.path, trail.lampNext), q = sampleAt(trail.path, trail.lampNext + 2), len = Math.hypot(q.x - p.x, q.y - p.y) || 1;
+        const nx = -(q.y - p.y) / len, ny = (q.x - p.x) / len;
         const side = trail.lampCount % 2 ? 1 : -1;
-        addLamp(p.x - ((q.y - p.y) / len) * 3.6 * side, p.y + ((q.x - p.x) / len) * 3.6 * side, now());
-        trail.lampNext += 26;
+        for (const s of [side, -side]) {
+          const lx = p.x + nx * LAMP_SIDE * s, ly = p.y + ny * LAMP_SIDE * s;
+          if (insideBuilding(lx, ly)) continue;
+          addLamp(lx, ly, now(), -nx * s, -ny * s);
+          break;
+        }
+        trail.lampNext += LAMP_EVERY;
+      }
+    }
+    // buildings whose light moment has come: golden motes rise from the facade
+    if (ignitions.length) {
+      const t = now();
+      for (let i = ignitions.length - 1; i >= 0; i--) {
+        const rec = ignitions[i];
+        if (rec.time <= t) { ignitions[i] = ignitions[ignitions.length - 1]; ignitions.pop(); ignite(rec); }
       }
     }
     if (litDirty && litKeys.size !== lastLit) { litDirty = false; lastLit = litKeys.size; if (onLit) onLit(lastLit); }
@@ -1103,6 +1452,9 @@ export function createGlow({ mapboxgl, map, token, assetBase = '', hero = 'm', o
     setRunnerVisible(v) { runner.visible = Boolean(v); },
     /** Close-up of the runner: bigger character and a light on the face (the host moves the camera). */
     setHeroView(on) { heroView = Boolean(on); },
+    /** The post pass (bloom + vignette) on or off; `strength` scales the bloom. */
+    setBloom(on, strength) { postOn = Boolean(on) && !lite; if (post && typeof strength === 'number') post.composite.uniforms.uBloom.value = strength; },
+    quality: () => (postOn ? 'full' : 'lite'),
     /** Where the runner is on screen (CSS px): feet, head and the hit box; null when hidden. */
     runnerScreen() {
       if (!runner.pos || !runner.visible || !renderer) return null;
@@ -1121,7 +1473,7 @@ export function createGlow({ mapboxgl, map, token, assetBase = '', hero = 'm', o
     onHeroReady(cb) { heroReadyCb = cb; if (heroes[heroKey]?.holder) cb(heroKey); },
     runner() { if (!runner.pos) return null; const ll = toLngLat(runner.pos[0], runner.pos[1]); return { lng: ll.lng, lat: ll.lat, heading: runner.heading == null ? null : ((Math.atan2(Math.sin(runner.heading), -Math.cos(runner.heading)) * 180) / Math.PI + 360) % 360, speed: runner.speed, activity: runner.activity }; },
     litCount: () => litKeys.size,
-    debug: { THREE, scene, camera, U, tiles, heroes, runner, grid, insideBuilding, toLngLat },
-    dispose() { disposed = true; cancelAnimationFrame(raf); try { map.removeLayer('medirun-glow'); } catch { /* map already gone */ } },
+    debug: { THREE, scene, camera, U, tiles, heroes, runner, grid, insideBuilding, toLngLat, post: () => post },
+    dispose() { disposed = true; cancelAnimationFrame(raf); if (post) post.dispose(); try { map.removeLayer('medirun-glow'); } catch { /* map already gone */ } },
   };
 }
