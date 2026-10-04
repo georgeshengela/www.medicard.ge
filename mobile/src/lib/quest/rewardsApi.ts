@@ -74,6 +74,9 @@ export type RedeemResult = {
   idempotentReplay?: boolean;
 };
 
+/** One cache entry for the store catalog: the MEDIQUEST store and the MEDIRUN prize goal share it. */
+export const REWARDS_CATALOG_KEY = ['quest', 'rewards', 'catalog'] as const;
+
 export const rewardsApi = {
   catalog: () => api.rewards.catalog(),
   get: (id: string) => api.rewards.get(id),

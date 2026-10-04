@@ -5,7 +5,7 @@ export function parseBridgeMessage(raw:string):BridgeMessage|null{
 }
 export function allowedApi(path:unknown,method:unknown):path is string{
  if(typeof path!=='string'||typeof method!=='string')return false;
- if(method==='GET')return /^\/(bootstrap|nearby|territory|grand|leaderboard(?:\?period=(week|season))?)$/.test(path);
+ if(method==='GET')return /^\/(bootstrap|nearby|territory|grand|drops|leaderboard(?:\?period=(week|season))?)$/.test(path);
  if(method==='PATCH')return path==='/settings';
  if(method==='PUT')return path==='/mission';
  return method==='POST'&&/^\/(sessions(?:\/[a-zA-Z0-9_-]+\/(batches|pause|resume|finish))?|gifts\/[a-zA-Z0-9_-]+\/claim)$/.test(path);

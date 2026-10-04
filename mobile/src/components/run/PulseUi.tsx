@@ -11,6 +11,8 @@ export const BOLD='NotoSansGeorgian_700Bold',SEMIBOLD='NotoSansGeorgian_600SemiB
 /** MEDIRUN brand teal and its filled-CTA shade. */
 export const RUN_TEAL='#14B8A6',RUN_CTA='#0D9488';
 /** Lifted look for controls that float over the live map (the map is not a hub page). */
+/** Hub ink inside MEDIRUN: its teal stays teal when the women's Home turns the app's brand rose. */
+export function runInk(ink:HubInk,dark:boolean){return ink==='teal'?(dark?'#5EEAD4':'#0F766E'):hubInk(ink,dark);}
 const FLOAT:ViewStyle={shadowColor:'#030712',shadowOpacity:.16,shadowRadius:14,shadowOffset:{width:0,height:6},elevation:6};
 
 export function Copy({children,size=14,muted=false,bold=false,style,numberOfLines}:{children:React.ReactNode;size?:number;muted?:boolean;bold?:boolean;style?:TextStyle|TextStyle[];numberOfLines?:number}){const c=useThemeColors();return <Text numberOfLines={numberOfLines} style={[{fontFamily:bold?BOLD:REGULAR,fontSize:size,lineHeight:Math.round(size*1.55),color:muted?c.text200:c.text100},style as TextStyle]}>{children}</Text>;}
@@ -22,12 +24,12 @@ export function Card({children,style,floating=false}:{children:React.ReactNode;s
 export function Section({title,link,onLink,children,style}:{title:string;link?:string;onLink?:()=>void;children:React.ReactNode;style?:ViewStyle}){return <View style={style}><HomeSectionHeading title={title} linkLabel={link} onLink={onLink}/>{children}</View>;}
 
 /** 42px icon tile tinted with its ink. */
-export function Tile({icon:Icon,ink='teal',size=HUB.tile}:{icon:LucideIcon;ink?:HubInk;size?:number}){const dark=useIsDark(),hex=hubInk(ink,dark);return <View style={{width:size,height:size,borderRadius:HUB.tileRadius,backgroundColor:hubTint(hex,dark),alignItems:'center',justifyContent:'center'}}><Icon size={Math.round(size*.5)} color={hex} strokeWidth={1.9}/></View>;}
+export function Tile({icon:Icon,ink='teal',size=HUB.tile}:{icon:LucideIcon;ink?:HubInk;size?:number}){const dark=useIsDark(),hex=runInk(ink,dark);return <View style={{width:size,height:size,borderRadius:HUB.tileRadius,backgroundColor:hubTint(hex,dark),alignItems:'center',justifyContent:'center'}}><Icon size={Math.round(size*.5)} color={hex} strokeWidth={1.9}/></View>;}
 
 /** Tile holding a generated 3D artwork instead of a line icon (MEDIRUN art, runArt.ts). */
-export function ArtTile({source,size=HUB.tile,ink='teal',bare=false}:{source:ImageSourcePropType;size?:number;ink?:HubInk;bare?:boolean}){const dark=useIsDark(),hex=hubInk(ink,dark);return <View style={{width:size,height:size,borderRadius:HUB.tileRadius,backgroundColor:bare?'transparent':hubTint(hex,dark),alignItems:'center',justifyContent:'center'}}><Image source={source} accessibilityIgnoresInvertColors resizeMode="contain" style={{width:size*1.08,height:size*1.08}}/></View>;}
+export function ArtTile({source,size=HUB.tile,ink='teal',bare=false}:{source:ImageSourcePropType;size?:number;ink?:HubInk;bare?:boolean}){const dark=useIsDark(),hex=runInk(ink,dark);return <View style={{width:size,height:size,borderRadius:HUB.tileRadius,backgroundColor:bare?'transparent':hubTint(hex,dark),alignItems:'center',justifyContent:'center'}}><Image source={source} accessibilityIgnoresInvertColors resizeMode="contain" style={{width:size*1.08,height:size*1.08}}/></View>;}
 
-export function useRunInk(ink:HubInk='teal'){return hubInk(ink,useIsDark());}
+export function useRunInk(ink:HubInk='teal'){return runInk(ink,useIsDark());}
 
 export function Bar({value,height=6,color=RUN_TEAL,label}:{value:number;height?:number;color?:string;label?:string}){const c=useThemeColors(),pct=Math.max(0,Math.min(100,value));return <View accessibilityRole="progressbar" accessibilityLabel={label} accessibilityValue={{min:0,max:100,now:Math.round(pct)}} style={{height,borderRadius:height,backgroundColor:c.bg200,overflow:'hidden'}}><View style={{height,width:`${pct}%`,borderRadius:height,backgroundColor:color}}/></View>;}
 

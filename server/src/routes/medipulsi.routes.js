@@ -11,6 +11,7 @@ import { t, getUserLanguage } from '../lib/i18n.js';
 import {localizeSnapshot} from '../lib/medipulsi/missionsEn.js';
 import {territory} from '../lib/medipulsi/territory.js';
 import {grandStatus} from '../lib/medipulsi/grand.js';
+import {dropsStatus} from '../lib/medipulsi/drops.js';
 export const medipulsiRouter=Router();
 // The app's MEDIRUN client (pulseApi) sends no X-Medicard-Lang: fall back to the account's stored language.
 medipulsiRouter.use(requireAuth,asyncHandler(async(req,_res,next)=>{if(!req.langExplicit)req.lang=await getUserLanguage(req.user.id).catch(()=>'ka');next();}));
@@ -29,5 +30,7 @@ medipulsiRouter.get('/territory',lookups,asyncHandler(async(req,res)=>res.json(a
 medipulsiRouter.get('/nearby',asyncHandler(async(req,res)=>res.json(await game.nearby(req.user.id,Date.now(),req.lang))));
 // „გაანათე თბილისი“: how much of Tbilisi the person has lit and whether the grand prize is visible to them.
 medipulsiRouter.get('/grand',lookups,asyncHandler(async(req,res)=>res.json(await grandStatus(req.user.id,req.lang))));
+// „ყუთები ახლა“: boxes out in the city this minute (per district), today's openings and the next wave. Aggregates only.
+medipulsiRouter.get('/drops',lookups,asyncHandler(async(req,res)=>res.json(await dropsStatus(req.user.id,{lang:req.lang}))));
 medipulsiRouter.post('/gifts/:id/claim',write,asyncHandler(async(req,res)=>res.json(await game.claim(req.user.id,id.parse(req.params.id)))));
 medipulsiRouter.get('/leaderboard',asyncHandler(async(req,res)=>res.json(await game.leaderboard(z.enum(['week','season']).default('week').parse(req.query.period)))));

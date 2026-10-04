@@ -27,6 +27,9 @@ import {ModuleHeader,ModuleHeaderButton} from '@/components/brand/ModuleHeader';
 import {RouteThumb,WeekBars} from './RunVisuals';
 import {PulseTerritory} from './PulseTerritory';
 import {GrandPrizeCard} from './GrandPrizeCard';
+import {RunDrops} from './RunDrops';
+import {RunPrizeGoal} from './RunPrizeGoal';
+import {useDrops} from '@/lib/medipulsi/drops';
 import { tx } from '@/i18n/locale';
 
 export const MISSION_ICONS={trees:Trees,landmark:Landmark,waves:Waves,mountain:Mountain,bridge:Compass,flower:Trees};
@@ -45,7 +48,8 @@ const away=(m:number)=>m<1000?tx(`${Math.round(m/10)*10} მ`, `${Math.round(m/1
 
 export default function PulseHub(){
  const router=useRouter(),c=useThemeColors(),ink=useRunInk(),insets=useSafeAreaInsets(),{healthProfile}=useAuth(),pulse=usePulse();
- const [history,setHistory]=useState<RunSummary[]>([]),[targetSheet,setTargetSheet]=useState(false),[panel,setPanel]=useState<PulsePanel|null>(null),[error,setError]=useState(''),[here,setHere]=useState<Coordinate|null>(null),[allWalks,setAllWalks]=useState(false),[busy,setBusy]=useState(false);
+ const [history,setHistory]=useState<RunSummary[]>([]),[targetSheet,setTargetSheet]=useState(false),[panel,setPanel]=useState<PulsePanel|null>(null),[error,setError]=useState(''),[missionError,setMissionError]=useState(''),[here,setHere]=useState<Coordinate|null>(null),[allWalks,setAllWalks]=useState(false),[busy,setBusy]=useState(false);
+ const liveBoxes=useDrops().data?.now.boxes||0;
  const testPulse=useHeartbeat(EMPTY_SIGNAL,pulse.snapshot?.settings||{},false);
  useFocusEffect(useCallback(()=>{
   let alive=true;
@@ -58,19 +62,22 @@ export default function PulseHub(){
  },[router]));
  const start=(target?:RunTarget)=>{setTargetSheet(false);const body={weightKg:healthProfile?.weightKg,heightCm:healthProfile?.heightCm};void (target?prepareRun(target,body):prepareExploration(body));router.push('/run/active' as never);};
  const saved=pulse.snapshot?.history||[];
- const walks=useMemo(()=>saved.length?saved.map(s=>({startedAt:s.startedAt,meters:s.meters})):history.map(r=>({startedAt:r.startedAt,meters:r.distanceM})),[saved,history]);
+ const walks=useMemo(()=>saved.length?saved.map(s=>({startedAt:s.startedAt,meters:s.meters,seconds:s.seconds||0,newMeters:s.newMeters||0})):history.map(r=>({startedAt:r.startedAt,meters:r.distanceM,seconds:Math.round((r.movingMs||0)/1000),newMeters:0})),[saved,history]);
  const week=useMemo(()=>weekBuckets(walks),[walks]),streak=useMemo(()=>walkStreak(walks),[walks]);
- const weekKm=week.reduce((s,d)=>s+d.meters,0)/1000,weekWalks=week.filter(d=>d.meters>0).length;
- const lifetimeKm=walks.reduce((s,w)=>s+w.meters,0)/1000;
- const newKm=saved.reduce((sum,w)=>sum+(w.newMeters||0),0)/1000;
- const weekStart=Date.now()-7*86_400_000,weekNewKm=saved.filter(w=>Date.parse(w.startedAt)>=weekStart).reduce((sum,w)=>sum+(w.newMeters||0),0)/1000;
+ const weekKm=week.reduce((s,d)=>s+d.meters,0)/1000,weekDays=week.filter(d=>d.meters>0).length;
+ // The same seven local days as the bars (today and the six before it).
+ const weekStart=useMemo(()=>{const d=new Date();return new Date(d.getFullYear(),d.getMonth(),d.getDate()-6).getTime();},[]);
+ const thisWeek=walks.filter(w=>Date.parse(w.startedAt)>=weekStart&&w.meters>0);
+ const weekNewKm=thisWeek.reduce((sum,w)=>sum+w.newMeters,0)/1000,weekMin=Math.round(thisWeek.reduce((sum,w)=>sum+w.seconds,0)/60);
+ // Lifetime numbers from the server's totals: its history list holds only the latest 50 walks.
+ const totals=pulse.snapshot?.totals,lifetimeKm=(totals?totals.meters:walks.reduce((s,w)=>s+w.meters,0))/1000,lifetimeWalks=totals?totals.walks:walks.length;
  const records=useMemo(()=>personalRecords(history),[history]);
  const missions=pulse.snapshot?.missions||[],missionCount=missions.length||24;
  const stamps=Object.values(pulse.book.progress).filter(p=>p.completedAt).length;
  const active=missions.find(m=>m.id===pulse.book.selected);
  const next=useMemo(()=>suggestMission(missions,pulse.book,here),[missions,pulse.book,here]);
  const leave=()=>router.canGoBack()?router.back():router.replace('/(tabs)/home' as never);
- const choose=(id:string)=>{if(busy)return;setBusy(true);void getPulseClient().selectMission(id).catch(e=>setError((e as Error).message)).finally(()=>setBusy(false));};
+ const choose=(id:string)=>{if(busy)return;setBusy(true);setMissionError('');void getPulseClient().selectMission(id).catch(()=>setMissionError(tx('მისია ვერ აირჩა. შეამოწმე ინტერნეტი და სცადე თავიდან.','Couldn’t choose the mission. Check your connection and try again.'))).finally(()=>setBusy(false));};
  const recordTiles=[
   records.longest&&{id:records.longest.id,art:RUN_ICON.route,value:formatKm(records.longest.distanceM,2),unit:tx('კმ', 'km'),label:tx('უგრძესი', 'Longest')},
   records.fastest&&{id:records.fastest.id,art:RUN_ICON.pace,value:formatPace(records.fastest.paceSecPerKm),unit:tx('/კმ', '/km'),label:tx('უსწრაფესი', 'Fastest')},
@@ -89,21 +96,28 @@ export default function PulseHub(){
      {streak>0?<View style={{flexDirection:'row',alignItems:'center',gap:5,backgroundColor:'rgba(251,191,36,0.14)',borderRadius:10,paddingHorizontal:9,paddingVertical:3}}><Flame size={13} color="#FCD34D" fill="#FCD34D"/><Copy bold size={11} style={{color:'#FDE68A'}}>{streak} {tx('დღე ზედიზედ', 'day streak')}</Copy></View>
       :<View style={{flexDirection:'row',alignItems:'center',gap:7}}><View style={{width:6,height:6,borderRadius:3,backgroundColor:'#2DD4BF'}}/><Copy bold size={11} style={{color:'#99F6E4'}}>{tx('შენი ტემპით · ნებისმიერ ქალაქში', 'At your pace · in any city')}</Copy></View>}
     </View>
-    <Copy bold size={27} style={{lineHeight:38,color:'#fff'}}>{streak>1?tx('რიტმს ნუ დაკარგავ.\nგზა გელოდება.','Keep the rhythm.\nYour path is waiting.'):tx('გარეთ ახალი\nამბავი იწყება.','A new story\nstarts outside.')}</Copy>
-    <Copy size={13} style={{color:'#C5DADA'}}>{weekKm>0?tx(`ამ კვირაში უკვე ${weekKm.toFixed(1)} კმ გაიარე.`, `You’ve already walked ${weekKm.toFixed(1)} km this week.`):tx('გადადგი პირველი ნაბიჯი. დანარჩენს გზად აღმოაჩენ.', 'Take the first step. You’ll discover the rest along the way.')}</Copy>
+    <Copy bold size={26} style={{lineHeight:36,color:'#fff'}}>{tx('იარე ქალაქში.\nიპოვე ყუთები.','Walk the city.\nFind the boxes.')}</Copy>
+    <Copy size={13} style={{color:'#C5DADA'}}>{tx('ყუთებში Medi Coins-ია — მაღაზიაში საჩუქრებზე ცვლი. ყოველი ახალი ქუჩა კი თბილისს ანათებს.','Boxes hold Medi Coins you swap for prizes in the store. Every new street lights up Tbilisi.')}</Copy>
+    <View style={{flexDirection:'row',gap:6,marginTop:4}}>
+     {[tx('გაისეირნე','Walk'),tx('იპოვე ყუთი','Find a box'),tx('აიღე საჩუქარი','Get a prize')].map((step,i)=><View key={step} style={{flex:1,alignItems:'center',gap:5,paddingHorizontal:6,paddingVertical:8,borderRadius:14,backgroundColor:'rgba(255,255,255,0.07)'}}>
+      <View style={{width:20,height:20,borderRadius:10,backgroundColor:'#2DD4BF',alignItems:'center',justifyContent:'center'}}><Copy bold size={11} style={{color:'#042F2E',lineHeight:15}}>{i+1}</Copy></View>
+      <Copy bold size={11} numberOfLines={2} style={{color:'#fff',lineHeight:15,textAlign:'center'}}>{step}</Copy>
+     </View>)}
+    </View>
    </View>
-   <View style={{marginTop:6,height:148}}>
+   <View style={{marginTop:2,height:116}}>
     <Image source={RUN_HERO} accessibilityIgnoresInvertColors resizeMode="cover" style={{width:'100%',height:'100%'}}/>
     {/* Melt the illustration into the card above and below. */}
     <Svg pointerEvents="none" style={{position:'absolute',inset:0}} width="100%" height="100%" preserveAspectRatio="none" viewBox="0 0 10 10"><Defs><LinearGradient id="heroFade" x1="0" y1="0" x2="0" y2="1"><Stop offset="0" stopColor={HUB.spotlightBg} stopOpacity="1"/><Stop offset=".22" stopColor={HUB.spotlightBg} stopOpacity="0"/><Stop offset=".78" stopColor={HUB.spotlightBg} stopOpacity="0"/><Stop offset="1" stopColor={HUB.spotlightBg} stopOpacity="1"/></LinearGradient></Defs><Rect x="0" y="0" width="10" height="10" fill="url(#heroFade)"/></Svg>
    </View>
-   <View style={{padding:HUB.cardPad,paddingTop:4,gap:8}}>
+   <View style={{padding:HUB.cardPad,paddingTop:4,gap:10}}>
+    <RunDrops/>
     {active?<Pressable accessibilityRole="button" accessibilityLabel={tx(`აქტიური მისია ${active.name}, ${missionPercent(pulse.book,active)} პროცენტი`, `Active mission ${active.name}, ${missionPercent(pulse.book,active)} percent`)} onPress={()=>setPanel('missions')} style={{flexDirection:'row',alignItems:'center',gap:10,paddingHorizontal:12,paddingVertical:9,borderRadius:14,backgroundColor:'rgba(255,255,255,0.07)'}}>
      <Compass size={15} color="#99F6E4"/><Copy bold size={12} numberOfLines={1} style={{flex:1,color:'#fff'}}>{tx('მისია ·', 'Mission ·')} {active.name}</Copy><Copy bold size={12} style={{color:'#99F6E4'}}>{missionPercent(pulse.book,active)}%</Copy>
     </Pressable>:null}
-    <Pressable accessibilityRole="button" accessibilityLabel={tx('დავიწყოთ აღმოჩენა — თავისუფალი გასეირნება', 'Start exploring — free walk')} onPress={()=>start()} style={{minHeight:58,borderRadius:18,backgroundColor:RUN_CTA,paddingHorizontal:14,flexDirection:'row',alignItems:'center',gap:12}}>
+    <Pressable accessibilityRole="button" accessibilityLabel={liveBoxes?tx('წავედით ყუთების საძებნელად — თავისუფალი გასეირნება','Go find the boxes — free walk'):tx('დავიწყოთ გასეირნება — თავისუფალი გასეირნება', 'Start a walk — free walk')} onPress={()=>start()} style={{minHeight:58,borderRadius:18,backgroundColor:RUN_CTA,paddingHorizontal:14,flexDirection:'row',alignItems:'center',gap:12}}>
      <View style={{width:34,height:34,borderRadius:12,backgroundColor:'rgba(255,255,255,0.16)',alignItems:'center',justifyContent:'center'}}><Play fill="#fff" color="#fff" size={15}/></View>
-     <Copy bold size={15} style={{flex:1,color:'#fff'}}>{tx('დავიწყოთ აღმოჩენა', 'Start exploring')}</Copy><ArrowUpRight color="#CCFBF1" size={22}/>
+     <Copy bold size={15} style={{flex:1,color:'#fff'}}>{liveBoxes?tx('წავედით ყუთების საძებნელად','Go find the boxes'):tx('დავიწყოთ გასეირნება', 'Start a walk')}</Copy><ArrowUpRight color="#CCFBF1" size={22}/>
     </Pressable>
     <Pressable accessibilityRole="button" onPress={()=>setTargetSheet(true)} style={{minHeight:44,flexDirection:'row',alignItems:'center',justifyContent:'center',gap:8}}><Target size={16} color="#99F6E4"/><Copy bold size={12} style={{color:'#fff'}}>{tx('ან ივარჯიშე მიზნით', 'or train with a goal')}</Copy><ChevronRight size={14} color="#99F6E4"/></Pressable>
    </View>
@@ -111,17 +125,23 @@ export default function PulseHub(){
 
   {error&&!pulse.snapshot?<Card><Copy bold size={15}>{tx('MEDIRUN-თან კავშირი ვერ დამყარდა', 'Couldn’t reach MEDIRUN')}</Copy><Copy muted size={12}>{tx('შეამოწმე ინტერნეტი. გასეირნება მაინც შეგიძლია — გზა შენახული დარჩება.', 'Check your connection. You can still walk — the route is saved.')}</Copy><Action secondary label={tx('ხელახლა ცდა', 'Try again')} onPress={()=>{setError('');void getPulseClient().refresh().catch(e=>setError(e.message));}}/></Card>:null}
 
-  <GrandPrizeCard/>
+  {/* Owner 2026-10-04 (second pass): the hub says what MEDIRUN is for — boxes now (in the hero), the prize
+      you are saving for, the Tbilisi campaign — then your week, the passport and your walks. */}
+  <RunPrizeGoal/>
 
-  {/* Owner 2026-10-04: shorter hub, in the order people use it — this week, the next find, the painted
-      city, your walks with the records on top, then collection / leaderboard and help. */}
+  <Section title={tx('გაანათე თბილისი','Light up Tbilisi')}>
+   <GrandPrizeCard/>
+  </Section>
+  <PulseTerritory totalKm={lifetimeKm} walks={lifetimeWalks} weekNewKm={weekNewKm}/>
+
   <Section title={tx('ეს კვირა', 'This week')}>
    <Card style={{gap:18}}>
-    <View style={{flexDirection:'row',alignItems:'baseline',gap:6}}><Copy bold size={34} style={{lineHeight:42,letterSpacing:-1,fontVariant:['tabular-nums']}}>{weekKm.toFixed(1)}</Copy><Copy bold size={14} style={{color:c.primary100}}>{tx('კმ', 'km')}</Copy><View style={{flex:1}}/><Copy muted size={12}>{weekWalks?tx(`${weekWalks} აქტიური დღე`, `${weekWalks} active ${weekWalks===1?'day':'days'}`):tx('ჯერ არ გაგისეირნია', 'No walks yet')}</Copy></View>
+    <View style={{flexDirection:'row',alignItems:'baseline',gap:6}}><Copy bold size={34} style={{lineHeight:42,letterSpacing:-1,fontVariant:['tabular-nums']}}>{weekKm.toFixed(1)}</Copy><Copy bold size={14} style={{color:c.primary100}}>{tx('კმ', 'km')}</Copy><View style={{flex:1}}/><Copy muted size={12}>{weekDays?tx(`${weekDays} აქტიური დღე`, `${weekDays} active ${weekDays===1?'day':'days'}`):tx('ამ კვირაში ჯერ არ გაგისეირნია', 'No walks this week yet')}</Copy></View>
     <WeekBars days={week}/>
     <View style={{flexDirection:'row',borderTopWidth:1,borderColor:c.bg200,paddingTop:14}}>
-     {[{value:lifetimeKm.toFixed(1),label:tx('სულ კმ', 'Total km')},{value:String(walks.length),label:tx('გასეირნება', 'Walks')},{value:newKm.toFixed(1),label:tx('ახალი გზა, კმ', 'New streets, km')}].map((st,i)=><View key={st.label} style={{flex:1,alignItems:'center',borderLeftWidth:i?1:0,borderColor:c.bg200}}><Copy bold size={17} style={{fontVariant:['tabular-nums']}}>{st.value}</Copy><Copy muted size={11} numberOfLines={1}>{st.label}</Copy></View>)}
+     {[{value:String(thisWeek.length),label:tx('გასეირნება', 'Walks')},{value:weekNewKm.toFixed(1),label:tx('ახალი ქუჩა, კმ', 'New streets, km')},{value:String(weekMin),label:tx('აქტიური წთ', 'Active min')}].map((st,i)=><View key={st.label} style={{flex:1,alignItems:'center',borderLeftWidth:i?1:0,borderColor:c.bg200}}><Copy bold size={17} style={{fontVariant:['tabular-nums']}}>{st.value}</Copy><Copy muted size={11} numberOfLines={1}>{st.label}</Copy></View>)}
     </View>
+    {lifetimeWalks?<Copy muted size={11} style={{textAlign:'center',marginTop:-6}}>{tx(`სულ MEDIRUN-ში: ${lifetimeKm.toFixed(1)} კმ · ${lifetimeWalks} გასეირნება`,`All-time in MEDIRUN: ${lifetimeKm.toFixed(1)} km · ${lifetimeWalks} ${lifetimeWalks===1?'walk':'walks'}`)}</Copy>:null}
    </Card>
   </Section>
 
@@ -140,10 +160,9 @@ export default function PulseHub(){
      <View style={{flex:1,minWidth:0}}><Copy muted size={11}>{next.d!=null?tx('შენთან ყველაზე ახლოს', 'Closest to you'):tx('შემდეგი აღმოჩენა', 'Next find')}</Copy><Copy bold size={14} numberOfLines={1}>{next.m.name}</Copy><Copy muted size={11} numberOfLines={1}>{next.m.meters} {tx('მ ზონაში', 'm zone')}{next.d!=null?tx(` · ${away(next.d)} შენგან`, ` · ${away(next.d)} away`):''}</Copy></View>
      <Pressable accessibilityRole="button" accessibilityLabel={tx(`მისიის არჩევა: ${next.m.name}`, `Choose mission: ${next.m.name}`)} disabled={busy} onPress={()=>choose(next.m.id)} style={{minHeight:44,paddingHorizontal:16,borderRadius:14,backgroundColor:c.accent100,justifyContent:'center',opacity:busy?.6:1}}><Copy bold size={12} style={{color:c.primary100}}>{tx('არჩევა', 'Choose')}</Copy></Pressable>
     </View>:null}
+    {missionError?<Copy size={12} style={{color:c.danger}}>{missionError}</Copy>:null}
    </Card>
   </Section>
-
-  <PulseTerritory totalKm={lifetimeKm} walks={walks.length} weekNewKm={weekNewKm}/>
 
   {history.length?<Section title={tx('შენი გასეირნებები', 'Your walks')} link={history.length>3?(allWalks?tx('ნაკლები', 'Less'):tx(`ყველა · ${history.length}`, `All · ${history.length}`)):undefined} onLink={()=>setAllWalks(v=>!v)}>
    {recordTiles.length?<View style={{flexDirection:'row',gap:8,marginBottom:10}}>{recordTiles.map(r=><Pressable key={r.label} accessibilityRole="button" accessibilityLabel={`${r.label}: ${r.value} ${r.unit}`} onPress={()=>router.push(`/run/${r.id}` as never)} style={{flex:1,backgroundColor:c.surface,borderRadius:18,paddingVertical:12,paddingHorizontal:10,gap:6}}>

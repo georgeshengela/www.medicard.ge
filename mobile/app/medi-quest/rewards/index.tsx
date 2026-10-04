@@ -21,7 +21,7 @@ import {
 import { useOffline } from '@/hooks/useOffline';
 import { useThemeColors } from '@/theme/colors';
 import { HUB, hubText } from '@/theme/hub';
-import { rewardsApi, type StoreCatalog, type StoreReward } from '@/lib/quest/rewardsApi';
+import { REWARDS_CATALOG_KEY, rewardsApi, type StoreCatalog, type StoreReward } from '@/lib/quest/rewardsApi';
 import { buildRewardsDevCatalog } from '@/lib/quest/rewardsDevFixture.js';
 import { isQuestDevEnabled, getQuestDevScenario } from '@/lib/quest/devFixture';
 import { rewardTitle, rewardsCopy } from '@/i18n/quest/rewards.js';
@@ -31,7 +31,7 @@ import { useAccountQuery } from '@/hooks/useAccountQuery';
 import { accountKey, FRESH, queryClient } from '@/lib/queryClient';
 
 /** Under 'quest' so the Quest refresh signal (coins, claims) also refreshes eligibility. */
-const CATALOG_KEY = ['quest', 'rewards', 'catalog'] as const;
+const CATALOG_KEY = REWARDS_CATALOG_KEY;
 
 type Filter = 'all' | 'afford' | 'gadget' | 'giftcard' | 'digital';
 

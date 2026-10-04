@@ -6,10 +6,10 @@ import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {CalendarClock,Check,ExternalLink,FileText,Footprints,Hourglass,Lock,RotateCw,Sparkles} from 'lucide-react-native';
 import {Bone} from '@/components/ui/Skeleton';
 import {useIsDark,useThemeColors} from '@/theme/colors';
-import {HUB,hubInk,hubTint} from '@/theme/hub';
+import {HUB,hubTint} from '@/theme/hub';
 import {cityOf,dropLabel,goalStreetKm,grandArea,grandCountdown,grandPercent,grandProgress,levelPercent,safeRulesUrl,streetsLeftLabel,type GrandPrize} from '@/lib/medipulsi/grand';
 import {tx} from '@/i18n/locale';
-import {Action,Card,Copy,RUN_TEAL,Section} from './PulseUi';
+import {Action,Card,Copy,RUN_TEAL,Section,runInk} from './PulseUi';
 import {ModuleHeader} from '@/components/brand/ModuleHeader';
 import {RUN_GIFT} from './runArt';
 import {eligibleLabel,isGrandMissing,useGrandPrize} from './GrandPrizeCard';
@@ -136,7 +136,7 @@ function Ring({progress,color,track,label,children}:{progress:number;color:strin
 }
 
 function HowTo({data}:{data:GrandPrize}){
- const c=useThemeColors(),dark=useIsDark(),ink=hubInk('teal',dark),{requirement}=data;
+ const c=useThemeColors(),dark=useIsDark(),ink=runInk('teal',dark),{requirement}=data;
  const goal=levelPercent(requirement.percent),km=goalStreetKm(requirement);
  const steps=[
   {title:tx('ჩართე MEDIRUN','Turn on MEDIRUN'),body:tx('MEDIRUN-ის მთავარ გვერდზე დააჭირე „დავიწყოთ აღმოჩენა“.','On the MEDIRUN home page, tap “Start exploring”.')},
@@ -157,7 +157,7 @@ function HowTo({data}:{data:GrandPrize}){
 }
 
 function Levels({data}:{data:GrandPrize}){
- const c=useThemeColors(),dark=useIsDark(),teal=hubInk('teal',dark);
+ const c=useThemeColors(),dark=useIsDark(),teal=runInk('teal',dark);
  const nextId=data.next?.id??data.levels.find(l=>!l.reached)?.id??null;
  return <Section title={tx('დონეები','Levels')}>
   <Card style={{gap:4,padding:8}}>

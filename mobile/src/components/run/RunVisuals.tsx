@@ -6,13 +6,13 @@ import type { LatLng } from '@/lib/run/geo';
 import { formatPace } from '@/lib/run/geo';
 import { routeThumbPath, splitDurations, type DayBucket } from '@/lib/run/insights';
 import { useIsDark, useThemeColors } from '@/theme/colors';
-import { hubInk, hubTint, HUB } from '@/theme/hub';
-import { Copy, RUN_TEAL } from './PulseUi';
+import { hubTint, HUB } from '@/theme/hub';
+import { Copy, RUN_TEAL, runInk } from './PulseUi';
 import { tx } from '@/i18n/locale';
 
 /** The walk's own shape in a tinted tile — falls back to the route icon. */
 export function RouteThumb({ segments, size = HUB.tile + 10 }: { segments: LatLng[][]; size?: number }) {
-  const dark = useIsDark(), ink = hubInk('teal', dark);
+  const dark = useIsDark(), ink = runInk('teal', dark);
   const d = useMemo(() => routeThumbPath(segments, size, size, 8), [segments, size]);
   return <View style={{ width: size, height: size, borderRadius: HUB.tileRadius, backgroundColor: hubTint(ink, dark), alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
     {d ? <Svg width={size} height={size} accessible={false}>
@@ -24,7 +24,7 @@ export function RouteThumb({ segments, size = HUB.tile + 10 }: { segments: LatLn
 
 /** Seven day columns; today is the solid one. */
 export function WeekBars({ days, height: full = 86 }: { days: DayBucket[]; height?: number }) {
-  const c = useThemeColors(), dark = useIsDark(), ink = hubInk('teal', dark);
+  const c = useThemeColors(), dark = useIsDark(), ink = runInk('teal', dark);
   const height = days.some(d => d.meters > 0) ? full : 28;
   const max = Math.max(1000, ...days.map(d => d.meters));
   return <View accessible accessibilityLabel={days.map(d => tx(`${d.label} ${(d.meters / 1000).toFixed(1)} კმ`, `${d.label} ${(d.meters / 1000).toFixed(1)} km`)).join(', ')} style={{ flexDirection: 'row', alignItems: 'flex-end', gap: 8 }}>

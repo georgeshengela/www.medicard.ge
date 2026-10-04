@@ -102,3 +102,63 @@ test('eligibility page: levels, streets left, status by date',()=>{
  assert.equal(done.me.eligible,true);assert.equal(done.next,null);assert.equal(done.campaign.status,'live');assert.equal(done.campaign.name,'Light up Tbilisi');
  assert.equal(grandView({share:{percent:0},now:Date.parse('2027-01-01T00:00:00Z')}).campaign.status,'ended');
 });
+
+/* ───────── „ყუთები ახლა“ (drops.js) ───────── */
+import {dropsView,scheduleOf} from './drops.js';
+const T=iso=>Date.parse(iso);
+function rowsOf(date){
+ const p=plan(date);
+ return {gifts:p.map(x=>({id:x.gift.id,stock:x.gift.stock,allocated:0,startsAt:x.gift.startsAt,endsAt:x.gift.endsAt,rewardKind:x.gift.rewardKind})),rules:new Map(p.map(x=>[x.rule.giftId,{...x.rule}]))};
+}
+test('drops: live boxes are counted per district, never with coordinates',()=>{
+ const {gifts,rules}=rowsOf('2026-10-06');
+ const v=dropsView({gifts,rules,now:T('2026-10-06T09:00:00+04:00')});
+ const morning=gifts.filter(g=>g.id.includes('-am-'));
+ assert.equal(v.now.boxes,morning.length);
+ assert.equal(v.now.openingsLeft,morning.reduce((s,g)=>s+g.stock,0));
+ assert.equal(v.now.districts.reduce((s,d)=>s+d.boxes,0),morning.length);
+ assert.ok(!JSON.stringify(v).match(/latitude|longitude|lng|lat"|place/));
+ assert.equal(v.next.kind,'evening');
+ assert.equal(v.next.startsAt,new Date('2026-10-06T18:00:00+04:00').toISOString());
+});
+test('drops: a box that ran out or ended is not "out there"',()=>{
+ const {gifts,rules}=rowsOf('2026-10-06');
+ const spent=gifts.map(g=>g.id.includes('-am-')?{...g,allocated:g.stock}:g);
+ const v=dropsView({gifts:spent,rules,now:T('2026-10-06T09:00:00+04:00')});
+ assert.equal(v.now.boxes,0);
+ assert.equal(v.now.endsAt,null);
+});
+test('drops: before the start the next wave is the first morning; the campaign is upcoming',()=>{
+ const {gifts,rules}=rowsOf('2026-10-05');
+ const v=dropsView({gifts,rules,now:T('2026-10-04T20:00:00+04:00')});
+ assert.equal(v.campaign.status,'upcoming');
+ assert.equal(v.now.boxes,0);
+ assert.equal(v.next.startsAt,new Date('2026-10-05T08:30:00+04:00').toISOString());
+ assert.ok(v.next.coins.min>=50&&v.next.coins.max<=250);
+});
+test('drops: Saturday rain is announced as a kind, its park is not named before it starts',()=>{
+ const {gifts,rules}=rowsOf('2026-10-10');
+ const v=dropsView({gifts,rules,now:T('2026-10-10T15:00:00+04:00')});
+ assert.equal(v.next.kind,'saturday');
+ assert.ok(!('districts' in v.next));
+});
+test('drops: the grand prize never shows up in the box counts',()=>{
+ const {gifts,rules}=rowsOf('2026-12-31');
+ const v=dropsView({gifts,rules,now:T('2026-12-31T13:00:00+04:00')});
+ const grand=gifts.find(g=>g.id===CAMPAIGN.grand.id);
+ assert.ok(grand);
+ const counted=gifts.filter(g=>g.id!==CAMPAIGN.grand.id&&+new Date(g.startsAt)<=T('2026-12-31T13:00:00+04:00')&&+new Date(g.endsAt)>T('2026-12-31T13:00:00+04:00')).length;
+ assert.equal(v.now.boxes,counted);
+});
+test('drops: with nothing in the database the plan names the next wave',()=>{
+ const p=plan('2026-10-07');
+ const v=dropsView({gifts:[],rules:new Map(),planned:p,now:T('2026-10-07T07:00:00+04:00')});
+ assert.equal(v.next.startsAt,new Date('2026-10-07T08:30:00+04:00').toISOString());
+ assert.ok(v.next.boxes>0);
+});
+test('drops: the weekly rhythm comes from the config',()=>{
+ const s=scheduleOf(CAMPAIGN,'ka');
+ assert.equal(s[0].times,'08:30 და 18:00');
+ assert.equal(s[2].times,'16:00');
+ assert.deepEqual(s[1].coins,{min:150,max:500});
+});

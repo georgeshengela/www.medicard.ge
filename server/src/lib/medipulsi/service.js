@@ -22,12 +22,15 @@ export async function catalog(db=prisma){return (await db.medipulsiMission.findM
 export async function snapshot(userId,db=prisma){
  const p=await db.medipulsiPlayer.findUnique({where:{userId}});
  if(!p)return null;
- const [session,history,claims,missions,cfg]=await Promise.all([
+ const [session,history,claims,missions,cfg,sum]=await Promise.all([
   p.activeSessionId?db.medipulsiSession.findUnique({where:{id:p.activeSessionId}}):null,
   db.medipulsiSession.findMany({where:{userId,phase:'FINISHED'},orderBy:{startedAt:'desc'},take:50}),
-  db.medipulsiClaim.findMany({where:{userId},orderBy:{createdAt:'desc'},take:100}),catalog(db),config(db)
+  db.medipulsiClaim.findMany({where:{userId},orderBy:{createdAt:'desc'},take:100}),catalog(db),config(db),
+  // `history` is the latest 50 walks; lifetime numbers come from every finished walk.
+  db.medipulsiSession.aggregate({where:{userId,phase:'FINISHED'},_count:{_all:true},_sum:{meters:true,newMeters:true}})
  ]);
- return {userId,state:p.state,settings:p.settings,handle:p.handle,leaderboardOptIn:p.leaderboardOptIn,revision:p.revision,session,history,claims,missions,config:cfg,mapboxToken:env.MAPBOX_PUBLIC_TOKEN};
+ const totals={walks:sum._count._all,meters:sum._sum.meters||0,newMeters:sum._sum.newMeters||0};
+ return {userId,state:p.state,settings:p.settings,handle:p.handle,leaderboardOptIn:p.leaderboardOptIn,revision:p.revision,session,history,totals,claims,missions,config:cfg,mapboxToken:env.MAPBOX_PUBLIC_TOKEN};
 }
 export async function bootstrap(userId,lang='ka'){await transaction(tx=>playerLock(tx,userId,lang));return snapshot(userId);}
 export async function settings(userId,input){return transaction(async tx=>{const p=await playerLock(tx,userId);const {handle,leaderboardOptIn,...preferences}=input;await tx.medipulsiPlayer.update({where:{userId},data:{settings:{...p.settings,...preferences},...(handle!==undefined?{handle}:{}),...(leaderboardOptIn!==undefined?{leaderboardOptIn}:{}),revision:{increment:1}}});return snapshot(userId,tx);});}
