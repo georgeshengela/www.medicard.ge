@@ -1,3 +1,4 @@
+import { brandHex } from '@/theme/brandTone';
 import React from 'react';
 import { Image, View, type ViewStyle } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
@@ -19,7 +20,7 @@ type Props = {
 };
 
 export function MedicationPillIcon({
-  color = '#14B8A6',
+  color = brandHex('#14B8A6'),
   shape = 'long',
   size = 48,
   border,

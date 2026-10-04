@@ -1,6 +1,7 @@
 import { CyclePressable as Pressable } from '@/components/cycle/CyclePressable';
 import React, { useLayoutEffect, useState } from 'react';
-import { Platform, ScrollView, Share, Switch, Text, View } from 'react-native';
+import { Platform, ScrollView, Share, Text, View } from 'react-native';
+import { Switch } from '@/components/ui/AppSwitch';
 import { useNavigation, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, { FadeInUp } from 'react-native-reanimated';

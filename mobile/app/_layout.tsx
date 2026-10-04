@@ -1,7 +1,10 @@
 import '../global.css';
 import '@/lib/bootGuard';
 
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { vars } from 'nativewind';
+import { roseCssVars, setBrandTone, useBrandTone } from '@/theme/brandTone';
+import { useHomeLayout } from '@/hooks/useHomeLayout';
 import { LogBox, Platform, Settings, Text, View } from 'react-native';
 import { tx } from '@/i18n/locale';
 
@@ -227,9 +230,23 @@ function AuthGate({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
+/** Keeps the brand tone in step with the resolved Home layout (rose for the women's Home). */
+function BrandToneSync() {
+  const { layout } = useHomeLayout();
+  useEffect(() => {
+    setBrandTone(layout === 'women' ? 'rose' : 'teal');
+  }, [layout]);
+  useEffect(() => () => setBrandTone('teal'), []);
+  return null;
+}
+
 function AppShell() {
   const colors = useThemeColors();
   const { scheme, ready: themeReady } = useTheme();
+  // Women's Home chosen → the whole app in its rose (owner 2026-10-04): NativeWind's brand variables
+  // are re-pointed here for every className; useThemeColors() follows the same tone.
+  const tone = useBrandTone();
+  const toneVars = useMemo(() => (tone === 'rose' ? vars(roseCssVars(scheme === 'dark')) : null), [tone, scheme]);
   const { user, ready: authReady, healthProfile, setHealthProfile } = useAuth();
   const segments = useSegments();
   const router = useRouter();
@@ -393,8 +410,9 @@ function AppShell() {
   return (
     <>
       <StatusBar style={scheme === 'dark' ? 'light' : 'dark'} />
+      {user ? <BrandToneSync /> : null}
       <AuthGate>
-        <View style={{ flex: 1, backgroundColor: colors.bg100 }}>
+        <View style={[{ flex: 1, backgroundColor: colors.bg100 }, toneVars]}>
           <View style={{ flex: 1 }}>
             <Stack
               screenOptions={{

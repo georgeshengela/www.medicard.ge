@@ -1,5 +1,6 @@
 import React from 'react';
 import { Pressable, View } from 'react-native';
+import { hubInk } from '@/theme/hub';
 import { ArrowUpRight, Flag, Gift } from 'lucide-react-native';
 import type { QuestDashboard } from '@/lib/quest/api';
 import { useIsDark, useThemeColors } from '@/theme/colors';
@@ -13,7 +14,7 @@ import { QuestCoinMark } from './QuestIcon';
 import { Bone } from '@/components/ui/Skeleton';
 
 export function QuestProfileCard({ dashboard, loading, error, stale, onOpen, onRetry, edgeInset = 16, hideTitle = false }: { dashboard: QuestDashboard | null; loading: boolean; error: boolean; stale: boolean; onOpen: () => void; onRetry: () => void; edgeInset?: number; hideTitle?: boolean }) {
-  const c = useThemeColors(), dark = useIsDark(), ink = dark ? '#5EEAD4' : '#0F766E';
+  const c = useThemeColors(), dark = useIsDark(), ink = hubInk('teal', dark);
   const profile = dashboard?.profile;
   const done = dashboard?.summary.dailyCompleted ?? 0, total = dashboard?.summary.dailyTotal ?? 0;
   const rewards = dashboard?.summary.unclaimedRewards ?? 0;

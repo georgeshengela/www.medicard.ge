@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, Image, Platform, Pressable, ScrollView, StyleSheet, Switch, Text, TextInput, View, type ImageSourcePropType, type ViewStyle } from 'react-native';
+import { ActivityIndicator, Image, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View, type ImageSourcePropType, type ViewStyle } from 'react-native';
+import { Switch } from '@/components/ui/AppSwitch';
 import { KeyboardFormShell } from '@/components/ui/KeyboardFormShell';
 import { SkeletonPage, haptic } from '@/components/coach/CoachKit';
 import { useRouter } from 'expo-router';

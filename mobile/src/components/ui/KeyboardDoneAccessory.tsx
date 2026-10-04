@@ -1,3 +1,4 @@
+import { brandHex } from '@/theme/brandTone';
 import React from 'react';
 import { InputAccessoryView, Keyboard, Platform, Pressable, Text, View } from 'react-native';
 import { ka } from '@/i18n/ka';
@@ -34,7 +35,7 @@ export function KeyboardDoneAccessory() {
             style={{
               fontFamily: 'NotoSansGeorgian_600SemiBold',
               fontSize: 16,
-              color: '#14B8A6',
+              color: brandHex('#14B8A6'),
             }}
           >
             {ka.common.done}

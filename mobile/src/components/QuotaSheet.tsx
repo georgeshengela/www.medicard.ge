@@ -1,3 +1,4 @@
+import { brandHex } from '@/theme/brandTone';
 import React, { useEffect, useState } from 'react';
 import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { BlurView } from 'expo-blur';
@@ -86,7 +87,7 @@ export function QuotaSheet({
                   periodEnd={plan.usage?.periodEnd}
                   colors={{
                     brand: FIGMA.brand,
-                    brandMuted: dark ? '#115E59' : '#99F6E4',
+                    brandMuted: dark ? brandHex('#115E59') : brandHex('#99F6E4'),
                     track: dark ? '#374151' : '#E5E7EB',
                     textPrimary: FIGMA.textPrimary,
                     textSecondary: FIGMA.textSecondary,

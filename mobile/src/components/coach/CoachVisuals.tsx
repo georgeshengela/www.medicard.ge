@@ -11,7 +11,7 @@ import { usePrefersReducedMotion } from '@/hooks/usePrefersReducedMotion';
 import { haptic } from '@/components/coach/CoachKit';
 import type { ProgressPhoto } from '@/lib/coach';
 import { daysBetween } from '@/lib/coach';
-import { hubText } from '@/theme/hub';
+import { hubText, hubInk } from '@/theme/hub';
 import { useIsDark, useThemeColors } from '@/theme/colors';
 import { tx } from '@/i18n/locale';
 
@@ -37,7 +37,7 @@ export function WeightChart({ series, goal, height = 170 }: { series: { date: st
     return { x, y, min, max, pad, first, end };
   }, [data, goal, width, height]);
 
-  const ink = dark ? '#5EEAD4' : '#0F766E';
+  const ink = hubInk('teal', dark);
   const goalInk = dark ? '#FCD34D' : '#B45309';
   return (
     <View onLayout={onLayout} style={{ height }} accessibilityRole="image" accessibilityLabel={data.length ? tx(`წონა: ${data[data.length - 1].kg} კგ${goal ? `, მიზანი ${goal.targetKg} კგ` : ''}`, `Weight: ${data[data.length - 1].kg} kg${goal ? `, goal ${goal.targetKg} kg` : ''}`) : tx('წონის მონაცემი არ არის', 'No weight data')}>

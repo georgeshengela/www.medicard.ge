@@ -1,3 +1,4 @@
+import { brandHex } from '@/theme/brandTone';
 import React, { useCallback, useRef, useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { useFocusEffect, useRouter } from "expo-router";
@@ -92,7 +93,7 @@ function Recipes() {
             <ChefHat size={30} color="#8AD5C7" />
             <Text style={[hubText.cardTitle, { color: "#FFFFFF", fontSize: 17 }]}>{tx("დედის ლობიო, შენი სალათი, კვირის სუპი", "Mom's lobio, your salad, Sunday soup")}</Text>
             <Text style={[hubText.body, { color: "#B6D9D3" }]}>{tx("ჩაწერე ინგრედიენტები ერთხელ, მიუთითე რამდენ პორციას გამოდის — და შემდეგ ყოველ ჯერზე ერთი შეხებით ჩაიწერს ზუსტ კალორიას და მაკროებს.", "Enter the ingredients once and how many servings it makes — then every time, one tap logs the exact calories and macros.")}</Text>
-            <Pressable accessibilityRole="button" onPress={() => router.push("/nutrition/recipe")} style={[s.cta, { backgroundColor: "#0D9488" }]}>
+            <Pressable accessibilityRole="button" onPress={() => router.push("/nutrition/recipe")} style={[s.cta, { backgroundColor: brandHex('#0D9488') }]}>
               <Plus size={17} color="#FFFFFF" />
               <Text style={[hubText.link, { color: "#FFFFFF" }]}>{tx("პირველი რეცეპტის შექმნა", "Create your first recipe")}</Text>
             </Pressable>

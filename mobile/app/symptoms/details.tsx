@@ -1,6 +1,7 @@
 import { tx } from '@/i18n/locale';
 import React, { useCallback, useRef } from 'react';
-import { KeyboardAvoidingView, Platform, Pressable, ScrollView, Switch, Text, TextInput, View } from 'react-native';
+import { KeyboardAvoidingView, Platform, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
+import { Switch } from '@/components/ui/AppSwitch';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ChevronRight, Pill, Plus, Search, ShieldCheck } from 'lucide-react-native';

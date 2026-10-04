@@ -1,3 +1,4 @@
+import { brandHex } from '@/theme/brandTone';
 import React from 'react';
 import { Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
@@ -94,7 +95,7 @@ export function ProfilePetsSection({ hideTitle = false }: { hideTitle?: boolean 
                 {tx('პროფილი, მოვლის გეგმა და MEDIVET — ერთ ადგილას.', 'Profile, care plan and MEDIVET — in one place.')}
               </Text>
             </View>
-            <Pressable accessibilityRole="button" accessibilityLabel={tx('ცხოველის დამატება', 'Add a pet')} onPress={() => router.push('/pets/new')} style={[s.addSmall, { backgroundColor: '#0D9488' }]}>
+            <Pressable accessibilityRole="button" accessibilityLabel={tx('ცხოველის დამატება', 'Add a pet')} onPress={() => router.push('/pets/new')} style={[s.addSmall, { backgroundColor: brandHex('#0D9488') }]}>
               <Plus size={20} color="#FFFFFF" strokeWidth={2.4} />
             </Pressable>
           </View>

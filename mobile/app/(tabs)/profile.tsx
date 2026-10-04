@@ -1,3 +1,4 @@
+import { brandHex } from '@/theme/brandTone';
 import React, { useCallback, useState } from 'react';
 import { Alert, Image, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useFocusEffect, useRouter } from 'expo-router';
@@ -182,7 +183,7 @@ export default function Profile() {
                   <Text style={[hubText.value, { fontSize: 20, color: colors.primary100 }]}>{initials || '·'}</Text>
                 )}
               </View>
-              <View style={{ position: 'absolute', right: -2, bottom: -2, width: 24, height: 24, borderRadius: 12, backgroundColor: '#0D9488', borderWidth: 2, borderColor: colors.surface, alignItems: 'center', justifyContent: 'center' }}>
+              <View style={{ position: 'absolute', right: -2, bottom: -2, width: 24, height: 24, borderRadius: 12, backgroundColor: brandHex('#0D9488'), borderWidth: 2, borderColor: colors.surface, alignItems: 'center', justifyContent: 'center' }}>
                 <Camera size={12} color="#FFFFFF" />
               </View>
             </Pressable>

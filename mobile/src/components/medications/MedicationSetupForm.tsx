@@ -1,13 +1,13 @@
 import Animated, { useAnimatedStyle } from 'react-native-reanimated';
 import { Platform } from 'react-native';
 import { useKeyboardPad } from '@/components/ui/KeyboardFormShell';
+import { Switch } from '@/components/ui/AppSwitch';
 import React, { useEffect, useMemo, useState } from 'react';
 import {
   Alert,
   Pressable,
   ScrollView,
   StyleSheet,
-  Switch,
   Text,
   TextInput,
   View,

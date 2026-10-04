@@ -1,3 +1,4 @@
+import { brandHex } from '@/theme/brandTone';
 import React, { useEffect, useRef, useState } from "react";
 import { ActivityIndicator, Keyboard, KeyboardAvoidingView, Platform, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -145,7 +146,7 @@ export function DescribeMealModal({
               accessibilityLabel={tx("შეფასება", "Estimate")}
               disabled={busy || text.trim().length < 3}
               onPress={submit}
-              style={[s.send, { backgroundColor: "#0F766E", opacity: busy || text.trim().length < 3 ? 0.45 : 1 }]}
+              style={[s.send, { backgroundColor: brandHex('#0F766E'), opacity: busy || text.trim().length < 3 ? 0.45 : 1 }]}
             >
               {busy ? <ActivityIndicator color="#FFFFFF" /> : <Send size={18} color="#FFFFFF" />}
               <Text style={[hubText.link, { color: "#FFFFFF", fontSize: 14 }]}>{busy ? tx("ვითვლი…", "Counting…") : tx("დათვალე", "Count it")}</Text>

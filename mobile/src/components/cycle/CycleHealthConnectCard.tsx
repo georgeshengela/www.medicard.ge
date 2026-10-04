@@ -1,6 +1,7 @@
 import { CyclePressable as Pressable } from '@/components/cycle/CyclePressable';
 import React, { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, Platform, Switch, Text, View } from 'react-native';
+import { ActivityIndicator, Platform, Text, View } from 'react-native';
+import { Switch } from '@/components/ui/AppSwitch';
 import { Activity, ExternalLink } from 'lucide-react-native';
 import { CycleCard } from '@/components/cycle/CycleUI';
 import { ka } from '@/i18n/ka';

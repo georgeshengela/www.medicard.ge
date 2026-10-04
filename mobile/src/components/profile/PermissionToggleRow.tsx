@@ -1,5 +1,6 @@
 import React from 'react';
-import { ActivityIndicator, Pressable, Switch, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, Text, View } from 'react-native';
+import { Switch } from '@/components/ui/AppSwitch';
 import type { LucideIcon } from 'lucide-react-native';
 import { FIGMA_HEALTH_METRICS, useFigmaHealthMetrics } from '@/constants/figmaHealthMetricsLayout';
 import { useIsDark } from '@/theme/colors';

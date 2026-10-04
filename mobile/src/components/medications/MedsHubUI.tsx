@@ -1,3 +1,4 @@
+import { brandHex } from '@/theme/brandTone';
 import React from 'react';
 import { ActivityIndicator, Image, Pressable, StyleSheet, Text, View, type ImageSourcePropType, type StyleProp, type ViewStyle } from 'react-native';
 import Svg, { Circle } from 'react-native-svg';
@@ -15,7 +16,7 @@ import type { DoseStatus } from '@/types/medications';
 
 /** Filled CTA colour — dark uses the deeper teal so white text keeps contrast. */
 export function medsPrimaryFill(c: Palette, dark: boolean): string {
-  return dark ? '#0D9488' : c.primary200;
+  return dark ? brandHex('#0D9488') : c.primary200;
 }
 
 /** Pill colour swatches offered in the add-medication form. */

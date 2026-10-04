@@ -5,7 +5,8 @@
  */
 import { CyclePressable as Pressable } from '@/components/cycle/CyclePressable';
 import React from 'react';
-import { Switch, Text, View } from 'react-native';
+import { Text, View } from 'react-native';
+import { Switch } from '@/components/ui/AppSwitch';
 import { Check, type LucideIcon } from 'lucide-react-native';
 import { ka } from '@/i18n/ka';
 import { tx } from '@/i18n/locale';

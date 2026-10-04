@@ -2,6 +2,7 @@
  * Not mounted since 2026-09-27 (App Review 5.1.1(iv): no message with "Not now" before a
  * permission sheet). Face ID is turned on from Profile → permissions instead.
  */
+import { brandHex } from '@/theme/brandTone';
 import React, { useEffect, useRef, useState } from 'react';
 import { Platform, Pressable, Text, View } from 'react-native';
 import { useSegments } from 'expo-router';
@@ -110,7 +111,7 @@ function BiometricOffer({ owner }: { owner: string }) {
           <Icon size={40} color={c.primary200} strokeWidth={1.6} />
           <Text style={{ fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 20, lineHeight: 28, color: c.text100, textAlign: 'center' }}>{title}</Text>
           <Text style={{ fontFamily: 'NotoSansGeorgian_400Regular', fontSize: 14, lineHeight: 22, color: c.text200, textAlign: 'center' }}>{body}</Text>
-          <Pressable accessibilityRole="button" disabled={busy} onPress={() => void enable()} style={{ alignSelf: 'stretch', minHeight: 50, borderRadius: 16, alignItems: 'center', justifyContent: 'center', backgroundColor: '#0D9488', opacity: busy ? 0.6 : 1 }}>
+          <Pressable accessibilityRole="button" disabled={busy} onPress={() => void enable()} style={{ alignSelf: 'stretch', minHeight: 50, borderRadius: 16, alignItems: 'center', justifyContent: 'center', backgroundColor: brandHex('#0D9488'), opacity: busy ? 0.6 : 1 }}>
             <Text style={{ fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 16, color: '#FFFFFF' }}>{ka.profileSetup.faceIdEnable}</Text>
           </Pressable>
           <Pressable accessibilityRole="button" disabled={busy} onPress={() => void decline()} style={{ minHeight: 44, justifyContent: 'center' }}>

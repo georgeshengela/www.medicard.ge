@@ -1,5 +1,6 @@
 import React,{useEffect,useState} from 'react';
-import {ActivityIndicator,Keyboard,Pressable,ScrollView,Switch,View} from 'react-native';
+import { ActivityIndicator, Keyboard, Pressable, ScrollView, View } from 'react-native';
+import { Switch } from '@/components/ui/AppSwitch';
 import {Check,ChevronDown,ChevronUp,Compass,Crown,Globe2,Landmark,MapPin,Mountain,RefreshCw,Trees,Trophy,Volume2,Waves} from 'lucide-react-native';
 import {getPulseClient,pulseApi,usePulse} from '@/lib/medipulsi/client';
 import {CHAPTERS,missionPercent,missionProgress,type Mission} from '@/lib/medipulsi/core/missions';

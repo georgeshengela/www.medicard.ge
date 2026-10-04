@@ -1,8 +1,9 @@
+import { toned } from '@/theme/brandTone';
 import { useIsDark } from '@/theme/colors';
 import { tx } from '../i18n/locale.js';
 
 /** Figma 11405:99213 — Medication Tracker design tokens. */
-export const FIGMA_MEDS = {
+export const FIGMA_MEDS = toned({
   brand: '#14B8A6',
   brandDark: '#0D9488',
   brandQuaternary: '#F0FDFA',
@@ -68,9 +69,9 @@ export const FIGMA_MEDS = {
     { key: 'heart', label: tx('გული', 'Heart') },
     { key: 'pain', label: tx('ტკივილი', 'Pain') },
   ] as const,
-} as const;
+} as const);
 
-export const FIGMA_MEDS_DARK = {
+export const FIGMA_MEDS_DARK = toned({
   brandQuaternary: '#042F2E',
   brandTertiary: '#115E59',
   textPrimary: '#FFFFFF',
@@ -101,7 +102,7 @@ export const FIGMA_MEDS_DARK = {
     shadowRadius: 0,
     elevation: 0,
   },
-} as const;
+} as const);
 
 export function useFigmaMeds() {
   const dark = useIsDark();

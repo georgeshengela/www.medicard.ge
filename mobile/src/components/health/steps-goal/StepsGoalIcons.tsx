@@ -1,3 +1,4 @@
+import { brandHex } from '@/theme/brandTone';
 import React from 'react';
 import Svg, { Path } from 'react-native-svg';
 
@@ -175,7 +176,7 @@ export function GoalSparkle({ size = 24 }: IconProps) {
   );
 }
 
-export function GoalFootSteps({ size = 48, color = '#14B8A6' }: IconProps) {
+export function GoalFootSteps({ size = 48, color = brandHex('#14B8A6') }: IconProps) {
   return (
     <Svg width={size} height={size} viewBox="0 0 48 48" fill="none">
       <Path

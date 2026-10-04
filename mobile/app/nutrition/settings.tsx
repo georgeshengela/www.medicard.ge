@@ -1,5 +1,6 @@
 import React, { useCallback, useRef, useState } from "react";
-import { Pressable, Switch, Text, View } from "react-native";
+import { Pressable, Text, View } from 'react-native';
+import { Switch } from '@/components/ui/AppSwitch';
 import { useFocusEffect, useRouter } from "expo-router";
 import { Bell, Flame, Footprints, HeartPulse, Minus, PieChart, Plus, RefreshCcw } from "lucide-react-native";
 import { api } from "@/lib/api";
@@ -152,7 +153,7 @@ function Settings() {
         <NText style={{ fontFamily: "NotoSansGeorgian_600SemiBold" }}>{title}</NText>
         <NText style={{ fontSize: 12, color: c.text200, lineHeight: 18 }}>{detail}</NText>
       </View>
-      <Switch accessibilityLabel={title} value={value} disabled={busy} onValueChange={onChange} trackColor={{ true: "#0D9488", false: c.bg300 }} thumbColor="#FFFFFF" />
+      <Switch accessibilityLabel={title} value={value} disabled={busy} onValueChange={onChange} trackColor={{ true: c.primary200, false: c.bg300 }} thumbColor="#FFFFFF" />
     </View>
   );
   const timePicker = (label: string, key: "breakfast" | "lunch" | "dinner") => (
@@ -249,7 +250,7 @@ function Settings() {
             <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
               <Bell size={20} color={c.primary100} />
               <NText style={{ fontFamily: "NotoSansGeorgian_600SemiBold", fontSize: 16, flex: 1 }}>{tx("კვების შეხსენებები", "Meal reminders")}</NText>
-              <Switch accessibilityLabel={tx("შეხსენებები", "Reminders")} value={prefs.reminders.enabled} disabled={busy} onValueChange={(v) => (v ? void enableReminders() : void save({ ...prefs, reminders: { ...prefs.reminders, enabled: false } }))} trackColor={{ true: "#0D9488", false: c.bg300 }} thumbColor="#FFFFFF" />
+              <Switch accessibilityLabel={tx("შეხსენებები", "Reminders")} value={prefs.reminders.enabled} disabled={busy} onValueChange={(v) => (v ? void enableReminders() : void save({ ...prefs, reminders: { ...prefs.reminders, enabled: false } }))} trackColor={{ true: c.primary200, false: c.bg300 }} thumbColor="#FFFFFF" />
             </View>
             <NText style={{ fontSize: 12, color: c.text200 }}>{tx("სამი მოკლე შეხსენება ტელეფონზე. არ ამოწმებს რა ჭამე — უბრალოდ დროზე გახსენებს.", "Three short reminders on your phone. They don't check what you ate — they just remind you on time.")}</NText>
             {prefs.reminders.enabled && (

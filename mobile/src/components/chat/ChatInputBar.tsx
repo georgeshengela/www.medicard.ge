@@ -1,3 +1,4 @@
+import { brandHex } from '@/theme/brandTone';
 import React from 'react';
 import { ActivityIndicator, Pressable, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -119,7 +120,7 @@ export function ChatInputBar({
             width: FIGMA_CHAT.sendBtnSize,
             height: FIGMA_CHAT.sendBtnSize,
             borderRadius: 999,
-            backgroundColor: canSend || sending ? '#0D9488' : FIGMA_CHAT.border,
+            backgroundColor: canSend || sending ? brandHex('#0D9488') : FIGMA_CHAT.border,
             alignItems: 'center',
             justifyContent: 'center',
             ...FIGMA_CHAT.shadowXs,

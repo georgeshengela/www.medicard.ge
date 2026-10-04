@@ -1,3 +1,4 @@
+import { brandHex } from '@/theme/brandTone';
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
@@ -533,7 +534,7 @@ function NutritionScreen({ owner }: { owner: string }) {
       accessibilityRole="button"
       disabled={busy || disabled}
       onPress={action}
-      style={[s.button, { backgroundColor: primary ? "#0F766E" : c.bg200, opacity: busy || disabled ? 0.5 : 1 }]}
+      style={[s.button, { backgroundColor: primary ? brandHex('#0F766E') : c.bg200, opacity: busy || disabled ? 0.5 : 1 }]}
     >
       {icon}
       <Text style={[txt, { color: primary ? "#fff" : c.text100, fontFamily: "NotoSansGeorgian_600SemiBold" }]}>{label}</Text>

@@ -1,3 +1,4 @@
+import { brandHex } from '@/theme/brandTone';
 import React, { useState } from 'react';
 import { Linking, Pressable, Text, View } from 'react-native';
 import { ExternalLink, ShieldCheck } from 'lucide-react-native';
@@ -21,7 +22,7 @@ export function AiPrivacySummary({ manifest, tone = 'app', hideTitle = false }: 
   const body = tone === 'onboarding' ? '#4B5563' : colors.text200;
   const card = tone === 'onboarding' ? '#FFFFFF' : colors.surface;
   const border = tone === 'onboarding' ? '#E5E7EB' : colors.bg300;
-  const accent = '#0F766E';
+  const accent = brandHex('#0F766E');
   const text = { color: body, fontFamily: 'NotoSansGeorgian_400Regular' as const, fontSize: 15, lineHeight: 22 };
 
   return (

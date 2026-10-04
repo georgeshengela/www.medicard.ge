@@ -1,7 +1,8 @@
+import { toned } from '@/theme/brandTone';
 import { useIsDark } from '@/theme/colors';
 
 /** Figma 11425:139549 — daily streak / login bonus. */
-export const FIGMA_STREAK = {
+export const FIGMA_STREAK = toned({
   brand: '#14B8A6',
   warning: '#F59E0B',
   warningSoft: '#FCD34D',
@@ -25,9 +26,9 @@ export const FIGMA_STREAK = {
   glowMid: 253,
   glowInner: 169,
   heroHeight: 148,
-} as const;
+} as const);
 
-export const FIGMA_STREAK_DARK = {
+export const FIGMA_STREAK_DARK = toned({
   textPrimary: '#FFFFFF',
   textSecondary: '#D1D5DB',
   weekday: '#9CA3AF',
@@ -35,7 +36,7 @@ export const FIGMA_STREAK_DARK = {
   cardBg: '#111827',
   border: '#374151',
   emptyDot: '#374151',
-} as const;
+} as const);
 
 export function useFigmaStreak() {
   const dark = useIsDark();

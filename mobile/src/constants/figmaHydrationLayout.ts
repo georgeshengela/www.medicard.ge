@@ -1,7 +1,8 @@
+import { toned } from '@/theme/brandTone';
 import { useIsDark } from '@/theme/colors';
 
 /** Figma 9283:202564 / 9017:196580 / 9017:209643 / 8852:117118 — hydration tokens. */
-export const FIGMA_HYDRATION = {
+export const FIGMA_HYDRATION = toned({
   brand: '#14B8A6',
   brandLight: '#99F6E4',
   brandMuted: '#CCFBF1',
@@ -37,9 +38,9 @@ export const FIGMA_HYDRATION = {
     shadowRadius: 14,
     elevation: 4,
   },
-} as const;
+} as const);
 
-export const FIGMA_HYDRATION_DARK = {
+export const FIGMA_HYDRATION_DARK = toned({
   brandQuaternary: '#042F2E',
   textPrimary: '#FFFFFF',
   textSecondary: '#D1D5DB',
@@ -54,7 +55,7 @@ export const FIGMA_HYDRATION_DARK = {
   waterMid: '#0EA5E9',
   waterSoft: '#164E63',
   successText: '#86EFAC',
-} as const;
+} as const);
 
 export function useFigmaHydration() {
   const dark = useIsDark();

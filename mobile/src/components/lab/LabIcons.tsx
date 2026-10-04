@@ -1,3 +1,4 @@
+import { brandHex } from '@/theme/brandTone';
 import React from 'react';
 import Svg, { Path } from 'react-native-svg';
 
@@ -40,7 +41,7 @@ export function LabFlaskTriangle({ color = '#8B5CF6' }: { color?: string }) {
 }
 
 /** Figma 11363:109240 check — outer 20, leaf 20. */
-export function LabCheckMark({ color = '#14B8A6' }: { color?: string }) {
+export function LabCheckMark({ color = brandHex('#14B8A6') }: { color?: string }) {
   return (
     <Svg width={20} height={20} viewBox="0 0 20 20" fill="none">
       <Path
@@ -74,7 +75,7 @@ export function LabInfoCircle({ color = '#9CA3AF', size = 20 }: { color?: string
 }
 
 /** Figma 8852:143210 sort chevron — outer 20. */
-export function LabChevronDown({ color = '#14B8A6' }: { color?: string }) {
+export function LabChevronDown({ color = brandHex('#14B8A6') }: { color?: string }) {
   return (
     <Svg width={20} height={20} viewBox="0 0 20 20" fill="none">
       <Path

@@ -1,5 +1,6 @@
 import React from 'react';
-import { Linking, Pressable, Switch, Text, View } from 'react-native';
+import { Linking, Pressable, Text, View } from 'react-native';
+import { Switch } from '@/components/ui/AppSwitch';
 import { Clock } from 'lucide-react-native';
 import { PetButton as Button } from '@/components/pets/PetUi';
 import { PetInput as Input } from '@/components/pets/PetUi';

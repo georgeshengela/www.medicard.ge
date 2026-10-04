@@ -1,7 +1,8 @@
+import { toned } from '@/theme/brandTone';
 import { useIsDark } from '@/theme/colors';
 
 /** Figma 11369:93993 — AI Health Assistant chat tokens. */
-export const FIGMA_CHAT = {
+export const FIGMA_CHAT = toned({
   brand: '#14B8A6',
   brandQuaternary: '#F0FDFA',
   brandBorderLight: '#CCFBF1',
@@ -42,10 +43,10 @@ export const FIGMA_CHAT = {
     shadowRadius: 2,
     elevation: 1,
   },
-} as const;
+} as const);
 
 /** Dark chat / home-card chrome — same gray-950 stack as login. */
-export const FIGMA_CHAT_DARK = {
+export const FIGMA_CHAT_DARK = toned({
   brandQuaternary: '#042F2E',
   brandBorderLight: '#115E59',
   textPrimary: '#FFFFFF',
@@ -59,7 +60,7 @@ export const FIGMA_CHAT_DARK = {
   onInverse: '#111827',
   successBg: '#052E16',
   successBorder: '#166534',
-} as const;
+} as const);
 
 export function useFigmaChat() {
   const dark = useIsDark();

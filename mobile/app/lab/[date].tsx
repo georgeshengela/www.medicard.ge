@@ -1,3 +1,4 @@
+import { brandHex } from '@/theme/brandTone';
 import { labRowName } from '@/lib/labNames';
 import { dateLocale } from '@/i18n/locale';
 import React, { useMemo, useState } from 'react';
@@ -56,7 +57,7 @@ export default function LabDateScreen() {
   );
 
   const title = dateKey && isTodayYmd(dateKey) ? ka.common.today : dateKey ? formatLabDateKa(dateKey) : ka.lab.title;
-  const cta = T.pageBg === '#030712' ? '#0D9488' : T.brand;
+  const cta = T.pageBg === '#030712' ? brandHex('#0D9488') : T.brand;
 
   return (
     <View style={{ flex: 1, backgroundColor: T.pageBg, paddingTop: insets.top }}>

@@ -1,5 +1,7 @@
+import { brandHex } from '@/theme/brandTone';
 import React, { useEffect } from 'react';
 import { Pressable, StyleSheet, Text, View, useColorScheme } from 'react-native';
+import { hubInk } from '@/theme/hub';
 import Animated, {
   Easing,
   cancelAnimation,
@@ -40,9 +42,9 @@ export function MaintenanceScreen({ onRetry }: { onRetry?: () => void }) {
   const fast = useAnimatedStyle(() => ({ transform: [{ rotate: `${spin.value * 720}deg` }] }));
   const bob = useAnimatedStyle(() => ({ transform: [{ translateY: -6 * float.value }] }));
 
-  const ink = dark ? '#5EEAD4' : '#0F766E';
-  const inkSoft = dark ? '#2DD4BF' : '#14B8A6';
-  const inkPale = dark ? '#99F6E4' : '#5EEAD4';
+  const ink = hubInk('teal', dark);
+  const inkSoft = dark ? brandHex('#2DD4BF') : brandHex('#14B8A6');
+  const inkPale = dark ? brandHex('#99F6E4') : brandHex('#5EEAD4');
 
   return (
     <View style={[styles.page, { backgroundColor: dark ? '#030712' : '#F8FAFA' }]}>
@@ -71,7 +73,7 @@ export function MaintenanceScreen({ onRetry }: { onRetry?: () => void }) {
         </Text>
 
         {onRetry ? (
-          <Pressable accessibilityRole="button" onPress={onRetry} style={[styles.cta, { backgroundColor: dark ? '#0D9488' : '#0F766E' }]}>
+          <Pressable accessibilityRole="button" onPress={onRetry} style={[styles.cta, { backgroundColor: dark ? brandHex('#0D9488') : brandHex('#0F766E') }]}>
             <Text style={styles.ctaText}>{tx('თავიდან ცდა', 'Try again')}</Text>
           </Pressable>
         ) : null}

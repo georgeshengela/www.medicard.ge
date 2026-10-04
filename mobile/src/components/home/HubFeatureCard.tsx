@@ -1,5 +1,6 @@
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { useBrandTone } from '@/theme/brandTone';
 import { ArrowUpRight, type LucideIcon } from 'lucide-react-native';
 import { HUB, hubInk, hubText, hubTint, type HubInk } from '@/theme/hub';
 import { useIsDark, useThemeColors } from '@/theme/colors';
@@ -49,10 +50,14 @@ export function HubFeatureCard({
   const dark = useIsDark();
   const accent = useHomeAccent();
   const spotlight = tone === 'spotlight';
+  // Brand tone rose (women's Home chosen): the one dark card turns deep plum with a blush ink.
+  const rose = useBrandTone() === 'rose';
+  const spotBg = rose ? '#3A1526' : HUB.spotlightBg;
+  const spotInk = rose ? '#FFC2D1' : '#99F6E4';
   const inkHex = hubInk(ink, dark);
   const textPrimary = spotlight ? '#FFFFFF' : c.text100;
-  const textSecondary = spotlight ? '#C5DADA' : c.text200;
-  const ctaColor = spotlight ? '#99F6E4' : accent.ink;
+  const textSecondary = spotlight ? (rose ? '#E8C9D3' : '#C5DADA') : c.text200;
+  const ctaColor = spotlight ? spotInk : accent.ink;
   const rule = spotlight ? 'rgba(255,255,255,0.14)' : c.bg300;
 
   const action = Boolean(cta && onPress);
@@ -62,13 +67,13 @@ export function HubFeatureCard({
       accessibilityLabel={accessibilityLabel ?? (action ? `${title}. ${cta}` : `${title}. ${body}`)}
       disabled={!action}
       onPress={onPress}
-      style={[s.card, { backgroundColor: spotlight ? HUB.spotlightBg : c.surface }]}
+      style={[s.card, { backgroundColor: spotlight ? spotBg : c.surface }]}
     >
       <View style={stackLead ? s.headStacked : s.head}>
         {lead ??
           (Icon ? (
             <View style={[s.tile, { backgroundColor: spotlight ? 'rgba(255,255,255,0.12)' : hubTint(inkHex, dark) }]}>
-              <Icon size={21} color={spotlight ? '#99F6E4' : inkHex} strokeWidth={1.8} />
+              <Icon size={21} color={spotlight ? spotInk : inkHex} strokeWidth={1.8} />
             </View>
           ) : null)}
         <View style={{ flex: 1, minWidth: 0, gap: 4 }}>

@@ -1,3 +1,4 @@
+import { brandHex } from '@/theme/brandTone';
 import React, { useEffect, useState } from 'react';
 import { Text, View, type ImageSourcePropType } from 'react-native';
 import { CheckCheck } from 'lucide-react-native';
@@ -119,7 +120,7 @@ function ChatStreamCursor() {
         height: 16,
         borderRadius: 1.5,
         marginTop: 2,
-        backgroundColor: '#0D9488',
+        backgroundColor: brandHex('#0D9488'),
         opacity: on ? 1 : 0.18,
       }}
     />

@@ -1,5 +1,6 @@
 import React, { useRef, useState } from 'react';
 import { ModuleWordmark } from '@/components/brand/ModuleWordmark';
+import { hubInk } from '@/theme/hub';
 import { Pressable, RefreshControl, ScrollView, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ArrowLeft, CircleHelp, Sparkles } from 'lucide-react-native';
@@ -35,7 +36,7 @@ export function QuestHubView(p: QuestHubViewProps) {
   const c = useThemeColors(), dark = useIsDark(), insets = useSafeAreaInsets();
   const scroll = useRef<ScrollView>(null);
   const [guide, setGuide] = useState(false);
-  const ink = dark ? '#5EEAD4' : '#0F766E';
+  const ink = hubInk('teal', dark);
   const profile = p.dashboard?.profile;
   const daily = orderedMissions(p.dashboard?.daily.quests ?? []), weekly = orderedMissions(p.dashboard?.weekly.quests ?? []);
   const unavailable = Boolean(p.dashboard?.unavailable || (p.dashboard && !profile));

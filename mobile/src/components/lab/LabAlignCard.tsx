@@ -1,3 +1,4 @@
+import { brandHex } from '@/theme/brandTone';
 import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
@@ -141,7 +142,7 @@ export function LabAlignCard({
             style={{
               height: 48,
               borderRadius: 14,
-              backgroundColor: '#0D9488',
+              backgroundColor: brandHex('#0D9488'),
               flexDirection: 'row',
               alignItems: 'center',
               justifyContent: 'center',
@@ -208,7 +209,7 @@ export function LabAlignCard({
                 style={{
                   height: 48,
                   borderRadius: 14,
-                  backgroundColor: '#0D9488',
+                  backgroundColor: brandHex('#0D9488'),
                   alignItems: 'center',
                   justifyContent: 'center',
                 }}

@@ -1,3 +1,4 @@
+import { brandHex } from '@/theme/brandTone';
 import React, { useEffect } from 'react';
 import { ActivityIndicator, BackHandler, Keyboard, Pressable, ScrollView, Text, View } from 'react-native';
 import { Modal } from '@/components/ui/appModal';
@@ -65,7 +66,7 @@ export function AiSharingConsentHost() {
             accessibilityState={{ disabled: prompt.busy, busy: prompt.busy }}
             disabled={prompt.busy}
             onPress={() => { void decideAiSharing(true); }}
-            style={{ minHeight: 52, borderRadius: 16, backgroundColor: '#0F766E', alignItems: 'center', justifyContent: 'center', opacity: prompt.busy ? 0.65 : 1 }}
+            style={{ minHeight: 52, borderRadius: 16, backgroundColor: brandHex('#0F766E'), alignItems: 'center', justifyContent: 'center', opacity: prompt.busy ? 0.65 : 1 }}
           >
             {prompt.busy ? <ActivityIndicator color="#FFFFFF" /> : (
               <Text style={{ color: '#FFFFFF', fontFamily: 'NotoSansGeorgian_600SemiBold', fontSize: 16 }}>{allowLabel}</Text>

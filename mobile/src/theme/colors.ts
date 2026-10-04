@@ -1,4 +1,5 @@
 import { useColorScheme } from 'nativewind';
+import { BRAND_ROSE, useBrandTone } from './brandTone';
 
 /**
  * The same tokens as `global.css`, as plain values for the places React Native cannot
@@ -69,9 +70,15 @@ export const darkColors: Palette = {
 };
 
 /** Palette for the currently active scheme. Re-renders when the theme changes. */
+/** The women's-Home rose over the brand tokens (brandTone.ts); built once so identities stay stable. */
+const roseLight: Palette = { ...lightColors, ...BRAND_ROSE.light };
+const roseDark: Palette = { ...darkColors, ...BRAND_ROSE.dark };
+
 export function useThemeColors(): Palette {
   const { colorScheme } = useColorScheme();
-  return colorScheme === 'dark' ? darkColors : lightColors;
+  const rose = useBrandTone() === 'rose';
+  if (colorScheme === 'dark') return rose ? roseDark : darkColors;
+  return rose ? roseLight : lightColors;
 }
 
 /** True when the dark palette is active — for icon swaps and status-bar style. */

@@ -1,3 +1,4 @@
+import { brandHex } from '@/theme/brandTone';
 import React, { useEffect, useRef, useState } from 'react';
 import { Image, Keyboard, KeyboardAvoidingView, Platform, Pressable, ScrollView, Text, View, type ImageSourcePropType } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -168,7 +169,7 @@ export function PetIconWell({
         width: size,
         height: size,
         borderRadius: 14,
-        backgroundColor: dark ? colors.accent100 : '#F0FDFA',
+        backgroundColor: dark ? colors.accent100 : brandHex('#F0FDFA'),
         alignItems: 'center',
         justifyContent: 'center',
       }}
@@ -305,7 +306,7 @@ export function PetFilterChip({
         gap: 8,
         alignSelf: fill ? 'stretch' : 'flex-start',
         width: fill ? '100%' : undefined,
-        backgroundColor: selected ? (dark ? colors.accent100 : '#F0FDFA') : dark ? colors.bg200 : '#F9FAFB',
+        backgroundColor: selected ? (dark ? colors.accent100 : brandHex('#F0FDFA')) : dark ? colors.bg200 : '#F9FAFB',
         borderColor: selected ? colors.primary200 : dark ? colors.bg300 : '#D1D5DB',
         maxWidth: '100%',
       }}

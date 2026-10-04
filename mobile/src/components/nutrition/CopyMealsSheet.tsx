@@ -1,3 +1,4 @@
+import { brandHex } from '@/theme/brandTone';
 import React, { useEffect, useState } from "react";
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -83,7 +84,7 @@ export function CopyMealsSheet({
             </>
           )}
           {!!error && <Text accessibilityRole="alert" style={[hubText.body, { color: c.danger }]}>{error}</Text>}
-          <Pressable accessibilityRole="button" disabled={busy} onPress={() => onCopy(date, type || undefined)} style={[s.primary, { opacity: busy ? 0.6 : 1 }]}>
+          <Pressable accessibilityRole="button" disabled={busy} onPress={() => onCopy(date, type || undefined)} style={[s.primary, { opacity: busy ? 0.6 : 1, backgroundColor: brandHex("#0F766E") }]}>
             {busy ? <ActivityIndicator color="#FFFFFF" /> : <Text style={[hubText.link, { color: "#FFFFFF", fontSize: 15 }]}>{date === today ? tx("დღევანდელში დამატება", "Add to today") : tx(`${nutritionDateLabel(date)}-ში დამატება`, `Add to ${nutritionDateLabel(date)}`)}</Text>}
           </Pressable>
           <Pressable accessibilityRole="button" onPress={onClose} style={[s.secondary, { backgroundColor: c.bg200 }]}>

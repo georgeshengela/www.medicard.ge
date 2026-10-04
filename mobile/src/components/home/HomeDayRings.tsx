@@ -1,3 +1,4 @@
+import { brandHex } from '@/theme/brandTone';
 import React, { useEffect } from 'react';
 import { Pressable, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import Animated, {
@@ -41,8 +42,8 @@ const ICONS: Record<DayRing['key'], LucideIcon> = { steps: Footprints, water: Dr
 
 function ringPalette(dark: boolean): Record<DayRing['key'], string> {
   return dark
-    ? { steps: '#2DD4BF', water: '#60A5FA', meds: '#A78BFA' }
-    : { steps: '#14B8A6', water: '#3B82F6', meds: '#7C3AED' };
+    ? { steps: brandHex('#2DD4BF'), water: '#60A5FA', meds: '#A78BFA' }
+    : { steps: brandHex('#14B8A6'), water: '#3B82F6', meds: '#7C3AED' };
 }
 
 function Ring({

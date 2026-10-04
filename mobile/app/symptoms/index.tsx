@@ -1,3 +1,4 @@
+import { brandHex } from '@/theme/brandTone';
 import React, { useCallback } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
@@ -99,7 +100,7 @@ function StartCard({
         paddingHorizontal: 16,
         paddingVertical: 14,
         borderRadius: 22,
-        backgroundColor: primary ? '#0D9488' : '#111827',
+        backgroundColor: primary ? brandHex('#0D9488') : '#111827',
       }}
     >
       <View
@@ -112,11 +113,11 @@ function StartCard({
           backgroundColor: primary ? 'rgba(255,255,255,0.16)' : 'rgba(94,234,212,0.12)',
         }}
       >
-        <Icon size={22} color={primary ? '#FFFFFF' : '#5EEAD4'} strokeWidth={1.9} />
+        <Icon size={22} color={primary ? '#FFFFFF' : brandHex('#5EEAD4')} strokeWidth={1.9} />
       </View>
       <View style={{ flex: 1, minWidth: 0, gap: 2 }}>
         <Text style={{ fontFamily: 'NotoSansGeorgian_600SemiBold', fontSize: 15.5, lineHeight: 21, color: '#FFFFFF' }}>{title}</Text>
-        <Text numberOfLines={2} style={{ fontFamily: 'NotoSansGeorgian_400Regular', fontSize: 12.5, lineHeight: 17, color: primary ? '#CCFBF1' : '#9CA3AF' }}>
+        <Text numberOfLines={2} style={{ fontFamily: 'NotoSansGeorgian_400Regular', fontSize: 12.5, lineHeight: 17, color: primary ? brandHex('#CCFBF1') : '#9CA3AF' }}>
           {detail}
         </Text>
       </View>

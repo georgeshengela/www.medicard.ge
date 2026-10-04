@@ -1,3 +1,4 @@
+import { brandHex } from '@/theme/brandTone';
 import React, { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
@@ -199,7 +200,7 @@ export default function AiDataProcessingScreen() {
                 style={{
                   minHeight: 52,
                   borderRadius: 16,
-                  backgroundColor: '#0F766E',
+                  backgroundColor: brandHex('#0F766E'),
                   alignItems: 'center',
                   justifyContent: 'center',
                   opacity: busy ? 0.65 : 1,

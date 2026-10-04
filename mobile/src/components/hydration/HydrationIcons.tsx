@@ -1,3 +1,4 @@
+import { brandHex } from '@/theme/brandTone';
 import React from 'react';
 import { View } from 'react-native';
 import Svg, { Circle, ClipPath, Defs, G, LinearGradient, Path, Rect, Stop } from 'react-native-svg';
@@ -18,7 +19,7 @@ export function HydrationDrop({ size = 40, color = '#38BDF8' }: { size?: number;
 const FIGMA_DROP =
   'M8.57682 0.796823C9.50645 -0.265609 11.1602 -0.265606 12.0898 0.796823L17.7852 7.30594C19.6427 9.42886 20.6667 12.1543 20.6667 14.9752C20.6667 16.3322 20.3995 17.676 19.8802 18.9296C19.3609 20.1833 18.6002 21.323 17.6406 22.2825C16.6811 23.242 15.5414 24.0028 14.2878 24.5221C13.0341 25.0414 11.6903 25.3085 10.3333 25.3085C8.97635 25.3085 7.63259 25.0414 6.37891 24.5221C5.12522 24.0028 3.98557 23.242 3.02604 22.2825C2.06651 21.323 1.30576 20.1833 0.786458 18.9296C0.267171 17.676 6.93905e-06 16.3322 0 14.9752C2.46608e-07 12.1543 1.02396 9.42886 2.88151 7.30594L8.57682 0.796823Z';
 
-export function FigmaHydrationDrop({ color = '#14B8A6' }: { color?: string }) {
+export function FigmaHydrationDrop({ color = brandHex('#14B8A6') }: { color?: string }) {
   return (
     <View style={{ width: 32, height: 32, alignItems: 'center', justifyContent: 'center' }}>
       <Svg width={20.6667} height={25.3085} viewBox="0 0 20.6667 25.3085" fill="none">
@@ -29,7 +30,7 @@ export function FigmaHydrationDrop({ color = '#14B8A6' }: { color?: string }) {
 }
 
 /** Figma 9283:202587 / assets/figma/hydration/hatch-a-9283.svg — 173×97, rotate 60° in the fill. */
-export function FigmaHydrationHatch({ color = '#0D9488' }: { color?: string }) {
+export function FigmaHydrationHatch({ color = brandHex('#0D9488') }: { color?: string }) {
   return (
     <Svg width={173} height={97} viewBox="0 0 173 97" fill="none">
       {Array.from({ length: 13 }, (_, i) => (
@@ -66,14 +67,14 @@ export function HydrationContainerIcon({
     <Svg width={size} height={size} viewBox="0 0 72 72" fill="none">
       <Defs>
         <LinearGradient id={`${uid}-fill`} x1="36" y1="20" x2="36" y2="68">
-          <Stop offset="0" stopColor="#14B8A6" />
-          <Stop offset="1" stopColor="#14B8A6" stopOpacity="0" />
+          <Stop offset="0" stopColor={brandHex('#14B8A6')} />
+          <Stop offset="1" stopColor={brandHex('#14B8A6')} stopOpacity="0" />
         </LinearGradient>
         <ClipPath id={`${uid}-clip`}>
           <Path d={body} />
         </ClipPath>
       </Defs>
-      <Path d={body} fill="#CCFBF1" />
+      <Path d={body} fill={brandHex('#CCFBF1')} />
       <G clipPath={`url(#${uid}-clip)`}>
         <Path d={fill} fill={`url(#${uid}-fill)`} />
       </G>
@@ -81,14 +82,14 @@ export function HydrationContainerIcon({
   );
 }
 
-export function HydrationMiniBottle({ size = 40, color = '#14B8A6' }: { size?: number; color?: string }) {
+export function HydrationMiniBottle({ size = 40, color = brandHex('#14B8A6') }: { size?: number; color?: string }) {
   return (
     <View style={{ width: size, height: size, alignItems: 'center', justifyContent: 'center' }}>
       <Svg width={size} height={size} viewBox="0 0 40 40" fill="none">
         <Rect x="16" y="4" width="8" height="5" rx="1.5" fill={color} opacity={0.45} />
         <Path
           d="M13 12C13 10.9 13.9 10 15 10H25C26.1 10 27 10.9 27 12V14.5C29 16 30 18.5 30 22V31C30 33.2 28.2 35 26 35H14C11.8 35 10 33.2 10 31V22C10 18.5 11 16 13 14.5V12Z"
-          fill="#CCFBF1"
+          fill={brandHex('#CCFBF1')}
         />
         <Path d="M12 22C14 26 26 26 28 22V31C28 32.1 27.1 33 26 33H14C12.9 33 12 32.1 12 31V22Z" fill={color} />
       </Svg>
@@ -144,7 +145,7 @@ export function HydrationDayEmpty({ size = 32, color = '#4B5563' }: { size?: num
 export function DrinkTypeIcon({
   type,
   size = 20,
-  color = '#14B8A6',
+  color = brandHex('#14B8A6'),
 }: {
   type: 'water' | 'coffee' | 'tea' | 'other';
   size?: number;

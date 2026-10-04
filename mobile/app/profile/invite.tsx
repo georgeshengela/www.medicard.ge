@@ -1,3 +1,4 @@
+import { brandHex } from '@/theme/brandTone';
 import React, { useCallback, useState } from 'react';
 import { ActivityIndicator, Image, Pressable, ScrollView, Share, StyleSheet, Text, View } from 'react-native';
 import { useFocusEffect, useRouter } from 'expo-router';
@@ -91,7 +92,7 @@ export default function InviteScreen() {
           <View style={[s.card, { backgroundColor: c.surface }]}>
             <Text style={[hubText.cardTitle, { color: c.text100 }]}>{ka.referral.phoneTitle}</Text>
             <Text style={[hubText.body, { color: c.text200 }]}>{ka.referral.phoneBody}</Text>
-            <Pressable accessibilityRole="button" onPress={() => router.push('/profile/verify-phone' as never)} style={[s.cta, { marginTop: 8 }]}>
+            <Pressable accessibilityRole="button" onPress={() => router.push('/profile/verify-phone' as never)} style={[s.cta, { marginTop: 8, backgroundColor: brandHex('#0D9488') }]}>
               <Text style={s.ctaText}>{ka.referral.phoneCta}</Text>
             </Pressable>
           </View>
@@ -113,7 +114,7 @@ export default function InviteScreen() {
             <Text selectable accessibilityLabel={`${ka.referral.yourCode}: ${data.code.split('').join(' ')}`} style={{ fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 34, letterSpacing: 6, color: c.text100, marginVertical: 6 }}>
               {data.code}
             </Text>
-            <Pressable accessibilityRole="button" onPress={share} style={[s.cta, { alignSelf: 'stretch' }]}>
+            <Pressable accessibilityRole="button" onPress={share} style={[s.cta, { alignSelf: 'stretch', backgroundColor: brandHex('#0D9488') }]}>
               <Image source={REFERRAL_ART.share} resizeMode="contain" accessible={false} accessibilityIgnoresInvertColors style={{ width: 22, height: 22 }} />
               <Text style={s.ctaText}>{ka.referral.share}</Text>
             </Pressable>

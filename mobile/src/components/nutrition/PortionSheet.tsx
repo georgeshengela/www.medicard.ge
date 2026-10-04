@@ -1,3 +1,4 @@
+import { brandHex } from '@/theme/brandTone';
 import React, { useEffect, useMemo, useState } from "react";
 import { Keyboard, KeyboardAvoidingView, Platform, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -115,7 +116,7 @@ export function PortionSheet({
               accessibilityRole="button"
               disabled={!item}
               onPress={() => item && onAdd(item, food, amount)}
-              style={[s.primary, { backgroundColor: "#0F766E", opacity: item ? 1 : 0.45 }]}
+              style={[s.primary, { backgroundColor: brandHex('#0F766E'), opacity: item ? 1 : 0.45 }]}
             >
               <Text style={[hubText.link, { color: "#fff", fontSize: 14 }]}>{tx("დამატება", "Add")}</Text>
             </Pressable>

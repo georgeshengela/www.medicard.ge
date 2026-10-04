@@ -1,3 +1,4 @@
+import { brandHex } from '@/theme/brandTone';
 import React, { useCallback, useState } from 'react';
 import { Alert, Text, View, useWindowDimensions } from 'react-native';
 import { useFocusEffect, useLocalSearchParams } from 'expo-router';
@@ -73,7 +74,7 @@ export default function MyQrScreen() {
               <Svg width={cardW} height={cardW + 150} style={{ position: 'absolute' }}>
                 <Defs>
                   <LinearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
-                    <Stop offset="0" stopColor="#0F766E" />
+                    <Stop offset="0" stopColor={brandHex('#0F766E')} />
                     <Stop offset="0.55" stopColor="#102C35" />
                     <Stop offset="1" stopColor="#030712" />
                   </LinearGradient>
@@ -82,12 +83,12 @@ export default function MyQrScreen() {
               </Svg>
               <View style={{ alignItems: 'center', paddingTop: 22, paddingBottom: 24, gap: 14 }}>
                 <View style={[coachStyles.row, { gap: 10 }]}>
-                  <View style={{ borderRadius: 30, borderWidth: 3, borderColor: '#99F6E4' }}>
+                  <View style={{ borderRadius: 30, borderWidth: 3, borderColor: brandHex('#99F6E4') }}>
                     <Avatar avatarId={avatarId} photoUrl={photo} name={user?.fullName ?? '?'} size={50} />
                   </View>
                   <View>
                     <Text style={{ fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 18, color: '#FFFFFF' }}>{user?.fullName}</Text>
-                    <Text style={[hubText.caption, { color: '#99F6E4' }]}>{tx('MEDICARD პროფილი', 'MEDICARD profile')}</Text>
+                    <Text style={[hubText.caption, { color: brandHex('#99F6E4') }]}>{tx('MEDICARD პროფილი', 'MEDICARD profile')}</Text>
                   </View>
                 </View>
                 <View style={{ padding: 12, backgroundColor: '#FFFFFF', borderRadius: 26 }}>

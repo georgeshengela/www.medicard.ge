@@ -1,5 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Image, Pressable, RefreshControl, ScrollView, StyleSheet, Switch, Text, TextInput, View } from 'react-native';
+import { Image, Pressable, RefreshControl, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Switch } from '@/components/ui/AppSwitch';
+import { useBrandTone, brandHex } from '@/theme/brandTone';
 import { Stack, useRouter } from 'expo-router';
 import { CalendarDays, ChevronRight, Crown, FlaskConical, Pill, Plus, Search } from 'lucide-react-native';
 import { HomeSectionHeading } from '@/components/home/HomeSectionHeading';
@@ -297,8 +299,9 @@ const MED_POPULAR_CHIPS = [
 
 /** The spotlight's lead: a ring that fills as today's doses get taken. */
 function TodayRing({ taken, total }: { taken: number; total: number }) {
+  const rose = useBrandTone() === 'rose';
   return (
-    <MedsRing size={64} stroke={6} progress={total > 0 ? taken / total : 0} color="#99F6E4" track="rgba(255,255,255,0.16)">
+    <MedsRing size={64} stroke={6} progress={total > 0 ? taken / total : 0} color={rose ? '#FFC2D1' : brandHex('#99F6E4')} track="rgba(255,255,255,0.16)">
       <Text style={[hubText.value, { fontSize: 15, color: '#FFFFFF' }]}>{total > 0 ? `${taken}/${total}` : '—'}</Text>
     </MedsRing>
   );

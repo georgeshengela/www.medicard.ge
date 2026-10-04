@@ -1,7 +1,8 @@
+import { toned } from '@/theme/brandTone';
 import { useIsDark } from '@/theme/colors';
 
 /** Figma 8911:62026 — Home dashboard top tokens. */
-export const FIGMA_HOME_DASHBOARD = {
+export const FIGMA_HOME_DASHBOARD = toned({
   brand: '#14B8A6',
   brandQuaternary: '#F0FDFA',
   brandBorder: '#99F6E4',
@@ -23,10 +24,10 @@ export const FIGMA_HOME_DASHBOARD = {
   chevron: '#9CA3AF',
   warning: '#F59E0B',
   success: '#22C55E',
-} as const;
+} as const);
 
 /** Dark home dashboard — Figma 11413:249017. */
-export const FIGMA_HOME_DASHBOARD_DARK = {
+export const FIGMA_HOME_DASHBOARD_DARK = toned({
   brandQuaternary: '#042F2E',
   brandBorder: '#115E59',
   textPrimary: '#FFFFFF',
@@ -42,7 +43,7 @@ export const FIGMA_HOME_DASHBOARD_DARK = {
   avatarRing: '#111827',
   checkboxBg: '#111827',
   chevron: '#6B7280',
-} as const;
+} as const);
 
 export function useFigmaHomeDashboard() {
   const dark = useIsDark();

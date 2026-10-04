@@ -1,3 +1,4 @@
+import { brandHex } from '@/theme/brandTone';
 import React from 'react';
 import { ActivityIndicator, Image, Pressable, Text, View, type ImageSourcePropType, type ViewProps } from 'react-native';
 import { ChevronRight, PawPrint, type LucideIcon } from 'lucide-react-native';
@@ -22,8 +23,8 @@ export function PetPanel({ children, onPress, padded = true, elevated: _elevated
 }
 export function PetButton({ label, onPress, variant = 'primary', icon: Icon, loading, disabled, size = 'md', fullWidth = true, ...rest }: { label: string; onPress?: () => void; variant?: 'primary' | 'secondary' | 'ghost' | 'danger'; icon?: LucideIcon; loading?: boolean; disabled?: boolean; size?: 'sm' | 'md' | 'lg'; fullWidth?: boolean; accessibilityLabel?: string; testID?: string }) {
   const c = useThemeColors(), dark = useIsDark(), inactive = disabled || loading;
-  const ink = variant === 'primary' ? '#FFFFFF' : variant === 'danger' ? c.danger : dark ? '#99F6E4' : '#0F766E';
-  return <Pressable accessibilityRole="button" accessibilityLabel={label} accessibilityState={{ disabled: Boolean(inactive), busy: Boolean(loading) }} disabled={inactive} onPress={onPress} {...rest} style={{ minHeight: size === 'sm' ? 44 : 52, paddingHorizontal: 16, paddingVertical: 12, borderRadius: 17, alignSelf: fullWidth ? 'stretch' : 'flex-start', backgroundColor: variant === 'primary' ? '#0D9488' : variant === 'danger' ? c.dangerBg : variant === 'ghost' ? 'transparent' : c.surfaceRaised, opacity: inactive ? .5 : 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+  const ink = variant === 'primary' ? '#FFFFFF' : variant === 'danger' ? c.danger : dark ? brandHex('#99F6E4') : brandHex('#0F766E');
+  return <Pressable accessibilityRole="button" accessibilityLabel={label} accessibilityState={{ disabled: Boolean(inactive), busy: Boolean(loading) }} disabled={inactive} onPress={onPress} {...rest} style={{ minHeight: size === 'sm' ? 44 : 52, paddingHorizontal: 16, paddingVertical: 12, borderRadius: 17, alignSelf: fullWidth ? 'stretch' : 'flex-start', backgroundColor: variant === 'primary' ? brandHex('#0D9488') : variant === 'danger' ? c.dangerBg : variant === 'ghost' ? 'transparent' : c.surfaceRaised, opacity: inactive ? .5 : 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
     {loading ? <ActivityIndicator color={ink} /> : <>{Icon ? <Icon size={19} color={ink} /> : null}<PetText bold color={ink}>{label}</PetText></>}
   </Pressable>;
 }

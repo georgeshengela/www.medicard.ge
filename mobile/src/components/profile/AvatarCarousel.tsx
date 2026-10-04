@@ -1,3 +1,4 @@
+import { brandHex } from '@/theme/brandTone';
 import React, { useCallback, useEffect, useRef } from 'react';
 import {
   Dimensions,
@@ -48,7 +49,7 @@ function ArrowDownIcon({ size }: { size: number }) {
     <Svg width={size} height={size} viewBox="0 0 32 32" fill="none">
       <Path
         d="M16.0003 3C16.5526 3 17.0003 3.44772 17.0003 4V16.3333H26.667C27.0714 16.3333 27.4367 16.5769 27.5915 16.9505C27.7462 17.3242 27.66 17.7544 27.374 18.0404L16.7074 28.707C16.5198 28.8944 16.2654 29 16.0003 29C15.7353 28.9999 15.4807 28.8945 15.2933 28.707L4.62663 18.0404C4.34086 17.7544 4.25458 17.324 4.40918 16.9505C4.56391 16.577 4.92936 16.3335 5.33366 16.3333H15.0003V4C15.0003 3.44786 15.4482 3.00023 16.0003 3Z"
-        fill="#14B8A6"
+        fill={brandHex('#14B8A6')}
       />
     </Svg>
   );
@@ -59,7 +60,7 @@ function ArrowUpIcon({ size }: { size: number }) {
     <Svg width={size} height={size} viewBox="0 0 32 32" fill="none">
       <Path
         d="M16.0003 29C15.4482 29 15.0003 28.5523 15.0003 28V15.6667H5.33366C4.92936 15.6665 4.56391 15.423 4.40918 15.0495C4.25458 14.676 4.34086 14.2458 4.62663 13.9598L15.2933 3.293C15.4807 3.10554 15.7353 3.00008 16.0003 3C16.2654 3.00008 16.5198 3.10554 16.7074 3.293L27.374 13.9598C27.66 14.2458 27.7462 14.676 27.5915 15.0495C27.4367 15.423 27.374 15.6665 26.667 15.6667H17.0003V28C17.0003 28.5523 16.5526 29 16.0003 29Z"
-        fill="#14B8A6"
+        fill={brandHex('#14B8A6')}
       />
     </Svg>
   );
@@ -89,7 +90,7 @@ function AvatarFace({
       height: size,
       borderRadius: size / 2,
       borderWidth: border,
-      borderColor: dist < 0.35 ? '#14B8A6' : idleBorder,
+      borderColor: dist < 0.35 ? brandHex('#14B8A6') : idleBorder,
       opacity,
       overflow: 'hidden' as const,
       backgroundColor: faceBg,

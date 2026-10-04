@@ -226,7 +226,7 @@ export function FloatingTabBar({ visible = true }: { visible?: boolean }) {
             borderWidth: 4,
             borderColor: onRunHub ? colors.accent200 : colors.bg100,
             elevation: 10,
-            shadowColor: '#0F766E',
+            shadowColor: colors.primary100,
             shadowOffset: { width: 0, height: 6 },
             shadowOpacity: 0.35,
             shadowRadius: 10,

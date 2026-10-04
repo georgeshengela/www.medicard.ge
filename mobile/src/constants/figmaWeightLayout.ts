@@ -1,7 +1,8 @@
+import { toned } from '@/theme/brandTone';
 import { useIsDark } from '@/theme/colors';
 
 /** Nightingale 8927:182138 / 182116 / 185344 — weight hub, history, goal. */
-export const FIGMA_WEIGHT = {
+export const FIGMA_WEIGHT = toned({
   brand: '#14B8A6',
   brandLight: '#99F6E4',
   brandSoft: '#F0FDFA',
@@ -29,9 +30,9 @@ export const FIGMA_WEIGHT = {
     shadowRadius: 2,
     elevation: 1,
   },
-} as const;
+} as const);
 
-export const FIGMA_WEIGHT_DARK = {
+export const FIGMA_WEIGHT_DARK = toned({
   brandSoft: '#042F2E',
   brandBorder: '#115E59',
   cta: '#0D9488',
@@ -45,7 +46,7 @@ export const FIGMA_WEIGHT_DARK = {
   track: '#374151',
   successSoft: '#052E16',
   successBorder: '#166534',
-} as const;
+} as const);
 
 export function useFigmaWeight() {
   const dark = useIsDark();

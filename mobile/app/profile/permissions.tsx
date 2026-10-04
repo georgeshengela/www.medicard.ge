@@ -1,3 +1,4 @@
+import { brandHex } from '@/theme/brandTone';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
@@ -416,7 +417,7 @@ export default function PermissionsScreen() {
               />
               <PermissionToggleRow
                 icon={MapPin}
-                iconColor="#14B8A6"
+                iconColor={brandHex('#14B8A6')}
                 label={ka.permissions.locationTitle}
                 hint={livingPlaceLine(healthProfile) || undefined}
                 value={snapshot?.location.enabled === true}

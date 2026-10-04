@@ -1,3 +1,4 @@
+import { brandHex } from '@/theme/brandTone';
 import React, { useEffect, useId, useRef, useState } from "react";
 import {
   AccessibilityInfo,
@@ -128,7 +129,7 @@ export function EnergyRing({
         <Svg width="100%" height="100%" viewBox="0 0 300 252">
           <Defs>
             <LinearGradient id={id} x1="0%" y1="100%" x2="100%" y2="0%">
-              <Stop offset="0" stopColor={dark ? "#408F85" : "#0F766E"} />
+              <Stop offset="0" stopColor={dark ? "#408F85" : brandHex('#0F766E')} />
               <Stop offset="1" stopColor={dark ? "#8AD5C7" : "#3EB6A0"} />
             </LinearGradient>
           </Defs>

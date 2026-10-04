@@ -1,5 +1,7 @@
+import { brandHex } from '@/theme/brandTone';
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import { ActivityIndicator, Platform, Pressable, StyleSheet, Switch, Text, View } from "react-native";
+import { ActivityIndicator, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Switch } from '@/components/ui/AppSwitch';
 import { useFocusEffect, useRouter } from "expo-router";
 import * as Haptics from "expo-haptics";
 import DateTimePicker, { DateTimePickerAndroid } from "@react-native-community/datetimepicker";
@@ -308,7 +310,7 @@ function Fasting() {
                   <Text style={[hubText.cardTitle, { color: c.text100 }]}>{tx("მიზნის შესრულებისას", "When you reach your goal")}</Text>
                   <Text style={[hubText.caption, { color: c.text200 }]}>{tx("ერთი შეტყობინება, როცა შიმშილის საათები შესრულდება.", "One notification when your fasting hours are done.")}</Text>
                 </View>
-                <Switch accessibilityLabel={tx("შეხსენება მიზნის შესრულებისას", "Reminder when you reach your goal")} value={!!settings?.notify} disabled={busy} onValueChange={(v) => void toggleNotify(v)} trackColor={{ true: "#0D9488", false: c.bg300 }} thumbColor="#FFFFFF" />
+                <Switch accessibilityLabel={tx("შეხსენება მიზნის შესრულებისას", "Reminder when you reach your goal")} value={!!settings?.notify} disabled={busy} onValueChange={(v) => void toggleNotify(v)} trackColor={{ true: c.primary200, false: c.bg300 }} thumbColor="#FFFFFF" />
               </View>
             </HubCard>
           </HubSection>
@@ -408,7 +410,7 @@ function FastRing({ fast, now, targetMinutes }: { fast: Fast | null; now: number
         <Defs>
           <LinearGradient id="fastRing" x1="0%" y1="0%" x2="100%" y2="100%">
             <Stop offset="0" stopColor={dark ? "#8AD5C7" : "#3EB6A0"} />
-            <Stop offset="1" stopColor={dark ? "#408F85" : "#0F766E"} />
+            <Stop offset="1" stopColor={dark ? "#408F85" : brandHex('#0F766E')} />
           </LinearGradient>
         </Defs>
         <Circle cx={size / 2} cy={size / 2} r={r} stroke={c.bg200} strokeWidth={stroke} fill="none" />
@@ -513,7 +515,7 @@ function Screening({
         {answers.diabetesMedication === true && (
           <View style={[s.row, { paddingVertical: 4 }]}>
             <Text style={[hubText.body, { color: c.text100, flex: 1 }]}>{tx("ექიმმა შიმშილის ფანჯარა დამიდასტურა", "My doctor has approved a fasting window")}</Text>
-            <Switch accessibilityLabel={tx("ექიმმა შიმშილის ფანჯარა დამიდასტურა", "My doctor has approved a fasting window")} value={!!answers.doctorApproved} onValueChange={(v) => setAnswers((a) => ({ ...a, doctorApproved: v }))} trackColor={{ true: "#0D9488", false: c.bg300 }} thumbColor="#FFFFFF" />
+            <Switch accessibilityLabel={tx("ექიმმა შიმშილის ფანჯარა დამიდასტურა", "My doctor has approved a fasting window")} value={!!answers.doctorApproved} onValueChange={(v) => setAnswers((a) => ({ ...a, doctorApproved: v }))} trackColor={{ true: c.primary200, false: c.bg300 }} thumbColor="#FFFFFF" />
           </View>
         )}
         <NButton

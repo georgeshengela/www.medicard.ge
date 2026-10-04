@@ -1,3 +1,4 @@
+import { brandHex } from '@/theme/brandTone';
 import React, { useCallback, useMemo, useState } from 'react';
 import { Linking, Pressable, Text, View } from 'react-native';
 import { useFocusEffect } from 'expo-router';
@@ -237,7 +238,7 @@ function ClinicRow({
                   flexGrow: 1,
                   minHeight: 44,
                   borderRadius: 14,
-                  backgroundColor: dark ? '#0D9488' : colors.primary200,
+                  backgroundColor: dark ? brandHex('#0D9488') : colors.primary200,
                   paddingHorizontal: 12,
                   flexDirection: 'row',
                   alignItems: 'center',

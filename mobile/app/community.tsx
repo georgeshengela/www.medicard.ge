@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, AppState, BackHandler, FlatList, Image, Keyboard, KeyboardAvoidingView, Platform, Pressable, RefreshControl, ScrollView, Switch, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, AppState, BackHandler, FlatList, Image, Keyboard, KeyboardAvoidingView, Platform, Pressable, RefreshControl, ScrollView, Text, TextInput, View } from 'react-native';
+import { Switch } from '@/components/ui/AppSwitch';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ArrowLeft, Baby, Bell, Check, ChevronRight, CircleUserRound, Feather, Heart, ImagePlus, Leaf, LockKeyhole, MessageCircle, MessagesSquare, MoreHorizontal, Orbit, Send, Settings2, ShieldCheck, ThumbsDown, Users, X } from 'lucide-react-native';

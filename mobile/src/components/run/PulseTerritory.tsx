@@ -1,5 +1,6 @@
 import React,{useMemo,useRef,useState} from 'react';
-import {Platform,Pressable,ScrollView,StyleSheet,Switch,View,useWindowDimensions} from 'react-native';
+import { Platform, Pressable, ScrollView, StyleSheet, View, useWindowDimensions } from 'react-native';
+import { Switch } from '@/components/ui/AppSwitch';
 import Svg,{Circle,Defs,G,Line,LinearGradient,Path,RadialGradient,Rect,Stop,Text as SvgText,TSpan} from 'react-native-svg';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';

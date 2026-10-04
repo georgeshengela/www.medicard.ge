@@ -1,3 +1,4 @@
+import { brandHex } from '@/theme/brandTone';
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { ModuleWordmark } from '@/components/brand/ModuleWordmark';
 import type { ModuleBrandId } from '@/theme/moduleBrand';
@@ -77,7 +78,7 @@ export function NButton({
         paddingVertical: 12,
         paddingHorizontal: 18,
         borderRadius: 16,
-        backgroundColor: secondary ? c.bg200 : "#0F766E",
+        backgroundColor: secondary ? c.bg200 : brandHex('#0F766E'),
         opacity: disabled ? 0.45 : 1,
         alignItems: "center",
         justifyContent: "center",

@@ -1,3 +1,4 @@
+import { brandHex } from '@/theme/brandTone';
 import React, { useCallback, useState } from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 import { useFocusEffect, useRouter } from 'expo-router';
@@ -83,7 +84,7 @@ function Pill({
         borderRadius: 12,
         alignItems: 'center',
         justifyContent: 'center',
-        backgroundColor: active ? '#0D9488' : colors.bg200,
+        backgroundColor: active ? brandHex('#0D9488') : colors.bg200,
       }}
     >
       <Text

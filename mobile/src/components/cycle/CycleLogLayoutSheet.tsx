@@ -1,5 +1,6 @@
 import React from 'react';
-import { Pressable, StyleSheet, Switch, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Switch } from '@/components/ui/AppSwitch';
 import * as Haptics from 'expo-haptics';
 import { ChevronDown, ChevronUp } from 'lucide-react-native';
 import { CycleExplainSheet } from '@/components/cycle/CycleExplainSheet';

@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Pressable, ScrollView, View } from 'react-native';
+import { hubInk } from '@/theme/hub';
 import Svg, { Circle, Path } from 'react-native-svg';
 import { Check, Flag, Gift, Lock, Palette } from 'lucide-react-native';
 import { QuestArt } from './QuestIcon';
@@ -59,8 +60,8 @@ export function QuestJourneyPanel({ overview, onGuide }: { overview: CompanionOv
       <QText size={13} muted>{info.next ? tx(`შემდეგი: ${companionMilestoneTitle(info.next.titleKey, appLang())} · დარჩა ${info.remaining} ქულა`, `Next: ${companionMilestoneTitle(info.next.titleKey, appLang())} · ${info.remaining} ${info.remaining === 1 ? 'point' : 'points'} to go`) : tx('ყველა ეტაპი გახსნილია. შენი მისიები და მიღწევები გრძელდება.', 'Every stage is unlocked. Your missions and achievements carry on.')}</QText>
     </QCard>
     <View style={{ flexDirection: 'row', gap: 10 }}>
-      <QCard style={{ flex: 1, padding: 14 }}><QText size={23} bold color={dark ? '#5EEAD4' : '#0F766E'}>+1</QText><QText size={12} muted>{tx('დღიური მისიის შესრულება', 'Daily mission completed')}</QText></QCard>
-      <QCard style={{ flex: 1, padding: 14 }}><QText size={23} bold color={dark ? '#5EEAD4' : '#0F766E'}>+3</QText><QText size={12} muted>{tx('კვირის მისიის შესრულება', 'Weekly mission completed')}</QText></QCard>
+      <QCard style={{ flex: 1, padding: 14 }}><QText size={23} bold color={hubInk('teal', dark)}>+1</QText><QText size={12} muted>{tx('დღიური მისიის შესრულება', 'Daily mission completed')}</QText></QCard>
+      <QCard style={{ flex: 1, padding: 14 }}><QText size={23} bold color={hubInk('teal', dark)}>+3</QText><QText size={12} muted>{tx('კვირის მისიის შესრულება', 'Weekly mission completed')}</QText></QCard>
     </View>
     <QText size={13} muted>{tx('ქულა ავტომატურად ემატება შესრულებისას. XP და მონეტები ცალკე ჯილდოა — მისიის ბარათიდან მიიღე.', 'Points are added automatically when you complete a mission. XP and coins are a separate reward — collect them from the mission card.')}</QText>
     <QHeading title={tx('შენი ეტაპები', 'Your stages')} meta={tx(`${chapters.length} თავი`, `${chapters.length} ${chapters.length === 1 ? 'chapter' : 'chapters'}`)} />
@@ -71,7 +72,7 @@ export function QuestJourneyPanel({ overview, onGuide }: { overview: CompanionOv
     <QCard style={{ gap: 0 }}>
       {info.milestones.filter(m => m.chapterKey === chapter).map((m, i, all) => {
         const next = m.key === info.next?.key;
-        const tone = m.unlocked ? (dark ? '#5EEAD4' : '#0F766E') : c.text300;
+        const tone = m.unlocked ? (hubInk('teal', dark)) : c.text300;
         return <View key={m.key} style={{ flexDirection: 'row', gap: 14, minHeight: 98 }}>
           <View style={{ width: 36, alignItems: 'center' }}>
             <View style={{ width: 36, height: 36, borderRadius: 13, backgroundColor: m.unlocked ? c.accent100 : c.bg100, borderWidth: next ? 2 : 1, borderColor: next ? c.primary200 : c.bg300, alignItems: 'center', justifyContent: 'center' }}>

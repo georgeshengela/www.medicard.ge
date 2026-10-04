@@ -1,5 +1,7 @@
+import { brandHex } from '@/theme/brandTone';
 import React, { useState } from 'react';
-import { Platform, Pressable, ScrollView, Share, StyleSheet, Switch, Text, View } from 'react-native';
+import { Platform, Pressable, ScrollView, Share, StyleSheet, Text, View } from 'react-native';
+import { Switch } from '@/components/ui/AppSwitch';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Print from 'expo-print';
@@ -157,7 +159,7 @@ export default function HealthPassportScreen() {
         {error ? <Text accessibilityRole="alert" style={[hubText.body, { color: c.danger }]}>{error}</Text> : null}
 
         <Pressable accessibilityRole="button" disabled={busy} onPress={() => void share()}
-          style={{ minHeight: 52, borderRadius: 16, flexDirection: 'row', gap: 8, alignItems: 'center', justifyContent: 'center', backgroundColor: '#0D9488', opacity: busy ? 0.6 : 1 }}>
+          style={{ minHeight: 52, borderRadius: 16, flexDirection: 'row', gap: 8, alignItems: 'center', justifyContent: 'center', backgroundColor: brandHex('#0D9488'), opacity: busy ? 0.6 : 1 }}>
           <FileDown size={20} color="#FFFFFF" />
           <Text style={{ fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 16, color: '#FFFFFF' }}>{busy ? ka.passport.busy : ka.passport.cta}</Text>
         </Pressable>

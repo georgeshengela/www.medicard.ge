@@ -1,7 +1,8 @@
+import { toned } from '@/theme/brandTone';
 import { useIsDark } from '@/theme/colors';
 
 /** Figma 8852:143210 — Nightingale history list chrome. */
-export const FIGMA_LAB = {
+export const FIGMA_LAB = toned({
   pageBg: '#FFFFFF',
   cardBg: '#F9FAFB',
   border: '#E5E7EB',
@@ -30,9 +31,9 @@ export const FIGMA_LAB = {
     shadowRadius: 2,
     elevation: 1,
   },
-} as const;
+} as const);
 
-export const FIGMA_LAB_DARK = {
+export const FIGMA_LAB_DARK = toned({
   pageBg: '#030712',
   cardBg: '#111827',
   border: '#374151',
@@ -49,7 +50,7 @@ export const FIGMA_LAB_DARK = {
   tabSelected: '#111827',
   tooltipBg: '#F9FAFB',
   tooltipText: '#111827',
-} as const;
+} as const);
 
 export function useFigmaLab() {
   const dark = useIsDark();

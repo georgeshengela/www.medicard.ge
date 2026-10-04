@@ -1,3 +1,4 @@
+import { brandHex } from '@/theme/brandTone';
 import React, { useEffect, useRef, useState } from 'react';
 import { AccessibilityInfo, Animated, AppState, Easing, Image, Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -75,17 +76,17 @@ export function NutritionScanner({ photoUri, scanning, disabled, enabled, label 
         )}
         <View pointerEvents="none" style={StyleSheet.absoluteFill} accessible={false} importantForAccessibility="no-hide-descendants">
           {(['tl', 'tr', 'bl', 'br'] as const).map(corner => (
-            <View key={corner} style={[s.corner, s[corner], { borderColor: photoUri ? '#5EEAD4' : c.primary100 }]} />
+            <View key={corner} style={[s.corner, s[corner], { borderColor: photoUri ? brandHex('#5EEAD4') : c.primary100 }]} />
           ))}
           {scanning && !reduceMotion && foreground && (
             <Animated.View style={[s.scan, { transform: [{ translateY: motion.interpolate({ inputRange: [0, 1], outputRange: [26, height - 74] }) }] }]}>
               <LinearGradient colors={['transparent', 'rgba(20,184,166,0.18)']} style={{ height: 44 }} />
-              <View style={{ height: 2, backgroundColor: '#5EEAD4' }} />
+              <View style={{ height: 2, backgroundColor: brandHex('#5EEAD4') }} />
             </Animated.View>
           )}
         </View>
         <View style={[s.finderLabel, { backgroundColor: photoUri ? '#111827' : c.bg100 }]}>
-          {photoUri ? <Check size={13} color="#99F6E4" /> : <Focus size={13} color={c.text200} />}
+          {photoUri ? <Check size={13} color={brandHex('#99F6E4')} /> : <Focus size={13} color={c.text200} />}
           <Text style={[txt, { fontSize: 11, color: photoUri ? '#FFFFFF' : c.text200 }]}>
             {scanning ? tx('ფოტო მუშავდება', 'Processing photo') : photoUri ? tx('ფოტო შერჩეულია', 'Photo selected') : label ? tx('ცხრილი მკაფიოდ და სწორად მოაქციე კადრში', 'Fit the panel in the frame, sharp and straight') : tx('თეფში სრულად მოაქციე კადრში', 'Fit the whole plate in the frame')}
           </Text>
@@ -99,7 +100,7 @@ export function NutritionScanner({ photoUri, scanning, disabled, enabled, label 
         </View>
       ) : (
         <View style={s.actions}>
-          <Pressable testID="nutrition-camera" accessibilityRole="button" accessibilityLabel={photoUri ? tx('ფოტოს თავიდან გადაღება', 'Retake photo') : tx('კერძის გადაღება', 'Photograph meal')} disabled={actionsDisabled} onPress={onCamera} style={[s.action, { backgroundColor: photoUri ? c.bg200 : '#0F766E', opacity: actionsDisabled ? 0.45 : 1 }]}>
+          <Pressable testID="nutrition-camera" accessibilityRole="button" accessibilityLabel={photoUri ? tx('ფოტოს თავიდან გადაღება', 'Retake photo') : tx('კერძის გადაღება', 'Photograph meal')} disabled={actionsDisabled} onPress={onCamera} style={[s.action, { backgroundColor: photoUri ? c.bg200 : brandHex('#0F766E'), opacity: actionsDisabled ? 0.45 : 1 }]}>
             <Camera size={20} color={photoUri ? c.text100 : '#FFFFFF'} />
             <Text style={[txt, s.actionText, { color: photoUri ? c.text100 : '#FFFFFF' }]}>{photoUri ? tx('თავიდან', 'Retake') : tx('გადაღება', 'Take photo')}</Text>
           </Pressable>

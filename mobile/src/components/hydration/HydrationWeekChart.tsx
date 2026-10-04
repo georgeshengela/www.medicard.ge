@@ -1,3 +1,4 @@
+import { brandHex } from '@/theme/brandTone';
 import React, { useState } from 'react';
 import { LayoutChangeEvent, Text, View } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
@@ -56,8 +57,8 @@ export function HydrationWeekChart({ height = 220 }: Props) {
           </View>
           {width > 0 ? (
             <Svg width="100%" height={PLOT_H} viewBox={`0 0 ${PLOT_W} ${PLOT_H}`}>
-              <Path d={FIGMA_VIOLIN_B} fill="#14B8A6" fillOpacity={0.6} />
-              <Path d={FIGMA_VIOLIN_A} fill="#14B8A6" fillOpacity={0.6} />
+              <Path d={FIGMA_VIOLIN_B} fill={brandHex('#14B8A6')} fillOpacity={0.6} />
+              <Path d={FIGMA_VIOLIN_A} fill={brandHex('#14B8A6')} fillOpacity={0.6} />
             </Svg>
           ) : null}
         </View>

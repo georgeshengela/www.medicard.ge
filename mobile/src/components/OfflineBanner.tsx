@@ -1,3 +1,4 @@
+import { brandHex } from '@/theme/brandTone';
 import React from 'react';
 import { Text, View } from 'react-native';
 import Animated, { FadeInUp, FadeOutUp } from 'react-native-reanimated';
@@ -44,7 +45,7 @@ export function OfflineBanner() {
           paddingRight: 14,
           paddingVertical: 8,
           borderRadius: 999,
-          backgroundColor: dark ? '#0D9488' : colors.primary200,
+          backgroundColor: dark ? brandHex('#0D9488') : colors.primary200,
           shadowColor: '#000',
           shadowOpacity: dark ? 0.35 : 0.12,
           shadowRadius: 10,

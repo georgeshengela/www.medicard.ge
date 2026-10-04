@@ -1,7 +1,8 @@
+import { toned } from '@/theme/brandTone';
 import { useIsDark } from '@/theme/colors';
 
 /** Figma 8851:166841 / 8850:134246 — steps detail & history tokens. */
-export const FIGMA_STEPS = {
+export const FIGMA_STEPS = toned({
   brand: '#14B8A6',
   brandLight: '#99F6E4',
   brandQuaternary: '#F0FDFA',
@@ -26,9 +27,9 @@ export const FIGMA_STEPS = {
     shadowRadius: 2,
     elevation: 1,
   },
-} as const;
+} as const);
 
-export const FIGMA_STEPS_DARK = {
+export const FIGMA_STEPS_DARK = toned({
   brandQuaternary: '#042F2E',
   textPrimary: '#FFFFFF',
   textSecondary: '#D1D5DB',
@@ -41,7 +42,7 @@ export const FIGMA_STEPS_DARK = {
   pointRing: '#111827',
   trendUp: '#22C55E',
   trendDown: '#F43F5E',
-} as const;
+} as const);
 
 export function useFigmaSteps() {
   const dark = useIsDark();

@@ -1,7 +1,8 @@
+import { toned } from '@/theme/brandTone';
 import { useIsDark } from '@/theme/colors';
 
 /** Figma 11369:94062 — AI Symptom Checker tokens from SH Nightingale UI Kit v3. */
-export const FIGMA_SYMPTOMS = {
+export const FIGMA_SYMPTOMS = toned({
   brand: '#14B8A6',
   brandDark: '#0D9488',
   brandSoft: '#F0FDFA',
@@ -35,9 +36,9 @@ export const FIGMA_SYMPTOMS = {
   // Owner 2026-10-04: the symptom flow speaks the hub language — flat cards, no shadows.
   shadowXs: {},
   shadowCard: {},
-} as const;
+} as const);
 
-export const FIGMA_SYMPTOMS_DARK = {
+export const FIGMA_SYMPTOMS_DARK = toned({
   brandSoft: '#042F2E',
   brandBorder: '#115E59',
   textPrimary: '#FFFFFF',
@@ -51,7 +52,7 @@ export const FIGMA_SYMPTOMS_DARK = {
   white: '#1F2937',
   canvas: '#030712',
   inverse: '#FFFFFF',
-} as const;
+} as const);
 
 export function useFigmaSymptoms() {
   const dark = useIsDark();

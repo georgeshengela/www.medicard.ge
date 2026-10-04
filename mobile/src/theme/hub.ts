@@ -1,4 +1,5 @@
 import { StyleSheet } from 'react-native';
+import { BRAND_ROSE, getBrandTone } from './brandTone';
 
 /**
  * The Home hub design language. Every page that adopts the hub look reads
@@ -37,7 +38,12 @@ const INK: Record<HubInk, { light: string; dark: string }> = {
   neutral: { light: '#374151', dark: '#D1D5DB' },
 };
 
+/** Brand tone rose (brandTone.ts): the app's „teal“ ink follows the women's-Home rose. */
+const ROSE_BRAND_INK = { light: BRAND_ROSE.light.primary100, dark: BRAND_ROSE.dark.primary200 };
+
 export function hubInk(ink: HubInk, dark: boolean): string {
+  // Read at render time: every caller also reads useThemeColors(), which re-renders on a tone change.
+  if (ink === 'teal' && getBrandTone() === 'rose') return dark ? ROSE_BRAND_INK.dark : ROSE_BRAND_INK.light;
   return dark ? INK[ink].dark : INK[ink].light;
 }
 

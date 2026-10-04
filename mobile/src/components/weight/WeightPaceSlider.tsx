@@ -1,3 +1,4 @@
+import { brandHex } from '@/theme/brandTone';
 import React, { useMemo, useRef, useState } from 'react';
 import { LayoutChangeEvent, Text, View } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
@@ -154,7 +155,7 @@ export function WeightPaceSlider({ pace, currentKg, recommended, onChange }: Pro
             }}
           >
             <LinearGradient
-              colors={['#5EEAD4', '#14B8A6', '#0D9488']}
+              colors={[brandHex('#5EEAD4'), brandHex('#14B8A6'), brandHex('#0D9488')]}
               locations={[0, 0.55, 1]}
               start={{ x: 0, y: 0.5 }}
               end={{ x: 1, y: 0.5 }}
