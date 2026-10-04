@@ -73,6 +73,8 @@ button:focus-visible, select:focus-visible, textarea:focus-visible, .thumb:focus
 .meta { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; font-size: 12.5px; color: var(--muted); }
 .meta .t { font-weight: 800; color: var(--ink); font-size: 14px; font-variant-numeric: tabular-nums; }
 .tag { background: var(--chip); border-radius: 999px; padding: 2px 9px; font-weight: 600; }
+.tag.new { background: var(--ok-bg); color: var(--ok); }
+.tag.old { background: var(--chip); color: var(--ink); }
 .wm { font: italic 800 13px var(--mark); letter-spacing: .02em; color: var(--mc); }
 .wm i { font-style: normal; color: var(--ink); }
 .cap { white-space: pre-wrap; overflow-wrap: anywhere; font-size: 13.5px; line-height: 1.55; margin: 0; max-height: 9.3em; overflow: hidden; position: relative; }
@@ -108,21 +110,23 @@ textarea { width: 100%; min-height: 64px; resize: vertical; font: 13.5px/1.45 va
 
 <div class="wrap">
   <h1>MEDICARD — პოსტები 5 ოქტომბრიდან 31 დეკემბრამდე</h1>
-  <p class="lede">ყოველდღე 2–3 ერთეული: მოდულის პოსტი რეალური ეკრანით და MEDIRUN-ის „გაანათე თბილისის“ სთორი. ყოველ პოსტს მონიშნე — <b>კარგია</b>, <b>შესაცვლელია</b> (დაწერე, რა შევცვალო) ან <b>ამოვიღოთ</b>. შენს მონიშვნებს მე წავიკითხავ და ყველაფერს ერთად გავასწორებ.</p>
+  <p class="lede">ერთ კალენდარში: <b>ძველი კარგი პოსტები</b>, რომლებიც რჩება, და <b>ახალი</b> პოსტერები რეალური ეკრანებით, თავისუფალ ადგილებზე. ძველი ეკრანის ან ძველი ინფორმაციის მქონე პოსტები დრაფტად გადავიდა — სია ბოლოშია, მიზეზით. ყოველ პოსტს შეგიძლია მონიშნო: <b>კარგია</b>, <b>შესაცვლელია</b> ან <b>ამოვიღოთ</b>.</p>
   <div class="stats" id="stats"></div>
   <section class="notes" aria-labelledby="notes-h">
     <h2 id="notes-h">გადასახედი სანამ ადმინში შევიტანთ</h2>
     <ul>
+      <li>ძველიდან დარჩა ყველაფერი, რაც სწორია: ფოტო-პოსტები, პასპორტის დიორამები, რჩევები, გამოცანები, „ხვალ 16:00“, iPhone-ის უკუთვლა, LinkedIn. „ნოემბერი — უბნების თვე“-ს ტექსტში ფარნის ქოინები 500-ით გასწორდა.</li>
       <li>MEDIRUN-ის ციფრები ახალი ეკონომიკიდანაა: ორშ–პარ 08:00 · 13:00 · 18:00 (20–80), შაბ–კვ 09:30 · 13:30 · 17:30 (30–120), შაბათის წვიმა 16:00 (80/150), ფარნები 500 — 7 ნოემბრიდან, კვირის პრიზები 300/200/100, კიბე 100/60/40/25%.</li>
       <li>შაბათის პარკები და გამოცანები ფაილის განრიგიდანაა (რიყე, ვაკე, ლისი, 9 აპრილის ბაღი). თუ ადმინში პარკს შეცვლი, გამოცანაც უნდა შევცვალოთ.</li>
       <li>მაღაზიის ფასები კოდის ნაგულისხმევიდანაა (მაგ. Zoommer 50 ₾ — 5 000). თუ ადმინში შეცვალე, მითხარი.</li>
       <li>ეკრანები აპის ნამდვილი ეკრანებია, სატესტო ანგარიშზე (ნინო / გიორგი) — რეალური ადამიანის მონაცემი არსად ჩანს.</li>
-      <li>Metricool-ში ძველი, უკვე დაგეგმილი პოსტები ჯერ ისევ დგას — მათ შენი დასტურის შემდეგ ჩავანაცვლებ.</li>
+      <li>Metricool-ში ყველაფერი ზუსტად ასეა დაგეგმილი: ძველი შესაცვლელები დრაფტადაა (არ წაშლილა), ახლები — თავ-თავის დროზე.</li>
     </ul>
   </section>
   <div class="bar" role="toolbar" aria-label="ფილტრები">
     <div class="seg" id="f-kind" aria-label="ტიპი"></div>
     <select id="f-mod" aria-label="მოდული"></select>
+    <div class="seg" id="f-origin" aria-label="წარმომავლობა"></div>
     <div class="seg" id="f-status" aria-label="სტატუსი"></div>
     <select id="f-week" aria-label="კვირაზე გადასვლა"></select>
     <span class="progress" id="progress"></span>
@@ -136,7 +140,7 @@ textarea { width: 100%; min-height: 64px; resize: vertical; font: 13.5px/1.45 va
 
 <script>
 const ITEMS = /*__DATA__*/[];
-const MOD = { run: ['MEDI', 'RUN'], medi: ['MEDI', ''], cycle: ['MEDI', 'CYCLE'], food: ['MEDI', 'FOOD'], pill: ['MEDI', 'PILL'], quest: ['MEDI', 'QUEST'],
+const MOD = { old: ['MEDICARD', ''], run: ['MEDI', 'RUN'], medi: ['MEDI', ''], cycle: ['MEDI', 'CYCLE'], food: ['MEDI', 'FOOD'], pill: ['MEDI', 'PILL'], quest: ['MEDI', 'QUEST'],
   vet: ['MEDI', 'VET'], coach: ['MEDI', 'COACH'], scan: ['MEDI', 'SCAN'], lab: ['MEDI', 'LAB'], card: ['MEDICARD', ''] };
 const KIND = { FEED: 'პოსტი', CAROUSEL: 'კარუსელი', STORY: 'სთორი', LINKEDIN: 'LinkedIn' };
 const WD = ['კვირა', 'ორშაბათი', 'სამშაბათი', 'ოთხშაბათი', 'ხუთშაბათი', 'პარასკევი', 'შაბათი'];
@@ -150,7 +154,7 @@ const WEEKS = [
   ['2026-12-14', 'კვირა 11 · მთელი თბილისი', 'შაბათის წვიმა: ლისის ტბა'], ['2026-12-21', 'კვირა 12 · მთელი თბილისი', 'შაბათის წვიმა: 9 აპრილის ბაღი'],
   ['2026-12-28', 'ბოლო დღეები · 31 დეკემბერი, 12:00 — დიდი ყუთი', ''],
 ];
-const state = { kind: 'all', mod: 'all', status: 'all', reviews: {}, canWrite: true, db: null };
+const state = { kind: 'all', mod: 'all', origin: 'all', status: 'all', reviews: {}, canWrite: true, db: null };
 const el = (tag, attrs = {}, ...kids) => { const e = document.createElement(tag); for (const [k, v] of Object.entries(attrs)) { if (k === 'class') e.className = v; else if (k === 'text') e.textContent = v; else if (k.startsWith('on')) e.addEventListener(k.slice(2), v); else e.setAttribute(k, v); } kids.flat().forEach((c) => c != null && e.append(c)); return e; };
 const dayLabel = (d) => { const dt = new Date(d + 'T12:00:00+04:00'); return [String(+d.slice(8)), WD[dt.getUTCDay()], MON[d.slice(5, 7)]]; };
 const weekOf = (d) => { let w = WEEKS[0]; for (const x of WEEKS) if (d >= x[0]) w = x; return w; };
@@ -158,24 +162,27 @@ const weekOf = (d) => { let w = WEEKS[0]; for (const x of WEEKS) if (d >= x[0]) 
 function wordmark(m) { const [a, b] = MOD[m] || MOD.card; const s = el('span', { class: 'wm', style: `--mc: var(--${m})` }); s.append(el('i', { text: a }), b); return s; }
 
 function stats() {
-  const live = ITEMS.filter((p) => p.date !== 'reserve');
+  const live = ITEMS.filter((p) => p.date !== 'reserve' && p.date !== 'replaced');
   const n = (k) => live.filter((p) => p.kind === k).length;
   const days = new Set(live.map((p) => p.date)).size;
   const box = document.getElementById('stats'); box.replaceChildren();
-  [[days, 'დღე'], [n('FEED') + n('CAROUSEL'), 'პოსტი'], [n('STORY'), 'სთორი'], [n('LINKEDIN'), 'LinkedIn'], [ITEMS.length - live.length, 'სათადარიგო']]
+  const o = (x) => live.filter((p) => (p.origin || 'new') === x).length;
+  [[days, 'დღე'], [n('FEED') + n('CAROUSEL'), 'პოსტი'], [n('STORY'), 'სთორი'], [n('LINKEDIN'), 'LinkedIn'], [o('old'), 'ძველიდან რჩება'], [o('new'), 'ახალი'], [ITEMS.filter((p) => p.date === 'replaced').length, 'დრაფტად გადავიდა']]
     .forEach(([v, l]) => box.append(el('div', {}, el('b', { text: String(v) }), el('span', { text: l }))));
 }
 
 function segs() {
   const mk = (id, opts, key) => { const box = document.getElementById(id); box.replaceChildren(...opts.map(([v, l]) => el('button', { 'aria-pressed': String(state[key] === v), onclick: () => { state[key] = v; segs(); render(); } }, l))); };
   mk('f-kind', [['all', 'ყველა'], ['feed', 'პოსტები'], ['STORY', 'სთორები'], ['LINKEDIN', 'LinkedIn']], 'kind');
+  mk('f-origin', [['all', 'ყველა'], ['new', 'ახალი'], ['old', 'ძველი']], 'origin');
   mk('f-status', [['all', 'ყველა'], ['none', 'გადაუხედავი'], ['change', 'შესაცვლელი'], ['ok', 'კარგია']], 'status');
 }
 function selects() {
-  const mods = ['all', 'run', 'medi', 'pill', 'food', 'cycle', 'lab', 'scan', 'quest', 'vet', 'coach', 'card'];
-  const names = { all: 'ყველა მოდული', run: 'MEDIRUN', medi: 'Medi', pill: 'MEDIPILL', food: 'MEDIFOOD', cycle: 'MEDICYCLE', lab: 'MEDILAB', scan: 'MEDISCAN', quest: 'MEDIQUEST', vet: 'MEDIVET', coach: 'MEDICOACH', card: 'MEDICARD' };
+  const mods = ['all', 'old', 'run', 'medi', 'pill', 'food', 'cycle', 'lab', 'scan', 'quest', 'vet', 'coach', 'card'];
+  const names = { old: 'ძველი პოსტები', all: 'ყველა მოდული', run: 'MEDIRUN', medi: 'Medi', pill: 'MEDIPILL', food: 'MEDIFOOD', cycle: 'MEDICYCLE', lab: 'MEDILAB', scan: 'MEDISCAN', quest: 'MEDIQUEST', vet: 'MEDIVET', coach: 'MEDICOACH', card: 'MEDICARD' };
   const ms = document.getElementById('f-mod'); ms.replaceChildren(...mods.map((m) => el('option', { value: m }, names[m]))); ms.onchange = () => { state.mod = ms.value; render(); };
   const ws = document.getElementById('f-week'); ws.replaceChildren(el('option', { value: '' }, 'კვირაზე გადასვლა…'), ...WEEKS.map((w) => el('option', { value: w[0] }, w[1])), el('option', { value: 'reserve' }, 'სათადარიგო'));
+  ws.append(el('option', { value: 'replaced' }, 'დრაფტად გადავიდა'));
   ws.onchange = () => { const t = document.getElementById('w-' + ws.value); if (t) t.scrollIntoView({ block: 'start' }); ws.value = ''; };
 }
 
@@ -183,6 +190,7 @@ function visible(p) {
   if (state.kind === 'feed' && !(p.kind === 'FEED' || p.kind === 'CAROUSEL')) return false;
   if (state.kind !== 'all' && state.kind !== 'feed' && p.kind !== state.kind) return false;
   if (state.mod !== 'all' && p.m !== state.mod) return false;
+  if (state.origin !== 'all' && (p.origin || 'new') !== state.origin) return false;
   const st = state.reviews[p.id]?.status || 'none';
   if (state.status !== 'all' && st !== state.status) return false;
   return true;
@@ -224,6 +232,7 @@ function card(p) {
   if (urls.length > 1) { const c = el('span', { class: 'count', text: `1 / ${urls.length}` }); media.append(c); slides.addEventListener('scroll', () => { c.textContent = `${Math.round(slides.scrollLeft / slides.clientWidth) + 1} / ${urls.length}`; }, { passive: true }); }
   const body = el('div', { class: 'body' });
   const meta = el('div', { class: 'meta' }, p.time ? el('span', { class: 't', text: p.time }) : null, el('span', { class: 'tag', text: KIND[p.kind] + (p.kind === 'CAROUSEL' ? ` · ${urls.length}` : '') }), wordmark(p.m),
+    p.origin === 'old' ? el('span', { class: 'tag old', text: p.date === 'replaced' ? 'ძველი · დრაფტი' : 'ძველი · რჩება' }) : el('span', { class: 'tag new', text: 'ახალი' }),
     p.ai ? el('span', { class: 'tag', title: 'Instagram-ზე მოინიშნება როგორც AI', text: 'AI სურათი' }) : null);
   body.append(meta);
   if (p.caption) {
@@ -232,7 +241,8 @@ function card(p) {
     const copy = el('button', { class: 'btn', onclick: (e) => copyText(p.caption, e.currentTarget) }, 'ტექსტის კოპირება');
     body.append(cap, el('div', { class: 'row' }, more, copy));
   }
-  if (p.note && !p.caption) body.append(el('p', { class: 'note', text: p.note }));
+  if (p.note && (!p.caption || p.origin === 'old')) body.append(el('p', { class: 'note', text: p.note }));
+  if (p.moved) body.append(el('p', { class: 'note', text: p.moved }));
   if (li && p.reuse) body.append(el('p', { class: 'note', text: 'სურათი — იმავე კვირის პოსტიდან' }));
   const info = el('span', { class: 'saved', text: rv.at ? 'შენახულია' : '' });
   if (state.canWrite) {
@@ -255,13 +265,13 @@ function render() {
   for (const p of ITEMS) { if (!visible(p)) continue; if (!byDay.has(p.date)) byDay.set(p.date, []); byDay.get(p.date).push(p); }
   let lastWeek = null, section = null, shown = 0;
   for (const [d, ps] of byDay) {
-    const w = d === 'reserve' ? ['reserve', 'სათადარიგო პოსტები', 'ჩასანაცვლებლად — თუ რომელიმე პოსტი არ მოგეწონა'] : weekOf(d);
+    const w = d === 'reserve' ? ['reserve', 'სათადარიგო პოსტები', 'ჩასანაცვლებლად — თუ რომელიმე პოსტი არ მოგეწონა'] : d === 'replaced' ? ['replaced', 'დრაფტად გადავიდა (ძველი)', 'ძველი ეკრანი ან ძველი ინფორმაცია — Metricool-ში დრაფტადაა, არ გამოქვეყნდება'] : weekOf(d);
     if (w[0] !== lastWeek) {
       lastWeek = w[0];
       section = el('section', { class: 'week', id: 'w-' + w[0] }, el('header', {}, el('h2', { text: w[1] }), w[2] ? el('span', { text: w[2] }) : null));
       list.append(section);
     }
-    const [num, wd, mon] = d === 'reserve' ? ['★', 'სათადარიგო', ''] : dayLabel(d);
+    const [num, wd, mon] = d === 'reserve' ? ['★', 'სათადარიგო', ''] : d === 'replaced' ? ['✕', 'დრაფტი', ''] : dayLabel(d);
     section.append(el('div', { class: 'day' }, el('div', { class: 'date' }, el('b', { text: num }), el('span', { text: wd + (mon ? ', ' + mon : '') })), el('div', { class: 'posts' }, ps.map(card))));
     shown += ps.length;
   }
