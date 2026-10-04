@@ -18,5 +18,10 @@
     "fingerprint": "12464b9a54daa1f7a17c0449f234036dbc9bd47a",
     "version": "1.0.0.20.0",
     "recordedAt": "2026-10-03T16:02:29.246Z"
+  },
+  "1.0.0.21": {
+    "fingerprint": "faf16d565fd2a3f87dfe8cf4d8fed5238476bdd6",
+    "version": "1.0.0.21.0",
+    "recordedAt": "2026-10-04T20:58:30.612Z"
   }
 }
