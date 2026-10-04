@@ -12,10 +12,11 @@ function src(rel) {
 }
 
 describe('release crash regressions', () => {
-  it('reward detail imports trackQuestEvent, QUEST, and ApiError', () => {
+  it('reward detail imports trackQuestEvent and ApiError (and QUEST when used)', () => {
     const text = src('app/medi-quest/rewards/[id].tsx');
     assert.match(text, /import \{ trackQuestEvent \} from '@\/lib\/productObservability'/);
-    assert.match(text, /import \{ QUEST \} from '@\/theme\/questTokens'/);
+    // The violet rebuild (1.0.0.20.29) dropped QUEST; whenever it is used it must be imported.
+    if (/\bQUEST\./.test(text)) assert.match(text, /import \{ QUEST \} from '@\/theme\/questTokens'/);
     assert.match(text, /import \{[^}]*ApiError[^}]*\} from '@\/lib\/api'/);
   });
 
