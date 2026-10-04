@@ -6,7 +6,6 @@ import { useRouter } from 'expo-router';
 import { RunFinishedView } from '@/components/run/RunFinishedView';
 import { Action, Copy } from '@/components/run/PulseUi';
 import { StepsGoalConfetti } from '@/components/health/steps-goal/StepsGoalConfetti';
-import { ka } from '@/i18n/ka';
 import { cancelRun, useRunSession } from '@/lib/run/store';
 import { useThemeColors } from '@/theme/colors';
 import { usePulse } from '@/lib/medipulsi/client';
@@ -39,7 +38,8 @@ export default function RunSummaryScreen() {
       {celebrate ? <StepsGoalConfetti /> : null}
       <RunFinishedView
         summary={summary}
-        title={summary.targetMeters===0?tx('გასეირნება დასრულდა', 'Walk finished'):ka.run.summaryTitle}
+        title={summary.targetMeters===0?tx('გასეირნება დასრულდა', 'Walk finished'):tx('ვარჯიში დასრულდა', 'Workout finished')}
+        onBack={() => leave('/run')}
         footer={
           <View style={{ gap: 10 }}>
             <View style={{ flexDirection: 'row', gap: 9, alignItems: 'center', marginBottom: 4 }}><CloudUpload size={18} color={colors.primary100} /><Copy muted size={11} style={{ flex: 1 }}>{pulse.pending > 0 ? tx('შენახულია ტელეფონში · ანგარიშზე გაგზავნას ელოდება', 'Saved on your phone · waiting to sync to your account') : tx('გასეირნების ჩანაწერი შენახულია', 'Walk record saved')}</Copy></View>

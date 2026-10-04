@@ -19,7 +19,7 @@ export async function pulseApi<T>(path:string,method='GET',body?:unknown,owner=l
  try{
   const response=await fetch(API_BASE_URL+'/api/medipulsi'+path,{method,headers:{Authorization:`Bearer ${token}`,'Content-Type':'application/json','X-Medicard-Lang':appLang()},body:body===undefined?undefined:JSON.stringify(body),signal:abort.signal});
   const data=await response.json();if(localAccountId()!==owner)throw new Error(tx('ანგარიში შეიცვალა.','The account changed.'));
-  if(!response.ok)throw Object.assign(new Error(response.status===404?tx('MEDIRUN-ის თამაშის სერვისი ამ სერვერზე ჯერ არ განახლებულა.','The MEDIRUN game service isn’t updated on this server yet.'):data.error||tx('კავშირი ვერ მოხერხდა.','Couldn’t connect.')),{status:response.status,code:data.code});
+  if(!response.ok)throw Object.assign(new Error(response.status===404?tx('MEDIRUN დროებით მიუწვდომელია. სცადე ცოტა ხანში.','MEDIRUN is unavailable for a moment. Try again shortly.'):data.error||tx('კავშირი ვერ მოხერხდა.','Couldn’t connect.')),{status:response.status,code:data.code});
   if(data.mapboxToken)rememberMapboxToken(data.mapboxToken);return data;
  }finally{clearTimeout(timeout);}
 }

@@ -3689,7 +3689,7 @@ const kaStrings = {
     approxKm: (km: string) => `≈ ${km} კმ`,
     approxTime: (min: number) => `≈ ${min} წთ`,
     approxKcal: (n: number) => `≈ ${n} კკალ`,
-    dropPin: 'სამიზნის მონიშვნა',
+    dropPin: 'დავიწყოთ',
     preparing: 'სამიზნეს ვეძებ…',
     preparingHint: 'GPS და მარშრუტი — რამდენიმე წამი.',
     ready: 'სამიზნე მონიშნულია',

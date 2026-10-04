@@ -193,7 +193,8 @@ export function RunTargetSheet({ visible, onClose, onConfirm, heightCm, weightKg
             })}
           </View>
 
-          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 14 }}>
+          {/* One row of equal choices (owner 2026-10-04: no lonely chip on a second line). */}
+          <View style={{ flexDirection: 'row', gap: 6, marginTop: 14 }}>
             {presets.map((n) => {
               const active = preset === n;
               return (
@@ -203,10 +204,12 @@ export function RunTargetSheet({ visible, onClose, onConfirm, heightCm, weightKg
                   accessibilityState={{ selected: active }}
                   onPress={() => choosePreset(n)}
                   style={{
+                    flex: 1,
                     minHeight: 44,
-                    paddingHorizontal: 16,
+                    paddingHorizontal: 4,
                     paddingVertical: 10,
                     borderRadius: 999,
+                    alignItems: 'center',
                     justifyContent: 'center',
                     backgroundColor: active ? (dark ? '#115E59' : colors.accent100) : colors.bg200,
                     borderWidth: 1,
@@ -214,6 +217,9 @@ export function RunTargetSheet({ visible, onClose, onConfirm, heightCm, weightKg
                   }}
                 >
                   <Text
+                    numberOfLines={1}
+                    adjustsFontSizeToFit
+                    minimumFontScale={0.8}
                     style={{
                       fontFamily: 'NotoSansGeorgian_700Bold',
                       fontSize: 14,

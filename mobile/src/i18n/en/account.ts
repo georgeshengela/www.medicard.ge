@@ -493,7 +493,7 @@ export const enAccount: Pick<Strings, 'visits' | 'referral' | 'passport' | 'phon
     approxKm: (km: string) => `≈ ${km} km`,
     approxTime: (min: number) => `≈ ${min} min`,
     approxKcal: (n: number) => `≈ ${n} kcal`,
-    dropPin: 'Drop the target',
+    dropPin: 'Start',
     preparing: 'Finding a target…',
     preparingHint: 'GPS and route — just a few seconds.',
     ready: 'Target set',

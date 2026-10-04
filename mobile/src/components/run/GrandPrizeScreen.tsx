@@ -3,13 +3,14 @@ import {Image,Linking,Pressable,RefreshControl,ScrollView,View} from 'react-nati
 import Svg,{Circle} from 'react-native-svg';
 import {useRouter} from 'expo-router';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
-import {ArrowLeft,CalendarClock,Check,ExternalLink,FileText,Footprints,Hourglass,Lock,RotateCw,Sparkles} from 'lucide-react-native';
+import {CalendarClock,Check,ExternalLink,FileText,Footprints,Hourglass,Lock,RotateCw,Sparkles} from 'lucide-react-native';
 import {Bone} from '@/components/ui/Skeleton';
 import {useIsDark,useThemeColors} from '@/theme/colors';
 import {HUB,hubInk,hubTint} from '@/theme/hub';
 import {cityOf,dropLabel,goalStreetKm,grandArea,grandCountdown,grandPercent,grandProgress,levelPercent,safeRulesUrl,streetsLeftLabel,type GrandPrize} from '@/lib/medipulsi/grand';
 import {tx} from '@/i18n/locale';
-import {Action,Card,Copy,IconButton,RUN_TEAL,Section} from './PulseUi';
+import {Action,Card,Copy,RUN_TEAL,Section} from './PulseUi';
+import {ModuleHeader} from '@/components/brand/ModuleHeader';
 import {RUN_GIFT} from './runArt';
 import {eligibleLabel,isGrandMissing,useGrandPrize} from './GrandPrizeCard';
 
@@ -25,13 +26,7 @@ export default function GrandPrizeScreen(){
 
  return <View style={{flex:1,backgroundColor:c.bg100}}>
   <ScrollView showsVerticalScrollIndicator={false} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor={c.primary200} colors={[RUN_TEAL]} progressBackgroundColor={c.surface}/>} contentContainerStyle={{paddingTop:insets.top+12,paddingBottom:insets.bottom+32,paddingHorizontal:HUB.gutter,gap:HUB.sectionGap}}>
-   <View style={{flexDirection:'row',alignItems:'center',gap:12}}>
-    <IconButton label={tx('უკან','Back')} icon={ArrowLeft} onPress={leave}/>
-    <View style={{flex:1,minWidth:0}}>
-     <Copy bold size={20} numberOfLines={1} style={{lineHeight:28}}>{tx('დიდი საჩუქარი','Grand prize')}</Copy>
-     <Copy muted size={11} numberOfLines={1}>MEDIRUN</Copy>
-    </View>
-   </View>
+   <ModuleHeader module="run" subtitle={tx('დიდი საჩუქარი','Grand prize')} onBack={leave}/>
 
    {data?<>
     <Hero data={data}/>
@@ -42,7 +37,7 @@ export default function GrandPrizeScreen(){
    </>:missing||failed?<Card style={{alignItems:'center',gap:12,paddingVertical:28}}>
     <Image source={RUN_GIFT} accessibilityIgnoresInvertColors resizeMode="contain" style={{width:96,height:96}}/>
     <Copy bold size={17} style={{textAlign:'center'}}>{missing?tx('დიდი საჩუქარი მალე გამოჩნდება','The grand prize is almost here'):tx('ინფორმაცია ვერ ჩაიტვირთა','Couldn’t load the details')}</Copy>
-    <Copy muted size={13} style={{textAlign:'center'}}>{missing?tx('დეტალები და შენი პროგრესი აქ სულ მალე იქნება. სცადე ცოტა ხანში.','Details and your progress will be here very soon. Try again in a little while.'):(query.error as Error|null)?.message||tx('შეამოწმე ინტერნეტი და სცადე თავიდან.','Check your connection and try again.')}</Copy>
+    <Copy muted size={13} style={{textAlign:'center'}}>{missing?tx('დეტალები და შენი პროგრესი აქ სულ მალე იქნება. სცადე ცოტა ხანში.','Details and your progress will be here very soon. Try again in a little while.'):tx('შეამოწმე ინტერნეტი და სცადე თავიდან.','Check your connection and try again.')}</Copy>
     <View style={{alignSelf:'stretch'}}><Action secondary label={tx('ხელახლა ცდა','Try again')} icon={RotateCw} busy={refreshing} onPress={refresh}/></View>
    </Card>:<Loading/>}
   </ScrollView>
