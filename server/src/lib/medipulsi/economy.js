@@ -145,3 +145,35 @@ export async function payWeeklyPrizes(campaign,{db=prisma,now=Date.now(),force=f
  if(paid.length)await tellOwner(`🏅 MEDIRUN: ${prev}-ის კვირის პრიზები ჩაირიცხა — ${paid.map(p=>`${p.board==='boxes'?'ყუთები':'მანძილი'} #${p.rank} ${p.handle} +${p.coins}`).join(', ')} (სულ ${paid.reduce((s,p)=>s+p.coins,0)} ქოინი).`);
  return {week:prev,paid};
 }
+
+/* ───────── the player's MEDIRUN wallet (owner 2026-10-04: balance + history on the MEDIRUN page) ───────── */
+const ROW_LIMIT=40;
+/** Pure: ledger rows (joined with the claim's box) → what the app lists. Never a coordinate. */
+export function walletRows(rows,lang='ka'){
+ const en=lang==='en';
+ return rows.map(r=>{
+  const m=r.metadata&&typeof r.metadata==='object'?r.metadata:{},meta=r.ruleMeta&&typeof r.ruleMeta==='object'?r.ruleMeta:{};
+  const prize=String(r.sourceId||'').startsWith(PRIZE_SOURCE_PREFIX);
+  const place=en?(meta.placeEn||meta.place||null):(meta.place||null),city=en?(meta.cityEn||meta.city||null):(meta.city||null);
+  return {id:r.id,amount:r.amount,createdAt:r.createdAt,kind:prize?'prize':meta.kind==='grand'?'grand':'box',
+   rank:Number(m.rank)||null,base:Number(m.base)||null,place,district:meta.district||null,city,
+   board:prize?(m.board||null):null,week:prize?(m.week||null):null,giftKind:meta.kind||null};
+ });
+}
+export async function walletView(userId,{db=prisma,campaign,now=Date.now(),lang='ka'}={}){
+ const since=tbilisiMidnight(campaign.start),until=new Date(+tbilisiMidnight(campaign.end)+DAY);
+ const [profile,ledger,season,claims]=await Promise.all([
+  db.userQuestProfile.findUnique({where:{userId},select:{cachedCoinBalance:true}}).catch(()=>null),
+  db.$queryRaw`SELECT l."id", l."amount", l."createdAt", l."sourceId", l."metadata", r."meta" AS "ruleMeta" FROM "RewardLedger" l LEFT JOIN "MedipulsiClaim" c ON l."sourceId" LIKE 'claim:%' AND c."id"=substring(l."sourceId" from 7) LEFT JOIN "MedipulsiGiftRule" r ON r."giftId"=c."giftId" WHERE l."userId"=${userId} AND l."sourceType"=${COIN_SOURCE} AND l."currency"='COIN' ORDER BY l."createdAt" DESC LIMIT ${ROW_LIMIT}`.catch(()=>[]),
+  db.rewardLedger.aggregate({_sum:{amount:true},where:{userId,sourceType:COIN_SOURCE,currency:'COIN',createdAt:{gte:since,lt:until}}}).catch(()=>({_sum:{amount:0}})),
+  db.$queryRaw`SELECT count(*)::int AS boxes, count(*) FILTER (WHERE ("reward"->>'rank')::int=1)::int AS firsts FROM "MedipulsiClaim" WHERE "userId"=${userId} AND "status" IN ('APPROVED','FULFILLED') AND "createdAt">=${since} AND "createdAt"<${until}`.catch(()=>[{boxes:0,firsts:0}]),
+ ]);
+ let balance=profile?.cachedCoinBalance;
+ if(!Number.isFinite(balance)){const all=await db.rewardLedger.aggregate({_sum:{amount:true},where:{userId,currency:'COIN'}}).catch(()=>({_sum:{amount:0}}));balance=all._sum.amount||0;}
+ return {balance:Math.max(0,balance||0),season:{earned:Math.max(0,season._sum.amount||0),boxes:claims[0]?.boxes||0,firsts:claims[0]?.firsts||0,start:campaign.start,end:campaign.end},rows:walletRows(ledger,lang),now:new Date(now).toISOString()};
+}
+/** The balance after a claim, for the app's live coin counter. */
+export async function coinBalance(tx,userId){
+ const p=await tx.userQuestProfile.findUnique({where:{userId},select:{cachedCoinBalance:true}}).catch(()=>null);
+ return Number.isFinite(p?.cachedCoinBalance)?p.cachedCoinBalance:null;
+}

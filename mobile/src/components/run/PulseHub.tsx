@@ -27,6 +27,7 @@ import {RouteThumb,WeekBars} from './RunVisuals';
 import {PulseTerritory} from './PulseTerritory';
 import {GrandPrizeCard} from './GrandPrizeCard';
 import {RunDropsCard} from './RunDrops';
+import {RunWallet} from './RunWallet';
 import {RunHero} from './RunHero';
 import {RunPrizeGoal} from './RunPrizeGoal';
 import { tx } from '@/i18n/locale';
@@ -95,6 +96,9 @@ export default function PulseHub(){
   {/* Owner 2026-10-04 (second pass): the hub says what MEDIRUN is for — boxes now (in the hero), the prize
       you are saving for, the Tbilisi campaign — then your week, the passport and your walks. */}
   <RunDropsCard/>
+
+  {/* Owner 2026-10-04: the coins the boxes paid — balance and every movement — live on the MEDIRUN page too. */}
+  <RunWallet/>
 
   <RunPrizeGoal/>
 

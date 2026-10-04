@@ -8,7 +8,7 @@ import {distance} from './core/engine.js';
 import {fail} from './schema.js';
 import {giftRules,percentsFor,isUnlocked,localizeGift,creditGiftCoins,payoutFor,decayOf} from './giftRules.js';
 import {getCampaign,economyOf} from './campaignStore.js';
-import {periodBounds,boxesBoard,metersBoard,myNumbers,rankAmong,weekWinners,weekStart,tbilisiMidnight} from './economy.js';
+import {periodBounds,boxesBoard,metersBoard,myNumbers,rankAmong,weekWinners,weekStart,tbilisiMidnight,walletView,coinBalance} from './economy.js';
 
 export const DEFAULTS={enabled:true,giftsEnabled:true,leaderboardEnabled:true,message:''};
 export async function config(db=prisma){const row=await db.medipulsiConfig.findUnique({where:{id:'main'}});return {...DEFAULTS,...row?.data};}
@@ -123,7 +123,9 @@ export async function claim(userId,giftId,now=Date.now()){
  const claimed=await tx.medipulsiClaim.create({data:{id:randomUUID(),userId,giftId,sessionId:s.id,code:randomBytes(10).toString('hex').toUpperCase(),status:g.rewardKind==='DIGITAL'?'APPROVED':'PENDING',reward:{title:coins>0?`${coins} Medi Coins`:g.title,description:g.description,kind:g.rewardKind,coins,rank,base:rule?.coins||0,evidence:{fixAt:p.state.journey.lastFix,accuracy:p.state.journey.accuracy,distance:distance(p.state.journey.position,[g.longitude,g.latitude]),sessionMeters:s.meters,rejectedFixes:s.rejected}}}});
  await tx.medipulsiGift.update({where:{id:giftId},data:{allocated:{increment:1}}});
  await creditGiftCoins(tx,{userId,claimId:claimed.id,giftId,rule,amount:coins,rank,now:new Date(now)});
- return claimed;
+ // The balance after this opening rides along, so the app's coin counter is right the moment the box opens.
+ const balance=coins>0?await coinBalance(tx,userId):null;
+ return balance==null?claimed:{...claimed,balance};
 });}
 /**
  * Two boards (economy 2): `boxes` — coins from box openings, boxes, first finds; `meters` — verified distance.
@@ -131,6 +133,11 @@ export async function claim(userId,giftId,now=Date.now()){
  * No coordinates, names, email, or health records are exposed in rankings; `me` is the reader's own place even
  * when they are not on the list (a reason to join).
  */
+/** Medi Coins balance, this season's MEDIRUN earnings and the last movements with the box's park (no coordinates). */
+export async function wallet(userId,lang='ka',now=Date.now()){
+ const campaign=await getCampaign(prisma,now);
+ return walletView(userId,{db:prisma,campaign,now,lang});
+}
 export async function leaderboard(period='week',board='meters',userId=null,now=Date.now()){
  if(!(await config()).leaderboardEnabled)return {rows:[],board,period,me:null,prizes:null,lastWeek:[]};
  const campaign=await getCampaign(prisma,now),{since}=periodBounds(period,campaign,now);

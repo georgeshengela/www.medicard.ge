@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {planDay,dayKind,rotationOrder,CAMPAIGN,dateAdd} from './autopilot.js';
 import {isUnlocked,normalizeRule,localizeGift,shareOfArea,ladderOf,maxPayout,payoutFor,normalizeDecay} from './giftRules.js';
-import {budgetState,weekStart,periodBounds,rankAmong} from './economy.js';
+import {budgetState,weekStart,periodBounds,rankAmong,walletRows} from './economy.js';
 import {grandView} from './grand.js';
 
 const DISTRICTS=['გლდანი','ნაძალადევი','დიდუბე','ჩუღურეთი','საბურთალო','ვაკე','მთაწმინდა','კრწანისი','ისანი','სამგორი'];
@@ -204,6 +204,15 @@ test('economy: leaderboard weeks are Tbilisi Monday → Sunday, the season is th
  assert.equal(periodBounds('week',CAMPAIGN,T('2026-10-08T10:00:00+04:00')).since.toISOString(),'2026-10-04T20:00:00.000Z');
  assert.equal(periodBounds('season',CAMPAIGN,T('2026-10-08T10:00:00+04:00')).since.toISOString(),'2026-10-04T20:00:00.000Z');
  assert.ok(periodBounds('season',CAMPAIGN,T('2027-03-01T10:00:00+04:00')).since>new Date('2026-11-01'),'outside the campaign: the last 90 days');
+});
+test('wallet: a movement names the box park and the opener place, a prize its board — never a coordinate',()=>{
+ const rows=walletRows([
+  {id:'a',amount:25,createdAt:'2026-10-06T06:30:00Z',sourceId:'claim:c1',metadata:{giftId:'g',rank:2,base:40},ruleMeta:{kind:'am',place:'ვაკის პარკი',placeEn:'Vake Park',district:'ვაკე',spot:'s1',decay:[100,60]}},
+  {id:'b',amount:300,createdAt:'2026-10-12T20:10:00Z',sourceId:'week:2026-10-05:boxes:1',metadata:{week:'2026-10-05',board:'boxes',rank:1},ruleMeta:null},
+ ]);
+ assert.deepEqual(rows.map(r=>[r.kind,r.amount,r.rank,r.base,r.place,r.district,r.board,r.week]),[['box',25,2,40,'ვაკის პარკი','ვაკე',null,null],['prize',300,1,null,null,null,'boxes','2026-10-05']]);
+ assert.equal(walletRows([{id:'a',amount:25,createdAt:'x',sourceId:'claim:c1',metadata:{},ruleMeta:{place:'ვაკის პარკი',placeEn:'Vake Park'}}],'en')[0].place,'Vake Park');
+ assert.ok(!JSON.stringify(rows).match(/lat|lng|spot|decay/));
 });
 test('economy: a player outside the list still gets a place',()=>{
  const rows=[{coins:300,boxes:5},{coins:120,boxes:4},{coins:120,boxes:2},{coins:40,boxes:1}];

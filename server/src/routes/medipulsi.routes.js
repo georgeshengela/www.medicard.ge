@@ -33,4 +33,6 @@ medipulsiRouter.get('/grand',lookups,asyncHandler(async(req,res)=>res.json(await
 // „ყუთები ახლა“: boxes out in the city this minute (per district), today's openings and the next wave. Aggregates only.
 medipulsiRouter.get('/drops',lookups,asyncHandler(async(req,res)=>res.json(await dropsStatus(req.user.id,{lang:req.lang}))));
 medipulsiRouter.post('/gifts/:id/claim',write,asyncHandler(async(req,res)=>res.json(await game.claim(req.user.id,id.parse(req.params.id)))));
+// Medi Coins on the MEDIRUN page: balance, this season's box earnings and the last movements (park, rank, date).
+medipulsiRouter.get('/wallet',lookups,asyncHandler(async(req,res)=>res.json(await game.wallet(req.user.id,req.lang))));
 medipulsiRouter.get('/leaderboard',asyncHandler(async(req,res)=>res.json(await game.leaderboard(z.enum(['week','season']).default('week').parse(req.query.period),z.enum(['meters','boxes']).default('meters').parse(req.query.board),req.user.id))));

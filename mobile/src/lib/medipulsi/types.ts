@@ -3,7 +3,7 @@ import type {Mission,MissionBook} from './core/missions';
 export type {Journey,Mission,MissionBook};
 export type PulseFix=Fix&{mocked?:boolean};
 /** `reward.coins` = what THIS opening paid, `rank` = its place in the box's first-finder ladder (economy 2). */
-export type Claim={id:string;giftId:string;status:'PENDING'|'APPROVED'|'FULFILLED'|'REJECTED';code:string;reward:{title:string;description:string;kind:string;coins?:number;rank?:number;base?:number};createdAt:string};
+export type Claim={id:string;giftId:string;status:'PENDING'|'APPROVED'|'FULFILLED'|'REJECTED';code:string;reward:{title:string;description:string;kind:string;coins?:number;rank?:number;base?:number};createdAt:string;/** Medi Coins balance right after this opening (servers from 1.0.0.20.37). */balance?:number};
 export type PulseSettings={mapMode?:'auto'|'day'|'night';sound?:boolean;haptic?:boolean;volume?:number;followBearing?:boolean;threeD?:boolean};
 export type Snapshot={userId:string;state:{journey:Journey;book:MissionBook};settings:PulseSettings;handle:string;leaderboardOptIn:boolean;session:null|{id:string;seq:number;phase:string};history:Array<{id:string;startedAt:string;meters:number;seconds:number;steps:number;newMeters:number}>;totals?:{walks:number;meters:number;newMeters:number};claims:Claim[];missions:Mission[];config:{enabled:boolean;giftsEnabled:boolean;leaderboardEnabled:boolean;message:string};mapboxToken?:string};
 /** Economy 2 fields: `coins` = what opening it now pays, `rank` = the opener's place, `base` = the first finder's coins, `opened`/`stock` = openings used / total. */
