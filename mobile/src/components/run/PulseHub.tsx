@@ -1,9 +1,8 @@
 import React,{useCallback,useMemo,useState} from 'react';
 import {Image,Pressable,ScrollView,View} from 'react-native';
-import Svg,{Defs,LinearGradient,Rect,Stop} from 'react-native-svg';
 import {useFocusEffect,useRouter} from 'expo-router';
 import * as Location from 'expo-location';
-import {ArrowUpRight,BookOpen,ChevronRight,Compass,Flame,Landmark,Mountain,Play,Settings2,Target,Trees,Waves} from 'lucide-react-native';
+import {ArrowUpRight,BookOpen,ChevronRight,Compass,Landmark,Mountain,Settings2,Trees,Waves} from 'lucide-react-native';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {useAuth} from '@/store/AuthContext';
 import {useThemeColors} from '@/theme/colors';
@@ -21,15 +20,15 @@ import {useHeartbeat} from '@/lib/medipulsi/useHeartbeat';
 import {EMPTY_SIGNAL} from '@/lib/medipulsi/types';
 import {RunTargetSheet} from './RunTargetSheet';
 import {PulsePanels,type PulsePanel} from './PulsePanels';
-import {Action,ArtTile,Bar,Card,Copy,RUN_CTA,Section,useRunInk} from './PulseUi';
+import {Action,ArtTile,Bar,Card,Copy,Section} from './PulseUi';
 import {MISSION_ART,RUN_GIFT,RUN_HERO,RUN_ICON} from './runArt';
 import {ModuleHeader,ModuleHeaderButton} from '@/components/brand/ModuleHeader';
 import {RouteThumb,WeekBars} from './RunVisuals';
 import {PulseTerritory} from './PulseTerritory';
 import {GrandPrizeCard} from './GrandPrizeCard';
-import {RunDrops} from './RunDrops';
+import {RunDropsCard} from './RunDrops';
+import {RunHero} from './RunHero';
 import {RunPrizeGoal} from './RunPrizeGoal';
-import {useDrops} from '@/lib/medipulsi/drops';
 import { tx } from '@/i18n/locale';
 
 export const MISSION_ICONS={trees:Trees,landmark:Landmark,waves:Waves,mountain:Mountain,bridge:Compass,flower:Trees};
@@ -47,9 +46,8 @@ const walkDay=(iso:string)=>{const d=new Date(iso);if(!Number.isFinite(d.getTime
 const away=(m:number)=>m<1000?tx(`${Math.round(m/10)*10} მ`, `${Math.round(m/10)*10} m`):tx(`${(m/1000).toFixed(m<10000?1:0)} კმ`, `${(m/1000).toFixed(m<10000?1:0)} km`);
 
 export default function PulseHub(){
- const router=useRouter(),c=useThemeColors(),ink=useRunInk(),insets=useSafeAreaInsets(),{healthProfile}=useAuth(),pulse=usePulse();
+ const router=useRouter(),c=useThemeColors(),insets=useSafeAreaInsets(),{healthProfile}=useAuth(),pulse=usePulse();
  const [history,setHistory]=useState<RunSummary[]>([]),[targetSheet,setTargetSheet]=useState(false),[panel,setPanel]=useState<PulsePanel|null>(null),[error,setError]=useState(''),[missionError,setMissionError]=useState(''),[here,setHere]=useState<Coordinate|null>(null),[allWalks,setAllWalks]=useState(false),[busy,setBusy]=useState(false);
- const liveBoxes=useDrops().data?.now.boxes||0;
  const testPulse=useHeartbeat(EMPTY_SIGNAL,pulse.snapshot?.settings||{},false);
  useFocusEffect(useCallback(()=>{
   let alive=true;
@@ -89,44 +87,15 @@ export default function PulseHub(){
   <ModuleHeader module="run" backLabel={tx('MEDICARD-ში დაბრუნება', 'Back to MEDICARD')} onBack={leave} subtitle={`${dayMoment()} ${tx('· შენი ქალაქის პულსი', '· your city’s pulse')}`}
    right={<ModuleHeaderButton label={tx('პარამეტრები', 'Settings')} icon={Settings2} onPress={()=>setPanel('settings')}/>}/>
 
-  {/* The page's one spotlight. */}
-  <View style={{backgroundColor:HUB.spotlightBg,borderRadius:HUB.cardRadius,overflow:'hidden'}}>
-   <View style={{paddingHorizontal:HUB.cardPad+2,paddingTop:HUB.cardPad+2,gap:8}}>
-    <View style={{flexDirection:'row',alignItems:'center',gap:8}}>
-     {streak>0?<View style={{flexDirection:'row',alignItems:'center',gap:5,backgroundColor:'rgba(251,191,36,0.14)',borderRadius:10,paddingHorizontal:9,paddingVertical:3}}><Flame size={13} color="#FCD34D" fill="#FCD34D"/><Copy bold size={11} style={{color:'#FDE68A'}}>{streak} {tx('დღე ზედიზედ', 'day streak')}</Copy></View>
-      :<View style={{flexDirection:'row',alignItems:'center',gap:7}}><View style={{width:6,height:6,borderRadius:3,backgroundColor:'#2DD4BF'}}/><Copy bold size={11} style={{color:'#99F6E4'}}>{tx('შენი ტემპით · ნებისმიერ ქალაქში', 'At your pace · in any city')}</Copy></View>}
-    </View>
-    <Copy bold size={26} style={{lineHeight:36,color:'#fff'}}>{tx('იარე ქალაქში.\nიპოვე ყუთები.','Walk the city.\nFind the boxes.')}</Copy>
-    <Copy size={13} style={{color:'#C5DADA'}}>{tx('ყუთებში Medi Coins-ია — მაღაზიაში საჩუქრებზე ცვლი. ყოველი ახალი ქუჩა კი თბილისს ანათებს.','Boxes hold Medi Coins you swap for prizes in the store. Every new street lights up Tbilisi.')}</Copy>
-    <View style={{flexDirection:'row',gap:6,marginTop:4}}>
-     {[tx('გაისეირნე','Walk'),tx('იპოვე ყუთი','Find a box'),tx('აიღე საჩუქარი','Get a prize')].map((step,i)=><View key={step} style={{flex:1,alignItems:'center',gap:5,paddingHorizontal:6,paddingVertical:8,borderRadius:14,backgroundColor:'rgba(255,255,255,0.07)'}}>
-      <View style={{width:20,height:20,borderRadius:10,backgroundColor:'#2DD4BF',alignItems:'center',justifyContent:'center'}}><Copy bold size={11} style={{color:'#042F2E',lineHeight:15}}>{i+1}</Copy></View>
-      <Copy bold size={11} numberOfLines={2} style={{color:'#fff',lineHeight:15,textAlign:'center'}}>{step}</Copy>
-     </View>)}
-    </View>
-   </View>
-   <View style={{marginTop:2,height:116}}>
-    <Image source={RUN_HERO} accessibilityIgnoresInvertColors resizeMode="cover" style={{width:'100%',height:'100%'}}/>
-    {/* Melt the illustration into the card above and below. */}
-    <Svg pointerEvents="none" style={{position:'absolute',inset:0}} width="100%" height="100%" preserveAspectRatio="none" viewBox="0 0 10 10"><Defs><LinearGradient id="heroFade" x1="0" y1="0" x2="0" y2="1"><Stop offset="0" stopColor={HUB.spotlightBg} stopOpacity="1"/><Stop offset=".22" stopColor={HUB.spotlightBg} stopOpacity="0"/><Stop offset=".78" stopColor={HUB.spotlightBg} stopOpacity="0"/><Stop offset="1" stopColor={HUB.spotlightBg} stopOpacity="1"/></LinearGradient></Defs><Rect x="0" y="0" width="10" height="10" fill="url(#heroFade)"/></Svg>
-   </View>
-   <View style={{padding:HUB.cardPad,paddingTop:4,gap:10}}>
-    <RunDrops/>
-    {active?<Pressable accessibilityRole="button" accessibilityLabel={tx(`აქტიური მისია ${active.name}, ${missionPercent(pulse.book,active)} პროცენტი`, `Active mission ${active.name}, ${missionPercent(pulse.book,active)} percent`)} onPress={()=>setPanel('missions')} style={{flexDirection:'row',alignItems:'center',gap:10,paddingHorizontal:12,paddingVertical:9,borderRadius:14,backgroundColor:'rgba(255,255,255,0.07)'}}>
-     <Compass size={15} color="#99F6E4"/><Copy bold size={12} numberOfLines={1} style={{flex:1,color:'#fff'}}>{tx('მისია ·', 'Mission ·')} {active.name}</Copy><Copy bold size={12} style={{color:'#99F6E4'}}>{missionPercent(pulse.book,active)}%</Copy>
-    </Pressable>:null}
-    <Pressable accessibilityRole="button" accessibilityLabel={liveBoxes?tx('წავედით ყუთების საძებნელად — თავისუფალი გასეირნება','Go find the boxes — free walk'):tx('დავიწყოთ გასეირნება — თავისუფალი გასეირნება', 'Start a walk — free walk')} onPress={()=>start()} style={{minHeight:58,borderRadius:18,backgroundColor:RUN_CTA,paddingHorizontal:14,flexDirection:'row',alignItems:'center',gap:12}}>
-     <View style={{width:34,height:34,borderRadius:12,backgroundColor:'rgba(255,255,255,0.16)',alignItems:'center',justifyContent:'center'}}><Play fill="#fff" color="#fff" size={15}/></View>
-     <Copy bold size={15} style={{flex:1,color:'#fff'}}>{liveBoxes?tx('წავედით ყუთების საძებნელად','Go find the boxes'):tx('დავიწყოთ გასეირნება', 'Start a walk')}</Copy><ArrowUpRight color="#CCFBF1" size={22}/>
-    </Pressable>
-    <Pressable accessibilityRole="button" onPress={()=>setTargetSheet(true)} style={{minHeight:44,flexDirection:'row',alignItems:'center',justifyContent:'center',gap:8}}><Target size={16} color="#99F6E4"/><Copy bold size={12} style={{color:'#fff'}}>{tx('ან ივარჯიშე მიზნით', 'or train with a goal')}</Copy><ChevronRight size={14} color="#99F6E4"/></Pressable>
-   </View>
-  </View>
+  {/* The page's one spotlight: the lit city, live boxes and the start button. */}
+  <RunHero streak={streak} onStart={()=>start()} onGoal={()=>setTargetSheet(true)}/>
 
   {error&&!pulse.snapshot?<Card><Copy bold size={15}>{tx('MEDIRUN-თან კავშირი ვერ დამყარდა', 'Couldn’t reach MEDIRUN')}</Copy><Copy muted size={12}>{tx('შეამოწმე ინტერნეტი. გასეირნება მაინც შეგიძლია — გზა შენახული დარჩება.', 'Check your connection. You can still walk — the route is saved.')}</Copy><Action secondary label={tx('ხელახლა ცდა', 'Try again')} onPress={()=>{setError('');void getPulseClient().refresh().catch(e=>setError(e.message));}}/></Card>:null}
 
   {/* Owner 2026-10-04 (second pass): the hub says what MEDIRUN is for — boxes now (in the hero), the prize
       you are saving for, the Tbilisi campaign — then your week, the passport and your walks. */}
+  <RunDropsCard/>
+
   <RunPrizeGoal/>
 
   <Section title={tx('გაანათე თბილისი','Light up Tbilisi')}>
@@ -155,6 +124,9 @@ export default function PulseHub(){
      </View>
      <Image source={RUN_ICON.passport} accessibilityIgnoresInvertColors resizeMode="contain" style={{width:76,height:76,transform:[{rotate:'-6deg'}]}}/>
     </View>
+    {active?<Pressable accessibilityRole="button" accessibilityLabel={tx(`აქტიური მისია ${active.name}, ${missionPercent(pulse.book,active)} პროცენტი`, `Active mission ${active.name}, ${missionPercent(pulse.book,active)} percent`)} onPress={()=>setPanel('missions')} style={{flexDirection:'row',alignItems:'center',gap:10,paddingHorizontal:12,minHeight:44,borderRadius:14,backgroundColor:c.accent100}}>
+     <Compass size={15} color={c.primary100}/><Copy bold size={12} numberOfLines={1} style={{flex:1}}>{tx('აქტიური მისია ·', 'Active mission ·')} {active.name}</Copy><Copy bold size={12} style={{color:c.primary100}}>{missionPercent(pulse.book,active)}%</Copy>
+    </Pressable>:null}
     {next?<View style={{flexDirection:'row',alignItems:'center',gap:12,borderTopWidth:1,borderColor:c.bg200,paddingTop:14}}>
      <ArtTile source={MISSION_ART[next.m.id]||RUN_ICON.flag} size={56}/>
      <View style={{flex:1,minWidth:0}}><Copy muted size={11}>{next.d!=null?tx('შენთან ყველაზე ახლოს', 'Closest to you'):tx('შემდეგი აღმოჩენა', 'Next find')}</Copy><Copy bold size={14} numberOfLines={1}>{next.m.name}</Copy><Copy muted size={11} numberOfLines={1}>{next.m.meters} {tx('მ ზონაში', 'm zone')}{next.d!=null?tx(` · ${away(next.d)} შენგან`, ` · ${away(next.d)} away`):''}</Copy></View>
