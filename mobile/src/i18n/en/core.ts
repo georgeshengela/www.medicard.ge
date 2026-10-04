@@ -575,7 +575,7 @@ export const enCore: Pick<Strings, 'app' | 'common' | 'auth' | 'assessment' | 'o
 
   tabs: {
     home: 'Home',
-    records: 'My card',
+    records: 'Labs',
     medications: 'Meds',
     profile: 'Profile',
   },

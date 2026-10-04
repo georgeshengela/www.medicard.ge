@@ -4,7 +4,7 @@ import { useRouter, useSegments } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, { Easing, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import * as Haptics from 'expo-haptics';
-import { FolderHeart, Footprints, House, Pill, User, type LucideIcon } from 'lucide-react-native';
+import { Footprints, House, Pill, TestTubeDiagonal, User, type LucideIcon } from 'lucide-react-native';
 import { ka } from '@/i18n/ka';
 import { getRunState } from '@/lib/run/store';
 import { useThemeColors } from '@/theme/colors';
@@ -34,7 +34,7 @@ type TabDef = {
 
 const LEFT_TABS: TabDef[] = [
   { href: '/(tabs)/home', name: 'home', title: ka.tabs.home, Icon: House },
-  { href: '/(tabs)/records', name: 'records', title: ka.tabs.records, Icon: FolderHeart },
+  { href: '/(tabs)/records', name: 'records', title: ka.tabs.records, Icon: TestTubeDiagonal },
 ];
 
 const RIGHT_TABS: TabDef[] = [
@@ -266,7 +266,7 @@ function TabButton({
       }}
     >
       <tab.Icon size={20} color={color} strokeWidth={focused ? 2.3 : 1.8} />
-      <Text numberOfLines={1} style={{ color, fontFamily: 'NotoSansGeorgian_500Medium', fontSize: 9, marginTop: 4 }}>{tab.name === 'medications' ? tx('წამლები', 'Meds') : tab.name === 'records' ? tx('ბარათი', 'Card') : tab.title}</Text>
+      <Text numberOfLines={1} style={{ color, fontFamily: 'NotoSansGeorgian_500Medium', fontSize: 9, marginTop: 4 }}>{tab.name === 'medications' ? tx('წამლები', 'Meds') : tab.title}</Text>
     </TouchableOpacity>
   );
 }
