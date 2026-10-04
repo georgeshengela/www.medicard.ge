@@ -4,7 +4,7 @@ import { useRouter, useSegments } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, { Easing, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import * as Haptics from 'expo-haptics';
-import { Footprints, House, Pill, TestTubeDiagonal, User, type LucideIcon } from 'lucide-react-native';
+import { FlaskConical, Footprints, House, Pill, User, type LucideIcon } from 'lucide-react-native';
 import { ka } from '@/i18n/ka';
 import { getRunState } from '@/lib/run/store';
 import { useThemeColors } from '@/theme/colors';
@@ -34,7 +34,7 @@ type TabDef = {
 
 const LEFT_TABS: TabDef[] = [
   { href: '/(tabs)/home', name: 'home', title: ka.tabs.home, Icon: House },
-  { href: '/(tabs)/records', name: 'records', title: ka.tabs.records, Icon: TestTubeDiagonal },
+  { href: '/(tabs)/records', name: 'records', title: ka.tabs.records, Icon: FlaskConical },
 ];
 
 const RIGHT_TABS: TabDef[] = [

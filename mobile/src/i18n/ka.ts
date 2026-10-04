@@ -586,7 +586,7 @@ const kaStrings = {
 
   tabs: {
     home: 'მთავარი',
-    // Owner 2026-10-04: the MEDILAB tab reads „ანალიზები“ with a test tube (was „ჩემი ბარათი“ / folder).
+    // Owner 2026-10-04: the MEDILAB tab reads „ანალიზები“ with a flask (was „ჩემი ბარათი“ / folder; a test tube read wrong).
     records: 'ანალიზები',
     medications: 'მედიკამენტები',
     profile: 'პროფილი',
