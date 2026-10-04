@@ -24,21 +24,41 @@ export async function ensureCityTable(db=prisma){
 }
 
 /* ───────── 1. detect ───────── */
+const km=(a,b)=>{const r=Math.PI/180,x=(b[0]-a[0])*r*Math.cos((a[1]+b[1])/2*r),y=(b[1]-a[1])*r;return Math.hypot(x,y)*6371;};
+/**
+ * The city of a home place: the known city named like the place the app shows (UserLocation.cityKa — „ლიეჟი“),
+ * the nearest one within 40 km; else the OSM city of the home's ~2 km tile (that can be a district such as
+ * Rocourt, which is why the name comes first). `resolve` = may ask Nominatim for an unknown tile.
+ */
+export async function homeCityId(home,{db=prisma,resolve=false}={}){
+ const at=[Number(home.lng),Number(home.lat)];
+ if(home.cityKa){
+  const rows=await db.$queryRaw`SELECT "id","geometry" FROM "MedipulsiArea" WHERE "kind"='city' AND ("nameKa"=${home.cityKa} OR "nameEn"=${home.cityKa})`.catch(()=>[]);
+  const best=rows.map(r=>{const b=geometryBbox(r.geometry);return {id:r.id,d:km(at,[(b[0]+b[2])/2,(b[1]+b[3])/2])};}).filter(r=>r.d<=40).sort((a,b)=>a.d-b.d)[0];
+  if(best)return best.id;
+ }
+ const tile=tileOf(at);
+ const [row]=await db.$queryRaw`SELECT "cityId" FROM "MedipulsiPlaceTile" WHERE "tile"=${tile}`.catch(()=>[]);
+ if(row)return row.cityId||null;
+ if(!resolve)return null;
+ return (await resolveTilePlace(tile))?.cityId||null;
+}
+
 /**
  * Cities where people live (home place in UserLocation, location sharing on). Resolves at most `budget`
  * unknown tiles per call (Nominatim etiquette); the rest arrive on the next tick.
  */
 export async function detectCities({db=prisma,campaign,budget=4}={}){
  await ensureCityTable(db);
- const homes=await db.$queryRaw`SELECT "lat","lng" FROM "UserLocation" WHERE "enabled"=true AND "lat" IS NOT NULL AND "lng" IS NOT NULL`.catch(()=>[]);
- const byTile=new Map();
- for(const h of homes){const t=tileOf([h.lng,h.lat]);byTile.set(t,(byTile.get(t)||0)+1);}
- const tiles=[...byTile.keys()];
- const known=new Map(tiles.length?(await db.$queryRaw`SELECT "tile","cityId" FROM "MedipulsiPlaceTile" WHERE "tile" = ANY(${tiles})`).map(r=>[r.tile,r.cityId]):[]);
- let left=budget;
- for(const t of tiles)if(!known.has(t)&&left>0){left--;try{const p=await resolveTilePlace(t);known.set(t,p.cityId);}catch{/* next tick */}}
+ const homes=await db.$queryRaw`SELECT "lat","lng","cityKa" FROM "UserLocation" WHERE "enabled"=true AND "lat" IS NOT NULL AND "lng" IS NOT NULL`.catch(()=>[]);
  const players=new Map();
- for(const [t,n] of byTile){const id=known.get(t);if(id)players.set(id,(players.get(id)||0)+n);}
+ let left=budget;
+ for(const h of homes){
+  let id=null;
+  try{id=await homeCityId(h,{db,resolve:left>0});}catch{/* next tick */}
+  if(id===null&&left>0)left--;
+  if(id)players.set(id,(players.get(id)||0)+1);
+ }
  const ids=[...players.keys()];
  const areas=ids.length?await db.$queryRaw`SELECT "id","countryCode","nameKa","nameEn","geometry" FROM "MedipulsiArea" WHERE "id" = ANY(${ids}) AND "kind"='city'`:[];
  for(const a of areas){

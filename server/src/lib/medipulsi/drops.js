@@ -5,7 +5,7 @@
 import {prisma} from '../prisma.js';
 import {CAMPAIGN,tbilisiDate,planDay,autopilotEnabled} from './autopilot.js';
 import {getCampaign} from './campaignStore.js';
-import {ensureCityTable,cityRulesOf} from './cities.js';
+import {ensureCityTable,cityRulesOf,homeCityId} from './cities.js';
 import {timezoneFor,zonedTime,localDate} from './citySpotsMath.js';
 import {tileOf} from './territoryMath.js';
 import {giftRules,ensureGiftRuleTable} from './giftRules.js';
@@ -116,20 +116,29 @@ async function readerCity(userId,{db,campaign,now,lang}){
  const tbilisi={id:campaign.area.id,timezone:'Asia/Tbilisi'};
  const [player,home]=await Promise.all([
   db.medipulsiPlayer.findUnique({where:{userId},select:{state:true}}).catch(()=>null),
-  db.$queryRaw`SELECT "lat","lng" FROM "UserLocation" WHERE "userId"=${userId} AND "enabled"=true AND "lat" IS NOT NULL`.then(r=>r[0]||null).catch(()=>null),
+  db.$queryRaw`SELECT "lat","lng","cityKa" FROM "UserLocation" WHERE "userId"=${userId} AND "enabled"=true AND "lat" IS NOT NULL`.then(r=>r[0]||null).catch(()=>null),
  ]);
- const j=player?.state?.journey,points=[];
- if(Array.isArray(j?.position)&&j.lastFix&&now-j.lastFix<24*HOUR)points.push(j.position);
- if(home)points.push([home.lng,home.lat]);
- for(const pt of points){
-  const [row]=await db.$queryRaw`SELECT "cityId" FROM "MedipulsiPlaceTile" WHERE "tile"=${tileOf(pt)}`.catch(()=>[]);
-  if(!row?.cityId)continue;
-  if(row.cityId===campaign.area.id)return tbilisi;
-  await ensureCityTable(db);
-  const [c]=await db.$queryRaw`SELECT "cityId","nameKa","nameEn","timezone","status","enabled" FROM "MedirunCity" WHERE "cityId"=${row.cityId}`;
-  if(c)return {id:c.cityId,name:(lang==='en'?c.nameEn:c.nameKa)||c.nameEn||c.nameKa,timezone:c.timezone,pending:c.status!=='ready'||!c.enabled};
-  const [a]=await db.$queryRaw`SELECT "nameKa","nameEn","countryCode","geometry" FROM "MedipulsiArea" WHERE "id"=${row.cityId}`;
-  if(a)return {id:row.cityId,name:(lang==='en'?a.nameEn:a.nameKa)||a.nameEn||a.nameKa,timezone:timezoneFor(a.countryCode,pt[0]),pending:true};
+ await ensureCityTable(db);
+ const cityRow=async id=>(await db.$queryRaw`SELECT "cityId","nameKa","nameEn","timezone","status","enabled" FROM "MedirunCity" WHERE "cityId"=${id}`)[0]||null;
+ const asView=c=>({id:c.cityId,name:(lang==='en'?c.nameEn:c.nameKa)||c.nameEn||c.nameKa,timezone:c.timezone,pending:c.status!=='ready'||!c.enabled});
+ // 1. Walking somewhere in the last 24 h: Tbilisi or a city that already has boxes.
+ const j=player?.state?.journey;
+ if(Array.isArray(j?.position)&&j.lastFix&&now-j.lastFix<24*HOUR){
+  const [row]=await db.$queryRaw`SELECT "cityId" FROM "MedipulsiPlaceTile" WHERE "tile"=${tileOf(j.position)}`.catch(()=>[]);
+  if(row?.cityId===campaign.area.id)return tbilisi;
+  const c=row?.cityId?await cityRow(row.cityId):null;
+  if(c)return asView(c);
+ }
+ // 2. Home: the city the app shows (UserLocation), named first, else its tile.
+ if(home){
+  const id=await homeCityId(home,{db}).catch(()=>null);
+  if(id===campaign.area.id)return tbilisi;
+  if(id){
+   const c=await cityRow(id);
+   if(c)return asView(c);
+   const [a]=await db.$queryRaw`SELECT "nameKa","nameEn","countryCode" FROM "MedipulsiArea" WHERE "id"=${id}`;
+   if(a)return {id,name:(lang==='en'?a.nameEn:a.nameKa)||a.nameEn||a.nameKa,timezone:timezoneFor(a.countryCode,home.lng),pending:true};
+  }
  }
  return tbilisi;
 }
