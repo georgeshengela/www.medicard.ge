@@ -635,6 +635,9 @@
   function paintRules(body) {
     if (!st.draft.economy) st.draft.economy = structuredClone(st.o.economy || ECONOMY_DEFAULTS);
     if (!st.draft.economy.weeklyPrizes) st.draft.economy.weeklyPrizes = { boxes: [], meters: [] };
+    // Three prize places per board, always numbers (a hole in the array would be refused by the server).
+    ['boxes', 'meters'].forEach((k) => { const l = st.draft.economy.weeklyPrizes[k] || []; st.draft.economy.weeklyPrizes[k] = [0, 1, 2].map((i) => Number(l[i] || 0)); });
+    if (!Array.isArray(st.draft.economy.decay) || !st.draft.economy.decay.length) st.draft.economy.decay = [100, 60, 40, 25];
     if (!st.draft.cities) st.draft.cities = structuredClone(CITY_DEFAULTS);
     if (!st.draft.cities.weekendCoins) st.draft.cities.weekendCoins = structuredClone(st.draft.cities.coins);
     const c = st.draft, sat = c.saturday, g = c.grand;
