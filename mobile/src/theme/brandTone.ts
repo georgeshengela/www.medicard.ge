@@ -116,7 +116,13 @@ export function toned<T extends object>(tokens: T): T {
   return new Proxy(tokens, {
     get(target, key, receiver) {
       const value = Reflect.get(target, key, receiver);
-      return typeof value === 'string' ? brandHex(value) : value;
+      if (typeof value !== 'string') return value;
+      // A frozen token object (React Native deep-freezes style props in dev) may only report its real
+      // value — returning the rose there throws a Proxy invariant TypeError and crashed the app into
+      // the maintenance screen (1.0.0.20.13). Frozen reads stay teal; everything else follows the tone.
+      const desc = Reflect.getOwnPropertyDescriptor(target, key);
+      if (desc && !desc.configurable && !desc.writable) return value;
+      return brandHex(value);
     },
   });
 }
