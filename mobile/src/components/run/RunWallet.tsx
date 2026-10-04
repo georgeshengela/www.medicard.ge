@@ -1,13 +1,12 @@
 import React from 'react';
 import {Pressable,View} from 'react-native';
 import {useRouter} from 'expo-router';
-import {ChevronRight,Gift,Sparkles,Store,Trophy} from 'lucide-react-native';
+import {ChevronRight,Gift,RefreshCw,Sparkles,Store,Trophy} from 'lucide-react-native';
 import {Bone} from '@/components/ui/Skeleton';
 import {QuestCoinMark} from '@/components/quest/QuestIcon';
 import {questDate} from '@/components/quest/store/QuestStoreKit';
 import {useFeatureState,isFeatureOn} from '@/lib/featureFlags';
 import {useRunWallet,type WalletRow} from '@/lib/medipulsi/wallet';
-import {getMediCoinBalanceHint} from '@/lib/quest/cache';
 import {tx} from '@/i18n/locale';
 import {useIsDark,useThemeColors} from '@/theme/colors';
 import {hubTint} from '@/theme/hub';
@@ -39,11 +38,12 @@ export function rowDetail(row:WalletRow){
 export function RunWallet(){
  const router=useRouter(),c=useThemeColors(),dark=useIsDark(),teal=runInk('teal',dark),amber=dark?AMBER_DARK:AMBER_LIGHT,flags=useFeatureState();
  const query=useRunWallet(),data=query.data;
- const hint=getMediCoinBalanceHint(),balance=hint??data?.balance??null;
+ const balance=query.liveBalance??data?.balance??null,failed=query.isError&&!data;
  const storeOn=isFeatureOn('quest',flags)&&isFeatureOn('rewardsStore',flags);
  const rows=(data?.rows||[]).slice(0,5);
  const toWallet=()=>router.push('/medi-quest/wallet' as never),toStore=()=>router.push('/medi-quest/rewards' as never);
  return <Section title="Medi Coins" link={tx('ყველა ისტორია','Full history')} onLink={toWallet}>
+  <View style={{gap:12}}>
   <Card style={{gap:14}}>
    <View style={{flexDirection:'row',alignItems:'center',gap:12}}>
     <View style={{width:46,height:46,borderRadius:15,backgroundColor:hubTint(amber,dark),alignItems:'center',justifyContent:'center'}}><QuestCoinMark size={26}/></View>
@@ -62,6 +62,7 @@ export function RunWallet(){
    </View>
   </Card>
   {query.isLoading&&!data?<Card style={{gap:10}}>{[0,1,2].map(i=><Bone key={i} height={44} radius={12}/>)}</Card>
+  :failed?<Card style={{gap:10}}><Copy bold size={14}>{tx('ისტორია ვერ ჩაიტვირთა','Couldn’t load your history')}</Copy><Copy muted size={12}>{tx('შეამოწმე ინტერნეტი და სცადე ხელახლა.','Check your connection and try again.')}</Copy><Pressable accessibilityRole="button" onPress={()=>void query.refetch()} style={{alignSelf:'flex-start',minHeight:40,paddingHorizontal:14,borderRadius:14,backgroundColor:hubTint(teal,dark),flexDirection:'row',alignItems:'center',gap:6}}><RefreshCw size={14} color={teal}/><Copy bold size={12} style={{color:teal}}>{tx('ხელახლა ცდა','Try again')}</Copy></Pressable></Card>
   :!rows.length?<Card><Copy muted size={13}>{tx('ყუთი ჯერ არ გაგიხსნია. პირველივე გახსნის ქოინები აქ გამოჩნდება — როდის, სად და რამდენი.','No box opened yet. The coins from your first opening show up here — when, where and how much.')}</Copy></Card>
   :<Card style={{paddingVertical:6,gap:0}}>
    {rows.map((row,i)=>{
@@ -74,5 +75,6 @@ export function RunWallet(){
    })}
    {(data?.rows.length||0)>rows.length?<Pressable accessibilityRole="button" onPress={toWallet} style={{minHeight:44,flexDirection:'row',alignItems:'center',justifyContent:'center',gap:6,borderTopWidth:1,borderColor:c.bg200}}><Copy bold size={13} style={{color:teal}}>{tx('ყველა მოძრაობა','All movements')}</Copy><ChevronRight size={14} color={teal}/></Pressable>:null}
   </Card>}
+  </View>
  </Section>;
 }

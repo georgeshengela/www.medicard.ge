@@ -1,5 +1,5 @@
 import React,{useEffect,useRef,useState} from 'react';
-import {Animated,Easing,Pressable,View} from 'react-native';
+import {Animated,Easing,Pressable,ScrollView,View} from 'react-native';
 import {LinearGradient} from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
 import {Gift,X} from 'lucide-react-native';
@@ -21,12 +21,16 @@ const COINS=10;
 
 /** Generated 3D gift (fal.ai) floating in its own glow; `open` is the discovered state. */
 export function GiftArtwork({size=210,open=false,shake}:{size?:number;open?:boolean;shake?:Animated.Value}){
- const reduced=usePrefersReducedMotion(),float=useRef(new Animated.Value(0)).current,glow=open?AMBER:'#5EEAD4';
+ const reduced=usePrefersReducedMotion(),float=useRef(new Animated.Value(0)).current,glow=open?AMBER:'#5EEAD4',box=Math.round(size*1.4);
  useEffect(()=>{if(reduced)return;const wave=(to:number)=>Animated.timing(float,{toValue:to,duration:1500,easing:Easing.inOut(Easing.sin),useNativeDriver:true});const loop=Animated.loop(Animated.sequence([wave(1),wave(0)]));loop.start();return()=>loop.stop();},[reduced,float]);
- const rotate=shake?shake.interpolate({inputRange:[-1,0,1],outputRange:['-7deg','0deg','7deg']}):'0deg';
- return <View style={{width:size*1.45,height:size*1.3,alignItems:'center',justifyContent:'center'}}>
-  <Svg pointerEvents="none" style={{position:'absolute'}} width={size*1.45} height={size*1.3}><Defs><RadialGradient id="giftGlow" cx="50%" cy="50%" r="50%"><Stop offset="0" stopColor={glow} stopOpacity={open?.6:.34}/><Stop offset="1" stopColor={glow} stopOpacity="0"/></RadialGradient></Defs><Ellipse cx="50%" cy="50%" rx="50%" ry="50%" fill="url(#giftGlow)"/></Svg>
-  <Animated.Image source={open?RUN_GIFT_OPEN:RUN_GIFT} accessibilityIgnoresInvertColors resizeMode="contain" style={{width:size,height:size,transform:[{translateY:float.interpolate({inputRange:[0,1],outputRange:[0,-10]})},{rotate}]}}/>
+ const rotate=shake?shake.interpolate({inputRange:[-1,0,1],outputRange:['-6deg','0deg','6deg']}):'0deg';
+ // A square stage: the glow is a sibling behind the picture, the picture keeps its own square and is never
+ // rotated itself (a rotated image gets clipped on Android) — the wrapper view shakes instead.
+ return <View style={{width:box,height:box,alignItems:'center',justifyContent:'center',overflow:'visible'}}>
+  <Svg pointerEvents="none" style={{position:'absolute',left:0,top:0}} width={box} height={box}><Defs><RadialGradient id={open?'giftGlowOpen':'giftGlow'} cx="50%" cy="50%" r="50%"><Stop offset="0" stopColor={glow} stopOpacity={open?.55:.34}/><Stop offset="1" stopColor={glow} stopOpacity="0"/></RadialGradient></Defs><Ellipse cx="50%" cy="50%" rx="50%" ry="50%" fill={`url(#${open?'giftGlowOpen':'giftGlow'})`}/></Svg>
+  <Animated.View style={{width:size,height:size,overflow:'visible',transform:[{translateY:float.interpolate({inputRange:[0,1],outputRange:[0,-10]})},{rotate}]}}>
+   <Animated.Image source={open?RUN_GIFT_OPEN:RUN_GIFT} accessibilityIgnoresInvertColors resizeMode="contain" style={{width:size,height:size,backgroundColor:'transparent'}}/>
+  </Animated.View>
  </View>;
 }
 
@@ -89,8 +93,8 @@ export function PulseGift({visible,signal,onClose}:{visible:boolean;signal:GiftS
     <Copy bold size={12} style={{color:MINT,letterSpacing:1.5}}>{claim?tx('შენი ახალი აღმოჩენა','YOUR NEW FIND'):tx('MEDIRUN · აღმოჩენა','MEDIRUN · A FIND')}</Copy>
     <Pressable accessibilityRole="button" accessibilityLabel={tx('დახურვა','Close')} hitSlop={8} onPress={onClose} style={{width:40,height:40,borderRadius:14,backgroundColor:'rgba(255,255,255,0.10)',alignItems:'center',justifyContent:'center'}}><X size={18} color={WHITE}/></Pressable>
    </View>
-   <View style={{flex:1,alignItems:'center',justifyContent:'center',paddingHorizontal:24,gap:6}}>
-    <View style={{alignItems:'center',justifyContent:'center'}}><GiftArtwork size={claim?180:220} open={Boolean(claim)} shake={shake}/><CoinBurst play={Boolean(claim)}/></View>
+   <ScrollView style={{flex:1}} contentContainerStyle={{flexGrow:1,alignItems:'center',justifyContent:'center',paddingHorizontal:24,paddingVertical:12,gap:6}} showsVerticalScrollIndicator={false} bounces={false}>
+    <View style={{alignItems:'center',justifyContent:'center',overflow:'visible'}}><GiftArtwork size={claim?170:210} open={Boolean(claim)} shake={shake}/><CoinBurst play={Boolean(claim)}/></View>
     {claim?<Animated.View style={{alignItems:'center',gap:6,opacity:reveal,transform:[{translateY:reveal.interpolate({inputRange:[0,1],outputRange:[24,0]})}]}}>
      {physical?<Copy bold size={28} style={{color:WHITE,textAlign:'center'}}>{claim.reward.title}</Copy>:<><CountUp to={paid}/><Copy bold size={16} style={{color:MINT,marginTop:-6}}>Medi Coins</Copy></>}
      {rank?<View style={{marginTop:10,paddingHorizontal:14,paddingVertical:8,borderRadius:16,backgroundColor:rank===1?'rgba(252,211,77,0.18)':'rgba(255,255,255,0.10)'}}><Copy bold size={13} style={{color:rank===1?AMBER:WHITE,textAlign:'center'}}>{rank===1?tx('🏆 პირველი აღმომჩენი — სრული თანხა','🏆 First finder — the full amount'):tx(`მე-${rank} გამხსნელი${claim.reward.base?` · პირველმა ${num(claim.reward.base)} აიღო`:''}`,`Opener #${rank}${claim.reward.base?` · the first got ${num(claim.reward.base)}`:''}`)}</Copy></View>:null}
@@ -102,7 +106,7 @@ export function PulseGift({visible,signal,onClose}:{visible:boolean;signal:GiftS
      <Copy size={14} style={{color:'#CCFBF1',textAlign:'center'}}>{inRange?tx('პულსმა აქ მოგიყვანა — ყუთი შენს წინაა.','The pulse led you here — the box is right in front of you.'):tx('ყუთის დიაპაზონს გასცდი. მიუახლოვდი 20 მეტრზე და გახსნა ისევ გაჩნდება.','You’ve stepped out of the box’s range. Get within 20 metres and the opening comes back.')}</Copy>
      {coinsNow?<View style={{marginTop:8,alignItems:'center',paddingHorizontal:18,paddingVertical:12,borderRadius:20,backgroundColor:'rgba(255,255,255,0.10)',gap:2}}><Copy bold size={24} style={{color:AMBER,fontVariant:['tabular-nums']}}>{num(coinsNow)} Medi Coins</Copy><Copy size={12} style={{color:'#CCFBF1',textAlign:'center'}}>{rankLine(gift||{})}</Copy></View>:gift?.description?<Copy size={12} style={{color:'#CCFBF1',textAlign:'center'}}>{gift.description}</Copy>:null}
     </View>}
-   </View>
+   </ScrollView>
    <View style={{paddingHorizontal:20,gap:10}}>
     {error?<View style={{padding:12,borderRadius:16,backgroundColor:'rgba(248,113,113,0.16)'}}><Copy size={13} style={{color:'#FECACA',textAlign:'center'}}>{error}</Copy></View>:null}
     {claim?<Action label={tx('ჩემია!','It’s mine!')} onPress={onClose}/>

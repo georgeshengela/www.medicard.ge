@@ -161,7 +161,8 @@ export function walletRows(rows,lang='ka'){
  });
 }
 export async function walletView(userId,{db=prisma,campaign,now=Date.now(),lang='ka'}={}){
- const since=tbilisiMidnight(campaign.start),until=new Date(+tbilisiMidnight(campaign.end)+DAY);
+ // „ამ სეზონზე“: the campaign window — before it starts (test boxes, manual drops) everything so far counts.
+ const start=tbilisiMidnight(campaign.start),since=now<+start?new Date(0):start,until=new Date(+tbilisiMidnight(campaign.end)+DAY);
  const [profile,ledger,season,claims]=await Promise.all([
   db.userQuestProfile.findUnique({where:{userId},select:{cachedCoinBalance:true}}).catch(()=>null),
   db.$queryRaw`SELECT l."id", l."amount", l."createdAt", l."sourceId", l."metadata", r."meta" AS "ruleMeta" FROM "RewardLedger" l LEFT JOIN "MedipulsiClaim" c ON l."sourceId" LIKE 'claim:%' AND c."id"=substring(l."sourceId" from 7) LEFT JOIN "MedipulsiGiftRule" r ON r."giftId"=c."giftId" WHERE l."userId"=${userId} AND l."sourceType"=${COIN_SOURCE} AND l."currency"='COIN' ORDER BY l."createdAt" DESC LIMIT ${ROW_LIMIT}`.catch(()=>[]),

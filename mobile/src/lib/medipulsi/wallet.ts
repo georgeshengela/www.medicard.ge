@@ -1,8 +1,8 @@
-import {useEffect} from 'react';
+import {useEffect,useState} from 'react';
 import {useAccountQuery} from '@/hooks/useAccountQuery';
 import {FRESH} from '@/lib/queryClient';
 import {pulseApi} from '@/lib/medipulsi/client';
-import {subscribeMediCoinBalance} from '@/lib/quest/cache';
+import {getMediCoinBalanceHint,subscribeMediCoinBalance} from '@/lib/quest/cache';
 
 /** `GET /api/medipulsi/wallet` — server `src/lib/medipulsi/economy.js` walletView. Parks and dates, never a coordinate. */
 export type WalletRow={
@@ -24,10 +24,15 @@ export type RunWalletData={
 
 export const RUN_WALLET_KEY=['medirun','wallet'] as const;
 
-/** Balance + MEDIRUN history for the hub; re-read when any screen publishes a new coin balance (a box just opened). */
+/**
+ * Balance + MEDIRUN history for the hub. LIVE: re-read on every focus (the person comes back from a walk with a
+ * box just opened) and the moment any screen publishes a new coin balance; the published balance is also returned
+ * so the number on screen moves before the server answers.
+ */
 export function useRunWallet(){
- const query=useAccountQuery<RunWalletData>({key:[...RUN_WALLET_KEY],fetch:()=>pulseApi<RunWalletData>('/wallet'),staleTime:FRESH.SHORT,retry:(count,error)=>(error as {status?:number}|null)?.status!==404&&count<1});
+ const query=useAccountQuery<RunWalletData>({key:[...RUN_WALLET_KEY],fetch:()=>pulseApi<RunWalletData>('/wallet'),staleTime:FRESH.LIVE,retry:(count,error)=>(error as {status?:number}|null)?.status!==404&&count<1});
  const {refetch}=query;
- useEffect(()=>subscribeMediCoinBalance(()=>{void refetch();}),[refetch]);
- return query;
+ const [liveBalance,setLiveBalance]=useState<number|null>(()=>getMediCoinBalanceHint());
+ useEffect(()=>subscribeMediCoinBalance(value=>{setLiveBalance(value);void refetch();}),[refetch]);
+ return {...query,liveBalance};
 }
