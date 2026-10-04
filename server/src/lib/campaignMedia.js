@@ -43,6 +43,18 @@ export const PRIVATE_CAMPAIGNS = [
       { file: 'pa4-partner', name: 'A4 ფურცელი პარტნიორებისთვის', spec: '210×297 მმ, ოფისის პრინტერისთვის' },
     ],
   },
+  // Q4 social calendar (brand/social-q4): module posters + MEDIRUN economy-2 posts. Images only — #/social shows them.
+  {
+    id: 'medicard-q4-2026',
+    slug: 'q4-2026',
+    brand: 'medicard',
+    name: 'MEDICARD · ოქტომბერი–დეკემბერი',
+    start: '2026-10-05',
+    end: '2026-12-31',
+    rulesUrl: 'https://medicard.ge/medirun#rules',
+    plan: null,
+    prints: [],
+  },
 ];
 const BY_SLUG = new Map(PRIVATE_CAMPAIGNS.map((c) => [c.slug, c]));
 
