@@ -827,44 +827,831 @@ window.BRANDBOOK = {
  },
  "social": [
   {
-   "src": "../facebook-cover.png",
-   "name": "facebook cover"
+   "id": "glow-feed",
+   "title": "გაანათე თბილისი · feed",
+   "internal": true,
+   "items": [
+    {
+     "src": "../medirun/glow-campaign/out/feed/f00-teaser.jpg",
+     "name": "f00 teaser"
+    },
+    {
+     "src": "../medirun/glow-campaign/out/feed/f01-key.jpg",
+     "name": "f01 key"
+    },
+    {
+     "src": "../medirun/glow-campaign/out/feed/f02-how.jpg",
+     "name": "f02 how"
+    },
+    {
+     "src": "../medirun/glow-campaign/out/feed/f03-week.jpg",
+     "name": "f03 week"
+    },
+    {
+     "src": "../medirun/glow-campaign/out/feed/f04-levels.jpg",
+     "name": "f04 levels"
+    },
+    {
+     "src": "../medirun/glow-campaign/out/feed/f05-iphone-1.jpg",
+     "name": "f05 iphone 1"
+    },
+    {
+     "src": "../medirun/glow-campaign/out/feed/f05-iphone-22.jpg",
+     "name": "f05 iphone 22"
+    },
+    {
+     "src": "../medirun/glow-campaign/out/feed/f05-iphone-52.jpg",
+     "name": "f05 iphone 52"
+    },
+    {
+     "src": "../medirun/glow-campaign/out/feed/f05-iphone-8.jpg",
+     "name": "f05 iphone 8"
+    },
+    {
+     "src": "../medirun/glow-campaign/out/feed/f05-iphone.jpg",
+     "name": "f05 iphone"
+    },
+    {
+     "src": "../medirun/glow-campaign/out/feed/f06-week1.jpg",
+     "name": "f06 week1"
+    },
+    {
+     "src": "../medirun/glow-campaign/out/feed/f07-week2.jpg",
+     "name": "f07 week2"
+    },
+    {
+     "src": "../medirun/glow-campaign/out/feed/f08-week3.jpg",
+     "name": "f08 week3"
+    },
+    {
+     "src": "../medirun/glow-campaign/out/feed/f09-week4.jpg",
+     "name": "f09 week4"
+    },
+    {
+     "src": "../medirun/glow-campaign/out/feed/f10-november.jpg",
+     "name": "f10 november"
+    },
+    {
+     "src": "../medirun/glow-campaign/out/feed/f11-december.jpg",
+     "name": "f11 december"
+    },
+    {
+     "src": "../medirun/glow-campaign/out/feed/f12-partner.jpg",
+     "name": "f12 partner"
+    },
+    {
+     "src": "../medirun/glow-campaign/out/feed/f13-safety.jpg",
+     "name": "f13 safety"
+    },
+    {
+     "src": "../medirun/glow-campaign/out/feed/f14-saturday-01.jpg",
+     "name": "f14 saturday 01"
+    },
+    {
+     "src": "../medirun/glow-campaign/out/feed/f14-saturday-02.jpg",
+     "name": "f14 saturday 02"
+    },
+    {
+     "src": "../medirun/glow-campaign/out/feed/f14-saturday-03.jpg",
+     "name": "f14 saturday 03"
+    },
+    {
+     "src": "../medirun/glow-campaign/out/feed/f14-saturday-04.jpg",
+     "name": "f14 saturday 04"
+    },
+    {
+     "src": "../medirun/glow-campaign/out/feed/f14-saturday-05.jpg",
+     "name": "f14 saturday 05"
+    },
+    {
+     "src": "../medirun/glow-campaign/out/feed/f14-saturday-06.jpg",
+     "name": "f14 saturday 06"
+    },
+    {
+     "src": "../medirun/glow-campaign/out/feed/f14-saturday-07.jpg",
+     "name": "f14 saturday 07"
+    },
+    {
+     "src": "../medirun/glow-campaign/out/feed/f14-saturday-08.jpg",
+     "name": "f14 saturday 08"
+    },
+    {
+     "src": "../medirun/glow-campaign/out/feed/f14-saturday-09.jpg",
+     "name": "f14 saturday 09"
+    },
+    {
+     "src": "../medirun/glow-campaign/out/feed/f14-saturday-10.jpg",
+     "name": "f14 saturday 10"
+    },
+    {
+     "src": "../medirun/glow-campaign/out/feed/f14-saturday-11.jpg",
+     "name": "f14 saturday 11"
+    },
+    {
+     "src": "../medirun/glow-campaign/out/feed/f14-saturday-12.jpg",
+     "name": "f14 saturday 12"
+    }
+   ]
   },
   {
-   "src": "../facebook-profile-circle.png",
-   "name": "facebook profile circle"
+   "id": "glow-story",
+   "title": "გაანათე თბილისი · stories",
+   "internal": true,
+   "items": [
+    {
+     "src": "../medirun/glow-campaign/out/story/s01-teaser.jpg",
+     "name": "s01 teaser"
+    },
+    {
+     "src": "../medirun/glow-campaign/out/story/s02-teaser.jpg",
+     "name": "s02 teaser"
+    },
+    {
+     "src": "../medirun/glow-campaign/out/story/s03-launch.jpg",
+     "name": "s03 launch"
+    },
+    {
+     "src": "../medirun/glow-campaign/out/story/s04-weekday.jpg",
+     "name": "s04 weekday"
+    },
+    {
+     "src": "../medirun/glow-campaign/out/story/s05-weekend.jpg",
+     "name": "s05 weekend"
+    },
+    {
+     "src": "../medirun/glow-campaign/out/story/s06-hint-01-1.jpg",
+     "name": "s06 hint 01 1"
+    },
+    {
+     "src": "../medirun/glow-campaign/out/story/s06-hint-01-2.jpg",
+     "name": "s06 hint 01 2"
+    },
+    {
+     "src": "../medirun/glow-campaign/out/story/s06-hint-02-1.jpg",
+     "name": "s06 hint 02 1"
+    },
+    {
+     "src": "../medirun/glow-campaign/out/story/s06-hint-02-2.jpg",
+     "name": "s06 hint 02 2"
+    },
+    {
+     "src": "../medirun/glow-campaign/out/story/s06-hint-03-1.jpg",
+     "name": "s06 hint 03 1"
+    },
+    {
+     "src": "../medirun/glow-campaign/out/story/s06-hint-03-2.jpg",
+     "name": "s06 hint 03 2"
+    },
+    {
+     "src": "../medirun/glow-campaign/out/story/s06-hint-04-1.jpg",
+     "name": "s06 hint 04 1"
+    },
+    {
+     "src": "../medirun/glow-campaign/out/story/s06-hint-04-2.jpg",
+     "name": "s06 hint 04 2"
+    },
+    {
+     "src": "../medirun/glow-campaign/out/story/s06-hint-05-1.jpg",
+     "name": "s06 hint 05 1"
+    },
+    {
+     "src": "../medirun/glow-campaign/out/story/s06-hint-05-2.jpg",
+     "name": "s06 hint 05 2"
+    },
+    {
+     "src": "../medirun/glow-campaign/out/story/s06-hint-06-1.jpg",
+     "name": "s06 hint 06 1"
+    },
+    {
+     "src": "../medirun/glow-campaign/out/story/s06-hint-06-2.jpg",
+     "name": "s06 hint 06 2"
+    },
+    {
+     "src": "../medirun/glow-campaign/out/story/s06-hint-07-1.jpg",
+     "name": "s06 hint 07 1"
+    },
+    {
+     "src": "../medirun/glow-campaign/out/story/s06-hint-07-2.jpg",
+     "name": "s06 hint 07 2"
+    },
+    {
+     "src": "../medirun/glow-campaign/out/story/s06-hint-08-1.jpg",
+     "name": "s06 hint 08 1"
+    },
+    {
+     "src": "../medirun/glow-campaign/out/story/s06-hint-08-2.jpg",
+     "name": "s06 hint 08 2"
+    },
+    {
+     "src": "../medirun/glow-campaign/out/story/s06-hint-09-1.jpg",
+     "name": "s06 hint 09 1"
+    },
+    {
+     "src": "../medirun/glow-campaign/out/story/s06-hint-09-2.jpg",
+     "name": "s06 hint 09 2"
+    },
+    {
+     "src": "../medirun/glow-campaign/out/story/s06-hint-10-1.jpg",
+     "name": "s06 hint 10 1"
+    },
+    {
+     "src": "../medirun/glow-campaign/out/story/s06-hint-10-2.jpg",
+     "name": "s06 hint 10 2"
+    },
+    {
+     "src": "../medirun/glow-campaign/out/story/s06-hint-11-1.jpg",
+     "name": "s06 hint 11 1"
+    },
+    {
+     "src": "../medirun/glow-campaign/out/story/s06-hint-11-2.jpg",
+     "name": "s06 hint 11 2"
+    },
+    {
+     "src": "../medirun/glow-campaign/out/story/s06-hint-12-1.jpg",
+     "name": "s06 hint 12 1"
+    },
+    {
+     "src": "../medirun/glow-campaign/out/story/s06-hint-12-2.jpg",
+     "name": "s06 hint 12 2"
+    },
+    {
+     "src": "../medirun/glow-campaign/out/story/s07-tomorrow-01.jpg",
+     "name": "s07 tomorrow 01"
+    },
+    {
+     "src": "../medirun/glow-campaign/out/story/s07-tomorrow-02.jpg",
+     "name": "s07 tomorrow 02"
+    },
+    {
+     "src": "../medirun/glow-campaign/out/story/s07-tomorrow-03.jpg",
+     "name": "s07 tomorrow 03"
+    },
+    {
+     "src": "../medirun/glow-campaign/out/story/s07-tomorrow-04.jpg",
+     "name": "s07 tomorrow 04"
+    },
+    {
+     "src": "../medirun/glow-campaign/out/story/s07-tomorrow-05.jpg",
+     "name": "s07 tomorrow 05"
+    },
+    {
+     "src": "../medirun/glow-campaign/out/story/s07-tomorrow-06.jpg",
+     "name": "s07 tomorrow 06"
+    },
+    {
+     "src": "../medirun/glow-campaign/out/story/s07-tomorrow-07.jpg",
+     "name": "s07 tomorrow 07"
+    },
+    {
+     "src": "../medirun/glow-campaign/out/story/s07-tomorrow-08.jpg",
+     "name": "s07 tomorrow 08"
+    },
+    {
+     "src": "../medirun/glow-campaign/out/story/s07-tomorrow-09.jpg",
+     "name": "s07 tomorrow 09"
+    },
+    {
+     "src": "../medirun/glow-campaign/out/story/s07-tomorrow-10.jpg",
+     "name": "s07 tomorrow 10"
+    },
+    {
+     "src": "../medirun/glow-campaign/out/story/s07-tomorrow-11.jpg",
+     "name": "s07 tomorrow 11"
+    },
+    {
+     "src": "../medirun/glow-campaign/out/story/s07-tomorrow-12.jpg",
+     "name": "s07 tomorrow 12"
+    },
+    {
+     "src": "../medirun/glow-campaign/out/story/s08-levels.jpg",
+     "name": "s08 levels"
+    },
+    {
+     "src": "../medirun/glow-campaign/out/story/s09-iphone-soon.jpg",
+     "name": "s09 iphone soon"
+    },
+    {
+     "src": "../medirun/glow-campaign/out/story/s09-iphone-today.jpg",
+     "name": "s09 iphone today"
+    },
+    {
+     "src": "../medirun/glow-campaign/out/story/s09-iphone-tomorrow.jpg",
+     "name": "s09 iphone tomorrow"
+    },
+    {
+     "src": "../medirun/glow-campaign/out/story/s09-iphone.jpg",
+     "name": "s09 iphone"
+    },
+    {
+     "src": "../medirun/glow-campaign/out/story/s10-how.jpg",
+     "name": "s10 how"
+    }
+   ]
   },
   {
-   "src": "../facebook-profile.png",
-   "name": "facebook profile"
+   "id": "glow-print",
+   "title": "გაანათე თბილისი · ბეჭდვა",
+   "internal": true,
+   "items": [
+    {
+     "src": "../medirun/glow-campaign/out/print/pa3-key.png",
+     "name": "pa3 key"
+    },
+    {
+     "src": "../medirun/glow-campaign/out/print/pa3-teaser.png",
+     "name": "pa3 teaser"
+    },
+    {
+     "src": "../medirun/glow-campaign/out/print/pa4-partner.png",
+     "name": "pa4 partner"
+    },
+    {
+     "src": "../medirun/glow-campaign/out/print/pa5-tent.png",
+     "name": "pa5 tent"
+    },
+    {
+     "src": "../medirun/glow-campaign/out/print/pst-sticker.png",
+     "name": "pst sticker"
+    }
+   ]
   },
   {
-   "src": "../social-editorial-day.png",
-   "name": "social editorial day"
+   "id": "passport",
+   "title": "MEDIRUN · თბილისის პასპორტი",
+   "items": [
+    {
+     "src": "../medirun/posts/out/medirun-passport-01.jpg",
+     "name": "medirun passport 01"
+    },
+    {
+     "src": "../medirun/posts/out/medirun-passport-02.jpg",
+     "name": "medirun passport 02"
+    },
+    {
+     "src": "../medirun/posts/out/medirun-passport-03.jpg",
+     "name": "medirun passport 03"
+    },
+    {
+     "src": "../medirun/posts/out/medirun-passport-04.jpg",
+     "name": "medirun passport 04"
+    },
+    {
+     "src": "../medirun/posts/out/medirun-passport-05.jpg",
+     "name": "medirun passport 05"
+    },
+    {
+     "src": "../medirun/posts/out/medirun-passport-06.jpg",
+     "name": "medirun passport 06"
+    },
+    {
+     "src": "../medirun/posts/out/medirun-passport-07.jpg",
+     "name": "medirun passport 07"
+    },
+    {
+     "src": "../medirun/posts/out/medirun-passport-08.jpg",
+     "name": "medirun passport 08"
+    },
+    {
+     "src": "../medirun/posts/out/medirun-passport-09.jpg",
+     "name": "medirun passport 09"
+    },
+    {
+     "src": "../medirun/posts/out/medirun-passport-10.jpg",
+     "name": "medirun passport 10"
+    },
+    {
+     "src": "../medirun/posts/out/medirun-passport-11.jpg",
+     "name": "medirun passport 11"
+    },
+    {
+     "src": "../medirun/posts/out/medirun-passport-12.jpg",
+     "name": "medirun passport 12"
+    },
+    {
+     "src": "../medirun/posts/out/medirun-passport-13.jpg",
+     "name": "medirun passport 13"
+    },
+    {
+     "src": "../medirun/posts/out/medirun-passport-14.jpg",
+     "name": "medirun passport 14"
+    },
+    {
+     "src": "../medirun/posts/out/medirun-passport-15.jpg",
+     "name": "medirun passport 15"
+    },
+    {
+     "src": "../medirun/posts/out/medirun-passport-16.jpg",
+     "name": "medirun passport 16"
+    },
+    {
+     "src": "../medirun/posts/out/medirun-passport-17.jpg",
+     "name": "medirun passport 17"
+    },
+    {
+     "src": "../medirun/posts/out/medirun-passport-18.jpg",
+     "name": "medirun passport 18"
+    },
+    {
+     "src": "../medirun/posts/out/medirun-passport-19.jpg",
+     "name": "medirun passport 19"
+    },
+    {
+     "src": "../medirun/posts/out/medirun-passport-20.jpg",
+     "name": "medirun passport 20"
+    },
+    {
+     "src": "../medirun/posts/out/medirun-passport-21.jpg",
+     "name": "medirun passport 21"
+    },
+    {
+     "src": "../medirun/posts/out/medirun-passport-22.jpg",
+     "name": "medirun passport 22"
+    },
+    {
+     "src": "../medirun/posts/out/medirun-passport-23.jpg",
+     "name": "medirun passport 23"
+    },
+    {
+     "src": "../medirun/posts/out/medirun-passport-24.jpg",
+     "name": "medirun passport 24"
+    },
+    {
+     "src": "../medirun/posts/out/medirun-passport-ch-culture.jpg",
+     "name": "medirun passport ch culture"
+    },
+    {
+     "src": "../medirun/posts/out/medirun-passport-ch-green.jpg",
+     "name": "medirun passport ch green"
+    },
+    {
+     "src": "../medirun/posts/out/medirun-passport-ch-horizon.jpg",
+     "name": "medirun passport ch horizon"
+    },
+    {
+     "src": "../medirun/posts/out/medirun-passport-ch-oldtown.jpg",
+     "name": "medirun passport ch oldtown"
+    },
+    {
+     "src": "../medirun/posts/out/medirun-passport-ch-walk.jpg",
+     "name": "medirun passport ch walk"
+    }
+   ]
   },
   {
-   "src": "../social-editorial-lab.png",
-   "name": "social editorial lab"
+   "id": "launch-feed",
+   "title": "28 დღე · feed",
+   "items": [
+    {
+     "src": "../campaign/out/d02-feed.jpg",
+     "name": "d02 feed"
+    },
+    {
+     "src": "../campaign/out/d04-feed.jpg",
+     "name": "d04 feed"
+    },
+    {
+     "src": "../campaign/out/d05-feed.jpg",
+     "name": "d05 feed"
+    },
+    {
+     "src": "../campaign/out/d06-feed.jpg",
+     "name": "d06 feed"
+    },
+    {
+     "src": "../campaign/out/d07-feed.jpg",
+     "name": "d07 feed"
+    },
+    {
+     "src": "../campaign/out/d08-feed.jpg",
+     "name": "d08 feed"
+    },
+    {
+     "src": "../campaign/out/d09-feed.jpg",
+     "name": "d09 feed"
+    },
+    {
+     "src": "../campaign/out/d10-feed.jpg",
+     "name": "d10 feed"
+    },
+    {
+     "src": "../campaign/out/d11-feed.jpg",
+     "name": "d11 feed"
+    },
+    {
+     "src": "../campaign/out/d12-feed.jpg",
+     "name": "d12 feed"
+    },
+    {
+     "src": "../campaign/out/d13-feed.jpg",
+     "name": "d13 feed"
+    },
+    {
+     "src": "../campaign/out/d14-feed.jpg",
+     "name": "d14 feed"
+    },
+    {
+     "src": "../campaign/out/d15-feed.jpg",
+     "name": "d15 feed"
+    },
+    {
+     "src": "../campaign/out/d16-feed.jpg",
+     "name": "d16 feed"
+    },
+    {
+     "src": "../campaign/out/d17-feed.jpg",
+     "name": "d17 feed"
+    },
+    {
+     "src": "../campaign/out/d18-feed.jpg",
+     "name": "d18 feed"
+    },
+    {
+     "src": "../campaign/out/d19-feed.jpg",
+     "name": "d19 feed"
+    },
+    {
+     "src": "../campaign/out/d20-feed.jpg",
+     "name": "d20 feed"
+    },
+    {
+     "src": "../campaign/out/d21-feed.jpg",
+     "name": "d21 feed"
+    },
+    {
+     "src": "../campaign/out/d22-feed.jpg",
+     "name": "d22 feed"
+    },
+    {
+     "src": "../campaign/out/d23-feed.jpg",
+     "name": "d23 feed"
+    },
+    {
+     "src": "../campaign/out/d24-feed.jpg",
+     "name": "d24 feed"
+    },
+    {
+     "src": "../campaign/out/d25-feed.jpg",
+     "name": "d25 feed"
+    },
+    {
+     "src": "../campaign/out/d26-feed.jpg",
+     "name": "d26 feed"
+    },
+    {
+     "src": "../campaign/out/d27-feed.jpg",
+     "name": "d27 feed"
+    },
+    {
+     "src": "../campaign/out/d28-feed.jpg",
+     "name": "d28 feed"
+    }
+   ]
   },
   {
-   "src": "../social-editorial-manifesto.png",
-   "name": "social editorial manifesto"
+   "id": "launch-story",
+   "title": "28 დღე · stories",
+   "items": [
+    {
+     "src": "../campaign/out/d02-story.jpg",
+     "name": "d02 story"
+    },
+    {
+     "src": "../campaign/out/d03-story.jpg",
+     "name": "d03 story"
+    },
+    {
+     "src": "../campaign/out/d04-story.jpg",
+     "name": "d04 story"
+    },
+    {
+     "src": "../campaign/out/d05-story.jpg",
+     "name": "d05 story"
+    },
+    {
+     "src": "../campaign/out/d06-story.jpg",
+     "name": "d06 story"
+    },
+    {
+     "src": "../campaign/out/d07-story.jpg",
+     "name": "d07 story"
+    },
+    {
+     "src": "../campaign/out/d08-story.jpg",
+     "name": "d08 story"
+    },
+    {
+     "src": "../campaign/out/d09-story.jpg",
+     "name": "d09 story"
+    },
+    {
+     "src": "../campaign/out/d10-story.jpg",
+     "name": "d10 story"
+    },
+    {
+     "src": "../campaign/out/d11-story.jpg",
+     "name": "d11 story"
+    },
+    {
+     "src": "../campaign/out/d12-story.jpg",
+     "name": "d12 story"
+    },
+    {
+     "src": "../campaign/out/d13-story.jpg",
+     "name": "d13 story"
+    },
+    {
+     "src": "../campaign/out/d14-story.jpg",
+     "name": "d14 story"
+    },
+    {
+     "src": "../campaign/out/d15-story.jpg",
+     "name": "d15 story"
+    },
+    {
+     "src": "../campaign/out/d16-story.jpg",
+     "name": "d16 story"
+    },
+    {
+     "src": "../campaign/out/d17-story.jpg",
+     "name": "d17 story"
+    },
+    {
+     "src": "../campaign/out/d18-story.jpg",
+     "name": "d18 story"
+    },
+    {
+     "src": "../campaign/out/d19-story.jpg",
+     "name": "d19 story"
+    },
+    {
+     "src": "../campaign/out/d20-story.jpg",
+     "name": "d20 story"
+    },
+    {
+     "src": "../campaign/out/d21-story.jpg",
+     "name": "d21 story"
+    },
+    {
+     "src": "../campaign/out/d22-story.jpg",
+     "name": "d22 story"
+    },
+    {
+     "src": "../campaign/out/d23-story.jpg",
+     "name": "d23 story"
+    },
+    {
+     "src": "../campaign/out/d24-story.jpg",
+     "name": "d24 story"
+    },
+    {
+     "src": "../campaign/out/d25-story.jpg",
+     "name": "d25 story"
+    },
+    {
+     "src": "../campaign/out/d26-story.jpg",
+     "name": "d26 story"
+    },
+    {
+     "src": "../campaign/out/d27-story.jpg",
+     "name": "d27 story"
+    },
+    {
+     "src": "../campaign/out/d28-story.jpg",
+     "name": "d28 story"
+    }
+   ]
   },
   {
-   "src": "../social-hook-apps.png",
-   "name": "social hook apps"
+   "id": "launch-li",
+   "title": "28 დღე · LinkedIn",
+   "items": [
+    {
+     "src": "../campaign/out/d06-linkedin.jpg",
+     "name": "d06 linkedin"
+    },
+    {
+     "src": "../campaign/out/d08-linkedin.jpg",
+     "name": "d08 linkedin"
+    },
+    {
+     "src": "../campaign/out/d13-linkedin.jpg",
+     "name": "d13 linkedin"
+    },
+    {
+     "src": "../campaign/out/d15-linkedin.jpg",
+     "name": "d15 linkedin"
+    },
+    {
+     "src": "../campaign/out/d20-linkedin.jpg",
+     "name": "d20 linkedin"
+    },
+    {
+     "src": "../campaign/out/d22-linkedin.jpg",
+     "name": "d22 linkedin"
+    },
+    {
+     "src": "../campaign/out/d27-linkedin.jpg",
+     "name": "d27 linkedin"
+    }
+   ]
   },
   {
-   "src": "../social-hook-lab.png",
-   "name": "social hook lab"
+   "id": "launch",
+   "title": "App Store-ზე გამოსვლა",
+   "items": [
+    {
+     "src": "../launch/out/feed.jpg",
+     "name": "feed"
+    },
+    {
+     "src": "../launch/out/square.jpg",
+     "name": "square"
+    },
+    {
+     "src": "../launch/out/story.jpg",
+     "name": "story"
+    },
+    {
+     "src": "../launch/out/wide.jpg",
+     "name": "wide"
+    }
+   ]
   },
   {
-   "src": "../social-hook-medi.png",
-   "name": "social hook medi"
+   "id": "profile",
+   "title": "პროფილი და პირველი შაბლონები",
+   "items": [
+    {
+     "src": "../facebook-cover.png",
+     "name": "facebook cover"
+    },
+    {
+     "src": "../facebook-profile-circle.png",
+     "name": "facebook profile circle"
+    },
+    {
+     "src": "../facebook-profile.png",
+     "name": "facebook profile"
+    },
+    {
+     "src": "../social-editorial-day.png",
+     "name": "social editorial day"
+    },
+    {
+     "src": "../social-editorial-lab.png",
+     "name": "social editorial lab"
+    },
+    {
+     "src": "../social-editorial-manifesto.png",
+     "name": "social editorial manifesto"
+    },
+    {
+     "src": "../social-hook-apps.png",
+     "name": "social hook apps"
+    },
+    {
+     "src": "../social-hook-lab.png",
+     "name": "social hook lab"
+    },
+    {
+     "src": "../social-hook-medi.png",
+     "name": "social hook medi"
+    },
+    {
+     "src": "../social-hook-one.png",
+     "name": "social hook one"
+    }
+   ]
+  }
+ ],
+ "videos": [
+  {
+   "src": "../medirun/medirun-ad-45s-3d-upload.mp4",
+   "title": "MEDIRUN · 45 წმ · 3D",
+   "ratio": "16:9",
+   "poster": "posters/medirun-45-3d.jpg",
+   "mb": 42
   },
   {
-   "src": "../social-hook-one.png",
-   "name": "social hook one"
+   "src": "../ad/medicard-ad-35s-feed-4x5.mp4",
+   "title": "MEDICARD · 35 წმ",
+   "ratio": "4:5",
+   "poster": "posters/medicard-35.jpg",
+   "mb": 64
+  },
+  {
+   "src": "../reel/medicard-reel-30s-instagram-reels-9x16.mp4",
+   "title": "MEDICARD reel · 30 წმ",
+   "ratio": "9:16",
+   "poster": "posters/reel-30.jpg",
+   "mb": 39
+  },
+  {
+   "src": "../medirun/medirun-ad-45s-upload.mp4",
+   "title": "MEDIRUN · 45 წმ",
+   "ratio": "16:9",
+   "poster": "posters/medirun-45.jpg",
+   "mb": 39
   }
  ]
 };

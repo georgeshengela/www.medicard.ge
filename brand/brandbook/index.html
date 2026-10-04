@@ -264,10 +264,20 @@
   .measure { font-size: 12px; color: var(--muted); }
 
   /* ---------- social / files ---------- */
-  .social { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; }
-  .social button { border: 0; padding: 0; background: var(--surface); border-radius: 18px; overflow: hidden; cursor: zoom-in; text-align: left; font: 500 12px/1.3 'Noto Sans Georgian', sans-serif; color: var(--muted); }
-  .social img { width: 100%; aspect-ratio: 4 / 3; object-fit: cover; }
-  .social span { display: block; padding: 10px 12px 12px; }
+  .style-card { background: var(--surface); border-radius: 22px; overflow: hidden; display: flex; flex-direction: column; }
+  .style-card img { width: 100%; aspect-ratio: 4 / 5; object-fit: cover; }
+  .style-body { padding: 16px 18px 18px; }
+  .style-body h4 { font: 800 19px/1.3 'FiraGO', 'Noto Sans Georgian', sans-serif; color: var(--ink); margin: 4px 0 8px; }
+  .style-body p { margin: 0 0 12px; font-size: 13.5px; line-height: 1.55; }
+  .kicker { font-size: 12.5px; color: var(--teal); font-weight: 600; }
+  .internal { font-style: normal; font-size: 11px; font-weight: 700; color: #B45309; background: #FEF3C7; padding: 2px 8px; border-radius: 999px; margin-left: 6px; }
+  .gal.posts { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
+  .gal.posts img { aspect-ratio: auto; height: 210px; object-fit: contain; }
+  .videos { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 12px; align-items: start; }
+  .videos figure { margin: 0; background: var(--surface); border-radius: 18px; overflow: hidden; }
+  .videos video { width: 100%; display: block; background: #030712; max-height: 420px; }
+  .videos figcaption { padding: 10px 12px 12px; font-size: 13px; color: var(--ink); font-weight: 600; }
+  .videos figcaption span { display: block; color: var(--muted); font-weight: 400; font-size: 12px; }
   .files { width: 100%; border-collapse: collapse; font-size: 14px; }
   .files td { padding: 10px; border-top: 1px solid var(--line); vertical-align: top; }
   .files td:first-child { color: var(--ink); font-weight: 600; width: 34%; }
@@ -582,8 +592,68 @@
     <!-- 10 SOCIAL -->
     <section class="ch" id="social">
       <div class="ch-head"><span class="ch-num">10</span><h2>სოციალური</h2></div>
-      <p class="lede">Facebook-ის ქავერი და პროფილი, პოსტების შაბლონები. ყოველ კამპანიაში პირველი MEDIRUN-ია. „გაანათე თბილისის“ პოსტერები მხოლოდ ადმინშია (#/campaigns) და აქ არ დევს.</p>
-      <div class="social" id="socialGrid"></div>
+      <p class="lede">ოქტომბრიდან სამი სერია გავიდა Facebook-ზე, Instagram-სა და LinkedIn-ზე — <b style="color:var(--ink)" id="socialCount"></b>. სამივეს ერთი ხმა აქვს: მოკლე სათაური FiraGO-თი, ერთი დიდი სურათი, ქვემოთ ყოველთვის „App Store · medicard.ge“.</p>
+
+      <h3>სამი სტილი</h3>
+      <div class="grid g3">
+        <article class="style-card">
+          <img src="../../brand/campaign/out/d06-feed.jpg" alt="28 დღის კამპანიის პოსტი" loading="lazy">
+          <div class="style-body">
+            <span class="kicker">1–28 ოქტომბერი · 28 დღე</span>
+            <h4>ყოველდღიური ჯანმრთელობა</h4>
+            <p>ღრმა ფირუზისფერი ან ღია პიტნისფერი ფონი, ზემოთ ლოგო. ქართველი ადამიანები თბილისში ან აპის ნამდვილი ეკრანი ტელეფონში, ქვემოთ მუქი გრადიენტი სათაურისთვის.</p>
+            <div class="hexes"><button type="button" data-hex="#0F766E"><i style="background:#0F766E"></i>#0F766E</button><button type="button" data-hex="#042F2E"><i style="background:#042F2E"></i>#042F2E</button><button type="button" data-hex="#99F6E4"><i style="background:#99F6E4"></i>#99F6E4</button><button type="button" data-hex="#E8F5F2"><i style="background:#E8F5F2"></i>#E8F5F2</button></div>
+          </div>
+        </article>
+        <article class="style-card">
+          <img src="../../brand/medirun/posts/out/medirun-passport-01.jpg" alt="MEDIRUN თბილისის პასპორტი" loading="lazy">
+          <div class="style-body">
+            <span class="kicker">MEDIRUN · 24 შტამპი</span>
+            <h4>თბილისის პასპორტი</h4>
+            <p>ღამის ლურჯი, ზემოთ MEDIRUN wordmark და აბრა. ყოველ პარკს თავისი იზომეტრიული 3D დიორამა და ოქროს შტამპი „N/24“ აქვს — სერია, რომელსაც აგროვებ.</p>
+            <div class="hexes"><button type="button" data-hex="#071427"><i style="background:#071427"></i>#071427</button><button type="button" data-hex="#030712"><i style="background:#030712"></i>#030712</button><button type="button" data-hex="#F59E0B"><i style="background:#F59E0B"></i>#F59E0B</button><button type="button" data-hex="#14B8A6"><i style="background:#14B8A6"></i>#14B8A6</button></div>
+          </div>
+        </article>
+        <article class="style-card">
+          <img src="../../brand/medirun/glow-campaign/out/feed/f01-key.jpg" alt="გაანათე თბილისი" loading="lazy">
+          <div class="style-body">
+            <span class="kicker">5 ოქტომბერი – 31 დეკემბერი <em class="internal">შიდა</em></span>
+            <h4>გაანათე თბილისი</h4>
+            <p>ღამის ქალაქი, რომელიც გზის კვალზე ფირუზისფრად ინთება. ოქროს საჩუქრები, ვარდისფერი 1%, სთორიებში დიდი დრო და ციფრები. მასალა მხოლოდ ადმინშია (#/campaigns).</p>
+            <div class="hexes"><button type="button" data-hex="#030712"><i style="background:#030712"></i>#030712</button><button type="button" data-hex="#2DD4BF"><i style="background:#2DD4BF"></i>#2DD4BF</button><button type="button" data-hex="#FCD34D"><i style="background:#FCD34D"></i>#FCD34D</button><button type="button" data-hex="#F43F5E"><i style="background:#F43F5E"></i>#F43F5E</button></div>
+          </div>
+        </article>
+      </div>
+
+      <h3>ყველა პოსტში</h3>
+      <div class="grid g2">
+        <div class="card"><ul class="rules">
+          <li>App Store-ის ბმული და medicard.ge — თავად ტექსტში; პოსტერზე „App Store · medicard.ge“</li>
+          <li>მიმართვა „შენ“; მხოლოდ ნამდვილი ფაქტები</li>
+          <li>ყოველ კამპანიაში პირველი MEDIRUN-ია</li>
+          <li>AI ფოტო Instagram-ზე მონიშნულია (isAiGenerated)</li>
+          <li>ქართული ტექსტი ყოველთვის გადაკითხული</li>
+        </ul></div>
+        <div class="card">
+          <table class="files">
+            <tr><td>ფორმატები</td><td>feed 4:5 · story 9:16 · LinkedIn 1.91:1 · reel 9:16</td></tr>
+            <tr><td>საათები (თბილისი)</td><td>LinkedIn 09:30 · feed 10:00 (შაბ–კვ 11:00) · MEDIRUN 15:00 · story 19:30</td></tr>
+            <tr><td>დაგეგმვა</td><td>Metricool; ზუსტი ისტორია ადმინში — #/social</td></tr>
+          </table>
+          <ul class="rules no" style="margin-top:12px">
+            <li>მხოლოდ „ბმული ბიოში“</li>
+            <li>გამოგონილი ციფრები ან მიმოხილვები</li>
+            <li>„გაანათე თბილისის“ მასალა საჯარო ბმულზე</li>
+          </ul>
+        </div>
+      </div>
+
+      <h3>ყველა პოსტი</h3>
+      <div class="gal-tabs" id="socTabs" role="group" aria-label="სოციალური სერიები"></div>
+      <div class="gal posts" id="socGal"></div>
+
+      <h3>რეკლამები</h3>
+      <div class="videos" id="videos"></div>
     </section>
 
     <!-- 11 FILES -->
@@ -599,6 +669,7 @@
           <tr><td>შრიფტები</td><td><code>mobile/assets/fonts/</code> (Archy, Exo 2), <code>server/public/fonts/</code> (FiraGO, Davit, Exo 2)</td></tr>
           <tr><td>ციკლის ვიჯეტი</td><td><code>src/lib/cycleWidgetLayout.tsx</code>, არტი <code>mobile/assets/widget/cycle/</code> ← <code>brand/cycle/widget/render-art.cjs</code></td></tr>
           <tr><td>ციკლის ხატულები</td><td><code>brand/cycle/icons/build.mjs</code> → <code>src/constants/cycleIconSvg.ts</code></td></tr>
+          <tr><td>სოციალური</td><td><code>brand/campaign/</code> (plan.py, poster.html), <code>brand/medirun/posts/</code>, <code>brand/medirun/glow-campaign/</code> (შიდა), <code>brand/launch/</code>; ვიდეო <code>brand/ad/</code>, <code>brand/reel/</code>, <code>brand/medirun/</code></td></tr>
           <tr><td>3D ილუსტრაციები</td><td><code>mobile/assets/art/</code>, <code>mobile/assets/run/</code>, <code>server/public/rewards/</code>; გენერაცია <code>brand/medirun/*_batch.py</code></td></tr>
         </table>
       </div>
@@ -763,7 +834,18 @@
   renderGal();
 
   /* social */
-  $('#socialGrid').innerHTML = B.social.map((it) => `<button type="button" data-src="${it.src}" data-cap="${it.name}"><img src="${it.src}" alt="${it.name}" loading="lazy"><span>${it.name}</span></button>`).join('');
+  const soc = B.social || [];
+  const socTotal = soc.reduce((n, g) => n + g.items.length, 0);
+  $('#socialCount').textContent = `${socTotal} გამოსახულება და ${(B.videos || []).length} ვიდეო`;
+  let socActive = soc[0] && soc[0].id;
+  const renderSoc = () => {
+    $('#socTabs').innerHTML = soc.map((g) => `<button type="button" data-s="${g.id}" aria-pressed="${g.id === socActive}">${g.title} <span style="opacity:.6">${g.items.length}</span>${g.internal ? ' <span class="internal">შიდა</span>' : ''}</button>`).join('');
+    const g = soc.find((x) => x.id === socActive);
+    $('#socGal').innerHTML = g ? g.items.map((it) => `<button type="button" data-src="${it.src}" data-cap="${g.title} · ${it.name}"><img src="${it.src}" alt="${it.name}" loading="lazy">${it.name}</button>`).join('') : '';
+  };
+  $('#socTabs').addEventListener('click', (e) => { const b = e.target.closest('button[data-s]'); if (!b) return; socActive = b.dataset.s; renderSoc(); });
+  renderSoc();
+  $('#videos').innerHTML = (B.videos || []).map((v) => `<figure><video controls preload="none" playsinline ${v.poster ? `poster="${v.poster}"` : ''} src="${v.src}"></video><figcaption>${v.title}<span>${v.ratio} · ${v.mb} MB</span></figcaption></figure>`).join('');
 
   /* lightbox + copy delegation */
   const lb = $('#lightbox');
