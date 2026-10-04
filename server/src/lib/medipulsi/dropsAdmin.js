@@ -12,6 +12,7 @@ import {isFeatureEnabled,setFeatureFlag} from '../featureFlags.js';
 import {listCities,citySpots,addCity,setCityEnabled,requeueCity,harvestCity,planCityDay,cityDates,ensureCityTable,cityRulesOf,boxesPerWave} from './cities.js';
 import {CITY_HELPERS,dayKind} from './autopilot.js';
 import {localDate} from './citySpotsMath.js';
+import {tileOf} from './territoryMath.js';
 
 const HOUR=3600_000,DAY=24*HOUR,OFFSET='+04:00';
 const bad=(status,message,code='DROPS_ERROR')=>{throw Object.assign(new Error(message),{status,code});};
@@ -219,7 +220,15 @@ const coinsCopy=(coins,minPercent)=>({
 
 /** A box the admin places by hand: a known spot (or a point in Tbilisi), coins, stock, start and length. */
 export async function manualDrop(input,{adminId,db=prisma,now=Date.now()}){
- const campaign=await getCampaign(db,now),{spots,golden}=loadSpots();
+ const campaign=await getCampaign(db,now);
+ // Tbilisi (curated spots, districts) or any other city with harvested spots (districts = its parks).
+ let cityMeta={},spots,golden={};
+ if(input.cityId&&input.cityId!==campaign.area.id){
+  const city=(await listCities({db})).find(c=>c.cityId===input.cityId);
+  if(!city)bad(404,'ქალაქი ვერ მოიძებნა.');
+  spots=await citySpots(input.cityId,{db});
+  cityMeta={cityId:city.cityId,city:city.nameKa||city.nameEn,cityEn:city.nameEn||city.nameKa};
+ }else({spots,golden}=loadSpots());
  let spot=null;
  if(input.spotId){
   const s=spots.find(x=>x.id===input.spotId)||(golden?.[input.spotId]?{id:input.spotId,...golden[input.spotId]}:null);
@@ -232,19 +241,30 @@ export async function manualDrop(input,{adminId,db=prisma,now=Date.now()}){
   spot=pool[Math.floor(Math.random()*pool.length)];
  }else if(Number.isFinite(input.latitude)&&Number.isFinite(input.longitude)){
   spot={id:'point',lat:input.latitude,lng:input.longitude,place:input.place||null,district:null};
+  // A point outside Tbilisi belongs to the city of its tile, so that city's players see it in „ყუთები ახლა“.
+  const [row]=await db.$queryRaw`SELECT "cityId" FROM "MedipulsiPlaceTile" WHERE "tile"=${tileOf([input.longitude,input.latitude])}`.catch(()=>[]);
+  if(row?.cityId&&row.cityId!==campaign.area.id){
+   const [a]=await db.$queryRaw`SELECT "nameKa","nameEn" FROM "MedipulsiArea" WHERE "id"=${row.cityId}`.catch(()=>[]);
+   cityMeta={cityId:row.cityId,city:a?.nameKa||a?.nameEn||null,cityEn:a?.nameEn||a?.nameKa||null};
+  }
+ }else if(cityMeta.cityId&&spots.length){
+  spot=spots[Math.floor(Math.random()*spots.length)];
  }else bad(400,'აირჩიე ადგილი, უბანი ან კოორდინატები.');
  const start=input.startsAt?new Date(input.startsAt):new Date(now),end=new Date(+start+input.hours*HOUR);
  if(+end<=now)bad(400,'ყუთის დრო უკვე გავიდა.');
  const t=new Date(+start+4*HOUR).toISOString(),date=t.slice(0,10);
  const id=`glow-${date}-x-${t.slice(11,13)}${t.slice(14,16)}-${randomUUID().slice(0,6)}`;
- const copy=coinsCopy(input.coins,input.minPercent||null);
- const gift={id,title:copy.title,description:copy.description,longitude:spot.lng,latitude:spot.lat,pulseRadius:input.pulseRadius,revealRadius:input.revealRadius,rewardKind:'DIGITAL',stock:input.stock,published:true,archived:false,startsAt:start,endsAt:end};
- const rule={giftId:id,campaign:campaign.id,coins:input.coins,minPercent:input.minPercent||null,areaId:input.minPercent?campaign.area.id:null,meta:{kind:'manual',spot:spot.id,place:spot.place||null,district:spot.district||null,titleEn:copy.titleEn,descriptionEn:copy.descriptionEn,note:input.note||null}};
+ // A physical prize (handed over after review) or a coin box.
+ const prize=input.prize||null;
+ if(!prize&&!(input.coins>0))bad(400,'მიუთითე ქოინი ან პრიზი.');
+ const copy=prize?{title:prize.title,description:prize.description||'',titleEn:prize.titleEn||prize.title,descriptionEn:prize.descriptionEn||prize.description||''}:coinsCopy(input.coins,input.minPercent||null);
+ const gift={id,title:copy.title,description:copy.description,longitude:spot.lng,latitude:spot.lat,pulseRadius:input.pulseRadius,revealRadius:input.revealRadius,rewardKind:prize?'PHYSICAL':'DIGITAL',stock:input.stock,published:true,archived:false,startsAt:start,endsAt:end};
+ const rule={giftId:id,campaign:campaign.id,coins:prize?0:input.coins,minPercent:input.minPercent||null,areaId:input.minPercent?campaign.area.id:null,meta:{kind:prize?'prize':'manual',spot:spot.id,place:spot.place||null,district:spot.district||null,...cityMeta,titleEn:copy.titleEn,descriptionEn:copy.descriptionEn,note:input.note||null}};
  await ensureGiftRuleTable(db);
  await db.$transaction(async tx=>{
   await tx.medipulsiGift.create({data:gift});
   await upsertGiftRule(tx,rule);
-  await audit(tx,adminId,'DROP_MANUAL',id,{coins:input.coins,stock:input.stock,startsAt:start,endsAt:end,spot:spot.id,place:spot.place||null,district:spot.district||null,minPercent:input.minPercent||null,note:input.note||null});
+  await audit(tx,adminId,'DROP_MANUAL',id,{prize:prize?.title||null,city:cityMeta.city||null,coins:prize?0:input.coins,stock:input.stock,startsAt:start,endsAt:end,spot:spot.id,place:spot.place||null,district:spot.district||null,minPercent:input.minPercent||null,note:input.note||null});
  });
  clearGiftRuleCache();
  return boxRow(await db.medipulsiGift.findUnique({where:{id}}),rule,now);
@@ -265,6 +285,15 @@ export async function boxAction(id,input,{adminId,db=prisma,now=Date.now()}){
   const copy=coinsCopy(input.coins,rule?.minPercent||null);
   await upsertGiftRule(db,{...(rule||{giftId:id,campaign:null,minPercent:null,areaId:null,meta:{kind:'admin'}}),coins:input.coins,meta:{...(rule?.meta||{kind:'admin'}),titleEn:copy.titleEn,descriptionEn:copy.descriptionEn}});
   Object.assign(data,{title:copy.title,description:copy.description});
+ }
+ else if(input.action==='text'){
+  if(g.rewardKind!=='PHYSICAL')bad(400,'ქოინების ყუთის ტექსტი თავისით იწერება — შეცვალე ქოინი.');
+  Object.assign(data,{title:input.title,description:input.description||''});
+  if(rule)await upsertGiftRule(db,{...rule,meta:{...rule.meta,titleEn:input.titleEn||input.title,descriptionEn:input.descriptionEn||input.description||''}});
+ }
+ else if(input.action==='place'){
+  if(g.allocated>0)bad(400,'უკვე გახსნილ ყუთს ადგილს ვერ შეუცვლი.');
+  Object.assign(data,{latitude:input.latitude,longitude:input.longitude});
  }
  else if(input.action==='time'){
   const start=new Date(input.startsAt),end=new Date(input.endsAt);

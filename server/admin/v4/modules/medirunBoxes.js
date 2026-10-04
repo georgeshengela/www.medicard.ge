@@ -209,7 +209,7 @@
           </div>` : ''}
         </header>
         <div class="s-card-body is-flush">${boxes.length ? `<div class="s-table-wrap"><table class="s-table mb-table">
-          <thead><tr><th>დრო</th><th>ადგილი</th><th>ტიპი</th><th class="num">ქოინი</th><th>გახსნა</th><th>სტატუსი</th><th aria-label="მოქმედებები"></th></tr></thead>
+          <thead><tr><th>დრო</th><th>ადგილი</th><th>ტიპი</th><th class="num">შიგთავსი</th><th>გახსნა</th><th>სტატუსი</th><th aria-label="მოქმედებები"></th></tr></thead>
           <tbody>${boxes.map(boxRowHtml).join('')}</tbody></table></div>`
           : `<div class="s-empty">${ico('box')}<strong>ამ დღეს ყუთი ჯერ არ არის</strong><span>${inCampaign ? (rule?.off ? 'დღე გამორთულია კალენდარში.' : 'ავტოპილოტი ყუთებს წინა დღეს ქმნის. „ნაკლულის შექმნა“ ახლავე შექმნის.') : 'თარიღი კამპანიის გარეთაა — ყუთი შეგიძლია ხელით დააგდო.'}</span></div>`}</div>
       </section>
@@ -223,32 +223,66 @@
     body.querySelector('[data-mb-cancel-day]')?.addEventListener('click', (e) => dayOp('cancel', e.currentTarget));
     body.querySelectorAll('[data-mb-box]').forEach((tr) => {
       const box = boxes.find((b) => b.id === tr.dataset.mbBox);
-      tr.querySelectorAll('[data-act]').forEach((btn) => btn.addEventListener('click', () => boxAct(box, btn.dataset.act, btn)));
+      tr.addEventListener('click', (e) => { if (!e.target.closest('a')) openBoxCard(box); });
+      tr.addEventListener('keydown', (e) => { if (e.key === 'Enter' && e.target === tr) { e.preventDefault(); openBoxCard(box); } });
     });
   }
 
+  const KIND_TONE = { manual: 'is-accent', prize: 'is-warn', grand: 'is-ok', saturday: 'is-info', lantern: 'is-accent' };
   function boxRowHtml(b) {
     const [label, tone] = STATUS[b.status] || [b.status, 'is-plain'];
     const pct = b.stock ? Math.round((b.allocated / b.stock) * 100) : 0;
     const map = `https://www.google.com/maps?q=${b.latitude},${b.longitude}`;
-    const can = { end: b.status === 'live' || b.status === 'empty', cancel: ['planned', 'live', 'empty', 'hidden'].includes(b.status), restore: b.status === 'canceled', edit: b.status !== 'canceled' && b.status !== 'ended' };
-    return `<tr data-mb-box="${esc(b.id)}">
-      <td data-label="დრო"><b>${esc(clock(b.startsAt))}–${esc(clock(b.endsAt))}</b>${ymdOf(b.endsAt) !== ymdOf(b.startsAt) ? `<small class="s-muted"> (${esc(dayLabel(ymdOf(b.endsAt)))})</small>` : ''}</td>
+    const prize = b.kind === 'grand' || b.rewardKind === 'PHYSICAL';
+    return `<tr class="is-click" tabindex="0" data-mb-box="${esc(b.id)}">
+      <td data-label="დრო"><span class="mb-time">${esc(clock(b.startsAt))}<i>–</i>${esc(clock(b.endsAt))}</span>${ymdOf(b.endsAt) !== ymdOf(b.startsAt) ? `<small class="s-muted mb-sub">${esc(dayLabel(ymdOf(b.endsAt)))}-მდე</small>` : ''}</td>
       <td data-label="ადგილი"><div class="mb-place"><b>${esc(b.place || 'კოორდინატი')}</b><span>${esc(b.city ? `${b.city}${b.district && b.district !== b.place ? ` · ${b.district}` : ''}` : (b.district || '—'))}</span></div></td>
-      <td data-label="ტიპი"><span class="s-badge is-plain">${esc(kindLabel(b.kind))}</span>${b.minPercent ? `<small class="s-muted"> ${esc(String(b.minPercent))}%-დან</small>` : ''}</td>
-      <td data-label="ქოინი" class="num"><b>${b.kind === 'grand' || b.rewardKind === 'PHYSICAL' ? 'პრიზი' : num(b.coins)}</b></td>
+      <td data-label="ტიპი"><span class="s-badge ${KIND_TONE[b.kind] || 'is-plain'}">${esc(kindLabel(b.kind))}</span>${b.minPercent ? `<small class="s-muted mb-sub">${esc(String(b.minPercent))}%-დან</small>` : ''}</td>
+      <td data-label="შიგთავსი" class="num"><b>${prize ? esc(b.title || 'პრიზი') : `${num(b.coins)}`}</b>${prize ? '' : '<small class="s-muted mb-sub">ქოინი</small>'}</td>
       <td data-label="გახსნა"><div class="mb-open"><div class="s-meter${pct >= 100 ? ' is-warn' : ''}" role="img" aria-label="${pct}%"><i style="width:${pct}%"></i></div><small>${num(b.allocated)} / ${num(b.stock)}</small></div></td>
       <td data-label="სტატუსი"><span class="s-badge ${tone}">${esc(label)}</span></td>
-      <td><div class="p4-actions is-end">
-        <a class="btn compact" href="${esc(map)}" target="_blank" rel="noopener" title="რუკაზე ნახვა" aria-label="რუკაზე ნახვა">${ico('pin')}</a>
-        ${can.edit && b.rewardKind === 'DIGITAL' ? '<button type="button" class="btn compact" data-act="coins">ქოინი</button>' : ''}
-        ${can.edit ? '<button type="button" class="btn compact" data-act="stock">მარაგი</button>' : ''}
-        ${can.edit ? '<button type="button" class="btn compact" data-act="time">დრო</button>' : ''}
-        ${can.end ? '<button type="button" class="btn compact" data-act="end">დასრულება</button>' : ''}
-        ${can.cancel ? '<button type="button" class="btn compact danger" data-act="cancel">გაუქმება</button>' : ''}
-        ${can.restore ? '<button type="button" class="btn compact" data-act="restore">აღდგენა</button>' : ''}
+      <td><div class="p4-actions is-end mb-row-actions">
+        <a class="btn compact mb-icon-btn" href="${esc(map)}" target="_blank" rel="noopener" title="რუკაზე ნახვა" aria-label="რუკაზე ნახვა">${ico('pin')}</a>
+        <button type="button" class="btn compact" data-act="open">მართვა</button>
       </div></td>
     </tr>`;
+  }
+
+  /** The box card: every fact and every action of one box in one place. */
+  function openBoxCard(box) {
+    const [label, tone] = STATUS[box.status] || [box.status, 'is-plain'];
+    const prize = box.kind === 'grand' || box.rewardKind === 'PHYSICAL';
+    const fact = (k, v) => `<div><dt>${esc(k)}</dt><dd>${v}</dd></div>`;
+    const can = { end: box.status === 'live' || box.status === 'empty', cancel: ['planned', 'live', 'empty', 'hidden'].includes(box.status), restore: box.status === 'canceled', edit: !['canceled', 'ended'].includes(box.status) };
+    const actions = [
+      can.edit && !prize ? ['coins', 'ქოინის შეცვლა', ''] : null,
+      can.edit && prize ? ['text', 'ტექსტის შეცვლა', ''] : null,
+      can.edit ? ['stock', 'მარაგის შეცვლა', ''] : null,
+      can.edit ? ['time', 'დროის შეცვლა', ''] : null,
+      can.edit && !box.allocated ? ['place', 'ადგილის შეცვლა', ''] : null,
+      can.end ? ['end', 'ახლავე დასრულება', ''] : null,
+      can.cancel ? ['cancel', 'გაუქმება', 'danger'] : null,
+      can.restore ? ['restore', 'აღდგენა', 'primary'] : null,
+    ].filter(Boolean);
+    const d = V().openDialog?.({
+      title: box.place || 'ყუთი', description: [box.city, box.district && box.district !== box.place ? box.district : null].filter(Boolean).join(' · ') || 'თბილისი', wide: true, watchDirty: false,
+      body: `<div class="mb-card">
+        <div class="mb-card-badges"><span class="s-badge ${tone}">${esc(label)}</span><span class="s-badge ${KIND_TONE[box.kind] || 'is-plain'}">${esc(kindLabel(box.kind))}</span>${box.minPercent ? `<span class="s-badge is-plain">ჩანს ${esc(String(box.minPercent))}%-დან</span>` : ''}</div>
+        <dl class="mb-facts">
+          ${fact('დრო', `${esc(dayLabel(ymdOf(box.startsAt)))}, ${esc(clock(box.startsAt))}–${esc(clock(box.endsAt))}`)}
+          ${fact(prize ? 'პრიზი' : 'ქოინი ერთ გახსნაზე', prize ? esc(box.title || 'პრიზი') : `<b>${num(box.coins)}</b> Medi Coins`)}
+          ${fact('გაიხსნა', `<b>${num(box.allocated)}</b> / ${num(box.stock)}`)}
+          ${fact('რადიუსი', `პულსი ${num(box.pulseRadius)} მ · გახსნა ${num(box.revealRadius)} მ`)}
+          ${fact('კოორდინატი', `<a href="https://www.google.com/maps?q=${box.latitude},${box.longitude}" target="_blank" rel="noopener">${esc(Number(box.latitude).toFixed(5))}, ${esc(Number(box.longitude).toFixed(5))} ↗</a>`)}
+          ${fact('ID', `<code class="mb-code">${esc(box.id)}</code>`)}
+        </dl>
+        ${actions.length ? `<div class="mb-card-actions">${actions.map(([k, l, t]) => `<button type="button" class="btn${t ? ` ${t}` : ''}" data-card-act="${k}">${esc(l)}</button>`).join('')}</div>` : '<p class="s-muted">დასრულებულ ყუთს ცვლილება აღარ სჭირდება.</p>'}
+      </div>`,
+      footer: '<button type="button" class="btn" data-no>დახურვა</button>',
+    });
+    const panel = doc.querySelector('#v3-dialog .v3-dialog-panel');
+    panel.querySelector('[data-no]').onclick = () => void d.close();
+    panel.querySelectorAll('[data-card-act]').forEach((btn) => btn.addEventListener('click', async () => { await d.close(); void boxAct(box, btn.dataset.cardAct, null); }));
   }
 
   async function reloadDay() {
@@ -293,12 +327,19 @@
     const fields = {
       coins: `<label class="s-field"><span>ქოინი ყუთში</span><input type="number" name="coins" min="1" max="10000" step="1" value="${box.coins}" required><small>ერთი გახსნა = ამდენი Medi Coins</small></label>`,
       stock: `<label class="s-field"><span>რამდენჯერ იხსნება</span><input type="number" name="stock" min="${box.allocated}" max="100000" step="1" value="${box.stock}" required><small>უკვე გაიხსნა ${num(box.allocated)}-ჯერ — ნაკლები ვერ იქნება</small></label>`,
+      text: `<label class="s-field"><span>სახელი (ქართ.)</span><input type="text" name="title" minlength="2" maxlength="100" value="${esc(box.title || '')}" required></label>
+        <label class="s-field"><span>აღწერა</span><textarea name="description" rows="3" maxlength="1000"></textarea></label>
+        <label class="s-field"><span>სახელი (ინგლ.)</span><input type="text" name="titleEn" maxlength="100"></label>`,
+      place: `<div class="s-form-grid">
+        <label class="s-field"><span>Latitude</span><input type="number" name="latitude" step="0.000001" min="-90" max="90" value="${box.latitude}" required></label>
+        <label class="s-field"><span>Longitude</span><input type="number" name="longitude" step="0.000001" min="-180" max="180" value="${box.longitude}" required></label></div>
+        <small class="s-muted">მხოლოდ საჯარო, უსაფრთხო საფეხმავლო ადგილი. გახსნილ ყუთს ადგილი აღარ ეცვლება.</small>`,
       time: `<div class="s-form-grid">
         <label class="s-field"><span>დაწყება (თბილისი)</span><input type="datetime-local" name="startsAt" value="${tb(box.startsAt).slice(0, 16)}" ${box.allocated ? 'disabled' : ''} required></label>
         <label class="s-field"><span>დასრულება (თბილისი)</span><input type="datetime-local" name="endsAt" value="${tb(box.endsAt).slice(0, 16)}" required></label></div>`,
     }[act];
     const d = V().openDialog?.({
-      title: { coins: 'ქოინების შეცვლა', stock: 'მარაგის შეცვლა', time: 'დროის შეცვლა' }[act],
+      title: { coins: 'ქოინების შეცვლა', stock: 'მარაგის შეცვლა', time: 'დროის შეცვლა', text: 'პრიზის ტექსტი', place: 'ადგილის შეცვლა' }[act],
       description: `${box.place || 'ყუთი'} · ${clock(box.startsAt)}–${clock(box.endsAt)}`,
       body: `<form id="mb-box-form" class="s-stack" novalidate>${fields}</form>`,
       footer: '<p class="s-form-msg" role="alert"></p><button type="button" class="btn" data-no>გაუქმება</button><button type="submit" class="btn primary" form="mb-box-form">შენახვა</button>',
@@ -309,6 +350,8 @@
       e.preventDefault();
       const f = new FormData(form);
       const body = act === 'coins' ? { action: 'coins', coins: Number(f.get('coins')) } : act === 'stock' ? { action: 'stock', stock: Number(f.get('stock')) }
+        : act === 'text' ? { action: 'text', title: String(f.get('title')), ...(f.get('description') ? { description: String(f.get('description')) } : {}), ...(f.get('titleEn') ? { titleEn: String(f.get('titleEn')) } : {}) }
+        : act === 'place' ? { action: 'place', latitude: Number(f.get('latitude')), longitude: Number(f.get('longitude')) }
         : { action: 'time', startsAt: box.allocated ? new Date(box.startsAt).toISOString() : `${f.get('startsAt')}:00+04:00`, endsAt: `${f.get('endsAt')}:00+04:00` };
       const submit = panel.querySelector('[type=submit]');
       submit.disabled = true;
@@ -324,14 +367,30 @@
 
   /* ─────────────── manual drop ─────────────── */
   async function openDropDialog() {
-    if (!st.spots) { try { st.spots = await api('/spots'); } catch (err) { toast(say(err, 'ადგილები ვერ ჩაიტვირთა.'), 'bad'); return; } }
+    let cityList = [];
+    try {
+      if (!st.spots) st.spots = await api('/spots');
+      cityList = (await api('/cities')).cities.filter((c) => c.status === 'ready' && c.enabled);
+    } catch (err) { toast(say(err, 'ადგილები ვერ ჩაიტვირთა.'), 'bad'); return; }
     const districts = [...new Set(st.spots.spots.map((s) => s.district).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'ka'));
     const wd = st.o.campaign.days.weekday;
     const startDefault = st.day === st.o.today ? '' : `${st.day}T12:00`;
     const d = V().openDialog?.({
       title: 'ყუთის დაგდება', wide: true,
       description: 'ხელით დაგდებული ყუთი წესებისგან დამოუკიდებელია: ავტოპილოტი მას არ შეცვლის და „ხელახლა აწყობა“ არ წაშლის.',
-      body: `<form id="mb-drop-form" class="s-stack" novalidate>
+      body: `<form id="mb-drop-form" class="s-stack mb-drop" novalidate>
+        <div class="mb-drop-row">
+          <div class="s-segment" role="tablist" aria-label="რა">
+            <button type="button" role="tab" data-what="coins" aria-selected="true">Medi Coins</button>
+            <button type="button" role="tab" data-what="prize" aria-selected="false">ფიზიკური პრიზი</button>
+          </div>
+          <label class="s-field mb-inline"><span class="sr-only">ქალაქი</span><select name="cityId" data-drop-city><option value="">თბილისი</option>${cityList.map((c) => `<option value="${esc(c.cityId)}">${esc(c.nameKa || c.nameEn)}${c.countryCode ? ` · ${esc(c.countryCode)}` : ''}</option>`).join('')}</select></label>
+        </div>
+        <div data-what-pane="prize" hidden class="s-form-grid">
+          <label class="s-field"><span>პრიზის სახელი</span><input type="text" name="prizeTitle" minlength="2" maxlength="100" placeholder="მაგ. Xiaomi Smart Band 10"></label>
+          <label class="s-field"><span>სახელი ინგლისურად</span><input type="text" name="prizeTitleEn" maxlength="100" placeholder="Xiaomi Smart Band 10"></label>
+          <label class="s-field mb-wide"><span>აღწერა</span><input type="text" name="prizeDescription" maxlength="1000" placeholder="ვინც პირველი გახსნის, ის იღებს. გადაცემა — შემოწმების შემდეგ."></label>
+        </div>
         <div class="s-segment" role="tablist" aria-label="სად">
           <button type="button" role="tab" data-where="district" aria-selected="true">სადმე უბანში</button>
           <button type="button" role="tab" data-where="spot" aria-selected="false">კონკრეტული ადგილი</button>
@@ -343,12 +402,12 @@
           ${districts.map((dist) => `<optgroup label="${esc(dist)}">${st.spots.spots.filter((s) => s.district === dist && !s.excluded).map((s) => `<option value="${esc(s.id)}">${esc(s.place)} · ${esc(s.id.split('-').pop())}</option>`).join('')}</optgroup>`).join('')}
         </select></label></div>
         <div data-where-pane="point" hidden class="s-form-grid">
-          <label class="s-field"><span>Latitude</span><input type="number" name="latitude" step="0.000001" min="41.55" max="41.9" placeholder="41.7098"></label>
-          <label class="s-field"><span>Longitude</span><input type="number" name="longitude" step="0.000001" min="44.6" max="45.1" placeholder="44.7509"></label>
+          <label class="s-field"><span>Latitude</span><input type="number" name="latitude" step="0.000001" min="-90" max="90" placeholder="41.7098"></label>
+          <label class="s-field"><span>Longitude</span><input type="number" name="longitude" step="0.000001" min="-180" max="180" placeholder="44.7509"></label>
           <label class="s-field"><span>ადგილის სახელი</span><input type="text" name="place" maxlength="80" placeholder="მაგ. ვაკის პარკი, შადრევანთან"></label>
         </div>
         <div class="s-form-grid">
-          <label class="s-field"><span>ქოინი ერთ გახსნაზე</span><input type="number" name="coins" min="1" max="10000" value="100" required></label>
+          <label class="s-field" data-coins-field><span>ქოინი ერთ გახსნაზე</span><input type="number" name="coins" min="1" max="10000" value="100"></label>
           <label class="s-field"><span>რამდენჯერ იხსნება</span><input type="number" name="stock" min="1" max="1000" value="5" required></label>
           <label class="s-field"><span>დაწყება (თბილისი)</span><input type="datetime-local" name="startsAt" value="${esc(startDefault)}"><small>ცარიელი = ახლავე</small></label>
           <label class="s-field"><span>ხანგრძლივობა, საათი</span><input type="number" name="hours" min="0.25" max="24" step="0.25" value="3" required></label>
@@ -361,7 +420,29 @@
       footer: '<p class="s-form-msg" role="alert"></p><button type="button" class="btn" data-no>გაუქმება</button><button type="submit" class="btn primary" form="mb-drop-form">დაგდება</button>',
     });
     const form = doc.getElementById('mb-drop-form'), panel = form.closest('.v3-dialog-panel');
-    let where = 'district';
+    let where = 'district', what = 'coins';
+    form.querySelectorAll('[data-what]').forEach((b) => b.addEventListener('click', () => {
+      what = b.dataset.what;
+      form.querySelectorAll('[data-what]').forEach((x) => x.setAttribute('aria-selected', String(x === b)));
+      form.querySelector('[data-what-pane="prize"]').hidden = what !== 'prize';
+      form.querySelector('[data-coins-field]').hidden = what === 'prize';
+      if (what === 'prize') form.querySelector('[name=stock]').value = '1';
+    }));
+    // Another city: its parks become the „უბნები“ and its spots the list.
+    form.querySelector('[data-drop-city]').addEventListener('change', async (e) => {
+      const id = e.target.value, dSel = form.querySelector('[name=district]'), sSel = form.querySelector('[name=spotId]');
+      if (!id) {
+        dSel.innerHTML = districts.map((x) => `<option>${esc(x)}</option>`).join('');
+        sSel.innerHTML = `<optgroup label="შაბათის პარკები">${st.spots.golden.map((g) => `<option value="${esc(g.key)}">${esc(g.place)}</option>`).join('')}</optgroup>${districts.map((dist) => `<optgroup label="${esc(dist)}">${st.spots.spots.filter((x) => x.district === dist && !x.excluded).map((x) => `<option value="${esc(x.id)}">${esc(x.place)} · ${esc(x.id.split('-').pop())}</option>`).join('')}</optgroup>`).join('')}`;
+        return;
+      }
+      try {
+        const { spots } = await api(`/cities/${id}/spots`);
+        const parks = [...new Set(spots.map((x) => x.district).filter(Boolean))].sort((a, b) => a.localeCompare(b));
+        dSel.innerHTML = parks.map((x) => `<option>${esc(x)}</option>`).join('');
+        sSel.innerHTML = spots.map((x) => `<option value="${esc(x.id)}">${esc(x.place || x.id)} · ${esc(x.id.split('-').pop())}</option>`).join('');
+      } catch (err) { toast(say(err, 'ქალაქის ადგილები ვერ ჩაიტვირთა.'), 'bad'); }
+    });
     form.querySelectorAll('[data-where]').forEach((b) => b.addEventListener('click', () => {
       where = b.dataset.where;
       form.querySelectorAll('[data-where]').forEach((x) => x.setAttribute('aria-selected', String(x === b)));
@@ -371,7 +452,12 @@
     form.onsubmit = async (e) => {
       e.preventDefault();
       const f = new FormData(form), n = (k) => (f.get(k) === '' || f.get(k) == null ? null : Number(f.get(k)));
-      const body = { coins: n('coins'), stock: n('stock'), hours: n('hours'), pulseRadius: n('pulseRadius'), revealRadius: n('revealRadius'), startsAt: f.get('startsAt') ? `${f.get('startsAt')}:00+04:00` : null, minPercent: n('minPercent') || null };
+      const body = { stock: n('stock'), hours: n('hours'), pulseRadius: n('pulseRadius'), revealRadius: n('revealRadius'), startsAt: f.get('startsAt') ? `${f.get('startsAt')}:00+04:00` : null, minPercent: n('minPercent') || null };
+      if (what === 'prize') {
+        if (String(f.get('prizeTitle') || '').trim().length < 2) { panel.querySelector('[role=alert]').textContent = 'ჩაწერე პრიზის სახელი.'; return; }
+        body.prize = { title: String(f.get('prizeTitle')).trim(), ...(f.get('prizeDescription') ? { description: String(f.get('prizeDescription')) } : {}), ...(f.get('prizeTitleEn') ? { titleEn: String(f.get('prizeTitleEn')) } : {}) };
+      } else body.coins = n('coins');
+      if (f.get('cityId')) body.cityId = String(f.get('cityId'));
       if (f.get('note')) body.note = String(f.get('note'));
       if (where === 'district') body.district = String(f.get('district'));
       else if (where === 'spot') body.spotId = String(f.get('spotId'));
@@ -405,7 +491,7 @@
       <button type="button" class="btn compact" data-add-coin="${path}">${ico('plus')} ვარიანტი</button></div>`;
   }
   function wavesTable(path, waves) {
-    return `<table class="s-table mb-mini"><thead><tr><th>დაწყება</th><th>საათი</th><th title="ყუთები მთელ ქალაქში, უბნების რიგით">ქალაქში</th><th title="დამატებითი ყუთები კვირის თემის ზონაში">თემაში</th><th>მხოლოდ განათებულ ბილიკზე</th><th></th></tr></thead><tbody>
+    return `<table class="s-table mb-mini"><thead><tr><th>დაწყება</th><th>საათი</th><th title="ყუთები მთელ ქალაქში, უბნების რიგით">ქალაქში</th><th title="დამატებითი ყუთები კვირის თემის ზონაში">თემაში</th><th title="მხოლოდ განათებულ ბილიკზე (საღამოს)">განათებული</th><th></th></tr></thead><tbody>
       ${waves.map((w, i) => `<tr>
         <td><input type="time" value="${esc(w.time)}" data-p="${path}.${i}.time" aria-label="დაწყება"> <small class="s-muted">${esc(kindLabel(w.id))}</small></td>
         <td><input type="number" min="0.5" max="16" step="0.5" value="${w.hours}" data-p="${path}.${i}.hours" aria-label="საათი"></td>
@@ -421,8 +507,10 @@
     return `<section class="s-card"><header class="s-card-head"><div><h3>${title}</h3><p>${hint}</p></div></header>
       <div class="s-card-body s-stack">
         <div class="mb-sum">${esc(daySummary(day))}</div>
-        <h4 class="mb-h4">ტალღები — როდის ჩნდება ყუთები</h4>${wavesTable(`${p}.waves`, day.waves)}
-        <h4 class="mb-h4">შიგთავსი — რამდენი ქოინია ყუთში</h4>${coinsTable(`${p}.coins`, day.coins)}
+        <div class="mb-split">
+          <div class="mb-block"><h4 class="mb-h4">ტალღები — როდის ჩნდება ყუთები</h4>${wavesTable(`${p}.waves`, day.waves)}</div>
+          <div class="mb-block"><h4 class="mb-h4">შიგთავსი — რამდენი ქოინია ყუთში</h4>${coinsTable(`${p}.coins`, day.coins)}</div>
+        </div>
         <div class="s-form-grid">
           <label class="s-field"><span>ერთი ყუთი იხსნება — მინ.</span><input type="number" min="1" max="1000" value="${day.stock[0]}" data-p="${p}.stock.0"><small>რამდენ ადამიანს შეუძლია გახსნა</small></label>
           <label class="s-field"><span>მაქს.</span><input type="number" min="1" max="1000" value="${day.stock[1]}" data-p="${p}.stock.1"></label>
@@ -456,8 +544,10 @@
           <label class="s-field"><span>პულსის რადიუსი, მ</span><input type="number" min="40" max="500" value="${r.pulseRadius}" data-p="cities.pulseRadius"></label>
           <label class="s-field"><span>გახსნის რადიუსი, მ</span><input type="number" min="10" max="50" value="${r.revealRadius}" data-p="cities.revealRadius"></label>
         </div>
-        <h4 class="mb-h4">შიგთავსი — სამუშაო დღე</h4>${coinsTable('cities.coins', r.coins)}
-        <h4 class="mb-h4">შიგთავსი — შაბათ-კვირა</h4>${coinsTable('cities.weekendCoins', r.weekendCoins || r.coins)}
+        <div class="mb-split">
+          <div class="mb-block"><h4 class="mb-h4">შიგთავსი — სამუშაო დღე</h4>${coinsTable('cities.coins', r.coins)}</div>
+          <div class="mb-block"><h4 class="mb-h4">შიგთავსი — შაბათ-კვირა</h4>${coinsTable('cities.weekendCoins', r.weekendCoins || r.coins)}</div>
+        </div>
       </div></section>`;
   }
   function paintRules(body) {

@@ -11,6 +11,7 @@ import {asyncHandler} from '../middleware/error.js';
 import {id,missionWrite,giftWrite,configWrite,reviewWrite,claimWrite,fail} from '../lib/medipulsi/schema.js';
 import * as D from '../lib/medipulsi/dropsAdmin.js';
 import {resetCampaign} from '../lib/medipulsi/campaignStore.js';
+import {medirunInsights} from '../lib/medipulsi/insights.js';
 export const adminMedipulsiRouter=Router();
 const r=adminMedipulsiRouter,view=requireAdminCapability('MEDIPULSI_VIEW'),manage=requireAdminCapability('MEDIPULSI_MANAGE'),review=requireAdminCapability('MEDIPULSI_REVIEW');
 r.use(requireAdmin,(req,res,next)=>{res.set('Cache-Control','no-store');next();});
@@ -72,7 +73,13 @@ r.put('/config',manage,write,asyncHandler(async(req,res)=>{
   const old=await tx.medipulsiConfig.findUnique({where:{id:'main'}}),u=await tx.medipulsiConfig.updateMany({where:{id:'main',revision:input.revision},data:{data:input.data,revision:{increment:1}}});if(!u.count)fail(409,'პარამეტრები შეიცვალა. განაახლე გვერდი.');await audit(tx,req,'CONFIG_SAVE','main',{before:old?.data,after:input.data});return tx.medipulsiConfig.findUnique({where:{id:'main'}});
  }));
 }));
-r.get('/audit',view,asyncHandler(async(req,res)=>res.json({rows:await prisma.medipulsiAudit.findMany({orderBy:{createdAt:'desc'},...pagination(req.query)}),total:await prisma.medipulsiAudit.count()})));
+// scope=game: the game's own changes only — box changes have their own log in #/medirun-boxes.
+r.get('/audit',view,asyncHandler(async(req,res)=>{
+ const where=req.query.scope==='game'?{AND:[{NOT:{action:{startsWith:'DROP_'}}},{NOT:{AND:[{action:'GIFT_SAVE'},{actorId:'medirun-autopilot'}]}}]}:{};
+ res.json({rows:await prisma.medipulsiAudit.findMany({where,orderBy:{createdAt:'desc'},...pagination(req.query)}),total:await prisma.medipulsiAudit.count({where})});
+}));
+// Players, comebacks, trends, countries and cities, Tbilisi levels, most active, coins and prizes (cached 10 min).
+r.get('/insights',view,asyncHandler(async(req,res)=>res.json(await medirunInsights({force:req.query.fresh==='1'}))));
 
 /* ───────── „MEDIRUN ყუთები“ (#/medirun-boxes): rules, days, spots, boxes, numbers ───────── */
 const ymdParam=z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
@@ -113,8 +120,9 @@ r.post('/drops/days/:date/apply',manage,write,asyncHandler(async(req,res)=>res.j
 r.post('/drops/days/:date/regenerate',manage,write,asyncHandler(async(req,res)=>res.json(await D.regenerateDate(ymdParam.parse(req.params.date),{adminId:adminId(req)}))));
 r.post('/drops/days/:date/cancel',manage,write,asyncHandler(async(req,res)=>res.json(await D.cancelDate(ymdParam.parse(req.params.date),{adminId:adminId(req)}))));
 r.post('/drops/boxes',manage,write,asyncHandler(async(req,res)=>{
- const input=z.object({spotId:id.optional(),district:z.string().trim().min(1).max(40).optional(),latitude:z.number().min(41.55).max(41.9).optional(),longitude:z.number().min(44.6).max(45.1).optional(),place:z.string().trim().max(80).optional(),
-  coins:z.number().int().min(1).max(10000),stock:z.number().int().min(1).max(1000),startsAt:z.iso.datetime({offset:true}).nullable().optional(),hours:z.number().min(.25).max(24),
+ const input=z.object({cityId:z.string().regex(/^[a-z]\d+$/).optional(),spotId:id.optional(),district:z.string().trim().min(1).max(80).optional(),latitude:z.number().min(-90).max(90).optional(),longitude:z.number().min(-180).max(180).optional(),place:z.string().trim().max(80).optional(),
+  prize:z.object({title:z.string().trim().min(2).max(100),description:z.string().trim().max(1000).optional(),titleEn:z.string().trim().max(100).optional(),descriptionEn:z.string().trim().max(1000).optional()}).strict().nullable().optional(),
+  coins:z.number().int().min(1).max(10000).nullable().optional(),stock:z.number().int().min(1).max(1000),startsAt:z.iso.datetime({offset:true}).nullable().optional(),hours:z.number().min(.25).max(24),
   pulseRadius:z.number().int().min(40).max(500),revealRadius:z.number().int().min(10).max(50),minPercent:z.number().min(.01).max(100).nullable().optional(),note:z.string().trim().max(300).optional()}).strict()
   .refine(v=>v.pulseRadius>v.revealRadius,'პულსის რადიუსი გახსნის რადიუსზე დიდი უნდა იყოს').parse(req.body);
  res.json(await D.manualDrop(input,{adminId:adminId(req)}));
@@ -125,6 +133,8 @@ r.patch('/drops/boxes/:id',manage,write,asyncHandler(async(req,res)=>{
   z.object({action:z.literal('stock'),stock:z.number().int().min(0).max(100000)}).strict(),
   z.object({action:z.literal('coins'),coins:z.number().int().min(1).max(10000)}).strict(),
   z.object({action:z.literal('time'),startsAt:z.iso.datetime({offset:true}),endsAt:z.iso.datetime({offset:true})}).strict(),
+  z.object({action:z.literal('text'),title:z.string().trim().min(2).max(100),description:z.string().trim().max(1000).optional(),titleEn:z.string().trim().max(100).optional(),descriptionEn:z.string().trim().max(1000).optional()}).strict(),
+  z.object({action:z.literal('place'),latitude:z.number().min(-90).max(90),longitude:z.number().min(-180).max(180)}).strict(),
  ]).parse(req.body);
  res.json(await D.boxAction(id.parse(req.params.id),input,{adminId:adminId(req)}));
 }));

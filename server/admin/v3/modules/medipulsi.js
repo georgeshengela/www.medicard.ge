@@ -1,11 +1,12 @@
 /**
  * MediCard Admin — MEDIRUN (#/medipulsi; internal API name stays "medipulsi").
- * Tabs: overview · gifts · claims · missions · sessions · settings · log. Editors open in AdminV3.openDialog;
- * the mission and gift editors carry the Mapbox location picker.
+ * Tabs: overview · countries & cities · players · claims · missions · sessions · settings · log (owner 2026-10-04:
+ * the boxes — rules, days, cities, manual drops — live in #/medirun-boxes; this page is the game itself: who plays,
+ * where, how much, prizes to hand over). Editors open in AdminV3.openDialog; the mission editor carries the map.
  */
 (function (global) {
   'use strict';
-  const TABS = [['overview', 'მიმოხილვა'], ['gifts', 'საჩუქრები'], ['claims', 'ჯილდოების გაცემა'], ['missions', 'მისიები'], ['sessions', 'სესიები'], ['config', 'პარამეტრები'], ['audit', 'ჟურნალი']];
+  const TABS = [['overview', 'მიმოხილვა'], ['geo', 'ქვეყნები და ქალაქები'], ['players', 'მოთამაშეები'], ['claims', 'ჯილდოების გაცემა'], ['missions', 'მისიები'], ['sessions', 'გასეირნებები'], ['config', 'პარამეტრები'], ['audit', 'ჟურნალი']];
   const esc = (value) => String(value ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const ico = (name) => (typeof icon === 'function' ? icon(name) : '');
   const V = () => global.AdminV3 || {};
@@ -39,14 +40,6 @@
     return m ? `„გაანათე თბილისი“ · ${BOX_KIND[m[1]] || 'კამპანიის ყუთი'}` : '';
   }
 
-  function giftStatus(g, now = Date.now()) {
-    if (g.archived) return ['არქივი', 'is-plain'];
-    if (!g.published) return ['მონახაზი', 'is-plain'];
-    if (now < Date.parse(g.startsAt)) return ['დაგეგმილი', 'is-info'];
-    if (now >= Date.parse(g.endsAt)) return ['დასრულებული', 'is-plain'];
-    if (Number(g.allocated) >= Number(g.stock)) return ['მარაგი ამოიწურა', 'is-warn'];
-    return ['აქტიური', 'is-ok'];
-  }
   const missionStatus = (m) => (m.archived ? ['არქივი', 'is-plain'] : m.published ? ['გამოქვეყნებული', 'is-ok'] : ['მონახაზი', 'is-plain']);
 
   function place(latitude, longitude) {
@@ -129,46 +122,72 @@
     </section>`;
   }
 
+  const pct = (a, b) => (b ? `${Math.round((a / b) * 100)}%` : '—');
+  const shortDay = (ymd) => { const [, m, d] = ymd.split('-').map(Number); return `${d} ${['იან', 'თებ', 'მარ', 'აპრ', 'მაი', 'ივნ', 'ივლ', 'აგვ', 'სექ', 'ოქტ', 'ნოე', 'დეკ'][m - 1]}`; };
+  const BOXES = { campaign: ['კამპანია', 'is-ok'], ready: ['ყუთები ჩნდება', 'is-ok'], pending: ['ადგილებს ვეძებთ', 'is-info'], failed: ['ადგილები ვერ მოიძებნა', 'is-bad'], empty: ['ბილიკი ვერ მოიძებნა', 'is-warn'], off: ['გამორთულია', 'is-plain'], none: ['ჯერ არა', 'is-plain'] };
+
   function overviewHtml(d) {
-    const cfg = d.config?.data || {};
+    const cfg = d.config?.data || {}, i = d.insights;
     const alerts = [];
-    if (cfg.enabled === false) alerts.push(`<div class="s-callout is-warn">${ico('alert')}<p><b>თამაში შეჩერებულია.</b> ახალი სირბილი ვერ იწყება და მიმდინარე ვერ გრძელდება.</p><button type="button" class="btn compact" data-run-go="config">პარამეტრები</button></div>`);
+    if (cfg.enabled === false) alerts.push(`<div class="s-callout is-warn">${ico('alert')}<p><b>თამაში შეჩერებულია.</b> ახალი გასეირნება ვერ იწყება და მიმდინარე ვერ გრძელდება.</p><button type="button" class="btn compact" data-run-go="config">პარამეტრები</button></div>`);
     else if (cfg.giftsEnabled === false) alerts.push(`<div class="s-callout is-warn">${ico('alert')}<p><b>საჩუქრები გამორთულია.</b> ყუთის სიგნალი არ ჩანს და გახსნა შეჩერებულია.</p><button type="button" class="btn compact" data-run-go="config">პარამეტრები</button></div>`);
-    if (d.pending) alerts.push(`<div class="s-callout is-warn">${ico('gift')}<p><b>${fmt(d.pending)} ფიზიკური პრიზის განაცხადი ელოდება შემოწმებას.</b> გაცემამდე გადაამოწმე მოთამაშე და GPS-ის მონაცემები.</p><button type="button" class="btn compact" data-run-pending>განაცხადების ნახვა</button></div>`);
+    if (i.prizes.pending || i.prizes.toHandOver) alerts.push(`<div class="s-callout is-warn">${ico('gift')}<p><b>${fmt(i.prizes.pending)} პრიზი ელოდება შემოწმებას${i.prizes.toHandOver ? `, ${fmt(i.prizes.toHandOver)} — გადაცემას` : ''}.</b> გაცემამდე გადაამოწმე მოთამაშე და GPS-ის მონაცემები.</p><button type="button" class="btn compact" data-run-pending>გახსნა</button></div>`);
     const flag = (on, label) => `<span class="s-badge ${on ? 'is-ok' : 'is-bad'}">${label}: ${on ? 'ჩართულია' : 'გამორთულია'}</span>`;
+    const C = global.AdminCharts;
+    const series = (key) => i.trend.map((t) => ({ day: shortDay(t.date), count: t[key] }));
+    const topLevel = Math.max(1, ...i.levels.map((l) => l.players));
     return `${alerts.join('')}
+      <div class="s-callout s-run-link">${ico('box')}<p><b>ყუთები ცალკე გვერდზეა.</b> წესები, დღეები, ქალაქები, ხელით დაგდება და ყუთების ციფრები — „MEDIRUN ყუთები“.</p><a class="btn compact" href="#/medirun-boxes">გახსნა</a></div>
       <div class="s-metrics">
-        ${metric('მოთამაშე', fmt(d.players), 'სულ')}
-        ${metric('ახლა თამაშობს', fmt(d.active), 'ბოლო 2 წუთში')}
-        ${metric('გასეირნება', fmt(d.sessions), 'სულ')}
-        ${metric('გავლილი მანძილი', `${fmt(Math.round((d.totals?.meters || 0) / 1000))} კმ`, 'გამორიცხულის გარეშე')}
-        ${metric('საჩუქარი რუკაზე', fmt(d.gifts), 'აქტიური ან დაგეგმილი')}
-        ${metric('შესამოწმებელი პრიზი', fmt(d.pending), `${fmt(d.claims)} განაცხადიდან`, d.pending ? 'is-warn' : '')}
+        ${metric('მოთამაშე', fmt(i.players.total), `+${fmt(i.players.new7)} ბოლო 7 დღეში`)}
+        ${metric('აქტიური 7 დღეში', fmt(i.players.active7), `ახლა თამაშობს: ${fmt(i.players.activeNow)}`, i.players.activeNow ? 'is-ok' : '')}
+        ${metric('ბრუნდება', pct(i.players.returning, i.players.active30), `${fmt(i.players.returning)} / ${fmt(i.players.active30)} — 2+ დღე 30 დღეში`)}
+        ${metric('გასეირნება', fmt(i.walks.total), `${fmt(i.walks.last7)} ბოლო 7 დღეში`)}
+        ${metric('კილომეტრი', `${num(i.walks.km)}`, `${num(i.walks.km7)} კმ ბოლო 7 დღეში · ${num(i.walks.hours)} სთ სულ`)}
+        ${metric('ახალი ქუჩა', `${num(i.walks.newKm)} კმ`, `${num(i.walks.newKm7)} კმ ბოლო 7 დღეში`)}
+        ${metric('ქოინი ყუთებიდან', fmt(i.coins.total), `${fmt(i.coins.openings)} გახსნა · ${fmt(i.coins.last7)} ბოლო 7 დღეში`)}
+        ${metric('პრიზი', fmt(i.prizes.pending + i.prizes.toHandOver), i.prizes.pending + i.prizes.toHandOver ? 'შესამოწმებელი ან გადასაცემი' : 'ყველაფერი გაცემულია', i.prizes.pending ? 'is-warn' : '')}
       </div>
-      ${card('თამაშის მდგომარეობა', `${cfg.message ? 'მოთამაშეები ხედავენ შენს შეტყობინებას.' : 'მოთამაშისთვის შეტყობინება არ არის.'}${d.config?.updatedAt ? ` ბოლოს შეიცვალა ${esc(when(d.config.updatedAt))}.` : ''}`,
+      <div class="s-run-grid">
+        ${card('გასეირნება და მოთამაშე დღეში', 'ბოლო 30 დღე · თბილისის დროით', C ? C.line([{ label: 'გასეირნება', points: series('walks') }, { label: 'მოთამაშე', points: series('players') }], { label: 'გასეირნება და მოთამაშე', height: 210, legend: true, empty: 'ამ პერიოდში გასეირნება არ ყოფილა' }) : '', { flush: false })}
+        ${card('კილომეტრი დღეში', 'ბოლო 30 დღე', C ? C.bars(series('km'), { label: 'კილომეტრი დღეში', height: 210, unit: 'კმ', empty: 'ამ პერიოდში მანძილი არ არის' }) : '', { flush: false })}
+      </div>
+      <div class="s-run-grid">
+        ${card('თბილისის დონეები', 'ვინ რამდენი % გაანათა თბილისიდან — ფარნის ყუთები და დიდი საჩუქარი ამის მიხედვით ჩანს.', `<div class="s-run-levels">${i.levels.map((l) => `<div class="s-run-level"><span><b>${esc(l.name)}</b><small>${num(l.percent, 2)}%-დან</small></span><div class="s-meter"><i style="width:${Math.round((l.players / topLevel) * 100)}%"></i></div><b>${fmt(l.players)}</b></div>`).join('')}</div>
+          ${i.tbilisiTop.length ? `<div class="s-run-top"><small>ყველაზე მეტი</small>${i.tbilisiTop.map((t) => `<a href="#/users/${encodeURIComponent(t.userId)}">${esc(t.name || 'მოთამაშე')}</a><b>${num(t.percent, 3)}%</b>`).join('')}</div>` : ''}`, { flush: false })}
+        ${card('გახსნილი ყუთები დღეში', 'ყველა ქალაქი · ბოლო 30 დღე', C ? C.bars(series('opened'), { label: 'გახსნა დღეში', height: 210, tone: 'amber', empty: 'ამ პერიოდში ყუთი არავის გაუხსნია' }) : '', { flush: false })}
+      </div>
+      ${card('თამაშის მდგომარეობა', `${cfg.message ? 'მოთამაშეები ხედავენ შენს შეტყობინებას.' : 'მოთამაშისთვის შეტყობინება არ არის.'}`,
         `<div class="s-run-flags">${flag(cfg.enabled !== false, 'თამაში')}${flag(cfg.giftsEnabled !== false, 'საჩუქრები')}${flag(cfg.leaderboardEnabled !== false, 'რეიტინგი')}</div>
          ${cfg.message ? `<blockquote class="s-run-message">${esc(cfg.message)}</blockquote>` : ''}`,
-        { flush: false, action: `<button type="button" class="btn ghost compact" data-run-go="config">შეცვლა</button>` })}`;
+        { flush: false, action: `<button type="button" class="btn ghost compact" data-run-go="config">შეცვლა</button>` })}
+      <p class="s-muted s-run-stamp">ციფრები განახლდა ${esc(when(i.generatedAt))} · ერთხელ 10 წუთში</p>`;
   }
 
-  function giftsHtml(data) {
-    const manage = can('MEDIPULSI_MANAGE');
-    const body = rows.map((g) => {
-      const stock = Number(g.stock) || 0;
-      const used = Math.min(100, stock ? Math.round(((Number(g.allocated) || 0) / stock) * 100) : 0);
-      const campaign = campaignLabel(g.id);
-      return `<tr>
-        <td><b>${esc(g.title)}</b>${sub(`${g.rewardKind === 'PHYSICAL' ? 'ფიზიკური' : 'ციფრული'}${campaign ? ` · ${esc(campaign)}` : ''}`)}${sub(copyId(g.id, 'საჩუქრის ID'))}</td>
-        <td>${place(g.latitude, g.longitude)}${sub(`პულსი ${fmt(g.pulseRadius)} მ · გახსნა ${fmt(g.revealRadius)} მ`)}</td>
-        <td class="num"><b>${fmt(g.allocated)}</b> / ${fmt(stock)}<div class="s-meter s-run-stock"><i style="width:${used}%"></i></div></td>
-        <td class="s-run-when">${esc(when(g.startsAt))}${sub(`დასრულება: ${esc(when(g.endsAt))}`)}</td>
-        <td>${badge(giftStatus(g))}</td>
-        <td class="num">${manage ? `<button type="button" class="btn ghost compact" data-run-action="edit" data-id="${esc(g.id)}">რედაქტირება</button>` : ''}</td>
-      </tr>`;
-    }).join('');
-    return card('საჩუქრები', 'გაცემული / მარაგი: გახსნილი ყუთები მარაგიდან. უარყოფილი განაცხადის პრიზი მარაგს აღარ უბრუნდება.',
-      table(['საჩუქარი', 'ადგილი', ['გაცემული / მარაგი', 'num'], 'დრო (თბილისი)', 'მდგომარეობა', ''], body, 'საჩუქარი ჯერ არ დამატებულა.'),
-      { action: manage ? `<button type="button" class="btn primary compact" data-run-action="new">${ico('plus')} საჩუქრის დამატება</button>` : '', foot: pager(data.total) });
+  function geoHtml(i) {
+    const countries = i.countries.map((c) => `<tr><td><b>${esc(c.nameKa || c.code)}</b>${sub(esc(c.code))}</td><td class="num">${fmt(c.players)}</td><td class="num">${fmt(c.homes)}</td><td class="num">${num(c.paintedKm2, 2)} კმ²</td></tr>`).join('');
+    const cities = i.cities.map((c) => `<tr>
+        <td><b>${esc(c.nameKa || c.nameEn)}</b>${sub(`${esc(c.nameEn && c.nameEn !== c.nameKa ? `${c.nameEn} · ` : '')}${esc(c.countryCode || '')}`)}</td>
+        <td class="num">${fmt(c.players)}</td><td class="num">${fmt(c.homes)}</td>
+        <td class="num">${num(c.paintedKm2, 2)} კმ²${sub(`${num(c.percent, 3)}% ქალაქიდან`)}</td>
+        <td class="num">${fmt(c.opened)}${c.openers ? sub(`${fmt(c.openers)} მოთამაშე`) : ''}</td>
+        <td>${badge(BOXES[c.boxes] || BOXES.none)}</td></tr>`).join('');
+    return `${card('ქალაქები', '„ითამაშა“ — ვინც აქ გაისეირნა MEDIRUN-ით; „ცხოვრობს“ — ლოკაციით (იგივე ქალაქი, რაც აპში ჩანს); „გაანათა“ — ყველა მოთამაშის ახალი ქუჩები ერთად; „გაიხსნა“ — ყუთები ბოლო 30 დღეში.',
+        table(['ქალაქი', ['ითამაშა', 'num'], ['ცხოვრობს', 'num'], ['გაანათა', 'num'], ['გაიხსნა', 'num'], 'ყუთები'], cities, 'ჯერ არცერთ ქალაქში არ უთამაშიათ.'),
+        { action: '<a class="btn compact" href="#/medirun-boxes?tab=cities">ქალაქების ყუთები</a>' })}
+      ${card('ქვეყნები', '', table(['ქვეყანა', ['ითამაშა', 'num'], ['ცხოვრობს', 'num'], ['გაანათა', 'num']], countries, 'ჯერ მონაცემი არ არის.'))}
+      ${i.unresolvedKm2 > 0 ? `<p class="s-muted s-run-stamp">${num(i.unresolvedKm2, 2)} კმ² ჯერ ქალაქს არ მიეკუთვნა — ადგილი დაზუსტდება, როცა მოთამაშე აპში თავის ქალაქს გახსნის.</p>` : ''}`;
+  }
+
+  function playersHtml(i) {
+    const body = i.top.map((p, n) => `<tr>
+        <td class="num s-run-rank">${n + 1}</td>
+        <td><a href="#/users/${encodeURIComponent(p.userId)}"><b>${esc(p.name || 'მოთამაშე')}</b></a>${sub(`${esc(p.handle || '')}${p.optIn ? ' · რეიტინგშია' : ''}`)}</td>
+        <td class="num"><b>${num(p.km)}</b> კმ</td><td class="num">${fmt(p.walks)}</td><td class="num">${num(p.newKm)} კმ</td><td class="num">${num(p.hours)} სთ</td>
+        <td class="num">${fmt(p.opened)}${p.coins ? sub(`${fmt(p.coins)} ქოინი`) : ''}</td><td class="num">${p.tbilisiPercent ? `${num(p.tbilisiPercent, 3)}%` : '—'}</td></tr>`).join('');
+    return card('ყველაზე აქტიური · 30 დღე', 'კილომეტრის მიხედვით; გამორიცხული გასეირნებები არ ითვლება. სახელზე დაჭერით მომხმარებლის გვერდი იხსნება.',
+      table([['#', 'num'], 'მოთამაშე', ['მანძილი', 'num'], ['გასეირნება', 'num'], ['ახალი ქუჩა', 'num'], ['დრო', 'num'], ['ყუთი', 'num'], ['თბილისი', 'num']], body, 'ბოლო 30 დღეში არავის უთამაშია.'))
+      + `<div class="s-metrics">${metric('რეიტინგში ჩართული', fmt(i.players.optIn), `${pct(i.players.optIn, i.players.total)} მოთამაშიდან`)}${metric('ბრუნდება', pct(i.players.returning, i.players.active30), '2+ დღე ბოლო 30 დღეში')}${metric('ახალი 7 დღეში', fmt(i.players.new7), 'პირველად გახსნა MEDIRUN')}</div>`;
   }
 
   function claimsHtml(data) {
@@ -261,7 +280,7 @@
         <td>${auditEntity(row)}</td>
         <td><details class="s-details s-tech-details"><summary>ნახვა</summary><div><pre>${esc(JSON.stringify(row.details, null, 2))}</pre></div></details></td>
       </tr>`).join('');
-    return card('ცვლილებების ჟურნალი', 'ვინ რა შეცვალა MEDIRUN-ში, უახლესი ზემოთ. ავტოპილოტი კამპანიის ყუთებს თავად ამატებს.',
+    return card('ცვლილებების ჟურნალი', 'ვინ რა შეცვალა თამაშში (მისიები, გასეირნებები, პრიზები, პარამეტრები), უახლესი ზემოთ. ყუთების ცვლილებები — „MEDIRUN ყუთები → ჟურნალი“.',
       table(['დრო', 'ვინ', 'ცვლილება', 'ჩანაწერი', 'ტექნიკური დეტალები'], body, 'ჩანაწერი ჯერ არ არის.'), { foot: pager(data.total) });
   }
 
@@ -277,17 +296,22 @@
       <div class="s-stack s-run-body" aria-live="polite"><div class="v3-skel" aria-hidden="true">${'<i></i>'.repeat(5)}</div></div>
     </div>`;
     root.querySelectorAll('[data-run-tab]').forEach((b) => (b.onclick = () => { selected = b.dataset.runTab; offset = 0; filter = ''; void render(); }));
-    root.querySelector('[data-run-refresh]').onclick = () => void render();
+    root.querySelector('[data-run-refresh]').onclick = () => { render.fresh = true; void render(); };
     const body = root.querySelector('.s-run-body');
     try {
       if (!can('MEDIPULSI_VIEW')) throw new Error('MEDIRUN-ის ნახვის უფლება არ გაქვს.');
-      const data = await request('/' + selected + (['gifts', 'sessions', 'claims', 'audit'].includes(selected) ? `?offset=${offset}${filter ? '&' + (selected === 'sessions' ? 'phase' : 'status') + '=' + encodeURIComponent(filter) : ''}` : ''));
+      const fresh = render.fresh ? '?fresh=1' : '';
+      render.fresh = false;
+      const data = selected === 'overview' ? await Promise.all([request('/overview'), request('/insights' + fresh)]).then(([o, ins]) => ({ ...o, insights: ins }))
+        : selected === 'geo' || selected === 'players' ? await request('/insights' + fresh)
+        : await request('/' + selected + (['sessions', 'claims', 'audit'].includes(selected) ? `?offset=${offset}${selected === 'audit' ? '&scope=game' : ''}${filter ? '&' + (selected === 'sessions' ? 'phase' : 'status') + '=' + encodeURIComponent(filter) : ''}` : ''));
       if (version !== ticket) return;
       if (!data) throw new Error('სერვერმა მონაცემი არ დააბრუნა — სცადე განახლება.');
       rows = data.rows || [];
       body.innerHTML = {
         overview: () => overviewHtml(data),
-        gifts: () => giftsHtml(data),
+        geo: () => geoHtml(data),
+        players: () => playersHtml(data),
         claims: () => claimsHtml(data),
         missions: () => missionsHtml(),
         sessions: () => sessionsHtml(data),
@@ -298,6 +322,7 @@
       body.querySelectorAll('[data-run-page]').forEach((b) => (b.onclick = () => { offset += Number(b.dataset.runPage) * PAGE; void render(); }));
       body.querySelectorAll('[data-run-go]').forEach((b) => (b.onclick = () => { selected = b.dataset.runGo; offset = 0; filter = ''; void render(); }));
       body.querySelector('[data-run-pending]')?.addEventListener('click', () => { selected = 'claims'; offset = 0; filter = 'PENDING'; void render(); });
+      global.AdminCharts?.hydrate?.();
       body.querySelectorAll('[data-run-action]').forEach((b) => (b.onclick = () => editor(rows.find((r) => r.id === b.dataset.id), b.dataset.runAction)));
       const cfg = body.querySelector('[data-config]');
       if (cfg) bindConfig(cfg, data);
@@ -354,7 +379,7 @@
     let description = '';
     let fields = '';
     let wide = false;
-    const located = ['missions', 'gifts'].includes(selected) && ['new', 'edit'].includes(action);
+    const located = selected === 'missions' && ['new', 'edit'].includes(action);
     if (selected === 'missions') {
       const m = row?.data || { id: '', name: '', chapter: 'green', center: [44.7509, 41.7098], radius: 200, meters: 300, seconds: 60, title: '', story: '', tip: 'იარე საჯარო საფეხმავლო სივრცეში.', icon: 'trees', source: 'https://www.openstreetmap.org/' };
       title = row ? 'მისიის რედაქტირება' : 'თბილისის ახალი მისია';
@@ -364,16 +389,6 @@
         + group('მისია', field('id', 'მისიის კოდი', m.id, 'text', `required pattern="[a-zA-Z0-9_-]+" ${row ? 'readonly' : ''}`) + field('name', 'სახელი', m.name, 'text', 'required maxlength="100"') + select('chapter', 'კოლექცია', m.chapter, CHAPTERS) + select('icon', 'იკონკა', m.icon, MISSION_ICONS) + field('meters', 'გასავლელი მანძილი · მ', m.meters, 'number', 'min="50" max="10000" required') + field('seconds', 'მოძრაობის დრო · წმ', m.seconds, 'number', 'min="60" max="7200" required'))
         + group('ტექსტი აპში', field('title', 'სათაური', m.title) + field('source', 'წყაროს HTTPS ბმული', m.source, 'url', 'required') + wideField('story', 'ისტორია', m.story) + wideField('tip', 'ადგილზე მისვლის რჩევა', m.tip))
         + `<div class="s-run-toggles">${toggle('published', 'გამოქვეყნებულია', row?.published)}${toggle('archived', 'არქივში გადატანა', row?.archived)}</div>`;
-    } else if (selected === 'gifts') {
-      const g = row || { id: crypto.randomUUID(), title: '', description: '', longitude: 44.7509, latitude: 41.7098, pulseRadius: 120, revealRadius: 20, rewardKind: 'DIGITAL', stock: 1, startsAt: new Date(), endsAt: new Date(Date.now() + 7 * 86400000) };
-      title = row ? 'საჩუქრის რედაქტირება' : 'ახალი საჩუქარი';
-      description = 'მოათავსე მხოლოდ საჯარო და უსაფრთხო საფეხმავლო ადგილზე. ზუსტი კოორდინატები მოთამაშეს პულსის რადიუსში შესვლამდე არ ეგზავნება.';
-      wide = true;
-      fields = group('ადგილი', field('longitude', 'გრძედი', g.longitude, 'number', 'step="any" min="-180" max="180" required') + field('latitude', 'განედი', g.latitude, 'number', 'step="any" min="-90" max="90" required') + field('pulseRadius', 'პულსის დიაპაზონი · მ', g.pulseRadius, 'number', 'min="40" max="500" required') + field('revealRadius', 'გახსნის რადიუსი · მ', g.revealRadius, 'number', 'min="10" max="50" required'))
-        + group('საჩუქარი', field('title', 'საჩუქრის სახელი', g.title, 'text', 'required maxlength="100"') + select('rewardKind', 'პრიზის ტიპი', g.rewardKind, [['DIGITAL', 'ციფრული'], ['PHYSICAL', 'ფიზიკური — ადმინის შემოწმებით']]) + field('stock', 'სულ მარაგი', g.stock, 'number', `min="${g.allocated || 0}" required`) + wideField('description', 'აღწერა და მიღების პირობები', g.description))
-        + group('დრო (თბილისის დროით)', field('startsAt', 'დაწყება', toTbilisiInput(g.startsAt), 'datetime-local', 'required') + field('endsAt', 'დასრულება', toTbilisiInput(g.endsAt), 'datetime-local', 'required'))
-        + `<div class="s-run-toggles">${toggle('published', 'გამოქვეყნებულია', g.published)}${toggle('archived', 'არქივში გადატანა', g.archived)}</div>`;
-      row = g;
     } else if (action === 'review') {
       title = row.excluded ? 'სესიის დაბრუნება რეიტინგში' : 'სესიის გამორიცხვა რეიტინგიდან';
       description = 'გავლილი გზის პირადი ისტორია რჩება. მიზეზი ჩაიწერება ჟურნალში.';
@@ -396,7 +411,7 @@
     }
     if (located) {
       fields = `<div class="s-run-map-section">
-          <div class="s-run-map-picks" hidden><button type="button" class="btn compact" data-run-pick="tbilisi">თბილისი</button>${selected === 'gifts' ? '<button type="button" class="btn compact" data-run-pick="world">მთელი მსოფლიო</button>' : ''}</div>
+          <div class="s-run-map-picks" hidden><button type="button" class="btn compact" data-run-pick="tbilisi">თბილისი</button></div>
           <div class="s-run-map" role="region" aria-label="ადგილმდებარეობის არჩევა" hidden></div>
           <small class="s-run-map-status">რუკა იტვირთება…</small>
         </div>${fields}`;
@@ -427,7 +442,6 @@
           const key = str('id');
           return request('/missions/' + key, { method: 'PUT', body: { revision: row?.revision || 0, published: f.has('published'), archived: f.has('archived'), data: { id: key, name: str('name'), chapter: str('chapter'), icon: str('icon'), center: [n('longitude'), n('latitude')], radius: n('radius'), meters: n('meters'), seconds: n('seconds'), title: str('title'), story: str('story'), tip: str('tip'), source: str('source') } } });
         }
-        if (selected === 'gifts') return request('/gifts/' + row.id, { method: 'PUT', body: { revision: row.revision || 0, title: str('title'), description: str('description'), longitude: n('longitude'), latitude: n('latitude'), pulseRadius: n('pulseRadius'), revealRadius: n('revealRadius'), rewardKind: str('rewardKind'), stock: n('stock'), startsAt: fromTbilisiInput(str('startsAt')), endsAt: fromTbilisiInput(str('endsAt')), published: f.has('published'), archived: f.has('archived') } });
         if (action === 'review') return request('/sessions/' + row.id + '/review', { method: 'PATCH', body: { excluded: !row.excluded, reason: str('reason') } });
         return request('/claims/' + row.id, { method: 'PATCH', body: { status: str('status'), reason: str('reason') } });
       });
