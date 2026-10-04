@@ -146,11 +146,11 @@ export async function requeueCity(cityId,{db=prisma}={}){
 /* ───────── 3. plan (pure) ───────── */
 export const DEFAULT_CITY_RULES=Object.freeze({
  enabled:true,minPlayers:1,
- waves:[{id:'am',time:'09:00',hours:5},{id:'ev',time:'18:00',hours:3}],
- boxesPerWave:{base:1,perPlayers:10,max:5},weekendExtra:1,
- coins:[{amount:50,weight:60},{amount:100,weight:35},{amount:250,weight:5}],
- weekendCoins:[{amount:150,weight:50},{amount:250,weight:35},{amount:500,weight:15}],
- stock:[2,3],pulseRadius:250,revealRadius:20,overrides:{},
+ waves:[{id:'am',time:'09:00',hours:4.5},{id:'md',time:'13:00',hours:4},{id:'ev',time:'18:00',hours:3.5}],
+ boxesPerWave:{base:2,perPlayers:5,max:6},weekendExtra:1,
+ coins:[{amount:20,weight:50},{amount:30,weight:30},{amount:50,weight:15},{amount:80,weight:5}],
+ weekendCoins:[{amount:30,weight:50},{amount:50,weight:30},{amount:80,weight:15},{amount:120,weight:5}],
+ stock:[3,5],pulseRadius:250,revealRadius:20,overrides:{},
 });
 export const cityRulesOf=campaign=>({...DEFAULT_CITY_RULES,...(campaign?.cities||{})});
 

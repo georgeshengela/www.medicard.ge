@@ -5,9 +5,10 @@
 // „ხელახლა აწყობა“ replaces a day's boxes that have not started and that nobody opened.
 import {randomUUID} from 'node:crypto';
 import {prisma} from '../prisma.js';
-import {planDay,applyDay,loadSpots,tbilisiDate,dateAdd,dayOf,autopilotEnabled} from './autopilot.js';
-import {campaignRecord,getCampaign,saveCampaign,parseCampaign,clearCampaignCache} from './campaignStore.js';
-import {giftRules,upsertGiftRule,ensureGiftRuleTable,clearGiftRuleCache} from './giftRules.js';
+import {planDay,applyDay,loadSpots,tbilisiDate,dateAdd,dayOf,autopilotEnabled,coinCopy} from './autopilot.js';
+import {campaignRecord,getCampaign,saveCampaign,parseCampaign,clearCampaignCache,economyOf} from './campaignStore.js';
+import {giftRules,upsertGiftRule,ensureGiftRuleTable,clearGiftRuleCache,normalizeDecay,ladderOf,maxPayout} from './giftRules.js';
+import {seasonPaid,budgetState,weekWinners,weekStart} from './economy.js';
 import {isFeatureEnabled,setFeatureFlag} from '../featureFlags.js';
 import {listCities,citySpots,addCity,setCityEnabled,requeueCity,harvestCity,planCityDay,cityDates,ensureCityTable,cityRulesOf,boxesPerWave} from './cities.js';
 import {CITY_HELPERS,dayKind} from './autopilot.js';
@@ -25,7 +26,9 @@ export function boxRow(g,rule,now=Date.now()){
  const status=g.archived?'canceled':!g.published?'hidden':+g.startsAt>now?'planned':+g.endsAt<=now?'ended':g.allocated>=g.stock?'empty':'live';
  return {id:g.id,title:g.title,startsAt:g.startsAt,endsAt:g.endsAt,stock:g.stock,allocated:g.allocated,status,revision:g.revision,
   coins:rule?.coins||0,kind:rule?.meta?.kind||(g.rewardKind==='PHYSICAL'?'prize':'admin'),cityId:rule?.meta?.cityId||null,city:rule?.meta?.city||null,district:rule?.meta?.district||null,place:rule?.meta?.place||null,spot:rule?.meta?.spot||null,
-  minPercent:rule?.minPercent||null,latitude:g.latitude,longitude:g.longitude,pulseRadius:g.pulseRadius,revealRadius:g.revealRadius,rewardKind:g.rewardKind};
+  minPercent:rule?.minPercent||null,latitude:g.latitude,longitude:g.longitude,pulseRadius:g.pulseRadius,revealRadius:g.revealRadius,rewardKind:g.rewardKind,
+  // Economy 2: every opening's coins (first finder first) and the most the box can pay.
+  ladder:rule?.coins>0?ladderOf(rule,g.stock):[],maxCoins:rule?.coins>0?maxPayout(rule,g.stock):0};
 }
 
 async function freshRules(db){clearGiftRuleCache();return giftRules(db);}
@@ -73,6 +76,9 @@ export async function dropsOverview({db=prisma,now=Date.now()}={}){
   campaignRecord(db),autopilotState(db),dayBoxes(today,{db,now}),dayBoxes(tomorrow,{db,now}),dayNumbers(dateAdd(today,-13),today,{db}),districtOpenings(30,{db,now}),
  ]);
  const campaign=record.campaign,visible=boxesToday.filter(b=>b.kind!=='grand');
+ // Economy 2: where the season budget stands and the last paid week's prizes.
+ const paid=await seasonPaid(campaign,{db}).catch(()=>0),budget=budgetState(campaign,paid,now);
+ const prevMonday=dateAdd(weekStart(now),-7),lastWeek=await weekWinners(prevMonday,{db}).catch(()=>[]);
  const live=visible.filter(b=>b.status==='live');
  const upcoming=[...boxesToday,...boxesTomorrow].filter(b=>b.status==='planned'&&b.kind!=='grand').sort((a,b)=>+new Date(a.startsAt)-+new Date(b.startsAt));
  const next=upcoming[0]?upcoming.filter(b=>+new Date(b.startsAt)===+new Date(upcoming[0].startsAt)):[];
@@ -85,6 +91,7 @@ export async function dropsOverview({db=prisma,now=Date.now()}={}){
   status:today<campaign.start?'upcoming':today>campaign.end?'ended':'live',
   dayToday:dayOf(campaign,today),dayTomorrow:dayOf(campaign,tomorrow),
   live:{boxes:live.length,openingsLeft:live.reduce((s,b)=>s+Math.max(0,b.stock-b.allocated),0),openedToday:t.opened,playersToday:t.players,coinsToday:t.coins},
+  budget,economy:economyOf(campaign),prizes:{week:prevMonday,winners:lastWeek},
   next:next.length?{startsAt:next[0].startsAt,boxes:next.length,coins:{min:Math.min(...next.map(b=>b.coins)),max:Math.max(...next.map(b=>b.coins))}}:null,
   boxes:{[today]:boxesToday,[tomorrow]:boxesTomorrow},
   last14,districts,
@@ -92,7 +99,7 @@ export async function dropsOverview({db=prisma,now=Date.now()}={}){
  };
 }
 
-const planRow=(p,existing,now)=>({id:p.gift.id,startsAt:p.gift.startsAt,endsAt:p.gift.endsAt,kind:p.rule.meta?.kind||'admin',coins:p.rule.coins,stock:p.gift.stock,district:p.rule.meta?.district||null,place:p.rule.meta?.place||null,spot:p.rule.meta?.spot||null,minPercent:p.rule.minPercent,latitude:p.gift.latitude,longitude:p.gift.longitude,exists:existing.has(p.gift.id),past:+p.gift.endsAt<=now});
+const planRow=(p,existing,now)=>({id:p.gift.id,startsAt:p.gift.startsAt,endsAt:p.gift.endsAt,kind:p.rule.meta?.kind||'admin',coins:p.rule.coins,stock:p.gift.stock,maxCoins:maxPayout({coins:p.rule.coins,decay:p.rule.meta?.decay},p.gift.stock),district:p.rule.meta?.district||null,place:p.rule.meta?.place||null,spot:p.rule.meta?.spot||null,minPercent:p.rule.minPercent,latitude:p.gift.latitude,longitude:p.gift.longitude,exists:existing.has(p.gift.id),past:+p.gift.endsAt<=now});
 
 /** What the rules (saved or a draft) would place on `days` dates from `from`, beside what already exists. */
 export async function previewDays({draft=null,from,days=1,db=prisma,now=Date.now()}){
@@ -101,7 +108,7 @@ export async function previewDays({draft=null,from,days=1,db=prisma,now=Date.now
  const plans=dates.map(date=>({date,plan:planDay(date,{campaign})}));
  const ids=plans.flatMap(p=>p.plan.map(x=>x.gift.id));
  const existing=new Set(ids.length?(await db.medipulsiGift.findMany({where:{id:{in:ids}},select:{id:true}})).map(g=>g.id):[]);
- return plans.map(({date,plan})=>{const o=dayOf(campaign,date);return {date,kind:o.kind,off:o.off,note:o.override?.note||null,saturday:Boolean(campaign.saturday.dates?.[date]),boxes:plan.map(p=>planRow(p,existing,now)),coins:plan.reduce((s,p)=>s+p.rule.coins*p.gift.stock,0)};});
+ return plans.map(({date,plan})=>{const o=dayOf(campaign,date);return {date,kind:o.kind,off:o.off,note:o.override?.note||null,saturday:Boolean(campaign.saturday.dates?.[date]),boxes:plan.map(p=>planRow(p,existing,now)),coins:plan.reduce((s,p)=>s+maxPayout({coins:p.rule.coins,decay:p.rule.meta?.decay},p.gift.stock),0)};});
 }
 
 /** One line per campaign date: template, override, planned boxes and coins, what already exists. */
@@ -111,7 +118,7 @@ export async function campaignCalendar({db=prisma,now=Date.now()}={}){
  for(let d=campaign.start;d<=campaign.end;d=dateAdd(d,1)){
   const plan=planDay(d,{campaign}),o=dayOf(campaign,d),regular=plan.filter(p=>p.gift.id!==campaign.grand.id);
   rows.push({date:d,kind:o.kind,off:o.off,as:o.override?.as||null,custom:Boolean(o.override?.day),note:o.override?.note||null,saturday:Boolean(campaign.saturday.dates?.[d])&&!o.off,lantern:regular.some(p=>p.rule.meta?.kind==='lantern'),grand:plan.some(p=>p.gift.id===campaign.grand.id),
-   boxes:regular.length,openings:regular.reduce((s,p)=>s+p.gift.stock,0),coins:regular.reduce((s,p)=>s+p.rule.coins*p.gift.stock,0),
+   boxes:regular.length,openings:regular.reduce((s,p)=>s+p.gift.stock,0),coins:regular.reduce((s,p)=>s+maxPayout({coins:p.rule.coins,decay:p.rule.meta?.decay},p.gift.stock),0),
    times:[...new Set(regular.map(p=>new Date(+p.gift.startsAt+4*HOUR).toISOString().slice(11,16)))]});
  }
  const counts=await db.$queryRaw`SELECT substring("id" from 6 for 10) AS d, count(*)::int AS n FROM "MedipulsiGift" WHERE "id" LIKE 'glow-%' AND "archived"=false GROUP BY 1`;
@@ -211,12 +218,7 @@ export async function cancelDate(date,{adminId,db=prisma,now=Date.now()}){
  return {archived:r.count};
 }
 
-const coinsCopy=(coins,minPercent)=>({
- title:`${coins} Medi Coins`,
- description:minPercent?`ფარნის ყუთი: მხოლოდ მათთვის, ვისაც თბილისის ${String(minPercent).replace('.',',')}% აქვს განათებული. გახსენი და ${coins} Medi Coins ავტომატურად ჩაირიცხება შენს ანგარიშზე.`:`გახსენი ყუთი და ${coins} Medi Coins ავტომატურად ჩაირიცხება შენს ანგარიშზე. დააგროვე და გადაცვალე ჯილდოებზე.`,
- titleEn:`${coins} Medi Coins`,
- descriptionEn:minPercent?`Lantern box: only for players who have lit ${minPercent}% of Tbilisi. Open it and ${coins} Medi Coins land in your account.`:`Open the box and ${coins} Medi Coins land in your account automatically. Collect them and swap them for rewards.`,
-});
+const coinsCopy=(coins,minPercent,decay=null)=>coinCopy(coins,{minPercent,decay});
 
 /** A box the admin places by hand: a known spot (or a point in Tbilisi), coins, stock, start and length. */
 export async function manualDrop(input,{adminId,db=prisma,now=Date.now()}){
@@ -269,9 +271,11 @@ export async function manualDrop(input,{adminId,db=prisma,now=Date.now()}){
  // A physical prize (handed over after review) or a coin box.
  const prize=input.prize||null;
  if(!prize&&!(input.coins>0))bad(400,'მიუთითე ქოინი ან პრიზი.');
- const copy=prize?{title:prize.title,description:prize.description||'',titleEn:prize.titleEn||prize.title,descriptionEn:prize.descriptionEn||prize.description||''}:coinsCopy(input.coins,input.minPercent||null);
+ // Economy 2: a hand-dropped coin box follows the campaign ladder unless the admin asked for „everyone the same“.
+ const decay=prize||input.flat?null:normalizeDecay(economyOf(campaign).decay);
+ const copy=prize?{title:prize.title,description:prize.description||'',titleEn:prize.titleEn||prize.title,descriptionEn:prize.descriptionEn||prize.description||''}:coinsCopy(input.coins,input.minPercent||null,decay);
  const gift={id,title:copy.title,description:copy.description,longitude:spot.lng,latitude:spot.lat,pulseRadius:input.pulseRadius,revealRadius:input.revealRadius,rewardKind:prize?'PHYSICAL':'DIGITAL',stock:input.stock,published:true,archived:false,startsAt:start,endsAt:end};
- const rule={giftId:id,campaign:campaign.id,coins:prize?0:input.coins,minPercent:input.minPercent||null,areaId:input.minPercent?campaign.area.id:null,meta:{kind:prize?'prize':'manual',spot:spot.id,place:spot.place||null,district:spot.district||null,...cityMeta,titleEn:copy.titleEn,descriptionEn:copy.descriptionEn,note:input.note||null}};
+ const rule={giftId:id,campaign:campaign.id,coins:prize?0:input.coins,minPercent:input.minPercent||null,areaId:input.minPercent?campaign.area.id:null,meta:{kind:prize?'prize':'manual',spot:spot.id,place:spot.place||null,district:spot.district||null,...cityMeta,...(decay?{decay}:{}),titleEn:copy.titleEn,descriptionEn:copy.descriptionEn,note:input.note||null}};
  await ensureGiftRuleTable(db);
  await db.$transaction(async tx=>{
   await tx.medipulsiGift.create({data:gift});
@@ -294,7 +298,7 @@ export async function boxAction(id,input,{adminId,db=prisma,now=Date.now()}){
  else if(input.action==='stock'){if(input.stock<g.allocated)bad(400,`მარაგი უკვე გახსნილზე (${g.allocated}) ნაკლები ვერ იქნება.`);data.stock=input.stock;}
  else if(input.action==='coins'){
   if(g.rewardKind!=='DIGITAL')bad(400,'ფიზიკურ პრიზს ქოინები არ აქვს.');
-  const copy=coinsCopy(input.coins,rule?.minPercent||null);
+  const copy=coinsCopy(input.coins,rule?.minPercent||null,rule?.meta?.decay||null);
   await upsertGiftRule(db,{...(rule||{giftId:id,campaign:null,minPercent:null,areaId:null,meta:{kind:'admin'}}),coins:input.coins,meta:{...(rule?.meta||{kind:'admin'}),titleEn:copy.titleEn,descriptionEn:copy.descriptionEn}});
   Object.assign(data,{title:copy.title,description:copy.description});
  }

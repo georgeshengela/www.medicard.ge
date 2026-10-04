@@ -15,12 +15,40 @@ export async function ensureGiftRuleTable(db=prisma){
  ready=true;
 }
 
+/* ───────── first-finder ladder (economy 2, owner 2026-10-04) ─────────
+ * A box opens several times; the first opener gets the full coins, the next ones a falling share
+ * (`decay` = percent per opening, the last value repeats). The ladder is frozen into the rule's meta when the
+ * box is planned, so a later rule change never alters a box already out in the city. No decay = everyone the same
+ * (boxes made before economy 2, plain admin gifts). */
+export const DEFAULT_DECAY=[100];
+export function normalizeDecay(list){
+ if(!Array.isArray(list)||!list.length||list.length>12)return null;
+ const d=list.map(v=>Math.round(Number(v)));
+ if(d.some(v=>!Number.isFinite(v)||v<1||v>100))return null;
+ for(let i=1;i<d.length;i++)if(d[i]>d[i-1])return null;
+ return d;
+}
+export const decayOf=rule=>normalizeDecay(rule?.decay)||DEFAULT_DECAY;
+/** Coins for the opening with this 0-based index (= `allocated` at claim time): rounded to 5, never below 5. */
+export function payoutFor(rule,index){
+ const coins=Math.max(0,Math.round(Number(rule?.coins)||0));
+ if(!coins)return 0;
+ const d=decayOf(rule),pct=d[Math.min(Math.max(0,index|0),d.length-1)];
+ if(pct>=100)return coins;
+ return Math.max(5,Math.round(coins*pct/100/5)*5);
+}
+/** Every opening's coins for a box with `stock` openings, first to last. */
+export const ladderOf=(rule,stock)=>Array.from({length:Math.max(0,Math.min(1000,stock|0))},(_,i)=>payoutFor(rule,i));
+/** The most a box can ever pay (every opening used). */
+export const maxPayout=(rule,stock)=>ladderOf(rule,stock).reduce((s,n)=>s+n,0);
+
 /** Plain row → rule; unknown or broken values never unlock anything by accident. */
 export function normalizeRule(row){
  if(!row)return null;
  const coins=Math.max(0,Math.min(10000,Math.round(Number(row.coins)||0)));
  const min=Number(row.minPercent);
- return {giftId:row.giftId,campaign:row.campaign||null,coins,minPercent:Number.isFinite(min)&&min>0?min:null,areaId:row.areaId||null,meta:row.meta&&typeof row.meta==='object'?row.meta:{}};
+ const meta=row.meta&&typeof row.meta==='object'?row.meta:{};
+ return {giftId:row.giftId,campaign:row.campaign||null,coins,minPercent:Number.isFinite(min)&&min>0?min:null,areaId:row.areaId||null,meta,decay:normalizeDecay(meta.decay)};
 }
 /** A gated gift needs the player's lit share of its area to reach the threshold. */
 export function isUnlocked(rule,percentOf){
@@ -100,12 +128,15 @@ async function syncQuestCache(tx,userId){
  const xp=sum('XP'),coins=sum('COIN');
  await tx.userQuestProfile.upsert({where:{userId},update:{cachedCoinBalance:coins,totalXp:xp,currentLevel:getLevelForXp(xp).level},create:{userId,cachedCoinBalance:coins,totalXp:xp,currentLevel:getLevelForXp(xp).level}});
 }
-/** Pays the gift's coins once per claim (unique ledger key), inside the claim transaction. */
-export async function creditGiftCoins(tx,{userId,claimId,giftId,rule,now=new Date()}){
- if(!(rule?.coins>0))return 0;
+/** Pays this opening's coins once per claim (unique ledger key), inside the claim transaction. `amount` = the
+ * ladder step for this opening (payoutFor); without it the full coins, as before economy 2. */
+export async function creditGiftCoins(tx,{userId,claimId,giftId,rule,amount=null,rank=null,now=new Date()}){
+ const coins=amount==null?Math.max(0,Math.round(Number(rule?.coins)||0)):Math.max(0,Math.round(Number(amount)||0));
+ if(!(coins>0))return 0;
  const existing=await tx.rewardLedger.findUnique({where:{userId_currency_sourceType_sourceId:{userId,currency:'COIN',sourceType:COIN_SOURCE,sourceId:`claim:${claimId}`}}});
  if(existing)return 0;
- await tx.rewardLedger.create({data:{id:randomUUID(),userId,currency:'COIN',amount:rule.coins,transactionType:'EARN',sourceType:COIN_SOURCE,sourceId:`claim:${claimId}`,createdAt:now,metadata:{giftId,campaign:rule.campaign}}});
+ await tx.rewardLedger.create({data:{id:randomUUID(),userId,currency:'COIN',amount:coins,transactionType:'EARN',sourceType:COIN_SOURCE,sourceId:`claim:${claimId}`,createdAt:now,metadata:{giftId,campaign:rule?.campaign||null,...(rank?{rank,base:rule?.coins||0}:{})}}});
  await syncQuestCache(tx,userId);
- return rule.coins;
+ return coins;
 }
+export {syncQuestCache};

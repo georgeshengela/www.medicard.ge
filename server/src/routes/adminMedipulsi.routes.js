@@ -131,7 +131,7 @@ r.post('/drops/boxes',manage,write,asyncHandler(async(req,res)=>{
  const input=z.object({cityId:z.string().regex(/^[a-z]\d+$/).optional(),spotId:id.optional(),district:z.string().trim().min(1).max(80).optional(),latitude:z.number().min(-90).max(90).optional(),longitude:z.number().min(-180).max(180).optional(),place:z.string().trim().max(80).optional(),
   prize:z.object({title:z.string().trim().min(2).max(100),description:z.string().trim().max(1000).optional(),titleEn:z.string().trim().max(100).optional(),descriptionEn:z.string().trim().max(1000).optional()}).strict().nullable().optional(),
   coins:z.number().int().min(1).max(10000).nullable().optional(),stock:z.number().int().min(1).max(1000),startsAt:z.iso.datetime({offset:true}).nullable().optional(),hours:z.number().min(.25).max(24),
-  pulseRadius:z.number().int().min(40).max(500),revealRadius:z.number().int().min(10).max(50),minPercent:z.number().min(.01).max(100).nullable().optional(),note:z.string().trim().max(300).optional()}).strict()
+  pulseRadius:z.number().int().min(40).max(500),revealRadius:z.number().int().min(10).max(50),minPercent:z.number().min(.01).max(100).nullable().optional(),flat:z.boolean().optional(),note:z.string().trim().max(300).optional()}).strict()
   .refine(v=>v.pulseRadius>v.revealRadius,'პულსის რადიუსი გახსნის რადიუსზე დიდი უნდა იყოს').parse(req.body);
  res.json(await D.manualDrop(input,{adminId:adminId(req)}));
 }));

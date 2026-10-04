@@ -50,13 +50,13 @@ export function RunDropsCard(){
     <View style={{flexDirection:'row',flexWrap:'wrap',gap:6}}>
      {now.districts.slice(0,10).map(d=><View key={d.name} style={{flexDirection:'row',alignItems:'center',gap:5,paddingHorizontal:10,paddingVertical:6,borderRadius:12,backgroundColor:hubTint(teal,dark)}}><MapPin size={12} color={teal}/><Copy size={12}>{d.name}</Copy><Copy bold size={12} style={{color:teal}}>{d.boxes}</Copy></View>)}
     </View>
-    <View style={{flexDirection:'row',alignItems:'center',gap:8}}><Gift size={15} color={teal}/><Copy muted size={12} style={{flex:1}}>{[now.coins?tx(`თითოში ${coinsText(now.coins)}`,`${coinsText(now.coins)} each`):'',now.endsAt?tx(`${tbilisi(now.endsAt).clock}-მდე`,`until ${tbilisi(now.endsAt).clock}`):''].filter(Boolean).join(' · ')}</Copy></View>
+    <View style={{flexDirection:'row',alignItems:'center',gap:8}}><Gift size={15} color={teal}/><Copy muted size={12} style={{flex:1}}>{[now.coins?tx(`პირველ გამხსნელს ${coinsText(now.coins)}`,`${coinsText(now.coins)} for the first to open`):'',now.endsAt?tx(`${tbilisi(now.endsAt).clock}-მდე`,`until ${tbilisi(now.endsAt).clock}`):''].filter(Boolean).join(' · ')}</Copy></View>
    </>:next?<>
     <View style={{flexDirection:'row',alignItems:'baseline',gap:8}}>
      <Copy bold size={22} style={{fontVariant:['tabular-nums']}}>{tbilisi(next.startsAt).clock}</Copy>
      <Copy muted size={13} style={{flex:1}}>{dayWord(next.startsAt)} · {tx(`${next.boxes} ყუთი`,`${next.boxes} ${next.boxes===1?'box':'boxes'}`)}</Copy>
     </View>
-    {next.coins?<View style={{flexDirection:'row',alignItems:'center',gap:8}}><Gift size={15} color={teal}/><Copy muted size={12} style={{flex:1}}>{tx(`თითოში ${coinsText(next.coins)}`,`${coinsText(next.coins)} each`)}</Copy></View>:null}
+    {next.coins?<View style={{flexDirection:'row',alignItems:'center',gap:8}}><Gift size={15} color={teal}/><Copy muted size={12} style={{flex:1}}>{tx(`პირველ გამხსნელს ${coinsText(next.coins)}`,`${coinsText(next.coins)} for the first to open`)}</Copy></View>:null}
     {note?<Copy muted size={12}>{note}</Copy>:null}
    </>:null}
    <View style={{borderTopWidth:1,borderColor:c.bg200,paddingTop:10}}>
@@ -67,6 +67,14 @@ export function RunDropsCard(){
  </Section>;
 }
 
+/** „პირველი იღებს სრულს, მეორე 60%…“ from the server's ladder; the old flat rule when a server sends none. */
+export function decayText(decay?:number[]){
+ const d=(decay||[]).filter(n=>Number.isFinite(n));
+ if(d.length<2||d[0]<=d[d.length-1])return tx('ერთ ყუთს რამდენიმე ადამიანი ხსნის, სანამ მარაგი არ ამოიწურება.','Several people can open one box until it runs out.');
+ const ord=(i:number)=>tx(i===1?'მეორე':i===2?'მესამე':`მე-${i+1}`,i===1?'the second':i===2?'the third':`#${i+1}`);
+ const parts=d.slice(1,-1).map((p,i)=>tx(`${ord(i+1)} — ${p}%`,`${ord(i+1)} ${p}%`));
+ return tx(`ერთ ყუთს რამდენიმე ადამიანი ხსნის: პირველი იღებს სრულ თანხას, ${parts.join(', ')}, შემდეგი — ${d[d.length-1]}%. იჩქარე — ყუთი პირველს ეკუთვნის.`,`Several people open each box: the first gets the full amount, ${parts.join(', ')}, the next ones ${d[d.length-1]}%. Hurry — the box belongs to the first.`);
+}
 function ScheduleSheet({visible,onClose,data}:{visible:boolean;onClose:()=>void;data:Drops}){
  const c=useThemeColors();
  const period=`${formatYmd(data.campaign.start)} – ${formatYmd(data.campaign.end)}`;
@@ -75,13 +83,14 @@ function ScheduleSheet({visible,onClose,data}:{visible:boolean;onClose:()=>void;
   <Copy muted size={13}>{city?tx(`${city} · ${period}. ყუთები თავისით ჩნდება ქალაქის პარკებში, ყოველდღე სხვა ადგილას. დრო — ადგილობრივი.`,`${city} · ${period}. Boxes appear by themselves in the city’s parks, in a different place every day. Local time.`):tx(`„${data.campaign.name}“ · ${period}. ყუთები თავისით ჩნდება თბილისის პარკებში, ყოველდღე სხვა უბნებში.`,`„${data.campaign.name}“ · ${period}. Boxes appear by themselves in Tbilisi parks, in different districts every day.`)}</Copy>
   <Card style={{paddingVertical:4,gap:0}}>
    {data.schedule.map((row,i)=><View key={row.id} style={{flexDirection:'row',alignItems:'center',gap:12,minHeight:60,paddingVertical:10,borderTopWidth:i?1:0,borderColor:c.bg200}}>
-    <View style={{flex:1,minWidth:0}}><Copy bold size={14}>{row.label}</Copy><Copy muted size={12}>{coinsText(row.coins)} {tx('თითო ყუთში','per box')}</Copy></View>
+    <View style={{flex:1,minWidth:0}}><Copy bold size={14}>{row.label}</Copy><Copy muted size={12}>{coinsText(row.coins)} {tx('პირველ გამხსნელს','for the first opener')}</Copy></View>
     <Copy bold size={14} style={{color:c.primary100,fontVariant:['tabular-nums']}}>{row.times}</Copy>
    </View>)}
   </Card>
   <Card style={{gap:8}}>
    <Copy bold size={14}>{tx('როგორ იხსნება ყუთი','How a box opens')}</Copy>
-   <Copy muted size={12}>{tx('1. დაიწყე გასეირნება MEDIRUN-ში. 2. ყუთიდან 250–350 მ-ზე პულსი ჩაგერთვება — რაც ახლოს ხარ, მით ჩქარია. 3. 20–25 მ-ზე ყუთი კამერაში გამოჩნდება — შეეხე და ქოინები მაშინვე ჩაგერიცხება. ერთ ყუთს რამდენიმე ადამიანი ხსნის, სანამ მარაგი არ ამოიწურება.','1. Start a walk in MEDIRUN. 2. 250–350 m from a box a pulse starts — the closer you are, the faster it beats. 3. At 20–25 m the box shows up in the camera — tap it and the coins land at once. Several people can open one box until it runs out.')}</Copy>
+   <Copy muted size={12}>{tx('1. დაიწყე გასეირნება MEDIRUN-ში. 2. ყუთიდან 250–350 მ-ზე პულსი ჩაგერთვება — რაც ახლოს ხარ, მით ჩქარია. 3. 20–25 მ-ზე ყუთი კამერაში გამოჩნდება — შეეხე და ქოინები მაშინვე ჩაგერიცხება.','1. Start a walk in MEDIRUN. 2. 250–350 m from a box a pulse starts — the closer you are, the faster it beats. 3. At 20–25 m the box shows up in the camera — tap it and the coins land at once.')}</Copy>
+   <Copy muted size={12}>{decayText(data.economy?.decay)}</Copy>
    <Copy muted size={12}>{tx('ქოინებს MEDIQUEST-ის მაღაზიაში ცვლი სასაჩუქრე ბარათებსა და გაჯეტებზე.','You swap the coins for gift cards and gadgets in the MEDIQUEST store.')}</Copy>
   </Card>
   {city?null:<Pressable accessibilityRole="link" onPress={()=>void Linking.openURL(data.campaign.rulesUrl)} style={{minHeight:44,flexDirection:'row',alignItems:'center',justifyContent:'center',gap:6}}>

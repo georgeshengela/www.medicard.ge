@@ -12,8 +12,9 @@ import {randomUUID} from 'node:crypto';
 import {prisma} from '../prisma.js';
 import {isFeatureEnabled} from '../featureFlags.js';
 import {acquireJobLease} from '../jobLease.js';
-import {upsertGiftRule,giftRules,ensureGiftRuleTable} from './giftRules.js';
-import {FILE_CAMPAIGN,getCampaign} from './campaignStore.js';
+import {upsertGiftRule,giftRules,ensureGiftRuleTable,normalizeDecay,maxPayout} from './giftRules.js';
+import {FILE_CAMPAIGN,getCampaign,economyOf} from './campaignStore.js';
+import {budgetGate,payWeeklyPrizes} from './economy.js';
 import {detectCities,nextHarvest,harvestCity,listCities,citySpots,planCityDay,cityDates} from './cities.js';
 
 const DATA=new URL('../../data/',import.meta.url);
@@ -58,13 +59,30 @@ function inFocus(week,spot){
  return false;
 }
 
-export function coinGift(campaign,{id,spot,start,end,coins,stock,pulseRadius,revealRadius,kind,minPercent=null}){
- const lantern=Boolean(minPercent);
+/** The box copy for a coin box: the first-finder ladder is part of the promise, so the text says it. */
+export function coinCopy(coins,{minPercent=null,decay=null}={}){
+ const lantern=Boolean(minPercent),steps=normalizeDecay(decay),ladder=steps&&steps.length>1&&steps[0]>steps.at(-1);
+ const pct=String(minPercent).replace('.',',');
  return {
-  gift:{id,title:`${coins} Medi Coins`,description:lantern?`ფარნის ყუთი: მხოლოდ მათთვის, ვისაც თბილისის ${String(minPercent).replace('.',',')}% აქვს განათებული. გახსენი და ${coins} Medi Coins ავტომატურად ჩაირიცხება შენს ანგარიშზე.`:`გახსენი ყუთი და ${coins} Medi Coins ავტომატურად ჩაირიცხება შენს ანგარიშზე. დააგროვე და გადაცვალე ჯილდოებზე.`,
+  title:`${coins} Medi Coins`,
+  description:lantern
+   ?`ფარნის ყუთი: მხოლოდ მათთვის, ვისაც თბილისის ${pct}% აქვს განათებული. პირველ გამხსნელს ${coins} Medi Coins${ladder?', შემდეგებს — ნაკლები':''}. ქოინები მაშინვე ჩაირიცხება.`
+   :ladder?`პირველ გამხსნელს ${coins} Medi Coins, მეორეს ${steps[1]}%, შემდეგებს კიდევ ნაკლები. გახსენი და ქოინები მაშინვე ჩაირიცხება — დააგროვე და გადაცვალე ჯილდოებზე.`
+   :`გახსენი ყუთი და ${coins} Medi Coins ავტომატურად ჩაირიცხება შენს ანგარიშზე. დააგროვე და გადაცვალე ჯილდოებზე.`,
+  titleEn:`${coins} Medi Coins`,
+  descriptionEn:lantern
+   ?`Lantern box: only for players who have lit ${minPercent}% of Tbilisi. ${coins} Medi Coins for the first to open it${ladder?', less for the next ones':''}. The coins land at once.`
+   :ladder?`${coins} Medi Coins for the first to open it, ${steps[1]}% for the second, less for the next ones. Open it and the coins land at once — collect them and swap them for rewards.`
+   :`Open the box and ${coins} Medi Coins land in your account automatically. Collect them and swap them for rewards.`,
+ };
+}
+export function coinGift(campaign,{id,spot,start,end,coins,stock,pulseRadius,revealRadius,kind,minPercent=null}){
+ const decay=normalizeDecay(economyOf(campaign).decay)||null,copy=coinCopy(coins,{minPercent,decay});
+ return {
+  gift:{id,title:copy.title,description:copy.description,
    longitude:spot.lng,latitude:spot.lat,pulseRadius,revealRadius,rewardKind:'DIGITAL',stock,published:true,archived:false,startsAt:start,endsAt:end},
   rule:{giftId:id,campaign:campaign.id,coins,minPercent,areaId:minPercent?campaign.area.id:null,meta:{kind,spot:spot.id||null,place:spot.place||null,district:spot.district||null,
-   titleEn:`${coins} Medi Coins`,descriptionEn:lantern?`Lantern box: only for players who have lit ${minPercent}% of Tbilisi. Open it and ${coins} Medi Coins land in your account.`:`Open the box and ${coins} Medi Coins land in your account automatically. Collect them and swap them for rewards.`}},
+   ...(decay?{decay}:{}),titleEn:copy.titleEn,descriptionEn:copy.descriptionEn}},
  };
 }
 
@@ -173,8 +191,15 @@ export async function autopilotEnabled(db=prisma){
 }
 /** Today and tomorrow (Tbilisi) inside the campaign; boxes are created ahead and appear at their start time. */
 export async function runAutopilot({db=prisma,now=Date.now(),force=false}={}){
- if(!force&&!(await autopilotEnabled(db)))return {skipped:'paused'};
  const campaign=await getCampaign(db,now);
+ // Monday: last week's leaderboard prizes — promised in the app, so they go out even while box placement is
+ // paused, and before the budget gate is checked. Only the MEDIRUN module switch stops them.
+ let prizes=null;
+ if(force||await isFeatureEnabled('medirun',db).catch(()=>false)){try{prizes=await payWeeklyPrizes(campaign,{db,now});}catch(error){console.warn('[medirun-autopilot] weekly prizes failed',error?.message);}}
+ if(!force&&!(await autopilotEnabled(db)))return {skipped:'paused',prizes};
+ // Economy 2: when the season's coins are spent, no new boxes until the owner raises the budget.
+ const budget=await budgetGate(campaign,{db,now});
+ if(budget.stopped)return {skipped:'budget',budget,prizes};
  const today=tbilisiDate(now),dates=[today,dateAdd(today,1)].filter(d=>d>=campaign.start&&d<=campaign.end);
  const results=[];for(const date of dates)results.push(await applyDay(date,{db,plan:planDay(date,{campaign})}));
  // Every other city with a player: detect, harvest one city's spots per tick, then place its local today / tomorrow.
@@ -187,7 +212,7 @@ export async function runAutopilot({db=prisma,now=Date.now(),force=false}={}){
    for(const date of cityDates(city,now))results.push({city:city.cityId,...await applyDay(date,{db,plan:planCityDay(city,date,{campaign,spots,helpers:CITY_HELPERS})})});
   }
  }catch(error){console.warn('[medirun-autopilot] cities failed',error?.message);}
- return {results};
+ return {results,budget,prizes};
 }
 
 let timer=null;
@@ -212,5 +237,5 @@ export async function dayStatus(date,{db=prisma}={}){
  const gifts=await db.medipulsiGift.findMany({where:{id:{startsWith:prefix}},select:{id:true,title:true,stock:true,allocated:true,startsAt:true,endsAt:true,archived:true,latitude:true,longitude:true}});
  const rules=await giftRules(db,0);
  const coins=await db.rewardLedger.aggregate({_sum:{amount:true},_count:true,where:{sourceType:'MEDIRUN',metadata:{path:['giftId'],string_starts_with:prefix}}}).catch(()=>({_sum:{amount:null},_count:0}));
- return {date,boxes:gifts.length,openings:gifts.reduce((s,g)=>s+g.allocated,0),capacity:gifts.reduce((s,g)=>s+g.stock,0),coinsPaid:coins._sum.amount||0,gifts:gifts.map(g=>({...g,rule:rules.get(g.id)||null}))};
+ return {date,boxes:gifts.length,openings:gifts.reduce((s,g)=>s+g.allocated,0),capacity:gifts.reduce((s,g)=>s+g.stock,0),maxCoins:gifts.reduce((s,g)=>s+maxPayout(rules.get(g.id),g.stock),0),coinsPaid:coins._sum.amount||0,gifts:gifts.map(g=>({...g,rule:rules.get(g.id)||null}))};
 }

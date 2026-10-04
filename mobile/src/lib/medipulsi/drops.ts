@@ -14,6 +14,8 @@ export type Drops={
  me:{opened:number;coins:number};
  next:{startsAt:string;boxes:number;coins:CoinRange;kind:DropWaveKind}|null;
  schedule:{id:'weekday'|'weekend'|'saturday';label:string;times:string;coins:CoinRange}[];
+ /** Economy 2: percent per opening — the first finder gets decay[0] (100), later openers less. */
+ economy?:{decay:number[]};
 };
 
 /** Live box counts for the MEDIRUN hub: re-read every minute while the hub is on screen. */

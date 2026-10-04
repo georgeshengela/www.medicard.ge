@@ -5,7 +5,8 @@ import {Check,ChevronDown,ChevronUp,Compass,Crown,Globe2,Landmark,MapPin,Mountai
 import {getPulseClient,pulseApi,usePulse} from '@/lib/medipulsi/client';
 import {CHAPTERS,missionPercent,missionProgress,type Mission} from '@/lib/medipulsi/core/missions';
 import {distance} from '@/lib/medipulsi/core/engine';
-import type {PulseSettings} from '@/lib/medipulsi/types';
+import type {Leaderboard,PulseSettings} from '@/lib/medipulsi/types';
+import {num,useCountdown} from './RunDrops';
 import {useThemeColors} from '@/theme/colors';
 import {useTheme} from '@/store/ThemeContext';
 import {Action,ArtTile,Bar,Card,Copy,RUN_CTA,Segmented,Sheet,Tile,useRunInk} from './PulseUi';
@@ -34,7 +35,8 @@ export const HELP=[
  [tx('11 · კილომეტრები და რეკორდები', '11 · Kilometers and records'),tx('ყოველ სრულ კილომეტრზე ეკრანზე ჩანს ამ კილომეტრის ტემპი; ვიბრაცია ჩართულია, თუ ორმაგი ვიბრაცია ჩართული გაქვს. შეჯამებაში ნახავ თითოეული კილომეტრის ტემპს. რეკორდები (ყველაზე გრძელი, საუკეთესო ტემპი 1 კმ-დან, ყველაზე ხანგრძლივი) ამ ტელეფონში შენახული გასეირნებებიდან ითვლება.', 'At each full kilometer, the pace for that kilometer shows on screen, with a vibration if you have double vibration on. The summary shows the pace for every kilometer. Records (longest, best pace from 1 km, longest duration) are counted from walks saved on this phone.')],
 ];
 
-type Row={handle:string;meters:number;newMeters:number};
+type Row=Leaderboard['rows'][number];
+const MEDAL_WORDS=['🥇','🥈','🥉'];
 type View_=ReturnType<typeof usePulse>;
 const MEDALS=['#F59E0B','#94A3B8','#B45309'];
 
@@ -62,11 +64,13 @@ function MissionCard({m,view,busy,onSelect}:{m:Mission;view:View_;busy:boolean;o
 
 export function PulsePanels({panel,onClose,onTestPulse}:{panel:PulsePanel|null;onClose:()=>void;onTestPulse?:()=>void}){
  const view=usePulse(),client=getPulseClient(),c=useThemeColors(),theme=useTheme();
- const [error,setError]=useState(''),[busy,setBusy]=useState(false),[period,setPeriod]=useState<'week'|'season'>('week'),[rows,setRows]=useState<Row[]>([]),[loadingRows,setLoadingRows]=useState(false),[handle,setHandle]=useState(''),[chapter,setChapter]=useState<'all'|Mission['chapter']>('all');
+ const [error,setError]=useState(''),[busy,setBusy]=useState(false),[period,setPeriod]=useState<'week'|'season'>('week'),[board,setBoard]=useState<'boxes'|'meters'>('boxes'),[lb,setLb]=useState<Leaderboard|null>(null),[loadingRows,setLoadingRows]=useState(false),[handle,setHandle]=useState(''),[chapter,setChapter]=useState<'all'|Mission['chapter']>('all');
+ const rows:Row[]=lb?.rows||[];
+ const prizeLeft=useCountdown(lb?.prizes?.endsAt);
  const settings=view.snapshot?.settings||{};
  const execute=async(action:()=>Promise<unknown>)=>{if(busy)return;setError('');setBusy(true);try{await action();}catch(e){setError((e as Error).message);}finally{setBusy(false);}};
  useEffect(()=>{if(!panel)return;setError('');void client.refresh().catch(e=>setError(e.message));setHandle(view.snapshot?.handle||'');},[panel]);
- useEffect(()=>{if(panel!=='leaderboard')return;let alive=true;setLoadingRows(true);void pulseApi<{rows:Row[]}>('/leaderboard?period='+period).then(data=>{if(alive)setRows(data.rows);}).catch(e=>{if(alive)setError(e.message);}).finally(()=>{if(alive)setLoadingRows(false);});return()=>{alive=false;};},[panel,period]);
+ useEffect(()=>{if(panel!=='leaderboard')return;let alive=true;setLoadingRows(true);void pulseApi<Leaderboard>(`/leaderboard?period=${period}&board=${board}`).then(data=>{if(alive)setLb(data);}).catch(e=>{if(alive)setError(e.message);}).finally(()=>{if(alive)setLoadingRows(false);});return()=>{alive=false;};},[panel,period,board]);
  const update=(patch:PulseSettings)=>void execute(()=>client.settings(patch));
  const saveNickname=()=>{if(!view.snapshot)return;const nickname=handle.trim()||view.snapshot.handle;void execute(async()=>{await client.settings({handle:nickname,leaderboardOptIn:true});setHandle(nickname);Keyboard.dismiss();});};
  const missions=view.snapshot?.missions||[],total=missions.length||24;
@@ -74,8 +78,8 @@ export function PulsePanels({panel,onClose,onTestPulse}:{panel:PulsePanel|null;o
  const rank=(m:Mission)=>{const p=missionProgress(view.book,m);if(view.book.selected===m.id)return 0;if(p.completedAt)return 3;return p.meters>0?1:2;};
  const listed=missions.filter(m=>chapter==='all'||m.chapter===chapter).map(m=>({m,r:rank(m),d:view.journey.accuracy<=25?distance(view.journey.position,m.center):0})).sort((a,b)=>a.r-b.r||a.d-b.d).map(x=>x.m);
  const done=missions.filter(m=>missionProgress(view.book,m).completedAt).length;
- const me=view.snapshot?.leaderboardOptIn?view.snapshot.handle:null;
- const myIndex=me?rows.findIndex(r=>r.handle===me):-1;
+ const myIndex=lb?.me?.listed&&lb.me.rank?lb.me.rank-1:-1;
+ const score=(row:{coins?:number;meters?:number})=>board==='boxes'?`${num(row.coins||0)} MC`:`${((row.meters||0)/1000).toFixed(2)} ${tx('კმ','km')}`;
  return <Sheet visible={Boolean(panel)} title={panel?titles[panel]:''} onClose={onClose} keyboardAware={panel==='leaderboard'} footer={panel==='leaderboard'?<Action busy={busy} disabled={!view.snapshot} label={view.snapshot?.leaderboardOptIn?tx('სახელის შენახვა', 'Save name'):tx('ლიდერბორდში ჩართვა', 'Join the leaderboard')} onPress={saveNickname}/>:undefined}>
   {error&&panel!=='leaderboard'?<Card><Copy style={{color:c.danger}}>{error}</Copy><Action label={tx('ხელახლა ცდა', 'Try again')} secondary icon={RefreshCw} onPress={()=>void execute(()=>client.refresh())}/></Card>:null}
   {panel==='collection'&&view.snapshot&&view.pending>0&&!view.running?<Card><Copy bold>{tx('ჩანაწერების ნაწილი გაგზავნას ელოდება', 'Some records are waiting to be sent')}</Copy><Copy muted>{view.message}</Copy><Action label={tx('ჩანაწერების ხელახლა გაგზავნა', 'Resend records')} secondary busy={busy} icon={RefreshCw} onPress={()=>void execute(()=>client.refresh())}/></Card>:null}
@@ -93,14 +97,17 @@ export function PulsePanels({panel,onClose,onTestPulse}:{panel:PulsePanel|null;o
   {panel==='leaderboard'?<>
    <PulseNicknameField value={handle} onChange={setHandle} placeholder={view.snapshot?.handle} disabled={busy||!view.snapshot}/>
    {error?<Card><Copy style={{color:c.danger}}>{error}</Copy><Action label={tx('ხელახლა ცდა', 'Try again')} secondary icon={RefreshCw} onPress={()=>void execute(()=>client.refresh())}/></Card>:null}
-   <Segmented value={period} onChange={setPeriod} options={[{value:'week',label:tx('7 დღე', '7 days')},{value:'season',label:tx('90 დღე', '90 days')}]}/>
-   {myIndex>=0?<Card style={{flexDirection:'row',alignItems:'center',gap:12,backgroundColor:c.accent100}}><Crown size={20} color={c.primary100}/><Copy bold style={{flex:1}}>{tx('შენ ხარ #', 'You’re #')}{myIndex+1}</Copy><Copy bold style={{fontVariant:['tabular-nums']}}>{(rows[myIndex].meters/1000).toFixed(2)} {tx('კმ', 'km')}</Copy></Card>:null}
-   {loadingRows&&!rows.length?<Card><ActivityIndicator color={c.primary100}/></Card>:!rows.length?<Card><Trophy color={c.primary100} size={24}/><Copy muted>{tx('ამ პერიოდში დასრულებული გასეირნებები ჯერ არ გამოჩენილა. იყავი პირველი.', 'No finished walks in this period yet. Be the first.')}</Copy></Card>:<Card style={{paddingVertical:6,gap:0}}>{rows.map((row,index)=>{const mine=index===myIndex;return <View key={index} style={{flexDirection:'row',alignItems:'center',gap:12,paddingVertical:12,borderTopWidth:index?1:0,borderColor:c.bg200}}>
+   <Segmented value={board} onChange={setBoard} options={[{value:'boxes',label:tx('ყუთები', 'Boxes')},{value:'meters',label:tx('მანძილი', 'Distance')}]}/>
+   <Segmented value={period} onChange={setPeriod} options={[{value:'week',label:tx('ეს კვირა', 'This week')},{value:'season',label:tx('სეზონი', 'Season')}]}/>
+   {lb?.prizes&&period==='week'?<Card style={{gap:4}}><View style={{flexDirection:'row',alignItems:'center',gap:8}}><Trophy size={16} color={c.primary100}/><Copy bold size={13} style={{flex:1}}>{tx('კვირის პრიზები', 'Weekly prizes')}</Copy><Copy muted size={12} style={{fontVariant:['tabular-nums']}}>{prizeLeft.d>0?tx(`${prizeLeft.d} დღე ${prizeLeft.h} სთ`,`${prizeLeft.d}d ${prizeLeft.h}h`):tx(`${prizeLeft.h} სთ ${prizeLeft.m} წთ`,`${prizeLeft.h}h ${prizeLeft.m}m`)}</Copy></View><Copy muted size={12}>{lb.prizes.coins.map((n,i)=>`${MEDAL_WORDS[i]||`#${i+1}`} ${num(n)}`).join(' · ')} Medi Coins · {tx('ორშაბათს ჩაირიცხება სიაში მყოფ პირველ სამეულს', 'credited on Monday to the top three on the list')}</Copy></Card>:null}
+   {lb?.me?.rank?<Card style={{flexDirection:'row',alignItems:'center',gap:12,backgroundColor:c.accent100}}><Crown size={20} color={c.primary100}/><View style={{flex:1}}><Copy bold>{tx(`შენ ხარ #${lb.me.rank}`, `You’re #${lb.me.rank}`)}{lb.me.listed?'':tx(' · სიაში არ ხარ', ' · not on the list')}</Copy>{lb.me.listed?null:<Copy muted size={11}>{tx('ჩაერთე — სხვებიც დაგინახავენ და პრიზსაც მიიღებ.', 'Join — others will see you and you can win a prize.')}</Copy>}</View><Copy bold style={{fontVariant:['tabular-nums']}}>{score(lb.me)}</Copy></Card>:null}
+   {loadingRows&&!rows.length?<Card><ActivityIndicator color={c.primary100}/></Card>:!rows.length?<Card><Trophy color={c.primary100} size={24}/><Copy muted>{board==='boxes'?tx('ამ პერიოდში ყუთი ჯერ არავის გაუხსნია. იყავი პირველი.', 'Nobody has opened a box in this period yet. Be the first.'):tx('ამ პერიოდში დასრულებული გასეირნებები ჯერ არ გამოჩენილა. იყავი პირველი.', 'No finished walks in this period yet. Be the first.')}</Copy></Card>:<Card style={{paddingVertical:6,gap:0}}>{rows.map((row,index)=>{const mine=index===myIndex;return <View key={index} style={{flexDirection:'row',alignItems:'center',gap:12,paddingVertical:12,borderTopWidth:index?1:0,borderColor:c.bg200}}>
     <View style={{width:30,height:30,borderRadius:15,alignItems:'center',justifyContent:'center',backgroundColor:index<3?MEDALS[index]+'26':'transparent'}}><Copy bold size={13} style={{color:index<3?MEDALS[index]:c.text200}}>{index+1}</Copy></View>
-    <Copy bold numberOfLines={1} style={{flex:1,color:mine?c.primary100:c.text100}}>{row.handle}{mine?tx(' · შენ', ' · you'):''}</Copy>
-    <Copy bold style={{fontVariant:['tabular-nums']}}>{(row.meters/1000).toFixed(2)} {tx('კმ', 'km')}</Copy>
+    <View style={{flex:1,minWidth:0}}><Copy bold numberOfLines={1} style={{color:mine?c.primary100:c.text100}}>{row.handle}{mine?tx(' · შენ', ' · you'):''}</Copy>{board==='boxes'?<Copy muted size={11}>{tx(`${row.boxes||0} ყუთი · ${row.firsts||0}-ჯერ პირველი`,`${row.boxes||0} boxes · first ${row.firsts||0}×`)}</Copy>:row.walks?<Copy muted size={11}>{tx(`${row.walks} გასეირნება`,`${row.walks} walks`)}</Copy>:null}</View>
+    <Copy bold style={{fontVariant:['tabular-nums']}}>{score(row)}</Copy>
    </View>;})}</Card>}
-   <Copy muted size={12}>{tx('დასრულებული სესიების დადასტურებული მანძილი, ნებისმიერი ქალაქიდან. სიაში მონაწილეობას შენ ირჩევ; მარშრუტი და მდებარეობა არ ჩანს.', 'Verified distance from finished sessions, in any city. You choose whether to be on the list; your route and location aren’t shown.')}</Copy>
+   {lb?.lastWeek?.length?<Card style={{gap:6}}><Copy bold size={13}>{tx('გასული კვირის გამარჯვებულები', 'Last week’s winners')}</Copy>{lb.lastWeek.map(w=><Copy key={`${w.board}-${w.rank}`} muted size={12}>{MEDAL_WORDS[w.rank-1]||`#${w.rank}`} {w.handle} · +{num(w.coins)} Medi Coins</Copy>)}</Card>:null}
+   <Copy muted size={12}>{board==='boxes'?tx('ყუთების გახსნით მიღებული ქოინები ამ პერიოდში. ყუთს რამდენიმე ადამიანი ხსნის — პირველი იღებს სრულ თანხას, შემდეგები ნაკლებს. სიაში მონაწილეობას შენ ირჩევ; მდებარეობა არ ჩანს.', 'Coins earned by opening boxes in this period. Several people open each box — the first gets the full amount, the next ones less. You choose whether to be on the list; your location isn’t shown.'):tx('დასრულებული სესიების დადასტურებული მანძილი, ნებისმიერი ქალაქიდან. სიაში მონაწილეობას შენ ირჩევ; მარშრუტი და მდებარეობა არ ჩანს.', 'Verified distance from finished sessions, in any city. You choose whether to be on the list; your route and location aren’t shown.')}</Copy>
    {view.snapshot?.leaderboardOptIn?<Action secondary label={tx('მონაწილეობის გამორთვა', 'Leave the leaderboard')} busy={busy} onPress={()=>{if(view.snapshot)void execute(()=>client.settings({handle:handle.trim()||view.snapshot!.handle,leaderboardOptIn:false}));}}/>:null}
   </>:null}
   {panel==='settings'?<>

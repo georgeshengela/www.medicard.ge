@@ -36,7 +36,7 @@
   const WEEKDAYS = ['კვ', 'ორშ', 'სამ', 'ოთხ', 'ხუთ', 'პარ', 'შაბ'];
   const MONTHS = ['იან', 'თებ', 'მარ', 'აპრ', 'მაი', 'ივნ', 'ივლ', 'აგვ', 'სექ', 'ოქტ', 'ნოე', 'დეკ'];
   const STATUS = { planned: ['დაგეგმილი', 'is-info'], live: ['ქალაქშია', 'is-ok'], empty: ['ამოიწურა', 'is-warn'], ended: ['დასრულდა', 'is-plain'], canceled: ['გაუქმდა', 'is-bad'], hidden: ['დამალული', 'is-plain'] };
-  const KIND = { am: 'დილის ტალღა', ev: 'საღამოს ტალღა', saturday: 'შაბათის წვიმა', lantern: 'ფარანი', manual: 'ხელით', grand: 'დიდი საჩუქარი', admin: 'ადმინის', prize: 'პრიზი' };
+  const KIND = { am: 'დილის ტალღა', md: 'შუადღის ტალღა', ev: 'საღამოს ტალღა', saturday: 'შაბათის წვიმა', lantern: 'ფარანი', manual: 'ხელით', grand: 'დიდი საჩუქარი', admin: 'ადმინის', prize: 'პრიზი' };
   const kindLabel = (k) => KIND[k] || `ტალღა „${k}“`;
   const THEMES = { oldtown: 'ძველი ქალაქი', green: 'მწვანე', horizon: 'ხედები', culture: 'კულტურა', districts: 'უბნები' };
   const ACTIONS = {
@@ -45,7 +45,12 @@
     DROP_BOX_END: 'ყუთი დასრულდა', DROP_BOX_CANCEL: 'ყუთი გაუქმდა', DROP_BOX_RESTORE: 'ყუთი აღდგა', DROP_BOX_STOCK: 'მარაგი შეიცვალა', DROP_BOX_COINS: 'ქოინები შეიცვალა', DROP_BOX_TIME: 'დრო შეიცვალა',
     DROP_CITY_ADD: 'ქალაქი დაემატა', DROP_CITY_RULE: 'ქალაქის წესი შეიცვალა', DROP_CITY_HARVEST: 'ქალაქის ადგილები განახლდა', DROP_CITY_APPLY: 'ქალაქის ყუთები შეიქმნა',
     DROP_AUTOPILOT_ON: 'ავტოპილოტი ჩაირთო', DROP_AUTOPILOT_OFF: 'ავტოპილოტი გამოირთო', GIFT_SAVE: 'საჩუქარი შეიცვალა (MEDIRUN გვერდიდან)',
+    DROP_RULES_UPGRADE: 'წესები ახალ ეკონომიკაზე გადავიდა', DROP_BUDGET_WARN: 'ბიუჯეტის გაფრთხილება', DROP_BUDGET_STOP: 'ბიუჯეტი ამოიწურა — ყუთები შეჩერდა', DROP_WEEK_PRIZES: 'კვირის პრიზები ჩაირიცხა',
   };
+  /* Economy 2: the first-finder ladder, mirrored from giftRules.js (rounded to 5, never below 5). */
+  const ladderOf = (coins, stock, decay) => { const d = Array.isArray(decay) && decay.length ? decay : [100]; return Array.from({ length: Math.max(0, Math.round(stock)) }, (_, i) => { const pct = d[Math.min(i, d.length - 1)]; return pct >= 100 ? coins : Math.max(5, Math.round((coins * pct) / 100 / 5) * 5); }); };
+  const ladderSum = (coins, stock, decay) => ladderOf(coins, stock, decay).reduce((s, n) => s + n, 0);
+  const ladderText = (ladder) => (ladder.length > 1 ? ladder.map((n, i) => `${i === 0 ? '1-ლი' : i === ladder.length - 1 && ladder.length > 2 ? 'ბოლო' : `მე-${i + 1}`} ${num(n)}`).join(' · ') : ladder.length ? `${num(ladder[0])}` : '—');
 
   const st = { sub: 'today', o: null, day: null, dayBoxes: null, draft: null, dirty: false, cal: null, calFilter: 'future', spots: null, spotQ: '', spotDistrict: 'all', spotOnlyOut: false, statsDays: 30, stats: null, log: null, logOffset: 0, timer: null };
 
@@ -172,11 +177,11 @@
       ? `<span class="s-badge is-accent" title="${esc(o.rules.updatedAt ? when(o.rules.updatedAt) : '')}">წესები: ადმინიდან · ვერსია ${num(o.rules.revision)}</span>`
       : '<span class="s-badge is-plain">წესები: ნაგულისხმევი (ფაილი)</span>';
     const pilotNote = a.envOff ? 'გამორთულია სერვერის პარამეტრით (MEDIRUN_AUTOPILOT=off)' : !a.medirun ? 'MEDIRUN მოდული შეჩერებულია „მოდულებში“' : a.enabled ? 'ყოველ 10 წუთში ქმნის დღევანდელ და ხვალინდელ ყუთებს' : 'ახალი ყუთები თავისით აღარ ჩნდება';
-    const n = o.next;
+    const n = o.next, b = o.budget;
     return `<section class="s-card mb-hero">
         <div class="mb-hero-main">
           <div class="mb-hero-title"><span class="mb-hero-mark">${ico('box')}</span><div><h2>${esc(c.name.ka)}</h2><p>${esc(dayLabel(c.start))} – ${esc(dayLabel(c.end))} · თბილისი</p></div></div>
-          <div class="mb-hero-badges"><span class="s-badge ${phase[0]}">${esc(phase[1])}</span>${rules}${o.rules.invalid ? '<span class="s-badge is-bad">შენახული წესები დაზიანებულია — მუშაობს ფაილი</span>' : ''}</div>
+          <div class="mb-hero-badges"><span class="s-badge ${phase[0]}">${esc(phase[1])}</span>${rules}${o.rules.invalid ? '<span class="s-badge is-bad">შენახული წესები დაზიანებულია — მუშაობს ფაილი</span>' : ''}${o.budget?.stopped ? '<span class="s-badge is-bad">ბიუჯეტი ამოიწურა — ავტოპილოტი ახალ ყუთს აღარ დებს</span>' : ''}</div>
         </div>
         <label class="mb-pilot${a.enabled ? ' is-on' : ''}">
           <input class="s-switch" type="checkbox" role="switch" data-mb-pilot ${a.flag ? 'checked' : ''} ${a.envOff ? 'disabled' : ''} aria-label="ავტოპილოტი">
@@ -187,7 +192,8 @@
         <div class="s-metric${o.live.boxes ? ' is-ok' : ''}"><span>ყუთი ახლა ქალაქში</span><strong>${num(o.live.boxes)}</strong><small>${o.live.boxes ? `კიდევ ${num(o.live.openingsLeft)} გახსნა დარჩა` : 'ამ წუთას არცერთი'}</small></div>
         <div class="s-metric"><span>დღეს გაიხსნა</span><strong>${num(o.live.openedToday)}</strong><small>${num(o.live.playersToday)} მოთამაშე</small></div>
         <div class="s-metric"><span>ქოინი დღეს</span><strong>${num(o.live.coinsToday)}</strong><small>ბალანსებზე ჩაირიცხა</small></div>
-        <div class="s-metric"><span>შემდეგი ყუთები</span><strong>${n ? esc(clock(n.startsAt)) : '—'}</strong><small>${n ? `${ymdOf(n.startsAt) === o.today ? 'დღეს' : 'ხვალ'} · ${num(n.boxes)} ყუთი · ${num(n.coins.min)}–${num(n.coins.max)} ქოინი · <span data-mb-next-left>${esc(leftText(n.startsAt))}</span>` : 'დაგეგმილი ყუთი არ არის'}</small></div>
+        <div class="s-metric"><span>შემდეგი ყუთები</span><strong>${n ? esc(clock(n.startsAt)) : '—'}</strong><small>${n ? `${ymdOf(n.startsAt) === o.today ? 'დღეს' : 'ხვალ'} · ${num(n.boxes)} ყუთი · პირველს ${num(n.coins.min)}–${num(n.coins.max)} ქოინი · <span data-mb-next-left>${esc(leftText(n.startsAt))}</span>` : 'დაგეგმილი ყუთი არ არის'}</small></div>
+        ${b ? `<div class="s-metric${b.stopped ? ' is-bad' : b.percent >= 80 ? ' is-warn' : ''}"><span>სეზონის ბიუჯეტი</span><strong>${num(b.paid)} <small>/ ${num(b.seasonCoins)}</small></strong><small>${b.seasonCoins ? `${b.percent}% გაცემულია · დარჩა ${num(b.left)} ქოინი, ${num(b.daysLeft)} დღე (≈ ${num(b.perDayLeft)}/დღე) · ამ ტემპით ≈ ${num(b.projected)}` : 'ბიუჯეტი არ არის დაწესებული — „წესები → ეკონომიკა“'}</small></div>` : ''}
       </div>`;
   }
   function bindHead(scope) {
@@ -227,7 +233,7 @@
     st.dayBoxes = res.boxes || [];
     const boxes = st.dayBoxes;
     const rule = st.day === o.today ? o.dayToday : st.day === o.tomorrow ? o.dayTomorrow : null;
-    const totals = boxes.filter((b) => b.status !== 'canceled').reduce((s, b) => ({ n: s.n + 1, cap: s.cap + b.stock, opened: s.opened + b.allocated, coins: s.coins + b.coins * b.stock }), { n: 0, cap: 0, opened: 0, coins: 0 });
+    const totals = boxes.filter((b) => b.status !== 'canceled').reduce((s, b) => ({ n: s.n + 1, cap: s.cap + b.stock, opened: s.opened + b.allocated, coins: s.coins + (Number.isFinite(b.maxCoins) ? b.maxCoins : b.coins * b.stock) }), { n: 0, cap: 0, opened: 0, coins: 0 });
     const inCampaign = st.day >= o.campaign.start && st.day <= o.campaign.end;
     body.innerHTML = `<div class="s-stack">
       ${rule?.off ? `<div class="s-callout is-warn">${ico('alert')}<p><b>ეს დღე გამორთულია კალენდარში.</b> ავტოპილოტი ამ დღეს ყუთებს არ ქმნის${rule.override?.note ? ` · ${esc(rule.override.note)}` : ''}.</p></div>` : ''}
@@ -280,7 +286,7 @@
       <td data-label="დრო"><span class="mb-time">${esc(clock(b.startsAt))}<i>–</i>${esc(clock(b.endsAt))}</span>${ymdOf(b.endsAt) !== ymdOf(b.startsAt) ? `<small class="s-muted mb-sub">${esc(dayLabel(ymdOf(b.endsAt)))}-მდე</small>` : ''}</td>
       <td data-label="ადგილი"><div class="mb-place"><b>${esc(b.place || 'კოორდინატი')}</b><span>${esc(b.city ? `${b.city}${b.district && b.district !== b.place ? ` · ${b.district}` : ''}` : (b.district || '—'))}</span></div></td>
       <td data-label="ტიპი"><span class="s-badge ${KIND_TONE[b.kind] || 'is-plain'}">${esc(kindLabel(b.kind))}</span>${b.minPercent ? `<small class="s-muted mb-sub">${esc(String(b.minPercent))}%-დან</small>` : ''}</td>
-      <td data-label="შიგთავსი" class="num"><b>${prize ? esc(b.title || 'პრიზი') : `${num(b.coins)}`}</b>${prize ? '' : '<small class="s-muted mb-sub">ქოინი</small>'}</td>
+      <td data-label="შიგთავსი" class="num"><b>${prize ? esc(b.title || 'პრიზი') : `${num(b.coins)}`}</b>${prize ? '' : `<small class="s-muted mb-sub">${b.ladder && b.ladder.length > 1 && b.ladder[0] !== b.ladder[b.ladder.length - 1] ? `პირველს · შემდეგ ${esc(b.ladder.slice(1, 4).map(num).join(' · '))}` : 'ქოინი'}</small>`}</td>
       <td data-label="გახსნა"><div class="mb-open"><div class="s-meter${pct >= 100 ? ' is-warn' : ''}" role="img" aria-label="${pct}%"><i style="width:${pct}%"></i></div><small>${num(b.allocated)} / ${num(b.stock)}</small></div></td>
       <td data-label="სტატუსი"><span class="s-badge ${tone}">${esc(label)}</span></td>
       <td><div class="p4-actions is-end mb-row-actions">
@@ -312,7 +318,8 @@
         <div class="mb-card-badges"><span class="s-badge ${tone}">${esc(label)}</span><span class="s-badge ${KIND_TONE[box.kind] || 'is-plain'}">${esc(kindLabel(box.kind))}</span>${box.minPercent ? `<span class="s-badge is-plain">ჩანს ${esc(String(box.minPercent))}%-დან</span>` : ''}</div>
         <dl class="mb-facts">
           ${fact('დრო', `${esc(dayLabel(ymdOf(box.startsAt)))}, ${esc(clock(box.startsAt))}–${esc(clock(box.endsAt))}`)}
-          ${fact(prize ? 'პრიზი' : 'ქოინი ერთ გახსნაზე', prize ? esc(box.title || 'პრიზი') : `<b>${num(box.coins)}</b> Medi Coins`)}
+          ${fact(prize ? 'პრიზი' : 'პირველ გამხსნელს', prize ? esc(box.title || 'პრიზი') : `<b>${num(box.coins)}</b> Medi Coins`)}
+          ${!prize && box.ladder?.length ? fact('გახსნების კიბე', `${esc(ladderText(box.ladder))}<br><small class="s-muted">სულ მაქს. ${num(box.maxCoins)} ქოინი</small>`) : ''}
           ${fact('გაიხსნა', `<b>${num(box.allocated)}</b> / ${num(box.stock)}`)}
           ${fact('რადიუსი', `პულსი ${num(box.pulseRadius)} მ · გახსნა ${num(box.revealRadius)} მ`)}
           ${fact('კოორდინატი', `<a href="https://www.google.com/maps?q=${box.latitude},${box.longitude}" target="_blank" rel="noopener">${esc(Number(box.latitude).toFixed(5))}, ${esc(Number(box.longitude).toFixed(5))} ↗</a>`)}
@@ -452,8 +459,9 @@
           <label class="s-field"><span>ადგილის სახელი</span><input type="text" name="place" maxlength="80" placeholder="მაგ. ვაკის პარკი, შადრევანთან"></label>
         </div>
         <div class="s-form-grid">
-          <label class="s-field" data-coins-field><span>ქოინი ერთ გახსნაზე</span><input type="number" name="coins" min="1" max="10000" value="100"></label>
+          <label class="s-field" data-coins-field><span>ქოინი პირველ გამხსნელს</span><input type="number" name="coins" min="1" max="10000" value="50"><small>შემდეგები კიბით: ${esc((st.o.economy?.decay || [100]).join(' / '))}%</small></label>
           <label class="s-field"><span>რამდენჯერ იხსნება</span><input type="number" name="stock" min="1" max="1000" value="5" required></label>
+          <label class="s-field" data-coins-field><span>ყველა გახსნა ერთნაირი</span><label class="mb-check"><input type="checkbox" class="s-switch" name="flat"> კიბის გარეშე — ყველას სრული</label></label>
           <label class="s-field"><span>დაწყება (თბილისი)</span><input type="datetime-local" name="startsAt" value="${esc(startDefault)}"><small>ცარიელი = ახლავე</small></label>
           <label class="s-field"><span>ხანგრძლივობა, საათი</span><input type="number" name="hours" min="0.25" max="24" step="0.25" value="3" required></label>
           <label class="s-field"><span>პულსის რადიუსი, მ</span><input type="number" name="pulseRadius" min="40" max="500" value="${wd.pulseRadius}" required><small>აქედან იწყება გულისცემა</small></label>
@@ -502,7 +510,7 @@
       if (what === 'prize') {
         if (String(f.get('prizeTitle') || '').trim().length < 2) { panel.querySelector('[role=alert]').textContent = 'ჩაწერე პრიზის სახელი.'; return; }
         body.prize = { title: String(f.get('prizeTitle')).trim(), ...(f.get('prizeDescription') ? { description: String(f.get('prizeDescription')) } : {}), ...(f.get('prizeTitleEn') ? { titleEn: String(f.get('prizeTitleEn')) } : {}) };
-      } else body.coins = n('coins');
+      } else { body.coins = n('coins'); if (f.get('flat')) body.flat = true; }
       if (f.get('cityId')) body.cityId = String(f.get('cityId'));
       if (f.get('note')) body.note = String(f.get('note'));
       if (where === 'district') body.district = String(f.get('district'));
@@ -529,8 +537,31 @@
   const avgCoins = (coins) => { const w = coins.reduce((s, o) => s + Number(o.weight || 0), 0); return w ? coins.reduce((s, o) => s + Number(o.amount || 0) * Number(o.weight || 0), 0) / w : 0; };
   function daySummary(day) {
     const boxes = day.waves.reduce((s, w) => s + Number(w.rotation || 0) + Number(w.focus || 0), 0);
-    const stock = (Number(day.stock[0]) + Number(day.stock[1])) / 2;
-    return `დღეში ≈ ${num(boxes)} ყუთი · ≈ ${num(Math.round(boxes * stock))} გახსნა · თუ ყველა გაიხსნა ≈ ${num(Math.round(boxes * stock * avgCoins(day.coins)))} ქოინი · საშუალოდ ${num(Math.round(avgCoins(day.coins)))} ქოინი ყუთში`;
+    const stock = (Number(day.stock[0]) + Number(day.stock[1])) / 2, decay = st.draft?.economy?.decay || [100];
+    const avg = avgCoins(day.coins), perBox = ladderSum(avg, Math.round(stock), decay);
+    return `დღეში ≈ ${num(boxes)} ყუთი · ${num(day.waves.length)} ტალღა · ≈ ${num(Math.round(boxes * stock))} გახსნა · თუ ყველა გაიხსნა ≈ ${num(Math.round(boxes * perBox))} ქოინი · პირველს საშუალოდ ${num(Math.round(avg))} ქოინი`;
+  }
+  function economyCard() {
+    const e = st.draft.economy, d = e.decay, w = e.weeklyPrizes, b = e.budget;
+    const sample = ladderOf(50, 6, d), weekCost = [...(w.boxes || []), ...(w.meters || [])].reduce((s, n) => s + Number(n || 0), 0);
+    const bs = st.o.budget;
+    return `<section class="s-card"><header class="s-card-head"><div><h3>ეკონომიკა</h3><p>ბიზნესის მხარე: ვინ რამდენს იღებს და რამდენი შეიძლება სულ გაიცეს.</p></div></header>
+      <div class="s-card-body s-stack">
+        <div class="mb-sum">50-ქოინიანი ყუთი 6 გახსნაზე: ${esc(ladderText(sample))} · სულ ${num(sample.reduce((s, n) => s + n, 0))} · კვირის პრიზები ${num(weekCost)} ქოინი/კვირა</div>
+        <div class="mb-split">
+          <div class="mb-block"><h4 class="mb-h4">გახსნების კიბე — პირველი იღებს სრულს, შემდეგი ნაკლებს (%)</h4>
+            <div class="s-form-grid">${d.map((v, i) => `<label class="s-field"><span>${i === 0 ? '1-ლი გამხსნელი' : i === d.length - 1 ? `მე-${i + 1} და შემდეგი` : `მე-${i + 1}`}</span><input type="number" min="1" max="100" value="${v}" data-p="economy.decay.${i}"><small>${i === 0 ? '100 = სრული ქოინი' : 'წინაზე მეტი ვერ იქნება'}</small></label>`).join('')}</div>
+            <div class="p4-actions"><button type="button" class="btn compact" data-decay-add ${d.length >= 8 ? 'disabled' : ''}>${ico('plus')} საფეხური</button><button type="button" class="btn compact" data-decay-del ${d.length <= 1 ? 'disabled' : ''}>${ico('trash')} ბოლო საფეხური</button></div>
+            <p class="s-muted">კიბე ყუთში „იყინება“ შექმნისას — ცვლილება ეხება მხოლოდ ახალ ყუთებს. გახსნა 5-ზე მრგვალდება და 5-ზე ნაკლები არასდროსაა.</p></div>
+          <div class="mb-block"><h4 class="mb-h4">სეზონის ბიუჯეტი და კვირის პრიზები</h4>
+            <div class="s-form-grid">
+              <label class="s-field"><span>სეზონის ბიუჯეტი, ქოინი</span><input type="number" min="0" max="10000000" step="100" value="${b.seasonCoins}" data-p="economy.budget.seasonCoins"><small>${bs ? `გაცემულია ${num(bs.paid)} (${bs.percent}%) · ≈ ${num(Math.round(b.seasonCoins / 100))} ₾ მაღაზიის ფასით · 0 = შეზღუდვის გარეშე` : '0 = შეზღუდვის გარეშე'}</small></label>
+              <label class="s-field"><span>გაფრთხილება, %</span><input type="text" value="${esc((b.warnAt || []).join(', '))}" data-warn-at><small>Telegram-ში ერთხელ თითო ზღვარზე; 100%-ზე ავტოპილოტი ჩერდება</small></label>
+              ${['boxes', 'meters'].map((k) => [0, 1, 2].map((i) => `<label class="s-field"><span>${k === 'boxes' ? 'ყუთების' : 'მანძილის'} ლიდერბორდი · ${['🥇 1-ლი', '🥈 მე-2', '🥉 მე-3'][i]}</span><input type="number" min="0" max="10000" step="10" value="${Number((w[k] || [])[i] || 0)}" data-p="economy.weeklyPrizes.${k}.${i}"><small>${i === 0 ? 'ორშაბათს 00:10 ჩაირიცხება · 0 = არ არის' : ''}</small></label>`).join('')).join('')}
+            </div>
+            <p class="s-muted">კვირა = თბილისის ორშაბათი–კვირა. პრიზს იღებს მხოლოდ ლიდერბორდში ჩართული მოთამაშე; ბიუჯეტში ითვლება.</p></div>
+        </div>
+      </div></section>`;
   }
   function coinsTable(path, coins) {
     const total = coins.reduce((s, o) => s + Number(o.weight || 0), 0) || 1;
@@ -570,7 +601,7 @@
         </div>
       </div></section>`;
   }
-  const CITY_DEFAULTS = { enabled: true, minPlayers: 1, waves: [{ id: 'am', time: '09:00', hours: 5 }, { id: 'ev', time: '18:00', hours: 3 }], boxesPerWave: { base: 1, perPlayers: 10, max: 5 }, weekendExtra: 1, coins: [{ amount: 50, weight: 60 }, { amount: 100, weight: 35 }, { amount: 250, weight: 5 }], weekendCoins: [{ amount: 150, weight: 50 }, { amount: 250, weight: 35 }, { amount: 500, weight: 15 }], stock: [2, 3], pulseRadius: 250, revealRadius: 20, overrides: {} };
+  const CITY_DEFAULTS = { enabled: true, minPlayers: 1, waves: [{ id: 'am', time: '09:00', hours: 4.5 }, { id: 'md', time: '13:00', hours: 4 }, { id: 'ev', time: '18:00', hours: 3.5 }], boxesPerWave: { base: 2, perPlayers: 5, max: 6 }, weekendExtra: 1, coins: [{ amount: 20, weight: 50 }, { amount: 30, weight: 30 }, { amount: 50, weight: 15 }, { amount: 80, weight: 5 }], weekendCoins: [{ amount: 30, weight: 50 }, { amount: 50, weight: 30 }, { amount: 80, weight: 15 }, { amount: 120, weight: 5 }], stock: [3, 5], pulseRadius: 250, revealRadius: 20, overrides: {} };
   function citiesCard() {
     const r = st.draft.cities;
     const b = r.boxesPerWave;
@@ -600,7 +631,10 @@
         </div>
       </div></section>`;
   }
+  const ECONOMY_DEFAULTS = { version: 2, decay: [100, 60, 40, 25], budget: { seasonCoins: 60000, warnAt: [50, 80] }, weeklyPrizes: { boxes: [300, 200, 100], meters: [300, 200, 100] } };
   function paintRules(body) {
+    if (!st.draft.economy) st.draft.economy = structuredClone(st.o.economy || ECONOMY_DEFAULTS);
+    if (!st.draft.economy.weeklyPrizes) st.draft.economy.weeklyPrizes = { boxes: [], meters: [] };
     if (!st.draft.cities) st.draft.cities = structuredClone(CITY_DEFAULTS);
     if (!st.draft.cities.weekendCoins) st.draft.cities.weekendCoins = structuredClone(st.draft.cities.coins);
     const c = st.draft, sat = c.saturday, g = c.grand;
@@ -610,8 +644,9 @@
     const dropDate = g.dropAt.slice(0, 10), dropTime = g.dropAt.slice(11, 16);
     body.innerHTML = `<form class="s-stack mb-rules" data-mb-rules novalidate>
       <div class="s-callout">${ico('info')}<p><b>ცვლილება ეხება მხოლოდ ჯერ შეუქმნელ ყუთებს.</b> ავტოპილოტი ყუთებს დღით ადრე ქმნის — დღევანდელისა და ხვალინდელისთვის „დღეს“ ტაბში დააჭირე „ხელახლა აწყობა“. შენახვამდე „გადახედვა“ გაჩვენებს, რა შეიცვლება.</p></div>
-      ${dayCard('weekday', 'სამუშაო დღე (ორშაბათი–პარასკევი)', 'ნაკლები და მცირე ყუთები, პარკების სიღრმეში.')}
-      ${dayCard('weekend', 'შაბათ-კვირა', 'მეტი და უკეთესი ყუთები.')}
+      ${economyCard()}
+      ${dayCard('weekday', 'სამუშაო დღე (ორშაბათი–პარასკევი)', 'სამი ტალღა, ყველა უბანში, მცირე ქოინი.')}
+      ${dayCard('weekend', 'შაბათ-კვირა', 'სამი ტალღა, მეტი ყუთი, ოდნავ მეტი ქოინი.')}
       ${citiesCard()}
       <section class="s-card"><header class="s-card-head"><div><h3>შაბათის ქოინების წვიმა</h3><p>ერთ პარკში ბევრი ყუთი ერთად. პარკს სთორიში გამოცანით ამხელთ, ამიტომ აპში პარკი წინასწარ არ ჩანს.</p></div></header>
         <div class="s-card-body s-stack">
@@ -694,7 +729,7 @@
   }
 
   /* draft helpers: data-p="a.b.0.c" paths into st.draft */
-  const NUMERIC = /(\.amount|\.weight|\.hours|\.rotation|\.focus|\.stock(\.\d)?|Radius|minDepthM|\.points|radiusM|\.coins|minPercent|\.percent|\.base|\.perPlayers|\.max|weekendExtra|minPlayers)$/;
+  const NUMERIC = /(\.amount|\.weight|\.hours|\.rotation|\.focus|\.stock(\.\d)?|Radius|minDepthM|\.points|radiusM|\.coins|minPercent|\.percent|\.base|\.perPlayers|\.max|weekendExtra|minPlayers|\.decay\.\d+|seasonCoins|weeklyPrizes\.(boxes|meters)\.\d+)$/;
   function setPath(obj, path, value) {
     const keys = path.split('.');
     let o = obj;
@@ -723,6 +758,10 @@
         if (/^cities\./.test(el.dataset.p) && sum) { const b = st.draft.cities.boxesPerWave; sum.textContent = `ერთ ტალღაში: ${num(b.base)} ყუთი + 1 ყოველ ${num(b.perPlayers)} მოთამაშეზე (მაქს. ${num(b.max)})${st.draft.cities.weekendExtra ? `, შაბათ-კვირას +${num(st.draft.cities.weekendExtra)}` : ''} · ${num(st.draft.cities.waves.length)} ტალღა დღეში`; }
         const key = el.dataset.p.match(/^days\.(weekday|weekend)/)?.[1];
         if (sum && key) sum.textContent = daySummary(st.draft.days[key]);
+        if (/^economy\./.test(el.dataset.p)) { const e = st.draft.economy, sample = ladderOf(50, 6, e.decay), weekCost = [...(e.weeklyPrizes.boxes || []), ...(e.weeklyPrizes.meters || [])].reduce((s, n) => s + Number(n || 0), 0); if (sum) sum.textContent = `50-ქოინიანი ყუთი 6 გახსნაზე: ${ladderText(sample)} · სულ ${num(sample.reduce((s, n) => s + n, 0))} · კვირის პრიზები ${num(weekCost)} ქოინი/კვირა`; body.querySelectorAll('.s-card .mb-sum').forEach((el2) => { const k = el2.closest('.s-card')?.querySelector('[data-p^="days.weekday"]') ? 'weekday' : el2.closest('.s-card')?.querySelector('[data-p^="days.weekend"]') ? 'weekend' : null; if (k) el2.textContent = daySummary(st.draft.days[k]); }); }
+      } else if (el.matches('[data-warn-at]')) {
+        st.draft.economy.budget.warnAt = el.value.split(',').map((x) => Number(x.trim())).filter((n) => Number.isFinite(n) && n >= 1 && n <= 100).slice(0, 5);
+        markDirty(body);
       } else if (el.dataset.weekList) {
         const [i, field] = el.dataset.weekList.split('.');
         const list = el.value.split(',').map((x) => x.trim()).filter(Boolean);
@@ -743,7 +782,7 @@
       if (el.dataset.satPark) { st.draft.saturday.dates[el.dataset.satPark] = el.value; markDirty(body); }
       else if (el.matches('[data-grand-spot]')) { st.draft.grand.spot = el.value || null; markDirty(body); }
       else if (el.matches('[data-lantern-on]')) {
-        st.draft.saturday.lantern = el.checked ? (st.o.campaign.saturday.lantern || { from: st.draft.start, points: 2, stock: 5, coins: 1500, minPercent: 0.25 }) : null;
+        st.draft.saturday.lantern = el.checked ? (st.o.campaign.saturday.lantern || { from: st.draft.start, points: 2, stock: 3, coins: 500, minPercent: 0.25 }) : null;
         markDirty(body); rerender();
       } else if (el.dataset.p && /\.coins\.\d+\.weight$/.test(el.dataset.p)) rerender();
     });
@@ -753,7 +792,9 @@
       if (b.dataset.del) {
         const keys = b.dataset.del.split('.'), idx = Number(keys.pop()), list = getPath(st.draft, keys.join('.'));
         list.splice(idx, 1); markDirty(body); rerender();
-      } else if (b.dataset.addCoin) { getPath(st.draft, b.dataset.addCoin).push({ amount: 100, weight: 10 }); markDirty(body); rerender(); }
+      } else if (b.dataset.addCoin) { getPath(st.draft, b.dataset.addCoin).push({ amount: 50, weight: 10 }); markDirty(body); rerender(); }
+      else if (b.matches('[data-decay-add]')) { const d = st.draft.economy.decay; d.push(Math.max(1, Math.round(d[d.length - 1] * 0.6))); markDirty(body); rerender(); }
+      else if (b.matches('[data-decay-del]')) { if (st.draft.economy.decay.length > 1) st.draft.economy.decay.pop(); markDirty(body); rerender(); }
       else if (b.matches('[data-add-cwave]')) { const w = st.draft.cities.waves; let n = 1; while (w.some((x) => x.id === `w${n}`)) n += 1; w.push({ id: `w${n}`, time: '13:00', hours: 3 }); markDirty(body); rerender(); }
       else if (b.dataset.addWave) {
         const waves = getPath(st.draft, b.dataset.addWave);
@@ -1029,6 +1070,7 @@
       </div>
       <section class="s-card"><header class="s-card-head"><div><h3>გახსნა დღეში</h3></div></header><div class="s-card-body">${C ? C.bars(days.map((d) => ({ day: short(d.date), count: d.opened })), { label: 'გახსნა დღეში', height: 200, empty: 'ამ პერიოდში ყუთი ჯერ არავის გაუხსნია' }) : ''}</div></section>
       <section class="s-card"><header class="s-card-head"><div><h3>ქოინი დღეში</h3></div></header><div class="s-card-body">${C ? C.bars(days.map((d) => ({ day: short(d.date), count: d.coins })), { label: 'ქოინი დღეში', height: 200, tone: 'amber', empty: 'ამ პერიოდში ქოინი ჯერ არ გაცემულა' }) : ''}</div></section>
+      ${st.o.prizes ? `<section class="s-card"><header class="s-card-head"><div><h3>კვირის პრიზები · ${esc(dayLabel(st.o.prizes.week))}-ის კვირა</h3><p>ლიდერბორდის პირველი სამეული ორშაბათს იღებს ქოინებს (ყუთები — ქოინებით, მანძილი — კილომეტრებით).</p></div></header><div class="s-card-body">${st.o.prizes.winners.length ? `<div class="mb-meters">${st.o.prizes.winners.map((x) => `<div class="mb-meter-row"><span>${x.board === 'boxes' ? 'ყუთები' : 'მანძილი'} · ${['🥇', '🥈', '🥉'][x.rank - 1] || `#${x.rank}`} ${esc(x.handle || '—')}</span><div class="s-meter"><i style="width:${Math.min(100, Math.round((x.coins / Math.max(1, ...st.o.prizes.winners.map((y) => y.coins))) * 100))}%"></i></div><b>+${num(x.coins)}</b></div>`).join('')}</div>` : '<p class="s-muted">გასულ კვირას პრიზი არავის ჩარიცხვია — ლიდერბორდში ჩართული მოთამაშე არ ყოფილა, ან კვირა კამპანიამდე იყო.</p>'}</div></section>` : ''}
       <section class="s-card"><header class="s-card-head"><div><h3>სად ხსნიან · ბოლო 30 დღე</h3><p>უბნები გახსნების მიხედვით.</p></div></header><div class="s-card-body">${districts.length ? `<div class="mb-meters">${districts.map((x) => `<div class="mb-meter-row"><span>${esc(x.district)}</span><div class="s-meter"><i style="width:${Math.round((x.opened / top) * 100)}%"></i></div><b>${num(x.opened)}</b></div>`).join('')}</div>` : '<p class="s-muted">ჯერ არცერთი გახსნა.</p>'}</div></section>
       <section class="s-card"><header class="s-card-head"><div><h3>დღეების მიხედვით</h3></div></header><div class="s-card-body is-flush"><div class="s-table-wrap"><table class="s-table"><thead><tr><th>დღე</th><th class="num">ყუთი</th><th class="num">მარაგი</th><th class="num">გაიხსნა</th><th class="num">მოთამაშე</th><th class="num">ქოინი</th></tr></thead><tbody>
         ${days.slice().reverse().map((d) => `<tr><td>${esc(dayLabel(d.date))}</td><td class="num">${num(d.boxes)}</td><td class="num">${num(d.capacity)}</td><td class="num">${num(d.opened)}</td><td class="num">${num(d.players)}</td><td class="num">${num(d.coins)}</td></tr>`).join('')}
@@ -1053,6 +1095,10 @@
       if (r.action === 'DROP_DAY_CANCEL') return `გაუქმდა ${num(d.archived)}`;
       if (r.action === 'DROP_BOX_COINS') return `${num(d.before?.coins)} → ${num(d.coins)} ქოინი`;
       if (r.action === 'DROP_BOX_STOCK') return `${num(d.before?.stock)} → ${num(d.stock)}`;
+      if (r.action === 'DROP_WEEK_PRIZES') return d.winners?.length ? `${d.winners.map((w) => `${w.board === 'boxes' ? 'ყუთები' : 'მანძილი'} #${w.rank} ${w.handle} +${num(w.coins)}`).join(', ')} · სულ ${num(d.total)}` : 'გამარჯვებული არ იყო';
+      if (r.action === 'DROP_BUDGET_WARN') return `${num(d.paid)} / ${num(d.seasonCoins)} ქოინი (${d.percent}%) · დარჩა ${num(d.daysLeft)} დღე`;
+      if (r.action === 'DROP_BUDGET_STOP') return `${num(d.paid)} / ${num(d.seasonCoins)} ქოინი — გაზარდე ბიუჯეტი „წესები → ეკონომიკა“`;
+      if (r.action === 'DROP_RULES_UPGRADE') return `ეკონომიკა ${num(d.from)} → ${num(d.to)}: ახალი ტალღები, ქოინები და კიბე; შენი თარიღები, თემები და გამორთული დღეები შენარჩუნდა`;
       return '';
     };
     // Never a raw id as the label: a date, „წესები“, the box's place/time, or the gift title.
@@ -1060,6 +1106,8 @@
       const d = r.details || {}, id = String(r.entityId || '');
       if (/^\d{4}-\d{2}-\d{2}$/.test(id)) return dayLabel(id);
       if (id === st.o?.campaign?.id || id === 'campaign') return 'წესები';
+      if (r.action === 'DROP_WEEK_PRIZES') return `${dayLabel(id)}-ის კვირა`;
+      if (r.action.startsWith('DROP_BUDGET')) return 'სეზონის ბიუჯეტი';
       if (id === 'medirunAutopilot') return 'ავტოპილოტი';
       if (r.action === 'GIFT_SAVE') return d.after?.title || d.before?.title || 'საჩუქარი';
       const m = id.match(/^glow-(\d{4}-\d{2}-\d{2})-(?:x-(\d{2})(\d{2})|([a-z0-9]+)-(\d+))/);

@@ -1,13 +1,15 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {planDay,dayKind,rotationOrder,CAMPAIGN,dateAdd} from './autopilot.js';
-import {isUnlocked,normalizeRule,localizeGift,shareOfArea} from './giftRules.js';
+import {isUnlocked,normalizeRule,localizeGift,shareOfArea,ladderOf,maxPayout,payoutFor,normalizeDecay} from './giftRules.js';
+import {budgetState,weekStart,periodBounds,rankAmong} from './economy.js';
 import {grandView} from './grand.js';
 
 const DISTRICTS=['გლდანი','ნაძალადევი','დიდუბე','ჩუღურეთი','საბურთალო','ვაკე','მთაწმინდა','კრწანისი','ისანი','სამგორი'];
 // 10 districts × 14 spots on a small grid; every third one lit, depths 10–130 m.
 const spots=DISTRICTS.flatMap((district,d)=>Array.from({length:14},(_,i)=>({id:`s${d}-${i}`,place:`პარკი ${d}`,district,kind:i%5?'park':'square',lng:44.75+d*0.006+(i%4)*0.0015,lat:41.70+Math.floor(i/4)*0.0015,lit:i%3===0,depthM:10+(i*9)%120,areaM2:80_000})));
-const golden={rike:{place:'რიყის პარკი',lng:44.8099,lat:41.6937},vake:{place:'ვაკის პარკი',lng:44.7509,lat:41.7098},lisi:{place:'ლისის ტბა',lng:44.7345,lat:41.7438},april9:{place:'9 აპრილის ბაღი',lng:44.7994,lat:41.6983}};
+// `vake` sits inside the test grid so the rain and the lantern boxes have paths around them.
+const golden={rike:{place:'რიყის პარკი',lng:44.8099,lat:41.6937},vake:{place:'ვაკის პარკი',lng:44.78,lat:41.7},lisi:{place:'ლისის ტბა',lng:44.7345,lat:41.7438},april9:{place:'9 აპრილის ბაღი',lng:44.7994,lat:41.6983}};
 const plan=date=>planDay(date,{spots,golden});
 
 test('the same date always gives the same boxes',()=>{
@@ -17,15 +19,21 @@ test('nothing outside the campaign',()=>{
  assert.equal(plan('2026-10-02').length,0);
  assert.equal(plan('2027-01-01').length,0);
 });
-test('weekdays: few small boxes deep inside parks; weekends: more and better',()=>{
+test('economy 2: weekdays three waves of many small boxes; weekends more and a little better',()=>{
  assert.equal(dayKind('2026-10-05'),'weekday');assert.equal(dayKind('2026-10-11'),'weekend');
  const mon=plan('2026-10-05'),sun=plan('2026-10-11');
- assert.ok(mon.length>=5&&mon.length<=7,`weekday boxes ${mon.length}`);
- assert.ok(mon.every(p=>p.rule.coins<=250&&p.gift.stock<=3&&p.gift.pulseRadius===250)); // coins ×5 since 2 Oct (store economy)
- assert.ok(mon.every(p=>spots.find(s=>s.id===p.rule.meta.spot).depthM>=40),'weekday boxes avoid park edges');
+ assert.ok(mon.length>=15&&mon.length<=18,`weekday boxes ${mon.length}`); // 3 × 5 city boxes (+ theme boxes when the week's zone has spots)
+ assert.deepEqual([...new Set(mon.map(p=>p.rule.meta.kind))],['am','md','ev'],'three waves a day');
+ assert.ok(mon.every(p=>p.rule.coins<=80&&p.gift.stock>=4&&p.gift.stock<=6&&p.gift.pulseRadius===250));
+ assert.ok(mon.every(p=>spots.find(s=>s.id===p.rule.meta.spot).depthM>=20),'weekday boxes avoid park edges');
+ // Maximum coverage: the two daytime waves together visit every district.
+ assert.equal(new Set(mon.filter(p=>p.rule.meta.kind!=='ev').map(p=>p.rule.meta.district)).size,10,'all ten districts every weekday');
  const avg=list=>list.reduce((s,p)=>s+p.rule.coins,0)/list.length;
  assert.ok(sun.length>mon.length&&avg(sun)>avg(mon));
- assert.ok(sun.every(p=>p.rule.coins>=150));
+ assert.ok(sun.every(p=>p.rule.coins>=30&&p.rule.coins<=120));
+ // Every box carries the first-finder ladder and says so in its copy.
+ assert.ok(mon.every(p=>JSON.stringify(p.rule.meta.decay)==='[100,60,40,25]'));
+ assert.match(mon[0].gift.description,/პირველ გამხსნელს/);assert.match(mon[0].rule.meta.descriptionEn,/first to open/);
 });
 test('evening waves only use lit paths, and no spot repeats inside a day',()=>{
  for(const date of ['2026-10-05','2026-10-10','2026-11-14']){
@@ -41,10 +49,10 @@ test('rotation visits every district before repeating one',()=>{
  assert.equal(new Set(order.slice(0,10).map(s=>s.district)).size,10);
  assert.equal(order.length,spots.length);
 });
-test('a week of weekday boxes never reuses a rotation spot',()=>{
+test('a week of daytime boxes never reuses a rotation spot',()=>{
  // Theme-week focus spots may repeat by design (a small area); the city-wide rotation must not.
  const seen=new Set(),campaign={...CAMPAIGN,weeks:[]};
- for(let d='2026-10-05';d<='2026-10-09';d=dateAdd(d,1))for(const p of planDay(d,{spots,golden,campaign}).filter(p=>p.rule.meta.kind==='am')){assert.ok(!seen.has(p.rule.meta.spot),`${p.rule.meta.spot} reused`);seen.add(p.rule.meta.spot);}
+ for(let d='2026-10-05';d<='2026-10-09';d=dateAdd(d,1))for(const p of planDay(d,{spots,golden,campaign}).filter(p=>['am','md'].includes(p.rule.meta.kind))){assert.ok(!seen.has(p.rule.meta.spot),`${p.rule.meta.spot} reused`);seen.add(p.rule.meta.spot);}
 });
 test('Saturday 16:00 rain around the announced park; lanterns from November need 0.25%',()=>{
  const oct=plan('2026-10-10'),rain=oct.filter(p=>p.rule.meta.kind==='saturday');
@@ -53,7 +61,8 @@ test('Saturday 16:00 rain around the announced park; lanterns from November need
  assert.equal(oct.filter(p=>p.rule.meta.kind==='lantern').length,0);
  assert.equal(plan('2026-10-11').filter(p=>p.rule.meta.kind==='saturday').length,0,'Sunday has no rain');
  const nov=plan('2026-11-07').filter(p=>p.rule.meta.kind==='lantern');
- for(const p of nov){assert.equal(p.rule.minPercent,0.25);assert.equal(p.rule.areaId,CAMPAIGN.area.id);assert.equal(p.rule.coins,1500);}
+ assert.equal(nov.length,2);
+ for(const p of nov){assert.equal(p.rule.minPercent,0.25);assert.equal(p.rule.areaId,CAMPAIGN.area.id);assert.equal(p.rule.coins,500);assert.equal(p.gift.stock,3);}
 });
 test('the grand prize exists only on 31 December, for 1% of Tbilisi, as a physical single box',()=>{
  assert.equal(plan('2026-12-30').filter(p=>p.rule.meta.kind==='grand').length,0);
@@ -66,6 +75,18 @@ test('every gift id fits the admin id format',()=>{
  for(const d of ['2026-10-05','2026-11-07','2026-12-31'])for(const p of plan(d))assert.match(p.gift.id,/^[a-zA-Z0-9_-]{1,80}$/);
 });
 
+test('economy 2: the first finder gets the full coins, the next ones a falling share, never below 5',()=>{
+ const rule=normalizeRule({giftId:'g',coins:40,meta:{decay:[100,60,40,25]}});
+ assert.deepEqual(rule.decay,[100,60,40,25]);
+ assert.deepEqual(ladderOf(rule,6),[40,25,15,10,10,10]);
+ assert.equal(maxPayout(rule,6),110);
+ assert.deepEqual(ladderOf(normalizeRule({giftId:'g',coins:20,meta:{decay:[100,60,40,25]}}),4),[20,10,10,5]);
+ // No ladder (boxes from before economy 2, plain admin gifts): every opening pays the same.
+ assert.deepEqual(ladderOf(normalizeRule({giftId:'g',coins:100}),3),[100,100,100]);
+ assert.equal(payoutFor(normalizeRule({giftId:'g',coins:0,meta:{decay:[100,50]}}),0),0,'a prize box pays no coins');
+ // A broken ladder never pays more than the box says.
+ assert.equal(normalizeDecay([100,120]),null);assert.equal(normalizeDecay([]),null);assert.equal(normalizeDecay([50,80]),null);assert.deepEqual(normalizeDecay(['100','60']),[100,60]);
+});
 test('gating: a rule without threshold is open, a gated rule needs the share',()=>{
  assert.equal(isUnlocked(null,()=>0),true);
  const rule=normalizeRule({giftId:'g',coins:'300',minPercent:1,areaId:'r1996871'});
@@ -118,8 +139,11 @@ test('drops: live boxes are counted per district, never with coordinates',()=>{
  assert.equal(v.now.openingsLeft,morning.reduce((s,g)=>s+g.stock,0));
  assert.equal(v.now.districts.reduce((s,d)=>s+d.boxes,0),morning.length);
  assert.ok(!JSON.stringify(v).match(/latitude|longitude|lng|lat"|place/));
- assert.equal(v.next.kind,'evening');
- assert.equal(v.next.startsAt,new Date('2026-10-06T18:00:00+04:00').toISOString());
+ assert.equal(v.next.kind,'regular');
+ assert.equal(v.next.startsAt,new Date('2026-10-06T13:00:00+04:00').toISOString());
+ const later=dropsView({gifts,rules,now:T('2026-10-06T17:30:00+04:00')});
+ assert.equal(later.next.kind,'evening');
+ assert.equal(later.next.startsAt,new Date('2026-10-06T18:00:00+04:00').toISOString());
 });
 test('drops: a box that ran out or ended is not "out there"',()=>{
  const {gifts,rules}=rowsOf('2026-10-06');
@@ -133,8 +157,9 @@ test('drops: before the start the next wave is the first morning; the campaign i
  const v=dropsView({gifts,rules,now:T('2026-10-04T20:00:00+04:00')});
  assert.equal(v.campaign.status,'upcoming');
  assert.equal(v.now.boxes,0);
- assert.equal(v.next.startsAt,new Date('2026-10-05T08:30:00+04:00').toISOString());
- assert.ok(v.next.coins.min>=50&&v.next.coins.max<=250);
+ assert.equal(v.next.startsAt,new Date('2026-10-05T08:00:00+04:00').toISOString());
+ assert.ok(v.next.coins.min>=20&&v.next.coins.max<=80);
+ assert.deepEqual(v.economy.decay,[100,60,40,25]);
 });
 test('drops: Saturday rain is announced as a kind, its park is not named before it starts',()=>{
  const {gifts,rules}=rowsOf('2026-10-10');
@@ -153,18 +178,43 @@ test('drops: the grand prize never shows up in the box counts',()=>{
 test('drops: with nothing in the database the plan names the next wave',()=>{
  const p=plan('2026-10-07');
  const v=dropsView({gifts:[],rules:new Map(),planned:p,now:T('2026-10-07T07:00:00+04:00')});
- assert.equal(v.next.startsAt,new Date('2026-10-07T08:30:00+04:00').toISOString());
+ assert.equal(v.next.startsAt,new Date('2026-10-07T08:00:00+04:00').toISOString());
  assert.ok(v.next.boxes>0);
 });
 test('drops: the weekly rhythm comes from the config',()=>{
  const s=scheduleOf(CAMPAIGN,'ka');
- assert.equal(s[0].times,'08:30 და 18:00');
+ assert.equal(s[0].times,'08:00 და 13:00 და 18:00');
  assert.equal(s[2].times,'16:00');
- assert.deepEqual(s[1].coins,{min:150,max:500});
+ assert.deepEqual(s[1].coins,{min:30,max:120});
+});
+
+/* ───────── economy 2: budget, weeks, ranks (economy.js) ───────── */
+test('economy: the season budget stops the autopilot at 100 % and projects the pace',()=>{
+ const now=T('2026-10-20T12:00:00+04:00');
+ const s=budgetState(CAMPAIGN,15000,now);
+ assert.equal(s.seasonCoins,60000);assert.equal(s.daysTotal,88);assert.equal(s.daysGone,16);assert.equal(s.daysLeft,72);
+ assert.equal(s.percent,25);assert.equal(s.stopped,false);assert.equal(s.projected,Math.round(15000/16*88));assert.equal(s.perDayLeft,Math.round(45000/72));
+ assert.equal(budgetState(CAMPAIGN,60000,now).stopped,true);
+ assert.equal(budgetState({...CAMPAIGN,economy:{...CAMPAIGN.economy,budget:{seasonCoins:0}}},999999,now).stopped,false,'no budget = no stop');
+});
+test('economy: leaderboard weeks are Tbilisi Monday → Sunday, the season is the campaign',()=>{
+ assert.equal(weekStart(T('2026-10-04T23:30:00+04:00')),'2026-09-28','Sunday night still belongs to its week');
+ assert.equal(weekStart(T('2026-10-05T00:10:00+04:00')),'2026-10-05');
+ assert.equal(weekStart(T('2026-10-11T12:00:00+04:00')),'2026-10-05');
+ assert.equal(periodBounds('week',CAMPAIGN,T('2026-10-08T10:00:00+04:00')).since.toISOString(),'2026-10-04T20:00:00.000Z');
+ assert.equal(periodBounds('season',CAMPAIGN,T('2026-10-08T10:00:00+04:00')).since.toISOString(),'2026-10-04T20:00:00.000Z');
+ assert.ok(periodBounds('season',CAMPAIGN,T('2027-03-01T10:00:00+04:00')).since>new Date('2026-11-01'),'outside the campaign: the last 90 days');
+});
+test('economy: a player outside the list still gets a place',()=>{
+ const rows=[{coins:300,boxes:5},{coins:120,boxes:4},{coins:120,boxes:2},{coins:40,boxes:1}];
+ assert.equal(rankAmong(rows,{coins:120,boxes:3},'boxes'),3);
+ assert.equal(rankAmong(rows,{coins:500,boxes:1},'boxes'),1);
+ assert.equal(rankAmong(rows,{coins:0,boxes:0},'boxes'),null);
+ assert.equal(rankAmong([{meters:5000},{meters:900}],{meters:1000},'meters'),2);
 });
 
 /* ───────── admin-editable rules (campaignStore.js) ───────── */
-import {parseCampaign,FILE_CAMPAIGN} from './campaignStore.js';
+import {parseCampaign,FILE_CAMPAIGN,upgradeCampaign} from './campaignStore.js';
 const withRules=patch=>({...structuredClone(FILE_CAMPAIGN),...patch});
 test('rules: the repo file is a valid campaign',()=>{assert.equal(parseCampaign(FILE_CAMPAIGN).id,FILE_CAMPAIGN.id);});
 test('rules: a broken draft is refused with a Georgian reason',()=>{
@@ -182,13 +232,26 @@ test('rules: a day switched off has no boxes, the grand prize still comes',()=>{
 test('rules: a weekday run as a weekend gets weekend coins and waves',()=>{
  const c=withRules({dayOverrides:{'2026-10-07':{as:'weekend'}}});
  const p=planDay('2026-10-07',{campaign:c,spots,golden});
- assert.ok(p.every(x=>x.rule.coins>=150));
- assert.ok(p.some(x=>x.gift.id.includes('-am-'))&&+p[0].gift.startsAt===+new Date('2026-10-07T10:30:00+04:00'));
+ assert.ok(p.every(x=>x.rule.coins>=30));
+ assert.ok(p.some(x=>x.gift.id.includes('-am-'))&&+p[0].gift.startsAt===+new Date('2026-10-07T09:30:00+04:00'));
 });
 test('rules: a custom day replaces only what it names',()=>{
  const c=withRules({dayOverrides:{'2026-10-08':{day:{coins:[{amount:777,weight:1}],stock:[9,9]}}}});
  const p=planDay('2026-10-08',{campaign:c,spots,golden});
  assert.ok(p.length>0&&p.every(x=>x.rule.coins===777&&x.gift.stock===9));
+});
+test('rules: a campaign saved before economy 2 adopts the new economy but keeps the admin\'s own choices',()=>{
+ const old=structuredClone(FILE_CAMPAIGN);delete old.economy;
+ old.name.ka='ჩემი კამპანია';old.days.weekday.coins=[{amount:999,weight:1}];old.saturday.dates={'2026-10-17':'lisi'};old.cities.overrides={r1:{off:true}};old.dayOverrides={'2026-10-06':{off:true}};old.excludedSpots=['x'];
+ const up=parseCampaign(upgradeCampaign(old));
+ assert.equal(up.economy.version,FILE_CAMPAIGN.economy.version);
+ assert.equal(up.name.ka,'ჩემი კამპანია');
+ assert.deepEqual(up.days.weekday.coins,FILE_CAMPAIGN.days.weekday.coins);
+ assert.deepEqual(up.saturday.dates,{'2026-10-17':'lisi'});assert.deepEqual(up.cities.overrides,{r1:{off:true}});
+ assert.deepEqual(up.dayOverrides,{'2026-10-06':{off:true}});assert.deepEqual(up.excludedSpots,['x']);
+ assert.equal(upgradeCampaign(up),null,'already current');
+ const bad=structuredClone(FILE_CAMPAIGN);bad.economy.decay=[50,80];
+ assert.throws(()=>parseCampaign(bad),e=>/კიბე/.test(e.message));
 });
 test('rules: an excluded spot never gets a box',()=>{
  const used=new Set(plan('2026-10-06').map(p=>p.rule.meta.spot));
@@ -206,25 +269,26 @@ const liegeSpots=Array.from({length:12},(_,i)=>({id:`r19956604-parc-${i}`,place:
 const cityPlan=(date,patch={},city=liege)=>planCityDay(city,date,{campaign:{...structuredClone(FILE_CAMPAIGN),...patch},spots:liegeSpots,helpers:CITY_HELPERS});
 test('cities: one player gets boxes at local time, with the city on every box',()=>{
  const p=cityPlan('2026-10-06');
- assert.equal(p.length,2);
+ assert.equal(p.length,6,'two boxes in each of three waves');
  assert.equal(+p[0].gift.startsAt,+new Date('2026-10-06T07:00:00Z'));
  assert.ok(p.every(x=>x.gift.id.startsWith('glow-2026-10-06-r19956604-')&&x.rule.meta.cityId==='r19956604'&&x.rule.meta.city==='ლიეჟი'));
  assert.equal(new Set(p.map(x=>x.rule.meta.spot)).size,p.length);
 });
 test('cities: more players, more boxes; weekends add one and pay more; the cap holds',()=>{
  const rules=cityRulesOf(FILE_CAMPAIGN);
- assert.equal(boxesPerWave(rules,{...liege,players:1},false),1);
- assert.equal(boxesPerWave(rules,{...liege,players:25},false),3);
- assert.equal(boxesPerWave(rules,{...liege,players:1},true),2);
- assert.equal(boxesPerWave(rules,{...liege,players:5000},true),5);
- assert.ok(cityPlan('2026-10-10').every(x=>x.rule.coins>=150));
+ assert.equal(boxesPerWave(rules,{...liege,players:1},false),2);
+ assert.equal(boxesPerWave(rules,{...liege,players:12},false),4);
+ assert.equal(boxesPerWave(rules,{...liege,players:1},true),3);
+ assert.equal(boxesPerWave(rules,{...liege,players:5000},true),6);
+ assert.ok(cityPlan('2026-10-10').every(x=>x.rule.coins>=30&&x.rule.coins<=120));
+ assert.ok(cityPlan('2026-10-06').every(x=>JSON.stringify(x.rule.meta.decay)==='[100,60,40,25]'),'the ladder travels to every city');
 });
 test('cities: off, disabled, no players, outside the campaign → nothing',()=>{
  const rules=cityRulesOf(FILE_CAMPAIGN);
  assert.equal(cityPlan('2026-10-06',{cities:{...rules,overrides:{r19956604:{off:true}}}}).length,0);
  assert.equal(cityPlan('2026-10-06',{cities:{...rules,enabled:false}}).length,0);
  assert.equal(cityPlan('2026-10-06',{},{...liege,players:0}).length,0);
- assert.equal(cityPlan('2026-10-06',{},{...liege,players:0,source:'manual'}).length,2);
+ assert.equal(cityPlan('2026-10-06',{},{...liege,players:0,source:'manual'}).length,6);
  assert.equal(cityPlan('2027-01-02').length,0);
 });
 test('cities: local time follows summer / winter time',()=>{

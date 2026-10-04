@@ -79,7 +79,7 @@ export function RunHero({streak,onStart,onGoal}:{streak:number;onStart:()=>void;
 
   <View style={{paddingHorizontal:HUB.cardPad,marginTop:2}}>
    <Copy bold size={36} style={{color:'#fff',lineHeight:44,letterSpacing:-.5}}>{live?tx('ყუთები\nგელოდება.','The boxes\nare waiting.'):city?tx(`გაანათე\n${city.name}.`,`Light up\n${city.name}.`):tx('გაანათე\nთბილისი.','Light up\nTbilisi.')}</Copy>
-   <Copy size={13} style={{color:MINT,marginTop:4}}>{live&&data?.now.coins?tx(`თითოში ${coinsText(data.now.coins)}`,`${coinsText(data.now.coins)} in each`):city?.pending&&!next?tx('შენს ქალაქში ყუთებს ვამზადებთ — მალე გამოჩნდება.','We’re setting up boxes in your city — they appear soon.'):tx('იარე. იპოვე ყუთი. აიღე საჩუქარი.','Walk. Find a box. Get a prize.')}</Copy>
+   <Copy size={13} style={{color:MINT,marginTop:4}}>{live&&data?.now.coins?tx(`პირველს ${coinsText(data.now.coins)}`,`${coinsText(data.now.coins)} for the first`):city?.pending&&!next?tx('შენს ქალაქში ყუთებს ვამზადებთ — მალე გამოჩნდება.','We’re setting up boxes in your city — they appear soon.'):tx('იარე. იპოვე ყუთი. აიღე საჩუქარი.','Walk. Find a box. Get a prize.')}</Copy>
   </View>
 
   {/* The middle stays free: the lit street is the picture. */}

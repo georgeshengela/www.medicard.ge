@@ -14,113 +14,148 @@
     "km2": 503.93
   },
   "rulesUrl": "https://medicard.ge/medirun#rules",
+  "economy": {
+    "note": "ეკონომიკა 2 (owner 2026-10-04): ბევრი ყუთი, ცოტა ქოინი, დღეში სამი ტალღა. ყუთს რამდენიმე ადამიანი ხსნის — პირველი იღებს სრულს, მეორე 60%, მესამე 40%, შემდეგი 25%. სეზონის ბიუჯეტი ქოინებში — ამოწურვისას ავტოპილოტი ახალ ყუთს აღარ დებს. კვირის პრიზები ორშაბათს ჩაირიცხება ლიდერბორდის პირველ სამეულს.",
+    "version": 2,
+    "decay": [100, 60, 40, 25],
+    "budget": {
+      "seasonCoins": 60000,
+      "warnAt": [50, 80]
+    },
+    "weeklyPrizes": {
+      "boxes": [300, 200, 100],
+      "meters": [300, 200, 100]
+    }
+  },
   "days": {
     "weekday": {
-      "note": "ორშაბათი–პარასკევი: მცირე საჩუქრები, ცოტა ყუთი, პარკების სიღრმეში",
+      "note": "ორშაბათი–პარასკევი: სამი ტალღა, ყველა უბანში, მცირე ქოინი",
       "waves": [
         {
           "id": "am",
-          "time": "08:30",
-          "hours": 5,
-          "rotation": 3,
+          "time": "08:00",
+          "hours": 4.5,
+          "rotation": 5,
+          "focus": 1
+        },
+        {
+          "id": "md",
+          "time": "13:00",
+          "hours": 4,
+          "rotation": 5,
           "focus": 1
         },
         {
           "id": "ev",
           "time": "18:00",
-          "hours": 3,
-          "rotation": 2,
+          "hours": 3.5,
+          "rotation": 5,
           "focus": 1,
           "litOnly": true
         }
       ],
       "coins": [
         {
+          "amount": 20,
+          "weight": 50
+        },
+        {
+          "amount": 30,
+          "weight": 30
+        },
+        {
           "amount": 50,
-          "weight": 60
+          "weight": 15
         },
         {
-          "amount": 100,
-          "weight": 35
-        },
-        {
-          "amount": 250,
+          "amount": 80,
           "weight": 5
         }
       ],
       "stock": [
-        2,
-        3
+        4,
+        6
       ],
       "pulseRadius": 250,
       "revealRadius": 20,
-      "minDepthM": 40
+      "minDepthM": 20
     },
     "weekend": {
-      "note": "შაბათი–კვირა: კარგი საჩუქრები",
+      "note": "შაბათი–კვირა: სამი ტალღა, მეტი ყუთი, ოდნავ მეტი ქოინი",
       "waves": [
         {
           "id": "am",
-          "time": "10:30",
-          "hours": 5,
-          "rotation": 4,
+          "time": "09:30",
+          "hours": 4.5,
+          "rotation": 6,
+          "focus": 2
+        },
+        {
+          "id": "md",
+          "time": "13:30",
+          "hours": 4,
+          "rotation": 6,
           "focus": 2
         },
         {
           "id": "ev",
           "time": "17:30",
-          "hours": 3,
-          "rotation": 3,
-          "focus": 1,
+          "hours": 3.5,
+          "rotation": 6,
+          "focus": 2,
           "litOnly": true
         }
       ],
       "coins": [
         {
-          "amount": 150,
+          "amount": 30,
           "weight": 50
         },
         {
-          "amount": 250,
-          "weight": 35
+          "amount": 50,
+          "weight": 30
         },
         {
-          "amount": 500,
+          "amount": 80,
           "weight": 15
+        },
+        {
+          "amount": 120,
+          "weight": 5
         }
       ],
       "stock": [
-        3,
-        4
+        4,
+        6
       ],
       "pulseRadius": 300,
       "revealRadius": 25,
-      "minDepthM": 30
+      "minDepthM": 20
     }
   },
   "saturday": {
     "time": "16:00",
     "hours": 2,
     "points": 8,
-    "stock": 6,
+    "stock": 4,
     "radiusM": 700,
     "pulseRadius": 350,
     "revealRadius": 25,
     "coins": [
       {
-        "amount": 250,
+        "amount": 80,
         "weight": 60
       },
       {
-        "amount": 500,
+        "amount": 150,
         "weight": 40
       }
     ],
     "lantern": {
       "from": "2026-11-07",
       "points": 2,
-      "stock": 5,
-      "coins": 1500,
+      "stock": 3,
+      "coins": 500,
       "minPercent": 0.25
     },
     "dates": {
@@ -269,8 +304,8 @@
         "en": "Lantern"
       },
       "unlocks": {
-        "ka": "ნოემბრიდან შაბათობით ფარნის ყუთებს დაინახავ — თითოში 1 500 Medi Coins.",
-        "en": "From November you will see the Saturday lantern boxes, 1,500 Medi Coins each."
+        "ka": "ნოემბრიდან შაბათობით ფარნის ყუთებს დაინახავ — პირველ გამხსნელს 500 Medi Coins.",
+        "en": "From November you will see the Saturday lantern boxes, 500 Medi Coins for the first to open one."
       }
     },
     {
@@ -316,58 +351,71 @@
     "spot": null
   },
   "cities": {
-    "note": "ყველა სხვა ქალაქი, სადაც ერთი მოთამაშე მაინც ცხოვრობს (owner 2026-10-04). დრო — ქალაქის ადგილობრივი.",
+    "note": "ყველა სხვა ქალაქი, სადაც ერთი მოთამაშე მაინც ცხოვრობს (owner 2026-10-04). დრო — ქალაქის ადგილობრივი. იგივე ეკონომიკა: სამი ტალღა, მცირე ქოინი, პირველი იღებს სრულს.",
     "enabled": true,
     "minPlayers": 1,
     "waves": [
       {
         "id": "am",
         "time": "09:00",
-        "hours": 5
+        "hours": 4.5
+      },
+      {
+        "id": "md",
+        "time": "13:00",
+        "hours": 4
       },
       {
         "id": "ev",
         "time": "18:00",
-        "hours": 3
+        "hours": 3.5
       }
     ],
     "boxesPerWave": {
-      "base": 1,
-      "perPlayers": 10,
-      "max": 5
+      "base": 2,
+      "perPlayers": 5,
+      "max": 6
     },
     "weekendExtra": 1,
     "coins": [
       {
+        "amount": 20,
+        "weight": 50
+      },
+      {
+        "amount": 30,
+        "weight": 30
+      },
+      {
         "amount": 50,
-        "weight": 60
+        "weight": 15
       },
       {
-        "amount": 100,
-        "weight": 35
-      },
-      {
-        "amount": 250,
+        "amount": 80,
         "weight": 5
       }
     ],
     "weekendCoins": [
       {
-        "amount": 150,
+        "amount": 30,
         "weight": 50
       },
       {
-        "amount": 250,
-        "weight": 35
+        "amount": 50,
+        "weight": 30
       },
       {
-        "amount": 500,
+        "amount": 80,
         "weight": 15
+      },
+      {
+        "amount": 120,
+        "weight": 5
       }
     ],
     "stock": [
-      2,
-      3
+      3,
+      5
     ],
     "pulseRadius": 250,
     "revealRadius": 20,

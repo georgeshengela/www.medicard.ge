@@ -6,7 +6,9 @@ import {pauseJourney,resetSession} from './core/session.js';
 import {emptyBook,advanceMission} from './core/missions.js';
 import {distance} from './core/engine.js';
 import {fail} from './schema.js';
-import {giftRules,percentsFor,isUnlocked,localizeGift,creditGiftCoins} from './giftRules.js';
+import {giftRules,percentsFor,isUnlocked,localizeGift,creditGiftCoins,payoutFor,decayOf} from './giftRules.js';
+import {getCampaign,economyOf} from './campaignStore.js';
+import {periodBounds,boxesBoard,metersBoard,myNumbers,rankAmong,weekWinners,weekStart,tbilisiMidnight} from './economy.js';
 
 export const DEFAULTS={enabled:true,giftsEnabled:true,leaderboardEnabled:true,message:''};
 export async function config(db=prisma){const row=await db.medipulsiConfig.findUnique({where:{id:'main'}});return {...DEFAULTS,...row?.data};}
@@ -97,8 +99,11 @@ export async function nearby(userId,now=Date.now(),lang='ka'){
  const percents=gated.length?await percentsFor(userId,gated):new Map();
  const closest=open.filter(g=>isUnlocked(rules.get(g.id),id=>percents.get(id))).map(g=>({g,d:distance(j.position,[g.longitude,g.latitude])})).filter(x=>x.d<=x.g.pulseRadius).sort((a,b)=>a.d-b.d)[0];
  if(!closest)return {...noSignal,quality:true};
- const {g,d}=closest,revealed=inRange(j,g);
- return {signal:true,revealed,quality:true,period:Math.round((2200-1500*(1-d/g.pulseRadius))/100)*100,distance:revealed?Math.round(d):0,gift:revealed?localizeGift({id:g.id,title:g.title,description:g.description,rewardKind:g.rewardKind,position:[g.longitude,g.latitude]},rules.get(g.id),lang):null};
+ const {g,d}=closest,revealed=inRange(j,g),rule=rules.get(g.id)||null;
+ // Economy 2: what THIS opening pays (first finder gets the full coins, later ones a falling share).
+ const coins=payoutFor(rule,g.allocated),money=rule?.coins>0?{coins,base:rule.coins,rank:g.allocated+1,opened:g.allocated,stock:g.stock,decay:decayOf(rule)}:{};
+ const gift=revealed?localizeGift({id:g.id,title:g.title,description:g.description,rewardKind:g.rewardKind,position:[g.longitude,g.latitude]},rule,lang):null;
+ return {signal:true,revealed,quality:true,period:Math.round((2200-1500*(1-d/g.pulseRadius))/100)*100,distance:revealed?Math.round(d):0,gift:gift?{...gift,...money,...(coins>0?{title:`${coins} Medi Coins`}:{})}:null};
 }
 export async function claim(userId,giftId,now=Date.now()){
  const rule=(await giftRules()).get(giftId)||null,percents=rule?.minPercent?await percentsFor(userId,[rule],{maxAgeMs:0}):new Map();
@@ -113,15 +118,35 @@ export async function claim(userId,giftId,now=Date.now()){
  if(!g||!g.published||g.archived||+g.startsAt>now||+g.endsAt<=now||!inRange(p.state.journey,g))fail(409,'საჩუქარი ამ მდებარეობაზე მიუწვდომელია.');
  if(!isUnlocked(rule,id=>percents.get(id)))fail(409,'ეს საჩუქარი ჯერ შენთვის დახურულია.','GIFT_LOCKED');
  if(g.allocated>=g.stock)fail(409,'საჩუქრის მარაგი ამოიწურა.','OUT_OF_STOCK');
- const claimed=await tx.medipulsiClaim.create({data:{id:randomUUID(),userId,giftId,sessionId:s.id,code:randomBytes(10).toString('hex').toUpperCase(),status:g.rewardKind==='DIGITAL'?'APPROVED':'PENDING',reward:{title:g.title,description:g.description,kind:g.rewardKind,coins:rule?.coins||0,evidence:{fixAt:p.state.journey.lastFix,accuracy:p.state.journey.accuracy,distance:distance(p.state.journey.position,[g.longitude,g.latitude]),sessionMeters:s.meters,rejectedFixes:s.rejected}}}});
+ // Economy 2: the opening's place in the ladder is `allocated` under the row lock — first finder = rank 1.
+ const rank=g.allocated+1,coins=payoutFor(rule,g.allocated);
+ const claimed=await tx.medipulsiClaim.create({data:{id:randomUUID(),userId,giftId,sessionId:s.id,code:randomBytes(10).toString('hex').toUpperCase(),status:g.rewardKind==='DIGITAL'?'APPROVED':'PENDING',reward:{title:coins>0?`${coins} Medi Coins`:g.title,description:g.description,kind:g.rewardKind,coins,rank,base:rule?.coins||0,evidence:{fixAt:p.state.journey.lastFix,accuracy:p.state.journey.accuracy,distance:distance(p.state.journey.position,[g.longitude,g.latitude]),sessionMeters:s.meters,rejectedFixes:s.rejected}}}});
  await tx.medipulsiGift.update({where:{id:giftId},data:{allocated:{increment:1}}});
- await creditGiftCoins(tx,{userId,claimId:claimed.id,giftId,rule,now:new Date(now)});
+ await creditGiftCoins(tx,{userId,claimId:claimed.id,giftId,rule,amount:coins,rank,now:new Date(now)});
  return claimed;
 });}
-export async function leaderboard(period){
- if(!(await config()).leaderboardEnabled)return {rows:[]};
- const since=new Date(Date.now()-(period==='season'?90:7)*86400000);
- // No coordinates, names, email, or health records are exposed in rankings.
- const rows=await prisma.$queryRaw`SELECT p."handle", SUM(s."newMeters")::float8 AS "newMeters", SUM(s."meters")::float8 AS "meters" FROM "MedipulsiSession" s JOIN "MedipulsiPlayer" p ON p."userId"=s."userId" JOIN "User" u ON u."id"=p."userId" WHERE p."leaderboardOptIn"=true AND u."status"='ACTIVE' AND s."excluded"=false AND s."phase"='FINISHED' AND s."startedAt">=${since} GROUP BY p."userId",p."handle" HAVING SUM(s."meters")>0 ORDER BY SUM(s."meters") DESC, MIN(s."endedAt") ASC LIMIT 100`;
- return {rows};
+/**
+ * Two boards (economy 2): `boxes` — coins from box openings, boxes, first finds; `meters` — verified distance.
+ * `week` = this Tbilisi calendar week (the Monday prizes use the same window), `season` = the campaign.
+ * No coordinates, names, email, or health records are exposed in rankings; `me` is the reader's own place even
+ * when they are not on the list (a reason to join).
+ */
+export async function leaderboard(period='week',board='meters',userId=null,now=Date.now()){
+ if(!(await config()).leaderboardEnabled)return {rows:[],board,period,me:null,prizes:null,lastWeek:[]};
+ const campaign=await getCampaign(prisma,now),{since}=periodBounds(period,campaign,now);
+ const rowsFull=board==='boxes'?await boxesBoard({since,db:prisma}):await metersBoard({since,db:prisma});
+ const rows=rowsFull.map(({userId:_u,...r})=>r);
+ let me=null;
+ if(userId){
+  const mine=await myNumbers(userId,{since,db:prisma}).catch(()=>null);
+  if(mine){const listed=rowsFull.findIndex(r=>r.userId===userId);me={...mine,rank:listed>=0?listed+1:rankAmong(rowsFull,mine,board),listed:listed>=0};}
+ }
+ // Monday prizes while the campaign runs: what the week's top places get, and who got last week's.
+ const e=economyOf(campaign),live=now>=+tbilisiMidnight(campaign.start)&&now<+tbilisiMidnight(campaign.end)+86400_000;
+ const list=(board==='boxes'?e.weeklyPrizes.boxes:e.weeklyPrizes.meters)||[];
+ const monday=weekStart(now),nextMonday=new Date(+tbilisiMidnight(monday)+7*86400_000);
+ const prizes=live&&list.some(n=>n>0)?{coins:list.filter(n=>n>0),endsAt:nextMonday.toISOString()}:null;
+ const prevMonday=new Date(Date.parse(`${monday}T00:00:00Z`)-7*86400_000).toISOString().slice(0,10);
+ const lastWeek=live?await weekWinners(prevMonday,{db:prisma}).then(w=>w.filter(x=>x.board===board)).catch(()=>[]):[];
+ return {rows,board,period,me,prizes,lastWeek};
 }

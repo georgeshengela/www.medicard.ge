@@ -4,7 +4,8 @@
 // The Saturday rain is not named before it starts (its park is revealed by riddle stories at 15:00 / 15:30).
 import {prisma} from '../prisma.js';
 import {CAMPAIGN,tbilisiDate,planDay,autopilotEnabled} from './autopilot.js';
-import {getCampaign} from './campaignStore.js';
+import {getCampaign,economyOf} from './campaignStore.js';
+import {normalizeDecay} from './giftRules.js';
 import {ensureCityTable,cityRulesOf,homeCityId} from './cities.js';
 import {timezoneFor,zonedTime,localDate} from './citySpotsMath.js';
 import {tileOf} from './territoryMath.js';
@@ -96,6 +97,8 @@ export function dropsView({gifts,rules,now=Date.now(),claimsToday=0,coinsToday=0
   me:{opened:mine.opened,coins:mine.coins},
   next,
   schedule:schedule||scheduleOf(campaign,lang),
+  // Economy 2: the first-finder ladder, so the app can say „პირველს სრული, მეორეს 60 %…“.
+  economy:{decay:normalizeDecay(economyOf(campaign).decay)||[100]},
  };
 }
 

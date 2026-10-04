@@ -4,6 +4,7 @@
 // „ნაგულისხმევზე დაბრუნება“ deletes the row. Every reader (autopilot, /drops, /grand) goes through getCampaign().
 // Changes apply to boxes that do not exist yet: the autopilot never edits a box it already created.
 import {readFileSync} from 'node:fs';
+import {randomUUID} from 'node:crypto';
 import {z} from 'zod';
 import {prisma} from '../prisma.js';
 
@@ -29,6 +30,18 @@ const grand=z.object({id:z.string().regex(/^[a-zA-Z0-9_-]{1,80}$/),dropAt:z.stri
 const simpleWave=z.object({id:z.string().regex(/^[a-z0-9]{1,8}$/).refine(v=>!['sat','lan','x'].includes(v),'ტალღის ეს კოდი დაკავებულია'),time:hhmm,hours:z.number().min(.5).max(16)});
 const cities=z.object({enabled:z.boolean(),minPlayers:int(1,10000),waves:z.array(simpleWave).max(6).refine(list=>new Set(list.map(w=>w.id)).size===list.length,'ტალღების კოდები არ უნდა მეორდებოდეს'),boxesPerWave:z.object({base:int(0,30),perPlayers:int(1,100000),max:int(0,30)}),weekendExtra:int(0,10),coins,weekendCoins:coins.optional(),stock:z.tuple([int(1,1000),int(1,1000)]).refine(([lo,hi])=>lo<=hi,'მარაგის „დან“ „მდე“-ზე დიდი ვერ იქნება'),pulseRadius:int(40,500),revealRadius:int(10,50),overrides:z.record(z.string().regex(/^[a-z]\d+$/),z.object({off:z.boolean().optional(),boxesPerWave:int(0,30).optional(),note:z.string().max(300).optional()})).optional()}).refine(radii,'ქალაქების პულსის რადიუსი გახსნის რადიუსზე დიდი უნდა იყოს');
 const override=z.object({off:z.boolean().optional(),as:z.enum(['weekday','weekend']).optional(),day:dayPatch.optional(),note:z.string().max(300).optional()});
+// Economy 2 (owner 2026-10-04): the first-finder ladder, the season coin budget and the Monday leaderboard prizes.
+const prizeList=z.array(int(0,10000)).max(10);
+const economy=z.object({
+ note:z.string().max(600).optional(),
+ version:int(1,99).default(2),
+ decay:z.array(int(1,100)).min(1).max(12).refine(d=>d.every((v,i)=>!i||v<=d[i-1]),'კიბე უნდა იკლებდეს: ყოველი შემდეგი გახსნა წინაზე მეტს ვერ იღებს'),
+ budget:z.object({seasonCoins:int(0,10_000_000),warnAt:z.array(z.number().min(1).max(100)).max(5).default([50,80])}),
+ weeklyPrizes:z.object({boxes:prizeList.default([]),meters:prizeList.default([])}),
+});
+export const FILE_ECONOMY=Object.freeze(structuredClone(FILE_CAMPAIGN.economy));
+/** The campaign's economy with the file's values for anything a saved row lacks. */
+export const economyOf=campaign=>({...FILE_ECONOMY,...(campaign?.economy||{}),budget:{...FILE_ECONOMY.budget,...(campaign?.economy?.budget||{})},weeklyPrizes:{...FILE_ECONOMY.weeklyPrizes,...(campaign?.economy?.weeklyPrizes||{})}});
 
 export const campaignSchema=z.object({
  id:z.literal(FILE_CAMPAIGN.id),
@@ -45,7 +58,26 @@ export const campaignSchema=z.object({
  dayOverrides:z.record(ymd,override).optional(),
  excludedSpots:z.array(z.string().min(1).max(80)).max(400).optional(),
  cities:cities.optional(),
+ economy:economy.optional(),
 }).refine(c=>c.start<=c.end,'კამპანიის დასაწყისი დასასრულზე გვიან ვერ იქნება');
+
+/**
+ * A saved campaign from before economy 2 gets the file's economy blocks (waves, coins, stock, Saturday, cities,
+ * levels, economy) while everything the admin shaped by hand stays: name, dates, weeks, grand prize, day
+ * overrides, excluded spots, Saturday parks, city overrides. Pure; null when nothing needs upgrading.
+ */
+export function upgradeCampaign(saved,file=FILE_CAMPAIGN){
+ const have=Number(saved?.economy?.version)||1,want=Number(file.economy?.version)||1;
+ if(have>=want)return null;
+ return {
+  ...saved,
+  days:structuredClone(file.days),
+  saturday:{...structuredClone(file.saturday),dates:saved.saturday?.dates||file.saturday.dates},
+  cities:{...structuredClone(file.cities),overrides:saved.cities?.overrides||{}},
+  levels:structuredClone(file.levels),
+  economy:structuredClone(file.economy),
+ };
+}
 
 /** Parses a draft; throws a 400 with the first problem in Georgian. */
 export function parseCampaign(data){
@@ -55,7 +87,7 @@ export function parseCampaign(data){
  throw Object.assign(new Error(`${first?.message||'არასწორი მნიშვნელობა'}${first?.path?.length?` (${first.path.join(' › ')})`:''}`),{status:400,code:'CAMPAIGN_INVALID'});
 }
 
-let ready=false;
+let ready=false,upgrading=false;
 async function ensureTable(db){
  if(ready)return;
  await db.$executeRawUnsafe(`CREATE TABLE IF NOT EXISTS "MedirunCampaign" ("id" TEXT PRIMARY KEY, "data" JSONB NOT NULL, "revision" INTEGER NOT NULL DEFAULT 1, "updatedAt" TIMESTAMPTZ NOT NULL DEFAULT now(), "updatedBy" TEXT)`);
@@ -72,7 +104,24 @@ export async function campaignRecord(db=prisma){
   await ensureTable(db);
   const rows=await db.$queryRaw`SELECT "data","revision","updatedAt","updatedBy" FROM "MedirunCampaign" WHERE "id"=${FILE_CAMPAIGN.id}`;
   if(!rows[0])return {campaign:FILE_CAMPAIGN,source:'file',revision:0,updatedAt:null,updatedBy:null};
-  try{return {campaign:parseCampaign(rows[0].data),source:'admin',revision:rows[0].revision,updatedAt:rows[0].updatedAt,updatedBy:rows[0].updatedBy};}
+  try{
+   let campaign=parseCampaign(rows[0].data),revision=rows[0].revision;
+   // Economy 2 rolled out after the admin saved rules: adopt the new economy once, keep the admin's own choices.
+   const upgraded=upgradeCampaign(campaign);
+   if(upgraded){
+    campaign=parseCampaign(upgraded);
+    if(!upgrading){
+     upgrading=true;
+     try{
+      await db.$executeRaw`UPDATE "MedirunCampaign" SET "data"=${JSON.stringify(campaign)}::jsonb,"revision"="revision"+1,"updatedAt"=now(),"updatedBy"='economy-upgrade' WHERE "id"=${FILE_CAMPAIGN.id} AND "revision"=${revision}`;
+      await db.medipulsiAudit.create({data:{id:randomUUID(),actorId:'medirun-autopilot',action:'DROP_RULES_UPGRADE',entityId:campaign.id,details:{from:Number(rows[0].data?.economy?.version)||1,to:campaign.economy.version}}}).catch(()=>{});
+      revision+=1;
+      console.log(`[medirun] campaign rules upgraded to economy ${campaign.economy.version}`);
+     }catch(error){console.warn('[medirun] economy upgrade not saved',error?.message);}
+    }
+   }
+   return {campaign,source:'admin',revision,updatedAt:rows[0].updatedAt,updatedBy:rows[0].updatedBy};
+  }
   catch(error){console.warn('[medirun] saved campaign is invalid, using the file',error?.message);return {campaign:FILE_CAMPAIGN,source:'file',revision:rows[0].revision,updatedAt:rows[0].updatedAt,updatedBy:rows[0].updatedBy,invalid:error.message};}
  }catch(error){
   console.warn('[medirun] campaign table unavailable',error?.message);
