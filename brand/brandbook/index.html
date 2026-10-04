@@ -1,0 +1,797 @@
+<!doctype html>
+<html lang="ka">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MEDICARD Brand Book</title>
+<meta name="description" content="MEDICARD-ის ბრენდბუქი: ლოგო, აიქონები, ფერები, შრიფტები, MEDI მოდულები, ვიჯეტები და ილუსტრაციები.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Georgian:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  @font-face { font-family: 'Archy'; src: url('../../mobile/assets/fonts/medifontbold.otf') format('opentype'); font-weight: 700; font-display: swap; }
+  @font-face { font-family: 'Archy'; src: url('../../mobile/assets/fonts/medifont.ttf') format('truetype'); font-weight: 300; font-display: swap; }
+  @font-face { font-family: 'Exo 2 Brand'; src: url('../../server/public/fonts/exo2/Exo2-ExtraBold.ttf') format('truetype'); font-weight: 800; font-display: swap; }
+  @font-face { font-family: 'FiraGO'; src: url('../../server/public/fonts/firago/FiraGO-Regular.woff2') format('woff2'); font-weight: 400; font-display: swap; }
+  @font-face { font-family: 'FiraGO'; src: url('../../server/public/fonts/firago/FiraGO-SemiBold.woff2') format('woff2'); font-weight: 600; font-display: swap; }
+  @font-face { font-family: 'FiraGO'; src: url('../../server/public/fonts/firago/FiraGO-ExtraBold.woff2') format('woff2'); font-weight: 800; font-display: swap; }
+  @font-face { font-family: 'Davit'; src: url('../../server/public/fonts/davit-guramishvili/DM-Davit-Guramishvili.woff2') format('woff2'); font-display: swap; }
+
+  :root {
+    --canvas: #F5F7F7;
+    --surface: #FFFFFF;
+    --raised: #EAEEEF;
+    --line: #DDE3E4;
+    --ink: #0F1A1C;
+    --body: #46565A;
+    --muted: #7B8B8F;
+    --teal: #0F766E;
+    --teal-2: #14B8A6;
+    --tint: #CCFBF1;
+    --spot: #102C35;
+    --on-spot: #FFFFFF;
+    --on-spot-muted: #9FC3C4;
+    color-scheme: light;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --canvas: #030712; --surface: #111827; --raised: #1F2937; --line: #374151;
+      --ink: #FFFFFF; --body: #D1D5DB; --muted: #6B7280;
+      --teal: #5EEAD4; --teal-2: #14B8A6; --tint: #042F2E; --spot: #0B2027;
+      color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --canvas: #030712; --surface: #111827; --raised: #1F2937; --line: #374151;
+    --ink: #FFFFFF; --body: #D1D5DB; --muted: #6B7280;
+    --teal: #5EEAD4; --teal-2: #14B8A6; --tint: #042F2E; --spot: #0B2027;
+    color-scheme: dark;
+  }
+
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+  body {
+    margin: 0;
+    background: var(--canvas);
+    color: var(--body);
+    font: 400 15px/1.6 'Noto Sans Georgian', system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  img { max-width: 100%; display: block; }
+  a { color: var(--teal); }
+  :focus-visible { outline: 2px solid var(--teal-2); outline-offset: 3px; border-radius: 6px; }
+
+  /* ---------- hero ---------- */
+  .hero {
+    position: relative;
+    overflow: hidden;
+    background: var(--spot);
+    color: var(--on-spot);
+    padding: 40px 20px 56px;
+    min-height: 560px;
+    display: flex;
+    flex-direction: column;
+  }
+  .hero-mark {
+    position: absolute;
+    right: -170px;
+    bottom: -210px;
+    width: 720px;
+    height: 720px;
+    transform: rotate(-14deg);
+    opacity: .9;
+    pointer-events: none;
+  }
+  .hero-top { display: flex; align-items: center; gap: 12px; position: relative; z-index: 1; }
+  .hero-top svg { width: 34px; height: 34px; }
+  .hero-top span { font: 700 21px/1 'Archy', 'Noto Sans Georgian', sans-serif; letter-spacing: .01em; }
+  .theme-toggle {
+    margin-left: auto;
+    background: rgba(255,255,255,.08);
+    color: var(--on-spot);
+    border: 0;
+    border-radius: 999px;
+    padding: 9px 16px;
+    font: 600 13px/1 'Noto Sans Georgian', sans-serif;
+    cursor: pointer;
+  }
+  .theme-toggle:hover { background: rgba(255,255,255,.14); }
+  .hero-body { position: relative; z-index: 1; margin-top: auto; max-width: 760px; }
+  .hero h1 {
+    font: 700 clamp(64px, 13vw, 168px)/.92 'Archy', 'Noto Sans Georgian', sans-serif;
+    margin: 0 0 18px;
+    color: #FFFFFF;
+    letter-spacing: -.01em;
+  }
+  .hero p { font-size: 17px; line-height: 1.6; color: var(--on-spot-muted); max-width: 52ch; margin: 0; }
+  .hero-meta { margin-top: 26px; display: flex; flex-wrap: wrap; gap: 8px; }
+  .hero-meta span { font-size: 13px; color: #CFE5E4; background: rgba(255,255,255,.07); padding: 6px 12px; border-radius: 999px; }
+
+  /* ---------- layout ---------- */
+  .shell { max-width: 1240px; margin: 0 auto; padding: 0 20px; display: grid; grid-template-columns: 220px minmax(0, 1fr); gap: 48px; }
+  nav.toc { position: sticky; top: 0; align-self: start; padding: 40px 0; max-height: 100vh; overflow: auto; }
+  nav.toc ol { list-style: none; margin: 0; padding: 0; counter-reset: ch; }
+  nav.toc li { counter-increment: ch; }
+  nav.toc a {
+    display: flex; gap: 10px; align-items: baseline;
+    padding: 7px 10px; border-radius: 10px;
+    color: var(--body); text-decoration: none; font-size: 14px;
+  }
+  nav.toc a::before { content: counter(ch, decimal-leading-zero); font-size: 11px; color: var(--muted); font-variant-numeric: tabular-nums; }
+  nav.toc a:hover, nav.toc a.on { background: var(--surface); color: var(--ink); }
+  main { padding: 40px 0 96px; min-width: 0; }
+  section.ch { padding-top: 56px; scroll-margin-top: 8px; }
+  section.ch:first-child { padding-top: 0; }
+  .ch-head { display: flex; align-items: baseline; gap: 14px; margin-bottom: 8px; }
+  .ch-num { font: 600 13px/1 'Noto Sans Georgian', sans-serif; color: var(--teal); font-variant-numeric: tabular-nums; }
+  h2 { font: 700 40px/1.1 'Archy', 'Noto Sans Georgian', sans-serif; color: var(--ink); margin: 0; letter-spacing: .005em; }
+  .lede { max-width: 68ch; margin: 6px 0 24px; font-size: 16px; }
+  h3 { font: 700 17px/1.4 'Noto Sans Georgian', sans-serif; color: var(--ink); margin: 34px 0 12px; }
+  .card { background: var(--surface); border-radius: 22px; padding: 22px; }
+  .grid { display: grid; gap: 14px; }
+  .g2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .g3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .g4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .cap { font-size: 13px; color: var(--muted); margin-top: 10px; line-height: 1.45; }
+  .cap b { color: var(--ink); font-weight: 600; }
+  code, .mono { font-family: ui-monospace, 'SF Mono', Consolas, monospace; font-size: 12.5px; }
+  .rules { margin: 0; padding: 0; list-style: none; display: grid; gap: 8px; }
+  .rules li { padding-left: 22px; position: relative; }
+  .rules li::before { content: ''; position: absolute; left: 4px; top: .7em; width: 7px; height: 7px; border-radius: 50%; background: var(--teal-2); }
+  .rules.no li::before { background: #C62B3F; }
+
+  /* ---------- logo ---------- */
+  .logo-stage { border-radius: 22px; aspect-ratio: 4 / 3; display: grid; place-items: center; position: relative; overflow: hidden; }
+  .logo-stage svg { width: 34%; height: auto; }
+  .lockup { display: flex; align-items: center; gap: 14px; }
+  .lockup svg { width: 52px; height: 52px; }
+  .lockup span { font: 700 44px/1 'Archy', 'Noto Sans Georgian', sans-serif; }
+  .clear { position: relative; display: inline-grid; place-items: center; padding: 26px; background-image: repeating-linear-gradient(45deg, rgba(20,184,166,.10) 0 6px, transparent 6px 12px); border-radius: 12px; }
+  .clear::after { content: ''; position: absolute; inset: 26px; outline: 1px dashed var(--teal-2); }
+  .clear svg { width: 104px; height: 104px; display: block; }
+  .sizes { display: flex; align-items: flex-end; gap: 22px; }
+  .sizes div { display: flex; flex-direction: column; align-items: center; gap: 8px; font-size: 12px; color: var(--muted); }
+
+  /* ---------- icons ---------- */
+  .appicon { width: 100%; aspect-ratio: 1; border-radius: 22.37%; box-shadow: 0 10px 30px rgba(15,26,28,.16); }
+  .icon-cell { display: flex; flex-direction: column; align-items: center; text-align: center; }
+  .icon-cell .cap { margin-top: 12px; }
+  .layer { background: var(--raised); border-radius: 18px; padding: 12px; }
+  .layer img { border-radius: 10px; background: repeating-conic-gradient(var(--line) 0% 25%, transparent 0% 50%) 50% / 16px 16px; }
+
+  /* ---------- colour ---------- */
+  .sw { display: flex; flex-direction: column; justify-content: flex-start; border-radius: 18px; overflow: hidden; background: var(--surface); cursor: pointer; border: 0; padding: 0; text-align: left; font: inherit; color: inherit; }
+  .sw .chip { height: 92px; }
+  .sw .meta { padding: 12px 14px 14px; }
+  .sw .meta b { display: block; color: var(--ink); font-size: 14px; font-weight: 600; }
+  .sw .meta span { font-size: 12.5px; color: var(--muted); }
+  .sw:hover .chip { filter: saturate(1.08); }
+  .scale { display: flex; border-radius: 18px; overflow: hidden; height: 120px; }
+  .scale button { flex: 1; min-width: 0; border: 0; cursor: pointer; display: flex; align-items: flex-end; padding: 10px; font: 600 11.5px/1.2 ui-monospace, Consolas, monospace; }
+  .theme-table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  .theme-table th { text-align: left; font-weight: 600; color: var(--muted); font-size: 12.5px; padding: 0 10px 10px; }
+  .theme-table td { padding: 9px 10px; border-top: 1px solid var(--line); vertical-align: middle; }
+  .dot { display: inline-block; width: 18px; height: 18px; border-radius: 6px; vertical-align: -4px; margin-right: 8px; box-shadow: inset 0 0 0 1px rgba(127,127,127,.25); }
+
+  /* ---------- type ---------- */
+  .spec { display: grid; grid-template-columns: 220px minmax(0, 1fr); gap: 24px; align-items: start; }
+  .spec + .spec { margin-top: 14px; }
+  .spec .big { font-size: 54px; line-height: 1.1; color: var(--ink); overflow-wrap: anywhere; }
+  .spec .alpha { margin-top: 10px; font-size: 18px; color: var(--body); overflow-wrap: anywhere; }
+  .scale-row { display: grid; grid-template-columns: 90px minmax(0, 1fr); gap: 16px; align-items: baseline; padding: 10px 0; border-top: 1px solid var(--line); }
+  .scale-row:first-child { border-top: 0; }
+  .scale-row span { font-size: 12.5px; color: var(--muted); font-variant-numeric: tabular-nums; }
+  .scale-row p { margin: 0; color: var(--ink); }
+
+  /* ---------- modules ---------- */
+  .wm { font-family: 'Exo 2 Brand', 'Exo 2', sans-serif; font-weight: 800; letter-spacing: .01em; line-height: 1; white-space: nowrap; }
+  .wm i { font-style: normal; display: inline-block; transform: skewX(-16deg); }
+  .mod { border-radius: 22px; overflow: hidden; background: var(--surface); }
+  .mod-hero { position: relative; height: 170px; padding: 20px; display: flex; flex-direction: column; justify-content: space-between; overflow: hidden; color: #fff; }
+  .mod-hero .ring { position: absolute; border-radius: 50%; border: 1.5px solid rgba(255,255,255,.14); }
+  .mod-hero .glow { position: absolute; width: 220px; height: 220px; right: -60px; top: -80px; border-radius: 50%; filter: blur(10px); }
+  .mod-hero .wm { position: relative; font-size: 31px; }
+  .mod-hero .tile { position: relative; width: 42px; height: 42px; border-radius: 14px; background: rgba(255,255,255,.16); display: grid; place-items: center; }
+  .mod-hero .tile svg { width: 22px; height: 22px; color: #fff; }
+  .mod-body { padding: 16px 18px 18px; }
+  .mod-body .wm { font-size: 22px; color: var(--ink); }
+  .mod-body p { margin: 8px 0 12px; font-size: 13.5px; line-height: 1.5; }
+  .hexes { display: flex; flex-wrap: wrap; gap: 6px; }
+  .hexes button { border: 0; background: var(--raised); color: var(--body); border-radius: 999px; padding: 4px 10px 4px 6px; font: 500 11.5px/1.4 ui-monospace, Consolas, monospace; display: inline-flex; align-items: center; gap: 6px; cursor: pointer; }
+  .hexes i { width: 12px; height: 12px; border-radius: 50%; display: inline-block; }
+
+  /* ---------- iconography ---------- */
+  .ui-icons { display: grid; grid-template-columns: repeat(auto-fill, minmax(104px, 1fr)); gap: 10px; }
+  .ui-icon { background: var(--surface); border-radius: 18px; padding: 16px 8px 12px; display: flex; flex-direction: column; align-items: center; gap: 10px; text-align: center; font-size: 12px; color: var(--muted); }
+  .ui-icon .t { width: 42px; height: 42px; border-radius: 14px; display: grid; place-items: center; }
+  .ui-icon .t svg { width: 21px; height: 21px; }
+  .glyphs { display: grid; grid-template-columns: repeat(auto-fill, minmax(76px, 1fr)); gap: 8px; }
+  .glyph { display: flex; flex-direction: column; align-items: center; gap: 6px; font-size: 10.5px; color: var(--muted); text-align: center; overflow-wrap: anywhere; }
+  .glyph .disc { width: 56px; height: 56px; border-radius: 50%; display: grid; place-items: center; }
+  .glyph .disc svg { width: 30px; height: 30px; }
+
+  /* ---------- widgets ---------- */
+  .wstage { border-radius: 28px; padding: 28px 22px; display: flex; flex-wrap: wrap; gap: 20px; align-items: flex-start; }
+  .wstage.light { background: linear-gradient(150deg, #F3D9E3 0%, #E9E1F4 55%, #F7E6DA 100%); }
+  .wstage.dark { background: linear-gradient(150deg, #120F22 0%, #1C1431 55%, #0B1220 100%); }
+  .wcell { display: flex; flex-direction: column; gap: 8px; align-items: center; font-size: 12px; color: #6B5E6E; }
+  .wstage.dark .wcell { color: #A99EB5; }
+  .w { position: relative; overflow: hidden; border-radius: 23px; width: 170px; height: 170px; background-size: 100% 100%; box-shadow: 0 6px 22px rgba(42,31,45,.12); }
+  .w.m { width: 364px; }
+  .w .in { position: absolute; inset: 0; padding: 16px; display: flex; flex-direction: column; }
+  .w .hd { display: flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 800; letter-spacing: .02em; }
+  .w .hd img { width: 13px; height: 13px; }
+  .w .ans { margin-top: auto; }
+  .w .c1 { font-size: 13px; font-weight: 600; line-height: 1.25; }
+  .w .v { font: 700 36px/1 ui-rounded, 'SF Pro Rounded', 'Nunito', system-ui, sans-serif; letter-spacing: -.02em; }
+  .w .u { font-size: 15px; font-weight: 600; margin-left: 4px; }
+  .w .n { font-size: 12px; font-weight: 500; margin-top: 3px; }
+  .w .side { position: absolute; right: 16px; bottom: 16px; display: flex; flex-direction: column; align-items: flex-end; gap: 10px; }
+  .w .pill-date { font-size: 12px; font-weight: 600; padding: 4px 10px; border-radius: 10px; }
+  .w .btn { height: 40px; width: 112px; border-radius: 20px; background: #C92A55; color: #fff; font-weight: 700; font-size: 14px; display: grid; place-items: center; }
+  .w .neutral { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; font-size: 15px; font-weight: 800; letter-spacing: .03em; }
+  .w .neutral img { width: 34px; height: 34px; }
+
+  /* ---------- illustrations ---------- */
+  .gal-tabs { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 14px; }
+  .gal-tabs button { border: 0; background: var(--surface); color: var(--body); border-radius: 999px; padding: 8px 14px; font: 600 13px/1 'Noto Sans Georgian', sans-serif; cursor: pointer; }
+  .gal-tabs button[aria-pressed="true"] { background: var(--ink); color: var(--canvas); }
+  .gal-note { font-size: 13.5px; margin: 0 0 14px; }
+  .gal { display: grid; grid-template-columns: repeat(auto-fill, minmax(128px, 1fr)); gap: 10px; }
+  .gal button { border: 0; padding: 10px; background: var(--surface); border-radius: 18px; cursor: zoom-in; display: flex; flex-direction: column; gap: 8px; align-items: center; font: 500 11.5px/1.3 'Noto Sans Georgian', sans-serif; color: var(--muted); text-align: center; }
+  .gal img { width: 100%; aspect-ratio: 1; object-fit: contain; }
+  .lightbox { position: fixed; inset: 0; background: rgba(3,7,18,.82); display: none; place-items: center; z-index: 50; padding: 24px; cursor: zoom-out; }
+  .lightbox.on { display: grid; animation: fade .18s ease-out; }
+  .lightbox img { max-width: min(92vw, 900px); max-height: 82vh; object-fit: contain; border-radius: 18px; background: rgba(255,255,255,.04); }
+  .lightbox p { color: #D1D5DB; text-align: center; margin: 12px 0 0; font-size: 13px; }
+  @keyframes fade { from { opacity: 0; } }
+
+  /* ---------- UI language ---------- */
+  .phone { width: 300px; max-width: 100%; background: #F5F7F7; border-radius: 34px; padding: 22px 20px; color: #0F1A1C; box-shadow: 0 0 0 8px #0F1A1C; }
+  .phone.dk { background: #030712; color: #fff; }
+  .phone h4 { font: 700 17px/1.4 'Noto Sans Georgian', sans-serif; margin: 0 0 12px; }
+  .phone .pc { background: #fff; border-radius: 22px; padding: 18px; display: flex; gap: 12px; align-items: center; margin-bottom: 28px; }
+  .phone.dk .pc { background: #111827; }
+  .phone .pt { width: 42px; height: 42px; border-radius: 14px; background: rgba(15,118,110,.08); display: grid; place-items: center; color: #0F766E; flex: none; }
+  .phone.dk .pt { background: rgba(94,234,212,.15); color: #5EEAD4; }
+  .phone .pt svg { width: 21px; height: 21px; }
+  .phone .pc b { display: block; font-size: 15px; font-weight: 600; }
+  .phone .pc small { font-size: 13px; color: #7B8B8F; }
+  .phone.dk .pc small { color: #9CA3AF; }
+  .phone .spotlight { background: #102C35; color: #fff; border-radius: 22px; padding: 18px; }
+  .phone .spotlight small { color: #9FC3C4; font-size: 13px; }
+  .measure { font-size: 12px; color: var(--muted); }
+
+  /* ---------- social / files ---------- */
+  .social { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; }
+  .social button { border: 0; padding: 0; background: var(--surface); border-radius: 18px; overflow: hidden; cursor: zoom-in; text-align: left; font: 500 12px/1.3 'Noto Sans Georgian', sans-serif; color: var(--muted); }
+  .social img { width: 100%; aspect-ratio: 4 / 3; object-fit: cover; }
+  .social span { display: block; padding: 10px 12px 12px; }
+  .files { width: 100%; border-collapse: collapse; font-size: 14px; }
+  .files td { padding: 10px; border-top: 1px solid var(--line); vertical-align: top; }
+  .files td:first-child { color: var(--ink); font-weight: 600; width: 34%; }
+  .toast { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); background: var(--ink); color: var(--canvas); padding: 10px 16px; border-radius: 12px; font-size: 13px; opacity: 0; pointer-events: none; transition: opacity .2s; z-index: 60; }
+  .toast.on { opacity: 1; }
+  footer { padding: 32px 20px 48px; text-align: center; font-size: 13px; color: var(--muted); }
+
+  @media (max-width: 1080px) {
+    .g4 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  }
+  @media (max-width: 900px) {
+    .shell { grid-template-columns: minmax(0, 1fr); gap: 0; }
+    nav.toc { position: static; max-height: none; padding: 20px 0 0; }
+    nav.toc ol { display: flex; gap: 4px; overflow-x: auto; padding-bottom: 6px; }
+    nav.toc a { white-space: nowrap; }
+    .g3 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .spec { grid-template-columns: minmax(0, 1fr); gap: 8px; }
+    .hero-mark { width: 480px; height: 480px; right: -150px; bottom: -150px; }
+  }
+  @media (max-width: 560px) {
+    .g2, .g3, .g4 { grid-template-columns: minmax(0, 1fr); }
+    .scale { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); height: auto; }
+    .scale button { height: 64px; }
+    h2 { font-size: 32px; }
+    .spec .big { font-size: 40px; }
+    .w.m { width: 100%; max-width: 364px; }
+    .hero { min-height: 480px; }
+  }
+</style>
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <linearGradient id="gBrand" x1="24.75" y1="12.75" x2="60.75" y2="48.75" gradientUnits="userSpaceOnUse">
+      <stop offset=".2" stop-color="#0D9488"/><stop offset=".4" stop-color="#14B8A6"/><stop offset="1" stop-color="#5EEAD4"/>
+    </linearGradient>
+    <linearGradient id="gHero" x1="24.75" y1="12.75" x2="60.75" y2="48.75" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#14B8A6" stop-opacity=".30"/><stop offset="1" stop-color="#5EEAD4" stop-opacity=".08"/>
+    </linearGradient>
+    <symbol id="mark" viewBox="24.75 12.75 36 36">
+      <path fill-rule="evenodd" clip-rule="evenodd" d="M42.75 12.75C47.2687 12.75 50.9318 16.4131 50.9318 20.9318V22.5682H52.5682C57.0869 22.5682 60.75 26.2313 60.75 30.75C60.75 35.2687 57.0869 38.9318 52.5682 38.9318H50.9318V40.5682C50.9318 45.0869 47.2687 48.75 42.75 48.75C38.2313 48.75 34.5682 45.0869 34.5682 40.5682V38.9318H32.9318C28.4131 38.9318 24.75 35.2687 24.75 30.75C24.75 26.2313 28.4131 22.5682 32.9318 22.5682H34.5682V20.9318C34.5682 16.4131 38.2313 12.75 42.75 12.75ZM50.8407 25.8409C50.0861 32.6671 44.6671 38.0861 37.8409 38.8407V40.5682C37.8409 43.2794 40.0388 45.4773 42.75 45.4773C45.4612 45.4773 47.6591 43.2794 47.6591 40.5682V37.2955C47.6591 36.3917 48.3917 35.6591 49.2955 35.6591H52.5682C55.2794 35.6591 57.4773 33.4612 57.4773 30.75C57.4773 28.0388 55.2794 25.8409 52.5682 25.8409H50.8407ZM42.75 16.0227C40.0388 16.0227 37.8409 18.2206 37.8409 20.9318V24.2045C37.8409 25.1083 37.1083 25.8409 36.2045 25.8409H32.9318C30.2206 25.8409 28.0227 28.0388 28.0227 30.75C28.0227 33.4612 30.2206 35.6591 32.9318 35.6591H34.6593C35.4139 28.8329 40.8329 23.4131 47.6591 22.6585V20.9318C47.6591 18.2206 45.4612 16.0227 42.75 16.0227ZM47.5225 25.9767C42.616 26.7391 38.7391 30.616 37.9767 35.5225C42.8838 34.7603 46.7603 30.8838 47.5225 25.9767Z"/>
+    </symbol>
+  </defs>
+</svg>
+
+<header class="hero">
+  <svg class="hero-mark" viewBox="0 0 36 36" aria-hidden="true"><use href="#mark" fill="url(#gHero)"/></svg>
+  <div class="hero-top">
+    <svg viewBox="0 0 36 36" aria-hidden="true"><use href="#mark" fill="url(#gBrand)"/></svg>
+    <span>მედიქარდი</span>
+    <button class="theme-toggle" id="themeToggle" type="button">მუქი თემა</button>
+  </div>
+  <div class="hero-body">
+    <h1>ბრენდბუქი</h1>
+    <p>როგორ გამოიყურება და ლაპარაკობს MEDICARD — ლოგო, აიქონები, ფერები, შრიფტები, MEDI მოდულები, ვიჯეტები და ყველა ილუსტრაცია ერთ გვერდზე. ყოველი მნიშვნელობა აღებულია აპის კოდიდან.</p>
+    <div class="hero-meta"><span>აპი 1.0.0.20</span><span>ქართული · English</span><span id="genDate"></span></div>
+  </div>
+</header>
+
+<div class="shell">
+  <nav class="toc" aria-label="თავები">
+    <ol>
+      <li><a href="#logo">ლოგო</a></li>
+      <li><a href="#icons">აპის აიქონი</a></li>
+      <li><a href="#color">ფერები</a></li>
+      <li><a href="#type">შრიფტები</a></li>
+      <li><a href="#modules">MEDI მოდულები</a></li>
+      <li><a href="#iconography">ხატულები</a></li>
+      <li><a href="#widgets">ვიჯეტები</a></li>
+      <li><a href="#art">ილუსტრაციები</a></li>
+      <li><a href="#ui">ინტერფეისის ენა</a></li>
+      <li><a href="#social">სოციალური</a></li>
+      <li><a href="#files">ფაილები</a></li>
+    </ol>
+  </nav>
+
+  <main>
+    <!-- 01 LOGO -->
+    <section class="ch" id="logo">
+      <div class="ch-head"><span class="ch-num">01</span><h2>ლოგო</h2></div>
+      <p class="lede">ნიშანი არის მომრგვალებული სამედიცინო ჯვარი, რომელსაც შიგნით ფოთოლი კვეთს: ზრუნვა და სიცოცხლე ერთ ხაზში. ის ყოველთვის ერთი ფორმაა — არ იჭრება, არ იწელება და არ ირთავს ჩრდილს.</p>
+      <div class="grid g3">
+        <div>
+          <div class="logo-stage" style="background:#FFFFFF"><svg viewBox="0 0 36 36" aria-label="ლოგო ღია ფონზე"><use href="#mark" fill="url(#gBrand)"/></svg></div>
+          <p class="cap"><b>მთავარი</b> · ფირუზისფერი გრადიენტი თეთრ ან ღია ფონზე</p>
+        </div>
+        <div>
+          <div class="logo-stage" style="background:#102C35"><svg viewBox="0 0 36 36" aria-label="ლოგო მუქ ფონზე"><use href="#mark" fill="url(#gBrand)"/></svg></div>
+          <p class="cap"><b>მუქ ფონზე</b> · იგივე გრადიენტი spotlight-ზე <code>#102C35</code></p>
+        </div>
+        <div>
+          <div class="logo-stage" style="background:linear-gradient(140deg,#14B8A6,#0F766E)"><svg viewBox="0 0 36 36" aria-label="თეთრი ლოგო"><use href="#mark" fill="#FFFFFF"/></svg></div>
+          <p class="cap"><b>თეთრი</b> · ფერად ფონზე და აპის აიქონში</p>
+        </div>
+      </div>
+
+      <h3>ლოგოტიპი</h3>
+      <div class="grid g2">
+        <div class="card" style="display:flex;align-items:center;justify-content:center;min-height:170px">
+          <div class="lockup"><svg viewBox="0 0 36 36" aria-hidden="true"><use href="#mark" fill="url(#gBrand)"/></svg><span style="color:var(--ink)">მედიქარდი</span></div>
+        </div>
+        <div class="card" style="display:flex;align-items:center;justify-content:center;min-height:170px;background:#102C35">
+          <div class="lockup"><svg viewBox="0 0 36 36" aria-hidden="true"><use href="#mark" fill="url(#gBrand)"/></svg><span style="color:#fff">მედიქარდი</span></div>
+        </div>
+      </div>
+      <p class="cap">სიტყვა „მედიქარდი“ იწერება <b>Archy Bold</b>-ით (აპში MediFont). ლათინური ფორმა „MEDICARD“ — დიდი ასოებით, ერთ სიტყვად; ვიჯეტებსა და Live Activity-ში სისტემური მძიმე შრიფტით.</p>
+
+      <h3>თავისუფალი არე და ზომა</h3>
+      <div class="grid g2">
+        <div class="card" style="display:flex;gap:28px;align-items:center;flex-wrap:wrap">
+          <div class="clear"><svg viewBox="0 0 36 36" aria-hidden="true"><use href="#mark" fill="url(#gBrand)"/></svg></div>
+          <p style="margin:0;flex:1;min-width:180px">ნიშნის ირგვლივ დატოვე მისი სიგანის <b style="color:var(--ink)">¼</b> — ამ არეში არც ტექსტი შედის და არც კიდე.</p>
+        </div>
+        <div class="card">
+          <div class="sizes">
+            <div><svg width="64" height="64" viewBox="0 0 36 36"><use href="#mark" fill="url(#gBrand)"/></svg>64</div>
+            <div><svg width="32" height="32" viewBox="0 0 36 36"><use href="#mark" fill="url(#gBrand)"/></svg>32</div>
+            <div><svg width="20" height="20" viewBox="0 0 36 36"><use href="#mark" fill="url(#gBrand)"/></svg>20</div>
+            <div><svg width="13" height="13" viewBox="0 0 36 36"><use href="#mark" fill="#C92A55"/></svg>13</div>
+          </div>
+          <p class="cap" style="margin-top:16px">ციფრულად მინიმუმ <b>13 pt</b> (ვიჯეტის თავში). 20 pt-ზე ნაკლებზე გრადიენტის ნაცვლად ერთი ფერი.</p>
+        </div>
+      </div>
+
+      <h3>ორნამენტი</h3>
+      <div class="grid g2">
+        <div class="card" style="position:relative;overflow:hidden;min-height:200px;background:var(--surface)">
+          <img src="../../mobile/assets/widget/cycle/ornament-m-rose-light.png" alt="" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:right">
+          <p style="position:relative;max-width:55%;margin:0">დიდი, ოდნავ მობრუნებული (−14°) ნიშანი, რომელსაც კიდე ჭრის. 12–28% სიმკვრივით, ერთი ფერის გრადიენტით. პირველად ციკლის ვიჯეტზე გამოჩნდა.</p>
+        </div>
+        <div class="card">
+          <ul class="rules no">
+            <li>არ შეცვალო ფორმა, პროპორცია ან ფოთლის მიმართულება</li>
+            <li>არ დაამატო ჩრდილი, კონტური ან 3D ეფექტი ლოგოს</li>
+            <li>არ ააწყო ლოგო ფიგურებით — მხოლოდ <code>assets/logo.svg</code></li>
+            <li>არ გამოიყენო პალიტრის გარეთ ფერი (გარდა აპის აიქონების ვარიანტებისა)</li>
+            <li>არ დადო ჭრელ ფოტოზე თავისუფალი არის გარეშე</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- 02 APP ICON -->
+    <section class="ch" id="icons">
+      <div class="ch-head"><span class="ch-num">02</span><h2>აპის აიქონი</h2></div>
+      <p class="lede">თეთრი ნიშანი ფირუზისფერ გრადიენტზე. 1.20.0-დან iPhone-ზე ხუთი აიქონია: პროფილი → პარამეტრები → „აპის აიქონი“. Android-ზე ჯერ მხოლოდ კლასიკური.</p>
+      <div class="grid" style="grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:22px">
+        <div class="icon-cell"><img class="appicon" src="../../mobile/assets/icon.png" alt="კლასიკური აიქონი" loading="lazy"><p class="cap"><b>კლასიკური</b><br>ნაგულისხმევი</p></div>
+        <div class="icon-cell"><img class="appicon" src="../../mobile/assets/app-icons/rose.png" alt="ვარდისფერი აიქონი" loading="lazy"><p class="cap"><b>ვარდისფერი</b><br>„შენთვის“ · ყველასთვის ღიაა</p></div>
+        <div class="icon-cell"><img class="appicon" src="../../mobile/assets/app-icons/midnight.png" alt="ღამის აიქონი" loading="lazy"><p class="cap"><b>ღამე</b><br>ნათება მუქზე</p></div>
+        <div class="icon-cell"><img class="appicon" src="../../mobile/assets/app-icons/pearl.png" alt="მარგალიტის აიქონი" loading="lazy"><p class="cap"><b>მარგალიტი</b><br>ღია, მშვიდი</p></div>
+        <div class="icon-cell"><img class="appicon" src="../../mobile/assets/app-icons/gold.png" alt="ოქროს აიქონი" loading="lazy"><p class="cap"><b>ოქრო</b><br>ოქროსფერი მწვანეზე</p></div>
+      </div>
+      <h3>Android adaptive და სხვა ზომები</h3>
+      <div class="grid g4">
+        <div class="layer"><img src="../../mobile/assets/android-icon-foreground.png" alt="Android foreground" loading="lazy"><p class="cap"><b>foreground</b> · 1024</p></div>
+        <div class="layer"><img src="../../mobile/assets/android-icon-background.png" alt="Android background" loading="lazy"><p class="cap"><b>background</b> · 1024</p></div>
+        <div class="layer"><img src="../../mobile/assets/android-icon-monochrome.png" alt="Android monochrome" loading="lazy"><p class="cap"><b>monochrome</b> · Material You</p></div>
+        <div class="layer"><img src="../../mobile/assets/splash-icon.png" alt="Splash" loading="lazy" style="background:#14B8A6"><p class="cap"><b>splash</b> · 512</p></div>
+      </div>
+    </section>
+
+    <!-- 03 COLOR -->
+    <section class="ch" id="color">
+      <div class="ch-head"><span class="ch-num">03</span><h2>ფერები</h2></div>
+      <p class="lede">ფირუზისფერი არის ბრენდი — სიმშვიდე და სისუფთავე. ყველაფერი დანარჩენი ჩუმი ნეიტრალია, რომ ერთი აქცენტი ჩანდეს. დააჭირე ფერს და hex დაკოპირდება.</p>
+      <h3>ბრენდის ფირუზისფერი</h3>
+      <div class="scale" id="tealScale"></div>
+      <h3>ძირითადი</h3>
+      <div class="grid g4" id="coreSwatches"></div>
+      <h3>ღია და მუქი თემა</h3>
+      <div class="card" style="overflow-x:auto">
+        <table class="theme-table" id="themeTable">
+          <thead><tr><th>ტოკენი</th><th>როლი</th><th>ღია</th><th>მუქი</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+      <p class="cap">მუქი თემა არის ცივი ნაცრისფერ-ლურჯი (gray-950), არა ფირუზისფრად შეფერილი შავი. გვერდი ბარათზე მუქია. მუქზე ღილაკი <code>#0D9488</code>.</p>
+      <h3>ციკლის პალიტრა</h3>
+      <div class="grid g4" id="cycleSwatches"></div>
+      <p class="cap">ქალები Flo-დან და Apple Health-იდან გადმოდიან, ამიტომ ენა ნაცნობია: <b>ვარდისფერ-წითელი</b> = მენსტრუაცია (სავსე — აღნიშნული, წყვეტილი — სავარაუდო), <b>ფირუზისფერი</b> = ნაყოფიერი დღეები და ოვულაცია.</p>
+    </section>
+
+    <!-- 04 TYPE -->
+    <section class="ch" id="type">
+      <div class="ch-head"><span class="ch-num">04</span><h2>შრიფტები</h2></div>
+      <p class="lede">ხუთი შრიფტი, თითოეულს თავისი ადგილი აქვს. ტექსტი ყოველთვის Noto Sans Georgian (აპი) ან FiraGO (საიტი და ადმინი); დანარჩენი სამი მხოლოდ სახელებისთვისაა.</p>
+      <div class="card spec">
+        <div><b style="color:var(--ink)">Noto Sans Georgian</b><p class="cap" style="margin-top:4px">აპის ყველა ტექსტი · 400 / 500 / 600 / 700</p></div>
+        <div><div class="big" style="font-family:'Noto Sans Georgian';font-weight:700">ჯანმრთელობა ერთ ადგილას</div><div class="alpha" style="font-family:'Noto Sans Georgian'">აბგდევზთიკლმნოპჟრსტუფქღყშჩცძწჭხჯჰ · Aa Bb 0123456789</div></div>
+      </div>
+      <div class="card spec">
+        <div><b style="color:var(--ink)">FiraGO</b><p class="cap" style="margin-top:4px">საიტი medicard.ge, /app და ადმინი · 400 / 600 / 800</p></div>
+        <div><div class="big" style="font-family:'FiraGO';font-weight:800">ყველა მოდული ერთ აპში</div><div class="alpha" style="font-family:'FiraGO'">აბგდევზთიკლმნოპჟრსტუფქღყშჩცძწჭხჯჰ · Aa Bb 0123456789</div></div>
+      </div>
+      <div class="card spec">
+        <div><b style="color:var(--ink)">Archy (MediFont)</b><p class="cap" style="margin-top:4px">მხოლოდ ლოგოტიპი „მედიქარდი“ და დიდი სათაურები ბრენდულ მასალაში</p></div>
+        <div><div class="big" style="font-family:'Archy';font-weight:700;font-size:64px">მედიქარდი</div><div class="alpha" style="font-family:'Archy';font-weight:700">აბგდევზთიკლმნოპჟრსტუფქღყშჩცძწჭხჯჰ</div></div>
+      </div>
+      <div class="card spec">
+        <div><b style="color:var(--ink)">Exo 2 ExtraBold</b><p class="cap" style="margin-top:4px">მხოლოდ MEDI-ს wordmark-ები · −16° დახრა მოდულის ნაწილზე</p></div>
+        <div><div class="big wm" style="font-size:58px">MEDI<i style="color:#0D9488">RUN</i></div><div class="alpha wm" style="font-size:22px;white-space:normal">ABCDEFGHIJKLMNOPQRSTUVWXYZ 0123456789</div></div>
+      </div>
+      <div class="card spec">
+        <div><b style="color:var(--ink)">DM Davit Guramishvili</b><p class="cap" style="margin-top:4px">საიტის სადესანტო გვერდის დიდი სათაურები</p></div>
+        <div><div class="big" style="font-family:'Davit'">შენი დღე, შენი ჯანმრთელობა</div></div>
+      </div>
+      <h3>ტექსტის სკალა (აპი)</h3>
+      <div class="card">
+        <div class="scale-row"><span>29 / 38</span><p style="font-size:29px;line-height:38px;font-weight:700">დღეს</p></div>
+        <div class="scale-row"><span>24 / 33</span><p style="font-size:24px;line-height:33px;font-weight:700">წინ რა გელის</p></div>
+        <div class="scale-row"><span>20 / 29</span><p style="font-size:20px;line-height:29px;font-weight:600">შემდეგი მიღება</p></div>
+        <div class="scale-row"><span>17 / 26</span><p style="font-size:17px;line-height:26px;font-weight:700">სექციის სათაური ბარათის ზემოთ</p></div>
+        <div class="scale-row"><span>15 / 24</span><p style="font-size:15px;line-height:24px">ძირითადი ტექსტი და ბარათის სათაური</p></div>
+        <div class="scale-row"><span>13 / 20</span><p style="font-size:13px;line-height:20px;color:var(--body)">ახსნა, ბმული, მეორადი ინფორმაცია</p></div>
+      </div>
+    </section>
+
+    <!-- 05 MODULES -->
+    <section class="ch" id="modules">
+      <div class="ch-head"><span class="ch-num">05</span><h2>MEDI მოდულები</h2></div>
+      <p class="lede">დიდი მოდულები ერთი სიტყვით იწერება, როგორც MEDIRUN: სწორი „MEDI“ და მოდულის ნაწილი საკუთარ ფერში, −16°-ით დახრილი. თითოეულს ერთი ფერი აქვს — wordmark-ზე, hero ბარათზე, Home-ის ხატულაზე და რეკლამაში. ფონი, ბარათები და ნავიგაცია საერთოა.</p>
+      <div class="grid g3" id="modGrid"></div>
+      <h3>წესები</h3>
+      <div class="grid g2">
+        <div class="card"><ul class="rules">
+          <li>ერთი სიტყვა, დიდი ასოებით: MEDICYCLE, MEDIQUEST, MEDIVET</li>
+          <li>ჰედერში კომპაქტურად: უკან · wordmark 25 pt · ერთი 11 pt ხაზი · მარჯვენა ღილაკი</li>
+          <li>ტაბ-ბარის ცენტრალური ღილაკი — მხოლოდ „RUN“</li>
+          <li>ასისტენტის სახელი — Medi; ლოგო „MEDI“ ფირუზისფერში</li>
+        </ul></div>
+        <div class="card"><ul class="rules no">
+          <li>MEDI QUEST, Medi Vet — გამოტოვებით ან პატარა ასოებით</li>
+          <li>MEDIDOCTOR — აპში ექიმი არ არის</li>
+          <li>Nightingale მომხმარებლის ტექსტში (მხოლოდ Figma kit-ის სახელია)</li>
+          <li>wordmark დიდ ბანერად — ის ყოველთვის კომპაქტურია</li>
+        </ul></div>
+      </div>
+    </section>
+
+    <!-- 06 ICONOGRAPHY -->
+    <section class="ch" id="iconography">
+      <div class="ch-head"><span class="ch-num">06</span><h2>ხატულები</h2></div>
+      <p class="lede">ინტერფეისში — Lucide-ის კონტურული ხატულები, ხაზი 1.7, 42 px ფილაში. ფილა იმავე ფერითაა შეფერილი: 8% ღიაზე, 15% მუქზე. ციკლის ჩანაწერებისთვის — ბრტყელი Health Icons. ფერი ნიშნავს ფაქტს ან ფაზას, არა კატეგორიას.</p>
+      <h3>ინტერფეისის ხატულები და ფერები</h3>
+      <div class="ui-icons" id="uiIcons"></div>
+      <h3>ციკლის ხატულები · Health Icons (MIT)</h3>
+      <div class="card"><div class="glyphs" id="glyphs"></div></div>
+      <p class="cap">სისხლდენა — ვარდისფერი, ნაყოფიერება — ფირუზისფერი, დანარჩენი — მელანი. წყარო: <code>mobile/src/constants/cycleIconSvg.ts</code>.</p>
+    </section>
+
+    <!-- 07 WIDGETS -->
+    <section class="ch" id="widgets">
+      <div class="ch-head"><span class="ch-num">07</span><h2>ვიჯეტები</h2></div>
+      <p class="lede">„MEDICARD ციკლი“ — iPhone-ის მთავარ ეკრანზე, პატარა და საშუალო ზომით. ლოგოს ორნამენტი კუთხეში, მხოლოდ მენსტრუაციის სიტყვები. დისკრეტულ რეჟიმში — ფირუზისფერი ლოგო და „MEDICARD“, ციკლის არაფერი.</p>
+      <div class="wstage light" id="wLight"></div>
+      <div class="wstage dark" id="wDark" style="margin-top:12px"></div>
+      <div class="grid g2" style="margin-top:14px">
+        <div class="card"><h3 style="margin-top:0">MEDIRUN · Live Activity</h3><p style="margin:0">სირბილისას ჩაკეტილ ეკრანზე და Dynamic Island-ში: დრო, მანძილი, ⏸ / ▶. ტექსტი და დიზაინი JS-შია, ამიტომ OTA-თი იცვლება.</p></div>
+        <div class="card"><h3 style="margin-top:0">„სავარაუდო დღე“ · Live Activity</h3><p style="margin:0">ციკლის პარამეტრებში ჩასართავი. ჩნდება სავარაუდო დღეს, ქრება სისხლდენის აღნიშვნისას ან 24 საათში. იგივე სიტყვები და დისკრეტულობა.</p></div>
+      </div>
+    </section>
+
+    <!-- 08 ART -->
+    <section class="ch" id="art">
+      <div class="ch-head"><span class="ch-num">08</span><h2>ილუსტრაციები</h2></div>
+      <p class="lede">რბილი 3D: თიხის მსგავსი ფორმები, თბილი სინათლე, ლოგოებისა და ტექსტის გარეშე. ერთი ობიექტი, სუფთა ფონი. სადესანტო გვერდზე ილუსტრაცია არ იდება. დააჭირე სურათს — გადიდდება.</p>
+      <div class="gal-tabs" id="galTabs" role="group" aria-label="ილუსტრაციების ჯგუფები"></div>
+      <p class="gal-note" id="galNote"></p>
+      <div class="gal" id="gal"></div>
+    </section>
+
+    <!-- 09 UI -->
+    <section class="ch" id="ui">
+      <div class="ch-head"><span class="ch-num">09</span><h2>ინტერფეისის ენა</h2></div>
+      <p class="lede">Home არის მაგალითი, დანარჩენი გვერდები მასზე გადადის. სათაური ბარათის ზემოთაა, ბარათი ბრტყელია, გვერდზე ერთი spotlight. ტექსტი მიმართავს: „შენ“.</p>
+      <div class="grid g2" style="align-items:start">
+        <div style="display:flex;gap:20px;flex-wrap:wrap;justify-content:center">
+          <div class="phone">
+            <h4>შემდეგი მიღება</h4>
+            <div class="pc"><div class="pt"><i data-lucide="pill"></i></div><div><b>მეტფორმინი · 500 მგ</b><small>დღეს, 14:00</small></div></div>
+            <h4>მთავარი</h4>
+            <div class="spotlight"><b>MEDI</b><br><small>რით დაგეხმარო დღეს?</small></div>
+          </div>
+          <div class="phone dk">
+            <h4>შემდეგი მიღება</h4>
+            <div class="pc"><div class="pt"><i data-lucide="pill"></i></div><div><b>მეტფორმინი · 500 მგ</b><small>დღეს, 14:00</small></div></div>
+            <h4>წყალი</h4>
+            <div class="pc"><div class="pt"><i data-lucide="droplets"></i></div><div><b>1.2 / 2 ლ</b><small>კიდევ 4 ჭიქა</small></div></div>
+          </div>
+        </div>
+        <div class="card">
+          <ul class="rules">
+            <li>გვერდის ფონი <code>bg100</code>; ბარათი <code>surface</code>, რადიუსი 22, კონტურისა და ჩრდილის გარეშე</li>
+            <li>კიდე 20 · სექციებს შორის 28 · სათაურიდან ბარათამდე 12 · ბარათის შიგნით 18</li>
+            <li>ხატულის ფილა 42 × 42, რადიუსი 14</li>
+            <li>ერთი spotlight გვერდზე — მუქი ფირუზისფერი <code>#102C35</code></li>
+            <li>მოდალი ჩნდება fade-ით, არასდროს slide-ით; დასტური — ცენტრში ბარათი</li>
+            <li>ფორმა: ველი და მთავარი ღილაკი ყოველთვის კლავიატურის ზემოთ</li>
+            <li>OS ნებართვის წინ ერთი ღილაკი — „გაგრძელება“</li>
+          </ul>
+          <ul class="rules no" style="margin-top:14px">
+            <li>სექციის სათაური ბარათის შიგნით</li>
+            <li>მეორე მუქი ბარათი ან დეკორატიული რკალები</li>
+            <li>„სნიმარი“ — სწორია „გამოსახულება“</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- 10 SOCIAL -->
+    <section class="ch" id="social">
+      <div class="ch-head"><span class="ch-num">10</span><h2>სოციალური</h2></div>
+      <p class="lede">Facebook-ის ქავერი და პროფილი, პოსტების შაბლონები. ყოველ კამპანიაში პირველი MEDIRUN-ია. „გაანათე თბილისის“ პოსტერები მხოლოდ ადმინშია (#/campaigns) და აქ არ დევს.</p>
+      <div class="social" id="socialGrid"></div>
+    </section>
+
+    <!-- 11 FILES -->
+    <section class="ch" id="files">
+      <div class="ch-head"><span class="ch-num">11</span><h2>ფაილები</h2></div>
+      <p class="lede">სად ცხოვრობს თითოეული მნიშვნელობა. რამის შეცვლისას ჯერ აქ შეცვალე, შემდეგ ბრენდბუქი თავიდან ააწყე: <code>node brand/brandbook/build.mjs</code>.</p>
+      <div class="card" style="overflow-x:auto">
+        <table class="files">
+          <tr><td>ლოგო</td><td><code>mobile/assets/logo.svg</code>, <code>logo-light.png</code>, <code>logo-dark.png</code></td></tr>
+          <tr><td>აპის აიქონები</td><td><code>mobile/assets/icon.png</code>, <code>mobile/assets/app-icons/</code> (+ <code>thumb/</code>), <code>src/lib/appIcon.ts</code></td></tr>
+          <tr><td>ფერები</td><td><code>mobile/src/theme/colors.ts</code> ↔ <code>mobile/global.css</code>, <code>theme/hub.ts</code>, <code>theme/cyclePalette.ts</code></td></tr>
+          <tr><td>MEDI მოდულები</td><td><code>mobile/src/theme/moduleBrand.ts</code> ↔ <code>server/public/js/module-brand.js</code>, დაფა <code>brand/modules/module-brands.html</code></td></tr>
+          <tr><td>შრიფტები</td><td><code>mobile/assets/fonts/</code> (Archy, Exo 2), <code>server/public/fonts/</code> (FiraGO, Davit, Exo 2)</td></tr>
+          <tr><td>ციკლის ვიჯეტი</td><td><code>src/lib/cycleWidgetLayout.tsx</code>, არტი <code>mobile/assets/widget/cycle/</code> ← <code>brand/cycle/widget/render-art.cjs</code></td></tr>
+          <tr><td>ციკლის ხატულები</td><td><code>brand/cycle/icons/build.mjs</code> → <code>src/constants/cycleIconSvg.ts</code></td></tr>
+          <tr><td>3D ილუსტრაციები</td><td><code>mobile/assets/art/</code>, <code>mobile/assets/run/</code>, <code>server/public/rewards/</code>; გენერაცია <code>brand/medirun/*_batch.py</code></td></tr>
+        </table>
+      </div>
+    </section>
+  </main>
+</div>
+
+<footer>მედიქარდი · ბრენდბუქი · ააწყო <code>brand/brandbook/build.mjs</code></footer>
+
+<div class="lightbox" id="lightbox" role="dialog" aria-modal="true" aria-label="გადიდებული სურათი"><div><img id="lbImg" alt=""><p id="lbCap"></p></div></div>
+<div class="toast" id="toast" role="status"></div>
+
+<script src="manifest.js"></script>
+<script src="https://unpkg.com/lucide@0.460.0/dist/umd/lucide.min.js"></script>
+<script>
+(() => {
+  const $ = (s) => document.querySelector(s);
+  const B = window.BRANDBOOK || { groups: [], cycleIcons: {}, social: [] };
+  $('#genDate').textContent = 'განახლდა ' + (B.generated || '');
+
+  /* theme */
+  const root = document.documentElement;
+  const toggle = $('#themeToggle');
+  const isDark = () => root.dataset.theme ? root.dataset.theme === 'dark' : matchMedia('(prefers-color-scheme: dark)').matches;
+  const label = () => { toggle.textContent = isDark() ? 'ღია თემა' : 'მუქი თემა'; };
+  try { const t = localStorage.getItem('bb.theme'); if (t) root.dataset.theme = t; } catch {}
+  label();
+  toggle.addEventListener('click', () => {
+    root.dataset.theme = isDark() ? 'light' : 'dark';
+    try { localStorage.setItem('bb.theme', root.dataset.theme); } catch {}
+    label();
+  });
+
+  /* copy */
+  const toast = $('#toast');
+  let tt;
+  const copy = (hex) => {
+    navigator.clipboard?.writeText(hex).catch(() => {});
+    toast.textContent = hex + ' დაკოპირდა';
+    toast.classList.add('on');
+    clearTimeout(tt); tt = setTimeout(() => toast.classList.remove('on'), 1300);
+  };
+  const lum = (hex) => { const n = parseInt(hex.slice(1, 7), 16); const c = [n >> 16, (n >> 8) & 255, n & 255].map((v) => { v /= 255; return v <= .03928 ? v / 12.92 : ((v + .055) / 1.055) ** 2.4; }); return .2126 * c[0] + .7152 * c[1] + .0722 * c[2]; };
+  const onColor = (hex) => (lum(hex) > .4 ? '#0F1A1C' : '#FFFFFF');
+
+  /* colour */
+  const TEAL = ['#CCFBF1', '#99F6E4', '#5EEAD4', '#2DD4BF', '#14B8A6', '#0D9488', '#0F766E', '#115E59', '#042F2E'];
+  $('#tealScale').innerHTML = TEAL.map((h) => `<button type="button" style="background:${h};color:${onColor(h)}" data-hex="${h}" aria-label="${h}">${h}</button>`).join('');
+  const sw = (h, name, role) => `<button type="button" class="sw" data-hex="${h}"><div class="chip" style="background:${h}"></div><div class="meta"><b>${name}</b><span>${h} · ${role}</span></div></button>`;
+  $('#coreSwatches').innerHTML = [
+    ['#14B8A6', 'ფირუზისფერი', 'ბრენდი, ბმული, ხატულა'],
+    ['#0F766E', 'ღრმა ფირუზისფერი', 'ბრენდის ტექსტი ღიაზე'],
+    ['#102C35', 'Spotlight', 'გვერდზე ერთი მუქი ბარათი'],
+    ['#0F1A1C', 'მელანი', 'სათაურები'],
+    ['#F5F7F7', 'ტილო', 'გვერდის ფონი'],
+    ['#0F8A5F', 'წარმატება', 'შენახულია, მიღებულია'],
+    ['#B87400', 'გაფრთხილება', 'ყურადღება'],
+    ['#C62B3F', 'საფრთხე', 'შეცდომა, წაშლა'],
+  ].map(([h, n, r]) => sw(h, n, r)).join('');
+  $('#cycleSwatches').innerHTML = [
+    ['#C92A55', 'მენსტრუაცია', 'ვარდისფერ-წითელი'],
+    ['#F4B8C8', 'ბლაში', 'რბილი ფონი, ორნამენტი'],
+    ['#2DB7AE', 'ნაყოფიერი', 'ფირუზისფერი შევსება'],
+    ['#F0AE84', 'ფოლიკულური', 'მხოლოდ გრაფიკაში'],
+  ].map(([h, n, r]) => sw(h, n, r)).join('');
+  const THEME = [
+    ['bg100', 'გვერდი', '#F5F7F7', '#030712'],
+    ['surface', 'ბარათი', '#FFFFFF', '#111827'],
+    ['bg200', 'შეყვანა, ჩიპი', '#EAEEEF', '#1F2937'],
+    ['bg300', 'კონტური, ტრეკი', '#DDE3E4', '#374151'],
+    ['text100', 'სათაური', '#0F1A1C', '#FFFFFF'],
+    ['text200', 'ტექსტი', '#46565A', '#D1D5DB'],
+    ['text300', 'placeholder', '#7B8B8F', '#6B7280'],
+    ['primary100', 'ბრენდის ტექსტი', '#0F766E', '#99F6E4'],
+    ['primary200', 'ბრენდი', '#14B8A6', '#14B8A6'],
+    ['accent100', 'ბრენდის ფონი', '#CCFBF1', '#042F2E'],
+  ];
+  $('#themeTable tbody').innerHTML = THEME.map(([t, r, l, d]) => `<tr><td><code>${t}</code></td><td>${r}</td><td><button type="button" class="hexes-btn" data-hex="${l}" style="border:0;background:none;padding:0;cursor:pointer;color:inherit;font:inherit"><span class="dot" style="background:${l}"></span>${l}</button></td><td><button type="button" data-hex="${d}" style="border:0;background:none;padding:0;cursor:pointer;color:inherit;font:inherit"><span class="dot" style="background:${d}"></span>${d}</button></td></tr>`).join('');
+
+  /* modules */
+  const MODS = [
+    ['run', 'RUN', 'სირბილი და თბილისის განათება. ტაბ-ბარში — „RUN“.', 'footprints', '#0D9488', '#2DD4BF', ['#0B4D47', '#0D9488', '#14B8A6'], 'rgba(94,234,212,.35)', '#99F6E4'],
+    ['cycle', 'CYCLE', 'ციკლი, ორსულობა და ქალის ჯანმრთელობა.', 'calendar-heart', '#C92A55', '#FF8FA8', ['#831843', '#C92A55', '#F43F5E'], 'rgba(255,143,168,.35)', '#FECDD3'],
+    ['food', 'FOOD', 'კვების დღიური: ფოტო, შტრიხკოდი, აღწერა.', 'utensils', '#047857', '#34D399', ['#064E3B', '#059669', '#34D399'], 'rgba(110,231,183,.38)', '#A7F3D0'],
+    ['pill', 'PILL', 'წამლები, განრიგი და შეხსენებები.', 'pill', '#1D4ED8', '#93C5FD', ['#1E3A8A', '#1D4ED8', '#3B82F6'], 'rgba(147,197,253,.35)', '#BFDBFE'],
+    ['quest', 'QUEST', 'მისიები, Medi Coins და ჯილდოები.', 'trophy', '#6D28D9', '#C4B5FD', ['#3B0764', '#6D28D9', '#8B5CF6'], 'rgba(196,181,253,.35)', '#DDD6FE'],
+    ['vet', 'VET', 'შინაური ცხოველები და Medi Vet.', 'paw-print', '#0369A1', '#7DD3FC', ['#0C4A6E', '#0284C7', '#38BDF8'], 'rgba(125,211,252,.38)', '#E0F2FE'],
+    ['coach', 'COACH', 'ტრენერი და კლიენტი, თანხმობით.', 'dumbbell', '#475569', '#CBD5E1', ['#0F172A', '#1F2937', '#475569'], 'rgba(148,163,184,.30)', '#CBD5E1'],
+    ['scan', 'SCAN', 'ანალიზი, გამოსახულება და კანი ერთ ჩატში.', 'scan-line', '#22D3EE', '#67E8F9', ['#083344', '#0891B2', '#22D3EE'], 'rgba(103,232,249,.35)', '#CFFAFE'],
+    ['medi', '', 'ასისტენტი Medi — ხმით და ტექსტით.', 'audio-lines', '#0D9488', '#2DD4BF', ['#0B4D47', '#0D9488', '#14B8A6'], 'rgba(94,234,212,.35)', '#99F6E4'],
+  ];
+  const hexBtn = (h) => `<button type="button" data-hex="${h}"><i style="background:${h}"></i>${h}</button>`;
+  $('#modGrid').innerHTML = MODS.map(([id, suf, desc, icon, inkL, inkD, g, glow, onHero]) => `
+    <article class="mod">
+      <div class="mod-hero" style="background:linear-gradient(135deg,${g[0]} 0%,${g[1]} 60%,${g[2]} 100%)">
+        <div class="glow" style="background:${glow}"></div>
+        <div class="ring" style="width:260px;height:260px;right:-90px;top:-90px"></div>
+        <div class="ring" style="width:180px;height:180px;right:-50px;top:-50px"></div>
+        <div class="tile"><i data-lucide="${icon}"></i></div>
+        <div class="wm">MEDI${suf ? `<i style="color:${onHero}">${suf}</i>` : ''}</div>
+      </div>
+      <div class="mod-body">
+        <div class="wm">MEDI${suf ? `<i class="ink" data-l="${inkL}" data-d="${inkD}">${suf}</i>` : ''}</div>
+        <p>${desc}</p>
+        <div class="hexes">${hexBtn(inkL)}${hexBtn(inkD)}${hexBtn(g[0])}</div>
+      </div>
+    </article>`).join('');
+  const paintInks = () => document.querySelectorAll('.ink').forEach((el) => { el.style.color = isDark() ? el.dataset.d : el.dataset.l; });
+
+  /* UI icons */
+  const INKS = { teal: ['#0F766E', '#5EEAD4'], blue: ['#1D4ED8', '#93C5FD'], violet: ['#6B50A0', '#C4B5FD'], rose: ['#BE185D', '#F9A8D4'], amber: ['#B45309', '#FCD34D'], green: ['#15803D', '#86EFAC'], sky: ['#0369A1', '#7DD3FC'], cyan: ['#06B6D4', '#67E8F9'], neutral: ['#374151', '#D1D5DB'] };
+  const UI = [['pill', 'წამლები', 'blue'], ['calendar-check', 'ვიზიტები', 'teal'], ['droplets', 'წყალი', 'sky'], ['footprints', 'ნაბიჯები', 'teal'], ['scale', 'წონა', 'green'], ['utensils', 'კვება', 'green'], ['calendar-heart', 'ციკლი', 'rose'], ['heart-handshake', 'საზოგადოება', 'rose'], ['audio-lines', 'Medi', 'teal'], ['stethoscope', 'სიმპტომები', 'violet'], ['flask-conical', 'ლაბორატორია', 'cyan'], ['scan-line', 'გამოსახულება', 'cyan'], ['file-heart', 'ჩემი ბარათი', 'teal'], ['activity', 'მაჩვენებლები', 'amber'], ['shopping-bag', 'აფთიაქი', 'amber'], ['cloud-sun', 'ამინდი', 'sky'], ['trophy', 'MEDIQUEST', 'violet'], ['paw-print', 'ცხოველები', 'sky'], ['dumbbell', 'MEDICOACH', 'neutral'], ['sparkles', 'კანის მოვლა', 'rose']];
+  $('#uiIcons').innerHTML = UI.map(([icon, name, ink]) => `<div class="ui-icon"><div class="t" data-ink="${ink}"><i data-lucide="${icon}"></i></div>${name}</div>`).join('');
+  const paintTiles = () => document.querySelectorAll('.t[data-ink]').forEach((el) => {
+    const [l, d] = INKS[el.dataset.ink]; const ink = isDark() ? d : l;
+    el.style.color = ink; el.style.background = ink + (isDark() ? '26' : '14');
+  });
+
+  /* cycle glyphs */
+  const glyphInk = (name) => /drop|flow|blood|spot|pad|tampon|cup|period/i.test(name) ? ['#C92A55', '#FF8FA8', '#FDEEF2', '#3A1B26'] : /ovul|fertil|mucus|egg|lh|opk/i.test(name) ? ['#0B6F6E', '#5ED6D0', '#E3F6F5', '#0C2F2E'] : null;
+  const glyphHtml = () => Object.entries(B.cycleIcons).map(([name, svg]) => {
+    const g = glyphInk(name); const d = isDark();
+    const ink = g ? (d ? g[1] : g[0]) : (d ? '#F7F0F4' : '#2A1F2D');
+    const bg = g ? (d ? g[3] : g[2]) : (d ? '#211B27' : '#F8F1F4');
+    return `<div class="glyph"><div class="disc" style="color:${ink};background:${bg}">${svg}</div>${name.replace(/_/g, ' ')}</div>`;
+  }).join('');
+
+  /* widgets */
+  const A = '../../mobile/assets/widget/cycle/';
+  const widget = (theme, size, state) => {
+    const L = theme === 'light';
+    const c = L ? { bg: '#FFFFFF', ink: '#2A1F2D', muted: '#6B5E6E', rose: '#C92A55' } : { bg: '#17131C', ink: '#F7F0F4', muted: '#CDBFC8', rose: '#FF8FA8' };
+    const fam = size === 'm' ? 'm' : 's';
+    if (state === 'neutral') {
+      return `<div class="w${size === 'm' ? ' m' : ''}" style="background-color:${c.bg};background-image:url(${A}ornament-${fam}-teal-${theme}.png)"><div class="neutral" style="color:${c.ink}"><img src="${A}logo-teal.png" alt="">MEDICARD</div></div>`;
+    }
+    const s = state === 'period' ? { c1: 'მენსტრუაციის დღე', v: '2', u: '', n: 'დაიწყო ორშ, 5 ოქტ' } : { c1: 'მენსტრუაციამდე', v: '3', u: 'დღე', n: 'სავარაუდოდ' };
+    const side = size === 'm' ? `<div class="side"><div class="pill-date" style="background:${c.bg};color:${c.ink}">ხუთ, 8 ოქტ</div><div class="btn">დაიწყო</div></div>` : '';
+    return `<div class="w${size === 'm' ? ' m' : ''}" style="background-color:${c.bg};background-image:url(${A}ornament-${fam}-rose-${theme}.png)"><div class="in">
+      <div class="hd" style="color:${c.muted}"><img src="${A}logo-rose-${theme}.png" alt="">MEDICARD</div>
+      <div class="ans"><div class="c1" style="color:${c.muted}">${s.c1}</div><div><span class="v" style="color:${c.rose}">${s.v}</span>${s.u ? `<span class="u" style="color:${c.ink}">${s.u}</span>` : ''}</div><div class="n" style="color:${c.muted}">${s.n}</div></div>
+    </div>${side}</div>`;
+  };
+  for (const theme of ['light', 'dark']) {
+    $(theme === 'light' ? '#wLight' : '#wDark').innerHTML = [
+      [widget(theme, 's', 'countdown'), 'მოლოდინი'],
+      [widget(theme, 'm', 'countdown'), 'მოლოდინი · საშუალო'],
+      [widget(theme, 's', 'period'), 'მენსტრუაციის დღე'],
+      [widget(theme, 's', 'neutral'), 'დისკრეტული'],
+    ].map(([w, cap]) => `<div class="wcell">${w}<span>${cap}</span></div>`).join('');
+  }
+
+  /* gallery */
+  let active = B.groups[0]?.id;
+  const renderGal = () => {
+    $('#galTabs').innerHTML = B.groups.map((g) => `<button type="button" data-g="${g.id}" aria-pressed="${g.id === active}">${g.title} <span style="opacity:.6">${g.items.length}</span></button>`).join('');
+    const g = B.groups.find((x) => x.id === active);
+    $('#galNote').textContent = g ? g.note : '';
+    $('#gal').innerHTML = g ? g.items.map((it) => `<button type="button" data-src="${it.src}" data-cap="${it.name}"><img src="${it.src}" alt="${it.name}" loading="lazy">${it.name}</button>`).join('') : '';
+  };
+  $('#galTabs').addEventListener('click', (e) => { const b = e.target.closest('button[data-g]'); if (!b) return; active = b.dataset.g; renderGal(); });
+  renderGal();
+
+  /* social */
+  $('#socialGrid').innerHTML = B.social.map((it) => `<button type="button" data-src="${it.src}" data-cap="${it.name}"><img src="${it.src}" alt="${it.name}" loading="lazy"><span>${it.name}</span></button>`).join('');
+
+  /* lightbox + copy delegation */
+  const lb = $('#lightbox');
+  document.addEventListener('click', (e) => {
+    const hex = e.target.closest('[data-hex]');
+    if (hex) { copy(hex.dataset.hex); return; }
+    const pic = e.target.closest('button[data-src]');
+    if (pic) { $('#lbImg').src = pic.dataset.src; $('#lbImg').alt = pic.dataset.cap; $('#lbCap').textContent = pic.dataset.cap; lb.classList.add('on'); return; }
+    if (e.target.closest('#lightbox')) lb.classList.remove('on');
+  });
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape') lb.classList.remove('on'); });
+
+  /* toc highlight */
+  const links = [...document.querySelectorAll('nav.toc a')];
+  const io = new IntersectionObserver((entries) => {
+    entries.forEach((en) => { if (en.isIntersecting) links.forEach((a) => a.classList.toggle('on', a.getAttribute('href') === '#' + en.target.id)); });
+  }, { rootMargin: '-30% 0px -60% 0px' });
+  document.querySelectorAll('section.ch').forEach((s) => io.observe(s));
+
+  /* theme-dependent paint */
+  const paint = () => { paintInks(); paintTiles(); $('#glyphs').innerHTML = glyphHtml(); };
+  paint();
+  toggle.addEventListener('click', paint);
+  matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => { label(); paint(); });
+
+  const icons = () => window.lucide && window.lucide.createIcons({ attrs: { 'stroke-width': 1.7 } });
+  if (window.lucide) icons(); else window.addEventListener('load', icons);
+})();
+</script>
+</body>
+</html>
