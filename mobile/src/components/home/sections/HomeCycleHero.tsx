@@ -70,7 +70,7 @@ import {
 } from './useHomeCycleActions';
 import { LinearGradient } from 'expo-linear-gradient';
 import { cycleWaveModel } from '@/lib/home/cycleWave';
-import { CycleWaveStage, type WaveAnswer, type WaveLeaf } from './CycleWaveStage';
+import { CycleWaveLoader, CycleWaveStage, type WaveAnswer, type WaveLeaf } from './CycleWaveStage';
 
 /** Shared cycle data from the Home root (`useCycleView` mounted once there). */
 export type HomeCycleData = {
@@ -1014,17 +1014,10 @@ function HeroSkeleton({ minHeight }: { minHeight: number }) {
   const bone = theme.bg200;
   return (
     <View
-      accessibilityRole="progressbar"
-      accessibilityLabel={ka.common.loading}
       style={[s.open, { minHeight }]}
     >
       <View style={{ height: STRIP_H + 24, borderRadius: 18, backgroundColor: bone }} />
-      <View style={[s.stage, { gap: 12 }]}>
-        <View style={{ height: 14, width: 120, borderRadius: 7, backgroundColor: bone, marginTop: 14 }} />
-        <View style={{ height: 56, width: 150, borderRadius: 16, backgroundColor: bone }} />
-        <View style={{ height: 12, width: 170, borderRadius: 6, backgroundColor: bone }} />
-        <View style={{ height: 30, width: 200, borderRadius: 15, backgroundColor: bone, marginTop: 8 }} />
-      </View>
+      <CycleWaveLoader label={ka.common.loading} />
       <View style={s.actions}>
         <View style={{ height: 50, borderRadius: 25, backgroundColor: bone }} />
         <View style={s.buttons}>

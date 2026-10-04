@@ -1,9 +1,22 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { PanResponder, Pressable, StyleSheet, Text, View, type LayoutChangeEvent } from 'react-native';
+import { AccessibilityInfo, PanResponder, Pressable, StyleSheet, Text, View, type LayoutChangeEvent } from 'react-native';
+import { useIsFocused } from 'expo-router';
 import Svg, { Circle, ClipPath, Defs, G, LinearGradient as SvgGradient, Path, Rect, Stop } from 'react-native-svg';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
-import Animated, { Easing, useAnimatedProps, useSharedValue, withRepeat, withTiming } from 'react-native-reanimated';
+import Animated, {
+  cancelAnimation,
+  Easing,
+  FadeIn,
+  FadeInDown,
+  useAnimatedProps,
+  useSharedValue,
+  withDelay,
+  withRepeat,
+  withSequence,
+  withTiming,
+  type SharedValue,
+} from 'react-native-reanimated';
 import { usePrefersReducedMotion } from '@/hooks/usePrefersReducedMotion';
 import { tx } from '@/i18n/locale';
 import { waveDayAt, waveHeightAt, type CycleWaveModel, type WavePhase } from '@/lib/home/cycleWave';
@@ -11,6 +24,17 @@ import { useIsDark, useThemeColors } from '@/theme/colors';
 import { cycleHexAlpha, useCycleColors } from '@/theme/cycle';
 
 const AnimatedCircle = Animated.createAnimatedComponent(Circle);
+const AnimatedPath = Animated.createAnimatedComponent(Path);
+const AnimatedRect = Animated.createAnimatedComponent(Rect);
+
+/** anime.js-style easings, run on the UI thread (anime.js itself drives the DOM, not native views). */
+const OUT_SOFT = Easing.bezier(0.22, 1, 0.36, 1);
+const OUT_TEXT = Easing.out(Easing.cubic);
+/** The pearl rides the wave for this long; everything else is timed around it. */
+const DRAW_MS = 1300;
+const DRAW_DELAY = 160;
+/** Delay between neighbouring day dots as they ripple out from today. */
+const DOT_STAGGER = 26;
 
 /** The words of the answer: one caption, one number (or word) with its unit, one line under it. */
 export type WaveAnswer = { top: string | null; value: string; unit: string | null; sub: string | null; tone?: 'period' | 'ink' };
@@ -69,15 +93,16 @@ export function CycleWaveStage({
   const modelRef = useRef(model);
   modelRef.current = model;
 
+  const focused = useIsFocused();
+  /** Intro timeline, 0 → 1 (the dots run in day units, see `dotsTo`); final values when motion is reduced. */
+  const draw = useSharedValue(0);
+  const fill = useSharedValue(0);
+  const dotsT = useSharedValue(0);
+  const ahead = useSharedValue(0);
+  /** The bloom when the pearl lands, then one slow breathing ring. */
+  const bloom = useSharedValue(0);
   const breath = useSharedValue(0);
-  useEffect(() => {
-    if (reduceMotion) {
-      breath.value = 0;
-      return;
-    }
-    breath.value = withRepeat(withTiming(1, { duration: 2000, easing: Easing.inOut(Easing.sin) }), -1, true);
-  }, [breath, reduceMotion]);
-  const haloProps = useAnimatedProps(() => ({ r: 11 + breath.value * 5, opacity: 0.34 - breath.value * 0.2 }));
+  const enterRef = useRef(true);
 
   useEffect(() => () => {
     if (holdRef.current) clearTimeout(holdRef.current);
@@ -143,11 +168,106 @@ export function CycleWaveStage({
       stops.push({ offset: Math.min(p.from + blend, p.to) / model.span, color });
       stops.push({ offset: Math.max(p.to - blend, p.from) / model.span, color });
     }
-    return { line, area, stops };
+    // The lived run as its own polyline (day 0 → today) with cumulative lengths: the line draws itself
+    // along it and the pearl rides it (anime.js `createDrawable` + `createMotionPath`, done natively).
+    const lx: number[] = [];
+    const ly: number[] = [];
+    if (model.todayT != null) {
+      for (const p of model.points) {
+        if (p.t >= model.todayT) break;
+        lx.push(xOf(p.t));
+        ly.push(yOf(p.t));
+      }
+      lx.push(xOf(model.todayT));
+      ly.push(yOf(model.todayT));
+    }
+    const cum = lx.map(() => 0);
+    for (let i = 1; i < lx.length; i += 1) cum[i] = cum[i - 1] + Math.hypot(lx[i] - lx[i - 1], ly[i] - ly[i - 1]);
+    const livedLen = cum[cum.length - 1] ?? 0;
+    const livedLine = lx.map((x, i) => `${i ? 'L' : 'M'}${x.toFixed(1)},${ly[i].toFixed(1)}`).join(' ');
+    const livedArea = lx.length > 1 ? `${livedLine} L${lx[lx.length - 1].toFixed(1)},${BASE} L${lx[0].toFixed(1)},${BASE} Z` : '';
+    return { line, area, stops, lx, ly, cum, livedLen, livedLine, livedArea };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [width, model, c]);
 
+  const todayDay = model.todayT != null ? Math.round(model.todayT + 0.5) : 1;
+  const dotsTo = model.dots.reduce((m, d) => Math.max(m, Math.abs(d.day - todayDay)), 0) + 1;
+  const ready = geometry != null;
+
+  // The intro plays once per mount, as soon as the wave has a width; a data refresh never replays it.
+  useEffect(() => {
+    if (!ready) return;
+    let alive = true;
+    AccessibilityInfo.isReduceMotionEnabled()
+      .catch(() => false)
+      .then((reduced) => {
+        if (!alive) return;
+        if (reduced) {
+          enterRef.current = false;
+          draw.value = 1;
+          fill.value = 1;
+          dotsT.value = 999;
+          ahead.value = 1;
+          bloom.value = 1;
+          return;
+        }
+        draw.value = withDelay(DRAW_DELAY, withTiming(1, { duration: DRAW_MS, easing: OUT_SOFT }));
+        fill.value = withDelay(DRAW_DELAY + 260, withTiming(1, { duration: DRAW_MS, easing: OUT_TEXT }));
+        dotsT.value = withDelay(
+          DRAW_DELAY + 520,
+          withSequence(withTiming(dotsTo, { duration: dotsTo * DOT_STAGGER + 260, easing: Easing.linear }), withTiming(999, { duration: 0 })),
+        );
+        ahead.value = withDelay(DRAW_DELAY + DRAW_MS * 0.7, withTiming(1, { duration: 700, easing: OUT_TEXT }));
+        bloom.value = withDelay(DRAW_DELAY + DRAW_MS * 0.82, withTiming(1, { duration: 1100, easing: OUT_SOFT }));
+      });
+    const t = setTimeout(() => {
+      enterRef.current = false;
+    }, 1400);
+    return () => {
+      alive = false;
+      clearTimeout(t);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ready]);
+
+  // One thin ring breathing out from today, only while Home is on screen and motion is allowed.
+  useEffect(() => {
+    if (reduceMotion || !focused) {
+      cancelAnimation(breath);
+      breath.value = 0;
+      return;
+    }
+    breath.value = 0;
+    breath.value = withDelay(DRAW_DELAY + DRAW_MS + 900, withRepeat(withTiming(1, { duration: 3400, easing: Easing.linear }), -1, false));
+    return () => cancelAnimation(breath);
+  }, [breath, reduceMotion, focused]);
+
+  const LX = geometry?.lx ?? EMPTY;
+  const LY = geometry?.ly ?? EMPTY;
+  const CUM = geometry?.cum ?? EMPTY;
+  const LEN = geometry?.livedLen ?? 0;
+  const lineProps = useAnimatedProps(() => ({ strokeDashoffset: (1 - draw.value) * (LEN + 2) }), [LEN]);
+  const fillProps = useAnimatedProps(() => ({ fillOpacity: fill.value * (dark ? 0.42 : 0.38) }), [dark]);
+  const aheadLineProps = useAnimatedProps(() => ({ opacity: ahead.value }));
+  const aheadFillProps = useAnimatedProps(() => ({ fillOpacity: ahead.value * (dark ? 0.09 : 0.1) }), [dark]);
+  const pearlProps = useAnimatedProps(() => {
+    const at = pointAlong(LX, LY, CUM, draw.value * LEN);
+    return { cx: at.x, cy: at.y };
+  }, [LX, LY, CUM, LEN]);
+  // The landing bloom: one thin ring opening like a petal, then gone.
+  const bloomProps = useAnimatedProps(() => {
+    const k = bloom.value;
+    const at = pointAlong(LX, LY, CUM, LEN);
+    return { cx: at.x, cy: at.y, r: 7 + k * 20, strokeOpacity: k > 0 && k < 1 ? (1 - k) * 0.7 : 0 };
+  }, [LX, LY, CUM, LEN]);
+  const breathProps = useAnimatedProps(() => {
+    const k = 1 - (1 - breath.value) * (1 - breath.value);
+    const at = pointAlong(LX, LY, CUM, LEN);
+    return { cx: at.x, cy: at.y, r: 8 + k * 13, strokeOpacity: breath.value > 0 ? (1 - k) * 0.5 : 0 };
+  }, [LX, LY, CUM, LEN]);
+
   const todayX = model.todayT != null && width ? xOf(model.todayT) : null;
+  const enter = enterRef.current;
   const scrubX = scrub != null && width ? xOf(scrub - 0.5) : null;
 
   const onLayout = (e: LayoutChangeEvent) => {
@@ -169,11 +289,20 @@ export function CycleWaveStage({
       <Pressable accessibilityRole="button" accessibilityLabel={a11yLabel} onPress={onOpen} style={s.head}>
         <View style={s.answer}>
           {shown.top ? (
-            <Text numberOfLines={1} style={[s.caption, { color: c.muted }]}>
+            <Animated.Text
+              entering={enter ? FadeInDown.duration(560).easing(OUT_TEXT) : undefined}
+              numberOfLines={1}
+              style={[s.caption, { color: c.muted }]}
+            >
               {shown.top}
-            </Text>
+            </Animated.Text>
           ) : null}
-          <View style={s.valueRow}>
+          {/* A finger on the wave swaps the number with a short fade; the intro lifts it in. */}
+          <Animated.View
+            key={`${shown.value}|${shown.unit ?? ''}`}
+            entering={enter ? FadeInDown.delay(90).duration(600).easing(OUT_TEXT) : FadeIn.duration(180)}
+            style={s.valueRow}
+          >
             <Text
               numberOfLines={1}
               adjustsFontSizeToFit
@@ -183,14 +312,22 @@ export function CycleWaveStage({
               {shown.value}
             </Text>
             {shown.unit ? <Text style={[s.unit, { color: valueColor }]}>{shown.unit}</Text> : null}
-          </View>
+          </Animated.View>
           {shown.sub ? (
-            <Text numberOfLines={2} style={[s.sub, { color: c.muted }]}>
+            <Animated.Text
+              entering={enter ? FadeInDown.delay(180).duration(600).easing(OUT_TEXT) : undefined}
+              numberOfLines={2}
+              style={[s.sub, { color: c.muted }]}
+            >
               {shown.sub}
-            </Text>
+            </Animated.Text>
           ) : null}
         </View>
-        {leaf && scrub == null ? <Leaf leaf={leaf} /> : null}
+        {leaf && scrub == null ? (
+          <Animated.View entering={enter ? FadeIn.delay(DRAW_DELAY + DRAW_MS * 0.75).duration(600) : FadeIn.duration(200)}>
+            <Leaf leaf={leaf} />
+          </Animated.View>
+        ) : null}
       </Pressable>
 
       <View
@@ -208,9 +345,6 @@ export function CycleWaveStage({
                   <Stop key={i} offset={st.offset} stopColor={st.color} />
                 ))}
               </SvgGradient>
-              <ClipPath id="cwLived">
-                <Rect x={0} y={0} width={todayX ?? 0} height={H} />
-              </ClipPath>
               <ClipPath id="cwAhead">
                 <Rect x={todayX ?? 0} y={0} width={width} height={H} />
               </ClipPath>
@@ -218,7 +352,8 @@ export function CycleWaveStage({
 
             {/* A variable cycle's whole start window, as a dashed rose run on the floor. */}
             {model.windowT ? (
-              <Rect
+              <AnimatedRect
+                animatedProps={aheadLineProps}
                 x={xOf(model.windowT.from)}
                 y={BASE - 9}
                 width={Math.max(8, xOf(model.windowT.to) - xOf(model.windowT.from))}
@@ -232,24 +367,45 @@ export function CycleWaveStage({
             ) : null}
 
             <G clipPath="url(#cwAhead)">
-              <Path d={geometry.area} fill="url(#cwPhase)" fillOpacity={dark ? 0.09 : 0.1} />
-              <Path d={geometry.line} stroke="url(#cwPhase)" strokeWidth={2} strokeDasharray="1 5" strokeLinecap="round" fill="none" />
+              <AnimatedPath d={geometry.area} fill="url(#cwPhase)" animatedProps={aheadFillProps} />
+              <AnimatedPath
+                d={geometry.line}
+                stroke="url(#cwPhase)"
+                strokeWidth={2}
+                strokeDasharray="1 5"
+                strokeLinecap="round"
+                fill="none"
+                animatedProps={aheadLineProps}
+              />
             </G>
-            <G clipPath="url(#cwLived)">
-              <Path d={geometry.area} fill="url(#cwPhase)" fillOpacity={dark ? 0.42 : 0.38} />
-              <Path d={geometry.line} stroke="url(#cwPhase)" strokeWidth={3} strokeLinecap="round" fill="none" />
-            </G>
+            {/* The lived part draws itself from day 1 to today like a silk thread; its fill follows softly. */}
+            {geometry.livedArea ? <AnimatedPath d={geometry.livedArea} fill="url(#cwPhase)" animatedProps={fillProps} /> : null}
+            {geometry.livedLine ? (
+              <AnimatedPath
+                d={geometry.livedLine}
+                stroke="url(#cwPhase)"
+                strokeWidth={3}
+                strokeLinecap="round"
+                fill="none"
+                strokeDasharray={[geometry.livedLen + 2, geometry.livedLen + 2]}
+                animatedProps={lineProps}
+              />
+            ) : null}
 
             {/* One dot per cycle day: lived filled, ahead hollow, logged bleeding rose. */}
+            {/* The day dots ripple out from today (anime.js `stagger(…, { from })`). */}
             {model.dots.map((d) => {
               const x = xOf(d.day - 0.5);
-              if (d.bleed) return <Circle key={d.day} cx={x} cy={DOTS_Y} r={2.6} fill={c.period} />;
+              const dist = Math.abs(d.day - todayDay);
+              if (d.bleed) return <DayDot key={d.day} t={dotsT} dist={dist} cx={x} r={2.6} fill={c.period} />;
               if (d.state === 'ahead')
-                return <Circle key={d.day} cx={x} cy={DOTS_Y} r={1.9} fill="none" stroke={c.mutedSoft} strokeWidth={1} opacity={0.7} />;
-              return <Circle key={d.day} cx={x} cy={DOTS_Y} r={d.state === 'today' ? 2.6 : 1.9} fill={d.state === 'today' ? c.ink : c.mutedSoft} />;
+                return <DayDot key={d.day} t={dotsT} dist={dist} cx={x} r={1.9} fill="none" stroke={c.mutedSoft} opacity={0.7} />;
+              return (
+                <DayDot key={d.day} t={dotsT} dist={dist} cx={x} r={d.state === 'today' ? 2.6 : 1.9} fill={d.state === 'today' ? c.ink : c.mutedSoft} />
+              );
             })}
 
-            {model.dropT != null && !model.windowT ? <Drop x={xOf(model.dropT)} y={BASE - 4} color={c.period} dark={dark} /> : null}
+            {model.dropT != null && !model.windowT ? <Drop x={xOf(model.dropT)} y={BASE - 4} color={c.period} dark={dark} t={ahead} /> : null}
 
             {scrubX != null && scrub != null ? (
               <G>
@@ -260,8 +416,9 @@ export function CycleWaveStage({
 
             {todayX != null && model.todayT != null ? (
               <G opacity={scrub != null ? 0.45 : 1}>
-                <AnimatedCircle cx={todayX} cy={yOf(model.todayT)} fill={tone} animatedProps={haloProps} />
-                <Circle cx={todayX} cy={yOf(model.todayT)} r={7} fill={dark ? c.ink : '#FFFFFF'} stroke={tone} strokeWidth={3} />
+                <AnimatedCircle fill="none" stroke={tone} strokeWidth={1.2} animatedProps={breathProps} />
+                <AnimatedCircle fill="none" stroke={tone} strokeWidth={1.4} animatedProps={bloomProps} />
+                <AnimatedCircle r={7} fill={dark ? c.ink : '#FFFFFF'} stroke={tone} strokeWidth={3} animatedProps={pearlProps} />
               </G>
             ) : null}
           </Svg>
@@ -284,13 +441,72 @@ export function CycleWaveStage({
   );
 }
 
-/** A small rose drop, dashed and pale: the expected start, not a logged one. */
-function Drop({ x, y, color, dark }: { x: number; y: number; color: string; dark: boolean }) {
+const EMPTY: number[] = [];
+
+/** A point at distance `at` along a polyline with cumulative lengths `cum` (worklet). */
+function pointAlong(xs: number[], ys: number[], cum: number[], at: number): { x: number; y: number } {
+  'worklet';
+  const n = xs.length;
+  if (n === 0) return { x: -40, y: -40 };
+  if (n === 1 || at <= 0) return { x: xs[0], y: ys[0] };
+  let i = 1;
+  while (i < n - 1 && cum[i] < at) i += 1;
+  const seg = cum[i] - cum[i - 1] || 1;
+  const f = Math.min(1, Math.max(0, (at - cum[i - 1]) / seg));
+  return { x: xs[i - 1] + (xs[i] - xs[i - 1]) * f, y: ys[i - 1] + (ys[i] - ys[i - 1]) * f };
+}
+
+/** A rose drop outline whose round bottom rests at `y` (worklet). */
+function dropPath(x: number, y: number): string {
+  'worklet';
   const h = 18;
   const w = 13;
   const top = y - h;
-  const d = `M${x},${top} C${x + w * 0.2},${top + h * 0.3} ${x + w / 2},${top + h * 0.5} ${x + w / 2},${top + h * 0.7} A${w / 2},${w / 2} 0 1 1 ${x - w / 2},${top + h * 0.7} C${x - w / 2},${top + h * 0.5} ${x - w * 0.2},${top + h * 0.3} ${x},${top} Z`;
-  return <Path d={d} fill={cycleHexAlpha(color, dark ? 0.24 : 0.14)} stroke={color} strokeWidth={1.5} strokeDasharray="2.5 2" />;
+  return `M${x},${top} C${x + w * 0.2},${top + h * 0.3} ${x + w / 2},${top + h * 0.5} ${x + w / 2},${top + h * 0.7} A${w / 2},${w / 2} 0 1 1 ${x - w / 2},${top + h * 0.7} C${x - w / 2},${top + h * 0.5} ${x - w * 0.2},${top + h * 0.3} ${x},${top} Z`;
+}
+
+/** One day dot that pops in when the ripple from today reaches it (a soft back-out, like anime.js `outBack`). */
+function DayDot({
+  t,
+  dist,
+  cx,
+  r,
+  fill,
+  stroke,
+  opacity,
+}: {
+  t: SharedValue<number>;
+  dist: number;
+  cx: number;
+  r: number;
+  fill: string;
+  stroke?: string;
+  opacity?: number;
+}) {
+  const props = useAnimatedProps(() => {
+    const k = Math.min(1, Math.max(0, (t.value - dist) / 2.2));
+    const b = k - 1;
+    const eased = k >= 1 ? 1 : 1 + 2.4 * b * b * b + 1.4 * b * b;
+    return { r: r * Math.max(0, eased) };
+  }, [dist, r]);
+  return (
+    <AnimatedCircle cx={cx} cy={DOTS_Y} fill={fill} stroke={stroke} strokeWidth={stroke ? 1 : 0} opacity={opacity} animatedProps={props} />
+  );
+}
+
+/** A small rose drop, dashed and pale: the expected start, not a logged one. It drips into place once. */
+function Drop({ x, y, color, dark, t }: { x: number; y: number; color: string; dark: boolean; t: SharedValue<number> }) {
+  const props = useAnimatedProps(() => ({ d: dropPath(x, y - (1 - t.value) * 10), opacity: t.value }), [x, y]);
+  return (
+    <AnimatedPath
+      d={dropPath(x, y)}
+      fill={cycleHexAlpha(color, dark ? 0.24 : 0.14)}
+      stroke={color}
+      strokeWidth={1.5}
+      strokeDasharray="2.5 2"
+      animatedProps={props}
+    />
+  );
 }
 
 function Leaf({ leaf }: { leaf: WaveLeaf }) {
@@ -315,7 +531,117 @@ function Leaf({ leaf }: { leaf: WaveLeaf }) {
   );
 }
 
+/** Loader height: about the wave stage's own, so nothing jumps when the cycle arrives. */
+const LOADER_H = 236;
+const LOADER_WAVE_H = 96;
+
+/**
+ * While the cycle loads (Flo-like, owner 2026-10-05): one thin rose thread flows along a soft hill —
+ * its head draws forward with a pearl on it, its tail follows and lets go — on the stage's own
+ * blush card. One calm loop, nothing else; a still thread when motion is reduced.
+ */
+export function CycleWaveLoader({ label }: { label: string }) {
+  const dark = useIsDark();
+  const c = useCycleColors();
+  const reduceMotion = usePrefersReducedMotion();
+  const focused = useIsFocused();
+  const [width, setWidth] = useState(0);
+  const flow = useSharedValue(0);
+
+  useEffect(() => {
+    if (reduceMotion || !focused) {
+      cancelAnimation(flow);
+      flow.value = 0.5;
+      return;
+    }
+    flow.value = 0;
+    flow.value = withRepeat(withTiming(1, { duration: 2800, easing: Easing.linear }), -1, false);
+    return () => cancelAnimation(flow);
+  }, [flow, reduceMotion, focused]);
+
+  const path = useMemo(() => {
+    if (!width) return null;
+    const xs: number[] = [];
+    const ys: number[] = [];
+    const left = 24;
+    const right = width - 24;
+    const base = LOADER_WAVE_H - 14;
+    const top = 14;
+    const steps = 64;
+    for (let i = 0; i <= steps; i += 1) {
+      const u = i / steps;
+      // A calm hill with a gentle shoulder: no peak that could read as a forecast.
+      const v = 0.12 + 0.62 * Math.exp(-((u - 0.52) ** 2) / (2 * 0.2 * 0.2)) + 0.14 * Math.exp(-((u - 0.18) ** 2) / (2 * 0.09 * 0.09));
+      xs.push(left + u * (right - left));
+      ys.push(base - Math.min(1, v) * (base - top));
+    }
+    const cum = xs.map(() => 0);
+    for (let i = 1; i < xs.length; i += 1) cum[i] = cum[i - 1] + Math.hypot(xs[i] - xs[i - 1], ys[i] - ys[i - 1]);
+    const len = cum[cum.length - 1];
+    const d = xs.map((x, i) => `${i ? 'L' : 'M'}${x.toFixed(1)},${ys[i].toFixed(1)}`).join(' ');
+    return { xs, ys, cum, len, d };
+  }, [width]);
+
+  const XS = path?.xs ?? EMPTY;
+  const YS = path?.ys ?? EMPTY;
+  const CUM = path?.cum ?? EMPTY;
+  const LEN = path?.len ?? 0;
+  const still = reduceMotion;
+  // Head leads, tail follows 38 % later: the thread is drawn, then let go, and the loop meets itself at 0.
+  const threadProps = useAnimatedProps(() => {
+    const ease = (x: number) => (x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2);
+    const head = still ? 1 : ease(Math.min(1, Math.max(0, flow.value / 0.62)));
+    const tail = still ? 0 : ease(Math.min(1, Math.max(0, (flow.value - 0.38) / 0.62)));
+    const visible = Math.max(0.001, (head - tail) * LEN);
+    return { strokeDasharray: [visible, LEN * 2 + 4], strokeDashoffset: -tail * LEN };
+  }, [LEN, still]);
+  const pearlProps = useAnimatedProps(() => {
+    const ease = (x: number) => (x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2);
+    const head = ease(Math.min(1, Math.max(0, flow.value / 0.62)));
+    const tail = ease(Math.min(1, Math.max(0, (flow.value - 0.38) / 0.62)));
+    const at = pointAlong(XS, YS, CUM, head * LEN);
+    return { cx: at.x, cy: at.y, opacity: still ? 0 : Math.min(1, (head - tail) * 6) };
+  }, [XS, YS, CUM, LEN, still]);
+
+  return (
+    <View
+      accessibilityRole="progressbar"
+      accessibilityLabel={label}
+      style={[s.stage, s.loader, { backgroundColor: c.cardSoft }]}
+      onLayout={(e) => {
+        const w = Math.round(e.nativeEvent.layout.width);
+        if (w !== width) setWidth(w);
+      }}
+    >
+      <LinearGradient
+        pointerEvents="none"
+        colors={[cycleHexAlpha(c.period, dark ? 0.2 : 0.14), cycleHexAlpha(c.period, dark ? 0.06 : 0.04), cycleHexAlpha(c.period, 0)]}
+        locations={[0, 0.55, 1]}
+        start={{ x: 1, y: 0 }}
+        end={{ x: 0.1, y: 1 }}
+        style={StyleSheet.absoluteFill}
+      />
+      <View style={s.loaderHead}>
+        <View style={[s.loaderBone, { width: 96, height: 12, backgroundColor: cycleHexAlpha(c.muted, 0.14) }]} />
+        <View style={[s.loaderBone, { width: 132, height: 40, borderRadius: 14, backgroundColor: cycleHexAlpha(c.muted, 0.1) }]} />
+      </View>
+      {path ? (
+        <Svg width={width} height={LOADER_WAVE_H}>
+          <Path d={path.d} stroke={cycleHexAlpha(c.period, dark ? 0.16 : 0.12)} strokeWidth={1.5} strokeDasharray="1 5" strokeLinecap="round" fill="none" />
+          <AnimatedPath d={path.d} stroke={c.period} strokeOpacity={0.8} strokeWidth={2} strokeLinecap="round" fill="none" animatedProps={threadProps} />
+          <AnimatedCircle r={4.5} fill={dark ? c.ink : '#FFFFFF'} stroke={c.period} strokeWidth={2} animatedProps={pearlProps} />
+        </Svg>
+      ) : (
+        <View style={{ height: LOADER_WAVE_H }} />
+      )}
+    </View>
+  );
+}
+
 const s = StyleSheet.create({
+  loader: { height: LOADER_H, justifyContent: 'space-between' },
+  loaderHead: { paddingHorizontal: 18, gap: 10 },
+  loaderBone: { borderRadius: 6 },
   stage: { alignSelf: 'stretch', borderRadius: 20, overflow: 'hidden', paddingTop: 18, paddingBottom: 14 },
   head: { flexDirection: 'row', alignItems: 'flex-start', paddingHorizontal: 18, gap: 12 },
   answer: { flex: 1, minWidth: 0 },
