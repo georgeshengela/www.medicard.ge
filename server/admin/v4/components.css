@@ -110,6 +110,8 @@ html body input.s-switch[type="checkbox"]:checked { background: var(--s-accent) 
 html body input.s-switch[type="checkbox"]:checked::after { transform: translateX(16px); }
 html body input.s-switch[type="checkbox"]:disabled { opacity: .5; cursor: not-allowed; }
 html body input.s-switch[type="checkbox"]:focus-visible { box-shadow: 0 0 0 3px var(--s-accent-ring) !important; }
+/* A switch inside a table keeps its size: table inputs otherwise stretch to 100% / min 64 px (a long, ugly pill). */
+html body table.s-table input.s-switch[type="checkbox"], html body .s-field input.s-switch[type="checkbox"] { width: 36px; min-width: 0; max-width: 36px; height: 20px; }
 
 .s-callout {
   display: flex; gap: 12px; align-items: flex-start;
@@ -1259,7 +1261,6 @@ html body .workspace .p4-tabs > .v3-subnav { flex: 0 1 auto; flex-wrap: nowrap; 
 
 /* #/email */
 #tab-email .em-page > * { min-width: 0; }
-#tab-email table.s-table input.s-switch { width: 36px; min-width: 0; padding: 0; }
 #tab-email .em-name { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
 #tab-email .em-wrap { min-width: 240px; line-height: 1.5; }
 #tab-email .em-when { display: grid; gap: 1px; white-space: nowrap; }
