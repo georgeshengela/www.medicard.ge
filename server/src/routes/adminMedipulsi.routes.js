@@ -9,6 +9,8 @@ import {requireAdminCapability} from '../lib/adminCapabilities.js';
 import {RATE_LIMIT_VALIDATE} from '../lib/rateLimitKey.js';
 import {asyncHandler} from '../middleware/error.js';
 import {id,missionWrite,giftWrite,configWrite,reviewWrite,claimWrite,fail} from '../lib/medipulsi/schema.js';
+import * as D from '../lib/medipulsi/dropsAdmin.js';
+import {resetCampaign} from '../lib/medipulsi/campaignStore.js';
 export const adminMedipulsiRouter=Router();
 const r=adminMedipulsiRouter,view=requireAdminCapability('MEDIPULSI_VIEW'),manage=requireAdminCapability('MEDIPULSI_MANAGE'),review=requireAdminCapability('MEDIPULSI_REVIEW');
 r.use(requireAdmin,(req,res,next)=>{res.set('Cache-Control','no-store');next();});
@@ -71,3 +73,62 @@ r.put('/config',manage,write,asyncHandler(async(req,res)=>{
  }));
 }));
 r.get('/audit',view,asyncHandler(async(req,res)=>res.json({rows:await prisma.medipulsiAudit.findMany({orderBy:{createdAt:'desc'},...pagination(req.query)}),total:await prisma.medipulsiAudit.count()})));
+
+/* ───────── „MEDIRUN ყუთები“ (#/medirun-boxes): rules, days, spots, boxes, numbers ───────── */
+const ymdParam=z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
+const adminId=req=>req.admin?.id;
+r.get('/drops',view,asyncHandler(async(req,res)=>res.json(await D.dropsOverview())));
+r.get('/drops/day/:date',view,asyncHandler(async(req,res)=>res.json({date:req.params.date,boxes:await D.dayBoxes(ymdParam.parse(req.params.date))})));
+r.get('/drops/calendar',view,asyncHandler(async(req,res)=>res.json({days:await D.campaignCalendar()})));
+r.get('/drops/stats',view,asyncHandler(async(req,res)=>{
+ const days=z.coerce.number().int().min(7).max(120).default(30).parse(req.query.days),to=req.query.to?ymdParam.parse(req.query.to):new Date(Date.now()+4*3600_000).toISOString().slice(0,10);
+ const from=new Date(Date.parse(`${to}T00:00:00Z`)-(days-1)*86400_000).toISOString().slice(0,10);
+ res.json({from,to,days:await D.dayNumbers(from,to)});
+}));
+r.get('/drops/spots',view,asyncHandler(async(req,res)=>res.json(await D.spotList())));
+r.get('/drops/audit',view,asyncHandler(async(req,res)=>res.json(await D.dropsAudit({offset:pagination(req.query).skip}))));
+r.post('/drops/preview',view,write,asyncHandler(async(req,res)=>{
+ const input=z.object({draft:z.record(z.string(),z.unknown()).nullable().optional(),from:ymdParam,days:z.number().int().min(1).max(14).default(1)}).strict().parse(req.body);
+ res.json({days:await D.previewDays({draft:input.draft||null,from:input.from,days:input.days})});
+}));
+r.put('/drops/rules',manage,write,asyncHandler(async(req,res)=>{
+ const input=z.object({revision:z.number().int().min(0),data:z.record(z.string(),z.unknown())}).strict().parse(req.body);
+ res.json(await D.saveRules(input.data,{revision:input.revision,adminId:adminId(req)}));
+}));
+r.delete('/drops/rules',manage,write,asyncHandler(async(req,res)=>{
+ await resetCampaign();
+ await prisma.medipulsiAudit.create({data:{id:randomUUID(),actorId:adminId(req),action:'DROP_RULES_RESET',entityId:'campaign',details:{}}});
+ res.json(await D.dropsOverview());
+}));
+const dayPatch=z.object({waves:z.array(z.record(z.string(),z.unknown())).optional(),coins:z.array(z.record(z.string(),z.unknown())).optional(),stock:z.tuple([z.number(),z.number()]).optional(),pulseRadius:z.number().optional(),revealRadius:z.number().optional(),minDepthM:z.number().optional()}).strict();
+r.put('/drops/days/:date',manage,write,asyncHandler(async(req,res)=>{
+ const input=z.object({override:z.object({off:z.boolean().optional(),as:z.enum(['weekday','weekend']).optional(),day:dayPatch.optional(),note:z.string().trim().max(300).optional()}).strict().nullable()}).strict().parse(req.body);
+ res.json(await D.setDayOverride(ymdParam.parse(req.params.date),input.override,{adminId:adminId(req)}));
+}));
+r.put('/drops/spots/:id',manage,write,asyncHandler(async(req,res)=>{
+ const input=z.object({excluded:z.boolean()}).strict().parse(req.body);
+ res.json(await D.setSpotExcluded(id.parse(req.params.id),input.excluded,{adminId:adminId(req)}));
+}));
+r.post('/drops/days/:date/apply',manage,write,asyncHandler(async(req,res)=>res.json(await D.applyDate(ymdParam.parse(req.params.date),{adminId:adminId(req)}))));
+r.post('/drops/days/:date/regenerate',manage,write,asyncHandler(async(req,res)=>res.json(await D.regenerateDate(ymdParam.parse(req.params.date),{adminId:adminId(req)}))));
+r.post('/drops/days/:date/cancel',manage,write,asyncHandler(async(req,res)=>res.json(await D.cancelDate(ymdParam.parse(req.params.date),{adminId:adminId(req)}))));
+r.post('/drops/boxes',manage,write,asyncHandler(async(req,res)=>{
+ const input=z.object({spotId:id.optional(),district:z.string().trim().min(1).max(40).optional(),latitude:z.number().min(41.55).max(41.9).optional(),longitude:z.number().min(44.6).max(45.1).optional(),place:z.string().trim().max(80).optional(),
+  coins:z.number().int().min(1).max(10000),stock:z.number().int().min(1).max(1000),startsAt:z.iso.datetime({offset:true}).nullable().optional(),hours:z.number().min(.25).max(24),
+  pulseRadius:z.number().int().min(40).max(500),revealRadius:z.number().int().min(10).max(50),minPercent:z.number().min(.01).max(100).nullable().optional(),note:z.string().trim().max(300).optional()}).strict()
+  .refine(v=>v.pulseRadius>v.revealRadius,'პულსის რადიუსი გახსნის რადიუსზე დიდი უნდა იყოს').parse(req.body);
+ res.json(await D.manualDrop(input,{adminId:adminId(req)}));
+}));
+r.patch('/drops/boxes/:id',manage,write,asyncHandler(async(req,res)=>{
+ const input=z.discriminatedUnion('action',[
+  z.object({action:z.literal('end')}).strict(),z.object({action:z.literal('cancel')}).strict(),z.object({action:z.literal('restore')}).strict(),
+  z.object({action:z.literal('stock'),stock:z.number().int().min(0).max(100000)}).strict(),
+  z.object({action:z.literal('coins'),coins:z.number().int().min(1).max(10000)}).strict(),
+  z.object({action:z.literal('time'),startsAt:z.iso.datetime({offset:true}),endsAt:z.iso.datetime({offset:true})}).strict(),
+ ]).parse(req.body);
+ res.json(await D.boxAction(id.parse(req.params.id),input,{adminId:adminId(req)}));
+}));
+r.put('/drops/autopilot',manage,write,asyncHandler(async(req,res)=>{
+ const input=z.object({enabled:z.boolean()}).strict().parse(req.body);
+ res.json(await D.setAutopilot(input.enabled,{admin:req.admin}));
+}));

@@ -73,7 +73,7 @@
     overview: 'o', users: 'u', push: 'p', 'poster-studio': 'i', nutrition: 'n', community: 'c', medipulsi: 'm',
     health: 'h', ai: 'd', rewards: 'r', orders: 'e', sms: 'x', pharmacy: 'f', quality: 'q', testing: 't', audit: 'a', settings: 's', quests: 'k', features: 'l', funnel: 'v', email: 'j', support: 'b', trainers: 'w', capacity: 'z', news: 'y', errors: 'g',
     // Every letter is taken; digits work the same way (physical Digit keys, any layout).
-    social: '1', campaigns: '2',
+    social: '1', campaigns: '2', 'medirun-boxes': '3',
   };
   const SUBPAGES = [
     ['push', 'brain', 'გადაწყვეტილებები', 'Brain decisions'],
@@ -83,6 +83,11 @@
     ['push', 'history', 'Push ისტორია', 'history campaigns'],
     ['push', 'devices', 'მოწყობილობები', 'devices tokens'],
     ['rewards', 'campaigns', 'კამპანიები', 'campaigns'],
+    ['medirun-boxes', 'today', 'MEDIRUN ყუთები — დღეს', 'medirun boxes drops today live ყუთი დაგდება'],
+    ['medirun-boxes', 'rules', 'MEDIRUN ყუთების წესები', 'medirun boxes rules waves coins schedule წესები ტალღა ქოინი'],
+    ['medirun-boxes', 'calendar', 'MEDIRUN ყუთების კალენდარი', 'medirun boxes calendar days კალენდარი დღე'],
+    ['medirun-boxes', 'spots', 'MEDIRUN ადგილები', 'medirun spots parks places ადგილები პარკი'],
+    ['medirun-boxes', 'stats', 'MEDIRUN ყუთების ციფრები', 'medirun boxes stats openings coins ციფრები'],
     ['rewards', 'partners', 'პარტნიორები', 'partners'],
     ['rewards', 'redemptions', 'გაცვლები', 'redemptions vouchers'],
     ['rewards', 'codes', 'კოდების მარაგი', 'codes inventory'],

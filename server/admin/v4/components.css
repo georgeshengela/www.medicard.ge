@@ -1934,3 +1934,57 @@ html body .workspace .s-coach-search input { width: 100%; height: 32px; box-sizi
 @media (max-width: 640px) { .p2-store-form-grid { grid-template-columns: 1fr; } }
 .p2-store-hint { cursor: pointer; }
 /* ─── [/rewards-store] ─── */
+
+/* ─── [#/medirun-boxes] MEDIRUN ყუთები (v4/modules/medirunBoxes.js) ─── */
+.mb-page .mb-hero { display: flex; align-items: center; justify-content: space-between; gap: 18px; flex-wrap: wrap; padding: 18px 20px; background: linear-gradient(135deg, #042f2e 0%, #0b4d47 55%, #0d9488 100%); color: #fff; border: 0; }
+.mb-page .mb-hero-main { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.mb-page .mb-hero-title { display: flex; align-items: center; gap: 12px; }
+.mb-page .mb-hero-title h2 { margin: 0; font-size: 18px; font-weight: 700; color: #fff; }
+.mb-page .mb-hero-title p { margin: 2px 0 0; font-size: 12.5px; color: #c5dada; }
+.mb-page .mb-hero-mark { width: 40px; height: 40px; border-radius: 12px; display: grid; place-items: center; background: rgba(255, 255, 255, .12); color: #99f6e4; }
+.mb-page .mb-hero-mark .icon { width: 22px; height: 22px; }
+.mb-page .mb-hero-badges { display: flex; gap: 6px; flex-wrap: wrap; }
+.mb-page .mb-hero .s-badge.is-plain { background: rgba(255, 255, 255, .12); color: #e6fffb; }
+.mb-page .mb-pilot { display: flex; align-items: center; gap: 12px; padding: 10px 14px; border-radius: 14px; background: rgba(3, 7, 18, .35); cursor: pointer; max-width: 420px; }
+.mb-page .mb-pilot b { display: block; font-size: 13.5px; color: #fff; }
+.mb-page .mb-pilot small { display: block; font-size: 12px; color: #c5dada; line-height: 1.4; }
+.mb-page .mb-pilot.is-on b::before { content: ""; display: inline-block; width: 7px; height: 7px; border-radius: 99px; background: #34d399; margin-right: 7px; vertical-align: 1px; }
+.mb-page .mb-grow { flex: 1; }
+.mb-page .s-toolbar { justify-content: flex-start; }
+.mb-page .mb-inline { margin: 0; min-width: 0; }
+.mb-page .mb-inline input, .mb-page .mb-inline select { min-height: 34px; }
+.mb-page .mb-table td { vertical-align: middle; }
+.mb-page .mb-table tr.is-past td { opacity: .55; }
+.mb-page .mb-table tr.is-click { cursor: pointer; }
+.mb-page .mb-table tr.is-click:hover td { background: var(--s-hover); }
+.mb-page .mb-place { display: flex; flex-direction: column; min-width: 0; }
+.mb-page .mb-place span { font-size: 12px; color: var(--s-muted); }
+.mb-page .mb-open { display: grid; gap: 4px; min-width: 90px; }
+.mb-page .mb-open small { font-size: 12px; color: var(--s-muted); font-variant-numeric: tabular-nums; }
+.mb-page .mb-note { display: flex; align-items: center; gap: 6px; margin: 0; font-size: 12.5px; }
+.mb-page .mb-note .icon { width: 14px; height: 14px; }
+.mb-page .mb-sum, #v3-dialog .mb-sum { padding: 10px 12px; border-radius: 10px; background: var(--s-accent-soft); color: var(--s-accent-ink); font-size: 13px; font-weight: 600; }
+.mb-page .mb-h4, #v3-dialog .mb-h4 { margin: 4px 0 0; font-size: 12.5px; font-weight: 650; color: var(--s-muted); text-transform: none; letter-spacing: 0; }
+:is(.mb-page, #v3-dialog) .mb-mini { width: 100%; }
+:is(.mb-page, #v3-dialog) .mb-mini td, :is(.mb-page, #v3-dialog) .mb-mini th { padding: 6px 8px; }
+:is(.mb-page, #v3-dialog) .mb-mini input:not([type=checkbox]), :is(.mb-page, #v3-dialog) .mb-mini select { width: 100%; min-width: 64px; min-height: 32px; padding: 4px 8px; border: 1px solid var(--s-line); border-radius: 8px; background: var(--s-surface); color: var(--s-ink); font: inherit; font-size: 13px; }
+:is(.mb-page, #v3-dialog) .mb-mini input[type=time], :is(.mb-page, #v3-dialog) .mb-mini input[type=date] { min-width: 110px; }
+:is(.mb-page, #v3-dialog) .mb-coins { display: grid; gap: 8px; justify-items: start; }
+:is(.mb-page, #v3-dialog) .mb-coins .mb-mini { max-width: 520px; }
+.mb-page .mb-row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.mb-page .mb-row input { min-height: 32px; padding: 4px 8px; border: 1px solid var(--s-line); border-radius: 8px; background: var(--s-surface); color: var(--s-ink); font: inherit; }
+.mb-page .mb-check { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; color: var(--s-ink); }
+.mb-page .mb-pad { padding: 10px 14px; }
+.mb-page .mb-savebar { position: sticky; bottom: 12px; z-index: 5; display: flex; align-items: center; justify-content: flex-end; gap: 8px; flex-wrap: wrap; padding: 12px 14px; border-radius: 14px; background: var(--s-surface); border: 1px solid var(--s-line); box-shadow: 0 8px 24px rgba(15, 23, 42, .12); }
+.mb-page .mb-savebar-note { margin-right: auto; font-size: 13px; color: var(--s-muted); }
+.mb-page .mb-savebar-note b { color: var(--s-warn); }
+.mb-page .mb-meters { display: grid; gap: 8px; }
+.mb-page .mb-meter-row { display: grid; grid-template-columns: minmax(110px, 180px) 1fr 48px; align-items: center; gap: 10px; font-size: 13px; }
+.mb-page .mb-meter-row b { text-align: right; font-variant-numeric: tabular-nums; }
+#v3-dialog .mb-confirm { margin: 0; font-size: 14px; line-height: 1.6; color: var(--s-ink); }
+#v3-dialog .mb-custom { padding: 12px; border-radius: 12px; background: var(--s-sunken); }
+@media (max-width: 720px) {
+  .mb-page .mb-pilot { max-width: none; width: 100%; }
+  .mb-page .mb-meter-row { grid-template-columns: 1fr 1fr 40px; }
+}
+/* ─── [/medirun-boxes] ─── */

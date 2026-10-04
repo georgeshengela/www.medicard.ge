@@ -162,3 +162,37 @@ test('drops: the weekly rhythm comes from the config',()=>{
  assert.equal(s[2].times,'16:00');
  assert.deepEqual(s[1].coins,{min:150,max:500});
 });
+
+/* ───────── admin-editable rules (campaignStore.js) ───────── */
+import {parseCampaign,FILE_CAMPAIGN} from './campaignStore.js';
+const withRules=patch=>({...structuredClone(FILE_CAMPAIGN),...patch});
+test('rules: the repo file is a valid campaign',()=>{assert.equal(parseCampaign(FILE_CAMPAIGN).id,FILE_CAMPAIGN.id);});
+test('rules: a broken draft is refused with a Georgian reason',()=>{
+ const bad=withRules({});bad.days.weekday.stock=[5,2];
+ assert.throws(()=>parseCampaign(bad),e=>e.status===400&&/მარაგის/.test(e.message));
+ const reserved=withRules({});reserved.days.weekday.waves[0].id='sat';
+ assert.throws(()=>parseCampaign(reserved),e=>/დაკავებულია/.test(e.message));
+});
+test('rules: a day switched off has no boxes, the grand prize still comes',()=>{
+ const c=withRules({dayOverrides:{'2026-10-06':{off:true},'2026-12-31':{off:true}}});
+ assert.equal(planDay('2026-10-06',{campaign:c,spots,golden}).length,0);
+ const grandDay=planDay('2026-12-31',{campaign:c,spots,golden});
+ assert.deepEqual(grandDay.map(p=>p.gift.id),[c.grand.id]);
+});
+test('rules: a weekday run as a weekend gets weekend coins and waves',()=>{
+ const c=withRules({dayOverrides:{'2026-10-07':{as:'weekend'}}});
+ const p=planDay('2026-10-07',{campaign:c,spots,golden});
+ assert.ok(p.every(x=>x.rule.coins>=150));
+ assert.ok(p.some(x=>x.gift.id.includes('-am-'))&&+p[0].gift.startsAt===+new Date('2026-10-07T10:30:00+04:00'));
+});
+test('rules: a custom day replaces only what it names',()=>{
+ const c=withRules({dayOverrides:{'2026-10-08':{day:{coins:[{amount:777,weight:1}],stock:[9,9]}}}});
+ const p=planDay('2026-10-08',{campaign:c,spots,golden});
+ assert.ok(p.length>0&&p.every(x=>x.rule.coins===777&&x.gift.stock===9));
+});
+test('rules: an excluded spot never gets a box',()=>{
+ const used=new Set(plan('2026-10-06').map(p=>p.rule.meta.spot));
+ const out=[...used][0];
+ const c=withRules({excludedSpots:[out]});
+ for(let d='2026-10-05';d<='2026-10-12';d=dateAdd(d,1))assert.ok(!planDay(d,{campaign:c,spots,golden}).some(p=>p.rule.meta.spot===out));
+});

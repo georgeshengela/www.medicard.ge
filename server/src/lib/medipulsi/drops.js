@@ -4,12 +4,13 @@
 // The Saturday rain is not named before it starts (its park is revealed by riddle stories at 15:00 / 15:30).
 import {prisma} from '../prisma.js';
 import {CAMPAIGN,tbilisiDate,planDay,autopilotEnabled} from './autopilot.js';
+import {getCampaign} from './campaignStore.js';
 import {giftRules} from './giftRules.js';
 import {config} from './service.js';
 
 const HOUR=3600_000;
 /** The grand prize has its own card and its spot is a secret; it never shows up in the box counts. */
-export const isGrandGift=(gift,rule)=>rule?.meta?.kind==='grand'||gift.id===CAMPAIGN.grand?.id;
+export const isGrandGift=(gift,rule,campaign=CAMPAIGN)=>rule?.meta?.kind==='grand'||gift.id===campaign.grand?.id;
 
 function coinRange(rules){
  const coins=rules.map(r=>Number(r?.coins)||0).filter(n=>n>0);
@@ -44,7 +45,7 @@ export function scheduleOf(campaign=CAMPAIGN,lang='ka'){
 export function dropsView({gifts,rules,now=Date.now(),claimsToday=0,coinsToday=0,mine={opened:0,coins:0},planned=[],lang='ka',campaign=CAMPAIGN,enabled=true}){
  const start=new Date(`${campaign.start}T00:00:00${campaign.utcOffset}`).getTime(),end=new Date(`${campaign.end}T23:59:59${campaign.utcOffset}`).getTime();
  const status=now<start?'upcoming':now>end?'ended':'live';
- const visible=gifts.filter(g=>!isGrandGift(g,rules.get(g.id)));
+ const visible=gifts.filter(g=>!isGrandGift(g,rules.get(g.id),campaign));
  const active=visible.filter(g=>+new Date(g.startsAt)<=now&&+new Date(g.endsAt)>now&&g.allocated<g.stock);
  const districts=new Map();
  for(const g of active){const d=rules.get(g.id)?.meta?.district||(lang==='en'?'Other places':'სხვა ადგილები');districts.set(d,(districts.get(d)||0)+1);}
@@ -57,7 +58,7 @@ export function dropsView({gifts,rules,now=Date.now(),claimsToday=0,coinsToday=0
   const at=Math.min(...ahead.map(g=>+new Date(g.startsAt))),wave=ahead.filter(g=>+new Date(g.startsAt)===at),r=wave.map(g=>rules.get(g.id));
   next={startsAt:new Date(at).toISOString(),boxes:wave.length,coins:coinRange(r),kind:waveKind(r)};
  }else{
-  const wave=planned.filter(p=>!isGrandGift(p.gift,p.rule)&&+p.gift.startsAt>now).sort((a,b)=>a.gift.startsAt-b.gift.startsAt);
+  const wave=planned.filter(p=>!isGrandGift(p.gift,p.rule,campaign)&&+p.gift.startsAt>now).sort((a,b)=>a.gift.startsAt-b.gift.startsAt);
   if(wave.length){const at=+wave[0].gift.startsAt,same=wave.filter(p=>+p.gift.startsAt===at);next={startsAt:new Date(at).toISOString(),boxes:same.length,coins:coinRange(same.map(p=>p.rule)),kind:waveKind(same.map(p=>p.rule))};}
  }
  const lockedNow=active.filter(g=>rules.get(g.id)?.minPercent).length;
@@ -82,7 +83,7 @@ export function dropsView({gifts,rules,now=Date.now(),claimsToday=0,coinsToday=0
 // The city-wide part is the same for everyone: one read per 20 s per instance, however many players look.
 let cache={at:0,key:'',value:null};
 async function cityPart(now,db){
- const date=tbilisiDate(now),dayStart=new Date(`${date}T00:00:00${CAMPAIGN.utcOffset}`);
+ const date=tbilisiDate(now),dayStart=new Date(`${date}T00:00:00+04:00`);
  if(cache.value&&cache.key===date&&now-cache.at<20_000)return cache.value;
  const [gifts,claimsToday,coins]=await Promise.all([
   db.medipulsiGift.findMany({where:{published:true,archived:false,endsAt:{gt:new Date(now)},startsAt:{lte:new Date(now+3*24*HOUR)}},select:{id:true,stock:true,allocated:true,startsAt:true,endsAt:true,rewardKind:true},take:500}),
@@ -95,7 +96,7 @@ async function cityPart(now,db){
 }
 
 export async function dropsStatus(userId,{now=Date.now(),lang='ka',db=prisma}={}){
- const cfg=await config(db);
+ const [cfg,campaign]=await Promise.all([config(db),getCampaign(db,now)]);
  const enabled=Boolean(cfg.enabled&&cfg.giftsEnabled);
  const city=await cityPart(now,db);
  const [rules,opened,coins]=await Promise.all([
@@ -103,7 +104,7 @@ export async function dropsStatus(userId,{now=Date.now(),lang='ka',db=prisma}={}
   db.medipulsiClaim.count({where:{userId,createdAt:{gte:city.dayStart}}}),
   db.rewardLedger.aggregate({_sum:{amount:true},where:{userId,sourceType:'MEDIRUN',currency:'COIN',createdAt:{gte:city.dayStart}}}).catch(()=>({_sum:{amount:0}})),
  ]);
- const planned=city.gifts.some(g=>+g.startsAt>now)||!enabled||!(await autopilotEnabled(db).catch(()=>false))?[]:[city.date,...[1,2].map(d=>tbilisiDate(now+d*24*HOUR))].flatMap(d=>planDay(d));
- const view=dropsView({gifts:enabled?city.gifts:[],rules,now,claimsToday:city.claimsToday,coinsToday:city.coinsToday,mine:{opened,coins:coins._sum.amount||0},planned,lang,enabled});
+ const planned=city.gifts.some(g=>+g.startsAt>now)||!enabled||!(await autopilotEnabled(db).catch(()=>false))?[]:[city.date,...[1,2].map(d=>tbilisiDate(now+d*24*HOUR))].flatMap(d=>planDay(d,{campaign}));
+ const view=dropsView({gifts:enabled?city.gifts:[],rules,now,claimsToday:city.claimsToday,coinsToday:city.coinsToday,mine:{opened,coins:coins._sum.amount||0},planned,lang,enabled,campaign});
  return view;
 }

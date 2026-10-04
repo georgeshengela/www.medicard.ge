@@ -2,6 +2,7 @@
 // Uses the same share function as the gift gate (giftRules.cityShare), so the page and the box never disagree.
 import {CAMPAIGN} from './autopilot.js';
 import {cityShare} from './giftRules.js';
+import {getCampaign} from './campaignStore.js';
 
 /** A walk paints a ~100 m wide strip: 1 km of new street ≈ 0.1 km². */
 export const KM2_PER_STREET_KM=0.1;
@@ -25,6 +26,7 @@ export function grandView({share,lang='ka',now=Date.now(),campaign=CAMPAIGN}){
 }
 
 export async function grandStatus(userId,lang='ka'){
- const share=await cityShare(userId,CAMPAIGN.area.id,{fallbackKm2:CAMPAIGN.area.km2,maxAgeMs:60_000});
- return grandView({share,lang});
+ const campaign=await getCampaign();
+ const share=await cityShare(userId,campaign.area.id,{fallbackKm2:campaign.area.km2,maxAgeMs:60_000});
+ return grandView({share,lang,campaign});
 }

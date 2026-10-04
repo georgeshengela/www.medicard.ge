@@ -13,9 +13,11 @@ import {prisma} from '../prisma.js';
 import {isFeatureEnabled} from '../featureFlags.js';
 import {acquireJobLease} from '../jobLease.js';
 import {upsertGiftRule,giftRules,ensureGiftRuleTable} from './giftRules.js';
+import {FILE_CAMPAIGN,getCampaign} from './campaignStore.js';
 
 const DATA=new URL('../../data/',import.meta.url);
-export const CAMPAIGN=JSON.parse(readFileSync(new URL('medirun-campaign.json',DATA),'utf8'));
+/** The repo default; the live rules come from getCampaign() (admin #/medirun-boxes can change them). */
+export const CAMPAIGN=FILE_CAMPAIGN;
 let SPOTS=null;
 export function loadSpots(){
  if(SPOTS)return SPOTS;
@@ -66,9 +68,17 @@ function coinGift(campaign,{id,spot,start,end,coins,stock,pulseRadius,revealRadi
 }
 
 export const dayKind=date=>{const d=new Date(`${date}T00:00:00Z`).getUTCDay();return d===0||d===6?'weekend':'weekday';};
+/**
+ * The rules of one date: the weekday/weekend template, or the admin's override for that date
+ * (`off` = no boxes that day, `as` = use the other template, `day` = its own waves / coins / stock).
+ */
+export function dayOf(campaign,date){
+ const ov=campaign.dayOverrides?.[date]||null,kind=ov?.as||dayKind(date),base=campaign.days[kind];
+ return {kind,off:Boolean(ov?.off),override:ov,day:ov?.day?{...base,...ov.day}:base};
+}
 const perDay=(day,lit)=>day.waves.filter(w=>Boolean(w.litOnly)===lit).reduce((s,w)=>s+w.rotation,0);
 /** Rotation picks used by all campaign days before `date` (weekdays use fewer), so no spot repeats until the list ends. */
-function usedBefore(campaign,date,lit){let n=0;for(let d=campaign.start;d<date;d=dateAdd(d,1))n+=perDay(campaign.days[dayKind(d)],lit);return n;}
+function usedBefore(campaign,date,lit){let n=0;for(let d=campaign.start;d<date;d=dateAdd(d,1)){const o=dayOf(campaign,d);if(!o.off)n+=perDay(o.day,lit);}return n;}
 
 /** The grand prize spot: the configured golden key, else a fixed random path in a big named park (≥ 5 ha, not a forest). */
 export function pickGrandSpot(campaign,spots,golden){
@@ -81,8 +91,12 @@ export function pickGrandSpot(campaign,spots,golden){
 
 /** Every box of one Tbilisi date. Pure: no clock, no database. */
 export function planDay(date,{campaign=CAMPAIGN,spots=loadSpots().spots,golden=loadSpots().golden}={}){
+ // Spots the admin took out (a closed park, a bad path) never get a box.
+ const excluded=new Set(campaign.excludedSpots||[]);
+ if(excluded.size)spots=spots.filter(s=>!excluded.has(s.id));
  if(!spots?.length||date<campaign.start||date>campaign.end)return [];
- const out=[],seed=`${campaign.id}`,r=rng(`${seed}:${date}`),week=weekOf(campaign,date),day=campaign.days[dayKind(date)];
+ const {day,off}=dayOf(campaign,date);
+ const out=[],seed=`${campaign.id}`,r=rng(`${seed}:${date}`),week=weekOf(campaign,date);
  // "Harder" places: only spots deep enough inside their park (when the list knows the depth).
  const g=campaign.grand,grandDay=Boolean(g&&date===g.dropAt.slice(0,10)),grandSpot=grandDay?pickGrandSpot(campaign,spots,golden):null;
  // On the grand-prize day no small box sits within 500 m of it, so the pulse never leads a hunter astray.
@@ -93,9 +107,9 @@ export function planDay(date,{campaign=CAMPAIGN,spots=loadSpots().spots,golden=l
  const rotAll=rotationOrder(pool,seed),rotLit=rotationOrder(lit.length>=20?lit:pool,seed+':lit');
  const focusOrder=shuffle(pool.filter(s=>inFocus(week,s)),`${seed}:${week?.from}`);
  let usedAll=usedBefore(campaign,date,false),usedLit=usedBefore(campaign,date,true),usedFocus=0;
- if(week)for(let d=week.from;d<date;d=dateAdd(d,1))usedFocus+=campaign.days[dayKind(d)].waves.reduce((s,w)=>s+w.focus,0);
+ if(week)for(let d=week.from;d<date;d=dateAdd(d,1)){const o=dayOf(campaign,d);if(!o.off)usedFocus+=o.day.waves.reduce((s,w)=>s+w.focus,0);}
  const taken=new Set();
- for(const wave of day.waves){
+ for(const wave of off?[]:day.waves){
   const start=stamp(date,wave.time,campaign.utcOffset),end=new Date(start.getTime()+wave.hours*3600_000);
   const rot=wave.litOnly?pick(rotLit,usedLit,wave.rotation):pick(rotAll,usedAll,wave.rotation);
   if(wave.litOnly)usedLit+=wave.rotation;else usedAll+=wave.rotation;
@@ -108,7 +122,7 @@ export function planDay(date,{campaign=CAMPAIGN,spots=loadSpots().spots,golden=l
    out.push(coinGift(campaign,{id:`glow-${date}-${wave.id}-${String(n).padStart(2,'0')}`,spot,start,end,coins:weighted(day.coins,r),stock:lo+Math.floor(r()*(hi-lo+1)),pulseRadius:day.pulseRadius,revealRadius:day.revealRadius,kind:wave.id}));
   }
  }
- const sat=campaign.saturday,anchorKey=sat.dates?.[date];
+ const sat=campaign.saturday,anchorKey=off?null:sat.dates?.[date];
  if(anchorKey&&golden?.[anchorKey]){
   const anchor=at(golden[anchorKey]),start=stamp(date,sat.time,campaign.utcOffset),end=new Date(start.getTime()+sat.hours*3600_000);
   const near=spots.filter(s=>metersBetween(anchor,at(s))<=sat.radiusM).sort((a,b)=>metersBetween(anchor,at(a))-metersBetween(anchor,at(b)));
@@ -158,8 +172,9 @@ export async function autopilotEnabled(db=prisma){
 /** Today and tomorrow (Tbilisi) inside the campaign; boxes are created ahead and appear at their start time. */
 export async function runAutopilot({db=prisma,now=Date.now(),force=false}={}){
  if(!force&&!(await autopilotEnabled(db)))return {skipped:'paused'};
- const today=tbilisiDate(now),dates=[today,dateAdd(today,1)].filter(d=>d>=CAMPAIGN.start&&d<=CAMPAIGN.end);
- const results=[];for(const date of dates)results.push(await applyDay(date,{db}));
+ const campaign=await getCampaign(db,now);
+ const today=tbilisiDate(now),dates=[today,dateAdd(today,1)].filter(d=>d>=campaign.start&&d<=campaign.end);
+ const results=[];for(const date of dates)results.push(await applyDay(date,{db,plan:planDay(date,{campaign})}));
  return {results};
 }
 
