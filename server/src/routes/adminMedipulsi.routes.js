@@ -12,6 +12,7 @@ import {id,missionWrite,giftWrite,configWrite,reviewWrite,claimWrite,fail} from 
 import * as D from '../lib/medipulsi/dropsAdmin.js';
 import {resetCampaign} from '../lib/medipulsi/campaignStore.js';
 import {medirunInsights} from '../lib/medipulsi/insights.js';
+import {resolveMapLocation} from '../lib/medipulsi/mapLink.js';
 export const adminMedipulsiRouter=Router();
 const r=adminMedipulsiRouter,view=requireAdminCapability('MEDIPULSI_VIEW'),manage=requireAdminCapability('MEDIPULSI_MANAGE'),review=requireAdminCapability('MEDIPULSI_REVIEW');
 r.use(requireAdmin,(req,res,next)=>{res.set('Cache-Control','no-store');next();});
@@ -119,6 +120,13 @@ r.put('/drops/spots/:id',manage,write,asyncHandler(async(req,res)=>{
 r.post('/drops/days/:date/apply',manage,write,asyncHandler(async(req,res)=>res.json(await D.applyDate(ymdParam.parse(req.params.date),{adminId:adminId(req)}))));
 r.post('/drops/days/:date/regenerate',manage,write,asyncHandler(async(req,res)=>res.json(await D.regenerateDate(ymdParam.parse(req.params.date),{adminId:adminId(req)}))));
 r.post('/drops/days/:date/cancel',manage,write,asyncHandler(async(req,res)=>res.json(await D.cancelDate(ymdParam.parse(req.params.date),{adminId:adminId(req)}))));
+// „ლოკაცია“: a Google Maps link (short share links too) or coordinates → the exact point.
+r.post('/drops/resolve-location',manage,write,asyncHandler(async(req,res)=>{
+ const {link}=z.object({link:z.string().trim().min(3).max(2000)}).strict().parse(req.body);
+ const found=await resolveMapLocation(link).catch(()=>null);
+ if(!found)fail(422,'ბმულიდან ადგილი ვერ ამოვიღე. ჩასვი Google Maps-ის ბმული ან კოორდინატები (მაგ. 41.7098, 44.7509).');
+ res.json(found);
+}));
 r.post('/drops/boxes',manage,write,asyncHandler(async(req,res)=>{
  const input=z.object({cityId:z.string().regex(/^[a-z]\d+$/).optional(),spotId:id.optional(),district:z.string().trim().min(1).max(80).optional(),latitude:z.number().min(-90).max(90).optional(),longitude:z.number().min(-180).max(180).optional(),place:z.string().trim().max(80).optional(),
   prize:z.object({title:z.string().trim().min(2).max(100),description:z.string().trim().max(1000).optional(),titleEn:z.string().trim().max(100).optional(),descriptionEn:z.string().trim().max(1000).optional()}).strict().nullable().optional(),

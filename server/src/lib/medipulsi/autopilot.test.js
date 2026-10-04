@@ -267,3 +267,15 @@ test('drops: a Liège reader sees only Liège boxes, with the park as the place'
  const t=dropsView({gifts,rules,now:at});
  assert.ok(t.city.campaignCity&&t.now.districts.every(d=>!d.name.startsWith('Parc')));
 });
+
+/* ───────── admin „ლოკაცია“: Google Maps link → exact point ───────── */
+import {parseMapLocation} from './mapLink.js';
+test('map links: the place pin wins over the map centre; plain coordinates work',()=>{
+ const owner='https://www.google.com/maps/place/Chau.+de+Tongres+170,+4000+Li%C3%A8ge/@50.6679071,5.5529779,17z/data=!3m1!4b1!4m6!3m5!1s0x47c0fa59475aea11:0xd415658bdb7a2394!8m2!3d50.6679037!4d5.5555528!16s%2Fg%2F11hbprz51s?entry=ttu&g_ep=EgoyMDI2MDkzMC4wIKXMDSoASAFQAw%3D%3D';
+ assert.deepEqual(parseMapLocation(owner),{latitude:50.6679037,longitude:5.5555528,source:'pin'});
+ assert.deepEqual(parseMapLocation('https://www.google.com/maps/@41.7098,44.7509,16z'),{latitude:41.7098,longitude:44.7509,source:'center'});
+ assert.deepEqual(parseMapLocation('https://maps.google.com/?q=41.7151,44.8271'),{latitude:41.7151,longitude:44.8271,source:'query'});
+ assert.deepEqual(parseMapLocation(' 41.69442, 44.78384 '),{latitude:41.69442,longitude:44.78384,source:'coordinates'});
+ assert.equal(parseMapLocation('https://maps.app.goo.gl/abc123'),null);
+ assert.equal(parseMapLocation('ვაკის პარკი'),null);
+});

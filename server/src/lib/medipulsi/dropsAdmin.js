@@ -12,7 +12,7 @@ import {isFeatureEnabled,setFeatureFlag} from '../featureFlags.js';
 import {listCities,citySpots,addCity,setCityEnabled,requeueCity,harvestCity,planCityDay,cityDates,ensureCityTable,cityRulesOf,boxesPerWave} from './cities.js';
 import {CITY_HELPERS,dayKind} from './autopilot.js';
 import {localDate} from './citySpotsMath.js';
-import {tileOf} from './territoryMath.js';
+import {tileOf,insideGeometry,geometryBbox} from './territoryMath.js';
 
 const HOUR=3600_000,DAY=24*HOUR,OFFSET='+04:00';
 const bad=(status,message,code='DROPS_ERROR')=>{throw Object.assign(new Error(message),{status,code});};
@@ -241,11 +241,23 @@ export async function manualDrop(input,{adminId,db=prisma,now=Date.now()}){
   spot=pool[Math.floor(Math.random()*pool.length)];
  }else if(Number.isFinite(input.latitude)&&Number.isFinite(input.longitude)){
   spot={id:'point',lat:input.latitude,lng:input.longitude,place:input.place||null,district:null};
-  // A point outside Tbilisi belongs to the city of its tile, so that city's players see it in „ყუთები ახლა“.
-  const [row]=await db.$queryRaw`SELECT "cityId" FROM "MedipulsiPlaceTile" WHERE "tile"=${tileOf([input.longitude,input.latitude])}`.catch(()=>[]);
-  if(row?.cityId&&row.cityId!==campaign.area.id){
-   const [a]=await db.$queryRaw`SELECT "nameKa","nameEn" FROM "MedipulsiArea" WHERE "id"=${row.cityId}`.catch(()=>[]);
-   cityMeta={cityId:row.cityId,city:a?.nameKa||a?.nameEn||null,cityEn:a?.nameEn||a?.nameKa||null};
+  // A point outside Tbilisi joins a city that has boxes (inside it, else the nearest within 15 km), so that
+  // city's players see it in „ყუთები ახლა“; only then the OSM city of its tile (which can be a district).
+  const at=[input.longitude,input.latitude];
+  const inTbilisi=insideGeometry(at,(await db.$queryRaw`SELECT "geometry" FROM "MedipulsiArea" WHERE "id"=${campaign.area.id}`.catch(()=>[]))[0]?.geometry);
+  if(!inTbilisi){
+   await ensureCityTable(db);
+   const rows=await db.$queryRaw`SELECT c."cityId",c."nameKa",c."nameEn",a."geometry" FROM "MedirunCity" c JOIN "MedipulsiArea" a ON a."id"=c."cityId"`.catch(()=>[]);
+   const km=(b)=>{const r=Math.PI/180,x=(b[0]-at[0])*r*Math.cos((b[1]+at[1])/2*r),y=(b[1]-at[1])*r;return Math.hypot(x,y)*6371;};
+   const near=rows.map(r=>{const b=geometryBbox(r.geometry);return {...r,inside:insideGeometry(at,r.geometry),d:km([(b[0]+b[2])/2,(b[1]+b[3])/2])};}).sort((x,y)=>Number(y.inside)-Number(x.inside)||x.d-y.d)[0];
+   if(near&&(near.inside||near.d<=15))cityMeta={cityId:near.cityId,city:near.nameKa||near.nameEn,cityEn:near.nameEn||near.nameKa};
+   else{
+    const [row]=await db.$queryRaw`SELECT "cityId" FROM "MedipulsiPlaceTile" WHERE "tile"=${tileOf(at)}`.catch(()=>[]);
+    if(row?.cityId&&row.cityId!==campaign.area.id){
+     const [a]=await db.$queryRaw`SELECT "nameKa","nameEn" FROM "MedipulsiArea" WHERE "id"=${row.cityId}`.catch(()=>[]);
+     cityMeta={cityId:row.cityId,city:a?.nameKa||a?.nameEn||null,cityEn:a?.nameEn||a?.nameKa||null};
+    }
+   }
   }
  }else if(cityMeta.cityId&&spots.length){
   spot=spots[Math.floor(Math.random()*spots.length)];

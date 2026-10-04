@@ -65,6 +65,48 @@
     return h >= 24 ? `${Math.floor(h / 24)} დღე ${h % 24} სთ` : h ? `${h} სთ ${m} წთ` : `${m} წთ`;
   }
 
+  /* ─────────────── „ლოკაცია“: Google Maps link or coordinates → the exact point ─────────────── */
+  // Same rules as server lib/medipulsi/mapLink.js: the place pin (!3d…!4d…) beats the map centre (@lat,lng).
+  function parseMapLocation(input) {
+    let text = String(input || '').trim();
+    if (!text) return null;
+    try { text = decodeURIComponent(text); } catch { /* keep */ }
+    const ok = (a, b) => Number.isFinite(a) && Number.isFinite(b) && Math.abs(a) <= 90 && Math.abs(b) <= 180 && !(a === 0 && b === 0);
+    for (const [re, source] of [[/!3d(-?\d+(?:\.\d+)?)!4d(-?\d+(?:\.\d+)?)/, 'pin'], [/[?&](?:q|query|ll|destination|center)=(-?\d+(?:\.\d+)?),\s*(-?\d+(?:\.\d+)?)/, 'query'], [/@(-?\d+(?:\.\d+)?),(-?\d+(?:\.\d+)?)/, 'center'], [/^\s*(-?\d{1,2}(?:\.\d+)?)\s*[,; ]\s*(-?\d{1,3}(?:\.\d+)?)\s*$/, 'coordinates']]) {
+      const m = re.exec(text);
+      if (m && ok(Number(m[1]), Number(m[2]))) return { latitude: Number(m[1]), longitude: Number(m[2]), source };
+    }
+    return null;
+  }
+  const LOC_SOURCE = { pin: 'ზუსტი ადგილი (პინი)', query: 'ბმულის წერტილი', center: 'რუკის ცენტრი — თუ შეიძლება, ჩასვი ადგილის ბმული', coordinates: 'კოორდინატები' };
+  function locationField() {
+    return `<label class="s-field mb-wide"><span>ლოკაცია</span><input type="text" data-loc-link autocomplete="off" placeholder="ჩასვი Google Maps-ის ბმული ან კოორდინატები (41.7098, 44.7509)"><small data-loc-status>Google Maps-ში გახსენი ადგილი → „გაზიარება“ ან მისამართის ზოლი → ბმული ჩასვი აქ. კოორდინატები თავად ამოვა.</small></label>`;
+  }
+  /** Fills latitude / longitude from the „ლოკაცია“ field; short share links go through the server. */
+  function bindLocationField(scope) {
+    const link = scope.querySelector('[data-loc-link]'), status = scope.querySelector('[data-loc-status]');
+    const lat = scope.querySelector('[name=latitude]'), lng = scope.querySelector('[name=longitude]');
+    if (!link || !lat || !lng) return;
+    let seq = 0, timer = null;
+    const show = (found) => {
+      lat.value = found.latitude; lng.value = found.longitude;
+      status.innerHTML = `<b class="mb-loc-ok">✓ ${esc(found.latitude.toFixed(6))}, ${esc(found.longitude.toFixed(6))}</b> · ${esc(LOC_SOURCE[found.source] || '')} · <a href="https://www.google.com/maps?q=${found.latitude},${found.longitude}" target="_blank" rel="noopener">რუკაზე შემოწმება ↗</a>`;
+      lat.dispatchEvent(new Event('input', { bubbles: true }));
+    };
+    const run = async () => {
+      const value = link.value.trim(), mine = ++seq;
+      if (!value) return;
+      const local = parseMapLocation(value);
+      if (local) { show(local); return; }
+      if (!/^https:\/\//.test(value)) { status.innerHTML = '<span class="mb-loc-bad">ადგილი ვერ ამოვიღე — ჩასვი Google Maps-ის ბმული ან კოორდინატები.</span>'; return; }
+      status.textContent = 'ბმულს ვხსნი…';
+      try { const found = await api('/resolve-location', { method: 'POST', body: { link: value } }); if (mine === seq) show(found); }
+      catch (err) { if (mine === seq) status.innerHTML = `<span class="mb-loc-bad">${esc(say(err, 'ადგილი ვერ ამოვიღე.'))}</span>`; }
+    };
+    link.addEventListener('input', () => { clearTimeout(timer); timer = setTimeout(run, 350); });
+    link.addEventListener('paste', () => { clearTimeout(timer); timer = setTimeout(run, 50); });
+  }
+
   /* ─────────────── hash state ─────────────── */
   const hashParams = () => (typeof global.hashSearch === 'function' ? global.hashSearch() : new URLSearchParams(location.hash.split('?')[1] || ''));
   function writeSub(sub) {
@@ -331,6 +373,7 @@
         <label class="s-field"><span>აღწერა</span><textarea name="description" rows="3" maxlength="1000"></textarea></label>
         <label class="s-field"><span>სახელი (ინგლ.)</span><input type="text" name="titleEn" maxlength="100"></label>`,
       place: `<div class="s-form-grid">
+        ${locationField()}
         <label class="s-field"><span>Latitude</span><input type="number" name="latitude" step="0.000001" min="-90" max="90" value="${box.latitude}" required></label>
         <label class="s-field"><span>Longitude</span><input type="number" name="longitude" step="0.000001" min="-180" max="180" value="${box.longitude}" required></label></div>
         <small class="s-muted">მხოლოდ საჯარო, უსაფრთხო საფეხმავლო ადგილი. გახსნილ ყუთს ადგილი აღარ ეცვლება.</small>`,
@@ -345,6 +388,7 @@
       footer: '<p class="s-form-msg" role="alert"></p><button type="button" class="btn" data-no>გაუქმება</button><button type="submit" class="btn primary" form="mb-box-form">შენახვა</button>',
     });
     const form = doc.getElementById('mb-box-form'), panel = form.closest('.v3-dialog-panel');
+    bindLocationField(form);
     panel.querySelector('[data-no]').onclick = () => void d.close();
     form.onsubmit = async (e) => {
       e.preventDefault();
@@ -394,7 +438,7 @@
         <div class="s-segment" role="tablist" aria-label="სად">
           <button type="button" role="tab" data-where="district" aria-selected="true">სადმე უბანში</button>
           <button type="button" role="tab" data-where="spot" aria-selected="false">კონკრეტული ადგილი</button>
-          <button type="button" role="tab" data-where="point" aria-selected="false">კოორდინატი</button>
+          <button type="button" role="tab" data-where="point" aria-selected="false">ლოკაცია / ბმული</button>
         </div>
         <div data-where-pane="district"><label class="s-field"><span>უბანი</span><select name="district">${districts.map((x) => `<option>${esc(x)}</option>`).join('')}</select><small>ამ უბნის პარკებიდან შემთხვევითი ბილიკი (გამორიცხული ადგილების გარდა)</small></label></div>
         <div data-where-pane="spot" hidden><label class="s-field"><span>ადგილი</span><select name="spotId">
@@ -402,6 +446,7 @@
           ${districts.map((dist) => `<optgroup label="${esc(dist)}">${st.spots.spots.filter((s) => s.district === dist && !s.excluded).map((s) => `<option value="${esc(s.id)}">${esc(s.place)} · ${esc(s.id.split('-').pop())}</option>`).join('')}</optgroup>`).join('')}
         </select></label></div>
         <div data-where-pane="point" hidden class="s-form-grid">
+          ${locationField()}
           <label class="s-field"><span>Latitude</span><input type="number" name="latitude" step="0.000001" min="-90" max="90" placeholder="41.7098"></label>
           <label class="s-field"><span>Longitude</span><input type="number" name="longitude" step="0.000001" min="-180" max="180" placeholder="44.7509"></label>
           <label class="s-field"><span>ადგილის სახელი</span><input type="text" name="place" maxlength="80" placeholder="მაგ. ვაკის პარკი, შადრევანთან"></label>
@@ -421,6 +466,7 @@
     });
     const form = doc.getElementById('mb-drop-form'), panel = form.closest('.v3-dialog-panel');
     let where = 'district', what = 'coins';
+    bindLocationField(form);
     form.querySelectorAll('[data-what]').forEach((b) => b.addEventListener('click', () => {
       what = b.dataset.what;
       form.querySelectorAll('[data-what]').forEach((x) => x.setAttribute('aria-selected', String(x === b)));
@@ -461,7 +507,11 @@
       if (f.get('note')) body.note = String(f.get('note'));
       if (where === 'district') body.district = String(f.get('district'));
       else if (where === 'spot') body.spotId = String(f.get('spotId'));
-      else { body.latitude = n('latitude'); body.longitude = n('longitude'); if (f.get('place')) body.place = String(f.get('place')); }
+      else {
+        body.latitude = n('latitude'); body.longitude = n('longitude');
+        if (!Number.isFinite(body.latitude) || !Number.isFinite(body.longitude)) { panel.querySelector('[role=alert]').textContent = 'ჩასვი ლოკაციის ბმული ან კოორდინატები.'; return; }
+        if (f.get('place')) body.place = String(f.get('place'));
+      }
       const submit = panel.querySelector('[type=submit]');
       submit.disabled = true;
       try {

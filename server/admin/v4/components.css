@@ -2037,6 +2037,9 @@ html body .workspace .s-coach-search input { width: 100%; height: 32px; box-sizi
 #v3-dialog .mb-card-actions { display: flex; gap: 8px; flex-wrap: wrap; }
 #v3-dialog .mb-drop-row { display: flex; gap: 12px; align-items: center; justify-content: space-between; flex-wrap: wrap; }
 #v3-dialog .mb-wide { grid-column: 1 / -1; }
+#v3-dialog .mb-loc-ok { color: var(--s-ok); font-variant-numeric: tabular-nums; }
+#v3-dialog .mb-loc-bad { color: var(--s-bad); }
+#v3-dialog [data-loc-link] { font-size: 13px; }
 @media (max-width: 720px) {
   .mb-page .mb-pilot { max-width: none; width: 100%; }
   .mb-page .mb-meter-row { grid-template-columns: 1fr 1fr 44px; }
