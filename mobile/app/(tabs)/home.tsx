@@ -61,6 +61,7 @@ import { HYDRATION_DROP_ML } from '@/types/hydration';
 import { useNutritionDashboard } from '@/components/nutrition/ProgramUI';
 import { HomeCustomizeRow, HomeLayoutOfferCard, HomeWash } from '@/components/home/layout/HomeLayoutChrome';
 import { HomeLayoutPicker } from '@/components/home/layout/HomeLayoutPicker';
+import { ModulesSheet } from '@/components/home/ModulesSheet';
 import { HomeDayPair } from '@/components/home/sections/HomeDayPair';
 import { HomeNutritionLite } from '@/components/home/sections/HomeNutritionLite';
 import { HomeEnergyCard } from '@/components/home/sections/HomeEnergyCard';
@@ -147,6 +148,7 @@ export default function Home() {
   const [refreshing, setRefreshing] = useState(false);
   const [refreshError, setRefreshError] = useState(false);
   const [picker, setPicker] = useState<'home_header' | 'home_footer' | 'offer' | null>(null);
+  const [modulesOpen, setModulesOpen] = useState(false);
   const [offerConfirm, setOfferConfirm] = useState(false);
   const completion = profileCompletion(healthProfile, user);
   const communityEntry = useCommunityEntry(user?.id, female) && isFeatureOn('community', features);
@@ -350,7 +352,7 @@ export default function Home() {
           avatarId={avatar}
           streak={user?.currentStreak ?? 0}
           dateLabel={formatDayMonthYearKa()}
-          onCustomize={layoutsOn ? () => setPicker('home_header') : undefined}
+          onModules={() => setModulesOpen(true)}
         />
       </View>
     ),
@@ -518,6 +520,12 @@ export default function Home() {
       {layoutsOn ? (
         <HomeLayoutPicker visible={picker !== null} onClose={() => setPicker(null)} source={picker ?? 'home_header'} />
       ) : null}
+      <ModulesSheet
+        visible={modulesOpen}
+        onClose={() => setModulesOpen(false)}
+        // iOS cannot present a modal while another one is still fading out.
+        onCustomize={layoutsOn ? () => setTimeout(() => setPicker('home_header'), 350) : undefined}
+      />
     </HomeAccentContext.Provider>
   );
 }

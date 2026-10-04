@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Image, Pressable, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { useRouter } from 'expo-router';
-import { CloudSun, Dumbbell, LayoutDashboard } from 'lucide-react-native';
+import { CloudSun, Dumbbell, LayoutGrid } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
 import Animated, { Easing, interpolate, runOnJS, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
@@ -26,15 +26,15 @@ type Props = {
   avatarId: string | null;
   streak: number;
   dateLabel: string;
-  /** Opens the Home layout picker (hidden while admin paused „homeLayouts“). */
-  onCustomize?: () => void;
+  /** Opens the modules sheet (quick navigation; the Home layout picker is its last row). */
+  onModules?: () => void;
 };
 
 /**
  * Greeting row. Everything glanceable that used to need its own card
  * (weather, streak) now lives as a small pill beside the date.
  */
-export function HomeHeader({ firstName, initial, avatarId, streak, dateLabel, onCustomize }: Props) {
+export function HomeHeader({ firstName, initial, avatarId, streak, dateLabel, onModules }: Props) {
   const myPhoto = useMyAvatarUrl();
   const [brokenPhoto, setBrokenPhoto] = useState<string | null>(null);
   const narrow = useWindowDimensions().width < 360;
@@ -119,15 +119,15 @@ export function HomeHeader({ firstName, initial, avatarId, streak, dateLabel, on
         </Text>
       </View>
 
-      {onCustomize ? (
+      {onModules ? (
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel={tx('მთავარი გვერდის შეცვლა', 'Change Home layout')}
+          accessibilityLabel={tx('ყველა მოდული', 'All modules')}
           hitSlop={4}
-          onPress={onCustomize}
+          onPress={onModules}
           style={[s.customize, { backgroundColor: c.surface }]}
         >
-          <LayoutDashboard size={19} color={accent.ink} strokeWidth={2} />
+          <LayoutGrid size={19} color={accent.ink} strokeWidth={2} />
         </Pressable>
       ) : null}
       <View style={s.avatarSlot}>

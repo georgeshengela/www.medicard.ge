@@ -22,6 +22,7 @@ import {
 } from 'lucide-react-native';
 import { HomeSectionHeading } from '@/components/home/HomeSectionHeading';
 import { ModuleWordmark } from '@/components/brand/ModuleWordmark';
+import { ModulesSheet } from '@/components/home/ModulesSheet';
 import { HomeMediQuestSection } from '@/components/quest/HomeMediQuestSection';
 import { ProfilePetsSection } from '@/components/pets/ProfilePetsSection';
 import { ProfileCoachSection, useProfileCoachVisible } from '@/components/coach/CoachEntry';
@@ -72,6 +73,7 @@ export default function Profile() {
   const coachOn = isFeatureOn('coach', features);
   const coachCard = useProfileCoachVisible();
   const [deleteOpen, setDeleteOpen] = useState(false);
+  const [modulesOpen, setModulesOpen] = useState(false);
   const [deleteBusy, setDeleteBusy] = useState(false);
   const [profileAccent, setProfileAccent] = useState(false);
   const rewards = rewardsCopy(appLang());
@@ -255,7 +257,7 @@ export default function Profile() {
       {/* Owner 2026-10-03: Home has no „სერვისები“ block any more — every feature opens from here, so it sits right under the identity card. */}
       <View style={[s.section, { marginTop: 12 }]}>
         <View style={[s.list, { backgroundColor: colors.surface }]}>
-          <ProfileMenuRow icon={LayoutGrid} ink="teal" label={tx('ყველა ფუნქცია', 'All features')} onPress={() => router.push('/explore' as never)} isLast />
+          <ProfileMenuRow icon={LayoutGrid} ink="teal" label={tx('ყველა ფუნქცია', 'All features')} onPress={() => setModulesOpen(true)} isLast />
         </View>
       </View>
 
@@ -350,6 +352,7 @@ export default function Profile() {
         {ka.app.disclaimer}
       </Text>
 
+      <ModulesSheet visible={modulesOpen} onClose={() => setModulesOpen(false)} />
       <DeleteAccountModal
         visible={deleteOpen}
         busy={deleteBusy}
