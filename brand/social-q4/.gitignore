@@ -1,0 +1,10 @@
+out/
+review/img/
+screens/*.png
+_*.txt
+_*.log
+_render.log
+harness/logs/
+harness/*.pid
+harness/*.log
+__pycache__/

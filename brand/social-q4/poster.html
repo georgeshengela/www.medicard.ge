@@ -1,0 +1,468 @@
+<!doctype html>
+<html lang="ka">
+<head>
+<meta charset="utf-8" />
+<title>MEDICARD Q4 posters</title>
+<!--
+  MEDICARD social, 5 Oct – 31 Dec 2026. One page renders every poster: render.py calls window.render(spec)
+  and screenshots #poster. Brand rules (brand/brandbook): module colours = mobile/src/theme/moduleBrand.ts,
+  wordmarks Exo 2 ExtraBold with the module part skewed −16°, big brand headlines Archy, text FiraGO,
+  „App Store · medicard.ge“ on every image, the logo ornament rotated −14° and cut by the edge.
+-->
+<style>
+  @font-face { font-family: Archy; src: url(../../mobile/assets/fonts/medifontbold.otf); }
+  @font-face { font-family: Exo2; src: url(../../server/public/fonts/exo2/Exo2-ExtraBold.ttf); }
+  @font-face { font-family: FiraGO; font-weight: 400; src: url(../../server/public/fonts/firago/FiraGO-Regular.woff2) format('woff2'); }
+  @font-face { font-family: FiraGO; font-weight: 500; src: url(../../server/public/fonts/firago/FiraGO-Medium.woff2) format('woff2'); }
+  @font-face { font-family: FiraGO; font-weight: 600; src: url(../../server/public/fonts/firago/FiraGO-SemiBold.woff2) format('woff2'); }
+  @font-face { font-family: FiraGO; font-weight: 700; src: url(../../server/public/fonts/firago/FiraGO-Bold.woff2) format('woff2'); }
+  @font-face { font-family: FiraGO; font-weight: 800; src: url(../../server/public/fonts/firago/FiraGO-ExtraBold.woff2) format('woff2'); }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: #222; font-family: FiraGO, system-ui, sans-serif; -webkit-font-smoothing: antialiased; }
+  #poster { position: relative; overflow: hidden; color: #fff; isolation: isolate; }
+  .abs { position: absolute; }
+
+  /* backgrounds */
+  .bg-mod { position: absolute; inset: 0; z-index: -3;
+    background: radial-gradient(760px 620px at 92% 4%, var(--glow), transparent 62%),
+                radial-gradient(900px 700px at -10% 108%, rgba(0,0,0,.28), transparent 60%),
+                linear-gradient(158deg, var(--deep) 0%, var(--sig) 62%, var(--bright) 118%); }
+  .bg-light { position: absolute; inset: 0; z-index: -3;
+    background: radial-gradient(820px 640px at 96% 0%, var(--tint2), transparent 64%), var(--tint); }
+  .bg-night { position: absolute; inset: 0; z-index: -3; background: #030712; }
+  .grain { position: absolute; inset: 0; z-index: -1; opacity: .07; mix-blend-mode: overlay; pointer-events: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"); }
+  .ring { position: absolute; border-radius: 50%; border: 2px solid var(--ringc, rgba(255,255,255,.09)); z-index: -2; }
+  .orn { position: absolute; z-index: -2; transform: rotate(-14deg); }
+  .orn path { fill: var(--ornc, rgba(255,255,255,.08)); }
+
+  /* brand marks */
+  .wm { font-family: Exo2; line-height: 1; white-space: nowrap; letter-spacing: .005em; }
+  .wm i { font-style: normal; display: inline-block; transform: skewX(-16deg); color: var(--onhero); margin-left: .02em; }
+  .light .wm { color: #0B1220; } .light .wm i { color: var(--ink); }
+  .mc { display: flex; align-items: center; gap: 12px; }
+  .mc svg { display: block; }
+  .mc b { font-weight: 800; letter-spacing: .085em; font-size: 24px; }
+  .mark path { fill: currentColor; }
+  .light .mc b { color: #0B1220; }
+
+  /* type */
+  .h { font-family: Archy; line-height: 1.04; letter-spacing: .005em; font-weight: normal; }
+  .sub { font-weight: 500; line-height: 1.42; color: rgba(255,255,255,.86); }
+  .light .h { color: #0B1220; } .light .sub { color: #3F4B5C; }
+  .label { font-weight: 700; font-size: 24px; color: var(--onhero); }
+  .light .label { color: var(--ink); }
+
+  /* footer */
+  .foot { display: flex; align-items: center; gap: 18px; }
+  .foot img { height: 62px; display: block; }
+  .foot div { font-weight: 700; font-size: 21px; line-height: 1.28; color: var(--onhero); }
+  .foot small { display: block; font-size: 21px; font-weight: 600; color: rgba(255,255,255,.88); }
+  .light .foot div { color: var(--ink); } .light .foot small { color: #3F4B5C; }
+
+  /* phone */
+  .phone { position: absolute; transform-origin: 0 0; width: 470px; height: 956px; }
+  .phone .scr { position: absolute; left: 24px; top: 22px; width: 422px; height: 912px; border-radius: 56px; overflow: hidden; background: #F4F6F8; }
+  .phone .scr.dark { background: #030712; }
+  .phone .scr img { position: absolute; left: 0; top: 57px; width: 100%; display: block; }
+  .phone .sb { position: absolute; left: 0; right: 0; top: 0; height: 57px; display: flex; align-items: center; justify-content: space-between; padding: 6px 34px 0 46px; font: 600 17px/1 -apple-system, 'SF Pro Text', FiraGO, sans-serif; color: #0B1220; z-index: 2; }
+  .phone .scr.dark .sb { color: #fff; }
+  .phone .island { position: absolute; top: 13px; left: 50%; width: 118px; height: 34px; margin-left: -59px; border-radius: 20px; background: #000; z-index: 3; }
+  .phone .frame { position: absolute; inset: 0; z-index: 4; }
+  .phone .shadow { position: absolute; left: 24px; top: 40px; width: 422px; height: 900px; border-radius: 60px; box-shadow: 0 60px 120px rgba(0,0,0,.42), 0 18px 40px rgba(0,0,0,.25); z-index: -1; }
+  .light .phone .shadow { box-shadow: 0 50px 110px rgba(15,23,42,.22), 0 14px 34px rgba(15,23,42,.12); }
+
+  /* pull-out card cut from a real screen */
+  .pull { position: absolute; border-radius: 30px; background-repeat: no-repeat; background-color: #fff;
+    box-shadow: 0 40px 80px rgba(0,0,0,.36), 0 10px 26px rgba(0,0,0,.18), 0 0 0 1px rgba(255,255,255,.4) inset; }
+  .light .pull { box-shadow: 0 34px 70px rgba(15,23,42,.2), 0 8px 22px rgba(15,23,42,.1), 0 0 0 1px rgba(15,23,42,.05); }
+
+  /* lists */
+  .ticks { display: grid; gap: 20px; }
+  .ticks div { display: flex; align-items: flex-start; gap: 16px; font-weight: 600; font-size: 27px; line-height: 1.32; }
+  .ticks div i { flex: none; width: 40px; height: 40px; border-radius: 13px; display: grid; place-items: center; font-style: normal; font-size: 21px; font-weight: 800;
+    background: rgba(255,255,255,.14); color: var(--onhero); margin-top: -2px; }
+  .light .ticks div { color: #0B1220; } .light .ticks div i { background: var(--tile); color: var(--ink); }
+  .rows { display: grid; gap: 16px; }
+  .row { display: flex; align-items: center; gap: 22px; padding: 22px 26px; border-radius: 26px; background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.12); }
+  .row .k { flex: none; font-family: Archy; font-size: 44px; min-width: 150px; color: var(--onhero); }
+  .row .v { font-weight: 700; font-size: 26px; line-height: 1.25; }
+  .row .v small { display: block; font-weight: 500; font-size: 21px; color: rgba(255,255,255,.72); margin-top: 4px; }
+  .rows.big { gap: 18px; } .rows.big .row { padding: 28px 30px; } .rows.big .row .v { font-size: 30px; } .rows.big .row .v small { font-size: 23px; } .rows.big .row .k { font-size: 50px; }
+  .light .row { background: #fff; border-color: rgba(15,23,42,.06); box-shadow: 0 10px 30px rgba(15,23,42,.06); }
+  .light .row .v { color: #0B1220; } .light .row .v small { color: #52607A; } .light .row .k { color: var(--ink); }
+  .chip { display: inline-flex; align-items: center; gap: 10px; padding: 12px 22px; border-radius: 999px; font-weight: 700; font-size: 23px;
+    background: rgba(255,255,255,.12); border: 1px solid rgba(255,255,255,.2); color: #fff; }
+  .light .chip { background: #fff; border-color: rgba(15,23,42,.08); color: #0B1220; }
+  .art { position: absolute; display: block; filter: drop-shadow(0 40px 60px rgba(0,0,0,.35)); }
+  .light .art { filter: drop-shadow(0 30px 50px rgba(15,23,42,.18)); }
+
+  /* campaign (night) */
+  .city { position: absolute; background-size: cover; background-position: center; z-index: -2; }
+  .gold { color: #FCD34D; } .rose { color: #FB7185; } .teal { color: #2DD4BF; }
+  .pillc { display: inline-flex; padding: 10px 20px; border-radius: 999px; border: 1.5px solid rgba(45,212,191,.55); color: #99F6E4; font-weight: 700; font-size: 21px; background: rgba(4,47,46,.45); }
+  .big { font-family: Archy; line-height: .9; }
+  .prize { display: grid; justify-items: center; gap: 10px; padding: 22px 14px 20px; border-radius: 30px; background: rgba(255,255,255,.07); border: 1px solid rgba(255,255,255,.1); }
+  .prize img { width: 210px; height: 210px; object-fit: contain; filter: drop-shadow(0 24px 30px rgba(0,0,0,.4)); }
+  .prize b { font-weight: 700; font-size: 22px; min-height: 54px; display: flex; align-items: center; text-align: center; line-height: 1.2; }
+  .prize span { display: inline-flex; align-items: center; gap: 8px; font-weight: 800; font-size: 25px; color: #FCD34D; }
+  .prize span img { width: 30px; height: 30px; filter: none; }
+  .podium { display: flex; align-items: flex-end; gap: 18px; }
+  .podium div { flex: 1; border-radius: 28px 28px 10px 10px; display: grid; align-content: start; justify-items: center; padding-top: 24px; gap: 6px;
+    background: linear-gradient(180deg, rgba(255,255,255,.16), rgba(255,255,255,.04)); border: 1px solid rgba(255,255,255,.14); }
+  .podium b { font-family: Archy; font-size: 64px; line-height: 1; }
+  .podium span { font-weight: 700; font-size: 22px; color: rgba(255,255,255,.78); }
+  .ladder { display: grid; gap: 16px; }
+  .ladder div { display: grid; grid-template-columns: 170px 1fr 120px; align-items: center; gap: 22px; font-weight: 700; font-size: 26px; }
+  .ladder div > span:nth-child(2) { height: 30px; border-radius: 99px; background: rgba(255,255,255,.1); overflow: hidden; }
+  .ladder div > span:nth-child(2) i { display: block; height: 100%; border-radius: 99px; background: linear-gradient(90deg, #14B8A6, #FCD34D); }
+  .ladder div > b { font-family: Archy; font-size: 44px; text-align: right; font-weight: normal; }
+  .q { font-family: Archy; }
+  .note { font-weight: 500; font-size: 20px; color: rgba(255,255,255,.62); line-height: 1.4; }
+  .light .note { color: #64748B; }
+</style>
+</head>
+<body>
+<div id="poster"></div>
+<script>
+const ROOT = '../../';
+const BADGE = ROOT + 'server/public/icons/app-store-badge.svg';
+const FRAME = ROOT + 'brand/medirun/assets/iphone-16-pro-max.svg';
+const CITY = ROOT + 'brand/medirun/glow-campaign/assets/city.jpg';
+const COIN = ROOT + 'mobile/assets/art/coin.png';
+const LOGO_D = 'M42.75 12.75C47.2687 12.75 50.9318 16.4131 50.9318 20.9318V22.5682H52.5682C57.0869 22.5682 60.75 26.2313 60.75 30.75C60.75 35.2687 57.0869 38.9318 52.5682 38.9318H50.9318V40.5682C50.9318 45.0869 47.2687 48.75 42.75 48.75C38.2313 48.75 34.5682 45.0869 34.5682 40.5682V38.9318H32.9318C28.4131 38.9318 24.75 35.2687 24.75 30.75C24.75 26.2313 28.4131 22.5682 32.9318 22.5682H34.5682V20.9318C34.5682 16.4131 38.2313 12.75 42.75 12.75ZM50.8407 25.8409C50.0861 32.6671 44.6671 38.0861 37.8409 38.8407V40.5682C37.8409 43.2794 40.0388 45.4773 42.75 45.4773C45.4612 45.4773 47.6591 43.2794 47.6591 40.5682V37.2955C47.6591 36.3917 48.3917 35.6591 49.2955 35.6591H52.5682C55.2794 35.6591 57.4773 33.4612 57.4773 30.75C57.4773 28.0388 55.2794 25.8409 52.5682 25.8409H50.8407ZM42.75 16.0227C40.0388 16.0227 37.8409 18.2206 37.8409 20.9318V24.2045C37.8409 25.1083 37.1083 25.8409 36.2045 25.8409H32.9318C30.2206 25.8409 28.0227 28.0388 28.0227 30.75C28.0227 33.4612 30.2206 35.6591 32.9318 35.6591H34.6593C35.4139 28.8329 40.8329 23.4131 47.6591 22.6585V20.9318C47.6591 18.2206 45.4612 16.0227 42.75 16.0227ZM47.5225 25.9767C42.616 26.7391 38.7391 30.616 37.9767 35.5225C42.8838 34.7603 46.7603 30.8838 47.5225 25.9767Z';
+
+// mobile/src/theme/moduleBrand.ts (+ light canvases for the light variant)
+const MB = {
+  run:   { suf: 'RUN',   ink: '#0D9488', g: ['#0B4D47', '#0D9488', '#14B8A6'], glow: 'rgba(94,234,212,0.35)',  on: '#99F6E4', tint: '#EEF8F6', tint2: 'rgba(20,184,166,.20)' },
+  cycle: { suf: 'CYCLE', ink: '#C92A55', g: ['#831843', '#C92A55', '#F43F5E'], glow: 'rgba(255,143,168,0.35)', on: '#FECDD3', tint: '#FDF2F4', tint2: 'rgba(244,63,94,.16)' },
+  food:  { suf: 'FOOD',  ink: '#047857', g: ['#064E3B', '#059669', '#34D399'], glow: 'rgba(110,231,183,0.38)', on: '#A7F3D0', tint: '#EFF8F3', tint2: 'rgba(52,211,153,.20)' },
+  pill:  { suf: 'PILL',  ink: '#1D4ED8', g: ['#1E3A8A', '#1D4ED8', '#3B82F6'], glow: 'rgba(147,197,253,0.35)', on: '#BFDBFE', tint: '#F0F4FD', tint2: 'rgba(59,130,246,.18)' },
+  quest: { suf: 'QUEST', ink: '#6D28D9', g: ['#3B0764', '#6D28D9', '#8B5CF6'], glow: 'rgba(196,181,253,0.35)', on: '#DDD6FE', tint: '#F5F2FD', tint2: 'rgba(139,92,246,.18)' },
+  vet:   { suf: 'VET',   ink: '#0369A1', g: ['#0C4A6E', '#0284C7', '#38BDF8'], glow: 'rgba(125,211,252,0.38)', on: '#E0F2FE', tint: '#EFF6FB', tint2: 'rgba(56,189,248,.20)' },
+  coach: { suf: 'COACH', ink: '#475569', g: ['#0F172A', '#1F2937', '#475569'], glow: 'rgba(148,163,184,0.30)', on: '#CBD5E1', tint: '#F3F5F8', tint2: 'rgba(71,85,105,.16)' },
+  scan:  { suf: 'SCAN',  ink: '#0E7490', g: ['#083344', '#0891B2', '#22D3EE'], glow: 'rgba(103,232,249,0.35)', on: '#CFFAFE', tint: '#EEF8FA', tint2: 'rgba(34,211,238,.20)' },
+  lab:   { suf: 'LAB',   ink: '#4F46E5', g: ['#1E1B4B', '#4338CA', '#6366F1'], glow: 'rgba(165,180,252,0.38)', on: '#C7D2FE', tint: '#F2F2FD', tint2: 'rgba(99,102,241,.18)' },
+  medi:  { suf: '',      ink: '#0D9488', g: ['#0B4D47', '#0D9488', '#14B8A6'], glow: 'rgba(94,234,212,0.35)',  on: '#99F6E4', tint: '#EEF8F6', tint2: 'rgba(20,184,166,.20)' },
+  card:  { suf: null,    ink: '#0D9488', g: ['#042F2E', '#0B4D47', '#0D9488'], glow: 'rgba(94,234,212,0.30)',  on: '#99F6E4', tint: '#EEF8F6', tint2: 'rgba(20,184,166,.20)' },
+};
+
+const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+// keep „MEDIRUN-ის“, „20–80“ and similar tokens on one line
+const br = (s) => esc(s).replace(/(^|[\s(])([^\s<>]*[-–][^\s<>]+)/g, '$1<span style="white-space:nowrap">$2</span>').replace(/\n/g, '<br>');
+const SHOTS = 'screens/';
+const shotUrl = (n) => (/\.\w+$/.test(n) ? n : (n.includes('/') ? n : SHOTS + n) + '.webp');
+const markSvg = (size, cls = '') => `<svg class="mark ${cls}" width="${size}" height="${size}" viewBox="24.75 12.75 36 36"><path d="${LOGO_D}"/></svg>`;
+const gradMark = (size) => `<svg width="${size}" height="${size}" viewBox="24.75 12.75 36 36"><defs><linearGradient id="lg${size}" x1="24.75" y1="12.75" x2="60.75" y2="48.75" gradientUnits="userSpaceOnUse"><stop offset=".2" stop-color="#0D9488"/><stop offset=".4" stop-color="#14B8A6"/><stop offset="1" stop-color="#5EEAD4"/></linearGradient></defs><path d="${LOGO_D}" fill="url(#lg${size})"/></svg>`;
+
+function vars(m, light) {
+  const b = MB[m] || MB.card;
+  return `--deep:${b.g[0]};--sig:${b.g[1]};--bright:${b.g[2]};--glow:${b.glow};--onhero:${light ? b.ink : b.on};--ink:${b.ink};--tint:${b.tint};--tint2:${b.tint2};--tile:${hexA(b.ink, .1)};--ringc:${light ? hexA(b.ink, .12) : 'rgba(255,255,255,.09)'};--ornc:${light ? hexA(b.ink, .07) : 'rgba(255,255,255,.075)'}`;
+}
+function hexA(hex, a) { const n = parseInt(hex.slice(1), 16); return `rgba(${n >> 16},${(n >> 8) & 255},${n & 255},${a})`; }
+
+function wordmark(m, size = 46) {
+  const b = MB[m];
+  if (!b || b.suf === null) return `<div class="mc">${gradMark(size + 6)}<b style="font-size:${Math.round(size * .56)}px">MEDICARD</b></div>`;
+  return `<div class="wm" style="font-size:${size}px">MEDI${b.suf ? `<i>${b.suf}</i>` : ''}</div>`;
+}
+function header(s, W, top = 64) {
+  const right = s.tag ? `<div class="chip" style="font-size:20px;padding:10px 20px">${esc(s.tag)}</div>`
+    : (MB[s.m] && MB[s.m].suf !== null ? `<div class="mc" style="color:${s.light ? '#0B1220' : '#fff'};opacity:.92">${markSvg(34)}<b style="font-size:18px">MEDICARD</b></div>` : '');
+  return `<div class="abs" style="left:72px;right:72px;top:${top}px;display:flex;align-items:center;justify-content:space-between">${wordmark(s.m)}${right}</div>`;
+}
+function footer(s, bottom = 60, left = 72, free = 'უფასოდ') {
+  return `<div class="abs foot" style="left:${left}px;bottom:${bottom}px"><img src="${BADGE}" alt=""><div>${esc(free)}<small>App Store · medicard.ge</small></div></div>`;
+}
+function rings(cx, cy, r, n = 3, step = .34) {
+  return Array.from({ length: n }, (_, i) => { const R = r * (1 + i * step); return `<div class="ring" style="left:${cx - R}px;top:${cy - R}px;width:${2 * R}px;height:${2 * R}px"></div>`; }).join('');
+}
+function ornament(x, y, size) { return `<svg class="orn" style="left:${x}px;top:${y}px" width="${size}" height="${size}" viewBox="24.75 12.75 36 36"><path d="${LOGO_D}"/></svg>`; }
+function bg(s) { return s.light ? '<div class="bg-light"></div>' : '<div class="bg-mod"></div><div class="grain"></div>'; }
+
+// iPhone 16 Pro Max frame with a real screen (390-wide CSS screenshot @3x), scaled to width w.
+function phone(shot, x, y, w, opt = {}) {
+  const k = w / 470;
+  const dark = opt.dark || /-dark$/.test(shot);
+  const off = opt.offset ? `top:${57 - opt.offset * (422 / 390)}px` : '';
+  const rot = opt.rot ? ` rotate(${opt.rot}deg)` : '';
+  return `<div class="phone" style="left:${x}px;top:${y}px;transform:scale(${k})${rot}">
+    <div class="shadow"></div>
+    <div class="scr${dark ? ' dark' : ''}"><div class="sb"><span>9:41</span><span>${sbIcons()}</span></div><div class="island"></div><img src="${shotUrl(shot)}" style="${off}" alt=""></div>
+    <img class="frame" src="${FRAME}" alt=""></div>`;
+}
+function sbIcons() {
+  return `<svg width="76" height="14" viewBox="0 0 76 14" style="display:block"><g fill="currentColor"><rect x="0" y="9" width="3.4" height="4.6" rx="1"/><rect x="5" y="6.5" width="3.4" height="7.1" rx="1"/><rect x="10" y="4" width="3.4" height="9.6" rx="1"/><rect x="15" y="1.2" width="3.4" height="12.4" rx="1"/>
+  <path d="M31.5 3.2a11 11 0 0 1 7.6 3l1.4-1.5a13 13 0 0 0-18 0l1.4 1.5a11 11 0 0 1 7.6-3Zm0 4.1a6.9 6.9 0 0 1 4.7 1.9l1.4-1.5a8.9 8.9 0 0 0-12.2 0l1.4 1.5a6.9 6.9 0 0 1 4.7-1.9Zm0 4.1-2.2 2.3 2.2 2.2 2.2-2.2Z" transform="translate(0 -2)"/>
+  <rect x="47" y="1" width="25" height="12.5" rx="4" fill="none" stroke="currentColor" stroke-opacity=".4" stroke-width="1.2"/><rect x="49" y="3" width="19" height="8.5" rx="2.4"/><rect x="73.2" y="4.8" width="1.8" height="4.6" rx=".9" fill-opacity=".45"/></g></svg>`;
+}
+// a card cut out of a screenshot: region [x,y,w,h] in the 390-wide CSS coordinates of the shot
+function pull(shot, region, x, y, w, extra = '') {
+  const [rx, ry, rw, rh] = region; const k = w / rw;
+  return `<div class="pull" style="left:${x}px;top:${y}px;width:${w}px;height:${Math.round(rh * k)}px;background-image:url(${shotUrl(shot)});background-size:${390 * k}px auto;background-position:${-rx * k}px ${-ry * k}px;${extra}"></div>`;
+}
+function ticks(items, icon = '✓') { return `<div class="ticks">${items.map((t, i) => `<div><i>${esc(Array.isArray(icon) ? icon[i] : icon)}</i><span>${esc(t)}</span></div>`).join('')}</div>`; }
+
+/* ───────────────────────────── feed 1080×1350 ───────────────────────────── */
+const T = {};
+
+// Signature module poster: headline, real screen in a phone bleeding off the bottom, one card pulled out of it.
+T.phone = (s) => {
+  const hs = s.hs || 92;
+  const pw = s.pw || 540, px = s.px ?? (1080 - pw - 26), py = s.py || 600;
+  const side = s.pull
+    ? pull(s.pull.shot || s.shot, s.pull.r, s.pull.x ?? 48, s.pull.y ?? (py + 150), s.pull.w || 540)
+    : (s.ticks ? `<div class="abs" style="left:72px;top:${py + 110}px;width:${px - 110}px">${ticks(s.ticks, s.icons || '✓')}</div>` : '');
+  return [1080, 1350, `${bg(s)}
+    ${ornament(-260, 760, 900)}${rings(px + pw / 2, py + 470, 300)}
+    ${header(s, 1080)}
+    <div class="abs tb" style="left:72px;top:${s.ht || 168}px;width:${s.hw || 936}px">
+      <h1 class="h" style="font-size:${hs}px">${br(s.h)}</h1>
+      ${s.sub ? `<p class="sub" style="font-size:29px;margin-top:22px;max-width:${s.sw || 860}px">${br(s.sub)}</p>` : ''}
+    </div>
+    <div class="auto" data-anchor="${py}" data-min="${s.minTop || 400}" data-gap="${s.gap || 48}">
+    ${phone(s.shot, px, py, pw, { offset: s.offset, dark: s.dark })}
+    ${side}</div>
+    ${footer(s)}`];
+};
+
+// Two screens side by side.
+T.duo = (s) => {
+  const hs = s.hs || 88;
+  return [1080, 1350, `${bg(s)}${ornament(640, -200, 760)}${rings(540, 1100, 360)}
+    ${header(s, 1080)}
+    <div class="abs tb" style="left:72px;top:168px;width:936px"><h1 class="h" style="font-size:${hs}px">${br(s.h)}</h1>
+      ${s.sub ? `<p class="sub" style="font-size:29px;margin-top:20px;max-width:880px">${br(s.sub)}</p>` : ''}</div>
+    <div class="auto" data-anchor="${(s.py || 610) - 50}" data-min="420" data-gap="70">
+    ${phone(s.shots[0], 70, s.py || 610, 470, { offset: s.offsets?.[0], rot: -5 })}
+    ${phone(s.shots[1], 548, (s.py || 610) - 50, 470, { offset: s.offsets?.[1], rot: 5 })}</div>
+    ${footer(s, 46)}`];
+};
+
+// One UI fragment, big and crisp (from a 3x screen).
+T.zoom = (s) => {
+  const w = s.zw || 936; const [rx, ry, rw, rh] = s.r; const hgt = Math.round(rh * w / rw);
+  return [1080, 1350, `${bg(s)}${ornament(-300, 780, 980)}
+    ${header(s, 1080)}
+    <div class="abs" style="left:72px;top:168px;width:936px"><h1 class="h" style="font-size:${s.hs || 92}px">${br(s.h)}</h1>
+      ${s.sub ? `<p class="sub" style="font-size:29px;margin-top:20px;max-width:880px">${br(s.sub)}</p>` : ''}</div>
+    ${pull(s.shot, s.r, (1080 - w) / 2, s.zy || Math.max(520, 1350 - 170 - hgt), w)}
+    ${footer(s)}`];
+};
+
+// Steps / tips: rows on the module colour (or light), optional 3D art in the corner.
+T.list = (s) => {
+  const rows = s.rows.map((r) => `<div class="row">${r.k ? `<div class="k" style="${r.kw ? `min-width:${r.kw}px` : ''}">${esc(r.k)}</div>` : ''}<div class="v">${esc(r.t)}${r.d ? `<small>${esc(r.d)}</small>` : ''}</div></div>`).join('');
+  return [1080, 1350, `${bg(s)}${ornament(560, 820, 900)}
+    ${header(s, 1080)}
+    ${s.art ? `<img class="art" src="${ROOT + s.art}" style="right:${s.artR ?? 60}px;top:${s.artT ?? 150}px;width:${s.artW || 300}px" alt="">` : ''}
+    <div class="abs" style="left:72px;top:${s.ht || 176}px;width:${s.hw || (s.art ? 640 : 936)}px"><h1 class="h" style="font-size:${s.hs || 84}px">${br(s.h)}</h1>
+      ${s.sub ? `<p class="sub" style="font-size:28px;margin-top:20px">${br(s.sub)}</p>` : ''}</div>
+    <div class="abs rows big" style="left:72px;right:72px;bottom:${s.note ? 230 : 180}px">${rows}</div>
+    ${s.note ? `<p class="abs note" style="left:72px;right:72px;bottom:150px">${esc(s.note)}</p>` : ''}
+    ${footer(s)}`];
+};
+
+// A question or a statement, set big, with a large 3D object bleeding off the bottom-right corner.
+T.ask = (s) => {
+  const aw = s.artW || 640, ax = s.artX ?? (1080 - aw + 70), ay = s.artY ?? (1350 - aw + 40);
+  return [1080, 1350, `${bg(s)}${rings(ax + aw / 2, ay + aw / 2, aw * .42, 4, .3)}
+    ${header(s, 1080)}
+    <div class="abs" style="left:72px;top:${s.ht || 176}px;width:${s.hw || 936}px"><h1 class="h" style="font-size:${s.hs || 110}px">${br(s.h)}</h1>
+      ${s.sub ? `<p class="sub" style="font-size:31px;margin-top:26px;max-width:${s.sw || 660}px">${br(s.sub)}</p>` : ''}</div>
+    ${s.art ? `<img class="art" src="${ROOT + s.art}" style="left:${ax}px;top:${ay}px;width:${aw}px" alt="">` : ''}
+    ${s.ticks ? `<div class="abs" style="left:72px;bottom:190px;width:${s.tw || 470}px">${ticks(s.ticks, s.icons || '✓')}</div>` : ''}
+    ${footer(s)}`];
+};
+
+// Medi Coins store: prize renders with their coin price.
+T.store = (s) => {
+  const it = s.items.map((p) => `<div class="prize"><img src="${ROOT}server/public/rewards/${p[0]}.webp" alt=""><b>${esc(p[1]).replace(/ ₾/g, '&nbsp;₾')}</b><span><img src="${COIN}" alt="">${esc(p[2])}</span></div>`).join('');
+  return [1080, 1350, `${bg(s)}
+    ${header(s, 1080)}
+    <div class="abs" style="left:72px;top:168px;width:936px"><h1 class="h" style="font-size:${s.hs || 84}px">${br(s.h)}</h1>
+      ${s.sub ? `<p class="sub" style="font-size:28px;margin-top:18px;max-width:900px">${br(s.sub)}</p>` : ''}</div>
+    <div class="abs" style="left:56px;right:56px;top:${s.gy || 470}px;display:grid;grid-template-columns:repeat(3,1fr);gap:18px">${it}</div>
+    ${footer(s)}`];
+};
+
+/* ───────────────────────────── MEDIRUN night ───────────────────────────── */
+// A row of 3D dioramas (Tbilisi places) standing on soft light pools.
+function dioramas(arts, top, size, W = 1080) {
+  const n = arts.length, gap = 18, total = n * size + (n - 1) * gap, x0 = (W - total) / 2;
+  return arts.map((a, i) => {
+    const x = x0 + i * (size + gap), y = top + (i === 1 && n === 3 ? -36 : 0);
+    return `<div class="abs" style="left:${x - 30}px;top:${y + size * .62}px;width:${size + 60}px;height:${size * .5}px;border-radius:50%;background:radial-gradient(closest-side,rgba(45,212,191,.32),transparent);z-index:-1"></div>
+      <img class="art" src="${ROOT}brand/medirun/gen/${a}_cut.png" style="left:${x}px;top:${y}px;width:${size}px" alt="">`;
+  }).join('');
+}
+function night(s, W, H, cityH) {
+  if (s.arts) return `<div class="bg-night"></div>
+    <div class="abs" style="inset:0;z-index:-2;background:radial-gradient(760px 520px at 50% ${H === 1920 ? 30 : 22}%,rgba(20,184,166,.22),transparent 70%),radial-gradient(700px 520px at 85% 100%,rgba(20,184,166,.16),transparent 70%)"></div>
+    ${dioramas(s.arts, s.artsY ?? (H === 1920 ? 400 : 150), s.artsW || (H === 1920 ? 300 : 280), W)}<div class="grain"></div>`;
+  return `<div class="bg-night"></div>
+    <div class="city" style="left:0;right:0;top:0;height:${cityH}px;background-image:url(${CITY});background-position:${s.cityPos || '60% 40%'}"></div>
+    <div class="abs" style="left:0;right:0;top:0;height:${cityH + 4}px;z-index:-1;background:linear-gradient(180deg,rgba(3,7,18,.72) 0%,rgba(3,7,18,.1) 24%,rgba(3,7,18,.15) 55%,#030712 100%)"></div>
+    <div class="abs" style="inset:0;z-index:-1;background:radial-gradient(700px 520px at 85% 96%,rgba(20,184,166,.20),transparent 70%)"></div>
+    <div class="grain"></div>`;
+}
+function runHead(s, top = 64, side = 72) {
+  return `<div class="abs" style="left:${side}px;right:${side}px;top:${top}px;display:flex;align-items:center;justify-content:space-between">
+    <div class="wm" style="font-size:46px;--onhero:#2DD4BF">MEDI<i>RUN</i></div><div class="pillc">${esc(s.tag || 'გაანათე თბილისი')}</div></div>`;
+}
+const runFoot = (s, bottom = 60) => `<div class="abs foot" style="left:72px;bottom:${bottom}px;--onhero:#99F6E4"><img src="${BADGE}" alt=""><div>უფასოდ<small>App Store · medicard.ge</small></div></div>`;
+
+// Night city + headline + rows (times, rules, levels).
+T.night = (s) => {
+  const rows = (s.rows || []).map((r) => `<div class="row" style="background:rgba(255,255,255,.06)"><div class="k" style="color:${r.c || '#2DD4BF'};min-width:${r.kw || 170}px">${esc(r.k)}</div><div class="v">${esc(r.t)}${r.d ? `<small>${esc(r.d)}</small>` : ''}</div></div>`).join('');
+  return [1080, 1350, `${night(s, 1080, 1350, s.cityH || 640)}
+    ${runHead(s)}
+    ${s.art ? `<img class="art" src="${ROOT + s.art}" style="left:${s.artX ?? 640}px;top:${s.artY ?? 250}px;width:${s.artW || 340}px" alt="">` : ''}
+    <div class="abs" style="left:72px;top:${s.ht || 470}px;width:${s.hw || 936}px">
+      ${s.k ? `<div class="label" style="color:${s.kc || '#2DD4BF'};margin-bottom:16px">${esc(s.k)}</div>` : ''}
+      <h1 class="h" style="font-size:${s.hs || 92}px">${br(s.h)}</h1>
+      ${s.sub ? `<p class="sub" style="font-size:28px;margin-top:20px;max-width:${s.sw || 900}px">${br(s.sub)}</p>` : ''}
+    </div>
+    ${rows ? `<div class="abs rows" style="left:72px;right:72px;${s.ry ? `top:${s.ry}px` : `bottom:${s.rb || 165}px`}">${rows}</div>` : ''}
+    ${s.ladder ? `<div class="abs ladder" style="left:72px;right:72px;top:${s.ry || 860}px">${s.ladder.map((l) => `<div><span>${esc(l[0])}</span><span><i style="width:${l[1]}%"></i></span><b class="${l[2] || 'gold'}">${esc(l[1])}%</b></div>`).join('')}</div>` : ''}
+    ${s.podium ? `<div class="abs podium" style="left:150px;right:150px;top:${s.ry || 830}px;height:300px">${s.podium.map((p) => `<div style="height:${p[2]}%"><b class="${p[3] || 'gold'}">${esc(p[1])}</b><span>${esc(p[0])}</span></div>`).join('')}</div>` : ''}
+    ${s.note ? `<p class="abs note" style="left:72px;right:72px;bottom:150px">${esc(s.note)}</p>` : ''}
+    ${runFoot(s)}`];
+};
+
+// Gold gift on the night sky (Saturday rain, lantern boxes, first finder).
+T.gift = (s) => [1080, 1350, `<div class="bg-night"></div>
+    ${s.bgn ? `<div class="abs big" style="left:0;right:0;top:${s.bgnY ?? 150}px;text-align:center;font-size:${s.bgnS || 360}px;color:${s.bgnC || 'rgba(252,211,77,.07)'};z-index:-1">${esc(s.bgn)}</div>` : ''}
+    <div class="abs" style="inset:0;z-index:-2;background:radial-gradient(560px 480px at 50% 37%,${s.glow || 'rgba(252,211,77,.30)'},transparent 70%),radial-gradient(900px 600px at 50% 110%,rgba(20,184,166,.22),transparent 70%)"></div>
+    ${rings(540, 470, 190, 4, .38).replace(/class="ring"/g, `class="ring" style="--ringc:${s.ring || 'rgba(252,211,77,.16)'}"`)}<div class="grain"></div>
+    ${runHead(s)}
+    <img class="art" src="${ROOT + (s.art || 'mobile/assets/run/gift.png')}" style="left:${540 - (s.artW || 400) / 2}px;top:${s.artY ?? 260}px;width:${s.artW || 400}px" alt="">
+    <div class="abs" style="left:72px;right:72px;top:${s.ht || 760}px;text-align:center">
+      ${s.k ? `<div class="label" style="color:${s.kc || '#FCD34D'};margin-bottom:14px;font-size:26px">${esc(s.k)}</div>` : ''}
+      <h1 class="h" style="font-size:${s.hs || 92}px">${br(s.h)}</h1>
+      ${s.sub ? `<p class="sub" style="font-size:28px;margin:20px auto 0;max-width:880px">${br(s.sub)}</p>` : ''}
+      ${s.chips ? `<div style="display:flex;gap:14px;justify-content:center;flex-wrap:wrap;margin-top:28px">${s.chips.map((c) => `<span class="chip" style="${c[1] ? `color:${c[1]};border-color:${c[1]}55` : ''}">${esc(c[0] ?? c)}</span>`).join('')}</div>` : ''}
+    </div>
+    ${runFoot(s)}`];
+
+// A giant number (iPhone countdown, 1 %, times).
+T.count = (s) => [1080, 1350, `<div class="bg-night"></div>
+    <div class="abs" style="inset:0;z-index:-2;background:radial-gradient(620px 560px at 50% 40%,${s.glow || 'rgba(244,63,94,.32)'},transparent 72%)"></div>
+    ${rings(540, 520, 250, 3, .32).replace(/class="ring"/g, `class="ring" style="--ringc:${s.ring || 'rgba(251,113,133,.22)'}"`)}<div class="grain"></div>
+    ${runHead(s)}
+    <div class="abs" style="left:0;right:0;top:${s.ny || 290}px;text-align:center">
+      <div class="big ${s.nc || 'rose'}" style="font-size:${s.ns || 380}px">${esc(s.n)}</div>
+      <div style="font-weight:700;font-size:34px;margin-top:14px;color:rgba(255,255,255,.86)">${esc(s.unit || '')}</div>
+    </div>
+    <div class="abs" style="left:72px;right:72px;top:${s.ht || 860}px;text-align:center">
+      <h1 class="h" style="font-size:${s.hs || 76}px">${br(s.h)}</h1>
+      ${s.sub ? `<p class="sub" style="font-size:27px;margin:18px auto 0;max-width:880px">${br(s.sub)}</p>` : ''}
+    </div>
+    ${runFoot(s)}`];
+
+/* ───────────────────────────── stories 1080×1920 ───────────────────────────── */
+// Safe area: keep words between y 250 and 1640.
+T.sphone = (s) => {
+  const pw = s.pw || 640;
+  return [1080, 1920, `${bg(s)}${ornament(-300, 1250, 1000)}${rings(540, 1500, 360)}
+    <div class="abs" style="left:72px;right:72px;top:250px;display:flex;align-items:center;justify-content:space-between">${wordmark(s.m, 52)}</div>
+    <div class="abs tb" style="left:72px;top:350px;width:936px"><h1 class="h" style="font-size:${s.hs || 108}px">${br(s.h)}</h1>
+      ${s.sub ? `<p class="sub" style="font-size:34px;margin-top:24px;max-width:900px">${br(s.sub)}</p>` : ''}</div>
+    <div class="auto" data-anchor="${s.py || 820}" data-min="640" data-gap="60">
+    ${phone(s.shot, (1080 - pw) / 2, s.py || 820, pw, { offset: s.offset, dark: s.dark })}
+    ${s.pull ? pull(s.pull.shot || s.shot, s.pull.r, s.pull.sx ?? 60, s.pull.sy ?? 1250, s.pull.sw || 560) : ''}</div>
+    <div class="abs foot" style="left:72px;bottom:150px;z-index:5"><img src="${BADGE}" alt=""><div>უფასოდ<small>App Store · medicard.ge</small></div></div>`];
+};
+
+// MEDIRUN story: big time / number on the night city.
+T.swave = (s) => [1080, 1920, `${night(s, 1080, 1920, 1100)}
+    ${runHead(s, 240)}
+    <div class="abs" style="left:72px;right:72px;top:${s.ny || 620}px">
+      ${s.k ? `<div class="label" style="color:${s.kc || '#2DD4BF'};font-size:34px;margin-bottom:10px">${esc(s.k)}</div>` : ''}
+      <div class="big ${s.nc || 'teal'}" style="font-size:${s.ns || 300}px;letter-spacing:-.01em">${br(s.n)}</div>
+    </div>
+    <div class="abs" style="left:72px;right:72px;top:${s.ht || 1130}px">
+      <h1 class="h" style="font-size:${s.hs || 88}px">${br(s.h)}</h1>
+      ${s.sub ? `<p class="sub" style="font-size:34px;margin-top:24px">${br(s.sub)}</p>` : ''}
+      ${s.chips ? `<div style="display:flex;gap:14px;flex-wrap:wrap;margin-top:34px">${s.chips.map((c) => `<span class="chip" style="font-size:27px;${c[1] ? `color:${c[1]};border-color:${c[1]}66` : ''}">${esc(c[0] ?? c)}</span>`).join('')}</div>` : ''}
+    </div>
+    <div class="abs foot" style="left:72px;bottom:150px;--onhero:#99F6E4"><img src="${BADGE}" alt=""><div>უფასოდ<small>App Store · medicard.ge</small></div></div>`];
+
+// Weekly prizes: a podium of three numbers.
+T.spodium = (s) => [1080, 1920, `<div class="bg-night"></div>
+    <div class="abs" style="inset:0;z-index:-2;background:radial-gradient(640px 560px at 50% 30%,rgba(252,211,77,.24),transparent 72%),radial-gradient(900px 700px at 50% 108%,rgba(20,184,166,.22),transparent 70%)"></div><div class="grain"></div>
+    ${runHead(s, 240)}
+    <img class="art" src="${ROOT}brand/medirun/gen/${s.art || 'ui_i_trophy'}_cut.png" style="left:390px;top:360px;width:300px" alt="">
+    <div class="abs" style="left:72px;right:72px;top:700px;text-align:center">
+      <div class="label" style="color:#FCD34D;font-size:32px;margin-bottom:14px">${esc(s.k || '')}</div>
+      <h1 class="h" style="font-size:${s.hs || 92}px">${br(s.h)}</h1>
+    </div>
+    <div class="abs podium" style="left:110px;right:110px;top:1010px;height:360px">
+      <div style="height:78%"><b>200</b><span>მე-2</span></div><div style="height:100%;border-color:rgba(252,211,77,.5)"><b class="gold">300</b><span>1-ლი</span></div><div style="height:62%"><b>100</b><span>მე-3</span></div>
+    </div>
+    <div class="abs" style="left:72px;right:72px;top:1400px;text-align:center">
+      <p class="sub" style="font-size:32px;margin:0 auto;max-width:900px">${br(s.sub || '')}</p>
+      <div style="display:flex;gap:14px;justify-content:center;margin-top:26px"><span class="chip" style="font-size:27px">🏆 ყუთები</span><span class="chip" style="font-size:27px">👟 მანძილი</span></div>
+    </div>
+    <div class="abs foot" style="left:72px;bottom:150px;--onhero:#99F6E4"><img src="${BADGE}" alt=""><div>უფასოდ<small>App Store · medicard.ge</small></div></div>`];
+
+// Saturday riddle / gift story.
+T.sgift = (s) => [1080, 1920, `<div class="bg-night"></div>
+    <div class="abs" style="inset:0;z-index:-2;background:radial-gradient(640px 560px at 50% 36%,${s.glow || 'rgba(252,211,77,.28)'},transparent 72%),radial-gradient(900px 700px at 50% 108%,rgba(20,184,166,.24),transparent 70%)"></div>
+    ${rings(540, 700, 220, 4, .38).replace(/class="ring"/g, `class="ring" style="--ringc:${s.ring || 'rgba(252,211,77,.15)'}"`)}<div class="grain"></div>
+    ${runHead(s, 240)}
+    ${s.art !== false ? `<img class="art" src="${ROOT + (s.art || 'mobile/assets/run/gift.png')}" style="left:${540 - (s.artW || 420) / 2}px;top:${s.artY ?? 470}px;width:${s.artW || 420}px" alt="">` : ''}
+    ${s.n ? `<div class="abs big ${s.nc || 'gold'}" style="left:0;right:0;top:${s.ny || 480}px;text-align:center;font-size:${s.ns || 300}px">${esc(s.n)}</div>` : ''}
+    <div class="abs" style="left:72px;right:72px;top:${s.ht || 1010}px;text-align:center">
+      ${s.k ? `<div class="label" style="color:${s.kc || '#FCD34D'};font-size:32px;margin-bottom:16px">${esc(s.k)}</div>` : ''}
+      <h1 class="h" style="font-size:${s.hs || 88}px">${br(s.h)}</h1>
+      ${s.sub ? `<p class="sub" style="font-size:${s.ss || 34}px;font-weight:${s.sw8 || 500};color:#fff;margin:24px auto 0;max-width:920px">${br(s.sub)}</p>` : ''}
+      ${s.chips ? `<div style="display:flex;gap:14px;justify-content:center;flex-wrap:wrap;margin-top:34px">${s.chips.map((c) => `<span class="chip" style="font-size:27px;${c[1] ? `color:${c[1]};border-color:${c[1]}66` : ''}">${esc(c[0] ?? c)}</span>`).join('')}</div>` : ''}
+    </div>
+    <div class="abs foot" style="left:72px;bottom:150px;--onhero:#99F6E4"><img src="${BADGE}" alt=""><div>უფასოდ<small>App Store · medicard.ge</small></div></div>`];
+
+// Module tip story on the module colour.
+T.stip = (s) => {
+  const rows = (s.rows || []).map((r) => `<div class="row">${r.k ? `<div class="k">${esc(r.k)}</div>` : ''}<div class="v" style="font-size:30px">${esc(r.t)}${r.d ? `<small style="font-size:24px">${esc(r.d)}</small>` : ''}</div></div>`).join('');
+  return [1080, 1920, `${bg(s)}${ornament(400, 1300, 1000)}
+    <div class="abs" style="left:72px;right:72px;top:250px;display:flex;align-items:center;justify-content:space-between">${wordmark(s.m, 52)}</div>
+    ${s.art ? `<img class="art" src="${ROOT + s.art}" style="right:70px;top:${s.artT ?? 340}px;width:${s.artW || 300}px" alt="">` : ''}
+    <div class="abs" style="left:72px;top:${s.ht || 420}px;width:${s.hw || 936}px"><h1 class="h" style="font-size:${s.hs || 100}px">${br(s.h)}</h1>
+      ${s.sub ? `<p class="sub" style="font-size:34px;margin-top:24px">${br(s.sub)}</p>` : ''}</div>
+    <div class="abs rows" style="left:72px;right:72px;top:${s.ry || 900}px">${rows}</div>
+    <div class="abs foot" style="left:72px;bottom:150px"><img src="${BADGE}" alt=""><div>უფასოდ<small>App Store · medicard.ge</small></div></div>`];
+};
+
+/* ───────────────────────────── LinkedIn uses the feed poster ───────────────────────────── */
+
+async function render(spec) {
+  const make = T[spec.t];
+  if (!make) throw new Error('unknown template ' + spec.t);
+  const [W, H, html] = make(spec);
+  const el = document.getElementById('poster');
+  el.className = spec.light ? 'light' : '';
+  el.setAttribute('style', `width:${W}px;height:${H}px;${vars(spec.m || (spec.t.startsWith('s') && !spec.m ? 'run' : 'card'), spec.light)}`);
+  el.innerHTML = html;
+  await document.fonts.ready;
+  const imgs = [...el.querySelectorAll('img')];
+  await Promise.all(imgs.map((i) => i.complete ? (i.naturalWidth ? Promise.resolve() : Promise.reject(new Error('broken image ' + i.src))) : new Promise((ok, bad) => { i.onload = ok; i.onerror = () => bad(new Error('broken image ' + i.src)); })));
+  const bgs = [...el.querySelectorAll('.pull,.city')].map((d) => getComputedStyle(d).backgroundImage.match(/url\("?(.*?)"?\)/)?.[1]).filter(Boolean);
+  await Promise.all(bgs.map((u) => new Promise((ok, bad) => { const im = new Image(); im.onload = ok; im.onerror = () => bad(new Error('broken bg ' + u)); im.src = u; })));
+  for (const g of el.querySelectorAll('.auto')) {
+    const tb = el.querySelector('.tb');
+    if (!tb) continue;
+    const top0 = el.getBoundingClientRect().top;
+    const bottom = tb.getBoundingClientRect().bottom - top0;
+    const want = Math.max(+g.dataset.min, Math.round(bottom + +g.dataset.gap));
+    const delta = want - +g.dataset.anchor;
+    for (const c of g.children) c.style.top = (parseFloat(c.style.top) + delta) + 'px';
+  }
+  await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+  return [W, H];
+}
+window.render = render;
+document.body.dataset.ready = '1';
+</script>
+</body>
+</html>

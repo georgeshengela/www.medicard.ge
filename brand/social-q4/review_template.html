@@ -1,0 +1,293 @@
+<title>MEDICARD Q4 პოსტები</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Exo+2:ital,wght@1,800&family=Noto+Sans+Georgian:wght@400;500;600;700;800&display=swap">
+<style>
+/* Layout: a planner — summary and filters on top, then week sections; each day is a row (date rail · its posts). */
+:root {
+  --bg: #F3F6F7; --surface: #FFFFFF; --ink: #0B1220; --muted: #586474; --line: #DFE5EA; --accent: #0D9488; --accent-ink: #0F766E;
+  --ok: #15803D; --ok-bg: #E7F6EC; --change: #B45309; --change-bg: #FDF1E3; --drop: #B91C1C; --drop-bg: #FDECEC;
+  --chip: #EDF2F4; --shadow: 0 1px 2px rgba(15,23,42,.06), 0 6px 18px rgba(15,23,42,.06);
+  --font: "Noto Sans Georgian", "FiraGO", "Segoe UI", system-ui, sans-serif; --mark: "Exo 2", "Segoe UI", sans-serif;
+  --run: #0D9488; --medi: #0D9488; --cycle: #C92A55; --food: #047857; --pill: #1D4ED8; --quest: #6D28D9; --vet: #0369A1; --coach: #475569; --scan: #0E7490; --lab: #4F46E5; --card: #0D9488;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #030712; --surface: #111827; --ink: #F3F4F6; --muted: #9CA3AF; --line: #1F2937; --accent: #2DD4BF; --accent-ink: #5EEAD4;
+  --ok: #4ADE80; --ok-bg: #0F2A1A; --change: #FBBF24; --change-bg: #2E2208; --drop: #F87171; --drop-bg: #2E1010;
+  --chip: #1F2937; --shadow: 0 1px 2px rgba(0,0,0,.4);
+  --run: #2DD4BF; --medi: #2DD4BF; --cycle: #FF8FA8; --food: #34D399; --pill: #93C5FD; --quest: #C4B5FD; --vet: #7DD3FC; --coach: #CBD5E1; --scan: #67E8F9; --lab: #A5B4FC; --card: #2DD4BF;
+  color-scheme: dark } }
+:root[data-theme="dark"] {
+  --bg: #030712; --surface: #111827; --ink: #F3F4F6; --muted: #9CA3AF; --line: #1F2937; --accent: #2DD4BF; --accent-ink: #5EEAD4;
+  --ok: #4ADE80; --ok-bg: #0F2A1A; --change: #FBBF24; --change-bg: #2E2208; --drop: #F87171; --drop-bg: #2E1010;
+  --chip: #1F2937; --shadow: 0 1px 2px rgba(0,0,0,.4);
+  --run: #2DD4BF; --medi: #2DD4BF; --cycle: #FF8FA8; --food: #34D399; --pill: #93C5FD; --quest: #C4B5FD; --vet: #7DD3FC; --coach: #CBD5E1; --scan: #67E8F9; --lab: #A5B4FC; --card: #2DD4BF;
+  color-scheme: dark }
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+body { background: var(--bg); color: var(--ink); font: 15px/1.5 var(--font); }
+.wrap { max-width: 1320px; margin: 0 auto; padding-inline: 20px; padding-block: 28px 80px; }
+h1 { font-size: clamp(26px, 4vw, 38px); line-height: 1.15; margin: 0; font-weight: 800; text-wrap: balance; }
+h2 { font-size: 20px; margin: 0; font-weight: 800; text-wrap: balance; }
+.lede { color: var(--muted); margin: 10px 0 0; max-width: 70ch; }
+.stats { display: flex; flex-wrap: wrap; gap: 8px 22px; margin-top: 18px; font-variant-numeric: tabular-nums; }
+.stats div { display: flex; align-items: baseline; gap: 8px; }
+.stats b { font-size: 24px; font-weight: 800; }
+.stats span { color: var(--muted); font-size: 14px; }
+.notes { margin-top: 22px; background: var(--surface); border-radius: 16px; padding: 18px 20px; box-shadow: var(--shadow); max-width: 900px; }
+.notes h2 { font-size: 16px; }
+.notes ul { margin: 10px 0 0; padding-left: 20px; display: grid; gap: 6px; color: var(--ink); }
+.notes li::marker { color: var(--accent); }
+.bar { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; background: color-mix(in srgb, var(--bg) 92%, transparent); backdrop-filter: blur(8px);
+  margin-top: 24px; padding-block: 12px; border-bottom: 1px solid var(--line); display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+.seg { display: inline-flex; background: var(--chip); border-radius: 999px; padding: 3px; gap: 2px; max-width: 100%; overflow-x: auto; scrollbar-width: none; }
+.seg button { white-space: nowrap; }
+.seg button { border: 0; background: transparent; color: var(--muted); font: 600 13px var(--font); padding: 6px 12px; border-radius: 999px; cursor: pointer; }
+.seg button[aria-pressed="true"] { background: var(--surface); color: var(--ink); box-shadow: var(--shadow); }
+.bar select { font: 600 13px var(--font); color: var(--ink); background: var(--chip); border: 0; border-radius: 999px; padding: 8px 12px; }
+button:focus-visible, select:focus-visible, textarea:focus-visible, .thumb:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.progress { margin-left: auto; color: var(--muted); font-size: 13px; font-variant-numeric: tabular-nums; }
+.week { margin-top: 34px; }
+.week header { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 14px; padding-bottom: 10px; border-bottom: 2px solid var(--ink); }
+.week header span { color: var(--muted); font-size: 14px; }
+.day { display: grid; grid-template-columns: 92px 1fr; gap: 16px; padding-block: 18px; border-bottom: 1px solid var(--line); }
+.date { position: sticky; top: 72px; align-self: start; }
+.date b { display: block; font-size: 34px; line-height: 1; font-weight: 800; font-variant-numeric: tabular-nums; }
+.date span { display: block; color: var(--muted); font-size: 13px; margin-top: 4px; }
+.posts { display: flex; flex-wrap: wrap; gap: 16px; min-width: 0; }
+.post { background: var(--surface); border-radius: 18px; box-shadow: var(--shadow); width: 340px; max-width: 100%; display: flex; flex-direction: column; overflow: hidden; }
+.post.story { width: 236px; }
+.post.li { width: 340px; }
+.post[data-status="ok"] { box-shadow: 0 0 0 2px var(--ok), var(--shadow); }
+.post[data-status="change"] { box-shadow: 0 0 0 2px var(--change), var(--shadow); }
+.post[data-status="drop"] { box-shadow: 0 0 0 2px var(--drop), var(--shadow); opacity: .72; }
+.media { position: relative; background: var(--chip); }
+.slides { display: flex; overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none; }
+.slides::-webkit-scrollbar { display: none; }
+.thumb { flex: none; width: 100%; scroll-snap-align: start; display: block; cursor: zoom-in; border: 0; padding: 0; background: none; }
+.thumb img { display: block; width: 100%; aspect-ratio: 4 / 5; object-fit: cover; }
+.story .thumb img { aspect-ratio: 9 / 16; }
+.li .thumb img { aspect-ratio: 4 / 5; }
+.count { position: absolute; top: 10px; right: 10px; background: rgba(3,7,18,.72); color: #fff; font: 700 12px var(--font); padding: 4px 9px; border-radius: 999px; font-variant-numeric: tabular-nums; }
+.body { padding: 14px 16px 16px; display: flex; flex-direction: column; gap: 10px; flex: 1; min-width: 0; }
+.meta { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; font-size: 12.5px; color: var(--muted); }
+.meta .t { font-weight: 800; color: var(--ink); font-size: 14px; font-variant-numeric: tabular-nums; }
+.tag { background: var(--chip); border-radius: 999px; padding: 2px 9px; font-weight: 600; }
+.wm { font: italic 800 13px var(--mark); letter-spacing: .02em; color: var(--mc); }
+.wm i { font-style: normal; color: var(--ink); }
+.cap { white-space: pre-wrap; overflow-wrap: anywhere; font-size: 13.5px; line-height: 1.55; margin: 0; max-height: 9.3em; overflow: hidden; position: relative; }
+.cap.open { max-height: none; }
+.cap:not(.open)::after { content: ""; position: absolute; inset: auto 0 0 0; height: 2.4em; background: linear-gradient(transparent, var(--surface)); }
+.note { font-size: 13px; color: var(--muted); margin: 0; }
+.row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.btn { border: 1px solid var(--line); background: var(--surface); color: var(--ink); font: 600 12.5px var(--font); padding: 6px 11px; border-radius: 10px; cursor: pointer; }
+.btn.link { border: 0; padding: 0; color: var(--accent-ink); background: none; }
+.review { display: flex; gap: 6px; flex-wrap: wrap; margin-top: auto; }
+.review button { flex: 1; min-width: 70px; border: 1px solid var(--line); background: var(--surface); color: var(--muted); font: 700 12.5px var(--font); padding: 7px 6px; border-radius: 10px; cursor: pointer; }
+.review button[data-v="ok"][aria-pressed="true"] { background: var(--ok-bg); color: var(--ok); border-color: var(--ok); }
+.review button[data-v="change"][aria-pressed="true"] { background: var(--change-bg); color: var(--change); border-color: var(--change); }
+.review button[data-v="drop"][aria-pressed="true"] { background: var(--drop-bg); color: var(--drop); border-color: var(--drop); }
+textarea { width: 100%; min-height: 64px; resize: vertical; font: 13.5px/1.45 var(--font); color: var(--ink); background: var(--bg); border: 1px solid var(--line); border-radius: 10px; padding: 8px 10px; }
+.saved { font-size: 12px; color: var(--muted); }
+.ro { font-size: 12.5px; color: var(--muted); }
+.box { position: fixed; inset: 0; z-index: 20; background: rgba(3,7,18,.86); display: grid; place-items: center; padding: 16px; }
+.box img { max-height: 92vh; max-width: min(92vw, 720px); border-radius: 12px; display: block; }
+.box nav { position: fixed; bottom: calc(18px + env(safe-area-inset-bottom, 0px)); left: 0; right: 0; display: flex; justify-content: center; gap: 10px; }
+.box nav button { font: 700 14px var(--font); padding: 10px 16px; border-radius: 999px; border: 0; background: #fff; color: #0B1220; cursor: pointer; }
+.empty { color: var(--muted); padding: 30px 0; }
+@media (max-width: 640px) {
+  .day { grid-template-columns: 1fr; gap: 10px; }
+  .date { position: static; display: flex; align-items: baseline; gap: 10px; }
+  .date b { font-size: 26px; }
+  .post, .post.li { width: 100%; }
+  .post.story { width: calc(50% - 8px); min-width: 150px; }
+  .progress { margin-left: 0; width: 100%; }
+}
+@media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto !important; } }
+</style>
+
+<div class="wrap">
+  <h1>MEDICARD — პოსტები 5 ოქტომბრიდან 31 დეკემბრამდე</h1>
+  <p class="lede">ყოველდღე 2–3 ერთეული: მოდულის პოსტი რეალური ეკრანით და MEDIRUN-ის „გაანათე თბილისის“ სთორი. ყოველ პოსტს მონიშნე — <b>კარგია</b>, <b>შესაცვლელია</b> (დაწერე, რა შევცვალო) ან <b>ამოვიღოთ</b>. შენს მონიშვნებს მე წავიკითხავ და ყველაფერს ერთად გავასწორებ.</p>
+  <div class="stats" id="stats"></div>
+  <section class="notes" aria-labelledby="notes-h">
+    <h2 id="notes-h">გადასახედი სანამ ადმინში შევიტანთ</h2>
+    <ul>
+      <li>MEDIRUN-ის ციფრები ახალი ეკონომიკიდანაა: ორშ–პარ 08:00 · 13:00 · 18:00 (20–80), შაბ–კვ 09:30 · 13:30 · 17:30 (30–120), შაბათის წვიმა 16:00 (80/150), ფარნები 500 — 7 ნოემბრიდან, კვირის პრიზები 300/200/100, კიბე 100/60/40/25%.</li>
+      <li>შაბათის პარკები და გამოცანები ფაილის განრიგიდანაა (რიყე, ვაკე, ლისი, 9 აპრილის ბაღი). თუ ადმინში პარკს შეცვლი, გამოცანაც უნდა შევცვალოთ.</li>
+      <li>მაღაზიის ფასები კოდის ნაგულისხმევიდანაა (მაგ. Zoommer 50 ₾ — 5 000). თუ ადმინში შეცვალე, მითხარი.</li>
+      <li>ეკრანები აპის ნამდვილი ეკრანებია, სატესტო ანგარიშზე (ნინო / გიორგი) — რეალური ადამიანის მონაცემი არსად ჩანს.</li>
+      <li>Metricool-ში ძველი, უკვე დაგეგმილი პოსტები ჯერ ისევ დგას — მათ შენი დასტურის შემდეგ ჩავანაცვლებ.</li>
+    </ul>
+  </section>
+  <div class="bar" role="toolbar" aria-label="ფილტრები">
+    <div class="seg" id="f-kind" aria-label="ტიპი"></div>
+    <select id="f-mod" aria-label="მოდული"></select>
+    <div class="seg" id="f-status" aria-label="სტატუსი"></div>
+    <select id="f-week" aria-label="კვირაზე გადასვლა"></select>
+    <span class="progress" id="progress"></span>
+  </div>
+  <main id="list"></main>
+</div>
+<div class="box" id="box" hidden role="dialog" aria-modal="true" aria-label="სურათი">
+  <img id="box-img" alt="">
+  <nav><button id="box-prev">‹ წინა</button><button id="box-close">დახურვა</button><button id="box-next">შემდეგი ›</button></nav>
+</div>
+
+<script>
+const ITEMS = /*__DATA__*/[];
+const MOD = { run: ['MEDI', 'RUN'], medi: ['MEDI', ''], cycle: ['MEDI', 'CYCLE'], food: ['MEDI', 'FOOD'], pill: ['MEDI', 'PILL'], quest: ['MEDI', 'QUEST'],
+  vet: ['MEDI', 'VET'], coach: ['MEDI', 'COACH'], scan: ['MEDI', 'SCAN'], lab: ['MEDI', 'LAB'], card: ['MEDICARD', ''] };
+const KIND = { FEED: 'პოსტი', CAROUSEL: 'კარუსელი', STORY: 'სთორი', LINKEDIN: 'LinkedIn' };
+const WD = ['კვირა', 'ორშაბათი', 'სამშაბათი', 'ოთხშაბათი', 'ხუთშაბათი', 'პარასკევი', 'შაბათი'];
+const MON = { '10': 'ოქტომბერი', '11': 'ნოემბერი', '12': 'დეკემბერი' };
+const WEEKS = [
+  ['2026-10-05', 'კვირა 1 · დაწყება და ძველი ქალაქი', 'შაბათის წვიმა: რიყის პარკი'], ['2026-10-12', 'კვირა 2 · მწვანე თბილისი', 'შაბათის წვიმა: ვაკის პარკი'],
+  ['2026-10-19', 'კვირა 3 · წყალი და ჰორიზონტი', 'შაბათის წვიმა: ლისის ტბა'], ['2026-10-26', 'კვირა 4 · ქალაქის ხელწერა', 'შაბათის წვიმა: 9 აპრილის ბაღი'],
+  ['2026-11-02', 'კვირა 5 · გლდანი, ნაძალადევი · ფარნები იწყება', 'შაბათის წვიმა: ვაკის პარკი'], ['2026-11-09', 'კვირა 6 · დიდუბე, ჩუღურეთი, საბურთალო', 'შაბათის წვიმა: რიყის პარკი'],
+  ['2026-11-16', 'კვირა 7 · ისანი, სამგორი', 'შაბათის წვიმა: ლისის ტბა'], ['2026-11-23', 'კვირა 8 · ვაკე, მთაწმინდა, კრწანისი', 'შაბათის წვიმა: 9 აპრილის ბაღი'],
+  ['2026-11-30', 'კვირა 9 · შუქურების თვე', 'შაბათის წვიმა: ვაკის პარკი'], ['2026-12-07', 'კვირა 10 · მთელი თბილისი', 'შაბათის წვიმა: რიყის პარკი'],
+  ['2026-12-14', 'კვირა 11 · მთელი თბილისი', 'შაბათის წვიმა: ლისის ტბა'], ['2026-12-21', 'კვირა 12 · მთელი თბილისი', 'შაბათის წვიმა: 9 აპრილის ბაღი'],
+  ['2026-12-28', 'ბოლო დღეები · 31 დეკემბერი, 12:00 — დიდი ყუთი', ''],
+];
+const state = { kind: 'all', mod: 'all', status: 'all', reviews: {}, canWrite: true, db: null };
+const el = (tag, attrs = {}, ...kids) => { const e = document.createElement(tag); for (const [k, v] of Object.entries(attrs)) { if (k === 'class') e.className = v; else if (k === 'text') e.textContent = v; else if (k.startsWith('on')) e.addEventListener(k.slice(2), v); else e.setAttribute(k, v); } kids.flat().forEach((c) => c != null && e.append(c)); return e; };
+const dayLabel = (d) => { const dt = new Date(d + 'T12:00:00+04:00'); return [String(+d.slice(8)), WD[dt.getUTCDay()], MON[d.slice(5, 7)]]; };
+const weekOf = (d) => { let w = WEEKS[0]; for (const x of WEEKS) if (d >= x[0]) w = x; return w; };
+
+function wordmark(m) { const [a, b] = MOD[m] || MOD.card; const s = el('span', { class: 'wm', style: `--mc: var(--${m})` }); s.append(el('i', { text: a }), b); return s; }
+
+function stats() {
+  const live = ITEMS.filter((p) => p.date !== 'reserve');
+  const n = (k) => live.filter((p) => p.kind === k).length;
+  const days = new Set(live.map((p) => p.date)).size;
+  const box = document.getElementById('stats'); box.replaceChildren();
+  [[days, 'დღე'], [n('FEED') + n('CAROUSEL'), 'პოსტი'], [n('STORY'), 'სთორი'], [n('LINKEDIN'), 'LinkedIn'], [ITEMS.length - live.length, 'სათადარიგო']]
+    .forEach(([v, l]) => box.append(el('div', {}, el('b', { text: String(v) }), el('span', { text: l }))));
+}
+
+function segs() {
+  const mk = (id, opts, key) => { const box = document.getElementById(id); box.replaceChildren(...opts.map(([v, l]) => el('button', { 'aria-pressed': String(state[key] === v), onclick: () => { state[key] = v; segs(); render(); } }, l))); };
+  mk('f-kind', [['all', 'ყველა'], ['feed', 'პოსტები'], ['STORY', 'სთორები'], ['LINKEDIN', 'LinkedIn']], 'kind');
+  mk('f-status', [['all', 'ყველა'], ['none', 'გადაუხედავი'], ['change', 'შესაცვლელი'], ['ok', 'კარგია']], 'status');
+}
+function selects() {
+  const mods = ['all', 'run', 'medi', 'pill', 'food', 'cycle', 'lab', 'scan', 'quest', 'vet', 'coach', 'card'];
+  const names = { all: 'ყველა მოდული', run: 'MEDIRUN', medi: 'Medi', pill: 'MEDIPILL', food: 'MEDIFOOD', cycle: 'MEDICYCLE', lab: 'MEDILAB', scan: 'MEDISCAN', quest: 'MEDIQUEST', vet: 'MEDIVET', coach: 'MEDICOACH', card: 'MEDICARD' };
+  const ms = document.getElementById('f-mod'); ms.replaceChildren(...mods.map((m) => el('option', { value: m }, names[m]))); ms.onchange = () => { state.mod = ms.value; render(); };
+  const ws = document.getElementById('f-week'); ws.replaceChildren(el('option', { value: '' }, 'კვირაზე გადასვლა…'), ...WEEKS.map((w) => el('option', { value: w[0] }, w[1])), el('option', { value: 'reserve' }, 'სათადარიგო'));
+  ws.onchange = () => { const t = document.getElementById('w-' + ws.value); if (t) t.scrollIntoView({ block: 'start' }); ws.value = ''; };
+}
+
+function visible(p) {
+  if (state.kind === 'feed' && !(p.kind === 'FEED' || p.kind === 'CAROUSEL')) return false;
+  if (state.kind !== 'all' && state.kind !== 'feed' && p.kind !== state.kind) return false;
+  if (state.mod !== 'all' && p.m !== state.mod) return false;
+  const st = state.reviews[p.id]?.status || 'none';
+  if (state.status !== 'all' && st !== state.status) return false;
+  return true;
+}
+
+let boxList = [], boxIdx = 0;
+function openBox(list, i) { boxList = list; boxIdx = i; showBox(); document.getElementById('box').hidden = false; document.getElementById('box-close').focus(); }
+function showBox() { document.getElementById('box-img').src = boxList[boxIdx]; }
+document.getElementById('box-close').onclick = () => { document.getElementById('box').hidden = true; };
+document.getElementById('box-prev').onclick = () => { boxIdx = (boxIdx - 1 + boxList.length) % boxList.length; showBox(); };
+document.getElementById('box-next').onclick = () => { boxIdx = (boxIdx + 1) % boxList.length; showBox(); };
+document.getElementById('box').addEventListener('click', (e) => { if (e.target.id === 'box') e.currentTarget.hidden = true; });
+document.addEventListener('keydown', (e) => { const b = document.getElementById('box'); if (b.hidden) return; if (e.key === 'Escape') b.hidden = true; if (e.key === 'ArrowLeft') document.getElementById('box-prev').click(); if (e.key === 'ArrowRight') document.getElementById('box-next').click(); });
+
+async function copyText(text, btn) {
+  try { await navigator.clipboard.writeText(text); btn.textContent = 'დაკოპირდა ✓'; }
+  catch { const r = document.createRange(); r.selectNodeContents(btn.closest('.body').querySelector('.cap')); const s = getSelection(); s.removeAllRanges(); s.addRange(r); btn.textContent = 'მონიშნულია — დააკოპირე'; }
+  setTimeout(() => { btn.textContent = 'ტექსტის კოპირება'; }, 2200);
+}
+
+async function saveReview(id, patch, info) {
+  const prev = state.reviews[id] || {};
+  const next = { status: prev.status || 'none', note: prev.note || '', ...patch, at: new Date().toISOString() };
+  state.reviews[id] = next;
+  if (!state.db) { info.textContent = 'ამ ხედში ვერ ინახება'; return; }
+  info.textContent = 'ინახება…';
+  try { await state.db.collection('reviews').doc(id).set(next); info.textContent = 'შენახულია'; }
+  catch (e) { info.textContent = e && e.code === 'invalid_argument' ? 'შენახვის უფლება არ გაქვს' : 'ვერ შეინახა — სცადე ხელახლა'; if (e && e.code === 'invalid_argument') { state.canWrite = false; render(); } }
+  progress();
+}
+
+function card(p) {
+  const story = p.kind === 'STORY', li = p.kind === 'LINKEDIN';
+  const rv = state.reviews[p.id] || {};
+  const post = el('article', { class: 'post' + (story ? ' story' : '') + (li ? ' li' : ''), 'data-status': rv.status || 'none', id: 'p-' + p.id });
+  const urls = p.images.map((n) => 'img/' + n);
+  const slides = el('div', { class: 'slides' }, urls.map((u, i) => el('button', { class: 'thumb', 'aria-label': `სურათი ${i + 1}`, onclick: () => openBox(urls, i) }, el('img', { src: u, loading: 'lazy', alt: '' }))));
+  const media = el('div', { class: 'media' }, slides);
+  if (urls.length > 1) { const c = el('span', { class: 'count', text: `1 / ${urls.length}` }); media.append(c); slides.addEventListener('scroll', () => { c.textContent = `${Math.round(slides.scrollLeft / slides.clientWidth) + 1} / ${urls.length}`; }, { passive: true }); }
+  const body = el('div', { class: 'body' });
+  const meta = el('div', { class: 'meta' }, p.time ? el('span', { class: 't', text: p.time }) : null, el('span', { class: 'tag', text: KIND[p.kind] + (p.kind === 'CAROUSEL' ? ` · ${urls.length}` : '') }), wordmark(p.m),
+    p.ai ? el('span', { class: 'tag', title: 'Instagram-ზე მოინიშნება როგორც AI', text: 'AI სურათი' }) : null);
+  body.append(meta);
+  if (p.caption) {
+    const cap = el('p', { class: 'cap', text: p.caption });
+    const more = el('button', { class: 'btn link', onclick: () => { cap.classList.toggle('open'); more.textContent = cap.classList.contains('open') ? 'შეკეცვა' : 'სრულად ნახვა'; } }, 'სრულად ნახვა');
+    const copy = el('button', { class: 'btn', onclick: (e) => copyText(p.caption, e.currentTarget) }, 'ტექსტის კოპირება');
+    body.append(cap, el('div', { class: 'row' }, more, copy));
+  }
+  if (p.note && !p.caption) body.append(el('p', { class: 'note', text: p.note }));
+  if (li && p.reuse) body.append(el('p', { class: 'note', text: 'სურათი — იმავე კვირის პოსტიდან' }));
+  const info = el('span', { class: 'saved', text: rv.at ? 'შენახულია' : '' });
+  if (state.canWrite) {
+    const btns = [['ok', 'კარგია'], ['change', 'შესაცვლელი'], ['drop', 'ამოვიღოთ']].map(([v, l]) => el('button', { 'data-v': v, 'aria-pressed': String(rv.status === v),
+      onclick: () => { const s = rv.status === v ? 'none' : v; saveReview(p.id, { status: s }, info); post.dataset.status = s; btns.forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.v === s))); ta.hidden = s !== 'change' && !(state.reviews[p.id]?.note); } }, l));
+    const ta = el('textarea', { id: 'n-' + p.id, placeholder: 'რა შევცვალო? (ტექსტი, სურათი, დრო…)', 'aria-label': 'კომენტარი' });
+    ta.value = rv.note || ''; ta.hidden = rv.status !== 'change' && !rv.note;
+    let t; ta.addEventListener('input', () => { clearTimeout(t); t = setTimeout(() => saveReview(p.id, { note: ta.value }, info), 900); });
+    body.append(el('div', { class: 'review' }, btns), ta, info);
+  } else if (rv.status && rv.status !== 'none') {
+    body.append(el('p', { class: 'ro', text: { ok: 'მონიშნულია: კარგია', change: 'მონიშნულია: შესაცვლელი', drop: 'მონიშნულია: ამოვიღოთ' }[rv.status] + (rv.note ? ' — ' + rv.note : '') }));
+  }
+  post.append(media, body);
+  return post;
+}
+
+function render() {
+  const list = document.getElementById('list'); list.replaceChildren();
+  const byDay = new Map();
+  for (const p of ITEMS) { if (!visible(p)) continue; if (!byDay.has(p.date)) byDay.set(p.date, []); byDay.get(p.date).push(p); }
+  let lastWeek = null, section = null, shown = 0;
+  for (const [d, ps] of byDay) {
+    const w = d === 'reserve' ? ['reserve', 'სათადარიგო პოსტები', 'ჩასანაცვლებლად — თუ რომელიმე პოსტი არ მოგეწონა'] : weekOf(d);
+    if (w[0] !== lastWeek) {
+      lastWeek = w[0];
+      section = el('section', { class: 'week', id: 'w-' + w[0] }, el('header', {}, el('h2', { text: w[1] }), w[2] ? el('span', { text: w[2] }) : null));
+      list.append(section);
+    }
+    const [num, wd, mon] = d === 'reserve' ? ['★', 'სათადარიგო', ''] : dayLabel(d);
+    section.append(el('div', { class: 'day' }, el('div', { class: 'date' }, el('b', { text: num }), el('span', { text: wd + (mon ? ', ' + mon : '') })), el('div', { class: 'posts' }, ps.map(card))));
+    shown += ps.length;
+  }
+  if (!shown) list.append(el('p', { class: 'empty', text: 'ამ ფილტრით არაფერი მოიძებნა. შეცვალე ფილტრი ზემოთ.' }));
+  progress();
+}
+
+function progress() {
+  const vals = Object.values(state.reviews);
+  const c = (s) => vals.filter((r) => r.status === s).length;
+  document.getElementById('progress').textContent = `კარგია ${c('ok')} · შესაცვლელი ${c('change')} · ამოვიღოთ ${c('drop')} · სულ ${ITEMS.length}`;
+}
+
+stats(); segs(); selects(); render();
+
+(async () => {
+  const db = window.claude?.use ? await window.claude.use('db').catch(() => null) : null;
+  if (!db) { state.canWrite = false; render(); return; }
+  state.db = db;
+  try { const user = await window.claude.use('user'); const can = user ? await user.can('data.write') : null; if (can === false) { state.canWrite = false; } } catch {}
+  db.collection('reviews').onSnapshot((snap) => {
+    const next = {}; snap.docs.forEach((d) => { if (d.exists) next[d.id] = d.data(); });
+    const changed = JSON.stringify(next) !== JSON.stringify(state.reviews);
+    state.reviews = next;
+    if (changed && !document.activeElement?.matches?.('textarea')) render(); else progress();
+  }, () => { progress(); });
+  render();
+})();
+</script>

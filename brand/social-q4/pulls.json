@@ -1,0 +1,519 @@
+{
+ "run-hero": {
+  "shot": "run-hub",
+  "r": [
+   20,
+   90,
+   350,
+   315
+  ],
+  "w": 480,
+  "y": 690
+ },
+ "run-next": {
+  "shot": "run-hub",
+  "r": [
+   20,
+   500,
+   350,
+   132
+  ],
+  "w": 540,
+  "y": 820
+ },
+ "run-wallet-card": {
+  "shot": "run-wallet",
+  "r": [
+   16,
+   60,
+   358,
+   176
+  ],
+  "w": 540,
+  "y": 780
+ },
+ "run-moves": {
+  "shot": "run-wallet",
+  "r": [
+   16,
+   245,
+   358,
+   290
+  ],
+  "w": 480,
+  "y": 700
+ },
+ "run-board": {
+  "shot": "run-leaders",
+  "r": [
+   16,
+   420,
+   358,
+   300
+  ],
+  "w": 480,
+  "y": 700
+ },
+ "run-drops-card": {
+  "shot": "run-drops",
+  "r": [
+   16,
+   62,
+   358,
+   196
+  ],
+  "w": 560,
+  "y": 1230
+ },
+ "run-grand-card": {
+  "shot": "run-grand",
+  "r": [
+   20,
+   90,
+   350,
+   350
+  ],
+  "w": 480,
+  "y": 680
+ },
+ "run-progress": {
+  "shot": "run-grand",
+  "r": [
+   20,
+   500,
+   350,
+   292
+  ],
+  "w": 480,
+  "y": 720
+ },
+ "pill-hero": {
+  "shot": "pill-hub",
+  "r": [
+   16,
+   82,
+   358,
+   272
+  ],
+  "w": 500,
+  "y": 740
+ },
+ "pill-dose": {
+  "shot": "pill-hub",
+  "r": [
+   16,
+   445,
+   358,
+   152
+  ],
+  "w": 540,
+  "y": 800
+ },
+ "food-budget": {
+  "shot": "food-hub",
+  "r": [
+   16,
+   82,
+   358,
+   232
+  ],
+  "w": 540,
+  "y": 760
+ },
+ "food-log": {
+  "shot": "food-hub",
+  "r": [
+   16,
+   505,
+   358,
+   200
+  ],
+  "w": 540,
+  "y": 780
+ },
+ "food-meal": {
+  "shot": "food-diary",
+  "r": [
+   16,
+   380,
+   358,
+   118
+  ],
+  "w": 540,
+  "y": 820
+ },
+ "food-macro": {
+  "shot": "food-diary",
+  "r": [
+   16,
+   150,
+   358,
+   210
+  ],
+  "w": 540,
+  "y": 780
+ },
+ "food-timer": {
+  "shot": "food-fasting",
+  "r": [
+   16,
+   100,
+   358,
+   332
+  ],
+  "w": 480,
+  "y": 700
+ },
+ "cycle-hero": {
+  "shot": "cycle",
+  "r": [
+   16,
+   255,
+   358,
+   300
+  ],
+  "w": 480,
+  "y": 720
+ },
+ "cycle-phase": {
+  "shot": "cycle",
+  "r": [
+   16,
+   500,
+   358,
+   150
+  ],
+  "w": 540,
+  "y": 820
+ },
+ "cycle-icons": {
+  "shot": "cycle-log",
+  "r": [
+   16,
+   290,
+   358,
+   340
+  ],
+  "w": 480,
+  "y": 700
+ },
+ "home-women-hero": {
+  "shot": "home-women",
+  "r": [
+   16,
+   270,
+   358,
+   450
+  ],
+  "w": 480,
+  "y": 660
+ },
+ "home-today": {
+  "shot": "home-standard",
+  "r": [
+   16,
+   95,
+   358,
+   360
+  ],
+  "w": 480,
+  "y": 700
+ },
+ "weight-budget": {
+  "shot": "home-weight",
+  "r": [
+   16,
+   95,
+   358,
+   340
+  ],
+  "w": 480,
+  "y": 700
+ },
+ "quest-mission": {
+  "shot": "quest-hub",
+  "r": [
+   16,
+   590,
+   358,
+   190
+  ],
+  "w": 540,
+  "y": 800
+ },
+ "quest-level": {
+  "shot": "quest-hub",
+  "r": [
+   16,
+   290,
+   358,
+   230
+  ],
+  "w": 540,
+  "y": 760
+ },
+ "quest-wallet-card": {
+  "shot": "quest-wallet",
+  "r": [
+   16,
+   80,
+   358,
+   250
+  ],
+  "w": 480,
+  "y": 740
+ },
+ "quest-prize": {
+  "shot": "quest-prize",
+  "r": [
+   16,
+   385,
+   358,
+   165
+  ],
+  "w": 540,
+  "y": 800
+ },
+ "vet-pet": {
+  "shot": "vet-hub",
+  "r": [
+   16,
+   115,
+   358,
+   165
+  ],
+  "w": 540,
+  "y": 800
+ },
+ "vet-profile": {
+  "shot": "vet-pet",
+  "r": [
+   16,
+   90,
+   358,
+   150
+  ],
+  "w": 540,
+  "y": 800
+ },
+ "vet-care": {
+  "shot": "vet-pet",
+  "r": [
+   16,
+   300,
+   358,
+   120
+  ],
+  "w": 540,
+  "y": 820
+ },
+ "water-ring": {
+  "shot": "water",
+  "r": [
+   0,
+   50,
+   390,
+   142
+  ],
+  "w": 540,
+  "y": 800
+ },
+ "scan-choices": {
+  "shot": "scan",
+  "r": [
+   16,
+   390,
+   358,
+   262
+  ],
+  "w": 480,
+  "y": 740
+ },
+ "run-live-hero": {
+  "shot": "run-hub-live",
+  "r": [
+   20,
+   90,
+   350,
+   315
+  ],
+  "w": 480,
+  "y": 690
+ },
+ "run-mycity": {
+  "shot": "run-city",
+  "r": [
+   16,
+   288,
+   358,
+   214
+  ],
+  "w": 560,
+  "y": 760
+ },
+ "run-grandrow": {
+  "shot": "run-city",
+  "r": [
+   16,
+   55,
+   358,
+   142
+  ],
+  "w": 560,
+  "y": 800
+ },
+ "run-week": {
+  "shot": "run-city",
+  "r": [
+   16,
+   552,
+   358,
+   232
+  ],
+  "w": 540,
+  "y": 760
+ },
+ "quest-gadgets": {
+  "shot": "quest-store-gadgets",
+  "r": [
+   16,
+   375,
+   358,
+   262
+  ],
+  "w": 520,
+  "y": 760
+ },
+ "quest-balance": {
+  "shot": "quest-store-gadgets",
+  "r": [
+   16,
+   80,
+   358,
+   210
+  ],
+  "w": 540,
+  "y": 780
+ },
+ "home-ask": {
+  "shot": "home-standard",
+  "r": [
+   16,
+   505,
+   358,
+   112
+  ],
+  "w": 560,
+  "y": 820
+ },
+ "pill-prices": {
+  "shot": "pill-pharmacy",
+  "r": [
+   16,
+   360,
+   358,
+   300
+  ],
+  "w": 500,
+  "y": 720
+ },
+ "lab-latest": {
+  "shot": "lab-records",
+  "r": [
+   16,
+   82,
+   358,
+   166
+  ],
+  "w": 560,
+  "y": 780
+ },
+ "lab-range": {
+  "shot": "lab-param",
+  "r": [
+   16,
+   82,
+   358,
+   216
+  ],
+  "w": 540,
+  "y": 760
+ },
+ "medi-card": {
+  "shot": "medi-chat",
+  "r": [
+   40,
+   225,
+   340,
+   300
+  ],
+  "w": 470,
+  "y": 700
+ },
+ "medi-switch": {
+  "shot": "medi-consilium",
+  "r": [
+   0,
+   676,
+   390,
+   112
+  ],
+  "w": 560,
+  "y": 840
+ },
+ "medi-answer": {
+  "shot": "medi-answer",
+  "r": [
+   0,
+   390,
+   390,
+   242
+  ],
+  "w": 500,
+  "y": 740
+ },
+ "scan-values": {
+  "shot": "scan-result",
+  "r": [
+   16,
+   145,
+   358,
+   300
+  ],
+  "w": 480,
+  "y": 700
+ },
+ "coach-session": {
+  "shot": "coach-client",
+  "r": [
+   16,
+   300,
+   358,
+   200
+  ],
+  "w": 540,
+  "y": 760
+ },
+ "coach-clients": {
+  "shot": "coach-trainer",
+  "r": [
+   16,
+   140,
+   358,
+   212
+  ],
+  "w": 540,
+  "y": 760
+ },
+ "weight-card": {
+  "shot": "home-weight-full",
+  "r": [
+   16,
+   1300,
+   358,
+   272
+  ],
+  "w": 540,
+  "y": 760
+ }
+}
