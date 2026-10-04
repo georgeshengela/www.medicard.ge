@@ -1,5 +1,5 @@
-import { brandHex } from '@/theme/brandTone';
 import React, { useEffect, useRef, useState } from "react";
+import { useMedifood } from "./ProgramUI";
 import { ActivityIndicator, Keyboard, KeyboardAvoidingView, Platform, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Mic, Send, Sparkles, X } from "lucide-react-native";
@@ -36,6 +36,7 @@ export function DescribeMealModal({
   onSubmit: (text: string, voice: boolean) => void;
 }) {
   const c = useThemeColors();
+  const M = useMedifood();
   const safe = useSafeAreaInsets();
   const [text, setText] = useState("");
   const [notice, setNotice] = useState("");
@@ -146,10 +147,10 @@ export function DescribeMealModal({
               accessibilityLabel={tx("შეფასება", "Estimate")}
               disabled={busy || text.trim().length < 3}
               onPress={submit}
-              style={[s.send, { backgroundColor: brandHex('#0F766E'), opacity: busy || text.trim().length < 3 ? 0.45 : 1 }]}
+              style={[s.send, { backgroundColor: M.ink, opacity: busy || text.trim().length < 3 ? 0.45 : 1 }]}
             >
-              {busy ? <ActivityIndicator color="#FFFFFF" /> : <Send size={18} color="#FFFFFF" />}
-              <Text style={[hubText.link, { color: "#FFFFFF", fontSize: 14 }]}>{busy ? tx("ვითვლი…", "Counting…") : tx("დათვალე", "Count it")}</Text>
+              {busy ? <ActivityIndicator color={M.onInk} /> : <Send size={18} color={M.onInk} />}
+              <Text style={[hubText.link, { color: M.onInk, fontSize: 14 }]}>{busy ? tx("ვითვლი…", "Counting…") : tx("დათვალე", "Count it")}</Text>
             </Pressable>
           </View>
           <Text style={[hubText.small, { color: c.text300 }]}>{tx("ტექსტი (და ხმა, თუ იყენებ) OpenRouter-ის გავლით Google Vertex AI-ს გადაეცემა. შედეგს შენახვამდე გადაამოწმებ.", "Your text (and voice, if you use it) is sent to Google Vertex AI through OpenRouter. You check the result before saving.")}</Text>

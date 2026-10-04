@@ -1,8 +1,10 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { BackHandler, KeyboardAvoidingView, Platform, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import { BackHandler, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import Animated, { useAnimatedStyle } from "react-native-reanimated";
+import { LinearGradient } from "expo-linear-gradient";
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import * as Haptics from "expo-haptics";
-import { Bookmark, ChefHat, Minus, PenLine, Plus, Search, Sparkles, X } from "lucide-react-native";
+import { Bookmark, ChefHat, PenLine, Search, Sparkles, X } from "lucide-react-native";
 import { api } from "@/lib/api";
 import { tx } from "@/i18n/locale";
 import {
@@ -16,22 +18,26 @@ import {
   type FoodItem,
 } from "@/lib/nutrition";
 import { useAuth } from "@/store/AuthContext";
-import { useIsDark, useThemeColors } from "@/theme/colors";
-import { HUB, hubInk, hubText, hubTint } from "@/theme/hub";
+import { useThemeColors } from "@/theme/colors";
+import { HUB, hubText } from "@/theme/hub";
+import { MODULE_BRANDS } from "@/theme/moduleBrand";
 import { APP_MODAL_OVERLAY, APP_MODAL_PROPS, Modal } from "@/components/ui/appModal";
-import { NButton, NError, NLoading, NScreen } from "@/components/nutrition/ProgramUI";
+import { useKeyboardPad } from "@/components/ui/KeyboardFormShell";
+import { NButton, NConfirm, NError, NLoading, NScreen, NStepper, useMedifood, withMedifood } from "@/components/nutrition/ProgramUI";
 import { HubCard, HubSection, MacroLine, ScoreBadge } from "@/components/nutrition/NutritionUi";
 import { MedicalSourcesLink } from "@/components/health/MedicalSourcesLink";
 import { FoodSearchModal, type FoodPick } from "@/components/nutrition/FoodSearchModal";
 import { DescribeMealModal } from "@/components/nutrition/DescribeMealModal";
 import { aiConsentDeclinedText, isAiConsentDeclined } from "@/lib/aiConsentDecline";
 
-export default function RecipeScreen() {
+export default withMedifood(function RecipeScreen() {
   const { user } = useAuth();
   const params = useLocalSearchParams<{ id?: string }>();
   const id = typeof params.id === "string" && params.id ? params.id : "";
   return <RecipeEditor key={(user?.id || "guest") + id} owner={user?.id || ""} recipeId={id} />;
-}
+});
+
+const BRAND = MODULE_BRANDS.food;
 
 type Sheet = null | "search" | "saved" | "describe" | "manual";
 const snapshot = (name: string, servings: number, items: FoodItem[]) => JSON.stringify({ name: name.trim(), servings, items });
@@ -43,7 +49,7 @@ const snapshot = (name: string, servings: number, items: FoodItem[]) => JSON.str
  */
 function RecipeEditor({ owner, recipeId }: { owner: string; recipeId: string }) {
   const c = useThemeColors(),
-    dark = useIsDark(),
+    M = useMedifood(),
     router = useRouter();
   const [id] = useState(() => recipeId || newUuid());
   const [name, setName] = useState("");
@@ -159,12 +165,10 @@ function RecipeEditor({ owner, recipeId }: { owner: string; recipeId: string }) 
   const grams = items.reduce((sum, i) => sum + i.grams, 0);
   const per = (v: number) => Math.round((v / servings) * 10) / 10;
   const score = items.length ? healthScore(items) : null;
-  const teal = hubInk("teal", dark);
-  const inputStyle = [s.input, { backgroundColor: c.bg200, color: c.text100, borderColor: c.bg300 }];
+  const inputStyle = [s.input, { backgroundColor: c.bg200, color: c.text100 }];
   return (
     <NScreen
       title={recipeId ? tx("რეცეპტის რედაქტირება", "Edit recipe") : tx("ახალი რეცეპტი", "New recipe")}
-      subtitle={tx("ინგრედიენტები → პორციები → ერთი შეხებით ჩაწერა", "Ingredients → servings → one-tap logging")}
       onBack={back}
       footer={<NButton label={busy ? tx("ინახება…", "Saving…") : tx("რეცეპტის შენახვა", "Save recipe")} disabled={busy || loading || !items.length || !name.trim()} onPress={() => void save()} />}
     >
@@ -178,35 +182,41 @@ function RecipeEditor({ owner, recipeId }: { owner: string; recipeId: string }) 
               <TextInput accessibilityLabel={tx("რეცეპტის სახელი", "Recipe name")} placeholder={tx("მაგ. ჩაქაფული, ქათმის სუპი", "e.g. chakapuli, chicken soup")} placeholderTextColor={c.text300} value={name} onChangeText={setName} maxLength={120} style={[inputStyle, { fontSize: 17, fontFamily: "NotoSansGeorgian_600SemiBold" }]} />
               <View style={s.row}>
                 <Text style={[hubText.body, { color: c.text200, flex: 1 }]}>{tx("რამდენ პორციას გამოდის?", "How many servings does it make?")}</Text>
-                <Pressable accessibilityRole="button" accessibilityLabel={tx("ნაკლები პორცია", "Fewer servings")} disabled={servings <= 1} onPress={() => setServings((n) => Math.max(1, n - 1))} style={[s.round, { backgroundColor: c.bg200, opacity: servings <= 1 ? 0.4 : 1 }]}>
-                  <Minus size={17} color={c.text100} />
-                </Pressable>
-                <Text accessibilityLiveRegion="polite" style={[hubText.value, { color: c.text100, minWidth: 32, textAlign: "center", fontSize: 18 }]}>{servings}</Text>
-                <Pressable accessibilityRole="button" accessibilityLabel={tx("მეტი პორცია", "More servings")} disabled={servings >= 50} onPress={() => setServings((n) => Math.min(50, n + 1))} style={[s.round, { backgroundColor: c.bg200, opacity: servings >= 50 ? 0.4 : 1 }]}>
-                  <Plus size={17} color={c.text100} />
-                </Pressable>
+                <NStepper
+                  value={String(servings)}
+                  width={32}
+                  minusLabel={tx("ნაკლები პორცია", "Fewer servings")}
+                  plusLabel={tx("მეტი პორცია", "More servings")}
+                  minusDisabled={servings <= 1}
+                  plusDisabled={servings >= 50}
+                  onMinus={() => setServings((n) => Math.max(1, n - 1))}
+                  onPlus={() => setServings((n) => Math.min(50, n + 1))}
+                />
               </View>
             </HubCard>
           </HubSection>
 
           {items.length > 0 && (
             <HubSection title={tx("ერთი პორცია", "One serving")}>
-              <HubCard tone="spotlight">
+              <LinearGradient colors={BRAND.gradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={s.hero}>
+                <View pointerEvents="none" style={[s.glow, { backgroundColor: BRAND.glow }]} />
                 <View style={s.row}>
                   <Text style={{ fontFamily: "NotoSansGeorgian_700Bold", fontSize: 34, lineHeight: 42, color: "#FFFFFF", flex: 1 }}>
                     {Math.round(total.calories / servings)}
-                    <Text style={{ fontSize: 14, fontFamily: "NotoSansGeorgian_400Regular", color: "#B6D9D3" }}>{tx(" კკალ", " kcal")} · {Math.round(grams / servings)} {tx("გ", "g")}</Text>
+                    <Text style={{ fontSize: 14, fontFamily: "NotoSansGeorgian_400Regular", color: BRAND.onHero }}>{tx(" კკალ", " kcal")} · {Math.round(grams / servings)} {tx("გ", "g")}</Text>
                   </Text>
-                  <ScoreBadge score={score} />
+                  <View style={{ backgroundColor: "#FFFFFF", borderRadius: 11 }}>
+                    <ScoreBadge score={score} />
+                  </View>
                 </View>
-                <MacroLine protein={per(total.protein)} carbs={per(total.carbs)} fat={per(total.fat)} color="#D1E7E3" />
-                <Text style={[hubText.caption, { color: "#B6D9D3" }]}>
+                <MacroLine protein={per(total.protein)} carbs={per(total.carbs)} fat={per(total.fat)} color="#FFFFFF" />
+                <Text style={[hubText.caption, { color: BRAND.onHero }]}>
                   {tx(
                     `მთლიანი: ${total.calories} კკალ · ${Math.round(grams)} გ · ${items.length} ინგრედიენტი`,
                     `Total: ${total.calories} kcal · ${Math.round(grams)} g · ${items.length} ${items.length === 1 ? "ingredient" : "ingredients"}`,
                   )}
                 </Text>
-              </HubCard>
+              </LinearGradient>
               {score != null && <MedicalSourcesLink sourceIds={["mealQuality"]} />}
             </HubSection>
           )}
@@ -215,7 +225,9 @@ function RecipeEditor({ owner, recipeId }: { owner: string; recipeId: string }) 
             {items.length === 0 && (
               <HubCard>
                 <View style={[s.row, { justifyContent: "center" }]}>
-                  <ChefHat size={30} color={teal} />
+                  <View style={[s.bigTile, { backgroundColor: M.inkSoft }]}>
+                    <ChefHat size={26} color={M.ink} strokeWidth={1.8} />
+                  </View>
                 </View>
                 <Text style={[hubText.body, { color: c.text200, textAlign: "center" }]}>{tx("დაამატე ყველაფერი, რაც ქვაბში ჩადის — წონა მოუმზადებელი სახით. ზეთსაც ნუ დაივიწყებ.", "Add everything that goes into the pot — weights uncooked. Don't forget the oil.")}</Text>
               </HubCard>
@@ -255,8 +267,8 @@ function RecipeEditor({ owner, recipeId }: { owner: string; recipeId: string }) 
                 const I = Icon as typeof Search;
                 return (
                   <Pressable key={key as string} accessibilityRole="button" accessibilityLabel={tx(`ინგრედიენტის დამატება: ${label}`, `Add ingredient: ${label}`)} disabled={items.length >= 40} onPress={() => { setSheetError(""); setDescribeNotice(""); setSheet(key as Sheet); }} style={[s.add, { backgroundColor: c.surface }]}>
-                    <View style={[s.tile, { backgroundColor: hubTint(teal, dark) }]}>
-                      <I size={18} color={teal} />
+                    <View style={[s.tile, { backgroundColor: M.inkSoft }]}>
+                      <I size={18} color={M.ink} />
                     </View>
                     <Text style={[hubText.link, { color: c.text100 }]}>{label as string}</Text>
                   </Pressable>
@@ -272,52 +284,62 @@ function RecipeEditor({ owner, recipeId }: { owner: string; recipeId: string }) 
       <DescribeMealModal visible={sheet === "describe"} owner={owner} busy={busy} error={sheetError} consentNotice={describeNotice} onClose={() => setSheet(null)} onSubmit={(text) => void describe(text)} />
       <Modal visible={sheet === "manual"} {...APP_MODAL_PROPS} onRequestClose={() => setSheet(null)}>
         <Pressable accessibilityRole="button" accessibilityLabel={tx("დახურვა", "Close")} onPress={() => setSheet(null)} style={[StyleSheet.absoluteFill, { backgroundColor: APP_MODAL_OVERLAY }]} />
-        <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={{ flex: 1, justifyContent: "flex-end" }} pointerEvents="box-none">
-          <View accessibilityViewIsModal style={[s.sheet, { backgroundColor: c.surface }]}>
-            <Text style={[hubText.cardTitle, { color: c.text100, fontSize: 17 }]}>{tx("ინგრედიენტი ხელით", "Add ingredient manually")}</Text>
-            <Text style={[hubText.caption, { color: c.text300 }]}>{tx("მთლიანი რაოდენობის მნიშვნელობები (არა 100 გრამის).", "Values for the whole amount (not per 100 g).")}</Text>
-            <TextInput accessibilityLabel={tx("სახელი", "Name")} placeholder={tx("სახელი", "Name")} placeholderTextColor={c.text300} value={manual.name} onChangeText={(v) => setManual({ ...manual, name: v })} maxLength={120} style={inputStyle} />
-            <View style={s.fieldGrid}>
-              {(
-                [
-                  ["grams", tx("გრამი", "Grams")],
-                  ["calories", tx("კკალ", "kcal")],
-                  ["protein", tx("ცილა გ", "Protein g")],
-                  ["carbs", tx("ნახშ. გ", "Carbs g")],
-                  ["fat", tx("ცხიმი გ", "Fat g")],
-                ] as const
-              ).map(([key, label]) => (
-                <View key={key} style={{ width: "31%", flexGrow: 1, gap: 4 }}>
-                  <Text style={[hubText.small, { color: c.text200 }]}>{label}</Text>
-                  <TextInput accessibilityLabel={label} value={manual[key]} onChangeText={(v) => setManual({ ...manual, [key]: v })} keyboardType="decimal-pad" maxLength={8} style={inputStyle} />
-                </View>
-              ))}
-            </View>
-            {!!sheetError && <Text accessibilityRole="alert" style={[hubText.body, { color: c.danger }]}>{sheetError}</Text>}
-            <NButton label={tx("დამატება", "Add")} onPress={addManual} />
-            <NButton secondary label={tx("გაუქმება", "Cancel")} onPress={() => setSheet(null)} />
+        <ManualSheet>
+          <Text style={[hubText.cardTitle, { color: c.text100, fontSize: 17 }]}>{tx("ინგრედიენტი ხელით", "Add ingredient manually")}</Text>
+          <Text style={[hubText.caption, { color: c.text300 }]}>{tx("მთლიანი რაოდენობის მნიშვნელობები (არა 100 გრამის).", "Values for the whole amount (not per 100 g).")}</Text>
+          <TextInput accessibilityLabel={tx("სახელი", "Name")} placeholder={tx("სახელი", "Name")} placeholderTextColor={c.text300} value={manual.name} onChangeText={(v) => setManual({ ...manual, name: v })} maxLength={120} style={inputStyle} />
+          <View style={s.fieldGrid}>
+            {(
+              [
+                ["grams", tx("გრამი", "Grams")],
+                ["calories", tx("კკალ", "kcal")],
+                ["protein", tx("ცილა გ", "Protein g")],
+                ["carbs", tx("ნახშ. გ", "Carbs g")],
+                ["fat", tx("ცხიმი გ", "Fat g")],
+              ] as const
+            ).map(([key, label]) => (
+              <View key={key} style={{ width: "31%", flexGrow: 1, gap: 4 }}>
+                <Text style={[hubText.small, { color: c.text200 }]}>{label}</Text>
+                <TextInput accessibilityLabel={label} value={manual[key]} onChangeText={(v) => setManual({ ...manual, [key]: v })} keyboardType="decimal-pad" maxLength={8} style={inputStyle} />
+              </View>
+            ))}
           </View>
-        </KeyboardAvoidingView>
-      </Modal>
-      <Modal visible={leave} {...APP_MODAL_PROPS} onRequestClose={() => setLeave(false)}>
-        <View style={{ flex: 1, justifyContent: "center", padding: 24 }}>
-          <View style={[StyleSheet.absoluteFill, { backgroundColor: APP_MODAL_OVERLAY }]} />
-          <View accessibilityViewIsModal style={{ backgroundColor: c.surface, borderRadius: 24, padding: 24, gap: 14 }}>
-            <Text style={[hubText.cardTitle, { color: c.text100, fontSize: 18 }]}>{tx("გამოსვლა შენახვის გარეშე?", "Leave without saving?")}</Text>
-            <Text style={[hubText.body, { color: c.text200 }]}>{tx("რეცეპტის ცვლილებები დაიკარგება.", "Your recipe changes will be lost.")}</Text>
-            <NButton secondary label={tx("დარჩენა", "Stay")} onPress={() => setLeave(false)} />
-            <NButton
-              label={tx("გამოსვლა", "Leave")}
-              onPress={() => {
-                setLeave(false);
-                if (router.canGoBack()) router.back();
-                else router.replace("/nutrition/recipes");
-              }}
-            />
+          {!!sheetError && <Text accessibilityRole="alert" style={[hubText.body, { color: c.danger }]}>{sheetError}</Text>}
+          <View style={{ flexDirection: "row", gap: 10 }}>
+            <NButton secondary label={tx("გაუქმება", "Cancel")} onPress={() => setSheet(null)} style={{ flex: 1 }} />
+            <NButton label={tx("დამატება", "Add")} onPress={addManual} style={{ flex: 1 }} />
           </View>
-        </View>
+        </ManualSheet>
       </Modal>
+      <NConfirm
+        visible={leave}
+        title={tx("გამოსვლა შენახვის გარეშე?", "Leave without saving?")}
+        message={tx("რეცეპტის ცვლილებები დაიკარგება.", "Your recipe changes will be lost.")}
+        cancelLabel={tx("დარჩენა", "Stay")}
+        confirmLabel={tx("გამოსვლა", "Leave")}
+        danger
+        onClose={() => setLeave(false)}
+        onConfirm={() => {
+          setLeave(false);
+          if (router.canGoBack()) router.back();
+          else router.replace("/nutrition/recipes");
+        }}
+      />
     </NScreen>
+  );
+}
+
+/** The manual-ingredient sheet: its bottom padding follows the keyboard (KeyboardFormShell's measured pad). */
+function ManualSheet({ children }: { children: React.ReactNode }) {
+  const c = useThemeColors();
+  const { frameRef, onLayout, pad } = useKeyboardPad(34);
+  const padStyle = useAnimatedStyle(() => ({ paddingBottom: pad.value }));
+  return (
+    <View ref={frameRef} onLayout={onLayout} style={{ flex: 1, justifyContent: "flex-end" }} pointerEvents="box-none">
+      <Animated.View accessibilityViewIsModal style={[s.sheet, { backgroundColor: c.surface }, padStyle]}>
+        {children}
+      </Animated.View>
+    </View>
   );
 }
 
@@ -341,13 +363,16 @@ function GramsField({ grams, onGrams }: { grams: number; onGrams: (g: number) =>
 
 const s = StyleSheet.create({
   row: { flexDirection: "row", alignItems: "center", gap: 10 },
-  round: { width: 44, height: 44, borderRadius: 22, alignItems: "center", justifyContent: "center" },
+  round: { width: 40, height: 44, alignItems: "center", justifyContent: "center", marginRight: -8 },
+  hero: { borderRadius: HUB.cardRadius, padding: 16, gap: 8, overflow: "hidden" },
+  glow: { position: "absolute", width: 180, height: 180, borderRadius: 90, right: -60, top: -80 },
+  bigTile: { width: 52, height: 52, borderRadius: 17, alignItems: "center", justifyContent: "center" },
   step: { minWidth: 56, minHeight: 44, borderRadius: 12, alignItems: "center", justifyContent: "center", paddingHorizontal: 10 },
-  input: { borderRadius: 14, borderWidth: 1, paddingHorizontal: 14, paddingVertical: 10, fontSize: 16, minHeight: 48, fontFamily: "NotoSansGeorgian_400Regular" },
+  input: { borderRadius: 14, paddingHorizontal: 14, paddingVertical: 10, fontSize: 16, minHeight: 48, fontFamily: "NotoSansGeorgian_400Regular" },
   addGrid: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
   add: { width: "48%", flexGrow: 1, minHeight: 60, borderRadius: HUB.cardRadius, flexDirection: "row", alignItems: "center", gap: 10, padding: 10 },
   tile: { width: 38, height: 38, borderRadius: 12, alignItems: "center", justifyContent: "center" },
-  sheet: { borderTopLeftRadius: 26, borderTopRightRadius: 26, padding: 20, paddingBottom: 34, gap: 12 },
+  sheet: { borderTopLeftRadius: 26, borderTopRightRadius: 26, padding: 20, gap: 12 },
   fieldGrid: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
   gramsBox: { flex: 1, minHeight: 44, borderRadius: 12, flexDirection: "row", alignItems: "center", paddingHorizontal: 12, gap: 4 },
   gramsInput: { flex: 1, fontSize: 16, minHeight: 44, fontFamily: "NotoSansGeorgian_400Regular" },

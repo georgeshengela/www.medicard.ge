@@ -17,7 +17,7 @@ import {
 import { HomeSectionHeading } from "@/components/home/HomeSectionHeading";
 import { healthScoreLabel } from "@/lib/nutrition";
 import type { LogMethod } from "./LogMethodSheet";
-import { useIsDark, useThemeColors } from "@/theme/colors";
+import { useIsDark, useModuleTone, useThemeColors } from "@/theme/colors";
 import { useFeature } from "@/lib/featureFlags";
 import { HUB, hubInk, hubText, hubTint, type HubInk } from "@/theme/hub";
 import { tx } from '@/i18n/locale';
@@ -45,6 +45,9 @@ export function QuickLogTiles({ tiles = PRIMARY_LOG_TILES, columns = 4, onPick }
   const c = useThemeColors();
   const dark = useIsDark();
   const router = useRouter();
+  // Inside MEDIFOOD the brand ink is the module's emerald (the teal hub ink follows the women's rose).
+  const moduleTone = useModuleTone();
+  const inkOf = (ink: HubInk) => (ink === "teal" && moduleTone ? c.primary100 : hubInk(ink, dark));
   const wide = columns === 2;
   // While voice is paused from admin the describe tile stops promising a microphone.
   const voice = useFeature("voice");
@@ -54,7 +57,7 @@ export function QuickLogTiles({ tiles = PRIMARY_LOG_TILES, columns = 4, onPick }
   return (
     <View style={s.grid}>
       {shown.map((tile) => {
-        const ink = hubInk(tile.ink, dark);
+        const ink = inkOf(tile.ink);
         return (
           <Pressable
             key={tile.method}
@@ -106,7 +109,8 @@ export function MacroLine({ protein, carbs, fat, color }: { protein: number; car
 /** A hub section: title outside the card, optional right link, then the content. */
 export function HubSection({ title, linkLabel, onLink, children, first = false }: { title: string; linkLabel?: string; onLink?: () => void; children: React.ReactNode; first?: boolean }) {
   return (
-    <View style={{ marginTop: first ? 0 : HUB.sectionGap - 20, gap: HUB.headingGap }}>
+    // The heading carries its own bottom margin (HUB.headingGap); no second gap here.
+    <View style={{ marginTop: first ? 0 : HUB.sectionGap - 20 }}>
       <HomeSectionHeading title={title} linkLabel={linkLabel} onLink={onLink} />
       {children}
     </View>
@@ -122,7 +126,7 @@ export function HubCard({ children, style, tone = "surface" }: { children: React
 const s = StyleSheet.create({
   grid: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
   tile: { borderRadius: 16, alignItems: "center", justifyContent: "center", gap: 8 },
-  tileNarrow: { flex: 1, minWidth: 0, paddingVertical: 12, paddingHorizontal: 6, minHeight: 84 },
+  tileNarrow: { flex: 1, minWidth: 0, paddingVertical: 10, paddingHorizontal: 4, minHeight: 78 },
   tileWide: { width: "48%", flexGrow: 1, flexDirection: "row", padding: 12, minHeight: 66 },
   icon: { width: HUB.tile, height: HUB.tile, borderRadius: HUB.tileRadius, alignItems: "center", justifyContent: "center" },
   badge: { flexDirection: "row", alignItems: "center", gap: 5, paddingHorizontal: 9, borderRadius: 10, alignSelf: "flex-start" },

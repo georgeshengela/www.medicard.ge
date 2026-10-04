@@ -1,5 +1,5 @@
-import { brandHex } from '@/theme/brandTone';
 import React, { useEffect, useState } from "react";
+import { useMedifood } from "./ProgramUI";
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Copy } from "lucide-react-native";
@@ -7,7 +7,7 @@ import { APP_MODAL_OVERLAY, APP_MODAL_PROPS, Modal } from "@/components/ui/appMo
 import { foodTotals, localDay, mealLabels, shiftDay, type Meal } from "@/lib/nutrition";
 import { nutritionDateLabel } from "@/lib/nutritionProgram";
 import { useIsDark, useThemeColors } from "@/theme/colors";
-import { hubInk, hubText, hubTint } from "@/theme/hub";
+import { hubText, hubTint } from "@/theme/hub";
 import { tx } from '@/i18n/locale';
 
 /**
@@ -30,6 +30,7 @@ export function CopyMealsSheet({
   const c = useThemeColors(),
     dark = useIsDark(),
     safe = useSafeAreaInsets();
+  const M = useMedifood();
   const today = localDay();
   const source = meals?.[0]?.date || today;
   const [date, setDate] = useState(today);
@@ -44,7 +45,7 @@ export function CopyMealsSheet({
   const single = meals.length === 1;
   const days = Array.from({ length: 7 }, (_, i) => shiftDay(today, -i));
   const t = foodTotals(meals.flatMap((m) => m.items));
-  const teal = hubInk("teal", dark);
+  const teal = M.ink;
   const chip = (selected: boolean) => [s.chip, { backgroundColor: selected ? hubTint(teal, dark) : c.bg200, borderColor: selected ? teal : "transparent" }];
   return (
     <Modal visible {...APP_MODAL_PROPS} onRequestClose={onClose}>
@@ -84,8 +85,8 @@ export function CopyMealsSheet({
             </>
           )}
           {!!error && <Text accessibilityRole="alert" style={[hubText.body, { color: c.danger }]}>{error}</Text>}
-          <Pressable accessibilityRole="button" disabled={busy} onPress={() => onCopy(date, type || undefined)} style={[s.primary, { opacity: busy ? 0.6 : 1, backgroundColor: brandHex("#0F766E") }]}>
-            {busy ? <ActivityIndicator color="#FFFFFF" /> : <Text style={[hubText.link, { color: "#FFFFFF", fontSize: 15 }]}>{date === today ? tx("დღევანდელში დამატება", "Add to today") : tx(`${nutritionDateLabel(date)}-ში დამატება`, `Add to ${nutritionDateLabel(date)}`)}</Text>}
+          <Pressable accessibilityRole="button" disabled={busy} onPress={() => onCopy(date, type || undefined)} style={[s.primary, { opacity: busy ? 0.6 : 1, backgroundColor: M.ink }]}>
+            {busy ? <ActivityIndicator color={M.onInk} /> : <Text style={[hubText.link, { color: M.onInk, fontSize: 15 }]}>{date === today ? tx("დღევანდელში დამატება", "Add to today") : tx(`${nutritionDateLabel(date)}-ში დამატება`, `Add to ${nutritionDateLabel(date)}`)}</Text>}
           </Pressable>
           <Pressable accessibilityRole="button" onPress={onClose} style={[s.secondary, { backgroundColor: c.bg200 }]}>
             <Text style={[hubText.link, { color: c.text100 }]}>{tx("გაუქმება", "Cancel")}</Text>
@@ -100,6 +101,6 @@ const s = StyleSheet.create({
   row: { flexDirection: "row", alignItems: "center", gap: 10 },
   wrap: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
   chip: { minHeight: 40, paddingHorizontal: 13, borderRadius: 12, borderWidth: 1.5, alignItems: "center", justifyContent: "center" },
-  primary: { minHeight: 50, borderRadius: 16, backgroundColor: "#0F766E", alignItems: "center", justifyContent: "center", marginTop: 4 },
+  primary: { minHeight: 50, borderRadius: 16, alignItems: "center", justifyContent: "center", marginTop: 4 },
   secondary: { minHeight: 46, borderRadius: 16, alignItems: "center", justifyContent: "center" },
 });

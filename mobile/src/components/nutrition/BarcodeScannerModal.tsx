@@ -1,4 +1,3 @@
-import { brandHex } from '@/theme/brandTone';
 import React, { useEffect, useRef, useState } from "react";
 import { ActivityIndicator, AppState, Keyboard, KeyboardAvoidingView, Platform, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -99,14 +98,14 @@ export function BarcodeScannerModal({
             {(["tl", "tr", "bl", "br"] as const).map((corner) => (
               <View key={corner} style={[s.corner, s[corner]]} />
             ))}
-            {busy && <ActivityIndicator color={brandHex('#5EEAD4')} size="large" />}
+            {busy && <ActivityIndicator color="#6EE7B7" size="large" />}
           </View>
           <Text style={[txt, s.hint]}>{busy ? tx("პროდუქტს ვეძებ…", "Looking up the product…") : granted ? tx("მოათავსე შტრიხკოდი ჩარჩოში", "Place the barcode inside the frame") : tx("კამერა გამორთულია — ჩართე ან აკრიფე კოდი", "Camera is off — turn it on or type the code")}</Text>
         </View>
         <View style={[s.bottom, { paddingBottom: Math.max(safe.bottom, 16) }]}>
           {!!error && <Text accessibilityRole="alert" style={[txt, { color: "#FCA5A5", fontSize: 13, lineHeight: 20 }]}>{error}</Text>}
           {!granted && (
-            <Pressable accessibilityRole="button" onPress={() => void ask()} style={[s.primary, { backgroundColor: brandHex('#0D9488') }]}>
+            <Pressable accessibilityRole="button" onPress={() => void ask()} style={[s.primary, { backgroundColor: '#047857' }]}>
               <ScanBarcode size={18} color="#FFFFFF" />
               <Text style={[hubText.link, { color: "#FFFFFF" }]}>{asked && permission && !permission.canAskAgain ? tx("ნებართვა პარამეტრებში ჩართე", "Allow it in Settings") : tx("კამერის ჩართვა", "Turn on camera")}</Text>
             </Pressable>
@@ -123,8 +122,8 @@ export function BarcodeScannerModal({
               onSubmitEditing={submitManual}
               style={[s.input, { backgroundColor: "#1F2937", color: "#FFFFFF", borderColor: "#374151" }]}
             />
-            <Pressable accessibilityRole="button" accessibilityLabel={tx("კოდის ძებნა", "Search code")} disabled={manual.length < 6 || busy} onPress={submitManual} style={[s.go, { backgroundColor: c.primary200, opacity: manual.length < 6 || busy ? 0.45 : 1 }]}>
-              <Text style={[hubText.link, { color: brandHex('#042F2E') }]}>{tx("ძებნა", "Search")}</Text>
+            <Pressable accessibilityRole="button" accessibilityLabel={tx("კოდის ძებნა", "Search code")} disabled={manual.length < 6 || busy} onPress={submitManual} style={[s.go, { backgroundColor: '#6EE7B7', opacity: manual.length < 6 || busy ? 0.45 : 1 }]}>
+              <Text style={[hubText.link, { color: '#022C22' }]}>{tx("ძებნა", "Search")}</Text>
             </Pressable>
           </View>
           <Text style={[txt, { fontSize: 11, lineHeight: 17, color: "#9CA3AF" }]}>{tx("კამერის კადრი ტელეფონიდან არ იგზავნება. მხოლოდ კოდი მოწმდება Open Food Facts-ის ბაზაში.", "The camera image never leaves your phone. Only the code is checked in the Open Food Facts database.")}</Text>
@@ -139,7 +138,7 @@ const s = StyleSheet.create({
   round: { width: 44, height: 44, borderRadius: 22, backgroundColor: "rgba(17,24,39,0.7)", alignItems: "center", justifyContent: "center" },
   center: { flex: 1, alignItems: "center", justifyContent: "center", gap: 18 },
   frame: { width: 260, height: 170, alignItems: "center", justifyContent: "center" },
-  corner: { position: "absolute", width: 30, height: 30, borderColor: "#5EEAD4" },
+  corner: { position: "absolute", width: 30, height: 30, borderColor: "#6EE7B7" },
   tl: { top: 0, left: 0, borderTopWidth: 3, borderLeftWidth: 3, borderTopLeftRadius: 14 },
   tr: { top: 0, right: 0, borderTopWidth: 3, borderRightWidth: 3, borderTopRightRadius: 14 },
   bl: { bottom: 0, left: 0, borderBottomWidth: 3, borderLeftWidth: 3, borderBottomLeftRadius: 14 },

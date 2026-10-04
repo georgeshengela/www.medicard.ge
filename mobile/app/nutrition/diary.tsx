@@ -1,4 +1,3 @@
-import { brandHex } from '@/theme/brandTone';
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
@@ -6,9 +5,7 @@ import {
   BackHandler,
   Image,
   Keyboard,
-  KeyboardAvoidingView,
   Linking,
-  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -22,7 +19,6 @@ import * as ImagePicker from "expo-image-picker";
 import { requestPhotoLibraryAccess } from "@/lib/photoLibraryAccess";
 import * as Haptics from "expo-haptics";
 import {
-  ArrowLeft,
   Bookmark,
   BookmarkCheck,
   ChevronLeft,
@@ -31,11 +27,8 @@ import {
   Copy,
   CopyPlus,
   Info,
-  Leaf,
   Plus,
   Sparkles,
-  Trash2,
-  Utensils,
   Wand2,
   X,
 } from "lucide-react-native";
@@ -76,8 +69,13 @@ import {
   type SavedFood,
 } from "@/lib/nutrition";
 import { useThemeColors } from "@/theme/colors";
-import { hubText } from "@/theme/hub";
-import { APP_MODAL_PROPS, APP_MODAL_OVERLAY, Modal } from "@/components/ui/appModal";
+import { HUB, hubText } from "@/theme/hub";
+import { ModuleHeaderButton, ModuleStackHeader } from "@/components/brand/ModuleHeader";
+import { KeyboardFormShell } from "@/components/ui/KeyboardFormShell";
+import { NConfirm, NSegment, useMedifood, withMedifood } from "@/components/nutrition/ProgramUI";
+import { SwipeDeleteRow, SwipeGroup } from "@/components/records/SwipeDeleteRow";
+import { UndoToast } from "@/components/records/UndoToast";
+import { useUndoDelete } from "@/components/records/useUndoDelete";
 import { useAuth } from "@/store/AuthContext";
 import { useAccountQuery } from "@/hooks/useAccountQuery";
 import { accountKey, FRESH, queryClient } from "@/lib/queryClient";
@@ -100,12 +98,13 @@ function refreshNutritionDashboard() {
 type Photo = { uri: string; name: string; mimeType: string; size?: number };
 type Sheet = null | "methods" | "barcode" | "search" | "saved" | "describe";
 
-export default function Nutrition() {
+export default withMedifood(function NutritionDiary() {
   const { user } = useAuth();
   return <NutritionScreen key={user?.id || "guest"} owner={user?.id || ""} />;
-}
+});
 function NutritionScreen({ owner }: { owner: string }) {
   const c = useThemeColors(),
+    M = useMedifood(),
     safe = useSafeAreaInsets(),
     router = useRouter();
   const params = useLocalSearchParams<{ method?: string }>();
@@ -144,7 +143,6 @@ function NutritionScreen({ owner }: { owner: string }) {
   const [editing, setEditing] = useState<number | null>(null),
     [fields, setFields] = useState(foodFields());
   const [confirmation, setConfirmation] = useState<{ title: string; message: string; action: () => void } | null>(null);
-  const [keyboardOpen, setKeyboardOpen] = useState(false);
   const [scanning, setScanning] = useState(false);
   const [uncertainty, setUncertainty] = useState<"low" | "medium" | "high" | null>(null);
   const [sheet, setSheet] = useState<Sheet>(null);
@@ -165,14 +163,6 @@ function NutritionScreen({ owner }: { owner: string }) {
     mealBaseline.current = mealEditSnapshot(meal);
     setDraft(meal);
   };
-  useEffect(() => {
-    const show = Keyboard.addListener("keyboardDidShow", () => setKeyboardOpen(true));
-    const hide = Keyboard.addListener("keyboardDidHide", () => setKeyboardOpen(false));
-    return () => {
-      show.remove();
-      hide.remove();
-    };
-  }, []);
   const alive = useRef(true),
     lock = useRef(false);
   useEffect(() => {
@@ -471,18 +461,25 @@ function NutritionScreen({ owner }: { owner: string }) {
       if (alive.current) setSavedItems((s) => ({ ...s, [index]: true }));
       void Haptics.selectionAsync().catch(() => {});
     });
-  const remove = (meal: Meal) =>
-    setConfirmation({
-      title: tx("ჩანაწერის წაშლა?", "Delete this entry?"),
-      message: tx("ეს კვება დღიურიდან წაიშლება.", "This meal will be removed from your diary."),
-      action: () =>
-        void run(async () => {
-          await api.nutrition.remove(meal.id);
-          void removeMealFromHealth(meal.id);
-          patchDayMeals(meal.date, (list) => withoutMeal(list, meal.id));
-          refreshNutritionDashboard();
-        }),
-    });
+  // A swiped-away meal disappears at once; the real delete runs after the 5 s „დაბრუნება“ window.
+  const { held, remove: holdMeal, undo } = useUndoDelete<Meal>((meal) => {
+    void api.nutrition
+      .remove(meal.id)
+      .then(() => {
+        void removeMealFromHealth(meal.id);
+        patchDayMeals(meal.date, (list) => withoutMeal(list, meal.id));
+        refreshNutritionDashboard();
+      })
+      .catch((e) => {
+        if (alive.current) setError((e as Error).message);
+        void queryClient.invalidateQueries({ queryKey: accountKey(...mealsKey(meal.date)) });
+      });
+  });
+  const remove = (meal: Meal) => {
+    if (busy) return;
+    void Haptics.selectionAsync().catch(() => {});
+    holdMeal(meal);
+  };
   /** Copy the chosen meals with fresh ids; a retry after a network error reuses them. */
   const copyIds = useRef<Record<string, string>>({});
   const copyMeals = (date: string, type?: Meal["type"]) =>
@@ -526,377 +523,403 @@ function NutritionScreen({ owner }: { owner: string }) {
       setCopyError("");
       setCopying(previous);
     });
-  const sum = foodTotals(draft?.items || meals.flatMap((m) => m.items));
+  // A meal waiting in the undo window is already gone from the list and the totals.
+  const shown = held ? meals.filter((m) => m.id !== held.id) : meals;
+  const sum = foodTotals(draft?.items || shown.flatMap((m) => m.items));
   const score = draft?.items.length ? healthScore(draft.items) : null;
   const txt = { color: c.text100, fontFamily: "NotoSansGeorgian_400Regular" };
-  const button = (label: string, action: () => void, primary = false, disabled = false, icon?: React.ReactNode) => (
+  const button = (label: string, action: () => void, primary = false, disabled = false, icon?: React.ReactNode, compact = false) => (
     <Pressable
       accessibilityRole="button"
+      accessibilityLabel={label}
       disabled={busy || disabled}
       onPress={action}
-      style={[s.button, { backgroundColor: primary ? brandHex('#0F766E') : c.bg200, opacity: busy || disabled ? 0.5 : 1 }]}
+      style={[s.button, compact && s.buttonCompact, { backgroundColor: primary ? M.ink : c.bg200, opacity: busy || disabled ? 0.5 : 1 }]}
     >
       {icon}
-      <Text style={[txt, { color: primary ? "#fff" : c.text100, fontFamily: "NotoSansGeorgian_600SemiBold" }]}>{label}</Text>
+      <Text style={[txt, { color: primary ? M.onInk : c.text100, fontFamily: primary ? "NotoSansGeorgian_700Bold" : "NotoSansGeorgian_600SemiBold", fontSize: compact ? 14 : 15 }]}>{label}</Text>
     </Pressable>
   );
-  const inputStyle = [s.input, { backgroundColor: c.bg200, color: c.text100, borderColor: c.bg300 }];
+  const fieldStyle = (onCard: boolean) => [s.input, { backgroundColor: onCard ? c.bg200 : c.surface, color: c.text100 }];
+  const today = localDay();
+  const title = !draft
+    ? tx("კვების დღიური", "Food diary")
+    : editing !== null
+      ? tx("საკვების მონაცემები", "Food details")
+      : draft.items.length
+        ? tx("გადაამოწმე და შეინახე", "Review and save")
+        : tx("ახალი ჩანაწერი", "New entry");
+  const footer = busy ? (
+    <View style={[s.row, { minHeight: 50, justifyContent: "center" }]}>
+      <ActivityIndicator color={M.ink} />
+      <Text style={[txt, { fontSize: 14 }]}>{scanning ? tx("მიმდინარეობს შეფასება…", "Estimating…") : tx("მიმდინარეობს…", "Working…")}</Text>
+    </View>
+  ) : editing !== null ? (
+    button(tx("საკვების დადასტურება", "Confirm food"), applyItem, true)
+  ) : draft && !draft.items.length ? (
+    <View style={{ gap: 8 }}>
+      {photo && enabled && button(error ? tx("შეფასების ხელახლა ცდა", "Retry estimate") : photoMode === "label" ? tx("ეტიკეტის წაკითხვა", "Read label") : tx("შეფასების დაწყება", "Start estimate"), () => void analyze(), true)}
+      {!photo && button(tx("როგორ ჩავწეროთ?", "How to log it?"), () => setSheet("methods"), true, false, <Plus size={17} color={M.onInk} />)}
+      {photo && button(tx("სხვა გზა", "Another way"), () => setSheet("methods"))}
+    </View>
+  ) : draft ? (
+    button(tx("დღიურში შენახვა", "Save to diary"), () => void save(), true, !draft.items.length)
+  ) : undefined;
   return (
-    <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={{ flex: 1, backgroundColor: c.bg100, paddingTop: safe.top }}>
-      <View style={s.header}>
-        <Pressable accessibilityLabel={tx("უკან", "Back")} onPress={close} disabled={busy} style={s.icon}>
-          <ArrowLeft color={c.text100} size={22} />
-        </Pressable>
-        <View style={{ flex: 1 }}>
-          <Text style={[txt, s.title]}>{tx("კვების დღიური", "Food diary")}</Text>
-          <Text style={[txt, { fontSize: 12, color: c.text200 }]}>
-            {draft ? (draft.items.length ? tx("გადაამოწმე და შეინახე", "Review and save") : tx("აირჩიე გზა, გადაამოწმე, შეინახე", "Pick a way, review, save")) : tx("შენი კვება, უკეთ გასაგებად", "Understand your eating better")}
-          </Text>
-        </View>
-        <Leaf size={25} color={c.primary100} />
-      </View>
-      <ScrollView
-        ref={scroll}
-        pointerEvents={busy ? "none" : "auto"}
-        keyboardShouldPersistTaps="handled"
-        keyboardDismissMode="on-drag"
-        contentContainerStyle={{ padding: 18, gap: 18, paddingBottom: 24, width: "100%", maxWidth: 640, alignSelf: "center" }}
-      >
-        {!!error && (
-          <View accessibilityRole="alert" style={[s.card, { backgroundColor: c.dangerBg }]}>
-            <Text style={[txt, { color: c.danger }]}>{error}</Text>
-            {!draft && button(tx("ხელახლა ცდა", "Try again"), () => void load())}
-          </View>
-        )}
-        {!!aiDeclined && !error && !!draft && (
-          <AiConsentDeclinedNote busy={busy} onRetry={() => void (aiDeclined === "fix" ? fix() : analyze())} />
-        )}
-        {!!message && !draft && (
-          <Text accessibilityLiveRegion="polite" style={[txt, { color: c.success }]}>{message}</Text>
-        )}
-        {!draft && (
-          <View style={s.row}>
-            <Pressable accessibilityLabel={tx("წინა დღე", "Previous day")} onPress={() => setDay(shiftDay(day, -1))} style={s.icon}>
-              <ChevronLeft color={c.text100} />
-            </Pressable>
-            <Text style={[txt, { flex: 1, textAlign: "center", fontFamily: "NotoSansGeorgian_600SemiBold" }]}>
-              {day === localDay() ? tx("დღეს", "Today") : new Date(day + "T12:00:00").toLocaleDateString(dateLocale(), { day: "numeric", month: "long" })}
-            </Text>
-            <Pressable accessibilityLabel={tx("შემდეგი დღე", "Next day")} disabled={day >= localDay()} onPress={() => setDay(shiftDay(day, 1))} style={[s.icon, { opacity: day >= localDay() ? 0.3 : 1 }]}>
-              <ChevronRight color={c.text100} />
-            </Pressable>
-          </View>
-        )}
-        {draft && editing === null && <NutritionScanSteps stage={draft.items.length ? 1 : 0} />}
-        {draft && draft.items.length > 0 && editing === null && !!explanation && (
-          <View style={[s.row, { alignItems: "flex-start" }]}>
-            {photo && <Image source={{ uri: photo.uri }} style={{ width: 56, height: 56, borderRadius: 14, backgroundColor: c.bg200 }} />}
-            <View style={{ flex: 1, gap: 4 }}>
-              <View style={s.row}>
-                <CircleCheck size={17} color={c.primary100} />
-                <Text style={[txt, { fontFamily: "NotoSansGeorgian_600SemiBold", fontSize: 16 }]}>{tx("შეფასება მზადაა", "Estimate ready")}</Text>
-              </View>
-              <Text style={[txt, { fontSize: 12, lineHeight: 20, color: c.text200 }]}>{tx("გადაამოწმე საკვები და პორცია, შემდეგ შეინახე.", "Check the food and portion, then save.")}</Text>
-            </View>
-          </View>
-        )}
-        {editing === null && (!draft || draft.items.length > 0) && (
-          <View style={[s.card, { backgroundColor: c.surface, borderColor: c.bg300, borderWidth: 1, gap: 6 }]}>
-            <View style={s.row}>
-              <Utensils color={c.primary100} size={21} />
-              <Text style={[txt, { color: c.text200, flex: 1 }]}>{draft ? tx("არჩეული პორცია", "Selected portion") : tx("აღრიცხული ენერგია", "Energy logged")}</Text>
-              <ScoreBadge score={score} />
-            </View>
-            {draft && (
-              <TextInput
-                accessibilityLabel={tx("კერძის სახელი", "Dish name")}
-                placeholder={tx("კერძის სახელი (არასავალდებულო)", "Dish name (optional)")}
-                placeholderTextColor={c.text300}
-                value={draft.title || ""}
-                onChangeText={(title) => setDraft({ ...draft, title })}
-                maxLength={120}
-                style={[txt, { fontSize: 18, fontFamily: "NotoSansGeorgian_600SemiBold", paddingVertical: 4 }]}
-              />
-            )}
-            <Text style={[txt, { fontSize: 40, fontFamily: "NotoSansGeorgian_700Bold", marginVertical: 4 }]}>
-              {sum.calories}
-              <Text style={{ fontSize: 16, fontFamily: "NotoSansGeorgian_400Regular" }}>{tx(" კკალ", " kcal")}</Text>
-            </Text>
-            <View style={[s.row, { justifyContent: "space-between" }]}>
-              {[
-                [tx("ცილა", "Protein"), sum.protein],
-                [tx("ნახშირწყლები", "Carbs"), sum.carbs],
-                [tx("ცხიმი", "Fat"), sum.fat],
-              ].map(([label, value]) => (
-                <View key={label}>
-                  <Text style={[txt, { fontSize: 12, color: c.text200 }]}>{label}</Text>
-                  <Text style={[txt, { fontFamily: "NotoSansGeorgian_600SemiBold", marginTop: 4 }]}>{value} {tx("გ", "g")}</Text>
-                </View>
-              ))}
-            </View>
-            <View style={[s.row, { justifyContent: "space-between", marginTop: 4 }]}>
-              {[
-                [tx("ბოჭკო", "Fiber"), sum.fiber, tx("გ", "g")],
-                [tx("შაქარი", "Sugar"), sum.sugar, tx("გ", "g")],
-                [tx("ნატრიუმი", "Sodium"), sum.sodium != null ? Math.round(sum.sodium) : null, tx("მგ", "mg")],
-              ].map(([label, value, unit]) => (
-                <View key={String(label)}>
-                  <Text style={[txt, { fontSize: 11, color: c.text300 }]}>{label}</Text>
-                  <Text style={[txt, { fontSize: 13, color: value == null ? c.text300 : c.text200, marginTop: 2 }]}>{value == null ? "—" : `${value} ${unit}`}</Text>
-                </View>
-              ))}
-            </View>
-            {score != null && (
-              <>
-                <Text style={[txt, { fontSize: 11, lineHeight: 17, color: c.text300, marginTop: 4 }]}>{tx("ქულა 1–10 MEDICARD-ის საკუთარი მიახლოებითი შეფასებაა, არა სამედიცინო დასკვნა.", "The 1–10 score is MEDICARD's own approximate rating, not a medical assessment.")}</Text>
-                <MedicalSourcesLink sourceIds={["mealQuality"]} />
-              </>
-            )}
-          </View>
-        )}
-        {loading && !draft ? <ActivityIndicator color={c.primary200} /> : null}
-        {!draft && !loading && (
-          <>
-            {meals.length === 0 && !error && (
-              <View style={[s.card, { backgroundColor: c.surface, gap: 14 }]}>
-                <View style={{ alignItems: "center", gap: 6, paddingTop: 6 }}>
-                  <Image
-                    source={EMPTY_ART.diary}
-                    resizeMode="contain"
-                    accessible={false}
-                    accessibilityIgnoresInvertColors
-                    style={{ width: 110, height: 110 }}
-                  />
-                  <Text style={[txt, { fontSize: 19, fontFamily: "NotoSansGeorgian_600SemiBold" }]}>{day === localDay() ? tx("რას მიირთმევ დღეს?", "What are you eating today?") : tx("ამ დღეს ჩანაწერი არ არის", "Nothing logged this day")}</Text>
-                  <Text style={[txt, { textAlign: "center", color: c.text200, lineHeight: 21, fontSize: 13 }]}>
-                    {tx("აირჩიე ერთი გზა. Medi დაითვლის, შენ გადაამოწმებ და შეინახავ.", "Pick one way. Medi does the math, you review and save.")}
-                  </Text>
-                </View>
-                <QuickLogTiles onPick={startWith} />
-                {button(tx("სხვა გზები: გალერეა, ეტიკეტი, შენახული, ხელით", "More ways: gallery, label, saved, manual"), () => { newMeal(false); setTimeout(() => setSheet("methods"), 50); })}
-                {day === localDay() && button(tx("გუშინდელი კვების გამეორება", "Repeat yesterday's meals"), () => void repeatYesterday(), false, false, <CopyPlus size={16} color={c.text100} />)}
+    <>
+      <Stack.Screen options={{ gestureEnabled: !draft && !busy }} />
+      <SwipeGroup>
+        <KeyboardFormShell
+          background={c.bg100}
+          scrollRef={scroll}
+          header={
+            <ModuleStackHeader
+              module="food"
+              subtitle={title}
+              onBack={close}
+              right={!draft ? <ModuleHeaderButton label={tx("კვების დამატება", "Add meal")} icon={Plus} onPress={() => newMeal(true)} /> : undefined}
+            />
+          }
+          contentStyle={{ paddingTop: 4, paddingHorizontal: HUB.gutter, gap: 16, width: "100%", maxWidth: 680, alignSelf: "center" }}
+          footer={footer ? <View style={{ width: "100%", maxWidth: 640, alignSelf: "center" }}>{footer}</View> : undefined}
+        >
+          <View pointerEvents={busy ? "none" : "auto"} style={{ gap: 16 }}>
+            {!!error && (
+              <View accessibilityRole="alert" style={[s.card, { backgroundColor: c.dangerBg, gap: 10, padding: 14 }]}>
+                <Text style={[txt, { color: c.danger, fontSize: 14, lineHeight: 21 }]}>{error}</Text>
+                {!draft && button(tx("ხელახლა ცდა", "Try again"), () => void load(), false, false, undefined, true)}
               </View>
             )}
-            {meals.length > 0 && day !== localDay() &&
-              button(tx("ამ დღის კოპირება", "Copy this day"), () => { setCopyError(""); setCopying(meals); }, false, false, <CopyPlus size={16} color={c.text100} />)}
-            {(["breakfast", "lunch", "dinner", "snack"] as const)
-              .filter((type) => meals.some((m) => m.type === type))
-              .map((type) => (
-                <View key={type} style={{ gap: 8 }}>
-                  <View style={[s.row, { paddingHorizontal: 4 }]}>
-                    <Text style={[txt, { fontFamily: "NotoSansGeorgian_600SemiBold", fontSize: 15, flex: 1 }]}>{mealLabels[type]}</Text>
-                    <Text style={[txt, { fontSize: 12, color: c.text300 }]}>{foodTotals(meals.filter((m) => m.type === type).flatMap((m) => m.items)).calories} {tx("კკალ", "kcal")}</Text>
-                  </View>
-                  {meals
-                    .filter((m) => m.type === type)
-                    .map((meal) => {
-                      const mealScore = meal.healthScore ?? healthScore(meal.items);
-                      const t = foodTotals(meal.items);
-                      return (
-                        <Pressable
-                          key={meal.id}
-                          accessibilityRole="button"
-                          accessibilityLabel={tx(`${meal.title || meal.items.map((i) => i.name).join(", ")} · ${t.calories} კკალ · რედაქტირება`, `${meal.title || meal.items.map((i) => i.name).join(", ")} · ${t.calories} kcal · Edit`)}
-                          onPress={() => {
-                            openMeal(meal);
-                            setEditing(null);
-                            resetResult();
-                          }}
-                          style={[s.card, { backgroundColor: c.surface, gap: 8 }]}
-                        >
-                          <View style={[s.row, { alignItems: "flex-start" }]}>
-                            <View style={{ flex: 1, minWidth: 0, gap: 3 }}>
-                              <Text numberOfLines={2} style={[txt, { fontSize: 16, fontFamily: "NotoSansGeorgian_600SemiBold", lineHeight: 22 }]}>{meal.title || meal.items.map((i) => i.name).join(" · ")}</Text>
-                              {!!meal.title && <Text numberOfLines={2} style={[txt, { fontSize: 12, color: c.text300, lineHeight: 17 }]}>{meal.items.map((i) => i.name).join(" · ")}</Text>}
-                            </View>
-                            <Text style={[txt, { fontSize: 18, fontFamily: "NotoSansGeorgian_700Bold" }]}>{t.calories}<Text style={{ fontSize: 11, color: c.text300, fontFamily: "NotoSansGeorgian_400Regular" }}>{tx(" კკალ", " kcal")}</Text></Text>
-                          </View>
-                          <View style={s.row}>
-                            <View style={{ flex: 1, gap: 4 }}>
-                              <MacroLine protein={t.protein} carbs={t.carbs} fat={t.fat} />
-                              <Text style={[txt, { fontSize: 11, color: c.text300 }]}>{sourceLabels[meal.source] || sourceLabels.manual} · {tx("შეეხე რედაქტირებისთვის", "Tap to edit")}</Text>
-                            </View>
-                            <ScoreBadge score={mealScore} size="sm" />
-                            <Pressable accessibilityRole="button" accessibilityLabel={tx("კვების კოპირება", "Copy meal")} onPress={() => { setCopyError(""); setCopying([meal]); }} disabled={busy} style={[s.icon, { marginRight: -12 }]}>
-                              <Copy size={18} color={c.text300} />
-                            </Pressable>
-                            <Pressable accessibilityRole="button" accessibilityLabel={tx("კვების წაშლა", "Delete meal")} onPress={() => remove(meal)} disabled={busy} style={[s.icon, { marginRight: -10 }]}>
-                              <Trash2 size={18} color={c.text300} />
-                            </Pressable>
-                          </View>
-                        </Pressable>
-                      );
-                    })}
-                </View>
-              ))}
-            {meals.length > 0 && (
-              <View style={{ paddingHorizontal: 4 }}>
-                <Text style={[txt, { fontSize: 11, lineHeight: 17, color: c.text300 }]}>{tx("ქულა 1–10 MEDICARD-ის საკუთარი მიახლოებითი შეფასებაა, არა სამედიცინო დასკვნა.", "The 1–10 score is MEDICARD's own approximate rating, not a medical assessment.")}</Text>
-                <MedicalSourcesLink sourceIds={["mealQuality"]} />
+            {!!aiDeclined && !error && !!draft && (
+              <AiConsentDeclinedNote busy={busy} onRetry={() => void (aiDeclined === "fix" ? fix() : analyze())} />
+            )}
+            {!!message && !draft && (
+              <View style={[s.row, { gap: 8, paddingHorizontal: 4 }]}>
+                <CircleCheck size={16} color={c.success} />
+                <Text accessibilityLiveRegion="polite" style={[txt, { color: c.success, fontSize: 14, flex: 1 }]}>{message}</Text>
               </View>
             )}
-          </>
-        )}
-        {draft && editing === null && (
-          <>
-            {draft.items.length === 0 && (
-              <NutritionScanner
-                photoUri={photo?.uri}
-                scanning={scanning}
-                disabled={busy}
-                enabled={enabled}
-                label={photoMode === "label"}
-                onCamera={() => void pick(true, photoMode)}
-                onGallery={() => void pick(false, photoMode)}
-                onMore={() => setSheet("methods")}
-              />
-            )}
-            <View style={s.row}>
-              {Object.entries(mealLabels).map(([key, label]) => (
-                <Pressable
-                  key={key}
-                  accessibilityRole="button"
-                  accessibilityState={{ selected: draft.type === key }}
-                  accessibilityLabel={label}
-                  onPress={() => setDraft({ ...draft, type: key as Meal["type"] })}
-                  style={[s.chip, { backgroundColor: draft.type === key ? c.accent100 : c.bg200, borderColor: draft.type === key ? c.primary100 : c.bg300 }]}
-                >
-                  <Text numberOfLines={1} style={[txt, { fontSize: 12 }]}>{key === "snack" ? tx("ხემსი", "Snack") : label}</Text>
+            {!draft && (
+              <View style={[s.dayBar, { backgroundColor: c.surface }]}>
+                <Pressable accessibilityRole="button" accessibilityLabel={tx("წინა დღე", "Previous day")} onPress={() => setDay(shiftDay(day, -1))} style={[s.dayButton, { backgroundColor: c.bg200 }]}>
+                  <ChevronLeft size={19} color={c.text100} />
                 </Pressable>
-              ))}
-            </View>
-            {!!explanation && (
-              <View style={[s.row, { alignItems: "flex-start", padding: 14, borderRadius: 16, backgroundColor: c.bg200 }]}>
-                <Info size={18} color={c.primary100} />
-                <View style={{ flex: 1, gap: 5 }}>
-                  <Text style={[txt, { fontSize: 12, fontFamily: "NotoSansGeorgian_600SemiBold" }]}>{uncertainty === "high" ? tx("პორცია განსაკუთრებით ყურადღებით გადაამოწმე", "Check the portion especially carefully") : uncertainty === "low" ? tx("შეფასება საკმაოდ ზუსტია", "The estimate is fairly accurate") : tx("შეფასება მიახლოებითია", "The estimate is approximate")}</Text>
-                  <Text style={[txt, { color: c.text200, lineHeight: 20, fontSize: 12 }]}>{explanation}</Text>
+                <View style={{ flex: 1, alignItems: "center" }}>
+                  <Text style={[txt, { fontFamily: "NotoSansGeorgian_600SemiBold", fontSize: 15 }]}>
+                    {day === today ? tx("დღეს", "Today") : day === shiftDay(today, -1) ? tx("გუშინ", "Yesterday") : new Date(day + "T12:00:00").toLocaleDateString(dateLocale(), { weekday: "short", day: "numeric", month: "long" })}
+                  </Text>
+                  {day !== today ? (
+                    <Pressable accessibilityRole="button" onPress={() => setDay(today)} hitSlop={8}>
+                      <Text style={[hubText.small, { color: M.ink, fontFamily: "NotoSansGeorgian_600SemiBold" }]}>{tx("დღევანდელზე დაბრუნება", "Back to today")}</Text>
+                    </Pressable>
+                  ) : null}
+                </View>
+                <Pressable accessibilityRole="button" accessibilityLabel={tx("შემდეგი დღე", "Next day")} disabled={day >= today} onPress={() => setDay(shiftDay(day, 1))} style={[s.dayButton, { backgroundColor: c.bg200, opacity: day >= today ? 0.35 : 1 }]}>
+                  <ChevronRight size={19} color={c.text100} />
+                </Pressable>
+              </View>
+            )}
+            {draft && editing === null && <NutritionScanSteps stage={draft.items.length ? 1 : 0} />}
+            {draft && draft.items.length > 0 && editing === null && !!explanation && (
+              <View style={[s.row, { alignItems: "flex-start" }]}>
+                {photo && <Image source={{ uri: photo.uri }} style={{ width: 56, height: 56, borderRadius: 14, backgroundColor: c.bg200 }} />}
+                <View style={{ flex: 1, gap: 2 }}>
+                  <View style={[s.row, { gap: 6 }]}>
+                    <CircleCheck size={17} color={M.ink} />
+                    <Text style={[txt, { fontFamily: "NotoSansGeorgian_600SemiBold", fontSize: 16 }]}>{tx("შეფასება მზადაა", "Estimate ready")}</Text>
+                  </View>
+                  <Text style={[hubText.caption, { color: c.text200 }]}>{tx("გადაამოწმე საკვები და პორცია, შემდეგ შეინახე.", "Check the food and portion, then save.")}</Text>
                 </View>
               </View>
             )}
-            {draft.items.map((item, index) => (
-              <View key={index} style={[s.card, { backgroundColor: c.surface, gap: 12 }]}>
-                <View style={s.row}>
-                  <Text style={[txt, { flex: 1, fontFamily: "NotoSansGeorgian_600SemiBold", fontSize: 17 }]}>{item.name}</Text>
-                  <Pressable
-                    accessibilityLabel={savedItems[index] ? tx("შენახულია", "Saved") : tx("შენახულებში დამატება", "Add to saved")}
-                    disabled={!!savedItems[index]}
-                    onPress={() => void saveItemAsFood(item, index)}
-                    style={s.icon}
-                  >
-                    {savedItems[index] ? <BookmarkCheck color={c.primary100} size={19} /> : <Bookmark color={c.text200} size={19} />}
-                  </Pressable>
-                  <Pressable accessibilityLabel={tx("საკვების ამოშლა", "Remove food")} onPress={() => setDraft({ ...draft, items: draft.items.filter((_, n) => n !== index) })} style={s.icon}>
-                    <X color={c.text200} size={18} />
-                  </Pressable>
-                </View>
-                <View style={[s.row, { alignItems: "baseline" }]}>
-                  <Text style={[txt, { fontSize: 22, fontFamily: "NotoSansGeorgian_700Bold" }]}>{Math.round(item.calories)}<Text style={{ fontSize: 12, color: c.text300, fontFamily: "NotoSansGeorgian_400Regular" }}>{tx(" კკალ", " kcal")}</Text></Text>
-                  <Text style={[txt, { color: c.text200, fontSize: 13 }]}>· {item.grams} {tx("გ", "g")}</Text>
-                </View>
-                <MacroLine protein={item.protein} carbs={item.carbs} fat={item.fat} />
-                <View style={s.row}>
-                  {button("½", () => setDraft({ ...draft, items: draft.items.map((v, n) => (n === index ? scaleFood(v, Math.max(0.1, v.grams / 2)) : v)) }))}
-                  {button("×2", () => {
-                    if (item.grams * 2 > 10000) {
-                      setError(tx("პორცია ზედმეტად დიდია.", "That portion is too large."));
-                      return;
-                    }
-                    setDraft({ ...draft, items: draft.items.map((v, n) => (n === index ? scaleFood(v, v.grams * 2) : v)) });
-                  })}
-                  {button(tx("რედაქტირება", "Edit"), () => editItem(index))}
-                </View>
-              </View>
-            ))}
-            {draft.items.length > 0 && enabled && (
+            {editing === null && (draft ? draft.items.length > 0 : shown.length > 0) && (
               <View style={[s.card, { backgroundColor: c.surface, gap: 10 }]}>
                 <View style={s.row}>
-                  <Wand2 size={17} color={c.primary100} />
-                  <Text style={[txt, { fontFamily: "NotoSansGeorgian_600SemiBold", fontSize: 14 }]}>{tx("რამე არასწორია? უთხარი Medi-ს", "Something wrong? Tell Medi")}</Text>
+                  <Text style={[hubText.caption, { color: c.text200, flex: 1 }]}>{draft ? tx("არჩეული პორცია", "Selected portion") : tx("დღის ჯამი", "Day total")}</Text>
+                  <ScoreBadge score={score} />
                 </View>
-                <TextInput
-                  accessibilityLabel={tx("შესწორება", "Correction")}
-                  placeholder={tx("მაგ. ეს ღორის კი არა, ქათმის მწვადი იყო · ბრინჯი ნახევარი · სოუსი არ ყოფილა", "e.g. it was chicken kebab, not pork · half the rice · no sauce")}
-                  placeholderTextColor={c.text300}
-                  value={correction}
-                  onChangeText={setCorrection}
-                  maxLength={500}
-                  multiline
-                  style={[inputStyle, { minHeight: 56, fontSize: 14 }]}
-                />
-                {button(scanning ? tx("ვასწორებ…", "Fixing…") : tx("შესწორება AI-ით", "Fix with AI"), () => void fix(), false, correction.trim().length < 2 || scanning, <Sparkles size={15} color={c.text100} />)}
+                {draft && (
+                  <TextInput
+                    accessibilityLabel={tx("კერძის სახელი", "Dish name")}
+                    placeholder={tx("კერძის სახელი (არასავალდებულო)", "Dish name (optional)")}
+                    placeholderTextColor={c.text300}
+                    value={draft.title || ""}
+                    onChangeText={(next) => setDraft({ ...draft, title: next })}
+                    maxLength={120}
+                    style={[txt, { fontSize: 18, fontFamily: "NotoSansGeorgian_600SemiBold", paddingVertical: 2 }]}
+                  />
+                )}
+                <Text style={[txt, { fontSize: 34, lineHeight: 42, fontFamily: "NotoSansGeorgian_700Bold", fontVariant: ["tabular-nums"] }]}>
+                  {sum.calories}
+                  <Text style={{ fontSize: 15, fontFamily: "NotoSansGeorgian_400Regular", color: c.text200 }}>{tx(" კკალ", " kcal")}</Text>
+                </Text>
+                <View style={[s.macroGrid, { borderTopColor: c.bg300 }]}>
+                  {(
+                    [
+                      [tx("ცილა", "Protein"), sum.protein, tx("გ", "g")],
+                      [tx("ნახშირწყ.", "Carbs"), sum.carbs, tx("გ", "g")],
+                      [tx("ცხიმი", "Fat"), sum.fat, tx("გ", "g")],
+                      [tx("ბოჭკო", "Fiber"), sum.fiber, tx("გ", "g")],
+                      [tx("შაქარი", "Sugar"), sum.sugar, tx("გ", "g")],
+                      [tx("ნატრიუმი", "Sodium"), sum.sodium != null ? Math.round(sum.sodium) : null, tx("მგ", "mg")],
+                    ] as const
+                  ).map(([label, value, unit], index) => (
+                    <View key={label} style={s.macroCell}>
+                      <Text numberOfLines={1} style={[hubText.small, { color: c.text300 }]}>{label}</Text>
+                      <Text numberOfLines={1} style={[txt, { fontSize: index < 3 ? 15 : 13, fontFamily: index < 3 ? "NotoSansGeorgian_600SemiBold" : "NotoSansGeorgian_400Regular", color: value == null ? c.text300 : index < 3 ? c.text100 : c.text200 }]}>
+                        {value == null ? "—" : `${value} ${unit}`}
+                      </Text>
+                    </View>
+                  ))}
+                </View>
+                {score != null && (
+                  <>
+                    <Text style={[hubText.small, { color: c.text300 }]}>{tx("ქულა 1–10 MEDICARD-ის საკუთარი მიახლოებითი შეფასებაა, არა სამედიცინო დასკვნა.", "The 1–10 score is MEDICARD's own approximate rating, not a medical assessment.")}</Text>
+                    <MedicalSourcesLink sourceIds={["mealQuality"]} />
+                  </>
+                )}
               </View>
             )}
-            {draft.items.length > 0 && draft.items.length < 25 && button(tx("+ კიდევ საკვების დამატება", "+ Add more food"), () => setSheet("methods"), false, false, <Plus size={16} color={c.text100} />)}
-            <Text style={[txt, { fontFamily: "NotoSansGeorgian_600SemiBold", fontSize: 13 }]}>{draft.items.length ? tx("შენიშვნა", "Note") : tx("რა დაგვეხმარება შეფასებაში? (არასავალდებულო)", "Anything that helps the estimate? (optional)")}</Text>
-            <TextInput
-              accessibilityLabel={tx("პორციის აღწერა", "Portion description")}
-              placeholder={tx("მაგ. ორი ნაჭერი, სოუსის გარეშე", "e.g. two slices, no sauce")}
-              placeholderTextColor={c.text200}
-              value={draft.note}
-              onChangeText={(note) => setDraft({ ...draft, note })}
-              maxLength={500}
-              multiline
-              style={[inputStyle, { minHeight: 62, fontSize: 14 }]}
-            />
-          </>
-        )}
-        {draft && editing !== null && (
-          <View style={{ gap: 12 }}>
-            <Text style={[txt, { fontSize: 20, fontFamily: "NotoSansGeorgian_600SemiBold" }]}>{tx("საკვების მონაცემები", "Food details")}</Text>
-            <Text style={[txt, { color: c.text200 }]}>{tx("მიუთითე მთლიანი პორციის მნიშვნელობები, არა 100 გრამის. ეტიკეტიდან შეგიძლია გადაიტანო.", "Enter values for the whole portion, not per 100 g. You can copy them from the label.")}</Text>
-            {Object.entries({
-              name: tx("საკვების სახელი", "Food name"),
-              grams: tx("პორცია · გრამი", "Portion · grams"),
-              calories: tx("ენერგია · კკალ", "Energy · kcal"),
-              protein: tx("ცილა · გ", "Protein · g"),
-              carbs: tx("ნახშირწყლები · გ", "Carbs · g"),
-              fat: tx("ცხიმი · გ", "Fat · g"),
-              fiber: tx("ბოჭკო · გ (არასავალდებულო)", "Fiber · g (optional)"),
-              sugar: tx("შაქარი · გ (არასავალდებულო)", "Sugar · g (optional)"),
-              sodium: tx("ნატრიუმი · მგ (არასავალდებულო)", "Sodium · mg (optional)"),
-            }).map(([key, label]) => (
-              <View key={key} style={{ gap: 6 }}>
-                <Text numberOfLines={1} style={[txt, { fontSize: 12 }]}>{label}</Text>
-                <TextInput
-                  accessibilityLabel={label}
-                  testID={`nutrition-field-${key}`}
-                  value={fields[key as keyof typeof fields]}
-                  maxLength={key === "name" ? 120 : 8}
-                  onChangeText={(value) => setFields({ ...fields, [key]: value })}
-                  keyboardType={key === "name" ? "default" : "decimal-pad"}
-                  style={inputStyle}
+            {loading && !draft ? <ActivityIndicator color={M.ink} style={{ paddingVertical: 20 }} /> : null}
+            {!draft && !loading && (
+              <>
+                {shown.length === 0 && !error && (
+                  <View style={[s.card, { backgroundColor: c.surface, gap: 14 }]}>
+                    <View style={{ alignItems: "center", gap: 4 }}>
+                      <Image source={EMPTY_ART.diary} resizeMode="contain" accessible={false} accessibilityIgnoresInvertColors style={{ width: 96, height: 96 }} />
+                      <Text style={[txt, { fontSize: 18, fontFamily: "NotoSansGeorgian_700Bold", textAlign: "center" }]}>{day === today ? tx("რას მიირთმევ დღეს?", "What are you eating today?") : tx("ამ დღეს ჩანაწერი არ არის", "Nothing logged this day")}</Text>
+                      <Text style={[hubText.body, { textAlign: "center", color: c.text200 }]}>{tx("აირჩიე ერთი გზა. Medi დაითვლის, შენ გადაამოწმებ და შეინახავ.", "Pick one way. Medi does the math, you review and save.")}</Text>
+                    </View>
+                    <QuickLogTiles onPick={startWith} />
+                    <View style={{ flexDirection: "row", gap: 8 }}>
+                      <View style={{ flex: 1 }}>{button(tx("სხვა გზები", "More ways"), () => { newMeal(false); setTimeout(() => setSheet("methods"), 50); }, false, false, <Plus size={16} color={c.text100} />, true)}</View>
+                      {day === today ? <View style={{ flex: 1 }}>{button(tx("გუშინდელი", "Yesterday's"), () => void repeatYesterday(), false, false, <CopyPlus size={16} color={c.text100} />, true)}</View> : null}
+                    </View>
+                  </View>
+                )}
+                {(["breakfast", "lunch", "dinner", "snack"] as const)
+                  .filter((type) => shown.some((m) => m.type === type))
+                  .map((type) => {
+                    const group = shown.filter((m) => m.type === type);
+                    return (
+                      <View key={type}>
+                        <View style={[s.row, { paddingHorizontal: 4, marginBottom: 8 }]}>
+                          <Text style={[hubText.sectionTitle, { color: c.text100, flex: 1, fontSize: 16 }]}>{mealLabels[type]}</Text>
+                          <Text style={[hubText.caption, { color: c.text300 }]}>{foodTotals(group.flatMap((m) => m.items)).calories} {tx("კკალ", "kcal")}</Text>
+                        </View>
+                        <View style={[s.list, { backgroundColor: c.surface }]}>
+                          {group.map((meal, index) => {
+                            const mealScore = meal.healthScore ?? healthScore(meal.items);
+                            const t = foodTotals(meal.items);
+                            const name = meal.title || meal.items.map((i) => i.name).join(" · ");
+                            return (
+                              <SwipeDeleteRow key={meal.id} onDelete={() => remove(meal)}>
+                                {(openActions, a11y) => (
+                                  <View style={{ backgroundColor: c.surface, paddingHorizontal: 14 }}>
+                                    <View style={[s.mealRow, index > 0 && { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: c.bg300 }]}>
+                                    <Pressable
+                                      accessibilityRole="button"
+                                      accessibilityLabel={tx(`${name} · ${t.calories} კკალ · რედაქტირება`, `${name} · ${t.calories} kcal · Edit`)}
+                                      {...a11y}
+                                      onPress={() => {
+                                        openMeal(meal);
+                                        setEditing(null);
+                                        resetResult();
+                                      }}
+                                      onLongPress={openActions}
+                                      delayLongPress={350}
+                                      style={s.mealMain}
+                                    >
+                                      <View style={{ flex: 1, minWidth: 0, gap: 3 }}>
+                                        <Text numberOfLines={1} style={[hubText.cardTitle, { color: c.text100, fontSize: 14.5 }]}>{name}</Text>
+                                        <MacroLine protein={t.protein} carbs={t.carbs} fat={t.fat} />
+                                        <Text numberOfLines={1} style={[hubText.small, { color: c.text300 }]}>{sourceLabels[meal.source] || sourceLabels.manual}</Text>
+                                      </View>
+                                      <View style={{ alignItems: "flex-end", gap: 4 }}>
+                                        <Text style={[txt, { fontSize: 16, fontFamily: "NotoSansGeorgian_700Bold" }]}>
+                                          {t.calories}
+                                          <Text style={{ fontSize: 11, color: c.text300, fontFamily: "NotoSansGeorgian_400Regular" }}>{tx(" კკალ", " kcal")}</Text>
+                                        </Text>
+                                        <ScoreBadge score={mealScore} size="sm" />
+                                      </View>
+                                    </Pressable>
+                                    <Pressable accessibilityRole="button" accessibilityLabel={tx("კვების კოპირება", "Copy meal")} onPress={() => { setCopyError(""); setCopying([meal]); }} disabled={busy} hitSlop={4} style={[s.icon, { marginRight: -10 }]}>
+                                      <Copy size={17} color={c.text300} />
+                                    </Pressable>
+                                    </View>
+                                  </View>
+                                )}
+                              </SwipeDeleteRow>
+                            );
+                          })}
+                        </View>
+                      </View>
+                    );
+                  })}
+                {shown.length > 0 && (
+                  <View style={{ paddingHorizontal: 4, gap: 2 }}>
+                    <Text style={[hubText.small, { color: c.text300 }]}>
+                      {tx("შეეხე რედაქტირებისთვის, წასაშლელად გადაწიე მარცხნივ. ქულა 1–10 MEDICARD-ის მიახლოებითი შეფასებაა, არა სამედიცინო დასკვნა.", "Tap to edit, swipe left to delete. The 1–10 score is MEDICARD's approximate rating, not a medical assessment.")}
+                    </Text>
+                    <MedicalSourcesLink sourceIds={["mealQuality"]} />
+                  </View>
+                )}
+                {shown.length > 0 && day !== today && button(tx("ამ დღის კოპირება", "Copy this day"), () => { setCopyError(""); setCopying(shown); }, false, false, <CopyPlus size={16} color={c.text100} />, true)}
+              </>
+            )}
+            {draft && editing === null && (
+              <>
+                {draft.items.length === 0 && (
+                  <NutritionScanner
+                    photoUri={photo?.uri}
+                    scanning={scanning}
+                    disabled={busy}
+                    enabled={enabled}
+                    label={photoMode === "label"}
+                    onCamera={() => void pick(true, photoMode)}
+                    onGallery={() => void pick(false, photoMode)}
+                    onMore={() => setSheet("methods")}
+                  />
+                )}
+                <NSegment
+                  value={draft.type}
+                  onChange={(type) => setDraft({ ...draft, type })}
+                  options={(Object.keys(mealLabels) as Meal["type"][]).map((key) => ({ value: key, label: key === "snack" ? tx("ხემსი", "Snack") : mealLabels[key] }))}
                 />
+                {!!explanation && (
+                  <View style={[s.row, { alignItems: "flex-start", padding: 14, borderRadius: 18, backgroundColor: M.inkSoft }]}>
+                    <Info size={18} color={M.ink} />
+                    <View style={{ flex: 1, gap: 4 }}>
+                      <Text style={[txt, { fontSize: 13, fontFamily: "NotoSansGeorgian_600SemiBold" }]}>{uncertainty === "high" ? tx("პორცია განსაკუთრებით ყურადღებით გადაამოწმე", "Check the portion especially carefully") : uncertainty === "low" ? tx("შეფასება საკმაოდ ზუსტია", "The estimate is fairly accurate") : tx("შეფასება მიახლოებითია", "The estimate is approximate")}</Text>
+                      <Text style={[hubText.caption, { color: c.text200 }]}>{explanation}</Text>
+                    </View>
+                  </View>
+                )}
+                {draft.items.map((item, index) => (
+                  <View key={index} style={[s.card, { backgroundColor: c.surface, gap: 8 }]}>
+                    <View style={[s.row, { gap: 4 }]}>
+                      <Text numberOfLines={2} style={[hubText.cardTitle, { color: c.text100, flex: 1, fontSize: 16 }]}>{item.name}</Text>
+                      <Pressable
+                        accessibilityRole="button"
+                        accessibilityLabel={savedItems[index] ? tx("შენახულია", "Saved") : tx("შენახულებში დამატება", "Add to saved")}
+                        disabled={!!savedItems[index]}
+                        onPress={() => void saveItemAsFood(item, index)}
+                        style={s.icon}
+                      >
+                        {savedItems[index] ? <BookmarkCheck color={M.ink} size={19} /> : <Bookmark color={c.text200} size={19} />}
+                      </Pressable>
+                      <Pressable accessibilityRole="button" accessibilityLabel={tx("საკვების ამოშლა", "Remove food")} onPress={() => setDraft({ ...draft, items: draft.items.filter((_, n) => n !== index) })} style={[s.icon, { marginRight: -10 }]}>
+                        <X color={c.text200} size={18} />
+                      </Pressable>
+                    </View>
+                    <View style={[s.row, { alignItems: "baseline", gap: 8 }]}>
+                      <Text style={[txt, { fontSize: 22, fontFamily: "NotoSansGeorgian_700Bold" }]}>
+                        {Math.round(item.calories)}
+                        <Text style={{ fontSize: 12, color: c.text300, fontFamily: "NotoSansGeorgian_400Regular" }}>{tx(" კკალ", " kcal")}</Text>
+                      </Text>
+                      <Text style={[txt, { color: c.text200, fontSize: 13 }]}>· {item.grams} {tx("გ", "g")}</Text>
+                    </View>
+                    <MacroLine protein={item.protein} carbs={item.carbs} fat={item.fat} />
+                    <View style={[s.row, { gap: 8, marginTop: 2 }]}>
+                      {button("½", () => setDraft({ ...draft, items: draft.items.map((v, n) => (n === index ? scaleFood(v, Math.max(0.1, v.grams / 2)) : v)) }), false, false, undefined, true)}
+                      {button("×2", () => {
+                        if (item.grams * 2 > 10000) {
+                          setError(tx("პორცია ზედმეტად დიდია.", "That portion is too large."));
+                          return;
+                        }
+                        setDraft({ ...draft, items: draft.items.map((v, n) => (n === index ? scaleFood(v, v.grams * 2) : v)) });
+                      }, false, false, undefined, true)}
+                      <View style={{ flex: 1 }}>{button(tx("რედაქტირება", "Edit"), () => editItem(index), false, false, undefined, true)}</View>
+                    </View>
+                  </View>
+                ))}
+                {draft.items.length > 0 && enabled && (
+                  <View style={[s.card, { backgroundColor: c.surface, gap: 10 }]}>
+                    <View style={[s.row, { gap: 8 }]}>
+                      <Wand2 size={17} color={M.ink} />
+                      <Text style={[txt, { fontFamily: "NotoSansGeorgian_600SemiBold", fontSize: 14 }]}>{tx("რამე არასწორია? უთხარი Medi-ს", "Something wrong? Tell Medi")}</Text>
+                    </View>
+                    <TextInput
+                      accessibilityLabel={tx("შესწორება", "Correction")}
+                      placeholder={tx("მაგ. ქათმის მწვადი იყო · ბრინჯი ნახევარი · სოუსის გარეშე", "e.g. it was chicken kebab · half the rice · no sauce")}
+                      placeholderTextColor={c.text300}
+                      value={correction}
+                      onChangeText={setCorrection}
+                      maxLength={500}
+                      multiline
+                      style={[fieldStyle(true), { minHeight: 56, fontSize: 14 }]}
+                    />
+                    {button(scanning ? tx("ვასწორებ…", "Fixing…") : tx("შესწორება AI-ით", "Fix with AI"), () => void fix(), false, correction.trim().length < 2 || scanning, <Sparkles size={15} color={c.text100} />, true)}
+                  </View>
+                )}
+                {draft.items.length > 0 && draft.items.length < 25 && button(tx("კიდევ საკვების დამატება", "Add more food"), () => setSheet("methods"), false, false, <Plus size={16} color={c.text100} />, true)}
+                <View style={{ gap: 6 }}>
+                  <Text style={[txt, { fontFamily: "NotoSansGeorgian_600SemiBold", fontSize: 13, color: c.text200, marginHorizontal: 2 }]}>{draft.items.length ? tx("შენიშვნა", "Note") : tx("რა დაგვეხმარება შეფასებაში? (არასავალდებულო)", "Anything that helps the estimate? (optional)")}</Text>
+                  <TextInput
+                    accessibilityLabel={tx("პორციის აღწერა", "Portion description")}
+                    placeholder={tx("მაგ. ორი ნაჭერი, სოუსის გარეშე", "e.g. two slices, no sauce")}
+                    placeholderTextColor={c.text300}
+                    value={draft.note}
+                    onChangeText={(note) => setDraft({ ...draft, note })}
+                    maxLength={500}
+                    multiline
+                    style={[fieldStyle(false), { minHeight: 62, fontSize: 14 }]}
+                  />
+                </View>
+              </>
+            )}
+            {draft && editing !== null && (
+              <View style={{ gap: 12 }}>
+                <Text style={[hubText.body, { color: c.text200 }]}>{tx("მიუთითე მთლიანი პორციის მნიშვნელობები, არა 100 გრამის. ეტიკეტიდან შეგიძლია გადაიტანო.", "Enter values for the whole portion, not per 100 g. You can copy them from the label.")}</Text>
+                {(
+                  [
+                    [["name", tx("საკვების სახელი", "Food name")]],
+                    [
+                      ["grams", tx("პორცია, გ", "Portion, g")],
+                      ["calories", tx("ენერგია, კკალ", "Energy, kcal")],
+                    ],
+                    [
+                      ["protein", tx("ცილა, გ", "Protein, g")],
+                      ["carbs", tx("ნახშ., გ", "Carbs, g")],
+                      ["fat", tx("ცხიმი, გ", "Fat, g")],
+                    ],
+                    [
+                      ["fiber", tx("ბოჭკო, გ", "Fiber, g")],
+                      ["sugar", tx("შაქარი, გ", "Sugar, g")],
+                      ["sodium", tx("ნატრიუმი, მგ", "Sodium, mg")],
+                    ],
+                  ] as const
+                ).map((row, rowIndex) => (
+                  <View key={rowIndex} style={{ gap: 6 }}>
+                    {rowIndex === 3 ? <Text style={[hubText.caption, { color: c.text300, marginHorizontal: 2 }]}>{tx("არასავალდებულო", "Optional")}</Text> : null}
+                    <View style={{ flexDirection: "row", gap: 8 }}>
+                      {row.map(([key, label]) => (
+                        <View key={key} style={{ flex: 1, minWidth: 0, gap: 6 }}>
+                          <Text numberOfLines={1} style={[hubText.caption, { color: c.text200, marginHorizontal: 2, fontFamily: "NotoSansGeorgian_600SemiBold" }]}>{label}</Text>
+                          <TextInput
+                            accessibilityLabel={label}
+                            testID={`nutrition-field-${key}`}
+                            value={fields[key]}
+                            maxLength={key === "name" ? 120 : 8}
+                            onChangeText={(value) => setFields({ ...fields, [key]: value })}
+                            keyboardType={key === "name" ? "default" : "decimal-pad"}
+                            style={[fieldStyle(false), key !== "name" && { textAlign: "center", paddingHorizontal: 8 }]}
+                          />
+                        </View>
+                      ))}
+                    </View>
+                  </View>
+                ))}
+                {button(tx("გაუქმება", "Cancel"), close, false, false, undefined, true)}
               </View>
-            ))}
-            {button(tx("გაუქმება", "Cancel"), close)}
+            )}
+            <Text style={[hubText.small, { color: c.text300, paddingHorizontal: 4 }]}>
+              {tx("შეფასებული კალორიები და საკვები ნივთიერებები სავარაუდოა. ეს არ არის სამედიცინო ან დიეტოლოგიური დანიშნულება.", "Estimated calories and nutrients are approximate. This is not medical or dietary advice.")}
+            </Text>
           </View>
-        )}
-        <Text style={[txt, { fontSize: 12, color: c.text200, lineHeight: 19 }]}>
-          {tx("შეფასებული კალორიები და საკვები ნივთიერებები სავარაუდოა. ეს არ არის სამედიცინო ან დიეტოლოგიური დანიშნულება.", "Estimated calories and nutrients are approximate. This is not medical or dietary advice.")}
-        </Text>
-      </ScrollView>
-      <View style={{ padding: 16, paddingBottom: keyboardOpen ? 10 : Math.max(safe.bottom, 12), borderTopWidth: 1, borderColor: c.bg300, backgroundColor: c.surface }}>
-        {busy ? (
-          <View style={s.row}>
-            <ActivityIndicator color={c.primary200} />
-            <Text style={[txt, { fontSize: 13 }]}>{scanning ? tx("მიმდინარეობს შეფასება…", "Estimating…") : tx("მიმდინარეობს…", "Working…")}</Text>
-          </View>
-        ) : editing !== null ? (
-          button(tx("საკვების დადასტურება", "Confirm food"), applyItem, true)
-        ) : draft && !draft.items.length ? (
-          <View style={{ gap: 8 }}>
-            {photo && enabled && button(error ? tx("შეფასების ხელახლა ცდა", "Retry estimate") : photoMode === "label" ? tx("ეტიკეტის წაკითხვა", "Read label") : tx("შეფასების დაწყება", "Start estimate"), () => void analyze(), true)}
-            {!photo && button(tx("როგორ ჩავწეროთ?", "How to log it?"), () => setSheet("methods"), true, false, <Plus size={17} color="#fff" />)}
-            {photo && button(tx("სხვა გზა", "Another way"), () => setSheet("methods"))}
-          </View>
-        ) : draft ? (
-          button(tx("დღიურში შენახვა", "Save to diary"), () => void save(), true, !draft.items.length)
-        ) : (
-          button(tx("კვების დამატება", "Add meal"), () => newMeal(true), true, loading, <Plus size={17} color="#fff" />)
-        )}
-      </View>
-      <Stack.Screen options={{ gestureEnabled: !draft && !busy }} />
+        </KeyboardFormShell>
+      </SwipeGroup>
+      {held && !draft ? <UndoToast key={held.id} title={tx("კვება წაიშალა", "Meal deleted")} bottom={safe.bottom + 16} onUndo={undo} /> : null}
       <CopyMealsSheet meals={copying} busy={busy} error={copyError} onClose={() => setCopying(null)} onCopy={(date, type) => void copyMeals(date, type)} />
       <LogMethodSheet visible={sheet === "methods"} aiEnabled={enabled} onPick={pickMethod} onClose={() => setSheet(null)} />
       <BarcodeScannerModal visible={sheet === "barcode" && !product} busy={busy} error={sheetError} onClose={() => setSheet(null)} onCode={(code) => void lookupBarcode(code)} />
@@ -911,35 +934,35 @@ function NutritionScreen({ owner }: { owner: string }) {
       />
       <FoodSearchModal visible={sheet === "search" || sheet === "saved"} initialTab={sheet === "saved" ? "recent" : "search"} onClose={() => setSheet(null)} onPick={onFoodPick} />
       <DescribeMealModal visible={sheet === "describe"} owner={owner} busy={busy} error={sheetError} consentNotice={describeNotice} onClose={() => setSheet(null)} onSubmit={(text, voice) => void describe(text, voice)} />
-      <Modal visible={!!confirmation} {...APP_MODAL_PROPS} onRequestClose={() => setConfirmation(null)}>
-        <View style={{ flex: 1, justifyContent: "center", padding: 24 }}>
-          <View style={[StyleSheet.absoluteFill, { backgroundColor: APP_MODAL_OVERLAY }]} />
-          <View accessibilityViewIsModal style={{ backgroundColor: c.surface, borderRadius: 24, padding: 24, gap: 16 }}>
-            <Text style={[txt, { fontSize: 20, fontFamily: "NotoSansGeorgian_700Bold" }]}>{confirmation?.title}</Text>
-            <Text style={[txt, { color: c.text200, lineHeight: 22 }]}>{confirmation?.message}</Text>
-            {button(tx("გაუქმება", "Cancel"), () => setConfirmation(null))}
-            {button(
-              tx("დადასტურება", "Confirm"),
-              () => {
-                const action = confirmation?.action;
-                setConfirmation(null);
-                action?.();
-              },
-              true,
-            )}
-          </View>
-        </View>
-      </Modal>
-    </KeyboardAvoidingView>
+      <NConfirm
+        visible={!!confirmation}
+        title={confirmation?.title || ""}
+        message={confirmation?.message}
+        cancelLabel={tx("დარჩენა", "Stay")}
+        confirmLabel={tx("გასვლა", "Discard")}
+        danger
+        onClose={() => setConfirmation(null)}
+        onConfirm={() => {
+          const action = confirmation?.action;
+          setConfirmation(null);
+          action?.();
+        }}
+      />
+    </>
   );
 }
 const s = StyleSheet.create({
-  header: { paddingHorizontal: 16, paddingVertical: 10, flexDirection: "row", alignItems: "center", gap: 10 },
-  title: { fontSize: 20, fontFamily: "NotoSansGeorgian_700Bold" },
   row: { flexDirection: "row", alignItems: "center", gap: 10 },
-  icon: { width: 44, height: 44, alignItems: "center", justifyContent: "center" },
-  card: { padding: 18, borderRadius: 22 },
-  button: { minHeight: 46, paddingHorizontal: 16, paddingVertical: 12, borderRadius: 14, alignItems: "center", justifyContent: "center", flexDirection: "row", gap: 8 },
-  chip: { flex: 1, alignItems: "center", justifyContent: "center", paddingHorizontal: 5, paddingVertical: 10, minHeight: 44, borderRadius: 14, borderWidth: 1 },
-  input: { borderRadius: 14, borderWidth: 1, padding: 14, fontSize: 16, minHeight: 48 },
+  icon: { width: 40, height: 44, alignItems: "center", justifyContent: "center" },
+  card: { padding: HUB.cardPad, borderRadius: HUB.cardRadius },
+  list: { borderRadius: HUB.cardRadius, overflow: "hidden" },
+  mealRow: { flexDirection: "row", alignItems: "center", gap: 6, minHeight: 66 },
+  mealMain: { flex: 1, minWidth: 0, flexDirection: "row", alignItems: "center", gap: 10, paddingVertical: 12 },
+  dayBar: { flexDirection: "row", alignItems: "center", gap: 10, padding: 6, borderRadius: 18, minHeight: 56 },
+  dayButton: { width: 44, height: 44, borderRadius: 14, alignItems: "center", justifyContent: "center" },
+  macroGrid: { flexDirection: "row", flexWrap: "wrap", rowGap: 10, borderTopWidth: StyleSheet.hairlineWidth, paddingTop: 10 },
+  macroCell: { width: "33.33%", gap: 1 },
+  button: { minHeight: 50, paddingHorizontal: 16, paddingVertical: 12, borderRadius: 16, alignItems: "center", justifyContent: "center", flexDirection: "row", gap: 8 },
+  buttonCompact: { minHeight: 44, paddingVertical: 9, paddingHorizontal: 14, borderRadius: 14 },
+  input: { borderRadius: 14, paddingHorizontal: 14, paddingVertical: 12, fontSize: 16, minHeight: 50 },
 });

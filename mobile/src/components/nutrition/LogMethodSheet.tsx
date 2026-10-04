@@ -61,7 +61,8 @@ export function LogMethodSheet({
           <View style={s.grid}>
             {ENTRIES.map((entry) => {
               const disabled = !!entry.ai && !aiEnabled;
-              const ink = hubInk(entry.ink, dark);
+              // The brand ink is MEDIFOOD's emerald here (the teal hub ink follows the women's rose).
+              const ink = entry.ink === "teal" ? c.primary100 : hubInk(entry.ink, dark);
               return (
                 <Pressable
                   key={entry.key}

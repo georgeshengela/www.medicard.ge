@@ -85,4 +85,10 @@ test("fasting, recipe and copy gates (no database writes on refusal)", async (t)
   assert.equal((await call("/nutrition/meals/copy", "POST", { date: "2026-09-01", copies: [{ fromId: id(2), id: id(3) }] })).status, 404, "only the person's own meals are copied");
   assert.equal((await call(`/nutrition/recipes/${id(4)}`, "PUT", { id: id(5), name: "x", servings: 2, items: [{ name: "a", grams: 100, calories: 100, protein: 1, carbs: 1, fat: 1 }] })).status, 400, "path and body ids must match");
   assert.equal((await call(`/nutrition/recipes/${id(4)}`, "PUT", { id: id(4), name: "x", servings: 0, items: [] })).status, 400);
+
+  // „ჩემი რეცეპტები“: the plan's /recipes?type= route sits first and must let the plain list through.
+  const own = await call("/nutrition/recipes");
+  assert.equal(own.status, 200, "the person's own recipe list is not swallowed by the meal-plan route");
+  assert.deepEqual((await own.json()).recipes, []);
+  assert.equal((await call("/nutrition/recipes?type=brunch")).status, 400, "the meal-plan route still validates its type");
 });

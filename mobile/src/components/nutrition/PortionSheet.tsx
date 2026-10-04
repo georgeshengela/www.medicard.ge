@@ -1,5 +1,5 @@
-import { brandHex } from '@/theme/brandTone';
 import React, { useEffect, useMemo, useState } from "react";
+import { useMedifood } from "./ProgramUI";
 import { Keyboard, KeyboardAvoidingView, Platform, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Bookmark, BookmarkCheck, X } from "lucide-react-native";
@@ -26,6 +26,7 @@ export function PortionSheet({
   onToggleFavorite?: (food: SavedFood) => void;
 }) {
   const c = useThemeColors();
+  const M = useMedifood();
   const safe = useSafeAreaInsets();
   const [grams, setGrams] = useState("100");
   const [keyboard, setKeyboard] = useState(false);
@@ -116,9 +117,9 @@ export function PortionSheet({
               accessibilityRole="button"
               disabled={!item}
               onPress={() => item && onAdd(item, food, amount)}
-              style={[s.primary, { backgroundColor: brandHex('#0F766E'), opacity: item ? 1 : 0.45 }]}
+              style={[s.primary, { backgroundColor: M.ink, opacity: item ? 1 : 0.45 }]}
             >
-              <Text style={[hubText.link, { color: "#fff", fontSize: 14 }]}>{tx("დამატება", "Add")}</Text>
+              <Text style={[hubText.link, { color: M.onInk, fontSize: 14 }]}>{tx("დამატება", "Add")}</Text>
             </Pressable>
           </View>
         )}

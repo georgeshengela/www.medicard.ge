@@ -1,4 +1,3 @@
-import { brandHex } from '@/theme/brandTone';
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { ActivityIndicator, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Switch } from '@/components/ui/AppSwitch';
@@ -6,7 +5,7 @@ import { useFocusEffect, useRouter } from "expo-router";
 import * as Haptics from "expo-haptics";
 import DateTimePicker, { DateTimePickerAndroid } from "@react-native-community/datetimepicker";
 import Svg, { Circle, Defs, LinearGradient, Stop } from "react-native-svg";
-import { Bell, CircleCheck, Clock3, Flame, History, Minus, Plus, ShieldAlert, Timer, Trash2, Trophy, Utensils } from "lucide-react-native";
+import { Bell, CircleCheck, Clock3, Flame, History, ShieldAlert, Timer, Trash2, Trophy, Utensils } from "lucide-react-native";
 import { api } from "@/lib/api";
 import { newUuid } from "@/lib/nutrition";
 import { nutritionDateLabel } from "@/lib/nutritionProgram";
@@ -31,17 +30,17 @@ import { useAuth } from "@/store/AuthContext";
 import { useIsDark, useThemeColors } from "@/theme/colors";
 import { HUB, hubInk, hubText, hubTint } from "@/theme/hub";
 import { APP_MODAL_OVERLAY, APP_MODAL_PROPS, Modal } from "@/components/ui/appModal";
-import { NButton, NError, NLoading, NScreen } from "@/components/nutrition/ProgramUI";
+import { NButton, NChip, NConfirm, NError, NLoading, NScreen, NSegment, NStepper, useMedifood, withMedifood } from "@/components/nutrition/ProgramUI";
 import { HubCard, HubSection } from "@/components/nutrition/NutritionUi";
 import { MedicalSourcesLink } from "@/components/health/MedicalSourcesLink";
 import { tx } from "@/i18n/locale";
 
-export default function FastingScreen() {
+export default withMedifood(function FastingScreen() {
   const { user } = useAuth();
   return <Fasting key={user?.id || "guest"} />;
-}
+});
 
-type Confirm = { title: string; message: string; confirm: string; action: () => void } | null;
+type Confirm = { title: string; message: string; confirm: string; danger?: boolean; action: () => void } | null;
 type Edit = { fast: Fast; startedAt: Date; endedAt: Date | null } | null;
 
 function Fasting() {
@@ -179,6 +178,7 @@ function Fasting() {
       title: tx("ჩანაწერის წაშლა?", "Delete this entry?"),
       message: tx("ეს შიმშილის ჩანაწერი ისტორიიდან წაიშლება.", "This fast will be removed from your history."),
       confirm: tx("წაშლა", "Delete"),
+      danger: true,
       action: () =>
         void run(async () => {
           await api.nutrition.fasting.remove(fast.id);
@@ -196,10 +196,9 @@ function Fasting() {
     });
 
   const e = state?.eligibility;
-  const teal = hubInk("teal", dark);
-  const txt = { color: c.text100, fontFamily: "NotoSansGeorgian_400Regular" } as const;
+  const teal = useMedifood().ink;
   return (
-    <NScreen title={tx("ინტერვალური შიმშილი", "Intermittent fasting")} subtitle={tx("ტაიმერი, ისტორია, სერია", "Timer, history, streak")}>
+    <NScreen title={tx("ინტერვალური შიმშილი", "Intermittent fasting")}>
       {!!error && <NError message={error} retry={state ? undefined : () => void load()} />}
       {!state && !error && <NLoading />}
       {state && e && (e.needsScreening || rescreen) && (
@@ -264,24 +263,30 @@ function Fasting() {
                 <>
                   <Text style={[hubText.caption, { color: c.text300, textAlign: "center" }]}>{tx("აირჩიე ფანჯარა: შიმშილის საათები : ჭამის საათები", "Pick a window: fasting hours : eating hours")}</Text>
                   <View style={s.chips}>
-                    {FASTING_PROTOCOLS.map((p) => {
-                      const selected = targetHours === p.hours;
-                      return (
-                        <Pressable key={p.key} accessibilityRole="button" accessibilityState={{ selected }} accessibilityLabel={`${p.label}. ${p.detail}`} disabled={busy} onPress={() => void saveSettings(p.hours)} style={[s.chip, { backgroundColor: selected ? hubTint(teal, dark) : c.bg200, borderColor: selected ? teal : "transparent" }]}>
-                          <Text style={[hubText.value, { color: selected ? teal : c.text100 }]}>{p.label}</Text>
-                          <Text numberOfLines={1} style={[hubText.small, { color: c.text300 }]}>{p.detail}</Text>
-                        </Pressable>
-                      );
-                    })}
+                    {FASTING_PROTOCOLS.map((p) => (
+                      <NChip
+                        key={p.key}
+                        on="card"
+                        label={p.label}
+                        detail={p.detail}
+                        selected={targetHours === p.hours}
+                        disabled={busy}
+                        onPress={() => void saveSettings(p.hours)}
+                        style={{ width: "31%", flexGrow: 1 }}
+                      />
+                    ))}
                   </View>
                   <View style={[s.row, { justifyContent: "center" }]}>
-                    <Pressable accessibilityRole="button" accessibilityLabel={tx("ერთი საათით ნაკლები", "One hour less")} disabled={busy || targetHours <= FAST_MIN_HOURS} onPress={() => void saveSettings(targetHours - 1)} style={[s.round, { backgroundColor: c.bg200, opacity: targetHours <= FAST_MIN_HOURS ? 0.4 : 1 }]}>
-                      <Minus size={18} color={c.text100} />
-                    </Pressable>
-                    <Text style={[hubText.value, { color: c.text100, minWidth: 120, textAlign: "center" }]}>{tx(`${targetHours} სთ შიმშილი`, `${targetHours} h fast`)}</Text>
-                    <Pressable accessibilityRole="button" accessibilityLabel={tx("ერთი საათით მეტი", "One hour more")} disabled={busy || targetHours >= FAST_MAX_HOURS} onPress={() => void saveSettings(targetHours + 1)} style={[s.round, { backgroundColor: c.bg200, opacity: targetHours >= FAST_MAX_HOURS ? 0.4 : 1 }]}>
-                      <Plus size={18} color={c.text100} />
-                    </Pressable>
+                    <NStepper
+                      value={tx(`${targetHours} სთ შიმშილი`, `${targetHours} h fast`)}
+                      width={120}
+                      minusLabel={tx("ერთი საათით ნაკლები", "One hour less")}
+                      plusLabel={tx("ერთი საათით მეტი", "One hour more")}
+                      minusDisabled={busy || targetHours <= FAST_MIN_HOURS}
+                      plusDisabled={busy || targetHours >= FAST_MAX_HOURS}
+                      onMinus={() => void saveSettings(targetHours - 1)}
+                      onPlus={() => void saveSettings(targetHours + 1)}
+                    />
                   </View>
                   <NButton label={busy ? tx("იწყება…", "Starting…") : tx("დაწყება ახლა", "Start now")} disabled={busy} onPress={() => void start()} />
                   <NButton secondary label={tx("უკვე დავიწყე ადრე…", "I started earlier…")} disabled={busy} onPress={() => setStartPicker(true)} />
@@ -319,7 +324,7 @@ function Fasting() {
             <HubCard>
               <View style={[s.row, { alignItems: "stretch" }]}>
                 <StatTile icon={<Flame size={17} color={hubInk("amber", dark)} />} tint={hubTint(hubInk("amber", dark), dark)} value={`${state.stats.streak}`} label={tx("დღე ზედიზედ", "Day streak")} />
-                <StatTile icon={<Trophy size={17} color={hubInk("teal", dark)} />} tint={hubTint(teal, dark)} value={`${state.stats.week.completed}/${state.stats.week.count}`} label={tx("ამ კვირაში", "This week")} />
+                <StatTile icon={<Trophy size={17} color={teal} />} tint={hubTint(teal, dark)} value={`${state.stats.week.completed}/${state.stats.week.count}`} label={tx("ამ კვირაში", "This week")} />
                 <StatTile icon={<Clock3 size={17} color={hubInk("blue", dark)} />} tint={hubTint(hubInk("blue", dark), dark)} value={hoursLabel(state.stats.week.averageMinutes)} label={tx("საშუალო", "Average")} />
               </View>
               <Text style={[hubText.caption, { color: c.text300 }]}>
@@ -368,24 +373,19 @@ function Fasting() {
 
       <StartEarlierSheet visible={startPicker} busy={busy} onClose={() => setStartPicker(false)} onPick={(d) => void start(d)} />
       <EditFastSheet edit={edit} busy={busy} onChange={setEdit} onClose={() => setEdit(null)} onSave={() => void saveEdit()} onDelete={(f) => remove(f)} />
-      <Modal visible={!!confirm} {...APP_MODAL_PROPS} onRequestClose={() => setConfirm(null)}>
-        <View style={{ flex: 1, justifyContent: "center", padding: 24 }}>
-          <View style={[StyleSheet.absoluteFill, { backgroundColor: APP_MODAL_OVERLAY }]} />
-          <View accessibilityViewIsModal style={{ backgroundColor: c.surface, borderRadius: 24, padding: 24, gap: 14 }}>
-            <Text style={[txt, { fontSize: 19, fontFamily: "NotoSansGeorgian_700Bold" }]}>{confirm?.title}</Text>
-            <Text style={[txt, { color: c.text200, lineHeight: 22 }]}>{confirm?.message}</Text>
-            <NButton secondary label={tx("გაუქმება", "Cancel")} onPress={() => setConfirm(null)} />
-            <NButton
-              label={confirm?.confirm || tx("დადასტურება", "Confirm")}
-              onPress={() => {
-                const action = confirm?.action;
-                setConfirm(null);
-                action?.();
-              }}
-            />
-          </View>
-        </View>
-      </Modal>
+      <NConfirm
+        visible={!!confirm}
+        title={confirm?.title || ""}
+        message={confirm?.message}
+        confirmLabel={confirm?.confirm || tx("დადასტურება", "Confirm")}
+        danger={confirm?.danger}
+        onClose={() => setConfirm(null)}
+        onConfirm={() => {
+          const action = confirm?.action;
+          setConfirm(null);
+          action?.();
+        }}
+      />
     </NScreen>
   );
 }
@@ -398,7 +398,8 @@ function localYmd(iso: string) {
 /** Progress ring: elapsed time against the goal, a live clock in the middle. */
 function FastRing({ fast, now, targetMinutes }: { fast: Fast | null; now: number; targetMinutes: number }) {
   const c = useThemeColors(),
-    dark = useIsDark();
+    dark = useIsDark(),
+    ink = useMedifood().ink;
   const size = 232, stroke = 16, r = (size - stroke) / 2, circumference = 2 * Math.PI * r;
   const progress = fast ? fastProgress(fast, now) : 0;
   const elapsedMs = fast ? Math.max(0, now - new Date(fast.startedAt).getTime()) : 0;
@@ -409,8 +410,8 @@ function FastRing({ fast, now, targetMinutes }: { fast: Fast | null; now: number
       <Svg width={size} height={size} style={StyleSheet.absoluteFill}>
         <Defs>
           <LinearGradient id="fastRing" x1="0%" y1="0%" x2="100%" y2="100%">
-            <Stop offset="0" stopColor={dark ? "#8AD5C7" : "#3EB6A0"} />
-            <Stop offset="1" stopColor={dark ? "#408F85" : brandHex('#0F766E')} />
+            <Stop offset="0" stopColor={dark ? "#6EE7B7" : "#10B981"} />
+            <Stop offset="1" stopColor={dark ? "#10B981" : "#047857"} />
           </LinearGradient>
         </Defs>
         <Circle cx={size / 2} cy={size / 2} r={r} stroke={c.bg200} strokeWidth={stroke} fill="none" />
@@ -433,11 +434,11 @@ function FastRing({ fast, now, targetMinutes }: { fast: Fast | null; now: number
         <>
           <Text style={[hubText.caption, { color: c.text300 }]}>{done ? tx("მიზანი შესრულდა", "Goal reached") : tx("გავიდა", "Elapsed")}</Text>
           <Text style={{ fontFamily: "NotoSansGeorgian_700Bold", fontSize: 38, lineHeight: 48, color: c.text100, fontVariant: ["tabular-nums"] }}>{clockLabelSeconds(elapsedMs)}</Text>
-          <Text style={[hubText.caption, { color: done ? hubInk("teal", dark) : c.text200 }]}>{done ? tx(`+${clockLabelSeconds(elapsedMs - fast.targetMinutes * 60000)} ზედმეტი`, `+${clockLabelSeconds(elapsedMs - fast.targetMinutes * 60000)} extra`) : tx(`დარჩა ${clockLabelSeconds(leftMs)}`, `${clockLabelSeconds(leftMs)} left`)}</Text>
+          <Text style={[hubText.caption, { color: done ? ink : c.text200 }]}>{done ? tx(`+${clockLabelSeconds(elapsedMs - fast.targetMinutes * 60000)} ზედმეტი`, `+${clockLabelSeconds(elapsedMs - fast.targetMinutes * 60000)} extra`) : tx(`დარჩა ${clockLabelSeconds(leftMs)}`, `${clockLabelSeconds(leftMs)} left`)}</Text>
         </>
       ) : (
         <>
-          <Timer size={26} color={hubInk("teal", dark)} />
+          <Timer size={26} color={ink} />
           <Text style={{ fontFamily: "NotoSansGeorgian_700Bold", fontSize: 34, lineHeight: 44, color: c.text100 }}>{tx(`${Math.round(targetMinutes / 60)} სთ`, `${Math.round(targetMinutes / 60)} h`)}</Text>
           <Text style={[hubText.caption, { color: c.text200 }]}>{tx(`ჭამის ფანჯარა ${24 - Math.round(targetMinutes / 60)} სთ`, `Eating window ${24 - Math.round(targetMinutes / 60)} h`)}</Text>
         </>
@@ -477,8 +478,7 @@ function Screening({
   onSubmit: (answers: FastingScreeningAnswers) => void;
   onCancel?: () => void;
 }) {
-  const c = useThemeColors(),
-    dark = useIsDark();
+  const c = useThemeColors();
   const [answers, setAnswers] = useState<Partial<FastingScreeningAnswers>>(
     initial ? { eatingDisorder: initial.eatingDisorder, pregnancy: initial.pregnancy, diabetesMedication: initial.diabetesMedication, doctorApproved: initial.doctorApproved } : {},
   );
@@ -488,7 +488,6 @@ function Screening({
     ["diabetesMedication", tx("იღებ ინსულინს ან შაქრის დამწევ წამალს?", "Do you take insulin or glucose-lowering medication?"), tx("შიმშილისას შაქარი შეიძლება საშიშად დაეცეს.", "Your blood sugar can drop dangerously while fasting.")],
   ];
   const complete = questions.every(([k]) => typeof answers[k] === "boolean");
-  const teal = hubInk("teal", dark);
   return (
     <HubSection first title={tx("სანამ დავიწყებთ", "Before we start")}>
       <HubCard>
@@ -497,19 +496,16 @@ function Screening({
           <View key={key} style={{ gap: 8 }}>
             <Text style={[hubText.cardTitle, { color: c.text100 }]}>{question}</Text>
             {!!hint && <Text style={[hubText.caption, { color: c.text300 }]}>{hint}</Text>}
-            <View style={s.row}>
-              {([
-                [true, tx("კი", "Yes")],
-                [false, tx("არა", "No")],
-              ] as const).map(([value, label]) => {
-                const selected = answers[key] === value;
-                return (
-                  <Pressable key={label} accessibilityRole="radio" accessibilityState={{ selected }} accessibilityLabel={`${question} ${label}`} disabled={busy} onPress={() => setAnswers((a) => ({ ...a, [key]: value }))} style={[s.answer, { backgroundColor: selected ? hubTint(teal, dark) : c.bg200, borderColor: selected ? teal : "transparent" }]}>
-                    <Text style={[hubText.link, { color: selected ? teal : c.text100 }]}>{label}</Text>
-                  </Pressable>
-                );
-              })}
-            </View>
+            <NSegment
+              on="card"
+              disabled={busy}
+              value={answers[key] === undefined ? "" : answers[key] ? "yes" : "no"}
+              onChange={(v) => setAnswers((a) => ({ ...a, [key]: v === "yes" }))}
+              options={[
+                { value: "no", label: tx("არა", "No") },
+                { value: "yes", label: tx("კი", "Yes") },
+              ]}
+            />
           </View>
         ))}
         {answers.diabetesMedication === true && (

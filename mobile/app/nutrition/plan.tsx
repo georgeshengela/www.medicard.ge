@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import { Pressable, ScrollView, View } from "react-native";
+import { Pressable, StyleSheet, View } from "react-native";
 import { useFocusEffect, useRouter } from "expo-router";
 import {
   Check,
@@ -35,14 +35,20 @@ import {
   NError,
   NLoading,
   MacroRails,
+  useMedifood,
   useNutritionDashboard,
+  withMedifood,
 } from "@/components/nutrition/ProgramUI";
-export default function NutritionPlan() {
+import { ModuleHeaderButton } from "@/components/brand/ModuleHeader";
+import { HubSection } from "@/components/nutrition/NutritionUi";
+import { HUB } from "@/theme/hub";
+export default withMedifood(function NutritionPlan() {
   const { user } = useAuth();
   return <Plan key={user?.id || "guest"} />;
-}
+});
 function Plan() {
   const c = useThemeColors(),
+    M = useMedifood(),
     router = useRouter(),
     {
       data: d,
@@ -129,8 +135,12 @@ function Plan() {
   return (
     <NScreen
       title={shopping ? tx("საყიდლების სია", "Shopping list") : tx("ჩემი რაციონი", "My meal plan")}
-      subtitle={tx("7 დღე · მოქნილი კერძები · შენი არჩევანი", "7 days · flexible dishes · your choice")}
       onBack={shopping ? () => setShopping(false) : undefined}
+      right={
+        !shopping && week?.shopping.length ? (
+          <ModuleHeaderButton label={tx("საყიდლების სია", "Shopping list")} icon={ShoppingBasket} onPress={() => setShopping(true)} />
+        ) : undefined
+      }
     >
       {!!(error || dashboardError) && (
         <NError
@@ -142,38 +152,43 @@ function Plan() {
         />
       )}
       {!!notice && (
-        <NText accessibilityLiveRegion="polite" style={{ color: c.primary100 }}>
+        <NText accessibilityLiveRegion="polite" style={{ color: c.success }}>
           {notice}
         </NText>
       )}
       {shopping ? (
         <>
-          <NCard>
-            <NText>{tx("მთელი არჩეული კვირის ინგრედიენტები", "Ingredients for the whole selected week")}</NText>
-            <NText style={{ color: c.text200, fontSize: 12 }}>
+          <View style={{ gap: 4, marginHorizontal: 2 }}>
+            <NText style={{ fontFamily: "NotoSansGeorgian_600SemiBold" }}>{tx("მთელი არჩეული კვირის ინგრედიენტები", "Ingredients for the whole selected week")}</NText>
+            <NText style={{ color: c.text300, fontSize: 12, lineHeight: 18 }}>
               {tx(
                 "რაოდენობა ეხება სახელში მითითებულ მდგომარეობას: მოხარშული, მზა ან მშრალი. შეამოწმე, რა გაქვს უკვე სახლში; ეს უმი შესაძენი წონის კონვერტაცია არ არის.",
                 "Amounts refer to the state in the name: cooked, ready-made or dry. Check what you already have at home; this is not converted to raw weight for buying.",
               )}
             </NText>
-          </NCard>
-          {week?.shopping.map((item) => (
-            <View
-              key={item.name}
-              style={{
-                flexDirection: "row",
-                gap: 14,
-                borderBottomWidth: 1,
-                borderColor: c.bg300,
-                paddingVertical: 9,
-              }}
-            >
-              <NText style={{ flex: 1 }}>{item.name}</NText>
-              <NText style={{ fontFamily: "NotoSansGeorgian_600SemiBold" }}>
-                {item.grams} {tx("გ", "g")}
-              </NText>
+          </View>
+          {!!week?.shopping.length && (
+            <View style={{ backgroundColor: c.surface, borderRadius: HUB.cardRadius, paddingHorizontal: 16, paddingVertical: 4 }}>
+              {week.shopping.map((item, index) => (
+                <View
+                  key={item.name}
+                  style={{
+                    flexDirection: "row",
+                    gap: 14,
+                    alignItems: "center",
+                    minHeight: 46,
+                    borderTopWidth: index ? StyleSheet.hairlineWidth : 0,
+                    borderColor: c.bg300,
+                  }}
+                >
+                  <NText style={{ flex: 1 }}>{item.name}</NText>
+                  <NText style={{ fontFamily: "NotoSansGeorgian_600SemiBold", fontVariant: ["tabular-nums"] }}>
+                    {item.grams} {tx("გ", "g")}
+                  </NText>
+                </View>
+              ))}
             </View>
-          ))}
+          )}
           <NButton
             secondary
             label={tx("რაციონის ნახვა", "View meal plan")}
@@ -210,101 +225,61 @@ function Plan() {
               )}
             </NCard>
           )}
-          <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel={tx("წინა კვირა", "Previous week")}
-              disabled={busy || from <= shiftDay(localDay(), -83)}
-              onPress={() => changeWeek(-7)}
-              style={{ padding: 10 }}
-            >
-              <ChevronLeft size={22} color={c.text100} />
-            </Pressable>
-            <NText style={{ flex: 1, textAlign: "center", fontSize: 13 }}>
-              {formatYmd(from)} — {formatYmd(shiftDay(from, 6))}
-            </NText>
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel={tx("შემდეგი კვირა", "Next week")}
-              disabled={busy || from >= shiftDay(localDay(), 21)}
-              onPress={() => changeWeek(7)}
-              style={{ padding: 10 }}
-            >
-              <ChevronRight size={22} color={c.text100} />
-            </Pressable>
-          </View>
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={{ gap: 8 }}
-          >
-            {Array.from({ length: 7 }, (_, i) => shiftDay(from, i)).map((v) => (
+          <View style={{ backgroundColor: c.surface, borderRadius: HUB.cardRadius, padding: 6, gap: 6 }}>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
               <Pressable
-                key={v}
-                disabled={busy}
                 accessibilityRole="button"
-                accessibilityState={{ selected: day === v }}
-                accessibilityLabel={formatYmd(v, true)}
-                onPress={() => {
-                  setDay(v);
-                  setOpened(null);
-                  setAlternatives(null);
-                }}
-                style={{
-                  width: 57,
-                  minHeight: 70,
-                  paddingVertical: 10,
-                  alignItems: "center",
-                  justifyContent: "center",
-                  borderRadius: 18,
-                  backgroundColor: day === v ? c.accent100 : c.surface,
-                  borderWidth: 1,
-                  borderColor: day === v ? c.primary100 : c.bg300,
-                }}
+                accessibilityLabel={tx("წინა კვირა", "Previous week")}
+                disabled={busy || from <= shiftDay(localDay(), -83)}
+                onPress={() => changeWeek(-7)}
+                style={{ width: 40, height: 40, borderRadius: 13, alignItems: "center", justifyContent: "center", backgroundColor: c.bg200, opacity: busy || from <= shiftDay(localDay(), -83) ? 0.35 : 1 }}
               >
-                <NText style={{ fontSize: 11, color: c.text200 }}>
-                  {nutritionDateLabel(v, true)}
-                </NText>
-                <NText
-                  style={{
-                    fontSize: 20,
-                    lineHeight: 28,
-                    fontFamily: "NotoSansGeorgian_600SemiBold",
-                  }}
-                >
-                  {Number(v.slice(8))}
-                </NText>
+                <ChevronLeft size={19} color={c.text100} />
               </Pressable>
-            ))}
-          </ScrollView>
+              <NText style={{ flex: 1, textAlign: "center", fontSize: 13, fontFamily: "NotoSansGeorgian_600SemiBold" }}>
+                {formatYmd(from)} — {formatYmd(shiftDay(from, 6))}
+              </NText>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={tx("შემდეგი კვირა", "Next week")}
+                disabled={busy || from >= shiftDay(localDay(), 21)}
+                onPress={() => changeWeek(7)}
+                style={{ width: 40, height: 40, borderRadius: 13, alignItems: "center", justifyContent: "center", backgroundColor: c.bg200, opacity: busy || from >= shiftDay(localDay(), 21) ? 0.35 : 1 }}
+              >
+                <ChevronRight size={19} color={c.text100} />
+              </Pressable>
+            </View>
+            <View style={{ flexDirection: "row", gap: 4 }}>
+              {Array.from({ length: 7 }, (_, i) => shiftDay(from, i)).map((v) => {
+                const selected = day === v;
+                const isToday = v === localDay();
+                return (
+                  <Pressable
+                    key={v}
+                    disabled={busy}
+                    accessibilityRole="button"
+                    accessibilityState={{ selected }}
+                    accessibilityLabel={formatYmd(v, true)}
+                    onPress={() => {
+                      setDay(v);
+                      setOpened(null);
+                      setAlternatives(null);
+                    }}
+                    style={{ flex: 1, minWidth: 0, minHeight: 58, alignItems: "center", justifyContent: "center", borderRadius: 14, backgroundColor: selected ? M.ink : "transparent" }}
+                  >
+                    <NText numberOfLines={1} style={{ fontSize: 11, lineHeight: 15, color: selected ? M.onInk : c.text300 }}>{nutritionDateLabel(v, true)}</NText>
+                    <NText style={{ fontSize: 17, lineHeight: 24, fontFamily: "NotoSansGeorgian_700Bold", color: selected ? M.onInk : c.text100 }}>{Number(v.slice(8))}</NText>
+                    <View style={{ width: 4, height: 4, borderRadius: 2, backgroundColor: isToday ? (selected ? M.onInk : M.ink) : "transparent" }} />
+                  </Pressable>
+                );
+              })}
+            </View>
+          </View>
           {loading ? (
             <NLoading />
           ) : meals.length ? (
             <>
-              <View
-                style={{
-                  flexDirection: "row",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                }}
-              >
-                <NText
-                  style={{
-                    fontSize: 18,
-                    fontFamily: "NotoSansGeorgian_600SemiBold",
-                  }}
-                >
-                  {tx("დღის მენიუ", "Day menu")}
-                </NText>
-                <Pressable
-                  onPress={() => setShopping(true)}
-                  accessibilityRole="button"
-                  accessibilityLabel={tx("საყიდლების სია", "Shopping list")}
-                  style={{ padding: 10 }}
-                >
-                  <ShoppingBasket color={c.primary100} size={22} />
-                </Pressable>
-              </View>
+              <HubSection first title={tx("დღის მენიუ", "Day menu")} linkLabel={tx("საყიდლები", "Shopping")} onLink={() => setShopping(true)}>
               <NCard>
                 <NText style={{ fontFamily: "NotoSansGeorgian_600SemiBold" }}>
                   {foodTotals(meals.flatMap((m) => m.data.items)).calories}{" "}
@@ -321,6 +296,7 @@ function Plan() {
                   )}
                 </NText>
               </NCard>
+              </HubSection>
               {meals.map((m) => {
                 const Icon = icons[m.type],
                   expanded = opened === m.id;
@@ -344,15 +320,15 @@ function Plan() {
                       >
                         <View
                           style={{
-                            width: 38,
-                            height: 38,
-                            borderRadius: 13,
-                            backgroundColor: c.accent100,
+                            width: HUB.tile,
+                            height: HUB.tile,
+                            borderRadius: HUB.tileRadius,
+                            backgroundColor: M.inkSoft,
                             alignItems: "center",
                             justifyContent: "center",
                           }}
                         >
-                          <Icon color={c.primary100} size={20} />
+                          <Icon color={M.ink} size={20} strokeWidth={1.9} />
                         </View>
                         <View style={{ flex: 1 }}>
                           <NText style={{ fontSize: 12, color: c.text200 }}>
@@ -368,7 +344,7 @@ function Plan() {
                           </NText>
                         </View>
                         {m.eaten ? (
-                          <Check color={c.primary100} size={20} />
+                          <Check color={M.ink} size={20} />
                         ) : (
                           <ChevronDown color={c.text200} size={18} />
                         )}
@@ -391,7 +367,7 @@ function Plan() {
                     </Pressable>
                     {expanded && (
                       <>
-                        <View style={{ height: 1, backgroundColor: c.bg300 }} />
+                        <View style={{ height: StyleSheet.hairlineWidth, backgroundColor: c.bg300 }} />
                         {m.data.items.map((v, i) => (
                           <View
                             key={i}
@@ -522,15 +498,15 @@ function Plan() {
             </>
           ) : (
             <NCard>
-              <View style={{ alignItems: "center", padding: 12 }}>
-                <Sunrise size={42} color={c.primary100} />
+              <View style={{ alignSelf: "center", width: 56, height: 56, borderRadius: 18, alignItems: "center", justifyContent: "center", backgroundColor: M.inkSoft }}>
+                <Sunrise size={28} color={M.ink} strokeWidth={1.8} />
               </View>
               <NText
                 style={{
                   textAlign: "center",
-                  fontSize: 20,
-                  lineHeight: 29,
-                  fontFamily: "NotoSansGeorgian_600SemiBold",
+                  fontSize: 18,
+                  lineHeight: 26,
+                  fontFamily: "NotoSansGeorgian_700Bold",
                 }}
               >
                 {tx("კვირა წინასწარ დაგეგმე", "Plan your week ahead")}
@@ -571,11 +547,6 @@ function Plan() {
               }
             />
           )}
-          <NButton
-            secondary
-            label={tx("კვების დღიური", "Food diary")}
-            onPress={() => router.push("/nutrition/diary")}
-          />
         </>
       )}
     </NScreen>

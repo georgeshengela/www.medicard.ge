@@ -1,3 +1,4 @@
+import { createContext, createElement, useContext, type ReactNode } from 'react';
 import { useColorScheme } from 'nativewind';
 import { BRAND_ROSE, useBrandTone } from './brandTone';
 
@@ -74,9 +75,45 @@ export const darkColors: Palette = {
 const roseLight: Palette = { ...lightColors, ...BRAND_ROSE.light };
 const roseDark: Palette = { ...darkColors, ...BRAND_ROSE.dark };
 
+/**
+ * A MEDI module's own accent over the brand tokens inside its pages (owner 2026-10-04: MEDIVET's
+ * pages speak sky blue like its wordmark). Mounted by the module's layout (`ModuleToneProvider`);
+ * canvas, surfaces and text stay shared. It wins over the women's rose inside that module.
+ */
+export type ModuleTone = 'vet' | 'food';
+type ToneTokens = { primary100: string; primary200: string; primary300: string; accent100: string; accent200: string };
+const MODULE_TONES: Record<ModuleTone, { light: ToneTokens; dark: ToneTokens }> = {
+  // MEDIVET (moduleBrand `vet`): #0369A1 / #7DD3FC.
+  vet: {
+    light: { primary100: '#0369A1', primary200: '#0284C7', primary300: '#38BDF8', accent100: '#E0F2FE', accent200: '#7DD3FC' },
+    dark: { primary100: '#7DD3FC', primary200: '#38BDF8', primary300: '#0EA5E9', accent100: '#0C2A3D', accent200: '#075985' },
+  },
+  // MEDIFOOD (moduleBrand `food`): #047857 / #34D399.
+  food: {
+    light: { primary100: '#047857', primary200: '#059669', primary300: '#34D399', accent100: '#D1FAE5', accent200: '#6EE7B7' },
+    dark: { primary100: '#34D399', primary200: '#10B981', primary300: '#6EE7B7', accent100: '#022C22', accent200: '#065F46' },
+  },
+};
+const TONED: Record<ModuleTone, { light: Palette; dark: Palette }> = {
+  vet: { light: { ...lightColors, ...MODULE_TONES.vet.light }, dark: { ...darkColors, ...MODULE_TONES.vet.dark } },
+  food: { light: { ...lightColors, ...MODULE_TONES.food.light }, dark: { ...darkColors, ...MODULE_TONES.food.dark } },
+};
+const ModuleToneContext = createContext<ModuleTone | null>(null);
+
+export function ModuleToneProvider({ tone, children }: { tone: ModuleTone; children: ReactNode }) {
+  return createElement(ModuleToneContext.Provider, { value: tone }, children);
+}
+
+/** The module tone around this component, if any (chat tokens and other non-palette colours follow it). */
+export function useModuleTone(): ModuleTone | null {
+  return useContext(ModuleToneContext);
+}
+
 export function useThemeColors(): Palette {
   const { colorScheme } = useColorScheme();
   const rose = useBrandTone() === 'rose';
+  const module = useContext(ModuleToneContext);
+  if (module) return colorScheme === 'dark' ? TONED[module].dark : TONED[module].light;
   if (colorScheme === 'dark') return rose ? roseDark : darkColors;
   return rose ? roseLight : lightColors;
 }

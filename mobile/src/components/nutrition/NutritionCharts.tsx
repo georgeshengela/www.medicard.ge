@@ -1,4 +1,3 @@
-import { brandHex } from '@/theme/brandTone';
 import React, { useEffect, useId, useRef, useState } from "react";
 import {
   AccessibilityInfo,
@@ -17,7 +16,7 @@ import Svg, {
   Stop,
   Text as SvgText,
 } from "react-native-svg";
-import { Beef, Droplet, Leaf, Wheat } from "lucide-react-native";
+import { Beef, Droplet, Wheat } from "lucide-react-native";
 import { useIsDark, useThemeColors } from "@/theme/colors";
 import { tx } from "@/i18n/locale";
 import {
@@ -83,167 +82,6 @@ function Reveal({ children }: { children: React.ReactNode }) {
     </Animated.View>
   );
 }
-function polar(cx: number, cy: number, radius: number, degrees: number) {
-  const a = (degrees * Math.PI) / 180;
-  return { x: cx + radius * Math.cos(a), y: cy + radius * Math.sin(a) };
-}
-function arc(
-  cx: number,
-  cy: number,
-  radius: number,
-  start: number,
-  end: number,
-) {
-  const a = polar(cx, cy, radius, start),
-    b = polar(cx, cy, radius, end);
-  return `M ${a.x} ${a.y} A ${radius} ${radius} 0 ${end - start > 180 ? 1 : 0} 1 ${b.x} ${b.y}`;
-}
-
-/** Open-ended energy dial: the ring is progress only when a real target exists. */
-export function EnergyRing({
-  value,
-  target,
-}: {
-  value: number;
-  target: number | null;
-}) {
-  const c = useThemeColors(),
-    dark = useIsDark();
-  const ratio =
-    target && target > 0 ? Math.min(1, Math.max(0, value / target)) : 0;
-  const id = "energy" + useId().replace(/[^a-z0-9]/gi, "");
-  const end = polar(150, 127, 101, 140 + ratio * 260);
-  const ink = dark ? "#72CABA" : "#168679";
-  return (
-    <Reveal>
-      <View
-        accessible
-        accessibilityLabel={tx(`${Math.round(value)} აღრიცხული კკალ${target ? `, დღის სამიზნე ${target} კკალ` : ", დღის სამიზნე ჯერ არჩეული არ არის"}`, `${Math.round(value)} kcal logged${target ? `, daily target ${target} kcal` : ", no daily target chosen yet"}`)}
-        style={{
-          width: "100%",
-          maxWidth: 300,
-          aspectRatio: 300 / 252,
-          alignSelf: "center",
-        }}
-      >
-        <Svg width="100%" height="100%" viewBox="0 0 300 252">
-          <Defs>
-            <LinearGradient id={id} x1="0%" y1="100%" x2="100%" y2="0%">
-              <Stop offset="0" stopColor={dark ? "#408F85" : brandHex('#0F766E')} />
-              <Stop offset="1" stopColor={dark ? "#8AD5C7" : "#3EB6A0"} />
-            </LinearGradient>
-          </Defs>
-          {Array.from({ length: 41 }, (_, i) => {
-            const a = polar(150, 127, i % 5 === 0 ? 117 : 120, 140 + i * 6.5),
-              b = polar(150, 127, 124, 140 + i * 6.5);
-            return (
-              <Line
-                key={i}
-                x1={a.x}
-                y1={a.y}
-                x2={b.x}
-                y2={b.y}
-                stroke={target && i / 40 <= ratio && value > 0 ? ink : c.bg300}
-                strokeWidth={i % 5 === 0 ? 2 : 1}
-                strokeLinecap="round"
-              />
-            );
-          })}
-          <Path
-            d={arc(150, 127, 101, 140, 400)}
-            fill="none"
-            stroke={c.bg200}
-            strokeWidth={13}
-            strokeLinecap="round"
-          />
-          {ratio > 0 && (
-            <>
-              <Path
-                d={arc(150, 127, 101, 140, 140 + ratio * 260)}
-                fill="none"
-                stroke={`url(#${id})`}
-                strokeWidth={13}
-                strokeLinecap="round"
-              />
-              <Circle cx={end.x} cy={end.y} r={4} fill={c.surface} />
-            </>
-          )}
-          <Path
-            d={arc(150, 127, 88, 140, 400)}
-            fill="none"
-            stroke={c.bg300}
-            strokeOpacity={0.45}
-            strokeWidth={0.7}
-          />
-        </Svg>
-        <View
-          style={{
-            position: "absolute",
-            top: "23%",
-            left: 0,
-            right: 0,
-            alignItems: "center",
-            gap: 3,
-          }}
-        >
-          <Leaf size={19} color={ink} strokeWidth={1.7} />
-          <Label style={{ fontSize: 11, marginTop: 2 }}>
-            {tx("აღრიცხული ენერგია", "Energy logged")}
-          </Label>
-          <Label
-            style={{
-              fontSize: 43,
-              lineHeight: 55,
-              color: c.text100,
-              fontFamily: bold,
-              fontVariant: ["tabular-nums"],
-              letterSpacing: -1.5,
-            }}
-          >
-            {Math.round(value).toLocaleString("en-US")}
-          </Label>
-          <Label style={{ fontSize: 11, lineHeight: 17 }}>{tx("კილოკალორია", "kilocalories")}</Label>
-        </View>
-        <View
-          style={{
-            position: "absolute",
-            bottom: 4,
-            left: 40,
-            right: 40,
-            alignItems: "center",
-          }}
-        >
-          <View
-            style={{
-              flexDirection: "row",
-              alignItems: "center",
-              gap: 6,
-              paddingHorizontal: 11,
-              paddingVertical: 5,
-              borderRadius: 20,
-              backgroundColor: c.bg200,
-            }}
-          >
-            <View
-              style={{
-                width: 5,
-                height: 5,
-                borderRadius: 3,
-                backgroundColor: ink,
-              }}
-            />
-            <Label style={{ fontSize: 10, lineHeight: 16 }}>
-              {target
-                ? tx(`${target} კკალ · დღის სამიზნე`, `${target} kcal · daily target`)
-                : tx("შენი რიტმი, შენი ბალანსი", "Your rhythm, your balance")}
-            </Label>
-          </View>
-        </View>
-      </View>
-    </Reveal>
-  );
-}
-
 export function MacroRails({
   actual,
   target,
@@ -254,8 +92,8 @@ export function MacroRails({
   const c = useThemeColors(),
     dark = useIsDark();
   const colors = dark
-    ? ["#80C6B6", "#B6A6D5", "#D3B38A"]
-    : ["#267F70", "#7D66A5", "#996B37"];
+    ? ["#6EE7B7", "#B6A6D5", "#D3B38A"]
+    : ["#047857", "#7D66A5", "#996B37"];
   const icons = [Beef, Wheat, Droplet],
     names = tx(["ცილა", "ნახშირწყალი", "ცხიმი"], ["Protein", "Carbs", "Fat"]);
   return (
@@ -346,7 +184,7 @@ export function IntakeWeekChart({ days }: { days: NutritionDay[] }) {
     1,
     ...days.map((d) => Math.max(d.totals.calories, d.target?.calories || 0)),
   );
-  const ink = dark ? "#80C6B6" : "#268E7F";
+  const ink = dark ? "#6EE7B7" : "#059669";
   if (!current) return null;
   return (
     <View style={{ gap: 18 }}>
@@ -537,7 +375,7 @@ export function WeightChart({
   const c = useThemeColors(),
     dark = useIsDark(),
     id = "weight" + useId().replace(/[^a-z0-9]/gi, "");
-  const ink = dark ? "#80C6B6" : "#268E7F";
+  const ink = dark ? "#6EE7B7" : "#059669";
   const lastPoint = points.at(-1);
   if (points.length < 2)
     return (

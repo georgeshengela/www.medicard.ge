@@ -26,6 +26,7 @@ export function KeyboardFormShell({
   background,
   contentStyle,
   dismissOnTap = true,
+  scrollRef: outerScrollRef,
 }: {
   header?: React.ReactNode;
   children: React.ReactNode;
@@ -33,9 +34,12 @@ export function KeyboardFormShell({
   background: string;
   contentStyle?: ViewStyle;
   dismissOnTap?: boolean;
+  /** The page's own handle on the scroll view (e.g. to jump back to the top after a step). */
+  scrollRef?: React.MutableRefObject<ScrollView | null>;
 }) {
   const insets = useSafeAreaInsets();
-  const scrollRef = useRef<ScrollView>(null);
+  const innerScrollRef = useRef<ScrollView>(null);
+  const scrollRef = outerScrollRef ?? innerScrollRef;
   const offset = useRef(0);
   const revealFocus = useCallback(() => {
     if (Platform.OS === 'web') return;

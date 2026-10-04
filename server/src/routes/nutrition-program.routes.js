@@ -176,7 +176,9 @@ r.put(
 );
 r.get(
   "/recipes",
-  wrap(async (req, res) => {
+  wrap(async (req, res, next) => {
+    // Without ?type this is the person's own recipe list (nutrition-plus.routes.js, mounted after this router).
+    if (req.query.type === undefined) return next();
     const type = z
       .enum(["breakfast", "lunch", "dinner", "snack"])
       .parse(req.query.type);
