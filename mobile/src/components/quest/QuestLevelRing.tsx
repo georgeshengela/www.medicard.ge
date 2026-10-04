@@ -66,8 +66,11 @@ export function QuestLevelRing({
     strokeDashoffset: c * (1 - anim.value),
   }));
 
-  const numberSize = size >= 120 ? 44 : size >= 96 ? 34 : 22;
-  const numberLine = size >= 120 ? 50 : size >= 96 ? 40 : 26;
+  // Sized by digit count instead of `adjustsFontSizeToFit`: on iOS that prop together with a fixed
+  // lineHeight shrank the level number to nothing (Profile ring was empty on the phone, fine on web).
+  const baseSize = size >= 120 ? 44 : size >= 96 ? 34 : 22;
+  const numberSize = Math.round(baseSize * (label.length >= 4 ? 0.62 : label.length === 3 ? 0.78 : 1));
+  const numberLine = Math.round(numberSize * 1.25);
 
   return (
     <View
@@ -104,7 +107,6 @@ export function QuestLevelRing({
       >
         <Text
           numberOfLines={1}
-          adjustsFontSizeToFit
           style={{
             fontFamily: 'NotoSansGeorgian_700Bold',
             fontSize: numberSize,
