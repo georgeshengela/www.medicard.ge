@@ -43,15 +43,15 @@ type UtilityLink = { href: string; label: string; icon: LucideIcon };
 
 /** Fixed order (owner 2026-10-04): the everyday health modules first, then the play/extra ones. */
 const MODULES: ModuleTile[] = [
-  { id: 'pill', href: '/(tabs)/medications', line: tx('წამლები და დოზები', 'Medications and doses'), icon: Pill },
-  { id: 'lab', href: '/(tabs)/records', line: tx('ანალიზის შედეგები', 'Lab results'), icon: FlaskConical },
-  { id: 'scan', href: '/scan', line: tx('ფოტოს წაკითხვა AI-ით', 'Read a photo with AI'), icon: ScanLine },
-  { id: 'food', href: '/nutrition', line: tx('კვება და კალორიები', 'Food and calories'), icon: Utensils },
-  { id: 'cycle', href: '/cycle', line: tx('ციკლი და პროგნოზი', 'Cycle and forecast'), icon: Droplet, female: true },
+  { id: 'pill', href: '/(tabs)/medications', line: tx('წამლები', 'Medications'), icon: Pill },
+  { id: 'lab', href: '/(tabs)/records', line: tx('ანალიზები', 'Lab results'), icon: FlaskConical },
+  { id: 'scan', href: '/scan', line: tx('სკანირება', 'Scan'), icon: ScanLine },
+  { id: 'food', href: '/nutrition', line: tx('კვება', 'Food'), icon: Utensils },
+  { id: 'cycle', href: '/cycle', line: tx('ციკლი', 'Cycle'), icon: Droplet, female: true },
   { id: 'run', href: '/run', line: tx('გაანათე ქალაქი', 'Light up the city'), icon: Footprints },
-  { id: 'quest', href: '/medi-quest', line: tx('მისიები და ჯილდოები', 'Missions and rewards'), icon: Trophy },
-  { id: 'vet', href: '/pets', line: tx('ჩემი ცხოველები', 'My pets'), icon: PawPrint },
-  { id: 'coach', href: '/trainer', line: tx('ტრენერი და ვარჯიში', 'Trainer and workouts'), icon: Dumbbell },
+  { id: 'quest', href: '/medi-quest', line: tx('მისიები', 'Missions'), icon: Trophy },
+  { id: 'vet', href: '/pets', line: tx('ცხოველები', 'Pets'), icon: PawPrint },
+  { id: 'coach', href: '/trainer', line: tx('ტრენერი', 'Trainer'), icon: Dumbbell },
 ];
 
 const UTILITIES: UtilityLink[] = [
@@ -117,7 +117,7 @@ export function ModulesSheet({ visible, onClose, onCustomize }: {
           style={[s.sheet, { backgroundColor: c.surface, paddingBottom: insets.bottom + 16, maxHeight: height * 0.9 }]}
         >
           <View style={[s.handle, { backgroundColor: c.bg300 }]} />
-          <View style={s.head}>
+          <View style={[s.head, { paddingHorizontal: HUB.gutter }]}>
             <Text accessibilityRole="header" style={[hubText.sectionTitle, { color: c.text100, flex: 1 }]}>
               {tx('სად გადავიდეთ?', 'Where to?')}
             </Text>
@@ -132,7 +132,7 @@ export function ModulesSheet({ visible, onClose, onCustomize }: {
             </Pressable>
           </View>
 
-          <ScrollView style={{ flexShrink: 1 }} bounces={false} showsVerticalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingBottom: 4 }}>
+          <ScrollView style={{ flexShrink: 1 }} bounces={false} showsVerticalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingBottom: 4, paddingHorizontal: HUB.gutter }}>
             {mediOn ? (
               <Animated.View entering={enter(0)}>
                 <Pressable
@@ -141,10 +141,10 @@ export function ModulesSheet({ visible, onClose, onCustomize }: {
                   onPress={() => go(mediRoute())}
                   style={[s.medi, { backgroundColor: alpha(moduleInk('medi', dark), dark ? 0.07 : 0.04), borderColor: alpha(moduleInk('medi', dark), dark ? 0.42 : 0.3) }]}
                 >
-                  <Rings ink={moduleInk('medi', dark)} dark={dark} size={110} />
-                  <MediOrb size={34} />
+                  <Rings ink={moduleInk('medi', dark)} dark={dark} size={96} />
+                  <MediOrb size={30} />
                   <View style={{ flex: 1, minWidth: 0 }}>
-                    <ModuleWordmark module="medi" size={17} />
+                    <ModuleWordmark module="medi" size={16} />
                     <Text numberOfLines={1} style={[hubText.small, { color: c.text200 }]}>
                       {tx('ჰკითხე ნებისმიერი რამ', 'Ask anything')}
                     </Text>
@@ -159,7 +159,8 @@ export function ModulesSheet({ visible, onClose, onCustomize }: {
                 const ink = moduleInk(m.id, dark);
                 const Icon = m.icon;
                 // Symmetry (owner 2026-10-04): with an odd count (MEDICYCLE for women, a paused module) the
-                // last module closes the grid as one full-width row instead of a lone half tile.
+                // last module closes the grid as one full-width row instead of a lone half tile. The name sits
+                // beside the icon so the whole sheet fits one screen without scrolling (owner).
                 const wide = modules.length % 2 === 1 && index === modules.length - 1;
                 return (
                   <Animated.View key={m.id} entering={enter(index + 1)} style={wide ? s.cellWide : s.cell}>
@@ -167,14 +168,14 @@ export function ModulesSheet({ visible, onClose, onCustomize }: {
                       accessibilityRole="button"
                       accessibilityLabel={`${MODULE_BRANDS[m.id].name} — ${m.line}`}
                       onPress={() => go(m.href)}
-                      style={[wide ? s.row : s.tile, { backgroundColor: alpha(ink, dark ? 0.07 : 0.04), borderColor: alpha(ink, dark ? 0.42 : 0.3) }]}
+                      style={[s.row, { backgroundColor: alpha(ink, dark ? 0.07 : 0.04), borderColor: alpha(ink, dark ? 0.42 : 0.3) }]}
                     >
-                      <Rings ink={ink} dark={dark} size={wide ? 96 : 84} />
+                      <Rings ink={ink} dark={dark} size={wide ? 96 : 64} />
                       <View style={[s.iconRing, { borderColor: alpha(ink, dark ? 0.7 : 0.55) }]}>
                         <Icon size={15} color={ink} strokeWidth={2} />
                       </View>
-                      <View style={{ gap: 1, flex: wide ? 1 : undefined, minWidth: 0 }}>
-                        <ModuleWordmark module={m.id} size={15} />
+                      <View style={{ flex: 1, minWidth: 0 }}>
+                        <ModuleWordmark module={m.id} size={wide ? 15 : 14} />
                         <Text numberOfLines={1} style={[hubText.small, { color: c.text200 }]}>{m.line}</Text>
                       </View>
                       {wide ? <ChevronRight size={16} color={c.text300} /> : null}
@@ -185,9 +186,8 @@ export function ModulesSheet({ visible, onClose, onCustomize }: {
             </View>
 
             {utilities.length ? (
-              <Animated.View entering={enter(modules.length + 1)} style={{ gap: 8, marginTop: 6 }}>
-                <Text style={[hubText.caption, { color: c.text300 }]}>{tx('სხვა', 'More')}</Text>
-                <View style={s.chips}>
+              <Animated.View entering={enter(modules.length + 1)} style={{ marginTop: 4, marginHorizontal: -HUB.gutter }}>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.chips}>
                   {utilities.map((u) => {
                     const Icon = u.icon;
                     return (
@@ -203,16 +203,16 @@ export function ModulesSheet({ visible, onClose, onCustomize }: {
                       </Pressable>
                     );
                   })}
-                </View>
+                </ScrollView>
               </Animated.View>
             ) : null}
 
-            <View style={[s.links, { borderColor: c.bg300 }]}>
-              <LinkRow icon={LayoutGrid} label={tx('ყველა ფუნქცია', 'All features')} onPress={() => go('/explore')} />
+            <View style={s.links}>
+              <LinkButton icon={LayoutGrid} label={tx('ყველა ფუნქცია', 'All features')} onPress={() => go('/explore')} />
               {onCustomize ? (
-                <LinkRow
+                <LinkButton
                   icon={LayoutDashboard}
-                  label={tx('მთავარი გვერდის მორგება', 'Customize Home')}
+                  label={tx('გვერდის მორგება', 'Customize Home')}
                   onPress={() => {
                     onClose();
                     onCustomize();
@@ -241,13 +241,12 @@ function Rings({ ink, dark, size }: { ink: string; dark: boolean; size: number }
   );
 }
 
-function LinkRow({ icon: Icon, label, onPress }: { icon: LucideIcon; label: string; onPress: () => void }) {
+function LinkButton({ icon: Icon, label, onPress }: { icon: LucideIcon; label: string; onPress: () => void }) {
   const c = useThemeColors();
   return (
-    <Pressable accessibilityRole="button" accessibilityLabel={label} onPress={onPress} style={s.linkRow}>
-      <Icon size={17} color={c.text200} strokeWidth={2} />
-      <Text numberOfLines={1} style={[hubText.link, { color: c.text100, flex: 1 }]}>{label}</Text>
-      <ChevronRight size={16} color={c.text300} />
+    <Pressable accessibilityRole="button" accessibilityLabel={label} onPress={onPress} style={[s.linkButton, { backgroundColor: c.bg100 }]}>
+      <Icon size={16} color={c.text200} strokeWidth={2} />
+      <Text numberOfLines={1} style={[hubText.caption, { color: c.text100, fontFamily: 'NotoSansGeorgian_600SemiBold' }]}>{label}</Text>
     </Pressable>
   );
 }
@@ -261,7 +260,6 @@ const s = StyleSheet.create({
     borderTopLeftRadius: 28,
     borderTopRightRadius: 28,
     paddingTop: 10,
-    paddingHorizontal: HUB.gutter,
     gap: 14,
   },
   handle: { alignSelf: 'center', width: 36, height: 4, borderRadius: 2 },
@@ -270,9 +268,9 @@ const s = StyleSheet.create({
   medi: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 14,
-    minHeight: 66,
-    paddingHorizontal: 14,
+    gap: 10,
+    minHeight: 56,
+    paddingHorizontal: 10,
     borderRadius: 20,
     borderWidth: 1,
     overflow: 'hidden',
@@ -280,26 +278,18 @@ const s = StyleSheet.create({
   grid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', rowGap: 8 },
   cell: { width: '48.5%' },
   cellWide: { width: '100%' },
-  tile: {
-    minHeight: 96,
-    padding: 12,
-    borderRadius: 20,
-    borderWidth: 1,
-    justifyContent: 'space-between',
-    overflow: 'hidden',
-  },
   row: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
-    minHeight: 60,
-    paddingHorizontal: 12,
-    borderRadius: 20,
+    gap: 10,
+    minHeight: 56,
+    paddingHorizontal: 10,
+    borderRadius: 18,
     borderWidth: 1,
     overflow: 'hidden',
   },
   iconRing: { width: 32, height: 32, borderRadius: 16, borderWidth: 1.5, alignItems: 'center', justifyContent: 'center' },
-  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  chips: { flexDirection: 'row', gap: 8, paddingHorizontal: HUB.gutter },
   chip: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -309,6 +299,15 @@ const s = StyleSheet.create({
     borderRadius: 20,
     borderWidth: 1,
   },
-  links: { borderTopWidth: StyleSheet.hairlineWidth, marginTop: 8 },
-  linkRow: { flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 48 },
+  links: { flexDirection: 'row', gap: 8, marginTop: 4 },
+  linkButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    minHeight: 46,
+    paddingHorizontal: 10,
+    borderRadius: 16,
+  },
 });
