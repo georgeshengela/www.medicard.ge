@@ -129,7 +129,7 @@ export function ProfileCoachSection() {
 
   return (
     <View style={{ marginTop: HUB.sectionGap }}>
-      <HomeSectionHeading title={tx('ფიტნესი · MEDICOACH', 'Fitness · MEDICOACH')} linkLabel={tx('გახსნა', 'Open')} onLink={() => router.push('/trainer' as never)} />
+      <HomeSectionHeading title="MEDICOACH" brand="coach" linkLabel={tx('გახსნა', 'Open')} onLink={() => router.push('/trainer' as never)} />
       <View style={[s.shell, { backgroundColor: c.surface }]}>
         <View style={[s.spot, { backgroundColor: HUB.spotlightBg }]}>
           <Dumbbell size={96} color="rgba(153,246,228,0.06)" strokeWidth={1.4} style={s.watermark} />

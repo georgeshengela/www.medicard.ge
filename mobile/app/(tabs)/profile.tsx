@@ -1,7 +1,8 @@
 import { brandHex } from '@/theme/brandTone';
 import React, { useCallback, useState } from 'react';
 import { Alert, Image, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { useFocusEffect, useRouter } from 'expo-router';
+import { Stack, useFocusEffect, useRouter } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   QrCode,
   Camera,
@@ -20,6 +21,7 @@ import {
   type LucideIcon,
 } from 'lucide-react-native';
 import { HomeSectionHeading } from '@/components/home/HomeSectionHeading';
+import { ModuleWordmark } from '@/components/brand/ModuleWordmark';
 import { HomeMediQuestSection } from '@/components/quest/HomeMediQuestSection';
 import { ProfilePetsSection } from '@/components/pets/ProfilePetsSection';
 import { ProfileCoachSection } from '@/components/coach/CoachEntry';
@@ -59,6 +61,7 @@ export default function Profile() {
   const { user, stats, refresh, signOut, deleteAccount, healthProfile } = useAuth();
   const colors = useThemeColors();
   const tabInset = useTabBarInset();
+  const insets = useSafeAreaInsets();
   const router = useRouter();
 
   const [refreshing, setRefreshing] = useState(false);
@@ -154,12 +157,21 @@ export default function Profile() {
     <ScrollView
       {...kb.scrollProps}
       style={{ flex: 1, backgroundColor: colors.bg100 }}
-      contentContainerStyle={{ paddingBottom: tabInset, paddingTop: 6, width: '100%', maxWidth: 760, alignSelf: 'center' }}
+      contentContainerStyle={{ paddingBottom: tabInset, paddingTop: insets.top + 12, width: '100%', maxWidth: 760, alignSelf: 'center' }}
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary100} />}
       showsVerticalScrollIndicator={false}
     >
+      <Stack.Screen options={{ headerShown: false }} />
+      {/* Owner 2026-10-04: the page is titled MEDIPROFILE — the module header's wordmark + one muted line, no buttons (a tab has no back). */}
+      <View style={{ paddingHorizontal: HUB.gutter, minHeight: 44, justifyContent: 'center' }}>
+        <ModuleWordmark module="profile" />
+        <Text numberOfLines={1} style={[s.subtitle, { color: colors.text200 }]}>
+          {tx('ანგარიში, ჯანმრთელობა და პარამეტრები', 'Account, health and settings')}
+        </Text>
+      </View>
+
       {/* Identity */}
-      <View style={[s.section, { marginTop: 8 }]}>
+      <View style={[s.section, { marginTop: 16 }]}>
         <View style={[s.card, { backgroundColor: colors.surface, gap: 16 }]}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
             <Pressable
@@ -243,7 +255,7 @@ export default function Profile() {
       {/* Pets */}
       {isFeatureOn('pets', features) ? (
         <View style={s.section}>
-          <HomeSectionHeading title={tx('ჩემი ცხოველები', 'My pets')} linkLabel={tx('ყველას ნახვა', 'See all')} onLink={() => router.push('/pets')} />
+          <HomeSectionHeading title="MEDIVET" brand="vet" linkLabel={tx('ყველას ნახვა', 'See all')} onLink={() => router.push('/pets')} />
           <ProfilePetsSection hideTitle />
         </View>
       ) : null}
@@ -381,6 +393,7 @@ const s = StyleSheet.create({
   card: { borderRadius: HUB.cardRadius, padding: HUB.cardPad },
   list: { borderRadius: HUB.cardRadius, overflow: 'hidden' },
   name: { fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 20, lineHeight: 27 },
+  subtitle: { fontFamily: 'NotoSansGeorgian_400Regular', fontSize: 11, lineHeight: 17 },
   factRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 13 },
   statBar: { flexDirection: 'row', alignItems: 'center', borderRadius: HUB.cardRadius, paddingHorizontal: 6 },
   stat: {

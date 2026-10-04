@@ -8,10 +8,11 @@
  * „ახლა აპში“ card), its Home icon tile and ads. Page canvas, cards, tab bar and status bar stay
  * shared — never re-token colors.ts / global.css from here.
  *
- * Utility areas (records, visits, labs, water, …) keep plain names on purpose.
+ * Utility areas (visits, water, …) keep plain names on purpose. Module pages use the standard
+ * header `ModuleHeader` (components/brand/ModuleHeader.tsx) — the MEDIRUN hub header.
  * The site (`server/public/js/module-brand.js`) mirrors these values — keep them in sync.
  */
-export type ModuleBrandId = 'run' | 'cycle' | 'food' | 'pill' | 'quest' | 'vet' | 'coach' | 'scan' | 'medi';
+export type ModuleBrandId = 'run' | 'cycle' | 'food' | 'pill' | 'quest' | 'vet' | 'coach' | 'scan' | 'lab' | 'profile' | 'medi';
 
 export type ModuleBrand = {
   id: ModuleBrandId;
@@ -71,6 +72,20 @@ export const MODULE_BRANDS: Record<ModuleBrandId, ModuleBrand> = {
     // Owner 2026-10-04: the light theme uses the same bright cyan as the dark one (small text: scanTextInk).
     ink: { light: '#22D3EE', dark: '#67E8F9' },
     gradient: ['#083344', '#0891B2', '#22D3EE'], glow: 'rgba(103,232,249,0.35)', onHero: '#CFFAFE',
+  },
+  // MEDILAB (owner 2026-10-04): „ჩემი ბარათი“ — lab values, saved reports and every Medi conversation.
+  // Indigo = the ink of a lab report; distinct from MEDIPILL blue and MEDIQUEST violet.
+  lab: {
+    id: 'lab', suffix: 'LAB', name: 'MEDILAB',
+    ink: { light: '#4F46E5', dark: '#A5B4FC' },
+    gradient: ['#1E1B4B', '#4338CA', '#6366F1'], glow: 'rgba(165,180,252,0.38)', onHero: '#C7D2FE',
+  },
+  // MEDIPROFILE (owner 2026-10-04): the Profile tab's title. It is the person's own page, not a module,
+  // so it keeps the brand teal instead of a signature colour.
+  profile: {
+    id: 'profile', suffix: 'PROFILE', name: 'MEDIPROFILE',
+    ink: { light: '#0D9488', dark: '#2DD4BF' },
+    gradient: ['#0B4D47', '#0D9488', '#14B8A6'], glow: 'rgba(94,234,212,0.35)', onHero: '#99F6E4',
   },
   medi: {
     id: 'medi', suffix: '', name: 'MEDI',
