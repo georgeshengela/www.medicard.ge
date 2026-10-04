@@ -4,7 +4,7 @@ import { useRouter, useSegments } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, { Easing, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import * as Haptics from 'expo-haptics';
-import { CalendarClock, FolderHeart, Footprints, House, User, type LucideIcon } from 'lucide-react-native';
+import { FolderHeart, Footprints, House, Pill, User, type LucideIcon } from 'lucide-react-native';
 import { ka } from '@/i18n/ka';
 import { getRunState } from '@/lib/run/store';
 import { useThemeColors } from '@/theme/colors';
@@ -38,7 +38,7 @@ const LEFT_TABS: TabDef[] = [
 ];
 
 const RIGHT_TABS: TabDef[] = [
-  { href: '/(tabs)/medications', name: 'medications', title: ka.tabs.medications, Icon: CalendarClock },
+  { href: '/(tabs)/medications', name: 'medications', title: ka.tabs.medications, Icon: Pill },
   { href: '/(tabs)/profile', name: 'profile', title: ka.tabs.profile, Icon: User },
 ];
 

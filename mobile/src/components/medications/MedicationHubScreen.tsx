@@ -4,6 +4,7 @@ import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CalendarDays, ChevronRight, FlaskConical, Plus, Search, Tag, type LucideIcon } from 'lucide-react-native';
 import { ModuleHeader, ModuleHeaderButton } from '@/components/brand/ModuleHeader';
+import { MediHeaderButton } from '@/components/medi/MediHeaderButton';
 import { HomeSectionHeading } from '@/components/home/HomeSectionHeading';
 import { MedicationPillIcon } from '@/components/medications/MedicationPillIcon';
 import { MedipillHero } from '@/components/medications/MedipillHero';
@@ -96,7 +97,13 @@ export function MedicationHubScreen() {
           module="pill"
           subtitle={tx('წამლები, დოზები და შეხსენებები', 'Medications, doses and reminders')}
           style={s.gutter}
-          right={<ModuleHeaderButton label={ka.meds.addMedicationCta} icon={Plus} onPress={openAdd} />}
+          right={
+            /* Medi beside + (owner 2026-10-04): „what is this medicine for?“ is asked right here. */
+            <View style={{ flexDirection: 'row', gap: 8 }}>
+              <MediHeaderButton />
+              <ModuleHeaderButton label={ka.meds.addMedicationCta} icon={Plus} onPress={openAdd} />
+            </View>
+          }
         />
 
         {loading && medications.length === 0 ? (

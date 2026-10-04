@@ -10,6 +10,7 @@ import {
   type LucideIcon,
 } from 'lucide-react-native';
 import { ModuleHeader, ModuleHeaderButton } from '@/components/brand/ModuleHeader';
+import { MediHeaderButton } from '@/components/medi/MediHeaderButton';
 import { HubFeatureCard } from '@/components/home/HubFeatureCard';
 import { MedilabHero } from '@/components/records/MedilabHero';
 import { SwipeDeleteRow, SwipeGroup, type RowA11y } from '@/components/records/SwipeDeleteRow';
@@ -121,7 +122,6 @@ export default function Records() {
 
   const upload = canScan ? () => router.push('/scan' as never) : undefined;
   const newChat = canChat ? () => router.push(mediRoute() as never) : undefined;
-  const headerAction = segment === 'records' ? upload : newChat;
 
   const layout = reduceMotion ? undefined : LinearTransition.duration(220);
   const exiting = reduceMotion ? undefined : FadeOut.duration(140);
@@ -140,12 +140,13 @@ export default function Records() {
             module="lab"
             subtitle={tx('ანალიზები, დასკვნები და საუბრები', 'Lab tests, reports and conversations')}
             style={s.section}
-            right={headerAction ? (
-              <ModuleHeaderButton
-                label={segment === 'records' ? ka.records.addCta : tx('ახალი საუბარი', 'New conversation')}
-                icon={Plus}
-                onPress={headerAction}
-              />
+            right={canChat || (segment === 'records' && upload) ? (
+              /* Medi beside + (owner 2026-10-04): „what does this result mean?“ is asked right here. On the
+                 conversations tab Medi's button is the new conversation, so + shows only for uploads. */
+              <View style={{ flexDirection: 'row', gap: 8 }}>
+                <MediHeaderButton />
+                {segment === 'records' && upload ? <ModuleHeaderButton label={ka.records.addCta} icon={Plus} onPress={upload} /> : null}
+              </View>
             ) : undefined}
           />
           {labsOn ? (
