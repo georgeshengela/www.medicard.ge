@@ -32,6 +32,16 @@ function useCoachState(): State | null {
 }
 
 /**
+ * Profile shows the MEDICOACH card only to people it concerns — a trainer link (any state) or their own
+ * trainer profile; everyone else gets one plain row (owner 2026-10-04). null until the state is read.
+ */
+export function useProfileCoachVisible(): boolean | null {
+  const state = useCoachState();
+  if (!state) return null;
+  return Boolean(state.me.trainerProfile || state.me.clientLink || state.overview?.link);
+}
+
+/**
  * The Home header's MEDICOACH coin (owner 2026-10-03: no Home section for trainer mode, a switch
  * instead): null for everyone but verified trainers; `today` = sessions still ahead today (null until read).
  */

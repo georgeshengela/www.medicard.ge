@@ -7,6 +7,8 @@ import {
   QrCode,
   Camera,
   BellRing,
+  ClipboardCheck,
+  Dumbbell,
   FileText,
   Gift,
   LayoutGrid,
@@ -14,17 +16,15 @@ import {
   Lock,
   LogOut,
   Mail,
-  MessageSquareText,
-  Pill,
   ShieldCheck,
+  Smartphone,
   Trash2,
-  type LucideIcon,
 } from 'lucide-react-native';
 import { HomeSectionHeading } from '@/components/home/HomeSectionHeading';
 import { ModuleWordmark } from '@/components/brand/ModuleWordmark';
 import { HomeMediQuestSection } from '@/components/quest/HomeMediQuestSection';
 import { ProfilePetsSection } from '@/components/pets/ProfilePetsSection';
-import { ProfileCoachSection } from '@/components/coach/CoachEntry';
+import { ProfileCoachSection, useProfileCoachVisible } from '@/components/coach/CoachEntry';
 import { PrivateImage } from '@/components/coach/CoachUI';
 import { useMyAvatarUrl } from '@/lib/myAvatar';
 import { useKeyboardScroll } from '@/components/ui/KeyboardFormShell';
@@ -39,6 +39,8 @@ import { SUPPORT_EMAIL } from '@/constants/legal';
 import { ka } from '@/i18n/ka';
 import { ApiError } from '@/lib/api';
 import { formatDate } from '@/lib/format';
+import { displayEmail } from '@/lib/accountEmail';
+import { profileCompletion } from '@/lib/profileCompletion';
 import { openAppSystemSettings } from '@/lib/appPermissions';
 import {
   isNotificationsEnabled,
@@ -46,8 +48,8 @@ import {
   registerPushTokenWithServer,
   setPushOptedIn,
 } from '@/lib/notifications';
-import { useIsDark, useThemeColors } from '@/theme/colors';
-import { HUB, hubInk, hubText, hubTint, type HubInk } from '@/theme/hub';
+import { useThemeColors } from '@/theme/colors';
+import { HUB, hubText } from '@/theme/hub';
 import { livingPlaceLine } from '@/lib/userLocation';
 import { useAuth } from '@/store/AuthContext';
 import { requestQuestRefresh } from '@/lib/quest/cache';
@@ -58,7 +60,7 @@ import { openEmail } from '@/lib/openEmail';
 import { appLang, tx } from '@/i18n/locale';
 
 export default function Profile() {
-  const { user, stats, refresh, signOut, deleteAccount, healthProfile } = useAuth();
+  const { user, refresh, signOut, deleteAccount, healthProfile } = useAuth();
   const colors = useThemeColors();
   const tabInset = useTabBarInset();
   const insets = useSafeAreaInsets();
@@ -67,8 +69,8 @@ export default function Profile() {
   const [refreshing, setRefreshing] = useState(false);
   const [notificationsOn, setNotificationsOn] = useState<boolean | null>(null);
   const features = useFeatureState();
-  const recordsOn = isFeatureOn('records', features);
-  const medsOn = isFeatureOn('medications', features);
+  const coachOn = isFeatureOn('coach', features);
+  const coachCard = useProfileCoachVisible();
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [deleteBusy, setDeleteBusy] = useState(false);
   const [profileAccent, setProfileAccent] = useState(false);
@@ -151,6 +153,10 @@ export default function Profile() {
   const [brokenPhoto, setBrokenPhoto] = useState<string | null>(null);
   // Keyboard: the inline medical-profile editor keeps its fields and Save above the keyboard.
   const kb = useKeyboardScroll();
+  // Synthetic logins (phone / Apple without an address) are not mailboxes — never shown as the email.
+  const email = displayEmail(user?.email);
+  const completion = profileCompletion(healthProfile, user);
+  const passportOn = isFeatureOn('healthPassport', features);
 
   return (
     <View {...kb.frameProps}>
@@ -223,26 +229,35 @@ export default function Profile() {
               <QrCode size={22} color={colors.primary100} />
             </Pressable>
           </View>
-          {user?.email || user?.phone ? (
-            <View style={{ gap: 8, borderTopWidth: StyleSheet.hairlineWidth, borderColor: colors.bg300, paddingTop: 12 }}>
-              {user?.email ? <Fact label={ka.profile.email} value={user.email} /> : null}
-              {user?.phone ? <Fact label={ka.profile.phone} value={user.phone} /> : null}
-            </View>
-          ) : null}
+          <View style={{ gap: 8, borderTopWidth: StyleSheet.hairlineWidth, borderColor: colors.bg300, paddingTop: 12 }}>
+            {email ? <Fact label={ka.profile.email} value={email} /> : null}
+            {user?.phone ? (
+              <Fact label={ka.profile.phone} value={user.phone} />
+            ) : (
+              /* Store prizes, invites and the women's space need a verified phone — offer it here, not after a refusal. */
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={tx('ტელეფონის დადასტურება', 'Verify phone number')}
+                onPress={() => router.push('/profile/verify-phone' as never)}
+                style={{ flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 32 }}
+              >
+                <Text style={[hubText.caption, { color: colors.text300 }]}>{ka.profile.phone}</Text>
+                <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', gap: 6 }}>
+                  <Smartphone size={15} color={colors.primary200} />
+                  <Text numberOfLines={1} style={[hubText.link, { color: colors.primary200 }]}>{tx('დადასტურება', 'Verify')}</Text>
+                </View>
+              </Pressable>
+            )}
+          </View>
         </View>
       </View>
 
-      {/* Stats: three doors, not three numbers. Records and chats open „ჩემი ბარათი“, so both follow its switch. */}
-      {recordsOn || medsOn ? (
-        <View style={s.section}>
-          <HomeSectionHeading title={ka.profile.stats} />
-          <View style={[s.statBar, { backgroundColor: colors.surface }]}>
-            {recordsOn ? <StatTile icon={FileText} ink="teal" value={stats?.records ?? 0} label={ka.profile.statRecords} onPress={() => router.push('/(tabs)/records')} /> : null}
-            {recordsOn ? <StatTile icon={MessageSquareText} ink="blue" value={stats?.chats ?? 0} label={ka.profile.statChats} onPress={() => router.push('/(tabs)/records')} divider /> : null}
-            {medsOn ? <StatTile icon={Pill} ink="violet" value={stats?.activeMedications ?? 0} label={ka.profile.statMeds} onPress={() => router.push('/(tabs)/medications')} divider={recordsOn} /> : null}
-          </View>
+      {/* Owner 2026-10-03: Home has no „სერვისები“ block any more — every feature opens from here, so it sits right under the identity card. */}
+      <View style={[s.section, { marginTop: 12 }]}>
+        <View style={[s.list, { backgroundColor: colors.surface }]}>
+          <ProfileMenuRow icon={LayoutGrid} ink="teal" label={tx('ყველა ფუნქცია', 'All features')} onPress={() => router.push('/explore' as never)} isLast />
         </View>
-      ) : null}
+      </View>
 
       {/* Quest — each module block disappears while an admin has it paused (admin „მოდულები“) */}
       {isFeatureOn('quest', features) ? (
@@ -260,8 +275,8 @@ export default function Profile() {
         </View>
       ) : null}
 
-      {/* MEDICOACH: trainer link, progress photos, trainer registration */}
-      {isFeatureOn('coach', features) ? (
+      {/* MEDICOACH: the card only for people with a trainer link or a trainer profile; everyone else gets a row under „აპლიკაცია“ */}
+      {coachOn && coachCard === true ? (
         <View style={{ paddingHorizontal: HUB.gutter }}>
           <ProfileCoachSection />
         </View>
@@ -271,9 +286,19 @@ export default function Profile() {
       <View style={s.section}>
         <HomeSectionHeading title={ka.profile.medicalProfile} />
         <MedicalProfileSection />
-        {isFeatureOn('healthPassport', features) ? (
+        {completion.percent < 100 || passportOn ? (
           <View style={[s.card, { backgroundColor: colors.surface, marginTop: 12 }]}>
-            <ProfileMenuRow icon={FileText} ink="teal" label={ka.passport.profileRow} value={ka.passport.profileRowHint} onPress={() => router.push('/profile/health-passport' as never)} isLast />
+            {completion.percent < 100 ? (
+              <ProfileMenuRow
+                icon={ClipboardCheck}
+                ink="amber"
+                label={ka.home.completeProfileTitle(completion.percent)}
+                value={tx('დარჩენილი კითხვები', 'Remaining questions')}
+                onPress={() => router.push('/profile/complete' as never)}
+                isLast={!passportOn}
+              />
+            ) : null}
+            {passportOn ? <ProfileMenuRow icon={FileText} ink="teal" label={ka.passport.profileRow} value={ka.passport.profileRowHint} onPress={() => router.push('/profile/health-passport' as never)} isLast /> : null}
           </View>
         ) : null}
       </View>
@@ -301,13 +326,9 @@ export default function Profile() {
       <View style={s.section}>
         <HomeSectionHeading title={tx('აპლიკაცია', 'App')} />
         <View style={[s.list, { backgroundColor: colors.surface }]}>
-          {/* Owner 2026-10-03: Home has no „სერვისები“ block any more — every feature opens from here. */}
-          <ProfileMenuRow
-            icon={LayoutGrid}
-            ink="teal"
-            label={tx('ყველა ფუნქცია', 'All features')}
-            onPress={() => router.push('/explore' as never)}
-          />
+          {coachOn && coachCard === false ? (
+            <ProfileMenuRow icon={Dumbbell} ink="neutral" label={tx('ტრენერი და ფიტნესი', 'Trainer and fitness')} value="MEDICOACH" onPress={() => router.push('/trainer' as never)} />
+          ) : null}
           {isFeatureOn('invites', features) ? <ProfileMenuRow icon={Gift} ink="amber" label={ka.referral.profileRow} onPress={() => router.push('/profile/invite' as never)} /> : null}
           <ProfileMenuRow icon={Lock} ink="neutral" label={ka.profile.privacyPolicy} onPress={() => router.push('/profile/privacy')} />
           <ProfileMenuRow icon={FileText} ink="neutral" label={ka.profile.terms} onPress={() => router.push('/profile/terms')} />
@@ -353,55 +374,10 @@ function Fact({ label, value }: { label: string; value: string }) {
   );
 }
 
-/** One third of the stats bar: small tinted icon, number over label. */
-function StatTile({
-  icon: Icon,
-  ink,
-  value,
-  label,
-  onPress,
-  divider,
-}: {
-  icon: LucideIcon;
-  ink: HubInk;
-  value: number;
-  label: string;
-  onPress: () => void;
-  divider?: boolean;
-}) {
-  const colors = useThemeColors();
-  const dark = useIsDark();
-  const inkHex = hubInk(ink, dark);
-  return (
-    <>
-      {divider ? <View style={{ width: StyleSheet.hairlineWidth, alignSelf: 'stretch', marginVertical: 12, backgroundColor: colors.bg300 }} /> : null}
-      <Pressable accessibilityRole="button" accessibilityLabel={`${value} ${label}`} onPress={onPress} style={s.stat}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-          <View style={{ width: 22, height: 22, borderRadius: 7, alignItems: 'center', justifyContent: 'center', backgroundColor: hubTint(inkHex, dark) }}>
-            <Icon size={12} color={inkHex} strokeWidth={2.2} />
-          </View>
-          <Text style={[hubText.value, { fontSize: 17, lineHeight: 22, color: colors.text100 }]}>{value}</Text>
-        </View>
-        <Text numberOfLines={1} adjustsFontSizeToFit style={[hubText.small, { color: colors.text300, maxWidth: '100%' }]}>{label}</Text>
-      </Pressable>
-    </>
-  );
-}
-
 const s = StyleSheet.create({
   section: { paddingHorizontal: HUB.gutter, marginTop: HUB.sectionGap },
   card: { borderRadius: HUB.cardRadius, padding: HUB.cardPad },
   list: { borderRadius: HUB.cardRadius, overflow: 'hidden' },
   name: { fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 20, lineHeight: 27 },
   subtitle: { fontFamily: 'NotoSansGeorgian_400Regular', fontSize: 11, lineHeight: 17 },
-  factRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 13 },
-  statBar: { flexDirection: 'row', alignItems: 'center', borderRadius: HUB.cardRadius, paddingHorizontal: 6 },
-  stat: {
-    flex: 1,
-    minWidth: 0,
-    alignItems: 'center',
-    gap: 2,
-    paddingVertical: 11,
-    paddingHorizontal: 6,
-  },
 });
