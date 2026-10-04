@@ -4,7 +4,6 @@ import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
 import Animated, { FadeInDown } from 'react-native-reanimated';
-import Svg, { Circle } from 'react-native-svg';
 import {
   CalendarCheck,
   ChevronRight,
@@ -28,6 +27,7 @@ import {
 } from 'lucide-react-native';
 import { APP_MODAL_OVERLAY, APP_MODAL_PROPS, Modal } from '@/components/ui/appModal';
 import { ModuleWordmark } from '@/components/brand/ModuleWordmark';
+import { OutlineRings as Rings, withAlpha as alpha } from '@/components/brand/OutlineRings';
 import { MediOrb } from '@/components/medi/MediOrb';
 import { usePrefersReducedMotion } from '@/hooks/usePrefersReducedMotion';
 import { isHrefAvailable, useFeatureState } from '@/lib/featureFlags';
@@ -63,10 +63,6 @@ const UTILITIES: UtilityLink[] = [
   { href: '/pharmacy', label: tx('აფთიაქი', 'Pharmacy'), icon: Store },
 ];
 
-/** `#RRGGBB` + alpha 0–1 → `#RRGGBBAA`. */
-function alpha(hex: string, a: number): string {
-  return `${hex}${Math.round(a * 255).toString(16).padStart(2, '0')}`;
-}
 
 /**
  * Quick navigation (owner 2026-10-04): the Home header's grid button opens every MEDI module in one
@@ -224,20 +220,6 @@ export function ModulesSheet({ visible, onClose, onCustomize }: {
         </View>
       </View>
     </Modal>
-  );
-}
-
-/** The hero card's concentric rings, drawn as thin strokes from the tile's top-right corner. */
-function Rings({ ink, dark, size }: { ink: string; dark: boolean; size: number }) {
-  const o = dark ? 1.25 : 1;
-  return (
-    <View pointerEvents="none" style={{ position: 'absolute', top: 0, right: 0, width: size, height: size }}>
-      <Svg width={size} height={size}>
-        <Circle cx={size} cy={0} r={size * 0.32} stroke={ink} strokeOpacity={0.22 * o} strokeWidth={1.2} fill="none" />
-        <Circle cx={size} cy={0} r={size * 0.56} stroke={ink} strokeOpacity={0.14 * o} strokeWidth={1.2} fill="none" />
-        <Circle cx={size} cy={0} r={size * 0.8} stroke={ink} strokeOpacity={0.08 * o} strokeWidth={1.2} fill="none" />
-      </Svg>
-    </View>
   );
 }
 

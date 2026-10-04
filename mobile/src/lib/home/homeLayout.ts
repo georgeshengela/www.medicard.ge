@@ -1,7 +1,7 @@
 /**
  * Home layouts (owner decision 2026-10-02): one Home screen, four arrangements of the same
  * modules — „ქალის ჯანმრთელობა“ (cycle first, women only), „აქტიური“ (steps, water, MEDIRUN),
- * „კვება და წონა“ (budget, logging, weight) and „სტანდარტული“ (the Home we had).
+ * „კვება და წონა“ (budget, logging, weight) and „სტანდარტული“ (rebuilt 2026-10-04 for men first).
  *
  * Pure: no React Native, so node tests load it. Module pages and the bottom tab bar never change
  * with the layout — only the Home tab's order and accent do.
@@ -29,7 +29,7 @@ export const HOME_LAYOUT_DESCRIPTIONS: Record<HomeLayoutId, string> = {
   women: tx('ციკლი, დღის რჩევები და შენი დღე — ერთ ნაზ გვერდზე', 'Your cycle, daily tips and your day on one calm page'),
   active: tx('ნაბიჯები, წყალი, MEDIRUN და მისიები — წინ', 'Steps, water, MEDIRUN and missions up front'),
   weight: tx('დღის ბიუჯეტი, სწრაფი ჩაწერა და წონის გზა', 'Daily budget, quick logging and your weight path'),
-  standard: tx('ყველაფერი ერთად, როგორც აქამდე', 'Everything in one place, as before'),
+  standard: tx('დღის მთავარი: წამლები, აქტიურობა, ანალიზები და კვება', 'Today’s essentials: medicines, activity, labs and food'),
 };
 
 type Gender = 'MALE' | 'FEMALE' | 'OTHER' | string | null | undefined;

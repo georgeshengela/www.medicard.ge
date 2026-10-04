@@ -91,7 +91,7 @@ export function HomeHeader({ firstName, initial, avatarId, streak, dateLabel, on
     <View style={s.wrap}>
       <View style={{ flex: 1, minWidth: 0, gap: 6 }}>
         <View style={s.meta}>
-          <Text numberOfLines={1} style={[s.date, { color: c.text200 }]}>
+          <Text numberOfLines={1} style={[s.date, { color: c.text200, flexShrink: 1 }]}>
             {dateLabel}
           </Text>
           {weatherOn ? <WeatherPill /> : null}
@@ -223,8 +223,9 @@ const s = StyleSheet.create({
   meta: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    flexWrap: 'wrap',
+    gap: 6,
+    // One line on every phone (owner 2026-10-04): the date gives way before the pills ever wrap.
+    flexWrap: 'nowrap',
   },
   date: {
     fontFamily: 'NotoSansGeorgian_500Medium',

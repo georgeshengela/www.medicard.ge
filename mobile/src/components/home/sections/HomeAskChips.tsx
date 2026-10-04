@@ -3,6 +3,7 @@ import { Pressable, ScrollView, StyleSheet, Text } from 'react-native';
 import { HeartHandshake } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import { prepareCycleAskMedi } from '@/lib/cycleAskMediLaunch';
+import { mediPrefillRoute } from '@/lib/mediHandoff';
 import { peekCycleView } from '@/lib/cycleViewCache';
 import { useFeature } from '@/lib/featureFlags';
 import { tx } from '@/i18n/locale';
@@ -23,18 +24,46 @@ import { HUB } from '@/theme/hub';
  * sends it only with her first question, after AI consent. The question waits in memory too; the
  * route carries only the `handoff=1` marker (W2-8b).
  */
-const QUESTIONS: string[] = [
-  tx('რა მეხმარება მენსტრუაციის ტკივილისას?', 'What helps with period pain?'),
-  tx('რა არის PMS და როგორ შევიმსუბუქო?', 'What is PMS and how can I ease it?'),
-  tx('რატომ შეიძლება დაგვიანდეს მენსტრუაცია?', 'Why might my period be late?'),
-  tx('რა ვჭამო ციკლის სხვადასხვა ფაზაში?', 'What should I eat in each cycle phase?'),
-];
+export type AskChipSet = 'cycle' | 'standard' | 'active' | 'weight';
+
+/**
+ * One set per Home layout (owner 2026-10-04). Standard is built for men first: in Georgia about half of
+ * men smoke daily, a third of adults have raised blood pressure and heart disease is the leading cause
+ * of death — so blood pressure, cholesterol, quitting and age-based check-ups. General questions only;
+ * nothing personal is in them.
+ */
+const QUESTIONS: Record<AskChipSet, string[]> = {
+  cycle: [
+    tx('რა მეხმარება მენსტრუაციის ტკივილისას?', 'What helps with period pain?'),
+    tx('რა არის PMS და როგორ შევიმსუბუქო?', 'What is PMS and how can I ease it?'),
+    tx('რატომ შეიძლება დაგვიანდეს მენსტრუაცია?', 'Why might my period be late?'),
+    tx('რა ვჭამო ციკლის სხვადასხვა ფაზაში?', 'What should I eat in each cycle phase?'),
+  ],
+  standard: [
+    tx('წნევა 140/90 — ეს მაღალია?', 'Blood pressure 140/90 — is that high?'),
+    tx('რა შემოწმებები მჭირდება ჩემს ასაკში?', 'Which check-ups do I need at my age?'),
+    tx('როგორ დავანებო თავი მოწევას?', 'How do I quit smoking?'),
+    tx('ქოლესტერინი მომემატა — რა შევცვალო?', 'My cholesterol went up — what should I change?'),
+  ],
+  active: [
+    tx('კუნთები მტკივა ვარჯიშის შემდეგ — რა ვქნა?', 'My muscles ache after a workout — what helps?'),
+    tx('როგორ დავიწყო სირბილი ნულიდან?', 'How do I start running from zero?'),
+    tx('რამდენი წყალი მჭირდება ვარჯიშისას?', 'How much water do I need when I train?'),
+    tx('მუხლი მტკივა სიარულისას — რატომ?', 'My knee hurts when I walk — why?'),
+  ],
+  weight: [
+    tx('რამდენი ცილა მჭირდება დღეში?', 'How much protein do I need a day?'),
+    tx('როგორ დავიკლო წონა უსაფრთხოდ?', 'How do I lose weight safely?'),
+    tx('რა ვჭამო ვახშმად, რომ მაძღარი ვიყო?', 'What dinner keeps me full?'),
+    tx('საღამოს მშია — რა ვქნა?', 'I get hungry in the evening — what helps?'),
+  ],
+};
 
 /**
  * `community`: the women's space entry is allowed — the row then starts with „ჰკითხე სხვა ქალებს“,
  * which opens the space's composer (empty: no question or health text travels between screens).
  */
-export function HomeAskChips({ community = false }: { community?: boolean } = {}) {
+export function HomeAskChips({ community = false, set = 'cycle' }: { community?: boolean; set?: AskChipSet } = {}) {
   const c = useThemeColors();
   const accent = useHomeAccent();
   const router = useRouter();
@@ -47,6 +76,11 @@ export function HomeAskChips({ community = false }: { community?: boolean } = {}
     try {
       // Read once at the tap (Home keeps one subscriber per query key); the Home only caches the
       // view while the cycle lock is off.
+      if (set !== 'cycle') {
+        // The question waits in memory for the consultation; the route carries only `handoff=1`.
+        router.push(mediPrefillRoute(user?.id, question) as never);
+        return;
+      }
       const bundle = cycleOn ? (peekCycleView()?.display ?? null) : null;
       router.push((await prepareCycleAskMedi(user?.id, bundle, question)) as never);
     } finally {
@@ -75,7 +109,7 @@ export function HomeAskChips({ community = false }: { community?: boolean } = {}
           </Text>
         </Pressable>
       ) : null}
-      {QUESTIONS.map((question) => (
+      {QUESTIONS[set].map((question) => (
         <Pressable
           key={question}
           accessibilityRole="button"

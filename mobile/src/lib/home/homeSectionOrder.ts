@@ -2,10 +2,12 @@
  * Home hub composition — order and presence only, no UI.
  *
  * Four layouts (owner decision 2026-10-02, `homeLayout.ts`) arrange the same modules:
- *  - standard — reading order follows what a person can act on right now, then what they
- *    come to MEDICARD for, grouped so each block has one job:
- *      greet → today's rings → ask Medi → doses due → trainer session (only when linked) →
- *      women's health (opt-in) → news (admin cards) → nutrition → AI check-ups → services → legal
+ *  - standard — rebuilt 2026-10-04 for men first (research: men track numbers, respond to
+ *    challenges and rewards, want one-tap logging; in Georgia blood pressure, smoking and heart
+ *    disease dominate). Each block has one job and the conditional ones vanish on ordinary days:
+ *      greet → „დღეს“ (one answer, dials, one-tap actions) → ask Medi (men's questions) → doses due →
+ *      „არ გამოგრჩეს“ (visit ≤ 7 days, lab ≤ 14 days) → trainer → women's health (opt-in) →
+ *      „შენი კვირა“ (steps trend) → challenges (MEDIRUN + MEDIQUEST) → MEDISCAN → news → MEDIFOOD → legal
  *    The one personal input is the onboarding goal („რისთვის გჭირდება MEDICARD?“): its section
  *    moves up to sit right after "ask Medi". Nothing is hidden because of it.
  *  - women — the cycle first, then what is ahead, today's tips, her day (steps, water, food),
@@ -34,6 +36,7 @@ export type HomeSectionId =
   | 'news'
   | 'profileNudge'
   | 'layoutOffer'
+  | 'attention'
   | 'customize'
   | 'disclaimer'
   // standard
@@ -41,6 +44,8 @@ export type HomeSectionId =
   | 'cycle'
   | 'nutrition'
   | 'checkup'
+  | 'week'
+  | 'challenges'
   // women
   | 'cycleHero'
   | 'cycleAhead'
@@ -72,11 +77,14 @@ export const HOME_LAYOUT_ORDER: Record<HomeLayoutId, readonly HomeSectionId[]> =
     'hero',
     'ask',
     'nextDose',
+    'attention',
     'coach',
     'cycle',
+    'week',
+    'challenges',
+    'checkup',
     'news',
     'nutrition',
-    'checkup',
     'profileNudge',
     'customize',
     'disclaimer',
@@ -86,6 +94,7 @@ export const HOME_LAYOUT_ORDER: Record<HomeLayoutId, readonly HomeSectionId[]> =
     'cycleHero',
     'ask',
     'nextDose',
+    'attention',
     'coach',
     'cycleAhead',
     'community',
@@ -104,6 +113,7 @@ export const HOME_LAYOUT_ORDER: Record<HomeLayoutId, readonly HomeSectionId[]> =
     'moveHero',
     'ask',
     'nextDose',
+    'attention',
     'coach',
     'waterOutdoor',
     'medirun',
@@ -121,6 +131,7 @@ export const HOME_LAYOUT_ORDER: Record<HomeLayoutId, readonly HomeSectionId[]> =
     'quickLog',
     'ask',
     'nextDose',
+    'attention',
     'coach',
     'weightProgress',
     'meals',

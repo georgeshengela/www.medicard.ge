@@ -46,7 +46,7 @@ export function HomeNutritionLite({
   const weight = useHomeWeight(nutrition);
   const weightOn = Boolean(hub) && isHrefAvailable('/health-metrics/weight', features);
 
-  const eaten = data?.today.calories ?? 0;
+  const eaten = data?.today?.calories ?? 0;
   const target = data?.budget ?? data?.targets?.calories ?? null;
   const meals = data?.mealCount ?? 0;
   const logged = meals > 0;
@@ -71,14 +71,18 @@ export function HomeNutritionLite({
 
   return (
     <View style={bare ? s.bare : s.section}>
-      {bare ? null : (
+      {/* Standard (owner 2026-10-04): the hub card as its own section — the MEDIFOOD wordmark is the
+          heading above the card (title, then content); inside „შენი დღე“ (bare) it sits in the card. */}
+      {bare ? null : hub ? (
+        <HomeSectionHeading title="MEDIFOOD" brand="food" linkLabel={tx('ჰაბი', 'Hub')} onLink={() => router.push('/nutrition' as never)} />
+      ) : (
         <HomeSectionHeading title={tx('კვება', 'Nutrition')} linkLabel={tx('ყველა', 'All')} onLink={() => router.push('/nutrition' as never)} />
       )}
       {loading && !data ? (
         <MetricCardSkeleton />
       ) : (
         <View style={[s.card, hub ? s.hubCard : null, { backgroundColor: c.surface }]}>
-          {hub ? (
+          {hub && bare ? (
             <View style={s.hubHead}>
               <Pressable
                 accessibilityRole="button"
@@ -127,7 +131,7 @@ export function HomeNutritionLite({
               ) : null}
             </View>
           </Pressable>
-          {photoOn && !hub ? (
+          {photoOn && !(hub && bare) ? (
             <Pressable accessibilityRole="button" accessibilityLabel={cameraLabel} onPress={openCamera} style={[s.camera, { backgroundColor: accent.cta }]}>
               <Camera size={20} color={accent.onCta} strokeWidth={2} />
             </Pressable>

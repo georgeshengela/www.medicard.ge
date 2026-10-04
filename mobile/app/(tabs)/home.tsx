@@ -23,9 +23,7 @@ import {
 import { Disclaimer } from '@/components/Disclaimer';
 import { HomeAskMedi } from '@/components/home/HomeAskMedi';
 import { HomeCyclePreviewCard } from '@/components/home/HomeCyclePreviewCard';
-import { HomeDayRings, type DayRing } from '@/components/home/HomeDayRings';
 import { MedicalSourcesLink } from '@/components/health/MedicalSourcesLink';
-import { HomeNutritionCard } from '@/components/home/HomeNutritionCard';
 import { HomeNewsSection } from '@/components/home/HomeNewsSection';
 import { useAnnouncements } from '@/hooks/useAnnouncements';
 import { isFeatureOn, isHrefAvailable, useFeatureState } from '@/lib/featureFlags';
@@ -41,7 +39,7 @@ import { normalizeAvatarForGender } from '@/constants/avatarAssets';
 import { useHydration } from '@/hooks/useHydration';
 import { useMedications } from '@/hooks/useMedications';
 import { useStepsMetrics } from '@/hooks/useStepsMetrics';
-import { formatDayMonthYearKa } from '@/lib/format';
+import { formatYmd } from '@/lib/format';
 import { requestHealthRefresh } from '@/lib/healthDataSync';
 import { buildHomeSectionOrder } from '@/lib/home/homeSectionOrder';
 import { primaryGoalFromProfile } from '@/lib/assessmentForm';
@@ -69,6 +67,13 @@ import { HomeCycleHero, HomeCycleToastHost } from '@/components/home/sections/Ho
 import { HomeCycleTips } from '@/components/home/sections/HomeCycleTips';
 import { HomeCycleAhead } from '@/components/home/sections/HomeCycleAhead';
 import { HomeAskChips } from '@/components/home/sections/HomeAskChips';
+import { HomeTodayHero, type TodayDial } from '@/components/home/sections/HomeTodayHero';
+import { HomeAttention } from '@/components/home/sections/HomeAttention';
+import { HomeWeekSteps } from '@/components/home/sections/HomeWeekSteps';
+import { HomeChallenges } from '@/components/home/sections/HomeChallenges';
+import { todayAnswer } from '@/lib/home/todayAnswer';
+import { invalidate } from '@/lib/queryClient';
+import { peekCycleView } from '@/lib/cycleViewCache';
 import { HomeCycleStats } from '@/components/home/sections/HomeCycleStats';
 import { HomeMoveHero } from '@/components/home/sections/HomeMoveHero';
 import { HomeWaterOutdoor } from '@/components/home/sections/HomeWaterOutdoor';
@@ -136,8 +141,8 @@ export default function Home() {
   const hydration = useHydration({ enabled: waterOn });
   const steps = useStepsMetrics('1d', { enabled: stepsOn });
   const meds = useMedications();
-  // The standard nutrition card reads the dashboard itself; the other layouts share this one.
-  const nutrition = useNutritionDashboard({ enabled: nutritionOn && layout !== 'standard' });
+  // Every layout shows MEDIFOOD from this one shared dashboard read (standard too since 2026-10-04).
+  const nutrition = useNutritionDashboard({ enabled: nutritionOn });
   const cycleQuery = useCycleView(user?.id, layout === 'women' && female && cycleOn && cycleLocked === false);
   const cycle = {
     view: cycleQuery.data ?? null,
@@ -166,8 +171,9 @@ export default function Home() {
     .map(([, kind]) => kind);
   const symptomsOn = isHrefAvailable('/symptoms', features);
   const checkupOn = scanKinds.length > 0 || symptomsOn;
-  // Women's Home: question chips under „ჰკითხე Medi-ს“ open the consultation with the question typed in.
-  const askChips = layout === 'women' && isHrefAvailable(mediRoute({ mode: 'doctor' }), features);
+  // Question chips under „ჰკითხე Medi-ს“ on every layout (its own set each) open the consultation with
+  // the question typed in; nothing is sent until the person presses send.
+  const askChips = isHrefAvailable(mediRoute({ mode: 'doctor' }), features);
   // Women's Home keeps today's food inside „შენი დღე“ (under steps and water) when that block shows.
   const foodInDay = layout === 'women' && nutritionOn && (stepsOn || waterOn);
 
@@ -208,6 +214,9 @@ export default function Home() {
     if (!nutritionOn) (['nutritionLite', 'energy', 'quickLog', 'meals', 'nutritionTools'] as const).forEach((id) => hidden.add(id));
     if (!isFeatureOn('weight', features)) hidden.add('weightProgress');
     if (!layoutsOn) hidden.add('customize');
+    if (!stepsOn) hidden.add('week');
+    if (!isFeatureOn('medirun', features) && !isFeatureOn('quest', features)) hidden.add('challenges');
+    if (!isHrefAvailable('/visits', features) && !isHrefAvailable('/lab', features)) hidden.add('attention');
     return hidden;
   }, [features, checkupOn, medsOn, stepsOn, waterOn, showMedsRing, cycleOn, nutritionOn, layoutsOn, foodInDay]);
 
@@ -276,7 +285,8 @@ export default function Home() {
         meds.load(),
         news.reload(),
         // Layout-only data refreshes only where that layout shows it (active queries only).
-        layout !== 'standard' && nutritionOn ? nutrition.load() : Promise.resolve(),
+        nutritionOn ? nutrition.load() : Promise.resolve(),
+        layout === 'standard' ? Promise.allSettled([refreshActiveHomeData(), invalidate('visits', 'home')]) : Promise.resolve(),
         layout === 'women' && cycleQuery.isEnabled ? cycleQuery.refetch() : Promise.resolve(),
         layout === 'active' ? refreshActiveHomeData() : Promise.resolve(),
       ]);
@@ -304,40 +314,51 @@ export default function Home() {
 
   const stepsTotal = steps.bundle?.todayTotal ?? 0;
   const stepsGoal = steps.bundle?.goal ?? 0;
-  // A paused module's ring (and the quick „add a glass“) leaves the card; the rest close up.
-  const rings: DayRing[] = [];
+  // Standard Home „დღეს“ (2026-10-04): the dials and the one answer; a paused module's dial leaves the row.
+  const stepsBundle = steps.bundle;
+  // Nothing connected and nothing counted: the dial offers to connect instead of showing a lonely 0.
+  const stepsLinked = Boolean(stepsBundle && (stepsBundle.connected || stepsTotal > 0));
+  const dials: TodayDial[] = [];
   if (stepsOn) {
-    rings.push({
+    dials.push({
       key: 'steps',
       progress: stepsGoal > 0 ? stepsTotal / stepsGoal : 0,
-      label: tx('ნაბიჯი', 'Steps'),
-      value: steps.loading && !steps.bundle ? '…' : steps.bundle ? tx(`${groupDigits(stepsTotal)} ნაბიჯი`, `${groupDigits(stepsTotal)} ${stepsTotal === 1 ? 'step' : 'steps'}`) : tx('ნაბიჯები', 'Steps'),
-      hint: stepsGoal > 0 ? tx(`მიზანი ${groupDigits(stepsGoal)}`, `Goal ${groupDigits(stepsGoal)}`) : tx('დააკავშირე მოწყობილობა', 'Connect a device'),
+      value: steps.loading && !stepsBundle ? '…' : stepsLinked ? groupDigits(stepsTotal) : '—',
+      label: stepsLinked ? (stepsGoal > 0 ? tx(`${groupDigits(stepsGoal)}-დან`, `of ${groupDigits(stepsGoal)}`) : tx('ნაბიჯი', 'steps')) : tx('დაკავშირება', 'Connect'),
+      a11y: stepsLinked
+        ? tx(`ნაბიჯები: ${groupDigits(stepsTotal)}${stepsGoal > 0 ? `, მიზანი ${groupDigits(stepsGoal)}` : ''}`, `Steps: ${groupDigits(stepsTotal)}${stepsGoal > 0 ? `, goal ${groupDigits(stepsGoal)}` : ''}`)
+        : tx('ნაბიჯების დაკავშირება', 'Connect steps'),
       onPress: () => open('/health-metrics/steps'),
     });
   }
   if (waterOn) {
-    rings.push({
+    dials.push({
       key: 'water',
       progress: hydration.progress,
-      label: tx('წყალი', 'Water'),
-      value: hydration.loading ? '…' : `${liters(hydration.todayMl)} / ${liters(hydration.goalMl)} ${tx('ლ', 'L')}`,
-      hint: hydration.loading ? undefined : hydration.remainingMl > 0 ? tx(`დარჩა ${liters(hydration.remainingMl)} ლ`, `${liters(hydration.remainingMl)} L to go`) : tx('მიზანი შესრულდა', 'Goal reached'),
+      value: hydration.loading ? '…' : tx(`${liters(hydration.todayMl)} ლ`, `${liters(hydration.todayMl)} L`),
+      label: tx(`${liters(hydration.goalMl)} ლ-დან`, `of ${liters(hydration.goalMl)} L`),
+      a11y: tx(`წყალი: ${liters(hydration.todayMl)} ლიტრი ${liters(hydration.goalMl)}-დან`, `Water: ${liters(hydration.todayMl)} of ${liters(hydration.goalMl)} litres`),
       onPress: () => open('/health-metrics/hydration'),
-      onQuickAdd: addGlass,
-      quickAddLabel: tx(`წყლის დამატება, ${HYDRATION_DROP_ML} მლ`, `Add water, ${HYDRATION_DROP_ML} ml`),
     });
   }
   if (showMedsRing) {
-    rings.push({
+    dials.push({
       key: 'meds',
       progress: doses.taken / doses.total,
-      label: tx('წამლები', 'Medications'),
-      value: tx(`${doses.taken} / ${doses.total} მიღებული`, `${doses.taken} / ${doses.total} taken`),
-      hint: doses.pending[0] ? tx(`შემდეგი ${doses.pending[0].time}`, `Next ${doses.pending[0].time}`) : tx('ყველა მიღებულია', 'All taken'),
+      value: `${doses.taken} / ${doses.total}`,
+      label: tx('დოზა დღეს', 'doses today'),
+      a11y: tx(`წამლები: ${doses.taken} მიღებული ${doses.total}-დან`, `Medicines: ${doses.taken} of ${doses.total} taken`),
       onPress: () => open('/(tabs)/medications'),
     });
   }
+  const answer = todayAnswer({
+    pendingDoses: medsOn
+      ? doses.pending.map((dose) => ({ time: dose.time, name: meds.medications.find((m) => m.id === dose.medicationId)?.medName ?? tx('წამალი', 'Medicine') }))
+      : [],
+    steps: stepsOn && stepsLinked && stepsGoal > 0 ? { total: stepsTotal, goal: stepsGoal } : null,
+    water: waterOn && !hydration.loading ? { ml: hydration.todayMl, goalMl: hydration.goalMl } : null,
+    now: new Date(),
+  });
 
   const heading = (title: string, href?: string, linkLabel = tx('ყველას ნახვა', 'See all')) => (
     <HomeSectionHeading title={title} linkLabel={href ? linkLabel : undefined} onLink={href ? () => open(href) : undefined} />
@@ -351,28 +372,35 @@ export default function Home() {
           initial={user?.fullName?.slice(0, 1) || 'M'}
           avatarId={avatar}
           streak={user?.currentStreak ?? 0}
-          dateLabel={formatDayMonthYearKa()}
+          // Day and month only: the year never changes the day, and the row stays on one line.
+          dateLabel={formatYmd(todayYmd())}
           onModules={() => setModulesOpen(true)}
         />
       </View>
     ),
+    // Standard „დღეს“ (owner 2026-10-04, built for men first): one answer, the day's dials, one-tap actions.
     hero: (
-      <View style={[s.section, { marginTop: 22 }]}>
-        {heading(tx('შენი დღე', 'Your day'), '/health-metrics', tx('ყველა მაჩვენებელი', 'All metrics'))}
-        <HomeDayRings rings={rings} />
+      <>
+        <HomeTodayHero answer={answer} dials={dials} onAddWater={waterOn ? addGlass : undefined} onWeightSaved={() => void nutrition.load()} />
         {stepsOn || waterOn ? (
-          <MedicalSourcesLink sourceIds={[...(stepsOn ? ['dailySteps' as const] : []), ...(waterOn ? ['waterIntake' as const] : [])]} />
+          <View style={{ paddingHorizontal: HUB.gutter }}>
+            <MedicalSourcesLink sourceIds={[...(stepsOn ? ['dailySteps' as const] : []), ...(waterOn ? ['waterIntake' as const] : [])]} />
+          </View>
         ) : null}
-      </View>
+      </>
     ),
     ask: (
       <View style={[s.section, { marginTop: 12 }]}>
         <HomeAskMedi onPress={() => open('/assistant')} />
-        {askChips ? <HomeAskChips community={communityEntry} /> : null}
+        {askChips ? <HomeAskChips set={layout === 'women' ? 'cycle' : layout} community={layout === 'women' && communityEntry} /> : null}
       </View>
     ),
     nextDose: <HomeNextDoseSection meds={meds} />,
-    coach: <HomeCoachSection tone={layout === 'active' || layout === 'weight' ? 'surface' : 'spotlight'} />,
+    // Standard's one spotlight is MEDISCAN, so the trainer card stays a surface card there too.
+    coach: <HomeCoachSection tone={layout === 'women' ? 'spotlight' : 'surface'} />,
+    attention: <HomeAttention />,
+    week: <HomeWeekSteps todayTotal={stepsTotal} goal={stepsGoal} fetchedAt={stepsBundle?.fetchedAt ?? null} />,
+    challenges: <HomeChallenges />,
     cycle: (
       <View style={s.section}>
         {heading(tx('ქალის ჯანმრთელობა', "Women's health"), '/cycle', tx('ციკლის ნახვა', 'View cycle'))}
@@ -388,11 +416,12 @@ export default function Home() {
       </View>
     ),
     news: <HomeNewsSection items={news.items} onDismiss={news.dismiss} />,
+    // MEDIFOOD hub card (calories + weight with „აწონვა“), the same one the women's Home uses.
     nutrition: (
-      <View style={s.section}>
-        {heading(tx('კვება', 'Nutrition'), '/nutrition', tx('ყველა', 'All'))}
-        <HomeNutritionCard />
-      </View>
+      <HomeNutritionLite
+        nutrition={nutrition}
+        hub={{ pregnant: female && peekCycleView()?.display?.profile.mode === 'PREGNANCY' }}
+      />
     ),
     // MEDISCAN (owner 2026-10-04): its own hero card with the three choices; symptoms as a row under it.
     checkup: <HomeScanSection kinds={scanKinds} symptomsOn={symptomsOn} />,

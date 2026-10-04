@@ -14,10 +14,11 @@ test('today first, then daily habits, then discovery; every section is unique', 
   const order = buildHomeSectionOrder({ includeCycle: true });
   assert.equal(order[0], 'dashboard');
   assert.ok(order.indexOf('hero') < order.indexOf('ask'));
-  assert.ok(order.indexOf('nextDose') < order.indexOf('cycle'));
-  assert.ok(order.indexOf('cycle') < order.indexOf('nutrition'));
-  assert.ok(order.indexOf('nutrition') < order.indexOf('checkup'));
-  assert.ok(order.indexOf('checkup') < order.indexOf('customize'));
+  // Standard rebuilt 2026-10-04: today → what needs you → trends and challenges → MEDISCAN → MEDIFOOD.
+  const at = (id: (typeof order)[number]) => order.indexOf(id);
+  assert.ok(at('nextDose') < at('attention') && at('attention') < at('cycle'));
+  assert.ok(at('cycle') < at('week') && at('week') < at('challenges') && at('challenges') < at('checkup'));
+  assert.ok(at('checkup') < at('nutrition') && at('nutrition') < at('customize'));
   // Owner 2026-10-03: „სერვისები“ left Home — all features open from Profile.
   assert.ok(!order.includes('services' as never));
   assert.equal(order.at(-1), 'disclaimer');
@@ -47,7 +48,8 @@ test('the onboarding goal moves its section right after ask Medi, nothing disapp
 
 test('the trainer block sits with what is due today, before women’s health and nutrition', () => {
   const order = buildHomeSectionOrder({ includeCycle: true });
-  assert.equal(order.indexOf('coach'), order.indexOf('nextDose') + 1);
+  assert.equal(order.indexOf('attention'), order.indexOf('nextDose') + 1);
+  assert.equal(order.indexOf('coach'), order.indexOf('attention') + 1);
   assert.ok(order.indexOf('coach') < order.indexOf('cycle'));
 });
 
@@ -66,10 +68,11 @@ test('an admin-paused module drops its section and nothing else', () => {
   assert.ok(!buildHomeSectionOrder({ includeCycle: true, primaryGoal: 'nutrition', hidden: new Set(['nutrition']) }).includes('nutrition'));
 });
 
-test('standard keeps today’s Home and only gains the layout switch row before the disclaimer', () => {
+test('standard (rebuilt 2026-10-04 for men first) in its exact order', () => {
   const order = buildHomeSectionOrder({ includeCycle: true });
   assert.deepEqual(order, [
-    'dashboard', 'hero', 'ask', 'nextDose', 'coach', 'cycle', 'news', 'nutrition', 'checkup', 'profileNudge', 'customize', 'disclaimer',
+    'dashboard', 'hero', 'ask', 'nextDose', 'attention', 'coach', 'cycle', 'week', 'challenges', 'checkup', 'news', 'nutrition',
+    'profileNudge', 'customize', 'disclaimer',
   ]);
   assert.deepEqual(buildHomeSectionOrder({ layout: 'standard', includeCycle: true }), order);
 });

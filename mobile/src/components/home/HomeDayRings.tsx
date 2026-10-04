@@ -40,7 +40,7 @@ export type DayRing = {
 
 const ICONS: Record<DayRing['key'], LucideIcon> = { steps: Footprints, water: Droplets, meds: Pill };
 
-function ringPalette(dark: boolean): Record<DayRing['key'], string> {
+export function ringPalette(dark: boolean): Record<DayRing['key'], string> {
   return dark
     ? { steps: brandHex('#2DD4BF'), water: '#60A5FA', meds: '#A78BFA' }
     : { steps: brandHex('#14B8A6'), water: '#3B82F6', meds: '#7C3AED' };
