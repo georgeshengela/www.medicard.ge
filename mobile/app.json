@@ -3,7 +3,7 @@
     "name": "MEDICARD AI",
     "slug": "medicard-ge",
     "scheme": "medicard",
-    "version": "1.0.0.20.40",
+    "version": "1.0.0.21.0",
     "assetBundlePatterns": [
       "assets/**"
     ],
@@ -247,6 +247,134 @@
             "android": {
               "foregroundImage": "./assets/app-icons/gold-android.png",
               "backgroundColor": "#06211F"
+            }
+          },
+          {
+            "name": "Chukurtma",
+            "ios": "./assets/app-icons/chukurtma.png",
+            "android": {
+              "foregroundImage": "./assets/app-icons/chukurtma-android.png",
+              "backgroundColor": "#480F23"
+            }
+          },
+          {
+            "name": "Silk",
+            "ios": "./assets/app-icons/silk.png",
+            "android": {
+              "foregroundImage": "./assets/app-icons/silk-android.png",
+              "backgroundColor": "#FDF6F7"
+            }
+          },
+          {
+            "name": "Orchid",
+            "ios": "./assets/app-icons/orchid.png",
+            "android": {
+              "foregroundImage": "./assets/app-icons/orchid-android.png",
+              "backgroundColor": "#2F103D"
+            }
+          },
+          {
+            "name": "Lavender",
+            "ios": "./assets/app-icons/lavender.png",
+            "android": {
+              "foregroundImage": "./assets/app-icons/lavender-android.png",
+              "backgroundColor": "#E3D8FC"
+            }
+          },
+          {
+            "name": "Cherry",
+            "ios": "./assets/app-icons/cherry.png",
+            "android": {
+              "foregroundImage": "./assets/app-icons/cherry-android.png",
+              "backgroundColor": "#F38699"
+            }
+          },
+          {
+            "name": "Sage",
+            "ios": "./assets/app-icons/sage.png",
+            "android": {
+              "foregroundImage": "./assets/app-icons/sage-android.png",
+              "backgroundColor": "#D3DECA"
+            }
+          },
+          {
+            "name": "Glass",
+            "ios": "./assets/app-icons/glass.png",
+            "android": {
+              "foregroundImage": "./assets/app-icons/glass-android.png",
+              "backgroundColor": "#0A233F"
+            }
+          },
+          {
+            "name": "Neon",
+            "ios": "./assets/app-icons/neon.png",
+            "android": {
+              "foregroundImage": "./assets/app-icons/neon-android.png",
+              "backgroundColor": "#050910"
+            }
+          },
+          {
+            "name": "Paper",
+            "ios": "./assets/app-icons/paper.png",
+            "android": {
+              "foregroundImage": "./assets/app-icons/paper-android.png",
+              "backgroundColor": "#FEFEFE"
+            }
+          },
+          {
+            "name": "Marble",
+            "ios": "./assets/app-icons/marble.png",
+            "android": {
+              "foregroundImage": "./assets/app-icons/marble-android.png",
+              "backgroundColor": "#F7F6F3"
+            }
+          },
+          {
+            "name": "City",
+            "ios": "./assets/app-icons/city.png",
+            "android": {
+              "foregroundImage": "./assets/app-icons/city-android.png",
+              "backgroundColor": "#040812"
+            }
+          },
+          {
+            "name": "Holo",
+            "ios": "./assets/app-icons/holo.png",
+            "android": {
+              "foregroundImage": "./assets/app-icons/holo-android.png",
+              "backgroundColor": "#E6D0F5"
+            }
+          },
+          {
+            "name": "Watercolor",
+            "ios": "./assets/app-icons/watercolor.png",
+            "android": {
+              "foregroundImage": "./assets/app-icons/watercolor-android.png",
+              "backgroundColor": "#F9F6F2"
+            }
+          },
+          {
+            "name": "Puffy",
+            "ios": "./assets/app-icons/puffy.png",
+            "android": {
+              "foregroundImage": "./assets/app-icons/puffy-android.png",
+              "backgroundColor": "#EDFCF9"
+            }
+          },
+          {
+            "name": "Pixel",
+            "ios": "./assets/app-icons/pixel.png",
+            "android": {
+              "foregroundImage": "./assets/app-icons/pixel-android.png",
+              "backgroundColor": "#1D1A49"
+            }
+          },
+          {
+            "name": "Topo",
+            "ios": "./assets/app-icons/topo.png",
+            "android": {
+              "foregroundImage": "./assets/app-icons/topo-android.png",
+              "backgroundColor": "#022220"
             }
           }
         ]
