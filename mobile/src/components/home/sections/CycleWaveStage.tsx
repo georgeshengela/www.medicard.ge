@@ -3,7 +3,8 @@ import { AccessibilityInfo, PanResponder, Pressable, StyleSheet, Text, View, typ
 import { useIsFocused } from 'expo-router';
 import Svg, { Circle, ClipPath, Defs, G, LinearGradient as SvgGradient, Path, Rect, Stop } from 'react-native-svg';
 import { LinearGradient } from 'expo-linear-gradient';
-import * as Haptics from 'expo-haptics';
+import { useScrollLock } from '@/components/ui/LockableScrollView';
+import { scrubHaptics } from '@/lib/scrubHaptics';
 import Animated, {
   cancelAnimation,
   Easing,
@@ -49,6 +50,9 @@ const BASE = H - 24;
 const DOTS_Y = BASE + 12;
 /** How long a finger's preview stays after release, so a tap can be read. */
 const HOLD_MS = 2600;
+/** A still finger takes the wave after this long; a sideways move takes it at once, a vertical one scrolls. */
+const TAKE_MS = 170;
+const SLOP = 8;
 
 /**
  * „ციკლის ტალღა“ — the women's Home answer (owner 2026-10-03, replacing the plain centred glow):
@@ -104,20 +108,54 @@ export function CycleWaveStage({
   const breath = useSharedValue(0);
   const enterRef = useRef(true);
 
-  useEffect(() => () => {
-    if (holdRef.current) clearTimeout(holdRef.current);
-  }, []);
+  useEffect(
+    () => () => {
+      if (holdRef.current) clearTimeout(holdRef.current);
+      clearTake();
+      setLocked(false);
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [],
+  );
 
   const xOf = (t: number, w = width) => PAD_X + (t / model.span) * (w - PAD_X * 2);
   const yOf = (t: number) => BASE - waveHeightAt(model, t) * (BASE - TOP);
 
-  const setScrubDay = (d: number | null) => {
+  const todayRef = useRef<number | null>(null);
+  todayRef.current = model.todayT != null ? Math.round(model.todayT + 0.5) : null;
+  /** A tick on every new day, a firmer one on today. */
+  const setScrubDay = (d: number | null, silent = false) => {
     if (d === scrubRef.current) return;
     scrubRef.current = d;
     setScrub(d);
-    if (d != null) Haptics.selectionAsync().catch(() => undefined);
+    if (d == null || silent) return;
+    if (d === todayRef.current) scrubHaptics.landmark();
+    else scrubHaptics.tick();
   };
-  const dayAtX = (x: number) => {
+  // The wave spans the page, so it must not swallow page scrolls: it takes the finger only after a
+  // sideways move or a short still hold, and then pauses the page's scroll until release.
+  const lockScroll = useScrollLock();
+  const lockedRef = useRef(false);
+  const setLocked = (on: boolean) => {
+    if (lockedRef.current === on) return;
+    lockedRef.current = on;
+    lockScroll(on);
+  };
+  const touch = useRef({ active: false, abandoned: false, x: 0, take: null as ReturnType<typeof setTimeout> | null });
+  const clearTake = () => {
+    if (touch.current.take) clearTimeout(touch.current.take);
+    touch.current.take = null;
+  };
+  const take = () => {
+    const g = touch.current;
+    if (g.active || g.abandoned) return;
+    clearTake();
+    g.active = true;
+    setLocked(true);
+    scrubHaptics.grab();
+    setScrubDay(dayAt(g.x), true);
+  };
+  const dayAt = (x: number) => {
     const w = widthRef.current;
     const m = modelRef.current;
     if (!w) return null;
@@ -128,16 +166,49 @@ export function CycleWaveStage({
       PanResponder.create({
         onStartShouldSetPanResponder: () => true,
         onMoveShouldSetPanResponder: () => true,
-        onPanResponderTerminationRequest: () => false,
+        // Until the wave has taken the finger, the page's scroll may have it.
+        onPanResponderTerminationRequest: () => !touch.current.active,
+        onShouldBlockNativeResponder: () => false,
         onPanResponderGrant: (e) => {
           if (holdRef.current) clearTimeout(holdRef.current);
-          setScrubDay(dayAtX(e.nativeEvent.locationX));
+          const g = touch.current;
+          g.active = false;
+          g.abandoned = false;
+          g.x = e.nativeEvent.locationX;
+          clearTake();
+          g.take = setTimeout(take, TAKE_MS);
         },
-        onPanResponderMove: (e) => setScrubDay(dayAtX(e.nativeEvent.locationX)),
+        onPanResponderMove: (e, gs) => {
+          const g = touch.current;
+          g.x = e.nativeEvent.locationX;
+          if (g.active) {
+            setScrubDay(dayAt(g.x));
+            return;
+          }
+          if (g.abandoned) return;
+          if (Math.abs(gs.dx) > SLOP && Math.abs(gs.dx) > Math.abs(gs.dy) * 1.2) take();
+          else if (Math.abs(gs.dy) > SLOP) {
+            g.abandoned = true;
+            clearTake();
+          }
+        },
         onPanResponderRelease: () => {
-          holdRef.current = setTimeout(() => setScrubDay(null), HOLD_MS);
+          const g = touch.current;
+          clearTake();
+          if (!g.active && !g.abandoned) setScrubDay(dayAt(g.x)); // a tap shows that day
+          g.active = false;
+          setLocked(false);
+          if (scrubRef.current != null) holdRef.current = setTimeout(() => setScrubDay(null), HOLD_MS);
         },
-        onPanResponderTerminate: () => setScrubDay(null),
+        onPanResponderTerminate: () => {
+          const g = touch.current;
+          clearTake();
+          const wasActive = g.active;
+          g.active = false;
+          g.abandoned = true;
+          setLocked(false);
+          if (wasActive) setScrubDay(null);
+        },
       }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [],
@@ -338,7 +409,7 @@ export function CycleWaveStage({
         {...pan.panHandlers}
       >
         {geometry ? (
-          <Svg width={width} height={H}>
+          <Svg width={width} height={H} pointerEvents="none">
             <Defs>
               <SvgGradient id="cwPhase" x1={xOf(0)} y1={0} x2={xOf(model.span)} y2={0} gradientUnits="userSpaceOnUse">
                 {geometry.stops.map((st, i) => (

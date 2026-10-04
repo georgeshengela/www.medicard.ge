@@ -2,7 +2,8 @@ import { CyclePressable as Pressable } from '@/components/cycle/CyclePressable';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { PanResponder, Text, useWindowDimensions, View } from 'react-native';
 import Svg, { Circle, Defs, G, Line, Path, RadialGradient, Stop } from 'react-native-svg';
-import * as Haptics from 'expo-haptics';
+import { useScrollLock } from '@/components/ui/LockableScrollView';
+import { scrubHaptics } from '@/lib/scrubHaptics';
 import Animated, {
   Easing,
   FadeIn,
@@ -178,25 +179,50 @@ export function CycleStatusGauge({
     if (deg < 0) deg += 360;
     return Math.min(count, Math.floor((deg / 360) * count) + 1);
   };
-  const setScrubDay = (d: number | null) => {
+  // While a finger scrubs the ring the page must not scroll (iOS kept scrolling under the pan responder).
+  const lockScroll = useScrollLock();
+  const lockedRef = useRef(false);
+  const setLocked = (on: boolean) => {
+    if (lockedRef.current === on) return;
+    lockedRef.current = on;
+    lockScroll(on);
+  };
+  useEffect(() => () => setLocked(false), []); // eslint-disable-line react-hooks/exhaustive-deps
+  const dayRef = useRef(day);
+  dayRef.current = day;
+  /** A tick on every new day, a firmer one on today; the grab itself already buzzed. */
+  const setScrubDay = (d: number | null, silent = false) => {
     if (d === scrubRef.current) return;
     scrubRef.current = d;
     setScrub(d);
-    if (d != null) Haptics.selectionAsync().catch(() => undefined);
+    if (d == null || silent) return;
+    if (d === dayRef.current) scrubHaptics.landmark();
+    else scrubHaptics.tick();
+  };
+  const end = () => {
+    setLocked(false);
+    setScrubDay(null);
   };
   const pan = useMemo(
     () =>
       PanResponder.create({
+        // Only a touch on the band itself takes the ring, so a swipe over the centre still scrolls.
         onStartShouldSetPanResponder: (e) => Boolean(length && !tracking && describeDay && dayAt(e.nativeEvent.locationX, e.nativeEvent.locationY) != null),
+        onStartShouldSetPanResponderCapture: () => false,
         onMoveShouldSetPanResponder: () => false,
         onPanResponderTerminationRequest: () => false,
-        onPanResponderGrant: (e) => setScrubDay(dayAt(e.nativeEvent.locationX, e.nativeEvent.locationY)),
+        onShouldBlockNativeResponder: () => true,
+        onPanResponderGrant: (e) => {
+          setLocked(true);
+          scrubHaptics.grab();
+          setScrubDay(dayAt(e.nativeEvent.locationX, e.nativeEvent.locationY), true);
+        },
         onPanResponderMove: (e) => {
           const d = dayAt(e.nativeEvent.locationX, e.nativeEvent.locationY);
           if (d != null) setScrubDay(d);
         },
-        onPanResponderRelease: () => setScrubDay(null),
-        onPanResponderTerminate: () => setScrubDay(null),
+        onPanResponderRelease: end,
+        onPanResponderTerminate: end,
       }),
     // eslint-disable-next-line react-hooks/exhaustive-deps -- geometry inputs only
     [size, count, length, tracking, describeDay],
