@@ -1,3 +1,4 @@
+import { MODULE_BRANDS } from '@/theme/moduleBrand';
 import React, { useEffect } from 'react';
 import { ActivityIndicator, Pressable, Text, View } from 'react-native';
 import Animated, {
@@ -68,7 +69,7 @@ export function QuestClaimButton({
 
   const compact = size === 'sm';
   const height = compact ? 40 : 48;
-  const fill = dark ? '#0D9488' : colors.primary200;
+  const fill = MODULE_BRANDS.quest.gradient[1];
   const fontSize = compact ? 13 : 14;
   const iconSize = compact ? 15 : 17;
 

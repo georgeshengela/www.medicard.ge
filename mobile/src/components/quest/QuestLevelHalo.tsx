@@ -18,7 +18,8 @@ import { useIsDark, useThemeColors } from '@/theme/colors';
 /** Figma 8853:146377 — 320px Nightingale score halo. Exact ring geometry from exported ellipses. */
 const SIZE = 320;
 const INNER = 160;
-const BRAND = '#14B8A6';
+// MEDIQUEST violet (the level-up sheet is mounted globally, outside the module tone).
+const BRAND = '#8B5CF6';
 const BADGE = '#22C55E';
 
 type Props = {

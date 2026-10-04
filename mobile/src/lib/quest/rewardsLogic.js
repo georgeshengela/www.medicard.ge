@@ -11,6 +11,8 @@ export const WALLET_LEDGER_SOURCE_TYPES = Object.freeze([
   'ADMIN_ADJUSTMENT',
   'HUNT',
   'REFERRAL',
+  'MEDIRUN',
+  'REWARD_REFUND',
 ]);
 
 export function coinsShortfall(cost, balance) {
@@ -46,6 +48,12 @@ export function walletSourceLabel(sourceType, copy = {}) {
       return copy.ledgerHunt || copy.ledgerUnknown || 'Medi Hunt';
     case 'REFERRAL':
       return copy.ledgerReferral || copy.ledgerUnknown || 'Invite bonus';
+    // MEDIRUN boxes pay coins (server giftRules.js COIN_SOURCE) — they used to show as „balance adjustment“.
+    case 'MEDIRUN':
+      return copy.ledgerMedirun || 'MEDIRUN';
+    // A store prize that could not be handed over: the coins came back (rewardsAdmin.js).
+    case 'REWARD_REFUND':
+      return copy.ledgerRefund || 'Coins returned';
     default:
       return copy.ledgerUnknown || 'Balance adjustment';
   }

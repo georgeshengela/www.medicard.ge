@@ -27,7 +27,7 @@ export function QuestProgressBar({
   const colors = useThemeColors();
   const reduce = usePrefersReducedMotion();
   const fillState = progressBarFill(percent);
-  const fill = color || (near ? QUEST.accent.movement : colors.primary200);
+  const fill = color || colors.primary200;
   const [trackW, setTrackW] = useState(0);
   const width = useSharedValue(0);
 

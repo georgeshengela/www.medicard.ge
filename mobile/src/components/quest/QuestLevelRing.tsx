@@ -97,7 +97,7 @@ export function QuestLevelRing({
           width: inner,
           height: inner,
           borderRadius: inner / 2,
-          backgroundColor: filled ? (dark ? QUEST.wash.dark : QUEST.wash.lightSoft) : 'transparent',
+          backgroundColor: filled ? colors.accent100 : 'transparent',
           alignItems: 'center',
           justifyContent: 'center',
         }}

@@ -80,13 +80,18 @@ const roseDark: Palette = { ...darkColors, ...BRAND_ROSE.dark };
  * pages speak sky blue like its wordmark). Mounted by the module's layout (`ModuleToneProvider`);
  * canvas, surfaces and text stay shared. It wins over the women's rose inside that module.
  */
-export type ModuleTone = 'vet' | 'food';
+export type ModuleTone = 'vet' | 'food' | 'quest';
 type ToneTokens = { primary100: string; primary200: string; primary300: string; accent100: string; accent200: string };
 const MODULE_TONES: Record<ModuleTone, { light: ToneTokens; dark: ToneTokens }> = {
   // MEDIVET (moduleBrand `vet`): #0369A1 / #7DD3FC.
   vet: {
     light: { primary100: '#0369A1', primary200: '#0284C7', primary300: '#38BDF8', accent100: '#E0F2FE', accent200: '#7DD3FC' },
     dark: { primary100: '#7DD3FC', primary200: '#38BDF8', primary300: '#0EA5E9', accent100: '#0C2A3D', accent200: '#075985' },
+  },
+  // MEDIQUEST (moduleBrand `quest`): #6D28D9 / #C4B5FD (owner 2026-10-04: the whole module speaks its violet).
+  quest: {
+    light: { primary100: '#6D28D9', primary200: '#7C3AED', primary300: '#A78BFA', accent100: '#EDE9FE', accent200: '#C4B5FD' },
+    dark: { primary100: '#C4B5FD', primary200: '#A78BFA', primary300: '#8B5CF6', accent100: '#221437', accent200: '#4C1D95' },
   },
   // MEDIFOOD (moduleBrand `food`): #047857 / #34D399.
   food: {
@@ -97,6 +102,7 @@ const MODULE_TONES: Record<ModuleTone, { light: ToneTokens; dark: ToneTokens }> 
 const TONED: Record<ModuleTone, { light: Palette; dark: Palette }> = {
   vet: { light: { ...lightColors, ...MODULE_TONES.vet.light }, dark: { ...darkColors, ...MODULE_TONES.vet.dark } },
   food: { light: { ...lightColors, ...MODULE_TONES.food.light }, dark: { ...darkColors, ...MODULE_TONES.food.dark } },
+  quest: { light: { ...lightColors, ...MODULE_TONES.quest.light }, dark: { ...darkColors, ...MODULE_TONES.quest.dark } },
 };
 const ModuleToneContext = createContext<ModuleTone | null>(null);
 

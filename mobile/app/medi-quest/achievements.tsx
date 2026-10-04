@@ -1,9 +1,10 @@
+import { ModuleHeader } from '@/components/brand/ModuleHeader';
+import { tx } from '@/i18n/locale';
 import React, { useCallback, useEffect, useState } from 'react';
 import { Pressable, RefreshControl, ScrollView, Text, View } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { ArrowLeft } from 'lucide-react-native';
 import { QuestArt } from '@/components/quest/QuestIcon';
 import { QUEST_TROPHY_ART } from '@/components/quest/questArt';
 import * as Haptics from 'expo-haptics';
@@ -77,36 +78,13 @@ export default function QuestAchievementsScreen() {
   const groups = groupAchievements(items);
 
   return (
-    <View className="flex-1 bg-bg-100" style={{ paddingTop: insets.top }}>
-      <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 8, paddingVertical: 4 }}>
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={questText.back}
-          hitSlop={8}
-          onPress={() => router.back()}
-          style={{ width: 44, height: 44, alignItems: 'center', justifyContent: 'center' }}
-        >
-          <ArrowLeft size={22} color={colors.text100} strokeWidth={2.2} />
-        </Pressable>
-        <Text
-          style={{
-            flex: 1,
-            fontFamily: 'NotoSansGeorgian_700Bold',
-            fontSize: 18,
-            lineHeight: 24,
-            letterSpacing: -0.2,
-            color: colors.text100,
-          }}
-        >
-          {copy.section}
-        </Text>
-      </View>
-
+    <View className="flex-1 bg-bg-100">
       <ScrollView
-        contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 8, paddingBottom: insets.bottom + 40, gap: 20 }}
+        contentContainerStyle={{ paddingHorizontal: 20, paddingTop: insets.top + 12, paddingBottom: insets.bottom + 40, gap: 20 }}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary200} />}
         showsVerticalScrollIndicator={false}
       >
+        <ModuleHeader module="quest" subtitle={copy.section} fallbackHref="/medi-quest" />
         {loading && !overview ? (
           <AchievementsSkeleton />
         ) : error && !overview ? (
@@ -130,7 +108,7 @@ export default function QuestAchievementsScreen() {
                 borderRadius: 22,
                 alignItems: 'center',
                 justifyContent: 'center',
-                backgroundColor: dark ? QUEST.wash.dark : QUEST.wash.light,
+                backgroundColor: colors.accent100,
               }}
             >
               <QuestArt source={QUEST_TROPHY_ART} size={48} />
@@ -173,7 +151,7 @@ export default function QuestAchievementsScreen() {
                     borderRadius: 18,
                     alignItems: 'center',
                     justifyContent: 'center',
-                    backgroundColor: dark ? QUEST.wash.dark : QUEST.wash.light,
+                    backgroundColor: colors.accent100,
                   }}
                 >
                   <QuestArt source={QUEST_TROPHY_ART} size={44} />
@@ -219,7 +197,7 @@ export default function QuestAchievementsScreen() {
                     style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 2 }}
                   >
                     <Text style={{ fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 16, lineHeight: 22, letterSpacing: -0.2, color: colors.text100 }}>
-                      {copy.categories[group.category as keyof typeof copy.categories] || group.category}
+                      {copy.categories[group.category as keyof typeof copy.categories] || tx('სხვა', 'Other')}
                     </Text>
                     <Text style={{ fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 13, lineHeight: 18, color: colors.text300 }}>
                       {group.items.filter((row: AchievementItem) => row.unlocked).length} / {group.items.length}

@@ -36,7 +36,7 @@ export function QuestIcon({
 }) {
   const colors = useThemeColors();
   const dark = useIsDark();
-  const bg = ready && !done ? QUEST.accent[kind] : dark ? QUEST.wash.dark : QUEST.wash.light;
+  const bg = ready && !done ? colors.primary200 : colors.accent100;
   const mark = Math.round(size * 0.42);
   return (
     <View style={{ width: size, height: size }}>

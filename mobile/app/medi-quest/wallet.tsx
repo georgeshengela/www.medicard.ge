@@ -1,73 +1,80 @@
-import React, { useEffect, useState } from 'react';
-import { Pressable, ScrollView, Text, View } from 'react-native';
-import Animated, { FadeInDown } from 'react-native-reanimated';
+import React, { useCallback, useEffect, useState } from 'react';
+import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { ArrowLeft, TrendingUp } from 'lucide-react-native';
-import { appLang, dateLocale } from '@/i18n/locale';
+import { RefreshCw, Store } from 'lucide-react-native';
+import { appLang, tx } from '@/i18n/locale';
+import { ModuleHeader, ModuleHeaderButton } from '@/components/brand/ModuleHeader';
+import { HomeSectionHeading } from '@/components/home/HomeSectionHeading';
 import { Bone } from '@/components/ui/Skeleton';
-import { QuestAnimatedNumber } from '@/components/quest/QuestAnimatedNumber';
-import { QuestArt, QuestCoinMark } from '@/components/quest/QuestIcon';
-import { QUEST_GIFT_ART, ledgerArt } from '@/components/quest/questArt';
-import { QuestMediLine } from '@/components/quest/QuestMediLine';
-import { usePrefersReducedMotion } from '@/hooks/usePrefersReducedMotion';
-import { useIsDark, useThemeColors } from '@/theme/colors';
+import { QuestArt } from '@/components/quest/QuestIcon';
+import { ledgerArt } from '@/components/quest/questArt';
+import { QuestWalletCard, coins, questDate, useQuestInk } from '@/components/quest/store/QuestStoreKit';
+import { useThemeColors } from '@/theme/colors';
+import { HUB, hubText } from '@/theme/hub';
 import { questApi } from '@/lib/quest/api';
-import { formatQuestNumber } from '@/lib/quest/logic.js';
-import { canShowRedeem, coinsShortfall, walletSourceLabel } from '@/lib/quest/rewardsLogic.js';
+import { walletSourceLabel } from '@/lib/quest/rewardsLogic.js';
 import { q } from '@/lib/quest/copy';
 import { buildQuestDevWallet, getQuestDevScenario, isQuestDevEnabled } from '@/lib/quest/devFixture';
 import { rewardsCopy } from '@/i18n/quest/rewards.js';
 import { getMediCoinBalanceHint, subscribeMediCoinBalance } from '@/lib/quest/cache';
-import { QUEST } from '@/theme/questTokens';
 
 type WalletData = Awaited<ReturnType<typeof questApi.rewards>>;
 
+/**
+ * Medi Coins wallet (owner 2026-10-04 redesign): the standard module header, the violet coins card
+ * (same as the store) with the way to spend them, earned / spent in two numbers, and every movement
+ * named by where it came from — MEDIRUN boxes and store refunds included.
+ */
 export default function QuestWalletScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const colors = useThemeColors();
-  const dark = useIsDark();
-  const reduce = usePrefersReducedMotion();
+  const c = useThemeColors();
+  const ink = useQuestInk();
   const copy = q(appLang());
   const rewards = rewardsCopy(appLang());
   const [data, setData] = useState<WalletData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [failed, setFailed] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
   const [liveCoins, setLiveCoins] = useState<number | null>(() => getMediCoinBalanceHint());
 
-  const load = () => {
+  const load = useCallback(async () => {
     if (isQuestDevEnabled() && getQuestDevScenario() !== 'LIVE') {
       setData(buildQuestDevWallet() as unknown as WalletData);
       setLoading(false);
       return;
     }
-    void questApi
-      .rewards()
-      .then(setData)
-      .catch(() => setData(null))
-      .finally(() => setLoading(false));
-  };
-
-  useEffect(() => {
-    load();
+    try {
+      setData(await questApi.rewards());
+      setFailed(false);
+    } catch {
+      setFailed(true);
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
   useEffect(() => {
-    return subscribeMediCoinBalance((coins) => {
-      setLiveCoins(coins);
-      if (coins == null) load();
-      else {
-        setData((prev) =>
-          prev
-            ? {
-                ...prev,
-                balance: { ...prev.balance, coins },
-              }
-            : prev,
-        );
-      }
+    void load();
+  }, [load]);
+
+  useEffect(() => {
+    return subscribeMediCoinBalance((value) => {
+      setLiveCoins(value);
+      if (value == null) void load();
+      else setData((prev) => (prev ? { ...prev, balance: { ...prev.balance, coins: value } } : prev));
     });
-  }, []);
+  }, [load]);
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    try {
+      await load();
+    } finally {
+      setRefreshing(false);
+    }
+  };
 
   const sourceLabel = (sourceType: string) =>
     walletSourceLabel(sourceType, {
@@ -79,229 +86,104 @@ export default function QuestWalletScreen() {
       ledgerRedeem: rewards.ledgerRedeem || copy.ledgerRedeem,
       ledgerHunt: copy.ledgerHunt,
       ledgerReferral: copy.ledgerReferral,
+      ledgerMedirun: copy.ledgerMedirun,
+      ledgerRefund: copy.ledgerRefund,
     });
-  const coinInk = dark ? QUEST.pill.coinInkDark : QUEST.pill.coinInkLight;
-  const coinBg = dark ? QUEST.pill.coinDark : QUEST.pill.coinLight;
-  const displayBalance = liveCoins ?? data?.balance?.coins ?? 0;
+  const balance = liveCoins ?? data?.balance?.coins ?? 0;
+  const rows = (data?.transactions ?? []).filter((row) => row.currency !== 'XP');
 
   return (
-    <View className="flex-1 bg-bg-100" style={{ paddingTop: insets.top }}>
-      <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 8, paddingVertical: 4 }}>
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={copy.back}
-          hitSlop={8}
-          onPress={() => router.back()}
-          style={{ width: 44, height: 44, alignItems: 'center', justifyContent: 'center' }}
-        >
-          <ArrowLeft size={22} color={colors.text100} strokeWidth={2.2} />
-        </Pressable>
-        <Text style={{ flex: 1, fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 18, lineHeight: 24, letterSpacing: -0.2, color: colors.text100 }}>
-          {copy.coinsName}
-        </Text>
-      </View>
-
+    <View style={{ flex: 1, backgroundColor: c.bg100 }}>
       <ScrollView
-        contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 8, paddingBottom: insets.bottom + 32, gap: 20 }}
+        contentContainerStyle={{ paddingTop: insets.top + 12, paddingBottom: insets.bottom + 40, width: '100%', maxWidth: 760, alignSelf: 'center' }}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={ink.violet} />}
         showsVerticalScrollIndicator={false}
       >
-        {/* Balance hero */}
-        <Animated.View
-          entering={reduce ? undefined : FadeInDown.duration(QUEST.motion.base)}
-          style={{
-            backgroundColor: dark ? colors.surface : '#FFFFFF',
-            borderWidth: 1,
-            borderColor: colors.bg300,
-            borderRadius: QUEST.radius,
-            padding: 20,
-            overflow: 'hidden',
-          }}
-        >
-          <View
-            pointerEvents="none"
-            style={{
-              position: 'absolute',
-              right: -50,
-              top: -60,
-              width: 200,
-              height: 200,
-              borderRadius: 100,
-              backgroundColor: coinBg,
-              opacity: dark ? 0.8 : 0.7,
-            }}
-          />
-          <Text style={{ fontFamily: 'NotoSansGeorgian_600SemiBold', fontSize: 12, lineHeight: 16, letterSpacing: 1, textTransform: 'uppercase', color: colors.text300 }}>
-            {copy.balanceLabel}
-          </Text>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, marginTop: 8 }}>
-            <View
-              style={{
-                width: 48,
-                height: 48,
-                borderRadius: 24,
-                alignItems: 'center',
-                justifyContent: 'center',
-                backgroundColor: coinBg,
-              }}
-            >
-              <QuestCoinMark size={26} color={coinInk} />
-            </View>
-            {loading && !data ? (
-              <Bone width={140} height={40} radius={10} />
-            ) : (
-              <QuestAnimatedNumber
-                value={displayBalance}
-                locale={appLang()}
-                duration={900}
-                numberOfLines={1}
-                adjustsFontSizeToFit
-                style={{
-                  flex: 1,
-                  fontFamily: 'NotoSansGeorgian_700Bold',
-                  fontSize: 40,
-                  lineHeight: 48,
-                  letterSpacing: -1,
-                  color: colors.text100,
-                }}
-              />
-            )}
-          </View>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 14 }}>
-            <View
-              style={{
-                flexDirection: 'row',
-                alignItems: 'center',
-                gap: 5,
-                paddingHorizontal: 10,
-                paddingVertical: 5,
-                borderRadius: 999,
-                backgroundColor: dark ? QUEST.wash.dark : QUEST.wash.light,
-              }}
-            >
-              <TrendingUp size={13} color={colors.primary100} strokeWidth={2.4} />
-              <Text style={{ fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 12, lineHeight: 16, color: colors.primary100 }}>
-                {copy.earned}: {formatQuestNumber(data?.totalEarned.coins || 0, appLang())}
-              </Text>
-            </View>
-          </View>
-        </Animated.View>
+        <ModuleHeader
+          module="quest"
+          subtitle="Medi Coins"
+          fallbackHref="/medi-quest"
+          style={s.gutter}
+          right={<ModuleHeaderButton label={tx('მაღაზია', 'Store')} icon={Store} onPress={() => router.push('/medi-quest/rewards' as never)} />}
+        />
 
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={rewards.useCoins}
-          onPress={() => router.push('/medi-quest/rewards' as never)}
-          className="active:opacity-75"
-          style={{
-            flexDirection: 'row',
-            alignItems: 'center',
-            gap: 12,
-            backgroundColor: dark ? colors.surface : '#FFFFFF',
-            borderWidth: 1,
-            borderColor: colors.bg300,
-            borderRadius: QUEST.rowRadius,
-            paddingHorizontal: 14,
-            paddingVertical: 14,
-          }}
-        >
-          <View
-            style={{
-              width: 40,
-              height: 40,
-              borderRadius: 12,
-              alignItems: 'center',
-              justifyContent: 'center',
-              backgroundColor: dark ? QUEST.wash.dark : QUEST.wash.light,
-            }}
-          >
-            <QuestArt source={QUEST_GIFT_ART} size={32} />
+        <QuestWalletCard
+          style={[s.gutter, { marginTop: 18 }]}
+          caption={tx('ბალანსი', 'Balance')}
+          balance={balance}
+          loading={loading && liveCoins == null}
+          action={{ label: tx('გამოიყენე მაღაზიაში', 'Spend in the store'), onPress: () => router.push('/medi-quest/rewards' as never) }}
+        />
+
+        {data ? (
+          <View style={[s.gutter, s.totals]}>
+            <Total label={tx('სულ მიღებული', 'Earned')} value={`+${coins(data.totalEarned?.coins ?? 0)}`} tone={ink.violet} />
+            <Total label={tx('დახარჯული', 'Spent')} value={coins(Math.abs(data.totalSpent?.coins ?? 0))} tone={c.text100} />
           </View>
-          <Text style={{ flex: 1, fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 15, color: colors.text100 }}>
-            {rewards.useCoins}
-          </Text>
-        </Pressable>
+        ) : null}
 
-        {/* Activity */}
-        <View style={{ gap: 8 }}>
-          <Text style={{ fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 16, lineHeight: 22, letterSpacing: -0.2, color: colors.text100, paddingHorizontal: 2 }}>
-            {copy.recent}
-          </Text>
-
+        <View style={[s.gutter, { marginTop: HUB.sectionGap - 6 }]}>
+          <HomeSectionHeading title={copy.recent} />
           {loading && !data ? (
-            [0, 1, 2].map((i) => <Bone key={i} height={64} radius={QUEST.rowRadius} />)
-          ) : !data?.transactions.length ? (
-            <View
-              style={{
-                backgroundColor: dark ? colors.surface : '#FFFFFF',
-                borderWidth: 1,
-                borderColor: colors.bg300,
-                borderRadius: QUEST.radius,
-                padding: QUEST.pad,
-              }}
-            >
-              <QuestMediLine text={copy.walletEmpty} />
+            <View style={{ gap: 8 }}>{[0, 1, 2].map((i) => <Bone key={i} height={60} radius={18} />)}</View>
+          ) : failed && !data ? (
+            <View style={[s.card, { backgroundColor: c.surface }]}>
+              <Text style={[hubText.cardTitle, { color: c.text100 }]}>{tx('ისტორია ვერ ჩაიტვირთა', 'Couldn’t load your history')}</Text>
+              <Pressable accessibilityRole="button" onPress={() => void load()} style={[s.retry, { backgroundColor: ink.dark ? 'rgba(196,181,253,0.12)' : '#F1EDFB' }]}>
+                <RefreshCw size={15} color={ink.violet} />
+                <Text style={[hubText.link, { color: ink.violet }]}>{tx('ხელახლა ცდა', 'Try again')}</Text>
+              </Pressable>
+            </View>
+          ) : !rows.length ? (
+            <View style={[s.card, { backgroundColor: c.surface }]}>
+              <Text style={[hubText.body, { color: c.text200 }]}>{copy.walletEmpty}</Text>
             </View>
           ) : (
-            data.transactions.map((row, index) => {
-              const positive = row.amount > 0;
-              return (
-                <Animated.View
-                  key={row.id}
-                  entering={reduce ? undefined : FadeInDown.duration(QUEST.motion.base).delay(80 + Math.min(index, 8) * 45)}
-                  style={{
-                    flexDirection: 'row',
-                    alignItems: 'center',
-                    gap: 12,
-                    borderRadius: QUEST.rowRadius,
-                    backgroundColor: dark ? colors.surface : '#FFFFFF',
-                    borderWidth: 1,
-                    borderColor: colors.bg300,
-                    paddingHorizontal: 12,
-                    paddingVertical: 12,
-                  }}
-                >
-                  <View
-                    style={{
-                      width: 40,
-                      height: 40,
-                      borderRadius: 12,
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      backgroundColor: dark ? QUEST.wash.dark : QUEST.wash.light,
-                    }}
-                  >
-                    <QuestArt source={ledgerArt(row.sourceType)} size={32} />
-                  </View>
-                  <View style={{ flex: 1, minWidth: 0 }}>
-                    <Text numberOfLines={1} style={{ fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 15, lineHeight: 20, color: colors.text100 }}>
-                      {sourceLabel(row.sourceType)}
-                    </Text>
-                    <Text style={{ fontFamily: 'NotoSansGeorgian_500Medium', fontSize: 12, lineHeight: 16, color: colors.text300, marginTop: 2 }}>
-                      {new Date(row.createdAt).toLocaleDateString(dateLocale(), { day: 'numeric', month: 'short' })}
+            <View style={[s.list, { backgroundColor: c.surface }]}>
+              {rows.map((row, index) => {
+                const positive = row.amount > 0;
+                return (
+                  <View key={row.id} style={[s.row, index ? { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: c.bg300 } : null]}>
+                    <View style={[s.art, { backgroundColor: ink.dark ? 'rgba(196,181,253,0.10)' : '#F5F1FF' }]}>
+                      <QuestArt source={ledgerArt(row.sourceType)} size={28} />
+                    </View>
+                    <View style={{ flex: 1, minWidth: 0 }}>
+                      <Text numberOfLines={1} style={[hubText.cardTitle, { color: c.text100, fontSize: 14, lineHeight: 20 }]}>{sourceLabel(row.sourceType)}</Text>
+                      <Text style={[hubText.small, { color: c.text300 }]}>{questDate(row.createdAt)}</Text>
+                    </View>
+                    <Text style={[s.amount, { color: positive ? ink.violet : c.text200 }]}>
+                      {positive ? '+' : '−'}{coins(Math.abs(row.amount))}
                     </Text>
                   </View>
-                  <View
-                    style={{
-                      flexDirection: 'row',
-                      alignItems: 'center',
-                      gap: 5,
-                      paddingHorizontal: 10,
-                      paddingVertical: 5,
-                      borderRadius: 999,
-                      backgroundColor: positive ? coinBg : colors.bg200,
-                    }}
-                  >
-                    <QuestCoinMark size={12} color={positive ? coinInk : colors.text300} />
-                    <Text style={{ fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 13, lineHeight: 18, color: positive ? coinInk : colors.text200 }}>
-                      {positive ? '+' : ''}
-                      {formatQuestNumber(row.amount, appLang())}
-                    </Text>
-                  </View>
-                </Animated.View>
-              );
-            })
+                );
+              })}
+            </View>
           )}
         </View>
       </ScrollView>
     </View>
   );
 }
+
+function Total({ label, value, tone }: { label: string; value: string; tone: string }) {
+  const c = useThemeColors();
+  return (
+    <View style={[s.total, { backgroundColor: c.surface }]}>
+      <Text style={[hubText.small, { color: c.text300 }]}>{label}</Text>
+      <Text style={[s.totalValue, { color: tone }]}>{value}</Text>
+    </View>
+  );
+}
+
+const s = StyleSheet.create({
+  gutter: { paddingHorizontal: HUB.gutter },
+  totals: { flexDirection: 'row', gap: 10, marginTop: 12 },
+  total: { flex: 1, borderRadius: 18, padding: 14, gap: 2 },
+  totalValue: { fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 18, lineHeight: 24, fontVariant: ['tabular-nums'] },
+  card: { borderRadius: 20, padding: 16, gap: 8 },
+  retry: { alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center', gap: 6, minHeight: 40, paddingHorizontal: 14, borderRadius: 20 },
+  list: { borderRadius: 22, paddingHorizontal: 14 },
+  row: { flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 64, paddingVertical: 10 },
+  art: { width: 40, height: 40, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
+  amount: { fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 15, lineHeight: 20, fontVariant: ['tabular-nums'] },
+});

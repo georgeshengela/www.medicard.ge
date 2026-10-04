@@ -1,25 +1,30 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { Pressable, ScrollView, Share, Text, View } from 'react-native';
+import { Pressable, ScrollView, Share, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { appLang, dateLocale } from '@/i18n/locale';
-import { isPhoneRequiredError, offerPhoneVerification } from '@/lib/phoneGate';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { ArrowLeft } from 'lucide-react-native';
-import { QuestArt } from '@/components/quest/QuestIcon';
-import { rewardArt } from '@/components/quest/questArt';
-import { Button } from '@/components/ui/Button';
+import { CalendarClock, Check, ChevronDown, ChevronUp, Gift, MapPin, RefreshCw, Sparkles, Store } from 'lucide-react-native';
+import { appLang, tx } from '@/i18n/locale';
+import { isPhoneRequiredError, offerPhoneVerification } from '@/lib/phoneGate';
+import { ModuleHeader } from '@/components/brand/ModuleHeader';
 import { Bone } from '@/components/ui/Skeleton';
-import { QuestAnimatedNumber } from '@/components/quest/QuestAnimatedNumber';
-import { QuestMediLine } from '@/components/quest/QuestMediLine';
-import { APP_MODAL_OVERLAY, APP_MODAL_PROPS, Modal } from '@/components/ui/appModal';
+import {
+  AffordLine,
+  QuestButton,
+  QuestSheet,
+  RewardStage,
+  StockPill,
+  coins,
+  isSoldOut,
+  questDate,
+  useQuestInk,
+} from '@/components/quest/store/QuestStoreKit';
 import { useOffline } from '@/hooks/useOffline';
-import { useIsDark, useThemeColors } from '@/theme/colors';
-import { formatQuestNumber } from '@/lib/quest/logic.js';
+import { useThemeColors } from '@/theme/colors';
+import { HUB, hubText } from '@/theme/hub';
 import { ApiError } from '@/lib/api';
 import { rewardsApi, type RedeemResult, type StoreReward } from '@/lib/quest/rewardsApi';
 import { trackQuestEvent } from '@/lib/productObservability';
-import { QUEST } from '@/theme/questTokens';
 import { canShowRedeem, coinsShortfall, newIdempotencyKey } from '@/lib/quest/rewardsLogic.js';
 import { buildRewardsDevCatalog } from '@/lib/quest/rewardsDevFixture.js';
 import { getQuestDevScenario, isQuestDevEnabled } from '@/lib/quest/devFixture';
@@ -31,32 +36,40 @@ import {
   rewardTitle,
   rewardsCopy,
 } from '@/i18n/quest/rewards.js';
-import {
-  getMediCoinBalanceHint,
-  invalidateMediCoinBalance,
-  requestEntitlementRefresh,
-  subscribeMediCoinBalance,
-} from '@/lib/quest/cache';
+import { invalidateMediCoinBalance, requestEntitlementRefresh } from '@/lib/quest/cache';
 
+const fmtDate = questDate;
+
+/**
+ * Reward detail (owner 2026-10-04 redesign): the prize big on its stage, the price with how far away it
+ * is, what you get and how you receive it, terms folded, and one sticky button that always says what
+ * will happen — or why it can't yet. Confirm and success are bottom sheets; a redeem error shows in
+ * the confirm sheet, where the person is looking.
+ */
 export default function RewardDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const colors = useThemeColors();
-  const dark = useIsDark();
+  const c = useThemeColors();
+  const ink = useQuestInk();
+  const { width } = useWindowDimensions();
   const offline = useOffline();
   const copy = rewardsCopy(appLang());
   const [reward, setReward] = useState<StoreReward | null>(null);
   const [loading, setLoading] = useState(true);
+  const [loadFailed, setLoadFailed] = useState<'missing' | 'error' | null>(null);
   const [confirm, setConfirm] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<RedeemResult | null>(null);
   const [displayBalance, setDisplayBalance] = useState<number | null>(null);
   const [codeRevealed, setCodeRevealed] = useState(false);
+  const [termsOpen, setTermsOpen] = useState(false);
   const idemRef = useRef(newIdempotencyKey());
 
   const load = useCallback(async () => {
+    setLoading(true);
+    setLoadFailed(null);
     if (isQuestDevEnabled() && getQuestDevScenario() !== 'LIVE') {
       const catalog = buildRewardsDevCatalog(getQuestDevScenario() as never);
       const found = [...catalog.featured, ...catalog.available].find((r) => r.id === id) || catalog.featured[0];
@@ -70,8 +83,9 @@ export default function RewardDetailScreen() {
       setReward(row);
       setDisplayBalance(row.userBalance);
       void trackQuestEvent('reward_viewed', row.key);
-    } catch {
+    } catch (err) {
       setReward(null);
+      setLoadFailed(err instanceof ApiError && err.status === 404 ? 'missing' : 'error');
     } finally {
       setLoading(false);
     }
@@ -85,6 +99,17 @@ export default function RewardDetailScreen() {
   const shortfall = reward ? coinsShortfall(reward.coinCost, balance) : 0;
   const redeemable = canShowRedeem(reward, { offline });
 
+  const finishSuccess = (result: RedeemResult) => {
+    if (!reward) return;
+    setSuccess(result);
+    setDisplayBalance(result.wallet.currentBalance);
+    invalidateMediCoinBalance({ coins: result.wallet.currentBalance });
+    requestEntitlementRefresh();
+    setConfirm(false);
+    void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    void trackQuestEvent('reward_redeemed', `${reward.key}:${coinCostBucket(reward.coinCost)}`);
+  };
+
   const onRedeem = async () => {
     if (!reward || busy || offline) return;
     setBusy(true);
@@ -92,11 +117,12 @@ export default function RewardDetailScreen() {
     void trackQuestEvent('reward_redeem_started', reward.key);
     try {
       if (isQuestDevEnabled() && getQuestDevScenario() !== 'LIVE') {
+        const endsAt = new Date(Date.now() + (reward.entitlementDurationDays || 7) * 86_400_000).toISOString();
         const fake: RedeemResult = {
           ok: true,
           redemption: {
             id: 'dev-redemption',
-            status: 'ISSUED',
+            status: reward.type === 'PHYSICAL_PRIZE' ? 'PENDING' : 'ISSUED',
             coinCost: reward.coinCost,
             redeemedAt: new Date().toISOString(),
             expiresAt: new Date(Date.now() + 7 * 86_400_000).toISOString(),
@@ -109,44 +135,21 @@ export default function RewardDetailScreen() {
               descriptionKey: reward.descriptionKey,
               termsKey: reward.termsKey,
               imageKey: reward.imageKey,
+              imageUrl: reward.imageUrl,
               partnerDisplay: reward.partnerDisplay,
             },
             code: reward.type.includes('PARTNER') || reward.type === 'COUPON_CODE' ? 'MEDI-DEV-QA-01' : null,
             codeMasked: '********QA-01',
-            entitlement: reward.entitlementKey
-              ? {
-                  entitlementKey: reward.entitlementKey,
-                  startsAt: new Date().toISOString(),
-                  endsAt: new Date(Date.now() + (reward.entitlementDurationDays || 7) * 86_400_000).toISOString(),
-                  status: 'ACTIVE',
-                }
-              : null,
+            entitlement: reward.entitlementKey ? { entitlementKey: reward.entitlementKey, startsAt: new Date().toISOString(), endsAt, status: 'ACTIVE' } : null,
           },
-          wallet: {
-            previousBalance: balance,
-            currentBalance: Math.max(0, balance - reward.coinCost),
-            spent: reward.coinCost,
-          },
+          wallet: { previousBalance: balance, currentBalance: Math.max(0, balance - reward.coinCost), spent: reward.coinCost },
           entitlement: null,
         };
         fake.entitlement = fake.redemption.entitlement;
-        setSuccess(fake);
-        setDisplayBalance(fake.wallet.currentBalance);
-        invalidateMediCoinBalance({ coins: fake.wallet.currentBalance });
-        requestEntitlementRefresh();
-        setConfirm(false);
-        void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-        void trackQuestEvent('reward_redeemed', `${reward.key}:${coinCostBucket(reward.coinCost)}`);
+        finishSuccess(fake);
         return;
       }
-      const result = await rewardsApi.redeem(reward.id, idemRef.current);
-      setSuccess(result);
-      setDisplayBalance(result.wallet.currentBalance);
-      invalidateMediCoinBalance({ coins: result.wallet.currentBalance });
-      requestEntitlementRefresh();
-      setConfirm(false);
-      void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      void trackQuestEvent('reward_redeemed', `${reward.key}:${coinCostBucket(reward.coinCost)}`);
+      finishSuccess(await rewardsApi.redeem(reward.id, idemRef.current));
     } catch (err: unknown) {
       if (isPhoneRequiredError(err)) {
         setConfirm(false);
@@ -163,264 +166,264 @@ export default function RewardDetailScreen() {
     }
   };
 
+  const header = (
+    <ModuleHeader module="quest" subtitle={tx('ჯილდო', 'Reward')} fallbackHref="/medi-quest/rewards" style={s.gutter} />
+  );
+
   if (loading) {
     return (
-      <View className="flex-1 bg-bg-100" style={{ paddingTop: insets.top, paddingHorizontal: 16, gap: 12 }}>
-        <Bone height={44} radius={12} />
-        <Bone height={220} radius={QUEST.radius} />
+      <View style={{ flex: 1, backgroundColor: c.bg100, paddingTop: insets.top + 12, gap: 16 }}>
+        {header}
+        <View style={[s.gutter, { gap: 14 }]}>
+          <Bone height={Math.round(width * 0.72)} radius={28} />
+          <Bone width={220} height={28} radius={8} />
+          <Bone height={90} radius={20} />
+        </View>
       </View>
     );
   }
 
   if (!reward) {
     return (
-      <View className="flex-1 bg-bg-100" style={{ paddingTop: insets.top, paddingHorizontal: 16 }}>
-        <Pressable onPress={() => router.back()} style={{ width: 44, height: 44, justifyContent: 'center' }}>
-          <ArrowLeft size={22} color={colors.text100} />
-        </Pressable>
-        <QuestMediLine text={rewardErrorMessage('REWARD_NOT_FOUND', appLang())} />
+      <View style={{ flex: 1, backgroundColor: c.bg100, paddingTop: insets.top + 12, gap: 20 }}>
+        {header}
+        <View style={[s.gutter]}>
+          <View style={[s.card, { backgroundColor: c.surface }]}>
+            <Text style={[hubText.cardTitle, { color: c.text100 }]}>
+              {loadFailed === 'missing' ? tx('ეს ჯილდო აღარ არის მაღაზიაში', 'This reward is no longer in the store') : tx('ჯილდო ვერ ჩაიტვირთა', 'The reward didn’t load')}
+            </Text>
+            <Text style={[hubText.caption, { color: c.text200 }]}>
+              {loadFailed === 'missing' ? tx('სხვა საჩუქრებს მაღაზიაში ნახავ.', 'You’ll find other prizes in the store.') : tx('შეამოწმე ინტერნეტი და სცადე ხელახლა.', 'Check your connection and try again.')}
+            </Text>
+            <View style={{ flexDirection: 'row', gap: 10, marginTop: 6 }}>
+              {loadFailed === 'error' ? <QuestButton label={tx('ხელახლა ცდა', 'Try again')} onPress={() => void load()} /> : null}
+              <QuestButton kind="secondary" label={tx('მაღაზია', 'Store')} onPress={() => router.replace('/medi-quest/rewards' as never)} />
+            </View>
+          </View>
+        </View>
       </View>
     );
   }
 
   const title = rewardTitle(reward.titleKey, appLang());
+  const description = rewardDescription(reward.descriptionKey, appLang());
+  const terms = reward.termsKey ? rewardTerms(reward.termsKey, appLang()) : '';
+  const physical = reward.type === 'PHYSICAL_PRIZE';
+  const soldOut = isSoldOut(reward);
   const after = Math.max(0, balance - reward.coinCost);
+  const blocker = soldOut
+    ? tx('ამოიწურა', 'Sold out')
+    : offline
+      ? copy.offlineRedeem
+      : shortfall > 0
+        ? tx(`კიდევ ${coins(shortfall)} მონეტა გჭირდება`, `You need ${coins(shortfall)} more coins`)
+        : !redeemable && reward.userEligibility?.reasonCode
+          ? rewardErrorMessage(reward.userEligibility.reasonCode, appLang())
+          : null;
 
   return (
-    <View className="flex-1 bg-bg-100" style={{ paddingTop: insets.top }}>
-      <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 8 }}>
-        <Pressable
-          accessibilityRole="button"
-          onPress={() => router.back()}
-          style={{ width: 44, height: 44, alignItems: 'center', justifyContent: 'center' }}
-        >
-          <ArrowLeft size={22} color={colors.text100} strokeWidth={2.2} />
-        </Pressable>
-        <Text style={{ flex: 1, fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 18, color: colors.text100 }} numberOfLines={1}>
-          {title}
-        </Text>
-      </View>
+    <View style={{ flex: 1, backgroundColor: c.bg100 }}>
+      <ScrollView contentContainerStyle={{ paddingTop: insets.top + 12, paddingBottom: insets.bottom + 120, width: '100%', maxWidth: 760, alignSelf: 'center' }} showsVerticalScrollIndicator={false}>
+        {header}
 
-      <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: insets.bottom + 120, gap: 16 }}>
-        <View
-          style={{
-            backgroundColor: dark ? colors.surface : '#FFFFFF',
-            borderWidth: 1,
-            borderColor: colors.bg300,
-            borderRadius: QUEST.radius,
-            padding: 20,
-            gap: 12,
-          }}
-        >
-          <View
-            style={{
-              width: 72,
-              height: 72,
-              borderRadius: 20,
-              alignItems: 'center',
-              justifyContent: 'center',
-              backgroundColor: dark ? QUEST.wash.dark : QUEST.wash.light,
-            }}
-          >
-            <QuestArt source={rewardArt(reward)} size={60} />
-          </View>
-          <Text style={{ fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 22, lineHeight: 28, color: colors.text100 }}>
-            {title}
-          </Text>
-          <Text style={{ fontFamily: 'NotoSansGeorgian_500Medium', fontSize: 15, lineHeight: 22, color: colors.text200 }}>
-            {rewardDescription(reward.descriptionKey, appLang())}
-          </Text>
-          <Text style={{ fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 16, color: colors.primary100 }}>
-            {copy.costLabel}: {formatQuestNumber(reward.coinCost, appLang())} Medi Coins
-          </Text>
-          <Text style={{ fontFamily: 'NotoSansGeorgian_500Medium', fontSize: 14, color: colors.text300 }}>
-            {copy.youHave}: {formatQuestNumber(balance, appLang())}
-          </Text>
-          {shortfall > 0 ? (
-            <Text style={{ fontFamily: 'NotoSansGeorgian_500Medium', fontSize: 14, color: colors.text300 }}>
-              {copy.needMore(formatQuestNumber(shortfall, appLang()))}
-            </Text>
-          ) : null}
+        <View style={[s.gutter, { marginTop: 18 }]}>
+          <RewardStage reward={reward} height={Math.round(Math.min(width, 760) * 0.72)} radius={28}>
+            <View style={{ position: 'absolute', top: 14, left: 14 }}><StockPill reward={reward} /></View>
+          </RewardStage>
         </View>
 
-        <Block title={copy.whatYouGet} body={rewardDescription(reward.descriptionKey, appLang())} colors={colors} dark={dark} />
-        {reward.entitlementDurationDays ? (
-          <Block title={copy.validity} body={copy.days(reward.entitlementDurationDays)} colors={colors} dark={dark} />
-        ) : null}
-        {reward.partnerDisplay ? (
-          <Block title={copy.partner} body={reward.partnerDisplay.displayName} colors={colors} dark={dark} />
-        ) : null}
-        {reward.termsKey ? (
-          <Block title={copy.terms} body={rewardTerms(reward.termsKey, appLang())} colors={colors} dark={dark} />
-        ) : null}
+        <View style={[s.gutter, { marginTop: 18, gap: 6 }]}>
+          {reward.partnerDisplay?.displayName ? (
+            <Text style={[hubText.caption, { color: ink.violet }]}>{reward.partnerDisplay.displayName}</Text>
+          ) : null}
+          <Text accessibilityRole="header" style={[s.title, { color: c.text100 }]}>{title}</Text>
+          <Text style={[hubText.body, { color: c.text200 }]}>{description}</Text>
+        </View>
 
-        {error ? (
-          <Text style={{ fontFamily: 'NotoSansGeorgian_600SemiBold', fontSize: 14, color: '#DC2626' }}>{error}</Text>
-        ) : null}
+        <View style={[s.gutter, { marginTop: 18 }]}>
+          <View style={[s.card, { backgroundColor: c.surface }]}>
+            <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 12 }}>
+              <View style={{ flex: 1 }}>
+                <AffordLine cost={reward.coinCost} balance={balance} soldOut={soldOut} />
+              </View>
+              <View style={{ alignItems: 'flex-end' }}>
+                <Text style={[hubText.small, { color: c.text300 }]}>{tx('შენ გაქვს', 'You have')}</Text>
+                <Text style={[s.have, { color: c.text100 }]}>{coins(balance)}</Text>
+              </View>
+            </View>
+            {shortfall > 0 && !soldOut ? (
+              <Pressable accessibilityRole="button" onPress={() => router.push('/medi-quest?tab=missions' as never)} style={[s.earn, { backgroundColor: ink.dark ? 'rgba(196,181,253,0.10)' : '#F5F1FF' }]}>
+                <Sparkles size={16} color={ink.violet} />
+                <Text style={[hubText.caption, { color: c.text100, flex: 1 }]}>
+                  {tx('მონეტები მისიებით, MEDIRUN-ის ყუთებით და მეგობრების მოწვევით გროვდება.', 'Coins come from missions, MEDIRUN boxes and inviting friends.')}
+                </Text>
+                <Text style={[hubText.link, { color: ink.violet }]}>{tx('მისიები', 'Missions')}</Text>
+              </Pressable>
+            ) : null}
+          </View>
+        </View>
+
+        <View style={[s.gutter, { marginTop: 12 }]}>
+          <View style={[s.list, { backgroundColor: c.surface }]}>
+            {physical ? (
+              <InfoRow icon={MapPin} title={tx('როგორ მიიღებ', 'How you get it')} body={tx('თბილისში 14 დღეში გადმოგცემთ — დაგიკავშირდებით ანგარიშის ტელეფონზე. თუ ვერ მოხერხდა, მონეტები სრულად დაგიბრუნდება.', 'We hand it over in Tbilisi within 14 days and call your account phone first. If that fails, every coin comes back.')} />
+            ) : null}
+            {reward.entitlementDurationDays ? (
+              <InfoRow icon={CalendarClock} title={copy.validity} body={copy.days(reward.entitlementDurationDays)} />
+            ) : null}
+            {reward.partnerDisplay?.displayName ? (
+              <InfoRow icon={Store} title={copy.partner} body={reward.partnerDisplay.displayName} />
+            ) : null}
+            {terms ? (
+              <Pressable
+                accessibilityRole="button"
+                accessibilityState={{ expanded: termsOpen }}
+                onPress={() => setTermsOpen((v) => !v)}
+                style={s.termsRow}
+              >
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                  <Text style={[hubText.cardTitle, { color: c.text100, flex: 1, fontSize: 14 }]}>{copy.terms}</Text>
+                  {termsOpen ? <ChevronUp size={18} color={c.text300} /> : <ChevronDown size={18} color={c.text300} />}
+                </View>
+                {termsOpen ? <Text style={[hubText.caption, { color: c.text200, marginTop: 8 }]}>{terms}</Text> : null}
+              </Pressable>
+            ) : null}
+          </View>
+        </View>
       </ScrollView>
 
-      <View
-        style={{
-          position: 'absolute',
-          left: 0,
-          right: 0,
-          bottom: 0,
-          padding: 16,
-          paddingBottom: insets.bottom + 16,
-          backgroundColor: dark ? colors.bg100 : '#F8FAFC',
-          borderTopWidth: 1,
-          borderTopColor: colors.bg300,
-        }}
-      >
-        <Button
-          label={copy.redeem}
-          onPress={() => setConfirm(true)}
-          disabled={!redeemable || busy}
-          accessibilityLabel={`${copy.redeem} ${title} ${formatQuestNumber(reward.coinCost, appLang())} Medi Coins`}
-        />
-        {offline ? (
-          <Text style={{ marginTop: 8, textAlign: 'center', fontFamily: 'NotoSansGeorgian_500Medium', fontSize: 12, color: colors.text300 }}>
-            {copy.offlineRedeem}
-          </Text>
-        ) : null}
+      <View style={[s.footer, { paddingBottom: insets.bottom + 12, backgroundColor: c.bg100, borderTopColor: c.bg300 }]}>
+        <View style={{ width: '100%', maxWidth: 720, alignSelf: 'center', flexDirection: 'row' }}>
+          <QuestButton
+            label={blocker ?? tx(`აიღე · ${coins(reward.coinCost)} მონეტა`, `Get it · ${coins(reward.coinCost)} coins`)}
+            a11y={blocker ?? tx(`${title}-ის აღება ${coins(reward.coinCost)} მონეტად`, `Get ${title} for ${coins(reward.coinCost)} coins`)}
+            disabled={Boolean(blocker) || !redeemable}
+            onPress={() => {
+              setError(null);
+              setConfirm(true);
+            }}
+          />
+        </View>
       </View>
 
-      <Modal visible={confirm} {...APP_MODAL_PROPS} onRequestClose={() => setConfirm(false)}>
-        <View style={{ flex: 1, justifyContent: 'flex-end' }}>
-          <Pressable style={{ flex: 1, backgroundColor: APP_MODAL_OVERLAY }} onPress={() => setConfirm(false)} />
-          <View
-            style={{
-              backgroundColor: dark ? colors.surfaceRaised : '#FFFFFF',
-              borderTopLeftRadius: 28,
-              borderTopRightRadius: 28,
-              padding: 20,
-              paddingBottom: insets.bottom + 20,
-              gap: 12,
-            }}
-          >
-            <Text style={{ fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 18, color: colors.text100 }}>{copy.confirmTitle}</Text>
-            <Text style={{ fontFamily: 'NotoSansGeorgian_500Medium', fontSize: 15, color: colors.text200 }}>
-              {copy.confirmBody(formatQuestNumber(reward.coinCost, appLang()))}
-            </Text>
-            <Text style={{ fontFamily: 'NotoSansGeorgian_500Medium', fontSize: 14, color: colors.text300 }}>
-              {copy.balanceNow}: {formatQuestNumber(balance, appLang())}
-            </Text>
-            <Text style={{ fontFamily: 'NotoSansGeorgian_500Medium', fontSize: 14, color: colors.text300 }}>
-              {copy.balanceAfter}: {formatQuestNumber(after, appLang())}
-            </Text>
-            <View style={{ flexDirection: 'row', gap: 10, marginTop: 8 }}>
-              <View style={{ flex: 1 }}>
-                <Button label={copy.cancel} variant="secondary" onPress={() => setConfirm(false)} />
-              </View>
-              <View style={{ flex: 1 }}>
-                <Button label={copy.redeem} onPress={() => void onRedeem()} disabled={busy} />
-              </View>
-            </View>
+      <QuestSheet visible={confirm} onClose={() => (busy ? undefined : setConfirm(false))} dismissable={!busy}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
+          <View style={{ width: 72 }}>
+            <RewardStage reward={reward} height={72} radius={18} />
+          </View>
+          <View style={{ flex: 1, gap: 2 }}>
+            <Text style={[hubText.small, { color: c.text300 }]}>{tx('ადასტურებ?', 'Confirm?')}</Text>
+            <Text numberOfLines={2} style={[hubText.cardTitle, { color: c.text100 }]}>{title}</Text>
           </View>
         </View>
-      </Modal>
+        <View style={[s.ledger, { borderColor: c.bg300 }]}>
+          <LedgerRow label={copy.balanceNow} value={coins(balance)} />
+          <LedgerRow label={tx('ღირებულება', 'Price')} value={`− ${coins(reward.coinCost)}`} />
+          <View style={[s.hair, { backgroundColor: c.bg300 }]} />
+          <LedgerRow label={tx('დაგრჩება', 'Left after')} value={coins(after)} strong />
+        </View>
+        {physical ? (
+          <Text style={[hubText.caption, { color: c.text200 }]}>
+            {tx('ანგარიშის ტელეფონზე დაგირეკავთ და საჩუქარს თბილისში 14 დღეში გადმოგცემთ.', 'We’ll call your account phone and hand the prize over in Tbilisi within 14 days.')}
+          </Text>
+        ) : null}
+        {error ? <Text accessibilityRole="alert" style={[hubText.caption, { color: c.danger }]}>{error}</Text> : null}
+        <View style={{ flexDirection: 'row', gap: 10 }}>
+          <QuestButton kind="secondary" label={copy.cancel} disabled={busy} onPress={() => setConfirm(false)} />
+          <QuestButton label={tx('დადასტურება', 'Confirm')} busy={busy} onPress={() => void onRedeem()} />
+        </View>
+      </QuestSheet>
 
-      <Modal visible={Boolean(success)} {...APP_MODAL_PROPS} onRequestClose={() => setSuccess(null)}>
-        <View style={{ flex: 1, justifyContent: 'flex-end' }}>
-          <Pressable style={{ flex: 1, backgroundColor: APP_MODAL_OVERLAY }} onPress={() => setSuccess(null)} />
-          <View
-            style={{
-              backgroundColor: dark ? colors.surfaceRaised : '#FFFFFF',
-              borderTopLeftRadius: 28,
-              borderTopRightRadius: 28,
-              padding: 20,
-              paddingBottom: insets.bottom + 20,
-              gap: 12,
-            }}
-          >
-            <Text style={{ fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 20, color: colors.text100 }}>{copy.successTitle}</Text>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-              <Text style={{ fontFamily: 'NotoSansGeorgian_500Medium', fontSize: 14, color: colors.text300 }}>{copy.coinsLabel}</Text>
-              <QuestAnimatedNumber
-                value={success?.wallet.currentBalance ?? balance}
-                locale={appLang()}
-                style={{ fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 28, color: colors.text100 }}
-              />
+      <QuestSheet visible={Boolean(success)} onClose={() => setSuccess(null)}>
+        <View style={{ alignItems: 'center', gap: 10 }}>
+          <View style={{ width: 150 }}>
+            <RewardStage reward={reward} height={150} radius={30} />
+            <View style={[s.check, { backgroundColor: ink.violet, borderColor: c.surface }]}>
+              <Check size={18} color="#FFFFFF" strokeWidth={3} />
             </View>
-            {success?.redemption.status === 'PENDING' ? (
-              <Text style={{ fontFamily: 'NotoSansGeorgian_500Medium', fontSize: 14, lineHeight: 21, color: colors.text200 }}>
-                {copy.physicalSuccess}
-              </Text>
-            ) : null}
-            {success?.redemption.code ? (
-              <View style={{ gap: 8 }}>
-                <Text style={{ fontFamily: 'NotoSansGeorgian_600SemiBold', fontSize: 13, color: colors.text300 }}>CODE</Text>
-                <Pressable
-                  accessibilityRole="button"
-                  accessibilityLabel={codeRevealed ? copy.copyCode : copy.codeHidden}
-                  onPress={async () => {
-                    if (!codeRevealed) {
-                      setCodeRevealed(true);
-                      return;
-                    }
-                    await Share.share({ message: success.redemption.code || '' });
-                  }}
-                  style={{
-                    padding: 14,
-                    borderRadius: 12,
-                    backgroundColor: dark ? colors.bg200 : '#F1F5F9',
-                  }}
-                >
-                  <Text style={{ fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 18, letterSpacing: 1, color: colors.text100 }}>
-                    {codeRevealed ? success.redemption.code : success.redemption.codeMasked || '••••'}
-                  </Text>
-                </Pressable>
-                {success.redemption.expiresAt ? (
-                  <Text style={{ fontFamily: 'NotoSansGeorgian_500Medium', fontSize: 13, color: colors.text300 }}>
-                    {copy.expires}: {new Date(success.redemption.expiresAt).toLocaleDateString(dateLocale())}
-                  </Text>
-                ) : null}
-              </View>
-            ) : null}
-            {success?.entitlement ? (
-              <Text style={{ fontFamily: 'NotoSansGeorgian_500Medium', fontSize: 14, color: colors.text200 }}>
-                {success.entitlement.entitlementKey} · {copy.expires}{' '}
-                {new Date(success.entitlement.endsAt).toLocaleDateString(dateLocale())}
-              </Text>
-            ) : null}
-            <Button
-              label={copy.viewMine}
-              onPress={() => {
-                setSuccess(null);
-                router.push('/medi-quest/rewards/mine' as never);
-              }}
-            />
           </View>
+          <Text accessibilityRole="header" style={[s.successTitle, { color: c.text100 }]}>{tx('ჯილდო შენია!', 'It’s yours!')}</Text>
+          <Text style={[hubText.body, { color: c.text200, textAlign: 'center' }]}>
+            {success?.redemption.status === 'PENDING'
+              ? tx('ანგარიშის ტელეფონზე დაგირეკავთ და საჩუქარს თბილისში 14 დღეში გადმოგცემთ. სტატუსს „ჩემ ჯილდოებში“ ნახავ.', 'We’ll call your account phone and hand it over in Tbilisi within 14 days. Track it in My rewards.')
+              : success?.entitlement
+                ? tx(`აქტიურია ${fmtDate(success.entitlement.endsAt)}-მდე.`, `Active until ${fmtDate(success.entitlement.endsAt)}.`)
+                : title}
+          </Text>
         </View>
-      </Modal>
+        {success?.redemption.code || success?.redemption.codeMasked ? (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={codeRevealed ? tx('კოდის გაზიარება', 'Share the code') : copy.codeHidden}
+            onPress={async () => {
+              if (!codeRevealed) {
+                setCodeRevealed(true);
+                return;
+              }
+              await Share.share({ message: success.redemption.code || '' });
+            }}
+            style={[s.code, { borderColor: ink.violet }]}
+          >
+            <Text style={[hubText.small, { color: c.text300 }]}>{tx('კოდი', 'Code')}</Text>
+            <Text style={[s.codeText, { color: c.text100 }]}>{codeRevealed ? success.redemption.code : success.redemption.codeMasked || '••••'}</Text>
+            <Text style={[hubText.small, { color: ink.violet }]}>{codeRevealed ? tx('შეეხე გასაზიარებლად', 'Tap to share') : tx('შეეხე სანახავად', 'Tap to reveal')}</Text>
+          </Pressable>
+        ) : null}
+        <Text style={[hubText.caption, { color: c.text300, textAlign: 'center' }]}>
+          {tx(`დაგრჩა ${coins(success?.wallet.currentBalance ?? balance)} მონეტა`, `${coins(success?.wallet.currentBalance ?? balance)} coins left`)}
+        </Text>
+        <View style={{ flexDirection: 'row', gap: 10 }}>
+          <QuestButton kind="secondary" label={tx('მაღაზია', 'Store')} onPress={() => { setSuccess(null); router.back(); }} />
+          <QuestButton label={copy.viewMine} onPress={() => { setSuccess(null); router.replace('/medi-quest/rewards/mine' as never); }} />
+        </View>
+      </QuestSheet>
     </View>
   );
 }
 
-function Block({
-  title,
-  body,
-  colors,
-  dark,
-}: {
-  title: string;
-  body: string;
-  colors: ReturnType<typeof useThemeColors>;
-  dark: boolean;
-}) {
+function InfoRow({ icon: Icon, title, body }: { icon: typeof Gift; title: string; body: string }) {
+  const c = useThemeColors();
+  const ink = useQuestInk();
   return (
-    <View
-      style={{
-        backgroundColor: dark ? colors.surface : '#FFFFFF',
-        borderWidth: 1,
-        borderColor: colors.bg300,
-        borderRadius: QUEST.rowRadius,
-        padding: 14,
-        gap: 6,
-      }}
-    >
-      <Text style={{ fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 13, color: colors.text300 }}>{title}</Text>
-      <Text style={{ fontFamily: 'NotoSansGeorgian_500Medium', fontSize: 14, lineHeight: 20, color: colors.text200 }}>{body}</Text>
+    <View style={s.infoRow}>
+      <View style={[s.infoIcon, { backgroundColor: ink.dark ? 'rgba(196,181,253,0.12)' : '#F1EDFB' }]}>
+        <Icon size={17} color={ink.violet} strokeWidth={2} />
+      </View>
+      <View style={{ flex: 1, gap: 2 }}>
+        <Text style={[hubText.cardTitle, { color: c.text100, fontSize: 14 }]}>{title}</Text>
+        <Text style={[hubText.caption, { color: c.text200 }]}>{body}</Text>
+      </View>
     </View>
   );
 }
+
+function LedgerRow({ label, value, strong = false }: { label: string; value: string; strong?: boolean }) {
+  const c = useThemeColors();
+  return (
+    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+      <Text style={[hubText.caption, { color: strong ? c.text100 : c.text200, flex: 1 }]}>{label}</Text>
+      <Text style={[strong ? s.ledgerStrong : s.ledgerValue, { color: c.text100 }]}>{value}</Text>
+    </View>
+  );
+}
+
+const s = StyleSheet.create({
+  gutter: { paddingHorizontal: HUB.gutter },
+  title: { fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 24, lineHeight: 32, letterSpacing: -0.4 },
+  card: { borderRadius: 22, padding: 16, gap: 14 },
+  have: { fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 16, lineHeight: 22, fontVariant: ['tabular-nums'] },
+  earn: { flexDirection: 'row', alignItems: 'center', gap: 10, borderRadius: 16, padding: 12 },
+  list: { borderRadius: 22, paddingHorizontal: 16, paddingVertical: 6 },
+  infoRow: { flexDirection: 'row', gap: 12, paddingVertical: 12 },
+  infoIcon: { width: 34, height: 34, borderRadius: 11, alignItems: 'center', justifyContent: 'center' },
+  termsRow: { paddingVertical: 14, minHeight: 48, justifyContent: 'center' },
+  footer: { position: 'absolute', left: 0, right: 0, bottom: 0, paddingTop: 12, paddingHorizontal: HUB.gutter, borderTopWidth: StyleSheet.hairlineWidth },
+  ledger: { borderWidth: 1, borderRadius: 16, padding: 14, gap: 8 },
+  hair: { height: StyleSheet.hairlineWidth },
+  ledgerValue: { fontFamily: 'NotoSansGeorgian_600SemiBold', fontSize: 14, lineHeight: 20, fontVariant: ['tabular-nums'] },
+  ledgerStrong: { fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 16, lineHeight: 22, fontVariant: ['tabular-nums'] },
+  check: { position: 'absolute', right: -6, bottom: -6, width: 34, height: 34, borderRadius: 17, borderWidth: 3, alignItems: 'center', justifyContent: 'center' },
+  successTitle: { fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 22, lineHeight: 30 },
+  code: { borderWidth: 1.5, borderStyle: 'dashed', borderRadius: 16, padding: 14, alignItems: 'center', gap: 4 },
+  codeText: { fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 20, lineHeight: 28, letterSpacing: 2 },
+});

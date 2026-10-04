@@ -82,7 +82,10 @@ export function ledgerArt(sourceType: string | null | undefined): ImageSourcePro
     case 'REFERRAL':
       return REFERRAL_ART.hero;
     case 'HUNT': // MEDIRUN gift found through the pulse
+    case 'MEDIRUN': // „გაანათე თბილისი“ coin boxes
       return RUN_GIFT;
+    case 'REWARD_REFUND':
+      return COIN_ART;
     case 'REWARD_REDEMPTION':
       return QUEST_ART.reward_voucher;
     case 'SYSTEM':

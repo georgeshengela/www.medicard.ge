@@ -49,7 +49,7 @@ import {
   registerPushTokenWithServer,
   setPushOptedIn,
 } from '@/lib/notifications';
-import { useThemeColors } from '@/theme/colors';
+import { ModuleToneProvider, useThemeColors } from '@/theme/colors';
 import { HUB, hubText } from '@/theme/hub';
 import { livingPlaceLine } from '@/lib/userLocation';
 import { useAuth } from '@/store/AuthContext';
@@ -266,7 +266,10 @@ export default function Profile() {
       {isFeatureOn('quest', features) ? (
         <View style={s.section}>
           <HomeSectionHeading title="MEDIQUEST" brand="quest" />
-          <HomeMediQuestSection edgeInset={0} hideTitle />
+          {/* Inside the module tone: the card's ring and bar speak MEDIQUEST violet, like its pages. */}
+          <ModuleToneProvider tone="quest">
+            <HomeMediQuestSection edgeInset={0} hideTitle />
+          </ModuleToneProvider>
         </View>
       ) : null}
 

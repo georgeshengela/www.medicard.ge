@@ -68,3 +68,10 @@ describe('phase 7 rewardsLogic', () => {
     assert.ok(newIdempotencyKey().length >= 8);
   });
 });
+
+it('MEDIRUN boxes and store refunds get their own wallet labels, never „balance adjustment“', () => {
+  const copy = { ledgerMedirun: 'MEDIRUN-ის საჩუქარი', ledgerRefund: 'დაბრუნებული მონეტები', ledgerUnknown: 'კორექტირება' };
+  assert.equal(walletSourceLabel('MEDIRUN', copy), 'MEDIRUN-ის საჩუქარი');
+  assert.equal(walletSourceLabel('REWARD_REFUND', copy), 'დაბრუნებული მონეტები');
+  assert.ok(WALLET_LEDGER_SOURCE_TYPES.includes('MEDIRUN') && WALLET_LEDGER_SOURCE_TYPES.includes('REWARD_REFUND'));
+});

@@ -70,10 +70,11 @@ export function QuestCard({
   const a11y = copy.a11yQuest(title, quest.progress, quest.target, percent, quest.rewardCoins, quest.rewardXp);
   const accentKind: QuestAccentKind = weekly || kind === 'weekly' ? 'weekly' : (kind as QuestAccentKind);
   const conversational = kind === 'medi' && active;
-  const accent = QUEST.accent[accentKind];
+  // The module tone (violet inside MEDIQUEST) instead of the old teal family per category.
+  const accent = colors.primary200;
 
   const borderColor = claimable ? accent : weekly ? (dark ? colors.accent200 : colors.accent200) : colors.bg300;
-  const background = claimable ? (dark ? QUEST.wash.dark : QUEST.wash.lightSoft) : dark ? colors.surface : '#FFFFFF';
+  const background = claimable ? colors.accent100 : colors.surface;
 
   return (
     <Animated.View
@@ -240,7 +241,7 @@ export function QuestCard({
 
       {active && action ? (
         <Pressable accessibilityRole="button" onPress={action.onPress} className="active:opacity-75" style={{ marginTop: 12, minHeight: 44, justifyContent: 'center', alignItems: 'center', borderRadius: 14, backgroundColor: colors.surfaceRaised }}>
-          <Text style={{ fontFamily: 'NotoSansGeorgian_600SemiBold', fontSize: 13, color: dark ? '#99F6E4' : '#0F766E' }}>{action.label}</Text>
+          <Text style={{ fontFamily: 'NotoSansGeorgian_600SemiBold', fontSize: 13, color: colors.primary100 }}>{action.label}</Text>
         </Pressable>
       ) : null}
 

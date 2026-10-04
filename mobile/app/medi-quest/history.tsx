@@ -1,9 +1,11 @@
+import { ModuleHeader } from '@/components/brand/ModuleHeader';
+import { tx } from '@/i18n/locale';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { ArrowLeft, Clock3 } from 'lucide-react-native';
+import { Clock3 } from 'lucide-react-native';
 import { appLang, dateLocale } from '@/i18n/locale';
 import { Button } from '@/components/ui/Button';
 import { ListRowsSkeleton } from '@/components/ui/Skeleton';
@@ -86,32 +88,20 @@ export default function QuestHistoryScreen() {
     if (status === 'CLAIMED') return copy.claimed;
     if (status === 'COMPLETED') return copy.completed;
     if (status === 'EXPIRED') return copy.expired;
-    return status;
+    // Never a raw enum on screen.
+    if (status === 'CANCELLED') return tx('გაუქმდა', 'Cancelled');
+    return tx('მიმდინარე', 'In progress');
   };
 
   let rowIndex = 0;
 
   return (
-    <View className="flex-1 bg-bg-100" style={{ paddingTop: insets.top }}>
-      <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 8, paddingVertical: 4 }}>
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={copy.back}
-          hitSlop={8}
-          onPress={() => router.back()}
-          style={{ width: 44, height: 44, alignItems: 'center', justifyContent: 'center' }}
-        >
-          <ArrowLeft size={22} color={colors.text100} strokeWidth={2.2} />
-        </Pressable>
-        <Text style={{ flex: 1, fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 18, lineHeight: 24, letterSpacing: -0.2, color: colors.text100 }}>
-          {copy.history}
-        </Text>
-      </View>
-
+    <View className="flex-1 bg-bg-100">
       <ScrollView
-        contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 8, paddingBottom: insets.bottom + 32, gap: 20 }}
+        contentContainerStyle={{ paddingHorizontal: 20, paddingTop: insets.top + 12, paddingBottom: insets.bottom + 32, gap: 20 }}
         showsVerticalScrollIndicator={false}
       >
+        <ModuleHeader module="quest" subtitle={copy.history} fallbackHref="/medi-quest" />
         {loading && !items.length ? (
           <ListRowsSkeleton rows={5} padded={false} />
         ) : !items.length ? (

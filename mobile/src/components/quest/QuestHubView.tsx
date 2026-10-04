@@ -1,9 +1,9 @@
 import React, { useRef, useState } from 'react';
-import { ModuleWordmark } from '@/components/brand/ModuleWordmark';
-import { hubInk } from '@/theme/hub';
+import { ModuleHeader, ModuleHeaderButton } from '@/components/brand/ModuleHeader';
 import { Pressable, RefreshControl, ScrollView, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { ArrowLeft, CircleHelp, Sparkles } from 'lucide-react-native';
+import { CircleHelp, Sparkles } from 'lucide-react-native';
+import { QuestWalletCard } from '@/components/quest/store/QuestStoreKit';
 import { QUEST_ART } from '@/constants/appArt';
 import type { QuestDashboard, QuestItem } from '@/lib/quest/api';
 import type { CompanionCosmetic, CompanionOverview } from '@/lib/companion/api';
@@ -36,7 +36,7 @@ export function QuestHubView(p: QuestHubViewProps) {
   const c = useThemeColors(), dark = useIsDark(), insets = useSafeAreaInsets();
   const scroll = useRef<ScrollView>(null);
   const [guide, setGuide] = useState(false);
-  const ink = hubInk('teal', dark);
+  const ink = c.primary100;
   const profile = p.dashboard?.profile;
   const daily = orderedMissions(p.dashboard?.daily.quests ?? []), weekly = orderedMissions(p.dashboard?.weekly.quests ?? []);
   const unavailable = Boolean(p.dashboard?.unavailable || (p.dashboard && !profile));
@@ -57,15 +57,13 @@ export function QuestHubView(p: QuestHubViewProps) {
   </View> : p.companionLoading ? <View style={{ gap: 12 }}><Bone height={210} radius={24} /><Bone height={110} radius={24} /></View> : <QCard><QText bold>{tx('პროგრესი ვერ ჩაიტვირთა', 'Couldn’t load progress')}</QText><QText muted>{tx('მისიების შესრულება შეგიძლია გააგრძელო. შენი პროგრესი ანგარიშზე ინახება.', 'You can keep completing missions. Your progress is saved to your account.')}</QText><QButton secondary label={tx('ხელახლა ცდა', 'Try again')} onPress={p.onCompanionRetry} /></QCard>;
 
   return <View style={{ flex: 1, backgroundColor: c.bg100, paddingTop: insets.top }}>
-    <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 10, gap: 12 }}>
-      <Pressable accessibilityRole="button" accessibilityLabel={tx('უკან', 'Back')} onPress={p.onBack} style={{ width: 44, height: 44, borderRadius: 17, backgroundColor: c.surface, borderWidth: 1, borderColor: c.bg300, alignItems: 'center', justifyContent: 'center' }}><ArrowLeft size={20} color={c.text100} /></Pressable>
-      <View style={{ flex: 1 }}><ModuleWordmark module="quest" /></View>
-      <Pressable accessibilityRole="button" accessibilityLabel={tx('როგორ მუშაობს MEDIQUEST', 'How MEDIQUEST works')} onPress={() => setGuide(true)} style={{ width: 44, height: 44, borderRadius: 17, backgroundColor: c.surfaceRaised, alignItems: 'center', justifyContent: 'center' }}><CircleHelp size={21} color={ink} /></Pressable>
-    </View>
-    <View style={{ flexDirection: 'row', marginHorizontal: 16, marginTop: 2, marginBottom: 8, padding: 4, borderRadius: 19, backgroundColor: c.surfaceRaised }}>
+    {/* The standard MEDI module header (owner 2026-10-04), pinned with the tabs under it. */}
+    <ModuleHeader module="quest" subtitle={tx('მისიები, პროგრესი და ჯილდოები', 'Missions, progress and rewards')} onBack={p.onBack} style={{ paddingHorizontal: 20, paddingTop: 12, paddingBottom: 10 }}
+      right={<ModuleHeaderButton label={tx('როგორ მუშაობს MEDIQUEST', 'How MEDIQUEST works')} icon={CircleHelp} onPress={() => setGuide(true)} />} />
+    <View style={{ flexDirection: 'row', marginHorizontal: 20, marginTop: 2, marginBottom: 8, padding: 4, borderRadius: 19, backgroundColor: c.surfaceRaised }}>
       {TABS.map(tab => <Pressable key={tab.key} accessibilityRole="tab" accessibilityState={{ selected: p.tab === tab.key }} onPress={() => { p.onTab(tab.key); scroll.current?.scrollTo({ y: 0, animated: false }); }} style={{ flex: 1, minHeight: 44, borderRadius: 15, alignItems: 'center', justifyContent: 'center', backgroundColor: p.tab === tab.key ? c.surface : 'transparent', borderWidth: p.tab === tab.key ? 1 : 0, borderColor: c.bg300 }}><QText bold size={13} color={p.tab === tab.key ? ink : c.text200}>{tab.label}</QText></Pressable>)}
     </View>
-    <ScrollView ref={scroll} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 14, paddingBottom: insets.bottom + 28, gap: 20 }} refreshControl={<RefreshControl refreshing={p.refreshing} onRefresh={p.onRefresh} tintColor={c.primary200} />}>
+    <ScrollView ref={scroll} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 14, paddingBottom: insets.bottom + 28, gap: 20 }} refreshControl={<RefreshControl refreshing={p.refreshing} onRefresh={p.onRefresh} tintColor={c.primary200} />}>
       {p.offline || p.stale ? <QNotice text={p.offline ? tx('ოფლაინი · ბოლო შენახული მონაცემები', 'Offline · last saved data') : tx('მონაცემები ვერ განახლდა · შენახული ვერსია', 'Couldn’t refresh · saved version')} action={p.offline ? undefined : tx('განახლება', 'Refresh')} onPress={p.onRefresh} /> : null}
       {p.loading && !p.dashboard ? <><Bone height={230} radius={24} /><Bone height={140} radius={24} /><Bone height={140} radius={24} /></> : p.error && !p.dashboard || unavailable ? <QCard>
         <Sparkles size={30} color={ink} /><QText size={20} bold>{unavailable ? tx('მისიები დროებით მიუწვდომელია', 'Missions are temporarily unavailable') : tx('MEDIQUEST ვერ ჩაიტვირთა', 'Couldn’t load MEDIQUEST')}</QText><QText muted>{tx('სცადე გვერდის განახლება. შენი დაგროვილი მონაცემები ანგარიშზე რჩება.', 'Try refreshing the page. Everything you’ve earned stays on your account.')}</QText><QButton label={tx('ხელახლა ცდა', 'Try again')} onPress={p.onRefresh} /><QButton secondary label={tx('როგორ მუშაობს?', 'How does it work?')} onPress={() => setGuide(true)} />
@@ -103,7 +101,8 @@ export function QuestHubView(p: QuestHubViewProps) {
           <QLink title={tx('მისიების ისტორია', 'Mission history')} body={tx('შესრულებული, მიღებული და დასრულებული მისიები.', 'Completed, collected and ended missions.')} art={QUEST_ART.history} onPress={() => open('/medi-quest/history')} />
         </> : <>
           <View><QText size={25} bold>{tx('შენი შრომის შედეგი.', 'The fruit of your effort.')}</QText><QText size={13} muted>{tx('მონეტები გამოიყენე ჯილდოებისთვის, კოლექციით კი შენი ნიშანი გააფორმე.', 'Spend coins on rewards and style your badge with your collection.')}</QText></View>
-          <QCard><View style={{ flexDirection: 'row', gap: 10, alignItems: 'center' }}><QuestCoinMark size={24} /><QText size={13} muted>{tx('ხელმისაწვდომი ბალანსი', 'Available balance')}</QText></View><QText size={38} bold>{profile?.coinBalance.toLocaleString() ?? '—'} <QText muted>Medi Coins</QText></QText><QButton label={tx('ჯილდოების მაღაზია', 'Rewards store')} icon={<QuestArt source={QUEST_GIFT_ART} size={22} />} onPress={() => open('/medi-quest/rewards')} /><QText size={12} muted>{tx('ხელმისაწვდომ შეთავაზებებსა და მათ პირობებს მაღაზიაში ნახავ.', 'You’ll find available offers and their terms in the store.')}</QText></QCard>
+          {/* The violet Medi Coins card — the same one the store and the wallet open with. */}
+          <QuestWalletCard balance={profile?.coinBalance ?? 0} loading={!profile} caption={tx('ხელმისაწვდომი ბალანსი', 'Available balance')} action={{ label: tx('ჯილდოების მაღაზია', 'Rewards store'), onPress: () => open('/medi-quest/rewards') }} />
           <QLink title={tx('ბალანსის ისტორია', 'Balance history')} body={tx('საიდან მიიღე და რაში გამოიყენე მონეტები.', 'Where your coins came from and what you spent them on.')} art={QUEST_ART.wallet} onPress={() => open('/medi-quest/wallet')} />
           {companionBody(p.companion ? <QuestCollectionPanel overview={p.companion} onEquip={p.onEquip} busyKey={p.equipBusy} error={p.equipError} offline={p.offline || p.companionStale} /> : null)}
         </>}

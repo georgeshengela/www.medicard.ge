@@ -1,47 +1,57 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Pressable, RefreshControl, ScrollView, Text, View } from 'react-native';
-import Animated, { FadeInDown } from 'react-native-reanimated';
+import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { ArrowLeft, ChevronRight } from 'lucide-react-native';
+import { Gift, RefreshCw, WifiOff } from 'lucide-react-native';
 import { appLang, tx } from '@/i18n/locale';
+import { ModuleHeader, ModuleHeaderButton } from '@/components/brand/ModuleHeader';
+import { HomeSectionHeading } from '@/components/home/HomeSectionHeading';
 import { Bone } from '@/components/ui/Skeleton';
-import { QuestAnimatedNumber } from '@/components/quest/QuestAnimatedNumber';
-import { QuestArt, QuestCoinMark } from '@/components/quest/QuestIcon';
-import { rewardArt } from '@/components/quest/questArt';
-import { QuestMediLine } from '@/components/quest/QuestMediLine';
+import {
+  AffordLine,
+  QuestWalletCard,
+  RewardStage,
+  RewardTile,
+  StockPill,
+  isSoldOut,
+  rewardKind,
+  useQuestInk,
+  useTileWidth,
+} from '@/components/quest/store/QuestStoreKit';
 import { useOffline } from '@/hooks/useOffline';
-import { usePrefersReducedMotion } from '@/hooks/usePrefersReducedMotion';
-import { useIsDark, useThemeColors } from '@/theme/colors';
-import { formatQuestNumber } from '@/lib/quest/logic.js';
+import { useThemeColors } from '@/theme/colors';
+import { HUB, hubText } from '@/theme/hub';
 import { rewardsApi, type StoreCatalog, type StoreReward } from '@/lib/quest/rewardsApi';
-import { canShowRedeem, coinsShortfall } from '@/lib/quest/rewardsLogic.js';
 import { buildRewardsDevCatalog } from '@/lib/quest/rewardsDevFixture.js';
 import { isQuestDevEnabled, getQuestDevScenario } from '@/lib/quest/devFixture';
-import {
-  rewardDescription,
-  rewardErrorMessage,
-  rewardTitle,
-  rewardsCopy,
-} from '@/i18n/quest/rewards.js';
+import { rewardTitle, rewardsCopy } from '@/i18n/quest/rewards.js';
 import { trackQuestEvent } from '@/lib/productObservability';
 import { getMediCoinBalanceHint, subscribeMediCoinBalance } from '@/lib/quest/cache';
-import { QUEST } from '@/theme/questTokens';
 import { useAccountQuery } from '@/hooks/useAccountQuery';
 import { accountKey, FRESH, queryClient } from '@/lib/queryClient';
 
 /** Under 'quest' so the Quest refresh signal (coins, claims) also refreshes eligibility. */
 const CATALOG_KEY = ['quest', 'rewards', 'catalog'] as const;
 
+type Filter = 'all' | 'afford' | 'gadget' | 'giftcard' | 'digital';
+
+/**
+ * Rewards store (owner 2026-10-04 redesign): the standard module header, the violet Medi Coins card with
+ * the next prize it is closest to, filter chips that only show what exists, the featured prizes as a
+ * horizontal shelf and everything else as a two-column gallery. Each tile shows the price and how far
+ * away it is — a store people can read at a glance.
+ */
 export default function RewardsStoreScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const colors = useThemeColors();
-  const dark = useIsDark();
+  const c = useThemeColors();
+  const ink = useQuestInk();
   const offline = useOffline();
-  const reduce = usePrefersReducedMotion();
   const copy = rewardsCopy(appLang());
+  const tileWidth = useTileWidth();
+  const { width } = useWindowDimensions();
   const [refreshing, setRefreshing] = useState(false);
+  const [filter, setFilter] = useState<Filter>('all');
   const [liveCoins, setLiveCoins] = useState<number | null>(() => getMediCoinBalanceHint());
   const devScenario = isQuestDevEnabled() ? getQuestDevScenario() : 'LIVE';
   const devActive = devScenario !== 'LIVE';
@@ -58,13 +68,8 @@ export default function RewardsStoreScreen() {
     [devActive, devScenario],
   );
   const data = devCatalog ?? query.data ?? null;
-  const loading = !devActive && query.isPending && query.fetchStatus !== 'idle';
-  const loadError =
-    !devActive && !query.data && query.isError
-      ? query.error instanceof Error && query.error.message
-        ? query.error.message
-        : copy.loadFailed
-      : null;
+  const loading = !devActive && !data && query.fetchStatus !== 'idle';
+  const failed = !devActive && !data && query.isError;
   const { refetch } = query;
 
   useEffect(() => {
@@ -72,11 +77,11 @@ export default function RewardsStoreScreen() {
   }, []);
 
   useEffect(() => {
-    return subscribeMediCoinBalance((coins) => {
-      setLiveCoins(coins);
-      if (coins != null) {
+    return subscribeMediCoinBalance((value) => {
+      setLiveCoins(value);
+      if (value != null) {
         queryClient.setQueryData<StoreCatalog>(accountKey(...CATALOG_KEY), (prev) =>
-          prev ? { ...prev, balance: { ...prev.balance, coins } } : prev,
+          prev ? { ...prev, balance: { ...prev.balance, coins: value } } : prev,
         );
       } else {
         void refetch();
@@ -95,274 +100,172 @@ export default function RewardsStoreScreen() {
 
   const balance = liveCoins ?? data?.balance.coins ?? 0;
   const featured = data?.featured ?? [];
-  const available = data?.available ?? [];
+  const everything = useMemo(() => [...(data?.featured ?? []), ...(data?.available ?? [])], [data]);
+
+  // The cheapest prize still out of reach: the wallet card shows how close it is.
+  const next = useMemo(() => {
+    const target = everything
+      .filter((r) => !isSoldOut(r) && r.coinCost > balance)
+      .sort((a, b) => a.coinCost - b.coinCost)[0];
+    return target ? { title: rewardTitle(target.titleKey, appLang()), need: target.coinCost - balance, progress: balance / target.coinCost } : null;
+  }, [everything, balance]);
+
+  const filters = useMemo(() => {
+    const list: { id: Filter; label: string; count: number }[] = [
+      { id: 'all', label: tx('ყველა', 'All'), count: everything.length },
+      { id: 'afford', label: tx('საკმარისი მაქვს', 'I can afford'), count: everything.filter((r) => !isSoldOut(r) && r.coinCost <= balance).length },
+      { id: 'gadget', label: tx('გაჯეტები', 'Gadgets'), count: everything.filter((r) => rewardKind(r) === 'gadget').length },
+      { id: 'giftcard', label: tx('სასაჩუქრე ბარათები', 'Gift cards'), count: everything.filter((r) => rewardKind(r) === 'giftcard').length },
+      { id: 'digital', label: tx('აპის სტილები', 'App styles'), count: everything.filter((r) => rewardKind(r) === 'digital').length },
+    ];
+    return list.filter((f) => f.id === 'all' || f.count > 0);
+  }, [everything, balance]);
+
+  const shown = useMemo(() => {
+    const pool = filter === 'all' ? (data?.available ?? []) : everything;
+    const picked = pool.filter((r) =>
+      filter === 'all' ? true : filter === 'afford' ? !isSoldOut(r) && r.coinCost <= balance : rewardKind(r) === filter,
+    );
+    // Sold-out prizes go last so the gallery opens on things that can still be taken.
+    return [...picked].sort((a, b) => Number(isSoldOut(a)) - Number(isSoldOut(b)));
+  }, [filter, data, everything, balance]);
+
+  const open = (reward: StoreReward) => {
+    void trackQuestEvent('reward_viewed', reward.key);
+    router.push(`/medi-quest/rewards/${reward.id}` as never);
+  };
 
   return (
-    <View className="flex-1 bg-bg-100" style={{ paddingTop: insets.top }}>
-      <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 8, paddingVertical: 4 }}>
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={tx('უკან', 'Back')}
-          hitSlop={8}
-          onPress={() => router.back()}
-          style={{ width: 44, height: 44, alignItems: 'center', justifyContent: 'center' }}
-        >
-          <ArrowLeft size={22} color={colors.text100} strokeWidth={2.2} />
-        </Pressable>
-        <Text
-          style={{
-            flex: 1,
-            fontFamily: 'NotoSansGeorgian_700Bold',
-            fontSize: 18,
-            lineHeight: 24,
-            letterSpacing: -0.2,
-            color: colors.text100,
-          }}
-        >
-          {copy.title}
-        </Text>
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={copy.myRewards}
-          onPress={() => router.push('/medi-quest/rewards/mine' as never)}
-          style={{ paddingHorizontal: 12, paddingVertical: 8 }}
-        >
-          <Text style={{ fontFamily: 'NotoSansGeorgian_600SemiBold', fontSize: 13, color: colors.primary200 }}>
-            {copy.myRewards}
-          </Text>
-        </Pressable>
-      </View>
-
+    <View style={{ flex: 1, backgroundColor: c.bg100 }}>
       <ScrollView
-        contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 8, paddingBottom: insets.bottom + 32, gap: 20 }}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary200} />}
+        contentContainerStyle={{ paddingTop: insets.top + 12, paddingBottom: insets.bottom + 40, width: '100%', maxWidth: 760, alignSelf: 'center' }}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={ink.violet} />}
         showsVerticalScrollIndicator={false}
       >
-        <Animated.View
-          entering={reduce ? undefined : FadeInDown.duration(QUEST.motion.base)}
-          style={{
-            backgroundColor: dark ? colors.surface : '#FFFFFF',
-            borderWidth: 1,
-            borderColor: colors.bg300,
-            borderRadius: QUEST.radius,
-            padding: 20,
-          }}
-        >
-          <Text
-            style={{
-              fontFamily: 'NotoSansGeorgian_600SemiBold',
-              fontSize: 12,
-              lineHeight: 16,
-              letterSpacing: 1,
-              textTransform: 'uppercase',
-              color: colors.text300,
-            }}
-          >
-            {copy.coinsLabel}
-          </Text>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 8 }}>
-            <QuestCoinMark size={28} color={dark ? QUEST.pill.coinInkDark : QUEST.pill.coinInkLight} />
-            {loading && !data ? (
-              <Bone width={120} height={36} radius={10} />
-            ) : (
-              <QuestAnimatedNumber
-                value={balance}
-                locale={appLang()}
-                style={{
-                  fontFamily: 'NotoSansGeorgian_700Bold',
-                  fontSize: 36,
-                  lineHeight: 44,
-                  letterSpacing: -1,
-                  color: colors.text100,
-                }}
-              />
-            )}
-          </View>
-          <Text
-            style={{
-              marginTop: 10,
-              fontFamily: 'NotoSansGeorgian_500Medium',
-              fontSize: 14,
-              lineHeight: 20,
-              color: colors.text200,
-            }}
-          >
-            {copy.tagline}
-          </Text>
-          {offline ? (
-            <Text style={{ marginTop: 8, fontFamily: 'NotoSansGeorgian_500Medium', fontSize: 13, color: colors.text300 }}>
-              {copy.offlineRedeem}
-            </Text>
-          ) : null}
-        </Animated.View>
+        <ModuleHeader
+          module="quest"
+          subtitle={tx('ჯილდოების მაღაზია', 'Rewards store')}
+          fallbackHref="/medi-quest"
+          style={s.gutter}
+          right={<ModuleHeaderButton label={copy.myRewards} icon={Gift} onPress={() => router.push('/medi-quest/rewards/mine' as never)} />}
+        />
 
-        {featured.length ? (
-          <Section title={copy.featured}>
-            {featured.map((reward, i) => (
-              <RewardCard
-                key={reward.id}
-                reward={reward}
-                balance={balance}
-                offline={offline}
-                copy={copy}
-                dark={dark}
-                colors={colors}
-                delay={i}
-                reduce={reduce}
-                onPress={() => router.push(`/medi-quest/rewards/${reward.id}` as never)}
-              />
-            ))}
-          </Section>
+        <QuestWalletCard
+          style={[s.gutter, { marginTop: 18 }]}
+          balance={balance}
+          loading={loading && liveCoins == null}
+          next={next}
+          action={{ label: tx('როგორ დავაგროვო მონეტები', 'How to earn coins'), onPress: () => router.push('/medi-quest?tab=missions' as never) }}
+        />
+
+        {offline ? (
+          <View style={[s.gutter, s.notice]}>
+            <WifiOff size={15} color={c.text300} />
+            <Text style={[hubText.caption, { color: c.text200, flex: 1 }]}>{copy.offlineRedeem}</Text>
+          </View>
         ) : null}
 
-        <Section title={copy.available}>
-          {loading && !data ? (
-            [0, 1].map((i) => <Bone key={i} height={96} radius={QUEST.radius} />)
-          ) : loadError ? (
-            <QuestMediLine text={loadError} />
-          ) : !available.length ? (
-            <QuestMediLine text={copy.emptyStore} />
-          ) : (
-            available.map((reward, i) => (
-              <RewardCard
-                key={reward.id}
-                reward={reward}
-                balance={balance}
-                offline={offline}
-                copy={copy}
-                dark={dark}
-                colors={colors}
-                delay={i}
-                reduce={reduce}
-                onPress={() => router.push(`/medi-quest/rewards/${reward.id}` as never)}
-              />
-            ))
-          )}
-        </Section>
+        {failed ? (
+          <View style={[s.gutter, { marginTop: 24 }]}>
+            <View style={[s.errorCard, { backgroundColor: c.surface }]}>
+              <Text style={[hubText.cardTitle, { color: c.text100 }]}>{tx('მაღაზია ვერ ჩაიტვირთა', 'The store didn’t load')}</Text>
+              <Text style={[hubText.caption, { color: c.text200 }]}>{tx('შეამოწმე ინტერნეტი და სცადე ხელახლა.', 'Check your connection and try again.')}</Text>
+              <Pressable accessibilityRole="button" onPress={() => void refetch()} style={[s.retry, { backgroundColor: ink.dark ? 'rgba(196,181,253,0.12)' : '#F1EDFB' }]}>
+                <RefreshCw size={15} color={ink.violet} />
+                <Text style={[hubText.link, { color: ink.violet }]}>{tx('ხელახლა ცდა', 'Try again')}</Text>
+              </Pressable>
+            </View>
+          </View>
+        ) : loading ? (
+          <View style={[s.gutter, s.grid, { marginTop: 24 }]}>
+            {[0, 1, 2, 3].map((i) => <Bone key={i} width={tileWidth} height={tileWidth + 92} radius={22} />)}
+          </View>
+        ) : !everything.length ? (
+          <Text style={[s.gutter, hubText.body, { color: c.text200, marginTop: 24 }]}>{copy.emptyStore}</Text>
+        ) : (
+          <>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.chips} style={{ marginTop: 20 }}>
+              {filters.map((f) => {
+                const on = filter === f.id;
+                return (
+                  <Pressable
+                    key={f.id}
+                    accessibilityRole="button"
+                    accessibilityState={{ selected: on }}
+                    accessibilityLabel={`${f.label}, ${f.count}`}
+                    onPress={() => setFilter(f.id)}
+                    style={[s.chip, on ? { backgroundColor: ink.violet, borderColor: ink.violet } : { backgroundColor: c.surface, borderColor: c.bg300 }]}
+                  >
+                    <Text style={[s.chipText, { color: on ? (ink.dark ? '#1E1033' : '#FFFFFF') : c.text100 }]}>{f.label}</Text>
+                    <Text style={[s.chipCount, { color: on ? (ink.dark ? '#1E1033' : '#EDE4FF') : c.text300 }]}>{f.count}</Text>
+                  </Pressable>
+                );
+              })}
+            </ScrollView>
+
+            {filter === 'all' && featured.length ? (
+              <View style={{ marginTop: HUB.sectionGap - 4 }}>
+                <View style={s.gutter}>
+                  <HomeSectionHeading title={tx('მთავარი პრიზები', 'Top prizes')} />
+                </View>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} decelerationRate="fast" snapToInterval={Math.round(width * 0.68) + 12} contentContainerStyle={s.shelf}>
+                  {featured.map((reward) => (
+                    <FeaturedCard key={reward.id} reward={reward} balance={balance} width={Math.round(width * 0.68)} onPress={() => open(reward)} />
+                  ))}
+                </ScrollView>
+              </View>
+            ) : null}
+
+            <View style={[s.gutter, { marginTop: HUB.sectionGap - 4 }]}>
+              {filter === 'all' ? <HomeSectionHeading title={tx('ყველა ჯილდო', 'All rewards')} /> : null}
+              {shown.length ? (
+                <View style={s.grid}>
+                  {shown.map((reward) => (
+                    <RewardTile key={reward.id} reward={reward} balance={balance} width={tileWidth} onPress={() => open(reward)} />
+                  ))}
+                </View>
+              ) : (
+                <Text style={[hubText.body, { color: c.text200 }]}>
+                  {filter === 'afford'
+                    ? tx('ჯერ არცერთისთვის არ გყოფნის — შეასრულე მისიები და აიღე პირველი საჩუქარი.', 'Not enough for any yet — finish missions to take your first prize.')
+                    : copy.emptyStore}
+                </Text>
+              )}
+            </View>
+          </>
+        )}
       </ScrollView>
     </View>
   );
 }
 
-function Section({ title, children }: { title: string; children: React.ReactNode }) {
-  const colors = useThemeColors();
-  return (
-    <View style={{ gap: 10 }}>
-      <Text
-        style={{
-          fontFamily: 'NotoSansGeorgian_700Bold',
-          fontSize: 16,
-          lineHeight: 22,
-          color: colors.text100,
-          paddingHorizontal: 2,
-        }}
-      >
-        {title}
-      </Text>
-      {children}
-    </View>
-  );
-}
-
-function RewardCard({
-  reward,
-  balance,
-  offline,
-  copy,
-  dark,
-  colors,
-  delay,
-  reduce,
-  onPress,
-}: {
-  reward: StoreReward;
-  balance: number;
-  offline: boolean;
-  copy: ReturnType<typeof rewardsCopy>;
-  dark: boolean;
-  colors: ReturnType<typeof useThemeColors>;
-  delay: number;
-  reduce: boolean;
-  onPress: () => void;
-}) {
-  const shortfall = coinsShortfall(reward.coinCost, balance);
-  const redeemable = canShowRedeem(reward, { offline });
+/** Shelf card for a featured prize: a big stage, the title and the price with how far away it is. */
+function FeaturedCard({ reward, balance, width, onPress }: { reward: StoreReward; balance: number; width: number; onPress: () => void }) {
+  const c = useThemeColors();
   const title = rewardTitle(reward.titleKey, appLang());
-  const desc = rewardDescription(reward.descriptionKey, appLang());
-  const a11y = `${title}, ${formatQuestNumber(reward.coinCost, appLang())} Medi Coins, ${
-    reward.inventoryState === 'OUT_OF_STOCK' ? copy.outOfStock : redeemable ? copy.view : copy.unavailable
-  }`;
-
   return (
-    <Animated.View entering={reduce ? undefined : FadeInDown.duration(QUEST.motion.base).delay(60 + delay * 40)}>
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel={a11y}
-        onPress={() => {
-          void trackQuestEvent('reward_viewed', reward.key);
-          onPress();
-        }}
-        className="active:opacity-75"
-        style={{
-          flexDirection: 'row',
-          gap: 12,
-          alignItems: 'center',
-          backgroundColor: dark ? colors.surface : '#FFFFFF',
-          borderWidth: 1,
-          borderColor: colors.bg300,
-          borderRadius: QUEST.radius,
-          padding: QUEST.pad,
-        }}
-      >
-        <View
-          style={{
-            width: QUEST.icon,
-            height: QUEST.icon,
-            borderRadius: QUEST.iconRadius,
-            alignItems: 'center',
-            justifyContent: 'center',
-            backgroundColor: dark ? QUEST.wash.dark : QUEST.wash.light,
-          }}
-        >
-          <QuestArt source={rewardArt(reward)} size={Math.round(QUEST.icon * (reward.imageUrl ? 0.96 : 0.8))} />
-        </View>
-        <View style={{ flex: 1, minWidth: 0, gap: 4 }}>
-          <Text numberOfLines={2} style={{ fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 15, lineHeight: 20, color: colors.text100 }}>
-            {title}
-          </Text>
-          {reward.partnerDisplay?.displayName ? (
-            <Text numberOfLines={1} style={{ fontFamily: 'NotoSansGeorgian_500Medium', fontSize: 12, lineHeight: 16, color: colors.primary200 }}>
-              {reward.partnerDisplay.displayName}
-            </Text>
-          ) : null}
-          <Text numberOfLines={2} style={{ fontFamily: 'NotoSansGeorgian_500Medium', fontSize: 13, lineHeight: 18, color: colors.text300 }}>
-            {desc}
-          </Text>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 4, flexWrap: 'wrap' }}>
-            <Text style={{ fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 13, color: colors.primary100 }}>
-              {formatQuestNumber(reward.coinCost, appLang())} Medi Coins
-            </Text>
-            {reward.inventoryState === 'OUT_OF_STOCK' ? (
-              <Text style={{ fontFamily: 'NotoSansGeorgian_500Medium', fontSize: 12, color: colors.text300 }}>{copy.outOfStock}</Text>
-            ) : reward.type === 'PHYSICAL_PRIZE' && typeof reward.inventoryRemaining === 'number' && reward.inventoryRemaining > 0 ? (
-              <Text style={{ fontFamily: 'NotoSansGeorgian_600SemiBold', fontSize: 12, color: colors.text200 }}>
-                {copy.left(formatQuestNumber(reward.inventoryRemaining, appLang()))}
-                {shortfall > 0 ? ` · ${copy.needMore(formatQuestNumber(shortfall, appLang()))}` : ''}
-              </Text>
-            ) : shortfall > 0 ? (
-              <Text style={{ fontFamily: 'NotoSansGeorgian_500Medium', fontSize: 12, color: colors.text300 }}>
-                {copy.needMore(formatQuestNumber(shortfall, appLang()))}
-              </Text>
-            ) : null}
-          </View>
-          {!redeemable && reward.userEligibility?.reasonCode && reward.userEligibility.reasonCode !== 'REWARD_INSUFFICIENT_COINS' ? (
-            <Text style={{ fontFamily: 'NotoSansGeorgian_500Medium', fontSize: 12, color: colors.text300 }}>
-              {rewardErrorMessage(reward.userEligibility.reasonCode, appLang())}
-            </Text>
-          ) : null}
-        </View>
-        <ChevronRight size={18} color={colors.text300} strokeWidth={2.2} />
-      </Pressable>
-    </Animated.View>
+    <Pressable accessibilityRole="button" accessibilityLabel={title} onPress={onPress} className="active:opacity-85" style={[s.featured, { width, backgroundColor: c.surface }]}>
+      <RewardStage reward={reward} height={Math.round(width * 0.62)} radius={18}>
+        <View style={{ position: 'absolute', top: 10, left: 10 }}><StockPill reward={reward} /></View>
+      </RewardStage>
+      <View style={{ paddingHorizontal: 6, gap: 10 }}>
+        <Text numberOfLines={2} style={[hubText.cardTitle, { color: c.text100, minHeight: 44 }]}>{title}</Text>
+        <AffordLine cost={reward.coinCost} balance={balance} soldOut={isSoldOut(reward)} />
+      </View>
+    </Pressable>
   );
 }
+
+const s = StyleSheet.create({
+  gutter: { paddingHorizontal: HUB.gutter },
+  notice: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 12 },
+  errorCard: { borderRadius: 22, padding: 18, gap: 8 },
+  retry: { alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center', gap: 6, minHeight: 40, paddingHorizontal: 14, borderRadius: 20, marginTop: 6 },
+  chips: { paddingHorizontal: HUB.gutter, gap: 8 },
+  chip: { flexDirection: 'row', alignItems: 'center', gap: 6, minHeight: 40, paddingHorizontal: 14, borderRadius: 20, borderWidth: 1 },
+  chipText: { fontFamily: 'NotoSansGeorgian_600SemiBold', fontSize: 13, lineHeight: 18 },
+  chipCount: { fontFamily: 'NotoSansGeorgian_500Medium', fontSize: 12, lineHeight: 16, fontVariant: ['tabular-nums'] },
+  shelf: { paddingHorizontal: HUB.gutter, gap: 12 },
+  featured: { borderRadius: 24, padding: 8, paddingBottom: 14, gap: 12 },
+  grid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', rowGap: 12 },
+});

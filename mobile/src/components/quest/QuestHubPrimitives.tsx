@@ -1,3 +1,4 @@
+import { MODULE_BRANDS } from '@/theme/moduleBrand';
 import React from 'react';
 import { ActivityIndicator, Image, Pressable, StyleSheet, Text, View, type ImageSourcePropType, type ViewStyle } from 'react-native';
 import { ArrowUpRight, ChevronRight } from 'lucide-react-native';
@@ -14,8 +15,8 @@ export function QCard({ children, style }: { children: React.ReactNode; style?: 
 }
 export function QButton({ label, onPress, secondary, disabled, busy, icon }: { label: string; onPress: () => void; secondary?: boolean; disabled?: boolean; busy?: boolean; icon?: React.ReactNode }) {
   const c = useThemeColors(), dark = useIsDark();
-  return <Pressable accessibilityRole="button" accessibilityState={{ disabled: Boolean(disabled || busy), busy }} disabled={disabled || busy} onPress={onPress} className="active:opacity-75" style={[styles.button, { backgroundColor: secondary ? c.surfaceRaised : '#0D9488', opacity: disabled ? .5 : 1 }]}>
-    {busy ? <ActivityIndicator color={secondary ? c.primary200 : '#FFFFFF'} /> : <>{icon}<QText bold color={secondary ? (dark ? '#99F6E4' : '#0F766E') : '#FFFFFF'}>{label}</QText></>}
+  return <Pressable accessibilityRole="button" accessibilityState={{ disabled: Boolean(disabled || busy), busy }} disabled={disabled || busy} onPress={onPress} className="active:opacity-75" style={[styles.button, { backgroundColor: secondary ? c.surfaceRaised : MODULE_BRANDS.quest.gradient[1], opacity: disabled ? .5 : 1 }]}>
+    {busy ? <ActivityIndicator color={secondary ? c.primary200 : '#FFFFFF'} /> : <>{icon}<QText bold color={secondary ? c.primary100 : '#FFFFFF'}>{label}</QText></>}
   </Pressable>;
 }
 export function QHeading({ title, meta }: { title: string; meta?: string }) {

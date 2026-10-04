@@ -1,6 +1,6 @@
+import { MODULE_BRANDS } from '@/theme/moduleBrand';
 import React, { useEffect, useState } from 'react';
 import { Pressable, ScrollView, View } from 'react-native';
-import { hubInk } from '@/theme/hub';
 import Svg, { Circle, Path } from 'react-native-svg';
 import { Check, Flag, Gift, Lock, Palette } from 'lucide-react-native';
 import { QuestArt } from './QuestIcon';
@@ -26,7 +26,7 @@ function styleTitle(item: CompanionCosmetic) {
 /** A personal achievement seal. All four owned style slots have a visible result. */
 export function QuestEmblem({ equipment = EMPTY, size = 84 }: { equipment?: CompanionEquipment; size?: number }) {
   const c = useThemeColors(), dark = useIsDark();
-  const ink = accentColorForEquipment(equipment.accent, '#14B8A6');
+  const ink = accentColorForEquipment(equipment.accent, c.primary200);
   const bg = visualKeyForCosmetic(equipment.background) ?? '';
   const fill = bg.includes('dawn') ? (dark ? '#292524' : '#FFFBEB') : bg.includes('garden') ? (dark ? '#142C23' : '#F0FDF4') : bg.includes('city') ? (dark ? '#172554' : '#EFF6FF') : bg.includes('summit') ? (dark ? '#2E1065' : '#F5F3FF') : bg.includes('teal_room') ? (dark ? '#042F2E' : '#CCFBF1') : c.surfaceRaised;
   const accessory = visualKeyForCosmetic(equipment.accessory) ?? '';
@@ -60,19 +60,19 @@ export function QuestJourneyPanel({ overview, onGuide }: { overview: CompanionOv
       <QText size={13} muted>{info.next ? tx(`შემდეგი: ${companionMilestoneTitle(info.next.titleKey, appLang())} · დარჩა ${info.remaining} ქულა`, `Next: ${companionMilestoneTitle(info.next.titleKey, appLang())} · ${info.remaining} ${info.remaining === 1 ? 'point' : 'points'} to go`) : tx('ყველა ეტაპი გახსნილია. შენი მისიები და მიღწევები გრძელდება.', 'Every stage is unlocked. Your missions and achievements carry on.')}</QText>
     </QCard>
     <View style={{ flexDirection: 'row', gap: 10 }}>
-      <QCard style={{ flex: 1, padding: 14 }}><QText size={23} bold color={hubInk('teal', dark)}>+1</QText><QText size={12} muted>{tx('დღიური მისიის შესრულება', 'Daily mission completed')}</QText></QCard>
-      <QCard style={{ flex: 1, padding: 14 }}><QText size={23} bold color={hubInk('teal', dark)}>+3</QText><QText size={12} muted>{tx('კვირის მისიის შესრულება', 'Weekly mission completed')}</QText></QCard>
+      <QCard style={{ flex: 1, padding: 14 }}><QText size={23} bold color={c.primary100}>+1</QText><QText size={12} muted>{tx('დღიური მისიის შესრულება', 'Daily mission completed')}</QText></QCard>
+      <QCard style={{ flex: 1, padding: 14 }}><QText size={23} bold color={c.primary100}>+3</QText><QText size={12} muted>{tx('კვირის მისიის შესრულება', 'Weekly mission completed')}</QText></QCard>
     </View>
     <QText size={13} muted>{tx('ქულა ავტომატურად ემატება შესრულებისას. XP და მონეტები ცალკე ჯილდოა — მისიის ბარათიდან მიიღე.', 'Points are added automatically when you complete a mission. XP and coins are a separate reward — collect them from the mission card.')}</QText>
     <QHeading title={tx('შენი ეტაპები', 'Your stages')} meta={tx(`${chapters.length} თავი`, `${chapters.length} ${chapters.length === 1 ? 'chapter' : 'chapters'}`)} />
     <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
-      {chapters.map((key, i) => <Pressable key={key} accessibilityRole="tab" accessibilityState={{ selected: key === chapter }} onPress={() => setChapter(key)} style={{ minHeight: 44, paddingHorizontal: 18, justifyContent: 'center', borderRadius: 16, backgroundColor: key === chapter ? '#0D9488' : c.surfaceRaised }}><QText bold color={key === chapter ? '#FFFFFF' : c.text200}>{tx(`თავი ${i + 1}`, `Chapter ${i + 1}`)}</QText></Pressable>)}
+      {chapters.map((key, i) => <Pressable key={key} accessibilityRole="tab" accessibilityState={{ selected: key === chapter }} onPress={() => setChapter(key)} style={{ minHeight: 44, paddingHorizontal: 18, justifyContent: 'center', borderRadius: 16, backgroundColor: key === chapter ? MODULE_BRANDS.quest.gradient[1] : c.surfaceRaised }}><QText bold color={key === chapter ? '#FFFFFF' : c.text200}>{tx(`თავი ${i + 1}`, `Chapter ${i + 1}`)}</QText></Pressable>)}
     </ScrollView>
     <View><QText size={17} bold>{companionChapterTitle(chapter, appLang())}</QText></View>
     <QCard style={{ gap: 0 }}>
       {info.milestones.filter(m => m.chapterKey === chapter).map((m, i, all) => {
         const next = m.key === info.next?.key;
-        const tone = m.unlocked ? (hubInk('teal', dark)) : c.text300;
+        const tone = m.unlocked ? c.primary100 : c.text300;
         return <View key={m.key} style={{ flexDirection: 'row', gap: 14, minHeight: 98 }}>
           <View style={{ width: 36, alignItems: 'center' }}>
             <View style={{ width: 36, height: 36, borderRadius: 13, backgroundColor: m.unlocked ? c.accent100 : c.bg100, borderWidth: next ? 2 : 1, borderColor: next ? c.primary200 : c.bg300, alignItems: 'center', justifyContent: 'center' }}>
@@ -105,7 +105,7 @@ export function QuestCollectionPanel({ overview, onEquip, busyKey, error, offlin
       <View style={{ flexDirection: 'row', gap: 18, alignItems: 'center' }}><QuestEmblem equipment={overview.equipment} size={96} /><View style={{ flex: 1 }}><QText bold size={17}>{tx('შენი პროგრესის ნიშანი', 'Your progress badge')}</QText><QText size={13} muted>{tx('ეტაპებზე გახსნილი ფერით, ფონითა და სიმბოლოებით გააფორმე.', 'Style it with the colors, backgrounds and symbols you unlock along the way.')}</QText></View></View>
     </QCard>
     <View style={{ flexDirection: 'row', gap: 6 }}>
-      {SLOTS.map(s => <Pressable key={s.key} accessibilityRole="tab" accessibilityState={{ selected: slot === s.key }} onPress={() => setSlot(s.key)} style={{ flex: 1, minHeight: 44, paddingHorizontal: 3, borderRadius: 14, alignItems: 'center', justifyContent: 'center', backgroundColor: slot === s.key ? '#0D9488' : c.surfaceRaised }}><QText size={12} bold color={slot === s.key ? '#FFFFFF' : c.text200}>{s.label}</QText></Pressable>)}
+      {SLOTS.map(s => <Pressable key={s.key} accessibilityRole="tab" accessibilityState={{ selected: slot === s.key }} onPress={() => setSlot(s.key)} style={{ flex: 1, minHeight: 44, paddingHorizontal: 3, borderRadius: 14, alignItems: 'center', justifyContent: 'center', backgroundColor: slot === s.key ? MODULE_BRANDS.quest.gradient[1] : c.surfaceRaised }}><QText size={12} bold color={slot === s.key ? '#FFFFFF' : c.text200}>{s.label}</QText></Pressable>)}
     </View>
     {error ? <QNotice text={error} danger /> : null}
     {offline ? <QNotice text={tx('კოლექციის შეცვლას ინტერნეტი სჭირდება. ბოლო შენახულ სტილს ხედავ.', 'Changing your collection needs internet. You’re seeing your last saved style.')} /> : null}

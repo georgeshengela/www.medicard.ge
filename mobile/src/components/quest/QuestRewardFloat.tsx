@@ -1,3 +1,4 @@
+import { MODULE_BRANDS } from '@/theme/moduleBrand';
 import React from 'react';
 import { Text, View, type ViewStyle } from 'react-native';
 import Animated, { Easing, FadeOutUp, withDelay, withSpring, withTiming } from 'react-native-reanimated';
@@ -67,7 +68,7 @@ export function QuestRewardFloat({
           paddingHorizontal: 14,
           paddingVertical: 8,
           borderRadius: 999,
-          backgroundColor: dark ? '#0D9488' : colors.primary200,
+          backgroundColor: MODULE_BRANDS.quest.gradient[1],
           shadowColor: '#000',
           shadowOpacity: dark ? 0.35 : 0.12,
           shadowRadius: 10,
