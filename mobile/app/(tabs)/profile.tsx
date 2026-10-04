@@ -208,7 +208,8 @@ export default function Profile() {
               </View>
             </Pressable>
             <View style={{ flex: 1, minWidth: 0, gap: 3 }}>
-              <Text numberOfLines={2} style={[s.name, { color: colors.text100 }]}>
+              {/* One line (owner 2026-10-04): a long name shrinks a little instead of wrapping. */}
+              <Text numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.75} style={[s.name, { color: colors.text100 }]}>
                 {user?.fullName}
               </Text>
               {livingPlaceLine(healthProfile) ? (
@@ -381,6 +382,6 @@ const s = StyleSheet.create({
   section: { paddingHorizontal: HUB.gutter, marginTop: HUB.sectionGap },
   card: { borderRadius: HUB.cardRadius, padding: HUB.cardPad },
   list: { borderRadius: HUB.cardRadius, overflow: 'hidden' },
-  name: { fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 20, lineHeight: 27 },
+  name: { fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 17, lineHeight: 24 },
   subtitle: { fontFamily: 'NotoSansGeorgian_400Regular', fontSize: 11, lineHeight: 17 },
 });
