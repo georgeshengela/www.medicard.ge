@@ -89,7 +89,7 @@ function ScheduleSheet({visible,onClose,data}:{visible:boolean;onClose:()=>void;
   </Card>
   <Card style={{gap:8}}>
    <Copy bold size={14}>{tx('როგორ იხსნება ყუთი','How a box opens')}</Copy>
-   <Copy muted size={12}>{tx('1. დაიწყე გასეირნება MEDIRUN-ში. 2. ყუთიდან 250–350 მ-ზე პულსი ჩაგერთვება — რაც ახლოს ხარ, მით ჩქარია. 3. 20–25 მ-ზე ყუთი კამერაში გამოჩნდება — შეეხე და ქოინები მაშინვე ჩაგერიცხება.','1. Start a walk in MEDIRUN. 2. 250–350 m from a box a pulse starts — the closer you are, the faster it beats. 3. At 20–25 m the box shows up in the camera — tap it and the coins land at once.')}</Copy>
+   <Copy muted size={12}>{tx('1. დაიწყე გასეირნება MEDIRUN-ში. 2. ყუთიდან 250–350 მ-ზე პულსი ჩაგერთვება — რაც ახლოს ხარ, მით ჩქარია. 3. 20–25 მ-ზე გამოჩნდება „შეეხე და გახსენი“ — გახსენი და ქოინები მაშინვე ჩაგერიცხება.','1. Start a walk in MEDIRUN. 2. 250–350 m from a box a pulse starts — the closer you are, the faster it beats. 3. At 20–25 m “Tap to open” appears — open it and the coins land at once.')}</Copy>
    <Copy muted size={12}>{decayText(data.economy?.decay)}</Copy>
    <Copy muted size={12}>{tx('ქოინებს MEDIQUEST-ის მაღაზიაში ცვლი სასაჩუქრე ბარათებსა და გაჯეტებზე.','You swap the coins for gift cards and gadgets in the MEDIQUEST store.')}</Copy>
   </Card>

@@ -80,7 +80,7 @@ async function deliver(kind: GiftAlertKind): Promise<void> {
       title: near ? tx('💓 აღმოჩენა ახლოსაა', '💓 A find is near') : tx('🎁 საჩუქარი შენ გვერდითაა', '🎁 The gift is right next to you'),
       body: near
         ? tx('გახსენი MEDIRUN და მიჰყევი პულსს.', 'Open MEDIRUN and follow the pulse.')
-        : tx('გახსენი MEDIRUN და ჩართე კამერა — ყუთი აქვეა.', 'Open MEDIRUN and turn on the camera — the box is right here.'),
+        : tx('გახსენი MEDIRUN და შეეხე „გახსნას“ — ყუთი აქვეა.', 'Open MEDIRUN and tap “Open” — the box is right here.'),
       sound: true,
       data: { type: 'medirun_gift', route: near ? '/run/active' : '/run/active?gift=1' },
       ...(Platform.OS === 'android' ? { channelId: GIFT_CHANNEL_ID } : {}),

@@ -7,6 +7,7 @@ import {
   Text,
   View,
 } from 'react-native';
+import { LockableScrollView } from '@/components/ui/LockableScrollView';
 import { useFocusEffect, useRouter } from 'expo-router';
 import Animated, { Easing, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -510,7 +511,7 @@ export default function Home() {
 
   return (
     <HomeAccentContext.Provider value={accent}>
-      <ScrollView
+      <LockableScrollView
         ref={scrollRef}
         style={{ flex: 1, backgroundColor: c.bg100 }}
         contentContainerStyle={{
@@ -544,7 +545,7 @@ export default function Home() {
             <React.Fragment key={id}>{sections[id]}</React.Fragment>
           ))}
         </Animated.View>
-      </ScrollView>
+      </LockableScrollView>
       {layout === 'women' ? <HomeCycleToastHost /> : null}
       {layoutsOn ? (
         <HomeLayoutPicker visible={picker !== null} onClose={() => setPicker(null)} source={picker ?? 'home_header'} />

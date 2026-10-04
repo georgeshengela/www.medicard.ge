@@ -5,6 +5,7 @@ import {
   ScrollView,
   Text,
   View} from 'react-native';
+import { LockableScrollView } from '@/components/ui/LockableScrollView';
 import { useIsFocused, useLocalSearchParams, useNavigation, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, { FadeInUp } from 'react-native-reanimated';
@@ -1067,7 +1068,7 @@ export default function CycleHome() {
     <CycleAtmosphere>
       {/* Status-bar spacer: the pinned week sits below it, never under the clock. */}
       <View style={{ flex: 1, paddingTop: insets.top }}>
-        <ScrollView
+        <LockableScrollView
           style={{
             flex: 1,
             marginBottom: 0,
@@ -1500,7 +1501,7 @@ export default function CycleHome() {
               onClassifyPostpartumBleed={(date, classified) => setClassifyBleed({ date, classified })}
             />
           ) : null}
-        </ScrollView>
+        </LockableScrollView>
       </View>
 
       {!needsOnboarding && pane === 'calendar' && !daySheetOpen && !quickOpen ? (
