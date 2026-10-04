@@ -133,7 +133,7 @@
     if (!st.day) st.day = st.o.today;
     if (!st.draft || !st.dirty) st.draft = structuredClone(st.o.campaign);
     root.innerHTML = `<div class="s-stack v3-tab-shell mb-page">
-      <div data-mb-head>${headHtml()}</div>
+      <div class="mb-head" data-mb-head>${headHtml()}</div>
       <div class="s-tabbar">
         <nav class="v3-subnav" role="tablist" aria-label="ყუთების განყოფილებები">${SUBS.map(([k, l]) => `<button type="button" role="tab" class="v3-subnav-btn${k === st.sub ? ' is-active' : ''}" data-mb-sub="${k}" aria-selected="${k === st.sub}">${l}</button>`).join('')}</nav>
       </div>
@@ -535,13 +535,13 @@
   function coinsTable(path, coins) {
     const total = coins.reduce((s, o) => s + Number(o.weight || 0), 0) || 1;
     return `<div class="mb-coins">
-      <table class="s-table mb-mini"><thead><tr><th>ქოინი ყუთში</th><th>წილი (წონა)</th><th class="num">ალბათობა</th><th></th></tr></thead><tbody>
+      <div class="mb-tablebox"><table class="s-table mb-mini"><thead><tr><th>ქოინი ყუთში</th><th>წილი (წონა)</th><th class="num">ალბათობა</th><th></th></tr></thead><tbody>
       ${coins.map((o, i) => `<tr><td><input type="number" min="1" max="10000" value="${o.amount}" data-p="${path}.${i}.amount" aria-label="ქოინი"></td><td><input type="number" min="0" max="1000" step="1" value="${o.weight}" data-p="${path}.${i}.weight" aria-label="წონა"></td><td class="num">${Math.round((Number(o.weight || 0) / total) * 100)}%</td><td>${coins.length > 1 ? `<button type="button" class="btn compact" data-del="${path}.${i}" aria-label="წაშლა">${ico('trash')}</button>` : ''}</td></tr>`).join('')}
-      </tbody></table>
+      </tbody></table></div>
       <button type="button" class="btn compact" data-add-coin="${path}">${ico('plus')} ვარიანტი</button></div>`;
   }
   function wavesTable(path, waves) {
-    return `<table class="s-table mb-mini"><thead><tr><th>დაწყება</th><th>საათი</th><th title="ყუთები მთელ ქალაქში, უბნების რიგით">ქალაქში</th><th title="დამატებითი ყუთები კვირის თემის ზონაში">თემაში</th><th title="მხოლოდ განათებულ ბილიკზე (საღამოს)">განათებული</th><th></th></tr></thead><tbody>
+    return `<div class="mb-tablebox"><table class="s-table mb-mini"><thead><tr><th>დაწყება</th><th>საათი</th><th title="ყუთები მთელ ქალაქში, უბნების რიგით">ქალაქში</th><th title="დამატებითი ყუთები კვირის თემის ზონაში">თემაში</th><th title="მხოლოდ განათებულ ბილიკზე (საღამოს)">განათებული</th><th></th></tr></thead><tbody>
       ${waves.map((w, i) => `<tr>
         <td><input type="time" value="${esc(w.time)}" data-p="${path}.${i}.time" aria-label="დაწყება"> <small class="s-muted">${esc(kindLabel(w.id))}</small></td>
         <td><input type="number" min="0.5" max="16" step="0.5" value="${w.hours}" data-p="${path}.${i}.hours" aria-label="საათი"></td>
@@ -549,7 +549,7 @@
         <td><input type="number" min="0" max="30" value="${w.focus}" data-p="${path}.${i}.focus" aria-label="თემაში"></td>
         <td><input type="checkbox" class="s-switch" ${w.litOnly ? 'checked' : ''} data-p="${path}.${i}.litOnly" aria-label="მხოლოდ განათებული"></td>
         <td><button type="button" class="btn compact" data-del="${path}.${i}" aria-label="ტალღის წაშლა">${ico('trash')}</button></td></tr>`).join('')}
-      </tbody></table>
+      </tbody></table></div>
       <button type="button" class="btn compact" data-add-wave="${path}">${ico('plus')} ტალღა</button>`;
   }
   function dayCard(key, title, hint) {
@@ -579,9 +579,9 @@
         <label class="mb-check"><input type="checkbox" class="s-switch" data-p="cities.enabled" ${r.enabled ? 'checked' : ''}> ყუთები სხვა ქალაქებშიც</label>
         <div class="mb-sum">ერთ ტალღაში: ${num(b.base)} ყუთი + 1 ყოველ ${num(b.perPlayers)} მოთამაშეზე (მაქს. ${num(b.max)})${r.weekendExtra ? `, შაბათ-კვირას +${num(r.weekendExtra)}` : ''} · ${num(r.waves.length)} ტალღა დღეში</div>
         <h4 class="mb-h4">ტალღები (ადგილობრივი დრო)</h4>
-        <table class="s-table mb-mini"><thead><tr><th>დაწყება</th><th>საათი</th><th></th></tr></thead><tbody>
+        <div class="mb-tablebox"><table class="s-table mb-mini"><thead><tr><th>დაწყება</th><th>საათი</th><th></th></tr></thead><tbody>
           ${r.waves.map((w, i) => `<tr><td><input type="time" value="${esc(w.time)}" data-p="cities.waves.${i}.time" aria-label="დაწყება"></td><td><input type="number" min="0.5" max="16" step="0.5" value="${w.hours}" data-p="cities.waves.${i}.hours" aria-label="საათი"></td><td>${r.waves.length > 1 ? `<button type="button" class="btn compact" data-del="cities.waves.${i}" aria-label="წაშლა">${ico('trash')}</button>` : ''}</td></tr>`).join('')}
-        </tbody></table>
+        </tbody></table></div>
         <button type="button" class="btn compact" data-add-cwave>${ico('plus')} ტალღა</button>
         <div class="s-form-grid">
           <label class="s-field"><span>ყუთი ტალღაში — საბაზო</span><input type="number" min="0" max="30" value="${b.base}" data-p="cities.boxesPerWave.base"></label>
@@ -626,9 +626,9 @@
           </div>
           <h4 class="mb-h4">შიგთავსი</h4>${coinsTable('saturday.coins', sat.coins)}
           <h4 class="mb-h4">შაბათები და პარკები</h4>
-          <table class="s-table mb-mini"><thead><tr><th>თარიღი</th><th>პარკი</th><th></th></tr></thead><tbody>
+          <div class="mb-tablebox"><table class="s-table mb-mini"><thead><tr><th>თარიღი</th><th>პარკი</th><th></th></tr></thead><tbody>
             ${satDates.map(([date, park]) => `<tr><td>${esc(dayLabel(date))}</td><td><select data-sat-park="${date}" aria-label="პარკი">${parks.map((k) => `<option value="${k}" ${k === park ? 'selected' : ''}>${esc(parkName[k])}</option>`).join('')}</select></td><td><button type="button" class="btn compact" data-sat-del="${date}" aria-label="წაშლა">${ico('trash')}</button></td></tr>`).join('')}
-          </tbody></table>
+          </tbody></table></div>
           <div class="mb-row"><input type="date" data-sat-new aria-label="ახალი შაბათი"><button type="button" class="btn compact" data-sat-add>${ico('plus')} თარიღის დამატება</button></div>
           <h4 class="mb-h4">ფარნის ყუთები (შაბათს, განათების ზღვრიდან)</h4>
           <label class="mb-check"><input type="checkbox" class="s-switch" data-lantern-on ${sat.lantern ? 'checked' : ''}> ჩართულია</label>
@@ -655,7 +655,7 @@
           <label class="s-field"><span>ადგილი</span><select data-grand-spot><option value="">ავტომატურად (დიდი ცნობილი პარკი)</option>${parks.map((k) => `<option value="${k}" ${g.spot === k ? 'selected' : ''}>${esc(parkName[k])}</option>`).join('')}</select><small>საბოლოო საიდუმლო ადგილი დღესთან ახლოს დააყენე</small></label>
         </div></div></section>
       <section class="s-card"><header class="s-card-head"><div><h3>კვირის თემები</h3><p>„თემაში“ ყუთები ამ კვირაში ამ ზონაში დგება: უბნები, პარკის ტიპები ან წერტილები (lng, lat, რადიუსი).</p></div></header>
-        <div class="s-card-body is-flush"><div class="s-table-wrap"><table class="s-table mb-mini"><thead><tr><th>დან</th><th>მდე</th><th>თემა</th><th>უბნები (მძიმით)</th><th>ტიპები (park, garden…)</th><th>წერტილები: lng,lat,მ; …</th><th></th></tr></thead><tbody>
+        <div class="s-card-body s-stack"><div class="mb-tablebox"><table class="s-table mb-mini is-fluid"><thead><tr><th>დან</th><th>მდე</th><th>თემა</th><th>უბნები (მძიმით)</th><th>ტიპები (park, garden…)</th><th>წერტილები: lng,lat,მ; …</th><th></th></tr></thead><tbody>
           ${c.weeks.map((w, i) => `<tr>
             <td><input type="date" value="${esc(w.from)}" data-p="weeks.${i}.from" aria-label="დან"></td>
             <td><input type="date" value="${esc(w.to)}" data-p="weeks.${i}.to" aria-label="მდე"></td>
@@ -664,9 +664,9 @@
             <td><input type="text" value="${esc((w.kinds || []).join(', '))}" data-week-list="${i}.kinds" aria-label="ტიპები"></td>
             <td><input type="text" value="${esc((w.anchors || []).map((a) => a.join(',')).join('; '))}" data-week-anchors="${i}" aria-label="წერტილები"></td>
             <td><button type="button" class="btn compact" data-del="weeks.${i}" aria-label="წაშლა">${ico('trash')}</button></td></tr>`).join('')}
-        </tbody></table></div><div class="mb-pad"><button type="button" class="btn compact" data-add-week>${ico('plus')} კვირა</button></div></div></section>
+        </tbody></table></div><button type="button" class="btn compact" data-add-week>${ico('plus')} კვირა</button></div></section>
       <section class="s-card"><header class="s-card-head"><div><h3>დონეები</h3><p>რამდენი % უნდა გაანათოს თბილისიდან და რას ხსნის — ჩანს აპის დიდი საჩუქრის გვერდზე.</p></div></header>
-        <div class="s-card-body is-flush"><div class="s-table-wrap"><table class="s-table mb-mini"><thead><tr><th>%</th><th>სახელი (ქართ.)</th><th>სახელი (ინგლ.)</th><th>რას ხსნის (ქართ.)</th><th>რას ხსნის (ინგლ.)</th></tr></thead><tbody>
+        <div class="s-card-body"><div class="mb-tablebox"><table class="s-table mb-mini is-fluid"><thead><tr><th>%</th><th>სახელი (ქართ.)</th><th>სახელი (ინგლ.)</th><th>რას ხსნის (ქართ.)</th><th>რას ხსნის (ინგლ.)</th></tr></thead><tbody>
           ${c.levels.map((l, i) => `<tr>
             <td><input type="number" min="0.001" max="100" step="0.01" value="${l.percent}" data-p="levels.${i}.percent" aria-label="პროცენტი"></td>
             <td><input type="text" maxlength="60" value="${esc(l.name.ka)}" data-p="levels.${i}.name.ka" aria-label="სახელი"></td>
