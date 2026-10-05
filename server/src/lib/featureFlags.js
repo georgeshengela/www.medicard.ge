@@ -197,6 +197,25 @@ export const FEATURES = Object.freeze([
     defaultMessageEn: 'Campaign gifts are paused for a moment.',
   },
   {
+    key: 'medirunDecor',
+    group: 'system',
+    parent: 'medirun',
+    label: 'MEDIRUN ქალაქის დეკორი',
+    description: 'ღამის რუკის მორთულობა თბილისში: სადღესასწაულო ტრაილერები რუსთაველზე (თავისუფლების მოედანი ⇄ ფილარმონია) და მთაწმინდის განათებული ბორბალი. გამორთვისას რუკაზე აღარ ჩანს; სირბილზე გავლენა არ აქვს.',
+    defaultMessage: 'ქალაქის მორთულობა დროებით გამორთულია.',
+    defaultMessageEn: 'City decorations are off for a moment.',
+  },
+  {
+    key: 'medirunPartners',
+    group: 'system',
+    parent: 'medirun',
+    defaultOff: true,
+    label: 'MEDIRUN პარტნიორები რუკაზე (მაკდონალდსი)',
+    description: 'პარტნიორი ადგილების 3D შენობები და განათებული ლოგოები ღამის რუკაზე — ახლა მაკდონალდსი რუსთაველის მოედანზე. თავიდან გამორთულია: ჩართე მხოლოდ პარტნიორთან ხელშეკრულების შემდეგ (ლოგო მათი სავაჭრო ნიშანია).',
+    defaultMessage: 'პარტნიორები რუკაზე დროებით არ ჩანს.',
+    defaultMessageEn: 'Partners are hidden on the map for a moment.',
+  },
+  {
     key: 'quest',
     group: 'module',
     label: 'MEDIQUEST',
@@ -338,7 +357,8 @@ async function readRows(db = prisma) {
 
 function ownState(rows, key) {
   const row = rows.find((r) => r.key === key);
-  return row ? row.enabled !== false : true;
+  // a missing row means enabled — except features that must be switched on on purpose (`defaultOff`)
+  return row ? row.enabled !== false : !BY_KEY.get(key)?.defaultOff;
 }
 
 /** The key that pauses `key` — itself, or its parent module — or null when it runs. */

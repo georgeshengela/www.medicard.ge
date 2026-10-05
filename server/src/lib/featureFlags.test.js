@@ -28,7 +28,18 @@ describe('feature flags', () => {
     assert.equal(await isFeatureEnabled('medi', db), true);
     const list = await listFeatureFlags(db);
     assert.equal(list.length, FEATURES.length);
-    assert.ok(list.every((f) => f.enabled && f.message));
+    assert.ok(list.every((f) => f.enabled === !f.defaultOff && f.message));
+  });
+
+  it('keeps a defaultOff feature off until an admin switches it on', async () => {
+    const db = fakeDb();
+    assert.ok(FEATURES.find((f) => f.key === 'medirunPartners')?.defaultOff);
+    assert.equal(await isFeatureEnabled('medirunPartners', db), false);
+    assert.equal((await publicFeatureFlags(db)).medirunPartners, false);
+    assert.equal((await publicFeatureFlags(db)).medirunDecor, true);
+    await setFeatureFlag('medirunPartners', { enabled: true }, { db });
+    resetFeatureFlagCacheForTests();
+    assert.equal(await isFeatureEnabled('medirunPartners', db), true);
   });
 
   it('pauses and resumes a module with a custom message', async () => {
@@ -73,7 +84,8 @@ describe('module hierarchy', () => {
     assert.equal(flags.mediVet, false);
     assert.equal(flags.cycle, true);
     const messages = await publicFeatureMessages(db);
-    assert.deepEqual(Object.keys(messages).sort(), ['mediVet', 'pets']);
+    const offByDefault = new Set(FEATURES.filter((f) => f.defaultOff).map((f) => f.key));
+    assert.deepEqual(Object.keys(messages).filter((k) => !offByDefault.has(k)).sort(), ['mediVet', 'pets']);
     assert.equal(await featureDisabledMessage('mediVet', db, 'en'), 'Pets is paused for a moment. Your data is saved.');
     assert.equal((await publicFeatureMessages(db, 'en')).pets, 'Pets is paused for a moment. Your data is saved.');
   });
