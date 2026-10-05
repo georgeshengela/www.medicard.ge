@@ -6,7 +6,7 @@ import {useWrapped,type Wrapped} from '@/lib/medipulsi/social';
 import {loadRunHistory,type RunSummary} from '@/lib/run/history';
 import {formatKm} from '@/lib/run/geo';
 import {formatYmd} from '@/lib/format';
-import {cityLines,joinSegments,thin,trimEnds,type LngLat} from '@/lib/run/shareStudio';
+import {cityLines,joinSegments,lineLength,thin,trimEnds,type LngLat} from '@/lib/run/shareStudio';
 import {tx} from '@/i18n/locale';
 import {Action,Card,Copy,Section,runInk} from './PulseUi';
 import {useIsDark,useThemeColors} from '@/theme/colors';
@@ -33,7 +33,7 @@ export function RunWrappedCard(){
  const scene=useMemo<ShareSceneInput|null>(()=>{
   if(!w||!visible||!canRecordClips)return null;
   const lines=cityLines(trimEnds(history.filter(r=>inWeek(r.startedAt,w.week)).map(r=>joinSegments((r.segments?.length?r.segments:[r.path]).map(s=>s.map(p=>[p.lng,p.lat] as LngLat)))),200)).map(l=>thin(l,400));
-  if(!lines.length)return null;
+  if(!lines.length||lines.reduce((s,l)=>s+lineLength(l),0)<150)return null;
   return {kind:'city',lines,hero:user?.gender==='FEMALE'?'f':'m',kicker:`${formatYmd(w.week.start)} – ${formatYmd(w.week.end)}`,title:tx('ჩემი კვირა MEDIRUN-ში','My week in MEDIRUN'),big:formatKm(w.meters,1),unit:tx('კმ','km'),
    stats:[
     {value:formatKm(w.newMeters,1),label:tx('ახალი ქუჩა, კმ','new streets, km')},

@@ -8,7 +8,7 @@ import {usePulse} from '@/lib/medipulsi/client';
 import {coverageFeatures} from '@/lib/medipulsi/core/journey';
 import {useCityMeter,type CityMeter} from '@/lib/medipulsi/social';
 import {grandPercent,levelPercent} from '@/lib/medipulsi/grand';
-import {cityLines,thin,trimEnds,type LngLat} from '@/lib/run/shareStudio';
+import {cityLines,lineLength,thin,trimEnds,type LngLat} from '@/lib/run/shareStudio';
 import {tx} from '@/i18n/locale';
 import {Action,Bar,Card,Copy,Section,runInk} from './PulseUi';
 import {useGrandPrize} from './GrandPrizeCard';
@@ -37,7 +37,7 @@ export function RunCityCard(){
   return cityLines(trimEnds(raw,200)).slice(-160).map(l=>thin(l,300));
  },[pulse.journey.trail,pulse.journey.covered]);
  const mine=grand?.me?.percent??null;
- const scene=useMemo<ShareSceneInput|null>(()=>canRecordClips&&lines.length?{kind:'city',lines,hero:user?.gender==='FEMALE'?'f':'m',
+ const scene=useMemo<ShareSceneInput|null>(()=>canRecordClips&&lines.length&&lines.reduce((s,l)=>s+lineLength(l),0)>=150?{kind:'city',lines,hero:user?.gender==='FEMALE'?'f':'m',
   kicker:tx('გაანათე თბილისი','Light up Tbilisi'),title:tx('ჩემი განათებული ქალაქი','My lit-up city'),big:mine!=null?meterPercent(mine).replace('%',''):String(lines.length),unit:mine!=null?'%':tx('ქუჩა','streets'),
   stats:[
    ...(meter?[{value:`${meterPercent(meter.percent)}`,label:tx(`${meter.city} ერთად`,`${meter.city} together`)}]:[]),
