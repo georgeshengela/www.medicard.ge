@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="ka">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
+<title>MEDIRUN XR</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Exo+2:wght@800&family=Noto+Sans+Georgian:wght@400;700&display=swap" rel="stylesheet">
+<script type="importmap">{"imports":{
+  "three":"/engine/node_modules/three/build/three.module.js",
+  "three/addons/":"/engine/node_modules/three/examples/jsm/",
+  "pbf":"/engine/node_modules/pbf/index.js",
+  "@mapbox/vector-tile":"/engine/node_modules/@mapbox/vector-tile/index.js",
+  "@mapbox/point-geometry":"/engine/node_modules/@mapbox/point-geometry/index.js"
+}}</script>
+<style>
+  :root { --bg100: #030712; --surface: #111827; --bg200: #1F2937; --text100: #FFFFFF; --text200: #D1D5DB; --text300: #6B7280;
+          --primary100: #99F6E4; --teal: #14B8A6; --cta: #0D9488; --warm: #FCD34D; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; background: var(--bg100); color: var(--text100); font-family: "Noto Sans Georgian", system-ui, sans-serif; overflow: hidden; }
+  canvas { display: block; touch-action: none; }
+  .wordmark { font-family: "Exo 2", sans-serif; font-weight: 800; font-size: 26px; letter-spacing: -0.5px; }
+  .wordmark b { color: var(--teal); display: inline-block; transform: skewX(-16deg); }
+  .card { position: fixed; left: 16px; top: 16px; width: min(360px, calc(100vw - 32px)); background: rgba(17, 24, 39, .92); border-radius: 22px; padding: 18px; display: flex; flex-direction: column; gap: 12px; }
+  .card p { margin: 0; font-size: 13px; line-height: 20px; color: var(--text200); }
+  .buttons { display: flex; gap: 10px; }
+  button { flex: 1; min-height: 48px; border: 0; border-radius: 16px; background: var(--cta); color: #fff; font: 700 14px/20px "Noto Sans Georgian", sans-serif; cursor: pointer; }
+  button.secondary { background: var(--bg200); }
+  button:disabled { opacity: .35; cursor: default; }
+  .status { font-size: 12px; color: var(--primary100); min-height: 18px; }
+  .stats { position: fixed; right: 16px; top: 16px; background: rgba(17, 24, 39, .92); border-radius: 18px; padding: 10px 16px; display: flex; gap: 16px; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .stats .lit { color: var(--warm); } .stats .km { color: var(--primary100); }
+  .stats span { color: var(--text200); font-weight: 400; margin-left: 4px; }
+  details { font-size: 12px; line-height: 19px; color: var(--text200); }
+  summary { cursor: pointer; color: var(--text100); font-weight: 700; }
+  kbd { font: 700 11px/16px system-ui; background: var(--bg200); border-radius: 6px; padding: 1px 6px; color: var(--primary100); }
+  body.in-xr .card, body.in-xr .stats { display: none; }
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="wordmark">MEDI<b>RUN</b> <span style="color:var(--text300);font-size:15px">XR</span></div>
+  <p>თბილისის ღამის ქალაქი Quest-ში. გაარბენინე და ქუჩები აანთე.</p>
+  <div class="buttons">
+    <button id="enterVr" disabled>VR-ში შესვლა</button>
+    <button id="enterAr" class="secondary" disabled>ოთახში (MR)</button>
+  </div>
+  <div class="status" id="status"></div>
+  <details>
+    <summary>მართვა</summary>
+    Quest: მარცხენა სტიკი სირბილი, ჩახმახი აჩქარება, მარჯვენა სტიკი ← → მობრუნება და ↑ ↓ ზუმი, მარჯვენა სტიკზე დაჭერა მაგიდის სიმაღლე, A ცეკვა, B გმირი, X თავიდან, Y ცენტრში.<br>
+    კომპიუტერი: <kbd>W A S D</kbd> სირბილი, <kbd>Shift</kbd> აჩქარება, თაგვით მობრუნება, ბორბლით ზუმი, <kbd>Q</kbd> <kbd>E</kbd> 30°, <kbd>F</kbd> ცეკვა, <kbd>H</kbd> გმირი, <kbd>T</kbd> მაგიდა, <kbd>R</kbd> თავიდან, <kbd>C</kbd> ცენტრი.
+  </details>
+</div>
+<div class="stats"><div class="lit"><b id="lit">0</b><span>ანთია</span></div><div class="km"><b id="km">0.00</b><span>კმ</span></div></div>
+<script type="module" src="./xr.js"></script>
+</body>
+</html>
