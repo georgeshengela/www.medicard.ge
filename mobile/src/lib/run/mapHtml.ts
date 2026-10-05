@@ -1,7 +1,7 @@
 import type {LatLng} from './geo';
 import {tx} from '../../i18n/locale.js';
 import {MAP_FLAG,MAP_GIFT,MAP_PUCK} from './mapArt.js';
-export const RUN_MAP_HTML_REV=22;
+export const RUN_MAP_HTML_REV=24;
 /** MEDIRUN Glow engine + runner models, served with CORS by medicard.ge (built by brand/medirun/glow/engine/build.mjs). */
 export const GLOW_BASE='https://medicard.ge/medirun/glow/';
 
@@ -69,7 +69,19 @@ export function buildRunMapHtml(opts:{token:string;center:LatLng;dark:boolean;ch
   if(!G||glow)return;
   try{glow=G.createGlow({mapboxgl:mapboxgl,map:map,token:TOKEN,assetBase:GLOW_BASE,hero:hero,onLit:function(n){post({type:'lit',count:n});}});}
   catch(e){glow=null;}
-  if(!glow)trailLayers();
+  if(!glow)trailLayers();else startDecor();
+ }
+ // City decor (holiday trucks on Rustaveli, the Mtatsminda wheel, partner venues) is a separate script next to the
+ // engine: it reuses the engine's three.js, builds nothing outside Tbilisi and follows the admin switches
+ // medirunDecor / medirunPartners. The map never waits for it and never fails because of it.
+ function startDecor(){
+  try{
+   if(!glow.debug||!glow.debug.THREE)return;
+   window.__MEDIRUN_THREE__=glow.debug.THREE;
+   var s=document.createElement('script');s.src=GLOW_BASE+'decor/decor.js?v=${RUN_MAP_HTML_REV}';
+   s.onload=function(){try{window.MedirunDecor.start(glow,{map:map,mapboxgl:mapboxgl,base:GLOW_BASE+'decor/'});}catch(e){}};
+   document.head.appendChild(s);
+  }catch(e){}
  }
  function placePuck(){if(glow||!showRunner)return;if(!puck){var el=document.createElement('div');el.className='puck';el.innerHTML='<img alt="" src="'+PUCK_ART+'">';puck=new mapboxgl.Marker({element:el,rotationAlignment:'map',pitchAlignment:'map'}).setLngLat(position).addTo(map);}puck.setLngLat(position);if(heading!=null)puck.setRotation(heading);}
  function lerpAngle(a,b,t){return a+((((b-a)%360)+540)%360-180)*t;}
