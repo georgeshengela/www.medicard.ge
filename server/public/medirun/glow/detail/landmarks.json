@@ -65,7 +65,7 @@
       "id": "tv-tower",
       "name": "თბილისის ტელეანძა",
       "file": "models/tv-tower.glb",
-      "note": "Mtatsminda TV tower (OSM way 437940450, 274.5 m) in its own paint; ~1100 lamps on the lattice glow in MEDIRUN teal; it replaces the generic lattice tower and the OSM parts that model it",
+      "note": "Mtatsminda TV tower (OSM way 437940450, 274.5 m) in its own paint with red aviation lights (owner 2026-10-05: no MEDIRUN lamps — they read badly from afar); it replaces the generic lattice tower and the OSM parts that model it",
       "at": [
         44.784955,
         41.695816
@@ -73,7 +73,7 @@
       "height": 274.5,
       "front": "z",
       "facing": 180,
-      "look": "medirun",
+      "look": "paint",
       "farLoad": 6000,
       "replacesTower": 60,
       "beacons": [
@@ -85,8 +85,7 @@
       "replaces": [
         437940450
       ],
-      "clearsTall": 60,
-      "leds": 1100
+      "clearsTall": 60
     },
     {
       "id": "freedom-square",

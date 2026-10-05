@@ -1255,7 +1255,8 @@ export function createGlow({ mapboxgl, map, token, assetBase = '', detailBase, h
         uBaseZ: { value: Math.max(0, fit.base) }, uSpanZ: { value: Math.max(2, fit.top - Math.max(0, fit.base)) } };
       const look = sp.look || (sp.from ? 'canopy' : 'flood');
       const glow = new THREE.Color(...(sp.glow || [0.55, 0.85, 1.0])), flood = look === 'flood';
-      const emissive = look === 'medirun' ? `
+      const emissive = look === 'paint' ? `
+              totalEmissiveRadiance += heroBase * 0.16;   // its own paint under the night sky, nothing added` : look === 'medirun' ? `
               {
                 // its own paint under the night sky, and the teal of its lamps reflected on the steel
                 float hz = clamp((vHeroW.z - uBaseZ) / uSpanZ, 0.0, 1.0);
@@ -1278,7 +1279,7 @@ export function createGlow({ mapboxgl, map, token, assetBase = '', detailBase, h
                 float led = step(0.7, heroHash(cell)) * dotMask * (0.45 + 0.55 * frame) * (0.5 + 0.5 * sin(uTime * (1.2 + 2.5 * heroHash(cell + 3.1)) + heroHash(cell) * 40.0));
                 totalEmissiveRadiance += vec3(0.85, 0.95, 1.0) * led * heroLit * 1.6;
               }`;
-      const dim = look === 'medirun' ? 'diffuseColor.rgb *= 0.55;' : flood ? 'diffuseColor.rgb *= mix(0.40, 0.55, heroLit);'
+      const dim = look === 'medirun' || look === 'paint' ? 'diffuseColor.rgb *= 0.55;' : flood ? 'diffuseColor.rgb *= mix(0.40, 0.55, heroLit);'
         : 'diffuseColor.rgb *= mix(0.30, 0.42, heroLit) * mix(vec3(0.75, 0.85, 1.0), vec3(1.0), smoothstep(0.55, 0.85, dot(heroBase, vec3(0.333))));';
       model.traverse((o) => {
         if (!o.isMesh) return;
