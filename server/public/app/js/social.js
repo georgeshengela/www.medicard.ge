@@ -82,22 +82,17 @@ export function socialBlock({ onSignedIn, onLink, divider = 'after' }) {
     box.hidden = false;
     if (google) {
       // Google draws its button only for an authorized JavaScript origin (Cloud console → the Web
-      // client). Until its iframe has a size the slot is laid out but invisible (and so is the whole
-      // block when there is no Apple button), so a missing origin never shows a dead button.
-      google.el.classList.add('is-pending');
-      if (!apple) box.classList.add('is-waiting');
+      // client) and only while it is visible, so the slot shows at once; if Google has not drawn
+      // it within 10 s of the tab being in front (origin missing, network), the slot goes away
+      // instead of staying dead. Background tabs draw late, so hidden time does not count.
       list.appendChild(google.el);
-      const started = Date.now();
+      let waited = 0;
       const check = () => {
-        if (!box.isConnected) return;
-        if (google.el.querySelector('iframe')?.offsetWidth > 0) {
-          google.el.classList.remove('is-pending');
-          box.classList.remove('is-waiting');
-        } else if (Date.now() - started < 10_000) setTimeout(check, 250);
-        else {
-          google.el.remove();
-          if (!apple) box.hidden = true;
-        }
+        if (!box.isConnected || google.el.querySelector('iframe')?.offsetWidth > 0) return;
+        if (document.visibilityState === 'visible') waited += 250;
+        if (waited < 10_000) { setTimeout(check, 250); return; }
+        google.el.remove();
+        if (!apple) box.hidden = true;
       };
       setTimeout(check, 250);
     }
