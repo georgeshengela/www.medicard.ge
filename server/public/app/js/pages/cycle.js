@@ -1273,6 +1273,7 @@ export default async function cyclePage(root, ctx = {}) {
     const subtitle = headerSubtitle(b, v);
     const head = pageHead(wordmark('cycle'), subtitle,
       button(t('აღრიცხვა', 'Log'), { icon: 'plus', variant: 'ghost', onClick: () => openDayLog(v.today) }),
+      button(t('ექიმისთვის', 'For a doctor'), { icon: 'file', variant: 'ghost', onClick: () => openDoctorReport() }),
       iconButton('settings', { title: t('ციკლის პარამეტრები', 'Cycle settings'), onClick: openSettings }));
 
     if (v.needsOnboarding) {
@@ -2438,6 +2439,58 @@ async function openDayModal(b, date, { only, onBundle, focus = null }) {
     if (focus === 'fertility' || focus === 'more') requestAnimationFrame(() => bodyEl.querySelector(`[data-group="${focus === 'fertility' ? 'fertility' : 'private'}"]`)?.scrollIntoView({ block: 'start' }));
   }
   return m;
+}
+
+/* ── „ექიმის შეჯამება“ (mobile app/cycle/summary.tsx): the same printable document the app shares as a PDF ──
+   Menstrual history, pain/symptoms and wellness are always in; fertility tests, sexual health and private
+   notes only when she ticks them. The renderer and its clinician copy (ka / en / fr / ru) are the app's own
+   (vendor/, synced by scripts/sync-web-cycle-report.mjs). Nothing leaves the browser except the GET. */
+function openDoctorReport() {
+  const opts = { includeFertility: false, includeSexual: false, includeNotes: false, locale: isEn ? 'en' : 'ka' };
+  const body = h('div', { class: 'stack', style: { gap: '14px' } }, skeleton(4));
+  const m = openModal({ title: t('ექიმის შეჯამება', 'Doctor summary'), size: 'lg', body });
+  m.el.classList.add('cy');
+  import('../vendor/cycleDoctorSummary.js').then((R) => {
+    const paint = () => {
+      const copy = R.doctorSummaryCopy(opts.locale);
+      const sw = (key, label) => h('label', { class: 'cy-check' }, h('input', { type: 'checkbox', checked: opts[key], onChange: (e) => { opts[key] = e.target.checked; } }),
+        h('span', { class: 'cy-check-text' }, h('span', { class: 'cy-check-label' }, label)));
+      const on = (label) => h('div', { class: 'cy-check disabled' }, icon('check', { size: 16 }), h('span', { class: 'cy-check-text' }, h('span', { class: 'cy-check-label' }, `${label} · ${copy.alwaysOn}`)));
+      const err = h('div', { class: 'form-error', hidden: true });
+      const frameWrap = h('div', { class: 'cy-report-frame', hidden: true });
+      const make = button(t('შეჯამების შექმნა', 'Create the summary'), { icon: 'file', variant: 'rose' });
+      const printBtn = button(t('ბეჭდვა / PDF', 'Print / PDF'), { icon: 'download', variant: 'ghost', disabled: true });
+      let frame = null;
+      make.addEventListener('click', () => busy(make, async () => {
+        err.hidden = true;
+        try {
+          const q = { includeFertility: opts.includeFertility ? '1' : '0', includeSexual: opts.includeSexual ? '1' : '0', includeNotes: opts.includeNotes ? '1' : '0' };
+          const summary = await get('/api/cycle/doctor-summary', q);
+          const html = R.buildCycleReportHtmlFromSummary(summary, opts.locale);
+          // A sandboxed frame (same-origin only so print works; no scripts): the report is plain HTML.
+          frame = h('iframe', { title: copy.reportTitle, sandbox: 'allow-same-origin allow-modals', class: 'cy-report-iframe' });
+          frame.srcdoc = html;
+          mount(frameWrap, frame);
+          frameWrap.hidden = false;
+          printBtn.disabled = false;
+        } catch (e) { err.textContent = e?.message || copy.pdfFail; err.hidden = false; }
+      }));
+      printBtn.addEventListener('click', () => { try { frame?.contentWindow?.focus(); frame?.contentWindow?.print(); } catch { toast(copy.pdfFail, 'error'); } });
+      mount(body,
+        h('p', { class: 'muted', style: { fontSize: '14px' } }, copy.includeTitle),
+        h('div', { class: 'stack', style: { gap: '10px' } },
+          on(copy.menstrualOn), on(copy.painOn), on(copy.wellnessOn),
+          sw('includeFertility', copy.fertilityToggle), sw('includeSexual', copy.sexualToggle), sw('includeNotes', copy.notesToggle)),
+        field(copy.reportLocale, select(R.DOCTOR_SUMMARY_LOCALES.map((l) => ({ value: l, label: copy[`locale${l[0].toUpperCase()}${l[1]}`] || l.toUpperCase() })), opts.locale, {
+          onChange: (e) => { opts.locale = e.target.value; paint(); },
+        })),
+        h('div', { class: 'hstack', style: { gap: '8px', flexWrap: 'wrap' } }, make, printBtn),
+        err,
+        frameWrap,
+        h('p', { class: 'disclaimer' }, icon('info', { size: 14 }), copy.historyDisclaimer));
+    };
+    paint();
+  }).catch((e) => mount(body, errorBox(e)));
 }
 
 /* ── Settings (defaults only; reminders, sharing, contraception and other modes stay in the app) ─ */

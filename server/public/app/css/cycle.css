@@ -477,3 +477,7 @@
 /* Long Georgian words never break mid-word: the size follows the longest word (--n) and the tile's width. */
 .cy-tile { container-type: inline-size; }
 .cy-tile-label { overflow-wrap: normal; word-break: keep-all; max-width: none; width: 112cqi; margin: 0 -6cqi; font-size: min(11.5px, calc(112cqi / (var(--n, 6) * 0.74))); }
+/* Doctor summary preview: the printable report in a frame. */
+.cy-report-frame { border-radius: 16px; overflow: hidden; box-shadow: inset 0 0 0 1px var(--line); background: #fff; }
+.cy-report-iframe { display: block; width: 100%; height: 60vh; border: 0; background: #fff; }
+.cy-check .ic { color: var(--cy-success); flex: none; margin-top: 2px; }
