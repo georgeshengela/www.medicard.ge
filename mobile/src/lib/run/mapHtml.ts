@@ -1,7 +1,8 @@
 import type {LatLng} from './geo';
 import {tx} from '../../i18n/locale.js';
 import {MAP_FLAG,MAP_GIFT,MAP_PUCK} from './mapArt.js';
-export const RUN_MAP_HTML_REV=22;
+import {WEATHER_FX_JS} from './weatherFx.ts';
+export const RUN_MAP_HTML_REV=23;
 /** MEDIRUN Glow engine + runner models, served with CORS by medicard.ge (built by brand/medirun/glow/engine/build.mjs). */
 export const GLOW_BASE='https://medicard.ge/medirun/glow/';
 
@@ -30,9 +31,9 @@ export function buildRunMapHtml(opts:{token:string;center:LatLng;dark:boolean;ch
  @keyframes giftFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-8px)}}
  @keyframes giftHalo{0%,100%{opacity:.65}50%{opacity:1}}
  @media (prefers-reduced-motion:reduce){.gift img,.gift .halo{animation:none}}
- .hint{position:absolute;left:0;top:0;transform:translate(-50%,-100%);padding:7px 12px;border-radius:14px;background:rgba(17,24,39,.92);color:#fff;font:600 12px/16px system-ui,sans-serif;white-space:nowrap;pointer-events:none;opacity:0;transition:opacity .4s;box-shadow:0 6px 14px rgba(3,7,18,.35)}
+ .hint{position:absolute;z-index:3;left:0;top:0;transform:translate(-50%,-100%);padding:7px 12px;border-radius:14px;background:rgba(17,24,39,.92);color:#fff;font:600 12px/16px system-ui,sans-serif;white-space:nowrap;pointer-events:none;opacity:0;transition:opacity .4s;box-shadow:0 6px 14px rgba(3,7,18,.35)}
  .hint.on{opacity:1}.hint b{color:#5EEAD4}
- </style></head><body><div id="map"></div><script>
+ </style></head><body><div id="map"></div><script>${WEATHER_FX_JS}</script><script>
  (function(){
  var PUCK_ART=${json(MAP_PUCK)},FLAG_ART=${json(MAP_FLAG)},GIFT_ART=${json(MAP_GIFT)},GLOW_BASE=${json(base)};
  var channel=${json(opts.channel||'native-map')},center=${json([opts.center.lng,opts.center.lat])},TOKEN=${json(opts.token)};
@@ -88,6 +89,7 @@ export function buildRunMapHtml(opts:{token:string;center:LatLng;dark:boolean;ch
    var k=reduced?1:1-Math.exp(-dt*2.4),kb=reduced?1:1-Math.exp(-dt*1.3),c=map.getCenter();
    map.jumpTo({center:[c.lng+(target[0]-c.lng)*k,c.lat+(target[1]-c.lat)*k],zoom:map.getZoom()+(zoom-map.getZoom())*k,pitch:map.getPitch()+(pitch-map.getPitch())*k,bearing:lerpAngle(map.getBearing(),bearing,kb),padding:view});
   }
+  if(window.MedirunWeather&&ready)window.MedirunWeather.camera(map.getBearing(),map.getPitch());
   if(hint){var sc=glow&&hintUntil>t?glow.runnerScreen():null;if(sc){hint.style.left=sc.headX+'px';hint.style.top=(sc.headY-10)+'px';hint.classList.add('on');}else hint.classList.remove('on');}
   raf=requestAnimationFrame(frame);
  }
@@ -116,6 +118,7 @@ export function buildRunMapHtml(opts:{token:string;center:LatLng;dark:boolean;ch
   case 'reached':if(goal)goal.getElement().classList.add('reached');break;
   case 'activity':if(glow)glow.setActivity(m.value);break;
   case 'layout':pad={top:Math.max(0,m.top||0),bottom:Math.max(0,m.bottom||0),left:0,right:0};break;
+  case 'weather':if(window.MedirunWeather)window.MedirunWeather.set(m.fx||null);break;
   case 'theme':break; // the Glow city is a night city in every theme
  }}
  window.__run=function(m){if(!ready)queue.push(m);else handle(m);};

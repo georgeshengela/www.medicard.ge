@@ -26,6 +26,11 @@ import {PulseGift} from './PulseGift';
 import {Action,Card,Copy,IconButton,RUN_CTA,RUN_TEAL,Sheet} from './PulseUi';
 import {MediRunLogo,PulseGlyph} from './PulseIdentity';
 import { tx } from '@/i18n/locale';
+import {useFeature} from '@/lib/featureFlags';
+import {useRunWeather} from '@/hooks/useRunWeather';
+import {runWeatherFx} from '@/lib/run/runWeather';
+import {weatherConditionLabel} from '@/lib/weather';
+import {Meteocon,meteoconSlugFor} from '@/components/weather/Meteocon';
 
 type Notice={text:string;tone:'info'|'success'|'warn';sticky?:boolean};
 const KEEP_AWAKE_TAG='medirun-session';
@@ -43,6 +48,10 @@ export default function PulseActive(){
  const hapticOn=settings.haptic!==false;
  const hapticRef=useRef(hapticOn);hapticRef.current=hapticOn;
  const focused=useIsFocused(),params=useLocalSearchParams<{resume?:string;gift?:string}>();
+ // Live weather where the runner is: the map rains when it rains there (admin „ამინდი“ switch pauses it).
+ const weather=useRunWeather(center,useFeature('weather')&&focused);
+ const fx=useMemo(()=>runWeatherFx(weather?.snapshot),[weather?.snapshot]);
+ const pills=Boolean(mission||lit>0||weather);
  // While the phone is locked or another app is open the map gets nothing; coming back sends the latest state once.
  const [appActive,setAppActive]=useState(AppState.currentState!=='background'),[mapEpoch,setMapEpoch]=useState(0);
  const live=ready&&appActive;
@@ -71,12 +80,13 @@ export default function PulseActive(){
  useEffect(()=>{const sub=BackHandler.addEventListener('hardwareBackPress',()=>{leave();return true;});return()=>sub.remove();},[active,running]);
  useEffect(()=>{if(!live||!run.origin)return;map.current?.send({type:'init',origin:run.current||run.origin,pin:run.pin,route:run.route?.coords||null,fit:false,hero:user?.gender==='FEMALE'?'f':'m'});},[live,mapEpoch,run.origin,run.pin,run.route,user?.gender]);
  useEffect(()=>{if(live)map.current?.send({type:'activity',value:running?'auto':'idle'});},[live,mapEpoch,running]);
- useEffect(()=>{if(live)map.current?.send({type:'layout',top:insets.top+8+44+8+(mission||lit>0?42:0),bottom:Math.max(12,insets.bottom)+dockHeight+12});},[live,mapEpoch,insets.top,insets.bottom,dockHeight,Boolean(mission||lit>0)]);
+ useEffect(()=>{if(live)map.current?.send({type:'layout',top:insets.top+8+44+8+(pills?42:0),bottom:Math.max(12,insets.bottom)+dockHeight+12});},[live,mapEpoch,insets.top,insets.bottom,dockHeight,pills]);
  useEffect(()=>{if(live&&run.current)map.current?.send({type:'fix',lat:run.current.lat,lng:run.current.lng,heading:run.headingDeg,speed:running?run.speedKmh/3.6:0});},[live,mapEpoch,run.current,run.headingDeg]);
  const paint=useMemo(()=>[...(pulse.journey.trail||[]),...coverageFeatures(pulse.journey).features.map(f=>f.geometry.coordinates)], [pulse.journey.trail,pulse.journey.covered]);
  useEffect(()=>{if(live)map.current?.send({type:'paint',lines:paint});},[live,mapEpoch,paint]);
  useEffect(()=>{if(live)map.current?.send({type:'mission',center:mission?.center||null,radius:mission?.radius});},[live,mapEpoch,mission]);
  useEffect(()=>{if(live)map.current?.send({type:'gift',position:running&&pulse.signal.revealed?pulse.signal.gift?.position||null:null});},[live,mapEpoch,running,pulse.signal.revealed,pulse.signal.gift]);
+ useEffect(()=>{if(live)map.current?.send({type:'weather',fx});},[live,mapEpoch,fx?.kind,fx?.wind]);
  useEffect(()=>{if(live)map.current?.send({type:'options',rotate:settings.followBearing!==false,threeD:settings.threeD!==false});},[live,mapEpoch,settings.followBearing,settings.threeD]);
  const begin=async()=>{if(busy)return;setBusy(true);try{await (run.phase==='paused'?resumeRun():startRun());}finally{setBusy(false);}};
  const end=async()=>{if(busy)return;setBusy(true);try{await finishRun();setFinish(false);}finally{setBusy(false);}};
@@ -105,7 +115,7 @@ export default function PulseActive(){
     </Card>
     <IconButton floating label={tx('მენიუ', 'Menu')} icon={MoreHorizontal} onPress={()=>setMenu(true)}/>
    </View>
-   {mission||lit>0?<View pointerEvents="box-none" style={{flexDirection:'row',alignItems:'center',flexWrap:'wrap',gap:8}}>{mission?<Pressable accessibilityRole="button" accessibilityLabel={tx(`მისია ${mission.name}, ${missionPercent(pulse.book,mission)} პროცენტი`, `Mission ${mission.name}, ${missionPercent(pulse.book,mission)} percent`)} onPress={()=>setPanel('missions')} style={{flexDirection:'row',alignItems:'center',gap:7,backgroundColor:c.surface,borderRadius:16,paddingVertical:8,paddingHorizontal:12,shadowColor:'#030712',shadowOpacity:.14,shadowRadius:10,shadowOffset:{width:0,height:4},elevation:4}}><Compass size={13} color={c.primary100}/><Copy size={11} bold>{mission.name}</Copy><View style={{width:1,height:12,backgroundColor:c.bg300}}/><Copy size={11} bold style={{color:c.primary100}}>{missionPercent(pulse.book,mission)}%</Copy></Pressable>:null}{lit>0?<View accessible accessibilityLabel={tx(`ანთია ${lit} შენობა`, `${lit} buildings lit`)} style={{flexDirection:'row',alignItems:'center',gap:7,backgroundColor:c.surface,borderRadius:16,paddingVertical:8,paddingHorizontal:12,shadowColor:'#030712',shadowOpacity:.14,shadowRadius:10,shadowOffset:{width:0,height:4},elevation:4}}><Building2 size={13} color={dark?'#FCD34D':'#B45309'}/><Copy size={11} bold style={{color:dark?'#FCD34D':'#B45309',fontVariant:['tabular-nums']}}>{lit}</Copy><Copy size={11} muted>{tx('ანთია', 'lit')}</Copy></View>:null}</View>:null}
+   {pills?<View pointerEvents="box-none" style={{flexDirection:'row',alignItems:'center',flexWrap:'wrap',gap:8}}>{mission?<Pressable accessibilityRole="button" accessibilityLabel={tx(`მისია ${mission.name}, ${missionPercent(pulse.book,mission)} პროცენტი`, `Mission ${mission.name}, ${missionPercent(pulse.book,mission)} percent`)} onPress={()=>setPanel('missions')} style={{flexDirection:'row',alignItems:'center',gap:7,backgroundColor:c.surface,borderRadius:16,paddingVertical:8,paddingHorizontal:12,shadowColor:'#030712',shadowOpacity:.14,shadowRadius:10,shadowOffset:{width:0,height:4},elevation:4}}><Compass size={13} color={c.primary100}/><Copy size={11} bold>{mission.name}</Copy><View style={{width:1,height:12,backgroundColor:c.bg300}}/><Copy size={11} bold style={{color:c.primary100}}>{missionPercent(pulse.book,mission)}%</Copy></Pressable>:null}{lit>0?<View accessible accessibilityLabel={tx(`ანთია ${lit} შენობა`, `${lit} buildings lit`)} style={{flexDirection:'row',alignItems:'center',gap:7,backgroundColor:c.surface,borderRadius:16,paddingVertical:8,paddingHorizontal:12,shadowColor:'#030712',shadowOpacity:.14,shadowRadius:10,shadowOffset:{width:0,height:4},elevation:4}}><Building2 size={13} color={dark?'#FCD34D':'#B45309'}/><Copy size={11} bold style={{color:dark?'#FCD34D':'#B45309',fontVariant:['tabular-nums']}}>{lit}</Copy><Copy size={11} muted>{tx('ანთია', 'lit')}</Copy></View>:null}{weather?<WeatherBadge weather={weather} onPress={()=>setNotice({text:weatherLine(weather),tone:'info'})}/>:null}</View>:null}
    {banner?<Pressable accessibilityRole="button" accessibilityLabel={tx('შეტყობინების დახურვა', 'Dismiss message')} onPress={()=>{setNotice(null);setMapError('');}}><Card floating style={{paddingVertical:11,paddingHorizontal:14,borderRadius:16,flexDirection:'row',alignItems:'center',gap:10}}><View style={{width:4,alignSelf:'stretch',borderRadius:2,backgroundColor:bannerColor}}/><Copy size={12} bold={banner.tone==='success'} style={{flex:1}}>{banner.text}</Copy></Card></Pressable>:null}
   </View>
   {center?<View pointerEvents="box-none" style={{position:'absolute',bottom:Math.max(12,insets.bottom)+dockHeight+12,right:14,alignItems:'flex-end',gap:9}}><IconButton floating label={tx('ჩემს მდებარეობაზე დაბრუნება', 'Back to my location')} icon={LocateFixed} active={following} onPress={()=>map.current?.send({type:'follow'})}/></View>:null}
@@ -129,4 +139,22 @@ export default function PulseActive(){
   </Sheet>
   <PulsePanels panel={panel} onClose={()=>setPanel(null)} onTestPulse={()=>void testPulse()}/><PulseGift visible={gift} signal={pulse.signal} onClose={()=>setGift(false)}/>
  </View>;
+}
+
+/** „ახლა გარეთ“: one line for the badge tap — city, temperature, sky and wind. */
+function weatherLine({snapshot,city}:NonNullable<ReturnType<typeof useRunWeather>>):string{
+ const cur=snapshot.current,parts=[city,`${Math.round(cur.temperatureC)}°`,weatherConditionLabel(cur.condition)];
+ if(cur.windKmh>=15)parts.push(tx(`ქარი ${Math.round(cur.windKmh)} კმ/სთ`,`wind ${Math.round(cur.windKmh)} km/h`));
+ if(Math.round(cur.feelsLikeC)!==Math.round(cur.temperatureC))parts.push(tx(`იგრძნობა ${Math.round(cur.feelsLikeC)}°`,`feels like ${Math.round(cur.feelsLikeC)}°`));
+ return parts.filter(Boolean).join(' · ');
+}
+
+/** Small weather pill beside the mission / lit pills: the sky icon, the temperature and the city. */
+function WeatherBadge({weather,onPress}:{weather:NonNullable<ReturnType<typeof useRunWeather>>;onPress:()=>void}){
+ const c=useThemeColors(),cur=weather.snapshot.current;
+ return <Pressable accessibilityRole="button" accessibilityLabel={tx(`ამინდი: ${weatherLine(weather)}`,`Weather: ${weatherLine(weather)}`)} onPress={onPress} style={{flexDirection:'row',alignItems:'center',gap:4,backgroundColor:c.surface,borderRadius:16,paddingVertical:4,paddingLeft:6,paddingRight:12,minHeight:33,shadowColor:'#030712',shadowOpacity:.14,shadowRadius:10,shadowOffset:{width:0,height:4},elevation:4}}>
+  <View style={{width:24,height:24,overflow:'hidden',alignItems:'center',justifyContent:'center'}}><Meteocon slug={meteoconSlugFor(cur.condition,cur.isDay)} size={24}/></View>
+  <Copy size={11} bold style={{fontVariant:['tabular-nums']}}>{`${Math.round(cur.temperatureC)}°`}</Copy>
+  {weather.city?<Copy size={11} muted numberOfLines={1} style={{maxWidth:110}}>{weather.city}</Copy>:null}
+ </Pressable>;
 }
