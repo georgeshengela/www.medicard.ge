@@ -66,6 +66,21 @@ const glow = createGlow({
 window.glow = { state, map, L, engine: glow };   // debug handle for previews
 $('loading').classList.add('done');
 
+// City decor (Rustaveli trucks, the Mtatsminda wheel, partner venues) — loaded the way mapHtml.ts loads it in the app:
+// the built decor.js reuses the engine's three.js. Served from the repo root it is the server's copy; partner venues
+// are shown here unless ?partners=0 (in the app they follow the admin switch medirunPartners).
+if (params.get('decor') !== '0') {
+  const decorBase = params.get('decorBase') ?? '/server/public/medirun/glow/decor/';
+  window.__MEDIRUN_THREE__ = glow.debug.THREE;
+  const s = document.createElement('script');
+  s.src = `${decorBase}decor.js?v=${Date.now()}`;
+  s.onload = () => {
+    const statusUrl = URL.createObjectURL(new Blob([JSON.stringify({ features: { medirunPartners: params.get('partners') !== '0' } })], { type: 'application/json' }));
+    try { window.glow.decor = window.MedirunDecor.start(glow, { map, mapboxgl, base: decorBase, statusUrl }); } catch (e) { console.warn('decor', e); }
+  };
+  document.head.appendChild(s);
+}
+
 // ---------- chrome ----------
 const ICON = {
   play: '<svg class="i" viewBox="0 0 24 24"><polygon points="6 3 20 12 6 21 6 3"/></svg>',
