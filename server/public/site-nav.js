@@ -53,6 +53,7 @@
     { key: 'home', href: '/', label: T('მთავარი', 'Home'), hint: T('დღე მედიქარდთან', 'A day with MEDICARD'), icon: 'home', bar: false },
     { key: 'about', href: '/about', label: T('ჩვენ შესახებ', 'About'), hint: T('ვინ ვართ და რისი გვჯერა', 'Who we are and what we believe'), icon: 'about' },
     { key: 'medirun', href: '/medirun', label: 'MEDIRUN', hint: T('გაანათე თბილისი · 5 ოქტ – 31 დეკ', 'Light up Tbilisi · 5 Oct – 31 Dec'), icon: 'run', live: true },
+    { key: 'cycle', href: '/cycle', label: 'MEDICYCLE', hint: T('ციკლის კალენდარი · უფასოდ', 'Period calendar · free'), icon: 'cycle' },
     { key: 'calculators', href: '/calculators', label: T('კალკულატორები', 'Calculators'), hint: T('ციკლი და ორსულობა — 10 უფასო', 'Cycle and pregnancy — 10 free tools'), icon: 'calc', mega: true },
     { key: 'faq', href: onHome ? '#faq' : '/#faq', label: T('კითხვები', 'FAQ'), hint: T('ხშირი კითხვები', 'Frequently asked questions'), icon: 'faq' },
     { key: 'contact', href: '/contact', label: T('კონტაქტი', 'Contact'), hint: T('მოგვწერე', 'Write to us'), icon: 'mail' }
@@ -63,6 +64,7 @@
     /^\/about/.test(path) ? 'about' :
     /^\/contact/.test(path) ? 'contact' :
     /^\/calculators/.test(path) ? 'calculators' :
+    /^\/cycle/.test(path) ? 'cycle' :
     /^\/medi(pulsi|run)/.test(path) ? 'medirun' : '';
 
   function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
