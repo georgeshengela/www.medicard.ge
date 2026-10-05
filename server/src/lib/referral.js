@@ -3,22 +3,21 @@ import { createHash, randomInt, randomUUID } from 'node:crypto';
 import { withJobLease } from './jobLease.js';
 import { prisma } from './prisma.js';
 import { sendExpoPush } from './push.js';
-import { hasVerifiedPhone } from './phoneGate.js';
 import { getLevelForXp } from './questLevels.js';
 import { maskedUserRef } from './rewardsAdmin.js';
 import { getUserLanguages, langOf } from './i18n.js';
 
 /**
- * Referral with Medi coins (Phase 3.4, 2026-09-27).
- * A person shares a personal code. A new account (≤ CLAIM_WINDOW_DAYS old) can enter it once.
- * Coins go to both sides only after the invitee's first health action and only when both have a
- * verified phone. One device per referral, inviter paid at most INVITER_MONTHLY_CAP times a month.
+ * Referral with Medi coins (Phase 3.4, simplified by the owner 2026-10-05).
+ * A person with a verified phone shares a personal code. A new account (≤ CLAIM_WINDOW_DAYS old)
+ * enters it once on the invite page and both sides get REFERRAL_COINS at that moment, in the same
+ * transaction. One code invites at most MONTHLY_INVITES people per Tbilisi calendar month. One device per referral.
  * Medi coins have no monetary value. Ledger rows: sourceType REFERRAL, unique per side.
+ * While the admin switch `referralRewards` is off a claim is kept PENDING and paid once it is back on.
  */
-export const REFERRAL_COINS = 100;
-export const INVITER_MONTHLY_CAP = 5;
+export const REFERRAL_COINS = 25;
+export const MONTHLY_INVITES = 5;
 export const CLAIM_WINDOW_DAYS = 14;
-export const REWARD_WINDOW_DAYS = 30;
 export const CODE_ALPHABET = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
 export const CODE_LENGTH = 6;
 const DAY = 86400000;
@@ -33,6 +32,7 @@ export const REFERRAL_ERRORS = {
   DEVICE_REQUIRED: 'მოწვევის კოდი აპიდან შეიყვანე.',
   INVITER_INACTIVE: 'ეს კოდი ახლა არ მოქმედებს.',
   NETWORK_USED: 'ამ ქსელიდან ამ კოდით მოწვევა უკვე დაფიქსირდა.',
+  LIMIT_REACHED: `ამ თვეში ამ კოდით უკვე ${MONTHLY_INVITES} მეგობარია მოწვეული. კოდი ისევ იმუშავებს ახალი თვის 1-ლი რიცხვიდან.`,
 };
 
 export const REFERRAL_ERRORS_EN = {
@@ -45,6 +45,7 @@ export const REFERRAL_ERRORS_EN = {
   DEVICE_REQUIRED: 'Enter the invite code in the app.',
   INVITER_INACTIVE: "This code isn't active right now.",
   NETWORK_USED: 'An invite with this code was already recorded from this network.',
+  LIMIT_REACHED: `This code has already invited ${MONTHLY_INVITES} friends this month. It works again from the 1st of next month.`,
 };
 
 /**
@@ -93,7 +94,7 @@ export function tbilisiMonthStart(now = new Date()) {
 }
 
 /** Pure claim decision. Returns an error code or null when the claim may be recorded. */
-export function claimDecision({ invitee, inviter, now = new Date(), alreadyReferred, inviterReferredByInvitee, deviceUsed, networkClaims = 0 }) {
+export function claimDecision({ invitee, inviter, now = new Date(), alreadyReferred, inviterReferredByInvitee, deviceUsed, networkClaims = 0, inviterInvites = 0 }) {
   if (!inviter) return 'CODE_NOT_FOUND';
   if (inviter.id === invitee.id) return 'OWN_CODE';
   if (alreadyReferred) return 'ALREADY_CLAIMED';
@@ -102,16 +103,15 @@ export function claimDecision({ invitee, inviter, now = new Date(), alreadyRefer
   if (deviceUsed) return 'DEVICE_USED';
   if (networkClaims >= NETWORK_CLAIMS_PER_INVITER) return 'NETWORK_USED';
   if (inviter.status !== 'ACTIVE') return 'INVITER_INACTIVE';
+  if (inviterInvites >= MONTHLY_INVITES) return 'LIMIT_REACHED';
   return null;
 }
 
-/** Pure reward decision for one pending referral. */
-export function rewardDecision({ referral, invitee, inviter, hasHealthAction, inviterRewardedThisMonth, now = new Date() }) {
-  if (now.getTime() - new Date(referral.createdAt).getTime() > REWARD_WINDOW_DAYS * DAY) return { action: 'EXPIRE' };
-  if (!invitee || invitee.status !== 'ACTIVE') return { action: 'WAIT' };
-  if (!hasVerifiedPhone(invitee) || !hasHealthAction) return { action: 'WAIT' };
-  const inviterOk = Boolean(inviter && inviter.status === 'ACTIVE' && hasVerifiedPhone(inviter) && inviterRewardedThisMonth < INVITER_MONTHLY_CAP);
-  return { action: 'REWARD', inviter: inviterOk };
+/** "Nino Beridze" → "Nino B." — the inviter sees who joined, never the full name or contact. */
+export function inviteeLabel(fullName, fallback = 'მეგობარი') {
+  const parts = String(fullName ?? '').trim().split(/\s+/).filter(Boolean);
+  if (!parts.length || parts[0].includes('@')) return fallback;
+  return parts.length > 1 ? `${parts[0]} ${[...parts[1]][0]}.` : parts[0];
 }
 
 export async function getOrCreateCode(userId, { db = prisma } = {}) {
@@ -128,47 +128,62 @@ export async function getOrCreateCode(userId, { db = prisma } = {}) {
   throw new Error('REFERRAL_CODE_UNAVAILABLE');
 }
 
-export async function claimReferral({ invitee, code: rawCode, installId, ip, lang = 'ka' }, { db = prisma, now = new Date() } = {}) {
+async function referralRewardsOn(db) {
+  return db !== prisma || isFeatureEnabled('referralRewards');
+}
+
+export async function claimReferral({ invitee, code: rawCode, installId, ip, lang = 'ka' }, { db = prisma, now = new Date(), send = sendExpoPush } = {}) {
   const code = normalizeCode(rawCode);
   const errors = langOf(lang) === 'en' ? REFERRAL_ERRORS_EN : REFERRAL_ERRORS;
   const fail = (key) => ({ ok: false, code: `REFERRAL_${key}`, error: errors[key] });
   if (!code) return fail('CODE_NOT_FOUND');
-  const [owner] = await db.$queryRaw`SELECT u.id, u.status FROM "ReferralCode" c JOIN "User" u ON u.id = c."userId" WHERE c.code = ${code}`;
+  const [owner] = await db.$queryRaw`SELECT u.id, u.status, u."fullName" FROM "ReferralCode" c JOIN "User" u ON u.id = c."userId" WHERE c.code = ${code}`;
   // One device per referral: a claim without a device id could dodge the unique index.
   const deviceHash = deviceHashOf(installId);
   if (!deviceHash) return fail('DEVICE_REQUIRED');
   const networkHash = networkHashOf(ip);
   const networkSince = new Date(now.getTime() - NETWORK_WINDOW_DAYS * DAY);
-  const [[referred], [cycle], [device], [network]] = await Promise.all([
+  const monthStart = tbilisiMonthStart(now);
+  const [[referred], [cycle], [device], [network], [invites]] = await Promise.all([
     db.$queryRaw`SELECT 1 AS x FROM "Referral" WHERE "inviteeId" = ${invitee.id}`,
     owner ? db.$queryRaw`SELECT 1 AS x FROM "Referral" WHERE "inviterId" = ${invitee.id} AND "inviteeId" = ${owner.id}` : Promise.resolve([]),
     db.$queryRaw`SELECT 1 AS x FROM "Referral" WHERE "deviceHash" = ${deviceHash}`,
     owner && networkHash
       ? db.$queryRaw`SELECT COUNT(*)::int AS n FROM "Referral" WHERE "inviterId" = ${owner.id} AND "networkHash" = ${networkHash} AND "createdAt" >= ${networkSince}`
       : Promise.resolve([{ n: 0 }]),
+    owner ? db.$queryRaw`SELECT COUNT(*)::int AS n FROM "Referral" WHERE "inviterId" = ${owner.id} AND status <> 'REJECTED' AND "createdAt" >= ${monthStart}` : Promise.resolve([{ n: 0 }]),
   ]);
   const reason = claimDecision({
     invitee, inviter: owner, now,
     alreadyReferred: Boolean(referred), inviterReferredByInvitee: Boolean(cycle), deviceUsed: Boolean(device),
-    networkClaims: Number(network?.n ?? 0),
+    networkClaims: Number(network?.n ?? 0), inviterInvites: Number(invites?.n ?? 0),
   });
   if (reason) return fail(reason);
-  const inserted = await db.$queryRaw`INSERT INTO "Referral" (id, "inviterId", "inviteeId", code, "deviceHash", "networkHash")
-    VALUES (${randomUUID()}, ${owner.id}, ${invitee.id}, ${code}, ${deviceHash}, ${networkHash})
-    ON CONFLICT DO NOTHING RETURNING id`;
-  if (!inserted.length) return fail('DEVICE_USED');
-  return { ok: true, status: 'PENDING' };
-}
-
-async function hasHealthAction(db, userId) {
-  const [row] = await db.$queryRaw`SELECT (
-      EXISTS (SELECT 1 FROM "MedicationSchedule" WHERE "userId" = ${userId})
-      OR EXISTS (SELECT 1 FROM "DoctorVisit" WHERE "userId" = ${userId})
-      OR EXISTS (SELECT 1 FROM "MedicalRecord" WHERE "userId" = ${userId})
-      OR EXISTS (SELECT 1 FROM "NutritionMeal" WHERE "userId" = ${userId})
-      OR EXISTS (SELECT 1 FROM "CycleLog" WHERE "userId" = ${userId})
-    ) AS ok`;
-  return Boolean(row?.ok);
+  const pay = await referralRewardsOn(db);
+  const id = randomUUID();
+  const result = await db.$transaction(async (tx) => {
+    // Claims on one code queue behind this row lock, so the monthly cap holds under concurrency.
+    await tx.$queryRaw`SELECT 1 AS x FROM "ReferralCode" WHERE "userId" = ${owner.id} FOR UPDATE`;
+    const [{ n }] = await tx.$queryRaw`SELECT COUNT(*)::int AS n FROM "Referral" WHERE "inviterId" = ${owner.id} AND status <> 'REJECTED' AND "createdAt" >= ${monthStart}`;
+    if (n >= MONTHLY_INVITES) return { error: 'LIMIT_REACHED' };
+    const inserted = await tx.$queryRaw`INSERT INTO "Referral" (id, "inviterId", "inviteeId", code, "deviceHash", "networkHash", status, "inviterRewarded", "rewardedAt")
+      VALUES (${id}, ${owner.id}, ${invitee.id}, ${code}, ${deviceHash}, ${networkHash}, ${pay ? 'REWARDED' : 'PENDING'}, ${pay}, ${pay ? now : null})
+      ON CONFLICT DO NOTHING RETURNING id`;
+    if (!inserted.length) return { error: 'DEVICE_USED' };
+    if (!pay) return { balance: null };
+    const balance = await earn(tx, invitee.id, 'invitee', id, now);
+    await earn(tx, owner.id, 'inviter', id, now);
+    return { balance };
+  });
+  if (result.error) return fail(result.error);
+  if (pay) void notifyInviter(db, send, owner.id);
+  return {
+    ok: true,
+    status: pay ? 'REWARDED' : 'PENDING',
+    coins: pay ? REFERRAL_COINS : 0,
+    balance: result.balance,
+    inviter: inviteeLabel(owner.fullName, langOf(lang) === 'en' ? 'Friend' : 'მეგობარი'),
+  };
 }
 
 async function syncQuestCache(tx, userId) {
@@ -182,13 +197,14 @@ async function syncQuestCache(tx, userId) {
     update: { cachedCoinBalance: coins, totalXp: xp, currentLevel: level },
     create: { userId, cachedCoinBalance: coins, totalXp: xp, currentLevel: level },
   });
+  return coins;
 }
 
 async function earn(tx, userId, side, referralId, now) {
   await tx.rewardLedger.create({
     data: { userId, currency: 'COIN', amount: REFERRAL_COINS, transactionType: 'EARN', sourceType: 'REFERRAL', sourceId: `${side}:${referralId}`, createdAt: now, metadata: { side } },
   });
-  await syncQuestCache(tx, userId);
+  return syncQuestCache(tx, userId);
 }
 
 async function notify(db, send, userId, body, lang = 'ka') {
@@ -197,57 +213,39 @@ async function notify(db, send, userId, body, lang = 'ka') {
   if (tokens.length) await send(tokens, { title, body, data: { route: '/profile/invite' } }).catch(() => null);
 }
 
+async function notifyInviter(db, send, inviterId) {
+  try {
+    const lang = db === prisma ? (await getUserLanguages([inviterId])).get(String(inviterId)) ?? 'ka' : 'ka';
+    await notify(db, send, inviterId, langOf(lang) === 'en'
+      ? 'A friend entered your invite code — your bonus has been added.'
+      : 'მეგობარმა შენი მოწვევის კოდი შეიყვანა — ბონუსი ჩაგერიცხა.', lang);
+  } catch {
+    // A missed push never undoes the payout.
+  }
+}
+
 let busy = false;
 
+/** Pays claims recorded while the admin switch `referralRewards` was off. */
 export async function processPendingReferrals({ db = prisma, now = new Date(), send = sendExpoPush } = {}) {
-  if (db === prisma && !(await isFeatureEnabled('referralRewards'))) return { rewarded: 0, paused: true };
+  if (!(await referralRewardsOn(db))) return { rewarded: 0, paused: true };
   if (busy) return { rewarded: 0 };
   busy = true;
   let rewarded = 0;
   try {
-    await db.$executeRaw`UPDATE "Referral" SET status = 'EXPIRED', reason = 'NO_ACTION' WHERE status = 'PENDING' AND "createdAt" < ${new Date(now.getTime() - REWARD_WINDOW_DAYS * DAY)}`;
-    // Only referrals that are ready (invitee has a phone and a first health action), so a pile
-    // of inactive invitees can never hold back newer ones.
-    const pending = await db.$queryRaw`SELECT r.id, r."inviterId", r."inviteeId", r."createdAt" FROM "Referral" r
-      JOIN "User" u ON u.id = r."inviteeId"
-      WHERE r.status = 'PENDING' AND u.phone IS NOT NULL AND (
-        EXISTS (SELECT 1 FROM "MedicationSchedule" x WHERE x."userId" = r."inviteeId")
-        OR EXISTS (SELECT 1 FROM "DoctorVisit" x WHERE x."userId" = r."inviteeId")
-        OR EXISTS (SELECT 1 FROM "MedicalRecord" x WHERE x."userId" = r."inviteeId")
-        OR EXISTS (SELECT 1 FROM "NutritionMeal" x WHERE x."userId" = r."inviteeId")
-        OR EXISTS (SELECT 1 FROM "CycleLog" x WHERE x."userId" = r."inviteeId"))
-      ORDER BY r."createdAt" LIMIT 200`;
-    const monthStart = tbilisiMonthStart(now);
-    const langs = pending.length && db === prisma
-      ? await getUserLanguages(pending.flatMap((r) => [r.inviterId, r.inviteeId]))
-      : new Map();
-    const langFor = (id) => langs.get(String(id)) ?? 'ka';
+    const pending = await db.$queryRaw`SELECT id, "inviterId", "inviteeId" FROM "Referral" WHERE status = 'PENDING' ORDER BY "createdAt" LIMIT 200`;
     for (const referral of pending) {
-      const people = await db.user.findMany({ where: { id: { in: [referral.inviterId, referral.inviteeId] } }, select: { id: true, status: true, phone: true } });
-      const invitee = people.find((p) => p.id === referral.inviteeId);
-      const inviter = people.find((p) => p.id === referral.inviterId);
-      if (!invitee || !hasVerifiedPhone(invitee)) continue;
-      const [{ n }] = await db.$queryRaw`SELECT count(*)::int AS n FROM "Referral" WHERE "inviterId" = ${referral.inviterId} AND "inviterRewarded" = TRUE AND "rewardedAt" >= ${monthStart}`;
-      const decision = rewardDecision({ referral, invitee, inviter, hasHealthAction: await hasHealthAction(db, invitee.id), inviterRewardedThisMonth: n, now });
-      if (decision.action !== 'REWARD') continue;
       const done = await db.$transaction(async (tx) => {
-        const claimed = await tx.$executeRaw`UPDATE "Referral" SET status = 'REWARDED', "rewardedAt" = ${now}, "inviterRewarded" = ${decision.inviter},
-          reason = ${decision.inviter ? null : 'INVITER_NOT_ELIGIBLE'} WHERE id = ${referral.id} AND status = 'PENDING'`;
+        const claimed = await tx.$executeRaw`UPDATE "Referral" SET status = 'REWARDED', "rewardedAt" = ${now}, "inviterRewarded" = TRUE, reason = NULL
+          WHERE id = ${referral.id} AND status = 'PENDING'`;
         if (!claimed) return false;
-        await earn(tx, invitee.id, 'invitee', referral.id, now);
-        if (decision.inviter) await earn(tx, inviter.id, 'inviter', referral.id, now);
+        await earn(tx, referral.inviteeId, 'invitee', referral.id, now);
+        await earn(tx, referral.inviterId, 'inviter', referral.id, now);
         return true;
       });
       if (!done) continue;
       rewarded += 1;
-      await notify(db, send, invitee.id, langFor(invitee.id) === 'en'
-        ? 'Your invite bonus has been added. Thank you for using MEDICARD!'
-        : 'მოწვევის ბონუსი ჩაგერიცხა. მადლობა, რომ MEDICARD-ს იყენებ!', langFor(invitee.id));
-      if (decision.inviter) {
-        await notify(db, send, inviter.id, langFor(inviter.id) === 'en'
-          ? 'The person you invited has started using MEDICARD — your bonus has been added.'
-          : 'შენმა მოწვეულმა MEDICARD-ით სარგებლობა დაიწყო — ბონუსი ჩაგერიცხა.', langFor(inviter.id));
-      }
+      await notifyInviter(db, send, referral.inviterId);
     }
     return { rewarded };
   } finally {
@@ -255,30 +253,42 @@ export async function processPendingReferrals({ db = prisma, now = new Date(), s
   }
 }
 
-export async function referralSummary(userId, { db = prisma, now = new Date(), withCode = true } = {}) {
-  const [code, [counts], [mine], [me]] = await Promise.all([
+export async function referralSummary(userId, { db = prisma, now = new Date(), withCode = true, lang = 'ka' } = {}) {
+  const friend = langOf(lang) === 'en' ? 'Friend' : 'მეგობარი';
+  const [code, invitees, paid, [mine], [me]] = await Promise.all([
     withCode ? getOrCreateCode(userId, { db }) : Promise.resolve(null),
-    db.$queryRaw`SELECT count(*)::int AS invited,
-        count(*) FILTER (WHERE status = 'PENDING')::int AS pending,
-        count(*) FILTER (WHERE "inviterRewarded")::int AS rewarded,
-        count(*) FILTER (WHERE "inviterRewarded" AND "rewardedAt" >= ${tbilisiMonthStart(now)})::int AS "rewardedThisMonth"
-      FROM "Referral" WHERE "inviterId" = ${userId}`,
-    db.$queryRaw`SELECT status FROM "Referral" WHERE "inviteeId" = ${userId}`,
+    db.$queryRaw`SELECT r.status, r."createdAt", u."fullName" FROM "Referral" r JOIN "User" u ON u.id = r."inviteeId"
+      WHERE r."inviterId" = ${userId} AND r.status <> 'REJECTED' ORDER BY r."createdAt" DESC`,
+    db.rewardLedger.aggregate({ where: { userId, sourceType: 'REFERRAL', sourceId: { startsWith: 'inviter:' } }, _sum: { amount: true } }),
+    db.$queryRaw`SELECT r.status, u."fullName" FROM "Referral" r JOIN "User" u ON u.id = r."inviterId" WHERE r."inviteeId" = ${userId}`,
     db.$queryRaw`SELECT "createdAt" FROM "User" WHERE id = ${userId}`,
   ]);
   const canClaim = !mine && Boolean(me) && now.getTime() - new Date(me.createdAt).getTime() <= CLAIM_WINDOW_DAYS * DAY;
+  const invited = invitees.length;
+  const rewarded = invitees.filter((r) => r.status === 'REWARDED').length;
+  const monthStart = tbilisiMonthStart(now);
+  const invitedThisMonth = invitees.filter((r) => new Date(r.createdAt) >= monthStart).length;
+  const monthRemaining = Math.max(0, MONTHLY_INVITES - invitedThisMonth);
   return {
     code,
     link: code ? inviteLink(code) : null,
     phoneRequired: !withCode,
     coinsPerSide: REFERRAL_COINS,
-    monthlyCap: INVITER_MONTHLY_CAP,
-    invited: counts?.invited ?? 0,
-    pending: counts?.pending ?? 0,
-    rewarded: counts?.rewarded ?? 0,
-    coinsEarned: (counts?.rewarded ?? 0) * REFERRAL_COINS,
-    monthRemaining: Math.max(0, INVITER_MONTHLY_CAP - (counts?.rewardedThisMonth ?? 0)),
-    invitedBy: mine ? { status: mine.status } : null,
+    claimWindowDays: CLAIM_WINDOW_DAYS,
+    invited,
+    pending: invited - rewarded,
+    rewarded,
+    coinsEarned: paid?._sum?.amount ?? 0,
+    invitees: invitees.map((r) => ({
+      name: inviteeLabel(r.fullName, friend),
+      at: new Date(r.createdAt).toISOString(),
+      status: r.status,
+      coins: r.status === 'REWARDED' ? REFERRAL_COINS : 0,
+    })),
+    monthlyCap: MONTHLY_INVITES,
+    invitedThisMonth,
+    monthRemaining,
+    invitedBy: mine ? { status: mine.status, name: inviteeLabel(mine.fullName, friend) } : null,
     canClaim,
   };
 }
@@ -303,7 +313,7 @@ export async function referralAdminOverview({ db = prisma, now = new Date() } = 
     inviter: maskedUserRef(inviterId),
     ...(inviteeId ? { inviteeId, invitee: maskedUserRef(inviteeId) } : {}),
   });
-  return { totals, top: top.map(mask), recent: recent.map(mask), rules: { coinsPerSide: REFERRAL_COINS, monthlyCap: INVITER_MONTHLY_CAP, claimWindowDays: CLAIM_WINDOW_DAYS, rewardWindowDays: REWARD_WINDOW_DAYS } };
+  return { totals, top: top.map(mask), recent: recent.map(mask), rules: { coinsPerSide: REFERRAL_COINS, monthlyCap: MONTHLY_INVITES, claimWindowDays: CLAIM_WINDOW_DAYS } };
 }
 
 export function startReferralRewards({ intervalMs = 10 * 60 * 1000 } = {}) {

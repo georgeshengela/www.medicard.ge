@@ -310,7 +310,7 @@ export const FEATURES = Object.freeze([
     group: 'system',
     parent: 'invites',
     label: 'მოწვევის ჯილდოები',
-    description: 'მეგობრის მოწვევისთვის 100 coin-ის ავტომატური დარიცხვა. კოდის შეყვანა გრძელდება, დარიცხვა ჩაირთვება ხელახლა ჩართვისას.',
+    description: 'კოდის შეყვანისთანავე 25 coin ორივე მხარეს. გამორთვისას კოდის შეყვანა გრძელდება, დარიცხვა ხდება ხელახლა ჩართვისას.',
     defaultMessage: 'მოწვევის ჯილდოები დროებით შეჩერებულია.',
     defaultMessageEn: 'Invite rewards are paused for a moment.',
   },

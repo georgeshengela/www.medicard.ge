@@ -38,11 +38,11 @@ const claimSchema = z.object({
 referralRouter.get(
   '/me',
   asyncHandler(async (req, res) => {
-    res.json(await referralSummary(req.user.id, { withCode: hasVerifiedPhone(req.user) }));
+    res.json(await referralSummary(req.user.id, { withCode: hasVerifiedPhone(req.user), lang: req.lang }));
   }),
 );
 
-// Entering a friend's code works for any new account; coins wait for a verified phone.
+// Entering a friend's code works for any new account and pays both sides at once.
 referralRouter.post(
   '/claim',
   claimLimiter,

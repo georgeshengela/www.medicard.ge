@@ -766,9 +766,8 @@
       <div class="s-stack" data-v3-rewards="referrals">
         <div class="s-metrics">
           ${metric('სულ მოწვევა', fmt(t.total), `${fmt(t.thisMonth)} ამ თვეში`)}
-          ${metric('ელოდება', fmt(t.pending), 'პირველ ჩანაწერს ან ტელეფონის დადასტურებას')}
-          ${metric('დარიცხული', fmt(t.rewarded), 'ორივე მხარეს, თვიური ლიმიტით')}
-          ${metric('ვადაგასული', fmt(t.expired), `${fmt(r.rewardWindowDays)} დღე ჩანაწერის გარეშე`)}
+          ${metric('ელოდება', fmt(t.pending), 'ჯილდოები გამორთული იყო შეყვანისას')}
+          ${metric('დარიცხული', fmt(t.rewarded), 'ორივე მხარეს, შეყვანისთანავე')}
         </div>
         ${card({
           title: 'ბოლო მოწვევები',
@@ -791,11 +790,10 @@
             desc: 'ფულადი ღირებულება არ აქვს — მხოლოდ Medi Coins.',
             body: `<dl class="p2-facts">
               <div><dt>ბონუსი</dt><dd>${fmt(r.coinsPerSide)} Medi Coins ორივე მხარეს</dd></div>
-              <div><dt>როდის ერიცხება</dt><dd>მოწვეულის პირველი ჯანმრთელობის ჩანაწერის შემდეგ</dd></div>
-              <div><dt>პირობა</dt><dd>ორივეს დადასტურებული ტელეფონი, ერთი მოწყობილობა ერთ მოწვევაზე</dd></div>
-              <div><dt>მომწვევის ლიმიტი</dt><dd>თვეში ${fmt(r.monthlyCap)} ბონუსი</dd></div>
+              <div><dt>როდის ერიცხება</dt><dd>მაშინვე, როცა მოწვეული კოდს შეიყვანს</dd></div>
+              <div><dt>პირობა</dt><dd>მომწვევს დადასტურებული ტელეფონი, ერთი მოწყობილობა ერთ მოწვევაზე</dd></div>
+              <div><dt>მომწვევის ლიმიტი</dt><dd>თვეში ${fmt(r.monthlyCap)} მოწვევა ერთ კოდზე</dd></div>
               <div><dt>კოდის შეყვანა</dt><dd>რეგისტრაციიდან ${fmt(r.claimWindowDays)} დღეში</dd></div>
-              <div><dt>ვადა</dt><dd>${fmt(r.rewardWindowDays)} დღე ჩანაწერის გარეშე</dd></div>
             </dl>`,
           })}
         </div>

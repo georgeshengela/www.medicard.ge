@@ -1,13 +1,12 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import {
-  CLAIM_WINDOW_DAYS, CODE_LENGTH, INVITER_MONTHLY_CAP, NETWORK_CLAIMS_PER_INVITER, REWARD_WINDOW_DAYS,
-  claimDecision, deviceHashOf, networkHashOf, generateCode, inviteLink, normalizeCode, rewardDecision, tbilisiMonthStart,
+  CLAIM_WINDOW_DAYS, CODE_LENGTH, MONTHLY_INVITES, NETWORK_CLAIMS_PER_INVITER, REFERRAL_COINS,
+  claimDecision, deviceHashOf, networkHashOf, generateCode, inviteLink, inviteeLabel, normalizeCode, tbilisiMonthStart,
 } from './referral.js';
 
 const now = new Date('2026-09-27T10:00:00Z');
 const daysAgo = (d) => new Date(now.getTime() - d * 86400000);
-const phone = '+995555123456';
 
 describe('referral codes', () => {
   it('generates unambiguous codes and normalizes input', () => {
@@ -65,31 +64,22 @@ describe('claim decision', () => {
   });
 });
 
-describe('referral health action (audit 2026-09-27)', () => {
-  it('does not count the automatic daily check-in created by GET /api/auth/me', async () => {
-    const { readFileSync } = await import('node:fs');
-    const src = readFileSync(new URL('./referral.js', import.meta.url), 'utf8');
-    assert.equal(src.includes('"DailyCheckIn"'), false);
+describe('simple referral rules (owner 2026-10-05)', () => {
+  const now2 = new Date('2026-10-05T10:00:00Z');
+  const invitee = { id: 'b', createdAt: now2 };
+  const inviter = { id: 'a', status: 'ACTIVE' };
+  it('pays 25 coins per side and allows five invites a month', () => {
+    assert.equal(REFERRAL_COINS, 25);
+    assert.equal(MONTHLY_INVITES, 5);
+    assert.equal(claimDecision({ invitee, inviter, now: now2, inviterInvites: 4 }), null);
+    assert.equal(claimDecision({ invitee, inviter, now: now2, inviterInvites: 5 }), 'LIMIT_REACHED');
   });
-});
-
-describe('reward decision', () => {
-  const referral = { createdAt: daysAgo(2) };
-  const invitee = { status: 'ACTIVE', phone };
-  const inviter = { status: 'ACTIVE', phone };
-  it('pays both sides after a health action with verified phones', () => {
-    assert.deepEqual(rewardDecision({ referral, invitee, inviter, hasHealthAction: true, inviterRewardedThisMonth: 0, now }), { action: 'REWARD', inviter: true });
-  });
-  it('waits for phone and first action', () => {
-    assert.equal(rewardDecision({ referral, invitee: { status: 'ACTIVE', phone: null }, inviter, hasHealthAction: true, inviterRewardedThisMonth: 0, now }).action, 'WAIT');
-    assert.equal(rewardDecision({ referral, invitee, inviter, hasHealthAction: false, inviterRewardedThisMonth: 0, now }).action, 'WAIT');
-  });
-  it('caps the inviter monthly and without a phone, invitee still paid', () => {
-    assert.deepEqual(rewardDecision({ referral, invitee, inviter, hasHealthAction: true, inviterRewardedThisMonth: INVITER_MONTHLY_CAP, now }), { action: 'REWARD', inviter: false });
-    assert.deepEqual(rewardDecision({ referral, invitee, inviter: { status: 'ACTIVE', phone: '' }, hasHealthAction: true, inviterRewardedThisMonth: 0, now }), { action: 'REWARD', inviter: false });
-  });
-  it('expires old pending referrals', () => {
-    assert.equal(rewardDecision({ referral: { createdAt: daysAgo(REWARD_WINDOW_DAYS + 1) }, invitee, inviter, hasHealthAction: true, inviterRewardedThisMonth: 0, now }).action, 'EXPIRE');
+  it('shows invitees as first name + initial, never an email', () => {
+    assert.equal(inviteeLabel('Nino Beridze'), 'Nino B.');
+    assert.equal(inviteeLabel('ნინო ბერიძე'), 'ნინო ბ.');
+    assert.equal(inviteeLabel('Giorgi'), 'Giorgi');
+    assert.equal(inviteeLabel(''), 'მეგობარი');
+    assert.equal(inviteeLabel('a@b.ge', 'Friend'), 'Friend');
   });
 });
 
