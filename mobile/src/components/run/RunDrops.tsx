@@ -27,6 +27,16 @@ export function useCountdown(to:string|null|undefined,onDone?:()=>void){
  return countdownParts(left);
 }
 
+/** Georgian „in <city>“: თბილისი → თბილისში, ვენა → ვენაში. */
+export const kaIn=(name:string)=>(name.endsWith('ი')?name.slice(0,-1):name)+'ში';
+/** „ახლა თბილისში 12 ადამიანი დადის · წვიმის ზონაში 5“ — numbers only (the server hides counts below three). */
+export function liveText(data:Drops){
+ const w=data.live?.walkers,r=data.live?.rain,city=data.city?.name||tx('თბილისი','Tbilisi');
+ if(!w)return '';
+ const head=tx(`ახლა ${kaIn(city)} ${w} ადამიანი დადის`,`${w} people are walking in ${city} right now`);
+ return r?`${head} · ${tx(`ქოინების წვიმასთან ${r}`,`${r} at the coin rain`)}`:head;
+}
+
 function nextNote(next:NonNullable<Drops['next']>){
  if(next.kind==='saturday')return tx('ქოინების წვიმა ერთ პარკში — პარკს 15:00-სა და 15:30-ზე სთორიში გამოცანით გავამხელთ.','A coin rain in one park — revealed with a riddle in our stories at 15:00 and 15:30.');
  if(next.kind==='lantern')return tx('ფარნის ყუთები — თბილისის 0,25%-დან.','Lantern boxes — from 0.25% of Tbilisi.');
@@ -46,6 +56,7 @@ export function RunDropsCard(){
  const note=!live&&next?nextNote(next):null;
  return <Section title={live?tx('სად არის ყუთები','Where the boxes are'):tx('შემდეგი ყუთები','Next boxes')} link={tx('განრიგი','Schedule')} onLink={()=>setSchedule(true)}>
   <Card style={{gap:12}}>
+   {data.live?.walkers?<View accessible accessibilityLabel={liveText(data)} style={{flexDirection:'row',alignItems:'center',gap:8}}><View style={{width:8,height:8,borderRadius:4,backgroundColor:'#22C55E'}}/><Copy bold size={12} style={{flex:1}}>{liveText(data)}</Copy></View>:null}
    {live?<>
     <View style={{flexDirection:'row',flexWrap:'wrap',gap:6}}>
      {now.districts.slice(0,10).map(d=><View key={d.name} style={{flexDirection:'row',alignItems:'center',gap:5,paddingHorizontal:10,paddingVertical:6,borderRadius:12,backgroundColor:hubTint(teal,dark)}}><MapPin size={12} color={teal}/><Copy size={12}>{d.name}</Copy><Copy bold size={12} style={{color:teal}}>{d.boxes}</Copy></View>)}

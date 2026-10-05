@@ -1,7 +1,7 @@
 import React from 'react';
 import {Pressable,View} from 'react-native';
 import {useRouter} from 'expo-router';
-import {ChevronRight,Gift,RefreshCw,Sparkles,Store,Trophy} from 'lucide-react-native';
+import {ChevronRight,Gift,RefreshCw,Sparkles,Store,Trophy,Users} from 'lucide-react-native';
 import {Bone} from '@/components/ui/Skeleton';
 import {QuestCoinMark} from '@/components/quest/QuestIcon';
 import {questDate} from '@/components/quest/store/QuestStoreKit';
@@ -22,6 +22,8 @@ const ordinal=(n:number)=>tx(n===1?'პირველი':`მე-${n}`,n===1?'
 export function rowTitle(row:WalletRow){
  if(row.kind==='prize')return tx(`კვირის პრიზი · ${row.board==='meters'?'მანძილი':'ყუთები'}`,`Weekly prize · ${row.board==='meters'?'distance':'boxes'}`);
  if(row.kind==='grand')return tx('დიდი საჩუქარი','Grand prize');
+ if(row.kind==='together')return tx('ერთად გავლილი კილომეტრი','A kilometre walked together');
+ if(row.giftKind==='starter')return tx('სასტარტო ყუთი','Starter box');
  const where=row.place||row.district||row.city;
  return where?tx(`ყუთი · ${where}`,`Box · ${where}`):tx('ყუთი','Box');
 }
@@ -68,7 +70,7 @@ export function RunWallet(){
   :!rows.length?<Card><Copy muted size={13}>{tx('ყუთი ჯერ არ გაგიხსნია. პირველივე გახსნის ქოინები აქ გამოჩნდება — როდის, სად და რამდენი.','No box opened yet. The coins from your first opening show up here — when, where and how much.')}</Copy></Card>
   :<Card style={{paddingVertical:6,gap:0}}>
    {rows.map((row,i)=>{
-    const Icon=row.kind==='prize'?Trophy:row.kind==='grand'?Sparkles:Gift,ink=row.kind==='box'?teal:amber;
+    const Icon=row.kind==='prize'?Trophy:row.kind==='grand'?Sparkles:row.kind==='together'?Users:Gift,ink=row.kind==='box'?teal:amber;
     return <View key={row.id} style={{flexDirection:'row',alignItems:'center',gap:12,minHeight:58,paddingVertical:10,borderTopWidth:i?1:0,borderColor:c.bg200}}>
      <View style={{width:38,height:38,borderRadius:12,backgroundColor:hubTint(ink,dark),alignItems:'center',justifyContent:'center'}}><Icon size={18} color={ink} strokeWidth={1.9}/></View>
      <View style={{flex:1,minWidth:0}}><Copy bold size={13} numberOfLines={1}>{rowTitle(row)}</Copy><Copy muted size={11} numberOfLines={1}>{rowDetail(row)}</Copy></View>

@@ -14,6 +14,7 @@ export type FunnelEventName =
   | 'price_alert_opened'
   | 'health_passport_created'
   | 'referral_shared'
+  | 'medirun_shared'
   | 'home_layout_picker_opened'
   | 'home_layout_changed'
   | 'home_layout_offer_answered'

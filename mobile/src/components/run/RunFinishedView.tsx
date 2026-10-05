@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState, type ReactNode } from 'react';
+import React, { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { ScrollView, Share, View } from 'react-native';
 import { Award, Flag, Flame, Footprints, Gauge, MapPin, Share2, Timer, Zap } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -15,6 +15,9 @@ import { loadRunHistory, type RunSummary } from '@/lib/run/history';
 import { useThemeColors } from '@/theme/colors';
 import { HUB } from '@/theme/hub';
 import { tx } from '@/i18n/locale';
+import { useAuth } from '@/store/AuthContext';
+import { joinSegments, thin, trimEnds, type LngLat } from '@/lib/run/shareStudio';
+import { ShareStudio, canRecordClips, type ShareSceneInput } from './ShareStudio';
 
 /** `onBack`: where the header's back goes (the summary leaves the finished session; history goes back). */
 type Props = { summary: RunSummary; title: string; onBack?: () => void; footer?: ReactNode };
@@ -26,6 +29,8 @@ export function RunFinishedView({ summary, title, onBack, footer }: Props) {
   const map = useRef<RunMapHandle>(null);
   const [mapReady, setMapReady] = useState(false);
   const [records, setRecords] = useState<RecordKind[]>([]);
+  const [studio, setStudio] = useState(false);
+  const { user } = useAuth();
   const pct = summary.targetMeters > 0 ? Math.min(100, Math.round(summary.distanceM / summary.targetMeters * 100)) : 0;
   const mapCenter = summary.origin ?? summary.pin ?? summary.path[0] ?? null;
   const avgKmh = summary.movingMs > 0 ? summary.distanceM / 1000 / (summary.movingMs / 3_600_000) : 0;
@@ -48,7 +53,25 @@ export function RunFinishedView({ summary, title, onBack, footer }: Props) {
     return () => clearTimeout(timer);
   }, [mapReady, mapCenter, summary]);
 
+  // The share clip: this walk lighting the night city. 200 m are cut at both ends (a walk often starts at home);
+  // a walk too short for that falls back to the text share.
+  const scene = useMemo<ShareSceneInput | null>(() => {
+    const segments = (summary.segments?.length ? summary.segments : [summary.path]).map(seg => seg.map(p => [p.lng, p.lat] as LngLat));
+    const line = thin(joinSegments(trimEnds(segments, 200)), 1200);
+    if (!canRecordClips || line.length < 2) return null;
+    return {
+      kind: 'walk', line, hero: user?.gender === 'FEMALE' ? 'f' : 'm',
+      kicker: formatRunDate(summary.startedAt), title: tx('გავანათე', 'I lit up'), big: formatKm(summary.distanceM), unit: tx('კმ', 'km'),
+      stats: [
+        { value: formatClock(summary.movingMs), label: tx('აქტიური დრო', 'Active time') },
+        { value: formatPace(summary.paceSecPerKm), label: tx('ტემპი /კმ', 'Pace /km') },
+        { value: formatThousands(summary.steps), label: tx('ნაბიჯი', 'Steps') },
+      ],
+    };
+  }, [summary, user?.gender]);
+
   const share = () => {
+    if (scene) { setStudio(true); return; }
     const lines = [
       `MEDIRUN · ${formatRunDate(summary.startedAt)}`,
       tx(`${formatKm(summary.distanceM)} კმ · ${formatClock(summary.movingMs)} · ${formatPace(summary.paceSecPerKm)} /კმ`, `${formatKm(summary.distanceM)} km · ${formatClock(summary.movingMs)} · ${formatPace(summary.paceSecPerKm)} /km`),
@@ -103,5 +126,6 @@ export function RunFinishedView({ summary, title, onBack, footer }: Props) {
       <MedicalSourcesLink sourceIds={['activityMet']} />
     </View>
     {footer}
+    <ShareStudio visible={studio} scene={scene} source="walk" onClose={() => setStudio(false)} />
   </ScrollView>;
 }

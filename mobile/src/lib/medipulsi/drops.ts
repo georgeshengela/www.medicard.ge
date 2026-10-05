@@ -16,6 +16,8 @@ export type Drops={
  schedule:{id:'weekday'|'weekend'|'saturday';label:string;times:string;coins:CoinRange}[];
  /** Economy 2: percent per opening — the first finder gets decay[0] (100), later openers less. */
  economy?:{decay:number[]};
+ /** People walking in the city right now and near the Saturday rain (null below three). Servers from 2026-10-05. */
+ live?:{walkers:number|null;rain:number|null};
 };
 
 /** Live box counts for the MEDIRUN hub: re-read every minute while the hub is on screen. */
