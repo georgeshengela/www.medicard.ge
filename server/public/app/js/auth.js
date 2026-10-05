@@ -50,6 +50,8 @@ export function renderAuth(root, { query = {}, onDone }) {
   else if (query.mode === 'email') showSignIn(panel, 'email');
   else if (query.mode === 'phone') showSignIn(panel, 'phone');
   else showSignIn(panel);
+  // iPhone / iPad: the app first, the web as the alternative (/app-promo.js, at most every 14 days).
+  window.MedicardAppPromo?.show({ mode: 'sheet' });
 }
 
 /* Phone or email — the same switch as the app's sign-in; the method used last on this browser opens

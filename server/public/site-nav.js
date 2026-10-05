@@ -255,4 +255,13 @@
   document.addEventListener('DOMContentLoaded', sync);
   window.addEventListener('load', sync);
   sync();
+
+  // iPhone / iPad: a small „get the app“ card at the bottom (/app-promo.js; no scrim on public pages).
+  if (/iPhone|iPad|iPod/.test(navigator.userAgent) || (/Macintosh/.test(navigator.userAgent) && navigator.maxTouchPoints > 1)) {
+    var promo = document.createElement('script');
+    promo.src = '/app-promo.js';
+    promo.defer = true;
+    promo.setAttribute('data-mode', 'card');
+    document.head.appendChild(promo);
+  }
 })();

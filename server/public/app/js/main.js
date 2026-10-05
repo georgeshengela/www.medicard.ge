@@ -8,6 +8,23 @@ import {
 
 const BASE = '/app';
 
+/**
+ * iPhone / iPad: offer the app once the signed-in shell is up (/app-promo.js decides whether and
+ * how often). The line under it says how to sign in there, so the app opens this same account
+ * instead of creating a second one (2026-10-05 duplicate accounts).
+ */
+function offerAppOnIphone() {
+  const u = session.user || {};
+  const phone = typeof u.phone === 'string' && /^\+995\d{9}$/.test(u.phone) ? u.phone.replace(/^(\+995)(\d{3})\d{3}(\d{3})$/, '$1 $2 *** $3') : null;
+  const email = typeof u.email === 'string' && !/@(phone|apple)\.medicard\.ge$/.test(u.email) ? u.email : null;
+  const hint = phone
+    ? t(`აპში შედი იმავე ნომრით (${phone}) — იქ ეს ანგარიში დაგხვდება.`, `In the app, sign in with the same number (${phone}) — this account will be there.`)
+    : email
+      ? t(`აპში შედი იმავე ელ-ფოსტით (${email}) — იქ ეს ანგარიში დაგხვდება.`, `In the app, sign in with the same email (${email}) — this account will be there.`)
+      : t('აპში შედი იმავე გზით, რითაც აქ შეხვედი — იქ ეს ანგარიში დაგხვდება.', 'In the app, sign in the same way you did here — this account will be there.');
+  window.MedicardAppPromo?.show({ mode: 'sheet', hint, delayMs: 1500 });
+}
+
 /* Route table. `page` is a lazy module whose default export is
    async (root, ctx) => cleanup?  ctx = { params, query, navigate, setTitle } */
 /** The metrics page is open while any of its trackers is (admin „მოდულები“ pauses each one). */
@@ -236,7 +253,11 @@ async function route() {
     return;
   }
 
-  if (!shell) { shell = buildShell(); mount(root, shell.el); }
+  if (!shell) {
+    shell = buildShell();
+    mount(root, shell.el);
+    offerAppOnIphone();
+  }
 
   const m = match(path);
   if (typeof cleanup === 'function') { try { cleanup(); } catch { /* ignore */ } }
