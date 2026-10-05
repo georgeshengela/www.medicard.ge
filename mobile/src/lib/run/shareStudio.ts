@@ -45,8 +45,30 @@ function cut(line:LngLat[],meters:number,start:boolean):LngLat[]{
  * before it is drawn on a picture people will post. Lines shorter than twice that disappear.
  */
 export function trimEnds(lines:LngLat[][],meters=200):LngLat[][]{
- return lines.map(l=>l.filter(valid)).filter(l=>l.length>1).map(l=>cut(cut(l,meters,true),meters,false)).filter(l=>l.length>1&&lineLength(l)>20);
+ return splitJumps(lines).map(l=>l.filter(valid)).filter(l=>l.length>1).map(l=>cut(cut(l,meters,true),meters,false)).filter(l=>l.length>1&&lineLength(l)>20);
 }
+/**
+ * GPS jumps out (owner 2026-10-05: a test walk showed one straight line across the city). A step much longer than the
+ * line's usual step — a fix that leapt out of a building, a car ride, a long gap — splits the line there, and pieces
+ * shorter than `minM` go. History paths are downsampled (≤ 240 points), so "usual" comes from the line itself.
+ */
+export function splitJumps(lines:LngLat[][],{maxGapM=80,minM=30}:{maxGapM?:number;minM?:number}={}):LngLat[][]{
+ const out:LngLat[][]=[];
+ for(const raw of lines){
+  const l=raw.filter(valid);if(l.length<2)continue;
+  const gaps=l.slice(1).map((p,i)=>metersBetween(l[i],p)).sort((a,b)=>a-b),median=gaps[Math.floor(gaps.length/2)]||0;
+  const limit=Math.max(maxGapM,Math.min(250,median*6));   // even a 240-point history of a very long walk steps < 250 m
+  let piece:LngLat[]=[l[0]];
+  for(let i=1;i<l.length;i++){
+   if(metersBetween(l[i-1],l[i])>limit){if(piece.length>1)out.push(piece);piece=[l[i]];}
+   else piece.push(l[i]);
+  }
+  if(piece.length>1)out.push(piece);
+ }
+ return out.filter(l=>lineLength(l)>=minM);
+}
+/** The longest continuous piece (a walk clip follows one unbroken path). */
+export const longestLine=(lines:LngLat[][]):LngLat[]=>lines.reduce<LngLat[]>((best,l)=>lineLength(l)>lineLength(best)?l:best,[]);
 /** One walk drawn as one line: segments joined in order (pauses become a short straight step). */
 export function joinSegments(segments:LngLat[][]):LngLat[]{return segments.flat().filter(valid);}
 /**

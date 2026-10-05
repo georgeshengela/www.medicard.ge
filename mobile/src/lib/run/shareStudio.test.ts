@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {trimEnds,joinSegments,cityLines,boundsOf,thin,lineLength,metersBetween,buildShareStudioHtml,type LngLat} from './shareStudio.ts';
+import {trimEnds,joinSegments,cityLines,boundsOf,thin,lineLength,metersBetween,buildShareStudioHtml,splitJumps,longestLine,type LngLat} from './shareStudio.ts';
 
 const T:LngLat=[44.7930,41.6970];
 const east=(p:LngLat,m:number):LngLat=>[p[0]+m/(111320*Math.cos(p[1]*Math.PI/180)),p[1]];
@@ -41,4 +41,15 @@ test('the page carries the scene as data only and escapes markup', () => {
  const city=buildShareStudioHtml({token:'pk.test',scene:{kind:'walk',line:line(T,600),hero:'f',kicker:'',title:'',big:'2',unit:'km',stats:[],link:'medicard.ge/medirun',cta:'x',attribution:'© Mapbox'}});
  assert.ok(city.includes('mapbox-gl.js')&&city.includes('engine.js'));
  assert.ok(!/[\u2028\u2029]/.test(city));
+});
+
+test('GPS jumps split a route; the walk clip keeps the longest unbroken stretch', () => {
+ const walk=line(T,600,10),leap=line(east(T,3000),300,10);
+ const pieces=splitJumps([[...walk,...leap]]);
+ assert.equal(pieces.length,2);
+ assert.ok(Math.abs(lineLength(longestLine(pieces))-600)<2);
+ // a long downsampled walk (40 m steps) is not mistaken for jumps
+ assert.equal(splitJumps([line(T,8000,40)]).length,1);
+ // a lone leap between two fixes leaves nothing to draw
+ assert.deepEqual(trimEnds([[T,east(T,2500)]],200),[]);
 });

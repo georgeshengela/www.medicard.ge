@@ -16,7 +16,7 @@ import { useThemeColors } from '@/theme/colors';
 import { HUB } from '@/theme/hub';
 import { tx } from '@/i18n/locale';
 import { useAuth } from '@/store/AuthContext';
-import { joinSegments, thin, trimEnds, type LngLat } from '@/lib/run/shareStudio';
+import { lineLength, longestLine, thin, trimEnds, type LngLat } from '@/lib/run/shareStudio';
 import { ShareStudio, canRecordClips, type ShareSceneInput } from './ShareStudio';
 
 /** `onBack`: where the header's back goes (the summary leaves the finished session; history goes back). */
@@ -57,8 +57,9 @@ export function RunFinishedView({ summary, title, onBack, footer }: Props) {
   // a walk too short for that falls back to the text share.
   const scene = useMemo<ShareSceneInput | null>(() => {
     const segments = (summary.segments?.length ? summary.segments : [summary.path]).map(seg => seg.map(p => [p.lng, p.lat] as LngLat));
-    const line = thin(joinSegments(trimEnds(segments, 200)), 1200);
-    if (!canRecordClips || line.length < 2) return null;
+    // GPS jumps split the walk; the clip follows its longest unbroken stretch (never a straight leap across town).
+    const line = thin(longestLine(trimEnds(segments, 200)), 1200);
+    if (!canRecordClips || line.length < 2 || lineLength(line) < 150) return null;
     return {
       kind: 'walk', line, hero: user?.gender === 'FEMALE' ? 'f' : 'm',
       kicker: formatRunDate(summary.startedAt), title: tx('გავანათე', 'I lit up'), big: formatKm(summary.distanceM), unit: tx('კმ', 'km'),

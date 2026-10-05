@@ -1,8 +1,8 @@
-import React,{useCallback,useMemo,useState} from 'react';
+import React,{useCallback,useEffect,useMemo,useRef,useState} from 'react';
 import {Image,Pressable,ScrollView,View} from 'react-native';
 import {useFocusEffect,useLocalSearchParams,useRouter} from 'expo-router';
 import * as Location from 'expo-location';
-import {ArrowUpRight,ChevronRight,Compass,Landmark,Mountain,Settings2,Trees,Waves} from 'lucide-react-native';
+import {ArrowUpRight,ChevronRight,Compass,House,Landmark,Mountain,Trees,Waves} from 'lucide-react-native';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {useAuth} from '@/store/AuthContext';
 import {useThemeColors} from '@/theme/colors';
@@ -33,6 +33,11 @@ import {RunRaceCard} from './RunRaceCard';
 import {RunCrewCard} from './RunCrewCard';
 import {RunCityCard} from './RunCityCard';
 import {RunWrappedCard} from './RunWrappedCard';
+import {RunHubTabBar,useRunHubTabsInset,type RunHubTab} from './RunHubTabs';
+import {RunCitiesEntry} from './RunCities';
+
+/** The section the person was on: a walk detail and back, or a finished walk, opens the hub where they left it. */
+let lastTab:RunHubTab='start';
 import { tx } from '@/i18n/locale';
 
 export const MISSION_ICONS={trees:Trees,landmark:Landmark,waves:Waves,mountain:Mountain,bridge:Compass,flower:Trees};
@@ -79,6 +84,11 @@ export default function PulseHub(){
  const active=missions.find(m=>m.id===pulse.book.selected);
  const next=useMemo(()=>suggestMission(missions,pulse.book,here),[missions,pulse.book,here]);
  const leave=()=>router.canGoBack()?router.back():router.replace('/(tabs)/home' as never);
+ const goHome=()=>router.replace('/(tabs)/home' as never);
+ const [tab,setTabState]=useState<RunHubTab>(lastTab),scroll=useRef<ScrollView>(null),tabsInset=useRunHubTabsInset();
+ const setTab=(next:RunHubTab)=>{lastTab=next;if(next!==tab){setTabState(next);scroll.current?.scrollTo({y:0,animated:false});}else scroll.current?.scrollTo({y:0,animated:true});};
+ // A crew invite link opens the „ერთად“ section with the join sheet.
+ useEffect(()=>{if(params.crew){lastTab='together';setTabState('together');}},[params.crew]);
  const choose=(id:string)=>{if(busy)return;setBusy(true);setMissionError('');void getPulseClient().selectMission(id).catch(()=>setMissionError(tx('მისია ვერ აირჩა. შეამოწმე ინტერნეტი და სცადე თავიდან.','Couldn’t choose the mission. Check your connection and try again.'))).finally(()=>setBusy(false));};
  const recordTiles=[
   records.longest&&{id:records.longest.id,art:RUN_ICON.route,value:formatKm(records.longest.distanceM,2),unit:tx('კმ', 'km'),label:tx('უგრძესი', 'Longest')},
@@ -87,49 +97,20 @@ export default function PulseHub(){
  ].filter(Boolean) as {id:string;art:typeof RUN_HERO;value:string;unit:string;label:string}[];
  const shown=allWalks?history:history.slice(0,3);
 
- return <View style={{flex:1,backgroundColor:c.bg100}}><ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{paddingTop:insets.top+12,paddingBottom:insets.bottom+32,paddingHorizontal:HUB.gutter,gap:HUB.sectionGap}}>
+ return <View style={{flex:1,backgroundColor:c.bg100}}><ScrollView ref={scroll} showsVerticalScrollIndicator={false} contentContainerStyle={{paddingTop:insets.top+12,paddingBottom:tabsInset,paddingHorizontal:HUB.gutter,gap:HUB.sectionGap}}>
   <ModuleHeader module="run" backLabel={tx('MEDICARD-ში დაბრუნება', 'Back to MEDICARD')} onBack={leave} subtitle={`${dayMoment()} ${tx('· შენი ქალაქის პულსი', '· your city’s pulse')}`}
-   right={<ModuleHeaderButton label={tx('პარამეტრები', 'Settings')} icon={Settings2} onPress={()=>setPanel('settings')}/>}/>
+   right={<ModuleHeaderButton label={tx('მთავარზე დაბრუნება', 'Back to Home')} icon={House} onPress={goHome}/>}/>
 
-  {/* The page's one spotlight: the lit city, live boxes and the start button. */}
-  <RunHero streak={streak} onStart={()=>start()} onGoal={()=>setTargetSheet(true)}/>
 
   {error&&!pulse.snapshot?<Card><Copy bold size={15}>{tx('MEDIRUN-თან კავშირი ვერ დამყარდა', 'Couldn’t reach MEDIRUN')}</Copy><Copy muted size={12}>{tx('შეამოწმე ინტერნეტი. გასეირნება მაინც შეგიძლია — გზა შენახული დარჩება.', 'Check your connection. You can still walk — the route is saved.')}</Copy><Action secondary label={tx('ხელახლა ცდა', 'Try again')} onPress={()=>{setError('');void getPulseClient().refresh().catch(e=>setError(e.message));}}/></Card>:null}
 
-  {/* Owner 2026-10-05 (third pass, by what moves people): where the boxes are, this week's race for the Monday
-      prizes, the prize you are saving for and the coins that feed it, the Tbilisi campaign — then your last
-      seven days, the passport and your walks. */}
+  {/* Owner 2026-10-05: the page grew too long — four sections under a bottom menu, each short. */}
+  {tab==='start'?<>
+  <RunHero streak={streak} onStart={()=>start()} onGoal={()=>setTargetSheet(true)}/>
   {/* Monday–Wednesday: last week in one card with a video to share (owner 2026-10-05). */}
   <RunWrappedCard/>
 
   <RunDropsCard/>
-
-  <RunRaceCard optedIn={Boolean(pulse.snapshot?.leaderboardOptIn)} onOpen={()=>setPanel('leaderboard')}/>
-
-  {/* Friends walk together: crews, „ერთად“ and together-km coins (owner 2026-10-05). */}
-  <RunCrewCard joinCode={params.crew} onJoinCodeUsed={()=>router.setParams({crew:undefined} as never)}/>
-
-  <RunPrizeGoal/>
-
-  {/* Owner 2026-10-04: the coins the boxes paid — balance and every movement — live on the MEDIRUN page too. */}
-  <RunWallet/>
-
-  <Section title={tx('გაანათე თბილისი','Light up Tbilisi')}>
-   <GrandPrizeCard/>
-  </Section>
-  <RunCityCard/>
-
-  <Section title={tx('ბოლო 7 დღე', 'Last 7 days')}>
-   <Card style={{gap:18}}>
-    <View style={{flexDirection:'row',alignItems:'baseline',gap:6}}><Copy bold size={34} style={{lineHeight:42,letterSpacing:-1,fontVariant:['tabular-nums']}}>{weekKm.toFixed(1)}</Copy><Copy bold size={14} style={{color:c.primary100}}>{tx('კმ', 'km')}</Copy><View style={{flex:1}}/><Copy muted size={12}>{weekDays?tx(`${weekDays} აქტიური დღე`, `${weekDays} active ${weekDays===1?'day':'days'}`):tx('ბოლო 7 დღეში ჯერ არ გაგისეირნია', 'No walks in the last 7 days')}</Copy></View>
-    <WeekBars days={week}/>
-    <View style={{flexDirection:'row',borderTopWidth:1,borderColor:c.bg200,paddingTop:14}}>
-     {[{value:String(thisWeek.length),label:tx('გასეირნება', 'Walks')},{value:weekNewKm.toFixed(1),label:tx('ახალი ქუჩა, კმ', 'New streets, km')},{value:String(weekMin),label:tx('აქტიური წთ', 'Active min')}].map((st,i)=><View key={st.label} style={{flex:1,alignItems:'center',borderLeftWidth:i?1:0,borderColor:c.bg200}}><Copy bold size={17} style={{fontVariant:['tabular-nums']}}>{st.value}</Copy><Copy muted size={11} numberOfLines={1}>{st.label}</Copy></View>)}
-    </View>
-    {lifetimeWalks?<Copy muted size={11} style={{textAlign:'center',marginTop:-6}}>{tx(`სულ MEDIRUN-ში: ${lifetimeKm.toFixed(1)} კმ · ${lifetimeWalks} გასეირნება`,`All-time in MEDIRUN: ${lifetimeKm.toFixed(1)} km · ${lifetimeWalks} ${lifetimeWalks===1?'walk':'walks'}`)}</Copy>:null}
-   </Card>
-  </Section>
-
   <Section title={tx('თბილისის პასპორტი', 'Tbilisi passport')} link={tx('ყველა მისია', 'All missions')} onLink={()=>setPanel('missions')}>
    <Card style={{gap:16}}>
     <View style={{flexDirection:'row',alignItems:'center',gap:14}}>
@@ -152,6 +133,42 @@ export default function PulseHub(){
    </Card>
   </Section>
 
+  </>:null}
+
+  {tab==='rewards'?<>
+  <RunPrizeGoal/>
+  {/* Owner 2026-10-04: the coins the boxes paid — balance and every movement — live on the MEDIRUN page too. */}
+  <RunWallet/>
+
+  <Section title={tx('გაანათე თბილისი','Light up Tbilisi')}>
+   <GrandPrizeCard/>
+  </Section>
+  <View style={{flexDirection:'row',gap:12}}>{[{id:'collection',label:tx('კოლექცია', 'Collection'),detail:tx(`${pulse.snapshot?.claims.length||0} საჩუქარი · ${stamps} შტამპი`, `${pulse.snapshot?.claims.length||0} ${(pulse.snapshot?.claims.length||0)===1?'gift':'gifts'} · ${stamps} ${stamps===1?'stamp':'stamps'}`),art:RUN_GIFT,ink:'amber' as const,onPress:()=>setPanel('collection')},{id:'leaderboard',label:tx('ლიდერბორდი', 'Leaderboard'),detail:tx('კვირის და სეზონის','Week and season'),art:RUN_ICON.route,ink:'teal' as const,onPress:()=>setPanel('leaderboard')}].map(item=><Pressable key={item.id} accessibilityRole="button" accessibilityLabel={`${item.label}. ${item.detail}`} onPress={item.onPress} style={{flex:1}}>
+   <Card style={{minHeight:120,gap:10}}><View style={{flexDirection:'row',justifyContent:'space-between'}}><ArtTile source={item.art} ink={item.ink} size={48}/><ArrowUpRight size={17} color={c.text300}/></View><View><Copy bold size={15} numberOfLines={1}>{item.label}</Copy><Copy muted size={11} numberOfLines={1}>{item.detail}</Copy></View></Card>
+  </Pressable>)}</View>
+  </>:null}
+
+  {tab==='together'?<>
+  <RunRaceCard optedIn={Boolean(pulse.snapshot?.leaderboardOptIn)} onOpen={()=>setPanel('leaderboard')}/>
+  {/* Friends walk together: crews, „ერთად“ and together-km coins (owner 2026-10-05). */}
+  <RunCrewCard joinCode={params.crew} onJoinCodeUsed={()=>router.setParams({crew:undefined} as never)}/>
+
+  <RunCityCard/>
+  </>:null}
+
+  {tab==='progress'?<>
+  <RunCitiesEntry/>
+  <Section title={tx('ბოლო 7 დღე', 'Last 7 days')}>
+   <Card style={{gap:18}}>
+    <View style={{flexDirection:'row',alignItems:'baseline',gap:6}}><Copy bold size={34} style={{lineHeight:42,letterSpacing:-1,fontVariant:['tabular-nums']}}>{weekKm.toFixed(1)}</Copy><Copy bold size={14} style={{color:c.primary100}}>{tx('კმ', 'km')}</Copy><View style={{flex:1}}/><Copy muted size={12}>{weekDays?tx(`${weekDays} აქტიური დღე`, `${weekDays} active ${weekDays===1?'day':'days'}`):tx('ბოლო 7 დღეში ჯერ არ გაგისეირნია', 'No walks in the last 7 days')}</Copy></View>
+    <WeekBars days={week}/>
+    <View style={{flexDirection:'row',borderTopWidth:1,borderColor:c.bg200,paddingTop:14}}>
+     {[{value:String(thisWeek.length),label:tx('გასეირნება', 'Walks')},{value:weekNewKm.toFixed(1),label:tx('ახალი ქუჩა, კმ', 'New streets, km')},{value:String(weekMin),label:tx('აქტიური წთ', 'Active min')}].map((st,i)=><View key={st.label} style={{flex:1,alignItems:'center',borderLeftWidth:i?1:0,borderColor:c.bg200}}><Copy bold size={17} style={{fontVariant:['tabular-nums']}}>{st.value}</Copy><Copy muted size={11} numberOfLines={1}>{st.label}</Copy></View>)}
+    </View>
+    {lifetimeWalks?<Copy muted size={11} style={{textAlign:'center',marginTop:-6}}>{tx(`სულ MEDIRUN-ში: ${lifetimeKm.toFixed(1)} კმ · ${lifetimeWalks} გასეირნება`,`All-time in MEDIRUN: ${lifetimeKm.toFixed(1)} km · ${lifetimeWalks} ${lifetimeWalks===1?'walk':'walks'}`)}</Copy>:null}
+   </Card>
+  </Section>
+
   {history.length?<Section title={tx('შენი გასეირნებები', 'Your walks')} link={history.length>3?(allWalks?tx('ნაკლები', 'Less'):tx(`ყველა · ${history.length}`, `All · ${history.length}`)):undefined} onLink={()=>setAllWalks(v=>!v)}>
    {recordTiles.length?<View style={{flexDirection:'row',gap:8,marginBottom:10}}>{recordTiles.map(r=><Pressable key={r.label} accessibilityRole="button" accessibilityLabel={`${r.label}: ${r.value} ${r.unit}`} onPress={()=>router.push(`/run/${r.id}` as never)} style={{flex:1,backgroundColor:c.surface,borderRadius:18,paddingVertical:12,paddingHorizontal:10,gap:6}}>
     <ArtTile source={r.art} size={34}/>
@@ -166,8 +183,9 @@ export default function PulseHub(){
    </Pressable>)}</Card>
   </Section>:null}
 
-  <View style={{flexDirection:'row',gap:12}}>{[{id:'collection' as const,label:tx('კოლექცია', 'Collection'),detail:tx(`${pulse.snapshot?.claims.length||0} საჩუქარი · ${stamps} შტამპი`, `${pulse.snapshot?.claims.length||0} ${(pulse.snapshot?.claims.length||0)===1?'gift':'gifts'} · ${stamps} ${stamps===1?'stamp':'stamps'}`),art:RUN_GIFT,ink:'amber' as const},{id:'help' as const,label:tx('წესები', 'Rules'),detail:tx('როგორ მუშაობს', 'How it works'),art:RUN_ICON.atlas,ink:'teal' as const}].map(item=><Pressable key={item.id} accessibilityRole="button" accessibilityLabel={`${item.label}. ${item.detail}`} onPress={()=>setPanel(item.id)} style={{flex:1}}>
+  <View style={{flexDirection:'row',gap:12}}>{[{id:'help',label:tx('წესები', 'Rules'),detail:tx('როგორ მუშაობს', 'How it works'),art:RUN_ICON.atlas,ink:'teal' as const,onPress:()=>setPanel('help')},{id:'settings',label:tx('პარამეტრები', 'Settings'),detail:tx('ხმა, ვიბრაცია, რუკა','Sound, haptics, map'),art:RUN_ICON.timer,ink:'teal' as const,onPress:()=>setPanel('settings')}].map(item=><Pressable key={item.id} accessibilityRole="button" accessibilityLabel={`${item.label}. ${item.detail}`} onPress={item.onPress} style={{flex:1}}>
    <Card style={{minHeight:120,gap:10}}><View style={{flexDirection:'row',justifyContent:'space-between'}}><ArtTile source={item.art} ink={item.ink} size={48}/><ArrowUpRight size={17} color={c.text300}/></View><View><Copy bold size={15} numberOfLines={1}>{item.label}</Copy><Copy muted size={11} numberOfLines={1}>{item.detail}</Copy></View></Card>
   </Pressable>)}</View>
- </ScrollView><RunTargetSheet visible={targetSheet} onClose={()=>setTargetSheet(false)} onConfirm={start} weightKg={healthProfile?.weightKg} heightCm={healthProfile?.heightCm}/><PulsePanels panel={panel} onClose={()=>setPanel(null)} onTestPulse={()=>void testPulse()}/></View>;
+  </>:null}
+ </ScrollView><RunHubTabBar value={tab} onChange={setTab}/><RunTargetSheet visible={targetSheet} onClose={()=>setTargetSheet(false)} onConfirm={start} weightKg={healthProfile?.weightKg} heightCm={healthProfile?.heightCm}/><PulsePanels panel={panel} onClose={()=>setPanel(null)} onTestPulse={()=>void testPulse()}/></View>;
 }
