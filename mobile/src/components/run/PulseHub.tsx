@@ -24,7 +24,6 @@ import {Action,ArtTile,Bar,Card,Copy,Section} from './PulseUi';
 import {MISSION_ART,RUN_GIFT,RUN_HERO,RUN_ICON} from './runArt';
 import {ModuleHeader,ModuleHeaderButton} from '@/components/brand/ModuleHeader';
 import {RouteThumb,WeekBars} from './RunVisuals';
-import {PulseTerritory} from './PulseTerritory';
 import {GrandPrizeCard} from './GrandPrizeCard';
 import {RunDropsCard} from './RunDrops';
 import {RunWallet} from './RunWallet';
@@ -119,7 +118,6 @@ export default function PulseHub(){
    <GrandPrizeCard/>
   </Section>
   <RunCityCard/>
-  <PulseTerritory totalKm={lifetimeKm} walks={lifetimeWalks} weekNewKm={weekNewKm}/>
 
   <Section title={tx('ბოლო 7 დღე', 'Last 7 days')}>
    <Card style={{gap:18}}>

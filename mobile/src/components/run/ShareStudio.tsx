@@ -61,13 +61,20 @@ export function ShareStudio({visible,scene,onClose,source}:{visible:boolean;scen
 
  const hasScene=Boolean(scene);
  useEffect(()=>{if(visible&&hasScene)void start();else{run.current++;setHtml('');}},[visible,hasScene]);// eslint-disable-line react-hooks/exhaustive-deps
- // Nothing may hang: the city has 30 s to load and start, the clip 45 s to come back.
+ // Nothing may hang: the page reports progress every few frames; 40 s without any news (or 4 min in all) ends it.
+ const lastNews=useRef(Date.now());
  useEffect(()=>{
   if(!visible||phase==='ready'||phase==='error')return;
-  const limit=phase==='preparing'?30_000:45_000,id=run.current;
-  const t=setTimeout(()=>{if(id!==run.current)return;if(image){setPhase('ready');return;}setPhase('error');setError(tx('ჩაწერა ვერ დასრულდა. სცადე თავიდან — კარგ ინტერნეტზე უფრო სწრაფია.','The recording didn’t finish. Try again — it’s faster on a good connection.'));},limit);
-  return()=>clearTimeout(t);
- },[visible,phase,image]);
+  const id=run.current,began=Date.now();lastNews.current=Date.now();
+  const t=setInterval(()=>{
+   if(id!==run.current)return;
+   if(Date.now()-lastNews.current<40_000&&Date.now()-began<240_000)return;
+   clearInterval(t);
+   if(image){setPhase('ready');return;}
+   setPhase('error');setError(tx('ვიდეო ვერ მომზადდა. სცადე თავიდან — კარგ ინტერნეტზე უფრო სწრაფია.','The video couldn’t be made. Try again — it’s faster on a good connection.'));
+  },3000);
+  return()=>clearInterval(t);
+ },[visible,phase==='ready'||phase==='error',image]);// eslint-disable-line react-hooks/exhaustive-deps
  // Old clips in the cache go when the studio closes.
  useEffect(()=>{if(visible)return;const old=files.current;files.current=[];for(const f of old)void FileSystem.deleteAsync(f,{idempotent:true}).catch(()=>{});},[visible]);
 
@@ -80,7 +87,7 @@ export function ShareStudio({visible,scene,onClose,source}:{visible:boolean;scen
  const onMessage=useCallback((e:WebViewMessageEvent)=>{
   let m:StudioMessage&{none?:boolean};
   try{m=JSON.parse(e.nativeEvent.data);}catch{return;}
-  const id=run.current;
+  const id=run.current;lastNews.current=Date.now();
   if(m.type==='started'){setMode(m.mode);setPhase('recording');return;}
   if(m.type==='progress'){setProgress(Math.max(0,Math.min(1,Number(m.p)||0)));return;}
   if(m.type==='error'){setPhase('error');setError(m.message==='token'?tx('რუკის წვდომა ვერ დადასტურდა.','Map access couldn’t be verified.'):tx('ჩაწერა ვერ მოხერხდა. სცადე თავიდან.','The recording didn’t work. Try again.'));return;}
@@ -109,7 +116,7 @@ export function ShareStudio({visible,scene,onClose,source}:{visible:boolean;scen
  };
 
  const status=phase==='preparing'?tx('ქალაქი იტვირთება…','Loading the city…')
-  :phase==='recording'?(mode==='video'?tx(`ვიდეო იწერება · ${Math.round(progress*100)}%`,`Recording · ${Math.round(progress*100)}%`):tx(`სურათი იქმნება · ${Math.round(progress*100)}%`,`Making the picture · ${Math.round(progress*100)}%`))
+  :phase==='recording'?(mode==='video'?tx(`ვიდეო მზადდება · ${Math.round(progress*100)}%`,`Making your video · ${Math.round(progress*100)}%`):tx(`სურათი მზადდება · ${Math.round(progress*100)}%`,`Making the picture · ${Math.round(progress*100)}%`))
   :phase==='saving'?tx('ინახება…','Saving…')
   :phase==='ready'?(video?tx('ვიდეო მზადაა','Your video is ready'):tx('სურათი მზადაა','Your picture is ready')):'';
  return <Modal {...APP_MODAL_PROPS} visible={visible} onRequestClose={onClose}>
@@ -120,7 +127,7 @@ export function ShareStudio({visible,scene,onClose,source}:{visible:boolean;scen
    </View>
    <View style={{flex:1,alignItems:'center',justifyContent:'center',gap:14}}>
     <View style={{width:boxW,height:boxH,borderRadius:24,overflow:'hidden',backgroundColor:'#030712'}}>
-     {html?<WebView key={html.length+':'+run.current} source={{html,baseUrl}} originWhitelist={['*']} onMessage={onMessage} javaScriptEnabled domStorageEnabled
+     {html?<WebView key={html.length+':'+run.current} source={{html,baseUrl}} originWhitelist={['*']} onMessage={onMessage} javaScriptEnabled domStorageEnabled allowsInlineMediaPlayback mediaPlaybackRequiresUserAction={false}
       onContentProcessDidTerminate={()=>{setPhase('error');setError(tx('ჩაწერა შეწყდა. სცადე თავიდან.','The recording stopped. Try again.'));}}
       onRenderProcessGone={()=>{setPhase('error');setError(tx('ჩაწერა შეწყდა. სცადე თავიდან.','The recording stopped. Try again.'));}}
       onShouldStartLoadWithRequest={r=>r.url===baseUrl||r.url==='about:blank'||r.url.startsWith('about:srcdoc')}
@@ -141,7 +148,7 @@ export function ShareStudio({visible,scene,onClose,source}:{visible:boolean;scen
       <Action label={video?tx('ვიდეოს გაზიარება','Share the video'):tx('სურათის გაზიარება','Share the picture')} icon={video?Clapperboard:Share2} busy={busy} disabled={!video&&!image} onPress={()=>void share(video?'video':'image')}/>
       {video&&image?<Action secondary label={tx('სურათის გაზიარება','Share the picture')} icon={ImageIcon} disabled={busy} onPress={()=>void share('image')}/>:null}
      </>
-     :<Copy size={11} style={{color:'rgba(204,251,241,0.75)',textAlign:'center',fontFamily:REGULAR}}>{tx('ნუ დახურავ — რამდენიმე წამი. ბოლოში შენი მოწვევის ბმულია: ვინც მისით შემოვა, ორივე მიიღებთ Medi Coins-ს.','Keep this open — a few seconds. Your invite link is at the bottom: whoever joins with it, you both get Medi Coins.')}</Copy>}
+     :<Copy size={11} style={{color:'rgba(204,251,241,0.75)',textAlign:'center',fontFamily:REGULAR}}>{tx('ნუ დახურავ — ვიდეო კადრ-კადრ მზადდება. ბოლოში შენი მოწვევის ბმულია: ვინც მისით შემოვა, ორივე მიიღებთ Medi Coins-ს.','Keep this open — it takes a little while, frame by frame. Your invite link is at the bottom: whoever joins with it, you both get Medi Coins.')}</Copy>}
    </View>
   </LinearGradient>
  </Modal>;
