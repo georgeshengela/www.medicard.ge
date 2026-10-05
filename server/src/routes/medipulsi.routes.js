@@ -15,6 +15,7 @@ import {dropsStatus} from '../lib/medipulsi/drops.js';
 import {crewView,createCrew,joinCrew,leaveCrew,renameCrew,removeMember} from '../lib/medipulsi/social.js';
 import {cityMeter} from '../lib/medipulsi/cityMeter.js';
 import {wrappedView} from '../lib/medipulsi/wrapped.js';
+import {recordVisit,myCities} from '../lib/medipulsi/cityVisits.js';
 export const medipulsiRouter=Router();
 // The app's MEDIRUN client (pulseApi) sends no X-Medicard-Lang: fall back to the account's stored language.
 medipulsiRouter.use(requireAuth,asyncHandler(async(req,_res,next)=>{if(!req.langExplicit)req.lang=await getUserLanguage(req.user.id).catch(()=>'ka');next();}));
@@ -25,7 +26,12 @@ medipulsiRouter.get('/bootstrap',asyncHandler(async(req,res)=>res.json({...local
 medipulsiRouter.patch('/settings',write,asyncHandler(async(req,res)=>res.json(localizeSnapshot(await game.settings(req.user.id,settingsSchema.parse(req.body)),req.lang))));
 medipulsiRouter.put('/mission',write,asyncHandler(async(req,res)=>res.json(localizeSnapshot(await game.selectMission(req.user.id,z.object({id:id.nullable()}).strict().parse(req.body).id),req.lang))));
 medipulsiRouter.post('/sessions',write,asyncHandler(async(req,res)=>res.json(localizeSnapshot(await game.start(req.user.id,z.object({id:z.uuid()}).strict().parse(req.body).id),req.lang))));
-medipulsiRouter.post('/sessions/:id/batches',write,asyncHandler(async(req,res)=>res.json(await game.batch(req.user.id,id.parse(req.params.id),batchSchema.parse(req.body)))));
+medipulsiRouter.post('/sessions/:id/batches',write,asyncHandler(async(req,res)=>{
+ const input=batchSchema.parse(req.body),out=await game.batch(req.user.id,id.parse(req.params.id),input);
+ // „ჩემი ქალაქები“: the city of the latest fix is remembered (tile cache, at most once per 10 min per tile).
+ if(out?.accepted)void recordVisit(req.user.id,input.fixes[input.fixes.length-1]?.position);
+ res.json(out);
+}));
 medipulsiRouter.post('/sessions/:id/:action',write,asyncHandler(async(req,res)=>res.json(localizeSnapshot(await game.control(req.user.id,id.parse(req.params.id),z.enum(['pause','resume','finish']).parse(req.params.action)),req.lang))));
 const lookups=rateLimit({windowMs:60000,limit:20,standardHeaders:true,legacyHeaders:false,validate:RATE_LIMIT_VALIDATE,keyGenerator:apiTrafficKey});
 // Painted share of each city / country the person walked in (aggregates only, never the route).
@@ -50,6 +56,8 @@ medipulsiRouter.post('/crew/members/:id/remove',write,asyncHandler(async(req,res
 // „თბილისი ერთად“: how much of the campaign city everyone has lit together (aggregates only).
 medipulsiRouter.get('/city',lookups,asyncHandler(async(req,res)=>res.json({meter:await cityMeter({lang:req.lang})})));
 // Last week in one card (Monday–Wednesday in the app): the reader's own numbers, ranks and prizes.
+// „ჩემი ქალაქები“: lit cities with their share and dot map, then the cities visited without lighting anything yet.
+medipulsiRouter.get('/cities',lookups,asyncHandler(async(req,res)=>res.json(await myCities(req.user.id,{lang:req.lang}))));
 medipulsiRouter.get('/wrapped',lookups,asyncHandler(async(req,res)=>res.json(await wrappedView(req.user.id))));
 
 // Public: the same city meter for the /medirun page (no account, no personal data).

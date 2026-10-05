@@ -12,7 +12,7 @@ test('MEDIRUN API allow-list covers every read the app makes',()=>{
 });
 
 test('crews, the city meter and the weekly card are allowed; nothing else around them',()=>{
- for(const p of ['/crew','/city','/wrapped'])assert.ok(allowedApi(p,'GET'),p);
+ for(const p of ['/crew','/city','/cities','/wrapped'])assert.ok(allowedApi(p,'GET'),p);
  for(const p of ['/crew','/crew/join','/crew/leave','/crew/members/3f2c1a9e-1b2c-4d5e-8f90-123456789abc/remove'])assert.ok(allowedApi(p,'POST'),p);
  assert.ok(allowedApi('/crew','PATCH'));
  for(const p of ['/crew/delete','/crew/members/x/promote','/crew?code=AB'])assert.equal(allowedApi(p,'POST'),false,p);

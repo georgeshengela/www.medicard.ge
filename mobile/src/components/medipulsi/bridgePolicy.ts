@@ -6,7 +6,7 @@ export function parseBridgeMessage(raw:string):BridgeMessage|null{
 export function allowedApi(path:unknown,method:unknown):path is string{
  if(typeof path!=='string'||typeof method!=='string')return false;
  // GET: the hub/panel reads — the wallet and both leaderboard boards (period + board) included.
- if(method==='GET')return /^\/(bootstrap|nearby|territory|grand|drops|wallet|crew|city|wrapped|leaderboard(?:\?period=(week|season)(?:&board=(boxes|meters))?)?)$/.test(path);
+ if(method==='GET')return /^\/(bootstrap|nearby|territory|grand|drops|wallet|crew|city|cities|wrapped|leaderboard(?:\?period=(week|season)(?:&board=(boxes|meters))?)?)$/.test(path);
  if(method==='PATCH')return path==='/settings'||path==='/crew';
  if(method==='PUT')return path==='/mission';
  return method==='POST'&&/^\/(sessions(?:\/[a-zA-Z0-9_-]+\/(batches|pause|resume|finish))?|gifts\/[a-zA-Z0-9_-]+\/claim|crew|crew\/(join|leave)|crew\/members\/[a-zA-Z0-9_-]+\/remove)$/.test(path);

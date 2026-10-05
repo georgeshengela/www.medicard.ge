@@ -19,6 +19,7 @@ export default function RunLayout() {
       <Stack.Screen name="summary" options={{ ...completionMotion, gestureEnabled: false }} />
       <Stack.Screen name="grand" />
       <Stack.Screen name="crew" />
+      <Stack.Screen name="cities" />
       <Stack.Screen name="[id]" />
     </Stack>
     </ModuleToneProvider>
