@@ -1,0 +1,155 @@
+{
+  "v": 1,
+  "models": [
+    {
+      "id": "peace-bridge",
+      "name": "მშვიდობის ხიდი",
+      "file": "models/peace-bridge.glb",
+      "note": "from/to = the axis of the OSM canopy outline (way 440933580, building=roof, 8–20 m); the plain deck runs on west of it",
+      "from": [
+        44.807568,
+        41.69296
+      ],
+      "to": [
+        44.808952,
+        41.693013
+      ],
+      "deck": 7.5,
+      "deckWidth": 5,
+      "canopyWidth": 17,
+      "rise": 11,
+      "glow": [
+        0.55,
+        0.85,
+        1.0
+      ],
+      "replacesBridge": true
+    },
+    {
+      "id": "metekhi",
+      "name": "მეტეხის ეკლესია",
+      "file": "models/metekhi.glb",
+      "note": "church fitted to its OSM outline (way 1064270003, 21 × 20 m); the terrace of its rock stands 11 m above the street, the rock reaches below ground",
+      "at": [
+        44.811257,
+        41.690155
+      ],
+      "fitAbove": 0.55,
+      "fitWidth": 21.2,
+      "levelAt": 0.3375,
+      "level": 11,
+      "squash": 0.9,
+      "front": "x",
+      "facing": 275,
+      "replaces": [
+        1064270003
+      ]
+    },
+    {
+      "id": "gorgasali",
+      "name": "ვახტანგ გორგასლის ძეგლი",
+      "file": "models/gorgasali.glb",
+      "note": "equestrian statue on its pedestal (OSM way 1062990549) at the plateau height, the pedestal reaching the street; the horse faces NNW over the river",
+      "at": [
+        44.810728,
+        41.690315
+      ],
+      "height": 13,
+      "front": "z",
+      "facing": 330,
+      "replacesMonument": 15,
+      "level": 11,
+      "reachGround": true
+    },
+    {
+      "id": "tv-tower",
+      "name": "თბილისის ტელეანძა",
+      "file": "models/tv-tower.glb",
+      "note": "Mtatsminda TV tower (OSM way 437940450, 274.5 m) in its own paint; ~1100 lamps on the lattice glow in MEDIRUN teal; it replaces the generic lattice tower and the OSM parts that model it",
+      "at": [
+        44.784955,
+        41.695816
+      ],
+      "height": 274.5,
+      "front": "z",
+      "facing": 180,
+      "look": "medirun",
+      "farLoad": 6000,
+      "replacesTower": 60,
+      "beacons": [
+        0.36,
+        0.62,
+        0.86,
+        1.0
+      ],
+      "replaces": [
+        437940450
+      ],
+      "clearsTall": 60,
+      "leds": 1100
+    },
+    {
+      "id": "freedom-square",
+      "name": "თავისუფლების მოედანი",
+      "note": "rebuilt from OSM: monument outline way 1018836829 (r 13.1) and its parts (steps 0.5/1.0/1.5 m, column r 2.1 to 30 m, golden ring 23.5–26 m), lawns ways 247419205/1066244279-81 (r 13.6–20.4), roundabout ring road surface=sett (centre line r ≈ 23.5, 3 lanes)",
+      "at": [
+        44.801487,
+        41.693396
+      ],
+      "plaza": {
+        "steps": [
+          [
+            13.1,
+            0.5
+          ],
+          [
+            8.1,
+            1.0
+          ],
+          [
+            4.5,
+            1.5
+          ]
+        ],
+        "lawn": [
+          13.6,
+          20.4
+        ],
+        "road": [
+          20.4,
+          31.0
+        ],
+        "pathWidth": 3.5,
+        "lamps": 12
+      },
+      "column": {
+        "r": 2.1,
+        "pedestal": 5.0,
+        "pedestalTop": 4.4,
+        "band": [
+          23.5,
+          26.0
+        ],
+        "bandR": 2.6,
+        "top": 30.0
+      },
+      "clearsAll": 14,
+      "replacesMonument": 15
+    },
+    {
+      "id": "st-george",
+      "name": "წმინდა გიორგის ქანდაკება",
+      "file": "models/st-george.glb",
+      "note": "gilded St George slaying the dragon (Zurab Tsereteli, 2006) on top of the Freedom Monument column; real 5.6 m, drawn 8 m so it reads on the map; lit all night",
+      "at": [
+        44.801487,
+        41.693396
+      ],
+      "height": 8,
+      "front": "z",
+      "facing": 300,
+      "standOn": "freedom-square",
+      "alwaysLit": true
+    }
+  ]
+}

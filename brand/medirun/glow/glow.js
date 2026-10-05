@@ -59,6 +59,8 @@ const state = {
 };
 const glow = createGlow({
   mapboxgl, map, token: TOKEN, assetBase: 'assets/', hero: state.hero,
+  // city detail tiles: served from the repo root (preview "brandbook" on :4471) they are found at the server's copy
+  detailBase: params.get('detail') ?? '/server/public/medirun/glow/detail/',
   onLit: (n) => { state.lit = n; $('lit').textContent = n; $('litPill').classList.remove('pop'); void $('litPill').offsetWidth; $('litPill').classList.add('pop'); },
 });
 window.glow = { state, map, L, engine: glow };   // debug handle for previews
