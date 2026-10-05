@@ -391,3 +391,27 @@ export async function dropsAudit({db=prisma,offset=0}={}){
  const [rows,total]=await Promise.all([db.medipulsiAudit.findMany({where,orderBy:{createdAt:'desc'},take:50,skip:offset}),db.medipulsiAudit.count({where})]);
  return {rows,total};
 }
+
+/* ───────── map ───────── */
+/** Boxes of one city for the admin map (owner 2026-10-05): what is out now, what comes in the next 36 h and what
+ * ended in the last 12 h, plus every city with boxes for the picker and the city's outline box to frame an empty map.
+ * Boxes without a cityId are Tbilisi's (campaign area). */
+export async function mapBoxes(cityId,{db=prisma,now=Date.now()}={}){
+ const campaign=await getCampaign(db,now),tb=campaign.area.id,want=cityId||tb;
+ const [gifts,rules,cities,areas]=await Promise.all([
+  db.medipulsiGift.findMany({where:{archived:false,endsAt:{gt:new Date(now-12*HOUR)},startsAt:{lt:new Date(now+36*HOUR)}},orderBy:[{startsAt:'asc'},{id:'asc'}]}),
+  freshRules(db),
+  listCities({db}).catch(()=>[]),
+  db.$queryRaw`SELECT "id","geometry" FROM "MedipulsiArea" WHERE "kind"='city'`.catch(()=>[]),
+ ]);
+ const rows=gifts.map(g=>boxRow(g,rules.get(g.id),now)).filter(b=>b.status!=='hidden');
+ const count=new Map();
+ for(const b of rows){const c=b.cityId||tb,n=count.get(c)||{live:0,planned:0};if(b.status==='live')n.live++;else if(b.status==='planned')n.planned++;count.set(c,n);}
+ const bbox=id=>{const a=areas.find(x=>x.id===id);if(!a?.geometry)return null;const b=geometryBbox(a.geometry);return b.every(Number.isFinite)?b:null;};
+ const list=[{cityId:tb,name:campaign.area.ka,nameEn:campaign.area.en,countryCode:'GE'},...cities.filter(c=>c.cityId!==tb).map(c=>({cityId:c.cityId,name:c.nameKa||c.nameEn,nameEn:c.nameEn||c.nameKa,countryCode:c.countryCode||null}))];
+ return {
+  cityId:want,bbox:bbox(want),
+  cities:list.map(c=>({...c,live:count.get(c.cityId)?.live||0,planned:count.get(c.cityId)?.planned||0})),
+  boxes:rows.filter(b=>(b.cityId||tb)===want),
+ };
+}

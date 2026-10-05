@@ -146,6 +146,7 @@ r.patch('/drops/boxes/:id',manage,write,asyncHandler(async(req,res)=>{
  ]).parse(req.body);
  res.json(await D.boxAction(id.parse(req.params.id),input,{adminId:adminId(req)}));
 }));
+r.get('/drops/map',view,asyncHandler(async(req,res)=>res.json(await D.mapBoxes(req.query.city?z.string().regex(/^[a-z]\d+$/).parse(req.query.city):null))));
 r.get('/drops/cities',view,asyncHandler(async(req,res)=>res.json(await D.citiesOverview())));
 r.get('/drops/cities/:id/spots',view,asyncHandler(async(req,res)=>res.json({spots:await D.citySpotList(id.parse(req.params.id))})));
 r.post('/drops/cities',manage,write,asyncHandler(async(req,res)=>res.json(await D.addCityByAdmin(z.object({cityId:z.string().regex(/^[a-z]\d+$/)}).strict().parse(req.body).cityId,{adminId:adminId(req)}))));

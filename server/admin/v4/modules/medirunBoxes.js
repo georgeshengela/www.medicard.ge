@@ -2,6 +2,7 @@
  * MediCard Admin V4 — #/medirun-boxes „MEDIRUN ყუთები“ (/api/admin/medipulsi/drops*).
  * Owner 2026-10-04: one place to run the „გაანათე თბილისი“ boxes — when they drop, how many, where, with what.
  *   დღეს       live numbers, today's / tomorrow's / any date's boxes, manual drop, per-box actions, rebuild / cancel a day
+ *   რუკა       a real map of one city's boxes: out now / planned / ±1 day, pulse radius, click = the box card
  *   ქალაქები   every other city with a player: spots from OpenStreetMap, players, local time, on/off, boxes
  *   წესები     the weekly rules: weekday / weekend waves, coins table, stock, radii, Saturday rain + lanterns,
  *              the grand prize, weekly themes and levels — a draft with preview before saving
@@ -32,7 +33,7 @@
     ICONS.pin = ICONS.pin || '<path d="M12 21s-7-6.2-7-11a7 7 0 0 1 14 0c0 4.8-7 11-7 11Z"/><circle cx="12" cy="10" r="2.5"/>';
   }
 
-  const SUBS = [['today', 'დღეს'], ['cities', 'ქალაქები'], ['rules', 'წესები'], ['calendar', 'კალენდარი'], ['spots', 'ადგილები'], ['stats', 'ციფრები'], ['log', 'ჟურნალი']];
+  const SUBS = [['today', 'დღეს'], ['map', 'რუკა'], ['cities', 'ქალაქები'], ['rules', 'წესები'], ['calendar', 'კალენდარი'], ['spots', 'ადგილები'], ['stats', 'ციფრები'], ['log', 'ჟურნალი']];
   const WEEKDAYS = ['კვ', 'ორშ', 'სამ', 'ოთხ', 'ხუთ', 'პარ', 'შაბ'];
   const MONTHS = ['იან', 'თებ', 'მარ', 'აპრ', 'მაი', 'ივნ', 'ივლ', 'აგვ', 'სექ', 'ოქტ', 'ნოე', 'დეკ'];
   const STATUS = { planned: ['დაგეგმილი', 'is-info'], live: ['ქალაქშია', 'is-ok'], empty: ['ამოიწურა', 'is-warn'], ended: ['დასრულდა', 'is-plain'], canceled: ['გაუქმდა', 'is-bad'], hidden: ['დამალული', 'is-plain'] };
@@ -214,6 +215,7 @@
     body.innerHTML = skel();
     try {
       if (st.sub === 'today') await paintToday(body);
+      else if (st.sub === 'map') await paintMap(body);
       else if (st.sub === 'cities') await paintCities(body);
       else if (st.sub === 'rules') paintRules(body);
       else if (st.sub === 'calendar') await paintCalendar(body);
@@ -261,7 +263,7 @@
           <tbody>${boxes.map(boxRowHtml).join('')}</tbody></table></div>`
           : `<div class="s-empty">${ico('box')}<strong>ამ დღეს ყუთი ჯერ არ არის</strong><span>${inCampaign ? (rule?.off ? 'დღე გამორთულია კალენდარში.' : 'ავტოპილოტი ყუთებს წინა დღეს ქმნის. „ნაკლულის შექმნა“ ახლავე შექმნის.') : 'თარიღი კამპანიის გარეთაა — ყუთი შეგიძლია ხელით დააგდო.'}</span></div>`}</div>
       </section>
-      <p class="s-muted mb-note">${ico('pin')} ადგილს რუკაზე ხედავ სტრიქონის 📍 ღილაკით. მოთამაშეები ზუსტ ადგილს ვერ ხედავენ — აპში ჩანს მხოლოდ უბანი და რაოდენობა.</p>
+      <p class="s-muted mb-note">${ico('pin')} ყველა ყუთს ერთად „რუკა“ ტაბში ხედავ, ერთს — სტრიქონის 📍 ღილაკით. მოთამაშეები ზუსტ ადგილს ვერ ხედავენ — აპში ჩანს მხოლოდ უბანი და რაოდენობა.</p>
     </div>`;
     body.querySelectorAll('[data-mb-day]').forEach((b) => b.addEventListener('click', () => { st.day = b.dataset.mbDay; void paintSub(); }));
     body.querySelector('[data-mb-date]').addEventListener('change', (e) => { if (e.target.value) { st.day = e.target.value; void paintSub(); } });
@@ -294,6 +296,131 @@
         <button type="button" class="btn compact" data-act="open">მართვა</button>
       </div></td>
     </tr>`;
+  }
+
+  /* ═════════ რუკა — where the boxes lie, per city (owner 2026-10-05) ═════════ */
+  const MAP_FILTERS = [['now', 'ახლა ქალაქში'], ['soon', 'დაგეგმილი'], ['all', 'ყველა (±1 დღე)']];
+  const MAP_TONE = { live: 'is-live', empty: 'is-empty', planned: 'is-planned', ended: 'is-ended' };
+  const RADIUS_COLOR = { live: '#0d9488', empty: '#d97706', planned: '#3056d3', ended: '#8792a2' };
+  const mapState = { city: null, filter: 'now', data: null, map: null, markers: [], token: null, timer: null, fitted: null };
+  let mapboxP = null;
+  function loadMapbox() {
+    if (global.mapboxgl) return Promise.resolve(global.mapboxgl);
+    if (mapboxP) return mapboxP;
+    mapboxP = new Promise((resolve, reject) => {
+      if (!doc.getElementById('mapbox-gl-css')) {
+        const css = doc.createElement('link');
+        css.id = 'mapbox-gl-css'; css.rel = 'stylesheet'; css.href = 'https://api.mapbox.com/mapbox-gl-js/v3.8.0/mapbox-gl.css';
+        doc.head.appendChild(css);
+      }
+      const s = doc.createElement('script');
+      s.src = 'https://api.mapbox.com/mapbox-gl-js/v3.8.0/mapbox-gl.js';
+      s.onload = () => resolve(global.mapboxgl);
+      s.onerror = () => { mapboxP = null; reject(new Error('რუკა ვერ ჩაიტვირთა — შეამოწმე ინტერნეტი.')); };
+      doc.head.appendChild(s);
+    });
+    return mapboxP;
+  }
+  const mapStyle = () => (doc.documentElement.dataset.theme === 'dark' ? 'mapbox://styles/mapbox/dark-v11' : 'mapbox://styles/mapbox/streets-v12');
+  const mapShown = (b) => (mapState.filter === 'now' ? b.status === 'live' || b.status === 'empty' : mapState.filter === 'soon' ? b.status === 'planned' : true);
+  /** A circle of `m` metres around a box as a GeoJSON ring (the pulse radius players feel). */
+  function ring(lng, lat, m) {
+    const pts = [], dLat = m / 111320, dLng = m / (111320 * Math.cos((lat * Math.PI) / 180));
+    for (let i = 0; i <= 48; i++) { const a = (i / 48) * Math.PI * 2; pts.push([lng + dLng * Math.cos(a), lat + dLat * Math.sin(a)]); }
+    return pts;
+  }
+
+  async function paintMap(body) {
+    clearInterval(mapState.timer);
+    const [data, cfg] = await Promise.all([api(`/map${mapState.city ? `?city=${encodeURIComponent(mapState.city)}` : ''}`), mapState.token ? null : global.api('/medipulsi/map')]);
+    if (cfg) mapState.token = cfg.token;
+    mapState.data = data;
+    mapState.city = data.cityId;
+    body.innerHTML = `<div class="s-stack">
+      <div class="s-toolbar">
+        <label class="s-field mb-inline"><span class="sr-only">ქალაქი</span><select data-map-city>${data.cities.map((c) => `<option value="${esc(c.cityId)}" ${c.cityId === data.cityId ? 'selected' : ''}>${esc(c.name)}${c.countryCode && c.countryCode !== 'GE' ? ` · ${esc(c.countryCode)}` : ''} — ${num(c.live)} ახლა${c.planned ? `, ${num(c.planned)} დაგეგმ.` : ''}</option>`).join('')}</select></label>
+        <div class="s-segment" role="tablist" aria-label="რომელი ყუთები">${MAP_FILTERS.map(([k, l]) => `<button type="button" role="tab" data-map-f="${k}" aria-selected="${k === mapState.filter}">${l}</button>`).join('')}</div>
+        <span class="mb-grow"></span>
+        <span class="s-muted" data-map-count></span>
+        <button type="button" class="btn compact" data-map-refresh>${ico('refresh')} განახლება</button>
+      </div>
+      <section class="s-card mb-map-card">
+        <div class="mb-map" data-map-host>${mapState.token ? '' : `<div class="s-empty">${ico('alert')}<strong>რუკის გასაღები არ არის</strong><span>სერვერზე MAPBOX_PUBLIC_TOKEN არ არის დაყენებული.</span></div>`}</div>
+        <div class="mb-map-legend">
+          <span><i class="mb-dot is-live"></i>ქალაქშია</span><span><i class="mb-dot is-empty"></i>ამოიწურა</span><span><i class="mb-dot is-planned"></i>დაგეგმილი</span><span><i class="mb-dot is-ended"></i>დასრულდა</span><span><i class="mb-dot is-prize"></i>პრიზი</span>
+          <span class="s-muted">რიცხვი = პირველი გამხსნელის ქოინი · წრე = პულსის რადიუსი · ყუთზე დაჭერით — დეტალები და მართვა</span>
+        </div>
+      </section>
+      <p class="s-muted mb-note">${ico('pin')} ეს რუკა მხოლოდ ადმინისთვისაა. მოთამაშეები აპში ზუსტ ადგილს ვერ ხედავენ — მხოლოდ უბანს და რაოდენობას.</p>
+    </div>`;
+    body.querySelector('[data-map-city]').addEventListener('change', (e) => { mapState.city = e.target.value; mapState.fitted = null; void paintSub(); });
+    body.querySelectorAll('[data-map-f]').forEach((b) => b.addEventListener('click', () => {
+      mapState.filter = b.dataset.mapF;
+      body.querySelectorAll('[data-map-f]').forEach((x) => x.setAttribute('aria-selected', String(x === b)));
+      drawBoxes(true);
+    }));
+    body.querySelector('[data-map-refresh]').addEventListener('click', () => void refreshMap());
+    if (!mapState.token) return;
+    const mapboxgl = await loadMapbox();
+    const host = body.querySelector('[data-map-host]');
+    try { mapState.map?.remove(); } catch { /* gone */ }
+    mapState.markers = [];
+    mapState.fitted = null;
+    const bb = data.bbox;
+    const map = new mapboxgl.Map({ container: host, accessToken: mapState.token, style: mapStyle(), ...(bb ? { bounds: [[bb[0], bb[1]], [bb[2], bb[3]]], fitBoundsOptions: { padding: 30 } } : { center: [44.793, 41.7151], zoom: 11.5 }), attributionControl: true });
+    mapState.map = map;
+    map.addControl(new mapboxgl.NavigationControl({ showCompass: false }), 'top-right');
+    map.addControl(new mapboxgl.FullscreenControl(), 'top-right');
+    map.on('load', () => {
+      map.addSource('mb-radius', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
+      map.addLayer({ id: 'mb-radius-fill', type: 'fill', source: 'mb-radius', paint: { 'fill-color': ['get', 'color'], 'fill-opacity': 0.12 } });
+      map.addLayer({ id: 'mb-radius-line', type: 'line', source: 'mb-radius', paint: { 'line-color': ['get', 'color'], 'line-width': 1.2, 'line-opacity': 0.6 } });
+      drawBoxes(true);
+    });
+    mapState.timer = setInterval(() => {
+      if (!doc.querySelector('[data-map-host]')?.offsetParent) { clearInterval(mapState.timer); return; }
+      void refreshMap(true);
+    }, 60_000);
+  }
+
+  async function refreshMap(quiet) {
+    try {
+      mapState.data = await api(`/map?city=${encodeURIComponent(mapState.city)}`);
+      drawBoxes(false);
+      if (!quiet) toast('განახლდა', 'ok');
+    } catch (err) { if (!quiet) toast(say(err, 'ვერ განახლდა.'), 'bad'); }
+  }
+
+  function drawBoxes(fit) {
+    const map = mapState.map, data = mapState.data;
+    if (!map || !data || !map.getSource('mb-radius')) return;
+    mapState.markers.forEach((m) => m.remove());
+    mapState.markers = [];
+    const boxes = data.boxes.filter(mapShown);
+    const count = doc.querySelector('[data-map-count]');
+    if (count) count.textContent = `${num(boxes.length)} ყუთი რუკაზე · ${num(data.boxes.filter((b) => b.status === 'live').length)} ახლა ქალაქში`;
+    map.getSource('mb-radius').setData({ type: 'FeatureCollection', features: boxes.filter((b) => b.pulseRadius).map((b) => ({ type: 'Feature', properties: { color: RADIUS_COLOR[b.status] || '#8792a2' }, geometry: { type: 'Polygon', coordinates: [ring(b.longitude, b.latitude, b.pulseRadius)] } })) });
+    for (const b of boxes) {
+      const prize = b.kind === 'grand' || b.rewardKind === 'PHYSICAL';
+      const label = (STATUS[b.status] || [b.status])[0];
+      const el = doc.createElement('button');
+      el.type = 'button';
+      el.className = `mb-pin ${MAP_TONE[b.status] || 'is-ended'}${prize ? ' is-prize' : ''}`;
+      el.textContent = prize ? '★' : b.coins >= 1000 ? `${Math.round(b.coins / 100) / 10}k` : String(b.coins || '·');
+      el.setAttribute('aria-label', `${b.place || 'ყუთი'} · ${label}`);
+      const pop = new global.mapboxgl.Popup({ offset: 16, closeButton: false, maxWidth: '260px', className: 'mb-pop' }).setHTML(`<b>${esc(b.place || 'ყუთი')}</b><span>${esc(b.district && b.district !== b.place ? b.district : (b.city || ''))}</span><span>${esc(dayLabel(ymdOf(b.startsAt)))}, ${esc(clock(b.startsAt))}–${esc(clock(b.endsAt))} · ${esc(kindLabel(b.kind))}</span><span>${prize ? esc(b.title || 'პრიზი') : `პირველს ${num(b.coins)} ქოინი`} · გაიხსნა ${num(b.allocated)}/${num(b.stock)}</span><em>${esc(label)}</em>`);
+      el.addEventListener('mouseenter', () => pop.setLngLat([b.longitude, b.latitude]).addTo(map));
+      el.addEventListener('mouseleave', () => pop.remove());
+      el.addEventListener('click', (e) => { e.stopPropagation(); pop.remove(); openBoxCard(b); });
+      mapState.markers.push(new global.mapboxgl.Marker({ element: el }).setLngLat([b.longitude, b.latitude]).addTo(map));
+    }
+    const key = `${mapState.city}|${mapState.filter}`;
+    if (fit && boxes.length && mapState.fitted !== key) {
+      mapState.fitted = key;
+      const bounds = new global.mapboxgl.LngLatBounds();
+      boxes.forEach((b) => bounds.extend([b.longitude, b.latitude]));
+      map.fitBounds(bounds, { padding: 70, maxZoom: 15, duration: 600 });
+    }
   }
 
   /** The box card: every fact and every action of one box in one place. */
