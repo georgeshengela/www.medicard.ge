@@ -1,6 +1,7 @@
 /* MEDICARD site navigation — one source for every public page.
    Pages place <header class="tb" id="topbar"></header> and load this script right after it
-   (add data-offset when the page has no full-bleed hero and needs room under the bar). */
+   (add data-offset when the page has no full-bleed hero and needs room under the bar;
+   data-logo swaps the bar's icon, e.g. the rose app icon on /cycle). */
 (function () {
   'use strict';
 
@@ -8,6 +9,7 @@
   if (!header) return;
 
   var APP_STORE = 'https://apps.apple.com/app/id6812517519';
+  var LOGO = /^\/[\w\/.-]+\.png$/.test(header.getAttribute('data-logo') || '') ? header.getAttribute('data-logo') : '/icon.png';
   var I18N = window.MedicardI18n || { lang: 'ka', t: function (ka) { return ka; }, set: function () {} };
   var T = I18N.t;
   var path = location.pathname.replace(/\/+$/, '') || '/';
@@ -116,7 +118,7 @@
 
   header.innerHTML =
     '<div class="tb-bar">' +
-      '<a class="tb-brand" href="/" aria-label="' + esc(T('მედიქარდი, მთავარი გვერდი', 'MEDICARD, home')) + '"><img src="/icon.png" width="32" height="32" alt="" /><span>' + esc(T('მედიქარდი', 'MEDICARD')) + '</span></a>' +
+      '<a class="tb-brand" href="/" aria-label="' + esc(T('მედიქარდი, მთავარი გვერდი', 'MEDICARD, home')) + '"><img src="' + esc(LOGO) + '" width="32" height="32" alt="" /><span>' + esc(T('მედიქარდი', 'MEDICARD')) + '</span></a>' +
       '<nav class="tb-links" aria-label="' + esc(T('მთავარი მენიუ', 'Main menu')) + '"><span class="tb-glide" aria-hidden="true"></span>' + links + '</nav>' +
       langSwitch() +
       '<a class="tb-login" href="/app">' + ICON.user + '<span>' + esc(signedIn ? T('ჩემი ანგარიში', 'My account') : T('შესვლა', 'Sign in')) + '</span></a>' +

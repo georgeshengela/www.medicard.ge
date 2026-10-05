@@ -15,8 +15,8 @@
   <meta property="og:title" content="MEDICYCLE — ციკლის კალენდარი უფასოდ" data-en-content="MEDICYCLE — free period calendar" />
   <meta property="og:description" content="იცოდე წინასწარ. სრულიად უფასო, iPhone-ზე." data-en-content="Know ahead. Completely free, on iPhone." />
   <meta property="og:image" content="https://medicard.ge/cycle/medicycle-og.jpg" />
-  <link rel="icon" href="/favicon.png" />
-  <link rel="apple-touch-icon" href="/icon.png" />
+  <link rel="icon" href="/cycle/medicycle-favicon.png" />
+  <link rel="apple-touch-icon" href="/cycle/medicycle-icon.png" />
   <link rel="preload" href="/fonts/firago/FiraGO-Regular.woff2" as="font" type="font/woff2" crossorigin />
   <link rel="preload" href="/fonts/firago/FiraGO-ExtraBold.woff2" as="font" type="font/woff2" crossorigin />
   <link rel="stylesheet" href="/site-nav.css?v=11" />
@@ -35,6 +35,7 @@
     body { margin: 0; font-family: "FiraGO", system-ui, -apple-system, "Segoe UI", sans-serif; color: var(--ink); background: var(--mist); line-height: 1.5; }
     a { color: inherit; }
     .wrap { width: min(1080px, 100% - 40px); margin: 0 auto; }
+    main .wrap, footer .wrap { width: min(100% - 28px, 1240px); } /* same edges as the site menu */
     .skip { position: absolute; left: -999px; } .skip:focus { left: 16px; top: 16px; z-index: 10; background: #fff; padding: 8px 12px; border-radius: 10px; }
 
     /* hero */
@@ -110,8 +111,8 @@
 </head>
 <body>
   <a class="skip" href="#main" data-en="Skip to content">გადადი შინაარსზე</a>
-  <header class="tb" id="topbar"></header>
-  <script src="/site-nav.js?v=11"></script>
+  <header class="tb" id="topbar" data-logo="/cycle/medicycle-icon.png"></header>
+  <script src="/site-nav.js?v=12"></script>
   <div class="hero" data-tone="dark">
     <div class="wrap">
       <div class="hero-grid" id="main">
