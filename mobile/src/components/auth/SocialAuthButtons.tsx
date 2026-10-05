@@ -82,7 +82,7 @@ function ProviderButton({ provider, busy, disabled, onPress }: ButtonProps) {
 }
 
 /** "Continue with Apple / Google" block for sign-in and sign-up, with an "or with email" divider under it. */
-export function SocialAuthButtons() {
+export function SocialAuthButtons({ dividerLabel }: { dividerLabel?: string } = {}) {
   const router = useRouter();
   const auth = useFigmaAuth();
   const colors = useThemeColors();
@@ -160,7 +160,7 @@ export function SocialAuthButtons() {
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
         <View style={{ flex: 1, height: 1, backgroundColor: auth.dividerColor }} />
         <Text style={{ fontFamily: 'NotoSansGeorgian_400Regular', fontSize: 13, lineHeight: 18, color: auth.textMuted }}>
-          {tx('ან ელ-ფოსტით', 'or with email')}
+          {dividerLabel ?? tx('ან ელ-ფოსტით', 'or with email')}
         </Text>
         <View style={{ flex: 1, height: 1, backgroundColor: auth.dividerColor }} />
       </View>

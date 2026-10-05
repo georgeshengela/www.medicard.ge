@@ -1,18 +1,21 @@
 import React, { useMemo, useRef, useState } from 'react';
 import { View } from 'react-native';
 import { useRouter } from 'expo-router';
+import { AccountConflictSheet } from '@/components/auth/AccountConflictSheet';
 import { OtpCodeInput } from '@/components/auth/OtpCodeInput';
 import { ProfilePhoneField } from '@/components/profile/ProfilePhoneField';
 import { ProfileSetupShell } from '@/components/profile/ProfileSetupShell';
 import { ka } from '@/i18n/ka';
-import { ApiError, api } from '@/lib/api';
+import { ApiError, accountConflictOf, api, type AccountConflict } from '@/lib/api';
 import { authErrorMessage } from '@/lib/authErrorMessage';
 import { localAccountId } from '@/lib/localAccount';
 import { useAuth } from '@/store/AuthContext';
 
 /**
- * Confirm a phone number when a feature needs it (women's space, rewards). Two steps on one
- * screen — number, then the SMS code — in the keyboard-safe setup shell, then back.
+ * Confirm a phone number when a feature needs it (women's space, rewards) or from Profile →
+ * „შესვლის გზები“. Two steps on one screen — number, then the SMS code — in the keyboard-safe
+ * setup shell, then back. A number that is on another of the person's accounts opens the
+ * account-conflict sheet (bring it here / switch) instead of a dead end.
  */
 export default function VerifyPhoneScreen() {
   const router = useRouter();
@@ -22,6 +25,7 @@ export default function VerifyPhoneScreen() {
   const [sentTo, setSentTo] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [conflict, setConflict] = useState<AccountConflict | null>(null);
   const lock = useRef(false);
   const owner = useRef(localAccountId());
 
@@ -40,6 +44,11 @@ export default function VerifyPhoneScreen() {
     try {
       await work();
     } catch (e) {
+      const found = accountConflictOf(e);
+      if (found) {
+        setConflict(found);
+        return;
+      }
       const taken = e instanceof ApiError && (e.code === 'PHONE_TAKEN' || e.status === 409);
       setError(taken ? ka.auth.phoneTakenBody : authErrorMessage(e));
     } finally {
@@ -68,6 +77,18 @@ export default function VerifyPhoneScreen() {
 
   if (!user) return null;
 
+  const sheet = (
+    <AccountConflictSheet
+      conflict={conflict}
+      onClose={() => setConflict(null)}
+      onDone={(outcome) => {
+        setConflict(null);
+        if (outcome.action === 'switch') router.replace('/(tabs)/home' as never);
+        else leave();
+      }}
+    />
+  );
+
   return sentTo ? (
     <ProfileSetupShell
       title={ka.profileSetup.verifyTitle}
@@ -83,6 +104,7 @@ export default function VerifyPhoneScreen() {
       <View style={{ alignItems: 'center', paddingTop: 24 }}>
         <OtpCodeInput value={code} onChange={setCode} error={error} length={4} variant="hero" />
       </View>
+      {sheet}
     </ProfileSetupShell>
   ) : (
     <ProfileSetupShell
@@ -99,6 +121,7 @@ export default function VerifyPhoneScreen() {
       <View style={{ paddingHorizontal: 16, paddingTop: 16 }}>
         <ProfilePhoneField value={local} onChange={setLocal} error={error} />
       </View>
+      {sheet}
     </ProfileSetupShell>
   );
 }

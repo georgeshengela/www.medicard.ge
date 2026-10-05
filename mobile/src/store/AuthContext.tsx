@@ -58,6 +58,13 @@ type AuthState = {
   resetPasswordWithSms: (input: { phone: string; code: string; password: string; confirmPassword: string }) => Promise<void>;
   signOut: () => Promise<void>;
   deleteAccount: () => Promise<void>;
+  /** „I already have an account“ right after sign-up: removes the just-created empty account and signs out. */
+  discardNewAccount: () => Promise<void>;
+  /** Switches the session to another of the person's accounts (account conflict → switch). */
+  switchToAccount: (result: { token: string; user: User; usage: Usage }, previousDeleted: boolean) => Promise<void>;
+  /** Adds Apple / Google to the signed-in account. Throws ApiError (with a conflict) when it belongs to another one. */
+  linkApple: () => Promise<'linked' | 'cancelled'>;
+  linkGoogle: () => Promise<'linked' | 'cancelled'>;
   /** Re-reads the session (/auth/me). `maxAgeMs`: skip when the last answer is younger (screen focus). */
   refresh: (opts?: { maxAgeMs?: number }) => Promise<void>;
   refreshHealthProfile: () => Promise<HealthProfile | null>;
@@ -81,6 +88,29 @@ function sameJson(a: unknown, b: unknown): boolean {
   } catch {
     return false;
   }
+}
+
+/** Stops this device's push and local reminders for the account that is leaving. Best-effort. */
+async function stopDeviceDelivery() {
+  try {
+    const { cancelAllReminders, unregisterPushFromServer } = await import('@/lib/notifications');
+    await unregisterPushFromServer();
+    await cancelAllReminders();
+  } catch {
+    /* local cleanup still continues */
+  }
+}
+
+/** Device-side data of an account that no longer exists here (deleted, discarded or merged away). */
+async function forgetAccountOnDevice(userId: string | undefined) {
+  if (!userId) return;
+  await import('@/lib/petCareReminders').then(({ onPetCareLogout }) => onPetCareLogout(userId)).catch(() => undefined);
+  void import('@/lib/pregnancyCareCalendar').then(({ wipePregnancyCareCalendarOwnership }) =>
+    wipePregnancyCareCalendarOwnership(userId).catch(() => undefined),
+  );
+  void import('@/lib/cycleOffline').then(({ destroyCycleOfflineAccount }) =>
+    destroyCycleOfflineAccount(userId).catch(() => undefined),
+  );
 }
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
@@ -423,28 +453,46 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       },
       deleteAccount: async () => {
         const userId = user?.id;
-        try {
-          const { cancelAllReminders, unregisterPushFromServer } = await import('@/lib/notifications');
-          await unregisterPushFromServer();
-          await cancelAllReminders();
-        } catch {
-          /* local cleanup still continues */
-        }
+        await stopDeviceDelivery();
         await api.auth.deleteAccount();
-        if (userId) {
-          await import('@/lib/petCareReminders').then(({ onPetCareLogout }) => onPetCareLogout(userId)).catch(() => undefined);
-        }
-        if (userId) {
-          void import('@/lib/pregnancyCareCalendar').then(({ wipePregnancyCareCalendarOwnership }) =>
-            wipePregnancyCareCalendarOwnership(userId).catch(() => undefined),
-          );
-          void import('@/lib/cycleOffline').then(({ destroyCycleOfflineAccount }) =>
-            destroyCycleOfflineAccount(userId).catch(() => undefined),
-          );
-        }
+        await forgetAccountOnDevice(userId);
         await clearToken();
         await clearSessionSnapshot();
         resetSession();
+      },
+      discardNewAccount: async () => {
+        const userId = user?.id;
+        await api.auth.discardNewAccount();
+        await stopDeviceDelivery();
+        await forgetAccountOnDevice(userId);
+        await clearToken();
+        await clearSessionSnapshot();
+        resetSession();
+      },
+      switchToAccount: async (result, previousDeleted) => {
+        const userId = user?.id;
+        await stopDeviceDelivery();
+        if (userId && userId !== result.user?.id) {
+          // A deleted account leaves nothing behind; one that stays is only signed out, like signOut.
+          if (previousDeleted) await forgetAccountOnDevice(userId);
+          else await import('@/lib/petCareReminders').then(({ onPetCareLogout }) => onPetCareLogout(userId)).catch(() => undefined);
+        }
+        await adopt(result);
+      },
+      linkApple: async () => {
+        const { requestAppleCredential } = await import('@/lib/socialSignIn');
+        const { nonce } = await api.auth.appleNonce();
+        const credential = await requestAppleCredential(nonce);
+        if (!credential) return 'cancelled';
+        await api.auth.appleLink(credential);
+        return 'linked';
+      },
+      linkGoogle: async () => {
+        const { requestGoogleIdToken } = await import('@/lib/socialSignIn');
+        const idToken = await requestGoogleIdToken();
+        if (!idToken) return 'cancelled';
+        await api.auth.googleLink({ idToken });
+        return 'linked';
       },
       refresh: refreshSession,
       refreshHealthProfile,

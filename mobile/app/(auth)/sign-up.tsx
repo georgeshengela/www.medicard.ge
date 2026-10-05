@@ -10,7 +10,9 @@ import { AuthPrimaryButton } from '@/components/auth/AuthPrimaryButton';
 import { PasswordStrengthHint } from '@/components/auth/PasswordStrengthHint';
 import { Input } from '@/components/ui/Input';
 import { EmailTypoHint } from '@/components/auth/EmailTypoHint';
+import { useFigmaAuth } from '@/constants/figmaAuthLayout';
 import { ka } from '@/i18n/ka';
+import { tx } from '@/i18n/locale';
 import { ApiError } from '@/lib/api';
 import { authErrorMessage } from '@/lib/authErrorMessage';
 import { AUTH_KEYBOARD_OPEN_PX } from '@/lib/authChrome';
@@ -29,6 +31,7 @@ type Errors = {
 export default function SignUp() {
   const { signUp } = useAuth();
   const router = useRouter();
+  const auth = useFigmaAuth();
   const { height: keyboardHeight } = useKeyboardMetrics();
   const keyboardOpen = keyboardHeight > AUTH_KEYBOARD_OPEN_PX;
 
@@ -127,8 +130,19 @@ export default function SignUp() {
     >
       <AuthScreenTitle>{ka.auth.signUp}</AuthScreenTitle>
 
-      <View style={{ marginBottom: 24 }}>
+      <View style={{ marginBottom: 24, gap: 14 }}>
         <SocialAuthButtons />
+        {/* Same choices as the web: a phone number signs up on the sign-in screen (SMS code). */}
+        <Pressable
+          accessibilityRole="button"
+          hitSlop={8}
+          onPress={() => router.replace('/(auth)/sign-in?method=phone' as never)}
+          style={{ alignSelf: 'center' }}
+        >
+          <Text style={{ fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 14, lineHeight: 20, color: auth.linkColor }}>
+            {tx('ტელეფონის ნომრით რეგისტრაცია', 'Sign up with a phone number')}
+          </Text>
+        </Pressable>
       </View>
 
       <View style={{ gap: 16 }}>
