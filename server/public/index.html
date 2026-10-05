@@ -32,10 +32,9 @@
   <link rel="apple-touch-icon" href="/icon.png" />
   <link rel="preload" href="/fonts/firago/FiraGO-Regular.woff2" as="font" type="font/woff2" crossorigin />
   <link rel="preload" href="/fonts/firago/FiraGO-Bold.woff2" as="font" type="font/woff2" crossorigin />
-  <link rel="modulepreload" href="/vendor/three/three.module.min.js" />
+  <link rel="preload" href="/fonts/noto-serif-georgian/NotoSerifGeorgian-Light-georgian.woff2" as="font" type="font/woff2" crossorigin />
   <link rel="stylesheet" href="/site-nav.css?v=11" />
-  <link rel="stylesheet" href="/home.css?v=15" />
-  <script type="importmap">{ "imports": { "three": "/vendor/three/three.module.min.js" } }</script>
+  <link rel="stylesheet" href="/home.css?v=16" />
 </head>
 <body>
   <a class="skip" href="#main" data-en="Skip to content">გადადი შინაარსზე</a>
@@ -44,80 +43,40 @@
   <script src="/site-nav.js?v=11"></script>
 
   <main id="main">
-    <!-- A day with MEDICARD: one screen, a vertical clock that moves the 3D phone through the day -->
-    <section class="day" id="day" data-tone="light" aria-label="დღე მედიქარდთან" data-en-aria-label="A day with MEDICARD">
-      <div class="stage" aria-hidden="true">
-        <div class="sky"></div>
-        <div class="sun"></div>
-        <canvas id="scene"></canvas>
-        <figure class="poster">
-          <img src="/screens/v3/home.webp?v=1" alt="" width="880" height="1912" />
-        </figure>
-        <div class="clock"><span class="clock-time" id="clock-time">08:40</span></div>
-      </div>
-
-      <div class="day-ui">
-        <div class="hero-copy">
-          <a class="hero-promo" href="#medirun">
-            <i aria-hidden="true"></i><span data-en-html="<b>New</b> · Light up Tbilisi"><b>ახალი</b> · გაანათე თბილისი</span>
-            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="m13 6 6 6-6 6"/></svg>
-          </a>
-          <h1 class="hero-title">
-            <span class="line"><span data-en="Health at">ჯანმრთელობა</span></span>
-            <span class="line"><span data-en="every hour">დღის ყოველ</span></span>
-            <span class="line"><span data-en="of the day.">საათში.</span></span>
-          </h1>
-          <p class="hero-lead" data-en="MEDICARD is a health app made in Georgia. Medi, medications, nutrition, lab results, cycle and movement — on one phone, and all of it free.">MEDICARD ქართული ჯანმრთელობის აპია. Medi, მედიკამენტები, კვება, ანალიზები, ციკლი და მოძრაობა — ერთ ტელეფონში და ყველაფერი უფასოდ.</p>
-          <div class="hero-actions">
-            <a class="store-badge is-official" href="https://apps.apple.com/app/id6812517519"><img src="/icons/app-store-badge.svg" alt="Download on the App Store" width="162" height="54" /></a>
-            <a class="btn btn-quiet" href="#medi" data-en="Meet Medi">გაიცანი Medi</a>
-          </div>
+    <!-- Hero: one serif headline and a single heartbeat line across the page (owner pick 2026-10-05, concept A in brand/hero-concepts) -->
+    <section class="hero" id="top" data-tone="light" aria-labelledby="hero-title">
+      <div class="hero-inner">
+        <a class="hero-promo" href="#medirun">
+          <i aria-hidden="true"></i><span data-en-html="<b>New</b> · Light up Tbilisi"><b>ახალი</b> · გაანათე თბილისი</span>
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="m13 6 6 6-6 6"/></svg>
+        </a>
+        <h1 class="hero-title" id="hero-title">
+          <span data-en="Health at every">ჯანმრთელობა</span>
+          <span data-en="hour of the day">დღის ყოველ საათში</span>
+        </h1>
+        <div class="hero-pulse" aria-hidden="true">
+          <svg viewBox="0 0 4000 120" preserveAspectRatio="xMidYMid slice" focusable="false">
+            <defs><filter id="pulse-blur" x="-1%" y="-60%" width="102%" height="220%"><feGaussianBlur stdDeviation="4" /></filter></defs>
+            <path class="pulse-glow" pathLength="1" filter="url(#pulse-blur)" d="M0 70 H1928 C1940 70 1944 60 1952 60 C1960 60 1964 70 1974 70 H1988 L2000 8 L2016 112 L2028 52 L2036 70 H2058 C2072 70 2076 56 2088 56 C2100 56 2104 70 2116 70 H4000" />
+            <path class="pulse-line" pathLength="1" d="M0 70 H1928 C1940 70 1944 60 1952 60 C1960 60 1964 70 1974 70 H1988 L2000 8 L2016 112 L2028 52 L2036 70 H2058 C2072 70 2076 56 2088 56 C2100 56 2104 70 2116 70 H4000" />
+          </svg>
+          <i class="pulse-beat"></i>
         </div>
-
-        <div class="dial-wrap">
-          <p class="dial-hint" id="dial-hint" data-en="Pick a time">აირჩიე დრო</p>
-          <div class="dial" id="dial" role="tablist" aria-orientation="vertical" aria-labelledby="dial-hint">
-            <span class="dial-track" aria-hidden="true"><i class="dial-fill"></i><i class="dial-bead"></i></span>
-          <button class="stop" type="button" role="tab" id="stop-0" aria-selected="true" aria-controls="moment-panel" tabindex="0" data-key="home" data-en-moment-label="Morning" data-en-moment-title="Your day at a glance." data-en-moment-text="Steps, water, meds and cycle — on one screen, the moment you open the app." data-time="08:40" data-label="დილა" data-title="დღე ერთი შეხედვით." data-text="ნაბიჯები, წყალი, წამლები და ციკლი — ერთ ეკრანზე, როგორც კი აპს გახსნი.">
-            <span class="stop-dot" aria-hidden="true"></span>
-            <time>08:40</time>
-            <span class="stop-name" data-en="Home">მთავარი</span>
-          </button>
-          <button class="stop" type="button" role="tab" id="stop-1" aria-selected="false" aria-controls="moment-panel" tabindex="-1" data-key="meds" data-en-moment-label="Morning" data-en-moment-title="Meds on time, every day." data-en-moment-text="The reminder arrives right on time, you mark the dose with one tap, and your stats show how consistent you are." data-time="11:00" data-label="დილა" data-title="წამალი დროზე, ყოველდღე." data-text="შეხსენება ზუსტ დროს მოდის, მიღებას ერთი შეხებით მონიშნავ, სტატისტიკა კი გაჩვენებს, რამდენად რეგულარული ხარ.">
-            <span class="stop-dot" aria-hidden="true"></span>
-            <time>11:00</time>
-            <span class="stop-name" data-en="Meds">წამლები</span>
-          </button>
-          <button class="stop" type="button" role="tab" id="stop-2" aria-selected="false" aria-controls="moment-panel" tabindex="-1" data-key="nutrition" data-en-moment-label="Afternoon" data-en-moment-title="Snap your plate." data-en-moment-text="Medi estimates calories and macros from the photo — you adjust it and save." data-time="13:40" data-label="შუადღე" data-title="გადაუღე თეფშს." data-text="ფოტოდან Medi კალორიებსა და მაკროებს შეაფასებს — შენ ასწორებ და ინახავ.">
-            <span class="stop-dot" aria-hidden="true"></span>
-            <time>13:40</time>
-            <span class="stop-name" data-en="Nutrition">კვება</span>
-          </button>
-          <button class="stop" type="button" role="tab" id="stop-3" aria-selected="false" aria-controls="moment-panel" tabindex="-1" data-key="quest" data-en-moment-label="Evening" data-en-moment-title="Missions that get you moving." data-en-moment-text="Steps, water and doses turn into daily missions — with rewards and streaks." data-time="18:10" data-label="საღამო" data-title="მისიები, რომლებიც გამოძრავებს." data-text="ნაბიჯები, წყალი და მიღებები დღის მისიებად იქცევა — ჯილდოებით და სერიით.">
-            <span class="stop-dot" aria-hidden="true"></span>
-            <time>18:10</time>
-            <span class="stop-name">MEDIQUEST</span>
-          </button>
-          <button class="stop" type="button" role="tab" id="stop-4" aria-selected="false" aria-controls="moment-panel" tabindex="-1" data-key="lab-dark" data-en-moment-label="Evening" data-en-moment-title="Lab results in plain language." data-en-moment-text="Numbers and reference ranges, explained so they make sense. It doesn’t diagnose you — it helps you understand." data-time="21:00" data-label="საღამო" data-title="ანალიზი, გასაგებ ენაზე." data-text="ციფრები და ნორმები ქართულად აიხსნება. დიაგნოზს არ გისვამს — გაგებაში გეხმარება.">
-            <span class="stop-dot" aria-hidden="true"></span>
-            <time>21:00</time>
-            <span class="stop-name" data-en="Lab results">ანალიზები</span>
-          </button>
-          <button class="stop" type="button" role="tab" id="stop-5" aria-selected="false" aria-controls="moment-panel" tabindex="-1" data-key="cycle-dark" data-en-moment-label="Night" data-en-moment-title="Two seconds for you." data-en-moment-text="A cycle ring, quick logging and predictions that are always marked as estimates." data-time="22:30" data-label="ღამე" data-title="ორი წამი შენთვის." data-text="ციკლის რგოლი, სწრაფი აღრიცხვა და პროგნოზი, რომელიც ყოველთვის სავარაუდოდ მოინიშნება.">
-            <span class="stop-dot" aria-hidden="true"></span>
-            <time>22:30</time>
-            <span class="stop-name" data-en="Cycle">ციკლი</span>
-          </button>
-          </div>
-          <div class="moment-panel" id="moment-panel" role="tabpanel" aria-labelledby="stop-0" aria-live="polite">
-            <p class="moment-label" id="moment-label" data-en="Morning · 08:40">დილა · 08:40</p>
-            <h2 id="moment-title" data-en="Your day at a glance.">დღე ერთი შეხედვით.</h2>
-            <p id="moment-text" data-en="Steps, water, meds and cycle — on one screen, the moment you open the app.">ნაბიჯები, წყალი, წამლები და ციკლი — ერთ ეკრანზე, როგორც კი აპს გახსნი.</p>
-          </div>
+        <p class="hero-lead" data-en="A health app made in Georgia. Medi, medications, nutrition, lab results, cycle and movement — together, and completely free.">ქართული ჯანმრთელობის აპი. Medi, მედიკამენტები, კვება, ანალიზები, ციკლი და მოძრაობა — ერთად და სრულიად უფასოდ.</p>
+        <div class="hero-actions">
+          <a class="store-badge is-official" href="https://apps.apple.com/app/id6812517519"><img src="/icons/app-store-badge.svg" alt="Download on the App Store" width="162" height="54" /></a>
+          <a class="btn btn-quiet" href="#medi" data-en="Meet Medi">გაიცანი Medi</a>
         </div>
       </div>
-
-      <a class="scroll-cue" href="#medirun" aria-label="ქვემოთ გადასვლა" data-en-aria-label="Scroll down"><span></span></a>
+      <ul class="hero-modules" aria-label="MEDICARD-ის მოდულები" data-en-aria-label="MEDICARD modules">
+        <li style="--mod:#0D9488">MEDI<b>RUN</b></li>
+        <li style="--mod:#C92A55">MEDI<b>CYCLE</b></li>
+        <li style="--mod:#047857">MEDI<b>FOOD</b></li>
+        <li style="--mod:#1D4ED8">MEDI<b>PILL</b></li>
+        <li style="--mod:#6D28D9">MEDI<b>QUEST</b></li>
+        <li style="--mod:#0891B2">MEDI<b>SCAN</b></li>
+        <li style="--mod:#4F46E5">MEDI<b>LAB</b></li>
+      </ul>
     </section>
 
     <!-- MEDIRUN campaign „გაანათე თბილისი“ (5 Oct – 31 Dec 2026); details and rules at /medirun -->
@@ -334,7 +293,6 @@
     </div>
   </footer>
 
-  <script src="/home.js?v=5" defer></script>
-  <script type="module" src="/home-scene.js?v=14"></script>
+  <script src="/home.js?v=6" defer></script>
 </body>
 </html>

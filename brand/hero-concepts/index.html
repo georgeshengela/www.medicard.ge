@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="ka">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Hero concepts</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+Georgian:wght@200;300;400&family=Noto+Sans+Georgian:wght@200;300;400&display=swap" rel="stylesheet" />
+<style>
+@font-face { font-family: "FiraGO"; src: url("/server/public/fonts/firago/FiraGO-Regular.woff2") format("woff2"); font-weight: 400; }
+@font-face { font-family: "FiraGO"; src: url("/server/public/fonts/firago/FiraGO-Medium.woff2") format("woff2"); font-weight: 500; }
+@font-face { font-family: "FiraGO"; src: url("/server/public/fonts/firago/FiraGO-SemiBold.woff2") format("woff2"); font-weight: 600; }
+@font-face { font-family: "Exo2"; src: url("/server/public/fonts/exo2/Exo2-ExtraBold.ttf"); font-weight: 800; }
+
+:root {
+  --paper: #F6FAF9;
+  --mist: #E4F1EE;
+  --ink: #0B2B2E;
+  --ink-2: #4A6366;
+  --ink-3: #8AA09F;
+  --hair: rgba(11, 43, 46, .12);
+  --teal: #0D9488;
+  --teal-2: #14B8A6;
+  --rose: #F43F5E;
+  --serif: "Noto Serif Georgian", Georgia, serif;
+  --sans: "FiraGO", system-ui, sans-serif;
+  --thin: "Noto Sans Georgian", "FiraGO", sans-serif;
+  --gutter: clamp(20px, 4vw, 56px);
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { background: var(--paper); color: var(--ink); font-family: var(--sans); -webkit-font-smoothing: antialiased; }
+.hero { position: relative; min-height: 100svh; overflow: hidden; display: flex; flex-direction: column; }
+.hero[hidden] { display: none; }
+
+/* shared nav (simplified copy of the site menu) */
+.nav { position: relative; z-index: 5; display: flex; align-items: center; justify-content: space-between; margin: 18px auto 0; width: min(1240px, calc(100% - 2 * var(--gutter))); padding: 10px 12px 10px 14px; border-radius: 22px; background: rgba(255,255,255,.72); backdrop-filter: blur(14px); box-shadow: 0 1px 0 rgba(11,43,46,.04), 0 10px 30px -18px rgba(11,43,46,.25); }
+.brand { display: flex; align-items: center; gap: 10px; font-weight: 600; font-size: 15px; }
+.brand i { width: 32px; height: 32px; border-radius: 10px; background: var(--teal); display: grid; place-items: center; }
+.links { display: flex; gap: 26px; font-size: 14px; color: var(--ink-2); }
+.signin { background: var(--teal); color: #fff; border-radius: 14px; padding: 10px 18px; font-size: 14px; font-weight: 600; }
+@media (max-width: 900px) { .links { display: none; } }
+
+.badge { display: inline-block; height: 50px; }
+.badge img { height: 100%; display: block; }
+.quiet { display: inline-flex; align-items: center; height: 50px; padding: 0 22px; border-radius: 14px; color: var(--ink); font-size: 15px; font-weight: 500; text-decoration: none; box-shadow: inset 0 0 0 1px var(--hair); }
+.actions { display: flex; gap: 12px; flex-wrap: wrap; }
+.lead { font-size: clamp(16px, 1.25vw, 18px); line-height: 1.7; color: var(--ink-2); max-width: 46ch; }
+
+.promo { display: inline-flex; align-items: center; gap: 10px; font-size: 13px; color: var(--ink); text-decoration: none; padding: 7px 14px 7px 10px; border-radius: 99px; box-shadow: inset 0 0 0 1px var(--hair); background: rgba(255,255,255,.6); }
+.promo i { width: 7px; height: 7px; border-radius: 50%; background: var(--teal-2); box-shadow: 0 0 0 4px rgba(20,184,166,.18); }
+
+/* ───────────── A · პულსი ───────────── */
+.a { background: radial-gradient(120% 70% at 50% 40%, #FFFFFF 0%, var(--paper) 55%, var(--mist) 100%); }
+.a .body { flex: 1; display: grid; place-items: center; text-align: center; padding: 40px var(--gutter) 30px; position: relative; }
+.a .wrap { position: relative; z-index: 2; display: grid; justify-items: center; gap: 22px; }
+.a h1 { font-family: var(--serif); font-weight: 300; font-size: clamp(44px, 7.4vw, 112px); line-height: 1.04; letter-spacing: -.01em; }
+.a h1 span { display: block; }
+.a .lead { text-align: center; margin-top: 4px; }
+.a .pulse { display: block; width: 100vw; height: 120px; margin: 6px 0 -6px; pointer-events: none; }
+.a .pulse-row { position: relative; width: 100vw; margin-inline: calc(50% - 50vw); display: flex; justify-content: center; }
+.a .wrap { width: 100%; }
+.a .pulse path { fill: none; stroke: url(#pulseFade); stroke-width: 1.2; vector-effect: non-scaling-stroke; stroke-dasharray: 4000; stroke-dashoffset: 4000; animation: draw 2.6s cubic-bezier(.6,.1,.2,1) .2s forwards; }
+.a .pulse .glow { stroke: url(#pulseFade); stroke-width: 7; opacity: .10; filter: blur(4px); }
+.a .beat { position: absolute; z-index: 1; width: 9px; height: 9px; border-radius: 50%; background: var(--rose); box-shadow: 0 0 0 6px rgba(244,63,94,.12), 0 0 26px 6px rgba(244,63,94,.35); opacity: 0; animation: fade .6s ease 2.4s forwards, breathe 2.4s ease-in-out 3s infinite; }
+.a .mark { position: absolute; inset: 0; display: grid; place-items: center; z-index: 0; opacity: .05; }
+.a .mark svg { width: min(78vh, 760px); }
+.a .modules { position: relative; z-index: 2; display: flex; justify-content: center; flex-wrap: wrap; gap: 10px 34px; padding: 0 var(--gutter) 34px; }
+@keyframes breathe { 50% { box-shadow: 0 0 0 10px rgba(244,63,94,.06), 0 0 34px 10px rgba(244,63,94,.28); } }
+@keyframes draw { to { stroke-dashoffset: 0; } }
+@keyframes fade { to { opacity: 1; } }
+
+/* module wordmarks */
+.wm { font-family: "Exo2", sans-serif; font-weight: 800; font-size: 14px; letter-spacing: .02em; color: var(--ink); white-space: nowrap; }
+.wm b { display: inline-block; transform: skewX(-16deg); font-weight: 800; }
+
+/* ───────────── B · დღის რკალი ───────────── */
+.b { --sky-a: #FCEFE8; --sky-b: #E3F3EF; background: linear-gradient(180deg, var(--sky-b) 0%, #F4FAF8 55%, var(--sky-a) 100%); }
+.b .body { flex: 1; position: relative; display: grid; grid-template-columns: minmax(0, 1fr); width: min(1240px, calc(100% - 2 * var(--gutter))); margin: 0 auto; }
+.b .copy { position: relative; z-index: 3; padding-top: clamp(40px, 7vh, 90px); display: grid; gap: 22px; justify-items: center; align-content: start; text-align: center; margin: 0 auto; max-width: 900px; }
+.b h1 { font-family: var(--thin); font-weight: 200; font-size: clamp(42px, 6vw, 92px); line-height: 1.02; letter-spacing: -.02em; }
+.b h1 span { display: block; }
+.b .sky { position: absolute; inset: 0; z-index: 1; pointer-events: none; }
+.b .sky svg { position: absolute; left: 50%; bottom: 0; transform: translateX(-50%); width: max(100vw, 820px); height: auto; overflow: visible; }
+.b .arc { fill: none; stroke: var(--ink); stroke-opacity: .16; stroke-width: 1; vector-effect: non-scaling-stroke; }
+.b .arc-lit { fill: none; stroke: url(#arcLit); stroke-width: 2; vector-effect: non-scaling-stroke; }
+.b .horizon { stroke: var(--ink); stroke-opacity: .14; vector-effect: non-scaling-stroke; }
+.b .tick circle { fill: var(--paper); stroke: var(--ink); stroke-opacity: .35; vector-effect: non-scaling-stroke; }
+.b .tick.on circle { fill: var(--teal); stroke: none; }
+.b .tick text { font-family: var(--sans); font-size: 15px; fill: var(--ink-2); }
+.b .tick text.t { font-weight: 600; fill: var(--ink); font-size: 16px; }
+.b .now text { font-family: var(--sans); font-size: 13px; fill: var(--ink-2); letter-spacing: .02em; }
+
+/* ───────────── C · ჩუქურთმა ───────────── */
+.c { background: radial-gradient(80% 90% at 78% 50%, #FFFFFF 0%, var(--paper) 45%, #E9F4F1 100%); }
+.c .body { flex: 1; display: grid; grid-template-columns: 1.05fr 1fr; align-items: center; gap: 40px; width: min(1240px, calc(100% - 2 * var(--gutter))); margin: 0 auto; padding: 30px 0 50px; }
+.c .copy { display: grid; gap: 26px; }
+.c h1 { font-family: var(--serif); font-weight: 300; font-size: clamp(42px, 5.6vw, 88px); line-height: 1.06; letter-spacing: -.01em; }
+.c h1 span { display: block; }
+.c .rosette { position: relative; aspect-ratio: 1; width: 100%; max-width: 600px; justify-self: center; }
+.c .rosette svg { width: 100%; height: 100%; overflow: visible; }
+.c .spin { transform-origin: 300px 300px; animation: spin 140s linear infinite; }
+.c .ring { fill: none; stroke: var(--ink); stroke-opacity: .10; }
+.c .petal { fill: none; stroke: var(--teal); stroke-width: .9; }
+.c .orbit text { font-family: "Exo2", sans-serif; font-weight: 800; font-size: 11.5px; letter-spacing: .04em; }
+@keyframes spin { to { transform: rotate(360deg); } }
+@media (max-width: 900px) {
+  .c .body { grid-template-columns: 1fr; padding-top: 24px; }
+  .c .rosette { order: -1; max-width: 340px; }
+}
+@media (prefers-reduced-motion: reduce) { * { animation: none !important; } .a .pulse path { stroke-dashoffset: 0; } .a .beat { opacity: 1; } }
+</style>
+</head>
+<body>
+
+<template id="nav">
+  <header class="nav">
+    <span class="brand"><i><svg width="20" height="20" viewBox="66 30 73 73"><use href="#markPath" fill="#fff"/></svg></i>მედიქარდი</span>
+    <nav class="links"><span>ჩვენ შესახებ</span><span>MEDIRUN</span><span>MEDICYCLE</span><span>კალკულატორები</span><span>კითხვები</span><span>კონტაქტი</span></nav>
+    <span class="signin">შესვლა</span>
+  </header>
+</template>
+
+<svg width="0" height="0" style="position:absolute">
+  <defs>
+    <path id="markPath" fill-rule="evenodd" d="M102.75 30.75C111.787 30.75 119.114 38.0762 119.114 47.1136V50.3864H122.386C131.424 50.3864 138.75 57.7126 138.75 66.75C138.75 75.7874 131.424 83.1136 122.386 83.1136H119.114V86.3864C119.114 95.4238 111.787 102.75 102.75 102.75C93.7126 102.75 86.3864 95.4238 86.3864 86.3864V83.1136H83.1136C74.0762 83.1136 66.75 75.7874 66.75 66.75C66.75 57.7126 74.0762 50.3864 83.1136 50.3864H86.3864V47.1136C86.3864 38.0762 93.7126 30.75 102.75 30.75ZM118.931 56.9318C117.422 70.5842 106.584 81.4221 92.9318 82.9315V86.3864C92.9318 91.8088 97.3276 96.2045 102.75 96.2045C108.172 96.2045 112.568 91.8088 112.568 86.3864V79.8409C112.568 78.0334 114.033 76.5682 115.841 76.5682H122.386C127.809 76.5682 132.205 72.1724 132.205 66.75C132.205 61.3276 127.809 56.9318 122.386 56.9318H118.931ZM102.75 37.2955C97.3276 37.2955 92.9318 41.6912 92.9318 47.1136V53.6591C92.9318 55.4666 91.4666 56.9318 89.6591 56.9318H83.1136C77.6912 56.9318 73.2955 61.3276 73.2955 66.75C73.2955 72.1724 77.6912 76.5682 83.1136 76.5682H86.5685C88.0779 62.9158 98.9157 52.0762 112.568 50.5669V47.1136C112.568 41.6912 108.172 37.2955 102.75 37.2955ZM112.295 57.2035C102.482 58.7282 94.7282 66.482 93.2035 76.2949C103.018 74.7706 110.771 67.0175 112.295 57.2035Z"/>
+  </defs>
+</svg>
+
+<!-- A · პულსი -->
+<section class="hero a" data-v="a" hidden>
+  <div class="navslot"></div>
+  <div class="body">
+    <div class="wrap">
+      <a class="promo" href="#"><i></i>ახალი · გაანათე თბილისი</a>
+      <h1><span>ჯანმრთელობა</span><span>დღის ყოველ საათში</span></h1>
+      <div class="pulse-row">
+        <svg class="pulse" viewBox="0 0 1440 120" preserveAspectRatio="none" aria-hidden="true">
+          <defs><linearGradient id="pulseFade" x1="0" x2="1440" y1="0" y2="0" gradientUnits="userSpaceOnUse">
+            <stop offset="0" stop-color="#0D9488" stop-opacity="0"/><stop offset=".3" stop-color="#0D9488" stop-opacity=".5"/>
+            <stop offset=".5" stop-color="#0D9488"/><stop offset=".7" stop-color="#0D9488" stop-opacity=".5"/><stop offset="1" stop-color="#0D9488" stop-opacity="0"/></linearGradient></defs>
+          <path class="glow" d="M0 70 H640 C652 70 656 60 664 60 C672 60 676 70 686 70 H700 L712 8 L728 112 L740 52 L748 70 H770 C784 70 788 56 800 56 C812 56 816 70 828 70 H1440" />
+          <path d="M0 70 H640 C652 70 656 60 664 60 C672 60 676 70 686 70 H700 L712 8 L728 112 L740 52 L748 70 H770 C784 70 788 56 800 56 C812 56 816 70 828 70 H1440" />
+        </svg>
+      </div>
+      <p class="lead">ქართული ჯანმრთელობის აპი. Medi, მედიკამენტები, კვება, ანალიზები, ციკლი და მოძრაობა — ერთად და სრულიად უფასოდ.</p>
+      <div class="actions"><a class="badge" href="#"><img src="/server/public/icons/app-store-badge.svg" alt="App Store" /></a><a class="quiet" href="#">გაიცანი Medi</a></div>
+    </div>
+  </div>
+  <div class="modules" aria-label="მოდულები"></div>
+</section>
+
+<!-- B · დღის რკალი -->
+<section class="hero b" data-v="b" hidden>
+  <div class="navslot"></div>
+  <div class="body">
+    <div class="sky" aria-hidden="true"><svg id="arcSvg" viewBox="0 0 1500 560"></svg></div>
+    <div class="copy">
+      <a class="promo" href="#"><i></i>ახალი · გაანათე თბილისი</a>
+      <h1><span>ჯანმრთელობა</span><span>დღის ყოველ საათში.</span></h1>
+      <p class="lead">ქართული ჯანმრთელობის აპი. Medi, მედიკამენტები, კვება, ანალიზები, ციკლი და მოძრაობა — ერთად და სრულიად უფასოდ.</p>
+      <div class="actions"><a class="badge" href="#"><img src="/server/public/icons/app-store-badge.svg" alt="App Store" /></a><a class="quiet" href="#">გაიცანი Medi</a></div>
+    </div>
+  </div>
+</section>
+
+<!-- C · ჩუქურთმა -->
+<section class="hero c" data-v="c" hidden>
+  <div class="navslot"></div>
+  <div class="body">
+    <div class="copy">
+      <a class="promo" href="#" style="justify-self:start"><i></i>ახალი · გაანათე თბილისი</a>
+      <h1><span>ჯანმრთელობა</span><span>დღის ყოველ</span><span>საათში.</span></h1>
+      <p class="lead">ქართული ჯანმრთელობის აპი. Medi, მედიკამენტები, კვება, ანალიზები, ციკლი და მოძრაობა — ერთად და სრულიად უფასოდ.</p>
+      <div class="actions"><a class="badge" href="#"><img src="/server/public/icons/app-store-badge.svg" alt="App Store" /></a><a class="quiet" href="#">გაიცანი Medi</a></div>
+    </div>
+    <div class="rosette" aria-hidden="true"><svg id="rosSvg" viewBox="0 0 600 600"></svg></div>
+  </div>
+</section>
+
+<script>
+const MODULES = [
+  ['RUN', '#0D9488'], ['CYCLE', '#C92A55'], ['FOOD', '#047857'], ['PILL', '#1D4ED8'],
+  ['QUEST', '#6D28D9'], ['SCAN', '#0891B2'], ['LAB', '#4F46E5'], ['VET', '#0369A1'], ['COACH', '#475569'],
+];
+const q = new URLSearchParams(location.search);
+const v = q.get('v') || 'a';
+document.querySelector(`[data-v="${v}"]`).hidden = false;
+document.querySelectorAll('.navslot').forEach((s) => s.replaceWith(document.getElementById('nav').content.cloneNode(true)));
+const NS = 'http://www.w3.org/2000/svg';
+const el = (n, a = {}, p) => { const e = document.createElementNS(NS, n); for (const k in a) e.setAttribute(k, a[k]); if (p) p.appendChild(e); return e; };
+
+/* A: wordmarks row */
+document.querySelector('.a .modules').innerHTML = MODULES.slice(0, 7).map(([m, c]) => `<span class="wm">MEDI<b style="color:${c}">${m}</b></span>`).join('');
+/* A: beat dot sits on the pulse peak */
+(function () {
+  const svg = document.querySelector('.a .pulse');
+  const dot = document.createElement('i'); dot.className = 'beat'; svg.parentElement.appendChild(dot);
+  const place = () => { const r = svg.getBoundingClientRect(), b = svg.parentElement.getBoundingClientRect();
+    dot.style.left = (r.left - b.left + r.width * 712 / 1440 - 4.5) + 'px'; dot.style.top = (r.top - b.top + r.height * 8 / 120 - 4.5) + 'px'; };
+  place(); addEventListener('resize', place);
+})();
+
+/* B: the day as a flat arc on the horizon, the sun at the real Tbilisi time (?t=HH:MM to pin) */
+(function () {
+  const svg = document.getElementById('arcSvg'); if (!svg) return;
+  const W = 1440, H = 330, cx = 720, cy = 318, RX = 600, RY = 210;
+  svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+  const defs = el('defs', {}, svg);
+  const lg = el('linearGradient', { id: 'arcLit', x1: '0', x2: '1' }, defs);
+  el('stop', { offset: '0', 'stop-color': '#14B8A6', 'stop-opacity': '0' }, lg);
+  el('stop', { offset: '1', 'stop-color': '#0D9488' }, lg);
+  const rg = el('radialGradient', { id: 'sun' }, defs);
+  el('stop', { offset: '0', 'stop-color': '#FFE3C7' }, rg);
+  el('stop', { offset: '.3', 'stop-color': '#FFC9A3', 'stop-opacity': '.6' }, rg);
+  el('stop', { offset: '1', 'stop-color': '#FFC9A3', 'stop-opacity': '0' }, rg);
+  const hz = el('linearGradient', { id: 'hz', x1: '0', x2: '1' }, defs);
+  [[0, 0], [.2, .16], [.8, .16], [1, 0]].forEach(([o, a]) => el('stop', { offset: o, 'stop-color': '#0B2B2E', 'stop-opacity': a }, hz));
+  const toAng = (h) => Math.PI - ((h - 6) / 18) * Math.PI;
+  const pt = (h, k = 1) => [cx + RX * k * Math.cos(toAng(h)), cy - RY * k * Math.sin(toAng(h))];
+  el('rect', { x: 0, y: cy, width: W, height: 1, fill: 'url(#hz)' }, svg);
+  el('path', { class: 'arc', d: `M${cx - RX} ${cy} A${RX} ${RY} 0 0 1 ${cx + RX} ${cy}` }, svg);
+  const t = (q.get('t') || new Date().toLocaleTimeString('en-GB', { timeZone: 'Asia/Tbilisi', hour: '2-digit', minute: '2-digit' })).split(':');
+  const now = Math.min(23.9, Math.max(6, +t[0] + t[1] / 60));
+  const [nx, ny] = pt(now);
+  el('path', { class: 'arc-lit', d: `M${cx - RX} ${cy} A${RX} ${RY} 0 0 1 ${nx} ${ny}` }, svg);
+  el('circle', { cx: nx, cy: ny, r: 150, fill: 'url(#sun)' }, svg);
+  const MOM = [['08:40', 'მთავარი'], ['11:00', 'წამალი'], ['13:40', 'კვება'], ['18:10', 'მისიები'], ['21:00', 'ანალიზები'], ['22:30', 'ციკლი']];
+  for (const [time, name] of MOM) {
+    const [hh, mm] = time.split(':'); const h = +hh + mm / 60; const [x, y] = pt(h);
+    const g = el('g', { class: 'tick' + (h <= now ? ' on' : '') }, svg);
+    el('circle', { cx: x, cy: y, r: 4.5 }, g);
+    const [lx, ly] = pt(h, 1.09); const anchor = h < 13 ? 'end' : h > 17 ? 'start' : 'middle';
+    const tt = el('text', { x: lx, y: ly - 8, 'text-anchor': anchor, class: 't' }, g); tt.textContent = time;
+    const tn = el('text', { x: lx, y: ly + 11, 'text-anchor': anchor }, g); tn.textContent = name;
+  }
+  el('circle', { cx: nx, cy: ny, r: 12, fill: '#fff', stroke: '#F4A27A', 'stroke-width': 1.5 }, svg);
+  el('circle', { cx: nx, cy: ny, r: 4, fill: '#F43F5E' }, svg);
+  const lab = el('g', { class: 'now' }, svg); const nt = el('text', { x: nx, y: ny + 36, 'text-anchor': 'middle' }, lab); nt.textContent = `ახლა თბილისში ${t.join(':')}`;
+})();
+
+/* C: rosette — the logo mark repeated eight times, module colours on the outer orbit */
+(function () {
+  const svg = document.getElementById('rosSvg'); if (!svg) return;
+  const defs = el('defs', {}, svg);
+  const rg = el('radialGradient', { id: 'core' }, defs);
+  el('stop', { offset: '0', 'stop-color': '#5EEAD4', 'stop-opacity': '.55' }, rg);
+  el('stop', { offset: '1', 'stop-color': '#5EEAD4', 'stop-opacity': '0' }, rg);
+  el('circle', { cx: 300, cy: 300, r: 210, fill: 'url(#core)' }, svg);
+  [270].forEach((r) => el('circle', { class: 'ring', cx: 300, cy: 300, r }, svg));
+  const spin = el('g', { class: 'spin' }, svg);
+  [[3.9, 0, .16], [3.05, 22.5, .30], [2.2, 45, .55]].forEach(([k, rot, op]) => {
+    const g = el('g', { transform: `translate(300 300) rotate(${rot}) scale(${k}) translate(-102.75 -66.75)` }, spin);
+    el('use', { href: '#markPath', class: 'petal', 'stroke-opacity': op, 'vector-effect': 'non-scaling-stroke' }, g);
+  });
+  const center = el('g', { transform: 'translate(300 300) scale(1.25) translate(-102.75 -66.75)' }, svg);
+  el('use', { href: '#markPath', fill: '#0D9488' }, center);
+  const orbit = el('g', { class: 'orbit' }, svg);
+  MODULES.forEach(([m, c], i) => {
+    const a = -Math.PI / 2 + (i / MODULES.length) * Math.PI * 2;
+    const x = 300 + 270 * Math.cos(a), y = 300 + 270 * Math.sin(a);
+    el('circle', { cx: x, cy: y, r: 5, fill: c }, orbit);
+    el('circle', { cx: x, cy: y, r: 12, fill: c, 'fill-opacity': .12 }, orbit);
+    const ox = 300 + 300 * Math.cos(a), oy = 300 + 300 * Math.sin(a) + 4;
+    const tx = el('text', { x: ox, y: oy, 'text-anchor': Math.abs(Math.cos(a)) < .3 ? 'middle' : Math.cos(a) > 0 ? 'start' : 'end', fill: c }, orbit);
+    tx.textContent = 'MEDI' + m;
+  });
+})();
+</script>
+</body>
+</html>
