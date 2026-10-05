@@ -23,7 +23,6 @@
     about: svg('<path d="M19.5 12.6 12 20l-7.5-7.4A4.8 4.8 0 0 1 12 6.3a4.8 4.8 0 0 1 7.5 6.3Z"/><path d="M3.5 12h4l1.5-3 3 6 1.5-3h7"/>'),
     calc: svg('<rect x="4" y="2.5" width="16" height="19" rx="3"/><path d="M8 7h8"/><path d="M8 12h.01M12 12h.01M16 12h.01M8 16h.01M12 16h.01M16 16h.01"/>'),
     run: svg('<path d="M5 17.5a2.5 2.5 0 0 0 5 0V15H5Z"/><path d="M5 15V9.5C5 7 6.2 5 7.5 5S10 7 10 9.5V15"/><path d="M14 13.5a2.5 2.5 0 0 0 5 0V11h-5Z"/><path d="M14 11V5.5C14 3 15.2 1 16.5 1S19 3 19 5.5V11"/>'),
-    faq: svg('<circle cx="12" cy="12" r="9"/><path d="M9.6 9.2a2.5 2.5 0 0 1 4.8.9c0 1.7-2.4 2.2-2.4 3.6"/><path d="M12 17h.01"/>'),
     mail: svg('<rect x="3" y="5" width="18" height="14" rx="3"/><path d="m4 7 8 6 8-6"/>'),
     download: svg('<path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M5 21h14"/>'),
     cycle: svg('<circle cx="12" cy="12" r="8"/><path d="M12 4a8 8 0 0 1 8 8"/><circle cx="12" cy="12" r="2"/>'),
@@ -57,7 +56,6 @@
     { key: 'medirun', href: '/medirun', label: 'MEDIRUN', hint: T('გაანათე თბილისი · 5 ოქტ – 31 დეკ', 'Light up Tbilisi · 5 Oct – 31 Dec'), icon: 'run', live: true },
     { key: 'cycle', href: '/cycle', label: 'MEDICYCLE', hint: T('ციკლის კალენდარი · უფასოდ', 'Period calendar · free'), icon: 'cycle' },
     { key: 'calculators', href: '/calculators', label: T('კალკულატორები', 'Calculators'), hint: T('ციკლი და ორსულობა — 10 უფასო', 'Cycle and pregnancy — 10 free tools'), icon: 'calc', mega: true },
-    { key: 'faq', href: onHome ? '#faq' : '/#faq', label: T('კითხვები', 'FAQ'), hint: T('ხშირი კითხვები', 'Frequently asked questions'), icon: 'faq' },
     { key: 'contact', href: '/contact', label: T('კონტაქტი', 'Contact'), hint: T('მოგვწერე', 'Write to us'), icon: 'mail' }
   ];
 

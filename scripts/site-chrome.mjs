@@ -6,7 +6,7 @@ export const SITE_STYLES = `  <link rel="stylesheet" href="/site-nav.css?v=11" /
   <link rel="stylesheet" href="/site-refresh.css?v=2" />`;
 
 export const SITE_HEADER = `  <header class="tb" id="topbar"></header>
-  <script src="/site-nav.js?v=11"></script>`;
+  <script src="/site-nav.js?v=13"></script>`;
 
 /** Attribute value escaping for data-en* (keeps our own markup in data-en-html). */
 export function enAttr(s) {
