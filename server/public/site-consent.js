@@ -1,19 +1,21 @@
-/* MEDICARD site cookie consent + Meta Pixel (owner 2026-10-05). Loaded by site-i18n.js on public pages only.
+/* MEDICARD site cookie consent + Meta Pixel + Google Analytics 4 (owner 2026-10-05). Loaded by site-i18n.js on public pages only.
 
-   Nothing from Meta loads until the visitor taps „ვეთანხმები“ / Accept. „უარი“ is one tap and as prominent.
+   Nothing from Meta or Google loads until the visitor taps „ვეთანხმები“ / Accept. „უარი“ is one tap and as prominent.
    The choice lives in localStorage "medicard.consent" ({ v, marketing, at }) and is asked again after 12 months
    or when CONSENT_VERSION changes. Global Privacy Control = declined, no banner.
    Never on /app, /admin, the health calculators, invite / personal QR / coach / unsubscribe / delete-account / reset
    pages (EXCLUDED), never
    advanced matching, autoConfig off (no automatic button/form scraping), events carry no health data:
    PageView everywhere, ViewContent on /medirun, AppStoreClick { store } on App Store / Google Play links.
+   GA4 (one consent with the Pixel): page_view + app_store_click { store }; Google Signals and ad personalisation off.
    Reopen the choice: any [data-cookie-settings] element or MedicardConsent.open(). */
 (function () {
   'use strict';
 
   var PIXEL_ID = '1059707503561973'; // Meta dataset „MEDICARD Web“, business portfolio Medicard • მედიქარდი
+  var GA_ID = 'G-877340MLKJ'; // GA4 property „MEDICARD — medicard.ge“ (account Q Project)
   var KEY = 'medicard.consent';
-  var CONSENT_VERSION = 1;
+  var CONSENT_VERSION = 2; // 2: Google Analytics joined the Pixel
   var MAX_AGE = 365 * 24 * 3600 * 1000;
   // Calculators (cycle, ovulation, pregnancy …): the page address alone would tell Meta about a health interest.
   var EXCLUDED = /^\/(app|admin|api|u|i|unsubscribe|delete-account|reset-password|reset|press|open-app|coach|calculators|medipulsi)(\/|$|\.html)/;
@@ -33,8 +35,9 @@
   function write(marketing) {
     try { localStorage.setItem(KEY, JSON.stringify({ v: CONSENT_VERSION, marketing: !!marketing, at: new Date().toISOString() })); } catch (e) { /* private mode: this page only */ }
   }
-  function dropMetaCookies() {
-    ['_fbp', '_fbc'].forEach(function (name) {
+  function dropTrackingCookies() {
+    var names = ['_fbp', '_fbc', '_ga', '_ga_' + GA_ID.replace(/^G-/, '')];
+    names.forEach(function (name) {
       document.cookie = name + '=; Max-Age=0; path=/';
       document.cookie = name + '=; Max-Age=0; path=/; domain=' + location.hostname.replace(/^www\./, '.');
     });
@@ -63,6 +66,29 @@
       if (store) window.fbq('trackCustom', 'AppStoreClick', { store: store });
     }, true);
   }
+
+  /* ───────── Google Analytics 4 ───────── */
+  var gaOn = false;
+  function startAnalytics() {
+    if (gaOn) return;
+    gaOn = true;
+    window.dataLayer = window.dataLayer || [];
+    window.gtag = function () { window.dataLayer.push(arguments); };
+    window.gtag('js', new Date());
+    window.gtag('config', GA_ID, { allow_google_signals: false, allow_ad_personalization_signals: false });
+    var s = document.createElement('script');
+    s.async = true;
+    s.src = 'https://www.googletagmanager.com/gtag/js?id=' + GA_ID;
+    document.head.appendChild(s);
+    document.addEventListener('click', function (e) {
+      var a = e.target && e.target.closest ? e.target.closest('a[href]') : null;
+      if (!a) return;
+      var href = a.getAttribute('href') || '';
+      var store = /apps\.apple\.com/.test(href) ? 'app_store' : /play\.google\.com/.test(href) ? 'google_play' : '';
+      if (store) window.gtag('event', 'app_store_click', { store: store });
+    }, true);
+  }
+  function startTracking() { startPixel(); startAnalytics(); }
 
   /* ───────── banner ───────── */
   var CSS = '' +
@@ -93,8 +119,8 @@
     var before = read();
     write(marketing);
     close();
-    if (marketing) startPixel();
-    else if (pixelOn || (before && before.marketing)) { dropMetaCookies(); location.reload(); }
+    if (marketing) startTracking();
+    else if (pixelOn || gaOn || (before && before.marketing)) { dropTrackingCookies(); location.reload(); }
   }
   function open() {
     if (box) return;
@@ -108,9 +134,9 @@
     box.setAttribute('aria-label', t('ქუქი-ფაილები', 'Cookies'));
     var privacy = isEn() ? '/privacy-en#s15' : '/privacy#s15';
     box.innerHTML =
-      '<h2>' + t('ქუქი-ფაილები რეკლამისთვის', 'Cookies for advertising') + '</h2>' +
-      '<p>' + t('თანხმობის შემთხვევაში ამ საიტზე ჩაირთვება Meta Pixel, რომ ვნახოთ, რომელი რეკლამა მუშაობს. ის მხოლოდ საიტის გვერდებს ხედავს — შენს ჯანმრთელობის მონაცემებს და აპს არასდროს. ',
-        'If you agree, this site turns on the Meta Pixel so we can see which ads work. It only sees the site’s pages — never your health data or the app. ') +
+      '<h2>' + t('ქუქი-ფაილები სტატისტიკისა და რეკლამისთვის', 'Cookies for statistics and advertising') + '</h2>' +
+      '<p>' + t('თანხმობის შემთხვევაში ამ საიტზე ჩაირთვება Google Analytics და Meta Pixel, რომ ვნახოთ, როგორ იყენებენ საიტს და რომელი რეკლამა მუშაობს. ისინი მხოლოდ საიტის გვერდებს ხედავენ — შენს ჯანმრთელობის მონაცემებს და აპს არასდროს. ',
+        'If you agree, this site turns on Google Analytics and the Meta Pixel so we can see how the site is used and which ads work. They only see the site’s pages — never your health data or the app. ') +
       '<a href="' + privacy + '">' + t('დეტალურად', 'Details') + '</a></p>' +
       '<div class="mc-consent-row"><button type="button" data-no>' + t('უარი', 'Decline') + '</button><button type="button" data-yes>' + t('ვეთანხმები', 'Accept') + '</button></div>';
     box.querySelector('[data-no]').addEventListener('click', function () { choose(false); });
@@ -132,7 +158,7 @@
     if (navigator.globalPrivacyControl === true) return;
     var v = read();
     if (!v) open();
-    else if (v.marketing) startPixel();
+    else if (v.marketing) startTracking();
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
   else boot();

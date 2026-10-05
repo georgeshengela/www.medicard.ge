@@ -255,7 +255,7 @@ function chrome(page, body) {
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <script src="/site-i18n.js?v=2"></script>
+  <script src="/site-i18n.js?v=3"></script>
   <title data-en="${enAttr(page.titleEn)} — MEDICARD">${escapeHtml(page.title)} — მედიქარდი</title>
   <meta name="description" content="${escapeHtml(page.description)}" data-en-content="${enAttr(page.descriptionEn)}" />
   <link rel="canonical" href="https://medicard.ge${page.path}" />

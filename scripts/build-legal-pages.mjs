@@ -392,7 +392,7 @@ function pageHtml(page, meta, blocks, kinds) {
   <link rel="alternate" hreflang="en" href="https://medicard.ge${enPath}" />
   <link rel="alternate" hreflang="x-default" href="https://medicard.ge${kaPath}" />
   <meta name="medicard:${en ? "ka" : "en"}" content="${page.altPath}" />
-${enChoice}  <script src="/site-i18n.js?v=2"></script>
+${enChoice}  <script src="/site-i18n.js?v=3"></script>
   <meta name="theme-color" content="#E8F5F2" />
   <meta property="og:type" content="website" />
   <meta property="og:locale" content="${ui.locale}" />
