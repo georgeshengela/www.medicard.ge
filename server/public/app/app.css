@@ -570,3 +570,41 @@ p { margin: 0; }
   *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
   .chart .draw { stroke-dashoffset: 0; }
 }
+
+/* ── MEDI module wordmarks (mobile ModuleWordmark): upright „MEDI“ + the module part skewed −16° in its colour ── */
+@font-face { font-family: 'Exo 2 Wordmark'; src: url('/fonts/exo2/Exo2-ExtraBold.ttf') format('truetype'); font-weight: 800; font-display: swap; }
+.wm { display: inline-flex; align-items: baseline; font-family: 'Exo 2 Wordmark', 'FiraGO', sans-serif; font-weight: 800; letter-spacing: .01em; line-height: 1; white-space: nowrap; font-size: .92em; }
+.wm-medi { color: var(--text); }
+.wm-suffix { display: inline-block; transform: skewX(-16deg); color: var(--wm-ink, var(--brand)); margin-left: .02em; }
+.wm-run { --wm-ink: #0d9488; } .wm-cycle { --wm-ink: #c92a55; } .wm-food { --wm-ink: #047857; } .wm-pill { --wm-ink: #1d4ed8; }
+.wm-quest { --wm-ink: #6d28d9; } .wm-vet { --wm-ink: #0369a1; } .wm-coach { --wm-ink: #475569; } .wm-scan { --wm-ink: #22d3ee; } .wm-lab { --wm-ink: #4f46e5; }
+:root[data-theme=dark] .wm-run { --wm-ink: #2dd4bf; } :root[data-theme=dark] .wm-cycle { --wm-ink: #ff8fa8; } :root[data-theme=dark] .wm-food { --wm-ink: #34d399; }
+:root[data-theme=dark] .wm-pill { --wm-ink: #93c5fd; } :root[data-theme=dark] .wm-quest { --wm-ink: #c4b5fd; } :root[data-theme=dark] .wm-vet { --wm-ink: #7dd3fc; }
+:root[data-theme=dark] .wm-coach { --wm-ink: #cbd5e1; } :root[data-theme=dark] .wm-scan { --wm-ink: #67e8f9; } :root[data-theme=dark] .wm-lab { --wm-ink: #a5b4fc; }
+
+/* ── Home (layouts, „არ გამოგრჩეს“, MEDISCAN) ── */
+.home-attn { display: flex; align-items: center; gap: 14px; padding: 14px 16px; }
+.home-attn .row-main { flex: 1; min-width: 0; }
+.home-attn > .ic:last-child { color: var(--text3); }
+.home-scan {
+  position: relative; display: flex; align-items: center; justify-content: space-between; gap: 18px; padding: 22px 24px; overflow: hidden; isolation: isolate;
+  background: linear-gradient(135deg, #083344 0%, #0891b2 62%, #22d3ee 100%); color: #e6fdff;
+}
+.home-scan::before { content: ""; position: absolute; right: -60px; top: -80px; width: 260px; height: 260px; border-radius: 50%; background: rgba(103, 232, 249, .35); filter: blur(30px); z-index: -1; }
+.home-scan-text { display: flex; flex-direction: column; gap: 8px; max-width: 520px; }
+.home-scan-title .wm { font-size: 24px; }
+.home-scan-title .wm-medi { color: #fff; }
+.home-scan-title .wm-suffix { color: #cffafe; }
+.home-scan p { font-size: 14px; line-height: 1.55; color: rgba(230, 253, 255, .86); }
+.home-scan .cta { display: inline-flex; align-items: center; gap: 6px; font-weight: 700; font-size: 14px; color: #fff; }
+.home-scan-lens { position: relative; flex: none; width: 76px; height: 76px; border-radius: 50%; display: grid; place-items: center; color: #fff; background: rgba(255, 255, 255, .14); box-shadow: inset 0 0 0 1.5px rgba(207, 250, 254, .55); }
+.home-scan-lens i { position: absolute; inset: -6px; border-radius: 50%; border: 2px solid transparent; border-top-color: #cffafe; animation: scanOrbit 3.2s linear infinite; }
+@keyframes scanOrbit { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .home-scan-lens i { animation: none; } }
+@media (max-width: 520px) { .home-scan-lens { display: none; } }
+.home-layout-opt { width: 100%; display: flex; align-items: center; gap: 12px; padding: 10px 12px; border: 1.5px solid transparent; border-radius: 16px; background: var(--bg); font: inherit; color: var(--text); text-align: left; cursor: pointer; }
+.home-layout-opt.on { border-color: var(--brand); }
+.home-layout-opt:disabled { opacity: .5; cursor: default; }
+.home-layout-opt .row-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.home-layout-opt .row-main span { font-size: 12.5px; color: var(--text3); }
+.home-layout-opt > .ic { color: var(--brand); }

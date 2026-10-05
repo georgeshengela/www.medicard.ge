@@ -11,6 +11,7 @@ import { get, put, post, patch, del, ApiError } from '../api.js';
 import { ring, barChart, heatmap } from '../charts.js';
 import { withAiConsent, aiDeclinedSlot } from '../aiConsent.js';
 import { t, isEn } from '../i18n.js';
+import { wordmark } from '../brand.js';
 
 const CSS = '/app/css/medications.css';
 function ensureCss() {
@@ -608,7 +609,7 @@ async function listPage(root, ctx) {
   const addBtn = button(t('დამატება', 'Add'), { icon: 'plus' });
   const interBtn = button(t('ურთიერთქმედება', 'Interactions'), { icon: 'shield', variant: 'ghost' });
   const body = h('div');
-  mount(root, pageHead(t('მედიკამენტები', 'Medications'), t('დღის გრაფიკი, მიღების სტატისტიკა და ურთიერთქმედება', 'Daily schedule, dose stats and interactions'), interBtn, addBtn), body);
+  mount(root, pageHead(wordmark('pill'), t('მედიკამენტები · დღის გრაფიკი, მიღების სტატისტიკა და ურთიერთქმედება', 'Medications · daily schedule, dose stats and interactions'), interBtn, addBtn), body);
   let bundle = null;
   const onAdd = () => openMedForm(null, () => reload());
   addBtn.addEventListener('click', onAdd);

@@ -268,3 +268,34 @@
 @media (max-width: 380px) {
   .medi-modes button .ic { display: none; }
 }
+
+/* ── One chat (2026-10-03): the „კონსილიუმი“ switch on the composer; while on, the composer, orb and answers turn indigo ── */
+.medi-head { justify-content: space-between; }
+.medi-deep {
+  flex: none; align-self: center; display: inline-flex; align-items: center; gap: 6px; height: 36px; padding: 0 12px; border: 0; border-radius: 12px;
+  background: transparent; color: var(--text2); font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; transition: background .15s, color .15s;
+}
+.medi-deep:hover { background: color-mix(in srgb, var(--ink-violet) 10%, transparent); color: var(--ink-violet); }
+.medi-deep.on { background: color-mix(in srgb, var(--ink-violet) 16%, transparent); color: var(--ink-violet); }
+.medi.is-deep .medi-composer:focus-within { box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--ink-violet) 60%, transparent), 0 0 0 4px color-mix(in srgb, var(--ink-violet) 14%, transparent); }
+.medi.is-deep .medi-send { background: var(--ink-violet); }
+.medi.is-deep .medi-send:hover:not(:disabled) { background: color-mix(in srgb, var(--ink-violet) 85%, #000); }
+.medi-kicker { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; font-weight: 700; color: var(--ink-violet); }
+.medi-msg.answer.deep .medi-answer { padding-left: 12px; border-left: 2px solid color-mix(in srgb, var(--ink-violet) 40%, transparent); }
+
+/* Cycle context chip (sent once with the first clinical question; removable). */
+.medi-ctx-slot:empty { display: none; }
+.medi-ctx { display: flex; flex-direction: column; gap: 6px; padding: 10px 12px; border-radius: 16px; background: color-mix(in srgb, #c92a55 7%, var(--bg)); }
+.medi-ctx-row { display: flex; align-items: center; gap: 8px; }
+.medi-ctx-main {
+  flex: 1; min-width: 0; display: inline-flex; align-items: center; gap: 7px; border: 0; background: none; padding: 0; cursor: pointer;
+  font: inherit; font-size: 13px; font-weight: 600; color: var(--text); text-align: left;
+}
+.medi-ctx-main span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.medi-ctx-main .ic:first-child { color: #c92a55; }
+:root[data-theme=dark] .medi-ctx-main .ic:first-child { color: #ff8fa8; }
+.medi-ctx-x { flex: none; width: 28px; height: 28px; border: 0; border-radius: 9px; background: transparent; color: var(--text3); cursor: pointer; display: grid; place-items: center; }
+.medi-ctx-x:hover { background: color-mix(in srgb, currentColor 12%, transparent); color: var(--text); }
+.medi-ctx-lines { margin: 2px 0 0; padding-left: 18px; font-size: 12.5px; color: var(--text2); line-height: 1.55; }
+.medi-ctx-note { font-size: 11.5px; color: var(--text3); }
+@media (max-width: 560px) { .medi-deep span { display: none; } .medi-deep { padding: 0 10px; } }

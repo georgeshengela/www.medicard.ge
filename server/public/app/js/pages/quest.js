@@ -9,6 +9,8 @@ import { get, post, put, ApiError, invalidate } from '../api.js';
 import { ring } from '../charts.js';
 import { refreshMe, featureOn } from '../session.js';
 import { t, isEn } from '../i18n.js';
+import { wordmark } from '../brand.js';
+import { PRIZE_EN } from '../questRewardCopy.js';
 
 const CSS = '/app/css/quest.css';
 function ensureCss() {
@@ -241,9 +243,18 @@ const REWARD_ERRORS = isEn ? {
   REWARD_USER_LIMIT: 'ლიმიტი ამოწურულია.', REWARD_PERIOD_LIMIT: 'პერიოდის ლიმიტი ამოწურულია.', REWARD_ALREADY_REDEEMED: 'უკვე გაცვლილია.',
   REWARD_CODE_UNAVAILABLE: 'კოდი მიუწვდომელია.', REWARD_ENTITLEMENT_UNAVAILABLE: 'უფლება მიუწვდომელია.', REWARD_REDEMPTION_CONFLICT: 'გაცვლა კონფლიქტშია. ხელახლა სცადე.',
 };
-const rewardTitle = (r) => REWARD_TITLES[r?.titleKey] || r?.partnerDisplay?.displayName || r?.titleKey || t('ჯილდო', 'Reward');
-const rewardDesc = (r) => REWARD_DESCRIPTIONS[r?.descriptionKey] || '';
-const rewardTerms = (r) => (r?.termsKey ? REWARD_TERMS[r.termsKey] || '' : '');
+// Store prizes arrive keyed by their Georgian copy (or already in English from localizeReward); the app's
+// dictionary translates them for English readers. A `reward.*` key without a translation never reaches the screen.
+const prizeText = (kind, key) => (typeof key === 'string' && key && !key.startsWith('reward.') ? (isEn ? PRIZE_EN[kind][key] || key : key) : '');
+const rewardTitle = (r) => REWARD_TITLES[r?.titleKey] || prizeText('title', r?.titleKey) || r?.partnerDisplay?.displayName || t('ჯილდო', 'Reward');
+const rewardDesc = (r) => REWARD_DESCRIPTIONS[r?.descriptionKey] || prizeText('description', r?.descriptionKey);
+const rewardTerms = (r) => (r?.termsKey ? REWARD_TERMS[r.termsKey] || prizeText('terms', r.termsKey) : '');
+const isPhysical = (r) => r?.type === 'PHYSICAL_PRIZE';
+/** Prize art (our own renders, `imageUrl` from the server) or the type's tile. */
+function rewardArt(r, ink, size) {
+  if (r?.imageUrl && /^(https:\/\/|\/)/.test(r.imageUrl)) return h('span', { class: 'q-reward-art', style: { width: `${size}px`, height: `${size}px` } }, h('img', { src: r.imageUrl, alt: '', loading: 'lazy' }));
+  return tile(r?.partnerDisplay ? 'gift' : isPhysical(r) ? 'gift' : 'sparkles', ink, size);
+}
 function rewardError(code) {
   if (!code) return t('მიუწვდომელი', 'Unavailable');
   return REWARD_ERRORS[code] || REWARD_ERRORS[`REWARD_${code}`] || t('მიუწვდომელი', 'Unavailable');
@@ -254,13 +265,13 @@ function newIdempotencyKey() {
 }
 const LEDGER = isEn ? {
   QUEST: 'Mission', ACHIEVEMENT: 'Achievement', REWARD_REDEMPTION: 'Medi reward', SYSTEM: 'System adjustment',
-  ADMIN_ADJUSTMENT: 'Admin adjustment', HUNT: 'Medi Hunt', REFERRAL: 'Invite bonus',
+  ADMIN_ADJUSTMENT: 'Admin adjustment', HUNT: 'Medi Hunt', REFERRAL: 'Invite bonus', MEDIRUN: 'MEDIRUN gift', REWARD_REFUND: 'Store refund',
 } : {
   QUEST: 'მისია', ACHIEVEMENT: 'მიღწევა', REWARD_REDEMPTION: 'Medi ჯილდო', SYSTEM: 'სისტემური კორექტირება',
-  ADMIN_ADJUSTMENT: 'ადმინისტრაციული კორექტირება', HUNT: 'Medi Hunt', REFERRAL: 'მოწვევის ბონუსი',
+  ADMIN_ADJUSTMENT: 'ადმინისტრაციული კორექტირება', HUNT: 'Medi Hunt', REFERRAL: 'მოწვევის ბონუსი', MEDIRUN: 'MEDIRUN-ის საჩუქარი', REWARD_REFUND: 'მაღაზიის დაბრუნება',
 };
 const ledgerLabel = (type) => LEDGER[String(type || '')] || t('ბალანსის კორექტირება', 'Balance adjustment');
-const LEDGER_ICON = { QUEST: 'target', ACHIEVEMENT: 'award', REWARD_REDEMPTION: 'gift', REFERRAL: 'users', HUNT: 'mapPin' };
+const LEDGER_ICON = { QUEST: 'target', ACHIEVEMENT: 'award', REWARD_REDEMPTION: 'gift', REFERRAL: 'users', HUNT: 'mapPin', MEDIRUN: 'mapPin', REWARD_REFUND: 'undo' };
 
 /* Journey copy (lib/companion/copy.ts, cosmeticNames.ts, cosmeticVisuals.ts). */
 const CHAPTERS = isEn ? { 1: 'First path', 2: 'Quiet rhythm', 3: 'Farther on', 4: 'Deeper trail', 5: 'Long horizon' } : { 1: 'პირველი გზა', 2: 'მშვიდი რიტმი', 3: 'უფრო შორს', 4: 'ღრმა კვალი', 5: 'გრძელი ჰორიზონტი' };
@@ -452,7 +463,7 @@ export default async function questPage(root, ctx) {
   mount(root,
     h('header', { class: 'page-head' },
       h('div', { class: 'page-head-text' },
-        h('h1', null, 'MEDI ', h('span', { class: 'q-brand' }, 'QUEST')),
+        h('h1', null, wordmark('quest')),
         h('p', null, t('პატარა ნაბიჯები. შენი დიდი პროგრესი.', 'Small steps. Your big progress.'))),
       h('div', { class: 'page-head-actions' },
         button(t('როგორ მუშაობს?', 'How it works'), { variant: 'ghost', icon: 'info', onClick: () => guide() }))),
@@ -880,7 +891,7 @@ export default async function questPage(root, ctx) {
     const out = r.inventoryState === 'OUT_OF_STOCK';
     const short = Math.max(0, Math.floor(Number(r.coinCost) || 0) - Math.floor(Number(balance) || 0));
     return h('button', { type: 'button', class: `card hover q-reward ${featured ? 'featured' : ''}`, onClick: () => rewardDetail(r, balance, onRedeemed) },
-      h('div', { class: 'between' }, tile(r.partnerDisplay ? 'gift' : 'sparkles', featured ? 'amber' : 'teal', 42),
+      h('div', { class: 'between' }, rewardArt(r, featured ? 'amber' : 'teal', isPhysical(r) && r.imageUrl ? 72 : 42),
         out ? badge(t('მარაგი ამოწურულია', 'Out of stock'), 'neutral') : r.userEligibility?.canRedeem ? badge(t('ხელმისაწვდომი', 'Available'), 'ok') : short > 0 ? badge(t(`კიდევ ${fmtNum(short)}`, `${fmtNum(short)} more`), 'warn') : badge(t('მიუწვდომელი', 'Unavailable'), 'neutral')),
       h('div', { class: 'q-reward-title' }, rewardTitle(r)),
       r.partnerDisplay?.displayName ? h('div', { class: 'faint', style: { fontSize: '12.5px' } }, t(`პარტნიორი · ${r.partnerDisplay.displayName}`, `Partner · ${r.partnerDisplay.displayName}`)) : null,
@@ -898,6 +909,7 @@ export default async function questPage(root, ctx) {
       title: rewardTitle(r),
       size: 'md',
       body: h('div', { class: 'stack', style: { gap: '16px' } },
+        r.imageUrl ? h('div', { class: 'q-reward-hero' }, rewardArt(r, 'amber', 180)) : null,
         rewardDesc(r) ? h('div', null, h('div', { class: 'field-label' }, t('რას მიიღებ', 'What you get')), h('p', { class: 'muted', style: { marginTop: '6px' } }, rewardDesc(r))) : null,
         h('div', { class: 'grid grid-2', style: { gap: '10px' } },
           h('div', { class: 'q-mini' }, h('span', { class: 'faint' }, t('ღირებულება', 'Cost')), h('b', null, coin(r.coinCost))),
@@ -965,6 +977,8 @@ export default async function questPage(root, ctx) {
       body: h('div', { class: 'stack', style: { gap: '14px', textAlign: 'center', alignItems: 'center' } },
         h('span', { class: 'tile ink-amber', style: { width: '64px', height: '64px' } }, icon('gift', { size: 30 })),
         h('div', { class: 'q-reward-title' }, rewardTitle(red.reward || r)),
+        // A store prize is handed over in person: the owner calls the phone on the account (mobile rewards/[id]).
+        isPhysical(r) ? h('p', { class: 'muted', style: { fontSize: '14px' } }, t('თბილისში 14 დღეში გადმოგცემთ — დაგიკავშირდებით ანგარიშის ტელეფონზე. თუ გადაცემა ვერ მოხერხდა, Medi Coins სრულად დაგიბრუნდება.', 'We hand it over in Tbilisi within 14 days and call the phone on your account. If the hand-over fails, your Medi Coins are refunded in full.')) : null,
         res?.wallet ? h('div', { class: 'muted' }, t('ახალი ბალანსი: ', 'New balance: '), coin(res.wallet.currentBalance)) : null,
         code ? h('div', { class: 'q-codebox' }, codeEl,
           h('div', { class: 'hstack', style: { justifyContent: 'center' } },
@@ -980,14 +994,19 @@ export default async function questPage(root, ctx) {
     try {
       const mine = await get('/api/rewards/redemptions');
       if (!alive) return;
-      const groups = [[t('აქტიური', 'Active'), mine?.active || [], t('გაცემული', 'Issued'), 'ok'], [t('გამოყენებული', 'Used'), mine?.used || [], t('გამოყენებული', 'Used'), 'neutral'], [t('ვადაგასული', 'Expired'), mine?.expired || [], t('ვადაგასული', 'Expired'), 'neutral']];
+      // PENDING = a store prize waiting for its hand-over; in „used“ it was handed over (mobile rewards/mine statusOf).
+      const groups = [
+        [t('აქტიური', 'Active'), mine?.active || [], (it) => (it.status === 'PENDING' ? t('გადაცემას ელოდება', 'Waiting for hand-over') : t('აქტიური', 'Active')), 'ok'],
+        [t('გამოყენებული', 'Used'), mine?.used || [], (it) => (it.status === 'PENDING' ? t('გადმოგეცა', 'Handed over') : t('გამოყენებული', 'Used')), 'neutral'],
+        [t('ვადაგასული', 'Expired'), mine?.expired || [], () => t('ვადაგასული', 'Expired'), 'neutral'],
+      ];
       if (!groups.some(([, list]) => list.length)) { mount(slot, h('div', { class: 'card' }, empty(t('ჯერ არც ერთი გაცვლა არ გაქვს.', 'No redemptions yet.')))); return; }
       mount(slot, h('div', { class: 'card' }, groups.filter(([, list]) => list.length).map(([title, list, status, tone]) => h('div', { class: 'q-mine-group' },
         h('div', { class: 'q-cat' }, title),
-        h('div', { class: 'list' }, list.map((it) => h('div', { class: 'row' }, tile('gift', tone === 'ok' ? 'amber' : 'neutral', 36),
+        h('div', { class: 'list' }, list.map((it) => h('div', { class: 'row' }, it.reward?.imageUrl ? rewardArt(it.reward, 'amber', 36) : tile('gift', tone === 'ok' ? 'amber' : 'neutral', 36),
           h('div', { class: 'row-main' },
             h('div', { class: 'row-title' }, it.reward ? rewardTitle(it.reward) : t('ჯილდო', 'Reward')),
-            h('div', { class: 'row-sub' }, [status, fmtDate(it.redeemedAt, { year: true }), it.expiresAt ? t(`ვადა ${fmtDate(it.expiresAt, { year: true })}`, `Expires ${fmtDate(it.expiresAt, { year: true })}`) : ''].filter(Boolean).join(' · ')),
+            h('div', { class: 'row-sub' }, [status(it), fmtDate(it.redeemedAt, { year: true }), it.expiresAt ? t(`ვადა ${fmtDate(it.expiresAt, { year: true })}`, `Expires ${fmtDate(it.expiresAt, { year: true })}`) : ''].filter(Boolean).join(' · ')),
             it.code || it.codeMasked ? h('div', { class: 'q-code-sm num' }, it.codeMasked || '••••') : null),
           h('div', { class: 'row-trail' }, coin(it.coinCost)))))))));
     } catch (e) {

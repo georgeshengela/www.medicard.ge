@@ -12,15 +12,18 @@ const BASE = '/app';
    async (root, ctx) => cleanup?  ctx = { params, query, navigate, setTitle } */
 /** The metrics page is open while any of its trackers is (admin „მოდულები“ pauses each one). */
 const TRACKERS = ['weight', 'steps', 'hydration'];
+/** MEDISCAN is open while any of its three readings is (labs / imaging / skin). */
+const SCAN_KINDS = ['labs', 'imaging', 'skin'];
 
 const ROUTES = [
   { path: '/', page: () => import('./pages/home.js'), title: t('მთავარი', 'Home') },
   { path: '/medi', page: () => import('./pages/medi.js'), title: 'Medi', feature: 'medi' },
   { path: '/medications', page: () => import('./pages/medications.js'), title: t('მედიკამენტები', 'Medications'), feature: 'medications' },
   { path: '/medications/:id', page: () => import('./pages/medications.js'), title: t('მედიკამენტი', 'Medication'), feature: 'medications' },
-  { path: '/records', page: () => import('./pages/records.js'), title: t('ჩემი ბარათი', 'My card'), feature: 'records' },
+  { path: '/records', page: () => import('./pages/records.js'), title: t('ჩანაწერები', 'Records'), feature: 'records' },
   { path: '/records/:id', page: () => import('./pages/records.js'), title: t('ჩანაწერი', 'Record'), feature: 'records' },
   { path: '/lab', page: () => import('./pages/lab.js'), title: t('ანალიზები', 'Lab results'), feature: 'labs' },
+  { path: '/scan', page: () => import('./pages/scan.js'), title: 'MEDISCAN', anyOf: SCAN_KINDS },
   { path: '/visits', page: () => import('./pages/visits.js'), title: t('ვიზიტები', 'Visits'), feature: 'visits' },
   { path: '/health', page: () => import('./pages/health.js'), title: t('მაჩვენებლები', 'Health metrics'), anyOf: TRACKERS },
   { path: '/nutrition', page: () => import('./pages/nutrition.js'), title: t('კვება', 'Nutrition'), feature: 'nutrition' },
@@ -45,8 +48,9 @@ const NAV = [
   ] },
   { group: t('ჯანმრთელობა', 'Health'), items: [
     { href: '/medications', label: t('მედიკამენტები', 'Medications'), icon: 'pill', feature: 'medications' },
-    { href: '/records', label: t('ჩემი ბარათი', 'My card'), icon: 'folder', feature: 'records' },
     { href: '/lab', label: t('ანალიზები', 'Lab results'), icon: 'flask', feature: 'labs' },
+    { href: '/scan', label: 'MEDISCAN', icon: 'scanLine', anyOf: SCAN_KINDS },
+    { href: '/records', label: t('ჩანაწერები', 'Records'), icon: 'folder', feature: 'records' },
     { href: '/visits', label: t('ვიზიტები', 'Visits'), icon: 'stethoscope', feature: 'visits' },
     { href: '/health', label: t('მაჩვენებლები', 'Health metrics'), icon: 'activity', anyOf: TRACKERS },
   ] },
@@ -64,7 +68,7 @@ const BOTTOM = [
   { href: '/', label: t('მთავარი', 'Home'), icon: 'home' },
   { href: '/medications', label: t('წამლები', 'Meds'), icon: 'pill', feature: 'medications' },
   { href: '/medi', label: 'Medi', icon: 'sparkles', feature: 'medi' },
-  { href: '/records', label: t('ბარათი', 'Card'), icon: 'folder', feature: 'records' },
+  { href: '/lab', label: t('ანალიზები', 'Labs'), icon: 'flask', feature: 'labs' },
   { menu: true, label: t('მენიუ', 'Menu'), icon: 'grid' },
 ];
 

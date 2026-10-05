@@ -16,6 +16,7 @@ import { get, post, put, patch, del, authedBlobUrl, ApiError } from '../api.js';
 import { lineChart, barChart, ring } from '../charts.js';
 import { session, loadSession } from '../session.js';
 import { t, plural } from '../i18n.js';
+import { wordmark } from '../brand.js';
 
 const CSS = '/app/css/trainer.css';
 function ensureCss() {
@@ -450,7 +451,7 @@ async function hubPage(root, ctx, opts = {}) {
       if (!alive) return;
       draw();
     } catch (e) {
-      if (alive) mount(root, pageHead(t('ჩემი ტრენერი', 'My trainer'), 'MEDICOACH'), errorBox(e, reload));
+      if (alive) mount(root, pageHead(wordmark('coach'), t('ჩემი ტრენერი', 'My trainer')), errorBox(e, reload));
     }
   }
 
@@ -502,7 +503,7 @@ async function hubPage(root, ctx, opts = {}) {
         button(t('ტრენერის მოძებნა', 'Find a trainer'), { icon: 'search', onClick: () => search.querySelector('input')?.focus() }),
         button(t('ტრენერის რეგისტრაცია', 'Trainer sign-up'), { variant: 'outline', icon: 'award', href: '/trainer/apply', class: 'tr-on-spot' })));
     return [
-      pageHead(t('ჩემი ტრენერი', 'My trainer'), t('MEDICOACH — იპოვე დადასტურებული ტრენერი ან დაუკავშირდი მის კოდით. შენ წყვეტ, რას დაინახავს.', 'MEDICOACH — find a verified trainer or connect with their code. You decide what they see.')),
+      pageHead(wordmark('coach'), t('ჩემი ტრენერი — იპოვე დადასტურებული ტრენერი ან დაუკავშირდი მის კოდით. შენ წყვეტ, რას დაინახავს.', 'My trainer — find a verified trainer or connect with their code. You decide what they see.')),
       h('div', { class: 'grid grid-main tr-top' },
         hero,
         h('div', { class: 'tr-col' },
@@ -519,7 +520,7 @@ async function hubPage(root, ctx, opts = {}) {
   function inviteView() {
     const trn = ov.trainer;
     return [
-      pageHead(t('ჩემი ტრენერი', 'My trainer'), 'MEDICOACH'),
+      pageHead(wordmark('coach'), t('ჩემი ტრენერი', 'My trainer')),
       h('div', { class: 'grid grid-main' },
         h('div', { class: 'tr-col' },
           section(t('ტრენერი გიწვევს', 'A trainer is inviting you'), card({ class: 'spotlight hero-card pad-lg tr-invite' },
@@ -547,7 +548,7 @@ async function hubPage(root, ctx, opts = {}) {
   function pendingView() {
     const trn = ov.trainer;
     return [
-      pageHead(t('ჩემი ტრენერი', 'My trainer'), 'MEDICOACH'),
+      pageHead(wordmark('coach'), t('ჩემი ტრენერი', 'My trainer')),
       h('div', { class: 'grid grid-main' },
         h('div', { class: 'tr-col' },
           section(t('მოთხოვნა გაგზავნილია', 'Request sent'), card({ class: 'pad-lg' },
@@ -581,7 +582,7 @@ async function hubPage(root, ctx, opts = {}) {
       progressLinks(true),
       trainerModeCard());
     return [
-      pageHead(t('ჩემი ტრენერი', 'My trainer'), `${trn.displayName}${link.since ? t(` · ერთად ${fmtDate(link.since)}-დან`, ` · together since ${fmtDate(link.since)}`) : ''}`,
+      pageHead(wordmark('coach'), `${t('ჩემი ტრენერი', 'My trainer')} · ${trn.displayName}${link.since ? t(` · ერთად ${fmtDate(link.since)}-დან`, ` · together since ${fmtDate(link.since)}`) : ''}`,
         button(t('ვარჯიშები', 'Sessions'), { variant: 'ghost', icon: 'calendar', href: '/trainer/sessions' }),
         button(t('გაზიარება', 'Sharing'), { variant: 'secondary', icon: 'shield', href: '/trainer/sharing' })),
       h('div', { class: 'grid grid-main' }, left, right),

@@ -1,0 +1,65 @@
+/* MEDICARD web — MEDISCAN: one reading chat. Cyan = the radiology light box (mobile moduleBrand scan);
+   small text uses the deeper cyan ink for contrast (mobile scanTextInk). */
+.scan { --scan: #22d3ee; --scan-ink: #0e7490; max-width: 860px; margin: 0 auto; display: flex; flex-direction: column; gap: 18px; }
+:root[data-theme=dark] .scan { --scan: #67e8f9; --scan-ink: #67e8f9; }
+.scan-thread { display: flex; flex-direction: column; gap: 18px; }
+
+.scan-hero { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 8px; padding: 18px 0 4px; }
+.scan-hero h2 { font-size: 23px; font-weight: 700; }
+.scan-hero p { color: var(--text2); font-size: 14.5px; max-width: 420px; line-height: 1.55; }
+/* ScanLens: a glass lens with an orbiting arc (no flask viewfinder). */
+.scan-lens { position: relative; width: 84px; height: 84px; border-radius: 50%; display: grid; place-items: center; margin-bottom: 6px; color: var(--scan-ink);
+  background: radial-gradient(60% 60% at 35% 30%, color-mix(in srgb, var(--scan) 30%, #fff) 0%, color-mix(in srgb, var(--scan) 18%, transparent) 60%, transparent 100%);
+  box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--scan) 55%, transparent), 0 18px 40px -18px color-mix(in srgb, var(--scan) 80%, transparent); }
+.scan-lens i { position: absolute; inset: -7px; border-radius: 50%; border: 2px solid transparent; border-top-color: var(--scan); border-right-color: color-mix(in srgb, var(--scan) 40%, transparent); animation: scanOrbit 3.2s linear infinite; }
+.scan-lens.busy i { animation-duration: 1.1s; }
+@keyframes scanOrbit { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .scan-lens i { animation: none; } }
+
+.scan-choices { width: 100%; max-width: 520px; display: grid; gap: 8px; margin-top: 10px; text-align: left; }
+.scan-choice { display: flex; align-items: center; gap: 12px; min-height: 64px; padding: 10px 12px; border-radius: 20px; border: 1.5px solid transparent; background: var(--surface); cursor: pointer; font: inherit; color: var(--text); text-align: left; box-shadow: var(--shadow-sm, 0 1px 2px rgba(0,0,0,.04)); }
+.scan-choice.on { border-color: var(--scan); }
+.scan-choice:hover { border-color: color-mix(in srgb, var(--scan) 50%, transparent); }
+.scan-choice-ic { width: 42px; height: 42px; border-radius: 14px; display: grid; place-items: center; flex: none; background: color-mix(in srgb, var(--scan) 16%, transparent); color: var(--scan-ink); }
+.scan-choice-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.scan-choice-text b { font-size: 15px; }
+.scan-choice-text span { font-size: 12.5px; color: var(--text3); }
+.scan-radio { width: 20px; height: 20px; border-radius: 50%; border: 2px solid var(--line); flex: none; display: grid; place-items: center; }
+.scan-choice.on .scan-radio { border-color: var(--scan); }
+.scan-choice.on .scan-radio::after { content: ""; width: 10px; height: 10px; border-radius: 50%; background: var(--scan); }
+
+.scan-msg { display: flex; gap: 12px; }
+.scan-msg.me { justify-content: flex-end; }
+.scan-bubble { max-width: min(620px, 86%); padding: 11px 16px; border-radius: 20px 20px 6px 20px; background: color-mix(in srgb, var(--scan) 12%, var(--bg)); font-size: 15px; line-height: 1.55; white-space: pre-wrap; overflow-wrap: anywhere; display: flex; flex-direction: column; gap: 6px; }
+.scan-upload-kind { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; font-weight: 700; color: var(--scan-ink); }
+.scan-upload-note { font-size: 14px; color: var(--text2); }
+.scan-files, .scan-picked { display: flex; flex-wrap: wrap; gap: 6px; }
+.scan-file { display: inline-flex; align-items: center; gap: 5px; max-width: 260px; padding: 4px 8px; border-radius: 9px; background: var(--surface); font-size: 12.5px; color: var(--text2); overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.scan-file-x { border: 0; background: none; padding: 0 0 0 2px; cursor: pointer; color: var(--text3); display: inline-grid; }
+.scan-orb { width: 28px; height: 28px; border-radius: 9px; flex: none; display: grid; place-items: center; margin-top: 2px; color: #04232b;
+  background: radial-gradient(120% 120% at 20% 10%, color-mix(in srgb, var(--scan) 60%, #fff) 0%, var(--scan) 60%, color-mix(in srgb, var(--scan) 70%, #000) 100%); }
+.scan-col { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 8px; }
+.scan-result-head { font-size: 14px; font-weight: 700; }
+.scan-sub { font-size: 13px; color: var(--text2); margin-top: -4px; }
+.scan-answer { font-size: 15px; line-height: 1.7; overflow-wrap: anywhere; }
+.scan-progress { display: inline-flex; align-items: center; gap: 10px; font-size: 13.5px; color: var(--text2); padding-left: 40px; }
+
+.scan-dock { position: sticky; bottom: 0; display: flex; flex-direction: column; gap: 10px; padding-bottom: 10px; background: linear-gradient(to bottom, transparent, var(--bg) 18px); padding-top: 14px; }
+.scan-upload { display: flex; flex-direction: column; gap: 12px; padding: 14px; }
+.scan-upload .dropzone { padding: 16px; }
+.scan-seg { display: inline-flex; gap: 2px; padding: 4px; border-radius: 14px; background: var(--bg); align-self: flex-start; flex-wrap: wrap; }
+.scan-seg button { display: inline-flex; align-items: center; gap: 6px; border: 0; background: transparent; padding: 7px 12px; border-radius: 10px; font: inherit; font-size: 13px; font-weight: 600; color: var(--text2); cursor: pointer; }
+.scan-seg button.on { background: var(--surface); color: var(--text); box-shadow: 0 1px 3px rgba(15, 26, 28, .1); }
+.scan-seg button.on .ic { color: var(--scan-ink); }
+.scan-regions { display: flex; flex-direction: column; gap: 8px; }
+.scan-regions .chip.on { background: color-mix(in srgb, var(--scan) 18%, transparent); color: var(--scan-ink); box-shadow: inset 0 0 0 1.5px var(--scan); }
+.scan-note-row { display: flex; gap: 10px; align-items: flex-end; }
+.scan-note-row .scan-note { flex: 1; min-height: 44px; }
+.scan-ask { display: flex; align-items: flex-end; gap: 8px; padding: 8px 8px 8px 16px; border-radius: 22px; background: var(--surface); box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--scan) 45%, transparent); }
+.scan-ask-input { flex: 1; min-width: 0; border: 0; background: transparent; resize: none; outline: none; font: inherit; font-size: 15px; line-height: 1.55; color: var(--text); padding: 9px 0; max-height: 160px; }
+.scan-ask .medi-send { width: 42px; height: 42px; border: 0; border-radius: 14px; cursor: pointer; display: grid; place-items: center; background: var(--scan-ink); color: #fff; flex: none; }
+:root[data-theme=dark] .scan-ask .medi-send { color: #04232b; }
+.scan-ask .medi-send:disabled { opacity: .4; cursor: default; }
+.scan-declined { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 14px; background: var(--surface); font-size: 13.5px; color: var(--text2); }
+@media (max-width: 560px) { .scan-note-row { flex-direction: column; align-items: stretch; } }
+.scan-upload.compact { flex-direction: row; align-items: center; justify-content: space-between; flex-wrap: wrap; padding: 8px 10px; }

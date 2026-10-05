@@ -14,6 +14,7 @@ import { lineChart, barChart, ring, donut } from '../charts.js';
 import { session } from '../session.js';
 import { qrMatrix } from './coachQr.js';
 import { t, plural } from '../i18n.js';
+import { wordmark } from '../brand.js';
 
 const CSS = '/app/css/coach.css';
 function ensureCss() {
@@ -243,7 +244,7 @@ function renderGate(env, me) {
   const root = env.root;
   if (!p) {
     mount(root, h('div', { class: 'co' },
-      pageHead(t('ტრენერის სივრცე', 'Trainer workspace'), t('MEDICOACH — ვერიფიცირებული ფიტნეს ტრენერებისთვის', 'MEDICOACH — for verified fitness trainers')),
+      pageHead(wordmark('coach'), t('ტრენერის სივრცე — ვერიფიცირებული ფიტნეს ტრენერებისთვის', 'Trainer workspace — for verified fitness trainers')),
       card({ class: 'pad-lg co-gate' },
         tile('dumbbell', 'teal', 52),
         h('h2', null, t('ტრენერის პროფილი არ გაქვს', 'You don’t have a trainer profile')),

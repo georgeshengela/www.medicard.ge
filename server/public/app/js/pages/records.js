@@ -1,4 +1,4 @@
-// MEDICARD web — „ჩემი ბარათი“ (/records, /records/:id). Mirrors mobile/app/(tabs)/records.tsx and record/[id].tsx.
+// MEDICARD web — MEDILAB records (/records, /records/:id; never „ბარათი“ in copy, owner 2026-10-04). Mirrors mobile/app/(tabs)/records.tsx and record/[id].tsx.
 // Records come from the AI modules (lab, imaging, skin, symptoms, skincare); saved Medi conversations
 // (/api/chats) are listed here too and reopen in /medi. Private files are fetched with the Bearer token.
 import {
@@ -10,6 +10,7 @@ import { donut } from '../charts.js';
 import { withAiConsent, aiDeclinedSlot } from '../aiConsent.js';
 import { openLabUpload, dropzone, checkFile } from './lab.js';
 import { featureOn } from '../session.js';
+import { wordmark } from '../brand.js';
 import { t, isEn } from '../i18n.js';
 
 function ensureCss() {
@@ -35,11 +36,11 @@ const TYPE_LOOK = {
   PRESCRIPTION: { icon: 'pill', ink: 'amber', color: 'var(--c6)' },
 };
 const FILTERS = ['ALL', 'LAB', 'CT_MRI', 'SKIN', 'SKINCARE', 'SYMPTOM'];
-const MEDI_MODE = { ASSISTANT: { label: 'Medi', ink: 'sky' }, DOCTOR: { label: t('ექიმთან', 'Doctor'), ink: 'teal' }, CONSILIUM: { label: t('ღრმა ანალიზი', 'Deep analysis'), ink: 'violet' } };
+const MEDI_MODE = { ASSISTANT: { label: 'Medi', ink: 'sky' }, DOCTOR: { label: t('კონსულტაცია', 'Consultation'), ink: 'teal' }, CONSILIUM: { label: t('კონსილიუმი', 'Consilium'), ink: 'violet' } };
 const look = (t) => TYPE_LOOK[t] || { icon: 'file', ink: 'neutral', color: 'var(--text3)' };
 const typeLabel = (t) => TYPE_LABEL[t] || t;
 
-const IMAGING_REGIONS = [
+export const IMAGING_REGIONS = [
   { id: 'hip-femur', ka: 'ბარძაყი / თეძო', en: 'hip / femur' },
   { id: 'knee', ka: 'მუხლი', en: 'knee' },
   { id: 'tibia-fibula', ka: 'წვივი / ფეხი', en: 'tibia / fibula / leg' },
@@ -163,7 +164,7 @@ function openImageUpload(kind, { navigate, onSaved }) {
     invalidate('/api/records');
     onSaved?.();
     mount(body,
-      h('div', { class: 'lab-saved' }, tile('check', 'green', 40), h('div', null, h('div', { class: 'card-title' }, t('დასკვნა შენახულია ჩემს ბარათში', 'Review saved to My card')), h('div', { class: 'card-sub' }, fmtDateTime(out.record?.createdAt || new Date())))),
+      h('div', { class: 'lab-saved' }, tile('check', 'green', 40), h('div', null, h('div', { class: 'card-title' }, t('დასკვნა შენახულია ჩანაწერებში', 'Review saved to your records')), h('div', { class: 'card-sub' }, fmtDateTime(out.record?.createdAt || new Date())))),
       analysis ? h('div', { class: 'lab-analysis' }, markdown(analysis)) : h('p', { class: 'muted' }, t('Medi-მ დასკვნა ვერ დაასრულა. სცადე ხელახლა.', 'Medi couldn’t finish the review. Please try again.')),
       h('p', { class: 'disclaimer', style: { marginTop: 0 } }, icon('info', { size: 15 }), DISCLAIMER));
     submitBtn.hidden = true;
@@ -203,7 +204,7 @@ async function listPage(root, ctx) {
   const state = { records: [], total: 0, chats: [], filter: 'ALL', query: '', lab: null };
   const uploadBtn = button(t('ატვირთვა', 'Upload'), { icon: 'upload', onClick: () => openUploadChooser({ navigate: ctx.navigate, onSaved: () => refresh().catch(() => {}) }) });
   const body = h('div');
-  mount(root, pageHead(t('ჩემი ბარათი', 'My card'), t('ანალიზები, დასკვნები და საუბრები Medi-სთან ერთ ადგილას', 'Lab tests, reviews and Medi conversations in one place'), uploadBtn), body);
+  mount(root, pageHead(wordmark('lab'), t('ჩანაწერები: ანალიზები, დასკვნები და საუბრები Medi-სთან ერთ ადგილას', 'Records: lab tests, reviews and Medi conversations in one place'), uploadBtn), body);
 
   mount(body, h('div', { class: 'stack', style: { gap: '16px' } },
     h('div', { class: 'stats-row' }, [0, 1, 2, 3].map(() => skeleton(2))),
@@ -352,7 +353,7 @@ async function listPage(root, ctx) {
 function mediHint() {
   return h('a', { class: 'card hover rec-lab', href: '/medi', 'data-link': '' },
     tile('sparkles', 'teal', 42),
-    h('div', { class: 'row-main' }, h('div', { class: 'card-title' }, 'Medi'), h('div', { class: 'card-sub' }, t('საუბრები ავტომატურად ინახება ამ ბარათში', 'Conversations are saved to this card automatically'))),
+    h('div', { class: 'row-main' }, h('div', { class: 'card-title' }, 'Medi'), h('div', { class: 'card-sub' }, t('საუბრები აქ ავტომატურად ინახება', 'Conversations are saved here automatically'))),
     icon('chevronRight', { size: 18, className: 'row-chev' }));
 }
 
@@ -377,7 +378,7 @@ function recRow({ ic, ink, title, meta, body, attach, href, onDelete }) {
 /* ── Detail page ──────────────────────────────────────── */
 async function detailPage(root, ctx) {
   const { id } = ctx.params;
-  const back = h('a', { class: 'back', href: '/records', 'data-link': '' }, icon('chevronLeft', { size: 16 }), t('ჩემი ბარათი', 'My card'));
+  const back = h('a', { class: 'back', href: '/records', 'data-link': '' }, icon('chevronLeft', { size: 16 }), t('ჩანაწერები', 'Records'));
   const host = h('div');
   mount(root, back, host);
   mount(host, h('div', { class: 'grid grid-main', style: { marginTop: '24px' } }, skeleton(8), skeleton(4)));
@@ -386,7 +387,7 @@ async function detailPage(root, ctx) {
     ({ record } = await get(`/api/records/${encodeURIComponent(id)}`));
   } catch (e) {
     mount(host, h('div', { style: { marginTop: '24px' } }, e.status === 404 || e.status === 400
-      ? card(empty(t('ჩანაწერი ვერ მოიძებნა', 'Record not found'), t('შესაძლოა უკვე წაშლილია.', 'It may have been deleted already.'), button(t('ჩემს ბარათზე დაბრუნება', 'Back to My card'), { href: '/records', variant: 'secondary' })))
+      ? card(empty(t('ჩანაწერი ვერ მოიძებნა', 'Record not found'), t('შესაძლოა უკვე წაშლილია.', 'It may have been deleted already.'), button(t('ჩანაწერებზე დაბრუნება', 'Back to records'), { href: '/records', variant: 'secondary' })))
       : errorBox(e, () => detailPage(root, ctx))));
     return;
   }

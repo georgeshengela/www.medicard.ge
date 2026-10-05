@@ -11,6 +11,7 @@ import { get, put, request, invalidate } from '../api.js';
 import { sparkline } from '../charts.js';
 import { withAiConsent, aiDeclinedSlot } from '../aiConsent.js';
 import { featureOn } from '../session.js';
+import { wordmark } from '../brand.js';
 import { t, isEn } from '../i18n.js';
 
 const CSS = '/app/css/lab.css';
@@ -32,11 +33,11 @@ const FLAG = {
   U: { label: t('უცნობი', 'Unknown'), tone: 'neutral' },
 };
 const FLAG_PROMPT = isEn ? { H: 'high', L: 'low', U: 'not assessed', N: 'in range' } : { H: 'მაღალი', L: 'დაბალი', U: 'შეუფასებელი', N: 'ნორმაში' };
-const isOff = (f) => f === 'H' || f === 'L';
+export const isOff = (f) => f === 'H' || f === 'L';
 
 /* ── Data helpers ─────────────────────────────────────── */
 const keyOf = (p) => String(p.key || p.nameEn || p.nameKa || '').trim().toLowerCase();
-const nameOf = (p) => (isEn ? p.nameEn || p.nameKa : p.nameKa || p.nameEn) || p.key;
+export const nameOf = (p) => (isEn ? p.nameEn || p.nameKa : p.nameKa || p.nameEn) || p.key;
 
 export function formatNorm(p) {
   const u = p.unit ? ` ${p.unit}` : '';
@@ -51,7 +52,7 @@ function num(n) {
   return Number.isInteger(n) ? String(n) : n.toFixed(Math.abs(n) >= 10 ? 1 : 2).replace(/\.?0+$/, '');
 }
 
-function labDate(d) { return d === ymd() ? t('დღეს', 'Today') : fmtDate(d, { year: true }); }
+export function labDate(d) { return d === ymd() ? t('დღეს', 'Today') : fmtDate(d, { year: true }); }
 
 function sortPanels(panels) {
   return [...(panels || [])].filter((p) => p && p.date && Array.isArray(p.parameters))
@@ -121,7 +122,7 @@ function askMedi(panels, navigate) {
   navigate('/medi?mode=doctor');
 }
 
-function flagBadge(flag) { const f = FLAG[flag] || FLAG.U; return badge(f.label, f.tone); }
+export function flagBadge(flag) { const f = FLAG[flag] || FLAG.U; return badge(f.label, f.tone); }
 
 /* ── Trend chart with reference band ─────────────────────── */
 function trendChart(points, { unit = '', height = 260 } = {}, observers) {
@@ -238,7 +239,7 @@ function trendChart(points, { unit = '', height = 260 } = {}, observers) {
   return box;
 }
 
-/* ── Upload (shared with „ჩემი ბარათი“) ─────────────────── */
+/* ── Upload (shared with the records page) ─────────────────── */
 function fileSize(b) { return b > 1024 * 1024 ? `${(b / 1024 / 1024).toFixed(1)} ${t('მბ', 'MB')}` : `${Math.max(1, Math.round(b / 1024))} ${t('კბ', 'KB')}`; }
 
 export function dropzone({ multiple, accept, hint, onFiles }) {
@@ -406,7 +407,7 @@ export function openLabUpload({ onSaved, navigate } = {}) {
 }
 
 /** POST /api/ai/explain-lab (consent first), then store the write-up on the panel. Returns text or null. */
-async function explainPanel(panel, context) {
+export async function explainPanel(panel, context) {
   const parameters = panel.parameters.slice(0, 80).map((p) => ({
     key: String(p.key || keyOf(p)).slice(0, 80),
     nameKa: String(p.nameKa || p.nameEn || p.key).slice(0, 160),
@@ -449,7 +450,8 @@ export default async function labPage(root, ctx) {
 
   const uploadBtn = button(t('ატვირთვა', 'Upload'), { icon: 'upload', onClick: () => openLabUpload({ onSaved: () => reload(true), navigate: ctx.navigate }) });
   const body = h('div');
-  mount(root, pageHead(t('ანალიზები', 'Lab tests'), t('ანალიზების მაჩვენებლები თარიღებით, ნორმებით და ტენდენციებით', 'Lab values by date, with reference ranges and trends'), uploadBtn), body);
+  mount(root, pageHead(wordmark('lab'), t('ანალიზების მაჩვენებლები თარიღებით, ნორმებით და ტენდენციებით', 'Lab values by date, with reference ranges and trends'),
+    featureOn('records') ? button(t('ჩანაწერები', 'Records'), { variant: 'ghost', icon: 'folder', href: '/records' }) : null, uploadBtn), body);
 
   const reload = async (silent) => {
     if (!silent) mount(body, h('div', { class: 'stack' }, h('div', { class: 'stats-row' }, [0, 1, 2, 3].map(() => skeleton(2))), h('div', { class: 'lab-layout' }, skeleton(6), skeleton(8))));
@@ -693,7 +695,7 @@ export default async function labPage(root, ctx) {
         h('div', { class: 'lab-modal-filters' }, search,
           segmented([{ value: 'all', label: t('ყველა', 'All') }, { value: 'watch', label: t(`საყურადღებო · ${off}`, `To watch · ${off}`) }], flag, (v) => { flag = v; paintTable(); })),
         tableHost,
-        panel.recordIds?.[0] ? h('a', { class: 'link', href: `/records/${panel.recordIds[0]}`, 'data-link': '', onClick: () => m.close() }, t('ორიგინალი ფურცელი ჩემს ბარათში', 'Original sheet in My card'), icon('chevronRight', { size: 16 })) : null,
+        panel.recordIds?.[0] ? h('a', { class: 'link', href: `/records/${panel.recordIds[0]}`, 'data-link': '', onClick: () => m.close() }, t('ორიგინალი ფურცელი ჩანაწერებში', 'Original sheet in your records'), icon('chevronRight', { size: 16 })) : null,
         h('p', { class: 'disclaimer', style: { marginTop: 0 } }, icon('info', { size: 15 }), DISCLAIMER)),
     });
   };

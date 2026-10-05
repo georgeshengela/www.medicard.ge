@@ -21,6 +21,7 @@ import { ring, donut, meters, barChart, lineChart } from '../charts.js';
 import { withAiConsent, aiDeclinedSlot } from '../aiConsent.js';
 import { featureOn } from '../session.js';
 import { t } from '../i18n.js';
+import { wordmark } from '../brand.js';
 
 const CSS = '/app/css/nutrition.css';
 const APP_STORE = 'https://apps.apple.com/app/id6812517519';
@@ -154,7 +155,7 @@ export default async function nutritionPage(root, ctx) {
   const left = h('div', { class: 'nu-col' });
   const right = h('div', { class: 'nu-col' });
   mount(root,
-    pageHead(t('კვება', 'Nutrition'), t('ჩაწერე, გადაამოწმე, გაიგე.', 'Log it, check it, understand it.'), settingsBtn, addBtn),
+    pageHead(wordmark('food'), t('კვება · ჩაწერე, გადაამოწმე, გაიგე.', 'Nutrition · log it, check it, understand it.'), settingsBtn, addBtn),
     dayBar,
     h('div', { class: 'grid nu-layout' }, left, right));
 

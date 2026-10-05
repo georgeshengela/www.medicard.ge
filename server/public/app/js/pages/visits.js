@@ -25,7 +25,7 @@ const DOCTOR_TYPES = isEn ? [
   ['NEURO', 'ნეუროლოგი'], ['ORTHO', 'ორთოპედი'], ['THERAPIST', 'თერაპევტი'], ['OPHTHALMO', 'ოფთალმოლოგი'],
   ['DERM', 'დერმატოლოგი'], ['PED', 'პედიატრი'], ['OTHER', 'სხვა სპეციალისტი'],
 ];
-const typeLabel = (code) => DOCTOR_TYPES.find(([c]) => c === code)?.[1] || code;
+export const typeLabel = (code) => DOCTOR_TYPES.find(([c]) => c === code)?.[1] || code;
 const REMINDER_PRESETS = isEn ? [
   [10080, '1 week before'], [1440, '1 day before'], [180, '3 hours before'], [60, '1 hour before'], [30, '30 min before'],
 ] : [

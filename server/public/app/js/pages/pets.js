@@ -10,6 +10,7 @@ import { lineChart, sparkline } from '../charts.js';
 import { withAiConsent } from '../aiConsent.js';
 import { featureOn } from '../session.js';
 import { t, isEn, plural } from '../i18n.js';
+import { wordmark } from '../brand.js';
 
 const CSS = '/app/css/pets.css';
 function ensureCss() {
@@ -273,7 +274,7 @@ async function petsHub(root, ctx) {
   const addBtn = button(t('ცხოველის დამატება', 'Add a pet'), { icon: 'plus', onClick: () => petForm(null, (p) => ctx.navigate(`/pets/${p.id}`)) });
   mount(root,
     h('header', { class: 'page-head' },
-      h('div', { class: 'page-head-text' }, h('h1', null, t('ჩემი ცხოველები', 'My pets')), h('p', null, t('მეტი ზრუნვა, ნაკლები დავიწყება. შენი ცხოველების ამბები და ყოველდღიური მოვლა ერთ სივრცეში.', 'More care, less forgetting. Your pets’ stories and everyday care in one place.'))),
+      h('div', { class: 'page-head-text' }, h('h1', null, wordmark('vet')), h('p', null, t('ჩემი ცხოველები · მეტი ზრუნვა, ნაკლები დავიწყება. შენი ცხოველების ამბები და ყოველდღიური მოვლა ერთ სივრცეში.', 'More care, less forgetting. Your pets’ stories and everyday care in one place.'))),
       h('div', { class: 'page-head-actions' }, addBtn)),
     grid,
     h('div', { class: 'grid grid-main pets-lower' },

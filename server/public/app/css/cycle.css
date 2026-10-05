@@ -322,3 +322,158 @@
 .cy-check.disabled { cursor: default; }
 .cy-check.disabled .cy-check-label { color: var(--text2); }
 .cy-sex-btn.wide { flex: 1; justify-content: center; }
+
+/* ── Icon tiles (mobile CycleIconTile): disc + Health Icons glyph + label; selected = ring + ✓ in the group's ink ── */
+.cy-tiles { display: flex; flex-wrap: wrap; gap: 12px 4px; }
+.cy-tile {
+  --ink: var(--cy-ink);
+  width: 78px; display: flex; flex-direction: column; align-items: center; gap: 6px; border: 0; background: none; padding: 0;
+  font: inherit; color: var(--cy-muted); cursor: pointer;
+}
+.cy-tile.bleeding { --ink: var(--cy-period); }
+.cy-tile.fertility { --ink: var(--cy-fertile); }
+.cy-tile-disc {
+  position: relative; width: 56px; height: 56px; border-radius: 50%; display: grid; place-items: center;
+  background: var(--cy-soft); color: var(--ink); transition: box-shadow .12s, transform .12s;
+}
+.cy-tile:hover .cy-tile-disc { box-shadow: inset 0 0 0 1.5px var(--cy-control); }
+.cy-tile:active .cy-tile-disc { transform: scale(.95); }
+.cy-tile.on .cy-tile-disc { box-shadow: inset 0 0 0 2px var(--ink); }
+.cy-tile.dashed .cy-tile-disc { box-shadow: none; outline: 1.5px dashed var(--ink); outline-offset: -1.5px; }
+.cy-tile-art { display: grid; place-items: center; }
+.cy-tile-art svg { width: 100%; height: 100%; display: block; }
+.cy-tile-art.hollow::before { content: ""; width: 62%; height: 62%; border-radius: 50%; border: 2.5px solid var(--ink); box-sizing: border-box; }
+.cy-tile-badge {
+  position: absolute; top: -3px; right: -3px; width: 20px; height: 20px; border-radius: 50%; display: grid; place-items: center;
+  background: var(--ink); color: var(--cy-knob-bg);
+}
+.cy-tile-label { font-size: 11.5px; line-height: 1.25; text-align: center; max-width: 82px; overflow-wrap: anywhere; font-weight: 500; }
+.cy-tile.on .cy-tile-label { color: var(--text); font-weight: 600; }
+.cy-tile-dots { display: inline-flex; gap: 3px; margin-top: -2px; }
+.cy-tile-dots i { width: 5px; height: 5px; border-radius: 50%; background: var(--line); }
+.cy-tile-dots i.on { background: var(--ink); }
+.cy-tile.more .cy-tile-disc { background: none; box-shadow: inset 0 0 0 1.5px var(--line); color: var(--cy-muted); font-size: 14px; }
+.cy-tile:focus-visible { outline: none; }
+.cy-tile:focus-visible .cy-tile-disc { box-shadow: 0 0 0 3px color-mix(in srgb, var(--ink) 35%, transparent); }
+
+/* Full log: jump tabs pinned at the top of the modal body; each group a quiet section. */
+.cy-log-modal .modal-body { padding-top: 0; }
+.cy-jump {
+  position: sticky; top: 0; z-index: 2; display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; padding: 12px 0 10px;
+  background: var(--surface); margin-bottom: -6px;
+}
+.cy-jump::before { content: ""; position: absolute; inset: 12px 0 10px; border-radius: 14px; background: var(--cy-soft); z-index: -1; }
+.cy-jump-tab {
+  position: relative; display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 38px; margin: 3px;
+  border: 0; border-radius: 11px; background: transparent; color: var(--cy-muted); font: inherit; font-size: 13px; font-weight: 500; cursor: pointer;
+}
+.cy-jump-tab.on { background: var(--surface); color: var(--text); font-weight: 700; box-shadow: 0 1px 2px rgba(0, 0, 0, .06); }
+.cy-jump-tab.on .ic { color: var(--cy-period); }
+.cy-jump-dot { position: absolute; top: 7px; right: 10px; width: 7px; height: 7px; border-radius: 50%; background: var(--cy-cta); }
+.cy-anchor { scroll-margin-top: 70px; height: 0; margin-bottom: -20px; }
+.cy-log-sec { scroll-margin-top: 70px; }
+.cy-log-sec h4 { margin-bottom: 12px; }
+.cy-sub-inline { font-size: 12px; font-weight: 500; color: var(--cy-muted-soft); margin-left: 4px; }
+.cy-sub-inline::before { content: "· "; }
+.cy-log-sec > p.cy-sub { margin: 10px 0 0; }
+.cy-log-sec h4 + p.cy-sub { margin: -6px 0 10px; }
+.cy-level + .cy-level { margin-top: 14px; }
+.cy-level .cy-life-label { margin-bottom: 8px; }
+.cy-lock-row {
+  width: 100%; display: flex; align-items: center; gap: 12px; padding: 12px 14px; border: 0; border-radius: 16px; background: var(--cy-soft);
+  font: inherit; color: var(--text); cursor: pointer; text-align: left;
+}
+.cy-lock-ic { width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; background: var(--cy-period-soft); color: var(--cy-period); flex: none; }
+.cy-lock-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.cy-lock-text b { font-size: 14px; }
+.cy-lock-text b em { font-style: normal; color: var(--cy-period); font-weight: 600; }
+.cy-lock-text span { font-size: 12px; color: var(--cy-muted-soft); line-height: 1.4; }
+.cy-sex-body { margin-top: 12px; }
+.cy-mark {
+  display: flex; gap: 10px; align-items: flex-start; margin-top: 16px; padding: 12px 14px; border-radius: 16px; background: var(--cy-soft); cursor: pointer; font-size: 14px;
+}
+.cy-mark.on { background: var(--cy-fertile-soft); }
+.cy-mark input { margin-top: 3px; accent-color: var(--cy-fertile); flex: none; }
+.cy-mark .cy-check-text { flex: 1; }
+.cy-mark > .ic { color: var(--cy-muted-soft); flex: none; margin-top: 3px; }
+
+/* „ნაყოფიერების ჩანაწერები“ (TTC) */
+.cy-ttc .cy-sub { font-size: 12.5px; color: var(--cy-muted-soft); line-height: 1.5; margin-bottom: 10px; }
+.cy-ttc-label { font-size: 11.5px; font-weight: 700; color: var(--cy-muted); letter-spacing: .2px; margin: 12px 0 6px; }
+.cy-ttc-lines { display: grid; gap: 4px; font-size: 14px; line-height: 1.5; }
+.cy-ttc-lines div:first-child { font-weight: 600; }
+.cy-signal {
+  display: flex; align-items: center; gap: 8px; width: 100%; margin-top: 12px; padding: 10px 12px; border: 0; border-radius: 14px; text-align: left;
+  background: var(--cy-fertile-soft); color: var(--cy-fertile); font: inherit; font-size: 13.5px; font-weight: 600; cursor: pointer;
+}
+.cy-signal span { flex: 1; min-width: 0; }
+.cy-ttc-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
+
+/* Heavy / long bleeding: rose is the bleeding colour here, not a warning. */
+.cy-heavy { display: flex; flex-direction: column; gap: 10px; }
+.cy-heavy-tile { width: 38px; height: 38px; border-radius: 12px; display: grid; place-items: center; flex: none; background: color-mix(in srgb, var(--cy-period) 10%, transparent); color: var(--cy-period); }
+
+/* „როგორ ხარ დღეს?“ · „ჰკითხე Medi-ს ციკლზე“ (CycleStoriesRow) */
+.cy-stories { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 10px; }
+.cy-story {
+  min-height: 112px; display: flex; flex-direction: column; justify-content: space-between; gap: 12px; padding: 14px; border: 0; border-radius: 22px;
+  font: inherit; text-align: left; cursor: pointer; transition: transform .12s, filter .12s;
+}
+.cy-story:hover { filter: brightness(1.03); }
+.cy-story:active { transform: scale(.98); }
+.cy-story.solid { background: var(--cy-cta); color: #fff; }
+.cy-story.soft { background: color-mix(in srgb, var(--teal, #0d9488) 10%, var(--surface)); color: var(--text); }
+.cy-story-ic { width: 36px; height: 36px; border-radius: 50%; display: grid; place-items: center; background: rgba(255, 255, 255, .22); }
+.cy-story.soft .cy-story-ic { background: color-mix(in srgb, var(--teal, #0d9488) 16%, transparent); color: var(--teal, #0d9488); }
+.cy-story-text { display: flex; flex-direction: column; gap: 3px; }
+.cy-story-text b { font-size: 14px; line-height: 1.3; }
+.cy-story-text span { font-size: 12px; opacity: .78; line-height: 1.35; }
+
+/* ── Home card (women's Home in Flo's shape): week tray → one big answer on a glow → phase → what's ahead ── */
+.cy-home2 { display: flex; flex-direction: column; gap: 14px; }
+.cy-week { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); }
+.cy-week-day { display: flex; flex-direction: column; align-items: center; gap: 4px; min-width: 0; }
+.cy-week-wd { font-size: 11px; font-weight: 600; color: var(--cy-muted-soft); }
+.cy-week .cy-day { height: 44px; cursor: default; }
+.cy-week .cy-day-ring { width: 40px; height: 40px; }
+.cy-week .cy-day-in { width: 32px; height: 32px; font-size: 13.5px; }
+.cy-answer {
+  position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; min-height: 150px; padding: 18px;
+  border-radius: 24px; text-align: center; color: var(--text); text-decoration: none; isolation: isolate; overflow: hidden;
+  --glow: var(--cy-muted-soft);
+}
+.cy-answer::before {
+  content: ""; position: absolute; inset: 0; z-index: -1;
+  background: radial-gradient(60% 75% at 50% 50%, color-mix(in srgb, var(--glow) 24%, transparent), color-mix(in srgb, var(--glow) 6%, transparent) 70%, transparent);
+}
+.cy-answer.glow-period { --glow: var(--cy-period); }
+.cy-answer.glow-fertile { --glow: var(--cy-fertile-fill); }
+.cy-answer.glow-luteal { --glow: var(--cy-luteal); }
+.cy-answer.glow-follicular { --glow: var(--cy-follicular); }
+.cy-answer-top { font-size: 13px; color: var(--cy-muted); font-weight: 600; }
+.cy-answer-value { font-size: 52px; line-height: 1.05; font-weight: 800; letter-spacing: -1.5px; font-variant-numeric: tabular-nums; }
+.cy-answer-value.period { color: var(--cy-period); }
+.cy-answer-bottom { font-size: 12.5px; color: var(--cy-muted-soft); font-weight: 500; max-width: 260px; }
+.cy-answer-line { font-size: 17px; line-height: 1.4; }
+.cy-home2-meta { display: flex; flex-direction: column; align-items: center; gap: 8px; text-align: center; }
+.cy-home2-meta .cy-phase-pill { margin: 0; cursor: default; }
+.cy-home2-line { font-size: 13.5px; color: var(--text2); line-height: 1.45; }
+.cy-ahead-title { font-size: 13px; font-weight: 700; margin-bottom: 8px; }
+.cy-ahead-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 8px; }
+.cy-ahead-item { position: relative; display: flex; flex-direction: column; gap: 2px; padding: 10px 12px 10px 14px; border-radius: 16px; background: var(--cy-soft); }
+.cy-ahead-item i { position: absolute; left: 0; top: 12px; bottom: 12px; width: 3px; border-radius: 2px; background: var(--cy-period); }
+.cy-ahead-item.fertile i, .cy-ahead-item.ovulation i { background: var(--cy-fertile-fill); }
+.cy-ahead-item b { font-size: 14px; }
+.cy-ahead-item span { font-size: 12.5px; color: var(--text2); }
+.cy-ahead-item small { font-size: 11.5px; color: var(--cy-muted-soft); }
+/* Phones: five tiles a row like the app (bleeding fits in one row), compact jump tabs. */
+@media (max-width: 520px) {
+  .cy-tile { width: calc((100% - 16px) / 5); }
+  .cy-tile-disc { width: 52px; height: 52px; }
+  .cy-tile-label { font-size: 11px; max-width: 100%; }
+  .cy-jump-tab { font-size: 12px; gap: 4px; margin: 3px 2px; }
+  .cy-jump-tab .ic { width: 13px; height: 13px; }
+}
+/* Long Georgian words never break mid-word: the size follows the longest word (--n) and the tile's width. */
+.cy-tile { container-type: inline-size; }
+.cy-tile-label { overflow-wrap: normal; word-break: keep-all; max-width: none; width: 112cqi; margin: 0 -6cqi; font-size: min(11.5px, calc(112cqi / (var(--n, 6) * 0.74))); }

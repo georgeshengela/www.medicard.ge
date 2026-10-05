@@ -1,8 +1,13 @@
-// MEDICARD web — Medi (one screen, three modes), mirrors mobile/app/assistant.tsx + MediConsultation.
-//   medi   → the action assistant: POST /api/assistant/plan → signed review → /api/assistant/execute
-//   doctor → DOCTOR consultation, streamed from POST /api/ai/query
-//   deep   → CONSILIUM ("ღრმა ანალიზი"), streamed from POST /api/ai/query
-// Query: ?mode=doctor|deep, ?session=<id> (also ?sessionId=), ?prefill=<text> (put in the composer, never auto-sent).
+// MEDICARD web — Medi: ONE chat (owner 2026-10-03), mirrors mobile/src/components/medi/MediChat.tsx + lib/mediThread.ts.
+//   Every message goes to the planner (POST /api/assistant/plan). A health question comes back as a `consult`
+//   action and the clinical answer (POST /api/ai/query DOCTOR) streams right into the same thread, no tap.
+//   The „კონსილიუმი“ switch on the composer sends straight to /api/ai/query CONSILIUM.
+//   Writes still come back as a review card (Save / Cancel); nothing is saved without the click.
+// Storage: the thread is an ASSISTANT ChatSession; each clinical answer also lives in its own DOCTOR / CONSILIUM
+// session and the thread's copy carries `kind` + `linkedSessionId`. An old consultation opened here continues
+// in a new thread that copies its last 30 turns.
+// Query: ?session=<id> (also ?sessionId=); old links ?mode=doctor (next question straight to the doctor) and
+// ?mode=deep (switch on) still work. Drafts from other pages travel in sessionStorage, never in the URL.
 // Every request that sends data to an AI goes through withAiConsent first.
 import {
   h, mount, clear, icon, button, iconButton, toast, openModal, confirmDialog, markdown, relDay, fmtTime, fmtDate, parseDate, ymd,
@@ -17,65 +22,50 @@ const APP_STORE = 'https://apps.apple.com/app/id6812517519';
 const LIMIT = 4000;
 const DISCLAIMER = t('ეს არ არის დიაგნოზი — საჭიროებისას ექიმს მიმართე.', 'This is not a diagnosis — see a doctor when needed.');
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const ANSWER_IN_HISTORY = 1500;
 
 function ensureCss() {
   if (!document.querySelector(`link[href="${CSS_HREF}"]`)) document.head.append(h('link', { rel: 'stylesheet', href: CSS_HREF }));
 }
 
-/* ── Modes (copy from mobile i18n ka.chat / ka.modules) ───────────────── */
-const MODES = {
-  medi: {
-    key: 'medi', label: 'Medi', api: null, sessionMode: 'ASSISTANT', icon: 'sparkles', ink: 'teal',
-    subtitle: t('შენი ასისტენტი', 'Your assistant'),
-    placeholder: t('დაწერე, რით დაგეხმარო…', 'Tell me how I can help…'),
-    emptyTitle: (name) => (name ? t(`გამარჯობა, ${name}`, `Hello, ${name}`) : t('გამარჯობა', 'Hello')),
-    emptyBody: t('მითხარი, რა გინდა — წამლის დამატება, წყლის ჩაწერა, ვიზიტის დაგეგმვა ან აპის რომელიმე გვერდის გახსნა. ჩანაწერს შენახვამდე ყოველთვის გადაგამოწმებინებ.', 'Tell me what you need — add a medication, log water, plan a visit or open any page of the app. I’ll always ask you to check an entry before saving it.'),
-    starters: [
-      { icon: 'droplet', ink: 'sky', text: t('დღეს 500 მლ წყალი დავლიე', 'I drank 500 ml of water today') },
-      { icon: 'pill', ink: 'teal', text: t('მინდა ახალი წამალი დავამატო', 'I want to add a new medication') },
-      { icon: 'calendar', ink: 'violet', text: t('ექიმთან ვიზიტი დამიგეგმე', 'Plan a doctor visit for me') },
-      { icon: 'scale', ink: 'amber', text: t('მინდა 5 კილო დავიკლო', 'I want to lose 5 kg') },
-    ],
-    thinking: t('ვამზადებ…', 'Preparing…'),
-  },
-  doctor: {
-    key: 'doctor', label: t('ექიმთან', 'Doctor'), api: 'DOCTOR', sessionMode: 'DOCTOR', icon: 'stethoscope', ink: 'blue',
-    subtitle: t('ჯანმრთელობის კითხვები და რჩევა', 'Health questions and advice'),
-    placeholder: t('დაწერე შეტყობინება…', 'Write a message…'),
-    emptyTitle: () => t('გამარჯობა, მე ვარ Medi', 'Hello, I’m Medi'),
-    emptyBody: t('მითხარი რა გაწუხებს — მეგობრულად და გასაგებად გიპასუხებ. ეს არ ცვლის ექიმს.', 'Tell me what’s bothering you — I’ll answer in a friendly, clear way. This doesn’t replace a doctor.'),
-    starters: [
-      { icon: 'brain', ink: 'violet', text: t('სამი დღეა თავი მტკივა', 'I’ve had a headache for three days') },
-      { icon: 'heart', ink: 'rose', text: t('მაღალი წნევა მაქვს, რა ვქნა?', 'My blood pressure is high — what should I do?') },
-      { icon: 'activity', ink: 'amber', text: t('ბავშვს 38.5 ტემპერატურა აქვს', 'My child has a temperature of 38.5') },
-    ],
-    thinking: t('Medi ფიქრობს…', 'Medi is thinking…'),
-  },
-  deep: {
-    key: 'deep', label: t('ღრმა ანალიზი', 'Deep analysis'), api: 'CONSILIUM', sessionMode: 'CONSILIUM', icon: 'users', ink: 'violet',
-    subtitle: t('რამდენიმე სპეციალისტის ხედვა', 'Several specialists’ views'),
-    placeholder: t('აღწერე შემთხვევა დეტალურად…', 'Describe the case in detail…'),
-    emptyTitle: () => t('ღრმა ანალიზი', 'Deep analysis'),
-    emptyBody: t('აღწერე სრული სურათი: ჩივილები, ანამნეზი, ჩატარებული კვლევები და მიმდინარე მკურნალობა. სისტემა შეარჩევს რელევანტურ სპეციალისტებს.', 'Describe the full picture: complaints, medical history, tests done and current treatment. The system will pick the relevant specialists.'),
-    checklist: isEn
-      ? ['What’s bothering you and for how long', 'Chronic conditions and allergies', 'Tests and scans you’ve had', 'What you take now and what you’ve tried']
-      : ['რა გაწუხებს და რამდენი ხანია', 'ქრონიკული დაავადებები და ალერგიები', 'ჩატარებული ანალიზები და კვლევები', 'რას იღებ ახლა და რა სცადე'],
-    starters: [],
-    thinking: t('სპეციალისტები განიხილავენ…', 'The specialists are reviewing…'),
-  },
+const STARTERS = [
+  { icon: 'droplet', ink: 'sky', text: t('დღეს 500 მლ წყალი დავლიე', 'I drank 500 ml of water today') },
+  { icon: 'pill', ink: 'teal', text: t('მინდა ახალი წამალი დავამატო', 'I want to add a new medication') },
+  { icon: 'brain', ink: 'violet', text: t('სამი დღეა თავი მტკივა', 'I’ve had a headache for three days') },
+  { icon: 'calendar', ink: 'amber', text: t('ექიმთან ვიზიტი დამიგეგმე', 'Plan a doctor visit for me') },
+];
+const CONSILIUM_CHECKLIST = isEn
+  ? ['What’s bothering you and for how long', 'Chronic conditions and allergies', 'Tests and scans you’ve had', 'What you take now and what you’ve tried']
+  : ['რა გაწუხებს და რამდენი ხანია', 'ქრონიკული დაავადებები და ალერგიები', 'ჩატარებული ანალიზები და კვლევები', 'რას იღებ ახლა და რა სცადე'];
+/** Admin „მოდულები“: `mediDoctor` off → the planner answers with the admin's message; `mediDeep` off → no switch. */
+const doctorOn = () => featureOn('mediDoctor');
+const deepOn = () => featureOn('mediDeep');
+/** How a saved session reads in the history list. */
+const SESSION_LOOK = {
+  ASSISTANT: { label: 'Medi', icon: 'sparkles', ink: 'teal' },
+  DOCTOR: { label: t('კონსულტაცია', 'Consultation'), icon: 'stethoscope', ink: 'blue' },
+  CONSILIUM: { label: t('კონსილიუმი', 'Consilium'), icon: 'users', ink: 'violet' },
 };
-const MODE_KEYS = ['medi', 'doctor', 'deep'];
-/** Admin „მოდულები“ can pause a mode: its tab hides and new conversations start in Medi; old ones still open. */
-const MODE_FEATURE = { doctor: 'mediDoctor', deep: 'mediDeep' };
-const modeOn = (k) => !MODE_FEATURE[k] || featureOn(MODE_FEATURE[k]);
 
-function modeFromParam(raw) {
-  const v = String(raw || '').trim().toLowerCase();
-  if (v === 'doctor') return 'doctor';
-  if (v === 'deep' || v === 'consilium') return 'deep';
-  return 'medi';
+const MONTHS_KA = ['იანვარი', 'თებერვალი', 'მარტი', 'აპრილი', 'მაისი', 'ივნისი', 'ივლისი', 'აგვისტო', 'სექტემბერი', 'ოქტომბერი', 'ნოემბერი', 'დეკემბერი'];
+const MONTHS_EN = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+/** Card values in words (mobile mediThread.humanCardValue): an ISO date never reaches the screen. */
+function humanDates(value) {
+  const year = new Date().getFullYear();
+  return String(value).replace(/\b(\d{4})-(\d{2})-(\d{2})\b/g, (all, y, m, d) => {
+    const month = (isEn ? MONTHS_EN : MONTHS_KA)[Number(m) - 1];
+    if (!month) return all;
+    const day = isEn ? `${month} ${Number(d)}` : `${Number(d)} ${month}`;
+    return Number(y) === year ? day : `${day} ${y}`;
+  });
 }
-function modeForSession(m) { return m === 'CONSILIUM' ? 'deep' : m === 'DOCTOR' ? 'doctor' : 'medi'; }
+
+/** The planner asked for the clinical model (mobile mediThread.consultFromReview). */
+function consultFromReview(review, fallback) {
+  if (!review || review.tool !== 'consult') return null;
+  const m = typeof review.args?.message === 'string' && review.args.message.trim().length >= 2 ? review.args.message.trim() : String(fallback || '').trim();
+  return { message: m.slice(0, LIMIT), mode: review.args?.mode === 'CONSILIUM' ? 'CONSILIUM' : 'DOCTOR' };
+}
 
 /* ── Planner review helpers (ported from mobile/src/lib/assistant.ts + assistantDialog.ts) ── */
 function dialogIntent(text) {
@@ -112,7 +102,7 @@ const VALUE_LABELS_KA = {
   VACCINATION: 'ვაქცინაცია', FLEA_TICK: 'რწყილი და ტკიპა', DEWORMING: 'ჭიებზე დამუშავება', MEDICATION: 'მედიკამენტი', ONCE: 'ერთჯერადად', EVERY_N_DAYS: 'ყოველ რამდენიმე დღეში', EVERY_N_WEEKS: 'ყოველ რამდენიმე კვირაში', EVERY_N_MONTHS: 'ყოველ რამდენიმე თვეში', DAILY_COURSE: 'ყოველდღიური კურსი', NONE: 'არ მეორდება', FIXED_CALENDAR: 'ფიქსირებული კალენდრით', FROM_ADMINISTRATION: 'ბოლო ჩატარებიდან', VETERINARIAN: 'ვეტერინარი', PRODUCT_INSTRUCTIONS: 'პროდუქტის ინსტრუქცია', USER_ENTERED: 'ჩემი ჩანაწერი', DATE_BASED: 'დღის მიხედვით', EXACT_TIME: 'ზუსტი დროით', oral: 'პერორალურად', topical: 'გარეგანად', injection: 'ინექციით',
   SEDENTARY: 'მჯდომარე', LIGHT: 'მსუბუქი', MODERATE: 'ზომიერი', ACTIVE: 'აქტიური', VERY_ACTIVE: 'ძალიან აქტიური', OMNIVORE: 'შერეული კვება', VEGETARIAN: 'ვეგეტარიანული', VEGAN: 'ვეგანური', KETO: 'კეტო', NEVER: 'არასდროს', FORMER: 'წარსულში', CURRENT: 'ამჟამად', OCCASIONAL: 'ზოგჯერ', REGULAR: 'რეგულარულად', poor: 'ცუდი', okay: 'საშუალო', good: 'კარგი', low: 'დაბალი', high: 'მაღალი', very_low: 'ძალიან დაბალი', very_high: 'ძალიან მაღალი', normal: 'ჩვეულებრივი', lb: 'ფუნტი', mixed: 'მეტისი',
   true: 'კი', false: 'არა', MALE: 'მამრობითი', FEMALE: 'მდედრობითი', UNKNOWN: 'უცნობია', EXACT: 'ზუსტი თარიღი', APPROXIMATE: 'სავარაუდო ასაკი',
-  DOCTOR: 'Medi ექიმი', CONSILIUM: 'ღრმა ანალიზი', dog: 'ძაღლი', cat: 'კატა', unknown: 'უცნობია', custom: 'სხვა ჯიში',
+  DOCTOR: 'Medi ექიმი', CONSILIUM: 'კონსილიუმი', dog: 'ძაღლი', cat: 'კატა', unknown: 'უცნობია', custom: 'სხვა ჯიში',
   start: 'დაწყება', end: 'დასრულება', none: 'არ არის', spotting: 'ლაქები', light: 'მსუბუქი', medium: 'საშუალო', heavy: 'უხვი',
   positive: 'დადებითი', negative: 'უარყოფითი', unclear: 'გაურკვეველი', taken: 'მივიღე', skipped: 'გამოვტოვე',
   suspected: 'სავარაუდო', veterinarian_confirmed: 'ვეტერინარის მიერ დადასტურებული', owner_reported: 'ჩემი დაკვირვება', active: 'აქტიური', resolved: 'დასრულებული',
@@ -144,7 +134,7 @@ const VALUE_LABELS_EN = {
   VACCINATION: 'Vaccination', FLEA_TICK: 'Fleas and ticks', DEWORMING: 'Deworming', MEDICATION: 'Medication', ONCE: 'Once', EVERY_N_DAYS: 'Every few days', EVERY_N_WEEKS: 'Every few weeks', EVERY_N_MONTHS: 'Every few months', DAILY_COURSE: 'Daily course', NONE: "Doesn't repeat", FIXED_CALENDAR: 'On a fixed calendar', FROM_ADMINISTRATION: 'From the last dose', VETERINARIAN: 'Veterinarian', PRODUCT_INSTRUCTIONS: 'Product instructions', USER_ENTERED: 'My own entry', DATE_BASED: 'By day', EXACT_TIME: 'At an exact time', oral: 'By mouth', topical: 'On the skin', injection: 'By injection',
   SEDENTARY: 'Sedentary', LIGHT: 'Light', MODERATE: 'Moderate', ACTIVE: 'Active', VERY_ACTIVE: 'Very active', OMNIVORE: 'Mixed diet', VEGETARIAN: 'Vegetarian', VEGAN: 'Vegan', KETO: 'Keto', NEVER: 'Never', FORMER: 'In the past', CURRENT: 'Currently', OCCASIONAL: 'Sometimes', REGULAR: 'Regularly', poor: 'Poor', okay: 'Okay', good: 'Good', low: 'Low', high: 'High', very_low: 'Very low', very_high: 'Very high', normal: 'Normal', lb: 'Pound', mixed: 'Mixed breed',
   true: 'Yes', false: 'No', MALE: 'Male', FEMALE: 'Female', UNKNOWN: 'Unknown', EXACT: 'Exact date', APPROXIMATE: 'Approximate age',
-  DOCTOR: 'Medi doctor', CONSILIUM: 'Deep analysis', dog: 'Dog', cat: 'Cat', unknown: 'Unknown', custom: 'Other breed',
+  DOCTOR: 'Medi doctor', CONSILIUM: 'Consilium', dog: 'Dog', cat: 'Cat', unknown: 'Unknown', custom: 'Other breed',
   start: 'Start', end: 'End', none: 'None', spotting: 'Spotting', light: 'Light', medium: 'Medium', heavy: 'Heavy',
   positive: 'Positive', negative: 'Negative', unclear: 'Unclear', taken: 'Taken', skipped: 'Skipped',
   suspected: 'Suspected', veterinarian_confirmed: 'Confirmed by a vet', owner_reported: 'My observation', active: 'Active', resolved: 'Resolved',
@@ -192,10 +182,19 @@ export default async function mediPage(root, ctx) {
   let alive = true;
   let generation = 0;
   const same = () => alive && session.user?.id === owner;
+  const legacyMode = String(ctx.query.mode || '').trim().toLowerCase();
 
   const st = {
-    mode: (() => { const m = modeFromParam(ctx.query.mode); return modeOn(m) || ctx.query.session || ctx.query.sessionId ? m : 'medi'; })(),
+    consilium: (legacyMode === 'deep' || legacyMode === 'consilium') && deepOn(),
     conv: { sessionId: ctx.query.session || ctx.query.sessionId || null, key: 0 },
+    /** Clinical sessions this thread continues (DOCTOR / CONSILIUM → session id). */
+    clinical: {},
+    /** An old consultation reopened here: its last turns are copied into the new thread on the first save. */
+    copyOnFirstSave: null,
+    /** The next question goes straight to the doctor (a drafted question from another page, ?mode=doctor). */
+    directNext: legacyMode === 'doctor' ? 'DOCTOR' : null,
+    /** Cycle context from the cycle page — a removable chip; sent once with the first clinical question. */
+    context: null,
     messages: [],
     loadState: 'ready', // loading | ready | error
     busy: false,
@@ -208,7 +207,6 @@ export default async function mediPage(root, ctx) {
     review: null,
     draft: null,
     suggestions: [],
-    receipt: null,
     persistChain: Promise.resolve(),
     catalog: null,
     // history
@@ -225,6 +223,7 @@ export default async function mediPage(root, ctx) {
   const log = h('div', { class: 'medi-log', role: 'log', 'aria-live': 'polite' }, thread);
   const jump = h('button', { class: 'medi-jump', type: 'button', hidden: true, onClick: () => scrollToEnd(true, true) }, icon('arrowDown', { size: 16 }), t('ბოლო შეტყობინება', 'Latest message'));
   const status = h('div', { class: 'medi-status' });
+  const chipSlot = h('div', { class: 'medi-ctx-slot' });
   const ta = h('textarea', {
     rows: 1, maxlength: LIMIT, 'aria-label': t('შეტყობინება Medi-სთვის', 'Message to Medi'),
     onInput: () => { autoGrow(); updateSend(); },
@@ -235,13 +234,15 @@ export default async function mediPage(root, ctx) {
   });
   const sendBtn = h('button', { class: 'medi-send', type: 'button', 'aria-label': t('გაგზავნა', 'Send'), title: t('გაგზავნა', 'Send'), onClick: () => (st.busy ? stop() : submit()) });
   const counter = h('span', { class: 'medi-count', hidden: true });
-  const composer = h('div', { class: 'medi-composer' }, ta, counter, sendBtn);
+  const deepBtn = h('button', { type: 'button', class: 'medi-deep', 'aria-pressed': 'false', onClick: () => toggleConsilium() });
+  const composer = h('div', { class: 'medi-composer' }, ta, counter, deepBtn, sendBtn);
   const foot = h('div', { class: 'medi-foot' },
     h('span', { class: 'medi-disc' }, icon('info', { size: 14 }), DISCLAIMER),
     h('span', { class: 'medi-keys' }, h('span', { class: 'kbd' }, 'Enter'), t(' გაგზავნა · ', ' to send · '), h('span', { class: 'kbd' }, 'Shift+Enter'), t(' ახალი ხაზი', ' for a new line')));
-  const dock = h('div', { class: 'medi-dock' }, status, composer, foot);
+  const dock = h('div', { class: 'medi-dock' }, status, chipSlot, composer, foot);
   const main = h('section', { class: 'medi-main' }, head, h('div', { class: 'medi-body' }, log, jump), dock);
-  mount(root, h('div', { class: 'medi' }, side, main));
+  const shell = h('div', { class: 'medi' }, side, main);
+  mount(root, shell);
 
   log.addEventListener('scroll', () => { jump.hidden = nearBottom() || !st.messages.length; }, { passive: true });
 
@@ -275,7 +276,26 @@ export default async function mediPage(root, ctx) {
     sendBtn.title = stoppable ? t('შეჩერება (Esc)', 'Stop (Esc)') : t('გაგზავნა', 'Send');
     sendBtn.disabled = st.busy ? !stoppable : (!ta.value.trim() || st.loadState !== 'ready');
   }
-  const mode = () => MODES[st.mode];
+  const consiliumOn = () => st.consilium && deepOn();
+  /** „კონსილიუმი“ on the composer: the composer, orb and answers turn indigo while it is on. */
+  function paintDeep() {
+    const on = consiliumOn();
+    deepBtn.hidden = !deepOn();
+    deepBtn.classList.toggle('on', on);
+    deepBtn.setAttribute('aria-pressed', on ? 'true' : 'false');
+    deepBtn.title = on ? t('კონსილიუმი ჩართულია — რამდენიმე სპეციალისტის ხედვა', 'Consilium is on — several specialists’ views') : t('კონსილიუმი: რამდენიმე სპეციალისტის ხედვა', 'Consilium: several specialists’ views');
+    mount(deepBtn, icon('users', { size: 15 }), h('span', null, t('კონსილიუმი', 'Consilium')));
+    shell.classList.toggle('is-deep', on);
+    ta.placeholder = on ? t('აღწერე შემთხვევა დეტალურად…', 'Describe the case in detail…') : t('ჰკითხე ან დაწერე, რით დაგეხმარო…', 'Ask, or tell me how I can help…');
+  }
+  function toggleConsilium(force) {
+    if (st.busy) return;
+    st.consilium = typeof force === 'boolean' ? force : !st.consilium;
+    paintDeep();
+    renderHead();
+    if (!st.messages.length) renderThread();
+    ta.focus({ preventScroll: true });
+  }
   function errorText(e, fallback) {
     const fields = e?.body?.fields;
     if (Array.isArray(fields) && fields.length) {
@@ -285,7 +305,6 @@ export default async function mediPage(root, ctx) {
   }
   function syncUrl(push = false) {
     const q = new URLSearchParams();
-    if (st.mode !== 'medi') q.set('mode', st.mode);
     if (st.conv.sessionId) q.set('session', st.conv.sessionId);
     const url = `/app/medi${q.toString() ? `?${q}` : ''}`;
     if (url === location.pathname + location.search) return;
@@ -294,23 +313,34 @@ export default async function mediPage(root, ctx) {
 
   /* ── Header ──────────────────────────────────────────── */
   function renderHead() {
-    const m = mode();
-    const sw = h('div', { class: 'medi-modes', role: 'tablist', 'aria-label': t('Medi-ს რეჟიმი', 'Medi mode') },
-      MODE_KEYS.filter((k) => modeOn(k) || k === st.mode).map((k) => h('button', {
-        type: 'button', role: 'tab', class: k === st.mode ? 'on' : '', 'aria-selected': k === st.mode ? 'true' : 'false',
-        title: MODES[k].subtitle,
-        onClick: () => { if (k !== st.mode) openConversation(k, null, { push: true }); },
-      }, icon(MODES[k].icon, { size: 16 }), h('span', null, MODES[k].label))));
+    const deep = consiliumOn();
     mount(head,
       h('div', { class: 'medi-id' },
-        h('span', { class: `medi-orb sm ink-${m.ink}` }, icon(m.icon, { size: 18 })),
-        h('div', { class: 'medi-id-text' }, h('b', null, 'Medi'), h('span', null, m.subtitle))),
-      sw,
+        h('span', { class: `medi-orb sm ink-${deep ? 'violet' : 'teal'}` }, icon(deep ? 'users' : 'sparkles', { size: 18 })),
+        h('div', { class: 'medi-id-text' }, h('b', null, 'Medi'), h('span', null, deep ? t('კონსილიუმი ჩართულია', 'Consilium is on') : t('შენი ჯანმრთელობის ასისტენტი', 'Your health assistant')))),
       h('div', { class: 'medi-actions' },
         iconButton('history', { title: t('საუბრები', 'Conversations'), class: 'medi-only-narrow', onClick: openHistoryModal }),
-        st.mode === 'medi' ? iconButton('compass', { title: t('რას აკეთებს Medi', 'What Medi can do'), onClick: openDirectory }) : null,
-        iconButton('squarePen', { title: t('ახალი საუბარი', 'New conversation'), onClick: () => openConversation(st.mode, null, { push: true }) }),
+        iconButton('compass', { title: t('რას აკეთებს Medi', 'What Medi can do'), onClick: openDirectory }),
+        iconButton('squarePen', { title: t('ახალი საუბარი', 'New conversation'), onClick: () => openConversation(null, { push: true }) }),
         iconButton('shield', { title: t('AI და კონფიდენციალურობა', 'AI and privacy'), onClick: () => ctx.navigate('/profile') })));
+  }
+
+  /* ── Cycle context chip (mobile MediContextChip) ─────── */
+  function renderChip() {
+    const c = st.context;
+    if (!c) { clear(chipSlot); return; }
+    const details = h('ul', { class: 'medi-ctx-lines', hidden: true }, c.lines.map((l) => h('li', null, l)));
+    const toggle = h('button', { type: 'button', class: 'medi-ctx-main', 'aria-expanded': 'false', title: t('რა გაიგზავნება', 'What will be sent') },
+      icon('flower', { size: 14 }), h('span', null, c.chipLabel), icon('chevronDown', { size: 14 }));
+    toggle.addEventListener('click', () => {
+      details.hidden = !details.hidden;
+      toggle.setAttribute('aria-expanded', details.hidden ? 'false' : 'true');
+    });
+    mount(chipSlot, h('div', { class: 'medi-ctx' },
+      h('div', { class: 'medi-ctx-row' }, toggle,
+        h('button', { type: 'button', class: 'medi-ctx-x', 'aria-label': t('კონტექსტის მოხსნა', 'Remove the context'), title: t('მოხსნა — მხოლოდ კითხვა გაიგზავნება', 'Remove — only the question is sent'), onClick: () => { st.context = null; renderChip(); } }, icon('x', { size: 14 }))),
+      details,
+      h('div', { class: 'medi-ctx-note' }, t('გაიგზავნება მხოლოდ პირველ კითხვასთან ერთად, AI-ზე თანხმობის შემდეგ.', 'Sent only with your first question, after the AI consent.'))));
   }
 
   /* ── Thread ──────────────────────────────────────────── */
@@ -328,34 +358,31 @@ export default async function mediPage(root, ctx) {
       updateSend();
       return;
     }
-    if (!st.messages.length) {
-      thread.append(emptyHero());
-    } else {
-      st.messages.forEach((msg, i) => thread.append(messageEl(msg, i)));
-    }
-    if (st.mode === 'medi') {
-      const task = taskEl();
-      if (task) thread.append(task);
-    }
+    if (!st.messages.length) thread.append(emptyHero());
+    else st.messages.forEach((msg, i) => thread.append(messageEl(msg, i)));
+    const task = taskEl();
+    if (task) thread.append(task);
     updateSend();
   }
 
   function emptyHero() {
-    const m = mode();
+    const deep = consiliumOn();
     return h('div', { class: 'medi-hero' },
-      h('div', { class: `medi-orb lg ink-${m.ink}` }, icon(m.icon, { size: 30 })),
-      h('h2', null, m.emptyTitle(firstName())),
-      h('p', null, m.emptyBody),
-      m.checklist ? h('ul', { class: 'medi-checklist' }, m.checklist.map((c) => h('li', null, icon('check', { size: 15 }), c))) : null,
-      m.starters.length ? h('div', { class: 'medi-starters' }, m.starters.map((s) => h('button', {
+      h('div', { class: `medi-orb lg ink-${deep ? 'violet' : 'teal'}` }, icon(deep ? 'users' : 'sparkles', { size: 30 })),
+      h('h2', null, deep ? t('კონსილიუმი', 'Consilium') : firstName() ? t(`გამარჯობა, ${firstName()}`, `Hello, ${firstName()}`) : t('გამარჯობა', 'Hello')),
+      h('p', null, deep
+        ? t('აღწერე სრული სურათი: ჩივილები, ანამნეზი, ჩატარებული კვლევები და მიმდინარე მკურნალობა. სისტემა შეარჩევს რელევანტურ სპეციალისტებს.', 'Describe the full picture: complaints, medical history, tests done and current treatment. The system will pick the relevant specialists.')
+        : t('ჰკითხე ჯანმრთელობაზე ან მითხარი, რა გინდა — წამლის დამატება, წყლის ჩაწერა, ვიზიტის დაგეგმვა. ჩანაწერს შენახვამდე ყოველთვის გადაგამოწმებინებ.', 'Ask about your health or tell me what you need — add a medication, log water, plan a visit. I’ll always ask you to check an entry before saving it.')),
+      deep ? h('ul', { class: 'medi-checklist' }, CONSILIUM_CHECKLIST.map((c) => h('li', null, icon('check', { size: 15 }), c))) : null,
+      deep ? null : h('div', { class: 'medi-starters' }, STARTERS.map((s) => h('button', {
         type: 'button', class: 'medi-starter', onClick: () => { if (!st.busy) send(s.text); },
-      }, h('span', { class: `tile ink-${s.ink}`, style: { width: '34px', height: '34px' } }, icon(s.icon, { size: 17 })), h('span', null, s.text), icon('arrowRight', { size: 16, className: 'medi-starter-go' })))) : null,
-      st.mode === 'medi' ? h('button', { type: 'button', class: 'medi-link', onClick: openDirectory }, icon('compass', { size: 16 }), t('ნახე, რას აკეთებს Medi', 'See what Medi can do')) : null);
+      }, h('span', { class: `tile ink-${s.ink}`, style: { width: '34px', height: '34px' } }, icon(s.icon, { size: 17 })), h('span', null, s.text), icon('arrowRight', { size: 16, className: 'medi-starter-go' })))),
+      deep ? null : h('button', { type: 'button', class: 'medi-link', onClick: openDirectory }, icon('compass', { size: 16 }), t('ნახე, რას აკეთებს Medi', 'See what Medi can do')));
   }
 
-  function aiAvatar() {
-    const m = mode();
-    return h('span', { class: `medi-orb xs ink-${m.ink}`, 'aria-hidden': 'true' }, icon('sparkles', { size: 14 }));
+  function aiAvatar(msg) {
+    const deep = msg.kind === 'answer' && msg.deep;
+    return h('span', { class: `medi-orb xs ink-${deep ? 'violet' : 'teal'}`, 'aria-hidden': 'true' }, icon(deep ? 'users' : 'sparkles', { size: 14 }));
   }
 
   function messageEl(msg, index) {
@@ -379,9 +406,10 @@ export default async function mediPage(root, ctx) {
         }
       }
     }
-    return h('div', { class: `medi-msg ai ${msg.local ? 'local' : ''}` },
-      aiAvatar(),
+    return h('div', { class: `medi-msg ai ${msg.local ? 'local' : ''} ${msg.kind === 'answer' ? `answer${msg.deep ? ' deep' : ''}` : ''}` },
+      aiAvatar(msg),
       h('div', { class: 'medi-msg-col' },
+        msg.kind === 'answer' && msg.deep ? h('div', { class: 'medi-kicker' }, icon('users', { size: 13 }), t('კონსილიუმი', 'Consilium')) : null,
         body,
         msg.stopped ? h('div', { class: 'medi-stopped' }, icon('info', { size: 14 }), t('შეჩერდა · ეს პასუხი არ შეინახა', 'Stopped · this answer wasn’t saved')) : null,
         msg.appOnly ? h('a', { class: 'btn btn-secondary btn-sm medi-app-link', href: APP_STORE, target: '_blank', rel: 'noopener' }, icon('smartphone', { size: 16 }), h('span', null, t('MEDICARD აპის გადმოწერა', 'Get the MEDICARD app'))) : null,
@@ -392,7 +420,8 @@ export default async function mediPage(root, ctx) {
     const el = msg.bodyEl;
     if (!el) return;
     if (msg.pending || (msg.streaming && !msg.content)) {
-      mount(el, h('div', { class: 'medi-thinking' }, h('span', { class: 'typing' }, h('i'), h('i'), h('i')), h('span', null, msg.label || mode().thinking)));
+      const label = msg.label || (msg.kind === 'answer' ? (msg.deep ? t('სპეციალისტები განიხილავენ…', 'The specialists are reviewing…') : t('Medi ფიქრობს…', 'Medi is thinking…')) : t('ვფიქრობ…', 'Thinking…'));
+      mount(el, h('div', { class: 'medi-thinking' }, h('span', { class: 'typing' }, h('i'), h('i'), h('i')), h('span', null, label)));
       return;
     }
     const md = markdown(msg.content);
@@ -451,17 +480,17 @@ export default async function mediPage(root, ctx) {
         again ? h('button', { type: 'button', class: 'medi-retry', onClick: () => {
           // The question in the composer wins (she may have edited it); else the one she tried to send.
           const text = ta.value.trim() || again.text;
-          st.note = null; st.declined = null; renderStatus(); send(text, again.petId);
+          st.note = null; st.declined = null; renderStatus(); send(text, again.petId, again.route);
         } }, t('ხელახლა ცდა', 'Try again')) : null,
         iconButton('x', { title: t('დახურვა', 'Close'), size: 16, onClick: () => { st.note = null; st.declined = null; renderStatus(); } })));
     }
     if (st.error) {
       status.append(h('div', { class: 'medi-error', role: 'alert' }, icon('alert', { size: 16 }),
         h('span', null, st.error),
-        st.failed ? h('button', { type: 'button', class: 'medi-retry', onClick: () => { const f = st.failed; st.failed = null; st.error = null; renderStatus(); send(f.text, f.petId); } }, icon('refresh', { size: 14 }), t('ხელახლა', 'Retry')) : null,
+        st.failed ? h('button', { type: 'button', class: 'medi-retry', onClick: () => { const f = st.failed; st.failed = null; st.error = null; renderStatus(); send(f.text, f.petId, f.route); } }, icon('refresh', { size: 14 }), t('ხელახლა', 'Retry')) : null,
         iconButton('x', { title: t('დახურვა', 'Close'), size: 16, onClick: () => { st.error = null; st.failed = null; renderStatus(); } })));
     }
-    if (st.mode === 'medi' && st.draft && !st.review) {
+    if (st.draft && !st.review) {
       const label = toolLabel(st.draft.tool);
       status.append(h('div', { class: 'medi-draft' }, icon('edit', { size: 15 }),
         h('span', null, t('მიმდინარე: ', 'In progress: '), h('b', null, label), t(' — უპასუხე Medi-ს კითხვას', ' — answer Medi’s question')),
@@ -477,26 +506,53 @@ export default async function mediPage(root, ctx) {
     st.busy = false;
   }
 
-  function openConversation(nextMode, sessionId, { push = false } = {}) {
+  function openConversation(sessionId, { push = false } = {}) {
     abortCurrent();
-    st.mode = MODES[nextMode] && (modeOn(nextMode) || sessionId) ? nextMode : 'medi';
     st.conv = { sessionId: sessionId || null, key: (st.conv?.key || 0) + 1 };
+    st.clinical = {};
+    st.copyOnFirstSave = null;
     st.messages = [];
-    st.review = null; st.draft = null; st.suggestions = []; st.receipt = null;
+    st.review = null; st.draft = null; st.suggestions = [];
     st.error = null; st.failed = null; st.note = null; st.declined = null;
+    st.context = null; st.directNext = null;
     st.persistChain = Promise.resolve();
     st.loadState = sessionId ? 'loading' : 'ready';
-    ta.placeholder = mode().placeholder;
+    paintDeep();
     renderHead();
     renderStatus();
+    renderChip();
     renderThread();
     renderSide();
     syncUrl(push);
     ctx.setTitle('Medi');
     if (sessionId) loadConversation();
-    else if (st.mode !== 'medi') consumeStaged();
-    if (st.mode === 'medi') loadCatalog();
+    loadCatalog();
     if (matchMedia('(pointer: fine)').matches) ta.focus({ preventScroll: true });
+  }
+
+  /** A saved session back into turns (mobile turnsFromSession): threads keep their kinds; old consultations become answers. */
+  function turnsFromSession(s) {
+    const deepSession = s.mode === 'CONSILIUM';
+    return (Array.isArray(s.messages) ? s.messages : []).filter((m) => typeof m?.content === 'string' && m.content.trim()).map((m) => {
+      if (m.role === 'user') return { role: 'user', content: m.content, timestamp: m.timestamp };
+      if (s.mode === 'ASSISTANT' && !m.kind) return { role: 'assistant', kind: 'medi', content: m.content, timestamp: m.timestamp };
+      return {
+        role: 'assistant', kind: 'answer', deep: s.mode === 'ASSISTANT' ? m.kind === 'deep' : deepSession, content: m.content, timestamp: m.timestamp,
+        interactionId: m.interactionId, feedbackRating: m.feedbackRating, sessionId: s.mode === 'ASSISTANT' ? m.linkedSessionId : s.id,
+      };
+    });
+  }
+  /** Turns as stored in the ASSISTANT thread (mobile storedTurns): unfinished answers, cards and local notes are not stored. */
+  function storedTurns(list) {
+    const out = [];
+    for (const m of list) {
+      if (m.local || m.pending || m.streaming || !String(m.content || '').trim()) continue;
+      const content = String(m.content).slice(0, LIMIT);
+      if (m.role === 'user') out.push({ role: 'user', content });
+      else if (m.kind === 'answer') out.push({ role: 'assistant', content, kind: m.deep ? 'deep' : 'answer', ...(m.sessionId ? { linkedSessionId: m.sessionId } : {}) });
+      else out.push({ role: 'assistant', content });
+    }
+    return out;
   }
 
   async function loadConversation() {
@@ -507,11 +563,15 @@ export default async function mediPage(root, ctx) {
       const r = await get(`/api/chats/${encodeURIComponent(conv.sessionId)}`);
       if (!same() || conv !== st.conv) return;
       const s = r.session || {};
-      const m = modeForSession(s.mode);
-      if (m !== st.mode) { st.mode = m; ta.placeholder = mode().placeholder; renderHead(); syncUrl(false); if (m === 'medi') loadCatalog(); }
-      st.messages = (Array.isArray(s.messages) ? s.messages : []).map((x) => ({
-        role: x.role === 'user' ? 'user' : 'assistant', content: String(x.content || ''), timestamp: x.timestamp, interactionId: x.interactionId,
-      }));
+      st.messages = turnsFromSession(s);
+      for (const m of st.messages) if (m.kind === 'answer' && m.sessionId) st.clinical[m.deep ? 'CONSILIUM' : 'DOCTOR'] = m.sessionId;
+      if (s.mode !== 'ASSISTANT') {
+        // An old consultation continues in a new Medi thread that carries its last 30 turns.
+        st.copyOnFirstSave = storedTurns(st.messages).slice(-30);
+        conv.sessionId = null;
+        syncUrl(false);
+        if (s.mode === 'CONSILIUM' && deepOn()) { st.consilium = true; paintDeep(); renderHead(); }
+      }
       st.loadState = 'ready';
       ctx.setTitle(s.title ? `Medi · ${s.title}` : 'Medi');
       renderThread();
@@ -521,20 +581,12 @@ export default async function mediPage(root, ctx) {
       if (!same() || conv !== st.conv) return;
       if (e instanceof ApiError && e.status === 404) {
         toast(t('საუბარი ვერ მოიძებნა', 'Conversation not found'), 'info');
-        openConversation(st.mode, null);
+        openConversation(null);
         return;
       }
       st.loadState = 'error';
       renderThread();
     }
-  }
-
-  function consumeStaged() {
-    const s = staged;
-    if (!s || s.owner !== owner || s.mode !== st.mode || s.expires < Date.now() || consumedOps.has(s.operationId)) return;
-    staged = null;
-    consumedOps.add(s.operationId);
-    if (s.message) { setComposer(s.message, false); send(s.message); }
   }
 
   /* ── Sending ─────────────────────────────────────────── */
@@ -550,31 +602,33 @@ export default async function mediPage(root, ctx) {
     st.controller.abort();
   }
 
-  async function send(text, petId) {
+  /** route: 'plan' | 'DOCTOR' | 'CONSILIUM' (a retry keeps the route it failed on). */
+  async function send(text, petId, route) {
     if (st.busy || st.loadState !== 'ready') return;
     const value = String(text || '').trim();
     if (!value) return;
-    if (value.length > LIMIT) { st.error = t(t(`შეტყობინება ძალიან გრძელია (მაქს. ${LIMIT} სიმბოლო).`, `Your message is too long (max ${LIMIT} characters).`), `Your message is too long (max ${LIMIT} characters).`); renderStatus(); return; }
+    if (value.length > LIMIT) { st.error = t(`შეტყობინება ძალიან გრძელია (მაქს. ${LIMIT} სიმბოლო).`, `Your message is too long (max ${LIMIT} characters).`); renderStatus(); return; }
+    if (value.length < 2) { st.error = t('შეკითხვა ძალიან მოკლეა.', 'Your question is too short.'); renderStatus(); return; }
     st.note = null; st.declined = null; st.error = null; st.failed = null;
-    if (st.mode === 'medi') {
-      const intent = dialogIntent(value);
-      if (st.review && intent === 'confirm') { setComposer('', false); await confirmReview(); return; }
-      if ((st.review || st.draft) && intent === 'cancel') { setComposer('', false); cancelReview(); return; }
-    } else if (value.length < 2) {
-      st.error = t('შეკითხვა ძალიან მოკლეა.', 'Your question is too short.'); renderStatus(); return;
-    }
+    const intent = dialogIntent(value);
+    if (st.review && intent === 'confirm') { setComposer('', false); await confirmReview(); return; }
+    if ((st.review || st.draft) && intent === 'cancel') { setComposer('', false); cancelReview(); return; }
+    const target = route || (consiliumOn() ? 'CONSILIUM' : st.directNext && doctorOn() ? st.directNext : 'plan');
+    st.directNext = null;
+    // A new message replaces a card that was never answered (mobile: the card turns „cancelled“).
+    if (target !== 'plan') { st.review = null; st.suggestions = []; }
     renderStatus();
     st.busy = true;
     updateSend();
     const gen = ++generation;
     let result;
     try {
-      result = await withAiConsent(() => (st.mode === 'medi' ? runPlan(value, gen, petId) : runConsult(value, gen)));
+      result = await withAiConsent(() => (target === 'plan' ? runPlan(value, gen, petId) : runAnswer(value, target, gen, null)));
     } catch (e) {
       if (gen === generation && same()) {
         st.error = errorText(e, t('კავშირი შეფერხდა. სცადე ხელახლა.', 'Connection problem. Please try again.'));
-        st.failed = { text: value, petId };
-        setComposer(value, false);
+        st.failed = { text: value, petId, route: e?.route || target };
+        if (!ta.value.trim()) setComposer(value, false);
       }
     } finally {
       if (gen === generation && same()) {
@@ -585,7 +639,7 @@ export default async function mediPage(root, ctx) {
           // Declining / closing is a valid choice: nothing was sent. A calm note with „ხელახლა ცდა“
           // (opens the disclosure again), never an error (App Review 2026-09-22).
           st.note = t('AI-ს არაფერი გაეგზავნა. როცა გინდა, შეგიძლია ხელახლა სცადო.', 'Nothing was sent to the AI. You can try again whenever you like.');
-          st.declined = { text: value, petId };
+          st.declined = { text: value, petId, route: target };
           if (!ta.value.trim()) setComposer(value, false);
         }
         renderStatus();
@@ -595,31 +649,41 @@ export default async function mediPage(root, ctx) {
     }
   }
 
-  function historyTurns() {
-    return st.messages.filter((m) => !m.local && !m.pending && !m.streaming && m.content.trim())
-      .slice(-10).map((m) => ({ role: m.role, content: m.content.slice(0, LIMIT) }));
+  /** What the planner sees (mobile plannerHistory): words only, clinical answers shortened, cards left out. */
+  function historyTurns(exclude) {
+    return st.messages.filter((m) => m !== exclude && !m.local && !m.pending && !m.streaming && m.content.trim())
+      .map((m) => ({ role: m.role, content: m.kind === 'answer' && m.content.length > ANSWER_IN_HISTORY ? `${m.content.slice(0, ANSWER_IN_HISTORY)}…` : m.content.slice(0, LIMIT) }))
+      .slice(-10);
   }
 
-  /** DOCTOR / CONSILIUM: SSE `data: {type:'delta'|'done'|'error'}` from /api/ai/query. */
-  async function runConsult(message, gen) {
+  /**
+   * The clinical answer streams into the thread: SSE `data: {type:'delta'|'done'|'error'}` from /api/ai/query.
+   * `userMsg` = the turn already shown (planner path); null = add it here (consilium / direct doctor).
+   */
+  async function runAnswer(message, mode, gen, userMsg) {
     const conv = st.conv;
     const ctrl = new AbortController();
     st.controller = ctrl;
     st.stopRequested = false;
+    updateSend();
     let timedOut = false;
     const timer = setTimeout(() => { timedOut = true; ctrl.abort(); }, 180_000);
     const now = new Date().toISOString();
-    const userMsg = { role: 'user', content: message, timestamp: now };
-    const aiMsg = { role: 'assistant', content: '', timestamp: now, streaming: true };
-    st.messages.push(userMsg, aiMsg);
+    const deep = mode === 'CONSILIUM';
+    const user = userMsg || { role: 'user', content: message, timestamp: now };
+    const aiMsg = { role: 'assistant', kind: 'answer', deep, content: '', timestamp: now, streaming: true };
+    if (!userMsg) st.messages.push(user);
+    st.messages.push(aiMsg);
     setComposer('', false);
     renderThread();
     scrollToEnd(true);
     const live = () => gen === generation && same() && conv === st.conv;
+    // The cycle context rides only with the first question that goes through (consent runs first).
+    const context = st.clinical[mode] ? undefined : st.context?.text;
     let done = null;
     try {
       await stream('/api/ai/query', {
-        message, mode: mode().api, ...(conv.sessionId ? { sessionId: conv.sessionId } : {}), stream: true,
+        message, mode, ...(st.clinical[mode] ? { sessionId: st.clinical[mode] } : {}), ...(context ? { context } : {}), stream: true,
       }, (event, data) => {
         if (!live()) return;
         const type = (data && typeof data === 'object' && data.type) || event;
@@ -629,38 +693,34 @@ export default async function mediPage(root, ctx) {
       }, { signal: ctrl.signal });
       if (!live()) return {};
       if (!done || typeof done.answer !== 'string' || !done.answer.trim()) throw new ApiError(t('პასუხი სრულად ვერ მივიღეთ. გთხოვ, სცადე ხელახლა.', 'The answer didn’t arrive in full. Please try again.'), 502);
-      aiMsg.content = done.answer;
-      aiMsg.streaming = false;
-      aiMsg.interactionId = done.interactionId;
-      aiMsg.timestamp = new Date().toISOString();
-      const first = !conv.sessionId;
-      conv.sessionId = done.sessionId || conv.sessionId;
-      if (first) syncUrl(false);
-      if (done.title) ctx.setTitle(`Medi · ${done.title}`);
+      Object.assign(aiMsg, { content: done.answer, streaming: false, interactionId: done.interactionId, timestamp: new Date().toISOString(), sessionId: done.sessionId });
+      if (done.sessionId) st.clinical[mode] = done.sessionId;
+      if (context) { st.context = null; renderChip(); }
+      persist(conv, storedTurns([user, aiMsg]));
       invalidate('/api/quests');
-      refreshSessions();
       return done;
     } catch (e) {
       if (!live()) return {};
-      const idx = st.messages.indexOf(aiMsg);
+      const drop = () => { st.messages = st.messages.filter((m) => m !== aiMsg && m !== user); };
       if (ctrl.signal.aborted && st.stopRequested) {
         // Stopped by the person: keep what arrived, clearly marked as not saved (the server discards it).
         aiMsg.streaming = false;
         if (aiMsg.content.trim()) aiMsg.stopped = true;
-        else { st.messages.splice(idx - 1, 2); setComposer(message, false); }
+        else { drop(); setComposer(message, false); }
         return {};
       }
-      if (idx >= 0) st.messages.splice(idx - 1, 2);
-      if (timedOut) throw new ApiError(t('პასუხის მოლოდინის დრო ამოიწურა. გთხოვ, სცადე ხელახლა.', 'The answer took too long. Please try again.'), 408);
-      if (e instanceof ApiError) throw e;
-      throw new ApiError(t('ინტერნეტთან კავშირი ვერ დამყარდა.', 'Couldn’t connect to the internet.'), 0);
+      drop();
+      const err = timedOut ? new ApiError(t('პასუხის მოლოდინის დრო ამოიწურა. გთხოვ, სცადე ხელახლა.', 'The answer took too long. Please try again.'), 408)
+        : e instanceof ApiError ? e : new ApiError(t('ინტერნეტთან კავშირი ვერ დამყარდა.', 'Couldn’t connect to the internet.'), 0);
+      err.route = mode;
+      throw err;
     } finally {
       clearTimeout(timer);
       if (!ctrl.signal.aborted) ctrl.abort(); // release the stream if an error event ended it early
     }
   }
 
-  /** Medi planner: reply + optional signed review / partial draft. */
+  /** Medi planner: reply + optional signed review / partial draft. A `consult` review = answer here, no tap. */
   async function runPlan(value, gen, petId) {
     const conv = st.conv;
     const ctrl = new AbortController();
@@ -672,49 +732,58 @@ export default async function mediPage(root, ctx) {
     const history = historyTurns();
     const now = new Date().toISOString();
     const userMsg = { role: 'user', content: value, timestamp: now };
-    const pending = { role: 'assistant', content: '', pending: true, timestamp: now };
+    const pending = { role: 'assistant', kind: 'medi', content: '', pending: true, timestamp: now };
     st.messages.push(userMsg, pending);
-    st.review = null; st.suggestions = []; st.receipt = null;
+    st.review = null; st.suggestions = [];
     setComposer('', false);
     renderStatus();
     renderThread();
     scrollToEnd(true);
     const live = () => gen === generation && same() && conv === st.conv;
+    let result;
     try {
-      const result = await post('/api/assistant/plan', {
+      result = await post('/api/assistant/plan', {
         text: value, scope: 'auto', history, draft: currentDraft || null, ...(petId ? { subjectId: petId } : {}),
       }, { signal: ctrl.signal });
-      if (!live()) return {};
-      Object.assign(pending, { content: String(result.reply || ''), pending: false, timestamp: new Date().toISOString() });
-      st.review = result.review || null;
-      st.draft = result.review ? null : result.draft || null;
-      st.suggestions = Array.isArray(result.suggestions) ? result.suggestions : [];
-      persist(conv, [{ role: 'user', content: value }, { role: 'assistant', content: pending.content }]);
-      scrollToEnd(true);
-      return result;
     } catch (e) {
+      clearTimeout(timer);
       if (!live()) return {};
-      const idx = st.messages.indexOf(pending);
-      if (idx >= 0) st.messages.splice(idx - 1, 2);
+      st.messages = st.messages.filter((m) => m !== pending && m !== userMsg);
       st.draft = currentDraft || null;
       if (ctrl.signal.aborted && st.stopRequested) { setComposer(value, false); return {}; }
       if (timedOut) throw new ApiError(t('პასუხის მოლოდინის დრო ამოიწურა. გთხოვ, სცადე ხელახლა.', 'The answer took too long. Please try again.'), 408);
       throw e;
-    } finally {
-      clearTimeout(timer);
     }
+    clearTimeout(timer);
+    if (!live()) return {};
+    // A health question: the clinical model answers right here.
+    const consult = consultFromReview(result.review, value);
+    if (consult) {
+      st.messages = st.messages.filter((m) => m !== pending);
+      st.draft = null;
+      return runAnswer(consult.message, consult.mode === 'CONSILIUM' && deepOn() ? 'CONSILIUM' : 'DOCTOR', gen, userMsg);
+    }
+    Object.assign(pending, { content: String(result.reply || ''), pending: false, timestamp: new Date().toISOString() });
+    st.review = result.review || null;
+    st.draft = result.review ? null : result.draft || null;
+    st.suggestions = Array.isArray(result.suggestions) ? result.suggestions : [];
+    persist(conv, storedTurns([userMsg, pending]));
+    scrollToEnd(true);
+    return result;
   }
 
-  /** Medi conversations are saved as ChatSession mode ASSISTANT (same as the app). */
+  /** The thread is a ChatSession mode ASSISTANT (same as the app); a reopened consultation's turns go first. */
   function persist(conv, turns) {
-    const clean = turns.map((t) => ({ role: t.role, content: String(t.content || '').slice(0, LIMIT) })).filter((t) => t.content.trim());
-    if (!clean.length) return;
+    const copy = conv === st.conv ? st.copyOnFirstSave : null;
+    const batch = copy ? [...copy, ...turns] : turns;
+    if (!batch.length) return;
     st.persistChain = st.persistChain
-      .then(() => post('/api/chats/assistant', { ...(conv.sessionId ? { sessionId: conv.sessionId } : {}), turns: clean }))
+      .then(() => post('/api/chats/assistant', { ...(conv.sessionId ? { sessionId: conv.sessionId } : {}), turns: batch }))
       .then((r) => {
         if (!same() || !r?.sessionId) return;
         const first = !conv.sessionId;
         conv.sessionId = r.sessionId;
+        if (conv === st.conv) st.copyOnFirstSave = null;
         if (conv === st.conv && first) syncUrl(false);
         refreshSessions();
       })
@@ -728,13 +797,14 @@ export default async function mediPage(root, ctx) {
       const c = await get('/api/assistant/catalog', { scope: 'auto' });
       if (!same()) return;
       st.catalog = c;
-      if (st.mode === 'medi') { renderStatus(); renderThread(); }
+      renderStatus();
+      renderThread();
     } catch { /* the conversation works without it; labels fall back */ }
   }
   const tools = () => st.catalog?.tools || [];
   const choices = () => st.catalog?.choices || {};
-  function toolLabel(name) { return tools().find((t) => t.name === name)?.label || t('ჩანაწერი', 'Entry'); }
-  function isHandoff(name) { return tools().find((t) => t.name === name)?.kind === 'handoff' || HANDOFF_TOOLS.includes(name); }
+  function toolLabel(name) { return tools().find((x) => x.name === name)?.label || t('ჩანაწერი', 'Entry'); }
+  function isHandoff(name) { return tools().find((x) => x.name === name)?.kind === 'handoff' || HANDOFF_TOOLS.includes(name); }
 
   function reviewRows(action) {
     const ch = choices();
@@ -743,8 +813,8 @@ export default async function mediPage(root, ctx) {
         : key === 'breedId' ? ch[`breedId:${action.args.speciesId}`]
           : key === 'productId' ? ch[`productId:${action.args.petId}`] : ch[key];
       const named = Array.isArray(list) ? list.find((o) => o.value === value)?.label : null;
-      const label = key === 'petId' ? t('ცხოველი', 'Pet') : key === 'medicationId' ? t('მედიკამენტი', 'Medication') : key === 'id' ? t('ჩანაწერი', 'Entry') : key === 'dueTime' ? t('დრო', 'Time') : FIELD_LABELS[key] || key;
-      return { key, label, value: named || display(value) };
+      const label = key === 'petId' ? t('ცხოველი', 'Pet') : key === 'medicationId' ? t('მედიკამენტი', 'Medication') : key === 'id' ? t('ჩანაწერი', 'Entry') : key === 'dueTime' ? t('დრო', 'Time') : key === 'destination' ? t('გვერდი', 'Page') : FIELD_LABELS[key] || key;
+      return { key, label, value: named || humanDates(display(value)) };
     }).filter((r) => r.value !== '');
   }
 
@@ -778,9 +848,9 @@ export default async function mediPage(root, ctx) {
 
   function cancelReview() {
     if (st.busy) return;
-    st.review = null; st.draft = null; st.suggestions = []; st.receipt = null;
+    st.review = null; st.draft = null; st.suggestions = [];
     const reply = t('კარგი, გაუქმებულია.', 'Okay, cancelled.');
-    st.messages.push({ role: 'assistant', content: reply, timestamp: new Date().toISOString() });
+    st.messages.push({ role: 'assistant', kind: 'medi', content: reply, timestamp: new Date().toISOString() });
     persist(st.conv, [{ role: 'assistant', content: reply }]);
     renderStatus();
     renderThread();
@@ -797,34 +867,34 @@ export default async function mediPage(root, ctx) {
     renderStatus();
     renderThread();
     const handoff = isHandoff(current.tool);
-    const pending = { role: 'assistant', content: '', pending: true, label: handoff ? t('ვხსნი…', 'Opening…') : t('ვინახავ…', 'Saving…') };
+    const pending = { role: 'assistant', kind: 'medi', content: '', pending: true, label: handoff ? t('ვხსნი…', 'Opening…') : t('ვინახავ…', 'Saving…') };
     st.messages.push(pending);
     renderThread();
     scrollToEnd(true);
     const live = () => gen === generation && same() && conv === st.conv;
+    let followUp = null;
     try {
       const result = await post('/api/assistant/execute', { token: current.token, confirmed: true }, { timeoutMs: 60_000 });
       if (!live()) return;
-      st.messages.splice(st.messages.indexOf(pending), 1);
+      st.messages = st.messages.filter((m) => m !== pending);
       st.review = null; st.draft = null; st.suggestions = [];
       if (result.native) {
-        handleNative(result.native, result.operationId);
-        return;
+        followUp = handleNative(result.native);
+      } else {
+        const petName = (choices().petId || []).find((p) => p.value === current.args.petId)?.label;
+        const reply = current.tool === 'medication_add' ? t(`${String(current.args.medName)} დამატებულია.`, `${String(current.args.medName)} added.`)
+          : current.tool === 'pet_care_plan' && petName ? t(`${petName}-ის გეგმა შენახულია.`, `${petName}’s plan is saved.`)
+            : t('შენახულია.', 'Saved.');
+        st.messages.push({ role: 'assistant', kind: 'medi', content: reply, timestamp: new Date().toISOString() });
+        persist(conv, [{ role: 'assistant', content: reply }]);
+        invalidate(''); // the write went through the server's own domain endpoint: re-read everything
+        st.catalog = null;
+        loadCatalog();
+        toast(t('შენახულია', 'Saved'));
       }
-      const petName = (choices().petId || []).find((p) => p.value === current.args.petId)?.label;
-      const reply = current.tool === 'medication_add' ? t(t(`${String(current.args.medName)} დამატებულია.`, `${String(current.args.medName)} added.`), `${String(current.args.medName)} added.`)
-        : current.tool === 'pet_care_plan' && petName ? t(t(`${petName}ს გეგმა შენახულია — ${String(current.args.startOn)}${current.args.dueTime ? `, ${String(current.args.dueTime)}` : ''}.`, `${petName}’s plan is saved — ${String(current.args.startOn)}${current.args.dueTime ? `, ${String(current.args.dueTime)}` : ''}.`), `${petName}’s plan is saved — ${String(current.args.startOn)}${current.args.dueTime ? `, ${String(current.args.dueTime)}` : ''}.`)
-          : t('შენახულია.', 'Saved.');
-      st.messages.push({ role: 'assistant', content: reply, timestamp: new Date().toISOString() });
-      persist(conv, [{ role: 'assistant', content: reply }]);
-      invalidate(''); // the write went through the server's own domain endpoint: re-read everything
-      st.catalog = null;
-      loadCatalog();
-      toast(t('შენახულია', 'Saved'));
     } catch (e) {
       if (!live()) return;
-      const idx = st.messages.indexOf(pending);
-      if (idx >= 0) st.messages.splice(idx, 1);
+      st.messages = st.messages.filter((m) => m !== pending);
       st.error = errorText(e, t('მოქმედება ვერ შესრულდა.', 'The action couldn’t be completed.'));
     } finally {
       if (gen === generation && same()) {
@@ -834,24 +904,24 @@ export default async function mediPage(root, ctx) {
         scrollToEnd(true);
       }
     }
+    // An older planner reply (a /chat/… handoff with a message): answer here instead of opening another screen.
+    if (followUp) send(followUp.message, undefined, followUp.mode);
   }
 
-  /** A confirmed handoff: consultation switches mode in place; pages open on the web when they exist. */
-  function handleNative(native, operationId) {
+  /** A confirmed handoff: a consultation answers in this thread; pages open on the web when they exist. */
+  function handleNative(native) {
     const route = String(native?.route || '');
-    const chat = /^\/chat\/([^/?#]+)/.exec(route);
-    if (chat) {
-      const target = modeFromParam(chat[1]) === 'deep' ? 'deep' : 'doctor';
-      if (native.message && operationId && !consumedOps.has(operationId)) {
-        staged = { owner, mode: target, message: String(native.message).slice(0, LIMIT), operationId, expires: Date.now() + 60_000 };
-      }
-      openConversation(target, null, { push: true });
-      return;
+    if (/^\/chat\//.test(route)) {
+      const deep = /^\/chat\/(deep|consilium)/i.test(route) || native.mode === 'CONSILIUM';
+      if (native.message) return { message: String(native.message).slice(0, LIMIT), mode: deep && deepOn() ? 'CONSILIUM' : 'DOCTOR' };
+      if (deep && deepOn()) toggleConsilium(true);
+      return null;
     }
     const web = webRouteFor(route);
-    if (web) { ctx.navigate(web); return; }
+    if (web) { ctx.navigate(web); return null; }
     const reply = t('ეს ფუნქცია MEDICARD აპშია — იქ გააგრძელე.', 'This feature is in the MEDICARD app — continue there.');
-    st.messages.push({ role: 'assistant', content: reply, timestamp: new Date().toISOString(), local: true, appOnly: true });
+    st.messages.push({ role: 'assistant', kind: 'medi', content: reply, timestamp: new Date().toISOString(), local: true, appOnly: true });
+    return null;
   }
 
   /* ── Capability directory ("რას აკეთებს Medi") ───────── */
@@ -904,13 +974,13 @@ export default async function mediPage(root, ctx) {
         list.append(h('div', { class: 'medi-dir-group' },
           h('div', { class: 'medi-dir-title' }, h('span', { class: `tile ink-${ink}`, style: { width: '28px', height: '28px' } }, icon(ic, { size: 15 })), g.label),
           h('div', { class: 'medi-dir-grid' }, feats.map((f) => {
-            const consult = f.id === 'doctor' ? 'doctor' : f.id === 'consilium' ? 'deep' : null;
+            const consult = f.id === 'doctor' ? 'doctor' : f.id === 'consilium' && deepOn() ? 'deep' : null;
             const web = FEATURE_WEB[f.id];
             return h('button', {
               type: 'button', class: 'medi-dir-item',
               onClick: () => {
                 m.close();
-                if (consult) openConversation(consult, null, { push: true });
+                if (consult) { toggleConsilium(consult === 'deep'); setComposer(ta.value); }
                 else if (web) ctx.navigate(web);
                 else {
                   st.messages.push({ role: 'assistant', content: t(t(`„${f.label}“ MEDICARD აპშია — იქ გააგრძელე.`, `“${f.label}” is in the MEDICARD app — continue there.`), `“${f.label}” is in the MEDICARD app — continue there.`), timestamp: new Date().toISOString(), local: true, appOnly: true });
@@ -978,7 +1048,7 @@ export default async function mediPage(root, ctx) {
     for (const s of items) {
       const b = bucket(s.updatedAt);
       if (b !== last) { wrap.append(h('div', { class: 'medi-hist-group' }, b)); last = b; }
-      const m = MODES[modeForSession(s.mode)];
+      const m = SESSION_LOOK[s.mode] || SESSION_LOOK.ASSISTANT;
       const active = s.id === st.conv.sessionId;
       const d = parseDate(s.updatedAt);
       const when = d ? (bucket(s.updatedAt) === t('დღეს', 'Today') ? fmtTime(d) : relDay(d) === t('გუშინ', 'Yesterday') ? t('გუშინ', 'Yesterday') : fmtDate(d, { short: true })) : '';
@@ -988,7 +1058,7 @@ export default async function mediPage(root, ctx) {
       }, icon('trash', { size: 15 }));
       wrap.append(h('div', {
         class: `medi-hist-item ${active ? 'on' : ''}`, role: 'button', tabindex: '0', 'aria-current': active ? 'true' : undefined,
-        onClick: () => { onPick?.(); if (!active) openConversation(modeForSession(s.mode), s.id, { push: true }); },
+        onClick: () => { onPick?.(); if (!active) openConversation(s.id, { push: true }); },
         onKeydown: (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.currentTarget.click(); } },
       },
       h('span', { class: `tile ink-${m.ink}`, style: { width: '30px', height: '30px' } }, icon(m.icon, { size: 15 })),
@@ -1006,7 +1076,7 @@ export default async function mediPage(root, ctx) {
       onInput: (e) => { st.filter = e.target.value; const list = e.target.closest('.medi-side, .modal-body')?.querySelector('.medi-hist'); if (list) list.replaceWith(historyList(onPick)); },
     });
     return h('div', { class: 'medi-side-top' },
-      button(t('ახალი საუბარი', 'New conversation'), { variant: 'primary', icon: 'plus', class: 'medi-new', onClick: () => { onPick?.(); openConversation(st.mode, null, { push: true }); } }),
+      button(t('ახალი საუბარი', 'New conversation'), { variant: 'primary', icon: 'plus', class: 'medi-new', onClick: () => { onPick?.(); openConversation(null, { push: true }); } }),
       search);
   }
 
@@ -1034,7 +1104,7 @@ export default async function mediPage(root, ctx) {
       st.sessions = (st.sessions || []).filter((x) => x.id !== s.id);
       if (histModal) histModal.modal.el.querySelector('.medi-hist')?.replaceWith(historyList(histModal.pick));
       toast(t('საუბარი წაიშალა', 'Conversation deleted'));
-      if (s.id === st.conv.sessionId) openConversation(st.mode, null);
+      if (s.id === st.conv.sessionId) openConversation(null);
       else renderSide();
     } catch (e) {
       toast(e?.message || t('წაშლა ვერ მოხერხდა', 'Couldn’t delete'), 'error');
@@ -1042,16 +1112,30 @@ export default async function mediPage(root, ctx) {
   }
 
   /* ── Boot ────────────────────────────────────────────── */
-  // Other pages hand over a draft through sessionStorage (health text never goes in the URL).
+  // Other pages hand over a draft through sessionStorage (health text never goes in the URL): the question
+  // goes to the composer (never auto-sent); `mode: 'doctor'` sends it straight to the doctor; the cycle page
+  // adds a context the person sees as a removable chip.
   let stored = null;
   try {
     stored = JSON.parse(sessionStorage.getItem('medicard.web.mediPrefill') || 'null');
     sessionStorage.removeItem('medicard.web.mediPrefill');
   } catch { stored = null; }
   const fresh = stored && typeof stored.text === 'string' && Date.now() - Number(stored.at || 0) < 5 * 60_000;
-  const prefill = fresh ? stored.text.slice(0, LIMIT) : typeof ctx.query.prefill === 'string' ? ctx.query.prefill.slice(0, LIMIT) : '';
-  openConversation(st.mode, st.conv.sessionId, { push: false });
-  if (prefill) setComposer(prefill, true); // never auto-sent; the URL is cleaned by syncUrl above
+  const directBoot = st.directNext;
+  openConversation(st.conv.sessionId, { push: false });
+  if (!st.conv.sessionId) {
+    st.directNext = directBoot;
+    if (fresh) {
+      if (stored.mode === 'doctor') st.directNext = 'DOCTOR';
+      const c = stored.context;
+      if (c && typeof c.text === 'string' && Array.isArray(c.lines) && typeof c.chipLabel === 'string') {
+        st.context = { text: c.text.slice(0, LIMIT), lines: c.lines.map(String).slice(0, 8), chipLabel: c.chipLabel.slice(0, 120) };
+        st.directNext = 'DOCTOR';
+        renderChip();
+      }
+      setComposer(stored.text.slice(0, LIMIT), true);
+    }
+  }
   loadSessions();
 
   return () => {
