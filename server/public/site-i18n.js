@@ -11,7 +11,8 @@
    (and <meta name="medicard:ka" content="/privacy"> the other way).
 
    The choice is shared with the web app (/app) through localStorage "medicard.lang";
-   ?lang=en|ka in the URL sets it too (shareable links). */
+   ?lang=en|ka in the URL sets it too (shareable links).
+   Also loads /site-consent.js (cookie banner + Meta Pixel, public pages only). */
 (function () {
   'use strict';
 
@@ -107,4 +108,10 @@
   } else {
     document.addEventListener('DOMContentLoaded', followPage);
   }
+
+  // Cookie consent + Meta Pixel (site-consent.js decides per page; nothing from Meta loads before „ვეთანხმები“).
+  var consent = document.createElement('script');
+  consent.src = '/site-consent.js?v=1';
+  consent.async = true;
+  document.head.appendChild(consent);
 })();

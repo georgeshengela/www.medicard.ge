@@ -2,7 +2,7 @@
 
 This is an English translation. If it differs from the Georgian version, the Georgian version prevails.
 
-**Last updated:** October 2, 2026
+**Last updated:** October 5, 2026
 **Effective date:** September 20, 2026
 
 This policy explains how account, health and activity information is processed in MEDICARD. The amount of data depends on the features you use and the permissions you grant. Reading this policy does not mean you consent to sharing with AI — the app offers you a separate choice for that.
@@ -149,3 +149,9 @@ Reporting a trainer or a client for a violation, and blocking, are possible from
 ## Meal plan and diet
 
 The meal plan stores the age, height, weight and activity data you confirm, your food preferences, allergens and your answers to the suitability questions, in order to set a starting target or to suggest that you discuss it with a specialist. The history of daily targets and planned meals is stored; a meal is marked as eaten only by your action. This data is not published. When you talk about nutrition with Medi, and only with valid consent to AI sharing, your daily totals, progress over the last 7 days, weight goal, diet and food preferences are passed to the relevant AI recipients; protected cycle details are not passed. Creating a plan does not in itself use AI. You can change or pause the plan on the nutrition page; when your account is deleted, this personal data is deleted as well.
+
+# 15. Website cookies and the Meta Pixel
+
+On the public pages of medicard.ge — not in the app, not in the signed-in web version at /app and not on the health calculator pages — we use the Meta Pixel of Meta Platforms, Inc. and its affiliates, and only after you tap "Accept" in the cookie banner. It then sets Meta cookies (_fbp) and sends Meta the address of the page you opened, the time, technical data about your browser and device, your IP address and whether you tapped an App Store button, so that we can measure our ads on Facebook and Instagram and show them to people who visited the site. Health data, data from the app, names, emails and phone numbers are never sent; automatic collection of buttons and forms is turned off. Meta processes this data under its own policy (facebook.com/privacy/policy), possibly outside Georgia.
+
+Without consent nothing is loaded from Meta, and a browser that sends Global Privacy Control is treated as a refusal. Your choice is kept in your browser for 12 months. You can change it at any time with the "Cookies" link at the bottom of the site; after you withdraw, the Pixel stops and its cookies are deleted.

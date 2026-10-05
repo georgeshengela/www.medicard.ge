@@ -50,6 +50,7 @@ export function siteFooter({ disclaimer, disclaimerEn = DISCLAIMER_EN[disclaimer
         <a class="sf-brand" href="/"><img src="/icon.png" width="28" height="28" alt="" /><span data-en="MEDICARD">მედიქარდი</span></a>
         <nav class="sf-links" aria-label="საიტის ბმულები" data-en-aria-label="Site links">
 ${links}
+          <a href="/privacy#s15" data-en-href="/privacy-en#s15" data-cookie-settings data-en="Cookies">ქუქი-ფაილები</a>
         </nav>
         <p class="sf-copy">© <span id="y">2026</span> Medicard.GE</p>
       </div>
