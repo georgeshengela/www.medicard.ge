@@ -1,0 +1,43 @@
+/* MEDICARD web — MEDIRUN (read-only): wallet + leaderboard. Brand teal (moduleBrand run). */
+.run-hint { display: flex; align-items: flex-start; gap: 10px; padding: 14px 16px; margin-bottom: 18px; font-size: 14px; line-height: 1.55; color: var(--text2); }
+.run-hint .ic { color: #0d9488; flex: none; margin-top: 2px; }
+.run-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr); gap: 24px; align-items: start; }
+@media (max-width: 980px) { .run-grid { grid-template-columns: 1fr; } }
+.run-wallet, .run-board { display: flex; flex-direction: column; gap: 14px; }
+.run-balance { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.run-balance > div { display: flex; flex-direction: column; gap: 2px; }
+.run-balance b { font-size: 34px; font-weight: 800; letter-spacing: -1px; font-variant-numeric: tabular-nums; }
+.run-season { font-size: 12.5px; margin-top: -8px; }
+.run-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.run-stats > div { display: flex; flex-direction: column; gap: 2px; padding: 10px 12px; border-radius: 14px; background: var(--bg); }
+.run-stats b { font-size: 18px; font-variant-numeric: tabular-nums; }
+.run-stats b.teal { color: #0d9488; } .run-stats b.amber { color: #b45309; }
+:root[data-theme=dark] .run-stats b.teal { color: #2dd4bf; } :root[data-theme=dark] .run-stats b.amber { color: #fbbf24; }
+.run-stats span { font-size: 12px; color: var(--text3); }
+.run-rows { display: flex; flex-direction: column; }
+.run-row { display: flex; align-items: center; gap: 12px; padding: 10px 0; border-top: 1px solid var(--line); }
+.run-row:first-child { border-top: 0; }
+.run-row-ic { width: 32px; height: 32px; border-radius: 10px; display: grid; place-items: center; flex: none; background: color-mix(in srgb, #0d9488 14%, transparent); color: #0d9488; }
+.run-row-ic.prize, .run-row-ic.grand { background: color-mix(in srgb, #f59e0b 16%, transparent); color: #b45309; }
+.run-row-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.run-row-main b { font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.run-row-main span { font-size: 12px; color: var(--text3); }
+.run-row-coins { font-weight: 700; color: #0d9488; font-variant-numeric: tabular-nums; }
+:root[data-theme=dark] .run-row-coins { color: #2dd4bf; }
+.run-tabs { display: flex; flex-wrap: wrap; gap: 8px; justify-content: space-between; }
+.run-prizes { display: flex; gap: 10px; align-items: flex-start; padding: 12px 14px; border-radius: 16px; background: color-mix(in srgb, #f59e0b 12%, var(--bg)); }
+.run-prizes .ic { color: #b45309; flex: none; margin-top: 2px; }
+.run-prizes div { display: flex; flex-direction: column; gap: 2px; font-size: 13.5px; }
+.run-prizes span { font-size: 12px; color: var(--text2); }
+.run-me { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 4px 12px; padding: 10px 14px; border-radius: 14px; background: color-mix(in srgb, #0d9488 10%, var(--bg)); font-size: 14px; }
+.run-me p { flex-basis: 100%; font-size: 12.5px; margin: 0; }
+.run-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.run-list li { display: flex; align-items: center; gap: 12px; padding: 9px 2px; border-top: 1px solid var(--line); }
+.run-list li:first-child { border-top: 0; }
+.run-rank { width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; flex: none; font-size: 12.5px; font-weight: 700; background: var(--bg); color: var(--text2); }
+.run-list li.top1 .run-rank { background: #fde68a; color: #78350f; } .run-list li.top2 .run-rank { background: #e5e7eb; color: #374151; } .run-list li.top3 .run-rank { background: #fed7aa; color: #7c2d12; }
+.run-name { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.run-name b { font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.run-name span { font-size: 12px; color: var(--text3); }
+.run-val { font-weight: 700; font-variant-numeric: tabular-nums; }
+.run-last { display: flex; flex-direction: column; gap: 4px; font-size: 13px; }
