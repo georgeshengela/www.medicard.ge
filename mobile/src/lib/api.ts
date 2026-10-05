@@ -3713,7 +3713,7 @@ export const api = {
   referrals: {
     me: () => request<import('@/lib/referral').ReferralSummary>('/api/referrals/me'),
     claim: (code: string, installId?: string) =>
-      request<{ ok: true; status: string }>('/api/referrals/claim', { method: 'POST', body: { code, installId } }),
+      request<import('@/lib/referral').ReferralClaimResult>('/api/referrals/claim', { method: 'POST', body: { code, installId } }),
   },
 
   rewards: {

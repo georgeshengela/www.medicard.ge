@@ -9,11 +9,12 @@ import { ApiError, api } from '@/lib/api';
 import { authErrorMessage } from '@/lib/authErrorMessage';
 import { localAccountId } from '@/lib/localAccount';
 import { petCareInstallId } from '@/lib/petCareReminderPrefs';
-import { clearPendingReferralCode, normalizeReferralCode, readPendingReferralCode } from '@/lib/referral';
+import { publishMediCoinBalance } from '@/lib/quest/cache';
+import { clearPendingReferralCode, normalizeReferralCode, readPendingReferralCode, type ReferralClaimResult } from '@/lib/referral';
 import { useThemeColors } from '@/theme/colors';
 import { hubText } from '@/theme/hub';
 
-/** Enter a friend's invite code once (Phase 3.4). Prefilled from an invite link when there is one. */
+/** Enter a friend's invite code once; both sides are paid at that moment. Prefilled from an invite link when there is one. */
 export default function InviteCodeScreen() {
   const router = useRouter();
   const c = useThemeColors();
@@ -21,7 +22,7 @@ export default function InviteCodeScreen() {
   const [code, setCode] = useState(normalizeReferralCode(params.code) ?? '');
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  const [done, setDone] = useState(false);
+  const [done, setDone] = useState<ReferralClaimResult | null>(null);
   const lock = useRef(false);
 
   useEffect(() => {
@@ -44,10 +45,11 @@ export default function InviteCodeScreen() {
     setError(null);
     const owner = localAccountId();
     try {
-      await api.referrals.claim(normalized, await petCareInstallId().catch(() => undefined));
+      const result = await api.referrals.claim(normalized, await petCareInstallId().catch(() => undefined));
       if (owner !== localAccountId()) return;
+      if (typeof result.balance === 'number') publishMediCoinBalance(result.balance);
       await clearPendingReferralCode();
-      setDone(true);
+      setDone(result);
     } catch (e) {
       if (e instanceof ApiError && e.status === 409) {
         setError(e.message);
@@ -62,7 +64,13 @@ export default function InviteCodeScreen() {
   return (
     <ProfileSetupShell
       title={done ? ka.referral.enterDoneTitle : ka.referral.enterTitle}
-      body={done ? ka.referral.enterDoneBody : ka.referral.enterBody}
+      body={
+        done
+          ? done.coins
+            ? ka.referral.enterDoneBody(done.coins, done.inviter ?? '')
+            : ka.referral.enterDonePending(done.inviter ?? '')
+          : ka.referral.enterBody
+      }
       primaryLabel={done ? ka.common.continue : ka.referral.enterCta}
       onPrimary={() => void submit()}
       onBack={leave}

@@ -25,24 +25,31 @@ export async function clearPendingReferralCode(): Promise<void> {
   await setPreference(PENDING_KEY, '');
 }
 
+export type ReferralInvitee = { name: string; at: string; status: string; coins: number };
+
 export type ReferralSummary = {
   code: string | null;
   link: string | null;
   phoneRequired: boolean;
   coinsPerSide: number;
   monthlyCap: number;
+  claimWindowDays?: number;
   invited: number;
+  invitedThisMonth?: number;
   pending: number;
   rewarded: number;
   coinsEarned: number;
   monthRemaining: number;
-  invitedBy: { status: string } | null;
+  invitees?: ReferralInvitee[];
+  invitedBy: { status: string; name?: string } | null;
   canClaim: boolean;
 };
 
+export type ReferralClaimResult = { ok: true; status: string; coins?: number; balance?: number | null; inviter?: string };
+
 export function referralShareMessage(code: string, link: string, coins: number): string {
   return tx(
-    `შემოდი MEDICARD-ში — წამლები, ანალიზები და ჯანმრთელობა ერთ აპში. რეგისტრაციის შემდეგ შეიყვანე ჩემი კოდი ${code} და ორივე მივიღებთ ${coins} Medi მონეტას.\n${link}`,
-    `Join me on MEDICARD — medications, lab results and your health in one app. After you sign up, enter my code ${code} and we both get ${coins} Medi Coins.\n${link}`,
+    `შემოდი MEDICARD-ში — წამლები, ანალიზები და ჯანმრთელობა ერთ აპში. რეგისტრაციის შემდეგ გახსენი პროფილი → „მოიწვიე მეგობარი“ → „მოწვევის კოდი მაქვს“ და შეიყვანე ჩემი კოდი ${code} — ორივე მაშინვე მივიღებთ ${coins} Medi მონეტას.\n${link}`,
+    `Join me on MEDICARD — medications, lab results and your health in one app. After you sign up, open Profile → “Invite a friend” → “I have an invite code” and enter my code ${code} — we both get ${coins} Medi Coins right away.\n${link}`,
   );
 }
