@@ -37,7 +37,8 @@ async function freshRules(db){clearGiftRuleCache();return giftRules(db);}
 export async function dayBoxes(date,{db=prisma,now=Date.now()}={}){
  const from=dayStart(date),to=new Date(+from+DAY);
  const [gifts,rules]=await Promise.all([
-  db.medipulsiGift.findMany({where:{OR:[{id:{startsWith:`glow-${date}-`}},{startsAt:{gte:from,lt:to}}]},orderBy:[{startsAt:'asc'},{id:'asc'}]}),
+  // Starter boxes are personal (their spot is the player's own position): never on the admin lists.
+  db.medipulsiGift.findMany({where:{OR:[{id:{startsWith:`glow-${date}-`}},{startsAt:{gte:from,lt:to}}],NOT:{id:{startsWith:'starter-'}}},orderBy:[{startsAt:'asc'},{id:'asc'}]}),
   freshRules(db),
  ]);
  return gifts.map(g=>boxRow(g,rules.get(g.id),now));
@@ -47,7 +48,7 @@ export async function dayBoxes(date,{db=prisma,now=Date.now()}={}){
 export async function dayNumbers(from,to,{db=prisma}={}){
  const since=dayStart(from),until=new Date(+dayStart(to)+DAY);
  const [boxes,claims,coins]=await Promise.all([
-  db.$queryRaw`SELECT to_char(("startsAt" AT TIME ZONE 'Asia/Tbilisi'),'YYYY-MM-DD') AS d, count(*)::int AS boxes, coalesce(sum("stock"),0)::int AS capacity, coalesce(sum("allocated"),0)::int AS taken FROM "MedipulsiGift" WHERE "archived"=false AND "startsAt">=${since} AND "startsAt"<${until} GROUP BY 1`,
+  db.$queryRaw`SELECT to_char(("startsAt" AT TIME ZONE 'Asia/Tbilisi'),'YYYY-MM-DD') AS d, count(*)::int AS boxes, coalesce(sum("stock"),0)::int AS capacity, coalesce(sum("allocated"),0)::int AS taken FROM "MedipulsiGift" WHERE "archived"=false AND "id" NOT LIKE 'starter-%' AND "startsAt">=${since} AND "startsAt"<${until} GROUP BY 1`,
   db.$queryRaw`SELECT to_char(("createdAt" AT TIME ZONE 'Asia/Tbilisi'),'YYYY-MM-DD') AS d, count(*)::int AS opened, count(DISTINCT "userId")::int AS players FROM "MedipulsiClaim" WHERE "createdAt">=${since} AND "createdAt"<${until} GROUP BY 1`,
   db.$queryRaw`SELECT to_char(("createdAt" AT TIME ZONE 'Asia/Tbilisi'),'YYYY-MM-DD') AS d, coalesce(sum("amount"),0)::int AS coins FROM "RewardLedger" WHERE "sourceType"='MEDIRUN' AND "currency"='COIN' AND "createdAt">=${since} AND "createdAt"<${until} GROUP BY 1`,
  ]);
@@ -387,7 +388,7 @@ export async function setAutopilot(enabled,{admin,db=prisma}){
 }
 
 export async function dropsAudit({db=prisma,offset=0}={}){
- const where={OR:[{action:{startsWith:'DROP_'}},{AND:[{action:'GIFT_SAVE'},{actorId:{not:'medirun-autopilot'}}]}]};
+ const where={OR:[{action:{startsWith:'DROP_'}},{action:{in:['CREW_DELETE','CITY_MILESTONE']}},{AND:[{action:'GIFT_SAVE'},{actorId:{not:'medirun-autopilot'}}]}]};
  const [rows,total]=await Promise.all([db.medipulsiAudit.findMany({where,orderBy:{createdAt:'desc'},take:50,skip:offset}),db.medipulsiAudit.count({where})]);
  return {rows,total};
 }
@@ -399,7 +400,7 @@ export async function dropsAudit({db=prisma,offset=0}={}){
 export async function mapBoxes(cityId,{db=prisma,now=Date.now()}={}){
  const campaign=await getCampaign(db,now),tb=campaign.area.id,want=cityId||tb;
  const [gifts,rules,cities,areas]=await Promise.all([
-  db.medipulsiGift.findMany({where:{archived:false,endsAt:{gt:new Date(now-12*HOUR)},startsAt:{lt:new Date(now+36*HOUR)}},orderBy:[{startsAt:'asc'},{id:'asc'}]}),
+  db.medipulsiGift.findMany({where:{archived:false,endsAt:{gt:new Date(now-12*HOUR)},startsAt:{lt:new Date(now+36*HOUR)},NOT:{id:{startsWith:'starter-'}}},orderBy:[{startsAt:'asc'},{id:'asc'}]}),
   freshRules(db),
   listCities({db}).catch(()=>[]),
   db.$queryRaw`SELECT "id","geometry" FROM "MedipulsiArea" WHERE "kind"='city'`.catch(()=>[]),

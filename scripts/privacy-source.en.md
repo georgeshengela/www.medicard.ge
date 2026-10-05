@@ -43,6 +43,8 @@ When your city is determined, we process GPS coordinates, accuracy and the time 
 
 During an active MEDIRUN session, we process the route travelled, distance, time, speed and game progress. Mapbox is used to display the map. The game route and the home city in your profile are stored for different purposes; walking does not automatically change your profile city. A session you start keeps recording your path while the screen is locked or another app is open (a blue indicator on iPhone, a notification on Android) until you pause or finish it; outside a session, location is not collected in the background. On iPhone, the session’s distance and time appear on the lock screen as a Live Activity, which is created on the phone and not sent to Apple.
 
+You join a MEDIRUN crew only by choice (with a code or a link). Crew members see your MEDIRUN nickname, role and this week’s distance. When, during an active session, you are within about 40 metres of a crew member, you both see that you are walking “together” — the nickname only, never a location or a route; the distance walked together counts towards coins. You can turn this off in the crew settings. “Tbilisi together” and “N people walking now” are aggregate numbers only (fewer than three people are never shown). A share video or picture is made on your phone, the first and last 200 metres of the route are cut from it, and only you share it.
+
 # 5. Data shared with AI and the purpose
 
 AI is used to prepare answers to your requests, explanations of health information, symptom assessments and care tips. Before anything is sent, the app shows the categories, the recipients and the choice to consent or decline.

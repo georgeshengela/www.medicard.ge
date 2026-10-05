@@ -3,7 +3,7 @@ export const id = z.string().min(1).max(80).regex(/^[a-zA-Z0-9_-]+$/);
 const text=(max=500)=>z.string().trim().max(max);
 export const fixSchema=z.object({position:z.tuple([z.number().min(-180).max(180),z.number().min(-90).max(90)]),accuracy:z.number().min(0).max(100000),timestamp:z.number().int().positive(),speed:z.number().min(0).max(1000).nullable(),mocked:z.boolean().optional()}).strict();
 export const batchSchema=z.object({id:z.uuid(),seq:z.number().int().positive(),fixes:z.array(fixSchema).min(1).max(120)}).strict();
-export const settingsSchema=z.object({theme:z.enum(['dark','light','system']).optional(),mapMode:z.enum(['auto','day','night']).optional(),sound:z.boolean().optional(),haptic:z.boolean().optional(),volume:z.number().min(0).max(1).optional(),threeD:z.boolean().optional(),showNetwork:z.boolean().optional(),followBearing:z.boolean().optional(),handle:text(30).min(2).optional(),leaderboardOptIn:z.boolean().optional()}).strict();
+export const settingsSchema=z.object({theme:z.enum(['dark','light','system']).optional(),mapMode:z.enum(['auto','day','night']).optional(),sound:z.boolean().optional(),haptic:z.boolean().optional(),volume:z.number().min(0).max(1).optional(),threeD:z.boolean().optional(),showNetwork:z.boolean().optional(),followBearing:z.boolean().optional(),together:z.boolean().optional(),handle:text(30).min(2).optional(),leaderboardOptIn:z.boolean().optional()}).strict();
 export const missionSchema=z.object({id,name:text(100).min(2),chapter:z.enum(['green','oldtown','horizon','culture']),center:z.tuple([z.number().min(44.5).max(45.1),z.number().min(41.55).max(41.9)]),radius:z.number().int().min(40).max(2000),meters:z.number().int().min(50).max(10000),seconds:z.number().int().min(60).max(7200),title:text(160),story:text(1000),tip:text(1000),icon:z.enum(['trees','landmark','waves','mountain','bridge','flower']),source:z.url().refine(s=>s.startsWith('https://'))}).strict();
 export const missionWrite=z.object({data:missionSchema,published:z.boolean(),archived:z.boolean(),revision:z.number().int().min(0)}).strict();
 export const giftWrite=z.object({title:text(100).min(2),description:text(1000),longitude:z.number().min(-180).max(180),latitude:z.number().min(-90).max(90),pulseRadius:z.number().int().min(40).max(500),revealRadius:z.number().int().min(10).max(50),rewardKind:z.enum(['DIGITAL','PHYSICAL']),stock:z.number().int().min(0).max(100000),published:z.boolean(),archived:z.boolean(),startsAt:z.iso.datetime(),endsAt:z.iso.datetime(),revision:z.number().int().min(0)}).strict().refine(v=>v.pulseRadius>v.revealRadius && new Date(v.endsAt)>new Date(v.startsAt));
@@ -28,5 +28,17 @@ const MESSAGES_EN=Object.freeze({
  'საჩუქარი ამ მდებარეობაზე მიუწვდომელია.':'This gift is not available at this location.',
  'საჩუქრის მარაგი ამოიწურა.':'This gift is out of stock.',
  'ეს საჩუქარი ჯერ შენთვის დახურულია.':'This gift is still locked for you.',
+ 'გუნდის სახელი 2–24 სიმბოლო უნდა იყოს, ბმულების გარეშე.':'A crew name has 2–24 characters and no links.',
+ 'ჯერ დატოვე შენი ახლანდელი გუნდი.':'Leave your current crew first.',
+ 'კოდი ვერ შეიქმნა. სცადე თავიდან.':'Couldn’t create a code. Try again.',
+ 'კოდი 6 სიმბოლოსგან შედგება.':'A crew code has 6 characters.',
+ 'ასეთი გუნდი ვერ მოიძებნა. შეამოწმე კოდი.':'No crew with this code. Check it and try again.',
+ 'გუნდი სავსეა (30 წევრი).':'This crew is full (30 members).',
+ 'გუნდში არ ხარ.':'You’re not in a crew.',
+ 'სახელს გუნდის შემქმნელი ცვლის.':'Only the crew’s creator can rename it.',
+ 'წევრს გუნდის შემქმნელი ასახლებს.':'Only the crew’s creator can remove members.',
+ 'ეს წევრი გუნდში აღარ არის.':'This member is no longer in the crew.',
+ 'საკუთარი თავის გასასვლელად „გუნდის დატოვება“ გამოიყენე.':'To leave, use “Leave crew”.',
+ 'გუნდი ვერ მოიძებნა.':'Crew not found.',
 });
 export function fail(status,message,code='MEDIPULSI_ERROR'){throw Object.assign(new Error(message),{status,code},MESSAGES_EN[message]?{messageEn:MESSAGES_EN[message]}:{});}

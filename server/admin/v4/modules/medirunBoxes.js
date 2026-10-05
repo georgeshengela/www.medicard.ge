@@ -33,7 +33,7 @@
     ICONS.pin = ICONS.pin || '<path d="M12 21s-7-6.2-7-11a7 7 0 0 1 14 0c0 4.8-7 11-7 11Z"/><circle cx="12" cy="10" r="2.5"/>';
   }
 
-  const SUBS = [['today', 'დღეს'], ['map', 'რუკა'], ['cities', 'ქალაქები'], ['rules', 'წესები'], ['calendar', 'კალენდარი'], ['spots', 'ადგილები'], ['stats', 'ციფრები'], ['log', 'ჟურნალი']];
+  const SUBS = [['today', 'დღეს'], ['map', 'რუკა'], ['cities', 'ქალაქები'], ['rules', 'წესები'], ['calendar', 'კალენდარი'], ['spots', 'ადგილები'], ['stats', 'ციფრები'], ['crews', 'გუნდები'], ['log', 'ჟურნალი']];
   const WEEKDAYS = ['კვ', 'ორშ', 'სამ', 'ოთხ', 'ხუთ', 'პარ', 'შაბ'];
   const MONTHS = ['იან', 'თებ', 'მარ', 'აპრ', 'მაი', 'ივნ', 'ივლ', 'აგვ', 'სექ', 'ოქტ', 'ნოე', 'დეკ'];
   const STATUS = { planned: ['დაგეგმილი', 'is-info'], live: ['ქალაქშია', 'is-ok'], empty: ['ამოიწურა', 'is-warn'], ended: ['დასრულდა', 'is-plain'], canceled: ['გაუქმდა', 'is-bad'], hidden: ['დამალული', 'is-plain'] };
@@ -46,7 +46,7 @@
     DROP_BOX_END: 'ყუთი დასრულდა', DROP_BOX_CANCEL: 'ყუთი გაუქმდა', DROP_BOX_RESTORE: 'ყუთი აღდგა', DROP_BOX_STOCK: 'მარაგი შეიცვალა', DROP_BOX_COINS: 'ქოინები შეიცვალა', DROP_BOX_TIME: 'დრო შეიცვალა',
     DROP_CITY_ADD: 'ქალაქი დაემატა', DROP_CITY_RULE: 'ქალაქის წესი შეიცვალა', DROP_CITY_HARVEST: 'ქალაქის ადგილები განახლდა', DROP_CITY_APPLY: 'ქალაქის ყუთები შეიქმნა',
     DROP_AUTOPILOT_ON: 'ავტოპილოტი ჩაირთო', DROP_AUTOPILOT_OFF: 'ავტოპილოტი გამოირთო', GIFT_SAVE: 'საჩუქარი შეიცვალა (MEDIRUN გვერდიდან)',
-    DROP_RULES_UPGRADE: 'წესები ახალ ეკონომიკაზე გადავიდა', DROP_BUDGET_WARN: 'ბიუჯეტის გაფრთხილება', DROP_BUDGET_STOP: 'ბიუჯეტი ამოიწურა — ყუთები შეჩერდა', DROP_WEEK_PRIZES: 'კვირის პრიზები ჩაირიცხა',
+    DROP_RULES_UPGRADE: 'წესები ახალ ეკონომიკაზე გადავიდა', DROP_BUDGET_WARN: 'ბიუჯეტის გაფრთხილება', DROP_BUDGET_STOP: 'ბიუჯეტი ამოიწურა — ყუთები შეჩერდა', DROP_WEEK_PRIZES: 'კვირის პრიზები ჩაირიცხა', CREW_DELETE: 'გუნდი წაიშალა', CITY_MILESTONE: 'ქალაქის ეტაპი',
   };
   /* Economy 2: the first-finder ladder, mirrored from giftRules.js (rounded to 5, never below 5). */
   const ladderOf = (coins, stock, decay) => { const d = Array.isArray(decay) && decay.length ? decay : [100]; return Array.from({ length: Math.max(0, Math.round(stock)) }, (_, i) => { const pct = d[Math.min(i, d.length - 1)]; return pct >= 100 ? coins : Math.max(5, Math.round((coins * pct) / 100 / 5) * 5); }); };
@@ -221,6 +221,7 @@
       else if (st.sub === 'calendar') await paintCalendar(body);
       else if (st.sub === 'spots') await paintSpots(body);
       else if (st.sub === 'stats') await paintStats(body);
+      else if (st.sub === 'crews') await paintCrews(body);
       else await paintLog(body);
     } catch (err) {
       body.innerHTML = failHtml(err);
@@ -688,6 +689,24 @@
             </div>
             <p class="s-muted">კვირა = თბილისის ორშაბათი–კვირა. პრიზს იღებს მხოლოდ ლიდერბორდში ჩართული მოთამაშე; ბიუჯეტში ითვლება.</p></div>
         </div>
+        <div class="mb-split">
+          <div class="mb-block"><h4 class="mb-h4">სასტარტო ყუთი — ახალი მოთამაშის პირველ გასეირნებაზე</h4>
+            <div class="s-form-grid">
+              <label class="s-field"><span>ჩართულია</span><input type="checkbox" ${e.starter.enabled ? 'checked' : ''} data-bool-p="economy.starter.enabled"><small>ერთხელ თითო ანგარიშზე, ვინც ჯერ ყუთი არ გაუხსნია</small></label>
+              <label class="s-field"><span>ქოინი</span><input type="number" min="0" max="1000" step="5" value="${e.starter.coins}" data-p="economy.starter.coins"><small>ბიუჯეტში ითვლება · ლიდერბორდზე არ ჩანს</small></label>
+              <label class="s-field"><span>ჩნდება გავლის შემდეგ, მ</span><input type="number" min="0" max="1000" step="10" value="${e.starter.afterMeters}" data-p="economy.starter.afterMeters"><small>ან წამების შემდეგ — რომელიც ადრე მოვა</small></label>
+              <label class="s-field"><span>ან წამის შემდეგ</span><input type="number" min="0" max="600" step="5" value="${e.starter.afterSeconds}" data-p="economy.starter.afterSeconds"><small>ზუსტი GPS-ით, მოთამაშის ადგილზე</small></label>
+              <label class="s-field"><span>ელოდება, სთ</span><input type="number" min="0.5" max="12" step="0.5" value="${e.starter.hours}" data-p="economy.starter.hours"><small>გაუხსნელი შემდეგ გასეირნებაზე ისევ ჩნდება</small></label>
+            </div>
+            <p class="s-muted">ყუთი პირადია: სხვა ვერ ხედავს, ადმინის რუკაზე და „დღეს“-ში არ ჩანს (მისი ადგილი მოთამაშის მდებარეობაა).</p></div>
+          <div class="mb-block"><h4 class="mb-h4">„ერთად“ — გუნდის წევრები ერთად დადიან</h4>
+            <div class="s-form-grid">
+              <label class="s-field"><span>ჩართულია</span><input type="checkbox" ${e.together.enabled ? 'checked' : ''} data-bool-p="economy.together.enabled"><small>ორი წევრი ≤ 40 მ-ზე, ორივეს აქტიური სესიით</small></label>
+              <label class="s-field"><span>ქოინი ყოველ ერთად გავლილ კმ-ზე</span><input type="number" min="0" max="500" step="5" value="${e.together.coinsPerKm}" data-p="economy.together.coinsPerKm"><small>0 = მხოლოდ „ერთად“ ნიშანი, ქოინის გარეშე</small></label>
+              <label class="s-field"><span>დღიური ზღვარი, ქოინი</span><input type="number" min="0" max="5000" step="5" value="${e.together.dailyCap}" data-p="economy.together.dailyCap"><small>თითო მოთამაშეზე დღეში · ბიუჯეტში ითვლება</small></label>
+            </div>
+            <p class="s-muted">გუნდები და მათი წაშლა — „გუნდები“ ტაბში.</p></div>
+        </div>
       </div></section>`;
   }
   function coinsTable(path, coins) {
@@ -759,12 +778,15 @@
       </div></section>`;
   }
   const ECONOMY_DEFAULTS = { version: 2, decay: [100, 60, 40, 25], budget: { seasonCoins: 60000, warnAt: [50, 80] }, weeklyPrizes: { boxes: [300, 200, 100], meters: [300, 200, 100] } };
+  const STARTER_DEFAULTS = { enabled: true, coins: 50, afterMeters: 60, afterSeconds: 45, hours: 2 }, TOGETHER_DEFAULTS = { enabled: true, coinsPerKm: 10, dailyCap: 30 };
   function paintRules(body) {
     if (!st.draft.economy) st.draft.economy = structuredClone(st.o.economy || ECONOMY_DEFAULTS);
     if (!st.draft.economy.weeklyPrizes) st.draft.economy.weeklyPrizes = { boxes: [], meters: [] };
     // Three prize places per board, always numbers (a hole in the array would be refused by the server).
     ['boxes', 'meters'].forEach((k) => { const l = st.draft.economy.weeklyPrizes[k] || []; st.draft.economy.weeklyPrizes[k] = [0, 1, 2].map((i) => Number(l[i] || 0)); });
     if (!Array.isArray(st.draft.economy.decay) || !st.draft.economy.decay.length) st.draft.economy.decay = [100, 60, 40, 25];
+    st.draft.economy.starter = { ...STARTER_DEFAULTS, ...(st.draft.economy.starter || {}) };
+    st.draft.economy.together = { ...TOGETHER_DEFAULTS, ...(st.draft.economy.together || {}) };
     if (!st.draft.cities) st.draft.cities = structuredClone(CITY_DEFAULTS);
     if (!st.draft.cities.weekendCoins) st.draft.cities.weekendCoins = structuredClone(st.draft.cities.coins);
     const c = st.draft, sat = c.saturday, g = c.grand;
@@ -859,7 +881,7 @@
   }
 
   /* draft helpers: data-p="a.b.0.c" paths into st.draft */
-  const NUMERIC = /(\.amount|\.weight|\.hours|\.rotation|\.focus|\.stock(\.\d)?|Radius|minDepthM|\.points|radiusM|\.coins|minPercent|\.percent|\.base|\.perPlayers|\.max|weekendExtra|minPlayers|\.decay\.\d+|seasonCoins|weeklyPrizes\.(boxes|meters)\.\d+)$/;
+  const NUMERIC = /(\.amount|\.weight|\.hours|\.rotation|\.focus|\.stock(\.\d)?|Radius|minDepthM|\.points|radiusM|\.coins|minPercent|\.percent|\.base|\.perPlayers|\.max|weekendExtra|minPlayers|\.decay\.\d+|seasonCoins|weeklyPrizes\.(boxes|meters)\.\d+|afterMeters|afterSeconds|coinsPerKm|dailyCap)$/;
   function setPath(obj, path, value) {
     const keys = path.split('.');
     let o = obj;
@@ -889,6 +911,9 @@
         const key = el.dataset.p.match(/^days\.(weekday|weekend)/)?.[1];
         if (sum && key) sum.textContent = daySummary(st.draft.days[key]);
         if (/^economy\./.test(el.dataset.p)) { const e = st.draft.economy, sample = ladderOf(50, 6, e.decay), weekCost = [...(e.weeklyPrizes.boxes || []), ...(e.weeklyPrizes.meters || [])].reduce((s, n) => s + Number(n || 0), 0); if (sum) sum.textContent = `50-ქოინიანი ყუთი 6 გახსნაზე: ${ladderText(sample)} · სულ ${num(sample.reduce((s, n) => s + n, 0))} · კვირის პრიზები ${num(weekCost)} ქოინი/კვირა`; body.querySelectorAll('.s-card .mb-sum').forEach((el2) => { const k = el2.closest('.s-card')?.querySelector('[data-p^="days.weekday"]') ? 'weekday' : el2.closest('.s-card')?.querySelector('[data-p^="days.weekend"]') ? 'weekend' : null; if (k) el2.textContent = daySummary(st.draft.days[k]); }); }
+      } else if (el.dataset.boolP) {
+        setPath(st.draft, el.dataset.boolP, Boolean(el.checked));
+        markDirty(body);
       } else if (el.matches('[data-warn-at]')) {
         st.draft.economy.budget.warnAt = el.value.split(',').map((x) => Number(x.trim())).filter((n) => Number.isFinite(n) && n >= 1 && n <= 100).slice(0, 5);
         markDirty(body);
@@ -1211,6 +1236,37 @@
   }
 
   /* ═════════ ჟურნალი ═════════ */
+  /* ───────── გუნდები (owner 2026-10-05): players' crews and the city lit together ───────── */
+  async function paintCrews(body) {
+    const o = await global.api('/medipulsi/crews');
+    const m = o.meter;
+    body.innerHTML = `${m ? `<section class="s-card"><header class="s-card-head"><div><h3>${esc(m.city)} ერთად</h3><p>ყველა მოთამაშის განათებული ქუჩები ერთად (გადაფარვა ერთხელ ითვლება) · განახლდება 10 წუთში ერთხელ.</p></div></header>
+        <div class="s-card-body"><div class="s-metrics">
+          <div class="s-metric"><span>განათებულია</span><strong>${esc(String(m.percent))}%</strong><small>${esc(String(m.paintedKm2))} კმ² / ${num(Math.round(m.areaKm2))} კმ²</small></div>
+          <div class="s-metric"><span>ადამიანი</span><strong>${num(m.people)}</strong><small>ვინც ქალაქის ნაწილი გაანათა</small></div>
+          <div class="s-metric"><span>შემდეგი ეტაპი</span><strong>${m.milestones?.next ? `${esc(String(m.milestones.next.percent))}%` : '—'}</strong><small>${m.milestones?.next ? `დარჩა ${esc(String(m.milestones.next.remaining))}%` : 'ყველა ეტაპი გავლილია'}</small></div>
+          <div class="s-metric"><span>განახლდა</span><strong>${esc(when(m.computedAt))}</strong><small>Telegram-ში შეტყობინება ყოველ ახალ ეტაპზე</small></div>
+        </div></div></section>` : ''}
+      <section class="s-card"><header class="s-card-head"><div><h3>გუნდები</h3><p>${num(o.rows.length)} გუნდი · სახელს მოთამაშე წერს და მხოლოდ გუნდის წევრები ხედავენ. შეუფერებელი სახელის შემთხვევაში წაშალე გუნდი — წევრები ანგარიშებს არ კარგავენ.</p></div></header>
+      <div class="s-card-body is-flush">${o.rows.length ? `<div class="s-table-wrap"><table class="s-table"><thead><tr><th>სახელი</th><th>კოდი</th><th class="num">წევრი</th><th>შეიქმნა</th><th></th></tr></thead><tbody>
+        ${o.rows.map((r) => `<tr><td><b>${esc(r.name)}</b></td><td><code class="mb-code">${esc(r.code)}</code></td><td class="num">${num(r.members)}</td><td class="s-muted">${esc(when(r.createdAt))}</td><td><button type="button" class="btn compact danger" data-crew-del="${esc(r.id)}" data-crew-name="${esc(r.name)}">${ico('trash')} წაშლა</button></td></tr>`).join('')}
+      </tbody></table></div>` : `<div class="s-empty">${ico('users')}<strong>ჯერ გუნდი არ შექმნილა</strong><span>მოთამაშეები MEDIRUN-ის ჰაბიდან ქმნიან და კოდით უერთდებიან.</span></div>`}</div></section>`;
+    body.querySelectorAll('[data-crew-del]').forEach((btn) => btn.addEventListener('click', () => {
+      const d = V().openDialog?.({
+        title: 'გუნდის წაშლა', description: btn.dataset.crewName, watchDirty: false,
+        body: '<p>გუნდი წაიშლება ყველა წევრისთვის. მათი გასეირნებები, ყუთები და ქოინები უცვლელი რჩება.</p>',
+        footer: '<button type="button" class="btn" data-no>გაუქმება</button><button type="button" class="btn danger" data-yes>წაშლა</button>',
+      });
+      if (!d) return;
+      const panel = doc.querySelector('#v3-dialog .v3-dialog-panel');
+      panel.querySelector('[data-no]').onclick = () => void d.close();
+      panel.querySelector('[data-yes]').onclick = async () => {
+        try { await global.api(`/medipulsi/crews/${encodeURIComponent(btn.dataset.crewDel)}`, { method: 'DELETE' }); await d.close(); toast('გუნდი წაიშალა', 'ok'); void paintSub(); }
+        catch (err) { toast(say(err, 'ვერ წაიშალა. სცადე ხელახლა.'), 'bad'); }
+      };
+    }));
+  }
+
   async function paintLog(body) {
     st.log = await api(`/audit?offset=${st.logOffset}`);
     const me = typeof state !== 'undefined' ? state.admin : null;
@@ -1228,6 +1284,8 @@
       if (r.action === 'DROP_WEEK_PRIZES') return d.winners?.length ? `${d.winners.map((w) => `${w.board === 'boxes' ? 'ყუთები' : 'მანძილი'} #${w.rank} ${w.handle} +${num(w.coins)}`).join(', ')} · სულ ${num(d.total)}` : 'გამარჯვებული არ იყო';
       if (r.action === 'DROP_BUDGET_WARN') return `${num(d.paid)} / ${num(d.seasonCoins)} ქოინი (${d.percent}%) · დარჩა ${num(d.daysLeft)} დღე`;
       if (r.action === 'DROP_BUDGET_STOP') return `${num(d.paid)} / ${num(d.seasonCoins)} ქოინი — გაზარდე ბიუჯეტი „წესები → ეკონომიკა“`;
+      if (r.action === 'CREW_DELETE') return `${d.name || ''} · ${num(d.members)} წევრი`;
+      if (r.action === 'CITY_MILESTONE') return `${num(d.people)} ადამიანი`;
       if (r.action === 'DROP_RULES_UPGRADE') return `ეკონომიკა ${num(d.from)} → ${num(d.to)}: ახალი ტალღები, ქოინები და კიბე; შენი თარიღები, თემები და გამორთული დღეები შენარჩუნდა`;
       return '';
     };
@@ -1237,6 +1295,8 @@
       if (/^\d{4}-\d{2}-\d{2}$/.test(id)) return dayLabel(id);
       if (id === st.o?.campaign?.id || id === 'campaign') return 'წესები';
       if (r.action === 'DROP_WEEK_PRIZES') return `${dayLabel(id)}-ის კვირა`;
+      if (r.action === 'CREW_DELETE') return 'გუნდი';
+      if (r.action === 'CITY_MILESTONE') return `${id.split(':').pop()}% ქალაქის`;
       if (r.action.startsWith('DROP_BUDGET')) return 'სეზონის ბიუჯეტი';
       if (id === 'medirunAutopilot') return 'ავტოპილოტი';
       if (r.action === 'GIFT_SAVE') return d.after?.title || d.before?.title || 'საჩუქარი';

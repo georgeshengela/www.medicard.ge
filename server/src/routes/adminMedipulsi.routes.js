@@ -13,6 +13,8 @@ import * as D from '../lib/medipulsi/dropsAdmin.js';
 import {resetCampaign} from '../lib/medipulsi/campaignStore.js';
 import {medirunInsights} from '../lib/medipulsi/insights.js';
 import {resolveMapLocation} from '../lib/medipulsi/mapLink.js';
+import {adminCrews,adminDeleteCrew} from '../lib/medipulsi/social.js';
+import {cityMeter} from '../lib/medipulsi/cityMeter.js';
 export const adminMedipulsiRouter=Router();
 const r=adminMedipulsiRouter,view=requireAdminCapability('MEDIPULSI_VIEW'),manage=requireAdminCapability('MEDIPULSI_MANAGE'),review=requireAdminCapability('MEDIPULSI_REVIEW');
 r.use(requireAdmin,(req,res,next)=>{res.set('Cache-Control','no-store');next();});
@@ -35,7 +37,9 @@ r.put('/missions/:id',manage,write,asyncHandler(async(req,res)=>{
   await audit(tx,req,'MISSION_SAVE',key,{before:old,after:input});return tx.medipulsiMission.findUnique({where:{id:key}});
  });res.json(result);
 }));
-r.get('/gifts',view,asyncHandler(async(req,res)=>res.json({rows:await prisma.medipulsiGift.findMany({orderBy:{updatedAt:'desc'},...pagination(req.query)}),total:await prisma.medipulsiGift.count()})));
+// Starter boxes are personal (placed where a new player stands) and never listed to staff.
+const listedGift={NOT:{id:{startsWith:'starter-'}}};
+r.get('/gifts',view,asyncHandler(async(req,res)=>res.json({rows:await prisma.medipulsiGift.findMany({where:listedGift,orderBy:{updatedAt:'desc'},...pagination(req.query)}),total:await prisma.medipulsiGift.count({where:listedGift})})));
 r.put('/gifts/:id',manage,write,asyncHandler(async(req,res)=>{
  const key=id.parse(req.params.id),input=giftWrite.parse(req.body),data={...input,startsAt:new Date(input.startsAt),endsAt:new Date(input.endsAt)};
  const result=await prisma.$transaction(async tx=>{
@@ -160,3 +164,6 @@ r.put('/drops/autopilot',manage,write,asyncHandler(async(req,res)=>{
  const input=z.object({enabled:z.boolean()}).strict().parse(req.body);
  res.json(await D.setAutopilot(input.enabled,{admin:req.admin}));
 }));
+// Crews (owner 2026-10-05): names are written by players and seen by their members only; staff can remove one.
+r.get('/crews',view,asyncHandler(async(req,res)=>res.json({rows:await adminCrews(),meter:await cityMeter().catch(()=>null)})));
+r.delete('/crews/:id',manage,write,asyncHandler(async(req,res)=>res.json(await adminDeleteCrew(z.uuid().parse(req.params.id),req.admin.id))));

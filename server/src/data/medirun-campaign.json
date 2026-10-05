@@ -25,7 +25,9 @@
     "weeklyPrizes": {
       "boxes": [300, 200, 100],
       "meters": [300, 200, 100]
-    }
+    },
+    "starter": {"enabled": true, "coins": 50, "afterMeters": 60, "afterSeconds": 45, "hours": 2},
+    "together": {"enabled": true, "coinsPerKm": 10, "dailyCap": 30}
   },
   "days": {
     "weekday": {

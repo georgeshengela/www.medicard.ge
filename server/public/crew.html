@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="ka" data-theme="dark">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title data-en="Join a MEDIRUN crew">შემოუერთდი MEDIRUN-ის გუნდს</title>
+  <meta name="robots" content="noindex" />
+  <meta property="og:title" content="შემოუერთდი MEDIRUN-ის გუნდს — გაანათე თბილისი ერთად" />
+  <meta property="og:image" content="https://medicard.ge/medirun/glow-og.jpg" />
+  <link rel="icon" href="/favicon.png" />
+  <script src="/site-i18n.js?v=4"></script>
+  <link rel="stylesheet" href="/landing.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Georgian:wght@400;600;700&display=swap" rel="stylesheet" />
+</head>
+<body>
+  <main class="hero" style="min-height:70vh;display:flex;align-items:center">
+    <div class="wrap" style="max-width:560px">
+      <p class="kicker">MEDIRUN</p>
+      <h1 style="max-width:none;font-size:32px" data-en="You’re invited to a MEDIRUN crew">მოგიწვიეს MEDIRUN-ის გუნდში</h1>
+      <p class="lead" data-en="Walk together, light up the city together. Open MEDICARD → MEDIRUN → Crew and enter this code — or tap the button on your phone.">
+        ერთად იარეთ და ერთად გაანათეთ ქალაქი. გახსენი MEDICARD → MEDIRUN → გუნდი და შეიყვანე ეს კოდი, ან ტელეფონზე დააჭირე ღილაკს.
+      </p>
+      <p id="code" style="font-size:34px;font-weight:700;letter-spacing:6px;margin:18px 0"></p>
+      <div class="hero-actions">
+        <a class="btn btn-cta" id="open-app" href="#" data-en="Open in MEDICARD">გახსენი MEDICARD-ში</a>
+        <a class="btn btn-ghost" href="https://apps.apple.com/app/id6812517519" data-en="Download on the App Store">ჩამოტვირთე App Store-დან</a>
+      </div>
+      <p class="lead" style="margin-top:18px;font-size:13px" data-en="Crew members see each other’s MEDIRUN nickname and weekly distance — never anyone’s location.">გუნდის წევრები ერთმანეთის MEDIRUN-ის სახელს და კვირის მანძილს ხედავენ — ვინმეს მდებარეობას არასდროს.</p>
+    </div>
+  </main>
+  <script src="/landing.js?v=17"></script>
+  <script>
+    (function () {
+      var T = (window.MedicardI18n || { t: function (k) { return k; } }).t;
+      var match = location.pathname.match(/\/crew\/([A-Za-z0-9]{6})\/?$/);
+      var code = match ? match[1].toUpperCase() : '';
+      var btn = document.getElementById('open-app');
+      if (!code) {
+        btn.href = '/medirun';
+        btn.removeAttribute('data-en'); // site-i18n applies data-en after this script
+        btn.textContent = T('MEDIRUN-ის გვერდი', 'MEDIRUN page');
+        return;
+      }
+      document.getElementById('code').textContent = code;
+      var android = /android/i.test(navigator.userAgent);
+      btn.href = android
+        ? 'intent://run/crew?code=' + code + '#Intent;scheme=medicard;package=ge.medicard.app;end'
+        : 'medicard://run/crew?code=' + code;
+    })();
+  </script>
+</body>
+</html>

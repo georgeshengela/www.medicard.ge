@@ -99,7 +99,7 @@ export async function findPlace(address) {
 }
 
 export async function listActiveGifts({ db = prisma } = {}) {
-  const rows = await db.medipulsiGift.findMany({ where: { published: true, archived: false, endsAt: { gt: new Date() } }, orderBy: { endsAt: 'asc' }, take: 20 });
+  const rows = await db.medipulsiGift.findMany({ where: { published: true, archived: false, endsAt: { gt: new Date() }, NOT: { id: { startsWith: 'starter-' } } }, orderBy: { endsAt: 'asc' }, take: 20 });
   return rows.map((g) => ({ id: g.id, title: g.title, latitude: g.latitude, longitude: g.longitude, stock: g.stock, allocated: g.allocated, endsAt: g.endsAt }));
 }
 

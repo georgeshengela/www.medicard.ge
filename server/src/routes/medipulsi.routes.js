@@ -12,6 +12,9 @@ import {localizeSnapshot} from '../lib/medipulsi/missionsEn.js';
 import {territory} from '../lib/medipulsi/territory.js';
 import {grandStatus} from '../lib/medipulsi/grand.js';
 import {dropsStatus} from '../lib/medipulsi/drops.js';
+import {crewView,createCrew,joinCrew,leaveCrew,renameCrew,removeMember} from '../lib/medipulsi/social.js';
+import {cityMeter} from '../lib/medipulsi/cityMeter.js';
+import {wrappedView} from '../lib/medipulsi/wrapped.js';
 export const medipulsiRouter=Router();
 // The app's MEDIRUN client (pulseApi) sends no X-Medicard-Lang: fall back to the account's stored language.
 medipulsiRouter.use(requireAuth,asyncHandler(async(req,_res,next)=>{if(!req.langExplicit)req.lang=await getUserLanguage(req.user.id).catch(()=>'ka');next();}));
@@ -36,3 +39,23 @@ medipulsiRouter.post('/gifts/:id/claim',write,asyncHandler(async(req,res)=>res.j
 // Medi Coins on the MEDIRUN page: balance, this season's box earnings and the last movements (park, rank, date).
 medipulsiRouter.get('/wallet',lookups,asyncHandler(async(req,res)=>res.json(await game.wallet(req.user.id,req.lang))));
 medipulsiRouter.get('/leaderboard',asyncHandler(async(req,res)=>res.json(await game.leaderboard(z.enum(['week','season']).default('week').parse(req.query.period),z.enum(['meters','boxes']).default('meters').parse(req.query.board),req.user.id))));
+// Crews (owner 2026-10-05): a small group joined by code; members see nicknames and this week's metres only.
+const crewName=z.object({name:z.string().max(80)}).strict(),crewCode=z.object({code:z.string().max(20)}).strict();
+medipulsiRouter.get('/crew',lookups,asyncHandler(async(req,res)=>res.json(await crewView(req.user.id,{lang:req.lang}))));
+medipulsiRouter.post('/crew',write,asyncHandler(async(req,res)=>{await game.bootstrap(req.user.id,req.lang);res.json(await createCrew(req.user.id,crewName.parse(req.body).name,{lang:req.lang}));}));
+medipulsiRouter.patch('/crew',write,asyncHandler(async(req,res)=>res.json(await renameCrew(req.user.id,crewName.parse(req.body).name,{lang:req.lang}))));
+medipulsiRouter.post('/crew/join',write,asyncHandler(async(req,res)=>{await game.bootstrap(req.user.id,req.lang);res.json(await joinCrew(req.user.id,crewCode.parse(req.body).code,{lang:req.lang}));}));
+medipulsiRouter.post('/crew/leave',write,asyncHandler(async(req,res)=>res.json(await leaveCrew(req.user.id,{lang:req.lang}))));
+medipulsiRouter.post('/crew/members/:id/remove',write,asyncHandler(async(req,res)=>res.json(await removeMember(req.user.id,id.parse(req.params.id),{lang:req.lang}))));
+// „თბილისი ერთად“: how much of the campaign city everyone has lit together (aggregates only).
+medipulsiRouter.get('/city',lookups,asyncHandler(async(req,res)=>res.json({meter:await cityMeter({lang:req.lang})})));
+// Last week in one card (Monday–Wednesday in the app): the reader's own numbers, ranks and prizes.
+medipulsiRouter.get('/wrapped',lookups,asyncHandler(async(req,res)=>res.json(await wrappedView(req.user.id))));
+
+// Public: the same city meter for the /medirun page (no account, no personal data).
+export const medirunPublicRouter=Router();
+const publicLimit=rateLimit({windowMs:60000,limit:60,standardHeaders:true,legacyHeaders:false,validate:RATE_LIMIT_VALIDATE});
+medirunPublicRouter.get('/city',publicLimit,asyncHandler(async(req,res)=>{
+ res.set('Cache-Control','public, max-age=60');
+ res.json({meter:await cityMeter({lang:req.query.lang==='en'?'en':'ka'})});
+}));

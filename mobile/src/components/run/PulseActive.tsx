@@ -3,7 +3,7 @@ import {ActivityIndicator,AppState,BackHandler,Image,Pressable,View} from 'react
 import {RUN_GIFT} from './runArt';
 import {useIsFocused,useLocalSearchParams,useRouter} from 'expo-router';
 import {activateKeepAwakeAsync,deactivateKeepAwake} from 'expo-keep-awake';
-import {ArrowLeft,BookOpen,Building2,Check,Compass,Footprints,Gauge,Gift,LocateFixed,MoreHorizontal,Navigation,Route,Settings2,Timer,Trophy} from 'lucide-react-native';
+import {ArrowLeft,BookOpen,Building2,Check,Compass,Footprints,Gauge,Gift,LocateFixed,MoreHorizontal,Navigation,Route,Settings2,Timer,Trophy,Users} from 'lucide-react-native';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
 import {hideFloatingTabBar} from '@/components/navigation/tabChrome';
@@ -51,7 +51,9 @@ export default function PulseActive(){
  // Live weather where the runner is: the map rains when it rains there (admin „ამინდი“ switch pauses it).
  const weather=useRunWeather(center,useFeature('weather')&&focused);
  const fx=useMemo(()=>runWeatherFx(weather?.snapshot),[weather?.snapshot]);
- const pills=Boolean(mission||lit>0||weather);
+ // Crew members walking next to you right now (nicknames only — never where they are).
+ const together=running?pulse.signal.together||null:null;
+ const pills=Boolean(mission||lit>0||weather||together);
  // While the phone is locked or another app is open the map gets nothing; coming back sends the latest state once.
  const [appActive,setAppActive]=useState(AppState.currentState!=='background'),[mapEpoch,setMapEpoch]=useState(0);
  const live=ready&&appActive;
@@ -76,6 +78,18 @@ export default function PulseActive(){
   if(event==='auto_resumed'){setNotice({text:tx('სესია გაგრძელდა — შენი გზა ისევ იწერება', 'Session resumed — your path is recording again'),tone:'success'});return;}
   if(event==='target_completed'||event==='pin_reached'){setNotice({text:event==='target_completed'?tx('მიზანი შესრულებულია! შეგიძლია გააგრძელო აღმოჩენა.', 'Goal reached! You can keep exploring.'):tx('დანიშნულების ადგილს მიაღწიე!', 'You’ve reached your destination!'),tone:'success'});void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(()=>{});}
  }),[]);
+ // „ერთად“: a crew member joins you → one tap on the wrist and a line; each paid together-km says so.
+ const togetherCount=together?.count||0,togetherCoins=together?.coins||0,prevTogether=useRef(0);
+ useEffect(()=>{
+  if(togetherCount>0&&prevTogether.current===0&&together){setNotice({text:tx(`${together.with.join(', ')} შენ გვერდითაა — ერთად ანათებთ ქალაქს`,`${together.with.join(', ')} is right next to you — you’re lighting the city together`),tone:'success'});if(hapticRef.current)void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(()=>{});}
+  prevTogether.current=togetherCount;
+ },[togetherCount]);// eslint-disable-line react-hooks/exhaustive-deps
+ useEffect(()=>{if(togetherCoins>0)setNotice({text:tx(`+${togetherCoins} Medi Coins · ერთად გავლილი კილომეტრი`,`+${togetherCoins} Medi Coins · a kilometre together`),tone:'success'});},[togetherCoins,together?.meters]);// eslint-disable-line react-hooks/exhaustive-deps
+ // Starter box (new players): say once that it is close, and open the reveal by itself the moment it is in reach.
+ const starterLeft=running?pulse.signal.starter?.pending.meters:undefined,starterTold=useRef(false),opened=useRef(new Set<string>());
+ useEffect(()=>{if(starterLeft==null||starterTold.current)return;starterTold.current=true;setNotice({text:tx(`პირველი ყუთი ახლოსაა — გაიარე კიდევ ${Math.max(10,Math.round(starterLeft/10)*10)} მ`,`Your first box is close — walk ${Math.max(10,Math.round(starterLeft/10)*10)} m more`),tone:'info'});},[starterLeft]);
+ const starterId=running&&pulse.signal.revealed&&pulse.signal.gift?.starter?pulse.signal.gift.id:null;
+ useEffect(()=>{if(!starterId||opened.current.has(starterId)||!focused)return;opened.current.add(starterId);if(hapticRef.current)void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(()=>{});setGift(true);},[starterId,focused]);
  const leave=()=>{if(active){if(running)pauseRun();setFinish(true);}else{cancelRun();router.replace('/run' as never);}};
  useEffect(()=>{const sub=BackHandler.addEventListener('hardwareBackPress',()=>{leave();return true;});return()=>sub.remove();},[active,running]);
  useEffect(()=>{if(!live||!run.origin)return;map.current?.send({type:'init',origin:run.current||run.origin,pin:run.pin,route:run.route?.coords||null,fit:false,hero:user?.gender==='FEMALE'?'f':'m'});},[live,mapEpoch,run.origin,run.pin,run.route,user?.gender]);
@@ -115,7 +129,7 @@ export default function PulseActive(){
     </Card>
     <IconButton floating label={tx('მენიუ', 'Menu')} icon={MoreHorizontal} onPress={()=>setMenu(true)}/>
    </View>
-   {pills?<View pointerEvents="box-none" style={{flexDirection:'row',alignItems:'center',flexWrap:'wrap',gap:8}}>{mission?<Pressable accessibilityRole="button" accessibilityLabel={tx(`მისია ${mission.name}, ${missionPercent(pulse.book,mission)} პროცენტი`, `Mission ${mission.name}, ${missionPercent(pulse.book,mission)} percent`)} onPress={()=>setPanel('missions')} style={{flexDirection:'row',alignItems:'center',gap:7,backgroundColor:c.surface,borderRadius:16,paddingVertical:8,paddingHorizontal:12,shadowColor:'#030712',shadowOpacity:.14,shadowRadius:10,shadowOffset:{width:0,height:4},elevation:4}}><Compass size={13} color={c.primary100}/><Copy size={11} bold>{mission.name}</Copy><View style={{width:1,height:12,backgroundColor:c.bg300}}/><Copy size={11} bold style={{color:c.primary100}}>{missionPercent(pulse.book,mission)}%</Copy></Pressable>:null}{lit>0?<View accessible accessibilityLabel={tx(`ანთია ${lit} შენობა`, `${lit} buildings lit`)} style={{flexDirection:'row',alignItems:'center',gap:7,backgroundColor:c.surface,borderRadius:16,paddingVertical:8,paddingHorizontal:12,shadowColor:'#030712',shadowOpacity:.14,shadowRadius:10,shadowOffset:{width:0,height:4},elevation:4}}><Building2 size={13} color={dark?'#FCD34D':'#B45309'}/><Copy size={11} bold style={{color:dark?'#FCD34D':'#B45309',fontVariant:['tabular-nums']}}>{lit}</Copy><Copy size={11} muted>{tx('ანთია', 'lit')}</Copy></View>:null}{weather?<WeatherBadge weather={weather} onPress={()=>setNotice({text:weatherLine(weather),tone:'info'})}/>:null}</View>:null}
+   {pills?<View pointerEvents="box-none" style={{flexDirection:'row',alignItems:'center',flexWrap:'wrap',gap:8}}>{mission?<Pressable accessibilityRole="button" accessibilityLabel={tx(`მისია ${mission.name}, ${missionPercent(pulse.book,mission)} პროცენტი`, `Mission ${mission.name}, ${missionPercent(pulse.book,mission)} percent`)} onPress={()=>setPanel('missions')} style={{flexDirection:'row',alignItems:'center',gap:7,backgroundColor:c.surface,borderRadius:16,paddingVertical:8,paddingHorizontal:12,shadowColor:'#030712',shadowOpacity:.14,shadowRadius:10,shadowOffset:{width:0,height:4},elevation:4}}><Compass size={13} color={c.primary100}/><Copy size={11} bold>{mission.name}</Copy><View style={{width:1,height:12,backgroundColor:c.bg300}}/><Copy size={11} bold style={{color:c.primary100}}>{missionPercent(pulse.book,mission)}%</Copy></Pressable>:null}{lit>0?<View accessible accessibilityLabel={tx(`ანთია ${lit} შენობა`, `${lit} buildings lit`)} style={{flexDirection:'row',alignItems:'center',gap:7,backgroundColor:c.surface,borderRadius:16,paddingVertical:8,paddingHorizontal:12,shadowColor:'#030712',shadowOpacity:.14,shadowRadius:10,shadowOffset:{width:0,height:4},elevation:4}}><Building2 size={13} color={dark?'#FCD34D':'#B45309'}/><Copy size={11} bold style={{color:dark?'#FCD34D':'#B45309',fontVariant:['tabular-nums']}}>{lit}</Copy><Copy size={11} muted>{tx('ანთია', 'lit')}</Copy></View>:null}{together?<View accessible accessibilityLabel={tx(`ერთად: ${together.with.join(', ')}`,`Together: ${together.with.join(', ')}`)} style={{flexDirection:'row',alignItems:'center',gap:7,backgroundColor:c.surface,borderRadius:16,paddingVertical:8,paddingHorizontal:12,shadowColor:'#030712',shadowOpacity:.14,shadowRadius:10,shadowOffset:{width:0,height:4},elevation:4}}><Users size={13} color={RUN_TEAL}/><Copy size={11} bold style={{color:RUN_TEAL}}>{tx('ერთად','Together')}</Copy><Copy size={11} muted numberOfLines={1} style={{maxWidth:120}}>{together.with.join(', ')}</Copy></View>:null}{weather?<WeatherBadge weather={weather} onPress={()=>setNotice({text:weatherLine(weather),tone:'info'})}/>:null}</View>:null}
    {banner?<Pressable accessibilityRole="button" accessibilityLabel={tx('შეტყობინების დახურვა', 'Dismiss message')} onPress={()=>{setNotice(null);setMapError('');}}><Card floating style={{paddingVertical:11,paddingHorizontal:14,borderRadius:16,flexDirection:'row',alignItems:'center',gap:10}}><View style={{width:4,alignSelf:'stretch',borderRadius:2,backgroundColor:bannerColor}}/><Copy size={12} bold={banner.tone==='success'} style={{flex:1}}>{banner.text}</Copy></Card></Pressable>:null}
   </View>
   {center?<View pointerEvents="box-none" style={{position:'absolute',bottom:Math.max(12,insets.bottom)+dockHeight+12,right:14,alignItems:'flex-end',gap:9}}><IconButton floating label={tx('ჩემს მდებარეობაზე დაბრუნება', 'Back to my location')} icon={LocateFixed} active={following} onPress={()=>map.current?.send({type:'follow'})}/></View>:null}

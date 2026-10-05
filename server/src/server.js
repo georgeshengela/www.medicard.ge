@@ -65,7 +65,7 @@ import { petsRouter } from './routes/pets.routes.js';
 import { usageRouter } from './routes/usage.routes.js';
 import { adminRouter } from './routes/admin.routes.js';
 import { adminRewardsRouter } from './routes/adminRewards.routes.js';
-import { medipulsiRouter } from './routes/medipulsi.routes.js';
+import { medipulsiRouter, medirunPublicRouter } from './routes/medipulsi.routes.js';
 import { adminMedipulsiRouter } from './routes/adminMedipulsi.routes.js';
 import { adminQaRouter } from './routes/adminQa.routes.js';
 import { appRouter } from './routes/app.routes.js';
@@ -345,6 +345,7 @@ startEmailWorkers();
 startSupportWorkers();
 startDirectorWorkers();
 app.use('/api/medipulsi', requireFeature('medirun'), medipulsiRouter);
+app.use('/api/medirun', medirunPublicRouter);
 app.use('/api/cycle', requireFeature('cycle'), cycleRouter);
 app.get('/api/cycle/share/:code', partnerShareClosedHandler);
 app.use('/api/usage', usageRouter);
@@ -451,6 +452,11 @@ if (serveLanding) {
   app.get('/u/:token', (_req, res) => {
     res.set('Cache-Control', 'no-store');
     res.sendFile(path.join(PUBLIC_DIST, 'personal-qr.html'));
+  });
+  // MEDIRUN crew invite (owner 2026-10-05): opens medicard://run/crew?code=… or shows the code and the App Store.
+  app.get('/crew/:code', (_req, res) => {
+    res.set('Cache-Control', 'no-store');
+    res.sendFile(path.join(PUBLIC_DIST, 'crew.html'));
   });
   app.get('/c/:code', (_req, res) => {
     res.set('Cache-Control', 'no-store');

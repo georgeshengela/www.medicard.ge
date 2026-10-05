@@ -136,6 +136,15 @@ html.lang-en .ka-only { display: none; }
 .level.red { border-color: rgba(253, 164, 175, .55); background: linear-gradient(90deg, rgba(244, 63, 94, .22), rgba(13, 27, 48, .7)); } .level.red .pct { color: var(--red2); }
 .levels-note { margin-top: 22px; color: var(--sub); font-size: 16px; }
 
+/* Tbilisi together: the live city meter */
+.meter { max-width: 860px; background: var(--card); border: 1px solid var(--line); border-radius: 22px; padding: 26px 28px; display: grid; gap: 16px; }
+.meter-row { display: flex; align-items: baseline; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+.meter-pct { font-size: clamp(48px, 8vw, 96px); font-weight: 800; color: var(--mint2); line-height: 1; letter-spacing: -.02em; }
+.meter-people { color: var(--sub); font-size: 17px; } .meter-people b { color: #fff; font-size: 24px; font-weight: 800; }
+.meter-bar { height: 10px; border-radius: 6px; background: rgba(148, 178, 222, .16); overflow: hidden; }
+.meter-bar i { display: block; height: 100%; width: 0; border-radius: 6px; background: linear-gradient(90deg, var(--mint), var(--mint3)); box-shadow: 0 0 18px rgba(94, 234, 212, .5); transition: width 1.2s var(--ease); }
+.meter-next { color: var(--sub); font-size: 16px; }
+
 /* Store: what the coins buy */
 .prizes { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 14px; }
 .prize { display: grid; gap: 8px; justify-items: center; text-align: center; padding: 18px 14px 20px; border-radius: 22px; background: var(--card); border: 1px solid var(--line-soft); transition: transform .25s var(--ease), border-color .25s; }

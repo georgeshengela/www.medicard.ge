@@ -91,6 +91,8 @@ const PROPS = {
   cycle_log_saved: z.object({ source: z.enum(CYCLE_LOG_SOURCES) }).strict(),
   cycle_period_started: z.object({ source: z.enum(CYCLE_PERIOD_START_SOURCES) }).strict(),
   cycle_explain_opened: z.object({ topic: z.enum(CYCLE_EXPLAIN_TOPICS) }).strict(),
+  // MEDIRUN share clip / picture sent to the share sheet (owner 2026-10-05): what and in which format, nothing else.
+  medirun_shared: z.object({ kind: z.enum(['walk', 'city', 'box', 'wrapped']), format: z.enum(['video', 'image']) }).strict(),
 };
 
 export const FUNNEL_EVENT_NAMES = Object.freeze(Object.keys(PROPS));
@@ -99,7 +101,7 @@ export const ACCOUNT_EVENTS = new Set([
   'signup_completed', 'onboarding_completed', 'first_health_action',
   'price_alert_opened', 'health_passport_created', 'referral_shared',
   'home_layout_picker_opened', 'home_layout_changed', 'home_layout_offer_answered',
-  'cycle_log_saved', 'cycle_period_started', 'cycle_explain_opened',
+  'cycle_log_saved', 'cycle_period_started', 'cycle_explain_opened', 'medirun_shared',
 ]);
 
 export const batchSchema = z.object({
@@ -204,7 +206,7 @@ function activityIndex(activityRows) {
 export const FEATURE_EVENTS = Object.freeze([
   'price_alert_opened', 'health_passport_created', 'referral_shared',
   'home_layout_picker_opened', 'home_layout_changed', 'home_layout_offer_answered',
-  'cycle_log_saved', 'cycle_period_started', 'cycle_explain_opened',
+  'cycle_log_saved', 'cycle_period_started', 'cycle_explain_opened', 'medirun_shared',
 ]);
 /** Events counted per value of one enum prop (event counts, not people). */
 const FEATURE_BREAKDOWN = Object.freeze({
@@ -213,6 +215,7 @@ const FEATURE_BREAKDOWN = Object.freeze({
   cycle_log_saved: 'source',
   cycle_period_started: 'source',
   cycle_explain_opened: 'topic',
+  medirun_shared: 'kind',
 });
 
 /**

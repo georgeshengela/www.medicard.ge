@@ -35,6 +35,7 @@ describe('funnel allow-list', () => {
       { name: 'cycle_log_saved', props: { source: 'quick' } },
       { name: 'cycle_period_started', props: { source: 'hero' } },
       { name: 'cycle_explain_opened', props: { topic: 'ring' } },
+      { name: 'medirun_shared', props: { kind: 'walk', format: 'video' } },
     ];
     assert.deepEqual(ok.map((e) => e.name).sort(), [...FUNNEL_EVENT_NAMES].sort());
     for (const e of ok) assert.ok(sanitizeFunnelEvent(e, { now, signedIn: true }), e.name);
@@ -68,6 +69,7 @@ describe('funnel allow-list', () => {
       cycle_log_saved: { source: 'full' },
       cycle_period_started: { source: 'home' },
       cycle_explain_opened: { topic: 'fertile' },
+      medirun_shared: { kind: 'box', format: 'image' },
     };
     for (const name of ACCOUNT_EVENTS) {
       const props = valid[name] ?? {};

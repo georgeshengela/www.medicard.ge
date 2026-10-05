@@ -11,6 +11,9 @@ import {timezoneFor,zonedTime,localDate} from './citySpotsMath.js';
 import {tileOf} from './territoryMath.js';
 import {giftRules,ensureGiftRuleTable} from './giftRules.js';
 import {config} from './service.js';
+import {STARTER_PREFIX} from './starter.js';
+import {liveWalkers} from './social.js';
+import {geometryBbox} from './territoryMath.js';
 
 const HOUR=3600_000;
 /** The grand prize has its own card and its spot is a secret; it never shows up in the box counts. */
@@ -60,7 +63,7 @@ export function cityScheduleOf(rules,lang='ka'){
  * rules map; only the reader's city counts. `claimsToday` / `coinsToday` are that city's (its local day),
  * `mine` the reader's own today. `city` = {id, name, pending}; none = Tbilisi.
  */
-export function dropsView({gifts,rules,now=Date.now(),claimsToday=0,coinsToday=0,mine={opened:0,coins:0},planned=[],lang='ka',campaign=CAMPAIGN,enabled=true,city=null,schedule=null}){
+export function dropsView({gifts,rules,now=Date.now(),claimsToday=0,coinsToday=0,mine={opened:0,coins:0},planned=[],lang='ka',campaign=CAMPAIGN,enabled=true,city=null,schedule=null,live=null}){
  const start=new Date(`${campaign.start}T00:00:00${campaign.utcOffset}`).getTime(),end=new Date(`${campaign.end}T23:59:59${campaign.utcOffset}`).getTime();
  const status=now<start?'upcoming':now>end?'ended':'live';
  const cityId=city?.id||campaign.area.id,home=cityId===campaign.area.id;
@@ -99,6 +102,8 @@ export function dropsView({gifts,rules,now=Date.now(),claimsToday=0,coinsToday=0
   schedule:schedule||scheduleOf(campaign,lang),
   // Economy 2: the first-finder ladder, so the app can say „პირველს სრული, მეორეს 60 %…“.
   economy:{decay:normalizeDecay(economyOf(campaign).decay)||[100]},
+  // „ახლა N ადამიანი დადის“ (owner 2026-10-05): numbers only, null below three people.
+  live:live||{walkers:null,rain:null},
  };
 }
 
@@ -106,7 +111,7 @@ export function dropsView({gifts,rules,now=Date.now(),claimsToday=0,coinsToday=0
 let cache={at:0,value:null};
 async function upcomingGifts(now,db){
  if(cache.value&&now-cache.at<20_000)return cache.value;
- const value=await db.medipulsiGift.findMany({where:{published:true,archived:false,endsAt:{gt:new Date(now)},startsAt:{lte:new Date(now+3*24*HOUR)}},select:{id:true,stock:true,allocated:true,startsAt:true,endsAt:true,rewardKind:true},take:2000});
+ const value=await db.medipulsiGift.findMany({where:{published:true,archived:false,endsAt:{gt:new Date(now)},startsAt:{lte:new Date(now+3*24*HOUR)},NOT:{id:{startsWith:STARTER_PREFIX}}},select:{id:true,stock:true,allocated:true,startsAt:true,endsAt:true,rewardKind:true,latitude:true,longitude:true},take:2000});
  cache={at:now,value};
  return value;
 }
@@ -165,6 +170,24 @@ export async function dropsStatus(userId,{now=Date.now(),lang='ka',db=prisma}={}
  const [today,mine]=await Promise.all([counts({db,cityId:city.id,campaign,since}),counts({db,cityId:city.id,campaign,since,userId})]);
  const home=city.id===campaign.area.id;
  const planned=!home||gifts.some(g=>+g.startsAt>now&&giftCity(rules.get(g.id),campaign)===city.id)||!enabled||!(await autopilotEnabled(db).catch(()=>false))?[]:[tbilisiDate(now),...[1,2].map(d=>tbilisiDate(now+d*24*HOUR))].flatMap(d=>planDay(d,{campaign}));
+ const live=home?await liveNow({db,campaign,gifts,rules,now}).catch(()=>null):null;
  return dropsView({gifts:enabled?gifts:[],rules,now,claimsToday:today.n,coinsToday:today.coins,mine:{opened:mine.n,coins:mine.coins},planned,lang,enabled,campaign,
-  city:home?null:city,schedule:home?null:cityScheduleOf(cityRulesOf(campaign),lang)});
+  city:home?null:city,schedule:home?null:cityScheduleOf(cityRulesOf(campaign),lang),live});
+}
+
+let areaBox={at:0,id:null,box:null};
+async function campaignBbox(db,campaign){
+ if(areaBox.id===campaign.area.id&&Date.now()-areaBox.at<6*HOUR)return areaBox.box;
+ const [a]=await db.$queryRaw`SELECT "geometry" FROM "MedipulsiArea" WHERE "id"=${campaign.area.id}`.catch(()=>[]);
+ const box=a?.geometry?geometryBbox(a.geometry):null;
+ areaBox={at:Date.now(),id:campaign.area.id,box:box&&box.every(Number.isFinite)?box:null};
+ return areaBox.box;
+}
+/** Walkers in the campaign city right now, and near the Saturday rain while it is out (its boxes' centre). */
+async function liveNow({db,campaign,gifts,rules,now}){
+ const bbox=await campaignBbox(db,campaign);
+ if(!bbox)return null;
+ const rain=gifts.filter(g=>rules.get(g.id)?.meta?.kind==='saturday'&&+new Date(g.startsAt)<=now&&+new Date(g.endsAt)>now&&g.allocated<g.stock&&Number.isFinite(g.longitude));
+ const centre=rain.length?[rain.reduce((s,g)=>s+g.longitude,0)/rain.length,rain.reduce((s,g)=>s+g.latitude,0)/rain.length]:null;
+ return liveWalkers({bbox,rain:centre?{center:centre,radiusM:Math.max(300,Number(campaign.saturday?.radiusM)||800)}:null,db,now});
 }

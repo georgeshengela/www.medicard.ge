@@ -1,8 +1,8 @@
-import React,{useEffect,useRef,useState} from 'react';
+import React,{useEffect,useMemo,useRef,useState} from 'react';
 import {Animated,Easing,Pressable,ScrollView,View} from 'react-native';
 import {LinearGradient} from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
-import {Gift,X} from 'lucide-react-native';
+import {Gift,Share2,X} from 'lucide-react-native';
 import Svg,{Defs,Ellipse,RadialGradient,Stop} from 'react-native-svg';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {usePrefersReducedMotion} from '@/hooks/usePrefersReducedMotion';
@@ -11,7 +11,9 @@ import {getRunState,resumeRun} from '@/lib/run/store';
 import {getPulseClient} from '@/lib/medipulsi/client';
 import {publishMediCoinBalance} from '@/lib/quest/cache';
 import type {Claim,GiftSignal} from '@/lib/medipulsi/types';
-import {tx} from '@/i18n/locale';
+import {appLang,tx} from '@/i18n/locale';
+import {formatYmd} from '@/lib/format';
+import {ShareStudio,canRecordClips,type ShareSceneInput} from './ShareStudio';
 import {RUN_GIFT,RUN_GIFT_OPEN} from './runArt';
 import {Action,Copy,REGULAR} from './PulseUi';
 import {num} from './RunDrops';
@@ -68,9 +70,9 @@ const haptic=(kind:'tap'|'win')=>{(kind==='tap'?Haptics.impactAsync(Haptics.Impa
  */
 export function PulseGift({visible,signal,onClose}:{visible:boolean;signal:GiftSignal;onClose:()=>void}){
  const insets=useSafeAreaInsets(),reduced=usePrefersReducedMotion();
- const [claim,setClaim]=useState<Claim|null>(null),[busy,setBusy]=useState(false),[error,setError]=useState('');
+ const [claim,setClaim]=useState<Claim|null>(null),[busy,setBusy]=useState(false),[error,setError]=useState(''),[studio,setStudio]=useState(false);
  const shake=useRef(new Animated.Value(0)).current,reveal=useRef(new Animated.Value(0)).current;
- useEffect(()=>{if(!visible){setClaim(null);setError('');setBusy(false);shake.setValue(0);reveal.setValue(0);}},[visible,shake,reveal]);
+ useEffect(()=>{if(!visible){setClaim(null);setError('');setBusy(false);setStudio(false);shake.setValue(0);reveal.setValue(0);}},[visible,shake,reveal]);
  const gift=signal.gift,coinsNow=gift?.coins||0,inRange=signal.revealed&&Boolean(gift);
  const openGift=async()=>{
   if(busy||!gift)return;
@@ -86,7 +88,15 @@ export function PulseGift({visible,signal,onClose}:{visible:boolean;signal:GiftS
   }catch(e){setError((e as Error).message||tx('ყუთი ვერ გაიხსნა. სცადე ხელახლა.','The box couldn’t be opened. Try again.'));}
   finally{setBusy(false);}
  };
- const paid=claim?.reward.coins||0,rank=claim?.reward.rank||0,physical=claim?.status==='PENDING';
+ const paid=claim?.reward.coins||0,rank=claim?.reward.rank||0,physical=claim?.status==='PENDING',starter=Boolean(claim?.reward.starter);
+ // The share clip of this opening: coins, the place in the ladder and the park (never the spot itself).
+ const scene=useMemo<ShareSceneInput|null>(()=>{
+  if(!canRecordClips||!claim||physical||!paid)return null;
+  const place=starter?'':(appLang()==='en'?claim.reward.placeEn||claim.reward.place:claim.reward.place)||claim.reward.district||'';
+  const badge=starter?tx('🎁 ჩემი პირველი MEDIRUN ყუთი','🎁 My first MEDIRUN box'):rank===1?tx('🏆 პირველი აღმომჩენი','🏆 First finder'):rank?tx(`მე-${rank} გამხსნელი`,`Opener #${rank}`):'';
+  const today=new Date(),ymd=`${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`;
+  return {kind:'box',coins:paid,badge,place:place?`📍 ${place}`:'',kicker:formatYmd(ymd),title:'',big:'',unit:'',stats:[]};
+ },[claim,physical,paid,starter,rank]);
  return <Modal {...APP_MODAL_PROPS} visible={visible} onRequestClose={onClose}>
   <LinearGradient colors={[...NIGHT]} start={{x:.2,y:0}} end={{x:.8,y:1}} style={{flex:1,paddingTop:insets.top+8,paddingBottom:insets.bottom+16}}>
    <View style={{paddingHorizontal:20,flexDirection:'row',alignItems:'center',justifyContent:'space-between'}}>
@@ -97,6 +107,7 @@ export function PulseGift({visible,signal,onClose}:{visible:boolean;signal:GiftS
     <View style={{alignItems:'center',justifyContent:'center',overflow:'visible'}}><GiftArtwork size={claim?170:210} open={Boolean(claim)} shake={shake}/><CoinBurst play={Boolean(claim)}/></View>
     {claim?<Animated.View style={{alignItems:'center',gap:6,opacity:reveal,transform:[{translateY:reveal.interpolate({inputRange:[0,1],outputRange:[24,0]})}]}}>
      {physical?<Copy bold size={28} style={{color:WHITE,textAlign:'center'}}>{claim.reward.title}</Copy>:<><CountUp to={paid}/><Copy bold size={16} style={{color:MINT,marginTop:-6}}>Medi Coins</Copy></>}
+     {starter?<View style={{marginTop:10,paddingHorizontal:14,paddingVertical:8,borderRadius:16,backgroundColor:'rgba(252,211,77,0.18)'}}><Copy bold size={13} style={{color:AMBER,textAlign:'center'}}>{tx('🎁 შენი პირველი MEDIRUN ყუთი!','🎁 Your first MEDIRUN box!')}</Copy></View>:null}
      {rank?<View style={{marginTop:10,paddingHorizontal:14,paddingVertical:8,borderRadius:16,backgroundColor:rank===1?'rgba(252,211,77,0.18)':'rgba(255,255,255,0.10)'}}><Copy bold size={13} style={{color:rank===1?AMBER:WHITE,textAlign:'center'}}>{rank===1?tx('🏆 პირველი აღმომჩენი — სრული თანხა','🏆 First finder — the full amount'):tx(`მე-${rank} გამხსნელი${claim.reward.base?` · პირველმა ${num(claim.reward.base)} აიღო`:''}`,`Opener #${rank}${claim.reward.base?` · the first got ${num(claim.reward.base)}`:''}`)}</Copy></View>:null}
      {physical?<Copy size={13} style={{color:'#CCFBF1',textAlign:'center',marginTop:8}}>{tx('საჩუქარი დაჯავშნილია. ადმინისტრატორი გადაამოწმებს და გადმოცემის სტატუსი კოლექციაში გამოჩნდება.','The gift is reserved. An administrator will check it, and the handover status will appear in your collection.')}{'\n'}{claim.code}</Copy>
      :typeof claim.balance==='number'?<Copy size={13} style={{color:'#CCFBF1',marginTop:8}}>{tx(`ბალანსი · ${num(claim.balance)} Medi Coins`,`Balance · ${num(claim.balance)} Medi Coins`)}</Copy>:null}
@@ -109,10 +120,11 @@ export function PulseGift({visible,signal,onClose}:{visible:boolean;signal:GiftS
    </ScrollView>
    <View style={{paddingHorizontal:20,gap:10}}>
     {error?<View style={{padding:12,borderRadius:16,backgroundColor:'rgba(248,113,113,0.16)'}}><Copy size={13} style={{color:'#FECACA',textAlign:'center'}}>{error}</Copy></View>:null}
-    {claim?<Action label={tx('ჩემია!','It’s mine!')} onPress={onClose}/>
+    {claim?<>{scene?<Action label={tx('გააზიარე ვიდეოთი','Share it as a video')} icon={Share2} onPress={()=>setStudio(true)}/>:null}<Action secondary={Boolean(scene)} label={tx('ჩემია!','It’s mine!')} onPress={onClose}/>{starter?<Copy size={11} style={{color:'rgba(204,251,241,0.75)',textAlign:'center',fontFamily:REGULAR}}>{tx('ახლა იპოვე ქალაქის ყუთები — „სად არის ყუთები“ MEDIRUN-ის გვერდზეა. ყოველ ყუთს პირველი აღმომჩენი სრულად იღებს.','Now find the city’s boxes — “Where the boxes are” is on the MEDIRUN page. The first finder of each box gets it all.')}</Copy>:null}</>
     :<><Action label={busy?tx('იხსნება…','Opening…'):tx('ყუთის გახსნა','Open the box')} icon={Gift} busy={busy} disabled={!inRange} onPress={()=>void openGift()}/>
      <Copy size={11} style={{color:'rgba(204,251,241,0.75)',textAlign:'center',fontFamily:REGULAR}}>{tx('ქოინები მაშინვე ჩაირიცხება. გახსნას ზუსტი GPS სჭირდება — დადექი ყუთთან.','The coins land at once. Opening needs a precise GPS fix — stand by the box.')}</Copy></>}
    </View>
   </LinearGradient>
+  <ShareStudio visible={studio} scene={scene} source="box" onClose={()=>setStudio(false)}/>
  </Modal>;
 }

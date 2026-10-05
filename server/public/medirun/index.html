@@ -171,6 +171,22 @@
       </div>
     </section>
 
+    <!-- Tbilisi together: everyone's lit streets, live from /api/medirun/city (owner 2026-10-05) -->
+    <section class="band" id="together" data-tone="dark" hidden>
+      <div class="wrap">
+        <div class="band-head">
+          <p class="eyebrow" data-en="Live · every walker together">ახლა · ყველა მოთამაშე ერთად</p>
+          <h2 class="display" data-en="Tbilisi, lit together.">თბილისი, ერთად განათებული.</h2>
+          <p class="sub" data-en="Every street any player has walked, counted once. Come with friends: start a crew in MEDIRUN and every kilometre you walk side by side pays you both Medi Coins.">ყველა ქუჩა, რომელიც ვინმე მოთამაშემ გაიარა — თითო ერთხელ ითვლება. მოდი მეგობრებთან ერთად: შექმენი გუნდი MEDIRUN-ში და ყოველ ერთად გავლილ კილომეტრზე ორივე იღებთ Medi Coins-ს.</p>
+        </div>
+        <div class="meter">
+          <div class="meter-row"><span class="meter-pct num" id="tg-pct">0%</span><span class="meter-people"><b class="num" id="tg-people">0</b> <span data-en="people lighting it">ადამიანი ანათებს</span></span></div>
+          <div class="meter-bar" role="progressbar" aria-labelledby="tg-next" aria-valuemin="0" aria-valuemax="100"><i id="tg-bar"></i></div>
+          <p class="meter-next" id="tg-next"></p>
+        </div>
+      </div>
+    </section>
+
     <!-- Store: what the coins buy -->
     <section class="band" id="store" data-tone="dark">
       <div class="wrap">
@@ -375,6 +391,30 @@
       }
       tick();
       setInterval(tick, 1000);
+    })();
+  </script>
+  <script>
+    /* „თბილისი ერთად“: everyone's lit share of Tbilisi, live; the section stays hidden until the numbers arrive. */
+    (function () {
+      var T = function (ka, en) { return window.MedicardI18n ? window.MedicardI18n.t(ka, en) : ka; };
+      var en = (document.documentElement.lang || '').indexOf('en') === 0;
+      var fmt = function (p, d) { var s = (Number(p) || 0).toFixed(d); return en ? s : s.replace('.', ','); };
+      var pct = function (p) { return p > 0 && p < 0.005 ? '<' + fmt(0.01, 2) + '%' : fmt(p, 2) + '%'; };
+      var lvl = function (p) { var s = String(Math.round(p * 100) / 100); return (en ? s : s.replace('.', ',')) + '%'; };
+      fetch('/api/medirun/city?lang=' + (en ? 'en' : 'ka')).then(function (r) { return r.ok ? r.json() : null; }).then(function (d) {
+        var m = d && d.meter; if (!m) return;
+        document.getElementById('tg-pct').textContent = pct(m.percent);
+        document.getElementById('tg-people').textContent = Number(m.people || 0).toLocaleString(en ? 'en-US' : 'ka-GE');
+        var next = m.milestones && m.milestones.next, last = (m.milestones && m.milestones.last && m.milestones.last.percent) || 0;
+        var share = next ? Math.max(0, Math.min(100, (m.percent - last) / (next.percent - last) * 100)) : 100;
+        var bar = document.querySelector('#together .meter-bar');
+        bar.setAttribute('aria-valuenow', String(Math.round(share)));
+        document.getElementById('tg-next').textContent = next
+          ? T('შემდეგი ეტაპი — ' + lvl(next.percent) + ' · დარჩა ' + pct(next.remaining) + '. ყოველი ახალი ქუჩა ითვლება.', 'Next milestone — ' + lvl(next.percent) + ' · ' + pct(next.remaining) + ' to go. Every new street counts.')
+          : T('ყველა ეტაპი გავლილია — მადლობა, თბილისო!', 'Every milestone reached — thank you, Tbilisi!');
+        document.getElementById('together').hidden = false;
+        requestAnimationFrame(function () { document.getElementById('tg-bar').style.width = share + '%'; });
+      }).catch(function () {});
     })();
   </script>
 </body>

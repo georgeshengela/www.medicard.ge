@@ -1,6 +1,6 @@
 import React,{useCallback,useMemo,useState} from 'react';
 import {Image,Pressable,ScrollView,View} from 'react-native';
-import {useFocusEffect,useRouter} from 'expo-router';
+import {useFocusEffect,useLocalSearchParams,useRouter} from 'expo-router';
 import * as Location from 'expo-location';
 import {ArrowUpRight,ChevronRight,Compass,Landmark,Mountain,Settings2,Trees,Waves} from 'lucide-react-native';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
@@ -31,6 +31,9 @@ import {RunWallet} from './RunWallet';
 import {RunHero} from './RunHero';
 import {RunPrizeGoal} from './RunPrizeGoal';
 import {RunRaceCard} from './RunRaceCard';
+import {RunCrewCard} from './RunCrewCard';
+import {RunCityCard} from './RunCityCard';
+import {RunWrappedCard} from './RunWrappedCard';
 import { tx } from '@/i18n/locale';
 
 export const MISSION_ICONS={trees:Trees,landmark:Landmark,waves:Waves,mountain:Mountain,bridge:Compass,flower:Trees};
@@ -48,7 +51,7 @@ const walkDay=(iso:string)=>{const d=new Date(iso);if(!Number.isFinite(d.getTime
 const away=(m:number)=>m<1000?tx(`${Math.round(m/10)*10} მ`, `${Math.round(m/10)*10} m`):tx(`${(m/1000).toFixed(m<10000?1:0)} კმ`, `${(m/1000).toFixed(m<10000?1:0)} km`);
 
 export default function PulseHub(){
- const router=useRouter(),c=useThemeColors(),insets=useSafeAreaInsets(),{healthProfile}=useAuth(),pulse=usePulse();
+ const router=useRouter(),c=useThemeColors(),insets=useSafeAreaInsets(),{healthProfile}=useAuth(),pulse=usePulse(),params=useLocalSearchParams<{crew?:string}>();
  const [history,setHistory]=useState<RunSummary[]>([]),[targetSheet,setTargetSheet]=useState(false),[panel,setPanel]=useState<PulsePanel|null>(null),[error,setError]=useState(''),[missionError,setMissionError]=useState(''),[here,setHere]=useState<Coordinate|null>(null),[allWalks,setAllWalks]=useState(false),[busy,setBusy]=useState(false);
  const testPulse=useHeartbeat(EMPTY_SIGNAL,pulse.snapshot?.settings||{},false);
  useFocusEffect(useCallback(()=>{
@@ -97,9 +100,15 @@ export default function PulseHub(){
   {/* Owner 2026-10-05 (third pass, by what moves people): where the boxes are, this week's race for the Monday
       prizes, the prize you are saving for and the coins that feed it, the Tbilisi campaign — then your last
       seven days, the passport and your walks. */}
+  {/* Monday–Wednesday: last week in one card with a video to share (owner 2026-10-05). */}
+  <RunWrappedCard/>
+
   <RunDropsCard/>
 
   <RunRaceCard optedIn={Boolean(pulse.snapshot?.leaderboardOptIn)} onOpen={()=>setPanel('leaderboard')}/>
+
+  {/* Friends walk together: crews, „ერთად“ and together-km coins (owner 2026-10-05). */}
+  <RunCrewCard joinCode={params.crew} onJoinCodeUsed={()=>router.setParams({crew:undefined} as never)}/>
 
   <RunPrizeGoal/>
 
@@ -109,6 +118,7 @@ export default function PulseHub(){
   <Section title={tx('გაანათე თბილისი','Light up Tbilisi')}>
    <GrandPrizeCard/>
   </Section>
+  <RunCityCard/>
   <PulseTerritory totalKm={lifetimeKm} walks={lifetimeWalks} weekNewKm={weekNewKm}/>
 
   <Section title={tx('ბოლო 7 დღე', 'Last 7 days')}>

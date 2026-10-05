@@ -7,7 +7,7 @@ import {getMediCoinBalanceHint,subscribeMediCoinBalance} from '@/lib/quest/cache
 /** `GET /api/medipulsi/wallet` — server `src/lib/medipulsi/economy.js` walletView. Parks and dates, never a coordinate. */
 export type WalletRow={
  id:string;amount:number;createdAt:string;
- kind:'box'|'prize'|'grand';
+ kind:'box'|'prize'|'grand'|'together';
  /** Box openings: the place in the first-finder ladder (1 = first) and what the first finder got. */
  rank:number|null;base:number|null;
  place:string|null;district:string|null;city:string|null;

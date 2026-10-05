@@ -6,7 +6,9 @@ import {pauseJourney,resetSession} from './core/session.js';
 import {emptyBook,advanceMission} from './core/missions.js';
 import {distance} from './core/engine.js';
 import {fail} from './schema.js';
-import {giftRules,percentsFor,isUnlocked,localizeGift,creditGiftCoins,payoutFor,decayOf} from './giftRules.js';
+import {giftRules,clearGiftRuleCache,percentsFor,isUnlocked,localizeGift,creditGiftCoins,payoutFor,decayOf} from './giftRules.js';
+import {ensureStarterBox,visibleTo,isStarterId} from './starter.js';
+import {togetherTick} from './social.js';
 import {getCampaign,economyOf} from './campaignStore.js';
 import {periodBounds,boxesBoard,metersBoard,myNumbers,rankAmong,weekWinners,weekStart,tbilisiMidnight,walletView,coinBalance} from './economy.js';
 
@@ -89,24 +91,40 @@ const noSignal={signal:false,revealed:false,quality:false,period:2200,distance:0
 function fresh(j,now){return j?.lastFix&&now-j.lastFix<15000&&now-j.lastFix>=-5000&&j.accuracy<=25&&['tracking','off-path','stationary'].includes(j.status);}
 function inRange(j,g){return distance(j.position,[g.longitude,g.latitude])+j.accuracy<=g.revealRadius;}
 export async function nearby(userId,now=Date.now(),lang='ka'){
- if(!(await config()).giftsEnabled)return noSignal;
+ const cfg=await config();
  const p=await prisma.medipulsiPlayer.findUnique({where:{userId}}),j=p?.state?.journey;
  if(!p?.activeSessionId||!fresh(j,now))return noSignal;
+ // Social and onboarding extras (owner 2026-10-05): who of your crew walks next to you, and the starter box a
+ // new player gets on the first walk. Both are best-effort — a failure never hides a real box.
+ const campaign=await getCampaign(prisma,now).catch(()=>null);
+ const [together,starter]=await Promise.all([
+  campaign?togetherTick(userId,{spot:j.position,settings:p.settings,campaign,now}):null,
+  campaign&&cfg.giftsEnabled?prisma.medipulsiSession.findUnique({where:{id:p.activeSessionId},select:{meters:true,seconds:true}}).then(session=>ensureStarterBox(userId,{journey:j,session,campaign,now})).catch(()=>null):null,
+ ]);
+ const extra={...(together?{together}:{}),...(starter?.pending?{starter:{pending:starter.pending}}:{})};
+ if(!cfg.giftsEnabled)return {...noSignal,quality:true,...extra};
  const claimed=await prisma.medipulsiClaim.findMany({where:{userId},select:{giftId:true}});
- const gifts=await prisma.medipulsiGift.findMany({where:{published:true,archived:false,startsAt:{lte:new Date(now)},endsAt:{gt:new Date(now)},id:{notIn:claimed.map(c=>c.giftId)},latitude:{gte:j.position[1]-.01,lte:j.position[1]+.01}}});
+ const gifts=(await prisma.medipulsiGift.findMany({where:{published:true,archived:false,startsAt:{lte:new Date(now)},endsAt:{gt:new Date(now)},id:{notIn:claimed.map(c=>c.giftId)},latitude:{gte:j.position[1]-.01,lte:j.position[1]+.01}}})).filter(g=>visibleTo(g.id,userId));
  // Campaign rules: a gated box (grand prize, lantern boxes) does not exist for a player below its lit-city threshold.
- const rules=await giftRules(),open=gifts.filter(g=>g.allocated<g.stock),gated=open.map(g=>rules.get(g.id)).filter(r=>r?.minPercent);
+ let rules=await giftRules();
+ // A starter box just placed on this instance (or another) must show its coins at once.
+ if(gifts.some(g=>isStarterId(g.id)&&!rules.has(g.id))){clearGiftRuleCache();rules=await giftRules();}
+ const open=gifts.filter(g=>g.allocated<g.stock),gated=open.map(g=>rules.get(g.id)).filter(r=>r?.minPercent);
  const percents=gated.length?await percentsFor(userId,gated):new Map();
  const closest=open.filter(g=>isUnlocked(rules.get(g.id),id=>percents.get(id))).map(g=>({g,d:distance(j.position,[g.longitude,g.latitude])})).filter(x=>x.d<=x.g.pulseRadius).sort((a,b)=>a.d-b.d)[0];
- if(!closest)return {...noSignal,quality:true};
- const {g,d}=closest,revealed=inRange(j,g),rule=rules.get(g.id)||null;
+ if(!closest)return {...noSignal,quality:true,...extra};
+ const {g,d}=closest,revealed=inRange(j,g),rule=rules.get(g.id)||null,starterBox=isStarterId(g.id);
  // Economy 2: what THIS opening pays (first finder gets the full coins, later ones a falling share).
- const coins=payoutFor(rule,g.allocated),money=rule?.coins>0?{coins,base:rule.coins,rank:g.allocated+1,opened:g.allocated,stock:g.stock,decay:decayOf(rule)}:{};
+ const coins=payoutFor(rule,g.allocated),money=rule?.coins>0?(starterBox?{coins,starter:true}:{coins,base:rule.coins,rank:g.allocated+1,opened:g.allocated,stock:g.stock,decay:decayOf(rule)}):{};
  const gift=revealed?localizeGift({id:g.id,title:g.title,description:g.description,rewardKind:g.rewardKind,position:[g.longitude,g.latitude]},rule,lang):null;
- return {signal:true,revealed,quality:true,period:Math.round((2200-1500*(1-d/g.pulseRadius))/100)*100,distance:revealed?Math.round(d):0,gift:gift?{...gift,...money,...(coins>0?{title:`${coins} Medi Coins`}:{})}:null};
+ return {signal:true,revealed,quality:true,period:Math.round((2200-1500*(1-d/g.pulseRadius))/100)*100,distance:revealed?Math.round(d):0,gift:gift?{...gift,...money,...(coins>0?{title:`${coins} Medi Coins`}:{})}:null,...extra};
 }
 export async function claim(userId,giftId,now=Date.now()){
- const rule=(await giftRules()).get(giftId)||null,percents=rule?.minPercent?await percentsFor(userId,[rule],{maxAgeMs:0}):new Map();
+ if(!visibleTo(giftId,userId))fail(409,'საჩუქარი ამ მდებარეობაზე მიუწვდომელია.');
+ let rules=await giftRules();
+ // Never pay a box with a rule this instance has not loaded yet (a box placed a moment ago elsewhere).
+ if(!rules.has(giftId)){clearGiftRuleCache();rules=await giftRules();}
+ const rule=rules.get(giftId)||null,percents=rule?.minPercent?await percentsFor(userId,[rule],{maxAgeMs:0}):new Map(),starterBox=isStarterId(giftId);
  return transaction(async tx=>{
  await enabled(tx);if(!(await config(tx)).giftsEnabled)fail(409,'საჩუქრები დროებით შეჩერებულია.');
  const p=await playerLock(tx,userId);
@@ -119,8 +137,10 @@ export async function claim(userId,giftId,now=Date.now()){
  if(!isUnlocked(rule,id=>percents.get(id)))fail(409,'ეს საჩუქარი ჯერ შენთვის დახურულია.','GIFT_LOCKED');
  if(g.allocated>=g.stock)fail(409,'საჩუქრის მარაგი ამოიწურა.','OUT_OF_STOCK');
  // Economy 2: the opening's place in the ladder is `allocated` under the row lock — first finder = rank 1.
- const rank=g.allocated+1,coins=payoutFor(rule,g.allocated);
- const claimed=await tx.medipulsiClaim.create({data:{id:randomUUID(),userId,giftId,sessionId:s.id,code:randomBytes(10).toString('hex').toUpperCase(),status:g.rewardKind==='DIGITAL'?'APPROVED':'PENDING',reward:{title:coins>0?`${coins} Medi Coins`:g.title,description:g.description,kind:g.rewardKind,coins,rank,base:rule?.coins||0,evidence:{fixAt:p.state.journey.lastFix,accuracy:p.state.journey.accuracy,distance:distance(p.state.journey.position,[g.longitude,g.latitude]),sessionMeters:s.meters,rejectedFixes:s.rejected}}}});
+ const rank=starterBox?null:g.allocated+1,coins=payoutFor(rule,g.allocated);
+ // The box's park travels with the claim so the share clip can say where it was found (never a coordinate).
+ const where=rule?.meta?.place?{place:rule.meta.place,placeEn:rule.meta.placeEn||null,district:rule.meta.district||null}:{};
+ const claimed=await tx.medipulsiClaim.create({data:{id:randomUUID(),userId,giftId,sessionId:s.id,code:randomBytes(10).toString('hex').toUpperCase(),status:g.rewardKind==='DIGITAL'?'APPROVED':'PENDING',reward:{title:coins>0?`${coins} Medi Coins`:g.title,description:g.description,kind:g.rewardKind,coins,...(starterBox?{starter:true}:{rank,base:rule?.coins||0}),...where,evidence:{fixAt:p.state.journey.lastFix,accuracy:p.state.journey.accuracy,distance:distance(p.state.journey.position,[g.longitude,g.latitude]),sessionMeters:s.meters,rejectedFixes:s.rejected}}}});
  await tx.medipulsiGift.update({where:{id:giftId},data:{allocated:{increment:1}}});
  await creditGiftCoins(tx,{userId,claimId:claimed.id,giftId,rule,amount:coins,rank,now:new Date(now)});
  // The balance after this opening rides along, so the app's coin counter is right the moment the box opens.

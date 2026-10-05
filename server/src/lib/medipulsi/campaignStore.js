@@ -38,10 +38,13 @@ const economy=z.object({
  decay:z.array(int(1,100)).min(1).max(12).refine(d=>d.every((v,i)=>!i||v<=d[i-1]),'კიბე უნდა იკლებდეს: ყოველი შემდეგი გახსნა წინაზე მეტს ვერ იღებს'),
  budget:z.object({seasonCoins:int(0,10_000_000),warnAt:z.array(z.number().min(1).max(100)).max(5).default([50,80])}),
  weeklyPrizes:z.object({boxes:prizeList.default([]),meters:prizeList.default([])}),
+ // Owner 2026-10-05: the starter box on a new player's first walk and the together-km coins for crews.
+ starter:z.object({enabled:z.boolean(),coins:int(0,1000),afterMeters:int(0,1000),afterSeconds:int(0,600),hours:z.number().min(.5).max(12)}).optional(),
+ together:z.object({enabled:z.boolean(),coinsPerKm:int(0,500),dailyCap:int(0,5000)}).optional(),
 });
 export const FILE_ECONOMY=Object.freeze(structuredClone(FILE_CAMPAIGN.economy));
 /** The campaign's economy with the file's values for anything a saved row lacks. */
-export const economyOf=campaign=>({...FILE_ECONOMY,...(campaign?.economy||{}),budget:{...FILE_ECONOMY.budget,...(campaign?.economy?.budget||{})},weeklyPrizes:{...FILE_ECONOMY.weeklyPrizes,...(campaign?.economy?.weeklyPrizes||{})}});
+export const economyOf=campaign=>({...FILE_ECONOMY,...(campaign?.economy||{}),budget:{...FILE_ECONOMY.budget,...(campaign?.economy?.budget||{})},weeklyPrizes:{...FILE_ECONOMY.weeklyPrizes,...(campaign?.economy?.weeklyPrizes||{})},starter:{...FILE_ECONOMY.starter,...(campaign?.economy?.starter||{})},together:{...FILE_ECONOMY.together,...(campaign?.economy?.together||{})}});
 
 export const campaignSchema=z.object({
  id:z.literal(FILE_CAMPAIGN.id),

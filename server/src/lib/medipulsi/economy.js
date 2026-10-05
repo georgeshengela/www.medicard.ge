@@ -82,11 +82,12 @@ export function periodBounds(period,campaign,now=Date.now()){
  return {since:new Date(now-90*DAY),until:null,label:'season'};
 }
 
-/** Box hunters: coins from openings, boxes opened, first finds. Opt-in players only; `withIds` keeps userId. */
+/** Box hunters: coins from openings, boxes opened, first finds. Opt-in players only; `withIds` keeps userId.
+ * The personal starter box (reward.starter) never ranks: everyone gets one. */
 export async function boxesBoard({since,until=null,limit=100,db=prisma}){
  const rows=until
-  ?await db.$queryRaw`SELECT p."userId", p."handle", count(*)::int AS boxes, coalesce(sum((c."reward"->>'coins')::int),0)::int AS coins, count(*) FILTER (WHERE (c."reward"->>'rank')::int=1)::int AS firsts FROM "MedipulsiClaim" c JOIN "MedipulsiPlayer" p ON p."userId"=c."userId" JOIN "User" u ON u."id"=p."userId" WHERE p."leaderboardOptIn"=true AND u."status"='ACTIVE' AND c."status" IN ('APPROVED','FULFILLED') AND c."createdAt">=${since} AND c."createdAt"<${until} GROUP BY p."userId",p."handle" HAVING coalesce(sum((c."reward"->>'coins')::int),0)>0 ORDER BY coins DESC, boxes DESC, firsts DESC, min(c."createdAt") ASC LIMIT ${limit}`
-  :await db.$queryRaw`SELECT p."userId", p."handle", count(*)::int AS boxes, coalesce(sum((c."reward"->>'coins')::int),0)::int AS coins, count(*) FILTER (WHERE (c."reward"->>'rank')::int=1)::int AS firsts FROM "MedipulsiClaim" c JOIN "MedipulsiPlayer" p ON p."userId"=c."userId" JOIN "User" u ON u."id"=p."userId" WHERE p."leaderboardOptIn"=true AND u."status"='ACTIVE' AND c."status" IN ('APPROVED','FULFILLED') AND c."createdAt">=${since} GROUP BY p."userId",p."handle" HAVING coalesce(sum((c."reward"->>'coins')::int),0)>0 ORDER BY coins DESC, boxes DESC, firsts DESC, min(c."createdAt") ASC LIMIT ${limit}`;
+  ?await db.$queryRaw`SELECT p."userId", p."handle", count(*)::int AS boxes, coalesce(sum((c."reward"->>'coins')::int),0)::int AS coins, count(*) FILTER (WHERE (c."reward"->>'rank')::int=1)::int AS firsts FROM "MedipulsiClaim" c JOIN "MedipulsiPlayer" p ON p."userId"=c."userId" JOIN "User" u ON u."id"=p."userId" WHERE p."leaderboardOptIn"=true AND u."status"='ACTIVE' AND c."status" IN ('APPROVED','FULFILLED') AND coalesce(c."reward"->>'starter','false')<>'true' AND c."createdAt">=${since} AND c."createdAt"<${until} GROUP BY p."userId",p."handle" HAVING coalesce(sum((c."reward"->>'coins')::int),0)>0 ORDER BY coins DESC, boxes DESC, firsts DESC, min(c."createdAt") ASC LIMIT ${limit}`
+  :await db.$queryRaw`SELECT p."userId", p."handle", count(*)::int AS boxes, coalesce(sum((c."reward"->>'coins')::int),0)::int AS coins, count(*) FILTER (WHERE (c."reward"->>'rank')::int=1)::int AS firsts FROM "MedipulsiClaim" c JOIN "MedipulsiPlayer" p ON p."userId"=c."userId" JOIN "User" u ON u."id"=p."userId" WHERE p."leaderboardOptIn"=true AND u."status"='ACTIVE' AND c."status" IN ('APPROVED','FULFILLED') AND coalesce(c."reward"->>'starter','false')<>'true' AND c."createdAt">=${since} GROUP BY p."userId",p."handle" HAVING coalesce(sum((c."reward"->>'coins')::int),0)>0 ORDER BY coins DESC, boxes DESC, firsts DESC, min(c."createdAt") ASC LIMIT ${limit}`;
  return rows;
 }
 /** Walkers: verified metres from finished sessions. */
@@ -99,7 +100,7 @@ export async function metersBoard({since,until=null,limit=100,db=prisma}){
 /** The reader's own numbers for the period (any player, opted in or not). */
 export async function myNumbers(userId,{since,db=prisma}){
  const [b,m]=await Promise.all([
-  db.$queryRaw`SELECT count(*)::int AS boxes, coalesce(sum((c."reward"->>'coins')::int),0)::int AS coins, count(*) FILTER (WHERE (c."reward"->>'rank')::int=1)::int AS firsts FROM "MedipulsiClaim" c WHERE c."userId"=${userId} AND c."status" IN ('APPROVED','FULFILLED') AND c."createdAt">=${since}`,
+  db.$queryRaw`SELECT count(*)::int AS boxes, coalesce(sum((c."reward"->>'coins')::int),0)::int AS coins, count(*) FILTER (WHERE (c."reward"->>'rank')::int=1)::int AS firsts FROM "MedipulsiClaim" c WHERE c."userId"=${userId} AND c."status" IN ('APPROVED','FULFILLED') AND coalesce(c."reward"->>'starter','false')<>'true' AND c."createdAt">=${since}`,
   db.$queryRaw`SELECT coalesce(SUM(s."meters"),0)::float8 AS meters, coalesce(SUM(s."newMeters"),0)::float8 AS "newMeters", count(*)::int AS walks FROM "MedipulsiSession" s WHERE s."userId"=${userId} AND s."excluded"=false AND s."phase"='FINISHED' AND s."startedAt">=${since}`,
  ]);
  return {boxes:b[0]?.boxes||0,coins:b[0]?.coins||0,firsts:b[0]?.firsts||0,meters:m[0]?.meters||0,newMeters:m[0]?.newMeters||0,walks:m[0]?.walks||0};
@@ -155,7 +156,8 @@ export function walletRows(rows,lang='ka'){
   const m=r.metadata&&typeof r.metadata==='object'?r.metadata:{},meta=r.ruleMeta&&typeof r.ruleMeta==='object'?r.ruleMeta:{};
   const prize=String(r.sourceId||'').startsWith(PRIZE_SOURCE_PREFIX);
   const place=en?(meta.placeEn||meta.place||null):(meta.place||null),city=en?(meta.cityEn||meta.city||null):(meta.city||null);
-  return {id:r.id,amount:r.amount,createdAt:r.createdAt,kind:prize?'prize':meta.kind==='grand'?'grand':'box',
+  const together=String(r.sourceId||'').startsWith('together:');
+  return {id:r.id,amount:r.amount,createdAt:r.createdAt,kind:prize?'prize':together?'together':meta.kind==='grand'?'grand':'box',
    rank:Number(m.rank)||null,base:Number(m.base)||null,place,district:meta.district||null,city,
    board:prize?(m.board||null):null,week:prize?(m.week||null):null,giftKind:meta.kind||null};
  });
