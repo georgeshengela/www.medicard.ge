@@ -11,6 +11,7 @@ import {
   Dumbbell,
   FileText,
   Gift,
+  KeyRound,
   LayoutGrid,
   Link2,
   Lock,
@@ -347,6 +348,7 @@ export default function Profile() {
       <View style={s.section}>
         <HomeSectionHeading title={ka.profile.account} />
         <View style={[s.list, { backgroundColor: colors.surface }]}>
+          <ProfileMenuRow icon={KeyRound} ink="teal" label={tx('შესვლის გზები', 'Sign-in methods')} onPress={() => router.push('/profile/sign-in-methods' as never)} />
           <ProfileMenuRow icon={LogOut} danger label={ka.auth.signOut} onPress={confirmSignOut} />
           <ProfileMenuRow icon={Trash2} danger label={ka.profile.deleteAccount} onPress={() => setDeleteOpen(true)} isLast />
         </View>

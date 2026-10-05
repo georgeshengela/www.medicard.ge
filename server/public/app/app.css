@@ -526,6 +526,21 @@ p { margin: 0; }
 }
 .social-google { position: relative; min-height: 40px; display: flex; justify-content: center; color: var(--text2); }
 .social-google.is-busy > * { opacity: .35; pointer-events: none; }
+/* Account conflict (accountLinks.js): two choices, the recommended one filled. */
+.conflict-choice {
+  display: grid; gap: 3px; width: 100%; text-align: left; border: 0; cursor: pointer; font: inherit;
+  padding: 12px 16px; border-radius: 16px; background: var(--bg); color: var(--text); transition: background .15s, transform .08s;
+}
+.conflict-choice:hover { background: var(--bg2); }
+.conflict-choice:active { transform: scale(.99); }
+.conflict-choice.primary { background: var(--brand); color: var(--on-brand); }
+.conflict-choice.primary:hover { background: #0f766e; }
+.conflict-choice .conflict-title { font-weight: 700; font-size: 15px; }
+.conflict-choice .conflict-hint { font-size: 12.5px; line-height: 1.45; opacity: .85; }
+.conflict-choice.is-busy { opacity: .6; pointer-events: none; }
+.auth-method { display: grid; grid-template-columns: 1fr 1fr; padding: 4px; border-radius: 14px; background: var(--bg); margin-bottom: 16px; }
+.auth-method button { border: 0; background: transparent; padding: 9px 12px; border-radius: 11px; font: inherit; font-size: 14px; font-weight: 600; color: var(--text2); cursor: pointer; }
+.auth-method button.on { background: var(--surface); color: var(--text); font-weight: 700; box-shadow: 0 1px 2px rgba(15, 26, 28, .08); }
 .legal-note a { color: var(--text2); text-decoration: underline; }
 @media (max-width: 900px) {
   .auth { grid-template-columns: 1fr; }

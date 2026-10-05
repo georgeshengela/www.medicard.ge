@@ -23,6 +23,13 @@ export function renderOnboarding(root, { onDone }) {
     accepted: false,
   };
   const STEPS = 5;
+  // „MEDICARD უკვე გამოგიყენებია?“ — first, once, on an account created within the last day (same
+  // question as the app): a „yes“ removes this new empty account so the person signs in the old way.
+  const askedKey = `medicard.web.existingAccountAsked.${u.id}`;
+  const fresh = u.createdAt && Date.now() - new Date(u.createdAt).getTime() < 24 * 60 * 60 * 1000;
+  let asked = true;
+  try { asked = Boolean(localStorage.getItem(askedKey)); } catch { asked = false; }
+  if (fresh && !asked) state.step = -1;
   const box = h('div', { class: 'onb-box' });
   mount(root, h('div', { class: 'onb' }, box));
 
@@ -47,6 +54,32 @@ export function renderOnboarding(root, { onDone }) {
     err.hidden = true;
     const s = state.step;
     let body;
+    if (s === -1) {
+      const yes = button(t('კი, ანგარიში უკვე მაქვს', 'Yes, I already have an account'), { variant: 'ghost', size: 'lg', onClick: () => busy(yes, async () => {
+        try {
+          await post('/api/auth/me/discard-new', {});
+          signOut();
+          location.href = '/app';
+        } catch (e) { fail(e); }
+      }) });
+      body = [
+        h('h1', { class: 'page-head', style: { display: 'block', margin: '0 0 8px', fontSize: '28px', fontWeight: 800 } }, t('MEDICARD უკვე გამოგიყენებია?', 'Have you used MEDICARD before?')),
+        h('p', { class: 'muted', style: { marginBottom: '22px' } }, t(
+          'თუ ანგარიში უკვე გაქვს — ნომრით, ელ-ფოსტით, Apple-ით ან Google-ით, აპში ან ვებზე — შედი იმავე გზით. ასე ყველაფერი ერთ ანგარიშზე დარჩება.',
+          'If you already have an account — with a phone number, email, Apple or Google, in the app or on the web — sign in the same way. That keeps everything on one account.',
+        )),
+        err,
+        h('div', { class: 'between', style: { marginTop: '28px' } },
+          yes,
+          button(t('არა, პირველად ვარ', 'No, I am new here'), { size: 'lg', onClick: () => {
+            try { localStorage.setItem(askedKey, '1'); } catch { /* private mode */ }
+            state.step = 0;
+            render();
+          } })),
+      ];
+      mount(box, h('div', { class: 'card pad-lg' }, body));
+      return;
+    }
     if (s === 0) {
       const nameIn = input({ value: state.fullName, placeholder: t('სახელი გვარი', 'First and last name'), autocomplete: 'name', onInput: (e) => { state.fullName = e.target.value; } });
       body = [

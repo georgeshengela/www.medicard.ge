@@ -37,6 +37,19 @@ import {
   verifyAppleIdentity,
   verifyGoogleIdentity,
 } from '../lib/socialAuth.js';
+import {
+  AccountLoginError,
+  accountHasContent,
+  absorbLogins,
+  conflictOptions,
+  conflictPayload,
+  loginMethods,
+  readConflictToken,
+  realEmail,
+  requestEmailAddCode,
+  verifyEmailAddCode,
+} from '../lib/accountLogins.js';
+import { writeAdminAudit } from '../lib/adminAudit.js';
 
 export const authRouter = Router();
 
@@ -649,17 +662,16 @@ authRouter.post(
   }),
 );
 
-/** Link a verified phone to the logged-in account (profile setup). */
+/**
+ * Link a verified phone to the logged-in account (profile, phone gate). A number that belongs to
+ * another account still gets its code: the code proves it is this person's, and verify then offers
+ * to bring that account's sign-in methods here or to switch to it (accountLogins.js).
+ */
 authRouter.post(
   '/phone/link/start',
   requireAuth,
   asyncHandler(async (req, res) => {
     const { phone } = phoneLinkStartSchema.parse(req.body);
-
-    const taken = await findUserByPhone(phone, { excludeUserId: req.user.id });
-    if (taken) {
-      return res.status(409).json(phoneTakenPayload(req.lang));
-    }
 
     const result = await requestPhoneOtp({ phone, purpose: 'LINK', userId: req.user.id, lang: req.lang });
     if (!result.ok) {
@@ -685,10 +697,14 @@ authRouter.post(
     if (!verified.ok) {
       return res.status(verified.status ?? 400).json({ error: verified.error });
     }
+    // The code was requested by this signed-in account, not by another session.
+    if (verified.userId && verified.userId !== req.user.id) {
+      return res.status(400).json({ error: t(req, 'კოდი არასწორია ან ვადა გაუვიდა.', 'The code is wrong or has expired.') });
+    }
 
     const taken = await findUserByPhone(phone, { excludeUserId: req.user.id });
     if (taken) {
-      return res.status(409).json(phoneTakenPayload(req.lang));
+      return res.status(409).json(await conflictPayload(req.lang, { kind: 'phone', currentId: req.user.id, otherId: taken.id }));
     }
 
     let user;
@@ -700,12 +716,180 @@ authRouter.post(
       });
     } catch (err) {
       if (err?.code === 'P2002' && err?.meta?.target?.includes?.('phone')) {
-        return res.status(409).json(phoneTakenPayload(req.lang));
+        const owner = await findUserByPhone(phone, { excludeUserId: req.user.id });
+        return res.status(409).json(owner
+          ? await conflictPayload(req.lang, { kind: 'phone', currentId: req.user.id, otherId: owner.id })
+          : phoneTakenPayload(req.lang));
       }
       throw err;
     }
 
     return res.json({ ok: true, user: publicUser(user) });
+  }),
+);
+
+/* ───────── Sign-in methods on one account (2026-10-05, src/lib/accountLogins.js) ───────── */
+
+authRouter.get(
+  '/methods',
+  requireAuth,
+  asyncHandler(async (req, res) => {
+    res.set('Cache-Control', 'no-store');
+    return res.json({ methods: await loginMethods(req.user.id) });
+  }),
+);
+
+const emailAddStartSchema = z.object({ email: z.string().trim().toLowerCase().email().max(160) });
+const emailAddVerifySchema = z.object({
+  email: z.string().trim().toLowerCase().email().max(160),
+  code: z.string().trim().regex(/^\d{6}$/),
+  password: z.string().min(8).max(128),
+});
+
+/** Adds a real email + password to an account that has none (phone or hidden-Apple sign-up). */
+authRouter.post(
+  '/email/add/start',
+  requireAuth,
+  asyncHandler(async (req, res) => {
+    const { email } = emailAddStartSchema.parse(req.body);
+    const result = await requestEmailAddCode({ user: req.user, email, lang: req.lang });
+    if (!result.ok) return res.status(result.status).json({ error: result.error, code: result.code });
+    return res.json({ sent: true, message: result.message, devCode: result.devCode });
+  }),
+);
+
+authRouter.post(
+  '/email/add/verify',
+  requireAuth,
+  asyncHandler(async (req, res) => {
+    const { email, code, password } = emailAddVerifySchema.parse(req.body);
+    if (realEmail(req.user.email)) {
+      return res.status(400).json({ error: t(req, 'ამ ანგარიშს ელ-ფოსტა უკვე აქვს.', 'This account already has an email.'), code: 'EMAIL_ALREADY_SET' });
+    }
+    const checked = await verifyEmailAddCode({ userId: req.user.id, email, code, lang: req.lang });
+    if (!checked.ok) return res.status(checked.status ?? 400).json({ error: checked.error });
+
+    const owner = await prisma.user.findUnique({ where: { email }, select: { id: true } });
+    if (owner && owner.id !== req.user.id) {
+      return res.status(409).json(await conflictPayload(req.lang, { kind: 'email', currentId: req.user.id, otherId: owner.id }));
+    }
+    let user;
+    try {
+      user = await prisma.user.update({
+        where: { id: req.user.id },
+        data: { email, passwordHash: await bcrypt.hash(password, 12) },
+        include: { package: true },
+      });
+    } catch (err) {
+      if (err?.code === 'P2002') {
+        const raced = await prisma.user.findUnique({ where: { email }, select: { id: true } });
+        if (raced) return res.status(409).json(await conflictPayload(req.lang, { kind: 'email', currentId: req.user.id, otherId: raced.id }));
+      }
+      throw err;
+    }
+    return res.json({ ok: true, user: publicUser(user), methods: await loginMethods(user.id) });
+  }),
+);
+
+/** Attaches a verified Apple / Google identity to the signed-in account. */
+async function linkSocialIdentity(req, res, identity, sealedRefresh = null) {
+  const owner = await findIdentity(identity.provider, identity.subject);
+  if (owner && owner.userId !== req.user.id) {
+    return res.status(409).json(await conflictPayload(req.lang, { kind: identity.provider, currentId: req.user.id, otherId: owner.userId }));
+  }
+  await saveIdentity({ userId: req.user.id, identity, sealedRefresh });
+  return res.json({ ok: true, methods: await loginMethods(req.user.id) });
+}
+
+authRouter.post(
+  '/apple/link',
+  requireAuth,
+  asyncHandler(async (req, res) => {
+    const data = appleSignInSchema.parse(req.body);
+    let identity;
+    try {
+      identity = await verifyAppleIdentity({ identityToken: data.identityToken, nonce: data.nonce });
+    } catch (error) {
+      return socialFailure(req, res, error);
+    }
+    const refreshToken = await exchangeAppleCode(data.authorizationCode, { clientId: identity.clientId });
+    return linkSocialIdentity(req, res, identity, refreshToken ? sealSecret(packAppleGrant(refreshToken, identity.clientId)) : null);
+  }),
+);
+
+authRouter.post(
+  '/google/link',
+  requireAuth,
+  asyncHandler(async (req, res) => {
+    const data = googleSignInSchema.parse(req.body);
+    let identity;
+    try {
+      identity = await verifyGoogleIdentity({ idToken: data.idToken });
+    } catch (error) {
+      return socialFailure(req, res, error);
+    }
+    return linkSocialIdentity(req, res, identity);
+  }),
+);
+
+const conflictResolveSchema = z.object({
+  token: z.string().min(20).max(4096),
+  action: z.enum(['move_here', 'switch']),
+});
+
+/**
+ * The person proved an identifier that belongs to another of their accounts.
+ * move_here: that account's sign-in methods come here and it is deleted (only while it has no
+ * health data). switch: sign in to that account; this one goes only while it has no health data.
+ */
+authRouter.post(
+  '/account-conflict/resolve',
+  requireAuth,
+  asyncHandler(async (req, res) => {
+    const { token, action } = conflictResolveSchema.parse(req.body);
+    const conflict = readConflictToken(token);
+    if (!conflict || conflict.from !== req.user.id) {
+      return res.status(400).json({ error: t(req, 'დრო ამოიწურა. სცადე თავიდან.', 'This took too long. Please try again.'), code: 'CONFLICT_EXPIRED' });
+    }
+    const options = await conflictOptions(conflict.from, conflict.to);
+    if (!options) {
+      return res.status(404).json({ error: t(req, 'ანგარიში ვერ მოიძებნა.', 'Account not found.'), code: 'CONFLICT_GONE' });
+    }
+    const audit = (actionName, value) => writeAdminAudit({
+      admin: { id: null, email: 'self-service' },
+      action: actionName,
+      targetType: 'user',
+      targetId: conflict.from,
+      previousValue: { kind: conflict.kind, otherUserId: conflict.to },
+      newValue: value,
+    });
+
+    if (action === 'move_here') {
+      if (!options.canMoveHere) {
+        return res.status(409).json({
+          error: t(req, 'იმ ანგარიშზე შენი მონაცემებია, ამიტომ აქ ვერ გადმოვიტანთ. შედი იმ ანგარიშში.', 'That account holds your data, so it cannot be moved here. Sign in to that account instead.'),
+          code: 'MERGE_NOT_ALLOWED',
+        });
+      }
+      const result = await absorbLogins(conflict.to, conflict.from);
+      await audit('USER_LOGINS_MOVED_HERE', result);
+      const user = await loadUserBundle(conflict.from);
+      return res.json({ ok: true, action, user: publicUser(user), methods: await loginMethods(user.id) });
+    }
+
+    if (!options.canSwitch) return res.status(403).json(blockedPayload(req));
+    let deletedCurrent = false;
+    if (options.switchDeletesCurrent) {
+      try {
+        await absorbLogins(conflict.from, conflict.to);
+        deletedCurrent = true;
+      } catch (error) {
+        if (!(error instanceof AccountLoginError)) throw error;
+      }
+    }
+    await audit('USER_SWITCHED_ACCOUNT', { deletedCurrent });
+    const other = await loadUserBundle(conflict.to);
+    return res.json({ ...(await signedInPayload(other, false)), action, deletedCurrent });
   }),
 );
 
@@ -792,6 +976,29 @@ authRouter.delete(
       return res.status(result.status).json({ error: result.error });
     }
     queueAccountDeletedEmail({ ...recipient, lang: result.deleted?.language ?? req.lang });
+    return res.json({ ok: true });
+  }),
+);
+
+/**
+ * „I already have an account“ right after sign-up: removes the account that was just created so
+ * the person can sign in to their real one. Only within a day of creation and only while it holds
+ * no health data (accountLogins.js); no deletion email — nothing the person kept is lost.
+ */
+const NEW_ACCOUNT_WINDOW_MS = 24 * 60 * 60 * 1000;
+authRouter.post(
+  '/me/discard-new',
+  requireAuth,
+  asyncHandler(async (req, res) => {
+    const fresh = Date.now() - new Date(req.user.createdAt).getTime() < NEW_ACCOUNT_WINDOW_MS;
+    if (!fresh || (await accountHasContent(req.user.id))) {
+      return res.status(409).json({
+        error: t(req, 'ამ ანგარიშზე უკვე შენი მონაცემებია, ამიტომ ავტომატურად არ წაიშლება.', 'This account already holds your data, so it is not removed automatically.'),
+        code: 'DISCARD_NOT_ALLOWED',
+      });
+    }
+    const result = await deleteUserAccount(req.user.id, req.lang);
+    if (!result.ok) return res.status(result.status).json({ error: result.error });
     return res.json({ ok: true });
   }),
 );

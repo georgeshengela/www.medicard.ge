@@ -8,6 +8,7 @@ import { get, patch, put, post, del } from '../api.js';
 import { session, setUser, setProfile, refreshMe, signOut, initials, applyTheme, getThemePref } from '../session.js';
 import { readAiConsent, askAiConsent } from '../aiConsent.js';
 import { t, lang, isEn, setLang, LANGUAGES } from '../i18n.js';
+import { openConflictModal, signInMethodsCard } from '../accountLinks.js';
 
 const PRIVACY_URL = isEn ? '/privacy-en' : '/privacy';
 const TERMS_URL = isEn ? '/terms-en' : '/terms';
@@ -20,7 +21,7 @@ const ALCOHOL = { NEVER: t('არ ვსვამ', 'Don’t drink'), OCCASIONA
 const SLEEP = { POOR: t('ცუდი', 'Poor'), FAIR: t('საშუალო', 'Fair'), GOOD: t('კარგი', 'Good'), EXCELLENT: t('შესანიშნავი', 'Excellent') };
 const STRESS = { LOW: t('დაბალი', 'Low'), MODERATE: t('ზომიერი', 'Moderate'), HIGH: t('მაღალი', 'High'), VERY_HIGH: t('ძალიან მაღალი', 'Very high') };
 
-const isSyntheticEmail = (e) => String(e || '').endsWith('@phone.medicard.ge');
+const isSyntheticEmail = (e) => /@(phone|apple)\.medicard\.ge$/.test(String(e || ''));
 const opts = (map, withEmpty = true) => [...(withEmpty ? [{ value: '', label: '—' }] : []), ...Object.entries(map).map(([value, label]) => ({ value, label }))];
 const list = (v) => (Array.isArray(v) && v.length ? v.join(', ') : '—');
 
@@ -50,9 +51,10 @@ export default async function profilePage(root) {
             row({ icon: 'user', ink: 'blue', title: t('სახელი', 'Name'), sub: u.fullName || '—' }),
             row({ icon: 'heart', ink: 'rose', title: t('სქესი', 'Sex'), sub: GENDER[u.gender] || '—' }),
             row({ icon: 'calendar', ink: 'violet', title: t('დაბადების თარიღი', 'Date of birth'), sub: u.birthDate ? `${fmtDate(u.birthDate, { year: true })}${u.age ? t(` · ${u.age} წლის`, ` · ${u.age} years old`) : ''}` : '—' }),
-            row({ icon: 'phone', ink: 'teal', title: t('ტელეფონი', 'Phone'), sub: u.phone || t('დაუდასტურებელი', 'Not verified'), trailing: u.phone ? badge(t('დადასტურებული', 'Verified'), 'ok') : button(t('დადასტურება', 'Verify'), { size: 'sm', variant: 'secondary', onClick: linkPhone }) }),
-            isSyntheticEmail(u.email) ? null : row({ icon: 'mail', ink: 'sky', title: t('ელ-ფოსტა', 'Email'), sub: u.email })),
-          ), { action: button(t('შეცვლა', 'Edit'), { variant: 'ghost', size: 'sm', icon: 'edit', onClick: editPersonal }) }),
+          )), { action: button(t('შეცვლა', 'Edit'), { variant: 'ghost', size: 'sm', icon: 'edit', onClick: editPersonal }) }),
+
+          // Phone, email + password, Apple, Google — every way into this one account (accountLinks.js).
+          section(t('შესვლის გზები', 'Sign-in methods'), signInMethodsCard({ onAddPhone: linkPhone, onChange: () => { refreshMe().then(render).catch(() => {}); } }).el),
 
           section(t('ჯანმრთელობის პროფილი', 'Health profile'), card(
             h('div', { class: 'stats-row', style: { marginBottom: '16px' } },
@@ -204,13 +206,23 @@ export default async function profilePage(root) {
       body: (close) => {
         const box = h('div');
         const err = h('div', { class: 'form-error', hidden: true });
+        // A number on another of the person's accounts: bring it here or switch (accountLinks.js).
+        const fail = (e) => {
+          if (e?.body?.conflict?.token) {
+            close();
+            openConflictModal(e.body.conflict, { onMoved: () => { refreshMe().then(render).catch(() => {}); } });
+            return;
+          }
+          err.textContent = e.message;
+          err.hidden = false;
+        };
         const step1 = () => {
           const inp = input({ type: 'tel', inputmode: 'numeric', placeholder: '5XX XXX XXX', maxlength: 12 });
           const go = button(t('კოდის მიღება', 'Get code'), { class: 'btn-block' });
           go.addEventListener('click', () => busy(go, async () => {
             err.hidden = true;
             phone = inp.value.replace(/\D/g, '').replace(/^995/, '');
-            try { const r = await post('/api/auth/phone/link/start', { phone }); step2(r); } catch (e) { err.textContent = e.message; err.hidden = false; }
+            try { const r = await post('/api/auth/phone/link/start', { phone }); step2(r); } catch (e) { fail(e); }
           }));
           mount(box, h('div', { class: 'form' }, h('p', { class: 'muted' }, t('დადასტურებული ნომერი საჭიროა ჯილდოების მისაღებად და ქალების სივრცისთვის.', 'A verified number is needed to redeem rewards and for the women’s space.')), field(t('ნომერი', 'Number'), h('div', { class: 'phone-wrap' }, h('span', null, '+995'), inp)), err, go));
           setTimeout(() => inp.focus(), 30);
@@ -227,7 +239,7 @@ export default async function profilePage(root) {
               close();
               toast(t('ნომერი დადასტურდა', 'Number verified'));
               render();
-            } catch (e) { err.textContent = e.message; err.hidden = false; }
+            } catch (e) { fail(e); }
           }));
           mount(box, h('div', { class: 'form' }, h('p', { class: 'muted' }, t(`კოდი გაიგზავნა ნომერზე +995 ${phone}.`, `We sent a code to +995 ${phone}.`)), field(t('4-ნიშნა კოდი', '4-digit code'), code), err, go));
           setTimeout(() => code.focus(), 30);

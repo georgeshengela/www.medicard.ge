@@ -48,6 +48,8 @@ import {
   useOnboardingDevPreview,
 } from '@/lib/onboardingDevPreview';
 import { needsProfileSetup, useAuth } from '@/store/AuthContext';
+import { ExistingAccountCheck } from '@/components/auth/ExistingAccountCheck';
+import { getPreference, setPreference } from '@/lib/storage';
 import { tx } from '@/i18n/locale';
 
 /** Product funnel: onboarding step keys only (no answers). Lazy so tests and startup never depend on it. */
@@ -116,6 +118,7 @@ export default function AssessmentScreen() {
     setUser,
     ready,
     signOut,
+    discardNewAccount,
   } = useAuth();
 
   const [stepIndex, setStepIndex] = useState(0);
@@ -126,6 +129,30 @@ export default function AssessmentScreen() {
   const [allowUnauthedRedirect, setAllowUnauthedRedirect] = useState(false);
   const initialized = useRef(false);
   const sessionDead = useRef(false);
+
+  // „MEDICARD უკვე გამოგიყენებია?“ — once, on a just-created account that has not started onboarding.
+  const [existingCheck, setExistingCheck] = useState<'unknown' | 'ask' | 'done'>('unknown');
+  const existingKey = user ? `onboarding.existingAccountAsked.${user.id}` : null;
+  useEffect(() => {
+    if (!user || !existingKey) return;
+    const extra = (healthProfile?.extraAnswers ?? {}) as Record<string, unknown>;
+    const fresh = Date.now() - new Date(user.createdAt ?? 0).getTime() < 24 * 60 * 60 * 1000;
+    if (preview || profileMode || !fresh || typeof extra.onboardingStepKey === 'string') {
+      setExistingCheck('done');
+      return;
+    }
+    let alive = true;
+    void getPreference(existingKey)
+      .catch(() => null)
+      .then((value) => {
+        if (alive) setExistingCheck(value ? 'done' : 'ask');
+      });
+    return () => {
+      alive = false;
+    };
+    // Decided once per account; later profile reads must not bring the question back.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id, existingKey, preview, profileMode]);
 
   // Sign-up navigates here in the same tick that setUser is scheduled. Wait one
   // frame so we do not bounce a brand-new session back to sign-in.
@@ -459,7 +486,22 @@ export default function AssessmentScreen() {
     );
   }
 
-  if (loading || !form || !step) {
+  if (existingCheck === 'ask') {
+    return (
+      <ExistingAccountCheck
+        onNew={() => {
+          if (existingKey) void setPreference(existingKey, '1').catch(() => undefined);
+          setExistingCheck('done');
+        }}
+        onHaveAccount={async () => {
+          await discardNewAccount();
+          router.replace('/(auth)/sign-in');
+        }}
+      />
+    );
+  }
+
+  if (loading || !form || !step || existingCheck === 'unknown') {
     return (
       <View className="flex-1 items-center justify-center bg-bg-100">
         <ActivityIndicator size="large" />

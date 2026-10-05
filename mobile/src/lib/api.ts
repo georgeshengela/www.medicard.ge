@@ -2325,6 +2325,25 @@ function safeParse(text: string): Record<string, unknown> {
 
 type AuthResponse = { token: string; user: User; usage: Usage };
 
+export type SignInMethods = { phone: string | null; email: string | null; apple: boolean; google: boolean };
+
+/** 409 body extra when a proven phone / email / Apple / Google already belongs to another account. */
+export type AccountConflict = {
+  kind: 'phone' | 'email' | 'apple' | 'google';
+  token: string;
+  otherCreatedAt: string;
+  otherHasData: boolean;
+  currentHasData: boolean;
+  canMoveHere: boolean;
+  canSwitch: boolean;
+  switchDeletesCurrent: boolean;
+};
+
+export function accountConflictOf(error: unknown): AccountConflict | null {
+  const conflict = error instanceof ApiError ? (error.details as { conflict?: AccountConflict } | undefined)?.conflict : undefined;
+  return conflict && typeof conflict.token === 'string' ? conflict : null;
+}
+
 export async function nutritionProgramRequest<T>(path:string, method:'GET'|'POST'|'PUT'='GET', body?:unknown):Promise<T> {
   const {localAccountId}=await import('@/lib/localAccount');
   const owner=localAccountId(),token=await getToken();
@@ -2523,6 +2542,40 @@ export const api = {
         body: { phone, code },
         timeoutMs: 20_000,
       }),
+
+    /** Sign-in methods on this account (phone, real email, Apple, Google). */
+    methods: () => request<{ methods: SignInMethods }>('/api/auth/methods', { timeoutMs: 15_000 }),
+
+    emailAddStart: (email: string) =>
+      request<{ sent: boolean; message: string; devCode?: string }>('/api/auth/email/add/start', {
+        method: 'POST',
+        body: { email },
+        timeoutMs: 20_000,
+      }),
+
+    emailAddVerify: (body: { email: string; code: string; password: string }) =>
+      request<{ ok: boolean; user: User; methods: SignInMethods }>('/api/auth/email/add/verify', {
+        method: 'POST',
+        body,
+        timeoutMs: 20_000,
+      }),
+
+    appleLink: (body: { identityToken: string; authorizationCode?: string; nonce: string; fullName?: string }) =>
+      request<{ ok: boolean; methods: SignInMethods }>('/api/auth/apple/link', { method: 'POST', body, timeoutMs: 30_000 }),
+
+    googleLink: (body: { idToken: string }) =>
+      request<{ ok: boolean; methods: SignInMethods }>('/api/auth/google/link', { method: 'POST', body, timeoutMs: 30_000 }),
+
+    /** The proven phone / email / Apple / Google belongs to another account: bring it here or switch. */
+    conflictResolve: (body: { token: string; action: 'move_here' | 'switch' }) =>
+      request<
+        | { ok: true; action: 'move_here'; user: User; methods: SignInMethods }
+        | (AuthResponse & { action: 'switch'; deletedCurrent: boolean })
+      >('/api/auth/account-conflict/resolve', { method: 'POST', body, timeoutMs: 30_000 }),
+
+    /** „I already have an account“ right after sign-up: removes the just-created, empty account. */
+    discardNewAccount: () =>
+      request<{ ok: boolean }>('/api/auth/me/discard-new', { method: 'POST', body: {}, timeoutMs: 20_000 }),
 
     passwordForgot: (email: string) =>
       request<{ sent: boolean; message: string; devCode?: string }>('/api/auth/password/forgot', {

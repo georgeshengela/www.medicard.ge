@@ -281,6 +281,23 @@ export function queueAccountDeletedEmail({ userId, email, fullName, lang = 'ka' 
   return true;
 }
 
+/** Code that proves an address before it is added to a signed-in account (accountLogins.js). */
+export async function sendEmailVerifyCode({ to, code, fullName, lang = 'ka' }, deps = {}) {
+  const transport = deps.transport || getDefaultTransport();
+  if (!transport?.configured) {
+    console.log(`[email] email verify code for ${to}: ${code}`);
+    return { id: 'dev-log' };
+  }
+  const result = await sendEmail({
+    to,
+    templateKey: 'email_verify',
+    vars: { ...commonVars({ fullName, lang }), code: String(code), minutes: '10' },
+    throwOnError: true,
+    lang,
+  }, { ...deps, transport });
+  return { id: result.providerId || null, status: result.status, reason: result.reason };
+}
+
 /**
  * Password reset code (signature unchanged for passwordReset.js). Without RESEND_API_KEY it keeps
  * the old behaviour: log the code to the console and return { id: 'dev-log' }. Failures throw.

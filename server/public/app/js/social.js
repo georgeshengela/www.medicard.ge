@@ -47,8 +47,12 @@ function appleUsable(cfg) {
  * "Continue with Apple / Google" block. Renders nothing until the server says a provider is on;
  * a failed script load hides that button. onSignedIn(res) gets the normal {token, user} answer;
  * onLink({ provider, email, linkToken }) runs when the address belongs to a password account.
+ *
+ * mode 'link' (Profile → „შესვლის გზები“): the same buttons attach the provider to the signed-in
+ * account (POST /api/auth/<provider>/link); onLinked(res, provider) on success, onConflict(conflict)
+ * when it belongs to another of the person's accounts. `only` limits the providers shown.
  */
-export function socialBlock({ onSignedIn, onLink, divider = 'after' }) {
+export function socialBlock({ onSignedIn, onLink, onLinked, onConflict, divider = 'after', mode = 'signin', only = ['apple', 'google'] }) {
   const err = h('div', { class: 'form-error', hidden: true, role: 'alert' });
   const list = h('div', { class: 'social-buttons' });
   const sep = h('div', { class: 'divider' }, t('ან', 'or'));
@@ -60,10 +64,16 @@ export function socialBlock({ onSignedIn, onLink, divider = 'after' }) {
     err.hidden = false;
   };
 
-  const finish = async (path, body) => {
+  const finish = async (provider, body) => {
     try {
-      onSignedIn(await post(path, body));
+      const res = await post(mode === 'link' ? `/api/auth/${provider}/link` : `/api/auth/${provider}`, body);
+      if (mode === 'link') onLinked?.(res, provider);
+      else onSignedIn(res);
     } catch (e) {
+      if (mode === 'link' && e instanceof ApiError && e.body?.conflict?.token) {
+        onConflict?.(e.body.conflict);
+        return;
+      }
       if (e instanceof ApiError && e.code === 'SOCIAL_LINK_REQUIRED' && e.body?.linkToken) {
         onLink({ provider: e.body.provider, email: e.body.email, linkToken: e.body.linkToken });
         return;
@@ -74,8 +84,8 @@ export function socialBlock({ onSignedIn, onLink, divider = 'after' }) {
 
   loadConfig().then(async (cfg) => {
     const [apple, google] = await Promise.all([
-      appleUsable(cfg.apple) ? appleButton(cfg.apple).catch(() => null) : null,
-      cfg.google?.clientId ? googleButton(cfg.google).catch(() => null) : null,
+      only.includes('apple') && appleUsable(cfg.apple) ? appleButton(cfg.apple).catch(() => null) : null,
+      only.includes('google') && cfg.google?.clientId ? googleButton(cfg.google).catch(() => null) : null,
     ]);
     if (!box.isConnected || (!apple && !google)) return; // screen already changed, or nothing to offer
     if (apple) list.appendChild(apple);
@@ -130,9 +140,10 @@ export function socialBlock({ onSignedIn, onLink, divider = 'after' }) {
     };
     await freshNonce();
 
-    const btn = h('button', { type: 'button', class: 'social-btn social-apple', 'aria-label': t('Apple-ით გაგრძელება', 'Continue with Apple') },
+    const label = mode === 'link' ? t('Apple-ის მიბმა', 'Link Apple') : t('Apple-ით გაგრძელება', 'Continue with Apple');
+    const btn = h('button', { type: 'button', class: 'social-btn social-apple', 'aria-label': label },
       h('span', { class: 'social-logo', html: `<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="${APPLE_PATH}"/></svg>` }),
-      h('span', null, t('Apple-ით გაგრძელება', 'Continue with Apple')));
+      h('span', null, label));
     btn.addEventListener('click', async () => {
       if (running) return;
       running = true;
@@ -156,7 +167,7 @@ export function socialBlock({ onSignedIn, onLink, divider = 'after' }) {
           const auth = res?.authorization;
           if (!auth?.id_token) return;
           const name = res.user?.name ? [res.user.name.firstName, res.user.name.lastName].filter(Boolean).join(' ').trim() : '';
-          await finish('/api/auth/apple', {
+          await finish('apple', {
             identityToken: auth.id_token,
             authorizationCode: auth.code || undefined,
             nonce: used,
@@ -186,7 +197,7 @@ export function socialBlock({ onSignedIn, onLink, divider = 'after' }) {
         running = true;
         err.hidden = true;
         el.classList.add('is-busy');
-        try { await finish('/api/auth/google', { idToken: resp.credential }); } finally {
+        try { await finish('google', { idToken: resp.credential }); } finally {
           running = false;
           el.classList.remove('is-busy');
         }
