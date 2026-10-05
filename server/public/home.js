@@ -11,6 +11,30 @@
   var SCREEN = function (key) { return '/screens/v3/' + key + '.webp?v=1'; };
   function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
 
+  /* ───── World map: light every country with at least one MEDICARD user ───── */
+  var worldDots = document.getElementById('world-dots');
+  if (worldDots && window.fetch) {
+    Promise.all([
+      fetch('/world/countries.json?v=1').then(function (r) { return r.json(); }),
+      fetch('/api/site/presence').then(function (r) { return r.ok ? r.json() : { countries: [] }; })
+    ]).then(function (res) {
+      var map = res[0], codes = (res[1] && res[1].countries) || [], names = (res[1] && res[1].names) || {};
+      codes.forEach(function (code, i) {
+        var p = map.c[code];
+        if (!p) return;
+        var dot = document.createElement('i');
+        dot.className = 'world-dot';
+        dot.style.left = (p[0] / map.w * 100).toFixed(3) + '%';
+        dot.style.top = (p[1] / map.h * 100).toFixed(3) + '%';
+        dot.style.setProperty('--i', i);
+        var label = document.createElement('span');
+        label.textContent = (names[code] && names[code][I18N.isEn ? 'en' : 'ka']) || code;
+        dot.appendChild(label);
+        worldDots.appendChild(dot);
+      });
+    }).catch(function () {});
+  }
+
   /* ───── Medi demo conversation ───── */
   var CHATS = {
     medi: {

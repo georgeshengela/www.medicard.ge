@@ -34,7 +34,7 @@
   <link rel="preload" href="/fonts/firago/FiraGO-Bold.woff2" as="font" type="font/woff2" crossorigin />
   <link rel="preload" href="/fonts/noto-serif-georgian/NotoSerifGeorgian-Light-georgian.woff2" as="font" type="font/woff2" crossorigin />
   <link rel="stylesheet" href="/site-nav.css?v=11" />
-  <link rel="stylesheet" href="/home.css?v=16" />
+  <link rel="stylesheet" href="/home.css?v=18" />
 </head>
 <body>
   <a class="skip" href="#main" data-en="Skip to content">გადადი შინაარსზე</a>
@@ -45,6 +45,11 @@
   <main id="main">
     <!-- Hero: one serif headline and a single heartbeat line across the page (owner pick 2026-10-05, concept A in brand/hero-concepts) -->
     <section class="hero" id="top" data-tone="light" aria-labelledby="hero-title">
+      <!-- Dotted world map; home.js lights every country with at least one MEDICARD user (/api/site/presence) -->
+      <div class="hero-world" aria-hidden="true">
+        <img src="/world/land.svg?v=1" alt="" width="1800" height="690" decoding="async" />
+        <div class="hero-world-dots" id="world-dots"></div>
+      </div>
       <div class="hero-inner">
         <a class="hero-promo" href="#medirun">
           <i aria-hidden="true"></i><span data-en-html="<b>New</b> · Light up Tbilisi"><b>ახალი</b> · გაანათე თბილისი</span>
@@ -59,8 +64,27 @@
             <defs><filter id="pulse-blur" x="-1%" y="-60%" width="102%" height="220%"><feGaussianBlur stdDeviation="4" /></filter></defs>
             <path class="pulse-glow" pathLength="1" filter="url(#pulse-blur)" d="M0 70 H1928 C1940 70 1944 60 1952 60 C1960 60 1964 70 1974 70 H1988 L2000 8 L2016 112 L2028 52 L2036 70 H2058 C2072 70 2076 56 2088 56 C2100 56 2104 70 2116 70 H4000" />
             <path class="pulse-line" pathLength="1" d="M0 70 H1928 C1940 70 1944 60 1952 60 C1960 60 1964 70 1974 70 H1988 L2000 8 L2016 112 L2028 52 L2036 70 H2058 C2072 70 2076 56 2088 56 C2100 56 2104 70 2116 70 H4000" />
+            <path class="pulse-spark" pathLength="1" filter="url(#pulse-blur)" d="M0 70 H1928 C1940 70 1944 60 1952 60 C1960 60 1964 70 1974 70 H1988 L2000 8 L2016 112 L2028 52 L2036 70 H2058 C2072 70 2076 56 2088 56 C2100 56 2104 70 2116 70 H4000" />
+            <path class="pulse-spark is-core" pathLength="1" d="M0 70 H1928 C1940 70 1944 60 1952 60 C1960 60 1964 70 1974 70 H1988 L2000 8 L2016 112 L2028 52 L2036 70 H2058 C2072 70 2076 56 2088 56 C2100 56 2104 70 2116 70 H4000" />
           </svg>
           <i class="pulse-beat"></i>
+          <!-- The line is the day: four moments from the app sit on it -->
+          <div class="moment is-down is-far" style="--x:-560px; --c:#0D9488; --i:0">
+            <i class="moment-dot"></i><i class="moment-stem"></i>
+            <div class="moment-card"><span class="moment-icon"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.5" stroke-opacity=".22"/><circle cx="12" cy="12" r="8.5" stroke-width="2.6" pathLength="100" stroke-dasharray="61 100" transform="rotate(-90 12 12)"/></svg></span><span><time>08:40</time><b data-en="6,120 steps">6 120 ნაბიჯი</b></span></div>
+          </div>
+          <div class="moment is-down" style="--x:-330px; --c:#1D4ED8; --i:1">
+            <i class="moment-dot"></i><i class="moment-stem"></i>
+            <div class="moment-card"><span class="moment-icon"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m10.5 20.5 10-10a4.95 4.95 0 1 0-7-7l-10 10a4.95 4.95 0 1 0 7 7Z"/><path d="m8.5 8.5 7 7"/></svg></span><span><time>11:00</time><b data-en="Dose taken">წამალი მიღებულია</b></span></div>
+          </div>
+          <div class="moment is-down" style="--x:330px; --c:#047857; --i:2">
+            <i class="moment-dot"></i><i class="moment-stem"></i>
+            <div class="moment-card"><span class="moment-icon"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 6.5V3a1 1 0 0 1 1-1"/><path d="M18.2 21A15 15 0 0 0 22 11a6 6 0 0 0-10-4.5A6 6 0 0 0 2 11a15 15 0 0 0 3.8 10 3 3 0 0 0 3.6.6 5.5 5.5 0 0 1 5.2 0 3 3 0 0 0 3.6-.6"/></svg></span><span><time>13:40</time><b data-en="Lunch · 620 kcal">სადილი · 620 კკალ</b></span></div>
+          </div>
+          <div class="moment is-down is-far" style="--x:560px; --c:#C92A55; --i:3">
+            <i class="moment-dot"></i><i class="moment-stem"></i>
+            <div class="moment-card"><span class="moment-icon"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8"/><path d="M12 4a8 8 0 0 1 8 8"/><circle cx="12" cy="12" r="2"/></svg></span><span><time>22:30</time><b data-en="Cycle day 14">ციკლის მე-14 დღე</b></span></div>
+          </div>
         </div>
         <p class="hero-lead" data-en="A health app made in Georgia. Medi, medications, nutrition, lab results, cycle and movement — together, and completely free.">ქართული ჯანმრთელობის აპი. Medi, მედიკამენტები, კვება, ანალიზები, ციკლი და მოძრაობა — ერთად და სრულიად უფასოდ.</p>
         <div class="hero-actions">
@@ -293,6 +317,6 @@
     </div>
   </footer>
 
-  <script src="/home.js?v=6" defer></script>
+  <script src="/home.js?v=7" defer></script>
 </body>
 </html>
