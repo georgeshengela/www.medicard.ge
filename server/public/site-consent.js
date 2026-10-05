@@ -7,7 +7,9 @@
    pages (EXCLUDED), never
    advanced matching, autoConfig off (no automatic button/form scraping), events carry no health data:
    PageView everywhere, ViewContent on /medirun, AppStoreClick { store } on App Store / Google Play links.
-   GA4 (one consent with the Pixel): page_view + app_store_click { store }; Google Signals and ad personalisation off.
+   GA4 (one consent with the Pixel): the tag sits in <head> of the public pages with Consent Mode — analytics_storage
+   denied (no cookies, cookieless pings only) until „ვეთანხმები“; page_view + app_store_click { store }; Signals and ad
+   personalisation off.
    Reopen the choice: any [data-cookie-settings] element or MedicardConsent.open(). */
 (function () {
   'use strict';
@@ -72,14 +74,22 @@
   function startAnalytics() {
     if (gaOn) return;
     gaOn = true;
-    window.dataLayer = window.dataLayer || [];
-    window.gtag = function () { window.dataLayer.push(arguments); };
-    window.gtag('js', new Date());
-    window.gtag('config', GA_ID, { allow_google_signals: false, allow_ad_personalization_signals: false });
-    var s = document.createElement('script');
-    s.async = true;
-    s.src = 'https://www.googletagmanager.com/gtag/js?id=' + GA_ID;
-    document.head.appendChild(s);
+    // Public pages carry the Google tag in <head> with Consent Mode (analytics_storage denied by default),
+    // so Google's „Test installation“ finds it; consent only flips it to granted. Pages without it load it here.
+    var inHead = typeof window.gtag === 'function' && document.querySelector('script[src*="googletagmanager.com/gtag/js"]');
+    if (inHead) {
+      window.gtag('consent', 'update', { analytics_storage: 'granted' });
+    } else {
+      window.dataLayer = window.dataLayer || [];
+      window.gtag = function () { window.dataLayer.push(arguments); };
+      window.gtag('consent', 'default', { analytics_storage: 'granted', ad_storage: 'denied', ad_user_data: 'denied', ad_personalization: 'denied' });
+      window.gtag('js', new Date());
+      window.gtag('config', GA_ID, { allow_google_signals: false, allow_ad_personalization_signals: false });
+      var s = document.createElement('script');
+      s.async = true;
+      s.src = 'https://www.googletagmanager.com/gtag/js?id=' + GA_ID;
+      document.head.appendChild(s);
+    }
     document.addEventListener('click', function (e) {
       var a = e.target && e.target.closest ? e.target.closest('a[href]') : null;
       if (!a) return;
@@ -120,7 +130,10 @@
     write(marketing);
     close();
     if (marketing) startTracking();
-    else if (pixelOn || gaOn || (before && before.marketing)) { dropTrackingCookies(); location.reload(); }
+    else {
+      if (typeof window.gtag === 'function') window.gtag('consent', 'update', { analytics_storage: 'denied' });
+      if (pixelOn || gaOn || (before && before.marketing)) { dropTrackingCookies(); location.reload(); }
+    }
   }
   function open() {
     if (box) return;

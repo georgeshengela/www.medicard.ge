@@ -10,7 +10,17 @@
   <link rel="alternate" hreflang="en" href="https://medicard.ge/privacy-en" />
   <link rel="alternate" hreflang="x-default" href="https://medicard.ge/privacy" />
   <meta name="medicard:en" content="/privacy-en" />
-  <script src="/site-i18n.js?v=3"></script>
+  <script src="/site-i18n.js?v=4"></script>
+  <!-- Google tag (gtag.js) — Consent Mode: no cookies until „ვეთანხმები“ (site-consent.js grants analytics_storage) -->
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('consent', 'default', { analytics_storage: 'denied', ad_storage: 'denied', ad_user_data: 'denied', ad_personalization: 'denied', wait_for_update: 500 });
+    try { var mcC = JSON.parse(localStorage.getItem('medicard.consent') || 'null'); if (mcC && mcC.v === 2 && mcC.marketing && navigator.globalPrivacyControl !== true && Date.now() - Date.parse(mcC.at) < 31536000000) gtag('consent', 'update', { analytics_storage: 'granted' }); } catch (e) {}
+    gtag('js', new Date());
+    gtag('config', 'G-877340MLKJ', { allow_google_signals: false, allow_ad_personalization_signals: false });
+  </script>
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-877340MLKJ"></script>
   <meta name="theme-color" content="#E8F5F2" />
   <meta property="og:type" content="website" />
   <meta property="og:locale" content="ka_GE" />
@@ -160,7 +170,7 @@
           <h2 id="s15">15. საიტის ქუქი-ფაილები, Google Analytics და Meta Pixel</h2>
           <p>medicard.ge-ის საჯარო გვერდებზე — არა აპში, არა ვებ-ვერსიაში /app-ზე და არა ჯანმრთელობის კალკულატორების გვერდებზე — ვიყენებთ Meta Platforms, Inc.-ისა და მისი შვილობილი კომპანიების Meta Pixel-ს, და მხოლოდ მას შემდეგ, რაც ქუქი-ფაილების ბანერში „ვეთანხმები“-ს დააჭერ. ამის შემდეგ ის ინახავს Meta-ს ქუქი-ფაილებს (_fbp) და Meta-ს უგზავნის გახსნილი გვერდის მისამართს, დროს, ტექნიკურ მონაცემებს ბრაუზერისა და მოწყობილობის შესახებ, IP მისამართს და იმას, დააჭირე თუ არა App Store-ის ღილაკს — რომ გავზომოთ ჩვენი რეკლამა Facebook-სა და Instagram-ზე და ვაჩვენოთ ის საიტის მნახველებს. ჯანმრთელობის მონაცემები, აპის მონაცემები, სახელი, ელფოსტა და ტელეფონის ნომერი არასდროს იგზავნება; ღილაკებისა და ფორმების ავტომატური შეგროვება გამორთულია. Meta ამ მონაცემებს საკუთარი პოლიტიკით ამუშავებს (facebook.com/privacy/policy), შესაძლოა საქართველოს გარეთ.</p>
           <p>იმავე თანხმობით, იმავე გვერდებზე ჩაირთვება Google LLC-ის Google Analytics 4, რომ დავინახოთ, რამდენი ადამიანი სტუმრობს საიტს, რომელი გვერდები იხსნება და საიდან მოდიან. ის ინახავს Google Analytics-ის ქუქი-ფაილებს (_ga, _ga_*) და Google-ს უგზავნის გახსნილი გვერდის მისამართს, წინა გვერდს (referrer), დროს, ტექნიკურ მონაცემებს ბრაუზერისა და მოწყობილობის შესახებ, IP მისამართზე დაფუძნებულ სავარაუდო მდებარეობას (ქალაქის დონეზე; Google Analytics 4 IP მისამართს არ ინახავს) და იმას, დააჭირე თუ არა App Store-ის ან Google Play-ს ღილაკს. Google Signals და რეკლამის პერსონალიზაცია გამორთულია; ჯანმრთელობის და აპის მონაცემები, სახელი, ელფოსტა და ტელეფონის ნომერი არ იგზავნება. Google ამ მონაცემებს საკუთარი პოლიტიკით ამუშავებს (policies.google.com/privacy), შესაძლოა საქართველოს გარეთ.</p>
-          <p>თანხმობის გარეშე Meta-დან და Google-დან არაფერი იტვირთება, ხოლო ბრაუზერი, რომელიც Global Privacy Control-ს აგზავნის, უარად ითვლება. შენი არჩევანი ბრაუზერში 12 თვე ინახება. ნებისმიერ დროს შეგიძლია შეცვალო საიტის ბოლოში „ქუქი-ფაილები“ ბმულით; თანხმობის გაუქმების შემდეგ Pixel და Google Analytics ჩერდება და მათი ქუქი-ფაილები იშლება.</p>
+          <p>თანხმობის გარეშე Meta-დან არაფერი იტვირთება. Google Analytics-ის კოდი გვერდზე თანხმობამდეც არის „Consent Mode“-ში: ქუქი-ფაილებს არ ინახავს და Google-ს მხოლოდ ანონიმურ, ქუქი-ფაილების გარეშე სიგნალს უგზავნის (გვერდის მისამართი, დრო, ბრაუზერის ტიპი, IP-ზე დაფუძნებული ქვეყანა/ქალაქი), რომლითაც შენი ამოცნობა შემდეგ ვიზიტებზე შეუძლებელია. ბრაუზერი, რომელიც Global Privacy Control-ს აგზავნის, უარად ითვლება. შენი არჩევანი ბრაუზერში 12 თვე ინახება. ნებისმიერ დროს შეგიძლია შეცვალო საიტის ბოლოში „ქუქი-ფაილები“ ბმულით; თანხმობის გაუქმების შემდეგ Pixel და Google Analytics ჩერდება და მათი ქუქი-ფაილები იშლება.</p>
         </article>
       </div>
     </section>
