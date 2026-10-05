@@ -25,8 +25,21 @@ export function cityLevel(percent:number){
  const from=current?.percent??0,to=next?.percent??from;
  return {current,next,progress:next?Math.max(0,Math.min(1,(p-from)/(to-from))):1};
 }
+/**
+ * The honest meter (owner 2026-10-05: „0,03% ნამეტანი დიდად ჩანს“): a fixed linear scale up to Lighthouse (1%), then
+ * to 10% and 100% — never stretched to the next small level, so a tiny share looks tiny. `ticks` mark the levels on
+ * the scale (0–1 positions).
+ */
+export function cityScale(percent:number){
+ const p=Number.isFinite(percent)&&percent>0?percent:0;
+ const max=p<1?1:p<10?10:100;
+ const ticks=CITY_LEVELS.filter(l=>l.percent<max&&l.percent>=max/20).map(l=>({at:l.percent/max,name:tx(l.ka,l.en),reached:p+1e-9>=l.percent}));
+ const top=CITY_LEVELS.find(l=>l.percent===max);
+ return {max,fill:Math.min(1,p/max),ticks,goal:top?tx(top.ka,top.en):null};
+}
 /** Lit segments of an LED meter with `count` segments; a started segment counts as half (0.5). */
 export function meterSegments(progress:number,count:number){
  const v=Math.max(0,Math.min(1,progress))*count,full=Math.floor(v);
- return Array.from({length:count},(_,i)=>i<full?1:i===full&&v-full>0.05?0.5:0);
+ // a real but tiny share still shows a spark in the first segment
+ return Array.from({length:count},(_,i)=>i<full?1:i===full&&v-full>0.001?0.5:0);
 }

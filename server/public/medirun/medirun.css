@@ -141,7 +141,13 @@ html.lang-en .ka-only { display: none; }
 .meter-row { display: flex; align-items: baseline; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
 .meter-pct { font-size: clamp(48px, 8vw, 96px); font-weight: 800; color: var(--mint2); line-height: 1; letter-spacing: -.02em; }
 .meter-people { color: var(--sub); font-size: 17px; } .meter-people b { color: #fff; font-size: 24px; font-weight: 800; }
+.meter-track { position: relative; padding-bottom: 22px; }
 .meter-bar { height: 10px; border-radius: 6px; background: rgba(148, 178, 222, .16); overflow: hidden; }
+.meter-ticks { position: absolute; inset: 0; pointer-events: none; }
+.meter-ticks i { position: absolute; top: -3px; width: 2px; height: 16px; margin-left: -1px; border-radius: 1px; background: rgba(203, 213, 225, .45); }
+.meter-ticks i.on { background: var(--mint3); }
+.meter-ticks i span { position: absolute; top: 18px; left: 50%; transform: translateX(-50%); font-size: 12px; font-style: normal; color: var(--mute); white-space: nowrap; }
+.meter-scale { display: flex; justify-content: space-between; color: var(--mute); font-size: 12px; margin-top: -4px; }
 .meter-bar i { display: block; height: 100%; width: 0; border-radius: 6px; background: linear-gradient(90deg, var(--mint), var(--mint3)); box-shadow: 0 0 18px rgba(94, 234, 212, .5); transition: width 1.2s var(--ease); }
 .meter-next { color: var(--sub); font-size: 16px; }
 

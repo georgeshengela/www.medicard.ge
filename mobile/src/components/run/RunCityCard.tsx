@@ -6,9 +6,10 @@ import {useIsDark,useThemeColors} from '@/theme/colors';
 import {hubTint} from '@/theme/hub';
 import {usePulse} from '@/lib/medipulsi/client';
 import {coverageFeatures} from '@/lib/medipulsi/core/journey';
-import {useCityMeter,type CityMeter} from '@/lib/medipulsi/social';
+import {useCityMeter} from '@/lib/medipulsi/social';
 import {grandPercent,levelPercent} from '@/lib/medipulsi/grand';
 import {cityLines,lineLength,thin,trimEnds,type LngLat} from '@/lib/run/shareStudio';
+import {cityScale} from '@/lib/medipulsi/cityLevels';
 import {tx} from '@/i18n/locale';
 import {Action,Bar,Card,Copy,Section,runInk} from './PulseUi';
 import {useGrandPrize} from './GrandPrizeCard';
@@ -17,12 +18,6 @@ import {ShareStudio,canRecordClips,type ShareSceneInput} from './ShareStudio';
 
 /** „0,84%“ with the precision a small city share needs (0,003% early on, 12% later). */
 export function meterPercent(p:number){return grandPercent(p);}
-/** Progress from the last milestone to the next one, 0–100. */
-export function milestoneProgress(m:CityMeter){
- const next=m.milestones.next?.percent,last=m.milestones.last?.percent??0;
- if(!next)return 100;
- return Math.max(0,Math.min(100,(m.percent-last)/(next-last)*100));
-}
 
 /**
  * „თბილისი ერთად“ (owner 2026-10-05): how much of the city every player has lit together, the next city milestone
@@ -55,7 +50,8 @@ export function RunCityCard(){
     <View style={{flexDirection:'row',alignItems:'center',gap:6,paddingHorizontal:10,paddingVertical:7,borderRadius:12,backgroundColor:hubTint(teal,dark)}}><Users size={14} color={teal}/><Copy bold size={12} style={{color:teal}}>{num(meter.people)}</Copy><Copy size={12} muted>{tx('ადამიანი','people')}</Copy></View>
    </View>
    {next?<View style={{gap:6}}>
-    <Bar value={milestoneProgress(meter)} label={tx(`შემდეგი ეტაპი ${levelPercent(next.percent)}`,`Next milestone ${levelPercent(next.percent)}`)}/>
+    {/* to scale (0–1%), never stretched to the next small milestone — a tiny share must look tiny */}
+    <Bar value={cityScale(meter.percent).fill*100} label={tx(`შემდეგი ეტაპი ${levelPercent(next.percent)}`,`Next milestone ${levelPercent(next.percent)}`)}/>
     <Copy muted size={12}>{tx(`შემდეგი ეტაპი — ${levelPercent(next.percent)} · დარჩა ${meterPercent(next.remaining)}. ყოველი ახალი ქუჩა ითვლება — ერთად უფრო სწრაფია.`,`Next milestone — ${levelPercent(next.percent)} · ${meterPercent(next.remaining)} to go. Every new street counts — it’s faster together.`)}</Copy>
    </View>:null}
    {meter.milestones.list.some(m=>m.reached)?<View style={{flexDirection:'row',flexWrap:'wrap',gap:6}}>

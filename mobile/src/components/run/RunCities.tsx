@@ -10,8 +10,8 @@ import {Bone} from '@/components/ui/Skeleton';
 import {useAccountQuery} from '@/hooks/useAccountQuery';
 import {FRESH} from '@/lib/queryClient';
 import {pulseApi} from '@/lib/medipulsi/client';
-import {cityLevel,meterSegments} from '@/lib/medipulsi/cityLevels';
-import {grandPercent} from '@/lib/medipulsi/grand';
+import {cityLevel,cityScale,meterSegments} from '@/lib/medipulsi/cityLevels';
+import {grandPercent,levelPercent} from '@/lib/medipulsi/grand';
 import {formatArea,type TerritoryMap} from '@/lib/medipulsi/territory';
 import {formatYmd} from '@/lib/format';
 import {useIsDark,useThemeColors} from '@/theme/colors';
@@ -52,12 +52,26 @@ function CityGlowMap({map,width,height,gold}:{map:TerritoryMap;width:number;heig
  </Svg>;
 }
 
-/** Twenty LED segments: the way from the reached level to the next. */
-function LedMeter({progress,gold,dashed=false}:{progress:number;gold:boolean;dashed?:boolean}){
- const c=useThemeColors(),dark=useIsDark(),on=gold?(dark?GOLD:'#D97706'):(dark?MINT:'#0D9488');
- return <View style={{flexDirection:'row',gap:2,height:4}}>
-  {meterSegments(dashed?0:progress,SEGMENTS).map((v,i)=><View key={i} style={{flex:1,borderRadius:1,backgroundColor:v?on:c.bg300,opacity:v===0.5?.45:dashed?.5:1}}/>)}
+/**
+ * Twenty LED segments on a fixed, honest scale (0–1%, then 0–10%): a tiny share stays a spark in the first segment.
+ * Thin ticks mark the light levels on the way (owner 2026-10-05: „0,03% ნამეტანი დიდად ჩანს“).
+ */
+function LedMeter({percent,gold,dashed=false}:{percent:number;gold:boolean;dashed?:boolean}){
+ const c=useThemeColors(),dark=useIsDark(),on=gold?(dark?GOLD:'#D97706'):(dark?MINT:'#0D9488'),s=cityScale(dashed?0:percent);
+ return <View style={{height:9,justifyContent:'flex-end'}}>
+  <View style={{flexDirection:'row',gap:2,height:4}}>
+   {meterSegments(s.fill,SEGMENTS).map((v,i)=><View key={i} style={{flex:1,borderRadius:1,backgroundColor:v?on:c.bg300,opacity:v===0.5?.55:dashed?.5:1}}/>)}
+  </View>
+  {s.ticks.map(t=><View key={t.at} pointerEvents="none" style={{position:'absolute',left:`${t.at*100}%`,top:0,width:1,height:9,marginLeft:-1,backgroundColor:t.reached?on:c.text300,opacity:t.reached?.9:.45}}/>)}
  </View>;
+}
+/** „0,03% · ნაპერწკალამდე 0,1% · შუქურამდე 1%“ — the honest scale in words. */
+function meterLine(percent:number){
+ const lv=cityLevel(percent),s=cityScale(percent);
+ const reached=lv.current?tx(`${lv.current.name} ✓`,`${lv.current.name} ✓`):'';
+ const next=lv.next?tx(`შემდეგი — ${lv.next.name} ${levelPercent(lv.next.percent)}`,`next — ${lv.next.name} ${levelPercent(lv.next.percent)}`):'';
+ const scale=tx(`ზოლი 0–${s.max}%`,`bar 0–${s.max}%`);
+ return [reached,next,scale].filter(Boolean).join(' · ');
 }
 
 /** One compact row: number · city / country · share, then the LED meter toward the next level. */
@@ -74,8 +88,8 @@ function CityRow({index,city,selected,onPress}:{index:number;city:LitCity;select
    <Copy bold size={15} style={{color:ink,fontVariant:['tabular-nums']}}>{pct(city.percent)}</Copy>
   </View>
   <View style={{paddingLeft:30,gap:5}}>
-   <LedMeter progress={lv.progress} gold={gold}/>
-   <Copy size={10} muted numberOfLines={1}>{lv.next?tx(`${lv.current?`${lv.current.name} · `:''}${lv.next.name}-მდე ${Math.round(lv.progress*100)}%`,`${lv.current?`${lv.current.name} · `:''}${Math.round(lv.progress*100)}% to ${lv.next.name}`):tx(`${lv.current?.name} — უმაღლესი დონე`,`${lv.current?.name} — the top level`)}</Copy>
+   <LedMeter percent={city.percent} gold={gold}/>
+   <Copy size={10} muted numberOfLines={1}>{meterLine(city.percent)}</Copy>
   </View>
  </Pressable>;
 }
@@ -118,7 +132,7 @@ export default function RunCities(){
 
    {data.lit.length?<Section title={tx('განათებული','Lit')}>
     <Card style={{padding:6,gap:2}}>{data.lit.map((city,i)=><CityRow key={city.id} index={i} city={city} selected={city.id===chosen?.id} onPress={()=>setPick(city.id)}/>)}</Card>
-    <Copy muted size={11} style={{marginTop:8}}>{tx('ზოლი გიჩვენებს გზას შემდეგ დონემდე: ნაპერწკალი 0,1% → ფარანი 0,25% → ჩირაღდანი 0,5% → შუქურა 1%. ერთი ქუჩა ერთხელ ითვლება.','The meter shows the way to the next level: Spark 0.1% → Lantern 0.25% → Torch 0.5% → Lighthouse 1%. Each street counts once.')}</Copy>
+    <Copy muted size={11} style={{marginTop:8}}>{tx('ზოლი ნამდვილი მასშტაბითაა — 0-დან შუქურამდე (1%). ნიშნები: ნაპერწკალი 0,1% · ფარანი 0,25% · ჩირაღდანი 0,5%. ერთი ქუჩა ერთხელ ითვლება.','The bar is to scale — from 0 to Lighthouse (1%). Marks: Spark 0.1% · Lantern 0.25% · Torch 0.5%. Each street counts once.')}</Copy>
    </Section>:null}
 
    {data.visited.length?<Section title={tx('ნამყოფი — ჯერ ჩაუქრობელი','Visited — still dark')}>
@@ -128,7 +142,7 @@ export default function RunCities(){
       <View style={{flex:1,minWidth:0}}><Copy bold size={14} numberOfLines={1} style={{color:c.text200}}>{city.name}</Copy><Copy muted size={11} numberOfLines={1}>{[city.country,tx(`აქ იყავი ${day(city.lastAt)}`,`here ${day(city.lastAt)}`)].filter(Boolean).join(' · ')}</Copy></View>
       <Copy muted size={13}>0%</Copy>
      </View>
-     <View style={{paddingLeft:30}}><LedMeter progress={0} gold={false} dashed/></View>
+     <View style={{paddingLeft:30}}><LedMeter percent={0} gold={false} dashed/></View>
     </View>)}</Card>
    </Section>:null}
 
@@ -152,7 +166,7 @@ export function RunCitiesEntry(){
     </View>
     {top.length?top.map(city=>{const lv=cityLevel(city.percent);return <View key={city.id} style={{gap:5}}>
      <View style={{flexDirection:'row',alignItems:'center'}}><Copy bold size={12} numberOfLines={1} style={{flex:1}}>{city.name}</Copy><Copy bold size={12} style={{color:lv.current?.gold?(dark?GOLD:'#B45309'):teal,fontVariant:['tabular-nums']}}>{pct(city.percent)}</Copy></View>
-     <LedMeter progress={lv.progress} gold={Boolean(lv.current?.gold)}/>
+     <LedMeter percent={city.percent} gold={Boolean(lv.current?.gold)}/>
     </View>;}):<Copy muted size={12}>{tx('პირველი გასეირნების შემდეგ შენი ქალაქი აქ აინთება.','After your first walk your city lights up here.')}</Copy>}
    </Card>
   </Pressable>

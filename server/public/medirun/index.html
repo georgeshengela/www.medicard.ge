@@ -181,7 +181,8 @@
         </div>
         <div class="meter">
           <div class="meter-row"><span class="meter-pct num" id="tg-pct">0%</span><span class="meter-people"><b class="num" id="tg-people">0</b> <span data-en="people lighting it">ადამიანი ანათებს</span></span></div>
-          <div class="meter-bar" role="progressbar" aria-labelledby="tg-next" aria-valuemin="0" aria-valuemax="100"><i id="tg-bar"></i></div>
+          <div class="meter-track"><div class="meter-bar" role="progressbar" aria-labelledby="tg-next" aria-valuemin="0" aria-valuemax="100"><i id="tg-bar"></i></div><div class="meter-ticks" id="tg-ticks"></div></div>
+          <div class="meter-scale"><span>0%</span><span id="tg-max">1%</span></div>
           <p class="meter-next" id="tg-next"></p>
         </div>
       </div>
@@ -406,7 +407,16 @@
         document.getElementById('tg-pct').textContent = pct(m.percent);
         document.getElementById('tg-people').textContent = Number(m.people || 0).toLocaleString(en ? 'en-US' : 'ka-GE');
         var next = m.milestones && m.milestones.next, last = (m.milestones && m.milestones.last && m.milestones.last.percent) || 0;
-        var share = next ? Math.max(0, Math.min(100, (m.percent - last) / (next.percent - last) * 100)) : 100;
+        // To scale (owner 2026-10-05): 0–1% of the city, then 0–10% — never stretched to the next small milestone.
+        var max = m.percent < 1 ? 1 : m.percent < 10 ? 10 : 100;
+        var share = Math.max(0, Math.min(100, m.percent / max * 100));
+        if (m.percent > 0 && share < 0.6) share = 0.6;
+        document.getElementById('tg-max').textContent = lvl(max);
+        var ticks = document.getElementById('tg-ticks');
+        [0.1, 0.25, 0.5, 2.5, 5].filter(function (t) { return t < max && t >= max / 20; }).forEach(function (t) {
+          var el = document.createElement('i'); el.style.left = (t / max * 100) + '%'; if (m.percent >= t) el.className = 'on';
+          var lab = document.createElement('span'); lab.textContent = lvl(t); el.appendChild(lab); ticks.appendChild(el);
+        });
         var bar = document.querySelector('#together .meter-bar');
         bar.setAttribute('aria-valuenow', String(Math.round(share)));
         document.getElementById('tg-next').textContent = next

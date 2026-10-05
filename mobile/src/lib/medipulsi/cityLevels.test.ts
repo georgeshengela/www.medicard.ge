@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {cityLevel,meterSegments} from './cityLevels.ts';
+import {cityLevel,cityScale,meterSegments} from './cityLevels.ts';
 
 test('city level: none yet, on the way to Spark', () => {
  const l=cityLevel(0.08);
@@ -29,4 +29,14 @@ test('LED meter: full, half and empty segments', () => {
  assert.deepEqual(meterSegments(0.6,4),[1,1,0.5,0]);
  assert.deepEqual(meterSegments(0,3),[0,0,0]);
  assert.deepEqual(meterSegments(1,3),[1,1,1]);
+});
+
+test('honest scale: 0,03% is a spark on a 0–1% track, levels as ticks', () => {
+ const s=cityScale(0.03);
+ assert.equal(s.max,1);
+ assert.ok(Math.abs(s.fill-0.03)<1e-9);
+ assert.deepEqual(s.ticks.map(t=>t.at),[0.1,0.25,0.5]);
+ assert.deepEqual(meterSegments(s.fill,20),[0.5,...Array(19).fill(0)]);
+ assert.equal(cityScale(3).max,10);
+ assert.equal(cityScale(0).fill,0);
 });
