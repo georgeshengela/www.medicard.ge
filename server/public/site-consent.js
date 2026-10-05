@@ -20,7 +20,7 @@
   var CONSENT_VERSION = 2; // 2: Google Analytics joined the Pixel
   var MAX_AGE = 365 * 24 * 3600 * 1000;
   // Calculators (cycle, ovulation, pregnancy …): the page address alone would tell Meta about a health interest.
-  var EXCLUDED = /^\/(app|admin|api|u|i|unsubscribe|delete-account|reset-password|reset|press|open-app|coach|calculators|medipulsi)(\/|$|\.html)/;
+  var EXCLUDED = /^\/(app|admin|api|u|i|unsubscribe|delete-account|reset-password|reset|press|open-app|coach|calculators|cycle|medipulsi)(\/|$|\.html)/;
   var path = location.pathname;
   if (EXCLUDED.test(path) || /^\/(invite|personal-qr|delete-account|open-app|coach)\.html$/.test(path)) return;
 

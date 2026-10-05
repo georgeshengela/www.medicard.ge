@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="ka">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title data-en="MEDICYCLE — free period calendar · MEDICARD">MEDICYCLE — ციკლის კალენდარი უფასოდ · მედიქარდი</title>
+  <meta name="description" content="იცოდე წინასწარ, როდის დაიწყება. ციკლის კალენდარი MEDICARD-ში: აღნიშვნა ერთი შეხებით, დროული შეხსენება, სრულიად უფასო." data-en-content="Know ahead when your period starts. The cycle calendar in MEDICARD: one-tap logging, timely reminders, completely free." />
+  <link rel="canonical" href="https://medicard.ge/cycle" />
+  <!-- Health page: site-consent.js never loads the Meta Pixel or Google Analytics here (EXCLUDED). -->
+  <script src="/site-i18n.js?v=4"></script>
+  <meta name="theme-color" content="#4a0d27" />
+  <meta property="og:type" content="website" />
+  <meta property="og:locale" content="ka_GE" />
+  <meta property="og:url" content="https://medicard.ge/cycle" />
+  <meta property="og:title" content="MEDICYCLE — ციკლის კალენდარი უფასოდ" data-en-content="MEDICYCLE — free period calendar" />
+  <meta property="og:description" content="იცოდე წინასწარ. სრულიად უფასო, iPhone-ზე." data-en-content="Know ahead. Completely free, on iPhone." />
+  <meta property="og:image" content="https://medicard.ge/cycle/medicycle-og.jpg" />
+  <link rel="icon" href="/favicon.png" />
+  <link rel="apple-touch-icon" href="/icon.png" />
+  <link rel="preload" href="/fonts/firago/FiraGO-Regular.woff2" as="font" type="font/woff2" crossorigin />
+  <link rel="preload" href="/fonts/firago/FiraGO-ExtraBold.woff2" as="font" type="font/woff2" crossorigin />
+  <style>
+    @font-face { font-family: "FiraGO"; src: url(/fonts/firago/FiraGO-Regular.woff2) format("woff2"); font-weight: 400; font-display: swap; }
+    @font-face { font-family: "FiraGO"; src: url(/fonts/firago/FiraGO-Medium.woff2) format("woff2"); font-weight: 500; font-display: swap; }
+    @font-face { font-family: "FiraGO"; src: url(/fonts/firago/FiraGO-Bold.woff2) format("woff2"); font-weight: 700; font-display: swap; }
+    @font-face { font-family: "FiraGO"; src: url(/fonts/firago/FiraGO-ExtraBold.woff2) format("woff2"); font-weight: 800; font-display: swap; }
+    @font-face { font-family: "Exo 2"; src: url(/fonts/exo2/Exo2-ExtraBold.ttf) format("truetype"); font-weight: 800; font-display: swap; }
+    :root {
+      --deep: #4a0d27; --wine: #831843; --rose: #C92A55; --bright: #F43F5E; --blush: #FECDD3; --mist: #FFF1F3;
+      --ink: #2a0a17; --muted: #7a4a5c; --line: rgba(131, 24, 67, .12);
+    }
+    * { box-sizing: border-box; }
+    html { -webkit-text-size-adjust: 100%; }
+    body { margin: 0; font-family: "FiraGO", system-ui, -apple-system, "Segoe UI", sans-serif; color: var(--ink); background: var(--mist); line-height: 1.5; }
+    a { color: inherit; }
+    .wrap { width: min(1080px, 100% - 40px); margin: 0 auto; }
+    .skip { position: absolute; left: -999px; } .skip:focus { left: 16px; top: 16px; z-index: 10; background: #fff; padding: 8px 12px; border-radius: 10px; }
+
+    /* hero */
+    .hero { position: relative; overflow: hidden; color: #fff; padding: 22px 0 64px;
+      background: radial-gradient(900px 600px at 85% 10%, rgba(244, 63, 94, .45), transparent 60%),
+                  radial-gradient(700px 520px at 0% 100%, rgba(201, 42, 85, .55), transparent 60%),
+                  linear-gradient(160deg, var(--deep) 0%, var(--wine) 55%, #9d1c4f 100%); }
+    .hero::after { content: ""; position: absolute; inset: 0; pointer-events: none;
+      background: repeating-radial-gradient(circle at 78% 38%, rgba(255,255,255,.06) 0 1px, transparent 1px 46px); }
+    .top { display: flex; align-items: center; justify-content: space-between; gap: 12px; position: relative; z-index: 1; }
+    .brand { display: inline-flex; align-items: center; gap: 10px; text-decoration: none; font-weight: 800; letter-spacing: .02em; }
+    .brand img { width: 30px; height: 30px; border-radius: 9px; }
+    .lang { font-size: 14px; color: var(--blush); text-decoration: none; padding: 6px 12px; border: 1px solid rgba(254, 205, 211, .35); border-radius: 999px; }
+    .hero-grid { position: relative; z-index: 1; display: grid; grid-template-columns: 1.1fr .9fr; gap: 48px; align-items: center; margin-top: 48px; }
+    .wm { font-family: "Exo 2", "FiraGO", sans-serif; font-weight: 800; font-size: 26px; letter-spacing: .01em; margin: 0 0 18px; }
+    .wm i { font-style: normal; display: inline-block; transform: skewX(-16deg); color: var(--blush); }
+    h1 { font-size: clamp(38px, 7vw, 66px); line-height: 1.04; margin: 0; font-weight: 800; letter-spacing: -.01em; }
+    h1 span { color: var(--blush); }
+    .lead { font-size: clamp(17px, 2.2vw, 20px); color: #ffe4e8; margin: 18px 0 28px; max-width: 34ch; }
+    .cta { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+    .store { display: inline-block; border-radius: 14px; transition: transform .2s ease; }
+    .store:hover, .store:focus-visible { transform: translateY(-2px); }
+    .store:focus-visible { outline: 3px solid var(--blush); outline-offset: 3px; }
+    .store img { display: block; height: 58px; width: auto; }
+    .free { display: flex; flex-direction: column; font-size: 14px; color: #ffe4e8; }
+    .free b { font-size: 22px; color: #fff; }
+    .chips { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 26px; padding: 0; list-style: none; }
+    .chips li { font-size: 14px; padding: 7px 13px; border-radius: 999px; background: rgba(255, 255, 255, .12); border: 1px solid rgba(255, 255, 255, .18); }
+
+    .phone { justify-self: center; width: min(320px, 78vw); aspect-ratio: 9 / 16; border-radius: 44px; padding: 10px;
+      background: linear-gradient(160deg, #2b0716, #12030a); box-shadow: 0 40px 80px -30px rgba(0,0,0,.6), 0 0 0 1px rgba(255,255,255,.08), 0 0 90px rgba(244, 63, 94, .35); }
+    .phone video { width: 100%; height: 100%; object-fit: cover; border-radius: 34px; display: block; background: var(--wine); }
+
+    /* features */
+    section { padding: 64px 0; }
+    h2 { font-size: clamp(26px, 4vw, 36px); line-height: 1.15; margin: 0 0 28px; font-weight: 800; letter-spacing: -.01em; }
+    .cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+    .card { background: #fff; border-radius: 22px; padding: 24px; box-shadow: 0 1px 0 var(--line); }
+    .ic { width: 46px; height: 46px; border-radius: 14px; display: grid; place-items: center; background: rgba(201, 42, 85, .1); color: var(--rose); margin-bottom: 14px; }
+    .ic svg { width: 24px; height: 24px; }
+    .card h3 { font-size: 19px; margin: 0 0 6px; }
+    .card p { margin: 0; color: var(--muted); font-size: 15.5px; }
+
+    .zero { display: grid; grid-template-columns: auto 1fr; gap: 28px; align-items: center; background: #fff; border-radius: 28px; padding: 32px; }
+    .zero .big { font-size: clamp(64px, 12vw, 112px); font-weight: 800; line-height: .9; color: var(--rose); letter-spacing: -.03em; }
+    .zero ul { margin: 0; padding: 0; list-style: none; display: grid; gap: 10px; font-size: 17px; }
+    .zero li::before { content: "✓"; color: var(--rose); font-weight: 800; margin-right: 10px; }
+
+    .privacy { background: linear-gradient(160deg, #fff, #ffe4e8); border-radius: 28px; padding: 32px; }
+    .privacy p { margin: 0 0 10px; font-size: 16.5px; color: var(--ink); max-width: 62ch; }
+    .privacy p:last-child { margin: 0; }
+
+    .final { text-align: center; color: #fff; border-radius: 32px; padding: 48px 24px;
+      background: radial-gradient(600px 300px at 50% 0%, rgba(244,63,94,.5), transparent 70%), linear-gradient(160deg, var(--deep), var(--wine)); }
+    .final h2 { margin-bottom: 10px; }
+    .final p { color: #ffe4e8; margin: 0 0 24px; }
+    .final .cta { justify-content: center; }
+    .note { font-size: 13.5px; color: var(--muted); margin-top: 22px; text-align: center; }
+    footer { padding: 28px 0 40px; font-size: 14px; color: var(--muted); }
+    footer .wrap { display: flex; gap: 16px; flex-wrap: wrap; justify-content: space-between; }
+    footer nav { display: flex; gap: 16px; flex-wrap: wrap; }
+
+    @media (max-width: 860px) {
+      .hero { padding-bottom: 48px; }
+      .hero-grid { grid-template-columns: 1fr; gap: 36px; margin-top: 32px; text-align: left; }
+      .phone { width: min(280px, 72vw); }
+      .cards { grid-template-columns: 1fr; }
+      .zero { grid-template-columns: 1fr; gap: 14px; padding: 26px; }
+      section { padding: 44px 0; }
+    }
+    @media (prefers-reduced-motion: reduce) { .store { transition: none; } }
+  </style>
+</head>
+<body>
+  <a class="skip" href="#main" data-en="Skip to content">გადადი შინაარსზე</a>
+  <header class="hero">
+    <div class="wrap">
+      <div class="top">
+        <a class="brand" href="/" aria-label="MEDICARD"><img src="/icon.png" alt="" width="30" height="30" />MEDICARD</a>
+        <a class="lang" href="?lang=en" data-en="ქართული" data-en-href="?lang=ka">English</a>
+      </div>
+      <div class="hero-grid" id="main">
+        <div>
+          <p class="wm" aria-label="MEDICYCLE">MEDI<i>CYCLE</i></p>
+          <h1 data-en-html="When will it start? <span>Know ahead.</span>">როდის დაიწყება? <span>იცოდე წინასწარ.</span></h1>
+          <p class="lead" data-en="The cycle calendar in MEDICARD: log with one tap, the app learns your rhythm and reminds you in time.">ციკლის კალენდარი MEDICARD-ში: აღნიშნე ერთი შეხებით, აპი შენს რიტმს სწავლობს და დროულად შეგახსენებს.</p>
+          <div class="cta">
+            <a class="store" href="https://apps.apple.com/app/id6812517519" data-store="hero"><img src="/icons/app-store-badge.svg" alt="Download on the App Store" width="174" height="58" /></a>
+            <span class="free"><b data-en="Free">უფასოდ</b><span data-en="iPhone · no subscription">iPhone · გამოწერის გარეშე</span></span>
+          </div>
+          <ul class="chips">
+            <li data-en="One-tap logging">აღნიშვნა ერთი შეხებით</li>
+            <li data-en="Timely reminders">დროული შეხსენება</li>
+            <li data-en="Face ID lock">Face ID ჩაკეტვა</li>
+          </ul>
+        </div>
+        <div class="phone">
+          <video src="/cycle/medicycle-720.mp4" poster="/cycle/medicycle-poster.jpg" autoplay muted loop playsinline preload="metadata" aria-label="MEDICYCLE app preview" data-en-aria-label="MEDICYCLE app preview"></video>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <section>
+      <div class="wrap">
+        <h2 data-en="Everything you need, nothing extra">ყველაფერი, რაც გჭირდება, ზედმეტის გარეშე</h2>
+        <div class="cards">
+          <article class="card">
+            <div class="ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3s6 6.4 6 11a6 6 0 0 1-12 0c0-4.6 6-11 6-11Z"/></svg></div>
+            <h3 data-en="Log with one tap">აღნიშნე ერთი შეხებით</h3>
+            <p data-en="Period, mood, pain and symptoms in a few seconds — with clear icons.">მენსტრუაცია, განწყობა, ტკივილი და სიმპტომები რამდენიმე წამში, გასაგები ხატულებით.</p>
+          </article>
+          <article class="card">
+            <div class="ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></div>
+            <h3 data-en="It learns your rhythm">აპი შენს რიტმს სწავლობს</h3>
+            <p data-en="The more you log, the better the forecast. It always says honestly when it's an estimate.">რაც მეტს აღნიშნავ, მით უკეთესია პროგნოზი. თუ რამე სავარაუდოა, აპი ამას გულწრფელად გეტყვის.</p>
+          </article>
+          <article class="card">
+            <div class="ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 1 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg></div>
+            <h3 data-en="Timely reminders">დროული შეხსენება</h3>
+            <p data-en="A few days before and on the day — so it never catches you off guard.">რამდენიმე დღით ადრე და თავად დღეს, რომ არაფერმა მოგიაროს მოულოდნელად.</p>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section style="padding-top:0">
+      <div class="wrap">
+        <div class="zero">
+          <div class="big">0 ₾</div>
+          <ul>
+            <li data-en="Completely free">სრულიად უფასოა</li>
+            <li data-en="No subscription">არანაირი გამოწერა</li>
+            <li data-en="No paid features">არანაირი ფასიანი ფუნქცია</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section style="padding-top:0">
+      <div class="wrap">
+        <div class="privacy">
+          <h2 data-en="Your cycle is yours">შენი ციკლი შენია</h2>
+          <p data-en="Cycle data is never used for advertising and is never sold.">ციკლის მონაცემები რეკლამისთვის არ გამოიყენება და არ იყიდება.</p>
+          <p data-en="You can lock the cycle section with Face ID, and notifications can stay discreet.">ციკლის განყოფილება შეგიძლია Face ID-ით ჩაკეტო, შეტყობინებები კი შეიძლება დისკრეტული იყოს.</p>
+          <p data-en-html="Details in our <a href='/privacy-en'>privacy policy</a>.">დეტალები — <a href="/privacy">კონფიდენციალურობის პოლიტიკაში</a>.</p>
+        </div>
+      </div>
+    </section>
+
+    <section style="padding-top:0">
+      <div class="wrap">
+        <div class="final">
+          <h2 data-en="Start today — it's free">დაიწყე დღესვე — უფასოა</h2>
+          <p data-en="MEDICARD for iPhone. A few seconds to install.">MEDICARD iPhone-ისთვის. დაყენებას რამდენიმე წამი სჭირდება.</p>
+          <div class="cta">
+            <a class="store" href="https://apps.apple.com/app/id6812517519" data-store="final"><img src="/icons/app-store-badge.svg" alt="Download on the App Store" width="174" height="58" /></a>
+          </div>
+        </div>
+        <p class="note" data-en="Forecasts are estimates: they are not contraception and do not replace a doctor's consultation.">პროგნოზი სავარაუდოა: ის არ არის კონტრაცეფციის საშუალება და ექიმის კონსულტაციას არ ცვლის.</p>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <div class="wrap">
+      <span>© 2026 Medicard.GE</span>
+      <nav aria-label="საიტის ბმულები" data-en-aria-label="Site links">
+        <a href="/" data-en="Home">მთავარი</a>
+        <a href="/privacy" data-en="Privacy" data-en-href="/privacy-en">კონფიდენციალურობა</a>
+        <a href="/terms" data-en="Terms" data-en-href="/terms-en">წესები</a>
+        <a href="mailto:support@medicard.ge">support@medicard.ge</a>
+      </nav>
+    </div>
+  </footer>
+</body>
+</html>

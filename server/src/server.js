@@ -248,6 +248,13 @@ app.get(['/medirun/rules', '/medirun/rules.html', '/medirun/index.html'], (req, 
   res.redirect(301, `/medirun${q}${req.path.includes('rules') ? '#rules' : ''}`);
 });
 
+// MEDICYCLE landing for the Instagram ad (owner 2026-10-05). Health page: no Pixel / GA (site-consent.js EXCLUDED).
+app.get(['/cycle', '/cycle/'], (_req, res, next) => {
+  if (!PUBLIC_DIST) return next();
+  res.set('Cache-Control', 'no-store');
+  res.sendFile(path.join(PUBLIC_DIST, 'cycle', 'index.html'));
+});
+
 // One-click marketing unsubscribe (email links + RFC 8058 POST). Public, no auth.
 app.use(unsubscribeRouter);
 
