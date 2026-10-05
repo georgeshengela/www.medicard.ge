@@ -3,6 +3,7 @@ import { h, mount, icon, button, busy, field, input } from './ui.js';
 import { post } from './api.js';
 import { signIn } from './session.js';
 import { t, lang, isEn, setLang } from './i18n.js';
+import { socialBlock, showSocialLink } from './social.js';
 
 let onDoneCb = () => {};
 
@@ -59,6 +60,15 @@ function done(res) {
   onDoneCb();
 }
 
+/** Apple / Google buttons; an address that already has a password account goes to the link step. */
+function social(panel, back, divider) {
+  return socialBlock({
+    divider,
+    onSignedIn: done,
+    onLink: (link) => showSocialLink(panel, link, { onSignedIn: done, onBack: () => back(panel), onForgot: (email) => showForgot(panel, email) }),
+  });
+}
+
 function errBox() { return h('div', { class: 'form-error', hidden: true, role: 'alert' }); }
 function showErr(box, e) { box.textContent = e?.message || t('ვერ შესრულდა. სცადე ხელახლა.', 'Something went wrong. Please try again.'); box.hidden = false; }
 
@@ -99,6 +109,7 @@ function showPhone(panel, preset = '') {
     h('p', { class: 'lead' }, t('შეიყვანე ნომერი — SMS-ით მიიღებ 4-ნიშნა კოდს. ახალ ნომერზე ანგარიში ავტომატურად შეიქმნება.', 'Enter your number and we’ll text you a 4-digit code. A new number gets an account automatically.')),
     form,
     h('div', { class: 'divider' }, t('ან', 'or')),
+    social(panel, showPhone, 'none'),
     button(t('ელ-ფოსტით შესვლა', 'Sign in with email'), { variant: 'ghost', size: 'lg', class: 'btn-block', icon: 'mail', onClick: () => showEmail(panel) }),
     h('div', { class: 'auth-switch' }, t('ანგარიში ელ-ფოსტით გინდა? ', 'Prefer an email account? '), h('button', { type: 'button', onClick: () => showRegister(panel) }, t('რეგისტრაცია', 'Sign up'))),
     legal());
@@ -175,6 +186,7 @@ function showEmail(panel) {
     h('p', { class: 'lead' }, t('იგივე ელ-ფოსტა და პაროლი, რითაც აპში შედიხარ.', 'The same email and password you use in the app.')),
     form,
     h('div', { class: 'divider' }, t('ან', 'or')),
+    social(panel, showEmail, 'none'),
     button(t('SMS კოდით შესვლა', 'Sign in with SMS code'), { variant: 'ghost', size: 'lg', class: 'btn-block', icon: 'smartphone', onClick: () => showPhone(panel) }),
     h('div', { class: 'auth-switch' }, t('ანგარიში არ გაქვს? ', 'Don’t have an account? '), h('button', { type: 'button', onClick: () => showRegister(panel) }, t('რეგისტრაცია', 'Sign up'))),
     legal());
@@ -213,6 +225,7 @@ function showRegister(panel) {
     h('h1', null, t('რეგისტრაცია', 'Sign up')),
     h('p', { class: 'lead' }, t('MEDICARD სრულიად უფასოა. ანგარიში აპშიც და ვებზეც ერთია. სერვისი 18 წლიდანაა.', 'MEDICARD is completely free. One account works in the app and on the web. You must be 18 or older.')),
     form,
+    social(panel, showRegister, 'before'),
     h('div', { class: 'auth-switch' }, t('უკვე გაქვს ანგარიში? ', 'Already have an account? '), h('button', { type: 'button', onClick: () => showPhone(panel) }, t('შესვლა', 'Sign in'))),
     legal());
   setTimeout(() => name.focus(), 30);

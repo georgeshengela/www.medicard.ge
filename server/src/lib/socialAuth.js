@@ -54,18 +54,41 @@ export const DEFAULT_GOOGLE_CLIENT_IDS = Object.freeze([
   '535295295288-9bg6olin1230i5qg2k0q4dpvbrv312qb.apps.googleusercontent.com',
 ]);
 
-/** Audiences we accept. Google: our web + iOS client ids; Apple: the bundle id(s). */
+/**
+ * Audiences we accept. Google: our web + iOS client ids; Apple: the bundle id(s) plus the web
+ * Services ID (`APPLE_WEB_SERVICE_ID`, Sign in with Apple JS on medicard.ge/app) when it is set.
+ * appleAudiences[0] stays the bundle id: grants without a recorded client id belong to it.
+ */
 export function socialConfig(env = process.env) {
   const googleOverride = list(env.GOOGLE_CLIENT_IDS);
+  const googleClientIds = googleOverride.length ? googleOverride : [...DEFAULT_GOOGLE_CLIENT_IDS];
+  const appleWebServiceId = String(env.APPLE_WEB_SERVICE_ID || '').trim();
+  const appleAudiences = list(env.APPLE_BUNDLE_IDS || 'ge.medicard.app');
+  if (appleWebServiceId && !appleAudiences.includes(appleWebServiceId)) appleAudiences.push(appleWebServiceId);
   return {
-    googleClientIds: googleOverride.length ? googleOverride : [...DEFAULT_GOOGLE_CLIENT_IDS],
-    appleAudiences: list(env.APPLE_BUNDLE_IDS || 'ge.medicard.app'),
+    googleClientIds,
+    // The web button's client (Google Identity Services); must be one of googleClientIds.
+    googleWebClientId: String(env.GOOGLE_WEB_CLIENT_ID || '').trim() || googleClientIds[0] || '',
+    appleAudiences,
+    appleWebServiceId,
+    appleWebRedirectUri: String(env.APPLE_WEB_REDIRECT_URI || 'https://medicard.ge/app').trim(),
     appleTeamId: String(env.APPLE_TEAM_ID || '').trim(),
     appleKeyId: String(env.APPLE_KEY_ID || '').trim(),
     // Render env vars keep "\n" literally when the PEM is pasted on one line.
     applePrivateKey: String(env.APPLE_PRIVATE_KEY || '').replace(/\\n/g, '\n').trim(),
     secret: String(env.JWT_SECRET || ''),
   };
+}
+
+/** What the web sign-in page needs (public ids only); a provider is null until it is configured. */
+export function socialWebConfig(config = socialConfig()) {
+  const google = config.googleWebClientId && config.googleClientIds.includes(config.googleWebClientId)
+    ? { clientId: config.googleWebClientId }
+    : null;
+  const apple = config.appleWebServiceId && config.appleWebRedirectUri
+    ? { clientId: config.appleWebServiceId, redirectUri: config.appleWebRedirectUri }
+    : null;
+  return { google, apple };
 }
 
 export function appleRevokeConfigured(config = socialConfig()) {
@@ -200,6 +223,8 @@ export async function verifyAppleIdentity({ identityToken, nonce }, { config = s
     email: email && verifiedFlag(claims.email_verified ?? true) ? email : null,
     privateRelay: verifiedFlag(claims.is_private_email) || Boolean(email?.endsWith('@privaterelay.appleid.com')),
     name: null,
+    // The app's bundle id or the web Services ID: the code exchange and revoke must use the same one.
+    clientId: String(claims.aud),
   };
 }
 
@@ -225,24 +250,47 @@ export async function verifyGoogleIdentity({ idToken }, { config = socialConfig(
 
 /* ───────── Apple token exchange / revoke ───────── */
 
-function appleClientSecret(config, now = Math.floor(Date.now() / 1000)) {
+function appleClientSecret(config, clientId = config.appleAudiences[0], now = Math.floor(Date.now() / 1000)) {
   return jwt.sign(
-    { iss: config.appleTeamId, iat: now, exp: now + 300, aud: APPLE_ISSUER, sub: config.appleAudiences[0] },
+    { iss: config.appleTeamId, iat: now, exp: now + 300, aud: APPLE_ISSUER, sub: clientId },
     config.applePrivateKey,
     { algorithm: 'ES256', keyid: config.appleKeyId },
   );
 }
 
+/** Only our own Apple client ids; anything else falls back to the bundle id. */
+function appleClientId(config, clientId) {
+  return clientId && config.appleAudiences.includes(clientId) ? clientId : config.appleAudiences[0];
+}
+
+/**
+ * Stored grant = the refresh token, prefixed with its client id when that is not the bundle id
+ * (web Services ID). Rows written before the web button carry the bare token.
+ */
+export function packAppleGrant(refreshToken, clientId, config = socialConfig()) {
+  if (!refreshToken) return null;
+  const id = appleClientId(config, clientId);
+  return id === config.appleAudiences[0] ? refreshToken : `${id}\n${refreshToken}`;
+}
+
+export function unpackAppleGrant(value, config = socialConfig()) {
+  const text = String(value || '');
+  const cut = text.indexOf('\n');
+  if (cut < 0) return { clientId: config.appleAudiences[0], refreshToken: text };
+  return { clientId: appleClientId(config, text.slice(0, cut)), refreshToken: text.slice(cut + 1) };
+}
+
 /** One-time authorization code → refresh token (only used to revoke later). Best-effort: null on any failure. */
-export async function exchangeAppleCode(code, { config = socialConfig(), fetchImpl = fetch } = {}) {
+export async function exchangeAppleCode(code, { config = socialConfig(), fetchImpl = fetch, clientId } = {}) {
   if (!code || typeof code !== 'string' || code.length > 2048 || !appleRevokeConfigured(config)) return null;
+  const id = appleClientId(config, clientId);
   try {
     const { ok, body } = await fetchJson(`${APPLE_ISSUER}/auth/token`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       body: new URLSearchParams({
-        client_id: config.appleAudiences[0],
-        client_secret: appleClientSecret(config),
+        client_id: id,
+        client_secret: appleClientSecret(config, id),
         code,
         grant_type: 'authorization_code',
       }).toString(),
@@ -258,15 +306,16 @@ export async function exchangeAppleCode(code, { config = socialConfig(), fetchIm
   }
 }
 
-export async function revokeAppleToken(refreshToken, { config = socialConfig(), fetchImpl = fetch } = {}) {
+export async function revokeAppleToken(refreshToken, { config = socialConfig(), fetchImpl = fetch, clientId } = {}) {
   if (!refreshToken || !appleRevokeConfigured(config)) return false;
+  const id = appleClientId(config, clientId);
   try {
     const { ok, status } = await fetchJson(`${APPLE_ISSUER}/auth/revoke`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       body: new URLSearchParams({
-        client_id: config.appleAudiences[0],
-        client_secret: appleClientSecret(config),
+        client_id: id,
+        client_secret: appleClientSecret(config, id),
         token: refreshToken,
         token_type_hint: 'refresh_token',
       }).toString(),
@@ -412,8 +461,10 @@ export async function revokeAppleGrantsForUser(userId, { db = prisma, config = s
   }
   let revoked = 0;
   for (const row of rows) {
-    const token = openSecret(row.appleRefreshToken, config.secret);
-    if (token && (await revokeAppleToken(token, { config, fetchImpl }))) revoked += 1;
+    const opened = openSecret(row.appleRefreshToken, config.secret);
+    if (!opened) continue;
+    const { clientId, refreshToken } = unpackAppleGrant(opened, config);
+    if (refreshToken && (await revokeAppleToken(refreshToken, { config, fetchImpl, clientId }))) revoked += 1;
   }
   return revoked;
 }

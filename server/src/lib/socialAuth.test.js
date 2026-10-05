@@ -174,6 +174,39 @@ test('apple revoke is skipped without keys and posts a signed client secret with
   assert.equal(secret.payload.sub, 'ge.medicard.app');
 });
 
+test('web: Services ID joins the Apple audiences; grants remember their client for revoke', async () => {
+  const { packAppleGrant, unpackAppleGrant, socialWebConfig } = await import('./socialAuth.js');
+  const plain = socialConfig({ JWT_SECRET: SECRET });
+  assert.deepEqual(socialWebConfig(plain), { google: { clientId: DEFAULT_GOOGLE_CLIENT_IDS[0] }, apple: null });
+
+  const web = socialConfig({ JWT_SECRET: SECRET, APPLE_WEB_SERVICE_ID: 'ge.medicard.web' });
+  assert.deepEqual(web.appleAudiences, ['ge.medicard.app', 'ge.medicard.web']);
+  assert.deepEqual(socialWebConfig(web).apple, { clientId: 'ge.medicard.web', redirectUri: 'https://medicard.ge/app' });
+  // A Google web id outside the accepted audiences is never offered.
+  assert.equal(socialWebConfig({ ...web, googleWebClientId: 'other.apps.googleusercontent.com' }).google, null);
+
+  const nonce = issueAppleNonce({ secret: SECRET });
+  const token = sign({ iss: 'https://appleid.apple.com', aud: 'ge.medicard.web', sub: '001.web', nonce });
+  assert.equal((await verifyAppleIdentity({ identityToken: token, nonce }, { config: web, fetchImpl })).clientId, 'ge.medicard.web');
+  await assert.rejects(verifyAppleIdentity({ identityToken: token, nonce }, { config, fetchImpl }), { code: 'SOCIAL_TOKEN_INVALID' });
+
+  assert.equal(packAppleGrant('r.app', 'ge.medicard.app', web), 'r.app');
+  assert.deepEqual(unpackAppleGrant(packAppleGrant('r.web', 'ge.medicard.web', web), web), { clientId: 'ge.medicard.web', refreshToken: 'r.web' });
+  assert.deepEqual(unpackAppleGrant('r.old', web), { clientId: 'ge.medicard.app', refreshToken: 'r.old' });
+  assert.equal(unpackAppleGrant('com.evil\nr.x', web).clientId, 'ge.medicard.app');
+
+  const { privateKey: ecKey } = crypto.generateKeyPairSync('ec', { namedCurve: 'P-256' });
+  const withKeys = { ...web, appleTeamId: 'TEAM123456', appleKeyId: 'KEY1234567', applePrivateKey: ecKey.export({ format: 'pem', type: 'pkcs8' }) };
+  let sent;
+  await revokeAppleToken('r.web', {
+    config: withKeys,
+    clientId: 'ge.medicard.web',
+    fetchImpl: async (_url, init) => { sent = new URLSearchParams(init.body); return { ok: true, status: 200, text: async () => '' }; },
+  });
+  assert.equal(sent.get('client_id'), 'ge.medicard.web');
+  assert.equal(jwt.decode(sent.get('client_secret')).sub, 'ge.medicard.web');
+});
+
 test('apple key self-check reads Apple’s answer to a dummy code', async () => {
   const { checkAppleKey } = await import('./socialAuth.js');
   assert.equal(await checkAppleKey({ config }), 'not_configured');

@@ -134,14 +134,17 @@ app.use(
         ? {
             directives: {
               defaultSrc: ["'self'"],
-              scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'", 'https://api.mapbox.com', 'https://connect.facebook.net', 'https://www.googletagmanager.com'],
-              styleSrc: ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com', 'https://api.mapbox.com'],
+              // accounts.google.com / appleid.cdn-apple.com: Sign in with Google / Apple on /app.
+              scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'", 'https://api.mapbox.com', 'https://connect.facebook.net', 'https://www.googletagmanager.com', 'https://accounts.google.com', 'https://appleid.cdn-apple.com'],
+              styleSrc: ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com', 'https://api.mapbox.com', 'https://accounts.google.com'],
               imgSrc: ["'self'", 'data:', 'blob:', 'https:'],
               connectSrc: ["'self'", 'https:', 'ws:', 'wss:'],
               fontSrc: ["'self'", 'data:', 'https://fonts.gstatic.com'],
               mediaSrc: ["'self'", 'blob:'],
               workerSrc: ["'self'", 'blob:'],
               childSrc: ["'self'", 'blob:'],
+              // The Google button is an iframe; without frame-src it falls back to child-src.
+              frameSrc: ["'self'", 'blob:', 'https://accounts.google.com'],
               objectSrc: ["'none'"],
               frameAncestors: ["'self'"],
             },
@@ -435,6 +438,10 @@ if (serveLanding) {
   // Signed-in web app (vanilla ES modules, history routing under /app).
   app.get(['/app', /^\/app\/(?!.*\.[a-z0-9]+$).*/i], (_req, res) => {
     res.set('Cache-Control', 'no-store');
+    // Google / Apple sign-in popups report back through window.opener, and the Google button
+    // checks the page origin from the referrer (helmet's defaults block both).
+    res.set('Cross-Origin-Opener-Policy', 'same-origin-allow-popups');
+    res.set('Referrer-Policy', 'strict-origin-when-cross-origin');
     res.sendFile(path.join(PUBLIC_DIST, 'app', 'index.html'));
   });
   app.get('/i/:code', (_req, res) => {

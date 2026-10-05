@@ -23,6 +23,8 @@ import {
   SocialAuthError,
   checkAppleKey,
   exchangeAppleCode,
+  packAppleGrant,
+  socialWebConfig,
   findIdentity,
   issueAppleNonce,
   readLinkToken,
@@ -555,6 +557,15 @@ async function completeSocialSignIn(req, res, identity, { fullName = null, seale
   return res.status(201).json(await signedInPayload(user, true));
 }
 
+/** Web sign-in page (/app): which buttons to show and their public client ids. */
+authRouter.get(
+  '/social/config',
+  asyncHandler(async (_req, res) => {
+    res.set('Cache-Control', 'no-store');
+    return res.json(socialWebConfig());
+  }),
+);
+
 authRouter.get(
   '/apple/nonce',
   asyncHandler(async (_req, res) => {
@@ -586,10 +597,10 @@ authRouter.post(
     } catch (error) {
       return socialFailure(req, res, error);
     }
-    const refreshToken = await exchangeAppleCode(data.authorizationCode);
+    const refreshToken = await exchangeAppleCode(data.authorizationCode, { clientId: identity.clientId });
     return completeSocialSignIn(req, res, identity, {
       fullName: data.fullName,
-      sealedRefresh: refreshToken ? sealSecret(refreshToken) : null,
+      sealedRefresh: refreshToken ? sealSecret(packAppleGrant(refreshToken, identity.clientId)) : null,
     });
   }),
 );
