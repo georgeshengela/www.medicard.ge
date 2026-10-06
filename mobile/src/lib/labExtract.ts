@@ -204,32 +204,44 @@ export function stripLabJson(text: string): string {
   return text.replace(/```(?:labjson|json)\s*[\s\S]*?```/gi, '').trim();
 }
 
+function labRowSignature(row: LabParameter): string | null {
+  if (!Number.isFinite(row?.value) || (row.refLow == null && row.refHigh == null)) return null;
+  return `${row.value}|${row.refLow ?? ''}|${row.refHigh ?? ''}`;
+}
+
+/**
+ * The vision model writes every analyte twice (printed-name table row + labjson row with an English
+ * slug). Same value + same printed range = the same analyte, so later rows only add what the earlier
+ * ones missed (2026-10-06: a 39-row sheet showed as 51 rows, MCV/ESR/ALT twice). Mirrors
+ * `dedupeLabRows` in server/src/lib/labExtract.js.
+ */
+export function dedupeLabRows(rows: readonly LabParameter[]): LabParameter[] {
+  const merged = new Map<string, LabParameter>();
+  const signatures = new Set<string>();
+  for (const row of rows) {
+    const canon = titledLabParam(row);
+    const signature = labRowSignature(canon);
+    if (merged.has(canon.key) || (signature && signatures.has(signature))) continue;
+    merged.set(canon.key, canon);
+    if (signature) signatures.add(signature);
+  }
+  return [...merged.values()];
+}
+
 export function parseLabExtract(text: string): LabExtract {
   const fromJson = parseLabJson(text);
   const fromTable = parsePipeTable(text);
   const fromDots = parseDotSeparatedLab(text);
-  const merged = new Map<string, LabParameter>();
-  for (const row of [...(fromJson?.parameters ?? []), ...fromTable, ...fromDots]) {
-    const canon = titledLabParam(row);
-    merged.set(canon.key, canon);
-  }
   return {
     date: fromJson?.date ?? parseDocumentDate(text),
-    parameters: [...merged.values()],
+    parameters: dedupeLabRows([...(fromJson?.parameters ?? []), ...fromTable, ...fromDots]),
   };
 }
 
 export function mergeLabExtracts(parts: LabExtract[]): LabExtract {
-  const merged = new Map<string, LabParameter>();
   let date: string | null = null;
-  for (const part of parts) {
-    if (!date && part.date) date = part.date;
-    for (const row of part.parameters) {
-      const canon = titledLabParam(row);
-      merged.set(canon.key, canon);
-    }
-  }
-  return { date, parameters: [...merged.values()] };
+  for (const part of parts) if (!date && part.date) date = part.date;
+  return { date, parameters: dedupeLabRows(parts.flatMap((part) => part.parameters)) };
 }
 
 export function formatLabDateKa(ymd: string): string {

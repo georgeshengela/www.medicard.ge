@@ -20,6 +20,8 @@ export type LabPanel = {
   analysis: string;
   visionNotes?: string;
   parameters: LabParameter[];
+  /** Made by the server (extract-lab or rebuilt from a record), not saved by the app. */
+  auto?: boolean;
 };
 
 export type LabExtract = {

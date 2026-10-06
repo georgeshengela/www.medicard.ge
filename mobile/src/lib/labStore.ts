@@ -1,5 +1,5 @@
 import { getScopedPreference, setScopedPreferenceStrict, localAccountId } from '@/lib/localAccount';
-import { mergeLabPanelLists } from '@/lib/labMerge';
+import { isAutoLabPanel, mergeLabPanelLists } from '@/lib/labMerge';
 import { resolveCanonicalLabKey, titledLabPanel } from '@/lib/labNames';
 import type { LabPanel } from '@/types/lab';
 
@@ -60,20 +60,25 @@ export async function replaceLabPanels(panels: LabPanel[]): Promise<LabPanel[]> 
 
 export async function upsertLabPanel(panel: LabPanel): Promise<LabPanel[]> {
   const owner = localAccountId();
-  const current = await loadLabPanels();
+  // One record is one panel: this save replaces copies of the same record under another date.
+  const ids = new Set(panel.recordIds);
+  const current = (await loadLabPanels()).filter((row) => row.date === panel.date || !row.recordIds.some((id) => ids.has(id)));
   const existing = current.find((row) => row.date === panel.date);
   if (existing) {
     const params = new Map(titledLabPanel(existing).parameters.map((row) => [row.key, row]));
     for (const row of titledLabPanel(panel).parameters) params.set(row.key, row);
+    // The app saved it now, so it is no longer a server-made panel (and must not keep that id).
+    const { auto: _auto, ...base } = existing;
     const merged: LabPanel = {
-      ...existing,
+      ...base,
+      id: isAutoLabPanel(existing) ? panel.id : existing.id,
       createdAt: panel.createdAt || existing.createdAt,
       recordIds: [...new Set([...existing.recordIds, ...panel.recordIds])],
       analysis: panel.analysis || existing.analysis,
       visionNotes: panel.visionNotes || existing.visionNotes,
       parameters: [...params.values()],
     };
-    const next = [merged, ...current.filter((row) => row.id !== existing.id)];
+    const next = [merged, ...current.filter((row) => row.id !== existing.id && row.id !== merged.id)];
     await saveLabPanels(next, owner);
     return next;
   }

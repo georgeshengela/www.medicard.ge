@@ -2897,6 +2897,8 @@ export const api = {
         record: MedicalRecord;
         notes: string;
         labExtract: import('@/types/lab').LabExtract;
+        /** This page was unreadable; the record holds only the pages read before it. */
+        unreadable?: boolean;
         pipeline: { extractor: { provider: string; model?: string }; reasoning: null };
         usage: Usage;
       };

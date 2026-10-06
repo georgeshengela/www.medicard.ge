@@ -146,9 +146,19 @@ export function titledLabParam(param: LabParameter): LabParameter {
   return { ...param, key, nameKa: title.nameKa, nameEn: title.nameEn };
 }
 
+/**
+ * Document header lines (birth date, doctor, patient, address, phone) that OCR turned into „values“
+ * (2026-10-06). Never a lab value. Mirrors `isLabMetadataRow` in server/src/lib/labExtract.js.
+ */
+const LAB_METADATA_ROW = /(დაბადებ|ექიმ|პაციენტ|მისამართ|ტელეფონ|date of birth|birth ?date|\bdoctor\b|physician|\bpatient\b|\baddress\b|\bphone\b)/i;
+export function isLabMetadataRow(row: Pick<LabParameter, 'key' | 'nameKa' | 'nameEn'>): boolean {
+  return LAB_METADATA_ROW.test(`${row?.nameKa ?? ''} ${row?.nameEn ?? ''} ${String(row?.key ?? '').replace(/_/g, ' ')}`);
+}
+
 export function collapseLabParameters(params: LabParameter[]): LabParameter[] {
   const merged = new Map<string, LabParameter>();
   for (const row of params) {
+    if (isLabMetadataRow(row)) continue;
     const canon = titledLabParam(row);
     if (!merged.has(canon.key)) merged.set(canon.key, canon);
   }
