@@ -6,13 +6,18 @@ import { loadAppActivityRows } from './appActivity.js';
 import { invalidateAdminAnalyticsPrefix } from './adminAnalytics.js';
 import { ADMIN_SOCKET_ROOM, authorizeSocketHandshake, userSocketRoom } from './socketAuth.js';
 import { registerQuestRealtimeEmitter } from './questRealtime.js';
+import { getOnlineUsers, onlineSignature } from './onlineUsers.js';
 
 const ROOM = ADMIN_SOCKET_ROOM;
 const LIVE_MS = 90_000;
 const DEBOUNCE_MS = 2000;
+/** People leave without an event (the heartbeat just stops): re-check while an admin is watching. */
+const ONLINE_TICK_MS = 10_000;
 
 let io = null;
 let flushTimer = null;
+let onlineTicker = null;
+let lastOnlineSignature = null;
 const seen = new Map();
 
 export function getRealtimeIo() {
@@ -47,12 +52,20 @@ export function attachAdminRealtime(httpServer) {
       getOpsLiveSnapshot()
         .then((snap) => socket.emit('ops:live', snap))
         .catch(() => undefined);
+      getOnlineUsers()
+        .then((snap) => socket.emit('ops:online', snap))
+        .catch(() => undefined);
       return;
     }
     if (identity?.kind === 'user') {
       socket.join(userSocketRoom(identity.userId));
     }
   });
+
+  if (!onlineTicker) {
+    onlineTicker = setInterval(() => { void emitOnlineUsers({ always: true }); }, ONLINE_TICK_MS);
+    onlineTicker.unref?.();
+  }
 
   registerQuestRealtimeEmitter((userId, payload) => {
     if (!io || !userId) return;
@@ -75,7 +88,29 @@ export function notifyOpsActivity(row) {
     getOpsLiveSnapshot()
       .then((snap) => io.to(ROOM).emit('ops:live', snap))
       .catch(() => undefined);
+    void emitOnlineUsers({ always: false });
   }, DEBOUNCE_MS);
+}
+
+function adminsWatching() {
+  return Boolean(io && io.sockets.adapter.rooms.get(ROOM)?.size > 0);
+}
+
+/**
+ * The admin home's online list. The ticker always sends (the „N წმ წინ“ times move); an activity only
+ * sends when someone came, left or changed screen.
+ */
+async function emitOnlineUsers({ always }) {
+  if (!adminsWatching()) return;
+  try {
+    const snap = await getOnlineUsers();
+    const signature = onlineSignature(snap);
+    if (!always && signature === lastOnlineSignature) return;
+    lastOnlineSignature = signature;
+    io.to(ROOM).emit('ops:online', snap);
+  } catch {
+    /* next tick tries again */
+  }
 }
 
 let brainFlushTimer = null;

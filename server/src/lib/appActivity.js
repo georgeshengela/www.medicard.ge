@@ -56,7 +56,8 @@ export async function recordAppActivity(userId, meta = {}, now = new Date()) {
       VALUES (${id}, ${userId}, ${date}, ${now}, ${now}, ${platform}, ${appVersion}, ${activityType})
       ON CONFLICT ("userId", "date") DO UPDATE SET
         "lastAt" = EXCLUDED."lastAt",
-        "activityType" = EXCLUDED."activityType",
+        -- A heartbeat keeps the last screen (admin „ახლა აპში“ shows where people are).
+        "activityType" = CASE WHEN EXCLUDED."activityType" = 'heartbeat' THEN "AppActivity"."activityType" ELSE EXCLUDED."activityType" END,
         "platform" = COALESCE(EXCLUDED."platform", "AppActivity"."platform"),
         "appVersion" = COALESCE(EXCLUDED."appVersion", "AppActivity"."appVersion")
     `;

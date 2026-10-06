@@ -296,6 +296,7 @@
         <div id="ops-status"><div class="v3-cc-skel-status" aria-hidden="true"></div></div>
         <div id="ops-attention"></div>
         <div id="ops-live-hero"><div class="v3-cc-skel-row is-hero" aria-hidden="true"></div></div>
+        <div id="ops-online"></div>
         <div class="v3-cc-split is-wide">
           <div id="ops-activity">${skel('is-plot')}</div>
           <div id="ops-movement">${skel('is-strip')}</div>
@@ -309,6 +310,7 @@
         <div id="ops-infra">${skel('is-infra')}</div>
         <div id="ops-geo">${skel('is-map')}</div>
       </div>`;
+    mountOnline();
     if (typeof bindOpsRange === 'function') bindOpsRange(renderCommandCenter);
     $('ops-refresh')?.addEventListener('click', () => {
       if ($('ops-refresh')?.classList.contains('is-loading')) return;
@@ -376,6 +378,171 @@
     paintGeo(root, geo);
     bindGo(root);
     applyLiveSnap();
+  }
+
+
+  /* ───────── Online now (owner 2026-10-06) ─────────
+   * Who is in the app this minute: AppActivity heartbeat ≤ 90 s (phone ~15 s, web /app 15 s).
+   * Socket `ops:online` every 10 s + on activity; HTTP /online-users when the socket is down.
+   * Rows are keyed: newcomers slide in, leavers fade out, „N წმ წინ“ ticks every second. */
+  const SCREEN_KA = {
+    home: 'მთავარი', index: 'მთავარი', cycle: 'MEDICYCLE', assistant: 'Medi', medi: 'Medi', chat: 'Medi',
+    scan: 'MEDISCAN', run: 'MEDIRUN', lab: 'MEDILAB', records: 'MEDILAB', record: 'MEDILAB',
+    nutrition: 'MEDIFOOD', food: 'MEDIFOOD', medications: 'MEDIPILL', meds: 'MEDIPILL', medication: 'MEDIPILL',
+    pets: 'MEDIVET', 'medi-quest': 'MEDIQUEST', quest: 'MEDIQUEST', rewards: 'MEDIQUEST', coach: 'MEDICOACH',
+    trainer: 'MEDICOACH', profile: 'პროფილი', settings: 'პარამეტრები', water: 'წყალი', hydration: 'წყალი',
+    steps: 'ნაბიჯები', weight: 'წონა', visits: 'ვიზიტები', news: 'სიახლეები', community: 'ქალების სივრცე',
+    explore: 'აღმოჩენა', symptoms: 'სიმპტომები', pharmacy: 'აფთიაქი', notifications: 'შეტყობინებები',
+    'sign-in': 'შესვლა', 'sign-up': 'რეგისტრაცია', 'profile-setup': 'რეგისტრაცია', assessment: 'რეგისტრაცია',
+    onboarding: 'რეგისტრაცია', 'link-account': 'შესვლა', phone: 'შესვლა',
+  };
+  const PLATFORM_KA = { ios: 'iPhone', android: 'Android', web: 'ვებ' };
+  let onlineEls = new Map();
+  let onlineTick = null;
+  let onlinePoll = null;
+  let onlinePollBusy = false;
+
+  function screenKa(screen) {
+    const first = String(screen || '').split('/').filter(Boolean)[0];
+    return first ? SCREEN_KA[first] || null : null;
+  }
+  function agoKa(iso) {
+    const s = Math.max(0, Math.round((Date.now() - new Date(iso).getTime()) / 1000));
+    if (s < 20) return 'ახლა';
+    if (s < 60) return `${s} წმ წინ`;
+    return `${Math.floor(s / 60)} წთ წინ`;
+  }
+  function clockOf(iso) {
+    const text = iso ? (V3().formatDate ? V3().formatDate(iso, 'datetime') : when(iso)) : '';
+    return text.replace(/^დღეს, /, '');
+  }
+  function personInitials(name) {
+    const clean = String(name || '').replace(/^\+/, '').trim();
+    if (/^\d/.test(clean)) return '#';
+    return typeof initials === 'function' ? initials(clean) : clean.slice(0, 1).toUpperCase();
+  }
+  function onlineRowHtml(u) {
+    const name = u.name || u.contact || 'უსახელო';
+    const isNew = u.joinedAt && Date.now() - new Date(u.joinedAt).getTime() < 24 * 3600 * 1000;
+    const where = screenKa(u.screen);
+    const device = [PLATFORM_KA[u.platform] || null, u.platform === 'web' ? null : u.appVersion].filter(Boolean).join(' · ');
+    const sub = [u.name && u.contact ? u.contact : '', u.firstAt ? `დღეს პირველად ${clockOf(u.firstAt)}` : ''].filter(Boolean).join(' · ');
+    return `
+      <span class="s-avatar${u.gender === 'FEMALE' ? ' is-f' : ''}" aria-hidden="true">${esc(personInitials(name))}<i class="cc-on-dot"></i></span>
+      <span class="cc-on-who">
+        <b>${esc(name)}</b>${isNew ? ' <span class="s-badge is-accent is-plain">ახალი</span>' : ''}
+        <small>${esc(sub)}</small>
+      </span>
+      <span class="cc-on-where">${where ? `<span class="s-badge is-info is-plain">${esc(where)}</span>` : ''}</span>
+      <span class="cc-on-device">${esc(device)}</span>
+      <span class="cc-on-ago" data-ago="${esc(u.lastAt)}">${esc(agoKa(u.lastAt))}</span>`;
+  }
+
+  function paintOnline(snap) {
+    const host = $('ops-online');
+    if (!host) return;
+    if (!host.querySelector('#ops-online-list')) {
+      onlineEls = new Map();
+      host.innerHTML = section({
+        title: 'ვინ არის ახლა აპში',
+        description: 'აპში ან ვებ-ვერსიაში ბოლო 90 წამში მყოფი ადამიანები. სია თავისით ახლდება — გვერდის განახლება არ სჭირდება. დააჭირე სტრიქონს პროფილის სანახავად.',
+        action: '<span class="cc-on-count" id="ops-online-count"><i class="v3-cc-pulse" aria-hidden="true"></i><b>—</b> ონლაინ</span>',
+        content: '<div class="cc-on-list" id="ops-online-list" role="list" aria-live="polite"></div><p class="cc-on-more" id="ops-online-more" hidden></p>',
+        mod: 'cc-on',
+      });
+      const list = host.querySelector('#ops-online-list');
+      list.addEventListener('click', (e) => {
+        const row = e.target.closest('[data-user]');
+        if (row) location.hash = `#/users/${encodeURIComponent(row.dataset.user)}`;
+      });
+      list.addEventListener('keydown', (e) => {
+        const row = e.target.closest('[data-user]');
+        if (row && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); row.click(); }
+      });
+    }
+    const list = host.querySelector('#ops-online-list');
+    const count = host.querySelector('#ops-online-count');
+    if (!snap) {
+      if (!list.children.length) list.innerHTML = '<div class="cc-on-empty">იტვირთება…</div>';
+      return;
+    }
+    // Stable order (who came first today stays put); the server list is newest-heartbeat first.
+    const users = [...(snap.users || [])].sort((a, b) => String(b.firstAt || '').localeCompare(String(a.firstAt || '')) || String(a.id).localeCompare(String(b.id)));
+    if (count) {
+      count.querySelector('b').textContent = fmt(snap.count ?? users.length);
+      count.classList.toggle('is-empty', !users.length);
+    }
+    list.querySelectorAll('.cc-on-empty').forEach((el) => el.remove());
+    const keep = new Set(users.map((u) => u.id));
+    for (const [id, el] of onlineEls) {
+      if (keep.has(id)) continue;
+      onlineEls.delete(id);
+      el.classList.add('is-leaving');
+      setTimeout(() => el.remove(), 380);
+    }
+    let prev = null;
+    for (const u of users) {
+      let el = onlineEls.get(u.id);
+      if (!el) {
+        el = document.createElement('div');
+        el.className = 'cc-on-row is-new';
+        el.setAttribute('role', 'listitem');
+        el.tabIndex = 0;
+        el.dataset.user = u.id;
+        onlineEls.set(u.id, el);
+        setTimeout(() => el.classList.remove('is-new'), 700);
+      }
+      const html = onlineRowHtml(u);
+      if (el.dataset.html !== html) { el.innerHTML = html; el.dataset.html = html; }
+      const anchor = prev ? prev.nextSibling : list.firstChild;
+      if (el !== anchor) list.insertBefore(el, anchor);
+      prev = el;
+    }
+    const more = host.querySelector('#ops-online-more');
+    const extra = Number(snap.count || 0) - users.length;
+    if (more) { more.hidden = !(extra > 0); more.textContent = extra > 0 ? `და კიდევ ${fmt(extra)} ადამიანი` : ''; }
+    if (!users.length) {
+      list.insertAdjacentHTML('beforeend', '<div class="cc-on-empty">ახლა აპში არავინაა. როგორც კი ვინმე შემოვა, აქ თავისით გამოჩნდება.</div>');
+    }
+  }
+
+  async function pollOnline() {
+    if (onlinePollBusy || !$('ops-online-list')) return;
+    onlinePollBusy = true;
+    try { patchOnlineUsers(await api('/online-users')); } catch { /* the next poll or socket event repaints */ }
+    finally { onlinePollBusy = false; }
+  }
+
+  function mountOnline() {
+    paintOnline(global.__opsOnline || null);
+    // The socket sends a list on connect; an admin who opens this page later gets one over HTTP at once.
+    void pollOnline();
+    if (!onlineTick) {
+      onlineTick = setInterval(() => {
+        const list = $('ops-online-list');
+        if (!list) { clearInterval(onlineTick); onlineTick = null; return; }
+        list.querySelectorAll('[data-ago]').forEach((el) => {
+          const next = agoKa(el.dataset.ago);
+          if (el.textContent !== next) el.textContent = next;
+        });
+      }, 1000);
+    }
+    if (!onlinePoll) {
+      onlinePoll = setInterval(() => {
+        if (!$('ops-online-list')) { clearInterval(onlinePoll); onlinePoll = null; return; }
+        if (!global.__adminSocketConnected && !document.hidden) void pollOnline();
+      }, 10_000);
+    }
+  }
+
+  function patchOnlineUsers(snap) {
+    if (!snap || !Array.isArray(snap.users)) return;
+    global.__opsOnline = snap;
+    paintOnline(snap);
+    // The hero number and this list come from the same heartbeat window: keep them equal.
+    if (typeof global.patchOpsLive === 'function') {
+      global.patchOpsLive({ ...(global.__opsLiveSnap || {}), onlineNow: snap.count, refreshedAt: snap.refreshedAt });
+    }
   }
 
   function paintLiveHero(root, overview, system) {
@@ -1086,4 +1253,5 @@
 
   global.renderCommandCenter = renderCommandCenter;
   global.refreshCommandCenterLive = refreshCommandCenterLive;
+  global.patchOnlineUsers = patchOnlineUsers;
 })(window);

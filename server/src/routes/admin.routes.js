@@ -1363,6 +1363,16 @@ adminRouter.get(
 );
 
 adminRouter.get(
+  '/online-users',
+  requireAdmin,
+  asyncHandler(async (_req, res) => {
+    res.set('Cache-Control', 'no-store');
+    const { getOnlineUsers } = await import('../lib/onlineUsers.js');
+    res.json(await getOnlineUsers());
+  }),
+);
+
+adminRouter.get(
   '/system/health',
   requireAdmin,
   asyncHandler(async (req, res) => {
