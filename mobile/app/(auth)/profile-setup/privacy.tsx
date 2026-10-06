@@ -9,6 +9,7 @@ import { PRIVACY_POLICY_EN } from '@/constants/privacyPolicyEn';
 import { ka } from '@/i18n/ka';
 import { isEn, tx } from '@/i18n/locale';
 import { patchProfileExtra } from '@/lib/profileSetupFlow';
+import { startAdMeasurement } from '@/lib/adMeasurement';
 import { useOnboardingDevPreview, onboardingScreenBlocked, onboardingStepHref } from '@/lib/onboardingDevPreview';
 import { useAuth } from '@/store/AuthContext';
 import { welcomeTopInset } from '@/constants/figmaWelcomeLayout';
@@ -140,6 +141,7 @@ export default function ProfileSetupPrivacyScreen() {
         privacyAcceptedAt: new Date().toISOString(),
       });
       setHealthProfile(updated);
+      if (!preview) startAdMeasurement(updated.extraAnswers);
       router.replace(onboardingStepHref('/(auth)/profile-setup/ai-privacy', preview) as never);
     } finally {
       setBusy(false);

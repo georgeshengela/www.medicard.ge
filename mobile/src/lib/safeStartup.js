@@ -72,6 +72,10 @@ export function runPostLoginSideEffects(user, healthProfile, { force = false } =
       void reconcilePetCareReminders({ reason: 'login' });
     }),
   );
+  // Meta install measurement (train 22): only after the privacy acceptance, never health data.
+  schedulePostLoginWork('ad-measurement', () =>
+    import('@/lib/adMeasurement').then(({ startAdMeasurement }) => startAdMeasurement(healthProfile?.extraAnswers)),
+  );
   // Goals restored from the server first, then every reminder family is put back on the device.
   schedulePostLoginWork('account', () =>
     import('@/lib/accountSync')
