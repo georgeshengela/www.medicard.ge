@@ -56,7 +56,17 @@ function scrub(value) {
   return out;
 }
 
+/**
+ * Unit tests call admin functions with a fake db, but the audit row used the real prisma: every
+ * `npm test` wrote 7 fake rows (qa@test / unknown, admin-1) into the main AdminAuditLog, shown in the
+ * admin activity sheet (owner 2026-10-06). Under the node test runner the audit is not written.
+ */
+export function auditWritesDisabled(env = process.env) {
+  return Boolean(env.NODE_TEST_CONTEXT) && env.ADMIN_AUDIT_IN_TESTS !== '1';
+}
+
 export async function writeAdminAudit({ admin, action, targetType, targetId, previousValue, newValue }) {
+  if (auditWritesDisabled()) return;
   try {
     await ensureAdminAuditTable();
     const id = crypto.randomUUID();
