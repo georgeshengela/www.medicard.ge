@@ -4,6 +4,7 @@ import {pauseJourney,resetSession} from './core/session';
 import {EMPTY_SIGNAL} from './types';
 import {tx} from '../../i18n/locale.js';
 import {normalizePulseFix,repairRejectedBatch} from './fixNormalization';
+import {pruneSent,uploadWaitMs} from './uploadPace';
 import type {Snapshot,PulseFix,GiftSignal,PulseSettings,Claim} from './types';
 
 type Operation={path:string;body?:unknown};
@@ -23,6 +24,8 @@ export class PulseSessionClient {
  /** Background uploads back off after a failure (5 s → 5 min) instead of retrying every tick forever. */
  private failures=0;
  private retryAt=0;
+ /** Send times of recent uploads: a backlog goes out at UPLOAD_PACE, never as a burst the request breaker reads as a loop. */
+ private sent:number[]=[];
  private loaded=false;
  private listeners=new Set<()=>void>();
  private view:PulseView={snapshot:null,journey:createJourney('gps'),book:emptyBook(),signal:EMPTY_SIGNAL,loading:false,running:false,pending:0,message:tx('შენი გზა ყველგან გრძელდება','Your path continues everywhere'),conflict:false};
@@ -77,6 +80,8 @@ export class PulseSessionClient {
   this.task=(async()=>{
    while(this.queue.length&&!this.disposed){
     const op=this.queue[0];
+    const wait=uploadWaitMs(this.sent,Date.now());if(wait>0){await new Promise(resolve=>setTimeout(resolve,wait));if(this.disposed)return;}
+    this.sent=[...pruneSent(this.sent,Date.now()),Date.now()];
     try{const result=await this.adapter.request<Snapshot|{seq:number}>(op.path,'POST',op.body);if(this.disposed)return;if('userId' in result)this.apply(result);this.queue.shift();await this.persist();}
     catch(error){const status=(error as {status?:number}).status;
      if(this.disposed)return;
