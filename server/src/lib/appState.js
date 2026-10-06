@@ -236,14 +236,32 @@ async function readProgramGoalSource(userId, db) {
   return row ?? null;
 }
 
+/**
+ * A panel made from lab uploads the person has since deleted goes with them. Without this a deleted
+ * upload's values (and its write-up) stayed in MEDILAB: every phone sync unions its old copy back in.
+ * Panels without a record (typed in by hand) always stay.
+ */
+export function withoutDeletedRecords(panels, existingIds) {
+  return asArray(panels).filter((panel) => {
+    const ids = asArray(panel?.recordIds);
+    return !ids.length || ids.some((id) => existingIds.has(id));
+  });
+}
+
+async function labRecordIds(userId, db) {
+  const rows = await db.medicalRecord.findMany({ where: { userId, type: 'LAB' }, select: { id: true } });
+  return new Set(asArray(rows).map((row) => row.id));
+}
+
 export async function loadAppState(userId, db = prisma) {
-  const [profile, records] = await Promise.all([
+  const [profile, records, recordIds] = await Promise.all([
     db.healthProfile.findUnique({ where: { userId } }),
     db.medicalRecord.findMany({
       where: { userId, type: 'LAB' },
       orderBy: { createdAt: 'asc' },
       take: MAX_PANELS,
     }),
+    labRecordIds(userId, db),
   ]);
   const stored = storedState(extraOf(profile));
   const reconstructed = reconstructLabPanels(records);
@@ -251,7 +269,7 @@ export async function loadAppState(userId, db = prisma) {
     ...stored,
     weightGoal: stored.weightGoal ? stored.weightGoal : unifiedWeightGoal(null, await readProgramGoalSource(userId, db)),
     // Stored panels come last so they win over the copy rebuilt from the record's current text.
-    labPanels: mergeLabPanelLists(reconstructed, stored.labPanels),
+    labPanels: withoutDeletedRecords(mergeLabPanelLists(reconstructed, stored.labPanels), recordIds),
   };
 }
 
@@ -270,7 +288,7 @@ export async function saveAppState(userId, patch) {
     const current = await loadAppState(userId, tx);
     const next = mergeAppState(current, patch);
     next.updatedAt = new Date().toISOString();
-    next.labPanels = persistablePanels(next.labPanels);
+    next.labPanels = persistablePanels(withoutDeletedRecords(next.labPanels, await labRecordIds(userId, tx)));
     const existing = await tx.healthProfile.findUnique({where:{userId}});
     await tx.healthProfile.update({where:{userId},data:{extraAnswers:{...extraOf(existing),labPanels:next.labPanels,appState:next}}});
     return next;

@@ -129,3 +129,14 @@ describe('document header lines are never lab values', async () => {
     assert.deepEqual(saved.parameters.map((r) => r.key), ['mcv']);
   });
 });
+
+describe('a deleted lab upload takes its values with it', async () => {
+  const { withoutDeletedRecords } = await import('./appState.js');
+  it('drops panels whose records were all deleted, keeps typed-in and live ones', () => {
+    const kept = withoutDeletedRecords(
+      [panel('gone', '2010-11-19', ['rec-deleted'], ['mcv']), panel('live', '2026-10-01', ['rec-live', 'rec-deleted'], ['tsh']), panel('typed', '2026-09-01', [], ['glucose'])],
+      new Set(['rec-live']),
+    );
+    assert.deepEqual(kept.map((p) => p.id), ['live', 'typed']);
+  });
+});
