@@ -1,5 +1,6 @@
 import { assertAiConsent, AI_DISCLOSURE, currentAiAccount, currentAiLanguage, hasAiLanguage, setAiLanguage } from './aiConsent.js';
 import { aiLanguageDirective, getUserLanguage, parseLang, t } from './i18n.js';
+import { withReasoningHeadroom } from './reasoningBudget.js';
 
 const ORIGINS = { openrouter: 'https://openrouter.ai', evidencemd: 'https://evidencemd.ai' };
 export function approvedProviderRouting(model) {
@@ -52,7 +53,7 @@ export function consentedAiFetch(provider, { check = assertAiConsent, account = 
     if (body == null && typeof input?.clone === 'function') body = await input.clone().text();
     if (provider === 'openrouter') {
       const payload = JSON.parse(String(body || '{}'));
-      body = JSON.stringify({ ...payload, provider: approvedProviderRouting(payload.model) });
+      body = JSON.stringify({ ...withReasoningHeadroom(payload), provider: approvedProviderRouting(payload.model) });
     }
     await check(account());
     const headers = new Headers(init.headers ?? (typeof input === 'object' ? input.headers : undefined));

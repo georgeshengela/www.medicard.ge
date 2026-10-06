@@ -99,3 +99,19 @@ it('explain-lab gets values in the shape the server accepts', async () => {
   assert.equal(nan.display, '—');
   assert.equal(nan.flag, 'U');
 });
+
+describe('vision output written twice (table + labjson)', () => {
+  it('counts each analyte once', () => {
+    const text = [
+      'ერითროციტების საშუალო მოცულობა (MCV) [Mean Corpuscular Volume] | 84.1 | ფლ | 80-96 | N',
+      'ედს (ESR) [Erythrocyte Sedimentation Rate] | 24 | მმ/სთ | 0-20 | H',
+      'ალანინამინოტრანსფერაზა (ALT) [Alanine Aminotransferase] | 11.3 | ერთ/ლ | 0-35 | N',
+      '```labjson',
+      '{"date":"2026-10-01","parameters":[{"key":"mcv","nameKa":"MCV","nameEn":"MCV","value":84.1,"display":"84.1","unit":"fL","refLow":80,"refHigh":96,"flag":"N"},{"key":"esr","nameKa":"ედს","nameEn":"ESR","value":24,"display":"24","unit":"mm/h","refLow":0,"refHigh":20,"flag":"H"},{"key":"alt","nameKa":"ALT","nameEn":"ALT","value":11.3,"display":"11.3","unit":"U/L","refLow":0,"refHigh":35,"flag":"N"}]}',
+      '```',
+    ].join('\n');
+    const parsed = parseLabExtract(text);
+    assert.equal(parsed.parameters.length, 3);
+    assert.equal(mergeLabExtracts([parsed, parseLabExtract(text)]).parameters.length, 3);
+  });
+});

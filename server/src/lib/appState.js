@@ -1,5 +1,5 @@
 import { prisma } from './prisma.js';
-import { extractLabFromText } from './labExtract.js';
+import { extractLabFromText, isLabMetadataRow } from './labExtract.js';
 import { unifiedWeightGoal } from './weightGoalUnify.js';
 
 const MAX_PANELS = 200;
@@ -25,7 +25,7 @@ function trimStr(value, max) {
 function sanitizeParameter(row) {
   if (!row || typeof row !== 'object') return null;
   const key = trimStr(row.key, 80);
-  if (!key) return null;
+  if (!key || isLabMetadataRow(row)) return null;
   const value = typeof row.value === 'number' && Number.isFinite(row.value) ? row.value : Number(row.value);
   return {
     key,
@@ -55,14 +55,49 @@ export function sanitizeLabPanel(row) {
     analysis: trimStr(row.analysis, 8_000),
     visionNotes: row.visionNotes ? trimStr(row.visionNotes, 8_000) : undefined,
     parameters,
+    ...(row.auto === true ? { auto: true } : {}),
   };
+}
+
+/**
+ * Server-made panels (extract-lab, rebuilt from a record) carry `auto`; older ones are recognised by
+ * their `lab-<date>-<recordId>` id. The app's own panel (the date the person saw or chose) wins.
+ */
+export function isAutoLabPanel(panel) {
+  if (panel?.auto === true) return true;
+  const ids = asArray(panel?.recordIds);
+  return ids.length === 1 && panel?.id === `lab-${panel?.date}-${ids[0]}`;
+}
+
+/**
+ * One lab record is one panel. The same record under another date (a guessed date, an OCR date, the
+ * date the person picked) used to show the same values two or three times in MEDILAB and its charts.
+ * Later input wins among equals; the app's panels win over server-made ones; same-date copies stay
+ * and are merged by date.
+ */
+export function dedupeLabPanelsByRecord(panels) {
+  const list = asArray(panels);
+  const claimed = new Map();
+  const keep = new Array(list.length).fill(true);
+  for (const auto of [false, true]) {
+    for (let i = list.length - 1; i >= 0; i -= 1) {
+      const panel = list[i];
+      if (!panel || isAutoLabPanel(panel) !== auto) continue;
+      const ids = asArray(panel.recordIds);
+      if (ids.some((id) => claimed.has(id) && claimed.get(id) !== panel.date)) {
+        keep[i] = false;
+        continue;
+      }
+      for (const id of ids) if (!claimed.has(id)) claimed.set(id, panel.date);
+    }
+  }
+  return list.filter((_, i) => keep[i]);
 }
 
 export function mergeLabPanelLists(current, incoming) {
   const byDate = new Map();
-  for (const raw of [...asArray(current), ...asArray(incoming)]) {
-    const panel = sanitizeLabPanel(raw);
-    if (!panel) continue;
+  const sanitized = [...asArray(current), ...asArray(incoming)].map(sanitizeLabPanel).filter(Boolean);
+  for (const panel of dedupeLabPanelsByRecord(sanitized)) {
     const existing = byDate.get(panel.date);
     if (!existing) {
       byDate.set(panel.date, panel);
@@ -70,8 +105,13 @@ export function mergeLabPanelLists(current, incoming) {
     }
     const params = new Map(existing.parameters.map((item) => [item.key, item]));
     for (const item of panel.parameters) params.set(item.key, item);
+    const auto = existing.auto === true && panel.auto === true;
+    const { auto: _auto, ...base } = existing;
     byDate.set(panel.date, {
-      ...existing,
+      ...base,
+      // A panel the app saved must not keep a server-made id, or it would read as server-made later.
+      id: !auto && isAutoLabPanel(existing) && !isAutoLabPanel(panel) ? panel.id : existing.id,
+      ...(auto ? { auto: true } : {}),
       createdAt: existing.createdAt || panel.createdAt,
       recordIds: [...new Set([...existing.recordIds, ...panel.recordIds])],
       analysis: existing.analysis || panel.analysis,
@@ -107,6 +147,7 @@ function panelFromRecord(record) {
     analysis: '',
     visionNotes: record.aiAnalysis,
     parameters: extract.parameters,
+    auto: true,
   });
 }
 
@@ -209,7 +250,8 @@ export async function loadAppState(userId, db = prisma) {
   return {
     ...stored,
     weightGoal: stored.weightGoal ? stored.weightGoal : unifiedWeightGoal(null, await readProgramGoalSource(userId, db)),
-    labPanels: mergeLabPanelLists(stored.labPanels, reconstructed),
+    // Stored panels come last so they win over the copy rebuilt from the record's current text.
+    labPanels: mergeLabPanelLists(reconstructed, stored.labPanels),
   };
 }
 
@@ -246,6 +288,7 @@ export async function persistLabExtract(userId, extract, record) {
     analysis: '',
     visionNotes: record.aiAnalysis,
     parameters: extract?.parameters?.length ? extract.parameters : extractLabFromText(record.aiAnalysis).parameters,
+    auto: true,
   });
   if (!panel) return null;
   return saveAppState(userId, { labPanels: [panel] });

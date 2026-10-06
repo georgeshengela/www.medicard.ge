@@ -8,13 +8,13 @@ import { prisma } from '../lib/prisma.js';
 import { AiEngineError } from '../lib/evidencemd.js';
 import { askAi, serverAiEngine, publicAiEngineCatalog, resolveOpenRouterModel } from '../lib/aiEngine.js';
 import { runTrackedAi } from '../lib/aiTelemetry.js';
-import { describeImage, structureLabText, SUPPORTED_IMAGE_TYPES } from '../lib/vision.js';
+import { describeImage, structureLabText, SUPPORTED_IMAGE_TYPES, VISION_EFFORTS } from '../lib/vision.js';
 import { extractPdfText, ocrImage, SUPPORTED_DOCUMENT_TYPES } from '../lib/ocr.js';
 import { buildVisionHandoff, buildDoctorTurnContext, sanitizeDoctorReply } from '../lib/prompts.js';
 import { calculateAge, withPatientAiContext } from '../lib/patient.js';
 import { buildSymptomPrompt, formatSymptomRecordKa, runSymptomCheck } from '../lib/symptomCheck.js';
 import { saveUpload } from '../lib/storage.js';
-import { extractLabFromText } from '../lib/labExtract.js';
+import { extractLabFromText, isCredibleLabRow } from '../lib/labExtract.js';
 import { persistLabExtract } from '../lib/appState.js';
 import { alignLabAnalytes } from '../lib/labAlign.js';
 import { adviseWeight } from '../lib/weightAdvice.js';
@@ -468,13 +468,13 @@ aiRouter.post(
         declared === 'application/pdf' ||
         (file.buffer?.length >= 4 && file.buffer.toString('ascii', 0, 4) === '%PDF');
       if (isPdf) {
-        const { text, pages } = await extractPdfText(file.buffer);
-        if (text.length < 24) {
-          return res.status(422).json({
-            error: t(req, 'PDF-დან ტექსტის ამოკითხვა ვერ მოხერხდა. სცადე დოკუმენტის ფოტოს ატვირთვა.', 'We could not read text from the PDF. Try uploading a photo of the document.'),
-          });
+        const { text, pages } = await extractPdfText(file.buffer).catch(() => ({ text: '', pages: 0 }));
+        if (text.length >= 24) {
+          pdfNotes.push(`[PDF, ${pages} გვერდი]\n\n${text}`);
+          continue;
         }
-        pdfNotes.push(`[PDF, ${pages} გვერდი]\n\n${text}`);
+        // A scanned PDF is only pictures: the vision model reads its pages itself.
+        images.push({ buffer: file.buffer, mimeType: 'application/pdf' });
         continue;
       }
 
@@ -490,7 +490,8 @@ aiRouter.post(
     let visionNotes = pdfNotes.join('\n\n');
     let extractor = { provider: pdfNotes.length ? 'pdf-parse' : 'none', model: pdfNotes.length ? 'pdf-parse' : '' };
 
-    if (images.length) {
+    let usedOcr = false;
+    const readImages = async (efforts, { ocr }) => {
       const parts = [];
       let last = null;
       for (const [index, image] of images.entries()) {
@@ -500,19 +501,38 @@ aiRouter.post(
           kind: 'LAB',
           patientContext: context,
           model: resolveOpenRouterModel(req.user),
+          efforts,
         }).catch(async (error) => {
-          const text = await ocrImage(image.buffer);
+          // Tesseract is the last resort: Georgian print through it is mostly noise, so its text only
+          // counts when it still yields real analytes (checked below).
+          const text = ocr && image.mimeType !== 'application/pdf' ? await ocrImage(image.buffer) : null;
           if (!text) throw error;
+          usedOcr = true;
           return { notes: text, provider: 'tesseract', model: 'tesseract-kat+eng+rus' };
         });
         parts.push(images.length > 1 ? `--- PAGE ${index + 1} ---\n${described.notes}` : described.notes);
         last = described;
       }
-      visionNotes = [visionNotes, ...parts].filter(Boolean).join('\n\n');
-      extractor = { provider: last?.provider ?? 'openrouter', model: last?.model ?? '' };
+      return { notes: [pdfNotes.join('\n\n'), ...parts].filter(Boolean).join('\n\n'), last };
+    };
+
+    if (images.length) {
+      const read = await readImages(VISION_EFFORTS, { ocr: true });
+      visionNotes = read.notes;
+      extractor = { provider: read.last?.provider ?? 'openrouter', model: read.last?.model ?? '' };
     }
 
     let labExtract = extractLabFromText(visionNotes);
+    // The model answered but no value came out of it: one careful pass before telling the person.
+    if (images.length && !usedOcr && !labExtract.parameters.length) {
+      const deep = await readImages(['high'], { ocr: false }).catch(() => null);
+      const deepExtract = deep ? extractLabFromText(deep.notes) : null;
+      if (deepExtract && deepExtract.parameters.length > labExtract.parameters.length) {
+        visionNotes = deep.notes;
+        labExtract = deepExtract;
+        extractor = { provider: deep.last?.provider ?? 'openrouter', model: deep.last?.model ?? '' };
+      }
+    }
     if (labExtract.parameters.length < 3 && visionNotes.length >= 24) {
       const structured = await structureLabText(visionNotes, {
         model: resolveOpenRouterModel(req.user),
@@ -524,6 +544,18 @@ aiRouter.post(
       }
     }
 
+    // OCR noise reads as rows like „დაბადების თარიღი … AVERS | 4“: only rows with a unit or a printed
+    // range count, and a page that yields none is reported as unreadable instead of being saved.
+    if (usedOcr) {
+      labExtract = { ...labExtract, parameters: labExtract.parameters.filter(isCredibleLabRow) };
+      // The app re-parses `notes`: hand it the clean rows, not the noise they came from.
+      visionNotes = [labExtract.date ? `DOCUMENT META\ndate: ${labExtract.date}` : '', formatLabTable(labExtract.parameters)].filter(Boolean).join('\n\n');
+    }
+    const unreadable = !labExtract.parameters.length || (usedOcr && labExtract.parameters.length < 3);
+    if (unreadable) {
+      console.warn('[medicard] lab sheet unreadable', { images: images.length, ocr: usedOcr, rows: labExtract.parameters.length });
+    }
+
     if (req.labAppend) {
       if (!recordId) {
         return res.status(400).json({ error: t(req, 'ჩანაწერი ვერ მოიძებნა.', 'Record not found.') });
@@ -533,6 +565,18 @@ aiRouter.post(
       });
       if (!existing) {
         return res.status(404).json({ error: t(req, 'ჩანაწერი ვერ მოიძებნა.', 'Record not found.') });
+      }
+      if (unreadable) {
+        // Keep the pages already read; this page adds nothing rather than noise.
+        return res.json({
+          record: { id: existing.id, type: existing.type, imageUrl: existing.imageUrl, aiAnalysis: existing.aiAnalysis, createdAt: existing.createdAt },
+          notes: existing.aiAnalysis,
+          labExtract: extractLabFromText(existing.aiAnalysis),
+          unreadable: true,
+          interactionId: null,
+          pipeline: { extractor, reasoning: null },
+          usage: await getUsage(req.user.id),
+        });
       }
       visionNotes = [existing.aiAnalysis, visionNotes].filter(Boolean).join('\n\n--- PAGE ---\n\n');
       const labExtract = extractLabFromText(visionNotes);
@@ -554,6 +598,17 @@ aiRouter.post(
         interactionId: null,
         pipeline: { extractor, reasoning: null },
         usage: await getUsage(req.user.id),
+      });
+    }
+
+    if (unreadable) {
+      return res.status(422).json({
+        code: 'LAB_UNREADABLE',
+        error: t(
+          req,
+          'ფურცლიდან მაჩვენებლები ვერ ამოვიკითხეთ. გადაუღე პირდაპირ, კარგ შუქზე, რომ ყველა ციფრი მკაფიოდ ჩანდეს, ან ატვირთე ლაბორატორიის PDF. ეს მცდელობა ლიმიტში არ ჩაგეთვლება.',
+          'We could not read the values on this sheet. Take the photo straight on, in good light, so every number is sharp, or upload the lab’s PDF. This try does not count toward your limit.',
+        ),
       });
     }
 
@@ -647,6 +702,9 @@ aiRouter.post(
         askAi({
           user: req.user,
           mode: 'LAB',
+          // A 40-row sheet explained in Georgian is ~5 000 visible tokens; a cut reply is retried, never saved.
+          maxTokens: 9000,
+          reasoningEffort: 'low',
           context: patientAiContext,
           messages: [
             { role: 'user', content: buildVisionHandoff({ kind: 'LAB', visionNotes, patientContext: body.context, lang: req.lang }) },

@@ -65,9 +65,12 @@ export async function runTrackedAi({
   const started = Date.now();
   try {
     const result = await fn();
+    // A streamed reply that hit max_tokens was already shown; record it as an error so admin sees it.
+    const cut = result?.finishReason === 'length';
     const interaction = await logAiInteraction({
       userId,
       mode,
+      ...(cut ? { status: 'ERROR', errorMessage: 'Reply cut off at max_tokens' } : {}),
       chatSessionId,
       medicalRecordId,
       userPrompt,

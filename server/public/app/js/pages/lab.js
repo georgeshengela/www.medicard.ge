@@ -369,7 +369,7 @@ export function openLabUpload({ onSaved, navigate } = {}) {
         if (context) fd.append('context', context);
         if (batch.last?.record?.id) fd.append('recordId', batch.last.record.id);
         if (i > 0) fd.append('append', '1');
-        batch.last = await request('/api/ai/extract-lab', { method: 'POST', body: fd, timeoutMs: 150_000 });
+        batch.last = await request('/api/ai/extract-lab', { method: 'POST', body: fd, timeoutMs: 180_000 });
         batch.next = i + 1;
         renderFiles();
       }
@@ -382,7 +382,7 @@ export function openLabUpload({ onSaved, navigate } = {}) {
     const extract = out.labExtract || { date: null, parameters: [] };
     const created = String(out.record?.createdAt || new Date().toISOString());
     const date = extract.date || created.slice(0, 10);
-    const res = { extract, date, notes: out.notes, recordId: out.record?.id, createdAt: created, panelId: `lab-${date}-${out.record?.id || Date.now()}` };
+    const res = { extract, date, notes: out.notes, recordId: out.record?.id, createdAt: created, panelId: `lab-${date}-${out.record?.id || Date.now()}-web` };
     batch = null;
     onSaved?.({ date, count: extract.parameters?.length || 0 });
     resultView(res);

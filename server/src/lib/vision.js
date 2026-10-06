@@ -6,6 +6,7 @@ import { env } from '../config/env.js';
 import { VISION_PROMPTS } from './prompts.js';
 import { AiEngineError } from './evidencemd.js';
 import { openRouterFallbackModels } from './aiEngine.js';
+import { thinksByDefault } from './reasoningBudget.js';
 
 /**
  * Vision pre-processing layer.
@@ -37,6 +38,20 @@ const anthropic = env.ANTHROPIC_API_KEY
 const openai = env.OPENAI_API_KEY
   ? new OpenAI({ fetch: consentedAiFetch('openai'), apiKey: env.OPENAI_API_KEY, timeout: 120_000, maxRetries: 1 })
   : null;
+
+/**
+ * Visible room for one read. A full Georgian lab sheet (≈40 analytes + DOCUMENT META + labjson) is
+ * ≈4 500 tokens; the old 2 000 (thinking included) cut every real sheet and pushed it to tesseract.
+ * Thinking room is added on top in consentedAiFetch (reasoningBudget.js).
+ */
+export const VISION_MAX_TOKENS = 12000;
+const VISION_MAX_TOKENS_MULTI = 24000;
+/** Measured 2026-10-06 on a 39-row sheet: minimal = 39/39 in ~29 s, medium = 39/39 in ~46 s. */
+export const VISION_EFFORTS = Object.freeze(['minimal', 'medium']);
+/** Copying a printed table needs little thinking; reading an X-ray or a skin photo needs more. */
+export function visionEffortsFor(kind) {
+  return kind === 'LAB' ? VISION_EFFORTS : ['medium', 'high'];
+}
 
 export const SUPPORTED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
 
@@ -84,7 +99,8 @@ export async function describeImages({ images, kind, patientContext, model }) {
           provider: 'openrouter',
           images: list,
           prompt,
-          maxTokens: 4000,
+          maxTokens: VISION_MAX_TOKENS_MULTI,
+          reasoningEffort: visionEffortsFor(kind)[0],
         });
       } catch (error) {
         errors.push(`openrouter-multi:${openRouterModel}: ${error?.message ?? error}`);
@@ -127,7 +143,8 @@ export async function structureLabText(text, { model } = {}) {
           'This is already-extracted text from a laboratory PDF. Structure every analyte. Do not invent values.',
           source.slice(0, 12000),
         ].join('\n\n'),
-        maxTokens: 4000,
+        maxTokens: VISION_MAX_TOKENS,
+        reasoningEffort: 'minimal',
       });
     } catch (error) {
       lastError = error;
@@ -137,7 +154,7 @@ export async function structureLabText(text, { model } = {}) {
   return null;
 }
 
-export async function describeImage({ buffer, mimeType, kind, patientContext, model }) {
+export async function describeImage({ buffer, mimeType, kind, patientContext, model, efforts = visionEffortsFor(kind) }) {
   if (!openrouter && !anthropic && !openai) {
     throw new AiEngineError(
       'გამოსახულების ანალიზის სერვისი არ არის კონფიგურირებული. დაამატეთ OPENROUTER_API_KEY.',
@@ -154,19 +171,25 @@ export async function describeImage({ buffer, mimeType, kind, patientContext, mo
   const errors = [];
 
   if (openrouter) {
+    // Fast pass first; a cut or empty read gets one deeper pass before anything else is tried.
     for (const openRouterModel of openRouterFallbackModels(model || env.OPENROUTER_MODEL)) {
-      try {
-        return await describeWithOpenAiCompatible({
-          client: openrouter,
-          model: openRouterModel,
-          provider: 'openrouter',
-          base64,
-          mimeType,
-          prompt,
-          detail: kind === 'LAB' ? 'auto' : 'high',
-        });
-      } catch (error) {
-        errors.push(`openrouter:${openRouterModel}: ${error?.message ?? error}`);
+      for (const effort of efforts) {
+        try {
+          return await describeWithOpenAiCompatible({
+            client: openrouter,
+            model: openRouterModel,
+            provider: 'openrouter',
+            base64,
+            mimeType,
+            prompt,
+            detail: 'high',
+            maxTokens: VISION_MAX_TOKENS,
+            reasoningEffort: effort,
+          });
+        } catch (error) {
+          errors.push(`openrouter:${openRouterModel}:${effort}: ${error?.message ?? error}`);
+          console.warn('[medicard] vision pass failed', openRouterModel, effort, error?.message ?? error);
+        }
       }
     }
   }
@@ -229,6 +252,14 @@ async function describeWithClaude({ base64, mimeType, prompt }) {
   return { notes, provider: 'anthropic', model: response.model ?? env.ANTHROPIC_MODEL };
 }
 
+/** A scanned PDF goes as a file part (Gemini reads its pages); everything else as an image. */
+export function mediaPart(mimeType, base64, detail = 'high') {
+  if (mimeType === 'application/pdf') {
+    return { type: 'file', file: { filename: 'lab.pdf', file_data: `data:application/pdf;base64,${base64}` } };
+  }
+  return { type: 'image_url', image_url: { url: `data:${mimeType};base64,${base64}`, detail } };
+}
+
 async function describeWithOpenAiCompatible({
   client,
   model,
@@ -237,24 +268,14 @@ async function describeWithOpenAiCompatible({
   mimeType,
   images,
   prompt,
-  maxTokens = 2000,
+  maxTokens = VISION_MAX_TOKENS,
   detail = 'high',
+  reasoningEffort,
 }) {
   const imageParts = images?.length
-    ? images.map((image) => ({
-        type: 'image_url',
-        image_url: {
-          url: `data:${image.mimeType};base64,${image.buffer.toString('base64')}`,
-          detail: 'high',
-        },
-      }))
+    ? images.map((image) => mediaPart(image.mimeType, image.buffer.toString('base64'), 'high'))
     : base64
-      ? [
-          {
-            type: 'image_url',
-            image_url: { url: `data:${mimeType};base64,${base64}`, detail: detail ?? 'high' },
-          },
-        ]
+      ? [mediaPart(mimeType, base64, detail ?? 'high')]
       : [];
 
   // Vision output is extraction notes (lab names stay Georgian for parsing), not the reader's answer:
@@ -263,6 +284,7 @@ async function describeWithOpenAiCompatible({
     model,
     max_tokens: maxTokens,
     temperature: 0,
+    ...(reasoningEffort && thinksByDefault(model) ? { reasoning: { effort: reasoningEffort, exclude: true } } : {}),
     messages: [
       {
         role: 'user',
