@@ -200,7 +200,9 @@ export function MediChat({ owner, sessionId, startConsilium, directDoctor, prefi
     try {
       // The cycle context rides only with the first question that goes through (consent runs first).
       const context = sessions.current[mode] ? undefined : cycleContextRef.current?.text;
-      const response = await streamAiQuery({ message: value, mode, sessionId: sessions.current[mode], cycleContextAllowed: !cycleContextExcluded.current, ...(context ? { context } : {}) },
+      // The planner's part of this chat (what she told Medi, what was saved) — the clinical session does not hold it.
+      const thread = plannerHistory(turnsRef.current.filter(t => t.id !== userTurn.id && t.id !== slot.id));
+      const response = await streamAiQuery({ message: value, mode, sessionId: sessions.current[mode], cycleContextAllowed: !cycleContextExcluded.current, ...(thread.length ? { thread } : {}), ...(context ? { context } : {}) },
         { signal: controller.signal, onDelta: (chunk: string) => { if (!valid(n)) return; buffer += chunk; if (!timer) timer = setTimeout(flush, 40); } });
       if (!valid(n)) return;
       requireAnalysisText(response.answer);

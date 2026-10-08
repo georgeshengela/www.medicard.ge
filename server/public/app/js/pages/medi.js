@@ -682,10 +682,12 @@ export default async function mediPage(root, ctx) {
     const live = () => gen === generation && same() && conv === st.conv;
     // The cycle context rides only with the first question that goes through (consent runs first).
     const context = st.clinical[mode] ? undefined : st.context?.text;
+    // The planner's part of this chat — the clinical session does not hold it (the server skips repeats).
+    const thread = historyTurns(user);
     let done = null;
     try {
       await stream('/api/ai/query', {
-        message, mode, cycleContextAllowed: !st.cycleContextExcluded, ...(st.clinical[mode] ? { sessionId: st.clinical[mode] } : {}), ...(context ? { context } : {}), stream: true,
+        message, mode, cycleContextAllowed: !st.cycleContextExcluded, ...(thread.length ? { thread } : {}), ...(st.clinical[mode] ? { sessionId: st.clinical[mode] } : {}), ...(context ? { context } : {}), stream: true,
       }, (event, data) => {
         if (!live()) return;
         const type = (data && typeof data === 'object' && data.type) || event;

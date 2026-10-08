@@ -1,45 +1,111 @@
 import { serializeCycleLogForAi } from './cycleAiContext.js';
 import { cycleModeForPatientAiContext } from './cycleModes.js';
 
-export const MEDI_RECORD_CONTEXT_RULES = `Account records are refreshed for this request; prefer their dated facts over older conversation claims. Read supplied cycle.logs before saying symptoms are missing. When recorded symptoms answer the question, name those symptoms and their dates; do not ask the person to enter them again. A recorded symptom is not a diagnosis or evidence of pregnancy. Ask only for information actually missing for the question. unavailable/withheld/not_requested means you cannot access that source, NOT that no records exist. An empty or partial date window does not mean no symptoms or no history. Never infer excluded private fields. Only apply the account holder's records when the question concerns that person.`;
+export const CYCLE_DIARY_MAX_ENTRIES = 45;
 
-/** One privacy/allowlist boundary for both the planner and the clinical answer. No cache or writes. */
+/**
+ * Rules for every Medi answer that carries account records (planner and clinical model alike).
+ * The 2026-10-08 incident: the diary held that day's symptoms, the clinical model never received it
+ * and told her „შენს ჩანაწერებში სიმპტომები არ ჩანს“.
+ */
+export const MEDI_RECORD_CONTEXT_RULES = `Account records are re-read from the database for this request; prefer their dated facts over older conversation claims.
+Before saying symptoms, results or history are missing, read every supplied block (cycle diary, symptom checks, lab values, records, visits, metrics, this conversation). When saved entries answer the question, name them with their dates and use them; never ask the person to type in again what is already saved. Ask only for what is genuinely missing (for example how it feels right now, onset, severity) — and say what you already see first.
+A logged symptom is the person's own entry, not a diagnosis and not evidence of pregnancy. Dates other than today are history, not today's state.
+A block marked withheld or unavailable means you cannot see that source here — never „there are no entries“. A source that is absent was not loaded or is empty: never call that a negative finding. Never reconstruct excluded private fields (sex, tests, temperature, notes).
+Apply the account holder's records only when the question is about that person.
+ქართულად: თუ ჩანაწერებში სიმპტომები წერია, არასოდეს თქვა „შენს ჩანაწერებში სიმპტომები არ ჩანს“ — დაასახელე ისინი თარიღით („8 ოქტომბერს ჩაინიშნე თავის ტკივილი და შებერილობა…“) და მათზე დაყრდნობით უპასუხე.`;
+
+const WITHHELD_DEVICE = 'Cycle diary withheld by the person’s privacy choices: the cycle Face ID/PIN lock, masked or discreet notifications, an older app version or the person removed the cycle context. Do not read, guess or reconstruct it, and never say the diary is empty. If cycle symptoms matter, say in one short clause that the cycle entries are protected and ask how she feels. Saving a NEW cycle entry the person explicitly asks for is still allowed (the save path checks its own permissions).';
+const WITHHELD_PROFILE = 'Cycle privacy is on for this account. Do not read, write or infer cycle data, mode or symptoms through Medi; entries may exist but are not available here. Point to the cycle screen when relevant.';
+const UNAVAILABLE = 'The cycle diary could not be loaded right now. If relevant, say it is temporarily unavailable; never claim there are no symptoms and do not reconstruct it from earlier turns.';
+
+/**
+ * One loader and one privacy boundary for the planner and the clinical answer. Owner-scoped, read
+ * fresh on every request, no cache, no writes. Returns null when the account has no cycle profile at
+ * all (men, women who never opened the cycle) — no block, no noise.
+ * Only `serializeCycleLogForAi` decides what a day says (registry allow-list: no sex, BBT, tests,
+ * mucus, notes, tags, observations bag); the query selects nothing else.
+ */
 export async function loadCycleAccountContext(userId, db, { today, allowed = true } = {}) {
-  if (!allowed) return { status: 'withheld', locked: true, instruction: 'This client has not allowed cycle context for this request. It may be an older app or a privacy choice. Do not read or reconstruct it, and do not claim the diary is empty. If relevant, explain that access is unavailable here and suggest checking the app version and cycle privacy settings.' };
+  let profile;
   try {
-    const profile = await db.cycleProfile.findUnique({ where: { userId }, select: {
-      mode: true, avgCycleLength: true, avgPeriodLength: true, lastPeriodStart: true,
-      dueDate: true, isIrregular: true, privacyEnabled: true, reminderPrefs: true,
+    profile = await db.cycleProfile.findUnique({ where: { userId }, select: {
+      mode: true, avgCycleLength: true, avgPeriodLength: true, lastPeriodStart: true, dueDate: true,
+      isIrregular: true, conditions: true, privacyEnabled: true, reminderPrefs: true,
     } });
-    if (profile?.privacyEnabled || profile?.reminderPrefs?.maskNotifications === true) {
-      return { status: 'withheld', locked: true, instruction: 'Cycle privacy is enabled. Do not read/write cycle through Medi or infer its mode or symptoms. Records may exist but are not available here.' };
-    }
-    if (!profile) return { status: 'not_configured', logs: [], instruction: 'No cycle profile is available. This is not evidence of no symptoms.' };
-    const rows = await db.cycleLog.findMany({ where: { userId, ...(today ? { date: { lte: today } } : {}) }, take: 45, orderBy: { date: 'desc' }, select: {
-      date: true, flow: true, symptoms: true, moods: true, painEntries: true, sleepQuality: true, stressLevel: true,
-    } });
-    const safeProfile = { mode: cycleModeForPatientAiContext(profile.mode), avgCycleLength: profile.avgCycleLength,
-      avgPeriodLength: profile.avgPeriodLength, lastPeriodStart: profile.lastPeriodStart,
-      isIrregular: profile.isIrregular, ...(profile.mode === 'PREGNANCY' ? { dueDate: profile.dueDate } : {}) };
-    return { status: 'available', asOf: today, profile: safeProfile,
-      // No raw diary notes, tests, sex, private keys, excluded-field diagnostics or identifiers.
-      logs: rows.map(row => ({ date: row.date, line: serializeCycleLogForAi({ ...row, flow: row.flow || 'not_recorded' }).line })),
-      coverage: { maxEntries: 45, returned: rows.length, newest: rows[0]?.date || null, oldest: rows.at(-1)?.date || null },
-      instruction: 'Saved cycle diary, newest first, at most 45 entries through asOf. Use dated symptoms and pain from these lines. — and not_recorded mean not recorded/shared, never a confirmed absence. Dates are historical unless equal to asOf. Calendar estimates and self-reported symptoms are not diagnoses.' };
   } catch {
-    return { status: 'unavailable', instruction: 'The cycle diary could not be loaded now. Explain temporary unavailability if relevant; never claim there are no symptoms. Do not reconstruct private data from prior turns.' };
+    return { status: 'unavailable', instruction: UNAVAILABLE };
+  }
+  if (!profile) return null;
+  if (profile.privacyEnabled) return { status: 'withheld', reason: 'privacy', instruction: WITHHELD_PROFILE };
+  if (!allowed || profile.reminderPrefs?.maskNotifications === true) {
+    return { status: 'withheld', reason: 'device', instruction: WITHHELD_DEVICE };
+  }
+  try {
+    const rows = await db.cycleLog.findMany({
+      where: { userId, ...(today ? { date: { lte: today } } : {}) },
+      take: CYCLE_DIARY_MAX_ENTRIES,
+      orderBy: { date: 'desc' },
+      select: { date: true, flow: true, symptoms: true, moods: true, painEntries: true, sleepQuality: true, stressLevel: true },
+    });
+    const mode = cycleModeForPatientAiContext(profile.mode);
+    const conditions = Array.isArray(profile.conditions) ? profile.conditions.map(String).filter(Boolean).slice(0, 8) : [];
+    return {
+      status: 'available',
+      asOf: today || null,
+      profile: {
+        ...(mode ? { mode } : {}),
+        avgCycleLength: profile.avgCycleLength,
+        avgPeriodLength: profile.avgPeriodLength,
+        lastPeriodStart: isoDay(profile.lastPeriodStart),
+        isIrregular: Boolean(profile.isIrregular),
+        ...(conditions.length ? { conditions } : {}),
+        ...(profile.mode === 'PREGNANCY' && profile.dueDate ? { dueDate: isoDay(profile.dueDate) } : {}),
+      },
+      // A missing flow is „not recorded“, never „none“ (= she logged no bleeding).
+      logs: rows.map(row => ({ date: row.date, line: serializeCycleLogForAi({ ...row, flow: row.flow || 'not_recorded' }).line })),
+      instruction: 'Saved cycle diary, newest first. Use the dated symptoms, moods, pain and flow. „—“ and not_recorded mean nothing was logged for that field, never a confirmed absence. Days without a line were not logged. Calendar estimates and self-logged symptoms are not diagnoses.',
+    };
+  } catch {
+    return { status: 'unavailable', instruction: UNAVAILABLE };
   }
 }
 
-export function cycleAccountContextText(context, max = 3800) {
+function isoDay(value) {
+  if (!value) return null;
+  if (value instanceof Date) return Number.isNaN(value.getTime()) ? null : value.toISOString().slice(0, 10);
+  return String(value).slice(0, 10);
+}
+
+/** Readable block for the clinical model. Newest days are kept when the budget runs out. */
+export function cycleAccountContextText(context, max = 4000) {
   if (!context) return null;
-  const { logs = [], ...meta } = context;
-  const header = `Saved cycle diary / შენახული ციკლის დღიური:\n${JSON.stringify(meta)}`;
-  let text = header, shown = 0;
-  for (const row of logs) {
-    if (text.length + row.line.length + 80 > max) break;
-    text += `\n${row.line}`; shown++;
+  if (context.status !== 'available') {
+    return `ციკლის დღიური / cycle diary: ${context.status}.\n${context.instruction}`;
   }
-  if (shown < logs.length) text += `\nOnly ${shown} of ${logs.length} loaded entries fit here; older entries are omitted, not absent.`;
+  const p = context.profile || {};
+  const facts = [
+    p.mode ? `რეჟიმი ${p.mode}` : null,
+    p.avgCycleLength ? `საშუალო ციკლი ${p.avgCycleLength} დღე` : null,
+    p.avgPeriodLength ? `მენსტრუაცია ${p.avgPeriodLength} დღე` : null,
+    p.lastPeriodStart ? `ბოლო მენსტრუაციის დაწყება ${p.lastPeriodStart}` : null,
+    p.isIrregular ? 'არარეგულარული ციკლი' : null,
+    p.conditions?.length ? `მითითებული მდგომარეობები: ${p.conditions.join(', ')}` : null,
+    p.dueDate ? `სავარაუდო მშობიარობა ${p.dueDate}` : null,
+  ].filter(Boolean);
+  const head = [
+    `ციკლის დღიური — შენახული ჩანაწერები, უახლესი პირველი${context.asOf ? ` (დღეს = ${context.asOf})` : ''}:`,
+    facts.length ? facts.join('; ') : null,
+    context.instruction,
+  ].filter(Boolean).join('\n');
+  const logs = context.logs || [];
+  if (!logs.length) return `${head}\nბოლო ${CYCLE_DIARY_MAX_ENTRIES} დღეში შენახული დღიური ჩანაწერი არ არის.`;
+  let text = head, shown = 0;
+  for (const row of logs) {
+    const line = context.asOf && row.date === context.asOf ? `- ${row.line} ← დღეს` : `- ${row.line}`;
+    if (text.length + line.length + 90 > max) break;
+    text += `\n${line}`; shown++;
+  }
+  if (shown < logs.length) text += `\n(${logs.length - shown} older entries did not fit here: omitted, not absent.)`;
   return text;
 }

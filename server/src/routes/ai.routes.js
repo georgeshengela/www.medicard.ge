@@ -114,6 +114,8 @@ const querySchema = z.object({
   context: z.string().trim().max(4000).optional(),
   stream: z.boolean().optional(),
   cycleContextAllowed: z.boolean().optional(),
+  /** Earlier turns of the one Medi chat (the planner's part the clinical session does not hold). */
+  thread: z.array(z.object({ role: z.enum(['user', 'assistant']), content: z.string().max(4000) })).max(12).optional(),
 });
 
 function wantsChatStream(req) {
@@ -162,7 +164,7 @@ aiRouter.post(
   '/query',
   enforceAiQuota,
   asyncHandler(async (req, res) => {
-    const { message, mode, sessionId, context, cycleContextAllowed } = querySchema.parse(req.body);
+    const { message, mode, sessionId, context, cycleContextAllowed, thread } = querySchema.parse(req.body);
 
     const session = sessionId
       ? await prisma.chatSession.findFirst({ where: { id: sessionId, userId: req.user.id, mode: { in: ['DOCTOR', 'CONSILIUM'] } } })
@@ -178,9 +180,11 @@ aiRouter.post(
     const userTurnCount = priorTurns.filter((m) => m.role === 'user').length + 1;
     const assistantTurnCount = priorTurns.filter((m) => m.role === 'assistant').length;
 
+    // Everything Medi may know about the person, re-read for every turn (2026-10-08 incident).
+    // The cycle diary needs the client's explicit yes: its Face ID/PIN lock lives on the device only.
     const profileContext = await withPatientAiContext(req.user, context, {
-      includeCycle: true, cycleAllowed: cycleContextAllowed === true,
-      today: cycleTodayKey(clientTimezoneFromReq(req)),
+      full: true, cycleAllowed: cycleContextAllowed === true,
+      today: cycleTodayKey(clientTimezoneFromReq(req)), thread, priorTurns,
     });
     const turnContext =
       [MEDI_RECORD_CONTEXT_RULES, mode === 'DOCTOR'

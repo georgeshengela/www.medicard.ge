@@ -58,8 +58,10 @@ export async function loadAssistantContext(user, domains, scope, db = prisma, pe
   if (requested.has('visits')) context.visits = (await db.doctorVisit.findMany({ where: { userId }, take: 30, orderBy: { visitDate: 'desc' } }))
     .map(r => pick(r, ['id', 'doctorType', 'doctorFirstName', 'doctorLastName', 'visitDate', 'visitTime', 'address', 'active']));
   if (requested.has('cycle')) {
-    context.cycle = await loadCycleAccountContext(userId, db, { today, allowed: cycleAllowed });
-    if (context.cycle.status === 'available') context.cycle.observationKeys = Object.values(OBSERVATION_REGISTRY).filter(r => observationAiContextAllowed(r.key)).map(r => pick(r, ['key', 'storage', 'category']));
+    const cycle = await loadCycleAccountContext(userId, db, { today, allowed: cycleAllowed });
+    // No cycle profile (men, or never opened): no block at all.
+    if (cycle) context.cycle = cycle;
+    if (cycle?.status === 'available') context.cycle.observationKeys = Object.values(OBSERVATION_REGISTRY).filter(r => observationAiContextAllowed(r.key)).map(r => pick(r, ['key', 'storage', 'category']));
   }
   if (requested.has('records')) context.records = (await db.medicalRecord.findMany({ where: { userId }, take: 12, orderBy: { createdAt: 'desc' } }))
     .map(r => ({ id: r.id, type: r.type, createdAt: r.createdAt, analysisExcerpt: trim(r.aiAnalysis) }));

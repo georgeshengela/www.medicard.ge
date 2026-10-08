@@ -55,24 +55,22 @@ export const CYCLE_AI_MOOD_ALLOWLIST = Object.freeze(
 const SYMPTOM_SET = new Set(CYCLE_AI_SYMPTOM_ALLOWLIST);
 const MOOD_SET = new Set(CYCLE_AI_MOOD_ALLOWLIST);
 
+/** Georgian labels for every AI-allowed symptom / mood key (same words as the app's chips). */
 const SYMPTOM_KA = {
-  cramps: 'სპაზმები',
-  headache: 'თავის ტკივილი',
-  bloating: 'შებერილობა',
-  acne: 'აკნე',
-  fatigue: 'დაღლილობა',
-  back_pain: 'წელის ტკივილი',
-  breast_tenderness: 'მკერდის მგრძნობელობა',
-  nausea: 'გულისრევა',
-  heartburn: 'გულძმარვა',
-  gas: 'გაზები',
-  sensitive_smell: 'სუნის მგრძნობელობა',
-  frequent_urination: 'ხშირი შარდვა',
-  anxious: 'შფოთვა',
-  irritable: 'გაღიზიანება',
-  sensitive: 'მგრძნობიარე',
-  energetic: 'ენერგიული',
-  sad: 'სევდიანი',
+  cramps: 'სპაზმები', headache: 'თავის ტკივილი', back_pain: 'წელის ტკივილი', breast_tenderness: 'მკერდის მგრძნობელობა',
+  pelvic_pain: 'მენჯის ტკივილი', ovulation_pain: 'ოვულაციის ტკივილი', migraine: 'მიგრენი', joint_pain: 'სახსრების ტკივილი',
+  muscle_pain: 'კუნთების ტკივილი', leg_cramps: 'ფეხის სპაზმები', bloating: 'შებერილობა', nausea: 'გულისრევა', vomiting: 'ღებინება',
+  constipation: 'ყაბზობა', diarrhea: 'დიარეა', gas: 'გაზები', heartburn: 'გულძმარვა', appetite_up: 'მადის მატება',
+  appetite_down: 'მადის კლება', cravings: 'საკვების ლტოლვა', acne: 'აკნე', dry_skin: 'მშრალი კანი', itchy_skin: 'ქავილი',
+  hair_loss: 'თმის ცვენა', fatigue: 'დაღლილობა', insomnia: 'უძილობა', oversleep: 'ძილიანობა', breast_swelling: 'მკერდის შეშუპება',
+  dizziness: 'თავბრუსხვევა', hot_flashes: 'ცხელი ტალღები', chills: 'შეცივება', sweating: 'ოფლიანობა', swelling: 'შეშუპება',
+  water_retention: 'წყლის შეკავება', sensitive_smell: 'სუნის მგრძნობელობა', tinnitus: 'ყურებში ხმაური', palpitations: 'გულის ფრიალი',
+  short_breath: 'სუნთქვის სიმძიმე', frequent_urination: 'ხშირი შარდვა', uti_feel: 'შარდის დისკომფორტი', fever: 'ცხელება',
+  cold_symptoms: 'გაციების სიმპტომები',
+  energetic: 'ენერგიული', calm: 'მშვიდი', happy: 'ბედნიერი', confident: 'თავდაჯერებული', sensitive: 'მგრძნობიარე', anxious: 'შფოთვა',
+  irritable: 'გაღიზიანება', angry: 'გაბრაზებული', sad: 'სევდიანი', tearful: 'ცრემლიანი', mood_swings: 'განწყობის ცვლა',
+  focused: 'კონცენტრირებული', unfocused: 'გაფანტული', tired_mood: 'დაღლილი', apathetic: 'აპათიური', stressed: 'სტრესი',
+  romantic: 'რომანტიკული', lonely: 'მარტოობა',
 };
 
 export function isSexualSymptomKey(key) {
