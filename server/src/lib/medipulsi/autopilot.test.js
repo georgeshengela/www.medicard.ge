@@ -384,3 +384,14 @@ test('drops: the phone position picks the city it is in (smallest box), junk hea
  assert.equal(pickCityAt([5.55,50.72],boxes.slice(0,2)).row.cityId,'r19956604'); // ~2 km north of the box
  assert.equal(pickCityAt([5.55,51.0],boxes.slice(0,2)),null); // ~33 km: too far
 });
+
+/* ───────── country → city, never a district (territory.js) ───────── */
+import {parentCityName} from './territory.js';
+test('places: a district or section answer climbs to its city; a city or village stays',()=>{
+ assert.equal(parentCityName({name:'Rocourt',addresstype:'city_district',address:{city_district:'Rocourt',city:'Liège'}}),'Liège');
+ assert.equal(parentCityName({name:'Liège',addresstype:'city_district',address:{city_district:'Liège',city:'Liège'}}),'Liège');
+ assert.equal(parentCityName({name:'Grivegnée',addresstype:'town',address:{town:'Grivegnée',city:'Liège'}}),'Liège');
+ assert.equal(parentCityName({name:'Glain',addresstype:'village',address:{village:'Glain',city:'Liège'}}),'Liège');
+ assert.equal(parentCityName({name:'თბილისი',addresstype:'city',address:{city:'თბილისი'}}),null);
+ assert.equal(parentCityName({name:'Tetritskaro Municipality',addresstype:'county',address:{county:'Tetritskaro Municipality'}}),null);
+});

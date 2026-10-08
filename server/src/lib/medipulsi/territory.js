@@ -41,10 +41,40 @@ async function ensureCountry(code,lng,lat){
  await prisma.$executeRaw`INSERT INTO "MedipulsiArea" ("id","kind","countryCode","nameKa","nameEn","areaKm2","geometry") VALUES (${'country:'+code},'country',${code},${n['name:ka']||countryNameKa(code,body.name)},${n['name:en']||countryNameEn(code,body.name)},${COUNTRY_AREA_KM2[code]??geometryAreaKm2(body.geojson)},NULL) ON CONFLICT ("id") DO NOTHING`;
 }
 
+/**
+ * Country → city, never a district (owner 2026-10-08): Nominatim's zoom-10 answer can be a part of a city
+ * (Liège's sections Rocourt, Glain, Grivegnée … each with its own boundary). When the address names a city other
+ * than the answer itself, that city's boundary is looked up and used instead. Pure check, exported for tests.
+ */
+export function parentCityName(body){
+ const a=body?.address||{},city=a.city||a.town||null;
+ if(!city||!body?.name||body.addresstype==='city')return null;
+ if(['city_district','district','suburb','borough','quarter','neighbourhood'].includes(body.addresstype))return city;  // same name as the city too (Liège's central section)
+ return String(body.name).trim().toLowerCase()===String(city).trim().toLowerCase()?null:city;
+}
+const CITY_TYPES=new Set(['city','town','village','municipality']);
+export async function searchCity(name,countryCode){
+ await nominatimTurn();
+ const url=new URL('https://nominatim.openstreetmap.org/search');
+ for(const [k,v] of Object.entries({format:'jsonv2',city:name,polygon_geojson:1,polygon_threshold:0.0005,namedetails:1,addressdetails:1,limit:5,...(countryCode?{countrycodes:countryCode.toLowerCase()}:{})}))url.searchParams.set(k,String(v));
+ const response=await fetch(url,{signal:AbortSignal.timeout(8000),headers:{Accept:'application/json','User-Agent':UA}});
+ if(!response.ok)throw new Error(`nominatim ${response.status}`);
+ const list=await response.json();
+ return (Array.isArray(list)?list:[]).find(b=>isPolygon(b?.geojson)&&CITY_TYPES.has(b.addresstype)&&Number(b.place_rank)<=16&&!['city_district','suburb','borough','quarter'].includes(b.addresstype))||null;
+}
+/** The whole city around a district answer (null when the answer already is the city or no city is found). */
+export async function cityAbove(body){
+ const name=parentCityName(body);
+ if(!name)return null;
+ const city=await searchCity(name,countryCodeOf(body?.address?.country_code)).catch(()=>null);
+ return city&&`${city.osm_type}${city.osm_id}`!==`${body.osm_type}${body.osm_id}`?city:null;
+}
+
 /** City (or the municipality around a village) and country of one tile; cached even when empty (sea). */
 async function resolveTile(tile){
  const [lng,lat]=tileCenter(tile);
- const body=await reverse(lng,lat,{zoom:10,polygon_threshold:0.0005});
+ const answer=await reverse(lng,lat,{zoom:10,polygon_threshold:0.0005});
+ const body=(await cityAbove(answer).catch(()=>null))||answer;
  const countryCode=countryCodeOf(body?.address?.country_code)||null;
  let cityId=null;
  if(isPolygon(body?.geojson)&&body.osm_type&&body.osm_id){
