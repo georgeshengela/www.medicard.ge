@@ -282,6 +282,7 @@ app.get('/health', (req, res) => {
   res.json({
     status: 'ok',
     service: 'medicard-ge',
+    revision: process.env.RENDER_GIT_COMMIT?.slice(0, 12) || null,
     time: new Date().toISOString(),
     engines: { evidencemd: true, vision: hasVisionProvider },
     admin: serveAdmin,

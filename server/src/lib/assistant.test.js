@@ -53,7 +53,12 @@ test('pet context never queries human tables, regardless of requested domains', 
 test('protected cycle cannot load observations into context', async () => {
   const db = { cycleProfile: { findUnique: async () => ({ privacyEnabled: true }) }, cycleLog: { findMany: () => { throw Error('must not read'); } } };
   const result = await loadAssistantContext({ id: owner }, ['cycle'], 'human', db);
-  assert.deepEqual(result.cycle.locked, true);
+  assert.equal(result.cycle.status, 'withheld'); assert.equal(result.cycle.logs, undefined);
+});
+test('no cycle profile means no cycle block at all (men are not told about a cycle)', async () => {
+  const db = { cycleProfile: { findUnique: async () => null }, cycleLog: { findMany: () => { throw Error('must not read'); } } };
+  const result = await loadAssistantContext({ id: owner }, ['cycle'], 'human', db);
+  assert.equal('cycle' in result, false);
 });
 test('Medi cycle context never carries BBT, tests, mucus or intimate fields (W3-5)', async () => {
   const row = {

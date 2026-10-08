@@ -35,5 +35,12 @@ test('course preserves explicit duration, uses inclusive end and rejects conflic
 
 test('unnamed requests use a fixed small context instead of a model call', () => {
   assert.deepEqual(assistantDefaultDomains({ text: 'როგორ ხარ?' }), ['profile', 'metrics', 'goals', 'medications', 'visits']);
-  assert.deepEqual(assistantDefaultDomains({ text: 'ჩემი ანალიზის შედეგი' }), ['records', 'consultations', 'profile', 'medications']);
+  assert.deepEqual(assistantDefaultDomains({ text: 'ჩემი ანალიზის შედეგი' }), ['records', 'consultations', 'profile', 'medications', 'cycle']);
+});
+
+test('saved symptom questions load the cycle diary without requiring the word cycle', () => {
+  for (const text of ['ჩემს ჩანიშნულ სიმპტომებს გადახედე', 'Review my logged symptoms']) {
+    const domains = assistantContextSelection({ scope: 'human', text });
+    assert.ok(domains.includes('cycle')); assert.ok(domains.includes('profile'));
+  }
 });

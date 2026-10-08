@@ -1,5 +1,19 @@
 # Medi — app-wide Georgian assistant
 
+## Medi knows the saved story — 2026-10-08
+
+Incident: a woman logged her cycle day, then asked Medi to answer from her symptoms; Medi replied that no symptoms were visible. The planner's `consult` handoff goes to `/api/ai/query`, whose context (`withPatientAiContext`) carried only the cycle mode. A first fix (eeb9a5d1) added the diary but made the server require a `cycleContextAllowed: true` flag that no installed app sent yet (no OTA was published), so every phone got „withheld“ — also in the planner, which had read the diary before.
+
+What every clinical answer (`/api/ai/query`, DOCTOR and CONSILIUM) now receives, re-read on every turn (`withPatientAiContext(user, note, { full: true, … })`):
+- the cycle diary through one boundary, `server/src/lib/cycleAccountContext.js` (also used by the planner): last 45 days up to the client's local today, newest first, today's line marked, Georgian labels; only what `serializeCycleLogForAi` allows (no sex, BBT, tests, mucus, notes, tags, observations bag — the query does not even select them). No cycle profile → no block at all (men are never told about a cycle). Profile privacy → `withheld/privacy`; masked notifications, or a client that did not say yes → `withheld/device`; read failure → `unavailable`. None of those may ever be presented as „no entries“.
+- `server/src/lib/patientHistoryContext.js`: the last 180 days of saved symptom checks and analyses (excerpts, no image URLs), the latest value of every MEDILAB analyte (out-of-range first; panels of deleted uploads dropped), planned and recent visits (type, date, time — no notes, addresses or doctor names), and the earlier turns of this Medi chat that the clinical session does not hold (`thread`, sent by the app and web; repeats skipped).
+- Added the same day (server only): dose marks of the last 14 days per active medication (taken / skipped; unmarked = unknown), MEDIFOOD (today, last 7 days, current weight and goal, diet, allergens, fasting), the last five other DOCTOR / CONSILIUM conversations (question + gist), older checks and analyses as one line each, each lab analyte's previous value, and cycle days older than the 45 listed ones counted over a year (same allow-list).
+- `MEDI_RECORD_CONTEXT_RULES` in both planner and clinical prompts: read every block before saying something is missing, name saved symptoms with dates, never ask to retype what is saved, history ≠ today, logged ≠ diagnosis, withheld ≠ none.
+
+Device privacy: the Face ID/PIN cycle lock and discreet notifications live only on the phone, so the server reads the diary only on an explicit `cycleContextAllowed: true`. The app computes it in `mobile/src/lib/mediCycleAccess.ts` (lock, masked notifications, account-scoped discreet; unreadable storage = no) for `/assistant/plan` and `/ai/query`; removing the cycle chip excludes it for that conversation. Older bundles send nothing and get `withheld` until the OTA (1.0.0.21.16 / 1.0.0.20.50) is applied. Saving a new cycle entry through Medi is not blocked by `withheld/device` (execution has its own `privacyEnabled` check).
+
+Tests: `server/src/lib/cycleAccountContext.test.js`, `patient.test.js` (the real clinical prompt assembly), `assistant.test.js`, `mobile/src/lib/mediCycleAccess.test.ts`.
+
 The owner requested spoken control across the whole app, including weight goals, health history, cycle tracking, pets and consilium. This work extends the existing authenticated workflows. The assistant must never claim success before the corresponding operation succeeds.
 
 ## Implementation contract

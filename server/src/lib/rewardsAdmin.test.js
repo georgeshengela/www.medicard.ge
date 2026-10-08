@@ -203,3 +203,12 @@ describe('phase 8 inventory states', () => {
     assert.equal(inventoryStockState({ mode: INVENTORY_MODES.CODE_POOL, available: 50, threshold: 5 }), STOCK_STATES.OK);
   });
 });
+
+describe('admin audit stays out of the main database during tests', async () => {
+  const { auditWritesDisabled } = await import('./adminAudit.js');
+  it('the node test runner never writes audit rows (2026-10-06: 285 fake rows in the activity sheet)', () => {
+    assert.equal(auditWritesDisabled({ NODE_TEST_CONTEXT: 'child-v8' }), true);
+    assert.equal(auditWritesDisabled({ NODE_TEST_CONTEXT: 'child-v8', ADMIN_AUDIT_IN_TESTS: '1' }), false);
+    assert.equal(auditWritesDisabled({}), false);
+  });
+});

@@ -806,6 +806,10 @@ function connectAdminRealtime() {
     }
     if (Number.isFinite(next)) lastLiveNewUsers = next;
   });
+  adminSocket.on('ops:online', (snap) => {
+    window.__opsOnline = snap;
+    if (typeof window.patchOnlineUsers === 'function') window.patchOnlineUsers(snap);
+  });
   adminSocket.on('community:changed', () => {
     if (location.hash.includes('/community') && !document.querySelector('dialog[open]')) window.renderCommunity?.();
   });

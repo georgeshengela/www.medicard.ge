@@ -3,7 +3,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import { ChevronDown, ChevronRight, Lock } from 'lucide-react-native';
 import { CycleBbtPicker } from '@/components/cycle/CycleBbtPicker';
-import { CycleIconRow, CycleIconTile } from '@/components/cycle/CycleIconTile';
+import { CycleIconRow, CycleIconTile, CycleTileGrid } from '@/components/cycle/CycleIconTile';
 import { CycleMoreTracking } from '@/components/cycle/CycleMoreTracking';
 import { CyclePainEditor } from '@/components/cycle/CycleObservationFields';
 import { useCycleLogLayout } from '@/components/cycle/useCycleLogLayout';
@@ -233,7 +233,7 @@ export function CycleQuickLogBody({
             <View style={{ height: 12 }} />
             <CycleBbtPicker value={form.bbt} onChange={(bbt) => onChange({ bbt })} lastLogged={lastBbt} disabled={disabled} />
             <Text style={[s.sub, { color: c.ink, marginTop: 12 }]}>{ka.cycle.mucus}</Text>
-            <View style={s.row}>
+            <CycleTileGrid>
               {MUCUS_OPTIONS.map((opt, i) => (
                 <CycleIconTile
                   key={opt.id}
@@ -248,7 +248,7 @@ export function CycleQuickLogBody({
                   onPress={() => onChange({ mucus: form.mucus === opt.id ? null : opt.id })}
                 />
               ))}
-            </View>
+            </CycleTileGrid>
             <Text style={[s.sub, { color: c.ink, marginTop: 12 }]}>{ka.cycle.pregnancyTest}</Text>
             <CycleTestResultRow value={form.pregnancyTest} onChange={(pregnancyTest) => onChange({ pregnancyTest })} />
           </Group>
@@ -294,7 +294,7 @@ export function CycleQuickLogBody({
       ) : null}
 
       <Group title={tx('სისხლდენა', 'Bleeding')} hint={tx('ერთი არჩევანი', 'one choice')}>
-        <View style={s.row}>
+        <CycleTileGrid>
           {FLOW_OPTIONS.map((opt) => {
             const style = flowGlyphStyle(opt.id);
             return (
@@ -313,7 +313,7 @@ export function CycleQuickLogBody({
               />
             );
           })}
-        </View>
+        </CycleTileGrid>
       </Group>
 
       {groups.map((id) => (
@@ -352,7 +352,6 @@ const s = StyleSheet.create({
   groupHead: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', gap: 10 },
   groupTitle: { fontFamily: 'NotoSansGeorgian_600SemiBold', fontSize: 14, lineHeight: 20 },
   groupHint: { fontFamily: 'NotoSansGeorgian_400Regular', fontSize: 12, lineHeight: 16, flexShrink: 1 },
-  row: { flexDirection: 'row', flexWrap: 'wrap', columnGap: 2, rowGap: 12 },
   lockRow: { flexDirection: 'row', alignItems: 'center', gap: 12, borderRadius: 16, paddingVertical: 10, paddingHorizontal: 12 },
   lockIcon: { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center' },
   lockTitle: { fontFamily: 'NotoSansGeorgian_600SemiBold', fontSize: 14, lineHeight: 20 },

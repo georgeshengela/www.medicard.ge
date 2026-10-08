@@ -142,6 +142,23 @@ export async function clearToken(): Promise<void> {
   });
 }
 
+/** Privacy decisions must distinguish an absent preference from unreadable storage. */
+export async function getPreferenceStrict(key: string): Promise<string | null> {
+  if (memoryPrefs.has(key)) return memoryPrefs.get(key) ?? null;
+  if (Platform.OS === 'web') {
+    if (typeof localStorage === 'undefined') throw new Error('preference_storage_unavailable');
+    return localStorage.getItem(key);
+  }
+  return runNativeStorage(async () => {
+    await ensureIosSandbox();
+    if (memoryPrefs.has(key)) return memoryPrefs.get(key) ?? null;
+    if (Platform.OS !== 'ios') return androidGet(key);
+    if (!iosSettingsOk()) throw new Error('preference_storage_unavailable');
+    const stored = Settings.get(prefStorageKey(key));
+    return typeof stored === 'string' && stored.length > 0 ? stored : null;
+  });
+}
+
 export async function getPreference(key: string): Promise<string | null> {
   try {
     if (memoryPrefs.has(key)) return memoryPrefs.get(key) ?? null;

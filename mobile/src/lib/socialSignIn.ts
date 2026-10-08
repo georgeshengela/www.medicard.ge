@@ -6,7 +6,8 @@
  * Both native modules exist only in binaries from train 1.0.0.18 on, so they are required lazily:
  * web, Expo Go and older binaries simply report "not available" and the buttons stay hidden.
  */
-import { Platform } from 'react-native';
+import { requireOptionalNativeModule } from 'expo';
+import { Platform, TurboModuleRegistry } from 'react-native';
 import { tx } from '@/i18n/locale';
 import googleOAuth from '../../google-oauth.json';
 
@@ -29,6 +30,9 @@ type GoogleModule = typeof import('@react-native-google-signin/google-signin');
 
 function loadApple(): AppleModule | null {
   if (Platform.OS !== 'ios') return null;
+  // Ask before requiring: a require() that throws outside module init goes through Metro's
+  // guardedLoadModule, which reports it as fatal (red screen in Expo Go) even though we catch it.
+  if (!requireOptionalNativeModule('ExpoAppleAuthentication')) return null;
   try {
     // eslint-disable-next-line @typescript-eslint/no-require-imports
     return require('expo-apple-authentication') as AppleModule;
@@ -39,6 +43,7 @@ function loadApple(): AppleModule | null {
 
 function loadGoogle(): GoogleModule | null {
   if (Platform.OS !== 'ios' && Platform.OS !== 'android') return null;
+  if (!TurboModuleRegistry.get('RNGoogleSignin')) return null;
   try {
     // eslint-disable-next-line @typescript-eslint/no-require-imports
     return require('@react-native-google-signin/google-signin') as GoogleModule;

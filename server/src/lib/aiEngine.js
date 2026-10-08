@@ -193,6 +193,16 @@ function finishAnswer(answer, { skipDisclaimer, onDelta }) {
   return content;
 }
 
+export function truncatedReplyError() {
+  return Object.assign(
+    new AiEngineError('AI-ის პასუხი ბოლომდე ვერ დაიწერა. სცადე თავიდან.', {
+      status: 502,
+      messageEn: 'The AI answer could not be completed. Please try again.',
+    }),
+    { code: 'AI_TRUNCATED' },
+  );
+}
+
 function mapOpenRouterError(error) {
   if (error instanceof AiEngineError) throw error;
   const status = error?.status ?? 502;
@@ -291,6 +301,13 @@ export async function askOpenRouterPrepared({
     }
 
     if (!stream) {
+      // A reply cut at max_tokens is a fragment, never an answer: ask once more with twice the room,
+      // then fail loudly so askAi falls back instead of showing the person half a sentence.
+      if (completion.choices?.[0]?.finish_reason === 'length') {
+        console.warn('[medicard] openrouter reply hit max_tokens, retrying with more room', model, maxTokens);
+        completion = await openrouter.chat.completions.create({ ...payload, max_tokens: maxTokens * 2 }, extra);
+        if (completion.choices?.[0]?.finish_reason === 'length') throw truncatedReplyError();
+      }
       const answer = extractChatContent(completion);
       const reasoning = extractChatReasoning(completion);
       if (!answer && !reasoning) {
@@ -309,22 +326,26 @@ export async function askOpenRouterPrepared({
     let answer = '';
     let usage = null;
     let modelOut = model;
+    let finishReason = null;
     for await (const chunk of completion) {
       if (signal?.aborted) {
         throw new AiEngineError('მოთხოვნა გაუქმდა.', { status: 499, messageEn: 'The request was cancelled.' });
       }
       if (chunk?.model) modelOut = chunk.model;
       if (chunk?.usage) usage = chunk.usage;
+      if (chunk?.choices?.[0]?.finish_reason) finishReason = chunk.choices[0].finish_reason;
       const piece = extractStreamDelta(chunk);
       if (!piece) continue;
       answer += piece;
       onDelta(piece);
     }
+    if (finishReason === 'length') console.warn('[medicard] streamed openrouter reply hit max_tokens', modelOut, maxTokens);
     return {
       content: finishAnswer(answer, { skipDisclaimer, onDelta }),
       model: modelOut,
       usage,
       engine: 'openrouter',
+      finishReason,
     };
   } catch (error) {
     mapOpenRouterError(error);
@@ -376,7 +397,7 @@ export async function askAi({
   reasoningEffort,
 }) {
   const engine = resolveAiEngine(user);
-  const opts = { mode, messages, context, trustedContext, temperature, maxTokens, skipDisclaimer, onDelta, signal, responseFormat };
+  const opts = { mode, messages, context, trustedContext, temperature, maxTokens, skipDisclaimer, onDelta, signal, responseFormat, reasoningEffort };
 
   if (engine.id === 'evidencemd') {
     const result = await askEvidenceMd(opts);

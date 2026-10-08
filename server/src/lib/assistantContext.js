@@ -1,6 +1,6 @@
 import { nutritionDashboard } from './nutritionProgramStore.js';
 import { prisma } from './prisma.js';
-import { serializeCycleLogForAi } from './cycleAiContext.js';
+import { loadCycleAccountContext } from './cycleAccountContext.js';
 import { OBSERVATION_REGISTRY, observationAiContextAllowed } from './cycleObservationRegistry.js';
 import { publicPetsCatalog } from './petsCatalog.js';
 
@@ -9,7 +9,7 @@ const pick = (row, keys) => row ? Object.fromEntries(keys.filter(k => row[k] !==
 const trim = (value, max = 1800) => typeof value === 'string' ? value.slice(0, max) : value;
 
 /** Every query is owner-scoped. Unknown/private fields are excluded, not merely hidden in the prompt. */
-export async function loadAssistantContext(user, domains, scope, db = prisma, petId = null, today = new Date().toISOString().slice(0,10)) {
+export async function loadAssistantContext(user, domains, scope, db = prisma, petId = null, today = new Date().toISOString().slice(0,10), { cycleAllowed = true } = {}) {
   const userId = user.id;
   const requested = new Set(domains);
   const context = { scope, limits: 'Relevant recent records only. Absence is unknown, not a negative finding.' };
@@ -58,13 +58,10 @@ export async function loadAssistantContext(user, domains, scope, db = prisma, pe
   if (requested.has('visits')) context.visits = (await db.doctorVisit.findMany({ where: { userId }, take: 30, orderBy: { visitDate: 'desc' } }))
     .map(r => pick(r, ['id', 'doctorType', 'doctorFirstName', 'doctorLastName', 'visitDate', 'visitTime', 'address', 'active']));
   if (requested.has('cycle')) {
-    const profile = await db.cycleProfile.findUnique({ where: { userId } });
-    context.cycle = profile?.privacyEnabled ? { locked: true, instruction: 'Open cycle screen to unlock. Do not read or write cycle through assistant.' } : {
-      profile: pick(profile, ['mode', 'avgCycleLength', 'avgPeriodLength', 'lastPeriodStart', 'dueDate', 'isIrregular', 'conditions']),
-      logs: (await db.cycleLog.findMany({ where: { userId }, take: 45, orderBy: { date: 'desc' } }))
-        .map(r => ({ date: r.date, ...serializeCycleLogForAi(r) })),
-      observationKeys: Object.values(OBSERVATION_REGISTRY).filter(r => observationAiContextAllowed(r.key)).map(r => pick(r, ['key', 'labelKa', 'label', 'storage', 'category'])),
-    };
+    const cycle = await loadCycleAccountContext(userId, db, { today, allowed: cycleAllowed });
+    // No cycle profile (men, or never opened): no block at all.
+    if (cycle) context.cycle = cycle;
+    if (cycle?.status === 'available') context.cycle.observationKeys = Object.values(OBSERVATION_REGISTRY).filter(r => observationAiContextAllowed(r.key)).map(r => pick(r, ['key', 'storage', 'category']));
   }
   if (requested.has('records')) context.records = (await db.medicalRecord.findMany({ where: { userId }, take: 12, orderBy: { createdAt: 'desc' } }))
     .map(r => ({ id: r.id, type: r.type, createdAt: r.createdAt, analysisExcerpt: trim(r.aiAnalysis) }));

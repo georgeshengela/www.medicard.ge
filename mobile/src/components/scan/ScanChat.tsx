@@ -178,12 +178,14 @@ export function ScanChat({ owner, initialKind }: { owner: string; initialKind: S
         let record: MedicalRecord | null = null;
         let notes = '';
         const extracts = [];
+        const unreadPages: number[] = [];
         for (let i = 0; i < sent.length; i += 1) {
           if (!operation.current()) return;
           setBusy(sent.length > 1 ? ka.lab.readingPage(i + 1, sent.length) : ka.lab.extractBusy(1));
           const response = await api.ai.extractLab({ files: [{ uri: sent[i].uri, name: sent[i].name, mimeType: sent[i].mimeType }], context, recordId: record?.id, append: i > 0 });
           if (!operation.current()) return;
           applyUsage(response.usage);
+          if (response.unreadable) unreadPages.push(i + 1);
           record = response.record; notes = response.notes;
           if (response.labExtract) extracts.push(response.labExtract);
           extracts.push(parseLabExtract(response.notes));
@@ -193,6 +195,12 @@ export function ScanChat({ owner, initialKind }: { owner: string; initialKind: S
         setTurns(t => [...t, labTurn]);
         if (merged.parameters.length && merged.date) await persistLab(merged.date, labTurn).catch(() => undefined);
         else if (merged.parameters.length) setDateFor(labTurn.id);
+        if (unreadPages.length) {
+          setError(tx(
+            `${unreadPages.join(', ')} გვერდი ვერ წავიკითხეთ. გადაუღე ხელახლა პირდაპირ და კარგ შუქზე, რომ ციფრები მკაფიოდ ჩანდეს.`,
+            `We could not read page ${unreadPages.join(', ')}. Take it again straight on and in good light so the numbers are sharp.`,
+          ));
+        }
       } else {
         setBusy(scan === 'SKIN' ? tx('ფოტოს ვაკვირდები…', 'Looking at the photo…') : tx('გამოსახულებას ვკითხულობ…', 'Reading the image…'));
         const file = sent[0];

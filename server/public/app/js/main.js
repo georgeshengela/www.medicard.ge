@@ -1,6 +1,7 @@
 // MEDICARD web — boot, router and app shell.
 import { h, mount, icon, clear, iconButton, toast, openModal } from './ui.js';
 import { getToken, onTokenChange } from './api.js';
+import { setPresenceScreen, startPresence } from './presence.js';
 import { t, isEn, lang, setLang } from './i18n.js';
 import {
   session, loadSession, signOut, featureOn, isFemale, isTrainer, initials, onSession, applyTheme, getThemePref, needsOnboarding,
@@ -276,6 +277,8 @@ async function route() {
 
   document.title = `${m.route.title} — ${t('მედიქარდი', 'MEDICARD')}`;
   mount(shell.crumb, m.route.title);
+  startPresence();
+  setPresenceScreen(path);
   const page = h('div', { class: 'page' });
   mount(shell.content, page);
   window.scrollTo({ top: 0 });

@@ -363,13 +363,46 @@ function parseLabJson(text) {
   }
 }
 
+const LAB_METADATA_ROW = /(დაბადებ|ექიმ|პაციენტ|მისამართ|ტელეფონ|date of birth|birth ?date|\bdoctor\b|physician|\bpatient\b|\baddress\b|\bphone\b)/i;
+/** Document header lines OCR turned into „values“ (birth date, doctor, patient…). Never a lab value. */
+export function isLabMetadataRow(row) {
+  return LAB_METADATA_ROW.test(`${row?.nameKa ?? ''} ${row?.nameEn ?? ''} ${String(row?.key ?? '').replace(/_/g, ' ')}`);
+}
+
+function labRowSignature(row) {
+  if (!Number.isFinite(row?.value) || (row.refLow == null && row.refHigh == null)) return null;
+  return `${row.value}|${row.refLow ?? ''}|${row.refHigh ?? ''}`;
+}
+
+/**
+ * The vision model writes every analyte twice: a printed-name table row and a labjson row with an
+ * English slug. Same value + same printed range = the same analyte, so table rows only add analytes the
+ * labjson block missed (2026-10-06: a 39-row sheet showed as 51 rows, MCV/ESR/ALT twice).
+ * Mirrored in mobile/src/lib/labExtract.ts.
+ */
+export function dedupeLabRows(primary, secondary) {
+  const out = [...primary];
+  const keys = new Set(out.map((row) => row.key));
+  const signatures = new Set(out.map(labRowSignature).filter(Boolean));
+  for (const row of secondary) {
+    const signature = labRowSignature(row);
+    if (keys.has(row.key) || (signature && signatures.has(signature))) continue;
+    out.push(row);
+    keys.add(row.key);
+    if (signature) signatures.add(signature);
+  }
+  return out;
+}
+
 export function extractLabFromText(...parts) {
   const text = parts.filter(Boolean).join('\n\n');
   const fromJson = parseLabJson(text);
   const fromTable = parsePipeTable(text);
   const fromDots = parseDotSeparatedLab(text);
   const merged = new Map();
-  for (const row of [...(fromJson?.parameters ?? []), ...fromTable, ...fromDots]) merged.set(row.key, row);
+  for (const row of dedupeLabRows(fromJson?.parameters ?? [], [...fromTable, ...fromDots])) {
+    if (!isLabMetadataRow(row)) merged.set(row.key, row);
+  }
   const labeled = text.match(
     /(?:date|collected|biologie|თარიღ|გაკეთდ)[^\d]{0,40}(\d{1,4}[-./]\d{1,2}[-./]\d{1,4})/i,
   );
@@ -378,4 +411,9 @@ export function extractLabFromText(...parts) {
     date: fromJson?.date ?? normalizeLooseDate(labeled?.[1] ?? any?.[1] ?? '') ?? null,
     parameters: [...merged.values()],
   };
+}
+
+/** An OCR row counts only with a number and a printed reference range (noise has neither). */
+export function isCredibleLabRow(row) {
+  return Number.isFinite(row?.value) && (row.refLow != null || row.refHigh != null);
 }

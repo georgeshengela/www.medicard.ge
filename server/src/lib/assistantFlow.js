@@ -36,6 +36,7 @@ export function assistantContextSelection({ scope, text, draft }) {
     [/ნაბიჯ|სირბილ|გასეირნ/u, ['metrics', 'goals', 'activity']],
     [/ვიზიტ|ჩაწერილი ექიმ/u, ['visits']], [/ციკლ|მენსტრუ|ორსულ|პერიოდ/u, ['cycle']],
     [/ალერგი|ქრონიკ|პროფილ/u, ['profile']],
+    [/სიმპტომ|შეგრძნებ|ჩანიშნულ|ჩანაწერ|ტკივ|ვგრძნობ|შეუძლოდ|ცუდად ვარ/u, ['cycle', 'profile', 'metrics', 'medications', 'records']],
     [/მედირან|medirun|medi run|აღმოჩენ/u, ['activity']],
     // English requests (the app in English).
     [/\b(?:medic\w*|pills?|dose|doses|ibuprofen|tablets?)\b/i, ['medications']],
@@ -44,6 +45,7 @@ export function assistantContextSelection({ scope, text, draft }) {
     [/\b(?:steps?|walk\w*|run|running)\b/i, ['metrics', 'goals', 'activity']],
     [/\b(?:visits?|appointments?|doctor)\b/i, ['visits']], [/\b(?:cycle|period|menstrua\w*|pregnan\w*)\b/i, ['cycle']],
     [/\b(?:allerg\w*|chronic|profile)\b/i, ['profile']],
+    [/\b(?:symptoms?|how I feel|logged|recorded|pain|hurts?|feel(?:ing)? (?:sick|unwell|bad))\b/i, ['cycle', 'profile', 'metrics', 'medications', 'records']],
   ];
   for (const [pattern, values] of rules) if (pattern.test(text)) values.forEach(value => domains.add(value));
   return domains.size ? [...domains] : null;
@@ -55,7 +57,7 @@ export function assistantContextSelection({ scope, text, draft }) {
  */
 export function assistantDefaultDomains({ text = '' } = {}) {
   if (/ანალიზ|დიაგნოზ|შედეგ|ისტორია|ადრე|წინათ|ყველაფერი|ყველა მონაცემ/u.test(text) || EN_HISTORY.test(text)) {
-    return ['records', 'consultations', 'profile', 'medications'];
+    return ['records', 'consultations', 'profile', 'medications', 'cycle'];
   }
   return ['profile', 'metrics', 'goals', 'medications', 'visits'];
 }

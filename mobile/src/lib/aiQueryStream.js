@@ -5,7 +5,9 @@ import { appLang, tx } from '@/i18n/locale';
 import { API_BASE_URL, ApiError, ensureAiSharingConsentForRequest } from '@/lib/api';
 import { markReachable } from '@/lib/reachability';
 import { consumeSseBuffer } from '@/lib/sseParse';
-import { getToken } from '@/lib/storage';
+import { getToken, getPreferenceStrict } from '@/lib/storage';
+import { mediCycleAccess } from '@/lib/mediCycleAccess';
+import { localAccountId, scopedPrefKey } from '@/lib/localAccount';
 
 function timezoneHeaders() {
   try {
@@ -62,8 +64,11 @@ export async function streamAiQuery(body, { onDelta, signal } = {}) {
   const cancel = () => controller.abort();
   signal?.addEventListener('abort', cancel, { once: true });
   try {
+    const owner = localAccountId();
     const token = await getToken();
     await ensureAiSharingConsentForRequest('/api/ai/query', 'POST', token);
+    const cycleContextAllowed = await mediCycleAccess(getPreferenceStrict, scopedPrefKey('medicard.engage.prefs.v1'), body.cycleContextAllowed !== true);
+    if (!owner || owner !== localAccountId()) throw new ApiError(tx('ანგარიში შეიცვალა.', 'You switched accounts.'), 401);
     if (signal?.aborted) throw new ApiError(tx('მოთხოვნა გაუქმდა.', 'Request canceled.'), 499);
     // Start the deadline after consent; give the user time to read the disclosure.
     timeout = setTimeout(() => { timedOut = true; controller.abort(); }, 180_000);
@@ -71,7 +76,7 @@ export async function streamAiQuery(body, { onDelta, signal } = {}) {
     const response = await expoFetch(`${API_BASE_URL}/api/ai/query`, {
       method: 'POST',
       headers: authHeaders(token),
-      body: JSON.stringify({ ...body, stream: true }),
+      body: JSON.stringify({ ...body, ...(body.cycleContextAllowed === true && !cycleContextAllowed ? { context: undefined } : {}), cycleContextAllowed, stream: true }),
       signal: controller.signal,
     });
 

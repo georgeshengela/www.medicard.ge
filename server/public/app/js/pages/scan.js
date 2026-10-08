@@ -308,7 +308,7 @@ export default async function scanPage(root, ctx) {
             if (context) fd.append('context', context);
             if (record?.id) fd.append('recordId', record.id);
             if (i > 0) fd.append('append', '1');
-            const res = await request('/api/ai/extract-lab', { method: 'POST', body: fd, timeoutMs: 150_000 });
+            const res = await request('/api/ai/extract-lab', { method: 'POST', body: fd, timeoutMs: 180_000 });
             record = res.record || record;
             notes = res.notes || notes;
             if (res.labExtract) extracts.push(res.labExtract);
@@ -328,7 +328,7 @@ export default async function scanPage(root, ctx) {
       if (out.lab) {
         const created = String(out.record?.createdAt || new Date().toISOString());
         const date = out.extract.date || created.slice(0, 10) || ymd();
-        const turn = { kind: 'lab', extract: out.extract, date, recordId: out.record?.id || '', notes: out.notes, note: text, panelId: `lab-${date}-${out.record?.id || Date.now()}`, createdAt: created };
+        const turn = { kind: 'lab', extract: out.extract, date, recordId: out.record?.id || '', notes: out.notes, note: text, panelId: `lab-${date}-${out.record?.id || Date.now()}-web`, createdAt: created };
         st.turns.push(turn);
         // The values land in Labs at once (mobile persistLab); the write-up is added when she asks for it.
         if (out.extract.parameters.length) {

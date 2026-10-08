@@ -1,12 +1,14 @@
 import { z } from 'zod';
 import { prisma } from './prisma.js';
-import { publicExtraAnswers } from './appState.js';
+import { publicExtraAnswers, withoutDeletedRecords } from './appState.js';
 import { resolvePackageAiLimit } from './packages.js';
 import { FREE_CONSUMER_RELEASE, freeConsumerPackage } from './consumerAccess.js';
 import { serverAiEngine } from './aiEngine.js';
 import { cycleModeForPatientAiContext } from './cycleModes.js';
 import { wrapUntrustedAiBlock } from './clinicalMessages.js';
 import { t } from './i18n.js';
+import { loadCycleAccountContext, cycleAccountContextText } from './cycleAccountContext.js';
+import { buildAdherenceBlock, buildConsultationsBlock, buildLabValuesBlock, buildNutritionBlock, buildRecentRecordsBlock, buildThreadBlock, buildVisitsBlock, loadPatientHistory } from './patientHistoryContext.js';
 
 function packageIsExpired(user) {
   return Boolean(user?.packageExpiresAt && new Date(user.packageExpiresAt).getTime() < Date.now());
@@ -267,24 +269,45 @@ export function withPatientProfile(user, extra) {
   return merged || undefined;
 }
 
-export async function loadPatientAiBundle(userId) {
-  const [healthProfile, metrics, schedules, cycle] = await Promise.all([
-    prisma.healthProfile.findUnique({ where: { userId } }),
-    prisma.healthMetricDaily.findMany({
+/**
+ * `full` = Medi's clinical answer: also the cycle diary (through the one privacy boundary in
+ * cycleAccountContext.js), saved checks / analyses, lab values and visits. Other AI callers keep the
+ * small bundle (profile, metrics, meds, cycle mode).
+ */
+export async function loadPatientAiBundle(userId, { full = false, cycleAllowed = false, today, user, excludeSessionId } = {}, db = prisma) {
+  const [healthProfile, metrics, schedules, cycle, history, labIds] = await Promise.all([
+    db.healthProfile.findUnique({ where: { userId } }),
+    db.healthMetricDaily.findMany({
       where: { userId },
       orderBy: { date: 'desc' },
       take: 14,
     }),
-    prisma.medicationSchedule.findMany({
+    db.medicationSchedule.findMany({
       where: { userId, active: true },
-      select: { medName: true, dosage: true, frequency: true },
+      select: { id: true, medName: true, dosage: true, frequency: true },
     }),
-    prisma.cycleProfile.findUnique({
-      where: { userId },
-      select: { mode: true },
-    }),
+    full
+      ? loadCycleAccountContext(userId, db, { today, allowed: cycleAllowed })
+      : db.cycleProfile.findUnique({ where: { userId }, select: { mode: true, privacyEnabled: true } }),
+    full ? loadPatientHistory(userId, db, { today, user, excludeSessionId }) : null,
+    full ? db.medicalRecord.findMany({ where: { userId, type: 'LAB' }, select: { id: true } }).catch(() => null) : null,
   ]);
-  return { healthProfile, metrics, schedules, cycleMode: cycle?.mode ?? null };
+  const extra = healthProfile?.extraAnswers && typeof healthProfile.extraAnswers === 'object' ? healthProfile.extraAnswers : {};
+  const storedPanels = Array.isArray(extra.labPanels) && extra.labPanels.length ? extra.labPanels : extra.appState?.labPanels;
+  return {
+    healthProfile,
+    metrics,
+    schedules,
+    cycleMode: !full && !cycle?.privacyEnabled ? cycle?.mode ?? null : null,
+    cycleContext: full ? cycle : null,
+    records: history?.records ?? null,
+    visits: history?.visits ?? null,
+    doseEvents: history?.doseEvents ?? null,
+    consultations: history?.consultations ?? null,
+    nutrition: history?.nutrition ?? null,
+    // A panel from a deleted upload goes with it (same rule as MEDILAB).
+    labPanels: full && labIds ? withoutDeletedRecords(storedPanels, new Set(labIds.map(r => r.id))) : null,
+  };
 }
 
 function formatMetricDay(row) {
@@ -317,9 +340,9 @@ export function buildTrackedMetricsBlock(metrics) {
  * Full clinical context for Medi / analysis — profile + scheduled meds + recent daily metrics.
  * Use this on every EvidenceMD call. `withPatientProfile` is only the sync leftover.
  */
-export async function withPatientAiContext(user, extra) {
+export async function withPatientAiContext(user, extra, options = {}) {
   if (!user?.id) return withPatientProfile(user, extra);
-  const bundle = await loadPatientAiBundle(user.id);
+  const bundle = await loadPatientAiBundle(user.id, { ...options, user });
   const enriched = { ...user, healthProfile: user.healthProfile ?? bundle.healthProfile };
   const meds = bundle.schedules.length
     ? [
@@ -331,12 +354,19 @@ export async function withPatientAiContext(user, extra) {
       ].join('\n')
     : null;
   const cycleMode = cycleModeForPatientAiContext(bundle.cycleMode);
-  const cycle = cycleMode ? `ციკლის რეჟიმი: ${cycleMode}` : null;
+  const cycle = options.full ? cycleAccountContextText(bundle.cycleContext) : cycleMode ? `ციკლის რეჟიმი: ${cycleMode}` : null;
   const merged = [
     buildPatientProfile(enriched),
-    buildTrackedMetricsBlock(bundle.metrics),
     meds,
+    options.full ? buildAdherenceBlock(bundle.schedules, bundle.doseEvents, options.today) : null,
     cycle,
+    options.full ? buildRecentRecordsBlock(bundle.records) : null,
+    options.full ? buildLabValuesBlock(bundle.labPanels) : null,
+    options.full ? buildVisitsBlock(bundle.visits, options.today) : null,
+    buildTrackedMetricsBlock(bundle.metrics),
+    options.full ? buildNutritionBlock(bundle.nutrition) : null,
+    options.full ? buildConsultationsBlock(bundle.consultations) : null,
+    options.full ? buildThreadBlock(options.thread, options.priorTurns) : null,
     extra?.trim() ? wrapUntrustedAiBlock('client_note', extra.trim(), 4000) : null,
   ]
     .filter(Boolean)
