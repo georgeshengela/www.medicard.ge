@@ -9,7 +9,8 @@ import {
   ymd,
 } from '@/lib/healthMetricsStorage';
 import { describePersonalStepsOrigin } from '@/lib/personalStepsOrigin.js';
-import { buildStepsBundle, sinceDateForPeriod } from '@/lib/stepsMetrics.shared';
+import { personalStepsGoalFor } from '@/lib/personalStepsGoal';
+import { buildStepsBundle, dailyTotals, sinceDateForPeriod } from '@/lib/stepsMetrics.shared';
 import { isHealthSyncEnabled, setHealthSyncEnabled, getHealthPlatform } from '@/lib/healthSync';
 import { tbilisiYmd } from '@/lib/tbilisiDate.js';
 import type { StepChartPeriod, StepSample, StepsMetricsBundle } from '@/types/stepsMetrics';
@@ -82,7 +83,12 @@ export async function fetchStepsMetrics(period: StepChartPeriod = '1d', opts?: {
   }
 
   const hasData = merged.length > 0 || stored.daily.some((d) => d.steps != null);
-  const bundle = buildStepsBundle(merged, deviceConnected || hasData, period);
+  // Daily goal = the person's own typical day over the last 14 completed days: the server rows cover
+  // 90 days and the phone's samples the last week, so this costs no extra read and no permission.
+  const storedByDay = new Map<string, number>();
+  for (const row of stored.daily) if (row.steps != null && row.steps > 0) storedByDay.set(row.date, row.steps);
+  const goal = personalStepsGoalFor([storedByDay, dailyTotals(nativeSamples)]);
+  const bundle = buildStepsBundle(merged, deviceConnected || hasData, period, goal);
 
   if (typeof __DEV__ !== 'undefined' && __DEV__) {
     const todayKey = ymd(new Date());

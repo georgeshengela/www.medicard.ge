@@ -17,11 +17,10 @@ import {
 import { lineChart, barChart, ring, rings, sparkline } from '../charts.js';
 import { session, setProfile, featureOn } from '../session.js';
 import { t, isEn } from '../i18n.js';
+import { stepsGoalFromDaily } from '../stepsGoal.js';
 
 const CSS = '/app/css/health.css';
 const APP_STORE = 'https://apps.apple.com/app/id6812517519';
-/** Same daily reference as the app (constants/figmaStepsLayout DEFAULT_STEPS_GOAL). */
-const STEPS_DAY_GOAL = 10_000;
 const WATER_DEFAULT_ML = 2000;
 const PACE_KG = { slow: 0.25, moderate: 0.5, fast: 0.75 };
 const PACE_LABEL = isEn ? { slow: 'Gentle', moderate: 'Moderate', fast: 'Fast' } : { slow: 'მშვიდი', moderate: 'ზომიერი', fast: 'სწრაფი' };
@@ -175,16 +174,18 @@ export default async function healthPage(root, ctx) {
     const keys = rangeKeys(range);
     const byDate = new Map(state.daily.map((d) => [d.date, d]));
     const history = weightHistory(state.daily, state.app?.weightLogs);
+    // Daily step goal = the person's own typical day (same rule as the app: stepsGoal.js).
+    const stepsGoal = stepsGoalFromDaily(state.daily);
     // Each tracker can be paused from admin „მოდულები“; the page shows the ones that run.
     mount(body,
-      overview(history, byDate),
+      overview(history, byDate, stepsGoal),
       featureOn('weight') ? section(t('წონა', 'Weight'), weightSection(history, keys), { action: button(t('წონის ჩაწერა', 'Log weight'), { size: 'sm', icon: 'plus', onClick: openWeightLog }) }) : null,
-      featureOn('steps') ? section(t('ნაბიჯები', 'Steps'), stepsSection(byDate, keys)) : null,
+      featureOn('steps') ? section(t('ნაბიჯები', 'Steps'), stepsSection(byDate, keys, stepsGoal)) : null,
       featureOn('hydration') ? section(t('წყალი', 'Water'), waterSection(byDate, keys), { action: button(t('მიზანი', 'Goal'), { size: 'sm', variant: 'ghost', icon: 'target', onClick: openWaterGoal }) }) : null);
   }
 
   /* KPI row */
-  function overview(history, byDate) {
+  function overview(history, byDate, stepsGoal) {
     const today = ymd();
     const current = history.at(-1)?.kg ?? session.profile?.weightKg ?? null;
     const steps = Number(byDate.get(today)?.steps) || 0;
@@ -199,7 +200,7 @@ export default async function healthPage(root, ctx) {
     return h('div', { class: 'grid grid-3 hm-kpis' },
       !featureOn('weight') ? null : kpi('scale', 'violet', t('წონა', 'Weight'), fmtKg(current), current != null ? KG : '', history.length ? t(`ბოლო ჩანაწერი: ${fmtDate(history.at(-1).date)}`, `Last entry: ${fmtDate(history.at(-1).date)}`) : t('ჯერ არ ჩაგიწერია', 'Nothing logged yet'),
         sparkline(history.slice(-14).map((p) => p.kg), { width: 90, height: 30, color: 'var(--ink-violet)' }), 'hm-weight'),
-      !featureOn('steps') ? null : kpi('footprints', 'green', t('ნაბიჯი დღეს', 'Steps today'), fmtNum(steps), '', t(`მიზანი ${fmtNum(STEPS_DAY_GOAL)}`, `Goal ${fmtNum(STEPS_DAY_GOAL)}`),
+      !featureOn('steps') ? null : kpi('footprints', 'green', t('ნაბიჯი დღეს', 'Steps today'), fmtNum(steps), '', t(`მიზანი ${fmtNum(stepsGoal)}`, `Goal ${fmtNum(stepsGoal)}`),
         sparkline(last14.map((k) => Number(byDate.get(k)?.steps) || 0), { width: 90, height: 30, color: 'var(--ink-green)' }), 'hm-steps'),
       !featureOn('hydration') ? null : kpi('droplet', 'sky', t('წყალი დღეს', 'Water today'), fmtMl(water), '', t(`მიზანი ${fmtMl(state.waterGoal)}`, `Goal ${fmtMl(state.waterGoal)}`),
         sparkline(last14.map((k) => Math.max(0, Number(byDate.get(k)?.hydrationMl) || 0)), { width: 90, height: 30, color: 'var(--ink-sky)' }), 'hm-water'));
@@ -395,7 +396,7 @@ export default async function healthPage(root, ctx) {
   }
 
   /* ── Steps ── */
-  function stepsSection(byDate, keys) {
+  function stepsSection(byDate, keys, goal) {
     const today = ymd();
     const values = keys.map((k) => Math.max(0, Number(byDate.get(k)?.steps) || 0));
     const anySteps = state.daily.some((d) => Number(d.steps) > 0);
@@ -415,7 +416,7 @@ export default async function healthPage(root, ctx) {
     const avg = withData.length ? Math.round(withData.reduce((a, b) => a + b, 0) / withData.length) : 0;
     const best = Math.max(0, ...values);
     const bestIdx = values.indexOf(best);
-    const reached = values.filter((v) => v >= STEPS_DAY_GOAL).length;
+    const reached = values.filter((v) => v >= goal).length;
     const total = values.reduce((a, b) => a + b, 0);
     wrap.append(card({ class: 'pad-lg' },
       h('div', { class: 'hm-mini-stats' },
@@ -427,8 +428,8 @@ export default async function healthPage(root, ctx) {
         labels: keys.map(shortDay),
         tipLabels: keys.map((k) => fmtDate(k)),
         values,
-        goal: STEPS_DAY_GOAL,
-        goalLabel: `${fmtNum(STEPS_DAY_GOAL)}`,
+        goal,
+        goalLabel: `${fmtNum(goal)}`,
         color: 'var(--ink-green)',
         unit: t('ნაბიჯი', 'steps'),
         fmt: (v) => fmtNum(v),
@@ -439,13 +440,13 @@ export default async function healthPage(root, ctx) {
         h('span', { class: 'faint hstack', style: { gap: '6px' } }, icon('smartphone', { size: 14 }), syncedAt ? t(`სინქრონი აპიდან · ${fmtDate(syncedAt)}`, `Synced from the app · ${fmtDate(syncedAt)}`) : t('სინქრონდება აპიდან', 'Synced from the app')))));
 
     const side = h('div', { class: 'stack', style: { gap: '16px' } });
-    const pct = Math.min(100, Math.round((todaySteps / STEPS_DAY_GOAL) * 100));
+    const pct = Math.min(100, Math.round((todaySteps / goal) * 100));
     side.append(card(
       h('div', { class: 'hstack', style: { gap: '18px' } },
-        ring({ value: todaySteps, max: STEPS_DAY_GOAL, size: 112, stroke: 11, color: 'var(--ink-green)', label: `${pct}%`, sub: t('დღეს', 'Today') }),
+        ring({ value: todaySteps, max: goal, size: 112, stroke: 11, color: 'var(--ink-green)', label: `${pct}%`, sub: t('დღეს', 'Today') }),
         h('div', { class: 'stack', style: { gap: '4px' } },
-          h('div', { class: 'card-title' }, stepsStatus(todaySteps)),
-          h('div', { class: 'card-sub' }, todaySteps >= STEPS_DAY_GOAL ? t(`${fmtNum(todaySteps - STEPS_DAY_GOAL)} ნაბიჯით მეტი`, `${fmtNum(todaySteps - STEPS_DAY_GOAL)} steps over`) : t(`დარჩა ${fmtNum(STEPS_DAY_GOAL - todaySteps)} ნაბიჯი`, `${fmtNum(STEPS_DAY_GOAL - todaySteps)} steps to go`)),
+          h('div', { class: 'card-title' }, stepsStatus(todaySteps, goal)),
+          h('div', { class: 'card-sub' }, todaySteps >= goal ? t(`${fmtNum(todaySteps - goal)} ნაბიჯით მეტი`, `${fmtNum(todaySteps - goal)} steps over`) : t(`დარჩა ${fmtNum(goal - todaySteps)} ნაბიჯი`, `${fmtNum(goal - todaySteps)} steps to go`)),
           h('div', { class: 'card-sub' }, t(`≈ ${fmtNum(todaySteps * 0.000762, 1)} კმ · ≈ ${fmtNum(Math.round(todaySteps / 100))} აქტიური წუთი`, `≈ ${fmtNum(todaySteps * 0.000762, 1)} km · ≈ ${fmtNum(Math.round(todaySteps / 100))} active minutes`))))));
     side.append(stepsGoalCard(byDate));
     wrap.append(side);
@@ -619,8 +620,8 @@ function trendTone(delta, goal) {
   return Math.sign(delta) === Math.sign(want) ? 'good' : 'bad';
 }
 
-function stepsStatus(steps) {
-  const r = steps / STEPS_DAY_GOAL;
+function stepsStatus(steps, goal) {
+  const r = steps / goal;
   if (r >= 1) return t('დღიური მიზანი უკვე მიღწეულია', 'Daily goal already reached');
   if (r >= 0.75) return t('მიზანთან ახლოს ხარ', 'You’re close to your goal');
   if (r >= 0.4) return t('ჩვეულებრივზე უფრო აქტიური ხარ', 'You’re more active than usual');
@@ -639,6 +640,7 @@ export function homeActivityCard() {
     const row = daily.find((d) => d.date === today) || {};
     const steps = Math.max(0, Number(row.steps) || 0);
     const water = Math.max(0, Number(row.hydrationMl) || 0);
+    const stepsGoal = stepsGoalFromDaily(daily);
     const weights = daily.filter((d) => d.weightKg != null);
     const lastKg = weights.at(-1)?.weightKg ?? session.profile?.weightKg ?? null;
     const add = button(t('+250 მლ', '+250 ml'), { variant: 'secondary', size: 'sm', icon: 'droplet' });
@@ -655,7 +657,7 @@ export function homeActivityCard() {
     // Paused trackers (admin „მოდულები“) leave the card; the rest stay as they are.
     const showSteps = featureOn('steps'), showWater = featureOn('hydration');
     const ringItems = [
-      showSteps ? { value: steps, max: STEPS_DAY_GOAL, color: 'var(--c6)', name: t('ნაბიჯი', 'Steps') } : null,
+      showSteps ? { value: steps, max: stepsGoal, color: 'var(--c6)', name: t('ნაბიჯი', 'Steps') } : null,
       showWater ? { value: water, max: goalMl, color: 'var(--c5)', name: t('წყალი', 'Water') } : null,
     ].filter(Boolean);
     mount(el,
@@ -664,7 +666,7 @@ export function homeActivityCard() {
         h('div', { class: 'stack hm-home-legend', style: { gap: '12px' } },
           !showSteps ? null : h('a', { class: 'hm-home-metric', href: '/health', 'data-link': '' },
             h('i', { style: { background: 'var(--c6)' } }),
-            h('div', null, h('span', null, t('ნაბიჯი', 'Steps')), h('b', null, fmtNum(steps), h('small', null, ` / ${fmtNum(STEPS_DAY_GOAL)}`)))),
+            h('div', null, h('span', null, t('ნაბიჯი', 'Steps')), h('b', null, fmtNum(steps), h('small', null, ` / ${fmtNum(stepsGoal)}`)))),
           !showWater ? null : h('a', { class: 'hm-home-metric', href: '/health', 'data-link': '' },
             h('i', { style: { background: 'var(--c5)' } }),
             h('div', null, h('span', null, t('წყალი', 'Water')), h('b', null, fmtNum(water), h('small', null, ` / ${fmtNum(goalMl)} ${ML}`)))),
