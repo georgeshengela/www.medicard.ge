@@ -34,6 +34,7 @@ import {
   detectCyclePhase,
   inferCycleStats,
   parseCycleInsightsJson,
+  lastPeriodTouches,
   pickLastPeriodStart,
   resolveLastPeriodStart,
   lastLoggedBleedDay,
@@ -296,7 +297,7 @@ async function getOrCreateProfile(userId) {
   });
 }
 
-/** `touched` = dates this request changed; a stored start on one of them that lost its bleed is dropped. */
+/** `touched` = dates whose bleeding this request removed or rewrote; a stored start on one of them with no bleed left is dropped. */
 async function syncLastPeriodStart(userId, today = todayInTimeZone(), touched = []) {
   const profile = await getOrCreateProfile(userId);
   const logs = await prisma.cycleLog.findMany({
@@ -1937,7 +1938,9 @@ cycleRouter.put(
       },
     });
 
-    await syncLastPeriodStart(req.user.id, today, [date]);
+    // Only removed bleeding can make the stored start stale — a mood or sex save on her onboarding
+    // start date (no log row behind it) keeps that date (CYC-01).
+    await syncLastPeriodStart(req.user.id, today, lastPeriodTouches(date, existing?.flow, body.flow));
 
     return res.json({ log: shapeCycleLog(log), bundle: await bundleFor(req) });
   }),
@@ -2012,8 +2015,12 @@ cycleRouter.delete(
     assertFemale(req.user);
     const { today } = await cycleClockForUser(req.user.id, clientTimezoneFromReq(req));
     const date = assertCycleDateKey(z.string().parse(req.params.date), today);
+    const existing = await prisma.cycleLog.findUnique({
+      where: { userId_date: { userId: req.user.id, date } },
+      select: { flow: true },
+    });
     await prisma.cycleLog.deleteMany({ where: { userId: req.user.id, date } });
-    await syncLastPeriodStart(req.user.id, today, [date]);
+    await syncLastPeriodStart(req.user.id, today, lastPeriodTouches(date, existing?.flow, null));
     return res.json(await bundleFor(req));
   }),
 );

@@ -274,6 +274,19 @@ function periodEndUndo(before) {
   return before ? { kind: 'clearFlow' } : { kind: 'removeLog' };
 }
 
+/**
+ * Undo of the one-tap start (mobile cyclePeriodStatus.periodStartUndo, CYC-04): today's row and the last
+ * period start come back exactly as they were — never „end“, which deleted a spotting-only day, wrote
+ * „no bleeding“ over other notes and dropped the start she gave in onboarding.
+ */
+function periodStartUndo(before, lastPeriodStart) {
+  if (before && isBleed(before.flow)) return { day: { kind: 'keep' }, lastPeriodStart: null };
+  const day = !before
+    ? { kind: 'removeLog' }
+    : { kind: 'restoreFlow', flow: before.flow === 'none' || before.flow === 'spotting' ? before.flow : null };
+  return { day, lastPeriodStart: lastPeriodStart || null };
+}
+
 /* ── Deviations copy (mobile src/lib/cycleDeviationCopy.ts) ─────────────── */
 const DEVIATION_RULES = { windowMonths: 6, minCycles: 3, spreadDays: 17, longPeriodDays: 10, factorTailDays: 90 };
 const deviationCopy = {
@@ -1146,21 +1159,30 @@ export default async function cyclePage(root, ctx = {}) {
   const startPeriod = async (btn) => {
     const v = derive(state.bundle);
     const date = v.today;
+    const undo = periodStartUndo(v.todayLog || null, state.bundle?.profile?.lastPeriodStart);
     await busy(btn, async () => {
       try {
         const b = await put('/api/cycle/period', { action: 'start', date, flow: 'medium' });
         setBundle(b);
         toast(t('მენსტრუაცია დაფიქსირდა — დღეს პირველი დღეა', 'Period logged — today is day 1'), 'ok', {
           ms: 8000,
-          action: { label: t('გაუქმება', 'Undo'), onClick: () => undoStart(date) },
+          action: { label: t('გაუქმება', 'Undo'), onClick: () => undoStart(date, undo) },
         });
       } catch (e) { toast(e.message, 'error'); }
     });
   };
-  const undoStart = async (date) => {
+  /** The day first (its exact flow back, or the row removed), then the start she had if the server lost it. */
+  const undoStart = async (date, undo) => {
+    if (undo.day.kind === 'keep') return;
     try {
-      // "end" on the first day clears that one-day period again (server planEndPeriod).
-      setBundle(await put('/api/cycle/period', { action: 'end', date }));
+      let b = undo.day.kind === 'removeLog'
+        ? await del(`/api/cycle/logs/${date}`)
+        : (await put(`/api/cycle/logs/${date}`, { flow: undo.day.flow })).bundle;
+      if (undo.lastPeriodStart && b?.profile?.lastPeriodStart !== undo.lastPeriodStart) {
+        const nb = await post('/api/cycle/last-period', { date: undo.lastPeriodStart });
+        if (Array.isArray(nb?.logs)) b = nb;
+      }
+      setBundle(b);
       toast(t('გაუქმდა', 'Undone'), 'info');
     } catch (e) { toast(e.message, 'error'); }
   };

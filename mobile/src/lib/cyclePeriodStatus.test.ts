@@ -1,6 +1,13 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { heroPeriodState, heroPlanWhileAsking, periodEndUndo, stillBleedingFlow } from './cyclePeriodStatus.ts';
+import {
+  heroPeriodState,
+  heroPlanWhileAsking,
+  lastPeriodToRestore,
+  periodEndUndo,
+  periodStartUndo,
+  stillBleedingFlow,
+} from './cyclePeriodStatus.ts';
 
 const today = '2026-09-06';
 const status = (state: 'active' | 'ended' | 'askStill') => ({ state, day: state === 'ended' ? null : 6, typicalLength: 5, autoEnded: state === 'ended' });
@@ -62,4 +69,37 @@ test('on the question day „მენსტრუაცია დაიწყ�
   assert.deepEqual(heroPlanWhileAsking({ primary: 'start', secondary: 'log' }, true), { primary: 'log', secondary: null });
   assert.deepEqual(heroPlanWhileAsking({ primary: 'log', secondary: 'start' }, false), { primary: 'log', secondary: 'start' });
   assert.deepEqual(heroPlanWhileAsking({ primary: 'end', secondary: 'log' }, true), { primary: 'end', secondary: 'log' });
+});
+
+test('undo of the one-tap „მენსტრუაცია დაიწყო“ restores the day exactly (CYC-04)', () => {
+  // No log before the tap: the row the start created goes away.
+  assert.deepEqual(periodStartUndo(undefined, null), { day: { kind: 'removeLog' }, lastPeriodStart: null });
+  assert.deepEqual(periodStartUndo(null, '2026-09-10'), { day: { kind: 'removeLog' }, lastPeriodStart: '2026-09-10' });
+  // A spotting-only day stays spotting (it is never deleted), „none“ stays „none“.
+  assert.deepEqual(periodStartUndo({ flow: 'spotting' }, '2026-09-10'), {
+    day: { kind: 'restoreFlow', flow: 'spotting' },
+    lastPeriodStart: '2026-09-10',
+  });
+  assert.deepEqual(periodStartUndo({ flow: 'none' }, null), { day: { kind: 'restoreFlow', flow: 'none' }, lastPeriodStart: null });
+  // A day with only moods / cramps gets its empty flow back — never a false „no bleeding“.
+  assert.deepEqual(periodStartUndo({ flow: null }, '2026-09-06'), { day: { kind: 'restoreFlow', flow: null }, lastPeriodStart: '2026-09-06' });
+  assert.deepEqual(periodStartUndo({}, null), { day: { kind: 'restoreFlow', flow: null }, lastPeriodStart: null });
+  // Bleeding was already logged: the start changed nothing, so the undo changes nothing (never „end“).
+  for (const flow of ['light', 'medium', 'heavy']) {
+    assert.deepEqual(periodStartUndo({ flow }, '2026-09-06'), { day: { kind: 'keep' }, lastPeriodStart: null }, flow);
+  }
+});
+
+test('undo of the one-tap start writes back the last period start only when the server lost it', () => {
+  const undo = periodStartUndo(null, '2026-09-10');
+  // The onboarding date the tap replaced: the server fell back to nothing or an older logged start.
+  assert.equal(lastPeriodToRestore(undo, null), '2026-09-10');
+  assert.equal(lastPeriodToRestore(undo, '2026-08-01'), '2026-09-10');
+  assert.equal(lastPeriodToRestore(undo, '2026-09-06'), '2026-09-10');
+  // She answered „today“ in onboarding and then tapped the start: today is still her start.
+  assert.equal(lastPeriodToRestore(periodStartUndo(null, '2026-09-06'), null), '2026-09-06');
+  // Already right, nothing before, or nothing was changed by the tap.
+  assert.equal(lastPeriodToRestore(undo, '2026-09-10'), null);
+  assert.equal(lastPeriodToRestore(periodStartUndo(null, null), null), null);
+  assert.equal(lastPeriodToRestore(periodStartUndo({ flow: 'heavy' }, '2026-09-10'), null), null);
 });

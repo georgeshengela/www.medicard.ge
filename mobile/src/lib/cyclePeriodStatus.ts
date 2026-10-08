@@ -84,6 +84,42 @@ export function periodEndUndo(before: { flow?: string | null } | null | undefine
 }
 
 /**
+ * Undo of the one-tap „მენსტრუაცია დაიწყო“ (CYC-04): today comes back exactly as it was before the tap,
+ * and so does the last period start (the start moved it to today). Never „end“: on a one-day run END
+ * deleted a spotting-only day, wrote a false „no bleeding“ over a day with other notes and dropped the
+ * start she gave in onboarding.
+ *   - no log before the tap → remove the row the start created;
+ *   - a row without bleeding (empty, „none“, „spotting“) → put that flow back, every other field stays;
+ *   - bleeding already logged → the start changed nothing (server `alreadyLogged`), so nothing to undo.
+ */
+export type PeriodStartUndo = {
+  day: { kind: 'removeLog' } | { kind: 'restoreFlow'; flow: 'none' | 'spotting' | null } | { kind: 'keep' };
+  /** The last period start shown before the tap (`bundle.profile.lastPeriodStart`); null = none / nothing to restore. */
+  lastPeriodStart: string | null;
+};
+
+export function periodStartUndo(
+  before: { flow?: string | null } | null | undefined,
+  lastPeriodStart: string | null | undefined,
+): PeriodStartUndo {
+  if (before && isBleed(before.flow)) return { day: { kind: 'keep' }, lastPeriodStart: null };
+  const day: PeriodStartUndo['day'] = !before
+    ? { kind: 'removeLog' }
+    : { kind: 'restoreFlow', flow: before.flow === 'none' || before.flow === 'spotting' ? before.flow : null };
+  return { day, lastPeriodStart: lastPeriodStart || null };
+}
+
+/**
+ * After the day is restored and synced: the start to write back (POST /last-period), or null when the
+ * server already shows it. Once today's bleeding is gone the server falls back to an older logged start,
+ * or to none (which would send her back to cycle setup) — the onboarding date the tap replaced is lost there.
+ */
+export function lastPeriodToRestore(undo: PeriodStartUndo, serverLastPeriodStart: string | null | undefined): string | null {
+  if (undo.day.kind === 'keep' || !undo.lastPeriodStart) return null;
+  return undo.lastPeriodStart === (serverLastPeriodStart ?? null) ? null : undo.lastPeriodStart;
+}
+
+/**
  * On the question day „მენსტრუაცია დაიწყო“ would only repeat „კი“ in the middle of a period: it steps
  * aside (a leading start becomes today's log, a secondary start disappears). Every other day: unchanged.
  */

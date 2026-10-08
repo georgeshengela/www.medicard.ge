@@ -6,8 +6,8 @@ import type { CycleLogForm } from '@/components/cycle/CycleLogTabs';
 import { periodToastTitle } from '@/components/cycle/CyclePeriodToast';
 import { formFromCycleLog, persistCycleLog } from '@/lib/cycleLogSave';
 import { periodStartTone } from '@/lib/cycleTone';
-import { queueApplyPeriod, queueRemoveCycleLog, saveCycleObservation, type CycleView } from '@/lib/cycleOffline';
-import { periodEndUndo, stillBleedingFlow, type PeriodEndUndo } from '@/lib/cyclePeriodStatus';
+import { queueApplyPeriod, queueRemoveCycleLog, saveCycleObservation, undoQueuedPeriodStart, type CycleView } from '@/lib/cycleOffline';
+import { periodEndUndo, periodStartUndo, stillBleedingFlow, type PeriodEndUndo, type PeriodStartUndo } from '@/lib/cyclePeriodStatus';
 import { tx } from '@/i18n/locale';
 import { putCycleView } from '@/lib/cycleViewCache';
 import { getCycleReminderPrefs } from '@/lib/cycleReminderPrefs';
@@ -133,6 +133,8 @@ export function useHomeCycleActions({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [toastDate, setToastDate] = useState<string | null>(null);
+  /** Today's row and the last period start before the one-tap start (its undo restores both, CYC-04). */
+  const startUndoRef = useRef<{ date: string; undo: PeriodStartUndo } | null>(null);
   /** Today's bleeding before the one-tap "period ended" (kept for undo); null = no end toast. */
   const [endToast, setEndToast] = useState<EndToast | null>(null);
   /** The day's form before the one-tap sex log (kept for undo); null = no sex toast. */
@@ -198,6 +200,7 @@ export function useHomeCycleActions({
 
   const startPeriod = useCallback(() => {
     if (!userId || busyRef.current) return;
+    const undo = periodStartUndo(view?.display.logs.find((l) => l.date === today) ?? null, view?.display.profile.lastPeriodStart);
     busyRef.current = true;
     setBusy(true);
     setError(null);
@@ -209,6 +212,7 @@ export function useHomeCycleActions({
         if (periodStartTone(mode).haptic === 'selection') Haptics.selectionAsync().catch(() => undefined);
         else Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined);
         showView(result.view);
+        startUndoRef.current = { date: today, undo };
         if (alive.current) {
           setSexBefore(null);
           setEndToast(null);
@@ -221,17 +225,20 @@ export function useHomeCycleActions({
         if (alive.current) setBusy(false);
       }
     })();
-  }, [userId, today, mode, showView, fail]);
+  }, [userId, view, today, mode, showView, fail]);
 
+  /** Undo of the one-tap start: the day and the last period start come back exactly as they were (never „end“). */
   const undoStart = useCallback(
     (date: string) => {
       if (!userId) return;
       setToastDate(null);
+      const entry = startUndoRef.current;
+      startUndoRef.current = null;
+      if (!entry || entry.date !== date) return;
       void (async () => {
         try {
-          // "end" on the first day clears that one-day period again (server planEndPeriod).
-          const result = await queueApplyPeriod(userId, { action: 'end', date });
-          showView(result.view);
+          const result = await undoQueuedPeriodStart(userId, entry.date, entry.undo);
+          if (result) showView(result.view);
         } catch (err) {
           fail(err);
         }

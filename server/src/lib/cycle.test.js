@@ -1,5 +1,6 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import {
   addDays,
   buildDoctorSummary,
@@ -11,6 +12,7 @@ import {
   detectCyclePhase,
   inferCycleStats,
   isPeriodFlow,
+  lastPeriodTouches,
   overlayLogsOnCalendar,
   pickLastPeriodStart,
   predictionConfidence,
@@ -169,6 +171,63 @@ describe('pickLastPeriodStart', () => {
       ]),
     );
     assert.equal(merged, '2026-03-01');
+  });
+});
+
+describe('last period start after a single-day write (CYC-01)', () => {
+  // She answered „today“ in onboarding: POST /last-period stores the date and creates no log row.
+  const lmp = '2026-10-08';
+  const olderRun = logs([
+    ['2026-08-01', 'medium'],
+    ['2026-08-02', 'medium'],
+    ['2026-08-03', 'light'],
+  ]);
+
+  it('a mood-only save on the stored start date keeps the start', () => {
+    // PUT /logs/:date with flow null (quick log, day sheet, the ♥ one-tap) on a day that had no row.
+    const after = [{ date: lmp, flow: null, symptoms: [], moods: ['calm'] }];
+    assert.equal(pickLastPeriodStart(lmp, after, undefined, undefined, lastPeriodTouches(lmp, undefined, null)), lmp);
+    assert.equal(
+      pickLastPeriodStart(lmp, [...olderRun, ...after], undefined, undefined, lastPeriodTouches(lmp, undefined, null)),
+      lmp,
+    );
+    // A row that already existed without bleeding, saved again without flow in the body.
+    assert.equal(pickLastPeriodStart(lmp, after, undefined, undefined, lastPeriodTouches(lmp, null, undefined)), lmp);
+    assert.equal(pickLastPeriodStart(lmp, after, undefined, undefined, lastPeriodTouches(lmp, 'spotting', 'none')), lmp);
+  });
+
+  it('a delete of a non-bleeding log on the stored start date keeps the start', () => {
+    // DELETE /logs/:date: the row had only a mood (or spotting) — no period was removed.
+    assert.equal(pickLastPeriodStart(lmp, [], undefined, undefined, lastPeriodTouches(lmp, null, null)), lmp);
+    assert.equal(pickLastPeriodStart(lmp, olderRun, undefined, undefined, lastPeriodTouches(lmp, 'spotting', null)), lmp);
+  });
+
+  it('a save that keeps bleeding (flow not sent, or another bleed level) keeps the start', () => {
+    const bleed = logs([[lmp, 'heavy']]);
+    assert.deepEqual(lastPeriodTouches(lmp, 'medium', undefined), []);
+    assert.deepEqual(lastPeriodTouches(lmp, 'medium', 'heavy'), []);
+    assert.equal(pickLastPeriodStart(lmp, bleed, undefined, undefined, lastPeriodTouches(lmp, 'medium', 'heavy')), lmp);
+  });
+
+  it('removing logged bleeding from the start date still drops that start', () => {
+    assert.deepEqual(lastPeriodTouches(lmp, 'medium', null), [lmp]);
+    assert.deepEqual(lastPeriodTouches(lmp, 'light', 'spotting'), [lmp]);
+    assert.deepEqual(lastPeriodTouches(lmp, 'heavy', 'none'), [lmp]);
+    // Edited to no bleeding, row kept with a mood.
+    const edited = [{ date: lmp, flow: 'none', symptoms: [], moods: ['calm'] }];
+    assert.equal(pickLastPeriodStart(lmp, edited, undefined, undefined, lastPeriodTouches(lmp, 'medium', 'none')), null);
+    // Deleted: falls back to what the logs say.
+    assert.equal(
+      pickLastPeriodStart(lmp, olderRun, undefined, undefined, lastPeriodTouches(lmp, 'medium', null)),
+      '2026-08-01',
+    );
+  });
+
+  it('PUT and DELETE /logs/:date pass only removed bleeding as touched', () => {
+    const src = readFileSync(new URL('../routes/cycle.routes.js', import.meta.url), 'utf8');
+    assert.doesNotMatch(src, /syncLastPeriodStart\(req\.user\.id, today, \[date\]\)/);
+    assert.match(src, /syncLastPeriodStart\(req\.user\.id, today, lastPeriodTouches\(date, existing\?\.flow, body\.flow\)\)/);
+    assert.match(src, /syncLastPeriodStart\(req\.user\.id, today, lastPeriodTouches\(date, existing\?\.flow, null\)\)/);
   });
 });
 

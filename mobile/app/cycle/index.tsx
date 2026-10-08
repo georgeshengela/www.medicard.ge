@@ -11,7 +11,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, { FadeInUp } from 'react-native-reanimated';
 import * as Haptics from 'expo-haptics';
 import { tx } from '@/i18n/locale';
-import { periodEndUndo, stillBleedingFlow, type PeriodEndUndo } from '@/lib/cyclePeriodStatus';
+import { periodEndUndo, periodStartUndo, stillBleedingFlow, type PeriodEndUndo, type PeriodStartUndo } from '@/lib/cyclePeriodStatus';
 import { CalendarHeart, Heart, MessageSquareText, PencilLine } from 'lucide-react-native';
 import { CycleHomeHeader } from '@/components/cycle/CycleHomeHeader';
 import { CycleHero } from '@/components/cycle/CycleHero';
@@ -70,6 +70,7 @@ import {
   queueApplyPeriod,
   saveCycleObservation,
   queueRemoveCycleLog,
+  undoQueuedPeriodStart,
   type CycleView,
 } from '@/lib/cycleOffline';
 import { putCycleBundle, putCycleView, useCycleView } from '@/lib/cycleViewCache';
@@ -249,8 +250,8 @@ export default function CycleHome() {
   const [postpartumQuery, setPostpartumQuery] = useState(() => emptyPostpartumQueryState());
   const postpartumGen = useRef(0);
   const [quickOpen, setQuickOpen] = useState(false);
-  /** One-tap "period started" confirmation (with undo / add flow). */
-  const [periodToast, setPeriodToast] = useState<string | null>(null);
+  /** One-tap "period started" confirmation (with undo / add flow); `undo` = the day and start before the tap. */
+  const [periodToast, setPeriodToast] = useState<{ date: string; undo: PeriodStartUndo } | null>(null);
   const [periodBusy, setPeriodBusy] = useState(false);
   /** One-tap "period ended" confirmation: today's bleeding before the tap, for undo (brief §8.2 item 12). */
   /** `undo` puts the day back exactly; `wasBleeding` = today had bleeding logged (else the „still bleeding?“ answer). */
@@ -747,6 +748,8 @@ export default function CycleHome() {
    */
   const startPeriodNow = async (source: 'hero' | 'widget' = 'hero') => {
     if (!user?.id || periodBusy) return;
+    // Undo puts back exactly this: today's row and the last period start shown before the tap (CYC-04).
+    const undo = periodStartUndo(bundle?.logs.find((l) => l.date === today) ?? null, bundle?.profile.lastPeriodStart);
     setPeriodBusy(true);
     try {
       const result = await queueApplyPeriod(user.id, { action: 'start', date: today });
@@ -756,7 +759,7 @@ export default function CycleHome() {
       if (periodStartTone(bundle?.profile.mode).haptic === 'selection') Haptics.selectionAsync().catch(() => undefined);
       else Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined);
       showView(result.view);
-      setPeriodToast(today);
+      setPeriodToast({ date: today, undo });
     } catch (err) {
       setError(err instanceof Error ? err.message : ka.common.error);
     } finally {
@@ -778,13 +781,13 @@ export default function CycleHome() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [widgetParams.periodStart, bundle, user?.id]);
 
-  const undoPeriodStart = async (date: string) => {
+  /** Undo of the one-tap start: the day and the last period start come back exactly as they were (never „end“). */
+  const undoPeriodStart = async (entry: { date: string; undo: PeriodStartUndo }) => {
     if (!user?.id) return;
     setPeriodToast(null);
     try {
-      // "end" on the first day clears that one-day period again (server planEndPeriod).
-      const result = await queueApplyPeriod(user.id, { action: 'end', date });
-      showView(result.view);
+      const result = await undoQueuedPeriodStart(user.id, entry.date, entry.undo);
+      if (result) showView(result.view);
     } catch (err) {
       setError(err instanceof Error ? err.message : ka.common.error);
     }
@@ -1524,7 +1527,7 @@ export default function CycleHome() {
           title={periodToastTitle(bundle?.profile.mode)}
           onAddFlow={() => {
             setPeriodToast(null);
-            openQuickLog(periodToast);
+            openQuickLog(periodToast.date);
           }}
           onUndo={() => void undoPeriodStart(periodToast)}
         />

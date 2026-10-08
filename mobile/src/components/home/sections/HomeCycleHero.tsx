@@ -46,6 +46,7 @@ import {
   cycleWeekStrip,
   daysBetweenKeys,
   fertileDaysInCycle,
+  pastEstimateBadge,
   recordedPeriodDaysInCycle,
   addDaysKey,
   startLeads,
@@ -469,12 +470,21 @@ function ClassicCycleCard({
         ? ka.cycle.heroUsualLength(length)
         : ka.cycle.heroCycleDayOf(phase.day, length)
       : null;
-  // A variable cycle is late only after its whole window (the centre model already knows when).
+  // Past the estimate — a variable cycle only after its whole window (the centre model already knows when).
   const late = forecastOn && caps.showLatePeriod && (spread ? center.kind === 'late' : inDays != null && inDays < 0);
+  // „ბოლო პატერნზე გვიანია“ only with the server's late verdict (the /cycle banner's rule); a forecast from
+  // defaults or < 2 logged cycles says „ჯერ ვსწავლობთ შენს რიტმს“ (CYC-07).
+  const lateBadge = late
+    ? pastEstimateBadge({ alerts: bundle.alerts, showLatePeriod: caps.showLatePeriod, averages: bundle.averages })
+    : null;
   // Dashed = an estimate (the calendar's grammar): the expected start with its weekday.
   const badge = forecastOn && next && !onPeriod
     ? late
-      ? { text: ka.cycle.lateCalmTitle, calm: true }
+      ? lateBadge === 'late'
+        ? { text: ka.cycle.lateCalmTitle, calm: true }
+        : lateBadge === 'learning'
+          ? { text: ka.cycle.confidenceLowShort, calm: true }
+          : null
       : inDays != null && inDays > 0
         ? { text: `${ka.cycle.heroLikely} · ${WEEKDAYS_KA[weekdayIndex(next)]}, ${formatYmd(next)}`, calm: false }
         : null
