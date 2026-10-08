@@ -7,7 +7,7 @@
  * once notifications are granted). Pure: no imports, so node tests load it directly.
  */
 
-type TrackedMedication = { medName?: string | null };
+type TrackedMedication = { medName?: string | null; config?: Record<string, unknown> | null };
 
 function norm(value: unknown): string {
   return typeof value === 'string' ? value.replace(/\s+/g, ' ').trim().toLocaleLowerCase() : '';
@@ -23,8 +23,9 @@ function sameMedicine(typed: string, tracked: string): boolean {
 /**
  * The medicine to finish setting up, or null. Only for people whose main goal is medications (others
  * may list what they take in their health profile without wanting reminders). `typed` =
- * `HealthProfile.medications`; `tracked` = every MEDIPILL medication, paused ones included. Call it
- * only once the medication list has loaded — an empty list while loading would look like „none yet“.
+ * `HealthProfile.medications`; `tracked` = every MEDIPILL medication, paused ones included (name or
+ * generic name). Call it only once the medication list has loaded — an empty list while loading
+ * would look like „none yet“.
  */
 export function medicationToSetUp(input: {
   primaryGoal: string | null | undefined;
@@ -32,7 +33,8 @@ export function medicationToSetUp(input: {
   tracked: readonly TrackedMedication[];
 }): string | null {
   if (input.primaryGoal !== 'medications') return null;
-  const tracked = input.tracked.map((med) => norm(med.medName)).filter(Boolean);
+  // The brand she added from the catalogue also counts by its generic name („Glucophage“ = „Metformin“).
+  const tracked = input.tracked.flatMap((med) => [norm(med.medName), norm(med.config?.genericName)]).filter(Boolean);
   for (const raw of input.typed ?? []) {
     const name = typeof raw === 'string' ? raw.replace(/\s+/g, ' ').trim() : '';
     if (name.length < 2) continue;

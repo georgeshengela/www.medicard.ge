@@ -14,6 +14,9 @@ test('the medicine named in the onboarding medication goal waits on Home until i
   // Set up in MEDIPILL (same name, any case, with a strength, or paused): nothing left to lead to.
   assert.equal(medicationToSetUp({ ...base, tracked: [{ medName: 'metformin' }] }), null);
   assert.equal(medicationToSetUp({ ...base, tracked: [{ medName: 'Metformin 500 მგ' }] }), null);
+  // Added from the catalogue under its brand: the generic name matches.
+  assert.equal(medicationToSetUp({ ...base, tracked: [{ medName: 'Glucophage', config: { genericName: 'Metformin' } }] }), null);
+  assert.equal(medicationToSetUp({ ...base, tracked: [{ medName: 'Glucophage', config: { genericName: 42 } }] }), 'Metformin');
   // Two typed: the second one is next once the first is tracked.
   assert.equal(medicationToSetUp({ ...base, typed: ['Metformin', 'ასპირინი'], tracked: [{ medName: 'Metformin' }] }), 'ასპირინი');
   assert.equal(medicationToSetUp({ ...base, typed: ['  Metformin  '] }), 'Metformin');
