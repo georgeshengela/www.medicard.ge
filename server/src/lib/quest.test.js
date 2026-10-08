@@ -40,6 +40,8 @@ import {
   getRewardBalance,
   getRewardLedger,
   getUserQuestDashboard,
+  questDashboardForClient,
+  questHistoryForClient,
   reconcileQuestProfile,
   updateQuestProgress,
 } from './quest.js';
@@ -578,9 +580,91 @@ describe('weekly Medi mission (owner 2026-10-08)', () => {
     assert.equal((await db.userQuest.findUnique({ where: { id: open.id } })).status, 'CANCELLED');
     assert.equal(questByKey(dash.daily.quests, 'daily_medi'), undefined);
     assert.equal(questByKey(dash.weekly.quests, 'weekly_medi').status, 'COMPLETED');
-    // Yesterday's completion stays claimable, for XP only.
+    // Yesterday's completion stays claimable and pays what its card showed before the retirement.
     const claimed = await claimQuest(USER, done.id, options(db));
+    assert.deepEqual(claimed.rewards, { xp: 20, coins: 10 });
+  });
+
+  it('pays a daily_medi mission completed before the retirement the coins its card promised', async () => {
+    const db = createQuestFakeDb();
+    await seedAiConsent(db);
+    const legacy = await db.questTemplate.create({
+      data: {
+        key: 'daily_medi', category: 'MEDI', cadence: 'DAILY', titleKey: 'quest.daily_medi.title',
+        descriptionKey: 'quest.daily_medi.description', progressType: 'MEDI_DAILY_USE', defaultTarget: 1,
+        rewardCoins: 10, rewardXp: 20, priority: 5, isActive: true,
+        config: { source: 'medi_daily_use', countsForDailyStreak: true },
+      },
+    });
+    // Completed this morning by the code before the deploy: no reward frozen on the row.
+    const done = await db.userQuest.create({
+      data: {
+        userId: USER, templateId: legacy.id, periodKey: TODAY, target: 1, progress: 1, status: 'COMPLETED',
+        assignedAt: new Date('2026-09-06T08:00:00+04:00'), completedAt: new Date('2026-09-06T09:00:00+04:00'),
+        expiresAt: endOfLocalDay(TODAY, QUEST_TIMEZONE), metadata: { cadence: 'DAILY', assignedTimezone: QUEST_TIMEZONE },
+      },
+    });
+
+    const dash = await getUserQuestDashboard(USER, options(db));
+    assert.equal((await db.questTemplate.findUnique({ where: { key: 'daily_medi' } })).rewardCoins, 0);
+    const card = questByKey(dash.daily.quests, 'daily_medi');
+    assert.deepEqual([card.status, card.claimable, card.rewardCoins, card.rewardXp], ['COMPLETED', true, 10, 20]);
+
+    const claimed = await claimQuest(USER, done.id, options(db));
+    assert.deepEqual(claimed.rewards, { xp: 20, coins: 10 });
+    const coins = await db.rewardLedger.findMany({ where: { userId: USER, currency: 'COIN' } });
+    assert.deepEqual(coins.map((entry) => entry.amount), [10]);
+  });
+
+  it('pays nothing extra for a daily_medi row that only completes after the retirement', async () => {
+    const db = createQuestFakeDb();
+    await seedAiConsent(db);
+    await ensureQuestTemplates(db);
+    const legacy = await db.questTemplate.create({
+      data: {
+        key: 'daily_medi', category: 'MEDI', cadence: 'DAILY', titleKey: 'quest.daily_medi.title',
+        descriptionKey: 'quest.daily_medi.description', progressType: 'MEDI_DAILY_USE', defaultTarget: 1,
+        rewardCoins: 10, rewardXp: 20, priority: 5, isActive: true,
+        config: { source: 'medi_daily_use', countsForDailyStreak: true },
+      },
+    });
+    await ensureQuestTemplates(db);
+    const open = await db.userQuest.create({
+      data: {
+        userId: USER, templateId: legacy.id, periodKey: TODAY, target: 1, progress: 1, status: 'ACTIVE',
+        assignedAt: new Date('2026-09-06T08:00:00+04:00'), expiresAt: endOfLocalDay(TODAY, QUEST_TIMEZONE),
+        metadata: { cadence: 'DAILY', assignedTimezone: QUEST_TIMEZONE },
+      },
+    });
+    const claimed = await claimQuest(USER, open.id, options(db));
     assert.deepEqual(claimed.rewards, { xp: 20, coins: 0 });
+  });
+
+  it('hides the weekly Medi mission from app JS that cannot show it (no „+0“ pill, no „today“ copy)', async () => {
+    const db = createQuestFakeDb();
+    await seedHydrationGoal(db);
+    await seedAiConsent(db);
+    await db.aiInteraction.create({ data: { userId: USER, status: 'OK', mode: 'DOCTOR', createdAt: NOW } });
+    const dash = await getUserQuestDashboard(USER, options(db));
+    assert.equal(questByKey(dash.weekly.quests, 'weekly_medi').claimable, true);
+    const snapshot = JSON.stringify(dash);
+
+    for (const version of ['1.0.0.21.0', '1.0.0.21.18', '1.0.0.20.40']) {
+      const old = questDashboardForClient(dash, version);
+      assert.equal(questByKey(old.weekly.quests, 'weekly_medi'), undefined, version);
+      assert.equal(old.summary.unclaimedRewards, dash.summary.unclaimedRewards - 1, version);
+      assert.equal(old.summary.weeklyCompleted, dash.summary.weeklyCompleted - 1, version);
+      assert.deepEqual(old.daily, dash.daily);
+    }
+    for (const version of ['1.0.0.21.19', '1.0.0.21.25', '1.0.0.22.0', 'web', '', undefined]) {
+      assert.equal(questDashboardForClient(dash, version), dash, String(version));
+    }
+    // The shared dashboard object (one computation for concurrent requests) is never changed.
+    assert.equal(JSON.stringify(dash), snapshot);
+
+    const history = { timezone: QUEST_TIMEZONE, today: TODAY, nextCursor: null, items: dash.weekly.quests };
+    assert.equal(questByKey(questHistoryForClient(history, '1.0.0.21.18').items, 'weekly_medi'), undefined);
+    assert.equal(questHistoryForClient(history, '1.0.0.21.19'), history);
   });
 });
 
@@ -702,6 +786,21 @@ describe('timezone hopping protection', () => {
 });
 
 describe('claim semantics', () => {
+  it('pays the reward frozen when the mission was completed, not a later template edit', async () => {
+    const { db, options } = await setup({ weekly: false });
+    const steps = questByKey(await db.userQuest.findMany({ include: { template: true } }), 'daily_steps');
+    await db.userQuest.update({ where: { id: steps.id }, data: { progress: 8000 } });
+    await completeQuest(USER, steps.id, options);
+    assert.deepEqual((await db.userQuest.findUnique({ where: { id: steps.id } })).metadata.reward, { xp: 50, coins: 30 });
+
+    await db.questTemplate.update({ where: { key: 'daily_steps' }, data: { rewardCoins: 5, rewardXp: 10 } });
+    const dash = await getUserQuestDashboard(USER, options);
+    const card = questByKey(dash.daily.quests, 'daily_steps');
+    assert.deepEqual([card.rewardCoins, card.rewardXp], [30, 50]);
+    const claimed = await claimQuest(USER, steps.id, options);
+    assert.deepEqual(claimed.rewards, { xp: 50, coins: 30 });
+  });
+
   it('does not expire a COMPLETED quest and allows a late claim', async () => {
     const { db, options } = await setup({ weekly: false });
     const steps = questByKey(await db.userQuest.findMany({ include: { template: true } }), 'daily_steps');

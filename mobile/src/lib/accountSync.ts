@@ -138,8 +138,13 @@ export async function pullAccountState(): Promise<AccountAppState | null> {
     return collectLocalState();
   }
   try {
-    const local = await collectLocalState();
+    const owner = localAccountId();
     const { state: remote } = await api.account.getAppState();
+    // Another account signed in meanwhile: never merge this answer into its data.
+    if (!owner || localAccountId() !== owner) return collectLocalState();
+    // Read the device after the request: a dose marked while it was in flight (a notification's
+    // „მივიღე ✓“ right after a cold start) must be in the merge, not overwritten by it.
+    const local = await collectLocalState();
     const merged = mergeAccountState(local, remote);
     await applyLocalState(merged);
     pulledThisSession = true;

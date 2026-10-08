@@ -73,12 +73,78 @@ export function pillShapePath(shape: PillShape): string {
 }
 
 const DOSE_LOG_KEY = 'medicard.meds.doseLogs';
+/** Device-level queue for marks made before any account could be resolved (see notificationDose.ts). */
+const PENDING_DOSE_KEY = 'medicard.meds.pendingDoseLogs';
 
-export async function loadDoseLogs(): Promise<MedicationDoseLog[]> {
+/**
+ * Dose logs are stored per account, and the account id is only set once /api/auth/me answers. A
+ * notification's „მივიღე ✓“ on a cold start runs before that, so resolve the account the way
+ * healthDataSync does: the session snapshot (readable while the phone is locked), then the token.
+ */
+export async function ensureLocalAccountScope(): Promise<string | null> {
+  const { localAccountId, setLocalAccountId } = await import('@/lib/localAccount');
+  if (localAccountId()) return localAccountId();
   try {
-    const { getScopedPreference } = await import('@/lib/localAccount');
-    const raw = await getScopedPreference(DOSE_LOG_KEY);
-    if (!raw) return [];
+    const { loadSessionSnapshot } = await import('@/lib/sessionSnapshot');
+    const snapshot = await loadSessionSnapshot();
+    if (!localAccountId() && snapshot?.user?.id) setLocalAccountId(snapshot.user.id);
+    if (!localAccountId()) {
+      const [{ getToken }, { jwtSubject }] = await Promise.all([import('@/lib/storage'), import('@/lib/jwtSubject')]);
+      const id = jwtSubject(await getToken());
+      if (!localAccountId() && id) setLocalAccountId(id);
+    }
+  } catch {
+    /* no session to resolve */
+  }
+  return localAccountId();
+}
+
+let pendingDrain: Promise<void> | null = null;
+/** False once this process saw the queue empty, so ordinary reads skip the storage lookup. */
+let pendingMaybe = true;
+
+/** Moves queued marks into the signed-in account's dose log (once; concurrent readers share it). */
+function drainPendingDoseLogs(): Promise<void> {
+  if (!pendingMaybe) return Promise.resolve();
+  if (pendingDrain) return pendingDrain;
+  pendingDrain = (async () => {
+    const [{ getPreference, deletePreference }, { getScopedPreference, setScopedPreference }, pending] = await Promise.all([
+      import('@/lib/storage'),
+      import('@/lib/localAccount'),
+      import('@/lib/notificationDose'),
+    ]);
+    const raw = await getPreference(PENDING_DOSE_KEY);
+    if (!raw) {
+      pendingMaybe = false;
+      return;
+    }
+    let queue: unknown[] = [];
+    try {
+      const parsed = JSON.parse(raw);
+      queue = Array.isArray(parsed) ? parsed : [];
+    } catch {
+      queue = [];
+    }
+    const marks = pending.takePendingDoses(queue, Date.now());
+    if (marks.length) {
+      const current = parseDoseLogs(await getScopedPreference(DOSE_LOG_KEY));
+      await setScopedPreference(DOSE_LOG_KEY, JSON.stringify(pending.mergeDoseLogs(current, marks)));
+      void import('@/lib/accountSync').then(({ scheduleAccountSyncPush }) => scheduleAccountSyncPush());
+      for (const mark of marks) syncDoseMark(mark, 'notification');
+    }
+    await deletePreference(PENDING_DOSE_KEY);
+    pendingMaybe = false;
+  })()
+    .catch(() => undefined)
+    .finally(() => {
+      pendingDrain = null;
+    });
+  return pendingDrain;
+}
+
+function parseDoseLogs(raw: string | null): MedicationDoseLog[] {
+  if (!raw) return [];
+  try {
     const parsed = JSON.parse(raw) as MedicationDoseLog[];
     return Array.isArray(parsed) ? parsed : [];
   } catch {
@@ -86,8 +152,55 @@ export async function loadDoseLogs(): Promise<MedicationDoseLog[]> {
   }
 }
 
+function syncDoseMark(entry: MedicationDoseLog, source: 'app' | 'notification') {
+  if (entry.status !== 'taken' && entry.status !== 'skipped') return;
+  const status = entry.status;
+  void import('@/lib/productObservability').then(({ syncDoseEvent }) =>
+    syncDoseEvent({
+      medicationId: entry.medicationId,
+      date: entry.date,
+      time: entry.time,
+      status,
+      source,
+      occurredAt: entry.updatedAt,
+    }),
+  );
+}
+
+export async function loadDoseLogs(): Promise<MedicationDoseLog[]> {
+  try {
+    if (!(await ensureLocalAccountScope())) return [];
+    const { getScopedPreference } = await import('@/lib/localAccount');
+    await drainPendingDoseLogs();
+    return parseDoseLogs(await getScopedPreference(DOSE_LOG_KEY));
+  } catch {
+    return [];
+  }
+}
+
 export async function saveDoseLog(entry: MedicationDoseLog, source: 'app' | 'notification' = 'app'): Promise<void> {
   const { setScopedPreference } = await import('@/lib/localAccount');
+  // Resolve the account before reading: reading with no account returns [] and writing would then
+  // replace the whole history with this one mark.
+  if (!(await ensureLocalAccountScope())) {
+    // No session could be read (e.g. a lock-screen tap before the phone was ever unlocked): keep the
+    // mark on the device and apply it once an account is signed in, instead of dropping it.
+    const [{ getPreference, setPreference }, { queuePendingDose }] = await Promise.all([
+      import('@/lib/storage'),
+      import('@/lib/notificationDose'),
+    ]);
+    let queue: unknown[] = [];
+    try {
+      const parsed = JSON.parse((await getPreference(PENDING_DOSE_KEY)) || '[]');
+      queue = Array.isArray(parsed) ? parsed : [];
+    } catch {
+      queue = [];
+    }
+    await setPreference(PENDING_DOSE_KEY, JSON.stringify(queuePendingDose(queue, entry, Date.now())));
+    pendingMaybe = true;
+    // Its dose event goes to the server when the queue is applied (there is no session to send it with now).
+    return;
+  }
   const existing = await loadDoseLogs();
   const key = `${entry.medicationId}|${entry.date}|${entry.time}`;
   const cutoff = new Date();
@@ -100,19 +213,7 @@ export async function saveDoseLog(entry: MedicationDoseLog, source: 'app' | 'not
   await setScopedPreference(DOSE_LOG_KEY, JSON.stringify(next));
   void import('@/lib/accountSync').then(({ scheduleAccountSyncPush }) => scheduleAccountSyncPush());
   void import('@/lib/mediNotificationBrain').then(({ requestEngageRefresh }) => requestEngageRefresh());
-  if (entry.status === 'taken' || entry.status === 'skipped') {
-    const status = entry.status;
-    void import('@/lib/productObservability').then(({ syncDoseEvent }) =>
-      syncDoseEvent({
-        medicationId: entry.medicationId,
-        date: entry.date,
-        time: entry.time,
-        status,
-        source,
-        occurredAt: entry.updatedAt,
-      }),
-    );
-  }
+  syncDoseMark(entry, source);
 }
 
 export function doseLogKey(medicationId: string, date: string, time: string): string {

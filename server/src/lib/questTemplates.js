@@ -74,6 +74,31 @@ export const RETIRED_QUEST_TEMPLATES = Object.freeze({
 });
 
 /**
+ * Medi Coins a retired template paid before it was retired (kept apart from RETIRED_QUEST_TEMPLATES,
+ * whose fields are written to the template row). A mission completed before the retirement still
+ * pays what its card showed then: daily_medi paid 10.
+ */
+export const RETIRED_QUEST_PAID_COINS = Object.freeze({ daily_medi: 10 });
+
+/**
+ * What a UserQuest row pays and shows. Completion freezes the reward on the row (metadata.reward),
+ * so a later template change (admin edit, retirement) never changes a reward already earned. A row
+ * completed before rewards were frozen pays its template's reward — a retired template's old coins.
+ */
+export function questRowReward(row) {
+  const template = row?.template || {};
+  const frozen = row?.metadata?.reward;
+  if (frozen && Number.isFinite(frozen.xp) && Number.isFinite(frozen.coins)) {
+    return { rewardXp: frozen.xp, rewardCoins: frozen.coins };
+  }
+  const retiredCoins = RETIRED_QUEST_PAID_COINS[template.key];
+  if (row?.completedAt && template.config?.retired === true && retiredCoins != null) {
+    return { rewardXp: template.rewardXp ?? 0, rewardCoins: retiredCoins };
+  }
+  return { rewardXp: template.rewardXp ?? 0, rewardCoins: template.rewardCoins ?? 0 };
+}
+
+/**
  * Owner rules that win over the admin console (config.adminManaged) on every seed and in the admin
  * PATCH: the Medi mission is weekly, one conversation completes it (MEDI_DAILY_USE progress is 0 or 1,
  * so any other target could never be reached), pays no Medi Coins (XP only) and never counts for the

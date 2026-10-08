@@ -1,3 +1,5 @@
+import { questRowReward } from './questTemplates.js';
+
 /** Fields that must never land in quest rows, metadata, or API payloads. */
 export const QUEST_FORBIDDEN_KEYS = Object.freeze([
   'notes',
@@ -71,6 +73,8 @@ export function questProgressPercent(progress, target) {
 export function publicQuest(row, extras = {}) {
   if (!row) return null;
   const template = row.template || {};
+  // The reward this row pays (frozen at completion), so the card and the claim always agree.
+  const { rewardCoins, rewardXp } = questRowReward(row);
   const paid = extras.claimedSourceIds instanceof Set
     ? extras.claimedSourceIds.has(row.id)
     : Boolean(row.claimedAt);
@@ -91,8 +95,8 @@ export function publicQuest(row, extras = {}) {
     completedAt: row.completedAt instanceof Date ? row.completedAt.toISOString() : row.completedAt,
     claimedAt: row.claimedAt instanceof Date ? row.claimedAt.toISOString() : row.claimedAt,
     expiresAt: row.expiresAt instanceof Date ? row.expiresAt.toISOString() : row.expiresAt,
-    rewardCoins: template.rewardCoins ?? 0,
-    rewardXp: template.rewardXp ?? 0,
+    rewardCoins,
+    rewardXp,
     claimable: row.status === 'COMPLETED' && !paid,
     // Phase 5 — safe Smart Quest presentation metadata only. Raw baseline,
     // completion ratios, and the decision trace never leave the server.

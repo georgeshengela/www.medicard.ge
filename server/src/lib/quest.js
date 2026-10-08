@@ -30,7 +30,8 @@ import {
   expiresAtForPeriod,
   questPeriodWindow,
 } from './questTime.js';
-import { countsForDailyStreak, ensureQuestTemplates } from './questTemplates.js';
+import { countsForDailyStreak, ensureQuestTemplates, questRowReward } from './questTemplates.js';
+import { isAppVersionBelow } from './appVersion.js';
 import { isUsableStepCapability, loadStepCapabilityStatus } from './stepCapability.js';
 import {
   SMART_QUEST_ENGINE_VERSION,
@@ -307,8 +308,7 @@ function notifyQuestCompleted(userId, quest, options = {}) {
     category: quest.template?.category,
     completedAt,
     periodKey: quest.periodKey,
-    rewardCoins: quest.template?.rewardCoins,
-    rewardXp: quest.template?.rewardXp,
+    ...questRowReward(quest),
     progress: quest.progress,
     target: quest.target,
     progressPercent: questProgressPercent(quest.progress, quest.target),
@@ -830,9 +830,16 @@ async function completeQuestInTx(tx, userId, userQuestId, options = {}) {
     },
   });
 
+  // Freeze what the card shows now: a later template change (admin edit, retirement) never changes
+  // a reward already earned — the claim pays this (questRowReward).
+  const reward = { xp: quest.template?.rewardXp ?? 0, coins: quest.template?.rewardCoins ?? 0 };
   const updated = await tx.userQuest.update({
     where: { id: quest.id },
-    data: { status: COMPLETED, completedAt: clock.now },
+    data: {
+      status: COMPLETED,
+      completedAt: clock.now,
+      metadata: sanitizeQuestJson({ ...(quest.metadata || {}), reward }),
+    },
     include: { template: true, completions: true },
   });
 
@@ -936,7 +943,8 @@ async function claimQuestInTx(tx, userId, userQuestId, options = {}) {
     throw httpError('ქვესტის ვადა ამოიწურა.', 409);
   }
 
-  const issued = assertIssuableQuestReward(quest.template);
+  // Reject an invalid reward before any write (the row's own reward is checked again below).
+  assertIssuableQuestReward({ ...quest.template, ...questRowReward(quest) });
   let justCompleted = false;
 
   if (quest.status === ACTIVE) {
@@ -955,6 +963,8 @@ async function claimQuestInTx(tx, userId, userQuestId, options = {}) {
     quest = completion.quest;
     justCompleted = completion.completed;
   }
+  // What the card promised: the reward frozen at completion (or a retired template's old coins).
+  const issued = assertIssuableQuestReward({ ...quest.template, ...questRowReward(quest) });
   const xpWrite = await writeReward(tx, {
     userId,
     currency: 'XP',
@@ -1190,14 +1200,51 @@ export async function getUserQuestDashboard(userId, options = {}) {
       periodKey: clock.week,
       quests: weekly,
     },
-    summary: {
-      dailyCompleted: daily.filter((quest) => quest.status === COMPLETED || quest.status === CLAIMED).length,
-      dailyTotal: daily.length,
-      dailyClaimable: daily.filter((quest) => quest.claimable).length,
-      weeklyCompleted: weekly.filter((quest) => quest.status === COMPLETED || quest.status === CLAIMED).length,
-      unclaimedRewards: [...daily, ...weekly].filter((quest) => quest.claimable).length,
-    },
+    summary: questSummary(daily, weekly),
   };
+}
+
+function questSummary(daily, weekly) {
+  return {
+    dailyCompleted: daily.filter((quest) => quest.status === COMPLETED || quest.status === CLAIMED).length,
+    dailyTotal: daily.length,
+    dailyClaimable: daily.filter((quest) => quest.claimable).length,
+    weeklyCompleted: weekly.filter((quest) => quest.status === COMPLETED || quest.status === CLAIMED).length,
+    unclaimedRewards: [...daily, ...weekly].filter((quest) => quest.claimable).length,
+  };
+}
+
+/**
+ * First app JS that can show the weekly Medi mission (1.0.0.21.19). Older JS names every Medi quest
+ * with the daily copy („დღეს …“) and always draws a coin pill — „+0“ for an XP-only mission — so it
+ * does not get the mission at all until it has the OTA. The web app ('web') and requests without a
+ * version get everything.
+ */
+export const WEEKLY_MEDI_MIN_APP_VERSION = '1.0.0.21.19';
+
+function hiddenForAppVersion(appVersion) {
+  return isAppVersionBelow(appVersion, WEEKLY_MEDI_MIN_APP_VERSION) === true;
+}
+
+function isWeeklyMedi(quest) {
+  return quest?.cadence === 'WEEKLY' && quest?.progressType === 'MEDI_DAILY_USE';
+}
+
+/** The dashboard as this app version can show it; a new object, the shared one is never changed. */
+export function questDashboardForClient(dashboard, appVersion) {
+  if (!dashboard || !hiddenForAppVersion(appVersion)) return dashboard;
+  const weeklyQuests = dashboard.weekly?.quests || [];
+  if (!weeklyQuests.some(isWeeklyMedi)) return dashboard;
+  const weekly = { ...dashboard.weekly, quests: weeklyQuests.filter((quest) => !isWeeklyMedi(quest)) };
+  return { ...dashboard, weekly, summary: questSummary(dashboard.daily?.quests || [], weekly.quests) };
+}
+
+/** Quest history as this app version can show it (same rule as the dashboard). */
+export function questHistoryForClient(history, appVersion) {
+  if (!history || !hiddenForAppVersion(appVersion)) return history;
+  const items = history.items || [];
+  if (!items.some(isWeeklyMedi)) return history;
+  return { ...history, items: items.filter((quest) => !isWeeklyMedi(quest)) };
 }
 
 function emptyQuestDashboard(clock, profile) {

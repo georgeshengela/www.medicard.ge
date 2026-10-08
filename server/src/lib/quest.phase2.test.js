@@ -78,9 +78,11 @@ describe('phase 2 economy — reject not clamp', () => {
     const steps = questByKey(await allQuests(db), 'daily_steps');
     await db.userQuest.update({ where: { id: steps.id }, data: { progress: 5000 } });
     await completeQuest(USER, steps.id, options);
-    await db.questTemplate.update({
-      where: { id: steps.templateId },
-      data: { rewardCoins: 300, rewardXp: 50 },
+    // A claim pays the reward frozen on the row at completion; an impossible one is refused.
+    const done = await db.userQuest.findUnique({ where: { id: steps.id } });
+    await db.userQuest.update({
+      where: { id: steps.id },
+      data: { metadata: { ...done.metadata, reward: { xp: 50, coins: 300 } } },
     });
 
     await assert.rejects(() => claimQuest(USER, steps.id, options), { code: 'QUEST_REWARD_CEILING' });
@@ -89,6 +91,22 @@ describe('phase 2 economy — reject not clamp', () => {
     assert.ok(!row.claimedAt);
     const ledger = await db.rewardLedger.findMany({ where: { userId: USER } });
     assert.equal(ledger.length, 0);
+  });
+
+  it('refuses an impossible template reward before completing a quest on claim', async () => {
+    const { db, options } = await setup({ weekly: false });
+    const steps = questByKey(await allQuests(db), 'daily_steps');
+    await db.userQuest.update({ where: { id: steps.id }, data: { progress: 5000 } });
+    await db.questTemplate.update({
+      where: { id: steps.templateId },
+      data: { rewardCoins: 300, rewardXp: 50 },
+    });
+
+    await assert.rejects(() => claimQuest(USER, steps.id, options), { code: 'QUEST_REWARD_CEILING' });
+    const row = await db.userQuest.findUnique({ where: { id: steps.id } });
+    assert.equal(row.status, 'ACTIVE');
+    assert.equal((await db.questCompletion.findMany({ where: { userQuestId: steps.id } })).length, 0);
+    assert.equal((await db.rewardLedger.findMany({ where: { userId: USER } })).length, 0);
   });
 
   it('does not silently issue a clamped amount', () => {

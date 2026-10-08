@@ -2,7 +2,8 @@ import type * as ExpoNotificationTypes from 'expo-notifications';
 import { Platform } from 'react-native';
 import { Notifications } from '@/lib/expoNotifications';
 import { addHydrationLog, todayYmd } from '@/lib/hydration';
-import { saveDoseLog } from '@/lib/medications.shared';
+import { ensureLocalAccountScope, saveDoseLog } from '@/lib/medications.shared';
+import { notificationDoseEntry } from '@/lib/notificationDose';
 import { markEngageOpened } from '@/lib/mediEngagePrefs';
 import { HYDRATION_DROP_ML } from '@/types/hydration';
 import { tx } from '../i18n/locale.js';
@@ -129,18 +130,19 @@ export async function handleNotificationAction(
 
   if (data.type === 'medi_engage') void markEngageOpened(family, key, action);
 
-  if (action === NOTIF_ACTION.take && typeof data.medicationId === 'string') {
-    await saveDoseLog({
-      medicationId: data.medicationId,
-      date: todayYmd(),
-      time: typeof data.time === 'string' ? data.time : '08:00',
-      status: 'taken',
-      updatedAt: new Date().toISOString(),
-    }, 'notification');
+  // „მივიღე ✓“ marks the dose the reminder was for: dated by when it was delivered (a 23:30 dose
+  // answered after midnight is still that evening's), saved even when the tap launched the app before
+  // sign-in finished (saveDoseLog resolves the account or queues the mark), and shown at once.
+  const dose = action === NOTIF_ACTION.take ? notificationDoseEntry(data, response.notification.date, Date.now()) : null;
+  if (dose) {
+    await saveDoseLog(dose, 'notification');
+    void import('@/lib/queryClient').then(({ invalidate }) => invalidate('medications'));
     return { navigate: false };
   }
 
   if (action === NOTIF_ACTION.drank) {
+    // Water is stored per account too; on a cold start the account is not set yet.
+    await ensureLocalAccountScope();
     await addHydrationLog({
       date: todayYmd(),
       ml: HYDRATION_DROP_ML,
