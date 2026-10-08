@@ -12,6 +12,7 @@ import { requireAdmin } from '../middleware/adminAuth.js';
 import { writeAdminAudit } from '../lib/adminAudit.js';
 import { listFeatureFlags, setFeatureFlag } from '../lib/featureFlags.js';
 import { validateQuestRewardAmounts } from '../lib/questEconomy.js';
+import { lockedQuestTemplateFields } from '../lib/questTemplates.js';
 import { getLevelForXp } from '../lib/questLevels.js';
 import { adjustCoins, ledgerBalance } from '../lib/adminCoins.js';
 
@@ -45,8 +46,9 @@ adminManageRouter.put('/features/:key', asyncHandler(async (req, res) => {
 const QUEST_LABELS = {
   daily_steps: 'დღიური ნაბიჯები',
   daily_hydration: 'დღიური წყალი',
-  daily_medi: 'Medi-სთან საუბარი',
+  daily_medi: 'Medi-სთან საუბარი (ძველი, დღიური)',
   weekly_steps: 'კვირის ნაბიჯები',
+  weekly_medi: 'Medi-სთან საუბარი (კვირაში ერთხელ)',
 };
 
 adminManageRouter.get('/quests/templates', asyncHandler(async (_req, res) => {
@@ -70,6 +72,8 @@ adminManageRouter.get('/quests/templates', asyncHandler(async (_req, res) => {
       priority: t.priority,
       isActive: t.isActive,
       adminManaged: t.config?.adminManaged === true,
+      // Owner rules the console cannot change (the Medi mission pays no coins; daily_medi is retired).
+      locked: lockedQuestTemplateFields(t.key),
       updatedAt: t.updatedAt,
       stats7d: { assigned: count(assigned, t.id), completed: count(completed, t.id) },
     })),
@@ -88,6 +92,10 @@ adminManageRouter.patch('/quests/templates/:key', asyncHandler(async (req, res) 
   const body = questBody.parse(req.body);
   const current = await prisma.questTemplate.findUnique({ where: { key: req.params.key } });
   if (!current) throw httpError('შაბლონი ვერ მოიძებნა.', 404);
+  const locked = lockedQuestTemplateFields(current.key);
+  if (locked && Object.entries(body).some(([field, value]) => field in locked && locked[field] !== value)) {
+    throw httpError('ეს მნიშვნელობა მფლობელის წესით ფიქსირებულია: Medi-სთან საუბარი Medi Coins-ს არ იძლევა, დღიური Medi მისია კი კვირის მისიით შეიცვალა.', 400, 'QUEST_TEMPLATE_LOCKED');
+  }
   const next = { ...current, ...body };
   try {
     validateQuestRewardAmounts({ cadence: next.cadence, rewardXp: next.rewardXp, rewardCoins: next.rewardCoins });

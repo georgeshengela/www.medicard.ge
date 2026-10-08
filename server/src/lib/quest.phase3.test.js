@@ -13,7 +13,7 @@ describe('phase 3 step capability eligibility', () => {
     const db = createQuestFakeDb();
     const assigned = await assignDailyQuests(USER, '2026-09-06', { db, now: NOW, timezone: QUEST_TIMEZONE });
     const keys = assigned.map((row) => row.template.key).sort();
-    assert.deepEqual(keys, ['daily_medi']);
+    assert.deepEqual(keys, []);
     assert.equal(isUsableStepCapability('UNKNOWN'), false);
   });
 

@@ -442,6 +442,18 @@ describe('phase 4 evaluator', () => {
     assert.ok(!keys.includes('HYDRATE_10'));
   });
 
+  it('counts weekly Medi missions for MEDI only, never for the WEEKLY tiers', async () => {
+    const { db, options } = await setup();
+    await seedCompletedQuests(db, { count: 3, category: 'MEDI', cadence: 'WEEKLY', keyPrefix: 'wm' });
+    const result = await evaluateAchievements(USER, options);
+    assert.equal(result.counters.mediCompleted, 3);
+    assert.equal(result.counters.weeklyCompleted, 0);
+    const keys = await unlockedKeys(db);
+    assert.ok(keys.includes('MEDI_3'));
+    assert.ok(!keys.includes('FIRST_WEEKLY'));
+    assert.ok(!keys.includes('WEEKLY_3'));
+  });
+
   it('unlocks streak tiers from the profile longest streak', async () => {
     const { db, options } = await setup();
     await db.userQuestProfile.create({ data: { userId: USER, currentStreak: 2, longestStreak: 7 } });

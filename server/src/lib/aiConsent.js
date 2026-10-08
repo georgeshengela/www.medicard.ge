@@ -39,13 +39,26 @@ export function bindAiLanguage(req, _res, next) {
 export function consentRequired() {
   return Object.assign(new Error(t(currentAiLanguage(), 'AI-სთვის მონაცემების გაზიარებას შენი თანხმობა სჭირდება.', 'Sharing your data with AI needs your permission.')), { status: 403, code: 'AI_CONSENT_REQUIRED' });
 }
+const isAcceptedConsentRow = (row) => row?.version === AI_CONSENT_VERSION && row?.decision === 'accepted';
 export async function readAiConsent(userId, db = prisma) {
   if (!userId) throw consentRequired();
   const rows = await db.$queryRaw`SELECT "version", "decision", "updatedAt" FROM "UserAiConsent" WHERE "userId" = ${userId}`;
   const row = rows[0] || null;
   return { version: AI_CONSENT_VERSION, manifest: AI_DISCLOSURE,
-    accepted: row?.version === AI_CONSENT_VERSION && row?.decision === 'accepted',
+    accepted: isAcceptedConsentRow(row),
     decision: row?.decision || null, updatedAt: row?.updatedAt || null };
+}
+/**
+ * Non-throwing check for features offered only after AI consent (the weekly Medi mission).
+ * True only for the current version's explicit „accepted“; no row, an old version or a failed read is false.
+ */
+export async function hasAcceptedAiConsent(userId, db = prisma) {
+  if (!userId || typeof db?.userAiConsent?.findUnique !== 'function') return false;
+  try {
+    return isAcceptedConsentRow(await db.userAiConsent.findUnique({ where: { userId } }));
+  } catch {
+    return false;
+  }
 }
 export async function assertAiConsent(userId = currentAiAccount()) {
   const consent = await readAiConsent(userId);

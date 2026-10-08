@@ -18,11 +18,15 @@ type Props = {
   size?: 'sm' | 'md';
 };
 
-/** XP + Medi Coins as two soft pills: XP in brand wash, coins in warm amber. */
+/**
+ * XP + Medi Coins as two soft pills: XP in brand wash, coins in warm amber.
+ * No coin pill when there are no coins (the weekly Medi mission pays XP only — never „+0“).
+ */
 export function QuestReward({ xp, coins, locale = appLang(), muted, variant = 'pill', size = 'sm' }: Props) {
   const copy = q(locale);
   const colors = useThemeColors();
   const dark = useIsDark();
+  const hasCoins = Number(coins) > 0;
 
   if (variant === 'inline') {
     const tone = muted ? colors.text300 : colors.text200;
@@ -31,12 +35,14 @@ export function QuestReward({ xp, coins, locale = appLang(), muted, variant = 'p
         <Text style={{ fontFamily: 'NotoSansGeorgian_600SemiBold', fontSize: 13, color: tone }}>
           +{formatQuestNumber(xp, locale)} {copy.xp}
         </Text>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-          <Text style={{ fontFamily: 'NotoSansGeorgian_600SemiBold', fontSize: 13, color: tone }}>
-            +{formatQuestNumber(coins, locale)}
-          </Text>
-          <QuestCoinMark size={12} color={muted ? colors.text300 : undefined} />
-        </View>
+        {hasCoins ? (
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+            <Text style={{ fontFamily: 'NotoSansGeorgian_600SemiBold', fontSize: 13, color: tone }}>
+              +{formatQuestNumber(coins, locale)}
+            </Text>
+            <QuestCoinMark size={12} color={muted ? colors.text300 : undefined} />
+          </View>
+        ) : null}
       </View>
     );
   }
@@ -67,22 +73,24 @@ export function QuestReward({ xp, coins, locale = appLang(), muted, variant = 'p
           +{formatQuestNumber(xp, locale)} {copy.xp}
         </Text>
       </View>
-      <View
-        style={{
-          flexDirection: 'row',
-          alignItems: 'center',
-          gap: 5,
-          borderRadius: 999,
-          paddingHorizontal: padH,
-          paddingVertical: padV,
-          backgroundColor: coinBg,
-        }}
-      >
-        <QuestCoinMark size={fontSize} color={coinInk} />
-        <Text style={{ fontFamily: 'NotoSansGeorgian_700Bold', fontSize, lineHeight: fontSize + 6, color: coinInk }}>
-          +{formatQuestNumber(coins, locale)}
-        </Text>
-      </View>
+      {hasCoins ? (
+        <View
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: 5,
+            borderRadius: 999,
+            paddingHorizontal: padH,
+            paddingVertical: padV,
+            backgroundColor: coinBg,
+          }}
+        >
+          <QuestCoinMark size={fontSize} color={coinInk} />
+          <Text style={{ fontFamily: 'NotoSansGeorgian_700Bold', fontSize, lineHeight: fontSize + 6, color: coinInk }}>
+            +{formatQuestNumber(coins, locale)}
+          </Text>
+        </View>
+      ) : null}
     </View>
   );
 }

@@ -153,6 +153,19 @@ export function weeklyPeriodKey(now = new Date(), timeZone = QUEST_TIMEZONE_FALL
   return isoWeekKey(questYmd(now, timeZone));
 }
 
+/**
+ * Local start/end of a quest period, read from the key itself: an ISO week key covers Monday 00:00 –
+ * Sunday 23:59:59.999, a day key that one day. The key is frozen on the row, so a template whose
+ * cadence later changed never re-reads an old row with the wrong window.
+ */
+export function questPeriodWindow(periodKey, timeZone = QUEST_TIMEZONE_FALLBACK) {
+  const monday = mondayOfIsoWeek(periodKey);
+  if (monday) {
+    return { start: startOfLocalDay(monday, timeZone), end: endOfLocalDay(addDaysYmd(monday, 6), timeZone) };
+  }
+  return { start: startOfLocalDay(periodKey, timeZone), end: endOfLocalDay(periodKey, timeZone) };
+}
+
 export function expiresAtForPeriod(cadence, periodKey, timeZone = QUEST_TIMEZONE_FALLBACK) {
   if (cadence === 'WEEKLY') {
     const monday = mondayOfIsoWeek(periodKey);

@@ -42,12 +42,12 @@ const Q = isEn ? {
   completed: 'Mission complete', claimed: 'Reward claimed', expired: 'Expired',
   stepsTitle: 'A short walk', stepsBody: 'At your own pace.', stepsZero: 'Start with one small step.',
   stepsNear: 'A little more and this mission is done.', hydroTitle: 'Water balance', hydroBody: 'Reach your goal, nothing extra.',
-  mediTitle: 'Check in with Medi', mediBody: 'One real conversation with Medi is enough.', weeklySteps: 'Weekly steps',
+  mediTitle: 'Check in with Medi this week', mediBody: 'One conversation a week is enough — whenever suits you.', weeklySteps: 'Weekly steps',
 } : {
   completed: 'მისია შესრულდა', claimed: 'ჯილდო მიღებულია', expired: 'ვადა ამოიწურა',
   stepsTitle: 'მოკლე გასეირნება', stepsBody: 'ნელი ნაბიჯებით, შენი ტემპით.', stepsZero: 'დავიწყოთ პირველი პატარა ნაბიჯით.',
   stepsNear: 'ცოტაც — და მისია მზადაა.', hydroTitle: 'წყლის ბალანსი', hydroBody: 'დალიე შენი დღიური მიზანი, ზედმეტის გარეშე.',
-  mediTitle: 'ესაუბრე Medi-ს', mediBody: 'დღეს ერთი ნამდვილი საუბარი საკმარისია.', weeklySteps: 'კვირის ნაბიჯები',
+  mediTitle: 'ამ კვირის საუბარი Medi-სთან', mediBody: 'კვირაში ერთი საუბარი საკმარისია — როცა შენ გინდა.', weeklySteps: 'კვირის ნაბიჯები',
 };
 const WHY = isEn ? {
   title: 'Why this goal?',
@@ -546,7 +546,8 @@ export default async function questPage(root, ctx) {
 
   /* ── Missions tab ── */
   function missionCard(q, weekly = false) {
-    const kind = weekly ? 'weekly' : questKind(q);
+    // The weekly Medi mission keeps its own look and „Open Medi“ action in the weekly section.
+    const kind = weekly && questKind(q) !== 'medi' ? 'weekly' : questKind(q);
     const look = KIND_LOOK[kind] || KIND_LOOK.movement;
     const claimed = q.status === 'CLAIMED';
     const claimable = q.claimable && !claimed;
@@ -573,7 +574,8 @@ export default async function questPage(root, ctx) {
           h('div', { class: 'q-mission-title' }, questTitle(q), weekly ? badge(t('კვირა', 'Weekly'), 'warn') : null),
           h('div', { class: 'q-mission-sub' }, questHelper(q))),
         h('div', { class: 'q-rewards' },
-          h('span', { class: 'q-pill coin' }, icon('coins', { size: 13 }), `+${fmtNum(q.rewardCoins)}`),
+          // XP-only missions (the weekly Medi one) show no „+0“ coin pill.
+          q.rewardCoins ? h('span', { class: 'q-pill coin' }, icon('coins', { size: 13 }), `+${fmtNum(q.rewardCoins)}`) : null,
           h('span', { class: 'q-pill xp' }, `+${fmtNum(q.rewardXp)} XP`))),
       active || claimable ? h('div', { class: 'q-mission-progress' },
         progress(pct(q.progressPercent), 100, { ink: claimable ? 'green' : look.ink }),
@@ -591,7 +593,10 @@ export default async function questPage(root, ctx) {
       const result = await post(`/api/quests/${encodeURIComponent(q.id)}/claim`);
       if (!alive || !result?.ok) throw new Error('claim_failed');
       setDash(applyClaim(dash, result));
-      if (result.claimed) toast(t(`+${fmtNum(result.reward.coinsAwarded)} მონეტა · +${fmtNum(result.reward.xpAwarded)} XP`, `+${fmtNum(result.reward.coinsAwarded)} coins · +${fmtNum(result.reward.xpAwarded)} XP`));
+      if (result.claimed) {
+        const coins = result.reward.coinsAwarded ? t(`+${fmtNum(result.reward.coinsAwarded)} მონეტა · `, `+${fmtNum(result.reward.coinsAwarded)} coins · `) : '';
+        toast(`${coins}+${fmtNum(result.reward.xpAwarded)} XP`);
+      }
       if (result.profile?.leveledUp) levelUp(result.profile.currentLevel, result.reward);
       invalidate('/api/medi-companion');
       invalidate('/api/achievements');
@@ -1086,7 +1091,7 @@ export default async function questPage(root, ctx) {
       ['How does the streak work?', 'If you complete at least one daily mission, the day counts toward your streak. Active days in a row grow the streak. A missed day ends the current streak; your best streak, earned XP and rewards stay. Just opening the app doesn’t grow the streak.'],
       ['When do missions refresh?', 'Daily missions change when a new day starts, weekly missions on Monday. Time follows your account’s time zone. You can claim a completed mission’s reward later; an unfinished mission moves to history once it expires.'],
       ['Where do steps and water progress come from?', 'Steps sync through a connection to your phone’s health app — use the MEDICARD app on your phone for this. The water mission needs a daily hydration goal and logged water. Progress is counted by the system; you can’t mark a mission done by hand on this page.'],
-      ['How is the Medi mission completed?', 'Open Medi and talk to it. The mission is completed after a successful conversation. Talking to Medi is free. Sharing data with AI needs your consent.'],
+      ['How is the Medi mission completed?', 'The Medi mission is weekly and only appears once you’ve agreed to share data with AI — that choice is yours. Open Medi and chat with it; one successful conversation on any day of the week is enough. It rewards XP only — no Medi Coins — and doesn’t affect your daily streak. Chatting with Medi is free.'],
       ['Why did my goal change?', 'A new movement goal can adapt to your recent activity. “Why this goal?” on the mission card shows the exact reason. The goal of a mission that’s already assigned stays fixed. Play at your own pace — XP and level are not a health assessment.'],
     ] : [
       ['რა განსხვავებაა XP-სა და მონეტებს შორის?', 'XP გამოცდილებაა და შენს დონეს ზრდის. Medi Coins ჯილდოების მაღაზიაში გამოიყენება. ორივეს იღებ მისიის ან მიღწევის ჯილდოს მიღებისას. მონეტების დახარჯვა XP-სა და დონეს არ ამცირებს; მონეტები ფული არ არის.'],
@@ -1094,7 +1099,7 @@ export default async function questPage(root, ctx) {
       ['როგორ მუშაობს სერია?', 'ერთ დღიურ მისიას მაინც თუ შეასრულებ, დღე სერიაში ჩაითვლება. ზედიზედ აქტიური დღეები სერიას ზრდის. გამოტოვებული დღე მიმდინარე სერიას წყვეტს; შენი საუკეთესო სერია, მიღებული XP და ჯილდოები რჩება. მხოლოდ აპის გახსნა ამ სერიას არ ზრდის.'],
       ['როდის განახლდება მისიები?', 'დღიური მისიები ახალი დღის დაწყებისას იცვლება, კვირის მისიები — ორშაბათს. დრო ანგარიშის დროის სარტყლის მიხედვით ითვლება. უკვე შესრულებული მისიის ჯილდო მოგვიანებითაც შეგიძლია მიიღო; შეუსრულებელი მისია ვადის გასვლის შემდეგ ისტორიაში გადადის.'],
       ['საიდან მოდის ნაბიჯები და წყლის პროგრესი?', 'ნაბიჯები ჯანმრთელობის აპთან კავშირით სინქრონდება — ამისთვის გამოიყენე MEDICARD აპი ტელეფონზე. წყლის მისიისთვის საჭიროა ჰიდრატაციის დღიური მიზანი და დაფიქსირებული წყალი. პროგრესს სისტემა ითვლის; ამ გვერდზე ხელით ვერ მონიშნავ მისიას შესრულებულად.'],
-      ['როგორ სრულდება Medi-ს მისია?', 'გახსენი Medi და ესაუბრე მას. მისია შესრულდება წარმატებული საუბრის შემდეგ. Medi-სთან საუბარი უფასოა. მონაცემების AI-სთან გაზიარებისთვის საჭიროა შენი თანხმობა.'],
+      ['როგორ სრულდება Medi-ს მისია?', 'Medi-ს მისია კვირის მისიაა და მხოლოდ მაშინ ჩანს, როცა მონაცემების AI-სთან გაზიარებაზე თანხმობა გაქვს მიცემული — ეს შენი არჩევანია. გახსენი Medi და ესაუბრე; კვირის ნებისმიერ დღეს ერთი წარმატებული საუბარი საკმარისია. ჯილდო მხოლოდ XP-ია — Medi Coins-ს არ იძლევა და დღიურ სერიას არ ცვლის. Medi-სთან საუბარი უფასოა.'],
       ['რატომ შეიცვალა ჩემი მიზანი?', 'მოძრაობის ახალი მიზანი შეიძლება ბოლო აქტივობას მოერგოს. მისიის ბარათზე „რატომ ეს მიზანი?“ ზუსტ მიზეზს გაჩვენებს. უკვე დანიშნული მისიის მიზანი ფიქსირებულია. ითამაშე შენი ტემპით — XP და დონე ჯანმრთელობის შეფასება არ არის.'],
     ];
     const tzName = dash?.daily?.timezone || dash?.profile?.timezone;
@@ -1119,7 +1124,7 @@ export default async function questPage(root, ctx) {
         h('div', { class: 'q-rank' }, rankLabel(rankKeyFromLevel(level))),
         h('p', { class: 'muted' }, t('ახალი დონე. ლამაზად მივდივართ 😄', 'New level. Beautifully done 😄')),
         reward ? h('div', { class: 'hstack', style: { justifyContent: 'center' } },
-          h('span', { class: 'q-pill coin' }, icon('coins', { size: 13 }), `+${fmtNum(reward.coinsAwarded)}`),
+          reward.coinsAwarded ? h('span', { class: 'q-pill coin' }, icon('coins', { size: 13 }), `+${fmtNum(reward.coinsAwarded)}`) : null,
           h('span', { class: 'q-pill xp' }, `+${fmtNum(reward.xpAwarded)} XP`)) : null),
       footer: (close) => [button(t('გაგრძელება', 'Continue'), { onClick: () => close() })],
     });
@@ -1139,21 +1144,23 @@ function referralCard() {
   const draw = async () => {
     try {
       const d = await get('/api/referrals/me');
+      // Same rules as the app's invite page (server/src/lib/referral.js): both sides are paid the moment the code is entered.
+      const coins = fmtNum(d?.coinsPerSide ?? 25), days = fmtNum(d?.claimWindowDays ?? 14), cap = fmtNum(d?.monthlyCap ?? 5);
       const steps = isEn ? [
-        'Your friend installs MEDICARD and signs up',
-        'Within 14 days of signing up, they enter your code',
-        'They verify their phone and make a first entry — a medication, lab result, visit, meal or cycle log',
-        `You each get ${fmtNum(d?.coinsPerSide ?? 100)} Medi Coins`,
+        'Share your code or link',
+        `Your friend signs up and, within ${days} days, enters the code in the MEDICARD app: Profile → “Invite a friend” → “I have an invite code”`,
+        `The moment they enter it, you each get ${coins} Medi Coins`,
+        `You can invite up to ${cap} friends a month`,
       ] : [
-        'მეგობარი აყენებს MEDICARD-ს და რეგისტრირდება',
-        'რეგისტრაციიდან 14 დღეში შეჰყავს შენი კოდი',
-        'ადასტურებს ტელეფონს და აკეთებს პირველ ჩანაწერს — წამალი, ანალიზი, ვიზიტი, კვება ან ციკლი',
-        `ორივე იღებთ ${fmtNum(d?.coinsPerSide ?? 100)} Medi მონეტას`,
+        'გაუზიარე შენი კოდი ან ბმული',
+        `მეგობარი რეგისტრირდება და ${days} დღეში შეიყვანს კოდს MEDICARD აპში: პროფილი → „მოიწვიე მეგობარი“ → „მოწვევის კოდი მაქვს“`,
+        `კოდის შეყვანისთანავე ორივე იღებთ ${coins} Medi მონეტას`,
+        `თვეში მაქსიმუმ ${cap} მეგობრის მოწვევა შეგიძლია`,
       ];
       const parts = [
         h('div', { class: 'hstack', style: { flexWrap: 'nowrap' } }, tile('gift', 'amber', 42),
           h('div', null, h('div', { class: 'card-title' }, t('მოიწვიე ოჯახის წევრი', 'Invite a family member')),
-            h('div', { class: 'muted', style: { fontSize: '13px' } }, t(`პირველი ჩანაწერის შემდეგ ორივე მიიღებთ ${fmtNum(d?.coinsPerSide ?? 100)} Medi მონეტას.`, `After their first entry, you each get ${fmtNum(d?.coinsPerSide ?? 100)} Medi Coins.`)))),
+            h('div', { class: 'muted', style: { fontSize: '13px' } }, t(`როგორც კი შენს კოდს შეიყვანს, ორივე მაშინვე მიიღებთ ${coins} Medi მონეტას.`, `As soon as they enter your code, you both get ${coins} Medi Coins right away.`)))),
       ];
       if (d?.phoneRequired) {
         parts.push(h('div', { class: 'q-notice' }, icon('smartphone', { size: 16 }), h('span', null, t('კოდის მისაღებად დაადასტურე ტელეფონი. ასე ვიცავთ მოწვევებს ყალბი ანგარიშებისგან.', 'Verify your phone to get your code. This protects invites from fake accounts.'))),
@@ -1183,7 +1190,7 @@ function referralCard() {
       if (d?.invitedBy) {
         parts.push(h('p', { class: 'muted', style: { fontSize: '13px' } }, d.invitedBy.status === 'REWARDED'
           ? t('მოწვევის ბონუსი უკვე მიღებული გაქვს.', 'You’ve already received your invite bonus.')
-          : t('მოწვევის კოდი შეყვანილია. ბონუსს მიიღებ ტელეფონის დადასტურებისა და პირველი ჩანაწერის შემდეგ.', 'Invite code entered. You’ll get the bonus after you verify your phone and make your first entry.')));
+          : t('მოწვევის კოდი შეყვანილია. ბონუსი მალე ჩაგერიცხება.', 'Invite code entered. Your bonus will arrive shortly.')));
       } else if (d?.canClaim) {
         // Claiming a friend's code is tied to one device, so it stays in the phone app.
         parts.push(h('p', { class: 'faint', style: { fontSize: '12.5px' } }, t('მეგობრის კოდი გაქვს? შეიყვანე MEDICARD აპში: პროფილი → მოიწვიე მეგობარი.', 'Have a friend’s code? Enter it in the MEDICARD app: Profile → Invite a friend.')));
