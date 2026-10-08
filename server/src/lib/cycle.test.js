@@ -789,3 +789,22 @@ describe('bundle reload after a cycle write (CYC-06)', () => {
     assert.equal((src.match(/return respondWithBundle\(req, res\);/g) || []).length, 5);
   });
 });
+
+describe('cached AI cycle cards are cleared and keyed by language (CYC-08)', () => {
+  const src = readFileSync(new URL('../routes/cycle.routes.js', import.meta.url), 'utf8');
+
+  it('a profile write that changes her rhythm clears them', () => {
+    assert.match(src, /if \(profileWriteStalesCycleAi\(current, data\)\) Object\.assign\(data, emptyCycleAiCache\(\)\);/);
+  });
+
+  it('a new last period start through POST /last-period clears them', () => {
+    const route = src.slice(src.indexOf("'/last-period'"), src.indexOf('const sharePermSchema'));
+    assert.match(route, /toDateKey\(profile\?\.lastPeriodStart\) !== date \? emptyCycleAiCache\(\) : \{\}/);
+  });
+
+  it('the bundle carries only cards in the reader language, and new cards are stored with it', () => {
+    assert.match(src, /aiInsights: cycleAiInsightsForLang\(profile\.aiInsights, lang\)/);
+    assert.match(src, /const stored = \{ \.\.\.insights, lang: req\.lang === 'en' \? 'en' : 'ka' \};/);
+    assert.match(src, /aiInsights: stored,/);
+  });
+});

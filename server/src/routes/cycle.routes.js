@@ -47,6 +47,7 @@ import {
   isPeriodFlow,
 } from '../lib/cycle.js';
 import { isCycleAiContextSupported } from '../lib/cycleModes.js';
+import { cycleAiInsightsForLang, profileWriteStalesCycleAi } from '../lib/cycleHonesty.js';
 import { alignPhaseWithForecast } from '../lib/cycleForecastHonesty.js';
 import { clientTimezoneFromReq, resolveCycleClock } from '../lib/cycleCivilDate.js';
 import {
@@ -601,8 +602,9 @@ async function loadBundle(userId, clock = null, lang = 'ka') {
       hiddenCycles: inferred.hiddenStarts ?? [],
       conditions: Array.isArray(profile.conditions) ? profile.conditions.map(String) : [],
       reminderPrefs: profile.reminderPrefs ?? null,
-      aiInsights: profile.aiInsights ?? null,
-      aiInsightsAt: profile.aiInsightsAt ?? null,
+      // Cached AI cards only in the reader's language (CYC-08); the other language reads as „none cached“.
+      aiInsights: cycleAiInsightsForLang(profile.aiInsights, lang),
+      aiInsightsAt: cycleAiInsightsForLang(profile.aiInsights, lang) ? profile.aiInsightsAt ?? null : null,
     },
     logs: shapedLogs,
     customTags,
@@ -1452,6 +1454,9 @@ async function applyProfileUpdate(req, res) {
 
   await getOrCreateProfile(req.user.id);
   const current = await prisma.cycleProfile.findUnique({ where: { userId: req.user.id } });
+  // A new last period start, averages, mode, contraception or conditions: cached AI cards would describe
+  // the old cycle day / phase (CYC-08). An unchanged value (the profile screen sends every field) keeps them.
+  if (profileWriteStalesCycleAi(current, data)) Object.assign(data, emptyCycleAiCache());
   const nextMode = body.mode ?? current?.mode;
   const pregnancyWrite =
     body.mode === 'PREGNANCY' ||
@@ -1516,10 +1521,14 @@ cycleRouter.post(
     const date = DATE_KEY.parse(req.body?.date ?? req.body?.lastPeriodStart);
     const clock = await cycleClockForUser(req.user.id, clientTimezoneFromReq(req));
     assertCycleDateKey(date, clock.today);
-    await getOrCreateProfile(req.user.id);
+    const profile = await getOrCreateProfile(req.user.id);
     await prisma.cycleProfile.update({
       where: { userId: req.user.id },
-      data: { lastPeriodStart: new Date(`${date}T00:00:00.000Z`) },
+      data: {
+        lastPeriodStart: new Date(`${date}T00:00:00.000Z`),
+        // A corrected start moves the cycle day and phase the cached AI cards talk about (CYC-08).
+        ...(toDateKey(profile?.lastPeriodStart) !== date ? emptyCycleAiCache() : {}),
+      },
     });
     return respondWithBundle(req, res);
   }),
@@ -2328,10 +2337,12 @@ cycleRouter.post(
       headline: bundle.localInsights.headline,
     };
 
+    // Stored with its language: an English reader never gets Georgian cached cards, nor the reverse (CYC-08).
+    const stored = { ...insights, lang: req.lang === 'en' ? 'en' : 'ka' };
     await prisma.cycleProfile.update({
       where: { userId: req.user.id },
       data: {
-        aiInsights: insights,
+        aiInsights: stored,
         aiInsightsAt: new Date(),
       },
     });
@@ -2339,7 +2350,7 @@ cycleRouter.post(
     const usage = parsed ? await req.consumeAiCredit() : req.usage;
 
     return res.json({
-      insights,
+      insights: stored,
       cached: false,
       model: answer.model,
       engine: answer.engine ?? 'openrouter',
