@@ -20,6 +20,7 @@ export const NOTIF_ACTION = {
   take: 'TAKE',
   snooze: 'SNOOZE',
   drank: 'DRANK',
+  /** Legacy „კარგად ვარ“ on check-ins: no longer offered (it saved nothing); old taps are a no-op. */
   ok: 'OK',
   chat: 'CHAT',
   open: 'OPEN',
@@ -47,8 +48,9 @@ export async function registerNotificationCategories(): Promise<void> {
     await Notifications.setNotificationCategoryAsync(NOTIF_CATEGORY.hydration, [
       { identifier: NOTIF_ACTION.drank, buttonTitle: tx('დავლიე 💧', 'Drank it 💧'), options: { opensAppToForeground: false } },
     ]);
+    // No „კარგად ვარ“ button: there is no check-in record to save it to, and a button that
+    // saves nothing is misleading. Re-registering replaces the old category on the device.
     await Notifications.setNotificationCategoryAsync(NOTIF_CATEGORY.checkin, [
-      { identifier: NOTIF_ACTION.ok, buttonTitle: tx('კარგად ვარ 💚', "I'm fine 💚"), options: { opensAppToForeground: false } },
       { identifier: NOTIF_ACTION.chat, buttonTitle: tx('Medi-სთან საუბარი', 'Talk to Medi'), options: { opensAppToForeground: true } },
     ]);
     await Notifications.setNotificationCategoryAsync(NOTIF_CATEGORY.visit, [
@@ -179,6 +181,7 @@ export async function handleNotificationAction(
     return { navigate: true };
   }
 
+  // A notification delivered before the button was removed can still carry it.
   if (action === NOTIF_ACTION.ok) {
     return { navigate: false };
   }

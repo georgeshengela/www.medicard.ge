@@ -26,7 +26,7 @@ export function clearNotificationRoutePending(): void {
   pendingSince = 0;
 }
 
-/** Automatic screens (daily streak) wait while a tapped notification is opening its target. */
+/** Automatic screens wait while a tapped notification is opening its target. */
 export function notificationNavigationBusy(now = Date.now(), settleMs = 4000): boolean {
   return pendingSince > 0 || (openedAt > 0 && now - openedAt < settleMs);
 }

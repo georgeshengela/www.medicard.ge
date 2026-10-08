@@ -372,7 +372,6 @@ export default function Home() {
           firstName={firstName}
           initial={user?.fullName?.slice(0, 1) || 'M'}
           avatarId={avatar}
-          streak={user?.currentStreak ?? 0}
           // Day and month only: the year never changes the day, and the row stays on one line.
           dateLabel={formatYmd(todayYmd())}
           onModules={() => setModulesOpen(true)}

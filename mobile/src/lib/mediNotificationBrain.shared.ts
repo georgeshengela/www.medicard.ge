@@ -30,7 +30,6 @@ export const ENGAGE_FAMILIES = {
   questSmart: { priority: 65, topic: 'questSmart' as EngageTopic },
   hydration: { priority: 45, topic: 'hydration' as EngageTopic },
   stepsQuiet: { priority: 40, topic: 'stepsSmart' as EngageTopic },
-  streak: { priority: 35, topic: 'checkin' as EngageTopic },
   chat: { priority: 33, topic: 'chatFollowup' as EngageTopic },
   morning: { priority: 32, topic: 'morning' as EngageTopic },
   checkin: { priority: 30, topic: 'checkin' as EngageTopic },
@@ -75,8 +74,6 @@ export type EngageSnapshot = {
   hydrationMl: number;
   hydrationGoal: number;
   loggedPain: boolean;
-  streak: number;
-  loggedHealthDays: number;
   medTakenWeek: number;
   medMissedWeek: number;
   missingProfileField: 'bloodType' | 'heightCm' | 'phone' | null;
@@ -459,16 +456,6 @@ export function evaluateEngageBrain(snap: EngageSnapshot): { accepted: EngageCan
       reasons: ['50k steps this week', 'once per achievement'],
     });
   }
-  if (snap.streak >= 30 && !sentKeySince(snap.sent, 'engage-achieve-month', now.getTime() - 28 * 86_400_000)) {
-    attempts.push({
-      key: 'engage-achieve-month',
-      family: 'achievement',
-      fireAt: scheduleAt(now, prefs, 10, 30, 1),
-      vars: {},
-      route: '/profile/streak',
-      reasons: ['30-day streak', 'once per achievement'],
-    });
-  }
   if (snap.medTakenWeek >= 5 && snap.medMissedWeek === 0 && !sentKeySince(snap.sent, 'engage-achieve-meds', weekStart)) {
     attempts.push({
       key: 'engage-achieve-meds',
@@ -510,25 +497,7 @@ export function evaluateEngageBrain(snap: EngageSnapshot): { accepted: EngageCan
     });
   }
 
-  if (snap.streak === 6 || snap.loggedHealthDays === 6) {
-    attempts.push({
-      key: 'engage-streak-continue',
-      family: 'streak',
-      fireAt: scheduleAt(now, prefs, 19, 10, 0),
-      vars: {},
-      route: '/profile/streak',
-      reasons: ['6-day logging streak'],
-    });
-  } else if (snap.streak === 7) {
-    attempts.push({
-      key: 'engage-streak-week',
-      family: 'streak',
-      fireAt: scheduleAt(now, prefs, 10, 0, 1),
-      vars: {},
-      route: '/profile/streak',
-      reasons: ['7 days together'],
-    });
-  }
+  // No streak pushes (owner 2026-10-08): the app-open streak rewarded opening the app, not health.
 
   if (!openedRecently && !openedToday) {
     attempts.push({

@@ -1,61 +1,18 @@
-import React, { useEffect, useRef, useState } from 'react';
+import { useEffect } from 'react';
 import { onReturnToForeground } from '@/lib/appForeground';
-import * as Haptics from 'expo-haptics';
-import { useRouter, useSegments } from 'expo-router';
-import {
-  isDeviceAccessGateFinished,
-  subscribeDeviceAccessGate,
-} from '@/lib/deviceAccess';
-import { notificationNavigationBusy } from '@/lib/notificationTaps';
 import { useAuth } from '@/store/AuthContext';
 
 /**
- * Shows the streak screen when `/api/auth/me` claims today's daily login.
- * Relogin is not required — a normal app open hydrates and claims.
- * Legacy +5 "ქულა" is retired; Medi Coins live in MEDIQUEST.
+ * Foreground upkeep for a signed-in session: re-read `/api/auth/me`, the notification
+ * permission and the offline cycle queue whenever the app comes back.
+ *
+ * The daily full-screen app-open streak celebration is retired (owner 2026-10-08):
+ * it rewarded opening the app, not health. The server still records the daily claim
+ * for data integrity and older builds; nothing in the app shows it. The streak screen
+ * stays routable only for links in notifications sent before.
  */
 export function DailyCheckInHost() {
-  const { user, pendingDailyBonus, consumeDailyBonus, refresh } = useAuth();
-  const router = useRouter();
-  const segments = useSegments();
-  const root = segments[0];
-  const shownThisAward = useRef(false);
-  const [gateReady, setGateReady] = useState(() => isDeviceAccessGateFinished());
-
-  useEffect(() => subscribeDeviceAccessGate(() => {
-    setGateReady(isDeviceAccessGateFinished());
-  }), []);
-
-  useEffect(() => {
-    shownThisAward.current = false;
-  }, [pendingDailyBonus]);
-
-  useEffect(() => {
-    if (!user || !pendingDailyBonus) return;
-    if (!root || root === '(auth)') return;
-    if (!gateReady) return;
-    if (shownThisAward.current) return;
-    shownThisAward.current = true;
-
-    let fired = false;
-    const timer = setTimeout(() => {
-      fired = true;
-      // A tapped notification opens its own target; the streak waits for the next screen change.
-      if (notificationNavigationBusy()) {
-        shownThisAward.current = false;
-        return;
-      }
-      consumeDailyBonus();
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined);
-      router.push('/profile/streak?bonus=1' as never);
-    }, 700);
-
-    return () => {
-      clearTimeout(timer);
-      // Navigating away inside the delay must not lose today's streak screen.
-      if (!fired) shownThisAward.current = false;
-    };
-  }, [user, pendingDailyBonus, root, consumeDailyBonus, router, gateReady]);
+  const { user, refresh } = useAuth();
 
   useEffect(() => {
     if (!user) return;

@@ -112,7 +112,6 @@ export const FAMILY_COOLDOWN_HOURS: Record<string, number> = {
   checkin: 20,
   morning: 20,
   sleep: 20,
-  streak: 24,
   hydration: 3.5,
   stepsQuiet: 15,
   insight: 48,
@@ -136,7 +135,6 @@ export const PREFERRED_WINDOW_FAMILIES = new Set([
   'unfinished',
   'chat',
   'visitFollowup',
-  'streak',
 ]);
 
 export function cooldownMsForFamily(family: string): number {

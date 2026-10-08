@@ -2,7 +2,7 @@ import React, { createContext, useCallback, useContext, useEffect, useMemo, useR
 import { onReturnToForeground } from '@/lib/appForeground';
 import { resetRunMemory } from '@/lib/run/store';
 import { ka } from '@/i18n/ka';
-import { ApiError, api, type AiEngineId, type CheckInState, type Gender, type HealthProfile, type Usage, type User } from '@/lib/api';
+import { ApiError, api, type AiEngineId, type Gender, type HealthProfile, type Usage, type User } from '@/lib/api';
 import { setLocalAccountId, wipeLegacyUnscopedHealthCaches } from '@/lib/localAccount';
 import { primeHomeLayout, registerHomeLayoutProfilePatch } from '@/lib/home/homeLayoutStore';
 import { needsHealthAssessment as needsHealthAssessmentFromLib, needsProfileSetup } from '@/lib/onboarding';
@@ -44,9 +44,6 @@ type AuthState = {
   usage: Usage | null;
   stats: Stats | null;
   healthProfile: HealthProfile | null;
-  /** Set when today's login bonus was just awarded this session. */
-  pendingDailyBonus: CheckInState | null;
-  consumeDailyBonus: () => void;
   signIn: (email: string, password: string) => Promise<void>;
   signUp: (input: SignUpInput) => Promise<void>;
   signInWithPhone: (phone: string, code: string, fullName?: string) => Promise<void>;
@@ -124,7 +121,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [healthProfile, setHealthProfile] = useState<HealthProfile | null>(null);
   const healthProfileRef = useRef<HealthProfile | null>(healthProfile);
   healthProfileRef.current = healthProfile;
-  const [pendingDailyBonus, setPendingDailyBonus] = useState<CheckInState | null>(null);
 
   const resetSession = useCallback(() => {
     setSessionRestoreError(null);
@@ -134,7 +130,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUsage(null);
     setStats(null);
     setHealthProfile(null);
-    setPendingDailyBonus(null);
     void import('@/lib/accountSync').then(({ resetAccountSync }) => resetAccountSync());
     void import('@/lib/healthDataSync').then(({ resetHealthPullCache }) => {
       resetHealthPullCache();
@@ -149,7 +144,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUsage(snap.usage);
     setStats(snap.stats);
     setHealthProfile(snap.healthProfile as unknown as HealthProfile);
-    setPendingDailyBonus(null);
   }, []);
 
   const lastMeAt = useRef(0);
@@ -185,7 +179,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           setUsage(me.usage);
           setStats(me.stats);
           setHealthProfile((prev) => (sameJson(prev, me.healthProfile ?? null) ? prev : (me.healthProfile ?? null)));
-          if (me.checkInAwarded && me.checkIn) setPendingDailyBonus(me.checkIn);
           runPostLoginSideEffects(me.user, me.healthProfile ?? null);
         } catch (error) {
           if (await getToken() !== token) return;
@@ -357,8 +350,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // not change its identity and start another loading effect indefinitely.
   }, []);
 
-  const consumeDailyBonus = useCallback(() => setPendingDailyBonus(null), []);
-
   const completeSocial = useCallback(
     async (
       provider: SocialProvider,
@@ -391,8 +382,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       usage,
       stats,
       healthProfile,
-      pendingDailyBonus,
-      consumeDailyBonus,
       signIn: async (email, password) => adopt(await api.auth.login({ email, password })),
       resetPasswordWithSms: async (input) => adopt(await api.auth.passwordSmsReset(input)),
       signUp: async (input) => {
@@ -512,8 +501,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       usage,
       stats,
       healthProfile,
-      pendingDailyBonus,
-      consumeDailyBonus,
       adopt,
       completeSocial,
       hydrate,
