@@ -2090,6 +2090,13 @@ export async function assistantRequest<T>(path: 'catalog' | 'state' | 'plan' | '
   if (owner !== localAccountId()) throw new ApiError(tx('ანგარიში შეიცვალა.', 'You switched accounts.'), 401);
   const token = await getToken();
   if (!token || owner !== localAccountId()) throw new ApiError(tx('გთხოვ, შეხვიდე ანგარიშში.', 'Please sign in.'), 401);
+  if (path === 'plan' && body && typeof body === 'object') {
+    const { mediCycleAccess } = await import('@/lib/mediCycleAccess');
+    const { getPreferenceStrict } = await import('@/lib/storage');
+    const { scopedPrefKey } = await import('@/lib/localAccount');
+    body = { ...body, cycleContextAllowed: await mediCycleAccess(getPreferenceStrict, scopedPrefKey('medicard.engage.prefs.v1'), (body as { cycleContextAllowed?: boolean }).cycleContextAllowed === false) };
+    if (owner !== localAccountId()) throw new ApiError(tx('ანგარიში შეიცვალა.', 'You switched accounts.'), 401);
+  }
   const result = await request<T>(`/api/assistant/${path}${path === 'catalog' ? `?scope=${scope}` : ''}`, {
     token, method: path === 'catalog' || path === 'state' ? 'GET' : 'POST', body, timeoutMs: 120000,
   });
