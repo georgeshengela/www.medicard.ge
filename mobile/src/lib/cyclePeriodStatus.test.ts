@@ -6,6 +6,7 @@ import {
   lastPeriodToRestore,
   periodEndUndo,
   periodStartUndo,
+  periodStartUndoDay,
   stillBleedingFlow,
 } from './cyclePeriodStatus.ts';
 
@@ -88,6 +89,16 @@ test('undo of the one-tap „მენსტრუაცია დაიწყ�
   for (const flow of ['light', 'medium', 'heavy']) {
     assert.deepEqual(periodStartUndo({ flow }, '2026-09-06'), { day: { kind: 'keep' }, lastPeriodStart: null }, flow);
   }
+});
+
+test('undo of the one-tap start never deletes what she logged after the tap', () => {
+  // No row before the tap, nothing added since: the row the start created goes.
+  assert.deepEqual(periodStartUndoDay(periodStartUndo(null, null), false), { kind: 'removeLog' });
+  // Cramps or a mood saved from the quick log while the toast was up: only the flow goes back to empty.
+  assert.deepEqual(periodStartUndoDay(periodStartUndo(null, '2026-09-10'), true), { kind: 'restoreFlow', flow: null });
+  // A row that existed before keeps its own plan (its flow back, every other field stays).
+  assert.deepEqual(periodStartUndoDay(periodStartUndo({ flow: 'spotting' }, null), true), { kind: 'restoreFlow', flow: 'spotting' });
+  assert.deepEqual(periodStartUndoDay(periodStartUndo({ flow: 'heavy' }, null), true), { kind: 'keep' });
 });
 
 test('undo of the one-tap start writes back the last period start only when the server lost it', () => {

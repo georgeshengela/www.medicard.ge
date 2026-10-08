@@ -786,7 +786,7 @@ export default function CycleHome() {
     if (!user?.id) return;
     setPeriodToast(null);
     try {
-      const result = await undoQueuedPeriodStart(user.id, entry.date, entry.undo);
+      const result = await undoQueuedPeriodStart(user.id, entry.date, entry.undo, bundle?.logs.find((l) => l.date === entry.date) ?? null);
       if (result) showView(result.view);
     } catch (err) {
       setError(err instanceof Error ? err.message : ka.common.error);

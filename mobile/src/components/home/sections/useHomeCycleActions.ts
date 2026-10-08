@@ -235,16 +235,18 @@ export function useHomeCycleActions({
       const entry = startUndoRef.current;
       startUndoRef.current = null;
       if (!entry || entry.date !== date) return;
+      // The row as it is now: anything logged since the tap stays (the published toast reads the latest handler).
+      const current = view?.display.logs.find((l) => l.date === date) ?? null;
       void (async () => {
         try {
-          const result = await undoQueuedPeriodStart(userId, entry.date, entry.undo);
+          const result = await undoQueuedPeriodStart(userId, entry.date, entry.undo, current);
           if (result) showView(result.view);
         } catch (err) {
           fail(err);
         }
       })();
     },
-    [userId, showView, fail],
+    [userId, view, showView, fail],
   );
 
   /** One tap: the period ends today (the server clears today's logged bleeding); the toast's undo restores it. */

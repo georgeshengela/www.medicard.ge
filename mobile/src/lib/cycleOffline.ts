@@ -1,7 +1,7 @@
 import { Platform } from 'react-native';
 import * as SecureStore from 'expo-secure-store';
 import { tx } from '../i18n/locale.js';
-import { api, ApiError, type CycleBundle } from '@/lib/api';
+import { api, ApiError, type CycleBundle, type CycleLog } from '@/lib/api';
 import {
   deletePreference,
   getPreference,
@@ -21,6 +21,7 @@ import {
   emptyAccount,
   emptyStore,
   enqueueMutation,
+  hasObservationExtras,
   overlayPendingOnBundle,
   parseOfflineStore,
   planQueuedLogMutations,
@@ -40,7 +41,7 @@ import {
   generateDekBytes,
   migratePlaintextToEncrypted,
 } from './cycleOfflineCrypto';
-import { lastPeriodToRestore, type PeriodStartUndo } from './cyclePeriodStatus';
+import { lastPeriodToRestore, periodStartUndoDay, type PeriodStartUndo } from './cyclePeriodStatus';
 
 export type CycleSyncState =
   | 'synced'
@@ -604,17 +605,21 @@ export async function queueApplyPeriod(
  * synced — the last period start she had before the tap is written back if the server lost it. Offline
  * the day is still restored (queued); the start is not, because the queued writes must reach the server
  * first. Null = nothing to undo (bleeding was already logged, the start changed nothing).
+ * `current` = the day's row as shown when Undo is tapped: notes saved since the tap are never deleted.
  */
 export async function undoQueuedPeriodStart(
   userId: string,
   date: string,
   undo: PeriodStartUndo,
+  current?: CycleLog | null,
 ): Promise<PersistResult | null> {
-  if (undo.day.kind === 'keep') return null;
+  const row = (current ?? null) as Record<string, unknown> | null;
+  const day = periodStartUndoDay(undo, Boolean(row) && (hasObservationExtras(row) || row?.sexualActivity != null));
+  if (day.kind === 'keep') return null;
   const result =
-    undo.day.kind === 'removeLog'
+    day.kind === 'removeLog'
       ? await queueRemoveCycleLog(userId, date)
-      : await saveCycleObservation(userId, date, { flow: undo.day.flow });
+      : await saveCycleObservation(userId, date, { flow: day.flow });
   if (!result.synced || !result.view) return result;
   const restore = lastPeriodToRestore(undo, result.view.canonical.profile.lastPeriodStart);
   if (!restore) return result;

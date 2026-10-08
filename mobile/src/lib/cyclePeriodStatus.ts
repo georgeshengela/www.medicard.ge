@@ -110,6 +110,16 @@ export function periodStartUndo(
 }
 
 /**
+ * The day's step, decided when Undo is tapped (the tap-time plan alone could delete a note): a row the
+ * start created that has since gained notes — cramps or a mood saved from the quick log while the toast
+ * was still up — keeps them; only its flow goes back to empty. Never a delete of something she logged.
+ */
+export function periodStartUndoDay(undo: PeriodStartUndo, rowHasNotesNow: boolean): PeriodStartUndo['day'] {
+  if (undo.day.kind === 'removeLog' && rowHasNotesNow) return { kind: 'restoreFlow', flow: null };
+  return undo.day;
+}
+
+/**
  * After the day is restored and synced: the start to write back (POST /last-period), or null when the
  * server already shows it. Once today's bleeding is gone the server falls back to an older logged start,
  * or to none (which would send her back to cycle setup) — the onboarding date the tap replaced is lost there.
