@@ -1,6 +1,6 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { nextProfileSetupHref } from './onboarding.ts';
+import { FINISH_RETRY_DELAYS_MS, finishRetryDelay, nextProfileSetupHref, withExtraAnswers } from './onboarding.ts';
 
 const user = { phone: null };
 
@@ -44,5 +44,50 @@ describe('7-step onboarding tail (privacy → AI → notifications)', () => {
       nextProfileSetupHref(profile({ privacyAccepted: true, aiPrivacyPrompted: true, notificationsEnabled: true, homeLayout: 'standard' }) as never, { phone: '' } as never),
       '/(auth)/profile-setup/analyzing',
     );
+  });
+});
+
+describe('notification answer when the save fails (ONB-6)', () => {
+  it('an answer kept in memory moves the person on instead of back to the primer', () => {
+    const base = profile({ privacyAccepted: true, aiPrivacyPrompted: true, avatarId: 'avatar-2' });
+    for (const notificationsEnabled of [true, false]) {
+      const local = withExtraAnswers(base as never, { notificationsEnabled });
+      assert.equal(nextProfileSetupHref(local, user as never), '/(auth)/profile-setup/home-layout');
+      assert.equal((local.extraAnswers as Record<string, unknown>).avatarId, 'avatar-2');
+    }
+    assert.equal((base.extraAnswers as Record<string, unknown>).notificationsEnabled, undefined);
+  });
+    const server = { completedAt: null, weightKg: 70, extraAnswers: { privacyAccepted: true, aiPrivacyDecision: 'accepted', onboardingAnalysis: { score: 80 } } };
+    const merged = keepLocalAnswers(server as never, local);
+    const extra = merged.extraAnswers as Record<string, unknown>;
+    assert.equal(extra.notificationsEnabled, false);
+    assert.deepEqual(extra.onboardingAnalysis, { score: 80 });
+    assert.equal((merged as unknown as { weightKg: number }).weightKg, 70);
+    // The server wins wherever both have a value.
+    const stale = withExtraAnswers(profile({ aiPrivacyDecision: 'declined' }) as never, {});
+    assert.equal((keepLocalAnswers(server as never, stale).extraAnswers as Record<string, unknown>).aiPrivacyDecision, 'accepted');
+  });
+});
+
+describe('last onboarding save retries (ONB-1)', () => {
+  const err = (status: number) => Object.assign(new Error('x'), { status });
+
+  it('retries a dropped connection, rate limit or server error a bounded number of times', () => {
+    for (const status of [0, 429, 500, 502, 503]) {
+      assert.deepEqual(
+        FINISH_RETRY_DELAYS_MS.map((_, i) => finishRetryDelay(err(status), i + 1)),
+        [...FINISH_RETRY_DELAYS_MS],
+      );
+      assert.equal(finishRetryDelay(err(status), FINISH_RETRY_DELAYS_MS.length + 1), null);
+    }
+  });
+
+  it('never retries what a retry cannot fix', () => {
+    for (const status of [400, 401, 403, 404, 409, 422]) assert.equal(finishRetryDelay(err(status), 1), null);
+    // A timeout already waited the whole request timeout (3 min): show the error, never wait again on its own.
+    assert.equal(finishRetryDelay(err(408), 1), null);
+    assert.equal(finishRetryDelay(new Error('completePayload: birthdate'), 1), null);
+    assert.equal(finishRetryDelay(null, 1), null);
+    assert.equal(finishRetryDelay(err(0), 0), null);
   });
 });

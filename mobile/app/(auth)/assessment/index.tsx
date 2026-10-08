@@ -49,6 +49,7 @@ import {
 } from '@/lib/onboardingDevPreview';
 import { needsProfileSetup, useAuth } from '@/store/AuthContext';
 import { ExistingAccountCheck } from '@/components/auth/ExistingAccountCheck';
+import { OnboardingExitLinks } from '@/components/auth/OnboardingExit';
 import { getPreference, setPreference } from '@/lib/storage';
 import { tx } from '@/i18n/locale';
 
@@ -565,7 +566,11 @@ export default function AssessmentScreen() {
         step.type.startsWith('goal-')
       }
       footerBelow={
-        step.type === 'weight' && profileMode ? (
+        // Onboarding only: a way out on every step (sign out, or delete the account — the direct
+        // delete shows where the person cannot go on: the birth-date step under 18).
+        !profileMode && !preview ? (
+          <OnboardingExitLinks showDelete={step.type === 'birthdate' && !canContinue} disabled={busy} />
+        ) : step.type === 'weight' && profileMode ? (
           <Pressable
             accessibilityRole="button"
             disabled={busy}
