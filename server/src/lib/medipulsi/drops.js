@@ -128,19 +128,15 @@ async function upcomingGifts(now,db){
 }
 
 /**
- * When the player last walked: the latest fix, else the pause (a pause or a finish clears `lastFix`), else the
- * row's last update — so a walk in another city keeps that city for 24 h after it ends (owner 2026-10-08, Liège).
+ * When the player last walked: only a live fix counts. A pause or finish clears `lastFix`; falling back to the pause
+ * time or the row's update picked up stale positions (owner's old Tbilisi walk replaced his Liège home, 2026-10-08) —
+ * the phone's own position (X-Medirun-At) covers trips instead.
  */
 export function lastWalkAt(player){
  const j=player?.state?.journey;
- if(!Array.isArray(j?.position))return 0;
- return Number(j.lastFix)||Date.parse(j.pausedAt||'')||Date.parse(j.completedAt||'')||(player?.updatedAt?+new Date(player.updatedAt):0)||0;
+ return Array.isArray(j?.position)?Number(j.lastFix)||0:0;
 }
 
-/**
- * The reader's city: where they walked in the last 24 h, else their home place (the city the app shows),
- * else Tbilisi. Only cached tile lookups — never a geocoding call on this path.
- */
 /** „5.58,50.63“ from the app's X-Medirun-At header (the phone's position on a ~1 km grid), else null. */
 export function parseAt(raw){
  const m=/^(-?\d{1,3}(?:\.\d{1,6})?),(-?\d{1,2}(?:\.\d{1,6})?)$/.exec(String(raw||'').trim());
@@ -168,7 +164,7 @@ async function cityBboxes(db,campaign){
 async function readerCity(userId,{db,campaign,now,lang,at=null}){
  const tbilisi={id:campaign.area.id,timezone:'Asia/Tbilisi'};
  const [player,home]=await Promise.all([
-  db.medipulsiPlayer.findUnique({where:{userId},select:{state:true,updatedAt:true}}).catch(()=>null),
+  db.medipulsiPlayer.findUnique({where:{userId},select:{state:true}}).catch(()=>null),
   db.$queryRaw`SELECT "lat","lng","cityKa" FROM "UserLocation" WHERE "userId"=${userId} AND "enabled"=true AND "lat" IS NOT NULL`.then(r=>r[0]||null).catch(()=>null),
  ]);
  await ensureCityTable(db);

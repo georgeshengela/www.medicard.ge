@@ -366,15 +366,13 @@ test('map links: the place pin wins over the map centre; plain coordinates work'
  assert.equal(parseMapLocation('ვაკის პარკი'),null);
 });
 
-test('drops: a paused or finished walk still tells the reader city (lastFix is cleared on pause)',()=>{
+test('drops: only a live fix tells the walked city (a paused journey may hold a stale position)',()=>{
  const t=Date.parse('2026-10-08T18:00:00Z');
  assert.equal(lastWalkAt({state:{journey:{position:[5.57,50.63],lastFix:t}}}),t);
- assert.equal(lastWalkAt({state:{journey:{position:[5.57,50.63],lastFix:null,pausedAt:'2026-10-08T18:00:00.000Z'}}}),t);
- assert.equal(lastWalkAt({state:{journey:{position:[5.57,50.63],lastFix:null}},updatedAt:new Date(t)}),t);
+ assert.equal(lastWalkAt({state:{journey:{position:[44.8,41.7],lastFix:null,pausedAt:'2026-10-08T18:00:00.000Z'}},updatedAt:new Date(t)}),0);
  assert.equal(lastWalkAt({state:{journey:{lastFix:t}}}),0);
  assert.equal(lastWalkAt(null),0);
 });
-
 test('drops: the phone position picks the city it is in (smallest box), junk headers are ignored',()=>{
  assert.deepEqual(parseAt('5.58,50.63'),[5.58,50.63]);
  assert.deepEqual(parseAt(' 44.79,41.72 '),[44.79,41.72]);
