@@ -128,21 +128,31 @@ async function upcomingGifts(now,db){
 }
 
 /**
+ * When the player last walked: the latest fix, else the pause (a pause or a finish clears `lastFix`), else the
+ * row's last update — so a walk in another city keeps that city for 24 h after it ends (owner 2026-10-08, Liège).
+ */
+export function lastWalkAt(player){
+ const j=player?.state?.journey;
+ if(!Array.isArray(j?.position))return 0;
+ return Number(j.lastFix)||Date.parse(j.pausedAt||'')||Date.parse(j.completedAt||'')||(player?.updatedAt?+new Date(player.updatedAt):0)||0;
+}
+
+/**
  * The reader's city: where they walked in the last 24 h, else their home place (the city the app shows),
  * else Tbilisi. Only cached tile lookups — never a geocoding call on this path.
  */
 async function readerCity(userId,{db,campaign,now,lang}){
  const tbilisi={id:campaign.area.id,timezone:'Asia/Tbilisi'};
  const [player,home]=await Promise.all([
-  db.medipulsiPlayer.findUnique({where:{userId},select:{state:true}}).catch(()=>null),
+  db.medipulsiPlayer.findUnique({where:{userId},select:{state:true,updatedAt:true}}).catch(()=>null),
   db.$queryRaw`SELECT "lat","lng","cityKa" FROM "UserLocation" WHERE "userId"=${userId} AND "enabled"=true AND "lat" IS NOT NULL`.then(r=>r[0]||null).catch(()=>null),
  ]);
  await ensureCityTable(db);
  const cityRow=async id=>(await db.$queryRaw`SELECT "cityId","nameKa","nameEn","timezone","status","enabled" FROM "MedirunCity" WHERE "cityId"=${id}`)[0]||null;
  const asView=c=>({id:c.cityId,name:(lang==='en'?c.nameEn:c.nameKa)||c.nameEn||c.nameKa,timezone:c.timezone,pending:c.status!=='ready'||!c.enabled});
  // 1. Walking somewhere in the last 24 h: Tbilisi or a city that already has boxes.
- const j=player?.state?.journey;
- if(Array.isArray(j?.position)&&j.lastFix&&now-j.lastFix<24*HOUR){
+ const j=player?.state?.journey,walkedAt=lastWalkAt(player);
+ if(Array.isArray(j?.position)&&walkedAt&&now-walkedAt<24*HOUR){
   const [row]=await db.$queryRaw`SELECT "cityId" FROM "MedipulsiPlaceTile" WHERE "tile"=${tileOf(j.position)}`.catch(()=>[]);
   if(row?.cityId===campaign.area.id)return tbilisi;
   const c=row?.cityId?await cityRow(row.cityId):null;

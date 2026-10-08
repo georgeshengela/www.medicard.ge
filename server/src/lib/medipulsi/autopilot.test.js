@@ -125,7 +125,7 @@ test('eligibility page: levels, streets left, status by date',()=>{
 });
 
 /* ───────── „ყუთები ახლა“ (drops.js) ───────── */
-import {dropsView,scheduleOf} from './drops.js';
+import {dropsView,scheduleOf,lastWalkAt} from './drops.js';
 const T=iso=>Date.parse(iso);
 function rowsOf(date){
  const p=plan(date);
@@ -364,4 +364,13 @@ test('map links: the place pin wins over the map centre; plain coordinates work'
  assert.deepEqual(parseMapLocation(' 41.69442, 44.78384 '),{latitude:41.69442,longitude:44.78384,source:'coordinates'});
  assert.equal(parseMapLocation('https://maps.app.goo.gl/abc123'),null);
  assert.equal(parseMapLocation('ვაკის პარკი'),null);
+});
+
+test('drops: a paused or finished walk still tells the reader city (lastFix is cleared on pause)',()=>{
+ const t=Date.parse('2026-10-08T18:00:00Z');
+ assert.equal(lastWalkAt({state:{journey:{position:[5.57,50.63],lastFix:t}}}),t);
+ assert.equal(lastWalkAt({state:{journey:{position:[5.57,50.63],lastFix:null,pausedAt:'2026-10-08T18:00:00.000Z'}}}),t);
+ assert.equal(lastWalkAt({state:{journey:{position:[5.57,50.63],lastFix:null}},updatedAt:new Date(t)}),t);
+ assert.equal(lastWalkAt({state:{journey:{lastFix:t}}}),0);
+ assert.equal(lastWalkAt(null),0);
 });
