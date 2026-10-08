@@ -6,7 +6,7 @@ import { Calendar, Check, ChevronLeft, ChevronRight, Clock, Pill, Plus, Search, 
 import { MedicationHeaderAction } from '@/components/medications/MedicationNavHeader';
 import { MedicationPillIcon } from '@/components/medications/MedicationPillIcon';
 import { MedicationRescheduleSheet } from '@/components/medications/MedicationRescheduleSheet';
-import { MedsButton, MedsCard, MedsChip, MedsEmptyState, MedsProgressBar, MedsRoundAction, MedsStatusPill, medsPrimaryFill, medsInk } from '@/components/medications/MedsHubUI';
+import { MedsButton, MedsCard, MedsChip, MedsEmptyState, MedsProgressBar, MedsRoundAction, MedsStatusPill, doseAttentionInk, doseStatusColor, medsPrimaryFill, medsInk } from '@/components/medications/MedsHubUI';
 import { ListRowsSkeleton } from '@/components/ui/Skeleton';
 import { MONTHS_KA } from '@/constants/cycle';
 import { useMedicationImages } from '@/hooks/useMedicationImages';
@@ -180,7 +180,7 @@ export default function MedicationRemindersScreen() {
                     : tone === 'taken'
                       ? c.success
                       : tone === 'skipped'
-                        ? c.danger
+                        ? doseAttentionInk(dark)
                         : tone === 'pending'
                           ? c.warning
                           : accent;
@@ -319,7 +319,7 @@ export default function MedicationRemindersScreen() {
 function StatusDot({ status }: { status: DoseStatus }) {
   const c = useThemeColors();
   const dark = useIsDark();
-  const color = status === 'taken' ? c.success : status === 'skipped' ? c.danger : c.warning;
+  const color = doseStatusColor(status, c, dark);
   const Icon = status === 'skipped' ? X : status === 'taken' ? Check : Clock;
   const label = status === 'taken' ? ka.meds.statusTaken : status === 'skipped' ? ka.meds.statusSkipped : ka.meds.statusPending;
   return (

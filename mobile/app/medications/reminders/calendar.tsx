@@ -4,7 +4,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Stack, useRouter } from 'expo-router';
 import { ListChecks } from 'lucide-react-native';
 import { MedicationHeaderAction } from '@/components/medications/MedicationNavHeader';
-import { MedsCard, medsPrimaryFill } from '@/components/medications/MedsHubUI';
+import { MedsCard, doseAttentionInk, medsPrimaryFill } from '@/components/medications/MedsHubUI';
 import { MONTHS_KA, WEEKDAYS_KA } from '@/constants/cycle';
 import { useMedications } from '@/hooks/useMedications';
 import { ka } from '@/i18n/ka';
@@ -104,13 +104,15 @@ export default function MedicationCalendarScreen() {
     [logStatusByDate, medications, schedule],
   );
 
+  // Skipped days are amber („look here“), not red: red stays for deleting and real alerts.
+  const attention = doseAttentionInk(dark);
   const dotColor = (status: DayStatus, onPrimary: boolean) => {
     if (onPrimary) return status === 'none' ? 'transparent' : 'rgba(255,255,255,0.9)';
     switch (status) {
       case 'taken':
         return c.success;
       case 'skipped':
-        return c.danger;
+        return attention;
       case 'mixed':
         return c.warning;
       case 'planned':
@@ -209,7 +211,7 @@ export default function MedicationCalendarScreen() {
                         accessibilityLabel={[taken ? ka.meds.calendarTakenCount(taken) : null, skipped ? ka.meds.calendarSkippedCount(skipped) : null].filter(Boolean).join(', ')}
                       >
                         {taken ? <CountMark color={c.success} count={taken} /> : null}
-                        {skipped ? <CountMark color={c.danger} count={skipped} /> : null}
+                        {skipped ? <CountMark color={attention} count={skipped} /> : null}
                       </View>
                     )}
                   </View>

@@ -20,7 +20,7 @@ import { HomeSectionHeading } from '@/components/home/HomeSectionHeading';
 import { MedicationHeaderAction } from '@/components/medications/MedicationNavHeader';
 import { MedicationPillIcon } from '@/components/medications/MedicationPillIcon';
 import { MedicationRescheduleSheet } from '@/components/medications/MedicationRescheduleSheet';
-import { MedsCard, MedsChip, MedsInfoRow, MedsStatusPill, medsPrimaryFill, medsInk } from '@/components/medications/MedsHubUI';
+import { MedsCard, MedsChip, MedsInfoRow, MedsStatusPill, doseAttentionInk, medsPrimaryFill, medsInk } from '@/components/medications/MedsHubUI';
 import { ProfileMenuRow } from '@/components/profile/ProfileMenuRow';
 import { DetailCardSkeleton } from '@/components/ui/Skeleton';
 import { useMedicationImages } from '@/hooks/useMedicationImages';
@@ -169,7 +169,7 @@ export function MedicationDoseScreen() {
           <MedsCard style={{ flexDirection: 'row', gap: 10, paddingVertical: 20 }}>
             <DoseAction label={ka.meds.actionTake} fill={primary} color="#FFFFFF" icon={Check} onPress={() => void markDose('taken')} />
             <DoseAction label={ka.meds.actionReschedule} fill={hubTint(accent, dark)} color={accent} icon={Clock} onPress={() => setRescheduleOpen(true)} />
-            <DoseAction label={ka.meds.actionSkip} fill={c.dangerBg} color={c.danger} icon={X} onPress={() => void markDose('skipped')} />
+            <DoseAction label={ka.meds.actionSkip} fill={hubTint(doseAttentionInk(dark), dark)} color={doseAttentionInk(dark)} icon={X} onPress={() => void markDose('skipped')} />
           </MedsCard>
         </View>
 
