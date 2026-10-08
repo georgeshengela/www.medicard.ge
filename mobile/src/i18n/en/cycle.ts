@@ -112,6 +112,7 @@ export const enCycle: Pick<Strings, 'cycle'> = {
     customTagAdd: 'Add tag',
     customTagPlaceholder: 'e.g. Travel',
     customTagEmpty: 'You don’t have any tags yet.',
+    customTagDayLimit: (max: number) => `You can pick up to ${max} tags a day.`,
     customTagOnlineOnly: 'New tags need the internet. You can apply existing tags offline.',
     customTagArchive: 'Archive',
     logHubPain: 'Pain',

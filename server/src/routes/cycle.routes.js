@@ -1897,7 +1897,9 @@ cycleRouter.put(
         exerciseLevel: z.string().nullable().optional(),
         caffeine: z.string().nullable().optional(),
         alcohol: z.string().nullable().optional(),
-        customTagIds: z.array(z.string()).max(8).optional(),
+        // Up to every tag she can have: more than 8 for one day keeps the day and only the first 8 tags
+        // (parseCustomTagIds) — never a 400 that loses the whole day's log (CYC-10).
+        customTagIds: z.array(z.string()).max(CYCLE_TAG_ACTIVE_MAX * 2).optional(),
         observations: z.record(z.string(), z.unknown()).nullable().optional(),
         energy: z.string().nullable().optional(),
         observationAssessments: z.record(z.string(), z.unknown()).optional(),

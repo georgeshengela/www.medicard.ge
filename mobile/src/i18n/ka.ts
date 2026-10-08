@@ -1535,6 +1535,7 @@ const kaStrings = {
     customTagAdd: 'ნიშნის დამატება',
     customTagPlaceholder: 'მაგ. მოგზაურობა',
     customTagEmpty: 'ნიშანი ჯერ არ გაქვს.',
+    customTagDayLimit: (max: number) => `ერთ დღეს ${max} ნიშნამდე შეგიძლია მონიშნო.`,
     customTagOnlineOnly: 'ახალი ნიშანი ინტერნეტით იქმნება. არსებული ნიშნების მინიჭება ოფლაინაც შეიძლება.',
     customTagArchive: 'არქივი',
     logHubPain: 'ტკივილი',

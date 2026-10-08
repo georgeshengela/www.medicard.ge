@@ -8,6 +8,7 @@ import { CycleLevelTiles } from '@/components/cycle/CycleModeTiles';
 import { usePainCoachMark } from '@/components/cycle/usePainCoachMark';
 import type { CycleCustomTag, CyclePainEntry, CyclePainSeverity, CyclePainType } from '@/lib/api';
 import { cycleGlyphFor, type LifestyleField } from '@/lib/cycleIconMap';
+import { CYCLE_TAGS_PER_DAY_MAX, toggleDayTagId } from '@/lib/cycleOfflineCore';
 import {
   ALCOHOL_LEVELS,
   CAFFEINE_LEVELS,
@@ -341,9 +342,11 @@ export function CycleTagPicker({
   const c = useCycleColors();
   const [name, setName] = useState('');
   const active = activeCustomTags(tags);
+  // The server keeps 8 tags a day (CYC-10): a 9th tick is refused here, with the hint below.
+  const atLimit = selectedIds.length >= CYCLE_TAGS_PER_DAY_MAX;
 
   const toggle = (id: string) => {
-    onChange(selectedIds.includes(id) ? selectedIds.filter((x) => x !== id) : [...selectedIds, id]);
+    onChange(toggleDayTagId(selectedIds, id).ids);
   };
 
   return (
@@ -355,15 +358,17 @@ export function CycleTagPicker({
         <View style={{ gap: 8, marginBottom: 12 }}>
           {active.map((tag) => {
             const on = selectedIds.includes(tag.id);
+            const blocked = !on && atLimit;
             return (
               <Pressable
                 key={tag.id}
+                disabled={blocked}
                 onPress={() => {
                   Haptics.selectionAsync().catch(() => undefined);
                   toggle(tag.id);
                 }}
                 accessibilityRole="button"
-                accessibilityState={{ selected: on }}
+                accessibilityState={{ selected: on, disabled: blocked }}
                 accessibilityLabel={tag.name}
                 style={{
                   minHeight: 48,
@@ -374,6 +379,7 @@ export function CycleTagPicker({
                   backgroundColor: on ? c.cardSoft : c.card,
                   borderWidth: 1.5,
                   borderColor: on ? c.ink : c.border,
+                  opacity: blocked ? 0.45 : 1,
                 }}
               >
                 <Text style={{ flex: 1, color: c.ink, fontFamily: 'NotoSansGeorgian_600SemiBold', fontSize: 15 }}>
@@ -396,6 +402,9 @@ export function CycleTagPicker({
               </Pressable>
             );
           })}
+          {atLimit ? (
+            <Text style={{ color: c.muted, fontSize: 12, lineHeight: 18 }}>{ka.cycle.customTagDayLimit(CYCLE_TAGS_PER_DAY_MAX)}</Text>
+          ) : null}
         </View>
       )}
       {onCreate ? (

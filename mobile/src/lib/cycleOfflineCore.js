@@ -20,6 +20,8 @@ const MAX_BACKOFF_MS = 300_000;
 const BASE_BACKOFF_MS = 30_000;
 const MAX_RETRY_AFTER_MS = 900_000;
 const QUOTA_CODES = ['MONTHLY_LIMIT_REACHED', 'DAILY_LIMIT_REACHED'];
+/** Tags on one day — the server's `CYCLE_TAGS_PER_DAY_MAX` (cycleObservations.js). */
+const CYCLE_TAGS_PER_DAY_MAX = 8;
 
 function isBleedFlow(flow) {
   return flow === 'light' || flow === 'medium' || flow === 'heavy';
@@ -321,6 +323,28 @@ function hasObservationExtras(body) {
   );
 }
 
+/** The day's tag ids, unique, at most `CYCLE_TAGS_PER_DAY_MAX` (the first ones she picked). */
+function capDayTagIds(ids) {
+  const out = [];
+  for (const id of Array.isArray(ids) ? ids : []) {
+    if (typeof id !== 'string' || out.includes(id)) continue;
+    out.push(id);
+    if (out.length >= CYCLE_TAGS_PER_DAY_MAX) break;
+  }
+  return out;
+}
+
+/**
+ * A tap on a tag in the day's picker (CYC-10): untick, or tick while fewer than 8 are ticked.
+ * `limited` = the tap was refused because 8 are already ticked (the picker says so).
+ */
+function toggleDayTagId(selected, id) {
+  const current = capDayTagIds(selected);
+  if (current.includes(id)) return { ids: current.filter((x) => x !== id), limited: false };
+  if (current.length >= CYCLE_TAGS_PER_DAY_MAX) return { ids: current, limited: true };
+  return { ids: [...current, id], limited: false };
+}
+
 /**
  * One user intent → one queued operation.
  * Start Period with only flow → START_PERIOD (server upserts that bleed day).
@@ -342,7 +366,9 @@ function planQueuedLogMutations(body, options) {
       },
     ];
   }
-  return [{ operation: 'UPSERT_LOG', payload: { ...body, date } }];
+  // Never more tags than the server keeps for one day: the rest of the day must always sync (CYC-10).
+  const tags = Array.isArray(body?.customTagIds) ? { customTagIds: capDayTagIds(body.customTagIds) } : {};
+  return [{ operation: 'UPSERT_LOG', payload: { ...body, ...tags, date } }];
 }
 
 function discardMutation(account, mutationId) {
@@ -705,6 +731,9 @@ module.exports = {
   BASE_BACKOFF_MS,
   MAX_RETRY_AFTER_MS,
   QUOTA_CODES,
+  CYCLE_TAGS_PER_DAY_MAX,
+  capDayTagIds,
+  toggleDayTagId,
   isBleedFlow,
   cloneJson,
   addDaysYmd,

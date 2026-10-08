@@ -21,6 +21,9 @@ const {
   replayCycleQueue,
   accountIsolationSafe,
   planQueuedLogMutations,
+  CYCLE_TAGS_PER_DAY_MAX,
+  capDayTagIds,
+  toggleDayTagId,
   discardMutation,
   attentionItems,
   cyclePersistFeedback,
@@ -1061,5 +1064,49 @@ describe('partial bundle after a failed reload (CYC-06)', () => {
     assert.match(offline, /export async function cacheCycleBundle[^{]*\{\n[^\n]*\n\s*if \(!isCompleteCycleBundle\(bundle\)\) return;/);
     assert.match(offline, /if \(isCompleteCycleBundle\(result\.bundle\)\) \{\n\s*latest\.cache = createCacheRecord/);
     assert.match(view, /if \(!isCompleteCycleBundle\(bundle\)\) \{\n\s*void invalidate\('cycle'\);\n\s*return;/);
+  });
+});
+
+describe('custom tags on one day (CYC-10)', () => {
+  const tag = (i) => `aaaaaaaa-aaaa-4aaa-8aaa-${String(i).padStart(12, '0')}`;
+  const nine = Array.from({ length: 9 }, (_, i) => tag(i));
+
+  it('matches the server limit of 8 tags a day', () => {
+    assert.equal(CYCLE_TAGS_PER_DAY_MAX, 8);
+  });
+
+  it('the picker refuses a 9th tick and says so; unticking always works', () => {
+    const eight = nine.slice(0, 8);
+    assert.deepEqual(toggleDayTagId(eight, tag(8)), { ids: eight, limited: true });
+    assert.deepEqual(toggleDayTagId(eight, tag(0)), { ids: eight.slice(1), limited: false });
+    assert.deepEqual(toggleDayTagId(eight.slice(0, 7), tag(8)), { ids: [...eight.slice(0, 7), tag(8)], limited: false });
+    assert.deepEqual(toggleDayTagId([], tag(1)), { ids: [tag(1)], limited: false });
+  });
+
+  it('a queued day never carries more than 8 tags, and keeps everything else', () => {
+    const [step] = planQueuedLogMutations({
+      date: '2026-08-30',
+      flow: 'heavy',
+      notes: 'kept',
+      symptoms: ['fatigue'],
+      customTagIds: nine,
+    });
+    assert.equal(step.operation, 'UPSERT_LOG');
+    assert.deepEqual(step.payload.customTagIds, nine.slice(0, 8));
+    assert.equal(step.payload.flow, 'heavy');
+    assert.equal(step.payload.notes, 'kept');
+    assert.deepEqual(step.payload.symptoms, ['fatigue']);
+    assert.deepEqual(capDayTagIds([tag(1), tag(1), tag(2)]), [tag(1), tag(2)]);
+  });
+
+  it('the picker and a newly created tag go through the same cap', () => {
+    const { readFileSync } = require('node:fs');
+    const { join } = require('node:path');
+    const picker = readFileSync(join(__dirname, '..', 'components', 'cycle', 'CycleObservationFields.tsx'), 'utf8');
+    const log = readFileSync(join(__dirname, '..', '..', 'app', 'cycle', 'log.tsx'), 'utf8');
+    assert.match(picker, /onChange\(toggleDayTagId\(selectedIds, id\)\.ids\)/);
+    assert.match(picker, /ka\.cycle\.customTagDayLimit\(CYCLE_TAGS_PER_DAY_MAX\)/);
+    assert.doesNotMatch(log, /\[\.\.\.prev\.customTagIds, result\.tag\.id\]/);
+    assert.match(log, /toggleDayTagId\(prev\.customTagIds, result\.tag\.id\)\.ids/);
   });
 });
