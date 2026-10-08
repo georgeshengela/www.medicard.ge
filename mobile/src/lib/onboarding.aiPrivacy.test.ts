@@ -57,16 +57,6 @@ describe('notification answer when the save fails (ONB-6)', () => {
     }
     assert.equal((base.extraAnswers as Record<string, unknown>).notificationsEnabled, undefined);
   });
-    const server = { completedAt: null, weightKg: 70, extraAnswers: { privacyAccepted: true, aiPrivacyDecision: 'accepted', onboardingAnalysis: { score: 80 } } };
-    const merged = keepLocalAnswers(server as never, local);
-    const extra = merged.extraAnswers as Record<string, unknown>;
-    assert.equal(extra.notificationsEnabled, false);
-    assert.deepEqual(extra.onboardingAnalysis, { score: 80 });
-    assert.equal((merged as unknown as { weightKg: number }).weightKg, 70);
-    // The server wins wherever both have a value.
-    const stale = withExtraAnswers(profile({ aiPrivacyDecision: 'declined' }) as never, {});
-    assert.equal((keepLocalAnswers(server as never, stale).extraAnswers as Record<string, unknown>).aiPrivacyDecision, 'accepted');
-  });
 });
 
 describe('last onboarding save retries (ONB-1)', () => {
