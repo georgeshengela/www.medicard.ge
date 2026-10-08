@@ -125,7 +125,7 @@ test('eligibility page: levels, streets left, status by date',()=>{
 });
 
 /* ───────── „ყუთები ახლა“ (drops.js) ───────── */
-import {dropsView,scheduleOf,lastWalkAt} from './drops.js';
+import {dropsView,scheduleOf,lastWalkAt,parseAt,pickCityAt} from './drops.js';
 const T=iso=>Date.parse(iso);
 function rowsOf(date){
  const p=plan(date);
@@ -373,4 +373,14 @@ test('drops: a paused or finished walk still tells the reader city (lastFix is c
  assert.equal(lastWalkAt({state:{journey:{position:[5.57,50.63],lastFix:null}},updatedAt:new Date(t)}),t);
  assert.equal(lastWalkAt({state:{journey:{lastFix:t}}}),0);
  assert.equal(lastWalkAt(null),0);
+});
+
+test('drops: the phone position picks the city it is in (smallest box), junk headers are ignored',()=>{
+ assert.deepEqual(parseAt('5.58,50.63'),[5.58,50.63]);
+ assert.deepEqual(parseAt(' 44.79,41.72 '),[44.79,41.72]);
+ for(const bad of ['', 'x', '5.58', '500,50', '5.58,95', '5.58;50.63', null])assert.equal(parseAt(bad),null);
+ const boxes=[{tbilisi:true,box:[44.6,41.6,45.0,41.85]},{row:{cityId:'r19956604'},box:[5.45,50.55,5.7,50.7]},{row:{cityId:'big'},box:[3,49,7,52]}];
+ assert.equal(pickCityAt([5.58,50.63],boxes).row.cityId,'r19956604');
+ assert.equal(pickCityAt([44.79,41.72],boxes).tbilisi,true);
+ assert.equal(pickCityAt([0,0],boxes),null);
 });

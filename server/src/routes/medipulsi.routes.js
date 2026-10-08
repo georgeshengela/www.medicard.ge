@@ -11,7 +11,7 @@ import { t, getUserLanguage } from '../lib/i18n.js';
 import {localizeSnapshot} from '../lib/medipulsi/missionsEn.js';
 import {territory} from '../lib/medipulsi/territory.js';
 import {grandStatus} from '../lib/medipulsi/grand.js';
-import {dropsStatus} from '../lib/medipulsi/drops.js';
+import {dropsStatus,parseAt} from '../lib/medipulsi/drops.js';
 import {crewView,createCrew,joinCrew,leaveCrew,renameCrew,removeMember} from '../lib/medipulsi/social.js';
 import {cityMeter} from '../lib/medipulsi/cityMeter.js';
 import {wrappedView} from '../lib/medipulsi/wrapped.js';
@@ -40,7 +40,7 @@ medipulsiRouter.get('/nearby',asyncHandler(async(req,res)=>res.json(await game.n
 // „გაანათე თბილისი“: how much of Tbilisi the person has lit and whether the grand prize is visible to them.
 medipulsiRouter.get('/grand',lookups,asyncHandler(async(req,res)=>res.json(await grandStatus(req.user.id,req.lang))));
 // „ყუთები ახლა“: boxes out in the city this minute (per district), today's openings and the next wave. Aggregates only.
-medipulsiRouter.get('/drops',lookups,asyncHandler(async(req,res)=>res.json(await dropsStatus(req.user.id,{lang:req.lang}))));
+medipulsiRouter.get('/drops',lookups,asyncHandler(async(req,res)=>res.json(await dropsStatus(req.user.id,{lang:req.lang,at:parseAt(req.get('x-medirun-at'))}))));
 medipulsiRouter.post('/gifts/:id/claim',write,asyncHandler(async(req,res)=>res.json(await game.claim(req.user.id,id.parse(req.params.id)))));
 // Medi Coins on the MEDIRUN page: balance, this season's box earnings and the last movements (park, rank, date).
 medipulsiRouter.get('/wallet',lookups,asyncHandler(async(req,res)=>res.json(await game.wallet(req.user.id,req.lang))));

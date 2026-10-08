@@ -141,7 +141,31 @@ export function lastWalkAt(player){
  * The reader's city: where they walked in the last 24 h, else their home place (the city the app shows),
  * else Tbilisi. Only cached tile lookups — never a geocoding call on this path.
  */
-async function readerCity(userId,{db,campaign,now,lang}){
+/** „5.58,50.63“ from the app's X-Medirun-At header (the phone's position on a ~1 km grid), else null. */
+export function parseAt(raw){
+ const m=/^(-?\d{1,3}(?:\.\d{1,6})?),(-?\d{1,2}(?:\.\d{1,6})?)$/.exec(String(raw||'').trim());
+ if(!m)return null;
+ const at=[Number(m[1]),Number(m[2])];
+ return Math.abs(at[0])<=180&&Math.abs(at[1])<=90?at:null;
+}
+/** The smallest city box (MEDIRUN cities + Tbilisi's campaign area) holding the point. Pure. */
+export function pickCityAt(at,boxes){
+ const area=b=>(b[2]-b[0])*(b[3]-b[1]);
+ return boxes.filter(x=>at[0]>=x.box[0]&&at[0]<=x.box[2]&&at[1]>=x.box[1]&&at[1]<=x.box[3]).sort((a,b)=>area(a.box)-area(b.box))[0]||null;
+}
+let cityBoxes={at:0,list:null};
+async function cityBboxes(db,campaign){
+ if(cityBoxes.list&&Date.now()-cityBoxes.at<10*60_000)return cityBoxes.list;
+ await ensureCityTable(db);
+ const rows=await db.$queryRaw`SELECT c."cityId",c."nameKa",c."nameEn",c."timezone",c."status",c."enabled",a."geometry" FROM "MedirunCity" c JOIN "MedipulsiArea" a ON a."id"=c."cityId"`.catch(()=>[]);
+ const list=rows.map(row=>({row,box:row.geometry?geometryBbox(row.geometry):null})).filter(x=>x.box&&x.box.every(Number.isFinite));
+ const tb=await campaignBbox(db,campaign);
+ if(tb)list.push({tbilisi:true,box:tb});
+ cityBoxes={at:Date.now(),list};
+ return list;
+}
+
+async function readerCity(userId,{db,campaign,now,lang,at=null}){
  const tbilisi={id:campaign.area.id,timezone:'Asia/Tbilisi'};
  const [player,home]=await Promise.all([
   db.medipulsiPlayer.findUnique({where:{userId},select:{state:true,updatedAt:true}}).catch(()=>null),
@@ -150,6 +174,12 @@ async function readerCity(userId,{db,campaign,now,lang}){
  await ensureCityTable(db);
  const cityRow=async id=>(await db.$queryRaw`SELECT "cityId","nameKa","nameEn","timezone","status","enabled" FROM "MedirunCity" WHERE "cityId"=${id}`)[0]||null;
  const asView=c=>({id:c.cityId,name:(lang==='en'?c.nameEn:c.nameKa)||c.nameEn||c.nameKa,timezone:c.timezone,pending:c.status!=='ready'||!c.enabled});
+ // 0. Where the phone is right now (owner 2026-10-08: in Liège the hub must show Liège, whatever home says).
+ if(at){
+  const hit=pickCityAt(at,await cityBboxes(db,campaign).catch(()=>[]));
+  if(hit?.tbilisi)return tbilisi;
+  if(hit?.row)return asView(hit.row);
+ }
  // 1. Walking somewhere in the last 24 h: Tbilisi or a city that already has boxes.
  const j=player?.state?.journey,walkedAt=lastWalkAt(player);
  if(Array.isArray(j?.position)&&walkedAt&&now-walkedAt<24*HOUR){
@@ -183,10 +213,10 @@ async function counts({db,cityId,campaign,since,userId=null}){
  }catch{return {n:0,coins:0};}
 }
 
-export async function dropsStatus(userId,{now=Date.now(),lang='ka',db=prisma}={}){
+export async function dropsStatus(userId,{now=Date.now(),lang='ka',db=prisma,at=null}={}){
  const [cfg,campaign]=await Promise.all([config(db),getCampaign(db,now)]);
  const enabled=Boolean(cfg.enabled&&cfg.giftsEnabled);
- const [gifts,city,rules]=await Promise.all([upcomingGifts(now,db),readerCity(userId,{db,campaign,now,lang}),giftRules(db,now)]);
+ const [gifts,city,rules]=await Promise.all([upcomingGifts(now,db),readerCity(userId,{db,campaign,now,lang,at}),giftRules(db,now)]);
  const since=zonedTime(localDate(now,city.timezone),'00:00',city.timezone);
  const [today,mine]=await Promise.all([counts({db,cityId:city.id,campaign,since}),counts({db,cityId:city.id,campaign,since,userId})]);
  const home=city.id===campaign.area.id;
