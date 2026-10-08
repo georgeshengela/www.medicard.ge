@@ -624,7 +624,7 @@ function stepsStatus(steps, goal) {
   const r = steps / goal;
   if (r >= 1) return t('დღიური მიზანი უკვე მიღწეულია', 'Daily goal already reached');
   if (r >= 0.75) return t('მიზანთან ახლოს ხარ', 'You’re close to your goal');
-  if (r >= 0.4) return t('ჩვეულებრივზე უფრო აქტიური ხარ', 'You’re more active than usual');
+  if (r >= 0.4) return t('მიზნისკენ მიდიხარ', 'You’re on your way to your goal');
   return t('დღეს ნაკლები აქტიურობაა', 'Less activity today');
 }
 

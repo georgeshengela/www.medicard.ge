@@ -970,7 +970,7 @@ const kaStrings = {
     yesterday: 'გუშინ',
     statusAboveGoal: 'დღიური მიზანი უკვე მიღწეულია',
     statusNearGoal: 'მიზანთან ახლოს ხარ',
-    statusActive: 'ჩვეულებრივზე უფრო აქტიური ხარ',
+    statusActive: 'მიზნისკენ მიდიხარ',
     statusLow: 'დღეს ნაკლები აქტიურობაა',
     remaining: (n: string) => `${n} დარჩა`,
     peak: (n: string) => `მაქს: ${n}`,

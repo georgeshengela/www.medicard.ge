@@ -38,6 +38,8 @@ test('goal window = the 14 completed days before today, oldest first', () => {
   assert.equal(keys[13], '2026-10-02');
   assert.ok(!keys.includes('2026-10-03'));
   assert.deepEqual(web.goalWindowKeys(now), keys);
+  // The phone's own week (stepsMetrics: every chart period reads at least this much).
+  assert.deepEqual(app.goalWindowKeys(now, 6), keys.slice(-6));
 });
 
 test('goal from per-day sources: today and older days are ignored, the larger source wins', () => {
