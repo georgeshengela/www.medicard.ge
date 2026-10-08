@@ -113,8 +113,10 @@ export default function ForgotPasswordSms() {
         router.replace('/(tabs)/home');
       } catch (err) {
         const message = authErrorMessage(err);
-        // A wrong or expired code sends the person back to the code step, password kept.
-        if (/კოდი|code/i.test(message)) {
+        // A wrong or expired code (or too many tries) sends the person back to the code step,
+        // password kept. Decided on the server's own text, not on the displayed one.
+        const serverText = err instanceof ApiError ? err.message : '';
+        if (/კოდი|code/i.test(serverText)) {
           setCode('');
           setCodeKey((k) => k + 1);
           setCodeError(message);

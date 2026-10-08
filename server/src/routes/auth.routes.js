@@ -13,6 +13,7 @@ import { requestPhoneOtp, verifyPhoneOtp } from '../lib/phoneOtp.js';
 import { findUserByPhone, phoneTakenPayload } from '../lib/phoneUsers.js';
 import { normalizeSmsDestination } from '../lib/sms.js';
 import { requireAuth, signToken } from '../middleware/auth.js';
+import { sessionRenewalFields } from '../lib/sessionRenewal.js';
 import { asyncHandler } from '../middleware/error.js';
 import { t } from '../lib/i18n.js';
 import { claimDailyCheckIn } from '../lib/checkIn.js';
@@ -922,6 +923,10 @@ authRouter.get(
       prisma.healthProfile.findUnique({ where: { userId: req.user.id } }),
     ]);
 
+    // Sliding session: `token` only when the presented one is past half its lifetime.
+    const renewal = sessionRenewalFields(req.authClaims, () => signToken(req.user));
+    if (renewal.token) res.set('Cache-Control', 'no-store');
+
     return res.json({
       user: userPayload,
       usage,
@@ -930,6 +935,7 @@ authRouter.get(
       checkIn,
       checkInAwarded,
       pointsAwarded,
+      ...renewal,
     });
   }),
 );

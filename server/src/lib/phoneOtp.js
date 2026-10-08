@@ -29,8 +29,14 @@ function displayPhone(phone) {
   return phone;
 }
 
-/** Send a 4-digit OTP to a Georgian mobile number. */
-export async function requestPhoneOtp({ phone, purpose = 'AUTH', userId = null, lang = 'ka' }) {
+/**
+ * Send a 4-digit OTP to a Georgian mobile number.
+ * `deps` exists for tests (fake db / SMS sender / environment); routes pass nothing.
+ */
+export async function requestPhoneOtp(
+  { phone, purpose = 'AUTH', userId = null, lang = 'ka' },
+  { db = prisma, send = sendSms, production = env.NODE_ENV === 'production', qaEnabled = isQaOtpEnabled } = {},
+) {
   const normalized = normalizeSmsDestination(phone);
   if (!/^9955\d{8}$/.test(normalized)) {
     return { ok: false, status: 400, error: t(lang, 'მობილური ნომერი უნდა იყოს ფორმატში +995 5XX XXX XXX.', 'Enter a mobile number in the format +995 5XX XXX XXX.') };
@@ -51,7 +57,7 @@ export async function requestPhoneOtp({ phone, purpose = 'AUTH', userId = null, 
     };
   }
 
-  const recent = await prisma.phoneVerification.findFirst({
+  const recent = await db.phoneVerification.findFirst({
     where: {
       phone: normalized,
       purpose,
@@ -72,17 +78,15 @@ export async function requestPhoneOtp({ phone, purpose = 'AUTH', userId = null, 
     };
   }
 
-  await prisma.phoneVerification.updateMany({
-    where: { phone: normalized, purpose, usedAt: null },
-    data: { usedAt: new Date() },
-  });
-
   const code = generateCode();
   const codeHash = await hashCode(code);
   const expiresAt = new Date(Date.now() + CODE_TTL_MS);
   const reference = `otp-${purpose}-${crypto.randomBytes(4).toString('hex')}`.slice(0, 20);
 
-  await prisma.phoneVerification.create({
+  // The row exists while the SMS is in flight (so a double tap meets the cooldown), but earlier
+  // codes stay valid until this one has really gone out, and a code that never went out is
+  // closed at once — otherwise a retry would answer „code sent“ for an SMS nobody received.
+  const row = await db.phoneVerification.create({
     data: {
       phone: normalized,
       codeHash,
@@ -92,6 +96,11 @@ export async function requestPhoneOtp({ phone, purpose = 'AUTH', userId = null, 
       expiresAt,
     },
   });
+
+  const discardUnsent = () =>
+    db.phoneVerification
+      .update({ where: { id: row.id }, data: { usedAt: new Date() } })
+      .catch((err) => console.error('[phone-otp] could not close an unsent code:', err?.message ?? err));
 
   const result = {
     ok: true,
@@ -103,7 +112,7 @@ export async function requestPhoneOtp({ phone, purpose = 'AUTH', userId = null, 
   };
 
   try {
-    const sms = await sendSms({
+    const sms = await send({
       destination: normalized,
       content: buildOtpMessage(code, lang),
       purpose: 'OTP',
@@ -114,14 +123,17 @@ export async function requestPhoneOtp({ phone, purpose = 'AUTH', userId = null, 
     });
 
     if (!sms.ok && sms.capped) {
+      await discardUnsent();
       return { ok: false, status: 429, error: sms.message };
     }
 
-    if (!sms.ok && env.NODE_ENV === 'production' && !(await isQaOtpEnabled())) {
-      return { ok: false, status: 502, error: sms.message || smsFailed };
+    // Never the provider's own text (balance, account state): the person gets ours.
+    if (!sms.ok && production && !(await qaEnabled())) {
+      await discardUnsent();
+      return { ok: false, status: 502, error: smsFailed };
     }
 
-    if (env.NODE_ENV !== 'production') {
+    if (!production) {
       result.devCode = code;
       if (!sms.ok) {
         result.message = devUnsent;
@@ -129,14 +141,22 @@ export async function requestPhoneOtp({ phone, purpose = 'AUTH', userId = null, 
     }
   } catch (err) {
     console.error('[phone-otp] SMS failed:', err?.message ?? err);
-    if (env.NODE_ENV === 'production' && !(await isQaOtpEnabled())) {
+    if (production && !(await qaEnabled())) {
+      await discardUnsent();
       return { ok: false, status: 502, error: smsFailed };
     }
-    if (env.NODE_ENV !== 'production') {
+    if (!production) {
       result.devCode = code;
       result.message = devUnsent;
     }
   }
+
+  // This code is the live one now: close the earlier ones — only older rows, so two requests that
+  // raced past the cooldown cannot close each other's codes.
+  await db.phoneVerification.updateMany({
+    where: { phone: normalized, purpose, usedAt: null, id: { not: row.id }, createdAt: { lt: row.createdAt } },
+    data: { usedAt: new Date() },
+  });
 
   return result;
 }
