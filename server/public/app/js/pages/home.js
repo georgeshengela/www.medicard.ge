@@ -140,11 +140,14 @@ function summaryStats() {
   const st = session.stats || {};
   const p = session.profile || {};
   const bmi = p.heightCm && p.weightKg ? p.weightKg / ((p.heightCm / 100) ** 2) : null;
-  return h('div', { class: 'grid grid-4 grid-stats' },
-    card(stat(t('სტრიკი', 'Streak'), fmtNum(u.currentStreak || 0), { icon: 'flame', unit: t('დღე', (u.currentStreak || 0) === 1 ? 'day' : 'days'), delta: t(`რეკორდი ${fmtNum(u.longestStreak || 0)} დღე`, `Best: ${fmtNum(u.longestStreak || 0)} ${(u.longestStreak || 0) === 1 ? 'day' : 'days'}`) })),
-    card(stat(t('ქულები', 'Points'), fmtNum(u.points || 0), { icon: 'star', delta: t('ყოველდღიური შესვლით და მისიებით', 'From daily check-ins and missions') })),
+  // No app-open streak tile (owner 2026-10-08): opening the app is not a health habit.
+  // Legacy points are no longer awarded, so the card never promises them for daily opens.
+  const cards = [
+    card(stat(t('ქულები', 'Points'), fmtNum(u.points || 0), { icon: 'star', delta: t('ადრე დაგროვებული', 'Collected earlier') })),
     featureOn('medications') ? card(stat(t('აქტიური წამლები', 'Active medications'), fmtNum(st.activeMedications || 0), { icon: 'pill', delta: t(`${fmtNum(st.records || 0)} ჩანაწერი`, `${fmtNum(st.records || 0)} ${(st.records || 0) === 1 ? 'record' : 'records'}`) })) : null,
-    card(stat('BMI', bmi ? bmi.toFixed(1) : '—', { icon: 'scale', delta: bmi ? bmiLabel(bmi) : t('დაამატე სიმაღლე და წონა პროფილში', 'Add your height and weight in Profile') })));
+    card(stat('BMI', bmi ? bmi.toFixed(1) : '—', { icon: 'scale', delta: bmi ? bmiLabel(bmi) : t('დაამატე სიმაღლე და წონა პროფილში', 'Add your height and weight in Profile') })),
+  ].filter(Boolean);
+  return h('div', { class: `grid grid-${cards.length} grid-stats` }, cards);
 }
 
 function bmiLabel(b) {

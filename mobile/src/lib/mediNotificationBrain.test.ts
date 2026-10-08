@@ -36,8 +36,6 @@ function snap(over: Partial<EngageSnapshot> = {}): EngageSnapshot {
     hydrationMl: 1800,
     hydrationGoal: 2000,
     loggedPain: false,
-    streak: 3,
-    loggedHealthDays: 3,
     medTakenWeek: 2,
     medMissedWeek: 1,
     missingProfileField: null,
@@ -60,6 +58,15 @@ describe('mediNotificationBrain', () => {
   it('does not send a check-in when the user just opened the app', () => {
     const rows = evaluateEngageCandidates(snap());
     assert.equal(rows.some((row) => row.family === 'checkin' && row.fireAt.getTime() <= snap().now.getTime() + 3_600_000), false);
+  });
+
+  it('never sends an app-open streak push', () => {
+    for (const hour of [8, 12, 17, 21]) {
+      const now = new Date(`2026-09-06T${String(hour).padStart(2, '0')}:00:00`);
+      const rows = evaluateEngageCandidates(snap({ now, lastOpenAt: now.getTime() - 3 * 86_400_000 }));
+      assert.equal(rows.some((row) => /streak|achieve-month/.test(row.key) || row.route.includes('/profile/streak')), false);
+    }
+    assert.equal(Object.keys(ENGAGE_FALLBACKS).some((key) => /streak|achieve-month/.test(key)), false);
   });
 
   it('skips hydration when the goal is already met', () => {

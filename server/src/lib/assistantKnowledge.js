@@ -76,7 +76,7 @@ export const ASSISTANT_FEATURES = Object.freeze([
   feature('ai_settings', 'AI და კონფიდენციალურობა', '/profile/ai-data', 'account', 'AI-სთვის მონაცემების გაზიარების თანხმობა, მიმღებები და გაუქმება.', ['human', 'pet']),
   feature('privacy', 'კონფიდენციალურობა', '/profile/privacy', 'account', 'მონაცემების გამოყენების პირობები და საკონტაქტო ინფორმაცია.', ['human', 'pet']),
   feature('terms', 'გამოყენების პირობები', '/profile/terms', 'account', 'მომსახურების პირობები.', ['human', 'pet']),
-  feature('streak', 'აქტიურობის სერია', '/profile/streak', 'activity', 'შენი აქტიური დღეები და სერია.'),
+  // No app-open streak (owner 2026-10-08): Medi does not send people to it.
 ]);
 /** English copy for the capability directory (Georgian above stays the default and the planner's guide). */
 const GROUPS_EN = Object.freeze({
@@ -150,7 +150,6 @@ const FEATURES_EN = Object.freeze({
   ai_settings: ['AI and privacy', 'Your permission to share data with AI, the recipients and withdrawing it.'],
   privacy: ['Privacy', 'How your data is used and contact details.'],
   terms: ['Terms of use', 'Terms of service.'],
-  streak: ['Activity streak', 'Your active days and streak.'],
 });
 function localizeFeature(f, lang) {
   if (lang !== 'en' || !FEATURES_EN[f.id]) return f;

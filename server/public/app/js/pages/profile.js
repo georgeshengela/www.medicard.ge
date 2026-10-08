@@ -43,7 +43,6 @@ export default async function profilePage(root) {
                 h('div', { class: 'muted', style: { marginTop: '2px' } }, [u.phone, isSyntheticEmail(u.email) ? null : u.email].filter(Boolean).join(' · ') || '—'),
                 h('div', { class: 'hstack', style: { marginTop: '10px' } },
                   badge(t(`${fmtNum(u.points || 0)} ქულა`, `${fmtNum(u.points || 0)} ${u.points === 1 ? 'point' : 'points'}`), 'brand'),
-                  badge(t(`სტრიკი ${fmtNum(u.currentStreak || 0)} დღე`, `${fmtNum(u.currentStreak || 0)}-day streak`), 'neutral'),
                   u.createdAt ? badge(t(`წევრი ${fmtDate(u.createdAt, { year: true })}-დან`, `Member since ${fmtDate(u.createdAt, { year: true })}`), 'neutral') : null)),
               button(t('რედაქტირება', 'Edit'), { variant: 'ghost', icon: 'edit', onClick: editPersonal }))),
 

@@ -111,10 +111,6 @@ export async function buildEngageSnapshot(user?: User | null, health?: HealthPro
       const row = daily.find((item) => item.date === day);
       return sum + (row?.steps && row.steps > 0 ? row.steps : 0);
     }, 0);
-  const loggedHealthDays = thisWeek.filter((day) => {
-    const row = daily.find((item) => item.date === day);
-    return Boolean(row?.steps || row?.weightKg || row?.hydrationMl || row?.sleepHours);
-  }).length;
   const medTakenWeek = doses.filter((row) => thisWeek.includes(row.date) && row.status === 'taken').length;
   const medMissedWeek = doses.filter((row) => thisWeek.includes(row.date) && row.status === 'skipped').length;
   const todayRow = daily.find((item) => item.date === today);
@@ -276,8 +272,6 @@ export async function buildEngageSnapshot(user?: User | null, health?: HealthPro
     hydrationMl: dayTotalMl(logs, today),
     hydrationGoal: goalMl,
     loggedPain,
-    streak: user?.currentStreak ?? 0,
-    loggedHealthDays,
     medTakenWeek,
     medMissedWeek,
     missingProfileField: missing,
