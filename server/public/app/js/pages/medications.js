@@ -32,13 +32,16 @@ const DAY_FULL = isEn
 const PILL_COLORS = ['#14B8A6', '#1E3A8A', '#E5E7EB', '#F43F5E', '#F97316', '#22C55E', '#0EA5E9', '#6366F1', '#334155', '#111827'];
 const MAX_TIMES = 8; // server: 1–8 doses a day
 const DUE_GRACE_MIN = 60; // a dose is "due" for an hour after its time, then "missed"
+// Skipped and missed doses are amber („look here“), never red: red stays for deleting and real
+// alerts (owner 2026-10-08). `amber` is the AA ink badge; in charts a missed dose is a paler amber.
 const STATUS = {
   taken: { label: t('მიღებული', 'Taken'), tone: 'ok' },
-  skipped: { label: t('გამოტოვებული', 'Skipped'), tone: 'warn' },
-  missed: { label: t('გაცდენილი', 'Missed'), tone: 'danger' },
+  skipped: { label: t('გამოტოვებული', 'Skipped'), tone: 'amber' },
+  missed: { label: t('გაცდენილი', 'Missed'), tone: 'amber' },
   due: { label: t('ახლა', 'Now'), tone: 'brand' },
   upcoming: { label: t('მოლოდინში', 'Upcoming'), tone: 'neutral' },
 };
+const MISSED_FILL = 'var(--med-missed)'; // medications.css: a paler amber beside the skipped one
 const APP_STORE = 'https://apps.apple.com/app/id6812517519';
 
 /* ── Pure helpers ────────────────────────────────────── */
@@ -274,7 +277,7 @@ export function homeCard() {
         h('div', { style: { flex: 1, minWidth: 0 } },
           h('div', { class: 'card-title' }, sum.total === 0 ? t('დღეს მიღება დაგეგმილი არ არის', 'No doses planned for today') : sum.open.length === 0 ? t('ყველა დოზა მიღებულია', 'All doses taken') : t(`${sum.taken}/${sum.total} მიღებული`, `${sum.taken}/${sum.total} taken`)),
           h('div', { class: 'card-sub' }, sum.next ? t(`შემდეგი ${sum.next.time} · ${sum.next.med.medName}`, `Next ${sum.next.time} · ${sum.next.med.medName}`) : sum.total ? t('კარგი დღეა — ასე გააგრძელე.', 'Great day — keep it up.') : t('შენი მედიკამენტები სხვა დღეებზეა.', 'Your medications are scheduled for other days.')),
-          missedCount ? h('div', { style: { marginTop: '6px' } }, badge(t(`${missedCount} გაცდენილი`, `${missedCount} missed`), 'danger')) : null)),
+          missedCount ? h('div', { style: { marginTop: '6px' } }, badge(t(`${missedCount} გაცდენილი`, `${missedCount} missed`), STATUS.missed.tone)) : null)),
       list.length ? h('div', { class: 'stack', style: { gap: '8px', marginTop: '16px' } }, list.map((d) => h('div', { class: 'med-dose' },
         pillBadge(parseConfig(d.med.config).pillColor, 36),
         h('div', { class: 'med-dose-main' },
@@ -548,7 +551,7 @@ function trendCard(bundle, medId = null) {
   const legend = h('div', { class: 'legend med-legend' },
     h('span', null, h('i', { style: { background: 'var(--ok)' } }), t('მიღებული', 'Taken')),
     h('span', null, h('i', { style: { background: 'var(--warn)' } }), t('გამოტოვებული', 'Skipped')),
-    h('span', null, h('i', { style: { background: 'var(--danger)' } }), t('გაცდენილი', 'Missed')));
+    h('span', null, h('i', { style: { background: MISSED_FILL } }), t('გაცდენილი', 'Missed')));
   const draw = () => {
     const rows = history(bundle, days, new Date(), medId);
     if (!rows.some((r) => r.planned)) {
@@ -561,7 +564,7 @@ function trendCard(bundle, medId = null) {
       stacked: [
         { name: t('მიღებული', 'Taken'), values: rows.map((r) => r.taken), color: 'var(--ok)' },
         { name: t('გამოტოვებული', 'Skipped'), values: rows.map((r) => r.skipped), color: 'var(--warn)' },
-        { name: t('გაცდენილი', 'Missed'), values: rows.map((r) => r.missed), color: 'var(--danger)' },
+        { name: t('გაცდენილი', 'Missed'), values: rows.map((r) => r.missed), color: MISSED_FILL },
       ],
       height: 220,
       fmt: (v) => String(Math.round(v)),

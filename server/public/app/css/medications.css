@@ -1,5 +1,9 @@
 /* MEDICARD web — Medications module. Builds on app.css tokens (light + dark). */
 
+/* Skipped and missed doses are amber, never red (red = deleting and real alerts). In the
+   trend chart a missed (unanswered) dose is a paler amber than a skipped one. */
+:root { --med-missed: color-mix(in srgb, var(--warn) 50%, var(--surface)); }
+
 /* Pill badge: tinted tile with the medication's own colour dot */
 .med-pill { display: grid; place-items: center; flex: none; border-radius: 14px; background: color-mix(in srgb, var(--pill, var(--brand)) 14%, transparent); }
 .med-pill i { display: block; width: 44%; height: 26%; border-radius: 999px; background: var(--pill, var(--brand)); box-shadow: inset 0 -2px 0 rgba(0, 0, 0, .12); transform: rotate(-35deg); }
@@ -22,7 +26,7 @@
 .med-dot { width: 12px; height: 12px; border-radius: 50%; background: var(--bg3); box-shadow: 0 0 0 4px var(--surface); position: relative; z-index: 1; }
 .med-dot.taken { background: var(--ok); }
 .med-dot.skipped { background: var(--warn); }
-.med-dot.missed { background: var(--danger); }
+.med-dot.missed { background: var(--warn); } /* amber, never red: a missed dose is „look here“, not a failure */
 .med-dot.due { background: var(--brand-2); animation: medPulse 1.8s ease-in-out infinite; }
 @keyframes medPulse { 50% { box-shadow: 0 0 0 4px var(--surface), 0 0 0 8px color-mix(in srgb, var(--brand-2) 25%, transparent); } }
 .med-slot-doses { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
