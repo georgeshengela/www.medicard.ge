@@ -12,6 +12,7 @@ import { describeImage, structureLabText, SUPPORTED_IMAGE_TYPES, VISION_EFFORTS 
 import { extractPdfText, ocrImage, SUPPORTED_DOCUMENT_TYPES } from '../lib/ocr.js';
 import { buildVisionHandoff, buildDoctorTurnContext, sanitizeDoctorReply } from '../lib/prompts.js';
 import { calculateAge, withPatientAiContext } from '../lib/patient.js';
+import { answerCarriedCycle } from '../lib/patientHistoryContext.js';
 import { MEDI_RECORD_CONTEXT_RULES } from '../lib/cycleAccountContext.js';
 import { clientTimezoneFromReq, cycleTodayKey } from '../lib/cycleCivilDate.js';
 import { buildSymptomPrompt, formatSymptomRecordKa, runSymptomCheck } from '../lib/symptomCheck.js';
@@ -128,7 +129,7 @@ function writeSse(res, payload) {
   if (typeof res.flush === 'function') res.flush();
 }
 
-async function persistChatTurn({ req, session, history, message, mode, answer }) {
+async function persistChatTurn({ req, session, history, message, mode, answer, cycleContext = false }) {
   const now = new Date().toISOString();
   const nextMessages = [
     ...history,
@@ -138,6 +139,8 @@ async function persistChatTurn({ req, session, history, message, mode, answer })
       content: answer.content,
       timestamp: new Date().toISOString(),
       interactionId: answer.interactionId,
+      // The cycle rode with this answer: a later answer leaves it out while the cycle is withheld.
+      cycleContext,
     },
   ];
 
@@ -182,10 +185,14 @@ aiRouter.post(
 
     // Everything Medi may know about the person, re-read for every turn (2026-10-08 incident).
     // The cycle diary needs the client's explicit yes: its Face ID/PIN lock lives on the device only.
+    const contextMeta = {};
     const profileContext = await withPatientAiContext(req.user, context, {
       full: true, cycleAllowed: cycleContextAllowed === true,
       today: cycleTodayKey(clientTimezoneFromReq(req)), thread, priorTurns, excludeSessionId: session?.id,
+      question: message, meta: contextMeta,
     });
+    // Marker on the stored answer: the diary or a staged cycle context rode with it.
+    const cycleContext = answerCarriedCycle({ cycleShared: contextMeta.cycleShared, cycleContextAllowed, context });
     const turnContext =
       [MEDI_RECORD_CONTEXT_RULES, mode === 'DOCTOR'
         ? buildDoctorTurnContext({ userTurnCount, assistantTurnCount })
@@ -239,7 +246,7 @@ aiRouter.post(
 
         if (abort.signal.aborted) return;
 
-        const { saved, usage } = await persistChatTurn({ req, session, history, message, mode, answer });
+        const { saved, usage } = await persistChatTurn({ req, session, history, message, mode, answer, cycleContext });
         writeSse(res, {
           type: 'done',
           sessionId: saved.id,
@@ -289,7 +296,7 @@ aiRouter.post(
       },
     });
 
-    const { saved, usage } = await persistChatTurn({ req, session, history, message, mode, answer });
+    const { saved, usage } = await persistChatTurn({ req, session, history, message, mode, answer, cycleContext });
 
     return res.json({
       sessionId: saved.id,
