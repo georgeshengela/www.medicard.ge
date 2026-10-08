@@ -19,6 +19,14 @@ export type MedReminderSlot = {
   date?: Date;
 };
 
+/**
+ * Every local reminder of one medication starts with this (`med:<id>:<time>…`); the trailing colon
+ * keeps `med:abc:` from matching another medication `med:abcd:…`.
+ */
+export function medicationReminderPrefix(medicationId: string): string {
+  return `med:${medicationId}:`;
+}
+
 /** One daily slot, or one weekly slot per selected Monday-index day. */
 export function planMedicationReminderSlots(
   medicationId: string,

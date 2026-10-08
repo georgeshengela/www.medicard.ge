@@ -28,6 +28,8 @@ import { useMedications } from '@/hooks/useMedications';
 import { ka } from '@/i18n/ka';
 import { tx } from '@/i18n/locale';
 import { api } from '@/lib/api';
+import { deleteMedication } from '@/lib/medicationDelete';
+import { cancelNotificationsByPrefix } from '@/lib/notifications';
 import {
   daysSummaryKa,
   findDoseLog,
@@ -91,7 +93,17 @@ export function MedicationDoseScreen() {
         text: ka.common.delete,
         style: 'destructive',
         onPress: async () => {
-          await api.medications.remove(med.id).catch(() => undefined);
+          // A failed delete says so and keeps the medication and its reminders; a done one removes
+          // its reminders at once, so none fires for a medication she believes is gone.
+          const result = await deleteMedication(med.id, {
+            remove: (medicationId) => api.medications.remove(medicationId),
+            cancelReminders: cancelNotificationsByPrefix,
+            fallbackMessage: tx('სცადე ხელახლა.', 'Please try again.'),
+          });
+          if (!result.ok) {
+            Alert.alert(tx('წამალი ვერ წაიშალა', "Couldn't delete the medication"), result.message);
+            return;
+          }
           await load();
           router.replace('/(tabs)/medications');
         },
