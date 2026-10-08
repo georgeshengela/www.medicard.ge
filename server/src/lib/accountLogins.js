@@ -107,6 +107,17 @@ export const CONTENT_PREDICATES = Object.freeze([
     columns: ['clientId', 'initiator'],
     where: `"clientId" = $1 AND initiator = 'CLIENT'`,
   },
+  {
+    // Her safety choices (coachSafety.js, raw SQL): a trainer she blocked or reported, with or without a link.
+    table: 'CoachBlock',
+    columns: ['clientId'],
+    where: `"clientId" = $1`,
+  },
+  {
+    table: 'CoachReport',
+    columns: ['reporterId'],
+    where: `"reporterId" = $1`,
+  },
 ]);
 
 /**
@@ -121,6 +132,25 @@ export function onboardingStarted(profile) {
     || extra.assessmentPhaseComplete === true
     || extra.onboardingComplete === true
     || extra.onboardingVersion != null;
+}
+
+export const NEW_ACCOUNT_WINDOW_MS = 24 * 60 * 60 * 1000;
+
+/**
+ * Why „I already have an account“ (POST /api/auth/me/discard-new) may not remove `user`, or null
+ * when it may: 'old' (created more than a day ago, or no valid creation time), 'started' (onboarding
+ * answered in the app or on the web) or 'content' (anything of the person's own, accountHasContent).
+ */
+export async function discardNewBlocker(user, db = prisma, now = Date.now()) {
+  const age = now - new Date(user?.createdAt).getTime();
+  if (!Number.isFinite(age) || age >= NEW_ACCOUNT_WINDOW_MS) return 'old';
+  const profile = await db.healthProfile.findUnique({
+    where: { userId: user.id },
+    select: { extraAnswers: true, completedAt: true },
+  });
+  if (onboardingStarted(profile)) return 'started';
+  if (await accountHasContent(user.id, db)) return 'content';
+  return null;
 }
 
 export class AccountLoginError extends Error {

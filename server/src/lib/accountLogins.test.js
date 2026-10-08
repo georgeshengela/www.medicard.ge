@@ -67,13 +67,31 @@ test('content tables are the person’s own records, never automatic rows', () =
   }
   // Tables with automatic rows are only counted through a predicate, every one bound to the user id.
   const { CONTENT_PREDICATES } = accountLogins;
-  for (const table of ['CycleProfile', 'HealthProfile', 'CyclePartnerShare', 'Referral', 'TrainerLink']) {
+  for (const table of ['CycleProfile', 'HealthProfile', 'CyclePartnerShare', 'Referral', 'TrainerLink', 'CoachBlock', 'CoachReport']) {
     assert.ok(CONTENT_PREDICATES.some((check) => check.table === table), table);
   }
   for (const check of CONTENT_PREDICATES) {
     assert.match(check.where, /\$1/, check.table);
     assert.doesNotMatch(check.where, /\$2|;/, check.table);
   }
+});
+
+test('content predicates: what makes an automatic row hers (pinned — the fake database below cannot run SQL)', () => {
+  const { CONTENT_PREDICATES } = accountLogins;
+  const where = (table) => CONTENT_PREDICATES.filter((check) => check.table === table).map((check) => check.where).join('\n');
+  // auth-08: the onboarding last-period answer and the cycle settings she chose.
+  for (const part of ['"lastPeriodStart" IS NOT NULL', '"dueDate" IS NOT NULL', "mode <> 'TRACK_PERIOD'", '"contraceptionMethod" IS NOT NULL',
+    '"expectsBleeding" = false', "\"fertilityDisplay\" <> 'auto'"]) {
+    assert.ok(where('CycleProfile').includes(part), part);
+  }
+  // Never the caches the app writes by itself.
+  assert.doesNotMatch(where('CycleProfile'), /aiInsights|reminderPrefs/);
+  // Typed weights count, the seeded ones do not; the onboarding answers themselves are not checked.
+  assert.match(where('HealthProfile'), /NOT LIKE 'wseed-%'/);
+  assert.doesNotMatch(where('HealthProfile'), /onboardingStepKey|primaryGoal|heightCm|weightKg/);
+  // A trainer's unanswered invite is not hers.
+  assert.match(where('TrainerLink'), /"acceptedAt" IS NOT NULL/);
+  assert.match(where('TrainerLink'), /initiator = 'CLIENT'/);
 });
 
 test('new auth writes are IP-limited and the email code has both languages', () => {
@@ -102,12 +120,15 @@ const FAKE_SCHEMA = {
  * `hits[userId]` = tables in which that person has a row the check should count. The fake cannot run
  * SQL, so it answers by table: the predicates themselves are checked against Postgres separately.
  */
-function fakeDb({ hits = {}, schema = FAKE_SCHEMA, users = {} } = {}) {
+function fakeDb({ hits = {}, schema = FAKE_SCHEMA, users = {}, profiles = {} } = {}) {
   const reads = [];
   return {
     reads,
     user: {
       findUnique: async ({ where }) => users[where.id] ?? null,
+    },
+    healthProfile: {
+      findUnique: async ({ where }) => profiles[where.userId] ?? null,
     },
     async $queryRaw(strings, ...values) {
       const sql = strings.join('?');
@@ -190,4 +211,27 @@ test('discard-new: refused once onboarding started in the app or on the web', ()
   assert.equal(onboardingStarted({ extraAnswers: { onboardingVersion: 2, onboardingStepKey: null, assessmentPhaseComplete: true } }), true);
   assert.equal(onboardingStarted({ extraAnswers: { assessmentPhaseComplete: true, onboardingSource: 'web' } }), true);
   assert.equal(onboardingStarted({ extraAnswers: {}, completedAt: new Date() }), true);
+});
+
+test('discard-new: a just-created account is removed only before onboarding and while it holds nothing of hers', async () => {
+  const { discardNewBlocker, NEW_ACCOUNT_WINDOW_MS } = accountLogins;
+  const now = Date.parse('2026-10-08T12:00:00Z');
+  const fresh = { id: 'u1', createdAt: new Date(now - 10 * 60 * 1000) };
+  // The case the question exists for: nothing answered, nothing entered.
+  assert.equal(await discardNewBlocker(fresh, fakeDb(), now), null);
+  assert.equal(await discardNewBlocker(fresh, fakeDb({ profiles: { u1: { extraAnswers: { homeLayout: 'standard' }, completedAt: null } } }), now), null);
+  // auth-08: her last period (or any other own data) on a brand-new account.
+  assert.equal(await discardNewBlocker(fresh, fakeDb({ hits: { u1: ['CycleProfile'] } }), now), 'content');
+  assert.equal(await discardNewBlocker(fresh, fakeDb({ hits: { u1: ['RewardLedger'] } }), now), 'content');
+  // auth-09 / ONB-11: onboarding answered in the app (step key) or finished on the web.
+  assert.equal(await discardNewBlocker(fresh, fakeDb({ profiles: { u1: { extraAnswers: { onboardingVersion: 2, onboardingStepKey: 'birthDate' } } } }), now), 'started');
+  assert.equal(await discardNewBlocker(fresh, fakeDb({ profiles: { u1: { extraAnswers: { assessmentPhaseComplete: true }, completedAt: new Date(now) } } }), now), 'started');
+  // Older than a day, or no usable creation time: never.
+  assert.equal(await discardNewBlocker({ id: 'u1', createdAt: new Date(now - NEW_ACCOUNT_WINDOW_MS) }, fakeDb(), now), 'old');
+  assert.equal(await discardNewBlocker({ id: 'u1', createdAt: 'not a date' }, fakeDb(), now), 'old');
+  assert.equal(await discardNewBlocker({ id: 'u1' }, fakeDb(), now), 'old');
+  // The content check failing (database error) blocks too.
+  const broken = fakeDb();
+  broken.$queryRaw = async () => { throw new Error('connection reset'); };
+  assert.equal(await discardNewBlocker(fresh, broken, now), 'content');
 });
