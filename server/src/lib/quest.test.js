@@ -656,7 +656,7 @@ describe('weekly Medi mission (owner 2026-10-08)', () => {
       assert.equal(old.summary.weeklyCompleted, dash.summary.weeklyCompleted - 1, version);
       assert.deepEqual(old.daily, dash.daily);
     }
-    for (const version of ['1.0.0.21.19', '1.0.0.21.25', '1.0.0.22.0', 'web', '', undefined]) {
+    for (const version of ['1.0.0.21.19', '1.0.0.21.20', '1.0.0.21.25', '1.0.0.21.100', '1.0.0.22.0', 'web', '', undefined]) {
       assert.equal(questDashboardForClient(dash, version), dash, String(version));
     }
     // The shared dashboard object (one computation for concurrent requests) is never changed.
