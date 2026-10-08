@@ -47,7 +47,7 @@
       ]
     },
     doctor: {
-      label: T('ექიმთან · კითხვა ჯანმრთელობაზე', 'Doctor · Health questions'),
+      label: T('კონსულტაცია · კითხვა ჯანმრთელობაზე', 'Consultation · Health questions'),
       turns: [
         { me: T('ბოლო დღეებში საღამოობით თავი მტკივა.', 'I’ve had headaches in the evenings lately.') },
         { medi: T('ამ დღეებში წყალი მიზანზე ნაკლები დალიე და ძილი 6 საათზე ნაკლები იყო — ორივე შეიძლება იყოს ტკივილის მიზეზი.', 'On those days you drank less water than your goal and slept under 6 hours — either could be behind the pain.') },

@@ -569,7 +569,7 @@ const kaStrings = {
   },
 
   chat: {
-    mediModes: { medi: 'Medi', doctor: 'ექიმთან', deep: 'ღრმა ანალიზი' } as Record<'medi' | 'doctor' | 'deep', string>,
+    mediModes: { medi: 'Medi', doctor: 'კონსულტაცია', deep: 'ღრმა ანალიზი' } as Record<'medi' | 'doctor' | 'deep', string>,
     mediModeSubtitles: { medi: 'შენი ასისტენტი', doctor: 'ჯანმრთელობის კითხვები და რჩევა', deep: 'რამდენიმე სპეციალისტის ხედვა' } as Record<'medi' | 'doctor' | 'deep', string>,
     navDoctorTitle: 'Medi',
     navModelBadge: 'AI',

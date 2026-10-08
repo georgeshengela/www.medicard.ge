@@ -1,13 +1,12 @@
 import React, { useEffect, useMemo, useRef } from 'react';
 import { ActivityIndicator, Animated, Easing, Image, Text, View } from 'react-native';
-import { Redirect, useLocalSearchParams, useRouter } from 'expo-router';
+import { Redirect, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Circle } from 'react-native-svg';
 import { AnalyzingBackdrop } from '@/components/profile/AnalyzingBackdrop';
 import { MedicardLogoMark } from '@/components/ui/MedicardLogoMark';
 import { AVATAR_SOURCES, isAvatarId, normalizeAvatarForGender } from '@/constants/avatarAssets';
 import { ka } from '@/i18n/ka';
-import { api } from '@/lib/api';
 import { useOnboardingDevPreview, onboardingScreenBlocked } from '@/lib/onboardingDevPreview';
 import { useAnimatedProgress } from '@/hooks/useAnimatedProgress';
 import { finishOnboarding } from '@/lib/profileSetupFlow';
@@ -18,7 +17,8 @@ const RING = 112;
 const RING_STROKE = 4;
 const RING_R = (RING - RING_STROKE) / 2;
 const RING_C = 2 * Math.PI * RING_R;
-const MIN_HOLD_MS = 3000;
+/** A short welcome beat while onboarding is saved — nothing is analysed here. */
+const MIN_HOLD_MS = 1500;
 const LOGO_SIZE = 34;
 const LOGO_GAP = 16;
 
@@ -28,13 +28,14 @@ function firstNameOf(fullName: string, extra: Record<string, unknown>): string {
   return raw.split(/\s+/)[0] ?? '';
 }
 
-/** Profile is being prepared — Figma 8846:211832 rings, then home. */
+/**
+ * Profile is being prepared — Figma 8846:211832 rings, then home. Only `finishOnboarding` runs here: the
+ * old hidden AI „health score“ call was removed (2026-10-08), so this screen never sends anything to AI.
+ */
 export default function ProfileSetupAnalyzingScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const preview = useOnboardingDevPreview();
-  const params = useLocalSearchParams<{ force?: string }>();
-  const force = params.force === '1';
   const { ready, user, healthProfile, setHealthProfile, setUser } = useAuth();
   const started = useRef(false);
   const progress = useRef(new Animated.Value(0)).current;
@@ -62,21 +63,9 @@ export default function ProfileSetupAnalyzingScreen() {
     const shownAt = Date.now();
 
     void (async () => {
-      let profile = healthProfile;
-      const extraAnswers = (healthProfile.extraAnswers ?? {}) as Record<string, unknown>;
-      if (extraAnswers.aiPrivacyDecision === 'accepted') {
-        try {
-          const res = await api.healthProfile.onboardingAnalysis({ force });
-          profile = res.profile;
-          setHealthProfile(profile);
-        } catch {
-          // score page is skipped — still mark onboarding done
-        }
-      }
-
       if (!preview) {
         try {
-          const result = await finishOnboarding(profile, user);
+          const result = await finishOnboarding(healthProfile, user);
           setHealthProfile(result.profile);
           setUser(result.user);
         } catch {
@@ -95,7 +84,7 @@ export default function ProfileSetupAnalyzingScreen() {
 
       router.replace('/(tabs)/home' as never);
     })();
-  }, [ready, user, healthProfile, router, setHealthProfile, setUser, preview, force]);
+  }, [ready, user, healthProfile, router, setHealthProfile, setUser, preview]);
 
   const extra = (healthProfile?.extraAnswers ?? {}) as Record<string, unknown>;
   const avatarId = normalizeAvatarForGender(

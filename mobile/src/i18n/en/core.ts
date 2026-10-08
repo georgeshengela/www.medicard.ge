@@ -558,7 +558,7 @@ export const enCore: Pick<Strings, 'app' | 'common' | 'auth' | 'assessment' | 'o
   },
 
   chat: {
-    mediModes: { medi: 'Medi', doctor: 'Doctor', deep: 'Deep analysis' } as Record<'medi' | 'doctor' | 'deep', string>,
+    mediModes: { medi: 'Medi', doctor: 'Consultation', deep: 'Deep analysis' } as Record<'medi' | 'doctor' | 'deep', string>,
     mediModeSubtitles: { medi: 'Your assistant', doctor: 'Health questions and advice', deep: 'Several specialists’ views' } as Record<'medi' | 'doctor' | 'deep', string>,
     navDoctorTitle: 'Medi',
     navModelBadge: 'AI',

@@ -39,8 +39,6 @@ const AI_CALL = new RegExp([
 
 /** Callers that may stay silent: nothing the person started, or the failure is already swallowed by design. */
 const SILENT = {
-  // Onboarding's automatic first analysis: any failure (decline included) just skips the score page.
-  'app/(auth)/profile-setup/analyzing.tsx': /onboardingAnalysis\(\{ force \}\);[\s\S]{0,200}\} catch \{\s*\/\/ score page is skipped/,
   // Voice capture: the decline is handled inside createVoiceCapture (assistantVoiceSession.ts, checked below).
   'src/components/assistant/useAssistantVoice.ts': /createVoiceCapture\(\{/,
 };
@@ -78,7 +76,7 @@ test('every mobile AI caller handles a declined disclosure calmly (isAiConsentDe
   // The known set; a new caller shows up here and must be handled (the assertion above already ran).
   for (const known of [
     'src/components/medi/MediChat.tsx', 'app/symptoms/analyzing.tsx', 'app/nutrition/diary.tsx', 'app/nutrition/recipe.tsx', 'app/module/skincare.tsx',
-    'app/medications/interaction.tsx', 'app/health-metrics/weight/index.tsx', 'app/(auth)/profile-setup/results.tsx',
+    'app/medications/interaction.tsx', 'app/health-metrics/weight/index.tsx',
     'app/pets/[id]/chat.tsx', 'src/components/scan/ScanChat.tsx', 'src/components/lab/LabAlignCard.tsx',
     'src/components/cycle/CycleInsights.tsx',
   ]) assert.ok(callers.includes(known), `${known} is still found as an AI caller (update the list if it moved)`);
@@ -90,7 +88,7 @@ test('the decline branch never shows an error, an error alert or an error haptic
   for (const rel of [
     'app/symptoms/analyzing.tsx', 'src/components/scan/ScanChat.tsx', 'src/components/lab/LabAlignCard.tsx', 'app/nutrition/diary.tsx',
     'app/nutrition/recipe.tsx', 'app/module/skincare.tsx', 'app/medications/interaction.tsx', 'app/health-metrics/weight/index.tsx',
-    'app/(auth)/profile-setup/results.tsx', 'src/components/cycle/CycleInsights.tsx', 'app/pets/[id]/chat.tsx',
+    'src/components/cycle/CycleInsights.tsx', 'app/pets/[id]/chat.tsx',
   ]) {
     const src = read(join(mobile, rel));
     for (const m of src.matchAll(/(?<!!)isAiConsentDeclined\((?:e|err|error)\)\)?/g)) {
@@ -111,7 +109,7 @@ test('the screens render the shared calm note (or its line) with a neutral „�
   for (const rel of [
     'app/symptoms/analyzing.tsx', 'src/components/scan/ScanChat.tsx', 'src/components/lab/LabAlignCard.tsx', 'app/nutrition/diary.tsx',
     'app/module/skincare.tsx', 'app/medications/interaction.tsx', 'app/health-metrics/weight/index.tsx',
-    'app/(auth)/profile-setup/results.tsx', 'app/pets/[id]/chat.tsx',
+    'app/pets/[id]/chat.tsx',
   ]) assert.match(read(join(mobile, rel)), /<AiConsentDeclinedNote[^>]*onRetry=/, `${rel} renders AiConsentDeclinedNote with a retry`);
   // The describe sheets keep the typed text; „დათვალე“ is the retry and the line is neutral.
   for (const rel of ['app/nutrition/diary.tsx', 'app/nutrition/recipe.tsx']) assert.match(read(join(mobile, rel)), /consentNotice=\{describeNotice\}/, rel);
