@@ -75,11 +75,12 @@ export const RETIRED_QUEST_TEMPLATES = Object.freeze({
 
 /**
  * Owner rules that win over the admin console (config.adminManaged) on every seed and in the admin
- * PATCH: the Medi mission is weekly, pays no Medi Coins (XP only) and never counts for the daily
- * streak; it is offered only after AI consent (quest.js isTemplateEligible).
+ * PATCH: the Medi mission is weekly, one conversation completes it (MEDI_DAILY_USE progress is 0 or 1,
+ * so any other target could never be reached), pays no Medi Coins (XP only) and never counts for the
+ * daily streak; it is offered only after AI consent (quest.js isTemplateEligible).
  */
 export const LOCKED_QUEST_TEMPLATE_FIELDS = Object.freeze({
-  weekly_medi: Object.freeze({ cadence: 'WEEKLY', rewardCoins: 0, config: { countsForDailyStreak: false, requiresAiConsent: true } }),
+  weekly_medi: Object.freeze({ cadence: 'WEEKLY', defaultTarget: 1, rewardCoins: 0, config: { countsForDailyStreak: false, requiresAiConsent: true } }),
   ...RETIRED_QUEST_TEMPLATES,
 });
 

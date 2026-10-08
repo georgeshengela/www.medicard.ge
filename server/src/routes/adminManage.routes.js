@@ -72,7 +72,7 @@ adminManageRouter.get('/quests/templates', asyncHandler(async (_req, res) => {
       priority: t.priority,
       isActive: t.isActive,
       adminManaged: t.config?.adminManaged === true,
-      // Owner rules the console cannot change (the Medi mission pays no coins; daily_medi is retired).
+      // Owner rules the console cannot change (the Medi mission: one conversation a week, no coins; daily_medi is retired).
       locked: lockedQuestTemplateFields(t.key),
       updatedAt: t.updatedAt,
       stats7d: { assigned: count(assigned, t.id), completed: count(completed, t.id) },
@@ -94,7 +94,7 @@ adminManageRouter.patch('/quests/templates/:key', asyncHandler(async (req, res) 
   if (!current) throw httpError('შაბლონი ვერ მოიძებნა.', 404);
   const locked = lockedQuestTemplateFields(current.key);
   if (locked && Object.entries(body).some(([field, value]) => field in locked && locked[field] !== value)) {
-    throw httpError('ეს მნიშვნელობა მფლობელის წესით ფიქსირებულია: Medi-სთან საუბარი Medi Coins-ს არ იძლევა, დღიური Medi მისია კი კვირის მისიით შეიცვალა.', 400, 'QUEST_TEMPLATE_LOCKED');
+    throw httpError('ეს მნიშვნელობა მფლობელის წესით ფიქსირებულია: Medi-ს მისია კვირაში ერთი საუბარია და Medi Coins-ს არ იძლევა, ძველი დღიური Medi მისია კი გამორთულია.', 400, 'QUEST_TEMPLATE_LOCKED');
   }
   const next = { ...current, ...body };
   try {

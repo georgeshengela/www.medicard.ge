@@ -1167,7 +1167,8 @@ function referralCard() {
           button(t('ტელეფონის დადასტურება', 'Verify phone'), { variant: 'secondary', icon: 'smartphone', onClick: async () => { if (await verifyPhone()) { invalidate('/api/referrals'); draw(); } } }));
       }
       if (d?.code) {
-        const shareText = t(`შემოდი MEDICARD-ში — წამლები, ანალიზები და ჯანმრთელობა ერთ აპში. რეგისტრაციის შემდეგ შეიყვანე ჩემი კოდი ${d.code} და ორივე მივიღებთ ${d.coinsPerSide} Medi მონეტას.\n${d.link || ''}`, `Join me on MEDICARD — medications, lab results and health in one app. After you sign up, enter my code ${d.code} and we’ll both get ${d.coinsPerSide} Medi Coins.\n${d.link || ''}`);
+        // Same words as the app's share text (mobile/src/lib/referral.ts): where to enter the code, paid at once.
+        const shareText = t(`შემოდი MEDICARD-ში — წამლები, ანალიზები და ჯანმრთელობა ერთ აპში. რეგისტრაციის შემდეგ გახსენი პროფილი → „მოიწვიე მეგობარი“ → „მოწვევის კოდი მაქვს“ და შეიყვანე ჩემი კოდი ${d.code} — ორივე მაშინვე მივიღებთ ${coins} Medi მონეტას.\n${d.link || ''}`, `Join me on MEDICARD — medications, lab results and your health in one app. After you sign up, open Profile → “Invite a friend” → “I have an invite code” and enter my code ${d.code} — we both get ${coins} Medi Coins right away.\n${d.link || ''}`);
         parts.push(
           h('div', { class: 'q-invite-code' }, h('span', { class: 'faint' }, t('შენი კოდი', 'Your code')), h('b', { class: 'num', 'aria-label': t(`შენი კოდი: ${d.code.split('').join(' ')}`, `Your code: ${d.code.split('').join(' ')}`) }, d.code)),
           h('div', { class: 'hstack' },

@@ -530,19 +530,20 @@ describe('weekly Medi mission (owner 2026-10-08)', () => {
     await db.questTemplate.create({
       data: {
         key: 'weekly_medi', category: 'MEDI', cadence: 'DAILY', titleKey: 'x', descriptionKey: 'y',
-        progressType: 'MEDI_DAILY_USE', defaultTarget: 1, rewardCoins: 50, rewardXp: 40, priority: 1, isActive: true,
+        progressType: 'MEDI_DAILY_USE', defaultTarget: 3, rewardCoins: 50, rewardXp: 40, priority: 1, isActive: true,
         config: { adminManaged: true, countsForDailyStreak: true },
       },
     });
     await ensureQuestTemplates(db);
     const row = await db.questTemplate.findUnique({ where: { key: 'weekly_medi' } });
-    assert.deepEqual([row.cadence, row.rewardCoins, row.config.countsForDailyStreak], ['WEEKLY', 0, false]);
+    // Medi progress is 0 or 1: a target above one could never be reached.
+    assert.deepEqual([row.cadence, row.defaultTarget, row.rewardCoins, row.config.countsForDailyStreak], ['WEEKLY', 1, 0, false]);
     // Everything else stays the admin's.
     assert.deepEqual([row.rewardXp, row.priority, row.config.adminManaged], [40, 1, true]);
   });
 
   it('tells the admin console which fields it cannot change', () => {
-    assert.deepEqual(lockedQuestTemplateFields('weekly_medi'), { cadence: 'WEEKLY', rewardCoins: 0 });
+    assert.deepEqual(lockedQuestTemplateFields('weekly_medi'), { cadence: 'WEEKLY', defaultTarget: 1, rewardCoins: 0 });
     assert.deepEqual(lockedQuestTemplateFields('daily_medi'), { isActive: false, rewardCoins: 0 });
     assert.equal(lockedQuestTemplateFields('daily_steps'), null);
   });
