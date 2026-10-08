@@ -311,7 +311,7 @@ function buildQuestDevAchievements() {
     devAchievement({ key: 'MOVE_10', threshold: 10, category: 'MOVEMENT', rarity: 'COMMON', rewardXp: 60, rewardCoins: 30, unlocked: true, claimed: true, daysAgo: 1, sortOrder: 31 }),
     devAchievement({ key: 'MOVE_25', threshold: 25, category: 'MOVEMENT', rarity: 'UNCOMMON', rewardXp: 120, rewardCoins: 60, progress: 14, sortOrder: 32 }),
     devAchievement({ key: 'HYDRATE_10', threshold: 10, category: 'HYDRATION', rarity: 'COMMON', rewardXp: 60, rewardCoins: 30, progress: 7, sortOrder: 41 }),
-    devAchievement({ key: 'MEDI_10', threshold: 10, category: 'MEDI', rarity: 'COMMON', rewardXp: 60, rewardCoins: 30, progress: 4, sortOrder: 51 }),
+    devAchievement({ key: 'MEDI_10', threshold: 10, category: 'MEDI', rarity: 'COMMON', rewardXp: 60, rewardCoins: 0, progress: 4, sortOrder: 51 }),
     devAchievement({ key: 'WEEKLY_3', threshold: 3, category: 'WEEKLY', rarity: 'COMMON', rewardXp: 100, rewardCoins: 50, unlocked: true, daysAgo: 1, sortOrder: 60 }),
     devAchievement({ key: 'LEVEL_5', threshold: 5, category: 'LEVEL', rarity: 'COMMON', rewardXp: 50, rewardCoins: 25, unlocked: true, claimed: true, daysAgo: 5, sortOrder: 70 }),
     devAchievement({ key: 'LEVEL_10', threshold: 10, category: 'LEVEL', rarity: 'UNCOMMON', rewardCoins: 50, rewardXp: 100, progress: 7, sortOrder: 71 }),

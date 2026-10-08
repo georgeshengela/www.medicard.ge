@@ -17,18 +17,16 @@ export function DailyCheckInHost() {
   useEffect(() => {
     if (!user) return;
     return onReturnToForeground(() => {
-      {
-        void refresh();
-        void import('@/lib/notifications').then(async ({ getNotificationPermissionGranted }) => {
-          const granted = await getNotificationPermissionGranted();
-          const { syncNotificationPermission } = await import('@/lib/productObservability');
-          await syncNotificationPermission(granted ? 'enabled' : 'disabled');
-        });
-        if (user.id) {
-          void import('@/lib/cycleOffline').then(({ flushCycleQueue }) =>
-            flushCycleQueue(user.id).catch(() => undefined),
-          );
-        }
+      void refresh();
+      void import('@/lib/notifications').then(async ({ getNotificationPermissionGranted }) => {
+        const granted = await getNotificationPermissionGranted();
+        const { syncNotificationPermission } = await import('@/lib/productObservability');
+        await syncNotificationPermission(granted ? 'enabled' : 'disabled');
+      });
+      if (user.id) {
+        void import('@/lib/cycleOffline').then(({ flushCycleQueue }) =>
+          flushCycleQueue(user.id).catch(() => undefined),
+        );
       }
     });
   }, [user, refresh]);
