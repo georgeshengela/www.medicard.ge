@@ -138,15 +138,22 @@ export function isNotificationRoute(route: unknown): route is string {
   return (NOTIFICATION_ROUTE_ROOTS as readonly string[]).includes(root);
 }
 
+/** A medication reminder's route with its own slot (`?time=HH:mm`) when the route does not name one. */
+function withDoseTime(route: string, data: Record<string, unknown>): string {
+  const time = typeof data.time === 'string' && /^([01]\d|2[0-3]):[0-5]\d$/.test(data.time) ? data.time : '';
+  if (data.type !== 'medication' || !time || !route.startsWith('/medications/') || /[?&]time=/.test(route)) return route;
+  return `${route}${route.includes('?') ? '&' : '?'}time=${time}`;
+}
+
 export function routeFromNotificationData(data: Record<string, unknown> | undefined | null): string | null {
   if (!data || typeof data !== 'object') return null;
 
-  if (isNotificationRoute(data.route)) return data.route;
+  if (isNotificationRoute(data.route)) return withDoseTime(data.route, data);
 
   switch (data.type) {
     case 'medication':
       return typeof data.medicationId === 'string' && data.medicationId
-        ? `/medications/${data.medicationId}`
+        ? withDoseTime(`/medications/${data.medicationId}`, data)
         : '/medications';
     case 'weight-goal':
       return '/health-metrics/weight';

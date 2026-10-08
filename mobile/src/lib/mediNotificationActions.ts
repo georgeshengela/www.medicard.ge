@@ -3,7 +3,7 @@ import { Platform } from 'react-native';
 import { Notifications } from '@/lib/expoNotifications';
 import { addHydrationLog, todayYmd } from '@/lib/hydration';
 import { ensureLocalAccountScope, saveDoseLog } from '@/lib/medications.shared';
-import { notificationDoseEntry } from '@/lib/notificationDose';
+import { medicationDoseRoute, notificationDoseEntry } from '@/lib/notificationDose';
 import { markEngageOpened } from '@/lib/mediEngagePrefs';
 import { HYDRATION_DROP_ML } from '@/types/hydration';
 import { tx } from '../i18n/locale.js';
@@ -125,6 +125,12 @@ export async function handleNotificationAction(
 
   if (isDefaultAction(action)) {
     if (data.type === 'medi_engage') void markEngageOpened(family, key, 'open');
+    // A medication reminder opens the reminded dose (its slot and day), also for reminders scheduled
+    // by older versions whose route named only the medication.
+    if (data.type === 'medication') {
+      const route = medicationDoseRoute(data, response.notification.date, Date.now());
+      if (route) return { navigate: true, route };
+    }
     return { navigate: true };
   }
 

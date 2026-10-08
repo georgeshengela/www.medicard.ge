@@ -563,7 +563,8 @@ export async function syncMedicationReminders(
             templateKey: 'medication',
             medicationId: dose.medicationId,
             time: dose.time,
-            route: `/medications/${dose.medicationId}`,
+            // The reminded slot, so a tap opens this dose and not the first one of the day.
+            route: `/medications/${dose.medicationId}?time=${dose.time}`,
           },
         },
         trigger:
