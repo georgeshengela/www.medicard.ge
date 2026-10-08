@@ -61,6 +61,8 @@ export async function runTrackedAi({
   visionProvider = null,
   visionModel = null,
   fn,
+  /** Optional: true once the person left a streamed answer. That cancel is not an AI error, so no row. */
+  cancelled = null,
 }) {
   const started = Date.now();
   try {
@@ -83,6 +85,8 @@ export async function runTrackedAi({
     });
     return { ...result, interactionId: interaction.id };
   } catch (error) {
+    // Admin counts ERROR rows as AI failures (command center „AI შეცდომები“); a person closing Medi is not one.
+    if (typeof cancelled === 'function' && cancelled()) throw error;
     await logAiInteraction({
       userId,
       mode,

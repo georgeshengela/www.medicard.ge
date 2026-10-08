@@ -212,6 +212,9 @@ aiRouter.post(
       const client = watchStreamClient(res);
       if (client.gone()) {
         client.dispose();
+        // A disconnect during enforceAiQuota's own reads fired 'close' before it listened: free the slot here,
+        // or it stays reserved (2 in flight → „ანალიზი უკვე მიმდინარეობს“) until the 20-minute sweep.
+        await req.releaseAiCredit?.().catch(() => undefined);
         return;
       }
       req.setTimeout(0);
@@ -230,6 +233,7 @@ aiRouter.post(
           mode,
           chatSessionId: session?.id,
           userPrompt: message,
+          cancelled: client.gone,
           fn: async () => {
             const result = await askAi({
               user: req.user,

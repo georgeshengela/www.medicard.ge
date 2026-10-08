@@ -102,3 +102,38 @@ test('/api/ai/query streams through the response watcher and skips storing once 
   assert.match(branch, /if \(client\.gone\(\)\) return;\s*\n\s*const \{ saved, usage \} = await persistChatTurn/);
   assert.match(branch, /finally \{\s*client\.dispose\(\);/);
 });
+
+// Review (2026-10-08): enforceAiQuota listens for 'close' only after its own reads. A person gone during
+// them never fired that listener, and the early return neither charged nor freed the slot — it stayed
+// reserved until the 20-minute sweep. Cancels are also not AI errors: admin's command center turns
+// „AI შეცდომები“ on for any ERROR row in 24 h.
+test('/api/ai/query frees the reserved slot when the person left before the stream started', () => {
+  const src = readFileSync(new URL('../routes/ai.routes.js', import.meta.url), 'utf8');
+  const early = src.slice(src.indexOf('const client = watchStreamClient(res);'));
+  const block = early.slice(0, early.indexOf('return;'));
+  assert.match(block, /if \(client\.gone\(\)\) \{[\s\S]*await req\.releaseAiCredit\?\.\(\)/);
+  assert.match(early, /runTrackedAi\(\{[\s\S]*?cancelled: client\.gone,[\s\S]*?signal: client\.signal/);
+});
+
+test('a cancelled AI call is not logged as an AI error; a real failure still is', async (t) => {
+  const { prisma } = await import('./prisma.js');
+  const { runTrackedAi } = await import('./aiTelemetry.js');
+  const rows = [];
+  const original = prisma.aiInteraction.create;
+  prisma.aiInteraction.create = async ({ data }) => { rows.push(data); return { id: `row-${rows.length}` }; };
+  t.after(() => { prisma.aiInteraction.create = original; });
+  const fail = () => { throw new Error('upstream'); };
+
+  let gone = true;
+  await assert.rejects(runTrackedAi({ userId: 'u1', mode: 'DOCTOR', userPrompt: 'q', cancelled: () => gone, fn: fail }), /upstream/);
+  assert.equal(rows.length, 0, 'the person left: no ERROR row');
+
+  gone = false;
+  await assert.rejects(runTrackedAi({ userId: 'u1', mode: 'DOCTOR', userPrompt: 'q', cancelled: () => gone, fn: fail }), /upstream/);
+  await assert.rejects(runTrackedAi({ userId: 'u1', mode: 'DOCTOR', userPrompt: 'q', fn: fail }), /upstream/);
+  assert.deepEqual(rows.map((row) => row.status), ['ERROR', 'ERROR']);
+
+  const ok = await runTrackedAi({ userId: 'u1', mode: 'DOCTOR', userPrompt: 'q', cancelled: () => false, fn: async () => ({ content: 'a' }) });
+  assert.equal(ok.interactionId, 'row-3');
+  assert.equal(rows[2].status, 'OK');
+});
