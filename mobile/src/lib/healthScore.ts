@@ -9,7 +9,10 @@ export type HealthScoreBand = {
   detailKa: string;
 };
 
-/** Canonical Asklepios scale: worse → better. Used on Home, results header, and legend. */
+/**
+ * Canonical Asklepios scale: worse → better. No screen uses it since the onboarding score page was removed
+ * (2026-10-08); only its unit test (test:units) still imports it — delete both together.
+ */
 export const HEALTH_SCORE_BANDS: HealthScoreBand[] = [
   {
     min: 0,
