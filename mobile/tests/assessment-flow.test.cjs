@@ -49,3 +49,49 @@ test('conditional questions appear only after yes and stored indices stay stable
   assert.equal(types({}).includes('body-type'), false);
   assert.equal(ACTIVE_ASSESSMENT_STEPS[5].type, 'body-type');
 });
+test('a notification answer kept only in memory is written by the final onboarding save', async () => {
+  const puts = [];
+  const loadFlow = require('./helpers/loadTs.cjs')({
+    '@/components/assessment/DateWheelPicker': {
+      parseBirthDate: () => ({ month: 1, day: 1, year: 2000 }),
+      birthDateIso: () => '2000-01-01', ageFromBirthDate: () => 26,
+    },
+    '@/lib/api': {
+      api: {
+        healthProfile: {
+          update: async (payload) => { puts.push(payload); return { profile: {} }; },
+          complete: async () => ({ profile: { completedAt: '2026-10-08T00:00:00Z' }, user: {} }),
+        },
+      },
+    },
+    '@/lib/storage': { getPreference: async () => null, setPreference: async () => undefined },
+    '@/lib/funnel': { trackOnboardingCompleted: () => undefined },
+  });
+  const { finishOnboarding } = loadFlow('src/lib/profileSetupFlow.ts');
+  const { withExtraAnswers } = loadFlow('src/lib/onboarding.ts');
+  const stored = { heightCm: 170, weightKg: 65, extraAnswers: { privacyAccepted: true, aiPrivacyPrompted: true, homeLayout: 'women' } };
+  const local = withExtraAnswers(stored, { notificationsEnabled: false });
+  await finishOnboarding(local, { birthDate: '1990-01-01', gender: 'FEMALE' });
+  assert.equal(puts.length, 1);
+  assert.equal(puts[0].extraAnswers.notificationsEnabled, false);
+  assert.equal(puts[0].extraAnswers.onboardingComplete, true);
+  // The Home layout keeps its own writer; the final save never re-sends it.
+  assert.equal('homeLayout' in puts[0].extraAnswers, false);
+});
+test('onboarding never dead-ends: a way out on every step, on the policy decline and after a failed final save', () => {
+  const fs = require('node:fs');
+  const path = require('node:path');
+  const read = (file) => fs.readFileSync(path.join(__dirname, '..', file), 'utf8');
+  const assessment = read('app/(auth)/assessment/index.tsx');
+  assert.match(assessment, /!profileMode && !preview \? \(\s*<OnboardingExitLinks showDelete=\{step\.type === 'birthdate' && !canContinue\}/);
+  const privacy = read('app/(auth)/profile-setup/privacy.tsx');
+  assert.doesNotMatch(privacy, /Alert\.alert/);
+  assert.match(privacy, /<OnboardingExitCard/);
+  assert.match(privacy, /setError\(authErrorMessage\(e\)\)/);
+  const notifications = read('app/(auth)/profile-setup/notifications.tsx');
+  assert.match(notifications, /withExtraAnswers\(healthProfile, \{ notificationsEnabled: osGranted \}\)/);
+  const analyzing = read('app/(auth)/profile-setup/analyzing.tsx');
+  assert.match(analyzing, /finishRetryDelay\(e, failures\)/);
+  assert.match(analyzing, /onPress=\{retry\}/);
+  assert.match(analyzing, /<OnboardingExitLinks/);
+});

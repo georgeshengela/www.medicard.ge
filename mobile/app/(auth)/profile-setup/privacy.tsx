@@ -1,13 +1,15 @@
 import React, { useMemo, useState } from 'react';
-import { ActivityIndicator, Alert, LayoutAnimation, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, LayoutAnimation, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Redirect, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ChevronDown, FileText, ShieldCheck, Utensils } from 'lucide-react-native';
+import { OnboardingExitCard } from '@/components/auth/OnboardingExit';
 import { ProfileSetupPrimaryButton } from '@/components/profile/ProfileSetupButtons';
 import { PRIVACY_POLICY_KA } from '@/constants/privacyPolicyKa';
 import { PRIVACY_POLICY_EN } from '@/constants/privacyPolicyEn';
 import { ka } from '@/i18n/ka';
 import { isEn, tx } from '@/i18n/locale';
+import { authErrorMessage } from '@/lib/authErrorMessage';
 import { patchProfileExtra } from '@/lib/profileSetupFlow';
 import { useOnboardingDevPreview, onboardingScreenBlocked, onboardingStepHref } from '@/lib/onboardingDevPreview';
 import { useAuth } from '@/store/AuthContext';
@@ -92,6 +94,8 @@ export default function ProfileSetupPrivacyScreen() {
   const preview = useOnboardingDevPreview();
   const { ready, user, healthProfile, setHealthProfile } = useAuth();
   const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [declineOpen, setDeclineOpen] = useState(false);
   const [openKeys, setOpenKeys] = useState<Set<string>>(() => new Set());
 
   const english = isEn();
@@ -133,7 +137,9 @@ export default function ProfileSetupPrivacyScreen() {
       router.back();
       return;
     }
+    if (busy) return;
     setBusy(true);
+    setError(null);
     try {
       const updated = await patchProfileExtra(healthProfile, user, {
         privacyAccepted: true,
@@ -141,18 +147,16 @@ export default function ProfileSetupPrivacyScreen() {
       });
       setHealthProfile(updated);
       router.replace(onboardingStepHref('/(auth)/profile-setup/ai-privacy', preview) as never);
+    } catch (e) {
+      // The acceptance is a legal record: it moves on only once the server stored it.
+      setError(authErrorMessage(e));
     } finally {
       setBusy(false);
     }
   };
 
-  const decline = () => {
-    Alert.alert(
-      ka.profileSetup.privacyTitle,
-      tx('აპის გამოყენების გასაგრძელებლად საჭიროა პოლიტიკის დათანხმება.', 'To keep using the app, you need to accept the policy.'),
-      [{ text: ka.common.cancel, style: 'cancel' }],
-    );
-  };
+  // Declining never records anything; the card offers reading again, signing out or deleting the account.
+  const decline = () => setDeclineOpen(true);
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.bg100, paddingTop: welcomeTopInset(insets.top) }}>
@@ -213,6 +217,11 @@ export default function ProfileSetupPrivacyScreen() {
             )}
           </Text>
         )}
+        {error ? (
+          <Text accessibilityRole="alert" style={[styles.errorText, { color: colors.danger }]}>
+            {error}
+          </Text>
+        ) : null}
         <ProfileSetupPrimaryButton
           label={viewing ? ka.common.done : ka.profileSetup.privacyAccept}
           onPress={() => void accept()}
@@ -225,6 +234,18 @@ export default function ProfileSetupPrivacyScreen() {
           </Pressable>
         )}
       </View>
+      {viewing ? null : (
+        <OnboardingExitCard
+          visible={declineOpen}
+          title={tx('პოლიტიკის გარეშე ვერ გავაგრძელებთ', 'We can’t continue without the policy')}
+          body={tx(
+            'აპის გამოყენების გასაგრძელებლად საჭიროა პოლიტიკის დათანხმება. თუ არ ეთანხმები, შეგიძლია გახვიდე ან წაშალო ანგარიში და მასთან ერთად შენახული პასუხები.',
+            'To keep using the app, you need to accept the policy. If you don’t agree, you can sign out, or delete your account together with the answers stored with it.',
+          )}
+          stayLabel={tx('წავიკითხავ ხელახლა', 'Read it again')}
+          onClose={() => setDeclineOpen(false)}
+        />
+      )}
     </View>
   );
 }
@@ -354,6 +375,12 @@ const styles = StyleSheet.create({
     fontFamily: 'NotoSansGeorgian_400Regular',
     fontSize: 12,
     lineHeight: 17,
+    textAlign: 'center',
+  },
+  errorText: {
+    fontFamily: 'NotoSansGeorgian_500Medium',
+    fontSize: 13,
+    lineHeight: 19,
     textAlign: 'center',
   },
   declineText: {
