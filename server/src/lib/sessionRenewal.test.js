@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import jwt from 'jsonwebtoken';
 import { env } from '../config/env.js';
 import { signToken } from '../middleware/auth.js';
+import { sealAssistantPlan } from './assistantExecution.js';
 import { sessionRenewalDue, sessionRenewalFields } from './sessionRenewal.js';
 
 const DAY = 24 * 60 * 60;
@@ -33,6 +34,14 @@ describe('sessionRenewalDue', () => {
     assert.equal(sessionRenewalDue({ exp: T0 + 30 * DAY }, at(20)), false);
     assert.equal(sessionRenewalDue({ iat: T0, exp: T0 }, at(20)), false);
     assert.equal(sessionRenewalDue(claims, at(31)), false);
+  });
+
+  it('never turns a one-purpose token (Medi action seal) into a session', () => {
+    const seal = jwt.decode(sealAssistantPlan('u1', { id: 'p1', tool: 'water_log', args: {} }));
+    assert.equal(seal.aud, 'medi-assistant-action');
+    const halfway = (seal.iat + (seal.exp - seal.iat) * 0.75) * 1000;
+    assert.equal(sessionRenewalDue({ iat: seal.iat, exp: seal.exp }, halfway), true);
+    assert.equal(sessionRenewalDue({ iat: seal.iat, exp: seal.exp, aud: seal.aud }, halfway), false);
   });
 });
 

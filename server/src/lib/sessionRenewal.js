@@ -10,9 +10,12 @@ export const SESSION_RENEW_AFTER = 0.5;
 
 /**
  * `claims` are the verified JWT claims (`iat` / `exp`, seconds). Measured against the token's own
- * span, so a different JWT_EXPIRES_IN on the server needs no code change.
+ * span, so a different JWT_EXPIRES_IN on the server needs no code change. Only sign-in tokens
+ * (signToken: no audience) slide; a token made for one purpose (`aud`, e.g. the 15-minute Medi
+ * action seal) must never turn into a full session.
  */
 export function sessionRenewalDue(claims, nowMs = Date.now()) {
+  if (claims?.aud !== undefined && claims?.aud !== null) return false;
   const iat = Number(claims?.iat);
   const exp = Number(claims?.exp);
   if (!Number.isFinite(iat) || !Number.isFinite(exp) || exp <= iat) return false;

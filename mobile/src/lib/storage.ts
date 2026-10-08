@@ -141,6 +141,9 @@ export async function setToken(token: string): Promise<void> {
  */
 export async function renewToken(current: string, next: string): Promise<boolean> {
   if (!next || next === current || (await getToken()) !== current) return false;
+  // Re-checked with no await before the write (writeToken sets memoryToken first): a sign-out
+  // that landed while getToken() resolved must not get the token written back.
+  if (memoryToken !== current) return false;
   await writeToken(next);
   return true;
 }

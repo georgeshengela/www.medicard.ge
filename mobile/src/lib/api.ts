@@ -6,6 +6,7 @@ import { appLang, tx } from '@/i18n/locale';
 import { forgetAiConsent, hasFreshAiConsent, rememberAiConsent } from '@/lib/aiSharingRoutes.js';
 import { formatRateLimitMessage, publicApiErrorMessage } from './rateLimitCopy.js';
 import { getToken } from './storage';
+import { jwtSubject } from './jwtSubject';
 import { UploadTimeoutError, uploadWithDeadline } from './uploadDeadline';
 import { withAuthConnectionRetry } from './authConnection';
 import { markReachable, markUnreachable } from './reachability';
@@ -2132,7 +2133,10 @@ export async function ensureAiSharingConsentForRequest(path: string, method = 'P
     }, settings);
     if (!accepted && !settings) throw new ApiError(tx('AI დამუშავების ნებართვა საჭიროა. არჩევანს პროფილში, „კონფიდენციალობა და მონაცემებში“ შეცვლი.', 'This needs your permission for AI processing. You can change your choice in Profile, under “Privacy and data”.'), 403, { code: 'AI_CONSENT_DECLINED' });
   }
-  if (owner !== localAccountId() || token !== await getToken()) throw new ApiError(tx('ანგარიში შეიცვალა.', 'You switched accounts.'), 401);
+  // Same account, not necessarily the same string: /api/auth/me may renew the token while the sheet is open.
+  const current = await getToken(), subject = current ? jwtSubject(current) : null;
+  const sameAccount = Boolean(current) && (current === token || (subject !== null && subject === jwtSubject(token)));
+  if (owner !== localAccountId() || !sameAccount) throw new ApiError(tx('ანგარიში შეიცვალა.', 'You switched accounts.'), 401);
 }
 
 const TRIP_REPORT_GAP_MS = 5 * 60_000;

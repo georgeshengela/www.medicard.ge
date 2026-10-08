@@ -108,3 +108,28 @@ test('a late renewal cannot store a token after signing out',async()=>{
  const restore=h.render().refresh();await tick();await h.render().signOut();pending.resolve({...h.full,token:'renewed-token'});await restore;
  assert.equal(h.token(),null);assert.equal(h.render().user,null);
 });
+
+// The real src/lib/storage.ts renewToken on the iOS path (Keychain + UserDefaults stubbed).
+function realStorage(saved){
+ const keychain=new Map(saved?[['medicard.auth.token',saved]]:[]),notices=[];
+ const mod=require('./helpers/loadTs.cjs')({
+  'react-native':{Platform:{OS:'ios'},Settings:{get:key=>key==='medicard.sandbox.v1'?'1':undefined,set:()=>{}}},
+  'expo-secure-store':{WHEN_UNLOCKED_THIS_DEVICE_ONLY:1,getItemAsync:async key=>keychain.get(key)??null,setItemAsync:async(key,value)=>{keychain.set(key,value);},deleteItemAsync:async key=>{keychain.delete(key);}},
+  '@/lib/protectedTokenChange.js':{notifyProtectedTokenReplace:(previous,next)=>notices.push([previous,next])},
+ })('src/lib/storage.ts');
+ return {mod,keychain,notices};
+}
+test('renewToken stores the fresh token only over the token that asked, without an account-change notice',async()=>{
+ const {mod,keychain,notices}=realStorage('old-token');
+ assert.equal(await mod.renewToken('old-token','renewed-token'),true);
+ assert.equal(await mod.getToken(),'renewed-token');assert.equal(keychain.get('medicard.auth.token'),'renewed-token');assert.deepEqual(notices,[]);
+ assert.equal(await mod.renewToken('old-token','late-token'),false);
+ assert.equal(await mod.getToken(),'renewed-token');
+});
+test('a sign-out that lands while renewToken reads the saved token is never undone',async()=>{
+ const {mod,keychain}=realStorage('old-token');
+ assert.equal(await mod.getToken(),'old-token');
+ const renewal=mod.renewToken('old-token','renewed-token');const signOut=mod.clearToken();
+ assert.equal(await renewal,false);await signOut;
+ assert.equal(await mod.getToken(),null);assert.equal(keychain.has('medicard.auth.token'),false);
+});
