@@ -9,23 +9,23 @@ const CASES: Array<[Array<number | null | undefined>, number]> = [
   [[], 4000],
   [[5000, 6000], 4000], // two days are not a typical day
   [[null, undefined, 0, -300, Number.NaN, Number.POSITIVE_INFINITY, 5000, 6000], 4000],
-  [[3000, 5000, 7000], 5000],
-  [[7000, 3000, 5000, 8000], 6000], // even count: mean of the middle two, any order
-  [[6200, 6300, 6400], 6500], // nearest 500 (6 300 → 6 500)
-  [[6240, 6240, 6240], 6000], // nearest 500 (6 240 → 6 000)
-  [[6250, 6250, 6250], 6500], // half rounds up
+  [[3000, 5000, 7000], 5500], // usual day 5 000 + 500
+  [[7000, 3000, 5000, 8000], 6500], // even count: mean of the middle two, any order
+  [[6200, 6300, 6400], 7000], // nearest 500 (6 300 → 6 500) + 500
+  [[6240, 6240, 6240], 6500], // nearest 500 (6 240 → 6 000) + 500
+  [[6250, 6250, 6250], 7000], // half rounds up
   [[500, 800, 1200], 2000], // floor
   [[15000, 18000, 20000], 10000], // ceiling — never above 10 000
-  [[2100, 2200, 30000, 31000, 2300], 2500], // one long hike does not move the typical day
+  [[2100, 2200, 30000, 31000, 2300], 3000], // one long hike does not move the typical day
 ];
 
-test('personal goal: median of the days with steps, nearest 500, 2 000–10 000, else 4 000', () => {
+test('personal goal: median of the days with steps, nearest 500, +500, 2 000–10 000, else 4 000', () => {
   for (const [totals, expected] of CASES) {
     assert.equal(app.personalStepsGoal(totals), expected, `app ${JSON.stringify(totals)}`);
     assert.equal(web.personalStepsGoal(totals), expected, `web ${JSON.stringify(totals)}`);
   }
   assert.equal(app.STEPS_GOAL_FALLBACK, 4000);
-  for (const key of ['STEPS_GOAL_FALLBACK', 'STEPS_GOAL_FLOOR', 'STEPS_GOAL_CEILING', 'STEPS_GOAL_ROUND', 'STEPS_GOAL_WINDOW_DAYS', 'STEPS_GOAL_MIN_DAYS'] as const) {
+  for (const key of ['STEPS_GOAL_FALLBACK', 'STEPS_GOAL_FLOOR', 'STEPS_GOAL_CEILING', 'STEPS_GOAL_ROUND', 'STEPS_GOAL_STRETCH', 'STEPS_GOAL_WINDOW_DAYS', 'STEPS_GOAL_MIN_DAYS'] as const) {
     assert.equal(web[key], app[key], key);
   }
 });
@@ -52,8 +52,8 @@ test('goal from per-day sources: today and older days are ignored, the larger so
     ['2026-09-30', 2000],
   ]);
   const device = { '2026-09-30': 7000 }; // the phone saw more than the last sync
-  assert.equal(app.personalStepsGoalFor([stored, device], now), 6000);
-  assert.equal(app.personalStepsGoalFor([stored], now), 5000);
+  assert.equal(app.personalStepsGoalFor([stored, device], now), 6500);
+  assert.equal(app.personalStepsGoalFor([stored], now), 5500);
   assert.equal(app.personalStepsGoalFor([new Map([['2026-10-02', 9000]])], now), 4000);
 
   const rows = [
@@ -63,7 +63,7 @@ test('goal from per-day sources: today and older days are ignored, the larger so
     { date: '2026-09-30', steps: 2000 },
     { date: '2026-09-29', steps: null },
   ];
-  assert.equal(web.stepsGoalFromDaily(rows, now), 5000);
+  assert.equal(web.stepsGoalFromDaily(rows, now), 5500);
   assert.equal(web.stepsGoalFromDaily([], now), 4000);
   assert.equal(web.stepsGoalFromDaily(null, now), 4000);
 });

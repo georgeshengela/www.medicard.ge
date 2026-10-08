@@ -1,13 +1,15 @@
-// MEDICARD web — default daily step goal = the person's own typical day (owner 2026-10-08; no fixed 10 000).
-// Mirror of mobile/src/lib/personalStepsGoal.ts (mobile/src/lib/personalStepsGoal.test.ts runs both on
-// one table): median of the last 14 completed days that have steps (at least 3 such days), rounded to
-// the nearest 500, kept within 2 000–10 000; 4 000 until there is enough data. Today is left out.
+// MEDICARD web — default daily step goal = one small step above the person's own typical day
+// (owner 2026-10-08; no fixed 10 000). Mirror of mobile/src/lib/personalStepsGoal.ts
+// (mobile/src/lib/personalStepsGoal.test.ts runs both on one table): median of the last 14 completed
+// days that have steps (at least 3 such days), rounded to the nearest 500, plus 500, kept within
+// 2 000–10 000; 4 000 until there is enough data. Today is left out.
 // No imports: the node test loads this file.
 
 export const STEPS_GOAL_FALLBACK = 4000;
 export const STEPS_GOAL_FLOOR = 2000;
 export const STEPS_GOAL_CEILING = 10000;
 export const STEPS_GOAL_ROUND = 500;
+export const STEPS_GOAL_STRETCH = 500;
 export const STEPS_GOAL_WINDOW_DAYS = 14;
 export const STEPS_GOAL_MIN_DAYS = 3;
 
@@ -19,7 +21,7 @@ export function personalStepsGoal(dailyTotals) {
   if (days.length < STEPS_GOAL_MIN_DAYS) return STEPS_GOAL_FALLBACK;
   const mid = Math.floor(days.length / 2);
   const median = days.length % 2 ? days[mid] : (days[mid - 1] + days[mid]) / 2;
-  const rounded = Math.round(median / STEPS_GOAL_ROUND) * STEPS_GOAL_ROUND;
+  const rounded = Math.round(median / STEPS_GOAL_ROUND) * STEPS_GOAL_ROUND + STEPS_GOAL_STRETCH;
   return Math.min(STEPS_GOAL_CEILING, Math.max(STEPS_GOAL_FLOOR, rounded));
 }
 

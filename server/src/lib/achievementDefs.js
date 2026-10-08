@@ -87,13 +87,14 @@ export const ACHIEVEMENT_DEFINITIONS = Object.freeze([
     [100, 'EPIC', 500, 250],
   ], 40),
 
-  // MEDIQUEST completions — XP only: Medi conversations never earn Medi Coins (owner 2026-10-08).
+  // MEDIQUEST completions. The Medi mission itself is weekly and XP-only (2026-10-08); these rare
+  // milestones (3–100 weeks of use) keep their coins so nobody loses a reward they were working toward.
   ...series('MEDI', 'MEDI', [
-    [3, 'COMMON', 30, 0],
-    [10, 'COMMON', 60, 0],
-    [25, 'UNCOMMON', 120, 0],
-    [50, 'RARE', 250, 0],
-    [100, 'EPIC', 500, 0],
+    [3, 'COMMON', 30, 15],
+    [10, 'COMMON', 60, 30],
+    [25, 'UNCOMMON', 120, 60],
+    [50, 'RARE', 250, 125],
+    [100, 'EPIC', 500, 250],
   ], 50),
 
   // Weekly quest completions
