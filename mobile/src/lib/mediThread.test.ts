@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { clinicalSessions, consultFromReview, humanCardValue, plannerHistory, storedTurns, turnsFromSession, type MediTurn } from './mediThread.ts';
+import { clinicalSessions, consultFromReview, humanCardValue, plannerHistory, SPOKEN_ANSWER_LIMIT, spokenAnswer, storedTurns, turnsFromSession, type MediTurn } from './mediThread.ts';
 
 const at = '2026-10-03T10:00:00.000Z';
 const DOC = '0b5d6f3e-3c1a-4c8e-9a51-2f1d1f0c7a11';
@@ -56,4 +56,27 @@ test('card values never show an ISO date', () => {
   assert.equal(humanCardValue('2027-01-15', today, false), '15 იანვარი 2027');
   assert.equal(humanCardValue('2026-10-05', today, true), '5 October');
   assert.equal(humanCardValue('500', today, false), '500');
+});
+
+// F10 (2026-10-08): a health question asked by voice got silence; the voice now reads the start of the answer.
+const ANSWER = '## შეჯამება\nთავის ტკივილი დილიდან ხშირად დაძაბულობისგან არის. ტემპერატურა 37.5 გრადუსამდე ჩვეულებრივია.\n\n'
+  + '**რა შეგიძლია გააკეთო:**\n- დალიე წყალი\n- დაისვენე [ბნელ ოთახში](https://example.test)\n\n'
+  + '### როდის მიმართო ექიმს\nთუ ცხელება 39-ზე მაღლა ადის, მიმართე ექიმს.\n\n---\n⚠️ ეს არ არის საბოლოო დიაგნოზი.';
+
+test('a voice question hears the answer as plain sentences, without markdown or the closing disclaimer', () => {
+  const spoken = spokenAnswer(ANSWER, 600, false);
+  assert.equal(spoken, 'შეჯამება. თავის ტკივილი დილიდან ხშირად დაძაბულობისგან არის. ტემპერატურა 37.5 გრადუსამდე ჩვეულებრივია. '
+    + 'რა შეგიძლია გააკეთო: დალიე წყალი. დაისვენე ბნელ ოთახში. როდის მიმართო ექიმს. თუ ცხელება 39-ზე მაღლა ადის, მიმართე ექიმს.');
+  assert.doesNotMatch(spoken, /[#*\[\]()⚠]|https|დიაგნოზი/);
+});
+
+test('a long answer is cut at a whole sentence and says the rest is on screen', () => {
+  const spoken = spokenAnswer(ANSWER, 100, false);
+  assert.equal(spoken, 'შეჯამება. თავის ტკივილი დილიდან ხშირად დაძაბულობისგან არის. სრული პასუხი ეკრანზეა.');
+  assert.ok(!spoken.includes('37.'), 'never stops inside a number');
+  assert.match(spokenAnswer(ANSWER, 100, true), /The full answer is on screen\.$/);
+  const long = spokenAnswer(('სიტყვა '.repeat(300)).trim(), SPOKEN_ANSWER_LIMIT, false);
+  assert.ok(long.length <= SPOKEN_ANSWER_LIMIT + 40 && long.length < 2000, 'fits /api/assistant/speak');
+  assert.match(long, /…\s+სრული პასუხი ეკრანზეა\.$/);
+  assert.equal(spokenAnswer('', 600, false), '');
 });

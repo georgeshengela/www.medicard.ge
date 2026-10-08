@@ -25,7 +25,7 @@ import { localAccountId } from '@/lib/localAccount';
 import { takeMediCycleContext, takeMediPrefill } from '@/lib/mediHandoff';
 import { legacyChatRouteToMedi } from '@/lib/mediModes';
 import {
-  clinicalSessions, consultFromReview, HIDDEN_ACTION_FIELDS, humanCardValue, plannerHistory, storedTurns, turnId, turnsFromSession,
+  clinicalSessions, consultFromReview, HIDDEN_ACTION_FIELDS, humanCardValue, plannerHistory, spokenAnswer, storedTurns, turnId, turnsFromSession,
   type ClinicalMode, type MediTurn, type StoredTurn,
 } from '@/lib/mediThread';
 import { useAuth } from '@/store/AuthContext';
@@ -145,11 +145,17 @@ export function MediChat({ owner, sessionId, startConsilium, directDoctor, prefi
   }, [sessionId, owner]);
   useEffect(() => loadHistory(), [loadHistory]);
 
+  /** Tools (with their forms), pages and the voice switches. Loaded on focus; „შესწორება“ loads it again after a failure. */
+  const loadCatalog = (apply: () => boolean) =>
+    assistantRequest<{ tools: AssistantTool[]; features?: AssistantFeature[]; groups?: AssistantGroup[]; choices: AssistantChoices; voiceInput: boolean; voiceOutput: boolean }>('catalog', owner, undefined, 'auto')
+      .then(r => {
+        if (!apply()) return null;
+        setTools(r.tools); setFeatures(r.features || []); setGroups(r.groups || []); setChoices(r.choices || {}); setVoiceAvail(r.voiceInput); setVoiceOutAvail(r.voiceOutput);
+        return r.tools;
+      });
   useFocusEffect(useCallback(() => {
     let current = true;
-    assistantRequest<{ tools: AssistantTool[]; features?: AssistantFeature[]; groups?: AssistantGroup[]; choices: AssistantChoices; voiceInput: boolean; voiceOutput: boolean }>('catalog', owner, undefined, 'auto')
-      .then(r => { if (current && valid()) { setTools(r.tools); setFeatures(r.features || []); setGroups(r.groups || []); setChoices(r.choices || {}); setVoiceAvail(r.voiceInput); setVoiceOutAvail(r.voiceOutput); } })
-      .catch(() => undefined);
+    loadCatalog(() => current && valid()).catch(() => undefined);
     return () => { current = false; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [owner]));
@@ -217,6 +223,8 @@ export function MediChat({ owner, sessionId, startConsilium, directDoctor, prefi
       const done: MediTurn = { ...slot, text: response.answer, streaming: false, interactionId: response.interactionId, sessionId: response.sessionId };
       setTurns(t => t.map(turn => (turn.id === slot.id ? done : turn)));
       persist(storedTurns([userTurn, done]));
+      // A question asked by voice hears the start of the answer (the voice switch, mute and focus are checked in say).
+      if (fromVoice) void speech.say(spokenAnswer(response.answer));
       if (response.usage) applyUsage(response.usage);
       void import('@/lib/quest/cache').then(({ requestQuestRefresh }) => requestQuestRefresh()).catch(() => undefined);
       if (focused.current) assistantHaptic('success');
@@ -353,8 +361,25 @@ export function MediChat({ owner, sessionId, startConsilium, directDoctor, prefi
     persist([{ role: 'assistant', content: tx('კარგი, გაუქმებულია.', 'OK, cancelled.') }]);
   }
 
-  function editAction(cardId: string, review: AssistantReview) {
-    speech.stop(); dropTurns(cardId);
+  async function editAction(cardId: string, review: AssistantReview) {
+    if (working.current || !valid()) return;
+    speech.stop(); setError(null);
+    // The form needs the tool's fields from the catalog. If that load failed, Edit loads it again; until the
+    // form can open the card stays (Edit is the retry), so the chat never ends up with no form and no composer.
+    if (!tools.some(t => t.name === review.tool)) {
+      const n = ++generation.current; working.current = true; setBusy('check');
+      let loaded: AssistantTool[] | null = null, failed = false;
+      try { loaded = await loadCatalog(() => valid(n)); } catch { failed = true; }
+      finally { working.current = false; if (alive.current) setBusy(null); }
+      if (!valid(n)) return;
+      if (!loaded?.some(t => t.name === review.tool)) {
+        setError(failed || !loaded
+          ? tx('ფორმა ვერ ჩაიტვირთა. შეამოწმე კავშირი და ხელახლა სცადე.', "The form couldn't load. Check your connection and try again.")
+          : tx('ამ ჩანაწერის ხელით შესწორება ახლა ვერ ხერხდება. შეინახე ან გააუქმე.', "This entry can't be edited by hand right now. Save it or cancel."));
+        return;
+      }
+    }
+    dropTurns(cardId);
     setDraft({ tool: review.tool, args: review.args }); setFocusFields(undefined); setManual(true);
   }
 
@@ -428,7 +453,7 @@ export function MediChat({ owner, sessionId, startConsilium, directDoctor, prefi
     if (item.kind === 'medi') return <MediLine text={item.text} />;
     if (item.kind === 'answer') return <AnswerTurn text={item.text} deep={item.deep} streaming={item.streaming} interactionId={item.interactionId} feedbackRating={item.feedbackRating} onRate={rating => void rate(item.id, item.interactionId, rating)} />;
     return <ActionCard title={item.review.label} tool={item.review.tool} rows={reviewRows(item.review)} handoff={isHandoff(item.review.tool)} state={item.state}
-      busy={!!busy} onConfirm={() => void confirm(item.id, item.review)} onEdit={() => editAction(item.id, item.review)} onCancel={() => cancelAction(item.id)} />;
+      busy={!!busy} onConfirm={() => void confirm(item.id, item.review)} onEdit={() => void editAction(item.id, item.review)} onCancel={() => cancelAction(item.id)} />;
   };
 
   const quiet = { color: C.text200, fontSize: 13, lineHeight: 21, fontFamily: 'NotoSansGeorgian_400Regular' } as const;
@@ -516,7 +541,7 @@ export function MediChat({ owner, sessionId, startConsilium, directDoctor, prefi
     <>
       <ChatScreenShell style={{ backgroundColor: C.bg100 }}
         header={<MediTopBar subtitle={subtitle} onBack={goBack} onNew={turns.length ? resetConversation : undefined} onMenu={() => { Keyboard.dismiss(); setMenu(true); }} disabled={capture.phase !== 'idle'} />}
-        footer={picker || manual ? undefined : (
+        footer={picker || (manual && draft && activeTool) ? undefined : (
           <View>
             {scrolledUp && turns.length ? (
               <Pressable accessibilityRole="button" accessibilityLabel={tx('ბოლო შეტყობინებაზე გადასვლა', 'Jump to the latest message')} onPress={() => scrollToEnd(true)}

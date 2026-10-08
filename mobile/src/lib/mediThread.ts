@@ -86,6 +86,51 @@ export function consultFromReview(review: AssistantReview | null | undefined, fa
   return { message: message.slice(0, 4000), mode: review.args.mode === 'CONSILIUM' ? 'CONSILIUM' : 'DOCTOR' };
 }
 
+/** How much of a clinical answer a voice question hears (/api/assistant/speak takes at most 2000 characters). */
+export const SPOKEN_ANSWER_LIMIT = 600;
+
+/**
+ * A health question asked by voice hears the start of the clinical answer: whole sentences, no markdown,
+ * no closing disclaimer (it stays on screen); when more is on screen, one line says so.
+ * Voice replies are only for voice input (docs/agents/medi-ai.md).
+ */
+export function spokenAnswer(text: string, limit = SPOKEN_ANSWER_LIMIT, en: boolean = isEn()): string {
+  const plain = String(text || '')
+    .replace(/\n\s*-{3,}\s*\n\s*⚠[\s\S]*$/u, '') // the disclaimer the server appends
+    .replace(/```[\s\S]*?```/g, ' ')
+    .replace(/!\[[^\]]*\]\([^)]*\)/g, ' ')
+    .replace(/\[([^\]]+)\]\([^)]*\)/g, '$1')
+    .split('\n')
+    .map(line => line
+      .replace(/^\s{0,3}#{1,6}\s+/, '')
+      .replace(/^\s*(?:[-*+•]|\d+[.)])\s+/, '')
+      .replace(/^\s*>\s?/, '')
+      .replace(/^\s*-{3,}\s*$/, '')
+      .replace(/[*_`~|]+/g, '')
+      .replace(/\s+/g, ' ')
+      .trim())
+    .filter(Boolean)
+    // Headings and list items become sentences of their own.
+    .map(line => (/[.!?…:;,]$/.test(line) ? line : `${line}.`))
+    .join(' ');
+  // A sentence ends at . ! ? … followed by a space (never inside 37.5).
+  const sentences = plain.match(/[\s\S]+?(?:[.!?…]+["'»“”)]*(?=\s|$)\s*|$)/g) ?? [];
+  let spoken = '';
+  for (const sentence of sentences) {
+    if (spoken && (spoken + sentence).trim().length > limit) break;
+    spoken += sentence;
+  }
+  spoken = spoken.trim();
+  if (!spoken) return '';
+  if (spoken.length > limit) {
+    // One very long first sentence: stop at a word boundary.
+    const cut = spoken.slice(0, limit);
+    spoken = `${cut.slice(0, Math.max(cut.lastIndexOf(' '), Math.floor(limit / 2))).trim()}…`;
+  }
+  const more = spoken.endsWith('…') || plain.length > spoken.length;
+  return more ? `${spoken} ${en ? 'The full answer is on screen.' : 'სრული პასუხი ეკრანზეა.'}` : spoken;
+}
+
 const MONTHS_KA = ['იანვარი', 'თებერვალი', 'მარტი', 'აპრილი', 'მაისი', 'ივნისი', 'ივლისი', 'აგვისტო', 'სექტემბერი', 'ოქტომბერი', 'ნოემბერი', 'დეკემბერი'];
 const MONTHS_EN = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 
