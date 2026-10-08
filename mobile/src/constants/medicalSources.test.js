@@ -47,7 +47,7 @@ describe('medical citations', () => {
       activityMet: ['3.5', 'pubmed.ncbi.nlm.nih.gov/21681120'],
       intermittentFasting: ['10–20 hours', 'nia.nih.gov'],
       physicalActivity: ['150–300', 'who.int'],
-      dailySteps: ['10,000', 'pubmed.ncbi.nlm.nih.gov/35247352'],
+      dailySteps: ['4,000', 'pubmed.ncbi.nlm.nih.gov/35247352'],
       labResults: ['printed', 'medlineplus.gov'],
       symptomsGeneral: ['not a diagnosis', 'nhs.uk'],
       medicationInteractions: ['AI', 'medlineplus.gov'],
@@ -80,7 +80,12 @@ describe('medical citations', () => {
     const shared = readFileSync(new URL('../lib/healthMetrics.shared.ts', import.meta.url), 'utf8');
     assert.match(shared, /sys < 130 && dia < 80\) return ka\.healthMetrics\.bpElevated/);
     assert.match(shared, /value >= 60 && value <= 100/);
-    const steps = readFileSync(new URL('./figmaStepsLayout.ts', import.meta.url), 'utf8');
-    assert.match(steps, /DEFAULT_STEPS_GOAL = 10_000/);
+    const goal = await import('../lib/personalStepsGoal.ts');
+    const n = (v) => v.toLocaleString('en-US');
+    for (const text of [medicalSources.dailySteps.description, medicalSources.dailySteps.descriptionKa]) {
+      for (const v of [goal.STEPS_GOAL_FALLBACK, goal.STEPS_GOAL_FLOOR, goal.STEPS_GOAL_CEILING]) assert.ok(text.includes(n(v)), `dailySteps must state ${n(v)}`);
+      assert.ok(text.includes(String(goal.STEPS_GOAL_WINDOW_DAYS)) && text.includes(String(goal.STEPS_GOAL_ROUND)) && text.includes(String(goal.STEPS_GOAL_MIN_DAYS)));
+    }
+    assert.doesNotMatch(medicalSources.dailySteps.description, /default goal is 10,000/);
   });
 });

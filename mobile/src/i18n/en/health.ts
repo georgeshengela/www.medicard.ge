@@ -279,7 +279,7 @@ export const enHealth: Pick<Strings, 'healthMetrics' | 'lab' | 'hydration' | 'st
     yesterday: 'Yesterday',
     statusAboveGoal: "You've already reached your daily goal",
     statusNearGoal: "You're close to your goal",
-    statusActive: "You're more active than usual",
+    statusActive: "You're on your way to your goal",
     statusLow: 'Less activity today',
     remaining: (n: string) => `${n} left`,
     peak: (n: string) => `Max: ${n}`,
