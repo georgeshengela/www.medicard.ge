@@ -20,6 +20,7 @@ import {
   parseMedicationConfig,
   saveDoseLog,
 } from '@/lib/medications.shared';
+import { answeredStatuses, isDoseAnswered } from '@/lib/doseAnswer';
 import { medicationCourseIncludesDate } from '@/lib/notificationPlan';
 import { useIsDark, useThemeColors } from '@/theme/colors';
 import { HUB, hubInk, hubText, hubTint } from '@/theme/hub';
@@ -74,9 +75,10 @@ type DayTone = 'none' | 'planned' | DoseStatus;
 
 function dayTone(doses: ScheduledDose[], logs: MedicationDoseLog[], key: string): DayTone {
   if (doses.length === 0) return 'none';
-  const statuses = doses
-    .map((dose) => findDoseLog(logs, dose.medicationId, key, dose.time)?.status)
-    .filter((status): status is DoseStatus => !!status);
+  // Undone („pending“) and moved doses are still to take: they do not colour the day.
+  const statuses = answeredStatuses(
+    doses.map((dose) => findDoseLog(logs, dose.medicationId, key, dose.time)).filter((log): log is MedicationDoseLog => !!log),
+  );
   if (statuses.length === 0) return 'planned';
   if (statuses.some((status) => status === 'skipped')) return 'skipped';
   if (statuses.length === doses.length && statuses.every((status) => status === 'taken')) return 'taken';
@@ -109,7 +111,7 @@ export default function MedicationRemindersScreen() {
   const selectedYmd = ymd(selectedDate);
   const dayDoses = useMemo(() => dosesForDay(medications, schedule, selectedDate), [medications, schedule, selectedDate]);
   const takenCount = dayDoses.filter((dose) => findDoseLog(doseLogs, dose.medicationId, selectedYmd, dose.time)?.status === 'taken').length;
-  const loggedCount = dayDoses.filter((dose) => findDoseLog(doseLogs, dose.medicationId, selectedYmd, dose.time)).length;
+  const loggedCount = dayDoses.filter((dose) => isDoseAnswered(findDoseLog(doseLogs, dose.medicationId, selectedYmd, dose.time))).length;
   const remaining = dayDoses.length - loggedCount;
 
   const groups = useMemo(() => {
@@ -257,7 +259,9 @@ export default function MedicationRemindersScreen() {
                         {doses.map((dose) => {
                           const med = medications.find((item) => item.id === dose.medicationId);
                           const cfg = parseMedicationConfig(med?.config);
-                          const log = findDoseLog(doseLogs, dose.medicationId, selectedYmd, dose.time);
+                          const found = findDoseLog(doseLogs, dose.medicationId, selectedYmd, dose.time);
+                          // An undone („pending“) dose is open again: Take / Reschedule / Skip come back.
+                          const log = isDoseAnswered(found) ? found : undefined;
                           const meal = cfg.mealTiming && cfg.mealTiming !== 'any' ? ka.meds.mealTiming[cfg.mealTiming] : null;
                           // One line that fits: the amount and how to take it (the time is the rail's badge).
                           const meta = [dose.dosage, meal].filter(Boolean).join(' · ');

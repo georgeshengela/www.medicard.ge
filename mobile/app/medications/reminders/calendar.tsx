@@ -8,11 +8,13 @@ import { MedsCard, doseAttentionInk, medsPrimaryFill } from '@/components/medica
 import { MONTHS_KA, WEEKDAYS_KA } from '@/constants/cycle';
 import { useMedications } from '@/hooks/useMedications';
 import { ka } from '@/i18n/ka';
+import { calendarDayStatus } from '@/lib/doseAnswer';
 import { parseMedicationConfig } from '@/lib/medications.shared';
 import { medicationCourseIncludesDate } from '@/lib/notificationPlan';
 import { useIsDark, useThemeColors } from '@/theme/colors';
 import { HUB, hubText } from '@/theme/hub';
 import type { Medication, ScheduledDose } from '@/lib/api';
+import type { MedicationDoseLog } from '@/types/medications';
 
 const MONTHS_BACK = 2;
 const MONTHS_AHEAD = 4;
@@ -79,18 +81,19 @@ export default function MedicationCalendarScreen() {
     [today],
   );
 
+  // Only taken/skipped answer a dose: an undone („pending“) or moved dose is still to take, so a day
+  // with nothing else is „planned“, never green.
   const logStatusByDate = useMemo(() => {
-    const grouped = new Map<string, string[]>();
+    const grouped = new Map<string, MedicationDoseLog[]>();
     for (const log of doseLogs) {
       const list = grouped.get(log.date) ?? [];
-      list.push(log.status);
+      list.push(log);
       grouped.set(log.date, list);
     }
     const map = new Map<string, DayStatus>();
-    for (const [date, statuses] of grouped) {
-      const taken = statuses.some((status) => status === 'taken');
-      const skipped = statuses.some((status) => status === 'skipped');
-      map.set(date, taken && skipped ? 'mixed' : skipped ? 'skipped' : 'taken');
+    for (const [date, logs] of grouped) {
+      const status = calendarDayStatus(logs);
+      if (status) map.set(date, status);
     }
     return map;
   }, [doseLogs]);
