@@ -23,6 +23,15 @@ test('nothing in the app opens the app-open streak screen', () => {
   assert.ok(existsSync(join(root, 'app', 'profile', 'streak.tsx')), 'old push links still need the route');
 });
 
+test('the web portal shows no app-open streak and promises nothing for daily opens', () => {
+  const pages = join(root, '..', 'server', 'public', 'app', 'js', 'pages');
+  for (const name of ['home.js', 'profile.js']) {
+    const src = readFileSync(join(pages, name), 'utf8');
+    assert.doesNotMatch(src, /currentStreak|longestStreak/, name);
+    assert.doesNotMatch(src, /ყოველდღიური შესვლით|daily check-ins/i, name);
+  }
+});
+
 test('the check-in notification offers no button that saves nothing', () => {
   const src = readFileSync(join(root, 'src', 'lib', 'mediNotificationActions.ts'), 'utf8');
   const checkin = src.match(/setNotificationCategoryAsync\(NOTIF_CATEGORY\.checkin, \[([\s\S]*?)\]\);/);

@@ -141,8 +141,9 @@ function summaryStats() {
   const p = session.profile || {};
   const bmi = p.heightCm && p.weightKg ? p.weightKg / ((p.heightCm / 100) ** 2) : null;
   // No app-open streak tile (owner 2026-10-08): opening the app is not a health habit.
+  // Legacy points are no longer awarded, so the card never promises them for daily opens.
   const cards = [
-    card(stat(t('ქულები', 'Points'), fmtNum(u.points || 0), { icon: 'star', delta: t('ყოველდღიური შესვლით და მისიებით', 'From daily check-ins and missions') })),
+    card(stat(t('ქულები', 'Points'), fmtNum(u.points || 0), { icon: 'star', delta: t('ადრე დაგროვებული', 'Collected earlier') })),
     featureOn('medications') ? card(stat(t('აქტიური წამლები', 'Active medications'), fmtNum(st.activeMedications || 0), { icon: 'pill', delta: t(`${fmtNum(st.records || 0)} ჩანაწერი`, `${fmtNum(st.records || 0)} ${(st.records || 0) === 1 ? 'record' : 'records'}`) })) : null,
     card(stat('BMI', bmi ? bmi.toFixed(1) : '—', { icon: 'scale', delta: bmi ? bmiLabel(bmi) : t('დაამატე სიმაღლე და წონა პროფილში', 'Add your height and weight in Profile') })),
   ].filter(Boolean);
