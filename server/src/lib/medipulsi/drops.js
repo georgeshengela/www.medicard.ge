@@ -1,6 +1,7 @@
 // „ყუთები ახლა“ on the MEDIRUN hub (owner 2026-10-04): how many gift boxes are out in the city this minute,
 // in which districts, how many were opened today, and when the next ones appear — so a player knows whether
-// going out now is worth it. Aggregates only: never a coordinate, a park, another player or the grand-prize spot.
+// going out now is worth it. Aggregates only: never a box's coordinate, another player or the grand-prize spot —
+// a district carries only a ~1 km grid point for „≈ N კმ შენგან“.
 // The Saturday rain is not named before it starts (its park is revealed by riddle stories at 15:00 / 15:30).
 import {prisma} from '../prisma.js';
 import {CAMPAIGN,tbilisiDate,planDay,autopilotEnabled} from './autopilot.js';
@@ -16,6 +17,8 @@ import {liveWalkers} from './social.js';
 import {geometryBbox} from './territoryMath.js';
 
 const HOUR=3600_000;
+/** 0.01° ≈ 1.1 km north–south, ~0.8 km east–west in Tbilisi. */
+const gridOf=v=>Math.round(v*100)/100;
 /** The grand prize has its own card and its spot is a secret; it never shows up in the box counts. */
 export const isGrandGift=(gift,rule,campaign=CAMPAIGN)=>rule?.meta?.kind==='grand'||gift.id===campaign.grand?.id;
 
@@ -70,7 +73,11 @@ export function dropsView({gifts,rules,now=Date.now(),claimsToday=0,coinsToday=0
  const visible=gifts.filter(g=>!isGrandGift(g,rules.get(g.id),campaign)&&giftCity(rules.get(g.id),campaign)===cityId);
  const active=visible.filter(g=>+new Date(g.startsAt)<=now&&+new Date(g.endsAt)>now&&g.allocated<g.stock);
  const districts=new Map();
- for(const g of active){const d=rules.get(g.id)?.meta?.district||(lang==='en'?'Other places':'სხვა ადგილები');districts.set(d,(districts.get(d)||0)+1);}
+ for(const g of active){
+  const d=rules.get(g.id)?.meta?.district||(lang==='en'?'Other places':'სხვა ადგილები'),row=districts.get(d)||{boxes:0,lng:0,lat:0,fixes:0,from:Infinity,to:0};
+  row.boxes+=1;row.from=Math.min(row.from,+new Date(g.startsAt));row.to=Math.max(row.to,+new Date(g.endsAt));if(Number.isFinite(g.longitude)&&Number.isFinite(g.latitude)){row.lng+=g.longitude;row.lat+=g.latitude;row.fixes+=1;}
+  districts.set(d,row);
+ }
  const activeRules=active.map(g=>rules.get(g.id));
  // Next wave: the earliest start still ahead (boxes sharing it form one wave); for Tbilisi the plan fills in
  // when the autopilot has not written tomorrow's boxes yet.
@@ -94,7 +101,11 @@ export function dropsView({gifts,rules,now=Date.now(),claimsToday=0,coinsToday=0
    endsAt:active.length?new Date(Math.max(...active.map(g=>+new Date(g.endsAt)))).toISOString():null,
    coins:coinRange(activeRules),
    lanternBoxes:lockedNow,
-   districts:[...districts].map(([name,boxes])=>({name,boxes})).sort((a,b)=>b.boxes-a.boxes||a.name.localeCompare(b.name)),
+   // „რამდენი კმ-ია ჩემგან“ (owner 2026-10-08): the middle of the district's boxes on a 0.01° grid (~1 km) — enough
+   // to say which way and how far, never where a box is (the pulse finds it inside 250–350 m).
+   districts:[...districts].map(([name,r])=>({name,boxes:r.boxes,near:r.fixes?[gridOf(r.lng/r.fixes),gridOf(r.lat/r.fixes)]:null,
+    // „გაქრება 1:42:05-ში“: when the last box there ends (a box can also run out of openings sooner).
+    startsAt:new Date(r.from).toISOString(),endsAt:new Date(r.to).toISOString()})).sort((a,b)=>b.boxes-a.boxes||a.name.localeCompare(b.name)),
   },
   today:{opened:claimsToday,coins:coinsToday},
   me:{opened:mine.opened,coins:mine.coins},
@@ -117,10 +128,40 @@ async function upcomingGifts(now,db){
 }
 
 /**
- * The reader's city: where they walked in the last 24 h, else their home place (the city the app shows),
- * else Tbilisi. Only cached tile lookups — never a geocoding call on this path.
+ * When the player last walked: only a live fix counts. A pause or finish clears `lastFix`; falling back to the pause
+ * time or the row's update picked up stale positions (owner's old Tbilisi walk replaced his Liège home, 2026-10-08) —
+ * the phone's own position (X-Medirun-At) covers trips instead.
  */
-async function readerCity(userId,{db,campaign,now,lang}){
+export function lastWalkAt(player){
+ const j=player?.state?.journey;
+ return Array.isArray(j?.position)?Number(j.lastFix)||0:0;
+}
+
+/** „5.58,50.63“ from the app's X-Medirun-At header (the phone's position on a ~1 km grid), else null. */
+export function parseAt(raw){
+ const m=/^(-?\d{1,3}(?:\.\d{1,6})?),(-?\d{1,2}(?:\.\d{1,6})?)$/.exec(String(raw||'').trim());
+ if(!m)return null;
+ const at=[Number(m[1]),Number(m[2])];
+ return Math.abs(at[0])<=180&&Math.abs(at[1])<=90?at:null;
+}
+/** The smallest city box (MEDIRUN cities + Tbilisi's campaign area) holding the point. Pure. */
+export function pickCityAt(at,boxes){
+ const area=b=>(b[2]-b[0])*(b[3]-b[1]);
+ return boxes.filter(x=>at[0]>=x.box[0]&&at[0]<=x.box[2]&&at[1]>=x.box[1]&&at[1]<=x.box[3]).sort((a,b)=>area(a.box)-area(b.box))[0]||null;
+}
+let cityBoxes={at:0,list:null};
+async function cityBboxes(db,campaign){
+ if(cityBoxes.list&&Date.now()-cityBoxes.at<10*60_000)return cityBoxes.list;
+ await ensureCityTable(db);
+ const rows=await db.$queryRaw`SELECT c."cityId",c."nameKa",c."nameEn",c."timezone",c."status",c."enabled",a."geometry" FROM "MedirunCity" c JOIN "MedipulsiArea" a ON a."id"=c."cityId"`.catch(()=>[]);
+ const list=rows.map(row=>({row,box:row.geometry?geometryBbox(row.geometry):null})).filter(x=>x.box&&x.box.every(Number.isFinite));
+ const tb=await campaignBbox(db,campaign);
+ if(tb)list.push({tbilisi:true,box:tb});
+ cityBoxes={at:Date.now(),list};
+ return list;
+}
+
+async function readerCity(userId,{db,campaign,now,lang,at=null}){
  const tbilisi={id:campaign.area.id,timezone:'Asia/Tbilisi'};
  const [player,home]=await Promise.all([
   db.medipulsiPlayer.findUnique({where:{userId},select:{state:true}}).catch(()=>null),
@@ -129,9 +170,15 @@ async function readerCity(userId,{db,campaign,now,lang}){
  await ensureCityTable(db);
  const cityRow=async id=>(await db.$queryRaw`SELECT "cityId","nameKa","nameEn","timezone","status","enabled" FROM "MedirunCity" WHERE "cityId"=${id}`)[0]||null;
  const asView=c=>({id:c.cityId,name:(lang==='en'?c.nameEn:c.nameKa)||c.nameEn||c.nameKa,timezone:c.timezone,pending:c.status!=='ready'||!c.enabled});
+ // 0. Where the phone is right now (owner 2026-10-08: in Liège the hub must show Liège, whatever home says).
+ if(at){
+  const hit=pickCityAt(at,await cityBboxes(db,campaign).catch(()=>[]));
+  if(hit?.tbilisi)return tbilisi;
+  if(hit?.row)return asView(hit.row);
+ }
  // 1. Walking somewhere in the last 24 h: Tbilisi or a city that already has boxes.
- const j=player?.state?.journey;
- if(Array.isArray(j?.position)&&j.lastFix&&now-j.lastFix<24*HOUR){
+ const j=player?.state?.journey,walkedAt=lastWalkAt(player);
+ if(Array.isArray(j?.position)&&walkedAt&&now-walkedAt<24*HOUR){
   const [row]=await db.$queryRaw`SELECT "cityId" FROM "MedipulsiPlaceTile" WHERE "tile"=${tileOf(j.position)}`.catch(()=>[]);
   if(row?.cityId===campaign.area.id)return tbilisi;
   const c=row?.cityId?await cityRow(row.cityId):null;
@@ -162,10 +209,10 @@ async function counts({db,cityId,campaign,since,userId=null}){
  }catch{return {n:0,coins:0};}
 }
 
-export async function dropsStatus(userId,{now=Date.now(),lang='ka',db=prisma}={}){
+export async function dropsStatus(userId,{now=Date.now(),lang='ka',db=prisma,at=null}={}){
  const [cfg,campaign]=await Promise.all([config(db),getCampaign(db,now)]);
  const enabled=Boolean(cfg.enabled&&cfg.giftsEnabled);
- const [gifts,city,rules]=await Promise.all([upcomingGifts(now,db),readerCity(userId,{db,campaign,now,lang}),giftRules(db,now)]);
+ const [gifts,city,rules]=await Promise.all([upcomingGifts(now,db),readerCity(userId,{db,campaign,now,lang,at}),giftRules(db,now)]);
  const since=zonedTime(localDate(now,city.timezone),'00:00',city.timezone);
  const [today,mine]=await Promise.all([counts({db,cityId:city.id,campaign,since}),counts({db,cityId:city.id,campaign,since,userId})]);
  const home=city.id===campaign.area.id;

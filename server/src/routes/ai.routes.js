@@ -157,6 +157,13 @@ async function persistChatTurn({ req, session, history, message, mode, answer, c
           messages: nextMessages,
         },
       });
+  // A new chat exists only after its first answer: link that answer's log row too, or admin
+  // shows the first question apart from the rest of the conversation.
+  if (!session && answer.interactionId) {
+    await prisma.aiInteraction
+      .updateMany({ where: { id: answer.interactionId, chatSessionId: null }, data: { chatSessionId: saved.id } })
+      .catch(() => undefined);
+  }
 
   const usage = await req.consumeAiCredit();
   await refreshQuestProgressForUser(req.user.id, QuestSignal.MEDI_USED);

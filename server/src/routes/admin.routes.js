@@ -947,26 +947,47 @@ adminRouter.get(
       })
       .parse(req.query);
 
-    const where = {
-      ...(query.mode ? { mode: query.mode } : {}),
-      ...(query.status ? { status: query.status } : {}),
-    };
-
-    const [total, interactions] = await Promise.all([
-      prisma.aiInteraction.count({ where }),
-      prisma.aiInteraction.findMany({
-        where,
-        orderBy: { createdAt: 'desc' },
-        skip: query.offset,
-        take: query.limit,
-        include: {
-          user: { select: { id: true, fullName: true, email: true } },
-          feedback: { select: { rating: true, comment: true } },
-        },
-      }),
+    // One entry per conversation: every question of a chat sits under its chat id, a request
+    // without a chat (cycle tips, lab reads, a failed first question) is its own entry.
+    // Filters keep a conversation when any of its questions matches.
+    const params = [];
+    const having = [];
+    if (query.mode) { params.push(query.mode); having.push(`bool_or(mode = $${params.length})`); }
+    if (query.status) { params.push(query.status); having.push(`bool_or(status = $${params.length})`); }
+    const groups = `SELECT coalesce("chatSessionId", id) AS key, max("createdAt") AS last
+      FROM "AiInteraction" GROUP BY 1${having.length ? ` HAVING ${having.join(' AND ')}` : ''}`;
+    const [[{ total }], page] = await Promise.all([
+      prisma.$queryRawUnsafe(`SELECT count(*)::int AS total FROM (${groups}) g`, ...params),
+      prisma.$queryRawUnsafe(
+        `${groups} ORDER BY last DESC OFFSET $${params.length + 1} LIMIT $${params.length + 2}`,
+        ...params, query.offset, query.limit,
+      ),
     ]);
+    const keys = page.map((g) => g.key);
+    const rows = keys.length
+      ? await prisma.aiInteraction.findMany({
+          where: { OR: [{ chatSessionId: { in: keys } }, { id: { in: keys }, chatSessionId: null }] },
+          orderBy: { createdAt: 'asc' },
+          include: {
+            user: { select: { id: true, fullName: true, email: true } },
+            feedback: { select: { rating: true, comment: true } },
+          },
+        })
+      : [];
+    const chatIds = [...new Set(rows.map((r) => r.chatSessionId).filter(Boolean))];
+    const titles = chatIds.length
+      ? new Map((await prisma.chatSession.findMany({ where: { id: { in: chatIds } }, select: { id: true, title: true } }))
+        .map((s) => [s.id, s.title]))
+      : new Map();
+    const byKey = new Map(keys.map((k) => [k, []]));
+    for (const r of rows) byKey.get(r.chatSessionId || r.id)?.push(r);
+    const items = keys.map((key) => {
+      const turns = byKey.get(key) || [];
+      if (turns.length === 1) return { kind: 'single', ...turns[0] };
+      return { kind: 'chat', id: key, title: titles.get(key) || null, turns };
+    }).filter((item) => item.kind === 'single' || item.turns.length);
 
-    res.json({ total, interactions, limit: query.limit, offset: query.offset });
+    res.json({ total, items, limit: query.limit, offset: query.offset });
   }),
 );
 

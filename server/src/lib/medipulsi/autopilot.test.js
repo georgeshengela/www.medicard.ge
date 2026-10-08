@@ -125,7 +125,7 @@ test('eligibility page: levels, streets left, status by date',()=>{
 });
 
 /* ───────── „ყუთები ახლა“ (drops.js) ───────── */
-import {dropsView,scheduleOf} from './drops.js';
+import {dropsView,scheduleOf,lastWalkAt,parseAt,pickCityAt} from './drops.js';
 const T=iso=>Date.parse(iso);
 function rowsOf(date){
  const p=plan(date);
@@ -144,6 +144,19 @@ test('drops: live boxes are counted per district, never with coordinates',()=>{
  const later=dropsView({gifts,rules,now:T('2026-10-06T17:30:00+04:00')});
  assert.equal(later.next.kind,'evening');
  assert.equal(later.next.startsAt,new Date('2026-10-06T18:00:00+04:00').toISOString());
+});
+test('drops: a district carries only a ~1 km grid point of its boxes, never the boxes themselves',()=>{
+ const {gifts,rules}=rowsOf('2026-10-06');
+ const placed=gifts.map((g,i)=>({...g,latitude:41.71234+i*0.0001,longitude:44.78567}));
+ const v=dropsView({gifts:placed,rules,now:T('2026-10-06T09:00:00+04:00')});
+ assert.ok(v.now.districts.length>0);
+ for(const d of v.now.districts){
+  assert.equal(d.near.length,2);
+  for(const n of d.near)assert.equal(Math.round(n*100)/100,n);
+  assert.ok(Date.parse(d.endsAt)>T('2026-10-06T09:00:00+04:00')&&Date.parse(d.startsAt)<=T('2026-10-06T09:00:00+04:00'));
+ }
+ assert.ok(!JSON.stringify(v).match(/latitude|longitude|41\.712|44\.785/));
+ assert.equal(dropsView({gifts,rules,now:T('2026-10-06T09:00:00+04:00')}).now.districts[0].near,null);
 });
 test('drops: a box that ran out or ended is not "out there"',()=>{
  const {gifts,rules}=rowsOf('2026-10-06');
@@ -351,4 +364,21 @@ test('map links: the place pin wins over the map centre; plain coordinates work'
  assert.deepEqual(parseMapLocation(' 41.69442, 44.78384 '),{latitude:41.69442,longitude:44.78384,source:'coordinates'});
  assert.equal(parseMapLocation('https://maps.app.goo.gl/abc123'),null);
  assert.equal(parseMapLocation('ვაკის პარკი'),null);
+});
+
+test('drops: only a live fix tells the walked city (a paused journey may hold a stale position)',()=>{
+ const t=Date.parse('2026-10-08T18:00:00Z');
+ assert.equal(lastWalkAt({state:{journey:{position:[5.57,50.63],lastFix:t}}}),t);
+ assert.equal(lastWalkAt({state:{journey:{position:[44.8,41.7],lastFix:null,pausedAt:'2026-10-08T18:00:00.000Z'}},updatedAt:new Date(t)}),0);
+ assert.equal(lastWalkAt({state:{journey:{lastFix:t}}}),0);
+ assert.equal(lastWalkAt(null),0);
+});
+test('drops: the phone position picks the city it is in (smallest box), junk headers are ignored',()=>{
+ assert.deepEqual(parseAt('5.58,50.63'),[5.58,50.63]);
+ assert.deepEqual(parseAt(' 44.79,41.72 '),[44.79,41.72]);
+ for(const bad of ['', 'x', '5.58', '500,50', '5.58,95', '5.58;50.63', null])assert.equal(parseAt(bad),null);
+ const boxes=[{tbilisi:true,box:[44.6,41.6,45.0,41.85]},{row:{cityId:'r19956604'},box:[5.45,50.55,5.7,50.7]},{row:{cityId:'big'},box:[3,49,7,52]}];
+ assert.equal(pickCityAt([5.58,50.63],boxes).row.cityId,'r19956604');
+ assert.equal(pickCityAt([44.79,41.72],boxes).tbilisi,true);
+ assert.equal(pickCityAt([0,0],boxes),null);
 });
