@@ -23,13 +23,18 @@ export function renderOnboarding(root, { onDone }) {
     accepted: false,
   };
   const STEPS = 5;
-  // „MEDICARD უკვე გამოგიყენებია?“ — first, once, on an account created within the last day (same
-  // question as the app): a „yes“ removes this new empty account so the person signs in the old way.
+  // „MEDICARD უკვე გამოგიყენებია?“ — first, once, on an account created within the last day that has
+  // not started onboarding anywhere (same rule as the app and the server's discard-new): a „yes“
+  // removes this new empty account so the person signs in the old way. Someone who already answered
+  // steps in the app is resumed here instead — „yes“ would be the honest answer for them.
   const askedKey = `medicard.web.existingAccountAsked.${u.id}`;
   const fresh = u.createdAt && Date.now() - new Date(u.createdAt).getTime() < 24 * 60 * 60 * 1000;
+  const extra = p.extraAnswers || {};
+  const started = Boolean(p.completedAt) || typeof extra.onboardingStepKey === 'string'
+    || extra.assessmentPhaseComplete === true || extra.onboardingComplete === true || extra.onboardingVersion != null;
   let asked = true;
   try { asked = Boolean(localStorage.getItem(askedKey)); } catch { asked = false; }
-  if (fresh && !asked) state.step = -1;
+  if (fresh && !asked && !started) state.step = -1;
   const box = h('div', { class: 'onb-box' });
   mount(root, h('div', { class: 'onb' }, box));
 

@@ -39,10 +39,10 @@ import {
 } from '../lib/socialAuth.js';
 import {
   AccountLoginError,
-  accountHasContent,
   absorbLogins,
   conflictOptions,
   conflictPayload,
+  discardNewBlocker,
   loginMethods,
   readConflictToken,
   realEmail,
@@ -982,16 +982,22 @@ authRouter.delete(
 
 /**
  * „I already have an account“ right after sign-up: removes the account that was just created so
- * the person can sign in to their real one. Only within a day of creation and only while it holds
- * no health data (accountLogins.js); no deletion email — nothing the person kept is lost.
+ * the person can sign in to their real one. Only within a day of creation, only before onboarding
+ * started (in the app or on the web) and only while it holds nothing of the person's own
+ * (accountLogins.js); no deletion email — nothing the person kept is lost.
  */
-const NEW_ACCOUNT_WINDOW_MS = 24 * 60 * 60 * 1000;
 authRouter.post(
   '/me/discard-new',
   requireAuth,
   asyncHandler(async (req, res) => {
-    const fresh = Date.now() - new Date(req.user.createdAt).getTime() < NEW_ACCOUNT_WINDOW_MS;
-    if (!fresh || (await accountHasContent(req.user.id))) {
+    const blocker = await discardNewBlocker(req.user);
+    if (blocker === 'started') {
+      return res.status(409).json({
+        error: t(req, 'ამ ანგარიშზე რეგისტრაცია უკვე დაწყებულია, ამიტომ ავტომატურად არ წაიშლება. გააგრძელე იქ, სადაც დაიწყე.', 'Sign-up has already started on this account, so it is not removed automatically. Carry on where you started.'),
+        code: 'DISCARD_NOT_ALLOWED',
+      });
+    }
+    if (blocker) {
       return res.status(409).json({
         error: t(req, 'ამ ანგარიშზე უკვე შენი მონაცემებია, ამიტომ ავტომატურად არ წაიშლება.', 'This account already holds your data, so it is not removed automatically.'),
         code: 'DISCARD_NOT_ALLOWED',
