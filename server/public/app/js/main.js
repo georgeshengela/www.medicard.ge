@@ -4,7 +4,7 @@ import { getToken, onTokenChange } from './api.js';
 import { setPresenceScreen, startPresence } from './presence.js';
 import { t, isEn, lang, setLang } from './i18n.js';
 import {
-  session, loadSession, signOut, featureOn, isFemale, isTrainer, initials, onSession, applyTheme, getThemePref, needsOnboarding,
+  session, loadSession, signOut, featureOn, isFemale, isTrainer, initials, displayName, onSession, applyTheme, getThemePref, needsOnboarding,
 } from './session.js';
 
 const BASE = '/app';
@@ -178,7 +178,7 @@ function buildShell() {
       h('a', { class: 'nav-item', href: '/profile', 'data-link': '', 'data-nav': '/profile', title: t('პროფილი', 'Profile') }, icon('settings', { size: 20 }), h('span', null, t('პროფილი და პარამეტრები', 'Profile and settings'))),
       h('a', { class: 'side-user', href: '/profile', 'data-link': '' },
         avatarEl(),
-        h('div', { class: 'who' }, h('b', null, session.user?.fullName || t('მომხმარებელი', 'User')), h('span', null, session.user?.phone || session.user?.email?.replace(/@phone\.medicard\.ge$/, '') || '')))));
+        h('div', { class: 'who' }, h('b', null, displayName() || t('მომხმარებელი', 'User')), h('span', null, session.user?.phone || session.user?.email?.replace(/@phone\.medicard\.ge$/, '') || '')))));
 
   const crumb = h('div', { class: 'crumb' });
   const themeBtn = iconButton(document.documentElement.dataset.theme === 'dark' ? 'sun' : 'moon', { title: t('თემის შეცვლა', 'Change theme'), onClick: () => {

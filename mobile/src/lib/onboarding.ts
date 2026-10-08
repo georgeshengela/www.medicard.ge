@@ -45,6 +45,18 @@ export function finishRetryDelay(error: unknown, failures: number): number | nul
   return transient ? FINISH_RETRY_DELAYS_MS[failures - 1] : null;
 }
 
+type BackRouter = { canGoBack: () => boolean; back: () => void; replace: (href: never) => void };
+
+/**
+ * After the last answer of „დაასრულე პროფილი“: back to the screen that opened it (the Home card or
+ * Profile both push it), so the person sees the card she came from update. Opened with no history
+ * (a link), it lands on Home.
+ */
+export function leaveProfileComplete(router: BackRouter): void {
+  if (router.canGoBack()) router.back();
+  else router.replace('/(tabs)/home' as never);
+}
+
 function hasAvatar(extra: Record<string, unknown>): boolean {
   return typeof extra.avatarId === 'string' && extra.avatarId.length > 0;
 }

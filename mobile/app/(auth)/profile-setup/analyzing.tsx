@@ -11,6 +11,7 @@ import { ka } from '@/i18n/ka';
 import { tx } from '@/i18n/locale';
 import { authErrorMessage } from '@/lib/authErrorMessage';
 import { reportError } from '@/lib/errorReporter';
+import { displayFirstName } from '@/lib/displayName';
 import { finishRetryDelay } from '@/lib/onboarding';
 import { useOnboardingDevPreview, onboardingScreenBlocked } from '@/lib/onboardingDevPreview';
 import { useAnimatedProgress } from '@/hooks/useAnimatedProgress';
@@ -26,12 +27,6 @@ const RING_C = 2 * Math.PI * RING_R;
 const MIN_HOLD_MS = 1500;
 const LOGO_SIZE = 34;
 const LOGO_GAP = 16;
-
-function firstNameOf(fullName: string, extra: Record<string, unknown>): string {
-  const legal = typeof extra.legalName === 'string' ? extra.legalName.trim() : '';
-  const raw = (legal || fullName).trim();
-  return raw.split(/\s+/)[0] ?? '';
-}
 
 /**
  * Profile is being prepared — Figma 8846:211832 rings, then home. Only `finishOnboarding` runs here: the
@@ -127,10 +122,8 @@ export default function ProfileSetupAnalyzingScreen() {
     user?.gender,
   );
   const avatarSource = isAvatarId(avatarId) ? AVATAR_SOURCES[avatarId] : AVATAR_SOURCES['avatar-1'];
-  const name = useMemo(
-    () => (user ? firstNameOf(user.fullName, extra) : ''),
-    [user, extra],
-  );
+  // Never the server's placeholder name: without a real one the line is just „ვამზადებთ პროფილს“.
+  const name = useMemo(() => displayFirstName(user, extra), [user, extra]);
   const scale = pulse.interpolate({ inputRange: [0, 1], outputRange: [1, 1.04] });
   const fill = useAnimatedProgress(progress, 0);
   const dashOffset = RING_C * (1 - fill);

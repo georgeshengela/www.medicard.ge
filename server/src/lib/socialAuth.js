@@ -471,6 +471,11 @@ export async function revokeAppleGrantsForUser(userId, { db = prisma, config = s
 
 /* ───────── Sign-in resolution ───────── */
 
+/**
+ * The stored name of a phone or Apple account that never typed one (`fullName` is required). It is a
+ * marker, not a name: the app (mobile/src/lib/displayName.ts), web /app (session.js) and the referral
+ * label never show it — keep the literal identical everywhere (guarded by tests on both sides).
+ */
 export const DEFAULT_SOCIAL_NAME = 'Medicard მომხმარებელი';
 
 /** Name for a new account: what the person typed on the Apple sheet, else Google's profile name. */

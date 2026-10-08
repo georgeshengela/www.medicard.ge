@@ -21,12 +21,13 @@ import {
   useSymptomChecker,
 } from '@/lib/symptomCheckerStore';
 import { useAuth } from '@/store/AuthContext';
+import { displayFirstName } from '@/lib/displayName';
 
 export default function SymptomSearchScreen() {
   const T = useFigmaSymptoms();
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { user } = useAuth();
+  const { user, healthProfile } = useAuth();
   const state = useSymptomChecker();
   const params = useLocalSearchParams<{ start?: string }>();
   // Entered from Home („აღწერე სიტყვებით“): a fresh check, not the last one still in memory.
@@ -42,7 +43,8 @@ export default function SymptomSearchScreen() {
   const [query, setQuery] = useState('');
   const [inputError, setInputError] = useState<string | null>(null);
   const inputRef = useRef<TextInput>(null);
-  const firstName = user?.fullName?.split(' ')[0] ?? '';
+  // Never the server's placeholder name: without a real one the heading has no name.
+  const firstName = displayFirstName(user, healthProfile?.extraAnswers);
   const typed = query.trim();
 
   const filtered = useMemo(() => {

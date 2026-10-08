@@ -9,7 +9,8 @@ const here = dirname(fileURLToPath(import.meta.url));
 describe('assessment legal name prefill', () => {
   it('uses user.fullName from the auth user object', () => {
     const text = readFileSync(join(here, 'assessmentForm.ts'), 'utf8');
-    assert.match(text, /legalName: extra\.legalName \|\| user\.fullName \|\| user\.name \|\| ''/);
+    // Through realFullName: the server's placeholder name („Medicard მომხმარებელი“) never prefills it.
+    assert.match(text, /legalName: realFullName\(\{ fullName: user\.fullName \|\| user\.name \}, \{ legalName: extra\.legalName \}\)/);
     assert.match(text, /fullName\?: string/);
   });
 });

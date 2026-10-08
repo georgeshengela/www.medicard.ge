@@ -27,21 +27,20 @@ import {
   visibleAssessmentIndices,
   type AssessmentStep,
 } from '@/constants/assessmentSteps';
-import { createWeightDraft, deadlineFromPace, draftToGoal, saveWeightGoal } from '@/lib/weightGoal';
 import { ka } from '@/i18n/ka';
 import { ApiError, api } from '@/lib/api';
 import { authErrorMessage } from '@/lib/authErrorMessage';
 import {
+  applyFormPatch,
   extraAnswersPayload,
   formFromProfile,
   fullProfilePayload,
-  lastPeriodYmd,
   patchPayloadForStep,
   type AssessmentFormState,
 } from '@/lib/assessmentForm';
-import { lastPeriodValid } from '@/components/assessment/AssessmentStepContent';
+import { saveOnboardingGoal } from '@/lib/onboardingGoals';
 import { profileCompletion, suggestTargetWeight } from '@/lib/profileCompletion';
-import { nextProfileSetupHref } from '@/lib/onboarding';
+import { leaveProfileComplete, nextProfileSetupHref } from '@/lib/onboarding';
 import {
   findAssessmentQaStepIndex,
   onboardingDevHref,
@@ -243,11 +242,8 @@ export default function AssessmentScreen() {
     : undefined;
 
   const patchForm = useCallback((patch: Partial<AssessmentFormState>) => {
-    setForm((current) => {
-      if (!current) return current;
-      const next = { ...current, ...patch };
-      return next;
-    });
+    // applyFormPatch also drops a main goal the new sex is not offered (the cycle goal after „male“).
+    setForm((current) => (current ? applyFormPatch(current, patch) : current));
   }, []);
 
   const markSessionDead = (e: unknown) => {
@@ -286,23 +282,13 @@ export default function AssessmentScreen() {
         const result = await api.healthProfile.update(fullProfilePayload(currentForm, stepIndex));
         setHealthProfile(result.profile);
         if (result.user) setUser(result.user);
-        router.replace('/(tabs)/profile' as never);
+        // Back where it was opened (the Home card or Profile), not always the Profile tab.
+        leaveProfileComplete(router);
         return;
       }
-      const confirmed = new Set(currentForm.confirmedSteps ?? []);
-      // Goal-specific first step: saved where the feature already reads it (one source of truth).
-      if (currentForm.primaryGoal === 'nutrition' && confirmed.has('goal-weight')) {
-        const draft = createWeightDraft(currentForm.weightKg);
-        draft.targetKg = currentForm.targetWeightKg;
-        draft.deadlineYmd = deadlineFromPace(currentForm.weightKg, currentForm.targetWeightKg, 'moderate');
-        // Reminders are on (default); nothing is shown until notifications are granted in step 7, and the
-        // reminder restore after that grant schedules them (a stored `false` used to keep them off forever).
-        const goal = draftToGoal(draft);
-        if (goal) await saveWeightGoal({ ...goal, updatedAt: new Date().toISOString() });
-      }
-      if (currentForm.primaryGoal === 'cycle' && confirmed.has('goal-cycle') && lastPeriodValid(currentForm)) {
-        await api.cycle.setLastPeriod(lastPeriodYmd(currentForm)).catch(() => undefined);
-      }
+      // Goal-specific first step (weight goal / last period start): a failure stops here and shows the
+      // error on the step — Finish retries it, Skip goes on without it.
+      await saveOnboardingGoal(currentForm);
       const result = await api.healthProfile.update({
         ...fullProfilePayload(currentForm, stepIndex),
         extraAnswers: {

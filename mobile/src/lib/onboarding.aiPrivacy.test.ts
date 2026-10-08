@@ -1,6 +1,6 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { FINISH_RETRY_DELAYS_MS, finishRetryDelay, nextProfileSetupHref, withExtraAnswers } from './onboarding.ts';
+import { FINISH_RETRY_DELAYS_MS, finishRetryDelay, leaveProfileComplete, nextProfileSetupHref, withExtraAnswers } from './onboarding.ts';
 
 const user = { phone: null };
 
@@ -79,5 +79,31 @@ describe('last onboarding save retries (ONB-1)', () => {
     assert.equal(finishRetryDelay(new Error('completePayload: birthdate'), 1), null);
     assert.equal(finishRetryDelay(null, 1), null);
     assert.equal(finishRetryDelay(err(0), 0), null);
+  });
+});
+
+describe('„დაასრულე პროფილი“ returns where it was opened', () => {
+  function fakeRouter(canGoBack: boolean) {
+    const calls: string[] = [];
+    return {
+      calls,
+      router: {
+        canGoBack: () => canGoBack,
+        back: () => calls.push('back'),
+        replace: (href: never) => calls.push(`replace:${String(href)}`),
+      },
+    };
+  }
+
+  it('goes back to the Home card (or Profile) that pushed it', () => {
+    const { calls, router } = fakeRouter(true);
+    leaveProfileComplete(router);
+    assert.deepEqual(calls, ['back']);
+  });
+
+  it('lands on Home when there is nothing to go back to, never on the Profile tab', () => {
+    const { calls, router } = fakeRouter(false);
+    leaveProfileComplete(router);
+    assert.deepEqual(calls, ['replace:/(tabs)/home']);
   });
 });
