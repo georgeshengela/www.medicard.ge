@@ -145,6 +145,19 @@ test('drops: live boxes are counted per district, never with coordinates',()=>{
  assert.equal(later.next.kind,'evening');
  assert.equal(later.next.startsAt,new Date('2026-10-06T18:00:00+04:00').toISOString());
 });
+test('drops: a district carries only a ~1 km grid point of its boxes, never the boxes themselves',()=>{
+ const {gifts,rules}=rowsOf('2026-10-06');
+ const placed=gifts.map((g,i)=>({...g,latitude:41.71234+i*0.0001,longitude:44.78567}));
+ const v=dropsView({gifts:placed,rules,now:T('2026-10-06T09:00:00+04:00')});
+ assert.ok(v.now.districts.length>0);
+ for(const d of v.now.districts){
+  assert.equal(d.near.length,2);
+  for(const n of d.near)assert.equal(Math.round(n*100)/100,n);
+  assert.ok(Date.parse(d.endsAt)>T('2026-10-06T09:00:00+04:00')&&Date.parse(d.startsAt)<=T('2026-10-06T09:00:00+04:00'));
+ }
+ assert.ok(!JSON.stringify(v).match(/latitude|longitude|41\.712|44\.785/));
+ assert.equal(dropsView({gifts,rules,now:T('2026-10-06T09:00:00+04:00')}).now.districts[0].near,null);
+});
 test('drops: a box that ran out or ended is not "out there"',()=>{
  const {gifts,rules}=rowsOf('2026-10-06');
  const spent=gifts.map(g=>g.id.includes('-am-')?{...g,allocated:g.stock}:g);

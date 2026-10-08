@@ -1,6 +1,7 @@
 // „ყუთები ახლა“ on the MEDIRUN hub (owner 2026-10-04): how many gift boxes are out in the city this minute,
 // in which districts, how many were opened today, and when the next ones appear — so a player knows whether
-// going out now is worth it. Aggregates only: never a coordinate, a park, another player or the grand-prize spot.
+// going out now is worth it. Aggregates only: never a box's coordinate, another player or the grand-prize spot —
+// a district carries only a ~1 km grid point for „≈ N კმ შენგან“.
 // The Saturday rain is not named before it starts (its park is revealed by riddle stories at 15:00 / 15:30).
 import {prisma} from '../prisma.js';
 import {CAMPAIGN,tbilisiDate,planDay,autopilotEnabled} from './autopilot.js';
@@ -16,6 +17,8 @@ import {liveWalkers} from './social.js';
 import {geometryBbox} from './territoryMath.js';
 
 const HOUR=3600_000;
+/** 0.01° ≈ 1.1 km north–south, ~0.8 km east–west in Tbilisi. */
+const gridOf=v=>Math.round(v*100)/100;
 /** The grand prize has its own card and its spot is a secret; it never shows up in the box counts. */
 export const isGrandGift=(gift,rule,campaign=CAMPAIGN)=>rule?.meta?.kind==='grand'||gift.id===campaign.grand?.id;
 
@@ -70,7 +73,11 @@ export function dropsView({gifts,rules,now=Date.now(),claimsToday=0,coinsToday=0
  const visible=gifts.filter(g=>!isGrandGift(g,rules.get(g.id),campaign)&&giftCity(rules.get(g.id),campaign)===cityId);
  const active=visible.filter(g=>+new Date(g.startsAt)<=now&&+new Date(g.endsAt)>now&&g.allocated<g.stock);
  const districts=new Map();
- for(const g of active){const d=rules.get(g.id)?.meta?.district||(lang==='en'?'Other places':'სხვა ადგილები');districts.set(d,(districts.get(d)||0)+1);}
+ for(const g of active){
+  const d=rules.get(g.id)?.meta?.district||(lang==='en'?'Other places':'სხვა ადგილები'),row=districts.get(d)||{boxes:0,lng:0,lat:0,fixes:0,from:Infinity,to:0};
+  row.boxes+=1;row.from=Math.min(row.from,+new Date(g.startsAt));row.to=Math.max(row.to,+new Date(g.endsAt));if(Number.isFinite(g.longitude)&&Number.isFinite(g.latitude)){row.lng+=g.longitude;row.lat+=g.latitude;row.fixes+=1;}
+  districts.set(d,row);
+ }
  const activeRules=active.map(g=>rules.get(g.id));
  // Next wave: the earliest start still ahead (boxes sharing it form one wave); for Tbilisi the plan fills in
  // when the autopilot has not written tomorrow's boxes yet.
@@ -94,7 +101,11 @@ export function dropsView({gifts,rules,now=Date.now(),claimsToday=0,coinsToday=0
    endsAt:active.length?new Date(Math.max(...active.map(g=>+new Date(g.endsAt)))).toISOString():null,
    coins:coinRange(activeRules),
    lanternBoxes:lockedNow,
-   districts:[...districts].map(([name,boxes])=>({name,boxes})).sort((a,b)=>b.boxes-a.boxes||a.name.localeCompare(b.name)),
+   // „რამდენი კმ-ია ჩემგან“ (owner 2026-10-08): the middle of the district's boxes on a 0.01° grid (~1 km) — enough
+   // to say which way and how far, never where a box is (the pulse finds it inside 250–350 m).
+   districts:[...districts].map(([name,r])=>({name,boxes:r.boxes,near:r.fixes?[gridOf(r.lng/r.fixes),gridOf(r.lat/r.fixes)]:null,
+    // „გაქრება 1:42:05-ში“: when the last box there ends (a box can also run out of openings sooner).
+    startsAt:new Date(r.from).toISOString(),endsAt:new Date(r.to).toISOString()})).sort((a,b)=>b.boxes-a.boxes||a.name.localeCompare(b.name)),
   },
   today:{opened:claimsToday,coins:coinsToday},
   me:{opened:mine.opened,coins:mine.coins},
