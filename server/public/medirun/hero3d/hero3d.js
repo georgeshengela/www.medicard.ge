@@ -7,7 +7,7 @@ import { GLTFLoader } from '/vendor/three/GLTFLoader.js';
 import { MeshoptDecoder } from '/vendor/three/meshopt_decoder.module.js';
 
 const BASE = '/medirun/hero3d/';
-const V = '1';
+const V = '2';
 const ADD = { transparent: true, depthWrite: false, blending: THREE.CustomBlending, blendSrc: THREE.OneFactor, blendDst: THREE.OneFactor, blendSrcAlpha: THREE.OneFactor, blendDstAlpha: THREE.OneFactor };
 
 const hero = document.querySelector('.hero');
@@ -28,7 +28,7 @@ async function start() {
   const loader = new GLTFLoader();
   loader.setMeshoptDecoder(MeshoptDecoder);
   const [cityGltf, runnerGltf, path] = await Promise.all([
-    loader.loadAsync(BASE + 'city.glb?v=' + V),
+    loader.loadAsync(BASE + (params.get('city') || 'city') + '.glb?v=' + V),
     loader.loadAsync('/medirun/glow/runner-m.glb'),
     fetch(BASE + 'path.json?v=' + V).then((r) => r.json()),
   ]);
@@ -47,7 +47,7 @@ async function start() {
   const uniforms = {
     map: { value: null }, uGrow: { value: 0 }, uRun: { value: 0 }, uFinale: { value: 0 }, uFade: { value: 1 },
     uAlpha: { value: 0 }, uRunner: { value: new THREE.Vector3(0, -99, 0) }, uEnd: { value: end.clone() },
-    uReach: { value: path.reach || 1.1 }, uSpan: { value: path.span || 9 }, uTime: { value: 0 },
+    uDbg: { value: +(params.get('dbg') || 0) }, uReach: { value: path.reach || 1.1 }, uSpan: { value: path.span || 9 }, uTime: { value: 0 },
   };
   let cityMesh = null;
   cityGltf.scene.updateMatrixWorld(true);
@@ -70,6 +70,7 @@ async function start() {
     g.setAttribute('uv', new THREE.BufferAttribute(uv, 2));
     if (src.index) g.setIndex(src.index.clone());
     g.setAttribute('aP', new THREE.BufferAttribute(pathAttrib(pos, pts, segLen, total), 3));
+    g.setAttribute('aRough', new THREE.BufferAttribute(roughness(nor, g.index), 1));
     g.computeBoundingSphere();
     uniforms.map.value = o.material.map;
     if (o.material.map) o.material.map.anisotropy = 4;
@@ -152,13 +153,13 @@ async function start() {
     const pt = parseFloat(getComputedStyle(hero).paddingTop) || 120;
     const CH = narrow ? Math.min(H, Math.round(pt + W * 0.1)) : H;
     canvas.style.height = CH + 'px';
-    const dpr = Math.min(window.devicePixelRatio || 1, narrow ? 1.5 : 1.75) * quality;
+    const dpr = Math.min(window.devicePixelRatio || 1, narrow ? 1.75 : 2) * quality;
     renderer.setPixelRatio(dpr);
     renderer.setSize(W, CH, false);
     post.resize(Math.round(W * dpr), Math.round(CH * dpr));
     sparks.material.uniforms.uPx.value = dpr;
-    const cx = narrow ? W / 2 : 0.66 * W, cy = narrow ? 64 + (pt - 64) * 0.5 : 0.4 * H;
-    const S = narrow ? Math.min(W * 0.8, (pt - 64) * 1.1) : 0.74 * Math.min(H, W * 0.75);   // block size on screen, px
+    const cx = narrow ? W / 2 : 0.64 * W, cy = narrow ? 60 + (pt - 60) * 0.5 : 0.42 * H;
+    const S = narrow ? Math.min(W * 0.94, (pt - 60) * 1.3) : 0.98 * Math.min(H, W * 0.75);   // block size on screen, px
     camera.aspect = W / CH;
     camera.userData.dist = radius / Math.sin(THREE.MathUtils.degToRad(camera.fov / 2)) / Math.max(0.2, S / CH) * 0.92;
     camera.setViewOffset(W, CH, W / 2 - cx, CH / 2 - cy, W, CH);
@@ -277,6 +278,22 @@ async function start() {
   window.__hero3d = { uniforms, camera, view, path, post, runner, trail, cityMesh, pool, sparks, seek: (s) => { t0 = performance.now() - s * 1000; } };
 }
 
+// Per vertex: the largest normal break to a neighbour (1 - cos). Meshy's raw houses are faceted (high), rock is smooth (low).
+function roughness(nor, index) {
+  const n = nor.length / 3, out = new Float32Array(n), idx = index ? index.array : null;
+  const tris = idx ? idx.length / 3 : n / 3;
+  const dev = (a, b) => {
+    const d = 1 - (nor[a * 3] * nor[b * 3] + nor[a * 3 + 1] * nor[b * 3 + 1] + nor[a * 3 + 2] * nor[b * 3 + 2]);
+    if (d > out[a]) out[a] = d;
+    if (d > out[b]) out[b] = d;
+  };
+  for (let t = 0; t < tris; t++) {
+    const a = idx ? idx[t * 3] : t * 3, b = idx ? idx[t * 3 + 1] : t * 3 + 1, c = idx ? idx[t * 3 + 2] : t * 3 + 2;
+    dev(a, b); dev(b, c); dev(c, a);
+  }
+  return out;
+}
+
 // Per vertex: x = nearest street position along the run (0..1), y = distance to the street, z = grow delay.
 function pathAttrib(pos, pts, segLen, total) {
   const n = pos.length / 3, out = new Float32Array(n * 3);
@@ -321,12 +338,13 @@ function cityMaterial(uniforms) {
   return new THREE.ShaderMaterial({
     uniforms, transparent: true,
     vertexShader: `
-      attribute vec3 aP;
+      attribute vec3 aP; attribute float aRough;
       uniform float uGrow, uRun, uFinale, uFade, uReach, uSpan;
       uniform vec3 uRunner, uEnd;
-      varying vec2 vUv; varying float vLit, vEdge, vGlow, vH; varying vec3 vN, vW;
+      varying vec2 vUv; varying float vLit, vEdge, vGlow, vH, vRough; varying vec3 vN, vW;
       void main(){
         vUv = uv;
+        vRough = aRough;
         vN = normal;
         vec3 p = position;
         float h = max(p.y, 0.0);
@@ -346,44 +364,62 @@ function cityMaterial(uniforms) {
         gl_Position = projectionMatrix * modelViewMatrix * vec4(p, 1.0);
       }`,
     fragmentShader: `
-      uniform sampler2D map; uniform float uAlpha, uTime;
-      varying vec2 vUv; varying float vLit, vEdge, vGlow, vH; varying vec3 vN, vW;
+      uniform sampler2D map; uniform float uAlpha, uTime, uDbg;
+      varying vec2 vUv; varying float vLit, vEdge, vGlow, vH, vRough; varying vec3 vN, vW;
       float hash(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
       void main(){
         vec3 tex = texture2D(map, vUv).rgb;
-        vec3 soft = texture2D(map, vUv, 3.5).rgb;           // blurred sample gates the glow (no per-pixel speckles)
+        vec3 soft = texture2D(map, vUv, 3.5).rgb;           // blurred sample gates every material guess (no per-pixel speckles)
         float lum = dot(tex, vec3(0.2126, 0.7152, 0.0722));
+        float slum = dot(soft, vec3(0.2126, 0.7152, 0.0722));
         vec3 nrm = normalize(vN);
-        float moon = 0.42 + 0.58 * max(dot(nrm, normalize(vec3(-0.45, 0.8, 0.35))), 0.0);   // cool moonlight from the river side
-        float sky = 0.5 + 0.5 * nrm.y;
-        vec3 night = mix(vec3(lum), tex, 0.35) * vec3(0.55, 0.7, 1.0) * (0.36 + 0.5 * moon) + vec3(0.006, 0.012, 0.03) * sky;
-        float n = hash(floor(vUv * 220.0));
-        float l = smoothstep(n * 0.55, n * 0.55 + 0.45, vLit);   // houses switch on window by window
+        float moon = max(dot(nrm, normalize(vec3(-0.45, 0.8, 0.35))), 0.0);   // cool moonlight from the river side
+        float up = clamp(nrm.y, 0.0, 1.0);
+        float wall = 1.0 - smoothstep(0.35, 0.7, abs(nrm.y));
+        // Graded albedo: the Meshy texture is flat and grey, so give it contrast and colour back.
+        vec3 alb = mix(vec3(lum), tex, 1.35);
+        alb = max(alb, 0.0) * (0.7 + 1.6 * lum);
         float warm = clamp((soft.r - soft.b) * 2.6 - 0.02, 0.0, 1.0);
         float mintT = clamp((soft.g - soft.r) * 3.0 - 0.15, 0.0, 1.0);
-        // lit: the houses pick up warm street light (stronger low on the walls, near the street)
-        vec3 lit = tex * (0.75 + 0.45 * moon) + vec3(1.0, 0.55, 0.22) * lum * (0.9 + 0.6 * smoothstep(1.2, 0.0, vH));
-        lit += tex * warm * 2.2 + vec3(1.0, 0.6, 0.25) * warm * 0.35;
+        // Water: flat, low, the only light blue-grey flat surface (streets are dark, lit roofs are orange).
+        float water = smoothstep(0.93, 0.98, nrm.y) * step(vH, 0.3) * smoothstep(0.045, 0.07, slum) * smoothstep(-0.002, 0.008, soft.b - soft.r) * (1.0 - mintT);
+        // Night: deep blue city, moonlit tops, a faint sky bounce.
+        vec3 night = alb * vec3(0.42, 0.55, 0.95) * (0.45 + 0.75 * moon) + vec3(0.004, 0.009, 0.024) * (0.4 + up);
+        night *= 1.0 - mintT * 0.65;   // the painted street waits dark for the runner
+        night = night / (1.0 + night * 1.6);
+        float n = hash(floor(vUv * 220.0));
+        float l = smoothstep(n * 0.55, n * 0.55 + 0.45, vLit);   // houses switch on window by window
+        // Lit: facades catch warm street light from below; roofs stay cool with a warm rim.
+        float low = smoothstep(1.3, 0.0, vH);
+        vec3 facade = alb * vec3(2.3, 1.3, 0.66) * (0.75 + 0.75 * low);
+        vec3 roof = alb * vec3(0.62, 0.72, 1.05) * (0.6 + 0.6 * moon) + vec3(0.05, 0.025, 0.008) * low * (1.0 - up * 0.7);
+        vec3 lit = mix(roof, facade, wall);
+        lit += alb * warm * vec3(2.2, 1.2, 0.5);
         lit = mix(lit, vec3(0.08, 0.75, 0.56) * (0.6 + lum), mintT * 0.85);   // the painted street turns mint, not white
         // Windows: a lit grid on the walls, each window switching on at its own moment.
-        float wall = 1.0 - smoothstep(0.25, 0.45, abs(nrm.y));
         vec2 tdir = normalize(vec2(-nrm.z, nrm.x) + 1e-5);
         vec2 wp = vec2(dot(vW.xz, tdir) / 0.11, vW.y / 0.15);
         vec2 cell = floor(wp), f = fract(wp);
         float hw = hash(cell + floor(vW.xz * 0.7) * 17.0);
         float pane = step(0.3, f.x) * step(f.x, 0.72) * step(0.28, f.y) * step(f.y, 0.78);
         float on = step(0.42, hw) * smoothstep(hw * 0.6, hw * 0.6 + 0.2, vLit);
-        float win = wall * pane * on * step(0.06, vH) * step(vH, 1.9);
+        // Meshy's raw houses are faceted, its rock and trees are smoothly sculpted: windows only on faceted walls.
+        float rough = 1.0 - smoothstep(0.1, 0.2, vRough);
+        float win = wall * pane * on * step(0.06, vH) * step(vH, 1.9) * (1.0 - rough);
         vec3 wc = mix(vec3(1.0, 0.62, 0.28), vec3(1.0, 0.85, 0.6), fract(hw * 7.3));
         lit += wc * win * (1.1 + 0.5 * fract(hw * 13.1));
-        night *= 1.0 - mintT * 0.65;
-        night = night / (1.0 + night * 2.5);   // pale surfaces (bridge glass, water) stay night, not white   // the painted street waits dark for the runner
         vec3 col = mix(night, lit, l);
-        col += wc * win * 0.6 * (1.0 - l);
+        // River: dark glassy water with moving glints; warm streaks once the city around it is lit.
+        float wave = sin(vW.z * 26.0 + 2.2 * sin(vW.x * 1.7 + uTime * 0.35) + uTime * 1.1);
+        float dash = smoothstep(0.2, 0.9, sin(vW.x * 4.3 - uTime * 0.6 + 3.0 * sin(vW.z * 1.3)) * 0.5 + 0.5);
+        float glint = smoothstep(0.86, 0.99, wave) * dash;
+        vec3 waterC = vec3(0.006, 0.014, 0.032) + vec3(0.05, 0.09, 0.16) * glint * 0.5 + vec3(1.0, 0.55, 0.22) * glint * l * 0.4;
+        col = mix(col, waterC, water);
         // Growing in: mint holographic scan lines until the house sets.
         float scan = 0.35 + 0.65 * step(0.55, fract(vW.y * 9.0 - uTime * 0.8));
         col = mix(col, vec3(0.06, 0.55, 0.45) * scan, min(1.0, vEdge * 1.2) * 0.85);
         col += vec3(0.35, 1.0, 0.85) * vGlow * 0.4;
+        if (uDbg > 0.5) col = uDbg < 1.5 ? vec3(smoothstep(0.045, 0.07, slum), 1.0 - smoothstep(0.004, 0.02, soft.b - soft.r), step(vH, 0.08)) : uDbg < 2.5 ? tex : uDbg < 3.5 ? vec3(water) : vec3(rough, vRough * 4.0, 0.0);
         gl_FragColor = vec4(col * uAlpha, uAlpha);
       }`,
   });
@@ -413,7 +449,7 @@ function createPost(renderer) {
       vec3 toSRGB(vec3 c){ return mix(c * 12.92, 1.055 * pow(c, vec3(1.0 / 2.4)) - 0.055, step(0.0031308, c)); }
       void main(){
         vec4 sc = texture2D(s, vUv);
-        vec3 g = (texture2D(b1, vUv).rgb * 0.8 + texture2D(b2, vUv).rgb * 1.3) * on;
+        vec3 g = (texture2D(b1, vUv).rgb * 0.8 + texture2D(b2, vUv).rgb * 0.9) * on;
         vec3 c = sc.rgb + g;
         c = c / (1.0 + max(c - 1.0, 0.0) * 0.6);               // soft shoulder for the brightest light
         float al = clamp(max(sc.a, max(g.r, max(g.g, g.b)) * 0.9), 0.0, 1.0);

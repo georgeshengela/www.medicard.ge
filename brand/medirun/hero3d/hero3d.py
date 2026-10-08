@@ -2,7 +2,7 @@
 
   python hero3d.py concept [--n 3]          -> work/concept_1..n.png   (from work/source.jpg, the owner's key art)
   python hero3d.py pick <n>                 -> work/concept.png
-  python hero3d.py model [--polys 120000]   -> work/model.glb + thumb.png   (Meshy credits)
+  python hero3d.py model [--polys 120000] [--raw]   -> work/model.glb (--raw: Meshy's own mesh, no remesh -> model-raw.glb)
   python hero3d.py status                   -> waits for the last Meshy task and downloads it
   python hero3d.py balance                  -> Meshy credits left
   node build.mjs                            -> server/public/medirun/hero3d/city.glb + path.json
@@ -80,22 +80,22 @@ def concept(n):
         print('wrote', out.relative_to(HERE), f"(${res.get('usage', {}).get('cost', '?')})", flush=True)
 
 
-def model(polys):
+def model(polys, raw=False):
     src = WORK / 'concept.png'
     if not src.exists():
         sys.exit(f'{src} missing: run concept + pick first')
     auth = meshy_auth()
     # Baked look, no PBR: the night lighting of the key art lives in the base colour, the page adds the light show.
     body = {'image_url': 'data:image/png;base64,' + base64.b64encode(src.read_bytes()).decode(), 'ai_model': 'latest',
-            'topology': 'triangle', 'target_polycount': polys, 'should_remesh': True, 'should_texture': True,
+            'topology': 'triangle', 'target_polycount': polys, 'should_remesh': not raw, 'should_texture': True,
             'enable_pbr': False, 'symmetry_mode': 'off'}
     task = http(f'{MESHY}/image-to-3d', body, auth)['result']
-    meta(task=task, polys=polys)
+    meta(task=task, polys=polys, raw=raw)
     print('meshy task', task, flush=True)
-    wait(task, auth)
+    wait(task, auth, 'model-raw.glb' if raw else 'model.glb')
 
 
-def wait(task, auth):
+def wait(task, auth, out='model.glb'):
     while True:
         st = http(f'{MESHY}/image-to-3d/{task}', headers=auth)
         s = st.get('status')
@@ -105,10 +105,10 @@ def wait(task, auth):
             sys.exit(f'meshy {s}: {json.dumps(st.get("task_error"))[:800]}')
         print(' ', s, st.get('progress'), flush=True)
         time.sleep(15)
-    (WORK / 'model.glb').write_bytes(http(st['model_urls']['glb'], raw=True))
+    (WORK / out).write_bytes(http(st['model_urls']['glb'], raw=True))
     if st.get('thumbnail_url'):
         (WORK / 'thumb.png').write_bytes(http(st['thumbnail_url'], raw=True))
-    print('wrote work/model.glb', f"{(WORK / 'model.glb').stat().st_size // 1024} KB")
+    print('wrote work/' + out, f"{(WORK / out).stat().st_size // 1024} KB")
 
 
 if __name__ == '__main__':
@@ -123,7 +123,7 @@ if __name__ == '__main__':
         (WORK / 'concept.png').write_bytes((WORK / f'concept_{rest[0]}.png').read_bytes())
         meta(picked=int(rest[0]))
     elif cmd == 'model':
-        model(int(flag('--polys', 120000)))
+        model(int(flag('--polys', 120000)), '--raw' in rest)
     elif cmd == 'status':
         wait(meta()['task'], meshy_auth())
     elif cmd == 'balance':

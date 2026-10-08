@@ -1,7 +1,8 @@
 """Build the /medirun hero city from the Meshy model (work/model.glb):
 
-  python build.py [--debug]   -> server/public/medirun/hero3d/path.json (+ work/path-debug.png with --debug)
-  then: gltf-transform optimize work/model.glb server/public/medirun/hero3d/city.glb (see OPTIMIZE below)
+  python build.py [--debug] [--glb]   -> server/public/medirun/hero3d/path.json (+ work/path-debug.png, + city.glb with --glb)
+
+Source: work/model-raw.glb (Meshy without remesh: sharper than the 150k remesh), decimated to ~16 % on export.
 
 The runner's street is found from the model's own texture: the mint light path painted in the key art. Vertices whose
 texel is mint, low on the block, form one long cluster; its longest chain (tree diameter) is the run, smoothed and
@@ -15,7 +16,8 @@ HERE = pathlib.Path(__file__).resolve().parent
 ROOT = HERE.parents[2]
 WORK = HERE / 'work'
 OUT = ROOT / 'server' / 'public' / 'medirun' / 'hero3d'
-OPTIMIZE = ['optimize', '--compress', 'meshopt', '--texture-compress', 'webp', '--texture-size', '2048', '--simplify-ratio', '0.55', '--simplify-error', '0.0008']
+SRC = 'model-raw.glb'
+OPTIMIZE = ['optimize', '--compress', 'meshopt', '--texture-compress', 'webp', '--texture-size', '2048', '--simplify-ratio', '0.16', '--simplify-error', '0.0004']
 
 
 def read_glb(p):
@@ -63,11 +65,11 @@ def chain(points, link):
 
 
 def main(debug):
-    pos, uv, tex, tri = read_glb(WORK / 'model.glb')
+    pos, uv, tex, tri = read_glb(WORK / SRC)
     h, w, _ = tex.shape
     # Sample every triangle at a few barycentric points (vertices alone are too sparse for a painted street).
     rng = np.random.default_rng(1)
-    S = 12
+    S = 3 if len(tri) > 1_000_000 else 12
     bc = rng.dirichlet([1, 1, 1], size=S)
     sp = np.einsum('sk,tkd->tsd', bc, pos[tri]).reshape(-1, 3)
     su = np.einsum('sk,tkd->tsd', bc, uv[tri]).reshape(-1, 2)
@@ -82,6 +84,9 @@ def main(debug):
     cx, cz = (lo[0] + hi[0]) / 2, (lo[2] + hi[2]) / 2
 
     mp = sp[mint]
+    # one sample per 4 mm cell keeps the clustering small on a 2M-triangle model
+    _, keep1 = np.unique(np.round(mp / 0.004).astype(int), axis=0, return_index=True)
+    mp = mp[keep1]
     print('mint vertices', len(mp))
     # The street is low on the block; the glowing bridge canopy sits high above the water.
     ground = np.percentile(pos[:, 1], 35)
@@ -175,5 +180,5 @@ if __name__ == '__main__':
     main('--debug' in sys.argv)
     if '--glb' in sys.argv:
         gt = pathlib.Path.home() / 'AppData/Local/Temp/claude/gltf/node_modules/.bin/gltf-transform.cmd'
-        subprocess.run([str(gt), OPTIMIZE[0], str(WORK / 'model.glb'), str(OUT / 'city.glb'), *OPTIMIZE[1:]], check=True, shell=False)
+        subprocess.run([str(gt), OPTIMIZE[0], str(WORK / SRC), str(OUT / 'city.glb'), *OPTIMIZE[1:]], check=True, shell=False)
         print('city.glb', (OUT / 'city.glb').stat().st_size // 1024, 'KB')
