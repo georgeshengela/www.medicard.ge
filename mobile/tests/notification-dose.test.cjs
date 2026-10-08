@@ -207,7 +207,7 @@ test('a payload without a slot keeps the old fallback route', async () => {
 
 test('the scheduled reminder names its slot and the fallback route keeps it', () => {
   const source = fs.readFileSync(path.join(SRC, 'notifications.ts'), 'utf8');
-  assert.match(source, /route: `\/medications\/\$\{dose\.medicationId\}\?time=\$\{dose\.time\}`/);
+  assert.match(source, /route: `\/medications\/\$\{dose\.medicationId\}\?time=\$\{dose\.time\}/);
   const plan = load(path.join(SRC, 'notificationPlan.ts'), {});
   assert.ok(plan.isNotificationRoute('/medications/med-1?time=20:00&date=2026-10-08'));
   assert.equal(

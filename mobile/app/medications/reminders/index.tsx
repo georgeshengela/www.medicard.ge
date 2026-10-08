@@ -13,6 +13,7 @@ import { useMedicationImages } from '@/hooks/useMedicationImages';
 import { useMedications } from '@/hooks/useMedications';
 import { EMPTY_ART } from '@/constants/appArt';
 import { ka } from '@/i18n/ka';
+import { tx } from '@/i18n/locale';
 import {
   DAY_LETTERS,
   findDoseLog,
@@ -20,7 +21,8 @@ import {
   parseMedicationConfig,
   saveDoseLog,
 } from '@/lib/medications.shared';
-import { answeredStatuses, isDoseAnswered } from '@/lib/doseAnswer';
+import { answeredStatuses, isDoseAnswered, rescheduledTime } from '@/lib/doseAnswer';
+import { moveDose } from '@/lib/doseReschedule';
 import { medicationCourseIncludesDate } from '@/lib/notificationPlan';
 import { useIsDark, useThemeColors } from '@/theme/colors';
 import { HUB, hubInk, hubText, hubTint } from '@/theme/hub';
@@ -95,7 +97,7 @@ export default function MedicationRemindersScreen() {
   const images = useMedicationImages(medications);
   const today = useMemo(() => startOfDay(new Date()), []);
   const [selectedDate, setSelectedDate] = useState(today);
-  const [reschedule, setReschedule] = useState<{ medicationId: string; time: string } | null>(null);
+  const [reschedule, setReschedule] = useState<ScheduledDose | null>(null);
 
   useEffect(() => {
     if (typeof dateParam !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(dateParam)) return;
@@ -124,17 +126,27 @@ export default function MedicationRemindersScreen() {
     return [...map.entries()];
   }, [dayDoses]);
 
-  const markDose = async (medicationId: string, time: string, status: 'taken' | 'skipped', newTime?: string) => {
+  const markDose = async (medicationId: string, time: string, status: 'taken' | 'skipped') => {
     const entry: MedicationDoseLog = {
       medicationId,
       date: selectedYmd,
-      time: newTime ?? time,
+      time,
       status,
       updatedAt: new Date().toISOString(),
     };
     await saveDoseLog(entry);
     setDoseLogs((prev) => [
       ...prev.filter((log) => !(log.medicationId === medicationId && log.date === selectedYmd && log.time === time)),
+      entry,
+    ]);
+    setReschedule(null);
+  };
+
+  // „გადატანა“ moves the dose's reminder; the dose stays open on its own slot (never „taken“).
+  const moveTo = async (dose: ScheduledDose, to: string) => {
+    const entry = await moveDose(dose, selectedYmd, to);
+    setDoseLogs((prev) => [
+      ...prev.filter((log) => !(log.medicationId === dose.medicationId && log.date === selectedYmd && log.time === dose.time)),
       entry,
     ]);
     setReschedule(null);
@@ -263,8 +275,10 @@ export default function MedicationRemindersScreen() {
                           // An undone („pending“) dose is open again: Take / Reschedule / Skip come back.
                           const log = isDoseAnswered(found) ? found : undefined;
                           const meal = cfg.mealTiming && cfg.mealTiming !== 'any' ? ka.meds.mealTiming[cfg.mealTiming] : null;
+                          const movedTo = rescheduledTime(found);
+                          const moved = movedTo ? tx(`გადატანილია ${formatTime24h(movedTo)}-ზე`, `Moved to ${formatTime24h(movedTo)}`) : null;
                           // One line that fits: the amount and how to take it (the time is the rail's badge).
-                          const meta = [dose.dosage, meal].filter(Boolean).join(' · ');
+                          const meta = [moved, dose.dosage, meal].filter(Boolean).join(' · ');
                           return (
                             <MedsCard key={`${dose.medicationId}-${dose.time}`} style={{ padding: 14, gap: 12 }}>
                               <Pressable
@@ -289,7 +303,7 @@ export default function MedicationRemindersScreen() {
                               {!log ? (
                                 <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center' }}>
                                   <MedsButton compact label={ka.meds.actionTake} icon={Check} onPress={() => void markDose(dose.medicationId, dose.time, 'taken')} style={{ flex: 1 }} />
-                                  <MedsRoundAction icon={Clock} tone="tonal" onPress={() => setReschedule({ medicationId: dose.medicationId, time: dose.time })} accessibilityLabel={`${ka.meds.actionReschedule}: ${dose.medName}`} />
+                                  <MedsRoundAction icon={Clock} tone="tonal" onPress={() => setReschedule(dose)} accessibilityLabel={`${ka.meds.actionReschedule}: ${dose.medName}`} />
                                   <MedsRoundAction icon={X} tone="quiet" onPress={() => void markDose(dose.medicationId, dose.time, 'skipped')} accessibilityLabel={`${ka.meds.actionSkip}: ${dose.medName}`} />
                                 </View>
                               ) : null}
@@ -308,11 +322,11 @@ export default function MedicationRemindersScreen() {
 
       <MedicationRescheduleSheet
         visible={!!reschedule}
-        currentTime={reschedule?.time}
+        currentTime={reschedule ? rescheduledTime(findDoseLog(doseLogs, reschedule.medicationId, selectedYmd, reschedule.time)) ?? reschedule.time : undefined}
         onClose={() => setReschedule(null)}
         onPick={(time) => {
           if (!reschedule) return;
-          void markDose(reschedule.medicationId, reschedule.time, 'taken', time);
+          void moveTo(reschedule, time);
         }}
       />
     </>

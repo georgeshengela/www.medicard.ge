@@ -28,6 +28,8 @@ import { useMedications } from '@/hooks/useMedications';
 import { ka } from '@/i18n/ka';
 import { tx } from '@/i18n/locale';
 import { api } from '@/lib/api';
+import { rescheduledTime } from '@/lib/doseAnswer';
+import { moveDose } from '@/lib/doseReschedule';
 import { deleteMedication } from '@/lib/medicationDelete';
 import { cancelNotificationsByPrefix } from '@/lib/notifications';
 import {
@@ -55,7 +57,7 @@ export function MedicationDoseScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { id, time, date } = useLocalSearchParams<{ id: string; time?: string; date?: string }>();
-  const { medications, doseLogs, setDoseLogs, load, loading } = useMedications();
+  const { medications, schedule, doseLogs, setDoseLogs, load, loading } = useMedications();
   const images = useMedicationImages(medications);
   const [rescheduleOpen, setRescheduleOpen] = useState(false);
   const med = medications.find((item) => item.id === id);
@@ -64,13 +66,14 @@ export function MedicationDoseScreen() {
   const doseTime = time ?? times[0] ?? '09:00';
   const doseDate = date ?? todayYmd();
   const log = findDoseLog(doseLogs, id, doseDate, doseTime);
+  const movedTo = rescheduledTime(log);
 
   const markDose = useCallback(
-    async (status: 'taken' | 'skipped', newTime?: string) => {
+    async (status: 'taken' | 'skipped') => {
       const entry = {
         medicationId: id,
         date: doseDate,
-        time: newTime ?? doseTime,
+        time: doseTime,
         status,
         updatedAt: new Date().toISOString(),
       };
@@ -83,6 +86,23 @@ export function MedicationDoseScreen() {
       router.back();
     },
     [id, doseDate, doseTime, router, setDoseLogs],
+  );
+
+  // „გადატანა“ moves the reminder for this dose; the dose stays open on its own slot (never „taken“).
+  const reschedule = useCallback(
+    async (to: string) => {
+      const dose = schedule.find((row) => row.medicationId === id && row.time === doseTime) ??
+        (med ? { medicationId: id, medName: med.medName, dosage: med.dosage, notes: med.notes, time: doseTime } : null);
+      if (!dose) return;
+      const entry = await moveDose(dose, doseDate, to);
+      setDoseLogs((prev) => [
+        ...prev.filter((item) => !(item.medicationId === id && item.date === doseDate && item.time === doseTime)),
+        entry,
+      ]);
+      setRescheduleOpen(false);
+      router.back();
+    },
+    [schedule, id, doseTime, med, doseDate, router, setDoseLogs],
   );
 
   const remove = () => {
@@ -173,7 +193,11 @@ export function MedicationDoseScreen() {
             <MedsChip label={freqLabel} />
             {meal ? <MedsChip label={meal} ink="amber" /> : null}
           </View>
-          {log ? <MedsStatusPill status={log.status} /> : null}
+          {movedTo ? (
+            <MedsChip label={tx(`გადატანილია ${formatTime24h(movedTo)}-ზე`, `Moved to ${formatTime24h(movedTo)}`)} active />
+          ) : log ? (
+            <MedsStatusPill status={log.status} />
+          ) : null}
         </MedsCard>
 
         <View>
@@ -208,9 +232,9 @@ export function MedicationDoseScreen() {
 
       <MedicationRescheduleSheet
         visible={rescheduleOpen}
-        currentTime={doseTime}
+        currentTime={movedTo ?? doseTime}
         onClose={() => setRescheduleOpen(false)}
-        onPick={(option) => void markDose('taken', option)}
+        onPick={(option) => void reschedule(option)}
       />
     </>
   );

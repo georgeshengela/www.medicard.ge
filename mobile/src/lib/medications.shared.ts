@@ -203,6 +203,7 @@ export async function saveDoseLog(entry: MedicationDoseLog, source: 'app' | 'not
   }
   const existing = await loadDoseLogs();
   const key = `${entry.medicationId}|${entry.date}|${entry.time}`;
+  const previous = existing.find((e) => `${e.medicationId}|${e.date}|${e.time}` === key);
   const cutoff = new Date();
   cutoff.setDate(cutoff.getDate() - 90);
   const cutoffKey = cutoff.toISOString().slice(0, 10);
@@ -213,7 +214,17 @@ export async function saveDoseLog(entry: MedicationDoseLog, source: 'app' | 'not
   await setScopedPreference(DOSE_LOG_KEY, JSON.stringify(next));
   void import('@/lib/accountSync').then(({ scheduleAccountSyncPush }) => scheduleAccountSyncPush());
   void import('@/lib/mediNotificationBrain').then(({ requestEngageRefresh }) => requestEngageRefresh());
+  // A dose moved with „გადატანა“ and now answered (or undone) needs no moved reminder any more.
+  if (previous?.rescheduledTo && !entry.rescheduledTo) cancelMovedDoseReminder(entry);
   syncDoseMark(entry, source);
+}
+
+function cancelMovedDoseReminder(entry: MedicationDoseLog) {
+  void Promise.all([import('@/lib/expoNotifications'), import('@/lib/notificationPlan')])
+    .then(([{ Notifications }, { movedDoseReminderId }]) =>
+      Notifications.cancelScheduledNotificationAsync(movedDoseReminderId(entry.medicationId, entry.date, entry.time)),
+    )
+    .catch(() => undefined);
 }
 
 export function doseLogKey(medicationId: string, date: string, time: string): string {

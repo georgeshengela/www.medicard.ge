@@ -12,7 +12,7 @@ import { ka } from '@/i18n/ka';
 import { tx } from '@/i18n/locale';
 import type { ScheduledDose } from '@/lib/api';
 import { formatTime24h, parseMedicationConfig, saveDoseLog, todayYmd } from '@/lib/medications.shared';
-import { computeTodayDoses } from '@/lib/home/todayDoses';
+import { computeTodayDoses, type PendingDose } from '@/lib/home/todayDoses';
 import { dueState, minuteOf, spanLabel } from '@/lib/home/doseDue';
 
 /** Figma 11416:83298 — 288×~88 peeking dose cards. */
@@ -52,7 +52,7 @@ function NextDoseCard({
   onTake,
   onUndo,
 }: {
-  dose: ScheduledDose;
+  dose: ScheduledDose & { dueTime?: string };
   cfg: MedConfig;
   nowMinute: number;
   taken: boolean;
@@ -63,7 +63,9 @@ function NextDoseCard({
   const c = useThemeColors();
   const accent = useHomeAccent();
   const subtitle = formLabel(cfg, dose.dosage);
-  const due = dueState(minuteOf(dose.time), nowMinute);
+  // A dose moved with „გადატანა“ is due at its new time, not „late“ since its old one.
+  const at = dose.dueTime ?? dose.time;
+  const due = dueState(minuteOf(at), nowMinute);
   // Hours later a counter only scolds: past three hours it is just „late“.
   const dueText =
     due.kind === 'late'
@@ -79,7 +81,7 @@ function NextDoseCard({
     <View style={{ width: CARD_W, minHeight: 88, borderRadius: 20, backgroundColor: c.surface, flexDirection: 'row', alignItems: 'center' }}>
       <Pressable
         accessibilityRole="button"
-        accessibilityLabel={[dose.medName, subtitle, formatTime24h(dose.time), taken ? tx('მიღებულია', 'taken') : dueText].filter(Boolean).join('. ')}
+        accessibilityLabel={[dose.medName, subtitle, formatTime24h(at), taken ? tx('მიღებულია', 'taken') : dueText].filter(Boolean).join('. ')}
         onPress={onOpen}
         style={{ flex: 1, minWidth: 0, gap: 4, paddingVertical: 16, paddingLeft: 16, paddingRight: 8 }}
       >
@@ -89,7 +91,7 @@ function NextDoseCard({
           </Text>
         ) : (
           <Text numberOfLines={1} style={{ fontFamily: 'NotoSansGeorgian_500Medium', fontSize: 12, lineHeight: 16, color: c.text200 }}>
-            <Text style={{ fontFamily: 'NotoSansGeorgian_700Bold', color: timeColor }}>{formatTime24h(dose.time)}</Text>
+            <Text style={{ fontFamily: 'NotoSansGeorgian_700Bold', color: timeColor }}>{formatTime24h(at)}</Text>
             {` · ${dueText}`}
           </Text>
         )}
@@ -129,7 +131,7 @@ export function HomeNextDoseSection({ meds }: Props) {
   const today = todayYmd();
   const [now, setNow] = useState(() => new Date());
   /** Doses taken from this row a moment ago, kept in place for the undo. */
-  const [justTaken, setJustTaken] = useState<ScheduledDose[]>([]);
+  const [justTaken, setJustTaken] = useState<PendingDose[]>([]);
   const timers = useRef(new Map<string, ReturnType<typeof setTimeout>>());
 
   useEffect(() => {
@@ -147,7 +149,7 @@ export function HomeNextDoseSection({ meds }: Props) {
   );
   const cards = useMemo(() => {
     const kept = justTaken.filter((d) => !pending.some((p) => keyOf(p) === keyOf(d)));
-    return [...pending, ...kept].sort((a, b) => a.time.localeCompare(b.time));
+    return [...pending, ...kept].sort((a, b) => a.dueTime.localeCompare(b.dueTime));
   }, [pending, justTaken]);
 
   if (loading) {
@@ -167,7 +169,7 @@ export function HomeNextDoseSection({ meds }: Props) {
     await saveDoseLog(entry);
     setDoseLogs((prev) => [...prev.filter((l) => !(l.medicationId === entry.medicationId && l.date === today && l.time === entry.time)), entry]);
   };
-  const take = async (dose: ScheduledDose) => {
+  const take = async (dose: PendingDose) => {
     const key = keyOf(dose);
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined);
     setJustTaken((prev) => [...prev.filter((d) => keyOf(d) !== key), dose]);

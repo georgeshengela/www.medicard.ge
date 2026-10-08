@@ -7,6 +7,8 @@
  */
 import type { DoseStatus, MedicationDoseLog } from '@/types/medications';
 
+const TIME_RE = /^([01]\d|2[0-3]):[0-5]\d$/;
+
 export function isDoseAnswered(log: Pick<MedicationDoseLog, 'status'> | null | undefined): boolean {
   return log?.status === 'taken' || log?.status === 'skipped';
 }
@@ -29,3 +31,21 @@ export function calendarDayStatus(logs: readonly Pick<MedicationDoseLog, 'status
   return taken && skipped ? 'mixed' : skipped ? 'skipped' : 'taken';
 }
 
+/** The later time a still-open dose was moved to („გადატანა“), or null. */
+export function rescheduledTime(log: Pick<MedicationDoseLog, 'status' | 'rescheduledTo'> | null | undefined): string | null {
+  if (!log || log.status !== 'pending') return null;
+  return typeof log.rescheduledTo === 'string' && TIME_RE.test(log.rescheduledTo) ? log.rescheduledTo : null;
+}
+
+/**
+ * The row „გადატანა“ writes: the dose stays open ('pending') on its own slot and day and remembers
+ * the new time. Never „taken“ — she has not taken it yet. Picking the dose's own time moves it back.
+ */
+export function rescheduledDoseEntry(
+  dose: Pick<MedicationDoseLog, 'medicationId' | 'date' | 'time'>,
+  to: string,
+  nowIso: string,
+): MedicationDoseLog {
+  const entry: MedicationDoseLog = { medicationId: dose.medicationId, date: dose.date, time: dose.time, status: 'pending', updatedAt: nowIso };
+  return to !== dose.time && TIME_RE.test(to) ? { ...entry, rescheduledTo: to } : entry;
+}
