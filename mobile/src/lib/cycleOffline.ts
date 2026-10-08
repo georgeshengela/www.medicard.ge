@@ -22,6 +22,7 @@ import {
   emptyStore,
   enqueueMutation,
   hasObservationExtras,
+  isCompleteCycleBundle,
   overlayPendingOnBundle,
   parseOfflineStore,
   planQueuedLogMutations,
@@ -279,7 +280,9 @@ function viewFromAccount(
   };
 }
 
-export async function cacheCycleBundle(userId: string, bundle: CycleBundle): Promise<void> {
+export async function cacheCycleBundle(userId: string, bundle: CycleBundle | null | undefined): Promise<void> {
+  // A partial write answer (or `null`) never replaces the last whole bundle on the device (CYC-06).
+  if (!isCompleteCycleBundle(bundle)) return;
   await withAccountWrite(async () => {
     const account = await loadCycleAccount(userId);
     account.cache = createCacheRecord(userId, bundle);
@@ -378,7 +381,7 @@ export async function flushCycleQueue(userId: string): Promise<CycleFlushResult>
       const newlyEnqueued = latest.queue.filter((item) => !pendingIds.has(item.id));
       latest.queue = compactCycleQueue([...result.remaining, ...newlyEnqueued]);
       latest.authPaused = result.authPaused;
-      if (result.bundle) {
+      if (isCompleteCycleBundle(result.bundle)) {
         latest.cache = createCacheRecord(userId, result.bundle);
       }
       if (result.failureKind === 'retryable') {

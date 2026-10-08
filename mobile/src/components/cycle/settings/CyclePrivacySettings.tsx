@@ -72,10 +72,13 @@ export function CyclePrivacySettings() {
     try {
       const data = await api.cycle.updateProfile({ privacyEnabled: on });
       if (userId) putCycleBundle(userId, data);
-      // Privacy mode masks the lock-screen text: re-plan the scheduled reminders with it.
+      // Privacy mode masks the lock-screen text: re-plan the scheduled reminders with it (no bundle came
+      // back — CYC-06 — means the next foreground re-plans them).
       try {
-        const prefs = await getCycleReminderPrefs({ mode: data.profile.mode });
-        await syncCycleReminders(data, prefs);
+        if (data) {
+          const prefs = await getCycleReminderPrefs({ mode: data.profile.mode });
+          await syncCycleReminders(data, prefs);
+        }
       } catch {
         /* Reminders are re-planned on the next foreground. */
       }
@@ -93,7 +96,7 @@ export function CyclePrivacySettings() {
     try {
       const data = await api.cycle.updateProfile({ enablePartnerShare: on });
       if (userId) putCycleBundle(userId, data);
-      const code = data.partnerShare?.code ?? data.profile.partnerShareCode;
+      const code = data?.partnerShare?.code ?? data?.profile.partnerShareCode;
       if (on && code) {
         await Share.share({ message: `${PARTNER_SHARE_BASE}${code}` });
         setMsgTone('success');

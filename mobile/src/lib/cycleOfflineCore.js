@@ -122,6 +122,24 @@ function isEncryptedEnvelope(value) {
   );
 }
 
+/**
+ * A whole cycle bundle from GET /api/cycle (or a write that answered with one). A failed reload after a
+ * settings write used to answer `{ profile, meta }` only (CYC-06); stored as the bundle it crashed /cycle
+ * and the women's Home (`bundle.logs.find`). Such a body — or the `null` newer servers send — is never
+ * cached or shown.
+ */
+function isCompleteCycleBundle(bundle) {
+  return Boolean(
+    bundle &&
+      typeof bundle === 'object' &&
+      Array.isArray(bundle.logs) &&
+      bundle.profile &&
+      typeof bundle.profile === 'object' &&
+      bundle.predictions &&
+      typeof bundle.predictions === 'object',
+  );
+}
+
 function readAccount(store, userScope) {
   const root = typeof store === 'string' || !store?.accounts ? parseOfflineStore(store) : store;
   const id = String(userScope || '');
@@ -130,7 +148,8 @@ function readAccount(store, userScope) {
   if (!raw || typeof raw !== 'object') return emptyAccount(id);
   return {
     userScope: id,
-    cache: raw.cache && typeof raw.cache === 'object' ? raw.cache : null,
+    // A partial bundle an older build cached (CYC-06) is dropped: the next visit loads the real one.
+    cache: raw.cache && typeof raw.cache === 'object' && isCompleteCycleBundle(raw.cache.bundle) ? raw.cache : null,
     queue: Array.isArray(raw.queue) ? raw.queue : [],
     cooldownUntil: Number(raw.cooldownUntil) || 0,
     authPaused: Boolean(raw.authPaused),
@@ -697,6 +716,7 @@ module.exports = {
   readAccount,
   writeAccount,
   persistStore,
+  isCompleteCycleBundle,
   createCacheRecord,
   createMutation,
   compactCycleQueue,

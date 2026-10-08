@@ -959,10 +959,7 @@ cycleRouter.put(
         today: clock.today,
       });
     });
-    return respondWithBundle(req, res, {
-      profile: bundle.profile,
-      meta: bundle.meta,
-    });
+    return respondWithBundle(req, res);
   }),
 );
 
@@ -979,10 +976,7 @@ cycleRouter.put(
       mode: bundle.profile?.mode,
       today: bundle.meta.today,
     });
-    return respondWithBundle(req, res, {
-      profile: bundle.profile,
-      meta: bundle.meta,
-    });
+    return respondWithBundle(req, res);
   }),
 );
 
@@ -998,10 +992,7 @@ cycleRouter.delete(
       date: body.date,
       mode: bundle.profile?.mode,
     });
-    return respondWithBundle(req, res, {
-      profile: bundle.profile,
-      meta: bundle.meta,
-    });
+    return respondWithBundle(req, res);
   }),
 );
 
@@ -1391,13 +1382,27 @@ export const profileUpdateSchema = z.object({
     .optional(),
 });
 
-async function respondWithBundle(req, res, fallback) {
-  try {
-    return res.json(await bundleFor(req));
-  } catch (err) {
-    console.error('[cycle] loadBundle failed after write', err);
-    return res.json(fallback);
+/**
+ * The fresh bundle after a write that already succeeded (CYC-06): one retry for a transient database
+ * error, then `null`. Never a partial bundle-shaped object — app builds cached that as the whole bundle
+ * (no logs, no predictions) and /cycle and the women's Home crashed on it. Every build skips a `null`
+ * body (`putCycleBundle` / `data?.profile` guards) and the 2xx still makes the app refetch its cycle views.
+ */
+export async function bundleAfterWrite(load, { attempts = 2, log = console } = {}) {
+  for (let attempt = 1; ; attempt += 1) {
+    try {
+      return await load();
+    } catch (err) {
+      if (attempt >= attempts) {
+        log.error('[cycle] loadBundle failed after write', err);
+        return null;
+      }
+    }
   }
+}
+
+async function respondWithBundle(req, res) {
+  return res.json(await bundleAfterWrite(() => bundleFor(req)));
 }
 
 async function applyProfileUpdate(req, res) {
@@ -1496,10 +1501,7 @@ async function applyProfileUpdate(req, res) {
     await updateOwnerSharePermissions(req.user.id, body.sharePermissions);
   }
 
-  return respondWithBundle(req, res, {
-    profile: { lastPeriodStart: body.lastPeriodStart ?? null },
-    meta: { today: clock.today, timezone: clock.timezone },
-  });
+  return respondWithBundle(req, res);
 }
 
 /** Android/Expo Go often drops or mishandles PATCH bodies — keep PUT + PATCH. */
@@ -1519,10 +1521,7 @@ cycleRouter.post(
       where: { userId: req.user.id },
       data: { lastPeriodStart: new Date(`${date}T00:00:00.000Z`) },
     });
-    return respondWithBundle(req, res, {
-      profile: { lastPeriodStart: date },
-      meta: { today: clock.today, timezone: clock.timezone },
-    });
+    return respondWithBundle(req, res);
   }),
 );
 

@@ -748,3 +748,44 @@ describe('cycleLengthSpread sample-size safety', () => {
     assert.equal(cycleLengthSpread([28, 28, 28, 28, 28, 28, 28, 28, 28, 45]), 0);
   });
 });
+
+describe('bundle reload after a cycle write (CYC-06)', () => {
+  const quiet = { error: () => {} };
+
+  it('answers the fresh bundle when the reload works', async () => {
+    const { bundleAfterWrite } = await import('../routes/cycle.routes.js');
+    const bundle = { profile: {}, logs: [], predictions: {}, meta: {} };
+    assert.equal(await bundleAfterWrite(async () => bundle, { log: quiet }), bundle);
+  });
+
+  it('retries a failed reload once (a transient database error)', async () => {
+    const { bundleAfterWrite } = await import('../routes/cycle.routes.js');
+    let calls = 0;
+    const bundle = { profile: {}, logs: [], predictions: {}, meta: {} };
+    const result = await bundleAfterWrite(async () => {
+      calls += 1;
+      if (calls === 1) throw new Error('connection reset');
+      return bundle;
+    }, { log: quiet });
+    assert.equal(result, bundle);
+    assert.equal(calls, 2);
+  });
+
+  it('answers null — never a partial bundle without logs — when the reload keeps failing', async () => {
+    const { bundleAfterWrite } = await import('../routes/cycle.routes.js');
+    let calls = 0;
+    const result = await bundleAfterWrite(async () => {
+      calls += 1;
+      throw new Error('database down');
+    }, { log: quiet });
+    assert.equal(result, null);
+    assert.equal(calls, 2);
+  });
+
+  it('every write route answers through it, with no bundle-shaped fallback', () => {
+    const src = readFileSync(new URL('../routes/cycle.routes.js', import.meta.url), 'utf8');
+    assert.doesNotMatch(src, /respondWithBundle\(req, res, /);
+    assert.doesNotMatch(src, /return res\.json\(fallback\)/);
+    assert.equal((src.match(/return respondWithBundle\(req, res\);/g) || []).length, 5);
+  });
+});

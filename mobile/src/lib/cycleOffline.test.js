@@ -10,6 +10,7 @@ const {
   persistStore,
   emptyAccount,
   createCacheRecord,
+  isCompleteCycleBundle,
   createMutation,
   compactCycleQueue,
   enqueueMutation,
@@ -1022,3 +1023,43 @@ describe('discard recovery', () => {
   });
 });
 
+describe('partial bundle after a failed reload (CYC-06)', () => {
+  it('only a whole bundle counts: logs array, profile and predictions', () => {
+    assert.equal(isCompleteCycleBundle(sampleBundle()), true);
+    // The old server fallback after a settings write whose reload failed.
+    assert.equal(isCompleteCycleBundle({ profile: { lastPeriodStart: '2026-08-12' }, meta: { today: '2026-08-29' } }), false);
+    assert.equal(isCompleteCycleBundle(null), false);
+    assert.equal(isCompleteCycleBundle(undefined), false);
+    assert.equal(isCompleteCycleBundle({ ...sampleBundle(), logs: undefined }), false);
+    assert.equal(isCompleteCycleBundle({ ...sampleBundle(), predictions: null }), false);
+  });
+
+  it('a partial bundle an older build cached is dropped on read (the queue stays)', () => {
+    let account = enqueueMutation(
+      emptyAccount('user-a'),
+      createMutation('user-a', 'UPSERT_LOG', { date: '2026-08-30', flow: 'heavy' }),
+    );
+    account.cache = createCacheRecord('user-a', { profile: { lastPeriodStart: '2026-08-12' }, meta: {} }, '2026-08-29T18:42:00.000Z');
+    const restored = readAccount(persistStore(writeAccount(null, 'user-a', account)), 'user-a');
+    assert.equal(restored.cache, null);
+    assert.equal(restored.queue.length, 1);
+    assert.equal(restored.queue[0].payload.flow, 'heavy');
+  });
+
+  it('a whole cached bundle is kept', () => {
+    const account = emptyAccount('user-a');
+    account.cache = createCacheRecord('user-a', sampleBundle(), '2026-08-29T18:42:00.000Z');
+    const restored = readAccount(persistStore(writeAccount(null, 'user-a', account)), 'user-a');
+    assert.equal(restored.cache.bundle.cycleDay, 18);
+  });
+
+  it('the cache writers and the shared view refuse a partial bundle', () => {
+    const { readFileSync } = require('node:fs');
+    const { join } = require('node:path');
+    const offline = readFileSync(join(__dirname, 'cycleOffline.ts'), 'utf8');
+    const view = readFileSync(join(__dirname, 'cycleViewCache.ts'), 'utf8');
+    assert.match(offline, /export async function cacheCycleBundle[^{]*\{\n[^\n]*\n\s*if \(!isCompleteCycleBundle\(bundle\)\) return;/);
+    assert.match(offline, /if \(isCompleteCycleBundle\(result\.bundle\)\) \{\n\s*latest\.cache = createCacheRecord/);
+    assert.match(view, /if \(!isCompleteCycleBundle\(bundle\)\) \{\n\s*void invalidate\('cycle'\);\n\s*return;/);
+  });
+});

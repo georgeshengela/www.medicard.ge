@@ -75,6 +75,8 @@ export function writeAccount(
   account: CycleOfflineAccount,
 ): CycleOfflineStore;
 export function persistStore(root: CycleOfflineStore): string;
+/** A whole bundle (logs array, profile, predictions) — never a partial write answer or `null`. */
+export function isCompleteCycleBundle(bundle: unknown): bundle is CycleBundle;
 export function createCacheRecord(
   userScope: string,
   bundle: CycleBundle,
