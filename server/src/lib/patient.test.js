@@ -28,8 +28,16 @@ function stubPrisma(t, data) {
     [prisma.medicalRecord, 'findMany', async q => { assert.equal(q.where.userId, owner); return q.where.type === 'LAB' ? (data.labIds ?? []) : (data.records ?? []); }],
     [prisma.doctorVisit, 'findMany', async q => { assert.equal(q.where.userId, owner); return data.visits ?? []; }],
     [prisma.chatSession, 'findMany', async q => { assert.equal(q.where.userId, owner); data.excluded = q.where.id; return data.consultations ?? []; }],
-    // Raw reads: dose marks answer with rows; every nutrition query gets nothing (that block is tested on its own).
-    [prisma, '$queryRaw', async (strings, ...values) => { assert.ok(values.includes(owner)); return /MedicationDoseEvent/.test(strings.join('?')) ? (data.doses ?? []) : []; }],
+    // Raw reads: dose marks, and the MEDIFOOD diary / program / open fast when a fixture holds them; everything else is empty.
+    [prisma, '$queryRaw', async (strings, ...values) => {
+      assert.ok(values.includes(owner));
+      const sql = strings.join('?');
+      if (/MedicationDoseEvent/.test(sql)) return data.doses ?? [];
+      if (/SELECT id,date,type,title,items,source FROM "NutritionMeal"/.test(sql)) return data.meals ?? [];
+      if (/FROM "NutritionProgram"/.test(sql)) return data.program ? [data.program] : [];
+      if (/FROM "NutritionFast"/.test(sql)) return data.fasts ?? [];
+      return [];
+    }],
   ];
   for (const [delegate, method, implementation] of fixtures) {
     const original = delegate[method]; delegate[method] = implementation;
@@ -111,4 +119,98 @@ test('food diary, weight goal and lab trends read as numbers, never as „not ea
   ], now);
   assert.match(records, /2026-10-01 · სიმპტომების შემოწმება: სიმპტომები: ხველა/);
   assert.match(records, /უფრო ძველი:\n- 2025-01-10 · კანის ფოტო: ხალი/);
+});
+
+test('the food diary, diet and fasting ride only with a nutrition conversation; food allergens always do', async t => {
+  // Disclosure category 8: nutrition data is shared „Medi-სთან კვების შესახებ საუბრისას“ only.
+  const data = { owner: 'fixture-account', cycleLogs: () => [],
+    meals: [{ id: 'meal-1', date: '2026-10-08', type: 'LUNCH', title: '', source: 'manual', items: [{ name: 'ხაჭაპური', calories: 650, protein: 22, carbs: 60, fat: 30 }] }],
+    program: { active: true, startedOn: '2026-10-05', targets: { calories: 1800 }, config: { mode: 'lose', weightKg: 70, heightCm: 165, birthDate: '1990-01-01', sex: 'female', targetKg: 65,
+      activity: 'light', pace: 'steady', diet: 'vegetarian', allergens: ['peanuts'], avoidFoods: '', allergyClarifications: [],
+      screening: { pregnancyOrBreastfeeding: false, eatingDisorder: false, medicalDiet: false } } },
+    fasts: [{ id: 'fast-1', startedAt: new Date(Date.now() - 5 * 3_600_000), endedAt: null, targetMinutes: 960, protocol: '16:8' }] };
+  stubPrisma(t, data);
+  const base = { full: true, cycleAllowed: true, today: '2026-10-08' };
+  const ask = (extra) => withPatientAiContext({ id: data.owner }, undefined, { ...base, ...extra });
+
+  const food = await ask({ question: 'რამდენი კალორია მივიღე დღეს?' });
+  for (const expected of [/ხაჭაპური/, /vegetarian/, /მარხვის ფანჯარა/, /peanuts/]) assert.match(food, expected);
+
+  for (const headache of [
+    await ask({ question: 'თავი მტკივა ორი დღეა, რა ვქნა?' }),
+    await ask({ question: 'I have had a headache for two days' }),
+    // Medi's own earlier words do not make it a nutrition conversation.
+    await ask({ question: 'თავი მტკივა', thread: [{ role: 'assistant', content: 'კვების დღიური შენახულია.' }] }),
+  ]) {
+    assert.doesNotMatch(headache, /ხაჭაპური|vegetarian|მარხვ|კვება და წონა|1800/);
+    assert.match(headache, /საკვების ალერგენები \(MEDIFOOD\): peanuts/,'food allergens are allergies (category 2) and stay');
+  }
+
+  // A follow-up in a nutrition conversation keeps it: her earlier turns in this chat or this consultation count.
+  assert.match(await ask({ question: 'და ეს ნორმალურია?', thread: [{ role: 'user', content: 'ნახე, დღეს რა ვჭამე' }] }), /ხაჭაპური/);
+  assert.match(await ask({ question: 'and is that okay?', priorTurns: [{ role: 'user', content: 'How many calories did I eat today?' }] }), /ხაჭაპური/);
+  assert.match(await ask({ question: 'რატომ არ მიკლებს წონა?' }), /ხაჭაპური/, 'a weight question is a nutrition conversation');
+  assert.doesNotMatch(await ask({ question: 'წონასწორობას ვკარგავ, თავბრუ მეხვევა' }), /ხაჭაპური/);
+});
+
+test('consultations that carried the cycle stay out while the cycle is withheld now', async t => {
+  const at = (d) => new Date(`2026-10-0${d}T10:00:00Z`);
+  const data = { owner: 'fixture-account', cycleProfile: { mode: 'TRACK_PERIOD', privacyEnabled: false }, cycleLogs: () => [],
+    consultations: [
+      // Answered without any cycle context: always kept (the 2026-10-08 grounding stays).
+      { mode: 'DOCTOR', updatedAt: at(7), messages: [{ role: 'user', content: 'მუცელი მტკივა ჭამის შემდეგ' }, { role: 'assistant', content: 'შესაძლოა გასტრიტი. მიმართე გასტროენტეროლოგს.', cycleContext: false }] },
+      // Answered with her cycle diary: restates diary facts without a single cycle word.
+      { mode: 'DOCTOR', updatedAt: at(6), messages: [{ role: 'user', content: 'რატომ ვარ ასე?' }, { role: 'assistant', content: 'გუშინ ჩაინიშნე გაღიზიანებადობა და დაღლილობა.', cycleContext: true }] },
+      // Stored before the marker existed, asked from the cycle screen.
+      { mode: 'CONSILIUM', updatedAt: at(5), messages: [{ role: 'user', content: 'რა ხდება ჩემს ციკლში ახლა?' }, { role: 'assistant', content: 'ციკლის მე-14 დღე, ოვულაციის ფაზა.' }] },
+      // Stored before the marker existed: unknown, so it is treated as possibly carrying the diary.
+      { mode: 'DOCTOR', updatedAt: at(4), messages: [{ role: 'user', content: 'ხველა მაქვს' }, { role: 'assistant', content: 'შენს ჩანაწერებში ჩანს შებერილობა.' }] },
+      // No cycle context then, but her own question was about the cycle.
+      { mode: 'DOCTOR', updatedAt: at(3), messages: [{ role: 'user', content: 'მენსტრუაცია დამიგვიანდა' }, { role: 'assistant', content: 'რამდენი დღით?', cycleContext: false }] },
+    ] };
+  stubPrisma(t, data);
+  const ask = (cycleAllowed) => withPatientAiContext({ id: data.owner }, undefined, { full: true, cycleAllowed, today: '2026-10-08', question: 'თავი მტკივა' });
+  const protectedOnes = /გაღიზიანებადობა|ციკლის მე-14|ოვულაცი|შებერილობა|მენსტრუაცია დამიგვიანდა/;
+
+  const deviceLocked = await ask(false);
+  assert.match(deviceLocked, /შესაძლოა გასტრიტი/);
+  assert.doesNotMatch(deviceLocked, protectedOnes);
+
+  data.cycleProfile = { mode: 'TRACK_PERIOD', privacyEnabled: true };
+  const privacyMode = await ask(true);
+  assert.match(privacyMode, /შესაძლოა გასტრიტი/);
+  assert.doesNotMatch(privacyMode, protectedOnes);
+
+  data.cycleProfile = { mode: 'TRACK_PERIOD', privacyEnabled: false, reminderPrefs: { maskNotifications: true } };
+  assert.doesNotMatch(await ask(true), protectedOnes);
+
+  // Cycle shared now: every earlier consultation is there.
+  data.cycleProfile = { mode: 'TRACK_PERIOD', privacyEnabled: false };
+  const open = await ask(true);
+  for (const expected of [/შესაძლოა გასტრიტი/, /გაღიზიანებადობა/, /ციკლის მე-14/, /შებერილობა/, /მენსტრუაცია დამიგვიანდა/]) assert.match(open, expected);
+
+  // No cycle profile at all (men): nothing to protect, nothing filtered.
+  data.cycleProfile = null;
+  assert.match(await ask(false), /გაღიზიანებადობა/);
+});
+
+test('the clinical answer reports whether the cycle diary was shared, for the marker on the stored turn', async t => {
+  const data = { owner: 'fixture-account', cycleProfile: { mode: 'TRACK_PERIOD' }, cycleLogs: () => [] };
+  stubPrisma(t, data);
+  const shared = {}; await withPatientAiContext({ id: data.owner }, undefined, { full: true, cycleAllowed: true, today: '2026-10-08', meta: shared });
+  assert.equal(shared.cycleShared, true);
+  const withheld = {}; await withPatientAiContext({ id: data.owner }, undefined, { full: true, cycleAllowed: false, today: '2026-10-08', meta: withheld });
+  assert.equal(withheld.cycleShared, false);
+  data.cycleProfile = null;
+  const none = {}; await withPatientAiContext({ id: data.owner }, undefined, { full: true, cycleAllowed: true, today: '2026-10-08', meta: none });
+  assert.equal(none.cycleShared, false);
+
+  const { answerCarriedCycle } = await import('./patientHistoryContext.js');
+  assert.equal(answerCarriedCycle({ cycleShared: true, cycleContextAllowed: true }), true);
+  assert.equal(answerCarriedCycle({ cycleShared: false, cycleContextAllowed: true, context: 'ციკლის დღე 3' }), true, 'staged cycle context');
+  // Builds before 2026-10-08 send the cycle-screen handoff in `context` with no flag at all.
+  assert.equal(answerCarriedCycle({ cycleShared: false, cycleContextAllowed: undefined, context: 'ციკლის დღე 3, ტკივილი' }), true);
+  assert.equal(answerCarriedCycle({ cycleShared: false, cycleContextAllowed: false, context: 'ჰემოგლობინი 98' }), false, 'a newer build said no (MEDISCAN follow-up)');
+  assert.equal(answerCarriedCycle({ cycleShared: false, cycleContextAllowed: undefined }), false);
+  assert.equal(answerCarriedCycle({ cycleShared: false, cycleContextAllowed: true, context: '   ' }), false);
 });
