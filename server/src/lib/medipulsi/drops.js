@@ -232,7 +232,8 @@ export async function dropsStatus(userId,{now=Date.now(),lang='ka',db=prisma,at=
  const [today,mine]=await Promise.all([counts({db,cityId:city.id,campaign,since}),counts({db,cityId:city.id,campaign,since,userId})]);
  const home=city.id===campaign.area.id;
  const planned=!home||gifts.some(g=>+g.startsAt>now&&giftCity(rules.get(g.id),campaign)===city.id)||!enabled||!(await autopilotEnabled(db).catch(()=>false))?[]:[tbilisiDate(now),...[1,2].map(d=>tbilisiDate(now+d*24*HOUR))].flatMap(d=>planDay(d,{campaign}));
- const live=home?await liveNow({db,campaign,gifts,rules,now}).catch(()=>null):null;
+ // „N ახლა დარბის“ in every city (owner 2026-10-09), still null below three people.
+ const live=home?await liveNow({db,campaign,gifts,rules,now}).catch(()=>null):await cityLive(city.id,{db,campaign,now}).catch(()=>null);
  return dropsView({gifts:enabled?gifts:[],rules,now,claimsToday:today.n,coinsToday:today.coins,mine:{opened:mine.n,coins:mine.coins},planned,lang,enabled,campaign,
   city:home?null:city,schedule:home?null:cityScheduleOf(cityRulesOf(campaign),lang),live});
 }
@@ -246,6 +247,10 @@ async function campaignBbox(db,campaign){
  return areaBox.box;
 }
 /** Walkers in the campaign city right now, and near the Saturday rain while it is out (its boxes' centre). */
+async function cityLive(cityId,{db,campaign,now}){
+ const box=(await cityBboxes(db,campaign)).find(x=>x.row?.cityId===cityId)?.box;
+ return box?liveWalkers({bbox:box,db,now}):null;
+}
 async function liveNow({db,campaign,gifts,rules,now}){
  const bbox=await campaignBbox(db,campaign);
  if(!bbox)return null;
