@@ -8,6 +8,7 @@ import { toDateOnly, calculateAge } from '../lib/patient.js';
 import { serverAiEngine } from '../lib/aiEngine.js';
 import { withAiAccount } from '../lib/aiConsent.js';
 import { rememberUserLanguage, t } from '../lib/i18n.js';
+import { readPasswordChangedAt, tokenPredatesPasswordChange } from '../lib/sessionRevocation.js';
 
 export function signToken(user) {
   const id = typeof user?.id === 'string' ? user.id.trim() : '';
@@ -75,6 +76,15 @@ export async function requireAuth(req, res, next) {
 
     if (!user) {
       return res.status(401).json({ error: t(req, 'მომხმარებელი ვერ მოიძებნა. ხელახლა შედი ანგარიშში.', 'Account not found. Please sign in again.') });
+    }
+
+    // A password reset ends every session signed before it (lib/sessionRevocation.js; fails open).
+    // Checked before next(), so GET /api/auth/me can never renew a token refused here.
+    if (tokenPredatesPasswordChange(payload, await readPasswordChangedAt(user.id))) {
+      return res.status(401).json({
+        error: t(req, 'ანგარიშის პაროლი შეიცვალა, ამიტომ ეს სესია დასრულდა. ხელახლა შედი ანგარიშში.', 'The account password was changed, so this session has ended. Please sign in again.'),
+        code: 'TOKEN_EXPIRED',
+      });
     }
 
     if (req.langExplicit) rememberUserLanguage(user.id, req.lang);

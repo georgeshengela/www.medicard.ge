@@ -14,6 +14,7 @@ import { findUserByPhone, phoneTakenPayload } from '../lib/phoneUsers.js';
 import { normalizeSmsDestination } from '../lib/sms.js';
 import { requireAuth, signToken } from '../middleware/auth.js';
 import { sessionRenewalFields } from '../lib/sessionRenewal.js';
+import { markPasswordChanged } from '../lib/sessionRevocation.js';
 import { asyncHandler } from '../middleware/error.js';
 import { t } from '../lib/i18n.js';
 import { claimDailyCheckIn } from '../lib/checkIn.js';
@@ -315,6 +316,8 @@ authRouter.post(
       await tx.passwordReset.updateMany({ where: { userId: user.id, usedAt: null }, data: { usedAt: new Date() } });
       return next;
     });
+    // Older sessions end; recorded before signing so this device's new token is not one of them.
+    await markPasswordChanged(user.id);
     return res.json({
       token: signToken(updated),
       user: publicUser(updated),

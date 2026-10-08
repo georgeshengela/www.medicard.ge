@@ -64,6 +64,9 @@ model User {
   emailMarketingOptInAt DateTime? @ignore
   /// App language ('ka' | 'en') for server-sent pushes/emails (prisma/20260929-language.sql). @ignore: raw SQL only (src/lib/i18n.js).
   language         String?   @ignore
+  /// Last password reset (prisma/20261008-password-changed.sql): requireAuth refuses JWTs signed before it.
+  /// @ignore: raw SQL only (src/lib/sessionRevocation.js), so User queries keep working before db:install adds it.
+  passwordChangedAt DateTime? @ignore @db.Timestamptz(6)
   emailLogs        EmailLog[]
   records          MedicalRecord[]
   checkIns         DailyCheckIn[]
