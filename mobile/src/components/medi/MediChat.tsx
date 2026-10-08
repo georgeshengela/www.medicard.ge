@@ -105,11 +105,16 @@ export function MediChat({ owner, sessionId, startConsilium, directDoctor, prefi
   const voiceIn = voiceAvail && voiceOn, voiceOut = voiceOutAvail && voiceOn;
   const consiliumOn = consilium && deepOn;
   const valid = (n = generation.current) => alive.current && focused.current && owner === localAccountId() && n === generation.current;
+  // An answer or plan already on its way settles even while another screen covers Medi (menu → privacy, a
+  // notification): it finishes, is saved in the thread, or fails with the question back in the composer.
+  // Only a reset, a new message, closing Medi or another account cancels it. Focus gates new actions and
+  // side effects (speech, haptics, navigation) — never the result itself.
+  const live = (n: number) => alive.current && owner === localAccountId() && n === generation.current;
   const isHandoff = (name: string) => tools.find(t => t.name === name)?.kind === 'handoff' || HANDOFF_TOOLS.includes(name);
 
   useEffect(() => { alive.current = true; return () => { alive.current = false; generation.current++; abort.current?.abort(); }; }, []);
   // Opening Medi re-checks the admin switches (≤1/min), so a paused mode hides here without leaving the app.
-  useFocusEffect(useCallback(() => { focused.current = true; void refreshFeatureFlags(); return () => { focused.current = false; generation.current++; }; }, []));
+  useFocusEffect(useCallback(() => { focused.current = true; void refreshFeatureFlags(); return () => { focused.current = false; }; }, []));
 
   // A drafted question (alert, tip, lab, symptoms, cycle) arrives in memory, never in the URL.
   useEffect(() => {
@@ -196,15 +201,15 @@ export function MediChat({ owner, sessionId, startConsilium, directDoctor, prefi
     addTurns(slot); setBusy(deep ? 'deep' : 'answer'); scrollToEnd(true);
     const controller = new AbortController(); abort.current = controller;
     let buffer = '', timer: ReturnType<typeof setTimeout> | null = null;
-    const flush = () => { timer = null; const extra = buffer; buffer = ''; if (extra && valid(n)) setTurns(t => t.map(turn => (turn.id === slot.id && turn.kind === 'answer' ? { ...turn, text: turn.text + extra } : turn))); };
+    const flush = () => { timer = null; const extra = buffer; buffer = ''; if (extra && live(n)) setTurns(t => t.map(turn => (turn.id === slot.id && turn.kind === 'answer' ? { ...turn, text: turn.text + extra } : turn))); };
     try {
       // The cycle context rides only with the first question that goes through (consent runs first).
       const context = sessions.current[mode] ? undefined : cycleContextRef.current?.text;
       // The planner's part of this chat (what she told Medi, what was saved) — the clinical session does not hold it.
       const thread = plannerHistory(turnsRef.current.filter(t => t.id !== userTurn.id && t.id !== slot.id));
       const response = await streamAiQuery({ message: value, mode, sessionId: sessions.current[mode], cycleContextAllowed: !cycleContextExcluded.current, ...(thread.length ? { thread } : {}), ...(context ? { context } : {}) },
-        { signal: controller.signal, onDelta: (chunk: string) => { if (!valid(n)) return; buffer += chunk; if (!timer) timer = setTimeout(flush, 40); } });
-      if (!valid(n)) return;
+        { signal: controller.signal, onDelta: (chunk: string) => { if (!live(n)) return; buffer += chunk; if (!timer) timer = setTimeout(flush, 40); } });
+      if (!live(n)) return;
       requireAnalysisText(response.answer);
       if (timer) clearTimeout(timer);
       if (context) setCycleContext(null);
@@ -214,10 +219,10 @@ export function MediChat({ owner, sessionId, startConsilium, directDoctor, prefi
       persist(storedTurns([userTurn, done]));
       if (response.usage) applyUsage(response.usage);
       void import('@/lib/quest/cache').then(({ requestQuestRefresh }) => requestQuestRefresh()).catch(() => undefined);
-      assistantHaptic('success');
+      if (focused.current) assistantHaptic('success');
     } catch (err) {
       if (timer) clearTimeout(timer);
-      if (!valid(n)) return;
+      if (!live(n)) return;
       dropTurns(slot.id, userTurn.id);
       setText(current => (current.trim() ? current : value));
       if (isAiConsentDeclined(err)) {
@@ -229,7 +234,7 @@ export function MediChat({ owner, sessionId, startConsilium, directDoctor, prefi
       } else {
         setRetry({ value, route: mode, fromVoice });
         setError(err instanceof ApiError || err instanceof IncompleteAnalysisError ? err.message : ka.common.error);
-        assistantHaptic('error');
+        if (focused.current) assistantHaptic('error');
       }
     } finally {
       if (abort.current === controller) abort.current = null;
@@ -244,7 +249,7 @@ export function MediChat({ owner, sessionId, startConsilium, directDoctor, prefi
       const result = await assistantRequest<AssistantPlan>('plan', owner, {
         text: value, scope: 'auto', history: plannerHistory(turnsRef.current.filter(t => t.id !== userTurn.id)), draft: currentDraft, cycleContextAllowed: !cycleContextExcluded.current, ...(petId ? { subjectId: petId } : {}),
       });
-      if (!valid(n)) return;
+      if (!live(n)) return;
       // A health question: the clinical model answers right here, no extra tap.
       const consult = consultFromReview(result.review, value);
       if (consult) {
@@ -260,11 +265,11 @@ export function MediChat({ owner, sessionId, startConsilium, directDoctor, prefi
       if (fromVoice) void speech.say(result.review ? spokenAssistantReview(result.review.label, reviewRows(result.review), isHandoff(result.review.tool)) : result.reply);
       scrollToEnd(true);
     } catch (e) {
-      if (!valid(n)) return;
+      if (!live(n)) return;
       dropTurns(userTurn.id); setText(current => (current.trim() ? current : value));
       setRetry({ value, route: 'plan', fromVoice, petId });
       if (isAiConsentDeclined(e)) setNotice(aiConsentDeclinedText());
-      else { setError(errorText(e, tx('კავშირი შეფერხდა.', 'Connection problem.'))); assistantHaptic('error'); }
+      else { setError(errorText(e, tx('კავშირი შეფერხდა.', 'Connection problem.'))); if (focused.current) assistantHaptic('error'); }
     }
   }
 
