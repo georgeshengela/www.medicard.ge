@@ -255,17 +255,21 @@
           <p>სამიზნე, ჯილდო და რიგი მოქმედებს ახლად მინიჭებულ მისიებზე. ლიმიტი: დღიური ≤250, კვირის ≤1000 Coins და XP.</p></div></header>
         <div class="s-card-body is-flush s-quest-body"><div class="s-table-wrap"><table class="s-table is-edit s-quest-table">
           <thead><tr><th>მისია</th><th>სიხშირე</th><th class="num">სამიზნე</th><th class="num">ჯილდო · Coins</th><th class="num">ჯილდო · XP</th><th class="num">რიგი</th><th class="num">შესრულება · 7 დღე</th><th>აქტიური</th><th></th></tr></thead>
-          <tbody>${t.map((q) => `<tr data-quest="${esc(q.key)}">
-            <td><b title="${esc(q.key)}">${esc(q.label)}</b><small class="s-quest-meta">${q.adminManaged ? '<span class="s-badge is-accent is-plain">ადმინის მართვაში</span>' : ''}${q.updatedAt ? `<span>შეიცვალა ${esc(when(q.updatedAt))}</span>` : ''}</small></td>
+          <tbody>${t.map((q) => {
+            // Owner rules (the Medi mission: one conversation a week, no coins; the old daily one stays off) — not editable here.
+            const lock = (field) => (q.locked && field in q.locked ? ' disabled title="მფლობელის წესი — ადმინიდან არ იცვლება"' : '');
+            return `<tr data-quest="${esc(q.key)}">
+            <td><b title="${esc(q.key)}">${esc(q.label)}</b><small class="s-quest-meta">${q.adminManaged ? '<span class="s-badge is-accent is-plain">ადმინის მართვაში</span>' : ''}${q.locked ? '<span class="s-badge is-plain">მფლობელის წესი</span>' : ''}${q.updatedAt ? `<span>შეიცვალა ${esc(when(q.updatedAt))}</span>` : ''}</small></td>
             <td>${esc(CADENCE[q.cadence] || 'სხვა')}</td>
-            <td class="num"><input type="number" min="1" data-f="defaultTarget" value="${q.defaultTarget}" aria-label="სამიზნე"><small class="s-quest-meta">${esc(UNIT[q.progressType] || '')}</small></td>
-            <td class="num"><input type="number" min="0" data-f="rewardCoins" value="${q.rewardCoins}" aria-label="ჯილდო Coins"></td>
+            <td class="num"><input type="number" min="1" data-f="defaultTarget" value="${q.defaultTarget}" aria-label="სამიზნე"${lock('defaultTarget')}><small class="s-quest-meta">${esc(UNIT[q.progressType] || '')}</small></td>
+            <td class="num"><input type="number" min="0" data-f="rewardCoins" value="${q.rewardCoins}" aria-label="ჯილდო Coins"${lock('rewardCoins')}></td>
             <td class="num"><input type="number" min="0" data-f="rewardXp" value="${q.rewardXp}" aria-label="ჯილდო XP"></td>
             <td class="num"><input type="number" min="0" data-f="priority" value="${q.priority}" aria-label="რიგი"></td>
             <td class="num"><b>${pct(q.stats7d.completed, q.stats7d.assigned)}%</b><small class="s-quest-meta">${fmt(q.stats7d.completed)} / ${fmt(q.stats7d.assigned)}</small></td>
-            <td><input class="s-switch" type="checkbox" role="switch" data-f="isActive" ${q.isActive ? 'checked' : ''} aria-label="აქტიური"></td>
+            <td><input class="s-switch" type="checkbox" role="switch" data-f="isActive" ${q.isActive ? 'checked' : ''} aria-label="აქტიური"${lock('isActive')}></td>
             <td class="num"><button type="button" class="btn compact" data-save disabled>შენახვა</button></td>
-          </tr>`).join('')}</tbody></table></div></div>
+          </tr>`;
+          }).join('')}</tbody></table></div></div>
         <footer class="s-card-foot"><span class="s-foot-note">Medi Coins-ს ფულადი ღირებულება არ აქვს. ჯილდოს შემცირება უკვე მიღებულ Coins-ს არ ცვლის; გამორთვა ახალ მინიჭებას აჩერებს.</span></footer>
       </section>
     </div>`;

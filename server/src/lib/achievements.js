@@ -105,7 +105,9 @@ export async function computeAchievementCounters(userId, options = {}) {
   for (const quest of quests) {
     const category = quest.template?.category;
     if (category in byCategory) byCategory[category] += 1;
-    if (quest.template?.cadence === 'WEEKLY') weeklyCompleted += 1;
+    // The weekly Medi mission (XP only, owner 2026-10-08) feeds the MEDI family, never the WEEKLY
+    // tiers: a Medi conversation must not unlock Medi Coins through a weekly achievement.
+    if (quest.template?.cadence === 'WEEKLY' && category !== 'MEDI') weeklyCompleted += 1;
     if (quest.status === 'CLAIMED') questsClaimed += 1;
     if (/^\d{4}-\d{2}-\d{2}$/.test(quest.periodKey || '')) dailyDays.add(quest.periodKey);
     if (quest.completedAt) {

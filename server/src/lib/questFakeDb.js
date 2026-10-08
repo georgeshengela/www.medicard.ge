@@ -250,6 +250,7 @@ export function createQuestFakeDb(seed = {}) {
     hydrationIntakeEvent: new Map(),
     stepTrackingCapability: new Map(),
     aiInteraction: new Map(),
+    userAiConsent: new Map(),
     medicationDoseEvent: new Map(),
     medicationSchedule: new Map(),
     achievementDefinition: new Map(),
@@ -319,6 +320,10 @@ export function createQuestFakeDb(seed = {}) {
     }),
     aiInteraction: modelApi(state, 'aiInteraction', {
       uniques: [{ name: 'id', fields: ['id'] }],
+    }),
+    userAiConsent: modelApi(state, 'userAiConsent', {
+      idField: 'userId',
+      uniques: [{ name: 'userId', fields: ['userId'] }],
     }),
     medicationDoseEvent: modelApi(state, 'medicationDoseEvent', {
       uniques: [
@@ -429,6 +434,7 @@ export function createQuestFakeDb(seed = {}) {
         hydrationIntakeEvent: clone([...state.hydrationIntakeEvent.entries()]),
         stepTrackingCapability: clone([...state.stepTrackingCapability.entries()]),
         aiInteraction: clone([...state.aiInteraction.entries()]),
+        userAiConsent: clone([...state.userAiConsent.entries()]),
         medicationDoseEvent: clone([...state.medicationDoseEvent.entries()]),
         medicationSchedule: clone([...state.medicationSchedule.entries()]),
         achievementDefinition: clone([...state.achievementDefinition.entries()]),
@@ -459,6 +465,7 @@ export function createQuestFakeDb(seed = {}) {
         state.hydrationIntakeEvent = new Map(snap.hydrationIntakeEvent);
         state.stepTrackingCapability = new Map(snap.stepTrackingCapability);
         state.aiInteraction = new Map(snap.aiInteraction);
+        state.userAiConsent = new Map(snap.userAiConsent);
         state.medicationDoseEvent = new Map(snap.medicationDoseEvent);
         state.medicationSchedule = new Map(snap.medicationSchedule);
         state.achievementDefinition = new Map(snap.achievementDefinition);

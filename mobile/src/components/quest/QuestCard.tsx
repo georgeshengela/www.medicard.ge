@@ -68,7 +68,8 @@ export function QuestCard({
   const active = quest.status === 'ACTIVE';
   const showBar = active || claimable;
   const a11y = copy.a11yQuest(title, quest.progress, quest.target, percent, quest.rewardCoins, quest.rewardXp);
-  const accentKind: QuestAccentKind = weekly || kind === 'weekly' ? 'weekly' : (kind as QuestAccentKind);
+  // The weekly Medi mission keeps the Medi icon in the weekly section.
+  const accentKind: QuestAccentKind = kind !== 'medi' && (weekly || kind === 'weekly') ? 'weekly' : (kind as QuestAccentKind);
   const conversational = kind === 'medi' && active;
   // The module tone (violet inside MEDIQUEST) instead of the old teal family per category.
   const accent = colors.primary200;

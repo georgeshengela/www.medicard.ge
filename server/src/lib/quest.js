@@ -1,4 +1,5 @@
 import { prisma } from './prisma.js';
+import { hasAcceptedAiConsent } from './aiConsent.js';
 import { sumRewardLedger } from './rewardLedgerSum.js';
 import {
   QUEST_ECONOMY,
@@ -23,12 +24,11 @@ import {
   canAssignNewDailyPeriod,
   dailyPeriodKey,
   daysInIsoWeek,
-  endOfLocalDay,
   getEffectiveQuestTimezone,
   normalizeQuestTimezone,
   resolveQuestClock,
   expiresAtForPeriod,
-  startOfLocalDay,
+  questPeriodWindow,
 } from './questTime.js';
 import { countsForDailyStreak, ensureQuestTemplates } from './questTemplates.js';
 import { isUsableStepCapability, loadStepCapabilityStatus } from './stepCapability.js';
@@ -59,6 +59,7 @@ export { publicQuest, publicRewardRow, sanitizeQuestJson, QUEST_FORBIDDEN_KEYS }
  * Mobile must never submit progress, completed=true, XP, coins, level, streak, or target.
  *
  * Progress is recomputed from HealthMetricDaily / HydrationPreference / AiInteraction.
+ * The Medi mission (weekly, XP only) is offered only after the current AI consent was accepted.
  * ACTIVE progress may decrease when the source-of-truth corrects.
  * COMPLETED is immutable — corrections do not revoke completion, streak, or later claims.
  * Rewards stay claimable; the ledger is authoritative for issuance.
@@ -151,7 +152,16 @@ export async function loadHydrationGoalMl(db, userId) {
   return goal;
 }
 
-async function isTemplateEligible(db, userId, template) {
+/**
+ * AI consent for one assignment pass, read before (never inside) the assignment transaction and
+ * only when a Medi template is on offer. A failed read means „no“.
+ */
+async function aiConsentForTemplates(db, userId, templates) {
+  if (!templates.some((template) => template.progressType === 'MEDI_DAILY_USE')) return false;
+  return hasAcceptedAiConsent(userId, db);
+}
+
+async function isTemplateEligible(db, userId, template, aiConsentAccepted = false) {
   try {
     validateQuestRewardAmounts({
       cadence: template.cadence,
@@ -168,6 +178,10 @@ async function isTemplateEligible(db, userId, template) {
   if (template.progressType === 'STEPS') {
     const status = await loadStepCapabilityStatus(db, userId);
     return isUsableStepCapability(status);
+  }
+  if (template.progressType === 'MEDI_DAILY_USE') {
+    // Optional and never pre-accepted: no mission nudges anyone into sharing data with AI.
+    return aiConsentAccepted === true;
   }
   return true;
 }
@@ -215,8 +229,7 @@ export async function computeQuestProgress(userId, templateOrQuest, periodKey, o
     if (options.mediUsedByPeriod?.has(key)) return options.mediUsedByPeriod.get(key) ? 1 : 0;
     if (Number(options.mediDailyUse) === 1) return 1;
     const tz = quest?.metadata?.assignedTimezone || options.timezone || QUEST_TIMEZONE_FALLBACK;
-    const start = startOfLocalDay(key, tz);
-    const end = endOfLocalDay(key, tz);
+    const { start, end } = questPeriodWindow(key, tz);
     if (typeof db.aiInteraction?.findMany !== 'function') return 0;
     const rows = await db.aiInteraction.findMany({
       where: {
@@ -245,11 +258,8 @@ async function loadProgressContext(db, userId, quests, options = {}) {
       dates.add(quest.periodKey);
     } else if (type === 'MEDI_DAILY_USE') {
       const tz = quest.metadata?.assignedTimezone || options.timezone || QUEST_TIMEZONE_FALLBACK;
-      mediWindows.push({
-        periodKey: quest.periodKey,
-        start: startOfLocalDay(quest.periodKey, tz),
-        end: endOfLocalDay(quest.periodKey, tz),
-      });
+      // Weekly Medi mission: any day of its ISO week counts (old daily rows keep their one day).
+      mediWindows.push({ periodKey: quest.periodKey, ...questPeriodWindow(quest.periodKey, tz) });
     }
   }
 
@@ -426,6 +436,10 @@ async function createAssignment(tx, { userId, template, periodKey, now, timezone
  *   - If the capability/goal returns within the same period, the CANCELLED
  *     quest is restored to ACTIVE with its original frozen target (and the
  *     original frozen hydration goalBasisMl).
+ *   - The Medi mission follows AI consent the same way (declined / revoked →
+ *     CANCELLED, accepted again in the same week → ACTIVE).
+ *   - An ACTIVE row of a template the owner retired (config.retired) is
+ *     CANCELLED for good, so it cannot pay next to its replacement.
  */
 export async function reconcileQuestEligibility(userId, options = {}) {
   const db = dbOf(options);
@@ -448,19 +462,43 @@ export async function reconcileQuestEligibility(userId, options = {}) {
 
   const stepQuests = rows.filter((row) => row.template?.progressType === 'STEPS');
   const hydroQuests = rows.filter((row) => row.template?.progressType === 'HYDRATION_GOAL_PERCENT');
+  const mediQuests = rows.filter((row) => row.template?.progressType === 'MEDI_DAILY_USE');
   const stepsUsable = stepQuests.length
     ? isUsableStepCapability(await loadStepCapabilityStatus(db, userId))
     : true;
   const hydrationGoal = hydroQuests.length ? await loadHydrationGoalMl(db, userId) : null;
+  const aiConsentAccepted = mediQuests.length ? await hasAcceptedAiConsent(userId, db) : true;
 
   let cancelled = 0;
   let restored = 0;
   for (const row of rows) {
     const type = row.template?.progressType;
-    const possible = type === 'STEPS' ? stepsUsable : type === 'HYDRATION_GOAL_PERCENT' ? hydrationGoal != null : true;
-    const cancelReason = type === 'STEPS' ? 'CAPABILITY_LOST' : 'HYDRATION_GOAL_REMOVED';
+    if (row.status === ACTIVE && row.template?.config?.retired === true) {
+      await db.userQuest.update({
+        where: { id: row.id },
+        data: {
+          status: 'CANCELLED',
+          metadata: sanitizeQuestJson({ ...(row.metadata || {}), cancelReason: 'TEMPLATE_RETIRED', cancelledAtPeriod: row.periodKey }),
+        },
+      });
+      cancelled += 1;
+      continue;
+    }
+    const gated = type === 'STEPS' || type === 'HYDRATION_GOAL_PERCENT' || type === 'MEDI_DAILY_USE';
+    const possible = type === 'STEPS'
+      ? stepsUsable
+      : type === 'HYDRATION_GOAL_PERCENT'
+        ? hydrationGoal != null
+        : type === 'MEDI_DAILY_USE'
+          ? aiConsentAccepted
+          : true;
+    const cancelReason = type === 'STEPS'
+      ? 'CAPABILITY_LOST'
+      : type === 'MEDI_DAILY_USE'
+        ? 'AI_CONSENT_MISSING'
+        : 'HYDRATION_GOAL_REMOVED';
 
-    if (row.status === ACTIVE && !possible && (type === 'STEPS' || type === 'HYDRATION_GOAL_PERCENT')) {
+    if (row.status === ACTIVE && !possible && gated) {
       await db.userQuest.update({
         where: { id: row.id },
         data: {
@@ -475,6 +513,7 @@ export async function reconcileQuestEligibility(userId, options = {}) {
     if (
       row.status === 'CANCELLED' &&
       possible &&
+      row.template?.config?.retired !== true &&
       row.metadata?.cancelReason === cancelReason &&
       isWithinReconciliation(row, clock.now)
     ) {
@@ -531,6 +570,8 @@ export async function assignDailyQuests(userId, date, options = {}) {
   const clock = await resolveClock(userId, options);
   const periodKey = date || clock.today;
   await ensureQuestTemplates(db);
+  const templates = await loadAssignableTemplates(db, 'DAILY', clock.now);
+  const aiConsentAccepted = await aiConsentForTemplates(db, userId, templates);
 
   return db.$transaction(async (tx) => {
     const profile = await ensureProfile(tx, userId, clock.timezone);
@@ -544,11 +585,10 @@ export async function assignDailyQuests(userId, date, options = {}) {
         .map((quest) => ({ ...quest, created: false, hopBlocked: true }));
     }
 
-    const templates = await loadAssignableTemplates(tx, 'DAILY', clock.now);
     const assigned = [];
     let createdAny = false;
     for (const template of templates) {
-      if (!(await isTemplateEligible(tx, userId, template))) continue;
+      if (!(await isTemplateEligible(tx, userId, template, aiConsentAccepted))) continue;
       const { quest, created, smartTrace } = await createAssignment(tx, {
         userId,
         template,
@@ -594,11 +634,12 @@ export async function assignWeeklyQuests(userId, week, options = {}) {
   const periodKey = week || clock.week;
   await ensureQuestTemplates(db);
   const templates = await loadAssignableTemplates(db, 'WEEKLY', clock.now);
+  const aiConsentAccepted = await aiConsentForTemplates(db, userId, templates);
 
   return db.$transaction(async (tx) => {
     const assigned = [];
     for (const template of templates) {
-      if (!(await isTemplateEligible(tx, userId, template))) continue;
+      if (!(await isTemplateEligible(tx, userId, template, aiConsentAccepted))) continue;
       const { quest, created, smartTrace } = await createAssignment(tx, {
         userId,
         template,
@@ -702,6 +743,8 @@ export async function updateQuestProgress(userId, spec = {}, options = {}) {
 
   const signals = options.signals;
   const relevant = quests.filter((quest) => {
+    // A retired template's leftover row never progresses (reconcile cancels it; otherwise it expires).
+    if (quest.template?.config?.retired === true) return false;
     if (spec.templateKey && quest.template?.key !== spec.templateKey) return false;
     if (Array.isArray(signals) && signals.length && !signals.includes(quest.template?.progressType)) {
       return false;
