@@ -1292,7 +1292,10 @@ export default async function cyclePage(root, ctx = {}) {
     else list.delete(start);
     const run = async () => {
       try {
-        setBundle(await put('/api/cycle/profile', { hiddenCycles: [...list].sort() }));
+        let nb = await put('/api/cycle/profile', { hiddenCycles: [...list].sort() });
+        // Saved, but the server could not reload the bundle (null): fetch it so the list shows the change.
+        if (!(nb?.profile && nb.predictions)) nb = await get('/api/cycle').catch(() => null);
+        setBundle(nb);
         if (isUndo) return;
         toast(hide ? t('ციკლი საშუალოდან დაიმალა', 'Cycle hidden from averages') : t('ციკლი საშუალოში დაბრუნდა', 'Cycle counted again'), 'ok', {
           ms: 6000,
