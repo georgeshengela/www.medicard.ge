@@ -139,7 +139,8 @@ app.use(
               scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'", 'https://api.mapbox.com', 'https://connect.facebook.net', 'https://www.googletagmanager.com', 'https://accounts.google.com', 'https://appleid.cdn-apple.com'],
               styleSrc: ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com', 'https://api.mapbox.com', 'https://accounts.google.com'],
               imgSrc: ["'self'", 'data:', 'blob:', 'https:'],
-              connectSrc: ["'self'", 'https:', 'ws:', 'wss:'],
+              // blob: three.js GLTFLoader fetches a model's embedded textures through blob URLs (/medirun 3D hero).
+              connectSrc: ["'self'", 'blob:', 'https:', 'ws:', 'wss:'],
               fontSrc: ["'self'", 'data:', 'https://fonts.gstatic.com'],
               mediaSrc: ["'self'", 'blob:'],
               workerSrc: ["'self'", 'blob:'],

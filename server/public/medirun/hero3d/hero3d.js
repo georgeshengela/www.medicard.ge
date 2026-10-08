@@ -72,9 +72,10 @@ async function start() {
     g.setAttribute('aP', new THREE.BufferAttribute(pathAttrib(pos, pts, segLen, total), 3));
     g.computeBoundingSphere();
     uniforms.map.value = o.material.map;
-    o.material.map.anisotropy = 4;
+    if (o.material.map) o.material.map.anisotropy = 4;
     cityMesh = new THREE.Mesh(g, cityMaterial(uniforms));
   });
+  if (!cityMesh || !uniforms.map.value) return;   // no texture (blocked fetch) → keep the poster
   world.add(cityMesh);
 
   // Soft light pool under the floating block.
