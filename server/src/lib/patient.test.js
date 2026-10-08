@@ -151,6 +151,27 @@ test('the food diary, diet and fasting ride only with a nutrition conversation; 
   assert.match(await ask({ question: 'and is that okay?', priorTurns: [{ role: 'user', content: 'How many calories did I eat today?' }] }), /ხაჭაპური/);
   assert.match(await ask({ question: 'რატომ არ მიკლებს წონა?' }), /ხაჭაპური/, 'a weight question is a nutrition conversation');
   assert.doesNotMatch(await ask({ question: 'წონასწორობას ვკარგავ, თავბრუ მეხვევა' }), /ხაჭაპური/);
+
+  // Everyday clinical phrasing that only looks like food or weight: „მომწონს“ (I like), „დამადასტურებელი“
+  // (confirming), lab protein, fasting labs, dose reduction. One such line in the chat would open the diary.
+  for (const notFood of [
+    'არ მომწონს ეს წამალი, გვერდითი ეფექტი მაქვს',
+    'მოსწონს ექიმს ეს ანალიზი?',
+    'მოეწონა ჩემს ექიმს, რომ ვარჯიშს დავიწყე',
+    'დამადასტურებელი ტესტი საჭიროა?',
+    'C-რეაქტიული ცილა მომატებულია',
+    'ცილა შარდში 0.3',
+    'My fasting glucose is 6.1',
+    'is fasting blood sugar of 110 high?',
+    'there is protein in my urine',
+    'დოზის დაკლება შეიძლება?',
+  ]) {
+    assert.doesNotMatch(await ask({ question: notFood }), /ხაჭაპური|vegetarian|მარხვ/, notFood);
+    assert.doesNotMatch(await ask({ question: 'თავი მტკივა', thread: [{ role: 'user', content: notFood }] }), /ხაჭაპური/, `thread: ${notFood}`);
+  }
+  for (const food of ['ავიწონე და 72 კგ ვარ', 'წონა მოვიმატე', 'მადა არ მაქვს', 'მადის დაკარგვა მაწუხებს', 'უმადობა მაქვს', 'ვჭამე და მერე გული მერევა', 'I am fasting 16:8, is that safe?', 'I lost my appetite']) {
+    assert.match(await ask({ question: food }), /ხაჭაპური/, food);
+  }
 });
 
 test('consultations that carried the cycle stay out while the cycle is withheld now', async t => {
@@ -188,6 +209,13 @@ test('consultations that carried the cycle stay out while the cycle is withheld 
   data.cycleProfile = { mode: 'TRACK_PERIOD', privacyEnabled: false };
   const open = await ask(true);
   for (const expected of [/შესაძლოა გასტრიტი/, /გაღიზიანებადობა/, /ციკლის მე-14/, /შებერილობა/, /მენსტრუაცია დამიგვიანდა/]) assert.match(open, expected);
+
+  // The other cycle modes speak their own words: perimenopause, menopause, postpartum.
+  const { consultationCarriesCycle } = await import('./patientHistoryContext.js');
+  for (const said of ['პერიმენოპაუზაში ვარ, ცხელი ტალღები მაქვს', 'კლიმაქსი დამეწყო', 'მშობიარობის შემდეგ მესამე კვირაა', 'perimenopause symptoms', 'menopause and sleep', 'postpartum, week 3', 'post-partum bleeding']) {
+    assert.equal(consultationCarriesCycle({ messages: [{ role: 'user', content: said }, { role: 'assistant', content: 'გასაგებია.', cycleContext: false }] }), true, said);
+  }
+  assert.equal(consultationCarriesCycle({ messages: [{ role: 'user', content: 'მუცელი მტკივა' }, { role: 'assistant', content: 'შესაძლოა გასტრიტი.', cycleContext: false }] }), false);
 
   // No cycle profile at all (men): nothing to protect, nothing filtered.
   data.cycleProfile = null;

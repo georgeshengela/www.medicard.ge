@@ -22,9 +22,6 @@ const TOOL_DOMAINS = {
   period_record: ['cycle'], cycle_record: ['cycle'], pregnancy_record: ['cycle'], cycle_settings: ['cycle'],
 };
 const EN_HISTORY = /\b(?:lab tests?|test results?|results?|diagnos\w*|history|earlier|everything|all (?:my )?data)\b/i;
-/** Nutrition words (ka / en). Also the clinical answer's gate for the MEDIFOOD diary (patientHistoryContext.js). */
-export const NUTRITION_WORDS_KA = /კვებ|კალორი|რაციო|დიეტ|ცილა|სადილ|საუზმ|ვახშ|დავიკლ|დაკლებ|დაკლო|წახემს/u;
-export const NUTRITION_WORDS_EN = /\b(?:food|meals?|calori\w*|diet|protein|breakfast|lunch|dinner|snack|ate|eat|nutrition)\b|\blose\b.*\b(?:kg|kilos?|weight)\b/i;
 /** No model is needed to classify a continuing task or clearly named domain. */
 export function assistantContextSelection({ scope, text, draft }) {
   if (scope === 'pet') return ['pets'];
@@ -34,7 +31,7 @@ export function assistantContextSelection({ scope, text, draft }) {
   const domains = new Set(TOOL_DOMAINS[draft?.tool] || []);
   const rules = [
     [/წამალ|მედიკამენტ|დოზა|იბუპროფენ/u, ['medications']],
-    [NUTRITION_WORDS_KA, ['nutrition']],
+    [/კვებ|კალორი|რაციო|დიეტ|ცილა|სადილ|საუზმ|ვახშ|დავიკლ|დაკლებ|დაკლო|წახემს/u, ['nutrition']],
     [/წყალ|ჰიდრატაცი/u, ['metrics']], [/წონა|კილო|კგ/u, ['profile', 'metrics', 'goals']],
     [/ნაბიჯ|სირბილ|გასეირნ/u, ['metrics', 'goals', 'activity']],
     [/ვიზიტ|ჩაწერილი ექიმ/u, ['visits']], [/ციკლ|მენსტრუ|ორსულ|პერიოდ/u, ['cycle']],
@@ -43,7 +40,7 @@ export function assistantContextSelection({ scope, text, draft }) {
     [/მედირან|medirun|medi run|აღმოჩენ/u, ['activity']],
     // English requests (the app in English).
     [/\b(?:medic\w*|pills?|dose|doses|ibuprofen|tablets?)\b/i, ['medications']],
-    [NUTRITION_WORDS_EN, ['nutrition']],
+    [/\b(?:food|meals?|calori\w*|diet|protein|breakfast|lunch|dinner|snack|ate|eat|nutrition)\b|\blose\b.*\b(?:kg|kilos?|weight)\b/i, ['nutrition']],
     [/\b(?:water|drank|hydrat\w*)\b/i, ['metrics']], [/\b(?:weight|weigh|kg|kilos?)\b/i, ['profile', 'metrics', 'goals']],
     [/\b(?:steps?|walk\w*|run|running)\b/i, ['metrics', 'goals', 'activity']],
     [/\b(?:visits?|appointments?|doctor)\b/i, ['visits']], [/\b(?:cycle|period|menstrua\w*|pregnan\w*)\b/i, ['cycle']],

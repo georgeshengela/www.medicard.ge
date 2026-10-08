@@ -8,7 +8,6 @@
  * no notes / addresses / doctor names / image URLs / meal photos.
  */
 import { nutritionDashboard } from './nutritionProgramStore.js';
-import { NUTRITION_WORDS_EN, NUTRITION_WORDS_KA } from './assistantFlow.js';
 
 const RECORD_DAYS = 180;
 const DOSE_DAYS = 14;
@@ -105,10 +104,14 @@ export function buildAdherenceBlock(schedules, events, today) {
 }
 
 /**
- * The planner's nutrition words plus eating, appetite, fasting and weight (the block carries the weight goal).
- * „წონასწორობა“ (balance) is not weight.
+ * Food talk: the planner's nutrition words (assistantFlow.js) plus eating, appetite, fasting and weight (the block
+ * carries the weight goal), narrowed so that everyday clinical phrasing does not open the diary: a false match
+ * sends disclosure-scoped data, a miss only loses some grounding. Not food: „მომწონს / მოსწონს / მოწონება“ (like),
+ * „დამადასტურებელი“ (confirming), „წონასწორობა“ (balance), lab protein („ცილა შარდში“, „protein in urine“),
+ * fasting labs („fasting glucose“), „დოზის დაკლება“ (dose reduction).
  */
-const NUTRITION_TALK = /ჭამ|საკვებ|მარხვ|მადა|წონ(?!ასწორ)|\b(?:eating|fasting|appetite|hungry|weight)\b/iu;
+const NUTRITION_TOPIC_KA = /კვებ|კალორი|რაციონ|დიეტ|სადილ|საუზმ|ვახშ|წახემს|დავიკლ|ჭამ|საკვებ|მარხვ|(?<!\p{L})მად[აი]|უმადო|(?:(?<!\p{L})|(?<!მო)[აი])წონ(?!ასწორ)/u;
+const NUTRITION_TOPIC_EN = /\b(?:food|meals?|calori\w*|diet\w*|breakfast|lunch|dinner|snacks?|ate|eat|eating|nutrition|appetite|hungry|weight)\b|\bfasting\b(?!\s+(?:blood|glucose|sugar|insulin|lipids?|labs?|tests?|panel))|\blose\b.*\b(?:kg|kilos?)\b/i;
 
 /**
  * AI disclosure category 8: meals, targets, weight goal, diet and fasting go to the AI only „Medi-სთან კვების
@@ -117,7 +120,7 @@ const NUTRITION_TALK = /ჭამ|საკვებ|მარხვ|მად�
  */
 export function conversationMentionsNutrition({ question, thread, priorTurns } = {}) {
   const said = [question, ...[...asArray(thread), ...asArray(priorTurns)].filter((t) => t?.role === 'user').map((t) => t.content)];
-  return said.some((text) => typeof text === 'string' && (NUTRITION_WORDS_KA.test(text) || NUTRITION_WORDS_EN.test(text) || NUTRITION_TALK.test(text)));
+  return said.some((text) => typeof text === 'string' && (NUTRITION_TOPIC_KA.test(text) || NUTRITION_TOPIC_EN.test(text)));
 }
 
 /**
@@ -153,8 +156,11 @@ export function buildNutritionBlock(d, { topic = true } = {}) {
   return ['კვება და წონა (MEDIFOOD; მხოლოდ ჩაწერილი კვება ითვლება — ჩაუწერელი უცნობია):', ...lines].join('\n');
 }
 
-/** Cycle words and the registry-protected fields (flow, fertility, pregnancy, discharge, sex, contraception, BBT). */
-const CYCLE_TALK = /ციკლ|მენსტრუ|თვიურ|ოვულაც|ფოლიკულ|ლუთე|ნაყოფიერ|ორსულ|პმს|სისხლდენ|გამონადენ|ლიბიდო|სექს|კონტრაცეპ|\b(?:cycles?|periods?|menstru\w*|ovulat\w*|follicular|luteal|fertil\w*|pregnan\w*|pms|spotting|discharge|libido|sex\w*|contracept\w*|bbt)\b/iu;
+/**
+ * Cycle words, the other cycle modes (perimenopause, menopause, postpartum) and the registry-protected fields
+ * (flow, fertility, pregnancy, discharge, sex, contraception, BBT).
+ */
+const CYCLE_TALK = /ციკლ|მენსტრუ|თვიურ|ოვულაც|ფოლიკულ|ლუთე|ნაყოფიერ|ორსულ|პმს|სისხლდენ|გამონადენ|ლიბიდო|სექს|კონტრაცეპ|მენოპაუზ|კლიმაქს|მშობიარ|\b(?:cycles?|periods?|menstru\w*|ovulat\w*|follicular|luteal|fertil\w*|pregnan\w*|pms|spotting|discharge|libido|sex\w*|contracept\w*|bbt|(?:peri|post)?menopaus\w*|post-?partum)\b/iu;
 
 /**
  * May this earlier consultation hold cycle details? Yes when a turn was answered with her cycle diary or staged
