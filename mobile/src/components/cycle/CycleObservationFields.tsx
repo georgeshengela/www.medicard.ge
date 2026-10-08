@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 import { StyleSheet, Text, TextInput, View } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import { Check, X } from 'lucide-react-native';
-import { CycleIconRow, CycleIconTile, levelLabel } from '@/components/cycle/CycleIconTile';
+import { CycleIconRow, CycleIconTile, CycleTileGrid, levelLabel } from '@/components/cycle/CycleIconTile';
 import { CycleLevelTiles } from '@/components/cycle/CycleModeTiles';
 import { usePainCoachMark } from '@/components/cycle/usePainCoachMark';
 import type { CycleCustomTag, CyclePainEntry, CyclePainSeverity, CyclePainType } from '@/lib/api';
@@ -131,10 +131,10 @@ export function CyclePainEditor({
           renderTile={({ id }) => tile(id)}
         />
       ) : (
-        <View style={{ flexDirection: 'row', flexWrap: 'wrap', columnGap: gap, rowGap: 12 }}>
+        <CycleTileGrid minGap={gap}>
           {typeOptions.map(tile)}
           {trailing}
-        </View>
+        </CycleTileGrid>
       )}
       {pillFor ? (
         <PainStrengthPill

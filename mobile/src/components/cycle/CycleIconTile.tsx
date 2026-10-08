@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View, type LayoutChangeEvent, type StyleProp, type ViewStyle } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import { SvgXml } from 'react-native-svg';
 import { Check } from 'lucide-react-native';
@@ -165,10 +165,37 @@ export function CycleMoreTile({ count, onPress, label }: { count: number; onPres
 }
 
 /**
+ * Column gap that spreads tiles over the whole width: as many 70 pt columns as fit with at least
+ * `minGap` between them, the spare width shared out evenly. Every row of a card then sits on the same
+ * columns, and a short row („ყველაფერი რიგზეა“ + two symptoms) keeps the same airy spacing instead of
+ * huddling on the left with its two-line labels touching (owner 2026-10-08).
+ */
+export function tileGridGap(width: number, minGap: number): number {
+  if (!(width > 0)) return minGap;
+  const cols = Math.max(1, Math.floor((width + minGap) / (TILE_W + minGap)));
+  if (cols < 2) return minGap;
+  return Math.max(minGap, Math.floor(((width - cols * TILE_W) / (cols - 1)) * 2) / 2);
+}
+
+/** A wrapping grid of tiles that measures itself and spreads them with `tileGridGap`. */
+export function CycleTileGrid({ minGap = 2, style, children }: { minGap?: number; style?: StyleProp<ViewStyle>; children: React.ReactNode }) {
+  const [width, setWidth] = useState(0);
+  const onLayout = (e: LayoutChangeEvent) => {
+    const w = e.nativeEvent.layout.width;
+    if (Math.abs(w - width) > 0.5) setWidth(w);
+  };
+  return (
+    <View onLayout={onLayout} style={[s.row, style, { columnGap: tileGridGap(width, minGap) }]}>
+      {children}
+    </View>
+  );
+}
+
+/**
  * A row of tiles: the first `visible` ones (plus every selected one, so an edited day never hides what
  * it holds) and a „+N“ tile; tapping it unfolds the whole group as a wrapped grid (same tiles, same
- * order). Rendering is left to `renderTile` so rows stay dumb. `gap` is the column gap: 0 lets five
- * 70 pt tiles share a 350 pt card.
+ * order). Rendering is left to `renderTile` so rows stay dumb. `gap` is the smallest column gap; the
+ * grid spreads the tiles over the full width (0 lets five 70 pt tiles share a 350 pt card).
  */
 export function CycleIconRow<T extends { id: string }>({
   items,
@@ -189,12 +216,12 @@ export function CycleIconRow<T extends { id: string }>({
   const folded = foldTiles(items, visible, isSelected ?? (() => false));
   const shown = expanded ? items : folded.shown;
   return (
-    <View style={[s.row, { columnGap: gap }]}>
+    <CycleTileGrid minGap={gap}>
       {shown.map((item) => (
         <React.Fragment key={item.id}>{renderTile(item)}</React.Fragment>
       ))}
       {!expanded && folded.hidden > 0 ? <CycleMoreTile count={folded.hidden} onPress={() => setExpanded(true)} /> : null}
-    </View>
+    </CycleTileGrid>
   );
 }
 
