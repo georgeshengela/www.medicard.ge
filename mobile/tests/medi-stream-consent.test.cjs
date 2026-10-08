@@ -12,8 +12,14 @@ const ts = require('typescript');
 // The stream now reads server errors the way every other request does (noteApiErrorSignals).
 
 const root = path.resolve(__dirname, '..');
+// Any property is another no-op; calling returns undefined; never a thenable.
+const inert = new Proxy(function inert() {}, { get: (target, key) => (key === 'then' || key === '__esModule' ? undefined : inert), apply: () => undefined });
 
-/** tests/helpers/loadTs.cjs plus `module` (rateLimitCopy.js is CommonJS) and the network globals the real api.ts request path needs. */
+/**
+ * tests/helpers/loadTs.cjs plus `module` (rateLimitCopy.js is CommonJS), the network globals the real api.ts
+ * request path needs, and an inert stub for any other package api.ts may import later (so a new import there
+ * does not break this test); repo files still load for real.
+ */
 function loader(mocks, globals) {
   const cache = new Map();
   function load(file) {
@@ -31,7 +37,8 @@ function loader(mocks, globals) {
           const found = [base, base + '.ts', base + '.js'].find((p) => fs.existsSync(p) && fs.statSync(p).isFile());
           if (found) return load(found);
         }
-        throw Error('Unmocked dependency: ' + name);
+        if (base) throw Error('Unmocked dependency: ' + name);
+        return inert;
       },
       console, Date, Promise, Map, Set, setTimeout, clearTimeout, ...globals,
     }, { filename: full });

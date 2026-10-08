@@ -236,7 +236,8 @@ export function MediChat({ owner, sessionId, startConsilium, directDoctor, prefi
       if (isAiConsentDeclined(err)) {
         // Nothing was sent (consent runs before the request): a calm line and a retry, never an error.
         setRetry({ value, route: mode, fromVoice }); setNotice(aiConsentDeclinedText());
-      } else if (err instanceof ApiError && err.isQuotaExceeded) {
+      } else if (err instanceof ApiError && err.isQuotaExceeded && focused.current) {
+        // The limit sheet only over Medi itself; under another screen the message and „ხელახლა ცდა“ wait below.
         setQuotaBlock(err.usage?.resetsInMs);
         if (err.usage) applyUsage(err.usage);
       } else {

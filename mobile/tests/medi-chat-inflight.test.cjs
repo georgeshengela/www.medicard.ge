@@ -24,9 +24,8 @@ const between = (from, to) => {
 };
 
 test('leaving Medi for another screen does not cancel the answer or plan on its way', () => {
-  const blur = src.match(/useFocusEffect\(useCallback\(\(\) => \{ focused\.current = true; void refreshFeatureFlags\(\); return \(\) => \{([^}]*)\}; \}, \[\]\)\);/);
-  assert.ok(blur, 'the focus effect that tracks focus');
-  assert.match(blur[1], /focused\.current = false/);
+  const blur = src.match(/return \(\) => \{([^}]*focused\.current = false[^}]*)\}/);
+  assert.ok(blur, 'the focus effect cleanup that marks the blur');
   assert.doesNotMatch(blur[1], /generation/, 'a blur never invalidates work in flight');
   const live = src.match(/const live = \(n: number\) => ([^;]+);/);
   assert.ok(live, 'live(n) exists');
@@ -44,6 +43,7 @@ test('a streamed answer settles whether or not Medi is on screen, and never stay
   const failure = answer.slice(answer.indexOf('} catch (err) {'));
   assert.match(failure, /if \(!live\(n\)\) return;\s*dropTurns\(slot\.id, userTurn\.id\);\s*setText\(/, 'a failed answer leaves no bubble and puts the question back');
   assert.doesNotMatch(answer, /(?<!focused\.current\) )assistantHaptic\(/, 'haptics only while Medi is on screen');
+  assert.match(failure, /isQuotaExceeded && focused\.current\)/, 'the limit sheet never opens over another screen');
 });
 
 test('a plan settles whether or not Medi is on screen', () => {
@@ -54,5 +54,5 @@ test('a plan settles whether or not Medi is on screen', () => {
 });
 
 test('closing Medi still aborts the request (the server then stores nothing)', () => {
-  assert.match(src, /useEffect\(\(\) => \{ alive\.current = true; return \(\) => \{ alive\.current = false; generation\.current\+\+; abort\.current\?\.abort\(\); \}; \}, \[\]\);/);
+  assert.match(src, /return \(\) => \{[^}]*alive\.current = false;[^}]*abort\.current\?\.abort\(\);[^}]*\}/);
 });

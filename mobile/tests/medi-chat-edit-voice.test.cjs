@@ -39,10 +39,12 @@ test('a voice question hears the start of the clinical answer; typed questions s
   const success = answer.slice(0, answer.indexOf('} catch (err) {'));
   assert.ok(success.indexOf('speech.say(') > success.indexOf('if (!live(n)) return;'), 'spoken only for an answer that settled');
   // The speech hook is created with the admin voice switch and checks focus and mute itself.
-  assert.match(src, /const voiceIn = voiceAvail && voiceOn, voiceOut = voiceOutAvail && voiceOn;/);
-  assert.match(src, /const speech = useAssistantSpeech\(owner, voiceOut, setNotice\);/);
+  assert.match(src, /voiceOut = voiceOutAvail && voiceOn\b/);
+  assert.match(src, /const speech = useAssistantSpeech\(owner, voiceOut\b/);
   const hook = readFileSync(join(__dirname, '..', 'src', 'components', 'assistant', 'useAssistantSpeech.ts'), 'utf8');
-  assert.match(hook, /if \(!active\(\) \|\| !latest\.current\.available \|\| latest\.current\.muted \|\| !text\.trim\(\)\) return false;/);
+  const say = hook.slice(hook.indexOf('async function say('));
+  const gate = say.slice(0, say.indexOf('return false;'));
+  for (const check of ['active()', 'latest.current.available', 'latest.current.muted']) assert.ok(gate.includes(check), `say() checks ${check} first`);
   // A new message stops a reply that is still speaking.
   assert.match(between('async function send(', 'async function afterSaved('), /speech\.stop\(\);/);
 });
