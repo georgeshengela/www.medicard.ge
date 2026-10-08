@@ -80,3 +80,9 @@ test('a long answer is cut at a whole sentence and says the rest is on screen', 
   assert.match(long, /…\s+სრული პასუხი ეკრანზეა\.$/);
   assert.equal(spokenAnswer('', 600, false), '');
 });
+
+test('a table reads as its rows, and a short answer ending in „…“ is not said to continue on screen', () => {
+  const table = '## შედეგი\n| მაჩვენებელი | შედეგი |\n|:---|---:|\n| ჰემოგლობინი | 13.5 |\n\nნორმაშია.';
+  assert.equal(spokenAnswer(table, 600, false), 'შედეგი. მაჩვენებელი შედეგი. ჰემოგლობინი 13.5. ნორმაშია.');
+  assert.equal(spokenAnswer('Drink water and rest…', 600, true), 'Drink water and rest…');
+});

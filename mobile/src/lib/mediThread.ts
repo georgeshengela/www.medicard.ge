@@ -105,8 +105,9 @@ export function spokenAnswer(text: string, limit = SPOKEN_ANSWER_LIMIT, en: bool
       .replace(/^\s{0,3}#{1,6}\s+/, '')
       .replace(/^\s*(?:[-*+•]|\d+[.)])\s+/, '')
       .replace(/^\s*>\s?/, '')
-      .replace(/^\s*-{3,}\s*$/, '')
       .replace(/[*_`~|]+/g, '')
+      // A rule or a table's |---|:---:| line says nothing aloud.
+      .replace(/^[\s:-]*-{3,}[\s:-]*$/, '')
       .replace(/\s+/g, ' ')
       .trim())
     .filter(Boolean)
@@ -122,12 +123,15 @@ export function spokenAnswer(text: string, limit = SPOKEN_ANSWER_LIMIT, en: bool
   }
   spoken = spoken.trim();
   if (!spoken) return '';
+  let cut = false;
   if (spoken.length > limit) {
     // One very long first sentence: stop at a word boundary.
-    const cut = spoken.slice(0, limit);
-    spoken = `${cut.slice(0, Math.max(cut.lastIndexOf(' '), Math.floor(limit / 2))).trim()}…`;
+    const head = spoken.slice(0, limit);
+    spoken = `${head.slice(0, Math.max(head.lastIndexOf(' '), Math.floor(limit / 2))).trim()}…`;
+    cut = true;
   }
-  const more = spoken.endsWith('…') || plain.length > spoken.length;
+  // Only when text was really left out (an answer that itself ends in „…“ was read in full).
+  const more = cut || plain.length > spoken.length;
   return more ? `${spoken} ${en ? 'The full answer is on screen.' : 'სრული პასუხი ეკრანზეა.'}` : spoken;
 }
 
