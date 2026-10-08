@@ -33,7 +33,7 @@ export const FEATURE_LABELS: Record<FeatureKey, string> = {
   nutrition: tx('კვება', 'Nutrition'),
   nutritionAi: tx('კვების AI', 'Nutrition AI'),
   medi: 'Medi',
-  mediDoctor: tx('Medi · ექიმთან', 'Medi · Doctor'),
+  mediDoctor: tx('Medi · კონსულტაცია', 'Medi · Consultation'),
   mediDeep: tx('Medi · ღრმა ანალიზი', 'Medi · Deep analysis'),
   symptoms: tx('სიმპტომების შემოწმება', 'Symptom check'),
   imaging: tx('რენტგენი, CT და MRI', 'X-ray, CT and MRI analysis'),

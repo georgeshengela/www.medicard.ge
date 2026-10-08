@@ -16,7 +16,7 @@ import { onboardingScreenBlocked, onboardingStepHref, useOnboardingDevPreview } 
 import { useAuth } from '@/store/AuthContext';
 import { tx } from '@/i18n/locale';
 
-/** Explicit AI permission — after notifications, before any onboarding analysis. */
+/** Explicit AI permission — voluntary, never pre-accepted, before any AI request. */
 export default function ProfileSetupAiPrivacyScreen() {
   const router = useRouter();
   const preview = useOnboardingDevPreview();

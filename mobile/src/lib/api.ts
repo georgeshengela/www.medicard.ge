@@ -2690,16 +2690,6 @@ export const api = {
         method: 'POST',
         body,
       }),
-    onboardingAnalysis: (opts?: { force?: boolean }) =>
-      request<{
-        analysis: import('@/types/onboardingAnalysis').OnboardingAnalysis;
-        profile: HealthProfile;
-        cached: boolean;
-      }>('/api/health-profile/onboarding-analysis', {
-        method: 'POST',
-        body: { force: Boolean(opts?.force) },
-        timeoutMs: 120_000,
-      }),
   },
 
   account: {

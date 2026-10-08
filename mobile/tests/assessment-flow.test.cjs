@@ -49,3 +49,13 @@ test('conditional questions appear only after yes and stored indices stay stable
   assert.equal(types({}).includes('body-type'), false);
   assert.equal(ACTIVE_ASSESSMENT_STEPS[5].type, 'body-type');
 });
+test('the last onboarding step sends nothing to AI and shows no health score (2026-10-08)', () => {
+  const { readFileSync, existsSync } = require('node:fs');
+  const { join } = require('node:path');
+  const root = join(__dirname, '..');
+  const analyzing = readFileSync(join(root, 'app', '(auth)', 'profile-setup', 'analyzing.tsx'), 'utf8');
+  assert.doesNotMatch(analyzing, /onboardingAnalysis|from '@\/lib\/api'/);
+  assert.match(analyzing, /finishOnboarding\(healthProfile, user\)/);
+  assert.doesNotMatch(readFileSync(join(root, 'src', 'lib', 'api.ts'), 'utf8'), /onboarding-analysis/);
+  assert.equal(existsSync(join(root, 'app', '(auth)', 'profile-setup', 'results.tsx')), false, 'the score page stays removed');
+});

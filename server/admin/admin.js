@@ -2510,7 +2510,7 @@ async function viewPushCampaign(id) {
 }
 
 const AI_MODE_LABELS = {
-  DOCTOR: 'Medi · ექიმთან',
+  DOCTOR: 'Medi · კონსულტაცია',
   CONSILIUM: 'Medi · ღრმა ანალიზი',
   SYMPTOM_CHECKER: 'სიმპტომების შემოწმება',
   LAB: 'ლაბორატორიული ანალიზი',
