@@ -23,6 +23,7 @@ import { api, ApiError, type CycleBundle } from '@/lib/api';
 import { isCyclePrivacyLockEnabled, setCyclePrivacyLockEnabled, getCycleReminderPrefs } from '@/lib/cycleReminderPrefs';
 import { syncCycleReminders } from '@/lib/cycleReminders';
 import { putCycleBundle } from '@/lib/cycleViewCache';
+import { cycleModeCapabilities } from '@/lib/cycleModes';
 import { useCycleColors } from '@/theme/cycle';
 import { SettingsDivider, SettingsNotice, SettingsRowSwitch, useCycleSettingsView, type CycleColors } from './CycleSettingsKit';
 
@@ -165,6 +166,7 @@ export function CyclePrivacySettings() {
             c={c}
             share={bundle?.partnerShare ?? null}
             fallbackCode={bundle?.profile.partnerShareCode ?? null}
+            paused={Boolean(bundle) && !cycleModeCapabilities(bundle?.profile.mode).showNextPeriodForecast}
             onCreate={() => void toggleShare(true)}
             onStop={() => void toggleShare(false)}
             onShare={(code) => void shareLink(code)}
@@ -194,6 +196,7 @@ function PartnerShareCard({
   c,
   share,
   fallbackCode,
+  paused,
   onCreate,
   onStop,
   onShare,
@@ -202,6 +205,8 @@ function PartnerShareCard({
   c: CycleColors;
   share: CycleBundle['partnerShare'] | null;
   fallbackCode: string | null;
+  /** Pregnancy / postpartum: the partner's page shows nothing until she tracks her cycle again. */
+  paused: boolean;
   onCreate: () => void;
   onStop: () => void;
   onShare: (code: string) => void;
@@ -234,6 +239,9 @@ function PartnerShareCard({
               <Text style={{ color: c.mutedSoft, fontSize: 11.5, marginTop: 6 }} selectable numberOfLines={1}>
                 medicard.ge/share/cycle/{code}
               </Text>
+            ) : null}
+            {paused ? (
+              <Text style={{ color: c.muted, fontSize: 12, lineHeight: 17, marginTop: 6 }}>{ka.cycle.partnerSharePausedOwner}</Text>
             ) : null}
           </View>
 

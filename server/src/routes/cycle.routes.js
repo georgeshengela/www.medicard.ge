@@ -110,6 +110,8 @@ import {
   applyForecastEligibilityToPredictions,
   applyForecastEligibilityToTodayPhase,
   evaluateForecastEligibility,
+  FORECAST_ELIGIBILITY_REASON,
+  FORECAST_GATE_KIND_POSTPARTUM_RETURN,
   forecastGateProfilePatch,
   omitForecastGateFromProfile,
   publicForecastEligibility,
@@ -1655,6 +1657,33 @@ cycleRouter.post(
   }),
 );
 
+/**
+ * Her POSTPARTUM_RETURN gate as her own view applies it (CYC-02): back in cycle tracking after a birth,
+ * nothing is forecast until two cycles were logged since. Read only — the partner GET never reconciles
+ * (writes) her classifications; a read error counts as „still gathering“, so the partner view stays paused.
+ */
+async function ownerPostpartumReturnPending(ownerUserId, profile, prefs) {
+  if (profile?.forecastGateKind !== FORECAST_GATE_KIND_POSTPARTUM_RETURN) return false;
+  let classifications = [];
+  if (profile.forecastGateEpisodeId) {
+    try {
+      classifications = await prisma.cyclePostpartumBleedClassification.findMany({
+        where: { userId: ownerUserId, postpartumEpisodeId: profile.forecastGateEpisodeId },
+      });
+    } catch {
+      classifications = [];
+    }
+  }
+  const eligibility = evaluateForecastEligibility({
+    forecastGateKind: profile.forecastGateKind,
+    forecastGateEpisodeId: profile.forecastGateEpisodeId,
+    classifications,
+    mode: profile.mode,
+    expectsBleeding: prefs?.expectsBleeding !== false,
+  });
+  return eligibility.reason === FORECAST_ELIGIBILITY_REASON.POSTPARTUM_HISTORY_INSUFFICIENT;
+}
+
 cycleRouter.get(
   '/share/:code',
   asyncHandler(async (req, res) => {
@@ -1722,6 +1751,8 @@ cycleRouter.get(
         hideFertility:
           ownerContraception.presentation.showFertileWindow === false
           || ownerContraception.presentation.fertilityDisplay?.effective === 'off',
+        // Pregnancy / postpartum pause the partner view in buildPartnerPayload; so does the return gate.
+        postpartumReturnPending: await ownerPostpartumReturnPending(share.ownerUserId, profile, ownerPrefs),
       },
     });
     securityShareLog('peek_ok', { partner: true });

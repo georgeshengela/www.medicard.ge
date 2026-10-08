@@ -830,6 +830,11 @@ export type CyclePartnerShare = {
 export type CyclePartnerPayload = {
   estimated: true;
   permissions: CycleSharePermissions;
+  /**
+   * Her mode shows no cycle right now (pregnancy, postpartum, or right after a birth): nothing else is
+   * sent and the mode is never named (server 2026-10-08+; older servers never send it).
+   */
+  paused?: boolean;
   period?: {
     inPeriod: boolean;
     inPeriodEstimated?: boolean;
