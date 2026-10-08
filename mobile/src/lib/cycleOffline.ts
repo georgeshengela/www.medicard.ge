@@ -1,7 +1,7 @@
 import { Platform } from 'react-native';
 import * as SecureStore from 'expo-secure-store';
 import { tx } from '../i18n/locale.js';
-import { api, ApiError, type CycleBundle } from '@/lib/api';
+import { api, ApiError, type CycleBundle, type CycleLog } from '@/lib/api';
 import {
   deletePreference,
   getPreference,
@@ -21,6 +21,7 @@ import {
   emptyAccount,
   emptyStore,
   enqueueMutation,
+  hasObservationExtras,
   overlayPendingOnBundle,
   parseOfflineStore,
   planQueuedLogMutations,
@@ -40,6 +41,7 @@ import {
   generateDekBytes,
   migratePlaintextToEncrypted,
 } from './cycleOfflineCrypto';
+import { lastPeriodToRestore, periodStartUndoDay, type PeriodStartUndo } from './cyclePeriodStatus';
 
 export type CycleSyncState =
   | 'synced'
@@ -595,6 +597,49 @@ export async function queueApplyPeriod(
       payload: { start: body.start, end: body.end, flow: body.flow ?? 'medium' },
     },
   ]);
+}
+
+/**
+ * Undo of the one-tap „მენსტრუაცია დაიწყო“ (CYC-04; the plan comes from `periodStartUndo`, captured at
+ * the tap): today's row goes back exactly as it was through the normal queue, then — once that has
+ * synced — the last period start she had before the tap is written back if the server lost it. Offline
+ * the day is still restored (queued); the start is not, because the queued writes must reach the server
+ * first. Null = nothing to undo (bleeding was already logged, the start changed nothing).
+ * `current` = the day's row as shown when Undo is tapped: notes saved since the tap are never deleted.
+ */
+export async function undoQueuedPeriodStart(
+  userId: string,
+  date: string,
+  undo: PeriodStartUndo,
+  current?: CycleLog | null,
+): Promise<PersistResult | null> {
+  const row = (current ?? null) as Record<string, unknown> | null;
+  const day = periodStartUndoDay(undo, Boolean(row) && (hasObservationExtras(row) || row?.sexualActivity != null));
+  if (day.kind === 'keep') return null;
+  const result =
+    day.kind === 'removeLog'
+      ? await queueRemoveCycleLog(userId, date)
+      : await saveCycleObservation(userId, date, { flow: day.flow });
+  if (!result.synced || !result.view) return result;
+  const restore = lastPeriodToRestore(undo, result.view.canonical.profile.lastPeriodStart);
+  if (!restore) return result;
+  try {
+    const bundle = await api.cycle.setLastPeriod(restore);
+    // A partial fallback body (the server could not build the bundle): keep the day's view, the write
+    // itself invalidates the cycle queries.
+    if (!bundle || !Array.isArray(bundle.logs)) return result;
+    try {
+      await cacheCycleBundle(userId, bundle);
+    } catch {
+      /* Device queue is broken; the server write already succeeded. */
+    }
+    const view = viewFromLiveBundle(bundle);
+    void import('@/lib/cycleViewCache').then(({ putCycleView }) => putCycleView(userId, view)).catch(() => undefined);
+    return { view, synced: true, persistedLocally: false };
+  } catch {
+    // The day is back; the start shows what the logs say until she sets it again in cycle settings.
+    return result;
+  }
 }
 
 export async function loadCycleView(userId: string): Promise<CycleView> {

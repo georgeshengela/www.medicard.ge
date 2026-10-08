@@ -658,8 +658,8 @@ export function lastLoggedBleedDay(inferred) {
 
 /**
  * Keep onboarding/profile start when logs have no confirmed bleed run.
- * `touched` = dates changed in this request: a stored start on a touched date that no longer has a
- * bleed log is stale (its log was deleted or edited) and falls back to what the logs say.
+ * `touched` = dates on which this request removed logged bleeding (`lastPeriodTouches`): a stored start
+ * on such a date that no longer has a bleed log is stale and falls back to what the logs say.
  */
 export function pickLastPeriodStart(
   current,
@@ -674,6 +674,19 @@ export function pickLastPeriodStart(
     touched.includes(current) &&
     !logs.some((l) => toDateKey(l.date) === current && PERIOD_FLOWS.includes(l.flow));
   return resolveLastPeriodStart(stale ? null : current, inferred.lastPeriodStart, lastLoggedBleedDay(inferred));
+}
+
+/**
+ * The `touched` list for one day's write: `[date]` only when logged bleeding was removed from it
+ * (light / medium / heavy → none, spotting, empty or a deleted row). A save or delete that never had
+ * bleeding — a mood, sex, notes on the start date she gave in onboarding (POST /last-period stores no
+ * log row) — must not erase that start and send her back to cycle setup (CYC-01).
+ * `nextFlow` undefined = flow not sent (the row keeps its flow); pass null for a deleted row.
+ */
+export function lastPeriodTouches(date, previousFlow, nextFlow) {
+  if (!date || !isPeriodFlow(previousFlow)) return [];
+  if (nextFlow === undefined || isPeriodFlow(nextFlow)) return [];
+  return [date];
 }
 
 /**
