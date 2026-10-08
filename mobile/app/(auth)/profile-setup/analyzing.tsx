@@ -12,7 +12,7 @@ import { tx } from '@/i18n/locale';
 import { api } from '@/lib/api';
 import { authErrorMessage } from '@/lib/authErrorMessage';
 import { reportError } from '@/lib/errorReporter';
-import { finishRetryDelay } from '@/lib/onboarding';
+import { finishRetryDelay, keepLocalAnswers } from '@/lib/onboarding';
 import { useOnboardingDevPreview, onboardingScreenBlocked } from '@/lib/onboardingDevPreview';
 import { useAnimatedProgress } from '@/hooks/useAnimatedProgress';
 import { finishOnboarding } from '@/lib/profileSetupFlow';
@@ -89,8 +89,9 @@ export default function ProfileSetupAnalyzingScreen() {
       if (extraAnswers.aiPrivacyDecision === 'accepted' && !analysisTried.current) {
         analysisTried.current = true;
         try {
+          // The server's copy below lacks answers kept only in memory (a step whose own save failed).
           const res = await api.healthProfile.onboardingAnalysis({ force });
-          profile = res.profile;
+          profile = keepLocalAnswers(res.profile, healthProfile);
           setHealthProfile(profile);
         } catch {
           // score page is skipped — still mark onboarding done

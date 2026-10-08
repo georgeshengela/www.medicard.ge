@@ -92,6 +92,8 @@ test('onboarding never dead-ends: a way out on every step, on the policy decline
   assert.match(notifications, /withExtraAnswers\(healthProfile, \{ notificationsEnabled: osGranted \}\)/);
   const analyzing = read('app/(auth)/profile-setup/analyzing.tsx');
   assert.match(analyzing, /finishRetryDelay\(e, failures\)/);
+  // The AI analysis answer is the server's copy: answers kept only in memory must survive it.
+  assert.match(analyzing, /profile = keepLocalAnswers\(res\.profile, healthProfile\)/);
   assert.match(analyzing, /onPress=\{retry\}/);
   assert.match(analyzing, /<OnboardingExitLinks/);
 });

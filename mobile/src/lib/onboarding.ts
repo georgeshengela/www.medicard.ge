@@ -27,20 +27,30 @@ export function withExtraAnswers(profile: HealthProfile, patch: Record<string, u
   return { ...profile, extraAnswers: { ...extraOf(profile), ...patch } };
 }
 
+/**
+ * A profile the server just sent back (e.g. the onboarding AI analysis), keeping answers that so far
+ * live only in memory (withExtraAnswers above), so the final save still sends them. Where both have
+ * a value, the server's wins.
+ */
+export function keepLocalAnswers(server: HealthProfile, local: HealthProfile | null | undefined): HealthProfile {
+  return { ...server, extraAnswers: { ...extraOf(local), ...extraOf(server) } };
+}
+
 /** Automatic retries of the last onboarding save (the „preparing your profile“ screen). */
 export const FINISH_RETRY_DELAYS_MS = [1500, 4000] as const;
 
 /**
  * Delay before automatic retry number `failures` of the last onboarding save, or null to stop and
- * show the error with a retry button. Only a dropped connection, a timeout, rate limiting or a
- * server error can pass on its own; any other 4xx (session ended, validation) never will, and
- * the count is bounded, so this never loops.
+ * show the error with a retry button. Only a dropped connection, rate limiting or a server error
+ * can pass on its own; any other 4xx (session ended, validation) never will, and the count is
+ * bounded, so this never loops. A timeout (408) is not retried on its own: the request already
+ * waited its whole timeout (3 min for these saves), so the person sees the error at once.
  */
 export function finishRetryDelay(error: unknown, failures: number): number | null {
   if (!Number.isInteger(failures) || failures < 1 || failures > FINISH_RETRY_DELAYS_MS.length) return null;
   const status = error && typeof error === 'object' ? (error as { status?: unknown }).status : undefined;
   if (typeof status !== 'number') return null;
-  const transient = status === 0 || status === 408 || status === 429 || status >= 500;
+  const transient = status === 0 || status === 429 || status >= 500;
   return transient ? FINISH_RETRY_DELAYS_MS[failures - 1] : null;
 }
 

@@ -1,6 +1,6 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { FINISH_RETRY_DELAYS_MS, finishRetryDelay, nextProfileSetupHref, withExtraAnswers } from './onboarding.ts';
+import { FINISH_RETRY_DELAYS_MS, finishRetryDelay, keepLocalAnswers, nextProfileSetupHref, withExtraAnswers } from './onboarding.ts';
 
 const user = { phone: null };
 
@@ -57,13 +57,28 @@ describe('notification answer when the save fails (ONB-6)', () => {
     }
     assert.equal((base.extraAnswers as Record<string, unknown>).notificationsEnabled, undefined);
   });
+
+  it('survives the AI analysis answer, which carries only what the server stored', () => {
+    const local = withExtraAnswers(profile({ privacyAccepted: true, aiPrivacyDecision: 'accepted' }) as never, {
+      notificationsEnabled: false,
+    });
+    const server = { completedAt: null, weightKg: 70, extraAnswers: { privacyAccepted: true, aiPrivacyDecision: 'accepted', onboardingAnalysis: { score: 80 } } };
+    const merged = keepLocalAnswers(server as never, local);
+    const extra = merged.extraAnswers as Record<string, unknown>;
+    assert.equal(extra.notificationsEnabled, false);
+    assert.deepEqual(extra.onboardingAnalysis, { score: 80 });
+    assert.equal((merged as unknown as { weightKg: number }).weightKg, 70);
+    // The server wins wherever both have a value.
+    const stale = withExtraAnswers(profile({ aiPrivacyDecision: 'declined' }) as never, {});
+    assert.equal((keepLocalAnswers(server as never, stale).extraAnswers as Record<string, unknown>).aiPrivacyDecision, 'accepted');
+  });
 });
 
 describe('last onboarding save retries (ONB-1)', () => {
   const err = (status: number) => Object.assign(new Error('x'), { status });
 
-  it('retries a dropped connection, timeout, rate limit or server error a bounded number of times', () => {
-    for (const status of [0, 408, 429, 500, 502, 503]) {
+  it('retries a dropped connection, rate limit or server error a bounded number of times', () => {
+    for (const status of [0, 429, 500, 502, 503]) {
       assert.deepEqual(
         FINISH_RETRY_DELAYS_MS.map((_, i) => finishRetryDelay(err(status), i + 1)),
         [...FINISH_RETRY_DELAYS_MS],
@@ -74,6 +89,8 @@ describe('last onboarding save retries (ONB-1)', () => {
 
   it('never retries what a retry cannot fix', () => {
     for (const status of [400, 401, 403, 404, 409, 422]) assert.equal(finishRetryDelay(err(status), 1), null);
+    // A timeout already waited the whole request timeout (3 min): show the error, never wait again on its own.
+    assert.equal(finishRetryDelay(err(408), 1), null);
     assert.equal(finishRetryDelay(new Error('completePayload: birthdate'), 1), null);
     assert.equal(finishRetryDelay(null, 1), null);
     assert.equal(finishRetryDelay(err(0), 0), null);
