@@ -1,5 +1,6 @@
 import { prisma } from './prisma.js';
 import { verifySocketToken, ADMIN_SOCKET_ROOM } from './socketAuth.js';
+import { readPasswordChangedAt, tokenPredatesPasswordChange } from './sessionRevocation.js';
 
 let namespace;
 let realtime;
@@ -9,20 +10,25 @@ let pending = false;
 const BATCH_MS = 1500;
 const SPREAD_MS = 2500;
 
+/** Handshake of the /community namespace (the main namespace's io.use does not cover it). */
+export async function communityHandshake(socket, next) {
+  try {
+    const payload = verifySocketToken(socket.handshake.auth?.token);
+    if (payload.role === 'admin' || typeof payload.sub !== 'string') throw new Error();
+    const [member] = await prisma.$queryRaw`SELECT m."userId" FROM "CommunityMember" m JOIN "User" u ON u.id=m."userId" WHERE m."userId"=${payload.sub} AND NOT m.banned AND u.gender='FEMALE' AND u.status='ACTIVE'`;
+    if (!member) throw new Error();
+    // Same rule as requireAuth and the main socket: a password reset ends older sessions (fails open).
+    if (tokenPredatesPasswordChange(payload, await readPasswordChangedAt(member.userId))) throw new Error();
+    socket.data.userId = member.userId;
+    socket.data.expiresAt = payload.exp * 1000;
+    next();
+  } catch { next(new Error('unauthorized')); }
+}
+
 export function attachCommunityRealtime(io) {
   realtime = io;
   namespace = io.of('/community');
-  namespace.use(async (socket, next) => {
-    try {
-      const payload = verifySocketToken(socket.handshake.auth?.token);
-      if (payload.role === 'admin' || typeof payload.sub !== 'string') throw new Error();
-      const [member] = await prisma.$queryRaw`SELECT m."userId" FROM "CommunityMember" m JOIN "User" u ON u.id=m."userId" WHERE m."userId"=${payload.sub} AND NOT m.banned AND u.gender='FEMALE' AND u.status='ACTIVE'`;
-      if (!member) throw new Error();
-      socket.data.userId = member.userId;
-      socket.data.expiresAt = payload.exp * 1000;
-      next();
-    } catch { next(new Error('unauthorized')); }
-  });
+  namespace.use(communityHandshake);
   namespace.on('connection', socket => {
     // Expiry also closes idle connections; no client-controlled room joins.
     const expiry = setTimeout(() => socket.disconnect(true), Math.max(0, Math.min(socket.data.expiresAt - Date.now(), 2147483647)));

@@ -30,12 +30,14 @@ const db = {
   async $transaction(work) {
     return typeof work === 'function' ? work(db) : Promise.all(work);
   },
-  async $queryRaw(strings) {
+  async $queryRaw(strings, ...values) {
     const sql = strings.join('?');
     if (/passwordChangedAt/.test(sql)) {
       if (db.changedAt === undefined) throw Object.assign(new Error('column "passwordChangedAt" does not exist'), { code: 'P2010', meta: { code: '42703' } });
       return [{ passwordChangedAt: db.changedAt }];
     }
+    // The /community socket handshake: USER is an active member.
+    if (/"CommunityMember"/.test(sql)) return values[0] === USER.id ? [{ userId: USER.id }] : [];
     return [];
   },
   async $executeRaw(strings, ...values) {
@@ -166,6 +168,27 @@ describe('requireAuth after a password reset', () => {
     // The seal's own check (verifyAssistantPlan) is jwt-only and was not changed.
     assert.equal(jwt.verify(sealed, env.JWT_SECRET, { audience: 'medi-assistant-action', issuer: 'medicard', subject: USER.id }).id, 'p1');
     assert.equal(renewal.sessionRenewalDue(jwt.decode(sealed)), false);
+  });
+});
+
+describe('the /community socket after a password reset', () => {
+  /** Runs the namespace middleware like socket.io does → { error, socket }. */
+  async function handshake(token) {
+    const { communityHandshake } = await import('./communityRealtime.js');
+    return new Promise((resolve) => {
+      const socket = { handshake: { auth: { token } }, data: {} };
+      communityHandshake(socket, (error) => resolve({ error, socket }));
+    });
+  }
+
+  it('refuses a socket signed before the reset; a newer one and a missing column pass', async () => {
+    db.changedAt = new Date((NOW - 60) * 1000);
+    assert.equal((await handshake(tokenAt(NOW - 3600))).error?.message, 'unauthorized');
+    const fresh = await handshake(signToken(USER));
+    assert.equal(fresh.error, undefined);
+    assert.equal(fresh.socket.data.userId, USER.id);
+    db.changedAt = undefined;
+    assert.equal((await handshake(tokenAt(NOW - 3600))).error, undefined);
   });
 });
 
