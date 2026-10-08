@@ -15,12 +15,22 @@ export const session = {
 export function onSession(fn) { listeners.add(fn); return () => listeners.delete(fn); }
 function emit() { listeners.forEach((fn) => fn(session)); }
 
+/**
+ * Sliding session: /api/auth/me adds a fresh `token` (same account) once the presented one is past
+ * half its lifetime. Kept only while the token that asked is still the saved one.
+ */
+function keepRenewedToken(sent, me) {
+  if (typeof me?.token === 'string' && me.token && sent && getToken() === sent) setToken(me.token);
+}
+
 export async function loadSession() {
-  if (!getToken()) return null;
+  const sent = getToken();
+  if (!sent) return null;
   const [me, status] = await Promise.all([
     get('/api/auth/me'),
     get('/api/app/status').catch(() => null),
   ]);
+  keepRenewedToken(sent, me);
   session.user = me.user;
   session.profile = me.healthProfile || null;
   session.stats = me.stats || null;
@@ -39,7 +49,9 @@ export async function loadSession() {
 }
 
 export async function refreshMe() {
+  const sent = getToken();
   const me = await get('/api/auth/me');
+  keepRenewedToken(sent, me);
   session.user = me.user;
   session.profile = me.healthProfile || session.profile;
   session.stats = me.stats || session.stats;

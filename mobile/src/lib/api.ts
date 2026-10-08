@@ -2619,6 +2619,8 @@ export const api = {
         checkIn?: CheckInState | null;
         checkInAwarded?: boolean;
         pointsAwarded?: number;
+        /** Fresh JWT for the same account once the presented one is past half its lifetime. */
+        token?: string;
       }>('/api/auth/me', {
         ...(token !== undefined ? { token } : {}),
         timeoutMs: 20_000,

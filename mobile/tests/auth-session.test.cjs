@@ -20,7 +20,7 @@ function harness(initialToken=null) {
   '@/lib/home/homeLayoutStore':{primeHomeLayout:asyncNoop,registerHomeLayoutProfilePatch:noop},
   '@/lib/onboarding':{needsHealthAssessment:noop,needsProfileSetup:noop,assessmentPhaseComplete:noop},
   '@/lib/sessionSnapshot':{clearSessionSnapshot:asyncNoop,saveSessionSnapshot:asyncNoop,loadSessionSnapshot:async()=>null},
-  '@/lib/storage':{getToken:async()=>token,setToken:async value=>{token=value;},clearToken:async()=>{token=null;}},
+  '@/lib/storage':{getToken:async()=>token,setToken:async value=>{token=value;},clearToken:async()=>{token=null;},renewToken:async(current,next)=>{if(!next||token!==current)return false;token=next;return true;}},
   '@/lib/safeStartup':{runPostLoginSideEffects:()=>{postLoginCount++;}},'@/lib/appForeground':{onReturnToForeground:()=>noop},'@/lib/authErrorMessage':{authErrorMessage:error=>error.message},
   '@/lib/quest/devFixture':{isQuestDevEnabled:()=>false,isQuestVisualSession:()=>false,setQuestVisualSession:noop},
   '@/lib/healthDataSync':{resetHealthPullCache:noop},'@/lib/quest/socket':{disconnectQuestSocket:noop},'@/lib/accountSync':{resetAccountSync:noop},
@@ -93,4 +93,18 @@ test('a late health profile cannot repopulate state after logout',async()=>{
  const read=h.render().refreshHealthProfile();await tick();await h.render().signOut();
  pending.resolve({profile:h.full.healthProfile});await read;
  assert.equal(h.render().healthProfile,null);
+});
+
+test('session restore keeps the fresh token the server renews',async()=>{
+ const h=harness('old-token');h.setMe(async()=>({...h.full,token:'renewed-token'}));await h.render().refresh();
+ assert.equal(h.token(),'renewed-token');assert.equal(h.render().user.id,h.full.user.id);assert.equal(h.counters().postLoginCount,1);
+});
+test('a /me answer without a token leaves the saved token alone',async()=>{
+ const h=harness('saved-token');await h.render().refresh();
+ assert.equal(h.token(),'saved-token');assert.equal(h.render().user.id,h.full.user.id);
+});
+test('a late renewal cannot store a token after signing out',async()=>{
+ const h=harness('old-token'),pending=deferred();h.setMe(()=>pending.promise);
+ const restore=h.render().refresh();await tick();await h.render().signOut();pending.resolve({...h.full,token:'renewed-token'});await restore;
+ assert.equal(h.token(),null);assert.equal(h.render().user,null);
 });

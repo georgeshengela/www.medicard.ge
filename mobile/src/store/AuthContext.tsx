@@ -7,7 +7,7 @@ import { setLocalAccountId, wipeLegacyUnscopedHealthCaches } from '@/lib/localAc
 import { primeHomeLayout, registerHomeLayoutProfilePatch } from '@/lib/home/homeLayoutStore';
 import { needsHealthAssessment as needsHealthAssessmentFromLib, needsProfileSetup } from '@/lib/onboarding';
 import { clearSessionSnapshot, loadSessionSnapshot, saveSessionSnapshot } from '@/lib/sessionSnapshot';
-import { clearToken, getToken, setToken } from '@/lib/storage';
+import { clearToken, getToken, renewToken, setToken } from '@/lib/storage';
 import { runPostLoginSideEffects } from '@/lib/safeStartup';
 import { authErrorMessage } from '@/lib/authErrorMessage';
 import {
@@ -186,6 +186,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           setStats(me.stats);
           setHealthProfile((prev) => (sameJson(prev, me.healthProfile ?? null) ? prev : (me.healthProfile ?? null)));
           if (me.checkInAwarded && me.checkIn) setPendingDailyBonus(me.checkIn);
+          // Sliding session: keep the fresh JWT the server sends past half the old one's lifetime.
+          // Last, after every `getToken() !== token` guard above; a sign-out in the meantime wins.
+          if (typeof me.token === 'string' && me.token) await renewToken(token, me.token).catch(() => false);
           runPostLoginSideEffects(me.user, me.healthProfile ?? null);
         } catch (error) {
           if (await getToken() !== token) return;

@@ -40,11 +40,15 @@ export function smsOtpDailyCap(value = process.env.SMS_OTP_DAILY_CAP) {
   return Number.isFinite(n) && n > 0 ? Math.floor(n) : 1000;
 }
 
-async function otpCapReached(dest) {
+/** Only codes that went out (or are going out) count: failed sends during an outage cost nothing. */
+const OTP_CAP_STATUSES = ['SENT', 'QUEUED'];
+
+export async function otpCapReached(dest, db = prisma) {
   const since = new Date(Date.now() - 24 * 60 * 60 * 1000);
+  const counted = { purpose: 'OTP', status: { in: OTP_CAP_STATUSES }, createdAt: { gt: since } };
   const [perNumber, total] = await Promise.all([
-    prisma.smsLog.count({ where: { destination: dest, purpose: 'OTP', createdAt: { gt: since } } }),
-    prisma.smsLog.count({ where: { purpose: 'OTP', createdAt: { gt: since } } }),
+    db.smsLog.count({ where: { destination: dest, ...counted } }),
+    db.smsLog.count({ where: counted }),
   ]);
   if (total >= smsOtpDailyCap()) return 'service';
   if (perNumber >= SMS_OTP_PER_NUMBER_DAILY) return 'number';

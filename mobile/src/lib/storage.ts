@@ -114,12 +114,10 @@ export async function getToken(): Promise<string | null> {
   }
 }
 
-export async function setToken(token: string): Promise<void> {
-  const previous = memoryToken;
+async function writeToken(token: string): Promise<void> {
   memoryToken = token;
   if (Platform.OS === 'web') {
     webStorage.setItem(TOKEN_KEY, token);
-    notifyProtectedTokenReplace(previous, token);
     return;
   }
   await runNativeStorage(async () => {
@@ -128,7 +126,23 @@ export async function setToken(token: string): Promise<void> {
       keychainAccessible: SecureStore.WHEN_UNLOCKED_THIS_DEVICE_ONLY,
     }).catch(() => undefined);
   });
+}
+
+export async function setToken(token: string): Promise<void> {
+  const previous = memoryToken;
+  await writeToken(token);
   notifyProtectedTokenReplace(previous, token);
+}
+
+/**
+ * Sliding session: GET /api/auth/me hands back a fresh JWT for the same account once the old one
+ * is past half its lifetime. Stored only while `current` is still the saved token (a sign-out or
+ * another account in the meantime wins), and without the account-change signal of `setToken`.
+ */
+export async function renewToken(current: string, next: string): Promise<boolean> {
+  if (!next || next === current || (await getToken()) !== current) return false;
+  await writeToken(next);
+  return true;
 }
 
 export async function clearToken(): Promise<void> {

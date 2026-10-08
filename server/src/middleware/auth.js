@@ -87,6 +87,8 @@ export async function requireAuth(req, res, next) {
     }
 
     req.user = user;
+    // iat / exp of the presented token: GET /api/auth/me renews it past half its lifetime.
+    req.authClaims = { iat: payload.iat, exp: payload.exp };
     // Bind the reading language (ka | en) for AI code deep in the stack.
     return withAiAccount(user.id, () => next(), req.lang);
   } catch (error) {
