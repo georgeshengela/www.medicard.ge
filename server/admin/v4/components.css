@@ -1579,6 +1579,14 @@ html body table.s-users-table tr.is-blocked td:first-child { box-shadow: inset 3
 .s-users-feats .s-badge { height: 18px; font-size: 11px; font-weight: 500; }
 .s-users-app { display: grid; gap: 1px; font-size: 13px; color: var(--s-ink); }
 .s-users-app small { font-size: 12px; color: var(--s-muted); font-variant-numeric: tabular-nums; }
+.s-users-no { width: 1%; white-space: nowrap; }
+.s-users-no-pill {
+  display: inline-flex; align-items: center; height: 22px; padding: 0 8px; border-radius: 99px;
+  font: 600 12px/1 var(--s-mono); font-variant-numeric: tabular-nums; color: var(--s-muted);
+  background: var(--s-sunken);
+}
+.s-users-no-pill.is-milestone { color: var(--s-accent-ink); background: var(--s-accent-soft); }
+.s-user-meta .s-users-no-pill { height: 20px; font-size: 11.5px; vertical-align: 1px; }
 .s-users-date { white-space: nowrap; color: var(--s-text-2); font-variant-numeric: tabular-nums; }
 .s-users-go { width: 28px; text-align: right; color: var(--s-faint); }
 .s-users-go .icon { width: 16px; height: 16px; vertical-align: middle; transition: transform .15s var(--s-ease), color .15s; }
@@ -1594,9 +1602,9 @@ html body #tab-users #next-page { flex-direction: row; }
   .s-users-group-label { flex-basis: 100%; }
   .s-users-pages { display: none; }
   html body table.s-users-table { min-width: 0; }
-  html body table.s-users-table :is(th, td):is(:nth-child(2), :nth-child(4), :nth-child(5), :nth-child(6)) { display: none; }
-  html body table.s-users-table :is(th, td):first-child { padding-left: 14px; }
-  html body table.s-users-table :is(th, td):nth-child(3) { padding-right: 14px; }
+  html body table.s-users-table :is(th, td):is(:nth-child(3), :nth-child(5), :nth-child(6), :nth-child(7)) { display: none; }
+  html body table.s-users-table :is(th, td):first-child { padding-left: 14px; padding-right: 0; }
+  html body table.s-users-table :is(th, td):nth-child(4) { padding-right: 14px; }
   .s-users-name .s-users-narrow { display: inline-flex; justify-self: start; margin-top: 2px; }
   .s-users-name code, .s-users-feats { display: none; }
   .s-users-person { gap: 10px; min-width: 0; }

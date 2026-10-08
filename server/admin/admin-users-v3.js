@@ -176,6 +176,13 @@
     return typeof initials === 'function' ? initials(user.fullName || user.email) : '?';
   }
 
+  /** Registration number cell: #1 = first account; every hundredth (and #1) stands out. */
+  function signupCell(n) {
+    if (!n) return '<td class="s-users-no"><span class="s-muted">—</span></td>';
+    const milestone = n === 1 || n % 100 === 0;
+    return `<td class="s-users-no"><span class="s-users-no-pill${milestone ? ' is-milestone' : ''}" title="${escA(`${fmtKa(n)}-ე დარეგისტრირებული`)}">#${esc(fmtKa(n))}</span></td>`;
+  }
+
   function userRow(u) {
     const act = activityState(u.lastActiveAt);
     const blocked = u.status === 'BLOCKED';
@@ -183,6 +190,7 @@
     const contact = contactLine(u);
     return `
       <tr class="is-click${blocked ? ' is-blocked' : ''}" data-id="${escA(u.id)}" tabindex="0">
+        ${signupCell(u.signupNo)}
         <td>
           <div class="s-users-person">
             <span class="s-avatar${blocked ? ' is-muted' : ''}" aria-hidden="true">${esc(personInitials(u))}</span>
@@ -251,7 +259,7 @@
               <label class="s-users-search">
                 <span class="sr-only">ძებნა</span>
                 ${ico('search')}
-                <input id="user-q" type="search" placeholder="სახელი, ელ-ფოსტა, ტელეფონი ან ID…" value="${escA(initial.q)}" autocomplete="off" />
+                <input id="user-q" type="search" placeholder="სახელი, ელ-ფოსტა, ტელეფონი, ID ან #100…" value="${escA(initial.q)}" autocomplete="off" />
                 <button type="button" id="user-q-clear" class="s-users-clear${initial.q ? '' : ' hidden'}" aria-label="ძებნის გასუფთავება">${ico('x')}</button>
               </label>
               <div class="s-segment" id="users-status-chips" role="tablist" aria-label="ანგარიშის სტატუსი">
@@ -284,6 +292,7 @@
             <table class="s-table s-users-table" aria-label="მომხმარებლების რეესტრი">
               <thead>
                 <tr>
+                  <th scope="col" class="s-users-no" title="რეგისტრაციის რიგითი ნომერი — #1 პირველი დარეგისტრირებულია">#</th>
                   <th scope="col">ადამიანი</th>
                   <th scope="col">ანგარიში</th>
                   <th scope="col">ბოლო აქტივობა</th>
@@ -292,7 +301,7 @@
                   <th scope="col" class="s-users-go"><span class="sr-only">გახსნა</span></th>
                 </tr>
               </thead>
-              <tbody id="users-tbody"><tr><td colspan="6"><div class="v3-skel" aria-hidden="true">${'<i></i>'.repeat(6)}</div></td></tr></tbody>
+              <tbody id="users-tbody"><tr><td colspan="7"><div class="v3-skel" aria-hidden="true">${'<i></i>'.repeat(6)}</div></td></tr></tbody>
             </table>
           </div>
 
@@ -397,7 +406,7 @@
         paintTable();
       } catch (err) {
         if (body && $('users-tbody') === body) {
-          body.innerHTML = `<tr><td colspan="6"><div class="s-empty" role="alert">${ico('alert')}<strong>რეესტრი ვერ ჩაიტვირთა</strong><span>სერვერმა პასუხი ვერ დააბრუნა — სცადე ხელახლა.</span>${err.message ? `<small>${esc(err.message)}</small>` : ''}<button type="button" class="btn compact" id="users-retry">ხელახლა ცდა</button></div></td></tr>`;
+          body.innerHTML = `<tr><td colspan="7"><div class="s-empty" role="alert">${ico('alert')}<strong>რეესტრი ვერ ჩაიტვირთა</strong><span>სერვერმა პასუხი ვერ დააბრუნა — სცადე ხელახლა.</span>${err.message ? `<small>${esc(err.message)}</small>` : ''}<button type="button" class="btn compact" id="users-retry">ხელახლა ცდა</button></div></td></tr>`;
           $('users-retry')?.addEventListener('click', load);
           if ($('user-meta')) $('user-meta').textContent = '';
           if ($('prev-page')) $('prev-page').disabled = true;
@@ -427,7 +436,7 @@
 
       const body = $('users-tbody');
       if (!rows.length) {
-        body.innerHTML = `<tr><td colspan="6"><div class="s-empty">${ico('users')}
+        body.innerHTML = `<tr><td colspan="7"><div class="s-empty">${ico('users')}
           <strong>${filtered ? 'ფილტრს არაფერი ემთხვევა' : 'მომხმარებლები ჯერ არ არის'}</strong>
           <span>${filtered ? 'შეცვალე ძებნა ან მოხსენი ფილტრები.' : 'პირველი ანგარიში რეგისტრაციისთანავე აქ გამოჩნდება.'}</span>
           ${filtered ? '<button type="button" class="btn compact" id="users-empty-clear">ფილტრების გასუფთავება</button>' : ''}
@@ -619,7 +628,7 @@
           <ul class="s-user-meta">
             <li><button type="button" class="s-user-idchip" data-copy="${escA(user.id)}" data-copy-label="მომხმარებლის ID" title="${escA(user.id)} — დააჭირე კოპირებისთვის" aria-label="მომხმარებლის ID-ის კოპირება">${ico('copy')}<code>${esc(String(user.id).slice(0, 8))}…</code></button></li>
             <li>${place.line ? `${place.flag || ico('globe')}<span>${esc(place.line)}</span>` : `${ico('globe')}<span>ადგილი უცნობია</span>`}</li>
-            <li>${ico('calendar')}<span>რეგისტრაცია: ${esc(when(user.createdAt, 'date'))}</span></li>
+            <li>${ico('calendar')}<span>რეგისტრაცია: ${esc(when(user.createdAt, 'date'))}${user.signupNo ? ` · <b class="s-users-no-pill${user.signupNo === 1 || user.signupNo % 100 === 0 ? ' is-milestone' : ''}">#${esc(fmtKa(user.signupNo))}</b>` : ''}</span></li>
             <li>${ico('user')}<span>${esc(genderAge || 'სქესი და ასაკი უცნობია')}</span></li>
           </ul>
         </div>

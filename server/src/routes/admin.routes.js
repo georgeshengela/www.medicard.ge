@@ -84,9 +84,33 @@ function bucketByDay(startToday, rows) {
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
+/**
+ * Registration order: #1 = the oldest account still in the base (createdAt, then id). Deleted accounts
+ * leave no gap, so a number can move down when an older account is deleted.
+ */
+async function loadSignupNumbers(ids) {
+  if (!ids.length) return new Map();
+  const rows = await prisma.$queryRaw`
+    SELECT id, n::int AS n FROM (
+      SELECT id, ROW_NUMBER() OVER (ORDER BY "createdAt", id) AS n FROM "User"
+    ) ranked
+    WHERE id = ANY(${ids}::text[])`;
+  return new Map(rows.map((row) => [row.id, row.n]));
+}
+
+async function userIdBySignupNumber(n) {
+  const rows = await prisma.$queryRaw`
+    SELECT id FROM "User" ORDER BY "createdAt", id OFFSET ${n - 1} LIMIT 1`;
+  return rows[0]?.id || null;
+}
+
+const SIGNUP_NO_RE = /^#\s*(\d{1,7})$/;
+
 /** Shared Users list + CSV export filter (same semantics). */
 async function buildAdminUsersWhere(query = {}) {
   const q = String(query.q ?? '').trim();
+  const signupNo = SIGNUP_NO_RE.exec(q);
+  const signupId = signupNo && Number(signupNo[1]) >= 1 ? await userIdBySignupNumber(Number(signupNo[1])) : null;
   const status = String(query.status ?? '').trim().toUpperCase();
   const packageCode = String(query.package ?? '').trim().toUpperCase();
   const activity = String(query.activity ?? '').trim();
@@ -94,7 +118,10 @@ async function buildAdminUsersWhere(query = {}) {
   const today = tbilisiYmd();
   const none = ['__none__'];
 
-  const orIdentity = q
+  // „#100“ = the 100th registered account.
+  const orIdentity = signupNo
+    ? [{ id: signupId || '__none__' }]
+    : q
     ? [
         { email: { contains: q, mode: 'insensitive' } },
         { fullName: { contains: q, mode: 'insensitive' } },
@@ -195,6 +222,7 @@ function adminUserRow(user, usage) {
     notificationPermission: user.notificationPermission ?? null,
     platform: user.platform ?? null,
     hasCycle: Boolean(user.hasCycle),
+    signupNo: user.signupNo ?? null,
     counts: {
       records: user._count?.records ?? 0,
       chats: user._count?.chats ?? 0,
@@ -440,9 +468,9 @@ adminRouter.get(
     ]);
 
     const ids = users.map((user) => user.id);
-    const [activityMap, permissions] = ids.length
-      ? await Promise.all([loadLatestActivityMap(ids), loadPermissionRows(ids)])
-      : [new Map(), []];
+    const [activityMap, permissions, signupNumbers] = ids.length
+      ? await Promise.all([loadLatestActivityMap(ids), loadPermissionRows(ids), loadSignupNumbers(ids)])
+      : [new Map(), [], new Map()];
     const permByUser = new Map(permissions.map((row) => [row.userId, row.status]));
 
     const rows = users.map((user) => {
@@ -455,6 +483,7 @@ adminRouter.get(
           lastActiveAt: activity?.lastAt || null,
           appVersion: activity?.appVersion || null,
           notificationPermission: permByUser.get(user.id) || 'unknown',
+          signupNo: signupNumbers.get(user.id) ?? null,
         },
         peekListUsage(user.package, user.periodUsages),
       );
@@ -492,13 +521,17 @@ adminRouter.get(
       from: req.query.from,
       to: req.query.to,
     });
-    const investigation = await getUserInvestigation(user.id, bounds);
+    const [investigation, signupNumbers] = await Promise.all([
+      getUserInvestigation(user.id, bounds),
+      loadSignupNumbers([user.id]),
+    ]);
     res.json({
       user: adminUserRow(
         {
           ...user,
           platform: investigation.activity?.platform || investigation.overview?.platform || null,
           hasCycle: Boolean(investigation.product?.hasCycle),
+          signupNo: signupNumbers.get(user.id) ?? null,
         },
         await getUsage(user.id),
       ),
