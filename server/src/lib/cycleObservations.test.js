@@ -1,6 +1,7 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
+import { createRequire } from 'node:module';
 import {
   buildPredictions,
   detectCyclePhase,
@@ -26,6 +27,7 @@ import {
   CYCLE_NOTE_MAX,
   CYCLE_TAG_NAME_MAX,
   CYCLE_TAG_ACTIVE_MAX,
+  CYCLE_TAGS_PER_DAY_MAX,
   OBSERVATION_PATTERN_MIN,
 } from './cycleObservations.js';
 
@@ -165,6 +167,9 @@ describe('custom tags', () => {
     const src = readFileSync(new URL('../routes/cycle.routes.js', import.meta.url), 'utf8');
     assert.doesNotMatch(src, /customTagIds: z\.array\(z\.string\(\)\)\.max\(8\)/);
     assert.match(src, /customTagIds: z\.array\(z\.string\(\)\)\.max\(CYCLE_TAG_ACTIVE_MAX \* 2\)\.optional\(\)/);
+    // The app's picker and offline queue stop at the same number.
+    const appCore = createRequire(import.meta.url)('../../../mobile/src/lib/cycleOfflineCore.js');
+    assert.equal(appCore.CYCLE_TAGS_PER_DAY_MAX, CYCLE_TAGS_PER_DAY_MAX);
   });
 });
 
