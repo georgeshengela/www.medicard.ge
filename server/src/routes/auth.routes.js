@@ -395,6 +395,14 @@ authRouter.post(
     if (user) {
       user = await loadUserBundle(user.id);
     } else {
+      // A new number is a sign-up: the admin switch applies as on /register (existing numbers still sign in).
+      const settings = await getAppSettings();
+      if (!settings.allowRegistrations) {
+        return res.status(403).json({
+          error: t(req, 'რეგისტრაცია დროებით გამორთულია. სცადე მოგვიანებით.', 'Sign-up is paused for now. Please try again later.'),
+          code: 'REGISTRATIONS_CLOSED',
+        });
+      }
       const packageId = await ensureFreePackageId();
       try {
         const created = await prisma.user.create({
@@ -773,21 +781,23 @@ authRouter.post(
     const checked = await verifyEmailAddCode({ userId: req.user.id, email, code, lang: req.lang });
     if (!checked.ok) return res.status(checked.status ?? 400).json({ error: checked.error });
 
+    // The code is used up now: a conflict carries the chosen password on to „move here“.
+    const passwordHash = await bcrypt.hash(password, 12);
     const owner = await prisma.user.findUnique({ where: { email }, select: { id: true } });
     if (owner && owner.id !== req.user.id) {
-      return res.status(409).json(await conflictPayload(req.lang, { kind: 'email', currentId: req.user.id, otherId: owner.id }));
+      return res.status(409).json(await conflictPayload(req.lang, { kind: 'email', currentId: req.user.id, otherId: owner.id, passwordHash }));
     }
     let user;
     try {
       user = await prisma.user.update({
         where: { id: req.user.id },
-        data: { email, passwordHash: await bcrypt.hash(password, 12) },
+        data: { email, passwordHash },
         include: { package: true },
       });
     } catch (err) {
       if (err?.code === 'P2002') {
         const raced = await prisma.user.findUnique({ where: { email }, select: { id: true } });
-        if (raced) return res.status(409).json(await conflictPayload(req.lang, { kind: 'email', currentId: req.user.id, otherId: raced.id }));
+        if (raced) return res.status(409).json(await conflictPayload(req.lang, { kind: 'email', currentId: req.user.id, otherId: raced.id, passwordHash }));
       }
       throw err;
     }
@@ -875,7 +885,8 @@ authRouter.post(
           code: 'MERGE_NOT_ALLOWED',
         });
       }
-      const result = await absorbLogins(conflict.to, conflict.from);
+      // An add-email conflict keeps the password chosen with the code (absent on phone / social ones).
+      const result = await absorbLogins(conflict.to, conflict.from, undefined, { passwordHash: conflict.passwordHash ?? null });
       await audit('USER_LOGINS_MOVED_HERE', result);
       const user = await loadUserBundle(conflict.from);
       return res.json({ ok: true, action, user: publicUser(user), methods: await loginMethods(user.id) });

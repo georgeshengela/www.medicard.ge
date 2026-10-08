@@ -23,6 +23,7 @@ import { sendEmailVerifyCode } from './email.js';
 import { deleteUserAccount } from './deleteUser.js';
 import { evaluateOtpRow, OTP_MAX_ATTEMPTS } from './otpContract.js';
 import { isQaOtpEnabled } from './qaOtp.js';
+import { openSecret, sealSecret } from './socialAuth.js';
 import { t } from './i18n.js';
 
 export const CONFLICT_TTL = '15m';
@@ -276,8 +277,10 @@ export async function conflictOptions(currentId, otherId, db = prisma) {
 /**
  * Moves every sign-in method of `fromId` onto `intoId`, then deletes `fromId`.
  * Refuses when `from` holds health data or a method does not fit.
+ * `passwordHash`: the password the person chose with the email they just proved (add-email
+ * conflict); the moved email signs in with it instead of the other account's old password.
  */
-export async function absorbLogins(fromId, intoId, db = prisma) {
+export async function absorbLogins(fromId, intoId, db = prisma, { passwordHash = null } = {}) {
   if (fromId === intoId) throw new AccountLoginError('MERGE_SAME', 400);
   if (await accountHasContent(fromId, db)) throw new AccountLoginError('MERGE_HAS_DATA');
   const [from, into] = await Promise.all([loginShape(fromId, db), loginShape(intoId, db)]);
@@ -294,7 +297,7 @@ export async function absorbLogins(fromId, intoId, db = prisma) {
       // The address is unique: free it on the account that goes, then give it (and the password
       // that belongs to it) to the account that stays.
       await tx.user.update({ where: { id: fromId }, data: { email: `merged.${fromId}@deleted.medicard.ge` } });
-      await tx.user.update({ where: { id: intoId }, data: { email: plan.email, passwordHash: from.passwordHash } });
+      await tx.user.update({ where: { id: intoId }, data: { email: plan.email, passwordHash: passwordHash || from.passwordHash } });
     }
     if (plan.identities) {
       await tx.$executeRaw`UPDATE "AuthIdentity" SET "userId" = ${intoId} WHERE "userId" = ${fromId}`;
@@ -308,9 +311,14 @@ export async function absorbLogins(fromId, intoId, db = prisma) {
 
 /* ───────── Conflict token ───────── */
 
-/** Proof that the signed-in `from` account proved an identifier owned by `to` (15 minutes). */
-export function signConflictToken({ kind, from, to }, key = secret()) {
-  return jwt.sign({ typ: 'account-conflict', kind, from, to }, key, { expiresIn: CONFLICT_TTL });
+/**
+ * Proof that the signed-in `from` account proved an identifier owned by `to` (15 minutes).
+ * An add-email conflict also carries the bcrypt hash of the password typed with the code, sealed
+ * (AES-GCM) so the token the app holds never exposes it; move_here gives it to the moved email.
+ */
+export function signConflictToken({ kind, from, to, passwordHash = null }, key = secret()) {
+  const pw = kind === 'email' && passwordHash ? sealSecret(passwordHash, key) : null;
+  return jwt.sign({ typ: 'account-conflict', kind, from, to, ...(pw ? { pw } : {}) }, key, { expiresIn: CONFLICT_TTL });
 }
 
 export function readConflictToken(token, key = secret()) {
@@ -318,7 +326,9 @@ export function readConflictToken(token, key = secret()) {
     const payload = jwt.verify(String(token || ''), key, { algorithms: ['HS256'] });
     if (payload?.typ !== 'account-conflict' || !payload.from || !payload.to || payload.from === payload.to) return null;
     if (!['phone', 'email', 'apple', 'google'].includes(payload.kind)) return null;
-    return { kind: payload.kind, from: String(payload.from), to: String(payload.to) };
+    const conflict = { kind: payload.kind, from: String(payload.from), to: String(payload.to) };
+    const passwordHash = payload.kind === 'email' && payload.pw ? openSecret(payload.pw, key) : null;
+    return passwordHash ? { ...conflict, passwordHash } : conflict;
   } catch {
     return null;
   }
@@ -333,14 +343,14 @@ const TAKEN_COPY = {
 const TAKEN_CODES = { phone: 'PHONE_TAKEN', email: 'EMAIL_TAKEN', apple: 'SOCIAL_TAKEN', google: 'SOCIAL_TAKEN' };
 
 /** 409 body for a proven identifier that belongs to another account (old clients read `error`/`code`). */
-export async function conflictPayload(lang, { kind, currentId, otherId }, db = prisma) {
+export async function conflictPayload(lang, { kind, currentId, otherId, passwordHash = null }, db = prisma) {
   const options = await conflictOptions(currentId, otherId, db);
   const copy = TAKEN_COPY[kind];
   return {
     error: t(lang, copy[0], copy[1]),
     code: TAKEN_CODES[kind],
     conflict: options
-      ? { kind, token: signConflictToken({ kind, from: currentId, to: otherId }), ...options }
+      ? { kind, token: signConflictToken({ kind, from: currentId, to: otherId, passwordHash }), ...options }
       : null,
   };
 }
