@@ -9,7 +9,7 @@ function fixture(profile = { mode: 'TRACK_PERIOD' }, logs = []) {
     cycleProfile: { findUnique: async q => { assert.equal(q.where.userId, owner); return profile; } },
     cycleLog: { findMany: async q => {
       reads++;
-      assert.equal(q.where.userId, owner); assert.equal(q.where.date.lte, today); assert.equal(q.take, 45);
+      assert.equal(q.where.userId, owner); assert.equal(q.where.date.lte, today); assert.equal(q.where.date.gte, '2025-10-08'); assert.equal(q.take, 365);
       assert.deepEqual(q.orderBy, { date: 'desc' });
       // Only the serializer's own fields are selected — never notes, BBT, tests, sex or the observations bag.
       assert.deepEqual(Object.keys(q.select).sort(), ['date', 'flow', 'moods', 'painEntries', 'sleepQuality', 'stressLevel', 'symptoms']);
@@ -72,4 +72,18 @@ test('the bounded block keeps the newest days and says older ones were omitted, 
 test('the shared rules forbid „no symptoms“ when entries are saved', () => {
   assert.match(MEDI_RECORD_CONTEXT_RULES, /never ask the person to type in again what is already saved/);
   assert.match(MEDI_RECORD_CONTEXT_RULES, /სიმპტომები არ ჩანს/);
+});
+
+test('days older than the 45 listed ones are counted, not dropped (a year, same allow-list)', async () => {
+  const days = Array.from({ length: 60 }, (_, i) => ({
+    date: `2026-${String(8 + Math.floor(i / 31)).padStart(2, '0')}-${String((i % 28) + 1).padStart(2, '0')}`,
+    flow: i % 10 === 0 ? 'medium' : null, symptoms: i >= 45 ? ['migraine', 'unprotected'] : [], moods: [], painEntries: i >= 45 ? [{ type: 'cramps', severity: 'severe' }] : [],
+  }));
+  const ctx = await loadCycleAccountContext(owner, fixture({ mode: 'TRACK_PERIOD' }, days).db, { today });
+  assert.equal(ctx.logs.length, 45);
+  assert.equal(ctx.older.loggedDays, 15);
+  const text = cycleAccountContextText(ctx);
+  assert.match(text, /უფრო ძველი ჩანაწერები .*15 ჩაწერილი დღე/);
+  assert.match(text, /მიგრენი ×15/); assert.match(text, /cramps ×15/);
+  assert.doesNotMatch(text, /unprotected/);
 });

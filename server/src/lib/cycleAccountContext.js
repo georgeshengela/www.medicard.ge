@@ -1,7 +1,9 @@
-import { serializeCycleLogForAi } from './cycleAiContext.js';
+import { serializeCycleLogForAi, summarizeCycleLogsForAi } from './cycleAiContext.js';
 import { cycleModeForPatientAiContext } from './cycleModes.js';
 
 export const CYCLE_DIARY_MAX_ENTRIES = 45;
+/** Older days are not listed one by one; they are counted over this window. */
+export const CYCLE_HISTORY_DAYS = 365;
 
 /**
  * Rules for every Medi answer that carries account records (planner and clinical model alike).
@@ -42,12 +44,15 @@ export async function loadCycleAccountContext(userId, db, { today, allowed = tru
     return { status: 'withheld', reason: 'device', instruction: WITHHELD_DEVICE };
   }
   try {
-    const rows = await db.cycleLog.findMany({
-      where: { userId, ...(today ? { date: { lte: today } } : {}) },
-      take: CYCLE_DIARY_MAX_ENTRIES,
+    const floor = today ? shiftDay(today, -CYCLE_HISTORY_DAYS) : null;
+    const all = await db.cycleLog.findMany({
+      where: { userId, ...(today ? { date: { lte: today, ...(floor ? { gte: floor } : {}) } } : {}) },
+      take: CYCLE_HISTORY_DAYS,
       orderBy: { date: 'desc' },
       select: { date: true, flow: true, symptoms: true, moods: true, painEntries: true, sleepQuality: true, stressLevel: true },
     });
+    const rows = all.slice(0, CYCLE_DIARY_MAX_ENTRIES);
+    const older = all.slice(CYCLE_DIARY_MAX_ENTRIES);
     const mode = cycleModeForPatientAiContext(profile.mode);
     const conditions = Array.isArray(profile.conditions) ? profile.conditions.map(String).filter(Boolean).slice(0, 8) : [];
     return {
@@ -64,11 +69,20 @@ export async function loadCycleAccountContext(userId, db, { today, allowed = tru
       },
       // A missing flow is „not recorded“, never „none“ (= she logged no bleeding).
       logs: rows.map(row => ({ date: row.date, line: serializeCycleLogForAi({ ...row, flow: row.flow || 'not_recorded' }).line })),
+      // Everything older inside the year, counted with the same allow-list, so long-running patterns show.
+      ...(older.length ? { older: { from: older.at(-1).date, to: older[0].date, ...summarizeCycleLogsForAi(older) } } : {}),
       instruction: 'Saved cycle diary, newest first. Use the dated symptoms, moods, pain and flow. „—“ and not_recorded mean nothing was logged for that field, never a confirmed absence. Days without a line were not logged. Calendar estimates and self-logged symptoms are not diagnoses.',
     };
   } catch {
     return { status: 'unavailable', instruction: UNAVAILABLE };
   }
+}
+
+function shiftDay(ymd, days) {
+  const d = new Date(`${ymd}T12:00:00Z`);
+  if (Number.isNaN(d.getTime())) return null;
+  d.setUTCDate(d.getUTCDate() + days);
+  return d.toISOString().slice(0, 10);
 }
 
 function isoDay(value) {
@@ -107,5 +121,16 @@ export function cycleAccountContextText(context, max = 4000) {
     text += `\n${line}`; shown++;
   }
   if (shown < logs.length) text += `\n(${logs.length - shown} older entries did not fit here: omitted, not absent.)`;
+  const o = context.older;
+  if (o?.loggedDays) {
+    text += `
+უფრო ძველი ჩანაწერები (${o.from} – ${o.to}, ${o.loggedDays} ჩაწერილი დღე, მათგან სისხლდენით ${o.bleedingDays}):`;
+    if (o.symptoms.length) text += `
+- სიმპტომები: ${o.symptoms.join(', ')}`;
+    if (o.pain.length) text += `
+- ტკივილი: ${o.pain.join(', ')}`;
+    if (o.moods.length) text += `
+- განწყობა: ${o.moods.join(', ')}`;
+  }
   return text;
 }

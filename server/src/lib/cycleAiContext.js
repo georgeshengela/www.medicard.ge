@@ -295,3 +295,35 @@ export function inspectCycleAiCategories({ logs = [] } = {}) {
     excludedCategories: [...excluded],
   };
 }
+
+/**
+ * Counts over a longer window for Medi (owner 2026-10-08: older history too), built from the same
+ * allow-list as the daily line: everyday symptoms and moods by Georgian label, pain by place,
+ * bleeding days. Sex, intimate symptoms and unknown keys are never counted.
+ */
+export function summarizeCycleLogsForAi(logs = []) {
+  const symptoms = new Map();
+  const moods = new Map();
+  const pain = new Map();
+  let bleedingDays = 0;
+  const bump = (map, key) => map.set(key, (map.get(key) || 0) + 1);
+  for (const log of Array.isArray(logs) ? logs : []) {
+    if (!log || typeof log !== 'object') continue;
+    if (observationAiContextAllowed('flow') && ['spotting', 'light', 'medium', 'heavy'].includes(log.flow)) bleedingDays++;
+    const painEntries = parsePainEntries(log.painEntries);
+    for (const key of stripPainManagedSymptoms(Array.isArray(log.symptoms) ? log.symptoms.map(String) : [], painEntries)) {
+      const cat = classifyCycleSymptomKey(key);
+      if (cat === CYCLE_FIELD_CATEGORIES.GENERAL_WELLNESS) bump(symptoms, labelKey(key));
+      else if (cat === CYCLE_FIELD_CATEGORIES.MOOD) bump(moods, labelKey(key));
+    }
+    for (const key of Array.isArray(log.moods) ? log.moods.map(String) : []) {
+      const cat = classifyCycleSymptomKey(key);
+      if (cat === CYCLE_FIELD_CATEGORIES.MOOD || cat === CYCLE_FIELD_CATEGORIES.GENERAL_WELLNESS) bump(moods, labelKey(key));
+    }
+    if (observationAiContextAllowed('pain')) {
+      for (const p of painEntries) if (p && typeof p === 'object' && p.type) bump(pain, String(p.type));
+    }
+  }
+  const top = (map, n) => [...map.entries()].sort((a, b) => b[1] - a[1]).slice(0, n).map(([k, c]) => `${k} ×${c}`);
+  return { loggedDays: Array.isArray(logs) ? logs.length : 0, bleedingDays, symptoms: top(symptoms, 12), moods: top(moods, 8), pain: top(pain, 6) };
+}

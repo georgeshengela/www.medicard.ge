@@ -27,6 +27,9 @@ function stubPrisma(t, data) {
     [prisma.cycleLog, 'findMany', async q => { assert.equal(q.where.userId, owner); data.cycleReads = (data.cycleReads ?? 0) + 1; return data.cycleLogs(); }],
     [prisma.medicalRecord, 'findMany', async q => { assert.equal(q.where.userId, owner); return q.where.type === 'LAB' ? (data.labIds ?? []) : (data.records ?? []); }],
     [prisma.doctorVisit, 'findMany', async q => { assert.equal(q.where.userId, owner); return data.visits ?? []; }],
+    [prisma.chatSession, 'findMany', async q => { assert.equal(q.where.userId, owner); data.excluded = q.where.id; return data.consultations ?? []; }],
+    // Raw reads: dose marks answer with rows; every nutrition query gets nothing (that block is tested on its own).
+    [prisma, '$queryRaw', async (strings, ...values) => { assert.ok(values.includes(owner)); return /MedicationDoseEvent/.test(strings.join('?')) ? (data.doses ?? []) : []; }],
   ];
   for (const [delegate, method, implementation] of fixtures) {
     const original = delegate[method]; delegate[method] = implementation;
@@ -48,19 +51,25 @@ test('Medi\'s clinical answer receives the saved diary, checks, labs, visits and
     ] } },
     labIds: [{ id: 'r1' }],
     visits: [{ doctorType: 'GYN', visitDate: '2026-10-12', visitTime: '10:30' }],
+    meds: [{ id: 'm1', medName: 'მეტფორმინი', dosage: '500 მგ', frequency: '09:00' }],
+    doses: [{ medicationId: 'm1', date: '2026-10-07', time: '09:00', status: 'skipped' }, { medicationId: 'm1', date: '2026-10-06', time: '09:00', status: 'taken' }],
+    consultations: [{ mode: 'DOCTOR', updatedAt: new Date('2026-09-15T10:00:00Z'), messages: [{ role: 'user', content: 'მუცელი მტკივა ჭამის შემდეგ' }, { role: 'assistant', content: '## შესაძლოა გასტრიტი\nმიმართე გასტროენტეროლოგს.' }] }],
   };
   stubPrisma(t, data);
   const options = { full: true, cycleAllowed: true, today: '2026-10-08',
     thread: [{ role: 'user', content: 'დღეს ციკლი ჩავინიშნე' }, { role: 'assistant', content: 'შენახულია.' }, { role: 'user', content: 'უკვე სესიაშია' }],
-    priorTurns: [{ role: 'user', content: 'უკვე სესიაშია' }] };
+    priorTurns: [{ role: 'user', content: 'უკვე სესიაშია' }], excludeSessionId: 'current-session' };
   const context = await withPatientAiContext({ id: data.owner }, undefined, options);
   const messages = buildClinicalMessages({ mode: 'DOCTOR', context, messages: [{ role: 'user', content: 'სიმპტომებზე დაყრდნობით მიპასუხე' }] });
   const block = messages[1].content;
   for (const expected of [/თავის ტკივილი/, /შებერილობა/, /2026-10-08.*← დღეს/, /ხველა, ცხელება/, /2026-10-01 · სიმპტომების შემოწმება/,
-    /ჰემოგლობინი: 98 g\/L \(ნორმა 120–160\) ↓ ნორმაზე დაბალი · 2026-09-01/, /2026-10-12 10:30 · გინეკოლოგი/, /დღეს ციკლი ჩავინიშნე/]) {
+    /ჰემოგლობინი: 98 g\/L \(ნორმა 120–160\) ↓ ნორმაზე დაბალი · 2026-09-01/, /2026-10-12 10:30 · გინეკოლოგი/, /დღეს ციკლი ჩავინიშნე/,
+    /მეტფორმინი: მიღებულად მონიშნული 1, გამოტოვებული 1 \(ბოლოს 2026-10-07\)/, /მოუნიშნავი დოზა უცნობია/,
+    /2026-09-15: კითხვა „მუცელი მტკივა ჭამის შემდეგ“ → პასუხის არსი: შესაძლოა გასტრიტი/]) {
     assert.match(block, expected);
   }
   assert.doesNotMatch(block, /TSH/, 'a panel from a deleted upload never reaches Medi');
+  assert.deepEqual(data.excluded, { not: 'current-session' }, 'the running consultation is not listed as an old one');
   assert.doesNotMatch(block, /უკვე სესიაშია/, 'turns the clinical session already holds are not repeated');
   symptoms = ['fatigue'];
   const fresh = await withPatientAiContext({ id: data.owner }, undefined, options);
@@ -80,4 +89,26 @@ test('without the client\'s yes the diary is not read; a man gets no cycle block
   data.cycleProfile = { mode: 'TRACK_PERIOD' };
   const small = await withPatientAiContext({ id: data.owner });
   assert.match(small, /ციკლის რეჟიმი: TRACK_PERIOD/); assert.equal(data.cycleReads ?? 0, 0);
+});
+
+test('food diary, weight goal and lab trends read as numbers, never as „not eaten“', async () => {
+  const { buildNutritionBlock, buildLabValuesBlock, buildRecentRecordsBlock } = await import('./patientHistoryContext.js');
+  const food = buildNutritionBlock({ targets: { calories: 1800 }, today: { calories: 950 }, mealCount: 2, todayMeals: [{ names: ['ხაჭაპური'] }, { names: ['სალათი'] }],
+    week: { recordedDays: 5, averageCalories: 1650, averageProtein: 70, targetDays: 5, onTargetDays: 4 },
+    facts: { current: { kg: 72.4, date: '2026-10-07' }, weightGoal: { startKg: 78, targetKg: 68 } }, program: { active: true, config: { diet: 'mediterranean', allergens: ['peanut'] } } });
+  for (const expected of [/950 კკალ, 2 კვება \(ხაჭაპური, სალათი\); დღიური მიზანი 1800/, /ჩაწერილი 5 დღე, საშუალოდ 1650/, /72\.4 კგ \(2026-10-07\); მიზანი 68 კგ \(დაწყება 78 კგ\)/, /mediterranean/, /peanut/, /ჩაუწერელი უცნობია/]) assert.match(food, expected);
+  assert.equal(buildNutritionBlock(null), null);
+  assert.equal(buildNutritionBlock({ week: { recordedDays: 0 }, facts: {} }), null);
+  const labs = buildLabValuesBlock([
+    { date: '2026-03-01', parameters: [{ key: 'hgb', nameKa: 'ჰემოგლობინი', display: '110', unit: 'g/L', flag: 'L' }] },
+    { date: '2026-09-01', parameters: [{ key: 'hgb', nameKa: 'ჰემოგლობინი', display: '98', unit: 'g/L', flag: 'L' }] },
+  ]);
+  assert.match(labs, /98 g\/L ↓ ნორმაზე დაბალი · 2026-09-01; წინა 110 g\/L · 2026-03-01/);
+  const now = new Date('2026-10-08T12:00:00Z');
+  const records = buildRecentRecordsBlock([
+    { type: 'SYMPTOM', createdAt: new Date('2026-10-01'), aiAnalysis: '**სიმპტომები:** ხველა' },
+    { type: 'SKIN', createdAt: new Date('2025-01-10'), aiAnalysis: 'ხალი, კეთილთვისებიანი სახე' },
+  ], now);
+  assert.match(records, /2026-10-01 · სიმპტომების შემოწმება: სიმპტომები: ხველა/);
+  assert.match(records, /უფრო ძველი:\n- 2025-01-10 · კანის ფოტო: ხალი/);
 });

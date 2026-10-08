@@ -184,7 +184,7 @@ aiRouter.post(
     // The cycle diary needs the client's explicit yes: its Face ID/PIN lock lives on the device only.
     const profileContext = await withPatientAiContext(req.user, context, {
       full: true, cycleAllowed: cycleContextAllowed === true,
-      today: cycleTodayKey(clientTimezoneFromReq(req)), thread, priorTurns,
+      today: cycleTodayKey(clientTimezoneFromReq(req)), thread, priorTurns, excludeSessionId: session?.id,
     });
     const turnContext =
       [MEDI_RECORD_CONTEXT_RULES, mode === 'DOCTOR'
