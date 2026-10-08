@@ -71,6 +71,21 @@ function notifySmsCap(kind) {
     .catch(() => undefined);
 }
 
+/**
+ * OTP bodies carry a live sign-in code. The provider gets the real text; SmsLog (the admin SMS
+ * journal) keeps it with the digits masked, so no admin session or database copy can read a code.
+ * Verification never reads SmsLog: codes are checked against PhoneVerification.codeHash (bcrypt).
+ */
+export function maskOtpDigits(text) {
+  return String(text ?? '').replace(/\d{4,8}/g, (digits) => '•'.repeat(digits.length));
+}
+
+/** A SmsLog row as the admin API shows it: OTP rows written before masking are masked here. */
+export function adminSmsLogView(row) {
+  if (!row || row.purpose !== 'OTP') return row;
+  return { ...row, content: maskOtpDigits(row.content) };
+}
+
 export async function sendSms({
   destination,
   content,
@@ -80,13 +95,13 @@ export async function sendSms({
   adminId = null,
   urgent = true,
   lang = 'ka',
-}) {
+}, { db = prisma } = {}) {
   const dest = normalizeSmsDestination(destination);
   const sender = env.SMS_OFFICE_SENDER || 'MEDICARD';
   const ref = reference ?? `${purpose}-${Date.now()}`.slice(0, 20);
 
   if (purpose === 'OTP') {
-    const cap = await otpCapReached(dest);
+    const cap = await otpCapReached(dest, db);
     if (cap) {
       notifySmsCap(cap);
       const message = String(lang).startsWith('en')
@@ -96,10 +111,10 @@ export async function sendSms({
     }
   }
 
-  const log = await prisma.smsLog.create({
+  const log = await db.smsLog.create({
     data: {
       destination: dest,
-      content,
+      content: purpose === 'OTP' ? maskOtpDigits(content) : content,
       sender,
       purpose,
       reference: ref,
@@ -111,7 +126,7 @@ export async function sendSms({
 
   if (!smsConfigured()) {
     const msg = 'SMS_OFFICE_API_KEY is not configured';
-    await prisma.smsLog.update({
+    await db.smsLog.update({
       where: { id: log.id },
       data: { status: 'FAILED', providerMsg: msg, providerCode: -1 },
     });
@@ -141,7 +156,7 @@ export async function sendSms({
     const data = await parseJsonResponse(res);
     const ok = data.Success === true || data.ErrorCode === 0;
 
-    await prisma.smsLog.update({
+    await db.smsLog.update({
       where: { id: log.id },
       data: {
         status: ok ? 'SENT' : 'FAILED',
@@ -161,7 +176,7 @@ export async function sendSms({
 
     return { ok: true, reference: ref, message: data.Message };
   } catch (err) {
-    await prisma.smsLog.update({
+    await db.smsLog.update({
       where: { id: log.id },
       data: {
         status: 'FAILED',

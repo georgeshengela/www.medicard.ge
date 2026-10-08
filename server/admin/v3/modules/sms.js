@@ -29,7 +29,6 @@
   ];
 
   let logState = { status: 'ALL', purpose: 'ALL', q: '', offset: 0, limit: 40 };
-  let shownLogs = [];
 
   function esc(v) {
     return typeof escapeHtml === 'function' ? escapeHtml(v) : String(v ?? '');
@@ -63,12 +62,9 @@
     if (/\p{Script=Georgian}/u.test(raw)) return raw;
     return REASON_KA.find(([re]) => re.test(raw))?.[1] || '';
   }
-  /** OTP messages carry a live code: hide the digits until someone asks to see them (display only). */
+  /** OTP codes never reach the journal (the server stores and returns them masked); mask again here as a safety net. */
   function maskCodes(text) {
     return String(text || '').replace(/\d{4,8}/g, (m) => '•'.repeat(m.length));
-  }
-  function isOtp(row) {
-    return row.purpose === 'OTP' && /\d{4,8}/.test(String(row.content || ''));
   }
   function statusBadge(status) {
     const [label, tone] = STATUS[status] || [status || '—', ''];
@@ -86,14 +82,12 @@
   }
 
   function logRowsHtml(logs) {
-    shownLogs = logs;
     if (!logs.length) {
       return `<tr><td colspan="5"><div class="s-empty p2-empty-sm">${ico('message')}<span>ამ ფილტრით SMS არ მოიძებნა</span></div></td></tr>`;
     }
     return logs
       .map((row, i) => {
-        const otp = isOtp(row);
-        const text = otp ? maskCodes(row.content) : String(row.content || '');
+        const text = row.purpose === 'OTP' ? maskCodes(row.content) : String(row.content || '');
         const failed = row.status === 'FAILED';
         const ka = failed ? reasonKa(row.providerMsg) : '';
         const raw = failed && row.providerMsg && ka !== row.providerMsg
@@ -105,7 +99,6 @@
         <td class="p2-sms-cell">
           <div class="p2-sms-line">
             <div class="p2-sms-text" data-sms-text="${i}" title="${esc(text)}">${esc(text)}</div>
-            ${otp ? `<button type="button" class="p2-reveal" data-reveal="${i}" aria-pressed="false" aria-label="კოდის ჩვენება" title="კოდის ჩვენება">${ico('eye')}</button>` : ''}
           </div>
         </td>
         <td><span class="s-badge is-plain">${esc(PURPOSE_KA[row.purpose] || row.purpose || '—')}</span></td>
@@ -125,21 +118,6 @@
   function bindLogRows() {
     const body = $('sms-log-body');
     if (!body) return;
-    body.querySelectorAll('[data-reveal]').forEach((btn) => {
-      btn.addEventListener('click', () => {
-        const i = Number(btn.getAttribute('data-reveal'));
-        const row = shownLogs[i];
-        const cell = body.querySelector(`[data-sms-text="${i}"]`);
-        if (!row || !cell) return;
-        const open = btn.getAttribute('aria-pressed') !== 'true';
-        const text = open ? String(row.content || '') : maskCodes(row.content);
-        cell.textContent = text;
-        cell.title = text;
-        btn.setAttribute('aria-pressed', String(open));
-        btn.title = open ? 'კოდის დამალვა' : 'კოდის ჩვენება';
-        btn.setAttribute('aria-label', btn.title);
-      });
-    });
     body.querySelectorAll('[data-sms-text]').forEach((cell) => {
       cell.addEventListener('click', () => cell.classList.toggle('is-open'));
     });
