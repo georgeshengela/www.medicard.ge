@@ -12,6 +12,8 @@ import { describeImage, structureLabText, SUPPORTED_IMAGE_TYPES, VISION_EFFORTS 
 import { extractPdfText, ocrImage, SUPPORTED_DOCUMENT_TYPES } from '../lib/ocr.js';
 import { buildVisionHandoff, buildDoctorTurnContext, sanitizeDoctorReply } from '../lib/prompts.js';
 import { calculateAge, withPatientAiContext } from '../lib/patient.js';
+import { MEDI_RECORD_CONTEXT_RULES } from '../lib/cycleAccountContext.js';
+import { clientTimezoneFromReq, cycleTodayKey } from '../lib/cycleCivilDate.js';
 import { buildSymptomPrompt, formatSymptomRecordKa, runSymptomCheck } from '../lib/symptomCheck.js';
 import { saveUpload } from '../lib/storage.js';
 import { extractLabFromText, isCredibleLabRow } from '../lib/labExtract.js';
@@ -111,6 +113,7 @@ const querySchema = z.object({
   sessionId: z.string().uuid().optional(),
   context: z.string().trim().max(4000).optional(),
   stream: z.boolean().optional(),
+  cycleContextAllowed: z.boolean().optional(),
 });
 
 function wantsChatStream(req) {
@@ -159,7 +162,7 @@ aiRouter.post(
   '/query',
   enforceAiQuota,
   asyncHandler(async (req, res) => {
-    const { message, mode, sessionId, context } = querySchema.parse(req.body);
+    const { message, mode, sessionId, context, cycleContextAllowed } = querySchema.parse(req.body);
 
     const session = sessionId
       ? await prisma.chatSession.findFirst({ where: { id: sessionId, userId: req.user.id, mode: { in: ['DOCTOR', 'CONSILIUM'] } } })
@@ -175,11 +178,14 @@ aiRouter.post(
     const userTurnCount = priorTurns.filter((m) => m.role === 'user').length + 1;
     const assistantTurnCount = priorTurns.filter((m) => m.role === 'assistant').length;
 
-    const profileContext = await withPatientAiContext(req.user, context);
+    const profileContext = await withPatientAiContext(req.user, context, {
+      includeCycle: true, cycleAllowed: cycleContextAllowed === true,
+      today: cycleTodayKey(clientTimezoneFromReq(req)),
+    });
     const turnContext =
-      mode === 'DOCTOR'
+      [MEDI_RECORD_CONTEXT_RULES, mode === 'DOCTOR'
         ? buildDoctorTurnContext({ userTurnCount, assistantTurnCount })
-        : null;
+        : null].filter(Boolean).join('\n\n');
     const stream = wantsChatStream(req);
 
     if (stream) {

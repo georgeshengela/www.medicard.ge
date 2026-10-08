@@ -7,6 +7,7 @@ import { serverAiEngine } from './aiEngine.js';
 import { cycleModeForPatientAiContext } from './cycleModes.js';
 import { wrapUntrustedAiBlock } from './clinicalMessages.js';
 import { t } from './i18n.js';
+import { loadCycleAccountContext, cycleAccountContextText } from './cycleAccountContext.js';
 
 function packageIsExpired(user) {
   return Boolean(user?.packageExpiresAt && new Date(user.packageExpiresAt).getTime() < Date.now());
@@ -267,7 +268,7 @@ export function withPatientProfile(user, extra) {
   return merged || undefined;
 }
 
-export async function loadPatientAiBundle(userId) {
+export async function loadPatientAiBundle(userId, { includeCycle = false, cycleAllowed = true, today } = {}) {
   const [healthProfile, metrics, schedules, cycle] = await Promise.all([
     prisma.healthProfile.findUnique({ where: { userId } }),
     prisma.healthMetricDaily.findMany({
@@ -279,12 +280,12 @@ export async function loadPatientAiBundle(userId) {
       where: { userId, active: true },
       select: { medName: true, dosage: true, frequency: true },
     }),
-    prisma.cycleProfile.findUnique({
+    includeCycle ? loadCycleAccountContext(userId, prisma, { today, allowed: cycleAllowed }) : prisma.cycleProfile.findUnique({
       where: { userId },
-      select: { mode: true },
+      select: { mode: true, privacyEnabled: true },
     }),
   ]);
-  return { healthProfile, metrics, schedules, cycleMode: cycle?.mode ?? null };
+  return { healthProfile, metrics, schedules, cycleMode: !includeCycle && !cycle?.privacyEnabled ? cycle?.mode ?? null : null, cycleContext: includeCycle ? cycle : null };
 }
 
 function formatMetricDay(row) {
@@ -317,9 +318,9 @@ export function buildTrackedMetricsBlock(metrics) {
  * Full clinical context for Medi / analysis — profile + scheduled meds + recent daily metrics.
  * Use this on every EvidenceMD call. `withPatientProfile` is only the sync leftover.
  */
-export async function withPatientAiContext(user, extra) {
+export async function withPatientAiContext(user, extra, options = {}) {
   if (!user?.id) return withPatientProfile(user, extra);
-  const bundle = await loadPatientAiBundle(user.id);
+  const bundle = await loadPatientAiBundle(user.id, options);
   const enriched = { ...user, healthProfile: user.healthProfile ?? bundle.healthProfile };
   const meds = bundle.schedules.length
     ? [
@@ -331,12 +332,12 @@ export async function withPatientAiContext(user, extra) {
       ].join('\n')
     : null;
   const cycleMode = cycleModeForPatientAiContext(bundle.cycleMode);
-  const cycle = cycleMode ? `ციკლის რეჟიმი: ${cycleMode}` : null;
+  const cycle = cycleAccountContextText(bundle.cycleContext) || (cycleMode ? `ციკლის რეჟიმი: ${cycleMode}` : null);
   const merged = [
+    cycle,
     buildPatientProfile(enriched),
     buildTrackedMetricsBlock(bundle.metrics),
     meds,
-    cycle,
     extra?.trim() ? wrapUntrustedAiBlock('client_note', extra.trim(), 4000) : null,
   ]
     .filter(Boolean)

@@ -100,6 +100,7 @@ export function MediChat({ owner, sessionId, startConsilium, directDoctor, prefi
   const abort = useRef<AbortController | null>(null);
   const list = useRef<FlatList<MediTurn>>(null), nearBottom = useRef(true);
   const cycleContextRef = useRef<CycleMediContext | null>(null); cycleContextRef.current = cycleContext;
+  const cycleContextExcluded = useRef(false);
 
   const voiceIn = voiceAvail && voiceOn, voiceOut = voiceOutAvail && voiceOn;
   const consiliumOn = consilium && deepOn;
@@ -199,7 +200,7 @@ export function MediChat({ owner, sessionId, startConsilium, directDoctor, prefi
     try {
       // The cycle context rides only with the first question that goes through (consent runs first).
       const context = sessions.current[mode] ? undefined : cycleContextRef.current?.text;
-      const response = await streamAiQuery({ message: value, mode, sessionId: sessions.current[mode], ...(context ? { context } : {}) },
+      const response = await streamAiQuery({ message: value, mode, sessionId: sessions.current[mode], cycleContextAllowed: !cycleContextExcluded.current, ...(context ? { context } : {}) },
         { signal: controller.signal, onDelta: (chunk: string) => { if (!valid(n)) return; buffer += chunk; if (!timer) timer = setTimeout(flush, 40); } });
       if (!valid(n)) return;
       requireAnalysisText(response.answer);
@@ -239,7 +240,7 @@ export function MediChat({ owner, sessionId, startConsilium, directDoctor, prefi
     const currentDraft = draft;
     try {
       const result = await assistantRequest<AssistantPlan>('plan', owner, {
-        text: value, scope: 'auto', history: plannerHistory(turnsRef.current.filter(t => t.id !== userTurn.id)), draft: currentDraft, ...(petId ? { subjectId: petId } : {}),
+        text: value, scope: 'auto', history: plannerHistory(turnsRef.current.filter(t => t.id !== userTurn.id)), draft: currentDraft, cycleContextAllowed: !cycleContextExcluded.current, ...(petId ? { subjectId: petId } : {}),
       });
       if (!valid(n)) return;
       // A health question: the clinical model answers right here, no extra tap.
@@ -390,6 +391,7 @@ export function MediChat({ owner, sessionId, startConsilium, directDoctor, prefi
     speech.stop(); abort.current?.abort(); generation.current++;
     if (sessionId) { router.replace('/assistant' as never); return; }
     conversation.current = undefined; copyOnFirstSave.current = null; sessions.current = {}; directNext.current = null;
+    cycleContextExcluded.current = false;
     setTurns([]); setDraft(null); setManual(false); setPicker(false); setText(''); setError(null); setNotice(null); setRetry(null); setSuggestions([]); setCycleContext(null);
   }
 
@@ -519,7 +521,7 @@ export function MediChat({ owner, sessionId, startConsilium, directDoctor, prefi
               consilium={consiliumOn} onConsilium={deepOn ? on => { setConsilium(on); assistantHaptic('success'); } : null}
               voice={voiceIn ? { phase: capture.phase, duration: capture.duration, start: capture.start, release: capture.release, cancel: capture.cancel } : null}
               onMore={() => { Keyboard.dismiss(); setPicker(true); }}
-              accessory={cycleContext ? <View style={{ marginBottom: 8 }}><MediContextChip context={cycleContext} onRemove={() => setCycleContext(null)} /></View> : null} />
+              accessory={cycleContext ? <View style={{ marginBottom: 8 }}><MediContextChip context={cycleContext} onRemove={() => { cycleContextExcluded.current = true; setCycleContext(null); }} /></View> : null} />
           </View>
         )}>
         {body}

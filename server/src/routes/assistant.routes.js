@@ -18,6 +18,7 @@ import { assistantError, assertAssistantActionContext, executeAssistantPlan, sea
 import { todayInTimeZone } from '../lib/cycle.js';
 import { clientTimezoneFromReq } from '../lib/cycleCivilDate.js';
 import { loadAppState } from '../lib/appState.js';
+import { MEDI_RECORD_CONTEXT_RULES } from '../lib/cycleAccountContext.js';
 import { prisma } from '../lib/prisma.js';
 import { publicPetsCatalog } from '../lib/petsCatalog.js';
 import { hasAssistantSpeech, synthesizeAssistantSpeech } from '../lib/assistantSpeech.js';
@@ -36,6 +37,7 @@ const planSchema = z.object({
   text: z.string().trim().min(1).max(4000), scope: scopeSchema,
   history: z.array(z.object({ role: z.enum(['user', 'assistant']), content: z.string().max(4000) }).strict()).max(12).default([]),
   draft: rawAction.nullable().optional(), subjectId: z.string().uuid().optional(),
+  cycleContextAllowed: z.boolean().optional(),
 }).strict();
 const planOutput = z.object({ reply: z.string().min(1).max(4000), action: rawAction.nullable().default(null), draft: rawAction.nullable().default(null) }).strict();
 const clock = req => ({ timezone: clientTimezoneFromReq(req) || 'UTC', today: todayInTimeZone(clientTimezoneFromReq(req) || 'UTC') });
@@ -144,7 +146,7 @@ assistantRouter.post('/plan', limit, aiDailyCap('assistantPlan'), requireAiConse
   // No extra model round trip to pick context (it cost 2–4 s per voice turn): rules, else a fixed small set.
   const classified = !domains;
   if (!domains) domains = assistantDefaultDomains(input);
-  const context = await loadAssistantContext(req.user, domains, input.scope, prisma, subject.petId, clock(req).today);
+  const context = await loadAssistantContext(req.user, domains, input.scope, prisma, subject.petId, clock(req).today, { cycleAllowed: input.cycleContextAllowed === true });
   const outputSchema = planOutput.superRefine((value, ctx) => {
     if (value.action && value.draft) ctx.addIssue({ code: 'custom', message: 'Return a ready action OR a partial draft.' });
     if (value.action) {
@@ -157,6 +159,7 @@ assistantRouter.post('/plan', limit, aiDailyCap('assistantPlan'), requireAiConse
     // Static instructions first so the provider can reuse its prompt cache; per-request facts follow separately.
     { role: 'system', content: `You are Medi, the Georgian MEDICARD action assistant. Scope ${input.scope}.
 Return ONLY {"reply":"concise Georgian, informal second person (შენ, შენი, გაქვს — never თქვენ)", "action":null|{"tool":"name","args":{}}, "draft":null|{"tool":"name","args":{}}}.
+${MEDI_RECORD_CONTEXT_RULES}
 Tools: ${JSON.stringify(catalog)}
 Authoritative app guide (open.destination uses these IDs): ${assistantAppGuide(input.scope)}
 Use this guide as the product source of truth. Distinguish a direct write, opening a native workflow, and explaining how to do something. For an unsupported direct write, open the precise existing workflow and say what the user does there. Never promise background tracking, purchases, rewards, settings changes or deletion performed by you. Explain only existing features; do not invent subscriptions, features or menu names. If asked about the whole app, summarize relevant groups briefly and invite a specific task; the interface has a searchable capability directory. Questions about app controls need no medical interpretation.

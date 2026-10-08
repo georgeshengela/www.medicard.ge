@@ -195,6 +195,7 @@ export default async function mediPage(root, ctx) {
     directNext: legacyMode === 'doctor' ? 'DOCTOR' : null,
     /** Cycle context from the cycle page — a removable chip; sent once with the first clinical question. */
     context: null,
+    cycleContextExcluded: false,
     messages: [],
     loadState: 'ready', // loading | ready | error
     busy: false,
@@ -338,7 +339,7 @@ export default async function mediPage(root, ctx) {
     });
     mount(chipSlot, h('div', { class: 'medi-ctx' },
       h('div', { class: 'medi-ctx-row' }, toggle,
-        h('button', { type: 'button', class: 'medi-ctx-x', 'aria-label': t('კონტექსტის მოხსნა', 'Remove the context'), title: t('მოხსნა — მხოლოდ კითხვა გაიგზავნება', 'Remove — only the question is sent'), onClick: () => { st.context = null; renderChip(); } }, icon('x', { size: 14 }))),
+        h('button', { type: 'button', class: 'medi-ctx-x', 'aria-label': t('კონტექსტის მოხსნა', 'Remove the context'), title: t('მოხსნა — მხოლოდ კითხვა გაიგზავნება', 'Remove — only the question is sent'), onClick: () => { st.cycleContextExcluded = true; st.context = null; renderChip(); } }, icon('x', { size: 14 }))),
       details,
       h('div', { class: 'medi-ctx-note' }, t('გაიგზავნება მხოლოდ პირველ კითხვასთან ერთად, AI-ზე თანხმობის შემდეგ.', 'Sent only with your first question, after the AI consent.'))));
   }
@@ -515,6 +516,7 @@ export default async function mediPage(root, ctx) {
     st.review = null; st.draft = null; st.suggestions = [];
     st.error = null; st.failed = null; st.note = null; st.declined = null;
     st.context = null; st.directNext = null;
+    st.cycleContextExcluded = false;
     st.persistChain = Promise.resolve();
     st.loadState = sessionId ? 'loading' : 'ready';
     paintDeep();
@@ -683,7 +685,7 @@ export default async function mediPage(root, ctx) {
     let done = null;
     try {
       await stream('/api/ai/query', {
-        message, mode, ...(st.clinical[mode] ? { sessionId: st.clinical[mode] } : {}), ...(context ? { context } : {}), stream: true,
+        message, mode, cycleContextAllowed: !st.cycleContextExcluded, ...(st.clinical[mode] ? { sessionId: st.clinical[mode] } : {}), ...(context ? { context } : {}), stream: true,
       }, (event, data) => {
         if (!live()) return;
         const type = (data && typeof data === 'object' && data.type) || event;
@@ -743,7 +745,7 @@ export default async function mediPage(root, ctx) {
     let result;
     try {
       result = await post('/api/assistant/plan', {
-        text: value, scope: 'auto', history, draft: currentDraft || null, ...(petId ? { subjectId: petId } : {}),
+        text: value, scope: 'auto', history, draft: currentDraft || null, cycleContextAllowed: !st.cycleContextExcluded, ...(petId ? { subjectId: petId } : {}),
       }, { signal: ctrl.signal });
     } catch (e) {
       clearTimeout(timer);

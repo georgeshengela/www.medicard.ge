@@ -1,5 +1,15 @@
 # Medi — app-wide Georgian assistant
 
+## Saved cycle symptoms in Medi — 2026-10-08
+
+An audited reply said no symptoms were available even though that day's log had already been saved. The planner could read the cycle diary, but its `consult` handoff used `/api/ai/query`, where `withPatientAiContext` loaded only the cycle mode. This was a context-delivery defect, not lost diary data. No patient content belongs in this document or regression fixtures.
+
+Both the planner and final clinical reply now use `loadCycleAccountContext`: owner-scoped, fresh on every request, through the client's civil date, newest first, at most 45 entries. Clinical text keeps complete dated lines within a bounded budget and labels omitted history explicitly. The registry still excludes intimate observations, tests, BBT, notes and unknown fields. No extra model call is needed. Instructions distinguish saved facts, missing entries, withheld access and temporary read failures; historical symptoms must not be presented as current or as a diagnosis.
+
+Native/Expo Medi sends `cycleContextAllowed` after strict local reads of the cycle lock, masked notifications and account-scoped discreet preference. Server profile privacy/masking remains authoritative. Removing the cycle context chip excludes it for that conversation; a new conversation resets the exclusion. Both HTTP routes require an explicit `true`; old clients without this flag cannot bypass a device-only lock. The `/app` Medi client sends the same flag and honors chip removal. Generic scan follow-ups do not automatically request cycle records. Existing AI disclosure/consent remains required before transmission. The app change needs the matching OTA update; backend deployment alone does not update older native clients.
+
+Verification: synthetic regression reproduced the missing symptoms at the actual clinical prompt builder, then passed after the fix; next-turn updates, owner scoping, privacy, registry exclusions and unavailable reads are covered. A read-only transaction checked that the referenced account's dated saved row now reaches the assembled cycle context, without printing record values, modifying data or calling an external AI. Tests do not prove a particular future generated answer or all app-module coverage. No database migration is required.
+
 The owner requested spoken control across the whole app, including weight goals, health history, cycle tracking, pets and consilium. This work extends the existing authenticated workflows. The assistant must never claim success before the corresponding operation succeeds.
 
 ## Implementation contract
