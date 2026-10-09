@@ -132,7 +132,7 @@ export function StreakWeekRow({
             {day.status === 'completed' ? (
               <StreakDayCompleted />
             ) : day.status === 'skipped' ? (
-              <StreakDaySkipped />
+              <StreakDaySkipped fill={FIGMA.emptyDot} ink={FIGMA.weekday} />
             ) : (
               <View
                 style={{

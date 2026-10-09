@@ -4,12 +4,31 @@ import { unlinkStoredUpload } from './privateUploads.js';
 import { coachFilesOf } from './trainerStore.js';
 import { getUserLanguage, t } from './i18n.js';
 import { revokeAppleGrantsForUser } from './socialAuth.js';
+import { phoneLookupValues } from './phoneUsers.js';
+import { SMS_DESTINATION_DELETED, smsDestinationHash } from './sms.js';
 
 export const SMS_LOG_REDACTED_CONTENT = '[redacted]';
 
-/** Audit rows stay, but OTP / message bodies must not survive account deletion. */
-export function smsLogAccountDeletePatch() {
-  return { userId: null, content: SMS_LOG_REDACTED_CONTENT, destination: '[deleted]', reference: null, providerMsg: null };
+/**
+ * Audit rows stay, but OTP / message bodies must not survive account deletion. The row's number
+ * becomes a keyed hash of it (smsDestinationHash: unreadable, but the per-number daily SMS-code cap
+ * still counts it, so deleting the account never resets that cap); without a number, „[deleted]“.
+ */
+export function smsLogAccountDeletePatch(destination) {
+  return { userId: null, content: SMS_LOG_REDACTED_CONTENT, destination: smsDestinationHash(destination) ?? SMS_DESTINATION_DELETED, reference: null, providerMsg: null };
+}
+
+/**
+ * Rows about this person's number. Sign-in codes are written before the account exists, so they
+ * carry userId null and the number as SMS digits ('9955…') while User.phone reads '+9955…':
+ * match every stored spelling. Rows of another account (another userId) are never touched.
+ */
+export function accountPhoneRowsWhere(userId, phone) {
+  const numbers = phone ? phoneLookupValues(phone) : [];
+  return {
+    phoneVerification: { OR: [{ userId }, ...(numbers.length ? [{ userId: null, phone: { in: numbers } }] : [])] },
+    smsLog: { OR: [{ userId }, ...(numbers.length ? [{ userId: null, destination: { in: numbers } }] : [])] },
+  };
 }
 
 /**
@@ -64,12 +83,22 @@ export async function deleteUserAccount(userId, lang = 'ka') {
   const locationTable = await prisma.$queryRaw`SELECT to_regclass('"UserLocation"')::text AS name`;
   // A trainer keeps session rows about a deleted client (clientId → NULL); their notes about that person go.
   const sessionTable = await prisma.$queryRaw`SELECT to_regclass('"TrainerSession"')::text AS name`;
+  // Add-email codes (accountLogins.js): raw SQL, created lazily, no foreign key to "User".
+  const emailVerifyTable = await prisma.$queryRaw`SELECT to_regclass('"EmailVerification"')::text AS name`;
+  const phoneRows = accountPhoneRowsWhere(userId, user.phone);
+  // Each row's number gets its own hash: a link code may have gone to another number than User.phone.
+  const smsNumbers = await prisma.smsLog.findMany({ where: phoneRows.smsLog, select: { destination: true }, distinct: ['destination'] });
   await prisma.$transaction([
     ...(locationTable[0]?.name ? [prisma.$executeRaw`DELETE FROM "UserLocation" WHERE "userId" = ${userId}`] : []),
     ...(sessionTable[0]?.name ? [prisma.$executeRaw`UPDATE "TrainerSession" SET note = NULL WHERE "clientId" = ${userId}`] : []),
+    ...(emailVerifyTable[0]?.name ? [prisma.$executeRaw`DELETE FROM "EmailVerification" WHERE "userId" = ${userId}`] : []),
     prisma.dailyUsage.deleteMany({ where: { userId } }),
-    prisma.phoneVerification.deleteMany({ where: { OR: [{ userId }, ...(user.phone ? [{ userId: null, phone: user.phone }] : [])] } }),
-    prisma.smsLog.updateMany({ where: { OR: [{ userId }, ...(user.phone ? [{ userId: null, destination: user.phone }] : [])] }, data: smsLogAccountDeletePatch() }),
+    prisma.phoneVerification.deleteMany({ where: phoneRows.phoneVerification }),
+    ...smsNumbers.map(({ destination }) =>
+      prisma.smsLog.updateMany({ where: { AND: [phoneRows.smsLog, { destination }] }, data: smsLogAccountDeletePatch(destination) }),
+    ),
+    // A row written after the read above (no userId/number left on it either way).
+    prisma.smsLog.updateMany({ where: phoneRows.smsLog, data: smsLogAccountDeletePatch() }),
     prisma.aiEvalResult.deleteMany({ where: { interaction: { userId } } }),
     prisma.pushEvent.deleteMany({ where: { userId } }),
     prisma.user.delete({ where: { id: userId } }),

@@ -23,6 +23,7 @@ import { sendEmailVerifyCode } from './email.js';
 import { deleteUserAccount } from './deleteUser.js';
 import { evaluateOtpRow, OTP_MAX_ATTEMPTS } from './otpContract.js';
 import { isQaOtpEnabled } from './qaOtp.js';
+import { openSecret, sealSecret } from './socialAuth.js';
 import { t } from './i18n.js';
 
 export const CONFLICT_TTL = '15m';
@@ -30,17 +31,128 @@ const CODE_TTL_MS = 10 * 60 * 1000;
 const RESEND_COOLDOWN_MS = 60 * 1000;
 
 /**
- * Tables whose rows are the person's own health content. Things created automatically (health
- * profile from onboarding, device step / metric syncs, generated nutrition plans, quest and
- * activity rows, consents, push tokens) do not count: a fresh account has them too.
+ * Tables whose every row ("userId") is the person's own content: health records, cycle entries,
+ * Medi Coins (every ledger row is a claimed quest / achievement, a MEDIRUN opening or walk, a
+ * referral or an admin grant — nothing is written on sign-up), MEDIRUN walks and box openings.
+ * Things created automatically (health profile defaults, device step / metric syncs, generated
+ * nutrition plans, quest and activity rows, MEDIRUN player rows, consents, push tokens) do not
+ * count: a fresh account has them too. Tables that hold both kinds are in CONTENT_PREDICATES.
  */
 export const CONTENT_TABLES = Object.freeze([
   'MedicalRecord', 'ChatSession', 'MedicationSchedule', 'MedicationDoseEvent', 'DoctorVisit',
   'CycleLog', 'CyclePregnancyEpisode', 'CyclePostpartumEpisode', 'PregnancyLog',
+  'CycleCustomTag', 'CyclePostpartumBleedClassification', 'PregnancyCarePlanItemState',
   'HydrationIntakeEvent', 'NutritionMeal', 'NutritionFood', 'NutritionFast', 'NutritionActivity',
   'BodyMeasurement', 'ProgressPhoto', 'WorkoutLog', 'Pet', 'CommunityMember', 'TrainerProfile',
   'PriceDropAlert', 'RewardRedemption', 'UserAvatar',
+  'RewardLedger', 'MedipulsiSession', 'MedipulsiClaim', 'MedirunCrewMember',
 ]);
+
+/** A JSON array with at least one element (anything else, NULL included, is false — never an error). */
+const nonEmptyArray = (expr) => `(jsonb_typeof(${expr}) = 'array' AND ${expr} <> '[]'::jsonb)`;
+/** Weight entries she typed; `wseed-` rows are seeded from the profile weight / Apple Health. */
+const typedWeightLogs = (expr) => `(CASE WHEN jsonb_typeof(${expr}) = 'array' THEN EXISTS (
+  SELECT 1 FROM jsonb_array_elements(${expr}) AS w WHERE COALESCE(w->>'id', '') NOT LIKE 'wseed-%') ELSE false END)`;
+
+/**
+ * Tables that also hold automatic rows: only rows matching `where` ($1 = the user id) count.
+ * Every column in `columns` must exist, otherwise the check is skipped — raw-SQL tables and columns
+ * are created lazily, and a table that is not there holds nobody's data.
+ */
+export const CONTENT_PREDICATES = Object.freeze([
+  {
+    // Created by the first cycle read. Her last-period answer (onboarding), mode, contraception,
+    // conditions and lock are hers; aiInsights / reminderPrefs are written by the app itself.
+    table: 'CycleProfile',
+    columns: ['userId', 'lastPeriodStart', 'dueDate', 'mode', 'contraceptionMethod', 'isIrregular', 'privacyEnabled',
+      'avgCycleLength', 'avgPeriodLength', 'conditions', 'partnerShareCode'],
+    where: `"userId" = $1 AND ("lastPeriodStart" IS NOT NULL OR "dueDate" IS NOT NULL OR mode <> 'TRACK_PERIOD'
+      OR "contraceptionMethod" IS NOT NULL OR "isIrregular" OR "privacyEnabled" OR "avgCycleLength" <> 28
+      OR "avgPeriodLength" <> 5 OR "partnerShareCode" IS NOT NULL OR ${nonEmptyArray('conditions')})`,
+  },
+  {
+    table: 'CycleProfile', // raw-SQL columns (cycleTrackingPrefs.js)
+    columns: ['userId', 'expectsBleeding', 'fertilityDisplay'],
+    where: `"userId" = $1 AND ("expectsBleeding" = false OR "fertilityDisplay" <> 'auto')`,
+  },
+  {
+    table: 'CyclePartnerShare',
+    columns: ['ownerUserId', 'partnerUserId'],
+    where: `"ownerUserId" = $1 OR "partnerUserId" = $1`,
+  },
+  {
+    // The profile row and its onboarding answers are automatic / re-asked; the clinical lists and the
+    // weight log, lab values and dose marks synced into extraAnswers (appState.js) are hers.
+    table: 'HealthProfile',
+    columns: ['userId', 'chronicConditions', 'allergies', 'medications', 'familyHistory', 'extraAnswers'],
+    where: `"userId" = $1 AND (${nonEmptyArray('"chronicConditions"')} OR ${nonEmptyArray('allergies')}
+      OR ${nonEmptyArray('medications')} OR ${nonEmptyArray('"familyHistory"')}
+      OR ${nonEmptyArray(`"extraAnswers"->'labPanels'`)} OR ${nonEmptyArray(`"extraAnswers"->'appState'->'labPanels'`)}
+      OR ${nonEmptyArray(`"extraAnswers"->'appState'->'doseLogs'`)} OR ${nonEmptyArray(`"extraAnswers"->'appState'->'runHistory'`)}
+      OR ${typedWeightLogs(`"extraAnswers"->'appState'->'weightLogs'`)})`,
+  },
+  {
+    // A claimed invite code, either side (with referral rewards paused it has no ledger row yet).
+    table: 'Referral',
+    columns: ['inviterId', 'inviteeId'],
+    where: `"inviterId" = $1 OR "inviteeId" = $1`,
+  },
+  {
+    // Her trainer: a link she asked for or accepted. A trainer's unanswered invite is not hers.
+    table: 'TrainerLink',
+    columns: ['clientId', 'acceptedAt'],
+    where: `"clientId" = $1 AND "acceptedAt" IS NOT NULL`,
+  },
+  {
+    table: 'TrainerLink',
+    columns: ['clientId', 'initiator'],
+    where: `"clientId" = $1 AND initiator = 'CLIENT'`,
+  },
+  {
+    // Her safety choices (coachSafety.js, raw SQL): a trainer she blocked or reported, with or without a link.
+    table: 'CoachBlock',
+    columns: ['clientId'],
+    where: `"clientId" = $1`,
+  },
+  {
+    table: 'CoachReport',
+    columns: ['reporterId'],
+    where: `"reporterId" = $1`,
+  },
+]);
+
+/**
+ * True once the person answered onboarding (app: a step key on every answered step, then the phase
+ * flag; web: the phase flag and the completed profile). Such an account is never discarded as new.
+ */
+export function onboardingStarted(profile) {
+  if (!profile) return false;
+  if (profile.completedAt) return true;
+  const extra = profile.extraAnswers && typeof profile.extraAnswers === 'object' ? profile.extraAnswers : {};
+  return typeof extra.onboardingStepKey === 'string'
+    || extra.assessmentPhaseComplete === true
+    || extra.onboardingComplete === true
+    || extra.onboardingVersion != null;
+}
+
+export const NEW_ACCOUNT_WINDOW_MS = 24 * 60 * 60 * 1000;
+
+/**
+ * Why „I already have an account“ (POST /api/auth/me/discard-new) may not remove `user`, or null
+ * when it may: 'old' (created more than a day ago, or no valid creation time), 'started' (onboarding
+ * answered in the app or on the web) or 'content' (anything of the person's own, accountHasContent).
+ */
+export async function discardNewBlocker(user, db = prisma, now = Date.now()) {
+  const age = now - new Date(user?.createdAt).getTime();
+  if (!Number.isFinite(age) || age >= NEW_ACCOUNT_WINDOW_MS) return 'old';
+  const profile = await db.healthProfile.findUnique({
+    where: { userId: user.id },
+    select: { extraAnswers: true, completedAt: true },
+  });
+  if (onboardingStarted(profile)) return 'started';
+  if (await accountHasContent(user.id, db)) return 'content';
+  return null;
+}
 
 export class AccountLoginError extends Error {
   constructor(code, status = 409) {
@@ -84,22 +196,29 @@ export async function loginMethods(userId, db = prisma) {
 
 /* ───────── Health content ───────── */
 
-let contentTables = null;
-async function existingContentTables(db) {
-  if (!contentTables) {
-    const rows = await db.$queryRaw`
-      SELECT table_name FROM information_schema.columns
-      WHERE table_schema = 'public' AND column_name = 'userId' AND table_name = ANY(${[...CONTENT_TABLES]})`;
-    contentTables = rows.map((row) => row.table_name);
-  }
-  return contentTables;
+const CONTENT_CHECKS = Object.freeze([
+  ...CONTENT_TABLES.map((table) => ({ table, columns: ['userId'], where: '"userId" = $1' })),
+  ...CONTENT_PREDICATES,
+]);
+
+/**
+ * The checks whose table and columns exist. Read on every call (this runs only on a conflict or a
+ * discard), never cached: a raw-SQL table created after the first read must not be missed.
+ */
+async function installedContentChecks(db) {
+  const tables = [...new Set(CONTENT_CHECKS.map((check) => check.table))];
+  const rows = await db.$queryRaw`
+    SELECT table_name, column_name FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = ANY(${tables})`;
+  const present = new Set(rows.map((row) => `${row.table_name}.${row.column_name}`));
+  return CONTENT_CHECKS.filter((check) => check.columns.every((column) => present.has(`${check.table}.${column}`)));
 }
 
-/** True when the account holds any health content (see CONTENT_TABLES). Fails closed. */
+/** True when the account holds anything of the person's own (CONTENT_TABLES / CONTENT_PREDICATES). Fails closed. */
 export async function accountHasContent(userId, db = prisma) {
   try {
-    for (const table of await existingContentTables(db)) {
-      const rows = await db.$queryRawUnsafe(`SELECT 1 FROM "${table}" WHERE "userId" = $1 LIMIT 1`, userId);
+    for (const check of await installedContentChecks(db)) {
+      const rows = await db.$queryRawUnsafe(`SELECT 1 FROM "${check.table}" WHERE ${check.where} LIMIT 1`, userId);
       if (rows.length) return true;
     }
     return false;
@@ -158,8 +277,10 @@ export async function conflictOptions(currentId, otherId, db = prisma) {
 /**
  * Moves every sign-in method of `fromId` onto `intoId`, then deletes `fromId`.
  * Refuses when `from` holds health data or a method does not fit.
+ * `passwordHash`: the password the person chose with the email they just proved (add-email
+ * conflict); the moved email signs in with it instead of the other account's old password.
  */
-export async function absorbLogins(fromId, intoId, db = prisma) {
+export async function absorbLogins(fromId, intoId, db = prisma, { passwordHash = null } = {}) {
   if (fromId === intoId) throw new AccountLoginError('MERGE_SAME', 400);
   if (await accountHasContent(fromId, db)) throw new AccountLoginError('MERGE_HAS_DATA');
   const [from, into] = await Promise.all([loginShape(fromId, db), loginShape(intoId, db)]);
@@ -176,7 +297,7 @@ export async function absorbLogins(fromId, intoId, db = prisma) {
       // The address is unique: free it on the account that goes, then give it (and the password
       // that belongs to it) to the account that stays.
       await tx.user.update({ where: { id: fromId }, data: { email: `merged.${fromId}@deleted.medicard.ge` } });
-      await tx.user.update({ where: { id: intoId }, data: { email: plan.email, passwordHash: from.passwordHash } });
+      await tx.user.update({ where: { id: intoId }, data: { email: plan.email, passwordHash: passwordHash || from.passwordHash } });
     }
     if (plan.identities) {
       await tx.$executeRaw`UPDATE "AuthIdentity" SET "userId" = ${intoId} WHERE "userId" = ${fromId}`;
@@ -190,9 +311,14 @@ export async function absorbLogins(fromId, intoId, db = prisma) {
 
 /* ───────── Conflict token ───────── */
 
-/** Proof that the signed-in `from` account proved an identifier owned by `to` (15 minutes). */
-export function signConflictToken({ kind, from, to }, key = secret()) {
-  return jwt.sign({ typ: 'account-conflict', kind, from, to }, key, { expiresIn: CONFLICT_TTL });
+/**
+ * Proof that the signed-in `from` account proved an identifier owned by `to` (15 minutes).
+ * An add-email conflict also carries the bcrypt hash of the password typed with the code, sealed
+ * (AES-GCM) so the token the app holds never exposes it; move_here gives it to the moved email.
+ */
+export function signConflictToken({ kind, from, to, passwordHash = null }, key = secret()) {
+  const pw = kind === 'email' && passwordHash ? sealSecret(passwordHash, key) : null;
+  return jwt.sign({ typ: 'account-conflict', kind, from, to, ...(pw ? { pw } : {}) }, key, { expiresIn: CONFLICT_TTL });
 }
 
 export function readConflictToken(token, key = secret()) {
@@ -200,7 +326,9 @@ export function readConflictToken(token, key = secret()) {
     const payload = jwt.verify(String(token || ''), key, { algorithms: ['HS256'] });
     if (payload?.typ !== 'account-conflict' || !payload.from || !payload.to || payload.from === payload.to) return null;
     if (!['phone', 'email', 'apple', 'google'].includes(payload.kind)) return null;
-    return { kind: payload.kind, from: String(payload.from), to: String(payload.to) };
+    const conflict = { kind: payload.kind, from: String(payload.from), to: String(payload.to) };
+    const passwordHash = payload.kind === 'email' && payload.pw ? openSecret(payload.pw, key) : null;
+    return passwordHash ? { ...conflict, passwordHash } : conflict;
   } catch {
     return null;
   }
@@ -215,14 +343,14 @@ const TAKEN_COPY = {
 const TAKEN_CODES = { phone: 'PHONE_TAKEN', email: 'EMAIL_TAKEN', apple: 'SOCIAL_TAKEN', google: 'SOCIAL_TAKEN' };
 
 /** 409 body for a proven identifier that belongs to another account (old clients read `error`/`code`). */
-export async function conflictPayload(lang, { kind, currentId, otherId }, db = prisma) {
+export async function conflictPayload(lang, { kind, currentId, otherId, passwordHash = null }, db = prisma) {
   const options = await conflictOptions(currentId, otherId, db);
   const copy = TAKEN_COPY[kind];
   return {
     error: t(lang, copy[0], copy[1]),
     code: TAKEN_CODES[kind],
     conflict: options
-      ? { kind, token: signConflictToken({ kind, from: currentId, to: otherId }), ...options }
+      ? { kind, token: signConflictToken({ kind, from: currentId, to: otherId, passwordHash }), ...options }
       : null,
   };
 }

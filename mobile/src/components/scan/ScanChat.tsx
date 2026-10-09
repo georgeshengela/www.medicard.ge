@@ -22,7 +22,7 @@ import { mergeLabExtracts, parseLabExtract } from '@/lib/labExtract';
 import { setLabPanelAnalysis, upsertLabPanel } from '@/lib/labStore';
 import { requestPhotoLibraryAccess } from '@/lib/photoLibraryAccess';
 import { usePlanUsage } from '@/lib/planUsage';
-import { canAskAboutResult, latestResultContext, SCAN_FEATURE, SCAN_KINDS, scanTurnId, type ScanFile, type ScanKind, type ScanTurn } from '@/lib/scanThread';
+import { canAskAboutResult, labPagesNotice, latestResultContext, readLabPages, SCAN_FEATURE, SCAN_KINDS, scanTurnId, type ScanFile, type ScanKind, type ScanTurn } from '@/lib/scanThread';
 import { useAnalysisTask } from '@/lib/useAnalysisTask';
 import { useAuth } from '@/store/AuthContext';
 import { MODULE_BRANDS } from '@/theme/moduleBrand';
@@ -175,32 +175,27 @@ export function ScanChat({ owner, initialKind }: { owner: string; initialKind: S
     const context = [regionContext, note].filter(Boolean).join('\n') || undefined;
     try {
       if (scan === 'LAB') {
-        let record: MedicalRecord | null = null;
-        let notes = '';
-        const extracts = [];
-        const unreadPages: number[] = [];
-        for (let i = 0; i < sent.length; i += 1) {
-          if (!operation.current()) return;
+        // An unreadable first page no longer fails the read: the next readable page starts the record.
+        const read = await readLabPages(sent.length, async (i, recordId) => {
           setBusy(sent.length > 1 ? ka.lab.readingPage(i + 1, sent.length) : ka.lab.extractBusy(1));
-          const response = await api.ai.extractLab({ files: [{ uri: sent[i].uri, name: sent[i].name, mimeType: sent[i].mimeType }], context, recordId: record?.id, append: i > 0 });
-          if (!operation.current()) return;
-          applyUsage(response.usage);
-          if (response.unreadable) unreadPages.push(i + 1);
-          record = response.record; notes = response.notes;
-          if (response.labExtract) extracts.push(response.labExtract);
-          extracts.push(parseLabExtract(response.notes));
-        }
+          const response = await api.ai.extractLab({ files: [{ uri: sent[i].uri, name: sent[i].name, mimeType: sent[i].mimeType }], context, recordId, append: !!recordId });
+          if (operation.current()) applyUsage(response.usage);
+          return response;
+        }, operation.current);
+        if (!read || !operation.current()) return;
+        const last = read.answers[read.answers.length - 1];
+        const record: MedicalRecord = last.record;
+        const notes = last.notes;
+        const extracts = read.answers.flatMap(response => [...(response.labExtract ? [response.labExtract] : []), parseLabExtract(response.notes)]);
         const merged = mergeLabExtracts(extracts);
-        const labTurn: Extract<ScanTurn, { kind: 'lab' }> = { id: scanTurnId(), kind: 'lab', extract: merged, recordId: record?.id ?? '', visionNotes: notes, note };
+        const labTurn: Extract<ScanTurn, { kind: 'lab' }> = { id: scanTurnId(), kind: 'lab', extract: merged, recordId: record.id, visionNotes: notes, note };
         setTurns(t => [...t, labTurn]);
         if (merged.parameters.length && merged.date) await persistLab(merged.date, labTurn).catch(() => undefined);
         else if (merged.parameters.length) setDateFor(labTurn.id);
-        if (unreadPages.length) {
-          setError(tx(
-            `${unreadPages.join(', ')} გვერდი ვერ წავიკითხეთ. გადაუღე ხელახლა პირდაპირ და კარგ შუქზე, რომ ციფრები მკაფიოდ ჩანდეს.`,
-            `We could not read page ${unreadPages.join(', ')}. Take it again straight on and in good light so the numbers are sharp.`,
-          ));
-        }
+        // Pages the reader could not look at right now wait in the composer for the same photo again.
+        if (read.laterPages.length && operation.current()) setFiles(sent.filter((_, i) => read.laterPages.includes(i + 1)));
+        const pagesNotice = labPagesNotice(read.unreadPages, read.laterPages);
+        if (pagesNotice && operation.current()) setError(pagesNotice);
       } else {
         setBusy(scan === 'SKIN' ? tx('ფოტოს ვაკვირდები…', 'Looking at the photo…') : tx('გამოსახულებას ვკითხულობ…', 'Reading the image…'));
         const file = sent[0];
@@ -274,6 +269,8 @@ export function ScanChat({ owner, initialKind }: { owner: string; initialKind: S
       doctorSession.current = response.sessionId;
       patch(slot.id, { text: response.answer, streaming: false, interactionId: response.interactionId } as Partial<ScanTurn>);
       if (response.usage) applyUsage(response.usage);
+      // A health answer counts for the weekly Medi mission, which the server does not announce on the socket.
+      void import('@/lib/quest/cache').then(({ requestQuestRefresh }) => requestQuestRefresh()).catch(() => undefined);
       scrollToEnd();
     } catch (err) {
       if (timer) clearTimeout(timer);

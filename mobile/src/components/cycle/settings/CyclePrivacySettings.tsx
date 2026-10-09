@@ -23,6 +23,9 @@ import { api, ApiError, type CycleBundle } from '@/lib/api';
 import { isCyclePrivacyLockEnabled, setCyclePrivacyLockEnabled, getCycleReminderPrefs } from '@/lib/cycleReminderPrefs';
 import { syncCycleReminders } from '@/lib/cycleReminders';
 import { putCycleBundle } from '@/lib/cycleViewCache';
+import { isPostpartumReturnLearning } from '@/lib/cycleForecastEligibility';
+import { cycleModeCapabilities } from '@/lib/cycleModes';
+import { isCompleteCycleBundle } from '@/lib/cycleOfflineCore';
 import { useCycleColors } from '@/theme/cycle';
 import { SettingsDivider, SettingsNotice, SettingsRowSwitch, useCycleSettingsView, type CycleColors } from './CycleSettingsKit';
 
@@ -71,10 +74,19 @@ export function CyclePrivacySettings() {
     try {
       const data = await api.cycle.updateProfile({ privacyEnabled: on });
       if (userId) putCycleBundle(userId, data);
-      // Privacy mode masks the lock-screen text: re-plan the scheduled reminders with it.
+      // Privacy mode masks the lock-screen text: re-plan the scheduled reminders with it at once. No fresh
+      // bundle (CYC-06: saved, but the reload failed) → the one on screen with the new switch, so turning
+      // it on never leaves unmasked reminders waiting for the next foreground.
       try {
-        const prefs = await getCycleReminderPrefs({ mode: data.profile.mode });
-        await syncCycleReminders(data, prefs);
+        const planned = isCompleteCycleBundle(data)
+          ? data
+          : bundle
+            ? { ...bundle, profile: { ...bundle.profile, privacyEnabled: on } }
+            : null;
+        if (planned) {
+          const prefs = await getCycleReminderPrefs({ mode: planned.profile.mode });
+          await syncCycleReminders(planned, prefs);
+        }
       } catch {
         /* Reminders are re-planned on the next foreground. */
       }
@@ -92,12 +104,17 @@ export function CyclePrivacySettings() {
     try {
       const data = await api.cycle.updateProfile({ enablePartnerShare: on });
       if (userId) putCycleBundle(userId, data);
-      const code = data.partnerShare?.code ?? data.profile.partnerShareCode;
+      const code = data?.partnerShare?.code ?? data?.profile?.partnerShareCode;
       if (on && code) {
         await Share.share({ message: `${PARTNER_SHARE_BASE}${code}` });
         setMsgTone('success');
         setMsg(ka.common.share);
-      } else if (!on) {
+      } else if (on) {
+        // Created, but no fresh bundle came back (CYC-06): the card shows the link with „გაზიარება“ once
+        // the cycle view is fetched again.
+        setMsgTone('success');
+        setMsg(tx('შენახულია', 'Saved'));
+      } else {
         setMsgTone('success');
         setMsg(ka.cycle.partnerOff);
       }
@@ -165,6 +182,10 @@ export function CyclePrivacySettings() {
             c={c}
             share={bundle?.partnerShare ?? null}
             fallbackCode={bundle?.profile.partnerShareCode ?? null}
+            paused={
+              Boolean(bundle) &&
+              (!cycleModeCapabilities(bundle?.profile.mode).showNextPeriodForecast || isPostpartumReturnLearning(bundle))
+            }
             onCreate={() => void toggleShare(true)}
             onStop={() => void toggleShare(false)}
             onShare={(code) => void shareLink(code)}
@@ -194,6 +215,7 @@ function PartnerShareCard({
   c,
   share,
   fallbackCode,
+  paused,
   onCreate,
   onStop,
   onShare,
@@ -202,6 +224,8 @@ function PartnerShareCard({
   c: CycleColors;
   share: CycleBundle['partnerShare'] | null;
   fallbackCode: string | null;
+  /** Pregnancy, postpartum, or back to tracking before forecasts return: the partner's page shows nothing. */
+  paused: boolean;
   onCreate: () => void;
   onStop: () => void;
   onShare: (code: string) => void;
@@ -234,6 +258,9 @@ function PartnerShareCard({
               <Text style={{ color: c.mutedSoft, fontSize: 11.5, marginTop: 6 }} selectable numberOfLines={1}>
                 medicard.ge/share/cycle/{code}
               </Text>
+            ) : null}
+            {paused ? (
+              <Text style={{ color: c.muted, fontSize: 12, lineHeight: 17, marginTop: 6 }}>{ka.cycle.partnerSharePausedOwner}</Text>
             ) : null}
           </View>
 

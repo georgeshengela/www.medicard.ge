@@ -169,6 +169,8 @@ describe('quest logic', () => {
     assert.equal(questKind(quest()), 'movement');
     assert.equal(questKind(quest({ progressType: 'HYDRATION_GOAL_PERCENT', key: 'daily_hydration' })), 'hydration');
     assert.equal(questKind(quest({ progressType: 'MEDI_DAILY_USE', key: 'daily_medi' })), 'medi');
+    // The weekly Medi mission keeps the Medi card (title, „Open Medi“), not the weekly-steps one.
+    assert.equal(questKind(quest({ progressType: 'MEDI_DAILY_USE', key: 'weekly_medi', cadence: 'WEEKLY' })), 'medi');
     assert.equal(questKind(quest({ cadence: 'WEEKLY', key: 'weekly_steps' })), 'weekly');
   });
 
@@ -326,6 +328,35 @@ describe('quest logic', () => {
     assert.equal(claimed.claimed, true);
     assert.equal(claimed.dashboard.daily.quests[0].status, 'CLAIMED');
     setQuestDevScenario('LIVE');
+  });
+
+  it('words the Medi mission as weekly and never announces 0 coins', () => {
+    assert.match(questCopy('ka').mediBody, /კვირაში/);
+    assert.match(questCopy('en').mediBody, /a week/);
+    assert.doesNotMatch(questCopy('en').a11yQuest('Medi', 0, 1, 0, 0, 20), /Medi Coins/);
+    assert.match(questCopy('en').a11yQuest('Walk', 0, 1, 0, 30, 50), /30 Medi Coins and 50 XP/);
+    assert.doesNotMatch(questCopy('ka').a11yQuest('Medi', 0, 1, 0, 0, 20), /Medi Coins/);
+  });
+
+  it('promises only what counts: a health question Medi answered, not any conversation (2026-10-09)', () => {
+    // Logging water or a medicine through Medi never reaches the clinical model, so it never counted;
+    // the card said „one conversation a week is enough“ and stayed at 0/1.
+    for (const lang of ['ka', 'en', 'fr', 'ru']) {
+      const copy = questCopy(lang);
+      assert.doesNotMatch(`${copy.mediTitle} ${copy.mediBody}`, /საუბარ|conversation|разговор/i, lang);
+    }
+    assert.match(questCopy('ka').mediTitle, /ჯანმრთელობ/);
+    assert.match(questCopy('en').mediTitle, /health/);
+    const { readFileSync } = require('node:fs');
+    const { join } = require('node:path');
+    const sheet = readFileSync(join(__dirname, '..', '..', 'components', 'quest', 'QuestGuideSheet.tsx'), 'utf8');
+    const web = readFileSync(join(__dirname, '..', '..', '..', '..', 'server', 'public', 'app', 'js', 'pages', 'quest.js'), 'utf8');
+    for (const src of [sheet, web]) {
+      assert.doesNotMatch(src, /ერთი წარმატებული საუბარი|one successful conversation/);
+      assert.match(src, /ამ მისიაში არ ითვლება/);
+      assert.match(src, /don’t count for this mission/);
+    }
+    assert.doesNotMatch(web, /mediTitle: '(ამ კვირის საუბარი|Check in with Medi)/);
   });
 
   it('localizes back labels in ka/en/fr/ru', () => {

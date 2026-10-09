@@ -176,9 +176,8 @@ function AuthGate({ children }: { children: React.ReactNode }) {
         }
 
         const onPrivacy = segments.includes('privacy');
-        const onResults = segments.includes('results');
         const onAnalyzing = segments.includes('analyzing');
-        if (onPrivacy || onResults || onAnalyzing) return;
+        if (onPrivacy || onAnalyzing) return;
 
         // Dev QA — allow profile-setup preview even when onboarding is complete.
         if (typeof __DEV__ !== 'undefined' && __DEV__ && (onProfileSetup || onAssessment)) {

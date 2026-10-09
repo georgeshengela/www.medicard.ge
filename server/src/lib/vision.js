@@ -56,6 +56,53 @@ export function visionEffortsFor(kind) {
 export const SUPPORTED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
 
 /**
+ * A reader that never got to look at the photo: no credit (402), a bad key (401), the model gone (404),
+ * a rate limit or timeout (408/429), an outage (5xx) or the network. A 400/403/413 (the provider refusing
+ * this image), an empty or cut answer and a refusal are about the photo, not the service.
+ */
+const READER_DOWN_STATUSES = new Set([401, 402, 404, 408, 429]);
+const READER_DOWN_CODES = new Set(['ECONNRESET', 'ECONNREFUSED', 'ETIMEDOUT', 'ENOTFOUND', 'EAI_AGAIN', 'EPIPE', 'UND_ERR_CONNECT_TIMEOUT', 'UND_ERR_SOCKET']);
+export function isVisionReaderDown(error) {
+  const status = Number(error?.status);
+  if (Number.isInteger(status) && status > 0) return READER_DOWN_STATUSES.has(status) || status >= 500;
+  // The SDKs' network errors carry no status (and keep the plain `Error` name).
+  if (error instanceof OpenAI.APIConnectionError || error instanceof Anthropic.APIConnectionError) return true;
+  const names = [error?.name, error?.constructor?.name].map(String);
+  if (names.some((name) => /^(APIConnectionError|APIConnectionTimeoutError|AbortError|TimeoutError)$/.test(name))) return true;
+  return READER_DOWN_CODES.has(String(error?.code || error?.cause?.code || ''));
+}
+
+/**
+ * The error once every reader failed (MEDISCAN F4, 2026-10-09). When none of them could answer at all,
+ * the photo was never read: say so calmly (503, `readerDown`) and never ask for another photo. Otherwise
+ * the readers saw it and could not read it — the old copy stays. `document`: a PDF, so the copy says file.
+ */
+export function visionFailedError(failures = [], cause = null, { document = false } = {}) {
+  const list = (failures ?? []).filter(Boolean);
+  if (list.length && list.every(isVisionReaderDown)) {
+    const error = new AiEngineError(
+      document
+        ? 'ანალიზი ახლა ვერ შესრულდა — სერვისი დროებით მიუწვდომელია. ფაილის ხელახლა ატვირთვა არ გჭირდება: სცადე იგივე ფაილით ცოტა ხანში. ეს მცდელობა ლიმიტში არ ჩაგეთვლება.'
+        : 'ანალიზი ახლა ვერ შესრულდა — სერვისი დროებით მიუწვდომელია. ფოტოს ხელახლა გადაღება არ გჭირდება: სცადე იგივე ფოტოთი ცოტა ხანში. ეს მცდელობა ლიმიტში არ ჩაგეთვლება.',
+      {
+        status: 503,
+        messageEn: document
+          ? 'The analysis couldn’t run right now — the service is temporarily unavailable. No need to upload the file again: try again with the same file in a little while. This try does not count toward your limit.'
+          : 'The analysis couldn’t run right now — the service is temporarily unavailable. No need to retake the photo: try again with the same photo in a little while. This try does not count toward your limit.',
+        cause,
+      },
+    );
+    error.readerDown = true;
+    return error;
+  }
+  return new AiEngineError('გამოსახულების ანალიზი ვერ შესრულდა. სცადე სხვა ფოტო ან მოგვიანებით.', {
+    status: 502,
+    messageEn: 'The image analysis didn’t work. Try another photo or try again later.',
+    cause,
+  });
+}
+
+/**
  * @param {object} opts
  * @param {Buffer} opts.buffer Raw image bytes.
  * @param {string} opts.mimeType
@@ -169,6 +216,7 @@ export async function describeImage({ buffer, mimeType, kind, patientContext, mo
 
   const base64 = buffer.toString('base64');
   const errors = [];
+  const failures = [];
 
   if (openrouter) {
     // Fast pass first; a cut or empty read gets one deeper pass before anything else is tried.
@@ -187,6 +235,7 @@ export async function describeImage({ buffer, mimeType, kind, patientContext, mo
             reasoningEffort: effort,
           });
         } catch (error) {
+          failures.push(error);
           errors.push(`openrouter:${openRouterModel}:${effort}: ${error?.message ?? error}`);
           console.warn('[medicard] vision pass failed', openRouterModel, effort, error?.message ?? error);
         }
@@ -198,6 +247,7 @@ export async function describeImage({ buffer, mimeType, kind, patientContext, mo
     try {
       return await describeWithClaude({ base64, mimeType, prompt });
     } catch (error) {
+      failures.push(error);
       errors.push(`claude: ${error?.message ?? error}`);
     }
   }
@@ -214,15 +264,12 @@ export async function describeImage({ buffer, mimeType, kind, patientContext, mo
         detail: kind === 'LAB' ? 'auto' : 'high',
       });
     } catch (error) {
+      failures.push(error);
       errors.push(`openai: ${error?.message ?? error}`);
     }
   }
 
-  throw new AiEngineError('გამოსახულების ანალიზი ვერ შესრულდა. სცადე სხვა ფოტო ან მოგვიანებით.', {
-    status: 502,
-    messageEn: 'The image analysis didn’t work. Try another photo or try again later.',
-    cause: new Error(errors.join(' | ')),
-  });
+  throw visionFailedError(failures, new Error(errors.join(' | ')), { document: mimeType === 'application/pdf' });
 }
 
 async function describeWithClaude({ base64, mimeType, prompt }) {

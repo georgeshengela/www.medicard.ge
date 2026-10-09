@@ -15,12 +15,22 @@ export const session = {
 export function onSession(fn) { listeners.add(fn); return () => listeners.delete(fn); }
 function emit() { listeners.forEach((fn) => fn(session)); }
 
+/**
+ * Sliding session: /api/auth/me adds a fresh `token` (same account) once the presented one is past
+ * half its lifetime. Kept only while the token that asked is still the saved one.
+ */
+function keepRenewedToken(sent, me) {
+  if (typeof me?.token === 'string' && me.token && sent && getToken() === sent) setToken(me.token);
+}
+
 export async function loadSession() {
-  if (!getToken()) return null;
+  const sent = getToken();
+  if (!sent) return null;
   const [me, status] = await Promise.all([
     get('/api/auth/me'),
     get('/api/app/status').catch(() => null),
   ]);
+  keepRenewedToken(sent, me);
   session.user = me.user;
   session.profile = me.healthProfile || null;
   session.stats = me.stats || null;
@@ -39,7 +49,9 @@ export async function loadSession() {
 }
 
 export async function refreshMe() {
+  const sent = getToken();
   const me = await get('/api/auth/me');
+  keepRenewedToken(sent, me);
   session.user = me.user;
   session.profile = me.healthProfile || session.profile;
   session.stats = me.stats || session.stats;
@@ -72,16 +84,24 @@ export function isTrainer() { return Boolean(session.trainer?.trainerProfile); }
 
 export function isFemale() { return String(session.user?.gender || '').toUpperCase() === 'FEMALE'; }
 
+/** The server's name for a phone / Apple account that never typed one (server socialAuth.js DEFAULT_SOCIAL_NAME). */
+export const PLACEHOLDER_NAME = 'Medicard მომხმარებელი';
+
+/** The account's own name; '' for none or the placeholder — never shown as a name. */
+export function displayName() {
+  const n = String(session.user?.fullName || '').replace(/\s+/g, ' ').trim();
+  return !n || n.toLowerCase() === PLACEHOLDER_NAME.toLowerCase() ? '' : n;
+}
+
 export function firstName() {
-  const n = String(session.user?.fullName || '').trim();
-  if (!n || n === 'Medicard მომხმარებელი') return '';
-  return n.split(/\s+/)[0];
+  const n = displayName();
+  return n ? n.split(' ')[0] : '';
 }
 
 export function initials() {
-  const n = String(session.user?.fullName || '').trim();
-  if (!n || n === 'Medicard მომხმარებელი') return 'M';
-  return n.split(/\s+/).slice(0, 2).map((p) => p[0]).join('').toUpperCase();
+  const n = displayName();
+  if (!n) return 'M';
+  return n.split(' ').slice(0, 2).map((p) => p[0]).join('').toUpperCase();
 }
 
 export function profileExtra() { return session.profile?.extraAnswers || {}; }

@@ -3,6 +3,7 @@ import { prisma } from './prisma.js';
 import { loadCycleAccountContext } from './cycleAccountContext.js';
 import { OBSERVATION_REGISTRY, observationAiContextAllowed } from './cycleObservationRegistry.js';
 import { publicPetsCatalog } from './petsCatalog.js';
+import { consultationsAllowedNow } from './patientHistoryContext.js';
 
 export const ASSISTANT_CONTEXT_DOMAINS = ['profile', 'metrics', 'goals', 'medications', 'visits', 'cycle', 'records', 'consultations', 'activity', 'pets', 'nutrition'];
 const pick = (row, keys) => row ? Object.fromEntries(keys.filter(k => row[k] !== undefined).map(k => [k, row[k]])) : null;
@@ -65,8 +66,13 @@ export async function loadAssistantContext(user, domains, scope, db = prisma, pe
   }
   if (requested.has('records')) context.records = (await db.medicalRecord.findMany({ where: { userId }, take: 12, orderBy: { createdAt: 'desc' } }))
     .map(r => ({ id: r.id, type: r.type, createdAt: r.createdAt, analysisExcerpt: trim(r.aiAnalysis) }));
-  if (requested.has('consultations')) context.consultations = (await db.chatSession.findMany({ where: { userId, mode: { in: ['DOCTOR', 'CONSILIUM'] } }, take: 6, orderBy: { updatedAt: 'desc' } }))
-    .map(r => ({ id: r.id, title: r.title, mode: r.mode, updatedAt: r.updatedAt,
-      messages: (Array.isArray(r.messages) ? r.messages : []).slice(-4).map(m => ({ role: m.role, content: trim(m.content, 700) })) }));
+  if (requested.has('consultations')) {
+    // Same boundary as the clinical answer: while the cycle is withheld, answers that may restate it stay out.
+    const cycleNow = requested.has('cycle') ? context.cycle ?? null : await loadCycleAccountContext(userId, db, { today, allowed: cycleAllowed });
+    const sessions = await db.chatSession.findMany({ where: { userId, mode: { in: ['DOCTOR', 'CONSILIUM'] } }, take: 6, orderBy: { updatedAt: 'desc' } });
+    context.consultations = consultationsAllowedNow(sessions, cycleNow)
+      .map(r => ({ id: r.id, title: r.title, mode: r.mode, updatedAt: r.updatedAt,
+        messages: (Array.isArray(r.messages) ? r.messages : []).slice(-4).map(m => ({ role: m.role, content: trim(m.content, 700) })) }));
+  }
   return context;
 }

@@ -34,16 +34,20 @@ import {
   assignWeeklyQuests,
   claimQuest,
   completeQuest,
+  ensureQuestTemplates,
   expireStaleQuests,
   getQuestHistory,
   getRewardBalance,
   getRewardLedger,
   getUserQuestDashboard,
+  questDashboardForClient,
+  questHistoryForClient,
   reconcileQuestProfile,
   updateQuestProgress,
 } from './quest.js';
-import { INITIAL_QUEST_TEMPLATES } from './questTemplates.js';
+import { INITIAL_QUEST_TEMPLATES, lockedQuestTemplateFields } from './questTemplates.js';
 import { QUEST_ECONOMY, assertIssuableQuestReward, validateQuestRewardAmounts } from './questEconomy.js';
+import { AI_CONSENT_VERSION } from './aiConsent.js';
 
 const NOW = new Date('2026-09-06T12:00:00+04:00');
 const TODAY = '2026-09-06';
@@ -71,6 +75,10 @@ async function setup(extra = {}) {
   await assignDailyQuests(USER, extra.date || TODAY, options);
   if (extra.weekly !== false) await assignWeeklyQuests(USER, extra.week, options);
   return { db, options };
+}
+
+async function seedAiConsent(db, decision = 'accepted', version = AI_CONSENT_VERSION) {
+  await db.userAiConsent.create({ data: { userId: USER, version, decision } });
 }
 
 function questByKey(rows, key) {
@@ -119,6 +127,7 @@ describe('timezone boundaries', () => {
   it('assigns the Tbilisi local day when UTC has already flipped', async () => {
     const now = new Date('2026-09-05T20:30:00.000Z');
     const db = createQuestFakeDb();
+    await seedHydrationGoal(db);
     const assigned = await assignDailyQuests(USER, null, { db, now });
     assert.ok(assigned.every((row) => row.periodKey === '2026-09-06'));
     assert.equal(weeklyPeriodKey(now), isoWeekKey('2026-09-06'));
@@ -130,7 +139,7 @@ describe('daily assignment', () => {
     const { db } = await setup({ weekly: false });
     const rows = await db.userQuest.findMany({ where: { userId: USER }, include: { template: true } });
     const keys = rows.map((row) => row.template.key).sort();
-    assert.deepEqual(keys, ['daily_hydration', 'daily_medi', 'daily_steps']);
+    assert.deepEqual(keys, ['daily_hydration', 'daily_steps']);
     assert.ok(rows.every((row) => row.status === 'ACTIVE'));
     assert.ok(rows.every((row) => row.periodKey === TODAY));
   });
@@ -426,7 +435,7 @@ describe('dashboard + concurrent completion', () => {
     const dash = await getUserQuestDashboard(USER, { db, now: NOW });
     assert.equal(dash.daily.timezone, QUEST_TIMEZONE);
     assert.equal(dash.daily.periodKey, TODAY);
-    assert.equal(dash.daily.quests.length, 3);
+    assert.equal(dash.daily.quests.length, 2);
     assert.equal(dash.weekly.quests.length, 1);
     const steps = questByKey(dash.daily.quests, 'daily_steps');
     assert.equal(steps.status, 'COMPLETED');
@@ -457,8 +466,217 @@ describe('phase 1 seed set', () => {
   it('keeps only the four controlled templates', () => {
     assert.deepEqual(
       INITIAL_QUEST_TEMPLATES.map((row) => row.key),
-      ['daily_steps', 'daily_hydration', 'daily_medi', 'weekly_steps'],
+      ['daily_steps', 'daily_hydration', 'weekly_steps', 'weekly_medi'],
     );
+  });
+});
+
+describe('weekly Medi mission (owner 2026-10-08)', () => {
+  const options = (db, extra = {}) => ({ db, now: NOW, timezone: QUEST_TIMEZONE, ...extra });
+
+  it('is offered only after the current AI consent was accepted', async () => {
+    for (const consent of [null, ['declined', AI_CONSENT_VERSION], ['revoked', AI_CONSENT_VERSION], ['accepted', 'older-version']]) {
+      const db = createQuestFakeDb();
+      if (consent) await seedAiConsent(db, ...consent);
+      const daily = await assignDailyQuests(USER, TODAY, options(db));
+      const weekly = await assignWeeklyQuests(USER, null, options(db));
+      assert.ok(![...daily, ...weekly].some((row) => row.template.category === 'MEDI'), String(consent));
+    }
+    const db = createQuestFakeDb();
+    await seedAiConsent(db);
+    assert.ok(!(await assignDailyQuests(USER, TODAY, options(db))).some((row) => row.template.category === 'MEDI'));
+    const medi = questByKey(await assignWeeklyQuests(USER, null, options(db)), 'weekly_medi');
+    assert.equal(medi.periodKey, isoWeekKey(TODAY));
+    assert.equal(medi.template.cadence, 'WEEKLY');
+  });
+
+  it('counts a consultation on any day of the ISO week, pays XP only and never moves the streak', async () => {
+    const db = createQuestFakeDb();
+    await seedAiConsent(db);
+    const medi = questByKey(await assignWeeklyQuests(USER, null, options(db)), 'weekly_medi');
+    // Sunday before the week's Monday belongs to the previous week.
+    await db.aiInteraction.create({ data: { userId: USER, status: 'OK', mode: 'DOCTOR', createdAt: new Date('2026-08-30T22:00:00+04:00') } });
+    let [row] = await updateQuestProgress(USER, { templateKey: 'weekly_medi' }, options(db));
+    assert.equal(row.progress, 0);
+    await db.aiInteraction.create({ data: { userId: USER, status: 'OK', mode: 'DOCTOR', createdAt: new Date('2026-08-31T09:00:00+04:00') } });
+    [row] = await updateQuestProgress(USER, { templateKey: 'weekly_medi' }, options(db));
+    assert.equal(row.status, 'COMPLETED');
+
+    const claimed = await claimQuest(USER, medi.id, options(db));
+    assert.deepEqual(claimed.rewards, { xp: 20, coins: 0 });
+    const ledger = await db.rewardLedger.findMany({ where: { userId: USER, sourceType: 'QUEST' } });
+    assert.deepEqual(ledger.map((entry) => entry.currency), ['XP']);
+    const profile = await db.userQuestProfile.findUnique({ where: { userId: USER } });
+    assert.equal(profile.currentStreak || 0, 0);
+    assert.equal(profile.lastActiveQuestDate || null, null);
+  });
+
+  it('leaves the dashboard when consent is revoked and returns in the same week', async () => {
+    const db = createQuestFakeDb();
+    await seedAiConsent(db);
+    let dash = await getUserQuestDashboard(USER, options(db));
+    assert.equal(questByKey(dash.weekly.quests, 'weekly_medi').status, 'ACTIVE');
+    assert.equal(dash.daily.quests.length, 0);
+
+    await db.userAiConsent.update({ where: { userId: USER }, data: { decision: 'revoked' } });
+    dash = await getUserQuestDashboard(USER, options(db));
+    assert.equal(questByKey(dash.weekly.quests, 'weekly_medi'), undefined);
+
+    await db.userAiConsent.update({ where: { userId: USER }, data: { decision: 'accepted' } });
+    dash = await getUserQuestDashboard(USER, options(db));
+    assert.equal(questByKey(dash.weekly.quests, 'weekly_medi').status, 'ACTIVE');
+  });
+
+  it('keeps the owner locks over an admin-managed row', async () => {
+    const db = createQuestFakeDb();
+    await db.questTemplate.create({
+      data: {
+        key: 'weekly_medi', category: 'MEDI', cadence: 'DAILY', titleKey: 'x', descriptionKey: 'y',
+        progressType: 'MEDI_DAILY_USE', defaultTarget: 3, rewardCoins: 50, rewardXp: 40, priority: 1, isActive: true,
+        config: { adminManaged: true, countsForDailyStreak: true },
+      },
+    });
+    await ensureQuestTemplates(db);
+    const row = await db.questTemplate.findUnique({ where: { key: 'weekly_medi' } });
+    // Medi progress is 0 or 1: a target above one could never be reached.
+    assert.deepEqual([row.cadence, row.defaultTarget, row.rewardCoins, row.config.countsForDailyStreak], ['WEEKLY', 1, 0, false]);
+    // Everything else stays the admin's.
+    assert.deepEqual([row.rewardXp, row.priority, row.config.adminManaged], [40, 1, true]);
+  });
+
+  it('tells the admin console which fields it cannot change', () => {
+    assert.deepEqual(lockedQuestTemplateFields('weekly_medi'), { cadence: 'WEEKLY', defaultTarget: 1, rewardCoins: 0 });
+    assert.deepEqual(lockedQuestTemplateFields('daily_medi'), { isActive: false, rewardCoins: 0 });
+    assert.equal(lockedQuestTemplateFields('daily_steps'), null);
+  });
+
+  it('retires daily_medi: switched off, no coins, today’s open row cancelled, history kept', async () => {
+    const db = createQuestFakeDb();
+    await seedHydrationGoal(db);
+    await seedAiConsent(db);
+    const legacy = await db.questTemplate.create({
+      data: {
+        key: 'daily_medi', category: 'MEDI', cadence: 'DAILY', titleKey: 'quest.daily_medi.title',
+        descriptionKey: 'quest.daily_medi.description', progressType: 'MEDI_DAILY_USE', defaultTarget: 1,
+        rewardCoins: 10, rewardXp: 20, priority: 5, isActive: true,
+        config: { source: 'medi_daily_use', countsForDailyStreak: true, adminManaged: true },
+      },
+    });
+    const base = { userId: USER, templateId: legacy.id, target: 1, assignedAt: NOW, metadata: { cadence: 'DAILY', assignedTimezone: QUEST_TIMEZONE } };
+    const open = await db.userQuest.create({
+      data: { ...base, periodKey: TODAY, progress: 0, status: 'ACTIVE', expiresAt: endOfLocalDay(TODAY, QUEST_TIMEZONE) },
+    });
+    const done = await db.userQuest.create({
+      data: { ...base, periodKey: '2026-09-05', progress: 1, status: 'COMPLETED', completedAt: new Date('2026-09-05T10:00:00+04:00'), expiresAt: endOfLocalDay('2026-09-05', QUEST_TIMEZONE) },
+    });
+    await db.aiInteraction.create({ data: { userId: USER, status: 'OK', mode: 'DOCTOR', createdAt: NOW } });
+
+    const dash = await getUserQuestDashboard(USER, options(db));
+    const template = await db.questTemplate.findUnique({ where: { key: 'daily_medi' } });
+    assert.deepEqual(
+      [template.isActive, template.rewardCoins, template.config.countsForDailyStreak, template.config.retired],
+      [false, 0, false, true],
+    );
+    assert.equal((await db.userQuest.findUnique({ where: { id: open.id } })).status, 'CANCELLED');
+    assert.equal(questByKey(dash.daily.quests, 'daily_medi'), undefined);
+    assert.equal(questByKey(dash.weekly.quests, 'weekly_medi').status, 'COMPLETED');
+    // Yesterday's completion stays claimable and pays what its card showed before the retirement.
+    const claimed = await claimQuest(USER, done.id, options(db));
+    assert.deepEqual(claimed.rewards, { xp: 20, coins: 10 });
+  });
+
+  it('pays a daily_medi mission completed before the retirement the coins its card promised', async () => {
+    const db = createQuestFakeDb();
+    await seedAiConsent(db);
+    const legacy = await db.questTemplate.create({
+      data: {
+        key: 'daily_medi', category: 'MEDI', cadence: 'DAILY', titleKey: 'quest.daily_medi.title',
+        descriptionKey: 'quest.daily_medi.description', progressType: 'MEDI_DAILY_USE', defaultTarget: 1,
+        rewardCoins: 10, rewardXp: 20, priority: 5, isActive: true,
+        config: { source: 'medi_daily_use', countsForDailyStreak: true },
+      },
+    });
+    // Completed this morning by the code before the deploy: no reward frozen on the row.
+    const done = await db.userQuest.create({
+      data: {
+        userId: USER, templateId: legacy.id, periodKey: TODAY, target: 1, progress: 1, status: 'COMPLETED',
+        assignedAt: new Date('2026-09-06T08:00:00+04:00'), completedAt: new Date('2026-09-06T09:00:00+04:00'),
+        expiresAt: endOfLocalDay(TODAY, QUEST_TIMEZONE), metadata: { cadence: 'DAILY', assignedTimezone: QUEST_TIMEZONE },
+      },
+    });
+
+    const dash = await getUserQuestDashboard(USER, options(db));
+    assert.equal((await db.questTemplate.findUnique({ where: { key: 'daily_medi' } })).rewardCoins, 0);
+    const card = questByKey(dash.daily.quests, 'daily_medi');
+    assert.deepEqual([card.status, card.claimable, card.rewardCoins, card.rewardXp], ['COMPLETED', true, 10, 20]);
+
+    const claimed = await claimQuest(USER, done.id, options(db));
+    assert.deepEqual(claimed.rewards, { xp: 20, coins: 10 });
+    const coins = await db.rewardLedger.findMany({ where: { userId: USER, currency: 'COIN' } });
+    assert.deepEqual(coins.map((entry) => entry.amount), [10]);
+  });
+
+  it('pays nothing extra for a daily_medi row that only completes after the retirement', async () => {
+    const db = createQuestFakeDb();
+    await seedAiConsent(db);
+    await ensureQuestTemplates(db);
+    const legacy = await db.questTemplate.create({
+      data: {
+        key: 'daily_medi', category: 'MEDI', cadence: 'DAILY', titleKey: 'quest.daily_medi.title',
+        descriptionKey: 'quest.daily_medi.description', progressType: 'MEDI_DAILY_USE', defaultTarget: 1,
+        rewardCoins: 10, rewardXp: 20, priority: 5, isActive: true,
+        config: { source: 'medi_daily_use', countsForDailyStreak: true },
+      },
+    });
+    await ensureQuestTemplates(db);
+    const open = await db.userQuest.create({
+      data: {
+        userId: USER, templateId: legacy.id, periodKey: TODAY, target: 1, progress: 1, status: 'ACTIVE',
+        assignedAt: new Date('2026-09-06T08:00:00+04:00'), expiresAt: endOfLocalDay(TODAY, QUEST_TIMEZONE),
+        metadata: { cadence: 'DAILY', assignedTimezone: QUEST_TIMEZONE },
+      },
+    });
+    const claimed = await claimQuest(USER, open.id, options(db));
+    assert.deepEqual(claimed.rewards, { xp: 20, coins: 0 });
+  });
+
+  it('hides the weekly Medi mission from app JS that cannot show it (no „+0“ pill, no „today“ copy)', async () => {
+    const db = createQuestFakeDb();
+    await seedHydrationGoal(db);
+    await seedAiConsent(db);
+    await db.aiInteraction.create({ data: { userId: USER, status: 'OK', mode: 'DOCTOR', createdAt: NOW } });
+    const dash = await getUserQuestDashboard(USER, options(db));
+    assert.equal(questByKey(dash.weekly.quests, 'weekly_medi').claimable, true);
+    const snapshot = JSON.stringify(dash);
+
+    // Native JS without the capability never gets it, whatever its version number (OTAs from
+    // other branches reuse the numbers).
+    for (const version of ['1.0.0.21.0', '1.0.0.21.18', '1.0.0.20.40', '1.0.0.21.24', '1.0.0.21.30', '1.0.0.22.0']) {
+      for (const caps of [undefined, '', 'other-cap']) {
+        const old = questDashboardForClient(dash, version, caps);
+        assert.equal(questByKey(old.weekly.quests, 'weekly_medi'), undefined, `${version} ${caps}`);
+        assert.equal(old.summary.unclaimedRewards, dash.summary.unclaimedRewards - 1, version);
+        assert.equal(old.summary.weeklyCompleted, dash.summary.weeklyCompleted - 1, version);
+        assert.deepEqual(old.daily, dash.daily);
+      }
+    }
+    // JS that says it can show it, the web app and unversioned requests get everything.
+    for (const [version, caps] of [
+      ['1.0.0.21.25', 'weekly-medi'],
+      ['1.0.0.21.100', 'other-cap, weekly-medi'],
+      ['1.0.0.22.0', 'WEEKLY-MEDI'],
+      ['web', undefined],
+      ['', undefined],
+      [undefined, undefined],
+    ]) {
+      assert.equal(questDashboardForClient(dash, version, caps), dash, `${version} ${caps}`);
+    }
+    // The shared dashboard object (one computation for concurrent requests) is never changed.
+    assert.equal(JSON.stringify(dash), snapshot);
+
+    const history = { timezone: QUEST_TIMEZONE, today: TODAY, nextCursor: null, items: dash.weekly.quests };
+    assert.equal(questByKey(questHistoryForClient(history, '1.0.0.21.25').items, 'weekly_medi'), undefined);
+    assert.equal(questHistoryForClient(history, '1.0.0.21.25', 'weekly-medi'), history);
   });
 });
 
@@ -532,6 +750,7 @@ describe('effective quest timezone', () => {
   it('assigns using the effective timezone, not a hardcoded Tbilisi day', async () => {
     const now = new Date('2026-09-06T01:30:00+02:00');
     const db = createQuestFakeDb();
+    await seedHydrationGoal(db);
     const assigned = await assignDailyQuests(USER, null, { db, now, timezone: 'Europe/Brussels' });
     assert.ok(assigned.length);
     assert.ok(assigned.every((row) => row.periodKey === '2026-09-06'));
@@ -541,6 +760,7 @@ describe('effective quest timezone', () => {
 describe('timezone hopping protection', () => {
   it('does not assign a second today after a rapid eastbound hop', async () => {
     const db = createQuestFakeDb();
+    await seedHydrationGoal(db);
     const brusselsEvening = new Date('2026-09-06T18:00:00+02:00');
     await assignDailyQuests(USER, null, { db, now: brusselsEvening, timezone: 'Europe/Brussels' });
     const tokyoNextLocal = new Date('2026-09-06T18:05:00+02:00');
@@ -558,6 +778,7 @@ describe('timezone hopping protection', () => {
 
   it('allows the natural next local day after the successor guard', async () => {
     const db = createQuestFakeDb();
+    await seedHydrationGoal(db);
     const day1 = new Date('2026-09-06T12:00:00+04:00');
     await assignDailyQuests(USER, '2026-09-06', { db, now: day1, timezone: 'Asia/Tbilisi' });
     const day2 = new Date(day1.getTime() + 13 * 60 * 60 * 1000);
@@ -577,6 +798,21 @@ describe('timezone hopping protection', () => {
 });
 
 describe('claim semantics', () => {
+  it('pays the reward frozen when the mission was completed, not a later template edit', async () => {
+    const { db, options } = await setup({ weekly: false });
+    const steps = questByKey(await db.userQuest.findMany({ include: { template: true } }), 'daily_steps');
+    await db.userQuest.update({ where: { id: steps.id }, data: { progress: 8000 } });
+    await completeQuest(USER, steps.id, options);
+    assert.deepEqual((await db.userQuest.findUnique({ where: { id: steps.id } })).metadata.reward, { xp: 50, coins: 30 });
+
+    await db.questTemplate.update({ where: { key: 'daily_steps' }, data: { rewardCoins: 5, rewardXp: 10 } });
+    const dash = await getUserQuestDashboard(USER, options);
+    const card = questByKey(dash.daily.quests, 'daily_steps');
+    assert.deepEqual([card.rewardCoins, card.rewardXp], [30, 50]);
+    const claimed = await claimQuest(USER, steps.id, options);
+    assert.deepEqual(claimed.rewards, { xp: 50, coins: 30 });
+  });
+
   it('does not expire a COMPLETED quest and allows a late claim', async () => {
     const { db, options } = await setup({ weekly: false });
     const steps = questByKey(await db.userQuest.findMany({ include: { template: true } }), 'daily_steps');
@@ -666,17 +902,20 @@ describe('economy safety', () => {
       [100, 35, 20],
     );
     assert.equal(byKey.daily_hydration.progressType, 'HYDRATION_GOAL_PERCENT');
+    assert.equal(byKey.daily_medi, undefined);
     assert.deepEqual(
-      [byKey.daily_medi.defaultTarget, byKey.daily_medi.rewardXp, byKey.daily_medi.rewardCoins],
-      [1, 20, 10],
+      [byKey.weekly_medi.defaultTarget, byKey.weekly_medi.rewardXp, byKey.weekly_medi.rewardCoins],
+      [1, 20, 0],
     );
-    assert.equal(byKey.daily_medi.progressType, 'MEDI_DAILY_USE');
+    assert.equal(byKey.weekly_medi.cadence, 'WEEKLY');
+    assert.equal(byKey.weekly_medi.progressType, 'MEDI_DAILY_USE');
+    assert.equal(byKey.weekly_medi.config.countsForDailyStreak, false);
     assert.deepEqual(
       [byKey.weekly_steps.defaultTarget, byKey.weekly_steps.rewardXp, byKey.weekly_steps.rewardCoins],
       [35_000, 200, 150],
     );
-    assert.equal(30 + 20 + 10, 60);
-    assert.equal(60 * 7 + 150, 570);
+    assert.equal(30 + 20, 50);
+    assert.equal(50 * 7 + 150, 500);
   });
 
   it('rejects reward ceilings instead of clamping', () => {

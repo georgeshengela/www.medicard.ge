@@ -78,8 +78,8 @@ const TEXT = {
     stepsNear: 'ცოტაც — და მისია მზადაა.',
     hydroTitle: 'წყლის ბალანსი',
     hydroBody: 'დალიე შენი დღიური მიზანი, ზედმეტის გარეშე.',
-    mediTitle: 'ესაუბრე Medi-ს',
-    mediBody: 'დღეს ერთი ნამდვილი საუბარი საკმარისია.',
+    mediTitle: 'ჰკითხე Medi-ს შენს ჯანმრთელობაზე',
+    mediBody: 'კვირაში ერთი კითხვა საკმარისია — როცა შენ გინდა.',
     openMedi: 'გახსენი Medi',
     weeklySteps: 'კვირის ნაბიჯები',
     historyEmpty: 'შესრულებული მისიები აქ გამოჩნდება.',
@@ -233,8 +233,8 @@ const TEXT = {
     stepsNear: 'A little more and this mission is done.',
     hydroTitle: 'Water balance',
     hydroBody: 'Reach your goal, nothing extra.',
-    mediTitle: 'Check in with Medi',
-    mediBody: 'One real conversation with Medi is enough.',
+    mediTitle: 'Ask Medi about your health',
+    mediBody: 'One question a week is enough — whenever suits you.',
     openMedi: 'Open Medi',
     weeklySteps: 'Weekly steps',
     historyEmpty: 'Your completed missions will appear here.',
@@ -387,8 +387,8 @@ const TEXT = {
     stepsNear: 'Encore un peu — et c’est bon.',
     hydroTitle: 'Équilibre hydrique',
     hydroBody: 'Atteins ton objectif, sans forcer.',
-    mediTitle: 'Passe voir Medi',
-    mediBody: 'Une vraie conversation avec Medi suffit.',
+    mediTitle: 'Pose une question santé à Medi',
+    mediBody: 'Une question par semaine suffit — quand tu veux.',
     openMedi: 'Ouvrir Medi',
     weeklySteps: 'Pas de la semaine',
     historyEmpty: 'Tes missions accomplies apparaîtront ici.',
@@ -539,8 +539,8 @@ const TEXT = {
     stepsNear: 'Ещё немного — и миссия готова.',
     hydroTitle: 'Водный баланс',
     hydroBody: 'Дойди до цели — без лишнего.',
-    mediTitle: 'Загляни к Medi',
-    mediBody: 'Поговори с Medi сегодня.',
+    mediTitle: 'Спроси Medi о своём здоровье',
+    mediBody: 'Одного вопроса в неделю достаточно — когда удобно.',
     openMedi: 'Открыть Medi',
     weeklySteps: 'Шаги недели',
     historyEmpty: 'Выполненные миссии появятся здесь.',
@@ -719,10 +719,11 @@ function questCopy(locale = 'ka') {
           : loc === 'ru'
             ? `${n} дн.`
             : `${n} day${n === 1 ? '' : 's'}`,
+    // Missions that pay XP only (the weekly Medi mission) never announce „0 Medi Coins“.
     a11yQuest: (title, progress, target, percent, coins, xp) =>
       loc === 'ka'
-        ? `${title}, ${progress} / ${target}, ${percent} პროცენტი, ჯილდო ${coins} Medi Coins და ${xp} XP`
-        : `${title}, ${progress} of ${target}, ${percent} percent complete, reward ${coins} Medi Coins and ${xp} XP`,
+        ? `${title}, ${progress} / ${target}, ${percent} პროცენტი, ჯილდო ${coins ? `${coins} Medi Coins და ` : ''}${xp} XP`
+        : `${title}, ${progress} of ${target}, ${percent} percent complete, reward ${coins ? `${coins} Medi Coins and ` : ''}${xp} XP`,
     levelUpBody: (n) =>
       loc === 'ka'
         ? `გილოცავ — ახლა ${n} დონე გაქვს.`

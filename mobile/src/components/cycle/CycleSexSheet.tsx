@@ -8,17 +8,18 @@ import { APP_MODAL_PROPS, Modal } from '@/components/ui/appModal';
 import { CyclePressable as Pressable } from './CyclePressable';
 import { CyclePrimaryButton, formatCycleDateKa } from './CycleUI';
 import { CycleSexSection } from './CycleSexSection';
-import type { CycleLogForm } from './CycleLogTabs';
+import { useCycleDayForm } from './useCycleDayForm';
 import { ka } from '@/i18n/ka';
-import { EMPTY_CYCLE_LOG, formFromCycleLog, persistCycleLog } from '@/lib/cycleLogSave';
-import { loadCycleView, type CycleView } from '@/lib/cycleOffline';
+import { persistCycleLog } from '@/lib/cycleLogSave';
+import type { CycleView } from '@/lib/cycleOffline';
 import { useAnalysisTask } from '@/lib/useAnalysisTask';
 import { useAuth } from '@/store/AuthContext';
 import { useCycleColors } from '@/theme/cycle';
 
 /**
  * Sex and sex drive on their own (owner request 2026-09-29): a small private sheet, separate from the
- * daily log. It loads the day's full log first and saves it back whole, so nothing else is overwritten.
+ * daily log. It fills from the day's full log in the shared cached cycle view (no download behind a
+ * spinner on every open — CYC-09) and saves it back whole, so nothing else is overwritten.
  */
 export function CycleSexSheet({
   visible,
@@ -34,28 +35,17 @@ export function CycleSexSheet({
   const { user } = useAuth();
   const c = useCycleColors();
   const insets = useSafeAreaInsets();
-  const [form, setForm] = useState<CycleLogForm>(EMPTY_CYCLE_LOG);
-  const [hydrated, setHydrated] = useState(false);
+  // `base` = the day as stored when the sheet filled (Apple Health / Health Connect get only what a save changes).
+  const { form, setForm, base, hydrated, loadError } = useCycleDayForm({ active: visible, date, userId: user?.id });
   const [saving, setSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [saveError, setError] = useState<string | null>(null);
+  const error = saveError ?? loadError;
   const task = useAnalysisTask(`cycle-sex:${user?.id}:${date}:${visible}`);
 
   useEffect(() => {
     if (!visible || !user?.id) return;
-    let alive = true;
-    setHydrated(false);
     setError(null);
     setSaving(false);
-    void loadCycleView(user.id)
-      .then((view) => {
-        if (!alive) return;
-        setForm(formFromCycleLog(view.display.logs.find((l) => l.date === date)));
-        setHydrated(true);
-      })
-      .catch(() => alive && setError(ka.cycle.assessmentLoadError));
-    return () => {
-      alive = false;
-    };
   }, [visible, date, user?.id]);
 
   const save = async () => {
@@ -65,7 +55,7 @@ export function CycleSexSheet({
     setSaving(true);
     setError(null);
     try {
-      const result = await persistCycleLog(user.id, date, form);
+      const result = await persistCycleLog(user.id, date, form, { base });
       if (!ticket.current()) return;
       if (!result.view && !result.synced && !result.persistedLocally && !result.sessionOnly) {
         setError(ka.cycle.saveNotPersisted);

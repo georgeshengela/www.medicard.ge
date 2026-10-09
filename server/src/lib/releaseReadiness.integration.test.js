@@ -97,7 +97,7 @@ test('release: real PostgreSQL consent, free access, location and account isolat
     const locations=await prisma.$queryRaw`SELECT COUNT(*)::int AS count FROM "UserLocation" WHERE "userId"=${b.id}`;assert.equal(locations[0].count,0);
     await assert.rejects(() => prisma.$executeRaw`INSERT INTO "UserLocation" ("userId", "updatedAt") VALUES (${b.id}, NOW())`, error => error.code === 'P2010' && error.meta?.code === '23503');
     assert.equal(await prisma.phoneVerification.count({where:{phone}}),0);assert.equal(await prisma.pushEvent.count({where:{userId:b.id}}),0);assert.equal(await prisma.aiEvalResult.count({where:{runId:run.id}}),0);
-    const row=await prisma.smsLog.findUnique({where:{id:sms.id}});assert.equal(row.destination,'[deleted]');assert.equal(row.content,'[redacted]');assert.equal(row.providerMsg,null);
+    const row=await prisma.smsLog.findUnique({where:{id:sms.id}});const {smsDestinationHash}=await import('./sms.js');assert.equal(row.destination,smsDestinationHash(phone));assert.doesNotMatch(row.destination,/\d/);assert.equal(row.content,'[redacted]');assert.equal(row.providerMsg,null);
     const count=await prisma.$queryRaw`SELECT COUNT(*)::int AS count FROM "UserAiConsent" WHERE "userId"=${b.id}`;assert.equal(count[0].count,0);
     await prisma.smsLog.delete({where:{id:sms.id}});await prisma.aiEvalRun.delete({where:{id:run.id}});
   });

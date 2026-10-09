@@ -8,8 +8,11 @@ import {
 } from './cycle.js';
 import {
   CYCLE_AI_HONESTY_RULES,
+  cycleAiInsightsForLang,
+  cycleAiInsightsLang,
   cycleHonestyFlags,
   emptyCycleAiCache,
+  profileWriteStalesCycleAi,
   latePeriodAlertKa,
   nextPeriodEstimateBody,
   pcosCautionKa,
@@ -167,6 +170,70 @@ describe('AI prompt categories', () => {
 describe('AI cache invalidation helper', () => {
   it('clears both insight fields so mutations cannot keep stale Medi copy', () => {
     assert.deepEqual(emptyCycleAiCache(), { aiInsights: null, aiInsightsAt: null });
+  });
+});
+
+describe('AI cycle cards follow her rhythm and her language (CYC-08)', () => {
+  const current = {
+    mode: 'TRACK_PERIOD',
+    lastPeriodStart: new Date('2026-09-20T00:00:00.000Z'),
+    avgCycleLength: 28,
+    avgPeriodLength: 5,
+    isIrregular: false,
+    contraceptionMethod: null,
+    contraceptionStartedAt: null,
+    conditions: ['pcos'],
+    privacyEnabled: false,
+  };
+
+  it('a corrected last period start, average, mode, contraception or condition stales the cards', () => {
+    assert.equal(profileWriteStalesCycleAi(current, { lastPeriodStart: new Date('2026-09-25T00:00:00.000Z') }), true);
+    assert.equal(profileWriteStalesCycleAi(current, { lastPeriodStart: null }), true);
+    assert.equal(profileWriteStalesCycleAi(current, { avgCycleLength: 32 }), true);
+    assert.equal(profileWriteStalesCycleAi(current, { avgPeriodLength: 6 }), true);
+    assert.equal(profileWriteStalesCycleAi(current, { isIrregular: true }), true);
+    assert.equal(profileWriteStalesCycleAi(current, { mode: 'TRY_TO_CONCEIVE' }), true);
+    assert.equal(profileWriteStalesCycleAi(current, { contraceptionMethod: 'PILL' }), true);
+    assert.equal(profileWriteStalesCycleAi(current, { conditions: ['pcos', 'endometriosis'] }), true);
+  });
+
+  it('the profile screen re-sending unchanged values, or other settings, keeps them', () => {
+    assert.equal(
+      profileWriteStalesCycleAi(current, {
+        mode: 'TRACK_PERIOD',
+        lastPeriodStart: new Date('2026-09-20T00:00:00.000Z'),
+        avgCycleLength: 28,
+        avgPeriodLength: 5,
+        isIrregular: false,
+        contraceptionMethod: null,
+        contraceptionStartedAt: null,
+        conditions: ['pcos'],
+        reminderPrefs: { enabled: true },
+      }),
+      false,
+    );
+    assert.equal(profileWriteStalesCycleAi(current, { privacyEnabled: true }), false);
+    assert.equal(profileWriteStalesCycleAi(current, { reminderPrefs: { enabled: false } }), false);
+    assert.equal(profileWriteStalesCycleAi(current, {}), false);
+  });
+
+  const kaCards = { headline: 'დღის რჩევები', cards: [{ id: 'a', title: 'რჩევა', body: 'დალიე წყალი.' }], source: 'ai' };
+  const enCards = { headline: 'Tips for today', cards: [{ id: 'a', title: 'Tip', body: 'Drink water.' }], source: 'ai' };
+
+  it('cards cached before the language was stored read as Georgian or English by their script', () => {
+    assert.equal(cycleAiInsightsLang(kaCards), 'ka');
+    assert.equal(cycleAiInsightsLang(enCards), 'en');
+    assert.equal(cycleAiInsightsLang({ ...enCards, lang: 'ka' }), 'ka');
+    assert.equal(cycleAiInsightsLang(null), null);
+  });
+
+  it('an English reader never gets Georgian cached cards, nor the reverse', () => {
+    assert.equal(cycleAiInsightsForLang(kaCards, 'en'), null);
+    assert.equal(cycleAiInsightsForLang(kaCards, 'ka'), kaCards);
+    assert.equal(cycleAiInsightsForLang(enCards, 'ka'), null);
+    assert.equal(cycleAiInsightsForLang({ ...enCards, lang: 'en' }, 'en').headline, 'Tips for today');
+    assert.equal(cycleAiInsightsForLang({ ...kaCards, lang: 'ka' }, 'en'), null);
+    assert.equal(cycleAiInsightsForLang(null, 'ka'), null);
   });
 });
 

@@ -149,12 +149,13 @@ export async function syncCycleLogNative(payload: CycleHealthPayload): Promise<v
 
   const flow = mapFlow(payload.flow, HealthKit.CategoryValueMenstrualFlow);
   if (flow != null && flow !== HealthKit.CategoryValueMenstrualFlow.none) {
+    // HealthKit requires HKMenstrualCycleStart on every flow sample: true only for a real new start (CYC-03).
     await HealthKit.saveCategorySample(
       'HKCategoryTypeIdentifierMenstrualFlow',
       flow,
       when,
       end,
-      payload.isPeriodStart ? { HKMenstrualCycleStart: true } : undefined,
+      { HKMenstrualCycleStart: payload.isPeriodStart === true },
     );
   }
 

@@ -16,6 +16,7 @@ import {
 } from './cycleAiContext.js';
 import { alignPhaseWithForecast, hideFertilePhase } from './cycleForecastHonesty.js';
 import { completedCycleIntervals, perimenopauseForecast } from './cyclePerimenopause.js';
+import { presentationCapabilitiesForProfileMode } from './cycleModeCapabilityMatrix.js';
 
 /** 32 bytes → 64 hex chars. 12-hex legacy codes are rejected. */
 export const SHARE_TOKEN_BYTES = 32;
@@ -202,15 +203,32 @@ export function ownerShareView(share, plaintextToken = null) {
 }
 
 /**
+ * True while her mode shows no next period at all (cycleModeCapabilityMatrix: pregnancy, postpartum) or
+ * forecasts wait for cycles logged after a birth (`postpartumReturnPending`, the POSTPARTUM_RETURN gate).
+ * The partner view is paused then — never a period weeks „overdue“ or „cycle day 50“ counted from the
+ * start before the pregnancy (CYC-02).
+ */
+export function partnerShareSuspended(mode, { postpartumReturnPending = false } = {}) {
+  if (postpartumReturnPending === true) return true;
+  return presentationCapabilitiesForProfileMode(mode).showNextPeriodForecast === false;
+}
+
+/**
  * `tracking` (brief §9 wave 2 item 17, optional — omitted = today's behaviour):
- * `{ trackingOnly, hideFertility }`. Tracking shares no next period and no phase; a hidden fertile-days
- * display (her „off“, Tracking, hormonal contraception, a mode without fertile days) shares no fertile
- * window / ovulation and never says „ნაყოფიერი“ / „ოვულაცია“ as the phase.
+ * `{ trackingOnly, hideFertility, postpartumReturnPending }`. Tracking shares no next period and no phase;
+ * a hidden fertile-days display (her „off“, Tracking, hormonal contraception, a mode without fertile days)
+ * shares no fertile window / ovulation and never says „ნაყოფიერი“ / „ოვულაცია“ as the phase.
+ * A paused share (`partnerShareSuspended`) carries only `{ estimated, permissions, paused: true }`: no
+ * period, phase, fertile window or symptoms (pregnancy chips such as nausea would tell), and nothing that
+ * names the mode. The link itself stays, so the partner sees her cycle again once she tracks it again.
  */
 export function buildPartnerPayload({ profile, logs, permissions, today = todayInTimeZone(), lang = 'ka', tracking = null, hiddenCycles = [] }) {
   const trackingOnly = tracking?.trackingOnly === true;
   const hideFertility = trackingOnly || tracking?.hideFertility === true;
   const allowed = normalizeSharePermissions(permissions);
+  if (partnerShareSuspended(profile?.mode, { postpartumReturnPending: tracking?.postpartumReturnPending === true })) {
+    return { estimated: true, permissions: allowed, paused: true };
+  }
   // Cycles she hid from averages shape the partner's estimate exactly as they shape hers (never named).
   const inferred = inferCycleStats(logs, profile.avgCycleLength, profile.avgPeriodLength, { hiddenStarts: hiddenCycles });
   const averages = resolveForecastAverages(profile, inferred);

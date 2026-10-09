@@ -48,5 +48,3 @@ export function useFigmaSteps() {
   const dark = useIsDark();
   return dark ? { ...FIGMA_STEPS, ...FIGMA_STEPS_DARK } : FIGMA_STEPS;
 }
-
-export const DEFAULT_STEPS_GOAL = 10_000;

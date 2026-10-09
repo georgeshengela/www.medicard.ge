@@ -19,3 +19,5 @@ Lab results, imaging (X-ray, ultrasound, MRI, CT) and skin photos are read in ON
 ## Unified Medi conversation (2026-09-21, app 1.0.0.11.4)
 
 Owner explicitly removed human/pet tabs from the global action assistant. Do not restore them. `/assistant` sends `scope:auto`; server resolves owned pet names (including Georgian suffixes) or asks for identity clarification. This UX does NOT merge human/pet storage or authorization. Dedicated Medi Vet clinical chat remains separate. Voice questions stay on the conversation canvas; manual forms and capability discovery are opt-in. Keep signed reviews and idempotent execution, never fabricate external clinic bookings or medication doses. See docs/MEDI-ASSISTANT.md latest entry.
+
+See also [strategy-and-hardening.md](strategy-and-hardening.md) (2026-10-08 rules that override older notes here).

@@ -1,6 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { copyFromYesterday, formIsEmpty, hasCopyableContent, nextPainSeverity, painLevel } from './cycleQuickLogCopy.ts';
+import { readFileSync } from 'node:fs';
+import { copyFromYesterday, formIsEmpty, hasCopyableContent, nextPainSeverity, painLevel, quickLogHeading, quickLogTitleDate } from './cycleQuickLogCopy.ts';
 
 const yesterday = {
   flow: 'medium',
@@ -48,4 +49,20 @@ test('pain strength cycles moderate → severe → mild → off', () => {
   assert.equal(painLevel('mild'), 1);
   assert.equal(painLevel('severe'), 3);
   assert.equal(painLevel(null), null);
+});
+
+test('CYC-12: the quick-log sheet for another day names that day — never "Log today", never an ISO date', () => {
+  assert.equal(quickLogTitleDate('2026-10-09', '2026-10-09'), null);
+  assert.equal(quickLogTitleDate('2026-10-05', '2026-10-09', 'ka'), '5 ოქტომბერი 2026');
+  assert.equal(quickLogTitleDate('2026-10-05', '2026-10-09', 'en'), '5 October 2026');
+  assert.doesNotMatch(String(quickLogTitleDate('2025-12-31', '2026-10-09', 'en')), /\d{4}-\d{2}-\d{2}/);
+  assert.equal(quickLogHeading('2026-10-09', '2026-10-09', 'Log today'), 'Log today');
+  assert.equal(quickLogHeading('2026-10-05', '2026-10-09', 'Log today'), 'დღის აღრიცხვა');
+
+  const sheet = readFileSync(new URL('../components/cycle/CycleQuickLogSheet.tsx', import.meta.url), 'utf8');
+  assert.match(sheet, /const titleDate = quickLogTitleDate\(date, q\.today\);/);
+  assert.match(sheet, /\{titleDate \?\? ka\.cycle\.logTodayCta\}/);
+  assert.doesNotMatch(sheet, /^\s*\{ka\.cycle\.logTodayCta\}\s*$/m);
+  const day = readFileSync(new URL('../components/cycle/CycleDaySheet.tsx', import.meta.url), 'utf8');
+  assert.match(day, /quickLogHeading\(date, today, ka\.cycle\.logTodayCta\)/);
 });

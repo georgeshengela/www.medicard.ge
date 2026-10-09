@@ -56,7 +56,6 @@ const kaStrings = {
     signUpHero: 'შექმენი ანგარიში და დაიწყე ჯანმრთელობის მართვა.',
     emailPlaceholderSignIn: 'შეიყვანე ელ-ფოსტა…',
     passwordPlaceholderSignIn: 'შეიყვანე პაროლი…',
-    keepSignedIn: 'დამახსოვრება',
     forgotPassword: 'დაგავიწყდა პაროლი?',
     forgotPasswordTitle: 'პაროლის აღდგენა',
     forgotPasswordChoose: 'აირჩიე პაროლის აღდგენის გზა',
@@ -569,7 +568,7 @@ const kaStrings = {
   },
 
   chat: {
-    mediModes: { medi: 'Medi', doctor: 'ექიმთან', deep: 'ღრმა ანალიზი' } as Record<'medi' | 'doctor' | 'deep', string>,
+    mediModes: { medi: 'Medi', doctor: 'კონსულტაცია', deep: 'ღრმა ანალიზი' } as Record<'medi' | 'doctor' | 'deep', string>,
     mediModeSubtitles: { medi: 'შენი ასისტენტი', doctor: 'ჯანმრთელობის კითხვები და რჩევა', deep: 'რამდენიმე სპეციალისტის ხედვა' } as Record<'medi' | 'doctor' | 'deep', string>,
     navDoctorTitle: 'Medi',
     navModelBadge: 'AI',
@@ -970,7 +969,7 @@ const kaStrings = {
     yesterday: 'გუშინ',
     statusAboveGoal: 'დღიური მიზანი უკვე მიღწეულია',
     statusNearGoal: 'მიზანთან ახლოს ხარ',
-    statusActive: 'ჩვეულებრივზე უფრო აქტიური ხარ',
+    statusActive: 'მიზნისკენ მიდიხარ',
     statusLow: 'დღეს ნაკლები აქტიურობაა',
     remaining: (n: string) => `${n} დარჩა`,
     peak: (n: string) => `მაქს: ${n}`,
@@ -1535,6 +1534,7 @@ const kaStrings = {
     customTagAdd: 'ნიშნის დამატება',
     customTagPlaceholder: 'მაგ. მოგზაურობა',
     customTagEmpty: 'ნიშანი ჯერ არ გაქვს.',
+    customTagDayLimit: (max: number) => `ერთ დღეს ${max} ნიშნამდე შეგიძლია მონიშნო.`,
     customTagOnlineOnly: 'ახალი ნიშანი ინტერნეტით იქმნება. არსებული ნიშნების მინიჭება ოფლაინაც შეიძლება.',
     customTagArchive: 'არქივი',
     logHubPain: 'ტკივილი',
@@ -1692,6 +1692,9 @@ const kaStrings = {
     partnerShareNeedAuth: 'გასაგრძელებლად შედი ანგარიშში.',
     partnerShareAccept: 'გაზიარების მიღება',
     partnerShareEmpty: 'ამ ბმულზე გასაზიარებელი ველი არ არის ჩართული.',
+    partnerSharePaused: 'ახლა საჩვენებელი არაფერია.',
+    partnerSharePausedOwner:
+      'ორსულობის დროს და მშობიარობის შემდეგ პარტნიორი ციკლის მონაცემებს ვერ ხედავს. ბმული ისევ იმუშავებს, როცა ციკლის პროგნოზი დაბრუნდება.',
     privacy: 'კონფიდენციალურობა',
     privacyHint: 'ჩართვისას ციკლის შეტყობინება ეკრანზე ზოგადი ტექსტით გამოჩნდება. Face ID ცალკე ირთვება.',
     emptyHint: 'მონიშნე ბოლო მენსტრუაცია ან დაიწყე დღის აღრიცხვა',

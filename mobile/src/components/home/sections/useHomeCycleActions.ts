@@ -5,9 +5,13 @@ import { ka } from '@/i18n/ka';
 import type { CycleLogForm } from '@/components/cycle/CycleLogTabs';
 import { periodToastTitle } from '@/components/cycle/CyclePeriodToast';
 import { formFromCycleLog, persistCycleLog } from '@/lib/cycleLogSave';
+import { periodStartTapHealthWrite } from '@/lib/cycleHealthWrite';
+import { syncCycleLogToHealth } from '@/lib/healthSync';
 import { periodStartTone } from '@/lib/cycleTone';
-import { queueApplyPeriod, queueRemoveCycleLog, saveCycleObservation, type CycleView } from '@/lib/cycleOffline';
-import { periodEndUndo, stillBleedingFlow, type PeriodEndUndo } from '@/lib/cyclePeriodStatus';
+import { queueApplyPeriod, queueRemoveCycleLog, saveCycleObservation, undoQueuedPeriodStart, type CycleView } from '@/lib/cycleOffline';
+import { cyclePersistFeedback } from '@/lib/cycleOfflineCore';
+import { periodEndUndo, periodStartUndo, stillBleedingFlow, type PeriodEndUndo, type PeriodStartUndo } from '@/lib/cyclePeriodStatus';
+import { cycleSetupStart } from '@/lib/cycleExperience';
 import { tx } from '@/i18n/locale';
 import { putCycleView } from '@/lib/cycleViewCache';
 import { getCycleReminderPrefs } from '@/lib/cycleReminderPrefs';
@@ -133,6 +137,8 @@ export function useHomeCycleActions({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [toastDate, setToastDate] = useState<string | null>(null);
+  /** Today's row and the last period start before the one-tap start (its undo restores both, CYC-04). */
+  const startUndoRef = useRef<{ date: string; undo: PeriodStartUndo } | null>(null);
   /** Today's bleeding before the one-tap "period ended" (kept for undo); null = no end toast. */
   const [endToast, setEndToast] = useState<EndToast | null>(null);
   /** The day's form before the one-tap sex log (kept for undo); null = no sex toast. */
@@ -156,6 +162,16 @@ export function useHomeCycleActions({
 
   const fail = useCallback((err: unknown) => {
     if (alive.current) setError(err instanceof Error && err.message ? err.message : ka.common.error);
+  }, []);
+
+  /**
+   * A one-tap action that stored nothing (device storage and the server both failed): say so and skip
+   * the success haptic and toast (CYC-05). True = stop.
+   */
+  const storedNothing = useCallback((result: { synced?: boolean; persistedLocally?: boolean; sessionOnly?: boolean } | null) => {
+    if (!result || cyclePersistFeedback(result) !== 'fail') return false;
+    if (alive.current) setError(ka.cycle.saveNotPersisted);
+    return true;
   }, []);
 
   /** Reminders follow a synced view only (the cycle screen's rule: never schedule from an optimistic one). */
@@ -198,17 +214,26 @@ export function useHomeCycleActions({
 
   const startPeriod = useCallback(() => {
     if (!userId || busyRef.current) return;
+    const beforeRow = view?.display.logs.find((l) => l.date === today) ?? null;
+    // The start she has: a restore still queued by an earlier undo counts, or this undo would lose it (IR3-2).
+    const undo = periodStartUndo(beforeRow, cycleSetupStart(view));
     busyRef.current = true;
     setBusy(true);
     setError(null);
     void (async () => {
       try {
         const result = await queueApplyPeriod(userId, { action: 'start', date: today });
+        if (storedNothing(result)) return;
+        // Apple Health / Health Connect get day 1 as a cycle start (IR-6): fire-and-forget, only when sync
+        // is on, never asks for access. Undo cannot take a Health sample back (none is ever deleted).
+        const health = periodStartTapHealthWrite(today, beforeRow);
+        if (health) void syncCycleLogToHealth(health).catch(() => undefined);
         trackCyclePeriodStarted('home');
         // TTC: a new cycle is not a success to celebrate — a plain selection tick (brief §9 item 16).
         if (periodStartTone(mode).haptic === 'selection') Haptics.selectionAsync().catch(() => undefined);
         else Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined);
         showView(result.view);
+        startUndoRef.current = { date: today, undo };
         if (alive.current) {
           setSexBefore(null);
           setEndToast(null);
@@ -221,23 +246,29 @@ export function useHomeCycleActions({
         if (alive.current) setBusy(false);
       }
     })();
-  }, [userId, today, mode, showView, fail]);
+  }, [userId, view, today, mode, showView, fail, storedNothing]);
 
+  /** Undo of the one-tap start: the day and the last period start come back exactly as they were (never „end“). */
   const undoStart = useCallback(
     (date: string) => {
       if (!userId) return;
       setToastDate(null);
+      const entry = startUndoRef.current;
+      startUndoRef.current = null;
+      if (!entry || entry.date !== date) return;
+      // The row as it is now: anything logged since the tap stays (the published toast reads the latest handler).
+      const current = view?.display.logs.find((l) => l.date === date) ?? null;
       void (async () => {
         try {
-          // "end" on the first day clears that one-day period again (server planEndPeriod).
-          const result = await queueApplyPeriod(userId, { action: 'end', date });
-          showView(result.view);
+          const result = await undoQueuedPeriodStart(userId, entry.date, entry.undo, current);
+          if (storedNothing(result)) return;
+          if (result) showView(result.view);
         } catch (err) {
           fail(err);
         }
       })();
     },
-    [userId, showView, fail],
+    [userId, view, showView, fail, storedNothing],
   );
 
   /** One tap: the period ends today (the server clears today's logged bleeding); the toast's undo restores it. */
@@ -251,6 +282,7 @@ export function useHomeCycleActions({
     void (async () => {
       try {
         const result = await queueApplyPeriod(userId, { action: 'end', date: today });
+        if (storedNothing(result)) return;
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined);
         showView(result.view);
         if (alive.current) {
@@ -265,7 +297,7 @@ export function useHomeCycleActions({
         if (alive.current) setBusy(false);
       }
     })();
-  }, [userId, view, today, showView, fail]);
+  }, [userId, view, today, showView, fail, storedNothing]);
 
   /** „ჯერ კიდევ გაქვს?“ → „კი“: the run continues today (a bleeding log; the server's period status follows). */
   const stillBleeding = useCallback(() => {
@@ -277,6 +309,7 @@ export function useHomeCycleActions({
     void (async () => {
       try {
         const result = await saveCycleObservation(userId, today, { flow });
+        if (storedNothing(result)) return;
         Haptics.selectionAsync().catch(() => undefined);
         showView(result.view);
         if (alive.current) {
@@ -291,7 +324,7 @@ export function useHomeCycleActions({
         if (alive.current) setBusy(false);
       }
     })();
-  }, [userId, view, today, showView, fail]);
+  }, [userId, view, today, showView, fail, storedNothing]);
 
   const undoEnd = useCallback(
     (entry: EndToast) => {
@@ -307,13 +340,14 @@ export function useHomeCycleActions({
               : undo.kind === 'clearFlow'
                 ? await saveCycleObservation(userId, entry.date, { flow: null })
                 : await queueRemoveCycleLog(userId, entry.date);
+          if (storedNothing(result)) return;
           showView(result.view);
         } catch (err) {
           fail(err);
         }
       })();
     },
-    [userId, showView, fail],
+    [userId, showView, fail, storedNothing],
   );
 
   /** Flo-style one tap: mark sex for today, keeping everything else logged that day. */
@@ -330,7 +364,8 @@ export function useHomeCycleActions({
     setError(null);
     void (async () => {
       try {
-        const result = await persistCycleLog(userId, today, { ...before, sexual: true });
+        const result = await persistCycleLog(userId, today, { ...before, sexual: true }, { base: before });
+        if (storedNothing(result)) return;
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined);
         showView(result.view);
         if (alive.current) {
@@ -345,7 +380,7 @@ export function useHomeCycleActions({
         if (alive.current) setSexBusy(false);
       }
     })();
-  }, [userId, view, today, showView, fail]);
+  }, [userId, view, today, showView, fail, storedNothing]);
 
   const undoSex = useCallback(
     (before: CycleLogForm) => {
@@ -353,14 +388,15 @@ export function useHomeCycleActions({
       setSexBefore(null);
       void (async () => {
         try {
-          const result = await persistCycleLog(userId, today, before);
+          const result = await persistCycleLog(userId, today, before, { base: before });
+          if (storedNothing(result)) return;
           showView(result.view);
         } catch (err) {
           fail(err);
         }
       })();
     },
-    [userId, today, showView, fail],
+    [userId, today, showView, fail, storedNothing],
   );
 
   const openSexSheet = useCallback(() => {

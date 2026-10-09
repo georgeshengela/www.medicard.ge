@@ -8,10 +8,12 @@ import { prisma } from '../lib/prisma.js';
 import { AiEngineError } from '../lib/evidencemd.js';
 import { askAi, serverAiEngine, publicAiEngineCatalog, resolveOpenRouterModel } from '../lib/aiEngine.js';
 import { runTrackedAi } from '../lib/aiTelemetry.js';
-import { describeImage, structureLabText, SUPPORTED_IMAGE_TYPES, VISION_EFFORTS } from '../lib/vision.js';
+import { watchStreamClient } from '../lib/streamClient.js';
+import { describeImage, isVisionReaderDown, structureLabText, SUPPORTED_IMAGE_TYPES, VISION_EFFORTS, visionFailedError } from '../lib/vision.js';
 import { extractPdfText, ocrImage, SUPPORTED_DOCUMENT_TYPES } from '../lib/ocr.js';
 import { buildVisionHandoff, buildDoctorTurnContext, sanitizeDoctorReply } from '../lib/prompts.js';
 import { calculateAge, withPatientAiContext } from '../lib/patient.js';
+import { answerCarriedCycle } from '../lib/patientHistoryContext.js';
 import { MEDI_RECORD_CONTEXT_RULES } from '../lib/cycleAccountContext.js';
 import { clientTimezoneFromReq, cycleTodayKey } from '../lib/cycleCivilDate.js';
 import { buildSymptomPrompt, formatSymptomRecordKa, runSymptomCheck } from '../lib/symptomCheck.js';
@@ -128,7 +130,32 @@ function writeSse(res, payload) {
   if (typeof res.flush === 'function') res.flush();
 }
 
-async function persistChatTurn({ req, session, history, message, mode, answer }) {
+/** Thrown inside the save when she closed Medi before it committed: the transaction rolls back. */
+function clientGoneError() {
+  return Object.assign(new Error('AI_CLIENT_GONE'), { code: 'AI_CLIENT_GONE', status: 499 });
+}
+
+/**
+ * A finished answer's save transaction waits for a connection as long as the old non-transaction save did
+ * (Prisma's 10 s pool wait), not the 2 s / 5 s interactive defaults that threw the answer away under load.
+ */
+const AI_SAVE_TRANSACTION = Object.freeze({ maxWait: 10_000, timeout: 15_000 });
+
+/** Marks an error thrown inside the save transaction's callback: Prisma never sent COMMIT for it. */
+function markSaveRolledBack(error) {
+  if (error !== null && typeof error === 'object' && Object.isExtensible(error)) error.aiSaveRolledBack = true;
+  return error;
+}
+
+/**
+ * Saves one answered turn and takes its AI credit in one transaction, inside the limiter's settlement:
+ * a close that lands during the save waits for it instead of freeing the slot under a stored answer, and
+ * a close just before it finds the slot released and writes nothing. `gone` (streamed answers) is read
+ * last inside the transaction — she closed Medi before the save committed → nothing is stored or charged.
+ * Only a close during the final commit (and 'done' still on its way to the phone) can keep an answer the
+ * app then drops. The quest refresh is the caller's (after 'done' for a stream).
+ */
+export async function persistChatTurn({ req, session, history, message, mode, answer, cycleContext = false, gone = null }) {
   const now = new Date().toISOString();
   const nextMessages = [
     ...history,
@@ -138,22 +165,42 @@ async function persistChatTurn({ req, session, history, message, mode, answer })
       content: answer.content,
       timestamp: new Date().toISOString(),
       interactionId: answer.interactionId,
+      // The cycle rode with this answer: a later answer leaves it out while the cycle is withheld.
+      cycleContext,
     },
   ];
 
-  const saved = session
-    ? await prisma.chatSession.update({
-        where: { id: session.id },
-        data: { messages: nextMessages, updatedAt: new Date() },
-      })
-    : await prisma.chatSession.create({
-        data: {
-          userId: req.user.id,
-          mode,
-          title: buildTitle(message),
-          messages: nextMessages,
-        },
-      });
+  let began = false;
+  const { saved, usage } = await req.settleAiOperation(() => prisma.$transaction(async (tx) => {
+    began = true;
+    try {
+      const saved = session
+        ? await tx.chatSession.update({
+            where: { id: session.id },
+            data: { messages: nextMessages, updatedAt: new Date() },
+          })
+        : await tx.chatSession.create({
+            data: {
+              userId: req.user.id,
+              mode,
+              title: buildTitle(message),
+              messages: nextMessages,
+            },
+          });
+      const usage = await commitAiCredit(req.user.id, tx);
+      if (typeof gone === 'function' && gone()) throw clientGoneError();
+      return { saved, usage };
+    } catch (error) {
+      // Thrown before Prisma sends COMMIT (even a lost connection here): the transaction rolls back, so this
+      // turn is known not to be stored (saveNotStored).
+      throw markSaveRolledBack(error);
+    }
+  }, AI_SAVE_TRANSACTION)).catch((error) => {
+    // The callback never ran (BEGIN failed on a dropped pooled connection, the slot was already released):
+    // nothing was written either. Only a failure after the callback — at COMMIT — is in doubt.
+    throw began ? error : markSaveRolledBack(error);
+  });
+  req.usage = usage;
   // A new chat exists only after its first answer: link that answer's log row too, or admin
   // shows the first question apart from the rest of the conversation.
   if (!session && answer.interactionId) {
@@ -161,10 +208,47 @@ async function persistChatTurn({ req, session, history, message, mode, answer })
       .updateMany({ where: { id: answer.interactionId, chatSessionId: null }, data: { chatSessionId: saved.id } })
       .catch(() => undefined);
   }
-
-  const usage = await req.consumeAiCredit();
-  await refreshQuestProgressForUser(req.user.id, QuestSignal.MEDI_USED);
   return { saved, usage };
+}
+
+/**
+ * Her answer was not saved — she closed Medi first (train 2 Stop — nothing stored, charged or logged) or the
+ * save is known not to have committed (saveNotStored): its log row goes too, so an answer she never kept does
+ * not count for the weekly Medi mission or show in admin as a consultation missing from the conversation.
+ */
+async function forgetUnkeptAnswer(userId, interactionId) {
+  if (!interactionId) return;
+  await prisma.aiInteraction.deleteMany({ where: { id: interactionId, userId } }).catch(() => undefined);
+}
+
+/**
+ * A failed save is known not to have committed only when its error was thrown inside the transaction callback or
+ * before the callback ran (marked by persistChatTurn: COMMIT was never sent), the limiter had already released the
+ * slot (the save never began), or Prisma reports a transaction that never started, expired or was rolled back
+ * (P2024, P2028, P2034).
+ * Anything else — a connection lost at COMMIT (P1017 and the like), an unknown error — is in doubt: Postgres may
+ * have stored the turn, so its log row stays (the answer must stay rateable and count for weekly Medi).
+ */
+export function saveNotStored(error) {
+  return error?.aiSaveRolledBack === true
+    || error?.message === 'AI_REQUEST_ALREADY_RELEASED'
+    || ['P2024', 'P2028', 'P2034'].includes(error?.code);
+}
+
+/**
+ * The streamed `error` event, same shape for every app build ({ type, error, status }). Only our own copy
+ * reaches the phone (an AiEngineError, or an error that carries `messageEn`); anything else — a failed save's
+ * Prisma text, an internal code such as AI_CREDIT_COMMIT_WITHOUT_RESERVATION — reads as the generic line.
+ */
+export function streamErrorEvent(req, error) {
+  const ours = error instanceof AiEngineError || (typeof error?.messageEn === 'string' && error.messageEn !== '');
+  const status = error instanceof AiEngineError ? error.status : error?.status;
+  return {
+    type: 'error',
+    error: (ours && t(req, error.message, error.messageEn || error.message))
+      || t(req, 'სამედიცინო ანალიზის სერვისთან დაკავშირება ვერ მოხერხდა.', 'We could not reach the medical analysis service.'),
+    status: status && status >= 400 && status < 600 ? status : 502,
+  };
 }
 
 aiRouter.post(
@@ -189,10 +273,14 @@ aiRouter.post(
 
     // Everything Medi may know about the person, re-read for every turn (2026-10-08 incident).
     // The cycle diary needs the client's explicit yes: its Face ID/PIN lock lives on the device only.
+    const contextMeta = {};
     const profileContext = await withPatientAiContext(req.user, context, {
       full: true, cycleAllowed: cycleContextAllowed === true,
       today: cycleTodayKey(clientTimezoneFromReq(req)), thread, priorTurns, excludeSessionId: session?.id,
+      question: message, meta: contextMeta,
     });
+    // Marker on the stored answer: the diary or a staged cycle context rode with it.
+    const cycleContext = answerCarriedCycle({ cycleShared: contextMeta.cycleShared, cycleContextAllowed, context });
     const turnContext =
       [MEDI_RECORD_CONTEXT_RULES, mode === 'DOCTOR'
         ? buildDoctorTurnContext({ userTurnCount, assistantTurnCount })
@@ -200,6 +288,15 @@ aiRouter.post(
     const stream = wantsChatStream(req);
 
     if (stream) {
+      // The person may have left during the reads above: no AI call, nothing stored, nothing charged.
+      const client = watchStreamClient(res);
+      if (client.gone()) {
+        client.dispose();
+        // A disconnect during enforceAiQuota's own reads fired 'close' before it listened: free the slot here,
+        // or it stays reserved (2 in flight → „ანალიზი უკვე მიმდინარეობს“) until the 20-minute sweep.
+        await req.releaseAiCredit?.().catch(() => undefined);
+        return;
+      }
       req.setTimeout(0);
       res.setTimeout(0);
       res.status(200);
@@ -210,18 +307,16 @@ aiRouter.post(
       if (req.socket) req.socket.setNoDelay(true);
       if (typeof res.flushHeaders === 'function') res.flushHeaders();
 
-      const abort = new AbortController();
-      const onClose = () => {
-        if (!res.writableEnded) abort.abort();
-      };
-      req.on('close', onClose);
-
+      let answer = null;
+      let kept = false;
+      let failure = null;
       try {
-        const answer = await runTrackedAi({
+        answer = await runTrackedAi({
           userId: req.user.id,
           mode,
           chatSessionId: session?.id,
           userPrompt: message,
+          cancelled: client.gone,
           fn: async () => {
             const result = await askAi({
               user: req.user,
@@ -231,9 +326,9 @@ aiRouter.post(
               messages: [...priorTurns, { role: 'user', content: message }],
               temperature: mode === 'DOCTOR' ? 0.3 : 0.2,
               maxTokens: 2400,
-              signal: abort.signal,
+              signal: client.signal,
               onDelta: (text) => {
-                if (abort.signal.aborted || res.writableEnded) return;
+                if (client.gone() || res.writableEnded) return;
                 writeSse(res, { type: 'delta', text });
               },
             });
@@ -244,9 +339,12 @@ aiRouter.post(
           },
         });
 
-        if (abort.signal.aborted) return;
+        // Stopped, left or offline before the answer was saved: nothing is stored or charged, and `finally`
+        // takes its log row back. The save checks once more inside its transaction.
+        if (client.gone()) return;
 
-        const { saved, usage } = await persistChatTurn({ req, session, history, message, mode, answer });
+        const { saved, usage } = await persistChatTurn({ req, session, history, message, mode, answer, cycleContext, gone: client.gone });
+        kept = true;
         writeSse(res, {
           type: 'done',
           sessionId: saved.id,
@@ -259,17 +357,21 @@ aiRouter.post(
           usage,
         });
         res.end();
+        // After 'done': the app has its answer sooner, and a close now changes nothing (it never fails).
+        await refreshQuestProgressForUser(req.user.id, QuestSignal.MEDI_USED);
       } catch (error) {
-        if (abort.signal.aborted || res.writableEnded) return;
-        const status = error instanceof AiEngineError ? error.status : error?.status;
-        writeSse(res, {
-          type: 'error',
-          error: t(req, error?.message, error?.messageEn || error?.message) || t(req, 'სამედიცინო ანალიზის სერვისთან დაკავშირება ვერ მოხერხდა.', 'We could not reach the medical analysis service.'),
-          status: status && status >= 400 && status < 600 ? status : 502,
-        });
+        failure = error;
+        if (client.gone() || res.writableEnded) return;
+        // Not our own copy (a failed save, an internal error): the log keeps its code only, never its text.
+        if (!(error instanceof AiEngineError)) console.warn('[ai] Medi answer not delivered', error?.code || error?.name || 'Error');
+        writeSse(res, streamErrorEvent(req, error));
         res.end();
       } finally {
-        req.removeListener('close', onClose);
+        client.dispose();
+        // Not saved (she left, or the save is known not to have committed): its log row goes too. A connection
+        // lost at COMMIT may have stored the turn, so its row stays. This runs after res.end(), so a slow pool
+        // never holds back the error she is waiting for.
+        if (!kept && (client.gone() || saveNotStored(failure))) await forgetUnkeptAnswer(req.user.id, answer?.interactionId);
       }
       return;
     }
@@ -296,7 +398,18 @@ aiRouter.post(
       },
     });
 
-    const { saved, usage } = await persistChatTurn({ req, session, history, message, mode, answer });
+    let turn;
+    try {
+      turn = await persistChatTurn({ req, session, history, message, mode, answer, cycleContext });
+    } catch (error) {
+      // Known not saved: the answer's log row goes too (it would count for weekly Medi with no answer behind it).
+      // A connection lost at COMMIT may have stored the turn: its row stays. No read here — the error answers
+      // at once, with the error handler's own generic copy, never Prisma's text.
+      if (saveNotStored(error)) await forgetUnkeptAnswer(req.user.id, answer.interactionId);
+      throw error;
+    }
+    const { saved, usage } = turn;
+    await refreshQuestProgressForUser(req.user.id, QuestSignal.MEDI_USED);
 
     return res.json({
       sessionId: saved.id,
@@ -508,6 +621,9 @@ aiRouter.post(
     let extractor = { provider: pdfNotes.length ? 'pdf-parse' : 'none', model: pdfNotes.length ? 'pdf-parse' : '' };
 
     let usedOcr = false;
+    // Set when the reader itself was down for a page (no credit, outage, network): that page was never
+    // really read, so an unreadable result is reported as „try again later“, never as „retake the photo“.
+    let readerDown = null;
     const readImages = async (efforts, { ocr }) => {
       const parts = [];
       let last = null;
@@ -520,6 +636,7 @@ aiRouter.post(
           model: resolveOpenRouterModel(req.user),
           efforts,
         }).catch(async (error) => {
+          if (ocr && error?.readerDown) readerDown = error;
           // Tesseract is the last resort: Georgian print through it is mostly noise, so its text only
           // counts when it still yields real analytes (checked below).
           const text = ocr && image.mimeType !== 'application/pdf' ? await ocrImage(image.buffer) : null;
@@ -553,7 +670,12 @@ aiRouter.post(
     if (labExtract.parameters.length < 3 && visionNotes.length >= 24) {
       const structured = await structureLabText(visionNotes, {
         model: resolveOpenRouterModel(req.user),
-      }).catch(() => null);
+      }).catch((error) => {
+        // A text PDF is read by this pass alone: with the reader down its values were never looked at, so
+        // „nothing found“ below is „try again later with the same file“, never „retake the photo“.
+        if (!images.length && !readerDown && isVisionReaderDown(error)) readerDown = visionFailedError([error], error, { document: true });
+        return null;
+      });
       if (structured?.notes) {
         visionNotes = `${visionNotes}\n\n${structured.notes}`;
         labExtract = extractLabFromText(visionNotes);
@@ -570,7 +692,7 @@ aiRouter.post(
     }
     const unreadable = !labExtract.parameters.length || (usedOcr && labExtract.parameters.length < 3);
     if (unreadable) {
-      console.warn('[medicard] lab sheet unreadable', { images: images.length, ocr: usedOcr, rows: labExtract.parameters.length });
+      console.warn('[medicard] lab sheet unreadable', { images: images.length, ocr: usedOcr, readerDown: Boolean(readerDown), rows: labExtract.parameters.length });
     }
 
     if (req.labAppend) {
@@ -584,12 +706,14 @@ aiRouter.post(
         return res.status(404).json({ error: t(req, 'ჩანაწერი ვერ მოიძებნა.', 'Record not found.') });
       }
       if (unreadable) {
-        // Keep the pages already read; this page adds nothing rather than noise.
+        // Keep the pages already read; this page adds nothing rather than noise. `unavailable` (additive):
+        // the reader was down, so the app asks for the same photo later instead of a retake.
         return res.json({
           record: { id: existing.id, type: existing.type, imageUrl: existing.imageUrl, aiAnalysis: existing.aiAnalysis, createdAt: existing.createdAt },
           notes: existing.aiAnalysis,
           labExtract: extractLabFromText(existing.aiAnalysis),
           unreadable: true,
+          ...(readerDown ? { unavailable: true } : {}),
           interactionId: null,
           pipeline: { extractor, reasoning: null },
           usage: await getUsage(req.user.id),
@@ -619,6 +743,9 @@ aiRouter.post(
     }
 
     if (unreadable) {
+      // The reader was down and the OCR fallback found nothing usable: the photo was never really read.
+      // The calm 503 („try again later with the same photo“) goes out; the reserved credit is released.
+      if (readerDown) throw readerDown;
       return res.status(422).json({
         code: 'LAB_UNREADABLE',
         error: t(
@@ -1036,7 +1163,7 @@ aiRouter.post(
       await tx.aiInteraction.update({ where: { id: answer.interactionId }, data: { medicalRecordId: record.id } });
       const usage = await commitAiCredit(req.user.id, tx);
       return { record, usage };
-    }));
+    }, AI_SAVE_TRANSACTION));
     return res.status(201).json({
       recordId: record.id,
       result,

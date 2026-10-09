@@ -12,6 +12,7 @@ import { IMAGE_PICKER_OPTIONS, toUploadableImage, type UploadableImage } from '@
 import { hasVerifiedPhone, isPhoneRequiredError, offerPhoneVerification } from '@/lib/phoneGate';
 import { invalidateCoachEntry } from '@/components/coach/CoachEntry';
 import { useAuth } from '@/store/AuthContext';
+import { realFullName } from '@/lib/displayName';
 import type { CoachCatalog, Gym, GymBrand, OwnTrainerProfile } from '@/lib/coach';
 import { Badge, Button, Card, Chip, CoachForm, CoachHeader, Field, IconTile, Input, Loading, Screen, Section, coachStyles } from '@/components/coach/CoachUI';
 import { HUB, hubText } from '@/theme/hub';
@@ -61,7 +62,8 @@ export default function TrainerApplyScreen() {
         setSpecialties(p.specialties);
         setGyms(p.gyms);
       } else {
-        setName((n) => n || user?.fullName || '');
+        // Never the server's placeholder name (phone / Apple sign-ups) as a trainer's public name.
+        setName((n) => n || realFullName({ fullName: user?.fullName }));
       }
     },
     [user?.fullName],

@@ -8,7 +8,6 @@ import Animated, { Easing, interpolate, runOnJS, useAnimatedStyle, useSharedValu
 import { useTrainerSwitch } from '@/components/coach/CoachEntry';
 import { usePrefersReducedMotion } from '@/hooks/usePrefersReducedMotion';
 import { MODULE_BRANDS } from '@/theme/moduleBrand';
-import { RUN_ICON } from '@/components/run/runArt';
 import { Meteocon, meteoconSlugFor } from '@/components/weather/Meteocon';
 import { AVATAR_SOURCES, isAvatarId } from '@/constants/avatarAssets';
 import { PrivateImage } from '@/components/coach/CoachUI';
@@ -24,7 +23,6 @@ type Props = {
   firstName: string;
   initial: string;
   avatarId: string | null;
-  streak: number;
   dateLabel: string;
   /** Opens the modules sheet (quick navigation; the Home layout picker is its last row). */
   onModules?: () => void;
@@ -32,14 +30,14 @@ type Props = {
 
 /**
  * Greeting row. Everything glanceable that used to need its own card
- * (weather, streak) now lives as a small pill beside the date.
+ * (weather) now lives as a small pill beside the date. The app-open streak pill
+ * is gone (owner 2026-10-08): opening the app is not a health habit.
  */
-export function HomeHeader({ firstName, initial, avatarId, streak, dateLabel, onModules }: Props) {
+export function HomeHeader({ firstName, initial, avatarId, dateLabel, onModules }: Props) {
   const myPhoto = useMyAvatarUrl();
   const [brokenPhoto, setBrokenPhoto] = useState<string | null>(null);
   const narrow = useWindowDimensions().width < 360;
   const c = useThemeColors();
-  const dark = useIsDark();
   const router = useRouter();
   const accent = useHomeAccent();
   // Paused from admin („მოდულები“): no pill, and no weather fetch behind it.
@@ -95,17 +93,6 @@ export function HomeHeader({ firstName, initial, avatarId, streak, dateLabel, on
             {dateLabel}
           </Text>
           {weatherOn ? <WeatherPill /> : null}
-          {streak > 0 ? (
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel={tx(`${streak}-დღიანი სერია`, `${streak}-day streak`)}
-              onPress={() => router.push('/profile/streak' as never)}
-              style={[s.pill, { backgroundColor: dark ? '#3B2A0A' : '#FDF1DC' }]}
-            >
-              <Image source={RUN_ICON.streak} resizeMode="contain" accessibilityIgnoresInvertColors accessible={false} style={{ width: 18, height: 18 }} />
-              <Text style={[s.pillText, { color: dark ? '#FDE68A' : '#92400E' }]}>{streak}</Text>
-            </Pressable>
-          ) : null}
         </View>
         {/* One line: long greetings and names shrink to fit instead of wrapping. */}
         <Text

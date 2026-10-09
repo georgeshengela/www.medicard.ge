@@ -121,7 +121,6 @@ describe('AI daily cap', async () => {
   it('caps are far above real daily use', () => {
     assert.ok(AI_DAILY_CAPS.nutritionEstimate >= 100);
     assert.ok(AI_DAILY_CAPS.assistantPlan >= 300);
-    assert.ok(AI_DAILY_CAPS.onboardingAnalysis >= 10);
   });
 
   it('refuses one user past the cap with an hours message, others keep going', async () => {

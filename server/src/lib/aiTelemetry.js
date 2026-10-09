@@ -2,6 +2,8 @@ import { prisma } from './prisma.js';
 import { PROMPT_VERSION } from './prompts.js';
 
 const MAX_SNIPPET = 2000;
+/** A streamed reply cut at max_tokens: she saw it and it was saved, but admin counts it as an AI error. */
+export const AI_REPLY_CUT_MESSAGE = 'Reply cut off at max_tokens';
 
 export function truncateSnippet(text, max = MAX_SNIPPET) {
   if (!text) return null;
@@ -61,16 +63,23 @@ export async function runTrackedAi({
   visionProvider = null,
   visionModel = null,
   fn,
+  /** Optional: true once the person left a streamed answer. That cancel is not an AI error, so no row. */
+  cancelled = null,
 }) {
   const started = Date.now();
   try {
     const result = await fn();
+    // She left as the answer finished (its last words were on their way): a cancel, not an answer — no OK
+    // row, which the weekly Medi mission would count. The catch below rethrows without a row.
+    if (typeof cancelled === 'function' && cancelled()) {
+      throw Object.assign(new Error('AI_CLIENT_GONE'), { code: 'AI_CLIENT_GONE', status: 499 });
+    }
     // A streamed reply that hit max_tokens was already shown; record it as an error so admin sees it.
     const cut = result?.finishReason === 'length';
     const interaction = await logAiInteraction({
       userId,
       mode,
-      ...(cut ? { status: 'ERROR', errorMessage: 'Reply cut off at max_tokens' } : {}),
+      ...(cut ? { status: 'ERROR', errorMessage: AI_REPLY_CUT_MESSAGE } : {}),
       chatSessionId,
       medicalRecordId,
       userPrompt,
@@ -83,6 +92,8 @@ export async function runTrackedAi({
     });
     return { ...result, interactionId: interaction.id };
   } catch (error) {
+    // Admin counts ERROR rows as AI failures (command center „AI შეცდომები“); a person closing Medi is not one.
+    if (typeof cancelled === 'function' && cancelled()) throw error;
     await logAiInteraction({
       userId,
       mode,

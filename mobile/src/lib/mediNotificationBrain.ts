@@ -27,6 +27,7 @@ import { hydrateFeatureFlags, isEngageFamilyOn } from '@/lib/featureFlags';
 import { visitDateTimeMs } from '@/lib/visitReminders';
 import { cancelNotificationsByPrefix, ENGAGE_CHANNEL_ID, NOTIF_PREFIX, getNotificationPermissionGranted } from '@/lib/notifications';
 import { applyPushCopy } from '@/lib/pushCopy';
+import { displayFirstName } from '@/lib/displayName';
 
 export {
   ENGAGE_FAMILIES,
@@ -49,11 +50,6 @@ export function rememberEngageActor(user?: User | null, health?: HealthProfile |
 
 function ymd(date: Date): string {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
-}
-
-function firstNameOf(user?: User | null): string {
-  const raw = user?.fullName?.trim() ?? '';
-  return raw.split(/\s+/)[0] || '';
 }
 
 function weekRange(end: Date): { thisWeek: string[]; prevWeek: string[] } {
@@ -111,10 +107,6 @@ export async function buildEngageSnapshot(user?: User | null, health?: HealthPro
       const row = daily.find((item) => item.date === day);
       return sum + (row?.steps && row.steps > 0 ? row.steps : 0);
     }, 0);
-  const loggedHealthDays = thisWeek.filter((day) => {
-    const row = daily.find((item) => item.date === day);
-    return Boolean(row?.steps || row?.weightKg || row?.hydrationMl || row?.sleepHours);
-  }).length;
   const medTakenWeek = doses.filter((row) => thisWeek.includes(row.date) && row.status === 'taken').length;
   const medMissedWeek = doses.filter((row) => thisWeek.includes(row.date) && row.status === 'skipped').length;
   const todayRow = daily.find((item) => item.date === today);
@@ -267,7 +259,8 @@ export async function buildEngageSnapshot(user?: User | null, health?: HealthPro
   return {
     now,
     lastOpenAt,
-    firstName: firstNameOf(user),
+    // Never the server's placeholder name: „დილა მშვიდობისა ☀️“ rather than „…, Medicard“.
+    firstName: displayFirstName(user, health?.extraAnswers),
     birthDate: user?.birthDate ?? null,
     createdAt: user?.createdAt ?? null,
     todaySteps: todayRow?.steps && todayRow.steps > 0 ? todayRow.steps : null,
@@ -276,8 +269,6 @@ export async function buildEngageSnapshot(user?: User | null, health?: HealthPro
     hydrationMl: dayTotalMl(logs, today),
     hydrationGoal: goalMl,
     loggedPain,
-    streak: user?.currentStreak ?? 0,
-    loggedHealthDays,
     medTakenWeek,
     medMissedWeek,
     missingProfileField: missing,

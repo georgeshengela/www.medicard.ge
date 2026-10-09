@@ -24,6 +24,7 @@ import { displayPhaseLabel } from '@/lib/cycleHonesty';
 import { isBleedFlow } from '@/lib/cycleLogSave';
 import { formatCycleDateKa } from '@/components/cycle/CycleUI';
 import { cycleModeCapabilities } from '@/lib/cycleModes';
+import { cycleSetupStart } from '@/lib/cycleExperience';
 import {
   forecastPresentationAllowed,
   suppressCycleLengthChrome,
@@ -227,7 +228,8 @@ export function HomeCyclePreviewCard({ onPress }: Props) {
 
   const cycleLen = bundle ? usedCycleLength(bundle) : 28;
   const hideLengthChrome = suppressCycleLengthChrome(bundle);
-  const lastPeriod = bundle?.profile.lastPeriodStart ?? null;
+  // A start an undo's restore still has queued counts as known: never the setup card meanwhile (IR3-2).
+  const lastPeriod = bundle ? cycleSetupStart(view.data) : null;
   const caps = cycleModeCapabilities(bundle?.profile.mode);
   const pregnancy = caps.showPregnancyOverview
     ? (bundle?.pregnancy ?? null)

@@ -1,0 +1,150 @@
+<!-- Component catalogue for the strategy deck. Every slide is a <section class="slide">. Copy these shapes; use only classes from deck.css. -->
+
+<!-- 1. PART DIVIDER (dark). Big faint number, eyebrow, title, one thesis, up to 3 key facts. -->
+<section class="slide dark">
+  <svg class="mark-bg" style="right:-300px;bottom:-360px;width:980px;height:980px;fill:#14B8A6;opacity:.10"><use href="#mk"/></svg>
+  <div class="divider-num">02</div>
+  <div style="margin-top:auto;max-width:1100px">
+    <div class="eyebrow">ნაწილი 2</div>
+    <h1 style="font-size:76px">რას ამბობენ მომხმარებლები</h1>
+    <p class="lede" style="font-size:22px">8 კატეგორია, 80-ზე მეტი აპი, ათასობით შეფასება. რა აწუხებთ, რას ითხოვენ და რა უყვართ.</p>
+  </div>
+  <div class="chrome"><span class="brand"><svg style="fill:#14B8A6"><use href="#mk"/></svg>მედიქარდი</span><span class="part">რას ამბობენ მომხმარებლები</span><span class="num"></span></div>
+</section>
+
+<!-- 2. STAT TILES. 3 or 4 tiles; one big number each; short label; source line in .s -->
+<section class="slide">
+  <div class="eyebrow">საქართველოს ჯანმრთელობა</div>
+  <h2>გულის დაავადება საქართველოში სიკვდილის მთავარი მიზეზია</h2>
+  <p class="lede">ერთი წინადადება, რომელიც ციფრებს ხსნის.</p>
+  <div class="body">
+    <div class="grid g4">
+      <div class="card stat"><div class="n rose">41<small>%</small></div><div class="l">სიკვდილი სისხლის მიმოქცევის დაავადებებით, 2024</div><div class="s">Geostat 2024</div></div>
+      <div class="card stat"><div class="n">8,8</div><div class="l">წლით ნაკლებს ცოცხლობენ კაცები</div><div class="s">Geostat / civil.ge</div></div>
+      <div class="card stat"><div class="n teal">37,7<small>%</small></div><div class="l">მაღალი წნევა, 2016</div><div class="s">WHO STEPS 2016</div></div>
+      <div class="card stat"><div class="n amber">43<small>%</small></div><div class="l">კაცები ეწევიან, 2021</div><div class="s">ტელეფონური კვლევა, n=1 236</div></div>
+    </div>
+    <div class="card tint push" style="margin-top:22px"><p style="font-size:18px"><b>რას ნიშნავს ეს MEDICARD-ისთვის:</b> ერთი ხაზი დასკვნით.</p></div>
+  </div>
+  <div class="src"><b>წყარო:</b> Geostat 2024; WHO STEPS Georgia 2016; Georgia Today 2021.</div>
+  <div class="chrome"><span class="brand"><svg style="fill:#14B8A6"><use href="#mk"/></svg>მედიქარდი</span><span class="part">ნაწილი 1 · პრობლემა</span><span class="num"></span></div>
+</section>
+
+<!-- 3. RANKED BARS + SIDE CARD. Bar width = value as % of the max shown. -->
+<section class="slide">
+  <div class="eyebrow">რატომ ტოვებენ აპს</div>
+  <h2>ყველაზე ხშირი მიზეზი: ჩაწერას ძალიან დიდი დრო სჭირდება</h2>
+  <div class="body">
+    <div class="split wide-left">
+      <div class="bars" style="align-content:start">
+        <div class="bar"><span>მონაცემის შეყვანას დიდი დრო სჭირდება</span><div class="track"><div class="fill rose" style="width:100%"></div></div><span class="v">44,5%</span></div>
+        <div class="bar"><span>ინტერესი დაიკარგა</span><div class="track"><div class="fill" style="width:91%"></div></div><span class="v">40,5%</span></div>
+        <div class="bar"><span>ფარული ხარჯები</span><div class="track"><div class="fill amber" style="width:81%"></div></div><span class="v">36,1%</span></div>
+      </div>
+      <div class="card night stack">
+        <h3>ჩვენი პასუხი</h3>
+        <p>ერთი-ორი შეხებით ჩაწერა, გუშინდელის კოპირება, ხმით ჩაწერა.</p>
+      </div>
+    </div>
+  </div>
+  <div class="src"><b>წყარო:</b> Krebs &amp; Duncan, JMIR mHealth 2015 (n=1 604).</div>
+  <div class="chrome"><span class="brand"><svg style="fill:#14B8A6"><use href="#mk"/></svg>მედიქარდი</span><span class="part">ნაწილი 1 · პრობლემა</span><span class="num"></span></div>
+</section>
+
+<!-- 4. MATRIX TABLE. Status pills: have / partial / missing. Priority pills: now / next / later. Max ~8 rows at default size, ~11 with .compact. -->
+<section class="slide">
+  <div class="eyebrow">საჩივრები → ჩვენი პასუხი</div>
+  <h2>რას ვერ იტანენ სხვა აპებში</h2>
+  <div class="body">
+    <table class="t compact">
+      <tr><th style="width:26%">საჩივარი</th><th style="width:22%">აპები</th><th style="width:11%">MEDICARD</th><th>ჩვენი ნაბიჯი</th></tr>
+      <tr><td>ფასიანი კედელი ძირითად ფუნქციებზე</td><td>MyFitnessPal, Cal AI, Noom</td><td><span class="pill have">გვაქვს</span></td><td>„ყოველთვის უფასო“ სია ეკრანზე და მაღაზიის გვერდზე.</td></tr>
+      <tr><td>გაწყვეტილი სტრიქი სჯის</td><td>Duolingo, Finch</td><td><span class="pill partial">ნაწილობრივ</span></td><td>ერთი მიმტევებელი სტრიქი დასვენების დღით.</td></tr>
+      <tr><td>ძალის ვარჯიშის გეგმა</td><td>Fitbod, Hevy</td><td><span class="pill missing">არ გვაქვს</span></td><td>„ჩემი ვარჯიში“: 4 შაბლონი, ტაიმერი, პროგრესია.</td></tr>
+    </table>
+  </div>
+  <div class="src"><b>წყარო:</b> App Store / Google Play შეფასებები, Reddit, Unstar 2026.</div>
+  <div class="chrome"><span class="brand"><svg style="fill:#14B8A6"><use href="#mk"/></svg>მედიქარდი</span><span class="part">ნაწილი 2 · მომხმარებლები</span><span class="num"></span></div>
+</section>
+
+<!-- 5. FEATURE CARDS (2 per slide). Wordmark of the module it deepens + priority + effort + build type. -->
+<section class="slide">
+  <div class="eyebrow">რას დავამატებთ · 3 / 12</div>
+  <h2>ერთი მიზანი და ერთი მიმტევებელი სტრიქი</h2>
+  <div class="body">
+    <div class="grid g2" style="flex:1">
+      <div class="card feat">
+        <div class="top"><span class="wm quest" style="font-size:20px">MEDI<i>QUEST</i></span><span class="pill now">ახლა</span><span class="pill">სირთულე S</span><span class="pill">OTA</span></div>
+        <h3>ჯანსაღი დღეები</h3>
+        <div class="lbl">პრობლემა</div>
+        <p>ოთხი სტრიქი, ერთი გამოტოვებული დღე ყველაფერს ანულებს.</p>
+        <div class="lbl">რას ვაკეთებთ</div>
+        <p>ერთი სტრიქი, კვირაში ერთი დასვენების დღე, „არ გამოტოვო ორჯერ“ ბონუსი.</p>
+        <div class="ev">Duolingo: ერთი გაკვეთილის წესმა 7+ დღის სტრიქები 40%-ით გაზარდა · Silverman &amp; Barasch 2023</div>
+        <div class="lbl">როგორ გავზომავთ</div>
+        <p>D30 შენარჩუნება და „ჯანსაღი დღეები“ კვირაში.</p>
+      </div>
+      <div class="card feat">
+        <div class="top"><span class="wm run" style="font-size:20px">MEDI<i>RUN</i></span><span class="pill next">შემდეგი</span><span class="pill">სირთულე M</span><span class="pill store">store build</span></div>
+        <h3>…</h3>
+      </div>
+    </div>
+  </div>
+  <div class="src"><b>წყარო:</b> …</div>
+  <div class="chrome"><span class="brand"><svg style="fill:#14B8A6"><use href="#mk"/></svg>მედიქარდი</span><span class="part">ნაწილი 5 · პროდუქტი</span><span class="num"></span></div>
+</section>
+
+<!-- 6. QUOTES WALL. Real user words (translated to Georgian, short), app + source. -->
+<section class="slide">
+  <div class="eyebrow">მომხმარებლის ხმა</div>
+  <h2>როგორ საუბრობენ ხალხი კვების აპებზე</h2>
+  <div class="body">
+    <div class="grid g3">
+      <div class="card"><p class="quote">შტრიხკოდის სკანერის მოხსნით MyFitnessPal მომხმარებლებს დიდ ზიანს აყენებს</p><p class="who">The Verge, 2022 · MyFitnessPal</p></div>
+      <div class="card"><p class="quote">…</p><p class="who">Reddit r/loseit</p></div>
+      <div class="card"><p class="quote">…</p><p class="who">App Store</p></div>
+    </div>
+  </div>
+  <div class="src"><b>წყარო:</b> …</div>
+  <div class="chrome"><span class="brand"><svg style="fill:#14B8A6"><use href="#mk"/></svg>მედიქარდი</span><span class="part">ნაწილი 2 · მომხმარებლები</span><span class="num"></span></div>
+</section>
+
+<!-- 7. TIMELINE / ROADMAP. 3 or 4 columns, each a card with a period header and a list. -->
+<section class="slide">
+  <div class="eyebrow">გეგმა</div>
+  <h2>12 თვე, 4 ეტაპი</h2>
+  <div class="body">
+    <div class="grid g4" style="flex:1">
+      <div class="card stack"><span class="pill now">Q4 2026</span><h3>საფუძველი</h3><ul class="list tight"><li>Android Google Play-ზე</li><li>პირველი კვირა</li></ul><p class="tiny push"><b>გადასასვლელი პირობა:</b> D30 ≥ 12%</p></div>
+      <div class="card stack"><span class="pill next">Q1 2027</span><h3>…</h3><ul class="list tight"><li>…</li></ul></div>
+      <div class="card stack"><span class="pill later">Q2 2027</span><h3>…</h3></div>
+      <div class="card stack"><span class="pill later">Q3 2027</span><h3>…</h3></div>
+    </div>
+  </div>
+  <div class="chrome"><span class="brand"><svg style="fill:#14B8A6"><use href="#mk"/></svg>მედიქარდი</span><span class="part">ნაწილი 7 · იდეის განვითარება</span><span class="num"></span></div>
+</section>
+
+<!-- 8. TEXT SPLIT. Left: numbered steps or list. Right: a tinted card or night card with the key argument. -->
+<section class="slide">
+  <div class="eyebrow">ნაბიჯები</div>
+  <h2>პირველი 30 დღე</h2>
+  <div class="body">
+    <div class="split">
+      <ol class="steps"><li><span><b>Android.</b> Google Play-ზე ქართული გვერდით.</span></li><li><span><b>…</b> …</span></li></ol>
+      <div class="card tint stack"><h3>რატომ ამ რიგით</h3><p>…</p></div>
+    </div>
+  </div>
+  <div class="chrome"><span class="brand"><svg style="fill:#14B8A6"><use href="#mk"/></svg>მედიქარდი</span><span class="part">დასკვნა</span><span class="num"></span></div>
+</section>
+
+<!-- 9. IMAGE SLIDE. Full-bleed MEDIRUN city (img/city.jpg) under a dark gradient, text bottom-left. -->
+<section class="slide dark" style="padding:0">
+  <img class="bleed" src="img/city.jpg" alt="" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover">
+  <div class="bleed" style="position:absolute;inset:0;background:linear-gradient(90deg,rgba(3,7,18,.92) 0%,rgba(3,7,18,.55) 45%,rgba(3,7,18,0) 75%)"></div>
+  <div style="position:relative;padding:64px 88px 76px;display:flex;flex-direction:column;height:100%">
+    <div class="eyebrow">MEDIRUN</div>
+    <h2 style="max-width:760px">ქალაქი, რომელიც შენი ნაბიჯებით ნათდება</h2>
+    <p class="lede" style="max-width:640px">…</p>
+  </div>
+  <div class="chrome"><span class="brand"><svg style="fill:#14B8A6"><use href="#mk"/></svg>მედიქარდი</span><span class="part">ნაწილი 6 · პოპულარიზაცია</span><span class="num"></span></div>
+</section>

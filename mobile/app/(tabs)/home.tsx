@@ -44,6 +44,9 @@ import { formatYmd } from '@/lib/format';
 import { requestHealthRefresh } from '@/lib/healthDataSync';
 import { buildHomeSectionOrder } from '@/lib/home/homeSectionOrder';
 import { primaryGoalFromProfile } from '@/lib/assessmentForm';
+import { displayFirstName, nameInitials } from '@/lib/displayName';
+import { medicationToSetUp } from '@/lib/home/medicationSetup';
+import { useMedicationSetupDismissals } from '@/hooks/useMedicationSetupDismissals';
 import { profileCompletion } from '@/lib/profileCompletion';
 import { mediRoute } from '@/lib/mediModes';
 import { computeTodayDoses } from '@/lib/home/todayDoses';
@@ -142,6 +145,7 @@ export default function Home() {
   const hydration = useHydration({ enabled: waterOn });
   const steps = useStepsMetrics('1d', { enabled: stepsOn });
   const meds = useMedications();
+  const setupDismissals = useMedicationSetupDismissals(user?.id);
   // Every layout shows MEDIFOOD from this one shared dashboard read (standard too since 2026-10-04).
   const nutrition = useNutritionDashboard({ enabled: nutritionOn });
   const cycleQuery = useCycleView(user?.id, layout === 'women' && female && cycleOn && cycleLocked === false);
@@ -304,7 +308,17 @@ export default function Home() {
     typeof extra?.avatarId === 'string' ? extra.avatarId : null,
     user?.gender ?? null,
   );
-  const firstName = user?.fullName?.split(' ')[0] ?? '';
+  // Never the server's placeholder („Medicard მომხმარებელი“ for phone / Apple sign-ups): no name = the greeting alone.
+  const firstName = displayFirstName(user, extra);
+  // The medicine named in the onboarding medication goal, until it is set up in MEDIPILL or she said „არა ახლა“.
+  const setupName = meds.loaded && setupDismissals.loaded
+    ? medicationToSetUp({
+        primaryGoal: primaryGoalFromProfile(healthProfile),
+        typed: healthProfile?.medications,
+        tracked: meds.medications,
+        dismissed: setupDismissals.names,
+      })
+    : null;
 
   const addGlass = useCallback(() => {
     void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => undefined);
@@ -354,7 +368,7 @@ export default function Home() {
   }
   const answer = todayAnswer({
     pendingDoses: medsOn
-      ? doses.pending.map((dose) => ({ time: dose.time, name: meds.medications.find((m) => m.id === dose.medicationId)?.medName ?? tx('წამალი', 'Medicine') }))
+      ? doses.pending.map((dose) => ({ time: dose.dueTime, name: meds.medications.find((m) => m.id === dose.medicationId)?.medName ?? tx('წამალი', 'Medicine') }))
       : [],
     steps: stepsOn && stepsLinked && stepsGoal > 0 ? { total: stepsTotal, goal: stepsGoal } : null,
     water: waterOn && !hydration.loading ? { ml: hydration.todayMl, goalMl: hydration.goalMl } : null,
@@ -370,9 +384,8 @@ export default function Home() {
       <View style={{ paddingTop: insets.top + 14 }}>
         <HomeHeader
           firstName={firstName}
-          initial={user?.fullName?.slice(0, 1) || 'M'}
+          initial={nameInitials(user, extra).slice(0, 1) || 'M'}
           avatarId={avatar}
-          streak={user?.currentStreak ?? 0}
           // Day and month only: the year never changes the day, and the row stays on one line.
           dateLabel={formatYmd(todayYmd())}
           onModules={() => setModulesOpen(true)}
@@ -396,7 +409,7 @@ export default function Home() {
         {askChips ? <HomeAskChips set={layout === 'women' ? 'cycle' : layout} community={layout === 'women' && communityEntry} /> : null}
       </View>
     ),
-    nextDose: <HomeNextDoseSection meds={meds} />,
+    nextDose: <HomeNextDoseSection meds={meds} setupName={setupName} onDismissSetup={setupDismissals.dismiss} />,
     // Standard's one spotlight is MEDISCAN, so the trainer card stays a surface card there too.
     coach: <HomeCoachSection tone={layout === 'women' ? 'spotlight' : 'surface'} />,
     attention: <HomeAttention />,

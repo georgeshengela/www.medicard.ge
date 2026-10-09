@@ -108,13 +108,23 @@ export function StreakDayCompleted({ size = FIGMA_STREAK.daySize }: { size?: num
   );
 }
 
-/** Figma skipped streak — 32×32 rose circle with X. */
-export function StreakDaySkipped({ size = FIGMA_STREAK.daySize }: { size?: number }) {
+/**
+ * A day without a check-in — a neutral disc with a short dash. Not the Figma rose X:
+ * a missed day is not a failure, and red stays for destructive actions and alerts.
+ */
+export function StreakDaySkipped({
+  size = FIGMA_STREAK.daySize,
+  fill = FIGMA_STREAK.emptyDot,
+  ink = FIGMA_STREAK.weekday,
+}: {
+  size?: number;
+  fill?: string;
+  ink?: string;
+}) {
   return (
     <Svg width={size} height={size} viewBox="0 0 32 32" fill="none">
-      <Rect width="32" height="32" rx="16" fill="#F43F5E" />
-      <Path d="M9 23L23 9" stroke="#FFFFFF" strokeWidth={4} strokeLinecap="round" />
-      <Path d="M23 23L9 9" stroke="#FFFFFF" strokeWidth={4} strokeLinecap="round" />
+      <Rect width="32" height="32" rx="16" fill={fill} />
+      <Path d="M11 16H21" stroke={ink} strokeWidth={3} strokeLinecap="round" />
     </Svg>
   );
 }

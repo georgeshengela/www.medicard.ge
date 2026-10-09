@@ -14,6 +14,7 @@ import { lastLoggedBbt } from '@/lib/cycleBbt';
 import { hasCycleLogNoteMarker, takeCycleLogNote } from '@/lib/cycleLogHandoff';
 import { api, ApiError, type CycleCustomTag, type CycleLog } from '@/lib/api';
 import { queueRemoveCycleLog } from '@/lib/cycleOffline';
+import { toggleDayTagId } from '@/lib/cycleOfflineCore';
 import { useCycleView } from '@/lib/cycleViewCache';
 import { useAuth } from '@/store/AuthContext';
 import {
@@ -65,6 +66,8 @@ function CycleLogScreen() {
   const [saving, setSaving] = useState(false);
   const task = useAnalysisTask(`cycle-log:${user?.id}:${date}`);
   const [form, setForm] = useState(EMPTY_CYCLE_LOG);
+  /** The day as stored when the form filled: Apple Health / Health Connect get only what a save changes. */
+  const [base, setBase] = useState<CycleLogForm>(EMPTY_CYCLE_LOG);
   const [customTags, setCustomTags] = useState<CycleCustomTag[]>([]);
   const [creatingTag, setCreatingTag] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -105,6 +108,7 @@ function CycleLogScreen() {
       setHasLog(Boolean(existing));
       // Consume-once, account-bound: taken (and cleared) here even when the day already has a log.
       const stagedNote = hasCycleLogNoteMarker(noteMarker) ? takeCycleLogNote(user.id) : null;
+      setBase(formFromCycleLog(existing));
       if (existing) {
         setForm(formFromCycleLog(existing));
       } else if (stagedNote) {
@@ -127,11 +131,12 @@ function CycleLogScreen() {
     try {
       const result = await api.cycle.createTag({ name });
       setCustomTags(result.bundle.customTags ?? [...customTags, result.tag]);
+      // A new tag is ticked only while the day has fewer than 8 (CYC-10); the picker says why otherwise.
       setForm((prev) => ({
         ...prev,
         customTagIds: prev.customTagIds.includes(result.tag.id)
           ? prev.customTagIds
-          : [...prev.customTagIds, result.tag.id],
+          : toggleDayTagId(prev.customTagIds, result.tag.id).ids,
       }));
     } catch (err) {
       setError(err instanceof ApiError ? err.message : ka.cycle.customTagOnlineOnly);
@@ -149,7 +154,7 @@ function CycleLogScreen() {
     setError(null);
     try {
       if (!user?.id) throw new ApiError(ka.common.error, 401);
-      const result = await persistCycleLog(user.id, date, form);
+      const result = await persistCycleLog(user.id, date, form, { base });
       if (!ticket.current()) return;
       if (result.view && !result.view.stale && result.view.pendingCount === 0) {
         try {

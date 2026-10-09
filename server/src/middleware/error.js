@@ -46,7 +46,7 @@ const FIELD_MESSAGES_EN = Object.freeze({
 const GEORGIAN_LETTER = /[\u10D0-\u10FF]/;
 
 /** A validation message for the request language (unknown Georgian text gets a plain English fallback). */
-function fieldMessage(req, message) {
+export function fieldMessage(req, message) {
   if (!isEnglish(req) || !GEORGIAN_LETTER.test(String(message || ''))) return message;
   return FIELD_MESSAGES_EN[message] || 'This field is not valid.';
 }

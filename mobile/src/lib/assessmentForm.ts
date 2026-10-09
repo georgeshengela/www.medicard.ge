@@ -1,10 +1,11 @@
 import type { Gender, HealthProfile } from '@/lib/api';
-import type { PrimaryGoal } from '@/constants/assessmentSteps';
+import { primaryGoalFits, type PrimaryGoal } from '@/constants/assessmentSteps';
 import {
   ageFromBirthDate,
   birthDateIso,
   parseBirthDate,
 } from '@/components/assessment/DateWheelPicker';
+import { realFullName } from '@/lib/displayName';
 import { tx } from '../i18n/locale.js';
 
 export type AssessmentFormState = {
@@ -86,6 +87,51 @@ function lastPeriodDefault() {
 export function lastPeriodYmd(form: AssessmentFormState): string {
   const p = (n: number) => String(n).padStart(2, '0');
   return `${form.lastPeriodYear}-${p(form.lastPeriodMonth)}-${p(form.lastPeriodDay)}`;
+}
+
+type LastPeriodFields = Pick<AssessmentFormState, 'lastPeriodYear' | 'lastPeriodMonth' | 'lastPeriodDay'>;
+export type LastPeriodProblem = 'invalid' | 'future' | 'old';
+
+/**
+ * Why a last period start cannot be saved: it has to be a real day in the last ~100 days (the cycle
+ * API rejects future dates). Null = fine. The picker only limits the year, so the step says why
+ * Continue is off instead of just greying it out.
+ */
+export function lastPeriodProblem(form: LastPeriodFields, now = Date.now()): LastPeriodProblem | null {
+  const d = new Date(form.lastPeriodYear, form.lastPeriodMonth - 1, form.lastPeriodDay, 12);
+  if (d.getMonth() !== form.lastPeriodMonth - 1) return 'invalid';
+  const days = (now - d.getTime()) / 86400000;
+  if (days < -0.5) return 'future';
+  if (days > 100) return 'old';
+  return null;
+}
+
+export function lastPeriodValid(form: LastPeriodFields, now = Date.now()): boolean {
+  return lastPeriodProblem(form, now) === null;
+}
+
+/** The line under the cycle goal picker when Continue is off. The step can be skipped, so it says so. */
+export function lastPeriodProblemText(problem: LastPeriodProblem): string {
+  if (problem === 'future') return tx('მომავალი თარიღის არჩევა არ შეიძლება.', 'You can’t pick a future date.');
+  if (problem === 'old') {
+    return tx(
+      '100 დღეზე მეტი გავიდა? გამოტოვე — მერე ციკლის გვერდზე დაამატებ.',
+      'More than 100 days ago? Skip this step — you can add it on the cycle screen later.',
+    );
+  }
+  return tx('ეს თარიღი არ არსებობს — აირჩიე სხვა დღე.', 'That date doesn’t exist — pick another day.');
+}
+
+/**
+ * Applies an answer to the form. A sex change drops a main goal the new answer no longer offers (the
+ * cycle goal is for women only), so a man never finishes with the hidden cycle goal still chosen.
+ */
+export function applyFormPatch(current: AssessmentFormState, patch: Partial<AssessmentFormState>): AssessmentFormState {
+  const next = { ...current, ...patch };
+  if ('gender' in patch && next.primaryGoal != null && !primaryGoalFits(next.primaryGoal, next.gender)) {
+    next.primaryGoal = null;
+  }
+  return next;
 }
 
 const PRIMARY_GOALS: PrimaryGoal[] = ['medications', 'nutrition', 'cycle', 'general'];
@@ -187,7 +233,9 @@ export function formFromProfile(
           : []),
       ]),
     ),
-    legalName: extra.legalName || user.fullName || user.name || '',
+    // The server's placeholder name („Medicard მომხმარებელი“, phone / Apple sign-ups) is no name:
+    // the „დაასრულე პროფილი“ name question starts empty instead of passing with it.
+    legalName: realFullName({ fullName: user.fullName || user.name }, { legalName: extra.legalName }),
     birthMonth: parsed.month,
     birthDay: parsed.day,
     birthYear: parsed.year,
@@ -226,7 +274,14 @@ export function extraAnswersPayload(
     weightUnit: form.weightUnit,
     heightUnit: form.heightUnit,
     voiceRecorded: form.voiceRecorded,
-    primaryGoal: form.primaryGoal ?? undefined,
+    // A stored goal this sex is not offered (the cycle goal kept after switching to male) is cleared;
+    // the server merges extraAnswers, so leaving it out would keep it. Unknown sex: left as it is.
+    primaryGoal:
+      form.primaryGoal == null
+        ? undefined
+        : form.gender && !primaryGoalFits(form.primaryGoal, form.gender)
+          ? null
+          : form.primaryGoal,
   };
 }
 

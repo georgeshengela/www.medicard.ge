@@ -290,6 +290,7 @@ p { margin: 0; }
 .badge-danger { background: var(--danger-bg); color: var(--danger); }
 .badge-violet { background: color-mix(in srgb, var(--ink-violet) var(--tint), transparent); color: var(--ink-violet); }
 .badge-rose { background: color-mix(in srgb, var(--ink-rose) var(--tint), transparent); color: var(--ink-rose); }
+.badge-amber { background: color-mix(in srgb, var(--ink-amber) var(--tint), transparent); color: var(--ink-amber); }
 
 /* ── Rows ──────────────────────────────────────────── */
 .list { display: flex; flex-direction: column; }

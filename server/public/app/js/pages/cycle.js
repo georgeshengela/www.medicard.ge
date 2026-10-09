@@ -274,6 +274,36 @@ function periodEndUndo(before) {
   return before ? { kind: 'clearFlow' } : { kind: 'removeLog' };
 }
 
+/**
+ * Undo of the one-tap start (mobile cyclePeriodStatus.periodStartUndo, CYC-04): today's row and the last
+ * period start come back exactly as they were — never „end“, which deleted a spotting-only day, wrote
+ * „no bleeding“ over other notes and dropped the start she gave in onboarding.
+ */
+function periodStartUndo(before, lastPeriodStart) {
+  if (before && isBleed(before.flow)) return { day: { kind: 'keep' }, lastPeriodStart: null };
+  const day = !before
+    ? { kind: 'removeLog' }
+    : { kind: 'restoreFlow', flow: before.flow === 'none' || before.flow === 'spotting' ? before.flow : null };
+  return { day, lastPeriodStart: lastPeriodStart || null };
+}
+
+/** Anything on a day's row besides its flow (mobile cycleOfflineCore.hasObservationExtras + a „no“ to sex). */
+function logHasNotes(log) {
+  if (!log) return false;
+  const lists = ['symptoms', 'moods', 'painEntries', 'customTagIds'];
+  const values = ['notes', 'bbt', 'sexualActivity', 'libido', 'cervicalMucus', 'ovulationTest', 'pregnancyTest',
+    'sleepQuality', 'stressLevel', 'exerciseLevel', 'caffeine', 'alcohol', 'energy'];
+  return lists.some((k) => Array.isArray(log[k]) && log[k].length > 0)
+    || values.some((k) => log[k] != null && log[k] !== '')
+    || Object.values(log.observations || {}).some((v) => v != null && v !== '');
+}
+
+/** Decided when Undo is clicked: notes saved since the start stay, only the flow goes back to empty. */
+function periodStartUndoDay(undo, rowHasNotesNow) {
+  if (undo.day.kind === 'removeLog' && rowHasNotesNow) return { kind: 'restoreFlow', flow: null };
+  return undo.day;
+}
+
 /* ── Deviations copy (mobile src/lib/cycleDeviationCopy.ts) ─────────────── */
 const DEVIATION_RULES = { windowMonths: 6, minCycles: 3, spreadDays: 17, longPeriodDays: 10, factorTailDays: 90 };
 const deviationCopy = {
@@ -1146,21 +1176,31 @@ export default async function cyclePage(root, ctx = {}) {
   const startPeriod = async (btn) => {
     const v = derive(state.bundle);
     const date = v.today;
+    const undo = periodStartUndo(v.todayLog || null, state.bundle?.profile?.lastPeriodStart);
     await busy(btn, async () => {
       try {
         const b = await put('/api/cycle/period', { action: 'start', date, flow: 'medium' });
         setBundle(b);
         toast(t('მენსტრუაცია დაფიქსირდა — დღეს პირველი დღეა', 'Period logged — today is day 1'), 'ok', {
           ms: 8000,
-          action: { label: t('გაუქმება', 'Undo'), onClick: () => undoStart(date) },
+          action: undo.day.kind === 'keep' ? null : { label: t('გაუქმება', 'Undo'), onClick: () => undoStart(date, undo) },
         });
       } catch (e) { toast(e.message, 'error'); }
     });
   };
-  const undoStart = async (date) => {
+  /** The day first (its exact flow back, or the row removed), then the start she had if the server lost it. */
+  const undoStart = async (date, undo) => {
+    const day = periodStartUndoDay(undo, logHasNotes((state.bundle?.logs || []).find((l) => l.date === date)));
+    if (day.kind === 'keep') return;
     try {
-      // "end" on the first day clears that one-day period again (server planEndPeriod).
-      setBundle(await put('/api/cycle/period', { action: 'end', date }));
+      let b = day.kind === 'removeLog'
+        ? await del(`/api/cycle/logs/${date}`)
+        : (await put(`/api/cycle/logs/${date}`, { flow: day.flow })).bundle;
+      if (undo.lastPeriodStart && b?.profile?.lastPeriodStart !== undo.lastPeriodStart) {
+        const nb = await post('/api/cycle/last-period', { date: undo.lastPeriodStart });
+        if (Array.isArray(nb?.logs)) b = nb;
+      }
+      setBundle(b);
       toast(t('გაუქმდა', 'Undone'), 'info');
     } catch (e) { toast(e.message, 'error'); }
   };
@@ -1211,7 +1251,8 @@ export default async function cyclePage(root, ctx = {}) {
   /** Flo-style one tap: mark sex for today; the rest of the day's log is untouched (server merges fields). */
   const logSexNow = async (btn) => {
     const v = derive(state.bundle);
-    const before = v.todayLog?.sexualActivity === true ? true : null;
+    // The stored answer as it is: undo puts a „არ მქონია“ (false) back, never null over it (IR-9).
+    const before = v.todayLog?.sexualActivity ?? null;
     if (before === true || (v.todayLog?.symptoms || []).some((id) => SEX_ACTIVITY_IDS.has(id))) {
       openDayLog(v.today, { only: 'sex' });
       return;
@@ -1252,7 +1293,10 @@ export default async function cyclePage(root, ctx = {}) {
     else list.delete(start);
     const run = async () => {
       try {
-        setBundle(await put('/api/cycle/profile', { hiddenCycles: [...list].sort() }));
+        let nb = await put('/api/cycle/profile', { hiddenCycles: [...list].sort() });
+        // Saved, but the server could not reload the bundle (null): fetch it so the list shows the change.
+        if (!(nb?.profile && nb.predictions)) nb = await get('/api/cycle').catch(() => null);
+        setBundle(nb);
         if (isUndo) return;
         toast(hide ? t('ციკლი საშუალოდან დაიმალა', 'Cycle hidden from averages') : t('ციკლი საშუალოში დაბრუნდა', 'Cycle counted again'), 'ok', {
           ms: 6000,
@@ -2026,8 +2070,10 @@ function formFromLog(l) {
     extraSymptoms: all.filter((id) => !SEX_IDS.has(id) && !SYMPTOMS.some((s) => s.id === id)),
     sexTags: all.filter((id) => SEX_IDS.has(id)),
     moods: [...(l?.moods || [])],
-    // Stored false cannot be told apart from the old default "no" → show as unanswered (cycleLogSave.ts).
+    // Stored false cannot be told apart from the old default "no" → show as unanswered (cycleLogForm.ts)…
     sexual: l?.sexualActivity === true || all.some((id) => SEX_ACTIVITY_IDS.has(id)) ? true : null,
+    // …but keep what is stored, so an untouched answer is saved back as it was (app CYC-11, IR-9).
+    sexualStored: l?.sexualActivity ?? null,
     bbt: l?.bbt != null ? String(l.bbt) : '',
     mucus: l?.cervicalMucus ?? null,
     ovulationTest: l?.ovulationTest ?? null,
@@ -2047,6 +2093,15 @@ function formFromLog(l) {
   };
 }
 
+/**
+ * The app's `sexualActivityForSave` (mobile cycleLogForm.ts): her answer when she gave one this time;
+ * otherwise a stored „არ მქონია“ (false) stays — a mood change never erases it. Clearing a „yes“ sends null.
+ */
+function sexualActivityForSave(f) {
+  if (f.sexual === true || f.sexual === false) return f.sexual;
+  return f.sexualStored === false ? false : null;
+}
+
 function payloadFromForm(f) {
   const raw = f.bbt.trim().replace(',', '.');
   const bbt = raw ? Number(raw) : null;
@@ -2062,7 +2117,7 @@ function payloadFromForm(f) {
     // Activity tags only when the answer is "yes"; sex drive is its own answer and is always kept.
     symptoms: [...f.symptoms, ...f.extraSymptoms, ...f.sexTags.filter((id) => f.sexual === true || !SEX_ACTIVITY_IDS.has(id))],
     moods: f.moods,
-    sexualActivity: f.sexual,
+    sexualActivity: sexualActivityForSave(f),
     bbt,
     cervicalMucus: f.mucus,
     ovulationTest: f.ovulationTest,

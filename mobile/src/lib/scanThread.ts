@@ -5,6 +5,7 @@
  * to the clinical model (/api/ai/query DOCTOR) with that result as context.
  * Pure: no I/O, no React.
  */
+import { tx } from '../i18n/locale.js';
 import type { LabExtract, LabParameter } from '../types/lab';
 
 export type ScanKind = 'LAB' | 'IMAGING' | 'SKIN';
@@ -73,4 +74,78 @@ export function latestResultContext(turns: readonly ScanTurn[]): string | null {
 /** A question can be asked once something has been read; until then the composer asks for a file. */
 export function canAskAboutResult(turns: readonly ScanTurn[]): boolean {
   return latestResultContext(turns) !== null;
+}
+
+/** The parts of one /api/ai/extract-lab answer the page loop needs. */
+export type LabPageAnswer = { record: { id: string }; unreadable?: boolean; unavailable?: boolean };
+export type LabPagesRead<T extends LabPageAnswer> = {
+  /** Every page that came back, in order (the last one holds the whole record). */
+  answers: T[];
+  /** 1-based pages that could not be read: a retake helps. */
+  unreadPages: number[];
+  /** 1-based pages the reader could not look at right now (it was down): the same photo, later. */
+  laterPages: number[];
+};
+
+/** The server's „no values on this sheet“ (422) — never the reader being down (503 AI_ENGINE_ERROR). */
+export function isLabUnreadable(error: unknown): boolean {
+  return !!error && typeof error === 'object' && (error as { code?: unknown }).code === 'LAB_UNREADABLE';
+}
+
+/**
+ * Reads lab pages one by one (MEDISCAN F8, 2026-10-09). The first page that reads starts the record and
+ * every later page is appended to it. A page found unreadable before anything was read (a cover page, a
+ * blurry first photo) is skipped and reported instead of failing the whole result; the read fails only
+ * when every page is unreadable, with that first page's own error. Any other failure (the reader down,
+ * consent, the limit, the network) stops the read as before. Null once `live()` turns false.
+ */
+export async function readLabPages<T extends LabPageAnswer>(
+  count: number,
+  readPage: (index: number, recordId: string | undefined) => Promise<T>,
+  live: () => boolean = () => true,
+): Promise<LabPagesRead<T> | null> {
+  const answers: T[] = [];
+  const unreadPages: number[] = [];
+  const laterPages: number[] = [];
+  let recordId: string | undefined;
+  let firstUnreadable: unknown = null;
+  for (let index = 0; index < count; index += 1) {
+    if (!live()) return null;
+    let answer: T;
+    try {
+      answer = await readPage(index, recordId);
+    } catch (error) {
+      if (recordId || !isLabUnreadable(error)) throw error;
+      if (!live()) return null;
+      unreadPages.push(index + 1);
+      firstUnreadable = firstUnreadable ?? error;
+      continue;
+    }
+    if (!live()) return null;
+    if (answer.unreadable) (answer.unavailable ? laterPages : unreadPages).push(index + 1);
+    recordId = answer.record.id;
+    answers.push(answer);
+  }
+  if (!answers.length) throw firstUnreadable ?? new Error('No lab page was read.');
+  return { answers, unreadPages, laterPages };
+}
+
+/** What she reads under the result when some pages were not read; null when every page was. */
+export function labPagesNotice(unreadPages: readonly number[], laterPages: readonly number[], t: (ka: string, en: string) => string = tx): string | null {
+  const lines: string[] = [];
+  if (unreadPages.length) {
+    const list = unreadPages.join(', ');
+    lines.push(t(
+      `${list} გვერდი ვერ წავიკითხეთ. გადაუღე ხელახლა პირდაპირ და კარგ შუქზე, რომ ციფრები მკაფიოდ ჩანდეს.`,
+      `We could not read page ${list}. Take it again straight on and in good light so the numbers are sharp.`,
+    ));
+  }
+  if (laterPages.length) {
+    const list = laterPages.join(', ');
+    lines.push(t(
+      `${list} გვერდი ახლა ვერ წავიკითხეთ — სერვისი დროებით მიუწვდომელია. ხელახლა გადაღება არ გჭირდება: იგივე ფოტო ისევ აქ არის, სცადე ცოტა ხანში.`,
+      `We couldn’t read page ${list} right now — the service is temporarily unavailable. No need to retake it: the same photo is still here, try again in a little while.`,
+    ));
+  }
+  return lines.length ? lines.join(' ') : null;
 }

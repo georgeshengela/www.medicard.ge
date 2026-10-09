@@ -2,8 +2,9 @@
  * The rest of the person's story for Medi's clinical answer (owner 2026-10-08: „Medi must know
  * everything about the person“): saved symptom checks and analyses (all of them — recent ones with an
  * excerpt, older ones one line each), the latest value of every lab analyte with its previous value,
- * doctor visits, whether doses were marked taken or skipped, food diary and weight goal, earlier
- * consultations, and the earlier part of this Medi chat. Owner-scoped reads only, every block bounded,
+ * doctor visits, whether doses were marked taken or skipped, food diary and weight goal (only when she talks
+ * about food — AI disclosure category 8), earlier consultations (not those that may carry the cycle while it
+ * is withheld), and the earlier part of this Medi chat. Owner-scoped reads only, every block bounded,
  * no notes / addresses / doctor names / image URLs / meal photos.
  */
 import { nutritionDashboard } from './nutritionProgramStore.js';
@@ -102,9 +103,36 @@ export function buildAdherenceBlock(schedules, events, today) {
   return [`წამლის მიღების ნიშნები ბოლო ${DOSE_DAYS} დღეში${today ? ` (დღეს = ${today})` : ''} — მოუნიშნავი დოზა უცნობია, არა გამოტოვებული:`, ...lines].join('\n');
 }
 
-/** Food diary and weight goal from MEDIFOOD — numbers and meal names only. */
-export function buildNutritionBlock(d) {
+/**
+ * Food talk: the planner's nutrition words (assistantFlow.js) plus eating, appetite, fasting and weight (the block
+ * carries the weight goal), narrowed so that everyday clinical phrasing does not open the diary: a false match
+ * sends disclosure-scoped data, a miss only loses some grounding. Not food: „მომწონს / მოსწონს / მოწონება“ (like),
+ * „დამადასტურებელი“ (confirming), „წონასწორობა“ (balance), lab protein („ცილა შარდში“, „protein in urine“),
+ * fasting labs („fasting glucose“), „დოზის დაკლება“ (dose reduction).
+ */
+const NUTRITION_TOPIC_KA = /კვებ|კალორი|რაციონ|დიეტ|სადილ|საუზმ|ვახშ|წახემს|დავიკლ|ჭამ|საკვებ|მარხვ|(?<!\p{L})მად[აი]|უმადო|(?:(?<!\p{L})|(?<!მო)[აი])წონ(?!ასწორ)/u;
+const NUTRITION_TOPIC_EN = /\b(?:food|meals?|calori\w*|diet\w*|breakfast|lunch|dinner|snacks?|ate|eat|eating|nutrition|appetite|hungry|weight)\b|\bfasting\b(?!\s+(?:blood|glucose|sugar|insulin|lipids?|labs?|tests?|panel))|\blose\b.*\b(?:kg|kilos?)\b/i;
+
+/**
+ * AI disclosure category 8: meals, targets, weight goal, diet and fasting go to the AI only „Medi-სთან კვების
+ * შესახებ საუბრისას“. Her own words count (this question, earlier user turns of this chat and this
+ * consultation); Medi's words never open it.
+ */
+export function conversationMentionsNutrition({ question, thread, priorTurns } = {}) {
+  const said = [question, ...[...asArray(thread), ...asArray(priorTurns)].filter((t) => t?.role === 'user').map((t) => t.content)];
+  return said.some((text) => typeof text === 'string' && (NUTRITION_TOPIC_KA.test(text) || NUTRITION_TOPIC_EN.test(text)));
+}
+
+/**
+ * Food diary and weight goal from MEDIFOOD — numbers and meal names only. Outside a nutrition conversation
+ * (`topic: false`) only the food allergens remain: they are allergies (disclosure category 2).
+ */
+export function buildNutritionBlock(d, { topic = true } = {}) {
   if (!d || typeof d !== 'object') return null;
+  if (!topic) {
+    const allergens = asArray(d.program?.config?.allergens);
+    return allergens.length ? `საკვების ალერგენები (MEDIFOOD): ${allergens.join(', ')}` : null;
+  }
   const lines = [];
   const kcal = (v) => (v != null && Number.isFinite(Number(v)) ? Math.round(Number(v)) : null);
   const target = kcal(d.targets?.calories);
@@ -126,6 +154,42 @@ export function buildNutritionBlock(d) {
   if (d.fasting?.active) lines.push(`- ახლა მიმდინარეობს მარხვის ფანჯარა (${Math.round((d.fasting.active.minutes || 0) / 60)} სთ)`);
   if (!lines.length) return null;
   return ['კვება და წონა (MEDIFOOD; მხოლოდ ჩაწერილი კვება ითვლება — ჩაუწერელი უცნობია):', ...lines].join('\n');
+}
+
+/**
+ * Cycle words, the other cycle modes (perimenopause, menopause, postpartum) and the registry-protected fields
+ * (flow, fertility, pregnancy, discharge, sex, contraception, BBT).
+ */
+const CYCLE_TALK = /ციკლ|მენსტრუ|თვიურ|ოვულაც|ფოლიკულ|ლუთე|ნაყოფიერ|ორსულ|პმს|სისხლდენ|გამონადენ|ლიბიდო|სექს|კონტრაცეპ|მენოპაუზ|კლიმაქს|მშობიარ|\b(?:cycles?|periods?|menstru\w*|ovulat\w*|follicular|luteal|fertil\w*|pregnan\w*|pms|spotting|discharge|libido|sex\w*|contracept\w*|bbt|(?:peri|post)?menopaus\w*|post-?partum)\b/iu;
+
+/**
+ * May this earlier consultation hold cycle details? Yes when a turn was answered with her cycle diary or staged
+ * cycle context (`cycleContext: true`, set by POST /api/ai/query), when a turn predates that marker (unknown:
+ * the diary may have been there), or when its text talks about the cycle.
+ */
+export function consultationCarriesCycle(session) {
+  const msgs = asArray(session?.messages).filter((m) => m && typeof m === 'object');
+  return msgs.some((m) => m.cycleContext === true
+    || (m.role === 'assistant' && typeof m.cycleContext !== 'boolean')
+    || (typeof m.content === 'string' && CYCLE_TALK.test(m.content)));
+}
+
+/**
+ * The marker POST /api/ai/query stores on an answer: the cycle diary went into the context, or the client sent
+ * its own context (the cycle-screen handoff) without saying no. Builds before 2026-10-08 never send
+ * `cycleContextAllowed`, so an absent flag next to a context counts as cycle.
+ */
+export function answerCarriedCycle({ cycleShared = false, cycleContextAllowed, context } = {}) {
+  return Boolean(cycleShared || (cycleContextAllowed !== false && typeof context === 'string' && context.trim()));
+}
+
+/**
+ * While the cycle is withheld now (cycle lock, privacy mode, discreet notifications, removed context) or could
+ * not be read, earlier consultations that may carry cycle details stay out. No cycle profile = nothing to hide.
+ */
+export function consultationsAllowedNow(sessions, cycleContext) {
+  if (sessions == null || !cycleContext || cycleContext.status === 'available') return sessions;
+  return asArray(sessions).filter((s) => !consultationCarriesCycle(s));
 }
 
 /** Earlier consultations (other DOCTOR / CONSILIUM sessions): when, about what, the gist of the answer. */

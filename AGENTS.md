@@ -14,6 +14,7 @@ This file is loaded into every session, so it holds only rules that apply everyw
 | Server: loop guards, cache, schema installs, email, support, capacity, errors, module switches, news | [docs/agents/server-ops.md](docs/agents/server-ops.md) |
 | MEDI QUEST, MEDI COACH, nutrition, reminders, web `/app` | [docs/agents/features.md](docs/agents/features.md) |
 | Main DB + publishing rules (full text) | [docs/agents/process.md](docs/agents/process.md) |
+| Strategy deck fixes (personal step goal, no app-open streak, weekly Medi, amber doses) and launch hardening (account deletion guard, sliding and reset-ended sessions, SMS codes, onboarding exits, cycle undo and Health writes, Medi privacy and Stop, dose taps and reschedule, client capability header) | [docs/agents/strategy-and-hardening.md](docs/agents/strategy-and-hardening.md) |
 
 Other docs: `docs/I18N.md`, `docs/MEDI-ASSISTANT.md`, `docs/NUTRITION.md`, `docs/TRAINER.md`, `docs/APP-REVIEW-*.md`, `docs/DB-DROP-CANDIDATES.md`.
 

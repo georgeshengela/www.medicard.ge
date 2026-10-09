@@ -60,11 +60,11 @@ test('an uncertain upload retains its exact payload and cannot trigger format re
  await client.init();assert.deepEqual(JSON.parse(h.stored).queue[0].body,body);assert.equal(h.archived.length,0);assert.equal(client.getSnapshot().pending,1);client.dispose();
 });
 
-function storeHarness(snapshotLoader=async()=>null,{background=false}={}){const h=harness();const bg={available:background,running:false,started:0,stopped:0,modes:[],sink:null};const gifts=[];let permission=true;let callback,headingCallback,removed=0,requested=0,watchCalls=0,saved=null,subscriptionGate=null;const appListeners=new Set();const app={currentState:'active',addEventListener:(_type,fn)=>{appListeners.add(fn);return {remove(){appListeners.delete(fn);}};},emit(next){app.currentState=next;for(const fn of [...appListeners])fn(next);}};
- const location={Accuracy:{High:4,BestForNavigation:6},getForegroundPermissionsAsync:async()=>({granted:permission}),getCurrentPositionAsync:async()=>({coords:{latitude:40.77,longitude:-73.97,accuracy:5}}),watchPositionAsync:async(_opts,fn)=>{watchCalls++;callback=fn;if(subscriptionGate)await subscriptionGate.promise;return {remove(){removed++;}};},watchHeadingAsync:async fn=>{headingCallback=fn;return {remove(){}};}};
- const geo=load(root+'/lib/run/geo.ts'),modules={react:{useSyncExternalStore:()=>{}},'react-native':{AppState:app},'expo-location':location,'@/lib/medipulsi/client':{getPulseClient:()=>h.client,resetPulseClient:()=>h.client.dispose()},'@/lib/run/activePersist':{clearActiveRun:async()=>{},saveActiveRun:async()=>{},loadActiveRun:snapshotLoader},'@/lib/run/history':{downsamplePath:p=>p,saveRunSummary:async s=>{saved=s;}},'@/lib/run/mapbox':{generateTargetPin:async()=>{throw new Error('Free walk must not request a city-specific route');}},'@/lib/userLocation':{requestLocationPermission:async()=>{requested++;return 'granted';}},'@/lib/run/locationTask':{setRunLocationSink:fn=>{bg.sink=fn;},startRunLocationUpdates:async mode=>{if(!bg.available)return false;bg.started++;bg.modes.push(mode);bg.running=true;return true;},stopRunLocationUpdates:async()=>{bg.stopped++;bg.running=false;}},'@/lib/run/giftAlerts':{onGiftSignal:signal=>gifts.push(signal),resetGiftAlerts:()=>{gifts.length=0;}}};
+function storeHarness(snapshotLoader=async()=>null,{background=false}={}){const h=harness();const bg={available:background,running:false,started:0,stopped:0,modes:[],sink:null};const gifts=[];let permission=true,canAskAgain=true;let callback,headingCallback,removed=0,requested=0,watchCalls=0,saved=null,subscriptionGate=null;const appListeners=new Set();const app={currentState:'active',addEventListener:(_type,fn)=>{appListeners.add(fn);return {remove(){appListeners.delete(fn);}};},emit(next){app.currentState=next;for(const fn of [...appListeners])fn(next);}};
+ const location={Accuracy:{High:4,BestForNavigation:6},getForegroundPermissionsAsync:async()=>({granted:permission,status:permission?'granted':'denied',canAskAgain:permission||canAskAgain}),getCurrentPositionAsync:async()=>({coords:{latitude:40.77,longitude:-73.97,accuracy:5}}),watchPositionAsync:async(_opts,fn)=>{watchCalls++;callback=fn;if(subscriptionGate)await subscriptionGate.promise;return {remove(){removed++;}};},watchHeadingAsync:async fn=>{headingCallback=fn;return {remove(){}};}};
+ const geo=load(root+'/lib/run/geo.ts'),modules={react:{useSyncExternalStore:()=>{}},'react-native':{AppState:app},'expo-location':location,'@/lib/medipulsi/client':{getPulseClient:()=>h.client,resetPulseClient:()=>h.client.dispose()},'@/lib/run/activePersist':{clearActiveRun:async()=>{},saveActiveRun:async()=>{},loadActiveRun:snapshotLoader},'@/lib/run/history':{downsamplePath:p=>p,saveRunSummary:async s=>{saved=s;}},'@/lib/run/mapbox':{generateTargetPin:async()=>{throw new Error('Free walk must not request a city-specific route');}},'@/lib/userLocation':{requestLocationPermission:async()=>{requested++;return permission?'granted':'denied';}},'@/lib/run/locationTask':{setRunLocationSink:fn=>{bg.sink=fn;},startRunLocationUpdates:async mode=>{if(!bg.available)return false;bg.started++;bg.modes.push(mode);bg.running=true;return true;},stopRunLocationUpdates:async()=>{bg.stopped++;bg.running=false;}},'@/lib/run/giftAlerts':{onGiftSignal:signal=>gifts.push(signal),resetGiftAlerts:()=>{gifts.length=0;}}};
  const store=loader(modules)(root+'/lib/run/store.ts');
- return {...h,store,app,location,get removed(){return removed;},get requested(){return requested;},get watchCalls(){return watchCalls;},get saved(){return saved;},set gate(value){subscriptionGate=value;},set offline(value){h.offline=value;},bg,gifts,set permission(value){permission=value;},bgFix(lng,lat,at,speed=1.3){bg.sink?.([{lat,lng,accuracy:5,heading:null,at,speed,mocked:false}]);},fix(lng,lat,at){callback({coords:{longitude:lng,latitude:lat,accuracy:5,speed:1,heading:90},timestamp:at});},heading(deg){headingCallback({trueHeading:deg,magHeading:deg});}};
+ return {...h,store,app,location,get removed(){return removed;},get requested(){return requested;},get watchCalls(){return watchCalls;},get saved(){return saved;},set gate(value){subscriptionGate=value;},set offline(value){h.offline=value;},bg,gifts,set permission(value){permission=value;},set canAskAgain(value){canAskAgain=value;},bgFix(lng,lat,at,speed=1.3){bg.sink?.([{lat,lng,accuracy:5,heading:null,at,speed,mocked:false}]);},fix(lng,lat,at){callback({coords:{longitude:lng,latitude:lat,accuracy:5,speed:1,heading:90},timestamp:at});},heading(deg){headingCallback({trueHeading:deg,magHeading:deg});}};
 }
 test('MEDI RUN shares one GPS watcher, server distance, compass, and a single finish',async()=>{const h=storeHarness();await h.store.prepareExploration();assert.equal(h.requested,0);assert.equal(h.store.getRunState().pin,null);await Promise.all([h.store.startRun(),h.store.startRun()]);assert.equal(h.watchCalls,1);const now=Date.now()-10000;h.fix(-73.97,40.77,now);h.heading(210);h.fix(-73.96994,40.77,now+4000);assert.equal(h.store.getRunState().headingDeg,210);assert.equal(h.store.getRunState().distanceM,h.client.getSnapshot().journey.meters);h.store.pauseRun();assert.equal(h.removed,1);const paused=h.store.getRunState().distanceM;h.fix(151.2,-33.86,Date.now());assert.equal(h.store.getRunState().distanceM,paused);const summary=await h.store.finishRun();assert.ok(summary.segments.length);assert.equal(summary.completedTarget,false);await h.client.flush();h.store.resetRunMemory();});
 test('GPS subscription completing after pause is immediately removed',async()=>{const h=storeHarness(),gate=defer();await h.store.prepareExploration();h.gate=gate;const start=h.store.startRun();while(h.watchCalls===0)await new Promise(r=>setTimeout(r,1));h.store.pauseRun();gate.resolve();await start;assert.equal(h.removed,1);assert.equal(h.store.getRunState().phase,'paused');h.store.resetRunMemory();});
@@ -120,3 +120,41 @@ test('a locked phone asks for the gift pulse every 20 s and hands the signal to 
  await settle(()=>h.gifts.some(g=>g.signal===true));
  assert.equal(h.requests.filter(r=>r.url==='/nearby').length,before+1,'one check, not one per fix');
  h.store.resetRunMemory();});
+
+// habits/F6: after „Don't Allow“ iOS answers every later request at once with no sheet, so „მდებარეობის
+// მიღება“ looped forever. The OS is asked only from the press; once it will not ask again the screen
+// offers Settings, and coming back re-reads the permission without ever asking.
+test('refused location the OS will not ask again offers Settings; the request ran once, from the press',async()=>{
+ const h=storeHarness();h.permission=false;h.canAskAgain=false;
+ assert.equal(await h.store.prepareExploration(),false);
+ const s=h.store.getRunState();assert.equal(s.phase,'idle');assert.equal(s.error,'permission');assert.equal(s.permissionBlocked,true);assert.equal(h.requested,1);
+ h.store.resetRunMemory();
+});
+test('refused location the OS can still ask keeps the retry button',async()=>{
+ const h=storeHarness();h.permission=false;h.canAskAgain=true;
+ await h.store.prepareExploration();
+ assert.equal(h.store.getRunState().error,'permission');assert.equal(h.store.getRunState().permissionBlocked,false);assert.equal(h.requested,1);
+ h.store.resetRunMemory();
+});
+test('back from Settings the permission is only re-read, and the location is found once it is on',async()=>{
+ const h=storeHarness();h.permission=false;h.canAskAgain=false;await h.store.prepareExploration();assert.equal(h.requested,1);
+ assert.equal(await h.store.recheckLocationPermission(),false);
+ assert.equal(h.requested,1,'returning to the app never asks the OS');assert.equal(h.store.getRunState().permissionBlocked,true);
+ h.canAskAgain=true;// Settings → „Ask Next Time“: the retry button comes back
+ assert.equal(await h.store.recheckLocationPermission(),false);assert.equal(h.store.getRunState().permissionBlocked,false);assert.equal(h.requested,1);
+ h.permission=true;
+ assert.equal(await h.store.recheckLocationPermission(),true);
+ const s=h.store.getRunState();assert.equal(s.phase,'ready');assert.equal(s.error,null);assert.equal(s.permissionBlocked,false);assert.ok(s.origin);assert.equal(h.requested,1);
+ assert.equal(await h.store.recheckLocationPermission(),false,'nothing to re-check once the location is found');
+ h.store.resetRunMemory();
+});
+test('MEDIRUN location screen: Settings only after a refusal, foreground re-check never requests, When-In-Use only',()=>{
+ const screen=fs.readFileSync(path.join(root,'components/run/PulseActive.tsx'),'utf8'),store=fs.readFileSync(path.join(root,'lib/run/store.ts'),'utf8');
+ assert.match(screen,/const locationOff=run\.error==='permission'&&run\.permissionBlocked/);
+ assert.match(screen,/locationOff\?<Action label=\{primerSettingsLabel\(\)\} icon=\{Settings2\} onPress=\{\(\)=>void Linking\.openSettings\(\)/);
+ assert.match(screen,/onReturnToForeground\(\(\)=>void recheckLocationPermission\(/);
+ assert.doesNotMatch(screen,/requestForegroundPermissionsAsync|requestLocationPermission|requestBackgroundPermissionsAsync/);
+ const recheck=store.slice(store.indexOf('export async function recheckLocationPermission'),store.indexOf('export async function regeneratePin'));
+ assert.match(recheck,/askOs: false/);assert.doesNotMatch(recheck,/requestLocationPermission|requestForegroundPermissionsAsync/);
+ assert.doesNotMatch(store,/requestBackgroundPermissionsAsync|ACCESS_BACKGROUND_LOCATION/);
+});

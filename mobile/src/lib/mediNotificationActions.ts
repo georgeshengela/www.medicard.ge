@@ -2,7 +2,8 @@ import type * as ExpoNotificationTypes from 'expo-notifications';
 import { Platform } from 'react-native';
 import { Notifications } from '@/lib/expoNotifications';
 import { addHydrationLog, todayYmd } from '@/lib/hydration';
-import { saveDoseLog } from '@/lib/medications.shared';
+import { ensureLocalAccountScope, saveDoseLog } from '@/lib/medications.shared';
+import { medicationDoseRoute, notificationDoseEntry, reminderOwner } from '@/lib/notificationDose';
 import { markEngageOpened } from '@/lib/mediEngagePrefs';
 import { HYDRATION_DROP_ML } from '@/types/hydration';
 import { tx } from '../i18n/locale.js';
@@ -20,6 +21,7 @@ export const NOTIF_ACTION = {
   take: 'TAKE',
   snooze: 'SNOOZE',
   drank: 'DRANK',
+  /** Legacy „კარგად ვარ“ on check-ins: no longer offered (it saved nothing); old taps are a no-op. */
   ok: 'OK',
   chat: 'CHAT',
   open: 'OPEN',
@@ -47,8 +49,9 @@ export async function registerNotificationCategories(): Promise<void> {
     await Notifications.setNotificationCategoryAsync(NOTIF_CATEGORY.hydration, [
       { identifier: NOTIF_ACTION.drank, buttonTitle: tx('დავლიე 💧', 'Drank it 💧'), options: { opensAppToForeground: false } },
     ]);
+    // No „კარგად ვარ“ button: there is no check-in record to save it to, and a button that
+    // saves nothing is misleading. Re-registering replaces the old category on the device.
     await Notifications.setNotificationCategoryAsync(NOTIF_CATEGORY.checkin, [
-      { identifier: NOTIF_ACTION.ok, buttonTitle: tx('კარგად ვარ 💚', "I'm fine 💚"), options: { opensAppToForeground: false } },
       { identifier: NOTIF_ACTION.chat, buttonTitle: tx('Medi-სთან საუბარი', 'Talk to Medi'), options: { opensAppToForeground: true } },
     ]);
     await Notifications.setNotificationCategoryAsync(NOTIF_CATEGORY.visit, [
@@ -122,23 +125,32 @@ export async function handleNotificationAction(
 
   if (isDefaultAction(action)) {
     if (data.type === 'medi_engage') void markEngageOpened(family, key, 'open');
+    // A medication reminder opens the reminded dose (its slot and day), also for reminders scheduled
+    // by older versions whose route named only the medication.
+    if (data.type === 'medication') {
+      const route = medicationDoseRoute(data, response.notification.date, Date.now());
+      if (route) return { navigate: true, route };
+    }
     return { navigate: true };
   }
 
   if (data.type === 'medi_engage') void markEngageOpened(family, key, action);
 
-  if (action === NOTIF_ACTION.take && typeof data.medicationId === 'string') {
-    await saveDoseLog({
-      medicationId: data.medicationId,
-      date: todayYmd(),
-      time: typeof data.time === 'string' ? data.time : '08:00',
-      status: 'taken',
-      updatedAt: new Date().toISOString(),
-    }, 'notification');
+  // „მივიღე ✓“ marks the dose the reminder was for: dated by when it was delivered (a 23:30 dose
+  // answered after midnight is still that evening's), saved even when the tap launched the app before
+  // sign-in finished (saveDoseLog resolves the account or queues the mark), and shown at once. Only
+  // into the account the reminder was scheduled for: a reminder left on a shared phone by someone who
+  // signed out never marks the next person's doses.
+  const dose = action === NOTIF_ACTION.take ? notificationDoseEntry(data, response.notification.date, Date.now()) : null;
+  if (dose) {
+    await saveDoseLog(dose, 'notification', reminderOwner(data));
+    void import('@/lib/queryClient').then(({ invalidate }) => invalidate('medications'));
     return { navigate: false };
   }
 
   if (action === NOTIF_ACTION.drank) {
+    // Water is stored per account too; on a cold start the account is not set yet.
+    await ensureLocalAccountScope();
     await addHydrationLog({
       date: todayYmd(),
       ml: HYDRATION_DROP_ML,
@@ -179,6 +191,7 @@ export async function handleNotificationAction(
     return { navigate: true };
   }
 
+  // A notification delivered before the button was removed can still carry it.
   if (action === NOTIF_ACTION.ok) {
     return { navigate: false };
   }

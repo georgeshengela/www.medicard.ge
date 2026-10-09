@@ -14,12 +14,27 @@ function parseRetryAfterSeconds(retryRaw, payload) {
 }
 
 function formatRateLimitMessage(seconds, fallback) {
-  const wait = Math.max(1, Math.min(3600, Number(seconds) || 0));
   if (!Number.isFinite(Number(seconds)) || Number(seconds) <= 0) {
     return fallback || tx('ძალიან ბევრი მოთხოვნა. დაელოდე ერთ წუთს.', 'Too many requests. Please wait a minute.');
   }
+  const wait = Math.max(1, Math.ceil(Number(seconds)));
+  // Long waits in minutes or hours: „დაელოდე 3600 წამს“ reads like a bug.
+  if (wait >= 3600) {
+    const hours = Math.ceil(wait / 3600);
+    return tx(`ძალიან ბევრი მოთხოვნა. ისევ სცადე დაახლოებით ${hours} საათში.`, `Too many requests. Try again in about ${hours} ${hours === 1 ? 'hour' : 'hours'}.`);
+  }
+  if (wait >= 120) {
+    const minutes = Math.ceil(wait / 60);
+    return tx(`ძალიან ბევრი მოთხოვნა. დაელოდე ${minutes} წუთს.`, `Too many requests. Please wait ${minutes} minutes.`);
+  }
   return tx(`ძალიან ბევრი მოთხოვნა. დაელოდე ${wait} წამს.`, `Too many requests. Please wait ${wait} ${wait === 1 ? 'second' : 'seconds'}.`);
 }
+
+/**
+ * AI limits the server words itself, in the person's language (an analysis already running, the daily
+ * fuse, the quota): its own text, never a made-up „wait N seconds“.
+ */
+const SERVER_WORDED_LIMITS = new Set(['AI_BUSY', 'AI_DAILY_CAP', 'DAILY_LIMIT_REACHED', 'MONTHLY_LIMIT_REACHED']);
 
 function publicApiErrorMessage(status, payload, retryRaw, fallback) {
   const serverError =
@@ -28,6 +43,11 @@ function publicApiErrorMessage(status, payload, retryRaw, fallback) {
     fallback;
   if (status !== 429) return serverError;
   const seconds = parseRetryAfterSeconds(retryRaw, payload);
+  const worded = typeof payload?.error === 'string' && payload.error.trim() ? payload.error : null;
+  if (worded && SERVER_WORDED_LIMITS.has(payload?.code)) return worded;
+  // RATE_LIMITED is also every generic limiter's code (sign-in codes, invites…); those send a wait, which
+  // reads in seconds, minutes or hours below. Only the AI start limit comes without one: keep its words.
+  if (worded && payload?.code === 'RATE_LIMITED' && seconds == null) return worded;
   if (seconds == null) {
     if (typeof serverError === 'string' && /წამს|წუთ|second|minute/i.test(serverError)) return serverError;
     return formatRateLimitMessage(60, serverError);

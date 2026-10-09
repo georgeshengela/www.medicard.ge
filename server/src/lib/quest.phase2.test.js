@@ -17,6 +17,7 @@ import {
   assignWeeklyQuests,
   claimQuest,
   completeQuest,
+  computeQuestProgress,
   expireStaleQuests,
   getQuestHistory,
   getQuestRewards,
@@ -28,8 +29,10 @@ import {
 } from './quest.js';
 import { QuestSignal, refreshQuestProgressForUser } from './questSignals.js';
 import { QUEST_ECONOMY, assertIssuableQuestReward, validateHydrationGoalMl } from './questEconomy.js';
-import { onQuestCompleted } from './questRealtime.js';
+import { onQuestCompleted, registerQuestRealtimeEmitter } from './questRealtime.js';
 import { publicQuest } from './questPrivacy.js';
+import { AI_CONSENT_VERSION } from './aiConsent.js';
+import { AI_ERROR_REVIEWED, AI_REPLY_CUT_MESSAGE } from './aiTelemetry.js';
 
 const NOW = new Date('2026-09-06T12:00:00+04:00');
 const TODAY = '2026-09-06';
@@ -50,6 +53,8 @@ async function setup(extra = {}) {
   const db = createQuestFakeDb();
   if (extra.hydration !== false) await seedHydration(db, extra.goalMl || 2000);
   if (extra.steps !== false) await seedSteps(db, extra.stepStatus || 'AVAILABLE');
+  // The weekly Medi mission is offered only after AI consent.
+  if (extra.aiConsent) await db.userAiConsent.create({ data: { userId: USER, version: AI_CONSENT_VERSION, decision: 'accepted' } });
   const options = { db, now: extra.now || NOW, timezone: extra.timezone || QUEST_TIMEZONE };
   await assignDailyQuests(USER, extra.date || TODAY, options);
   if (extra.weekly !== false) await assignWeeklyQuests(USER, extra.week || WEEK, options);
@@ -75,9 +80,11 @@ describe('phase 2 economy — reject not clamp', () => {
     const steps = questByKey(await allQuests(db), 'daily_steps');
     await db.userQuest.update({ where: { id: steps.id }, data: { progress: 5000 } });
     await completeQuest(USER, steps.id, options);
-    await db.questTemplate.update({
-      where: { id: steps.templateId },
-      data: { rewardCoins: 300, rewardXp: 50 },
+    // A claim pays the reward frozen on the row at completion; an impossible one is refused.
+    const done = await db.userQuest.findUnique({ where: { id: steps.id } });
+    await db.userQuest.update({
+      where: { id: steps.id },
+      data: { metadata: { ...done.metadata, reward: { xp: 50, coins: 300 } } },
     });
 
     await assert.rejects(() => claimQuest(USER, steps.id, options), { code: 'QUEST_REWARD_CEILING' });
@@ -86,6 +93,22 @@ describe('phase 2 economy — reject not clamp', () => {
     assert.ok(!row.claimedAt);
     const ledger = await db.rewardLedger.findMany({ where: { userId: USER } });
     assert.equal(ledger.length, 0);
+  });
+
+  it('refuses an impossible template reward before completing a quest on claim', async () => {
+    const { db, options } = await setup({ weekly: false });
+    const steps = questByKey(await allQuests(db), 'daily_steps');
+    await db.userQuest.update({ where: { id: steps.id }, data: { progress: 5000 } });
+    await db.questTemplate.update({
+      where: { id: steps.templateId },
+      data: { rewardCoins: 300, rewardXp: 50 },
+    });
+
+    await assert.rejects(() => claimQuest(USER, steps.id, options), { code: 'QUEST_REWARD_CEILING' });
+    const row = await db.userQuest.findUnique({ where: { id: steps.id } });
+    assert.equal(row.status, 'ACTIVE');
+    assert.equal((await db.questCompletion.findMany({ where: { userQuestId: steps.id } })).length, 0);
+    assert.equal((await db.rewardLedger.findMany({ where: { userId: USER } })).length, 0);
   });
 
   it('does not silently issue a clamped amount', () => {
@@ -100,7 +123,7 @@ describe('phase 2 assignment eligibility', () => {
   it('does not assign daily_hydration without a server goal', async () => {
     const { db } = await setup({ hydration: false, weekly: false });
     const keys = (await allQuests(db)).map((row) => row.template.key).sort();
-    assert.deepEqual(keys, ['daily_medi', 'daily_steps']);
+    assert.deepEqual(keys, ['daily_steps']);
   });
 
   it('assigns daily_hydration once a valid goal exists', async () => {
@@ -305,10 +328,10 @@ describe('phase 2 hydration', () => {
   });
 });
 
-describe('phase 2 medi daily use', () => {
+describe('phase 2 weekly Medi mission', () => {
   it('stays at 0 until a successful DOCTOR/CONSILIUM interaction', async () => {
-    const { db, options } = await setup({ weekly: false });
-    let medi = questByKey(await updateQuestProgress(USER, { templateKey: 'daily_medi' }, options), 'daily_medi');
+    const { db, options } = await setup({ aiConsent: true });
+    let medi = questByKey(await updateQuestProgress(USER, { templateKey: 'weekly_medi' }, options), 'weekly_medi');
     assert.equal(medi.progress, 0);
 
     await db.aiInteraction.create({
@@ -321,13 +344,13 @@ describe('phase 2 medi daily use', () => {
         assistantReply: 'secret reply',
       },
     });
-    medi = questByKey(await updateQuestProgress(USER, { templateKey: 'daily_medi' }, options), 'daily_medi');
+    medi = questByKey(await updateQuestProgress(USER, { templateKey: 'weekly_medi' }, options), 'weekly_medi');
     assert.equal(medi.progress, 0);
 
     await db.aiInteraction.create({
       data: { userId: USER, status: 'OK', mode: 'DOCTOR', createdAt: NOW },
     });
-    medi = questByKey(await updateQuestProgress(USER, { templateKey: 'daily_medi' }, options), 'daily_medi');
+    medi = questByKey(await updateQuestProgress(USER, { templateKey: 'weekly_medi' }, options), 'weekly_medi');
     assert.equal(medi.progress, 1);
     assert.equal(medi.status, 'COMPLETED');
     const blob = JSON.stringify(medi);
@@ -335,39 +358,113 @@ describe('phase 2 medi daily use', () => {
     assert.equal(/secret reply/.test(blob), false);
   });
 
+  it('counts a health answer cut at max_tokens (she saw it), never a failed one', async () => {
+    const { db, options } = await setup({ aiConsent: true });
+    await db.aiInteraction.create({ data: { userId: USER, status: 'ERROR', mode: 'DOCTOR', errorMessage: 'Provider 503', createdAt: NOW } });
+    // The planner (logging water, a reminder) and image reads are not a health answer.
+    await db.aiInteraction.create({ data: { userId: USER, status: 'OK', mode: 'SKIN', createdAt: NOW } });
+    const row = questByKey(await allQuests(db), 'weekly_medi');
+    let medi = questByKey(await updateQuestProgress(USER, { templateKey: 'weekly_medi' }, options), 'weekly_medi');
+    assert.equal(medi.progress, 0);
+    assert.equal(await computeQuestProgress(USER, row, WEEK, options), 0);
+
+    await db.aiInteraction.create({
+      data: { userId: USER, status: 'ERROR', mode: 'DOCTOR', errorMessage: AI_REPLY_CUT_MESSAGE, createdAt: NOW },
+    });
+    // Both reads (one quest, and the batched pass behind every progress update) follow the same rule.
+    assert.equal(await computeQuestProgress(USER, row, WEEK, options), 1);
+    medi = questByKey(await updateQuestProgress(USER, { templateKey: 'weekly_medi' }, options), 'weekly_medi');
+    assert.equal(medi.progress, 1);
+    assert.equal(medi.status, 'COMPLETED');
+  });
+
+  // Integration review IR-5/IR-17: admin „ჩაქრობა“ (POST /api/admin/ai/errors/review) turns every ERROR row
+  // into ERROR_REVIEWED, cut replies included. A mission assigned or recomputed after that must still count
+  // the cut answer she got; a reviewed real failure still never counts.
+  it('still counts a cut answer after the admin reviewed its error, never a reviewed failure', async () => {
+    const { db, options } = await setup({ aiConsent: true, weekly: false });
+    await db.aiInteraction.create({ data: { userId: USER, status: 'ERROR', mode: 'DOCTOR', errorMessage: 'Provider 503', createdAt: NOW } });
+    // No weekly row yet (consent accepted mid-week, web, first open lands in Medi): the answer's refresh finds nothing.
+    assert.deepEqual(await refreshQuestProgressForUser(USER, QuestSignal.MEDI_USED, options), []);
+    await db.aiInteraction.updateMany({ where: { userId: USER, status: 'ERROR' }, data: { status: AI_ERROR_REVIEWED } });
+    await assignWeeklyQuests(USER, WEEK, options);
+    const row = questByKey(await allQuests(db), 'weekly_medi');
+    assert.equal(await computeQuestProgress(USER, row, WEEK, options), 0, 'a reviewed failure is still not an answer');
+    assert.equal(questByKey(await updateQuestProgress(USER, { templateKey: 'weekly_medi' }, options), 'weekly_medi').progress, 0);
+
+    await db.aiInteraction.create({
+      data: { userId: USER, status: 'ERROR', mode: 'CONSILIUM', errorMessage: AI_REPLY_CUT_MESSAGE, createdAt: NOW },
+    });
+    await db.aiInteraction.updateMany({ where: { userId: USER, status: 'ERROR' }, data: { status: AI_ERROR_REVIEWED } });
+    assert.equal(await computeQuestProgress(USER, row, WEEK, options), 1);
+    const medi = questByKey(await updateQuestProgress(USER, { templateKey: 'weekly_medi' }, options), 'weekly_medi');
+    assert.equal(medi.progress, 1);
+    assert.equal(medi.status, 'COMPLETED');
+  });
+
   it('counts one qualifying interaction even across extra messages and sessions', async () => {
-    const { db, options } = await setup({ weekly: false });
+    const { db, options } = await setup({ aiConsent: true });
     await db.aiInteraction.create({ data: { userId: USER, status: 'OK', mode: 'DOCTOR', createdAt: NOW } });
     await db.aiInteraction.create({
       data: { userId: USER, status: 'OK', mode: 'CONSILIUM', createdAt: new Date(NOW.getTime() + 3600_000) },
     });
-    await updateQuestProgress(USER, { templateKey: 'daily_medi' }, options);
+    await updateQuestProgress(USER, { templateKey: 'weekly_medi' }, options);
     await refreshQuestProgressForUser(USER, QuestSignal.MEDI_USED, options);
-    const medi = questByKey(await allQuests(db), 'daily_medi');
+    const medi = questByKey(await allQuests(db), 'weekly_medi');
     assert.equal(medi.progress, 1);
     assert.equal((await db.questCompletion.findMany({ where: { userQuestId: medi.id } })).length, 1);
   });
 
-  it('does not complete yesterday after local midnight', async () => {
-    const { db, options } = await setup({ weekly: false });
+  // Integration review IR-4: older app JS (no X-Medicard-Caps) never sees weekly_medi, yet toasted
+  // „მისია შესრულდა 🎉“ for any `quest:completed` on the person's sockets. Its completion is not announced;
+  // every other mission still is.
+  it('never announces the weekly Medi completion on the sockets; other missions still are', async () => {
+    const events = [];
+    // Achievement and journey events stay (older JS shows those); only the mission completion is checked.
+    registerQuestRealtimeEmitter((userId, payload) => { if (payload.event === 'quest:completed') events.push(payload); });
+    const stop = onQuestCompleted((payload) => events.push({ listener: true, ...payload }));
+    try {
+      const { db, options } = await setup({ aiConsent: true });
+      await db.aiInteraction.create({ data: { userId: USER, status: 'OK', mode: 'DOCTOR', createdAt: NOW } });
+      // The answer's own refresh, and the dashboard sync another device's GET runs.
+      await refreshQuestProgressForUser(USER, QuestSignal.MEDI_USED, options);
+      const medi = questByKey(await allQuests(db), 'weekly_medi');
+      assert.equal(medi.status, 'COMPLETED');
+      await getUserQuestDashboard(USER, options);
+      assert.deepEqual(events, []);
+
+      await db.healthMetricDaily.create({ data: { userId: USER, date: TODAY, steps: 5000 } });
+      await refreshQuestProgressForUser(USER, QuestSignal.STEPS_CHANGED, options);
+      assert.deepEqual(events.map((event) => [event.event ?? 'listener', event.key]), [
+        ['listener', 'daily_steps'],
+        ['quest:completed', 'daily_steps'],
+      ]);
+    } finally {
+      stop();
+      registerQuestRealtimeEmitter(null);
+    }
+  });
+
+  it('does not complete last week after the Monday rollover', async () => {
+    const { db, options } = await setup({ aiConsent: true });
     const afterRollover = new Date('2026-09-07T00:05:00+04:00');
     await db.aiInteraction.create({
       data: { userId: USER, status: 'OK', mode: 'DOCTOR', createdAt: afterRollover },
     });
-    await updateQuestProgress(USER, { templateKey: 'daily_medi' }, { ...options, now: afterRollover });
-    const yesterday = questByKey(await allQuests(db), 'daily_medi');
-    assert.equal(yesterday.periodKey, TODAY);
-    assert.equal(yesterday.status, 'EXPIRED');
-    assert.equal(yesterday.progress, 0);
+    await updateQuestProgress(USER, { templateKey: 'weekly_medi' }, { ...options, now: afterRollover });
+    const lastWeek = questByKey(await allQuests(db), 'weekly_medi');
+    assert.equal(lastWeek.periodKey, WEEK);
+    assert.equal(lastWeek.status, 'EXPIRED');
+    assert.equal(lastWeek.progress, 0);
   });
 
-  it('attributes a near-midnight interaction to the assigned local day', async () => {
-    const { db, options } = await setup({ weekly: false });
-    const justAfterMidnight = new Date(startOfLocalDay(TODAY, QUEST_TIMEZONE).getTime() + 60_000);
+  it('attributes an interaction just after Monday midnight to the assigned week', async () => {
+    const { db, options } = await setup({ aiConsent: true });
+    const justAfterMidnight = new Date(startOfLocalDay(daysInIsoWeek(WEEK)[0], QUEST_TIMEZONE).getTime() + 60_000);
     await db.aiInteraction.create({
       data: { userId: USER, status: 'OK', mode: 'DOCTOR', createdAt: justAfterMidnight },
     });
-    const medi = questByKey(await updateQuestProgress(USER, { templateKey: 'daily_medi' }, options), 'daily_medi');
+    const medi = questByKey(await updateQuestProgress(USER, { templateKey: 'weekly_medi' }, options), 'weekly_medi');
     assert.equal(medi.progress, 1);
     assert.equal(medi.status, 'COMPLETED');
   });
@@ -452,11 +549,11 @@ describe('phase 2 API models', () => {
   });
 
   it('paginates history and distinguishes COMPLETED / CLAIMED / EXPIRED', async () => {
-    const { db, options } = await setup({ weekly: false });
+    const { db, options } = await setup({ aiConsent: true });
     const steps = questByKey(await allQuests(db), 'daily_steps');
     await db.userQuest.update({ where: { id: steps.id }, data: { progress: 5000 } });
     await completeQuest(USER, steps.id, options);
-    const medi = questByKey(await allQuests(db), 'daily_medi');
+    const medi = questByKey(await allQuests(db), 'weekly_medi');
     await db.userQuest.update({
       where: { id: medi.id },
       data: { expiresAt: new Date('2026-09-05T23:59:59+04:00') },
@@ -468,7 +565,7 @@ describe('phase 2 API models', () => {
     const byKey = Object.fromEntries(history.items.map((row) => [row.key, row]));
     assert.equal(byKey.daily_steps.status, 'CLAIMED');
     assert.equal(byKey.daily_steps.claimable, false);
-    assert.equal(byKey.daily_medi.status, 'EXPIRED');
+    assert.equal(byKey.weekly_medi.status, 'EXPIRED');
     assert.ok(!JSON.stringify(history).includes('goalBasisMl'));
   });
 
@@ -496,7 +593,7 @@ describe('phase 2 API models', () => {
 
 describe('phase 2 performance', () => {
   it('batches daily metric reads instead of querying per quest/day', async () => {
-    const { db, options } = await setup();
+    const { db, options } = await setup({ aiConsent: true });
     for (const date of daysInIsoWeek(WEEK)) {
       await db.healthMetricDaily.create({ data: { userId: USER, date, steps: 1000, hydrationMl: 200 } });
     }
@@ -509,14 +606,14 @@ describe('phase 2 performance', () => {
 
 describe('phase 2 signal router', () => {
   it('only refreshes matching progress types', async () => {
-    const { db, options } = await setup();
+    const { db, options } = await setup({ aiConsent: true });
     await db.healthMetricDaily.create({ data: { userId: USER, date: TODAY, steps: 5000, hydrationMl: 2000 } });
     await db.aiInteraction.create({ data: { userId: USER, status: 'OK', mode: 'DOCTOR', createdAt: NOW } });
     await refreshQuestProgressForUser(USER, QuestSignal.STEPS_CHANGED, options);
     const rows = await allQuests(db);
     assert.equal(questByKey(rows, 'daily_steps').status, 'COMPLETED');
     assert.equal(questByKey(rows, 'daily_hydration').status, 'ACTIVE');
-    assert.equal(questByKey(rows, 'daily_medi').status, 'ACTIVE');
+    assert.equal(questByKey(rows, 'weekly_medi').status, 'ACTIVE');
   });
 });
 

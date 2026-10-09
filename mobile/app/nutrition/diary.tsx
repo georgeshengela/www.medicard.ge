@@ -48,6 +48,7 @@ import { MedicalSourcesLink } from "@/components/health/MedicalSourcesLink";
 import { CopyMealsSheet } from "@/components/nutrition/CopyMealsSheet";
 import { removeMealFromHealth, syncMealsToHealth } from "@/lib/nutritionHealth";
 import {
+  aiEstimatesAvailable,
   foodTotals,
   localDay,
   mealLabels,
@@ -126,14 +127,16 @@ function NutritionScreen({ owner }: { owner: string }) {
     staleTime: FRESH.SHORT,
     enabled: Boolean(owner),
   });
+  // A failed read stays an error (re-read on the next visit, the last good answer kept); it is never
+  // cached as an AI pause. Only the server's own `photoEnabled: false` turns the AI methods off.
   const settingsQuery = useAccountQuery<{ photoEnabled: boolean }>({
     key: ["nutrition", "settings"],
-    fetch: () => api.nutrition.settings().catch(() => ({ photoEnabled: false })),
+    fetch: () => api.nutrition.settings(),
     staleTime: FRESH.LONG,
     enabled: Boolean(owner),
   });
   const meals = mealsQuery.data?.meals ?? EMPTY_MEALS;
-  const enabled = settingsQuery.data?.photoEnabled ?? false;
+  const enabled = aiEstimatesAvailable(settingsQuery.data);
   const loading = mealsQuery.isPending && mealsQuery.fetchStatus !== "idle";
   const loadError = mealsQuery.data
     ? mealsQuery.data.truncated

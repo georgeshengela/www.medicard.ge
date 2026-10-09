@@ -1,6 +1,7 @@
 import { mergeLabPanelLists } from '@/lib/labMerge';
 import { loadCanonicalLabPanels, replaceLabPanels } from '@/lib/labStore';
-import { loadDoseLogs } from '@/lib/medications.shared';
+import { cancelMovedDoseReminder, loadDoseLogs } from '@/lib/medications.shared';
+import { endedDoseMoves } from '@/lib/notificationDose';
 import { setScopedPreference, localAccountId } from '@/lib/localAccount';
 import { api, assistantRequest, type AccountAppState } from '@/lib/api';
 import { loadRunHistory } from '@/lib/run/history';
@@ -138,10 +139,18 @@ export async function pullAccountState(): Promise<AccountAppState | null> {
     return collectLocalState();
   }
   try {
-    const local = await collectLocalState();
+    const owner = localAccountId();
     const { state: remote } = await api.account.getAppState();
+    // Another account signed in meanwhile: never merge this answer into its data.
+    if (!owner || localAccountId() !== owner) return collectLocalState();
+    // Read the device after the request: a dose marked while it was in flight (a notification's
+    // „მივიღე ✓“ right after a cold start) must be in the merge, not overwritten by it.
+    const local = await collectLocalState();
     const merged = mergeAccountState(local, remote);
     await applyLocalState(merged);
+    // A dose moved here with „გადატანა“ and answered elsewhere (the web): its moved reminder must not
+    // ring for a dose already taken. Other reminders stay as they are until the next medications sync.
+    for (const row of endedDoseMoves(local.doseLogs ?? [], merged.doseLogs ?? [])) cancelMovedDoseReminder(row);
     pulledThisSession = true;
     lastPullAt = Date.now();
     void api.account.putAppState(merged).catch(() => undefined);

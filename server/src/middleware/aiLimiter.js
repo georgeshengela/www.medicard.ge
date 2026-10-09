@@ -18,10 +18,11 @@ function quotaBody(usage, { code = 'DAILY_LIMIT_REACHED', error = QUOTA_EXCEEDED
   return {
     error,
     code,
+    // Shape kept for older builds; MEDICARD is free, so it never names a plan (App Review 2026-09-22).
     upsell: {
-      title: t(lang, 'განაახლე გეგმა', 'Upgrade your plan'),
-      body: t(lang, 'სტანდარტი — 50 AI / დღე · ულტიმატი — შეუზღუდავი.', 'Standard — 50 AI / day · Ultimate — unlimited.'),
-      cta: t(lang, 'გეგმის არჩევა', 'Choose a plan'),
+      title: t(lang, 'MEDICARD უფასოა', 'MEDICARD is free'),
+      body: t(lang, 'ყველა ფუნქცია ხელმისაწვდომია.', 'Every feature is available.'),
+      cta: t(lang, 'გაგრძელება', 'Continue'),
     },
     usage,
   };

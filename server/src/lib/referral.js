@@ -6,6 +6,7 @@ import { sendExpoPush } from './push.js';
 import { getLevelForXp } from './questLevels.js';
 import { maskedUserRef } from './rewardsAdmin.js';
 import { getUserLanguages, langOf } from './i18n.js';
+import { DEFAULT_SOCIAL_NAME } from './socialAuth.js';
 
 /**
  * Referral with Medi coins (Phase 3.4, simplified by the owner 2026-10-05).
@@ -107,10 +108,13 @@ export function claimDecision({ invitee, inviter, now = new Date(), alreadyRefer
   return null;
 }
 
-/** "Nino Beridze" → "Nino B." — the inviter sees who joined, never the full name or contact. */
+/**
+ * "Nino Beridze" → "Nino B." — the inviter sees who joined, never the full name or contact. A phone /
+ * Apple account without a typed name (the placeholder name) is just „a friend“, never „Medicard მ.“.
+ */
 export function inviteeLabel(fullName, fallback = 'მეგობარი') {
   const parts = String(fullName ?? '').trim().split(/\s+/).filter(Boolean);
-  if (!parts.length || parts[0].includes('@')) return fallback;
+  if (!parts.length || parts[0].includes('@') || parts.join(' ').toLowerCase() === DEFAULT_SOCIAL_NAME.toLowerCase()) return fallback;
   return parts.length > 1 ? `${parts[0]} ${[...parts[1]][0]}.` : parts[0];
 }
 

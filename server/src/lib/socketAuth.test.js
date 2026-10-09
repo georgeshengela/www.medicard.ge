@@ -12,6 +12,7 @@ describe('socket authorization', () => {
     const adminId = await authorizeSocketHandshake(admin);
     const userId = await authorizeSocketHandshake(user, {
       loadUser: async () => ({ id: 'user-1', status: 'ACTIVE' }),
+      loadPasswordChangedAt: async () => null,
     });
     assert.equal(adminId.kind, 'admin');
     assert.equal(userId.kind, 'user');
@@ -28,13 +29,24 @@ describe('socket authorization', () => {
     await assert.rejects(() => authorizeSocketHandshake(expired), { code: 'SOCKET_EXPIRED' });
     const user = jwt.sign({ sub: 'user-1' }, env.JWT_SECRET);
     await assert.rejects(
-      () => authorizeSocketHandshake(user, { loadUser: async () => ({ id: 'user-1', status: 'BLOCKED' }) }),
+      () => authorizeSocketHandshake(user, { loadUser: async () => ({ id: 'user-1', status: 'BLOCKED' }), loadPasswordChangedAt: async () => null }),
       { code: 'SOCKET_BLOCKED' },
     );
     await assert.rejects(
       () => authorizeSocketHandshake(user, { loadUser: async () => null }),
       { code: 'SOCKET_UNAUTHORIZED' },
     );
+  });
+
+  it('a password reset ends sockets signed before it; newer ones and a missing column pass (auth-04)', async () => {
+    const now = Math.floor(Date.now() / 1000);
+    const old = jwt.sign({ sub: 'user-1', iat: now - 3600 }, env.JWT_SECRET);
+    const fresh = jwt.sign({ sub: 'user-1', iat: now }, env.JWT_SECRET);
+    const loadUser = async () => ({ id: 'user-1', status: 'ACTIVE' });
+    const resetAt = async () => new Date((now - 60) * 1000);
+    await assert.rejects(() => authorizeSocketHandshake(old, { loadUser, loadPasswordChangedAt: resetAt }), { code: 'SOCKET_EXPIRED' });
+    assert.equal((await authorizeSocketHandshake(fresh, { loadUser, loadPasswordChangedAt: resetAt })).userId, 'user-1');
+    assert.equal((await authorizeSocketHandshake(old, { loadUser, loadPasswordChangedAt: async () => null })).userId, 'user-1');
   });
 });
 

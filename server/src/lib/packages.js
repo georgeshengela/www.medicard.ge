@@ -101,8 +101,9 @@ export async function ensureFreePackageId() {
   }
 }
 
-export async function getUserPackage(userId) {
-  const user = await prisma.user.findUnique({
+/** `db`: the caller's transaction client when it runs inside one (the AI credit commit), so no second pool connection. */
+export async function getUserPackage(userId, db = prisma) {
+  const user = await db.user.findUnique({
     where: { id: userId },
     include: { package: true },
   });
@@ -110,7 +111,7 @@ export async function getUserPackage(userId) {
 
   const expired = Boolean(user.packageExpiresAt && user.packageExpiresAt.getTime() < Date.now());
   if (expired && user.package?.code !== 'FREE') {
-    const free = await prisma.package.findUnique({ where: { code: 'FREE' } });
+    const free = await db.package.findUnique({ where: { code: 'FREE' } });
     return { user, package: free, expired: true };
   }
 

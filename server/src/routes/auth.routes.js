@@ -13,6 +13,8 @@ import { requestPhoneOtp, verifyPhoneOtp } from '../lib/phoneOtp.js';
 import { findUserByPhone, phoneTakenPayload } from '../lib/phoneUsers.js';
 import { normalizeSmsDestination } from '../lib/sms.js';
 import { requireAuth, signToken } from '../middleware/auth.js';
+import { sessionRenewalFields } from '../lib/sessionRenewal.js';
+import { markPasswordChanged, passwordChangeClaim } from '../lib/sessionRevocation.js';
 import { asyncHandler } from '../middleware/error.js';
 import { t } from '../lib/i18n.js';
 import { claimDailyCheckIn } from '../lib/checkIn.js';
@@ -32,6 +34,7 @@ import {
   saveIdentity,
   sealSecret,
   signLinkToken,
+  DEFAULT_SOCIAL_NAME,
   socialDisplayName,
   unusablePasswordHash,
   verifyAppleIdentity,
@@ -39,10 +42,10 @@ import {
 } from '../lib/socialAuth.js';
 import {
   AccountLoginError,
-  accountHasContent,
   absorbLogins,
   conflictOptions,
   conflictPayload,
+  discardNewBlocker,
   loginMethods,
   readConflictToken,
   realEmail,
@@ -314,6 +317,8 @@ authRouter.post(
       await tx.passwordReset.updateMany({ where: { userId: user.id, usedAt: null }, data: { usedAt: new Date() } });
       return next;
     });
+    // Older sessions end; recorded before signing so this device's new token is not one of them.
+    await markPasswordChanged(user.id);
     return res.json({
       token: signToken(updated),
       user: publicUser(updated),
@@ -391,13 +396,22 @@ authRouter.post(
     if (user) {
       user = await loadUserBundle(user.id);
     } else {
+      // A new number is a sign-up: the admin switch applies as on /register (existing numbers still sign in).
+      const settings = await getAppSettings();
+      if (!settings.allowRegistrations) {
+        return res.status(403).json({
+          error: t(req, 'რეგისტრაცია დროებით გამორთულია. სცადე მოგვიანებით.', 'Sign-up is paused for now. Please try again later.'),
+          code: 'REGISTRATIONS_CLOSED',
+        });
+      }
       const packageId = await ensureFreePackageId();
       try {
         const created = await prisma.user.create({
           data: {
             phone,
             email: `${normalizeSmsDestination(phone)}@phone.medicard.ge`,
-            fullName: fullName ?? 'Medicard მომხმარებელი',
+            // One placeholder for phone and Apple sign-ups: the app and web /app never show it as a name.
+            fullName: fullName ?? DEFAULT_SOCIAL_NAME,
             gender: gender ?? null,
             birthDate: birthDate ?? null,
             passwordHash: await bcrypt.hash(`phone:${phone}:${Date.now()}`, 12),
@@ -769,21 +783,23 @@ authRouter.post(
     const checked = await verifyEmailAddCode({ userId: req.user.id, email, code, lang: req.lang });
     if (!checked.ok) return res.status(checked.status ?? 400).json({ error: checked.error });
 
+    // The code is used up now: a conflict carries the chosen password on to „move here“.
+    const passwordHash = await bcrypt.hash(password, 12);
     const owner = await prisma.user.findUnique({ where: { email }, select: { id: true } });
     if (owner && owner.id !== req.user.id) {
-      return res.status(409).json(await conflictPayload(req.lang, { kind: 'email', currentId: req.user.id, otherId: owner.id }));
+      return res.status(409).json(await conflictPayload(req.lang, { kind: 'email', currentId: req.user.id, otherId: owner.id, passwordHash }));
     }
     let user;
     try {
       user = await prisma.user.update({
         where: { id: req.user.id },
-        data: { email, passwordHash: await bcrypt.hash(password, 12) },
+        data: { email, passwordHash },
         include: { package: true },
       });
     } catch (err) {
       if (err?.code === 'P2002') {
         const raced = await prisma.user.findUnique({ where: { email }, select: { id: true } });
-        if (raced) return res.status(409).json(await conflictPayload(req.lang, { kind: 'email', currentId: req.user.id, otherId: raced.id }));
+        if (raced) return res.status(409).json(await conflictPayload(req.lang, { kind: 'email', currentId: req.user.id, otherId: raced.id, passwordHash }));
       }
       throw err;
     }
@@ -871,7 +887,8 @@ authRouter.post(
           code: 'MERGE_NOT_ALLOWED',
         });
       }
-      const result = await absorbLogins(conflict.to, conflict.from);
+      // An add-email conflict keeps the password chosen with the code (absent on phone / social ones).
+      const result = await absorbLogins(conflict.to, conflict.from, undefined, { passwordHash: conflict.passwordHash ?? null });
       await audit('USER_LOGINS_MOVED_HERE', result);
       const user = await loadUserBundle(conflict.from);
       return res.json({ ok: true, action, user: publicUser(user), methods: await loginMethods(user.id) });
@@ -922,6 +939,16 @@ authRouter.get(
       prisma.healthProfile.findUnique({ where: { userId: req.user.id } }),
     ]);
 
+    // Sliding session: `token` only when the presented one is past half its lifetime. It carries the
+    // password-change value requireAuth read, so a reset committed meanwhile still ends it.
+    // Only when that value was actually read: requireAuth lets the request through on a failed read
+    // (fail open), but a fresh token signed then would outlive a reset the check could not see. The
+    // next /me whose read works renews it (the token still has half its lifetime left).
+    const renewal = req.authPasswordChange?.known
+      ? sessionRenewalFields(req.authClaims, () => signToken(req.user, passwordChangeClaim(req.authPasswordChange)))
+      : {};
+    if (renewal.token) res.set('Cache-Control', 'no-store');
+
     return res.json({
       user: userPayload,
       usage,
@@ -930,6 +957,7 @@ authRouter.get(
       checkIn,
       checkInAwarded,
       pointsAwarded,
+      ...renewal,
     });
   }),
 );
@@ -982,16 +1010,22 @@ authRouter.delete(
 
 /**
  * „I already have an account“ right after sign-up: removes the account that was just created so
- * the person can sign in to their real one. Only within a day of creation and only while it holds
- * no health data (accountLogins.js); no deletion email — nothing the person kept is lost.
+ * the person can sign in to their real one. Only within a day of creation, only before onboarding
+ * started (in the app or on the web) and only while it holds nothing of the person's own
+ * (accountLogins.js); no deletion email — nothing the person kept is lost.
  */
-const NEW_ACCOUNT_WINDOW_MS = 24 * 60 * 60 * 1000;
 authRouter.post(
   '/me/discard-new',
   requireAuth,
   asyncHandler(async (req, res) => {
-    const fresh = Date.now() - new Date(req.user.createdAt).getTime() < NEW_ACCOUNT_WINDOW_MS;
-    if (!fresh || (await accountHasContent(req.user.id))) {
+    const blocker = await discardNewBlocker(req.user);
+    if (blocker === 'started') {
+      return res.status(409).json({
+        error: t(req, 'ამ ანგარიშზე რეგისტრაცია უკვე დაწყებულია, ამიტომ ავტომატურად არ წაიშლება. გააგრძელე იქ, სადაც დაიწყე.', 'Sign-up has already started on this account, so it is not removed automatically. Carry on where you started.'),
+        code: 'DISCARD_NOT_ALLOWED',
+      });
+    }
+    if (blocker) {
       return res.status(409).json({
         error: t(req, 'ამ ანგარიშზე უკვე შენი მონაცემებია, ამიტომ ავტომატურად არ წაიშლება.', 'This account already holds your data, so it is not removed automatically.'),
         code: 'DISCARD_NOT_ALLOWED',

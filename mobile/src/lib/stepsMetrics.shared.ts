@@ -1,5 +1,5 @@
 import { ka } from '@/i18n/ka';
-import { DEFAULT_STEPS_GOAL } from '@/constants/figmaStepsLayout';
+import { STEPS_GOAL_FALLBACK } from '@/lib/personalStepsGoal';
 import type {
   StepChartPeriod,
   StepLogEntry,
@@ -45,7 +45,8 @@ function sumSamples(samples: StepSample[]): number {
   return samples.reduce((sum, s) => sum + s.count, 0);
 }
 
-function dailyTotals(samples: StepSample[]): Map<string, number> {
+/** Local `YYYY-MM-DD` → steps; a day's `daily` aggregate wins over the sum of its samples. */
+export function dailyTotals(samples: StepSample[]): Map<string, number> {
   const byDay = new Map<string, StepSample[]>();
   for (const s of samples) {
     const day = ymd(new Date(s.at));
@@ -220,7 +221,8 @@ export function buildStepsBundle(
   samples: StepSample[],
   connected: boolean,
   period: StepChartPeriod = '1d',
-  goal = DEFAULT_STEPS_GOAL,
+  /** The person's own typical day (`personalStepsGoal`); the starter goal until a caller knows it. */
+  goal = STEPS_GOAL_FALLBACK,
 ): StepsMetricsBundle {
   const today = new Date();
   const todayTotal = todayStepTotal(samples, today);

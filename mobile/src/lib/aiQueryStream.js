@@ -2,7 +2,7 @@ import Constants from 'expo-constants';
 import { Platform } from 'react-native';
 import { ka } from '@/i18n/ka';
 import { appLang, tx } from '@/i18n/locale';
-import { API_BASE_URL, ApiError, ensureAiSharingConsentForRequest } from '@/lib/api';
+import { API_BASE_URL, ApiError, ensureAiSharingConsentForRequest, noteApiErrorSignals } from '@/lib/api';
 import { markReachable } from '@/lib/reachability';
 import { consumeSseBuffer } from '@/lib/sseParse';
 import { getToken, getPreferenceStrict } from '@/lib/storage';
@@ -33,6 +33,9 @@ function throwHttpError(status, text, retryAfter) {
   const payload = text ? (() => { try { return JSON.parse(text); } catch { return {}; } })() : {};
   const message =
     (typeof payload?.error === 'string' && payload.error) || `${ka.common.error} (${status})`;
+  // Same as every other request: a server-side „no consent“ forgets the phone's 15-minute memory, so the
+  // next try opens the real disclosure instead of repeating the refused call; a paused module hides now.
+  noteApiErrorSignals(status, payload, message);
   throw new ApiError(message, status, payload, retryAfter);
 }
 

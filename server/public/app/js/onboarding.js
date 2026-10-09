@@ -3,7 +3,7 @@
 // The voluntary AI consent is asked the first time the person uses Medi, never pre-accepted here.
 import { h, mount, icon, button, busy, field, input } from './ui.js';
 import { post, put } from './api.js';
-import { session, setProfile, setUser, signOut } from './session.js';
+import { session, setProfile, setUser, signOut, displayName } from './session.js';
 import { t, isEn } from './i18n.js';
 
 const PRIVACY_URL = isEn ? '/privacy-en' : '/privacy';
@@ -19,17 +19,22 @@ export function renderOnboarding(root, { onDone }) {
     birthDate: u.birthDate || '',
     heightCm: p.heightCm || '',
     weightKg: p.weightKg || '',
-    fullName: u.fullName && u.fullName !== 'Medicard მომხმარებელი' ? u.fullName : '',
+    fullName: displayName(),
     accepted: false,
   };
   const STEPS = 5;
-  // „MEDICARD უკვე გამოგიყენებია?“ — first, once, on an account created within the last day (same
-  // question as the app): a „yes“ removes this new empty account so the person signs in the old way.
+  // „MEDICARD უკვე გამოგიყენებია?“ — first, once, on an account created within the last day that has
+  // not started onboarding anywhere (same rule as the app and the server's discard-new): a „yes“
+  // removes this new empty account so the person signs in the old way. Someone who already answered
+  // steps in the app is resumed here instead — „yes“ would be the honest answer for them.
   const askedKey = `medicard.web.existingAccountAsked.${u.id}`;
   const fresh = u.createdAt && Date.now() - new Date(u.createdAt).getTime() < 24 * 60 * 60 * 1000;
+  const extra = p.extraAnswers || {};
+  const started = Boolean(p.completedAt) || typeof extra.onboardingStepKey === 'string'
+    || extra.assessmentPhaseComplete === true || extra.onboardingComplete === true || extra.onboardingVersion != null;
   let asked = true;
   try { asked = Boolean(localStorage.getItem(askedKey)); } catch { asked = false; }
-  if (fresh && !asked) state.step = -1;
+  if (fresh && !asked && !started) state.step = -1;
   const box = h('div', { class: 'onb-box' });
   mount(root, h('div', { class: 'onb' }, box));
 
@@ -44,6 +49,14 @@ export function renderOnboarding(root, { onDone }) {
   };
   const err = h('div', { class: 'form-error', hidden: true });
   const fail = (e) => { err.textContent = e?.message || t('ვერ შეინახა.', 'Couldn’t save.'); err.hidden = false; };
+
+  // The cycle goal is for women only: switching to male drops it, so it is never saved hidden.
+  const goalKeys = (gender) => ['medications', 'nutrition', ...(gender === 'FEMALE' ? ['cycle'] : []), 'general'];
+  const setGender = (gender) => {
+    state.gender = gender;
+    if (!goalKeys(gender).includes(state.goal)) state.goal = null;
+    render();
+  };
 
   function choice(label, ic, ink, on, onClick) {
     return h('button', { type: 'button', class: `choice ${on ? 'on' : ''}`, onClick },
@@ -88,8 +101,8 @@ export function renderOnboarding(root, { onDone }) {
         field(t('როგორ მოგმართოთ?', 'What should we call you?'), nameIn),
         h('div', { class: 'field-label', style: { margin: '18px 0 10px' } }, t('სქესი', 'Sex')),
         h('div', { class: 'choice-grid' },
-          choice(t('ქალი', 'Female'), 'user', 'rose', state.gender === 'FEMALE', () => { state.gender = 'FEMALE'; render(); }),
-          choice(t('კაცი', 'Male'), 'user', 'blue', state.gender === 'MALE', () => { state.gender = 'MALE'; render(); })),
+          choice(t('ქალი', 'Female'), 'user', 'rose', state.gender === 'FEMALE', () => setGender('FEMALE')),
+          choice(t('კაცი', 'Male'), 'user', 'blue', state.gender === 'MALE', () => setGender('MALE'))),
         nav(Boolean(state.gender), async () => { state.step = 1; render(); }),
       ];
     } else if (s === 1) {
@@ -103,7 +116,7 @@ export function renderOnboarding(root, { onDone }) {
         h('h2', { style: { fontSize: '26px', fontWeight: 800, marginBottom: '8px' } }, t('რა არის შენთვის მთავარი?', 'What matters most to you?')),
         h('p', { class: 'muted', style: { marginBottom: '22px' } }, t('მთავარ გვერდზე ამ სექციას პირველად დაგახვედრებთ.', 'We’ll put this section first on your Home page.')),
         h('div', { class: 'choice-grid' }, goals.map(([v, l, ic, ink]) => choice(l, ic, ink, state.goal === v, () => { state.goal = v; render(); }))),
-        nav(Boolean(state.goal), async () => { state.step = 2; render(); }),
+        nav(goals.some(([v]) => v === state.goal), async () => { state.step = 2; render(); }),
       ];
     } else if (s === 2) {
       const max = new Date(); max.setFullYear(max.getFullYear() - 18);

@@ -21,14 +21,15 @@ import { assistantDialogIntent, assistantFieldError, spokenAssistantReview } fro
 import type { CycleMediContext } from '@/lib/cycleMediContext';
 import { featureForHref, featureMessage, isFeatureOn, useFeature } from '@/lib/featureFlags';
 import { refreshFeatureFlags } from '@/lib/featureFlagSync';
-import { localAccountId } from '@/lib/localAccount';
-import { takeMediCycleContext, takeMediPrefill } from '@/lib/mediHandoff';
+import { localAccountId, onLocalAccountChange } from '@/lib/localAccount';
+import { clearMediDraft, holdMediDraft, takeMediCycleContext, takeMediDraft, takeMediPrefill } from '@/lib/mediHandoff';
 import { legacyChatRouteToMedi } from '@/lib/mediModes';
 import {
-  clinicalSessions, consultFromReview, HIDDEN_ACTION_FIELDS, humanCardValue, plannerHistory, storedTurns, turnId, turnsFromSession,
+  clinicalSessions, consultFromReview, HIDDEN_ACTION_FIELDS, humanCardValue, plannerHistory, spokenAnswer, storedTurns, turnId, turnsFromSession,
   type ClinicalMode, type MediTurn, type StoredTurn,
 } from '@/lib/mediThread';
 import { useAuth } from '@/store/AuthContext';
+import { displayFirstName } from '@/lib/displayName';
 import { useThemeColors } from '@/theme/colors';
 import { ka } from '@/i18n/ka';
 import { tx } from '@/i18n/locale';
@@ -41,6 +42,8 @@ import { MediWelcome } from './MediWelcome';
 type Busy = null | 'plan' | 'answer' | 'deep' | 'save' | 'open' | 'check' | 'history';
 type Retry = { value: string; route: 'plan' | ClinicalMode; fromVoice: boolean; petId?: string };
 const HANDOFF_TOOLS = ['open', 'consult', 'pet_consult', 'pet_open', 'record_open', 'visit_open', 'medication_open'];
+// The question held when she closed Medi mid-answer belongs to one account: sign-out or a switch drops it.
+onLocalAccountChange(() => clearMediDraft());
 
 export type MediChatProps = {
   owner: string;
@@ -65,7 +68,7 @@ export type MediChatProps = {
 export function MediChat({ owner, sessionId, startConsilium, directDoctor, prefill, handoff, pausedMessage }: MediChatProps) {
   const C = useThemeColors();
   const router = useRouter();
-  const { user, refreshHealthProfile, applyUsage } = useAuth();
+  const { user, healthProfile, refreshHealthProfile, applyUsage } = useAuth();
   const doctorOn = useFeature('mediDoctor');
   const deepOn = useFeature('mediDeep');
   const voiceOn = useFeature('voice');
@@ -98,6 +101,8 @@ export function MediChat({ owner, sessionId, startConsilium, directDoctor, prefi
   const directNext = useRef<ClinicalMode | null>(directDoctor ? 'DOCTOR' : null);
   const saving = useRef<Promise<unknown>>(Promise.resolve());
   const abort = useRef<AbortController | null>(null);
+  /** The question on its way (planner or answer) until it settles; held as a draft if she closes Medi first. */
+  const asking = useRef<string | null>(null);
   const list = useRef<FlatList<MediTurn>>(null), nearBottom = useRef(true);
   const cycleContextRef = useRef<CycleMediContext | null>(null); cycleContextRef.current = cycleContext;
   const cycleContextExcluded = useRef(false);
@@ -105,11 +110,17 @@ export function MediChat({ owner, sessionId, startConsilium, directDoctor, prefi
   const voiceIn = voiceAvail && voiceOn, voiceOut = voiceOutAvail && voiceOn;
   const consiliumOn = consilium && deepOn;
   const valid = (n = generation.current) => alive.current && focused.current && owner === localAccountId() && n === generation.current;
+  // An answer or plan already on its way settles even while another screen covers Medi (menu → privacy, a
+  // notification): it finishes, is saved in the thread, or fails with the question back in the composer.
+  // Only a reset, a new message, closing Medi or another account cancels it. Focus gates new actions and
+  // side effects (speech, haptics, navigation) — never the result itself.
+  const live = (n: number) => alive.current && owner === localAccountId() && n === generation.current;
   const isHandoff = (name: string) => tools.find(t => t.name === name)?.kind === 'handoff' || HANDOFF_TOOLS.includes(name);
 
-  useEffect(() => { alive.current = true; return () => { alive.current = false; generation.current++; abort.current?.abort(); }; }, []);
+  // Closing Medi mid-answer is Stop (the server stores nothing); her question waits in memory as a draft.
+  useEffect(() => { alive.current = true; return () => { alive.current = false; generation.current++; abort.current?.abort(); if (asking.current && owner === localAccountId()) holdMediDraft(owner, asking.current); }; }, []);
   // Opening Medi re-checks the admin switches (≤1/min), so a paused mode hides here without leaving the app.
-  useFocusEffect(useCallback(() => { focused.current = true; void refreshFeatureFlags(); return () => { focused.current = false; generation.current++; }; }, []));
+  useFocusEffect(useCallback(() => { focused.current = true; void refreshFeatureFlags(); return () => { focused.current = false; }; }, []));
 
   // A drafted question (alert, tip, lab, symptoms, cycle) arrives in memory, never in the URL.
   useEffect(() => {
@@ -119,6 +130,15 @@ export function MediChat({ owner, sessionId, startConsilium, directDoctor, prefi
     const staged = takeMediCycleContext(owner, drafted ?? (typeof prefill === 'string' ? prefill : null));
     if (staged) { setCycleContext(staged); directNext.current = 'DOCTOR'; }
     // Once per mount: a second read finds nothing (consume-once).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // The question she was waiting on when she last closed Medi comes back in the composer, only as a draft.
+  // A drafted question from another screen (prefill / handoff) wins; the held one then waits for a plain open.
+  useEffect(() => {
+    if (handoff || (typeof prefill === 'string' && prefill.trim())) return;
+    const held = takeMediDraft(owner);
+    if (held) setText(current => (current.trim() ? current : held));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -140,11 +160,17 @@ export function MediChat({ owner, sessionId, startConsilium, directDoctor, prefi
   }, [sessionId, owner]);
   useEffect(() => loadHistory(), [loadHistory]);
 
+  /** Tools (with their forms), pages and the voice switches. Loaded on focus; „შესწორება“ loads it again after a failure. */
+  const loadCatalog = (apply: () => boolean) =>
+    assistantRequest<{ tools: AssistantTool[]; features?: AssistantFeature[]; groups?: AssistantGroup[]; choices: AssistantChoices; voiceInput: boolean; voiceOutput: boolean }>('catalog', owner, undefined, 'auto')
+      .then(r => {
+        if (!apply()) return null;
+        setTools(r.tools); setFeatures(r.features || []); setGroups(r.groups || []); setChoices(r.choices || {}); setVoiceAvail(r.voiceInput); setVoiceOutAvail(r.voiceOutput);
+        return r.tools;
+      });
   useFocusEffect(useCallback(() => {
     let current = true;
-    assistantRequest<{ tools: AssistantTool[]; features?: AssistantFeature[]; groups?: AssistantGroup[]; choices: AssistantChoices; voiceInput: boolean; voiceOutput: boolean }>('catalog', owner, undefined, 'auto')
-      .then(r => { if (current && valid()) { setTools(r.tools); setFeatures(r.features || []); setGroups(r.groups || []); setChoices(r.choices || {}); setVoiceAvail(r.voiceInput); setVoiceOutAvail(r.voiceOutput); } })
-      .catch(() => undefined);
+    loadCatalog(() => current && valid()).catch(() => undefined);
     return () => { current = false; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [owner]));
@@ -196,15 +222,15 @@ export function MediChat({ owner, sessionId, startConsilium, directDoctor, prefi
     addTurns(slot); setBusy(deep ? 'deep' : 'answer'); scrollToEnd(true);
     const controller = new AbortController(); abort.current = controller;
     let buffer = '', timer: ReturnType<typeof setTimeout> | null = null;
-    const flush = () => { timer = null; const extra = buffer; buffer = ''; if (extra && valid(n)) setTurns(t => t.map(turn => (turn.id === slot.id && turn.kind === 'answer' ? { ...turn, text: turn.text + extra } : turn))); };
+    const flush = () => { timer = null; const extra = buffer; buffer = ''; if (extra && live(n)) setTurns(t => t.map(turn => (turn.id === slot.id && turn.kind === 'answer' ? { ...turn, text: turn.text + extra } : turn))); };
     try {
       // The cycle context rides only with the first question that goes through (consent runs first).
       const context = sessions.current[mode] ? undefined : cycleContextRef.current?.text;
       // The planner's part of this chat (what she told Medi, what was saved) — the clinical session does not hold it.
       const thread = plannerHistory(turnsRef.current.filter(t => t.id !== userTurn.id && t.id !== slot.id));
       const response = await streamAiQuery({ message: value, mode, sessionId: sessions.current[mode], cycleContextAllowed: !cycleContextExcluded.current, ...(thread.length ? { thread } : {}), ...(context ? { context } : {}) },
-        { signal: controller.signal, onDelta: (chunk: string) => { if (!valid(n)) return; buffer += chunk; if (!timer) timer = setTimeout(flush, 40); } });
-      if (!valid(n)) return;
+        { signal: controller.signal, onDelta: (chunk: string) => { if (!live(n)) return; buffer += chunk; if (!timer) timer = setTimeout(flush, 40); } });
+      if (!live(n)) return;
       requireAnalysisText(response.answer);
       if (timer) clearTimeout(timer);
       if (context) setCycleContext(null);
@@ -212,24 +238,27 @@ export function MediChat({ owner, sessionId, startConsilium, directDoctor, prefi
       const done: MediTurn = { ...slot, text: response.answer, streaming: false, interactionId: response.interactionId, sessionId: response.sessionId };
       setTurns(t => t.map(turn => (turn.id === slot.id ? done : turn)));
       persist(storedTurns([userTurn, done]));
+      // A question asked by voice hears the start of the answer (the voice switch, mute and focus are checked in say).
+      if (fromVoice) void speech.say(spokenAnswer(response.answer));
       if (response.usage) applyUsage(response.usage);
       void import('@/lib/quest/cache').then(({ requestQuestRefresh }) => requestQuestRefresh()).catch(() => undefined);
-      assistantHaptic('success');
+      if (focused.current) assistantHaptic('success');
     } catch (err) {
       if (timer) clearTimeout(timer);
-      if (!valid(n)) return;
+      if (!live(n)) return;
       dropTurns(slot.id, userTurn.id);
       setText(current => (current.trim() ? current : value));
       if (isAiConsentDeclined(err)) {
         // Nothing was sent (consent runs before the request): a calm line and a retry, never an error.
         setRetry({ value, route: mode, fromVoice }); setNotice(aiConsentDeclinedText());
-      } else if (err instanceof ApiError && err.isQuotaExceeded) {
+      } else if (err instanceof ApiError && err.isQuotaExceeded && focused.current) {
+        // The limit sheet only over Medi itself; under another screen the message and „ხელახლა ცდა“ wait below.
         setQuotaBlock(err.usage?.resetsInMs);
         if (err.usage) applyUsage(err.usage);
       } else {
         setRetry({ value, route: mode, fromVoice });
         setError(err instanceof ApiError || err instanceof IncompleteAnalysisError ? err.message : ka.common.error);
-        assistantHaptic('error');
+        if (focused.current) assistantHaptic('error');
       }
     } finally {
       if (abort.current === controller) abort.current = null;
@@ -244,7 +273,7 @@ export function MediChat({ owner, sessionId, startConsilium, directDoctor, prefi
       const result = await assistantRequest<AssistantPlan>('plan', owner, {
         text: value, scope: 'auto', history: plannerHistory(turnsRef.current.filter(t => t.id !== userTurn.id)), draft: currentDraft, cycleContextAllowed: !cycleContextExcluded.current, ...(petId ? { subjectId: petId } : {}),
       });
-      if (!valid(n)) return;
+      if (!live(n)) return;
       // A health question: the clinical model answers right here, no extra tap.
       const consult = consultFromReview(result.review, value);
       if (consult) {
@@ -260,11 +289,11 @@ export function MediChat({ owner, sessionId, startConsilium, directDoctor, prefi
       if (fromVoice) void speech.say(result.review ? spokenAssistantReview(result.review.label, reviewRows(result.review), isHandoff(result.review.tool)) : result.reply);
       scrollToEnd(true);
     } catch (e) {
-      if (!valid(n)) return;
+      if (!live(n)) return;
       dropTurns(userTurn.id); setText(current => (current.trim() ? current : value));
       setRetry({ value, route: 'plan', fromVoice, petId });
       if (isAiConsentDeclined(e)) setNotice(aiConsentDeclinedText());
-      else { setError(errorText(e, tx('კავშირი შეფერხდა.', 'Connection problem.'))); assistantHaptic('error'); }
+      else { setError(errorText(e, tx('კავშირი შეფერხდა.', 'Connection problem.'))); if (focused.current) assistantHaptic('error'); }
     }
   }
 
@@ -276,9 +305,12 @@ export function MediChat({ owner, sessionId, startConsilium, directDoctor, prefi
     const intent = assistantDialogIntent(value);
     if (pending?.kind === 'action' && intent === 'confirm') { setText(''); await confirm(pending.id, pending.review); return; }
     if ((pending || draft) && intent === 'cancel') { setText(''); cancelAction(pending?.id); return; }
-    const target: Retry['route'] = route ?? (consiliumOn ? 'CONSILIUM' : directNext.current && doctorOn ? directNext.current : 'plan');
+    // A retry (or older handoff) to a mode an admin has since paused goes through the planner instead of the same 503.
+    const routeOn = route === 'CONSILIUM' ? deepOn : route === 'DOCTOR' ? doctorOn : true;
+    const target: Retry['route'] = route && routeOn ? route : (consiliumOn ? 'CONSILIUM' : directNext.current && doctorOn ? directNext.current : 'plan');
     directNext.current = null;
     working.current = true; generation.current++;
+    asking.current = value; clearMediDraft();
     // A new message replaces a card that was never answered.
     setTurns(t => t.map(turn => (turn.kind === 'action' && turn.state === 'pending' ? { ...turn, state: 'cancelled' } : turn)));
     const userTurn: MediTurn = { id: turnId(), kind: 'user', text: value, at: now() };
@@ -286,7 +318,7 @@ export function MediChat({ owner, sessionId, startConsilium, directDoctor, prefi
     try {
       if (target === 'plan') await plan(value, userTurn, fromVoice, petId);
       else await answer(value, target, userTurn, fromVoice);
-    } finally { working.current = false; if (alive.current) setBusy(null); }
+    } finally { working.current = false; asking.current = null; if (alive.current) setBusy(null); }
   }
 
   async function afterSaved(saved: AssistantReview, n: number) {
@@ -348,8 +380,25 @@ export function MediChat({ owner, sessionId, startConsilium, directDoctor, prefi
     persist([{ role: 'assistant', content: tx('კარგი, გაუქმებულია.', 'OK, cancelled.') }]);
   }
 
-  function editAction(cardId: string, review: AssistantReview) {
-    speech.stop(); dropTurns(cardId);
+  async function editAction(cardId: string, review: AssistantReview) {
+    if (working.current || !valid()) return;
+    speech.stop(); setError(null);
+    // The form needs the tool's fields from the catalog. If that load failed, Edit loads it again; until the
+    // form can open the card stays (Edit is the retry), so the chat never ends up with no form and no composer.
+    if (!tools.some(t => t.name === review.tool)) {
+      const n = ++generation.current; working.current = true; setBusy('check');
+      let loaded: AssistantTool[] | null = null, failed = false;
+      try { loaded = await loadCatalog(() => valid(n)); } catch { failed = true; }
+      finally { working.current = false; if (alive.current) setBusy(null); }
+      if (!valid(n)) return;
+      if (!loaded?.some(t => t.name === review.tool)) {
+        setError(failed || !loaded
+          ? tx('ფორმა ვერ ჩაიტვირთა. შეამოწმე კავშირი და ხელახლა სცადე.', "The form couldn't load. Check your connection and try again.")
+          : tx('ამ ჩანაწერის ხელით შესწორება ახლა ვერ ხერხდება. შეინახე ან გააუქმე.', "This entry can't be edited by hand right now. Save it or cancel."));
+        return;
+      }
+    }
+    dropTurns(cardId);
     setDraft({ tool: review.tool, args: review.args }); setFocusFields(undefined); setManual(true);
   }
 
@@ -416,14 +465,15 @@ export function MediChat({ owner, sessionId, startConsilium, directDoctor, prefi
   const hasAnswers = turns.some(t => t.kind === 'answer');
   const thinking = busy === 'plan' ? tx('ვფიქრობ…', 'Thinking…') : busy === 'check' ? tx('ვამოწმებ…', 'Checking…') : null;
   const subtitle = consiliumOn ? tx('კონსილიუმი ჩართულია', 'Consilium is on') : tx('შენი ჯანმრთელობის ასისტენტი', 'Your health assistant');
-  const firstName = user?.fullName?.trim().split(/\s+/)[0];
+  // Never the server's placeholder name (phone / Apple sign-ups): no name = the welcome without one.
+  const firstName = displayFirstName(user, healthProfile?.extraAnswers) || undefined;
 
   const renderTurn = ({ item }: { item: MediTurn }) => {
     if (item.kind === 'user') return <UserTurn text={item.text} />;
     if (item.kind === 'medi') return <MediLine text={item.text} />;
     if (item.kind === 'answer') return <AnswerTurn text={item.text} deep={item.deep} streaming={item.streaming} interactionId={item.interactionId} feedbackRating={item.feedbackRating} onRate={rating => void rate(item.id, item.interactionId, rating)} />;
     return <ActionCard title={item.review.label} tool={item.review.tool} rows={reviewRows(item.review)} handoff={isHandoff(item.review.tool)} state={item.state}
-      busy={!!busy} onConfirm={() => void confirm(item.id, item.review)} onEdit={() => editAction(item.id, item.review)} onCancel={() => cancelAction(item.id)} />;
+      busy={!!busy} onConfirm={() => void confirm(item.id, item.review)} onEdit={() => void editAction(item.id, item.review)} onCancel={() => cancelAction(item.id)} />;
   };
 
   const quiet = { color: C.text200, fontSize: 13, lineHeight: 21, fontFamily: 'NotoSansGeorgian_400Regular' } as const;
@@ -511,7 +561,7 @@ export function MediChat({ owner, sessionId, startConsilium, directDoctor, prefi
     <>
       <ChatScreenShell style={{ backgroundColor: C.bg100 }}
         header={<MediTopBar subtitle={subtitle} onBack={goBack} onNew={turns.length ? resetConversation : undefined} onMenu={() => { Keyboard.dismiss(); setMenu(true); }} disabled={capture.phase !== 'idle'} />}
-        footer={picker || manual ? undefined : (
+        footer={picker || (manual && draft && activeTool) ? undefined : (
           <View>
             {scrolledUp && turns.length ? (
               <Pressable accessibilityRole="button" accessibilityLabel={tx('ბოლო შეტყობინებაზე გადასვლა', 'Jump to the latest message')} onPress={() => scrollToEnd(true)}

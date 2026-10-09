@@ -84,6 +84,8 @@ export type RunState = {
   driving: boolean;
   /** Buildings the Glow map lit this session (for the Live Activity). */
   litBuildings: number;
+  /** Location was refused and the OS will not ask again: only Settings can turn it on. */
+  permissionBlocked: boolean;
 };
 
 const PIN_RADIUS_M = 28;
@@ -132,6 +134,7 @@ const initial: RunState = {
   recordsInBackground: false,
   driving: false,
   litBuildings: 0,
+  permissionBlocked: false,
 };
 
 /** A system pause continues on its own when the app is back within this window; after it the person decides. */
@@ -398,6 +401,7 @@ export async function prepareRun(
   target: RunTarget,
   body: { weightKg?: number | null; heightCm?: number | null } = {},
   mode: 'run' | 'explore' = 'run',
+  opts: { askOs?: boolean } = {},
 ): Promise<boolean> {
   if(isActiveRunPhase(state.phase))return false;
   stopEverything();
@@ -422,10 +426,15 @@ export async function prepareRun(
   });
 
   const granted = await Location.getForegroundPermissionsAsync().catch(()=>({granted:false}));
-  const permission = granted.granted ? 'granted' : await requestLocationPermission().catch(()=>'denied');
+  // `askOs: false` (coming back from Settings) never shows the OS sheet — only a press may ask.
+  const permission = granted.granted ? 'granted' : opts.askOs === false ? 'denied' : await requestLocationPermission().catch(()=>'denied');
   if (request.signal.aborted || request !== prepareAbort) return false;
   if (permission !== 'granted') {
-    set({ phase: 'idle', error: 'permission' });
+    // The OS answered „no“. When it will not ask again (iOS after „Don't Allow“, Android „Don't ask
+    // again“) a retry returns at once with no sheet, so the screen offers Settings instead. A read only.
+    const now = await Location.getForegroundPermissionsAsync().catch(() => null);
+    if (request.signal.aborted || request !== prepareAbort) return false;
+    set({ phase: 'idle', error: 'permission', permissionBlocked: now?.granted !== true && now?.canAskAgain === false });
     return false;
   }
 
@@ -452,8 +461,24 @@ export async function prepareRun(
   return true;
 }
 
-export function prepareExploration(body: {weightKg?:number|null;heightCm?:number|null} = {}) {
-  return prepareRun({kind:'km',value:0},body,'explore');
+export function prepareExploration(body: {weightKg?:number|null;heightCm?:number|null} = {}, opts: { askOs?: boolean } = {}) {
+  return prepareRun({kind:'km',value:0},body,'explore',opts);
+}
+
+/**
+ * Back in the app after location was refused (e.g. from Settings): re-read the permission and, once
+ * it is on, find the location by itself. Never asks the OS — that happens only from a press.
+ */
+export async function recheckLocationPermission(body: {weightKg?:number|null;heightCm?:number|null} = {}): Promise<boolean> {
+  if (state.phase !== 'idle' || state.error !== 'permission') return false;
+  const now = await Location.getForegroundPermissionsAsync().catch(() => null);
+  if (!now || state.phase !== 'idle' || state.error !== 'permission') return false;
+  if (!now.granted) {
+    const blocked = now.canAskAgain === false;
+    if (blocked !== state.permissionBlocked) set({ permissionBlocked: blocked });
+    return false;
+  }
+  return prepareExploration(body, { askOs: false });
 }
 
 export async function regeneratePin(): Promise<void> {

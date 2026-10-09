@@ -14,6 +14,7 @@ import {
   denyShareAuth,
   evaluateShareAccess,
   partnerPayloadHasLeak,
+  partnerShareSuspended,
   generateShareToken,
   hashShareToken,
   isShareTokenFormat,
@@ -405,5 +406,68 @@ describe('partner view in perimenopause (brief §9 „მერე“ item 7)', 
       today: '2026-05-20',
     });
     assert.ok(payload.period.nextPeriodStart);
+  });
+});
+
+describe('partner view in pregnancy and postpartum (CYC-02)', () => {
+  const allOn = { period: true, cyclePhase: true, fertileWindow: true, symptoms: true };
+  // LMP 2026-08-20, today 2026-10-08: the old payload said „next period 2026-09-17“ and luteal „cycle day 50“.
+  const profile = { avgCycleLength: 28, avgPeriodLength: 5, lastPeriodStart: '2026-08-20', isIrregular: false };
+  const logs = [
+    { date: '2026-08-20', flow: 'medium', symptoms: [] },
+    { date: '2026-10-08', flow: null, symptoms: ['nausea', 'fatigue'] },
+  ];
+
+  for (const mode of ['PREGNANCY', 'POSTPARTUM']) {
+    it(`${mode}: no period forecast, phase, cycle day, fertile window or symptoms — a neutral paused view`, () => {
+      const payload = buildPartnerPayload({
+        profile: { ...profile, mode },
+        logs,
+        permissions: allOn,
+        today: '2026-10-08',
+      });
+      assert.deepEqual(payload, { estimated: true, permissions: allOn, paused: true });
+      const text = JSON.stringify(payload);
+      assert.equal(text.includes(mode), false);
+      assert.equal(text.includes('nausea'), false);
+      assert.equal(partnerPayloadHasLeak(payload), false);
+    });
+  }
+
+  it('the POSTPARTUM_RETURN gate (back to tracking, too few cycles since the birth) pauses it too', () => {
+    const payload = buildPartnerPayload({
+      profile: { ...profile, mode: 'TRACK_PERIOD' },
+      logs,
+      permissions: allOn,
+      today: '2026-10-08',
+      tracking: { trackingOnly: false, hideFertility: false, postpartumReturnPending: true },
+    });
+    assert.equal(payload.paused, true);
+    assert.equal(payload.period, undefined);
+    assert.equal(payload.phase, undefined);
+  });
+
+  it('cycle tracking, trying to conceive and perimenopause keep sharing (never paused)', () => {
+    for (const mode of ['TRACK_PERIOD', 'TRY_TO_CONCEIVE', 'PERIMENOPAUSE']) {
+      const payload = buildPartnerPayload({
+        profile: { ...profile, mode },
+        logs,
+        permissions: allOn,
+        today: '2026-10-08',
+      });
+      assert.equal(payload.paused, undefined, mode);
+      assert.ok(payload.period, mode);
+      assert.ok(payload.phase, mode);
+    }
+  });
+
+  it('the pause follows the capability matrix, never a hand-made mode list', () => {
+    assert.equal(partnerShareSuspended('PREGNANCY'), true);
+    assert.equal(partnerShareSuspended('POSTPARTUM'), true);
+    assert.equal(partnerShareSuspended('PERIMENOPAUSE'), false);
+    assert.equal(partnerShareSuspended('TRACK_PERIOD'), false);
+    assert.equal(partnerShareSuspended('TRY_TO_CONCEIVE'), false);
+    assert.equal(partnerShareSuspended(undefined), false);
+    assert.equal(partnerShareSuspended('TRACK_PERIOD', { postpartumReturnPending: true }), true);
   });
 });

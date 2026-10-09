@@ -16,10 +16,13 @@ import {
   getEffectiveCycleMask,
   redactCyclePushLog,
 } from '@/lib/cycleNotificationContract.js';
-import { parseMedicationConfig } from '@/lib/medications.shared';
+import { loadDoseLogs, parseMedicationConfig } from '@/lib/medications.shared';
 import {
+  movedDoseReminderId,
   planMedicationReminderSlots,
+  planMovedDoseReminders,
   prefixForNotificationId,
+  type MovedDoseReminder,
 } from '@/lib/notificationPlan';
 import { applyPushCopy, logPushEvent } from '@/lib/pushCopy';
 import {
@@ -514,8 +517,81 @@ export async function cancelNotificationsByPrefix(prefix: string): Promise<void>
 }
 
 /**
+ * A medication reminder's content. A dose moved with „გადატანა“ also names its day (`date`), so its
+ * „მივიღე ✓“ and its tap reach that dose and not the day it happens to be delivered on. `owner` is the
+ * account it was scheduled for: its „მივიღე ✓“ never marks a dose in another account (a delivered
+ * reminder stays on screen after a sign-out).
+ */
+function medicationReminderContent(dose: ScheduledDose, owner: string, date?: string) {
+  const copy = applyPushCopy('medication', {
+    name: dose.medName,
+    dosage: [dose.dosage, dose.notes].map((part) => String(part ?? '').trim()).filter(Boolean).join(' · '),
+  });
+  return {
+    title: copy.title,
+    body: copy.body,
+    sound: 'default',
+    categoryIdentifier: 'medi-med',
+    data: {
+      type: 'medication',
+      templateKey: 'medication',
+      medicationId: dose.medicationId,
+      time: dose.time,
+      ...(date ? { date } : {}),
+      owner,
+      // The reminded slot, so a tap opens this dose and not the first one of the day.
+      route: `/medications/${dose.medicationId}?time=${dose.time}${date ? `&date=${date}` : ''}`,
+    },
+  };
+}
+
+function scheduleMovedDose(dose: ScheduledDose, moved: MovedDoseReminder, owner: string) {
+  return Notifications.scheduleNotificationAsync({
+    identifier: moved.identifier,
+    content: medicationReminderContent(dose, owner, moved.date),
+    trigger: {
+      type: Notifications.SchedulableTriggerInputTypes.DATE,
+      date: moved.at,
+      ...(Platform.OS === 'android' ? { channelId: MED_CHANNEL_ID } : {}),
+    },
+  });
+}
+
+/**
+ * „გადატანა“ on a dose: its one-off reminder at the new time, scheduled right away so it exists even
+ * when the refetch that re-syncs reminders fails offline. Replaces an earlier move of the same dose.
+ */
+export async function scheduleMovedDoseReminder(
+  dose: ScheduledDose,
+  date: string,
+  to: string,
+  expectedOwner = localAccountId(),
+): Promise<boolean> {
+  if (!canScheduleNotifications() || !expectedOwner || localAccountId() !== expectedOwner) return false;
+  if (!(await getNotificationPermissionGranted()) || !(await isReminderFamilyOn('meds'))) return false;
+  try {
+    await Notifications.cancelScheduledNotificationAsync(movedDoseReminderId(dose.medicationId, date, dose.time));
+  } catch {
+    /* nothing scheduled yet */
+  }
+  // A time that already passed gets no reminder (it would fire at once); the dose is simply due.
+  const [moved] = planMovedDoseReminders(
+    [{ medicationId: dose.medicationId, date, time: dose.time, status: 'pending', rescheduledTo: to }],
+    () => true,
+  );
+  if (!moved || localAccountId() !== expectedOwner) return false;
+  try {
+    await scheduleMovedDose(dose, moved, expectedOwner);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
  * Rewrites medication reminders without touching cycle:* notifications.
  * Honors daysOfWeek from the medication config (daily if every day / unset).
+ * Doses moved with „გადატანა“ get their one-off reminder back from the dose logs.
  */
 export async function syncMedicationReminders(
   schedule: ScheduledDose[],
@@ -534,38 +610,45 @@ export async function syncMedicationReminders(
   let scheduled = 0;
   const otherCount = (await Notifications.getAllScheduledNotificationsAsync()).length;
   const budget = Math.max(0, Math.min(48, 60 - otherCount));
+
+  // Moved doses first: each is today's (or this week's) one dose, more urgent than a dated slot weeks out.
+  // The logs are read here, after the cancel above: a dose moved while a refetch was in flight is
+  // either in them or scheduled by its screen after this cancel — never lost in between.
+  let moved: MovedDoseReminder[] = [];
+  try {
+    moved = planMovedDoseReminders(await loadDoseLogs(), (medicationId, time) => {
+      const med = byId.get(medicationId);
+      return !(med && !med.active) && schedule.some((dose) => dose.medicationId === medicationId && dose.time === time);
+    }).slice(0, budget);
+  } catch {
+    moved = [];
+  }
+  for (const item of moved) {
+    if (localAccountId() !== expectedOwner) return scheduled;
+    const dose = schedule.find((row) => row.medicationId === item.medicationId && row.time === item.time);
+    if (!dose) continue;
+    try {
+      await scheduleMovedDose(dose, item, expectedOwner);
+      scheduled += 1;
+    } catch {
+      /* skip this one */
+    }
+  }
+
   const queue = schedule.flatMap(dose => {
     const med = byId.get(dose.medicationId);
     if (med && !med.active) return [];
     const config = parseMedicationConfig(med?.config);
     return planMedicationReminderSlots(dose.medicationId, dose.time, config.daysOfWeek, config).map(slot => ({ dose, slot }));
-  }).sort((a, b) => (a.slot.date?.getTime() || 0) - (b.slot.date?.getTime() || 0)).slice(0, budget);
+  }).sort((a, b) => (a.slot.date?.getTime() || 0) - (b.slot.date?.getTime() || 0)).slice(0, Math.max(0, budget - scheduled));
   for (const { dose, slot } of queue) {
     if (localAccountId() !== expectedOwner) break;
-    const copy = applyPushCopy('medication', {
-      name: dose.medName,
-      dosage: [dose.dosage, dose.notes].map((part) => String(part ?? '').trim()).filter(Boolean).join(' · '),
-    });
-    const title = copy.title;
-    const body = copy.body;
 
     // One bad slot must not cost the remaining doses their reminders.
     try {
       await Notifications.scheduleNotificationAsync({
         identifier: `${NOTIF_PREFIX.med}${slot.identifier}`,
-        content: {
-          title,
-          body,
-          sound: 'default',
-          categoryIdentifier: 'medi-med',
-          data: {
-            type: 'medication',
-            templateKey: 'medication',
-            medicationId: dose.medicationId,
-            time: dose.time,
-            route: `/medications/${dose.medicationId}`,
-          },
-        },
+        content: medicationReminderContent(dose, expectedOwner),
         trigger:
           slot.date
             ? { type: Notifications.SchedulableTriggerInputTypes.DATE, date: slot.date, ...(Platform.OS === 'android' ? { channelId: MED_CHANNEL_ID } : {}) }
@@ -837,9 +920,18 @@ export async function presentNotificationNow(opts: {
   return true;
 }
 
+/**
+ * Forgets this phone's last push registration without a request, so the next sign-in here registers
+ * again. For a session the server already ended (its token is refused, so an unregister could only
+ * answer 401; a password reset switched the account's push tokens off) or an account it deleted.
+ */
+export function forgetPushRegistration(): void {
+  lastPushRegistration = null;
+}
+
 /** Removes this device from admin push broadcasts. */
 export async function unregisterPushFromServer(): Promise<void> {
-  lastPushRegistration = null;
+  forgetPushRegistration();
   let token = await readLastPushToken();
   if (!token && Device.isDevice) {
     try {

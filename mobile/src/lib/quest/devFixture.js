@@ -485,23 +485,28 @@ function buildQuestDevDashboard(scenario) {
     rewardCoins: 20,
     rewardXp: 35,
   });
+  // Weekly, XP only, offered after AI consent (server questTemplates.js weekly_medi).
   const medi = item({
     id: 'dev-medi',
-    key: 'daily_medi',
+    key: 'weekly_medi',
+    cadence: 'WEEKLY',
     progressType: 'MEDI_DAILY_USE',
     target: 1,
     progress: 0,
     progressPercent: 0,
-    rewardCoins: 10,
+    rewardCoins: 0,
     rewardXp: 20,
+    targetSource: null,
+    difficulty: null,
+    reasonKey: null,
   });
 
   switch (scenario) {
     case 'FRESH_DAY':
       return dash(
-        [item({ targetSource: 'DEFAULT', difficulty: 'NORMAL', reasonKey: 'DEFAULT_TARGET' }), hydro, medi],
-        [weeklyRow({ progress: 0, progressPercent: 0 })],
-        { dailyCompleted: 0, dailyTotal: 3, dailyClaimable: 0, weeklyCompleted: 0, unclaimedRewards: 0 },
+        [item({ targetSource: 'DEFAULT', difficulty: 'NORMAL', reasonKey: 'DEFAULT_TARGET' }), hydro],
+        [weeklyRow({ progress: 0, progressPercent: 0 }), medi],
+        { dailyCompleted: 0, dailyTotal: 2, dailyClaimable: 0, weeklyCompleted: 0, unclaimedRewards: 0 },
         profile({ currentStreak: 0, longestStreak: 4, level: 1, totalXp: 40, coinBalance: 0, rankKey: 'LEVEL_1_4', levelProgress: { level: 1, nextLevelXp: 100, progressPercent: 2 } }),
       );
     case 'PARTIAL':
@@ -509,30 +514,30 @@ function buildQuestDevDashboard(scenario) {
         [
           moveItem({ progress: 1820, progressPercent: 40 }),
           { ...hydro, progress: 50, progressPercent: 50 },
-          medi,
         ],
-        [weeklyRow()],
-        { dailyCompleted: 0, dailyTotal: 3, dailyClaimable: 0, weeklyCompleted: 0, unclaimedRewards: 0 },
+        [weeklyRow(), medi],
+        { dailyCompleted: 0, dailyTotal: 2, dailyClaimable: 0, weeklyCompleted: 0, unclaimedRewards: 0 },
       );
     case 'NEAR_COMPLETE':
       return dash(
         [
           moveItem({ progress: 4460, progressPercent: 99 }),
           { ...hydro, progress: 99, progressPercent: 99 },
+        ],
+        [
+          weeklyRow({ progress: 34950, progressPercent: 99 }),
           { ...medi, progress: 1, progressPercent: 100, status: 'CLAIMED', claimable: false, claimedAt: '2026-09-06T10:00:00.000Z' },
         ],
-        [weeklyRow({ progress: 34950, progressPercent: 99 })],
-        { dailyCompleted: 1, dailyTotal: 3, dailyClaimable: 0, weeklyCompleted: 0, unclaimedRewards: 0 },
+        { dailyCompleted: 0, dailyTotal: 2, dailyClaimable: 0, weeklyCompleted: 1, unclaimedRewards: 0 },
       );
     case 'COMEBACK':
       return dash(
         [
           moveItem({ target: 4000, targetSource: 'COMEBACK', difficulty: 'EASY', reasonKey: 'COMEBACK_EASY', progress: 600, progressPercent: 15 }),
           { ...hydro, progress: 20, progressPercent: 20 },
-          medi,
         ],
-        [weeklyRow({ progress: 0, progressPercent: 0 })],
-        { dailyCompleted: 0, dailyTotal: 3, dailyClaimable: 0, weeklyCompleted: 0, unclaimedRewards: 0 },
+        [weeklyRow({ progress: 0, progressPercent: 0 }), medi],
+        { dailyCompleted: 0, dailyTotal: 2, dailyClaimable: 0, weeklyCompleted: 0, unclaimedRewards: 0 },
         profile({ currentStreak: 0, longestStreak: 12 }),
       );
     case 'STRUGGLING':
@@ -540,10 +545,9 @@ function buildQuestDevDashboard(scenario) {
         [
           moveItem({ target: 3500, difficulty: 'EASY', reasonKey: 'STRUGGLING_ADJUSTED', progress: 800, progressPercent: 23 }),
           { ...hydro, progress: 35, progressPercent: 35 },
-          medi,
         ],
-        [weeklyRow({ target: 29000, progress: 4200, progressPercent: 14, reasonKey: 'STRUGGLING_ADJUSTED' })],
-        { dailyCompleted: 0, dailyTotal: 3, dailyClaimable: 0, weeklyCompleted: 0, unclaimedRewards: 0 },
+        [weeklyRow({ target: 29000, progress: 4200, progressPercent: 14, reasonKey: 'STRUGGLING_ADJUSTED' }), medi],
+        { dailyCompleted: 0, dailyTotal: 2, dailyClaimable: 0, weeklyCompleted: 0, unclaimedRewards: 0 },
         profile({ currentStreak: 0, longestStreak: 6 }),
       );
     case 'DEFAULT_TARGET':
@@ -551,10 +555,9 @@ function buildQuestDevDashboard(scenario) {
         [
           item({ targetSource: 'DEFAULT', difficulty: 'NORMAL', reasonKey: 'DEFAULT_TARGET', progress: 2400, progressPercent: 48 }),
           { ...hydro, progress: 50, progressPercent: 50 },
-          medi,
         ],
-        [weeklyRow({ target: 35000, targetSource: 'DEFAULT', reasonKey: 'DEFAULT_TARGET' })],
-        { dailyCompleted: 0, dailyTotal: 3, dailyClaimable: 0, weeklyCompleted: 0, unclaimedRewards: 0 },
+        [weeklyRow({ target: 35000, targetSource: 'DEFAULT', reasonKey: 'DEFAULT_TARGET' }), medi],
+        { dailyCompleted: 0, dailyTotal: 2, dailyClaimable: 0, weeklyCompleted: 0, unclaimedRewards: 0 },
       );
     case 'CLAIMABLE':
       return dash(
@@ -567,20 +570,24 @@ function buildQuestDevDashboard(scenario) {
             completedAt: '2026-09-06T11:00:00.000Z',
           }),
           { ...hydro, progress: 100, progressPercent: 100, status: 'COMPLETED', claimable: true, completedAt: '2026-09-06T11:05:00.000Z' },
+        ],
+        [
+          weeklyRow({ progress: 35000, progressPercent: 100, status: 'COMPLETED', claimable: true }),
           { ...medi, progress: 1, progressPercent: 100, status: 'CLAIMED', claimedAt: '2026-09-06T09:00:00.000Z' },
         ],
-        [weeklyRow({ progress: 35000, progressPercent: 100, status: 'COMPLETED', claimable: true })],
-        { dailyCompleted: 3, dailyTotal: 3, dailyClaimable: 2, weeklyCompleted: 1, unclaimedRewards: 3 },
+        { dailyCompleted: 2, dailyTotal: 2, dailyClaimable: 2, weeklyCompleted: 2, unclaimedRewards: 3 },
       );
     case 'ALL_COMPLETE':
       return dash(
         [
           item({ progress: 5000, progressPercent: 100, status: 'CLAIMED', claimedAt: '2026-09-06T09:00:00.000Z' }),
           { ...hydro, progress: 100, progressPercent: 100, status: 'CLAIMED', claimedAt: '2026-09-06T09:10:00.000Z' },
+        ],
+        [
+          weeklyRow({ progress: 22000, progressPercent: 63 }),
           { ...medi, progress: 1, progressPercent: 100, status: 'CLAIMED', claimedAt: '2026-09-06T09:20:00.000Z' },
         ],
-        [weeklyRow({ progress: 22000, progressPercent: 63 })],
-        { dailyCompleted: 3, dailyTotal: 3, dailyClaimable: 0, weeklyCompleted: 0, unclaimedRewards: 0 },
+        { dailyCompleted: 2, dailyTotal: 2, dailyClaimable: 0, weeklyCompleted: 1, unclaimedRewards: 0 },
       );
     case 'NO_QUESTS':
       return dash(
@@ -617,10 +624,9 @@ function buildQuestDevDashboard(scenario) {
         [
           moveItem({ progress: 3820, progressPercent: 85 }),
           { ...hydro, progress: 65, progressPercent: 65 },
-          medi,
         ],
-        [weeklyRow({ progress: 34950, progressPercent: 99 })],
-        { dailyCompleted: 0, dailyTotal: 3, dailyClaimable: 0, weeklyCompleted: 0, unclaimedRewards: 0 },
+        [weeklyRow({ progress: 34950, progressPercent: 99 }), medi],
+        { dailyCompleted: 0, dailyTotal: 2, dailyClaimable: 0, weeklyCompleted: 0, unclaimedRewards: 0 },
         profile({ currentStreak: 99, longestStreak: 99 }),
       );
     case 'LARGE_BALANCE':
