@@ -112,6 +112,25 @@ const TONED: Record<ModuleTone, { light: Palette; dark: Palette }> = {
   run: { light: { ...lightColors, ...MODULE_TONES.run.light }, dark: { ...darkColors, ...MODULE_TONES.run.dark } },
 };
 const ModuleToneContext = createContext<ModuleTone | null>(null);
+/**
+ * MEDIRUN is a night-city game (owner 2026-10-09: „მთელი ჰაბი ღამის სტილში“): inside `NightProvider` every
+ * palette is the dark one whatever the phone's theme, on a deep night blue instead of the app's grey dark.
+ */
+const NightContext = createContext(false);
+const NIGHT_BASE = { bg100: '#050B16', bg200: '#16233A', bg300: '#26364F', surface: '#0C1729', surfaceRaised: '#14223A', text300: '#7D8DA6' };
+const NIGHT: Record<ModuleTone, Palette> = {
+  vet: { ...TONED.vet.dark, ...NIGHT_BASE },
+  food: { ...TONED.food.dark, ...NIGHT_BASE },
+  quest: { ...TONED.quest.dark, ...NIGHT_BASE },
+  run: { ...TONED.run.dark, ...NIGHT_BASE },
+};
+const NIGHT_PLAIN: Palette = { ...darkColors, ...NIGHT_BASE };
+export function NightProvider({ children }: { children: ReactNode }) {
+  return createElement(NightContext.Provider, { value: true }, children);
+}
+export function useIsNight(): boolean {
+  return useContext(NightContext);
+}
 
 export function ModuleToneProvider({ tone, children }: { tone: ModuleTone; children: ReactNode }) {
   return createElement(ModuleToneContext.Provider, { value: tone }, children);
@@ -126,6 +145,7 @@ export function useThemeColors(): Palette {
   const { colorScheme } = useColorScheme();
   const rose = useBrandTone() === 'rose';
   const module = useContext(ModuleToneContext);
+  if (useContext(NightContext)) return module ? NIGHT[module] : NIGHT_PLAIN;
   if (module) return colorScheme === 'dark' ? TONED[module].dark : TONED[module].light;
   if (colorScheme === 'dark') return rose ? roseDark : darkColors;
   return rose ? roseLight : lightColors;
@@ -134,7 +154,8 @@ export function useThemeColors(): Palette {
 /** True when the dark palette is active — for icon swaps and status-bar style. */
 export function useIsDark(): boolean {
   const { colorScheme } = useColorScheme();
-  return colorScheme === 'dark';
+  const night = useContext(NightContext);
+  return night || colorScheme === 'dark';
 }
 
 /**

@@ -1,3 +1,4 @@
+import {useSyncExternalStore} from 'react';
 import {useAccountQuery} from '@/hooks/useAccountQuery';
 import {pulseApi} from '@/lib/medipulsi/client';
 
@@ -9,7 +10,7 @@ export type Drops={
  campaign:{id:string;name:string;status:'upcoming'|'live'|'ended';start:string;end:string;rulesUrl:string};
  /** The reader's city (servers before 2026-10-04 send none = Tbilisi). `pending` = its spots are still being found. */
  city?:{id:string;name:string;campaignCity:boolean;pending:boolean};
- now:{boxes:number;openingsLeft:number;endsAt:string|null;coins:CoinRange;lanternBoxes:number;districts:{name:string;boxes:number}[]};
+ now:{boxes:number;openingsLeft:number;endsAt:string|null;coins:CoinRange;lanternBoxes:number;districts:{name:string;boxes:number;near?:[number,number]|null;startsAt?:string;endsAt?:string}[]};
  today:{opened:number;coins:number};
  me:{opened:number;coins:number};
  next:{startsAt:string;boxes:number;coins:CoinRange;kind:DropWaveKind}|null;
@@ -20,9 +21,21 @@ export type Drops={
  live?:{walkers:number|null;rain:number|null};
 };
 
+// Where the phone is now, on a 0.01° grid (~1 km): the server shows that city's boxes (a trip to Liège shows
+// Liège even when home is Tbilisi). Sent as a header, never in the URL; null = the server decides (walk, home).
+let dropsAt:string|null=null;
+const atListeners=new Set<()=>void>();
+export function setDropsAt(at:[number,number]|null){
+ const next=at&&at.every(Number.isFinite)?`${at[0].toFixed(2)},${at[1].toFixed(2)}`:null;
+ if(next===dropsAt)return;
+ dropsAt=next;atListeners.forEach(l=>l());
+}
+const useDropsAt=()=>useSyncExternalStore(l=>{atListeners.add(l);return()=>atListeners.delete(l);},()=>dropsAt,()=>dropsAt);
+
 /** Live box counts for the MEDIRUN hub: re-read every minute while the hub is on screen. */
 export function useDrops(){
- return useAccountQuery<Drops>({key:['medirun','drops'],fetch:()=>pulseApi<Drops>('/drops'),staleTime:0,refetchInterval:60_000,retry:(count,error)=>(error as {status?:number}|null)?.status!==404&&count<1});
+ const at=useDropsAt();
+ return useAccountQuery<Drops>({key:['medirun','drops',at||'-'],fetch:()=>pulseApi<Drops>('/drops','GET',undefined,undefined,at?{'X-Medirun-At':at}:undefined),staleTime:0,refetchInterval:60_000,retry:(count,error)=>(error as {status?:number}|null)?.status!==404&&count<1});
 }
 
 /** „1 სთ 5 წთ“ / „4 წთ 09 წმ“ / „2 დღე 3 სთ“ — a countdown that stays short. */

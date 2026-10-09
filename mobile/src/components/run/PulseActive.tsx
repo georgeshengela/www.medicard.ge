@@ -3,7 +3,7 @@ import {ActivityIndicator,AppState,BackHandler,Image,Pressable,View} from 'react
 import {RUN_GIFT} from './runArt';
 import {useIsFocused,useLocalSearchParams,useRouter} from 'expo-router';
 import {activateKeepAwakeAsync,deactivateKeepAwake} from 'expo-keep-awake';
-import {ArrowLeft,BookOpen,Building2,Check,Compass,Footprints,Gauge,Gift,LocateFixed,MoreHorizontal,Navigation,Route,Settings2,Timer,Trophy,Users} from 'lucide-react-native';
+import {ArrowLeft,BookOpen,Building2,Check,Compass,Footprints,Gauge,Gift,LocateFixed,MoreHorizontal,Navigation,Navigation2,Route,Settings2,Timer,Trophy,Users} from 'lucide-react-native';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
 import {hideFloatingTabBar} from '@/components/navigation/tabChrome';
@@ -19,6 +19,10 @@ import {usePulse} from '@/lib/medipulsi/client';
 import {useHeartbeat} from '@/lib/medipulsi/useHeartbeat';
 import {nightAt} from '@/lib/medipulsi/daylight';
 import {targetLabel} from '@/lib/run/labels';
+import {setDropsAt} from '@/lib/medipulsi/drops';
+import {bearingTo,clearHunt,routeProgress,setHuntRoute,useHunt,zoneRadiusAt} from '@/lib/run/hunt';
+import {fetchWalkingRoute} from '@/lib/run/mapbox';
+import {distance} from '@/lib/medipulsi/core/engine';
 import {RunMap,type RunMapHandle} from './RunMap';
 import {RunDock} from './RunDock';
 import {PulsePanels,type PulsePanel} from './PulsePanels';
@@ -53,7 +57,16 @@ export default function PulseActive(){
  const fx=useMemo(()=>runWeatherFx(weather?.snapshot),[weather?.snapshot]);
  // Crew members walking next to you right now (nicknames only — never where they are).
  const together=running?pulse.signal.together||null:null;
- const pills=Boolean(mission||lit>0||weather||together);
+ // Box hunt (owner 2026-10-08): a place from „სად არის ყუთები“ is the destination; the pulse searches inside the zone.
+ const hunt=useHunt(),huntFrom=run.current||run.origin,huntAt:[number,number]|null=huntFrom?[huntFrom.lng,huntFrom.lat]:null;
+ const huntM=hunt&&huntAt?distance(huntAt,hunt.center):null,huntEdge=hunt&&huntAt?zoneRadiusAt(hunt.center,hunt.radiusM,huntAt):0,inZone=Boolean(hunt&&huntM!=null&&huntM<=huntEdge);
+ // Navigation: metres left along the way (to the zone's edge), minutes on foot, and an arrow toward the zone that
+ // turns with the map (the map follows the heading in 3D or with „rotate“ on).
+ const way=useMemo(()=>hunt?.route&&huntAt&&hunt.route.length>1?routeProgress(hunt.route,huntAt):null,[hunt?.route,huntAt?.[0],huntAt?.[1]]);// eslint-disable-line react-hooks/exhaustive-deps
+ const toZoneM=hunt&&huntM!=null?Math.max(0,(way?way.leftM:huntM)-huntEdge):null,toZoneMin=toZoneM!=null?Math.max(1,Math.round(toZoneM/80)):null;
+ const mapTurns=settings.threeD!==false||settings.followBearing!==false;
+ const huntArrow=hunt&&huntAt?bearingTo(huntAt,hunt.center)-(mapTurns&&run.headingDeg!=null?run.headingDeg:0):0;
+ const pills=Boolean(mission||lit>0||weather||together||hunt);
  // While the phone is locked or another app is open the map gets nothing; coming back sends the latest state once.
  const [appActive,setAppActive]=useState(AppState.currentState!=='background'),[mapEpoch,setMapEpoch]=useState(0);
  const live=ready&&appActive;
@@ -62,7 +75,7 @@ export default function PulseActive(){
  // Like a navigation app: while a session records and its map is on screen, the screen does not dim and lock.
  // A long drive (drive mode) lets it sleep — the session keeps recording in the background.
  useEffect(()=>{if(!running||!focused||run.driving)return;void activateKeepAwakeAsync(KEEP_AWAKE_TAG).catch(()=>{});return()=>{void deactivateKeepAwake(KEEP_AWAKE_TAG).catch(()=>{});};},[running,focused,run.driving]);
- useEffect(()=>{if(run.phase==='finished')router.replace('/run/summary' as never);},[run.phase,router]);
+ useEffect(()=>{if(run.phase!=='finished')return;clearHunt();router.replace('/run/summary' as never);},[run.phase,router]);
  useEffect(()=>{if(pulse.conflict&&running)pauseRun();},[pulse.conflict,running]);
  // Transient notices fade on their own; warnings stay until tapped.
  useEffect(()=>{if(!notice||notice.sticky)return;const t=setTimeout(()=>setNotice(null),notice.tone==='success'?6000:4500);return()=>clearTimeout(t);},[notice]);
@@ -90,8 +103,10 @@ export default function PulseActive(){
  useEffect(()=>{if(starterLeft==null||starterTold.current)return;starterTold.current=true;setNotice({text:tx(`პირველი ყუთი ახლოსაა — გაიარე კიდევ ${Math.max(10,Math.round(starterLeft/10)*10)} მ`,`Your first box is close — walk ${Math.max(10,Math.round(starterLeft/10)*10)} m more`),tone:'info'});},[starterLeft]);
  const starterId=running&&pulse.signal.revealed&&pulse.signal.gift?.starter?pulse.signal.gift.id:null;
  useEffect(()=>{if(!starterId||opened.current.has(starterId)||!focused)return;opened.current.add(starterId);if(hapticRef.current)void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(()=>{});setGift(true);},[starterId,focused]);
- const leave=()=>{if(active){if(running)pauseRun();setFinish(true);}else{cancelRun();router.replace('/run' as never);}};
- useEffect(()=>{const sub=BackHandler.addEventListener('hardwareBackPress',()=>{leave();return true;});return()=>sub.remove();},[active,running]);
+ // Back during a session leaves the map only (owner 2026-10-08): the walk keeps recording, the top „რბოლა მიმდინარეობს“
+ // badge brings the map back, pause/finish stay on the dock. Back lands on the MEDIRUN hub (also when the map was opened from the badge).
+ const leave=()=>{if(active){router.dismissTo('/run' as never);}else{cancelRun();clearHunt();router.replace('/run' as never);}};
+ useEffect(()=>{const sub=BackHandler.addEventListener('hardwareBackPress',()=>{leave();return true;});return()=>sub.remove();},[active]);
  useEffect(()=>{if(!live||!run.origin)return;map.current?.send({type:'init',origin:run.current||run.origin,pin:run.pin,route:run.route?.coords||null,fit:false,hero:user?.gender==='FEMALE'?'f':'m'});},[live,mapEpoch,run.origin,run.pin,run.route,user?.gender]);
  useEffect(()=>{if(live)map.current?.send({type:'activity',value:running?'auto':'idle'});},[live,mapEpoch,running]);
  useEffect(()=>{if(live)map.current?.send({type:'layout',top:insets.top+8+44+8+(pills?42:0),bottom:Math.max(12,insets.bottom)+dockHeight+12});},[live,mapEpoch,insets.top,insets.bottom,dockHeight,pills]);
@@ -99,6 +114,55 @@ export default function PulseActive(){
  const paint=useMemo(()=>[...(pulse.journey.trail||[]),...coverageFeatures(pulse.journey).features.map(f=>f.geometry.coordinates)], [pulse.journey.trail,pulse.journey.covered]);
  useEffect(()=>{if(live)map.current?.send({type:'paint',lines:paint});},[live,mapEpoch,paint]);
  useEffect(()=>{if(live)map.current?.send({type:'mission',center:mission?.center||null,radius:mission?.radius});},[live,mapEpoch,mission]);
+ // The walking way to the zone once the runner's position is known (a straight line when Directions fails).
+ const needWay=Boolean(hunt&&!hunt.route&&huntFrom);
+ useEffect(()=>{
+  if(!hunt||hunt.route||!huntFrom)return;
+  const ctrl=new AbortController(),from:[number,number]=[huntFrom.lng,huntFrom.lat];
+  void fetchWalkingRoute(huntFrom,{lng:hunt.center[0],lat:hunt.center[1]},ctrl.signal).then(r=>{if(!ctrl.signal.aborted)setHuntRoute(hunt.id,r?.coords||[from,hunt.center]);});
+  return()=>ctrl.abort();
+ },[hunt?.id,needWay]);// eslint-disable-line react-hooks/exhaustive-deps
+ // Re-route like a navigator (owner 2026-10-08: „მარშრუტი უნდა გადააწყო“): more than 40 m off the way for 5 s,
+ // or 80 m further from the zone than the best point so far (walking off the other way) → a new way from here.
+ const offSince=useRef(0),bestLeft=useRef<{id:string|null;route:unknown;m:number}>({id:null,route:null,m:Infinity}),rerouted=useRef(0);
+ useEffect(()=>{
+  if(!hunt||!way||inZone||!running)return;
+  if(bestLeft.current.route!==hunt.route){bestLeft.current={id:hunt.id,route:hunt.route,m:way.leftM};offSince.current=0;}
+  bestLeft.current.m=Math.min(bestLeft.current.m,way.leftM);
+  const now=Date.now();
+  offSince.current=way.offM>40?offSince.current||now:0;
+  const off=offSince.current&&now-offSince.current>=5000,away=way.leftM-bestLeft.current.m>80;
+  if(!(off||away)||now-rerouted.current<15_000)return;
+  rerouted.current=now;offSince.current=0;
+  setHuntRoute(hunt.id,null);
+  setNotice({text:tx('მარშრუტი განახლდა — ახალი გზა შენი ადგილიდან','Route updated — a new way from where you are'),tone:'info'});
+ },[way?.offM,way?.leftM,inZone,running,hunt?.id,hunt?.route]);// eslint-disable-line react-hooks/exhaustive-deps
+ // The fly-over plays once per hunt, when the map is on screen; a reloaded map only gets the zone back.
+ const toured=useRef<string|null>(null);
+ const sendHunt=(tour:boolean)=>{if(hunt?.route)map.current?.send({type:'hunt',center:hunt.center,radius:hunt.radiusM,route:hunt.route,label:hunt.name,tour});};
+ useEffect(()=>{
+  if(!live)return;
+  if(!hunt){map.current?.send({type:'hunt',center:null});return;}
+  if(!hunt.route)return;
+  const tour=focused&&toured.current!==hunt.id;
+  if(tour)toured.current=hunt.id;
+  sendHunt(tour);
+ },[live,mapEpoch,hunt,focused]);// eslint-disable-line react-hooks/exhaustive-deps
+ // The hub's boxes card follows the city the walk is in.
+ useEffect(()=>{if(huntFrom)setDropsAt([huntFrom.lng,huntFrom.lat]);},[huntFrom?.lng,huntFrom?.lat]);// eslint-disable-line react-hooks/exhaustive-deps
+ const zoneTold=useRef<string|null>(null);
+ useEffect(()=>{
+  if(!hunt||!inZone||!running||zoneTold.current===hunt.id)return;
+  zoneTold.current=hunt.id;
+  setNotice({text:tx(`${hunt.name} — ზონაში ხარ! ახლა ეძებე: პულსი ყუთთან მიგიყვანს.`,`${hunt.name} — you’re in the zone! Search now: the pulse leads you to the box.`),tone:'success'});
+  if(hapticRef.current)void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(()=>{});
+ },[inZone,running,hunt?.id]);// eslint-disable-line react-hooks/exhaustive-deps
+ // The place's boxes ran out of time: the zone goes, the walk goes on.
+ useEffect(()=>{
+  if(!hunt?.endsAt)return;
+  const t=setTimeout(()=>{clearHunt();setNotice({text:tx('ამ ადგილის ყუთების დრო ამოიწურა — სიარული გრძელდება.','This place’s boxes ran out of time — your walk goes on.'),tone:'info'});},Math.max(0,Date.parse(hunt.endsAt)-Date.now()));
+  return()=>clearTimeout(t);
+ },[hunt?.id]);// eslint-disable-line react-hooks/exhaustive-deps
  useEffect(()=>{if(live)map.current?.send({type:'gift',position:running&&pulse.signal.revealed?pulse.signal.gift?.position||null:null});},[live,mapEpoch,running,pulse.signal.revealed,pulse.signal.gift]);
  useEffect(()=>{if(live)map.current?.send({type:'weather',fx});},[live,mapEpoch,fx?.kind,fx?.wind]);
  useEffect(()=>{if(live)map.current?.send({type:'options',rotate:settings.followBearing!==false,threeD:settings.threeD!==false});},[live,mapEpoch,settings.followBearing,settings.threeD]);
@@ -129,7 +193,10 @@ export default function PulseActive(){
     </Card>
     <IconButton floating label={tx('მენიუ', 'Menu')} icon={MoreHorizontal} onPress={()=>setMenu(true)}/>
    </View>
-   {pills?<View pointerEvents="box-none" style={{flexDirection:'row',alignItems:'center',flexWrap:'wrap',gap:8}}>{mission?<Pressable accessibilityRole="button" accessibilityLabel={tx(`მისია ${mission.name}, ${missionPercent(pulse.book,mission)} პროცენტი`, `Mission ${mission.name}, ${missionPercent(pulse.book,mission)} percent`)} onPress={()=>setPanel('missions')} style={{flexDirection:'row',alignItems:'center',gap:7,backgroundColor:c.surface,borderRadius:16,paddingVertical:8,paddingHorizontal:12,shadowColor:'#030712',shadowOpacity:.14,shadowRadius:10,shadowOffset:{width:0,height:4},elevation:4}}><Compass size={13} color={c.primary100}/><Copy size={11} bold>{mission.name}</Copy><View style={{width:1,height:12,backgroundColor:c.bg300}}/><Copy size={11} bold style={{color:c.primary100}}>{missionPercent(pulse.book,mission)}%</Copy></Pressable>:null}{lit>0?<View accessible accessibilityLabel={tx(`ანთია ${lit} შენობა`, `${lit} buildings lit`)} style={{flexDirection:'row',alignItems:'center',gap:7,backgroundColor:c.surface,borderRadius:16,paddingVertical:8,paddingHorizontal:12,shadowColor:'#030712',shadowOpacity:.14,shadowRadius:10,shadowOffset:{width:0,height:4},elevation:4}}><Building2 size={13} color={dark?'#FCD34D':'#B45309'}/><Copy size={11} bold style={{color:dark?'#FCD34D':'#B45309',fontVariant:['tabular-nums']}}>{lit}</Copy><Copy size={11} muted>{tx('ანთია', 'lit')}</Copy></View>:null}{together?<View accessible accessibilityLabel={tx(`ერთად: ${together.with.join(', ')}`,`Together: ${together.with.join(', ')}`)} style={{flexDirection:'row',alignItems:'center',gap:7,backgroundColor:c.surface,borderRadius:16,paddingVertical:8,paddingHorizontal:12,shadowColor:'#030712',shadowOpacity:.14,shadowRadius:10,shadowOffset:{width:0,height:4},elevation:4}}><Users size={13} color={RUN_TEAL}/><Copy size={11} bold style={{color:RUN_TEAL}}>{tx('ერთად','Together')}</Copy><Copy size={11} muted numberOfLines={1} style={{maxWidth:120}}>{together.with.join(', ')}</Copy></View>:null}{weather?<WeatherBadge weather={weather} onPress={()=>setNotice({text:weatherLine(weather),tone:'info'})}/>:null}</View>:null}
+   {pills?<View pointerEvents="box-none" style={{flexDirection:'row',alignItems:'center',flexWrap:'wrap',gap:8}}>{hunt?<Pressable accessibilityRole="button" accessibilityLabel={inZone?tx(`${hunt.name}, ზონაში ხარ. ტურის ხელახლა ნახვა`,`${hunt.name}, you’re in the zone. Replay the fly-over`):tx(`${hunt.name}, ზონამდე ${toZoneM!=null?formatDistanceShort(toZoneM):''}, დაახლოებით ${toZoneMin??''} წუთი. ტურის ხელახლა ნახვა`,`${hunt.name}, ${toZoneM!=null?formatDistanceShort(toZoneM):''} to the zone, about ${toZoneMin??''} min. Replay the fly-over`)} onPress={()=>sendHunt(true)} style={{flexDirection:'row',alignItems:'center',gap:9,backgroundColor:c.surface,borderRadius:18,borderWidth:1,borderColor:'rgba(245,158,11,0.4)',paddingVertical:6,paddingLeft:6,paddingRight:13,shadowColor:'#B45309',shadowOpacity:.22,shadowRadius:12,shadowOffset:{width:0,height:4},elevation:5}}>
+     <View style={{width:30,height:30,borderRadius:15,alignItems:'center',justifyContent:'center',backgroundColor:inZone?'#F59E0B':dark?'rgba(252,211,77,0.16)':'rgba(245,158,11,0.12)'}}>{inZone?<Gift size={15} color="#FFFBEB"/>:<Navigation2 size={15} color={dark?'#FCD34D':'#B45309'} fill={dark?'#FCD34D':'#B45309'} style={{transform:[{rotate:`${Math.round(huntArrow)}deg`}]}}/>}</View>
+     <View><Copy size={11} bold numberOfLines={1} style={{color:dark?'#FCD34D':'#B45309',maxWidth:130,lineHeight:14}}>{hunt.name}</Copy><Copy size={12} bold style={{fontVariant:['tabular-nums'],lineHeight:16}}>{inZone?tx('ზონაში ხარ · ეძებე!','In the zone · search!'):toZoneM!=null?`${formatDistanceShort(toZoneM)} · ${tx(`${toZoneMin} წთ`,`${toZoneMin} min`)}`:'…'}</Copy>{way&&!inZone?<View style={{height:2,borderRadius:1,marginTop:3,backgroundColor:c.bg200,overflow:'hidden'}}><View style={{height:2,borderRadius:1,width:`${Math.round(Math.min(1,way.doneM/Math.max(1,way.totalM-huntEdge))*100)}%`,backgroundColor:'#F59E0B'}}/></View>:null}</View>
+    </Pressable>:null}{mission?<Pressable accessibilityRole="button" accessibilityLabel={tx(`მისია ${mission.name}, ${missionPercent(pulse.book,mission)} პროცენტი`, `Mission ${mission.name}, ${missionPercent(pulse.book,mission)} percent`)} onPress={()=>setPanel('missions')} style={{flexDirection:'row',alignItems:'center',gap:7,backgroundColor:c.surface,borderRadius:16,paddingVertical:8,paddingHorizontal:12,shadowColor:'#030712',shadowOpacity:.14,shadowRadius:10,shadowOffset:{width:0,height:4},elevation:4}}><Compass size={13} color={c.primary100}/><Copy size={11} bold>{mission.name}</Copy><View style={{width:1,height:12,backgroundColor:c.bg300}}/><Copy size={11} bold style={{color:c.primary100}}>{missionPercent(pulse.book,mission)}%</Copy></Pressable>:null}{lit>0?<View accessible accessibilityLabel={tx(`ანთია ${lit} შენობა`, `${lit} buildings lit`)} style={{flexDirection:'row',alignItems:'center',gap:7,backgroundColor:c.surface,borderRadius:16,paddingVertical:8,paddingHorizontal:12,shadowColor:'#030712',shadowOpacity:.14,shadowRadius:10,shadowOffset:{width:0,height:4},elevation:4}}><Building2 size={13} color={dark?'#FCD34D':'#B45309'}/><Copy size={11} bold style={{color:dark?'#FCD34D':'#B45309',fontVariant:['tabular-nums']}}>{lit}</Copy><Copy size={11} muted>{tx('ანთია', 'lit')}</Copy></View>:null}{together?<View accessible accessibilityLabel={tx(`ერთად: ${together.with.join(', ')}`,`Together: ${together.with.join(', ')}`)} style={{flexDirection:'row',alignItems:'center',gap:7,backgroundColor:c.surface,borderRadius:16,paddingVertical:8,paddingHorizontal:12,shadowColor:'#030712',shadowOpacity:.14,shadowRadius:10,shadowOffset:{width:0,height:4},elevation:4}}><Users size={13} color={RUN_TEAL}/><Copy size={11} bold style={{color:RUN_TEAL}}>{tx('ერთად','Together')}</Copy><Copy size={11} muted numberOfLines={1} style={{maxWidth:120}}>{together.with.join(', ')}</Copy></View>:null}{weather?<WeatherBadge weather={weather} onPress={()=>setNotice({text:weatherLine(weather),tone:'info'})}/>:null}</View>:null}
    {banner?<Pressable accessibilityRole="button" accessibilityLabel={tx('შეტყობინების დახურვა', 'Dismiss message')} onPress={()=>{setNotice(null);setMapError('');}}><Card floating style={{paddingVertical:11,paddingHorizontal:14,borderRadius:16,flexDirection:'row',alignItems:'center',gap:10}}><View style={{width:4,alignSelf:'stretch',borderRadius:2,backgroundColor:bannerColor}}/><Copy size={12} bold={banner.tone==='success'} style={{flex:1}}>{banner.text}</Copy></Card></Pressable>:null}
   </View>
   {center?<View pointerEvents="box-none" style={{position:'absolute',bottom:Math.max(12,insets.bottom)+dockHeight+12,right:14,alignItems:'flex-end',gap:9}}><IconButton floating label={tx('ჩემს მდებარეობაზე დაბრუნება', 'Back to my location')} icon={LocateFixed} active={following} onPress={()=>map.current?.send({type:'follow'})}/></View>:null}
@@ -140,7 +207,7 @@ export default function PulseActive(){
   <Sheet title={tx('შენი გასეირნება', 'Your walk')} visible={details} onClose={()=>setDetails(false)}>
    <Card><Copy bold size={18}>{run.target?targetLabel(run.target):tx('თავისუფალი გასეირნება', 'Free walk')}</Copy>{[{label:tx('სავარაუდო ნაბიჯები', 'Estimated steps'),value:derived.steps.toLocaleString(),icon:Footprints},{label:tx('საშუალო ტემპი', 'Average pace'),value:formatPace(derived.pace)+tx(' /კმ', ' /km'),icon:Gauge},{label:tx('მიმდინარე სიჩქარე', 'Current speed'),value:run.speedKmh.toFixed(1)+tx(' კმ/სთ', ' km/h'),icon:Navigation},{label:tx('სესიის დრო პაუზების ჩათვლით', 'Session time incl. pauses'),value:formatClock(run.elapsedMs),icon:Timer},{label:tx('GPS სიზუსტე', 'GPS accuracy'),value:run.accuracyM==null?tx('ველოდებით', 'Waiting'):Math.round(run.accuracyM)+tx(' მ', ' m'),icon:LocateFixed}].map(row=><View key={row.label} style={{flexDirection:'row',gap:10,alignItems:'center',minHeight:30}}><row.icon size={18} color={c.primary100}/><Copy muted size={12} style={{flex:1}}>{row.label}</Copy><Copy bold size={13}>{row.value}</Copy></View>)}</Card>
    {run.splits.length?<Card><Copy bold>{tx('კილომეტრები', 'Kilometers')}</Copy>{splitDurations(run.splits).map((ms,i)=><View key={i} style={{flexDirection:'row',alignItems:'center',gap:10}}><Copy muted size={12} style={{flex:1}}>{i+1} {tx('კმ', 'km')}</Copy><Copy bold size={13} style={{fontVariant:['tabular-nums']}}>{ms!=null?formatPace(ms/1000):'–'}</Copy></View>)}</Card>:null}
-   <Card><Copy bold>{pulse.pending?tx('შენახულია ტელეფონში · იგზავნება', 'Saved on your phone · sending'):tx('ანგარიშთან სინქრონიზაცია', 'Syncing with your account')}</Copy><Copy muted>{pulse.message}</Copy><Copy muted size={12}>{backgroundLocationAvailable()?tx('რუკაზე ყოფნისას ეკრანი ანთებული რჩება. ტელეფონი შეგიძლია ჩაკეტო ან სხვა აპი გახსნა — სესია ფონზეც იწერება, სანამ პაუზას ან დასრულებას არ დააჭერ.', 'The screen stays on while the map is open. You can lock your phone or open another app — the session keeps recording in the background until you pause or finish it.'):tx('სესიის დროს ეკრანი ანთებული რჩება. თუ აპიდან გახვალ ან ტელეფონს ჩაკეტავ, სესია პაუზდება და დაბრუნებისას თავისით გაგრძელდება.', 'The screen stays on during a session. If you leave the app or lock your phone, the session pauses and continues on its own when you’re back.')}</Copy></Card>
+   <Card><Copy bold>{pulse.pending?tx('შენახულია ტელეფონში · იგზავნება', 'Saved on your phone · sending'):tx('ანგარიშთან სინქრონიზაცია', 'Syncing with your account')}</Copy><Copy muted>{pulse.message}</Copy><Copy muted size={12}>{backgroundLocationAvailable()?tx('რუკაზე ყოფნისას ეკრანი ანთებული რჩება. ტელეფონი შეგიძლია ჩაკეტო, სხვა აპი ან MEDICARD-ის სხვა გვერდი გახსნა — სესია ფონზეც იწერება, სანამ პაუზას ან დასრულებას არ დააჭერ.', 'The screen stays on while the map is open. You can lock your phone, open another app or another MEDICARD page — the session keeps recording in the background until you pause or finish it.'):tx('სესიის დროს ეკრანი ანთებული რჩება. თუ აპიდან გახვალ ან ტელეფონს ჩაკეტავ, სესია პაუზდება და დაბრუნებისას თავისით გაგრძელდება.', 'The screen stays on during a session. If you leave the app or lock your phone, the session pauses and continues on its own when you’re back.')}</Copy></Card>
   </Sheet>
   <Sheet title={tx('შენი მოძრაობის სივრცე', 'Your activity space')} visible={menu} onClose={()=>setMenu(false)}><Action secondary label={tx('გავლილი გზების რუკა', 'Map of your paths')} icon={Route} disabled={paint.length===0} onPress={()=>{setMenu(false);map.current?.send({type:'fit',bottom:dockHeight+35,paintOnly:true});}}/>{([{id:'missions',label:tx('თბილისის პასპორტი', 'Tbilisi passport'),icon:Compass},{id:'collection',label:tx('ჩემი აღმოჩენები', 'My finds'),icon:Gift},{id:'leaderboard',label:tx('ლიდერბორდი', 'Leaderboard'),icon:Trophy},{id:'settings',label:tx('პარამეტრები', 'Settings'),icon:Settings2},{id:'help',label:tx('როგორ მუშაობს?', 'How it works'),icon:BookOpen}] as const).map(item=><Action key={item.id} secondary label={item.label} icon={item.icon} onPress={()=>openPanel(item.id)}/>)}</Sheet>
   <Sheet title={tx('დავასრულოთ გასეირნება?', 'Finish your walk?')} visible={finish} onClose={()=>setFinish(false)}>

@@ -1,12 +1,13 @@
-import React,{useEffect,useState} from 'react';
+import React,{useEffect,useMemo,useState} from 'react';
 import {Linking,Pressable,View} from 'react-native';
-import {ChevronRight,Gift,MapPin} from 'lucide-react-native';
+import {ChevronDown,ChevronRight,ChevronUp,Gift,Hourglass,MapPin} from 'lucide-react-native';
 import {useIsDark,useThemeColors} from '@/theme/colors';
 import {hubTint} from '@/theme/hub';
 import {formatYmd} from '@/lib/format';
 import {countdownParts,useDrops,type CoinRange,type Drops} from '@/lib/medipulsi/drops';
 import {tx} from '@/i18n/locale';
-import {Card,Copy,Section,Sheet,runInk} from './PulseUi';
+import {distance,type Coordinate} from '@/lib/medipulsi/core/engine';
+import {Card,Copy,Section,Sheet,Tile,runInk} from './PulseUi';
 
 const TBILISI_MS=4*3600_000;
 export const num=(n:number)=>Math.round(n).toLocaleString('en-US').replace(/,/g,' ');
@@ -44,28 +45,110 @@ function nextNote(next:NonNullable<Drops['next']>){
  return null;
 }
 
+/** „≈ 2,5 კმ“: the district point is a ~1 km grid, so whole halves of a kilometre are as exact as it gets. */
+export function approxKm(m:number){
+ if(m<1000)return tx('1 კმ-მდე','under 1 km');
+ const km=m<20_000?Math.round(m/500)/2:Math.round(m/1000);
+ return tx(`≈ ${String(km).replace('.',',')} კმ`,`≈ ${km} km`);
+}
+/** Walking time at ~5 km/h, in 5-minute steps; hours past 90 minutes. */
+export function walkTime(m:number){
+ const min=Math.max(5,Math.round(m/1000*12/5)*5);
+ if(min<=90)return tx(`~${min} წთ ფეხით`,`~${min} min on foot`);
+ const h=Math.round(min/30)/2;
+ return tx(`~${String(h).replace('.',',')} სთ ფეხით`,`~${h} h on foot`);
+}
+const boxesWord=(n:number)=>tx(`${n} ყუთი`,`${n} ${n===1?'box':'boxes'}`);
+const ROWS=5;
+const pad2=(n:number)=>String(n).padStart(2,'0');
+/** „1:42:05“ / „07:09“ — how long the boxes of one place stay out. */
+export function clockLeft(ms:number){const {d,h,m,s}=countdownParts(ms),hours=d*24+h;return hours?`${hours}:${pad2(m)}:${pad2(s)}`:`${pad2(m)}:${pad2(s)}`;}
+/** Ink of a disappearing countdown: teal, amber under 15 minutes, red under 5. */
+const leftInk=(left:number,dark:boolean)=>left<5*60_000?(dark?'#FCA5A5':'#DC2626'):left<15*60_000?(dark?'#FCD34D':'#B45309'):runInk('teal',dark);
+/** „დაიყრება 9:14:20“ — the same pill as a place timer, counting to the next wave. */
+function DropTimer({to,now}:{to:string;now:number}){
+ const dark=useIsDark(),ink=runInk('teal',dark),left=Date.parse(to)-now;
+ return <View accessible accessibilityRole="timer" accessibilityLabel={tx(`დაიყრება ${clockLeft(left)}-ში`,`Drops in ${clockLeft(left)}`)} style={{flexDirection:'row',alignItems:'center',gap:5,paddingLeft:7,paddingRight:9,paddingVertical:3,borderRadius:10,backgroundColor:hubTint(ink,dark)}}>
+  <Hourglass size={11} color={ink} strokeWidth={2.4}/>
+  <Copy bold size={11} style={{color:ink,fontVariant:['tabular-nums'],lineHeight:15}}>{clockLeft(left)}</Copy>
+ </View>;
+}
+/** Teal while there is time, amber under 15 minutes, red under 5 — and a bar that drains with the wave. */
+function PlaceTimer({startsAt,endsAt,now}:{startsAt?:string;endsAt:string;now:number}){
+ const dark=useIsDark(),c=useThemeColors(),end=Date.parse(endsAt),left=end-now,from=startsAt?Date.parse(startsAt):NaN;
+ const ink=leftInk(left,dark);
+ const share=Number.isFinite(from)&&end>from?Math.max(0,Math.min(1,left/(end-from))):null;
+ return <View accessible accessibilityLabel={tx(`გაქრება ${clockLeft(left)}-ში`,`Gone in ${clockLeft(left)}`)} style={{gap:5,alignItems:'flex-start'}}>
+  <View style={{flexDirection:'row',alignItems:'center',gap:5,paddingLeft:7,paddingRight:9,paddingVertical:3,borderRadius:10,backgroundColor:hubTint(ink,dark)}}>
+   <Hourglass size={11} color={ink} strokeWidth={2.4}/>
+   <Copy bold size={11} style={{color:ink,fontVariant:['tabular-nums'],lineHeight:15}}>{clockLeft(left)}</Copy>
+  </View>
+  {share!=null?<View style={{alignSelf:'stretch',height:3,borderRadius:2,backgroundColor:c.bg200,overflow:'hidden'}}><View style={{width:`${Math.round(share*1000)/10}%`,height:3,borderRadius:2,backgroundColor:ink}}/></View>:null}
+ </View>;
+}
+
 /**
- * Under the hero: where the boxes are (districts) or what the next wave brings, today's openings and the
- * schedule. Short on purpose — the hero carries the numbers, this card the details.
+ * Under the hero: where the boxes are (districts, nearest first with an approximate distance from the reader)
+ * or what the next wave brings, today's openings and the schedule.
  */
-export function RunDropsCard(){
- const query=useDrops(),data=query.data,c=useThemeColors(),dark=useIsDark(),teal=runInk('teal',dark),[schedule,setSchedule]=useState(false);
+export type HuntPlace={name:string;near:Coordinate;endsAt?:string|null};
+export function RunDropsCard({here,onHunt}:{here?:Coordinate|null;onHunt?:(place:HuntPlace)=>void}){
+ const query=useDrops(),data=query.data,c=useThemeColors(),dark=useIsDark(),teal=runInk('teal',dark),[schedule,setSchedule]=useState(false),[all,setAll]=useState(false);
+ const rows=useMemo(()=>{
+  const list=(data?.now.districts||[]).map(d=>({...d,meters:here&&d.near?distance(here,d.near):null}));
+  return here?list.sort((a,b)=>(a.meters??Infinity)-(b.meters??Infinity)):list;
+ },[data?.now.districts,here]);
+ // One clock for every place timer; a place whose last box ended drops out and the counts are fetched again.
+ const [tick,setTick]=useState(Date.now()),timed=Boolean(data?.now.endsAt||data?.next?.startsAt||rows.some(r=>r.endsAt));
+ useEffect(()=>{if(!timed)return;const t=setInterval(()=>setTick(Date.now()),1000);return()=>clearInterval(t);},[timed]);
+ const passed=(iso?:string|null)=>Boolean(iso&&Date.parse(iso)<=tick);
+ const expired=passed(data?.now.endsAt)||passed(data?.next?.startsAt)||rows.some(r=>passed(r.endsAt));
+ useEffect(()=>{if(expired)void query.refetch();},[expired]);// eslint-disable-line react-hooks/exhaustive-deps
  if(!data||!data.enabled)return null;
  const {now,next,today,me}=data,live=now.boxes>0;
  if(!live&&!next)return null;
  const note=!live&&next?nextNote(next):null;
+ const open=rows.filter(r=>!r.endsAt||Date.parse(r.endsAt)>tick),measured=open.some(r=>r.meters!=null),shown=all?open:open.slice(0,ROWS);
  return <Section title={live?tx('სად არის ყუთები','Where the boxes are'):tx('შემდეგი ყუთები','Next boxes')} link={tx('განრიგი','Schedule')} onLink={()=>setSchedule(true)}>
   <Card style={{gap:12}}>
    {data.live?.walkers?<View accessible accessibilityLabel={liveText(data)} style={{flexDirection:'row',alignItems:'center',gap:8}}><View style={{width:8,height:8,borderRadius:4,backgroundColor:'#22C55E'}}/><Copy bold size={12} style={{flex:1}}>{liveText(data)}</Copy></View>:null}
    {live?<>
-    <View style={{flexDirection:'row',flexWrap:'wrap',gap:6}}>
-     {now.districts.slice(0,10).map(d=><View key={d.name} style={{flexDirection:'row',alignItems:'center',gap:5,paddingHorizontal:10,paddingVertical:6,borderRadius:12,backgroundColor:hubTint(teal,dark)}}><MapPin size={12} color={teal}/><Copy size={12}>{d.name}</Copy><Copy bold size={12} style={{color:teal}}>{d.boxes}</Copy></View>)}
+    <View style={{flexDirection:'row',alignItems:'center',gap:12}}>
+     <Tile icon={Gift}/>
+     <View style={{flex:1,minWidth:0}}>
+      <Copy bold size={16}>{tx(`ახლა ქალაქშია ${boxesWord(now.boxes)}`,`${boxesWord(now.boxes)} out in the city now`)}</Copy>
+      <Copy muted size={12}>{[now.coins?tx(`პირველს ${coinsText(now.coins)}`,`${coinsText(now.coins)} for the first`):'',next?tx(`შემდეგი დაყრა ${tbilisi(next.startsAt).clock}`,`next drop ${tbilisi(next.startsAt).clock}`):''].filter(Boolean).join(' · ')}</Copy>
+     </View>
     </View>
-    <View style={{flexDirection:'row',alignItems:'center',gap:8}}><Gift size={15} color={teal}/><Copy muted size={12} style={{flex:1}}>{[now.coins?tx(`პირველ გამხსნელს ${coinsText(now.coins)}`,`${coinsText(now.coins)} for the first to open`):'',now.endsAt?tx(`${tbilisi(now.endsAt).clock}-მდე`,`until ${tbilisi(now.endsAt).clock}`):''].filter(Boolean).join(' · ')}</Copy></View>
+    <View style={{borderRadius:18,backgroundColor:c.bg100,paddingHorizontal:12}}>
+     {shown.map((d,i)=>{const nearest=measured&&i===0&&d.meters!=null,near=d.near,go=near&&onHunt?()=>onHunt({name:d.name,near,endsAt:d.endsAt||now.endsAt}):undefined;return <Pressable key={d.name} disabled={!go} onPress={go} accessibilityRole={go?'button':undefined} accessibilityHint={go?tx('რუკაზე გაჩვენებს ზონას და გზას','Shows the zone and the way on the map'):undefined} accessibilityLabel={[d.name,boxesWord(d.boxes),d.meters!=null?`${approxKm(d.meters)}, ${walkTime(d.meters)}`:''].filter(Boolean).join(', ')} style={{flexDirection:'row',alignItems:'center',gap:10,minHeight:56,paddingVertical:11,borderTopWidth:i?1:0,borderColor:c.bg200}}>
+      <View style={{width:30,height:30,borderRadius:10,alignItems:'center',justifyContent:'center',backgroundColor:nearest?teal:hubTint(teal,dark)}}><MapPin size={15} color={nearest?(dark?'#042F2E':'#FFFFFF'):teal} strokeWidth={2.2}/></View>
+      <View style={{flex:1,minWidth:0}}>
+       <View style={{flexDirection:'row',alignItems:'center',gap:6}}><Copy bold size={14} numberOfLines={1} style={{flexShrink:1}}>{d.name}</Copy>{nearest?<View style={{paddingHorizontal:7,paddingVertical:1,borderRadius:8,backgroundColor:hubTint(teal,dark)}}><Copy bold size={10} style={{color:teal}}>{tx('უახლოესი','nearest')}</Copy></View>:null}</View>
+       <View style={{flexDirection:'row',alignItems:'center',gap:8,marginTop:2}}>
+        <Copy muted size={12}>{boxesWord(d.boxes)}</Copy>
+        {d.endsAt||now.endsAt?<View style={{flex:1,maxWidth:120}}><PlaceTimer startsAt={d.startsAt} endsAt={(d.endsAt||now.endsAt)!} now={tick}/></View>:null}
+       </View>
+      </View>
+      {d.meters!=null?<View style={{alignItems:'flex-end'}}>
+       <Copy bold size={14} style={{color:nearest?teal:c.text100,fontVariant:['tabular-nums']}}>{approxKm(d.meters)}</Copy>
+       <Copy muted size={11}>{walkTime(d.meters)}</Copy>
+      </View>:null}
+      {go?<ChevronRight size={16} color={c.text300}/>:null}
+     </Pressable>;})}
+     {open.length>ROWS?<Pressable accessibilityRole="button" onPress={()=>setAll(v=>!v)} style={{minHeight:44,flexDirection:'row',alignItems:'center',justifyContent:'center',gap:4,borderTopWidth:1,borderColor:c.bg200}}>
+      <Copy bold size={12} style={{color:teal}}>{all?tx('ნაკლები','Show less'):tx(`კიდევ ${open.length-ROWS} ადგილი`,`${open.length-ROWS} more places`)}</Copy>
+      {all?<ChevronUp size={14} color={teal}/>:<ChevronDown size={14} color={teal}/>}
+     </Pressable>:null}
+    </View>
+    {measured||!here?<Copy muted size={11}>{measured?tx('შეეხე ადგილს — რუკა ზონას და გზას გაჩვენებს. მანძილი მიახლოებითია, ზუსტ ადგილს პულსი გიჩვენებს.','Tap a place — the map shows the zone and the way. Distances are approximate; the pulse shows the exact spot.'):tx('მდებარეობის წვდომით აქ გამოჩნდება, რამდენი კმ-ია თითოეულ ადგილამდე.','With location access you’ll see how far each place is from you.')}</Copy>:null}
    </>:next?<>
-    <View style={{flexDirection:'row',alignItems:'baseline',gap:8}}>
-     <Copy bold size={22} style={{fontVariant:['tabular-nums']}}>{tbilisi(next.startsAt).clock}</Copy>
-     <Copy muted size={13} style={{flex:1}}>{dayWord(next.startsAt)} · {tx(`${next.boxes} ყუთი`,`${next.boxes} ${next.boxes===1?'box':'boxes'}`)}</Copy>
+    <View style={{flexDirection:'row',alignItems:'center',gap:12}}>
+     <Tile icon={Gift}/>
+     <View style={{flex:1,minWidth:0}}>
+      <Copy bold size={16}>{`${dayWord(next.startsAt)} ${tbilisi(next.startsAt).clock} · ${boxesWord(next.boxes)}`}</Copy>
+      <View style={{flexDirection:'row',alignItems:'center',gap:6,marginTop:2}}><Copy muted size={12}>{tx('დაიყრება','Drops in')}</Copy><DropTimer to={next.startsAt} now={tick}/></View>
+     </View>
     </View>
     {next.coins?<View style={{flexDirection:'row',alignItems:'center',gap:8}}><Gift size={15} color={teal}/><Copy muted size={12} style={{flex:1}}>{tx(`პირველ გამხსნელს ${coinsText(next.coins)}`,`${coinsText(next.coins)} for the first to open`)}</Copy></View>:null}
     {note?<Copy muted size={12}>{note}</Copy>:null}

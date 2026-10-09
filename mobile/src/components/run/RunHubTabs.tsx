@@ -11,7 +11,8 @@ import {tx} from '@/i18n/locale';
 
 /**
  * MEDIRUN hub sections (owner 2026-10-05: „გვერდი ძალიან დაგრძელდა — ქვემოთ მენიუ, ლოგიკური დანაყოფებით“):
- * start = go out now, rewards = what the coins buy, together = race / crew / the city, progress = my walks.
+ * start = go out now (boxes, passport, my walks), rewards = coins → goal → grand prize → collection, together =
+ * crew → week race → the city, progress = last week (Mon–Wed) → this week → records → cities → help (owner 2026-10-09).
  */
 export type RunHubTab='start'|'rewards'|'together'|'progress';
 export const RUN_HUB_TABS:ReadonlyArray<{id:RunHubTab;label:string;Icon:LucideIcon}>=[
