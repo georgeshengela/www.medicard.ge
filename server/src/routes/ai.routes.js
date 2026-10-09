@@ -141,6 +141,12 @@ function clientGoneError() {
  */
 const AI_SAVE_TRANSACTION = Object.freeze({ maxWait: 10_000, timeout: 15_000 });
 
+/** Marks an error thrown inside the save transaction's callback: Prisma never sent COMMIT for it. */
+function markSaveRolledBack(error) {
+  if (error !== null && typeof error === 'object' && Object.isExtensible(error)) error.aiSaveRolledBack = true;
+  return error;
+}
+
 /**
  * Saves one answered turn and takes its AI credit in one transaction, inside the limiter's settlement:
  * a close that lands during the save waits for it instead of freeing the slot under a stored answer, and
@@ -165,22 +171,28 @@ export async function persistChatTurn({ req, session, history, message, mode, an
   ];
 
   const { saved, usage } = await req.settleAiOperation(() => prisma.$transaction(async (tx) => {
-    const saved = session
-      ? await tx.chatSession.update({
-          where: { id: session.id },
-          data: { messages: nextMessages, updatedAt: new Date() },
-        })
-      : await tx.chatSession.create({
-          data: {
-            userId: req.user.id,
-            mode,
-            title: buildTitle(message),
-            messages: nextMessages,
-          },
-        });
-    const usage = await commitAiCredit(req.user.id, tx);
-    if (typeof gone === 'function' && gone()) throw clientGoneError();
-    return { saved, usage };
+    try {
+      const saved = session
+        ? await tx.chatSession.update({
+            where: { id: session.id },
+            data: { messages: nextMessages, updatedAt: new Date() },
+          })
+        : await tx.chatSession.create({
+            data: {
+              userId: req.user.id,
+              mode,
+              title: buildTitle(message),
+              messages: nextMessages,
+            },
+          });
+      const usage = await commitAiCredit(req.user.id, tx);
+      if (typeof gone === 'function' && gone()) throw clientGoneError();
+      return { saved, usage };
+    } catch (error) {
+      // Thrown before Prisma sends COMMIT (even a lost connection here): the transaction rolls back, so this
+      // turn is known not to be stored (saveNotStored).
+      throw markSaveRolledBack(error);
+    }
   }, AI_SAVE_TRANSACTION));
   req.usage = usage;
   // A new chat exists only after its first answer: link that answer's log row too, or admin
@@ -195,12 +207,25 @@ export async function persistChatTurn({ req, session, history, message, mode, an
 
 /**
  * Her answer was not saved — she closed Medi first (train 2 Stop — nothing stored, charged or logged) or the
- * save itself failed: its log row goes too, so an answer she never kept does not count for the weekly Medi
- * mission or show in admin as a consultation missing from the conversation.
+ * save is known not to have committed (saveNotStored): its log row goes too, so an answer she never kept does
+ * not count for the weekly Medi mission or show in admin as a consultation missing from the conversation.
  */
 async function forgetUnkeptAnswer(userId, interactionId) {
   if (!interactionId) return;
   await prisma.aiInteraction.deleteMany({ where: { id: interactionId, userId } }).catch(() => undefined);
+}
+
+/**
+ * A failed save is known not to have committed only when its error was thrown inside the transaction callback
+ * (marked by persistChatTurn: COMMIT was never sent), the limiter had already released the slot (the save never
+ * began), or Prisma reports a transaction that never started, expired or was rolled back (P2024, P2028, P2034).
+ * Anything else — a connection lost at COMMIT (P1017 and the like), an unknown error — is in doubt: Postgres may
+ * have stored the turn, so its log row stays (the answer must stay rateable and count for weekly Medi).
+ */
+export function saveNotStored(error) {
+  return error?.aiSaveRolledBack === true
+    || error?.message === 'AI_REQUEST_ALREADY_RELEASED'
+    || ['P2024', 'P2028', 'P2034'].includes(error?.code);
 }
 
 /**
@@ -277,6 +302,7 @@ aiRouter.post(
 
       let answer = null;
       let kept = false;
+      let failure = null;
       try {
         answer = await runTrackedAi({
           userId: req.user.id,
@@ -327,6 +353,7 @@ aiRouter.post(
         // After 'done': the app has its answer sooner, and a close now changes nothing (it never fails).
         await refreshQuestProgressForUser(req.user.id, QuestSignal.MEDI_USED);
       } catch (error) {
+        failure = error;
         if (client.gone() || res.writableEnded) return;
         // Not our own copy (a failed save, an internal error): the log keeps its code only, never its text.
         if (!(error instanceof AiEngineError)) console.warn('[ai] Medi answer not delivered', error?.code || error?.name || 'Error');
@@ -334,9 +361,10 @@ aiRouter.post(
         res.end();
       } finally {
         client.dispose();
-        // Not saved (she left, or the save failed while she waited): its log row goes too. This runs after
-        // res.end(), so a slow pool never holds back the error she is waiting for.
-        if (!kept) await forgetUnkeptAnswer(req.user.id, answer?.interactionId);
+        // Not saved (she left, or the save is known not to have committed): its log row goes too. A connection
+        // lost at COMMIT may have stored the turn, so its row stays. This runs after res.end(), so a slow pool
+        // never holds back the error she is waiting for.
+        if (!kept && (client.gone() || saveNotStored(failure))) await forgetUnkeptAnswer(req.user.id, answer?.interactionId);
       }
       return;
     }
@@ -367,9 +395,10 @@ aiRouter.post(
     try {
       turn = await persistChatTurn({ req, session, history, message, mode, answer, cycleContext });
     } catch (error) {
-      // Not saved: the answer's log row goes too (it would count for weekly Medi with no answer behind it).
-      // The error handler answers with its own generic copy, never Prisma's text.
-      await forgetUnkeptAnswer(req.user.id, answer.interactionId);
+      // Known not saved: the answer's log row goes too (it would count for weekly Medi with no answer behind it).
+      // A connection lost at COMMIT may have stored the turn: its row stays. No read here — the error answers
+      // at once, with the error handler's own generic copy, never Prisma's text.
+      if (saveNotStored(error)) await forgetUnkeptAnswer(req.user.id, answer.interactionId);
       throw error;
     }
     const { saved, usage } = turn;

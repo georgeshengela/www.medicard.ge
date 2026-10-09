@@ -110,8 +110,10 @@ test('/api/ai/query keeps no answer she closed Medi on, and sends done before th
   const src = readFileSync(new URL('../routes/ai.routes.js', import.meta.url), 'utf8');
   const start = src.indexOf('if (stream) {');
   const branch = src.slice(start, src.indexOf('\n      return;\n    }\n', start));
-  // Any unkept answer — she left, or the save failed (IR2-3) — loses its row, after the response ended.
-  assert.match(branch, /finally \{\s*client\.dispose\(\);(\s*\/\/[^\n]*)*\s*if \(!kept\) await forgetUnkeptAnswer\(req\.user\.id, answer\?\.interactionId\);/);
+  // An unkept answer loses its row after the response ended — when she left, or when the save is known not to
+  // have committed (IR2-3, IR3-1); the catch records the failure before any early return.
+  assert.match(branch, /finally \{\s*client\.dispose\(\);(\s*\/\/[^\n]*)*\s*if \(!kept && \(client\.gone\(\) \|\| saveNotStored\(failure\)\)\) await forgetUnkeptAnswer\(req\.user\.id, answer\?\.interactionId\);/);
+  assert.match(branch, /\} catch \(error\) \{\s*failure = error;\s*if \(client\.gone\(\) \|\| res\.writableEnded\) return;/);
   assert.match(branch, /persistChatTurn\([^\n]*\);\s*kept = true;/);
   const done = branch.indexOf("type: 'done'");
   assert.ok(done > 0 && done < branch.indexOf('res.end();') && branch.indexOf('res.end();') < branch.indexOf('refreshQuestProgressForUser('),
@@ -147,9 +149,10 @@ test('an answer she left as it finished writes no row', async (t) => {
  * Options: `probe` collects the transaction options, reads made on the global client while the transaction
  * is open, and the save's error; `poolOfOne` makes such a read stall until the transaction expires (the only
  * pool connection is the transaction's own); `reservationLost` empties the reservation before the save (an
- * admin quota reset mid-answer).
+ * admin quota reset mid-answer); `commitLost` lets Postgres apply the COMMIT and then drops the connection
+ * before Prisma hears back (the pooler's P1017), so `$transaction` rejects over a stored turn.
  */
-async function saveWithCloseAt(closeAt, { probe = {}, poolOfOne = false, reservationLost = false } = {}) {
+async function saveWithCloseAt(closeAt, { probe = {}, poolOfOne = false, reservationLost = false, commitLost = false } = {}) {
   const { EventEmitter } = await import('node:events');
   const { prisma } = await import('./prisma.js');
   const { enforceAiQuota } = await import('../middleware/aiLimiter.js');
@@ -210,6 +213,7 @@ async function saveWithCloseAt(closeAt, { probe = {}, poolOfOne = false, reserva
       db.sessions.push(...staged.sessions);
       db.reserved -= staged.commits;
       db.commits += staged.commits;
+      if (commitLost) throw Object.assign(new Error('Server has closed the connection.'), { code: 'P1017' });
       return result;
     } finally {
       txOpen -= 1;
@@ -292,16 +296,29 @@ test('commitAiCredit and the package read go through the transaction client they
 // after an admin quota reset, a pool timeout, a session deleted mid-answer) sent the raw code or Prisma's
 // English text to the phone under a Georgian screen, and the answer's OK row stayed to count for weekly Medi.
 test('a save that fails while she waits stores and charges nothing, and the phone reads our own copy', async () => {
-  const { streamErrorEvent } = await import('../routes/ai.routes.js');
+  const { streamErrorEvent, saveNotStored } = await import('../routes/ai.routes.js');
   const { AiEngineError } = await import('./evidencemd.js');
   const probe = {};
   assert.deepEqual(await saveWithCloseAt('never', { probe, reservationLost: true }),
     { outcome: 'AI_CREDIT_COMMIT_WITHOUT_RESERVATION', sessions: 0, commits: 0, releases: 0, reserved: 0 });
+  // Thrown inside the transaction, before COMMIT: known not stored, so the answer's row goes (IR3-1).
+  assert.equal(probe.error.aiSaveRolledBack, true);
+  assert.equal(saveNotStored(probe.error), true);
   const generic = { type: 'error', error: 'სამედიცინო ანალიზის სერვისთან დაკავშირება ვერ მოხერხდა.', status: 502 };
   assert.deepEqual(streamErrorEvent({ lang: 'ka' }, probe.error), generic);
   assert.deepEqual(streamErrorEvent({ lang: 'en' }, probe.error), { ...generic, error: 'We could not reach the medical analysis service.' });
   const poolTimeout = Object.assign(new Error('Transaction API error: Unable to start a transaction in the given time.'), { code: 'P2028' });
   assert.deepEqual(streamErrorEvent({ lang: 'ka' }, poolTimeout), generic);
+  // A transaction that never started, expired or was rolled back by Postgres stored nothing either.
+  for (const code of ['P2024', 'P2028', 'P2034']) assert.equal(saveNotStored(Object.assign(new Error('x'), { code })), true, code);
+  // A slot released before the save began (she closed Medi first): nothing was written.
+  const before = {};
+  assert.equal((await saveWithCloseAt('before', { probe: before })).outcome, 'AI_REQUEST_ALREADY_RELEASED');
+  assert.equal(saveNotStored(before.error), true);
+  // She closed Medi during the save: rolled back inside the transaction.
+  const during = {};
+  assert.equal((await saveWithCloseAt('credit', { probe: during })).outcome, 'AI_CLIENT_GONE');
+  assert.equal(saveNotStored(during.error), true);
   // Our own copy still reaches her, in her language and with its status — the keys every older build reads.
   const busy = new AiEngineError('AI დროებით გადატვირთულია. სცადე ერთი წუთის შემდეგ.', { status: 503, messageEn: 'The AI is busy right now. Please try again in a minute.' });
   assert.deepEqual(streamErrorEvent({ lang: 'ka' }, busy), { type: 'error', error: busy.message, status: 503 });
@@ -318,7 +335,33 @@ test('/api/ai/query takes back the row of any answer it did not save, streamed o
   assert.match(branch, /catch \(error\) \{[\s\S]*?writeSse\(res, streamErrorEvent\(req, error\)\);\s*res\.end\(\);/);
   assert.doesNotMatch(branch, /error\?\.message\b/, 'no raw error text in the stream');
   const json = src.slice(end, src.indexOf('POST /api/ai/analyze-image'));
-  assert.match(json, /try \{\s*turn = await persistChatTurn\(\{[^\n]*\}\);\s*\} catch \(error\) \{[\s\S]*?await forgetUnkeptAnswer\(req\.user\.id, answer\.interactionId\);\s*throw error;\s*\}/);
+  // Only a save known not to have committed loses its row (IR3-1), and nothing is read before the error answer.
+  assert.match(json, /try \{\s*turn = await persistChatTurn\(\{[^\n]*\}\);\s*\} catch \(error\) \{(\s*\/\/[^\n]*)*\s*if \(saveNotStored\(error\)\) await forgetUnkeptAnswer\(req\.user\.id, answer\.interactionId\);\s*throw error;\s*\}/);
+  // The save marks whatever its transaction callback threw: Prisma had not sent COMMIT for it.
+  const save = src.slice(src.indexOf('export async function persistChatTurn('), src.indexOf('async function forgetUnkeptAnswer('));
+  assert.match(save, /prisma\.\$transaction\(async \(tx\) => \{\s*try \{[\s\S]*return \{ saved, usage \};\s*\} catch \(error\) \{(\s*\/\/[^\n]*)*\s*throw markSaveRolledBack\(error\);\s*\}\s*\}, AI_SAVE_TRANSACTION\)\)/);
+});
+
+// Integration review IR3-1 (2026-10-09): Postgres applied the COMMIT, then the pooler dropped the connection
+// before Prisma heard back (P1017). `$transaction` rejected, so train 5 deleted the answer's AiInteraction row
+// although the turn was in her conversation: rating it returned 404 and it no longer counted for weekly Medi.
+test('a connection lost at COMMIT keeps the answer\'s row: the turn may be stored', async () => {
+  const { saveNotStored } = await import('../routes/ai.routes.js');
+  const probe = {};
+  const result = await saveWithCloseAt('never', { probe, commitLost: true });
+  assert.equal(result.outcome, 'Server has closed the connection.');
+  assert.equal(result.sessions, 1, 'the turn is in her conversation');
+  assert.equal(result.commits, 1, 'and its credit was taken');
+  assert.equal(probe.error.code, 'P1017');
+  assert.notEqual(probe.error.aiSaveRolledBack, true, 'not thrown inside the transaction callback');
+  assert.equal(saveNotStored(probe.error), false, 'in doubt: the row stays');
+  // Any other connection or unknown error at COMMIT is in doubt too.
+  for (const error of [Object.assign(new Error('Can\'t reach database server'), { code: 'P1001' }), new Error('socket hang up'), undefined, null]) {
+    assert.equal(saveNotStored(error), false);
+  }
+  // The same connection error thrown by a statement inside the transaction never reached COMMIT: the row goes.
+  const inside = Object.assign(new Error('Server has closed the connection.'), { code: 'P1017', aiSaveRolledBack: true });
+  assert.equal(saveNotStored(inside), true);
 });
 
 // Review (2026-10-08): enforceAiQuota listens for 'close' only after its own reads. A person gone during
