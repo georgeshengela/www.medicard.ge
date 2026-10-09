@@ -150,9 +150,10 @@ test('an answer she left as it finished writes no row', async (t) => {
  * is open, and the save's error; `poolOfOne` makes such a read stall until the transaction expires (the only
  * pool connection is the transaction's own); `reservationLost` empties the reservation before the save (an
  * admin quota reset mid-answer); `commitLost` lets Postgres apply the COMMIT and then drops the connection
- * before Prisma hears back (the pooler's P1017), so `$transaction` rejects over a stored turn.
+ * before Prisma hears back (the pooler's P1017), so `$transaction` rejects over a stored turn; `beginLost` drops
+ * the connection on BEGIN (a stale pooled connection), so the transaction never starts and its callback never runs.
  */
-async function saveWithCloseAt(closeAt, { probe = {}, poolOfOne = false, reservationLost = false, commitLost = false } = {}) {
+async function saveWithCloseAt(closeAt, { probe = {}, poolOfOne = false, reservationLost = false, commitLost = false, beginLost = false } = {}) {
   const { EventEmitter } = await import('node:events');
   const { prisma } = await import('./prisma.js');
   const { enforceAiQuota } = await import('../middleware/aiLimiter.js');
@@ -196,6 +197,7 @@ async function saveWithCloseAt(closeAt, { probe = {}, poolOfOne = false, reserva
   });
   patch(prisma, '$transaction', async (work, options) => {
     probe.txOptions = options;
+    if (beginLost) throw Object.assign(new Error('Server has closed the connection.'), { code: 'P1017' });
     const staged = { sessions: [], commits: 0 };
     const tx = {
       // commitAiCredit's package read, through the transaction
@@ -339,7 +341,7 @@ test('/api/ai/query takes back the row of any answer it did not save, streamed o
   assert.match(json, /try \{\s*turn = await persistChatTurn\(\{[^\n]*\}\);\s*\} catch \(error\) \{(\s*\/\/[^\n]*)*\s*if \(saveNotStored\(error\)\) await forgetUnkeptAnswer\(req\.user\.id, answer\.interactionId\);\s*throw error;\s*\}/);
   // The save marks whatever its transaction callback threw: Prisma had not sent COMMIT for it.
   const save = src.slice(src.indexOf('export async function persistChatTurn('), src.indexOf('async function forgetUnkeptAnswer('));
-  assert.match(save, /prisma\.\$transaction\(async \(tx\) => \{\s*try \{[\s\S]*return \{ saved, usage \};\s*\} catch \(error\) \{(\s*\/\/[^\n]*)*\s*throw markSaveRolledBack\(error\);\s*\}\s*\}, AI_SAVE_TRANSACTION\)\)/);
+  assert.match(save, /prisma\.\$transaction\(async \(tx\) => \{\s*began = true;\s*try \{[\s\S]*return \{ saved, usage \};\s*\} catch \(error\) \{(\s*\/\/[^\n]*)*\s*throw markSaveRolledBack\(error\);\s*\}\s*\}, AI_SAVE_TRANSACTION\)\)/);
 });
 
 // Integration review IR3-1 (2026-10-09): Postgres applied the COMMIT, then the pooler dropped the connection
@@ -362,6 +364,19 @@ test('a connection lost at COMMIT keeps the answer\'s row: the turn may be store
   // The same connection error thrown by a statement inside the transaction never reached COMMIT: the row goes.
   const inside = Object.assign(new Error('Server has closed the connection.'), { code: 'P1017', aiSaveRolledBack: true });
   assert.equal(saveNotStored(inside), true);
+});
+
+// Review of IR3-1: Prisma sends BEGIN before it runs the callback, outside the callback's try. A stale pooled
+// connection that drops on BEGIN (the pooler's P1017) stored nothing, yet it reached the route unmarked, so the
+// answer's OK row stayed with no turn behind it (the orphan row IR2-3 removed).
+test('a connection lost before the save began stores nothing, so the answer\'s row goes', async () => {
+  const { saveNotStored } = await import('../routes/ai.routes.js');
+  const probe = {};
+  assert.deepEqual(await saveWithCloseAt('never', { probe, beginLost: true }),
+    { outcome: 'Server has closed the connection.', sessions: 0, commits: 0, releases: 1, reserved: 0 });
+  assert.equal(probe.error.code, 'P1017');
+  assert.equal(probe.error.aiSaveRolledBack, true, 'the callback never ran: nothing reached COMMIT');
+  assert.equal(saveNotStored(probe.error), true);
 });
 
 // Review (2026-10-08): enforceAiQuota listens for 'close' only after its own reads. A person gone during

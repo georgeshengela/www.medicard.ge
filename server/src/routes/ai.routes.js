@@ -170,7 +170,9 @@ export async function persistChatTurn({ req, session, history, message, mode, an
     },
   ];
 
+  let began = false;
   const { saved, usage } = await req.settleAiOperation(() => prisma.$transaction(async (tx) => {
+    began = true;
     try {
       const saved = session
         ? await tx.chatSession.update({
@@ -193,7 +195,11 @@ export async function persistChatTurn({ req, session, history, message, mode, an
       // turn is known not to be stored (saveNotStored).
       throw markSaveRolledBack(error);
     }
-  }, AI_SAVE_TRANSACTION));
+  }, AI_SAVE_TRANSACTION)).catch((error) => {
+    // The callback never ran (BEGIN failed on a dropped pooled connection, the slot was already released):
+    // nothing was written either. Only a failure after the callback — at COMMIT — is in doubt.
+    throw began ? error : markSaveRolledBack(error);
+  });
   req.usage = usage;
   // A new chat exists only after its first answer: link that answer's log row too, or admin
   // shows the first question apart from the rest of the conversation.
@@ -216,9 +222,10 @@ async function forgetUnkeptAnswer(userId, interactionId) {
 }
 
 /**
- * A failed save is known not to have committed only when its error was thrown inside the transaction callback
- * (marked by persistChatTurn: COMMIT was never sent), the limiter had already released the slot (the save never
- * began), or Prisma reports a transaction that never started, expired or was rolled back (P2024, P2028, P2034).
+ * A failed save is known not to have committed only when its error was thrown inside the transaction callback or
+ * before the callback ran (marked by persistChatTurn: COMMIT was never sent), the limiter had already released the
+ * slot (the save never began), or Prisma reports a transaction that never started, expired or was rolled back
+ * (P2024, P2028, P2034).
  * Anything else — a connection lost at COMMIT (P1017 and the like), an unknown error — is in doubt: Postgres may
  * have stored the turn, so its log row stays (the answer must stay rateable and count for weekly Medi).
  */
