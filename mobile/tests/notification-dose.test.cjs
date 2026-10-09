@@ -281,6 +281,27 @@ test('a fresh sign-in keeps only its own marks of a mixed queue', async () => {
   assert.deepEqual(phone.logsOf('him'), []);
 });
 
+// The drain skips storage once this process saw the queue empty. The stored queue is what counts: when
+// the prune keeps her marks it must re-arm the drain itself, even if no tap in this process did.
+test('her kept marks drain even after this process saw the queue empty', async () => {
+  const phone = device();
+  phone.signIn('her');
+  assert.equal((await phone.shared.loadDoseLogs()).length, 0, 'the drain finds no queue');
+  phone.signOut();
+  const updatedAt = new Date().toISOString();
+  phone.prefs.set(
+    'medicard.meds.pendingDoseLogs',
+    JSON.stringify([{ medicationId: 'med-1', date: updatedAt.slice(0, 10), time: '20:00', status: 'taken', updatedAt, queuedAt: Date.now(), owner: 'her' }]),
+  );
+
+  await phone.freshSignIn('her');
+  const logs = await phone.shared.loadDoseLogs();
+  await flush();
+  assert.deepEqual(logs.map((row) => [row.medicationId, row.time, row.status]), [['med-1', '20:00', 'taken']]);
+  assert.equal(phone.events.length, 1);
+  assert.equal(phone.prefs.get('medicard.meds.pendingDoseLogs'), undefined);
+});
+
 test('a broken queue never fails the sign-in', async () => {
   const phone = device();
   phone.prefs.set('medicard.meds.pendingDoseLogs', '{not json');
