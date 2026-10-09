@@ -164,3 +164,61 @@ test('with no readable session the mark waits on the device and lands once she i
   assert.equal(phone.events.length, 1, 'the dose event goes out with the session');
   assert.equal((await phone.shared.loadDoseLogs()).length, 2);
 });
+
+// Tapping the reminder itself (not „მივიღე ✓“): a medicine taken at 08:00, 14:00 and 20:00. The 20:00
+// banner opened the dose screen with no slot, which fell back to 08:00 — „მიღება“ there re-marked 08:00
+// and left 20:00 open. The tap now opens the reminded slot and day.
+function openTap(deliveredSeconds, data) {
+  return {
+    actionIdentifier: 'expo.modules.notifications.actions.DEFAULT',
+    notification: { date: deliveredSeconds, request: { identifier: 'med:med-1:' + data.time, content: { data } } },
+  };
+}
+
+test('tapping a 20:00 reminder opens the 20:00 dose of that day', async () => {
+  const phone = device({ snapshotUser: 'u1' });
+  const data = { type: 'medication', medicationId: 'med-1', time: '20:00', route: '/medications/med-1?time=20:00' };
+  const result = await phone.actions.handleNotificationAction(openTap(localSeconds(2026, 10, 8, 20, 0), data));
+  assert.equal(result.navigate, true);
+  assert.equal(result.route, '/medications/med-1?time=20:00&date=2026-10-08');
+  assert.deepEqual(phone.logsOf('u1'), [], 'opening marks nothing');
+});
+
+test('a reminder scheduled by an older version (route without a slot) still opens its own dose', async () => {
+  const phone = device({ snapshotUser: 'u1' });
+  const data = { type: 'medication', medicationId: 'med-1', time: '14:00', route: '/medications/med-1' };
+  const result = await phone.actions.handleNotificationAction(openTap(localSeconds(2026, 10, 8, 14, 5), data));
+  assert.equal(result.route, '/medications/med-1?time=14:00&date=2026-10-08');
+});
+
+test('a 23:30 reminder opened after midnight opens that evening’s dose', async () => {
+  const phone = device({ snapshotUser: 'u1' });
+  const data = { type: 'medication', medicationId: 'med-1', time: '23:30' };
+  const result = await phone.actions.handleNotificationAction(openTap(localSeconds(2026, 10, 9, 0, 40), data));
+  assert.equal(result.route, '/medications/med-1?time=23:30&date=2026-10-08');
+});
+
+test('a payload without a slot keeps the old fallback route', async () => {
+  const phone = device({ snapshotUser: 'u1' });
+  const result = await phone.actions.handleNotificationAction(openTap(localSeconds(2026, 10, 8, 9, 0), { type: 'medication', medicationId: 'med-1' }));
+  assert.equal(result.navigate, true);
+  assert.equal(result.route, undefined);
+});
+
+test('the scheduled reminder names its slot and the fallback route keeps it', () => {
+  const source = fs.readFileSync(path.join(SRC, 'notifications.ts'), 'utf8');
+  assert.match(source, /route: `\/medications\/\$\{dose\.medicationId\}\?time=\$\{dose\.time\}/);
+  const plan = load(path.join(SRC, 'notificationPlan.ts'), {});
+  assert.ok(plan.isNotificationRoute('/medications/med-1?time=20:00&date=2026-10-08'));
+  assert.equal(
+    plan.routeFromNotificationData({ type: 'medication', medicationId: 'med-1', time: '20:00', route: '/medications/med-1' }),
+    '/medications/med-1?time=20:00',
+  );
+  assert.equal(plan.routeFromNotificationData({ type: 'medication', medicationId: 'med-1', time: '20:00' }), '/medications/med-1?time=20:00');
+  assert.equal(
+    plan.routeFromNotificationData({ type: 'medication', medicationId: 'med-1', time: '20:00', route: '/medications/med-1?time=20:00' }),
+    '/medications/med-1?time=20:00',
+  );
+  assert.equal(plan.routeFromNotificationData({ type: 'medication', medicationId: 'med-1' }), '/medications/med-1');
+  assert.equal(plan.routeFromNotificationData({ type: 'cycle_reminder', time: '20:00', route: '/cycle/log' }), '/cycle/log');
+});

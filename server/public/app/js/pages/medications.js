@@ -50,6 +50,7 @@ export function parseTimes(freq) { return String(freq || '').split(',').map((t) 
 const dow = (date) => (parseDate(date).getDay() + 6) % 7;
 const minutes = (t) => { const [a, b] = String(t).split(':').map(Number); return (a || 0) * 60 + (b || 0); };
 const pct = (a, b) => (b > 0 ? Math.round((a / b) * 100) : null);
+const movedTime = (log) => (log && log.status === 'pending' && /^([01]\d|2[0-3]):[0-5]\d$/.test(String(log.rescheduledTo || '')) ? log.rescheduledTo : null);
 const shortDay = (date) => { const d = parseDate(date); return `${d.getDate()}/${d.getMonth() + 1}`; };
 
 function daysSummary(days) {
@@ -121,15 +122,17 @@ export function dosesForDate(bundle, date, now = new Date(), medId = null) {
   return [...out.values()].map((d) => {
     const log = idx.get(`${d.med.id}|${date}|${d.time}`);
     let status = log && (log.status === 'taken' || log.status === 'skipped') ? log.status : null;
+    // The app's „გადატანა“ keeps the dose open on its own slot and moves it to a later time that day.
+    const movedTo = !status ? movedTime(log) : null;
     if (!status) {
       if (date < today) status = 'missed';
       else if (date > today) status = 'upcoming';
       else {
-        const m = minutes(d.time);
+        const m = minutes(movedTo || d.time);
         status = nowMin < m ? 'upcoming' : nowMin - m <= DUE_GRACE_MIN ? 'due' : 'missed';
       }
     }
-    return { ...d, date, status, log };
+    return { ...d, date, status, log, movedTo };
   }).sort((a, b) => a.time.localeCompare(b.time) || a.med.medName.localeCompare(b.med.medName, 'ka'));
 }
 
@@ -510,7 +513,7 @@ function timelineCard(bundle, rerender, onAdd) {
         pillBadge(cfg.pillColor, 38),
         h('div', { class: 'med-dose-main' },
           h('a', { href: `/medications/${d.med.id}`, 'data-link': '' }, h('div', { class: 'med-dose-title' }, d.med.medName)),
-          h('div', { class: 'med-dose-sub' }, [d.med.dosage, meal, d.status === 'missed' ? t('გაცდენილი', 'Missed') : d.status === 'due' ? t('ახლა დროა', 'Time to take') : null].filter(Boolean).join(' · '))),
+          h('div', { class: 'med-dose-sub' }, [d.movedTo ? t(`გადატანილია ${d.movedTo}-ზე`, `Moved to ${d.movedTo}`) : null, d.med.dosage, meal, d.status === 'missed' ? t('გაცდენილი', 'Missed') : d.status === 'due' ? t('ახლა დროა', 'Time to take') : null].filter(Boolean).join(' · '))),
         doseButtons(bundle, d, rerender));
     }))))));
 }

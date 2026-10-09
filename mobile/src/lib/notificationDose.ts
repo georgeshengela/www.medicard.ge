@@ -9,6 +9,7 @@ import type { MedicationDoseLog } from '@/types/medications';
 export const PENDING_DOSE_TTL_MS = 24 * 60 * 60_000;
 const PENDING_DOSE_MAX = 50;
 const TIME_RE = /^([01]\d|2[0-3]):[0-5]\d$/;
+const YMD_RE = /^\d{4}-\d{2}-\d{2}$/;
 
 export type PendingDose = MedicationDoseLog & { queuedAt: number };
 
@@ -41,6 +42,15 @@ export function doseDateForNotification(time: string, atMs: number): string {
   return ymd(scheduled);
 }
 
+/**
+ * The day of the dose a medication reminder is about. A one-off reminder names it (`data.date`);
+ * a repeating one is dated by when it was delivered.
+ */
+function reminderDoseDate(data: Record<string, unknown>, time: string, deliveredRaw: unknown, nowMs: number): string {
+  if (typeof data.date === 'string' && YMD_RE.test(data.date)) return data.date;
+  return doseDateForNotification(time, notificationTimeMs(deliveredRaw, nowMs));
+}
+
 /** The dose log row for a „მივიღე ✓“ tap, or null when the payload names no medication. */
 export function notificationDoseEntry(
   data: Record<string, unknown>,
@@ -53,11 +63,23 @@ export function notificationDoseEntry(
   const time = typeof data.time === 'string' ? data.time : '08:00';
   return {
     medicationId,
-    date: doseDateForNotification(time, notificationTimeMs(deliveredRaw, nowMs)),
+    date: reminderDoseDate(data, time, deliveredRaw, nowMs),
     time,
     status: 'taken',
     updatedAt: new Date(nowMs).toISOString(),
   };
+}
+
+/**
+ * Where tapping a medication reminder opens: the dose screen of the reminded slot and day
+ * (`/medications/<id>?time=20:00&date=…`), the same dose „მივიღე ✓“ would mark. Without its own
+ * slot the screen fell back to the first dose of the day. Null when the payload names no slot.
+ */
+export function medicationDoseRoute(data: Record<string, unknown>, deliveredRaw: unknown, nowMs: number): string | null {
+  const medicationId = typeof data.medicationId === 'string' ? data.medicationId : '';
+  const time = typeof data.time === 'string' && TIME_RE.test(data.time) ? data.time : '';
+  if (!medicationId || !time) return null;
+  return `/medications/${encodeURIComponent(medicationId)}?time=${time}&date=${reminderDoseDate(data, time, deliveredRaw, nowMs)}`;
 }
 
 const doseKey = (row: Pick<MedicationDoseLog, 'medicationId' | 'date' | 'time'>) =>

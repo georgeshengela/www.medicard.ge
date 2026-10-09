@@ -47,4 +47,10 @@ export type MedicationDoseLog = {
   time: string;
   status: DoseStatus;
   updatedAt: string;
+  /**
+   * „გადატანა“: the still-open dose (status 'pending', on its own slot `time`) was moved to this
+   * HH:mm the same day. A one-off reminder fires then; nothing is marked taken until she takes it.
+   * Older builds read the row as an ordinary pending dose.
+   */
+  rescheduledTo?: string;
 };

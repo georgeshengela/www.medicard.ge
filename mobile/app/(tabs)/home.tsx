@@ -354,7 +354,7 @@ export default function Home() {
   }
   const answer = todayAnswer({
     pendingDoses: medsOn
-      ? doses.pending.map((dose) => ({ time: dose.time, name: meds.medications.find((m) => m.id === dose.medicationId)?.medName ?? tx('წამალი', 'Medicine') }))
+      ? doses.pending.map((dose) => ({ time: dose.dueTime, name: meds.medications.find((m) => m.id === dose.medicationId)?.medName ?? tx('წამალი', 'Medicine') }))
       : [],
     steps: stepsOn && stepsLinked && stepsGoal > 0 ? { total: stepsTotal, goal: stepsGoal } : null,
     water: waterOn && !hydration.loading ? { ml: hydration.todayMl, goalMl: hydration.goalMl } : null,
