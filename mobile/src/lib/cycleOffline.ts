@@ -616,10 +616,11 @@ export async function queueApplyPeriod(
  * The start goes back first (IR-8): once the tap has reached the server, today's bleeding still holds the
  * shown start while the old one is written back, and removing the day then keeps it. Restoring the day
  * first left the server with no start for a round trip — /cycle showed cycle setup, Home its setup card,
- * and reminders were planned against it. When the start cannot go first (the tap is still queued, or
- * that request failed), it is written back after the day has synced, and the view without it is not
- * published in between. Offline the day is still restored (queued); the start is not, because the
- * queued writes must reach the server first.
+ * and reminders were planned against it. When the start cannot go first (the tap is still queued, that
+ * request failed, or her start was already today — removing today's bleeding then drops it on the server
+ * whatever was posted before), it is written back after the day has synced, and the view without it is
+ * not published in between (a refetch can still show it for that round trip). Offline the day is still
+ * restored (queued); the start is not, because the queued writes must reach the server first.
  */
 export async function undoQueuedPeriodStart(
   userId: string,
