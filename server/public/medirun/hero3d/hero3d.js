@@ -13,6 +13,9 @@ const ADD = { transparent: true, depthWrite: false, blending: THREE.CustomBlendi
 const hero = document.querySelector('.hero');
 const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
 const params = new URLSearchParams(location.search);
+// ?lite=1 — the app's lobby (owner 2026-10-09: the phone got hot): 30 fps, a lower resolution, and after two laps the
+// city rests on its fully lit frame instead of rendering forever. The /medirun page never passes it.
+const LITE = params.get('lite') === '1';
 if (hero && !reduce && params.get('3d') !== '0') start().catch((e) => console.warn('hero3d', e));
 
 async function start() {
@@ -153,7 +156,7 @@ async function start() {
     const pt = parseFloat(getComputedStyle(hero).paddingTop) || 120;
     const CH = narrow ? Math.min(H, Math.round(pt + W * 0.1)) : H;
     canvas.style.height = CH + 'px';
-    const dpr = Math.min(window.devicePixelRatio || 1, narrow ? 1.75 : 2) * quality;
+    const dpr = Math.min(window.devicePixelRatio || 1, LITE ? 1.25 : narrow ? 1.75 : 2) * quality;
     renderer.setPixelRatio(dpr);
     renderer.setSize(W, CH, false);
     post.resize(Math.round(W * dpr), Math.round(CH * dpr));
@@ -176,7 +179,7 @@ async function start() {
   // ---- Timeline.
   const RUN = Math.max(8, Math.min(14, total * 0.75));
   const T = { rise: 0.9, grow: [0.3, 3.0], runAt: 3.2, finale: 2.4, hold: 4.5, dim: 1.6 };
-  let t0 = null, lapStart = T.runAt, last = 0, running = true, visible = true, slow = 0;
+  let t0 = null, lapStart = T.runAt, last = 0, running = true, visible = true, slow = 0, laps = 0, rested = false, drawn = 0;
   const easeInOut = (x) => (x < 0.5 ? 2 * x * x : 1 - Math.pow(-2 * x + 2, 2) / 2);
   const tmp = new THREE.Vector3(), tan = new THREE.Vector3();
 
@@ -208,7 +211,8 @@ async function start() {
     uniforms.uRun.value = lap < 0 ? -0.05 : easeInOut(runP) * 1.0;
     uniforms.uFinale.value = fin;
     uniforms.uFade.value = 1 - dim;
-    if (dim >= 1) { lapStart = t + 0.6; runAct.reset().fadeIn(0.3).play(); danceAct.fadeOut(0.3); }
+    if (dim >= 1) { laps++; lapStart = t + 0.6; runAct.reset().fadeIn(0.3).play(); danceAct.fadeOut(0.3); }
+    if (LITE && laps >= 1 && fin >= 1 && dim === 0 && lap > RUN + T.finale + 1) rested = true;
 
     const show = lap < 0 ? 0 : Math.min(1, lap / 0.5) * (1 - Math.min(1, Math.max(0, (lap - RUN - T.finale - T.hold * 0.6) / 0.8)));
     mint.opacity = show;
@@ -251,9 +255,12 @@ async function start() {
   function loop(now) {
     if (!running) return;
     requestAnimationFrame(loop);
+    if (LITE && now - drawn < 32) return;   // 30 fps is plenty for a background
+    drawn = now;
     const a = performance.now();
     update(now);
     post.render(scene, camera);
+    if (rested) { running = false; return; }   // keep the lit frame on screen, stop drawing
     // Phones that cannot keep up get a lower resolution once, then the bloom off.
     const ms = performance.now() - a;
     slow = ms > 28 ? slow + 1 : Math.max(0, slow - 1);
@@ -265,7 +272,7 @@ async function start() {
   document.addEventListener('visibilitychange', wake);
   function wake() {
     const on = visible && !document.hidden;
-    if (on && !running) { running = true; last = performance.now(); requestAnimationFrame(loop); }
+    if (on && !running && !rested) { running = true; last = performance.now(); requestAnimationFrame(loop); }
     running = on;
   }
 

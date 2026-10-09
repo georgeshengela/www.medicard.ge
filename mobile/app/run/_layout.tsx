@@ -2,7 +2,8 @@ import { Stack,Redirect } from 'expo-router';
 import {ActivityIndicator,View} from 'react-native';
 import {useAuth} from '@/store/AuthContext';
 import { useStackMotion } from '@/hooks/useStackMotion';
-import { ModuleToneProvider } from '@/theme/colors';
+import { ModuleToneProvider, NightProvider } from '@/theme/colors';
+import { StatusBar } from 'expo-status-bar';
 
 export default function RunLayout() {
   const motion = useStackMotion();
@@ -11,9 +12,12 @@ export default function RunLayout() {
   if(!ready)return <View style={{flex:1,justifyContent:'center'}}><ActivityIndicator color="#14B8A6"/></View>;
   if(!user)return <Redirect href="/"/>;
   // MEDIRUN keeps its teal everywhere, also when the women's Home turns the app's brand rose.
+  // MEDIRUN is the night city everywhere — hub, map, summary, walks (owner 2026-10-09).
   return (
+    <NightProvider>
     <ModuleToneProvider tone="run">
-    <Stack screenOptions={{ headerShown: false, ...motion }}>
+    <StatusBar style="light" />
+    <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: '#050B16' }, ...motion }}>
       <Stack.Screen name="index" />
       <Stack.Screen name="active" options={{ ...completionMotion, gestureEnabled: false, fullScreenGestureEnabled: false }} />
       <Stack.Screen name="summary" options={{ ...completionMotion, gestureEnabled: false }} />
@@ -23,5 +27,6 @@ export default function RunLayout() {
       <Stack.Screen name="[id]" />
     </Stack>
     </ModuleToneProvider>
+    </NightProvider>
   );
 }

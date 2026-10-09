@@ -1251,3 +1251,14 @@ button.v3-cc-metric:hover {
   .v3-cc-skel-row,
   .v3-cc-pulse { animation: none; }
 }
+
+/* Countries (2026-10-09): share bar per country, cities and „როგორ დადგინდა“ under the list. */
+.v3-cc-geo-side { display: flex; flex-direction: column; gap: 10px; min-width: 0; max-height: 420px; padding-bottom: 12px; border-left: 1px solid var(--cc-border); background: var(--cc-surface); }
+.v3-cc-geo-side > .v3-cc-geo-list { border-left: 0; background: transparent; max-height: none; flex: 0 1 auto; }
+.v3-cc-geo-side > p { padding: 0 16px; }
+.v3-cc-geo-name { display: grid; gap: 5px; min-width: 0; }
+.v3-cc-geo-share { display: block; height: 4px; border-radius: 99px; background: var(--s-sunken, rgba(127,127,127,.15)); overflow: hidden; }
+.v3-cc-geo-share > i { display: block; height: 100%; border-radius: 99px; background: var(--s-accent, #14b8a6); }
+.v3-cc-geo-item strong small { display: block; font-size: 11px; font-weight: 500; color: var(--s-muted, #8a93a3); text-align: right; }
+.v3-cc-geo-cities, .v3-cc-geo-src { margin: 0; font-size: 12px; line-height: 1.5; color: var(--s-muted, #8a93a3); }
+.v3-cc-geo-cities b { color: var(--s-text-2, inherit); font-weight: 600; }

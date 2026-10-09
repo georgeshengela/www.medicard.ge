@@ -493,7 +493,9 @@ export async function errorGroups({ hours = 24, source = 'all', db = prisma } = 
     if (!byFp.has(v.fingerprint)) byFp.set(v.fingerprint, []);
     byFp.get(v.fingerprint).push({ version: v.version, count: Number(v.n) });
   }
+  const reviews = await reviewedGroups(db);
   const groups = rows.map((r) => ({
+    ...reviewState(reviews.get(r.fingerprint), r.lastSeen),
     fingerprint: r.fingerprint,
     source: r.source,
     kind: r.kind,
@@ -509,12 +511,54 @@ export async function errorGroups({ hours = 24, source = 'all', db = prisma } = 
     sampleStack: r.sampleStack,
     sampleRoute: r.sampleRoute,
   }));
+  // Totals count open groups only: a reviewed group is out until it happens again.
+  const hidden = groups.filter((g) => g.reviewed).map((g) => g.fingerprint);
   const [totals] = await db.$queryRaw`
     SELECT COALESCE(SUM(count), 0)::int AS events, COUNT(DISTINCT fingerprint)::int AS "groups", COUNT(DISTINCT "userHash")::int AS "users",
       COALESCE(SUM(count) FILTER (WHERE fatal), 0)::int AS fatal
-    FROM "ErrorEvent" WHERE "createdAt" >= ${since} AND (${source}::text = 'all' OR source = ${source}::text)`;
-  const newGroups = groups.filter((g) => new Date(g.firstSeen).getTime() >= since.getTime()).length;
-  return { hours, source, totals: { events: Number(totals?.events) || 0, groups: Number(totals?.groups) || 0, users: Number(totals?.users) || 0, fatal: Number(totals?.fatal) || 0, newGroups }, groups };
+    FROM "ErrorEvent" WHERE "createdAt" >= ${since} AND (${source}::text = 'all' OR source = ${source}::text)
+      AND NOT (fingerprint = ANY(${hidden}::text[]))`;
+  const newGroups = groups.filter((g) => !g.reviewed && new Date(g.firstSeen).getTime() >= since.getTime()).length;
+  return {
+    hours,
+    source,
+    totals: { events: Number(totals?.events) || 0, groups: Number(totals?.groups) || 0, users: Number(totals?.users) || 0, fatal: Number(totals?.fatal) || 0, newGroups, reviewed: hidden.length },
+    groups,
+  };
+}
+
+// ---------- review („განხილულია“) ----------
+
+const missingReviewTable = (error) => /ErrorEventReview|42P01|does not exist/.test(String(error?.message || error?.meta?.message || ''));
+
+/** fingerprint → reviewedAt; empty until install-errors.mjs has created the table. */
+async function reviewedGroups(db = prisma) {
+  try {
+    const rows = await db.$queryRaw`SELECT fingerprint, "reviewedAt" FROM "ErrorEventReview"`;
+    return new Map(rows.map((r) => [r.fingerprint, r.reviewedAt]));
+  } catch (error) {
+    if (missingReviewTable(error)) return new Map();
+    throw error;
+  }
+}
+
+/** Reviewed = nothing new since the review; a newer event reopens the group („დაბრუნდა“). */
+export function reviewState(reviewedAt, lastSeen) {
+  if (!reviewedAt) return { reviewed: false, reviewedAt: null, returned: false };
+  const reviewed = new Date(reviewedAt).getTime() >= new Date(lastSeen).getTime();
+  return { reviewed, reviewedAt, returned: !reviewed };
+}
+
+export async function reviewErrorGroups(fingerprints, { by = null, db = prisma } = {}) {
+  for (const fp of fingerprints) {
+    await db.$executeRaw`INSERT INTO "ErrorEventReview" (fingerprint, "reviewedAt", "reviewedBy") VALUES (${fp}, NOW(), ${by})
+      ON CONFLICT (fingerprint) DO UPDATE SET "reviewedAt" = NOW(), "reviewedBy" = EXCLUDED."reviewedBy"`;
+  }
+  return fingerprints.length;
+}
+
+export async function reopenErrorGroup(fingerprint, { db = prisma } = {}) {
+  return db.$executeRaw`DELETE FROM "ErrorEventReview" WHERE fingerprint = ${fingerprint}`;
 }
 
 export async function errorGroupDetail(fingerprint, { hours = 24, db = prisma } = {}) {

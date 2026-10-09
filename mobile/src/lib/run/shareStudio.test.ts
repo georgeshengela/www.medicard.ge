@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {trimEnds,joinSegments,cityLines,boundsOf,thin,lineLength,metersBetween,buildShareStudioHtml,splitJumps,longestLine,type LngLat} from './shareStudio.ts';
+import {privateLines,trimEnds,joinSegments,cityLines,boundsOf,thin,lineLength,metersBetween,buildShareStudioHtml,splitJumps,longestLine,type LngLat} from './shareStudio.ts';
 
 const T:LngLat=[44.7930,41.6970];
 const east=(p:LngLat,m:number):LngLat=>[p[0]+m/(111320*Math.cos(p[1]*Math.PI/180)),p[1]];
@@ -52,4 +52,17 @@ test('GPS jumps split a route; the walk clip keeps the longest unbroken stretch'
  assert.equal(splitJumps([line(T,8000,40)]).length,1);
  // a lone leap between two fixes leaves nothing to draw
  assert.deepEqual(trimEnds([[T,east(T,2500)]],200),[]);
+});
+
+test('walk clip privacy: home zone hidden anywhere, ends kept away from home, switch off shows all, no home trims the walk ends',()=>{
+ const home=T,walk=line(T,1500);                       // starts at home, 1.5 km east
+ const near=privateLines([walk],{home});
+ assert.ok(near.length===1&&lineLength(near[0])>1100&&lineLength(near[0])<1300);
+ for(const p of near[0])assert.ok(metersBetween(p,home)>250);
+ const far=east(T,3000),park=line(far,500);             // a park walk 3 km from home: shown in full
+ assert.ok(Math.abs(lineLength(privateLines([park],{home})[0])-lineLength(park))<1);
+ assert.ok(Math.abs(lineLength(privateLines([walk],{hide:false})[0])-lineLength(walk))<1);
+ const noHome=privateLines([walk],{home:null});
+ assert.ok(lineLength(noHome[0])>1000&&lineLength(noHome[0])<1150);
+ assert.deepEqual(privateLines([line(T,250)],{home}),[]);
 });

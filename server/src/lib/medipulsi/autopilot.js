@@ -7,6 +7,7 @@
 // rain (and, from November, a few „lantern“ boxes only for players with 0.25% of Tbilisi lit).
 // 31 December = the grand prize, visible only from 1% of Tbilisi.
 // Spots: server/src/data/medirun-spots-tbilisi.json (OpenStreetMap footway nodes inside public parks/squares).
+import {dispatchWaveAlerts} from './waveAlerts.js';
 import {readFileSync} from 'node:fs';
 import {randomUUID} from 'node:crypto';
 import {prisma} from '../prisma.js';
@@ -224,6 +225,9 @@ export function startMedirunAutopilot({intervalMs=10*60_000}={}){
    const out=await runAutopilot();
    const made=(out.results||[]).reduce((s,r)=>s+(r.created||0),0);
    if(made)console.log(`[medirun-autopilot] placed ${made} boxes`,(out.results||[]).map(r=>`${r.date}:${r.created}/${r.total}`).join(' '));
+   // Stage 3 (owner 2026-10-09): „ყუთი შენთან ახლოსაა“ for waves that just started — same lease, one sender.
+   const alerts=await dispatchWaveAlerts();
+   if(alerts.sent)console.log(`[medirun-autopilot] wave alerts sent ${alerts.sent}`);
   }catch(error){console.warn('[medirun-autopilot] run failed',error?.message);}
  };
  timer=setInterval(tick,intervalMs);timer.unref?.();

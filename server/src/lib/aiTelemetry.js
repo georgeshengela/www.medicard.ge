@@ -105,6 +105,9 @@ export async function runTrackedAi({
   }
 }
 
+/** An error the admin has looked at (#/ai „ჩაქრობა“): it leaves every error count but stays in the log. */
+export const AI_ERROR_REVIEWED = 'ERROR_REVIEWED';
+
 export async function getAiQualityStats() {
   const since24h = new Date(Date.now() - 24 * 60 * 60 * 1000);
   const since7d = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
@@ -118,6 +121,8 @@ export async function getAiQualityStats() {
     feedbackAgg,
     lastEval,
     avgLatency,
+    openErrors,
+    reviewedErrors,
   ] = await Promise.all([
     prisma.aiInteraction.count(),
     prisma.aiInteraction.count({ where: { createdAt: { gte: since24h } } }),
@@ -137,6 +142,8 @@ export async function getAiQualityStats() {
       where: { createdAt: { gte: since7d }, status: 'OK', latencyMs: { not: null } },
       _avg: { latencyMs: true },
     }),
+    prisma.aiInteraction.count({ where: { status: 'ERROR' } }),
+    prisma.aiInteraction.count({ where: { status: AI_ERROR_REVIEWED } }),
   ]);
 
   const feedback = { up: 0, down: 0 };
@@ -151,6 +158,8 @@ export async function getAiQualityStats() {
     last7d,
     errors24h,
     errorRate24h: last24h ? Math.round((errors24h / last24h) * 100) : 0,
+    openErrors,
+    reviewedErrors,
     byMode: byMode
       .map((row) => ({ mode: row.mode, count: row._count }))
       .sort((a, b) => b.count - a.count),

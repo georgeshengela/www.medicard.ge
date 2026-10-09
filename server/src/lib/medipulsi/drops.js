@@ -144,17 +144,26 @@ export function parseAt(raw){
  const at=[Number(m[1]),Number(m[2])];
  return Math.abs(at[0])<=180&&Math.abs(at[1])<=90?at:null;
 }
-/** The smallest city box (MEDIRUN cities + Tbilisi's campaign area) holding the point. Pure. */
-export function pickCityAt(at,boxes){
+/**
+ * The smallest city box (MEDIRUN cities + Tbilisi's campaign area) holding the point; outside every box, the nearest
+ * one within 20 km (a suburb such as Rocourt next to Liège plays in Liège). Pure.
+ */
+export function pickCityAt(at,boxes,maxKm=20){
  const area=b=>(b[2]-b[0])*(b[3]-b[1]);
- return boxes.filter(x=>at[0]>=x.box[0]&&at[0]<=x.box[2]&&at[1]>=x.box[1]&&at[1]<=x.box[3]).sort((a,b)=>area(a.box)-area(b.box))[0]||null;
+ const inside=boxes.filter(x=>at[0]>=x.box[0]&&at[0]<=x.box[2]&&at[1]>=x.box[1]&&at[1]<=x.box[3]).sort((a,b)=>area(a.box)-area(b.box))[0];
+ if(inside)return inside;
+ const k=Math.cos(at[1]*Math.PI/180)*111.32,km=b=>Math.hypot(Math.max(b[0]-at[0],0,at[0]-b[2])*k,Math.max(b[1]-at[1],0,at[1]-b[3])*111.32);
+ const near=boxes.map(x=>({x,d:km(x.box)})).filter(n=>n.d<=maxKm).sort((a,b)=>a.d-b.d)[0];
+ return near?near.x:null;
 }
 let cityBoxes={at:0,list:null};
 async function cityBboxes(db,campaign){
  if(cityBoxes.list&&Date.now()-cityBoxes.at<10*60_000)return cityBoxes.list;
  await ensureCityTable(db);
  const rows=await db.$queryRaw`SELECT c."cityId",c."nameKa",c."nameEn",c."timezone",c."status",c."enabled",a."geometry" FROM "MedirunCity" c JOIN "MedipulsiArea" a ON a."id"=c."cityId"`.catch(()=>[]);
- const list=rows.map(row=>({row,box:row.geometry?geometryBbox(row.geometry):null})).filter(x=>x.box&&x.box.every(Number.isFinite));
+ // Only cities that can have boxes: an empty one (no park paths found — e.g. Rocourt inside Liège) must not hide
+ // the city around it.
+ const list=rows.filter(row=>row.status==='ready'&&row.enabled!==false).map(row=>({row,box:row.geometry?geometryBbox(row.geometry):null})).filter(x=>x.box&&x.box.every(Number.isFinite));
  const tb=await campaignBbox(db,campaign);
  if(tb)list.push({tbilisi:true,box:tb});
  cityBoxes={at:Date.now(),list};
@@ -190,6 +199,12 @@ async function readerCity(userId,{db,campaign,now,lang,at=null}){
   if(id===campaign.area.id)return tbilisi;
   if(id){
    const c=await cityRow(id);
+   // A home city without boxes (no park paths found) plays in the city around / next to it.
+   if(c&&c.status!=='ready'&&Number.isFinite(Number(home.lng))){
+    const hit=pickCityAt([Number(home.lng),Number(home.lat)],await cityBboxes(db,campaign).catch(()=>[]));
+    if(hit?.tbilisi)return tbilisi;
+    if(hit?.row)return asView(hit.row);
+   }
    if(c)return asView(c);
    const [a]=await db.$queryRaw`SELECT "nameKa","nameEn","countryCode" FROM "MedipulsiArea" WHERE "id"=${id}`;
    if(a)return {id,name:(lang==='en'?a.nameEn:a.nameKa)||a.nameEn||a.nameKa,timezone:timezoneFor(a.countryCode,home.lng),pending:true};
@@ -217,7 +232,8 @@ export async function dropsStatus(userId,{now=Date.now(),lang='ka',db=prisma,at=
  const [today,mine]=await Promise.all([counts({db,cityId:city.id,campaign,since}),counts({db,cityId:city.id,campaign,since,userId})]);
  const home=city.id===campaign.area.id;
  const planned=!home||gifts.some(g=>+g.startsAt>now&&giftCity(rules.get(g.id),campaign)===city.id)||!enabled||!(await autopilotEnabled(db).catch(()=>false))?[]:[tbilisiDate(now),...[1,2].map(d=>tbilisiDate(now+d*24*HOUR))].flatMap(d=>planDay(d,{campaign}));
- const live=home?await liveNow({db,campaign,gifts,rules,now}).catch(()=>null):null;
+ // „N ახლა დარბის“ in every city (owner 2026-10-09), still null below three people.
+ const live=home?await liveNow({db,campaign,gifts,rules,now}).catch(()=>null):await cityLive(city.id,{db,campaign,now}).catch(()=>null);
  return dropsView({gifts:enabled?gifts:[],rules,now,claimsToday:today.n,coinsToday:today.coins,mine:{opened:mine.n,coins:mine.coins},planned,lang,enabled,campaign,
   city:home?null:city,schedule:home?null:cityScheduleOf(cityRulesOf(campaign),lang),live});
 }
@@ -231,6 +247,10 @@ async function campaignBbox(db,campaign){
  return areaBox.box;
 }
 /** Walkers in the campaign city right now, and near the Saturday rain while it is out (its boxes' centre). */
+async function cityLive(cityId,{db,campaign,now}){
+ const box=(await cityBboxes(db,campaign)).find(x=>x.row?.cityId===cityId)?.box;
+ return box?liveWalkers({bbox:box,db,now}):null;
+}
 async function liveNow({db,campaign,gifts,rules,now}){
  const bbox=await campaignBbox(db,campaign);
  if(!bbox)return null;

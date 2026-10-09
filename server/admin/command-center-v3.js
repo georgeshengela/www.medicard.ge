@@ -421,21 +421,82 @@
     if (/^\d/.test(clean)) return '#';
     return typeof initials === 'function' ? initials(clean) : clean.slice(0, 1).toUpperCase();
   }
-  function onlineRowHtml(u) {
+  // Story circles: the ring wears the colour of the module the person is in (mobile theme/moduleBrand.ts).
+  const PLACE_TONE = {
+    MEDIRUN: ['#0B4D47', '#0D9488', '#2DD4BF'], Medi: ['#0B4D47', '#0D9488', '#5EEAD4'], MEDICYCLE: ['#831843', '#C92A55', '#FF8FA8'],
+    MEDIFOOD: ['#064E3B', '#059669', '#34D399'], MEDIPILL: ['#1E3A8A', '#1D4ED8', '#60A5FA'], MEDIQUEST: ['#3B0764', '#6D28D9', '#A78BFA'],
+    MEDIVET: ['#0C4A6E', '#0284C7', '#38BDF8'], MEDICOACH: ['#1F2937', '#475569', '#94A3B8'], MEDISCAN: ['#083344', '#0891B2', '#22D3EE'],
+    MEDILAB: ['#1E1B4B', '#4338CA', '#818CF8'], 'მთავარი': ['#0F766E', '#14B8A6', '#99F6E4'], 'ქალების სივრცე': ['#831843', '#DB2777', '#F9A8D4'],
+    'რეგისტრაცია': ['#78350F', '#D97706', '#FCD34D'], 'შესვლა': ['#78350F', '#D97706', '#FCD34D'],
+  };
+  const NEUTRAL_TONE = ['#334155', '#64748B', '#CBD5E1'];
+  const placeTone = (place) => PLACE_TONE[place] || NEUTRAL_TONE;
+  function onlineTileHtml(u) {
     const name = u.name || u.contact || 'უსახელო';
+    const first = String(u.name || '').trim().split(/\s+/)[0] || name;
     const isNew = u.joinedAt && Date.now() - new Date(u.joinedAt).getTime() < 24 * 3600 * 1000;
-    const where = screenKa(u.screen);
+    const place = placeKa(u.screen);
     const device = [PLATFORM_KA[u.platform] || null, u.platform === 'web' ? null : u.appVersion].filter(Boolean).join(' · ');
-    const sub = [u.name && u.contact ? u.contact : '', u.firstAt ? `დღეს პირველად ${clockOf(u.firstAt)}` : ''].filter(Boolean).join(' · ');
     return `
-      <span class="s-avatar${u.gender === 'FEMALE' ? ' is-f' : ''}" aria-hidden="true">${esc(personInitials(name))}<i class="cc-on-dot"></i></span>
-      <span class="cc-on-who">
-        <b>${esc(name)}</b>${isNew ? ' <span class="s-badge is-accent is-plain">ახალი</span>' : ''}
-        <small>${esc(sub)}</small>
+      <span class="cc-st-ring${isNew ? ' is-new' : ''}" aria-hidden="true">
+        <span class="cc-st-face${u.gender === 'FEMALE' ? ' is-f' : ''}">${esc(personInitials(name))}</span>
+        <span class="cc-st-device" title="${esc(PLATFORM_KA[u.platform] || '')}">${ico(u.platform === 'web' ? 'globe' : 'phone')}</span>
       </span>
-      <span class="cc-on-where">${where ? `<span class="s-badge is-info is-plain">${esc(where)}</span>` : ''}</span>
-      <span class="cc-on-device">${esc(device)}</span>
-      <span class="cc-on-ago" data-ago="${esc(u.lastAt)}">${esc(agoKa(u.lastAt))}</span>`;
+      <span class="cc-st-place">${esc(place)}</span>
+      <span class="cc-st-name">${esc(first)}</span>
+      <span class="cc-st-pop" role="tooltip">
+        <b>${esc(name)}</b>${isNew ? ' <span class="s-badge is-accent is-plain">ახალი</span>' : ''}
+        ${u.name && u.contact ? `<small>${esc(u.contact)}</small>` : ''}
+        <span class="cc-st-pop-row"><i style="background:${placeTone(place)[1]}"></i>${esc(place)}${u.screen && u.screen.includes('/') ? ` <em>· ${esc(u.screen.split('/').slice(1).join('/'))}</em>` : ''}</span>
+        ${device ? `<span class="cc-st-pop-row">${esc(device)}</span>` : ''}
+        <span class="cc-st-pop-row">${u.firstAt ? `დღეს პირველად ${esc(clockOf(u.firstAt))} · ` : ''}<span data-ago="${esc(u.lastAt)}">${esc(agoKa(u.lastAt))}</span></span>
+      </span>`;
+  }
+  // Many people online stays readable: a summary over everyone (where / which device), chips that filter
+  // the list, a search box, and only the first ONLINE_PREVIEW rows until „ყველას ნახვა“.
+  const ONLINE_PREVIEW = 24;
+  const PLATFORM_ORDER = [['ios', 'iPhone'], ['android', 'Android'], ['web', 'ვებ'], ['unknown', 'უცნობი']];
+  const onlineView = { filter: '', query: '', expanded: false, snap: null };
+  const placeKa = (screen) => screenKa(screen) || 'სხვა';
+
+  /** Server summary (all online, not just the listed 100) merged onto module names; older servers → from the list. */
+  function onlineSummary(snap) {
+    const users = snap.users || [];
+    const raw = snap.summary || {
+      screens: users.reduce((acc, u) => { const k = String(u.screen || '').split('/').filter(Boolean)[0] || ''; acc[k] = (acc[k] || 0) + 1; return acc; }, {}),
+      platforms: users.reduce((acc, u) => { const k = u.platform || 'unknown'; acc[k] = (acc[k] || 0) + 1; return acc; }, {}),
+      newcomers: users.filter((u) => u.joinedAt && Date.now() - new Date(u.joinedAt).getTime() < 24 * 3600 * 1000).length,
+    };
+    const places = new Map();
+    for (const [first, n] of Object.entries(raw.screens || {})) {
+      const label = (first && SCREEN_KA[first]) || 'სხვა';
+      places.set(label, (places.get(label) || 0) + Number(n || 0));
+    }
+    const sorted = [...places].sort((a, b) => (a[0] === 'სხვა') - (b[0] === 'სხვა') || b[1] - a[1]);
+    return { places: sorted, platforms: raw.platforms || {}, newcomers: Number(raw.newcomers) || 0 };
+  }
+
+  function onlineSummaryHtml(snap, total) {
+    const { places, platforms, newcomers } = onlineSummary(snap);
+    const chips = [['', 'ყველა', total], ...places.map(([label, n]) => [label, label, n])]
+      .map(([key, label, n]) => `<button type="button" role="tab" class="cc-on-chip" aria-selected="${onlineView.filter === key}" data-on-filter="${esc(key)}">${esc(label)}<i>${fmt(n)}</i></button>`).join('');
+    const devices = PLATFORM_ORDER.map(([key, label]) => [key, label, Number(platforms[key]) || 0]).filter(([, , n]) => n > 0);
+    const sum = devices.reduce((s, [, , n]) => s + n, 0) || 1;
+    return `
+      <div class="cc-on-places" role="tablist" aria-label="სად არიან">${chips}</div>
+      <div class="cc-on-devices">
+        <div class="cc-on-bar" role="img" aria-label="${esc(devices.map(([, l, n]) => `${l} ${n}`).join(', '))}">${devices.map(([key, , n]) => `<i class="is-${key}" style="width:${(n / sum) * 100}%"></i>`).join('')}</div>
+        <div class="cc-on-legend">${devices.map(([key, label, n]) => `<span><i class="is-${key}"></i>${esc(label)} <b>${fmt(n)}</b> <em>${Math.round((n / sum) * 100)}%</em></span>`).join('')}${newcomers ? `<span class="cc-on-newcount"><span class="s-badge is-accent is-plain">ახალი</span> ${fmt(newcomers)} დღეს დარეგისტრირდა</span>` : ''}</div>
+      </div>`;
+  }
+
+  function onlineMatches(u) {
+    if (onlineView.filter && placeKa(u.screen) !== onlineView.filter) return false;
+    const q = onlineView.query.trim().toLowerCase();
+    if (!q) return true;
+    const digits = q.replace(/\D/g, '');
+    const hay = `${u.name || ''} ${u.contact || ''}`.toLowerCase();
+    return hay.includes(q) || (digits.length >= 3 && String(u.contact || '').replace(/\D/g, '').includes(digits));
   }
 
   function paintOnline(snap) {
@@ -445,9 +506,14 @@
       onlineEls = new Map();
       host.innerHTML = section({
         title: 'ვინ არის ახლა აპში',
-        description: 'აპში ან ვებ-ვერსიაში ბოლო 90 წამში მყოფი ადამიანები. სია თავისით ახლდება — გვერდის განახლება არ სჭირდება. დააჭირე სტრიქონს პროფილის სანახავად.',
+        description: 'აპში ან ვებ-ვერსიაში ბოლო 90 წამში მყოფი ადამიანები, თავისით ახლდება. რგოლის ფერი და ბეჯი — სად არის ახლა; მოძრავი რგოლი — ახალი მომხმარებელი. ჩიპი ფილტრავს, წრე ხსნის პროფილს.',
         action: '<span class="cc-on-count" id="ops-online-count"><i class="v3-cc-pulse" aria-hidden="true"></i><b>—</b> ონლაინ</span>',
-        content: '<div class="cc-on-list" id="ops-online-list" role="list" aria-live="polite"></div><p class="cc-on-more" id="ops-online-more" hidden></p>',
+        content: `<div class="cc-on-summary" id="ops-online-summary"></div>
+          <div class="cc-on-tools" id="ops-online-tools" hidden>
+            <label class="cc-on-search">${ico('search')}<input type="search" id="ops-online-q" placeholder="სახელი ან ნომერი" autocomplete="off" aria-label="ონლაინ მომხმარებლის ძებნა"></label>
+            <span class="cc-on-shown" id="ops-online-shown"></span>
+          </div>
+          <div class="cc-st-grid" id="ops-online-list" role="list" aria-live="polite"></div>`,
         mod: 'cc-on',
       });
       const list = host.querySelector('#ops-online-list');
@@ -459,6 +525,24 @@
         const row = e.target.closest('[data-user]');
         if (row && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); row.click(); }
       });
+      host.querySelector('#ops-online-summary').addEventListener('click', (e) => {
+        const chip = e.target.closest('[data-on-filter]');
+        if (!chip) return;
+        onlineView.filter = onlineView.filter === chip.dataset.onFilter ? '' : chip.dataset.onFilter;
+        onlineView.expanded = false;
+        paintOnline(onlineView.snap);
+      });
+      host.querySelector('#ops-online-q').addEventListener('input', (e) => {
+        onlineView.query = e.target.value;
+        paintOnline(onlineView.snap);
+      });
+      list.addEventListener('click', (e) => {
+        if (!e.target.closest('[data-on-more]')) return;
+        e.stopPropagation();
+        onlineView.expanded = !onlineView.expanded;
+        paintOnline(onlineView.snap);
+        if (!onlineView.expanded) host.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }, true);
     }
     const list = host.querySelector('#ops-online-list');
     const count = host.querySelector('#ops-online-count');
@@ -466,43 +550,81 @@
       if (!list.children.length) list.innerHTML = '<div class="cc-on-empty">იტვირთება…</div>';
       return;
     }
+    onlineView.snap = snap;
     // Stable order (who came first today stays put); the server list is newest-heartbeat first.
     const users = [...(snap.users || [])].sort((a, b) => String(b.firstAt || '').localeCompare(String(a.firstAt || '')) || String(a.id).localeCompare(String(b.id)));
+    const total = Number(snap.count ?? users.length) || 0;
     if (count) {
-      count.querySelector('b').textContent = fmt(snap.count ?? users.length);
-      count.classList.toggle('is-empty', !users.length);
+      count.querySelector('b').textContent = fmt(total);
+      count.classList.toggle('is-empty', !total);
     }
-    list.querySelectorAll('.cc-on-empty').forEach((el) => el.remove());
-    const keep = new Set(users.map((u) => u.id));
+    // A filter whose place emptied out falls back to everyone.
+    if (onlineView.filter && !users.some((u) => placeKa(u.screen) === onlineView.filter)) onlineView.filter = '';
+
+    const summary = host.querySelector('#ops-online-summary');
+    summary.hidden = !total;
+    const summaryHtml = total ? onlineSummaryHtml(snap, total) : '';
+    if (summary.dataset.html !== summaryHtml) { summary.innerHTML = summaryHtml; summary.dataset.html = summaryHtml; }
+
+    const matching = users.filter(onlineMatches);
+    const visible = onlineView.expanded ? matching : matching.slice(0, ONLINE_PREVIEW);
+    const tools = host.querySelector('#ops-online-tools');
+    tools.hidden = users.length <= ONLINE_PREVIEW && !onlineView.query;
+    const shown = host.querySelector('#ops-online-shown');
+    if (shown) {
+      const filtered = onlineView.filter || onlineView.query.trim();
+      shown.textContent = filtered ? `${fmt(matching.length)} ნაპოვნია` : (total > users.length ? `სიაში პირველი ${fmt(users.length)} · სულ ${fmt(total)}` : '');
+    }
+
+    list.querySelectorAll('.cc-on-empty, [data-on-more]').forEach((el) => el.remove());
+    const online = new Set(users.map((u) => u.id));
+    const keep = new Set(visible.map((u) => u.id));
     for (const [id, el] of onlineEls) {
       if (keep.has(id)) continue;
       onlineEls.delete(id);
+      if (online.has(id)) { el.remove(); continue; }
       el.classList.add('is-leaving');
       setTimeout(() => el.remove(), 380);
     }
     let prev = null;
-    for (const u of users) {
+    for (const u of visible) {
       let el = onlineEls.get(u.id);
       if (!el) {
         el = document.createElement('div');
-        el.className = 'cc-on-row is-new';
+        el.className = 'cc-st is-new';
         el.setAttribute('role', 'listitem');
         el.tabIndex = 0;
         el.dataset.user = u.id;
         onlineEls.set(u.id, el);
         setTimeout(() => el.classList.remove('is-new'), 700);
       }
-      const html = onlineRowHtml(u);
-      if (el.dataset.html !== html) { el.innerHTML = html; el.dataset.html = html; }
+      const html = onlineTileHtml(u);
+      if (el.dataset.html !== html) {
+        el.innerHTML = html;
+        el.dataset.html = html;
+        const [g1, g2, g3] = placeTone(placeKa(u.screen));
+        el.style.setProperty('--st-1', g1);
+        el.style.setProperty('--st-2', g2);
+        el.style.setProperty('--st-3', g3);
+        el.setAttribute('aria-label', `${u.name || u.contact || 'უსახელო'} — ${placeKa(u.screen)}`);
+      }
       const anchor = prev ? prev.nextSibling : list.firstChild;
       if (el !== anchor) list.insertBefore(el, anchor);
       prev = el;
     }
-    const more = host.querySelector('#ops-online-more');
-    const extra = Number(snap.count || 0) - users.length;
-    if (more) { more.hidden = !(extra > 0); more.textContent = extra > 0 ? `და კიდევ ${fmt(extra)} ადამიანი` : ''; }
-    if (!users.length) {
+
+    // „+N“ is the last circle; expanded, it folds the wall back.
+    const hiddenRows = matching.length - visible.length;
+    if (hiddenRows > 0 || (onlineView.expanded && matching.length > ONLINE_PREVIEW)) {
+      list.insertAdjacentHTML('beforeend', `<button type="button" class="cc-st cc-st-more" data-on-more>
+        <span class="cc-st-ring"><span class="cc-st-face">${onlineView.expanded ? ico('chevronLeft') : `+${fmt(hiddenRows)}`}</span></span>
+        <span class="cc-st-name">${onlineView.expanded ? 'ნაკლები' : 'ყველა'}</span></button>`);
+    }
+
+    if (!total) {
       list.insertAdjacentHTML('beforeend', '<div class="cc-on-empty">ახლა აპში არავინაა. როგორც კი ვინმე შემოვა, აქ თავისით გამოჩნდება.</div>');
+    } else if (!matching.length) {
+      list.insertAdjacentHTML('beforeend', '<div class="cc-on-empty">ამ ფილტრით ახლა არავინაა.</div>');
     }
   }
 
@@ -1177,15 +1299,27 @@
     const countries = geo.countries || [];
     const located = Number(geo.located) || 0;
     const unknown = Number(geo.unknown) || 0;
+    const total = located + unknown || 1;
+    const src = geo.sources || {};
+    // Where each country comes from (adminUserGeoShape.userCountry): shared location › phone code › time zone.
+    const sourceNote = [
+      src.location ? `მდებარეობა ${fmt(src.location)}` : '',
+      src.phone ? `ტელეფონის კოდი ${fmt(src.phone)}` : '',
+      src.timezone ? `საათის სარტყელი ${fmt(src.timezone)}` : '',
+    ].filter(Boolean).join(' · ');
+    const cities = geo.cities || [];
     const list = countries.length
-      ? '<ol class="v3-cc-geo-list">' + countries.map((row, i) => (
+      ? '<div class="v3-cc-geo-side"><ol class="v3-cc-geo-list">' + countries.map((row, i) => (
         `<li><button type="button" class="v3-cc-geo-item" data-geo-i="${i}">`
         + `${flagImg(row.code)}`
-        + `<span class="v3-cc-geo-name">${esc(row.nameKa)}</span>`
-        + `<strong>${fmt(row.users)}</strong></button></li>`
+        + `<span class="v3-cc-geo-name">${esc(row.nameKa)}<i class="v3-cc-geo-share"><i style="width:${Math.max(2, Math.round((row.users / total) * 100))}%"></i></i></span>`
+        + `<strong>${fmt(row.users)}<small>${Math.round((row.users / total) * 100)}%</small></strong></button></li>`
       )).join('')
         + (unknown ? `<li class="v3-cc-geo-unknown"><span>უცნობი ქვეყანა</span><strong>${fmt(unknown)}</strong></li>` : '')
         + '</ol>'
+        + (cities.length ? `<p class="v3-cc-geo-cities"><b>ქალაქები</b> (გაზიარებული მდებარეობით): ${cities.map((c) => `${esc(c.nameKa)} ${fmt(c.users)}`).join(' · ')}</p>` : '')
+        + (sourceNote ? `<p class="v3-cc-geo-src">როგორ დადგინდა: ${esc(sourceNote)}</p>` : '')
+        + '</div>'
       : emptyBox(
         'ქვეყანა ჯერ არ ჩანს',
         unknown
@@ -1199,8 +1333,8 @@
       title: 'ქვეყნები',
       helpKey: 'overview.geo',
       description: located
-        ? `${fmt(countries.length)} ქვეყანა · ${fmt(located)} მომხმარებელი მდებარეობით` + (unknown ? ` · ${fmt(unknown)} უცნობი` : '') + '.'
-        : 'ქვეყანა ინათება პირველი რეგისტრაციისას, როცა GPS ქვეყანა ცნობილია.',
+        ? `${fmt(located)} მომხმარებელი ${fmt(countries.length)} ქვეყანაში` + (unknown ? ` · ${fmt(unknown)} უცნობი` : '') + '. ქვეყანა: გაზიარებული მდებარეობა, თუ არა — ტელეფონის კოდი ან ტელეფონის საათის სარტყელი.'
+        : 'ქვეყანა ჯერ ვერ დადგინდა — ჩანს გაზიარებული მდებარეობით, ტელეფონის კოდით ან საათის სარტყლით.',
       content: `<div class="v3-cc-geo">${mapPane}${list}</div>`,
     });
     host.querySelectorAll('[data-geo-i]').forEach((btn) => {

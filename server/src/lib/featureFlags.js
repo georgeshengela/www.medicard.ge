@@ -197,6 +197,15 @@ export const FEATURES = Object.freeze([
     defaultMessageEn: 'Campaign gifts are paused for a moment.',
   },
   {
+    key: 'medirunWaveAlerts',
+    group: 'system',
+    parent: 'medirun',
+    label: 'MEDIRUN: „ყუთი შენთან ახლოსაა“ შეტყობინება',
+    description: 'ყუთების ტალღის დაწყებისას push იმ მოთამაშეებს, ვინც აპში ჩართო და ვისი სახლიც ყუთიდან 1,5 კმ-შია (დღეში მაქსიმუმ 2, 08:00–21:30). გამორთვისას შეტყობინებები აღარ იგზავნება.',
+    defaultMessage: 'ყუთების შეტყობინებები დროებით შეჩერებულია.',
+    defaultMessageEn: 'Box alerts are paused for a moment.',
+  },
+  {
     key: 'medirunDecor',
     group: 'system',
     parent: 'medirun',

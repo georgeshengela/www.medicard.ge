@@ -13,7 +13,7 @@ export default function RunHistoryDetailScreen() {
   const router = useRouter();
   const colors = useThemeColors();
   const insets = useSafeAreaInsets();
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const { id, video } = useLocalSearchParams<{ id: string; video?: string }>();
   const [run, setRun] = useState<RunSummary | null>(null);
 
   useFocusEffect(
@@ -46,6 +46,7 @@ export default function RunHistoryDetailScreen() {
       <RunFinishedView
         summary={run}
         title={tx('შენი გასეირნება', 'Your walk')}
+        autoVideo={video === '1'}
         onBack={() => (router.canGoBack() ? router.back() : router.replace('/run' as never))}
       />
     </View>

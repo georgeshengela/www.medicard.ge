@@ -21,3 +21,11 @@ CREATE TABLE IF NOT EXISTS "ErrorEvent" (
 );
 CREATE INDEX IF NOT EXISTS "ErrorEvent_fingerprint_time" ON "ErrorEvent"(fingerprint, "createdAt");
 CREATE INDEX IF NOT EXISTS "ErrorEvent_time" ON "ErrorEvent"("createdAt");
+
+-- Reviewed error groups (2026-10-09): the owner marks a group as looked at; it stays hidden until a newer
+-- event of the same fingerprint arrives ("reviewedAt" < lastSeen → shown again as „დაბრუნდა“).
+CREATE TABLE IF NOT EXISTS "ErrorEventReview" (
+  fingerprint TEXT PRIMARY KEY,
+  "reviewedAt" TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  "reviewedBy" TEXT
+);

@@ -52,6 +52,7 @@ export function RunPrizeGoal(){
  if(!storeOn)return null;
  const balance=live??query.data?.balance.coins??0;
  const goal=items.find(r=>r.id===goalId)||null;
+ const affordable=items.filter(r=>r.coinCost<=balance).length;
  const choose=(r:StoreReward)=>{
   if(r.id===goalId){router.push(`/medi-quest/rewards/${r.id}` as never);return;}
   setGoalId(r.id);void setScopedPreference(GOAL_KEY,r.id).catch(()=>{});
@@ -74,10 +75,12 @@ export function RunPrizeGoal(){
     </View>}
 
    {items.length?<View style={{gap:8,borderTopWidth:1,borderColor:c.bg200,paddingTop:12,marginHorizontal:-HUB.cardPad}}>
+    {/* Stage 5 (owner 2026-10-09): what the balance already buys comes first, marked „ახლავე“. */}
+    {affordable?<Copy bold size={12} style={{paddingHorizontal:HUB.cardPad,color:c.success}}>{tx(`ახლავე შეგიძლია აიღო: ${affordable} საჩუქარი`,`You can take ${affordable} ${affordable===1?'prize':'prizes'} right now`)}</Copy>:null}
     <Copy muted size={11} style={{paddingHorizontal:HUB.cardPad}}>{goal?tx('სხვა მიზანი? შეეხე საჩუქარს.','Another goal? Tap a prize.'):tx('შეეხე საჩუქარს — მიზნად დავაყენებთ.','Tap a prize to set it as your goal.')}</Copy>
     <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{gap:10,paddingHorizontal:HUB.cardPad}}>
      {items.slice(0,12).map(r=>{const on=r.id===goal?.id,pct=Math.min(100,balance/r.coinCost*100);return <Pressable key={r.id} accessibilityRole="button" accessibilityState={{selected:on}} accessibilityLabel={tx(`${title(r)}, ${num(r.coinCost)} ქოინი${on?', შენი მიზანი':''}`,`${title(r)}, ${num(r.coinCost)} coins${on?', your goal':''}`)} onPress={()=>choose(r)} style={{width:118,gap:6,padding:8,borderRadius:18,borderWidth:2,borderColor:on?teal:'transparent',backgroundColor:on?hubTint(teal,dark):c.bg100}}>
-      <View><Stage reward={r} size={98}/>{on?<View style={{position:'absolute',top:6,right:6,width:22,height:22,borderRadius:11,backgroundColor:RUN_TEAL,alignItems:'center',justifyContent:'center'}}><Check size={13} color="#fff" strokeWidth={3}/></View>:null}</View>
+      <View><Stage reward={r} size={98}/>{pct>=100&&!on?<View style={{position:'absolute',left:6,top:6,paddingHorizontal:7,paddingVertical:2,borderRadius:9,backgroundColor:c.success}}><Copy bold size={9} style={{color:'#fff'}}>{tx('ახლავე','Now')}</Copy></View>:null}{on?<View style={{position:'absolute',top:6,right:6,width:22,height:22,borderRadius:11,backgroundColor:RUN_TEAL,alignItems:'center',justifyContent:'center'}}><Check size={13} color="#fff" strokeWidth={3}/></View>:null}</View>
       <Copy bold size={12} numberOfLines={2} style={{minHeight:36,lineHeight:18}}>{title(r)}</Copy>
       <View style={{flexDirection:'row',alignItems:'center',gap:4}}><QuestCoinMark size={14}/><Copy bold size={12} style={{fontVariant:['tabular-nums']}}>{num(r.coinCost)}</Copy></View>
       <Bar value={pct} height={4} color={pct>=100?c.success:RUN_TEAL}/>

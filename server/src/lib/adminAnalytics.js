@@ -969,6 +969,7 @@ export async function getMediAnalytics(query) {
       },
       returningUsers: { value: returning },
       errors: { value: errors, delta: deltaSafe(errors, prevRows.filter((r) => r.status === 'ERROR').length) },
+      reviewedErrors: { value: rows.filter((r) => r.status === 'ERROR_REVIEWED').length },
       errorRate: { value: rateSafe(errors, rows.length) },
       avgLatencyMs: { value: avgLatency },
       tokens,

@@ -51,6 +51,24 @@ export function shapeOnlineUsers(rows, now = Date.now()) {
   return users;
 }
 
+/**
+ * Counts over everyone online (not only the listed 100): where they are (first route segment, the admin
+ * maps it to a module name), on what device, and how many signed up in the last 24 h.
+ */
+export function summarizeOnline(users, now = Date.now()) {
+  const screens = {};
+  const platforms = {};
+  let newcomers = 0;
+  for (const u of users) {
+    const first = String(u.screen || '').split('/').filter(Boolean)[0] || '';
+    screens[first] = (screens[first] || 0) + 1;
+    const platform = u.platform || 'unknown';
+    platforms[platform] = (platforms[platform] || 0) + 1;
+    if (u.joinedAt && now - new Date(u.joinedAt).getTime() < 24 * 3600 * 1000) newcomers += 1;
+  }
+  return { screens, platforms, newcomers };
+}
+
 export async function getOnlineUsers(now = new Date()) {
   await ensureAppActivityTable();
   const since = new Date(now.getTime() - ONLINE_WINDOW_MS);
@@ -69,6 +87,7 @@ export async function getOnlineUsers(now = new Date()) {
     refreshedAt: now.toISOString(),
     windowSeconds: ONLINE_WINDOW_MS / 1000,
     count: users.length,
+    summary: summarizeOnline(users, now.getTime()),
     users: users.slice(0, MAX_LISTED),
   };
 }
