@@ -290,7 +290,9 @@ export function MediChat({ owner, sessionId, startConsilium, directDoctor, prefi
     const intent = assistantDialogIntent(value);
     if (pending?.kind === 'action' && intent === 'confirm') { setText(''); await confirm(pending.id, pending.review); return; }
     if ((pending || draft) && intent === 'cancel') { setText(''); cancelAction(pending?.id); return; }
-    const target: Retry['route'] = route ?? (consiliumOn ? 'CONSILIUM' : directNext.current && doctorOn ? directNext.current : 'plan');
+    // A retry (or older handoff) to a mode an admin has since paused goes through the planner instead of the same 503.
+    const routeOn = route === 'CONSILIUM' ? deepOn : route === 'DOCTOR' ? doctorOn : true;
+    const target: Retry['route'] = route && routeOn ? route : (consiliumOn ? 'CONSILIUM' : directNext.current && doctorOn ? directNext.current : 'plan');
     directNext.current = null;
     working.current = true; generation.current++;
     // A new message replaces a card that was never answered.
