@@ -156,6 +156,7 @@
         <nav class="v3-subnav" role="tablist" aria-label="მხარდაჭერის განყოფილებები">${SUBS.map(([k, l]) => `<button type="button" role="tab" class="v3-subnav-btn${k === st.sub ? ' is-active' : ''}" data-support-sub="${k}" aria-selected="${k === st.sub}">${l}</button>`).join('')}</nav>
         <div class="sx-health" id="support-health" aria-live="polite"></div>
         <button type="button" class="btn ghost compact" data-support-refresh>${ico('refresh')}<span>განახლება</span></button>
+        <button type="button" class="btn primary compact" data-support-letter>${ico('edit')}<span>ახალი წერილი</span></button>
       </div>
       <div id="support-callouts"></div>
       <div id="support-pane"></div>
@@ -167,6 +168,7 @@
       void paintSub();
     }));
     root.querySelector('[data-support-refresh]').onclick = () => { void paintCallouts(); void paintSub(); void refreshBadge(); };
+    root.querySelector('[data-support-letter]').onclick = () => void openLetterDialog();
     void paintCallouts();
     await paintSub();
   }
@@ -456,7 +458,7 @@
     if (!box) return;
     st.frameObserver?.disconnect();
     if (!st.threadId) {
-      box.innerHTML = `<div class="sx-empty">${ico('mail')}<b>აირჩიე საუბარი</b><span>მარცხენა სიიდან გახსენი წერილი, წაიკითხე და უპასუხე — პასუხი წავა support@medicard.ge-დან, იმავე ძაფში.</span></div>`;
+      box.innerHTML = `<div class="sx-empty">${ico('mail')}<b>აირჩიე საუბარი</b><span>მარცხენა სიიდან გახსენი წერილი, წაიკითხე და უპასუხე — პასუხი წავა იმ მისამართიდან, რომელზეც წერილი მოვიდა, იმავე ძაფში.</span></div>`;
       if (side) side.innerHTML = '';
       $('support-shell')?.classList.remove('has-thread');
       return;
@@ -825,6 +827,63 @@
         toast('შენახულია', 'ok');
         await paintSub();
       } catch (e) { $('snip-msg').textContent = e.message; }
+    };
+  }
+
+  /* ═════════ New letter (partners, suppliers) ═════════ */
+  async function openLetterDialog() {
+    if (!st.config) { try { st.config = await api('/config'); } catch (e) { toast(e.message, 'bad'); return; } }
+    const senders = st.config.senders?.length ? st.config.senders : [{ email: st.config.sender || 'support@medicard.ge', name: '', letter: false }];
+    const first = senders.find((s) => s.letter) || senders[0];
+    const dlg = V().openDialog?.({
+      title: 'ახალი წერილი',
+      description: 'პარტნიორს ან მომწოდებელს. პასუხი აქვე, იმავე საუბარში მოვა.',
+      wide: true,
+      body: `<div class="s-stack">
+        <label class="s-field"><span>ვისგან</span><select id="letter-from">${senders.map((s) => `<option value="${esc(s.email)}"${s === first ? ' selected' : ''}>${esc(s.name ? `${s.name} <${s.email}>` : s.email)}${s.letter ? ' — ჩვეულებრივი წერილი' : ' — მხარდაჭერის შაბლონით'}</option>`).join('')}</select></label>
+        <label class="s-field"><span>ვის (მისამართი)</span><input type="email" id="letter-to" maxlength="254" autocomplete="off" placeholder="name@company.com"></label>
+        <label class="s-field"><span>მიმღების სახელი (არასავალდებულო)</span><input type="text" id="letter-to-name" maxlength="120" autocomplete="off"></label>
+        <label class="s-field"><span>სათაური</span><input type="text" id="letter-subject" maxlength="200"></label>
+        <label class="s-field"><span>ტექსტი</span><textarea id="letter-body" rows="16" maxlength="20000"></textarea><small>აბზაცები ცარიელი ხაზით. **მუქი**, სია „- “-ით ან „1. “-ით, ბმული [ტექსტი](https://…).</small></label>
+        <iframe class="s-preview-frame sx-preview-frame" title="წერილის გადახედვა" sandbox="" id="letter-preview-frame" hidden></iframe>
+        <p class="s-form-msg" id="letter-msg" role="status"></p></div>`,
+      footer: '<button type="button" class="btn secondary" id="letter-cancel">გაუქმება</button><button type="button" class="btn ghost" id="letter-preview">გადახედვა</button><button type="button" class="btn primary" id="letter-send">გაგზავნა</button>',
+    });
+    $('letter-to')?.focus();
+    const values = () => ({ from: $('letter-from').value, to: $('letter-to').value.trim(), toName: $('letter-to-name').value.trim(), subject: $('letter-subject').value.trim(), body: $('letter-body').value });
+    $('letter-cancel').onclick = () => dlg?.close();
+    $('letter-preview').onclick = async () => {
+      const v = values();
+      const frame = $('letter-preview-frame');
+      try {
+        const r = await api('/letters/preview', { method: 'POST', body: { from: v.from, subject: v.subject, body: v.body } });
+        frame.srcdoc = r.html;
+        frame.hidden = false;
+        frame.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+      } catch (e) { $('letter-msg').textContent = e.message; }
+    };
+    $('letter-send').onclick = async (e) => {
+      const btn = e.currentTarget;
+      const v = values();
+      if (!v.to || !v.subject || !v.body.trim()) { $('letter-msg').textContent = 'შეავსე მისამართი, სათაური და ტექსტი.'; return; }
+      btn.disabled = true;
+      btn.classList.add('is-loading');
+      try {
+        const r = await api('/letters', { method: 'POST', body: v });
+        V().setDirty?.(false);
+        dlg?.close();
+        toast(`წერილი გაიგზავნა: ${v.to}`, 'ok');
+        st.sub = 'inbox';
+        st.threadId = r.threadId;
+        st.composeMode = 'reply';
+        st.filter = { ...st.filter, status: 'active', offset: 0 };
+        writeHash();
+        await renderSupportAdmin();
+      } catch (err) {
+        $('letter-msg').textContent = err.message;
+        btn.disabled = false;
+        btn.classList.remove('is-loading');
+      }
     };
   }
 

@@ -53,6 +53,12 @@ const schema = z.object({
   RESEND_INBOUND_API_KEY: z.string().default(''),
   /** Sender of admin replies from #/support. */
   SUPPORT_FROM: z.string().default('MEDICARD მხარდაჭერა <support@medicard.ge>'),
+  /**
+   * Second #/support mailbox: the owner's own letters to partners and suppliers („ახალი წერილი“).
+   * Sent as a plain person-to-person email (no brand chrome); replies land back in #/support and
+   * are answered from the same address. Empty = off.
+   */
+  SUPPORT_LETTER_FROM: z.string().default('George Shengelia <ceo@medicard.ge>'),
   /** Owner notice on new support threads (subject only, max 1 per 10 min). Empty = off. */
   SUPPORT_NOTIFY_EMAIL: z.string().default(''),
   /** Store links for the welcome email; empty = https://medicard.ge/#download. */

@@ -20,7 +20,7 @@ import { hashEmail, isSuppressed } from '../lib/email/index.js';
 import { ATTACHMENT_MAX_BYTES, createInboundClient } from '../lib/support/resendInbound.js';
 import { previewText } from '../lib/support/quote.js';
 import { SUPPORT_STATUSES, inboundHealth, isMissingSupportTable, kickSupportInbound, supportConfig, SUPPORT_RETENTION_DAYS } from '../lib/support/inbound.js';
-import { addSupportNote, noteSchema, renderSupportReply, replySchema, sendSupportReply, snippetSchema, supportSender, threadPatchSchema } from '../lib/support/reply.js';
+import { addSupportNote, letterSchema, noteSchema, renderSupportLetter, renderSupportReply, replySchema, sendSupportLetter, sendSupportReply, senderForMailbox, snippetSchema, supportSender, supportSenders, threadPatchSchema } from '../lib/support/reply.js';
 
 export const adminSupportRouter = Router();
 adminSupportRouter.use(requireAdmin);
@@ -96,7 +96,33 @@ adminSupportRouter.get('/summary', view, asyncHandler(async (_req, res) => {
 
 adminSupportRouter.get('/config', view, guarded(async (_req, res) => {
   const [health, emailEnabled] = await Promise.all([inboundHealth(), isFeatureEnabled(EMAIL_FEATURE)]);
-  res.json({ ...supportConfig(), sender: supportSender().email, health, emailEnabled, retentionDays: SUPPORT_RETENTION_DAYS });
+  res.json({
+    ...supportConfig(),
+    sender: supportSender().email,
+    senders: supportSenders().map((s) => ({ email: s.email, name: s.name, letter: s.category === 'letter' })),
+    health,
+    emailEnabled,
+    retentionDays: SUPPORT_RETENTION_DAYS,
+  });
+}));
+
+/* ───────── New letter („ახალი წერილი“) ───────── */
+adminSupportRouter.post('/letters/preview', manage, guarded(async (req, res) => {
+  const body = z.object({ from: z.string().max(254).default(''), subject: z.string().max(200).default(''), body: z.string().max(20_000).default('') }).parse(req.body ?? {});
+  res.json(renderSupportLetter(body));
+}));
+
+adminSupportRouter.post('/letters', manage, guarded(async (req, res) => {
+  const body = letterSchema.parse(req.body ?? {});
+  const out = await sendSupportLetter({ ...body, admin: req.admin });
+  await writeAdminAudit({
+    admin: req.admin,
+    action: 'support.letter',
+    targetType: 'supportThread',
+    targetId: out.thread.id,
+    newValue: { messageId: out.messageId, from: body.from, chars: body.body.length, providerId: out.providerId },
+  });
+  res.status(201).json({ ok: true, threadId: out.thread.id });
 }));
 
 /* ───────── Threads ───────── */
@@ -205,7 +231,7 @@ adminSupportRouter.post('/threads/:id/preview', manage, guarded(async (req, res)
   const body = z.object({ body: z.string().max(20_000).default('') }).parse(req.body ?? {});
   const thread = await loadThread(req.params.id);
   const rendered = renderSupportReply(thread, body.body);
-  res.json({ ...rendered, to: thread.counterpartEmail, from: supportSender().email });
+  res.json({ ...rendered, to: thread.counterpartEmail, from: senderForMailbox(thread.mailbox).email });
 }));
 
 adminSupportRouter.post('/threads/:id/reply', manage, guarded(async (req, res) => {

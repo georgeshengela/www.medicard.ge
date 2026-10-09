@@ -292,6 +292,15 @@ const STYLES = {
   li: 'margin:0 0 8px;',
 };
 
+const LETTER_FONT = "Arial,Helvetica,'Noto Sans Georgian','Sylfaen',sans-serif";
+const LETTER_STYLES = {
+  p: 'margin:0 0 14px;font-size:14px;line-height:21px;color:#1f2937;',
+  strong: 'font-weight:700;',
+  link: 'color:#0b57d0;text-decoration:underline;',
+  list: 'margin:0 0 14px;padding:0 0 0 22px;font-size:14px;line-height:21px;color:#1f2937;',
+  li: 'margin:0 0 6px;',
+};
+
 function codeBox(code, label = 'ერთჯერადი კოდი') {
   const digits = escapeHtml(code);
   return `<table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin:8px 0 24px;">
@@ -323,6 +332,16 @@ export function renderEmail({ content, vars = {}, allowed = CAMPAIGN_VARS, categ
   const marketing = category === 'marketing';
   const unsub = marketing ? safeUrl(unsubscribeUrl) : '';
   const support = String(v.supportEmail || 'support@medicard.ge');
+
+  // 'letter' = a person-to-person email from #/support (partners, suppliers): no brand chrome or
+  // service footer — it reads like an ordinary email from the sender's own mailbox.
+  if (category === 'letter') {
+    const body = fillHtml(markdownToHtml(content.body, LETTER_STYLES), v, allowed).split(CODE_TOKEN).join('');
+    const html = `<!DOCTYPE html>
+<html lang="${en ? 'en' : 'ka'}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${escapeHtml(subject)}</title></head>
+<body style="margin:0;padding:16px;background:#ffffff;"><div style="max-width:640px;font-family:${LETTER_FONT};">${body}</div></body></html>`;
+    return { subject, preheader: '', html, text: markdownToText(content.body, v, allowed) };
+  }
 
   let bodyHtml = fillHtml(markdownToHtml(content.body, STYLES), v, allowed);
   bodyHtml = bodyHtml.split(CODE_TOKEN).join(codeBox(allowed.includes('code') ? v.code ?? '' : '', en ? 'One-time code' : undefined));

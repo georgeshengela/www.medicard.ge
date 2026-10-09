@@ -25,7 +25,7 @@ import {
   processSupportNotice,
   purgeOldSupportThreads,
 } from './support/inbound.js';
-import { renderSupportReply, sendSupportReply, snippetSchema, threadPatchSchema, replySchema } from './support/reply.js';
+import { renderSupportLetter, renderSupportReply, sendSupportLetter, sendSupportReply, senderForMailbox, snippetSchema, supportSenders, threadPatchSchema, replySchema } from './support/reply.js';
 import { isAllowedDownloadUrl } from './support/resendInbound.js';
 import { renderEmail, signSvixPayload } from './email/index.js';
 import { supportStatements } from '../../scripts/install-support.mjs';
@@ -439,6 +439,60 @@ describe('support replies', () => {
     assert.doesNotMatch(r.html, /unsubscribe|გამოწერის გაუქმება|სერვისული წერილია|<script/i);
     assert.doesNotMatch(r.html, /href="javascript/);
     assert.match(renderEmail({ content: { subject: 's', body: 'b' }, category: 'transactional' }).html, /სერვისული წერილია/);
+  });
+});
+
+/* ───────── New letters (owner → partners) ───────── */
+describe('support letters', () => {
+  it('lists support@ and the letter mailbox; only own-domain senders are allowed', async () => {
+    const senders = supportSenders();
+    assert.deepEqual(senders.map((s) => [s.email, s.category]), [['support@medicard.ge', 'support'], ['ceo@medicard.ge', 'letter']]);
+    assert.equal(senderForMailbox('CEO@medicard.ge').category, 'letter');
+    assert.equal(senderForMailbox('info@medicard.ge').email, 'support@medicard.ge');
+    const db = fakeDb();
+    await assert.rejects(sendSupportLetter({ from: 'ceo@gmail.com', to: 'a@b.com', subject: 's', body: 'b' }, { db, send: async () => ({ status: 'sent' }) }), /ამ მისამართიდან/);
+    await assert.rejects(sendSupportLetter({ from: 'ceo@medicard.ge', to: 'x@medicard.ge', subject: 's', body: 'b' }, { db, send: async () => ({ status: 'sent' }) }), /საკუთარ დომენზე/);
+    await assert.rejects(sendSupportLetter({ from: 'ceo@medicard.ge', to: 'a@b.com', subject: 's', body: 'b' }, { db, send: async () => ({ status: 'skipped', reason: 'suppressed' }) }), /დაბლოკილია/);
+    assert.equal(db.tables.threads.length, 0);
+  });
+
+  it('sends a plain letter from ceo@ with our Message-ID; the answer threads back and is answered from ceo@', async () => {
+    const db = fakeDb();
+    const calls = [];
+    const send = async (msg) => { calls.push(msg); return { status: 'sent', providerId: `re_${calls.length}` }; };
+    const out = await sendSupportLetter({ from: 'ceo@medicard.ge', to: 'Sales@Tasso.example', toName: 'Tasso', subject: 'Partnership inquiry', body: 'Hello,\n\n1. Pricing\n2. Branding', admin: { id: 'adm1' } }, { db, send, now: NOW });
+    const [c] = calls;
+    assert.equal(c.category, 'letter');
+    assert.equal(c.from, 'George Shengelia <ceo@medicard.ge>');
+    assert.equal(c.replyTo, 'ceo@medicard.ge');
+    assert.equal(c.to, 'sales@tasso.example');
+    const own = c.extraHeaders['Message-ID'];
+    assert.match(own, /^<[0-9a-f-]+@medicard\.ge>$/);
+    const t = db.tables.threads[0];
+    assert.equal(out.thread.id, t.id);
+    assert.equal(t.mailbox, 'ceo@medicard.ge');
+    assert.equal(t.status, 'waiting');
+    assert.equal(t.counterpartEmail, 'sales@tasso.example');
+    assert.equal(db.tables.messages[0].messageId, own);
+
+    // A follow-up before any answer threads onto our first letter, still from ceo@.
+    await sendSupportReply({ threadId: t.id, body: 'Following up.' }, { db, send, now: new Date(NOW.getTime() + 60_000) });
+    assert.equal(calls[1].category, 'letter');
+    assert.match(calls[1].from, /ceo@medicard\.ge/);
+    assert.equal(calls[1].extraHeaders['In-Reply-To'], own);
+
+    // Their answer (Re: + References) lands in the same thread.
+    const r = await applyInboundEmailEvent(received('t1', { from: 'Sales <sales@tasso.example>', to: ['ceo@medicard.ge'], subject: 'RE: Partnership inquiry', attachments: [] }), { db, now: new Date(NOW.getTime() + 3_600_000), kick: () => {} });
+    assert.equal(r.threadId, t.id);
+    assert.equal(db.tables.threads.length, 1);
+  });
+
+  it('letter layout is a plain email: no brand chrome, footer note or unsafe links', () => {
+    const r = renderSupportLetter({ from: 'ceo@medicard.ge', subject: 'Hi', body: 'Hello **Tasso**\n\n1. One\n2. Two\n\n[x](javascript:alert(1)) <script>x</script>' });
+    assert.equal(r.from, 'ceo@medicard.ge');
+    assert.match(r.html, /<ol /);
+    assert.doesNotMatch(r.html, /მხარდაჭერის პასუხი|სერვისული წერილია|unsubscribe|<script|href="javascript/i);
+    assert.match(r.text, /Hello Tasso/);
   });
 });
 
