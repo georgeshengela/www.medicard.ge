@@ -399,6 +399,20 @@ function planQueuedLogMutations(body, options) {
   return [{ operation: 'UPSERT_LOG', payload: { ...body, ...tags, date } }];
 }
 
+/**
+ * The undo's start restore (`SET_LAST_PERIOD`) queued more than a day ago is never sent; it counts as
+ * played (IR3-3). A start she set since on the web or through Medi never passes through the phone's
+ * queue, so a restore that waited longer than that (offline, signed out) would silently overwrite it.
+ * Only this operation: every other queued write plays as it always has.
+ */
+const START_RESTORE_MAX_AGE_MS = 24 * 60 * 60 * 1000;
+
+function startRestoreExpired(item, now) {
+  if (item?.operation !== 'SET_LAST_PERIOD') return false;
+  const created = Date.parse(item.createdAt || '');
+  return Number.isFinite(created) && now - created > START_RESTORE_MAX_AGE_MS;
+}
+
 function discardMutation(account, mutationId) {
   return {
     ...account,
@@ -785,6 +799,8 @@ module.exports = {
   backoffMs,
   hasObservationExtras,
   planQueuedLogMutations,
+  START_RESTORE_MAX_AGE_MS,
+  startRestoreExpired,
   discardMutation,
   attentionItems,
   cyclePersistFeedback,

@@ -70,6 +70,7 @@ import { syncPregnancyCareReminders } from '@/lib/pregnancyCareReminders';
 import {
   cacheCycleBundle,
   discardCycleMutation,
+  discardQueuedStartRestores,
   queueApplyPeriod,
   saveCycleObservation,
   queueRemoveCycleLog,
@@ -663,6 +664,8 @@ export default function CycleHome() {
       ? { ...bundle, profile: { ...bundle.profile, lastPeriodStart: iso } }
       : null;
     try {
+      // Her answer is the newest start: an undo's start restore still queued never replays over it (IR3-3).
+      await discardQueuedStartRestores(owner);
       let data: CycleBundle | null = null;
       try {
         data = await api.cycle.setLastPeriod(iso);

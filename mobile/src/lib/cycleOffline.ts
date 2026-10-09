@@ -29,6 +29,7 @@ import {
   planQueuedLogMutations,
   readAccount,
   replayCycleQueue,
+  startRestoreExpired,
   writeAccount,
   type CycleMutation,
   type CycleOfflineAccount,
@@ -103,6 +104,20 @@ const MUT_TIMEOUT_MS = 30_000;
 
 let flushLock: Promise<CycleFlushResult> | null = null;
 let accountWrite: Promise<void> = Promise.resolve();
+/** When she last set her start directly in the app, per account (ms, this JS run; IR3-3). */
+const startSetDirectlyAt = new Map<string, number>();
+
+/**
+ * A start restore queued before she set her start directly (`discardQueuedStartRestores`): her answer is
+ * newer, so it is never sent. Covers a flush that read the queue before the restore was dropped.
+ */
+function startRestoreSuperseded(item: CycleMutation, userId = item.userScope): boolean {
+  if (item.operation !== 'SET_LAST_PERIOD') return false;
+  const at = startSetDirectlyAt.get(String(userId));
+  if (!at) return false;
+  const created = Date.parse(item.createdAt);
+  return !Number.isFinite(created) || created <= at;
+}
 
 function withAccountWrite<T>(fn: () => Promise<T>): Promise<T> {
   const run = accountWrite.then(fn, fn);
@@ -294,7 +309,9 @@ export async function cacheCycleBundle(userId: string, bundle: CycleBundle | nul
 async function playMutation(item: CycleMutation): Promise<CycleBundle | null> {
   const payload = item.payload || {};
   if (item.operation === 'SET_LAST_PERIOD') {
-    // The undo's start restore (IR2-5). Saved but no whole bundle back (CYC-06) = played, nothing to cache.
+    // The undo's start restore (IR2-5). Older than her own start, or than a day: played, never sent (IR3-3).
+    if (startRestoreSuperseded(item) || startRestoreExpired(item, Date.now())) return null;
+    // Saved but no whole bundle back (CYC-06) = played, nothing to cache.
     const bundle = await api.cycle.setLastPeriod(String(payload.date || ''), { timeoutMs: MUT_TIMEOUT_MS });
     return isCompleteCycleBundle(bundle) ? bundle : null;
   }
@@ -385,7 +402,10 @@ export async function flushCycleQueue(userId: string): Promise<CycleFlushResult>
       const latest = await loadCycleAccount(userId);
       const pendingIds = new Set(pending.map((item) => item.id));
       const newlyEnqueued = latest.queue.filter((item) => !pendingIds.has(item.id));
-      latest.queue = compactCycleQueue([...result.remaining, ...newlyEnqueued]);
+      // A start restore she replaced while this flush ran never comes back with what it kept (IR3-3).
+      latest.queue = compactCycleQueue(
+        [...result.remaining, ...newlyEnqueued].filter((item) => !startRestoreSuperseded(item, userId)),
+      );
       latest.authPaused = result.authPaused;
       if (isCompleteCycleBundle(result.bundle)) {
         latest.cache = createCacheRecord(userId, result.bundle);
@@ -776,6 +796,31 @@ export async function peekCyclePendingCount(userId: string): Promise<number> {
 export async function listCycleAttention(userId: string): Promise<CycleAttentionItem[]> {
   const account = await loadCycleAccount(userId);
   return attentionItems(account);
+}
+
+/**
+ * She sets her last period start herself (cycle settings, the /cycle date pick, onboarding): a start
+ * restore the undo still has queued is older than her answer and must never replay over it (IR3-3).
+ * Call it right before the direct write. A flush that is sending one finishes first, so her write is
+ * the last the server gets; a flush that starts meanwhile skips it. Only the start restores go —
+ * the undo's day restore stays queued. Never throws: a storage error must not block her save.
+ */
+export async function discardQueuedStartRestores(userId: string): Promise<void> {
+  if (!userId) return;
+  startSetDirectlyAt.set(userId, Date.now());
+  try {
+    if (flushLock) await flushLock.catch(() => undefined);
+    await withAccountWrite(async () => {
+      const account = await loadCycleAccount(userId);
+      if (!account.queue.some((item) => item.operation === 'SET_LAST_PERIOD')) return;
+      await saveCycleAccount(userId, {
+        ...account,
+        queue: account.queue.filter((item) => item.operation !== 'SET_LAST_PERIOD'),
+      });
+    });
+  } catch {
+    /* Device storage failed: her write still goes; this run's flushes skip the old restore. */
+  }
 }
 
 export async function discardCycleMutation(userId: string, mutationId: string): Promise<void> {

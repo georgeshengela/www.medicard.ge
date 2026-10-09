@@ -20,7 +20,8 @@ const ONBOARDING_START = '2026-09-20';
  * `lastPeriod`: how each POST /last-period answers, in call order (then 'ok'):
  *   'ok' saves and answers the bundle · 'null' saves and answers `null` (the reload failed, CYC-06) ·
  *   'applied-408' saves, then the answer is lost (timeout) · 'refused-400' saves nothing ·
- *   'down-503' saves nothing (server down) · 'hang' never answers (a stalled network; `hung` resolves).
+ *   'down-503' saves nothing (server down) · 'hang' never answers (a stalled network; `hung` resolves) ·
+ *   'held-503' waits until `release()` (in flight; `hung` resolves), then fails like 'down-503'.
  * `platform: 'ios'` keeps the device queue in encrypted storage that outlives the app (`relaunch()`);
  * 'web' keeps it in memory for the session only.
  */
@@ -34,6 +35,10 @@ async function phone({ failStartFlush = false, onboardingStart = ONBOARDING_STAR
   let markHung;
   const hung = new Promise((resolve) => {
     markHung = resolve;
+  });
+  let release;
+  const held = new Promise((resolve) => {
+    release = resolve;
   });
 
   const fullLog = (date, fields) => ({
@@ -116,6 +121,11 @@ async function phone({ failStartFlush = false, onboardingStart = ONBOARDING_STAR
           markHung();
           return new Promise(() => undefined);
         }
+        if (how === 'held-503') {
+          markHung();
+          await held;
+          throw Object.assign(new Error('down'), { status: 503 });
+        }
         if (how === 'refused-400') throw Object.assign(new Error('refused'), { status: 400 });
         if (how === 'down-503') throw Object.assign(new Error('down'), { status: 503 });
         server.stored = date;
@@ -164,7 +174,7 @@ async function phone({ failStartFlush = false, onboardingStart = ONBOARDING_STAR
     });
     return Promise.race([hung, limit]).finally(() => clearTimeout(timer));
   };
-  return { server, calls, published, invalidated, offline, status, flushPublishes, relaunch, waitHung, secure, prefs };
+  return { server, calls, published, invalidated, offline, status, flushPublishes, relaunch, waitHung, release, secure, prefs, api };
 }
 
 /** Runs `fn` with the clock `ms` ahead (past a queue cooldown). */
@@ -504,4 +514,149 @@ test('IR2-5: a build that cannot play the start restore sends nothing that write
   const { assertCycleDateKey } = await import(pathToFileURL(join(__dirname, '../../server/src/lib/cyclePeriod.js')).href);
   assert.throws(() => assertCycleDateKey(String(item.payload.start || ''), TODAY), (err) => err.status === 400);
   assert.equal(core.classifyCycleFailure({ status: 400 }), 'permanent');
+});
+
+// IR3-3: the undo's start restore waits in the queue (no answer, cooldown). Meanwhile she sets her start
+// herself — cycle settings, the /cycle date pick, onboarding — which write the server directly. The
+// queue used to send the old restore afterwards and silently put her previous start back.
+async function undoWithRestoreQueued({ platform = 'web' } = {}) {
+  const p = await phone({ lastPeriod: ['down-503'], platform });
+  const shown = await p.offline.loadCycleView(USER);
+  const undo = p.status.periodStartUndo(null, shown.display.profile.lastPeriodStart);
+  const started = await p.offline.queueApplyPeriod(USER, { action: 'start', date: TODAY });
+  assert.equal(started.synced, true);
+  await p.offline.undoQueuedPeriodStart(USER, TODAY, undo, started.view.display.logs.find((l) => l.date === TODAY));
+  assert.deepEqual(await queueOf(p.offline), [`SET_LAST_PERIOD:${ONBOARDING_START}`, `REMOVE_LOG:${TODAY}`]);
+  p.calls.length = 0;
+  return p;
+}
+
+test('IR3-3: a start she sets herself after the undo is never overwritten by the queued restore', async () => {
+  const p = await undoWithRestoreQueued();
+  // Cycle settings: the start restore leaves the queue first, then her date goes to the server.
+  await p.offline.discardQueuedStartRestores(USER);
+  assert.deepEqual(await queueOf(p.offline), [`REMOVE_LOG:${TODAY}`], 'the day restore stays queued');
+  await p.api.cycle.setLastPeriod('2026-10-07');
+  p.calls.length = 0;
+
+  const flushed = await later(10 * 60_000, () => p.offline.flushCycleQueue(USER));
+  assert.equal(flushed.remaining, 0);
+  assert.deepEqual(p.calls, ['removeLog'], 'the old start is never sent again');
+  assert.equal(p.server.stored, '2026-10-07');
+  assert.equal(p.server.logs.has(TODAY), false, 'the day the tap created is gone');
+  assert.equal((await p.offline.loadCycleView(USER)).display.profile.lastPeriodStart, '2026-10-07');
+});
+
+test('IR3-3: her date picked while a start that was already today is queued again stays hers', async () => {
+  const p = await undoAfterStartToday(['down-503']);
+  assert.deepEqual(await queueOf(p.offline), [`SET_LAST_PERIOD:${TODAY}`]);
+  await p.offline.discardQueuedStartRestores(USER);
+  await p.api.cycle.setLastPeriod('2026-10-08');
+  p.calls.length = 0;
+  await later(10 * 60_000, () => p.offline.flushCycleQueue(USER));
+  assert.ok(!p.calls.some((call) => call.startsWith('setLastPeriod')), p.calls.join(' '));
+  assert.equal(p.server.stored, '2026-10-08');
+  assert.deepEqual(await queueOf(p.offline), []);
+});
+
+test('IR3-3: a restore already being sent finishes first; the flush never brings it back after her save', async () => {
+  const p = await phone({ lastPeriod: ['down-503', 'held-503'] });
+  const shown = await p.offline.loadCycleView(USER);
+  const undo = p.status.periodStartUndo(null, shown.display.profile.lastPeriodStart);
+  const started = await p.offline.queueApplyPeriod(USER, { action: 'start', date: TODAY });
+  await p.offline.undoQueuedPeriodStart(USER, TODAY, undo, started.view.display.logs.find((l) => l.date === TODAY));
+
+  // After the cooldown the queue sends the restore again; it is in flight when she saves her own start.
+  const flush = later(10 * 60_000, () => p.offline.flushCycleQueue(USER));
+  await p.waitHung();
+  let discarded = false;
+  const discard = p.offline.discardQueuedStartRestores(USER).then(() => {
+    discarded = true;
+  });
+  await p.flushPublishes();
+  assert.equal(discarded, false, 'her save waits for the request in flight');
+  p.release();
+  await flush;
+  await discard;
+  // That request failed (503) and the flush kept it, but it is gone once her save goes out.
+  assert.deepEqual(await queueOf(p.offline), [`REMOVE_LOG:${TODAY}`]);
+  await p.api.cycle.setLastPeriod('2026-10-07');
+  p.calls.length = 0;
+  await later(20 * 60_000, () => p.offline.flushCycleQueue(USER));
+  assert.deepEqual(p.calls, ['removeLog']);
+  assert.equal(p.server.stored, '2026-10-07');
+});
+
+test('IR3-3: a queue read before her save (a flush writing back what it read) still never sends the replaced restore', async () => {
+  const p = await undoWithRestoreQueued({ platform: 'ios' });
+  const { CYCLE_OFFLINE_STORAGE_KEY } = require('../src/lib/cycleOfflineCore.js');
+  const before = p.prefs.get(CYCLE_OFFLINE_STORAGE_KEY);
+  await p.offline.discardQueuedStartRestores(USER);
+  // A flush that read the device queue before her save writes it back, restore included.
+  p.prefs.set(CYCLE_OFFLINE_STORAGE_KEY, before);
+  assert.deepEqual(await queueOf(p.offline), [`SET_LAST_PERIOD:${ONBOARDING_START}`, `REMOVE_LOG:${TODAY}`]);
+  await p.api.cycle.setLastPeriod('2026-10-07');
+  p.calls.length = 0;
+
+  const flushed = await later(10 * 60_000, () => p.offline.flushCycleQueue(USER));
+  assert.equal(flushed.remaining, 0);
+  assert.deepEqual(p.calls, ['removeLog']);
+  assert.equal(p.server.stored, '2026-10-07');
+  assert.deepEqual(await queueOf(p.offline), []);
+});
+
+test('IR3-3: a start restore queued more than a day ago is never sent (a start set on the web since stays)', async () => {
+  const p = await undoWithRestoreQueued();
+  // While the phone stayed offline she set her start on the web /app (straight to the server, never
+  // through this queue); the phone comes back more than a day after the undo.
+  await p.api.cycle.setLastPeriod('2026-10-05');
+  p.calls.length = 0;
+  const flushed = await later(25 * 60 * 60_000, () => p.offline.flushCycleQueue(USER));
+  assert.equal(flushed.remaining, 0);
+  assert.deepEqual(p.calls, ['removeLog'], 'the old restore counts as played');
+  assert.equal(p.server.stored, '2026-10-05');
+  assert.deepEqual(await queueOf(p.offline), []);
+
+  // Within a day the restore is still sent, exactly as before.
+  const q = await undoWithRestoreQueued();
+  await later(23 * 60 * 60_000, () => q.offline.flushCycleQueue(USER));
+  assert.deepEqual(q.calls, [`setLastPeriod:${ONBOARDING_START}:30000`, 'removeLog']);
+  assert.equal(q.server.stored, ONBOARDING_START);
+});
+
+test('IR3-3: every direct last period write in the app drops a queued start restore right before it', () => {
+  const fs = require('node:fs');
+  const mobile = join(__dirname, '..');
+  const files = [];
+  const walk = (dir) => {
+    for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+      const full = join(dir, entry.name);
+      if (entry.isDirectory()) walk(full);
+      else if (/\.(ts|tsx)$/.test(entry.name) && !/\.test\.tsx?$/.test(entry.name)) files.push(full);
+    }
+  };
+  walk(join(mobile, 'src'));
+  walk(join(mobile, 'app'));
+  const writers = files
+    .filter((file) => /api\.cycle\.setLastPeriod\(/.test(fs.readFileSync(file, 'utf8')))
+    .map((file) => file.slice(mobile.length + 1))
+    .sort();
+  // The queue itself (the restore and the undo's follow-up) and the three places where she answers the date.
+  assert.deepEqual(writers, [
+    'app/cycle/index.tsx',
+    'src/components/cycle/settings/CycleProfileSettings.tsx',
+    'src/lib/cycleOffline.ts',
+    'src/lib/onboardingGoals.ts',
+  ]);
+  for (const file of writers.filter((name) => name !== 'src/lib/cycleOffline.ts')) {
+    const source = fs.readFileSync(join(mobile, file), 'utf8');
+    const write = source.indexOf('api.cycle.setLastPeriod(');
+    const drop = source.lastIndexOf('discardQueuedStartRestores(', write);
+    assert.ok(drop > 0, `${file}: no discardQueuedStartRestores before the write`);
+    assert.ok(write - drop < 600, `${file}: the drop is not right before the write`);
+  }
+  // Cycle settings save the prefilled start with every other setting: only a start she changed drops it.
+  const settings = fs.readFileSync(join(mobile, 'src/components/cycle/settings/CycleProfileSettings.tsx'), 'utf8');
+  assert.match(settings, /if \(userId && lastPeriod !== filledLastPeriod\.current\) await discardQueuedStartRestores\(userId\);/);
+  assert.match(settings, /filledLastPeriod\.current = next\.lastPeriod;/);
 });
