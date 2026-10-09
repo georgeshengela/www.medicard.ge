@@ -459,8 +459,10 @@ test('IR3-2: every setup gate reads the queued start, and the background reconci
   }
   const reminders = read('src/lib/cycleReminders.ts');
   const reconcile = reminders.slice(reminders.indexOf('export async function reconcileCycleReminders'));
-  const guard = reconcile.indexOf('view.pendingLastPeriodStart');
+  const guard = reconcile.indexOf('if (view.pendingLastPeriodStart && prefs.enabled) {');
   assert.ok(guard > 0 && guard < reconcile.indexOf('syncCycleReminders('), 'reconcile skips while a start restore is queued');
+  // Her switch still works meanwhile: reminders switched off are cancelled at once.
+  assert.match(reconcile, /\} else \{\s*count = await syncCycleReminders\(view\.canonical, prefs\);/);
   // Home and /cycle plan only from a view with nothing pending (a queued start restore is pending).
   assert.match(read('src/components/home/sections/useHomeCycleActions.ts'), /if \(next\.stale \|\| next\.pendingCount > 0\) \{/);
   assert.match(read('app/cycle/index.tsx'), /if \(gen !== ttcGen\.current \|\| view\.stale \|\| view\.pendingCount > 0\) return;/);
