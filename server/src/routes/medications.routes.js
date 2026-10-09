@@ -97,7 +97,7 @@ const AUTHORED_MESSAGE = /[\u10D0-\u10FF]/;
 
 /**
  * A rejected medication save says why. The shared handler answers every ZodError with the generic
- * „შევსებული მონაცემები არასწორია.“ and keeps the reason in `fields`, but app builds up to 1.0.0.21.20
+ * „შევსებული მონაცემები არასწორია.“ and keeps the reason in `fields`, but app builds before this change
  * show only `error` — so picking 9–12 doses a day (the old sheet offered 12, the server takes 8) ended in
  * a message that explained nothing. Same status and shape (`error` + `fields`); `error` is now the first
  * reason we wrote ourselves, in the request language. A failure with only the validator's own English

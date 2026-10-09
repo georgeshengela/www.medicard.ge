@@ -63,7 +63,7 @@ questsRouter.get(
   asyncHandler(async (req, res) => {
     const timezone = typeof req.query.timezone === 'string' ? req.query.timezone : undefined;
     // Older app JS gets only the missions it can draw (the shared result itself is never changed).
-    res.json(questDashboardForClient(await sharedDashboard(req.user.id, timezone), req.get('x-medicard-app-version')));
+    res.json(questDashboardForClient(await sharedDashboard(req.user.id, timezone), req.get('x-medicard-app-version'), req.get('x-medicard-caps')));
   }),
 );
 
@@ -79,7 +79,7 @@ questsRouter.get(
   asyncHandler(async (req, res) => {
     const take = req.query.take != null ? Number(req.query.take) : undefined;
     const cursor = typeof req.query.cursor === 'string' ? req.query.cursor : undefined;
-    res.json(questHistoryForClient(await getQuestHistory(req.user.id, { take, before: cursor }), req.get('x-medicard-app-version')));
+    res.json(questHistoryForClient(await getQuestHistory(req.user.id, { take, before: cursor }), req.get('x-medicard-app-version'), req.get('x-medicard-caps')));
   }),
 );
 

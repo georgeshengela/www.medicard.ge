@@ -32,7 +32,7 @@ import {
   questPeriodWindow,
 } from './questTime.js';
 import { countsForDailyStreak, ensureQuestTemplates, questRowReward } from './questTemplates.js';
-import { isAppVersionBelow } from './appVersion.js';
+import { parseAppVersion } from './appVersion.js';
 import { isUsableStepCapability, loadStepCapabilityStatus } from './stepCapability.js';
 import {
   SMART_QUEST_ENGINE_VERSION,
@@ -1225,33 +1225,42 @@ function questSummary(daily, weekly) {
 }
 
 /**
- * First app JS that can show the weekly Medi mission (1.0.0.21.19). Older JS names every Medi quest
- * with the daily copy („დღეს …“) and always draws a coin pill — „+0“ for an XP-only mission — so it
- * does not get the mission at all until it has the OTA. The web app ('web') and requests without a
- * version get everything.
+ * App JS that can show the weekly Medi mission says so in `X-Medicard-Caps` (WEEKLY_MEDI_CAP). Older
+ * JS names every Medi quest with the daily copy („დღეს …“) and always draws a coin pill — „+0“ for
+ * an XP-only mission — so it does not get the mission at all until it has the OTA. A version number
+ * cannot tell: OTAs from other branches reuse the numbers. The web app ('web') and requests without
+ * a native app version get everything.
  */
-export const WEEKLY_MEDI_MIN_APP_VERSION = '1.0.0.21.19';
+export const WEEKLY_MEDI_CAP = 'weekly-medi';
 
-function hiddenForAppVersion(appVersion) {
-  return isAppVersionBelow(appVersion, WEEKLY_MEDI_MIN_APP_VERSION) === true;
+function clientCaps(caps) {
+  return String(caps || '')
+    .split(',')
+    .map((cap) => cap.trim().toLowerCase())
+    .filter(Boolean);
+}
+
+function hiddenForClient(appVersion, caps) {
+  if (!parseAppVersion(appVersion)) return false;
+  return !clientCaps(caps).includes(WEEKLY_MEDI_CAP);
 }
 
 function isWeeklyMedi(quest) {
   return quest?.cadence === 'WEEKLY' && quest?.progressType === 'MEDI_DAILY_USE';
 }
 
-/** The dashboard as this app version can show it; a new object, the shared one is never changed. */
-export function questDashboardForClient(dashboard, appVersion) {
-  if (!dashboard || !hiddenForAppVersion(appVersion)) return dashboard;
+/** The dashboard as this client can show it; a new object, the shared one is never changed. */
+export function questDashboardForClient(dashboard, appVersion, caps) {
+  if (!dashboard || !hiddenForClient(appVersion, caps)) return dashboard;
   const weeklyQuests = dashboard.weekly?.quests || [];
   if (!weeklyQuests.some(isWeeklyMedi)) return dashboard;
   const weekly = { ...dashboard.weekly, quests: weeklyQuests.filter((quest) => !isWeeklyMedi(quest)) };
   return { ...dashboard, weekly, summary: questSummary(dashboard.daily?.quests || [], weekly.quests) };
 }
 
-/** Quest history as this app version can show it (same rule as the dashboard). */
-export function questHistoryForClient(history, appVersion) {
-  if (!history || !hiddenForAppVersion(appVersion)) return history;
+/** Quest history as this client can show it (same rule as the dashboard). */
+export function questHistoryForClient(history, appVersion, caps) {
+  if (!history || !hiddenForClient(appVersion, caps)) return history;
   const items = history.items || [];
   if (!items.some(isWeeklyMedi)) return history;
   return { ...history, items: items.filter((quest) => !isWeeklyMedi(quest)) };

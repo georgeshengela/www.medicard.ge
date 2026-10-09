@@ -4,7 +4,7 @@ import { createSchema, medicationValidationError } from './medications.routes.js
 
 // The app's frequency sheet used to offer 1–12 doses a day; the server takes 1–8. Picking 9 let her fill
 // in the whole form and then fail with the generic „შევსებული მონაცემები არასწორია.“ (the reason sat
-// only in `fields`, which app builds up to 1.0.0.21.20 never show). The top-line error now says why.
+// only in `fields`, which app builds before this change never show). The top-line error now says why.
 function fakeRes() {
   return {
     headersSent: false,

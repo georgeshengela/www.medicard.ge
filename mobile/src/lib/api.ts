@@ -2183,6 +2183,13 @@ export function guardRequest(method: string, path: string) {
   throw new ApiError(formatRateLimitMessage(seconds), 429, { code: 'CLIENT_LOOP_GUARD' }, seconds);
 }
 
+/**
+ * What this app JS can show that older JS could not (server `X-Medicard-Caps`). Version numbers
+ * cannot tell, because OTAs from other branches reuse them. weekly-medi: the weekly, XP-only Medi
+ * mission (server quest.js WEEKLY_MEDI_CAP).
+ */
+const CLIENT_CAPS = 'weekly-medi';
+
 async function request<T>(path: string, options: RequestOptions = {}): Promise<T> {
   const { method = 'GET', body, formData, timeoutMs = 180_000, cache } = options;
   guardRequest(method, path);
@@ -2203,6 +2210,7 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
           Accept: 'application/json',
           'X-Medicard-Platform': Platform.OS === 'ios' ? 'ios' : Platform.OS === 'android' ? 'android' : 'web',
           'X-Medicard-App-Version': String(Constants.expoConfig?.version || ''),
+          'X-Medicard-Caps': CLIENT_CAPS,
           ...clientTimezoneHeaders(),
           ...(body ? { 'Content-Type': 'application/json' } : {}),
           ...(token ? { Authorization: `Bearer ${token}` } : {}),

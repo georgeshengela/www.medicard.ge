@@ -649,22 +649,34 @@ describe('weekly Medi mission (owner 2026-10-08)', () => {
     assert.equal(questByKey(dash.weekly.quests, 'weekly_medi').claimable, true);
     const snapshot = JSON.stringify(dash);
 
-    for (const version of ['1.0.0.21.0', '1.0.0.21.18', '1.0.0.20.40']) {
-      const old = questDashboardForClient(dash, version);
-      assert.equal(questByKey(old.weekly.quests, 'weekly_medi'), undefined, version);
-      assert.equal(old.summary.unclaimedRewards, dash.summary.unclaimedRewards - 1, version);
-      assert.equal(old.summary.weeklyCompleted, dash.summary.weeklyCompleted - 1, version);
-      assert.deepEqual(old.daily, dash.daily);
+    // Native JS without the capability never gets it, whatever its version number (OTAs from
+    // other branches reuse the numbers).
+    for (const version of ['1.0.0.21.0', '1.0.0.21.18', '1.0.0.20.40', '1.0.0.21.24', '1.0.0.21.30', '1.0.0.22.0']) {
+      for (const caps of [undefined, '', 'other-cap']) {
+        const old = questDashboardForClient(dash, version, caps);
+        assert.equal(questByKey(old.weekly.quests, 'weekly_medi'), undefined, `${version} ${caps}`);
+        assert.equal(old.summary.unclaimedRewards, dash.summary.unclaimedRewards - 1, version);
+        assert.equal(old.summary.weeklyCompleted, dash.summary.weeklyCompleted - 1, version);
+        assert.deepEqual(old.daily, dash.daily);
+      }
     }
-    for (const version of ['1.0.0.21.19', '1.0.0.21.20', '1.0.0.21.25', '1.0.0.21.100', '1.0.0.22.0', 'web', '', undefined]) {
-      assert.equal(questDashboardForClient(dash, version), dash, String(version));
+    // JS that says it can show it, the web app and unversioned requests get everything.
+    for (const [version, caps] of [
+      ['1.0.0.21.25', 'weekly-medi'],
+      ['1.0.0.21.100', 'other-cap, weekly-medi'],
+      ['1.0.0.22.0', 'WEEKLY-MEDI'],
+      ['web', undefined],
+      ['', undefined],
+      [undefined, undefined],
+    ]) {
+      assert.equal(questDashboardForClient(dash, version, caps), dash, `${version} ${caps}`);
     }
     // The shared dashboard object (one computation for concurrent requests) is never changed.
     assert.equal(JSON.stringify(dash), snapshot);
 
     const history = { timezone: QUEST_TIMEZONE, today: TODAY, nextCursor: null, items: dash.weekly.quests };
-    assert.equal(questByKey(questHistoryForClient(history, '1.0.0.21.18').items, 'weekly_medi'), undefined);
-    assert.equal(questHistoryForClient(history, '1.0.0.21.19'), history);
+    assert.equal(questByKey(questHistoryForClient(history, '1.0.0.21.25').items, 'weekly_medi'), undefined);
+    assert.equal(questHistoryForClient(history, '1.0.0.21.25', 'weekly-medi'), history);
   });
 });
 
