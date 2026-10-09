@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Pressable, ScrollView, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import { Check, Pill, RotateCcw } from 'lucide-react-native';
@@ -8,6 +8,7 @@ import { HubFeatureCard } from '@/components/home/HubFeatureCard';
 import { DoseCarouselSkeleton } from '@/components/ui/Skeleton';
 import { useThemeColors } from '@/theme/colors';
 import { useHomeAccent } from '@/theme/homeAccent';
+import { hubText } from '@/theme/hub';
 import type { useMedications } from '@/hooks/useMedications';
 import { ka } from '@/i18n/ka';
 import { tx } from '@/i18n/locale';
@@ -35,6 +36,8 @@ type Props = {
    * a card leads to the MEDIPILL setup with the name filled in, so it is never silently dropped.
    */
   setupName?: string | null;
+  /** „არა ახლა“: hides the setup card for that name on this account (`useMedicationSetupDismissals`). */
+  onDismissSetup?: (name: string) => void;
 };
 
 function formLabel(cfg: MedConfig, dosage: string) {
@@ -134,25 +137,47 @@ function NextDoseCard({
   );
 }
 
-/** „დააყენე შეხსენება: Metformin“ — the onboarding medicine, waiting for its dose and times. */
-function SetupMedicationCard({ name }: { name: string }) {
+/**
+ * „დააყენე შეხსენება: Metformin“ — the onboarding medicine, waiting for its dose and times. A quiet
+ * „არა ახლა“ under it (a sibling, never nested in the card's own Pressable) hides it for that name: an
+ * as-needed medicine, a name that differs from the catalogue brand, or one she deleted later.
+ */
+function SetupMedicationCard({ name, onDismiss }: { name: string; onDismiss?: (name: string) => void }) {
   const router = useRouter();
+  const c = useThemeColors();
   return (
-    <HubFeatureCard
-      icon={Pill}
-      ink="blue"
-      title={tx(`დააყენე შეხსენება: ${name}`, `Set up reminders: ${name}`)}
-      body={tx(
-        'მიუთითე დოზა და მიღების დრო — და დროზე შეგახსენებთ.',
-        'Add the dose and the times you take it, and we will remind you on time.',
-      )}
-      cta={tx('დაყენება', 'Set up')}
-      onPress={() => router.push(medicationSetupRoute(name))}
-    />
+    <View>
+      <HubFeatureCard
+        icon={Pill}
+        ink="blue"
+        title={tx(`დააყენე შეხსენება: ${name}`, `Set up reminders: ${name}`)}
+        body={tx(
+          'მიუთითე დოზა და მიღების დრო — და დროზე შეგახსენებთ.',
+          'Add the dose and the times you take it, and we will remind you on time.',
+        )}
+        cta={tx('დაყენება', 'Set up')}
+        onPress={() => router.push(medicationSetupRoute(name))}
+      />
+      {onDismiss ? (
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={tx(`${name}: არა ახლა`, `${name}: not now`)}
+          hitSlop={8}
+          onPress={() => onDismiss(name)}
+          style={styles.notNow}
+        >
+          <Text style={[hubText.link, { color: c.text200 }]}>{tx('არა ახლა', 'Not now')}</Text>
+        </Pressable>
+      ) : null}
+    </View>
   );
 }
 
-export function HomeNextDoseSection({ meds, setupName }: Props) {
+const styles = StyleSheet.create({
+  notNow: { alignSelf: 'flex-start', minHeight: 40, justifyContent: 'center', paddingHorizontal: 4, marginTop: 4 },
+});
+
+export function HomeNextDoseSection({ meds, setupName, onDismissSetup }: Props) {
   const router = useRouter();
   const { medications, schedule, doseLogs, setDoseLogs, loading } = meds;
   const today = todayYmd();
@@ -251,7 +276,7 @@ export function HomeNextDoseSection({ meds, setupName }: Props) {
       ) : null}
       {setupName ? (
         <View style={{ marginTop: cards.length > 0 ? 10 : 0 }}>
-          <SetupMedicationCard name={setupName} />
+          <SetupMedicationCard name={setupName} onDismiss={onDismissSetup} />
         </View>
       ) : null}
     </View>
