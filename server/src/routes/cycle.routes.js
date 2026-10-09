@@ -1387,8 +1387,16 @@ export const profileUpdateSchema = z.object({
 /**
  * The fresh bundle after a write that already succeeded (CYC-06): one retry for a transient database
  * error, then `null`. Never a partial bundle-shaped object — app builds cached that as the whole bundle
- * (no logs, no predictions) and /cycle and the women's Home crashed on it. Every build skips a `null`
- * body (`putCycleBundle` / `data?.profile` guards) and the 2xx still makes the app refetch its cycle views.
+ * (no logs, no predictions) and /cycle and the women's Home crashed on it.
+ * App JS from the 1.0.0.21.28 OTA on and web /app skip a `null` body (`isCompleteCycleBundle` / `data?.`
+ * guards), and the 2xx still makes them refetch their cycle views. Older app JS (1.0.0.21.x before that
+ * OTA) caches nothing from it either (`putCycleBundle` skips a falsy body), but two of its screens read
+ * the body and show a generic error after a write that did save (IR-10): cycle privacy → partner link
+ * on/off (`toggleShare`; no share sheet opens) and the cycle profile form (`CycleProfileSettings.save`;
+ * that save's Health start sync and reminder re-plan are skipped too). The refetch still shows the saved
+ * change. Accepted, because no other answer is safe for those builds: any object body (a partial
+ * bundle, `{}`, an empty 200) is cached by them as the whole bundle and brings the crash back, and a
+ * non-2xx would report a saved write as failed. Never answer older builds a partial body to hide it.
  */
 export async function bundleAfterWrite(load, { attempts = 2, log = console } = {}) {
   for (let attempt = 1; ; attempt += 1) {
