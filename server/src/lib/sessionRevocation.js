@@ -76,7 +76,8 @@ export async function readPasswordChangedAt(userId, db = prisma) {
 /**
  * Extra claim for a token renewed under `change` (readPasswordChange of the renewing request).
  * Nothing when it could not be read: that token keeps the `iat` rule, exactly as before, so a failed
- * read never stamps a value that would later end a valid session.
+ * read never stamps a value that would later end a valid session. (GET /me does not renew at all
+ * then: a fresh `iat` would outlive a reset the check could not see.)
  */
 export function passwordChangeClaim(change) {
   if (!change?.known) return {};

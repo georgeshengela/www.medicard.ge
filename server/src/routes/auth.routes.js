@@ -941,7 +941,12 @@ authRouter.get(
 
     // Sliding session: `token` only when the presented one is past half its lifetime. It carries the
     // password-change value requireAuth read, so a reset committed meanwhile still ends it.
-    const renewal = sessionRenewalFields(req.authClaims, () => signToken(req.user, passwordChangeClaim(req.authPasswordChange)));
+    // Only when that value was actually read: requireAuth lets the request through on a failed read
+    // (fail open), but a fresh token signed then would outlive a reset the check could not see. The
+    // next /me whose read works renews it (the token still has half its lifetime left).
+    const renewal = req.authPasswordChange?.known
+      ? sessionRenewalFields(req.authClaims, () => signToken(req.user, passwordChangeClaim(req.authPasswordChange)))
+      : {};
     if (renewal.token) res.set('Cache-Control', 'no-store');
 
     return res.json({

@@ -11,6 +11,8 @@ const USER = { id: 'user-reset-1', email: 'nino@example.com', phone: '+995555123
 const db = {
   /** undefined → column missing (Postgres 42703, before db:install); null → never reset; Date → last reset. */
   changedAt: null,
+  /** IR2-6: the next N passwordChangedAt reads throw a pooler error (the column exists, the read failed). */
+  readFails: 0,
   executed: [],
   resetCodeHash: null,
   /** PushToken updateMany calls (IR-11); `pushFails` makes the next one throw. */
@@ -54,6 +56,10 @@ const db = {
   async $queryRaw(strings, ...values) {
     const sql = strings.join('?');
     if (/passwordChangedAt/.test(sql)) {
+      if (db.readFails > 0) {
+        db.readFails -= 1;
+        throw Object.assign(new Error('Server has closed the connection.'), { code: 'P1017' });
+      }
       if (db.changedAt === undefined) throw Object.assign(new Error('column "passwordChangedAt" does not exist'), { code: 'P2010', meta: { code: '42703' } });
       return [{ passwordChangedAt: db.changedAt }];
     }
@@ -104,6 +110,7 @@ beforeEach(() => {
   db.pushOff = [];
   db.pushFails = false;
   db.duringMe = null;
+  db.readFails = 0;
 });
 
 const NOW = Math.floor(Date.now() / 1000);
@@ -357,13 +364,42 @@ describe('a /me renewal racing a password reset', () => {
     assert.equal((await authorize(body.token)).passed, false);
   });
 
-  it('before db:install (or on a failed read) renewals carry no claim and pass exactly as before', async () => {
+  // IR2-6: the request still fails open, but a fresh token is only signed when the reset check ran.
+  it('before db:install (column unreadable) /me still answers but hands out no renewal', async () => {
     db.changedAt = undefined;
-    const body = await getMe(tokenAt(NOW - 20 * 86400));
-    assert.equal(typeof body.token, 'string');
-    assert.equal('pwc' in jwt.decode(body.token), false);
-    assert.equal((await authorize(body.token)).passed, true);
+    const old = tokenAt(NOW - 20 * 86400);
+    assert.equal(renewal.sessionRenewalDue(jwt.decode(old)), true);
+    const body = await getMe(old);
+    assert.equal(body.status, 200);
+    assert.equal(body.user.id, USER.id);
+    assert.equal(body.token, undefined);
+    assert.equal((await authorize(old)).passed, true, 'the token itself keeps working (fail open)');
     assert.deepEqual(mod.passwordChangeClaim({ known: false, at: null }), {});
+  });
+
+  it('a failed read never renews a token the reset ended; the next working read refuses it', async () => {
+    // Lost phone: its token is 20 days old (due for renewal); the owner reset the password a minute ago.
+    const lost = tokenAt(NOW - 20 * 86400);
+    db.changedAt = new Date((NOW - 60) * 1000);
+    db.readFails = 1;
+    const body = await getMe(lost);
+    assert.equal(body.status, 200, 'the request itself fails open');
+    assert.equal(body.token, undefined, 'no fresh session while the reset could not be checked');
+    const next = await authorize(lost);
+    assert.equal(next.passed, false);
+    assert.equal(next.status, 401);
+    assert.equal(next.body.code, 'TOKEN_EXPIRED');
+  });
+
+  it('a session that is still valid is renewed by the next /me whose read works', async () => {
+    db.changedAt = null;
+    const token = tokenAt(NOW - 20 * 86400);
+    db.readFails = 1;
+    assert.equal((await getMe(token)).token, undefined);
+    const body = await getMe(token);
+    assert.equal(typeof body.token, 'string');
+    assert.equal(jwt.decode(body.token).pwc, 0);
+    assert.equal((await authorize(body.token)).passed, true);
   });
 
   it('a token that is not due for renewal gets none', async () => {
