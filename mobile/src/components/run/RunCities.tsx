@@ -1,8 +1,8 @@
 import React,{useEffect,useMemo,useState} from 'react';
-import {Pressable,ScrollView,View,useWindowDimensions} from 'react-native';
+import {Pressable,ScrollView,Share,View,useWindowDimensions} from 'react-native';
 import {useRouter} from 'expo-router';
 import {LinearGradient} from 'expo-linear-gradient';
-import {Footprints,MapPin} from 'lucide-react-native';
+import {Footprints,MapPin,Share2} from 'lucide-react-native';
 import Svg,{Circle,Path,Rect} from 'react-native-svg';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {ModuleHeader} from '@/components/brand/ModuleHeader';
@@ -15,7 +15,8 @@ import {grandPercent,levelPercent} from '@/lib/medipulsi/grand';
 import {formatArea,type TerritoryMap} from '@/lib/medipulsi/territory';
 import {formatYmd} from '@/lib/format';
 import {useIsDark,useThemeColors} from '@/theme/colors';
-import {HUB} from '@/theme/hub';
+import {HUB,hubTint} from '@/theme/hub';
+import {shareLink} from '@/lib/medipulsi/social';
 import {appLang,tx} from '@/i18n/locale';
 import {Action,Card,Copy,Section,runInk} from './PulseUi';
 
@@ -153,6 +154,12 @@ export default function RunCities(){
 }
 
 /** MEDIRUN hub → „პროგრესი“: the way into „ჩემი ქალაქები“ — how many cities, the three brightest and their meters. */
+/** Stage 8 (owner 2026-10-09): „გავანათე ლიეჟის 0,03%“ with the person's invite link, one tap from Progress. */
+async function shareCity(city:LitCity){
+ const link=await shareLink().catch(()=>'https://medicard.ge/medirun');
+ await Share.share({message:tx(`MEDIRUN-ში ${city.name}-ის ${pct(city.percent)} უკვე გავანათე 🌃 შემომიერთდი და ერთად გავანათოთ: ${link}`,`I've lit ${pct(city.percent)} of ${city.name} in MEDIRUN 🌃 Join me and let's light it up together: ${link}`)}).catch(()=>{});
+}
+
 export function RunCitiesEntry(){
  const router=useRouter(),c=useThemeColors(),dark=useIsDark(),teal=runInk('teal',dark),data=useMyCities().data;
  if(!data)return null;
@@ -168,6 +175,9 @@ export function RunCitiesEntry(){
      <View style={{flexDirection:'row',alignItems:'center'}}><Copy bold size={12} numberOfLines={1} style={{flex:1}}>{city.name}</Copy><Copy bold size={12} style={{color:lv.current?.gold?(dark?GOLD:'#B45309'):teal,fontVariant:['tabular-nums']}}>{pct(city.percent)}</Copy></View>
      <LedMeter percent={city.percent} gold={Boolean(lv.current?.gold)}/>
     </View>;}):<Copy muted size={12}>{tx('პირველი გასეირნების შემდეგ შენი ქალაქი აქ აინთება.','After your first walk your city lights up here.')}</Copy>}
+    {top.length?<Pressable accessibilityRole="button" accessibilityLabel={tx(`გაზიარება: ${top[0].name} ${pct(top[0].percent)}`,`Share: ${top[0].name} ${pct(top[0].percent)}`)} onPress={()=>void shareCity(top[0])} style={{flexDirection:'row',alignItems:'center',justifyContent:'center',gap:8,minHeight:46,borderRadius:14,backgroundColor:hubTint(teal,dark)}}>
+     <Share2 size={16} color={teal}/><Copy bold size={13} style={{color:teal}}>{tx(`გააზიარე · ${top[0].name} ${pct(top[0].percent)}`,`Share · ${top[0].name} ${pct(top[0].percent)}`)}</Copy>
+    </Pressable>:null}
    </Card>
   </Pressable>
  </Section>;

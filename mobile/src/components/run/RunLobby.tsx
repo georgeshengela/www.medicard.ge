@@ -61,7 +61,7 @@ function StatBadge({accent,icon,value,label,pulse,reduced,a11y}:{accent:string;i
  </View>;
 }
 
-export function RunLobby({header,active,onStart,onGoal,onMore}:{header:React.ReactNode;active:boolean;onStart:()=>void;onGoal:()=>void;onMore:()=>void}){
+export function RunLobby({header,today,active,onStart,onGoal,onMore}:{header:React.ReactNode;today?:React.ReactNode;active:boolean;onStart:()=>void;onGoal:()=>void;onMore:()=>void}){
  const {width,height}=useWindowDimensions(),insets=useSafeAreaInsets(),reduced=usePrefersReducedMotion();
  const drops=useDrops(),data=drops.data?.enabled?drops.data:null;
  const live=Boolean(data&&data.now.boxes>0),next=!live?data?.next||null:null;
@@ -109,6 +109,7 @@ export function RunLobby({header,active,onStart,onGoal,onMore}:{header:React.Rea
 
   <View style={{flex:1}}/>
   <View style={{paddingHorizontal:HUB.gutter,paddingBottom:18,gap:14}}>
+   {today}
    <View style={{gap:6}}>
     <Copy bold size={34} style={{color:'#fff',lineHeight:40,letterSpacing:-.6}}>{headline}</Copy>
     <Copy bold size={13} numberOfLines={2} style={{color:MINT,lineHeight:18,fontVariant:['tabular-nums']}}>{status}</Copy>

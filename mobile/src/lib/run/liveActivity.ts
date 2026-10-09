@@ -13,6 +13,8 @@ import { tx } from '@/i18n/locale';
 import { formatClock } from '@/lib/run/geo';
 import { getRunState, pauseRun, subscribeRunState, type RunState } from '@/lib/run/store';
 import { getPulseClient } from '@/lib/medipulsi/client';
+import { distance } from '@/lib/medipulsi/core/engine';
+import { getHunt, routeProgress, zoneRadiusAt } from '@/lib/run/hunt';
 import type { GiftSignal } from '@/lib/medipulsi/types';
 import type { RunActivityProps } from '@/lib/run/runActivityLayout';
 
@@ -81,7 +83,23 @@ function statusOf(s: RunState): { tone: RunActivityProps['tone']; status: string
     return { tone: 'hold', status: s.driving ? tx('მანქანაში · ავტო-პაუზა', 'In a vehicle · auto-paused') : tx('ტრანსპორტი · თვლა შეჩერებულია', 'Vehicle · counting on hold') };
   }
   if (s.accuracyM == null || s.accuracyM > 25) return { tone: 'live', status: tx('GPS-ს ველოდებით', 'Waiting for GPS') };
-  return { tone: 'live', status: tx('შენი გზა იწერება', 'Your path is recording') };
+  return { tone: 'live', status: huntStatus(s) || tx('შენი გზა იწერება', 'Your path is recording') };
+}
+
+/**
+ * Box hunt on the lock screen (MEDIRUN stage 4, owner 2026-10-09): the status line says how far the zone is along the
+ * way, then „ზონაში ხარ — ეძებე“; the gift pulse („აღმოჩენა ახლოსაა“) still outranks it. Rounded to 50 m / 0.1 km
+ * so the activity does not update on every fix.
+ */
+export function huntStatus(s: Pick<RunState, 'current'>): string | null {
+  const h = getHunt(), at = s.current;
+  if (!h || !at) return null;
+  const p: [number, number] = [at.lng, at.lat];
+  const edge = zoneRadiusAt(h.center, h.radiusM, p);
+  if (distance(p, h.center) <= edge) return tx(`${h.name} · ზონაში ხარ — ეძებე`, `${h.name} · in the zone — search`);
+  const left = Math.max(0, (h.route && h.route.length > 1 ? routeProgress(h.route, p).leftM : distance(p, h.center)) - edge);
+  const far = left < 1000 ? tx(`${Math.max(50, Math.round(left / 50) * 50)} მ`, `${Math.max(50, Math.round(left / 50) * 50)} m`) : tx(`${(left / 1000).toFixed(1).replace('.', ',')} კმ`, `${(left / 1000).toFixed(1)} km`);
+  return tx(`${h.name} · ზონამდე ≈ ${far}`, `${h.name} · ≈ ${far} to the zone`);
 }
 
 /** The gift pulse while recording: near (signal) or here (in reach). */

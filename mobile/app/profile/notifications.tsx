@@ -10,6 +10,7 @@ import {
   ChevronLeft,
   Droplets,
   Footprints,
+  Gift,
   HeartHandshake,
   Mail,
   MessageCircle,
@@ -28,6 +29,8 @@ import {
 import { ReminderFamiliesSection } from '@/components/profile/ReminderFamiliesSection';
 import { useFigmaHealthMetrics } from '@/constants/figmaHealthMetricsLayout';
 import { ka } from '@/i18n/ka';
+import { tx } from '@/i18n/locale';
+import { useWaveAlerts } from '@/components/run/RunWaveAlert';
 import { api, type EmailPreferences } from '@/lib/api';
 import {
   DEFAULT_ENGAGE_PREFS,
@@ -114,6 +117,9 @@ export default function NotificationSettingsScreen() {
     const updated = await patchProfileExtra(healthProfile, user, { priceDropAlerts: next });
     setHealthProfile(updated);
   };
+  // MEDIRUN „ყუთი შენთან ახლოსაა“ (server push, off by default; same switch as under the MEDIRUN boxes card).
+  const waveAlerts = useWaveAlerts();
+  const [waveNote, setWaveNote] = useState('');
   const [prefs, setPrefs] = useState<MediEngagePrefs>(DEFAULT_ENGAGE_PREFS);
   // Marketing email consent lives on the server (Law 3144: explicit, off by default).
   const [emailPrefs, setEmailPrefs] = useState<EmailPreferences | null>(null);
@@ -215,6 +221,20 @@ export default function NotificationSettingsScreen() {
               />
             ))}
           </PermissionGroup>
+        </View>
+
+        <View style={{ gap: 8 }}>
+          <PermissionSectionLabel title="MEDIRUN" />
+          <PermissionGroup>
+            <PermissionToggleRow
+              icon={Gift}
+              label={tx('ყუთები ჩემთან ახლოს დაიყარა', 'Boxes dropped near me')}
+              value={waveAlerts.on}
+              isLast
+              onValueChange={(next) => { setWaveNote(''); void waveAlerts.set(next).then(setWaveNote); }}
+            />
+          </PermissionGroup>
+          {waveNote ? <Text style={{ fontFamily: 'NotoSansGeorgian_400Regular', fontSize: 12, lineHeight: 17, color: colors.warning, paddingHorizontal: 4 }}>{waveNote}</Text> : null}
         </View>
 
         <View style={{ gap: 8 }}>

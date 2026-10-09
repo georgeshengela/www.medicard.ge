@@ -27,6 +27,10 @@ import {GrandPrizeCard} from './GrandPrizeCard';
 import {RunDropsCard,type HuntPlace} from './RunDrops';
 import {RunWallet} from './RunWallet';
 import {RunLobby} from './RunLobby';
+import {FirstWalkGuide,TodayStrip} from './RunToday';
+import {RunWaveAlert} from './RunWaveAlert';
+import {RunPendingPrizes} from './RunPendingPrizes';
+import {RunStampGrid} from './RunStampGrid';
 import {RunPrizeGoal} from './RunPrizeGoal';
 import {RunRaceCard} from './RunRaceCard';
 import {RunCrewCard} from './RunCrewCard';
@@ -84,6 +88,9 @@ export default function PulseHub(){
  const week=useMemo(()=>weekBuckets(walks),[walks]),streak=useMemo(()=>walkStreak(walks),[walks]);
  // Lifetime numbers from the server's totals: its history list holds only the latest 50 walks.
  const totals=pulse.snapshot?.totals,lifetimeKm=(totals?totals.meters:walks.reduce((s,w)=>s+w.meters,0))/1000,lifetimeWalks=totals?totals.walks:walks.length;
+ // Stage 2 (owner 2026-10-09): the day at a glance and the first-walk steps.
+ const todayKm=useMemo(()=>{const d=new Date(),from=new Date(d.getFullYear(),d.getMonth(),d.getDate()).getTime();return walks.filter(w=>Date.parse(w.startedAt)>=from).reduce((s,w)=>s+w.meters,0)/1000;},[walks]);
+ const walkedOnce=lifetimeKm>=0.2||walks.some(w=>w.meters>=200),litOnce=Boolean((totals?.newMeters||0)>0||walks.some(w=>w.newMeters>0)),openedOnce=Boolean(pulse.snapshot?.claims.length);
  const missions=pulse.snapshot?.missions||[],missionCount=missions.length||24;
  const stamps=Object.values(pulse.book.progress).filter(p=>p.completedAt).length;
  const active=missions.find(m=>m.id===pulse.book.selected);
@@ -106,9 +113,11 @@ export default function PulseHub(){
 
   {/* Owner 2026-10-05: the page grew too long — four sections under a bottom menu, each short. */}
   {tab==='start'?<>
-  <RunLobby header={headerEl} active={focused&&appActive} onStart={()=>start()} onGoal={()=>setTargetSheet(true)} onMore={()=>scroll.current?.scrollTo({y:Math.max(560,winH-150)-insets.top-60,animated:true})}/>
+  <RunLobby header={headerEl} today={<TodayStrip todayKm={todayKm}/>} active={focused&&appActive} onStart={()=>start()} onGoal={()=>setTargetSheet(true)} onMore={()=>scroll.current?.scrollTo({y:Math.max(560,winH-150)-insets.top-60,animated:true})}/>
 
+  {pulse.snapshot?<FirstWalkGuide walked={walkedOnce} lit={litOnce} opened={openedOnce} onStart={()=>start()}/>:null}
   <RunDropsCard here={here} onHunt={hunt}/>
+  <RunWaveAlert/>
   <Section title={tx('თბილისის პასპორტი', 'Tbilisi passport')} link={tx('ყველა მისია', 'All missions')} onLink={()=>setPanel('missions')}>
    <Card style={{gap:16}}>
     <View style={{flexDirection:'row',alignItems:'center',gap:14}}>
@@ -119,6 +128,7 @@ export default function PulseHub(){
      </View>
      <Image source={RUN_ICON.passport} accessibilityIgnoresInvertColors resizeMode="contain" style={{width:76,height:76,transform:[{rotate:'-6deg'}]}}/>
     </View>
+    <RunStampGrid missions={missions} book={pulse.book} nextId={next?.m.id||null} onOpen={()=>setPanel('missions')}/>
     {active?<Pressable accessibilityRole="button" accessibilityLabel={tx(`აქტიური მისია ${active.name}, ${missionPercent(pulse.book,active)} პროცენტი`, `Active mission ${active.name}, ${missionPercent(pulse.book,active)} percent`)} onPress={()=>setPanel('missions')} style={{flexDirection:'row',alignItems:'center',gap:10,paddingHorizontal:12,minHeight:44,borderRadius:14,backgroundColor:c.accent100}}>
      <Compass size={15} color={c.primary100}/><Copy bold size={12} numberOfLines={1} style={{flex:1}}>{tx('აქტიური მისია ·', 'Active mission ·')} {active.name}</Copy><Copy bold size={12} style={{color:c.primary100}}>{missionPercent(pulse.book,active)}%</Copy>
     </Pressable>:null}
@@ -138,6 +148,7 @@ export default function PulseHub(){
   {tab==='rewards'?<>
   {/* Owner 2026-10-09 order (research: balance first, then the goal, then the big prize, then the collection). */}
   <RunWallet/>
+  <RunPendingPrizes/>
   <RunPrizeGoal/>
   <Section title={tx('გაანათე თბილისი','Light up Tbilisi')}>
    <GrandPrizeCard/>
