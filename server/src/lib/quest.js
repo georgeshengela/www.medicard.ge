@@ -1,5 +1,5 @@
 import { prisma } from './prisma.js';
-import { AI_REPLY_CUT_MESSAGE } from './aiTelemetry.js';
+import { AI_ERROR_REVIEWED, AI_REPLY_CUT_MESSAGE } from './aiTelemetry.js';
 import { hasAcceptedAiConsent } from './aiConsent.js';
 import { sumRewardLedger } from './rewardLedgerSum.js';
 import {
@@ -190,13 +190,15 @@ async function isTemplateEligible(db, userId, template, aiConsentAccepted = fals
 
 /**
  * The weekly Medi mission counts a health question Medi answered: a consultation (DOCTOR/CONSILIUM) that
- * finished, or one cut at max_tokens (shown and saved; logged as ERROR for admin). An answer she stopped
- * or left writes no row; a failed one is a plain ERROR — neither counts. Planner turns (logging, reminders)
- * never reach this table, and the mission copy promises only the health question.
+ * finished, or one cut at max_tokens (shown and saved; logged as ERROR for admin) — whether or not an admin
+ * has since reviewed that error (#/ai „ჩაქრობა“ → ERROR_REVIEWED): admin triage never changes a mission.
+ * An answer she stopped or left before it was saved keeps no row; a failed one is a plain ERROR — neither
+ * counts. Planner turns (logging, reminders) never reach this table, and the mission copy promises only
+ * the health question.
  */
 const MEDI_ANSWERED = Object.freeze({
   mode: { in: ['DOCTOR', 'CONSILIUM'] },
-  OR: [{ status: 'OK' }, { status: 'ERROR', errorMessage: AI_REPLY_CUT_MESSAGE }],
+  OR: [{ status: 'OK' }, { status: { in: ['ERROR', AI_ERROR_REVIEWED] }, errorMessage: AI_REPLY_CUT_MESSAGE }],
 });
 
 export async function computeQuestProgress(userId, templateOrQuest, periodKey, options = {}) {

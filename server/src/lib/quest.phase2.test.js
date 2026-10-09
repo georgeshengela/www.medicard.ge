@@ -32,7 +32,7 @@ import { QUEST_ECONOMY, assertIssuableQuestReward, validateHydrationGoalMl } fro
 import { onQuestCompleted } from './questRealtime.js';
 import { publicQuest } from './questPrivacy.js';
 import { AI_CONSENT_VERSION } from './aiConsent.js';
-import { AI_REPLY_CUT_MESSAGE } from './aiTelemetry.js';
+import { AI_ERROR_REVIEWED, AI_REPLY_CUT_MESSAGE } from './aiTelemetry.js';
 
 const NOW = new Date('2026-09-06T12:00:00+04:00');
 const TODAY = '2026-09-06';
@@ -374,6 +374,30 @@ describe('phase 2 weekly Medi mission', () => {
     // Both reads (one quest, and the batched pass behind every progress update) follow the same rule.
     assert.equal(await computeQuestProgress(USER, row, WEEK, options), 1);
     medi = questByKey(await updateQuestProgress(USER, { templateKey: 'weekly_medi' }, options), 'weekly_medi');
+    assert.equal(medi.progress, 1);
+    assert.equal(medi.status, 'COMPLETED');
+  });
+
+  // Integration review IR-5/IR-17: admin „ჩაქრობა“ (POST /api/admin/ai/errors/review) turns every ERROR row
+  // into ERROR_REVIEWED, cut replies included. A mission assigned or recomputed after that must still count
+  // the cut answer she got; a reviewed real failure still never counts.
+  it('still counts a cut answer after the admin reviewed its error, never a reviewed failure', async () => {
+    const { db, options } = await setup({ aiConsent: true, weekly: false });
+    await db.aiInteraction.create({ data: { userId: USER, status: 'ERROR', mode: 'DOCTOR', errorMessage: 'Provider 503', createdAt: NOW } });
+    // No weekly row yet (consent accepted mid-week, web, first open lands in Medi): the answer's refresh finds nothing.
+    assert.deepEqual(await refreshQuestProgressForUser(USER, QuestSignal.MEDI_USED, options), []);
+    await db.aiInteraction.updateMany({ where: { userId: USER, status: 'ERROR' }, data: { status: AI_ERROR_REVIEWED } });
+    await assignWeeklyQuests(USER, WEEK, options);
+    const row = questByKey(await allQuests(db), 'weekly_medi');
+    assert.equal(await computeQuestProgress(USER, row, WEEK, options), 0, 'a reviewed failure is still not an answer');
+    assert.equal(questByKey(await updateQuestProgress(USER, { templateKey: 'weekly_medi' }, options), 'weekly_medi').progress, 0);
+
+    await db.aiInteraction.create({
+      data: { userId: USER, status: 'ERROR', mode: 'CONSILIUM', errorMessage: AI_REPLY_CUT_MESSAGE, createdAt: NOW },
+    });
+    await db.aiInteraction.updateMany({ where: { userId: USER, status: 'ERROR' }, data: { status: AI_ERROR_REVIEWED } });
+    assert.equal(await computeQuestProgress(USER, row, WEEK, options), 1);
+    const medi = questByKey(await updateQuestProgress(USER, { templateKey: 'weekly_medi' }, options), 'weekly_medi');
     assert.equal(medi.progress, 1);
     assert.equal(medi.status, 'COMPLETED');
   });
