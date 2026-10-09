@@ -155,3 +155,13 @@ test('JSON requests and the stream share one error reader', () => {
   assert.match(api.slice(api.indexOf('function parseJsonBody')), /noteApiErrorSignals\(status, payload, serverError\)/);
   assert.match(fs.readFileSync(path.join(root, 'src/lib/aiQueryStream.js'), 'utf8'), /noteApiErrorSignals\(status, payload, message\);\s*throw new ApiError/);
 });
+
+// Review (2026-10-09): the switch hid, but „ხელახლა ცდა“ kept its route and an explicit route skipped the
+// switches, so the retry went to the paused mode and got the same 503 until the admin turned it back on.
+test('a retry to a mode paused since then goes through the planner, not the same 503', () => {
+  const src = fs.readFileSync(path.join(root, 'src/components/medi/MediChat.tsx'), 'utf8');
+  const send = src.slice(src.indexOf('async function send('), src.indexOf('async function afterSaved('));
+  assert.match(send, /const routeOn = route === 'CONSILIUM' \? deepOn : route === 'DOCTOR' \? doctorOn : true;/);
+  assert.match(send, /const target: Retry\['route'\] = route && routeOn \? route : \(/);
+  assert.doesNotMatch(send, /= route \?\?/, 'an explicit route never bypasses the admin switches');
+});

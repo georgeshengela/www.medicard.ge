@@ -31,10 +31,10 @@ function formatRateLimitMessage(seconds, fallback) {
 }
 
 /**
- * AI limits the server words itself, in the person's language (an analysis already running, too many AI
- * starts, the daily fuse, the quota): its own text, never a made-up „wait N seconds“.
+ * AI limits the server words itself, in the person's language (an analysis already running, the daily
+ * fuse, the quota): its own text, never a made-up „wait N seconds“.
  */
-const SERVER_WORDED_LIMITS = new Set(['AI_BUSY', 'RATE_LIMITED', 'AI_DAILY_CAP', 'DAILY_LIMIT_REACHED', 'MONTHLY_LIMIT_REACHED']);
+const SERVER_WORDED_LIMITS = new Set(['AI_BUSY', 'AI_DAILY_CAP', 'DAILY_LIMIT_REACHED', 'MONTHLY_LIMIT_REACHED']);
 
 function publicApiErrorMessage(status, payload, retryRaw, fallback) {
   const serverError =
@@ -42,8 +42,12 @@ function publicApiErrorMessage(status, payload, retryRaw, fallback) {
     (typeof payload?.detail === 'string' && payload.detail) ||
     fallback;
   if (status !== 429) return serverError;
-  if (SERVER_WORDED_LIMITS.has(payload?.code) && typeof payload?.error === 'string' && payload.error.trim()) return payload.error;
   const seconds = parseRetryAfterSeconds(retryRaw, payload);
+  const worded = typeof payload?.error === 'string' && payload.error.trim() ? payload.error : null;
+  if (worded && SERVER_WORDED_LIMITS.has(payload?.code)) return worded;
+  // RATE_LIMITED is also every generic limiter's code (sign-in codes, invites…); those send a wait, which
+  // reads in seconds, minutes or hours below. Only the AI start limit comes without one: keep its words.
+  if (worded && payload?.code === 'RATE_LIMITED' && seconds == null) return worded;
   if (seconds == null) {
     if (typeof serverError === 'string' && /წამს|წუთ|second|minute/i.test(serverError)) return serverError;
     return formatRateLimitMessage(60, serverError);
