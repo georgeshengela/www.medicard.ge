@@ -248,7 +248,7 @@ export async function togetherTick(userId,{spot,settings,campaign,now=Date.now()
 let liveCache={at:0,key:'',value:null};
 /**
  * How many people walk right now (active session, fix in the last 2 minutes) inside `bbox` = [w,s,e,n], and how
- * many of them are within `rain.radiusM` of the Saturday rain centre while it runs. Numbers below MIN_LIVE → null.
+ * many of them are within `rain.radiusM` of the Saturday rain centre while it runs. Rain counts below MIN_LIVE → null.
  */
 export async function liveWalkers({bbox,rain=null,db=prisma,now=Date.now()}){
  const key=JSON.stringify([bbox,rain]);
@@ -257,7 +257,9 @@ export async function liveWalkers({bbox,rain=null,db=prisma,now=Date.now()}){
  const spots=rows.filter(r=>Array.isArray(r.position)&&Number.isFinite(r.lastFix)&&now-r.lastFix<=120_000).map(r=>r.position);
  const inside=bbox?spots.filter(([x,y])=>x>=bbox[0]&&x<=bbox[2]&&y>=bbox[1]&&y<=bbox[3]):spots;
  const nearRain=rain?inside.filter(p=>distance(p,rain.center)<=rain.radiusM).length:0;
- const value={walkers:inside.length>=MIN_LIVE?inside.length:null,rain:rain&&nearRain>=MIN_LIVE?nearRain:null};
+ // Owner 2026-10-09: the app shows the real number of people walking in the city („ონლაინ“), small ones too; the
+ // Saturday rain count keeps the MIN_LIVE floor (one park is small enough to point at a person).
+ const value={walkers:inside.length,rain:rain&&nearRain>=MIN_LIVE?nearRain:null};
  liveCache={at:now,key,value};
  return value;
 }
