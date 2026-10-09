@@ -9,7 +9,7 @@ import { AiEngineError } from '../lib/evidencemd.js';
 import { askAi, serverAiEngine, publicAiEngineCatalog, resolveOpenRouterModel } from '../lib/aiEngine.js';
 import { runTrackedAi } from '../lib/aiTelemetry.js';
 import { watchStreamClient } from '../lib/streamClient.js';
-import { describeImage, structureLabText, SUPPORTED_IMAGE_TYPES, VISION_EFFORTS } from '../lib/vision.js';
+import { describeImage, isVisionReaderDown, structureLabText, SUPPORTED_IMAGE_TYPES, VISION_EFFORTS, visionFailedError } from '../lib/vision.js';
 import { extractPdfText, ocrImage, SUPPORTED_DOCUMENT_TYPES } from '../lib/ocr.js';
 import { buildVisionHandoff, buildDoctorTurnContext, sanitizeDoctorReply } from '../lib/prompts.js';
 import { calculateAge, withPatientAiContext } from '../lib/patient.js';
@@ -570,7 +570,12 @@ aiRouter.post(
     if (labExtract.parameters.length < 3 && visionNotes.length >= 24) {
       const structured = await structureLabText(visionNotes, {
         model: resolveOpenRouterModel(req.user),
-      }).catch(() => null);
+      }).catch((error) => {
+        // A text PDF is read by this pass alone: with the reader down its values were never looked at, so
+        // „nothing found“ below is „try again later with the same file“, never „retake the photo“.
+        if (!images.length && !readerDown && isVisionReaderDown(error)) readerDown = visionFailedError([error], error, { document: true });
+        return null;
+      });
       if (structured?.notes) {
         visionNotes = `${visionNotes}\n\n${structured.notes}`;
         labExtract = extractLabFromText(visionNotes);

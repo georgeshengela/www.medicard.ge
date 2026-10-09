@@ -200,5 +200,19 @@ describe('MEDISCAN F4: a reader that is down never blames the photo', async () =
     assert.ok(last.indexOf('if (readerDown) throw readerDown;') < last.indexOf("code: 'LAB_UNREADABLE'"), 'before the retake copy');
     // A later page keeps the 200 shape old apps read; `unavailable` is additive.
     assert.match(route, /unreadable: true,\s*\.\.\.\(readerDown \? \{ unavailable: true \} : \{\}\),/);
+    // A text PDF is read only by the structuring pass: that reader being down is the same calm 503.
+    assert.match(route, /if \(!images\.length && !readerDown && isVisionReaderDown\(error\)\) readerDown = visionFailedError\(\[error\], error, \{ document: true \}\);/);
+  });
+
+  it('a PDF hears „the same file“, never „the photo“', () => {
+    const down = visionFailedError([http(402)], null, { document: true });
+    assert.equal(down.status, 503);
+    assert.equal(down.readerDown, true);
+    assert.match(down.message, /იგივე ფაილით/);
+    assert.doesNotMatch(down.message, /ფოტო|გადაუღე/);
+    assert.match(down.messageEn, /same file/);
+    assert.doesNotMatch(down.messageEn, /photo|retake/i);
+    // A PDF the readers did look at keeps the old copy.
+    assert.equal(visionFailedError([new Error('empty response')], null, { document: true }).status, 502);
   });
 });

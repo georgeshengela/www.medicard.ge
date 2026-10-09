@@ -75,16 +75,20 @@ export function isVisionReaderDown(error) {
 /**
  * The error once every reader failed (MEDISCAN F4, 2026-10-09). When none of them could answer at all,
  * the photo was never read: say so calmly (503, `readerDown`) and never ask for another photo. Otherwise
- * the readers saw it and could not read it — the old copy stays.
+ * the readers saw it and could not read it — the old copy stays. `document`: a PDF, so the copy says file.
  */
-export function visionFailedError(failures = [], cause = null) {
+export function visionFailedError(failures = [], cause = null, { document = false } = {}) {
   const list = (failures ?? []).filter(Boolean);
   if (list.length && list.every(isVisionReaderDown)) {
     const error = new AiEngineError(
-      'ანალიზი ახლა ვერ შესრულდა — სერვისი დროებით მიუწვდომელია. ფოტოს ხელახლა გადაღება არ გჭირდება: სცადე იგივე ფოტოთი ცოტა ხანში. ეს მცდელობა ლიმიტში არ ჩაგეთვლება.',
+      document
+        ? 'ანალიზი ახლა ვერ შესრულდა — სერვისი დროებით მიუწვდომელია. ფაილის ხელახლა ატვირთვა არ გჭირდება: სცადე იგივე ფაილით ცოტა ხანში. ეს მცდელობა ლიმიტში არ ჩაგეთვლება.'
+        : 'ანალიზი ახლა ვერ შესრულდა — სერვისი დროებით მიუწვდომელია. ფოტოს ხელახლა გადაღება არ გჭირდება: სცადე იგივე ფოტოთი ცოტა ხანში. ეს მცდელობა ლიმიტში არ ჩაგეთვლება.',
       {
         status: 503,
-        messageEn: 'The analysis couldn’t run right now — the service is temporarily unavailable. No need to retake the photo: try again with the same photo in a little while. This try does not count toward your limit.',
+        messageEn: document
+          ? 'The analysis couldn’t run right now — the service is temporarily unavailable. No need to upload the file again: try again with the same file in a little while. This try does not count toward your limit.'
+          : 'The analysis couldn’t run right now — the service is temporarily unavailable. No need to retake the photo: try again with the same photo in a little while. This try does not count toward your limit.',
         cause,
       },
     );
@@ -265,7 +269,7 @@ export async function describeImage({ buffer, mimeType, kind, patientContext, mo
     }
   }
 
-  throw visionFailedError(failures, new Error(errors.join(' | ')));
+  throw visionFailedError(failures, new Error(errors.join(' | ')), { document: mimeType === 'application/pdf' });
 }
 
 async function describeWithClaude({ base64, mimeType, prompt }) {
