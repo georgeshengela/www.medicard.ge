@@ -61,6 +61,8 @@ export default function PulseHub(){
  // The lobby's 3D city runs only while Start is on screen and the app is in front.
  const focused=useIsFocused(),{height:winH}=useWindowDimensions(),[appActive,setAppActive]=useState(AppState.currentState==='active');
  useEffect(()=>{const sub=AppState.addEventListener('change',st=>setAppActive(st==='active'));return()=>sub.remove();},[]);
+ // Scrolled past the lobby: the 3D city stops (owner 2026-10-09: the phone got hot).
+ const [lobbySeen,setLobbySeen]=useState(true);
  const [history,setHistory]=useState<RunSummary[]>([]),[targetSheet,setTargetSheet]=useState(false),[panel,setPanel]=useState<PulsePanel|null>(null),[error,setError]=useState(''),[missionError,setMissionError]=useState(''),[here,setHere]=useState<Coordinate|null>(null),[busy,setBusy]=useState(false);
  const testPulse=useHeartbeat(EMPTY_SIGNAL,pulse.snapshot?.settings||{},false);
  useFocusEffect(useCallback(()=>{
@@ -98,14 +100,14 @@ export default function PulseHub(){
  const leave=()=>router.canGoBack()?router.back():router.replace('/(tabs)/home' as never);
  const goHome=()=>router.replace('/(tabs)/home' as never);
  const [tab,setTabState]=useState<RunHubTab>(lastTab),scroll=useRef<ScrollView>(null),tabsInset=useRunHubTabsInset();
- const setTab=(next:RunHubTab)=>{lastTab=next;if(next!==tab){setTabState(next);scroll.current?.scrollTo({y:0,animated:false});}else scroll.current?.scrollTo({y:0,animated:true});};
+ const setTab=(next:RunHubTab)=>{lastTab=next;if(next!==tab){setTabState(next);setLobbySeen(true);scroll.current?.scrollTo({y:0,animated:false});}else scroll.current?.scrollTo({y:0,animated:true});};
  // A crew invite link opens the „ერთად“ section with the join sheet.
  useEffect(()=>{if(params.crew){lastTab='together';setTabState('together');}},[params.crew]);
  const choose=(id:string)=>{if(busy)return;setBusy(true);setMissionError('');void getPulseClient().selectMission(id).catch(()=>setMissionError(tx('მისია ვერ აირჩა. შეამოწმე ინტერნეტი და სცადე თავიდან.','Couldn’t choose the mission. Check your connection and try again.'))).finally(()=>setBusy(false));};
 
  const headerEl=<ModuleHeader module="run" backLabel={tx('MEDICARD-ში დაბრუნება', 'Back to MEDICARD')} onBack={leave} subtitle={`${dayMoment()} ${tx('· შენი ქალაქის პულსი', '· your city’s pulse')}`}
    right={<ModuleHeaderButton label={tx('მთავარზე დაბრუნება', 'Back to Home')} icon={House} onPress={goHome}/>}/>;
- return <View style={{flex:1,backgroundColor:c.bg100}}><ScrollView ref={scroll} showsVerticalScrollIndicator={false} contentContainerStyle={{paddingTop:insets.top+12,paddingBottom:tabsInset,paddingHorizontal:HUB.gutter,gap:HUB.sectionGap}}>
+ return <View style={{flex:1,backgroundColor:c.bg100}}><ScrollView ref={scroll} scrollEventThrottle={250} onScroll={e=>{const seen=e.nativeEvent.contentOffset.y<Math.max(560,winH-150)*0.7;if(seen!==lobbySeen)setLobbySeen(seen);}} showsVerticalScrollIndicator={false} contentContainerStyle={{paddingTop:insets.top+12,paddingBottom:tabsInset,paddingHorizontal:HUB.gutter,gap:HUB.sectionGap}}>
   {tab!=='start'?headerEl:null}
 
 
@@ -113,7 +115,7 @@ export default function PulseHub(){
 
   {/* Owner 2026-10-05: the page grew too long — four sections under a bottom menu, each short. */}
   {tab==='start'?<>
-  <RunLobby header={headerEl} today={<TodayStrip todayKm={todayKm}/>} active={focused&&appActive} onStart={()=>start()} onGoal={()=>setTargetSheet(true)} onMore={()=>scroll.current?.scrollTo({y:Math.max(560,winH-150)-insets.top-60,animated:true})}/>
+  <RunLobby header={headerEl} today={<TodayStrip todayKm={todayKm}/>} active={focused&&appActive&&lobbySeen} onStart={()=>start()} onGoal={()=>setTargetSheet(true)} onMore={()=>scroll.current?.scrollTo({y:Math.max(560,winH-150)-insets.top-60,animated:true})}/>
 
   {pulse.snapshot?<FirstWalkGuide walked={walkedOnce} lit={litOnce} opened={openedOnce} onStart={()=>start()}/>:null}
   <RunDropsCard here={here} onHunt={hunt}/>
