@@ -1,7 +1,7 @@
 import React,{useMemo,useState} from 'react';
 import {Pressable,View} from 'react-native';
 import {useRouter} from 'expo-router';
-import {BookOpen,ChevronRight,Flame,Settings2,TrendingUp,Trophy} from 'lucide-react-native';
+import {BookOpen,ChevronRight,Clapperboard,Flame,Settings2,TrendingUp,Trophy} from 'lucide-react-native';
 import {useIsDark,useThemeColors} from '@/theme/colors';
 import {HUB,hubTint} from '@/theme/hub';
 import {tx} from '@/i18n/locale';
@@ -54,7 +54,8 @@ export function RecentWalks({history}:{history:RunSummary[]}){
       <View style={{flexDirection:'row',alignItems:'baseline',gap:4}}><Copy bold size={20} style={{fontVariant:['tabular-nums'],lineHeight:25}}>{formatKm(run.distanceM,2)}</Copy><Copy bold size={12} style={{color:teal}}>{tx('კმ','km')}</Copy></View>
       <Copy muted size={11} numberOfLines={1} style={{fontVariant:['tabular-nums']}}>{tx(`${min} წთ`,`${min} min`)}{run.paceSecPerKm?` · ${formatPace(run.paceSecPerKm)} ${tx('/კმ','/km')}`:''}{run.steps?tx(` · ${run.steps.toLocaleString('en-US').replace(/,/g,' ')} ნაბიჯი`,` · ${run.steps.toLocaleString('en-US')} steps`):''}</Copy>
      </View>
-     <ChevronRight color={c.text300} size={18}/>
+     {run.distanceM>=600?<Pressable accessibilityRole="button" accessibilityLabel={tx('ვიდეოდ გაზიარება','Share as a video')} hitSlop={6} onPress={()=>router.push(`/run/${run.id}?video=1` as never)} style={{width:40,height:40,borderRadius:13,backgroundColor:hubTint(teal,dark),alignItems:'center',justifyContent:'center'}}><Clapperboard size={18} color={teal}/></Pressable>
+     :<ChevronRight color={c.text300} size={18}/>}
     </Pressable>;
    })}
   </Card>

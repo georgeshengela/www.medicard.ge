@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import { ScrollView, Share, View } from 'react-native';
-import { Award, Flag, Flame, Footprints, Gauge, MapPin, Share2, Timer, Zap } from 'lucide-react-native';
+import { Pressable, ScrollView, Share, View } from 'react-native';
+import { Award, Clapperboard, Flag, Flame, Footprints, Gauge, MapPin, Share2, Timer, Zap } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MedicalSourcesLink } from '@/components/health/MedicalSourcesLink';
 import { RunMap, type RunMapHandle } from './RunMap';
@@ -20,11 +20,11 @@ import { lineLength, longestLine, thin, trimEnds, type LngLat } from '@/lib/run/
 import { ShareStudio, canRecordClips, type ShareSceneInput } from './ShareStudio';
 
 /** `onBack`: where the header's back goes (the summary leaves the finished session; history goes back). */
-type Props = { summary: RunSummary; title: string; onBack?: () => void; footer?: ReactNode };
+type Props = { summary: RunSummary; title: string; onBack?: () => void; footer?: ReactNode; /** Open the video right away (the walks list's 🎬). */ autoVideo?: boolean };
 
 const RECORD_COPY: Record<RecordKind, string> = { distance: tx('ყველაზე გრძელი გასეირნება', 'Longest walk'), pace: tx('საუკეთესო ტემპი', 'Best pace'), time: tx('ყველაზე ხანგრძლივი', 'Longest duration') };
 
-export function RunFinishedView({ summary, title, onBack, footer }: Props) {
+export function RunFinishedView({ summary, title, onBack, footer, autoVideo = false }: Props) {
   const c = useThemeColors(), insets = useSafeAreaInsets();
   const map = useRef<RunMapHandle>(null);
   const [mapReady, setMapReady] = useState(false);
@@ -71,6 +71,10 @@ export function RunFinishedView({ summary, title, onBack, footer }: Props) {
     };
   }, [summary, user?.gender]);
 
+  // „ვიდეო ყველა გასეირნებას“ (owner 2026-10-09): the walks list's 🎬 opens this page with the clip already starting.
+  const autoOpened = useRef(false);
+  useEffect(() => { if (autoVideo && scene && !autoOpened.current) { autoOpened.current = true; setStudio(true); } }, [autoVideo, scene]);
+
   const share = () => {
     if (scene) { setStudio(true); return; }
     const lines = [
@@ -111,6 +115,15 @@ export function RunFinishedView({ summary, title, onBack, footer }: Props) {
         {mapCenter ? <RunMap ref={map} center={mapCenter} onReady={() => setMapReady(true)} /> : <View style={{ flex: 1, padding: 24, alignItems: 'center', justifyContent: 'center', gap: 12 }}><MapPin size={28} color={c.primary100} /><Copy muted size={12}>{tx('ამ ჩანაწერს მარშრუტი არ ახლავს', 'This record has no route')}</Copy></View>}
       </View>
     </Card>
+
+    {/* The clip of this walk lighting the night city — the owner's favourite share, now on every walk. */}
+    <Pressable accessibilityRole="button" accessibilityLabel={scene ? tx('ვიდეოდ გაზიარება', 'Share as a video') : tx('გაზიარება', 'Share')} onPress={share} style={{ minHeight: 60, borderRadius: HUB.cardRadius, backgroundColor: HUB.spotlightBg, flexDirection: 'row', alignItems: 'center', gap: 14, paddingHorizontal: HUB.cardPad, paddingVertical: 12 }}>
+      <View style={{ width: 40, height: 40, borderRadius: 13, backgroundColor: 'rgba(94,234,212,0.16)', alignItems: 'center', justifyContent: 'center' }}>{scene ? <Clapperboard size={20} color="#5EEAD4" /> : <Share2 size={20} color="#5EEAD4" />}</View>
+      <View style={{ flex: 1 }}>
+        <Copy bold size={15} style={{ color: '#fff' }}>{scene ? tx('ვიდეოდ გაზიარება', 'Share as a video') : tx('გაზიარება', 'Share')}</Copy>
+        <Copy size={11} style={{ color: 'rgba(255,255,255,0.62)' }}>{scene ? tx('შენი გზა ანთებს ღამის ქალაქს — მზა ვიდეო სთორისთვის', 'Your path lighting the night city — a ready clip for stories') : tx('ვიდეოსთვის ~600 მ-ზე გრძელი გასეირნებაა საჭირო (სახლის მხარე ვიდეოში არ ჩანს)', 'A clip needs a walk longer than ~600 m (the home end is never shown)')}</Copy>
+      </View>
+    </Pressable>
 
     <Section title={tx('გასეირნება რიცხვებში', 'Your walk in numbers')}><Card style={{ flexDirection: 'row', flexWrap: 'wrap', padding: 6, gap: 0 }}>
       {/* One card, three columns (owner 2026-10-04: shorter pages) instead of six separate cards. */}
