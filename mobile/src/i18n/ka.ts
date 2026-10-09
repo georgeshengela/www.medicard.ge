@@ -1535,6 +1535,7 @@ const kaStrings = {
     customTagAdd: 'ნიშნის დამატება',
     customTagPlaceholder: 'მაგ. მოგზაურობა',
     customTagEmpty: 'ნიშანი ჯერ არ გაქვს.',
+    customTagDayLimit: (max: number) => `ერთ დღეს ${max} ნიშნამდე შეგიძლია მონიშნო.`,
     customTagOnlineOnly: 'ახალი ნიშანი ინტერნეტით იქმნება. არსებული ნიშნების მინიჭება ოფლაინაც შეიძლება.',
     customTagArchive: 'არქივი',
     logHubPain: 'ტკივილი',
@@ -1692,6 +1693,9 @@ const kaStrings = {
     partnerShareNeedAuth: 'გასაგრძელებლად შედი ანგარიშში.',
     partnerShareAccept: 'გაზიარების მიღება',
     partnerShareEmpty: 'ამ ბმულზე გასაზიარებელი ველი არ არის ჩართული.',
+    partnerSharePaused: 'ახლა საჩვენებელი არაფერია.',
+    partnerSharePausedOwner:
+      'ორსულობისა და მშობიარობის შემდგომ რეჟიმში პარტნიორი ციკლის მონაცემებს ვერ ხედავს. ციკლის აღრიცხვაზე დაბრუნებისას ბმული ისევ იმუშავებს.',
     privacy: 'კონფიდენციალურობა',
     privacyHint: 'ჩართვისას ციკლის შეტყობინება ეკრანზე ზოგადი ტექსტით გამოჩნდება. Face ID ცალკე ირთვება.',
     emptyHint: 'მონიშნე ბოლო მენსტრუაცია ან დაიწყე დღის აღრიცხვა',

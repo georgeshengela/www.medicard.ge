@@ -178,7 +178,7 @@ export function CycleProfileSettings() {
         expectsBleeding,
         fertilityDisplay,
       });
-      if (data.contraception?.ttcConflict) setTtcConflictOpen(true);
+      if (data?.contraception?.ttcConflict) setTtcConflictOpen(true);
       if (userId) {
         putCycleBundle(userId, data);
         try {
@@ -187,18 +187,22 @@ export function CycleProfileSettings() {
           /* Profile is already saved on the server. */
         }
       }
-      const next = applyCycleProfile(data);
-      setLastPeriod(next.lastPeriod);
-      setExpectsBleeding(next.expectsBleeding);
-      setFertilityDisplay(next.fertilityDisplay);
-      setDueDate(next.dueDate);
-      setReferenceDate(next.referenceDate);
-      setPostpartumReference(next.postpartumReference);
-      if (DATE_KEY.test(next.lastPeriod)) {
-        try {
-          await syncPeriodStartToHealth(next.lastPeriod);
-        } catch {
-          /* Health sync is optional. */
+      // `null` = saved, but the server could not reload the bundle (CYC-06): the form keeps what she
+      // typed, the cycle views refetch, and reminders are re-planned on the next foreground.
+      if (data) {
+        const next = applyCycleProfile(data);
+        setLastPeriod(next.lastPeriod);
+        setExpectsBleeding(next.expectsBleeding);
+        setFertilityDisplay(next.fertilityDisplay);
+        setDueDate(next.dueDate);
+        setReferenceDate(next.referenceDate);
+        setPostpartumReference(next.postpartumReference);
+        if (DATE_KEY.test(next.lastPeriod)) {
+          try {
+            await syncPeriodStartToHealth(next.lastPeriod);
+          } catch {
+            /* Health sync is optional. */
+          }
         }
       }
       if (ttcOvulationOn) {
@@ -211,7 +215,7 @@ export function CycleProfileSettings() {
       }
       let count = 0;
       try {
-        count = await syncCycleReminders(data, reminders);
+        if (data) count = await syncCycleReminders(data, reminders);
       } catch {
         /* Reminders must not fail a saved profile. */
       }

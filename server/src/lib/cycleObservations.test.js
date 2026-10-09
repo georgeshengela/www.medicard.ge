@@ -1,5 +1,7 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import { createRequire } from 'node:module';
 import {
   buildPredictions,
   detectCyclePhase,
@@ -25,6 +27,7 @@ import {
   CYCLE_NOTE_MAX,
   CYCLE_TAG_NAME_MAX,
   CYCLE_TAG_ACTIVE_MAX,
+  CYCLE_TAGS_PER_DAY_MAX,
   OBSERVATION_PATTERN_MIN,
 } from './cycleObservations.js';
 
@@ -148,6 +151,25 @@ describe('custom tags', () => {
   it('rejects invalid tag ids in strict mode', () => {
     assert.throws(() => parseCustomTagIds(['not-a-uuid'], { strict: true }));
     assert.equal(CYCLE_TAG_ACTIVE_MAX, 30);
+  });
+
+  it('more than 8 tags on one day keep the day and the first 8 tags, never a 400 (CYC-10)', () => {
+    const ids = Array.from({ length: 11 }, (_, i) => `aaaaaaaa-aaaa-4aaa-8aaa-${String(i).padStart(12, '0')}`);
+    const kept = parseCustomTagIds(ids, { strict: true });
+    assert.deepEqual(kept, ids.slice(0, 8));
+    // Duplicates do not count toward the 8.
+    assert.deepEqual(parseCustomTagIds([ids[0], ids[0], ...ids.slice(1, 9)], { strict: true }), ids.slice(0, 8));
+    // The whole day write still parses: flow, notes and 8 tags.
+    const write = parseObservationWrite({ customTagIds: ids, notes: 'note', symptoms: ['fatigue'] }, {});
+    assert.deepEqual(write.customTagIds, ids.slice(0, 8));
+    assert.equal(write.notes, 'note');
+    // The route's schema lets a long list reach the parser instead of rejecting the day.
+    const src = readFileSync(new URL('../routes/cycle.routes.js', import.meta.url), 'utf8');
+    assert.doesNotMatch(src, /customTagIds: z\.array\(z\.string\(\)\)\.max\(8\)/);
+    assert.match(src, /customTagIds: z\.array\(z\.string\(\)\)\.max\(CYCLE_TAG_ACTIVE_MAX \* 2\)\.optional\(\)/);
+    // The app's picker and offline queue stop at the same number.
+    const appCore = createRequire(import.meta.url)('../../../mobile/src/lib/cycleOfflineCore.js');
+    assert.equal(appCore.CYCLE_TAGS_PER_DAY_MAX, CYCLE_TAGS_PER_DAY_MAX);
   });
 });
 

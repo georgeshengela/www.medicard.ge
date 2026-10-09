@@ -10,6 +10,11 @@ export const MAX_BACKOFF_MS: number;
 export const BASE_BACKOFF_MS: number;
 export const MAX_RETRY_AFTER_MS: number;
 export const QUOTA_CODES: string[];
+/** Tags on one day — the server's `CYCLE_TAGS_PER_DAY_MAX`. */
+export const CYCLE_TAGS_PER_DAY_MAX: 8;
+export function capDayTagIds(ids: readonly string[] | null | undefined): string[];
+/** A tap on a tag: untick, or tick while fewer than 8 are ticked (`limited` = refused at the limit). */
+export function toggleDayTagId(selected: readonly string[] | null | undefined, id: string): { ids: string[]; limited: boolean };
 
 export type CycleOfflineOperation =
   | 'UPSERT_LOG'
@@ -75,6 +80,8 @@ export function writeAccount(
   account: CycleOfflineAccount,
 ): CycleOfflineStore;
 export function persistStore(root: CycleOfflineStore): string;
+/** A whole bundle (logs array, profile, predictions) — never a partial write answer or `null`. */
+export function isCompleteCycleBundle(bundle: unknown): bundle is CycleBundle;
 export function createCacheRecord(
   userScope: string,
   bundle: CycleBundle,

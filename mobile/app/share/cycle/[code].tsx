@@ -126,7 +126,8 @@ function PartnerShareBody({ payload }: { payload: CyclePartnerPayload }) {
     return (
       <CycleCard>
         <Text style={{ color: c.ink, fontWeight: '700', textAlign: 'center' }}>
-          {ka.cycle.partnerShareEmpty}
+          {/* Paused (her mode shows no cycle now): a neutral line that never names the mode. */}
+          {payload.paused ? ka.cycle.partnerSharePaused : ka.cycle.partnerShareEmpty}
         </Text>
       </CycleCard>
     );

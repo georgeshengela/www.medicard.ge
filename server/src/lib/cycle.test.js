@@ -748,3 +748,63 @@ describe('cycleLengthSpread sample-size safety', () => {
     assert.equal(cycleLengthSpread([28, 28, 28, 28, 28, 28, 28, 28, 28, 45]), 0);
   });
 });
+
+describe('bundle reload after a cycle write (CYC-06)', () => {
+  const quiet = { error: () => {} };
+
+  it('answers the fresh bundle when the reload works', async () => {
+    const { bundleAfterWrite } = await import('../routes/cycle.routes.js');
+    const bundle = { profile: {}, logs: [], predictions: {}, meta: {} };
+    assert.equal(await bundleAfterWrite(async () => bundle, { log: quiet }), bundle);
+  });
+
+  it('retries a failed reload once (a transient database error)', async () => {
+    const { bundleAfterWrite } = await import('../routes/cycle.routes.js');
+    let calls = 0;
+    const bundle = { profile: {}, logs: [], predictions: {}, meta: {} };
+    const result = await bundleAfterWrite(async () => {
+      calls += 1;
+      if (calls === 1) throw new Error('connection reset');
+      return bundle;
+    }, { log: quiet });
+    assert.equal(result, bundle);
+    assert.equal(calls, 2);
+  });
+
+  it('answers null — never a partial bundle without logs — when the reload keeps failing', async () => {
+    const { bundleAfterWrite } = await import('../routes/cycle.routes.js');
+    let calls = 0;
+    const result = await bundleAfterWrite(async () => {
+      calls += 1;
+      throw new Error('database down');
+    }, { log: quiet });
+    assert.equal(result, null);
+    assert.equal(calls, 2);
+  });
+
+  it('every write route answers through it, with no bundle-shaped fallback', () => {
+    const src = readFileSync(new URL('../routes/cycle.routes.js', import.meta.url), 'utf8');
+    assert.doesNotMatch(src, /respondWithBundle\(req, res, /);
+    assert.doesNotMatch(src, /return res\.json\(fallback\)/);
+    assert.equal((src.match(/return respondWithBundle\(req, res\);/g) || []).length, 5);
+  });
+});
+
+describe('cached AI cycle cards are cleared and keyed by language (CYC-08)', () => {
+  const src = readFileSync(new URL('../routes/cycle.routes.js', import.meta.url), 'utf8');
+
+  it('a profile write that changes her rhythm clears them', () => {
+    assert.match(src, /if \(profileWriteStalesCycleAi\(current, data\)\) Object\.assign\(data, emptyCycleAiCache\(\)\);/);
+  });
+
+  it('a new last period start through POST /last-period clears them', () => {
+    const route = src.slice(src.indexOf("'/last-period'"), src.indexOf('const sharePermSchema'));
+    assert.match(route, /toDateKey\(profile\?\.lastPeriodStart\) !== date \? emptyCycleAiCache\(\) : \{\}/);
+  });
+
+  it('the bundle carries only cards in the reader language, and new cards are stored with it', () => {
+    assert.match(src, /aiInsights: cycleAiInsightsForLang\(profile\.aiInsights, lang\)/);
+    assert.match(src, /const stored = \{ \.\.\.insights, lang: req\.lang === 'en' \? 'en' : 'ka' \};/);
+    assert.match(src, /aiInsights: stored,/);
+  });
+});

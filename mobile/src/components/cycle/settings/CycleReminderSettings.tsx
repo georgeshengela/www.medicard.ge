@@ -113,7 +113,8 @@ export function CycleReminderSettings() {
       if (serverDirty.current) {
         serverDirty.current = false;
         const data = await api.cycle.updateProfile({ reminderPrefs: serverReminderPrefs(current) });
-        source = data;
+        // `null` = saved, but no fresh bundle came back: re-plan with the one on screen.
+        source = data ?? source;
         if (userId) putCycleBundle(userId, data);
       }
     } catch {

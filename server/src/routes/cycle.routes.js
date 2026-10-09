@@ -47,6 +47,7 @@ import {
   isPeriodFlow,
 } from '../lib/cycle.js';
 import { isCycleAiContextSupported } from '../lib/cycleModes.js';
+import { cycleAiInsightsForLang, profileWriteStalesCycleAi } from '../lib/cycleHonesty.js';
 import { alignPhaseWithForecast } from '../lib/cycleForecastHonesty.js';
 import { clientTimezoneFromReq, resolveCycleClock } from '../lib/cycleCivilDate.js';
 import {
@@ -110,6 +111,8 @@ import {
   applyForecastEligibilityToPredictions,
   applyForecastEligibilityToTodayPhase,
   evaluateForecastEligibility,
+  FORECAST_ELIGIBILITY_REASON,
+  FORECAST_GATE_KIND_POSTPARTUM_RETURN,
   forecastGateProfilePatch,
   omitForecastGateFromProfile,
   publicForecastEligibility,
@@ -599,8 +602,9 @@ async function loadBundle(userId, clock = null, lang = 'ka') {
       hiddenCycles: inferred.hiddenStarts ?? [],
       conditions: Array.isArray(profile.conditions) ? profile.conditions.map(String) : [],
       reminderPrefs: profile.reminderPrefs ?? null,
-      aiInsights: profile.aiInsights ?? null,
-      aiInsightsAt: profile.aiInsightsAt ?? null,
+      // Cached AI cards only in the reader's language (CYC-08); the other language reads as „none cached“.
+      aiInsights: cycleAiInsightsForLang(profile.aiInsights, lang),
+      aiInsightsAt: cycleAiInsightsForLang(profile.aiInsights, lang) ? profile.aiInsightsAt ?? null : null,
     },
     logs: shapedLogs,
     customTags,
@@ -957,10 +961,7 @@ cycleRouter.put(
         today: clock.today,
       });
     });
-    return respondWithBundle(req, res, {
-      profile: bundle.profile,
-      meta: bundle.meta,
-    });
+    return respondWithBundle(req, res);
   }),
 );
 
@@ -977,10 +978,7 @@ cycleRouter.put(
       mode: bundle.profile?.mode,
       today: bundle.meta.today,
     });
-    return respondWithBundle(req, res, {
-      profile: bundle.profile,
-      meta: bundle.meta,
-    });
+    return respondWithBundle(req, res);
   }),
 );
 
@@ -996,10 +994,7 @@ cycleRouter.delete(
       date: body.date,
       mode: bundle.profile?.mode,
     });
-    return respondWithBundle(req, res, {
-      profile: bundle.profile,
-      meta: bundle.meta,
-    });
+    return respondWithBundle(req, res);
   }),
 );
 
@@ -1389,13 +1384,27 @@ export const profileUpdateSchema = z.object({
     .optional(),
 });
 
-async function respondWithBundle(req, res, fallback) {
-  try {
-    return res.json(await bundleFor(req));
-  } catch (err) {
-    console.error('[cycle] loadBundle failed after write', err);
-    return res.json(fallback);
+/**
+ * The fresh bundle after a write that already succeeded (CYC-06): one retry for a transient database
+ * error, then `null`. Never a partial bundle-shaped object — app builds cached that as the whole bundle
+ * (no logs, no predictions) and /cycle and the women's Home crashed on it. Every build skips a `null`
+ * body (`putCycleBundle` / `data?.profile` guards) and the 2xx still makes the app refetch its cycle views.
+ */
+export async function bundleAfterWrite(load, { attempts = 2, log = console } = {}) {
+  for (let attempt = 1; ; attempt += 1) {
+    try {
+      return await load();
+    } catch (err) {
+      if (attempt >= attempts) {
+        log.error('[cycle] loadBundle failed after write', err);
+        return null;
+      }
+    }
   }
+}
+
+async function respondWithBundle(req, res) {
+  return res.json(await bundleAfterWrite(() => bundleFor(req)));
 }
 
 async function applyProfileUpdate(req, res) {
@@ -1445,6 +1454,9 @@ async function applyProfileUpdate(req, res) {
 
   await getOrCreateProfile(req.user.id);
   const current = await prisma.cycleProfile.findUnique({ where: { userId: req.user.id } });
+  // A new last period start, averages, mode, contraception or conditions: cached AI cards would describe
+  // the old cycle day / phase (CYC-08). An unchanged value (the profile screen sends every field) keeps them.
+  if (profileWriteStalesCycleAi(current, data)) Object.assign(data, emptyCycleAiCache());
   const nextMode = body.mode ?? current?.mode;
   const pregnancyWrite =
     body.mode === 'PREGNANCY' ||
@@ -1494,10 +1506,7 @@ async function applyProfileUpdate(req, res) {
     await updateOwnerSharePermissions(req.user.id, body.sharePermissions);
   }
 
-  return respondWithBundle(req, res, {
-    profile: { lastPeriodStart: body.lastPeriodStart ?? null },
-    meta: { today: clock.today, timezone: clock.timezone },
-  });
+  return respondWithBundle(req, res);
 }
 
 /** Android/Expo Go often drops or mishandles PATCH bodies — keep PUT + PATCH. */
@@ -1512,15 +1521,16 @@ cycleRouter.post(
     const date = DATE_KEY.parse(req.body?.date ?? req.body?.lastPeriodStart);
     const clock = await cycleClockForUser(req.user.id, clientTimezoneFromReq(req));
     assertCycleDateKey(date, clock.today);
-    await getOrCreateProfile(req.user.id);
+    const profile = await getOrCreateProfile(req.user.id);
     await prisma.cycleProfile.update({
       where: { userId: req.user.id },
-      data: { lastPeriodStart: new Date(`${date}T00:00:00.000Z`) },
+      data: {
+        lastPeriodStart: new Date(`${date}T00:00:00.000Z`),
+        // A corrected start moves the cycle day and phase the cached AI cards talk about (CYC-08).
+        ...(toDateKey(profile?.lastPeriodStart) !== date ? emptyCycleAiCache() : {}),
+      },
     });
-    return respondWithBundle(req, res, {
-      profile: { lastPeriodStart: date },
-      meta: { today: clock.today, timezone: clock.timezone },
-    });
+    return respondWithBundle(req, res);
   }),
 );
 
@@ -1655,6 +1665,33 @@ cycleRouter.post(
   }),
 );
 
+/**
+ * Her POSTPARTUM_RETURN gate as her own view applies it (CYC-02): back in cycle tracking after a birth,
+ * nothing is forecast until two cycles were logged since. Read only — the partner GET never reconciles
+ * (writes) her classifications; a read error counts as „still gathering“, so the partner view stays paused.
+ */
+async function ownerPostpartumReturnPending(ownerUserId, profile, prefs) {
+  if (profile?.forecastGateKind !== FORECAST_GATE_KIND_POSTPARTUM_RETURN) return false;
+  let classifications = [];
+  if (profile.forecastGateEpisodeId) {
+    try {
+      classifications = await prisma.cyclePostpartumBleedClassification.findMany({
+        where: { userId: ownerUserId, postpartumEpisodeId: profile.forecastGateEpisodeId },
+      });
+    } catch {
+      classifications = [];
+    }
+  }
+  const eligibility = evaluateForecastEligibility({
+    forecastGateKind: profile.forecastGateKind,
+    forecastGateEpisodeId: profile.forecastGateEpisodeId,
+    classifications,
+    mode: profile.mode,
+    expectsBleeding: prefs?.expectsBleeding !== false,
+  });
+  return eligibility.reason === FORECAST_ELIGIBILITY_REASON.POSTPARTUM_HISTORY_INSUFFICIENT;
+}
+
 cycleRouter.get(
   '/share/:code',
   asyncHandler(async (req, res) => {
@@ -1722,6 +1759,8 @@ cycleRouter.get(
         hideFertility:
           ownerContraception.presentation.showFertileWindow === false
           || ownerContraception.presentation.fertilityDisplay?.effective === 'off',
+        // Pregnancy / postpartum pause the partner view in buildPartnerPayload; so does the return gate.
+        postpartumReturnPending: await ownerPostpartumReturnPending(share.ownerUserId, profile, ownerPrefs),
       },
     });
     securityShareLog('peek_ok', { partner: true });
@@ -1858,7 +1897,9 @@ cycleRouter.put(
         exerciseLevel: z.string().nullable().optional(),
         caffeine: z.string().nullable().optional(),
         alcohol: z.string().nullable().optional(),
-        customTagIds: z.array(z.string()).max(8).optional(),
+        // Up to every tag she can have: more than 8 for one day keeps the day and only the first 8 tags
+        // (parseCustomTagIds) — never a 400 that loses the whole day's log (CYC-10).
+        customTagIds: z.array(z.string()).max(CYCLE_TAG_ACTIVE_MAX * 2).optional(),
         observations: z.record(z.string(), z.unknown()).nullable().optional(),
         energy: z.string().nullable().optional(),
         observationAssessments: z.record(z.string(), z.unknown()).optional(),
@@ -2298,10 +2339,12 @@ cycleRouter.post(
       headline: bundle.localInsights.headline,
     };
 
+    // Stored with its language: an English reader never gets Georgian cached cards, nor the reverse (CYC-08).
+    const stored = { ...insights, lang: req.lang === 'en' ? 'en' : 'ka' };
     await prisma.cycleProfile.update({
       where: { userId: req.user.id },
       data: {
-        aiInsights: insights,
+        aiInsights: stored,
         aiInsightsAt: new Date(),
       },
     });
@@ -2309,7 +2352,7 @@ cycleRouter.post(
     const usage = parsed ? await req.consumeAiCredit() : req.usage;
 
     return res.json({
-      insights,
+      insights: stored,
       cached: false,
       model: answer.model,
       engine: answer.engine ?? 'openrouter',

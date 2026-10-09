@@ -14,6 +14,7 @@ import { lastLoggedBbt } from '@/lib/cycleBbt';
 import { hasCycleLogNoteMarker, takeCycleLogNote } from '@/lib/cycleLogHandoff';
 import { api, ApiError, type CycleCustomTag, type CycleLog } from '@/lib/api';
 import { queueRemoveCycleLog } from '@/lib/cycleOffline';
+import { toggleDayTagId } from '@/lib/cycleOfflineCore';
 import { useCycleView } from '@/lib/cycleViewCache';
 import { useAuth } from '@/store/AuthContext';
 import {
@@ -127,11 +128,12 @@ function CycleLogScreen() {
     try {
       const result = await api.cycle.createTag({ name });
       setCustomTags(result.bundle.customTags ?? [...customTags, result.tag]);
+      // A new tag is ticked only while the day has fewer than 8 (CYC-10); the picker says why otherwise.
       setForm((prev) => ({
         ...prev,
         customTagIds: prev.customTagIds.includes(result.tag.id)
           ? prev.customTagIds
-          : [...prev.customTagIds, result.tag.id],
+          : toggleDayTagId(prev.customTagIds, result.tag.id).ids,
       }));
     } catch (err) {
       setError(err instanceof ApiError ? err.message : ka.cycle.customTagOnlineOnly);

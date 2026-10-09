@@ -830,6 +830,11 @@ export type CyclePartnerShare = {
 export type CyclePartnerPayload = {
   estimated: true;
   permissions: CycleSharePermissions;
+  /**
+   * Her mode shows no cycle right now (pregnancy, postpartum, or right after a birth): nothing else is
+   * sent and the mode is never named (server 2026-10-08+; older servers never send it).
+   */
+  paused?: boolean;
   period?: {
     inPeriod: boolean;
     inPeriodEstimated?: boolean;
@@ -3435,8 +3440,10 @@ export const api = {
         body: { confirm: 'DELETE_CYCLE_DATA' },
         timeoutMs: 30_000,
       }),
+    /** `null` when the date was saved but the bundle could not be reloaded (CYC-06): refetch the view. */
     setLastPeriod: (date: string) =>
-      request<CycleBundle>('/api/cycle/last-period', { method: 'POST', body: { date } }),
+      request<CycleBundle | null>('/api/cycle/last-period', { method: 'POST', body: { date } }),
+    /** `null` when the profile was saved but the bundle could not be reloaded (CYC-06): refetch the view. */
     updateProfile: (body: Partial<{
       mode: CycleMode;
       avgCycleLength: number;
@@ -3460,7 +3467,7 @@ export const api = {
       reminderPrefs: CycleReminderPrefsServer;
       /** The whole list of hidden cycle starts (logged starts only, max 24). */
       hiddenCycles: string[];
-    }>) => request<CycleBundle>('/api/cycle/profile', { method: 'PUT', body }),
+    }>) => request<CycleBundle | null>('/api/cycle/profile', { method: 'PUT', body }),
     createShare: (permissions?: Partial<CycleSharePermissions>) =>
       request<CycleBundle>('/api/cycle/share', { method: 'POST', body: { permissions } }),
     updateShare: (permissions: Partial<CycleSharePermissions>) =>
