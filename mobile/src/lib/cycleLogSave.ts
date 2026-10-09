@@ -2,7 +2,7 @@ import { syncCycleLogToHealth } from '@/lib/healthSync';
 import type { CycleLogForm } from '@/components/cycle/CycleLogTabs';
 import { saveCycleObservation, type CycleView } from '@/lib/cycleOffline';
 import { cyclePersistFeedback } from '@/lib/cycleOfflineCore';
-import { planCycleHealthWrite, previousDayFlow, type CycleHealthDay } from '@/lib/cycleHealthWrite';
+import { continuesLoggedPeriod, planCycleHealthWrite, type CycleHealthDay } from '@/lib/cycleHealthWrite';
 import { cycleLogBodyFromForm, isBleedFlow } from '@/lib/cycleLogForm';
 
 export { EMPTY_CYCLE_LOG, formFromCycleLog, isBleedFlow, parseBbt } from '@/lib/cycleLogForm';
@@ -36,7 +36,7 @@ export async function persistCycleLog(
       form,
       base: options?.base,
       markStart: options?.markStart,
-      prevDayFlow: previousDayFlow(result.view?.display.logs, date),
+      continuesPeriod: continuesLoggedPeriod(result.view?.display.logs, date),
     });
     if (health) void syncCycleLogToHealth(health).catch(() => undefined);
   }

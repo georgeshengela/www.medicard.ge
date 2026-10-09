@@ -4,8 +4,9 @@
  * Health samples are never edited or deleted by Medicard, so every write adds a sample. A save of the
  * whole day (a mood, the ♥ one-tap, re-opening the full log) therefore writes only what this save
  * changed against the day as it was stored (`base`, the hydrated form), and marks a cycle start only
- * for a real new period start: bleeding on a day that had none, after a day without bleeding — or the
- * „დღეს დაიწყო“ button. Nothing changed → null, and the caller makes no Health call at all.
+ * for a real new period start: bleeding on a day that had none, where the logs show no period running
+ * into it (the server's own rule, gap days included) — or the „დღეს დაიწყო“ button. Nothing changed →
+ * null, and the caller makes no Health call at all.
  */
 import type { CycleHealthPayload } from './healthSync.shared';
 import type { CycleLogForm } from '../components/cycle/CycleLogTabs';
@@ -21,17 +22,32 @@ const centi = (value: number) => Math.round(value * 100);
 export type CycleHealthDay = Pick<CycleLogForm, 'flow' | 'bbt' | 'mucus'>;
 
 /**
- * The flow logged the day before `date`; null = no bleeding logged there; undefined = the logs are
- * not known (then only the explicit start button marks a start).
+ * Unlogged (or spotting-only) days the server still bridges inside one period — people skip logging
+ * (server `cycle.js` PERIOD_MERGE_MAX_INTERIOR_DAYS). An explicit „no bleeding“ day always ends it.
  */
-export function previousDayFlow(
+const PERIOD_BRIDGE_DAYS = 2;
+
+/**
+ * Whether bleeding on `date` continues a period already logged before it: bleeding on one of the
+ * 1 + PERIOD_BRIDGE_DAYS days before, with no explicit „no bleeding“ day in between (as the server
+ * groups periods). false = a new period; undefined = the logs are not known (then only the explicit
+ * start button marks a start). The server's 10-day span cap is not checked — that only errs toward
+ * fewer starts.
+ */
+export function continuesLoggedPeriod(
   logs: ReadonlyArray<{ date: string; flow?: string | null }> | null | undefined,
   date: string,
-): string | null | undefined {
+): boolean | undefined {
   if (!logs) return undefined;
-  const before = previousDay(date);
-  if (!before) return undefined;
-  return logs.find((log) => log.date === before)?.flow ?? null;
+  let day: string | null = date;
+  for (let i = 0; i <= PERIOD_BRIDGE_DAYS; i += 1) {
+    day = previousDay(day);
+    if (!day) return undefined;
+    const flow = logs.find((log) => log.date === day)?.flow ?? null;
+    if (isBleedFlow(flow)) return true;
+    if (flow === 'none') return false;
+  }
+  return false;
 }
 
 export function planCycleHealthWrite({
@@ -39,7 +55,7 @@ export function planCycleHealthWrite({
   form,
   base,
   markStart,
-  prevDayFlow,
+  continuesPeriod,
 }: {
   date: string;
   /** The day as saved now. */
@@ -51,15 +67,15 @@ export function planCycleHealthWrite({
   base?: CycleHealthDay | null;
   /** „დღეს დაიწყო“ in the quick log. */
   markStart?: boolean;
-  /** `previousDayFlow(logs, date)`. */
-  prevDayFlow?: string | null;
+  /** `continuesLoggedPeriod(logs, date)`. */
+  continuesPeriod?: boolean;
 }): CycleHealthPayload | null {
   const flow = form.flow ?? null;
   const baseFlow = base?.flow ?? null;
   const newStart =
     isBleedFlow(flow) &&
     !isBleedFlow(baseFlow) &&
-    (Boolean(markStart) || (base !== undefined && prevDayFlow !== undefined && !isBleedFlow(prevDayFlow)));
+    (Boolean(markStart) || (base !== undefined && continuesPeriod === false));
   const writeFlow = flow != null && WRITABLE_FLOWS.has(flow) && (newStart || flow !== baseFlow);
 
   // A BBT that came from Health unchanged is never written back (the temperature import's rule).
