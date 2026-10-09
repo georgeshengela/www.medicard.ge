@@ -395,3 +395,24 @@ test('places: a district or section answer climbs to its city; a city or village
  assert.equal(parentCityName({name:'თბილისი',addresstype:'city',address:{city:'თბილისი'}}),null);
  assert.equal(parentCityName({name:'Tetritskaro Municipality',addresstype:'county',address:{county:'Tetritskaro Municipality'}}),null);
 });
+
+/* ───────── „ყუთი შენთან ახლოსაა“ (waveAlerts.js) ───────── */
+import {planAlerts,alertCopy,roundedKm,inWindow} from './waveAlerts.js';
+test('wave alerts: nearby opted-in homes only, one per wave, two a day, place + rounded distance, daytime only',()=>{
+ const wave=(key,gifts)=>({key,gifts});
+ const box=(lng,lat,place='Parc de la Boverie')=>({lng,lat,place});
+ const homes=[{userId:'a',lng:5.5767,lat:50.6282},{userId:'b',lng:5.70,lat:50.70}];
+ const w1=wave('glow-2026-10-09-r1-am',[box(5.5770,50.6300),box(5.5800,50.6250,'Parc Avroy')]);
+ let plan=planAlerts({waves:[w1],homes,sentToday:new Map(),already:new Set()});
+ assert.equal(plan.length,1);assert.equal(plan[0].userId,'a');assert.equal(plan[0].boxes,2);assert.equal(plan[0].place,'Parc de la Boverie');
+ assert.equal(planAlerts({waves:[w1],homes,sentToday:new Map(),already:new Set(['a:glow-2026-10-09-r1-am'])}).length,0);
+ assert.equal(planAlerts({waves:[w1],homes,sentToday:new Map([['a',2]]),already:new Set()}).length,0);
+ const w2=wave('glow-2026-10-09-r1-md',[box(5.577,50.629)]),w3=wave('glow-2026-10-09-r1-ev',[box(5.577,50.629)]);
+ plan=planAlerts({waves:[w1,w2,w3],homes,sentToday:new Map(),already:new Set()});
+ assert.equal(plan.filter(p=>p.userId==='a').length,2);
+ assert.equal(roundedKm(640,'ka'),'≈ 600 მ');assert.equal(roundedKm(1240,'ka'),'≈ 1,2 კმ');assert.equal(roundedKm(30,'en'),'≈ 100 m');
+ const copy=alertCopy({place:'Parc de la Boverie',meters:640,boxes:2},'ka');
+ assert.match(copy.body,/2 ყუთი სახლიდან ≈ 600 მ-ში — Parc de la Boverie/);
+ assert.ok(!/\d+\.\d{4}/.test(copy.body+copy.title));
+ assert.equal(inWindow(Date.parse('2026-10-09T03:59:00Z')),false);assert.equal(inWindow(Date.parse('2026-10-09T04:00:00Z')),true);assert.equal(inWindow(Date.parse('2026-10-09T17:31:00Z')),false);
+});
