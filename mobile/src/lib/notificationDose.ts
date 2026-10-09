@@ -133,8 +133,9 @@ export function queuePendingDose(
 /**
  * The queued marks still worth applying to `accountId`, as plain dose log rows. A mark whose reminder
  * named another account is never applied here (a shared phone: the next person to sign in must not
- * get it). A mark without an owner (a reminder from older app JS) keeps the old rule; the queue is
- * cleared at every fresh sign-in, so it only ever reaches the session that was restored.
+ * get it). A mark without an owner (a reminder from older app JS) keeps the old rule; a fresh sign-in
+ * keeps only its own account's marks (`ownPendingDoses`), so it only ever reaches the session that
+ * was restored.
  */
 export function takePendingDoses(queue: readonly unknown[], nowMs: number, accountId: string): MedicationDoseLog[] {
   return queue
@@ -142,6 +143,16 @@ export function takePendingDoses(queue: readonly unknown[], nowMs: number, accou
     .filter((row) => typeof row.queuedAt === 'number' && nowMs - row.queuedAt <= PENDING_DOSE_TTL_MS)
     .filter((row) => !(typeof row.owner === 'string' && row.owner) || row.owner === accountId)
     .map(({ medicationId, date, time, status, updatedAt }) => ({ medicationId, date, time, status, updatedAt }));
+}
+
+/**
+ * What a fresh sign-in of `accountId` keeps of the queue: only the marks whose reminder named that
+ * account (her own „მივიღე ✓“ tapped while she was signed out). Marks of other accounts and marks
+ * without an owner were made in another session and are dropped.
+ */
+export function ownPendingDoses(queue: readonly unknown[], accountId: string): PendingDose[] {
+  if (!accountId) return [];
+  return queue.filter(isDoseRow).filter((row) => typeof row.owner === 'string' && row.owner === accountId);
 }
 
 /**

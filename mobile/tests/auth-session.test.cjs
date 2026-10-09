@@ -22,7 +22,7 @@ function harness(initialToken=null) {
   '@/lib/run/store':{resetRunMemory:noop},'@/i18n/ka':{ka:{auth:{registerNotConfirmed:'Unconfirmed'}}},
   '@/lib/api':{ApiError,api:{auth:{login:async()=>{loginCount++;return {token:'confirmed-token',user,usage:full.usage};},me:async()=>{meCount++;return me();},deleteAccount:()=>deleteAccount(),discardNewAccount:async()=>{delivery.push('server-discard');return {ok:true};}},healthProfile:{get:async()=>{profileCount++;return readProfile();}}}},
   '@/lib/localAccount':{setLocalAccountId:id=>{accountId=id;accountLog.push(`account:${id}`);},localAccountId:()=>accountId,wipeLegacyUnscopedHealthCaches:asyncNoop},'@/lib/jwtSubject':jwtSubjectModule,
-  '@/lib/medications.shared':{clearPendingDoseLogs:async()=>{accountLog.push('dose-queue-cleared');}},
+  '@/lib/medications.shared':{prunePendingDoseLogs:async id=>{accountLog.push(`dose-queue-pruned:${id}`);}},
   '@/lib/home/homeLayoutStore':{primeHomeLayout:asyncNoop,registerHomeLayoutProfilePatch:noop},
   '@/lib/onboarding':{needsHealthAssessment:noop,needsProfileSetup:noop,assessmentPhaseComplete:noop},
   '@/lib/sessionSnapshot':{clearSessionSnapshot:async()=>{snapshot=null;},saveSessionSnapshot:async value=>{snapshot=value;},loadSessionSnapshot:async()=>snapshot},
@@ -167,15 +167,16 @@ test('email sign-in shows no Remember me choice that would be ignored',()=>{
   assert.doesNotMatch(fs.readFileSync(path.resolve(__dirname,dict),'utf8'),/keepSignedIn|Remember me/,dict);
 });
 
-// IR-1: a reminder's „მივიღე ✓“ tapped while signed out waits in a device queue. A fresh sign-in drops
-// it before the new account is set (it was made in another session); restoring a saved session keeps it.
-test('a fresh sign-in clears queued dose marks before setting the account; a restored session keeps them',async()=>{
+// IR-1 / IR2-1: a reminder's „მივიღე ✓“ tapped while signed out waits in a device queue. A fresh sign-in
+// keeps only the signing-in account's own marks (the rest were made in another session) before the new
+// account is set; restoring a saved session keeps the queue.
+test('a fresh sign-in prunes queued dose marks to its own account before setting the account; a restored session keeps them',async()=>{
  const h=harness();await h.render().signIn('qa@medicard.test','synthetic');
- assert.equal(h.accountLog[0],'dose-queue-cleared');
+ assert.equal(h.accountLog[0],`dose-queue-pruned:${h.full.user.id}`);
  assert.equal(h.accountLog[1],`account:${h.full.user.id}`);
  const restored=harness('saved-token');await restored.render().refresh();
  assert.ok(restored.accountLog.includes(`account:${restored.full.user.id}`));
- assert.ok(!restored.accountLog.includes('dose-queue-cleared'));
+ assert.ok(!restored.accountLog.some(entry=>entry.startsWith('dose-queue-')));
 });
 
 // IR-11: a password reset on another device ends this phone's session (401 TOKEN_EXPIRED). The phone
