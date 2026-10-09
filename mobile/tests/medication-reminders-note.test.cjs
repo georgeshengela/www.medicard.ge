@@ -28,3 +28,17 @@ test('MEDIPILL says when notifications are off, asking only from its one button'
   assert.equal((note.match(/<MedsButton/g) || []).length, 2, 'one button in each state');
   assert.doesNotMatch(note, /ახლა არა|არა ახლა|მოგვიანებით|Not now|Later|<Modal|Alert\.alert/);
 });
+
+// Allowed in the phone's Settings: the medication list (and with it the reminders) used to wait until it
+// was 30 s old before refetching, so a quick return scheduled nothing.
+test('a grant seen on return from Settings schedules the reminders at once, a grant from the sheet only once', () => {
+  const note = read('src/components/medications/MedicationRemindersNote.tsx');
+  const readFn = note.slice(note.indexOf('const read = useCallback'), note.indexOf('useFocusEffect('));
+  assert.match(
+    readFn,
+    /if \(status === 'granted' && !busyRef\.current && lastStatus\.current != null && lastStatus\.current !== 'granted'\) void invalidateMedications\(\);\n\s+lastStatus\.current = status;/,
+  );
+  const press = note.slice(note.indexOf('const continueToSystemSheet'), note.indexOf('const openSettings'));
+  // requestNotificationPermission's grant already refetches the list; the read after it must not again.
+  assert.match(press, /if \(granted\) lastStatus\.current = 'granted';/);
+});

@@ -92,17 +92,22 @@ medicationsRouter.delete(
   }),
 );
 
+/** Our own validation copy is written in Georgian; the validator's defaults („Too big: …“) are English internals. */
+const AUTHORED_MESSAGE = /[\u10D0-\u10FF]/;
+
 /**
  * A rejected medication save says why. The shared handler answers every ZodError with the generic
  * „შევსებული მონაცემები არასწორია.“ and keeps the reason in `fields`, but app builds up to 1.0.0.21.20
  * show only `error` — so picking 9–12 doses a day (the old sheet offered 12, the server takes 8) ended in
- * a message that explained nothing. Same status and shape (`error` + `fields`); only `error` is now the
- * first field's own message in the request language.
+ * a message that explained nothing. Same status and shape (`error` + `fields`); `error` is now the first
+ * reason we wrote ourselves, in the request language. A failure with only the validator's own English
+ * text (a 121-character name) keeps the generic line rather than showing „Too big: …“ to her.
  */
 export function medicationValidationError(error, req, res, next) {
   if (!(error instanceof ZodError) || res.headersSent) return next(error);
   const fields = error.issues.map((i) => ({ field: i.path.join('.'), message: fieldMessage(req, i.message) }));
-  const reason = fields.find((f) => typeof f.message === 'string' && f.message.trim())?.message;
+  const authored = error.issues.find((i) => AUTHORED_MESSAGE.test(String(i.message || '')));
+  const reason = authored ? fieldMessage(req, authored.message) : null;
   return res.status(400).json({
     error: reason || t(req, 'შევსებული მონაცემები არასწორია.', 'Some of the details you entered are not valid.'),
     fields,

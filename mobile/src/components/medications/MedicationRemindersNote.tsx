@@ -3,6 +3,7 @@ import { Linking, Platform, Text, View, type StyleProp, type ViewStyle } from 'r
 import { useFocusEffect } from 'expo-router';
 import { Bell, BellOff } from 'lucide-react-native';
 import { MedsButton, MedsCard, MedsIconTile } from '@/components/medications/MedsHubUI';
+import { invalidateMedications } from '@/hooks/useMedications';
 import { tx } from '@/i18n/locale';
 import { onReturnToForeground } from '@/lib/appForeground';
 import { medicationReminderNotice, type NotificationPermissionState } from '@/lib/medicationReminderNotice';
@@ -17,8 +18,9 @@ import { hubText } from '@/theme/hub';
  * notifications are off (`medicationReminderNotice`). Never asks from an effect: the status is only
  * read here (on focus and on return from Settings); the system sheet opens from the primer's one
  * „გაგრძელება“ button. Once allowed, the grant itself refetches the medications and schedules every
- * reminder (`requestNotificationPermission` → reconcile); allowed later in Settings, the focus refetch
- * of the medication list schedules them.
+ * reminder (`requestNotificationPermission` → reconcile); allowed later in Settings, the next read here
+ * sees the change and refetches the list, which schedules them (the list alone would wait until it is
+ * 30 s old, and a dose could pass meanwhile).
  */
 export function MedicationRemindersNote({ activeCount, style }: { activeCount: number; style?: StyleProp<ViewStyle> }) {
   const c = useThemeColors();
@@ -27,6 +29,8 @@ export function MedicationRemindersNote({ activeCount, style }: { activeCount: n
   const [busy, setBusy] = useState(false);
   const busyRef = useRef(false);
   const alive = useRef(true);
+  /** The status the last read saw, to notice a grant made outside the app (the phone's Settings). */
+  const lastStatus = useRef<NotificationPermissionState | null>(null);
 
   useEffect(() => {
     alive.current = true;
@@ -41,6 +45,10 @@ export function MedicationRemindersNote({ activeCount, style }: { activeCount: n
       isReminderFamilyOn('meds').catch(() => true),
     ]);
     if (!alive.current) return;
+    // Just allowed in Settings: refetching the list schedules her medication reminders right away.
+    // While the primer's request is open (Android resumes the app under it), the grant refetches itself.
+    if (status === 'granted' && !busyRef.current && lastStatus.current != null && lastStatus.current !== 'granted') void invalidateMedications();
+    lastStatus.current = status;
     setPermission(status);
     setRemindersOn(on);
   }, []);
@@ -65,7 +73,11 @@ export function MedicationRemindersNote({ activeCount, style }: { activeCount: n
     setBusy(true);
     void asked
       .catch(() => false)
-      .then(() => markPrimerAsked('notifications'))
+      .then((granted) => {
+        // A grant from the sheet schedules every reminder itself; the read below must not refetch again.
+        if (granted) lastStatus.current = 'granted';
+        return markPrimerAsked('notifications');
+      })
       .finally(() => {
         busyRef.current = false;
         if (alive.current) setBusy(false);

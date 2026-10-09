@@ -224,6 +224,7 @@ export function MedicationSetupForm({
                 placeholder={ka.meds.namePlaceholder}
                 placeholderTextColor={c.text300}
                 accessibilityLabel={ka.meds.nameLabel}
+                maxLength={120}
                 autoFocus
                 autoCapitalize="sentences"
                 returnKeyType="done"
@@ -404,13 +405,14 @@ function daysLine(days: number[]): string {
 }
 
 /**
- * The server's own reason when it gives one: a 400 carries it in `fields` („დღეში დასაშვებია 1-დან 8
- * მიღებამდე“), while its top-line `error` is only the generic „შევსებული მონაცემები არასწორია.“
+ * The server's own words: the medications router puts the reason it wrote („დღეში დასაშვებია 1-დან 8
+ * მიღებამდე“) in the top-line `error` and keeps the generic line for anything else. `fields` can also
+ * hold the validator's English internals („Too big: …“), so it is only a fallback for an empty `error`.
  */
 function saveErrorMessage(err: unknown): string {
   if (!(err instanceof ApiError)) return ka.common.error;
   const field = err.fields?.find((f) => typeof f?.message === 'string' && f.message.trim());
-  return field?.message || err.message || ka.common.error;
+  return err.message || field?.message || ka.common.error;
 }
 
 function Divider({ color }: { color: string }) {

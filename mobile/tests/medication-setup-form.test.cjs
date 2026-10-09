@@ -61,10 +61,12 @@ test('the frequency sheet offers no more doses a day than the server takes', () 
   assert.match(routes, /times\.length > 0 && times\.length <= 8/);
 });
 
-test('a refused save shows the server’s own reason, not only the generic line', () => {
+test('a refused save shows the server’s own reason, never the validator’s English internals', () => {
   const body = saveBody();
   assert.match(body, /Alert\.alert\(ka\.common\.error, saveErrorMessage\(err\)\)/);
   const helper = form.slice(form.indexOf('function saveErrorMessage'), form.indexOf('function Divider'));
-  assert.match(helper, /err\.fields\?\.find/);
-  assert.match(helper, /field\?\.message \|\| err\.message \|\| ka\.common\.error/);
+  // The server chooses the readable reason for `error`; a raw field message („Too big: …“) is only a fallback.
+  assert.match(helper, /err\.message \|\| field\?\.message \|\| ka\.common\.error/);
+  // The name can never be longer than the server takes (120), so no save fails on it.
+  assert.match(form, /accessibilityLabel=\{ka\.meds\.nameLabel\}\n\s+maxLength=\{120\}/);
 });

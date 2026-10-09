@@ -65,3 +65,23 @@ test('the first field explains when several are wrong; anything that is not vali
   });
   assert.equal(passed, other);
 });
+
+test('the validator’s own English text never becomes the top line; our reason wins when there is one', () => {
+  // 121 characters: only zod's default („Too big: …“) describes it, so the generic line stays.
+  const longName = rejected({ medName: 'ა'.repeat(121), dosage: '1 ტაბლეტი', frequency: '08:00' });
+  const ka = fakeRes();
+  medicationValidationError(longName, {}, ka, () => assert.fail('a validation error is answered here'));
+  assert.equal(ka.statusCode, 400);
+  assert.equal(ka.body.error, 'შევსებული მონაცემები არასწორია.');
+  assert.equal(ka.body.fields[0].field, 'medName');
+  const en = fakeRes();
+  medicationValidationError(longName, { lang: 'en' }, en, () => assert.fail('a validation error is answered here'));
+  assert.equal(en.body.error, 'Some of the details you entered are not valid.');
+
+  // A long name and nine doses: the dose limit we wrote is the reason she sees.
+  const both = rejected({ medName: 'ა'.repeat(121), dosage: '1 ტაბლეტი', frequency: nineTimes });
+  const res = fakeRes();
+  medicationValidationError(both, {}, res, () => assert.fail('a validation error is answered here'));
+  assert.equal(res.body.error, 'დღეში დასაშვებია 1-დან 8 მიღებამდე');
+  assert.equal(res.body.fields.length, 2);
+});
