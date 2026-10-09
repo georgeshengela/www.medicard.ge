@@ -96,6 +96,25 @@ test('the migrated screens and cards use the cached hooks', () => {
   }
 });
 
+test('CYC-09: quick log, day sheet and sex sheet fill from the cached view, never a download per open', () => {
+  // useCycleQuickLog serves CycleQuickLogSheet and CycleDaySheet; the sex sheet has its own save path.
+  for (const name of ['useCycleQuickLog.ts', 'CycleSexSheet.tsx', 'CycleQuickLogSheet.tsx', 'CycleDaySheet.tsx']) {
+    const src = read(join(COMPONENTS, name));
+    assert.doesNotMatch(src, /\bloadCycleView\b/, `${name} must not re-download the cycle bundle`);
+  }
+  assert.match(read(join(COMPONENTS, 'useCycleQuickLog.ts')), /useCycleDayForm\(\{ active, date, userId \}\)/);
+  assert.match(read(join(COMPONENTS, 'CycleSexSheet.tsx')), /useCycleDayForm\(\{ active: visible, date, userId: user\?\.id \}\)/);
+  const hook = read(join(COMPONENTS, 'useCycleDayForm.ts'));
+  // Stale-while-revalidate through the shared view; only the signed-in account's view is used.
+  assert.match(hook, /useCycleView\(userId, active && owner\)/);
+  assert.match(hook, /const owner = Boolean\(userId\) && localAccountId\(\) === userId;/);
+  assert.match(hook, /const view = active && owner \? \(viewQuery\.data \?\? null\) : null;/);
+  // Filled before paint, and a refresh while open keeps her edits.
+  assert.match(hook, /useLayoutEffect\(/);
+  assert.match(hook, /rebaseCycleForm\(formRef\.current, baseRef\.current, stored\)/);
+  assert.doesNotMatch(hook, /\bloadCycleView\b|api\.cycle/);
+});
+
 test('cycle cache keys and tiers', () => {
   const keys = read(join(root, 'src', 'lib', 'cycleQueryKeys.ts'));
   for (const key of ["['cycle', 'view']", "['cycle', 'pregnancy']", "['cycle', 'pregnancy-care-plan']", "['cycle', 'observation-trends']", "['cycle', 'prediction-history']"]) {

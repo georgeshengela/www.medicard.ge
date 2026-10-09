@@ -60,6 +60,11 @@ export type CycleLogForm = {
   moods: string[];
   sexTags: string[];
   sexual: boolean | null;
+  /**
+   * The day's stored `sexualActivity` when the form was filled (hydrate only, never edited). A stored
+   * false shows as unanswered (`sexual: null`); saving keeps it unless she answers again (CYC-11).
+   */
+  sexualStored?: boolean | null;
   libido: number | null;
   bbt: string;
   mucus: string | null;

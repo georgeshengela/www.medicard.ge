@@ -7,6 +7,7 @@ import { periodToastTitle } from '@/components/cycle/CyclePeriodToast';
 import { formFromCycleLog, persistCycleLog } from '@/lib/cycleLogSave';
 import { periodStartTone } from '@/lib/cycleTone';
 import { queueApplyPeriod, queueRemoveCycleLog, saveCycleObservation, undoQueuedPeriodStart, type CycleView } from '@/lib/cycleOffline';
+import { cyclePersistFeedback } from '@/lib/cycleOfflineCore';
 import { periodEndUndo, periodStartUndo, stillBleedingFlow, type PeriodEndUndo, type PeriodStartUndo } from '@/lib/cyclePeriodStatus';
 import { tx } from '@/i18n/locale';
 import { putCycleView } from '@/lib/cycleViewCache';
@@ -160,6 +161,16 @@ export function useHomeCycleActions({
     if (alive.current) setError(err instanceof Error && err.message ? err.message : ka.common.error);
   }, []);
 
+  /**
+   * A one-tap action that stored nothing (device storage and the server both failed): say so and skip
+   * the success haptic and toast (CYC-05). True = stop.
+   */
+  const storedNothing = useCallback((result: { synced?: boolean; persistedLocally?: boolean; sessionOnly?: boolean } | null) => {
+    if (!result || cyclePersistFeedback(result) !== 'fail') return false;
+    if (alive.current) setError(ka.cycle.saveNotPersisted);
+    return true;
+  }, []);
+
   /** Reminders follow a synced view only (the cycle screen's rule: never schedule from an optimistic one). */
   const syncReminders = useCallback(
     async (next: CycleView) => {
@@ -207,6 +218,7 @@ export function useHomeCycleActions({
     void (async () => {
       try {
         const result = await queueApplyPeriod(userId, { action: 'start', date: today });
+        if (storedNothing(result)) return;
         trackCyclePeriodStarted('home');
         // TTC: a new cycle is not a success to celebrate — a plain selection tick (brief §9 item 16).
         if (periodStartTone(mode).haptic === 'selection') Haptics.selectionAsync().catch(() => undefined);
@@ -225,7 +237,7 @@ export function useHomeCycleActions({
         if (alive.current) setBusy(false);
       }
     })();
-  }, [userId, view, today, mode, showView, fail]);
+  }, [userId, view, today, mode, showView, fail, storedNothing]);
 
   /** Undo of the one-tap start: the day and the last period start come back exactly as they were (never „end“). */
   const undoStart = useCallback(
@@ -240,13 +252,14 @@ export function useHomeCycleActions({
       void (async () => {
         try {
           const result = await undoQueuedPeriodStart(userId, entry.date, entry.undo, current);
+          if (storedNothing(result)) return;
           if (result) showView(result.view);
         } catch (err) {
           fail(err);
         }
       })();
     },
-    [userId, view, showView, fail],
+    [userId, view, showView, fail, storedNothing],
   );
 
   /** One tap: the period ends today (the server clears today's logged bleeding); the toast's undo restores it. */
@@ -260,6 +273,7 @@ export function useHomeCycleActions({
     void (async () => {
       try {
         const result = await queueApplyPeriod(userId, { action: 'end', date: today });
+        if (storedNothing(result)) return;
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined);
         showView(result.view);
         if (alive.current) {
@@ -274,7 +288,7 @@ export function useHomeCycleActions({
         if (alive.current) setBusy(false);
       }
     })();
-  }, [userId, view, today, showView, fail]);
+  }, [userId, view, today, showView, fail, storedNothing]);
 
   /** „ჯერ კიდევ გაქვს?“ → „კი“: the run continues today (a bleeding log; the server's period status follows). */
   const stillBleeding = useCallback(() => {
@@ -286,6 +300,7 @@ export function useHomeCycleActions({
     void (async () => {
       try {
         const result = await saveCycleObservation(userId, today, { flow });
+        if (storedNothing(result)) return;
         Haptics.selectionAsync().catch(() => undefined);
         showView(result.view);
         if (alive.current) {
@@ -300,7 +315,7 @@ export function useHomeCycleActions({
         if (alive.current) setBusy(false);
       }
     })();
-  }, [userId, view, today, showView, fail]);
+  }, [userId, view, today, showView, fail, storedNothing]);
 
   const undoEnd = useCallback(
     (entry: EndToast) => {
@@ -316,13 +331,14 @@ export function useHomeCycleActions({
               : undo.kind === 'clearFlow'
                 ? await saveCycleObservation(userId, entry.date, { flow: null })
                 : await queueRemoveCycleLog(userId, entry.date);
+          if (storedNothing(result)) return;
           showView(result.view);
         } catch (err) {
           fail(err);
         }
       })();
     },
-    [userId, showView, fail],
+    [userId, showView, fail, storedNothing],
   );
 
   /** Flo-style one tap: mark sex for today, keeping everything else logged that day. */
@@ -339,7 +355,8 @@ export function useHomeCycleActions({
     setError(null);
     void (async () => {
       try {
-        const result = await persistCycleLog(userId, today, { ...before, sexual: true });
+        const result = await persistCycleLog(userId, today, { ...before, sexual: true }, { base: before });
+        if (storedNothing(result)) return;
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined);
         showView(result.view);
         if (alive.current) {
@@ -354,7 +371,7 @@ export function useHomeCycleActions({
         if (alive.current) setSexBusy(false);
       }
     })();
-  }, [userId, view, today, showView, fail]);
+  }, [userId, view, today, showView, fail, storedNothing]);
 
   const undoSex = useCallback(
     (before: CycleLogForm) => {
@@ -362,14 +379,15 @@ export function useHomeCycleActions({
       setSexBefore(null);
       void (async () => {
         try {
-          const result = await persistCycleLog(userId, today, before);
+          const result = await persistCycleLog(userId, today, before, { base: before });
+          if (storedNothing(result)) return;
           showView(result.view);
         } catch (err) {
           fail(err);
         }
       })();
     },
-    [userId, today, showView, fail],
+    [userId, today, showView, fail, storedNothing],
   );
 
   const openSexSheet = useCallback(() => {

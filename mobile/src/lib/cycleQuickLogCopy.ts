@@ -5,6 +5,8 @@
  * Pure: node tests load it.
  */
 import type { CyclePainEntry } from '@/lib/api';
+import { formatCycleCivilDate } from './cycleCivilDateKa.js';
+import { tx } from '../i18n/locale.js';
 
 export type CopyableLog = {
   flow: string | null;
@@ -72,4 +74,19 @@ export function nextPainSeverity(current: 'mild' | 'moderate' | 'severe' | null)
 
 export function painLevel(severity: 'mild' | 'moderate' | 'severe' | string | null | undefined): 1 | 2 | 3 | null {
   return severity === 'mild' ? 1 : severity === 'moderate' ? 2 : severity === 'severe' ? 3 : null;
+}
+
+/**
+ * The quick-log sheet's title for another day (CYC-12): the date in words in the app language
+ * („5 ოქტომბერი 2026“ / "5 October 2026"), never an ISO date. Null for today — the sheet then says
+ * „დღის აღრიცხვა“ / "Log today".
+ */
+export function quickLogTitleDate(date: string, today: string, lang?: 'ka' | 'en'): string | null {
+  if (date === today) return null;
+  return formatCycleCivilDate(date, lang);
+}
+
+/** The day sheet's heading above its inline log: "Log today" only for today. */
+export function quickLogHeading(date: string, today: string, todayLabel: string): string {
+  return date === today ? todayLabel : tx('დღის აღრიცხვა', 'Log this day');
 }
