@@ -517,7 +517,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       discardNewAccount: async () => {
         const userId = user?.id;
         await api.auth.discardNewAccount();
-        await stopDeviceDelivery();
+        // The server deleted the account and its push tokens with it: no unregister (it could only
+        // answer 401 and would hold the spinner on a bad connection), as after deleteAccount.
+        await cancelDeviceReminders();
         await forgetAccountOnDevice(userId);
         await clearToken();
         await clearSessionSnapshot();
@@ -525,7 +527,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       },
       switchToAccount: async (result, previousDeleted) => {
         const userId = user?.id;
-        await stopDeviceDelivery();
+        // A deleted account took its push tokens with it; one that stays is unregistered like signOut.
+        if (previousDeleted) await cancelDeviceReminders();
+        else await stopDeviceDelivery();
         if (userId && userId !== result.user?.id) {
           // A deleted account leaves nothing behind; one that stays is only signed out, like signOut.
           if (previousDeleted) await forgetAccountOnDevice(userId);

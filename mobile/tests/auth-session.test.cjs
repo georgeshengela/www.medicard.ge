@@ -15,7 +15,7 @@ function harness(initialToken=null) {
  const modules={
   react:React,'react-native':{AppState:{addEventListener:()=>({remove:noop})}},
   '@/lib/run/store':{resetRunMemory:noop},'@/i18n/ka':{ka:{auth:{registerNotConfirmed:'Unconfirmed'}}},
-  '@/lib/api':{ApiError,api:{auth:{login:async()=>{loginCount++;return {token:'confirmed-token',user,usage:full.usage};},me:async()=>{meCount++;return me();},deleteAccount:()=>deleteAccount()},healthProfile:{get:async()=>{profileCount++;return readProfile();}}}},
+  '@/lib/api':{ApiError,api:{auth:{login:async()=>{loginCount++;return {token:'confirmed-token',user,usage:full.usage};},me:async()=>{meCount++;return me();},deleteAccount:()=>deleteAccount(),discardNewAccount:async()=>{delivery.push('server-discard');return {ok:true};}},healthProfile:{get:async()=>{profileCount++;return readProfile();}}}},
   '@/lib/localAccount':{setLocalAccountId:id=>{accountId=id;},localAccountId:()=>accountId,wipeLegacyUnscopedHealthCaches:asyncNoop},
   '@/lib/home/homeLayoutStore':{primeHomeLayout:asyncNoop,registerHomeLayoutProfilePatch:noop},
   '@/lib/onboarding':{needsHealthAssessment:noop,needsProfileSetup:noop,assessmentPhaseComplete:noop},
@@ -242,4 +242,26 @@ test('an account deleted elsewhere also leaves no device data at the next launch
  h.startup();await tick();await tick();await tick();
  assert.equal(h.token(),null);assert.deepEqual(h.delivery,['reminders-cancel']);
  assert.deepEqual(h.forgotten.sort(),['cycle:synthetic-user','pregnancy:synthetic-user']);
+});
+
+// IR-14: discard-new and a switch that deleted the current account already removed it (and its push
+// tokens) on the server: no push unregister with the dead token before the local cleanup / adopt.
+test('discarding a just-created account cancels reminders with no further request',async()=>{
+ const h=harness('saved-token');await h.render().refresh();
+ await h.render().discardNewAccount();
+ assert.deepEqual(h.delivery,['server-discard','reminders-cancel']);
+ assert.equal(h.pushForgets(),1);assert.equal(h.token(),null);assert.equal(h.render().user,null);
+});
+test('a switch that deleted the current account sends no push unregister; one that kept it still does',async()=>{
+ const other={token:'other-token',user:{id:'other-user',email:'other@medicard.test'},usage:{remaining:10}};
+ const deleted=harness('saved-token');await deleted.render().refresh();
+ deleted.setMe(async()=>({...deleted.full,user:other.user}));
+ await deleted.render().switchToAccount(other,true);
+ assert.deepEqual(deleted.delivery,['reminders-cancel']);assert.deepEqual(deleted.forgotten.sort(),['cycle:synthetic-user','pregnancy:synthetic-user']);
+ assert.equal(deleted.token(),'other-token');assert.equal(deleted.render().user.id,'other-user');
+ const kept=harness('saved-token');await kept.render().refresh();
+ kept.setMe(async()=>({...kept.full,user:other.user}));
+ await kept.render().switchToAccount(other,false);
+ assert.deepEqual(kept.delivery,['push-unregister','reminders-cancel']);assert.deepEqual(kept.forgotten,[]);
+ assert.equal(kept.token(),'other-token');
 });
