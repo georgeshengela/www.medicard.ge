@@ -3451,8 +3451,8 @@ export const api = {
         timeoutMs: 30_000,
       }),
     /** `null` when the date was saved but the bundle could not be reloaded (CYC-06): refetch the view. */
-    setLastPeriod: (date: string) =>
-      request<CycleBundle | null>('/api/cycle/last-period', { method: 'POST', body: { date } }),
+    setLastPeriod: (date: string, opts?: { timeoutMs?: number }) =>
+      request<CycleBundle | null>('/api/cycle/last-period', { method: 'POST', body: { date }, timeoutMs: opts?.timeoutMs }),
     /** `null` when the profile was saved but the bundle could not be reloaded (CYC-06): refetch the view. */
     updateProfile: (body: Partial<{
       mode: CycleMode;
