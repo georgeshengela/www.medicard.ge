@@ -445,8 +445,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       },
       deleteAccount: async () => {
         const userId = user?.id;
-        await stopDeviceDelivery();
+        // Server first: a failed delete (network, 5xx) leaves her signed in with every reminder and
+        // push still in place. The server drops the push tokens with the account (cascade).
         await api.auth.deleteAccount();
+        await stopDeviceDelivery();
         await forgetAccountOnDevice(userId);
         await clearToken();
         await clearSessionSnapshot();
