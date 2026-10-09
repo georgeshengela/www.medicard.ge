@@ -3,8 +3,6 @@ import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-nati
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import {
-  Bell,
-  Boxes,
   CalendarDays,
   CalendarRange,
   Check,
@@ -20,7 +18,7 @@ import { HomeSectionHeading } from '@/components/home/HomeSectionHeading';
 import { MedicationHeaderAction } from '@/components/medications/MedicationNavHeader';
 import { MedicationPillIcon } from '@/components/medications/MedicationPillIcon';
 import { MedicationRescheduleSheet } from '@/components/medications/MedicationRescheduleSheet';
-import { MedsCard, MedsChip, MedsInfoRow, MedsStatusPill, medsPrimaryFill, medsInk } from '@/components/medications/MedsHubUI';
+import { MedsCard, MedsChip, MedsInfoRow, MedsStatusPill, doseAttentionInk, medsPrimaryFill, medsInk } from '@/components/medications/MedsHubUI';
 import { ProfileMenuRow } from '@/components/profile/ProfileMenuRow';
 import { DetailCardSkeleton } from '@/components/ui/Skeleton';
 import { useMedicationImages } from '@/hooks/useMedicationImages';
@@ -28,6 +26,10 @@ import { useMedications } from '@/hooks/useMedications';
 import { ka } from '@/i18n/ka';
 import { tx } from '@/i18n/locale';
 import { api } from '@/lib/api';
+import { rescheduledTime } from '@/lib/doseAnswer';
+import { moveDose } from '@/lib/doseReschedule';
+import { deleteMedication } from '@/lib/medicationDelete';
+import { cancelNotificationsByPrefix } from '@/lib/notifications';
 import {
   daysSummaryKa,
   findDoseLog,
@@ -53,7 +55,7 @@ export function MedicationDoseScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { id, time, date } = useLocalSearchParams<{ id: string; time?: string; date?: string }>();
-  const { medications, doseLogs, setDoseLogs, load, loading } = useMedications();
+  const { medications, schedule, doseLogs, setDoseLogs, load, loading } = useMedications();
   const images = useMedicationImages(medications);
   const [rescheduleOpen, setRescheduleOpen] = useState(false);
   const med = medications.find((item) => item.id === id);
@@ -62,13 +64,14 @@ export function MedicationDoseScreen() {
   const doseTime = time ?? times[0] ?? '09:00';
   const doseDate = date ?? todayYmd();
   const log = findDoseLog(doseLogs, id, doseDate, doseTime);
+  const movedTo = rescheduledTime(log);
 
   const markDose = useCallback(
-    async (status: 'taken' | 'skipped', newTime?: string) => {
+    async (status: 'taken' | 'skipped') => {
       const entry = {
         medicationId: id,
         date: doseDate,
-        time: newTime ?? doseTime,
+        time: doseTime,
         status,
         updatedAt: new Date().toISOString(),
       };
@@ -83,6 +86,23 @@ export function MedicationDoseScreen() {
     [id, doseDate, doseTime, router, setDoseLogs],
   );
 
+  // „გადატანა“ moves the reminder for this dose; the dose stays open on its own slot (never „taken“).
+  const reschedule = useCallback(
+    async (to: string) => {
+      const dose = schedule.find((row) => row.medicationId === id && row.time === doseTime) ??
+        (med ? { medicationId: id, medName: med.medName, dosage: med.dosage, notes: med.notes, time: doseTime } : null);
+      if (!dose) return;
+      const entry = await moveDose(dose, doseDate, to);
+      setDoseLogs((prev) => [
+        ...prev.filter((item) => !(item.medicationId === id && item.date === doseDate && item.time === doseTime)),
+        entry,
+      ]);
+      setRescheduleOpen(false);
+      router.back();
+    },
+    [schedule, id, doseTime, med, doseDate, router, setDoseLogs],
+  );
+
   const remove = () => {
     if (!med) return;
     Alert.alert(ka.meds.deleteFromSchedule, med.medName, [
@@ -91,7 +111,17 @@ export function MedicationDoseScreen() {
         text: ka.common.delete,
         style: 'destructive',
         onPress: async () => {
-          await api.medications.remove(med.id).catch(() => undefined);
+          // A failed delete says so and keeps the medication and its reminders; a done one removes
+          // its reminders at once, so none fires for a medication she believes is gone.
+          const result = await deleteMedication(med.id, {
+            remove: (medicationId) => api.medications.remove(medicationId),
+            cancelReminders: cancelNotificationsByPrefix,
+            fallbackMessage: tx('სცადე ხელახლა.', 'Please try again.'),
+          });
+          if (!result.ok) {
+            Alert.alert(tx('წამალი ვერ წაიშალა', "Couldn't delete the medication"), result.message);
+            return;
+          }
           await load();
           router.replace('/(tabs)/medications');
         },
@@ -113,7 +143,6 @@ export function MedicationDoseScreen() {
 
   const form = ka.meds.formLabels[cfg.form ?? 'pills'];
   const amount = cfg.amount ?? 1;
-  const remaining = cfg.remainingCount;
   const knownAs = [cfg.genericName, cfg.strength].filter((v) => v && v !== med.medName).join(' · ') || null;
   const freqLabel =
     cfg.frequencyKind === 'weekly'
@@ -161,15 +190,22 @@ export function MedicationDoseScreen() {
             <MedsChip label={freqLabel} />
             {meal ? <MedsChip label={meal} ink="amber" /> : null}
           </View>
-          {log ? <MedsStatusPill status={log.status} /> : null}
+          {movedTo ? (
+            <MedsChip label={tx(`გადატანილია ${formatTime24h(movedTo)}-ზე`, `Moved to ${formatTime24h(movedTo)}`)} active />
+          ) : log ? (
+            <MedsStatusPill status={log.status} />
+          ) : null}
         </MedsCard>
 
         <View>
           <HomeSectionHeading title={ka.meds.doseActionsTitle} />
           <MedsCard style={{ flexDirection: 'row', gap: 10, paddingVertical: 20 }}>
             <DoseAction label={ka.meds.actionTake} fill={primary} color="#FFFFFF" icon={Check} onPress={() => void markDose('taken')} />
-            <DoseAction label={ka.meds.actionReschedule} fill={hubTint(accent, dark)} color={accent} icon={Clock} onPress={() => setRescheduleOpen(true)} />
-            <DoseAction label={ka.meds.actionSkip} fill={c.dangerBg} color={c.danger} icon={X} onPress={() => void markDose('skipped')} />
+            {/* A taken dose is not moved: that would open it again and remind her to take it a second time. */}
+            {log?.status === 'taken' ? null : (
+              <DoseAction label={ka.meds.actionReschedule} fill={hubTint(accent, dark)} color={accent} icon={Clock} onPress={() => setRescheduleOpen(true)} />
+            )}
+            <DoseAction label={ka.meds.actionSkip} fill={hubTint(doseAttentionInk(dark), dark)} color={doseAttentionInk(dark)} icon={X} onPress={() => void markDose('skipped')} />
           </MedsCard>
         </View>
 
@@ -177,11 +213,11 @@ export function MedicationDoseScreen() {
           <HomeSectionHeading title={ka.meds.detailsTitle} />
           <MedsCard padded={false}>
             <MedsInfoRow icon={Pill} label={tx('ერთ მიღებაზე', 'Per dose')} value={ka.meds.doseAmountLine(amount, form)} />
-            {remaining != null ? <MedsInfoRow icon={Boxes} ink="sky" label={ka.meds.remainingLabel} value={ka.meds.pillsLeft(remaining)} /> : null}
-            <MedsInfoRow icon={CalendarDays} ink="blue" label={ka.meds.daysOfWeekLabel} value={daysLabel} />
-            {course ? <MedsInfoRow icon={CalendarRange} ink="violet" label={ka.meds.courseLabel} value={course} /> : null}
-            {meal ? <MedsInfoRow icon={Utensils} ink="amber" label={ka.meds.mealTimingLabel} value={meal} /> : null}
-            <MedsInfoRow icon={Bell} ink="rose" label={ka.meds.refillLabel} value={cfg.refillReminder ? ka.common.yes : ka.common.no} isLast />
+            {/* No „შევსების შეხსენება“ / pills-left rows: nothing counts the pack down or sends a refill
+                reminder yet, so showing them promised something that never came. */}
+            <MedsInfoRow icon={CalendarDays} ink="blue" label={ka.meds.daysOfWeekLabel} value={daysLabel} isLast={!course && !meal} />
+            {course ? <MedsInfoRow icon={CalendarRange} ink="violet" label={ka.meds.courseLabel} value={course} isLast={!meal} /> : null}
+            {meal ? <MedsInfoRow icon={Utensils} ink="amber" label={ka.meds.mealTimingLabel} value={meal} isLast /> : null}
           </MedsCard>
         </View>
 
@@ -196,9 +232,9 @@ export function MedicationDoseScreen() {
 
       <MedicationRescheduleSheet
         visible={rescheduleOpen}
-        currentTime={doseTime}
+        currentTime={movedTo ?? doseTime}
         onClose={() => setRescheduleOpen(false)}
-        onPick={(option) => void markDose('taken', option)}
+        onPick={(option) => void reschedule(option)}
       />
     </>
   );

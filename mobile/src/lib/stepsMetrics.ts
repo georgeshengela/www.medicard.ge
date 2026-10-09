@@ -9,10 +9,14 @@ import {
   ymd,
 } from '@/lib/healthMetricsStorage';
 import { describePersonalStepsOrigin } from '@/lib/personalStepsOrigin.js';
-import { buildStepsBundle, sinceDateForPeriod } from '@/lib/stepsMetrics.shared';
+import { goalWindowKeys, personalStepsGoalFor } from '@/lib/personalStepsGoal';
+import { buildStepsBundle, dailyTotals, sinceDateForPeriod } from '@/lib/stepsMetrics.shared';
 import { isHealthSyncEnabled, setHealthSyncEnabled, getHealthPlatform } from '@/lib/healthSync';
 import { tbilisiYmd } from '@/lib/tbilisiDate.js';
 import type { StepChartPeriod, StepSample, StepsMetricsBundle } from '@/types/stepsMetrics';
+
+/** Every period reads at least the phone's last week (today + this many completed days). */
+const NATIVE_BASE_DAYS = 6;
 
 function isExpoGo(): boolean {
   return Constants.appOwnership === 'expo';
@@ -45,7 +49,7 @@ export async function fetchStepsMetrics(period: StepChartPeriod = '1d', opts?: {
   const storedPromise = pullStoredHealth(defaultSyncFromDate(), defaultSyncToDate(), opts);
   const nativePromise = nativeRuntime
     ? (async () => {
-        const fetchSince = new Date(Math.min(since.getTime(), Date.now() - 6 * 86_400_000));
+        const fetchSince = new Date(Math.min(since.getTime(), Date.now() - NATIVE_BASE_DAYS * 86_400_000));
         fetchSince.setHours(0, 0, 0, 0);
         return fetchStepsSamples(fetchSince);
       })()
@@ -82,7 +86,17 @@ export async function fetchStepsMetrics(period: StepChartPeriod = '1d', opts?: {
   }
 
   const hasData = merged.length > 0 || stored.daily.some((d) => d.steps != null);
-  const bundle = buildStepsBundle(merged, deviceConnected || hasData, period);
+  // Daily goal = the person's own typical day over the last 14 completed days: the server rows cover
+  // 90 days and the phone's samples the last week, so this costs no extra read and no permission.
+  // Longer chart periods read the phone further back; only the week every period reads counts, so the
+  // goal is the same on Home and on every chart tab.
+  const storedByDay = new Map<string, number>();
+  for (const row of stored.daily) if (row.steps != null && row.steps > 0) storedByDay.set(row.date, row.steps);
+  const deviceByDay = dailyTotals(nativeSamples);
+  const deviceWeek = new Set(goalWindowKeys(new Date(), NATIVE_BASE_DAYS));
+  for (const key of [...deviceByDay.keys()]) if (!deviceWeek.has(key)) deviceByDay.delete(key);
+  const goal = personalStepsGoalFor([storedByDay, deviceByDay]);
+  const bundle = buildStepsBundle(merged, deviceConnected || hasData, period, goal);
 
   if (typeof __DEV__ !== 'undefined' && __DEV__) {
     const todayKey = ymd(new Date());

@@ -8,6 +8,7 @@ import {
   cycleHeroActions,
   cycleHeroVariant,
   cyclePeriodWindow,
+  pastEstimateBadge,
   trackingHeroActions,
   trackingRingDays,
   cycleRingModel,
@@ -103,6 +104,28 @@ test('centre number follows the hero grammar', () => {
   assert.deepEqual(cycleCenter({ ...base, hideLengthChrome: true }), { kind: 'none' });
   // Estimates hidden: an estimated "today" is never shown.
   assert.deepEqual(cycleCenter({ ...base, hidePredicted: true, forecastOn: false, predictedToday: true }), { kind: 'cycleDay', day: 26, length: 28 });
+});
+
+test('past the estimate: „later than your usual pattern“ only when the server says late (CYC-07)', () => {
+  const lateAlert = { level: 'warn', messageKa: 'მენსტრუაცია ჩვეულზე გვიანია', action: 'chat', late: { status: 'late', reason: 'predicted' } };
+  const pcos = { level: 'info', messageKa: 'PCOS', action: null };
+  // A brand-new user: onboarding date only, default 28 days, no logged cycle — one day past the guess.
+  const fresh = { source: 'default' as const, cycleCount: 0 };
+  assert.equal(pastEstimateBadge({ alerts: [], showLatePeriod: true, averages: fresh }), 'learning');
+  assert.equal(pastEstimateBadge({ alerts: undefined, showLatePeriod: true, averages: fresh }), 'learning');
+  assert.equal(pastEstimateBadge({ alerts: [pcos], showLatePeriod: true, averages: fresh }), 'learning');
+  // She typed her usual length but has fewer than two logged cycles: still learning, not „your pattern“.
+  assert.equal(pastEstimateBadge({ alerts: [], showLatePeriod: true, averages: { source: 'user', cycleCount: 1 } }), 'learning');
+  assert.equal(pastEstimateBadge({ alerts: [], showLatePeriod: true, averages: null }), 'learning');
+  // Enough history, inside the server's grace: the centre already says „N days past the estimate“ — no badge.
+  assert.equal(pastEstimateBadge({ alerts: [], showLatePeriod: true, averages: { source: 'inferred', cycleCount: 4 } }), null);
+  // The server's late verdict (its grace, logged flow, ≥ 2 cycles or 45 days since bleeding) — the /cycle banner's rule.
+  assert.equal(pastEstimateBadge({ alerts: [pcos, lateAlert], showLatePeriod: true, averages: { source: 'inferred', cycleCount: 4 } }), 'late');
+  assert.equal(pastEstimateBadge({ alerts: [lateAlert], showLatePeriod: true, averages: fresh }), 'late');
+  // An older server's late row without the `late` object is still recognised by its text.
+  assert.equal(pastEstimateBadge({ alerts: [{ level: 'warn', messageKa: 'მენსტრუაცია გვიანია', action: 'chat' }], showLatePeriod: true, averages: { source: 'inferred', cycleCount: 4 } }), 'late');
+  // A mode without late periods never claims one.
+  assert.notEqual(pastEstimateBadge({ alerts: [lateAlert], showLatePeriod: false, averages: { source: 'inferred', cycleCount: 4 } }), 'late');
 });
 
 test('variable cycles: the spread comes from her own last cycles, never narrower than a day or wider than a week', () => {

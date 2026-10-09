@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
-import { ActivityIndicator, AppState, Keyboard, KeyboardAvoidingView, Platform, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import { ActivityIndicator, AppState, Keyboard, KeyboardAvoidingView, Linking, Platform, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { CameraView, useCameraPermissions } from "expo-camera";
 import { Flashlight, FlashlightOff, ScanBarcode, X } from "lucide-react-native";
@@ -8,6 +8,7 @@ import { APP_MODAL_PROPS, Modal } from "@/components/ui/appModal";
 import { useThemeColors } from "@/theme/colors";
 import { hubText } from "@/theme/hub";
 import { tx } from '@/i18n/locale';
+import { onReturnToForeground } from "@/lib/appForeground";
 
 const BARCODE_TYPES = ["ean13", "ean8", "upc_a", "upc_e", "code128", "code39", "itf14"] as const;
 
@@ -15,6 +16,10 @@ const BARCODE_TYPES = ["ean13", "ean8", "upc_a", "upc_e", "code128", "code39", "
  * Live barcode viewfinder for packaged products. The camera frame never leaves
  * the phone: only the decoded digits are looked up. A typed code is the
  * fallback when the camera is unavailable or the print is damaged.
+ *
+ * Camera permission is requested only from the button (App Review 5.1.1(iv)). Until the system question
+ * was answered the sheet is a primer: one „გაგრძელება“ button, no close, no alternatives. After a „no“
+ * the OS will not ask again, so the button opens Settings.
  */
 export function BarcodeScannerModal({
   visible,
@@ -31,7 +36,7 @@ export function BarcodeScannerModal({
 }) {
   const c = useThemeColors();
   const safe = useSafeAreaInsets();
-  const [permission, requestPermission] = useCameraPermissions();
+  const [permission, requestPermission, readPermission] = useCameraPermissions();
   const [torch, setTorch] = useState(false);
   const [manual, setManual] = useState("");
   const [foreground, setForeground] = useState(AppState.currentState === "active");
@@ -41,6 +46,13 @@ export function BarcodeScannerModal({
     const sub = AppState.addEventListener("change", (state) => setForeground(state === "active"));
     return () => sub.remove();
   }, []);
+  // Fresh answer on every open and back from Settings (a read, never a request): a camera turned on
+  // there works at once, and a „no“ given elsewhere in the app shows the Settings button.
+  useEffect(() => {
+    if (!visible) return;
+    void readPermission().catch(() => undefined);
+    return onReturnToForeground(() => void readPermission().catch(() => undefined));
+  }, [visible, readPermission]);
   useEffect(() => {
     if (!visible) {
       setTorch(false);
@@ -50,7 +62,15 @@ export function BarcodeScannerModal({
     }
   }, [visible]);
   const granted = !!permission?.granted;
+  // Primer until the OS question was answered once (then close, typing the code and Settings are fine).
+  const primer = !granted && !asked && (!permission || permission.status === "undetermined");
+  // Answered „no“ and the OS will not show its sheet again: only Settings can turn the camera on.
+  const blocked = !granted && !!permission && permission.canAskAgain === false;
   const ask = async () => {
+    if (blocked) {
+      void Linking.openSettings().catch(() => undefined);
+      return;
+    }
     setAsked(true);
     try {
       await requestPermission();
@@ -85,13 +105,21 @@ export function BarcodeScannerModal({
           />
         ) : null}
         <View style={[s.top, { paddingTop: safe.top + 8 }]}>
-          <Pressable accessibilityRole="button" accessibilityLabel={tx("დახურვა", "Close")} onPress={onClose} style={s.round}>
-            <X size={22} color="#FFFFFF" />
-          </Pressable>
+          {primer ? (
+            <View style={s.round0} />
+          ) : (
+            <Pressable accessibilityRole="button" accessibilityLabel={tx("დახურვა", "Close")} onPress={onClose} style={s.round}>
+              <X size={22} color="#FFFFFF" />
+            </Pressable>
+          )}
           <Text style={[hubText.cardTitle, { color: "#FFFFFF", flex: 1, textAlign: "center" }]}>{tx("შტრიხკოდის სკანი", "Scan barcode")}</Text>
-          <Pressable accessibilityRole="button" accessibilityLabel={torch ? tx("ფანარის გამორთვა", "Turn off flashlight") : tx("ფანარის ჩართვა", "Turn on flashlight")} disabled={!granted} onPress={() => setTorch((v) => !v)} style={[s.round, { opacity: granted ? 1 : 0.4 }]}>
-            {torch ? <FlashlightOff size={20} color="#FFFFFF" /> : <Flashlight size={20} color="#FFFFFF" />}
-          </Pressable>
+          {primer ? (
+            <View style={s.round0} />
+          ) : (
+            <Pressable accessibilityRole="button" accessibilityLabel={torch ? tx("ფანარის გამორთვა", "Turn off flashlight") : tx("ფანარის ჩართვა", "Turn on flashlight")} disabled={!granted} onPress={() => setTorch((v) => !v)} style={[s.round, { opacity: granted ? 1 : 0.4 }]}>
+              {torch ? <FlashlightOff size={20} color="#FFFFFF" /> : <Flashlight size={20} color="#FFFFFF" />}
+            </Pressable>
+          )}
         </View>
         <View style={s.center} pointerEvents="none">
           <View style={s.frame}>
@@ -100,16 +128,25 @@ export function BarcodeScannerModal({
             ))}
             {busy && <ActivityIndicator color="#6EE7B7" size="large" />}
           </View>
-          <Text style={[txt, s.hint]}>{busy ? tx("პროდუქტს ვეძებ…", "Looking up the product…") : granted ? tx("მოათავსე შტრიხკოდი ჩარჩოში", "Place the barcode inside the frame") : tx("კამერა გამორთულია — ჩართე ან აკრიფე კოდი", "Camera is off — turn it on or type the code")}</Text>
+          <Text style={[txt, s.hint]}>
+            {busy
+              ? tx("პროდუქტს ვეძებ…", "Looking up the product…")
+              : granted
+                ? tx("მოათავსე შტრიხკოდი ჩარჩოში", "Place the barcode inside the frame")
+                : blocked
+                  ? tx("კამერა გამორთულია — ჩართე პარამეტრებში ან აკრიფე კოდი", "Camera is off — turn it on in Settings or type the code")
+                  : tx("შტრიხკოდის წასაკითხად კამერა გჭირდება.", "You need the camera to read the barcode.")}
+          </Text>
         </View>
         <View style={[s.bottom, { paddingBottom: Math.max(safe.bottom, 16) }]}>
           {!!error && <Text accessibilityRole="alert" style={[txt, { color: "#FCA5A5", fontSize: 13, lineHeight: 20 }]}>{error}</Text>}
           {!granted && (
             <Pressable accessibilityRole="button" onPress={() => void ask()} style={[s.primary, { backgroundColor: '#047857' }]}>
               <ScanBarcode size={18} color="#FFFFFF" />
-              <Text style={[hubText.link, { color: "#FFFFFF" }]}>{asked && permission && !permission.canAskAgain ? tx("ნებართვა პარამეტრებში ჩართე", "Allow it in Settings") : tx("კამერის ჩართვა", "Turn on camera")}</Text>
+              <Text style={[hubText.link, { color: "#FFFFFF" }]}>{blocked ? tx("ნებართვა პარამეტრებში ჩართე", "Allow it in Settings") : tx("გაგრძელება", "Continue")}</Text>
             </Pressable>
           )}
+          {primer ? null : (
           <View style={s.manualRow}>
             <TextInput
               accessibilityLabel={tx("შტრიხკოდის აკრეფა", "Type barcode")}
@@ -126,6 +163,7 @@ export function BarcodeScannerModal({
               <Text style={[hubText.link, { color: '#022C22' }]}>{tx("ძებნა", "Search")}</Text>
             </Pressable>
           </View>
+          )}
           <Text style={[txt, { fontSize: 11, lineHeight: 17, color: "#9CA3AF" }]}>{tx("კამერის კადრი ტელეფონიდან არ იგზავნება. მხოლოდ კოდი მოწმდება Open Food Facts-ის ბაზაში.", "The camera image never leaves your phone. Only the code is checked in the Open Food Facts database.")}</Text>
         </View>
       </KeyboardAvoidingView>
@@ -136,6 +174,7 @@ export function BarcodeScannerModal({
 const s = StyleSheet.create({
   top: { flexDirection: "row", alignItems: "center", paddingHorizontal: 12, gap: 8 },
   round: { width: 44, height: 44, borderRadius: 22, backgroundColor: "rgba(17,24,39,0.7)", alignItems: "center", justifyContent: "center" },
+  round0: { width: 44, height: 44 },
   center: { flex: 1, alignItems: "center", justifyContent: "center", gap: 18 },
   frame: { width: 260, height: 170, alignItems: "center", justifyContent: "center" },
   corner: { position: "absolute", width: 30, height: 30, borderColor: "#6EE7B7" },

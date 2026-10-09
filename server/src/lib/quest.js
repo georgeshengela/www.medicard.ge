@@ -1,4 +1,6 @@
 import { prisma } from './prisma.js';
+import { AI_ERROR_REVIEWED, AI_REPLY_CUT_MESSAGE } from './aiTelemetry.js';
+import { hasAcceptedAiConsent } from './aiConsent.js';
 import { sumRewardLedger } from './rewardLedgerSum.js';
 import {
   QUEST_ECONOMY,
@@ -23,14 +25,14 @@ import {
   canAssignNewDailyPeriod,
   dailyPeriodKey,
   daysInIsoWeek,
-  endOfLocalDay,
   getEffectiveQuestTimezone,
   normalizeQuestTimezone,
   resolveQuestClock,
   expiresAtForPeriod,
-  startOfLocalDay,
+  questPeriodWindow,
 } from './questTime.js';
-import { countsForDailyStreak, ensureQuestTemplates } from './questTemplates.js';
+import { countsForDailyStreak, ensureQuestTemplates, questRowReward } from './questTemplates.js';
+import { parseAppVersion } from './appVersion.js';
 import { isUsableStepCapability, loadStepCapabilityStatus } from './stepCapability.js';
 import {
   SMART_QUEST_ENGINE_VERSION,
@@ -59,6 +61,7 @@ export { publicQuest, publicRewardRow, sanitizeQuestJson, QUEST_FORBIDDEN_KEYS }
  * Mobile must never submit progress, completed=true, XP, coins, level, streak, or target.
  *
  * Progress is recomputed from HealthMetricDaily / HydrationPreference / AiInteraction.
+ * The Medi mission (weekly, XP only) is offered only after the current AI consent was accepted.
  * ACTIVE progress may decrease when the source-of-truth corrects.
  * COMPLETED is immutable — corrections do not revoke completion, streak, or later claims.
  * Rewards stay claimable; the ledger is authoritative for issuance.
@@ -151,7 +154,16 @@ export async function loadHydrationGoalMl(db, userId) {
   return goal;
 }
 
-async function isTemplateEligible(db, userId, template) {
+/**
+ * AI consent for one assignment pass, read before (never inside) the assignment transaction and
+ * only when a Medi template is on offer. A failed read means „no“.
+ */
+async function aiConsentForTemplates(db, userId, templates) {
+  if (!templates.some((template) => template.progressType === 'MEDI_DAILY_USE')) return false;
+  return hasAcceptedAiConsent(userId, db);
+}
+
+async function isTemplateEligible(db, userId, template, aiConsentAccepted = false) {
   try {
     validateQuestRewardAmounts({
       cadence: template.cadence,
@@ -169,8 +181,25 @@ async function isTemplateEligible(db, userId, template) {
     const status = await loadStepCapabilityStatus(db, userId);
     return isUsableStepCapability(status);
   }
+  if (template.progressType === 'MEDI_DAILY_USE') {
+    // Optional and never pre-accepted: no mission nudges anyone into sharing data with AI.
+    return aiConsentAccepted === true;
+  }
   return true;
 }
+
+/**
+ * The weekly Medi mission counts a health question Medi answered: a consultation (DOCTOR/CONSILIUM) that
+ * finished, or one cut at max_tokens (shown and saved; logged as ERROR for admin) — whether or not an admin
+ * has since reviewed that error (#/ai „ჩაქრობა“ → ERROR_REVIEWED): admin triage never changes a mission.
+ * An answer she stopped or left before it was saved keeps no row; a failed one is a plain ERROR — neither
+ * counts. Planner turns (logging, reminders) never reach this table, and the mission copy promises only
+ * the health question.
+ */
+const MEDI_ANSWERED = Object.freeze({
+  mode: { in: ['DOCTOR', 'CONSILIUM'] },
+  OR: [{ status: 'OK' }, { status: { in: ['ERROR', AI_ERROR_REVIEWED] }, errorMessage: AI_REPLY_CUT_MESSAGE }],
+});
 
 export async function computeQuestProgress(userId, templateOrQuest, periodKey, options = {}) {
   const db = dbOf(options);
@@ -215,14 +244,12 @@ export async function computeQuestProgress(userId, templateOrQuest, periodKey, o
     if (options.mediUsedByPeriod?.has(key)) return options.mediUsedByPeriod.get(key) ? 1 : 0;
     if (Number(options.mediDailyUse) === 1) return 1;
     const tz = quest?.metadata?.assignedTimezone || options.timezone || QUEST_TIMEZONE_FALLBACK;
-    const start = startOfLocalDay(key, tz);
-    const end = endOfLocalDay(key, tz);
+    const { start, end } = questPeriodWindow(key, tz);
     if (typeof db.aiInteraction?.findMany !== 'function') return 0;
     const rows = await db.aiInteraction.findMany({
       where: {
         userId,
-        status: 'OK',
-        mode: { in: ['DOCTOR', 'CONSILIUM'] },
+        ...MEDI_ANSWERED,
         createdAt: { gte: start, lte: end },
       },
       take: 1,
@@ -245,11 +272,8 @@ async function loadProgressContext(db, userId, quests, options = {}) {
       dates.add(quest.periodKey);
     } else if (type === 'MEDI_DAILY_USE') {
       const tz = quest.metadata?.assignedTimezone || options.timezone || QUEST_TIMEZONE_FALLBACK;
-      mediWindows.push({
-        periodKey: quest.periodKey,
-        start: startOfLocalDay(quest.periodKey, tz),
-        end: endOfLocalDay(quest.periodKey, tz),
-      });
+      // Weekly Medi mission: any day of its ISO week counts (old daily rows keep their one day).
+      mediWindows.push({ periodKey: quest.periodKey, ...questPeriodWindow(quest.periodKey, tz) });
     }
   }
 
@@ -268,8 +292,7 @@ async function loadProgressContext(db, userId, quests, options = {}) {
     const rows = await db.aiInteraction.findMany({
       where: {
         userId,
-        status: 'OK',
-        mode: { in: ['DOCTOR', 'CONSILIUM'] },
+        ...MEDI_ANSWERED,
         createdAt: { gte: from, lte: to },
       },
     });
@@ -287,7 +310,21 @@ async function loadProgressContext(db, userId, quests, options = {}) {
   return { metricByDate, mediUsedByPeriod };
 }
 
+/**
+ * The weekly Medi mission as a stored row (`template` included). `isWeeklyMedi` reads the flattened
+ * dashboard shape instead.
+ */
+function isWeeklyMediRow(quest) {
+  return quest?.template?.cadence === 'WEEKLY' && quest?.template?.progressType === 'MEDI_DAILY_USE';
+}
+
 function notifyQuestCompleted(userId, quest, options = {}) {
+  emitQuestAnalytics(userId, 'quest_completed', quest, options);
+  // `quest:completed` goes to every socket of the person. Older app JS hides the weekly Medi mission
+  // (questDashboardForClient) yet toasts any completion („მისია შესრულდა 🎉“ for a mission it never
+  // shows), and a socket does not say what its JS can show — so this one is never announced. New JS
+  // refreshes MEDIQUEST after each Medi answer itself; the web app does not listen.
+  if (isWeeklyMediRow(quest)) return;
   const completedAt = quest.completedAt instanceof Date ? quest.completedAt.toISOString() : quest.completedAt;
   emitQuestCompleted(userId, {
     questId: quest.id,
@@ -297,13 +334,11 @@ function notifyQuestCompleted(userId, quest, options = {}) {
     category: quest.template?.category,
     completedAt,
     periodKey: quest.periodKey,
-    rewardCoins: quest.template?.rewardCoins,
-    rewardXp: quest.template?.rewardXp,
+    ...questRowReward(quest),
     progress: quest.progress,
     target: quest.target,
     progressPercent: questProgressPercent(quest.progress, quest.target),
   });
-  emitQuestAnalytics(userId, 'quest_completed', quest, options);
 }
 
 function emitQuestAnalytics(userId, kind, quest, options = {}) {
@@ -426,6 +461,10 @@ async function createAssignment(tx, { userId, template, periodKey, now, timezone
  *   - If the capability/goal returns within the same period, the CANCELLED
  *     quest is restored to ACTIVE with its original frozen target (and the
  *     original frozen hydration goalBasisMl).
+ *   - The Medi mission follows AI consent the same way (declined / revoked →
+ *     CANCELLED, accepted again in the same week → ACTIVE).
+ *   - An ACTIVE row of a template the owner retired (config.retired) is
+ *     CANCELLED for good, so it cannot pay next to its replacement.
  */
 export async function reconcileQuestEligibility(userId, options = {}) {
   const db = dbOf(options);
@@ -448,19 +487,43 @@ export async function reconcileQuestEligibility(userId, options = {}) {
 
   const stepQuests = rows.filter((row) => row.template?.progressType === 'STEPS');
   const hydroQuests = rows.filter((row) => row.template?.progressType === 'HYDRATION_GOAL_PERCENT');
+  const mediQuests = rows.filter((row) => row.template?.progressType === 'MEDI_DAILY_USE');
   const stepsUsable = stepQuests.length
     ? isUsableStepCapability(await loadStepCapabilityStatus(db, userId))
     : true;
   const hydrationGoal = hydroQuests.length ? await loadHydrationGoalMl(db, userId) : null;
+  const aiConsentAccepted = mediQuests.length ? await hasAcceptedAiConsent(userId, db) : true;
 
   let cancelled = 0;
   let restored = 0;
   for (const row of rows) {
     const type = row.template?.progressType;
-    const possible = type === 'STEPS' ? stepsUsable : type === 'HYDRATION_GOAL_PERCENT' ? hydrationGoal != null : true;
-    const cancelReason = type === 'STEPS' ? 'CAPABILITY_LOST' : 'HYDRATION_GOAL_REMOVED';
+    if (row.status === ACTIVE && row.template?.config?.retired === true) {
+      await db.userQuest.update({
+        where: { id: row.id },
+        data: {
+          status: 'CANCELLED',
+          metadata: sanitizeQuestJson({ ...(row.metadata || {}), cancelReason: 'TEMPLATE_RETIRED', cancelledAtPeriod: row.periodKey }),
+        },
+      });
+      cancelled += 1;
+      continue;
+    }
+    const gated = type === 'STEPS' || type === 'HYDRATION_GOAL_PERCENT' || type === 'MEDI_DAILY_USE';
+    const possible = type === 'STEPS'
+      ? stepsUsable
+      : type === 'HYDRATION_GOAL_PERCENT'
+        ? hydrationGoal != null
+        : type === 'MEDI_DAILY_USE'
+          ? aiConsentAccepted
+          : true;
+    const cancelReason = type === 'STEPS'
+      ? 'CAPABILITY_LOST'
+      : type === 'MEDI_DAILY_USE'
+        ? 'AI_CONSENT_MISSING'
+        : 'HYDRATION_GOAL_REMOVED';
 
-    if (row.status === ACTIVE && !possible && (type === 'STEPS' || type === 'HYDRATION_GOAL_PERCENT')) {
+    if (row.status === ACTIVE && !possible && gated) {
       await db.userQuest.update({
         where: { id: row.id },
         data: {
@@ -475,6 +538,7 @@ export async function reconcileQuestEligibility(userId, options = {}) {
     if (
       row.status === 'CANCELLED' &&
       possible &&
+      row.template?.config?.retired !== true &&
       row.metadata?.cancelReason === cancelReason &&
       isWithinReconciliation(row, clock.now)
     ) {
@@ -531,6 +595,8 @@ export async function assignDailyQuests(userId, date, options = {}) {
   const clock = await resolveClock(userId, options);
   const periodKey = date || clock.today;
   await ensureQuestTemplates(db);
+  const templates = await loadAssignableTemplates(db, 'DAILY', clock.now);
+  const aiConsentAccepted = await aiConsentForTemplates(db, userId, templates);
 
   return db.$transaction(async (tx) => {
     const profile = await ensureProfile(tx, userId, clock.timezone);
@@ -544,11 +610,10 @@ export async function assignDailyQuests(userId, date, options = {}) {
         .map((quest) => ({ ...quest, created: false, hopBlocked: true }));
     }
 
-    const templates = await loadAssignableTemplates(tx, 'DAILY', clock.now);
     const assigned = [];
     let createdAny = false;
     for (const template of templates) {
-      if (!(await isTemplateEligible(tx, userId, template))) continue;
+      if (!(await isTemplateEligible(tx, userId, template, aiConsentAccepted))) continue;
       const { quest, created, smartTrace } = await createAssignment(tx, {
         userId,
         template,
@@ -594,11 +659,12 @@ export async function assignWeeklyQuests(userId, week, options = {}) {
   const periodKey = week || clock.week;
   await ensureQuestTemplates(db);
   const templates = await loadAssignableTemplates(db, 'WEEKLY', clock.now);
+  const aiConsentAccepted = await aiConsentForTemplates(db, userId, templates);
 
   return db.$transaction(async (tx) => {
     const assigned = [];
     for (const template of templates) {
-      if (!(await isTemplateEligible(tx, userId, template))) continue;
+      if (!(await isTemplateEligible(tx, userId, template, aiConsentAccepted))) continue;
       const { quest, created, smartTrace } = await createAssignment(tx, {
         userId,
         template,
@@ -702,6 +768,8 @@ export async function updateQuestProgress(userId, spec = {}, options = {}) {
 
   const signals = options.signals;
   const relevant = quests.filter((quest) => {
+    // A retired template's leftover row never progresses (reconcile cancels it; otherwise it expires).
+    if (quest.template?.config?.retired === true) return false;
     if (spec.templateKey && quest.template?.key !== spec.templateKey) return false;
     if (Array.isArray(signals) && signals.length && !signals.includes(quest.template?.progressType)) {
       return false;
@@ -787,9 +855,16 @@ async function completeQuestInTx(tx, userId, userQuestId, options = {}) {
     },
   });
 
+  // Freeze what the card shows now: a later template change (admin edit, retirement) never changes
+  // a reward already earned — the claim pays this (questRowReward).
+  const reward = { xp: quest.template?.rewardXp ?? 0, coins: quest.template?.rewardCoins ?? 0 };
   const updated = await tx.userQuest.update({
     where: { id: quest.id },
-    data: { status: COMPLETED, completedAt: clock.now },
+    data: {
+      status: COMPLETED,
+      completedAt: clock.now,
+      metadata: sanitizeQuestJson({ ...(quest.metadata || {}), reward }),
+    },
     include: { template: true, completions: true },
   });
 
@@ -893,7 +968,8 @@ async function claimQuestInTx(tx, userId, userQuestId, options = {}) {
     throw httpError('ქვესტის ვადა ამოიწურა.', 409);
   }
 
-  const issued = assertIssuableQuestReward(quest.template);
+  // Reject an invalid reward before any write (the row's own reward is checked again below).
+  assertIssuableQuestReward({ ...quest.template, ...questRowReward(quest) });
   let justCompleted = false;
 
   if (quest.status === ACTIVE) {
@@ -912,6 +988,8 @@ async function claimQuestInTx(tx, userId, userQuestId, options = {}) {
     quest = completion.quest;
     justCompleted = completion.completed;
   }
+  // What the card promised: the reward frozen at completion (or a retired template's old coins).
+  const issued = assertIssuableQuestReward({ ...quest.template, ...questRowReward(quest) });
   const xpWrite = await writeReward(tx, {
     userId,
     currency: 'XP',
@@ -1147,14 +1225,60 @@ export async function getUserQuestDashboard(userId, options = {}) {
       periodKey: clock.week,
       quests: weekly,
     },
-    summary: {
-      dailyCompleted: daily.filter((quest) => quest.status === COMPLETED || quest.status === CLAIMED).length,
-      dailyTotal: daily.length,
-      dailyClaimable: daily.filter((quest) => quest.claimable).length,
-      weeklyCompleted: weekly.filter((quest) => quest.status === COMPLETED || quest.status === CLAIMED).length,
-      unclaimedRewards: [...daily, ...weekly].filter((quest) => quest.claimable).length,
-    },
+    summary: questSummary(daily, weekly),
   };
+}
+
+function questSummary(daily, weekly) {
+  return {
+    dailyCompleted: daily.filter((quest) => quest.status === COMPLETED || quest.status === CLAIMED).length,
+    dailyTotal: daily.length,
+    dailyClaimable: daily.filter((quest) => quest.claimable).length,
+    weeklyCompleted: weekly.filter((quest) => quest.status === COMPLETED || quest.status === CLAIMED).length,
+    unclaimedRewards: [...daily, ...weekly].filter((quest) => quest.claimable).length,
+  };
+}
+
+/**
+ * App JS that can show the weekly Medi mission says so in `X-Medicard-Caps` (WEEKLY_MEDI_CAP). Older
+ * JS names every Medi quest with the daily copy („დღეს …“) and always draws a coin pill — „+0“ for
+ * an XP-only mission — so it does not get the mission at all until it has the OTA. A version number
+ * cannot tell: OTAs from other branches reuse the numbers. The web app ('web') and requests without
+ * a native app version get everything.
+ */
+export const WEEKLY_MEDI_CAP = 'weekly-medi';
+
+function clientCaps(caps) {
+  return String(caps || '')
+    .split(',')
+    .map((cap) => cap.trim().toLowerCase())
+    .filter(Boolean);
+}
+
+function hiddenForClient(appVersion, caps) {
+  if (!parseAppVersion(appVersion)) return false;
+  return !clientCaps(caps).includes(WEEKLY_MEDI_CAP);
+}
+
+function isWeeklyMedi(quest) {
+  return quest?.cadence === 'WEEKLY' && quest?.progressType === 'MEDI_DAILY_USE';
+}
+
+/** The dashboard as this client can show it; a new object, the shared one is never changed. */
+export function questDashboardForClient(dashboard, appVersion, caps) {
+  if (!dashboard || !hiddenForClient(appVersion, caps)) return dashboard;
+  const weeklyQuests = dashboard.weekly?.quests || [];
+  if (!weeklyQuests.some(isWeeklyMedi)) return dashboard;
+  const weekly = { ...dashboard.weekly, quests: weeklyQuests.filter((quest) => !isWeeklyMedi(quest)) };
+  return { ...dashboard, weekly, summary: questSummary(dashboard.daily?.quests || [], weekly.quests) };
+}
+
+/** Quest history as this client can show it (same rule as the dashboard). */
+export function questHistoryForClient(history, appVersion, caps) {
+  if (!history || !hiddenForClient(appVersion, caps)) return history;
+  const items = history.items || [];
+  if (!items.some(isWeeklyMedi)) return history;
+  return { ...history, items: items.filter((quest) => !isWeeklyMedi(quest)) };
 }
 
 function emptyQuestDashboard(clock, profile) {

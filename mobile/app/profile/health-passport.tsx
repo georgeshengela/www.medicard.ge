@@ -12,6 +12,7 @@ import { useLab } from '@/hooks/useLab';
 import { ka } from '@/i18n/ka';
 import type { PassportLocale } from '@/i18n/healthPassport';
 import { api } from '@/lib/api';
+import { realFullName } from '@/lib/displayName';
 import { buildCycleReportHtmlFromSummary } from '@/lib/cycleReport';
 import { buildHealthPassportHtml, type PassportData } from '@/lib/healthPassport';
 import { resolveLabTitle } from '@/lib/labNames';
@@ -62,7 +63,8 @@ export default function HealthPassportScreen() {
     }
     return {
       person: {
-        name: user?.fullName,
+        // The server's placeholder name is not her name: the passport shows „—“ instead.
+        name: realFullName(user, healthProfile?.extraAnswers) || null,
         sex: user?.gender ?? null,
         birthDate: user?.birthDate ?? null,
         heightCm: healthProfile?.heightCm ?? null,

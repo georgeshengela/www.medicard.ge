@@ -8,7 +8,7 @@ import { cycleModeForPatientAiContext } from './cycleModes.js';
 import { wrapUntrustedAiBlock } from './clinicalMessages.js';
 import { t } from './i18n.js';
 import { loadCycleAccountContext, cycleAccountContextText } from './cycleAccountContext.js';
-import { buildAdherenceBlock, buildConsultationsBlock, buildLabValuesBlock, buildNutritionBlock, buildRecentRecordsBlock, buildThreadBlock, buildVisitsBlock, loadPatientHistory } from './patientHistoryContext.js';
+import { buildAdherenceBlock, buildConsultationsBlock, buildLabValuesBlock, buildNutritionBlock, buildRecentRecordsBlock, buildThreadBlock, buildVisitsBlock, consultationsAllowedNow, conversationMentionsNutrition, loadPatientHistory } from './patientHistoryContext.js';
 
 function packageIsExpired(user) {
   return Boolean(user?.packageExpiresAt && new Date(user.packageExpiresAt).getTime() < Date.now());
@@ -303,7 +303,8 @@ export async function loadPatientAiBundle(userId, { full = false, cycleAllowed =
     records: history?.records ?? null,
     visits: history?.visits ?? null,
     doseEvents: history?.doseEvents ?? null,
-    consultations: history?.consultations ?? null,
+    // While the cycle is withheld now, earlier answers that may restate it stay out too.
+    consultations: consultationsAllowedNow(history?.consultations ?? null, cycle),
     nutrition: history?.nutrition ?? null,
     // A panel from a deleted upload goes with it (same rule as MEDILAB).
     labPanels: full && labIds ? withoutDeletedRecords(storedPanels, new Set(labIds.map(r => r.id))) : null,
@@ -339,10 +340,14 @@ export function buildTrackedMetricsBlock(metrics) {
 /**
  * Full clinical context for Medi / analysis — profile + scheduled meds + recent daily metrics.
  * Use this on every EvidenceMD call. `withPatientProfile` is only the sync leftover.
+ * `full` options: `question` (this message; with `thread` / `priorTurns` it decides whether the MEDIFOOD
+ * diary belongs here) and `meta` (filled with `cycleShared`: the cycle diary went into this context).
  */
 export async function withPatientAiContext(user, extra, options = {}) {
   if (!user?.id) return withPatientProfile(user, extra);
   const bundle = await loadPatientAiBundle(user.id, { ...options, user });
+  if (options.meta && typeof options.meta === 'object') options.meta.cycleShared = bundle.cycleContext?.status === 'available';
+  const nutritionTopic = conversationMentionsNutrition({ question: options.question, thread: options.thread, priorTurns: options.priorTurns });
   const enriched = { ...user, healthProfile: user.healthProfile ?? bundle.healthProfile };
   const meds = bundle.schedules.length
     ? [
@@ -364,7 +369,7 @@ export async function withPatientAiContext(user, extra, options = {}) {
     options.full ? buildLabValuesBlock(bundle.labPanels) : null,
     options.full ? buildVisitsBlock(bundle.visits, options.today) : null,
     buildTrackedMetricsBlock(bundle.metrics),
-    options.full ? buildNutritionBlock(bundle.nutrition) : null,
+    options.full ? buildNutritionBlock(bundle.nutrition, { topic: nutritionTopic }) : null,
     options.full ? buildConsultationsBlock(bundle.consultations) : null,
     options.full ? buildThreadBlock(options.thread, options.priorTurns) : null,
     extra?.trim() ? wrapUntrustedAiBlock('client_note', extra.trim(), 4000) : null,

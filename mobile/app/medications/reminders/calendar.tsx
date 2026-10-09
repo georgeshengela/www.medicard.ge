@@ -4,15 +4,17 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Stack, useRouter } from 'expo-router';
 import { ListChecks } from 'lucide-react-native';
 import { MedicationHeaderAction } from '@/components/medications/MedicationNavHeader';
-import { MedsCard, medsPrimaryFill } from '@/components/medications/MedsHubUI';
+import { MedsCard, doseAttentionInk, medsPrimaryFill } from '@/components/medications/MedsHubUI';
 import { MONTHS_KA, WEEKDAYS_KA } from '@/constants/cycle';
 import { useMedications } from '@/hooks/useMedications';
 import { ka } from '@/i18n/ka';
+import { calendarDayStatus } from '@/lib/doseAnswer';
 import { parseMedicationConfig } from '@/lib/medications.shared';
 import { medicationCourseIncludesDate } from '@/lib/notificationPlan';
 import { useIsDark, useThemeColors } from '@/theme/colors';
 import { HUB, hubText } from '@/theme/hub';
 import type { Medication, ScheduledDose } from '@/lib/api';
+import type { MedicationDoseLog } from '@/types/medications';
 
 const MONTHS_BACK = 2;
 const MONTHS_AHEAD = 4;
@@ -79,18 +81,19 @@ export default function MedicationCalendarScreen() {
     [today],
   );
 
+  // Only taken/skipped answer a dose: an undone („pending“) or moved dose is still to take, so a day
+  // with nothing else is „planned“, never green.
   const logStatusByDate = useMemo(() => {
-    const grouped = new Map<string, string[]>();
+    const grouped = new Map<string, MedicationDoseLog[]>();
     for (const log of doseLogs) {
       const list = grouped.get(log.date) ?? [];
-      list.push(log.status);
+      list.push(log);
       grouped.set(log.date, list);
     }
     const map = new Map<string, DayStatus>();
-    for (const [date, statuses] of grouped) {
-      const taken = statuses.some((status) => status === 'taken');
-      const skipped = statuses.some((status) => status === 'skipped');
-      map.set(date, taken && skipped ? 'mixed' : skipped ? 'skipped' : 'taken');
+    for (const [date, logs] of grouped) {
+      const status = calendarDayStatus(logs);
+      if (status) map.set(date, status);
     }
     return map;
   }, [doseLogs]);
@@ -104,13 +107,15 @@ export default function MedicationCalendarScreen() {
     [logStatusByDate, medications, schedule],
   );
 
+  // Skipped days are amber („look here“), not red: red stays for deleting and real alerts.
+  const attention = doseAttentionInk(dark);
   const dotColor = (status: DayStatus, onPrimary: boolean) => {
     if (onPrimary) return status === 'none' ? 'transparent' : 'rgba(255,255,255,0.9)';
     switch (status) {
       case 'taken':
         return c.success;
       case 'skipped':
-        return c.danger;
+        return attention;
       case 'mixed':
         return c.warning;
       case 'planned':
@@ -209,7 +214,7 @@ export default function MedicationCalendarScreen() {
                         accessibilityLabel={[taken ? ka.meds.calendarTakenCount(taken) : null, skipped ? ka.meds.calendarSkippedCount(skipped) : null].filter(Boolean).join(', ')}
                       >
                         {taken ? <CountMark color={c.success} count={taken} /> : null}
-                        {skipped ? <CountMark color={c.danger} count={skipped} /> : null}
+                        {skipped ? <CountMark color={attention} count={skipped} /> : null}
                       </View>
                     )}
                   </View>

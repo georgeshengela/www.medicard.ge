@@ -58,7 +58,8 @@ export default function MediQuestHub() {
       const result = await quest.claim(id);
       if (!mounted.current || !result?.claimed) return;
       void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined);
-      setFloatReward('+' + result.reward.coinsAwarded + tx(' მონეტა · +', ' coins · +') + result.reward.xpAwarded + ' XP');
+      // XP-only missions (the weekly Medi one) show no „+0 coins“.
+      setFloatReward((result.reward.coinsAwarded ? '+' + result.reward.coinsAwarded + tx(' მონეტა · ', ' coins · ') : '') + '+' + result.reward.xpAwarded + ' XP');
       if (rewardTimer.current) clearTimeout(rewardTimer.current);
       rewardTimer.current = setTimeout(() => setFloatReward(null), reduce ? 1600 : 2400);
       if (result.profile.leveledUp) presentQuestLevelUp({ level: result.profile.currentLevel, previousLevel: result.profile.previousLevel, rankKey: rankKeyFromLevel(result.profile.currentLevel), coins: result.reward.coinsAwarded, xp: result.reward.xpAwarded });

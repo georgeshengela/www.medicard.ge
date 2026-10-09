@@ -8,6 +8,9 @@ import { ProfileSetupShell } from '@/components/profile/ProfileSetupShell';
 import { ka } from '@/i18n/ka';
 import { requestNotificationPermission, registerPushTokenWithServer, setPushOptedIn } from '@/lib/notifications';
 import { markPrimerAsked, primerCopy } from '@/lib/permissionPrimer';
+import type { HealthProfile } from '@/lib/api';
+import { reportError } from '@/lib/errorReporter';
+import { withExtraAnswers } from '@/lib/onboarding';
 import { patchProfileExtra } from '@/lib/profileSetupFlow';
 import { useOnboardingDevPreview, onboardingScreenBlocked, onboardingStepHref } from '@/lib/onboardingDevPreview';
 import { useAuth } from '@/store/AuthContext';
@@ -54,9 +57,18 @@ export default function ProfileSetupNotificationsScreen() {
           await setPushOptedIn(true);
           await registerPushTokenWithServer({ skipPermissionProbe: true }).catch(() => undefined);
         }
-        const updated = await patchProfileExtra(healthProfile, user, {
-          notificationsEnabled: osGranted,
-        });
+        let updated: HealthProfile;
+        try {
+          updated = await patchProfileExtra(healthProfile, user, {
+            notificationsEnabled: osGranted,
+          });
+        } catch (e) {
+          // The OS sheet is already answered; a failed save must not keep the person on this
+          // one-button screen. The answer goes on in memory and the final onboarding save
+          // (finishOnboarding re-sends extraAnswers) stores it.
+          reportError('error', e);
+          updated = withExtraAnswers(healthProfile, { notificationsEnabled: osGranted });
+        }
         setHealthProfile(updated);
         goLocation();
       } finally {

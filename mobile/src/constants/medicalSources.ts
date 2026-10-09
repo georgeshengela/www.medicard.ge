@@ -252,9 +252,9 @@ export const medicalSources = {
     title: 'Daily steps and all-cause mortality: a meta-analysis of 15 international cohorts',
     titleKa: 'დღიური ნაბიჯები და სიკვდილობა: 15 კოჰორტის მეტა-ანალიზი',
     description:
-      'In this meta-analysis more daily steps were linked with lower risk of death, with the benefit leveling off at about 6,000–8,000 steps a day for adults 60 and older and 8,000–10,000 for younger adults. MEDICARD’s default goal is 10,000 steps a day and you can change it. The status compares today with your goal (100%, 75%, 40%). Distance assumes 0.762 m per step, which is an estimate.',
+      'In this meta-analysis more daily steps were linked with lower risk of death, with the benefit leveling off at about 6,000–8,000 steps a day for adults 60 and older and 8,000–10,000 for younger adults. MEDICARD starts one small step above your own typical day: the daily goal is the median of the days with steps among your last 14 days (today not counted), rounded to the nearest 500, plus 500, and kept between 2,000 and 10,000; with fewer than 3 such days it is 4,000. The status compares today with that goal (100%, 75%, 40%). Distance assumes 0.762 m per step, which is an estimate.',
     descriptionKa:
-      'ამ მეტა-ანალიზში მეტი დღიური ნაბიჯი სიკვდილის დაბალ რისკთან იყო დაკავშირებული; სარგებელი 60+ ასაკში დაახლოებით 6,000–8,000 ნაბიჯზე სტაბილდებოდა, ახალგაზრდებში — 8,000–10,000-ზე. MEDICARD-ის ნაგულისხმევი მიზანი დღეში 10,000 ნაბიჯია და შეგიძლია შეცვალო. სტატუსი დღევანდელს შენს მიზანს ადარებს (100%, 75%, 40%). მანძილი ითვლება 0.762 მ ნაბიჯზე — ეს მიახლოებაა.',
+      'ამ მეტა-ანალიზში მეტი დღიური ნაბიჯი სიკვდილის დაბალ რისკთან იყო დაკავშირებული; სარგებელი 60+ ასაკში დაახლოებით 6,000–8,000 ნაბიჯზე სტაბილდებოდა, ახალგაზრდებში — 8,000–10,000-ზე. MEDICARD შენს ჩვეულ დღეზე ერთი პატარა ნაბიჯით მაღლა იწყებს: დღის მიზანი ბოლო 14 დღიდან (დღევანდელის გარეშე) იმ დღეების მედიანაა, როცა ნაბიჯები ჩაიწერა, დამრგვალებული 500-ის უახლოეს ჯერადამდე, პლუს 500, 2,000-დან 10,000-მდე; თუ ასეთი დღე 3-ზე ნაკლებია — 4,000. სტატუსი დღევანდელს ამ მიზანს ადარებს (100%, 75%, 40%). მანძილი ითვლება 0.762 მ ნაბიჯზე — ეს მიახლოებაა.',
     url: 'https://pubmed.ncbi.nlm.nih.gov/35247352/',
   },
   labResults: {

@@ -5,7 +5,7 @@ import {
   confirmDialog, openModal, busy, fmtDate, badge, segmented, toggle, fmtNum,
 } from '../ui.js';
 import { get, patch, put, post, del } from '../api.js';
-import { session, setUser, setProfile, refreshMe, signOut, initials, applyTheme, getThemePref } from '../session.js';
+import { session, setUser, setProfile, refreshMe, signOut, initials, displayName, applyTheme, getThemePref } from '../session.js';
 import { readAiConsent, askAiConsent } from '../aiConsent.js';
 import { t, lang, isEn, setLang, LANGUAGES } from '../i18n.js';
 import { openConflictModal, signInMethodsCard } from '../accountLinks.js';
@@ -39,16 +39,15 @@ export default async function profilePage(root) {
             h('div', { class: 'hstack', style: { gap: '18px', flexWrap: 'nowrap' } },
               h('span', { class: 'avatar lg' }, initials()),
               h('div', { style: { flex: 1, minWidth: 0 } },
-                h('h2', { style: { fontSize: '22px' } }, u.fullName || t('მომხმარებელი', 'User')),
+                h('h2', { style: { fontSize: '22px' } }, displayName() || t('მომხმარებელი', 'User')),
                 h('div', { class: 'muted', style: { marginTop: '2px' } }, [u.phone, isSyntheticEmail(u.email) ? null : u.email].filter(Boolean).join(' · ') || '—'),
                 h('div', { class: 'hstack', style: { marginTop: '10px' } },
                   badge(t(`${fmtNum(u.points || 0)} ქულა`, `${fmtNum(u.points || 0)} ${u.points === 1 ? 'point' : 'points'}`), 'brand'),
-                  badge(t(`სტრიკი ${fmtNum(u.currentStreak || 0)} დღე`, `${fmtNum(u.currentStreak || 0)}-day streak`), 'neutral'),
                   u.createdAt ? badge(t(`წევრი ${fmtDate(u.createdAt, { year: true })}-დან`, `Member since ${fmtDate(u.createdAt, { year: true })}`), 'neutral') : null)),
               button(t('რედაქტირება', 'Edit'), { variant: 'ghost', icon: 'edit', onClick: editPersonal }))),
 
           section(t('პირადი მონაცემები', 'Personal details'), card(h('div', { class: 'list' },
-            row({ icon: 'user', ink: 'blue', title: t('სახელი', 'Name'), sub: u.fullName || '—' }),
+            row({ icon: 'user', ink: 'blue', title: t('სახელი', 'Name'), sub: displayName() || '—' }),
             row({ icon: 'heart', ink: 'rose', title: t('სქესი', 'Sex'), sub: GENDER[u.gender] || '—' }),
             row({ icon: 'calendar', ink: 'violet', title: t('დაბადების თარიღი', 'Date of birth'), sub: u.birthDate ? `${fmtDate(u.birthDate, { year: true })}${u.age ? t(` · ${u.age} წლის`, ` · ${u.age} years old`) : ''}` : '—' }),
           )), { action: button(t('შეცვლა', 'Edit'), { variant: 'ghost', size: 'sm', icon: 'edit', onClick: editPersonal }) }),
@@ -139,7 +138,9 @@ export default async function profilePage(root) {
     formModal({
       title: t('პირადი მონაცემები', 'Personal details'),
       fields: [
-        field(t('სახელი და გვარი', 'Full name'), input({ name: 'fullName', value: u.fullName || '', required: true, minlength: 2 })),
+        // No real name yet (phone / Apple sign-up): an empty field to type one, never the placeholder;
+        // left empty, the rest still saves.
+        field(t('სახელი და გვარი', 'Full name'), input({ name: 'fullName', value: displayName(), required: Boolean(displayName()), minlength: 2, placeholder: t('სახელი გვარი', 'First and last name') })),
         h('div', { class: 'form-row' },
           field(t('სქესი', 'Sex'), select(opts(GENDER, false), u.gender || 'FEMALE', { name: 'gender' })),
           field(t('დაბადების თარიღი', 'Date of birth'), input({ name: 'birthDate', type: 'date', value: u.birthDate || '', max: max.toISOString().slice(0, 10) }))),

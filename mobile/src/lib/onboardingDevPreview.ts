@@ -61,7 +61,6 @@ const SETUP_QA_STEPS: OnboardingQaStep[] = [
   { key: 'ai-privacy', label: 'AI & Privacy', href: '/(auth)/profile-setup/ai-privacy', group: 'setup' },
   { key: 'location', label: 'Location', href: '/(auth)/profile-setup/location', group: 'setup' },
   { key: 'analyzing', label: 'Analyzing', href: '/(auth)/profile-setup/analyzing', group: 'setup' },
-  { key: 'results', label: 'Results', href: '/(auth)/profile-setup/results', group: 'setup' },
 ];
 
 export const ONBOARDING_QA_GROUPS: OnboardingQaGroup[] = ['auth', 'assessment', 'setup'];

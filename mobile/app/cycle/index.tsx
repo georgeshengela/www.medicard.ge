@@ -11,8 +11,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, { FadeInUp } from 'react-native-reanimated';
 import * as Haptics from 'expo-haptics';
 import { tx } from '@/i18n/locale';
-import { periodEndUndo, stillBleedingFlow, type PeriodEndUndo } from '@/lib/cyclePeriodStatus';
-import { CalendarHeart, Heart, MessageSquareText, PencilLine } from 'lucide-react-native';
+import { periodEndUndo, periodStartUndo, stillBleedingFlow, type PeriodEndUndo, type PeriodStartUndo } from '@/lib/cyclePeriodStatus';
+import { CalendarHeart, Heart, MessageSquareText, PencilLine, X } from 'lucide-react-native';
 import { CycleHomeHeader } from '@/components/cycle/CycleHomeHeader';
 import { CycleHero } from '@/components/cycle/CycleHero';
 import { CycleExplainSheet } from '@/components/cycle/CycleExplainSheet';
@@ -58,6 +58,9 @@ import { displayPhaseLabel } from '@/lib/cycleHonesty';
 import { showContraceptionContextCard, showFertilityUi } from '@/lib/cycleContraception';
 import { alertPresentation, confidencePresentation, mergeOwnerClassifiedPeriodOntoMarks } from '@/lib/cyclePresentation.js';
 import { formFromCycleLog, isBleedFlow, persistCycleLog } from '@/lib/cycleLogSave';
+import { periodStartTapHealthWrite } from '@/lib/cycleHealthWrite';
+import { syncCycleLogToHealth } from '@/lib/healthSync';
+import { cyclePersistFeedback } from '@/lib/cycleOfflineCore';
 import type { CycleLogForm } from '@/components/cycle/CycleLogTabs';
 import { hasPmsPattern } from '@/lib/cycleAnalytics';
 import { CycleOfflineBanner } from '@/components/cycle/CycleOfflineBanner';
@@ -67,9 +70,11 @@ import { syncPregnancyCareReminders } from '@/lib/pregnancyCareReminders';
 import {
   cacheCycleBundle,
   discardCycleMutation,
+  discardQueuedStartRestores,
   queueApplyPeriod,
   saveCycleObservation,
   queueRemoveCycleLog,
+  undoQueuedPeriodStart,
   type CycleView,
 } from '@/lib/cycleOffline';
 import { putCycleBundle, putCycleView, useCycleView } from '@/lib/cycleViewCache';
@@ -123,12 +128,13 @@ import {
 } from '@/lib/cyclePostpartumQuery';
 import { useAuth } from '@/store/AuthContext';
 import { useCycleColors } from '@/theme/cycle';
-import { cycleSetupTailKey, needsCycleOnboarding, needsCycleSetupTail } from '@/lib/cycleExperience';
+import { cycleSetupStart, cycleSetupTailKey, needsCycleOnboarding, needsCycleSetupTail } from '@/lib/cycleExperience';
 import { getPreference, setPreference } from '@/lib/storage';
 import { localAccountId } from '@/lib/localAccount';
 import { trackCyclePeriodStarted } from '@/lib/funnel';
 import { cycleWidgetStartAllowed } from '@/lib/cycleWidgetSnapshot';
 import { cycleSettingsRoute } from '@/lib/cycleSettingsRoutes';
+import { realFullName } from '@/lib/displayName';
 import { CycleJourneyGuide } from '@/components/cycle/CycleJourneyGuide';
 
 type CyclePane = 'overview' | 'calendar' | 'journal';
@@ -202,7 +208,7 @@ function PaneSwitcher({
 }
 
 export default function CycleHome() {
-  const { user, ready: authReady } = useAuth();
+  const { user, healthProfile, ready: authReady } = useAuth();
   const router = useRouter();
   const navigation = useNavigation();
   const widgetParams = useLocalSearchParams<{ periodStart?: string }>();
@@ -249,8 +255,8 @@ export default function CycleHome() {
   const [postpartumQuery, setPostpartumQuery] = useState(() => emptyPostpartumQueryState());
   const postpartumGen = useRef(0);
   const [quickOpen, setQuickOpen] = useState(false);
-  /** One-tap "period started" confirmation (with undo / add flow). */
-  const [periodToast, setPeriodToast] = useState<string | null>(null);
+  /** One-tap "period started" confirmation (with undo / add flow); `undo` = the day and start before the tap. */
+  const [periodToast, setPeriodToast] = useState<{ date: string; undo: PeriodStartUndo } | null>(null);
   const [periodBusy, setPeriodBusy] = useState(false);
   /** One-tap "period ended" confirmation: today's bleeding before the tap, for undo (brief §8.2 item 12). */
   /** `undo` puts the day back exactly; `wasBleeding` = today had bleeding logged (else the „still bleeding?“ answer). */
@@ -539,7 +545,8 @@ export default function CycleHome() {
     void maybeImportCycleTemperature({ userId: user.id, bundle: canonical, today: cycleToday(canonical, todayKey()) });
   }, [screenFocused, canonicalReady, user?.id]);
 
-  const lastPeriod = bundle?.profile.lastPeriodStart ?? null;
+  // A start an undo's restore still has queued counts as known: never cycle setup meanwhile (IR3-2).
+  const lastPeriod = bundle ? cycleSetupStart(cycleView) : null;
   // The tail is due only while the flag is read and unset; `holdOnboarding` keeps the flow on screen after each save.
   const setupTailDue = setupTailDone === false && needsCycleSetupTail(bundle, false);
   const needsOnboarding =
@@ -658,6 +665,8 @@ export default function CycleHome() {
       ? { ...bundle, profile: { ...bundle.profile, lastPeriodStart: iso } }
       : null;
     try {
+      // Her answer is the newest start: an undo's start restore still queued never replays over it (IR3-3).
+      await discardQueuedStartRestores(owner);
       let data: CycleBundle | null = null;
       try {
         data = await api.cycle.setLastPeriod(iso);
@@ -742,21 +751,41 @@ export default function CycleHome() {
   };
 
   /**
+   * A one-tap action that stored nothing (device storage and the server both failed): say so and skip
+   * the success haptic and toast (CYC-05). True = stop.
+   */
+  const storedNothing = (result: { synced?: boolean; persistedLocally?: boolean; sessionOnly?: boolean } | null) => {
+    if (!result || cyclePersistFeedback(result) !== 'fail') return false;
+    setError(ka.cycle.saveNotPersisted);
+    return true;
+  };
+
+  /**
    * Flo-style one tap: today becomes day 1 immediately (offline-safe queue); the server projects the
    * rest of the period from the usual length. A toast offers "add flow" and "undo".
    */
   const startPeriodNow = async (source: 'hero' | 'widget' = 'hero') => {
     if (!user?.id || periodBusy) return;
+    // Undo puts back exactly this: today's row and the last period start she had before the tap (CYC-04),
+    // a start an earlier undo's restore still has queued included (IR3-2).
+    const beforeRow = bundle?.logs.find((l) => l.date === today) ?? null;
+    const undo = periodStartUndo(beforeRow, cycleSetupStart(cycleView));
     setPeriodBusy(true);
+    setError(null);
     try {
       const result = await queueApplyPeriod(user.id, { action: 'start', date: today });
+      if (storedNothing(result)) return;
+      // Apple Health / Health Connect get day 1 as a cycle start (IR-6): fire-and-forget, only when sync
+      // is on, never asks for access. Undo cannot take a Health sample back (none is ever deleted).
+      const health = periodStartTapHealthWrite(today, beforeRow);
+      if (health) void syncCycleLogToHealth(health).catch(() => undefined);
       if (source === 'widget') trackCyclePeriodStarted('widget');
       else trackCyclePeriodStarted('hero');
       // TTC: a new cycle is not a success to celebrate — a plain selection tick (brief §9 item 16).
       if (periodStartTone(bundle?.profile.mode).haptic === 'selection') Haptics.selectionAsync().catch(() => undefined);
       else Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined);
       showView(result.view);
-      setPeriodToast(today);
+      setPeriodToast({ date: today, undo });
     } catch (err) {
       setError(err instanceof Error ? err.message : ka.common.error);
     } finally {
@@ -778,13 +807,14 @@ export default function CycleHome() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [widgetParams.periodStart, bundle, user?.id]);
 
-  const undoPeriodStart = async (date: string) => {
+  /** Undo of the one-tap start: the day and the last period start come back exactly as they were (never „end“). */
+  const undoPeriodStart = async (entry: { date: string; undo: PeriodStartUndo }) => {
     if (!user?.id) return;
     setPeriodToast(null);
     try {
-      // "end" on the first day clears that one-day period again (server planEndPeriod).
-      const result = await queueApplyPeriod(user.id, { action: 'end', date });
-      showView(result.view);
+      const result = await undoQueuedPeriodStart(user.id, entry.date, entry.undo, bundle?.logs.find((l) => l.date === entry.date) ?? null);
+      if (storedNothing(result)) return;
+      if (result) showView(result.view);
     } catch (err) {
       setError(err instanceof Error ? err.message : ka.common.error);
     }
@@ -815,8 +845,10 @@ export default function CycleHome() {
       return;
     }
     setSexBusy(true);
+    setError(null);
     try {
-      const result = await persistCycleLog(user.id, today, { ...before, sexual: true });
+      const result = await persistCycleLog(user.id, today, { ...before, sexual: true }, { base: before });
+      if (storedNothing(result)) return;
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined);
       handleSaved(result.view);
       setPeriodToast(null);
@@ -832,7 +864,8 @@ export default function CycleHome() {
     if (!user?.id) return;
     setSexToast(null);
     try {
-      const result = await persistCycleLog(user.id, today, before);
+      const result = await persistCycleLog(user.id, today, before, { base: before });
+      if (storedNothing(result)) return;
       handleSaved(result.view);
     } catch (err) {
       setError(err instanceof Error ? err.message : ka.common.error);
@@ -854,8 +887,10 @@ export default function CycleHome() {
     const before = bundle?.logs.find((l) => l.date === today) ?? null;
     const undo = periodEndUndo(before ? { flow: before.flow } : null);
     setPeriodBusy(true);
+    setError(null);
     try {
       const result = await queueApplyPeriod(user.id, { action: 'end', date: today });
+      if (storedNothing(result)) return;
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined);
       showView(result.view);
       setPeriodToast(null);
@@ -881,6 +916,7 @@ export default function CycleHome() {
           : undo.kind === 'clearFlow'
             ? await saveCycleObservation(user.id, entry.date, { flow: null })
             : await queueRemoveCycleLog(user.id, entry.date);
+      if (storedNothing(result)) return;
       showView(result.view);
     } catch (err) {
       setError(err instanceof Error ? err.message : ka.common.error);
@@ -891,8 +927,10 @@ export default function CycleHome() {
   const stillBleedingNow = async () => {
     if (!user?.id || periodBusy || !bundle) return;
     setPeriodBusy(true);
+    setError(null);
     try {
       const result = await saveCycleObservation(user.id, today, { flow: stillBleedingFlow(bundle.logs, today) });
+      if (storedNothing(result)) return;
       Haptics.selectionAsync().catch(() => undefined);
       showView(result.view);
       setPeriodToast(null);
@@ -910,6 +948,13 @@ export default function CycleHome() {
     const t = setTimeout(() => setEndToast(null), 8000);
     return () => clearTimeout(t);
   }, [endToast]);
+
+  // A one-tap action's error fades on its own, like Home's (6 s).
+  useEffect(() => {
+    if (!actionError) return;
+    const t = setTimeout(() => setError(null), 6000);
+    return () => clearTimeout(t);
+  }, [actionError]);
 
   if (user?.gender !== 'FEMALE') {
     return (
@@ -984,7 +1029,8 @@ export default function CycleHome() {
       <CycleOnboarding
         visible
         saving={onboardSaving}
-        userName={user?.fullName}
+        // Never the server's placeholder name (phone / Apple sign-ups): „ეს შენი სივრცეა“ without one.
+        userName={realFullName(user, healthProfile?.extraAnswers) || null}
         error={saveError}
         hasLastPeriod={Boolean(lastPeriod) && !holdOnboarding}
         onSave={saveLastPeriod}
@@ -1167,6 +1213,23 @@ export default function CycleHome() {
                 <Text style={{ color: c.brand, fontFamily: 'NotoSansGeorgian_700Bold' }}>
                   {ka.cycle.retry}
                 </Text>
+              </Pressable>
+            </View>
+          ) : null}
+
+          {/* A one-tap action that failed while the screen shows her cycle (CYC-05): a calm line, dismissible. */}
+          {actionError && bundle ? (
+            <View style={{ marginHorizontal: 20, marginBottom: 8, flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+              <Text accessibilityRole="alert" style={{ color: c.danger, fontSize: 13, lineHeight: 18, flex: 1 }}>
+                {actionError}
+              </Text>
+              <Pressable
+                onPress={() => setError(null)}
+                accessibilityRole="button"
+                accessibilityLabel={ka.common.close}
+                style={{ width: 44, height: 44, alignItems: 'center', justifyContent: 'center' }}
+              >
+                <X size={18} color={c.muted} />
               </Pressable>
             </View>
           ) : null}
@@ -1524,7 +1587,7 @@ export default function CycleHome() {
           title={periodToastTitle(bundle?.profile.mode)}
           onAddFlow={() => {
             setPeriodToast(null);
-            openQuickLog(periodToast);
+            openQuickLog(periodToast.date);
           }}
           onUndo={() => void undoPeriodStart(periodToast)}
         />

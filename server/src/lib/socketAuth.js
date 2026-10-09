@@ -1,6 +1,7 @@
 import jwt from 'jsonwebtoken';
 import { env } from '../config/env.js';
 import { prisma } from './prisma.js';
+import { readPasswordChangedAt, tokenPredatesPasswordChange } from './sessionRevocation.js';
 
 export const ADMIN_SOCKET_ROOM = 'ops';
 
@@ -24,7 +25,7 @@ export function verifySocketToken(token) {
   }
 }
 
-export async function resolveSocketIdentity(payload, { loadUser } = {}) {
+export async function resolveSocketIdentity(payload, { loadUser, loadPasswordChangedAt = readPasswordChangedAt } = {}) {
   if (!payload?.sub) {
     const error = new Error('unauthorized');
     error.code = 'SOCKET_UNAUTHORIZED';
@@ -42,6 +43,12 @@ export async function resolveSocketIdentity(payload, { loadUser } = {}) {
   if (!user) {
     const error = new Error('unauthorized');
     error.code = 'SOCKET_UNAUTHORIZED';
+    throw error;
+  }
+  // Same rule as requireAuth: a password reset ends sessions signed before it (fails open).
+  if (tokenPredatesPasswordChange(payload, await loadPasswordChangedAt(user.id))) {
+    const error = new Error('unauthorized');
+    error.code = 'SOCKET_EXPIRED';
     throw error;
   }
   if (user.status === 'BLOCKED') {

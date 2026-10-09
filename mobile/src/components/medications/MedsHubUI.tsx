@@ -240,12 +240,21 @@ export function MedsChip({
   );
 }
 
-export function doseStatusColor(status: DoseStatus | 'planned' | 'mixed', c: Palette): string {
+/**
+ * A skipped or missed dose (owner 2026-10-08): amber — „look here“, never a failure to shame.
+ * Red stays for deleting and real alerts. The hub amber is MEDILAB's „outside the range“ ink and
+ * keeps AA text on its own tint in both themes.
+ */
+export function doseAttentionInk(dark: boolean): string {
+  return hubInk('amber', dark);
+}
+
+export function doseStatusColor(status: DoseStatus | 'planned' | 'mixed', c: Palette, dark: boolean): string {
   switch (status) {
     case 'taken':
       return c.success;
     case 'skipped':
-      return c.danger;
+      return doseAttentionInk(dark);
     case 'mixed':
     case 'pending':
       return c.warning;
@@ -258,7 +267,7 @@ export function doseStatusColor(status: DoseStatus | 'planned' | 'mixed', c: Pal
 export function MedsStatusPill({ status, small }: { status: DoseStatus; small?: boolean }) {
   const c = useThemeColors();
   const dark = useIsDark();
-  const color = doseStatusColor(status, c);
+  const color = doseStatusColor(status, c, dark);
   const Icon = status === 'taken' ? Check : status === 'skipped' ? X : Clock;
   const label =
     status === 'taken' ? ka.meds.statusTaken : status === 'skipped' ? ka.meds.statusSkipped : ka.meds.statusPending;

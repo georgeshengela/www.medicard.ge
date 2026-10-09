@@ -1,6 +1,6 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { nextProfileSetupHref } from './onboarding.ts';
+import { FINISH_RETRY_DELAYS_MS, finishRetryDelay, leaveProfileComplete, nextProfileSetupHref, withExtraAnswers } from './onboarding.ts';
 
 const user = { phone: null };
 
@@ -44,5 +44,66 @@ describe('7-step onboarding tail (privacy → AI → notifications)', () => {
       nextProfileSetupHref(profile({ privacyAccepted: true, aiPrivacyPrompted: true, notificationsEnabled: true, homeLayout: 'standard' }) as never, { phone: '' } as never),
       '/(auth)/profile-setup/analyzing',
     );
+  });
+});
+
+describe('notification answer when the save fails (ONB-6)', () => {
+  it('an answer kept in memory moves the person on instead of back to the primer', () => {
+    const base = profile({ privacyAccepted: true, aiPrivacyPrompted: true, avatarId: 'avatar-2' });
+    for (const notificationsEnabled of [true, false]) {
+      const local = withExtraAnswers(base as never, { notificationsEnabled });
+      assert.equal(nextProfileSetupHref(local, user as never), '/(auth)/profile-setup/home-layout');
+      assert.equal((local.extraAnswers as Record<string, unknown>).avatarId, 'avatar-2');
+    }
+    assert.equal((base.extraAnswers as Record<string, unknown>).notificationsEnabled, undefined);
+  });
+});
+
+describe('last onboarding save retries (ONB-1)', () => {
+  const err = (status: number) => Object.assign(new Error('x'), { status });
+
+  it('retries a dropped connection, rate limit or server error a bounded number of times', () => {
+    for (const status of [0, 429, 500, 502, 503]) {
+      assert.deepEqual(
+        FINISH_RETRY_DELAYS_MS.map((_, i) => finishRetryDelay(err(status), i + 1)),
+        [...FINISH_RETRY_DELAYS_MS],
+      );
+      assert.equal(finishRetryDelay(err(status), FINISH_RETRY_DELAYS_MS.length + 1), null);
+    }
+  });
+
+  it('never retries what a retry cannot fix', () => {
+    for (const status of [400, 401, 403, 404, 409, 422]) assert.equal(finishRetryDelay(err(status), 1), null);
+    // A timeout already waited the whole request timeout (3 min): show the error, never wait again on its own.
+    assert.equal(finishRetryDelay(err(408), 1), null);
+    assert.equal(finishRetryDelay(new Error('completePayload: birthdate'), 1), null);
+    assert.equal(finishRetryDelay(null, 1), null);
+    assert.equal(finishRetryDelay(err(0), 0), null);
+  });
+});
+
+describe('„დაასრულე პროფილი“ returns where it was opened', () => {
+  function fakeRouter(canGoBack: boolean) {
+    const calls: string[] = [];
+    return {
+      calls,
+      router: {
+        canGoBack: () => canGoBack,
+        back: () => calls.push('back'),
+        replace: (href: never) => calls.push(`replace:${String(href)}`),
+      },
+    };
+  }
+
+  it('goes back to the Home card (or Profile) that pushed it', () => {
+    const { calls, router } = fakeRouter(true);
+    leaveProfileComplete(router);
+    assert.deepEqual(calls, ['back']);
+  });
+
+  it('lands on Home when there is nothing to go back to, never on the Profile tab', () => {
+    const { calls, router } = fakeRouter(false);
+    leaveProfileComplete(router);
+    assert.deepEqual(calls, ['replace:/(tabs)/home']);
   });
 });

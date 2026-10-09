@@ -6,6 +6,7 @@ import { appLang, tx } from '@/i18n/locale';
 import { forgetAiConsent, hasFreshAiConsent, rememberAiConsent } from '@/lib/aiSharingRoutes.js';
 import { formatRateLimitMessage, publicApiErrorMessage } from './rateLimitCopy.js';
 import { getToken } from './storage';
+import { jwtSubject } from './jwtSubject';
 import { UploadTimeoutError, uploadWithDeadline } from './uploadDeadline';
 import { withAuthConnectionRetry } from './authConnection';
 import { markReachable, markUnreachable } from './reachability';
@@ -829,6 +830,11 @@ export type CyclePartnerShare = {
 export type CyclePartnerPayload = {
   estimated: true;
   permissions: CycleSharePermissions;
+  /**
+   * Her mode shows no cycle right now (pregnancy, postpartum, or right after a birth): nothing else is
+   * sent and the mode is never named (server 2026-10-08+; older servers never send it).
+   */
+  paused?: boolean;
   period?: {
     inPeriod: boolean;
     inPeriodEstimated?: boolean;
@@ -2132,7 +2138,10 @@ export async function ensureAiSharingConsentForRequest(path: string, method = 'P
     }, settings);
     if (!accepted && !settings) throw new ApiError(tx('AI დამუშავების ნებართვა საჭიროა. არჩევანს პროფილში, „კონფიდენციალობა და მონაცემებში“ შეცვლი.', 'This needs your permission for AI processing. You can change your choice in Profile, under “Privacy and data”.'), 403, { code: 'AI_CONSENT_DECLINED' });
   }
-  if (owner !== localAccountId() || token !== await getToken()) throw new ApiError(tx('ანგარიში შეიცვალა.', 'You switched accounts.'), 401);
+  // Same account, not necessarily the same string: /api/auth/me may renew the token while the sheet is open.
+  const current = await getToken(), subject = current ? jwtSubject(current) : null;
+  const sameAccount = Boolean(current) && (current === token || (subject !== null && subject === jwtSubject(token)));
+  if (owner !== localAccountId() || !sameAccount) throw new ApiError(tx('ანგარიში შეიცვალა.', 'You switched accounts.'), 401);
 }
 
 const TRIP_REPORT_GAP_MS = 5 * 60_000;
@@ -2174,6 +2183,13 @@ export function guardRequest(method: string, path: string) {
   throw new ApiError(formatRateLimitMessage(seconds), 429, { code: 'CLIENT_LOOP_GUARD' }, seconds);
 }
 
+/**
+ * What this app JS can show that older JS could not (server `X-Medicard-Caps`). Version numbers
+ * cannot tell, because OTAs from other branches reuse them. weekly-medi: the weekly, XP-only Medi
+ * mission (server quest.js WEEKLY_MEDI_CAP).
+ */
+const CLIENT_CAPS = 'weekly-medi';
+
 async function request<T>(path: string, options: RequestOptions = {}): Promise<T> {
   const { method = 'GET', body, formData, timeoutMs = 180_000, cache } = options;
   guardRequest(method, path);
@@ -2194,6 +2210,7 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
           Accept: 'application/json',
           'X-Medicard-Platform': Platform.OS === 'ios' ? 'ios' : Platform.OS === 'android' ? 'android' : 'web',
           'X-Medicard-App-Version': String(Constants.expoConfig?.version || ''),
+          'X-Medicard-Caps': CLIENT_CAPS,
           ...clientTimezoneHeaders(),
           ...(body ? { 'Content-Type': 'application/json' } : {}),
           ...(token ? { Authorization: `Bearer ${token}` } : {}),
@@ -2244,6 +2261,19 @@ function headerLookup(headers: Record<string, string> | undefined, name: string)
   return null;
 }
 
+/**
+ * What an error answer tells the app beyond its message. Every path that reads a server error (JSON
+ * requests, uploads, the streamed Medi answer) calls this, so none of them keeps asking with stale state.
+ */
+export function noteApiErrorSignals(status: number, payload: unknown, message: string) {
+  const body = (payload && typeof payload === 'object' ? payload : {}) as { code?: string; feature?: string };
+  // Consent was withdrawn (possibly on another device) or its version changed: forget the session memory so
+  // the next AI request opens the real disclosure again instead of repeating the refused call.
+  if (status === 403 && body.code === 'AI_CONSENT_REQUIRED') forgetAiConsent();
+  // An admin paused this module: hide it now (ModuleGate, Home) instead of on the next status poll.
+  if (status === 503 && body.code === 'FEATURE_DISABLED') noteFeatureDisabled(body.feature, message);
+}
+
 function parseJsonBody<T>(status: number, text: string, retryRaw?: string | null): T {
   const payload = text ? safeParse(text) : {};
   if (status < 200 || status >= 300) {
@@ -2258,12 +2288,7 @@ function parseJsonBody<T>(status: number, text: string, retryRaw?: string | null
       (typeof (payload as { retryAfterSeconds?: number })?.retryAfterSeconds === 'number'
         ? Math.floor((payload as { retryAfterSeconds: number }).retryAfterSeconds)
         : undefined);
-    // Consent was withdrawn (possibly on another device): forget the session memory so the next AI request asks again.
-    if (status === 403 && (payload as { code?: string })?.code === 'AI_CONSENT_REQUIRED') forgetAiConsent();
-    // An admin paused this module: hide it now (ModuleGate, Home) instead of on the next status poll.
-    if (status === 503 && (payload as { code?: string })?.code === 'FEATURE_DISABLED') {
-      noteFeatureDisabled((payload as { feature?: string }).feature, serverError);
-    }
+    noteApiErrorSignals(status, payload, serverError);
     throw new ApiError(serverError, status, payload as Record<string, unknown>, wait);
   }
   return payload as T;
@@ -2619,6 +2644,8 @@ export const api = {
         checkIn?: CheckInState | null;
         checkInAwarded?: boolean;
         pointsAwarded?: number;
+        /** Fresh JWT for the same account once the presented one is past half its lifetime. */
+        token?: string;
       }>('/api/auth/me', {
         ...(token !== undefined ? { token } : {}),
         timeoutMs: 20_000,
@@ -2689,16 +2716,6 @@ export const api = {
       request<{ profile: HealthProfile; user: User }>('/api/health-profile/complete', {
         method: 'POST',
         body,
-      }),
-    onboardingAnalysis: (opts?: { force?: boolean }) =>
-      request<{
-        analysis: import('@/types/onboardingAnalysis').OnboardingAnalysis;
-        profile: HealthProfile;
-        cached: boolean;
-      }>('/api/health-profile/onboarding-analysis', {
-        method: 'POST',
-        body: { force: Boolean(opts?.force) },
-        timeoutMs: 120_000,
       }),
   },
 
@@ -2906,6 +2923,8 @@ export const api = {
         labExtract: import('@/types/lab').LabExtract;
         /** This page was unreadable; the record holds only the pages read before it. */
         unreadable?: boolean;
+        /** With `unreadable`: the reader was down, so the same photo can be tried again later (no retake). */
+        unavailable?: boolean;
         pipeline: { extractor: { provider: string; model?: string }; reasoning: null };
         usage: Usage;
       };
@@ -3431,8 +3450,10 @@ export const api = {
         body: { confirm: 'DELETE_CYCLE_DATA' },
         timeoutMs: 30_000,
       }),
-    setLastPeriod: (date: string) =>
-      request<CycleBundle>('/api/cycle/last-period', { method: 'POST', body: { date } }),
+    /** `null` when the date was saved but the bundle could not be reloaded (CYC-06): refetch the view. */
+    setLastPeriod: (date: string, opts?: { timeoutMs?: number }) =>
+      request<CycleBundle | null>('/api/cycle/last-period', { method: 'POST', body: { date }, timeoutMs: opts?.timeoutMs }),
+    /** `null` when the profile was saved but the bundle could not be reloaded (CYC-06): refetch the view. */
     updateProfile: (body: Partial<{
       mode: CycleMode;
       avgCycleLength: number;
@@ -3456,7 +3477,7 @@ export const api = {
       reminderPrefs: CycleReminderPrefsServer;
       /** The whole list of hidden cycle starts (logged starts only, max 24). */
       hiddenCycles: string[];
-    }>) => request<CycleBundle>('/api/cycle/profile', { method: 'PUT', body }),
+    }>) => request<CycleBundle | null>('/api/cycle/profile', { method: 'PUT', body }),
     createShare: (permissions?: Partial<CycleSharePermissions>) =>
       request<CycleBundle>('/api/cycle/share', { method: 'POST', body: { permissions } }),
     updateShare: (permissions: Partial<CycleSharePermissions>) =>

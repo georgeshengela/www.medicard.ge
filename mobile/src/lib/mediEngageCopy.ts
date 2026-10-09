@@ -13,14 +13,6 @@ const ENGAGE_FALLBACKS_KA: Record<string, { title: string; body: string }> = {
     "title": "დღე თითქმის გავიდა 🌙",
     "body": "სანამ დღეს დავემშვიდობებით — როგორ ჩაიარა შენმა დღემ?"
   },
-  "engage-streak-week": {
-    "title": "7 დღე ერთად 💚",
-    "body": "უკვე 7 დღეა საკუთარ ჯანმრთელობას რეგულარულად აკვირდები. კარგი სერია გამოგვივიდა ✨"
-  },
-  "engage-streak-continue": {
-    "title": "დღესაც გავაგრძელოთ? 👀",
-    "body": "ბოლო 6 დღე ყოველდღე ინიშნავდი მონაცემებს. ერთი პატარა ჩანაწერი და სერია გრძელდება 💚"
-  },
   "engage-weekly": {
     "title": "შენი კვირა მზადაა 📊",
     "body": "ამ კვირაში ბევრი რამ დაგვიგროვდა. Medi-მ შენთვის მოკლე შეჯამება მოამზადა 💚"
@@ -40,10 +32,6 @@ const ENGAGE_FALLBACKS_KA: Record<string, { title: string; body: string }> = {
   "engage-achieve-steps": {
     "title": "პატარა გამარჯვება 🎉",
     "body": "ამ კვირაში უკვე {steps} ნაბიჯი დააგროვე. შენ შეიძლება არ დაგითვლია, Medi-მ კი დაითვალა 😄"
-  },
-  "engage-achieve-month": {
-    "title": "ერთი თვე ერთად 💚",
-    "body": "უკვე ერთი თვეა Medi შენს ჯანმრთელობაზე ზრუნვაში გეხმარება. მიხარია, რომ აქ ხარ."
   },
   "engage-achieve-meds": {
     "title": "კარგი კვირა იყო ✨",
@@ -180,14 +168,6 @@ const ENGAGE_FALLBACKS_EN: Record<string, { title: string; body: string }> = {
     "title": "The day is almost over 🌙",
     "body": "Before we say goodbye to today — how did your day go?"
   },
-  "engage-streak-week": {
-    "title": "7 days together 💚",
-    "body": "You've been keeping an eye on your health every day for 7 days now. That's a great streak ✨"
-  },
-  "engage-streak-continue": {
-    "title": "Keep it going today? 👀",
-    "body": "You've logged something every day for the last 6 days. One small entry keeps the streak going 💚"
-  },
   "engage-weekly": {
     "title": "Your week is ready 📊",
     "body": "A lot came together this week. Medi has put together a short summary for you 💚"
@@ -207,10 +187,6 @@ const ENGAGE_FALLBACKS_EN: Record<string, { title: string; body: string }> = {
   "engage-achieve-steps": {
     "title": "A small win 🎉",
     "body": "You've already collected {steps} steps this week. You may not have counted, but Medi did 😄"
-  },
-  "engage-achieve-month": {
-    "title": "One month together 💚",
-    "body": "Medi has been helping you look after your health for a month now. I'm glad you're here."
   },
   "engage-achieve-meds": {
     "title": "That was a good week ✨",

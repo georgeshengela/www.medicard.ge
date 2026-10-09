@@ -2,12 +2,13 @@ import React, { createContext, useCallback, useContext, useEffect, useMemo, useR
 import { onReturnToForeground } from '@/lib/appForeground';
 import { resetRunMemory } from '@/lib/run/store';
 import { ka } from '@/i18n/ka';
-import { ApiError, api, type AiEngineId, type CheckInState, type Gender, type HealthProfile, type Usage, type User } from '@/lib/api';
-import { setLocalAccountId, wipeLegacyUnscopedHealthCaches } from '@/lib/localAccount';
+import { ApiError, api, type AiEngineId, type Gender, type HealthProfile, type Usage, type User } from '@/lib/api';
+import { jwtSubject } from '@/lib/jwtSubject';
+import { localAccountId, setLocalAccountId, wipeLegacyUnscopedHealthCaches } from '@/lib/localAccount';
 import { primeHomeLayout, registerHomeLayoutProfilePatch } from '@/lib/home/homeLayoutStore';
 import { needsHealthAssessment as needsHealthAssessmentFromLib, needsProfileSetup } from '@/lib/onboarding';
 import { clearSessionSnapshot, loadSessionSnapshot, saveSessionSnapshot } from '@/lib/sessionSnapshot';
-import { clearToken, getToken, setToken } from '@/lib/storage';
+import { clearToken, getToken, renewToken, setToken } from '@/lib/storage';
 import { runPostLoginSideEffects } from '@/lib/safeStartup';
 import { authErrorMessage } from '@/lib/authErrorMessage';
 import {
@@ -44,9 +45,6 @@ type AuthState = {
   usage: Usage | null;
   stats: Stats | null;
   healthProfile: HealthProfile | null;
-  /** Set when today's login bonus was just awarded this session. */
-  pendingDailyBonus: CheckInState | null;
-  consumeDailyBonus: () => void;
   signIn: (email: string, password: string) => Promise<void>;
   signUp: (input: SignUpInput) => Promise<void>;
   signInWithPhone: (phone: string, code: string, fullName?: string) => Promise<void>;
@@ -101,6 +99,55 @@ async function stopDeviceDelivery() {
   }
 }
 
+/**
+ * The server already deleted the account and its push tokens with it (cascade), or already ended
+ * this session: only this phone's reminders and its push-registration memory are left. No network
+ * call, so nothing delays the local cleanup that follows.
+ */
+async function cancelDeviceReminders() {
+  try {
+    const { cancelAllReminders, forgetPushRegistration } = await import('@/lib/notifications');
+    forgetPushRegistration();
+    await cancelAllReminders();
+  } catch {
+    /* local cleanup still continues */
+  }
+}
+
+/**
+ * requireAuth's 401 for a token whose account no longer exists. Only this code means „deleted“:
+ * an expired session or a password changed elsewhere is also a 401, and that account still has
+ * data on this phone (unsynced offline cycle logs) that must not be wiped.
+ */
+function isAccountGone(error: unknown): boolean {
+  return error instanceof ApiError && error.status === 401 && error.code === 'ACCOUNT_NOT_FOUND';
+}
+
+/**
+ * The server refused this session (401: a password reset elsewhere, an expired token, a deleted
+ * account; or the account is blocked). The same on-device cleanup as signOut, without its push
+ * unregister: that request would carry the refused token and could only answer 401 (a reset
+ * already switched the account's push tokens off on the server). Before this, the phone she locked
+ * out with a reset kept showing her medicine reminders. A deleted account (`accountGone`) also
+ * leaves its device data, as after a confirmed delete.
+ */
+async function endSessionOnDevice(userId: string | undefined, accountGone = false) {
+  await cancelDeviceReminders();
+  if (accountGone && userId) await forgetAccountOnDevice(userId);
+  else await import('@/lib/petCareReminders').then(({ onPetCareLogout }) => onPetCareLogout(userId)).catch(() => undefined);
+}
+
+/**
+ * The account the device was signed in to, read before the session snapshot is cleared. Only for a
+ * token without a readable subject; never used to forget an account's device data.
+ */
+async function leavingAccountId(): Promise<string | undefined> {
+  const current = localAccountId();
+  if (current) return current;
+  const snapshot = await loadSessionSnapshot().catch(() => null);
+  return snapshot?.user?.id ?? undefined;
+}
+
 /** Device-side data of an account that no longer exists here (deleted, discarded or merged away). */
 async function forgetAccountOnDevice(userId: string | undefined) {
   if (!userId) return;
@@ -124,7 +171,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [healthProfile, setHealthProfile] = useState<HealthProfile | null>(null);
   const healthProfileRef = useRef<HealthProfile | null>(healthProfile);
   healthProfileRef.current = healthProfile;
-  const [pendingDailyBonus, setPendingDailyBonus] = useState<CheckInState | null>(null);
 
   const resetSession = useCallback(() => {
     setSessionRestoreError(null);
@@ -134,7 +180,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUsage(null);
     setStats(null);
     setHealthProfile(null);
-    setPendingDailyBonus(null);
     void import('@/lib/accountSync').then(({ resetAccountSync }) => resetAccountSync());
     void import('@/lib/healthDataSync').then(({ resetHealthPullCache }) => {
       resetHealthPullCache();
@@ -149,7 +194,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUsage(snap.usage);
     setStats(snap.stats);
     setHealthProfile(snap.healthProfile as unknown as HealthProfile);
-    setPendingDailyBonus(null);
   }, []);
 
   const lastMeAt = useRef(0);
@@ -185,11 +229,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           setUsage(me.usage);
           setStats(me.stats);
           setHealthProfile((prev) => (sameJson(prev, me.healthProfile ?? null) ? prev : (me.healthProfile ?? null)));
-          if (me.checkInAwarded && me.checkIn) setPendingDailyBonus(me.checkIn);
+          // Sliding session: keep the fresh JWT the server sends past half the old one's lifetime.
+          // Last, after every `getToken() !== token` guard above; a sign-out in the meantime wins.
+          if (typeof me.token === 'string' && me.token) await renewToken(token, me.token).catch(() => false);
           runPostLoginSideEffects(me.user, me.healthProfile ?? null);
         } catch (error) {
           if (await getToken() !== token) return;
           if (error instanceof ApiError && (error.isUnauthorized || error.code === 'ACCOUNT_BLOCKED')) {
+            // An account deleted elsewhere, or a delete whose answer was lost, leaves nothing here.
+            // The refused session is the token's own account (its subject): a switch or sign-in may
+            // already have set localAccountId to the account it is adopting before saving its token.
+            const subject = jwtSubject(token);
+            await endSessionOnDevice(subject ?? (await leavingAccountId()), isAccountGone(error) && subject !== null);
+            // A sign-in that landed during the cleanup keeps its new session.
+            if (await getToken() !== token) return;
             await clearToken();
             await clearSessionSnapshot();
             resetSession();
@@ -285,6 +338,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       resetHealthPullCache();
       const { disconnectQuestSocket } = await import('@/lib/quest/socket');
       disconnectQuestSocket();
+      // Reminder „მივიღე ✓“ marks queued before this sign-in (tapped while signed out): keep only this
+      // account's own before the account is set, so no drain started by the change applies another
+      // account's or an owner-less mark; hers land in her log once the account is set.
+      await import('@/lib/medications.shared')
+        .then(({ prunePendingDoseLogs }) => prunePendingDoseLogs(result.user.id))
+        .catch(() => undefined);
       setLocalAccountId(result.user.id);
       await wipeLegacyUnscopedHealthCaches();
       await setToken(result.token);
@@ -324,6 +383,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       } catch (error) {
         if (await getToken() !== result.token) return;
         if (error instanceof ApiError && (error.isUnauthorized || error.code === 'ACCOUNT_BLOCKED')) {
+          await endSessionOnDevice(result.user.id);
+          if (await getToken() !== result.token) return;
           await clearToken();
           await clearSessionSnapshot();
           resetSession();
@@ -357,8 +418,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // not change its identity and start another loading effect indefinitely.
   }, []);
 
-  const consumeDailyBonus = useCallback(() => setPendingDailyBonus(null), []);
-
   const completeSocial = useCallback(
     async (
       provider: SocialProvider,
@@ -391,8 +450,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       usage,
       stats,
       healthProfile,
-      pendingDailyBonus,
-      consumeDailyBonus,
       signIn: async (email, password) => adopt(await api.auth.login({ email, password })),
       resetPasswordWithSms: async (input) => adopt(await api.auth.passwordSmsReset(input)),
       signUp: async (input) => {
@@ -453,8 +510,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       },
       deleteAccount: async () => {
         const userId = user?.id;
-        await stopDeviceDelivery();
-        await api.auth.deleteAccount();
+        // Server first: a failed delete (network, 5xx) leaves her signed in with every reminder and
+        // push still in place. Once it is confirmed, everything on the phone goes at once with no
+        // further request: the server dropped the push tokens with the account (cascade), so a push
+        // unregister could only answer 401 and would hold up the cleanup on a bad connection.
+        try {
+          await api.auth.deleteAccount();
+        } catch (error) {
+          // A lost answer: the delete committed but the reply never arrived (timeout, dropped
+          // connection), so her retry finds no account. Only ACCOUNT_NOT_FOUND proves that.
+          if (!isAccountGone(error)) throw error;
+        }
+        await cancelDeviceReminders();
         await forgetAccountOnDevice(userId);
         await clearToken();
         await clearSessionSnapshot();
@@ -463,7 +530,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       discardNewAccount: async () => {
         const userId = user?.id;
         await api.auth.discardNewAccount();
-        await stopDeviceDelivery();
+        // The server deleted the account and its push tokens with it: no unregister (it could only
+        // answer 401 and would hold the spinner on a bad connection), as after deleteAccount.
+        await cancelDeviceReminders();
         await forgetAccountOnDevice(userId);
         await clearToken();
         await clearSessionSnapshot();
@@ -471,7 +540,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       },
       switchToAccount: async (result, previousDeleted) => {
         const userId = user?.id;
-        await stopDeviceDelivery();
+        // A deleted account took its push tokens with it; one that stays is unregistered like signOut.
+        if (previousDeleted) await cancelDeviceReminders();
+        else await stopDeviceDelivery();
         if (userId && userId !== result.user?.id) {
           // A deleted account leaves nothing behind; one that stays is only signed out, like signOut.
           if (previousDeleted) await forgetAccountOnDevice(userId);
@@ -512,8 +583,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       usage,
       stats,
       healthProfile,
-      pendingDailyBonus,
-      consumeDailyBonus,
       adopt,
       completeSocial,
       hydrate,

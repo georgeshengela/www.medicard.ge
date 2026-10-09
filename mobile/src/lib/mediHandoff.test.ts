@@ -4,9 +4,12 @@ import {
   MEDI_HANDOFF_PARAM,
   MEDI_HANDOFF_TTL_MS,
   MEDI_PREFILL_MAX,
+  clearMediDraft,
   clearMediHandoff,
+  holdMediDraft,
   mediPrefillRoute,
   stageMediPrefill,
+  takeMediDraft,
   takeMediPrefill,
 } from './mediHandoff.ts';
 
@@ -87,5 +90,45 @@ describe('mediPrefillRoute — the route never carries the text', () => {
     assert.equal(mediPrefillRoute('u1', '', 'doctor', 0), '/assistant?mode=doctor');
     assert.equal(mediPrefillRoute('u1', null, 'doctor', 0), '/assistant?mode=doctor');
     assert.equal(takeMediPrefill('u1', 1), null);
+  });
+});
+
+// 2026-10-09: closing Medi while an answer was being written is Stop (the server stores nothing), and the
+// question she typed was lost. It now waits in memory and comes back in the composer as a draft.
+describe('Medi draft — the question she was waiting on when she closed Medi', () => {
+  const QUESTION = 'რატომ მტკივა თავი დილით?';
+
+  it('comes back once, for the account that asked it', () => {
+    clearMediDraft();
+    assert.equal(holdMediDraft('u1', QUESTION), true);
+    assert.equal(takeMediDraft('u1'), QUESTION);
+    assert.equal(takeMediDraft('u1'), null);
+  });
+
+  it('another account (or none) finds nothing, and the draft is gone for the owner too', () => {
+    holdMediDraft('u1', QUESTION);
+    assert.equal(takeMediDraft('u2'), null);
+    assert.equal(takeMediDraft('u1'), null);
+    holdMediDraft('u1', QUESTION);
+    assert.equal(takeMediDraft(null), null);
+    assert.equal(takeMediDraft('u1'), null);
+  });
+
+  it('nothing to hold without an account or text; trimmed and capped', () => {
+    assert.equal(holdMediDraft(null, QUESTION), false);
+    assert.equal(holdMediDraft('u1', '   '), false);
+    assert.equal(takeMediDraft('u1'), null);
+    holdMediDraft('u1', `  ${'ა'.repeat(MEDI_PREFILL_MAX + 10)} `);
+    assert.equal(takeMediDraft('u1')?.length, MEDI_PREFILL_MAX);
+  });
+
+  it('a send or an account change clears it; the hand-off slots are separate', () => {
+    holdMediDraft('u1', QUESTION);
+    clearMediDraft();
+    assert.equal(takeMediDraft('u1'), null);
+    holdMediDraft('u1', QUESTION);
+    stageMediPrefill('u1', ALERT, 0);
+    assert.equal(takeMediPrefill('u1', 1), ALERT);
+    assert.equal(takeMediDraft('u1'), QUESTION);
   });
 });

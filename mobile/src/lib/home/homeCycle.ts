@@ -7,7 +7,7 @@
  * Eligibility flags (forecast / fertility / contraception / mode) are computed by the caller with
  * the real helpers and passed in as booleans.
  */
-import { classifyCycleDay, mergeLoggedFlowOntoMarks } from '../cyclePresentation.js';
+import { alertPresentation, classifyCycleDay, mergeLoggedFlowOntoMarks } from '../cyclePresentation.js';
 import type { CycleAverages, CycleDayMark } from '@/lib/api';
 
 // ---------- civil dates (YYYY-MM-DD, no timezone shift — same math as src/lib/cyclePhase.ts) ----------
@@ -281,6 +281,29 @@ export function cycleCenter({
   if (forecastOn && inDays != null && inDays > 0) return { kind: 'countdown', days: inDays };
   if (forecastOn && inDays != null && inDays < 0 && day != null) return { kind: 'late', day, lateBy: -inDays };
   return { kind: 'cycleDay', day, length: Math.max(14, Math.round(cycleLength) || 28) };
+}
+
+/**
+ * The calm badge once today is past the estimate (CYC-07). „ბოლო პატერნზე გვიანია“ claims a personal
+ * pattern, so it needs the server's late verdict — the /cycle banner's rule (a late row in
+ * `bundle.alerts`: logged bleeding, ≥ 2 completed cycles and its grace by confidence, or 45 days since
+ * the last bleeding). A forecast from the default 28 days or from fewer than two logged cycles says
+ * „ჯერ ვსწავლობთ შენს რიტმს“ instead; with enough history but no verdict yet there is no badge (the
+ * centre already says „N days past the estimate“).
+ */
+export function pastEstimateBadge({
+  alerts,
+  showLatePeriod,
+  averages,
+}: {
+  alerts: readonly unknown[] | null | undefined;
+  /** `cycleModeCapabilities(mode).showLatePeriod`. */
+  showLatePeriod: boolean;
+  averages: Pick<CycleAverages, 'source' | 'cycleCount'> | null | undefined;
+}): 'late' | 'learning' | null {
+  if (showLatePeriod && (alerts ?? []).some((row) => alertPresentation(row).late)) return 'late';
+  if (!averages || averages.source === 'default' || (averages.cycleCount ?? 0) < 2) return 'learning';
+  return null;
 }
 
 /** „მენსტრუაცია დაიწყო“ leads when it is plausible soon, or the rhythm is unknown / late (CycleHero). */

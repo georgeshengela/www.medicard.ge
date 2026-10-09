@@ -33,7 +33,6 @@ export default function ProfileSetupLayout() {
       <Stack.Screen name="ai-privacy" />
       <Stack.Screen name="location" />
       <Stack.Screen name="analyzing" />
-      <Stack.Screen name="results" />
       <Stack.Screen name="dev-launcher" />
     </Stack>
   );

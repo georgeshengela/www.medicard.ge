@@ -5,7 +5,7 @@
  * settings (`setLastPeriod` + `updateProfile`), then reminders are re-planned for the new profile.
  */
 import { CyclePressable as Pressable } from '@/components/cycle/CyclePressable';
-import React, { useEffect, useLayoutEffect, useState } from 'react';
+import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { Text, View } from 'react-native';
 import { useNavigation } from 'expo-router';
 import Animated, { FadeInUp } from 'react-native-reanimated';
@@ -31,7 +31,8 @@ import { KeyboardFormShell } from '@/components/ui/KeyboardFormShell';
 import { ka } from '@/i18n/ka';
 import { tx } from '@/i18n/locale';
 import { api, ApiError, type CycleBundle, type CycleCondition, type CycleContraceptionMethod, type CycleMode } from '@/lib/api';
-import { cacheCycleBundle } from '@/lib/cycleOffline';
+import { cacheCycleBundle, discardQueuedStartRestores } from '@/lib/cycleOffline';
+import { isCompleteCycleBundle } from '@/lib/cycleOfflineCore';
 import { putCycleBundle } from '@/lib/cycleViewCache';
 import { getCycleReminderPrefs, setCycleReminderPrefs } from '@/lib/cycleReminderPrefs';
 import { syncCycleReminders } from '@/lib/cycleReminders';
@@ -80,6 +81,8 @@ export function CycleProfileSettings() {
   const [avgCycle, setAvgCycle] = useState('28');
   const [avgPeriod, setAvgPeriod] = useState('5');
   const [lastPeriod, setLastPeriod] = useState('');
+  /** The last period start the form was filled with (or last saved): a different one is her own new answer. */
+  const filledLastPeriod = useRef('');
   const [dueDate, setDueDate] = useState('');
   const [referenceDate, setReferenceDate] = useState('');
   const [irregular, setIrregular] = useState(false);
@@ -115,6 +118,7 @@ export function CycleProfileSettings() {
     setAvgCycle(next.avgCycle);
     setAvgPeriod(next.avgPeriod);
     setLastPeriod(next.lastPeriod);
+    filledLastPeriod.current = next.lastPeriod;
     setDueDate(next.dueDate);
     setReferenceDate(next.referenceDate);
     setIrregular(next.irregular);
@@ -151,6 +155,9 @@ export function CycleProfileSettings() {
     setMsg(null);
     try {
       const lastPeriodStart = DATE_KEY.test(lastPeriod) ? lastPeriod : null;
+      // A start she changed here replaces an undo's start restore still queued on the phone (IR3-3). The
+      // prefilled start, saved again with another setting, leaves it alone: the undo is still on its way.
+      if (userId && lastPeriod !== filledLastPeriod.current) await discardQueuedStartRestores(userId);
       if (lastPeriodStart) {
         await api.cycle.setLastPeriod(lastPeriodStart);
       }
@@ -178,7 +185,7 @@ export function CycleProfileSettings() {
         expectsBleeding,
         fertilityDisplay,
       });
-      if (data.contraception?.ttcConflict) setTtcConflictOpen(true);
+      if (data?.contraception?.ttcConflict) setTtcConflictOpen(true);
       if (userId) {
         putCycleBundle(userId, data);
         try {
@@ -187,18 +194,26 @@ export function CycleProfileSettings() {
           /* Profile is already saved on the server. */
         }
       }
-      const next = applyCycleProfile(data);
-      setLastPeriod(next.lastPeriod);
-      setExpectsBleeding(next.expectsBleeding);
-      setFertilityDisplay(next.fertilityDisplay);
-      setDueDate(next.dueDate);
-      setReferenceDate(next.referenceDate);
-      setPostpartumReference(next.postpartumReference);
-      if (DATE_KEY.test(next.lastPeriod)) {
-        try {
-          await syncPeriodStartToHealth(next.lastPeriod);
-        } catch {
-          /* Health sync is optional. */
+      // `null` (an older server: a partial `{ profile, meta }`) = saved, but the server could not reload the
+      // bundle (CYC-06): the form keeps what she typed, the cycle views refetch, and reminders are
+      // re-planned on the next foreground.
+      const fresh = isCompleteCycleBundle(data) ? data : null;
+      filledLastPeriod.current = lastPeriod;
+      if (fresh) {
+        const next = applyCycleProfile(fresh);
+        setLastPeriod(next.lastPeriod);
+        filledLastPeriod.current = next.lastPeriod;
+        setExpectsBleeding(next.expectsBleeding);
+        setFertilityDisplay(next.fertilityDisplay);
+        setDueDate(next.dueDate);
+        setReferenceDate(next.referenceDate);
+        setPostpartumReference(next.postpartumReference);
+        if (DATE_KEY.test(next.lastPeriod)) {
+          try {
+            await syncPeriodStartToHealth(next.lastPeriod);
+          } catch {
+            /* Health sync is optional. */
+          }
         }
       }
       if (ttcOvulationOn) {
@@ -211,7 +226,7 @@ export function CycleProfileSettings() {
       }
       let count = 0;
       try {
-        count = await syncCycleReminders(data, reminders);
+        if (fresh) count = await syncCycleReminders(fresh, reminders);
       } catch {
         /* Reminders must not fail a saved profile. */
       }

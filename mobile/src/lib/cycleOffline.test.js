@@ -10,6 +10,7 @@ const {
   persistStore,
   emptyAccount,
   createCacheRecord,
+  isCompleteCycleBundle,
   createMutation,
   compactCycleQueue,
   enqueueMutation,
@@ -20,6 +21,9 @@ const {
   replayCycleQueue,
   accountIsolationSafe,
   planQueuedLogMutations,
+  CYCLE_TAGS_PER_DAY_MAX,
+  capDayTagIds,
+  toggleDayTagId,
   discardMutation,
   attentionItems,
   cyclePersistFeedback,
@@ -179,6 +183,32 @@ describe('queue compaction', () => {
     assert.equal(compacted.length, 4);
   });
 
+  // A save of the same day while that day's earlier write is in flight: flushCycleQueue sends a
+  // snapshot, then keeps only queue items whose id it did not send. The folded item must carry the
+  // newer write's id, or the newer note is dropped as „sent“ once the older request succeeds.
+  it('a write folded into an in-flight write of the same day is still sent after the flush', () => {
+    const date = '2026-08-30';
+    let account = emptyAccount('u');
+    account = enqueueMutation(account, createMutation('u', 'UPSERT_LOG', { date, flow: 'light', notes: 'a' }));
+    const inFlight = compactCycleQueue(account.queue);
+    account = enqueueMutation(account, createMutation('u', 'UPSERT_LOG', { date, flow: 'light', notes: 'b' }));
+    // The flush's own bookkeeping (cycleOffline.ts flushCycleQueue) after the in-flight request succeeded.
+    const sentIds = new Set(inFlight.map((item) => item.id));
+    const newlyEnqueued = account.queue.filter((item) => !sentIds.has(item.id));
+    const next = compactCycleQueue([...newlyEnqueued]);
+    assert.equal(next.length, 1);
+    assert.equal(next[0].payload.notes, 'b');
+    // The flow-only fold (one-tap undo) behaves the same way.
+    let other = emptyAccount('u');
+    other = enqueueMutation(other, createMutation('u', 'UPSERT_LOG', { date, flow: 'medium', symptoms: ['cramps'] }));
+    const flying = compactCycleQueue(other.queue);
+    other = enqueueMutation(other, createMutation('u', 'UPSERT_LOG', { date, flow: null }));
+    const left = other.queue.filter((item) => !new Set(flying.map((i) => i.id)).has(item.id));
+    assert.equal(left.length, 1);
+    assert.deepEqual(left[0].payload.symptoms, ['cramps']);
+    assert.equal(left[0].payload.flow, null);
+  });
+
   it('replaces UPSERT with following REMOVE on the same date', () => {
     const compacted = compactCycleQueue([
       createMutation('u', 'UPSERT_LOG', { date: '2026-08-30', flow: 'heavy' }),
@@ -186,6 +216,72 @@ describe('queue compaction', () => {
     ]);
     assert.equal(compacted.length, 1);
     assert.equal(compacted[0].operation, 'REMOVE_LOG');
+  });
+
+  // IR-7: offline she taps „მენსტრუაცია დაიწყო“, saves cramps and a note from the quick log while the toast
+  // is up, then taps „გაუქმება“. The undo writes only the flow; the day's cramps and note must stay.
+  it('a flow-only write (the one-tap start undo) keeps the whole day saved before it', () => {
+    const date = '2026-08-29';
+    const enqueue = (account, op, payload) => enqueueMutation(account, createMutation('user-a', op, payload));
+    let account = { ...emptyAccount('user-a'), cache: createCacheRecord('user-a', sampleBundle()) };
+    account = enqueue(account, 'START_PERIOD', { date, flow: 'medium' });
+    const [sheet] = planQueuedLogMutations({
+      date,
+      flow: 'medium',
+      symptoms: ['cramps'],
+      moods: ['calm'],
+      sexualActivity: false,
+      notes: 'ტკივილი დილით',
+      observations: { energy: 'low' },
+      energy: 'low',
+    });
+    account = enqueue(account, sheet.operation, sheet.payload);
+    const [undo] = planQueuedLogMutations({ date, flow: null });
+    assert.deepEqual(undo, { operation: 'UPSERT_LOG', payload: { date, flow: null } });
+    account = enqueue(account, undo.operation, undo.payload);
+
+    assert.deepEqual(account.queue.map((item) => item.operation), ['START_PERIOD', 'UPSERT_LOG']);
+    const kept = account.queue[1].payload;
+    assert.equal(kept.flow, null);
+    assert.deepEqual(kept.symptoms, ['cramps']);
+    assert.deepEqual(kept.moods, ['calm']);
+    assert.equal(kept.sexualActivity, false);
+    assert.equal(kept.notes, 'ტკივილი დილით');
+    assert.deepEqual(kept.observations, { energy: 'low' });
+
+    const { bundle } = overlayPendingOnBundle(account.cache.bundle, account.queue, 'user-a');
+    const row = bundle.logs.find((l) => l.date === date);
+    assert.equal(row.flow, null);
+    assert.deepEqual(row.symptoms, ['cramps']);
+    assert.equal(row.notes, 'ტკივილი დილით');
+
+    // The flush-time compaction (remaining + newly queued) applies the same rule.
+    const again = compactCycleQueue([
+      { ...account.queue[0], attemptCount: 2 },
+      createMutation('user-a', 'UPSERT_LOG', sheet.payload),
+      createMutation('user-a', 'UPSERT_LOG', { date, flow: 'light' }),
+    ]);
+    assert.equal(again[1].payload.flow, 'light');
+    assert.deepEqual(again[1].payload.symptoms, ['cramps']);
+  });
+
+  it('a flow-only write after a REMOVE, or a whole day after a whole day, still replaces', () => {
+    const date = '2026-08-30';
+    const afterRemove = compactCycleQueue([
+      createMutation('u', 'REMOVE_LOG', { date }),
+      createMutation('u', 'UPSERT_LOG', { date, flow: 'light' }),
+    ]);
+    assert.equal(afterRemove.length, 1);
+    assert.equal(afterRemove[0].operation, 'UPSERT_LOG');
+    assert.deepEqual(afterRemove[0].payload, { date, flow: 'light' });
+
+    const whole = compactCycleQueue([
+      createMutation('u', 'UPSERT_LOG', { date, flow: 'medium', symptoms: ['cramps'], notes: 'a' }),
+      createMutation('u', 'UPSERT_LOG', { date, flow: 'medium', symptoms: [], notes: null }),
+    ]);
+    assert.equal(whole.length, 1);
+    assert.deepEqual(whole[0].payload.symptoms, []);
+    assert.equal(whole[0].payload.notes, null);
   });
 });
 
@@ -1022,3 +1118,191 @@ describe('discard recovery', () => {
   });
 });
 
+describe('partial bundle after a failed reload (CYC-06)', () => {
+  it('only a whole bundle counts: logs array, profile and predictions', () => {
+    assert.equal(isCompleteCycleBundle(sampleBundle()), true);
+    // The old server fallback after a settings write whose reload failed.
+    assert.equal(isCompleteCycleBundle({ profile: { lastPeriodStart: '2026-08-12' }, meta: { today: '2026-08-29' } }), false);
+    assert.equal(isCompleteCycleBundle(null), false);
+    assert.equal(isCompleteCycleBundle(undefined), false);
+    assert.equal(isCompleteCycleBundle({ ...sampleBundle(), logs: undefined }), false);
+    assert.equal(isCompleteCycleBundle({ ...sampleBundle(), predictions: null }), false);
+  });
+
+  it('a partial bundle an older build cached is dropped on read (the queue stays)', () => {
+    let account = enqueueMutation(
+      emptyAccount('user-a'),
+      createMutation('user-a', 'UPSERT_LOG', { date: '2026-08-30', flow: 'heavy' }),
+    );
+    account.cache = createCacheRecord('user-a', { profile: { lastPeriodStart: '2026-08-12' }, meta: {} }, '2026-08-29T18:42:00.000Z');
+    const restored = readAccount(persistStore(writeAccount(null, 'user-a', account)), 'user-a');
+    assert.equal(restored.cache, null);
+    assert.equal(restored.queue.length, 1);
+    assert.equal(restored.queue[0].payload.flow, 'heavy');
+  });
+
+  it('a whole cached bundle is kept', () => {
+    const account = emptyAccount('user-a');
+    account.cache = createCacheRecord('user-a', sampleBundle(), '2026-08-29T18:42:00.000Z');
+    const restored = readAccount(persistStore(writeAccount(null, 'user-a', account)), 'user-a');
+    assert.equal(restored.cache.bundle.cycleDay, 18);
+  });
+
+  it('the cache writers and the shared view refuse a partial bundle', () => {
+    const { readFileSync } = require('node:fs');
+    const { join } = require('node:path');
+    const offline = readFileSync(join(__dirname, 'cycleOffline.ts'), 'utf8');
+    const view = readFileSync(join(__dirname, 'cycleViewCache.ts'), 'utf8');
+    assert.match(offline, /export async function cacheCycleBundle[^{]*\{\n[^\n]*\n\s*if \(!isCompleteCycleBundle\(bundle\)\) return;/);
+    assert.match(offline, /if \(isCompleteCycleBundle\(result\.bundle\)\) \{\n\s*latest\.cache = createCacheRecord/);
+    assert.match(view, /if \(!isCompleteCycleBundle\(bundle\)\) \{\n\s*void invalidate\('cycle'\);\n\s*return;/);
+  });
+
+  it('settings screens read only a whole bundle; privacy mode re-plans masking with the one on screen', () => {
+    const { readFileSync } = require('node:fs');
+    const { join } = require('node:path');
+    const dir = join(__dirname, '..', 'components', 'cycle', 'settings');
+    const privacy = readFileSync(join(dir, 'CyclePrivacySettings.tsx'), 'utf8');
+    const profile = readFileSync(join(dir, 'CycleProfileSettings.tsx'), 'utf8');
+    const reminders = readFileSync(join(dir, 'CycleReminderSettings.tsx'), 'utf8');
+    assert.match(
+      privacy,
+      /isCompleteCycleBundle\(data\)\s*\?\s*data\s*:\s*bundle\s*\?\s*\{ \.\.\.bundle, profile: \{ \.\.\.bundle\.profile, privacyEnabled: on \} \}/,
+    );
+    // The partner page is paused in the return gate too (server ownerPostpartumReturnPending): say so.
+    assert.match(privacy, /isPostpartumReturnLearning\(bundle\)/);
+    assert.match(profile, /const fresh = isCompleteCycleBundle\(data\) \? data : null;/);
+    const save = profile.slice(profile.indexOf('const save = async'), profile.indexOf('const pickMode'));
+    assert.doesNotMatch(save, /applyCycleProfile\(data\)|syncCycleReminders\(data,/);
+    assert.match(reminders, /source = isCompleteCycleBundle\(data\) \? data : source;/);
+  });
+});
+
+describe('custom tags on one day (CYC-10)', () => {
+  const tag = (i) => `aaaaaaaa-aaaa-4aaa-8aaa-${String(i).padStart(12, '0')}`;
+  const nine = Array.from({ length: 9 }, (_, i) => tag(i));
+
+  it('matches the server limit of 8 tags a day', () => {
+    assert.equal(CYCLE_TAGS_PER_DAY_MAX, 8);
+  });
+
+  it('the picker refuses a 9th tick and says so; unticking always works', () => {
+    const eight = nine.slice(0, 8);
+    assert.deepEqual(toggleDayTagId(eight, tag(8)), { ids: eight, limited: true });
+    assert.deepEqual(toggleDayTagId(eight, tag(0)), { ids: eight.slice(1), limited: false });
+    assert.deepEqual(toggleDayTagId(eight.slice(0, 7), tag(8)), { ids: [...eight.slice(0, 7), tag(8)], limited: false });
+    assert.deepEqual(toggleDayTagId([], tag(1)), { ids: [tag(1)], limited: false });
+  });
+
+  it('a queued day never carries more than 8 tags, and keeps everything else', () => {
+    const [step] = planQueuedLogMutations({
+      date: '2026-08-30',
+      flow: 'heavy',
+      notes: 'kept',
+      symptoms: ['fatigue'],
+      customTagIds: nine,
+    });
+    assert.equal(step.operation, 'UPSERT_LOG');
+    assert.deepEqual(step.payload.customTagIds, nine.slice(0, 8));
+    assert.equal(step.payload.flow, 'heavy');
+    assert.equal(step.payload.notes, 'kept');
+    assert.deepEqual(step.payload.symptoms, ['fatigue']);
+    assert.deepEqual(capDayTagIds([tag(1), tag(1), tag(2)]), [tag(1), tag(2)]);
+  });
+
+  it('the picker and a newly created tag go through the same cap', () => {
+    const { readFileSync } = require('node:fs');
+    const { join } = require('node:path');
+    const picker = readFileSync(join(__dirname, '..', 'components', 'cycle', 'CycleObservationFields.tsx'), 'utf8');
+    const log = readFileSync(join(__dirname, '..', '..', 'app', 'cycle', 'log.tsx'), 'utf8');
+    assert.match(picker, /onChange\(toggleDayTagId\(selectedIds, id\)\.ids\)/);
+    assert.match(picker, /ka\.cycle\.customTagDayLimit\(CYCLE_TAGS_PER_DAY_MAX\)/);
+    assert.doesNotMatch(log, /\[\.\.\.prev\.customTagIds, result\.tag\.id\]/);
+    assert.match(log, /toggleDayTagId\(prev\.customTagIds, result\.tag\.id\)\.ids/);
+  });
+});
+
+// IR2-5: the one-tap start's undo queues the old last period start (SET_LAST_PERIOD) with the day. The
+// start must reach the server between the tap and the day's restore (IR-8), so it is never folded and
+// no day write is ever folded across it.
+describe('SET_LAST_PERIOD (the undo of the one-tap start)', () => {
+  const date = '2026-08-30';
+  const set = (start) => createMutation('u', 'SET_LAST_PERIOD', { date: start });
+
+  it('is never compacted, and a same-day write is never folded across it', () => {
+    const queue = [
+      createMutation('u', 'START_PERIOD', { date, flow: 'medium' }),
+      createMutation('u', 'UPSERT_LOG', { date, flow: 'medium', symptoms: ['cramps'] }),
+      set('2026-08-01'),
+      createMutation('u', 'UPSERT_LOG', { date, flow: null }),
+      set('2026-08-02'),
+      createMutation('u', 'REMOVE_LOG', { date }),
+    ];
+    const compacted = compactCycleQueue(queue);
+    assert.deepEqual(
+      compacted.map((item) => item.id),
+      queue.map((item) => item.id),
+    );
+    assert.deepEqual(compacted[1].payload.symptoms, ['cramps'], 'the day saved before the start restore is sent whole');
+    // Enqueued one by one, the order is kept the same way.
+    let account = emptyAccount('u');
+    for (const item of queue) account = enqueueMutation(account, item);
+    assert.deepEqual(
+      account.queue.map((item) => item.operation),
+      ['START_PERIOD', 'UPSERT_LOG', 'SET_LAST_PERIOD', 'UPSERT_LOG', 'SET_LAST_PERIOD', 'REMOVE_LOG'],
+    );
+  });
+
+  it('replays in order; a failure keeps it first and the day behind it', async () => {
+    const q = [set('2026-08-01'), createMutation('u', 'REMOVE_LOG', { date })];
+    const seen = [];
+    const first = await replayCycleQueue(q, async (item) => {
+      seen.push(item.operation);
+      throw Object.assign(new Error('down'), { status: 503 });
+    });
+    assert.deepEqual(seen, ['SET_LAST_PERIOD'], 'the day is never sent before the start');
+    assert.equal(first.failureKind, 'retryable');
+    assert.deepEqual(first.remaining.map((item) => [item.operation, item.attemptCount, item.status]), [
+      ['SET_LAST_PERIOD', 1, 'pending'],
+      ['REMOVE_LOG', 0, 'pending'],
+    ]);
+    assert.equal(backoffMs(first.remaining[0].attemptCount), 60_000);
+    seen.length = 0;
+    const second = await replayCycleQueue(compactCycleQueue(first.remaining), async (item) => {
+      seen.push(item.operation);
+      // A restore saved without a bundle back (CYC-06) answers null; the day's answer is the bundle.
+      return item.operation === 'SET_LAST_PERIOD' ? null : sampleBundle({ cycleDay: 12 });
+    });
+    assert.deepEqual(seen, ['SET_LAST_PERIOD', 'REMOVE_LOG']);
+    assert.equal(second.flushed, 2);
+    assert.equal(second.bundle.cycleDay, 12);
+    assert.deepEqual(second.remaining, []);
+  });
+
+  it('a refusal is set aside (attention, discardable) and the day plays on the next flush', async () => {
+    const q = [set('2026-08-01'), createMutation('u', 'REMOVE_LOG', { date })];
+    const refused = await replayCycleQueue(q, async () => {
+      throw Object.assign(new Error('bad'), { status: 400 });
+    });
+    assert.equal(refused.failureKind, 'permanent');
+    assert.deepEqual(attentionItems({ queue: refused.remaining }), [
+      { id: q[0].id, date: '2026-08-01', operation: 'SET_LAST_PERIOD' },
+    ]);
+    const seen = [];
+    const next = await replayCycleQueue(compactCycleQueue(refused.remaining), async (item) => {
+      seen.push(item.operation);
+      return sampleBundle();
+    });
+    assert.deepEqual(seen, ['REMOVE_LOG']);
+    assert.deepEqual(next.remaining.map((item) => item.status), ['failed_permanent']);
+    assert.deepEqual(discardMutation({ ...emptyAccount('u'), queue: next.remaining }, q[0].id).queue, []);
+  });
+
+  it('is not drawn on the cached bundle: the start stays the server’s until it syncs', () => {
+    const cached = sampleBundle();
+    const { bundle, pendingDates } = overlayPendingOnBundle(cached, [set('2026-07-01')], 'u');
+    assert.equal(bundle.profile.lastPeriodStart, cached.profile.lastPeriodStart);
+    assert.deepEqual(bundle.logs, cached.logs);
+    assert.deepEqual(pendingDates, []);
+  });
+});

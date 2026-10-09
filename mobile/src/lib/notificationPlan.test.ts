@@ -98,7 +98,9 @@ it('home and calendar only show doses inside the inclusive course',()=>{
   assert.equal(medicationCourseIncludesDate(course,'2026-09-21'),true);
   assert.equal(medicationCourseIncludesDate(course,'2026-10-04'),true);
   assert.equal(medicationCourseIncludesDate(course,'2026-10-05'),false);
+});
 
+describe('notification taps and routes', () => {
   it('holds a tapped notification until the signed-in shell has mounted', () => {
     const ready = { appReady: true, signedIn: true, segments: ['(tabs)', 'home'] };
     assert.equal(canOpenNotificationRoute(ready), true);

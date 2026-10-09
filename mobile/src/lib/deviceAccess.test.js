@@ -61,6 +61,8 @@ describe('device access bootstrap', () => {
       '../components/permissions/PermissionGateHost.tsx',
       '../../app/(auth)/profile-setup/notifications.tsx',
       '../../app/(auth)/profile-setup/location.tsx',
+      // MEDIPILL's notifications-off note (primer state: one „გაგრძელება“ that opens the sheet).
+      '../components/medications/MedicationRemindersNote.tsx',
     ];
     for (const file of screens) {
       const text = readFileSync(join(here, file), 'utf8');
@@ -74,6 +76,28 @@ describe('device access bootstrap', () => {
     const inspect = readFileSync(join(here, 'deviceAccess.js'), 'utf8');
     assert.match(inspect, /!notificationsAsked/);
     assert.match(inspect, /!healthAsked/);
+  });
+
+  // A camera denied earlier (canAskAgain false) made the barcode button ask again: iOS answered „no“ with
+  // no sheet, the label switched to „ნებართვა პარამეტრებში ჩართე“ and the next tap did nothing.
+  it('barcode scanner: one-button primer before the camera question, Settings after a final no', () => {
+    const text = readFileSync(join(here, '../components/nutrition/BarcodeScannerModal.tsx'), 'utf8');
+    assert.match(text, /const primer = !granted && !asked && \(!permission \|\| permission\.status === "undetermined"\);/);
+    assert.match(text, /const blocked = !granted && !!permission && permission\.canAskAgain === false;/);
+    const ask = text.slice(text.indexOf('const ask = async'), text.indexOf('const handle ='));
+    assert.match(ask, /if \(blocked\) \{\s*void Linking\.openSettings\(\)/, 'the Settings button opens Settings');
+    assert.ok(ask.indexOf('Linking.openSettings') < ask.indexOf('requestPermission()'), 'Settings first, never another silent request');
+    // The only button labels: „გაგრძელება“ (opens the OS sheet) or the Settings one (after the answer).
+    assert.match(text, /\{blocked \? tx\("ნებართვა პარამეტრებში ჩართე", "Allow it in Settings"\) : tx\("გაგრძელება", "Continue"\)\}/);
+    assert.doesNotMatch(text, /asked && permission && !permission\.canAskAgain/);
+    assert.doesNotMatch(text, /კამერის ჩართვა|Turn on camera|ახლა არა|მოგვიანებით/);
+    // While the primer shows: no close, no flashlight, no typed-code field.
+    assert.equal((text.match(/\{primer \? \(\s*<View style=\{s\.round0\} \/>/g) || []).length, 2);
+    assert.match(text, /\{primer \? null : \(\s*<View style=\{s\.manualRow\}>/);
+    // Re-reads (never requests) the answer when opened and when back from Settings.
+    assert.match(text, /onReturnToForeground\(\(\) => void readPermission\(\)/);
+    assert.equal((text.match(/requestPermission\(\)/g) || []).length, 1, 'the OS sheet is asked for only from the button');
+    assert.match(ask, /requestPermission\(\)/);
   });
 
   it('reads iOS authorized/provisional as granted and does not re-ask when already allowed', () => {

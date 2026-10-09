@@ -164,7 +164,7 @@
         <div class="s-card-body is-flush">${rows.length ? `<div class="s-table-wrap"><table class="s-table p1-news-table">
           <thead><tr><th>სიახლე</th><th>სტატუსი</th><th>აუდიტორია</th><th>ჩვენების დრო</th><th class="num" title="უნიკალური ადამიანები, ვინც ბარათი დაინახა">ნახვა</th><th class="num" title="ვინც ბარათს დააჭირა; ქვემოთ — CTR">დაჭერა</th><th class="num" title="ვინც ბარათი X-ით დახურა — მას ის აღარ გამოუჩნდება">დამალა</th><th class="num" title="ნაკლები რიცხვი = პირველი">რიგი</th><th aria-label="მოქმედებები"></th></tr></thead>
           <tbody>${rows.map(rowHtml).join('')}</tbody></table></div>`
-          : `<div class="s-empty">${ico('megaphone')}<strong>${st.filter === 'all' ? 'ჯერ სიახლე არ გაქვს' : 'ამ ფილტრში სიახლე არ არის'}</strong><span>${st.filter === 'all' ? 'მაგალითად: „მოიარე ლისი და მოიგე PS5“ — სურათი, მოკლე ტექსტი და ღილაკი MEDIRUN-ზე.' : 'აირჩიე სხვა სტატუსი ან „ყველა“.'}</span></div>`}</div>
+          : `<div class="s-empty">${ico('megaphone')}<strong>${st.filter === 'all' ? 'ჯერ სიახლე არ გაქვს' : 'ამ ფილტრში სიახლე არ არის'}</strong><span>${st.filter === 'all' ? 'მაგალითად: „შაბათის გასეირნება ლისის ტბასთან“ — სურათი, მოკლე ტექსტი და ღილაკი MEDIRUN-ზე.' : 'აირჩიე სხვა სტატუსი ან „ყველა“.'}</span></div>`}</div>
       </section>
     </div>`;
 
@@ -375,8 +375,8 @@
         <form class="s-stack" data-form novalidate>
           <section class="s-card"><header class="s-card-head"><div><h3>შინაარსი</h3><p>მოკლე და კონკრეტული: რა ხდება და რას იღებს ადამიანი.</p></div></header>
             <div class="s-card-body s-stack">
-              <label class="s-field"><span>სათაური *</span><input data-f="title" maxlength="80" required value="${esc(a.title)}" placeholder="მოიარე ლისი და მოიგე PlayStation 5"><small data-count="title"></small></label>
-              <label class="s-field"><span>მოკლე ტექსტი ბარათზე</span><textarea data-f="body" maxlength="220" rows="3" placeholder="MEDIRUN-ის შემოდგომის ღონისძიება: 1–15 ოქტომბერი. ყველა, ვინც ლისის ტბას შემოუვლის, მონაწილეობს გათამაშებაში.">${esc(a.body)}</textarea><small data-count="body"></small></label>
+              <label class="s-field"><span>სათაური *</span><input data-f="title" maxlength="80" required value="${esc(a.title)}" placeholder="შაბათის გასეირნება ლისის ტბასთან"><small data-count="title"></small></label>
+              <label class="s-field"><span>მოკლე ტექსტი ბარათზე</span><textarea data-f="body" maxlength="220" rows="3" placeholder="MEDIRUN-ის შაბათის გასეირნება: 11:00, ლისის ტბა. მოდი მეგობრებთან ერთად — წრე დაახლოებით 3 კმ-ია.">${esc(a.body)}</textarea><small data-count="body"></small></label>
               <div class="s-form-grid">
                 <label class="s-field"><span>ნიშანი (ბეჯი)</span><input data-f="badge" maxlength="24" value="${esc(a.badge)}" placeholder="სიახლე / ღონისძიება / საჩუქარი"><small>ცარიელზე ჩანს „სიახლე“.</small></label>
                 <div class="s-field"><span>ფერი</span><div class="s-chips p1-swatches" role="radiogroup" aria-label="ფერი">${Object.entries(TONES).map(([k, [label, hex]]) => `<button type="button" role="radio" class="p1-swatch" style="--swatch:${hex}" aria-checked="${a.tone === k}" data-tone="${k}" title="${label}" aria-label="${label}"></button>`).join('')}</div></div>
@@ -388,7 +388,7 @@
                   <span class="p1-upload-state" data-image-state></span>
                 </div>
                 <small>საუკეთესოა ჰორიზონტალური 16:9 (მაგ. 1600×900). ბრაუზერი თვითონ შეამცირებს ≤1600px-მდე.</small></div>
-              <label class="s-field"><span>დეტალური ტექსტი (იხსნება ბარათზე დაჭერით)</span><textarea data-f="details" maxlength="4000" rows="7" placeholder="წესები, თარიღები, როგორ მივიღო მონაწილეობა, პრიზის გადაცემა…">${esc(a.details)}</textarea><small>ცარიელი ხაზი = ახალი აბზაცი.</small></label>
+              <label class="s-field"><span>დეტალური ტექსტი (იხსნება ბარათზე დაჭერით)</span><textarea data-f="details" maxlength="4000" rows="7" placeholder="თარიღი, შეკრების ადგილი, მარშრუტი, როგორ მივიღო მონაწილეობა…">${esc(a.details)}</textarea><small>ცარიელი ხაზი = ახალი აბზაცი.</small></label>
             </div></section>
 
           <section class="s-card"><header class="s-card-head"><div><h3>ღილაკი</h3><p>ერთი მოქმედება. აპის გვერდი იხსნება აპშივე; ბმული — ბრაუზერში.</p></div></header>

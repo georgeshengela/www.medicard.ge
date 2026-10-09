@@ -162,11 +162,12 @@ export async function markQuotaNotified(userId) {
   return { clearedAt: now };
 }
 
-async function loadLimit(userId) {
-  const { user, package: pkg, expired } = (await getUserPackage(userId)) ?? {};
+/** `db`: the caller's transaction client, if any (see commitAiCredit). */
+async function loadLimit(userId, db = prisma) {
+  const { user, package: pkg, expired } = (await getUserPackage(userId, db)) ?? {};
   if (!user) return { user: null, pkg: null, limit: 0 };
   if (FREE_CONSUMER_RELEASE) return { user, pkg, limit: Number.POSITIVE_INFINITY };
-  const effectivePkg = expired ? await prisma.package.findUnique({ where: { code: 'FREE' } }) : pkg;
+  const effectivePkg = expired ? await db.package.findUnique({ where: { code: 'FREE' } }) : pkg;
   return { user, pkg: effectivePkg, limit: resolveConsumeLimit(effectivePkg) };
 }
 
@@ -292,7 +293,9 @@ export async function reserveAiCredit(userId) {
 }
 
 export async function commitAiCredit(userId, db = prisma) {
-  const ctx = await loadLimit(userId);
+  // Inside a save transaction every read goes through it too: holding one connection while waiting for a
+  // second from the same pool stalls under load until the transaction times out and the answer is lost.
+  const ctx = await loadLimit(userId, db);
   if (!ctx.user) throw new Error('User not found');
   if (!Number.isFinite(ctx.limit)) {
     const released = await db.$executeRaw`

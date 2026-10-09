@@ -385,7 +385,8 @@ export default async function scanPage(root, ctx) {
     let done = null;
     try {
       const res = await withAiConsent(async () => {
-        await stream('/api/ai/query', { message: question, mode: 'DOCTOR', ...(st.doctorSession ? { sessionId: st.doctorSession } : {}), context, stream: true }, (event, data) => {
+        // No cycle here: the context is this result only (the server marks the answer as not carrying the cycle).
+        await stream('/api/ai/query', { message: question, mode: 'DOCTOR', ...(st.doctorSession ? { sessionId: st.doctorSession } : {}), context, cycleContextAllowed: false, stream: true }, (event, data) => {
           if (my !== gen || !alive) return;
           const type = (data && typeof data === 'object' && data.type) || event;
           if (type === 'delta' && data.text) { slot.text += data.text; paintAnswer(slot); }

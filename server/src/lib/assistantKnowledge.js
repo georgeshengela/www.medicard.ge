@@ -47,7 +47,7 @@ export const ASSISTANT_FEATURES = Object.freeze([
   feature('pregnancy', 'ორსულობა', '/cycle/pregnancy', 'cycle', 'არსებული ორსულობის რეჟიმის მიმოხილვა; რეჟიმის ჩართვა შენს დადასტურებას მოითხოვს.'),
   feature('pregnancy_timeline', 'ორსულობის კვირები', '/cycle/pregnancy/timeline', 'cycle', 'ორსულობის ეტაპების მიმოხილვა.'),
   feature('pregnancy_care', 'ორსულობის მოვლის გეგმა', '/cycle/pregnancy/care-plan', 'cycle', 'ვიზიტების, მოვლის ეტაპებისა და შეხსენებების მართვა.'),
-  feature('doctor', 'Medi ექიმი', '/chat/doctor', 'analysis', 'კონსულტაციის ჩათი. კონკრეტული ჩივილის გადაცემისთვის გამოიყენე consult.'),
+  feature('doctor', 'კონსულტაცია', '/chat/doctor', 'analysis', 'კონსულტაციის ჩათი. კონკრეტული ჩივილის გადაცემისთვის გამოიყენე consult.'),
   feature('consilium', 'ღრმა ანალიზი (კონსილიუმი)', '/chat/consilium', 'analysis', 'სპეციალისტების ერთობლივი AI განხილვა. ჩივილი გადაიტანე consult მოქმედებით.'),
   feature('symptoms', 'რა გაწუხებს დღეს?', '/symptoms', 'analysis', 'სიმპტომების შერჩევა, სხეულის რუკა და შეფასების ნაბიჯები.'),
   feature('symptoms_history', 'სიმპტომების ისტორია', '/symptoms/history', 'analysis', 'წინა შეფასებების ნახვა.'),
@@ -76,7 +76,7 @@ export const ASSISTANT_FEATURES = Object.freeze([
   feature('ai_settings', 'AI და კონფიდენციალურობა', '/profile/ai-data', 'account', 'AI-სთვის მონაცემების გაზიარების თანხმობა, მიმღებები და გაუქმება.', ['human', 'pet']),
   feature('privacy', 'კონფიდენციალურობა', '/profile/privacy', 'account', 'მონაცემების გამოყენების პირობები და საკონტაქტო ინფორმაცია.', ['human', 'pet']),
   feature('terms', 'გამოყენების პირობები', '/profile/terms', 'account', 'მომსახურების პირობები.', ['human', 'pet']),
-  feature('streak', 'აქტიურობის სერია', '/profile/streak', 'activity', 'შენი აქტიური დღეები და სერია.'),
+  // No app-open streak (owner 2026-10-08): Medi does not send people to it.
 ]);
 /** English copy for the capability directory (Georgian above stays the default and the planner's guide). */
 const GROUPS_EN = Object.freeze({
@@ -121,7 +121,7 @@ const FEATURES_EN = Object.freeze({
   pregnancy: ['Pregnancy', 'Overview of your current pregnancy mode; turning the mode on needs your confirmation.'],
   pregnancy_timeline: ['Pregnancy weeks', 'Overview of pregnancy stages.'],
   pregnancy_care: ['Pregnancy care plan', 'Manage visits, care milestones and reminders.'],
-  doctor: ['Medi doctor', 'The consultation chat. Use consult to pass on a specific complaint.'],
+  doctor: ['Consultation', 'The consultation chat. Use consult to pass on a specific complaint.'],
   consilium: ['Deep analysis (consilium)', 'A joint AI review by specialists. Pass the complaint on with the consult action.'],
   symptoms: ['What’s bothering you today?', 'Choose symptoms, use the body map and follow the assessment steps.'],
   symptoms_history: ['Symptom history', 'See earlier assessments.'],
@@ -150,7 +150,6 @@ const FEATURES_EN = Object.freeze({
   ai_settings: ['AI and privacy', 'Your permission to share data with AI, the recipients and withdrawing it.'],
   privacy: ['Privacy', 'How your data is used and contact details.'],
   terms: ['Terms of use', 'Terms of service.'],
-  streak: ['Activity streak', 'Your active days and streak.'],
 });
 function localizeFeature(f, lang) {
   if (lang !== 'en' || !FEATURES_EN[f.id]) return f;

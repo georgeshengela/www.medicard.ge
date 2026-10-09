@@ -118,13 +118,13 @@ export function MedipillHero({
           </View>
           <View style={{ flex: 1, minWidth: 0 }}>
             <Text numberOfLines={1} style={[s.nextLabel, { color: BRAND.onHero }]}>
-              {tx('შემდეგი', 'Next')} · {formatTime24h(next.time)}
+              {tx('შემდეგი', 'Next')} · {formatTime24h(next.dueTime)}
             </Text>
             <Text numberOfLines={1} style={s.nextName}>{next.medName}</Text>
           </View>
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel={`${ka.meds.actionTake}: ${next.medName}, ${formatTime24h(next.time)}`}
+            accessibilityLabel={`${ka.meds.actionTake}: ${next.medName}, ${formatTime24h(next.dueTime)}`}
             onPress={() => onTake(next)}
             hitSlop={6}
             style={s.take}

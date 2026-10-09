@@ -87,7 +87,8 @@ export const ACHIEVEMENT_DEFINITIONS = Object.freeze([
     [100, 'EPIC', 500, 250],
   ], 40),
 
-  // MEDIQUEST completions
+  // MEDIQUEST completions. The Medi mission itself is weekly and XP-only (2026-10-08); these rare
+  // milestones (3–100 weeks of use) keep their coins so nobody loses a reward they were working toward.
   ...series('MEDI', 'MEDI', [
     [3, 'COMMON', 30, 15],
     [10, 'COMMON', 60, 30],

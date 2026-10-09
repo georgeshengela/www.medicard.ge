@@ -1,19 +1,24 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Pressable, ScrollView, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import * as Haptics from 'expo-haptics';
-import { Check, RotateCcw } from 'lucide-react-native';
+import { Check, Pill, RotateCcw } from 'lucide-react-native';
 import { HomeSectionTitle } from '@/components/home/HomeSectionTitle';
+import { HubFeatureCard } from '@/components/home/HubFeatureCard';
 import { DoseCarouselSkeleton } from '@/components/ui/Skeleton';
 import { useThemeColors } from '@/theme/colors';
 import { useHomeAccent } from '@/theme/homeAccent';
+import { hubText } from '@/theme/hub';
 import type { useMedications } from '@/hooks/useMedications';
 import { ka } from '@/i18n/ka';
 import { tx } from '@/i18n/locale';
 import type { ScheduledDose } from '@/lib/api';
+import { reopenDose } from '@/lib/doseReschedule';
 import { formatTime24h, parseMedicationConfig, saveDoseLog, todayYmd } from '@/lib/medications.shared';
-import { computeTodayDoses } from '@/lib/home/todayDoses';
+import { computeTodayDoses, type PendingDose } from '@/lib/home/todayDoses';
 import { dueState, minuteOf, spanLabel } from '@/lib/home/doseDue';
+import type { MedicationDoseLog } from '@/types/medications';
+import { medicationSetupRoute } from '@/lib/home/medicationSetup';
 
 /** Figma 11416:83298 — 288×~88 peeking dose cards. */
 const CARD_W = 288;
@@ -26,6 +31,13 @@ type MedConfig = ReturnType<typeof parseMedicationConfig>;
 type Props = {
   /** Shared medications bundle — Home loads it once for the hero rings and this carousel. */
   meds: ReturnType<typeof useMedications>;
+  /**
+   * A medicine named in the onboarding medication goal that is not tracked yet (`medicationToSetUp`):
+   * a card leads to the MEDIPILL setup with the name filled in, so it is never silently dropped.
+   */
+  setupName?: string | null;
+  /** „არა ახლა“: hides the setup card for that name on this account (`useMedicationSetupDismissals`). */
+  onDismissSetup?: (name: string) => void;
 };
 
 function formLabel(cfg: MedConfig, dosage: string) {
@@ -52,7 +64,7 @@ function NextDoseCard({
   onTake,
   onUndo,
 }: {
-  dose: ScheduledDose;
+  dose: ScheduledDose & { dueTime?: string };
   cfg: MedConfig;
   nowMinute: number;
   taken: boolean;
@@ -63,7 +75,9 @@ function NextDoseCard({
   const c = useThemeColors();
   const accent = useHomeAccent();
   const subtitle = formLabel(cfg, dose.dosage);
-  const due = dueState(minuteOf(dose.time), nowMinute);
+  // A dose moved with „გადატანა“ is due at its new time, not „late“ since its old one.
+  const at = dose.dueTime ?? dose.time;
+  const due = dueState(minuteOf(at), nowMinute);
   // Hours later a counter only scolds: past three hours it is just „late“.
   const dueText =
     due.kind === 'late'
@@ -79,7 +93,7 @@ function NextDoseCard({
     <View style={{ width: CARD_W, minHeight: 88, borderRadius: 20, backgroundColor: c.surface, flexDirection: 'row', alignItems: 'center' }}>
       <Pressable
         accessibilityRole="button"
-        accessibilityLabel={[dose.medName, subtitle, formatTime24h(dose.time), taken ? tx('მიღებულია', 'taken') : dueText].filter(Boolean).join('. ')}
+        accessibilityLabel={[dose.medName, subtitle, formatTime24h(at), taken ? tx('მიღებულია', 'taken') : dueText].filter(Boolean).join('. ')}
         onPress={onOpen}
         style={{ flex: 1, minWidth: 0, gap: 4, paddingVertical: 16, paddingLeft: 16, paddingRight: 8 }}
       >
@@ -89,7 +103,7 @@ function NextDoseCard({
           </Text>
         ) : (
           <Text numberOfLines={1} style={{ fontFamily: 'NotoSansGeorgian_500Medium', fontSize: 12, lineHeight: 16, color: c.text200 }}>
-            <Text style={{ fontFamily: 'NotoSansGeorgian_700Bold', color: timeColor }}>{formatTime24h(dose.time)}</Text>
+            <Text style={{ fontFamily: 'NotoSansGeorgian_700Bold', color: timeColor }}>{formatTime24h(at)}</Text>
             {` · ${dueText}`}
           </Text>
         )}
@@ -123,13 +137,53 @@ function NextDoseCard({
   );
 }
 
-export function HomeNextDoseSection({ meds }: Props) {
+/**
+ * „დააყენე შეხსენება: Metformin“ — the onboarding medicine, waiting for its dose and times. A quiet
+ * „არა ახლა“ under it (a sibling, never nested in the card's own Pressable) hides it for that name: an
+ * as-needed medicine, a name that differs from the catalogue brand, or one she deleted later.
+ */
+function SetupMedicationCard({ name, onDismiss }: { name: string; onDismiss?: (name: string) => void }) {
+  const router = useRouter();
+  const c = useThemeColors();
+  return (
+    <View>
+      <HubFeatureCard
+        icon={Pill}
+        ink="blue"
+        title={tx(`დააყენე შეხსენება: ${name}`, `Set up reminders: ${name}`)}
+        body={tx(
+          'მიუთითე დოზა და მიღების დრო — და დროზე შეგახსენებთ.',
+          'Add the dose and the times you take it, and we will remind you on time.',
+        )}
+        cta={tx('დაყენება', 'Set up')}
+        onPress={() => router.push(medicationSetupRoute(name))}
+      />
+      {onDismiss ? (
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={tx(`${name}: არა ახლა`, `${name}: not now`)}
+          hitSlop={8}
+          onPress={() => onDismiss(name)}
+          style={styles.notNow}
+        >
+          <Text style={[hubText.link, { color: c.text200 }]}>{tx('არა ახლა', 'Not now')}</Text>
+        </Pressable>
+      ) : null}
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  notNow: { alignSelf: 'flex-start', minHeight: 40, justifyContent: 'center', paddingHorizontal: 4, marginTop: 4 },
+});
+
+export function HomeNextDoseSection({ meds, setupName, onDismissSetup }: Props) {
   const router = useRouter();
   const { medications, schedule, doseLogs, setDoseLogs, loading } = meds;
   const today = todayYmd();
   const [now, setNow] = useState(() => new Date());
   /** Doses taken from this row a moment ago, kept in place for the undo. */
-  const [justTaken, setJustTaken] = useState<ScheduledDose[]>([]);
+  const [justTaken, setJustTaken] = useState<PendingDose[]>([]);
   const timers = useRef(new Map<string, ReturnType<typeof setTimeout>>());
 
   useEffect(() => {
@@ -147,7 +201,7 @@ export function HomeNextDoseSection({ meds }: Props) {
   );
   const cards = useMemo(() => {
     const kept = justTaken.filter((d) => !pending.some((p) => keyOf(p) === keyOf(d)));
-    return [...pending, ...kept].sort((a, b) => a.time.localeCompare(b.time));
+    return [...pending, ...kept].sort((a, b) => a.dueTime.localeCompare(b.dueTime));
   }, [pending, justTaken]);
 
   if (loading) {
@@ -159,27 +213,30 @@ export function HomeNextDoseSection({ meds }: Props) {
     );
   }
 
-  if (cards.length === 0) return null;
+  if (cards.length === 0 && !setupName) return null;
 
-  // Undo writes „pending“ (the same answer the web undo writes), so the dose is due again.
-  const write = async (dose: ScheduledDose, status: 'taken' | 'pending') => {
-    const entry = { medicationId: dose.medicationId, date: today, time: dose.time, status, updatedAt: new Date().toISOString() };
-    await saveDoseLog(entry);
+  const keep = (entry: MedicationDoseLog) =>
     setDoseLogs((prev) => [...prev.filter((l) => !(l.medicationId === entry.medicationId && l.date === today && l.time === entry.time)), entry]);
+  const writeTaken = async (dose: ScheduledDose) => {
+    const entry: MedicationDoseLog = { medicationId: dose.medicationId, date: today, time: dose.time, status: 'taken', updatedAt: new Date().toISOString() };
+    await saveDoseLog(entry);
+    keep(entry);
   };
-  const take = async (dose: ScheduledDose) => {
+  const take = async (dose: PendingDose) => {
     const key = keyOf(dose);
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined);
     setJustTaken((prev) => [...prev.filter((d) => keyOf(d) !== key), dose]);
     clearTimeout(timers.current.get(key));
     timers.current.set(key, setTimeout(() => setJustTaken((prev) => prev.filter((d) => keyOf(d) !== key)), UNDO_MS));
-    await write(dose, 'taken');
+    await writeTaken(dose);
   };
-  const undo = async (dose: ScheduledDose) => {
+  // Undo writes „pending“ (the same answer the web undo writes), so the dose is due again; a dose moved
+  // with „გადატანა“ goes back to its moved time and gets its reminder back.
+  const undo = async (dose: PendingDose) => {
     const key = keyOf(dose);
     clearTimeout(timers.current.get(key));
     setJustTaken((prev) => prev.filter((d) => keyOf(d) !== key));
-    await write(dose, 'pending');
+    keep(await reopenDose(dose, today));
   };
 
   const nowMinute = now.getHours() * 60 + now.getMinutes();
@@ -187,34 +244,41 @@ export function HomeNextDoseSection({ meds }: Props) {
   return (
     <View style={{ paddingHorizontal: 20, marginTop: 28 }}>
       <HomeSectionTitle title={ka.home.nextDose} style={{ fontSize: 17, lineHeight: 24, marginBottom: 12 }} />
-      <ScrollView
-        horizontal
-        nestedScrollEnabled
-        showsHorizontalScrollIndicator={false}
-        decelerationRate="fast"
-        snapToInterval={SNAP}
-        snapToAlignment="start"
-        disableIntervalMomentum
-        style={{ marginHorizontal: -20 }}
-        contentContainerStyle={{ gap: CARD_GAP, paddingHorizontal: 20 }}
-      >
-        {cards.map((dose) => {
-          const med = medications.find((item) => item.id === dose.medicationId);
-          const taken = !pending.some((p) => keyOf(p) === keyOf(dose));
-          return (
-            <NextDoseCard
-              key={keyOf(dose)}
-              dose={dose}
-              cfg={parseMedicationConfig(med?.config)}
-              nowMinute={nowMinute}
-              taken={taken}
-              onOpen={() => router.push(`/medications/${dose.medicationId}?time=${dose.time}&date=${today}` as never)}
-              onTake={() => void take(dose)}
-              onUndo={() => void undo(dose)}
-            />
-          );
-        })}
-      </ScrollView>
+      {cards.length > 0 ? (
+        <ScrollView
+          horizontal
+          nestedScrollEnabled
+          showsHorizontalScrollIndicator={false}
+          decelerationRate="fast"
+          snapToInterval={SNAP}
+          snapToAlignment="start"
+          disableIntervalMomentum
+          style={{ marginHorizontal: -20 }}
+          contentContainerStyle={{ gap: CARD_GAP, paddingHorizontal: 20 }}
+        >
+          {cards.map((dose) => {
+            const med = medications.find((item) => item.id === dose.medicationId);
+            const taken = !pending.some((p) => keyOf(p) === keyOf(dose));
+            return (
+              <NextDoseCard
+                key={keyOf(dose)}
+                dose={dose}
+                cfg={parseMedicationConfig(med?.config)}
+                nowMinute={nowMinute}
+                taken={taken}
+                onOpen={() => router.push(`/medications/${dose.medicationId}?time=${dose.time}&date=${today}` as never)}
+                onTake={() => void take(dose)}
+                onUndo={() => void undo(dose)}
+              />
+            );
+          })}
+        </ScrollView>
+      ) : null}
+      {setupName ? (
+        <View style={{ marginTop: cards.length > 0 ? 10 : 0 }}>
+          <SetupMedicationCard name={setupName} onDismiss={onDismissSetup} />
+        </View>
+      ) : null}
     </View>
   );
 }

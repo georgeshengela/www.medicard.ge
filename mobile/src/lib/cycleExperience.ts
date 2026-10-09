@@ -10,6 +10,16 @@ export function needsCycleOnboarding(mode:string|undefined,lastPeriod:unknown,ho
  return !lastPeriod||holding;
 }
 /**
+ * The last period start the setup gates read (IR3-2): the view's own, else the one an undo's restore
+ * still queued on the phone writes back (`pendingLastPeriodStart`). A refetch between the undo's day
+ * restore and its start restore reads the server without a start; that is never cycle setup. The
+ * one-tap start captures it for its own undo too (that card is shown meanwhile). Never drawn into the
+ * bundle, its forecast or the reminders.
+ */
+export function cycleSetupStart(view:{display?:{profile?:{lastPeriodStart?:string|null}|null}|null;pendingLastPeriodStart?:string|null}|null|undefined):string|null{
+ return view?.display?.profile?.lastPeriodStart||view?.pendingLastPeriodStart||null;
+}
+/**
  * Onboarding dedup (brief §9 item 19): the assessment's goal step already saved „ბოლო მენსტრუაცია“
  * (`api.cycle.setLastPeriod`), so the cycle screen must not ask for the date again — only for the
  * rhythm (cycle / period length, „ცვალებადია“) and contraception. That tail is due once, while nothing

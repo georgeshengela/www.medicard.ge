@@ -8,13 +8,15 @@ import { toDateOnly, calculateAge } from '../lib/patient.js';
 import { serverAiEngine } from '../lib/aiEngine.js';
 import { withAiAccount } from '../lib/aiConsent.js';
 import { rememberUserLanguage, t } from '../lib/i18n.js';
+import { readPasswordChange, tokenPredatesPasswordChange } from '../lib/sessionRevocation.js';
 
-export function signToken(user) {
+/** `claims`: extra claims of a renewed session (passwordChangeClaim); never `sub` or `email`. */
+export function signToken(user, claims = {}) {
   const id = typeof user?.id === 'string' ? user.id.trim() : '';
   if (!id) {
     throw new Error('signToken: user id missing');
   }
-  return jwt.sign({ sub: id, email: user.email }, env.JWT_SECRET, {
+  return jwt.sign({ ...claims, sub: id, email: user.email }, env.JWT_SECRET, {
     expiresIn: env.JWT_EXPIRES_IN,
   });
 }
@@ -40,6 +42,13 @@ export function enrichPublicUser(user) {
   };
 }
 
+/**
+ * 401 code for a token whose account no longer exists (deleted). Additive: older apps act on the
+ * status alone. Newer ones finish a delete whose answer was lost and forget the account's device
+ * data on it; any other 401 (expired, password changed) is never read as „deleted“.
+ */
+export const ACCOUNT_NOT_FOUND = 'ACCOUNT_NOT_FOUND';
+
 /** Rejects the request unless it carries a valid `Authorization: Bearer <jwt>` header. */
 export async function requireAuth(req, res, next) {
   const header = req.headers.authorization ?? '';
@@ -57,7 +66,7 @@ export async function requireAuth(req, res, next) {
 
     const userId = typeof payload.sub === 'string' ? payload.sub : String(payload.sub ?? '');
     if (!userId || userId === 'undefined' || userId === 'null') {
-      return res.status(401).json({ error: t(req, 'მომხმარებელი ვერ მოიძებნა. ხელახლა შედი ანგარიშში.', 'Account not found. Please sign in again.') });
+      return res.status(401).json({ error: t(req, 'მომხმარებელი ვერ მოიძებნა. ხელახლა შედი ანგარიშში.', 'Account not found. Please sign in again.'), code: ACCOUNT_NOT_FOUND });
     }
 
     let user = await prisma.user.findUnique({
@@ -74,7 +83,18 @@ export async function requireAuth(req, res, next) {
     }
 
     if (!user) {
-      return res.status(401).json({ error: t(req, 'მომხმარებელი ვერ მოიძებნა. ხელახლა შედი ანგარიშში.', 'Account not found. Please sign in again.') });
+      return res.status(401).json({ error: t(req, 'მომხმარებელი ვერ მოიძებნა. ხელახლა შედი ანგარიშში.', 'Account not found. Please sign in again.'), code: ACCOUNT_NOT_FOUND });
+    }
+
+    // A password reset ends every session signed before it (lib/sessionRevocation.js; fails open).
+    // Checked before next(), so GET /api/auth/me can never renew a token refused here; the value
+    // read here goes into a renewal, so a reset that commits while /me runs still ends it.
+    const passwordChange = await readPasswordChange(user.id);
+    if (tokenPredatesPasswordChange(payload, passwordChange.at)) {
+      return res.status(401).json({
+        error: t(req, 'ანგარიშის პაროლი შეიცვალა, ამიტომ ეს სესია დასრულდა. ხელახლა შედი ანგარიშში.', 'The account password was changed, so this session has ended. Please sign in again.'),
+        code: 'TOKEN_EXPIRED',
+      });
     }
 
     if (req.langExplicit) rememberUserLanguage(user.id, req.lang);
@@ -87,6 +107,10 @@ export async function requireAuth(req, res, next) {
     }
 
     req.user = user;
+    // iat / exp of the presented token: GET /api/auth/me renews it past half its lifetime.
+    // `aud` marks a narrow token (e.g. a Medi action seal), which is never renewed.
+    req.authClaims = { iat: payload.iat, exp: payload.exp, aud: payload.aud };
+    req.authPasswordChange = passwordChange;
     // Bind the reading language (ka | en) for AI code deep in the stack.
     return withAiAccount(user.id, () => next(), req.lang);
   } catch (error) {

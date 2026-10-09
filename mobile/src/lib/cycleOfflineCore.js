@@ -20,6 +20,8 @@ const MAX_BACKOFF_MS = 300_000;
 const BASE_BACKOFF_MS = 30_000;
 const MAX_RETRY_AFTER_MS = 900_000;
 const QUOTA_CODES = ['MONTHLY_LIMIT_REACHED', 'DAILY_LIMIT_REACHED'];
+/** Tags on one day — the server's `CYCLE_TAGS_PER_DAY_MAX` (cycleObservations.js). */
+const CYCLE_TAGS_PER_DAY_MAX = 8;
 
 function isBleedFlow(flow) {
   return flow === 'light' || flow === 'medium' || flow === 'heavy';
@@ -122,6 +124,24 @@ function isEncryptedEnvelope(value) {
   );
 }
 
+/**
+ * A whole cycle bundle from GET /api/cycle (or a write that answered with one). A failed reload after a
+ * settings write used to answer `{ profile, meta }` only (CYC-06); stored as the bundle it crashed /cycle
+ * and the women's Home (`bundle.logs.find`). Such a body — or the `null` newer servers send — is never
+ * cached or shown.
+ */
+function isCompleteCycleBundle(bundle) {
+  return Boolean(
+    bundle &&
+      typeof bundle === 'object' &&
+      Array.isArray(bundle.logs) &&
+      bundle.profile &&
+      typeof bundle.profile === 'object' &&
+      bundle.predictions &&
+      typeof bundle.predictions === 'object',
+  );
+}
+
 function readAccount(store, userScope) {
   const root = typeof store === 'string' || !store?.accounts ? parseOfflineStore(store) : store;
   const id = String(userScope || '');
@@ -130,7 +150,8 @@ function readAccount(store, userScope) {
   if (!raw || typeof raw !== 'object') return emptyAccount(id);
   return {
     userScope: id,
-    cache: raw.cache && typeof raw.cache === 'object' ? raw.cache : null,
+    // A partial bundle an older build cached (CYC-06) is dropped: the next visit loads the real one.
+    cache: raw.cache && typeof raw.cache === 'object' && isCompleteCycleBundle(raw.cache.bundle) ? raw.cache : null,
     queue: Array.isArray(raw.queue) ? raw.queue : [],
     cooldownUntil: Number(raw.cooldownUntil) || 0,
     authPaused: Boolean(raw.authPaused),
@@ -190,8 +211,23 @@ function isLogFamily(op) {
 }
 
 /**
+ * A write that only sets the day's flow (`{ date, flow }`: the one-tap start's undo, „დასრულდა“'s undo,
+ * „ჯერ კიდევ გაქვს?“ → „კი“). The server's PUT changes nothing else on the row for it.
+ */
+function isFlowOnlyUpsert(item) {
+  if (item?.operation !== 'UPSERT_LOG') return false;
+  const payload = item.payload || {};
+  return 'flow' in payload && Object.keys(payload).every((key) => key === 'date' || key === 'flow');
+}
+
+/**
  * Compact consecutive UPSERT/REMOVE on the same date to the latest intended
- * state. Never compact START/END/FILL — those change meaning if merged.
+ * state. Never compact START/END/FILL/SET_LAST_PERIOD — those change meaning if merged; they also stand
+ * between log writes, so a day's write is never folded across one (the undo's start restore must reach
+ * the server between the tap and the day's restore, IR-8).
+ * A flow-only UPSERT after an UPSERT of the same day patches that write's flow instead of replacing it:
+ * the earlier write can be the whole day saved from a sheet (symptoms, notes), and replacing it with
+ * `{ date, flow }` lost them offline — the server would have kept them had both writes been sent (IR-7).
  */
 function compactCycleQueue(items) {
   const out = [];
@@ -211,10 +247,23 @@ function compactCycleQueue(items) {
       isLogFamily(last.operation) &&
       mutationDate(last) &&
       mutationDate(last) === mutationDate(item);
+    // A fold keeps the NEWER write's id: the older one may be in flight in flushCycleQueue, which
+    // drops every id it sent once the request succeeds. Keeping the old id lost the newer write.
+    if (sameDate && last.operation === 'UPSERT_LOG' && isFlowOnlyUpsert(item)) {
+      out[out.length - 1] = {
+        ...item,
+        id: item.id,
+        createdAt: last.createdAt,
+        payload: { ...(last.payload || {}), flow: item.payload.flow },
+        attemptCount: 0,
+        status: 'pending',
+      };
+      continue;
+    }
     if (sameDate) {
       out[out.length - 1] = {
         ...item,
-        id: last.id,
+        id: item.id,
         createdAt: last.createdAt,
         attemptCount: 0,
         status: 'pending',
@@ -302,6 +351,28 @@ function hasObservationExtras(body) {
   );
 }
 
+/** The day's tag ids, unique, at most `CYCLE_TAGS_PER_DAY_MAX` (the first ones she picked). */
+function capDayTagIds(ids) {
+  const out = [];
+  for (const id of Array.isArray(ids) ? ids : []) {
+    if (typeof id !== 'string' || out.includes(id)) continue;
+    out.push(id);
+    if (out.length >= CYCLE_TAGS_PER_DAY_MAX) break;
+  }
+  return out;
+}
+
+/**
+ * A tap on a tag in the day's picker (CYC-10): untick, or tick while fewer than 8 are ticked.
+ * `limited` = the tap was refused because 8 are already ticked (the picker says so).
+ */
+function toggleDayTagId(selected, id) {
+  const current = capDayTagIds(selected);
+  if (current.includes(id)) return { ids: current.filter((x) => x !== id), limited: false };
+  if (current.length >= CYCLE_TAGS_PER_DAY_MAX) return { ids: current, limited: true };
+  return { ids: [...current, id], limited: false };
+}
+
 /**
  * One user intent → one queued operation.
  * Start Period with only flow → START_PERIOD (server upserts that bleed day).
@@ -323,7 +394,38 @@ function planQueuedLogMutations(body, options) {
       },
     ];
   }
-  return [{ operation: 'UPSERT_LOG', payload: { ...body, date } }];
+  // Never more tags than the server keeps for one day: the rest of the day must always sync (CYC-10).
+  const tags = Array.isArray(body?.customTagIds) ? { customTagIds: capDayTagIds(body.customTagIds) } : {};
+  return [{ operation: 'UPSERT_LOG', payload: { ...body, ...tags, date } }];
+}
+
+/**
+ * The undo's start restore (`SET_LAST_PERIOD`) queued more than a day ago is never sent; it counts as
+ * played (IR3-3). A start she set since on the web or through Medi never passes through the phone's
+ * queue, so a restore that waited longer than that (offline, signed out) would silently overwrite it.
+ * Only this operation: every other queued write plays as it always has.
+ */
+const START_RESTORE_MAX_AGE_MS = 24 * 60 * 60 * 1000;
+
+function startRestoreExpired(item, now) {
+  if (item?.operation !== 'SET_LAST_PERIOD') return false;
+  const created = Date.parse(item.createdAt || '');
+  return Number.isFinite(created) && now - created > START_RESTORE_MAX_AGE_MS;
+}
+
+/**
+ * The start an undo's restore still waiting in the queue will write back (the last pending, unexpired
+ * `SET_LAST_PERIOD`), else null (IR3-2). The overlay never draws it: only the setup gates read it, so a
+ * refetch made between the day's restore and the start's shows no cycle setup.
+ */
+function pendingLastPeriodStart(queue, now) {
+  let start = null;
+  for (const item of queue || []) {
+    if (item?.operation !== 'SET_LAST_PERIOD' || item.status === 'failed_permanent') continue;
+    if (startRestoreExpired(item, now)) continue;
+    if (item.payload?.date) start = String(item.payload.date);
+  }
+  return start;
 }
 
 function discardMutation(account, mutationId) {
@@ -503,7 +605,8 @@ function restoreCanonicalDerived(original, next) {
 
 /**
  * Overlay pending user-entered observations onto a cached canonical bundle.
- * Does not advance or recompute medical predictions.
+ * Does not advance or recompute medical predictions. A queued SET_LAST_PERIOD is not drawn: the start
+ * and everything derived from it stay the server's until it has synced.
  */
 function overlayPendingOnBundle(bundle, queue, userScope) {
   if (!bundle) return { bundle: null, pendingDates: [] };
@@ -686,6 +789,9 @@ module.exports = {
   BASE_BACKOFF_MS,
   MAX_RETRY_AFTER_MS,
   QUOTA_CODES,
+  CYCLE_TAGS_PER_DAY_MAX,
+  capDayTagIds,
+  toggleDayTagId,
   isBleedFlow,
   cloneJson,
   addDaysYmd,
@@ -697,6 +803,7 @@ module.exports = {
   readAccount,
   writeAccount,
   persistStore,
+  isCompleteCycleBundle,
   createCacheRecord,
   createMutation,
   compactCycleQueue,
@@ -707,6 +814,9 @@ module.exports = {
   backoffMs,
   hasObservationExtras,
   planQueuedLogMutations,
+  START_RESTORE_MAX_AGE_MS,
+  startRestoreExpired,
+  pendingLastPeriodStart,
   discardMutation,
   attentionItems,
   cyclePersistFeedback,

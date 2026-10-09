@@ -6,9 +6,10 @@
  */
 import type { CycleBundle } from '@/lib/api';
 import { loadCycleView, type CycleView } from '@/lib/cycleOffline';
+import { isCompleteCycleBundle } from '@/lib/cycleOfflineCore';
 import { CYCLE_QUERY_KEYS } from '@/lib/cycleQueryKeys';
 import { localAccountId } from '@/lib/localAccount';
-import { accountKey, FRESH, queryClient } from '@/lib/queryClient';
+import { accountKey, FRESH, invalidate, queryClient } from '@/lib/queryClient';
 import { useAccountQuery } from '@/hooks/useAccountQuery';
 
 export const CYCLE_VIEW_KEY = CYCLE_QUERY_KEYS.view;
@@ -42,9 +43,17 @@ export function putCycleView(userId: string, view: CycleView | null | undefined)
   queryClient.setQueryData<CycleView>(accountKey(...CYCLE_VIEW_KEY), view);
 }
 
-/** An online write that answered with a fresh bundle (profile / last period / contraception). */
+/**
+ * An online write that answered with a fresh bundle (profile / last period / contraception). A write
+ * whose reload failed answers `null` (older servers: a partial `{ profile, meta }`): that is never shown
+ * as the view (CYC-06) — the cycle views are fetched again instead.
+ */
 export function putCycleBundle(userId: string, bundle: CycleBundle | null | undefined): void {
-  if (!bundle || !userId || localAccountId() !== userId) return;
+  if (!userId || localAccountId() !== userId) return;
+  if (!isCompleteCycleBundle(bundle)) {
+    void invalidate('cycle');
+    return;
+  }
   queryClient.setQueryData<CycleView>(accountKey(...CYCLE_VIEW_KEY), (old) =>
     old
       ? { ...old, display: bundle, canonical: bundle }
@@ -60,6 +69,7 @@ export function putCycleBundle(userId: string, bundle: CycleBundle | null | unde
           lastError: null,
           persistedLocally: false,
           attention: [],
+          pendingLastPeriodStart: null,
         },
   );
 }

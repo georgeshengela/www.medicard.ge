@@ -16,6 +16,7 @@ import { ka } from '@/i18n/ka';
 import { useSymptomChecker } from '@/lib/symptomCheckerStore';
 import { mediPrefillRoute } from '@/lib/mediHandoff';
 import { useAuth } from '@/store/AuthContext';
+import { displayFirstName } from '@/lib/displayName';
 import type { SymptomRisk } from '@/types/symptoms';
 
 const FILTERS = ['all', 'high', 'medium', 'low'] as const;
@@ -25,11 +26,12 @@ export default function SymptomResultsScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { ready } = useLocalSearchParams<{ ready?: string }>();
-  const { user } = useAuth();
+  const { user, healthProfile } = useAuth();
   const state = useSymptomChecker();
   const [filter, setFilter] = useState<(typeof FILTERS)[number]>('all');
   const [showReady, setShowReady] = useState(ready === '1');
-  const firstName = user?.fullName?.split(' ')[0] ?? '';
+  // Never the server's placeholder name: without a real one the heading has no name.
+  const firstName = displayFirstName(user, healthProfile?.extraAnswers);
 
   if (!state.result) return <Redirect href="/symptoms" />;
 

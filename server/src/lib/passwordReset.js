@@ -6,6 +6,7 @@ import { sendPasswordResetCode } from './email.js';
 import { isQaOtpEnabled, matchesQaEmailOtp } from './qaOtp.js';
 import { evaluateOtpRow, unusedUnexpiredOtpWhere } from './otpContract.js';
 import { t } from './i18n.js';
+import { markPasswordChanged } from './sessionRevocation.js';
 
 const CODE_TTL_MS = 10 * 60 * 1000;
 const RESEND_COOLDOWN_MS = 60 * 1000;
@@ -119,6 +120,8 @@ export async function resetPasswordWithCode({ email, code, password, lang = 'ka'
         data: { usedAt: new Date() },
       }),
     ]);
+    // Every session signed before the reset ends (sessionRevocation.js).
+    await markPasswordChanged(user.id);
     return { ok: true };
   }
 
@@ -158,6 +161,8 @@ export async function resetPasswordWithCode({ email, code, password, lang = 'ka'
       data: { usedAt: new Date() },
     }),
   ]);
+  // Every session signed before the reset ends (sessionRevocation.js).
+  await markPasswordChanged(user.id);
 
   return { ok: true };
 }

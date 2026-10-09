@@ -1,13 +1,18 @@
-import React, { useEffect, useMemo, useRef } from 'react';
-import { ActivityIndicator, Animated, Easing, Image, Text, View } from 'react-native';
-import { Redirect, useLocalSearchParams, useRouter } from 'expo-router';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { ActivityIndicator, Animated, Easing, Image, Pressable, Text, View } from 'react-native';
+import { Redirect, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Circle } from 'react-native-svg';
+import { OnboardingExitLinks } from '@/components/auth/OnboardingExit';
 import { AnalyzingBackdrop } from '@/components/profile/AnalyzingBackdrop';
 import { MedicardLogoMark } from '@/components/ui/MedicardLogoMark';
 import { AVATAR_SOURCES, isAvatarId, normalizeAvatarForGender } from '@/constants/avatarAssets';
 import { ka } from '@/i18n/ka';
-import { api } from '@/lib/api';
+import { tx } from '@/i18n/locale';
+import { authErrorMessage } from '@/lib/authErrorMessage';
+import { reportError } from '@/lib/errorReporter';
+import { displayFirstName } from '@/lib/displayName';
+import { finishRetryDelay } from '@/lib/onboarding';
 import { useOnboardingDevPreview, onboardingScreenBlocked } from '@/lib/onboardingDevPreview';
 import { useAnimatedProgress } from '@/hooks/useAnimatedProgress';
 import { finishOnboarding } from '@/lib/profileSetupFlow';
@@ -18,25 +23,25 @@ const RING = 112;
 const RING_STROKE = 4;
 const RING_R = (RING - RING_STROKE) / 2;
 const RING_C = 2 * Math.PI * RING_R;
-const MIN_HOLD_MS = 3000;
+/** A short welcome beat while onboarding is saved — nothing is analysed here. */
+const MIN_HOLD_MS = 1500;
 const LOGO_SIZE = 34;
 const LOGO_GAP = 16;
 
-function firstNameOf(fullName: string, extra: Record<string, unknown>): string {
-  const legal = typeof extra.legalName === 'string' ? extra.legalName.trim() : '';
-  const raw = (legal || fullName).trim();
-  return raw.split(/\s+/)[0] ?? '';
-}
-
-/** Profile is being prepared — Figma 8846:211832 rings, then home. */
+/**
+ * Profile is being prepared — Figma 8846:211832 rings, then home. Only `finishOnboarding` runs here: the
+ * old hidden AI „health score“ call was removed (2026-10-08), so this screen never sends anything to AI.
+ */
 export default function ProfileSetupAnalyzingScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const preview = useOnboardingDevPreview();
-  const params = useLocalSearchParams<{ force?: string }>();
-  const force = params.force === '1';
   const { ready, user, healthProfile, setHealthProfile, setUser } = useAuth();
   const started = useRef(false);
+  const alive = useRef(true);
+  // Bumped by „ხელახლა ცდა“: runs the final save again after it failed (and its retries too).
+  const [attempt, setAttempt] = useState(0);
+  const [error, setError] = useState<string | null>(null);
   const progress = useRef(new Animated.Value(0)).current;
   const pulse = useRef(new Animated.Value(0)).current;
 
@@ -56,46 +61,60 @@ export default function ProfileSetupAnalyzingScreen() {
   }, [progress, pulse]);
 
   useEffect(() => {
+    alive.current = true;
+    return () => {
+      alive.current = false;
+    };
+  }, []);
+
+  useEffect(() => {
     if (!ready || !user || !healthProfile || started.current) return;
     started.current = true;
 
     const shownAt = Date.now();
+    const wait = (ms: number) =>
+      new Promise<void>((resolve) => {
+        setTimeout(resolve, ms);
+      });
 
     void (async () => {
-      let profile = healthProfile;
-      const extraAnswers = (healthProfile.extraAnswers ?? {}) as Record<string, unknown>;
-      if (extraAnswers.aiPrivacyDecision === 'accepted') {
-        try {
-          const res = await api.healthProfile.onboardingAnalysis({ force });
-          profile = res.profile;
-          setHealthProfile(profile);
-        } catch {
-          // score page is skipped — still mark onboarding done
-        }
-      }
-
       if (!preview) {
-        try {
-          const result = await finishOnboarding(profile, user);
-          setHealthProfile(result.profile);
-          setUser(result.user);
-        } catch {
-          // stay; AuthGate will resume analyzing if complete() failed
-          started.current = false;
-          return;
+        // Nothing else re-runs this save (AuthGate stays out of profile-setup and nothing hydrates
+        // on foreground), so a failure is retried here a bounded number of times and then shown
+        // with a retry button — never an endless spinner. finishOnboarding is safe to repeat.
+        for (let failures = 1; ; failures += 1) {
+          try {
+            const result = await finishOnboarding(healthProfile, user);
+            setHealthProfile(result.profile);
+            setUser(result.user);
+            break;
+          } catch (e) {
+            const delay = finishRetryDelay(e, failures);
+            if (delay !== null && alive.current) {
+              await wait(delay);
+              if (alive.current) continue;
+            }
+            if (!alive.current) return;
+            reportError('error', e);
+            setError(authErrorMessage(e));
+            return;
+          }
         }
       }
 
       const left = MIN_HOLD_MS - (Date.now() - shownAt);
-      if (left > 0) {
-        await new Promise<void>((resolve) => {
-          setTimeout(resolve, left);
-        });
-      }
+      if (left > 0) await wait(left);
+      if (!alive.current) return;
 
       router.replace('/(tabs)/home' as never);
     })();
-  }, [ready, user, healthProfile, router, setHealthProfile, setUser, preview, force]);
+  }, [ready, user, healthProfile, router, setHealthProfile, setUser, preview, attempt]);
+
+  const retry = () => {
+    setError(null);
+    started.current = false;
+    setAttempt((n) => n + 1);
+  };
 
   const extra = (healthProfile?.extraAnswers ?? {}) as Record<string, unknown>;
   const avatarId = normalizeAvatarForGender(
@@ -103,10 +122,8 @@ export default function ProfileSetupAnalyzingScreen() {
     user?.gender,
   );
   const avatarSource = isAvatarId(avatarId) ? AVATAR_SOURCES[avatarId] : AVATAR_SOURCES['avatar-1'];
-  const name = useMemo(
-    () => (user ? firstNameOf(user.fullName, extra) : ''),
-    [user, extra],
-  );
+  // Never the server's placeholder name: without a real one the line is just „ვამზადებთ პროფილს“.
+  const name = useMemo(() => displayFirstName(user, extra), [user, extra]);
   const scale = pulse.interpolate({ inputRange: [0, 1], outputRange: [1, 1.04] });
   const fill = useAnimatedProgress(progress, 0);
   const dashOffset = RING_C * (1 - fill);
@@ -170,18 +187,60 @@ export default function ProfileSetupAnalyzingScreen() {
           </View>
         </Animated.View>
       </View>
-      <View style={{ paddingHorizontal: 24, paddingBottom: Math.max(insets.bottom, 16) + 32, alignItems: 'center' }}>
-        <Text
-          style={{
-            fontFamily: 'NotoSansGeorgian_600SemiBold',
-            fontSize: 22,
-            lineHeight: 32,
-            color: '#FFFFFF',
-            textAlign: 'center',
-          }}
-        >
-          {ka.profileSetup.preparingProfile(name)}
-        </Text>
+      <View style={{ paddingHorizontal: 24, paddingBottom: Math.max(insets.bottom, 16) + (error ? 12 : 32), alignItems: 'center' }}>
+        {error ? (
+          <>
+            <Text
+              accessibilityRole="header"
+              style={{ fontFamily: 'NotoSansGeorgian_600SemiBold', fontSize: 20, lineHeight: 28, color: '#FFFFFF', textAlign: 'center' }}
+            >
+              {tx('პროფილი ვერ შევინახეთ', 'We couldn’t save your profile')}
+            </Text>
+            <Text
+              accessibilityRole="alert"
+              style={{
+                marginTop: 8,
+                fontFamily: 'NotoSansGeorgian_400Regular',
+                fontSize: 14,
+                lineHeight: 21,
+                color: 'rgba(255,255,255,0.9)',
+                textAlign: 'center',
+              }}
+            >
+              {error}
+            </Text>
+            <Pressable
+              accessibilityRole="button"
+              onPress={retry}
+              style={{
+                marginTop: 20,
+                alignSelf: 'stretch',
+                height: 52,
+                borderRadius: 16,
+                backgroundColor: '#FFFFFF',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              <Text style={{ fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 16, color: '#0F766E' }}>
+                {tx('ხელახლა ცდა', 'Try again')}
+              </Text>
+            </Pressable>
+            <OnboardingExitLinks color="#FFFFFF" />
+          </>
+        ) : (
+          <Text
+            style={{
+              fontFamily: 'NotoSansGeorgian_600SemiBold',
+              fontSize: 22,
+              lineHeight: 32,
+              color: '#FFFFFF',
+              textAlign: 'center',
+            }}
+          >
+            {ka.profileSetup.preparingProfile(name)}
+          </Text>
+        )}
       </View>
     </View>
   );

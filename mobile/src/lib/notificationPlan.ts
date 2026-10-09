@@ -19,6 +19,55 @@ export type MedReminderSlot = {
   date?: Date;
 };
 
+/**
+ * Every local reminder of one medication starts with this (`med:<id>:<time>…`); the trailing colon
+ * keeps `med:abc:` from matching another medication `med:abcd:…`.
+ */
+export function medicationReminderPrefix(medicationId: string): string {
+  return `med:${medicationId}:`;
+}
+
+/** The one-off reminder of a dose moved with „გადატანა“ (`med:<id>:moved:<date>:<slot>`). */
+export function movedDoseReminderId(medicationId: string, date: string, time: string): string {
+  return `${medicationReminderPrefix(medicationId)}moved:${date}:${time}`;
+}
+
+export type MovedDoseReminder = {
+  identifier: string;
+  medicationId: string;
+  /** The dose's own slot — the reminder's „მივიღე ✓“ marks this one. */
+  time: string;
+  /** The dose's day (YYYY-MM-DD). */
+  date: string;
+  /** When the reminder fires: the moved-to time that day. */
+  at: Date;
+};
+
+/**
+ * One-off reminders for doses moved with „გადატანა“: a still-open ('pending') log with
+ * `rescheduledTo`, for a slot that is still in the schedule, at a moment within the next week.
+ * Re-planned by every medication reminder sync, so they survive its cancel-and-rewrite.
+ */
+export function planMovedDoseReminders(
+  logs: readonly { medicationId: string; date: string; time: string; status: string; rescheduledTo?: unknown }[],
+  hasSlot: (medicationId: string, time: string) => boolean,
+  now = new Date(),
+): MovedDoseReminder[] {
+  const out: MovedDoseReminder[] = [];
+  const horizon = now.getTime() + 7 * 86_400_000;
+  for (const log of logs) {
+    const to = log.rescheduledTo;
+    if (log.status !== 'pending' || typeof to !== 'string' || !/^([01]\d|2[0-3]):[0-5]\d$/.test(to)) continue;
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(log.date) || !hasSlot(log.medicationId, log.time)) continue;
+    const [y, m, d] = log.date.split('-').map(Number);
+    const [hour, minute] = to.split(':').map(Number);
+    const at = new Date(y, m - 1, d, hour, minute, 0, 0);
+    if (at.getTime() <= now.getTime() || at.getTime() > horizon) continue;
+    out.push({ identifier: movedDoseReminderId(log.medicationId, log.date, log.time), medicationId: log.medicationId, time: log.time, date: log.date, at });
+  }
+  return out.sort((a, b) => a.at.getTime() - b.at.getTime());
+}
+
 /** One daily slot, or one weekly slot per selected Monday-index day. */
 export function planMedicationReminderSlots(
   medicationId: string,
@@ -138,15 +187,22 @@ export function isNotificationRoute(route: unknown): route is string {
   return (NOTIFICATION_ROUTE_ROOTS as readonly string[]).includes(root);
 }
 
+/** A medication reminder's route with its own slot (`?time=HH:mm`) when the route does not name one. */
+function withDoseTime(route: string, data: Record<string, unknown>): string {
+  const time = typeof data.time === 'string' && /^([01]\d|2[0-3]):[0-5]\d$/.test(data.time) ? data.time : '';
+  if (data.type !== 'medication' || !time || !route.startsWith('/medications/') || /[?&]time=/.test(route)) return route;
+  return `${route}${route.includes('?') ? '&' : '?'}time=${time}`;
+}
+
 export function routeFromNotificationData(data: Record<string, unknown> | undefined | null): string | null {
   if (!data || typeof data !== 'object') return null;
 
-  if (isNotificationRoute(data.route)) return data.route;
+  if (isNotificationRoute(data.route)) return withDoseTime(data.route, data);
 
   switch (data.type) {
     case 'medication':
       return typeof data.medicationId === 'string' && data.medicationId
-        ? `/medications/${data.medicationId}`
+        ? withDoseTime(`/medications/${data.medicationId}`, data)
         : '/medications';
     case 'weight-goal':
       return '/health-metrics/weight';

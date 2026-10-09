@@ -114,6 +114,11 @@ export function parsePainEntries(raw, { strict = false } = {}) {
   return out;
 }
 
+/**
+ * The day's tag ids: unique client UUIDs, at most `CYCLE_TAGS_PER_DAY_MAX`. Strict (a write) still
+ * rejects a malformed id, but more than 8 tags keep the first 8 instead of failing — a 400 here made
+ * the queued day (flow, symptoms, notes) fail for good while the app said „saved on device“ (CYC-10).
+ */
 export function parseCustomTagIds(raw, { strict = false } = {}) {
   if (raw == null) return [];
   if (!Array.isArray(raw)) {
@@ -131,10 +136,7 @@ export function parseCustomTagIds(raw, { strict = false } = {}) {
     if (seen.has(key)) continue;
     seen.add(key);
     out.push(key);
-    if (out.length > CYCLE_TAGS_PER_DAY_MAX) {
-      if (strict) throw httpError(400, 'დღიურ ნიშნების ლიმიტი გადაჭარბებულია.');
-      return out.slice(0, CYCLE_TAGS_PER_DAY_MAX);
-    }
+    if (out.length >= CYCLE_TAGS_PER_DAY_MAX) return out;
   }
   return out;
 }

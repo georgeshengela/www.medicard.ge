@@ -1,31 +1,15 @@
-import { requireAiConsent } from '../lib/aiConsent.js';
 import { Router } from 'express';
 import { z } from 'zod';
 import { prisma } from '../lib/prisma.js';
-import { generateOnboardingAnalysis } from '../lib/onboardingAnalysis.js';
-import { resolveOpenRouterModel } from '../lib/aiEngine.js';
+import { legacyOnboardingAnalysisResponse } from '../lib/onboardingAnalysis.js';
 import { birthDateAgeError, birthDateInputSchema, genderSchema, publicHealthProfile, publicUser } from '../lib/patient.js';
 import { requireAuth } from '../middleware/auth.js';
-import rateLimit from 'express-rate-limit';
-import { aiDailyCap } from '../lib/aiDailyCap.js';
-import { attachRateLimitHandler, RATE_LIMIT_VALIDATE } from '../lib/rateLimitKey.js';
 import { asyncHandler } from '../middleware/error.js';
 import { t } from '../lib/i18n.js';
 
 export const healthProfileRouter = Router();
 
 healthProfileRouter.use(requireAuth);
-
-// Every analysis call can go to the model (force:true skips the cache): bound it like other AI routes.
-const onboardingAnalysisPerMinute = rateLimit({
-  windowMs: 60_000,
-  limit: 4,
-  standardHeaders: 'draft-7',
-  legacyHeaders: false,
-  validate: RATE_LIMIT_VALIDATE,
-  keyGenerator: (req) => `onboarding-analysis:${req.user.id}`,
-  handler: attachRateLimitHandler('onboarding-analysis'),
-});
 
 const stringArray = z.array(z.string().trim().min(1).max(120)).max(40);
 
@@ -120,69 +104,17 @@ healthProfileRouter.put(
   }),
 );
 
+// The onboarding „health score“ is gone (owner 2026-10-08): it was a paid AI call whose 0–100 score no
+// screen showed. Older app builds still call this once after the AI-consent step and read only `profile`,
+// so it keeps the answer shape — no model call, no score, nothing stored, nothing sent anywhere.
 healthProfileRouter.post(
   '/onboarding-analysis',
-  onboardingAnalysisPerMinute,
-  aiDailyCap('onboardingAnalysis'),
-  requireAiConsent,
   asyncHandler(async (req, res) => {
     const profile = await loadProfile(req.user.id);
     if (!profile) {
       return res.status(404).json({ error: t(req, 'პროფილი ვერ მოიძებნა', 'Profile not found') });
     }
-
-    const user = await prisma.user.findUnique({
-      where: { id: req.user.id },
-      include: { package: true },
-    });
-
-    const extra = (profile.extraAnswers ?? {});
-    const force = req.body?.force === true;
-    const previousScore =
-      typeof extra.onboardingAnalysis?.score === 'number' ? extra.onboardingAnalysis.score : null;
-
-    if (!force && previousScore != null) {
-      return res.json({
-        analysis: extra.onboardingAnalysis,
-        profile: publicHealthProfile(profile),
-        cached: true,
-      });
-    }
-
-    const [metrics, schedules, cycle] = await Promise.all([
-      prisma.healthMetricDaily.findMany({
-        where: { userId: req.user.id },
-        orderBy: { date: 'desc' },
-        take: 14,
-      }),
-      prisma.medicationSchedule.findMany({
-        where: { userId: req.user.id, active: true },
-        select: { medName: true, dosage: true },
-      }),
-      prisma.cycleProfile.findUnique({
-        where: { userId: req.user.id },
-        select: { mode: true },
-      }),
-    ]);
-
-    const analysis = await generateOnboardingAnalysis({
-      profile,
-      user,
-      extras: extra,
-      metrics,
-      scheduledMeds: schedules.map((row) => `${row.medName}${row.dosage ? ` ${row.dosage}` : ''}`),
-      cycleMode: cycle?.mode ?? null,
-      previousScore: force ? previousScore : null,
-      model: resolveOpenRouterModel(req.user),
-    });
-    await prisma.$executeRaw`UPDATE "HealthProfile" SET "extraAnswers"=jsonb_set(COALESCE("extraAnswers",'{}'::jsonb),'{onboardingAnalysis}',${JSON.stringify(analysis)}::jsonb,true) WHERE "userId"=${req.user.id}`;
-    const updated = await loadProfile(req.user.id);
-
-    return res.json({
-      analysis,
-      profile: publicHealthProfile(updated),
-      cached: false,
-    });
+    return res.json(legacyOnboardingAnalysisResponse(publicHealthProfile(profile)));
   }),
 );
 

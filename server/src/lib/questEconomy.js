@@ -2,9 +2,10 @@
  * Central MEDIQUEST economy and safety ceilings.
  * Do not scatter reward constants. Admin will own these later.
  *
- * Expected Phase 1.1 earnings (not ceilings):
- *   daily_steps 30 + daily_hydration 20 + daily_medi 10 = 60 coins/day
- *   weekly_steps 150 → perfect week ≈ 570 coins
+ * Expected earnings (not ceilings):
+ *   daily_steps 30 + daily_hydration 20 = 50 coins/day
+ *   weekly_steps 150 → perfect week ≈ 500 coins
+ *   weekly_medi pays XP only — a Medi conversation never earns Medi Coins (owner 2026-10-08)
  */
 export const QUEST_ECONOMY = Object.freeze({
   maxStandardDailyCoins: 150,

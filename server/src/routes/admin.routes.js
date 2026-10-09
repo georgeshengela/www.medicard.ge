@@ -31,7 +31,7 @@ import {
   syncAllPharmacySources,
   syncPharmacySource,
 } from '../lib/pharmacy/sync.js';
-import { getSmsBalance, normalizeSmsDestination, sendSms } from '../lib/sms.js';
+import { adminSmsLogView, getSmsBalance, normalizeSmsDestination, sendSms } from '../lib/sms.js';
 import { deleteUserAccount } from '../lib/deleteUser.js';
 import { attachRateLimitHandler, authWriteKey, RATE_LIMIT_VALIDATE } from '../lib/rateLimitKey.js';
 import {
@@ -1232,9 +1232,10 @@ adminRouter.get(
     if (query.q) {
       // A text-only search has no digits; `contains: ''` would match every number.
       const digits = query.q.replace(/\D/g, '');
+      // OTP text is never searched: older rows still hold a code, and a search must not confirm one.
       where.OR = [
         ...(digits ? [{ destination: { contains: digits } }] : []),
-        { content: { contains: query.q, mode: 'insensitive' } },
+        { content: { contains: query.q, mode: 'insensitive' }, purpose: { not: 'OTP' } },
       ];
     }
 
@@ -1248,7 +1249,7 @@ adminRouter.get(
       prisma.smsLog.count({ where }),
     ]);
 
-    res.json({ logs, total, limit: query.limit, offset: query.offset });
+    res.json({ logs: logs.map(adminSmsLogView), total, limit: query.limit, offset: query.offset });
   }),
 );
 

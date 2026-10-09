@@ -19,6 +19,44 @@ function extraOf(profile: HealthProfile | null | undefined): Record<string, unkn
   return (profile?.extraAnswers ?? {}) as Record<string, unknown>;
 }
 
+/**
+ * The profile with answers applied in memory only. Used when a setup step's own save failed but
+ * the answer is safe to carry: the final onboarding save (finishOnboarding) re-sends extraAnswers.
+ */
+export function withExtraAnswers(profile: HealthProfile, patch: Record<string, unknown>): HealthProfile {
+  return { ...profile, extraAnswers: { ...extraOf(profile), ...patch } };
+}
+
+/** Automatic retries of the last onboarding save (the „preparing your profile“ screen). */
+export const FINISH_RETRY_DELAYS_MS = [1500, 4000] as const;
+
+/**
+ * Delay before automatic retry number `failures` of the last onboarding save, or null to stop and
+ * show the error with a retry button. Only a dropped connection, rate limiting or a server error
+ * can pass on its own; any other 4xx (session ended, validation) never will, and the count is
+ * bounded, so this never loops. A timeout (408) is not retried on its own: the request already
+ * waited its whole timeout (3 min for these saves), so the person sees the error at once.
+ */
+export function finishRetryDelay(error: unknown, failures: number): number | null {
+  if (!Number.isInteger(failures) || failures < 1 || failures > FINISH_RETRY_DELAYS_MS.length) return null;
+  const status = error && typeof error === 'object' ? (error as { status?: unknown }).status : undefined;
+  if (typeof status !== 'number') return null;
+  const transient = status === 0 || status === 429 || status >= 500;
+  return transient ? FINISH_RETRY_DELAYS_MS[failures - 1] : null;
+}
+
+type BackRouter = { canGoBack: () => boolean; back: () => void; replace: (href: never) => void };
+
+/**
+ * After the last answer of „დაასრულე პროფილი“: back to the screen that opened it (the Home card or
+ * Profile both push it), so the person sees the card she came from update. Opened with no history
+ * (a link), it lands on Home.
+ */
+export function leaveProfileComplete(router: BackRouter): void {
+  if (router.canGoBack()) router.back();
+  else router.replace('/(tabs)/home' as never);
+}
+
 function hasAvatar(extra: Record<string, unknown>): boolean {
   return typeof extra.avatarId === 'string' && extra.avatarId.length > 0;
 }

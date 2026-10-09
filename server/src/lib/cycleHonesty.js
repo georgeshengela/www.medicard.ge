@@ -128,6 +128,60 @@ export function emptyCycleAiCache() {
   return { aiInsights: null, aiInsightsAt: null };
 }
 
+/**
+ * Profile fields the AI cycle cards are built from (`buildCycleAiUserPrompt`): cycle day and phase come
+ * from the last period start and the averages, the wording from the mode, contraception and conditions.
+ * A change to any of them makes cached cards describe the wrong day (CYC-08).
+ */
+export const CYCLE_AI_PROFILE_INPUTS = Object.freeze([
+  'lastPeriodStart',
+  'avgCycleLength',
+  'avgPeriodLength',
+  'isIrregular',
+  'mode',
+  'contraceptionMethod',
+  'contraceptionStartedAt',
+  'conditions',
+]);
+
+function aiInputValue(value) {
+  if (value == null) return null;
+  if (value instanceof Date) return Number.isNaN(value.getTime()) ? null : value.toISOString().slice(0, 10);
+  if (Array.isArray(value)) return JSON.stringify(value.map(String).sort());
+  if (typeof value === 'string' && /^\d{4}-\d{2}-\d{2}/.test(value)) return value.slice(0, 10);
+  return value;
+}
+
+/** True when a profile write (`data`, Prisma update shape) changes an input of the cached AI cards. */
+export function profileWriteStalesCycleAi(current, data) {
+  if (!data || typeof data !== 'object') return false;
+  return CYCLE_AI_PROFILE_INPUTS.some(
+    (field) => data[field] !== undefined && aiInputValue(data[field]) !== aiInputValue(current?.[field]),
+  );
+}
+
+const GEORGIAN_SCRIPT = /[Ⴀ-ჿᲐ-Ჿⴀ-⴯]/;
+
+/**
+ * Language of cached AI cycle cards: the stored `lang`, or — for cards cached before it was stored —
+ * Georgian when their text is in Georgian script, English otherwise. Null for no cards.
+ */
+export function cycleAiInsightsLang(insights) {
+  if (!insights || typeof insights !== 'object') return null;
+  if (insights.lang === 'ka' || insights.lang === 'en') return insights.lang;
+  const cards = Array.isArray(insights.cards) ? insights.cards : [];
+  const text = [insights.headline, insights.phaseLabel, ...cards.flatMap((card) => [card?.title, card?.body])]
+    .filter((part) => typeof part === 'string')
+    .join(' ');
+  return GEORGIAN_SCRIPT.test(text) ? 'ka' : 'en';
+}
+
+/** Cached AI cycle cards only in the reader's language (CYC-08): a ka ↔ en switch never shows the other one. */
+export function cycleAiInsightsForLang(insights, lang) {
+  if (!insights || typeof insights !== 'object') return null;
+  return cycleAiInsightsLang(insights) === (lang === 'en' ? 'en' : 'ka') ? insights : null;
+}
+
 export const CYCLE_AI_HONESTY_RULES = [
   'შეფასება არ წარმოადგინო როგორც დადგენილი ბიოლოგიური ფაქტი.',
   'ნუ დაისვამ დიაგნოზს და ნუ გამოიცნობ ორსულობას ან ახალ მდგომარეობას.',

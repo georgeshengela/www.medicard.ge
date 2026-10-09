@@ -1,6 +1,6 @@
 /**
  * Per-user daily fuse on AI routes that cost money but sit outside enforceAiQuota
- * (onboarding analysis, nutrition estimate, Medi voice). In the free release the AI quota has no
+ * (nutrition estimate, Medi voice). In the free release the AI quota has no
  * daily limit, so a client retry loop could otherwise make thousands of paid calls per user a day.
  * Caps are far above real use; reaching one means a bug or abuse, so the owner is told (throttled).
  * Counters are per instance (memory store) — with N instances the effective cap is up to N×.
@@ -13,7 +13,6 @@ import { t } from './i18n.js';
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 export const AI_DAILY_CAPS = Object.freeze({
-  onboardingAnalysis: 20,
   nutritionEstimate: 150,
   assistantPlan: 500,
   assistantTranscribe: 400,

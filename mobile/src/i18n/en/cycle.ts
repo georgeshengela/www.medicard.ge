@@ -112,6 +112,7 @@ export const enCycle: Pick<Strings, 'cycle'> = {
     customTagAdd: 'Add tag',
     customTagPlaceholder: 'e.g. Travel',
     customTagEmpty: 'You don’t have any tags yet.',
+    customTagDayLimit: (max: number) => `You can pick up to ${max} tags a day.`,
     customTagOnlineOnly: 'New tags need the internet. You can apply existing tags offline.',
     customTagArchive: 'Archive',
     logHubPain: 'Pain',
@@ -267,6 +268,9 @@ export const enCycle: Pick<Strings, 'cycle'> = {
     partnerShareNeedAuth: 'Sign in to continue.',
     partnerShareAccept: 'Accept sharing',
     partnerShareEmpty: 'Nothing is turned on for sharing on this link.',
+    partnerSharePaused: 'Nothing to show right now.',
+    partnerSharePausedOwner:
+      'During pregnancy and after a birth your partner sees no cycle details. The link works again once your cycle forecast is back.',
     privacy: 'Privacy',
     privacyHint: 'When on, cycle notifications show generic text on screen. Face ID is turned on separately.',
     emptyHint: 'Mark your last period or start logging today',

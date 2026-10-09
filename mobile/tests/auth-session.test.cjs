@@ -1,12 +1,17 @@
 const {test}=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path'),vm=require('node:vm'),ts=require('typescript');
 
+// The real jwtSubject (the account a stored token belongs to), transpiled like AuthContext below.
+const jwtSubjectModule=(()=>{const file=path.resolve(__dirname,'../src/lib/jwtSubject.js');const out=ts.transpileModule(fs.readFileSync(file,'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText;const exports={};vm.runInNewContext(out,{exports,Buffer},{filename:file});return exports;})();
+/** A JWT-shaped session token for `sub` (unsigned: the app only reads the subject). */
+const sessionToken=sub=>`eyJhbGciOiJIUzI1NiJ9.${Buffer.from(JSON.stringify({sub,email:'qa@medicard.test'})).toString('base64url')}.sig`;
+
 // Run the actual provider callbacks with deterministic React state/native boundaries.
 // These tests cover ordering and network recovery; they do not emulate native rendering.
 function harness(initialToken=null) {
- const slots=[],effects=[];let cursor=0,token=initialToken,postLoginCount=0,loginCount=0,meCount=0,profileCount=0;
+ const slots=[],effects=[];let cursor=0,token=initialToken,postLoginCount=0,loginCount=0,meCount=0,profileCount=0,accountId=null,snapshot=null,pushForgets=0,cancelGate=null;const delivery=[],petLogouts=[],forgotten=[],accountLog=[];
  const user={id:'synthetic-user',email:'qa@medicard.test'},profile={completedAt:'2026-09-20T00:00:00Z'};
  const full={user,usage:{remaining:10},stats:{records:5},healthProfile:profile};
- let me=async()=>full,readProfile=async()=>({profile:{...profile}});
+ let me=async()=>full,readProfile=async()=>({profile:{...profile}}),deleteAccount=async()=>{delivery.push('server-delete');return {ok:true};};
  class ApiError extends Error {constructor(message,status,payload={}){super(message);this.status=status;Object.assign(this,payload);}get isUnauthorized(){return this.status===401;}}
  const noop=()=>{},asyncNoop=async()=>{};
  const React={createContext:()=>({Provider:'Provider'}),createElement:(type,props,...children)=>({type,props:{...props,children}}),
@@ -15,23 +20,25 @@ function harness(initialToken=null) {
  const modules={
   react:React,'react-native':{AppState:{addEventListener:()=>({remove:noop})}},
   '@/lib/run/store':{resetRunMemory:noop},'@/i18n/ka':{ka:{auth:{registerNotConfirmed:'Unconfirmed'}}},
-  '@/lib/api':{ApiError,api:{auth:{login:async()=>{loginCount++;return {token:'confirmed-token',user,usage:full.usage};},me:async()=>{meCount++;return me();}},healthProfile:{get:async()=>{profileCount++;return readProfile();}}}},
-  '@/lib/localAccount':{setLocalAccountId:noop,wipeLegacyUnscopedHealthCaches:asyncNoop},
+  '@/lib/api':{ApiError,api:{auth:{login:async()=>{loginCount++;return {token:'confirmed-token',user,usage:full.usage};},me:async()=>{meCount++;return me();},deleteAccount:()=>deleteAccount(),discardNewAccount:async()=>{delivery.push('server-discard');return {ok:true};}},healthProfile:{get:async()=>{profileCount++;return readProfile();}}}},
+  '@/lib/localAccount':{setLocalAccountId:id=>{accountId=id;accountLog.push(`account:${id}`);},localAccountId:()=>accountId,wipeLegacyUnscopedHealthCaches:asyncNoop},'@/lib/jwtSubject':jwtSubjectModule,
+  '@/lib/medications.shared':{prunePendingDoseLogs:async id=>{accountLog.push(`dose-queue-pruned:${id}`);}},
   '@/lib/home/homeLayoutStore':{primeHomeLayout:asyncNoop,registerHomeLayoutProfilePatch:noop},
   '@/lib/onboarding':{needsHealthAssessment:noop,needsProfileSetup:noop,assessmentPhaseComplete:noop},
-  '@/lib/sessionSnapshot':{clearSessionSnapshot:asyncNoop,saveSessionSnapshot:asyncNoop,loadSessionSnapshot:async()=>null},
-  '@/lib/storage':{getToken:async()=>token,setToken:async value=>{token=value;},clearToken:async()=>{token=null;}},
+  '@/lib/sessionSnapshot':{clearSessionSnapshot:async()=>{snapshot=null;},saveSessionSnapshot:async value=>{snapshot=value;},loadSessionSnapshot:async()=>snapshot},
+  '@/lib/storage':{getToken:async()=>token,setToken:async value=>{token=value;},clearToken:async()=>{token=null;},renewToken:async(current,next)=>{if(!next||token!==current)return false;token=next;return true;}},
   '@/lib/safeStartup':{runPostLoginSideEffects:()=>{postLoginCount++;}},'@/lib/appForeground':{onReturnToForeground:()=>noop},'@/lib/authErrorMessage':{authErrorMessage:error=>error.message},
   '@/lib/quest/devFixture':{isQuestDevEnabled:()=>false,isQuestVisualSession:()=>false,setQuestVisualSession:noop},
   '@/lib/healthDataSync':{resetHealthPullCache:noop},'@/lib/quest/socket':{disconnectQuestSocket:noop},'@/lib/accountSync':{resetAccountSync:noop},
-  '@/lib/notifications':{unregisterPushFromServer:asyncNoop,cancelAllReminders:asyncNoop},'@/lib/petCareReminders':{onPetCareLogout:asyncNoop},
+  '@/lib/notifications':{unregisterPushFromServer:async()=>{delivery.push('push-unregister');},forgetPushRegistration:()=>{pushForgets++;},cancelAllReminders:async()=>{if(cancelGate)await cancelGate;delivery.push('reminders-cancel');}},'@/lib/petCareReminders':{onPetCareLogout:async id=>{petLogouts.push(id);}},
+  '@/lib/pregnancyCareCalendar':{wipePregnancyCareCalendarOwnership:async id=>{forgotten.push('pregnancy:'+id);}},'@/lib/cycleOffline':{destroyCycleOfflineAccount:async id=>{forgotten.push('cycle:'+id);}},
  };
  const file=path.resolve(__dirname,'../src/store/AuthContext.tsx');
  const source=ts.transpileModule(fs.readFileSync(file,'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022,jsx:ts.JsxEmit.React,esModuleInterop:true}}).outputText;
  const exports={};vm.runInNewContext(source,{exports,require:name=>{if(!(name in modules))throw Error('Unmocked: '+name);return modules[name];},console,setTimeout,clearTimeout},{filename:file});
  const render=()=>{cursor=0;return exports.AuthProvider({children:null}).props.value;};
  render();const startup=effects[0];
- return {render,startup,full,ApiError,setMe:fn=>{me=fn;},setProfile:fn=>{readProfile=fn;},token:()=>token,counters:()=>({postLoginCount,loginCount,meCount,profileCount})};
+ return {render,startup,full,ApiError,setMe:fn=>{me=fn;},setProfile:fn=>{readProfile=fn;},setDelete:fn=>{deleteAccount=fn;},delivery,accountLog,petLogouts,forgotten,token:()=>token,setToken:value=>{token=value;},setSnapshot:value=>{snapshot=value;},setAccountId:id=>{accountId=id;},holdCancel:gate=>{cancelGate=gate;},pushForgets:()=>pushForgets,counters:()=>({postLoginCount,loginCount,meCount,profileCount})};
 }
 function deferred(){let resolve;const promise=new Promise(r=>resolve=r);return {promise,resolve};}
 const tick=()=>new Promise(r=>setImmediate(r));
@@ -93,4 +100,204 @@ test('a late health profile cannot repopulate state after logout',async()=>{
  const read=h.render().refreshHealthProfile();await tick();await h.render().signOut();
  pending.resolve({profile:h.full.healthProfile});await read;
  assert.equal(h.render().healthProfile,null);
+});
+
+test('session restore keeps the fresh token the server renews',async()=>{
+ const h=harness('old-token');h.setMe(async()=>({...h.full,token:'renewed-token'}));await h.render().refresh();
+ assert.equal(h.token(),'renewed-token');assert.equal(h.render().user.id,h.full.user.id);assert.equal(h.counters().postLoginCount,1);
+});
+test('a /me answer without a token leaves the saved token alone',async()=>{
+ const h=harness('saved-token');await h.render().refresh();
+ assert.equal(h.token(),'saved-token');assert.equal(h.render().user.id,h.full.user.id);
+});
+test('a late renewal cannot store a token after signing out',async()=>{
+ const h=harness('old-token'),pending=deferred();h.setMe(()=>pending.promise);
+ const restore=h.render().refresh();await tick();await h.render().signOut();pending.resolve({...h.full,token:'renewed-token'});await restore;
+ assert.equal(h.token(),null);assert.equal(h.render().user,null);
+});
+
+// The real src/lib/storage.ts renewToken on the iOS path (Keychain + UserDefaults stubbed).
+function realStorage(saved){
+ const keychain=new Map(saved?[['medicard.auth.token',saved]]:[]),notices=[];
+ const mod=require('./helpers/loadTs.cjs')({
+  'react-native':{Platform:{OS:'ios'},Settings:{get:key=>key==='medicard.sandbox.v1'?'1':undefined,set:()=>{}}},
+  'expo-secure-store':{WHEN_UNLOCKED_THIS_DEVICE_ONLY:1,getItemAsync:async key=>keychain.get(key)??null,setItemAsync:async(key,value)=>{keychain.set(key,value);},deleteItemAsync:async key=>{keychain.delete(key);}},
+  '@/lib/protectedTokenChange.js':{notifyProtectedTokenReplace:(previous,next)=>notices.push([previous,next])},
+ })('src/lib/storage.ts');
+ return {mod,keychain,notices};
+}
+test('renewToken stores the fresh token only over the token that asked, without an account-change notice',async()=>{
+ const {mod,keychain,notices}=realStorage('old-token');
+ assert.equal(await mod.renewToken('old-token','renewed-token'),true);
+ assert.equal(await mod.getToken(),'renewed-token');assert.equal(keychain.get('medicard.auth.token'),'renewed-token');assert.deepEqual(notices,[]);
+ assert.equal(await mod.renewToken('old-token','late-token'),false);
+ assert.equal(await mod.getToken(),'renewed-token');
+});
+test('a sign-out that lands while renewToken reads the saved token is never undone',async()=>{
+ const {mod,keychain}=realStorage('old-token');
+ assert.equal(await mod.getToken(),'old-token');
+ const renewal=mod.renewToken('old-token','renewed-token');const signOut=mod.clearToken();
+ assert.equal(await renewal,false);await signOut;
+ assert.equal(await mod.getToken(),null);assert.equal(keychain.has('medicard.auth.token'),false);
+});
+
+// auth-11: nothing on the phone is torn down before the server confirms the deletion.
+test('a failed account delete keeps her reminders, push and session',async()=>{
+ const h=harness('saved-token');await h.render().refresh();
+ h.setDelete(async()=>{throw new h.ApiError('Server unavailable',503);});
+ await assert.rejects(h.render().deleteAccount(),/Server unavailable/);
+ assert.deepEqual(h.delivery,[],'reminders and push must survive a failed delete');
+ assert.equal(h.token(),'saved-token');assert.equal(h.render().user.id,h.full.user.id);
+});
+test('a confirmed account delete cancels reminders only after the server answered, with no further request',async()=>{
+ const h=harness('saved-token');await h.render().refresh();
+ await h.render().deleteAccount();
+ // The server dropped the push tokens with the account; an unregister could only answer 401.
+ assert.deepEqual(h.delivery,['server-delete','reminders-cancel']);
+ assert.equal(h.token(),null);assert.equal(h.render().user,null);
+});
+
+// auth-12: the email sign-in offered „დამახსოვრება“ / Remember me, but nothing ever read it — the
+// session is always kept on the phone (and slides). The form must not promise a choice it ignores.
+test('email sign-in shows no Remember me choice that would be ignored',()=>{
+ const signIn=fs.readFileSync(path.resolve(__dirname,'../app/(auth)/sign-in.tsx'),'utf8');
+ assert.doesNotMatch(signIn,/keepSignedIn|AuthCheckbox|accessibilityRole="checkbox"/);
+ assert.match(signIn,/ka\.auth\.forgotPassword/,'the forgot-password link stays');
+ for(const dict of ['../src/i18n/ka.ts','../src/i18n/en/core.ts'])
+  assert.doesNotMatch(fs.readFileSync(path.resolve(__dirname,dict),'utf8'),/keepSignedIn|Remember me/,dict);
+});
+
+// IR-1 / IR2-1: a reminder's „მივიღე ✓“ tapped while signed out waits in a device queue. A fresh sign-in
+// keeps only the signing-in account's own marks (the rest were made in another session) before the new
+// account is set; restoring a saved session keeps the queue.
+test('a fresh sign-in prunes queued dose marks to its own account before setting the account; a restored session keeps them',async()=>{
+ const h=harness();await h.render().signIn('qa@medicard.test','synthetic');
+ assert.equal(h.accountLog[0],`dose-queue-pruned:${h.full.user.id}`);
+ assert.equal(h.accountLog[1],`account:${h.full.user.id}`);
+ const restored=harness('saved-token');await restored.render().refresh();
+ assert.ok(restored.accountLog.includes(`account:${restored.full.user.id}`));
+ assert.ok(!restored.accountLog.some(entry=>entry.startsWith('dose-queue-')));
+});
+
+// IR-11: a password reset on another device ends this phone's session (401 TOKEN_EXPIRED). The phone
+// she locked out must stop her reminders like signOut does, with no request (its token is refused).
+test('a session ended by a password reset elsewhere stops this phone’s reminders, with no request',async()=>{
+ const h=harness('locked-out-token');h.setSnapshot({user:h.full.user});
+ h.setMe(async()=>{throw new h.ApiError('Password changed',401,{code:'TOKEN_EXPIRED'});});
+ h.startup();await tick();await tick();
+ assert.equal(h.token(),null);assert.equal(h.render().user,null);
+ assert.deepEqual(h.delivery,['reminders-cancel'],'reminders cancelled, no push unregister with the refused token');
+ assert.equal(h.pushForgets(),1,'the next sign-in here registers push again');
+ assert.deepEqual(h.petLogouts,[h.full.user.id]);
+ assert.deepEqual(h.forgotten,[],'an account that still exists keeps its device data (offline cycle logs)');
+});
+test('a session ended while she is using the app stops reminders of the account she was in',async()=>{
+ const h=harness('saved-token');await h.render().refresh();assert.equal(h.render().user.id,h.full.user.id);
+ h.setMe(async()=>{throw new h.ApiError('Expired',401,{code:'TOKEN_EXPIRED'});});await h.render().refresh();
+ assert.equal(h.token(),null);assert.deepEqual(h.delivery,['reminders-cancel']);assert.deepEqual(h.petLogouts,[h.full.user.id]);
+});
+test('a blocked account also stops this phone’s reminders',async()=>{
+ const h=harness('blocked-token');h.setSnapshot({user:h.full.user});
+ h.setMe(async()=>{throw new h.ApiError('Blocked',403,{code:'ACCOUNT_BLOCKED'});});await h.render().refresh();
+ assert.equal(h.token(),null);assert.deepEqual(h.delivery,['reminders-cancel']);
+});
+test('a connection failure or server error keeps every reminder',async()=>{
+ for(const failure of [{status:0},{status:408},{status:503},{status:403,code:'AI_CONSENT_REQUIRED'}]){
+  const h=harness('saved-token');h.setSnapshot({user:h.full.user});
+  h.setMe(async()=>{throw new h.ApiError('Unavailable',failure.status,failure.code?{code:failure.code}:{});});await h.render().refresh();
+  assert.equal(h.token(),'saved-token');assert.deepEqual(h.delivery,[],JSON.stringify(failure));assert.equal(h.pushForgets(),0);
+ }
+});
+test('a sign-in that lands during the cleanup keeps its new session',async()=>{
+ const h=harness('locked-out-token'),gate=deferred();h.holdCancel(gate.promise);
+ h.setMe(async()=>{throw new h.ApiError('Password changed',401,{code:'TOKEN_EXPIRED'});});
+ const restore=h.render().refresh();await tick();await tick();
+ h.setToken('new-session-token');gate.resolve();await restore;
+ assert.equal(h.token(),'new-session-token');
+});
+test('a sign-in whose token the server refuses also leaves no reminders behind',async()=>{
+ const h=harness();h.setMe(async()=>{throw new h.ApiError('Password changed',401,{code:'TOKEN_EXPIRED'});});
+ await assert.rejects(h.render().signIn('qa@medicard.test','synthetic'),/Password changed/);
+ assert.equal(h.token(),null);assert.deepEqual(h.delivery,['reminders-cancel']);assert.deepEqual(h.petLogouts,[h.full.user.id]);
+});
+// The device that did the reset registers push again right after its sign-in: every sign-in runs
+// syncPushRegistration, which skips the 6 h „already registered“ shortcut (also in 1.0.0.21.x JS).
+test('every sign-in registers push again without the 6 h freshness shortcut',()=>{
+ const notifications=fs.readFileSync(path.resolve(__dirname,'../src/lib/notifications.ts'),'utf8');
+ const startup=fs.readFileSync(path.resolve(__dirname,'../src/lib/safeStartup.js'),'utf8');
+ assert.match(notifications,/export async function syncPushRegistration\(\)[\s\S]{0,160}registerPushTokenWithServer\(\{ skipPermissionProbe: true \}\)/);
+ assert.match(notifications,/if \(!fresh \|\| opts\.skipPermissionProbe\) \{\s*await api\.push\.register/);
+ assert.match(startup,/schedulePostLoginWork\('push',[\s\S]{0,120}syncPushRegistration\(\)/);
+ assert.match(fs.readFileSync(path.resolve(__dirname,'../src/store/AuthContext.tsx'),'utf8'),/runPostLoginSideEffects\(user, healthProfile, \{ force: true \}\)/);
+});
+
+// IR-13: the delete committed but its answer was lost (timeout, dropped connection). Her retry gets
+// requireAuth's 401 ACCOUNT_NOT_FOUND: that finishes the delete on the phone. Any other 401 is not
+// proof of deletion and touches nothing.
+test('a delete whose answer was lost finishes on the retry',async()=>{
+ const h=harness('saved-token');await h.render().refresh();
+ h.setDelete(async()=>{throw new h.ApiError('Timed out',408);});
+ await assert.rejects(h.render().deleteAccount(),/Timed out/);
+ assert.deepEqual(h.delivery,[]);assert.equal(h.token(),'saved-token');
+ h.setDelete(async()=>{throw new h.ApiError('Account not found. Please sign in again.',401,{code:'ACCOUNT_NOT_FOUND'});});
+ await h.render().deleteAccount();await tick();
+ assert.deepEqual(h.delivery,['reminders-cancel']);
+ assert.deepEqual(h.forgotten.sort(),['cycle:synthetic-user','pregnancy:synthetic-user']);
+ assert.equal(h.token(),null);assert.equal(h.render().user,null);
+});
+test('a delete refused with another 401 keeps everything and shows the error',async()=>{
+ for(const payload of [{code:'TOKEN_EXPIRED'},{code:'TOKEN_INVALID'},{}]){
+  const h=harness('saved-token');await h.render().refresh();
+  h.setDelete(async()=>{throw new h.ApiError('Session ended',401,payload);});
+  await assert.rejects(h.render().deleteAccount(),/Session ended/);
+  assert.deepEqual(h.delivery,[],JSON.stringify(payload));assert.deepEqual(h.forgotten,[]);
+  assert.equal(h.token(),'saved-token');assert.equal(h.render().user.id,h.full.user.id);
+ }
+});
+test('an account deleted elsewhere also leaves no device data at the next launch',async()=>{
+ const h=harness(sessionToken('synthetic-user'));h.setSnapshot({user:h.full.user});
+ h.setMe(async()=>{throw new h.ApiError('Account not found',401,{code:'ACCOUNT_NOT_FOUND'});});
+ h.startup();await tick();await tick();await tick();
+ assert.equal(h.token(),null);assert.deepEqual(h.delivery,['reminders-cancel']);
+ assert.deepEqual(h.forgotten.sort(),['cycle:synthetic-user','pregnancy:synthetic-user']);
+});
+
+// A switch that deleted the current account: adopt sets localAccountId to the account it is adopting
+// before it saves that account's token. A hydrate still holding the deleted account's token gets
+// ACCOUNT_NOT_FOUND in that window; only the token's own account may lose its device data.
+test('a refused token forgets only its own account, never the one being adopted',async()=>{
+ const h=harness(sessionToken('synthetic-user'));await h.render().refresh();
+ h.setMe(async()=>{h.setAccountId('other-user');throw new h.ApiError('Account not found',401,{code:'ACCOUNT_NOT_FOUND'});});
+ await h.render().refresh();
+ assert.deepEqual(h.forgotten.sort(),['cycle:synthetic-user','pregnancy:synthetic-user']);
+ assert.deepEqual(h.petLogouts,['synthetic-user']);
+});
+test('a token without a readable subject never forgets device data, even for ACCOUNT_NOT_FOUND',async()=>{
+ const h=harness('opaque-token');h.setSnapshot({user:h.full.user});
+ h.setMe(async()=>{throw new h.ApiError('Account not found',401,{code:'ACCOUNT_NOT_FOUND'});});
+ await h.render().refresh();
+ assert.equal(h.token(),null);assert.deepEqual(h.delivery,['reminders-cancel']);
+ assert.deepEqual(h.forgotten,[]);assert.deepEqual(h.petLogouts,['synthetic-user']);
+});
+
+// IR-14: discard-new and a switch that deleted the current account already removed it (and its push
+// tokens) on the server: no push unregister with the dead token before the local cleanup / adopt.
+test('discarding a just-created account cancels reminders with no further request',async()=>{
+ const h=harness('saved-token');await h.render().refresh();
+ await h.render().discardNewAccount();
+ assert.deepEqual(h.delivery,['server-discard','reminders-cancel']);
+ assert.equal(h.pushForgets(),1);assert.equal(h.token(),null);assert.equal(h.render().user,null);
+});
+test('a switch that deleted the current account sends no push unregister; one that kept it still does',async()=>{
+ const other={token:'other-token',user:{id:'other-user',email:'other@medicard.test'},usage:{remaining:10}};
+ const deleted=harness('saved-token');await deleted.render().refresh();
+ deleted.setMe(async()=>({...deleted.full,user:other.user}));
+ await deleted.render().switchToAccount(other,true);
+ assert.deepEqual(deleted.delivery,['reminders-cancel']);assert.deepEqual(deleted.forgotten.sort(),['cycle:synthetic-user','pregnancy:synthetic-user']);
+ assert.equal(deleted.token(),'other-token');assert.equal(deleted.render().user.id,'other-user');
+ const kept=harness('saved-token');await kept.render().refresh();
+ kept.setMe(async()=>({...kept.full,user:other.user}));
+ await kept.render().switchToAccount(other,false);
+ assert.deepEqual(kept.delivery,['push-unregister','reminders-cancel']);assert.deepEqual(kept.forgotten,[]);
+ assert.equal(kept.token(),'other-token');
 });

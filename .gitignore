@@ -60,3 +60,6 @@ yarn-error.log*
 
 # Store build artifacts (uploaded by hand to Play Console)
 *.aab
+
+# Agent worktrees (temporary, per session)
+/.claude/worktrees/
