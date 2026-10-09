@@ -1,5 +1,5 @@
 import React,{useEffect,useMemo,useRef,useState} from 'react';
-import {ActivityIndicator,AppState,BackHandler,Image,Pressable,View} from 'react-native';
+import {ActivityIndicator,AppState,BackHandler,Image,Linking,Pressable,View} from 'react-native';
 import {RUN_GIFT} from './runArt';
 import {useIsFocused,useLocalSearchParams,useRouter} from 'expo-router';
 import {activateKeepAwakeAsync,deactivateKeepAwake} from 'expo-keep-awake';
@@ -9,7 +9,9 @@ import * as Haptics from 'expo-haptics';
 import {hideFloatingTabBar} from '@/components/navigation/tabChrome';
 import {useAuth} from '@/store/AuthContext';
 import {useIsDark,useThemeColors} from '@/theme/colors';
-import {cancelRun,finishRun,getRunState,onRunEvent,pauseRun,prepareExploration,resumeRun,runDerived,setLitBuildings,startRun,useRunSession} from '@/lib/run/store';
+import {cancelRun,finishRun,getRunState,onRunEvent,pauseRun,prepareExploration,recheckLocationPermission,resumeRun,runDerived,setLitBuildings,startRun,useRunSession} from '@/lib/run/store';
+import {onReturnToForeground} from '@/lib/appForeground';
+import {primerSettingsLabel} from '@/lib/permissionPrimer';
 import {backgroundLocationAvailable} from '@/lib/run/locationTask';
 import {formatClock,formatDistanceShort,formatPace} from '@/lib/run/geo';
 import {splitDurations} from '@/lib/run/insights';
@@ -108,6 +110,10 @@ export default function PulseActive(){
  useEffect(()=>{if(params.resume!=='1'||(run.phase!=='paused'&&run.phase!=='running'))return;router.setParams({resume:undefined} as never);if(run.phase==='paused')void begin();},[params.resume,run.phase]);
  // „საჩუქარი გვერდითაა“ notification opens medicard://run/active?gift=1: the camera finder opens once the pulse confirms it.
  useEffect(()=>{if(params.gift!=='1'||!running||!pulse.signal.revealed)return;router.setParams({gift:undefined} as never);setGift(true);},[params.gift,running,pulse.signal.revealed]);
+ // Location refused and the OS will not ask again: the button opens Settings. Back in the app, the permission
+ // is re-read (never requested) and, once it is on, the location is found by itself.
+ const locationOff=run.error==='permission'&&run.permissionBlocked;
+ useEffect(()=>{if(!focused||run.error!=='permission')return;return onReturnToForeground(()=>void recheckLocationPermission({weightKg:healthProfile?.weightKg,heightCm:healthProfile?.heightCm}));},[focused,run.error,healthProfile?.weightKg,healthProfile?.heightCm]);
  const openPanel=(value:PulsePanel)=>{setMenu(false);setPanel(value);};
  const gpsGood=run.accuracyM!=null&&run.accuracyM<=25;
  const remaining=run.targetMeters>0?Math.max(0,run.targetMeters-run.distanceM):0;
@@ -118,7 +124,7 @@ export default function PulseActive(){
  return <View style={{flex:1,backgroundColor:c.bg100}}>
   {center?<RunMap ref={map} center={center} mapDark={mapDark} onReady={()=>{setReady(true);setMapEpoch(e=>e+1);}} onFollowChange={setFollowing} onError={setMapError} onLit={n=>{setLit(n);setLitBuildings(n);}}/>:<View style={{flex:1,alignItems:'center',justifyContent:'center',padding:30,gap:18}}>
    <View style={{width:88,height:88,borderRadius:44,backgroundColor:c.accent100,alignItems:'center',justifyContent:'center'}}><Compass color={c.primary100} size={40}/></View>
-   {run.phase==='preparing'?<><ActivityIndicator color={RUN_TEAL}/><Copy>{tx('შენი მდებარეობა იძებნება…', 'Finding your location…')}</Copy></>:<><Copy bold size={22} style={{textAlign:'center'}}>{tx('მზად ხარ გასასვლელად?', 'Ready to head out?')}</Copy><Copy muted style={{textAlign:'center'}}>{run.error==='permission'?tx('MEDIRUN-ს მდებარეობის წვდომა სჭირდება, რომ შენი გზა დახატოს.', 'MEDIRUN needs location access to draw your path.'):tx('დავიწყოთ შენი მდებარეობიდან.', 'Let’s start from your location.')}</Copy><View style={{alignSelf:'stretch'}}><Action label={tx('მდებარეობის მიღება', 'Get my location')} icon={LocateFixed} onPress={()=>void prepareExploration({weightKg:healthProfile?.weightKg,heightCm:healthProfile?.heightCm})}/></View><Action secondary label={tx('უკან დაბრუნება', 'Go back')} onPress={leave}/></>}
+   {run.phase==='preparing'?<><ActivityIndicator color={RUN_TEAL}/><Copy>{tx('შენი მდებარეობა იძებნება…', 'Finding your location…')}</Copy></>:<><Copy bold size={22} style={{textAlign:'center'}}>{tx('მზად ხარ გასასვლელად?', 'Ready to head out?')}</Copy><Copy muted style={{textAlign:'center'}}>{locationOff?tx('მდებარეობაზე წვდომა გამორთულია. ჩართე ტელეფონის პარამეტრებში და აქ დაბრუნდი.', 'Location access is off. Turn it on in your phone’s Settings, then come back here.'):run.error==='permission'?tx('MEDIRUN-ს მდებარეობის წვდომა სჭირდება, რომ შენი გზა დახატოს.', 'MEDIRUN needs location access to draw your path.'):tx('დავიწყოთ შენი მდებარეობიდან.', 'Let’s start from your location.')}</Copy><View style={{alignSelf:'stretch'}}>{locationOff?<Action label={primerSettingsLabel()} icon={Settings2} onPress={()=>void Linking.openSettings().catch(()=>{})}/>:<Action label={tx('მდებარეობის მიღება', 'Get my location')} icon={LocateFixed} onPress={()=>void prepareExploration({weightKg:healthProfile?.weightKg,heightCm:healthProfile?.heightCm})}/>}</View><Action secondary label={tx('უკან დაბრუნება', 'Go back')} onPress={leave}/></>}
   </View>}
   <View pointerEvents="box-none" style={{position:'absolute',top:insets.top+8,left:14,right:14,gap:8}}>
    <View style={{flexDirection:'row',alignItems:'center',gap:8}}>
