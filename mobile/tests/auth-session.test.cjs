@@ -3,7 +3,7 @@ const {test}=require('node:test'),assert=require('node:assert/strict'),fs=requir
 // Run the actual provider callbacks with deterministic React state/native boundaries.
 // These tests cover ordering and network recovery; they do not emulate native rendering.
 function harness(initialToken=null) {
- const slots=[],effects=[];let cursor=0,token=initialToken,postLoginCount=0,loginCount=0,meCount=0,profileCount=0;const delivery=[];
+ const slots=[],effects=[];let cursor=0,token=initialToken,postLoginCount=0,loginCount=0,meCount=0,profileCount=0;const delivery=[],accountLog=[];
  const user={id:'synthetic-user',email:'qa@medicard.test'},profile={completedAt:'2026-09-20T00:00:00Z'};
  const full={user,usage:{remaining:10},stats:{records:5},healthProfile:profile};
  let me=async()=>full,readProfile=async()=>({profile:{...profile}}),deleteAccount=async()=>{delivery.push('server-delete');return {ok:true};};
@@ -16,7 +16,8 @@ function harness(initialToken=null) {
   react:React,'react-native':{AppState:{addEventListener:()=>({remove:noop})}},
   '@/lib/run/store':{resetRunMemory:noop},'@/i18n/ka':{ka:{auth:{registerNotConfirmed:'Unconfirmed'}}},
   '@/lib/api':{ApiError,api:{auth:{login:async()=>{loginCount++;return {token:'confirmed-token',user,usage:full.usage};},me:async()=>{meCount++;return me();},deleteAccount:()=>deleteAccount()},healthProfile:{get:async()=>{profileCount++;return readProfile();}}}},
-  '@/lib/localAccount':{setLocalAccountId:noop,wipeLegacyUnscopedHealthCaches:asyncNoop},
+  '@/lib/localAccount':{setLocalAccountId:id=>{accountLog.push(`account:${id}`);},wipeLegacyUnscopedHealthCaches:asyncNoop},
+  '@/lib/medications.shared':{clearPendingDoseLogs:async()=>{accountLog.push('dose-queue-cleared');}},
   '@/lib/home/homeLayoutStore':{primeHomeLayout:asyncNoop,registerHomeLayoutProfilePatch:noop},
   '@/lib/onboarding':{needsHealthAssessment:noop,needsProfileSetup:noop,assessmentPhaseComplete:noop},
   '@/lib/sessionSnapshot':{clearSessionSnapshot:asyncNoop,saveSessionSnapshot:asyncNoop,loadSessionSnapshot:async()=>null},
@@ -32,7 +33,7 @@ function harness(initialToken=null) {
  const exports={};vm.runInNewContext(source,{exports,require:name=>{if(!(name in modules))throw Error('Unmocked: '+name);return modules[name];},console,setTimeout,clearTimeout},{filename:file});
  const render=()=>{cursor=0;return exports.AuthProvider({children:null}).props.value;};
  render();const startup=effects[0];
- return {render,startup,full,ApiError,setMe:fn=>{me=fn;},setProfile:fn=>{readProfile=fn;},setDelete:fn=>{deleteAccount=fn;},delivery,token:()=>token,counters:()=>({postLoginCount,loginCount,meCount,profileCount})};
+ return {render,startup,full,ApiError,setMe:fn=>{me=fn;},setProfile:fn=>{readProfile=fn;},setDelete:fn=>{deleteAccount=fn;},delivery,accountLog,token:()=>token,counters:()=>({postLoginCount,loginCount,meCount,profileCount})};
 }
 function deferred(){let resolve;const promise=new Promise(r=>resolve=r);return {promise,resolve};}
 const tick=()=>new Promise(r=>setImmediate(r));
@@ -159,4 +160,15 @@ test('email sign-in shows no Remember me choice that would be ignored',()=>{
  assert.match(signIn,/ka\.auth\.forgotPassword/,'the forgot-password link stays');
  for(const dict of ['../src/i18n/ka.ts','../src/i18n/en/core.ts'])
   assert.doesNotMatch(fs.readFileSync(path.resolve(__dirname,dict),'utf8'),/keepSignedIn|Remember me/,dict);
+});
+
+// IR-1: a reminder's „მივიღე ✓“ tapped while signed out waits in a device queue. A fresh sign-in drops
+// it before the new account is set (it was made in another session); restoring a saved session keeps it.
+test('a fresh sign-in clears queued dose marks before setting the account; a restored session keeps them',async()=>{
+ const h=harness();await h.render().signIn('qa@medicard.test','synthetic');
+ assert.equal(h.accountLog[0],'dose-queue-cleared');
+ assert.equal(h.accountLog[1],`account:${h.full.user.id}`);
+ const restored=harness('saved-token');await restored.render().refresh();
+ assert.ok(restored.accountLog.includes(`account:${restored.full.user.id}`));
+ assert.ok(!restored.accountLog.includes('dose-queue-cleared'));
 });

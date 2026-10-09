@@ -3,7 +3,7 @@ import { Platform } from 'react-native';
 import { Notifications } from '@/lib/expoNotifications';
 import { addHydrationLog, todayYmd } from '@/lib/hydration';
 import { ensureLocalAccountScope, saveDoseLog } from '@/lib/medications.shared';
-import { medicationDoseRoute, notificationDoseEntry } from '@/lib/notificationDose';
+import { medicationDoseRoute, notificationDoseEntry, reminderOwner } from '@/lib/notificationDose';
 import { markEngageOpened } from '@/lib/mediEngagePrefs';
 import { HYDRATION_DROP_ML } from '@/types/hydration';
 import { tx } from '../i18n/locale.js';
@@ -138,10 +138,12 @@ export async function handleNotificationAction(
 
   // „მივიღე ✓“ marks the dose the reminder was for: dated by when it was delivered (a 23:30 dose
   // answered after midnight is still that evening's), saved even when the tap launched the app before
-  // sign-in finished (saveDoseLog resolves the account or queues the mark), and shown at once.
+  // sign-in finished (saveDoseLog resolves the account or queues the mark), and shown at once. Only
+  // into the account the reminder was scheduled for: a reminder left on a shared phone by someone who
+  // signed out never marks the next person's doses.
   const dose = action === NOTIF_ACTION.take ? notificationDoseEntry(data, response.notification.date, Date.now()) : null;
   if (dose) {
-    await saveDoseLog(dose, 'notification');
+    await saveDoseLog(dose, 'notification', reminderOwner(data));
     void import('@/lib/queryClient').then(({ invalidate }) => invalidate('medications'));
     return { navigate: false };
   }

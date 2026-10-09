@@ -42,6 +42,8 @@ function device({ snapshotUser = null, token = null } = {}) {
   let accountId = null;
   const events = [];
   const invalidated = [];
+  const cancelled = [];
+  const session = { snapshotUser, token };
   const localAccount = {
     localAccountId: () => accountId,
     setLocalAccountId: (id) => {
@@ -53,7 +55,7 @@ function device({ snapshotUser = null, token = null } = {}) {
     },
   };
   const storage = {
-    getToken: async () => token,
+    getToken: async () => session.token,
     getPreference: async (key) => prefs.get(key) ?? null,
     setPreference: async (key, value) => {
       prefs.set(key, value);
@@ -69,13 +71,19 @@ function device({ snapshotUser = null, token = null } = {}) {
   const shared = load(path.join(SRC, 'medications.shared.ts'), {
     '../i18n/locale.js': tx,
     '@/lib/localAccount': localAccount,
-    '@/lib/sessionSnapshot': { loadSessionSnapshot: async () => (snapshotUser ? { user: { id: snapshotUser } } : null) },
+    '@/lib/sessionSnapshot': {
+      loadSessionSnapshot: async () => (session.snapshotUser ? { user: { id: session.snapshotUser } } : null),
+    },
     '@/lib/storage': storage,
     '@/lib/jwtSubject': { jwtSubject: (value) => (value ? `jwt-${value}` : null) },
     '@/lib/notificationDose': notificationDoseModule,
     '@/lib/accountSync': { scheduleAccountSyncPush: () => {} },
     '@/lib/mediNotificationBrain': { requestEngageRefresh: () => {} },
     '@/lib/productObservability': { syncDoseEvent: async (event) => events.push(event) },
+    '@/lib/expoNotifications': {
+      Notifications: { cancelScheduledNotificationAsync: async (id) => cancelled.push(id) },
+    },
+    '@/lib/notificationPlan': () => load(path.join(SRC, 'notificationPlan.ts'), {}),
   });
   const actions = load(path.join(SRC, 'mediNotificationActions.ts'), {
     'react-native': { Platform: { OS: 'ios' } },
@@ -95,19 +103,32 @@ function device({ snapshotUser = null, token = null } = {}) {
     prefs,
     events,
     invalidated,
+    cancelled,
     signIn: (id) => localAccount.setLocalAccountId(id),
+    /** Sign-out: no account, no snapshot, no token (AuthContext signOut / deleteAccount). */
+    signOut: () => {
+      localAccount.setLocalAccountId(null);
+      session.snapshotUser = null;
+      session.token = null;
+    },
+    /** A fresh credential sign-in (AuthContext.adopt): the queue goes before the account is set. */
+    freshSignIn: async (id) => {
+      await shared.clearPendingDoseLogs();
+      localAccount.setLocalAccountId(id);
+      session.snapshotUser = id;
+    },
     logsOf: (id) => JSON.parse(prefs.get(`medicard.meds.doseLogs.${id}`) || '[]'),
   };
 }
 
 const flush = () => new Promise((resolve) => setImmediate(resolve));
 
-function takeTap(deliveredSeconds, time = '08:00') {
+function takeTap(deliveredSeconds, time = '08:00', extra = {}) {
   return {
     actionIdentifier: 'TAKE',
     notification: {
       date: deliveredSeconds,
-      request: { identifier: 'med:med-1:' + time, content: { data: { type: 'medication', medicationId: 'med-1', time } } },
+      request: { identifier: 'med:med-1:' + time, content: { data: { type: 'medication', medicationId: 'med-1', time, ...extra } } },
     },
   };
 }
@@ -163,6 +184,90 @@ test('with no readable session the mark waits on the device and lands once she i
   assert.equal(phone.prefs.get('medicard.meds.pendingDoseLogs'), undefined, 'the queue is applied once');
   assert.equal(phone.events.length, 1, 'the dose event goes out with the session');
   assert.equal((await phone.shared.loadDoseLogs()).length, 2);
+});
+
+// A shared phone. Her 09:00 MEDIPILL reminder stays in the notification centre after she signs out
+// (or deletes the account); someone taps its „მივიღე ✓“ while nobody is signed in. The old code queued
+// the mark for the device and the next account to sign in got her dose: in its log, on its calendar
+// and as a dose event on the server under its session. A mark now belongs to the reminder's account.
+const nowSeconds = () => Math.floor(Date.now() / 1000);
+
+test('a mark from her reminder tapped after she signed out never lands in the next account', async () => {
+  const phone = device({ snapshotUser: 'her' });
+  phone.signIn('her');
+  phone.signOut();
+  await phone.actions.handleNotificationAction(takeTap(nowSeconds(), '09:00', { owner: 'her' }));
+  assert.ok(phone.prefs.get('medicard.meds.pendingDoseLogs'), 'nobody is signed in: the mark waits');
+
+  // Even a session restored for someone else (no fresh sign-in in between) never gets it.
+  phone.signIn('him');
+  assert.equal((await phone.shared.loadDoseLogs()).length, 0);
+  await flush();
+  assert.deepEqual(phone.logsOf('him'), []);
+  assert.equal(phone.events.length, 0, 'no dose event under his session');
+  assert.equal(phone.prefs.get('medicard.meds.pendingDoseLogs'), undefined, 'the queue is gone');
+});
+
+test('a fresh sign-in drops a mark queued before it, even one from an older reminder without an owner', async () => {
+  const phone = device();
+  await phone.actions.handleNotificationAction(takeTap(nowSeconds(), '09:00'));
+  assert.ok(phone.prefs.get('medicard.meds.pendingDoseLogs'));
+  await phone.freshSignIn('him');
+  assert.equal((await phone.shared.loadDoseLogs()).length, 0);
+  await flush();
+  assert.equal(phone.events.length, 0);
+  assert.equal(phone.prefs.get('medicard.meds.pendingDoseLogs'), undefined);
+});
+
+test('her reminder tapped while someone else is signed in marks nothing', async () => {
+  const phone = device({ snapshotUser: 'him' });
+  const result = await phone.actions.handleNotificationAction(takeTap(nowSeconds(), '09:00', { owner: 'her' }));
+  await flush();
+  assert.equal(result.navigate, false);
+  assert.deepEqual(phone.logsOf('him'), []);
+  assert.deepEqual(phone.logsOf('her'), []);
+  assert.equal(phone.events.length, 0);
+});
+
+test('a cold-start „მივიღე ✓“ on her own reminder still lands in her account once her session is back', async () => {
+  const phone = device();
+  await phone.actions.handleNotificationAction(takeTap(nowSeconds(), '09:00', { owner: 'her' }));
+  assert.ok(phone.prefs.get('medicard.meds.pendingDoseLogs'));
+  // The phone was unlocked: the saved session (snapshot / token) restores her, no new sign-in.
+  phone.signIn('her');
+  const logs = await phone.shared.loadDoseLogs();
+  await flush();
+  assert.deepEqual(logs.map((row) => [row.medicationId, row.time, row.status]), [['med-1', '09:00', 'taken']]);
+  assert.equal(phone.events.length, 1);
+});
+
+test('her own reminder marks her dose while she is signed in', async () => {
+  const phone = device({ snapshotUser: 'her' });
+  await phone.actions.handleNotificationAction(takeTap(nowSeconds(), '09:00', { owner: 'her' }));
+  await flush();
+  assert.equal(phone.logsOf('her').length, 1);
+  assert.equal(phone.events.length, 1);
+});
+
+test('every medication reminder names the account it was scheduled for', () => {
+  const source = fs.readFileSync(path.join(SRC, 'notifications.ts'), 'utf8');
+  const content = source.slice(source.indexOf('function medicationReminderContent('));
+  const data = content.slice(content.indexOf('data: {'), content.indexOf('route:'));
+  assert.match(data, /\n\s*owner,\n/);
+  // Slot reminders and the moved one-offs both pass the owner they were scheduled for.
+  assert.match(source, /content: medicationReminderContent\(dose, expectedOwner\)/);
+  assert.match(source, /content: medicationReminderContent\(dose, owner, moved\.date\)/);
+  assert.equal((source.match(/scheduleMovedDose\(dose, (moved|item), expectedOwner\)/g) || []).length, 2);
+  assert.doesNotMatch(source, /medicationReminderContent\(dose\)/);
+});
+
+test('a fresh sign-in clears the queue before the account is set; a restored session does not', () => {
+  const auth = fs.readFileSync(path.resolve(SRC, '../store/AuthContext.tsx'), 'utf8');
+  const adopt = auth.slice(auth.indexOf('const adopt = useCallback('));
+  const clearAt = adopt.indexOf('clearPendingDoseLogs()');
+  assert.ok(clearAt > 0 && clearAt < adopt.indexOf('setLocalAccountId(result.user.id)'));
+  const hydrate = auth.slice(auth.indexOf('const hydrate = useCallback('), auth.indexOf('const refreshSession'));
+  assert.doesNotMatch(hydrate, /clearPendingDoseLogs/);
 });
 
 // Tapping the reminder itself (not „მივიღე ✓“): a medicine taken at 08:00, 14:00 and 20:00. The 20:00

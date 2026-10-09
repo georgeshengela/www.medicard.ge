@@ -103,16 +103,18 @@ let pendingDrain: Promise<void> | null = null;
 /** False once this process saw the queue empty, so ordinary reads skip the storage lookup. */
 let pendingMaybe = true;
 
-/** Moves queued marks into the signed-in account's dose log (once; concurrent readers share it). */
+/**
+ * Moves queued marks into the signed-in account's dose log (once; concurrent readers share it). Only
+ * marks from this account's reminders are applied; the rest of the queue is dropped with it.
+ */
 function drainPendingDoseLogs(): Promise<void> {
   if (!pendingMaybe) return Promise.resolve();
   if (pendingDrain) return pendingDrain;
   pendingDrain = (async () => {
-    const [{ getPreference, deletePreference }, { getScopedPreference, setScopedPreference }, pending] = await Promise.all([
-      import('@/lib/storage'),
-      import('@/lib/localAccount'),
-      import('@/lib/notificationDose'),
-    ]);
+    const [{ getPreference, deletePreference }, { getScopedPreference, setScopedPreference, localAccountId }, pending] =
+      await Promise.all([import('@/lib/storage'), import('@/lib/localAccount'), import('@/lib/notificationDose')]);
+    const owner = localAccountId();
+    if (!owner) return;
     const raw = await getPreference(PENDING_DOSE_KEY);
     if (!raw) {
       pendingMaybe = false;
@@ -125,8 +127,8 @@ function drainPendingDoseLogs(): Promise<void> {
     } catch {
       queue = [];
     }
-    const marks = pending.takePendingDoses(queue, Date.now());
-    if (marks.length) {
+    const marks = pending.takePendingDoses(queue, Date.now(), owner);
+    if (marks.length && localAccountId() === owner) {
       const current = parseDoseLogs(await getScopedPreference(DOSE_LOG_KEY));
       await setScopedPreference(DOSE_LOG_KEY, JSON.stringify(pending.mergeDoseLogs(current, marks)));
       void import('@/lib/accountSync').then(({ scheduleAccountSyncPush }) => scheduleAccountSyncPush());
@@ -178,13 +180,37 @@ export async function loadDoseLogs(): Promise<MedicationDoseLog[]> {
   }
 }
 
-export async function saveDoseLog(entry: MedicationDoseLog, source: 'app' | 'notification' = 'app'): Promise<void> {
+/**
+ * A fresh sign-in (password, SMS, Apple / Google, account switch) is about to set its account: a mark
+ * still queued from before it was made in another session (a reminder's „მივიღე ✓“ tapped while
+ * signed out) and must never land in this account. A restored session (snapshot / token) keeps it.
+ */
+export async function clearPendingDoseLogs(): Promise<void> {
+  try {
+    const { deletePreference } = await import('@/lib/storage');
+    await deletePreference(PENDING_DOSE_KEY);
+    pendingMaybe = false;
+  } catch {
+    /* sign-in never fails on this */
+  }
+}
+
+/**
+ * `reminderOwner`: for a reminder's „მივიღე ✓“, the account the reminder was scheduled for (null when
+ * an older version scheduled it without one). A mark is never written into another account.
+ */
+export async function saveDoseLog(
+  entry: MedicationDoseLog,
+  source: 'app' | 'notification' = 'app',
+  reminderOwner?: string | null,
+): Promise<void> {
   const { setScopedPreference } = await import('@/lib/localAccount');
   // Resolve the account before reading: reading with no account returns [] and writing would then
   // replace the whole history with this one mark.
-  if (!(await ensureLocalAccountScope())) {
+  const account = await ensureLocalAccountScope();
+  if (!account) {
     // No session could be read (e.g. a lock-screen tap before the phone was ever unlocked): keep the
-    // mark on the device and apply it once an account is signed in, instead of dropping it.
+    // mark on the device and apply it once its account is signed in again, instead of dropping it.
     const [{ getPreference, setPreference }, { queuePendingDose }] = await Promise.all([
       import('@/lib/storage'),
       import('@/lib/notificationDose'),
@@ -196,11 +222,16 @@ export async function saveDoseLog(entry: MedicationDoseLog, source: 'app' | 'not
     } catch {
       queue = [];
     }
-    await setPreference(PENDING_DOSE_KEY, JSON.stringify(queuePendingDose(queue, entry, Date.now())));
+    await setPreference(PENDING_DOSE_KEY, JSON.stringify(queuePendingDose(queue, entry, Date.now(), reminderOwner)));
     pendingMaybe = true;
+    // The dose is answered now: its „გადატანა“ reminder must not ring before the queue is applied
+    // (the id needs no account; nothing scheduled → nothing happens).
+    if (!entry.rescheduledTo) cancelMovedDoseReminder(entry);
     // Its dose event goes to the server when the queue is applied (there is no session to send it with now).
     return;
   }
+  // Another account's reminder (left on a shared phone): never mark this account's log with it.
+  if (reminderOwner && reminderOwner !== account) return;
   const existing = await loadDoseLogs();
   const key = `${entry.medicationId}|${entry.date}|${entry.time}`;
   const previous = existing.find((e) => `${e.medicationId}|${e.date}|${e.time}` === key);
@@ -219,7 +250,8 @@ export async function saveDoseLog(entry: MedicationDoseLog, source: 'app' | 'not
   syncDoseMark(entry, source);
 }
 
-function cancelMovedDoseReminder(entry: MedicationDoseLog) {
+/** Cancels the one-off reminder of a dose moved with „გადატანა“ (fire and forget; no account needed). */
+export function cancelMovedDoseReminder(entry: Pick<MedicationDoseLog, 'medicationId' | 'date' | 'time'>) {
   void Promise.all([import('@/lib/expoNotifications'), import('@/lib/notificationPlan')])
     .then(([{ Notifications }, { movedDoseReminderId }]) =>
       Notifications.cancelScheduledNotificationAsync(movedDoseReminderId(entry.medicationId, entry.date, entry.time)),

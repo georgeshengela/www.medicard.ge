@@ -3,10 +3,12 @@ import assert from 'node:assert/strict';
 import {
   PENDING_DOSE_TTL_MS,
   doseDateForNotification,
+  endedDoseMoves,
   mergeDoseLogs,
   notificationDoseEntry,
   notificationTimeMs,
   queuePendingDose,
+  reminderOwner,
   takePendingDoses,
 } from './notificationDose.ts';
 
@@ -106,10 +108,43 @@ test('pending queue: one entry per dose, newest wins', () => {
 test('pending queue: entries older than the TTL are dropped, fresh ones are applied', () => {
   const queuedAt = at(2026, 10, 8, 8, 1);
   const queue = queuePendingDose([], log('a', '2026-10-08', '08:00', '2026-10-08T05:01:00.000Z'), queuedAt);
-  assert.equal(takePendingDoses(queue, queuedAt + 60_000).length, 1);
-  assert.equal(takePendingDoses(queue, queuedAt + PENDING_DOSE_TTL_MS + 1).length, 0);
+  assert.equal(takePendingDoses(queue, queuedAt + 60_000, 'u1').length, 1);
+  assert.equal(takePendingDoses(queue, queuedAt + PENDING_DOSE_TTL_MS + 1, 'u1').length, 0);
   // Garbage from storage never crashes the drain.
-  assert.deepEqual(takePendingDoses([null, { medicationId: 3 }, 'x'] as unknown[], queuedAt), []);
-  const applied = takePendingDoses(queue, queuedAt + 60_000)[0];
+  assert.deepEqual(takePendingDoses([null, { medicationId: 3 }, 'x'] as unknown[], queuedAt, 'u1'), []);
+  const applied = takePendingDoses(queue, queuedAt + 60_000, 'u1')[0];
   assert.deepEqual(Object.keys(applied).sort(), ['date', 'medicationId', 'status', 'time', 'updatedAt']);
+});
+
+test('pending queue: a mark keeps the account of its reminder and is applied only to that account', () => {
+  const queuedAt = at(2026, 10, 8, 8, 1);
+  let queue = queuePendingDose([], log('a', '2026-10-08', '08:00', '2026-10-08T05:01:00.000Z'), queuedAt, 'owner-a');
+  queue = queuePendingDose(queue, log('b', '2026-10-08', '08:00', '2026-10-08T05:01:00.000Z'), queuedAt, 'owner-b');
+  // A reminder scheduled by older app JS names no account.
+  queue = queuePendingDose(queue, log('c', '2026-10-08', '08:00', '2026-10-08T05:01:00.000Z'), queuedAt, null);
+  assert.equal(queue.find((row) => row.medicationId === 'a')?.owner, 'owner-a');
+  assert.equal('owner' in (queue.find((row) => row.medicationId === 'c') ?? {}), false);
+  const forA = takePendingDoses(queue, queuedAt + 60_000, 'owner-a');
+  assert.deepEqual(forA.map((row) => row.medicationId).sort(), ['a', 'c']);
+  assert.deepEqual(Object.keys(forA[0]).sort(), ['date', 'medicationId', 'status', 'time', 'updatedAt'], 'the owner never enters a dose log row');
+  assert.deepEqual(takePendingDoses(queue, queuedAt + 60_000, 'someone-else').map((row) => row.medicationId), ['c']);
+});
+
+test('reminder owner: read from the payload; older reminders name none', () => {
+  assert.equal(reminderOwner({ owner: 'u1' }), 'u1');
+  assert.equal(reminderOwner({}), null);
+  assert.equal(reminderOwner({ owner: '' }), null);
+  assert.equal(reminderOwner({ owner: 7 }), null);
+});
+
+test('ended moves: a moved dose answered or moved back elsewhere, nothing else', () => {
+  const moved = { ...log('a', '2026-10-08', '09:00', '2026-10-08T05:00:00.000Z', 'pending'), rescheduledTo: '14:00' };
+  const other = { ...log('b', '2026-10-08', '09:00', '2026-10-08T05:00:00.000Z', 'pending'), rescheduledTo: '15:00' };
+  const plain = log('c', '2026-10-08', '09:00', '2026-10-08T05:00:00.000Z', 'pending');
+  const taken = log('a', '2026-10-08', '09:00', '2026-10-08T07:00:00.000Z', 'taken');
+  assert.deepEqual(endedDoseMoves([moved, other, plain], [taken, other, plain]).map((row) => row.medicationId), ['a']);
+  const movedBack = log('a', '2026-10-08', '09:00', '2026-10-08T07:00:00.000Z', 'pending');
+  assert.deepEqual(endedDoseMoves([moved], [movedBack]).map((row) => row.medicationId), ['a']);
+  assert.deepEqual(endedDoseMoves([moved], [{ ...moved, rescheduledTo: '16:00' }]), [], 'still moved: the next sync re-plans it');
+  assert.deepEqual(endedDoseMoves([taken], [moved]), [], 'a new move is never cancelled');
 });

@@ -11,7 +11,8 @@ const PENDING_DOSE_MAX = 50;
 const TIME_RE = /^([01]\d|2[0-3]):[0-5]\d$/;
 const YMD_RE = /^\d{4}-\d{2}-\d{2}$/;
 
-export type PendingDose = MedicationDoseLog & { queuedAt: number };
+/** `owner`: the account whose reminder the mark came from (absent for reminders scheduled by older app JS). */
+export type PendingDose = MedicationDoseLog & { queuedAt: number; owner?: string };
 
 function ymd(date: Date): string {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
@@ -49,6 +50,14 @@ export function doseDateForNotification(time: string, atMs: number): string {
 function reminderDoseDate(data: Record<string, unknown>, time: string, deliveredRaw: unknown, nowMs: number): string {
   if (typeof data.date === 'string' && YMD_RE.test(data.date)) return data.date;
   return doseDateForNotification(time, notificationTimeMs(deliveredRaw, nowMs));
+}
+
+/**
+ * The account a medication reminder was scheduled for (`data.owner`). Reminders scheduled by older
+ * app JS name none → null.
+ */
+export function reminderOwner(data: Record<string, unknown>): string | null {
+  return typeof data.owner === 'string' && data.owner ? data.owner : null;
 }
 
 /** The dose log row for a „მივიღე ✓“ tap, or null when the payload names no medication. */
@@ -107,16 +116,46 @@ function isDoseRow(row: unknown): row is PendingDose {
   );
 }
 
-/** Adds a mark to the queue (replacing an earlier mark of the same dose). */
-export function queuePendingDose(queue: readonly unknown[], entry: MedicationDoseLog, nowMs: number): PendingDose[] {
+/**
+ * Adds a mark to the queue (replacing an earlier mark of the same dose), with the account its
+ * reminder belongs to when the reminder names one.
+ */
+export function queuePendingDose(
+  queue: readonly unknown[],
+  entry: MedicationDoseLog,
+  nowMs: number,
+  owner?: string | null,
+): PendingDose[] {
   const kept = queue.filter(isDoseRow).filter((row) => doseKey(row) !== doseKey(entry));
-  return [...kept, { ...entry, queuedAt: nowMs }].slice(-PENDING_DOSE_MAX);
+  return [...kept, { ...entry, queuedAt: nowMs, ...(owner ? { owner } : {}) }].slice(-PENDING_DOSE_MAX);
 }
 
-/** The queued marks still worth applying, as plain dose log rows. */
-export function takePendingDoses(queue: readonly unknown[], nowMs: number): MedicationDoseLog[] {
+/**
+ * The queued marks still worth applying to `accountId`, as plain dose log rows. A mark whose reminder
+ * named another account is never applied here (a shared phone: the next person to sign in must not
+ * get it). A mark without an owner (a reminder from older app JS) keeps the old rule; the queue is
+ * cleared at every fresh sign-in, so it only ever reaches the session that was restored.
+ */
+export function takePendingDoses(queue: readonly unknown[], nowMs: number, accountId: string): MedicationDoseLog[] {
   return queue
     .filter(isDoseRow)
     .filter((row) => typeof row.queuedAt === 'number' && nowMs - row.queuedAt <= PENDING_DOSE_TTL_MS)
+    .filter((row) => !(typeof row.owner === 'string' && row.owner) || row.owner === accountId)
     .map(({ medicationId, date, time, status, updatedAt }) => ({ medicationId, date, time, status, updatedAt }));
+}
+
+/**
+ * Doses that were moved with „გადატანა“ in `before` and are no longer an open moved dose in `after`
+ * (answered, or moved back, on another device): their one-off moved reminder must not ring.
+ */
+export function endedDoseMoves(
+  before: readonly MedicationDoseLog[],
+  after: readonly MedicationDoseLog[],
+): MedicationDoseLog[] {
+  const now = new Map(after.map((row) => [doseKey(row), row]));
+  return before.filter((row) => {
+    if (row.status !== 'pending' || !row.rescheduledTo) return false;
+    const next = now.get(doseKey(row));
+    return !next || next.status !== 'pending' || !next.rescheduledTo;
+  });
 }

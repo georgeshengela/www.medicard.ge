@@ -294,6 +294,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       resetHealthPullCache();
       const { disconnectQuestSocket } = await import('@/lib/quest/socket');
       disconnectQuestSocket();
+      // A reminder's „მივიღე ✓“ queued before this sign-in was made in another session (tapped while
+      // signed out): drop it before the account is set, so no drain started by the change applies it.
+      await import('@/lib/medications.shared')
+        .then(({ clearPendingDoseLogs }) => clearPendingDoseLogs())
+        .catch(() => undefined);
       setLocalAccountId(result.user.id);
       await wipeLegacyUnscopedHealthCaches();
       await setToken(result.token);

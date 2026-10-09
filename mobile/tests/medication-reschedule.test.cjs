@@ -75,6 +75,8 @@ function phone() {
     events,
     scheduled,
     cancelled,
+    /** null: no account can be read (a lock-screen tap before the phone was unlocked after a restart). */
+    setAccount: (id) => localAccount.setLocalAccountId(id),
     logs: () => JSON.parse(prefs.get('medicard.meds.doseLogs.u1') || '[]'),
   };
 }
@@ -150,6 +152,43 @@ test('the moved reminder’s „მივიღე ✓“ marks the 09:00 dose o
   assert.equal(p.events.length, 1);
   assert.equal(p.events[0].time, '09:00');
   assert.ok(p.cancelled.includes('med:med-1:moved:2026-10-08:09:00'));
+});
+
+// The 09:00 dose moved to 14:00; the phone restarts and is still locked when the 09:00 daily reminder
+// arrives, and she taps its „მივიღე ✓“. No session can be read, so the mark waits in the device queue
+// — and the old code left the 14:00 one-off scheduled: it rang in the background for a dose she took.
+test('a queued „მივიღე ✓“ (no readable session) cancels the moved reminder right away', async () => {
+  const p = phone();
+  const { moveDose } = p.load('src/lib/doseReschedule.ts');
+  const actions = p.load('src/lib/mediNotificationActions.ts');
+  const { loadDoseLogs } = p.load('src/lib/medications.shared.ts');
+  await moveDose(DOSE, '2026-10-08', '14:00');
+  await flush();
+  assert.equal(p.cancelled.length, 0);
+
+  p.setAccount(null);
+  await actions.handleNotificationAction({
+    actionIdentifier: 'TAKE',
+    notification: {
+      date: new Date(2026, 9, 8, 9, 0).getTime() / 1000,
+      request: {
+        identifier: 'med:med-1:daily:09:00',
+        content: { data: { type: 'medication', medicationId: 'med-1', time: '09:00', owner: 'u1' } },
+      },
+    },
+  });
+  await flush();
+  assert.ok(p.prefs.get('medicard.meds.pendingDoseLogs'), 'the mark waits on the device');
+  assert.ok(p.cancelled.includes('med:med-1:moved:2026-10-08:09:00'), 'the 14:00 reminder will not ring');
+
+  // Her session is readable again: the dose is taken and no longer moved.
+  p.setAccount('u1');
+  const logs = await loadDoseLogs();
+  await flush();
+  assert.equal(logs.length, 1);
+  assert.equal(logs[0].status, 'taken');
+  assert.equal(logs[0].rescheduledTo, undefined);
+  assert.equal(p.events.length, 1);
 });
 
 test('Home’s undo after taking a moved dose puts it back at its moved time with its reminder', async () => {
@@ -303,5 +342,5 @@ test('every medication reminder sync puts the moved reminders back after its can
   const cancelAt = body.indexOf('cancelNotificationsByPrefix(NOTIF_PREFIX.med)');
   const readAt = body.indexOf('planMovedDoseReminders(await loadDoseLogs()');
   assert.ok(cancelAt > 0 && readAt > cancelAt, 'the dose logs are read after the cancel');
-  assert.match(body, /scheduleMovedDose\(dose, item\)/);
+  assert.match(body, /scheduleMovedDose\(dose, item, expectedOwner\)/);
 });

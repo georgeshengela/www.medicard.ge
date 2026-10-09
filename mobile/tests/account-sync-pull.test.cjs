@@ -10,6 +10,7 @@ const ts = require('typescript');
 // account must never be written into another that signed in meanwhile. Runs the real accountSync.ts
 // with storage and the API replaced by an in-memory device.
 const FILE = path.resolve(__dirname, '../src/lib/accountSync.ts');
+const notificationDose = require('./helpers/loadTs.cjs')({})('src/lib/notificationDose.ts');
 
 function load(modules) {
   const source = ts.transpileModule(fs.readFileSync(FILE, 'utf8'), {
@@ -47,12 +48,15 @@ function device(accountId) {
     answer = resolve;
   });
   const puts = [];
+  const cancelled = [];
   const sync = load({
     '@/lib/labMerge': { mergeLabPanelLists: (a, b) => [...a, ...b] },
     '@/lib/labStore': { loadCanonicalLabPanels: async () => [], replaceLabPanels: async () => {} },
     '@/lib/medications.shared': {
       loadDoseLogs: async () => JSON.parse(prefs.get(`medicard.meds.doseLogs.${account}`) || '[]'),
+      cancelMovedDoseReminder: (row) => cancelled.push(`med:${row.medicationId}:moved:${row.date}:${row.time}`),
     },
+    '@/lib/notificationDose': notificationDose,
     '@/lib/localAccount': {
       localAccountId: () => account,
       setScopedPreference: async (base, value) => {
@@ -74,6 +78,7 @@ function device(accountId) {
     sync,
     prefs,
     puts,
+    cancelled,
     answer: (state) => answer({ state }),
     switchTo: (id) => {
       account = id;
@@ -115,4 +120,25 @@ test('an answer for one account is never written into another that signed in mea
 
   assert.deepEqual(phone.logsOf('u2').map((row) => row.medicationId), ['med-b']);
   assert.equal(phone.puts.length, 0, 'nothing is pushed for the wrong account');
+});
+
+// The 09:00 dose was moved to 14:00 on the phone and then marked taken on the web. Opening Records pulls
+// the account: the taken row wins the merge, and the old code left the 14:00 one-off scheduled — it
+// rang in the background for a dose already taken.
+test('a moved dose answered on another device loses its moved reminder after the pull', async () => {
+  const phone = device('u1');
+  const moved = { medicationId: 'med-1', date: '2026-10-08', time: '09:00', status: 'pending', rescheduledTo: '14:00', updatedAt: '2026-10-08T05:00:00.000Z' };
+  const stillMoved = { ...moved, medicationId: 'med-2' };
+  phone.setLogs('u1', [moved, stillMoved]);
+
+  const pulling = phone.sync.pullAccountState();
+  await flush();
+  phone.answer({
+    doseLogs: [{ medicationId: 'med-1', date: '2026-10-08', time: '09:00', status: 'taken', updatedAt: '2026-10-08T07:00:00.000Z' }],
+    updatedAt: '2026-10-08T07:00:00.000Z',
+  });
+  await pulling;
+
+  assert.equal(phone.logsOf('u1').find((row) => row.medicationId === 'med-1').status, 'taken');
+  assert.deepEqual(phone.cancelled, ['med:med-1:moved:2026-10-08:09:00'], 'only the answered dose loses its moved reminder');
 });

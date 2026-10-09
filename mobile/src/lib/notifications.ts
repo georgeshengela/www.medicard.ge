@@ -518,9 +518,11 @@ export async function cancelNotificationsByPrefix(prefix: string): Promise<void>
 
 /**
  * A medication reminder's content. A dose moved with „გადატანა“ also names its day (`date`), so its
- * „მივიღე ✓“ and its tap reach that dose and not the day it happens to be delivered on.
+ * „მივიღე ✓“ and its tap reach that dose and not the day it happens to be delivered on. `owner` is the
+ * account it was scheduled for: its „მივიღე ✓“ never marks a dose in another account (a delivered
+ * reminder stays on screen after a sign-out).
  */
-function medicationReminderContent(dose: ScheduledDose, date?: string) {
+function medicationReminderContent(dose: ScheduledDose, owner: string, date?: string) {
   const copy = applyPushCopy('medication', {
     name: dose.medName,
     dosage: [dose.dosage, dose.notes].map((part) => String(part ?? '').trim()).filter(Boolean).join(' · '),
@@ -536,16 +538,17 @@ function medicationReminderContent(dose: ScheduledDose, date?: string) {
       medicationId: dose.medicationId,
       time: dose.time,
       ...(date ? { date } : {}),
+      owner,
       // The reminded slot, so a tap opens this dose and not the first one of the day.
       route: `/medications/${dose.medicationId}?time=${dose.time}${date ? `&date=${date}` : ''}`,
     },
   };
 }
 
-function scheduleMovedDose(dose: ScheduledDose, moved: MovedDoseReminder) {
+function scheduleMovedDose(dose: ScheduledDose, moved: MovedDoseReminder, owner: string) {
   return Notifications.scheduleNotificationAsync({
     identifier: moved.identifier,
-    content: medicationReminderContent(dose, moved.date),
+    content: medicationReminderContent(dose, owner, moved.date),
     trigger: {
       type: Notifications.SchedulableTriggerInputTypes.DATE,
       date: moved.at,
@@ -578,7 +581,7 @@ export async function scheduleMovedDoseReminder(
   );
   if (!moved || localAccountId() !== expectedOwner) return false;
   try {
-    await scheduleMovedDose(dose, moved);
+    await scheduleMovedDose(dose, moved, expectedOwner);
     return true;
   } catch {
     return false;
@@ -625,7 +628,7 @@ export async function syncMedicationReminders(
     const dose = schedule.find((row) => row.medicationId === item.medicationId && row.time === item.time);
     if (!dose) continue;
     try {
-      await scheduleMovedDose(dose, item);
+      await scheduleMovedDose(dose, item, expectedOwner);
       scheduled += 1;
     } catch {
       /* skip this one */
@@ -645,7 +648,7 @@ export async function syncMedicationReminders(
     try {
       await Notifications.scheduleNotificationAsync({
         identifier: `${NOTIF_PREFIX.med}${slot.identifier}`,
-        content: medicationReminderContent(dose),
+        content: medicationReminderContent(dose, expectedOwner),
         trigger:
           slot.date
             ? { type: Notifications.SchedulableTriggerInputTypes.DATE, date: slot.date, ...(Platform.OS === 'android' ? { channelId: MED_CHANNEL_ID } : {}) }
