@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { continuesLoggedPeriod, planCycleHealthWrite } from './cycleHealthWrite.ts';
+import { continuesLoggedPeriod, periodStartTapHealthWrite, planCycleHealthWrite } from './cycleHealthWrite.ts';
 import { EMPTY_CYCLE_LOG, formFromCycleLog } from './cycleLogForm.ts';
 import type { CycleLog } from './api.ts';
 
@@ -121,4 +121,32 @@ test('CYC-03: the save path is fire-and-forget and gated on the plan', () => {
   // HealthKit gets an explicit start flag on every flow sample (true only for a real start).
   const ios = readFileSync(new URL('./healthSyncPlatform.ios.ts', import.meta.url), 'utf8');
   assert.match(ios, /\{ HKMenstrualCycleStart: payload\.isPeriodStart === true \}/);
+});
+
+// IR-6: the one-tap „მენსტრუაცია დაიწყო“ (Home hero, /cycle hero, widget) never went through
+// persistCycleLog, so Health never got the start; the sheet saved after it saw `medium` already stored
+// and wrote „not a start“ (or nothing).
+test('IR-6: the one-tap start is day 1 of a cycle in Health; a later sheet save adds only what changed', () => {
+  assert.deepEqual(periodStartTapHealthWrite(D, null), {
+    date: D,
+    flow: 'medium',
+    bbt: null,
+    cervicalMucus: null,
+    isPeriodStart: true,
+  });
+  // A dry, spotting or notes-only day before the tap: the tap made it day 1.
+  for (const flow of ['none', 'spotting', null]) {
+    assert.equal(periodStartTapHealthWrite(D, log(D, { flow, symptoms: ['cramps'] }))?.isPeriodStart, true, String(flow));
+  }
+  // Bleeding already logged: the tap changed nothing (the server keeps her level), Health already has the day.
+  for (const flow of ['light', 'medium', 'heavy']) assert.equal(periodStartTapHealthWrite(D, log(D, { flow })), null, flow);
+  // After the tap the sheet's stored day is `medium`: picking heavy adds the flow, never a second start.
+  const afterTap = formFromCycleLog(log(D, { flow: 'medium' }));
+  assert.deepEqual(planCycleHealthWrite({ date: D, form: { ...afterTap, flow: 'heavy' }, base: afterTap, continuesPeriod: false }), {
+    date: D,
+    flow: 'heavy',
+    bbt: null,
+    cervicalMucus: null,
+    isPeriodStart: false,
+  });
 });

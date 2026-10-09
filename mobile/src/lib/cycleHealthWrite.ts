@@ -95,3 +95,24 @@ export function planCycleHealthWrite({
     isPeriodStart: writeFlow && newStart,
   };
 }
+
+/**
+ * The one-tap „მენსტრუაცია დაიწყო“ (Home hero, /cycle hero, the widget — IR-6) stores `medium` on the day
+ * outside `persistCycleLog`, so its callers write it to Health themselves: that day as a cycle start, or
+ * nothing when bleeding was already logged there (the tap changed nothing). Later sheet saves of the day
+ * then add only what they change. `before` = the day's row before the tap. Only those two callers use
+ * it — never `queueApplyPeriod`, which the month editor also uses to add a day to a past period.
+ */
+export function periodStartTapHealthWrite(
+  date: string,
+  before: { flow?: string | null } | null | undefined,
+): CycleHealthPayload | null {
+  // The server keeps a logged light / heavy as it was (`alreadyLogged`): never a `medium` sample over it.
+  if (isBleedFlow(before?.flow ?? null)) return null;
+  return planCycleHealthWrite({
+    date,
+    form: { flow: 'medium', bbt: '', mucus: null, bbtFromHealth: null },
+    base: { flow: before?.flow ?? null, bbt: '', mucus: null },
+    markStart: true,
+  });
+}

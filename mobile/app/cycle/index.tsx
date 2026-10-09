@@ -58,6 +58,8 @@ import { displayPhaseLabel } from '@/lib/cycleHonesty';
 import { showContraceptionContextCard, showFertilityUi } from '@/lib/cycleContraception';
 import { alertPresentation, confidencePresentation, mergeOwnerClassifiedPeriodOntoMarks } from '@/lib/cyclePresentation.js';
 import { formFromCycleLog, isBleedFlow, persistCycleLog } from '@/lib/cycleLogSave';
+import { periodStartTapHealthWrite } from '@/lib/cycleHealthWrite';
+import { syncCycleLogToHealth } from '@/lib/healthSync';
 import { cyclePersistFeedback } from '@/lib/cycleOfflineCore';
 import type { CycleLogForm } from '@/components/cycle/CycleLogTabs';
 import { hasPmsPattern } from '@/lib/cycleAnalytics';
@@ -761,12 +763,17 @@ export default function CycleHome() {
   const startPeriodNow = async (source: 'hero' | 'widget' = 'hero') => {
     if (!user?.id || periodBusy) return;
     // Undo puts back exactly this: today's row and the last period start shown before the tap (CYC-04).
-    const undo = periodStartUndo(bundle?.logs.find((l) => l.date === today) ?? null, bundle?.profile.lastPeriodStart);
+    const beforeRow = bundle?.logs.find((l) => l.date === today) ?? null;
+    const undo = periodStartUndo(beforeRow, bundle?.profile.lastPeriodStart);
     setPeriodBusy(true);
     setError(null);
     try {
       const result = await queueApplyPeriod(user.id, { action: 'start', date: today });
       if (storedNothing(result)) return;
+      // Apple Health / Health Connect get day 1 as a cycle start (IR-6): fire-and-forget, only when sync
+      // is on, never asks for access. Undo cannot take a Health sample back (none is ever deleted).
+      const health = periodStartTapHealthWrite(today, beforeRow);
+      if (health) void syncCycleLogToHealth(health).catch(() => undefined);
       if (source === 'widget') trackCyclePeriodStarted('widget');
       else trackCyclePeriodStarted('hero');
       // TTC: a new cycle is not a success to celebrate — a plain selection tick (brief §9 item 16).
