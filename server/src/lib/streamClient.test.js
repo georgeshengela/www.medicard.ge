@@ -143,8 +143,11 @@ test('an answer she left as it finished writes no row', async (t) => {
  * persistChatTurn with the real limiter (enforceAiQuota → settle / release) over a fake PeriodUsage row and
  * a fake transaction that applies its writes only when the work resolves. `closeAt` closes the response at
  * one point of the save, as her phone does when she closes Medi.
+ * Options: `probe` collects the transaction options and reads made on the global client while the
+ * transaction is open; `poolOfOne` makes such a read stall until the transaction expires (the only pool
+ * connection is the transaction's own).
  */
-async function saveWithCloseAt(closeAt) {
+async function saveWithCloseAt(closeAt, { probe = {}, poolOfOne = false } = {}) {
   const { EventEmitter } = await import('node:events');
   const { prisma } = await import('./prisma.js');
   const { enforceAiQuota } = await import('../middleware/aiLimiter.js');
@@ -156,13 +159,26 @@ async function saveWithCloseAt(closeAt) {
   const req = { user: { id: USER }, lang: 'ka' };
   const res = Object.assign(new EventEmitter(), { status: () => res, json: () => res });
   let gone = false;
+  let txOpen = 0;
+  probe.globalReadsInTx = 0;
   const pause = async (point) => {
     if (point !== closeAt) return;
     gone = true;
     res.emit('close');
     await sleep(5); // the close handler runs while this statement is still on its way
   };
-  patch(prisma.user, 'findUnique', async () => ({ id: USER, package: null, packageExpiresAt: null }), 'user');
+  const userRow = async () => ({ id: USER, package: null, packageExpiresAt: null });
+  patch(prisma.user, 'findUnique', async () => {
+    if (txOpen > 0) {
+      probe.globalReadsInTx += 1;
+      if (poolOfOne) {
+        // It waits for a second connection that only frees when the transaction ends: the transaction
+        // expires first and the save rolls back (what a busy pool did to finished answers).
+        throw Object.assign(new Error('Transaction API error: Transaction already closed: The timeout for this transaction was 5000 ms'), { code: 'P2028' });
+      }
+    }
+    return userRow();
+  }, 'user');
   patch(prisma, '$executeRawUnsafe', async () => 0);
   // reserveAiCredit's UPDATE … RETURNING
   patch(prisma, '$queryRaw', async () => { db.reserved += 1; return [{ count: 0, reserved: db.reserved, resetAt: null, notifyAt: null }]; });
@@ -173,21 +189,29 @@ async function saveWithCloseAt(closeAt) {
     db.releases += 1;
     return 1;
   });
-  patch(prisma, '$transaction', async (work) => {
+  patch(prisma, '$transaction', async (work, options) => {
+    probe.txOptions = options;
     const staged = { sessions: [], commits: 0 };
     const tx = {
+      // commitAiCredit's package read, through the transaction
+      user: { findUnique: userRow },
       chatSession: {
         create: async ({ data }) => { await pause('session'); const row = { id: `s-${closeAt}`, ...data }; staged.sessions.push(row); return row; },
       },
       // commitAiCredit (unlimited) inside the transaction
       $executeRaw: async () => { await pause('credit'); if (db.reserved <= staged.commits) return 0; staged.commits += 1; return 1; },
     };
-    const result = await work(tx);
-    await pause('commit');
-    db.sessions.push(...staged.sessions);
-    db.reserved -= staged.commits;
-    db.commits += staged.commits;
-    return result;
+    txOpen += 1;
+    try {
+      const result = await work(tx);
+      await pause('commit');
+      db.sessions.push(...staged.sessions);
+      db.reserved -= staged.commits;
+      db.commits += staged.commits;
+      return result;
+    } finally {
+      txOpen -= 1;
+    }
   });
   try {
     await new Promise((resolve, reject) => enforceAiQuota(req, res, (error) => (error ? reject(error) : resolve())));
@@ -223,6 +247,41 @@ test('closing Medi before or during the save stores and charges nothing and free
 
 test('a close during the final commit keeps the answer and its one credit together (the window left)', async () => {
   assert.deepEqual(await saveWithCloseAt('commit'), { outcome: 'kept', sessions: 1, commits: 1, releases: 0, reserved: 0 });
+});
+
+// Integration review IR2-2 (2026-10-09): the credit commit inside the save read her package on the global
+// client. Each save held its transaction's connection while waiting for a second one from the same pool, under
+// Prisma's 2 s / 5 s interactive defaults: a busy pool (or as many finishing answers as pool connections)
+// expired the transaction and the answer she had just read was thrown away.
+test('a finished answer is saved even when the pool has no second connection for it', async () => {
+  const probe = {};
+  assert.deepEqual(await saveWithCloseAt('never', { probe, poolOfOne: true }), { outcome: 'kept', sessions: 1, commits: 1, releases: 0, reserved: 0 });
+  assert.equal(probe.globalReadsInTx, 0, 'nothing is read on a second connection while the transaction holds one');
+  assert.ok(probe.txOptions?.maxWait >= 8_000, 'a busy pool is waited for, not given up on after 2 s');
+  assert.ok(probe.txOptions?.timeout >= 15_000, 'the save is not cut at the 5 s default');
+});
+
+test('commitAiCredit and the package read go through the transaction client they are given', async (t) => {
+  const { prisma } = await import('./prisma.js');
+  const { commitAiCredit } = await import('./usage.js');
+  const { getUserPackage } = await import('./packages.js');
+  const originals = [[prisma.user, 'findUnique', prisma.user.findUnique], [prisma.package, 'findUnique', prisma.package.findUnique]];
+  const outside = async () => { throw new Error('read on the global client inside a transaction'); };
+  prisma.user.findUnique = outside;
+  prisma.package.findUnique = outside;
+  t.after(() => { for (const [target, key, value] of originals) target[key] = value; });
+  const reads = [];
+  const tx = {
+    // An expired paid package also reads the FREE package: through the transaction too.
+    user: { findUnique: async ({ where }) => { reads.push('user'); return { id: where.id, packageExpiresAt: new Date(Date.now() - 86_400_000), package: { code: 'STANDARD' } }; } },
+    package: { findUnique: async () => { reads.push('package'); return { code: 'FREE' }; } },
+    $executeRaw: async () => 1,
+  };
+  const found = await getUserPackage('u-tx', tx);
+  assert.equal(found.package.code, 'FREE');
+  assert.equal(found.expired, true);
+  assert.equal((await commitAiCredit('u-tx', tx)).unlimited, true);
+  assert.deepEqual(reads, ['user', 'package', 'user', 'package']);
 });
 
 // Review (2026-10-08): enforceAiQuota listens for 'close' only after its own reads. A person gone during

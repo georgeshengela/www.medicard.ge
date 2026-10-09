@@ -136,6 +136,12 @@ function clientGoneError() {
 }
 
 /**
+ * A finished answer's save transaction waits for a connection as long as the old non-transaction save did
+ * (Prisma's 10 s pool wait), not the 2 s / 5 s interactive defaults that threw the answer away under load.
+ */
+const AI_SAVE_TRANSACTION = Object.freeze({ maxWait: 10_000, timeout: 15_000 });
+
+/**
  * Saves one answered turn and takes its AI credit in one transaction, inside the limiter's settlement:
  * a close that lands during the save waits for it instead of freeing the slot under a stored answer, and
  * a close just before it finds the slot released and writes nothing. `gone` (streamed answers) is read
@@ -175,7 +181,7 @@ export async function persistChatTurn({ req, session, history, message, mode, an
     const usage = await commitAiCredit(req.user.id, tx);
     if (typeof gone === 'function' && gone()) throw clientGoneError();
     return { saved, usage };
-  }));
+  }, AI_SAVE_TRANSACTION));
   req.usage = usage;
   // A new chat exists only after its first answer: link that answer's log row too, or admin
   // shows the first question apart from the rest of the conversation.
@@ -1096,7 +1102,7 @@ aiRouter.post(
       await tx.aiInteraction.update({ where: { id: answer.interactionId }, data: { medicalRecordId: record.id } });
       const usage = await commitAiCredit(req.user.id, tx);
       return { record, usage };
-    }));
+    }, AI_SAVE_TRANSACTION));
     return res.status(201).json({
       recordId: record.id,
       result,
