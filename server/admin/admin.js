@@ -2593,17 +2593,119 @@ const AI_REPLY_FIELDS = [
   ['unmatched', 'ვერ შესაბამისდა'], ['disclaimer', 'გაფრთხილება'],
 ];
 const AI_URGENCY = { routine: 'გეგმიური', urgent: 'სასწრაფო', emergency: 'გადაუდებელი' };
+const AI_URGENCY_TONE = { routine: 'is-ok', urgent: 'is-warn', emergency: 'is-bad' };
+const AI_VALUE_KA = { FEMALE: 'ქალი', MALE: 'კაცი', OTHER: 'სხვა' };
+/** An error the admin has looked at (server AI_ERROR_REVIEWED): out of every error count, still in the log. */
+const AI_ERROR_REVIEWED = 'ERROR_REVIEWED';
 
-/** Structured replies (symptom check, lab names, weight advice) are JSON: show the known fields, keep the raw JSON folded. */
+/** **bold**, *italic*, `code` on already-escaped text. */
+function aiInline(html) {
+  return html
+    .replace(/`([^`\n]+)`/g, '<code>$1</code>')
+    .replace(/\*\*(?!\s)([^*\n]+?)\*\*/g, '<strong>$1</strong>')
+    .replace(/__(?!\s)([^_\n]+?)__/g, '<strong>$1</strong>')
+    .replace(/(^|[\s(„"])\*(?![\s*])([^*\n]+?)\*(?=[\s.,;:!?)“"]|$)/g, '$1<em>$2</em>');
+}
+
+/** Medi's markdown (headings, lists, tables, quotes, rules) as safe HTML: every line is escaped first. */
+function aiMarkdown(text) {
+  const lines = String(text || '').replace(/\r\n?/g, '\n').split('\n');
+  const out = [];
+  let para = [];
+  let list = null;
+  let table = null;
+  const inline = (s) => aiInline(escapeHtml(s.trim()));
+  const flushPara = () => { if (para.length) out.push(`<p>${para.map(inline).join('<br>')}</p>`); para = []; };
+  const flushList = () => { if (list) out.push(`<${list.tag}>${list.items.join('')}</${list.tag}>`); list = null; };
+  const flushTable = () => {
+    if (!table) return;
+    const cells = (row) => row.replace(/^\s*\||\|\s*$/g, '').split('|').map((c) => c.trim());
+    const [head, ...body] = table.filter((r) => !/^\s*\|?\s*:?-{2,}/.test(r));
+    if (head) {
+      out.push(`<div class="s-chat-table"><table><thead><tr>${cells(head).map((c) => `<th>${inline(c)}</th>`).join('')}</tr></thead><tbody>${body
+        .map((r) => `<tr>${cells(r).map((c) => `<td>${inline(c)}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`);
+    }
+    table = null;
+  };
+  const flush = () => { flushPara(); flushList(); flushTable(); };
+  for (const line of lines) {
+    let m;
+    if (!line.trim()) { flush(); continue; }
+    if (/^\s*\|.*\|\s*$/.test(line)) { flushPara(); flushList(); (table ||= []).push(line); continue; }
+    flushTable();
+    if ((m = /^\s{0,3}#{1,6}\s+(.+?)\s*#*\s*$/.exec(line))) { flush(); out.push(`<h5>${inline(m[1])}</h5>`); continue; }
+    if (/^\s*([-*_])(\s*\1){2,}\s*$/.test(line)) { flush(); out.push('<hr>'); continue; }
+    if ((m = /^\s*>\s?(.*)$/.exec(line))) { flush(); out.push(`<blockquote>${inline(m[1])}</blockquote>`); continue; }
+    if ((m = /^(\s*)(?:[-*•+]|(\d+)[.)])\s+(.+)$/.exec(line))) {
+      flushPara();
+      const tag = m[2] ? 'ol' : 'ul';
+      if (list && list.tag !== tag && !m[1]) flushList();
+      list ||= { tag, items: [] };
+      list.items.push(`<li${m[1].length >= 2 ? ' class="is-sub"' : ''}>${inline(m[3])}</li>`);
+      continue;
+    }
+    if (list && /^\s{2,}\S/.test(line)) {
+      const last = list.items.length - 1;
+      list.items[last] = list.items[last].replace(/<\/li>$/, `<br>${inline(line)}</li>`);
+      continue;
+    }
+    flushList();
+    para.push(line);
+  }
+  flush();
+  return out.join('') || '<p class="s-muted">—</p>';
+}
+
+/** The question side: plain text, or the data the app sent (key: value lines) as a tidy, foldable list. */
+function aiPromptHtml(text) {
+  const t = aiPromptText(text).trim();
+  if (!t) return '<div class="s-chat-bubble"><span class="s-muted">შეკითხვის ტექსტი არ შენახულა.</span></div>';
+  const lines = t.split('\n').map((l) => l.trimEnd()).filter((l) => l.trim());
+  const kvRe = /^\s*[-•]?\s*([^:\n]{1,48}):\s*(.*)$/;
+  const kv = lines.filter((l) => kvRe.test(l)).length;
+  if (/^USER_LOGGED:/i.test(t) || (lines.length >= 4 && kv / lines.length >= 0.6)) {
+    const rows = lines.filter((l) => !/^USER_LOGGED:?\s*$/i.test(l.trim())).map((l) => {
+      const m = kvRe.exec(l);
+      if (!m) return `<div class="is-line">${escapeHtml(l.replace(/^\s*[-•]\s*/, ''))}</div>`;
+      const v = m[2].trim();
+      if (!v) return `<div class="is-head">${escapeHtml(m[1])}</div>`;
+      return `<div><dt>${escapeHtml(m[1])}</dt><dd>${escapeHtml(AI_VALUE_KA[v] || v)}</dd></div>`;
+    });
+    const dl = `<dl class="s-chat-facts">${rows.join('')}</dl>`;
+    return `<div class="s-chat-bubble is-context"><p class="s-chat-kicker">${icon('layers')} აპმა Medi-ს გაუგზავნა მონაცემები</p>${rows.length > 12
+      ? `<details class="s-chat-more"><summary>ყველა მონაცემი · ${rows.length} სტრიქონი</summary>${dl}</details>` : dl}</div>`;
+  }
+  const raw = t.split('\n');
+  if (raw.length > 14 || t.length > 900) {
+    const cut = raw.length > 14 ? raw.slice(0, 6).join('\n').length : 420;
+    return `<div class="s-chat-bubble"><div class="s-chat-plain">${escapeHtml(t.slice(0, cut).trimEnd())}…</div>
+      <details class="s-chat-more"><summary>სრული ტექსტი · ${raw.length} სტრიქონი</summary><div class="s-chat-plain">${escapeHtml(t)}</div></details></div>`;
+  }
+  return `<div class="s-chat-bubble"><div class="s-chat-plain">${escapeHtml(t)}</div></div>`;
+}
+
+/** Structured replies (symptom check, cycle tips, lab names, weight advice) are JSON: readable blocks, raw JSON folded. */
 function aiReplyHtml(text) {
   let data = null;
   try { data = JSON.parse(text); } catch { data = null; }
-  if (!data || typeof data !== 'object') return `<div class="s-medi-text">${escapeHtml(text || '—')}</div>`;
+  if (!data || typeof data !== 'object') return `<div class="s-chat-md">${aiMarkdown(text)}</div>`;
   const src = data.result && typeof data.result === 'object' ? data.result : data;
   const item = (key, v) => {
-    if (v && typeof v === 'object') return escapeHtml([v.nameKa || v.name || '', v.likelihood != null ? `${v.likelihood}%` : ''].filter(Boolean).join(' · ') || '—');
-    return escapeHtml(key === 'urgency' ? AI_URGENCY[v] || String(v) : String(v));
+    if (v && typeof v === 'object') {
+      const name = v.nameKa || v.name || v.title || '';
+      const pct = v.likelihood != null ? ` <span class="s-badge is-plain">${escapeHtml(String(v.likelihood))}%</span>` : '';
+      const body = v.body || v.descriptionKa || v.description || '';
+      return `${name ? `<b>${escapeHtml(name)}</b>` : ''}${pct}${body ? `<span class="s-chat-sub">${escapeHtml(body)}</span>` : ''}` || '—';
+    }
+    if (key === 'urgency') return `<span class="s-badge ${AI_URGENCY_TONE[v] || 'is-plain'}">${escapeHtml(AI_URGENCY[v] || String(v))}</span>`;
+    return aiInline(escapeHtml(String(v)));
   };
+  const blocks = [];
+  if (src.headline) blocks.push(`<p class="s-chat-lead">${escapeHtml(src.headline)}</p>`);
+  if (src.phaseLabel) blocks.push(`<p><span class="s-badge is-plain">${escapeHtml(src.phaseLabel)}</span></p>`);
+  if (Array.isArray(src.cards) && src.cards.length) {
+    blocks.push(`<div class="s-chat-cards">${src.cards.map((c) => `<div class="s-chat-card"><b>${escapeHtml(c?.title || '')}</b><p>${escapeHtml(c?.body || '')}</p></div>`).join('')}</div>`);
+  }
   const seen = new Set();
   const rows = AI_REPLY_FIELDS.filter(([key, label]) => {
     const v = src[key];
@@ -2614,8 +2716,69 @@ function aiReplyHtml(text) {
     const v = src[key];
     return `<div><dt>${label}</dt><dd>${Array.isArray(v) ? `<ul>${v.map((x) => `<li>${item(key, x)}</li>`).join('')}</ul>` : item(key, v)}</dd></div>`;
   });
-  return `${rows.length ? `<dl class="s-medi-dl">${rows.join('')}</dl>` : '<p class="s-muted">სტრუქტურირებული პასუხი — სრული სახით ქვემოთ, ტექნიკურ დეტალებშია.</p>'}
+  if (rows.length) blocks.push(`<dl class="s-medi-dl">${rows.join('')}</dl>`);
+  if (!blocks.length) blocks.push('<p class="s-muted">სტრუქტურირებული პასუხი — სრული სახით ტექნიკურ დეტალებშია.</p>');
+  return `<div class="s-chat-md">${blocks.join('')}</div>
     <details class="s-details s-tech-details"><summary>ტექნიკური დეტალები</summary><div><pre>${escapeHtml(JSON.stringify(data, null, 2))}</pre></div></details>`;
+}
+
+const aiTime = (iso) => (window.AdminV3?.formatDate ? window.AdminV3.formatDate(iso, 'datetime') : aiWhen(iso));
+const aiFeedbackBadge = (fb) => (!fb ? '' : fb.rating > 0 ? '<span class="s-badge is-plain is-ok">კარგი შეფასება</span>' : '<span class="s-badge is-plain is-bad">ცუდი შეფასება</span>');
+
+/** One question and Medi's answer as chat bubbles; a failed answer carries „ჩაქრობა“ / „დაბრუნება“. */
+function aiTurnHtml(t, { details = true } = {}) {
+  const ok = t.status === 'OK';
+  const reviewed = t.status === AI_ERROR_REVIEWED;
+  const fb = t.feedback?.[0];
+  const answer = ok
+    ? aiReplyHtml(t.assistantReply)
+    : `<p class="s-chat-err">${icon('alert')}<span>${escapeHtml(aiErrorText(t.errorMessage))}</span></p>
+       <div class="s-chat-err-actions">${reviewed
+        ? `<span class="s-badge is-plain">${icon('check')} განხილულია</span><button type="button" class="s-chat-link" data-ai-reopen="${escapeHtml(t.id)}">დაბრუნება</button>`
+        : `<button type="button" class="btn compact" data-ai-review="${escapeHtml(t.id)}">${icon('check')} განხილულია — ჩაქრობა</button>`}</div>`;
+  return `<div class="s-chat-turn">
+    <div class="s-chat-msg is-user">${aiPromptHtml(t.userPrompt)}<div class="s-chat-meta">${escapeHtml(aiTime(t.createdAt))}</div></div>
+    <div class="s-chat-msg is-medi">
+      <span class="s-chat-avatar" aria-hidden="true">M</span>
+      <div class="s-chat-col">
+        <div class="s-chat-bubble${ok ? '' : reviewed ? ' is-reviewed' : ' is-error'}">${answer}</div>
+        <div class="s-chat-meta"><span>Medi${t.latencyMs != null ? ` · ${escapeHtml(aiSeconds(t.latencyMs))}` : ''}</span>${aiFeedbackBadge(fb)}${fb?.comment ? `<span class="s-chat-fbnote">„${escapeHtml(fb.comment)}“</span>` : ''}${details ? `<button type="button" class="s-chat-link" data-ai-view="${escapeHtml(t.id)}">დეტალები</button>` : ''}</div>
+      </div>
+    </div>
+  </div>`;
+}
+
+/** „ჩაქრობა“ / „დაბრუნება“ for one error, several, or every open one; refreshes the page afterwards. */
+async function aiSetReviewed(ids, reviewed, { all = false } = {}) {
+  try {
+    const res = reviewed
+      ? await api('/ai/errors/review', { method: 'POST', body: all ? { all: true } : { ids } })
+      : await api('/ai/errors/reopen', { method: 'POST', body: { ids } });
+    const n = Number(res?.count) || 0;
+    toast(reviewed ? (n === 1 ? 'შეცდომა ჩაქრა — განხილულში გადავიდა' : `${n} შეცდომა ჩაქრა`) : 'შეცდომა ისევ ღიაა');
+    return true;
+  } catch (err) {
+    toast(/[ა-ჰ]/.test(err?.message || '') ? err.message : 'ვერ შეინახა — სცადე ხელახლა.', 'bad');
+    return false;
+  }
+}
+
+/** Wires the review buttons inside an open drawer; `after` re-opens the same view with fresh data. */
+function bindAiReview(host, after) {
+  host?.querySelectorAll('[data-ai-review], [data-ai-reopen]').forEach((btn) => {
+    btn.onclick = async (e) => {
+      e.stopPropagation();
+      if (btn.disabled) return;
+      btn.disabled = true;
+      const reviewed = Boolean(btn.dataset.aiReview);
+      const id = btn.dataset.aiReview || btn.dataset.aiReopen;
+      const ok = await aiSetReviewed([id], reviewed);
+      btn.disabled = false;
+      if (!ok) return;
+      after?.(id, reviewed);
+      if ($('tab-ai') && !$('tab-ai').classList.contains('hidden')) void renderAi();
+    };
+  });
 }
 
 /** What the local scan found missing in one answer (aiQuality.js heuristicJudge rubric); LLM-era results keep their own note. */
@@ -2643,16 +2806,27 @@ function aiLogQuery() {
   return params.toString();
 }
 
+/** Status cell: success, an open error (with „ჩაქრობა“ right in the row) or one already reviewed. */
+function aiStatusCell(turns) {
+  const open = turns.filter((t) => t.status === 'ERROR');
+  const reviewed = turns.filter((t) => t.status === AI_ERROR_REVIEWED);
+  const reason = (t) => `<small class="s-medi-sub">${escapeHtml(aiErrorText(t.errorMessage))}</small>`;
+  if (open.length) {
+    return `<span class="s-badge is-bad">${open.length > 1 ? `${open.length} შეცდომა` : 'შეცდომა'}</span>${turns.length === 1 ? reason(open[0]) : ''}
+      <button type="button" class="s-chat-link s-medi-rowact" data-ai-row-review="${escapeHtml(open.map((t) => t.id).join(','))}">${icon('check')} ჩაქრობა</button>`;
+  }
+  if (reviewed.length) return `<span class="s-badge is-plain">${icon('check')} განხილული შეცდომა</span>${turns.length === 1 ? reason(reviewed[0]) : ''}`;
+  return '<span class="s-badge is-ok">წარმატებული</span>';
+}
+
 function aiLogRow(row) {
-  const fb = row.feedback?.[0];
-  const ok = row.status === 'OK';
   return `<tr class="is-click" tabindex="0" data-ai-view="${escapeHtml(row.id)}">
     <td>${escapeHtml(aiWhen(row.createdAt))}</td>
     <td><b>${escapeHtml(row.user?.fullName || '—')}</b><small class="s-medi-sub">${escapeHtml(aiContact(row.user))}</small></td>
     <td>${escapeHtml(aiModeLabel(row.mode))}</td>
-    <td>${ok ? '<span class="s-badge is-ok">წარმატებული</span>' : `<span class="s-badge is-bad">შეცდომა</span><small class="s-medi-sub">${escapeHtml(aiErrorText(row.errorMessage))}</small>`}</td>
+    <td>${aiStatusCell([row])}</td>
     <td class="num">${escapeHtml(aiSeconds(row.latencyMs))}</td>
-    <td>${fb ? (fb.rating > 0 ? '<span class="s-badge is-plain is-ok">კარგი</span>' : '<span class="s-badge is-plain is-bad">ცუდი</span>') : '<span class="s-muted">—</span>'}</td>
+    <td>${aiFeedbackBadge(row.feedback?.[0]) || '<span class="s-muted">—</span>'}</td>
   </tr>`;
 }
 
@@ -2660,7 +2834,6 @@ function aiLogRow(row) {
 function aiChatRow(chat) {
   const turns = chat.turns || [];
   const last = turns[turns.length - 1] || {};
-  const errors = turns.filter((t) => t.status !== 'OK').length;
   const ok = turns.filter((t) => t.status === 'OK' && t.latencyMs != null);
   const avg = ok.length ? ok.reduce((s, t) => s + t.latencyMs, 0) / ok.length : null;
   const ratings = turns.flatMap((t) => t.feedback || []);
@@ -2670,43 +2843,48 @@ function aiChatRow(chat) {
     <td>${escapeHtml(aiWhen(last.createdAt))}</td>
     <td><b>${escapeHtml(last.user?.fullName || '—')}</b><small class="s-medi-sub">${escapeHtml(aiContact(last.user))}</small></td>
     <td>${escapeHtml(aiModeLabel(last.mode))} <span class="s-badge is-plain">საუბარი · ${turns.length} კითხვა</span>${chat.title ? `<small class="s-medi-sub">${escapeHtml(chat.title)}</small>` : ''}</td>
-    <td>${errors ? `<span class="s-badge is-bad">${errors} შეცდომა</span>` : '<span class="s-badge is-ok">წარმატებული</span>'}</td>
+    <td>${aiStatusCell(turns)}</td>
     <td class="num">${escapeHtml(aiSeconds(avg))}${ok.length > 1 ? '<small class="s-medi-sub">საშუალო</small>' : ''}</td>
     <td>${ratings.length ? `${good ? `<span class="s-badge is-plain is-ok">კარგი ${good}</span>` : ''}${bad ? ` <span class="s-badge is-plain is-bad">ცუდი ${bad}</span>` : ''}` : '<span class="s-muted">—</span>'}</td>
   </tr>`;
+}
+
+function aiDrawerHero({ kicker, title, user, at }) {
+  const contact = aiContact(user);
+  return `<header class="umodal-hero">
+      <div class="umodal-hero-copy">
+        <p class="kicker">${kicker}</p>
+        <h3>${escapeHtml(title)}</h3>
+        <p class="muted">${user?.id ? `<button type="button" class="inv-link" id="ai-open-user">${escapeHtml(user.fullName || 'პროფილი')}</button>` : escapeHtml(user?.fullName || '—')}${contact ? ` · ${escapeHtml(contact)}` : ''} · ${escapeHtml(aiTime(at))}</p>
+      </div>
+      <button type="button" class="btn icon-only ghost umodal-close" id="drawer-cancel" aria-label="დახურვა">${icon('x')}</button>
+    </header>`;
 }
 
 function viewAiChat(chat) {
   const turns = chat.turns || [];
   const first = turns[0] || {};
   const user = first.user || {};
-  const contact = aiContact(user);
-  const turnHtml = (t, i) => {
-    const ok = t.status === 'OK';
-    const fb = t.feedback?.[0];
-    return `<section class="dec-section s-medi-turn">
-      <h4>${i + 1}. კითხვა <span class="s-muted">· ${escapeHtml(aiWhen(t.createdAt))} · ${escapeHtml(aiSeconds(t.latencyMs))}</span>
-        ${ok ? '' : ' <span class="s-badge is-bad">შეცდომა</span>'}${fb ? (fb.rating > 0 ? ' <span class="s-badge is-plain is-ok">კარგი</span>' : ' <span class="s-badge is-plain is-bad">ცუდი</span>') : ''}</h4>
-      <div class="s-medi-text">${escapeHtml(aiPromptText(t.userPrompt) || '—')}</div>
-      ${ok ? aiReplyHtml(t.assistantReply) : `<div class="s-callout is-warn">${icon('alert')}<p>${escapeHtml(aiErrorText(t.errorMessage))}</p></div>`}
-      <p><button type="button" class="btn ghost compact" data-ai-view="${escapeHtml(t.id)}">დეტალები</button></p>
-    </section>`;
-  };
+  const open = turns.filter((t) => t.status === 'ERROR').length;
   openDrawer(`<div class="umodal s-medi-drawer">
-    <header class="umodal-hero">
-      <div class="umodal-hero-copy">
-        <p class="kicker">${escapeHtml(aiModeLabel(first.mode))} · საუბარი · ${turns.length} კითხვა</p>
-        <h3>${escapeHtml(chat.title || 'Medi-სთან საუბარი')}</h3>
-        <p class="muted">${user.id ? `<button type="button" class="inv-link" id="ai-open-user">${escapeHtml(user.fullName || 'პროფილი')}</button>` : escapeHtml(user.fullName || '—')}${contact ? ` · ${escapeHtml(contact)}` : ''} · ${escapeHtml(aiWhen(first.createdAt))}</p>
-      </div>
-      <button type="button" class="btn icon-only ghost umodal-close" id="drawer-cancel" aria-label="დახურვა">${icon('x')}</button>
-    </header>
-    <div class="umodal-body">${turns.map(turnHtml).join('')}</div>
+    ${aiDrawerHero({
+      kicker: `${escapeHtml(aiModeLabel(first.mode))} · საუბარი · ${turns.length} კითხვა${open ? ` · <span class="s-badge is-bad">${open} ღია შეცდომა</span>` : ''}`,
+      title: chat.title || 'Medi-სთან საუბარი',
+      user,
+      at: first.createdAt,
+    })}
+    <div class="umodal-body"><p class="s-chat-privacy">${icon('lock')} პირადი საუბარი — გახსენი მხოლოდ გამოსაძიებლად.</p><div class="s-chat">${turns.map((t) => aiTurnHtml(t)).join('')}</div></div>
   </div>`, { wide: true });
   $('drawer-cancel').onclick = closeDrawer;
   $('ai-open-user')?.addEventListener('click', () => editUser(user.id));
-  $('drawer-body')?.querySelectorAll('[data-ai-view]').forEach((btn) => {
+  const host = $('drawer-body');
+  host?.querySelectorAll('[data-ai-view]').forEach((btn) => {
     btn.onclick = () => viewAiInteraction(btn.dataset.aiView);
+  });
+  bindAiReview(host, (id, reviewed) => {
+    const turn = turns.find((t) => t.id === id);
+    if (turn) turn.status = reviewed ? AI_ERROR_REVIEWED : 'ERROR';
+    viewAiChat(chat);
   });
 }
 
@@ -2745,6 +2923,17 @@ function bindAiLog(host) {
       e.preventDefault();
       open();
     };
+  });
+  host.querySelectorAll('[data-ai-row-review]').forEach((btn) => {
+    btn.onclick = async (e) => {
+      e.stopPropagation();
+      if (btn.disabled) return;
+      btn.disabled = true;
+      const ok = await aiSetReviewed(btn.dataset.aiRowReview.split(',').filter(Boolean), true);
+      btn.disabled = false;
+      if (ok) void renderAi();
+    };
+    btn.onkeydown = (e) => e.stopPropagation();
   });
   host.querySelectorAll('[data-ai-page]').forEach((btn) => {
     btn.onclick = () => {
@@ -2825,7 +3014,7 @@ async function renderAi() {
       metric('მოთხოვნა', fmt(k.messages?.value), delta(k.messages?.delta) || period),
       metric('საუბარი', fmt(k.conversations?.value), k.avgMessagesPerConversation?.value != null ? `საშ. ${aiNum1(k.avgMessagesPerConversation.value)} მოთხოვნა საუბარში` : period),
       metric('დაბრუნებული', fmt(k.returningUsers?.value), mediUsers ? `${Math.round(((Number(k.returningUsers?.value) || 0) / mediUsers) * 100)}% Medi-ს მომხმარებლებიდან` : period),
-      metric('შეცდომის წილი', errRate == null ? '—' : `${aiNum1(Math.min(100, errRate))}%`, `${fmt(k.errors?.value)} შეცდომა · ${period}`, errRate > 5 ? ' is-bad' : errRate > 0 ? ' is-warn' : ''),
+      metric('შეცდომის წილი', errRate == null ? '—' : `${aiNum1(Math.min(100, errRate))}%`, `${fmt(k.errors?.value)} ღია შეცდომა${Number(k.reviewedErrors?.value) ? ` · ${fmt(k.reviewedErrors.value)} განხილული` : ''} · ${period}`, errRate > 5 ? ' is-bad' : errRate > 0 ? ' is-warn' : ''),
       metric('პასუხის საშუალო დრო', aiSeconds(k.avgLatencyMs?.value), period),
     ] : [
       metric('მოთხოვნა', fmt(stats.last7d), 'ბოლო 7 დღე'),
@@ -2834,8 +3023,11 @@ async function renderAi() {
     ];
 
     const alerts = [];
-    if (usage && errRate > 5) {
-      alerts.push(`<div class="s-callout is-warn">${icon('alert')}<p><b>შეცდომების წილი ${aiNum1(errRate)}% — ${escapeHtml(period)}.</b> ${fmt(k.errors?.value)} მოთხოვნა ჩავარდა; მიზეზი ჟურნალშია.</p><button type="button" class="btn compact" data-ai-show-errors>შეცდომების ნახვა</button></div>`);
+    const openErrors = Number(stats.openErrors) || 0;
+    if (openErrors) {
+      const high = usage && errRate > 5;
+      alerts.push(`<div class="s-callout${high ? ' is-warn' : ''}">${icon('alert')}<p><b>${fmt(openErrors)} ღია შეცდომა${high ? ` · წილი ${aiNum1(errRate)}% — ${escapeHtml(period)}` : ''}.</b> გადახედე მიზეზს და, როცა გაარკვევ ან გაასწორებ, ჩააქრე — განხილული შეცდომა ციფრებიდან და გრაფიკებიდან ქრება, ჟურნალში კი „განხილულში“ რჩება.</p>
+        <div class="s-medi-callout-actions"><button type="button" class="btn compact" data-ai-show-errors>ნახვა</button><button type="button" class="btn compact" data-ai-review-all>${icon('check')} ყველას ჩაქრობა</button></div></div>`);
     }
     if (lastEval?.avgScore != null && lastEval.avgScore < 72) {
       alerts.push(`<div class="s-callout is-warn">${icon('alert')}<p><b>ბოლო ხარისხის სკანი დაბალია: ${aiScoreText(lastEval.avgScore, lastEval.finishedAt)}.</b> ნახე, რომელ პასუხებს აკლია გაფრთხილება ან სისრულე.</p><button type="button" class="btn compact" data-ai-run="${escapeHtml(lastEval.id)}">სკანის ნახვა</button></div>`);
@@ -2849,7 +3041,7 @@ async function renderAi() {
         <div><div class="s-medi-title"><h3>მოთხოვნების ჟურნალი</h3>${helpBtn('medi.interactions')}</div>
           <p>უახლესი ზემოთ. სტრიქონი ხსნის შეკითხვასა და პასუხს — ეს პირადი ტექსტია, გახსენი მხოლოდ გამოსაძიებლად.</p></div>
         <div class="s-medi-filters">
-          <div class="s-segment" role="tablist" aria-label="სტატუსის ფილტრი">${[['', 'ყველა'], ['ERROR', 'შეცდომები'], ['OK', 'წარმატებული']]
+          <div class="s-segment" role="tablist" aria-label="სტატუსის ფილტრი">${[['', 'ყველა'], ['ERROR', 'ღია შეცდომები'], ['REVIEWED', 'განხილული'], ['OK', 'წარმატებული']]
             .map(([v, l]) => `<button type="button" role="tab" aria-selected="${aiLog.status === v}" data-ai-status="${v}">${l}</button>`).join('')}</div>
           <select id="ai-log-mode" aria-label="მოდულის ფილტრი"><option value="">ყველა მოდული</option>${knownModes
             .map((m) => `<option value="${escapeHtml(m)}"${aiLog.mode === m ? ' selected' : ''}>${escapeHtml(aiModeLabel(m))}</option>`).join('')}</select>
@@ -2972,6 +3164,16 @@ async function renderAi() {
       body.querySelector('[data-ai-status="ERROR"]')?.click();
       $('medi-log')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     });
+    body.querySelector('[data-ai-review-all]')?.addEventListener('click', () => {
+      window.AdminV3?.openConfirm?.({
+        title: 'ყველა ღია შეცდომის ჩაქრობა',
+        message: `${fmt(openErrors)} შეცდომა მოინიშნება განხილულად: ციფრებიდან და გრაფიკებიდან გაქრება, ჟურნალში „განხილულში“ დარჩება და ნებისმიერ დროს შეგიძლია დააბრუნო.`,
+        confirmLabel: 'ჩაქრობა',
+        onConfirm: async () => {
+          if (await aiSetReviewed([], true, { all: true })) void renderAi();
+        },
+      });
+    });
     body.querySelectorAll('[data-ai-run]').forEach((el) => {
       el.onclick = () => viewEvalRun(el.dataset.aiRun);
       el.onkeydown = (e) => {
@@ -3017,26 +3219,24 @@ async function viewAiInteraction(id) {
   }
   const fmt = (n) => (typeof opsFmt === 'function' ? opsFmt(n) : String(n ?? '—'));
   const ok = interaction.status === 'OK';
-  const fb = interaction.feedback?.[0];
+  const reviewed = interaction.status === AI_ERROR_REVIEWED;
   const user = interaction.user || {};
-  const contact = aiContact(user);
   const usage = interaction.tokenUsage || null;
   const tokens = usage ? usage.total_tokens ?? usage.total ?? null : null;
   const row = (label, value) => `<div class="inv-row"><span>${label}</span><strong>${value}</strong></div>`;
   openDrawer(`<div class="umodal s-medi-drawer">
-    <header class="umodal-hero">
-      <div class="umodal-hero-copy">
-        <p class="kicker">${escapeHtml(aiModeLabel(interaction.mode))}</p>
-        <h3>${ok ? 'Medi-ს პასუხი' : 'Medi-მ ვერ უპასუხა'}</h3>
-        <p class="muted">${escapeHtml(user.fullName || '—')} · ${escapeHtml(aiWhen(interaction.createdAt))}</p>
-      </div>
-      <button type="button" class="btn icon-only ghost umodal-close" id="drawer-cancel" aria-label="დახურვა">${icon('x')}</button>
-    </header>
+    ${aiDrawerHero({
+      kicker: escapeHtml(aiModeLabel(interaction.mode)),
+      title: ok ? 'Medi-ს პასუხი' : reviewed ? 'Medi-მ ვერ უპასუხა · განხილულია' : 'Medi-მ ვერ უპასუხა',
+      user,
+      at: interaction.createdAt,
+    })}
     <div class="umodal-body">
-      ${ok ? '' : `<div class="s-callout is-warn">${icon('alert')}<p>${escapeHtml(aiErrorText(interaction.errorMessage))}</p></div>`}
+      <p class="s-chat-privacy">${icon('lock')} პირადი ტექსტი — გახსენი მხოლოდ გამოსაძიებლად.</p>
+      <div class="s-chat">${aiTurnHtml(interaction, { details: false })}</div>
+      ${!ok && interaction.errorMessage ? `<details class="s-details s-tech-details"><summary>შეცდომის ტექნიკური ტექსტი</summary><div><pre>${escapeHtml(interaction.errorMessage)}</pre></div></details>` : ''}
       <section class="dec-section"><h4>დეტალები</h4><div class="inv-grid">
-        ${row('სტატუსი', ok ? '<span class="s-badge is-ok">წარმატებული</span>' : '<span class="s-badge is-bad">შეცდომა</span>')}
-        ${row('მომხმარებელი', `${user.id ? `<button type="button" class="inv-link" id="ai-open-user">${escapeHtml(user.fullName || 'პროფილი')}</button>` : escapeHtml(user.fullName || '—')}${contact ? ` <span class="s-muted">· ${escapeHtml(contact)}</span>` : ''}`)}
+        ${row('სტატუსი', ok ? '<span class="s-badge is-ok">წარმატებული</span>' : reviewed ? '<span class="s-badge is-plain">განხილული შეცდომა</span>' : '<span class="s-badge is-bad">შეცდომა</span>')}
         ${row('პასუხის დრო', escapeHtml(aiSeconds(interaction.latencyMs)))}
         ${row('მოდელი', escapeHtml(interaction.reasoningModel || '—'))}
         ${interaction.visionModel ? row('სურათის მოდელი', escapeHtml(interaction.visionModel)) : ''}
@@ -3044,15 +3244,11 @@ async function viewAiInteraction(id) {
         ${row('ინსტრუქციების ვერსია', escapeHtml(interaction.promptVersion || '—'))}
         ${row('ჩანაწერი', window.AdminV3?.copyIdButton ? window.AdminV3.copyIdButton(interaction.id, 'ჩანაწერის ID') : escapeHtml(interaction.id))}
       </div></section>
-      ${fb ? `<section class="dec-section"><h4>ადამიანის შეფასება</h4><p class="s-medi-fb">${fb.rating > 0 ? '<span class="s-badge is-ok">კარგი</span>' : '<span class="s-badge is-bad">ცუდი</span>'}${fb.comment ? `<span>${escapeHtml(fb.comment)}</span>` : ''}</p></section>` : ''}
-      <section class="dec-section"><h4>შეკითხვა</h4><div class="s-medi-text">${escapeHtml(aiPromptText(interaction.userPrompt) || '—')}</div></section>
-      ${ok
-        ? `<section class="dec-section"><h4>პასუხი</h4>${aiReplyHtml(interaction.assistantReply)}</section>`
-        : (interaction.errorMessage ? `<details class="s-details s-tech-details"><summary>ტექნიკური დეტალები</summary><div><pre>${escapeHtml(interaction.errorMessage)}</pre></div></details>` : '')}
     </div>
   </div>`, { wide: true });
   $('drawer-cancel').onclick = closeDrawer;
   $('ai-open-user')?.addEventListener('click', () => editUser(user.id));
+  bindAiReview($('drawer-body'), () => void viewAiInteraction(id));
 }
 
 async function viewEvalRun(id) {

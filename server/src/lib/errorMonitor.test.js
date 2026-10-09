@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import {
   LIMITS, buildEvent, createAlertThrottle, createErrorRecorder, errorMonitorEnabled, fingerprintOf, firstAppFrame,
-  newErrorText, normalizeMessage, parseClientErrorReport, scrubStack, scrubText, spikeText, tokenUserId, userHashOf,
+  newErrorText, normalizeMessage, parseClientErrorReport, scrubStack, scrubText, spikeText, reviewState, tokenUserId, userHashOf,
 } from './errorMonitor.js';
 import { errorStatements } from '../../scripts/install-errors.mjs';
 import jwt from 'jsonwebtoken';
@@ -21,7 +21,7 @@ HomeScreen@https://medicard.ge/_expo/static/js/web/entry-abc123.js?platform=web&
 
 test('install SQL is additive and only touches ErrorEvent', () => {
   const sql = readFileSync(new URL('../../prisma/20260929-errors.sql', import.meta.url), 'utf8');
-  assert.equal(errorStatements(sql).length, 3);
+  assert.equal(errorStatements(sql).length, 4);
   assert.throws(() => errorStatements('DROP TABLE "User";'));
   assert.throws(() => errorStatements('CREATE TABLE IF NOT EXISTS "User" (id TEXT);'));
 });
@@ -209,4 +209,12 @@ test('alert copy is short and carries only scrubbed fields', () => {
   assert.match(newErrorText(e), /სერვერი/);
   assert.match(newErrorText(e), /GET \/api\/x/);
   assert.match(spikeText(e, 77), /77 შემთხვევა/);
+});
+
+test('reviewState hides a reviewed group until a newer event arrives', () => {
+  assert.deepEqual(reviewState(null, '2026-10-09T10:00:00Z'), { reviewed: false, reviewedAt: null, returned: false });
+  assert.equal(reviewState('2026-10-09T11:00:00Z', '2026-10-09T10:00:00Z').reviewed, true);
+  const back = reviewState('2026-10-09T09:00:00Z', '2026-10-09T10:00:00Z');
+  assert.equal(back.reviewed, false);
+  assert.equal(back.returned, true);
 });

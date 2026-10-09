@@ -28,3 +28,7 @@ Applies to Push (`#/push` subnav ↔ panels), user investigation (`#/users/:id` 
 ```
 
 Shared hooks: `.v3-tab-shell`, `.v3-push .push-board`, `.v3-user-page .v3-user-board`. Kill legacy inset like `.user-body { padding: 22px }` inside V3 boards.
+
+## Reviewed errors („ჩაქრობა“, owner 2026-10-09)
+
+Errors the owner has looked at can be switched off. Medi (`#/ai`): `POST /api/admin/ai/errors/review` (`ids` or `all`) sets `AiInteraction.status` to `ERROR_REVIEWED` (`AI_ERROR_REVIEWED`, `aiTelemetry.js`), so it drops out of every `status = 'ERROR'` count (KPIs, charts, health, Director) but stays in the log under „განხილული“; `/ai/errors/reopen` puts it back. `#/errors`: `POST /api/admin/errors/review` / `DELETE /errors/review/:fingerprint` write `"ErrorEventReview"` (in `prisma/20260929-errors.sql`, installed by `install-errors.mjs`); a group stays hidden only while `reviewedAt >= lastSeen` — a newer event brings it back as „დაბრუნდა“. All four actions are audited. Medi drawers render the conversation as chat bubbles (`aiTurnHtml`, `aiMarkdown`, `aiPromptHtml` in `admin.js`; styles `.s-chat-*`): app-sent `key: value` context is folded, markdown is escaped then rendered.

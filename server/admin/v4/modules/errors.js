@@ -2,7 +2,8 @@
  * MediCard Admin V4 — #/errors შეცდომები (/api/admin/errors).
  * App crashes / JS errors and server 500s grouped by fingerprint (server/src/lib/errorMonitor.js):
  * period + source segments, totals, a table of groups and a detail dialog with the hourly chart,
- * the scrubbed stack and the latest 50 events.
+ * the scrubbed stack and the latest 50 events. „ჩაქრობა“ marks a group as reviewed: it leaves the list and the
+ * totals until the same error happens again (then it is back with „დაბრუნდა“).
  */
 (function adminV4Errors(global) {
   const doc = document;
@@ -21,6 +22,7 @@
 
   let hours = 24;
   let source = 'all';
+  let showReviewed = false;
   let refreshTimer = null;
 
   if (typeof ICONS === 'object') {
@@ -55,7 +57,9 @@
     const out = [`<span class="s-badge is-plain">${esc(SOURCE[g.source] || g.source)}</span>`];
     if (g.kind === 'crash' || g.fatal) out.push(`<span class="s-badge is-bad">${g.kind === 'crash' ? 'ავარია' : 'ფატალური'}</span>`);
     else out.push(`<span class="s-badge is-warn">${esc(KIND[g.kind] || g.kind)}</span>`);
-    if (new Date(g.firstSeen).getTime() >= Date.now() - hours * 3600_000) out.push('<span class="s-badge is-info">ახალი</span>');
+    if (g.reviewed) out.push(`<span class="s-badge is-plain">${ico('check')} განხილული</span>`);
+    else if (g.returned) out.push('<span class="s-badge is-warn">დაბრუნდა</span>');
+    else if (new Date(g.firstSeen).getTime() >= Date.now() - hours * 3600_000) out.push('<span class="s-badge is-info">ახალი</span>');
     return `<span class="p3-badges">${out.join('')}</span>`;
   }
 
@@ -63,8 +67,25 @@
     return `<div class="s-metric ${tone}"><span>${esc(label)}</span><strong>${num(value)}</strong><small>${small || ''}</small></div>`;
   }
 
+  /** Marks groups reviewed (or reopens one) and repaints; true when it saved. */
+  async function setReviewed(fingerprints, reviewed) {
+    try {
+      if (reviewed) await global.api('/errors/review', { method: 'POST', body: { fingerprints } });
+      else await global.api(`/errors/review/${encodeURIComponent(fingerprints[0])}`, { method: 'DELETE' });
+      global.toast?.(reviewed ? (fingerprints.length > 1 ? `${fingerprints.length} ჯგუფი ჩაქრა` : 'შეცდომა ჩაქრა — დაბრუნდება, თუ ისევ მოხდა') : 'შეცდომა ისევ ღიაა');
+      void renderErrorsAdmin({ silent: true });
+      return true;
+    } catch (err) {
+      global.toast?.(`ვერ შეინახა.${err?.message ? ` (${err.message})` : ''}`, 'bad');
+      return false;
+    }
+  }
+
   function paint(root, d) {
-    const groups = d.groups || [];
+    const all = d.groups || [];
+    const reviewedCount = all.filter((g) => g.reviewed).length;
+    const groups = showReviewed ? all : all.filter((g) => !g.reviewed);
+    const openGroups = all.filter((g) => !g.reviewed);
     const t = d.totals || {};
     root.innerHTML = `<div class="s-stack v3-tab-shell">
       <div class="s-toolbar">
@@ -82,15 +103,16 @@
 
       <div class="s-metrics">
         ${metric('შემთხვევა', t.events, 'ყველა ჩანაწერი პერიოდში')}
-        ${metric('ჯგუფი', t.groups, `ახალი: ${num(t.newGroups)}`)}
+        ${metric('ჯგუფი', t.groups, `ახალი: ${num(t.newGroups)}${reviewedCount ? ` · განხილული: ${num(reviewedCount)}` : ''}`)}
         ${metric('ადამიანი', t.users, 'ვისაც შეეხო (ანონიმურად)')}
         ${metric('ავარია / ფატალური', t.fatal, 'აპის ავარია ან სერვერის გაჩერება', t.fatal ? 'is-bad' : '')}
       </div>
 
       <section class="s-card">
-        <header class="s-card-head"><div><h3>შეცდომების ჯგუფები</h3><p>ერთი ჯგუფი = ერთი და იგივე შეცდომა (ტიპი, ტექსტი და კოდის ადგილი). დააჭირე სტრიქონს დეტალებისთვის.</p></div></header>
+        <header class="s-card-head"><div><h3>შეცდომების ჯგუფები</h3><p>ერთი ჯგუფი = ერთი და იგივე შეცდომა (ტიპი, ტექსტი და კოდის ადგილი). დააჭირე სტრიქონს დეტალებისთვის. როცა გაარკვევ ან გაასწორებ — „ჩაქრობა“: ჯგუფი ქრება, სანამ ისევ არ მოხდება.</p></div>
+          <div class="p3-tools">${reviewedCount ? `<button type="button" class="btn ghost compact" data-show-reviewed aria-pressed="${showReviewed}">${showReviewed ? 'განხილულის დამალვა' : `განხილული (${num(reviewedCount)})`}</button>` : ''}${openGroups.length > 1 ? `<button type="button" class="btn compact" data-review-all>${ico('check')} ყველას ჩაქრობა</button>` : ''}</div></header>
         <div class="s-card-body is-flush"><div class="s-table-wrap"><table class="s-table">
-          <thead><tr><th>შეცდომა</th><th>ტიპი</th><th class="num">რაოდენობა</th><th class="num">ადამიანი</th><th>პლატფორმა / ვერსია</th><th>ბოლოს</th></tr></thead>
+          <thead><tr><th>შეცდომა</th><th>ტიპი</th><th class="num">რაოდენობა</th><th class="num">ადამიანი</th><th>პლატფორმა / ვერსია</th><th>ბოლოს</th><th aria-label="მოქმედება"></th></tr></thead>
           <tbody>${groups.length ? groups.map((g) => `<tr class="is-click" data-fp="${esc(g.fingerprint)}" tabindex="0">
             <td class="p3-err-cell"><b>${esc(g.name)}</b><span class="p3-sub">${esc(g.message || '—')}</span>${g.sampleRoute ? `<span class="p3-sub"><code>${esc(g.sampleRoute)}</code></span>` : ''}</td>
             <td>${badges(g)}</td>
@@ -98,7 +120,10 @@
             <td class="num">${num(g.users)}</td>
             <td>${esc((g.platforms || []).map(platformLabel).join(', ') || '—')}${g.versions?.length ? `<span class="p3-sub">${g.versions.map((v) => `<span class="p3-nowrap">${esc(v.version)} (${num(v.count)})</span>`).join(' · ')}</span>` : ''}</td>
             <td class="p3-nowrap">${esc(ago(g.lastSeen))}<span class="p3-sub">პირველად: ${esc(when(g.firstSeen))}</span></td>
-          </tr>`).join('') : `<tr><td colspan="6"><div class="s-empty">${ico('check')}<strong>ამ პერიოდში შეცდომა არ ყოფილა</strong></div></td></tr>`}</tbody>
+            <td class="p3-nowrap">${g.reviewed
+              ? `<button type="button" class="btn ghost compact" data-reopen="${esc(g.fingerprint)}">დაბრუნება</button>`
+              : `<button type="button" class="btn compact" data-review="${esc(g.fingerprint)}">${ico('check')} ჩაქრობა</button>`}</td>
+          </tr>`).join('') : `<tr><td colspan="7"><div class="s-empty">${ico('check')}<strong>${reviewedCount ? 'ღია შეცდომა არ არის' : 'ამ პერიოდში შეცდომა არ ყოფილა'}</strong>${reviewedCount ? `<span>${num(reviewedCount)} ჯგუფი განხილულია — დაბრუნდება, თუ ისევ მოხდა.</span>` : ''}</div></td></tr>`}</tbody>
         </table></div></div>
       </section>
     </div>`;
@@ -112,6 +137,26 @@
       void renderErrorsAdmin();
     }));
     root.querySelector('[data-refresh]')?.addEventListener('click', () => void renderErrorsAdmin());
+    root.querySelector('[data-show-reviewed]')?.addEventListener('click', () => {
+      showReviewed = !showReviewed;
+      paint(root, d);
+    });
+    root.querySelector('[data-review-all]')?.addEventListener('click', () => {
+      global.AdminV3?.openConfirm?.({
+        title: 'ყველა ღია შეცდომის ჩაქრობა',
+        message: `${openGroups.length} ჯგუფი მოინიშნება განხილულად. ჯგუფი ისევ გამოჩნდება, თუ იგივე შეცდომა თავიდან მოხდება.`,
+        confirmLabel: 'ჩაქრობა',
+        onConfirm: async () => { await setReviewed(openGroups.map((g) => g.fingerprint), true); },
+      });
+    });
+    root.querySelectorAll('[data-review], [data-reopen]').forEach((btn) => {
+      btn.addEventListener('click', async (e) => {
+        e.stopPropagation();
+        btn.disabled = true;
+        if (!(await setReviewed([btn.dataset.review || btn.dataset.reopen], Boolean(btn.dataset.review)))) btn.disabled = false;
+      });
+      btn.addEventListener('keydown', (e) => e.stopPropagation());
+    });
     root.querySelectorAll('tr[data-fp]').forEach((tr) => {
       const group = groups.find((g) => g.fingerprint === tr.dataset.fp);
       const open = () => void openGroup(group);
@@ -186,6 +231,15 @@
           </table></div></div></section>
         <p class="p3-foot">ჯგუფის ანაბეჭდი: ${V?.copyIdButton ? V.copyIdButton(group.fingerprint, 'ანაბეჭდი') : `<code>${esc(group.fingerprint)}</code>`}</p>
       </div>`,
+      footer: group.reviewed
+        ? `<span class="p3-meta">${ico('check')} განხილულია${group.reviewedAt ? ` · ${esc(when(group.reviewedAt))}` : ''}</span><button type="button" class="btn" data-dialog-reopen>დაბრუნება</button>`
+        : `${group.returned ? '<span class="p3-meta">განხილვის შემდეგ ისევ მოხდა</span>' : ''}<button type="button" class="btn primary" data-dialog-review>${ico('check')} განხილულია — ჩაქრობა</button>`,
+    });
+    $('v3-dialog')?.querySelector('[data-dialog-review], [data-dialog-reopen]')?.addEventListener('click', async (e) => {
+      const btn = e.currentTarget;
+      btn.disabled = true;
+      if (await setReviewed([group.fingerprint], btn.hasAttribute('data-dialog-review'))) V?.closeDialog?.();
+      else btn.disabled = false;
     });
     global.AdminCharts?.hydrate?.();
   }

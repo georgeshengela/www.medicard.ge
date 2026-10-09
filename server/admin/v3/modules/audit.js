@@ -25,6 +25,12 @@
       ['quest.template.update', 'MEDIQUEST შაბლონი · შეცვლა'],
       ['capacity.test_alert', 'სისტემა · სატესტო გაფრთხილება'],
     ]],
+    ['შეცდომები', [
+      ['ai.error.review', 'Medi-ს შეცდომა · ჩაქრობა (განხილულია)'],
+      ['ai.error.reopen', 'Medi-ს შეცდომა · დაბრუნება'],
+      ['errors.review', 'შეცდომების ჯგუფი · ჩაქრობა (განხილულია)'],
+      ['errors.reopen', 'შეცდომების ჯგუფი · დაბრუნება'],
+    ]],
     ['Push', [
       ['push.template.save', 'Push შაბლონი · შენახვა'],
       ['push.template.reset', 'Push შაბლონი · ნაგულისხმევზე დაბრუნება'],
@@ -127,6 +133,8 @@
     Gym: 'დარბაზი',
     NutritionSettings: 'კვების პარამეტრები',
     NutritionRecipe: 'რეცეპტი',
+    aiInteraction: 'Medi-ს შეცდომა',
+    errorGroup: 'შეცდომების ჯგუფი',
   };
   // The admin page where each kind of object lives (the link in the details dialog).
   const PAGES = {
@@ -134,6 +142,7 @@
     capacity: ['#/capacity', 'სერვერის დატვირთვა'], push: ['#/push', 'Push & Brain'], news: ['#/news', 'სიახლეები'],
     email: ['#/email', 'ელფოსტა'], support: ['#/support', 'მხარდაჭერა'], director: ['#/director', 'დირექტორი'],
     rewards: ['#/rewards', 'ჯილდოები'], trainers: ['#/trainers', 'ტრენერები'], nutrition: ['#/nutrition', 'კვების დღიური'],
+    ai: ['#/ai', 'Medi'], errors: ['#/errors', 'შეცდომები'],
   };
   const TARGET_PAGE = {
     settings: 'settings', featureFlag: 'features', questTemplate: 'quests', system: 'capacity', pushTemplate: 'push',
@@ -141,6 +150,7 @@
     supportThread: 'support', supportSnippet: 'support', director: 'director', director_proposal: 'director',
     rewardPartner: 'rewards', rewardDefinition: 'rewards', rewardCampaign: 'rewards', rewardCode: 'rewards', rewardRedemption: 'rewards',
     TrainerProfile: 'trainers', CoachReport: 'trainers', Gym: 'trainers', NutritionSettings: 'nutrition', NutritionRecipe: 'nutrition',
+    aiInteraction: 'ai', errorGroup: 'errors',
   };
   const FEATURE_KA = {
     cycle: 'ციკლი და ორსულობა', nutrition: 'კვების დღიური', nutritionAi: 'კვების AI შეფასება', medi: 'Medi', pets: 'ჩემი ცხოველები',

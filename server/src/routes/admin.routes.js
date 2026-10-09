@@ -22,7 +22,7 @@ import { toDateOnly, calculateAge, genderSchema, MIN_USER_AGE } from '../lib/pat
 import { asyncHandler } from '../middleware/error.js';
 import { requireAdmin } from '../middleware/adminAuth.js';
 import { getProviderBalances } from '../lib/providerBalances.js';
-import { getAiQualityStats } from '../lib/aiTelemetry.js';
+import { AI_ERROR_REVIEWED, getAiQualityStats } from '../lib/aiTelemetry.js';
 import { getEvalRun, listEvalRuns, runQualityScan } from '../lib/aiQuality.js';
 import {
   getPharmacyAdminStats,
@@ -50,6 +50,7 @@ import {
   getDashboardBundle,
   getQualityBundle,
   getHealthBundle,
+  invalidateDashboardCaches,
 } from '../lib/adminAnalytics.js';
 import { getUserGeoAnalytics } from '../lib/adminUserGeo.js';
 import { getNotificationDecision, listNotificationDecisions } from '../lib/notificationDecisions.js';
@@ -943,9 +944,10 @@ adminRouter.get(
         limit: z.coerce.number().int().min(1).max(100).default(30),
         offset: z.coerce.number().int().min(0).default(0),
         mode: z.string().optional(),
-        status: z.enum(['OK', 'ERROR']).optional(),
+        status: z.enum(['OK', 'ERROR', 'REVIEWED']).optional(),
       })
       .parse(req.query);
+    const status = query.status === 'REVIEWED' ? AI_ERROR_REVIEWED : query.status;
 
     // One entry per conversation: every question of a chat sits under its chat id, a request
     // without a chat (cycle tips, lab reads, a failed first question) is its own entry.
@@ -953,7 +955,7 @@ adminRouter.get(
     const params = [];
     const having = [];
     if (query.mode) { params.push(query.mode); having.push(`bool_or(mode = $${params.length})`); }
-    if (query.status) { params.push(query.status); having.push(`bool_or(status = $${params.length})`); }
+    if (status) { params.push(status); having.push(`bool_or(status = $${params.length})`); }
     const groups = `SELECT coalesce("chatSessionId", id) AS key, max("createdAt") AS last
       FROM "AiInteraction" GROUP BY 1${having.length ? ` HAVING ${having.join(' AND ')}` : ''}`;
     const [[{ total }], page] = await Promise.all([
@@ -988,6 +990,58 @@ adminRouter.get(
     }).filter((item) => item.kind === 'single' || item.turns.length);
 
     res.json({ total, items, limit: query.limit, offset: query.offset });
+  }),
+);
+
+// „ჩაქრობა“: an error the owner has looked at leaves every error count (stats, charts, health, Director)
+// but stays in the log under „განხილული“; reopening puts it back. `all` = every open error.
+adminRouter.post(
+  '/ai/errors/review',
+  requireAdmin,
+  asyncHandler(async (req, res) => {
+    const body = z
+      .object({ ids: z.array(z.string().uuid()).max(500).optional(), all: z.boolean().optional() })
+      .refine((b) => b.all || b.ids?.length, { message: 'ids or all' })
+      .parse(req.body ?? {});
+    const where = { status: 'ERROR', ...(body.all ? {} : { id: { in: body.ids } }) };
+    const ids = (await prisma.aiInteraction.findMany({ where, select: { id: true } })).map((r) => r.id);
+    const { count } = ids.length
+      ? await prisma.aiInteraction.updateMany({ where: { id: { in: ids }, status: 'ERROR' }, data: { status: AI_ERROR_REVIEWED } })
+      : { count: 0 };
+    if (count) {
+      await writeAdminAudit({
+        admin: req.admin,
+        action: 'ai.error.review',
+        targetType: 'aiInteraction',
+        targetId: ids.length === 1 ? ids[0] : null,
+        newValue: { count, ids: ids.slice(0, 50) },
+      });
+      invalidateDashboardCaches();
+    }
+    res.json({ count });
+  }),
+);
+
+adminRouter.post(
+  '/ai/errors/reopen',
+  requireAdmin,
+  asyncHandler(async (req, res) => {
+    const { ids } = z.object({ ids: z.array(z.string().uuid()).min(1).max(500) }).parse(req.body ?? {});
+    const { count } = await prisma.aiInteraction.updateMany({
+      where: { id: { in: ids }, status: AI_ERROR_REVIEWED },
+      data: { status: 'ERROR' },
+    });
+    if (count) {
+      await writeAdminAudit({
+        admin: req.admin,
+        action: 'ai.error.reopen',
+        targetType: 'aiInteraction',
+        targetId: ids.length === 1 ? ids[0] : null,
+        newValue: { count, ids: ids.slice(0, 50) },
+      });
+      invalidateDashboardCaches();
+    }
+    res.json({ count });
   }),
 );
 
