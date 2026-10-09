@@ -2352,7 +2352,10 @@ html[data-theme="dark"] .cc-st-face.is-f { color: #FDA4AF; }
 .cc-st-more .cc-st-name { color: var(--s-accent); }
 /* Hover card */
 .cc-st-pop { position: absolute; bottom: calc(100% - 4px); left: 50%; z-index: 20; display: grid; gap: 3px; width: max-content; max-width: 260px; padding: 10px 12px; border: 1px solid var(--s-line); border-radius: 12px; background: var(--s-surface); box-shadow: var(--s-shadow-lg, 0 12px 32px rgba(0,0,0,.25)); text-align: left; font-size: 12px; color: var(--s-muted); opacity: 0; visibility: hidden; transform: translate(-50%, 6px); transition: opacity .15s, transform .15s, visibility .15s; pointer-events: none; }
-.cc-st:hover .cc-st-pop, .cc-st:focus-visible .cc-st-pop { opacity: 1; visibility: visible; transform: translate(-50%, 0); }
+/* The in-tile card is only the template; the visible one is #cc-st-floating on <body> (never under the sidebar). */
+.cc-st > .cc-st-pop { display: none; }
+.cc-st-pop.is-floating { position: fixed; bottom: auto; left: 0; top: 0; z-index: 140; transform: translateY(4px); }
+.cc-st-pop.is-floating.is-on { opacity: 1; visibility: visible; transform: none; }
 .cc-st-pop b { font-size: 13px; color: var(--s-ink); }
 .cc-st-pop small { font-size: 12px; color: var(--s-text-2); }
 .cc-st-pop-row { display: flex; align-items: center; gap: 6px; white-space: nowrap; }
