@@ -845,6 +845,7 @@ function NutritionScreen({ owner }: { owner: string }) {
                     onCamera={() => void pick(true, photoMode)}
                     onGallery={() => void pick(false, photoMode)}
                     onMore={() => setSheet("methods")}
+                    onMethod={pickMethod}
                   />
                 )}
                 <NSegment

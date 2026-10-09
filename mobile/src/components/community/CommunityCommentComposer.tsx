@@ -8,7 +8,7 @@ import { COMMUNITY_CTA, useCommunityColors as useThemeColors } from '@/component
 import {AnonymousAvatar} from './AnonymousAvatar';
 import { tx } from '@/i18n/locale';
 
-export function CommunityCommentComposer({postId,value,onChangeText,onSend,busy,inputRef,replying}:{postId:string;value:string;onChangeText:(v:string)=>void;onSend:(mentions:CommunityMention[])=>void;busy:boolean;inputRef:React.RefObject<TextInput|null>;replying:boolean}){
+export function CommunityCommentComposer({postId,value,onChangeText,onSend,busy,inputRef,replying,placeholder}:{postId:string;value:string;onChangeText:(v:string)=>void;onSend:(mentions:CommunityMention[])=>void;busy:boolean;inputRef:React.RefObject<TextInput|null>;replying:boolean;placeholder?:string}){
  const c=useThemeColors();
  const [mentions,setMentions]=useState<CommunityMention[]>([]),[selection,setSelection]=useState({start:0,end:0}),[candidates,setCandidates]=useState<MentionCandidate[]>([]),[loading,setLoading]=useState(false),[error,setError]=useState(false);
  const query=selection.start===selection.end?mentionQuery(value,selection.end,mentions):null;
@@ -34,8 +34,8 @@ export function CommunityCommentComposer({postId,value,onChangeText,onSend,busy,
    {mentions.length>=10&&<Text style={{padding:10,color:c.text200}}>{tx('ერთ კომენტარში მაქსიმუმ 10 მონიშვნა', 'Up to 10 mentions per comment')}</Text>}
   </View>}
   <View style={{flexDirection:'row',alignItems:'flex-end',gap:8}}>
-   <TextInput ref={inputRef} accessibilityLabel={tx('კომენტარი', 'Comment')} placeholder={replying?tx('დაწერე პასუხი… @ მონიშვნა', 'Write a reply… @ to mention'):tx('დაწერე კომენტარი… @ მონიშვნა', 'Write a comment… @ to mention')} placeholderTextColor={c.text200} value={value} onChangeText={change} onSelectionChange={e=>setSelection(e.nativeEvent.selection)} selection={selection} multiline maxLength={1500} style={{flex:1,minHeight:46,maxHeight:100,padding:12,borderWidth:1,borderColor:c.bg300,borderRadius:16,color:c.text100,backgroundColor:c.surface,fontFamily:'NotoSansGeorgian_400Regular',fontSize:14}}/>
-   <Pressable accessibilityRole="button" accessibilityLabel={replying?tx('პასუხის გაგზავნა', 'Send reply'):tx('კომენტარის გაგზავნა', 'Send comment')} disabled={busy||!value.trim()} onPress={()=>onSend(mentions.filter(m=>value.slice(m.start,m.end)==='@'+m.label))} style={{width:46,height:46,borderRadius:15,alignItems:'center',justifyContent:'center',backgroundColor:COMMUNITY_CTA,opacity:busy||!value.trim()?0.4:1}}>{busy?<ActivityIndicator color="white"/>:<Send size={19} color="white"/>}</Pressable>
+   <TextInput ref={inputRef} accessibilityLabel={tx('კომენტარი', 'Comment')} placeholder={placeholder||(replying?tx('დაწერე პასუხი… @ მონიშვნა', 'Write a reply… @ to mention'):tx('დაწერე კომენტარი… @ მონიშვნა', 'Write a comment… @ to mention'))} placeholderTextColor={c.text200} value={value} onChangeText={change} onSelectionChange={e=>setSelection(e.nativeEvent.selection)} selection={selection} multiline maxLength={1500} style={{flex:1,minHeight:44,maxHeight:110,paddingHorizontal:16,paddingTop:11,paddingBottom:11,borderWidth:1,borderColor:c.bg300,borderRadius:22,color:c.text100,backgroundColor:c.surface,fontFamily:'NotoSansGeorgian_400Regular',fontSize:14,lineHeight:21}}/>
+   <Pressable accessibilityRole="button" accessibilityLabel={replying?tx('პასუხის გაგზავნა', 'Send reply'):tx('კომენტარის გაგზავნა', 'Send comment')} disabled={busy||!value.trim()} onPress={()=>onSend(mentions.filter(m=>value.slice(m.start,m.end)==='@'+m.label))} style={{width:44,height:44,borderRadius:22,alignItems:'center',justifyContent:'center',backgroundColor:COMMUNITY_CTA,opacity:busy||!value.trim()?0.35:1}}>{busy?<ActivityIndicator color="white"/>:<Send size={18} color="white" style={{marginLeft:-2}}/>}</Pressable>
   </View>
  </View>;
 }

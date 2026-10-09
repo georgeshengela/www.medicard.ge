@@ -27,7 +27,6 @@ import {
   NLabel,
   NChoiceList,
   NSegment,
-  NChip,
   NField,
   MacroRails,
   useMedifood,
@@ -36,6 +35,9 @@ import {
 } from "@/components/nutrition/ProgramUI";
 import { tx } from "@/i18n/locale";
 import { formatYmd } from "@/lib/format";
+import { BodyMetricSheet, PickerField } from "@/components/ui/BodyMetricSheet";
+import { FoodIconGrid, FoodIconTile } from "@/components/nutrition/FoodIconTile";
+import { ageFromBirthDate, normalizeIsoDate } from "@/lib/birthdate";
 export default withMedifood(function NutritionGoal() {
   const { user } = useAuth();
   return <Goal key={user?.id || "guest"} owner={user?.id || ""} />;
@@ -51,6 +53,7 @@ function Goal({ owner }: { owner: string }) {
     [error, setError] = useState(""),
     [preview, setPreview] = useState<NutritionPreview | null>(null),
     [paused, setPaused] = useState(false);
+  const [bodyPicker, setBodyPicker] = useState<"height" | "birth" | null>(null);
   const [form, setForm] = useState({
     weight: "",
     height: "",
@@ -335,12 +338,33 @@ function Goal({ owner }: { owner: string }) {
               />
               <View style={{ flexDirection: "row", gap: 10 }}>
                 <View style={{ flex: 1 }}>
-                  <NField label={tx("სიმაღლე · სმ", "Height · cm")} value={form.height} onChangeText={(v) => patch("height", v)} keyboardType="decimal-pad" maxLength={5} />
+                  <PickerField
+                    label={tx("სიმაღლე", "Height")}
+                    icon="ruler"
+                    value={Number(form.height) > 0 ? tx(`${Math.round(Number(form.height.replace(",", ".")))} სმ`, `${Math.round(Number(form.height.replace(",", ".")))} cm`) : null}
+                    placeholder={tx("აირჩიე", "Choose")}
+                    onPress={() => { Keyboard.dismiss(); setBodyPicker("height"); }}
+                  />
                 </View>
-                <View style={{ flex: 1.3 }}>
-                  <NField label={tx("დაბადების თარიღი", "Date of birth")} value={form.birth} onChangeText={(v) => patch("birth", v)} placeholder="1990-05-21" autoCapitalize="none" maxLength={10} />
+                <View style={{ flex: 1.4 }}>
+                  <PickerField
+                    label={tx("დაბადების თარიღი", "Date of birth")}
+                    icon="calendar"
+                    value={normalizeIsoDate(form.birth) ? `${formatYmd(normalizeIsoDate(form.birth)!, true)} · ${tx(`${ageFromBirthDate(new Date(form.birth))} წლის`, `${ageFromBirthDate(new Date(form.birth))} y`)}` : null}
+                    placeholder={tx("აირჩიე", "Choose")}
+                    onPress={() => { Keyboard.dismiss(); setBodyPicker("birth"); }}
+                  />
                 </View>
               </View>
+              <BodyMetricSheet
+                kind={bodyPicker}
+                value={{ heightCm: Number(form.height.replace(",", ".")) || null, birthIso: form.birth || null }}
+                onDone={(next) => {
+                  if (next.heightCm != null) patch("height", String(next.heightCm));
+                  if (next.birthIso) patch("birth", next.birthIso);
+                }}
+                onClose={() => setBodyPicker(null)}
+              />
               <NLabel>{tx("ფორმულის სქესობრივი კოეფიციენტი", "Formula sex coefficient")}</NLabel>
               <NSegment
                 value={form.sex}
@@ -397,7 +421,7 @@ function Goal({ owner }: { owner: string }) {
                 </>
               )}
               <NLabel>{tx("კვების არჩევანი", "Eating style")}</NLabel>
-              <View accessibilityRole="radiogroup" style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+              <FoodIconGrid role="radiogroup">
                 {(
                   [
                     ["balanced", tx("მრავალფეროვანი", "Varied")],
@@ -405,26 +429,29 @@ function Goal({ owner }: { owner: string }) {
                     ["vegan", tx("ვეგანური", "Vegan")],
                   ] as const
                 ).map(([value, label]) => (
-                  <NChip key={value} label={label} selected={form.diet === value} onPress={() => patch("diet", value)} />
+                  <FoodIconTile key={value} id={value} label={label} role="radio" ink={M.ink} selected={form.diet === value} onPress={() => patch("diet", value)} />
                 ))}
-              </View>
+              </FoodIconGrid>
               <NLabel>{tx("გამოსარიცხი ალერგენები", "Allergens to exclude")}</NLabel>
-              <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+              <NText style={{ fontSize: 12, lineHeight: 18, color: c.text300, marginTop: -6, marginHorizontal: 2 }}>{tx("მონიშნე, რაც გეგმიდან უნდა გამოირიცხოს — მონიშნული ✕-ით გამოჩნდება.", "Tap what to leave out of the plan — excluded items show a ✕.")}</NText>
+              <FoodIconGrid>
                 {Object.entries(allergenLabels).map(([key, label]) => {
                   const required = d.facts.requiredAllergens.includes(key);
                   const selected = form.allergens.includes(key) || required;
                   return (
-                    <NChip
+                    <FoodIconTile
                       key={key}
-                      label={selected ? `✓ ${label}` : label}
+                      id={key}
+                      label={label}
+                      exclude
+                      ink={M.ink}
                       selected={selected}
                       disabled={required}
-                      accessibilityLabel={label}
                       onPress={() => patch("allergens", form.allergens.includes(key) ? form.allergens.filter((v) => v !== key) : [...form.allergens, key])}
                     />
                   );
                 })}
-              </View>
+              </FoodIconGrid>
               {!!d.facts.requiredAllergens.length && (
                 <NText style={{ fontSize: 12, lineHeight: 18, color: c.text300, marginTop: -6, marginHorizontal: 2 }}>
                   {tx("პროფილიდან დამატებულია:", "Added from your profile:")} {d.facts.requiredAllergens.map((a) => allergenLabels[a] || a).join(", ")}
