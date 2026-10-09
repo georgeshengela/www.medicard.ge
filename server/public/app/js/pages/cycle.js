@@ -1251,7 +1251,8 @@ export default async function cyclePage(root, ctx = {}) {
   /** Flo-style one tap: mark sex for today; the rest of the day's log is untouched (server merges fields). */
   const logSexNow = async (btn) => {
     const v = derive(state.bundle);
-    const before = v.todayLog?.sexualActivity === true ? true : null;
+    // The stored answer as it is: undo puts a „არ მქონია“ (false) back, never null over it (IR-9).
+    const before = v.todayLog?.sexualActivity ?? null;
     if (before === true || (v.todayLog?.symptoms || []).some((id) => SEX_ACTIVITY_IDS.has(id))) {
       openDayLog(v.today, { only: 'sex' });
       return;
@@ -2069,8 +2070,10 @@ function formFromLog(l) {
     extraSymptoms: all.filter((id) => !SEX_IDS.has(id) && !SYMPTOMS.some((s) => s.id === id)),
     sexTags: all.filter((id) => SEX_IDS.has(id)),
     moods: [...(l?.moods || [])],
-    // Stored false cannot be told apart from the old default "no" → show as unanswered (cycleLogSave.ts).
+    // Stored false cannot be told apart from the old default "no" → show as unanswered (cycleLogForm.ts)…
     sexual: l?.sexualActivity === true || all.some((id) => SEX_ACTIVITY_IDS.has(id)) ? true : null,
+    // …but keep what is stored, so an untouched answer is saved back as it was (app CYC-11, IR-9).
+    sexualStored: l?.sexualActivity ?? null,
     bbt: l?.bbt != null ? String(l.bbt) : '',
     mucus: l?.cervicalMucus ?? null,
     ovulationTest: l?.ovulationTest ?? null,
@@ -2090,6 +2093,15 @@ function formFromLog(l) {
   };
 }
 
+/**
+ * The app's `sexualActivityForSave` (mobile cycleLogForm.ts): her answer when she gave one this time;
+ * otherwise a stored „არ მქონია“ (false) stays — a mood change never erases it. Clearing a „yes“ sends null.
+ */
+function sexualActivityForSave(f) {
+  if (f.sexual === true || f.sexual === false) return f.sexual;
+  return f.sexualStored === false ? false : null;
+}
+
 function payloadFromForm(f) {
   const raw = f.bbt.trim().replace(',', '.');
   const bbt = raw ? Number(raw) : null;
@@ -2105,7 +2117,7 @@ function payloadFromForm(f) {
     // Activity tags only when the answer is "yes"; sex drive is its own answer and is always kept.
     symptoms: [...f.symptoms, ...f.extraSymptoms, ...f.sexTags.filter((id) => f.sexual === true || !SEX_ACTIVITY_IDS.has(id))],
     moods: f.moods,
-    sexualActivity: f.sexual,
+    sexualActivity: sexualActivityForSave(f),
     bbt,
     cervicalMucus: f.mucus,
     ovulationTest: f.ovulationTest,

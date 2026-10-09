@@ -5,6 +5,8 @@ import { ka } from '@/i18n/ka';
 import type { CycleLogForm } from '@/components/cycle/CycleLogTabs';
 import { periodToastTitle } from '@/components/cycle/CyclePeriodToast';
 import { formFromCycleLog, persistCycleLog } from '@/lib/cycleLogSave';
+import { periodStartTapHealthWrite } from '@/lib/cycleHealthWrite';
+import { syncCycleLogToHealth } from '@/lib/healthSync';
 import { periodStartTone } from '@/lib/cycleTone';
 import { queueApplyPeriod, queueRemoveCycleLog, saveCycleObservation, undoQueuedPeriodStart, type CycleView } from '@/lib/cycleOffline';
 import { cyclePersistFeedback } from '@/lib/cycleOfflineCore';
@@ -211,7 +213,8 @@ export function useHomeCycleActions({
 
   const startPeriod = useCallback(() => {
     if (!userId || busyRef.current) return;
-    const undo = periodStartUndo(view?.display.logs.find((l) => l.date === today) ?? null, view?.display.profile.lastPeriodStart);
+    const beforeRow = view?.display.logs.find((l) => l.date === today) ?? null;
+    const undo = periodStartUndo(beforeRow, view?.display.profile.lastPeriodStart);
     busyRef.current = true;
     setBusy(true);
     setError(null);
@@ -219,6 +222,10 @@ export function useHomeCycleActions({
       try {
         const result = await queueApplyPeriod(userId, { action: 'start', date: today });
         if (storedNothing(result)) return;
+        // Apple Health / Health Connect get day 1 as a cycle start (IR-6): fire-and-forget, only when sync
+        // is on, never asks for access. Undo cannot take a Health sample back (none is ever deleted).
+        const health = periodStartTapHealthWrite(today, beforeRow);
+        if (health) void syncCycleLogToHealth(health).catch(() => undefined);
         trackCyclePeriodStarted('home');
         // TTC: a new cycle is not a success to celebrate — a plain selection tick (brief §9 item 16).
         if (periodStartTone(mode).haptic === 'selection') Haptics.selectionAsync().catch(() => undefined);
