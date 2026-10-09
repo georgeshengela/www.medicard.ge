@@ -63,6 +63,10 @@ import { parseAnalyticsRange, addDaysYmd, tbilisiMidnight } from '../lib/adminAn
 import { listAdminAudit, writeAdminAudit } from '../lib/adminAudit.js';
 import { enrichDecisions } from '../lib/clientContext.js';
 import { getUserInvestigation } from '../lib/adminUserInvestigation.js';
+import { loadAdminIdentity } from '../lib/adminUserIdentity.js';
+import { getAvatar } from '../lib/identity.js';
+import { servePrivateUpload } from '../lib/privateUploads.js';
+import { applyPrivateCache } from '../lib/cycleShare.js';
 import { tbilisiYmd } from '../lib/checkIn.js';
 
 function emptyDayMap(startToday, days = 14) {
@@ -113,6 +117,7 @@ async function buildAdminUsersWhere(query = {}) {
   const signupNo = SIGNUP_NO_RE.exec(q);
   const signupId = signupNo && Number(signupNo[1]) >= 1 ? await userIdBySignupNumber(Number(signupNo[1])) : null;
   const status = String(query.status ?? '').trim().toUpperCase();
+  const gender = String(query.gender ?? '').trim().toUpperCase();
   const packageCode = String(query.package ?? '').trim().toUpperCase();
   const activity = String(query.activity ?? '').trim();
   const appVersion = String(query.appVersion ?? '').trim();
@@ -136,6 +141,7 @@ async function buildAdminUsersWhere(query = {}) {
     AND: [
       orIdentity ? { OR: orIdentity } : {},
       status === 'ACTIVE' || status === 'BLOCKED' ? { status } : {},
+      gender === 'FEMALE' || gender === 'MALE' || gender === 'OTHER' ? { gender } : gender === 'UNKNOWN' ? { gender: null } : {},
       packageCode ? { package: { code: packageCode } } : {},
       activity === 'medi' ? { chats: { some: {} } } : {},
       activity === 'meds' ? { medications: { some: {} } } : {},
@@ -224,6 +230,8 @@ function adminUserRow(user, usage) {
     platform: user.platform ?? null,
     hasCycle: Boolean(user.hasCycle),
     signupNo: user.signupNo ?? null,
+    avatar: user.avatar ?? null,
+    country: user.country ?? null,
     counts: {
       records: user._count?.records ?? 0,
       chats: user._count?.chats ?? 0,
@@ -470,9 +478,9 @@ adminRouter.get(
     ]);
 
     const ids = users.map((user) => user.id);
-    const [activityMap, permissions, signupNumbers] = ids.length
-      ? await Promise.all([loadLatestActivityMap(ids), loadPermissionRows(ids), loadSignupNumbers(ids)])
-      : [new Map(), [], new Map()];
+    const [activityMap, permissions, signupNumbers, identity] = ids.length
+      ? await Promise.all([loadLatestActivityMap(ids), loadPermissionRows(ids), loadSignupNumbers(ids), loadAdminIdentity(ids)])
+      : [new Map(), [], new Map(), new Map()];
     const permByUser = new Map(permissions.map((row) => [row.userId, row.status]));
 
     const rows = users.map((user) => {
@@ -486,6 +494,7 @@ adminRouter.get(
           appVersion: activity?.appVersion || null,
           notificationPermission: permByUser.get(user.id) || 'unknown',
           signupNo: signupNumbers.get(user.id) ?? null,
+          ...identity.get(user.id),
         },
         peekListUsage(user.package, user.periodUsages),
       );
@@ -525,9 +534,10 @@ adminRouter.get(
       from: req.query.from,
       to: req.query.to,
     });
-    const [investigation, signupNumbers] = await Promise.all([
+    const [investigation, signupNumbers, identity] = await Promise.all([
       getUserInvestigation(user.id, bounds),
       loadSignupNumbers([user.id]),
+      loadAdminIdentity([user.id]),
     ]);
     res.json({
       user: adminUserRow(
@@ -536,6 +546,7 @@ adminRouter.get(
           platform: investigation.activity?.platform || investigation.overview?.platform || null,
           hasCycle: Boolean(investigation.product?.hasCycle),
           signupNo: signupNumbers.get(user.id) ?? null,
+          ...identity.get(user.id),
         },
         await getUsage(user.id),
       ),
@@ -553,6 +564,21 @@ adminRouter.get(
       decisions: investigation.notifications?.recentDecisions || [],
       investigation,
     });
+  }),
+);
+
+// The person's own photo for admin screens (the app's /api/identity/avatars checks friendship instead).
+adminRouter.get(
+  '/users/:id/avatar',
+  requireAdmin,
+  asyncHandler(async (req, res) => {
+    applyPrivateCache(res);
+    const row = await getAvatar(String(req.params.id)).catch(() => null);
+    if (!row) return res.status(404).json({ error: 'ფოტო არ არის.' });
+    req.params.filename = String(row.fileKey).split('/').pop();
+    // servePrivateUpload checks for a signed-in app user; here the caller is the admin (requireAdmin above).
+    req.user = { id: `admin:${req.admin?.id || 'admin'}` };
+    return servePrivateUpload(req, res, { findOwner: async () => ({ ok: true }) });
   }),
 );
 

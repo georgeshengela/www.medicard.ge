@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="ka">
+<head>
+<meta charset="utf-8">
+<title>ქალების სივრცე · მისალმება</title>
+<style>
+  @font-face { font-family: 'NSG'; src: url('../cycle-ad/fonts/NotoSansGeorgian_200ExtraLight.ttf'); font-weight: 200; }
+  @font-face { font-family: 'NSG'; src: url('../cycle-ad/fonts/NotoSansGeorgian_300Light.ttf'); font-weight: 300; }
+  @font-face { font-family: 'NSG'; src: url('../cycle-ad/fonts/NotoSansGeorgian_400Regular.ttf'); font-weight: 400; }
+  @font-face { font-family: 'NSG'; src: url('../cycle-ad/fonts/NotoSansGeorgian_500Medium.ttf'); font-weight: 500; }
+  :root {
+    --porcelain: #FBF7F5;
+    --champagne: #EFE2D3;
+    --ink: #2A1F2D;
+    --muted: #7D6E7A;
+    --ruby: #C92A55;
+  }
+  html, body { margin: 0; background: #ddd; }
+  #poster {
+    position: relative; width: 1080px; height: 1350px; overflow: hidden;
+    background:
+      radial-gradient(900px 700px at 85% 8%, #F6E7E4 0%, transparent 60%),
+      radial-gradient(800px 800px at 0% 100%, #EEF0E6 0%, transparent 55%),
+      var(--porcelain);
+    font-family: 'NSG', sans-serif; color: var(--ink);
+  }
+  svg.silk { position: absolute; inset: 0; width: 100%; height: 100%; }
+  .grain { position: absolute; inset: 0; opacity: .05; mix-blend-mode: multiply;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"); }
+  .top { position: absolute; left: 96px; right: 96px; top: 92px; display: flex; justify-content: space-between; align-items: center;
+    font-size: 21px; font-weight: 400; letter-spacing: .14em; color: var(--muted); }
+  .top b { font-weight: 500; color: var(--ink); letter-spacing: .2em; }
+  .top i { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: var(--ruby); margin: 0 14px 3px; }
+  .copy { position: absolute; left: 96px; right: 96px; top: 300px; }
+  .kicker { font-size: 26px; font-weight: 300; letter-spacing: .02em; color: var(--muted); margin: 0 0 26px; }
+  h1 { margin: 0; font-weight: 200; font-size: 112px; line-height: 1.06; letter-spacing: -.02em; }
+  h1 em { font-style: normal; font-weight: 400; color: var(--ruby); }
+  .lead { margin: 40px 0 0; max-width: 760px; font-size: 32px; line-height: 1.5; font-weight: 300; color: #4A3D49; }
+  .pillars { position: absolute; left: 96px; right: 96px; bottom: 120px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 0;
+    border-top: 1px solid rgba(42, 31, 45, .16); }
+  .pillars div { padding: 28px 24px 0 0; }
+  .pillars div + div { padding-left: 28px; border-left: 1px solid rgba(42, 31, 45, .12); }
+  .pillars b { display: block; font-size: 30px; font-weight: 400; margin-bottom: 8px; }
+  .pillars span { display: block; font-size: 21px; line-height: 1.45; font-weight: 300; color: var(--muted); }
+  .sign { position: absolute; left: 96px; bottom: 58px; font-size: 19px; letter-spacing: .12em; color: var(--muted); font-weight: 400; }
+</style>
+</head>
+<body>
+<div id="poster">
+  <svg class="silk" viewBox="0 0 1080 1350" aria-hidden="true">
+    <defs>
+      <linearGradient id="g1" x1="0" y1="0" x2="1" y2="0">
+        <stop offset="0" stop-color="#C9A9B4" stop-opacity="0"/>
+        <stop offset=".25" stop-color="#C9A0AE"/>
+        <stop offset=".55" stop-color="#D9C2A7"/>
+        <stop offset=".85" stop-color="#A9B49C"/>
+        <stop offset="1" stop-color="#A9B49C" stop-opacity="0"/>
+      </linearGradient>
+      <linearGradient id="g2" x1="0" y1="0" x2="1" y2="0">
+        <stop offset="0" stop-color="#C92A55" stop-opacity="0"/>
+        <stop offset=".5" stop-color="#C92A55" stop-opacity=".9"/>
+        <stop offset="1" stop-color="#C92A55" stop-opacity="0"/>
+      </linearGradient>
+    </defs>
+    <g id="ribbon" fill="none" stroke="url(#g1)" stroke-linecap="round"></g>
+    <path id="accent" fill="none" stroke="url(#g2)" stroke-width="1.6" stroke-linecap="round"/>
+  </svg>
+  <div class="grain"></div>
+  <div class="top"><span><b>MEDICARD</b><i></i>ქალების სივრცე</span><span>მისალმება</span></div>
+  <div class="copy">
+    <p class="kicker">კეთილი იყოს შენი მობრძანება</p>
+    <h1>აქ ყველა<br>ისტორიას<br><em>უსმენენ</em></h1>
+    <p class="lead">ჰკითხე, გაუზიარე, დაუჭირე მხარი — სახელით, მეტსახელით ან სრულიად ანონიმურად.</p>
+  </div>
+  <div class="pillars">
+    <div><b>მხარდაჭერა</b><span>შენი გამოცდილება<br>სხვას ეხმარება</span></div>
+    <div><b>პატივისცემა</b><span>განსჯის გარეშე,<br>თბილად</span></div>
+    <div><b>უსაფრთხოება</b><span>ანონიმურობა<br>და მოდერაცია</span></div>
+  </div>
+  <div class="sign">მხოლოდ ქალებისთვის · MEDICARD აპში</div>
+</div>
+<script>
+  // Flowing silk: ~46 hairlines that share one wave and drift apart, sweeping behind the headline.
+  const g = document.getElementById('ribbon');
+  const N = 52;
+  // One shared wave under the copy: low and calm on the left, a long rise on the right where the page is empty.
+  const wave = (t) => `M -80 ${955 + t * 70} C 220 ${880 + t * 20}, 520 ${1060 - t * 60}, ${790 + t * 30} ${1000 - t * 70} S ${990 + t * 20} ${690 - t * 190}, 1180 ${470 - t * 230}`;
+  for (let i = 0; i < N; i++) {
+    const t = i / (N - 1);
+    const d = wave(t);
+    const p = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    p.setAttribute('d', d);
+    p.setAttribute('stroke-width', (0.6 + Math.sin(t * Math.PI) * 0.9).toFixed(2));
+    p.setAttribute('opacity', (0.25 + Math.sin(t * Math.PI) * 0.6).toFixed(2));
+    g.appendChild(p);
+  }
+  document.getElementById('accent').setAttribute('d', wave(0.5));
+</script>
+</body>
+</html>

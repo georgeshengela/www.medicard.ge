@@ -1595,7 +1595,12 @@ html body table.s-table tr.is-click:focus-visible { outline: 2px solid var(--s-a
 /* Registry (#/users) */
 .s-users-gender { display: grid; align-content: start; gap: 6px; }
 .s-users-gender-row { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
-.s-users-gender-row > div { display: grid; gap: 1px; min-width: 0; }
+.s-users-gender-row > button { display: grid; gap: 1px; min-width: 0; margin: -4px -6px; padding: 4px 6px; border: 0; border-radius: 8px; background: transparent; color: inherit; font: inherit; text-align: left; cursor: pointer; transition: background .15s; }
+.s-users-gender-row > button:hover { background: var(--s-hover); }
+.s-users-gender-row > button.is-on { background: var(--s-accent-soft); box-shadow: inset 0 0 0 1px var(--s-accent); }
+.s-users-gdot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; }
+.s-users-gdot.is-f { background: #F43F5E; }
+.s-users-gdot.is-m { background: #3B82F6; }
 .s-users-gender-row strong { font-size: 22px; font-weight: 700; line-height: 1.15; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
 .s-users-gender-row .is-f strong { color: #E11D48; }
 .s-users-gender-row .is-m strong { color: #2563EB; }
@@ -2347,7 +2352,10 @@ html[data-theme="dark"] .cc-st-face.is-f { color: #FDA4AF; }
 .cc-st-more .cc-st-name { color: var(--s-accent); }
 /* Hover card */
 .cc-st-pop { position: absolute; bottom: calc(100% - 4px); left: 50%; z-index: 20; display: grid; gap: 3px; width: max-content; max-width: 260px; padding: 10px 12px; border: 1px solid var(--s-line); border-radius: 12px; background: var(--s-surface); box-shadow: var(--s-shadow-lg, 0 12px 32px rgba(0,0,0,.25)); text-align: left; font-size: 12px; color: var(--s-muted); opacity: 0; visibility: hidden; transform: translate(-50%, 6px); transition: opacity .15s, transform .15s, visibility .15s; pointer-events: none; }
-.cc-st:hover .cc-st-pop, .cc-st:focus-visible .cc-st-pop { opacity: 1; visibility: visible; transform: translate(-50%, 0); }
+/* The in-tile card is only the template; the visible one is #cc-st-floating on <body> (never under the sidebar). */
+.cc-st > .cc-st-pop { display: none; }
+.cc-st-pop.is-floating { position: fixed; bottom: auto; left: 0; top: 0; z-index: 140; transform: translateY(4px); }
+.cc-st-pop.is-floating.is-on { opacity: 1; visibility: visible; transform: none; }
 .cc-st-pop b { font-size: 13px; color: var(--s-ink); }
 .cc-st-pop small { font-size: 12px; color: var(--s-text-2); }
 .cc-st-pop-row { display: flex; align-items: center; gap: 6px; white-space: nowrap; }
@@ -2356,3 +2364,39 @@ html[data-theme="dark"] .cc-st-face.is-f { color: #FDA4AF; }
 .cc-st-grid > .cc-on-empty { grid-column: 1 / -1; }
 @media (prefers-reduced-motion: reduce) { .cc-st-ring.is-new, .cc-st.is-new { animation: none; } }
 .cc-on-empty { padding: 26px 22px; font-size: 13px; color: var(--s-muted); text-align: center; }
+
+/* Real pictures (2026-10-09): preset avatar or own photo over the initials; country flag on the registry avatar. */
+.adm-ava { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; border-radius: inherit; background: var(--s-raised); }
+.adm-ava[hidden] { display: none; }
+.s-users-ava { position: relative; overflow: visible; }
+.s-users-ava > .adm-ava { border-radius: 50%; }
+.s-users-ava.is-f { background: color-mix(in srgb, #E11D48 12%, var(--s-raised)); color: #E11D48; }
+html[data-theme="dark"] .s-users-ava.is-f { color: #FDA4AF; }
+.s-users-flag { position: absolute; right: -4px; bottom: -3px; display: grid; place-items: center; width: 18px; height: 13px; border-radius: 3px; overflow: hidden; box-shadow: 0 0 0 2px var(--s-surface); }
+.s-users-flag img, .s-users-flag .v3-user-flag { display: block; width: 18px !important; height: 13px !important; object-fit: cover; border-radius: 0; box-shadow: none; }
+.s-user-ava-in { position: relative; display: grid; place-items: center; width: 100%; height: 100%; border-radius: 50%; overflow: hidden; }
+.cc-st-face { position: relative; overflow: hidden; }
+.cc-st-flag { position: absolute; left: 0; top: 4px; display: grid; width: 18px; height: 13px; border-radius: 3px; overflow: hidden; box-shadow: 0 0 0 2px var(--s-surface); }
+.cc-st-flag img { display: block; width: 18px; height: 13px; object-fit: cover; }
+.cc-st-pop-row img.v3-user-flag { width: 16px; height: 12px; border-radius: 2px; }
+
+/* Profile picture zoom (#/users/:id): the hero avatar opens a lightbox. */
+.s-user-ava.is-zoomable { padding: 0; border: 0; font: inherit; cursor: zoom-in; }
+.s-user-ava-zoom { position: absolute; inset: 0; display: grid; place-items: center; border-radius: 50%; background: rgba(0, 0, 0, 0.42); color: #fff; opacity: 0; transition: opacity .15s; }
+.s-user-ava-zoom .icon { width: 22px; height: 22px; }
+.s-user-ava.is-zoomable:hover .s-user-ava-zoom, .s-user-ava.is-zoomable:focus-visible .s-user-ava-zoom { opacity: 1; }
+.s-user-ava.is-zoomable:focus-visible { outline: 2px solid var(--s-accent); outline-offset: 4px; }
+.s-ava-lightbox { position: fixed; inset: 0; z-index: 120; display: grid; place-items: center; padding: 24px; background: rgba(8, 10, 14, 0.82); backdrop-filter: blur(6px); animation: s-ava-in .18s ease both; cursor: zoom-out; }
+.s-ava-lightbox.is-leaving { animation: s-ava-out .16s ease both; }
+.s-ava-lightbox figure { display: grid; justify-items: center; gap: 14px; margin: 0; }
+.s-ava-lightbox img { display: block; width: min(512px, 82vw, 72vh); height: auto; aspect-ratio: 1; object-fit: cover; border-radius: 24px; box-shadow: 0 24px 64px rgba(0, 0, 0, 0.5); cursor: default; animation: s-ava-pop .22s cubic-bezier(.2, .9, .3, 1.2) both; }
+.s-ava-lightbox figcaption { display: grid; justify-items: center; gap: 2px; color: #fff; text-align: center; }
+.s-ava-lightbox figcaption b { font-size: 16px; font-weight: 650; }
+.s-ava-lightbox figcaption span { font-size: 12.5px; color: rgba(255, 255, 255, 0.65); }
+.s-ava-lightbox-x { position: absolute; top: 18px; right: 18px; display: grid; place-items: center; width: 40px; height: 40px; border: 0; border-radius: 50%; background: rgba(255, 255, 255, 0.12); color: #fff; cursor: pointer; }
+.s-ava-lightbox-x:hover { background: rgba(255, 255, 255, 0.22); }
+.s-ava-lightbox-x .icon { width: 18px; height: 18px; }
+@keyframes s-ava-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes s-ava-out { to { opacity: 0; } }
+@keyframes s-ava-pop { from { opacity: 0; transform: scale(.85); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .s-ava-lightbox, .s-ava-lightbox img { animation: none; } }

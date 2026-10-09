@@ -187,7 +187,7 @@ export function FoodSearchModal({
   );
   const empty = (message: string) => <Text style={[txt, { color: c.text200, textAlign: "center", paddingVertical: 24, lineHeight: 22 }]}>{message}</Text>;
   return (
-    <Modal visible={visible} {...APP_MODAL_PROPS} transparent={false} onRequestClose={onClose}>
+    <Modal visible={visible} {...APP_MODAL_PROPS} transparent={false} onRequestClose={() => (portion ? setPortion(null) : onClose())}>
       <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={{ flex: 1, backgroundColor: c.bg100, paddingTop: safe.top }}>
         <View style={s.head}>
           <Pressable accessibilityRole="button" accessibilityLabel={tx("დახურვა", "Close")} onPress={onClose} style={s.iconButton}>
@@ -257,6 +257,7 @@ export function FoodSearchModal({
           )}
         </ScrollView>
         <PortionSheet
+          inline
           food={portion}
           onClose={() => setPortion(null)}
           onToggleFavorite={(food) => void toggleFavorite(food)}

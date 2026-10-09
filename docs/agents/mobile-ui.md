@@ -66,6 +66,8 @@ NativeWind v4 **silently drops function-form style callbacks on `Pressable`** �
 
 Transparent overlays **fade**. Never `animationType="slide"` — that slides the dim and leaves an ugly transparent hole.
 
+**Never nest a Modal in a Modal, and never present while one is closing (iOS freeze, 2026-10-09).** The MEDIFOOD portion sheet lived inside the food-search Modal; both closed in the same frame and left an invisible layer that swallowed every touch („search → add → save“ froze the diary). Draw an inner sheet as an overlay inside the outer Modal (`PortionSheet inline`). To go from one sheet to the camera, the photo picker or another Modal, close the first and open the next after `MODAL_HANDOFF_MS` (`components/ui/appModal`) — iOS silently refuses to present while a controller is dismissing, and the awaiting code hangs. Guard: `tests/modal-chrome.test.cjs`.
+
 ```tsx
 import { APP_MODAL_PROPS } from '@/components/ui/appModal';
 

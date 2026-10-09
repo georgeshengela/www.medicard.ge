@@ -71,11 +71,13 @@
     if (typeof setPageHeader === 'function') setPageHeader('users', { users: ['ადამიანები', title, subtitle, helpKey] });
   }
 
+  const GENDER_FILTER = [['', 'ყველა'], ['FEMALE', 'ქალი'], ['MALE', 'კაცი']];
   function usersFilterParamsFromHash() {
     const hs = typeof hashSearch === 'function' ? hashSearch() : new URLSearchParams();
     return {
       q: hs.get('q') || '',
       status: hs.get('status') || '',
+      gender: hs.get('gender') || '',
       activity: hs.get('activity') || '',
       appVersion: hs.get('appVersion') || '',
       page: Math.max(1, Number(hs.get('page') || 1) || 1),
@@ -88,6 +90,7 @@
     const params = new URLSearchParams();
     if (filters.q) params.set('q', filters.q);
     if (filters.status) params.set('status', filters.status);
+    if (filters.gender) params.set('gender', filters.gender);
     if (filters.activity) params.set('activity', filters.activity);
     if (filters.appVersion) params.set('appVersion', filters.appVersion);
     if (filters.page && filters.page > 1) params.set('page', String(filters.page));
@@ -112,6 +115,7 @@
     return {
       q: ($('user-q')?.value || '').trim(),
       status: $('user-status')?.value || '',
+      gender: $('user-gender')?.value || '',
       activity: $('user-activity')?.value || '',
       appVersion: hashSearch().get('appVersion') || '',
       page: Math.floor((state.offset || 0) / PAGE) + 1,
@@ -135,6 +139,7 @@
     const chips = [];
     if (f.q) chips.push(['q', `ძებნა: „${f.q}“`]);
     if (f.status) chips.push(['status', f.status === 'ACTIVE' || f.status === 'BLOCKED' ? accountStatusLabel(f.status) : f.status]);
+    if (f.gender) chips.push(['gender', f.gender === 'FEMALE' ? 'ქალები' : f.gender === 'MALE' ? 'კაცები' : 'სქესი: სხვა']);
     if (f.activity) chips.push(['activity', activityLabelKa(f.activity)]);
     if (f.appVersion) chips.push(['appVersion', `აპის ვერსია ${f.appVersion}`]);
     return chips;
@@ -183,6 +188,11 @@
     return `<td class="s-users-no"><span class="s-users-no-pill${milestone ? ' is-milestone' : ''}" title="${escA(`${fmtKa(n)}-ე დარეგისტრირებული`)}">#${esc(fmtKa(n))}</span></td>`;
   }
 
+  const COUNTRY_SOURCE_KA = { location: 'გაზიარებული მდებარეობით', phone: 'ტელეფონის კოდით', timezone: 'ტელეფონის საათის სარტყლით' };
+  function countryTitle(c) {
+    return [c.cityKa, c.nameKa].filter(Boolean).join(', ') + (COUNTRY_SOURCE_KA[c.source] ? ` · ${COUNTRY_SOURCE_KA[c.source]}` : '');
+  }
+
   function userRow(u) {
     const act = activityState(u.lastActiveAt);
     const blocked = u.status === 'BLOCKED';
@@ -193,7 +203,7 @@
         ${signupCell(u.signupNo)}
         <td>
           <div class="s-users-person">
-            <span class="s-avatar${blocked ? ' is-muted' : ''}" aria-hidden="true">${esc(personInitials(u))}</span>
+            <span class="s-avatar s-users-ava${blocked ? ' is-muted' : ''}${u.gender === 'FEMALE' ? ' is-f' : ''}" aria-hidden="true">${esc(personInitials(u))}${typeof adminAvatarImg === 'function' ? adminAvatarImg(u) : ''}${u.country?.code && typeof adminFlagImg === 'function' ? `<span class="s-users-flag" title="${escA(countryTitle(u.country))}">${adminFlagImg(u.country.code)}</span>` : ''}</span>
             <span class="s-users-name">
               <b>${esc(u.fullName || contactLine(u) || '—')}</b>
               <small>${esc(contact || 'კონტაქტი არ არის')}</small>
@@ -268,6 +278,9 @@
                 <button type="button" role="tab" data-status-chip="ACTIVE" aria-selected="${initial.status === 'ACTIVE'}">შესვლა დაშვებულია</button>
                 <button type="button" role="tab" data-status-chip="BLOCKED" aria-selected="${initial.status === 'BLOCKED'}">დაბლოკილი</button>
               </div>
+              <div class="s-segment s-users-gender-seg" id="users-gender-chips" role="tablist" aria-label="სქესი">
+                ${GENDER_FILTER.map(([v, l]) => `<button type="button" role="tab" data-gender-chip="${v}" aria-selected="${(initial.gender || '') === v}">${v ? `<i class="s-users-gdot is-${v === 'FEMALE' ? 'f' : 'm'}" aria-hidden="true"></i>` : ''}${l}</button>`).join('')}
+              </div>
             </div>
 
             <div class="s-users-facets" role="group" aria-label="ფილტრი აპის გამოყენებით">
@@ -283,6 +296,9 @@
 
           <select id="user-status" class="sr-only" aria-hidden="true" tabindex="-1">
             <option value=""></option><option value="ACTIVE"${initial.status === 'ACTIVE' ? ' selected' : ''}></option><option value="BLOCKED"${initial.status === 'BLOCKED' ? ' selected' : ''}></option>
+          </select>
+          <select id="user-gender" class="sr-only" aria-hidden="true" tabindex="-1">
+            ${GENDER_FILTER.map(([v]) => `<option value="${v}"${(initial.gender || '') === v ? ' selected' : ''}></option>`).join('')}
           </select>
           <select id="user-activity" class="sr-only" aria-hidden="true" tabindex="-1">
             <option value=""></option>
@@ -325,6 +341,10 @@
       document.querySelectorAll('[data-activity-chip]').forEach((btn) => {
         btn.setAttribute('aria-pressed', String((btn.dataset.activityChip || '') === (f.activity || '')));
       });
+      document.querySelectorAll('[data-gender-chip]').forEach((btn) => {
+        btn.setAttribute('aria-selected', String((btn.dataset.genderChip || '') === (f.gender || '')));
+      });
+      document.querySelectorAll('[data-gender-pick]').forEach((el) => el.classList.toggle('is-on', el.dataset.genderPick === f.gender));
     };
 
     const paintSummary = () => {
@@ -393,8 +413,8 @@
         const pct = (n) => Math.round((n / all) * 100);
         gHost.innerHTML = `<span>ქალი და კაცი</span>
           <div class="s-users-gender-row">
-            <div class="is-f"><strong>${fmtKa(female)}</strong><small>ქალი · ${pct(female)}%</small></div>
-            <div class="is-m"><strong>${fmtKa(male)}</strong><small>კაცი · ${pct(male)}%</small></div>
+            <button type="button" class="is-f${$('user-gender')?.value === 'FEMALE' ? ' is-on' : ''}" data-gender-pick="FEMALE" title="მხოლოდ ქალების ჩვენება"><strong>${fmtKa(female)}</strong><small>ქალი · ${pct(female)}%</small></button>
+            <button type="button" class="is-m${$('user-gender')?.value === 'MALE' ? ' is-on' : ''}" data-gender-pick="MALE" title="მხოლოდ კაცების ჩვენება"><strong>${fmtKa(male)}</strong><small>კაცი · ${pct(male)}%</small></button>
           </div>
           <div class="s-users-gender-bar" role="img" aria-label="ქალი ${female}, კაცი ${male}, სხვა ან უცნობი ${rest}"><i class="is-f" style="width:${(female / all) * 100}%"></i><i class="is-m" style="width:${(male / all) * 100}%"></i>${rest ? `<i class="is-o" style="width:${(rest / all) * 100}%"></i>` : ''}</div>
           <small>${rest ? `სხვა ან არ მიუთითებია: ${fmtKa(rest)}` : 'მთელი ბაზა'}</small>`;
@@ -413,6 +433,7 @@
       const params = new URLSearchParams({ limit: String(PAGE), offset: String(state.offset) });
       if (f.q) params.set('q', f.q);
       if (f.status) params.set('status', f.status);
+      if (f.gender) params.set('gender', f.gender);
       if (f.activity) params.set('activity', f.activity);
       if (f.appVersion) params.set('appVersion', f.appVersion);
       try {
@@ -481,9 +502,10 @@
       if ($('user-q')) $('user-q').value = '';
       $('user-q-clear')?.classList.add('hidden');
       if ($('user-status')) $('user-status').value = '';
+      if ($('user-gender')) $('user-gender').value = '';
       if ($('user-activity')) $('user-activity').value = '';
       state.offset = 0;
-      writeUsersHash({ q: '', status: '', activity: '', appVersion: '', page: 1 });
+      writeUsersHash({ q: '', status: '', gender: '', activity: '', appVersion: '', page: 1 });
       load();
     };
 
@@ -493,6 +515,7 @@
         $('user-q-clear')?.classList.add('hidden');
       }
       if (key === 'status' && $('user-status')) $('user-status').value = '';
+      if (key === 'gender' && $('user-gender')) $('user-gender').value = '';
       if (key === 'activity' && $('user-activity')) $('user-activity').value = '';
       state.offset = 0;
       if (key === 'appVersion') writeUsersHash({ ...readFiltersFromUi(), appVersion: '', page: 1 });
@@ -525,6 +548,15 @@
     document.querySelectorAll('[data-activity-chip]').forEach((btn) => {
       btn.addEventListener('click', () => setSelectAndLoad('user-activity', btn.dataset.activityChip));
     });
+    document.querySelectorAll('[data-gender-chip]').forEach((btn) => {
+      btn.addEventListener('click', () => setSelectAndLoad('user-gender', btn.dataset.genderChip));
+    });
+    // The halves of the „ქალი და კაცი“ card filter too (a second click clears).
+    $('users-kpi-gender')?.addEventListener('click', (e) => {
+      const pick = e.target.closest('[data-gender-pick]');
+      if (!pick) return;
+      setSelectAndLoad('user-gender', $('user-gender')?.value === pick.dataset.genderPick ? '' : pick.dataset.genderPick);
+    });
 
     $('user-reload').onclick = load;
     window.__reloadUsers = load;
@@ -537,6 +569,7 @@
       const params = new URLSearchParams();
       if (f.q) params.set('q', f.q);
       if (f.status) params.set('status', f.status);
+      if (f.gender) params.set('gender', f.gender);
       if (f.activity) params.set('activity', f.activity);
       if (f.appVersion) params.set('appVersion', f.appVersion);
       if (typeof opsDownload !== 'function') {
@@ -655,6 +688,31 @@
     };
   }
 
+  /** Full-size look at the profile picture: dark scrim, the image, the name; click, × or Esc closes. */
+  function openAvatarLightbox(src, title, caption) {
+    document.querySelector('.s-ava-lightbox')?.remove();
+    const box = document.createElement('div');
+    box.className = 's-ava-lightbox';
+    box.setAttribute('role', 'dialog');
+    box.setAttribute('aria-modal', 'true');
+    box.setAttribute('aria-label', title);
+    box.innerHTML = `<figure><img src="${escA(src)}" alt="${escA(title)}"><figcaption><b>${esc(title)}</b><span>${esc(caption)}</span></figcaption></figure>
+      <button type="button" class="s-ava-lightbox-x" aria-label="დახურვა">${ico('x')}</button>`;
+    const prev = document.activeElement;
+    const close = () => {
+      box.classList.add('is-leaving');
+      document.removeEventListener('keydown', onKey, true);
+      setTimeout(() => box.remove(), 160);
+      prev?.focus?.();
+    };
+    const onKey = (e) => { if (e.key === 'Escape') { e.stopPropagation(); close(); } };
+    box.addEventListener('click', (e) => { if (!e.target.closest('img')) close(); });
+    box.querySelector('.s-ava-lightbox-x').addEventListener('click', close);
+    document.addEventListener('keydown', onKey, true);
+    document.body.appendChild(box);
+    box.querySelector('.s-ava-lightbox-x').focus();
+  }
+
   /** Small action menu next to the hero buttons (export, block/unblock, delete). */
   function openUserMenu(anchor, items) {
     document.querySelector('.s-menu.s-user-menu')?.remove();
@@ -731,7 +789,15 @@
     const mediPeriod = medi.available === false ? null : (medi.periodCount ?? 0);
     const mediTotal = ov.medi?.requests;
     const blocked = user.status === 'BLOCKED';
-    const place = typeof adminPlaceOf === 'function' ? adminPlaceOf(ov.location) : { line: '', flag: '' };
+    let place = typeof adminPlaceOf === 'function' ? adminPlaceOf(ov.location) : { line: '', flag: '' };
+    // No shared location → the country we can tell from the phone code or time zone (same as the map).
+    if (!ov.location?.countryCode && user.country?.code) {
+      place = {
+        line: [user.country.cityKa, user.country.nameKa].filter(Boolean).join(', '),
+        flag: typeof adminFlagImg === 'function' ? adminFlagImg(user.country.code) : '',
+        note: COUNTRY_SOURCE_KA[user.country.source] || '',
+      };
+    }
     const genderAge = [
       user.gender && typeof genderKa === 'function' ? genderKa(user.gender) : null,
       user.age != null ? `${user.age} წლის` : null,
@@ -760,7 +826,9 @@
     const hero = `
       <section class="s-card s-user-hero2${blocked ? ' is-blocked' : ''}${live ? ' is-live' : ''}">
         <div class="s-user-hero2-main">
-          <span class="s-user-ava${user.gender === 'FEMALE' ? ' is-f' : ''}${blocked ? ' is-muted' : ''}" aria-hidden="true">${esc(personInitials(user))}${live ? '<i></i>' : ''}</span>
+          ${user.avatar
+            ? `<button type="button" class="s-user-ava is-zoomable${user.gender === 'FEMALE' ? ' is-f' : ''}${blocked ? ' is-muted' : ''}" id="user-ava-zoom" aria-label="სურათის გადიდება" title="სურათის გადიდება"><span class="s-user-ava-in">${esc(personInitials(user))}${typeof adminAvatarImg === 'function' ? adminAvatarImg(user) : ''}</span>${live ? '<i></i>' : ''}<span class="s-user-ava-zoom" aria-hidden="true">${ico('search')}</span></button>`
+            : `<span class="s-user-ava${user.gender === 'FEMALE' ? ' is-f' : ''}${blocked ? ' is-muted' : ''}" aria-hidden="true"><span class="s-user-ava-in">${esc(personInitials(user))}</span>${live ? '<i></i>' : ''}</span>`}
           <div class="s-user-hero2-copy">
             <div class="s-user-hero2-title"><h2>${esc(name)}</h2>${statusBadges}<div class="s-user-hero2-actions">
                 <button type="button" class="btn compact" id="user-edit">${ico('settings')} რედაქტირება</button>
@@ -774,7 +842,7 @@
               ${copyChip(user.id, 'მომხმარებლის ID', 'user', `${String(user.id).slice(0, 8)}…`)}
             </div>
             <ul class="s-user-hero2-facts">
-              <li>${place.line ? `${place.flag || ico('globe')}<span>${esc(place.line)}</span>` : `${ico('globe')}<span class="s-muted">ადგილი უცნობია</span>`}</li>
+              <li>${place.line ? `${place.flag || ico('globe')}<span>${esc(place.line)}${place.note ? ` <span class="s-muted" title="როგორ დადგინდა">· ${esc(place.note)}</span>` : ''}</span>` : `${ico('globe')}<span class="s-muted">ადგილი უცნობია</span>`}</li>
               <li>${ico('user')}<span>${esc(genderAge || 'სქესი და ასაკი უცნობია')}</span></li>
               <li>${ico('calendar')}<span>რეგისტრაცია ${esc(when(user.createdAt, 'date'))}</span></li>
               ${platform || appVer ? `<li>${ico('phone')}<span>${esc([platform, appVer].filter(Boolean).join(' '))}</span></li>` : ''}
@@ -889,6 +957,10 @@
     });
     $('user-header-reload')?.addEventListener('click', reload);
     $('user-edit')?.addEventListener('click', () => openUserEditDialog(user, reload));
+    $('user-ava-zoom')?.addEventListener('click', (e) => {
+      const src = e.currentTarget.querySelector('.adm-ava')?.src;
+      if (src) openAvatarLightbox(src, name, user.avatar?.kind === 'preset' ? 'აპის მზა ავატარი' : 'საკუთარი ფოტო');
+    });
     $('user-note')?.addEventListener('click', () => openUserEditDialog(user, reload));
     $('user-coins')?.addEventListener('click', () => global.AdminV4Manage?.coinsDialog?.(id, 'grant'));
     $('user-more')?.addEventListener('click', (e) => {

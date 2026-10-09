@@ -16,7 +16,7 @@ import {
 import { Stack, useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Animated, { useAnimatedStyle, withTiming } from "react-native-reanimated";
-import { AlertCircle, Check, Minus, Plus, type LucideIcon } from "lucide-react-native";
+import { AlertCircle, Check, ChevronLeft, ChevronRight, Minus, Plus, type LucideIcon } from "lucide-react-native";
 import { ModuleHeader, ModuleStackHeader } from "@/components/brand/ModuleHeader";
 import { KeyboardFormShell } from "@/components/ui/KeyboardFormShell";
 import { APP_MODAL_OVERLAY, APP_MODAL_PROPS, Modal } from "@/components/ui/appModal";
@@ -26,7 +26,8 @@ import { HUB, hubText, hubTint } from "@/theme/hub";
 import { moduleInk } from "@/theme/moduleBrand";
 import { useAccountQuery } from "@/hooks/useAccountQuery";
 import { FRESH } from "@/lib/queryClient";
-import { nutritionProgramApi, type NutritionDashboard } from "@/lib/nutritionProgram";
+import { nutritionDateLabel, nutritionProgramApi, type NutritionDashboard } from "@/lib/nutritionProgram";
+import { localDay, shiftDay } from "@/lib/nutrition";
 import { tx } from "@/i18n/locale";
 
 /**
@@ -465,6 +466,92 @@ export function NConfirm({
   );
 }
 
+/**
+ * The week strip (Cal AI / Yazio): the range with ‹ › for whole weeks, then seven day cells — the chosen
+ * day filled emerald, today dotted, days with an entry marked by a small bar, days out of reach dimmed.
+ * Shared by the diary and the meal plan so both read the same.
+ */
+export function NWeekStrip({
+  from,
+  selected,
+  onSelect,
+  onWeek,
+  prevDisabled,
+  nextDisabled,
+  marked,
+  isDisabled,
+  disabled,
+}: {
+  /** First day of the seven shown (YYYY-MM-DD). */
+  from: string;
+  selected: string;
+  onSelect: (day: string) => void;
+  onWeek: (step: -7 | 7) => void;
+  prevDisabled?: boolean;
+  nextDisabled?: boolean;
+  /** Days that have something recorded (a short bar under the number). */
+  marked?: ReadonlySet<string>;
+  /** A day that cannot be chosen (the diary's future). */
+  isDisabled?: (day: string) => boolean;
+  disabled?: boolean;
+}) {
+  const M = useMedifood();
+  const today = localDay();
+  const days = Array.from({ length: 7 }, (_, i) => shiftDay(from, i));
+  const arrow = (step: -7 | 7, off?: boolean) => {
+    const Icon = step < 0 ? ChevronLeft : ChevronRight;
+    return (
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={step < 0 ? tx("წინა კვირა", "Previous week") : tx("შემდეგი კვირა", "Next week")}
+        accessibilityState={{ disabled: !!(off || disabled) }}
+        disabled={off || disabled}
+        onPress={() => onWeek(step)}
+        hitSlop={4}
+        style={[s.weekArrow, { backgroundColor: M.c.bg200, opacity: off || disabled ? 0.35 : 1 }]}
+      >
+        <Icon size={18} color={M.c.text100} />
+      </Pressable>
+    );
+  };
+  return (
+    <View style={{ backgroundColor: M.c.surface, borderRadius: HUB.cardRadius, padding: 6, gap: 2 }}>
+      <View style={[s.row, { gap: 8 }]}>
+        {arrow(-7, prevDisabled)}
+        <Text numberOfLines={1} style={[hubText.link, { flex: 1, textAlign: "center", color: M.c.text100 }]}>
+          {nutritionDateLabel(days[0])} — {nutritionDateLabel(days[6])}
+        </Text>
+        {arrow(7, nextDisabled)}
+      </View>
+      <View style={{ flexDirection: "row", gap: 2 }}>
+        {days.map((day) => {
+          const chosen = day === selected;
+          const off = !!isDisabled?.(day);
+          const mark = marked?.has(day);
+          return (
+            <Pressable
+              key={day}
+              accessibilityRole="button"
+              accessibilityState={{ selected: chosen, disabled: off || !!disabled }}
+              accessibilityLabel={`${day === today ? tx("დღეს, ", "Today, ") : ""}${nutritionDateLabel(day)}${mark ? tx(", ჩანაწერი აქვს", ", has entries") : ""}`}
+              disabled={off || disabled}
+              onPress={() => onSelect(day)}
+              style={[s.weekDay, { backgroundColor: chosen ? M.ink : "transparent", opacity: off ? 0.35 : 1 }]}
+            >
+              <Text numberOfLines={1} style={[hubText.small, { color: chosen ? M.onInk : M.c.text300 }]}>{nutritionDateLabel(day, true)}</Text>
+              <Text style={[hubText.value, { fontSize: 17, lineHeight: 23, color: chosen ? M.onInk : M.c.text100, fontVariant: ["tabular-nums"] }]}>{Number(day.slice(8))}</Text>
+              <View style={{ flexDirection: "row", gap: 3, height: 4, alignItems: "center" }}>
+                {day === today ? <View style={[s.dot, { backgroundColor: chosen ? M.onInk : M.ink }]} /> : null}
+                {mark ? <View style={[s.bar, { backgroundColor: chosen ? M.onInk : M.ink, opacity: chosen ? 0.7 : 0.45 }]} /> : null}
+              </View>
+            </Pressable>
+          );
+        })}
+      </View>
+    </View>
+  );
+}
+
 /** A calm one-line result under an action (saved, logged…). */
 export function NNotice({ children, tone = "success" }: { children: string; tone?: "success" | "muted" }) {
   const c = useThemeColors();
@@ -527,6 +614,10 @@ const s = StyleSheet.create({
   choice: { flexDirection: "row", alignItems: "center", gap: 12, minHeight: 54, paddingVertical: 10 },
   radio: { width: 22, height: 22, borderRadius: 11, borderWidth: 1.5, alignItems: "center", justifyContent: "center" },
   round: { width: 44, height: 44, borderRadius: 22, alignItems: "center", justifyContent: "center" },
+  weekArrow: { width: 40, height: 40, borderRadius: 13, alignItems: "center", justifyContent: "center" },
+  weekDay: { flex: 1, minWidth: 0, minHeight: 60, borderRadius: 14, alignItems: "center", justifyContent: "center", gap: 1 },
+  dot: { width: 4, height: 4, borderRadius: 2 },
+  bar: { width: 10, height: 3, borderRadius: 2 },
 });
 
 export { MacroRails, WeightChart, IntakeWeekChart } from "./NutritionCharts";

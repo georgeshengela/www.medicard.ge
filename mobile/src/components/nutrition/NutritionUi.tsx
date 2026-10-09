@@ -2,80 +2,98 @@ import React from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { useRouter } from "expo-router";
 import {
+  Apple,
   Bookmark,
   Camera,
+  Ellipsis,
   Flame,
-  ImagePlus,
   Keyboard as KeyboardIcon,
   MessageSquareText,
   Mic,
+  Moon,
   ScanBarcode,
-  ScanText,
   Search,
+  SunMedium,
+  Utensils,
   type LucideIcon,
 } from "lucide-react-native";
 import { HomeSectionHeading } from "@/components/home/HomeSectionHeading";
-import { healthScoreLabel } from "@/lib/nutrition";
+import { healthScoreLabel, mealLabels } from "@/lib/nutrition";
 import type { LogMethod } from "./LogMethodSheet";
 import { useIsDark, useModuleTone, useThemeColors } from "@/theme/colors";
-import { useFeature } from "@/lib/featureFlags";
+import { isFeatureOn, useFeatureState } from "@/lib/featureFlags";
 import { HUB, hubInk, hubText, hubTint, type HubInk } from "@/theme/hub";
 import { tx } from '@/i18n/locale';
 
-type Tile = { method: LogMethod; title: string; hint: string; icon: LucideIcon; ink: HubInk };
-/** The four ways a first-time user should see first; the rest live behind "more". */
-export const PRIMARY_LOG_TILES: Tile[] = [
-  { method: "camera", title: tx("გადაიღე", "Snap"), hint: tx("კერძის ფოტო", "Photo of a meal"), icon: Camera, ink: "teal" },
-  { method: "barcode", title: tx("შტრიხკოდი", "Barcode"), hint: tx("შეფუთული პროდუქტი", "Packaged food"), icon: ScanBarcode, ink: "blue" },
-  { method: "describe", title: tx("თქვი", "Describe"), hint: tx("ან ჩაწერე სიტყვებით", "Say it or type it"), icon: Mic, ink: "amber" },
-  { method: "search", title: tx("მოძებნე", "Search"), hint: tx("კერძები და პროდუქტები", "Dishes and products"), icon: Search, ink: "green" },
-];
-export const SECONDARY_LOG_TILES: Tile[] = [
-  { method: "gallery", title: tx("გალერეა", "Gallery"), hint: tx("უკვე გადაღებული ფოტო", "A photo you already took"), icon: ImagePlus, ink: "teal" },
-  { method: "label", title: tx("ეტიკეტი", "Label"), hint: tx("Nutrition Facts ცხრილი", "Nutrition Facts panel"), icon: ScanText, ink: "violet" },
-  { method: "saved", title: tx("შენახული", "Saved"), hint: tx("ბოლო და რჩეული კერძები", "Recent and favorite meals"), icon: Bookmark, ink: "rose" },
-  { method: "manual", title: tx("ხელით", "Manual"), hint: tx("სახელი, გრამი, კკალ", "Name, grams, kcal"), icon: KeyboardIcon, ink: "neutral" },
-];
+export type MealType = keyof typeof mealLabels;
+/** The day's four slots, in eating order. */
+export const MEAL_TYPES: MealType[] = ["breakfast", "lunch", "dinner", "snack"];
+/** One glyph per slot, everywhere a meal type is shown (hub, diary, plan, Home). */
+export const MEAL_ICONS: Record<MealType, LucideIcon> = { breakfast: SunMedium, lunch: Utensils, dinner: Moon, snack: Apple };
+
+/** Where every logging door leads: the diary with that method running (and the slot preset). */
+export function diaryHref(method?: LogMethod, type?: MealType) {
+  const params: Record<string, string> = {};
+  if (method) params.method = method;
+  if (type) params.type = type;
+  return { pathname: "/nutrition/diary", params } as never;
+}
 
 /**
- * Quick-log tiles: one tap opens the diary with that method already running.
- * Same tile everywhere (Home, hub, empty diary) so the person learns it once.
+ * The logging bar (MyFitnessPal / Lose It pattern): one search field — the way most food gets in —
+ * with the photo and barcode buttons inside it, then a single row of the other ways. Replaces the old
+ * grid of eight equal tiles; every method stays one tap away and the full menu sits behind „სხვა“.
+ * Without AI (admin `nutritionAi` off) the photo button and „თქვი“ step aside.
  */
-export function QuickLogTiles({ tiles = PRIMARY_LOG_TILES, columns = 4, onPick }: { tiles?: Tile[]; columns?: 2 | 4; onPick?: (method: LogMethod) => void }) {
+export function LogBar({ type, onPick, ink: inkProp, fill: fillProp, onFill }: {
+  type?: MealType;
+  onPick?: (method: LogMethod) => void;
+  /** Icon colour (Home passes its layout accent); the camera button is `fill` with `onFill` on it. */
+  ink?: string;
+  fill?: string;
+  onFill?: string;
+}) {
   const c = useThemeColors();
   const dark = useIsDark();
   const router = useRouter();
-  // Inside MEDIFOOD the brand ink is the module's emerald (the teal hub ink follows the women's rose).
   const moduleTone = useModuleTone();
-  const inkOf = (ink: HubInk) => (ink === "teal" && moduleTone ? c.primary100 : hubInk(ink, dark));
-  const wide = columns === 2;
-  // While voice is paused from admin the describe tile stops promising a microphone.
-  const voice = useFeature("voice");
-  const shown = voice ? tiles : tiles.map((tile) => tile.method === "describe"
-    ? { ...tile, title: tx("აღწერე", "Describe"), hint: tx("სიტყვებით", "In words"), icon: MessageSquareText }
-    : tile);
+  const features = useFeatureState();
+  const ai = isFeatureOn("nutritionAi", features);
+  const voice = isFeatureOn("voice", features);
+  const ink = inkProp ?? (moduleTone ? c.primary100 : hubInk("teal", dark));
+  const fill = fillProp ?? ink;
+  const onInk = onFill ?? (dark ? "#022C22" : "#FFFFFF");
+  const go = (method: LogMethod) => (onPick ? onPick(method) : router.push(diaryHref(method, type)));
+  // Three ways beside the bar; gallery, label and manual live behind „სხვა გზები“ (the full menu).
+  const chips: { method: LogMethod; label: string; icon: LucideIcon }[] = [
+    ai ? { method: "describe", label: voice ? tx("თქვი", "Say it") : tx("აღწერე", "Describe"), icon: voice ? Mic : MessageSquareText } : { method: "manual", label: tx("ხელით", "Manual"), icon: KeyboardIcon },
+    { method: "saved", label: tx("შენახული", "Saved"), icon: Bookmark },
+    { method: "more", label: tx("სხვა გზები", "More ways"), icon: Ellipsis },
+  ];
   return (
-    <View style={s.grid}>
-      {shown.map((tile) => {
-        const ink = inkOf(tile.ink);
-        return (
-          <Pressable
-            key={tile.method}
-            accessibilityRole="button"
-            accessibilityLabel={`${tile.title} · ${tile.hint}`}
-            onPress={() => (onPick ? onPick(tile.method) : router.push({ pathname: "/nutrition/diary", params: { method: tile.method } } as never))}
-            style={[s.tile, wide ? s.tileWide : s.tileNarrow, { backgroundColor: c.bg100 }]}
-          >
-            <View style={[s.icon, { backgroundColor: hubTint(ink, dark) }]}>
-              <tile.icon size={wide ? 21 : 20} color={ink} strokeWidth={2} />
-            </View>
-            <View style={{ minWidth: 0, flex: wide ? 1 : undefined, alignItems: wide ? "flex-start" : "center" }}>
-              <Text numberOfLines={1} style={[hubText.link, { color: c.text100, fontSize: wide ? 14 : 12, textAlign: wide ? "left" : "center" }]}>{tile.title}</Text>
-              {wide ? <Text numberOfLines={1} style={[hubText.small, { color: c.text200 }]}>{tile.hint}</Text> : null}
-            </View>
+    <View style={{ gap: 8 }}>
+      <View style={[s.bar, { backgroundColor: c.surface }]}>
+        <Pressable accessibilityRole="search" accessibilityLabel={tx("საკვების ძებნა", "Search foods")} onPress={() => go("search")} style={s.barSearch}>
+          <Search size={19} color={c.text200} strokeWidth={2.2} />
+          <Text numberOfLines={1} style={[hubText.body, { color: c.text300, fontSize: 15, flex: 1 }]}>{tx("მოძებნე საკვები", "Search foods")}</Text>
+        </Pressable>
+        <Pressable accessibilityRole="button" accessibilityLabel={tx("შტრიხკოდის სკანი", "Scan a barcode")} onPress={() => go("barcode")} style={[s.barButton, { backgroundColor: hubTint(ink, dark) }]}>
+          <ScanBarcode size={20} color={ink} strokeWidth={2.1} />
+        </Pressable>
+        {ai ? (
+          <Pressable accessibilityRole="button" accessibilityLabel={tx("კერძის გადაღება", "Snap a meal")} onPress={() => go("camera")} style={[s.barButton, { backgroundColor: fill }]}>
+            <Camera size={20} color={onInk} strokeWidth={2.1} />
           </Pressable>
-        );
-      })}
+        ) : null}
+      </View>
+      <View style={s.chips}>
+        {chips.map((chip) => (
+          <Pressable key={chip.method} accessibilityRole="button" accessibilityLabel={chip.method === "more" ? tx("ჩაწერის ყველა გზა", "Every way to log") : chip.label} onPress={() => go(chip.method)} style={[s.chip, { backgroundColor: c.surface }]}>
+            <chip.icon size={16} color={ink} strokeWidth={2.1} />
+            <Text numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.85} style={[hubText.link, { color: c.text100, flexShrink: 1 }]}>{chip.label}</Text>
+          </Pressable>
+        ))}
+      </View>
     </View>
   );
 }
@@ -124,11 +142,11 @@ export function HubCard({ children, style, tone = "surface" }: { children: React
 }
 
 const s = StyleSheet.create({
-  grid: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
-  tile: { borderRadius: 16, alignItems: "center", justifyContent: "center", gap: 8 },
-  tileNarrow: { flex: 1, minWidth: 0, paddingVertical: 10, paddingHorizontal: 4, minHeight: 78 },
-  tileWide: { width: "48%", flexGrow: 1, flexDirection: "row", padding: 12, minHeight: 66 },
-  icon: { width: HUB.tile, height: HUB.tile, borderRadius: HUB.tileRadius, alignItems: "center", justifyContent: "center" },
+  bar: { flexDirection: "row", alignItems: "center", gap: 6, borderRadius: 20, padding: 6, paddingLeft: 0, minHeight: 58 },
+  barSearch: { flex: 1, minWidth: 0, minHeight: 46, flexDirection: "row", alignItems: "center", gap: 10, paddingLeft: 16 },
+  barButton: { width: 46, height: 46, borderRadius: 15, alignItems: "center", justifyContent: "center" },
+  chips: { flexDirection: "row", gap: 6 },
+  chip: { flex: 1, minWidth: 0, minHeight: 44, borderRadius: 15, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, paddingHorizontal: 6 },
   badge: { flexDirection: "row", alignItems: "center", gap: 5, paddingHorizontal: 9, borderRadius: 10, alignSelf: "flex-start" },
   card: { borderRadius: HUB.cardRadius, padding: HUB.cardPad, gap: 12 },
 });

@@ -439,7 +439,8 @@
     const device = [PLATFORM_KA[u.platform] || null, u.platform === 'web' ? null : u.appVersion].filter(Boolean).join(' · ');
     return `
       <span class="cc-st-ring${isNew ? ' is-new' : ''}" aria-hidden="true">
-        <span class="cc-st-face${u.gender === 'FEMALE' ? ' is-f' : ''}">${esc(personInitials(name))}</span>
+        <span class="cc-st-face${u.gender === 'FEMALE' ? ' is-f' : ''}">${esc(personInitials(name))}${typeof global.adminAvatarImg === 'function' ? global.adminAvatarImg(u) : ''}</span>
+        ${u.country?.code && typeof global.adminFlagImg === 'function' ? `<span class="cc-st-flag">${global.adminFlagImg(u.country.code)}</span>` : ''}
         <span class="cc-st-device" title="${esc(PLATFORM_KA[u.platform] || '')}">${ico(u.platform === 'web' ? 'globe' : 'phone')}</span>
       </span>
       <span class="cc-st-place">${esc(place)}</span>
@@ -447,6 +448,7 @@
       <span class="cc-st-pop" role="tooltip">
         <b>${esc(name)}</b>${isNew ? ' <span class="s-badge is-accent is-plain">ახალი</span>' : ''}
         ${u.name && u.contact ? `<small>${esc(u.contact)}</small>` : ''}
+        ${u.country?.nameKa ? `<span class="cc-st-pop-row">${global.adminFlagImg ? global.adminFlagImg(u.country.code) : ''}${esc([u.country.cityKa, u.country.nameKa].filter(Boolean).join(', '))}</span>` : ''}
         <span class="cc-st-pop-row"><i style="background:${placeTone(place)[1]}"></i>${esc(place)}${u.screen && u.screen.includes('/') ? ` <em>· ${esc(u.screen.split('/').slice(1).join('/'))}</em>` : ''}</span>
         ${device ? `<span class="cc-st-pop-row">${esc(device)}</span>` : ''}
         <span class="cc-st-pop-row">${u.firstAt ? `დღეს პირველად ${esc(clockOf(u.firstAt))} · ` : ''}<span data-ago="${esc(u.lastAt)}">${esc(agoKa(u.lastAt))}</span></span>
@@ -521,6 +523,41 @@
         const row = e.target.closest('[data-user]');
         if (row) location.hash = `#/users/${encodeURIComponent(row.dataset.user)}`;
       });
+      // Hover card lives on <body> (fixed, above the sidebar) and is kept inside the visible workspace.
+      const showPop = (tile) => {
+        const src = tile?.querySelector('.cc-st-pop');
+        if (!src) return;
+        let pop = document.getElementById('cc-st-floating');
+        if (!pop) {
+          pop = document.createElement('div');
+          pop.id = 'cc-st-floating';
+          pop.className = 'cc-st-pop is-floating';
+          pop.setAttribute('role', 'tooltip');
+          document.body.appendChild(pop);
+        }
+        pop.innerHTML = src.innerHTML;
+        pop.querySelectorAll('[data-ago]').forEach((el) => { el.textContent = agoKa(el.dataset.ago); });
+        const ring = (tile.querySelector('.cc-st-ring') || tile).getBoundingClientRect();
+        const side = document.querySelector('.sidebar, aside.nav, #sidebar')?.getBoundingClientRect();
+        const minX = Math.max(8, side && side.right < window.innerWidth / 2 ? side.right + 8 : 8);
+        const w = pop.offsetWidth;
+        const h = pop.offsetHeight;
+        const left = Math.min(Math.max(ring.left + ring.width / 2 - w / 2, minX), window.innerWidth - w - 8);
+        const above = ring.top - h - 10;
+        const top = above >= 64 ? above : ring.bottom + 10;
+        pop.style.left = `${Math.round(left)}px`;
+        pop.style.top = `${Math.round(top)}px`;
+        pop.classList.add('is-on');
+      };
+      const hidePop = () => document.getElementById('cc-st-floating')?.classList.remove('is-on');
+      list.addEventListener('mouseover', (e) => { const t = e.target.closest('.cc-st[data-user]'); if (t) showPop(t); });
+      list.addEventListener('mouseleave', hidePop);
+      list.addEventListener('mouseout', (e) => { if (!e.relatedTarget || !e.relatedTarget.closest?.('.cc-st[data-user]')) hidePop(); });
+      list.addEventListener('focusin', (e) => { const t = e.target.closest('.cc-st[data-user]'); if (t) showPop(t); });
+      list.addEventListener('focusout', hidePop);
+      list.addEventListener('click', hidePop);
+      host.closest('.workspace, .s-scrolled')?.addEventListener('scroll', hidePop, { passive: true });
+      window.addEventListener('scroll', hidePop, { passive: true });
       list.addEventListener('keydown', (e) => {
         const row = e.target.closest('[data-user]');
         if (row && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); row.click(); }
