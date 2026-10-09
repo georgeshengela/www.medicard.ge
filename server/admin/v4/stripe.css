@@ -683,26 +683,29 @@ html body .workspace .v3-subnav-btn::after {
 }
 html body .workspace .v3-subnav-btn.is-active::after { transform: scaleX(1); }
 
-/* Segmented range controls (ops range, filters) */
+/* Segmented range controls (ops range, filters) — same look as .s-segment (tokens in v4/components.css) */
 html body .workspace :is(.ops-range, .v3-filterbar .ops-range) {
-  background: var(--s-sunken) !important;
-  border: 1px solid var(--s-line) !important;
-  border-radius: var(--s-radius-sm) !important;
-  padding: 2px !important;
+  background: var(--s-seg-track, var(--s-sunken)) !important;
+  border: 1px solid var(--s-line-soft) !important;
+  border-radius: 10px !important;
+  padding: 3px !important;
+  gap: 2px !important;
   box-shadow: none !important;
 }
 html body .workspace .ops-range-btn {
-  height: 26px; border-radius: 6px !important; border: 0 !important;
-  font-size: 12.5px !important; font-weight: 500 !important;
+  height: 30px; padding: 0 14px !important; border-radius: 7px !important; border: 0 !important;
+  display: inline-flex; align-items: center; justify-content: center; line-height: 1 !important;
+  font-size: 13px !important; font-weight: 500 !important;
   color: var(--s-muted) !important; background: transparent !important; box-shadow: none !important;
   transition: background .15s, color .15s, box-shadow .15s;
 }
-html body .workspace .ops-range-btn:hover { color: var(--s-ink) !important; }
-html body .workspace .ops-range-btn:is(.active, .is-active, [aria-pressed="true"]) {
-  background: var(--s-surface) !important;
+html body .workspace .ops-range-btn:hover { color: var(--s-ink) !important; background: var(--s-seg-hover, var(--s-hover)) !important; }
+html body .workspace .ops-range-btn:is(.active, .is-active, [aria-pressed="true"]),
+html body .workspace .ops-range-btn:is(.active, .is-active, [aria-pressed="true"]):hover {
+  background: var(--s-seg-thumb, var(--s-surface)) !important;
   color: var(--s-ink) !important;
   font-weight: 600 !important;
-  box-shadow: var(--s-shadow-sm), 0 0 0 1px var(--s-line) !important;
+  box-shadow: var(--s-seg-shadow), 0 0 0 1px var(--s-seg-ring, var(--s-line)) !important;
 }
 
 /* Filter chips */
