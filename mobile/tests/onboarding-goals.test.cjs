@@ -16,11 +16,23 @@ const DATE_MOCK = {
   },
 };
 
-function loadGoals({ setLastPeriod }) {
-  const sent = { periods: [], weights: [] };
+function loadGoals({ setLastPeriod, account = 'user-a' }) {
+  const sent = { periods: [], weights: [], order: [] };
   const load = require('./helpers/loadTs.cjs')({
     ...DATE_MOCK,
-    '@/lib/api': { api: { cycle: { setLastPeriod: async (ymd) => { sent.periods.push(ymd); return setLastPeriod(ymd); } } } },
+    '@/lib/api': {
+      api: {
+        cycle: {
+          setLastPeriod: async (ymd) => {
+            sent.periods.push(ymd);
+            sent.order.push(`setLastPeriod:${ymd}`);
+            return setLastPeriod(ymd);
+          },
+        },
+      },
+    },
+    '@/lib/cycleOffline': { discardQueuedStartRestores: async (userId) => void sent.order.push(`discard:${userId}`) },
+    '@/lib/localAccount': { localAccountId: () => account },
     '@/lib/weightGoal': {
       createWeightDraft: (kg) => ({ startKg: kg }),
       deadlineFromPace: () => '2027-01-01',
@@ -56,6 +68,19 @@ test('a failed last period save stops the finish (error on the step, Finish retr
   const form = cycleForm(ok.form);
   await ok.saveOnboardingGoal(form);
   assert.deepEqual(ok.sent.periods, [ok.form.lastPeriodYmd(form)]);
+});
+
+// IR3-3: a start restore an undo left queued on this phone must never replay over the date she answers.
+test('her onboarding date drops a queued start restore first, then is sent', async () => {
+  const goals = loadGoals({ setLastPeriod: async () => ({}) });
+  const form = cycleForm(goals.form);
+  await goals.saveOnboardingGoal(form);
+  assert.deepEqual(goals.sent.order, ['discard:user-a', `setLastPeriod:${goals.form.lastPeriodYmd(form)}`]);
+
+  const signedOut = loadGoals({ setLastPeriod: async () => ({}), account: null });
+  await signedOut.saveOnboardingGoal(cycleForm(signedOut.form));
+  assert.equal(signedOut.sent.order.filter((step) => step.startsWith('discard')).length, 0);
+  assert.equal(signedOut.sent.periods.length, 1);
 });
 
 test('only the day she picked is ever sent: skipped, invalid, or not a woman → nothing', async () => {

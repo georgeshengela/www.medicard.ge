@@ -9,7 +9,7 @@ import { buildCycleAdvice } from '@/lib/cycleAdvice';
 import { isFeatureOn, useFeatureState } from '@/lib/featureFlags';
 import { cycleToday, phaseFromBundle } from '@/lib/cycleCanonical';
 import { showPhaseAsBiological } from '@/lib/cycleContraception';
-import { needsCycleOnboarding } from '@/lib/cycleExperience';
+import { cycleSetupStart, needsCycleOnboarding } from '@/lib/cycleExperience';
 import { forecastPresentationAllowed, suppressCycleLengthChrome } from '@/lib/cycleForecastEligibility';
 import { cycleModeCapabilities } from '@/lib/cycleModes';
 import { cycleTipsAllowed, homeTipCards } from '@/lib/home/homeCycle';
@@ -69,7 +69,7 @@ export function HomeCycleTips({ cycle, locked, first }: HomeCycleTipsProps) {
       classicOverview: caps.showClassicCycleOverview,
       forecastAllowed: forecastPresentationAllowed(bundle),
       phaseBiological: showPhaseAsBiological(bundle),
-      setupNeeded: needsCycleOnboarding(bundle.profile.mode, bundle.profile.lastPeriodStart ?? null),
+      setupNeeded: needsCycleOnboarding(bundle.profile.mode, cycleSetupStart(cycle.view)),
       phase: phase.phase,
     });
     if (!allowed) return [];
@@ -82,7 +82,7 @@ export function HomeCycleTips({ cycle, locked, first }: HomeCycleTipsProps) {
       isIrregular: bundle.profile.isIrregular,
     });
     return homeTipCards(cards);
-  }, [bundle, locked]);
+  }, [bundle, locked, cycle.view]);
 
   if (!tips.length) return null;
 

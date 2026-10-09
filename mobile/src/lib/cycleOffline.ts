@@ -26,9 +26,11 @@ import {
   isCompleteCycleBundle,
   overlayPendingOnBundle,
   parseOfflineStore,
+  pendingLastPeriodStart,
   planQueuedLogMutations,
   readAccount,
   replayCycleQueue,
+  startRestoreExpired,
   writeAccount,
   type CycleMutation,
   type CycleOfflineAccount,
@@ -65,6 +67,12 @@ export type CycleView = {
   lastError: string | null;
   persistedLocally: boolean;
   attention: CycleAttentionItem[];
+  /**
+   * The last period start an undo's restore still queued on the phone will write back (IR3-2), else
+   * null. Never drawn into `display` or its forecast: the setup gates treat it as a known start
+   * (`cycleSetupStart`), and no reminder is planned while it waits. Missing on views cached by older JS.
+   */
+  pendingLastPeriodStart?: string | null;
 };
 
 export type CycleFlushResult = {
@@ -103,6 +111,28 @@ const MUT_TIMEOUT_MS = 30_000;
 
 let flushLock: Promise<CycleFlushResult> | null = null;
 let accountWrite: Promise<void> = Promise.resolve();
+/** When she last set her start directly in the app, per account (ms, this JS run; IR3-3). */
+const startSetDirectlyAt = new Map<string, number>();
+
+/**
+ * A start restore queued before she set her start directly (`discardQueuedStartRestores`): her answer is
+ * newer, so it is never sent. Covers a flush that read the queue before the restore was dropped.
+ */
+function startRestoreSuperseded(item: CycleMutation, userId = item.userScope): boolean {
+  if (item.operation !== 'SET_LAST_PERIOD') return false;
+  const at = startSetDirectlyAt.get(String(userId));
+  if (!at) return false;
+  const created = Date.parse(item.createdAt);
+  return !Number.isFinite(created) || created <= at;
+}
+
+/** `CycleView.pendingLastPeriodStart` of an account's queue (a replaced or expired restore never counts). */
+function queuedStartRestore(account: CycleOfflineAccount): string | null {
+  return pendingLastPeriodStart(
+    account.queue.filter((item) => !startRestoreSuperseded(item, account.userScope)),
+    Date.now(),
+  );
+}
 
 function withAccountWrite<T>(fn: () => Promise<T>): Promise<T> {
   const run = accountWrite.then(fn, fn);
@@ -248,6 +278,7 @@ function viewFromAccount(
         lastError: extras.lastError ?? null,
         persistedLocally: extras.persistedLocally ?? false,
         attention: extras.attention ?? attentionItems(account),
+        pendingLastPeriodStart: queuedStartRestore(account),
       }
     : null;
   const pending = account.queue.filter((i) => i.status !== 'failed_permanent');
@@ -278,6 +309,7 @@ function viewFromAccount(
     lastError: extras?.lastError ?? null,
     persistedLocally: extras?.persistedLocally ?? pending.length > 0,
     attention: extras?.attention ?? attentionItems(account),
+    pendingLastPeriodStart: queuedStartRestore(account),
   };
 }
 
@@ -294,7 +326,9 @@ export async function cacheCycleBundle(userId: string, bundle: CycleBundle | nul
 async function playMutation(item: CycleMutation): Promise<CycleBundle | null> {
   const payload = item.payload || {};
   if (item.operation === 'SET_LAST_PERIOD') {
-    // The undo's start restore (IR2-5). Saved but no whole bundle back (CYC-06) = played, nothing to cache.
+    // The undo's start restore (IR2-5). Older than her own start, or than a day: played, never sent (IR3-3).
+    if (startRestoreSuperseded(item) || startRestoreExpired(item, Date.now())) return null;
+    // Saved but no whole bundle back (CYC-06) = played, nothing to cache.
     const bundle = await api.cycle.setLastPeriod(String(payload.date || ''), { timeoutMs: MUT_TIMEOUT_MS });
     return isCompleteCycleBundle(bundle) ? bundle : null;
   }
@@ -385,7 +419,10 @@ export async function flushCycleQueue(userId: string): Promise<CycleFlushResult>
       const latest = await loadCycleAccount(userId);
       const pendingIds = new Set(pending.map((item) => item.id));
       const newlyEnqueued = latest.queue.filter((item) => !pendingIds.has(item.id));
-      latest.queue = compactCycleQueue([...result.remaining, ...newlyEnqueued]);
+      // A start restore she replaced while this flush ran never comes back with what it kept (IR3-3).
+      latest.queue = compactCycleQueue(
+        [...result.remaining, ...newlyEnqueued].filter((item) => !startRestoreSuperseded(item, userId)),
+      );
       latest.authPaused = result.authPaused;
       if (isCompleteCycleBundle(result.bundle)) {
         latest.cache = createCacheRecord(userId, result.bundle);
@@ -535,6 +572,7 @@ function viewFromLiveBundle(bundle: CycleBundle): CycleView {
     lastError: null,
     persistedLocally: false,
     attention: [],
+    pendingLastPeriodStart: null,
   };
 }
 
@@ -640,10 +678,14 @@ export async function queueApplyPeriod(
  * reminders against it). A tap that is still queued plays before both. Only a start that was already
  * today goes after the day: removing today's bleeding drops it on the server whatever was written before.
  *
- * When the day has synced but the server still shows another start, it is written once more. A view
- * without the start is never published while that restore is still queued, was saved without a bundle
- * back, or got no answer (it may have been saved): nothing is published and the views are fetched again
- * (IR2-4). Only a refused write (4xx) leaves the server's view without it.
+ * When the day has synced but the server still shows another start, it is written once more. The undo
+ * itself never publishes a view without the start while that restore is still queued, was saved without
+ * a bundle back, or got no answer (it may have been saved): nothing is published and the views are
+ * fetched again (IR2-4). That refetch (and the offline view) CAN still read the server without the
+ * start: the day's restore went through while the queued start waits out its cooldown after 0, 408,
+ * 429 or 5xx. The overlay never draws the queued start; the view carries it as `pendingLastPeriodStart`,
+ * the setup gates (Home, /cycle) treat it as known, and no reminder is planned until it has synced
+ * (IR3-2). Only a refused write (4xx) leaves her without a start until she sets it again.
  */
 export async function undoQueuedPeriodStart(
   userId: string,
@@ -668,7 +710,8 @@ export async function undoQueuedPeriodStart(
   const restore = result.synced && result.view ? lastPeriodToRestore(undo, result.view.canonical.profile.lastPeriodStart) : null;
   if (!restore) {
     // The day synced but its start restore is still queued (her start was today and that write failed):
-    // the server's view without the start is not published; the queue sends it again (IR2-4).
+    // the server's view without the start is not published; the queue sends it again (IR2-4). A refetch
+    // until then reads the server without it, with the queued start as `pendingLastPeriodStart` (IR3-2).
     if (result.view && old && !result.view.display.profile.lastPeriodStart && result.view.pendingCount > 0) {
       return { ...result, view: null };
     }
@@ -742,6 +785,7 @@ export async function loadCycleView(userId: string): Promise<CycleView> {
       lastError: null,
       persistedLocally: pending.length > 0,
       attention: attentionItems(account),
+      pendingLastPeriodStart: queuedStartRestore(account),
     };
   } catch (error) {
     let account: CycleOfflineAccount;
@@ -776,6 +820,34 @@ export async function peekCyclePendingCount(userId: string): Promise<number> {
 export async function listCycleAttention(userId: string): Promise<CycleAttentionItem[]> {
   const account = await loadCycleAccount(userId);
   return attentionItems(account);
+}
+
+/**
+ * She sets her last period start herself (cycle settings, the /cycle date pick, onboarding): a start
+ * restore the undo still has queued is older than her answer and must never replay over it (IR3-3).
+ * Call it right before the direct write. A flush that is sending one finishes first, so her write is
+ * the last the server gets; a flush that starts meanwhile skips it. Only the start restores go —
+ * the undo's day restore stays queued. Never throws: a storage error must not block her save.
+ */
+export async function discardQueuedStartRestores(userId: string): Promise<void> {
+  if (!userId) return;
+  startSetDirectlyAt.set(userId, Date.now());
+  try {
+    // Nothing queued (the usual case): her save never waits on an unrelated flush. One being sent stays
+    // in the stored queue until its flush writes back, so this read also sees a restore in flight.
+    if (!(await loadCycleAccount(userId)).queue.some((item) => item.operation === 'SET_LAST_PERIOD')) return;
+    if (flushLock) await flushLock.catch(() => undefined);
+    await withAccountWrite(async () => {
+      const account = await loadCycleAccount(userId);
+      if (!account.queue.some((item) => item.operation === 'SET_LAST_PERIOD')) return;
+      await saveCycleAccount(userId, {
+        ...account,
+        queue: account.queue.filter((item) => item.operation !== 'SET_LAST_PERIOD'),
+      });
+    });
+  } catch {
+    /* Device storage failed: her write still goes; this run's flushes skip the old restore. */
+  }
 }
 
 export async function discardCycleMutation(userId: string, mutationId: string): Promise<void> {

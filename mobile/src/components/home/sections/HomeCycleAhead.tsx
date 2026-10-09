@@ -8,7 +8,7 @@ import { tx } from '@/i18n/locale';
 import type { CycleBundle } from '@/lib/api';
 import { cycleToday } from '@/lib/cycleCanonical';
 import { bleedingIsUncertain, showFertilityUi, showOvulationUi } from '@/lib/cycleContraception';
-import { needsCycleOnboarding } from '@/lib/cycleExperience';
+import { cycleSetupStart, needsCycleOnboarding } from '@/lib/cycleExperience';
 import { FERTILITY_STATUS, fertilityGateFromBundle, forecastPresentationAllowed } from '@/lib/cycleForecastEligibility';
 import { ovulationSourceLabel, wideWindowLabel } from '@/lib/cycleForecastCopy';
 import { CycleLearningBadge } from '@/components/cycle/CycleLearningBadge';
@@ -47,7 +47,7 @@ export function HomeCycleAhead({ cycle, locked }: HomeCycleAheadProps) {
 
   const caps = cycleModeCapabilities(bundle.profile.mode);
   if (!caps.showClassicCycleOverview) return null;
-  if (needsCycleOnboarding(bundle.profile.mode, bundle.profile.lastPeriodStart ?? null)) return null;
+  if (needsCycleOnboarding(bundle.profile.mode, cycleSetupStart(cycle.view))) return null;
 
   const today = cycleToday(bundle, todayKey());
   const forecastAllowed = forecastPresentationAllowed(bundle);

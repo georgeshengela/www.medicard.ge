@@ -11,6 +11,7 @@ import { periodStartTone } from '@/lib/cycleTone';
 import { queueApplyPeriod, queueRemoveCycleLog, saveCycleObservation, undoQueuedPeriodStart, type CycleView } from '@/lib/cycleOffline';
 import { cyclePersistFeedback } from '@/lib/cycleOfflineCore';
 import { periodEndUndo, periodStartUndo, stillBleedingFlow, type PeriodEndUndo, type PeriodStartUndo } from '@/lib/cyclePeriodStatus';
+import { cycleSetupStart } from '@/lib/cycleExperience';
 import { tx } from '@/i18n/locale';
 import { putCycleView } from '@/lib/cycleViewCache';
 import { getCycleReminderPrefs } from '@/lib/cycleReminderPrefs';
@@ -214,7 +215,8 @@ export function useHomeCycleActions({
   const startPeriod = useCallback(() => {
     if (!userId || busyRef.current) return;
     const beforeRow = view?.display.logs.find((l) => l.date === today) ?? null;
-    const undo = periodStartUndo(beforeRow, view?.display.profile.lastPeriodStart);
+    // The start she has: a restore still queued by an earlier undo counts, or this undo would lose it (IR3-2).
+    const undo = periodStartUndo(beforeRow, cycleSetupStart(view));
     busyRef.current = true;
     setBusy(true);
     setError(null);

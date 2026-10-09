@@ -115,6 +115,12 @@ export function planQueuedLogMutations(
   body: Record<string, unknown> & { date?: string; flow?: string | null },
   options?: { markStart?: boolean },
 ): { operation: CycleOfflineOperation; payload: Record<string, unknown> }[];
+/** A queued start restore older than this is never sent (IR3-3). */
+export const START_RESTORE_MAX_AGE_MS: number;
+/** True for a `SET_LAST_PERIOD` queued more than `START_RESTORE_MAX_AGE_MS` before `now` (ms). */
+export function startRestoreExpired(item: CycleMutation, now: number): boolean;
+/** The start a queued undo restore will write back (last pending, unexpired SET_LAST_PERIOD), else null (IR3-2). */
+export function pendingLastPeriodStart(queue: CycleMutation[] | undefined, now: number): string | null;
 export function discardMutation(account: CycleOfflineAccount, mutationId: string): CycleOfflineAccount;
 export function cyclePersistFeedback(result: {
   synced?: boolean;

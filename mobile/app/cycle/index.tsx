@@ -70,6 +70,7 @@ import { syncPregnancyCareReminders } from '@/lib/pregnancyCareReminders';
 import {
   cacheCycleBundle,
   discardCycleMutation,
+  discardQueuedStartRestores,
   queueApplyPeriod,
   saveCycleObservation,
   queueRemoveCycleLog,
@@ -127,7 +128,7 @@ import {
 } from '@/lib/cyclePostpartumQuery';
 import { useAuth } from '@/store/AuthContext';
 import { useCycleColors } from '@/theme/cycle';
-import { cycleSetupTailKey, needsCycleOnboarding, needsCycleSetupTail } from '@/lib/cycleExperience';
+import { cycleSetupStart, cycleSetupTailKey, needsCycleOnboarding, needsCycleSetupTail } from '@/lib/cycleExperience';
 import { getPreference, setPreference } from '@/lib/storage';
 import { localAccountId } from '@/lib/localAccount';
 import { trackCyclePeriodStarted } from '@/lib/funnel';
@@ -544,7 +545,8 @@ export default function CycleHome() {
     void maybeImportCycleTemperature({ userId: user.id, bundle: canonical, today: cycleToday(canonical, todayKey()) });
   }, [screenFocused, canonicalReady, user?.id]);
 
-  const lastPeriod = bundle?.profile.lastPeriodStart ?? null;
+  // A start an undo's restore still has queued counts as known: never cycle setup meanwhile (IR3-2).
+  const lastPeriod = bundle ? cycleSetupStart(cycleView) : null;
   // The tail is due only while the flag is read and unset; `holdOnboarding` keeps the flow on screen after each save.
   const setupTailDue = setupTailDone === false && needsCycleSetupTail(bundle, false);
   const needsOnboarding =
@@ -663,6 +665,8 @@ export default function CycleHome() {
       ? { ...bundle, profile: { ...bundle.profile, lastPeriodStart: iso } }
       : null;
     try {
+      // Her answer is the newest start: an undo's start restore still queued never replays over it (IR3-3).
+      await discardQueuedStartRestores(owner);
       let data: CycleBundle | null = null;
       try {
         data = await api.cycle.setLastPeriod(iso);
@@ -762,9 +766,10 @@ export default function CycleHome() {
    */
   const startPeriodNow = async (source: 'hero' | 'widget' = 'hero') => {
     if (!user?.id || periodBusy) return;
-    // Undo puts back exactly this: today's row and the last period start shown before the tap (CYC-04).
+    // Undo puts back exactly this: today's row and the last period start she had before the tap (CYC-04),
+    // a start an earlier undo's restore still has queued included (IR3-2).
     const beforeRow = bundle?.logs.find((l) => l.date === today) ?? null;
-    const undo = periodStartUndo(beforeRow, bundle?.profile.lastPeriodStart);
+    const undo = periodStartUndo(beforeRow, cycleSetupStart(cycleView));
     setPeriodBusy(true);
     setError(null);
     try {

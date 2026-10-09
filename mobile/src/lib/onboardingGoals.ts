@@ -1,4 +1,6 @@
 import { api } from '@/lib/api';
+import { discardQueuedStartRestores } from '@/lib/cycleOffline';
+import { localAccountId } from '@/lib/localAccount';
 import { createWeightDraft, deadlineFromPace, draftToGoal, saveWeightGoal } from '@/lib/weightGoal';
 import { lastPeriodValid, lastPeriodYmd, type AssessmentFormState } from '@/lib/assessmentForm';
 
@@ -21,7 +23,10 @@ export async function saveOnboardingGoal(form: AssessmentFormState): Promise<voi
     if (goal) await saveWeightGoal({ ...goal, updatedAt: new Date().toISOString() });
   }
   if (form.primaryGoal === 'cycle' && form.gender === 'FEMALE' && confirmed.has('goal-cycle') && lastPeriodValid(form)) {
-    // Only the day she picked on the step; idempotent on the server, so a retry is safe.
+    // Only the day she picked on the step; idempotent on the server, so a retry is safe. Her answer is the
+    // newest start: a start restore still queued on this phone never replays over it (IR3-3).
+    const userId = localAccountId();
+    if (userId) await discardQueuedStartRestores(userId);
     await api.cycle.setLastPeriod(lastPeriodYmd(form));
   }
 }
