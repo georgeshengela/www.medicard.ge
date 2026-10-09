@@ -1065,6 +1065,25 @@ describe('partial bundle after a failed reload (CYC-06)', () => {
     assert.match(offline, /if \(isCompleteCycleBundle\(result\.bundle\)\) \{\n\s*latest\.cache = createCacheRecord/);
     assert.match(view, /if \(!isCompleteCycleBundle\(bundle\)\) \{\n\s*void invalidate\('cycle'\);\n\s*return;/);
   });
+
+  it('settings screens read only a whole bundle; privacy mode re-plans masking with the one on screen', () => {
+    const { readFileSync } = require('node:fs');
+    const { join } = require('node:path');
+    const dir = join(__dirname, '..', 'components', 'cycle', 'settings');
+    const privacy = readFileSync(join(dir, 'CyclePrivacySettings.tsx'), 'utf8');
+    const profile = readFileSync(join(dir, 'CycleProfileSettings.tsx'), 'utf8');
+    const reminders = readFileSync(join(dir, 'CycleReminderSettings.tsx'), 'utf8');
+    assert.match(
+      privacy,
+      /isCompleteCycleBundle\(data\)\s*\?\s*data\s*:\s*bundle\s*\?\s*\{ \.\.\.bundle, profile: \{ \.\.\.bundle\.profile, privacyEnabled: on \} \}/,
+    );
+    // The partner page is paused in the return gate too (server ownerPostpartumReturnPending): say so.
+    assert.match(privacy, /isPostpartumReturnLearning\(bundle\)/);
+    assert.match(profile, /const fresh = isCompleteCycleBundle\(data\) \? data : null;/);
+    const save = profile.slice(profile.indexOf('const save = async'), profile.indexOf('const pickMode'));
+    assert.doesNotMatch(save, /applyCycleProfile\(data\)|syncCycleReminders\(data,/);
+    assert.match(reminders, /source = isCompleteCycleBundle\(data\) \? data : source;/);
+  });
 });
 
 describe('custom tags on one day (CYC-10)', () => {

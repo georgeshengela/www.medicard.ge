@@ -270,7 +270,7 @@ export const enCycle: Pick<Strings, 'cycle'> = {
     partnerShareEmpty: 'Nothing is turned on for sharing on this link.',
     partnerSharePaused: 'Nothing to show right now.',
     partnerSharePausedOwner:
-      'In pregnancy and postpartum mode your partner sees no cycle details. The link works again when you go back to cycle tracking.',
+      'During pregnancy and after a birth your partner sees no cycle details. The link works again once your cycle forecast is back.',
     privacy: 'Privacy',
     privacyHint: 'When on, cycle notifications show generic text on screen. Face ID is turned on separately.',
     emptyHint: 'Mark your last period or start logging today',
