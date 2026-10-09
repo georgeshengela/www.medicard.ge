@@ -4,7 +4,6 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Mail, Lock } from 'lucide-react-native';
 import { AuthShell } from '@/components/AuthShell';
 import { SignInSwitchLink } from '@/components/auth/AuthSwitchLink';
-import { AuthCheckbox } from '@/components/auth/AuthCheckbox';
 import { AuthPrimaryButton } from '@/components/auth/AuthPrimaryButton';
 import { OtpCodeInput } from '@/components/auth/OtpCodeInput';
 import { SocialAuthButtons } from '@/components/auth/SocialAuthButtons';
@@ -49,7 +48,6 @@ export default function SignIn() {
   const [method, setMethod] = useState<SignInMethod>(asked ?? defaultSignInMethod(appLang()));
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [keepSignedIn, setKeepSignedIn] = useState(true);
   const [errors, setErrors] = useState<{ email?: string; password?: string; form?: string }>({});
   const [busy, setBusy] = useState(false);
   const submittingRef = React.useRef(false);
@@ -264,10 +262,8 @@ export default function SignIn() {
                 />
               </View>
 
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 16 }}>
-                <View style={{ flex: 1 }}>
-                  <AuthCheckbox label={ka.auth.keepSignedIn} checked={keepSignedIn} onToggle={() => setKeepSignedIn((v) => !v)} />
-                </View>
+              {/* No „Remember me“: it never changed anything (the session is always kept and slides). */}
+              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end' }}>
                 <Pressable
                   accessibilityRole="button"
                   hitSlop={8}

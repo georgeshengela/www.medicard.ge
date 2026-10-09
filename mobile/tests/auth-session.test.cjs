@@ -149,3 +149,13 @@ test('a confirmed account delete stops push and reminders only after the server 
  assert.deepEqual(h.delivery,['server-delete','push-unregister','reminders-cancel']);
  assert.equal(h.token(),null);assert.equal(h.render().user,null);
 });
+
+// auth-12: the email sign-in offered „დამახსოვრება“ / Remember me, but nothing ever read it — the
+// session is always kept on the phone (and slides). The form must not promise a choice it ignores.
+test('email sign-in shows no Remember me choice that would be ignored',()=>{
+ const signIn=fs.readFileSync(path.resolve(__dirname,'../app/(auth)/sign-in.tsx'),'utf8');
+ assert.doesNotMatch(signIn,/keepSignedIn|AuthCheckbox|accessibilityRole="checkbox"/);
+ assert.match(signIn,/ka\.auth\.forgotPassword/,'the forgot-password link stays');
+ for(const dict of ['../src/i18n/ka.ts','../src/i18n/en/core.ts'])
+  assert.doesNotMatch(fs.readFileSync(path.resolve(__dirname,dict),'utf8'),/keepSignedIn|Remember me/,dict);
+});

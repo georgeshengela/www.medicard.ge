@@ -56,7 +56,6 @@ const kaStrings = {
     signUpHero: 'შექმენი ანგარიში და დაიწყე ჯანმრთელობის მართვა.',
     emailPlaceholderSignIn: 'შეიყვანე ელ-ფოსტა…',
     passwordPlaceholderSignIn: 'შეიყვანე პაროლი…',
-    keepSignedIn: 'დამახსოვრება',
     forgotPassword: 'დაგავიწყდა პაროლი?',
     forgotPasswordTitle: 'პაროლის აღდგენა',
     forgotPasswordChoose: 'აირჩიე პაროლის აღდგენის გზა',

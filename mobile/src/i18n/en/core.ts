@@ -47,7 +47,6 @@ export const enCore: Pick<Strings, 'app' | 'common' | 'auth' | 'assessment' | 'o
     signUpHero: 'Create an account and start managing your health.',
     emailPlaceholderSignIn: 'Enter your email…',
     passwordPlaceholderSignIn: 'Enter your password…',
-    keepSignedIn: 'Remember me',
     forgotPassword: 'Forgot your password?',
     forgotPasswordTitle: 'Reset password',
     forgotPasswordChoose: 'Choose how to reset your password',
