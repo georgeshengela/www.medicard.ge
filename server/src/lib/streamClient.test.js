@@ -99,8 +99,130 @@ test('/api/ai/query streams through the response watcher and skips storing once 
   assert.ok(start > 0 && branch.includes('persistChatTurn'), 'found the streamed branch');
   assert.match(branch, /const client = watchStreamClient\(res\);\s*if \(client\.gone\(\)\)/);
   assert.match(branch, /signal: client\.signal/);
-  assert.match(branch, /if \(client\.gone\(\)\) return;\s*\n\s*const \{ saved, usage \} = await persistChatTurn/);
+  assert.match(branch, /if \(client\.gone\(\)\) return;\s*\n\s*const \{ saved, usage \} = await persistChatTurn\(\{[^}]*gone: client\.gone \}\)/);
   assert.match(branch, /finally \{\s*client\.dispose\(\);/);
+});
+
+// Integration review IR-3 (2026-10-09): she closed Medi in the moment after the last word. The OK row was
+// written anyway (it counted for the weekly Medi mission), and a close during the save freed the slot under
+// a stored consultation; the app dropped the turn and offered the question again as a draft.
+test('/api/ai/query keeps no answer she closed Medi on, and sends done before the quest refresh', () => {
+  const src = readFileSync(new URL('../routes/ai.routes.js', import.meta.url), 'utf8');
+  const start = src.indexOf('if (stream) {');
+  const branch = src.slice(start, src.indexOf('\n      return;\n    }\n', start));
+  assert.match(branch, /finally \{\s*client\.dispose\(\);\s*if \(!kept && client\.gone\(\)\) await forgetUnkeptAnswer\(req\.user\.id, answer\?\.interactionId\);/);
+  assert.match(branch, /persistChatTurn\([^\n]*\);\s*kept = true;/);
+  const done = branch.indexOf("type: 'done'");
+  assert.ok(done > 0 && done < branch.indexOf('res.end();') && branch.indexOf('res.end();') < branch.indexOf('refreshQuestProgressForUser('),
+    "'done' reaches the phone before the quest refresh");
+  assert.match(src, /async function forgetUnkeptAnswer\(userId, interactionId\) \{[\s\S]*?aiInteraction\.deleteMany\(\{ where: \{ id: interactionId, userId \} \}\)/);
+  // The save and the credit are one transaction inside the limiter's settlement, `gone` read last in it.
+  const save = src.slice(src.indexOf('export async function persistChatTurn('), src.indexOf('async function forgetUnkeptAnswer('));
+  assert.match(save, /req\.settleAiOperation\(\(\) => prisma\.\$transaction\(async \(tx\) => \{[\s\S]*tx\.chatSession\.create[\s\S]*commitAiCredit\(req\.user\.id, tx\);\s*if \(typeof gone === 'function' && gone\(\)\) throw clientGoneError\(\);/);
+  assert.doesNotMatch(save, /prisma\.chatSession\.(create|update)|consumeAiCredit|refreshQuestProgressForUser/);
+});
+
+test('an answer she left as it finished writes no row', async (t) => {
+  const { prisma } = await import('./prisma.js');
+  const { runTrackedAi } = await import('./aiTelemetry.js');
+  const rows = [];
+  const original = prisma.aiInteraction.create;
+  prisma.aiInteraction.create = async ({ data }) => { rows.push(data); return { id: `row-${rows.length}` }; };
+  t.after(() => { prisma.aiInteraction.create = original; });
+  let gone = false;
+  // The last delta went out, then the response closed before the provider call returned.
+  const fn = async () => { gone = true; return { content: 'the whole answer', model: 'm' }; };
+  await assert.rejects(runTrackedAi({ userId: 'u1', mode: 'DOCTOR', userPrompt: 'q', cancelled: () => gone, fn }), { code: 'AI_CLIENT_GONE' });
+  assert.equal(rows.length, 0, 'no OK row for the weekly Medi mission to count');
+  // Without a cancel hook (every other AI route) a finished answer is logged as before.
+  const ok = await runTrackedAi({ userId: 'u1', mode: 'DOCTOR', userPrompt: 'q', fn });
+  assert.equal(ok.interactionId, 'row-1');
+});
+
+/**
+ * persistChatTurn with the real limiter (enforceAiQuota → settle / release) over a fake PeriodUsage row and
+ * a fake transaction that applies its writes only when the work resolves. `closeAt` closes the response at
+ * one point of the save, as her phone does when she closes Medi.
+ */
+async function saveWithCloseAt(closeAt) {
+  const { EventEmitter } = await import('node:events');
+  const { prisma } = await import('./prisma.js');
+  const { enforceAiQuota } = await import('../middleware/aiLimiter.js');
+  const { persistChatTurn } = await import('../routes/ai.routes.js');
+  const db = { reserved: 0, commits: 0, releases: 0, sessions: [] };
+  const originals = {};
+  const patch = (target, key, value, name = key) => { originals[name] = [target, key, target[key]]; target[key] = value; };
+  const USER = `close-race-${closeAt}`;
+  const req = { user: { id: USER }, lang: 'ka' };
+  const res = Object.assign(new EventEmitter(), { status: () => res, json: () => res });
+  let gone = false;
+  const pause = async (point) => {
+    if (point !== closeAt) return;
+    gone = true;
+    res.emit('close');
+    await sleep(5); // the close handler runs while this statement is still on its way
+  };
+  patch(prisma.user, 'findUnique', async () => ({ id: USER, package: null, packageExpiresAt: null }), 'user');
+  patch(prisma, '$executeRawUnsafe', async () => 0);
+  // reserveAiCredit's UPDATE … RETURNING
+  patch(prisma, '$queryRaw', async () => { db.reserved += 1; return [{ count: 0, reserved: db.reserved, resetAt: null, notifyAt: null }]; });
+  // releaseAiCredit (the stale sweep and the usage-row insert change nothing here)
+  patch(prisma, '$executeRaw', async (strings) => {
+    if (!strings.join('?').includes('GREATEST("reserved" - 1, 0)') || db.reserved <= 0) return 0;
+    db.reserved -= 1;
+    db.releases += 1;
+    return 1;
+  });
+  patch(prisma, '$transaction', async (work) => {
+    const staged = { sessions: [], commits: 0 };
+    const tx = {
+      chatSession: {
+        create: async ({ data }) => { await pause('session'); const row = { id: `s-${closeAt}`, ...data }; staged.sessions.push(row); return row; },
+      },
+      // commitAiCredit (unlimited) inside the transaction
+      $executeRaw: async () => { await pause('credit'); if (db.reserved <= staged.commits) return 0; staged.commits += 1; return 1; },
+    };
+    const result = await work(tx);
+    await pause('commit');
+    db.sessions.push(...staged.sessions);
+    db.reserved -= staged.commits;
+    db.commits += staged.commits;
+    return result;
+  });
+  try {
+    await new Promise((resolve, reject) => enforceAiQuota(req, res, (error) => (error ? reject(error) : resolve())));
+    if (closeAt === 'before') res.emit('close'), (gone = true);
+    let outcome = 'kept';
+    try {
+      await persistChatTurn({ req, session: null, history: [], message: 'my question', mode: 'DOCTOR', answer: { content: 'the answer', interactionId: null }, gone: () => gone });
+    } catch (error) {
+      outcome = error.message;
+    }
+    if (!gone) res.emit('finish');
+    await req.releaseAiCredit(); // whatever the close or finish started has settled
+    return { outcome, sessions: db.sessions.length, commits: db.commits, releases: db.releases, reserved: db.reserved };
+  } finally {
+    for (const [target, key, value] of Object.values(originals)) target[key] = value;
+  }
+}
+
+test('a delivered answer is saved and charged once; nothing is released under it', async () => {
+  assert.deepEqual(await saveWithCloseAt('never'), { outcome: 'kept', sessions: 1, commits: 1, releases: 0, reserved: 0 });
+});
+
+test('closing Medi before or during the save stores and charges nothing and frees the slot', async () => {
+  for (const closeAt of ['before', 'session', 'credit']) {
+    const result = await saveWithCloseAt(closeAt);
+    assert.equal(result.sessions, 0, `${closeAt}: no stored consultation`);
+    assert.equal(result.commits, 0, `${closeAt}: no credit taken`);
+    assert.equal(result.releases, 1, `${closeAt}: the slot is free again`);
+    assert.equal(result.reserved, 0);
+    assert.match(result.outcome, closeAt === 'before' ? /AI_REQUEST_ALREADY_RELEASED/ : /AI_CLIENT_GONE/);
+  }
+});
+
+test('a close during the final commit keeps the answer and its one credit together (the window left)', async () => {
+  assert.deepEqual(await saveWithCloseAt('commit'), { outcome: 'kept', sessions: 1, commits: 1, releases: 0, reserved: 0 });
 });
 
 // Review (2026-10-08): enforceAiQuota listens for 'close' only after its own reads. A person gone during

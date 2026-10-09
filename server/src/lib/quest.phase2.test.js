@@ -29,10 +29,10 @@ import {
 } from './quest.js';
 import { QuestSignal, refreshQuestProgressForUser } from './questSignals.js';
 import { QUEST_ECONOMY, assertIssuableQuestReward, validateHydrationGoalMl } from './questEconomy.js';
-import { onQuestCompleted } from './questRealtime.js';
+import { onQuestCompleted, registerQuestRealtimeEmitter } from './questRealtime.js';
 import { publicQuest } from './questPrivacy.js';
 import { AI_CONSENT_VERSION } from './aiConsent.js';
-import { AI_REPLY_CUT_MESSAGE } from './aiTelemetry.js';
+import { AI_ERROR_REVIEWED, AI_REPLY_CUT_MESSAGE } from './aiTelemetry.js';
 
 const NOW = new Date('2026-09-06T12:00:00+04:00');
 const TODAY = '2026-09-06';
@@ -378,6 +378,30 @@ describe('phase 2 weekly Medi mission', () => {
     assert.equal(medi.status, 'COMPLETED');
   });
 
+  // Integration review IR-5/IR-17: admin „ჩაქრობა“ (POST /api/admin/ai/errors/review) turns every ERROR row
+  // into ERROR_REVIEWED, cut replies included. A mission assigned or recomputed after that must still count
+  // the cut answer she got; a reviewed real failure still never counts.
+  it('still counts a cut answer after the admin reviewed its error, never a reviewed failure', async () => {
+    const { db, options } = await setup({ aiConsent: true, weekly: false });
+    await db.aiInteraction.create({ data: { userId: USER, status: 'ERROR', mode: 'DOCTOR', errorMessage: 'Provider 503', createdAt: NOW } });
+    // No weekly row yet (consent accepted mid-week, web, first open lands in Medi): the answer's refresh finds nothing.
+    assert.deepEqual(await refreshQuestProgressForUser(USER, QuestSignal.MEDI_USED, options), []);
+    await db.aiInteraction.updateMany({ where: { userId: USER, status: 'ERROR' }, data: { status: AI_ERROR_REVIEWED } });
+    await assignWeeklyQuests(USER, WEEK, options);
+    const row = questByKey(await allQuests(db), 'weekly_medi');
+    assert.equal(await computeQuestProgress(USER, row, WEEK, options), 0, 'a reviewed failure is still not an answer');
+    assert.equal(questByKey(await updateQuestProgress(USER, { templateKey: 'weekly_medi' }, options), 'weekly_medi').progress, 0);
+
+    await db.aiInteraction.create({
+      data: { userId: USER, status: 'ERROR', mode: 'CONSILIUM', errorMessage: AI_REPLY_CUT_MESSAGE, createdAt: NOW },
+    });
+    await db.aiInteraction.updateMany({ where: { userId: USER, status: 'ERROR' }, data: { status: AI_ERROR_REVIEWED } });
+    assert.equal(await computeQuestProgress(USER, row, WEEK, options), 1);
+    const medi = questByKey(await updateQuestProgress(USER, { templateKey: 'weekly_medi' }, options), 'weekly_medi');
+    assert.equal(medi.progress, 1);
+    assert.equal(medi.status, 'COMPLETED');
+  });
+
   it('counts one qualifying interaction even across extra messages and sessions', async () => {
     const { db, options } = await setup({ aiConsent: true });
     await db.aiInteraction.create({ data: { userId: USER, status: 'OK', mode: 'DOCTOR', createdAt: NOW } });
@@ -389,6 +413,36 @@ describe('phase 2 weekly Medi mission', () => {
     const medi = questByKey(await allQuests(db), 'weekly_medi');
     assert.equal(medi.progress, 1);
     assert.equal((await db.questCompletion.findMany({ where: { userQuestId: medi.id } })).length, 1);
+  });
+
+  // Integration review IR-4: older app JS (no X-Medicard-Caps) never sees weekly_medi, yet toasted
+  // „მისია შესრულდა 🎉“ for any `quest:completed` on the person's sockets. Its completion is not announced;
+  // every other mission still is.
+  it('never announces the weekly Medi completion on the sockets; other missions still are', async () => {
+    const events = [];
+    // Achievement and journey events stay (older JS shows those); only the mission completion is checked.
+    registerQuestRealtimeEmitter((userId, payload) => { if (payload.event === 'quest:completed') events.push(payload); });
+    const stop = onQuestCompleted((payload) => events.push({ listener: true, ...payload }));
+    try {
+      const { db, options } = await setup({ aiConsent: true });
+      await db.aiInteraction.create({ data: { userId: USER, status: 'OK', mode: 'DOCTOR', createdAt: NOW } });
+      // The answer's own refresh, and the dashboard sync another device's GET runs.
+      await refreshQuestProgressForUser(USER, QuestSignal.MEDI_USED, options);
+      const medi = questByKey(await allQuests(db), 'weekly_medi');
+      assert.equal(medi.status, 'COMPLETED');
+      await getUserQuestDashboard(USER, options);
+      assert.deepEqual(events, []);
+
+      await db.healthMetricDaily.create({ data: { userId: USER, date: TODAY, steps: 5000 } });
+      await refreshQuestProgressForUser(USER, QuestSignal.STEPS_CHANGED, options);
+      assert.deepEqual(events.map((event) => [event.event ?? 'listener', event.key]), [
+        ['listener', 'daily_steps'],
+        ['quest:completed', 'daily_steps'],
+      ]);
+    } finally {
+      stop();
+      registerQuestRealtimeEmitter(null);
+    }
   });
 
   it('does not complete last week after the Monday rollover', async () => {

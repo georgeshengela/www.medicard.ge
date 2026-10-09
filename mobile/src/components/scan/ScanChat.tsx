@@ -269,6 +269,8 @@ export function ScanChat({ owner, initialKind }: { owner: string; initialKind: S
       doctorSession.current = response.sessionId;
       patch(slot.id, { text: response.answer, streaming: false, interactionId: response.interactionId } as Partial<ScanTurn>);
       if (response.usage) applyUsage(response.usage);
+      // A health answer counts for the weekly Medi mission, which the server does not announce on the socket.
+      void import('@/lib/quest/cache').then(({ requestQuestRefresh }) => requestQuestRefresh()).catch(() => undefined);
       scrollToEnd();
     } catch (err) {
       if (timer) clearTimeout(timer);
