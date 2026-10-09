@@ -310,7 +310,21 @@ async function loadProgressContext(db, userId, quests, options = {}) {
   return { metricByDate, mediUsedByPeriod };
 }
 
+/**
+ * The weekly Medi mission as a stored row (`template` included). `isWeeklyMedi` reads the flattened
+ * dashboard shape instead.
+ */
+function isWeeklyMediRow(quest) {
+  return quest?.template?.cadence === 'WEEKLY' && quest?.template?.progressType === 'MEDI_DAILY_USE';
+}
+
 function notifyQuestCompleted(userId, quest, options = {}) {
+  emitQuestAnalytics(userId, 'quest_completed', quest, options);
+  // `quest:completed` goes to every socket of the person. Older app JS hides the weekly Medi mission
+  // (questDashboardForClient) yet toasts any completion („მისია შესრულდა 🎉“ for a mission it never
+  // shows), and a socket does not say what its JS can show — so this one is never announced. New JS
+  // refreshes MEDIQUEST after each Medi answer itself; the web app does not listen.
+  if (isWeeklyMediRow(quest)) return;
   const completedAt = quest.completedAt instanceof Date ? quest.completedAt.toISOString() : quest.completedAt;
   emitQuestCompleted(userId, {
     questId: quest.id,
@@ -325,7 +339,6 @@ function notifyQuestCompleted(userId, quest, options = {}) {
     target: quest.target,
     progressPercent: questProgressPercent(quest.progress, quest.target),
   });
-  emitQuestAnalytics(userId, 'quest_completed', quest, options);
 }
 
 function emitQuestAnalytics(userId, kind, quest, options = {}) {

@@ -29,7 +29,7 @@ import {
 } from './quest.js';
 import { QuestSignal, refreshQuestProgressForUser } from './questSignals.js';
 import { QUEST_ECONOMY, assertIssuableQuestReward, validateHydrationGoalMl } from './questEconomy.js';
-import { onQuestCompleted } from './questRealtime.js';
+import { onQuestCompleted, registerQuestRealtimeEmitter } from './questRealtime.js';
 import { publicQuest } from './questPrivacy.js';
 import { AI_CONSENT_VERSION } from './aiConsent.js';
 import { AI_ERROR_REVIEWED, AI_REPLY_CUT_MESSAGE } from './aiTelemetry.js';
@@ -413,6 +413,36 @@ describe('phase 2 weekly Medi mission', () => {
     const medi = questByKey(await allQuests(db), 'weekly_medi');
     assert.equal(medi.progress, 1);
     assert.equal((await db.questCompletion.findMany({ where: { userQuestId: medi.id } })).length, 1);
+  });
+
+  // Integration review IR-4: older app JS (no X-Medicard-Caps) never sees weekly_medi, yet toasted
+  // „მისია შესრულდა 🎉“ for any `quest:completed` on the person's sockets. Its completion is not announced;
+  // every other mission still is.
+  it('never announces the weekly Medi completion on the sockets; other missions still are', async () => {
+    const events = [];
+    // Achievement and journey events stay (older JS shows those); only the mission completion is checked.
+    registerQuestRealtimeEmitter((userId, payload) => { if (payload.event === 'quest:completed') events.push(payload); });
+    const stop = onQuestCompleted((payload) => events.push({ listener: true, ...payload }));
+    try {
+      const { db, options } = await setup({ aiConsent: true });
+      await db.aiInteraction.create({ data: { userId: USER, status: 'OK', mode: 'DOCTOR', createdAt: NOW } });
+      // The answer's own refresh, and the dashboard sync another device's GET runs.
+      await refreshQuestProgressForUser(USER, QuestSignal.MEDI_USED, options);
+      const medi = questByKey(await allQuests(db), 'weekly_medi');
+      assert.equal(medi.status, 'COMPLETED');
+      await getUserQuestDashboard(USER, options);
+      assert.deepEqual(events, []);
+
+      await db.healthMetricDaily.create({ data: { userId: USER, date: TODAY, steps: 5000 } });
+      await refreshQuestProgressForUser(USER, QuestSignal.STEPS_CHANGED, options);
+      assert.deepEqual(events.map((event) => [event.event ?? 'listener', event.key]), [
+        ['listener', 'daily_steps'],
+        ['quest:completed', 'daily_steps'],
+      ]);
+    } finally {
+      stop();
+      registerQuestRealtimeEmitter(null);
+    }
   });
 
   it('does not complete last week after the Monday rollover', async () => {
