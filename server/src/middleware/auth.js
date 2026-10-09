@@ -41,6 +41,13 @@ export function enrichPublicUser(user) {
   };
 }
 
+/**
+ * 401 code for a token whose account no longer exists (deleted). Additive: older apps act on the
+ * status alone. Newer ones finish a delete whose answer was lost and forget the account's device
+ * data on it; any other 401 (expired, password changed) is never read as „deleted“.
+ */
+export const ACCOUNT_NOT_FOUND = 'ACCOUNT_NOT_FOUND';
+
 /** Rejects the request unless it carries a valid `Authorization: Bearer <jwt>` header. */
 export async function requireAuth(req, res, next) {
   const header = req.headers.authorization ?? '';
@@ -58,7 +65,7 @@ export async function requireAuth(req, res, next) {
 
     const userId = typeof payload.sub === 'string' ? payload.sub : String(payload.sub ?? '');
     if (!userId || userId === 'undefined' || userId === 'null') {
-      return res.status(401).json({ error: t(req, 'მომხმარებელი ვერ მოიძებნა. ხელახლა შედი ანგარიშში.', 'Account not found. Please sign in again.') });
+      return res.status(401).json({ error: t(req, 'მომხმარებელი ვერ მოიძებნა. ხელახლა შედი ანგარიშში.', 'Account not found. Please sign in again.'), code: ACCOUNT_NOT_FOUND });
     }
 
     let user = await prisma.user.findUnique({
@@ -75,7 +82,7 @@ export async function requireAuth(req, res, next) {
     }
 
     if (!user) {
-      return res.status(401).json({ error: t(req, 'მომხმარებელი ვერ მოიძებნა. ხელახლა შედი ანგარიშში.', 'Account not found. Please sign in again.') });
+      return res.status(401).json({ error: t(req, 'მომხმარებელი ვერ მოიძებნა. ხელახლა შედი ანგარიშში.', 'Account not found. Please sign in again.'), code: ACCOUNT_NOT_FOUND });
     }
 
     // A password reset ends every session signed before it (lib/sessionRevocation.js; fails open).

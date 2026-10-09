@@ -212,3 +212,34 @@ test('every sign-in registers push again without the 6 h freshness shortcut',()=
  assert.match(startup,/schedulePostLoginWork\('push',[\s\S]{0,120}syncPushRegistration\(\)/);
  assert.match(fs.readFileSync(path.resolve(__dirname,'../src/store/AuthContext.tsx'),'utf8'),/runPostLoginSideEffects\(user, healthProfile, \{ force: true \}\)/);
 });
+
+// IR-13: the delete committed but its answer was lost (timeout, dropped connection). Her retry gets
+// requireAuth's 401 ACCOUNT_NOT_FOUND: that finishes the delete on the phone. Any other 401 is not
+// proof of deletion and touches nothing.
+test('a delete whose answer was lost finishes on the retry',async()=>{
+ const h=harness('saved-token');await h.render().refresh();
+ h.setDelete(async()=>{throw new h.ApiError('Timed out',408);});
+ await assert.rejects(h.render().deleteAccount(),/Timed out/);
+ assert.deepEqual(h.delivery,[]);assert.equal(h.token(),'saved-token');
+ h.setDelete(async()=>{throw new h.ApiError('Account not found. Please sign in again.',401,{code:'ACCOUNT_NOT_FOUND'});});
+ await h.render().deleteAccount();await tick();
+ assert.deepEqual(h.delivery,['reminders-cancel']);
+ assert.deepEqual(h.forgotten.sort(),['cycle:synthetic-user','pregnancy:synthetic-user']);
+ assert.equal(h.token(),null);assert.equal(h.render().user,null);
+});
+test('a delete refused with another 401 keeps everything and shows the error',async()=>{
+ for(const payload of [{code:'TOKEN_EXPIRED'},{code:'TOKEN_INVALID'},{}]){
+  const h=harness('saved-token');await h.render().refresh();
+  h.setDelete(async()=>{throw new h.ApiError('Session ended',401,payload);});
+  await assert.rejects(h.render().deleteAccount(),/Session ended/);
+  assert.deepEqual(h.delivery,[],JSON.stringify(payload));assert.deepEqual(h.forgotten,[]);
+  assert.equal(h.token(),'saved-token');assert.equal(h.render().user.id,h.full.user.id);
+ }
+});
+test('an account deleted elsewhere also leaves no device data at the next launch',async()=>{
+ const h=harness('saved-token');h.setSnapshot({user:h.full.user});
+ h.setMe(async()=>{throw new h.ApiError('Account not found',401,{code:'ACCOUNT_NOT_FOUND'});});
+ h.startup();await tick();await tick();await tick();
+ assert.equal(h.token(),null);assert.deepEqual(h.delivery,['reminders-cancel']);
+ assert.deepEqual(h.forgotten.sort(),['cycle:synthetic-user','pregnancy:synthetic-user']);
+});

@@ -183,6 +183,23 @@ describe('requireAuth after a password reset', () => {
   });
 });
 
+// IR-13: a delete whose answer was lost — the retry must be able to tell „this account is gone“
+// from any other 401 (expired, password changed), so that 401 carries its own code.
+describe('requireAuth for an account that no longer exists', () => {
+  it('answers 401 ACCOUNT_NOT_FOUND, and only there', async () => {
+    const gone = await authorize(jwt.sign({ sub: 'deleted-user', email: 'gone@example.com' }, env.JWT_SECRET, { expiresIn: '30d' }));
+    assert.equal(gone.status, 401);
+    assert.equal(gone.body.code, 'ACCOUNT_NOT_FOUND');
+    assert.match(gone.body.error, /ვერ მოიძებნა/);
+    const noSubject = await authorize(jwt.sign({ email: 'x@example.com' }, env.JWT_SECRET, { expiresIn: '30d' }));
+    assert.equal(noSubject.status, 401);
+    assert.equal(noSubject.body.code, 'ACCOUNT_NOT_FOUND');
+    db.changedAt = new Date((NOW - 60) * 1000);
+    assert.equal((await authorize(tokenAt(NOW - 3600))).body.code, 'TOKEN_EXPIRED');
+    assert.equal((await authorize('not-a-token')).body.code, 'TOKEN_INVALID');
+  });
+});
+
 describe('the /community socket after a password reset', () => {
   /** Runs the namespace middleware like socket.io does → { error, socket }. */
   async function handshake(token) {

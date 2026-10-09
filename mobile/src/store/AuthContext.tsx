@@ -114,15 +114,26 @@ async function cancelDeviceReminders() {
 }
 
 /**
- * The server refused this session (401: a password reset elsewhere, an expired token; or the
- * account is blocked). The same on-device cleanup as signOut, without its push unregister: that
- * request would carry the refused token and could only answer 401 (a reset already switched the
- * account's push tokens off on the server). Before this, the phone she locked out with a reset kept
- * showing her medicine reminders.
+ * requireAuth's 401 for a token whose account no longer exists. Only this code means „deleted“:
+ * an expired session or a password changed elsewhere is also a 401, and that account still has
+ * data on this phone (unsynced offline cycle logs) that must not be wiped.
  */
-async function endSessionOnDevice(userId: string | undefined) {
+function isAccountGone(error: unknown): boolean {
+  return error instanceof ApiError && error.status === 401 && error.code === 'ACCOUNT_NOT_FOUND';
+}
+
+/**
+ * The server refused this session (401: a password reset elsewhere, an expired token, a deleted
+ * account; or the account is blocked). The same on-device cleanup as signOut, without its push
+ * unregister: that request would carry the refused token and could only answer 401 (a reset
+ * already switched the account's push tokens off on the server). Before this, the phone she locked
+ * out with a reset kept showing her medicine reminders. A deleted account (`accountGone`) also
+ * leaves its device data, as after a confirmed delete.
+ */
+async function endSessionOnDevice(userId: string | undefined, accountGone = false) {
   await cancelDeviceReminders();
-  await import('@/lib/petCareReminders').then(({ onPetCareLogout }) => onPetCareLogout(userId)).catch(() => undefined);
+  if (accountGone && userId) await forgetAccountOnDevice(userId);
+  else await import('@/lib/petCareReminders').then(({ onPetCareLogout }) => onPetCareLogout(userId)).catch(() => undefined);
 }
 
 /** The account the device was signed in to, read before the session snapshot is cleared. */
@@ -221,7 +232,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         } catch (error) {
           if (await getToken() !== token) return;
           if (error instanceof ApiError && (error.isUnauthorized || error.code === 'ACCOUNT_BLOCKED')) {
-            await endSessionOnDevice(await leavingAccountId());
+            // An account deleted elsewhere, or a delete whose answer was lost, leaves nothing here.
+            await endSessionOnDevice(await leavingAccountId(), isAccountGone(error));
             // A sign-in that landed during the cleanup keeps its new session.
             if (await getToken() !== token) return;
             await clearToken();
@@ -489,7 +501,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         // push still in place. Once it is confirmed, everything on the phone goes at once with no
         // further request: the server dropped the push tokens with the account (cascade), so a push
         // unregister could only answer 401 and would hold up the cleanup on a bad connection.
-        await api.auth.deleteAccount();
+        try {
+          await api.auth.deleteAccount();
+        } catch (error) {
+          // A lost answer: the delete committed but the reply never arrived (timeout, dropped
+          // connection), so her retry finds no account. Only ACCOUNT_NOT_FOUND proves that.
+          if (!isAccountGone(error)) throw error;
+        }
         await cancelDeviceReminders();
         await forgetAccountOnDevice(userId);
         await clearToken();
