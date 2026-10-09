@@ -2,6 +2,8 @@ import { prisma } from './prisma.js';
 import { PROMPT_VERSION } from './prompts.js';
 
 const MAX_SNIPPET = 2000;
+/** A streamed reply cut at max_tokens: she saw it and it was saved, but admin counts it as an AI error. */
+export const AI_REPLY_CUT_MESSAGE = 'Reply cut off at max_tokens';
 
 export function truncateSnippet(text, max = MAX_SNIPPET) {
   if (!text) return null;
@@ -72,7 +74,7 @@ export async function runTrackedAi({
     const interaction = await logAiInteraction({
       userId,
       mode,
-      ...(cut ? { status: 'ERROR', errorMessage: 'Reply cut off at max_tokens' } : {}),
+      ...(cut ? { status: 'ERROR', errorMessage: AI_REPLY_CUT_MESSAGE } : {}),
       chatSessionId,
       medicalRecordId,
       userPrompt,
