@@ -46,6 +46,7 @@ import { buildHomeSectionOrder } from '@/lib/home/homeSectionOrder';
 import { primaryGoalFromProfile } from '@/lib/assessmentForm';
 import { displayFirstName, nameInitials } from '@/lib/displayName';
 import { medicationToSetUp } from '@/lib/home/medicationSetup';
+import { useMedicationSetupDismissals } from '@/hooks/useMedicationSetupDismissals';
 import { profileCompletion } from '@/lib/profileCompletion';
 import { mediRoute } from '@/lib/mediModes';
 import { computeTodayDoses } from '@/lib/home/todayDoses';
@@ -144,6 +145,7 @@ export default function Home() {
   const hydration = useHydration({ enabled: waterOn });
   const steps = useStepsMetrics('1d', { enabled: stepsOn });
   const meds = useMedications();
+  const setupDismissals = useMedicationSetupDismissals(user?.id);
   // Every layout shows MEDIFOOD from this one shared dashboard read (standard too since 2026-10-04).
   const nutrition = useNutritionDashboard({ enabled: nutritionOn });
   const cycleQuery = useCycleView(user?.id, layout === 'women' && female && cycleOn && cycleLocked === false);
@@ -308,9 +310,14 @@ export default function Home() {
   );
   // Never the server's placeholder („Medicard მომხმარებელი“ for phone / Apple sign-ups): no name = the greeting alone.
   const firstName = displayFirstName(user, extra);
-  // The medicine named in the onboarding medication goal, until it is set up in MEDIPILL.
-  const setupName = meds.loaded
-    ? medicationToSetUp({ primaryGoal: primaryGoalFromProfile(healthProfile), typed: healthProfile?.medications, tracked: meds.medications })
+  // The medicine named in the onboarding medication goal, until it is set up in MEDIPILL or she said „არა ახლა“.
+  const setupName = meds.loaded && setupDismissals.loaded
+    ? medicationToSetUp({
+        primaryGoal: primaryGoalFromProfile(healthProfile),
+        typed: healthProfile?.medications,
+        tracked: meds.medications,
+        dismissed: setupDismissals.names,
+      })
     : null;
 
   const addGlass = useCallback(() => {
@@ -402,7 +409,7 @@ export default function Home() {
         {askChips ? <HomeAskChips set={layout === 'women' ? 'cycle' : layout} community={layout === 'women' && communityEntry} /> : null}
       </View>
     ),
-    nextDose: <HomeNextDoseSection meds={meds} setupName={setupName} />,
+    nextDose: <HomeNextDoseSection meds={meds} setupName={setupName} onDismissSetup={setupDismissals.dismiss} />,
     // Standard's one spotlight is MEDISCAN, so the trainer card stays a surface card there too.
     coach: <HomeCoachSection tone={layout === 'women' ? 'spotlight' : 'surface'} />,
     attention: <HomeAttention />,

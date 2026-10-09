@@ -3,8 +3,6 @@ import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-nati
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import {
-  Bell,
-  Boxes,
   CalendarDays,
   CalendarRange,
   Check,
@@ -145,7 +143,6 @@ export function MedicationDoseScreen() {
 
   const form = ka.meds.formLabels[cfg.form ?? 'pills'];
   const amount = cfg.amount ?? 1;
-  const remaining = cfg.remainingCount;
   const knownAs = [cfg.genericName, cfg.strength].filter((v) => v && v !== med.medName).join(' · ') || null;
   const freqLabel =
     cfg.frequencyKind === 'weekly'
@@ -216,11 +213,11 @@ export function MedicationDoseScreen() {
           <HomeSectionHeading title={ka.meds.detailsTitle} />
           <MedsCard padded={false}>
             <MedsInfoRow icon={Pill} label={tx('ერთ მიღებაზე', 'Per dose')} value={ka.meds.doseAmountLine(amount, form)} />
-            {remaining != null ? <MedsInfoRow icon={Boxes} ink="sky" label={ka.meds.remainingLabel} value={ka.meds.pillsLeft(remaining)} /> : null}
-            <MedsInfoRow icon={CalendarDays} ink="blue" label={ka.meds.daysOfWeekLabel} value={daysLabel} />
-            {course ? <MedsInfoRow icon={CalendarRange} ink="violet" label={ka.meds.courseLabel} value={course} /> : null}
-            {meal ? <MedsInfoRow icon={Utensils} ink="amber" label={ka.meds.mealTimingLabel} value={meal} /> : null}
-            <MedsInfoRow icon={Bell} ink="rose" label={ka.meds.refillLabel} value={cfg.refillReminder ? ka.common.yes : ka.common.no} isLast />
+            {/* No „შევსების შეხსენება“ / pills-left rows: nothing counts the pack down or sends a refill
+                reminder yet, so showing them promised something that never came. */}
+            <MedsInfoRow icon={CalendarDays} ink="blue" label={ka.meds.daysOfWeekLabel} value={daysLabel} isLast={!course && !meal} />
+            {course ? <MedsInfoRow icon={CalendarRange} ink="violet" label={ka.meds.courseLabel} value={course} isLast={!meal} /> : null}
+            {meal ? <MedsInfoRow icon={Utensils} ink="amber" label={ka.meds.mealTimingLabel} value={meal} isLast /> : null}
           </MedsCard>
         </View>
 

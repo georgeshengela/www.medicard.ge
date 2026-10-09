@@ -61,6 +61,8 @@ describe('device access bootstrap', () => {
       '../components/permissions/PermissionGateHost.tsx',
       '../../app/(auth)/profile-setup/notifications.tsx',
       '../../app/(auth)/profile-setup/location.tsx',
+      // MEDIPILL's notifications-off note (primer state: one „გაგრძელება“ that opens the sheet).
+      '../components/medications/MedicationRemindersNote.tsx',
     ];
     for (const file of screens) {
       const text = readFileSync(join(here, file), 'utf8');

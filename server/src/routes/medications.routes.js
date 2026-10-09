@@ -1,8 +1,8 @@
 import { Router } from 'express';
-import { z } from 'zod';
+import { z, ZodError } from 'zod';
 import { prisma } from '../lib/prisma.js';
 import { requireAuth } from '../middleware/auth.js';
-import { asyncHandler } from '../middleware/error.js';
+import { asyncHandler, fieldMessage } from '../middleware/error.js';
 import { t } from '../lib/i18n.js';
 
 export const medicationsRouter = Router();
@@ -24,7 +24,7 @@ const timeList = z
   .refine((times) => times.every((t) => /^([01]\d|2[0-3]):[0-5]\d$/.test(t)), 'დრო უნდა იყოს ფორმატში 09:00')
   .transform((times) => [...new Set(times)].sort().join(', '));
 
-const createSchema = z.object({
+export const createSchema = z.object({
   medName: z.string().trim().min(2, 'მიუთითე მედიკამენტის დასახელება').max(120),
   dosage: z.string().trim().min(1, 'მიუთითე დოზა').max(80),
   frequency: timeList,
@@ -91,6 +91,30 @@ medicationsRouter.delete(
     return res.json({ deleted: true });
   }),
 );
+
+/** Our own validation copy is written in Georgian; the validator's defaults („Too big: …“) are English internals. */
+const AUTHORED_MESSAGE = /[\u10D0-\u10FF]/;
+
+/**
+ * A rejected medication save says why. The shared handler answers every ZodError with the generic
+ * „შევსებული მონაცემები არასწორია.“ and keeps the reason in `fields`, but app builds up to 1.0.0.21.20
+ * show only `error` — so picking 9–12 doses a day (the old sheet offered 12, the server takes 8) ended in
+ * a message that explained nothing. Same status and shape (`error` + `fields`); `error` is now the first
+ * reason we wrote ourselves, in the request language. A failure with only the validator's own English
+ * text (a 121-character name) keeps the generic line rather than showing „Too big: …“ to her.
+ */
+export function medicationValidationError(error, req, res, next) {
+  if (!(error instanceof ZodError) || res.headersSent) return next(error);
+  const fields = error.issues.map((i) => ({ field: i.path.join('.'), message: fieldMessage(req, i.message) }));
+  const authored = error.issues.find((i) => AUTHORED_MESSAGE.test(String(i.message || '')));
+  const reason = authored ? fieldMessage(req, authored.message) : null;
+  return res.status(400).json({
+    error: reason || t(req, 'შევსებული მონაცემები არასწორია.', 'Some of the details you entered are not valid.'),
+    fields,
+  });
+}
+
+medicationsRouter.use(medicationValidationError);
 
 function buildDailySchedule(medications) {
   return medications

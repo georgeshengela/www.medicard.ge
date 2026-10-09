@@ -8,6 +8,7 @@ import { MediHeaderButton } from '@/components/medi/MediHeaderButton';
 import { HomeSectionHeading } from '@/components/home/HomeSectionHeading';
 import { MedicationPillIcon } from '@/components/medications/MedicationPillIcon';
 import { MedipillHero } from '@/components/medications/MedipillHero';
+import { MedicationRemindersNote } from '@/components/medications/MedicationRemindersNote';
 import { MedsButton, MedsCard, MedsChip, MedsHairline, MedsIconTile, medsInk } from '@/components/medications/MedsHubUI';
 import { CatalogProductRow } from '@/components/pharmacy/CatalogProductRow';
 import { UpcomingDoseCard } from '@/components/medications/UpcomingDoseCard';
@@ -112,6 +113,8 @@ export function MedicationHubScreen() {
           </View>
         ) : (
           <>
+            {/* Notifications off on the phone: say so here instead of silently sending no reminder. */}
+            <MedicationRemindersNote activeCount={activeMeds.length} style={[s.gutter, { marginTop: HUB.sectionGap - 8 }]} />
             <View style={[s.gutter, { marginTop: HUB.sectionGap - 8 }]}>
               <MedipillHero
                 medications={medications}

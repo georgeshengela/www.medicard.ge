@@ -253,8 +253,11 @@ export function formatTime12h(time24: string): string {
   return formatTime24h(time24);
 }
 
+/** The server accepts 1–8 dose times a day (`medications.routes.js` timeList); the form never offers more. */
+export const MAX_TIMES_PER_DAY = 8;
+
 export function defaultTimesForCount(count: number): string[] {
-  const safe = Math.max(1, Math.min(12, count));
+  const safe = Math.max(1, Math.min(MAX_TIMES_PER_DAY, count));
   if (safe === 1) return ['08:00'];
   if (safe === 2) return ['08:00', '20:00'];
   if (safe === 3) return ['08:00', '14:00', '20:00'];

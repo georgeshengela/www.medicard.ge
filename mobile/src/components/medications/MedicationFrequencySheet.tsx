@@ -5,8 +5,10 @@ import { ka } from '@/i18n/ka';
 import { useIsDark, useThemeColors } from '@/theme/colors';
 import { hubInk, hubText, hubTint } from '@/theme/hub';
 import { medsInk } from '@/components/medications/MedsHubUI';
+import { MAX_TIMES_PER_DAY } from '@/lib/medications.shared';
 
-const OPTIONS = Array.from({ length: 12 }, (_, i) => i + 1);
+// No more than the server accepts: picking 9–12 used to fail only at save, with a generic error.
+const OPTIONS = Array.from({ length: MAX_TIMES_PER_DAY }, (_, i) => i + 1);
 
 type Props = {
   visible: boolean;
@@ -15,7 +17,7 @@ type Props = {
   onApply: (timesPerDay: number) => void;
 };
 
-/** How many times a day — a 4×3 grid of counts instead of a scrolling list. */
+/** How many times a day — a 4×2 grid of counts instead of a scrolling list. */
 export function MedicationFrequencySheet({ visible, value, onClose, onApply }: Props) {
   const c = useThemeColors();
   const dark = useIsDark();
