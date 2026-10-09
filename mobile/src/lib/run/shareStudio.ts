@@ -48,6 +48,27 @@ export function trimEnds(lines:LngLat[][],meters=200):LngLat[][]{
  return splitJumps(lines).map(l=>l.filter(valid)).filter(l=>l.length>1).map(l=>cut(cut(l,meters,true),meters,false)).filter(l=>l.length>1&&lineLength(l)>20);
 }
 /**
+ * The lines a walk clip may show (owner 2026-10-09: „600 მ-იანი შეზღუდვა რატომ?“ → smart privacy + a switch).
+ * `hide` off: the whole walk (GPS jumps still split it). `hide` on with a known `home`: every point within `zoneM` of
+ * home goes, wherever it is on the walk — a walk that starts at the park shows in full. `hide` on without a home:
+ * the old rule, `trimM` off both ends of the walk (not of every GPS piece).
+ */
+export function privateLines(lines:LngLat[][],{hide=true,home=null,zoneM=250,trimM=200}:{hide?:boolean;home?:LngLat|null;zoneM?:number;trimM?:number}={}):LngLat[][]{
+ const pieces=splitJumps(lines).map(l=>l.filter(valid)).filter(l=>l.length>1);
+ if(!hide)return pieces;
+ if(home&&valid(home)){
+  const out:LngLat[][]=[];
+  for(const l of pieces){let cur:LngLat[]=[];for(const p of l){if(metersBetween(p,home)<=zoneM){if(cur.length>1)out.push(cur);cur=[];}else cur.push(p);}if(cur.length>1)out.push(cur);}
+  return out.filter(l=>lineLength(l)>20);
+ }
+ if(!pieces.length)return [];
+ const first=cut(pieces[0],trimM,true),rest=pieces.slice(1);
+ const all=[first,...rest].filter(l=>l.length>1);
+ if(!all.length)return [];
+ all[all.length-1]=cut(all[all.length-1],trimM,false);
+ return all.filter(l=>l.length>1&&lineLength(l)>20);
+}
+/**
  * GPS jumps out (owner 2026-10-05: a test walk showed one straight line across the city). A step much longer than the
  * line's usual step — a fix that leapt out of a building, a car ride, a long gap — splits the line there, and pieces
  * shorter than `minM` go. History paths are downsampled (≤ 240 points), so "usual" comes from the line itself.

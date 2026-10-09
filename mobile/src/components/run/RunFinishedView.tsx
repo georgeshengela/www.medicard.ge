@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import { Pressable, ScrollView, Share, View } from 'react-native';
+import { Pressable, ScrollView, Share, Switch, View } from 'react-native';
 import { Award, Clapperboard, Flag, Flame, Footprints, Gauge, MapPin, Share2, Timer, Zap } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MedicalSourcesLink } from '@/components/health/MedicalSourcesLink';
@@ -16,7 +16,8 @@ import { useThemeColors } from '@/theme/colors';
 import { HUB } from '@/theme/hub';
 import { tx } from '@/i18n/locale';
 import { useAuth } from '@/store/AuthContext';
-import { lineLength, longestLine, thin, trimEnds, type LngLat } from '@/lib/run/shareStudio';
+import { lineLength, longestLine, privateLines, thin, type LngLat } from '@/lib/run/shareStudio';
+import { api } from '@/lib/api';
 import { ShareStudio, canRecordClips, type ShareSceneInput } from './ShareStudio';
 
 /** `onBack`: where the header's back goes (the summary leaves the finished session; history goes back). */
@@ -53,12 +54,20 @@ export function RunFinishedView({ summary, title, onBack, footer, autoVideo = fa
     return () => clearTimeout(timer);
   }, [mapReady, mapCenter, summary]);
 
-  // The share clip: this walk lighting the night city. 200 m are cut at both ends (a walk often starts at home);
-  // a walk too short for that falls back to the text share.
+  // The share clip: this walk lighting the night city. „დაფარე სახლის მხარე“ (on by default, owner 2026-10-09) hides
+  // only what passes within 250 m of the home place — a walk that starts elsewhere shows in full; without a known
+  // home it cuts 200 m off both ends. Off: the whole walk.
+  const [hideHome, setHideHome] = useState(true);
+  const [home, setHome] = useState<LngLat | null>(null);
+  useEffect(() => {
+    let alive = true;
+    void api.location.get().then(r => { if (alive && r?.location?.enabled && r.location.lat != null && r.location.lng != null) setHome([r.location.lng, r.location.lat]); }).catch(() => {});
+    return () => { alive = false; };
+  }, []);
   const scene = useMemo<ShareSceneInput | null>(() => {
     const segments = (summary.segments?.length ? summary.segments : [summary.path]).map(seg => seg.map(p => [p.lng, p.lat] as LngLat));
     // GPS jumps split the walk; the clip follows its longest unbroken stretch (never a straight leap across town).
-    const line = thin(longestLine(trimEnds(segments, 200)), 1200);
+    const line = thin(longestLine(privateLines(segments, { hide: hideHome, home })), 1200);
     if (!canRecordClips || line.length < 2 || lineLength(line) < 150) return null;
     return {
       kind: 'walk', line, hero: user?.gender === 'FEMALE' ? 'f' : 'm',
@@ -69,7 +78,7 @@ export function RunFinishedView({ summary, title, onBack, footer, autoVideo = fa
         { value: formatThousands(summary.steps), label: tx('ნაბიჯი', 'Steps') },
       ],
     };
-  }, [summary, user?.gender]);
+  }, [summary, user?.gender, hideHome, home]);
 
   // „ვიდეო ყველა გასეირნებას“ (owner 2026-10-09): the walks list's 🎬 opens this page with the clip already starting.
   const autoOpened = useRef(false);
@@ -121,9 +130,16 @@ export function RunFinishedView({ summary, title, onBack, footer, autoVideo = fa
       <View style={{ width: 40, height: 40, borderRadius: 13, backgroundColor: 'rgba(94,234,212,0.16)', alignItems: 'center', justifyContent: 'center' }}>{scene ? <Clapperboard size={20} color="#5EEAD4" /> : <Share2 size={20} color="#5EEAD4" />}</View>
       <View style={{ flex: 1 }}>
         <Copy bold size={15} style={{ color: '#fff' }}>{scene ? tx('ვიდეოდ გაზიარება', 'Share as a video') : tx('გაზიარება', 'Share')}</Copy>
-        <Copy size={11} style={{ color: 'rgba(255,255,255,0.62)' }}>{scene ? tx('შენი გზა ანთებს ღამის ქალაქს — მზა ვიდეო სთორისთვის', 'Your path lighting the night city — a ready clip for stories') : tx('ვიდეოსთვის ~600 მ-ზე გრძელი გასეირნებაა საჭირო (სახლის მხარე ვიდეოში არ ჩანს)', 'A clip needs a walk longer than ~600 m (the home end is never shown)')}</Copy>
+        <Copy size={11} style={{ color: 'rgba(255,255,255,0.62)' }}>{scene ? tx('შენი გზა ანთებს ღამის ქალაქს — მზა ვიდეო სთორისთვის', 'Your path lighting the night city — a ready clip for stories') : hideHome ? tx('სახლის დაფარვის შემდეგ ვიდეოსთვის გზა თითქმის აღარ რჩება — გამორთე ქვემოთ ან გააზიარე ტექსტით', 'With the home part hidden there is almost no path left for a clip — switch it off below or share as text') : tx('ვიდეოსთვის გზა ძალიან მოკლეა — გააზიარე ტექსტით', 'The path is too short for a clip — share as text')}</Copy>
       </View>
     </Pressable>
+    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, marginTop: -6, paddingHorizontal: 4 }}>
+      <View style={{ flex: 1 }}>
+        <Copy bold size={13}>{tx('დაფარე სახლის მხარე', 'Hide the home part')}</Copy>
+        <Copy muted size={11}>{hideHome ? (home ? tx('ვიდეოში არ ჩანს გზა შენი სახლიდან 250 მ-ში', 'The clip leaves out the path within 250 m of your home') : tx('ვიდეოში არ ჩანს გზის პირველი და ბოლო 200 მ', 'The clip leaves out the first and last 200 m')) : tx('ვიდეოში მთელი გზა ჩანს — ვინც ნახავს, შეიძლება მიხვდეს, სად დაიწყე', 'The clip shows the whole path — viewers may tell where you started')}</Copy>
+      </View>
+      <Switch value={hideHome} onValueChange={setHideHome} accessibilityLabel={tx('დაფარე სახლის მხარე', 'Hide the home part')} trackColor={{ true: '#0D9488', false: c.bg300 }} thumbColor="#fff" />
+    </View>
 
     <Section title={tx('გასეირნება რიცხვებში', 'Your walk in numbers')}><Card style={{ flexDirection: 'row', flexWrap: 'wrap', padding: 6, gap: 0 }}>
       {/* One card, three columns (owner 2026-10-04: shorter pages) instead of six separate cards. */}
