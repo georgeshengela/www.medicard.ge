@@ -2,7 +2,7 @@
 
 Rules from the 2026-10 strategy deck and the launch bug hunt. They touch several areas (steps, MEDIQUEST, Medi, accounts, onboarding, cycle, doses); the area files link here.
 
-## Strategy quick fixes (owner 2026-10-08, ships with app 1.0.0.21.25)
+## Strategy quick fixes (owner 2026-10-08, ships with app 1.0.0.21.28)
 
 From the 2026-10-06 strategy deck (`docs/strategy-2026/`, branch `claude/busy-turing-myk1kq`); the owner approved this package. Keep these rules:
 - **Personal step goal.** The daily step goal is the median of the days with steps among the last 14 finished days (today excluded, ≥ 3 such days), rounded to 500, **plus 500** (a reachable stretch), kept within 2 000–10 000; fewer days → 4 000. One rule in `mobile/src/lib/personalStepsGoal.ts` and `server/public/app/js/stepsGoal.js` (web has no build step), one table of cases tests both (`personalStepsGoal.test.ts`). `fetchStepsMetrics` feeds it the server's daily rows plus the phone's last week only, so every chart tab shows the same goal. Never bring back a fixed 10 000 default. The goal wizard (`stepsGoal.ts`), MEDIQUEST's adaptive target and MEDIRUN presets are not merged into it yet.
@@ -15,7 +15,7 @@ From the 2026-10-06 strategy deck (`docs/strategy-2026/`, branch `claude/busy-tu
 - **Skipped and missed doses are amber, not red** (`hubInk('amber')`, `doseStatusColor`; web `--med-missed`, `.badge-amber`). Red stays for deleting and real alerts. Guard: `mobile/tests/dose-status-colour.test.cjs`.
 - Admin news examples never suggest a draw („გათამაშება“).
 
-## Launch hardening, train 1 (owner 2026-10-08, ships with app 1.0.0.21.25)
+## Launch hardening, train 1 (owner 2026-10-08, ships with app 1.0.0.21.28)
 
 People are signing up; the owner asked for no bugs that cost trust. A bug hunt confirmed 61 findings; the first batch is fixed. Server first, then the OTA — every server change stays compatible with older app builds. Keep these rules:
 - **Accounts are never deleted as „empty“ by mistake.** `accountHasContent` (`server/src/lib/accountLogins.js`) also counts cycle tags/classifications/pregnancy plan, `RewardLedger`, MEDIRUN sessions/claims/crews, and person-made rows of mixed tables through `CONTENT_PREDICATES` (CycleProfile answers, HealthProfile clinical lists and typed logs, partner shares, referrals, trainer links); a missing table/column is skipped, an error fails closed. `POST /api/auth/me/discard-new` is refused (409 `DISCARD_NOT_ALLOWED`) once onboarding started (`discardNewBlocker`); app and web ask „MEDICARD უკვე გამოგიყენებია?“ only before that.
@@ -28,7 +28,7 @@ People are signing up; the owner asked for no bugs that cost trust. A bug hunt c
 - **Quest rewards are frozen at completion** (`UserQuest.metadata.reward`); a `daily_medi` row completed before its retirement pays its old 10 coins. `GET /api/quests` and `/history` show `weekly_medi` to native app JS only when it sends `X-Medicard-Caps: weekly-medi` (`CLIENT_CAPS` in `api.ts`, `WEEKLY_MEDI_CAP` in `quest.js`); never gate on a version number — OTAs from other branches reuse the numbers. Web and unversioned requests get everything.
 
 
-## Launch hardening, train 2 (2026-10-09, ships with app 1.0.0.21.25)
+## Launch hardening, train 2 (2026-10-09, ships with app 1.0.0.21.28)
 
 Second batch of the bug hunt (22 findings). Server first (adds `User.passwordChangedAt` through `npm run db:install`), then the OTA. Keep these rules:
 - **A password reset ends every older session.** Email, SMS and QA resets write `"User"."passwordChangedAt"` (raw SQL, `@ignore`, `install-password-changed.mjs`); `requireAuth` and both socket handshakes (default namespace and `/community`) refuse a token whose `iat` is more than 5 s older (401 `TOKEN_EXPIRED`), before `GET /me` can renew it. Fails open with no column, no value or a read error (`server/src/lib/sessionRevocation.js`). The read is deliberately uncached. Sign-out stays local-only (per-token revocation would cost another read per request). Adding an email is not a password change.
@@ -38,7 +38,7 @@ Second batch of the bug hunt (22 findings). Server first (adds `User.passwordCha
 - **Doses:** a medication reminder opens the reminded slot (`/medications/<id>?time=&date=`). „გადატანა“ = `pending` + `rescheduledTo` + a one-off `med:<id>:moved:<date>:<slot>` reminder, never TAKEN; a taken dose cannot be moved; Home's undo of a moved dose restores the move (`reopenDose`). Only taken/skipped answer a dose; the calendar never shows a pending dose as taken. A failed delete shows the error; reminders are cancelled only after the delete succeeded (or 404).
 - **Onboarding:** a medicine typed in the medications goal step shows a Home card „დააყენე შეხსენება: …“ that opens MEDIPILL setup with the name filled in (`src/lib/home/medicationSetup.ts`); no dose or time is invented. The placeholder name „Medicard“ is never shown as a person's name (`realFullName` in `displayName.ts`, guarded by a sweep test). A failed last-period save in the cycle goal step blocks Finish with the message (Skip continues without a date). A man cannot keep `primaryGoal: 'cycle'`. The cycle goal step explains a disabled Continue. „დაასრულე პროფილი“ opened from Home returns to Home.
 
-## Launch hardening, train 3 (2026-10-09, ships with app 1.0.0.21.25)
+## Launch hardening, train 3 (2026-10-09, ships with app 1.0.0.21.28)
 
 The rest of the bug hunt (app only, plus MEDIPILL validation copy on the server). Keep these rules:
 - **Cycle → Health:** `planCycleHealthWrite` (`src/lib/cycleHealthWrite.ts`) writes only what a save changed against the stored day (`base` — every `persistCycleLog` caller passes it); a cycle start only for „დღეს დაიწყო“ or bleeding newly added with no period running into it (`continuesLoggedPeriod` bridges 2 unlogged/spotting days like the server; an explicit „none“ ends a period). Fire-and-forget, never requests Health access; every iOS flow sample carries `HKMenstrualCycleStart` true/false.
