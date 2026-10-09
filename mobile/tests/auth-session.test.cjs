@@ -1,5 +1,10 @@
 const {test}=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path'),vm=require('node:vm'),ts=require('typescript');
 
+// The real jwtSubject (the account a stored token belongs to), transpiled like AuthContext below.
+const jwtSubjectModule=(()=>{const file=path.resolve(__dirname,'../src/lib/jwtSubject.js');const out=ts.transpileModule(fs.readFileSync(file,'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText;const exports={};vm.runInNewContext(out,{exports,Buffer},{filename:file});return exports;})();
+/** A JWT-shaped session token for `sub` (unsigned: the app only reads the subject). */
+const sessionToken=sub=>`eyJhbGciOiJIUzI1NiJ9.${Buffer.from(JSON.stringify({sub,email:'qa@medicard.test'})).toString('base64url')}.sig`;
+
 // Run the actual provider callbacks with deterministic React state/native boundaries.
 // These tests cover ordering and network recovery; they do not emulate native rendering.
 function harness(initialToken=null) {
@@ -16,7 +21,7 @@ function harness(initialToken=null) {
   react:React,'react-native':{AppState:{addEventListener:()=>({remove:noop})}},
   '@/lib/run/store':{resetRunMemory:noop},'@/i18n/ka':{ka:{auth:{registerNotConfirmed:'Unconfirmed'}}},
   '@/lib/api':{ApiError,api:{auth:{login:async()=>{loginCount++;return {token:'confirmed-token',user,usage:full.usage};},me:async()=>{meCount++;return me();},deleteAccount:()=>deleteAccount(),discardNewAccount:async()=>{delivery.push('server-discard');return {ok:true};}},healthProfile:{get:async()=>{profileCount++;return readProfile();}}}},
-  '@/lib/localAccount':{setLocalAccountId:id=>{accountId=id;},localAccountId:()=>accountId,wipeLegacyUnscopedHealthCaches:asyncNoop},
+  '@/lib/localAccount':{setLocalAccountId:id=>{accountId=id;},localAccountId:()=>accountId,wipeLegacyUnscopedHealthCaches:asyncNoop},'@/lib/jwtSubject':jwtSubjectModule,
   '@/lib/home/homeLayoutStore':{primeHomeLayout:asyncNoop,registerHomeLayoutProfilePatch:noop},
   '@/lib/onboarding':{needsHealthAssessment:noop,needsProfileSetup:noop,assessmentPhaseComplete:noop},
   '@/lib/sessionSnapshot':{clearSessionSnapshot:async()=>{snapshot=null;},saveSessionSnapshot:async value=>{snapshot=value;},loadSessionSnapshot:async()=>snapshot},
@@ -32,7 +37,7 @@ function harness(initialToken=null) {
  const exports={};vm.runInNewContext(source,{exports,require:name=>{if(!(name in modules))throw Error('Unmocked: '+name);return modules[name];},console,setTimeout,clearTimeout},{filename:file});
  const render=()=>{cursor=0;return exports.AuthProvider({children:null}).props.value;};
  render();const startup=effects[0];
- return {render,startup,full,ApiError,setMe:fn=>{me=fn;},setProfile:fn=>{readProfile=fn;},setDelete:fn=>{deleteAccount=fn;},delivery,petLogouts,forgotten,token:()=>token,setToken:value=>{token=value;},setSnapshot:value=>{snapshot=value;},holdCancel:gate=>{cancelGate=gate;},pushForgets:()=>pushForgets,counters:()=>({postLoginCount,loginCount,meCount,profileCount})};
+ return {render,startup,full,ApiError,setMe:fn=>{me=fn;},setProfile:fn=>{readProfile=fn;},setDelete:fn=>{deleteAccount=fn;},delivery,petLogouts,forgotten,token:()=>token,setToken:value=>{token=value;},setSnapshot:value=>{snapshot=value;},setAccountId:id=>{accountId=id;},holdCancel:gate=>{cancelGate=gate;},pushForgets:()=>pushForgets,counters:()=>({postLoginCount,loginCount,meCount,profileCount})};
 }
 function deferred(){let resolve;const promise=new Promise(r=>resolve=r);return {promise,resolve};}
 const tick=()=>new Promise(r=>setImmediate(r));
@@ -237,11 +242,29 @@ test('a delete refused with another 401 keeps everything and shows the error',as
  }
 });
 test('an account deleted elsewhere also leaves no device data at the next launch',async()=>{
- const h=harness('saved-token');h.setSnapshot({user:h.full.user});
+ const h=harness(sessionToken('synthetic-user'));h.setSnapshot({user:h.full.user});
  h.setMe(async()=>{throw new h.ApiError('Account not found',401,{code:'ACCOUNT_NOT_FOUND'});});
  h.startup();await tick();await tick();await tick();
  assert.equal(h.token(),null);assert.deepEqual(h.delivery,['reminders-cancel']);
  assert.deepEqual(h.forgotten.sort(),['cycle:synthetic-user','pregnancy:synthetic-user']);
+});
+
+// A switch that deleted the current account: adopt sets localAccountId to the account it is adopting
+// before it saves that account's token. A hydrate still holding the deleted account's token gets
+// ACCOUNT_NOT_FOUND in that window; only the token's own account may lose its device data.
+test('a refused token forgets only its own account, never the one being adopted',async()=>{
+ const h=harness(sessionToken('synthetic-user'));await h.render().refresh();
+ h.setMe(async()=>{h.setAccountId('other-user');throw new h.ApiError('Account not found',401,{code:'ACCOUNT_NOT_FOUND'});});
+ await h.render().refresh();
+ assert.deepEqual(h.forgotten.sort(),['cycle:synthetic-user','pregnancy:synthetic-user']);
+ assert.deepEqual(h.petLogouts,['synthetic-user']);
+});
+test('a token without a readable subject never forgets device data, even for ACCOUNT_NOT_FOUND',async()=>{
+ const h=harness('opaque-token');h.setSnapshot({user:h.full.user});
+ h.setMe(async()=>{throw new h.ApiError('Account not found',401,{code:'ACCOUNT_NOT_FOUND'});});
+ await h.render().refresh();
+ assert.equal(h.token(),null);assert.deepEqual(h.delivery,['reminders-cancel']);
+ assert.deepEqual(h.forgotten,[]);assert.deepEqual(h.petLogouts,['synthetic-user']);
 });
 
 // IR-14: discard-new and a switch that deleted the current account already removed it (and its push

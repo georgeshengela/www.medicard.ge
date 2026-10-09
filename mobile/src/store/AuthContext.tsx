@@ -3,6 +3,7 @@ import { onReturnToForeground } from '@/lib/appForeground';
 import { resetRunMemory } from '@/lib/run/store';
 import { ka } from '@/i18n/ka';
 import { ApiError, api, type AiEngineId, type Gender, type HealthProfile, type Usage, type User } from '@/lib/api';
+import { jwtSubject } from '@/lib/jwtSubject';
 import { localAccountId, setLocalAccountId, wipeLegacyUnscopedHealthCaches } from '@/lib/localAccount';
 import { primeHomeLayout, registerHomeLayoutProfilePatch } from '@/lib/home/homeLayoutStore';
 import { needsHealthAssessment as needsHealthAssessmentFromLib, needsProfileSetup } from '@/lib/onboarding';
@@ -136,7 +137,10 @@ async function endSessionOnDevice(userId: string | undefined, accountGone = fals
   else await import('@/lib/petCareReminders').then(({ onPetCareLogout }) => onPetCareLogout(userId)).catch(() => undefined);
 }
 
-/** The account the device was signed in to, read before the session snapshot is cleared. */
+/**
+ * The account the device was signed in to, read before the session snapshot is cleared. Only for a
+ * token without a readable subject; never used to forget an account's device data.
+ */
 async function leavingAccountId(): Promise<string | undefined> {
   const current = localAccountId();
   if (current) return current;
@@ -233,7 +237,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           if (await getToken() !== token) return;
           if (error instanceof ApiError && (error.isUnauthorized || error.code === 'ACCOUNT_BLOCKED')) {
             // An account deleted elsewhere, or a delete whose answer was lost, leaves nothing here.
-            await endSessionOnDevice(await leavingAccountId(), isAccountGone(error));
+            // The refused session is the token's own account (its subject): a switch or sign-in may
+            // already have set localAccountId to the account it is adopting before saving its token.
+            const subject = jwtSubject(token);
+            await endSessionOnDevice(subject ?? (await leavingAccountId()), isAccountGone(error) && subject !== null);
             // A sign-in that landed during the cleanup keeps its new session.
             if (await getToken() !== token) return;
             await clearToken();
