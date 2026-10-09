@@ -12,7 +12,7 @@ import Animated, { FadeInUp } from 'react-native-reanimated';
 import * as Haptics from 'expo-haptics';
 import { tx } from '@/i18n/locale';
 import { periodEndUndo, periodStartUndo, stillBleedingFlow, type PeriodEndUndo, type PeriodStartUndo } from '@/lib/cyclePeriodStatus';
-import { CalendarHeart, Heart, MessageSquareText, PencilLine } from 'lucide-react-native';
+import { CalendarHeart, Heart, MessageSquareText, PencilLine, X } from 'lucide-react-native';
 import { CycleHomeHeader } from '@/components/cycle/CycleHomeHeader';
 import { CycleHero } from '@/components/cycle/CycleHero';
 import { CycleExplainSheet } from '@/components/cycle/CycleExplainSheet';
@@ -58,6 +58,7 @@ import { displayPhaseLabel } from '@/lib/cycleHonesty';
 import { showContraceptionContextCard, showFertilityUi } from '@/lib/cycleContraception';
 import { alertPresentation, confidencePresentation, mergeOwnerClassifiedPeriodOntoMarks } from '@/lib/cyclePresentation.js';
 import { formFromCycleLog, isBleedFlow, persistCycleLog } from '@/lib/cycleLogSave';
+import { cyclePersistFeedback } from '@/lib/cycleOfflineCore';
 import type { CycleLogForm } from '@/components/cycle/CycleLogTabs';
 import { hasPmsPattern } from '@/lib/cycleAnalytics';
 import { CycleOfflineBanner } from '@/components/cycle/CycleOfflineBanner';
@@ -744,6 +745,16 @@ export default function CycleHome() {
   };
 
   /**
+   * A one-tap action that stored nothing (device storage and the server both failed): say so and skip
+   * the success haptic and toast (CYC-05). True = stop.
+   */
+  const storedNothing = (result: { synced?: boolean; persistedLocally?: boolean; sessionOnly?: boolean } | null) => {
+    if (!result || cyclePersistFeedback(result) !== 'fail') return false;
+    setError(ka.cycle.saveNotPersisted);
+    return true;
+  };
+
+  /**
    * Flo-style one tap: today becomes day 1 immediately (offline-safe queue); the server projects the
    * rest of the period from the usual length. A toast offers "add flow" and "undo".
    */
@@ -752,8 +763,10 @@ export default function CycleHome() {
     // Undo puts back exactly this: today's row and the last period start shown before the tap (CYC-04).
     const undo = periodStartUndo(bundle?.logs.find((l) => l.date === today) ?? null, bundle?.profile.lastPeriodStart);
     setPeriodBusy(true);
+    setError(null);
     try {
       const result = await queueApplyPeriod(user.id, { action: 'start', date: today });
+      if (storedNothing(result)) return;
       if (source === 'widget') trackCyclePeriodStarted('widget');
       else trackCyclePeriodStarted('hero');
       // TTC: a new cycle is not a success to celebrate — a plain selection tick (brief §9 item 16).
@@ -788,6 +801,7 @@ export default function CycleHome() {
     setPeriodToast(null);
     try {
       const result = await undoQueuedPeriodStart(user.id, entry.date, entry.undo, bundle?.logs.find((l) => l.date === entry.date) ?? null);
+      if (storedNothing(result)) return;
       if (result) showView(result.view);
     } catch (err) {
       setError(err instanceof Error ? err.message : ka.common.error);
@@ -819,8 +833,10 @@ export default function CycleHome() {
       return;
     }
     setSexBusy(true);
+    setError(null);
     try {
       const result = await persistCycleLog(user.id, today, { ...before, sexual: true }, { base: before });
+      if (storedNothing(result)) return;
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined);
       handleSaved(result.view);
       setPeriodToast(null);
@@ -837,6 +853,7 @@ export default function CycleHome() {
     setSexToast(null);
     try {
       const result = await persistCycleLog(user.id, today, before, { base: before });
+      if (storedNothing(result)) return;
       handleSaved(result.view);
     } catch (err) {
       setError(err instanceof Error ? err.message : ka.common.error);
@@ -858,8 +875,10 @@ export default function CycleHome() {
     const before = bundle?.logs.find((l) => l.date === today) ?? null;
     const undo = periodEndUndo(before ? { flow: before.flow } : null);
     setPeriodBusy(true);
+    setError(null);
     try {
       const result = await queueApplyPeriod(user.id, { action: 'end', date: today });
+      if (storedNothing(result)) return;
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined);
       showView(result.view);
       setPeriodToast(null);
@@ -885,6 +904,7 @@ export default function CycleHome() {
           : undo.kind === 'clearFlow'
             ? await saveCycleObservation(user.id, entry.date, { flow: null })
             : await queueRemoveCycleLog(user.id, entry.date);
+      if (storedNothing(result)) return;
       showView(result.view);
     } catch (err) {
       setError(err instanceof Error ? err.message : ka.common.error);
@@ -895,8 +915,10 @@ export default function CycleHome() {
   const stillBleedingNow = async () => {
     if (!user?.id || periodBusy || !bundle) return;
     setPeriodBusy(true);
+    setError(null);
     try {
       const result = await saveCycleObservation(user.id, today, { flow: stillBleedingFlow(bundle.logs, today) });
+      if (storedNothing(result)) return;
       Haptics.selectionAsync().catch(() => undefined);
       showView(result.view);
       setPeriodToast(null);
@@ -914,6 +936,13 @@ export default function CycleHome() {
     const t = setTimeout(() => setEndToast(null), 8000);
     return () => clearTimeout(t);
   }, [endToast]);
+
+  // A one-tap action's error fades on its own, like Home's (6 s).
+  useEffect(() => {
+    if (!actionError) return;
+    const t = setTimeout(() => setError(null), 6000);
+    return () => clearTimeout(t);
+  }, [actionError]);
 
   if (user?.gender !== 'FEMALE') {
     return (
@@ -1172,6 +1201,23 @@ export default function CycleHome() {
                 <Text style={{ color: c.brand, fontFamily: 'NotoSansGeorgian_700Bold' }}>
                   {ka.cycle.retry}
                 </Text>
+              </Pressable>
+            </View>
+          ) : null}
+
+          {/* A one-tap action that failed while the screen shows her cycle (CYC-05): a calm line, dismissible. */}
+          {actionError && bundle ? (
+            <View style={{ marginHorizontal: 20, marginBottom: 8, flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+              <Text accessibilityRole="alert" style={{ color: c.danger, fontSize: 13, lineHeight: 18, flex: 1 }}>
+                {actionError}
+              </Text>
+              <Pressable
+                onPress={() => setError(null)}
+                accessibilityRole="button"
+                accessibilityLabel={ka.common.close}
+                style={{ width: 44, height: 44, alignItems: 'center', justifyContent: 'center' }}
+              >
+                <X size={18} color={c.muted} />
               </Pressable>
             </View>
           ) : null}
