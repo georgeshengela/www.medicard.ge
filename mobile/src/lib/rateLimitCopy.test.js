@@ -26,6 +26,16 @@ describe('rate-limit copy', () => {
     assert.equal(publicApiErrorMessage(429, { error: quota, code: 'MONTHLY_LIMIT_REACHED' }, null, 'x'), quota);
   });
 
+  // Review (2026-10-09): RATE_LIMITED is also the generic limiters' code, and those send Retry-After.
+  it('a generic limiter with a known wait still reads it, not just „try later“', () => {
+    const later = { error: 'ძალიან ბევრი მცდელობა. სცადე მოგვიანებით.', code: 'RATE_LIMITED' };
+    assert.equal(publicApiErrorMessage(429, later, '600', 'x'), 'ძალიან ბევრი მოთხოვნა. დაელოდე 10 წუთს.');
+    const seconds = { error: 'ძალიან ბევრი მოთხოვნა. დაელოდე 900 წამს.', code: 'RATE_LIMITED', retryAfterSeconds: 900 };
+    assert.equal(publicApiErrorMessage(429, seconds, '900', 'x'), 'ძალიან ბევრი მოთხოვნა. დაელოდე 15 წუთს.');
+    const aiStarts = { error: 'ძალიან ბევრი AI მოთხოვნა. ცოტა ხანში სცადე.', code: 'RATE_LIMITED', usage: {} };
+    assert.equal(publicApiErrorMessage(429, aiStarts, null, 'x'), aiStarts.error);
+  });
+
   it('says long waits in minutes or hours, never thousands of seconds', () => {
     assert.equal(formatRateLimitMessage(90), 'ძალიან ბევრი მოთხოვნა. დაელოდე 90 წამს.');
     assert.equal(formatRateLimitMessage(600), 'ძალიან ბევრი მოთხოვნა. დაელოდე 10 წუთს.');
