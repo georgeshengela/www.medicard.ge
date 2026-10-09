@@ -130,7 +130,7 @@ function Recipes() {
                                 <ChefHat size={19} color={M.ink} strokeWidth={1.9} />
                               </View>
                               <View style={{ flex: 1, minWidth: 0 }}>
-                                <Text numberOfLines={1} style={[hubText.cardTitle, { color: c.text100 }]}>{r.name}</Text>
+                                <Text numberOfLines={2} style={[hubText.cardTitle, { color: c.text100 }]}>{r.name}</Text>
                                 <Text numberOfLines={1} style={[hubText.caption, { color: c.text300 }]}>
                                   {tx(`${kcal} კკალ პორცია · ${servings} პორცია · ცილა ${protein} გ`, `${kcal} kcal a serving · ${servings} ${servings === 1 ? "serving" : "servings"} · protein ${protein} g`)}
                                 </Text>

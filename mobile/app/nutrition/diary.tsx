@@ -21,8 +21,7 @@ import * as Haptics from "expo-haptics";
 import {
   Bookmark,
   BookmarkCheck,
-  ChevronLeft,
-  ChevronRight,
+  Check,
   CircleCheck,
   Copy,
   CopyPlus,
@@ -33,7 +32,6 @@ import {
   X,
 } from "lucide-react-native";
 import { api } from "@/lib/api";
-import { EMPTY_ART } from "@/constants/appArt";
 import { dateLocale, tx } from "@/i18n/locale";
 import { IMAGE_PICKER_OPTIONS } from "@/lib/imageUpload";
 import { prepareNutritionImage } from "@/lib/nutritionImage";
@@ -44,7 +42,8 @@ import { BarcodeScannerModal } from "@/components/nutrition/BarcodeScannerModal"
 import { FoodSearchModal, type FoodPick } from "@/components/nutrition/FoodSearchModal";
 import { DescribeMealModal } from "@/components/nutrition/DescribeMealModal";
 import { PortionSheet } from "@/components/nutrition/PortionSheet";
-import { MacroLine, QuickLogTiles, ScoreBadge } from "@/components/nutrition/NutritionUi";
+import { MacroLine, MEAL_ICONS, MEAL_TYPES, ScoreBadge } from "@/components/nutrition/NutritionUi";
+import { nutritionProgramApi } from "@/lib/nutritionProgram";
 import { MedicalSourcesLink } from "@/components/health/MedicalSourcesLink";
 import { CopyMealsSheet } from "@/components/nutrition/CopyMealsSheet";
 import { removeMealFromHealth, syncMealsToHealth } from "@/lib/nutritionHealth";
@@ -73,7 +72,7 @@ import { useThemeColors } from "@/theme/colors";
 import { HUB, hubText } from "@/theme/hub";
 import { ModuleHeaderButton, ModuleStackHeader } from "@/components/brand/ModuleHeader";
 import { KeyboardFormShell } from "@/components/ui/KeyboardFormShell";
-import { NConfirm, NSegment, useMedifood, withMedifood } from "@/components/nutrition/ProgramUI";
+import { NConfirm, NSegment, NWeekStrip, useMedifood, useNutritionDashboard, withMedifood } from "@/components/nutrition/ProgramUI";
 import { SwipeDeleteRow, SwipeGroup } from "@/components/records/SwipeDeleteRow";
 import { UndoToast } from "@/components/records/UndoToast";
 import { useUndoDelete } from "@/components/records/useUndoDelete";
@@ -108,8 +107,11 @@ function NutritionScreen({ owner }: { owner: string }) {
     M = useMedifood(),
     safe = useSafeAreaInsets(),
     router = useRouter();
-  const params = useLocalSearchParams<{ method?: string }>();
-  const [day, setDay] = useState(localDay()),
+  // ?method= starts a way of logging, ?type= presets the meal slot, ?date= opens that day (hub, Home, plan).
+  const params = useLocalSearchParams<{ method?: string; type?: string; date?: string }>();
+  const initialDay = typeof params.date === "string" && /^\d{4}-\d{2}-\d{2}$/.test(params.date) && params.date <= localDay() ? params.date : localDay();
+  const [day, setDay] = useState(initialDay),
+    [weekFrom, setWeekFrom] = useState(shiftDay(initialDay, -6)),
     [draft, setDraft] = useState<Meal | null>(null);
   const [busy, setBusy] = useState(false),
     [actionError, setError] = useState(""),
@@ -201,11 +203,11 @@ function NutritionScreen({ owner }: { owner: string }) {
     setCorrection("");
     setSavedItems({});
   };
-  const newMeal = (openMethods = true) => {
+  const newMeal = (openMethods = true, type?: Meal["type"]) => {
     openMeal({
       id: newUuid(),
       date: day,
-      type: day === localDay() ? mealTypeForHour(new Date().getHours()) : "lunch",
+      type: type ?? (day === localDay() ? mealTypeForHour(new Date().getHours()) : "lunch"),
       items: [],
       note: "",
       title: "",
@@ -236,9 +238,12 @@ function NutritionScreen({ owner }: { owner: string }) {
       resetResult();
       setEditing(null);
       setError("");
+      // Opened from the hub or Home straight into a way of logging: back returns there, not to the list.
+      if (launched.current && router.canGoBack()) router.back();
+      launched.current = false;
     };
     if (draft) {
-      if (mealEditSnapshot(draft) !== mealBaseline.current || photo)
+      if (draft.items.length && (mealEditSnapshot(draft) !== mealBaseline.current || photo))
         setConfirmation({ title: tx("გამოსვლა?", "Leave?"), message: tx("შეუნახავი ცვლილებები დაიკარგება.", "Unsaved changes will be lost."), action: leave });
       else leave();
     } else if (router.canGoBack()) router.back();
@@ -395,7 +400,8 @@ function NutritionScreen({ owner }: { owner: string }) {
     // Opening the camera, the photo picker or another sheet while the menu is still closing fails on
     // iOS (nothing appears and the diary stays busy), so wait for the menu to go first.
     const next = (open: () => void) => (fromSheet ? setTimeout(open, MODAL_HANDOFF_MS) : open());
-    if (method === "camera") next(() => void pick(true, "photo"));
+    if (method === "more") next(() => setSheet("methods"));
+    else if (method === "camera") next(() => void pick(true, "photo"));
     else if (method === "gallery") next(() => void pick(false, "photo"));
     else if (method === "label") next(() => void pick(true, "label"));
     else if (method === "barcode") next(() => setSheet("barcode"));
@@ -405,9 +411,10 @@ function NutritionScreen({ owner }: { owner: string }) {
     else editItem(draft?.items.length || 0);
   };
   /** One tap from Home or the hub: a fresh meal with that method already running. */
-  const startWith = (method: LogMethod) => {
+  const launched = useRef(false);
+  const startWith = (method: LogMethod, type?: Meal["type"]) => {
     if (busy) return;
-    newMeal(false);
+    newMeal(false, type);
     // Let the diary finish sliding in before the camera / a sheet is presented over it (iOS).
     setTimeout(() => pickMethod(method), MODAL_HANDOFF_MS);
   };
@@ -415,12 +422,17 @@ function NutritionScreen({ owner }: { owner: string }) {
   useFocusEffect(
     useCallback(() => {
       const method = typeof params.method === "string" ? params.method : "";
-      if (!method || handledMethod.current === method) return;
-      handledMethod.current = method;
-      if (!draft) startWith(method as LogMethod);
-      router.setParams({ method: "" });
+      const type = typeof params.type === "string" && params.type in mealLabels ? (params.type as Meal["type"]) : undefined;
+      const key = `${method}:${type || ""}`;
+      if (!method || handledMethod.current === key) return;
+      handledMethod.current = key;
+      if (!draft) {
+        launched.current = true;
+        startWith(method as LogMethod, type);
+      }
+      router.setParams({ method: "", type: "" });
       // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [params.method]),
+    }, [params.method, params.type]),
   );
   const onFoodPick = (pickResult: FoodPick) => {
     setSheet(null);
@@ -464,6 +476,9 @@ function NutritionScreen({ owner }: { owner: string }) {
       resetResult();
       setMessage(tx("კვება შენახულია", "Meal saved"));
       void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+      // Started from the hub or Home: the saved meal shows there in its slot, so go back to it.
+      if (launched.current && router.canGoBack()) router.back();
+      launched.current = false;
     });
   const saveItemAsFood = (item: FoodItem, index: number) =>
     run(async () => {
@@ -537,6 +552,28 @@ function NutritionScreen({ owner }: { owner: string }) {
   const shown = held ? meals.filter((m) => m.id !== held.id) : meals;
   const sum = foodTotals(draft?.items || shown.flatMap((m) => m.items));
   const score = draft?.items.length ? healthScore(draft.items) : null;
+  // Today's budget, macro targets and planned dishes come from the shared dashboard; past days use the
+  // target that was in force then (dashboard `days`, last 7 days).
+  const { data: dash } = useNutritionDashboard();
+  const today0 = localDay();
+  const plannedToday = dash?.date === today0 ? dash.planned.filter((p) => p.date === today0) : [];
+  const recordedDays = new Set<string>([...(dash?.days || []).filter((v) => v.recorded).map((v) => v.date), ...(shown.length ? [day] : [])]);
+  const pastTarget = dash?.days.find((v) => v.date === day)?.target ?? null;
+  const dayTarget: DayTarget | null =
+    day === today0 && dash?.targets
+      ? { calories: dash.budget ?? dash.targets.calories, protein: dash.targets.protein, carbs: dash.targets.carbs, fat: dash.targets.fat, isBudget: dash.budget != null && dash.budget !== dash.targets.calories }
+      : pastTarget
+        ? { calories: pastTarget.calories, protein: pastTarget.protein, carbs: pastTarget.carbs, fat: pastTarget.fat, isBudget: false }
+        : null;
+  /** A meal-plan dish eaten as planned: the server copies it into the diary under the dish's id. */
+  const eatPlanned = (id: string) =>
+    run(async () => {
+      await nutritionProgramApi.eat(id);
+      await refetchMeals();
+      refreshNutritionDashboard();
+      if (alive.current) setMessage(tx("რაციონის კერძი დღიურშია. პორცია შეგიძლია შეასწორო.", "The planned dish is in your diary. You can adjust the portion."));
+      void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+    });
   const txt = { color: c.text100, fontFamily: "NotoSansGeorgian_400Regular" };
   const button = (label: string, action: () => void, primary = false, disabled = false, icon?: React.ReactNode, compact = false) => (
     <Pressable
@@ -610,24 +647,20 @@ function NutritionScreen({ owner }: { owner: string }) {
               </View>
             )}
             {!draft && (
-              <View style={[s.dayBar, { backgroundColor: c.surface }]}>
-                <Pressable accessibilityRole="button" accessibilityLabel={tx("წინა დღე", "Previous day")} onPress={() => setDay(shiftDay(day, -1))} style={[s.dayButton, { backgroundColor: c.bg200 }]}>
-                  <ChevronLeft size={19} color={c.text100} />
-                </Pressable>
-                <View style={{ flex: 1, alignItems: "center" }}>
-                  <Text style={[txt, { fontFamily: "NotoSansGeorgian_600SemiBold", fontSize: 15 }]}>
-                    {day === today ? tx("დღეს", "Today") : day === shiftDay(today, -1) ? tx("გუშინ", "Yesterday") : new Date(day + "T12:00:00").toLocaleDateString(dateLocale(), { weekday: "short", day: "numeric", month: "long" })}
-                  </Text>
-                  {day !== today ? (
-                    <Pressable accessibilityRole="button" onPress={() => setDay(today)} hitSlop={8}>
-                      <Text style={[hubText.small, { color: M.ink, fontFamily: "NotoSansGeorgian_600SemiBold" }]}>{tx("დღევანდელზე დაბრუნება", "Back to today")}</Text>
-                    </Pressable>
-                  ) : null}
-                </View>
-                <Pressable accessibilityRole="button" accessibilityLabel={tx("შემდეგი დღე", "Next day")} disabled={day >= today} onPress={() => setDay(shiftDay(day, 1))} style={[s.dayButton, { backgroundColor: c.bg200, opacity: day >= today ? 0.35 : 1 }]}>
-                  <ChevronRight size={19} color={c.text100} />
-                </Pressable>
-              </View>
+              <NWeekStrip
+                from={weekFrom}
+                selected={day}
+                onSelect={(next) => setDay(next)}
+                onWeek={(step) => {
+                  const nextFrom = shiftDay(weekFrom, step);
+                  setWeekFrom(nextFrom);
+                  setDay(step > 0 ? (shiftDay(nextFrom, 6) > today ? today : shiftDay(nextFrom, 6)) : shiftDay(nextFrom, 6));
+                }}
+                nextDisabled={shiftDay(weekFrom, 6) >= today}
+                prevDisabled={weekFrom <= shiftDay(today, -365)}
+                isDisabled={(v) => v > today}
+                marked={recordedDays}
+              />
             )}
             {draft && editing === null && <NutritionScanSteps stage={draft.items.length ? 1 : 0} />}
             {draft && draft.items.length > 0 && editing === null && !!explanation && (
@@ -642,10 +675,11 @@ function NutritionScreen({ owner }: { owner: string }) {
                 </View>
               </View>
             )}
-            {editing === null && (draft ? draft.items.length > 0 : shown.length > 0) && (
+            {!draft && !loading && (shown.length > 0 || dayTarget != null) && <DaySummary sum={sum} target={dayTarget} />}
+            {editing === null && !!draft && draft.items.length > 0 && (
               <View style={[s.card, { backgroundColor: c.surface, gap: 10 }]}>
                 <View style={s.row}>
-                  <Text style={[hubText.caption, { color: c.text200, flex: 1 }]}>{draft ? tx("არჩეული პორცია", "Selected portion") : tx("დღის ჯამი", "Day total")}</Text>
+                  <Text style={[hubText.caption, { color: c.text200, flex: 1 }]}>{tx("არჩეული პორცია", "Selected portion")}</Text>
                   <ScoreBadge score={score} />
                 </View>
                 {draft && (
@@ -666,11 +700,11 @@ function NutritionScreen({ owner }: { owner: string }) {
                 <View style={[s.macroGrid, { borderTopColor: c.bg300 }]}>
                   {(
                     [
-                      [tx("ცილა", "Protein"), sum.protein, tx("გ", "g")],
-                      [tx("ნახშირწყ.", "Carbs"), sum.carbs, tx("გ", "g")],
-                      [tx("ცხიმი", "Fat"), sum.fat, tx("გ", "g")],
-                      [tx("ბოჭკო", "Fiber"), sum.fiber, tx("გ", "g")],
-                      [tx("შაქარი", "Sugar"), sum.sugar, tx("გ", "g")],
+                      [tx("ცილა", "Protein"), Math.round(sum.protein), tx("გ", "g")],
+                      [tx("ნახშირწყ.", "Carbs"), Math.round(sum.carbs), tx("გ", "g")],
+                      [tx("ცხიმი", "Fat"), Math.round(sum.fat), tx("გ", "g")],
+                      [tx("ბოჭკო", "Fiber"), sum.fiber != null ? Math.round(sum.fiber) : null, tx("გ", "g")],
+                      [tx("შაქარი", "Sugar"), sum.sugar != null ? Math.round(sum.sugar) : null, tx("გ", "g")],
                       [tx("ნატრიუმი", "Sodium"), sum.sodium != null ? Math.round(sum.sodium) : null, tx("მგ", "mg")],
                     ] as const
                   ).map(([label, value, unit], index) => (
@@ -693,31 +727,18 @@ function NutritionScreen({ owner }: { owner: string }) {
             {loading && !draft ? <ActivityIndicator color={M.ink} style={{ paddingVertical: 20 }} /> : null}
             {!draft && !loading && (
               <>
-                {shown.length === 0 && !error && (
-                  <View style={[s.card, { backgroundColor: c.surface, gap: 14 }]}>
-                    <View style={{ alignItems: "center", gap: 4 }}>
-                      <Image source={EMPTY_ART.diary} resizeMode="contain" accessible={false} accessibilityIgnoresInvertColors style={{ width: 96, height: 96 }} />
-                      <Text style={[txt, { fontSize: 18, fontFamily: "NotoSansGeorgian_700Bold", textAlign: "center" }]}>{day === today ? tx("რას მიირთმევ დღეს?", "What are you eating today?") : tx("ამ დღეს ჩანაწერი არ არის", "Nothing logged this day")}</Text>
-                      <Text style={[hubText.body, { textAlign: "center", color: c.text200 }]}>{tx("აირჩიე ერთი გზა. Medi დაითვლის, შენ გადაამოწმებ და შეინახავ.", "Pick one way. Medi does the math, you review and save.")}</Text>
-                    </View>
-                    <QuickLogTiles onPick={startWith} />
-                    <View style={{ flexDirection: "row", gap: 8 }}>
-                      <View style={{ flex: 1 }}>{button(tx("სხვა გზები", "More ways"), () => { newMeal(false); setTimeout(() => setSheet("methods"), 50); }, false, false, <Plus size={16} color={c.text100} />, true)}</View>
-                      {day === today ? <View style={{ flex: 1 }}>{button(tx("გუშინდელი", "Yesterday's"), () => void repeatYesterday(), false, false, <CopyPlus size={16} color={c.text100} />, true)}</View> : null}
-                    </View>
-                  </View>
-                )}
-                {(["breakfast", "lunch", "dinner", "snack"] as const)
-                  .filter((type) => shown.some((m) => m.type === type))
-                  .map((type) => {
-                    const group = shown.filter((m) => m.type === type);
-                    return (
-                      <View key={type}>
-                        <View style={[s.row, { paddingHorizontal: 4, marginBottom: 8 }]}>
-                          <Text style={[hubText.sectionTitle, { color: c.text100, flex: 1, fontSize: 16 }]}>{mealLabels[type]}</Text>
-                          <Text style={[hubText.caption, { color: c.text300 }]}>{foodTotals(group.flatMap((m) => m.items)).calories} {tx("კკალ", "kcal")}</Text>
-                        </View>
-                        <View style={[s.list, { backgroundColor: c.surface }]}>
+                {MEAL_TYPES.map((type) => {
+                  const group = shown.filter((m) => m.type === type);
+                  const planned = day === today ? plannedToday.filter((p) => p.type === type && !p.eaten) : [];
+                  const Icon = MEAL_ICONS[type];
+                  return (
+                    <View key={type}>
+                      <View style={[s.row, { paddingHorizontal: 4, marginBottom: 8, gap: 8 }]}>
+                        <Icon size={17} color={M.ink} strokeWidth={2.1} />
+                        <Text style={[hubText.sectionTitle, { color: c.text100, flex: 1, fontSize: 16 }]}>{mealLabels[type]}</Text>
+                        {group.length ? <Text style={[hubText.caption, { color: c.text300 }]}>{foodTotals(group.flatMap((m) => m.items)).calories} {tx("კკალ", "kcal")}</Text> : null}
+                      </View>
+                      <View style={[s.list, { backgroundColor: c.surface }]}>
                           {group.map((meal, index) => {
                             const mealScore = meal.healthScore ?? healthScore(meal.items);
                             const t = foodTotals(meal.items);
@@ -741,7 +762,7 @@ function NutritionScreen({ owner }: { owner: string }) {
                                       style={s.mealMain}
                                     >
                                       <View style={{ flex: 1, minWidth: 0, gap: 3 }}>
-                                        <Text numberOfLines={1} style={[hubText.cardTitle, { color: c.text100, fontSize: 14.5 }]}>{name}</Text>
+                                        <Text numberOfLines={2} style={[hubText.cardTitle, { color: c.text100, fontSize: 14.5 }]}>{name}</Text>
                                         <MacroLine protein={t.protein} carbs={t.carbs} fat={t.fat} />
                                         <Text numberOfLines={1} style={[hubText.small, { color: c.text300 }]}>{sourceLabels[meal.source] || sourceLabels.manual}</Text>
                                       </View>
@@ -762,10 +783,43 @@ function NutritionScreen({ owner }: { owner: string }) {
                               </SwipeDeleteRow>
                             );
                           })}
-                        </View>
+                        {planned.map((p, index) => (
+                          <View key={p.id} style={[s.mealRow, { paddingHorizontal: 14 }, (group.length > 0 || index > 0) && { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: c.bg300 }]}>
+                            <View style={{ flex: 1, minWidth: 0, gap: 2, paddingVertical: 10 }}>
+                              <Text numberOfLines={1} style={[hubText.cardTitle, { color: c.text100, fontSize: 14.5 }]}>{p.data.title}</Text>
+                              <Text numberOfLines={1} style={[hubText.small, { color: M.ink, fontFamily: "NotoSansGeorgian_600SemiBold" }]}>
+                                {tx(`რაციონიდან · ${Math.round(p.data.totals.calories)} კკალ`, `From your plan · ${Math.round(p.data.totals.calories)} kcal`)}
+                              </Text>
+                            </View>
+                            <Pressable
+                              accessibilityRole="button"
+                              accessibilityLabel={tx(`${p.data.title} — მივირთვი, დღიურში დამატება`, `${p.data.title} — I ate it, add to diary`)}
+                              disabled={busy}
+                              onPress={() => void eatPlanned(p.id)}
+                              hitSlop={4}
+                              style={[s.eat, { backgroundColor: M.inkSoft, opacity: busy ? 0.5 : 1 }]}
+                            >
+                              <Check size={15} color={M.ink} strokeWidth={2.6} />
+                              <Text style={[hubText.link, { color: M.ink }]}>{tx("მივირთვი", "Ate it")}</Text>
+                            </Pressable>
+                          </View>
+                        ))}
+                        <Pressable
+                          accessibilityRole="button"
+                          accessibilityLabel={tx(`დამატება: ${mealLabels[type]}`, `Add to ${mealLabels[type].toLowerCase()}`)}
+                          disabled={busy}
+                          onPress={() => newMeal(true, type)}
+                          style={[s.addRow, (group.length > 0 || planned.length > 0) && { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: c.bg300 }]}
+                        >
+                          <Plus size={17} color={M.ink} strokeWidth={2.4} />
+                          <Text style={[hubText.link, { color: M.ink, fontSize: 14 }]}>{tx("საკვების დამატება", "Add food")}</Text>
+                        </Pressable>
                       </View>
-                    );
-                  })}
+                    </View>
+                  );
+                })}
+                {day === today && shown.length === 0 && !error ? button(tx("გუშინდელის გამეორება", "Repeat yesterday"), () => void repeatYesterday(), false, false, <CopyPlus size={16} color={c.text100} />, true) : null}
+                {shown.length > 0 && day !== today && button(tx("ამ დღის კოპირება", "Copy this day"), () => { setCopyError(""); setCopying(shown); }, false, false, <CopyPlus size={16} color={c.text100} />, true)}
                 {shown.length > 0 && (
                   <View style={{ paddingHorizontal: 4, gap: 2 }}>
                     <Text style={[hubText.small, { color: c.text300 }]}>
@@ -774,7 +828,6 @@ function NutritionScreen({ owner }: { owner: string }) {
                     <MedicalSourcesLink sourceIds={["mealQuality"]} />
                   </View>
                 )}
-                {shown.length > 0 && day !== today && button(tx("ამ დღის კოპირება", "Copy this day"), () => { setCopyError(""); setCopying(shown); }, false, false, <CopyPlus size={16} color={c.text100} />, true)}
               </>
             )}
             {draft && editing === null && (
@@ -931,7 +984,7 @@ function NutritionScreen({ owner }: { owner: string }) {
       </SwipeGroup>
       {held && !draft ? <UndoToast key={held.id} title={tx("კვება წაიშალა", "Meal deleted")} bottom={safe.bottom + 16} onUndo={undo} /> : null}
       <CopyMealsSheet meals={copying} busy={busy} error={copyError} onClose={() => setCopying(null)} onCopy={(date, type) => void copyMeals(date, type)} />
-      <LogMethodSheet visible={sheet === "methods"} aiEnabled={enabled} onPick={pickMethod} onClose={() => setSheet(null)} />
+      <LogMethodSheet visible={sheet === "methods"} aiEnabled={enabled} mealType={draft?.type} onPick={pickMethod} onClose={() => setSheet(null)} />
       <BarcodeScannerModal visible={sheet === "barcode"} busy={busy} error={sheetError} onClose={() => setSheet(null)} onCode={(code) => void lookupBarcode(code)} />
       <PortionSheet
         food={product}
@@ -967,11 +1020,102 @@ const s = StyleSheet.create({
   list: { borderRadius: HUB.cardRadius, overflow: "hidden" },
   mealRow: { flexDirection: "row", alignItems: "center", gap: 6, minHeight: 66 },
   mealMain: { flex: 1, minWidth: 0, flexDirection: "row", alignItems: "center", gap: 10, paddingVertical: 12 },
-  dayBar: { flexDirection: "row", alignItems: "center", gap: 10, padding: 6, borderRadius: 18, minHeight: 56 },
-  dayButton: { width: 44, height: 44, borderRadius: 14, alignItems: "center", justifyContent: "center" },
+  track: { height: 8, borderRadius: 4, overflow: "hidden" },
+  fill: { height: 8, borderRadius: 4 },
+  miniTrack: { height: 4, borderRadius: 2, overflow: "hidden" },
+  miniFill: { height: 4, borderRadius: 2 },
+  addRow: { flexDirection: "row", alignItems: "center", gap: 8, minHeight: 50, paddingHorizontal: 14 },
+  eat: { flexDirection: "row", alignItems: "center", gap: 4, height: 38, paddingHorizontal: 10, borderRadius: 12 },
   macroGrid: { flexDirection: "row", flexWrap: "wrap", rowGap: 10, borderTopWidth: StyleSheet.hairlineWidth, paddingTop: 10 },
   macroCell: { width: "33.33%", gap: 1 },
   button: { minHeight: 50, paddingHorizontal: 16, paddingVertical: 12, borderRadius: 16, alignItems: "center", justifyContent: "center", flexDirection: "row", gap: 8 },
   buttonCompact: { minHeight: 44, paddingVertical: 9, paddingHorizontal: 14, borderRadius: 14 },
   input: { borderRadius: 14, paddingHorizontal: 14, paddingVertical: 12, fontSize: 16, minHeight: 50 },
 });
+
+
+type DayTarget = { calories: number; protein: number; carbs: number; fat: number; isBudget: boolean };
+const groupDigits = (n: number) => Math.round(n).toLocaleString("en-US").replace(/,/g, " ");
+
+/**
+ * The day at a glance, above the meals (MyFitnessPal's „remaining“ line, made calm): eaten against the
+ * day's budget with one bar, the three macros against their targets, the micro totals as one quiet
+ * line. Over the budget is amber, never red — tomorrow is a new day.
+ */
+function DaySummary({ sum, target }: { sum: ReturnType<typeof foodTotals>; target: DayTarget | null }) {
+  const M = useMedifood(),
+    { c, dark } = M;
+  const over = target ? sum.calories > target.calories : false;
+  const amber = dark ? "#FCD34D" : "#B45309";
+  const ratio = target && target.calories > 0 ? Math.min(1, sum.calories / target.calories) : 0;
+  const micro = [
+    sum.fiber != null ? tx(`ბოჭკო ${Math.round(sum.fiber)} გ`, `Fiber ${Math.round(sum.fiber)} g`) : null,
+    sum.sugar != null ? tx(`შაქარი ${Math.round(sum.sugar)} გ`, `Sugar ${Math.round(sum.sugar)} g`) : null,
+    sum.sodium != null ? tx(`ნატრიუმი ${groupDigits(sum.sodium)} მგ`, `Sodium ${groupDigits(sum.sodium)} mg`) : null,
+  ].filter(Boolean);
+  return (
+    <View style={[s.card, { backgroundColor: c.surface, gap: 12 }]}>
+      <View style={[s.row, { alignItems: "flex-end" }]}>
+        <View style={{ flex: 1, minWidth: 0 }}>
+          <Text style={[hubText.caption, { color: c.text200 }]}>{tx("მიღებული", "Eaten")}</Text>
+          <Text style={{ fontFamily: "NotoSansGeorgian_700Bold", fontSize: 30, lineHeight: 38, color: c.text100, fontVariant: ["tabular-nums"] }}>
+            {groupDigits(sum.calories)}
+            <Text style={[hubText.body, { color: c.text300 }]}>{tx(" კკალ", " kcal")}</Text>
+          </Text>
+        </View>
+        {target ? (
+          <View style={{ alignItems: "flex-end" }}>
+            <Text style={[hubText.caption, { color: c.text200 }]}>{over ? tx("ბიუჯეტზე მეტი", "Over budget") : tx("დარჩა", "Left")}</Text>
+            <Text style={{ fontFamily: "NotoSansGeorgian_700Bold", fontSize: 22, lineHeight: 30, color: over ? amber : M.ink, fontVariant: ["tabular-nums"] }}>
+              {groupDigits(Math.abs(target.calories - sum.calories))}
+            </Text>
+          </View>
+        ) : null}
+      </View>
+      {target ? (
+        <View style={{ gap: 6 }}>
+          <View style={[s.track, { backgroundColor: c.bg200 }]}>
+            <View style={[s.fill, { width: `${Math.max(ratio > 0 ? 2 : 0, ratio * 100)}%`, backgroundColor: over ? amber : M.ink }]} />
+          </View>
+          <Text style={[hubText.small, { color: c.text300 }]}>
+            {target.isBudget
+              ? tx(`დღის ბიუჯეტი ${groupDigits(target.calories)} კკალ (ვარჯიშის ჩათვლით)`, `Day budget ${groupDigits(target.calories)} kcal (exercise included)`)
+              : tx(`დღის სამიზნე ${groupDigits(target.calories)} კკალ`, `Daily target ${groupDigits(target.calories)} kcal`)}
+          </Text>
+        </View>
+      ) : null}
+      <View style={[s.row, { gap: 12, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: c.bg300, paddingTop: 12 }]}>
+        {(
+          [
+            ["protein", tx("ცილა", "Protein")],
+            ["carbs", tx("ნახშ.", "Carbs")],
+            ["fat", tx("ცხიმი", "Fat")],
+          ] as const
+        ).map(([key, label]) => {
+          const value = Math.round(sum[key]);
+          const goal = target?.[key] || 0;
+          const share = goal ? Math.min(1, value / goal) : 0;
+          return (
+            <View key={key} accessible accessibilityLabel={tx(`${label}: ${value} გრამი${goal ? ` ${goal}-დან` : ""}`, `${label}: ${value} grams${goal ? ` of ${goal}` : ""}`)} style={{ flex: 1, minWidth: 0, gap: 4 }}>
+              <Text numberOfLines={1} style={[hubText.small, { color: c.text300 }]}>{label}</Text>
+              <Text numberOfLines={1} style={[hubText.value, { color: c.text100, fontSize: 14, fontVariant: ["tabular-nums"] }]}>
+                {value}
+                <Text style={[hubText.small, { color: c.text300 }]}>{goal ? ` / ${goal} ${tx("გ", "g")}` : ` ${tx("გ", "g")}`}</Text>
+              </Text>
+              {goal ? (
+                <View style={[s.miniTrack, { backgroundColor: c.bg200 }]}>
+                  <View style={[s.miniFill, { width: `${Math.max(share > 0 ? 4 : 0, share * 100)}%`, backgroundColor: value > goal * 1.1 ? amber : M.ink }]} />
+                </View>
+              ) : null}
+            </View>
+          );
+        })}
+      </View>
+      {micro.length ? (
+        <Text numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.85} style={[hubText.small, { color: c.text200 }]}>
+          {micro.join(" · ")}
+        </Text>
+      ) : null}
+    </View>
+  );
+}
