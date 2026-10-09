@@ -278,3 +278,11 @@ export function upsertDayMeals(list: readonly Meal[], saved: readonly Meal[], da
 export function withoutMeal(list: readonly Meal[], id: string): Meal[] {
   return list.filter((m) => m.id !== id);
 }
+
+/**
+ * AI photo / label / describe estimates are off only when the server's settings said so (an admin pause).
+ * Unknown — the first read still in flight, or a failed read — is not a pause: `/estimate` explains a real one.
+ */
+export function aiEstimatesAvailable(settings: { photoEnabled?: boolean } | null | undefined): boolean {
+  return settings?.photoEnabled !== false;
+}

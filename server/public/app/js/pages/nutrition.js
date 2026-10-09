@@ -141,13 +141,14 @@ export default async function nutritionPage(root, ctx) {
   const today = ymd();
   const S = {
     day: /^\d{4}-\d{2}-\d{2}$/.test(ctx?.query?.date || '') && ctx.query.date <= today ? ctx.query.date : today,
-    dash: null, meals: [], activities: [], kinds: null, settings: { photoEnabled: false }, fasting: null,
+    dash: null, meals: [], activities: [], kinds: null, settings: null, fasting: null,
   };
   let alive = true;
   let fastTimer = null;
   let daySeq = 0;
 
-  const aiOn = () => Boolean(S.settings?.photoEnabled) && featureOn('nutritionAi');
+  // Only the server's own photoEnabled: false is a pause; an unread or failed settings read is not.
+  const aiOn = () => S.settings?.photoEnabled !== false && featureOn('nutritionAi');
 
   const settingsBtn = iconButton('settings', { title: t('ბიუჯეტის პარამეტრები', 'Budget settings'), onClick: () => openPreferences() });
   const addBtn = button(t('კვების დამატება', 'Add a meal'), { icon: 'plus', onClick: () => openMealEditor({ type: S.day === today ? mealTypeForHour() : 'lunch' }) });
@@ -167,12 +168,12 @@ export default async function nutritionPage(root, ctx) {
     try {
       const [dash, settings, fasting] = await Promise.all([
         get('/api/nutrition/program/dashboard'),
-        get('/api/nutrition/settings').catch(() => ({ photoEnabled: false })),
+        get('/api/nutrition/settings').catch(() => null),
         get('/api/nutrition/fasting').catch(() => null),
         loadDay(false),
       ]);
       if (!alive) return;
-      S.dash = dash; S.settings = settings || { photoEnabled: false }; S.fasting = fasting;
+      S.dash = dash; if (settings) S.settings = settings; S.fasting = fasting;
       renderAll();
     } catch (e) {
       if (!alive) return;
