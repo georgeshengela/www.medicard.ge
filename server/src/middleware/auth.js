@@ -8,14 +8,15 @@ import { toDateOnly, calculateAge } from '../lib/patient.js';
 import { serverAiEngine } from '../lib/aiEngine.js';
 import { withAiAccount } from '../lib/aiConsent.js';
 import { rememberUserLanguage, t } from '../lib/i18n.js';
-import { readPasswordChangedAt, tokenPredatesPasswordChange } from '../lib/sessionRevocation.js';
+import { readPasswordChange, tokenPredatesPasswordChange } from '../lib/sessionRevocation.js';
 
-export function signToken(user) {
+/** `claims`: extra claims of a renewed session (passwordChangeClaim); never `sub` or `email`. */
+export function signToken(user, claims = {}) {
   const id = typeof user?.id === 'string' ? user.id.trim() : '';
   if (!id) {
     throw new Error('signToken: user id missing');
   }
-  return jwt.sign({ sub: id, email: user.email }, env.JWT_SECRET, {
+  return jwt.sign({ ...claims, sub: id, email: user.email }, env.JWT_SECRET, {
     expiresIn: env.JWT_EXPIRES_IN,
   });
 }
@@ -86,8 +87,10 @@ export async function requireAuth(req, res, next) {
     }
 
     // A password reset ends every session signed before it (lib/sessionRevocation.js; fails open).
-    // Checked before next(), so GET /api/auth/me can never renew a token refused here.
-    if (tokenPredatesPasswordChange(payload, await readPasswordChangedAt(user.id))) {
+    // Checked before next(), so GET /api/auth/me can never renew a token refused here; the value
+    // read here goes into a renewal, so a reset that commits while /me runs still ends it.
+    const passwordChange = await readPasswordChange(user.id);
+    if (tokenPredatesPasswordChange(payload, passwordChange.at)) {
       return res.status(401).json({
         error: t(req, 'ანგარიშის პაროლი შეიცვალა, ამიტომ ეს სესია დასრულდა. ხელახლა შედი ანგარიშში.', 'The account password was changed, so this session has ended. Please sign in again.'),
         code: 'TOKEN_EXPIRED',
@@ -107,6 +110,7 @@ export async function requireAuth(req, res, next) {
     // iat / exp of the presented token: GET /api/auth/me renews it past half its lifetime.
     // `aud` marks a narrow token (e.g. a Medi action seal), which is never renewed.
     req.authClaims = { iat: payload.iat, exp: payload.exp, aud: payload.aud };
+    req.authPasswordChange = passwordChange;
     // Bind the reading language (ka | en) for AI code deep in the stack.
     return withAiAccount(user.id, () => next(), req.lang);
   } catch (error) {

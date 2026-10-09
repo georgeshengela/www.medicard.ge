@@ -19,6 +19,15 @@ import { prisma } from './prisma.js';
  */
 export const PASSWORD_CHANGE_SKEW_MS = 5_000;
 
+/**
+ * Claim of a token GET /api/auth/me renewed: the passwordChangedAt (epoch ms, 0 = none) requireAuth
+ * read for that request. A reset that commits while /me runs (or within the skew before it) would
+ * otherwise get a renewal whose fresh `iat` outlives it; with the claim, any later change ends the
+ * renewed session — compared exactly, no skew. Tokens without it (sign-ins, older renewals) keep the
+ * `iat` rule.
+ */
+export const PASSWORD_CHANGE_CLAIM = 'pwc';
+
 function timeOf(value) {
   if (value === null || value === undefined || value === '') return NaN;
   const ms = value instanceof Date ? value.getTime() : new Date(value).getTime();
@@ -29,6 +38,8 @@ function timeOf(value) {
 export function tokenPredatesPasswordChange(claims, passwordChangedAt, skewMs = PASSWORD_CHANGE_SKEW_MS) {
   const changedMs = timeOf(passwordChangedAt);
   if (!Number.isFinite(changedMs)) return false;
+  const seen = claims?.[PASSWORD_CHANGE_CLAIM];
+  if (typeof seen === 'number' && Number.isFinite(seen)) return seen < changedMs;
   const iat = claims?.iat;
   if (typeof iat !== 'number' || !Number.isFinite(iat)) return false;
   return iat * 1000 < changedMs - skewMs;
@@ -36,20 +47,40 @@ export function tokenPredatesPasswordChange(claims, passwordChangedAt, skewMs = 
 
 let readWarned = false;
 
-/** The account's last password change, or null (never reset, column not installed, read failed). */
-export async function readPasswordChangedAt(userId, db = prisma) {
+/**
+ * The account's last password change: `{ known: true, at }` (`at` null = never reset) when it was
+ * read, `{ known: false, at: null }` when it could not be (column not installed, read failed).
+ */
+export async function readPasswordChange(userId, db = prisma) {
   try {
     const rows = await db.$queryRaw`SELECT "passwordChangedAt" FROM "User" WHERE "id" = ${String(userId)}`;
-    const value = rows?.[0]?.passwordChangedAt ?? null;
-    return Number.isFinite(timeOf(value)) ? new Date(timeOf(value)) : null;
+    if (!rows?.length) return { known: false, at: null };
+    const value = rows[0]?.passwordChangedAt ?? null;
+    if (value === null) return { known: true, at: null };
+    return Number.isFinite(timeOf(value)) ? { known: true, at: new Date(timeOf(value)) } : { known: false, at: null };
   } catch (error) {
     // Once per process: before db:install every request lands here.
     if (!readWarned) {
       readWarned = true;
       console.warn('[auth] passwordChangedAt unreadable; sessions are not checked against password resets', error?.code || error?.message);
     }
-    return null;
+    return { known: false, at: null };
   }
+}
+
+/** The account's last password change, or null (never reset, column not installed, read failed). */
+export async function readPasswordChangedAt(userId, db = prisma) {
+  return (await readPasswordChange(userId, db)).at;
+}
+
+/**
+ * Extra claim for a token renewed under `change` (readPasswordChange of the renewing request).
+ * Nothing when it could not be read: that token keeps the `iat` rule, exactly as before, so a failed
+ * read never stamps a value that would later end a valid session.
+ */
+export function passwordChangeClaim(change) {
+  if (!change?.known) return {};
+  return { [PASSWORD_CHANGE_CLAIM]: change.at ? change.at.getTime() : 0 };
 }
 
 /**
