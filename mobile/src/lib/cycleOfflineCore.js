@@ -245,10 +245,12 @@ function compactCycleQueue(items) {
       isLogFamily(last.operation) &&
       mutationDate(last) &&
       mutationDate(last) === mutationDate(item);
+    // A fold keeps the NEWER write's id: the older one may be in flight in flushCycleQueue, which
+    // drops every id it sent once the request succeeds. Keeping the old id lost the newer write.
     if (sameDate && last.operation === 'UPSERT_LOG' && isFlowOnlyUpsert(item)) {
       out[out.length - 1] = {
         ...item,
-        id: last.id,
+        id: item.id,
         createdAt: last.createdAt,
         payload: { ...(last.payload || {}), flow: item.payload.flow },
         attemptCount: 0,
@@ -259,7 +261,7 @@ function compactCycleQueue(items) {
     if (sameDate) {
       out[out.length - 1] = {
         ...item,
-        id: last.id,
+        id: item.id,
         createdAt: last.createdAt,
         attemptCount: 0,
         status: 'pending',

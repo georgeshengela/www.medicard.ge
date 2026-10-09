@@ -183,6 +183,32 @@ describe('queue compaction', () => {
     assert.equal(compacted.length, 4);
   });
 
+  // A save of the same day while that day's earlier write is in flight: flushCycleQueue sends a
+  // snapshot, then keeps only queue items whose id it did not send. The folded item must carry the
+  // newer write's id, or the newer note is dropped as „sent“ once the older request succeeds.
+  it('a write folded into an in-flight write of the same day is still sent after the flush', () => {
+    const date = '2026-08-30';
+    let account = emptyAccount('u');
+    account = enqueueMutation(account, createMutation('u', 'UPSERT_LOG', { date, flow: 'light', notes: 'a' }));
+    const inFlight = compactCycleQueue(account.queue);
+    account = enqueueMutation(account, createMutation('u', 'UPSERT_LOG', { date, flow: 'light', notes: 'b' }));
+    // The flush's own bookkeeping (cycleOffline.ts flushCycleQueue) after the in-flight request succeeded.
+    const sentIds = new Set(inFlight.map((item) => item.id));
+    const newlyEnqueued = account.queue.filter((item) => !sentIds.has(item.id));
+    const next = compactCycleQueue([...newlyEnqueued]);
+    assert.equal(next.length, 1);
+    assert.equal(next[0].payload.notes, 'b');
+    // The flow-only fold (one-tap undo) behaves the same way.
+    let other = emptyAccount('u');
+    other = enqueueMutation(other, createMutation('u', 'UPSERT_LOG', { date, flow: 'medium', symptoms: ['cramps'] }));
+    const flying = compactCycleQueue(other.queue);
+    other = enqueueMutation(other, createMutation('u', 'UPSERT_LOG', { date, flow: null }));
+    const left = other.queue.filter((item) => !new Set(flying.map((i) => i.id)).has(item.id));
+    assert.equal(left.length, 1);
+    assert.deepEqual(left[0].payload.symptoms, ['cramps']);
+    assert.equal(left[0].payload.flow, null);
+  });
+
   it('replaces UPSERT with following REMOVE on the same date', () => {
     const compacted = compactCycleQueue([
       createMutation('u', 'UPSERT_LOG', { date: '2026-08-30', flow: 'heavy' }),
