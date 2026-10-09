@@ -30,7 +30,10 @@
 <div class="hero"><div class="fade"></div><div class="low"></div></div>
 <script>
   (function () {
-    var band = parseFloat(new URLSearchParams(location.search).get('band'));
+    var q = new URLSearchParams(location.search), band = parseFloat(q.get('band'));
+    // The lobby always runs hero3d in its light mode (30 fps, lower resolution, rests on the lit city after two
+    // laps) — set here so phones get it without an app update. hero3d reads the URL when its module runs, after this.
+    if (q.get('lite') !== '1') { q.set('lite', '1'); history.replaceState(null, '', location.pathname + '?' + q.toString()); }
     if (band > 0.3 && band < 0.9) { var h = document.querySelector('.hero'); h.style.paddingTop = (band * 100) + 'vh'; h.style.setProperty('--band', (band * 100) + 'vh'); }
     function post(msg) { try { window.ReactNativeWebView && window.ReactNativeWebView.postMessage(JSON.stringify(msg)); } catch (e) {} }
     var hero = document.querySelector('.hero'), done = false;
@@ -41,6 +44,6 @@
   })();
 </script>
 <script type="importmap">{ "imports": { "three": "/vendor/three/three.module.min.js" } }</script>
-<script type="module" src="/medirun/hero3d/hero3d.js?v=3"></script>
+<script type="module" src="/medirun/hero3d/hero3d.js?v=4"></script>
 </body>
 </html>
