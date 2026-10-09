@@ -1,7 +1,12 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
-import { useFocusEffect, useRouter } from "expo-router";
-import { Check, ChevronDown, ChevronUp, Clock, RefreshCw, Repeat2, ShoppingBasket } from "lucide-react-native";
+import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
+import * as Haptics from "expo-haptics";
+import Animated, { FadeInDown } from "react-native-reanimated";
+import { Check, ChefHat, ChevronDown, ChevronUp, Clock, RefreshCw, Repeat2, ShieldCheck, ShoppingBasket, Target } from "lucide-react-native";
+import { PlanComposer, COMPOSE_STEP_MS } from "@/components/nutrition/PlanComposer";
+import { PlanPlate } from "@/components/nutrition/PlanPlate";
+import { usePrefersReducedMotion } from "@/hooks/usePrefersReducedMotion";
 import { useAuth } from "@/store/AuthContext";
 import { tx } from "@/i18n/locale";
 import { getPreference, setPreference } from "@/lib/storage";
@@ -41,7 +46,14 @@ function Plan({ owner }: { owner: string }) {
     [shopping, setShopping] = useState(false),
     [alternatives, setAlternatives] = useState<{ id: string; recipes: Recipe[] } | null>(null),
     [notice, setNotice] = useState(""),
-    [ticked, setTicked] = useState<Record<string, boolean>>({});
+    [ticked, setTicked] = useState<Record<string, boolean>>({}),
+    [composing, setComposing] = useState(false),
+    [composeStep, setComposeStep] = useState(0),
+    [composed, setComposed] = useState<NutritionWeek | null>(null),
+    [revealKey, setRevealKey] = useState(0);
+  // ?compose=1 (hub card, the goal wizard's last step) composes at once; ?shopping=1 opens the list.
+  const params = useLocalSearchParams<{ compose?: string; shopping?: string }>();
+  const reduce = usePrefersReducedMotion();
   const alive = useRef(true),
     seq = useRef(0),
     lock = useRef(false);
@@ -130,16 +142,64 @@ function Plan({ owner }: { owner: string }) {
       await load();
       void loadDashboard();
     });
-  const generate = () =>
-    run(async () => {
-      const result = await nutritionProgramApi.generate(from, d!.program!.revision, week?.meals.length ? Math.floor(Math.random() * 999) + 1 : 0);
+  /**
+   * Compose (or re-compose) the week with the plate animation: four steps of COMPOSE_STEP_MS run
+   * beside the real request; the menu appears when both are done (never sooner than the steps).
+   */
+  const compose = async () => {
+    if (lock.current || !d?.program) return;
+    lock.current = true;
+    setBusy(true);
+    setError("");
+    setNotice("");
+    setComposed(null);
+    setComposeStep(0);
+    setComposing(true);
+    setOpened(null);
+    setAlternatives(null);
+    const stepMs = reduce ? 120 : COMPOSE_STEP_MS;
+    const timers = [1, 2, 3].map((n) => setTimeout(() => alive.current && setComposeStep((v) => Math.max(v, n)), n * stepMs));
+    const started = Date.now();
+    try {
+      const result = await nutritionProgramApi.generate(from, d.program.revision, week?.meals.length ? Math.floor(Math.random() * 999) + 1 : 0);
+      const wait = 3 * stepMs + stepMs * 0.8 - (Date.now() - started);
+      if (wait > 0) await new Promise((r) => setTimeout(r, wait));
+      if (!alive.current) return;
+      setComposed(result);
+      setComposeStep(4);
+      void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+      await new Promise((r) => setTimeout(r, reduce ? 200 : 1100));
+      if (!alive.current) return;
+      setWeek(result);
+      if (!result.meals.some((m) => m.date === day)) setDay(result.meals[0]?.date || from);
+      setRevealKey((k) => k + 1);
+      void loadDashboard();
+    } catch (e) {
+      if (alive.current) setError((e as Error).message);
+    } finally {
+      timers.forEach(clearTimeout);
+      lock.current = false;
       if (alive.current) {
-        setWeek(result);
-        setOpened(null);
-        setAlternatives(null);
+        setComposing(false);
+        setBusy(false);
       }
-    });
+    }
+  };
   const canGenerate = current && from >= today;
+  const composeAsked = useRef(false);
+  useEffect(() => {
+    if (params.compose !== "1" || composeAsked.current || loading || !week || !d) return;
+    composeAsked.current = true;
+    router.setParams({ compose: "" });
+    if (!week.meals.length && canGenerate) void compose();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [params.compose, loading, week, d]);
+  useEffect(() => {
+    if (params.shopping !== "1") return;
+    router.setParams({ shopping: "" });
+    setShopping(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [params.shopping]);
   const shoppingLeft = (week?.shopping || []).filter((item) => !ticked[item.name]).length;
   return (
     <NScreen
@@ -215,7 +275,9 @@ function Plan({ owner }: { owner: string }) {
             nextDisabled={from >= shiftDay(today, 21)}
             marked={plannedDays}
           />
-          {loading ? (
+          {composing ? (
+            <PlanComposer step={composeStep} calories={d?.targets?.calories ?? null} result={composed} />
+          ) : loading ? (
             <NLoading />
           ) : meals.length ? (
             <>
@@ -236,7 +298,11 @@ function Plan({ owner }: { owner: string }) {
                   const expanded = opened === m.id;
                   const canEat = !m.eaten && mealValid(m) && m.date <= today;
                   return (
-                    <View key={m.id} style={index > 0 ? { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: c.bg300 } : undefined}>
+                    <Animated.View
+                      key={`${m.id}:${revealKey}`}
+                      entering={revealKey && !reduce ? FadeInDown.delay(120 + index * 110).duration(420) : undefined}
+                      style={index > 0 ? { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: c.bg300 } : undefined}
+                    >
                       <View style={s.mealRow}>
                         <Pressable
                           accessibilityRole="button"
@@ -346,27 +412,36 @@ function Plan({ owner }: { owner: string }) {
                           )}
                         </View>
                       )}
-                    </View>
+                    </Animated.View>
                   );
                 })}
               </View>
               {canGenerate ? (
                 <View style={{ gap: 6 }}>
-                  <NButton secondary icon={RefreshCw} disabled={busy || loading} label={busy ? tx("მუშავდება…", "Working…") : tx("სხვა მენიუ ამ კვირაზე", "A new menu for this week")} onPress={() => void generate()} />
+                  <NButton secondary icon={RefreshCw} disabled={busy || loading} label={tx("სხვა მენიუ ამ კვირაზე", "A new menu for this week")} onPress={() => void compose()} />
                   <Text style={[hubText.small, { color: c.text300, textAlign: "center" }]}>{tx("უკვე მიღებული კერძები ადგილზე დარჩება.", "Dishes you already ate stay in place.")}</Text>
                 </View>
               ) : null}
             </>
           ) : (
-            <NCard style={{ alignItems: "center" }}>
-              <View style={[s.emptyIcon, { backgroundColor: M.inkSoft }]}>
-                <ShoppingBasket size={26} color={M.ink} strokeWidth={1.9} />
+            <NCard style={{ alignItems: "center", paddingVertical: 24, gap: 14 }}>
+              <PlanPlate size={150} stroke={12} mode={canGenerate ? "idle" : "still"}>
+                <ChefHat size={32} color={M.ink} strokeWidth={1.8} />
+              </PlanPlate>
+              <Text style={[hubText.sectionTitle, { color: c.text100, fontSize: 20, lineHeight: 28, textAlign: "center" }]}>{tx("შემიდგინე რაციონი", "Compose my meal plan")}</Text>
+              <View style={{ alignSelf: "stretch", gap: 10 }}>
+                {[
+                  { icon: Target, text: d?.targets ? tx(`დღეში ${kcal(d.targets.calories)} კკალ — შენი სამიზნე`, `${kcal(d.targets.calories)} kcal a day — your target`) : tx("შენს სამიზნეზე მორგებული", "Fitted to your target") },
+                  { icon: ShieldCheck, text: tx("ალერგენები და კვების სტილი გათვალისწინებულია", "Allergens and eating style respected") },
+                  { icon: ShoppingBasket, text: tx("4 კვება დღეში, შესაცვლელი კერძები, საყიდლების სია", "4 meals a day, swappable dishes, a shopping list") },
+                ].map((fact) => (
+                  <View key={fact.text} style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+                    <fact.icon size={17} color={M.ink} strokeWidth={2.1} />
+                    <Text style={[hubText.body, { color: c.text200, fontSize: 14, flex: 1 }]}>{fact.text}</Text>
+                  </View>
+                ))}
               </View>
-              <Text style={[hubText.sectionTitle, { color: c.text100, fontSize: 18, textAlign: "center" }]}>{tx("კვირა წინასწარ დაგეგმე", "Plan your week ahead")}</Text>
-              <Text style={[hubText.body, { color: c.text200, textAlign: "center" }]}>
-                {tx("ოთხი კვება დღეში შენს სამიზნესა და ალერგენებზე მორგებული, შესაცვლელი კერძები და საყიდლების ერთი სია.", "Four meals a day fitted to your target and allergens, swappable dishes and one shopping list.")}
-              </Text>
-              {canGenerate ? <NButton style={{ alignSelf: "stretch" }} disabled={busy || loading} label={busy ? tx("მუშავდება…", "Working…") : tx("7 დღის რაციონის შექმნა", "Create a 7-day plan")} onPress={() => void generate()} /> : null}
+              {canGenerate ? <NButton style={{ alignSelf: "stretch" }} disabled={busy || loading} label={tx("შედგენა · 7 დღე", "Compose · 7 days")} onPress={() => void compose()} /> : null}
             </NCard>
           )}
         </>

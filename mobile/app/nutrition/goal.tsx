@@ -191,6 +191,7 @@ function Goal({ owner }: { owner: string }) {
     avoidFoods: form.avoidFoods,
     screening: screening as ProgramConfig["screening"],
   });
+  const composeNext = !!preview?.eligible && preview.mealPlanning?.eligible !== false;
   const next = () => {
     setError("");
     Keyboard.dismiss();
@@ -241,7 +242,9 @@ function Goal({ owner }: { owner: string }) {
         );
         await applyNutritionSavedState(owner, saved);
         if (alive.current) await refreshHealthProfile().catch(() => {});
-        if (alive.current) router.replace("/nutrition");
+        // The plan is saved: go straight on to composing the menu (the plate animation) when meal
+        // planning is open for this person; otherwise back to the hub.
+        if (alive.current) router.replace((composeNext ? { pathname: "/nutrition/plan", params: { compose: "1" } } : "/nutrition") as never);
       });
   };
   const back = () => {
@@ -265,7 +268,9 @@ function Goal({ owner }: { owner: string }) {
               busy
                 ? tx("მუშავდება…", "Working…")
                 : step === 3
-                  ? tx("გეგმის შენახვა", "Save plan")
+                  ? composeNext
+                    ? tx("შენახვა და რაციონის შედგენა", "Save and compose my meal plan")
+                    : tx("გეგმის შენახვა", "Save plan")
                   : step === 2
                     ? tx("დღის სამიზნის ნახვა", "See daily target")
                     : tx("გაგრძელება", "Continue")
@@ -499,7 +504,7 @@ function Goal({ owner }: { owner: string }) {
                       />
                     </NCard>
                   )}
-                  <NText style={{ fontSize: 12, lineHeight: 18, color: c.text300, marginHorizontal: 2 }}>{tx("შენახვა განაახლებს აპში შენს საერთო წონის მიზანს და მიმდინარე წონას. რაციონს შემდეგ ეტაპზე შეადგენ.", "Saving updates your weight goal and current weight across the app. You’ll build your meal plan in the next step.")}</NText>
+                  <NText style={{ fontSize: 12, lineHeight: 18, color: c.text300, marginHorizontal: 2 }}>{tx("შენახვა განაახლებს აპში შენს საერთო წონის მიზანს და მიმდინარე წონას. შემდეგ რაციონს შეგიდგენ.", "Saving updates your weight goal and current weight across the app. Next we compose your meal plan.")}</NText>
                 </>
               ) : (
                 <NCard>

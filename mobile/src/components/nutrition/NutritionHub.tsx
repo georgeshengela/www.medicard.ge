@@ -32,6 +32,7 @@ import { ModuleHeaderButton } from "@/components/brand/ModuleHeader";
 import { MedicalSourcesLink } from "@/components/health/MedicalSourcesLink";
 import { NScreen, NLoading, NError, useMedifood, useNutritionDashboard, withMedifood } from "./ProgramUI";
 import { MedifoodHero } from "./MedifoodHero";
+import { PlanCard } from "./PlanCard";
 import { diaryHref, HubCard, HubSection, LogBar, MEAL_ICONS, MEAL_TYPES, type MealType } from "./NutritionUi";
 
 export default withMedifood(function Nutrition() {
@@ -68,6 +69,12 @@ function Hub() {
             {d.fasting?.active ? <FastingStrip d={d} onOpen={() => open("/nutrition/fasting")} /> : null}
             <LogBar />
           </View>
+
+          {isHrefAvailable("/nutrition/plan", features) ? (
+            <HubSection title={tx("ჩემი რაციონი", "My meal plan")} linkLabel={d.planned.some((p) => p.date === d.date) ? tx("კვირა", "Week") : undefined} onLink={() => open("/nutrition/plan")}>
+              <PlanCard d={d} />
+            </HubSection>
+          ) : null}
 
           <HubSection title={tx("დღის კვება", "Today's meals")} linkLabel={tx("დღიური", "Diary")} onLink={() => open("/nutrition/diary")}>
             <MealSlots d={d} planOn={isHrefAvailable("/nutrition/plan", features)} reload={load} />
@@ -230,15 +237,6 @@ function Tools({ d }: { d: NutritionDashboard }) {
     { c } = M,
     router = useRouter();
   const features = useFeatureState();
-  const plannedToday = d.planned.filter((p) => p.date === d.date);
-  const left = plannedToday.filter((p) => !p.eaten).length;
-  const planDetail = !d.targets
-    ? tx("ჯერ მიზანი აირჩიე — მერე 7 დღის მენიუ", "Pick a goal first — then a 7-day menu")
-    : plannedToday.length
-      ? left
-        ? tx(`დღეს ${plannedToday.length} კერძი · დარჩა ${left}`, `${plannedToday.length} dishes today · ${left} to go`)
-        : tx(`დღეს ${plannedToday.length} კერძი · ყველა მიღებულია`, `${plannedToday.length} dishes today · all eaten`)
-      : tx("7 დღის მენიუ და საყიდლების სია", "A 7-day menu and a shopping list");
   const small: { icon: LucideIcon; title: string; detail: string; href: string }[] = [
     { icon: ChefHat, title: tx("რეცეპტები", "Recipes"), detail: tx("შენი კერძები", "Your dishes"), href: "/nutrition/recipes" },
     { icon: Timer, title: tx("შიმშილი", "Fasting"), detail: d.fasting?.active ? tx("ტაიმერი ჩართულია", "Timer running") : tx("16:8 ტაიმერი", "16:8 timer"), href: "/nutrition/fasting" },
@@ -247,18 +245,6 @@ function Tools({ d }: { d: NutritionDashboard }) {
   ].filter((t) => isHrefAvailable(t.href, features));
   return (
     <View style={{ gap: 8 }}>
-      {isHrefAvailable("/nutrition/plan", features) ? (
-        <Pressable accessibilityRole="button" accessibilityLabel={`${tx("ჩემი რაციონი", "My meal plan")}. ${planDetail}`} onPress={() => router.push("/nutrition/plan" as never)} style={[s.planTile, { backgroundColor: c.surface }]}>
-          <View style={[s.toolIcon, { backgroundColor: M.ink }]}>
-            <CalendarDays size={20} color={M.onInk} strokeWidth={2} />
-          </View>
-          <View style={{ flex: 1, minWidth: 0 }}>
-            <Text numberOfLines={1} style={[hubText.cardTitle, { color: c.text100 }]}>{tx("ჩემი რაციონი", "My meal plan")}</Text>
-            <Text numberOfLines={1} style={[hubText.caption, { color: c.text200 }]}>{planDetail}</Text>
-          </View>
-          <ChevronRight size={18} color={c.text300} />
-        </Pressable>
-      ) : null}
       <View style={s.toolGrid}>
         {small.map((tool) => (
           <Pressable key={tool.href} accessibilityRole="button" accessibilityLabel={`${tool.title}. ${tool.detail}`} onPress={() => router.push(tool.href as never)} style={[s.tool, { backgroundColor: c.surface }]}>
