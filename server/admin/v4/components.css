@@ -1688,6 +1688,104 @@ html body #tab-users #next-page { flex-direction: row; }
   .s-users-name small { max-width: 40vw; }
 }
 
+/* User profile 2026-10-09: hero with identity + actions, KPI row, „რას იყენებს“ module tiles, recent activity,
+   detail tabs on the left; „ანგარიში“ facts and Medi Coins on the right; editing lives in a dialog. */
+.s-user-hero2 { position: relative; overflow: hidden; padding: 22px 24px; }
+.s-user-hero2::before { content: ''; position: absolute; inset: 0 0 auto 0; height: 84px; background: linear-gradient(120deg, color-mix(in srgb, var(--s-accent) 14%, transparent), transparent 70%); pointer-events: none; }
+.s-user-hero2.is-blocked::before { background: linear-gradient(120deg, color-mix(in srgb, var(--s-bad) 16%, transparent), transparent 70%); }
+.s-user-hero2-main { position: relative; display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 20px; align-items: start; }
+.s-user-ava { position: relative; display: grid; place-items: center; width: 76px; height: 76px; border-radius: 50%; background: var(--s-raised); color: var(--s-ink); font-size: 26px; font-weight: 700; letter-spacing: -0.02em; box-shadow: 0 0 0 4px var(--s-surface), 0 0 0 6px color-mix(in srgb, var(--s-accent) 45%, transparent); }
+.s-user-ava.is-f { background: color-mix(in srgb, #E11D48 12%, var(--s-raised)); color: #E11D48; box-shadow: 0 0 0 4px var(--s-surface), 0 0 0 6px color-mix(in srgb, #E11D48 40%, transparent); }
+html[data-theme="dark"] .s-user-ava.is-f { color: #FDA4AF; }
+.s-user-ava.is-muted { filter: grayscale(1); opacity: .7; }
+.s-user-ava > i { position: absolute; right: 2px; bottom: 2px; width: 16px; height: 16px; border-radius: 50%; background: var(--s-ok); box-shadow: 0 0 0 3px var(--s-surface); animation: s-user-pulse 2s ease-out infinite; }
+@keyframes s-user-pulse { 0% { box-shadow: 0 0 0 3px var(--s-surface), 0 0 0 3px color-mix(in srgb, var(--s-ok) 50%, transparent); } 100% { box-shadow: 0 0 0 3px var(--s-surface), 0 0 0 12px transparent; } }
+.s-user-hero2-copy { display: grid; gap: 10px; min-width: 0; padding-top: 4px; }
+.s-user-hero2-title { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 10px; }
+.s-user-hero2-title h2 { margin: 0 4px 0 0; font-size: 24px; font-weight: 700; line-height: 1.2; letter-spacing: -0.02em; color: var(--s-ink); overflow-wrap: anywhere; }
+.s-user-live { display: inline-flex; align-items: center; gap: 7px; height: 24px; padding: 0 10px; border-radius: 99px; background: var(--s-ok-soft); color: var(--s-ok); font-size: 12.5px; font-weight: 650; }
+.s-user-live i { width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+.s-user-seen { display: inline-flex; align-items: center; gap: 6px; height: 24px; padding: 0 10px; border-radius: 99px; background: var(--s-sunken); color: var(--s-text-2); font-size: 12.5px; font-weight: 500; }
+.s-user-seen .icon { width: 13px; height: 13px; color: var(--s-faint); }
+.s-user-hero2-contacts { display: flex; flex-wrap: wrap; gap: 6px; }
+.s-user-copy { display: inline-flex; align-items: center; gap: 7px; height: 30px; max-width: 100%; padding: 0 10px; border: 1px solid var(--s-line); border-radius: 8px; background: var(--s-surface); color: var(--s-ink); font: 500 13px var(--s-font); cursor: pointer; transition: border-color .15s, background .15s; }
+.s-user-copy > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.s-user-copy .icon { flex: none; width: 14px; height: 14px; color: var(--s-faint); }
+.s-user-copy .icon:last-child { width: 12px; height: 12px; opacity: 0; transition: opacity .15s; }
+.s-user-copy:hover { border-color: var(--s-line-strong); background: var(--s-hover); }
+.s-user-copy:hover .icon:last-child { opacity: 1; }
+.s-user-fact { display: inline-flex; align-items: center; gap: 6px; height: 30px; padding: 0 4px; font-size: 13px; color: var(--s-text-2); }
+.s-user-fact .icon { width: 14px; height: 14px; color: var(--s-faint); }
+.s-user-hero2-facts { display: flex; flex-wrap: wrap; gap: 6px 18px; margin: 0; padding: 0; list-style: none; font-size: 13px; color: var(--s-text-2); }
+.s-user-hero2-facts li { display: inline-flex; align-items: center; gap: 6px; min-width: 0; }
+.s-user-hero2-facts .icon { flex: none; width: 14px; height: 14px; color: var(--s-faint); }
+.s-user-hero2-facts .v3-user-flag { width: 18px; height: auto; border-radius: 2px; box-shadow: 0 0 0 1px var(--s-line); }
+.s-user-hero2-actions { display: flex; gap: 8px; align-items: center; margin-left: auto; }
+.s-user-note { position: relative; display: flex; align-items: flex-start; gap: 10px; width: 100%; margin-top: 18px; padding: 10px 14px; border: 1px solid color-mix(in srgb, var(--s-warn) 35%, var(--s-line)); border-radius: 10px; background: var(--s-warn-soft); color: var(--s-text); font: 13px/1.5 var(--s-font); text-align: left; cursor: pointer; }
+.s-user-note .icon { flex: none; width: 15px; height: 15px; margin-top: 2px; color: var(--s-warn); }
+.s-user-note b { display: block; font-size: 12px; font-weight: 650; color: var(--s-warn); }
+.s-user-note > span { white-space: pre-wrap; overflow-wrap: anywhere; }
+@media (max-width: 560px) {
+  .s-user-hero2 { padding: 18px 16px; }
+  .s-user-hero2-main { grid-template-columns: minmax(0, 1fr); justify-items: start; }
+  .s-user-ava { width: 64px; height: 64px; font-size: 22px; }
+}
+.s-user-main { display: grid; gap: 20px; min-width: 0; align-content: start; }
+.s-user-card .s-card-head { align-items: center; }
+/* „რას იყენებს“ — module tiles */
+.s-user-mods { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 10px; }
+.s-user-mod { position: relative; display: grid; gap: 6px; padding: 12px 14px 12px 16px; border: 1px solid var(--s-line); border-radius: 12px; background: var(--s-surface); color: inherit; font: inherit; text-align: left; cursor: pointer; overflow: hidden; transition: border-color .15s, transform .15s, box-shadow .15s; }
+.s-user-mod::before { content: ''; position: absolute; inset: 0 auto 0 0; width: 3px; background: var(--mod); }
+.s-user-mod:hover { border-color: color-mix(in srgb, var(--mod) 45%, var(--s-line)); transform: translateY(-1px); box-shadow: var(--s-shadow-sm); }
+.s-user-mod.is-active { background: color-mix(in srgb, var(--mod) 7%, var(--s-surface)); border-color: color-mix(in srgb, var(--mod) 30%, var(--s-line)); }
+.s-user-mod-top { display: flex; align-items: center; gap: 7px; min-width: 0; }
+.s-user-mod-top i { flex: none; width: 8px; height: 8px; border-radius: 50%; background: var(--mod); }
+.s-user-mod-top b { flex: 1; min-width: 0; font-size: 12.5px; font-weight: 600; color: var(--s-text-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.s-user-mod-top em { flex: none; font-style: normal; font-size: 10.5px; font-weight: 700; color: var(--mod); text-transform: none; }
+.s-user-mod > strong { display: flex; align-items: baseline; gap: 6px; font-size: 22px; font-weight: 700; line-height: 1.1; color: var(--s-ink); font-variant-numeric: tabular-nums; }
+.s-user-mod > strong small { font-size: 11.5px; font-weight: 500; color: var(--s-faint); }
+.s-user-mod-last { font-size: 12px; color: var(--s-muted); }
+.s-user-unused { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 14px 0 0; font-size: 12px; color: var(--s-muted); }
+.s-user-unused > span:first-child { margin-right: 2px; }
+.s-user-unused-chip { padding: 2px 8px; border-radius: 99px; background: var(--s-sunken); color: var(--s-faint); }
+.s-user-unused-chip.is-earlier { display: inline-flex; align-items: center; gap: 5px; color: var(--s-text-2); }
+.s-user-unused-chip.is-earlier::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: var(--mod); }
+.s-user-unused + .s-user-unused { margin-top: 8px; }
+/* Recent activity */
+.s-user-recent { position: relative; display: grid; gap: 0; margin: 0; padding: 0; list-style: none; }
+.s-user-recent::before { content: ''; position: absolute; left: 5px; top: 8px; bottom: 8px; width: 2px; border-radius: 2px; background: var(--s-line-soft); }
+.s-user-recent li { position: relative; display: grid; grid-template-columns: 12px minmax(0, 1fr); gap: 12px; padding: 7px 0; }
+.s-user-recent-dot { position: relative; z-index: 1; width: 12px; height: 12px; margin-top: 3px; border-radius: 50%; background: var(--s-surface); box-shadow: inset 0 0 0 3px var(--s-accent); }
+.s-user-recent li:not(:first-child) .s-user-recent-dot { box-shadow: inset 0 0 0 2px var(--s-line-strong); }
+.s-user-recent b { display: block; font-size: 13.5px; font-weight: 600; color: var(--s-ink); }
+.s-user-recent small { display: block; margin-top: 1px; font-size: 12px; color: var(--s-muted); }
+/* „ანგარიში“ facts */
+.s-user-facts { display: grid; margin: 0; }
+.s-user-facts > div { display: grid; grid-template-columns: 110px minmax(0, 1fr); gap: 12px; padding: 9px 0; border-top: 1px solid var(--s-line-soft); }
+.s-user-facts > div:first-child { border-top: 0; padding-top: 0; }
+.s-user-facts dt { font-size: 12.5px; color: var(--s-muted); }
+.s-user-facts dd { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 6px; margin: 0; min-width: 0; font-size: 13px; color: var(--s-ink); }
+.s-user-dev { padding: 2px 8px; border-radius: 6px; background: var(--s-sunken); font-size: 12px; color: var(--s-text-2); }
+.s-user-consent-hist { width: 100%; }
+/* Medi Coins card */
+.s-user-coins-hero { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin-bottom: 14px; }
+.s-user-coins-hero > div { display: grid; gap: 2px; padding: 12px; border-radius: 12px; background: var(--s-sunken); text-align: center; }
+.s-user-coins-hero > div:first-child { background: linear-gradient(135deg, color-mix(in srgb, #F59E0B 22%, var(--s-sunken)), var(--s-sunken)); }
+.s-user-coins-hero span { font-size: 11.5px; color: var(--s-muted); }
+.s-user-coins-hero strong { font-size: 20px; font-weight: 700; line-height: 1.15; color: var(--s-ink); font-variant-numeric: tabular-nums; }
+.s-user-coins-hero small { font-size: 11px; color: var(--s-faint); }
+.s-user-quests { display: grid; gap: 8px; margin-bottom: 10px; }
+.s-user-quests-h { font-size: 12px; font-weight: 650; color: var(--s-text-2); }
+.s-user-quest { display: grid; grid-template-columns: minmax(0, 1fr) 64px 44px; align-items: center; gap: 8px; font-size: 12.5px; color: var(--s-text); }
+.s-user-quest > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.s-user-quest > b { text-align: right; font-weight: 600; font-variant-numeric: tabular-nums; color: var(--s-ink); }
+.s-user-coins .s-details summary { font-size: 12.5px; }
+.s-user-form-row { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+@media (max-width: 560px) { .s-user-form-row { grid-template-columns: minmax(0, 1fr); } }
+.s-menu.s-user-menu { width: 260px; animation: s-palette-in .16s var(--s-spring) both; }
+.s-menu.s-user-menu button.is-danger, .s-menu.s-user-menu button.is-danger .icon { color: var(--s-bad); }
+@media (prefers-reduced-motion: reduce) { .s-user-ava > i { animation: none; } }
+
 /* User profile (#/users/:id) — tabs and panes come from admin.js renderUserInvestigationTabs() */
 html body #tab-users .v3-user-page.s-user { gap: 20px; padding-bottom: 72px; }
 .s-user-nav { display: flex; align-items: center; gap: 12px; margin-bottom: -8px; }

@@ -323,51 +323,58 @@
     }
     if ($('user-insights-host') !== host) return;
     const e = d.economy;
+    insightCache.set(userId, e.coins);
     const consent = d.consent.current;
-    const [cLabel, cTone] = consent ? (DECISION[consent.decision] || ['უცნობი', '']) : ['არ აურჩევია', ''];
+    const [cLabel, cTone] = consent ? (DECISION[consent.decision] || ['უცნობი', '']) : ['არ აურჩევია', 'is-plain'];
+    // The profile page has a Coins KPI and an AI-consent row in its „ანგარიში“ card: fill them in.
+    const kpi = $('user-kpi-coins');
+    if (kpi) kpi.innerHTML = `<span>Medi Coins</span><strong>${fmt(e.coins)}</strong><small>დონე ${fmt(e.level)} · სერია ${fmt(e.streak)} დღე</small>`;
+    const consentSlot = $('user-consent');
+    if (consentSlot) {
+      consentSlot.className = '';
+      consentSlot.innerHTML = `<span class="s-badge ${cTone}">${esc(cLabel)}</span>${consent ? ` <span class="s-muted" title="${esc(consent.version)}">${esc(when(consent.updatedAt))}</span>` : ''}${d.consent.events.length > 1 ? `<details class="s-details s-user-consent-hist"><summary>ისტორია (${d.consent.events.length})</summary><div><ul class="s-ledger">${d.consent.events.map((ev) => `<li><span class="s-badge ${(DECISION[ev.decision] || [])[1] || ''}">${esc((DECISION[ev.decision] || ['უცნობი'])[0])}</span><span title="${esc(ev.version)}">ვერსია ${esc(shortVer(ev.version))}<small>${esc(when(ev.createdAt))}</small></span></li>`).join('')}</ul></div></details>` : ''}`;
+    }
+    const activeQuests = d.quests.filter((q) => q.status === 'ACTIVE');
     host.innerHTML = `
-      <div class="v3-user-card s-insights">
-        <h3>${ico('gift')} Medi Coins და Quest</h3>
-        <div class="s-insight-stats">
-          <div><span>ბალანსი</span><strong>${fmt(e.coins)}</strong><small>Coins</small></div>
-          <div><span>დონე · XP</span><strong>${fmt(e.level)}</strong><small>${fmt(e.xp)} XP</small></div>
-          <div><span>სერია</span><strong>${fmt(e.streak)}</strong><small>მაქს. ${fmt(e.longestStreak)}</small></div>
+      <section class="s-card s-user-card s-user-coins">
+        <header class="s-card-head"><div><h3>Medi Coins და MEDIQUEST</h3></div></header>
+        <div class="s-card-body">
+          <div class="s-user-coins-hero">
+            <div><span>ბალანსი</span><strong>${fmt(e.coins)}</strong><small>Coins</small></div>
+            <div><span>დონე</span><strong>${fmt(e.level)}</strong><small>${fmt(e.xp)} XP</small></div>
+            <div><span>სერია</span><strong>${fmt(e.streak)}</strong><small>მაქს. ${fmt(e.longestStreak)}</small></div>
+          </div>
+          ${activeQuests.length ? `<div class="s-user-quests"><span class="s-user-quests-h">მიმდინარე მისიები</span>${activeQuests.slice(0, 4).map((q) => {
+            const pct = Math.max(0, Math.min(100, Math.round((Number(q.progress) / Math.max(1, Number(q.target))) * 100)));
+            return `<div class="s-user-quest"><span>${esc(q.label)}</span><div class="s-meter"><i style="width:${pct}%"></i></div><b>${fmt(q.progress)}/${fmt(q.target)}</b></div>`;
+          }).join('')}</div>` : ''}
+          <details class="s-details"><summary>ოპერაციები (${e.ledger.length})</summary><div>
+            ${e.ledger.length ? `<ul class="s-ledger">${e.ledger.map((r) => `<li><span class="s-ledger-amt ${r.amount < 0 ? 'is-neg' : ''}">${r.amount > 0 ? '+' : ''}${fmt(r.amount)} ${r.currency === 'XP' ? 'XP' : 'Coins'}</span>
+              <span>${esc(SOURCE[r.source] || 'სხვა')}${r.reason ? ` — ${esc(r.reason)}` : ''}<small>${esc(when(r.createdAt))}${r.adminEmail ? ` · ${esc(r.adminEmail)}` : ''}</small></span></li>`).join('')}</ul>` : '<p class="s-muted">ოპერაცია ჯერ არ არის.</p>'}
+          </div></details>
+          <details class="s-details"><summary>ყველა მისია (${d.quests.length})</summary><div>
+            ${d.quests.length ? `<ul class="s-ledger">${d.quests.map((q) => {
+              const [label, tone] = QUEST_STATUS[q.status] || ['სხვა', 'is-plain'];
+              return `<li><span class="s-badge ${tone}">${esc(label)}</span>
+              <span>${esc(q.label)} · ${fmt(q.progress)}/${fmt(q.target)}<small>${esc(periodLabel(q.periodKey))}</small></span></li>`;
+            }).join('')}</ul>` : '<p class="s-muted">მისია არ მინიჭებია.</p>'}
+          </div></details>
         </div>
-        <div class="s-insight-actions">
-          <button type="button" class="btn compact" data-coins="grant">${ico('plus')} დარიცხვა</button>
-          <button type="button" class="btn compact danger" data-coins="revoke">ჩამოჭრა</button>
-        </div>
-        <details class="s-details"><summary>ოპერაციები (${e.ledger.length})</summary><div>
-          ${e.ledger.length ? `<ul class="s-ledger">${e.ledger.map((r) => `<li><span class="s-ledger-amt ${r.amount < 0 ? 'is-neg' : ''}">${r.amount > 0 ? '+' : ''}${fmt(r.amount)} ${r.currency === 'XP' ? 'XP' : 'Coins'}</span>
-            <span>${esc(SOURCE[r.source] || 'სხვა')}${r.reason ? ` — ${esc(r.reason)}` : ''}<small>${esc(when(r.createdAt))}${r.adminEmail ? ` · ${esc(r.adminEmail)}` : ''}</small></span></li>`).join('')}</ul>` : '<p class="s-muted">ოპერაცია ჯერ არ არის.</p>'}
-        </div></details>
-        <details class="s-details"><summary>მისიები (${d.quests.length})</summary><div>
-          ${d.quests.length ? `<ul class="s-ledger">${d.quests.map((q) => {
-            const [label, tone] = QUEST_STATUS[q.status] || ['სხვა', 'is-plain'];
-            return `<li><span class="s-badge ${tone}">${esc(label)}</span>
-            <span>${esc(q.label)} · ${fmt(q.progress)}/${fmt(q.target)}<small>${esc(periodLabel(q.periodKey))}</small></span></li>`;
-          }).join('')}</ul>` : '<p class="s-muted">მისია არ მინიჭებია.</p>'}
-        </div></details>
-      </div>
-      <div class="v3-user-card s-insights">
-        <h3>${ico('shield')} AI თანხმობა</h3>
-        <p class="s-insight-consent"><span class="s-badge ${cTone}">${esc(cLabel)}</span>${consent ? `<span class="s-muted" title="${esc(consent.version)}">ვერსია ${esc(shortVer(consent.version))} · ${esc(when(consent.updatedAt))}</span>` : ''}</p>
-        ${d.consent.events.length ? `<details class="s-details"><summary>ისტორია (${d.consent.events.length})</summary><div><ul class="s-ledger">${d.consent.events.map((ev) => `<li><span class="s-badge ${(DECISION[ev.decision] || [])[1] || ''}">${esc((DECISION[ev.decision] || ['უცნობი'])[0])}</span><span title="${esc(ev.version)}">ვერსია ${esc(shortVer(ev.version))}<small>${esc(when(ev.createdAt))}</small></span></li>`).join('')}</ul></div></details>` : ''}
-      </div>
-      <div class="v3-user-card s-insights">
-        <h3>${ico('download')} მონაცემების ექსპორტი</h3>
-        <p class="s-insight-note">ადამიანის მოთხოვნით (წვდომის უფლება) — JSON ფაილი პროფილით, ჯანმრთელობის ჩანაწერებით, თანხმობებითა და ოპერაციებით. ქმედება იწერება აუდიტში.</p>
-        <button type="button" class="btn compact" data-export>${ico('download')} JSON ექსპორტი</button>
-      </div>`;
-    host.querySelectorAll('[data-coins]').forEach((b) => b.addEventListener('click', () => coinsDialog(userId, b.dataset.coins, e.coins)));
-    host.querySelector('[data-export]').addEventListener('click', async (ev) => {
-      const btn = ev.currentTarget;
-      btn.classList.add('is-loading');
-      try { await global.opsDownload?.(`/manage/users/${encodeURIComponent(userId)}/export`, `medicard-user-${userId.slice(0, 8)}.json`); } finally { btn.classList.remove('is-loading'); }
-    });
+      </section>`;
   }
 
-  function coinsDialog(userId, mode, balance) {
+  const insightCache = new Map();
+
+  async function exportUser(userId) {
+    try {
+      await global.opsDownload?.(`/manage/users/${encodeURIComponent(userId)}/export`, `medicard-user-${userId.slice(0, 8)}.json`);
+    } catch (err) {
+      global.toast?.(err?.message || 'ექსპორტი ვერ შესრულდა', 'bad');
+    }
+  }
+
+  function coinsDialog(userId, mode, balanceArg) {
+    const balance = balanceArg ?? insightCache.get(userId) ?? 0;
     const grant = mode === 'grant';
     const dialog = V().openDialog?.({
       title: grant ? 'Medi Coins-ის დარიცხვა' : 'Medi Coins-ის ჩამოჭრა',
@@ -412,5 +419,5 @@
 
   global.renderFeatures = renderFeatures;
   global.renderQuests = renderQuests;
-  global.AdminV4Manage = { renderFeatures, renderQuests, mountUserInsights };
+  global.AdminV4Manage = { renderFeatures, renderQuests, mountUserInsights, coinsDialog, exportUser };
 })(window);

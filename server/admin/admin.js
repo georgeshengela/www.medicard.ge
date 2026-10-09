@@ -1293,12 +1293,14 @@ window.adminFlagImg = adminFlagImg;
 window.adminPlaceOf = adminPlaceOf;
 
 /** Profile tabs. The page chrome, KPIs and the edit form live in admin-users-v3.js. */
-function renderUserInvestigationTabs(user, extra, pkgOptions, isPaid, activeTab) {
+function renderUserInvestigationTabs(user, extra, pkgOptions, isPaid, activeTab, { skipOverview = false } = {}) {
   const inv = extra.investigation || {};
   const ov = inv.overview || {};
   const usage = inv.productUsage || {};
   const notes = inv.notifications || extra.notifications || {};
-  const tab = USER_TABS.some(([key]) => key === activeTab) ? activeTab : 'overview';
+  // The profile page shows its own overview above the tabs; the tabs then start at „აქტივობა“.
+  const tabs = skipOverview ? USER_TABS.filter(([key]) => key !== 'overview') : USER_TABS;
+  const tab = tabs.some(([key]) => key === activeTab) ? activeTab : tabs[0][0];
   const tel = ov.telemetry || notes.telemetry || {};
   const period = userRangeLabel();
   const esc = escapeHtml;
@@ -1482,10 +1484,10 @@ function renderUserInvestigationTabs(user, extra, pkgOptions, isPaid, activeTab)
   const pane = (key, html) => `<div class="user-pane s-user-pane${tab === key ? ' is-on' : ''}" data-user-pane="${key}" role="tabpanel" aria-labelledby="user-tab-${key}">${html}</div>`;
   return `
     <div class="user-tabs" role="tablist" aria-label="პროფილის ნაწილები">
-      ${USER_TABS.map(([key, label]) => `<button type="button" class="user-tab" role="tab" id="user-tab-${key}" data-user-tab="${key}" aria-selected="${key === tab}" tabindex="${key === tab ? 0 : -1}">${label}</button>`).join('')}
+      ${tabs.map(([key, label]) => `<button type="button" class="user-tab" role="tab" id="user-tab-${key}" data-user-tab="${key}" aria-selected="${key === tab}" tabindex="${key === tab ? 0 : -1}">${label}</button>`).join('')}
     </div>
     <div class="user-body">
-      ${pane('overview', overview)}
+      ${skipOverview ? '' : pane('overview', overview)}
       ${pane('activity', timeline)}
       ${pane('product', product)}
       ${pane('notifications', notif)}
