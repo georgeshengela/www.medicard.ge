@@ -211,8 +211,21 @@ function isLogFamily(op) {
 }
 
 /**
+ * A write that only sets the day's flow (`{ date, flow }`: the one-tap start's undo, „დასრულდა“'s undo,
+ * „ჯერ კიდევ გაქვს?“ → „კი“). The server's PUT changes nothing else on the row for it.
+ */
+function isFlowOnlyUpsert(item) {
+  if (item?.operation !== 'UPSERT_LOG') return false;
+  const payload = item.payload || {};
+  return 'flow' in payload && Object.keys(payload).every((key) => key === 'date' || key === 'flow');
+}
+
+/**
  * Compact consecutive UPSERT/REMOVE on the same date to the latest intended
  * state. Never compact START/END/FILL — those change meaning if merged.
+ * A flow-only UPSERT after an UPSERT of the same day patches that write's flow instead of replacing it:
+ * the earlier write can be the whole day saved from a sheet (symptoms, notes), and replacing it with
+ * `{ date, flow }` lost them offline — the server would have kept them had both writes been sent (IR-7).
  */
 function compactCycleQueue(items) {
   const out = [];
@@ -232,6 +245,17 @@ function compactCycleQueue(items) {
       isLogFamily(last.operation) &&
       mutationDate(last) &&
       mutationDate(last) === mutationDate(item);
+    if (sameDate && last.operation === 'UPSERT_LOG' && isFlowOnlyUpsert(item)) {
+      out[out.length - 1] = {
+        ...item,
+        id: last.id,
+        createdAt: last.createdAt,
+        payload: { ...(last.payload || {}), flow: item.payload.flow },
+        attemptCount: 0,
+        status: 'pending',
+      };
+      continue;
+    }
     if (sameDate) {
       out[out.length - 1] = {
         ...item,

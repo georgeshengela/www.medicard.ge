@@ -191,6 +191,72 @@ describe('queue compaction', () => {
     assert.equal(compacted.length, 1);
     assert.equal(compacted[0].operation, 'REMOVE_LOG');
   });
+
+  // IR-7: offline she taps „მენსტრუაცია დაიწყო“, saves cramps and a note from the quick log while the toast
+  // is up, then taps „გაუქმება“. The undo writes only the flow; the day's cramps and note must stay.
+  it('a flow-only write (the one-tap start undo) keeps the whole day saved before it', () => {
+    const date = '2026-08-29';
+    const enqueue = (account, op, payload) => enqueueMutation(account, createMutation('user-a', op, payload));
+    let account = { ...emptyAccount('user-a'), cache: createCacheRecord('user-a', sampleBundle()) };
+    account = enqueue(account, 'START_PERIOD', { date, flow: 'medium' });
+    const [sheet] = planQueuedLogMutations({
+      date,
+      flow: 'medium',
+      symptoms: ['cramps'],
+      moods: ['calm'],
+      sexualActivity: false,
+      notes: 'ტკივილი დილით',
+      observations: { energy: 'low' },
+      energy: 'low',
+    });
+    account = enqueue(account, sheet.operation, sheet.payload);
+    const [undo] = planQueuedLogMutations({ date, flow: null });
+    assert.deepEqual(undo, { operation: 'UPSERT_LOG', payload: { date, flow: null } });
+    account = enqueue(account, undo.operation, undo.payload);
+
+    assert.deepEqual(account.queue.map((item) => item.operation), ['START_PERIOD', 'UPSERT_LOG']);
+    const kept = account.queue[1].payload;
+    assert.equal(kept.flow, null);
+    assert.deepEqual(kept.symptoms, ['cramps']);
+    assert.deepEqual(kept.moods, ['calm']);
+    assert.equal(kept.sexualActivity, false);
+    assert.equal(kept.notes, 'ტკივილი დილით');
+    assert.deepEqual(kept.observations, { energy: 'low' });
+
+    const { bundle } = overlayPendingOnBundle(account.cache.bundle, account.queue, 'user-a');
+    const row = bundle.logs.find((l) => l.date === date);
+    assert.equal(row.flow, null);
+    assert.deepEqual(row.symptoms, ['cramps']);
+    assert.equal(row.notes, 'ტკივილი დილით');
+
+    // The flush-time compaction (remaining + newly queued) applies the same rule.
+    const again = compactCycleQueue([
+      { ...account.queue[0], attemptCount: 2 },
+      createMutation('user-a', 'UPSERT_LOG', sheet.payload),
+      createMutation('user-a', 'UPSERT_LOG', { date, flow: 'light' }),
+    ]);
+    assert.equal(again[1].payload.flow, 'light');
+    assert.deepEqual(again[1].payload.symptoms, ['cramps']);
+  });
+
+  it('a flow-only write after a REMOVE, or a whole day after a whole day, still replaces', () => {
+    const date = '2026-08-30';
+    const afterRemove = compactCycleQueue([
+      createMutation('u', 'REMOVE_LOG', { date }),
+      createMutation('u', 'UPSERT_LOG', { date, flow: 'light' }),
+    ]);
+    assert.equal(afterRemove.length, 1);
+    assert.equal(afterRemove[0].operation, 'UPSERT_LOG');
+    assert.deepEqual(afterRemove[0].payload, { date, flow: 'light' });
+
+    const whole = compactCycleQueue([
+      createMutation('u', 'UPSERT_LOG', { date, flow: 'medium', symptoms: ['cramps'], notes: 'a' }),
+      createMutation('u', 'UPSERT_LOG', { date, flow: 'medium', symptoms: [], notes: null }),
+    ]);
+    assert.equal(whole.length, 1);
+    assert.deepEqual(whole[0].payload.symptoms, []);
+    assert.equal(whole[0].payload.notes, null);
+  });
 });
 
 describe('replay success / retryable / permanent', () => {
