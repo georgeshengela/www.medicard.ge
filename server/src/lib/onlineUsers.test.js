@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import { contactOf, onlineSignature, screenOf, shapeOnlineUsers } from './onlineUsers.js';
+import { contactOf, onlineSignature, screenOf, shapeOnlineUsers, summarizeOnline } from './onlineUsers.js';
 
 describe('admin online users', () => {
   const now = Date.parse('2026-10-06T12:00:00Z');
@@ -33,5 +33,19 @@ describe('admin online users', () => {
     const moved = { users: shapeOnlineUsers([row('a', 1, { activityType: 'cycle' })], now) };
     assert.equal(onlineSignature(a), onlineSignature(later));
     assert.notEqual(onlineSignature(a), onlineSignature(moved));
+  });
+
+  it('summarizes where everyone is and on what device', () => {
+    const users = shapeOnlineUsers([
+      row('a', 5),
+      row('b', 6, { activityType: 'run/active', platform: 'ANDROID' }),
+      row('c', 7, { activityType: 'run', createdAt: new Date(now - 3600_000) }),
+      row('d', 8, { activityType: 'heartbeat', platform: null }),
+    ], now);
+    assert.deepEqual(summarizeOnline(users, now), {
+      screens: { home: 1, run: 2, '': 1 },
+      platforms: { ios: 2, android: 1, unknown: 1 },
+      newcomers: 1,
+    });
   });
 });

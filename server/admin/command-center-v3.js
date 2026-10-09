@@ -430,12 +430,59 @@
     return `
       <span class="s-avatar${u.gender === 'FEMALE' ? ' is-f' : ''}" aria-hidden="true">${esc(personInitials(name))}<i class="cc-on-dot"></i></span>
       <span class="cc-on-who">
-        <b>${esc(name)}</b>${isNew ? ' <span class="s-badge is-accent is-plain">ახალი</span>' : ''}
+        <span class="cc-on-name"><b>${esc(name)}</b>${isNew ? '<span class="s-badge is-accent is-plain">ახალი</span>' : ''}</span>
         <small>${esc(sub)}</small>
       </span>
       <span class="cc-on-where">${where ? `<span class="s-badge is-info is-plain">${esc(where)}</span>` : ''}</span>
       <span class="cc-on-device">${esc(device)}</span>
       <span class="cc-on-ago" data-ago="${esc(u.lastAt)}">${esc(agoKa(u.lastAt))}</span>`;
+  }
+
+  // Many people online stays readable: a summary over everyone (where / which device), chips that filter
+  // the list, a search box, and only the first ONLINE_PREVIEW rows until „ყველას ნახვა“.
+  const ONLINE_PREVIEW = 8;
+  const PLATFORM_ORDER = [['ios', 'iPhone'], ['android', 'Android'], ['web', 'ვებ'], ['unknown', 'უცნობი']];
+  const onlineView = { filter: '', query: '', expanded: false, snap: null };
+  const placeKa = (screen) => screenKa(screen) || 'სხვა';
+
+  /** Server summary (all online, not just the listed 100) merged onto module names; older servers → from the list. */
+  function onlineSummary(snap) {
+    const users = snap.users || [];
+    const raw = snap.summary || {
+      screens: users.reduce((acc, u) => { const k = String(u.screen || '').split('/').filter(Boolean)[0] || ''; acc[k] = (acc[k] || 0) + 1; return acc; }, {}),
+      platforms: users.reduce((acc, u) => { const k = u.platform || 'unknown'; acc[k] = (acc[k] || 0) + 1; return acc; }, {}),
+      newcomers: users.filter((u) => u.joinedAt && Date.now() - new Date(u.joinedAt).getTime() < 24 * 3600 * 1000).length,
+    };
+    const places = new Map();
+    for (const [first, n] of Object.entries(raw.screens || {})) {
+      const label = (first && SCREEN_KA[first]) || 'სხვა';
+      places.set(label, (places.get(label) || 0) + Number(n || 0));
+    }
+    const sorted = [...places].sort((a, b) => (a[0] === 'სხვა') - (b[0] === 'სხვა') || b[1] - a[1]);
+    return { places: sorted, platforms: raw.platforms || {}, newcomers: Number(raw.newcomers) || 0 };
+  }
+
+  function onlineSummaryHtml(snap, total) {
+    const { places, platforms, newcomers } = onlineSummary(snap);
+    const chips = [['', 'ყველა', total], ...places.map(([label, n]) => [label, label, n])]
+      .map(([key, label, n]) => `<button type="button" role="tab" class="cc-on-chip" aria-selected="${onlineView.filter === key}" data-on-filter="${esc(key)}">${esc(label)}<i>${fmt(n)}</i></button>`).join('');
+    const devices = PLATFORM_ORDER.map(([key, label]) => [key, label, Number(platforms[key]) || 0]).filter(([, , n]) => n > 0);
+    const sum = devices.reduce((s, [, , n]) => s + n, 0) || 1;
+    return `
+      <div class="cc-on-places" role="tablist" aria-label="სად არიან">${chips}</div>
+      <div class="cc-on-devices">
+        <div class="cc-on-bar" role="img" aria-label="${esc(devices.map(([, l, n]) => `${l} ${n}`).join(', '))}">${devices.map(([key, , n]) => `<i class="is-${key}" style="width:${(n / sum) * 100}%"></i>`).join('')}</div>
+        <div class="cc-on-legend">${devices.map(([key, label, n]) => `<span><i class="is-${key}"></i>${esc(label)} <b>${fmt(n)}</b> <em>${Math.round((n / sum) * 100)}%</em></span>`).join('')}${newcomers ? `<span class="cc-on-newcount"><span class="s-badge is-accent is-plain">ახალი</span> ${fmt(newcomers)} დღეს დარეგისტრირდა</span>` : ''}</div>
+      </div>`;
+  }
+
+  function onlineMatches(u) {
+    if (onlineView.filter && placeKa(u.screen) !== onlineView.filter) return false;
+    const q = onlineView.query.trim().toLowerCase();
+    if (!q) return true;
+    const digits = q.replace(/\D/g, '');
+    const hay = `${u.name || ''} ${u.contact || ''}`.toLowerCase();
+    return hay.includes(q) || (digits.length >= 3 && String(u.contact || '').replace(/\D/g, '').includes(digits));
   }
 
   function paintOnline(snap) {
@@ -445,9 +492,15 @@
       onlineEls = new Map();
       host.innerHTML = section({
         title: 'ვინ არის ახლა აპში',
-        description: 'აპში ან ვებ-ვერსიაში ბოლო 90 წამში მყოფი ადამიანები. სია თავისით ახლდება — გვერდის განახლება არ სჭირდება. დააჭირე სტრიქონს პროფილის სანახავად.',
+        description: 'აპში ან ვებ-ვერსიაში ბოლო 90 წამში მყოფი ადამიანები, თავისით ახლდება. ჩიპი ფილტრავს სიას, სტრიქონი ხსნის პროფილს.',
         action: '<span class="cc-on-count" id="ops-online-count"><i class="v3-cc-pulse" aria-hidden="true"></i><b>—</b> ონლაინ</span>',
-        content: '<div class="cc-on-list" id="ops-online-list" role="list" aria-live="polite"></div><p class="cc-on-more" id="ops-online-more" hidden></p>',
+        content: `<div class="cc-on-summary" id="ops-online-summary"></div>
+          <div class="cc-on-tools" id="ops-online-tools" hidden>
+            <label class="cc-on-search">${ico('search')}<input type="search" id="ops-online-q" placeholder="სახელი ან ნომერი" autocomplete="off" aria-label="ონლაინ მომხმარებლის ძებნა"></label>
+            <span class="cc-on-shown" id="ops-online-shown"></span>
+          </div>
+          <div class="cc-on-list" id="ops-online-list" role="list" aria-live="polite"></div>
+          <button type="button" class="cc-on-toggle" id="ops-online-toggle" hidden></button>`,
         mod: 'cc-on',
       });
       const list = host.querySelector('#ops-online-list');
@@ -459,6 +512,22 @@
         const row = e.target.closest('[data-user]');
         if (row && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); row.click(); }
       });
+      host.querySelector('#ops-online-summary').addEventListener('click', (e) => {
+        const chip = e.target.closest('[data-on-filter]');
+        if (!chip) return;
+        onlineView.filter = onlineView.filter === chip.dataset.onFilter ? '' : chip.dataset.onFilter;
+        onlineView.expanded = false;
+        paintOnline(onlineView.snap);
+      });
+      host.querySelector('#ops-online-q').addEventListener('input', (e) => {
+        onlineView.query = e.target.value;
+        paintOnline(onlineView.snap);
+      });
+      host.querySelector('#ops-online-toggle').addEventListener('click', () => {
+        onlineView.expanded = !onlineView.expanded;
+        paintOnline(onlineView.snap);
+        if (!onlineView.expanded) host.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      });
     }
     const list = host.querySelector('#ops-online-list');
     const count = host.querySelector('#ops-online-count');
@@ -466,22 +535,44 @@
       if (!list.children.length) list.innerHTML = '<div class="cc-on-empty">იტვირთება…</div>';
       return;
     }
+    onlineView.snap = snap;
     // Stable order (who came first today stays put); the server list is newest-heartbeat first.
     const users = [...(snap.users || [])].sort((a, b) => String(b.firstAt || '').localeCompare(String(a.firstAt || '')) || String(a.id).localeCompare(String(b.id)));
+    const total = Number(snap.count ?? users.length) || 0;
     if (count) {
-      count.querySelector('b').textContent = fmt(snap.count ?? users.length);
-      count.classList.toggle('is-empty', !users.length);
+      count.querySelector('b').textContent = fmt(total);
+      count.classList.toggle('is-empty', !total);
     }
+    // A filter whose place emptied out falls back to everyone.
+    if (onlineView.filter && !users.some((u) => placeKa(u.screen) === onlineView.filter)) onlineView.filter = '';
+
+    const summary = host.querySelector('#ops-online-summary');
+    summary.hidden = !total;
+    const summaryHtml = total ? onlineSummaryHtml(snap, total) : '';
+    if (summary.dataset.html !== summaryHtml) { summary.innerHTML = summaryHtml; summary.dataset.html = summaryHtml; }
+
+    const matching = users.filter(onlineMatches);
+    const visible = onlineView.expanded ? matching : matching.slice(0, ONLINE_PREVIEW);
+    const tools = host.querySelector('#ops-online-tools');
+    tools.hidden = users.length <= ONLINE_PREVIEW && !onlineView.query;
+    const shown = host.querySelector('#ops-online-shown');
+    if (shown) {
+      const filtered = onlineView.filter || onlineView.query.trim();
+      shown.textContent = filtered ? `${fmt(matching.length)} ნაპოვნია` : (total > users.length ? `სიაში პირველი ${fmt(users.length)} · სულ ${fmt(total)}` : '');
+    }
+
     list.querySelectorAll('.cc-on-empty').forEach((el) => el.remove());
-    const keep = new Set(users.map((u) => u.id));
+    const online = new Set(users.map((u) => u.id));
+    const keep = new Set(visible.map((u) => u.id));
     for (const [id, el] of onlineEls) {
       if (keep.has(id)) continue;
       onlineEls.delete(id);
+      if (online.has(id)) { el.remove(); continue; }
       el.classList.add('is-leaving');
       setTimeout(() => el.remove(), 380);
     }
     let prev = null;
-    for (const u of users) {
+    for (const u of visible) {
       let el = onlineEls.get(u.id);
       if (!el) {
         el = document.createElement('div');
@@ -498,11 +589,16 @@
       if (el !== anchor) list.insertBefore(el, anchor);
       prev = el;
     }
-    const more = host.querySelector('#ops-online-more');
-    const extra = Number(snap.count || 0) - users.length;
-    if (more) { more.hidden = !(extra > 0); more.textContent = extra > 0 ? `და კიდევ ${fmt(extra)} ადამიანი` : ''; }
-    if (!users.length) {
+
+    const toggle = host.querySelector('#ops-online-toggle');
+    const hiddenRows = matching.length - visible.length;
+    toggle.hidden = !(hiddenRows > 0 || (onlineView.expanded && matching.length > ONLINE_PREVIEW));
+    toggle.textContent = onlineView.expanded ? 'ნაკლების ჩვენება' : `ყველას ნახვა · კიდევ ${fmt(hiddenRows)}`;
+
+    if (!total) {
       list.insertAdjacentHTML('beforeend', '<div class="cc-on-empty">ახლა აპში არავინაა. როგორც კი ვინმე შემოვა, აქ თავისით გამოჩნდება.</div>');
+    } else if (!matching.length) {
+      list.insertAdjacentHTML('beforeend', '<div class="cc-on-empty">ამ ფილტრით ახლა არავინაა.</div>');
     }
   }
 
