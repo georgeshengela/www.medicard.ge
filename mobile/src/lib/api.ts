@@ -2915,6 +2915,8 @@ export const api = {
         labExtract: import('@/types/lab').LabExtract;
         /** This page was unreadable; the record holds only the pages read before it. */
         unreadable?: boolean;
+        /** With `unreadable`: the reader was down, so the same photo can be tried again later (no retake). */
+        unavailable?: boolean;
         pipeline: { extractor: { provider: string; model?: string }; reasoning: null };
         usage: Usage;
       };

@@ -338,6 +338,27 @@ describe('quest logic', () => {
     assert.doesNotMatch(questCopy('ka').a11yQuest('Medi', 0, 1, 0, 0, 20), /Medi Coins/);
   });
 
+  it('promises only what counts: a health question Medi answered, not any conversation (2026-10-09)', () => {
+    // Logging water or a medicine through Medi never reaches the clinical model, so it never counted;
+    // the card said „one conversation a week is enough“ and stayed at 0/1.
+    for (const lang of ['ka', 'en', 'fr', 'ru']) {
+      const copy = questCopy(lang);
+      assert.doesNotMatch(`${copy.mediTitle} ${copy.mediBody}`, /საუბარ|conversation|разговор/i, lang);
+    }
+    assert.match(questCopy('ka').mediTitle, /ჯანმრთელობ/);
+    assert.match(questCopy('en').mediTitle, /health/);
+    const { readFileSync } = require('node:fs');
+    const { join } = require('node:path');
+    const sheet = readFileSync(join(__dirname, '..', '..', 'components', 'quest', 'QuestGuideSheet.tsx'), 'utf8');
+    const web = readFileSync(join(__dirname, '..', '..', '..', '..', 'server', 'public', 'app', 'js', 'pages', 'quest.js'), 'utf8');
+    for (const src of [sheet, web]) {
+      assert.doesNotMatch(src, /ერთი წარმატებული საუბარი|one successful conversation/);
+      assert.match(src, /ამ მისიაში არ ითვლება/);
+      assert.match(src, /don’t count for this mission/);
+    }
+    assert.doesNotMatch(web, /mediTitle: '(ამ კვირის საუბარი|Check in with Medi)/);
+  });
+
   it('localizes back labels in ka/en/fr/ru', () => {
     assert.equal(questCopy('ka').back, 'უკან');
     assert.equal(questCopy('en').back, 'Back');

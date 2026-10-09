@@ -42,12 +42,12 @@ const Q = isEn ? {
   completed: 'Mission complete', claimed: 'Reward claimed', expired: 'Expired',
   stepsTitle: 'A short walk', stepsBody: 'At your own pace.', stepsZero: 'Start with one small step.',
   stepsNear: 'A little more and this mission is done.', hydroTitle: 'Water balance', hydroBody: 'Reach your goal, nothing extra.',
-  mediTitle: 'Check in with Medi this week', mediBody: 'One conversation a week is enough — whenever suits you.', weeklySteps: 'Weekly steps',
+  mediTitle: 'Ask Medi about your health', mediBody: 'One question a week is enough — whenever suits you.', weeklySteps: 'Weekly steps',
 } : {
   completed: 'მისია შესრულდა', claimed: 'ჯილდო მიღებულია', expired: 'ვადა ამოიწურა',
   stepsTitle: 'მოკლე გასეირნება', stepsBody: 'ნელი ნაბიჯებით, შენი ტემპით.', stepsZero: 'დავიწყოთ პირველი პატარა ნაბიჯით.',
   stepsNear: 'ცოტაც — და მისია მზადაა.', hydroTitle: 'წყლის ბალანსი', hydroBody: 'დალიე შენი დღიური მიზანი, ზედმეტის გარეშე.',
-  mediTitle: 'ამ კვირის საუბარი Medi-სთან', mediBody: 'კვირაში ერთი საუბარი საკმარისია — როცა შენ გინდა.', weeklySteps: 'კვირის ნაბიჯები',
+  mediTitle: 'ჰკითხე Medi-ს შენს ჯანმრთელობაზე', mediBody: 'კვირაში ერთი კითხვა საკმარისია — როცა შენ გინდა.', weeklySteps: 'კვირის ნაბიჯები',
 };
 const WHY = isEn ? {
   title: 'Why this goal?',
@@ -1091,7 +1091,7 @@ export default async function questPage(root, ctx) {
       ['How does the streak work?', 'If you complete at least one daily mission, the day counts toward your streak. Active days in a row grow the streak. A missed day ends the current streak; your best streak, earned XP and rewards stay. Just opening the app doesn’t grow the streak.'],
       ['When do missions refresh?', 'Daily missions change when a new day starts, weekly missions on Monday. Time follows your account’s time zone. You can claim a completed mission’s reward later; an unfinished mission moves to history once it expires.'],
       ['Where do steps and water progress come from?', 'Steps sync through a connection to your phone’s health app — use the MEDICARD app on your phone for this. The water mission needs a daily hydration goal and logged water. Progress is counted by the system; you can’t mark a mission done by hand on this page.'],
-      ['How is the Medi mission completed?', 'The Medi mission is weekly and only appears once you’ve agreed to share data with AI — that choice is yours. Open Medi and chat with it; one successful conversation on any day of the week is enough. It rewards XP only — no Medi Coins — and doesn’t affect your daily streak. Chatting with Medi is free.'],
+      ['How is the Medi mission completed?', 'The Medi mission is weekly and only appears once you’ve agreed to share data with AI — that choice is yours. Open Medi and ask it something about your health; one answer from Medi on any day of the week is enough. Entries and reminders you add through Medi (water or a medicine, for example) don’t count for this mission. It rewards XP only — no Medi Coins — and doesn’t affect your daily streak. Chatting with Medi is free.'],
       ['Why did my goal change?', 'A new movement goal can adapt to your recent activity. “Why this goal?” on the mission card shows the exact reason. The goal of a mission that’s already assigned stays fixed. Play at your own pace — XP and level are not a health assessment.'],
     ] : [
       ['რა განსხვავებაა XP-სა და მონეტებს შორის?', 'XP გამოცდილებაა და შენს დონეს ზრდის. Medi Coins ჯილდოების მაღაზიაში გამოიყენება. ორივეს იღებ მისიის ან მიღწევის ჯილდოს მიღებისას. მონეტების დახარჯვა XP-სა და დონეს არ ამცირებს; მონეტები ფული არ არის.'],
@@ -1099,7 +1099,7 @@ export default async function questPage(root, ctx) {
       ['როგორ მუშაობს სერია?', 'ერთ დღიურ მისიას მაინც თუ შეასრულებ, დღე სერიაში ჩაითვლება. ზედიზედ აქტიური დღეები სერიას ზრდის. გამოტოვებული დღე მიმდინარე სერიას წყვეტს; შენი საუკეთესო სერია, მიღებული XP და ჯილდოები რჩება. მხოლოდ აპის გახსნა ამ სერიას არ ზრდის.'],
       ['როდის განახლდება მისიები?', 'დღიური მისიები ახალი დღის დაწყებისას იცვლება, კვირის მისიები — ორშაბათს. დრო ანგარიშის დროის სარტყლის მიხედვით ითვლება. უკვე შესრულებული მისიის ჯილდო მოგვიანებითაც შეგიძლია მიიღო; შეუსრულებელი მისია ვადის გასვლის შემდეგ ისტორიაში გადადის.'],
       ['საიდან მოდის ნაბიჯები და წყლის პროგრესი?', 'ნაბიჯები ჯანმრთელობის აპთან კავშირით სინქრონდება — ამისთვის გამოიყენე MEDICARD აპი ტელეფონზე. წყლის მისიისთვის საჭიროა ჰიდრატაციის დღიური მიზანი და დაფიქსირებული წყალი. პროგრესს სისტემა ითვლის; ამ გვერდზე ხელით ვერ მონიშნავ მისიას შესრულებულად.'],
-      ['როგორ სრულდება Medi-ს მისია?', 'Medi-ს მისია კვირის მისიაა და მხოლოდ მაშინ ჩანს, როცა მონაცემების AI-სთან გაზიარებაზე თანხმობა გაქვს მიცემული — ეს შენი არჩევანია. გახსენი Medi და ესაუბრე; კვირის ნებისმიერ დღეს ერთი წარმატებული საუბარი საკმარისია. ჯილდო მხოლოდ XP-ია — Medi Coins-ს არ იძლევა და დღიურ სერიას არ ცვლის. Medi-სთან საუბარი უფასოა.'],
+      ['როგორ სრულდება Medi-ს მისია?', 'Medi-ს მისია კვირის მისიაა და მხოლოდ მაშინ ჩანს, როცა მონაცემების AI-სთან გაზიარებაზე თანხმობა გაქვს მიცემული — ეს შენი არჩევანია. გახსენი Medi და ჰკითხე რამე შენს ჯანმრთელობაზე; კვირის ნებისმიერ დღეს Medi-ს ერთი პასუხი საკმარისია. Medi-ს დახმარებით დამატებული ჩანაწერები და შეხსენებები (მაგალითად, წყალი ან წამალი) ამ მისიაში არ ითვლება. ჯილდო მხოლოდ XP-ია — Medi Coins-ს არ იძლევა და დღიურ სერიას არ ცვლის. Medi-სთან საუბარი უფასოა.'],
       ['რატომ შეიცვალა ჩემი მიზანი?', 'მოძრაობის ახალი მიზანი შეიძლება ბოლო აქტივობას მოერგოს. მისიის ბარათზე „რატომ ეს მიზანი?“ ზუსტ მიზეზს გაჩვენებს. უკვე დანიშნული მისიის მიზანი ფიქსირებულია. ითამაშე შენი ტემპით — XP და დონე ჯანმრთელობის შეფასება არ არის.'],
     ];
     const tzName = dash?.daily?.timezone || dash?.profile?.timezone;

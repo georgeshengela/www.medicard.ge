@@ -21,8 +21,8 @@ import { assistantDialogIntent, assistantFieldError, spokenAssistantReview } fro
 import type { CycleMediContext } from '@/lib/cycleMediContext';
 import { featureForHref, featureMessage, isFeatureOn, useFeature } from '@/lib/featureFlags';
 import { refreshFeatureFlags } from '@/lib/featureFlagSync';
-import { localAccountId } from '@/lib/localAccount';
-import { takeMediCycleContext, takeMediPrefill } from '@/lib/mediHandoff';
+import { localAccountId, onLocalAccountChange } from '@/lib/localAccount';
+import { clearMediDraft, holdMediDraft, takeMediCycleContext, takeMediDraft, takeMediPrefill } from '@/lib/mediHandoff';
 import { legacyChatRouteToMedi } from '@/lib/mediModes';
 import {
   clinicalSessions, consultFromReview, HIDDEN_ACTION_FIELDS, humanCardValue, plannerHistory, spokenAnswer, storedTurns, turnId, turnsFromSession,
@@ -42,6 +42,8 @@ import { MediWelcome } from './MediWelcome';
 type Busy = null | 'plan' | 'answer' | 'deep' | 'save' | 'open' | 'check' | 'history';
 type Retry = { value: string; route: 'plan' | ClinicalMode; fromVoice: boolean; petId?: string };
 const HANDOFF_TOOLS = ['open', 'consult', 'pet_consult', 'pet_open', 'record_open', 'visit_open', 'medication_open'];
+// The question held when she closed Medi mid-answer belongs to one account: sign-out or a switch drops it.
+onLocalAccountChange(() => clearMediDraft());
 
 export type MediChatProps = {
   owner: string;
@@ -99,6 +101,8 @@ export function MediChat({ owner, sessionId, startConsilium, directDoctor, prefi
   const directNext = useRef<ClinicalMode | null>(directDoctor ? 'DOCTOR' : null);
   const saving = useRef<Promise<unknown>>(Promise.resolve());
   const abort = useRef<AbortController | null>(null);
+  /** The question on its way (planner or answer) until it settles; held as a draft if she closes Medi first. */
+  const asking = useRef<string | null>(null);
   const list = useRef<FlatList<MediTurn>>(null), nearBottom = useRef(true);
   const cycleContextRef = useRef<CycleMediContext | null>(null); cycleContextRef.current = cycleContext;
   const cycleContextExcluded = useRef(false);
@@ -113,7 +117,8 @@ export function MediChat({ owner, sessionId, startConsilium, directDoctor, prefi
   const live = (n: number) => alive.current && owner === localAccountId() && n === generation.current;
   const isHandoff = (name: string) => tools.find(t => t.name === name)?.kind === 'handoff' || HANDOFF_TOOLS.includes(name);
 
-  useEffect(() => { alive.current = true; return () => { alive.current = false; generation.current++; abort.current?.abort(); }; }, []);
+  // Closing Medi mid-answer is Stop (the server stores nothing); her question waits in memory as a draft.
+  useEffect(() => { alive.current = true; return () => { alive.current = false; generation.current++; abort.current?.abort(); if (asking.current && owner === localAccountId()) holdMediDraft(owner, asking.current); }; }, []);
   // Opening Medi re-checks the admin switches (≤1/min), so a paused mode hides here without leaving the app.
   useFocusEffect(useCallback(() => { focused.current = true; void refreshFeatureFlags(); return () => { focused.current = false; }; }, []));
 
@@ -125,6 +130,15 @@ export function MediChat({ owner, sessionId, startConsilium, directDoctor, prefi
     const staged = takeMediCycleContext(owner, drafted ?? (typeof prefill === 'string' ? prefill : null));
     if (staged) { setCycleContext(staged); directNext.current = 'DOCTOR'; }
     // Once per mount: a second read finds nothing (consume-once).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // The question she was waiting on when she last closed Medi comes back in the composer, only as a draft.
+  // A drafted question from another screen (prefill / handoff) wins; the held one then waits for a plain open.
+  useEffect(() => {
+    if (handoff || (typeof prefill === 'string' && prefill.trim())) return;
+    const held = takeMediDraft(owner);
+    if (held) setText(current => (current.trim() ? current : held));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -296,6 +310,7 @@ export function MediChat({ owner, sessionId, startConsilium, directDoctor, prefi
     const target: Retry['route'] = route && routeOn ? route : (consiliumOn ? 'CONSILIUM' : directNext.current && doctorOn ? directNext.current : 'plan');
     directNext.current = null;
     working.current = true; generation.current++;
+    asking.current = value; clearMediDraft();
     // A new message replaces a card that was never answered.
     setTurns(t => t.map(turn => (turn.kind === 'action' && turn.state === 'pending' ? { ...turn, state: 'cancelled' } : turn)));
     const userTurn: MediTurn = { id: turnId(), kind: 'user', text: value, at: now() };
@@ -303,7 +318,7 @@ export function MediChat({ owner, sessionId, startConsilium, directDoctor, prefi
     try {
       if (target === 'plan') await plan(value, userTurn, fromVoice, petId);
       else await answer(value, target, userTurn, fromVoice);
-    } finally { working.current = false; if (alive.current) setBusy(null); }
+    } finally { working.current = false; asking.current = null; if (alive.current) setBusy(null); }
   }
 
   async function afterSaved(saved: AssistantReview, n: number) {

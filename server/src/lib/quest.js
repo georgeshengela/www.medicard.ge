@@ -1,4 +1,5 @@
 import { prisma } from './prisma.js';
+import { AI_REPLY_CUT_MESSAGE } from './aiTelemetry.js';
 import { hasAcceptedAiConsent } from './aiConsent.js';
 import { sumRewardLedger } from './rewardLedgerSum.js';
 import {
@@ -187,6 +188,17 @@ async function isTemplateEligible(db, userId, template, aiConsentAccepted = fals
   return true;
 }
 
+/**
+ * The weekly Medi mission counts a health question Medi answered: a consultation (DOCTOR/CONSILIUM) that
+ * finished, or one cut at max_tokens (shown and saved; logged as ERROR for admin). An answer she stopped
+ * or left writes no row; a failed one is a plain ERROR — neither counts. Planner turns (logging, reminders)
+ * never reach this table, and the mission copy promises only the health question.
+ */
+const MEDI_ANSWERED = Object.freeze({
+  mode: { in: ['DOCTOR', 'CONSILIUM'] },
+  OR: [{ status: 'OK' }, { status: 'ERROR', errorMessage: AI_REPLY_CUT_MESSAGE }],
+});
+
 export async function computeQuestProgress(userId, templateOrQuest, periodKey, options = {}) {
   const db = dbOf(options);
   const quest = templateOrQuest?.template ? templateOrQuest : null;
@@ -235,8 +247,7 @@ export async function computeQuestProgress(userId, templateOrQuest, periodKey, o
     const rows = await db.aiInteraction.findMany({
       where: {
         userId,
-        status: 'OK',
-        mode: { in: ['DOCTOR', 'CONSILIUM'] },
+        ...MEDI_ANSWERED,
         createdAt: { gte: start, lte: end },
       },
       take: 1,
@@ -279,8 +290,7 @@ async function loadProgressContext(db, userId, quests, options = {}) {
     const rows = await db.aiInteraction.findMany({
       where: {
         userId,
-        status: 'OK',
-        mode: { in: ['DOCTOR', 'CONSILIUM'] },
+        ...MEDI_ANSWERED,
         createdAt: { gte: from, lte: to },
       },
     });

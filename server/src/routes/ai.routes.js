@@ -9,7 +9,7 @@ import { AiEngineError } from '../lib/evidencemd.js';
 import { askAi, serverAiEngine, publicAiEngineCatalog, resolveOpenRouterModel } from '../lib/aiEngine.js';
 import { runTrackedAi } from '../lib/aiTelemetry.js';
 import { watchStreamClient } from '../lib/streamClient.js';
-import { describeImage, structureLabText, SUPPORTED_IMAGE_TYPES, VISION_EFFORTS } from '../lib/vision.js';
+import { describeImage, isVisionReaderDown, structureLabText, SUPPORTED_IMAGE_TYPES, VISION_EFFORTS, visionFailedError } from '../lib/vision.js';
 import { extractPdfText, ocrImage, SUPPORTED_DOCUMENT_TYPES } from '../lib/ocr.js';
 import { buildVisionHandoff, buildDoctorTurnContext, sanitizeDoctorReply } from '../lib/prompts.js';
 import { calculateAge, withPatientAiContext } from '../lib/patient.js';
@@ -521,6 +521,9 @@ aiRouter.post(
     let extractor = { provider: pdfNotes.length ? 'pdf-parse' : 'none', model: pdfNotes.length ? 'pdf-parse' : '' };
 
     let usedOcr = false;
+    // Set when the reader itself was down for a page (no credit, outage, network): that page was never
+    // really read, so an unreadable result is reported as „try again later“, never as „retake the photo“.
+    let readerDown = null;
     const readImages = async (efforts, { ocr }) => {
       const parts = [];
       let last = null;
@@ -533,6 +536,7 @@ aiRouter.post(
           model: resolveOpenRouterModel(req.user),
           efforts,
         }).catch(async (error) => {
+          if (ocr && error?.readerDown) readerDown = error;
           // Tesseract is the last resort: Georgian print through it is mostly noise, so its text only
           // counts when it still yields real analytes (checked below).
           const text = ocr && image.mimeType !== 'application/pdf' ? await ocrImage(image.buffer) : null;
@@ -566,7 +570,12 @@ aiRouter.post(
     if (labExtract.parameters.length < 3 && visionNotes.length >= 24) {
       const structured = await structureLabText(visionNotes, {
         model: resolveOpenRouterModel(req.user),
-      }).catch(() => null);
+      }).catch((error) => {
+        // A text PDF is read by this pass alone: with the reader down its values were never looked at, so
+        // „nothing found“ below is „try again later with the same file“, never „retake the photo“.
+        if (!images.length && !readerDown && isVisionReaderDown(error)) readerDown = visionFailedError([error], error, { document: true });
+        return null;
+      });
       if (structured?.notes) {
         visionNotes = `${visionNotes}\n\n${structured.notes}`;
         labExtract = extractLabFromText(visionNotes);
@@ -583,7 +592,7 @@ aiRouter.post(
     }
     const unreadable = !labExtract.parameters.length || (usedOcr && labExtract.parameters.length < 3);
     if (unreadable) {
-      console.warn('[medicard] lab sheet unreadable', { images: images.length, ocr: usedOcr, rows: labExtract.parameters.length });
+      console.warn('[medicard] lab sheet unreadable', { images: images.length, ocr: usedOcr, readerDown: Boolean(readerDown), rows: labExtract.parameters.length });
     }
 
     if (req.labAppend) {
@@ -597,12 +606,14 @@ aiRouter.post(
         return res.status(404).json({ error: t(req, 'ჩანაწერი ვერ მოიძებნა.', 'Record not found.') });
       }
       if (unreadable) {
-        // Keep the pages already read; this page adds nothing rather than noise.
+        // Keep the pages already read; this page adds nothing rather than noise. `unavailable` (additive):
+        // the reader was down, so the app asks for the same photo later instead of a retake.
         return res.json({
           record: { id: existing.id, type: existing.type, imageUrl: existing.imageUrl, aiAnalysis: existing.aiAnalysis, createdAt: existing.createdAt },
           notes: existing.aiAnalysis,
           labExtract: extractLabFromText(existing.aiAnalysis),
           unreadable: true,
+          ...(readerDown ? { unavailable: true } : {}),
           interactionId: null,
           pipeline: { extractor, reasoning: null },
           usage: await getUsage(req.user.id),
@@ -632,6 +643,9 @@ aiRouter.post(
     }
 
     if (unreadable) {
+      // The reader was down and the OCR fallback found nothing usable: the photo was never really read.
+      // The calm 503 („try again later with the same photo“) goes out; the reserved credit is released.
+      if (readerDown) throw readerDown;
       return res.status(422).json({
         code: 'LAB_UNREADABLE',
         error: t(

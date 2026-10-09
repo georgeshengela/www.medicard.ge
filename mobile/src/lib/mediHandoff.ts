@@ -85,3 +85,33 @@ export function clearMediHandoff(): void {
   staged = null;
   stagedPrefill = null;
 }
+
+/**
+ * The question she was waiting on when she closed Medi (2026-10-09). Closing Medi while an answer is on
+ * its way is Stop: the app aborts and the server stores nothing, so the question would be lost. It waits
+ * here instead and comes back in the composer the next time she opens Medi — only as a draft: nothing is
+ * sent until she sends it. JS memory only (never storage, never a URL), bound to the account that asked,
+ * consume-once; cleared when she sends a message and when the signed-in account changes (sign-out too).
+ * No time limit: she may come back much later in the same app session.
+ */
+type HeldDraft = { owner: string; text: string };
+let heldDraft: HeldDraft | null = null;
+
+export function holdMediDraft(owner: string | null | undefined, text: string | null | undefined): boolean {
+  const value = String(text ?? '').trim().slice(0, MEDI_PREFILL_MAX);
+  if (!owner || !value) return false;
+  heldDraft = { owner, text: value };
+  return true;
+}
+
+/** Consume-once: the held question for this account, else null. Always clears. */
+export function takeMediDraft(owner: string | null | undefined): string | null {
+  const current = heldDraft;
+  heldDraft = null;
+  if (!current || !owner || current.owner !== owner) return null;
+  return current.text;
+}
+
+export function clearMediDraft(): void {
+  heldDraft = null;
+}

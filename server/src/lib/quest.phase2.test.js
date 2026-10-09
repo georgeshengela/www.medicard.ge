@@ -17,6 +17,7 @@ import {
   assignWeeklyQuests,
   claimQuest,
   completeQuest,
+  computeQuestProgress,
   expireStaleQuests,
   getQuestHistory,
   getQuestRewards,
@@ -31,6 +32,7 @@ import { QUEST_ECONOMY, assertIssuableQuestReward, validateHydrationGoalMl } fro
 import { onQuestCompleted } from './questRealtime.js';
 import { publicQuest } from './questPrivacy.js';
 import { AI_CONSENT_VERSION } from './aiConsent.js';
+import { AI_REPLY_CUT_MESSAGE } from './aiTelemetry.js';
 
 const NOW = new Date('2026-09-06T12:00:00+04:00');
 const TODAY = '2026-09-06';
@@ -354,6 +356,26 @@ describe('phase 2 weekly Medi mission', () => {
     const blob = JSON.stringify(medi);
     assert.equal(/secret prompt/.test(blob), false);
     assert.equal(/secret reply/.test(blob), false);
+  });
+
+  it('counts a health answer cut at max_tokens (she saw it), never a failed one', async () => {
+    const { db, options } = await setup({ aiConsent: true });
+    await db.aiInteraction.create({ data: { userId: USER, status: 'ERROR', mode: 'DOCTOR', errorMessage: 'Provider 503', createdAt: NOW } });
+    // The planner (logging water, a reminder) and image reads are not a health answer.
+    await db.aiInteraction.create({ data: { userId: USER, status: 'OK', mode: 'SKIN', createdAt: NOW } });
+    const row = questByKey(await allQuests(db), 'weekly_medi');
+    let medi = questByKey(await updateQuestProgress(USER, { templateKey: 'weekly_medi' }, options), 'weekly_medi');
+    assert.equal(medi.progress, 0);
+    assert.equal(await computeQuestProgress(USER, row, WEEK, options), 0);
+
+    await db.aiInteraction.create({
+      data: { userId: USER, status: 'ERROR', mode: 'DOCTOR', errorMessage: AI_REPLY_CUT_MESSAGE, createdAt: NOW },
+    });
+    // Both reads (one quest, and the batched pass behind every progress update) follow the same rule.
+    assert.equal(await computeQuestProgress(USER, row, WEEK, options), 1);
+    medi = questByKey(await updateQuestProgress(USER, { templateKey: 'weekly_medi' }, options), 'weekly_medi');
+    assert.equal(medi.progress, 1);
+    assert.equal(medi.status, 'COMPLETED');
   });
 
   it('counts one qualifying interaction even across extra messages and sessions', async () => {
