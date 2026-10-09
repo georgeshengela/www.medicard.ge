@@ -688,6 +688,31 @@
     };
   }
 
+  /** Full-size look at the profile picture: dark scrim, the image, the name; click, × or Esc closes. */
+  function openAvatarLightbox(src, title, caption) {
+    document.querySelector('.s-ava-lightbox')?.remove();
+    const box = document.createElement('div');
+    box.className = 's-ava-lightbox';
+    box.setAttribute('role', 'dialog');
+    box.setAttribute('aria-modal', 'true');
+    box.setAttribute('aria-label', title);
+    box.innerHTML = `<figure><img src="${escA(src)}" alt="${escA(title)}"><figcaption><b>${esc(title)}</b><span>${esc(caption)}</span></figcaption></figure>
+      <button type="button" class="s-ava-lightbox-x" aria-label="დახურვა">${ico('x')}</button>`;
+    const prev = document.activeElement;
+    const close = () => {
+      box.classList.add('is-leaving');
+      document.removeEventListener('keydown', onKey, true);
+      setTimeout(() => box.remove(), 160);
+      prev?.focus?.();
+    };
+    const onKey = (e) => { if (e.key === 'Escape') { e.stopPropagation(); close(); } };
+    box.addEventListener('click', (e) => { if (!e.target.closest('img')) close(); });
+    box.querySelector('.s-ava-lightbox-x').addEventListener('click', close);
+    document.addEventListener('keydown', onKey, true);
+    document.body.appendChild(box);
+    box.querySelector('.s-ava-lightbox-x').focus();
+  }
+
   /** Small action menu next to the hero buttons (export, block/unblock, delete). */
   function openUserMenu(anchor, items) {
     document.querySelector('.s-menu.s-user-menu')?.remove();
@@ -801,7 +826,9 @@
     const hero = `
       <section class="s-card s-user-hero2${blocked ? ' is-blocked' : ''}${live ? ' is-live' : ''}">
         <div class="s-user-hero2-main">
-          <span class="s-user-ava${user.gender === 'FEMALE' ? ' is-f' : ''}${blocked ? ' is-muted' : ''}" aria-hidden="true"><span class="s-user-ava-in">${esc(personInitials(user))}${typeof adminAvatarImg === 'function' ? adminAvatarImg(user) : ''}</span>${live ? '<i></i>' : ''}</span>
+          ${user.avatar
+            ? `<button type="button" class="s-user-ava is-zoomable${user.gender === 'FEMALE' ? ' is-f' : ''}${blocked ? ' is-muted' : ''}" id="user-ava-zoom" aria-label="სურათის გადიდება" title="სურათის გადიდება"><span class="s-user-ava-in">${esc(personInitials(user))}${typeof adminAvatarImg === 'function' ? adminAvatarImg(user) : ''}</span>${live ? '<i></i>' : ''}<span class="s-user-ava-zoom" aria-hidden="true">${ico('search')}</span></button>`
+            : `<span class="s-user-ava${user.gender === 'FEMALE' ? ' is-f' : ''}${blocked ? ' is-muted' : ''}" aria-hidden="true"><span class="s-user-ava-in">${esc(personInitials(user))}</span>${live ? '<i></i>' : ''}</span>`}
           <div class="s-user-hero2-copy">
             <div class="s-user-hero2-title"><h2>${esc(name)}</h2>${statusBadges}<div class="s-user-hero2-actions">
                 <button type="button" class="btn compact" id="user-edit">${ico('settings')} რედაქტირება</button>
@@ -930,6 +957,10 @@
     });
     $('user-header-reload')?.addEventListener('click', reload);
     $('user-edit')?.addEventListener('click', () => openUserEditDialog(user, reload));
+    $('user-ava-zoom')?.addEventListener('click', (e) => {
+      const src = e.currentTarget.querySelector('.adm-ava')?.src;
+      if (src) openAvatarLightbox(src, name, user.avatar?.kind === 'preset' ? 'აპის მზა ავატარი' : 'საკუთარი ფოტო');
+    });
     $('user-note')?.addEventListener('click', () => openUserEditDialog(user, reload));
     $('user-coins')?.addEventListener('click', () => global.AdminV4Manage?.coinsDialog?.(id, 'grant'));
     $('user-more')?.addEventListener('click', (e) => {
