@@ -110,7 +110,8 @@ test('/api/ai/query keeps no answer she closed Medi on, and sends done before th
   const src = readFileSync(new URL('../routes/ai.routes.js', import.meta.url), 'utf8');
   const start = src.indexOf('if (stream) {');
   const branch = src.slice(start, src.indexOf('\n      return;\n    }\n', start));
-  assert.match(branch, /finally \{\s*client\.dispose\(\);\s*if \(!kept && client\.gone\(\)\) await forgetUnkeptAnswer\(req\.user\.id, answer\?\.interactionId\);/);
+  // Any unkept answer — she left, or the save failed (IR2-3) — loses its row, after the response ended.
+  assert.match(branch, /finally \{\s*client\.dispose\(\);(\s*\/\/[^\n]*)*\s*if \(!kept\) await forgetUnkeptAnswer\(req\.user\.id, answer\?\.interactionId\);/);
   assert.match(branch, /persistChatTurn\([^\n]*\);\s*kept = true;/);
   const done = branch.indexOf("type: 'done'");
   assert.ok(done > 0 && done < branch.indexOf('res.end();') && branch.indexOf('res.end();') < branch.indexOf('refreshQuestProgressForUser('),
@@ -143,11 +144,12 @@ test('an answer she left as it finished writes no row', async (t) => {
  * persistChatTurn with the real limiter (enforceAiQuota → settle / release) over a fake PeriodUsage row and
  * a fake transaction that applies its writes only when the work resolves. `closeAt` closes the response at
  * one point of the save, as her phone does when she closes Medi.
- * Options: `probe` collects the transaction options and reads made on the global client while the
- * transaction is open; `poolOfOne` makes such a read stall until the transaction expires (the only pool
- * connection is the transaction's own).
+ * Options: `probe` collects the transaction options, reads made on the global client while the transaction
+ * is open, and the save's error; `poolOfOne` makes such a read stall until the transaction expires (the only
+ * pool connection is the transaction's own); `reservationLost` empties the reservation before the save (an
+ * admin quota reset mid-answer).
  */
-async function saveWithCloseAt(closeAt, { probe = {}, poolOfOne = false } = {}) {
+async function saveWithCloseAt(closeAt, { probe = {}, poolOfOne = false, reservationLost = false } = {}) {
   const { EventEmitter } = await import('node:events');
   const { prisma } = await import('./prisma.js');
   const { enforceAiQuota } = await import('../middleware/aiLimiter.js');
@@ -216,11 +218,13 @@ async function saveWithCloseAt(closeAt, { probe = {}, poolOfOne = false } = {}) 
   try {
     await new Promise((resolve, reject) => enforceAiQuota(req, res, (error) => (error ? reject(error) : resolve())));
     if (closeAt === 'before') res.emit('close'), (gone = true);
+    if (reservationLost) db.reserved = 0;
     let outcome = 'kept';
     try {
       await persistChatTurn({ req, session: null, history: [], message: 'my question', mode: 'DOCTOR', answer: { content: 'the answer', interactionId: null }, gone: () => gone });
     } catch (error) {
       outcome = error.message;
+      probe.error = error;
     }
     if (!gone) res.emit('finish');
     await req.releaseAiCredit(); // whatever the close or finish started has settled
@@ -282,6 +286,39 @@ test('commitAiCredit and the package read go through the transaction client they
   assert.equal(found.expired, true);
   assert.equal((await commitAiCredit('u-tx', tx)).unlimited, true);
   assert.deepEqual(reads, ['user', 'package', 'user', 'package']);
+});
+
+// Integration review IR2-3 (2026-10-09): a save that failed while she was still there (the reservation gone
+// after an admin quota reset, a pool timeout, a session deleted mid-answer) sent the raw code or Prisma's
+// English text to the phone under a Georgian screen, and the answer's OK row stayed to count for weekly Medi.
+test('a save that fails while she waits stores and charges nothing, and the phone reads our own copy', async () => {
+  const { streamErrorEvent } = await import('../routes/ai.routes.js');
+  const { AiEngineError } = await import('./evidencemd.js');
+  const probe = {};
+  assert.deepEqual(await saveWithCloseAt('never', { probe, reservationLost: true }),
+    { outcome: 'AI_CREDIT_COMMIT_WITHOUT_RESERVATION', sessions: 0, commits: 0, releases: 0, reserved: 0 });
+  const generic = { type: 'error', error: 'სამედიცინო ანალიზის სერვისთან დაკავშირება ვერ მოხერხდა.', status: 502 };
+  assert.deepEqual(streamErrorEvent({ lang: 'ka' }, probe.error), generic);
+  assert.deepEqual(streamErrorEvent({ lang: 'en' }, probe.error), { ...generic, error: 'We could not reach the medical analysis service.' });
+  const poolTimeout = Object.assign(new Error('Transaction API error: Unable to start a transaction in the given time.'), { code: 'P2028' });
+  assert.deepEqual(streamErrorEvent({ lang: 'ka' }, poolTimeout), generic);
+  // Our own copy still reaches her, in her language and with its status — the keys every older build reads.
+  const busy = new AiEngineError('AI დროებით გადატვირთულია. სცადე ერთი წუთის შემდეგ.', { status: 503, messageEn: 'The AI is busy right now. Please try again in a minute.' });
+  assert.deepEqual(streamErrorEvent({ lang: 'ka' }, busy), { type: 'error', error: busy.message, status: 503 });
+  assert.deepEqual(streamErrorEvent({ lang: 'en' }, busy), { type: 'error', error: busy.messageEn, status: 503 });
+  const labelled = Object.assign(new Error('ჩანაწერი ვერ შეინახა.'), { messageEn: 'The entry was not saved.', status: 409 });
+  assert.deepEqual(streamErrorEvent({ lang: 'en' }, labelled), { type: 'error', error: 'The entry was not saved.', status: 409 });
+});
+
+test('/api/ai/query takes back the row of any answer it did not save, streamed or not', () => {
+  const src = readFileSync(new URL('../routes/ai.routes.js', import.meta.url), 'utf8');
+  const start = src.indexOf('if (stream) {');
+  const end = src.indexOf('\n      return;\n    }\n', start);
+  const branch = src.slice(start, end);
+  assert.match(branch, /catch \(error\) \{[\s\S]*?writeSse\(res, streamErrorEvent\(req, error\)\);\s*res\.end\(\);/);
+  assert.doesNotMatch(branch, /error\?\.message\b/, 'no raw error text in the stream');
+  const json = src.slice(end, src.indexOf('POST /api/ai/analyze-image'));
+  assert.match(json, /try \{\s*turn = await persistChatTurn\(\{[^\n]*\}\);\s*\} catch \(error\) \{[\s\S]*?await forgetUnkeptAnswer\(req\.user\.id, answer\.interactionId\);\s*throw error;\s*\}/);
 });
 
 // Review (2026-10-08): enforceAiQuota listens for 'close' only after its own reads. A person gone during

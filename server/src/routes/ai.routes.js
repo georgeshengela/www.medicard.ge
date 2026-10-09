@@ -194,12 +194,29 @@ export async function persistChatTurn({ req, session, history, message, mode, an
 }
 
 /**
- * She closed Medi before her answer was saved: its log row goes too (train 2 Stop — nothing stored, charged
- * or logged), so an answer she never kept does not count for the weekly Medi mission.
+ * Her answer was not saved — she closed Medi first (train 2 Stop — nothing stored, charged or logged) or the
+ * save itself failed: its log row goes too, so an answer she never kept does not count for the weekly Medi
+ * mission or show in admin as a consultation missing from the conversation.
  */
 async function forgetUnkeptAnswer(userId, interactionId) {
   if (!interactionId) return;
   await prisma.aiInteraction.deleteMany({ where: { id: interactionId, userId } }).catch(() => undefined);
+}
+
+/**
+ * The streamed `error` event, same shape for every app build ({ type, error, status }). Only our own copy
+ * reaches the phone (an AiEngineError, or an error that carries `messageEn`); anything else — a failed save's
+ * Prisma text, an internal code such as AI_CREDIT_COMMIT_WITHOUT_RESERVATION — reads as the generic line.
+ */
+export function streamErrorEvent(req, error) {
+  const ours = error instanceof AiEngineError || (typeof error?.messageEn === 'string' && error.messageEn !== '');
+  const status = error instanceof AiEngineError ? error.status : error?.status;
+  return {
+    type: 'error',
+    error: (ours && t(req, error.message, error.messageEn || error.message))
+      || t(req, 'სამედიცინო ანალიზის სერვისთან დაკავშირება ვერ მოხერხდა.', 'We could not reach the medical analysis service.'),
+    status: status && status >= 400 && status < 600 ? status : 502,
+  };
 }
 
 aiRouter.post(
@@ -311,16 +328,15 @@ aiRouter.post(
         await refreshQuestProgressForUser(req.user.id, QuestSignal.MEDI_USED);
       } catch (error) {
         if (client.gone() || res.writableEnded) return;
-        const status = error instanceof AiEngineError ? error.status : error?.status;
-        writeSse(res, {
-          type: 'error',
-          error: t(req, error?.message, error?.messageEn || error?.message) || t(req, 'სამედიცინო ანალიზის სერვისთან დაკავშირება ვერ მოხერხდა.', 'We could not reach the medical analysis service.'),
-          status: status && status >= 400 && status < 600 ? status : 502,
-        });
+        // Not our own copy (a failed save, an internal error): the log keeps its code only, never its text.
+        if (!(error instanceof AiEngineError)) console.warn('[ai] Medi answer not delivered', error?.code || error?.name || 'Error');
+        writeSse(res, streamErrorEvent(req, error));
         res.end();
       } finally {
         client.dispose();
-        if (!kept && client.gone()) await forgetUnkeptAnswer(req.user.id, answer?.interactionId);
+        // Not saved (she left, or the save failed while she waited): its log row goes too. This runs after
+        // res.end(), so a slow pool never holds back the error she is waiting for.
+        if (!kept) await forgetUnkeptAnswer(req.user.id, answer?.interactionId);
       }
       return;
     }
@@ -347,7 +363,16 @@ aiRouter.post(
       },
     });
 
-    const { saved, usage } = await persistChatTurn({ req, session, history, message, mode, answer, cycleContext });
+    let turn;
+    try {
+      turn = await persistChatTurn({ req, session, history, message, mode, answer, cycleContext });
+    } catch (error) {
+      // Not saved: the answer's log row goes too (it would count for weekly Medi with no answer behind it).
+      // The error handler answers with its own generic copy, never Prisma's text.
+      await forgetUnkeptAnswer(req.user.id, answer.interactionId);
+      throw error;
+    }
+    const { saved, usage } = turn;
     await refreshQuestProgressForUser(req.user.id, QuestSignal.MEDI_USED);
 
     return res.json({
