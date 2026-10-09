@@ -576,6 +576,8 @@ adminRouter.get(
     const row = await getAvatar(String(req.params.id)).catch(() => null);
     if (!row) return res.status(404).json({ error: 'ფოტო არ არის.' });
     req.params.filename = String(row.fileKey).split('/').pop();
+    // servePrivateUpload checks for a signed-in app user; here the caller is the admin (requireAdmin above).
+    req.user = { id: `admin:${req.admin?.id || 'admin'}` };
     return servePrivateUpload(req, res, { findOwner: async () => ({ ok: true }) });
   }),
 );
