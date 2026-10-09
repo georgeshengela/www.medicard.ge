@@ -69,6 +69,11 @@ export async function runTrackedAi({
   const started = Date.now();
   try {
     const result = await fn();
+    // She left as the answer finished (its last words were on their way): a cancel, not an answer — no OK
+    // row, which the weekly Medi mission would count. The catch below rethrows without a row.
+    if (typeof cancelled === 'function' && cancelled()) {
+      throw Object.assign(new Error('AI_CLIENT_GONE'), { code: 'AI_CLIENT_GONE', status: 499 });
+    }
     // A streamed reply that hit max_tokens was already shown; record it as an error so admin sees it.
     const cut = result?.finishReason === 'length';
     const interaction = await logAiInteraction({

@@ -130,7 +130,20 @@ function writeSse(res, payload) {
   if (typeof res.flush === 'function') res.flush();
 }
 
-async function persistChatTurn({ req, session, history, message, mode, answer, cycleContext = false }) {
+/** Thrown inside the save when she closed Medi before it committed: the transaction rolls back. */
+function clientGoneError() {
+  return Object.assign(new Error('AI_CLIENT_GONE'), { code: 'AI_CLIENT_GONE', status: 499 });
+}
+
+/**
+ * Saves one answered turn and takes its AI credit in one transaction, inside the limiter's settlement:
+ * a close that lands during the save waits for it instead of freeing the slot under a stored answer, and
+ * a close just before it finds the slot released and writes nothing. `gone` (streamed answers) is read
+ * last inside the transaction — she closed Medi before the save committed → nothing is stored or charged.
+ * Only a close during the final commit (and 'done' still on its way to the phone) can keep an answer the
+ * app then drops. The quest refresh is the caller's (after 'done' for a stream).
+ */
+export async function persistChatTurn({ req, session, history, message, mode, answer, cycleContext = false, gone = null }) {
   const now = new Date().toISOString();
   const nextMessages = [
     ...history,
@@ -145,19 +158,25 @@ async function persistChatTurn({ req, session, history, message, mode, answer, c
     },
   ];
 
-  const saved = session
-    ? await prisma.chatSession.update({
-        where: { id: session.id },
-        data: { messages: nextMessages, updatedAt: new Date() },
-      })
-    : await prisma.chatSession.create({
-        data: {
-          userId: req.user.id,
-          mode,
-          title: buildTitle(message),
-          messages: nextMessages,
-        },
-      });
+  const { saved, usage } = await req.settleAiOperation(() => prisma.$transaction(async (tx) => {
+    const saved = session
+      ? await tx.chatSession.update({
+          where: { id: session.id },
+          data: { messages: nextMessages, updatedAt: new Date() },
+        })
+      : await tx.chatSession.create({
+          data: {
+            userId: req.user.id,
+            mode,
+            title: buildTitle(message),
+            messages: nextMessages,
+          },
+        });
+    const usage = await commitAiCredit(req.user.id, tx);
+    if (typeof gone === 'function' && gone()) throw clientGoneError();
+    return { saved, usage };
+  }));
+  req.usage = usage;
   // A new chat exists only after its first answer: link that answer's log row too, or admin
   // shows the first question apart from the rest of the conversation.
   if (!session && answer.interactionId) {
@@ -165,10 +184,16 @@ async function persistChatTurn({ req, session, history, message, mode, answer, c
       .updateMany({ where: { id: answer.interactionId, chatSessionId: null }, data: { chatSessionId: saved.id } })
       .catch(() => undefined);
   }
-
-  const usage = await req.consumeAiCredit();
-  await refreshQuestProgressForUser(req.user.id, QuestSignal.MEDI_USED);
   return { saved, usage };
+}
+
+/**
+ * She closed Medi before her answer was saved: its log row goes too (train 2 Stop — nothing stored, charged
+ * or logged), so an answer she never kept does not count for the weekly Medi mission.
+ */
+async function forgetUnkeptAnswer(userId, interactionId) {
+  if (!interactionId) return;
+  await prisma.aiInteraction.deleteMany({ where: { id: interactionId, userId } }).catch(() => undefined);
 }
 
 aiRouter.post(
@@ -227,8 +252,10 @@ aiRouter.post(
       if (req.socket) req.socket.setNoDelay(true);
       if (typeof res.flushHeaders === 'function') res.flushHeaders();
 
+      let answer = null;
+      let kept = false;
       try {
-        const answer = await runTrackedAi({
+        answer = await runTrackedAi({
           userId: req.user.id,
           mode,
           chatSessionId: session?.id,
@@ -256,10 +283,12 @@ aiRouter.post(
           },
         });
 
-        // Stopped, left or offline before the answer arrived: the unseen answer is not stored and not charged.
+        // Stopped, left or offline before the answer was saved: nothing is stored or charged, and `finally`
+        // takes its log row back. The save checks once more inside its transaction.
         if (client.gone()) return;
 
-        const { saved, usage } = await persistChatTurn({ req, session, history, message, mode, answer, cycleContext });
+        const { saved, usage } = await persistChatTurn({ req, session, history, message, mode, answer, cycleContext, gone: client.gone });
+        kept = true;
         writeSse(res, {
           type: 'done',
           sessionId: saved.id,
@@ -272,6 +301,8 @@ aiRouter.post(
           usage,
         });
         res.end();
+        // After 'done': the app has its answer sooner, and a close now changes nothing (it never fails).
+        await refreshQuestProgressForUser(req.user.id, QuestSignal.MEDI_USED);
       } catch (error) {
         if (client.gone() || res.writableEnded) return;
         const status = error instanceof AiEngineError ? error.status : error?.status;
@@ -283,6 +314,7 @@ aiRouter.post(
         res.end();
       } finally {
         client.dispose();
+        if (!kept && client.gone()) await forgetUnkeptAnswer(req.user.id, answer?.interactionId);
       }
       return;
     }
@@ -310,6 +342,7 @@ aiRouter.post(
     });
 
     const { saved, usage } = await persistChatTurn({ req, session, history, message, mode, answer, cycleContext });
+    await refreshQuestProgressForUser(req.user.id, QuestSignal.MEDI_USED);
 
     return res.json({
       sessionId: saved.id,
