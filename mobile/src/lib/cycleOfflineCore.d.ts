@@ -21,7 +21,9 @@ export type CycleOfflineOperation =
   | 'REMOVE_LOG'
   | 'START_PERIOD'
   | 'END_PERIOD'
-  | 'FILL_PERIOD';
+  | 'FILL_PERIOD'
+  /** The one-tap start's undo writes the old last period start back (POST /last-period, `{ date }`). */
+  | 'SET_LAST_PERIOD';
 
 export type CycleMutationStatus = 'pending' | 'failed_permanent';
 

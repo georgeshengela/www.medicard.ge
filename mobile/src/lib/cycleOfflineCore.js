@@ -222,7 +222,9 @@ function isFlowOnlyUpsert(item) {
 
 /**
  * Compact consecutive UPSERT/REMOVE on the same date to the latest intended
- * state. Never compact START/END/FILL — those change meaning if merged.
+ * state. Never compact START/END/FILL/SET_LAST_PERIOD — those change meaning if merged; they also stand
+ * between log writes, so a day's write is never folded across one (the undo's start restore must reach
+ * the server between the tap and the day's restore, IR-8).
  * A flow-only UPSERT after an UPSERT of the same day patches that write's flow instead of replacing it:
  * the earlier write can be the whole day saved from a sheet (symptoms, notes), and replacing it with
  * `{ date, flow }` lost them offline — the server would have kept them had both writes been sent (IR-7).
@@ -574,7 +576,8 @@ function restoreCanonicalDerived(original, next) {
 
 /**
  * Overlay pending user-entered observations onto a cached canonical bundle.
- * Does not advance or recompute medical predictions.
+ * Does not advance or recompute medical predictions. A queued SET_LAST_PERIOD is not drawn: the start
+ * and everything derived from it stay the server's until it has synced.
  */
 function overlayPendingOnBundle(bundle, queue, userScope) {
   if (!bundle) return { bundle: null, pendingDates: [] };

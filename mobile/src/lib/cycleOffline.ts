@@ -100,8 +100,6 @@ export type CycleAttentionItem = {
 
 const GET_TIMEOUT_MS = 20_000;
 const MUT_TIMEOUT_MS = 30_000;
-/** The undo's „start first“ write (IR-8) never holds back the day's restore for long. */
-const RESTORE_FIRST_TIMEOUT_MS = 10_000;
 
 let flushLock: Promise<CycleFlushResult> | null = null;
 let accountWrite: Promise<void> = Promise.resolve();
@@ -293,8 +291,13 @@ export async function cacheCycleBundle(userId: string, bundle: CycleBundle | nul
   });
 }
 
-async function playMutation(item: CycleMutation): Promise<CycleBundle> {
+async function playMutation(item: CycleMutation): Promise<CycleBundle | null> {
   const payload = item.payload || {};
+  if (item.operation === 'SET_LAST_PERIOD') {
+    // The undo's start restore (IR2-5). Saved but no whole bundle back (CYC-06) = played, nothing to cache.
+    const bundle = await api.cycle.setLastPeriod(String(payload.date || ''), { timeoutMs: MUT_TIMEOUT_MS });
+    return isCompleteCycleBundle(bundle) ? bundle : null;
+  }
   if (item.operation === 'UPSERT_LOG') {
     const date = String(payload.date || '');
     const { date: _d, ...body } = payload;
@@ -465,9 +468,22 @@ export async function enqueueCycleOp(
   operation: CycleOfflineOperation,
   payload: Record<string, unknown>,
 ): Promise<CycleOfflineAccount> {
+  return enqueueCycleOps(userId, [{ operation, payload }]);
+}
+
+/**
+ * Several writes of one intent go into the device queue in one save (IR2-5: the undo's start restore and
+ * its day): an app kill keeps both or neither, and no flush can start with only the first of them.
+ */
+async function enqueueCycleOps(
+  userId: string,
+  steps: { operation: CycleOfflineOperation; payload: Record<string, unknown> }[],
+): Promise<CycleOfflineAccount> {
   const result = await withAccountWrite(async () => {
     let account = await loadCycleAccount(userId);
-    account = enqueueMutation(account, createMutation(userId, operation, payload));
+    for (const step of steps) {
+      account = enqueueMutation(account, createMutation(userId, step.operation, step.payload));
+    }
     await saveCycleAccount(userId, account);
     return account;
   });
@@ -528,7 +544,7 @@ async function persistPlannedOnline(
 ): Promise<PersistResult> {
   let bundle: CycleBundle | null = null;
   for (const step of planned) {
-    bundle = await playMutation(createMutation(userId, step.operation, step.payload));
+    bundle = (await playMutation(createMutation(userId, step.operation, step.payload))) ?? bundle;
   }
   if (!bundle) return { view: null, synced: false, persistedLocally: false };
   try {
@@ -559,9 +575,7 @@ async function commitPlannedInner(
   planned: { operation: CycleOfflineOperation; payload: Record<string, unknown> }[],
 ): Promise<PersistResult> {
   try {
-    for (const step of planned) {
-      await enqueueCycleOp(userId, step.operation, step.payload);
-    }
+    await enqueueCycleOps(userId, planned);
     return await afterEnqueue(userId);
   } catch (error) {
     if (!(error instanceof CyclePersistError)) throw error;
@@ -614,22 +628,22 @@ export async function queueApplyPeriod(
 
 /**
  * Undo of the one-tap „მენსტრუაცია დაიწყო“ (CYC-04; the plan comes from `periodStartUndo`, captured at
- * the tap): today's row goes back exactly as it was through the normal queue, and so does the last
- * period start she had before the tap. Null = nothing to undo (bleeding was already logged, the start
- * changed nothing). `current` = the day's row as shown when Undo is tapped: notes saved since the tap
- * are never deleted.
+ * the tap): today's row goes back exactly as it was, and so does the last period start she had before
+ * the tap. Null = nothing to undo (bleeding was already logged, the start changed nothing). `current` =
+ * the day's row as shown when Undo is tapped: notes saved since the tap are never deleted.
  *
- * The start goes back first (IR-8): once the tap has reached the server, today's bleeding still holds the
- * shown start while the old one is written back, and removing the day then keeps it. Restoring the day
- * first left the server with no start for a round trip — /cycle showed cycle setup, Home its setup card,
- * and reminders were planned against it. When the start cannot go first (the tap is still queued, that
- * request failed, or her start was already today — removing today's bleeding then drops it on the server
- * whatever was posted before), it is written back after the day has synced, and the view without it is
- * not published in between (a refetch can still show it for that round trip). Nor after: when that
- * write's answer carries no whole bundle, or never comes (offline, timeout, 5xx — it may have been
- * saved), nothing is published and the views are fetched again (IR2-4); only a refused write (4xx)
- * leaves the server's view without the start. Offline the day is still restored (queued); the start is
- * not, because the queued writes must reach the server first.
+ * Both writes go into the device queue together, before any request (IR2-5): an app kill or a dead
+ * network right after the tap loses neither, and the queue sends them in order on the next flush or
+ * launch. The start goes first (`SET_LAST_PERIOD`, IR-8): today's bleeding still holds the shown start
+ * while the old one is written back, and removing the day then keeps it — the server never passes
+ * through „no start“ (that showed cycle setup on /cycle and the setup card on Home, and planned
+ * reminders against it). A tap that is still queued plays before both. Only a start that was already
+ * today goes after the day: removing today's bleeding drops it on the server whatever was written before.
+ *
+ * When the day has synced but the server still shows another start, it is written once more. A view
+ * without the start is never published while that restore is still queued, was saved without a bundle
+ * back, or got no answer (it may have been saved): nothing is published and the views are fetched again
+ * (IR2-4). Only a refused write (4xx) leaves the server's view without it.
  */
 export async function undoQueuedPeriodStart(
   userId: string,
@@ -640,23 +654,24 @@ export async function undoQueuedPeriodStart(
   const row = (current ?? null) as Record<string, unknown> | null;
   const day = periodStartUndoDay(undo, Boolean(row) && (hasObservationExtras(row) || row?.sexualActivity != null));
   if (day.kind === 'keep') return null;
-  if (undo.lastPeriodStart && undo.lastPeriodStart !== date) {
-    try {
-      if ((await peekCyclePendingCount(userId)) === 0) {
-        await api.cycle.setLastPeriod(undo.lastPeriodStart, { timeoutMs: RESTORE_FIRST_TIMEOUT_MS });
-      }
-    } catch {
-      /* Offline or refused: the day is restored below and the start after it. */
-    }
-  }
-  const result = await commitPlannedInner(
-    userId,
+  type Step = { operation: CycleOfflineOperation; payload: Record<string, unknown> };
+  const daySteps: Step[] =
     day.kind === 'removeLog'
       ? [{ operation: 'REMOVE_LOG', payload: { date } }]
-      : planQueuedLogMutations({ date, flow: day.flow }),
+      : planQueuedLogMutations({ date, flow: day.flow });
+  const old = undo.lastPeriodStart;
+  const startSteps: Step[] = old ? [{ operation: 'SET_LAST_PERIOD', payload: { date: old } }] : [];
+  const result = await commitPlannedInner(
+    userId,
+    old === date ? [...daySteps, ...startSteps] : [...startSteps, ...daySteps],
   );
   const restore = result.synced && result.view ? lastPeriodToRestore(undo, result.view.canonical.profile.lastPeriodStart) : null;
   if (!restore) {
+    // The day synced but its start restore is still queued (her start was today and that write failed):
+    // the server's view without the start is not published; the queue sends it again (IR2-4).
+    if (result.view && old && !result.view.display.profile.lastPeriodStart && result.view.pendingCount > 0) {
+      return { ...result, view: null };
+    }
     publishCycleView(userId, result.view);
     return result;
   }
