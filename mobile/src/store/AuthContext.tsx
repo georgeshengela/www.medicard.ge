@@ -98,6 +98,19 @@ async function stopDeviceDelivery() {
   }
 }
 
+/**
+ * The server already deleted the account and its push tokens with it (cascade): only this phone's
+ * reminders are left. No network call, so nothing delays the local cleanup that follows.
+ */
+async function cancelDeviceReminders() {
+  try {
+    const { cancelAllReminders } = await import('@/lib/notifications');
+    await cancelAllReminders();
+  } catch {
+    /* local cleanup still continues */
+  }
+}
+
 /** Device-side data of an account that no longer exists here (deleted, discarded or merged away). */
 async function forgetAccountOnDevice(userId: string | undefined) {
   if (!userId) return;
@@ -445,8 +458,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       },
       deleteAccount: async () => {
         const userId = user?.id;
-        await stopDeviceDelivery();
+        // Server first: a failed delete (network, 5xx) leaves her signed in with every reminder and
+        // push still in place. Once it is confirmed, everything on the phone goes at once with no
+        // further request: the server dropped the push tokens with the account (cascade), so a push
+        // unregister could only answer 401 and would hold up the cleanup on a bad connection.
         await api.auth.deleteAccount();
+        await cancelDeviceReminders();
         await forgetAccountOnDevice(userId);
         await clearToken();
         await clearSessionSnapshot();

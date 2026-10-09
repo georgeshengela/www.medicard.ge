@@ -3,10 +3,10 @@ const {test}=require('node:test'),assert=require('node:assert/strict'),fs=requir
 // Run the actual provider callbacks with deterministic React state/native boundaries.
 // These tests cover ordering and network recovery; they do not emulate native rendering.
 function harness(initialToken=null) {
- const slots=[],effects=[];let cursor=0,token=initialToken,postLoginCount=0,loginCount=0,meCount=0,profileCount=0;
+ const slots=[],effects=[];let cursor=0,token=initialToken,postLoginCount=0,loginCount=0,meCount=0,profileCount=0;const delivery=[];
  const user={id:'synthetic-user',email:'qa@medicard.test'},profile={completedAt:'2026-09-20T00:00:00Z'};
  const full={user,usage:{remaining:10},stats:{records:5},healthProfile:profile};
- let me=async()=>full,readProfile=async()=>({profile:{...profile}});
+ let me=async()=>full,readProfile=async()=>({profile:{...profile}}),deleteAccount=async()=>{delivery.push('server-delete');return {ok:true};};
  class ApiError extends Error {constructor(message,status,payload={}){super(message);this.status=status;Object.assign(this,payload);}get isUnauthorized(){return this.status===401;}}
  const noop=()=>{},asyncNoop=async()=>{};
  const React={createContext:()=>({Provider:'Provider'}),createElement:(type,props,...children)=>({type,props:{...props,children}}),
@@ -15,7 +15,7 @@ function harness(initialToken=null) {
  const modules={
   react:React,'react-native':{AppState:{addEventListener:()=>({remove:noop})}},
   '@/lib/run/store':{resetRunMemory:noop},'@/i18n/ka':{ka:{auth:{registerNotConfirmed:'Unconfirmed'}}},
-  '@/lib/api':{ApiError,api:{auth:{login:async()=>{loginCount++;return {token:'confirmed-token',user,usage:full.usage};},me:async()=>{meCount++;return me();}},healthProfile:{get:async()=>{profileCount++;return readProfile();}}}},
+  '@/lib/api':{ApiError,api:{auth:{login:async()=>{loginCount++;return {token:'confirmed-token',user,usage:full.usage};},me:async()=>{meCount++;return me();},deleteAccount:()=>deleteAccount()},healthProfile:{get:async()=>{profileCount++;return readProfile();}}}},
   '@/lib/localAccount':{setLocalAccountId:noop,wipeLegacyUnscopedHealthCaches:asyncNoop},
   '@/lib/home/homeLayoutStore':{primeHomeLayout:asyncNoop,registerHomeLayoutProfilePatch:noop},
   '@/lib/onboarding':{needsHealthAssessment:noop,needsProfileSetup:noop,assessmentPhaseComplete:noop},
@@ -24,14 +24,15 @@ function harness(initialToken=null) {
   '@/lib/safeStartup':{runPostLoginSideEffects:()=>{postLoginCount++;}},'@/lib/appForeground':{onReturnToForeground:()=>noop},'@/lib/authErrorMessage':{authErrorMessage:error=>error.message},
   '@/lib/quest/devFixture':{isQuestDevEnabled:()=>false,isQuestVisualSession:()=>false,setQuestVisualSession:noop},
   '@/lib/healthDataSync':{resetHealthPullCache:noop},'@/lib/quest/socket':{disconnectQuestSocket:noop},'@/lib/accountSync':{resetAccountSync:noop},
-  '@/lib/notifications':{unregisterPushFromServer:asyncNoop,cancelAllReminders:asyncNoop},'@/lib/petCareReminders':{onPetCareLogout:asyncNoop},
+  '@/lib/notifications':{unregisterPushFromServer:async()=>{delivery.push('push-unregister');},cancelAllReminders:async()=>{delivery.push('reminders-cancel');}},'@/lib/petCareReminders':{onPetCareLogout:asyncNoop},
+  '@/lib/pregnancyCareCalendar':{wipePregnancyCareCalendarOwnership:asyncNoop},'@/lib/cycleOffline':{destroyCycleOfflineAccount:asyncNoop},
  };
  const file=path.resolve(__dirname,'../src/store/AuthContext.tsx');
  const source=ts.transpileModule(fs.readFileSync(file,'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022,jsx:ts.JsxEmit.React,esModuleInterop:true}}).outputText;
  const exports={};vm.runInNewContext(source,{exports,require:name=>{if(!(name in modules))throw Error('Unmocked: '+name);return modules[name];},console,setTimeout,clearTimeout},{filename:file});
  const render=()=>{cursor=0;return exports.AuthProvider({children:null}).props.value;};
  render();const startup=effects[0];
- return {render,startup,full,ApiError,setMe:fn=>{me=fn;},setProfile:fn=>{readProfile=fn;},token:()=>token,counters:()=>({postLoginCount,loginCount,meCount,profileCount})};
+ return {render,startup,full,ApiError,setMe:fn=>{me=fn;},setProfile:fn=>{readProfile=fn;},setDelete:fn=>{deleteAccount=fn;},delivery,token:()=>token,counters:()=>({postLoginCount,loginCount,meCount,profileCount})};
 }
 function deferred(){let resolve;const promise=new Promise(r=>resolve=r);return {promise,resolve};}
 const tick=()=>new Promise(r=>setImmediate(r));
@@ -132,4 +133,30 @@ test('a sign-out that lands while renewToken reads the saved token is never undo
  const renewal=mod.renewToken('old-token','renewed-token');const signOut=mod.clearToken();
  assert.equal(await renewal,false);await signOut;
  assert.equal(await mod.getToken(),null);assert.equal(keychain.has('medicard.auth.token'),false);
+});
+
+// auth-11: nothing on the phone is torn down before the server confirms the deletion.
+test('a failed account delete keeps her reminders, push and session',async()=>{
+ const h=harness('saved-token');await h.render().refresh();
+ h.setDelete(async()=>{throw new h.ApiError('Server unavailable',503);});
+ await assert.rejects(h.render().deleteAccount(),/Server unavailable/);
+ assert.deepEqual(h.delivery,[],'reminders and push must survive a failed delete');
+ assert.equal(h.token(),'saved-token');assert.equal(h.render().user.id,h.full.user.id);
+});
+test('a confirmed account delete cancels reminders only after the server answered, with no further request',async()=>{
+ const h=harness('saved-token');await h.render().refresh();
+ await h.render().deleteAccount();
+ // The server dropped the push tokens with the account; an unregister could only answer 401.
+ assert.deepEqual(h.delivery,['server-delete','reminders-cancel']);
+ assert.equal(h.token(),null);assert.equal(h.render().user,null);
+});
+
+// auth-12: the email sign-in offered „დამახსოვრება“ / Remember me, but nothing ever read it — the
+// session is always kept on the phone (and slides). The form must not promise a choice it ignores.
+test('email sign-in shows no Remember me choice that would be ignored',()=>{
+ const signIn=fs.readFileSync(path.resolve(__dirname,'../app/(auth)/sign-in.tsx'),'utf8');
+ assert.doesNotMatch(signIn,/keepSignedIn|AuthCheckbox|accessibilityRole="checkbox"/);
+ assert.match(signIn,/ka\.auth\.forgotPassword/,'the forgot-password link stays');
+ for(const dict of ['../src/i18n/ka.ts','../src/i18n/en/core.ts'])
+  assert.doesNotMatch(fs.readFileSync(path.resolve(__dirname,dict),'utf8'),/keepSignedIn|Remember me/,dict);
 });
