@@ -128,8 +128,10 @@ function drainPendingDoseLogs(): Promise<void> {
       queue = [];
     }
     const marks = pending.takePendingDoses(queue, Date.now(), owner);
-    if (marks.length && localAccountId() === owner) {
-      const current = parseDoseLogs(await getScopedPreference(DOSE_LOG_KEY));
+    const current = marks.length && localAccountId() === owner ? parseDoseLogs(await getScopedPreference(DOSE_LOG_KEY)) : null;
+    // Checked again right before the write (no await in between): the scoped key follows the account
+    // at call time, so a switch during the read would otherwise put her log into the next account.
+    if (current && localAccountId() === owner) {
       await setScopedPreference(DOSE_LOG_KEY, JSON.stringify(pending.mergeDoseLogs(current, marks)));
       void import('@/lib/accountSync').then(({ scheduleAccountSyncPush }) => scheduleAccountSyncPush());
       for (const mark of marks) syncDoseMark(mark, 'notification');
@@ -204,7 +206,7 @@ export async function saveDoseLog(
   source: 'app' | 'notification' = 'app',
   reminderOwner?: string | null,
 ): Promise<void> {
-  const { setScopedPreference } = await import('@/lib/localAccount');
+  const { setScopedPreference, localAccountId } = await import('@/lib/localAccount');
   // Resolve the account before reading: reading with no account returns [] and writing would then
   // replace the whole history with this one mark.
   const account = await ensureLocalAccountScope();
@@ -242,6 +244,8 @@ export async function saveDoseLog(
     ...existing.filter((e) => `${e.medicationId}|${e.date}|${e.time}` !== key && e.date >= cutoffKey),
     { ...entry, updatedAt: new Date().toISOString() },
   ];
+  // Another account signed in while her log was read: never write her log and mark into it.
+  if (localAccountId() !== account) return;
   await setScopedPreference(DOSE_LOG_KEY, JSON.stringify(next));
   void import('@/lib/accountSync').then(({ scheduleAccountSyncPush }) => scheduleAccountSyncPush());
   void import('@/lib/mediNotificationBrain').then(({ requestEngageRefresh }) => requestEngageRefresh());

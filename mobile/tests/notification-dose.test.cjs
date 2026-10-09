@@ -44,12 +44,20 @@ function device({ snapshotUser = null, token = null } = {}) {
   const invalidated = [];
   const cancelled = [];
   const session = { snapshotUser, token };
+  /** Runs once, while the next scoped read is in flight (an account switch landing mid-read). */
+  let duringScopedRead = null;
   const localAccount = {
     localAccountId: () => accountId,
     setLocalAccountId: (id) => {
       accountId = id || null;
     },
-    getScopedPreference: async (base) => (accountId ? prefs.get(`${base}.${accountId}`) ?? null : null),
+    getScopedPreference: async (base) => {
+      const value = accountId ? prefs.get(`${base}.${accountId}`) ?? null : null;
+      const hook = duringScopedRead;
+      duringScopedRead = null;
+      if (hook) hook();
+      return value;
+    },
     setScopedPreference: async (base, value) => {
       if (accountId) prefs.set(`${base}.${accountId}`, value);
     },
@@ -105,6 +113,9 @@ function device({ snapshotUser = null, token = null } = {}) {
     invalidated,
     cancelled,
     signIn: (id) => localAccount.setLocalAccountId(id),
+    onNextScopedRead: (fn) => {
+      duringScopedRead = fn;
+    },
     /** Sign-out: no account, no snapshot, no token (AuthContext signOut / deleteAccount). */
     signOut: () => {
       localAccount.setLocalAccountId(null);
@@ -247,6 +258,35 @@ test('her own reminder marks her dose while she is signed in', async () => {
   await flush();
   assert.equal(phone.logsOf('her').length, 1);
   assert.equal(phone.events.length, 1);
+});
+
+// Her session is restored (or she is signed in) and the dose log is being read when another account
+// signs in on the phone (switch account). The scoped key follows the account at write time, so the old
+// code wrote her whole dose log, with the mark, into the account that had just signed in.
+test('an account switch while her dose log is read never writes her log into the next account', async () => {
+  const her = { medicationId: 'med-0', date: '2026-10-07', time: '08:00', status: 'taken', updatedAt: '2026-10-07T05:00:00.000Z' };
+
+  // The queued mark, applied when her session is back.
+  const queued = device();
+  await queued.actions.handleNotificationAction(takeTap(nowSeconds(), '09:00', { owner: 'her' }));
+  queued.prefs.set('medicard.meds.doseLogs.her', JSON.stringify([her]));
+  queued.signIn('her');
+  queued.onNextScopedRead(() => queued.signIn('him'));
+  await queued.shared.loadDoseLogs();
+  await flush();
+  assert.deepEqual(queued.logsOf('him'), [], 'nothing of hers lands in his log');
+  assert.deepEqual(queued.logsOf('her'), [her]);
+  assert.equal(queued.events.length, 0, 'no dose event under his session');
+
+  // A „მივიღე ✓“ while she is signed in.
+  const signedIn = device({ snapshotUser: 'her' });
+  signedIn.prefs.set('medicard.meds.doseLogs.her', JSON.stringify([her]));
+  signedIn.onNextScopedRead(() => signedIn.signIn('him'));
+  await signedIn.actions.handleNotificationAction(takeTap(nowSeconds(), '09:00', { owner: 'her' }));
+  await flush();
+  assert.deepEqual(signedIn.logsOf('him'), []);
+  assert.deepEqual(signedIn.logsOf('her'), [her]);
+  assert.equal(signedIn.events.length, 0);
 });
 
 test('every medication reminder names the account it was scheduled for', () => {
