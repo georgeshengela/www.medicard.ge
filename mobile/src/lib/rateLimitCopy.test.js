@@ -13,6 +13,26 @@ describe('rate-limit copy', () => {
     assert.equal(formatRateLimitMessage(12).includes('ერთ წუთს'), false);
   });
 
+  // Medi chat F9 (2026-10-08): AI limits came out as „დაელოდე 60 წამს“ (no Retry-After) or „დაელოდე 3600 წამს“.
+  it('keeps the server text for AI limits the server words itself', () => {
+    const busy = 'ანალიზი უკვე მიმდინარეობს. დაელოდე დასრულებას და ხელახლა სცადე.';
+    assert.equal(publicApiErrorMessage(429, { error: busy, code: 'AI_BUSY' }, null, 'x'), busy);
+    const starts = 'ძალიან ბევრი AI მოთხოვნა. ცოტა ხანში სცადე.';
+    assert.equal(publicApiErrorMessage(429, { error: starts, code: 'RATE_LIMITED' }, null, 'x'), starts);
+    const cap = 'დღევანდელი ლიმიტი ამოიწურა. ისევ სცადე დაახლოებით 7 საათში.';
+    assert.equal(publicApiErrorMessage(429, { error: cap, code: 'AI_DAILY_CAP', retryAfterSeconds: 25000 }, '25000', 'x'), cap);
+    const quota = 'You have reached your daily limit. It resets at this time tomorrow.';
+    assert.equal(publicApiErrorMessage(429, { error: quota, code: 'DAILY_LIMIT_REACHED' }, null, 'x'), quota);
+    assert.equal(publicApiErrorMessage(429, { error: quota, code: 'MONTHLY_LIMIT_REACHED' }, null, 'x'), quota);
+  });
+
+  it('says long waits in minutes or hours, never thousands of seconds', () => {
+    assert.equal(formatRateLimitMessage(90), 'ძალიან ბევრი მოთხოვნა. დაელოდე 90 წამს.');
+    assert.equal(formatRateLimitMessage(600), 'ძალიან ბევრი მოთხოვნა. დაელოდე 10 წუთს.');
+    assert.equal(formatRateLimitMessage(25000), 'ძალიან ბევრი მოთხოვნა. ისევ სცადე დაახლოებით 7 საათში.');
+    assert.equal(publicApiErrorMessage(429, { error: 'ძალიან ბევრი მოთხოვნა.' }, '900', 'x'), 'ძალიან ბევრი მოთხოვნა. დაელოდე 15 წუთს.');
+  });
+
   it('does not rewrite non-429 errors', () => {
     assert.equal(publicApiErrorMessage(400, { error: 'ელ-ფოსტა ან პაროლი არასწორია.' }, null, 'x'), 'ელ-ფოსტა ან პაროლი არასწორია.');
   });

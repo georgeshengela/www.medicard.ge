@@ -8,6 +8,7 @@ import { prisma } from '../lib/prisma.js';
 import { AiEngineError } from '../lib/evidencemd.js';
 import { askAi, serverAiEngine, publicAiEngineCatalog, resolveOpenRouterModel } from '../lib/aiEngine.js';
 import { runTrackedAi } from '../lib/aiTelemetry.js';
+import { watchStreamClient } from '../lib/streamClient.js';
 import { describeImage, structureLabText, SUPPORTED_IMAGE_TYPES, VISION_EFFORTS } from '../lib/vision.js';
 import { extractPdfText, ocrImage, SUPPORTED_DOCUMENT_TYPES } from '../lib/ocr.js';
 import { buildVisionHandoff, buildDoctorTurnContext, sanitizeDoctorReply } from '../lib/prompts.js';
@@ -207,6 +208,15 @@ aiRouter.post(
     const stream = wantsChatStream(req);
 
     if (stream) {
+      // The person may have left during the reads above: no AI call, nothing stored, nothing charged.
+      const client = watchStreamClient(res);
+      if (client.gone()) {
+        client.dispose();
+        // A disconnect during enforceAiQuota's own reads fired 'close' before it listened: free the slot here,
+        // or it stays reserved (2 in flight → „ანალიზი უკვე მიმდინარეობს“) until the 20-minute sweep.
+        await req.releaseAiCredit?.().catch(() => undefined);
+        return;
+      }
       req.setTimeout(0);
       res.setTimeout(0);
       res.status(200);
@@ -217,18 +227,13 @@ aiRouter.post(
       if (req.socket) req.socket.setNoDelay(true);
       if (typeof res.flushHeaders === 'function') res.flushHeaders();
 
-      const abort = new AbortController();
-      const onClose = () => {
-        if (!res.writableEnded) abort.abort();
-      };
-      req.on('close', onClose);
-
       try {
         const answer = await runTrackedAi({
           userId: req.user.id,
           mode,
           chatSessionId: session?.id,
           userPrompt: message,
+          cancelled: client.gone,
           fn: async () => {
             const result = await askAi({
               user: req.user,
@@ -238,9 +243,9 @@ aiRouter.post(
               messages: [...priorTurns, { role: 'user', content: message }],
               temperature: mode === 'DOCTOR' ? 0.3 : 0.2,
               maxTokens: 2400,
-              signal: abort.signal,
+              signal: client.signal,
               onDelta: (text) => {
-                if (abort.signal.aborted || res.writableEnded) return;
+                if (client.gone() || res.writableEnded) return;
                 writeSse(res, { type: 'delta', text });
               },
             });
@@ -251,7 +256,8 @@ aiRouter.post(
           },
         });
 
-        if (abort.signal.aborted) return;
+        // Stopped, left or offline before the answer arrived: the unseen answer is not stored and not charged.
+        if (client.gone()) return;
 
         const { saved, usage } = await persistChatTurn({ req, session, history, message, mode, answer, cycleContext });
         writeSse(res, {
@@ -267,7 +273,7 @@ aiRouter.post(
         });
         res.end();
       } catch (error) {
-        if (abort.signal.aborted || res.writableEnded) return;
+        if (client.gone() || res.writableEnded) return;
         const status = error instanceof AiEngineError ? error.status : error?.status;
         writeSse(res, {
           type: 'error',
@@ -276,7 +282,7 @@ aiRouter.post(
         });
         res.end();
       } finally {
-        req.removeListener('close', onClose);
+        client.dispose();
       }
       return;
     }

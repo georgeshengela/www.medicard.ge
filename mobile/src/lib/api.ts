@@ -2248,6 +2248,19 @@ function headerLookup(headers: Record<string, string> | undefined, name: string)
   return null;
 }
 
+/**
+ * What an error answer tells the app beyond its message. Every path that reads a server error (JSON
+ * requests, uploads, the streamed Medi answer) calls this, so none of them keeps asking with stale state.
+ */
+export function noteApiErrorSignals(status: number, payload: unknown, message: string) {
+  const body = (payload && typeof payload === 'object' ? payload : {}) as { code?: string; feature?: string };
+  // Consent was withdrawn (possibly on another device) or its version changed: forget the session memory so
+  // the next AI request opens the real disclosure again instead of repeating the refused call.
+  if (status === 403 && body.code === 'AI_CONSENT_REQUIRED') forgetAiConsent();
+  // An admin paused this module: hide it now (ModuleGate, Home) instead of on the next status poll.
+  if (status === 503 && body.code === 'FEATURE_DISABLED') noteFeatureDisabled(body.feature, message);
+}
+
 function parseJsonBody<T>(status: number, text: string, retryRaw?: string | null): T {
   const payload = text ? safeParse(text) : {};
   if (status < 200 || status >= 300) {
@@ -2262,12 +2275,7 @@ function parseJsonBody<T>(status: number, text: string, retryRaw?: string | null
       (typeof (payload as { retryAfterSeconds?: number })?.retryAfterSeconds === 'number'
         ? Math.floor((payload as { retryAfterSeconds: number }).retryAfterSeconds)
         : undefined);
-    // Consent was withdrawn (possibly on another device): forget the session memory so the next AI request asks again.
-    if (status === 403 && (payload as { code?: string })?.code === 'AI_CONSENT_REQUIRED') forgetAiConsent();
-    // An admin paused this module: hide it now (ModuleGate, Home) instead of on the next status poll.
-    if (status === 503 && (payload as { code?: string })?.code === 'FEATURE_DISABLED') {
-      noteFeatureDisabled((payload as { feature?: string }).feature, serverError);
-    }
+    noteApiErrorSignals(status, payload, serverError);
     throw new ApiError(serverError, status, payload as Record<string, unknown>, wait);
   }
   return payload as T;
