@@ -1221,3 +1221,88 @@ describe('custom tags on one day (CYC-10)', () => {
     assert.match(log, /toggleDayTagId\(prev\.customTagIds, result\.tag\.id\)\.ids/);
   });
 });
+
+// IR2-5: the one-tap start's undo queues the old last period start (SET_LAST_PERIOD) with the day. The
+// start must reach the server between the tap and the day's restore (IR-8), so it is never folded and
+// no day write is ever folded across it.
+describe('SET_LAST_PERIOD (the undo of the one-tap start)', () => {
+  const date = '2026-08-30';
+  const set = (start) => createMutation('u', 'SET_LAST_PERIOD', { date: start });
+
+  it('is never compacted, and a same-day write is never folded across it', () => {
+    const queue = [
+      createMutation('u', 'START_PERIOD', { date, flow: 'medium' }),
+      createMutation('u', 'UPSERT_LOG', { date, flow: 'medium', symptoms: ['cramps'] }),
+      set('2026-08-01'),
+      createMutation('u', 'UPSERT_LOG', { date, flow: null }),
+      set('2026-08-02'),
+      createMutation('u', 'REMOVE_LOG', { date }),
+    ];
+    const compacted = compactCycleQueue(queue);
+    assert.deepEqual(
+      compacted.map((item) => item.id),
+      queue.map((item) => item.id),
+    );
+    assert.deepEqual(compacted[1].payload.symptoms, ['cramps'], 'the day saved before the start restore is sent whole');
+    // Enqueued one by one, the order is kept the same way.
+    let account = emptyAccount('u');
+    for (const item of queue) account = enqueueMutation(account, item);
+    assert.deepEqual(
+      account.queue.map((item) => item.operation),
+      ['START_PERIOD', 'UPSERT_LOG', 'SET_LAST_PERIOD', 'UPSERT_LOG', 'SET_LAST_PERIOD', 'REMOVE_LOG'],
+    );
+  });
+
+  it('replays in order; a failure keeps it first and the day behind it', async () => {
+    const q = [set('2026-08-01'), createMutation('u', 'REMOVE_LOG', { date })];
+    const seen = [];
+    const first = await replayCycleQueue(q, async (item) => {
+      seen.push(item.operation);
+      throw Object.assign(new Error('down'), { status: 503 });
+    });
+    assert.deepEqual(seen, ['SET_LAST_PERIOD'], 'the day is never sent before the start');
+    assert.equal(first.failureKind, 'retryable');
+    assert.deepEqual(first.remaining.map((item) => [item.operation, item.attemptCount, item.status]), [
+      ['SET_LAST_PERIOD', 1, 'pending'],
+      ['REMOVE_LOG', 0, 'pending'],
+    ]);
+    assert.equal(backoffMs(first.remaining[0].attemptCount), 60_000);
+    seen.length = 0;
+    const second = await replayCycleQueue(compactCycleQueue(first.remaining), async (item) => {
+      seen.push(item.operation);
+      // A restore saved without a bundle back (CYC-06) answers null; the day's answer is the bundle.
+      return item.operation === 'SET_LAST_PERIOD' ? null : sampleBundle({ cycleDay: 12 });
+    });
+    assert.deepEqual(seen, ['SET_LAST_PERIOD', 'REMOVE_LOG']);
+    assert.equal(second.flushed, 2);
+    assert.equal(second.bundle.cycleDay, 12);
+    assert.deepEqual(second.remaining, []);
+  });
+
+  it('a refusal is set aside (attention, discardable) and the day plays on the next flush', async () => {
+    const q = [set('2026-08-01'), createMutation('u', 'REMOVE_LOG', { date })];
+    const refused = await replayCycleQueue(q, async () => {
+      throw Object.assign(new Error('bad'), { status: 400 });
+    });
+    assert.equal(refused.failureKind, 'permanent');
+    assert.deepEqual(attentionItems({ queue: refused.remaining }), [
+      { id: q[0].id, date: '2026-08-01', operation: 'SET_LAST_PERIOD' },
+    ]);
+    const seen = [];
+    const next = await replayCycleQueue(compactCycleQueue(refused.remaining), async (item) => {
+      seen.push(item.operation);
+      return sampleBundle();
+    });
+    assert.deepEqual(seen, ['REMOVE_LOG']);
+    assert.deepEqual(next.remaining.map((item) => item.status), ['failed_permanent']);
+    assert.deepEqual(discardMutation({ ...emptyAccount('u'), queue: next.remaining }, q[0].id).queue, []);
+  });
+
+  it('is not drawn on the cached bundle: the start stays the server’s until it syncs', () => {
+    const cached = sampleBundle();
+    const { bundle, pendingDates } = overlayPendingOnBundle(cached, [set('2026-07-01')], 'u');
+    assert.equal(bundle.profile.lastPeriodStart, cached.profile.lastPeriodStart);
+    assert.deepEqual(bundle.logs, cached.logs);
+    assert.deepEqual(pendingDates, []);
+  });
+});
