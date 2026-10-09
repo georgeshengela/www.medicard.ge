@@ -32,6 +32,7 @@ import { ka } from '@/i18n/ka';
 import { tx } from '@/i18n/locale';
 import { api, ApiError, type CycleBundle, type CycleCondition, type CycleContraceptionMethod, type CycleMode } from '@/lib/api';
 import { cacheCycleBundle } from '@/lib/cycleOffline';
+import { isCompleteCycleBundle } from '@/lib/cycleOfflineCore';
 import { putCycleBundle } from '@/lib/cycleViewCache';
 import { getCycleReminderPrefs, setCycleReminderPrefs } from '@/lib/cycleReminderPrefs';
 import { syncCycleReminders } from '@/lib/cycleReminders';
@@ -187,10 +188,12 @@ export function CycleProfileSettings() {
           /* Profile is already saved on the server. */
         }
       }
-      // `null` = saved, but the server could not reload the bundle (CYC-06): the form keeps what she
-      // typed, the cycle views refetch, and reminders are re-planned on the next foreground.
-      if (data) {
-        const next = applyCycleProfile(data);
+      // `null` (an older server: a partial `{ profile, meta }`) = saved, but the server could not reload the
+      // bundle (CYC-06): the form keeps what she typed, the cycle views refetch, and reminders are
+      // re-planned on the next foreground.
+      const fresh = isCompleteCycleBundle(data) ? data : null;
+      if (fresh) {
+        const next = applyCycleProfile(fresh);
         setLastPeriod(next.lastPeriod);
         setExpectsBleeding(next.expectsBleeding);
         setFertilityDisplay(next.fertilityDisplay);
@@ -215,7 +218,7 @@ export function CycleProfileSettings() {
       }
       let count = 0;
       try {
-        if (data) count = await syncCycleReminders(data, reminders);
+        if (fresh) count = await syncCycleReminders(fresh, reminders);
       } catch {
         /* Reminders must not fail a saved profile. */
       }

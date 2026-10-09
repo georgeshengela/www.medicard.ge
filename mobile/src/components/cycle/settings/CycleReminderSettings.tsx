@@ -25,6 +25,7 @@ import { CYCLE_MASK_STYLES, maskStyleLabel } from '@/lib/cycleNotificationMask';
 import { getEffectiveCycleMask } from '@/lib/cycleNotificationContract.js';
 import { cycleTrackingFromBundle } from '@/lib/cycleForecastEligibility';
 import { putCycleBundle } from '@/lib/cycleViewCache';
+import { isCompleteCycleBundle } from '@/lib/cycleOfflineCore';
 import { cycleLockScreenSupported } from '@/lib/cycleWidget';
 import {
   getCycleExpectedDayActivity,
@@ -113,8 +114,9 @@ export function CycleReminderSettings() {
       if (serverDirty.current) {
         serverDirty.current = false;
         const data = await api.cycle.updateProfile({ reminderPrefs: serverReminderPrefs(current) });
-        // `null` = saved, but no fresh bundle came back: re-plan with the one on screen.
-        source = data ?? source;
+        // `null` (an older server: a partial body) = saved, but no fresh bundle came back: re-plan with the
+        // one on screen.
+        source = isCompleteCycleBundle(data) ? data : source;
         if (userId) putCycleBundle(userId, data);
       }
     } catch {
