@@ -833,6 +833,9 @@ export async function discardQueuedStartRestores(userId: string): Promise<void> 
   if (!userId) return;
   startSetDirectlyAt.set(userId, Date.now());
   try {
+    // Nothing queued (the usual case): her save never waits on an unrelated flush. One being sent stays
+    // in the stored queue until its flush writes back, so this read also sees a restore in flight.
+    if (!(await loadCycleAccount(userId)).queue.some((item) => item.operation === 'SET_LAST_PERIOD')) return;
     if (flushLock) await flushLock.catch(() => undefined);
     await withAccountWrite(async () => {
       const account = await loadCycleAccount(userId);
