@@ -5,7 +5,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MedicalSourcesLink } from '@/components/health/MedicalSourcesLink';
 import { RunMap, type RunMapHandle } from './RunMap';
 import { ModuleHeader, ModuleHeaderButton } from '@/components/brand/ModuleHeader';
-import { Bar, Card, Copy, RUN_TEAL, Section, Tile } from './PulseUi';
+import { Action, Bar, Card, Copy, RUN_TEAL, Section, Sheet, Tile } from './PulseUi';
 import { SplitBars } from './RunVisuals';
 import { formatClock, formatKm, formatPace, formatThousands } from '@/lib/run/geo';
 import { recordsSetBy, type RecordKind } from '@/lib/run/insights';
@@ -64,11 +64,11 @@ export function RunFinishedView({ summary, title, onBack, footer, autoVideo = fa
     void api.location.get().then(r => { if (alive && r?.location?.enabled && r.location.lat != null && r.location.lng != null) setHome([r.location.lng, r.location.lat]); }).catch(() => {});
     return () => { alive = false; };
   }, []);
-  const scene = useMemo<ShareSceneInput | null>(() => {
+  const sceneFor = (hide: boolean): ShareSceneInput | null => {
     const segments = (summary.segments?.length ? summary.segments : [summary.path]).map(seg => seg.map(p => [p.lng, p.lat] as LngLat));
     // GPS jumps split the walk; the clip follows its longest unbroken stretch (never a straight leap across town).
-    const line = thin(longestLine(privateLines(segments, { hide: hideHome, home })), 1200);
-    if (!canRecordClips || line.length < 2 || lineLength(line) < 150) return null;
+    const line = thin(longestLine(privateLines(segments, { hide, home })), 1200);
+    if (!canRecordClips || line.length < 2 || lineLength(line) < 80) return null;
     return {
       kind: 'walk', line, hero: user?.gender === 'FEMALE' ? 'f' : 'm',
       kicker: formatRunDate(summary.startedAt), title: tx('გავანათე', 'I lit up'), big: formatKm(summary.distanceM), unit: tx('კმ', 'km'),
@@ -78,14 +78,30 @@ export function RunFinishedView({ summary, title, onBack, footer, autoVideo = fa
         { value: formatThousands(summary.steps), label: tx('ნაბიჯი', 'Steps') },
       ],
     };
-  }, [summary, user?.gender, hideHome, home]);
+  };
+  const scene = useMemo(() => sceneFor(hideHome), [summary, user?.gender, hideHome, home]); // eslint-disable-line react-hooks/exhaustive-deps
+  // The whole walk: offered (never used silently) when hiding the home part leaves nothing to film.
+  const fullScene = useMemo(() => sceneFor(false), [summary, user?.gender, home]); // eslint-disable-line react-hooks/exhaustive-deps
+  const [studioScene, setStudioScene] = useState<ShareSceneInput | null>(null);
+  const [askFull, setAskFull] = useState(false);
+  const openStudio = (next: ShareSceneInput) => { setStudioScene(next); setStudio(true); };
 
   // „ვიდეო ყველა გასეირნებას“ (owner 2026-10-09): the walks list's 🎬 opens this page with the clip already starting.
   const autoOpened = useRef(false);
-  useEffect(() => { if (autoVideo && scene && !autoOpened.current) { autoOpened.current = true; setStudio(true); } }, [autoVideo, scene]);
+  useEffect(() => {
+    if (!autoVideo || autoOpened.current || (!scene && !fullScene)) return;
+    autoOpened.current = true;
+    if (scene) openStudio(scene); else setAskFull(true);
+  }, [autoVideo, scene, fullScene]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // „ვიდეო მინდა, არა პარამეტრები“ (owner 2026-10-09): the button always makes the clip; when hiding the home part
+  // leaves nothing, it asks before showing the whole path — never a silent fallback to text.
   const share = () => {
-    if (scene) { setStudio(true); return; }
+    if (scene) { openStudio(scene); return; }
+    if (fullScene) { setAskFull(true); return; }
+    shareText();
+  };
+  const shareText = () => {
     const lines = [
       `MEDIRUN · ${formatRunDate(summary.startedAt)}`,
       tx(`${formatKm(summary.distanceM)} კმ · ${formatClock(summary.movingMs)} · ${formatPace(summary.paceSecPerKm)} /კმ`, `${formatKm(summary.distanceM)} km · ${formatClock(summary.movingMs)} · ${formatPace(summary.paceSecPerKm)} /km`),
@@ -126,11 +142,11 @@ export function RunFinishedView({ summary, title, onBack, footer, autoVideo = fa
     </Card>
 
     {/* The clip of this walk lighting the night city — the owner's favourite share, now on every walk. */}
-    <Pressable accessibilityRole="button" accessibilityLabel={scene ? tx('ვიდეოდ გაზიარება', 'Share as a video') : tx('გაზიარება', 'Share')} onPress={share} style={{ minHeight: 60, borderRadius: HUB.cardRadius, backgroundColor: HUB.spotlightBg, flexDirection: 'row', alignItems: 'center', gap: 14, paddingHorizontal: HUB.cardPad, paddingVertical: 12 }}>
-      <View style={{ width: 40, height: 40, borderRadius: 13, backgroundColor: 'rgba(94,234,212,0.16)', alignItems: 'center', justifyContent: 'center' }}>{scene ? <Clapperboard size={20} color="#5EEAD4" /> : <Share2 size={20} color="#5EEAD4" />}</View>
+    <Pressable accessibilityRole="button" accessibilityLabel={scene || fullScene ? tx('ვიდეოდ გაზიარება', 'Share as a video') : tx('გაზიარება', 'Share')} onPress={share} style={{ minHeight: 60, borderRadius: HUB.cardRadius, backgroundColor: HUB.spotlightBg, flexDirection: 'row', alignItems: 'center', gap: 14, paddingHorizontal: HUB.cardPad, paddingVertical: 12 }}>
+      <View style={{ width: 40, height: 40, borderRadius: 13, backgroundColor: 'rgba(94,234,212,0.16)', alignItems: 'center', justifyContent: 'center' }}>{scene || fullScene ? <Clapperboard size={20} color="#5EEAD4" /> : <Share2 size={20} color="#5EEAD4" />}</View>
       <View style={{ flex: 1 }}>
-        <Copy bold size={15} style={{ color: '#fff' }}>{scene ? tx('ვიდეოდ გაზიარება', 'Share as a video') : tx('გაზიარება', 'Share')}</Copy>
-        <Copy size={11} style={{ color: 'rgba(255,255,255,0.62)' }}>{scene ? tx('შენი გზა ანთებს ღამის ქალაქს — მზა ვიდეო სთორისთვის', 'Your path lighting the night city — a ready clip for stories') : hideHome ? tx('სახლის დაფარვის შემდეგ ვიდეოსთვის გზა თითქმის აღარ რჩება — გამორთე ქვემოთ ან გააზიარე ტექსტით', 'With the home part hidden there is almost no path left for a clip — switch it off below or share as text') : tx('ვიდეოსთვის გზა ძალიან მოკლეა — გააზიარე ტექსტით', 'The path is too short for a clip — share as text')}</Copy>
+        <Copy bold size={15} style={{ color: '#fff' }}>{scene || fullScene ? tx('ვიდეოდ გაზიარება', 'Share as a video') : tx('გაზიარება', 'Share')}</Copy>
+        <Copy size={11} style={{ color: 'rgba(255,255,255,0.62)' }}>{scene ? tx('შენი გზა ანთებს ღამის ქალაქს — მზა ვიდეო სთორისთვის', 'Your path lighting the night city — a ready clip for stories') : fullScene ? tx('სახლის დაფარვით გზა თითქმის არ რჩება — დააჭირე და აირჩიე', 'With the home part hidden little is left — tap to choose') : tx('ვიდეოსთვის გზა ძალიან მოკლეა — გაზიარდება ტექსტით', 'Too short for a clip — it shares as text')}</Copy>
       </View>
     </Pressable>
     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, marginTop: -6, paddingHorizontal: 4 }}>
@@ -156,6 +172,11 @@ export function RunFinishedView({ summary, title, onBack, footer, autoVideo = fa
       <MedicalSourcesLink sourceIds={['activityMet']} />
     </View>
     {footer}
-    <ShareStudio visible={studio} scene={scene} source="walk" onClose={() => setStudio(false)} />
+    <ShareStudio visible={studio} scene={studioScene || scene} source="walk" onClose={() => setStudio(false)} />
+    <Sheet title={tx('ვიდეოში სახლის მხარე გამოჩნდება', 'The clip will show the home part')} visible={askFull} onClose={() => setAskFull(false)}>
+      <Copy muted size={13}>{home ? tx('ეს გასეირნება თითქმის მთლიანად შენი სახლიდან 250 მ-შია, ამიტომ დაფარვის შემდეგ ვიდეოში გზა აღარ რჩება. მთელი გზით ვიდეოს ვინც ნახავს, შეიძლება მიხვდეს, სად ცხოვრობ.', 'This walk stays almost entirely within 250 m of your home, so with the home part hidden nothing is left to film. Anyone who sees a clip of the whole path may tell where you live.') : tx('გასეირნება მოკლეა: პირველი და ბოლო 200 მ-ის დაფარვის შემდეგ ვიდეოში გზა აღარ რჩება. მთელი გზით ვიდეოს ვინც ნახავს, შეიძლება მიხვდეს, სად დაიწყე.', 'The walk is short: with its first and last 200 m hidden nothing is left to film. Anyone who sees a clip of the whole path may tell where you started.')}</Copy>
+      <Action icon={Clapperboard} label={tx('ვიდეო მთელი გზით', 'Clip of the whole path')} onPress={() => { setAskFull(false); setHideHome(false); if (fullScene) openStudio(fullScene); }} />
+      <Action secondary label={tx('ტექსტით გაზიარება', 'Share as text')} onPress={() => { setAskFull(false); shareText(); }} />
+    </Sheet>
   </ScrollView>;
 }
