@@ -143,10 +143,11 @@ test('a failed account delete keeps her reminders, push and session',async()=>{
  assert.deepEqual(h.delivery,[],'reminders and push must survive a failed delete');
  assert.equal(h.token(),'saved-token');assert.equal(h.render().user.id,h.full.user.id);
 });
-test('a confirmed account delete stops push and reminders only after the server answered',async()=>{
+test('a confirmed account delete cancels reminders only after the server answered, with no further request',async()=>{
  const h=harness('saved-token');await h.render().refresh();
  await h.render().deleteAccount();
- assert.deepEqual(h.delivery,['server-delete','push-unregister','reminders-cancel']);
+ // The server dropped the push tokens with the account; an unregister could only answer 401.
+ assert.deepEqual(h.delivery,['server-delete','reminders-cancel']);
  assert.equal(h.token(),null);assert.equal(h.render().user,null);
 });
 
