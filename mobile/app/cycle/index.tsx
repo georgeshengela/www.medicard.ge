@@ -766,9 +766,10 @@ export default function CycleHome() {
    */
   const startPeriodNow = async (source: 'hero' | 'widget' = 'hero') => {
     if (!user?.id || periodBusy) return;
-    // Undo puts back exactly this: today's row and the last period start shown before the tap (CYC-04).
+    // Undo puts back exactly this: today's row and the last period start she had before the tap (CYC-04),
+    // a start an earlier undo's restore still has queued included (IR3-2).
     const beforeRow = bundle?.logs.find((l) => l.date === today) ?? null;
-    const undo = periodStartUndo(beforeRow, bundle?.profile.lastPeriodStart);
+    const undo = periodStartUndo(beforeRow, cycleSetupStart(cycleView));
     setPeriodBusy(true);
     setError(null);
     try {

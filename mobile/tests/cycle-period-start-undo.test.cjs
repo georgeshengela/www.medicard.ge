@@ -468,6 +468,42 @@ test('IR3-2: every setup gate reads the queued start, and the background reconci
   assert.match(read('app/cycle/index.tsx'), /if \(gen !== ttcGen\.current \|\| view\.stale \|\| view\.pendingCount > 0\) return;/);
 });
 
+// IR3-2 follow-up: while the start restore waits, Home and /cycle show the classic card (no setup), whose
+// main action is „მენსტრუაცია დაიწყო“. A second tap captured its undo's start from the start-less view
+// (null), so undoing it removed the day and the start with it: she landed in cycle setup after all.
+for (const when of ['after the cooldown (the tap syncs)', 'inside the cooldown (the tap waits in the queue)']) {
+  test(`IR3-2: a second tap while the start restore waits keeps that start for its own undo — ${when}`, async () => {
+    const p = await undoAfterStartToday(['down-503']);
+    const { cycleSetupStart } = loadExperience();
+    const shown = await p.offline.loadCycleView(USER);
+    assert.equal(shown.display.profile.lastPeriodStart, null);
+    assert.equal(shown.pendingLastPeriodStart, TODAY);
+    const ahead = when.startsWith('after') ? 10 * 60_000 : 0;
+
+    // Captured the way both callers do it (Home `startPeriod`, /cycle `startPeriodNow`).
+    const undo = p.status.periodStartUndo(null, cycleSetupStart(shown));
+    assert.equal(undo.lastPeriodStart, TODAY);
+    const started = await later(ahead, () => p.offline.queueApplyPeriod(USER, { action: 'start', date: TODAY }));
+    assert.equal(started.synced, ahead > 0);
+    await later(ahead, () =>
+      p.offline.undoQueuedPeriodStart(USER, TODAY, undo, started.view.display.logs.find((l) => l.date === TODAY)),
+    );
+    await later(60 * 60_000, () => p.offline.flushCycleQueue(USER));
+
+    assert.deepEqual(await queueOf(p.offline), []);
+    assert.equal(p.server.logs.has(TODAY), false, 'the tapped day is gone again');
+    assert.equal(p.server.stored, TODAY, 'her start survives both undos');
+    assert.equal((await p.offline.loadCycleView(USER)).display.profile.lastPeriodStart, TODAY);
+  });
+}
+
+test('IR3-2: both one-tap starts capture the undo\'s start through cycleSetupStart', () => {
+  const fs = require('node:fs');
+  const read = (file) => fs.readFileSync(join(__dirname, '..', file), 'utf8');
+  assert.match(read('src/components/home/sections/useHomeCycleActions.ts'), /periodStartUndo\(beforeRow, cycleSetupStart\(view\)\)/);
+  assert.match(read('app/cycle/index.tsx'), /periodStartUndo\(beforeRow, cycleSetupStart\(cycleView\)\)/);
+});
+
 // IR2-5: the undo used to wait up to 10 s on its first request before anything was saved on the phone.
 // On a stalled network, „გაუქმება“ and then swiping the app away lost the undo: the next launch still
 // showed the period started today and kept the reminders planned for it.
