@@ -26,6 +26,7 @@ import {
   isCompleteCycleBundle,
   overlayPendingOnBundle,
   parseOfflineStore,
+  pendingLastPeriodStart,
   planQueuedLogMutations,
   readAccount,
   replayCycleQueue,
@@ -66,6 +67,12 @@ export type CycleView = {
   lastError: string | null;
   persistedLocally: boolean;
   attention: CycleAttentionItem[];
+  /**
+   * The last period start an undo's restore still queued on the phone will write back (IR3-2), else
+   * null. Never drawn into `display` or its forecast: the setup gates treat it as a known start
+   * (`cycleSetupStart`), and no reminder is planned while it waits. Missing on views cached by older JS.
+   */
+  pendingLastPeriodStart?: string | null;
 };
 
 export type CycleFlushResult = {
@@ -117,6 +124,14 @@ function startRestoreSuperseded(item: CycleMutation, userId = item.userScope): b
   if (!at) return false;
   const created = Date.parse(item.createdAt);
   return !Number.isFinite(created) || created <= at;
+}
+
+/** `CycleView.pendingLastPeriodStart` of an account's queue (a replaced or expired restore never counts). */
+function queuedStartRestore(account: CycleOfflineAccount): string | null {
+  return pendingLastPeriodStart(
+    account.queue.filter((item) => !startRestoreSuperseded(item, account.userScope)),
+    Date.now(),
+  );
 }
 
 function withAccountWrite<T>(fn: () => Promise<T>): Promise<T> {
@@ -263,6 +278,7 @@ function viewFromAccount(
         lastError: extras.lastError ?? null,
         persistedLocally: extras.persistedLocally ?? false,
         attention: extras.attention ?? attentionItems(account),
+        pendingLastPeriodStart: queuedStartRestore(account),
       }
     : null;
   const pending = account.queue.filter((i) => i.status !== 'failed_permanent');
@@ -293,6 +309,7 @@ function viewFromAccount(
     lastError: extras?.lastError ?? null,
     persistedLocally: extras?.persistedLocally ?? pending.length > 0,
     attention: extras?.attention ?? attentionItems(account),
+    pendingLastPeriodStart: queuedStartRestore(account),
   };
 }
 
@@ -555,6 +572,7 @@ function viewFromLiveBundle(bundle: CycleBundle): CycleView {
     lastError: null,
     persistedLocally: false,
     attention: [],
+    pendingLastPeriodStart: null,
   };
 }
 
@@ -660,10 +678,14 @@ export async function queueApplyPeriod(
  * reminders against it). A tap that is still queued plays before both. Only a start that was already
  * today goes after the day: removing today's bleeding drops it on the server whatever was written before.
  *
- * When the day has synced but the server still shows another start, it is written once more. A view
- * without the start is never published while that restore is still queued, was saved without a bundle
- * back, or got no answer (it may have been saved): nothing is published and the views are fetched again
- * (IR2-4). Only a refused write (4xx) leaves the server's view without it.
+ * When the day has synced but the server still shows another start, it is written once more. The undo
+ * itself never publishes a view without the start while that restore is still queued, was saved without
+ * a bundle back, or got no answer (it may have been saved): nothing is published and the views are
+ * fetched again (IR2-4). That refetch (and the offline view) CAN still read the server without the
+ * start: the day's restore went through while the queued start waits out its cooldown after 0, 408,
+ * 429 or 5xx. The overlay never draws the queued start; the view carries it as `pendingLastPeriodStart`,
+ * the setup gates (Home, /cycle) treat it as known, and no reminder is planned until it has synced
+ * (IR3-2). Only a refused write (4xx) leaves her without a start until she sets it again.
  */
 export async function undoQueuedPeriodStart(
   userId: string,
@@ -688,7 +710,8 @@ export async function undoQueuedPeriodStart(
   const restore = result.synced && result.view ? lastPeriodToRestore(undo, result.view.canonical.profile.lastPeriodStart) : null;
   if (!restore) {
     // The day synced but its start restore is still queued (her start was today and that write failed):
-    // the server's view without the start is not published; the queue sends it again (IR2-4).
+    // the server's view without the start is not published; the queue sends it again (IR2-4). A refetch
+    // until then reads the server without it, with the queued start as `pendingLastPeriodStart` (IR3-2).
     if (result.view && old && !result.view.display.profile.lastPeriodStart && result.view.pendingCount > 0) {
       return { ...result, view: null };
     }
@@ -762,6 +785,7 @@ export async function loadCycleView(userId: string): Promise<CycleView> {
       lastError: null,
       persistedLocally: pending.length > 0,
       attention: attentionItems(account),
+      pendingLastPeriodStart: queuedStartRestore(account),
     };
   } catch (error) {
     let account: CycleOfflineAccount;

@@ -413,6 +413,21 @@ function startRestoreExpired(item, now) {
   return Number.isFinite(created) && now - created > START_RESTORE_MAX_AGE_MS;
 }
 
+/**
+ * The start an undo's restore still waiting in the queue will write back (the last pending, unexpired
+ * `SET_LAST_PERIOD`), else null (IR3-2). The overlay never draws it: only the setup gates read it, so a
+ * refetch made between the day's restore and the start's shows no cycle setup.
+ */
+function pendingLastPeriodStart(queue, now) {
+  let start = null;
+  for (const item of queue || []) {
+    if (item?.operation !== 'SET_LAST_PERIOD' || item.status === 'failed_permanent') continue;
+    if (startRestoreExpired(item, now)) continue;
+    if (item.payload?.date) start = String(item.payload.date);
+  }
+  return start;
+}
+
 function discardMutation(account, mutationId) {
   return {
     ...account,
@@ -801,6 +816,7 @@ module.exports = {
   planQueuedLogMutations,
   START_RESTORE_MAX_AGE_MS,
   startRestoreExpired,
+  pendingLastPeriodStart,
   discardMutation,
   attentionItems,
   cyclePersistFeedback,

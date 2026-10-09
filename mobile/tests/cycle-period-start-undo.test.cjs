@@ -83,7 +83,12 @@ async function phone({ failStartFlush = false, onboardingStart = ONBOARDING_STAR
   let startFailures = failStartFlush ? 1 : 0;
   const api = {
     cycle: {
-      get: async () => (calls.push('get'), bundle()),
+      get: async () => {
+        calls.push('get');
+        // `server.unreachable`: the phone has no network for reads (the offline view comes from the device).
+        if (server.unreachable) throw Object.assign(new Error('offline'), { status: 0 });
+        return bundle();
+      },
       applyPeriod: async (body) => {
         if (body.action !== 'start') {
           // Only the start is modelled; „end“ / „fill“ are recorded with what they ask for.
@@ -379,6 +384,86 @@ test('IR2-4/IR2-5: a start restore that fails after the day stays queued; nothin
   const flushed = await later(10 * 60_000, () => offline.flushCycleQueue(USER));
   assert.equal(flushed.remaining, 0);
   assert.equal(server.stored, TODAY);
+});
+
+// IR3-2: the undo publishes nothing, but its own refetches (the queue write, the day's 2xx, Home's retry)
+// read the server between the day's restore and the start's: no start there, and the overlay never draws
+// the queued one. Home switched to the setup card, /cycle to cycle setup, and the background reconcile
+// planned reminders against no start — until the queue replayed the start after its cooldown.
+const loadExperience = () => require('./helpers/loadTs.cjs')()('src/lib/cycleExperience.ts');
+
+test('IR3-2: a refetch while the start restore waits shows no cycle setup (online and offline)', async () => {
+  const { server, offline } = await undoAfterStartToday(['down-503']);
+  const { cycleSetupStart, needsCycleOnboarding } = loadExperience();
+  assert.equal(server.stored, null, 'the server has no start until the queue replays it');
+
+  for (const reachable of [true, false]) {
+    server.unreachable = !reachable;
+    const view = await offline.loadCycleView(USER);
+    const label = reachable ? 'online refetch' : 'offline view';
+    // The server's state, as it is: no start drawn into the bundle or its forecast.
+    assert.equal(view.display.profile.lastPeriodStart, null, label);
+    assert.equal(view.canonical.profile.lastPeriodStart, null, label);
+    assert.equal(view.reachable, reachable, label);
+    // The queued start is on the view; every setup gate (Home hero, tips, preview card, /cycle) reads it.
+    assert.equal(view.pendingLastPeriodStart, TODAY, label);
+    assert.equal(cycleSetupStart(view), TODAY, label);
+    assert.equal(needsCycleOnboarding(view.display.profile.mode, cycleSetupStart(view)), false, label);
+    // Reminders are never planned from it (Home and /cycle skip a view with pending writes).
+    assert.ok(view.pendingCount > 0, label);
+  }
+  server.unreachable = false;
+
+  // After the cooldown the queue writes the start back and the view is plain again.
+  await later(10 * 60_000, () => offline.flushCycleQueue(USER));
+  const synced = await offline.loadCycleView(USER);
+  assert.equal(synced.display.profile.lastPeriodStart, TODAY);
+  assert.equal(synced.pendingLastPeriodStart, null);
+  assert.equal(synced.pendingCount, 0);
+});
+
+test('IR3-2: only a pending, unexpired start restore counts; a view without one has none', async () => {
+  const core = require('../src/lib/cycleOfflineCore.js');
+  const now = Date.parse('2026-10-09T12:00:00.000Z');
+  const at = (hoursAgo) => new Date(now - hoursAgo * 3600_000).toISOString();
+  const restore = (date, hoursAgo, status = 'pending') => ({
+    ...core.createMutation(USER, 'SET_LAST_PERIOD', { date }, at(hoursAgo)),
+    status,
+  });
+  assert.equal(core.pendingLastPeriodStart([], now), null);
+  assert.equal(core.pendingLastPeriodStart([core.createMutation(USER, 'REMOVE_LOG', { date: TODAY }, at(1))], now), null);
+  assert.equal(core.pendingLastPeriodStart([restore('2026-09-20', 1)], now), '2026-09-20');
+  assert.equal(core.pendingLastPeriodStart([restore('2026-09-20', 2), restore('2026-09-25', 1)], now), '2026-09-25');
+  assert.equal(core.pendingLastPeriodStart([restore('2026-09-20', 1, 'failed_permanent')], now), null, 'refused: never replays');
+  assert.equal(core.pendingLastPeriodStart([restore('2026-09-20', 25)], now), null, 'older than a day: never sent');
+
+  // An undo that synced leaves nothing queued: the view carries no pending start.
+  const { result, offline } = await undoAfterStartToday([]);
+  assert.equal(result.view.pendingLastPeriodStart ?? null, null);
+  assert.equal((await offline.loadCycleView(USER)).pendingLastPeriodStart, null);
+});
+
+test('IR3-2: every setup gate reads the queued start, and the background reconcile plans nothing meanwhile', () => {
+  const fs = require('node:fs');
+  const read = (file) => fs.readFileSync(join(__dirname, '..', file), 'utf8');
+  for (const file of [
+    'src/components/home/sections/HomeCycleHero.tsx',
+    'src/components/home/sections/HomeCycleTips.tsx',
+    'src/components/home/sections/HomeCycleAhead.tsx',
+    'src/components/home/HomeCyclePreviewCard.tsx',
+    'app/cycle/index.tsx',
+  ]) {
+    const source = read(file);
+    assert.match(source, /cycleSetupStart\(/, file);
+    assert.doesNotMatch(source, /needsCycleOnboarding\([^)]*profile\.lastPeriodStart/, `${file}: a gate that ignores the queued start`);
+  }
+  const reminders = read('src/lib/cycleReminders.ts');
+  const reconcile = reminders.slice(reminders.indexOf('export async function reconcileCycleReminders'));
+  const guard = reconcile.indexOf('view.pendingLastPeriodStart');
+  assert.ok(guard > 0 && guard < reconcile.indexOf('syncCycleReminders('), 'reconcile skips while a start restore is queued');
+  // Home and /cycle plan only from a view with nothing pending (a queued start restore is pending).
+  assert.match(read('src/components/home/sections/useHomeCycleActions.ts'), /if \(next\.stale \|\| next\.pendingCount > 0\) \{/);
+  assert.match(read('app/cycle/index.tsx'), /if \(gen !== ttcGen\.current \|\| view\.stale \|\| view\.pendingCount > 0\) return;/);
 });
 
 // IR2-5: the undo used to wait up to 10 s on its first request before anything was saved on the phone.

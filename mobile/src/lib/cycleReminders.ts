@@ -186,6 +186,12 @@ export async function reconcileCycleReminders(userId: string, opts: { force?: bo
     const { getCycleReminderPrefs } = await import('@/lib/cycleReminderPrefs');
     const view = await loadCycleView(userId);
     if (!view?.canonical?.profile) return 0;
+    // An undo's start restore is still queued: the server's view may have no start yet. Plan nothing
+    // from it — the next foreground (or the screen that sees the synced view) plans again (IR3-2).
+    if (view.pendingLastPeriodStart) {
+      lastReconcileAt = 0;
+      return 0;
+    }
     const prefs = await getCycleReminderPrefs({ mode: view.canonical.profile.mode });
     const count = await syncCycleReminders(view.canonical, prefs);
     // Pregnancy care reminders used to be scheduled only when the cycle screen opened.

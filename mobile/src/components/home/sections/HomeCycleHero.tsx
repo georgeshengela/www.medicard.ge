@@ -33,7 +33,7 @@ import { cycleBundleCapabilities } from '@/lib/cycleModes';
 import { trackingCopy } from '@/lib/cycleTrackingCopy';
 import { isBleedFlow } from '@/lib/cycleLogSave';
 import { cycleLoggedBleedLabel } from '@/lib/cycleHistoryCopy';
-import { needsCycleOnboarding } from '@/lib/cycleExperience';
+import { cycleSetupStart, needsCycleOnboarding } from '@/lib/cycleExperience';
 import { formatCycleDateKa } from '@/lib/cycleCivilDateKa';
 import { formatYmd } from '@/lib/format';
 import { isFeatureOn, useFeatureState } from '@/lib/featureFlags';
@@ -124,7 +124,8 @@ export function HomeCycleHero({ cycle, locked, userId, first }: HomeCycleHeroPro
     locked,
     hasView: Boolean(bundle),
     failed: cycle.failed,
-    setupNeeded: Boolean(bundle) && needsCycleOnboarding(bundle?.profile.mode, bundle?.profile.lastPeriodStart ?? null),
+    // A start an undo's restore still has queued counts as known: never the setup card meanwhile (IR3-2).
+    setupNeeded: Boolean(bundle) && needsCycleOnboarding(bundle?.profile.mode, cycleSetupStart(view)),
     pregnancy: caps.showPregnancyOverview,
     postpartum: caps.showPostpartumOverview,
     peri: caps.showPerimenopauseTracking,

@@ -128,7 +128,7 @@ import {
 } from '@/lib/cyclePostpartumQuery';
 import { useAuth } from '@/store/AuthContext';
 import { useCycleColors } from '@/theme/cycle';
-import { cycleSetupTailKey, needsCycleOnboarding, needsCycleSetupTail } from '@/lib/cycleExperience';
+import { cycleSetupStart, cycleSetupTailKey, needsCycleOnboarding, needsCycleSetupTail } from '@/lib/cycleExperience';
 import { getPreference, setPreference } from '@/lib/storage';
 import { localAccountId } from '@/lib/localAccount';
 import { trackCyclePeriodStarted } from '@/lib/funnel';
@@ -545,7 +545,8 @@ export default function CycleHome() {
     void maybeImportCycleTemperature({ userId: user.id, bundle: canonical, today: cycleToday(canonical, todayKey()) });
   }, [screenFocused, canonicalReady, user?.id]);
 
-  const lastPeriod = bundle?.profile.lastPeriodStart ?? null;
+  // A start an undo's restore still has queued counts as known: never cycle setup meanwhile (IR3-2).
+  const lastPeriod = bundle ? cycleSetupStart(cycleView) : null;
   // The tail is due only while the flag is read and unset; `holdOnboarding` keeps the flow on screen after each save.
   const setupTailDue = setupTailDone === false && needsCycleSetupTail(bundle, false);
   const needsOnboarding =

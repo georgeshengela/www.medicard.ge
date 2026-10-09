@@ -69,6 +69,7 @@ export function putCycleBundle(userId: string, bundle: CycleBundle | null | unde
           lastError: null,
           persistedLocally: false,
           attention: [],
+          pendingLastPeriodStart: null,
         },
   );
 }
