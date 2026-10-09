@@ -35,6 +35,8 @@ export function CycleSexSheet({
   const c = useCycleColors();
   const insets = useSafeAreaInsets();
   const [form, setForm] = useState<CycleLogForm>(EMPTY_CYCLE_LOG);
+  /** The day as stored when the sheet filled (Apple Health / Health Connect get only what a save changes). */
+  const [base, setBase] = useState<CycleLogForm>(EMPTY_CYCLE_LOG);
   const [hydrated, setHydrated] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -49,7 +51,9 @@ export function CycleSexSheet({
     void loadCycleView(user.id)
       .then((view) => {
         if (!alive) return;
-        setForm(formFromCycleLog(view.display.logs.find((l) => l.date === date)));
+        const stored = formFromCycleLog(view.display.logs.find((l) => l.date === date));
+        setForm(stored);
+        setBase(stored);
         setHydrated(true);
       })
       .catch(() => alive && setError(ka.cycle.assessmentLoadError));
@@ -65,7 +69,7 @@ export function CycleSexSheet({
     setSaving(true);
     setError(null);
     try {
-      const result = await persistCycleLog(user.id, date, form);
+      const result = await persistCycleLog(user.id, date, form, { base });
       if (!ticket.current()) return;
       if (!result.view && !result.synced && !result.persistedLocally && !result.sessionOnly) {
         setError(ka.cycle.saveNotPersisted);

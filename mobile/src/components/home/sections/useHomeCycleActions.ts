@@ -339,7 +339,7 @@ export function useHomeCycleActions({
     setError(null);
     void (async () => {
       try {
-        const result = await persistCycleLog(userId, today, { ...before, sexual: true });
+        const result = await persistCycleLog(userId, today, { ...before, sexual: true }, { base: before });
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined);
         showView(result.view);
         if (alive.current) {
@@ -362,7 +362,7 @@ export function useHomeCycleActions({
       setSexBefore(null);
       void (async () => {
         try {
-          const result = await persistCycleLog(userId, today, before);
+          const result = await persistCycleLog(userId, today, before, { base: before });
           showView(result.view);
         } catch (err) {
           fail(err);

@@ -9,7 +9,8 @@ import type { CycleLogSource, CyclePeriodStartSource } from './funnelQueue';
 const BLEED = new Set(['light', 'medium', 'heavy']);
 const bleeds = (flow: string | null | undefined) => BLEED.has(String(flow ?? ''));
 
-function previousDay(date: string): string | null {
+/** The civil day before `date` (YYYY-MM-DD), or null for anything else. */
+export function previousDay(date: string): string | null {
   const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(date);
   if (!m) return null;
   const d = new Date(Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3]) - 1));

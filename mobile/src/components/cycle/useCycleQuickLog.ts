@@ -113,7 +113,7 @@ export function useCycleQuickLog({
       setSaveError(null);
       try {
         const next = { ...form, flow: markStart && !isBleedFlow(form.flow) ? 'medium' : form.flow };
-        const result = await persistCycleLog(userId, date, next, { markStart });
+        const result = await persistCycleLog(userId, date, next, { markStart, base });
         if (!ticket.current()) return false;
         if (!result.view && !result.synced && !result.persistedLocally && !result.sessionOnly) {
           setSaveError(ka.cycle.saveNotPersisted);

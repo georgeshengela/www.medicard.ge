@@ -820,7 +820,7 @@ export default function CycleHome() {
     }
     setSexBusy(true);
     try {
-      const result = await persistCycleLog(user.id, today, { ...before, sexual: true });
+      const result = await persistCycleLog(user.id, today, { ...before, sexual: true }, { base: before });
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined);
       handleSaved(result.view);
       setPeriodToast(null);
@@ -836,7 +836,7 @@ export default function CycleHome() {
     if (!user?.id) return;
     setSexToast(null);
     try {
-      const result = await persistCycleLog(user.id, today, before);
+      const result = await persistCycleLog(user.id, today, before, { base: before });
       handleSaved(result.view);
     } catch (err) {
       setError(err instanceof Error ? err.message : ka.common.error);

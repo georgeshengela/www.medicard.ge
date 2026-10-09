@@ -1,8 +1,9 @@
 import { syncCycleLogToHealth } from '@/lib/healthSync';
 import type { CycleLogForm } from '@/components/cycle/CycleLogTabs';
 import { saveCycleObservation, type CycleView } from '@/lib/cycleOffline';
-import { bbtForHealthWrite } from '@/lib/cycleTemperatureImport';
-import { cycleLogBodyFromForm, isBleedFlow, parseBbt } from '@/lib/cycleLogForm';
+import { cyclePersistFeedback } from '@/lib/cycleOfflineCore';
+import { planCycleHealthWrite, previousDayFlow, type CycleHealthDay } from '@/lib/cycleHealthWrite';
+import { cycleLogBodyFromForm, isBleedFlow } from '@/lib/cycleLogForm';
 
 export { EMPTY_CYCLE_LOG, formFromCycleLog, isBleedFlow, parseBbt } from '@/lib/cycleLogForm';
 
@@ -17,22 +18,27 @@ export async function persistCycleLog(
   userId: string,
   date: string,
   form: CycleLogForm,
-  options?: { markStart?: boolean },
+  options?: {
+    markStart?: boolean;
+    /** The day as it was stored before this save (the hydrated form): Health gets only what changed. */
+    base?: CycleHealthDay | null;
+  },
 ): Promise<PersistCycleLogResult> {
-  const bbtNum = parseBbt(form.bbt);
   const result = await saveCycleObservation(userId, date, cycleLogBodyFromForm(form), {
     markStart: Boolean(options?.markStart && isBleedFlow(form.flow)),
   });
-  try {
-    await syncCycleLogToHealth({
+  // Apple Health / Health Connect (CYC-03): only what this save changed, a cycle start only for a real
+  // new period start, never when nothing was stored. Fire-and-forget: it never fails, blocks or delays
+  // the save, and never asks for Health access (syncCycleLogToHealth only writes when sync is on).
+  if (cyclePersistFeedback(result) !== 'fail') {
+    const health = planCycleHealthWrite({
       date,
-      flow: form.flow,
-      bbt: bbtForHealthWrite(bbtNum, form.bbtFromHealth),
-      cervicalMucus: form.mucus,
-      isPeriodStart: options?.markStart || isBleedFlow(form.flow),
+      form,
+      base: options?.base,
+      markStart: options?.markStart,
+      prevDayFlow: previousDayFlow(result.view?.display.logs, date),
     });
-  } catch {
-    /* Health is best-effort and must not drop a queued observation */
+    if (health) void syncCycleLogToHealth(health).catch(() => undefined);
   }
   // Optional notification refresh must never turn a saved observation into an unhandled rejection.
   void import('@/lib/mediNotificationBrain').then(({ requestEngageRefresh }) => requestEngageRefresh()).catch(() => undefined);
