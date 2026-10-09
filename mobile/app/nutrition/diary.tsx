@@ -37,6 +37,7 @@ import { EMPTY_ART } from "@/constants/appArt";
 import { dateLocale, tx } from "@/i18n/locale";
 import { IMAGE_PICKER_OPTIONS } from "@/lib/imageUpload";
 import { prepareNutritionImage } from "@/lib/nutritionImage";
+import { MODAL_HANDOFF_MS } from "@/components/ui/appModal";
 import { NutritionScanner, NutritionScanSteps } from "@/components/nutrition/NutritionScanner";
 import { LogMethodSheet, type LogMethod } from "@/components/nutrition/LogMethodSheet";
 import { BarcodeScannerModal } from "@/components/nutrition/BarcodeScannerModal";
@@ -377,29 +378,38 @@ function NutritionScreen({ owner }: { owner: string }) {
       try {
         const { product: found } = await api.nutrition.barcode(code);
         if (!alive.current) return;
-        setProduct(found);
+        // The scanner closes first; the portion sheet opens once iOS has dismissed it (MODAL_HANDOFF_MS).
+        setSheet(null);
+        setTimeout(() => {
+          if (alive.current) setProduct(found);
+        }, MODAL_HANDOFF_MS);
       } catch (e) {
         setSheetError((e as Error).message);
       }
     });
   const pickMethod = (method: LogMethod) => {
+    const fromSheet = sheet !== null;
     setSheet(null);
     setSheetError("");
     setDescribeNotice("");
-    if (method === "camera") void pick(true, "photo");
-    else if (method === "gallery") void pick(false, "photo");
-    else if (method === "label") void pick(true, "label");
-    else if (method === "barcode") setTimeout(() => setSheet("barcode"), 250);
-    else if (method === "describe") setTimeout(() => setSheet("describe"), 250);
-    else if (method === "search") setTimeout(() => setSheet("search"), 250);
-    else if (method === "saved") setTimeout(() => setSheet("saved"), 250);
+    // Opening the camera, the photo picker or another sheet while the menu is still closing fails on
+    // iOS (nothing appears and the diary stays busy), so wait for the menu to go first.
+    const next = (open: () => void) => (fromSheet ? setTimeout(open, MODAL_HANDOFF_MS) : open());
+    if (method === "camera") next(() => void pick(true, "photo"));
+    else if (method === "gallery") next(() => void pick(false, "photo"));
+    else if (method === "label") next(() => void pick(true, "label"));
+    else if (method === "barcode") next(() => setSheet("barcode"));
+    else if (method === "describe") next(() => setSheet("describe"));
+    else if (method === "search") next(() => setSheet("search"));
+    else if (method === "saved") next(() => setSheet("saved"));
     else editItem(draft?.items.length || 0);
   };
   /** One tap from Home or the hub: a fresh meal with that method already running. */
   const startWith = (method: LogMethod) => {
     if (busy) return;
     newMeal(false);
-    setTimeout(() => pickMethod(method), 50);
+    // Let the diary finish sliding in before the camera / a sheet is presented over it (iOS).
+    setTimeout(() => pickMethod(method), MODAL_HANDOFF_MS);
   };
   const handledMethod = useRef<string | null>(null);
   useFocusEffect(
@@ -922,13 +932,12 @@ function NutritionScreen({ owner }: { owner: string }) {
       {held && !draft ? <UndoToast key={held.id} title={tx("კვება წაიშალა", "Meal deleted")} bottom={safe.bottom + 16} onUndo={undo} /> : null}
       <CopyMealsSheet meals={copying} busy={busy} error={copyError} onClose={() => setCopying(null)} onCopy={(date, type) => void copyMeals(date, type)} />
       <LogMethodSheet visible={sheet === "methods"} aiEnabled={enabled} onPick={pickMethod} onClose={() => setSheet(null)} />
-      <BarcodeScannerModal visible={sheet === "barcode" && !product} busy={busy} error={sheetError} onClose={() => setSheet(null)} onCode={(code) => void lookupBarcode(code)} />
+      <BarcodeScannerModal visible={sheet === "barcode"} busy={busy} error={sheetError} onClose={() => setSheet(null)} onCode={(code) => void lookupBarcode(code)} />
       <PortionSheet
         food={product}
         onClose={() => setProduct(null)}
         onAdd={(item) => {
           setProduct(null);
-          setSheet(null);
           addItems([item], "barcode", product?.name);
         }}
       />

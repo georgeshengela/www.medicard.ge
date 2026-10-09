@@ -17,6 +17,15 @@ export const APP_MODAL_PROPS = {
 export const APP_MODAL_OVERLAY = 'rgba(15, 23, 42, 0.55)';
 
 /**
+ * iOS cannot present a view controller while another one is still dismissing: a Modal, the camera or
+ * the photo picker opened in that window never appears (the awaiting code hangs), and two Modals
+ * dismissed in the same frame (a nested one and its parent) can leave an invisible one on screen that
+ * swallows every touch. Close the first, wait this long, then open the next. Never nest a Modal in a
+ * Modal — render the inner sheet as an overlay inside the outer one.
+ */
+export const MODAL_HANDOFF_MS = 450;
+
+/**
  * Use this instead of react-native's Modal. On iOS the tab pill lives in a
  * FullWindowOverlay window that sits above every RN Modal, so it covered sheets and
  * dialogs. While this Modal is visible the app chrome (tab pill, run badge) is hidden.

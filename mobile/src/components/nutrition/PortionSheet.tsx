@@ -13,14 +13,18 @@ import { tx } from '@/i18n/locale';
 /**
  * Portion picker for a food with per-100 g facts: serving chips, quick
  * multipliers and a grams field. Shows the resulting item before adding.
+ * `inline` draws it as an overlay inside the parent Modal (FoodSearchModal): a Modal nested in a Modal
+ * and both closed at once froze the screen on iOS (invisible layer over everything, 2026-10-09).
  */
 export function PortionSheet({
   food,
   onAdd,
   onClose,
   onToggleFavorite,
+  inline = false,
 }: {
   food: SavedFood | null;
+  inline?: boolean;
   onAdd: (item: FoodItem, food: SavedFood, grams: number) => void;
   onClose: () => void;
   onToggleFavorite?: (food: SavedFood) => void;
@@ -53,8 +57,8 @@ export function PortionSheet({
     { label: tx("100 გ", "100 g"), grams: 100 },
   ];
   const txt = { color: c.text100, fontFamily: "NotoSansGeorgian_400Regular" };
-  return (
-    <Modal visible={!!food} {...APP_MODAL_PROPS} onRequestClose={onClose}>
+  const content = (
+    <>
       <Pressable accessibilityRole="button" accessibilityLabel={tx("დახურვა", "Close")} onPress={onClose} style={[StyleSheet.absoluteFill, { backgroundColor: APP_MODAL_OVERLAY }]} />
       <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={{ flex: 1, justifyContent: "flex-end" }} pointerEvents="box-none">
         {food && (
@@ -124,6 +128,12 @@ export function PortionSheet({
           </View>
         )}
       </KeyboardAvoidingView>
+    </>
+  );
+  if (inline) return food ? <View style={StyleSheet.absoluteFill}>{content}</View> : null;
+  return (
+    <Modal visible={!!food} {...APP_MODAL_PROPS} onRequestClose={onClose}>
+      {content}
     </Modal>
   );
 }
