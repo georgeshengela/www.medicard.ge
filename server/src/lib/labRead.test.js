@@ -140,3 +140,65 @@ describe('a deleted lab upload takes its values with it', async () => {
     assert.deepEqual(kept.map((p) => p.id), ['live', 'typed']);
   });
 });
+
+describe('MEDISCAN F4: a reader that is down never blames the photo', async () => {
+  const { isVisionReaderDown, visionFailedError } = await import('./vision.js');
+  const { errorHandler } = await import('../middleware/error.js');
+  const { default: OpenAI } = await import('openai');
+  const { readFileSync } = await import('node:fs');
+  const { fileURLToPath } = await import('node:url');
+  const http = (status) => Object.assign(new Error(`${status} provider error`), { status });
+
+  it('no credit, a rate limit, an outage or the network is the service, not the photo', () => {
+    for (const status of [401, 402, 404, 408, 429, 500, 502, 503, 504]) assert.equal(isVisionReaderDown(http(status)), true, String(status));
+    assert.equal(isVisionReaderDown(new OpenAI.APIConnectionError({ cause: new Error('fetch failed') })), true);
+    assert.equal(isVisionReaderDown(new OpenAI.APIConnectionTimeoutError()), true);
+    assert.equal(isVisionReaderDown(Object.assign(new Error('socket hang up'), { code: 'ECONNRESET' })), true);
+    // The provider refusing this image, an empty or cut answer: the photo was looked at.
+    for (const error of [http(400), http(403), http(413), new Error('empty response'), new Error('Vision response was incomplete or declined.')]) {
+      assert.equal(isVisionReaderDown(error), false, error.message);
+    }
+  });
+
+  it('every reader down → a calm 503 that keeps the same photo; any real read failure → the old copy', () => {
+    const down = visionFailedError([http(402), http(402), new OpenAI.APIConnectionError({ cause: new Error('x') })]);
+    assert.equal(down.status, 503);
+    assert.equal(down.readerDown, true);
+    assert.doesNotMatch(down.message, /სხვა ფოტო|გადაუღე/);
+    assert.match(down.message, /იგივე ფოტოთი/);
+    assert.doesNotMatch(down.messageEn, /another photo/i);
+    assert.match(down.messageEn, /No need to retake/);
+    assert.match(down.messageEn, /same photo/);
+
+    for (const failures of [[http(402), new Error('empty response')], [http(400)], []]) {
+      const read = visionFailedError(failures);
+      assert.equal(read.status, 502);
+      assert.equal(read.readerDown, undefined);
+      assert.match(read.message, /სხვა ფოტო/);
+    }
+  });
+
+  it('the calm 503 reaches the app in its language as AI_ENGINE_ERROR', () => {
+    const down = visionFailedError([http(503)]);
+    for (const [lang, pattern] of [['ka', /იგივე ფოტოთი/], ['en', /same photo/]]) {
+      let status = null, body = null;
+      const res = { headersSent: false, status(s) { status = s; return this; }, json(b) { body = b; return this; } };
+      errorHandler(down, { lang, socket: {} }, res, () => {});
+      assert.equal(status, 503);
+      assert.equal(body.code, 'AI_ENGINE_ERROR');
+      assert.match(body.error, pattern);
+    }
+  });
+
+  it('extract-lab answers the calm 503, not LAB_UNREADABLE, when the reader was down', () => {
+    const src = readFileSync(fileURLToPath(new URL('../routes/ai.routes.js', import.meta.url)), 'utf8');
+    const route = src.slice(src.indexOf("'/extract-lab',"), src.indexOf("'/explain-lab',"));
+    // Only the first pass (with the OCR fallback) decides; the optional deeper pass after a real read does not.
+    assert.match(route, /if \(ocr && error\?\.readerDown\) readerDown = error;/);
+    const last = route.slice(route.lastIndexOf('if (unreadable) {'));
+    assert.ok(last.indexOf('if (readerDown) throw readerDown;') >= 0, 'the reader error is thrown');
+    assert.ok(last.indexOf('if (readerDown) throw readerDown;') < last.indexOf("code: 'LAB_UNREADABLE'"), 'before the retake copy');
+    // A later page keeps the 200 shape old apps read; `unavailable` is additive.
+    assert.match(route, /unreadable: true,\s*\.\.\.\(readerDown \? \{ unavailable: true \} : \{\}\),/);
+  });
+});
