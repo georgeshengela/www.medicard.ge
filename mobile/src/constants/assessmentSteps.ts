@@ -282,3 +282,8 @@ export function onboardingVisibleIndices(form: { primaryGoal?: PrimaryGoal | nul
 export function primaryGoalOptions(gender: string | null | undefined): PrimaryGoal[] {
   return gender === 'FEMALE' ? ['medications', 'nutrition', 'cycle', 'general'] : ['medications', 'nutrition', 'general'];
 }
+
+/** The goal is one this sex is offered (the cycle goal is for women only). */
+export function primaryGoalFits(goal: PrimaryGoal | null | undefined, gender: string | null | undefined): goal is PrimaryGoal {
+  return goal != null && primaryGoalOptions(gender).includes(goal);
+}

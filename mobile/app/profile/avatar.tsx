@@ -7,6 +7,7 @@ import { ka } from '@/i18n/ka';
 import { api, ApiError } from '@/lib/api';
 import { IMAGE_PICKER_OPTIONS, toUploadableImage } from '@/lib/imageUpload';
 import { setMyAvatarUrl, useMyAvatarUrl } from '@/lib/myAvatar';
+import { realFullName } from '@/lib/displayName';
 import { AVATAR_SOURCES, avatarsForGender, isAvatarId, normalizeAvatarForGender, type AvatarId } from '@/constants/avatarAssets';
 import { HomeSectionHeading } from '@/components/home/HomeSectionHeading';
 import { useAuth } from '@/store/AuthContext';
@@ -49,6 +50,8 @@ export default function AvatarScreen() {
   const teal = hubInk('teal', dark);
   const { width } = useWindowDimensions();
   const { user, healthProfile, refreshHealthProfile } = useAuth();
+  // Never the server's placeholder name (phone / Apple sign-ups without a typed name).
+  const ownName = realFullName(user, healthProfile?.extraAnswers);
   const photo = useMyAvatarUrl();
   const extra = (healthProfile?.extraAnswers ?? {}) as { avatarId?: string };
   const [preset, setPreset] = useState<AvatarId>(normalizeAvatarForGender(extra.avatarId ?? null, user?.gender ?? null));
@@ -136,9 +139,9 @@ export default function AvatarScreen() {
         {/* Current picture + photo actions */}
         <View style={[styles.card, { backgroundColor: c.surface, alignItems: 'center', marginTop: 8 }]}>
           <View style={[styles.ring, { borderColor: teal }]}>
-            <Avatar avatarId={isAvatarId(preset) ? preset : null} photoUrl={photo} name={user?.fullName ?? '?'} size={112} />
+            <Avatar avatarId={isAvatarId(preset) ? preset : null} photoUrl={photo} name={ownName || '?'} size={112} />
           </View>
-          {user?.fullName ? <Text style={[styles.name, { color: c.text100 }]}>{user.fullName}</Text> : null}
+          {ownName ? <Text style={[styles.name, { color: c.text100 }]}>{ownName}</Text> : null}
           <View style={[styles.sourcePill, { backgroundColor: c.bg100 }]}>
             <Text style={[hubText.small, { color: c.text200 }]}>{photo ? tx('შენი ფოტო', 'Your photo') : tx('ილუსტრირებული ავატარი', 'Illustrated avatar')}</Text>
           </View>

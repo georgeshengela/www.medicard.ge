@@ -27,6 +27,7 @@ import { hydrateFeatureFlags, isEngageFamilyOn } from '@/lib/featureFlags';
 import { visitDateTimeMs } from '@/lib/visitReminders';
 import { cancelNotificationsByPrefix, ENGAGE_CHANNEL_ID, NOTIF_PREFIX, getNotificationPermissionGranted } from '@/lib/notifications';
 import { applyPushCopy } from '@/lib/pushCopy';
+import { displayFirstName } from '@/lib/displayName';
 
 export {
   ENGAGE_FAMILIES,
@@ -49,11 +50,6 @@ export function rememberEngageActor(user?: User | null, health?: HealthProfile |
 
 function ymd(date: Date): string {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
-}
-
-function firstNameOf(user?: User | null): string {
-  const raw = user?.fullName?.trim() ?? '';
-  return raw.split(/\s+/)[0] || '';
 }
 
 function weekRange(end: Date): { thisWeek: string[]; prevWeek: string[] } {
@@ -263,7 +259,8 @@ export async function buildEngageSnapshot(user?: User | null, health?: HealthPro
   return {
     now,
     lastOpenAt,
-    firstName: firstNameOf(user),
+    // Never the server's placeholder name: „დილა მშვიდობისა ☀️“ rather than „…, Medicard“.
+    firstName: displayFirstName(user, health?.extraAnswers),
     birthDate: user?.birthDate ?? null,
     createdAt: user?.createdAt ?? null,
     todaySteps: todayRow?.steps && todayRow.steps > 0 ? todayRow.steps : null,

@@ -38,15 +38,24 @@ import { ConditionPicker } from '@/components/assessment/ConditionPicker';
 import { MedicationPicker } from '@/components/assessment/MedicationPicker';
 import { useAssessment } from '@/constants/assessmentLayout';
 import { GOAL_ART } from '@/constants/appArt';
-import { primaryGoalOptions, type AssessmentStep, type PrimaryGoal } from '@/constants/assessmentSteps';
+import { primaryGoalFits, primaryGoalOptions, type AssessmentStep, type PrimaryGoal } from '@/constants/assessmentSteps';
 import {
   ILLUSTRATION_SOURCES,
   MOOD_KEYS,
   moodImage,
 } from '@/constants/illustrationAssets';
 import { ka } from '@/i18n/ka';
-import { ageFromForm, type AssessmentFormState } from '@/lib/assessmentForm';
+import {
+  ageFromForm,
+  lastPeriodProblem,
+  lastPeriodProblemText,
+  lastPeriodValid,
+  type AssessmentFormState,
+} from '@/lib/assessmentForm';
 import { MIN_USER_AGE, MIN_USER_AGE_MESSAGE } from '@/lib/birthdate';
+
+/** A period start has to be a real day in the last ~100 days (rule in assessmentForm). */
+export { lastPeriodValid };
 
 type Props = {
   step: AssessmentStep;
@@ -71,14 +80,6 @@ const PRIMARY_GOAL_ART: Record<PrimaryGoal, ImageSourcePropType> = {
   cycle: GOAL_ART.cycle,
   general: GOAL_ART.general,
 };
-
-/** A period start has to be a real day in the last ~100 days (cycle API rejects future dates). */
-export function lastPeriodValid(form: Pick<AssessmentFormState, 'lastPeriodYear' | 'lastPeriodMonth' | 'lastPeriodDay'>, now = Date.now()): boolean {
-  const d = new Date(form.lastPeriodYear, form.lastPeriodMonth - 1, form.lastPeriodDay, 12);
-  if (d.getMonth() !== form.lastPeriodMonth - 1) return false;
-  const days = (now - d.getTime()) / 86400000;
-  return days >= -0.5 && days <= 100;
-}
 
 /** Compact horizontal ruler with its value on top — two fit on one onboarding screen. */
 function MetricRuler({ label, value, unit, values, labelOrigin, onSelect }: { label: string; value: number; unit: string; values: number[]; labelOrigin: number; onSelect: (n: number) => void }) {
@@ -511,7 +512,9 @@ export function AssessmentStepContent({ step, form, onChange, onAutoAdvance }: P
       );
     }
 
-    case 'goal-cycle':
+    case 'goal-cycle': {
+      // Continue is off for a future day or one more than 100 days back: say why (like the birth date).
+      const problem = lastPeriodProblem(form);
       return (
         <View style={{ width: '100%', alignItems: 'center' }}>
           <DateWheelPicker
@@ -528,8 +531,25 @@ export function AssessmentStepContent({ step, form, onChange, onAutoAdvance }: P
               })
             }
           />
+          {problem ? (
+            <Text
+              accessibilityRole="alert"
+              style={{
+                fontFamily: 'NotoSansGeorgian_400Regular',
+                fontSize: 14,
+                lineHeight: 20,
+                color: ASSESSMENT.textSecondary,
+                textAlign: 'center',
+                paddingHorizontal: 16,
+                paddingTop: 8,
+              }}
+            >
+              {lastPeriodProblemText(problem)}
+            </Text>
+          ) : null}
         </View>
       );
+    }
 
     case 'blood-type':
       return (
@@ -702,7 +722,8 @@ export function stepCanContinue(step: AssessmentStep, form: AssessmentFormState)
     case 'complete':
       return true;
     case 'primary-goal':
-      return form.primaryGoal !== null;
+      // Only a goal this sex is offered: the cycle goal chosen before switching to male does not count.
+      return primaryGoalFits(form.primaryGoal, form.gender);
     case 'body':
       return form.heightCm >= 100 && form.weightKg >= 30;
     case 'goal-medication':

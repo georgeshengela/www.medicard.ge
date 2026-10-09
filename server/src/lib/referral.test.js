@@ -81,6 +81,11 @@ describe('simple referral rules (owner 2026-10-05)', () => {
     assert.equal(inviteeLabel(''), 'მეგობარი');
     assert.equal(inviteeLabel('a@b.ge', 'Friend'), 'Friend');
   });
+  it('a phone / Apple account without a typed name is „a friend“, never „Medicard მ.“', () => {
+    assert.equal(inviteeLabel('Medicard მომხმარებელი'), 'მეგობარი');
+    assert.equal(inviteeLabel('  Medicard   მომხმარებელი ', 'Friend'), 'Friend');
+    assert.equal(inviteeLabel('Medicard Nino'), 'Medicard N.');
+  });
 });
 
 describe('referral errors in English', () => {

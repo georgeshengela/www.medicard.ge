@@ -2,8 +2,9 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import * as Haptics from 'expo-haptics';
-import { Check, RotateCcw } from 'lucide-react-native';
+import { Check, Pill, RotateCcw } from 'lucide-react-native';
 import { HomeSectionTitle } from '@/components/home/HomeSectionTitle';
+import { HubFeatureCard } from '@/components/home/HubFeatureCard';
 import { DoseCarouselSkeleton } from '@/components/ui/Skeleton';
 import { useThemeColors } from '@/theme/colors';
 import { useHomeAccent } from '@/theme/homeAccent';
@@ -16,6 +17,7 @@ import { formatTime24h, parseMedicationConfig, saveDoseLog, todayYmd } from '@/l
 import { computeTodayDoses, type PendingDose } from '@/lib/home/todayDoses';
 import { dueState, minuteOf, spanLabel } from '@/lib/home/doseDue';
 import type { MedicationDoseLog } from '@/types/medications';
+import { medicationSetupRoute } from '@/lib/home/medicationSetup';
 
 /** Figma 11416:83298 — 288×~88 peeking dose cards. */
 const CARD_W = 288;
@@ -28,6 +30,11 @@ type MedConfig = ReturnType<typeof parseMedicationConfig>;
 type Props = {
   /** Shared medications bundle — Home loads it once for the hero rings and this carousel. */
   meds: ReturnType<typeof useMedications>;
+  /**
+   * A medicine named in the onboarding medication goal that is not tracked yet (`medicationToSetUp`):
+   * a card leads to the MEDIPILL setup with the name filled in, so it is never silently dropped.
+   */
+  setupName?: string | null;
 };
 
 function formLabel(cfg: MedConfig, dosage: string) {
@@ -127,7 +134,25 @@ function NextDoseCard({
   );
 }
 
-export function HomeNextDoseSection({ meds }: Props) {
+/** „დააყენე შეხსენება: Metformin“ — the onboarding medicine, waiting for its dose and times. */
+function SetupMedicationCard({ name }: { name: string }) {
+  const router = useRouter();
+  return (
+    <HubFeatureCard
+      icon={Pill}
+      ink="blue"
+      title={tx(`დააყენე შეხსენება: ${name}`, `Set up reminders: ${name}`)}
+      body={tx(
+        'მიუთითე დოზა და მიღების დრო — და დროზე შეგახსენებთ.',
+        'Add the dose and the times you take it, and we will remind you on time.',
+      )}
+      cta={tx('დაყენება', 'Set up')}
+      onPress={() => router.push(medicationSetupRoute(name))}
+    />
+  );
+}
+
+export function HomeNextDoseSection({ meds, setupName }: Props) {
   const router = useRouter();
   const { medications, schedule, doseLogs, setDoseLogs, loading } = meds;
   const today = todayYmd();
@@ -163,7 +188,7 @@ export function HomeNextDoseSection({ meds }: Props) {
     );
   }
 
-  if (cards.length === 0) return null;
+  if (cards.length === 0 && !setupName) return null;
 
   const keep = (entry: MedicationDoseLog) =>
     setDoseLogs((prev) => [...prev.filter((l) => !(l.medicationId === entry.medicationId && l.date === today && l.time === entry.time)), entry]);
@@ -194,34 +219,41 @@ export function HomeNextDoseSection({ meds }: Props) {
   return (
     <View style={{ paddingHorizontal: 20, marginTop: 28 }}>
       <HomeSectionTitle title={ka.home.nextDose} style={{ fontSize: 17, lineHeight: 24, marginBottom: 12 }} />
-      <ScrollView
-        horizontal
-        nestedScrollEnabled
-        showsHorizontalScrollIndicator={false}
-        decelerationRate="fast"
-        snapToInterval={SNAP}
-        snapToAlignment="start"
-        disableIntervalMomentum
-        style={{ marginHorizontal: -20 }}
-        contentContainerStyle={{ gap: CARD_GAP, paddingHorizontal: 20 }}
-      >
-        {cards.map((dose) => {
-          const med = medications.find((item) => item.id === dose.medicationId);
-          const taken = !pending.some((p) => keyOf(p) === keyOf(dose));
-          return (
-            <NextDoseCard
-              key={keyOf(dose)}
-              dose={dose}
-              cfg={parseMedicationConfig(med?.config)}
-              nowMinute={nowMinute}
-              taken={taken}
-              onOpen={() => router.push(`/medications/${dose.medicationId}?time=${dose.time}&date=${today}` as never)}
-              onTake={() => void take(dose)}
-              onUndo={() => void undo(dose)}
-            />
-          );
-        })}
-      </ScrollView>
+      {cards.length > 0 ? (
+        <ScrollView
+          horizontal
+          nestedScrollEnabled
+          showsHorizontalScrollIndicator={false}
+          decelerationRate="fast"
+          snapToInterval={SNAP}
+          snapToAlignment="start"
+          disableIntervalMomentum
+          style={{ marginHorizontal: -20 }}
+          contentContainerStyle={{ gap: CARD_GAP, paddingHorizontal: 20 }}
+        >
+          {cards.map((dose) => {
+            const med = medications.find((item) => item.id === dose.medicationId);
+            const taken = !pending.some((p) => keyOf(p) === keyOf(dose));
+            return (
+              <NextDoseCard
+                key={keyOf(dose)}
+                dose={dose}
+                cfg={parseMedicationConfig(med?.config)}
+                nowMinute={nowMinute}
+                taken={taken}
+                onOpen={() => router.push(`/medications/${dose.medicationId}?time=${dose.time}&date=${today}` as never)}
+                onTake={() => void take(dose)}
+                onUndo={() => void undo(dose)}
+              />
+            );
+          })}
+        </ScrollView>
+      ) : null}
+      {setupName ? (
+        <View style={{ marginTop: cards.length > 0 ? 10 : 0 }}>
+          <SetupMedicationCard name={setupName} />
+        </View>
+      ) : null}
     </View>
   );
 }

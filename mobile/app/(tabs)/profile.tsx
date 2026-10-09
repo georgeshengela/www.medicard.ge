@@ -42,6 +42,7 @@ import { ka } from '@/i18n/ka';
 import { ApiError } from '@/lib/api';
 import { formatDate } from '@/lib/format';
 import { displayEmail } from '@/lib/accountEmail';
+import { nameInitials, realFullName } from '@/lib/displayName';
 import { profileCompletion } from '@/lib/profileCompletion';
 import { openAppSystemSettings } from '@/lib/appPermissions';
 import {
@@ -141,14 +142,10 @@ export default function Profile() {
     }
   };
 
-  const initials = user?.fullName
-    ?.split(' ')
-    .slice(0, 2)
-    .map((part) => part[0])
-    .join('')
-    .toUpperCase();
-
   const extra = (healthProfile?.extraAnswers ?? {}) as Record<string, unknown>;
+  // Phone / Apple sign-ups without a typed name carry the server's placeholder: never shown as a name.
+  const ownName = realFullName(user, extra);
+  const initials = nameInitials(user, extra);
   const storedAvatar = typeof extra.avatarId === 'string' ? extra.avatarId : null;
   const avatarId = storedAvatar ? normalizeAvatarForGender(storedAvatar, user?.gender ?? null) : null;
   const avatarSource = avatarId && isAvatarId(avatarId) ? AVATAR_SOURCES[avatarId] : null;
@@ -211,7 +208,7 @@ export default function Profile() {
             <View style={{ flex: 1, minWidth: 0, gap: 3 }}>
               {/* One line (owner 2026-10-04): a long name shrinks a little instead of wrapping. */}
               <Text numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.75} style={[s.name, { color: colors.text100 }]}>
-                {user?.fullName}
+                {ownName || tx('შენი პროფილი', 'Your profile')}
               </Text>
               {livingPlaceLine(healthProfile) ? (
                 <Text numberOfLines={1} style={[hubText.caption, { color: colors.text200 }]}>

@@ -262,6 +262,8 @@ export function tidyPushCopy(text: string): string {
     .replace(/(\S)([—–])/g, '$1 $2')
     .replace(/\s+([.,;:!?])/g, '$1')
     .replace(/\s{2,}/g, ' ')
+    // „დილა მშვიდობისა, {firstName} ☀️“ without a name (no real name on the account): no stray comma.
+    .replace(/მშვიდობისა, (?=[^\p{L}\p{N}\s]|$)/u, 'მშვიდობისა ')
     // English templates: the same clean-up when a value is missing, plus singular units.
     .replace(/\bTime for (?=[^\p{L}\p{N}\s]|$)/u, 'Time for your medication ')
     .replace(/\bforget your (?=[^\p{L}\p{N}\s])/u, 'forget your medication ')

@@ -90,7 +90,7 @@
     "typecheck": "tsc --noEmit",
     "test:offline": "node --test src/lib/cycleOffline.test.js",
     "test:lab": "node --experimental-strip-types --test src/lib/labExtract.test.ts src/lib/labChartScale.test.ts src/lib/labFilter.test.ts src/lib/labExplain.test.ts src/lib/labNames.test.ts src/lib/labMerge.test.ts src/lib/labMediPrompt.test.ts",
-    "test:onboarding": "node --experimental-strip-types --test src/lib/onboarding.aiPrivacy.test.ts src/lib/profileCompletion.test.ts src/lib/home/homeSectionOrder.test.ts && node --test tests/assessment-flow.test.cjs",
+    "test:onboarding": "node --experimental-strip-types --test src/lib/onboarding.aiPrivacy.test.ts src/lib/profileCompletion.test.ts src/lib/home/homeSectionOrder.test.ts src/lib/displayName.test.ts src/lib/home/medicationSetup.test.ts && node --test tests/assessment-flow.test.cjs tests/onboarding-goals.test.cjs",
     "test:medi": "node --experimental-strip-types --test src/lib/mediThread.test.ts src/lib/mediCycleAccess.test.ts src/lib/scanThread.test.ts src/lib/biometricOffer.test.ts src/lib/weightNav.test.ts src/lib/mediModes.test.ts src/lib/notificationPlan.test.ts src/lib/notificationDose.test.ts src/lib/assistantVoiceSession.test.ts src/lib/aiConsentDecline.test.ts src/lib/healthPassport.test.ts",
     "test:geo": "node --experimental-strip-types --test src/lib/geoPlace.test.ts",
     "test:weather": "node --experimental-strip-types --test src/lib/weather/*.test.ts",

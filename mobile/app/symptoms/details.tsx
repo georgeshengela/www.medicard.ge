@@ -16,6 +16,7 @@ import { useMedications } from '@/hooks/useMedications';
 import { ka } from '@/i18n/ka';
 import { updateSymptomChecker, useSymptomChecker } from '@/lib/symptomCheckerStore';
 import { useAuth } from '@/store/AuthContext';
+import { displayFirstName } from '@/lib/displayName';
 import { useFeature } from '@/lib/featureFlags';
 
 /**
@@ -28,11 +29,12 @@ export default function SymptomDetailsScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const state = useSymptomChecker();
-  const { user } = useAuth();
+  const { user, healthProfile } = useAuth();
   const { medications } = useMedications();
   // While medications are paused from admin the list still shows here, it just does not open the module.
   const medsOn = useFeature('medications');
-  const firstName = user?.fullName?.split(' ')[0] ?? '';
+  // Never the server's placeholder name: without a real one the heading has no name.
+  const firstName = displayFirstName(user, healthProfile?.extraAnswers);
   const navigating = useRef(false);
   useFocusEffect(useCallback(() => { navigating.current = false; }, []));
 

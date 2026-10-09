@@ -29,6 +29,7 @@ import {
   type ClinicalMode, type MediTurn, type StoredTurn,
 } from '@/lib/mediThread';
 import { useAuth } from '@/store/AuthContext';
+import { displayFirstName } from '@/lib/displayName';
 import { useThemeColors } from '@/theme/colors';
 import { ka } from '@/i18n/ka';
 import { tx } from '@/i18n/locale';
@@ -65,7 +66,7 @@ export type MediChatProps = {
 export function MediChat({ owner, sessionId, startConsilium, directDoctor, prefill, handoff, pausedMessage }: MediChatProps) {
   const C = useThemeColors();
   const router = useRouter();
-  const { user, refreshHealthProfile, applyUsage } = useAuth();
+  const { user, healthProfile, refreshHealthProfile, applyUsage } = useAuth();
   const doctorOn = useFeature('mediDoctor');
   const deepOn = useFeature('mediDeep');
   const voiceOn = useFeature('voice');
@@ -449,7 +450,8 @@ export function MediChat({ owner, sessionId, startConsilium, directDoctor, prefi
   const hasAnswers = turns.some(t => t.kind === 'answer');
   const thinking = busy === 'plan' ? tx('ვფიქრობ…', 'Thinking…') : busy === 'check' ? tx('ვამოწმებ…', 'Checking…') : null;
   const subtitle = consiliumOn ? tx('კონსილიუმი ჩართულია', 'Consilium is on') : tx('შენი ჯანმრთელობის ასისტენტი', 'Your health assistant');
-  const firstName = user?.fullName?.trim().split(/\s+/)[0];
+  // Never the server's placeholder name (phone / Apple sign-ups): no name = the welcome without one.
+  const firstName = displayFirstName(user, healthProfile?.extraAnswers) || undefined;
 
   const renderTurn = ({ item }: { item: MediTurn }) => {
     if (item.kind === 'user') return <UserTurn text={item.text} />;

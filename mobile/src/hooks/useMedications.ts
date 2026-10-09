@@ -72,6 +72,8 @@ export function useMedications() {
     reminderCount: query.data?.scheduled ?? null,
     refreshing,
     loading: query.isPending && query.fetchStatus !== 'idle',
+    /** The list really came back (an empty list before that, or after a failed read, is not „none“). */
+    loaded: query.data !== undefined,
     load,
     onRefresh,
   };

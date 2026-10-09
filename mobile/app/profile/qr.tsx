@@ -7,6 +7,7 @@ import { RefreshCcw, ShieldCheck } from 'lucide-react-native';
 import { api, ApiError } from '@/lib/api';
 import { localAccountId } from '@/lib/localAccount';
 import { useMyAvatarUrl } from '@/lib/myAvatar';
+import { realFullName } from '@/lib/displayName';
 import { useAuth } from '@/store/AuthContext';
 import { Avatar, Button, Card, CoachHeader, ErrorBox, Loading, Screen, coachStyles } from '@/components/coach/CoachUI';
 import { StyledQr } from '@/components/coach/StyledQr';
@@ -19,6 +20,8 @@ export default function MyQrScreen() {
   const c = useThemeColors();
   const { width } = useWindowDimensions();
   const { user, healthProfile } = useAuth();
+  // Never the server's placeholder name (phone / Apple sign-ups without a typed name).
+  const ownName = realFullName(user, healthProfile?.extraAnswers);
   const photo = useMyAvatarUrl();
   const params = useLocalSearchParams<{ note?: string }>();
   const [qr, setQr] = useState<{ token: string; link: string } | null>(null);
@@ -84,10 +87,10 @@ export default function MyQrScreen() {
               <View style={{ alignItems: 'center', paddingTop: 22, paddingBottom: 24, gap: 14 }}>
                 <View style={[coachStyles.row, { gap: 10 }]}>
                   <View style={{ borderRadius: 30, borderWidth: 3, borderColor: brandHex('#99F6E4') }}>
-                    <Avatar avatarId={avatarId} photoUrl={photo} name={user?.fullName ?? '?'} size={50} />
+                    <Avatar avatarId={avatarId} photoUrl={photo} name={ownName || '?'} size={50} />
                   </View>
                   <View>
-                    <Text style={{ fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 18, color: '#FFFFFF' }}>{user?.fullName}</Text>
+                    <Text style={{ fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 18, color: '#FFFFFF' }}>{ownName || tx('შენი პროფილი', 'Your profile')}</Text>
                     <Text style={[hubText.caption, { color: brandHex('#99F6E4') }]}>{tx('MEDICARD პროფილი', 'MEDICARD profile')}</Text>
                   </View>
                 </View>

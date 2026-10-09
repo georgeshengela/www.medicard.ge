@@ -44,6 +44,8 @@ import { formatYmd } from '@/lib/format';
 import { requestHealthRefresh } from '@/lib/healthDataSync';
 import { buildHomeSectionOrder } from '@/lib/home/homeSectionOrder';
 import { primaryGoalFromProfile } from '@/lib/assessmentForm';
+import { displayFirstName, nameInitials } from '@/lib/displayName';
+import { medicationToSetUp } from '@/lib/home/medicationSetup';
 import { profileCompletion } from '@/lib/profileCompletion';
 import { mediRoute } from '@/lib/mediModes';
 import { computeTodayDoses } from '@/lib/home/todayDoses';
@@ -304,7 +306,12 @@ export default function Home() {
     typeof extra?.avatarId === 'string' ? extra.avatarId : null,
     user?.gender ?? null,
   );
-  const firstName = user?.fullName?.split(' ')[0] ?? '';
+  // Never the server's placeholder („Medicard მომხმარებელი“ for phone / Apple sign-ups): no name = the greeting alone.
+  const firstName = displayFirstName(user, extra);
+  // The medicine named in the onboarding medication goal, until it is set up in MEDIPILL.
+  const setupName = meds.loaded
+    ? medicationToSetUp({ primaryGoal: primaryGoalFromProfile(healthProfile), typed: healthProfile?.medications, tracked: meds.medications })
+    : null;
 
   const addGlass = useCallback(() => {
     void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => undefined);
@@ -370,7 +377,7 @@ export default function Home() {
       <View style={{ paddingTop: insets.top + 14 }}>
         <HomeHeader
           firstName={firstName}
-          initial={user?.fullName?.slice(0, 1) || 'M'}
+          initial={nameInitials(user, extra).slice(0, 1) || 'M'}
           avatarId={avatar}
           // Day and month only: the year never changes the day, and the row stays on one line.
           dateLabel={formatYmd(todayYmd())}
@@ -395,7 +402,7 @@ export default function Home() {
         {askChips ? <HomeAskChips set={layout === 'women' ? 'cycle' : layout} community={layout === 'women' && communityEntry} /> : null}
       </View>
     ),
-    nextDose: <HomeNextDoseSection meds={meds} />,
+    nextDose: <HomeNextDoseSection meds={meds} setupName={setupName} />,
     // Standard's one spotlight is MEDISCAN, so the trainer card stays a surface card there too.
     coach: <HomeCoachSection tone={layout === 'women' ? 'spotlight' : 'surface'} />,
     attention: <HomeAttention />,

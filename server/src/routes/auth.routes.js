@@ -34,6 +34,7 @@ import {
   saveIdentity,
   sealSecret,
   signLinkToken,
+  DEFAULT_SOCIAL_NAME,
   socialDisplayName,
   unusablePasswordHash,
   verifyAppleIdentity,
@@ -409,7 +410,8 @@ authRouter.post(
           data: {
             phone,
             email: `${normalizeSmsDestination(phone)}@phone.medicard.ge`,
-            fullName: fullName ?? 'Medicard მომხმარებელი',
+            // One placeholder for phone and Apple sign-ups: the app and web /app never show it as a name.
+            fullName: fullName ?? DEFAULT_SOCIAL_NAME,
             gender: gender ?? null,
             birthDate: birthDate ?? null,
             passwordHash: await bcrypt.hash(`phone:${phone}:${Date.now()}`, 12),

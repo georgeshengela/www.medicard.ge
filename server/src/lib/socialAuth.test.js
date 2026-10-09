@@ -4,6 +4,7 @@ import crypto from 'node:crypto';
 import jwt from 'jsonwebtoken';
 import {
   DEFAULT_GOOGLE_CLIENT_IDS,
+  DEFAULT_SOCIAL_NAME,
   SocialAuthError,
   appleNonceValid,
   appleRevokeConfigured,
@@ -144,6 +145,7 @@ test('resolve: known identity signs in; verified-elsewhere links; password accou
 test('names, synthetic addresses and rate limits', () => {
   assert.equal(socialDisplayName('  ნინო   ბერიძე ', 'x'), 'ნინო ბერიძე');
   assert.equal(socialDisplayName('', null), 'Medicard მომხმარებელი');
+  assert.equal(DEFAULT_SOCIAL_NAME, 'Medicard მომხმარებელი');
   assert.match(syntheticAppleEmail('001.x'), /^apple\.[0-9a-f]{20}@apple\.medicard\.ge$/);
   assert.equal(isDeliverableEmail(syntheticAppleEmail('001.x')), false);
   assert.equal(isDeliverableEmail('x@privaterelay.appleid.com'), true);
@@ -216,4 +218,11 @@ test('apple key self-check reads Apple’s answer to a dummy code', async () => 
   assert.equal(await checkAppleKey({ config: withKeys, fetchImpl: answer('invalid_grant') }), 'ok');
   assert.equal(await checkAppleKey({ config: withKeys, fetchImpl: answer('invalid_client') }), 'invalid_client');
   assert.equal(await checkAppleKey({ config: { ...withKeys, applePrivateKey: 'not a pem' } }), 'key_unreadable');
+});
+
+test('phone sign-up stores the same placeholder constant the clients recognise (never its own copy)', async () => {
+  const { readFileSync } = await import('node:fs');
+  const routes = readFileSync(new URL('../routes/auth.routes.js', import.meta.url), 'utf8');
+  assert.match(routes, /fullName: fullName \?\? DEFAULT_SOCIAL_NAME,/);
+  assert.doesNotMatch(routes, /'Medicard მომხმარებელი'/);
 });
