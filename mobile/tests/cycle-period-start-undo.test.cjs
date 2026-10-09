@@ -309,7 +309,8 @@ test('IR2-4: a restored start whose answer carries no bundle publishes nothing; 
   assert.equal((await offline.loadCycleView(USER)).display.profile.lastPeriodStart, TODAY);
 });
 
-test('IR2-4: a lost answer (timeout after the server saved the start) publishes nothing; the views refetch', async () => {
+// The queued restore itself gets no answer (it stays queued); the follow-up write after the day is the next test.
+test('IR2-4: a queued start restore whose answer is lost (timeout after the server saved it) publishes nothing; the views refetch', async () => {
   const { server, published, invalidated, result, offline, flushPublishes } = await undoAfterStartToday(['applied-408', 'applied-408']);
   assert.equal(server.stored, TODAY);
   assert.equal(result.view, null);
@@ -319,6 +320,22 @@ test('IR2-4: a lost answer (timeout after the server saved the start) publishes 
   const after = await offline.loadCycleView(USER);
   await flushPublishes();
   assert.equal(after.canonical.profile.lastPeriodStart, TODAY);
+});
+
+test('IR2-4: the start written again after the day gets no answer (timeout or server down): nothing is published, the views refetch', async () => {
+  for (const lost of ['applied-408', 'down-503']) {
+    // The queued restore is saved without a bundle back, so the day's answer has no start and it is written
+    // once more after the day; that request then gets no answer.
+    const { server, calls, published, invalidated, result, offline } = await undoAfterStartToday(['null', lost]);
+    assert.deepEqual(calls.filter((call) => call.startsWith('setLastPeriod')), [`setLastPeriod:${TODAY}:30000`, `setLastPeriod:${TODAY}:30000`], lost);
+    assert.equal(server.stored, TODAY, `${lost}: the start is on the server`);
+    assert.equal(result.view, null, `${lost}: the view without the start is not published`);
+    assert.equal(result.synced, true, `${lost}: no false „not saved“ error`);
+    assert.ok(!published.includes(null), `${lost}: published starts: ${published.join(', ')}`);
+    // No write answered, so the undo fetches the views itself (the other request is the queue write's).
+    assert.equal(invalidated.filter((scope) => scope === 'cycle').length, 2, `${lost}: ${invalidated.join(', ')}`);
+    assert.deepEqual(await queueOf(offline), [], lost);
+  }
 });
 
 test('IR2-4: only a refused restore (4xx) shows the server state without the start', async () => {
