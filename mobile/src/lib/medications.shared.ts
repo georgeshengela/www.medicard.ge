@@ -183,15 +183,36 @@ export async function loadDoseLogs(): Promise<MedicationDoseLog[]> {
 }
 
 /**
- * A fresh sign-in (password, SMS, Apple / Google, account switch) is about to set its account: a mark
- * still queued from before it was made in another session (a reminder's „მივიღე ✓“ tapped while
- * signed out) and must never land in this account. A restored session (snapshot / token) keeps it.
+ * A fresh sign-in (password, SMS, Apple / Google, account switch) is about to set `accountId`: of the
+ * marks still queued from before it (a reminder's „მივიღე ✓“ tapped while signed out) only her own
+ * reminders' marks stay, and the drain applies them once the account is set. A mark from another
+ * account's reminder or from an older reminder without an owner was made in another session and is
+ * dropped. A restored session (snapshot / token) keeps the whole queue. Never fails the sign-in.
  */
-export async function clearPendingDoseLogs(): Promise<void> {
+export async function prunePendingDoseLogs(accountId: string): Promise<void> {
   try {
-    const { deletePreference } = await import('@/lib/storage');
-    await deletePreference(PENDING_DOSE_KEY);
-    pendingMaybe = false;
+    // A drain still running for the previous account ends by deleting the queue: let it finish first,
+    // so it never deletes what is written back here.
+    if (pendingDrain) await pendingDrain;
+    const [{ getPreference, setPreference, deletePreference }, { ownPendingDoses }] = await Promise.all([
+      import('@/lib/storage'),
+      import('@/lib/notificationDose'),
+    ]);
+    let queue: unknown[] = [];
+    try {
+      const parsed = JSON.parse((await getPreference(PENDING_DOSE_KEY)) || '[]');
+      queue = Array.isArray(parsed) ? parsed : [];
+    } catch {
+      queue = [];
+    }
+    const own = ownPendingDoses(queue, accountId);
+    if (own.length) {
+      await setPreference(PENDING_DOSE_KEY, JSON.stringify(own));
+      pendingMaybe = true;
+    } else {
+      await deletePreference(PENDING_DOSE_KEY);
+      pendingMaybe = false;
+    }
   } catch {
     /* sign-in never fails on this */
   }

@@ -7,6 +7,7 @@ import {
   mergeDoseLogs,
   notificationDoseEntry,
   notificationTimeMs,
+  ownPendingDoses,
   queuePendingDose,
   reminderOwner,
   takePendingDoses,
@@ -128,6 +129,18 @@ test('pending queue: a mark keeps the account of its reminder and is applied onl
   assert.deepEqual(forA.map((row) => row.medicationId).sort(), ['a', 'c']);
   assert.deepEqual(Object.keys(forA[0]).sort(), ['date', 'medicationId', 'status', 'time', 'updatedAt'], 'the owner never enters a dose log row');
   assert.deepEqual(takePendingDoses(queue, queuedAt + 60_000, 'someone-else').map((row) => row.medicationId), ['c']);
+});
+
+test('pending queue: a fresh sign-in keeps only the marks of its own reminders', () => {
+  const queuedAt = at(2026, 10, 8, 8, 1);
+  let queue = queuePendingDose([], log('a', '2026-10-08', '08:00', '2026-10-08T05:01:00.000Z'), queuedAt, 'owner-a');
+  queue = queuePendingDose(queue, log('b', '2026-10-08', '08:00', '2026-10-08T05:01:00.000Z'), queuedAt, 'owner-b');
+  queue = queuePendingDose(queue, log('c', '2026-10-08', '08:00', '2026-10-08T05:01:00.000Z'), queuedAt, null);
+  const kept = ownPendingDoses([...queue, null, 'x', { medicationId: 3, owner: 'owner-a' }] as unknown[], 'owner-a');
+  assert.deepEqual(kept.map((row) => [row.medicationId, row.owner]), [['a', 'owner-a']]);
+  assert.equal(kept[0].queuedAt, queuedAt, 'kept rows stay queue rows (the drain applies the TTL)');
+  assert.deepEqual(ownPendingDoses(queue, ''), []);
+  assert.deepEqual(ownPendingDoses(queue, 'someone-else'), []);
 });
 
 test('reminder owner: read from the payload; older reminders name none', () => {
