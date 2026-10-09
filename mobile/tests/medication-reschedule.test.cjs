@@ -152,6 +152,50 @@ test('the moved reminder’s „მივიღე ✓“ marks the 09:00 dose o
   assert.ok(p.cancelled.includes('med:med-1:moved:2026-10-08:09:00'));
 });
 
+test('Home’s undo after taking a moved dose puts it back at its moved time with its reminder', async () => {
+  const p = phone();
+  const { moveDose, reopenDose } = p.load('src/lib/doseReschedule.ts');
+  const { saveDoseLog } = p.load('src/lib/medications.shared.ts');
+  await moveDose(DOSE, '2026-10-08', '14:00');
+  // „მივიღე“ on the Home card: the dose is taken and its moved reminder is cancelled.
+  await saveDoseLog({ medicationId: 'med-1', date: '2026-10-08', time: '09:00', status: 'taken', updatedAt: 'x' });
+  await flush();
+  assert.ok(p.cancelled.includes('med:med-1:moved:2026-10-08:09:00'));
+  assert.equal(p.scheduled.length, 1);
+
+  // The undo: open again, still moved to 14:00, and the 14:00 reminder is scheduled again.
+  const entry = await reopenDose({ ...DOSE, dueTime: '14:00' }, '2026-10-08');
+  await flush();
+  assert.equal(entry.status, 'pending');
+  assert.equal(entry.rescheduledTo, '14:00');
+  const logs = p.logs();
+  assert.equal(logs.length, 1);
+  assert.equal(logs[0].time, '09:00');
+  assert.equal(logs[0].status, 'pending');
+  assert.equal(logs[0].rescheduledTo, '14:00');
+  assert.equal(p.scheduled.length, 2);
+  assert.equal(JSON.stringify(p.scheduled[1]), JSON.stringify({ medicationId: 'med-1', time: '09:00', date: '2026-10-08', to: '14:00' }));
+});
+
+test('Home’s undo of a dose that was not moved is a plain „pending“ with no extra reminder', async () => {
+  const p = phone();
+  const { reopenDose } = p.load('src/lib/doseReschedule.ts');
+  const entry = await reopenDose({ ...DOSE, dueTime: '09:00' }, '2026-10-08');
+  await flush();
+  assert.equal(entry.status, 'pending');
+  assert.equal(entry.rescheduledTo, undefined);
+  assert.equal(p.logs()[0].rescheduledTo, undefined);
+  assert.equal(p.scheduled.length, 0);
+  assert.equal(p.events.length, 0);
+  const home = readFileSync(join(root, 'src/components/home/HomeNextDoseSection.tsx'), 'utf8');
+  assert.match(home, /keep\(await reopenDose\(dose, today\)\)/, 'the Home undo goes through reopenDose');
+});
+
+test('a taken dose is not offered „გადატანა“ on the dose screen (it would open it again)', () => {
+  const screen = readFileSync(join(root, 'src/components/medications/MedicationDoseScreen.tsx'), 'utf8');
+  assert.match(screen, /\{log\?\.status === 'taken' \? null : \(\s*<DoseAction label=\{ka\.meds\.actionReschedule\}/);
+});
+
 test('a moved dose tapped open goes to its own slot and day', async () => {
   const p = phone();
   const actions = p.load('src/lib/mediNotificationActions.ts');

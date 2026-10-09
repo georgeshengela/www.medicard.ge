@@ -204,7 +204,10 @@ export function MedicationDoseScreen() {
           <HomeSectionHeading title={ka.meds.doseActionsTitle} />
           <MedsCard style={{ flexDirection: 'row', gap: 10, paddingVertical: 20 }}>
             <DoseAction label={ka.meds.actionTake} fill={primary} color="#FFFFFF" icon={Check} onPress={() => void markDose('taken')} />
-            <DoseAction label={ka.meds.actionReschedule} fill={hubTint(accent, dark)} color={accent} icon={Clock} onPress={() => setRescheduleOpen(true)} />
+            {/* A taken dose is not moved: that would open it again and remind her to take it a second time. */}
+            {log?.status === 'taken' ? null : (
+              <DoseAction label={ka.meds.actionReschedule} fill={hubTint(accent, dark)} color={accent} icon={Clock} onPress={() => setRescheduleOpen(true)} />
+            )}
             <DoseAction label={ka.meds.actionSkip} fill={hubTint(doseAttentionInk(dark), dark)} color={doseAttentionInk(dark)} icon={X} onPress={() => void markDose('skipped')} />
           </MedsCard>
         </View>

@@ -11,9 +11,11 @@ import type { useMedications } from '@/hooks/useMedications';
 import { ka } from '@/i18n/ka';
 import { tx } from '@/i18n/locale';
 import type { ScheduledDose } from '@/lib/api';
+import { reopenDose } from '@/lib/doseReschedule';
 import { formatTime24h, parseMedicationConfig, saveDoseLog, todayYmd } from '@/lib/medications.shared';
 import { computeTodayDoses, type PendingDose } from '@/lib/home/todayDoses';
 import { dueState, minuteOf, spanLabel } from '@/lib/home/doseDue';
+import type { MedicationDoseLog } from '@/types/medications';
 
 /** Figma 11416:83298 — 288×~88 peeking dose cards. */
 const CARD_W = 288;
@@ -163,11 +165,12 @@ export function HomeNextDoseSection({ meds }: Props) {
 
   if (cards.length === 0) return null;
 
-  // Undo writes „pending“ (the same answer the web undo writes), so the dose is due again.
-  const write = async (dose: ScheduledDose, status: 'taken' | 'pending') => {
-    const entry = { medicationId: dose.medicationId, date: today, time: dose.time, status, updatedAt: new Date().toISOString() };
-    await saveDoseLog(entry);
+  const keep = (entry: MedicationDoseLog) =>
     setDoseLogs((prev) => [...prev.filter((l) => !(l.medicationId === entry.medicationId && l.date === today && l.time === entry.time)), entry]);
+  const writeTaken = async (dose: ScheduledDose) => {
+    const entry: MedicationDoseLog = { medicationId: dose.medicationId, date: today, time: dose.time, status: 'taken', updatedAt: new Date().toISOString() };
+    await saveDoseLog(entry);
+    keep(entry);
   };
   const take = async (dose: PendingDose) => {
     const key = keyOf(dose);
@@ -175,13 +178,15 @@ export function HomeNextDoseSection({ meds }: Props) {
     setJustTaken((prev) => [...prev.filter((d) => keyOf(d) !== key), dose]);
     clearTimeout(timers.current.get(key));
     timers.current.set(key, setTimeout(() => setJustTaken((prev) => prev.filter((d) => keyOf(d) !== key)), UNDO_MS));
-    await write(dose, 'taken');
+    await writeTaken(dose);
   };
-  const undo = async (dose: ScheduledDose) => {
+  // Undo writes „pending“ (the same answer the web undo writes), so the dose is due again; a dose moved
+  // with „გადატანა“ goes back to its moved time and gets its reminder back.
+  const undo = async (dose: PendingDose) => {
     const key = keyOf(dose);
     clearTimeout(timers.current.get(key));
     setJustTaken((prev) => prev.filter((d) => keyOf(d) !== key));
-    await write(dose, 'pending');
+    keep(await reopenDose(dose, today));
   };
 
   const nowMinute = now.getHours() * 60 + now.getMinutes();

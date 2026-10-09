@@ -16,3 +16,15 @@ export async function moveDose(dose: ScheduledDose, date: string, to: string): P
   if (entry.rescheduledTo) await scheduleMovedDoseReminder(dose, date, entry.rescheduledTo).catch(() => false);
   return entry;
 }
+
+/**
+ * Home's undo of „მივიღე“: the dose is open again ('pending'). Taking a moved dose cancelled its moved
+ * reminder, so a dose that was moved (`dueTime` after its own slot) goes back to that time with its
+ * reminder — otherwise the undo would leave it with none.
+ */
+export async function reopenDose(dose: ScheduledDose & { dueTime?: string }, date: string): Promise<MedicationDoseLog> {
+  if (dose.dueTime && dose.dueTime !== dose.time) return moveDose(dose, date, dose.dueTime);
+  const entry: MedicationDoseLog = { medicationId: dose.medicationId, date, time: dose.time, status: 'pending', updatedAt: new Date().toISOString() };
+  await saveDoseLog(entry);
+  return entry;
+}
