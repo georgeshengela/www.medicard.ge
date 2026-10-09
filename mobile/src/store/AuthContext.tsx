@@ -3,7 +3,7 @@ import { onReturnToForeground } from '@/lib/appForeground';
 import { resetRunMemory } from '@/lib/run/store';
 import { ka } from '@/i18n/ka';
 import { ApiError, api, type AiEngineId, type Gender, type HealthProfile, type Usage, type User } from '@/lib/api';
-import { setLocalAccountId, wipeLegacyUnscopedHealthCaches } from '@/lib/localAccount';
+import { localAccountId, setLocalAccountId, wipeLegacyUnscopedHealthCaches } from '@/lib/localAccount';
 import { primeHomeLayout, registerHomeLayoutProfilePatch } from '@/lib/home/homeLayoutStore';
 import { needsHealthAssessment as needsHealthAssessmentFromLib, needsProfileSetup } from '@/lib/onboarding';
 import { clearSessionSnapshot, loadSessionSnapshot, saveSessionSnapshot } from '@/lib/sessionSnapshot';
@@ -99,16 +99,38 @@ async function stopDeviceDelivery() {
 }
 
 /**
- * The server already deleted the account and its push tokens with it (cascade): only this phone's
- * reminders are left. No network call, so nothing delays the local cleanup that follows.
+ * The server already deleted the account and its push tokens with it (cascade), or already ended
+ * this session: only this phone's reminders and its push-registration memory are left. No network
+ * call, so nothing delays the local cleanup that follows.
  */
 async function cancelDeviceReminders() {
   try {
-    const { cancelAllReminders } = await import('@/lib/notifications');
+    const { cancelAllReminders, forgetPushRegistration } = await import('@/lib/notifications');
+    forgetPushRegistration();
     await cancelAllReminders();
   } catch {
     /* local cleanup still continues */
   }
+}
+
+/**
+ * The server refused this session (401: a password reset elsewhere, an expired token; or the
+ * account is blocked). The same on-device cleanup as signOut, without its push unregister: that
+ * request would carry the refused token and could only answer 401 (a reset already switched the
+ * account's push tokens off on the server). Before this, the phone she locked out with a reset kept
+ * showing her medicine reminders.
+ */
+async function endSessionOnDevice(userId: string | undefined) {
+  await cancelDeviceReminders();
+  await import('@/lib/petCareReminders').then(({ onPetCareLogout }) => onPetCareLogout(userId)).catch(() => undefined);
+}
+
+/** The account the device was signed in to, read before the session snapshot is cleared. */
+async function leavingAccountId(): Promise<string | undefined> {
+  const current = localAccountId();
+  if (current) return current;
+  const snapshot = await loadSessionSnapshot().catch(() => null);
+  return snapshot?.user?.id ?? undefined;
 }
 
 /** Device-side data of an account that no longer exists here (deleted, discarded or merged away). */
@@ -199,6 +221,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         } catch (error) {
           if (await getToken() !== token) return;
           if (error instanceof ApiError && (error.isUnauthorized || error.code === 'ACCOUNT_BLOCKED')) {
+            await endSessionOnDevice(await leavingAccountId());
+            // A sign-in that landed during the cleanup keeps its new session.
+            if (await getToken() !== token) return;
             await clearToken();
             await clearSessionSnapshot();
             resetSession();
@@ -333,6 +358,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       } catch (error) {
         if (await getToken() !== result.token) return;
         if (error instanceof ApiError && (error.isUnauthorized || error.code === 'ACCOUNT_BLOCKED')) {
+          await endSessionOnDevice(result.user.id);
+          if (await getToken() !== result.token) return;
           await clearToken();
           await clearSessionSnapshot();
           resetSession();

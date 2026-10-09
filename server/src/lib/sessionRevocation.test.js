@@ -13,6 +13,16 @@ const db = {
   changedAt: null,
   executed: [],
   resetCodeHash: null,
+  /** PushToken updateMany calls (IR-11); `pushFails` makes the next one throw. */
+  pushOff: [],
+  pushFails: false,
+  pushToken: {
+    updateMany: async ({ where, data }) => {
+      if (db.pushFails) throw new Error('push table unavailable');
+      db.pushOff.push({ where, data });
+      return { count: 2 };
+    },
+  },
   user: {
     findUnique: async ({ where }) => {
       if (where.id === USER.id || where.email === USER.email) return { ...USER, package: null };
@@ -77,6 +87,8 @@ beforeEach(() => {
   db.changedAt = null;
   db.executed = [];
   db.resetCodeHash = null;
+  db.pushOff = [];
+  db.pushFails = false;
 });
 
 const NOW = Math.floor(Date.now() / 1000);
@@ -196,6 +208,22 @@ describe('where the reset is recorded', () => {
   it('markPasswordChanged never fails the reset before db:install', async () => {
     db.changedAt = undefined;
     assert.equal(await mod.markPasswordChanged(USER.id), false);
+    // Older sessions stay valid without the column, so their pushes stay too.
+    assert.deepEqual(db.pushOff, []);
+  });
+
+  // IR-11: the phone she locked out cannot unregister itself (its session is refused), so the reset
+  // switches the account's push tokens off; each device registers again when it signs in.
+  it('a reset switches off the account’s push tokens', async () => {
+    assert.equal(await mod.markPasswordChanged(USER.id), true);
+    assert.deepEqual(db.pushOff, [{ where: { userId: USER.id, active: true }, data: { active: false } }]);
+  });
+
+  it('a failed push-token update never fails the reset', async () => {
+    db.pushFails = true;
+    const at = new Date();
+    assert.equal(await mod.markPasswordChanged(USER.id, at), true);
+    assert.equal(db.changedAt, at);
   });
 
   it('the email reset ends older sessions', async () => {
@@ -205,6 +233,7 @@ describe('where the reset is recorded', () => {
     const result = await resetPasswordWithCode({ email: USER.email, code: '123456', password: 'new-password-1' });
     assert.equal(result.ok, true);
     assert.equal(db.executed.length, 1);
+    assert.equal(db.pushOff.length, 1);
     assert.equal((await authorize(before)).passed, false);
   });
 
@@ -223,6 +252,7 @@ describe('where the reset is recorded', () => {
     assert.equal(body.status, 200);
     assert.equal(typeof body.token, 'string');
     assert.equal(db.executed.length, 1);
+    assert.equal(db.pushOff.length, 1, 'push tokens are switched off before the resetting device registers again');
     assert.equal((await authorize(before)).passed, false);
     assert.equal((await authorize(body.token)).passed, true);
   });

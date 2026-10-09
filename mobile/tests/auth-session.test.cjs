@@ -3,7 +3,7 @@ const {test}=require('node:test'),assert=require('node:assert/strict'),fs=requir
 // Run the actual provider callbacks with deterministic React state/native boundaries.
 // These tests cover ordering and network recovery; they do not emulate native rendering.
 function harness(initialToken=null) {
- const slots=[],effects=[];let cursor=0,token=initialToken,postLoginCount=0,loginCount=0,meCount=0,profileCount=0;const delivery=[];
+ const slots=[],effects=[];let cursor=0,token=initialToken,postLoginCount=0,loginCount=0,meCount=0,profileCount=0,accountId=null,snapshot=null,pushForgets=0,cancelGate=null;const delivery=[],petLogouts=[],forgotten=[];
  const user={id:'synthetic-user',email:'qa@medicard.test'},profile={completedAt:'2026-09-20T00:00:00Z'};
  const full={user,usage:{remaining:10},stats:{records:5},healthProfile:profile};
  let me=async()=>full,readProfile=async()=>({profile:{...profile}}),deleteAccount=async()=>{delivery.push('server-delete');return {ok:true};};
@@ -16,23 +16,23 @@ function harness(initialToken=null) {
   react:React,'react-native':{AppState:{addEventListener:()=>({remove:noop})}},
   '@/lib/run/store':{resetRunMemory:noop},'@/i18n/ka':{ka:{auth:{registerNotConfirmed:'Unconfirmed'}}},
   '@/lib/api':{ApiError,api:{auth:{login:async()=>{loginCount++;return {token:'confirmed-token',user,usage:full.usage};},me:async()=>{meCount++;return me();},deleteAccount:()=>deleteAccount()},healthProfile:{get:async()=>{profileCount++;return readProfile();}}}},
-  '@/lib/localAccount':{setLocalAccountId:noop,wipeLegacyUnscopedHealthCaches:asyncNoop},
+  '@/lib/localAccount':{setLocalAccountId:id=>{accountId=id;},localAccountId:()=>accountId,wipeLegacyUnscopedHealthCaches:asyncNoop},
   '@/lib/home/homeLayoutStore':{primeHomeLayout:asyncNoop,registerHomeLayoutProfilePatch:noop},
   '@/lib/onboarding':{needsHealthAssessment:noop,needsProfileSetup:noop,assessmentPhaseComplete:noop},
-  '@/lib/sessionSnapshot':{clearSessionSnapshot:asyncNoop,saveSessionSnapshot:asyncNoop,loadSessionSnapshot:async()=>null},
+  '@/lib/sessionSnapshot':{clearSessionSnapshot:async()=>{snapshot=null;},saveSessionSnapshot:async value=>{snapshot=value;},loadSessionSnapshot:async()=>snapshot},
   '@/lib/storage':{getToken:async()=>token,setToken:async value=>{token=value;},clearToken:async()=>{token=null;},renewToken:async(current,next)=>{if(!next||token!==current)return false;token=next;return true;}},
   '@/lib/safeStartup':{runPostLoginSideEffects:()=>{postLoginCount++;}},'@/lib/appForeground':{onReturnToForeground:()=>noop},'@/lib/authErrorMessage':{authErrorMessage:error=>error.message},
   '@/lib/quest/devFixture':{isQuestDevEnabled:()=>false,isQuestVisualSession:()=>false,setQuestVisualSession:noop},
   '@/lib/healthDataSync':{resetHealthPullCache:noop},'@/lib/quest/socket':{disconnectQuestSocket:noop},'@/lib/accountSync':{resetAccountSync:noop},
-  '@/lib/notifications':{unregisterPushFromServer:async()=>{delivery.push('push-unregister');},cancelAllReminders:async()=>{delivery.push('reminders-cancel');}},'@/lib/petCareReminders':{onPetCareLogout:asyncNoop},
-  '@/lib/pregnancyCareCalendar':{wipePregnancyCareCalendarOwnership:asyncNoop},'@/lib/cycleOffline':{destroyCycleOfflineAccount:asyncNoop},
+  '@/lib/notifications':{unregisterPushFromServer:async()=>{delivery.push('push-unregister');},forgetPushRegistration:()=>{pushForgets++;},cancelAllReminders:async()=>{if(cancelGate)await cancelGate;delivery.push('reminders-cancel');}},'@/lib/petCareReminders':{onPetCareLogout:async id=>{petLogouts.push(id);}},
+  '@/lib/pregnancyCareCalendar':{wipePregnancyCareCalendarOwnership:async id=>{forgotten.push('pregnancy:'+id);}},'@/lib/cycleOffline':{destroyCycleOfflineAccount:async id=>{forgotten.push('cycle:'+id);}},
  };
  const file=path.resolve(__dirname,'../src/store/AuthContext.tsx');
  const source=ts.transpileModule(fs.readFileSync(file,'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022,jsx:ts.JsxEmit.React,esModuleInterop:true}}).outputText;
  const exports={};vm.runInNewContext(source,{exports,require:name=>{if(!(name in modules))throw Error('Unmocked: '+name);return modules[name];},console,setTimeout,clearTimeout},{filename:file});
  const render=()=>{cursor=0;return exports.AuthProvider({children:null}).props.value;};
  render();const startup=effects[0];
- return {render,startup,full,ApiError,setMe:fn=>{me=fn;},setProfile:fn=>{readProfile=fn;},setDelete:fn=>{deleteAccount=fn;},delivery,token:()=>token,counters:()=>({postLoginCount,loginCount,meCount,profileCount})};
+ return {render,startup,full,ApiError,setMe:fn=>{me=fn;},setProfile:fn=>{readProfile=fn;},setDelete:fn=>{deleteAccount=fn;},delivery,petLogouts,forgotten,token:()=>token,setToken:value=>{token=value;},setSnapshot:value=>{snapshot=value;},holdCancel:gate=>{cancelGate=gate;},pushForgets:()=>pushForgets,counters:()=>({postLoginCount,loginCount,meCount,profileCount})};
 }
 function deferred(){let resolve;const promise=new Promise(r=>resolve=r);return {promise,resolve};}
 const tick=()=>new Promise(r=>setImmediate(r));
@@ -159,4 +159,56 @@ test('email sign-in shows no Remember me choice that would be ignored',()=>{
  assert.match(signIn,/ka\.auth\.forgotPassword/,'the forgot-password link stays');
  for(const dict of ['../src/i18n/ka.ts','../src/i18n/en/core.ts'])
   assert.doesNotMatch(fs.readFileSync(path.resolve(__dirname,dict),'utf8'),/keepSignedIn|Remember me/,dict);
+});
+
+// IR-11: a password reset on another device ends this phone's session (401 TOKEN_EXPIRED). The phone
+// she locked out must stop her reminders like signOut does, with no request (its token is refused).
+test('a session ended by a password reset elsewhere stops this phone’s reminders, with no request',async()=>{
+ const h=harness('locked-out-token');h.setSnapshot({user:h.full.user});
+ h.setMe(async()=>{throw new h.ApiError('Password changed',401,{code:'TOKEN_EXPIRED'});});
+ h.startup();await tick();await tick();
+ assert.equal(h.token(),null);assert.equal(h.render().user,null);
+ assert.deepEqual(h.delivery,['reminders-cancel'],'reminders cancelled, no push unregister with the refused token');
+ assert.equal(h.pushForgets(),1,'the next sign-in here registers push again');
+ assert.deepEqual(h.petLogouts,[h.full.user.id]);
+ assert.deepEqual(h.forgotten,[],'an account that still exists keeps its device data (offline cycle logs)');
+});
+test('a session ended while she is using the app stops reminders of the account she was in',async()=>{
+ const h=harness('saved-token');await h.render().refresh();assert.equal(h.render().user.id,h.full.user.id);
+ h.setMe(async()=>{throw new h.ApiError('Expired',401,{code:'TOKEN_EXPIRED'});});await h.render().refresh();
+ assert.equal(h.token(),null);assert.deepEqual(h.delivery,['reminders-cancel']);assert.deepEqual(h.petLogouts,[h.full.user.id]);
+});
+test('a blocked account also stops this phone’s reminders',async()=>{
+ const h=harness('blocked-token');h.setSnapshot({user:h.full.user});
+ h.setMe(async()=>{throw new h.ApiError('Blocked',403,{code:'ACCOUNT_BLOCKED'});});await h.render().refresh();
+ assert.equal(h.token(),null);assert.deepEqual(h.delivery,['reminders-cancel']);
+});
+test('a connection failure or server error keeps every reminder',async()=>{
+ for(const failure of [{status:0},{status:408},{status:503},{status:403,code:'AI_CONSENT_REQUIRED'}]){
+  const h=harness('saved-token');h.setSnapshot({user:h.full.user});
+  h.setMe(async()=>{throw new h.ApiError('Unavailable',failure.status,failure.code?{code:failure.code}:{});});await h.render().refresh();
+  assert.equal(h.token(),'saved-token');assert.deepEqual(h.delivery,[],JSON.stringify(failure));assert.equal(h.pushForgets(),0);
+ }
+});
+test('a sign-in that lands during the cleanup keeps its new session',async()=>{
+ const h=harness('locked-out-token'),gate=deferred();h.holdCancel(gate.promise);
+ h.setMe(async()=>{throw new h.ApiError('Password changed',401,{code:'TOKEN_EXPIRED'});});
+ const restore=h.render().refresh();await tick();await tick();
+ h.setToken('new-session-token');gate.resolve();await restore;
+ assert.equal(h.token(),'new-session-token');
+});
+test('a sign-in whose token the server refuses also leaves no reminders behind',async()=>{
+ const h=harness();h.setMe(async()=>{throw new h.ApiError('Password changed',401,{code:'TOKEN_EXPIRED'});});
+ await assert.rejects(h.render().signIn('qa@medicard.test','synthetic'),/Password changed/);
+ assert.equal(h.token(),null);assert.deepEqual(h.delivery,['reminders-cancel']);assert.deepEqual(h.petLogouts,[h.full.user.id]);
+});
+// The device that did the reset registers push again right after its sign-in: every sign-in runs
+// syncPushRegistration, which skips the 6 h „already registered“ shortcut (also in 1.0.0.21.x JS).
+test('every sign-in registers push again without the 6 h freshness shortcut',()=>{
+ const notifications=fs.readFileSync(path.resolve(__dirname,'../src/lib/notifications.ts'),'utf8');
+ const startup=fs.readFileSync(path.resolve(__dirname,'../src/lib/safeStartup.js'),'utf8');
+ assert.match(notifications,/export async function syncPushRegistration\(\)[\s\S]{0,160}registerPushTokenWithServer\(\{ skipPermissionProbe: true \}\)/);
+ assert.match(notifications,/if \(!fresh \|\| opts\.skipPermissionProbe\) \{\s*await api\.push\.register/);
+ assert.match(startup,/schedulePostLoginWork\('push',[\s\S]{0,120}syncPushRegistration\(\)/);
+ assert.match(fs.readFileSync(path.resolve(__dirname,'../src/store/AuthContext.tsx'),'utf8'),/runPostLoginSideEffects\(user, healthProfile, \{ force: true \}\)/);
 });

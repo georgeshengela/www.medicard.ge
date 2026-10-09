@@ -7,7 +7,8 @@
  * queries keep working before db:install adds the column) and requireAuth refuses a token signed
  * before that moment. Everything fails open — no column yet, no value (accounts that have not
  * reset since this shipped), a token without `iat` or a failed read: the token is judged exactly
- * as before, so this can never sign everyone out at once.
+ * as before, so this can never sign everyone out at once. The reset also switches off the
+ * account's push tokens (markPasswordChanged), so the locked-out phone stops receiving her pushes.
  */
 import { prisma } from './prisma.js';
 
@@ -55,10 +56,20 @@ export async function readPasswordChangedAt(userId, db = prisma) {
  * Records a password reset. Call after the new password is committed and before signing the
  * token the resetting device gets. Never fails the reset: without the column it logs and the
  * older sessions stay valid, exactly as before this shipped.
+ *
+ * Once recorded, the account's push tokens are switched off too: a phone whose session just ended
+ * cannot unregister itself (DELETE /api/push/register needs a session), so it kept receiving her
+ * pushes. Every device registers again when it signs in (syncPushRegistration after sign-in), the
+ * resetting one right after the reset.
  */
 export async function markPasswordChanged(userId, at = new Date(), db = prisma) {
   try {
     await db.$executeRaw`UPDATE "User" SET "passwordChangedAt" = ${at} WHERE "id" = ${String(userId)}`;
+    try {
+      await db.pushToken.updateMany({ where: { userId: String(userId), active: true }, data: { active: false } });
+    } catch (error) {
+      console.warn('[auth] push tokens not switched off after a password change', error?.code || error?.message);
+    }
     return true;
   } catch (error) {
     console.warn('[auth] password change not recorded; older sessions stay valid', error?.code || error?.message);
