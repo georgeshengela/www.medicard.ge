@@ -311,7 +311,8 @@ function openMedForm(existing, onSaved) {
   let times = existing ? parseTimes(existing.frequency) : ['08:00'];
   let days = Array.isArray(cfg.daysOfWeek) && cfg.daysOfWeek.length ? [...cfg.daysOfWeek] : [0, 1, 2, 3, 4, 5, 6];
   let color = cfg.pillColor || PILL_COLORS[0];
-  let refillOn = cfg.refillReminder !== undefined ? Boolean(cfg.refillReminder) : true;
+  // No refill reminder or „amount left“ here: nothing counts the pack down or sends a refill reminder
+  // yet, so the form does not promise one. Values an earlier version stored stay in `...cfg`.
 
   const timesBox = h('div', { class: 'med-times-grid' });
   const countSel = select(Array.from({ length: MAX_TIMES }, (_, i) => ({ value: i + 1, label: i === 0 ? t('დღეში ერთხელ', 'Once a day') : t(`დღეში ${i + 1}-ჯერ`, `${i + 1} times a day`) })), times.length, { name: 'timesPerDay' });
@@ -344,11 +345,6 @@ function openMedForm(existing, onSaved) {
   }, h('span', { style: { background: c } }))));
   renderColors();
 
-  const refillFields = h('div', { class: 'form-row' },
-    field(t('შევსების ზღვარი', 'Refill threshold'), input({ name: 'refillThreshold', type: 'number', min: 1, max: 999, value: cfg.refillThreshold ?? 12 }), t('შეგახსენებ, როცა დარჩენილი ამ რაოდენობას მიაღწევს', 'We’ll remind you when what’s left reaches this amount')),
-    field(t('დარჩენილი რაოდენობა', 'Amount left'), input({ name: 'remainingCount', type: 'number', min: 0, max: 9999, value: cfg.remainingCount ?? '', placeholder: t('არასავალდებულო', 'Optional') })));
-  refillFields.hidden = !refillOn;
-
   const startIn = input({ name: 'startDate', type: 'date', value: cfg.startDate || today, required: true });
   const endIn = input({ name: 'endDate', type: 'date', value: cfg.endDate || ymd(addDays(parseDate(cfg.startDate || today), 365)) });
   startIn.addEventListener('change', () => { if (endIn.value && endIn.value < startIn.value) endIn.value = ymd(addDays(parseDate(startIn.value), 365)); endIn.min = startIn.value; });
@@ -366,10 +362,6 @@ function openMedForm(existing, onSaved) {
     h('div', { class: 'field' }, h('span', { class: 'field-label' }, t('მიღების დრო', 'Dose time')), timesBox),
     h('div', { class: 'field' }, h('span', { class: 'field-label' }, t('მიღების დღეები', 'Dose days')), daysBox, daysSummaryEl),
     h('div', { class: 'form-row' }, field(t('დაწყების თარიღი', 'Start date'), startIn), field(t('დასრულების თარიღი', 'End date'), endIn)),
-    h('div', { class: 'field' },
-      toggle(refillOn, (v) => { refillOn = v; refillFields.hidden = !v; }, t('შევსების შეხსენება', 'Refill reminder')),
-      h('span', { class: 'field-hint' }, t('შეხსენებას MEDICARD აპი გამოგიგზავნის.', 'The MEDICARD app sends the reminder.'))),
-    refillFields,
     h('div', { class: 'field' }, h('span', { class: 'field-label' }, t('ფერი', 'Color')), colorsBox),
     field(t('შენიშვნა', 'Note'), textarea({ name: 'notes', maxlength: 300, rows: 2, value: existing?.notes || '', placeholder: t('მაგ. ჭამის შემდეგ, უხვი წყლით', 'e.g. after meals, with plenty of water') })));
 
@@ -391,8 +383,6 @@ function openMedForm(existing, onSaved) {
       if (!v.startDate) throw new Error(t('მიუთითე დაწყების თარიღი', 'Enter a start date'));
       if (v.endDate && v.endDate < v.startDate) throw new Error(t('დასრულების თარიღი ვერ იქნება დაწყების თარიღზე ადრე', 'The end date can’t be before the start date'));
       const form = FORM_LABELS[v.form] ? v.form : 'pills';
-      const threshold = Math.max(1, Math.round(Number(v.refillThreshold) || 12));
-      const remaining = v.remainingCount === '' || v.remainingCount == null ? undefined : Math.max(0, Math.round(Number(v.remainingCount)));
       const config = {
         ...cfg,
         form,
@@ -404,11 +394,8 @@ function openMedForm(existing, onSaved) {
         endDate: v.endDate || undefined,
         pillColor: color,
         pillShape: cfg.pillShape || 'diamond',
-        refillReminder: refillOn,
-        refillThreshold: threshold,
         mealTiming: v.mealTiming || 'any',
         strength: String(v.strength || '').trim() || undefined,
-        remainingCount: Number.isFinite(remaining) ? remaining : undefined,
       };
       const body = {
         medName,
@@ -593,9 +580,6 @@ function heatCard(bundle) {
 function medCard(med, reload) {
   const cfg = parseConfig(med.config);
   const times = parseTimes(med.frequency);
-  const refill = cfg.remainingCount != null
-    ? badge(t(`${cfg.remainingCount} დარჩა`, `${cfg.remainingCount} left`), cfg.refillReminder && cfg.remainingCount <= (cfg.refillThreshold ?? 12) ? 'warn' : 'neutral')
-    : null;
   const tog = toggle(med.active, (v) => setActive(med, v, reload), null);
   tog.title = med.active ? t('შეჩერება', 'Pause') : t('განახლება', 'Resume');
   tog.setAttribute('aria-label', `${med.medName}: ${med.active ? t('აქტიური', 'active') : t('შეჩერებული', 'paused')}`);
@@ -608,7 +592,7 @@ function medCard(med, reload) {
     h('div', { class: 'med-times' }, times.map((t) => h('span', { class: 'med-time-chip' }, t))),
     h('div', { class: 'med-card-foot' },
       h('span', null, daysSummary(cfg.daysOfWeek).length > 40 ? t(`${cfg.daysOfWeek.length} დღე კვირაში`, `${cfg.daysOfWeek.length} days a week`) : daysSummary(cfg.daysOfWeek), cfg.endDate ? t(` · ${fmtDate(cfg.endDate, { short: true })}-მდე`, ` · until ${fmtDate(cfg.endDate, { short: true })}`) : ''),
-      refill || (med.active ? null : badge(t('შეჩერებული', 'Paused'), 'neutral'))));
+      med.active ? null : badge(t('შეჩერებული', 'Paused'), 'neutral')));
 }
 
 async function listPage(root, ctx) {
@@ -716,8 +700,6 @@ async function detailPage(root, ctx) {
       ['calendar', 'blue', t('მიღების დღეები', 'Dose days'), daysSummary(cfg.daysOfWeek)],
       cfg.startDate || cfg.endDate ? ['calendarCheck', 'violet', t('კურსი', 'Course'), `${cfg.startDate ? fmtDate(cfg.startDate) : '…'} – ${cfg.endDate ? fmtDate(cfg.endDate) : '…'}`] : null,
       cfg.mealTiming && cfg.mealTiming !== 'any' ? ['utensils', 'amber', t('ჭამასთან', 'With food'), MEAL_LABELS[cfg.mealTiming]] : null,
-      cfg.remainingCount != null ? ['folder', 'sky', t('დარჩენილი', 'Left'), t(`${cfg.remainingCount} დარჩა`, `${cfg.remainingCount} left`)] : null,
-      ['bell', 'rose', t('შევსების შეხსენება', 'Refill reminder'), cfg.refillReminder ? t(`კი · ზღვარი ${cfg.refillThreshold ?? 12}`, `Yes · at ${cfg.refillThreshold ?? 12}`) : t('არა', 'No')],
       med.notes ? ['file', 'neutral', t('შენიშვნა', 'Note'), med.notes] : null,
       ['plus', 'green', t('დამატებულია', 'Added'), fmtDate(med.createdAt)],
     ].filter(Boolean);

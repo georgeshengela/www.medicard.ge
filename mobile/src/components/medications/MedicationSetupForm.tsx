@@ -1,7 +1,6 @@
 import Animated, { useAnimatedStyle } from 'react-native-reanimated';
 import { Platform } from 'react-native';
 import { useKeyboardPad } from '@/components/ui/KeyboardFormShell';
-import { Switch } from '@/components/ui/AppSwitch';
 import React, { useEffect, useMemo, useState } from 'react';
 import {
   Alert,
@@ -13,10 +12,7 @@ import {
   View,
 } from 'react-native';
 import {
-  Bell,
-  Calendar,
   Clock,
-  Minus,
   Pencil,
   Pill,
   Plus,
@@ -28,7 +24,7 @@ import { MedicationFrequencySheet } from '@/components/medications/MedicationFre
 import { MedicationPillIcon } from '@/components/medications/MedicationPillIcon';
 import { MedicationShapePickerSheet } from '@/components/medications/MedicationShapePickerSheet';
 import { MedicationTimePickerSheet } from '@/components/medications/MedicationTimePickerSheet';
-import { MedsButton, MedsCard, MedsRoundAction, PILL_COLORS, medsInk, medsPrimaryFill } from '@/components/medications/MedsHubUI';
+import { MedsButton, MedsCard, PILL_COLORS, medsInk, medsPrimaryFill } from '@/components/medications/MedsHubUI';
 import { ProfileMenuRow } from '@/components/profile/ProfileMenuRow';
 import { HomeSectionHeading } from '@/components/home/HomeSectionHeading';
 import { ka } from '@/i18n/ka';
@@ -46,7 +42,7 @@ import {
 } from '@/lib/medications.shared';
 import type { MedicationForm, PillShape } from '@/types/medications';
 import { useIsDark, useThemeColors } from '@/theme/colors';
-import { HUB, hubInk, hubText, hubTint } from '@/theme/hub';
+import { HUB, hubText, hubTint } from '@/theme/hub';
 import { tx } from '@/i18n/locale';
 
 type Props = {
@@ -92,8 +88,8 @@ export function MedicationSetupForm({
   const [days, setDays] = useState<number[]>([0, 1, 2, 3, 4, 5, 6]);
   const [startDate, setStartDate] = useState(todayYmd());
   const [endDate, setEndDate] = useState(addYearsToIso(todayYmd(), 1));
-  const [refillReminder, setRefillReminder] = useState(true);
-  const [refillThreshold, setRefillThreshold] = useState('12');
+  // No refill reminder here: nothing counts the pills left or sends one yet, so the form does not
+  // promise it (it used to default to on). Values stored by older builds stay as they are.
   const [pillColor, setPillColor] = useState<string>(PILL_COLORS[0]);
   const [pillShape, setPillShape] = useState<PillShape>('diamond');
   const [busy, setBusy] = useState(false);
@@ -129,10 +125,6 @@ export function MedicationSetupForm({
     setDays((prev) => (prev.includes(d) ? prev.filter((x) => x !== d) : [...prev, d].sort()));
   };
 
-  const stepThreshold = (delta: number) => {
-    setRefillThreshold(String(Math.max(1, (Number(refillThreshold) || 1) + delta)));
-  };
-
   const applyTimesPerDay = (count: number) => {
     setTimesPerDay(count);
     setTimes((prev) => {
@@ -155,6 +147,11 @@ export function MedicationSetupForm({
       Alert.alert(ka.common.error, ka.meds.endBeforeStartError);
       return;
     }
+    // No day chosen: every reader takes an empty list as „every day“, the opposite of what she picked.
+    if (days.length === 0) {
+      Alert.alert(ka.common.error, ka.meds.noDaysSelected);
+      return;
+    }
     setBusy(true);
     try {
       await api.medications.create({
@@ -170,8 +167,6 @@ export function MedicationSetupForm({
           daysOfWeek: days,
           pillColor,
           pillShape,
-          refillReminder,
-          refillThreshold: Number(refillThreshold) || 12,
           startDate,
           endDate,
           imageUrl: initialImageUrl,
@@ -184,7 +179,7 @@ export function MedicationSetupForm({
       void import('@/lib/funnel').then(({ trackFirstHealthAction }) => trackFirstHealthAction('medication')).catch(() => undefined);
       onSaved();
     } catch (err) {
-      Alert.alert(ka.common.error, err instanceof ApiError ? err.message : ka.common.error);
+      Alert.alert(ka.common.error, saveErrorMessage(err));
     } finally {
       setBusy(false);
     }
@@ -318,36 +313,6 @@ export function MedicationSetupForm({
           </MedsCard>
         </View>
 
-        <View style={{ paddingHorizontal: HUB.gutter, marginTop: HUB.sectionGap }}>
-          <HomeSectionHeading title={ka.meds.sectionReminder} />
-          <View style={[styles.card, { backgroundColor: c.surface, padding: 0 }]}>
-            <ProfileMenuRowSwitch icon={Bell} label={ka.meds.refillLabel} value={refillReminder} onChange={setRefillReminder} ink="rose" isLast={!refillReminder} />
-            {refillReminder ? (
-              <>
-                <Divider color={c.bg300} />
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 16, paddingVertical: 12 }}>
-                  <View style={{ flex: 1 }}>
-                    <Text style={[hubText.cardTitle, { color: c.text100 }]}>{ka.meds.refillThresholdLabel}</Text>
-                    <Text style={[hubText.caption, { color: c.text200, marginTop: 2 }]}>{tx('შეგახსენებთ, როცა ამდენი დარჩება', 'We remind you when this many are left')}</Text>
-                  </View>
-                  {/* − value + : the number stays typeable, the buttons step it by one. */}
-                  <View style={styles.stepper}>
-                    <MedsRoundAction icon={Minus} tone="quiet" size={34} onPress={() => stepThreshold(-1)} accessibilityLabel={tx('ნაკლები', 'Fewer')} />
-                    <TextInput
-                      value={refillThreshold}
-                      onChangeText={(v) => setRefillThreshold(v.replace(/\D/g, '').slice(0, 3))}
-                      keyboardType="number-pad"
-                      accessibilityLabel={ka.meds.refillThresholdLabel}
-                      style={[hubText.value, styles.stepperValue, { color: c.text100 }]}
-                    />
-                    <MedsRoundAction icon={Plus} tone="quiet" size={34} onPress={() => stepThreshold(1)} accessibilityLabel={tx('მეტი', 'More')} />
-                  </View>
-                </View>
-              </>
-            ) : null}
-          </View>
-        </View>
-
         <View style={{ paddingHorizontal: HUB.gutter, marginTop: HUB.sectionGap, paddingBottom: 4 }}>
           <HomeSectionHeading title={ka.meds.pillColorLabel} />
           <MedsCard>
@@ -438,37 +403,18 @@ function daysLine(days: number[]): string {
   return preset ? preset.summary : daysSummaryKa(days);
 }
 
-function Divider({ color }: { color: string }) {
-  return <View style={{ height: StyleSheet.hairlineWidth, backgroundColor: color, marginLeft: 16 }} />;
+/**
+ * The server's own reason when it gives one: a 400 carries it in `fields` („დღეში დასაშვებია 1-დან 8
+ * მიღებამდე“), while its top-line `error` is only the generic „შევსებული მონაცემები არასწორია.“
+ */
+function saveErrorMessage(err: unknown): string {
+  if (!(err instanceof ApiError)) return ka.common.error;
+  const field = err.fields?.find((f) => typeof f?.message === 'string' && f.message.trim());
+  return field?.message || err.message || ka.common.error;
 }
 
-function ProfileMenuRowSwitch({
-  icon: Icon,
-  label,
-  value,
-  onChange,
-  ink,
-  isLast,
-}: {
-  icon: typeof Bell;
-  label: string;
-  value: boolean;
-  onChange: (v: boolean) => void;
-  ink: 'teal' | 'rose' | 'amber' | 'sky';
-  isLast?: boolean;
-}) {
-  const c = useThemeColors();
-  const dark = useIsDark();
-  const tint = hubInk(ink, dark);
-  return (
-    <View style={{ flexDirection: 'row', alignItems: 'center', minHeight: 58, paddingHorizontal: 16, paddingVertical: 10, gap: 12 }}>
-      <View style={{ width: 40, height: 40, borderRadius: 13, backgroundColor: hubTint(tint, dark), alignItems: 'center', justifyContent: 'center' }}>
-        <Icon size={19} color={tint} strokeWidth={1.9} />
-      </View>
-      <Text style={[hubText.cardTitle, { flex: 1, color: c.text100 }]}>{label}</Text>
-      <Switch value={value} onValueChange={onChange} trackColor={{ true: medsInk(dark), false: c.bg300 }} thumbColor="#fff" />
-    </View>
-  );
+function Divider({ color }: { color: string }) {
+  return <View style={{ height: StyleSheet.hairlineWidth, backgroundColor: color, marginLeft: 16 }} />;
 }
 
 const styles = StyleSheet.create({
@@ -490,10 +436,8 @@ const styles = StyleSheet.create({
     borderRadius: 999,
     padding: 4,
   },
-  stepper: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   presets: { flexDirection: 'row', borderRadius: 14, padding: 3, gap: 3 },
   preset: { flex: 1, minHeight: 38, borderRadius: 11, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 4 },
-  stepperValue: { width: 38, fontSize: 16, padding: 0, textAlign: 'center' },
   footer: {
     position: 'absolute',
     left: 0,
