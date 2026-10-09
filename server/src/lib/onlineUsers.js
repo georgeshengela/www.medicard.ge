@@ -4,6 +4,7 @@
 // Admin only: names and contacts, never health data.
 import { prisma } from './prisma.js';
 import { ensureAppActivityTable } from './appActivity.js';
+import { loadAdminIdentity } from './adminUserIdentity.js';
 
 export const ONLINE_WINDOW_MS = 90_000;
 const MAX_LISTED = 100;
@@ -83,12 +84,16 @@ export async function getOnlineUsers(now = new Date()) {
     ORDER BY a."userId", a."lastAt" DESC
   `;
   const users = shapeOnlineUsers(rows, now.getTime());
+  const listed = users.slice(0, MAX_LISTED);
+  // Photos / preset avatars and the country for the circles; a failure only costs the pictures.
+  const identity = await loadAdminIdentity(listed.map((u) => u.id)).catch(() => new Map());
+  for (const u of listed) Object.assign(u, identity.get(u.id) || {});
   return {
     refreshedAt: now.toISOString(),
     windowSeconds: ONLINE_WINDOW_MS / 1000,
     count: users.length,
     summary: summarizeOnline(users, now.getTime()),
-    users: users.slice(0, MAX_LISTED),
+    users: listed,
   };
 }
 

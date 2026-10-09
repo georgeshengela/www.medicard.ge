@@ -439,7 +439,8 @@
     const device = [PLATFORM_KA[u.platform] || null, u.platform === 'web' ? null : u.appVersion].filter(Boolean).join(' · ');
     return `
       <span class="cc-st-ring${isNew ? ' is-new' : ''}" aria-hidden="true">
-        <span class="cc-st-face${u.gender === 'FEMALE' ? ' is-f' : ''}">${esc(personInitials(name))}</span>
+        <span class="cc-st-face${u.gender === 'FEMALE' ? ' is-f' : ''}">${esc(personInitials(name))}${typeof global.adminAvatarImg === 'function' ? global.adminAvatarImg(u) : ''}</span>
+        ${u.country?.code && typeof global.adminFlagImg === 'function' ? `<span class="cc-st-flag">${global.adminFlagImg(u.country.code)}</span>` : ''}
         <span class="cc-st-device" title="${esc(PLATFORM_KA[u.platform] || '')}">${ico(u.platform === 'web' ? 'globe' : 'phone')}</span>
       </span>
       <span class="cc-st-place">${esc(place)}</span>
@@ -447,6 +448,7 @@
       <span class="cc-st-pop" role="tooltip">
         <b>${esc(name)}</b>${isNew ? ' <span class="s-badge is-accent is-plain">ახალი</span>' : ''}
         ${u.name && u.contact ? `<small>${esc(u.contact)}</small>` : ''}
+        ${u.country?.nameKa ? `<span class="cc-st-pop-row">${global.adminFlagImg ? global.adminFlagImg(u.country.code) : ''}${esc([u.country.cityKa, u.country.nameKa].filter(Boolean).join(', '))}</span>` : ''}
         <span class="cc-st-pop-row"><i style="background:${placeTone(place)[1]}"></i>${esc(place)}${u.screen && u.screen.includes('/') ? ` <em>· ${esc(u.screen.split('/').slice(1).join('/'))}</em>` : ''}</span>
         ${device ? `<span class="cc-st-pop-row">${esc(device)}</span>` : ''}
         <span class="cc-st-pop-row">${u.firstAt ? `დღეს პირველად ${esc(clockOf(u.firstAt))} · ` : ''}<span data-ago="${esc(u.lastAt)}">${esc(agoKa(u.lastAt))}</span></span>

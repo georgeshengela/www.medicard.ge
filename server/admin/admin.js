@@ -1290,6 +1290,54 @@ function adminPlaceOf(loc) {
   };
 }
 window.adminFlagImg = adminFlagImg;
+
+/**
+ * A person's picture over their initials: the preset avatar they picked (static file) or their own photo.
+ * Photos are private: <img data-ava-user> is filled by fetching /api/admin/users/:id/avatar with the admin
+ * token (never a token in the URL) and caching the blob per user+version. The initials stay underneath.
+ */
+const adminAvatarBlobs = new Map();
+function adminAvatarImg(user) {
+  const a = user?.avatar;
+  if (a?.kind === 'preset' && /^avatar-(?:[1-9]|1[0-2])$/.test(a.id)) return `<img class="adm-ava" src="./avatars/${a.id}.png" alt="" loading="lazy" decoding="async">`;
+  if (a?.kind === 'photo' && user.id) {
+    const key = `${user.id}:${a.v || 0}`;
+    const ready = adminAvatarBlobs.get(key);
+    return typeof ready === 'string'
+      ? `<img class="adm-ava" src="${ready}" alt="">`
+      : `<img class="adm-ava" data-ava-user="${escapeAttr(user.id)}" data-ava-key="${escapeAttr(key)}" alt="" hidden>`;
+  }
+  return '';
+}
+async function hydrateAdminAvatars(root = document) {
+  for (const img of root.querySelectorAll('img[data-ava-user]:not([src])')) {
+    const key = img.dataset.avaKey;
+    let pending = adminAvatarBlobs.get(key);
+    if (!pending) {
+      pending = fetch(`${API}/api/admin/users/${encodeURIComponent(img.dataset.avaUser)}/avatar`, {
+        headers: state.token ? { Authorization: `Bearer ${state.token}` } : {},
+      })
+        .then((r) => (r.ok ? r.blob() : null))
+        .then((blob) => {
+          const url = blob && blob.size ? URL.createObjectURL(blob) : '';
+          adminAvatarBlobs.set(key, url);
+          return url;
+        })
+        .catch(() => { adminAvatarBlobs.delete(key); return ''; });
+      adminAvatarBlobs.set(key, pending);
+    }
+    const url = typeof pending === 'string' ? pending : await pending;
+    if (url && img.isConnected) {
+      img.src = url;
+      img.hidden = false;
+    }
+  }
+}
+// Any screen that renders [data-ava-user] gets its photos without wiring: watch the workspace once.
+new MutationObserver(() => {
+  if (document.querySelector('img[data-ava-user]:not([src])')) void hydrateAdminAvatars();
+}).observe(document.documentElement, { childList: true, subtree: true });
+window.adminAvatarImg = adminAvatarImg;
 window.adminPlaceOf = adminPlaceOf;
 
 /** Profile tabs. The page chrome, KPIs and the edit form live in admin-users-v3.js. */

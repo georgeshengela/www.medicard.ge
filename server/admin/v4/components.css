@@ -1595,7 +1595,12 @@ html body table.s-table tr.is-click:focus-visible { outline: 2px solid var(--s-a
 /* Registry (#/users) */
 .s-users-gender { display: grid; align-content: start; gap: 6px; }
 .s-users-gender-row { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
-.s-users-gender-row > div { display: grid; gap: 1px; min-width: 0; }
+.s-users-gender-row > button { display: grid; gap: 1px; min-width: 0; margin: -4px -6px; padding: 4px 6px; border: 0; border-radius: 8px; background: transparent; color: inherit; font: inherit; text-align: left; cursor: pointer; transition: background .15s; }
+.s-users-gender-row > button:hover { background: var(--s-hover); }
+.s-users-gender-row > button.is-on { background: var(--s-accent-soft); box-shadow: inset 0 0 0 1px var(--s-accent); }
+.s-users-gdot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; }
+.s-users-gdot.is-f { background: #F43F5E; }
+.s-users-gdot.is-m { background: #3B82F6; }
 .s-users-gender-row strong { font-size: 22px; font-weight: 700; line-height: 1.15; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
 .s-users-gender-row .is-f strong { color: #E11D48; }
 .s-users-gender-row .is-m strong { color: #2563EB; }
@@ -2356,3 +2361,18 @@ html[data-theme="dark"] .cc-st-face.is-f { color: #FDA4AF; }
 .cc-st-grid > .cc-on-empty { grid-column: 1 / -1; }
 @media (prefers-reduced-motion: reduce) { .cc-st-ring.is-new, .cc-st.is-new { animation: none; } }
 .cc-on-empty { padding: 26px 22px; font-size: 13px; color: var(--s-muted); text-align: center; }
+
+/* Real pictures (2026-10-09): preset avatar or own photo over the initials; country flag on the registry avatar. */
+.adm-ava { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; border-radius: inherit; background: var(--s-raised); }
+.adm-ava[hidden] { display: none; }
+.s-users-ava { position: relative; overflow: visible; }
+.s-users-ava > .adm-ava { border-radius: 50%; }
+.s-users-ava.is-f { background: color-mix(in srgb, #E11D48 12%, var(--s-raised)); color: #E11D48; }
+html[data-theme="dark"] .s-users-ava.is-f { color: #FDA4AF; }
+.s-users-flag { position: absolute; right: -4px; bottom: -3px; display: grid; place-items: center; width: 18px; height: 13px; border-radius: 3px; overflow: hidden; box-shadow: 0 0 0 2px var(--s-surface); }
+.s-users-flag img, .s-users-flag .v3-user-flag { display: block; width: 18px !important; height: 13px !important; object-fit: cover; border-radius: 0; box-shadow: none; }
+.s-user-ava-in { position: relative; display: grid; place-items: center; width: 100%; height: 100%; border-radius: 50%; overflow: hidden; }
+.cc-st-face { position: relative; overflow: hidden; }
+.cc-st-flag { position: absolute; left: 0; top: 4px; display: grid; width: 18px; height: 13px; border-radius: 3px; overflow: hidden; box-shadow: 0 0 0 2px var(--s-surface); }
+.cc-st-flag img { display: block; width: 18px; height: 13px; object-fit: cover; }
+.cc-st-pop-row img.v3-user-flag { width: 16px; height: 12px; border-radius: 2px; }
