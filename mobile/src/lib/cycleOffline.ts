@@ -14,6 +14,7 @@ import {
   CYCLE_OFFLINE_STORAGE_KEY_V1,
   attentionItems,
   backoffMs,
+  classifyCycleFailure,
   compactCycleQueue,
   createCacheRecord,
   createMutation,
@@ -471,8 +472,13 @@ export async function enqueueCycleOp(
     return account;
   });
   // A cycle change (even offline) must refresh Home's cached cycle card too.
-  void import('@/lib/queryClient').then(({ invalidate }) => invalidate('cycle')).catch(() => undefined);
+  refetchCycleViews();
   return result;
+}
+
+/** Every cycle reader (Home card, cycle screens) fetches its view again. */
+function refetchCycleViews(): void {
+  void import('@/lib/queryClient').then(({ invalidate }) => invalidate('cycle')).catch(() => undefined);
 }
 
 async function afterEnqueue(userId: string): Promise<PersistResult> {
@@ -619,8 +625,11 @@ export async function queueApplyPeriod(
  * and reminders were planned against it. When the start cannot go first (the tap is still queued, that
  * request failed, or her start was already today — removing today's bleeding then drops it on the server
  * whatever was posted before), it is written back after the day has synced, and the view without it is
- * not published in between (a refetch can still show it for that round trip). Offline the day is still
- * restored (queued); the start is not, because the queued writes must reach the server first.
+ * not published in between (a refetch can still show it for that round trip). Nor after: when that
+ * write's answer carries no whole bundle, or never comes (offline, timeout, 5xx — it may have been
+ * saved), nothing is published and the views are fetched again (IR2-4); only a refused write (4xx)
+ * leaves the server's view without the start. Offline the day is still restored (queued); the start is
+ * not, because the queued writes must reach the server first.
  */
 export async function undoQueuedPeriodStart(
   userId: string,
@@ -653,12 +662,10 @@ export async function undoQueuedPeriodStart(
   }
   try {
     const bundle = await api.cycle.setLastPeriod(restore, { timeoutMs: MUT_TIMEOUT_MS });
-    // No whole bundle (the server could not reload it): show the day as the server has it; the write
-    // itself invalidates the cycle queries.
-    if (!isCompleteCycleBundle(bundle)) {
-      publishCycleView(userId, result.view);
-      return result;
-    }
+    // Saved, but no whole bundle came back (the server could not reload it): the day's view without the
+    // start is not what the server holds now (IR2-4). Publish nothing — the 2xx itself refetches the
+    // cycle views, and Home re-plans its reminders from that refetch (`showView(null)`).
+    if (!isCompleteCycleBundle(bundle)) return { ...result, view: null };
     try {
       await cacheCycleBundle(userId, bundle);
     } catch {
@@ -667,8 +674,14 @@ export async function undoQueuedPeriodStart(
     const view = viewFromLiveBundle(bundle);
     publishCycleView(userId, view);
     return { view, synced: true, persistedLocally: false };
-  } catch {
-    // The day is back; the start shows what the logs say until she sets it again in cycle settings.
+  } catch (error) {
+    // No answer (offline, timeout, 5xx): the start may well have been saved. Publish nothing and fetch
+    // what the server holds — no write answered, so nothing else refetches.
+    if (classifyCycleFailure(error as { status?: number }) === 'retryable') {
+      refetchCycleViews();
+      return { ...result, view: null };
+    }
+    // Refused (4xx): the day is back; the start shows what the logs say until she sets it again in cycle settings.
     publishCycleView(userId, result.view);
     return result;
   }

@@ -3,6 +3,7 @@ const assert = require('node:assert/strict');
 const { join } = require('node:path');
 const { pathToFileURL } = require('node:url');
 const loader = require('./helpers/loadTs.cjs');
+const { cyclePersistFeedback } = require('../src/lib/cycleOfflineCore.js');
 
 // IR-8: she gave her last period start only in onboarding (stored, no logs), taps „მენსტრუაცია დაიწყო“
 // and then „გაუქმება“ while online. The undo used to remove the day first: the server then had no start
@@ -15,11 +16,18 @@ const USER = 'user-a';
 const TODAY = '2026-10-09';
 const ONBOARDING_START = '2026-09-20';
 
-async function phone({ failStartFlush = false } = {}) {
+/**
+ * `lastPeriod`: how each POST /last-period answers, in call order (then 'ok'):
+ *   'ok' saves and answers the bundle · 'null' saves and answers `null` (the reload failed, CYC-06) ·
+ *   'applied-408' saves, then the answer is lost (timeout) · 'refused-400' saves nothing.
+ */
+async function phone({ failStartFlush = false, onboardingStart = ONBOARDING_START, lastPeriod = [] } = {}) {
   const rules = await import(pathToFileURL(join(__dirname, '../../server/src/lib/cycle.js')).href);
-  const server = { stored: ONBOARDING_START, logs: new Map(), starts: [] };
+  const server = { stored: onboardingStart, logs: new Map(), starts: [] };
   const calls = [];
   const published = [];
+  const invalidated = [];
+  const lastPeriodScript = [...lastPeriod];
 
   const fullLog = (date, fields) => ({
     id: `log-${date}`,
@@ -91,9 +99,12 @@ async function phone({ failStartFlush = false } = {}) {
       },
       setLastPeriod: async (date, opts) => {
         calls.push(`setLastPeriod:${date}:${opts?.timeoutMs ?? 'default'}`);
+        const how = lastPeriodScript.shift() ?? 'ok';
+        if (how === 'refused-400') throw Object.assign(new Error('refused'), { status: 400 });
         server.stored = date;
         server.starts.push(bundle().profile.lastPeriodStart);
-        return bundle();
+        if (how === 'applied-408') throw Object.assign(new Error('timeout'), { status: 408 });
+        return how === 'null' ? null : bundle();
       },
     },
   };
@@ -111,13 +122,13 @@ async function phone({ failStartFlush = false } = {}) {
     },
     './cycleOfflineCore': require('../src/lib/cycleOfflineCore.js'),
     './cycleOfflineCrypto': require('../src/lib/cycleOfflineCrypto.js'),
-    '@/lib/queryClient': { invalidate: () => undefined },
+    '@/lib/queryClient': { invalidate: (scope) => invalidated.push(scope) },
     '@/lib/cycleViewCache': { putCycleView: (_userId, view) => published.push(view.display.profile.lastPeriodStart) },
   });
   const offline = load('src/lib/cycleOffline.ts');
   const status = load('src/lib/cyclePeriodStatus.ts');
   const flushPublishes = () => new Promise((resolve) => setTimeout(resolve, 0));
-  return { server, calls, published, offline, status, flushPublishes };
+  return { server, calls, published, invalidated, offline, status, flushPublishes };
 }
 
 test('IR-8: undo of the one-tap start never leaves her without a start, on the server or on screen', async () => {
@@ -203,4 +214,56 @@ test('IR-8: while the tap is still queued (offline) the undo does not wait on th
   // The day is restored in the queue; the screen keeps the start the cached bundle has.
   assert.equal(result.view.display.logs.some((l) => l.date === TODAY), false);
   assert.ok(!published.includes(null), `published starts: ${published.join(', ')}`);
+});
+
+// IR2-4: her stored start was already today (onboarding said „today“), so removing today's bleeding drops
+// it on the server whatever was posted before — the start can only go back after the day. When that
+// write is saved but its answer carries no bundle, or the answer is lost, the day's view without the
+// start used to be published as synced: /cycle showed cycle setup, Home its setup card, and Home planned
+// its reminders from it and never re-planned when the refetch brought the start back.
+async function undoAfterStartToday(lastPeriod) {
+  const p = await phone({ onboardingStart: TODAY, lastPeriod });
+  const shown = await p.offline.loadCycleView(USER);
+  assert.equal(shown.display.profile.lastPeriodStart, TODAY);
+  const undo = p.status.periodStartUndo(null, shown.display.profile.lastPeriodStart);
+  const started = await p.offline.queueApplyPeriod(USER, { action: 'start', date: TODAY });
+  assert.equal(started.synced, true);
+  await p.flushPublishes();
+  p.published.length = 0;
+  p.invalidated.length = 0;
+  const result = await p.offline.undoQueuedPeriodStart(USER, TODAY, undo, started.view.display.logs.find((l) => l.date === TODAY));
+  await p.flushPublishes();
+  return { ...p, result };
+}
+
+test('IR2-4: a restored start whose answer carries no bundle publishes nothing; the views refetch', async () => {
+  const { server, published, invalidated, result, offline } = await undoAfterStartToday(['null', 'null']);
+  assert.equal(server.stored, TODAY, 'the start is back on the server');
+  assert.equal(server.logs.has(TODAY), false);
+  assert.equal(result.view, null, 'nothing to show: the callers refetch (Home re-plans reminders from it)');
+  assert.equal(result.synced, true, 'no false „not saved“ error');
+  assert.ok(!published.includes(null), `published starts: ${published.join(', ')}`);
+  assert.ok(invalidated.includes('cycle'), 'the cycle views are fetched again');
+  // A refetch shows the start the server holds.
+  assert.equal((await offline.loadCycleView(USER)).display.profile.lastPeriodStart, TODAY);
+});
+
+test('IR2-4: a lost answer (timeout after the server saved the start) publishes nothing; the views refetch', async () => {
+  const { server, published, invalidated, result, offline, flushPublishes } = await undoAfterStartToday(['applied-408', 'applied-408']);
+  assert.equal(server.stored, TODAY);
+  assert.equal(result.view, null);
+  assert.notEqual(cyclePersistFeedback(result), 'fail', 'no false „not saved“ error');
+  assert.ok(!published.includes(null), `published starts: ${published.join(', ')}`);
+  assert.ok(invalidated.includes('cycle'), 'the cycle views are fetched again');
+  const after = await offline.loadCycleView(USER);
+  await flushPublishes();
+  assert.equal(after.canonical.profile.lastPeriodStart, TODAY);
+});
+
+test('IR2-4: only a refused restore (4xx) shows the server state without the start', async () => {
+  const { server, published, result } = await undoAfterStartToday(['refused-400', 'refused-400']);
+  assert.equal(server.stored, null);
+  assert.ok(result.view, 'the day is back; she sets the start again in cycle settings');
+  assert.equal(result.view.canonical.profile.lastPeriodStart, null);
+  assert.ok(published.includes(null));
 });
