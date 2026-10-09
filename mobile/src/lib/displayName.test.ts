@@ -53,6 +53,13 @@ test('every greeting and name line goes through the helper, never the raw accoun
     assert.doesNotMatch(src, /fullName\?\.(trim\(\)\.)?split\(/, file);
   }
   assert.match(read('mobile/src/lib/mediNotificationBrain.ts'), /firstName: displayFirstName\(user, health\?\.extraAnswers\)/);
+  // MEDICYCLE's first screen („…, ეს შენი სივრცეა“) and the trainer application's name prefill.
+  const cycle = read('mobile/app/cycle/index.tsx');
+  assert.match(cycle, /userName=\{realFullName\(user, healthProfile\?\.extraAnswers\) \|\| null\}/);
+  assert.doesNotMatch(cycle, /userName=\{user\?\.fullName\}/);
+  const apply = read('mobile/app/trainer/apply.tsx');
+  assert.match(apply, /setName\(\(n\) => n \|\| realFullName\(\{ fullName: user\?\.fullName \}\)\)/);
+  assert.doesNotMatch(apply, /n \|\| user\?\.fullName/);
   // Web /app: the side menu, the profile header and its name row.
   assert.match(read('server/public/app/js/main.js'), /h\('b', null, displayName\(\) \|\|/);
   const webProfile = read('server/public/app/js/pages/profile.js');

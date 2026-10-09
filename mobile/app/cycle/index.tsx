@@ -130,6 +130,7 @@ import { localAccountId } from '@/lib/localAccount';
 import { trackCyclePeriodStarted } from '@/lib/funnel';
 import { cycleWidgetStartAllowed } from '@/lib/cycleWidgetSnapshot';
 import { cycleSettingsRoute } from '@/lib/cycleSettingsRoutes';
+import { realFullName } from '@/lib/displayName';
 import { CycleJourneyGuide } from '@/components/cycle/CycleJourneyGuide';
 
 type CyclePane = 'overview' | 'calendar' | 'journal';
@@ -203,7 +204,7 @@ function PaneSwitcher({
 }
 
 export default function CycleHome() {
-  const { user, ready: authReady } = useAuth();
+  const { user, healthProfile, ready: authReady } = useAuth();
   const router = useRouter();
   const navigation = useNavigation();
   const widgetParams = useLocalSearchParams<{ periodStart?: string }>();
@@ -987,7 +988,8 @@ export default function CycleHome() {
       <CycleOnboarding
         visible
         saving={onboardSaving}
-        userName={user?.fullName}
+        // Never the server's placeholder name (phone / Apple sign-ups): „ეს შენი სივრცეა“ without one.
+        userName={realFullName(user, healthProfile?.extraAnswers) || null}
         error={saveError}
         hasLastPeriod={Boolean(lastPeriod) && !holdOnboarding}
         onSave={saveLastPeriod}
