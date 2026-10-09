@@ -111,3 +111,51 @@ export function shapeGeoCountries(rows) {
   }
   return [...byCode.values()].sort((a, b) => b.users - a.users || a.code.localeCompare(b.code));
 }
+
+/** Calling codes → country (longest prefix wins). Only the country, never the number, leaves this file. */
+const PHONE_PREFIX_COUNTRY = [
+  ['995', 'GE'], ['374', 'AM'], ['994', 'AZ'], ['380', 'UA'], ['375', 'BY'], ['373', 'MD'], ['972', 'IL'], ['971', 'AE'],
+  ['966', 'SA'], ['974', 'QA'], ['420', 'CZ'], ['351', 'PT'], ['353', 'IE'], ['358', 'FI'], ['370', 'LT'], ['371', 'LV'],
+  ['372', 'EE'], ['357', 'CY'], ['359', 'BG'], ['90', 'TR'], ['49', 'DE'], ['44', 'GB'], ['33', 'FR'], ['39', 'IT'],
+  ['34', 'ES'], ['31', 'NL'], ['32', 'BE'], ['41', 'CH'], ['43', 'AT'], ['48', 'PL'], ['36', 'HU'], ['40', 'RO'],
+  ['30', 'GR'], ['46', 'SE'], ['47', 'NO'], ['45', 'DK'], ['86', 'CN'], ['81', 'JP'], ['82', 'KR'], ['91', 'IN'],
+  ['61', 'AU'], ['55', 'BR'], ['52', 'MX'], ['20', 'EG'], ['7', 'RU'], ['1', 'US'],
+];
+
+/** IANA zone → country for the zones people actually send; `Etc/*` and unknown zones say nothing. */
+const TZ_COUNTRY = {
+  'Asia/Tbilisi': 'GE', 'Asia/Yerevan': 'AM', 'Asia/Baku': 'AZ', 'Europe/Istanbul': 'TR', 'Europe/Moscow': 'RU',
+  'Europe/Kyiv': 'UA', 'Europe/Kiev': 'UA', 'Europe/Minsk': 'BY', 'Europe/Chisinau': 'MD', 'Europe/Brussels': 'BE',
+  'Europe/Berlin': 'DE', 'Europe/London': 'GB', 'Europe/Paris': 'FR', 'Europe/Rome': 'IT', 'Europe/Madrid': 'ES',
+  'Europe/Lisbon': 'PT', 'Europe/Amsterdam': 'NL', 'Europe/Zurich': 'CH', 'Europe/Vienna': 'AT', 'Europe/Warsaw': 'PL',
+  'Europe/Prague': 'CZ', 'Europe/Budapest': 'HU', 'Europe/Bucharest': 'RO', 'Europe/Sofia': 'BG', 'Europe/Athens': 'GR',
+  'Asia/Nicosia': 'CY', 'Europe/Dublin': 'IE', 'Europe/Stockholm': 'SE', 'Europe/Oslo': 'NO', 'Europe/Copenhagen': 'DK',
+  'Europe/Helsinki': 'FI', 'Europe/Vilnius': 'LT', 'Europe/Riga': 'LV', 'Europe/Tallinn': 'EE', 'Asia/Jerusalem': 'IL',
+  'Asia/Dubai': 'AE', 'Asia/Riyadh': 'SA', 'Asia/Qatar': 'QA', 'America/New_York': 'US', 'America/Chicago': 'US',
+  'America/Denver': 'US', 'America/Los_Angeles': 'US', 'America/Toronto': 'CA', 'Asia/Almaty': 'KZ', 'Asia/Tashkent': 'UZ',
+};
+
+export function phoneCountry(phone, email) {
+  const synthetic = /^\+?(\d{6,15})@phone\.medicard\.ge$/i.exec(String(email || ''));
+  const digits = String(phone || (synthetic ? synthetic[1] : '')).replace(/\D/g, '');
+  if (digits.length < 8) return null;
+  return PHONE_PREFIX_COUNTRY.find(([prefix]) => digits.startsWith(prefix))?.[1] ?? null;
+}
+
+export function timezoneCountry(tz) {
+  return TZ_COUNTRY[String(tz || '').trim()] || null;
+}
+
+/**
+ * One country per person from the best signal they have: the location they shared (GPS), then the calling
+ * code of their phone, then the device time zone the app reports. Returns null when none says anything.
+ */
+export function userCountry({ locationCode, phone, email, timezone } = {}) {
+  const gps = countryCodeOf(locationCode);
+  if (gps) return { code: gps, source: 'location' };
+  const tel = phoneCountry(phone, email);
+  if (tel) return { code: tel, source: 'phone' };
+  const tz = timezoneCountry(timezone);
+  if (tz) return { code: tz, source: 'timezone' };
+  return null;
+}

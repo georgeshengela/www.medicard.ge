@@ -1299,15 +1299,27 @@
     const countries = geo.countries || [];
     const located = Number(geo.located) || 0;
     const unknown = Number(geo.unknown) || 0;
+    const total = located + unknown || 1;
+    const src = geo.sources || {};
+    // Where each country comes from (adminUserGeoShape.userCountry): shared location › phone code › time zone.
+    const sourceNote = [
+      src.location ? `მდებარეობა ${fmt(src.location)}` : '',
+      src.phone ? `ტელეფონის კოდი ${fmt(src.phone)}` : '',
+      src.timezone ? `საათის სარტყელი ${fmt(src.timezone)}` : '',
+    ].filter(Boolean).join(' · ');
+    const cities = geo.cities || [];
     const list = countries.length
-      ? '<ol class="v3-cc-geo-list">' + countries.map((row, i) => (
+      ? '<div class="v3-cc-geo-side"><ol class="v3-cc-geo-list">' + countries.map((row, i) => (
         `<li><button type="button" class="v3-cc-geo-item" data-geo-i="${i}">`
         + `${flagImg(row.code)}`
-        + `<span class="v3-cc-geo-name">${esc(row.nameKa)}</span>`
-        + `<strong>${fmt(row.users)}</strong></button></li>`
+        + `<span class="v3-cc-geo-name">${esc(row.nameKa)}<i class="v3-cc-geo-share"><i style="width:${Math.max(2, Math.round((row.users / total) * 100))}%"></i></i></span>`
+        + `<strong>${fmt(row.users)}<small>${Math.round((row.users / total) * 100)}%</small></strong></button></li>`
       )).join('')
         + (unknown ? `<li class="v3-cc-geo-unknown"><span>უცნობი ქვეყანა</span><strong>${fmt(unknown)}</strong></li>` : '')
         + '</ol>'
+        + (cities.length ? `<p class="v3-cc-geo-cities"><b>ქალაქები</b> (გაზიარებული მდებარეობით): ${cities.map((c) => `${esc(c.nameKa)} ${fmt(c.users)}`).join(' · ')}</p>` : '')
+        + (sourceNote ? `<p class="v3-cc-geo-src">როგორ დადგინდა: ${esc(sourceNote)}</p>` : '')
+        + '</div>'
       : emptyBox(
         'ქვეყანა ჯერ არ ჩანს',
         unknown
@@ -1321,8 +1333,8 @@
       title: 'ქვეყნები',
       helpKey: 'overview.geo',
       description: located
-        ? `${fmt(countries.length)} ქვეყანა · ${fmt(located)} მომხმარებელი მდებარეობით` + (unknown ? ` · ${fmt(unknown)} უცნობი` : '') + '.'
-        : 'ქვეყანა ინათება პირველი რეგისტრაციისას, როცა GPS ქვეყანა ცნობილია.',
+        ? `${fmt(located)} მომხმარებელი ${fmt(countries.length)} ქვეყანაში` + (unknown ? ` · ${fmt(unknown)} უცნობი` : '') + '. ქვეყანა: გაზიარებული მდებარეობა, თუ არა — ტელეფონის კოდი ან ტელეფონის საათის სარტყელი.'
+        : 'ქვეყანა ჯერ ვერ დადგინდა — ჩანს გაზიარებული მდებარეობით, ტელეფონის კოდით ან საათის სარტყლით.',
       content: `<div class="v3-cc-geo">${mapPane}${list}</div>`,
     });
     host.querySelectorAll('[data-geo-i]').forEach((btn) => {

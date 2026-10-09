@@ -4,6 +4,7 @@ import { ensureUserLocationTable } from './userLocation.js';
 import {
   sanitizeMapboxPublicToken,
   shapeGeoCountries,
+  userCountry,
 } from './adminUserGeoShape.js';
 
 export {
@@ -36,34 +37,43 @@ export async function getUserGeoAnalytics() {
 
   pending = (async () => {
     await ensureUserLocationTable();
+    // Every account, with what we know about where it is (see userCountry for the order of trust).
     let rows = [];
     try {
       rows = await prisma.$queryRaw`
-      SELECT UPPER(TRIM(ul."countryCode")) AS "countryCode",
-             MIN(NULLIF(TRIM(ul."countryKa"), '')) AS "countryKa",
-             COUNT(*)::int AS users
-      FROM "UserLocation" ul
-      INNER JOIN "User" u ON u.id = ul."userId"
-      WHERE ul."enabled" = true
-        AND ul."countryCode" IS NOT NULL
-        AND length(trim(ul."countryCode")) = 2
-      GROUP BY 1
-      ORDER BY users DESC
+      SELECT u.phone, u.email, qp.timezone,
+             CASE WHEN ul."enabled" = true THEN UPPER(TRIM(ul."countryCode")) END AS "locationCode",
+             CASE WHEN ul."enabled" = true THEN NULLIF(TRIM(ul."cityKa"), '') END AS "cityKa"
+      FROM "User" u
+      LEFT JOIN "UserLocation" ul ON ul."userId" = u.id
+      LEFT JOIN "UserQuestProfile" qp ON qp."userId" = u.id
     `;
     } catch (error) {
       if (!isMissingTable(error)) throw error;
-      rows = [];
+      rows = (await prisma.user.findMany({ select: { phone: true, email: true } }));
     }
 
-    const countries = shapeGeoCountries(rows);
+    const byCountry = new Map();
+    const sources = { location: 0, phone: 0, timezone: 0 };
+    const cities = new Map();
+    for (const row of rows) {
+      const hit = userCountry(row);
+      if (!hit) continue;
+      sources[hit.source] += 1;
+      byCountry.set(hit.code, (byCountry.get(hit.code) || 0) + 1);
+      if (hit.source === 'location' && row.cityKa) cities.set(row.cityKa, (cities.get(row.cityKa) || 0) + 1);
+    }
+    const countries = shapeGeoCountries([...byCountry].map(([countryCode, users]) => ({ countryCode, users })));
     const located = countries.reduce((sum, row) => sum + row.users, 0);
-    const totalUsers = await prisma.user.count();
+    const totalUsers = rows.length;
     const payload = {
       token: mapboxPublicToken(),
       countries,
       located,
       unknown: Math.max(0, totalUsers - located),
       totalUsers,
+      sources,
+      cities: [...cities].map(([nameKa, users]) => ({ nameKa, users })).sort((x, y) => y.users - x.users).slice(0, 8),
       refreshedAt: new Date().toISOString(),
     };
     cache = { at: Date.now(), value: payload };
