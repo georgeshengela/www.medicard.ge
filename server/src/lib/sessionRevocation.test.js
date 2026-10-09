@@ -13,6 +13,16 @@ const db = {
   changedAt: null,
   executed: [],
   resetCodeHash: null,
+  /** PushToken updateMany calls (IR-11); `pushFails` makes the next one throw. */
+  pushOff: [],
+  pushFails: false,
+  pushToken: {
+    updateMany: async ({ where, data }) => {
+      if (db.pushFails) throw new Error('push table unavailable');
+      db.pushOff.push({ where, data });
+      return { count: 2 };
+    },
+  },
   user: {
     findUnique: async ({ where }) => {
       if (where.id === USER.id || where.email === USER.email) return { ...USER, package: null };
@@ -27,6 +37,17 @@ const db = {
     updateMany: async () => ({ count: 0 }),
   },
   appSettings: { findUnique: async () => ({ id: 'default', allowRegistrations: true, qaOtpEnabled: false, minAppVersion: '1.0.0' }) },
+  // GET /api/auth/me reads these; `duringMe` runs while the handler awaits them (IR-15's race).
+  duringMe: null,
+  medicalRecord: { count: async () => 0 },
+  chatSession: { count: async () => 0 },
+  medicationSchedule: { count: async () => 0 },
+  healthProfile: {
+    findUnique: async () => {
+      if (db.duringMe) await db.duringMe();
+      return null;
+    },
+  },
   async $transaction(work) {
     return typeof work === 'function' ? work(db) : Promise.all(work);
   },
@@ -40,6 +61,9 @@ const db = {
     if (/"CommunityMember"/.test(sql)) return values[0] === USER.id ? [{ userId: USER.id }] : [];
     return [];
   },
+  // GET /me's activity log (appActivity.js, fire-and-forget) creates its table lazily.
+  async $executeRawUnsafe() { return 0; },
+  async $queryRawUnsafe() { return []; },
   async $executeRaw(strings, ...values) {
     const sql = strings.join('?');
     if (/passwordChangedAt/.test(sql)) {
@@ -77,6 +101,9 @@ beforeEach(() => {
   db.changedAt = null;
   db.executed = [];
   db.resetCodeHash = null;
+  db.pushOff = [];
+  db.pushFails = false;
+  db.duringMe = null;
 });
 
 const NOW = Math.floor(Date.now() / 1000);
@@ -171,6 +198,23 @@ describe('requireAuth after a password reset', () => {
   });
 });
 
+// IR-13: a delete whose answer was lost — the retry must be able to tell „this account is gone“
+// from any other 401 (expired, password changed), so that 401 carries its own code.
+describe('requireAuth for an account that no longer exists', () => {
+  it('answers 401 ACCOUNT_NOT_FOUND, and only there', async () => {
+    const gone = await authorize(jwt.sign({ sub: 'deleted-user', email: 'gone@example.com' }, env.JWT_SECRET, { expiresIn: '30d' }));
+    assert.equal(gone.status, 401);
+    assert.equal(gone.body.code, 'ACCOUNT_NOT_FOUND');
+    assert.match(gone.body.error, /ვერ მოიძებნა/);
+    const noSubject = await authorize(jwt.sign({ email: 'x@example.com' }, env.JWT_SECRET, { expiresIn: '30d' }));
+    assert.equal(noSubject.status, 401);
+    assert.equal(noSubject.body.code, 'ACCOUNT_NOT_FOUND');
+    db.changedAt = new Date((NOW - 60) * 1000);
+    assert.equal((await authorize(tokenAt(NOW - 3600))).body.code, 'TOKEN_EXPIRED');
+    assert.equal((await authorize('not-a-token')).body.code, 'TOKEN_INVALID');
+  });
+});
+
 describe('the /community socket after a password reset', () => {
   /** Runs the namespace middleware like socket.io does → { error, socket }. */
   async function handshake(token) {
@@ -196,6 +240,22 @@ describe('where the reset is recorded', () => {
   it('markPasswordChanged never fails the reset before db:install', async () => {
     db.changedAt = undefined;
     assert.equal(await mod.markPasswordChanged(USER.id), false);
+    // Older sessions stay valid without the column, so their pushes stay too.
+    assert.deepEqual(db.pushOff, []);
+  });
+
+  // IR-11: the phone she locked out cannot unregister itself (its session is refused), so the reset
+  // switches the account's push tokens off; each device registers again when it signs in.
+  it('a reset switches off the account’s push tokens', async () => {
+    assert.equal(await mod.markPasswordChanged(USER.id), true);
+    assert.deepEqual(db.pushOff, [{ where: { userId: USER.id, active: true }, data: { active: false } }]);
+  });
+
+  it('a failed push-token update never fails the reset', async () => {
+    db.pushFails = true;
+    const at = new Date();
+    assert.equal(await mod.markPasswordChanged(USER.id, at), true);
+    assert.equal(db.changedAt, at);
   });
 
   it('the email reset ends older sessions', async () => {
@@ -205,6 +265,7 @@ describe('where the reset is recorded', () => {
     const result = await resetPasswordWithCode({ email: USER.email, code: '123456', password: 'new-password-1' });
     assert.equal(result.ok, true);
     assert.equal(db.executed.length, 1);
+    assert.equal(db.pushOff.length, 1);
     assert.equal((await authorize(before)).passed, false);
   });
 
@@ -223,7 +284,91 @@ describe('where the reset is recorded', () => {
     assert.equal(body.status, 200);
     assert.equal(typeof body.token, 'string');
     assert.equal(db.executed.length, 1);
+    assert.equal(db.pushOff.length, 1, 'push tokens are switched off before the resetting device registers again');
     assert.equal((await authorize(before)).passed, false);
     assert.equal((await authorize(body.token)).passed, true);
+  });
+});
+
+// IR-15: GET /api/auth/me renews a token past half its life. requireAuth read passwordChangedAt at the
+// start of the request; a reset that commits while the handler runs (or up to the 5 s skew before the
+// signing) used to get a renewal whose fresh iat survived it. Renewals now carry the value read.
+describe('a /me renewal racing a password reset', () => {
+  const meHandler = () => authRouter.stack.find((l) => l.route?.path === '/me' && l.route.methods.get).route.stack.at(-1).handle;
+  /** requireAuth, then the real GET /me handler → the JSON body. */
+  async function getMe(token) {
+    const auth = await authorize(token);
+    assert.equal(auth.passed, true, 'requireAuth lets the request through');
+    const req = { ...auth.req, body: {}, headers: { ...auth.req.headers }, get: () => undefined, ip: '127.0.0.1' };
+    return new Promise((resolve, reject) => {
+      const res = {
+        statusCode: 200,
+        set() { return this; },
+        setHeader() {},
+        status(code) { this.statusCode = code; return this; },
+        json(body) { resolve({ status: this.statusCode, ...body }); return this; },
+      };
+      Promise.resolve(meHandler()(req, res, reject)).catch(reject);
+    });
+  }
+
+  it('the claim is compared exactly; without a stored value it fails open; tokens without it keep the iat rule', () => {
+    const changed = new Date('2026-10-08T12:00:00.000Z');
+    const after = Math.floor(changed.getTime() / 1000) + 2;
+    assert.equal(mod.tokenPredatesPasswordChange({ iat: after, pwc: 0 }, changed), true);
+    assert.equal(mod.tokenPredatesPasswordChange({ iat: after, pwc: changed.getTime() - 1 }, changed), true);
+    assert.equal(mod.tokenPredatesPasswordChange({ iat: after, pwc: changed.getTime() }, changed), false);
+    assert.equal(mod.tokenPredatesPasswordChange({ iat: after, pwc: 0 }, null), false);
+    assert.equal(mod.tokenPredatesPasswordChange({ iat: after, pwc: 0 }, undefined), false);
+    assert.equal(mod.tokenPredatesPasswordChange({ iat: after }, changed), false);
+    assert.equal(mod.tokenPredatesPasswordChange({ iat: after, pwc: 'x' }, changed), false);
+  });
+
+  it('a renewal stamped before a reset is refused even when it was signed after it', async () => {
+    const renewal = signToken(USER, mod.passwordChangeClaim({ known: true, at: null }));
+    db.changedAt = new Date(Date.now() - 1000);
+    // The iat rule alone would keep it (signed after the reset).
+    assert.equal(mod.tokenPredatesPasswordChange({ iat: jwt.decode(renewal).iat }, db.changedAt), false);
+    const result = await authorize(renewal);
+    assert.equal(result.status, 401);
+    assert.equal(result.body.code, 'TOKEN_EXPIRED');
+  });
+
+  it('a reset that commits while /me runs ends the renewal it hands out', async () => {
+    const old = tokenAt(NOW - 20 * 86400);
+    db.duringMe = async () => { db.changedAt = new Date(); };
+    const body = await getMe(old);
+    assert.equal(body.status, 200);
+    assert.equal(typeof body.token, 'string', 'the old token was due for renewal');
+    assert.equal(jwt.decode(body.token).pwc, 0);
+    const result = await authorize(body.token);
+    assert.equal(result.passed, false);
+    assert.equal(result.body.code, 'TOKEN_EXPIRED');
+  });
+
+  it('a renewal after the reset keeps working and keeps sliding until the next reset', async () => {
+    db.changedAt = new Date((NOW - 30 * 86400) * 1000);
+    const body = await getMe(tokenAt(NOW - 20 * 86400));
+    assert.equal(jwt.decode(body.token).pwc, db.changedAt.getTime());
+    const renewed = await authorize(body.token);
+    assert.equal(renewed.passed, true);
+    assert.deepEqual(renewed.req.authPasswordChange, { known: true, at: db.changedAt });
+    db.changedAt = new Date();
+    assert.equal((await authorize(body.token)).passed, false);
+  });
+
+  it('before db:install (or on a failed read) renewals carry no claim and pass exactly as before', async () => {
+    db.changedAt = undefined;
+    const body = await getMe(tokenAt(NOW - 20 * 86400));
+    assert.equal(typeof body.token, 'string');
+    assert.equal('pwc' in jwt.decode(body.token), false);
+    assert.equal((await authorize(body.token)).passed, true);
+    assert.deepEqual(mod.passwordChangeClaim({ known: false, at: null }), {});
+  });
+
+  it('a token that is not due for renewal gets none', async () => {
+    const body = await getMe(signToken(USER));
+    assert.equal(body.status, 200);
+    assert.equal(body.token, undefined);
   });
 });

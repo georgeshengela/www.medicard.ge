@@ -1,3 +1,4 @@
+import { createHmac } from 'node:crypto';
 import { env } from '../config/env.js';
 import { prisma } from './prisma.js';
 
@@ -10,6 +11,28 @@ export function normalizeSmsDestination(phone) {
   if (digits.startsWith('995')) return digits;
   if (digits.length === 9 && digits.startsWith('5')) return `995${digits}`;
   return digits;
+}
+
+/** SmsLog destination of a row whose number was removed without a hash (older deletions). */
+export const SMS_DESTINATION_DELETED = '[deleted]';
+const DESTINATION_HASH_PREFIX = 'h:';
+
+/**
+ * Account deletion keeps SmsLog rows for the audit trail but must not keep the number: it is
+ * replaced by this keyed hash (HMAC with the server's JWT secret), which nobody can turn back into
+ * the number but which still lets the per-number daily cap count the codes that number got —
+ * otherwise deleting the account reset the cap. Letters only (each hex digit → a–p), so an admin
+ * search by digits never matches a hashed row.
+ */
+export function smsDestinationHash(phone) {
+  const digits = normalizeSmsDestination(phone);
+  if (!digits) return null;
+  const hex = createHmac('sha256', env.JWT_SECRET).update(`medicard:sms-destination:${digits}`).digest('hex').slice(0, 32);
+  return DESTINATION_HASH_PREFIX + hex.replace(/[0-9a-f]/g, (c) => String.fromCharCode(97 + parseInt(c, 16)));
+}
+
+export function isHashedSmsDestination(destination) {
+  return typeof destination === 'string' && destination.startsWith(DESTINATION_HASH_PREFIX);
 }
 
 function smsConfigured() {
@@ -46,8 +69,10 @@ const OTP_CAP_STATUSES = ['SENT', 'QUEUED'];
 export async function otpCapReached(dest, db = prisma) {
   const since = new Date(Date.now() - 24 * 60 * 60 * 1000);
   const counted = { purpose: 'OTP', status: { in: OTP_CAP_STATUSES }, createdAt: { gt: since } };
+  // Rows of a deleted account carry the number's hash instead of the number: they still count.
+  const hashed = smsDestinationHash(dest);
   const [perNumber, total] = await Promise.all([
-    db.smsLog.count({ where: { destination: dest, ...counted } }),
+    db.smsLog.count({ where: { destination: hashed ? { in: [dest, hashed] } : dest, ...counted } }),
     db.smsLog.count({ where: counted }),
   ]);
   if (total >= smsOtpDailyCap()) return 'service';
@@ -80,10 +105,15 @@ export function maskOtpDigits(text) {
   return String(text ?? '').replace(/\d{4,8}/g, (digits) => '•'.repeat(digits.length));
 }
 
-/** A SmsLog row as the admin API shows it: OTP rows written before masking are masked here. */
+/**
+ * A SmsLog row as the admin API shows it: OTP rows written before masking are masked here, and a
+ * deleted account's hashed number reads „[deleted]“ (never a hash as a label).
+ */
 export function adminSmsLogView(row) {
-  if (!row || row.purpose !== 'OTP') return row;
-  return { ...row, content: maskOtpDigits(row.content) };
+  if (!row) return row;
+  const view = isHashedSmsDestination(row.destination) ? { ...row, destination: SMS_DESTINATION_DELETED } : row;
+  if (view.purpose !== 'OTP') return view;
+  return { ...view, content: maskOtpDigits(view.content) };
 }
 
 export async function sendSms({

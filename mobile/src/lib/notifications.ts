@@ -920,9 +920,18 @@ export async function presentNotificationNow(opts: {
   return true;
 }
 
+/**
+ * Forgets this phone's last push registration without a request, so the next sign-in here registers
+ * again. For a session the server already ended (its token is refused, so an unregister could only
+ * answer 401; a password reset switched the account's push tokens off) or an account it deleted.
+ */
+export function forgetPushRegistration(): void {
+  lastPushRegistration = null;
+}
+
 /** Removes this device from admin push broadcasts. */
 export async function unregisterPushFromServer(): Promise<void> {
-  lastPushRegistration = null;
+  forgetPushRegistration();
   let token = await readLastPushToken();
   if (!token && Device.isDevice) {
     try {
