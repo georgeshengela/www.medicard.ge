@@ -11,6 +11,7 @@ import { CycleHeavyBleedingCard } from '@/components/cycle/CycleHeavyBleedingCar
 import { CycleIconTile } from '@/components/cycle/CycleIconTile';
 import { CycleLearnMoreSheet } from '@/components/cycle/CycleLearnMoreSheet';
 import { CycleQuickLogFields, quickLogModeHint } from '@/components/cycle/CycleQuickLogSheet';
+import { quickLogHeading } from '@/lib/cycleQuickLogCopy';
 import { CycleTtcSignalLine, CycleTtcSignalSheet } from '@/components/cycle/CycleTtcSignalLine';
 import { CyclePrimaryButton, formatCycleDateKa } from '@/components/cycle/CycleUI';
 import { useCycleQuickLog } from '@/components/cycle/useCycleQuickLog';
@@ -361,7 +362,7 @@ export function CycleDaySheet({
                 <View style={s.logBlock}>
                   <View style={s.logHead}>
                     <Text accessibilityRole="header" style={[s.sectionTitle, { color: c.mutedSoft }]}>
-                      {log ? tx('შეცვალე ან დაამატე', 'Change or add') : ka.cycle.logTodayCta}
+                      {log ? tx('შეცვალე ან დაამატე', 'Change or add') : quickLogHeading(date, today, ka.cycle.logTodayCta)}
                     </Text>
                     {q.caps ? (
                       <Text style={[s.logHint, { color: c.mutedSoft }]}>

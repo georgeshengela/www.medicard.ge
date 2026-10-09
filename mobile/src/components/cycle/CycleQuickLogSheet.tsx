@@ -21,6 +21,7 @@ import { useCycleQuickLog, type CycleQuickLogState } from '@/components/cycle/us
 import { ka } from '@/i18n/ka';
 import { tx } from '@/i18n/locale';
 import { lastLoggedBbt } from '@/lib/cycleBbt';
+import { quickLogTitleDate } from '@/lib/cycleQuickLogCopy';
 import type { CycleView } from '@/lib/cycleOffline';
 import { useAuth } from '@/store/AuthContext';
 import { useCycleColors } from '@/theme/cycle';
@@ -103,6 +104,8 @@ export function CycleQuickLogSheet({
   const { fontScale } = useWindowDimensions();
   const q = useCycleQuickLog({ active: visible, date, userId: user?.id, onSaved, funnelSource });
   const { caps, hydrated, saving, saveError } = q;
+  // Another day's sheet is titled with that day, never "Log today" (CYC-12).
+  const titleDate = quickLogTitleDate(date, q.today);
 
   const save = async (markStart?: boolean) => {
     if (await q.save(markStart)) onClose();
@@ -132,7 +135,7 @@ export function CycleQuickLogSheet({
               <View style={{flexDirection:'row',alignItems:'center',gap:12}}>
               <View style={{width:30,height:34,borderRadius:12,backgroundColor:c.accentSoft,alignItems:'center',justifyContent:'center'}}><CalendarDays size={18} color={c.brand}/></View>
               <Text style={{ flex:1, color: c.ink, fontSize: 18, lineHeight:26, fontFamily: 'NotoSansGeorgian_600SemiBold' }}>
-                {ka.cycle.logTodayCta}
+                {titleDate ?? ka.cycle.logTodayCta}
               </Text>
               <Pressable onPress={onClose} disabled={saving} accessibilityRole="button" accessibilityLabel={ka.common.close}
                 style={{width:44,height:44,borderRadius:22,backgroundColor:c.cardSoft,alignItems:'center',justifyContent:'center'}}><X size={20} color={c.muted}/></Pressable>
@@ -151,7 +154,7 @@ export function CycleQuickLogSheet({
               ) : (
               <>
               <Text style={{ color: c.muted, fontSize: 13, marginTop: 4, marginBottom: 14 }}>
-                {formatCycleDateKa(date)} · {quickLogModeHint(caps)}
+                {titleDate ? quickLogModeHint(caps) : `${formatCycleDateKa(date)} · ${quickLogModeHint(caps)}`}
               </Text>
 
               <CycleQuickLogFields q={q} date={date} />
