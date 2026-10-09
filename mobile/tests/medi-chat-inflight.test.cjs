@@ -56,3 +56,28 @@ test('a plan settles whether or not Medi is on screen', () => {
 test('closing Medi still aborts the request (the server then stores nothing)', () => {
   assert.match(src, /return \(\) => \{[^}]*alive\.current = false;[^}]*abort\.current\?\.abort\(\);[^}]*\}/);
 });
+
+// 2026-10-09: closing Medi mid-answer stays a Stop, but the question she typed is no longer lost. It is
+// held in memory (mediHandoff holdMediDraft: module-level, bound to the account, never storage or a URL)
+// and comes back in the composer the next time she opens Medi — only as a draft, never sent by itself.
+test('closing Medi mid-answer holds the question for the same account, after the abort', () => {
+  const cleanup = src.match(/return \(\) => \{([^}]*alive\.current = false;[^}]*)\}/);
+  assert.ok(cleanup, 'the unmount cleanup');
+  assert.match(cleanup[1], /abort\.current\?\.abort\(\);\s*if \(asking\.current && owner === localAccountId\(\)\) holdMediDraft\(owner, asking\.current\);/);
+  const send = between('async function send(', 'async function afterSaved(');
+  assert.match(send, /working\.current = true; generation\.current\+\+;\s*asking\.current = value; clearMediDraft\(\);/, 'set when the question leaves; a send clears the held one');
+  assert.match(send, /finally \{ working\.current = false; asking\.current = null;/, 'a settled question (answered, failed, refused) is not held');
+  assert.match(src, /^onLocalAccountChange\(\(\) => clearMediDraft\(\)\);$/m, 'sign-out or another account drops it');
+});
+
+test('opening Medi again puts the held question back in the composer only', () => {
+  const restore = between('const held = takeMediDraft(owner);', '}, []);');
+  assert.match(restore, /^const held = takeMediDraft\(owner\);\s*if \(held\) setText\(current => \(current\.trim\(\) \? current : held\)\);/);
+  assert.doesNotMatch(restore, /send\(|answer\(|plan\(/, 'never sent by itself');
+  const at = src.indexOf('takeMediDraft(owner)');
+  const effect = src.slice(src.lastIndexOf('useEffect(() => {', at), at);
+  assert.match(effect, /if \(handoff \|\| \(typeof prefill === 'string' && prefill\.trim\(\)\)\) return;/, 'a drafted question from another screen wins');
+  const handoff = readFileSync(join(__dirname, '..', 'src', 'lib', 'mediHandoff.ts'), 'utf8');
+  assert.doesNotMatch(handoff, /from ['"][^'"]*(storage|api|async-storage|secure-store|localAccount)[^'"]*['"]/i, 'memory only: no storage, no network');
+  assert.doesNotMatch(handoff, /\b(setPreference|AsyncStorage|SecureStore|fetch\()/, 'memory only: no storage, no network');
+});
