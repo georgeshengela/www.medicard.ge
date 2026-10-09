@@ -1593,6 +1593,21 @@ html body table.s-table tr.is-click:focus-visible { outline: 2px solid var(--s-a
 .s-users-gap { padding: 0 4px; color: var(--s-faint); }
 
 /* Registry (#/users) */
+.s-users-gender { display: grid; align-content: start; gap: 6px; }
+.s-users-gender-row { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.s-users-gender-row > div { display: grid; gap: 1px; min-width: 0; }
+.s-users-gender-row strong { font-size: 22px; font-weight: 700; line-height: 1.15; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+.s-users-gender-row .is-f strong { color: #E11D48; }
+.s-users-gender-row .is-m strong { color: #2563EB; }
+html[data-theme="dark"] .s-users-gender-row .is-f strong { color: #FB7185; }
+html[data-theme="dark"] .s-users-gender-row .is-m strong { color: #60A5FA; }
+.s-users-gender-row small { font-size: 12px; color: var(--s-muted); white-space: nowrap; }
+.s-users-gender-bar { display: flex; gap: 2px; height: 6px; overflow: hidden; border-radius: 99px; background: var(--s-sunken); }
+.s-users-gender-bar i { display: block; height: 100%; border-radius: 99px; transition: width .4s ease; }
+.s-users-gender-bar .is-f { background: #F43F5E; }
+.s-users-gender-bar .is-m { background: #3B82F6; }
+.s-users-gender-bar .is-o { background: var(--s-line-strong); }
+
 .s-users-title { display: flex; align-items: center; gap: 6px; }
 .s-users-meta { align-self: center; font-size: 12.5px; color: var(--s-muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
 .s-users-controls { display: grid; gap: 12px; padding: 0 18px 16px; }

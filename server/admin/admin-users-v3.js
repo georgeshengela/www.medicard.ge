@@ -243,6 +243,7 @@
           <div class="s-metric"><span>შესვლა დაშვებულია</span><strong id="users-kpi-active">—</strong><small>აქტიური ანგარიში</small></div>
           <div class="s-metric"><span>დაბლოკილი</span><strong id="users-kpi-blocked">—</strong><small>აპში ვერ შედის</small></div>
           <div class="s-metric"><span>ახალი · 7 დღე</span><strong id="users-kpi-week">—</strong><small id="users-kpi-today-hint">დღეს —</small></div>
+          <div class="s-metric s-users-gender" id="users-kpi-gender"><span>ქალი და კაცი</span><strong>—</strong><small>მთელი ბაზა</small></div>
         </div>
 
         <section class="s-card s-users-board">
@@ -382,6 +383,22 @@
       set('users-kpi-week', kpis.newWeek);
       const hint = $('users-kpi-today-hint');
       if (hint) hint.textContent = `დღეს ${fmtKa(kpis.newToday)}`;
+      const g = kpis.gender;
+      const gHost = $('users-kpi-gender');
+      if (g && gHost) {
+        const female = Number(g.FEMALE) || 0;
+        const male = Number(g.MALE) || 0;
+        const rest = (Number(g.OTHER) || 0) + (Number(g.UNKNOWN) || 0);
+        const all = female + male + rest || 1;
+        const pct = (n) => Math.round((n / all) * 100);
+        gHost.innerHTML = `<span>ქალი და კაცი</span>
+          <div class="s-users-gender-row">
+            <div class="is-f"><strong>${fmtKa(female)}</strong><small>ქალი · ${pct(female)}%</small></div>
+            <div class="is-m"><strong>${fmtKa(male)}</strong><small>კაცი · ${pct(male)}%</small></div>
+          </div>
+          <div class="s-users-gender-bar" role="img" aria-label="ქალი ${female}, კაცი ${male}, სხვა ან უცნობი ${rest}"><i class="is-f" style="width:${(female / all) * 100}%"></i><i class="is-m" style="width:${(male / all) * 100}%"></i>${rest ? `<i class="is-o" style="width:${(rest / all) * 100}%"></i>` : ''}</div>
+          <small>${rest ? `სხვა ან არ მიუთითებია: ${fmtKa(rest)}` : 'მთელი ბაზა'}</small>`;
+      }
     };
 
     const load = async () => {

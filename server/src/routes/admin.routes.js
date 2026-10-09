@@ -441,7 +441,7 @@ adminRouter.get(
     const todayStart = tbilisiMidnight(todayYmd);
     const weekStart = tbilisiMidnight(addDaysYmd(todayYmd, -6));
 
-    const [total, users, kpiTotal, kpiBlocked, kpiUltimate, kpiNewToday, kpiNewWeek] = await Promise.all([
+    const [total, users, kpiTotal, kpiBlocked, kpiUltimate, kpiNewToday, kpiNewWeek, kpiGender] = await Promise.all([
       prisma.user.count({ where }),
       prisma.user.findMany({
         where,
@@ -466,6 +466,7 @@ adminRouter.get(
       prisma.user.count({ where: { status: 'ACTIVE', package: { code: 'ULTIMATE' } } }),
       prisma.user.count({ where: { createdAt: { gte: todayStart } } }),
       prisma.user.count({ where: { createdAt: { gte: weekStart } } }),
+      prisma.user.groupBy({ by: ['gender'], _count: { _all: true } }),
     ]);
 
     const ids = users.map((user) => user.id);
@@ -500,6 +501,8 @@ adminRouter.get(
         ultimate: kpiUltimate,
         newToday: kpiNewToday,
         newWeek: kpiNewWeek,
+        // Whole base by gender (FEMALE / MALE / OTHER; null = not given) for the registry's gender card.
+        gender: Object.fromEntries(kpiGender.map((g) => [g.gender || 'UNKNOWN', g._count._all])),
       },
     });
   }),
