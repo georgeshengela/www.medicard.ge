@@ -31,7 +31,7 @@ Other docs: `docs/I18N.md`, `docs/MEDI-ASSISTANT.md`, `docs/NUTRITION.md`, `docs
 - AI: every AI call goes through the consent path (`consentedAiFetch` app, `withAiConsent` web); never pre-accept consent; a declined consent is a calm note (`AiConsentDeclinedNote`), never an error.
 - Languages: every new user-facing string in Georgian and English (`tx('ქართული','English')` / `ka` dictionary + `src/i18n/en`; server `t(req, ka, en)`); admin stays Georgian; consent versions derive from Georgian text.
 - Names: the AI is **Medi** (never Nightingale). Modules are one word — MEDIRUN, MEDICYCLE, MEDIFOOD, MEDIPILL, MEDIQUEST, MEDIVET, MEDICOACH, MEDISCAN, MEDILAB (never with a space, never MEDIDOCTOR); the tab-bar centre button alone reads RUN. Imaging = „გამოსახულება“, never „სნიმარი“.
-- Freezes: Pets/Medi Vet bug fixes only; MEDIRUN no new zones/prizes (≤1 event/month); cycle no new phases until iOS QA; women's community stays behind the admin launch flag. District competition is retired — never recreate it. No fifth bottom tab.
+- Freezes: Pets/Medi Vet bug fixes only; MEDIRUN no new zones/prizes (≤1 event/month); cycle no new phases until iOS QA; the women's community opens/closes only via the admin launch flag (`CommunityConfig.open`; it is OPEN since 2026-10-02 — check the flag, don't assume it is closed). District competition is retired — never recreate it. No fifth bottom tab.
 - New module = key in `featureFlags.js` `FEATURES` + `requireFeature` + `featureRoutes.ts` + admin `FEATURE_SECTIONS`. Never block `/api/health-metrics/sync`; never cancel medication/visit reminders on a pause. Every reminder family has a switch in Profile → შეტყობინებები and a call in the reconcile.
 
 ## Mobile gotchas (always)
