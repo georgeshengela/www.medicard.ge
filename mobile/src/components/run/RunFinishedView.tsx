@@ -16,7 +16,7 @@ import { useThemeColors } from '@/theme/colors';
 import { HUB } from '@/theme/hub';
 import { tx } from '@/i18n/locale';
 import { useAuth } from '@/store/AuthContext';
-import { lineLength, longestLine, privateLines, thin, type LngLat } from '@/lib/run/shareStudio';
+import { joinSegments, lineLength, longestLine, privateLines, thin, type LngLat } from '@/lib/run/shareStudio';
 import { api } from '@/lib/api';
 import { ShareStudio, canRecordClips, type ShareSceneInput } from './ShareStudio';
 
@@ -67,8 +67,11 @@ export function RunFinishedView({ summary, title, onBack, footer, autoVideo = fa
   const sceneFor = (hide: boolean): ShareSceneInput | null => {
     const segments = (summary.segments?.length ? summary.segments : [summary.path]).map(seg => seg.map(p => [p.lng, p.lat] as LngLat));
     // GPS jumps split the walk; the clip follows its longest unbroken stretch (never a straight leap across town).
-    const line = thin(longestLine(privateLines(segments, { hide, home })), 1200);
-    if (!canRecordClips || line.length < 2 || lineLength(line) < 80) return null;
+    let line = thin(longestLine(privateLines(segments, { hide, home })), 1200);
+    // The whole path (switch off / „ვიდეო მთელი გზით“): a short walk the GPS-jump filter chops into bits stays one
+    // line — owner 2026-10-09, a 0.25 km walk got „ძალიან მოკლეა“.
+    if (!hide && lineLength(line) < 80) line = thin(joinSegments(segments), 1200);
+    if (!canRecordClips || line.length < 2 || lineLength(line) < (hide ? 80 : 30)) return null;
     return {
       kind: 'walk', line, hero: user?.gender === 'FEMALE' ? 'f' : 'm',
       kicker: formatRunDate(summary.startedAt), title: tx('გავანათე', 'I lit up'), big: formatKm(summary.distanceM), unit: tx('კმ', 'km'),
