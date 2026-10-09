@@ -1,7 +1,7 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import { env } from '../config/env.js';
-import { SMS_OTP_PER_NUMBER_DAILY, adminSmsLogView, buildOtpMessage, maskOtpDigits, otpCapReached, sendSms } from './sms.js';
+import { SMS_OTP_PER_NUMBER_DAILY, adminSmsLogView, buildOtpMessage, maskOtpDigits, otpCapReached, sendSms, smsDestinationHash } from './sms.js';
 
 // SmsLog rows in memory; `count` honours the where clauses otpCapReached builds.
 function fakeLogs(rows) {
@@ -46,6 +46,38 @@ describe('otpCapReached', () => {
       if (prev === undefined) delete process.env.SMS_OTP_DAILY_CAP;
       else process.env.SMS_OTP_DAILY_CAP = prev;
     }
+  });
+});
+
+// IR-12: deleting the account must not reset the number's daily cap, and must not keep the number.
+describe('a deleted account’s SMS rows keep counting without the number', () => {
+  it('every spelling of one number gets the same keyed hash, which holds no digits', () => {
+    const hash = smsDestinationHash('995555123456');
+    assert.match(hash, /^h:[a-p]{32}$/);
+    assert.equal(smsDestinationHash('+995555123456'), hash);
+    assert.equal(smsDestinationHash('555123456'), hash);
+    assert.equal(smsDestinationHash('+995 555 12 34 56'), hash);
+    assert.notEqual(smsDestinationHash('995555123457'), hash);
+    assert.equal(smsDestinationHash(''), null);
+    assert.equal(smsDestinationHash('[deleted]'), null);
+  });
+
+  it('hashed rows still count toward the per-number cap; older „[deleted]“ rows do not', async () => {
+    const hashed = Array.from({ length: SMS_OTP_PER_NUMBER_DAILY }, () => log('SENT', smsDestinationHash('995555123456')));
+    assert.equal(await otpCapReached('995555123456', fakeLogs(hashed)), 'number');
+    const mixed = [...hashed.slice(0, 4), ...Array.from({ length: SMS_OTP_PER_NUMBER_DAILY - 4 }, () => log('SENT'))];
+    assert.equal(await otpCapReached('995555123456', fakeLogs(mixed)), 'number');
+    assert.equal(await otpCapReached('995555999999', fakeLogs(hashed)), null);
+    const legacy = Array.from({ length: SMS_OTP_PER_NUMBER_DAILY }, () => log('SENT', '[deleted]'));
+    assert.equal(await otpCapReached('995555123456', fakeLogs(legacy)), null);
+  });
+
+  it('the admin journal shows a hashed number as „[deleted]“, never the hash', () => {
+    const row = { id: 'c', purpose: 'OTP', content: 'Medicard: ••••', destination: smsDestinationHash('995555123456') };
+    assert.equal(adminSmsLogView(row).destination, '[deleted]');
+    const admin = { id: 'd', purpose: 'ADMIN', content: 'Hello', destination: smsDestinationHash('995555123456') };
+    assert.equal(adminSmsLogView(admin).destination, '[deleted]');
+    assert.equal(adminSmsLogView(admin).content, 'Hello');
   });
 });
 
