@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { cycleLogBodyFromForm, EMPTY_CYCLE_LOG, formFromCycleLog, sexualActivityForSave } from './cycleLogForm.ts';
+import { cycleDayFormStep, cycleLogBodyFromForm, EMPTY_CYCLE_LOG, formFromCycleLog, rebaseCycleForm, sexualActivityForSave } from './cycleLogForm.ts';
 import type { CycleLog } from './api.ts';
 
 const day = (patch: Partial<CycleLog>): CycleLog =>
@@ -57,4 +57,31 @@ test('the whole-day body keeps the rest of the day as before', () => {
   const no = cycleLogBodyFromForm({ ...form, sexual: false });
   assert.deepEqual(no.symptoms, ['cramps', 'high_drive']);
   assert.equal(no.sexualActivity, false);
+});
+
+test('CYC-09: a cached day fills at once; a day swipe refills; a refresh rebases', () => {
+  assert.equal(cycleDayFormStep(null, 'u1:2026-10-05', 1), 'fill');
+  assert.equal(cycleDayFormStep({ key: 'u1:2026-10-05', stamp: 1 }, 'u1:2026-10-05', 1), 'keep');
+  assert.equal(cycleDayFormStep({ key: 'u1:2026-10-05', stamp: 1 }, 'u1:2026-10-05', 2), 'rebase');
+  // Another day or another account always starts from that day's stored values.
+  assert.equal(cycleDayFormStep({ key: 'u1:2026-10-05', stamp: 1 }, 'u1:2026-10-06', 1), 'fill');
+  assert.equal(cycleDayFormStep({ key: 'u1:2026-10-05', stamp: 1 }, 'u2:2026-10-05', 1), 'fill');
+});
+
+test('CYC-09: a background refresh keeps her edits and takes every untouched field from the new day', () => {
+  const oldBase = formFromCycleLog(day({ flow: null, moods: [] }));
+  const edited = { ...oldBase, moods: ['calm'] };
+  // Meanwhile the stored day changed (another device, the offline queue flushed).
+  const newBase = formFromCycleLog(day({ flow: 'medium', notes: 'later note', sexualActivity: false }));
+  const next = rebaseCycleForm(edited, oldBase, newBase);
+  assert.deepEqual(next.moods, ['calm']);
+  assert.equal(next.flow, 'medium');
+  assert.equal(next.notes, 'later note');
+  // Hidden hydrate fields follow the stored day (CYC-11 keeps working after a rebase).
+  assert.equal(next.sexualStored, false);
+  assert.equal(cycleLogBodyFromForm(next).sexualActivity, false);
+  // Nothing edited → simply the new stored day.
+  assert.deepEqual(rebaseCycleForm(oldBase, oldBase, newBase), newBase);
+  // Her own change to a field the refresh also changed wins.
+  assert.equal(rebaseCycleForm({ ...oldBase, flow: 'light' }, oldBase, newBase).flow, 'light');
 });

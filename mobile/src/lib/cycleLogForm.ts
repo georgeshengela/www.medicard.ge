@@ -124,3 +124,42 @@ export function cycleLogBodyFromForm(form: CycleLogForm) {
     observationAssessments: form.observationAssessments || {},
   };
 }
+
+function stableJson(value: unknown): string {
+  if (Array.isArray(value)) return `[${value.map(stableJson).join(',')}]`;
+  if (value && typeof value === 'object') {
+    return `{${Object.keys(value as Record<string, unknown>)
+      .sort()
+      .map((k) => `${JSON.stringify(k)}:${stableJson((value as Record<string, unknown>)[k])}`)
+      .join(',')}}`;
+  }
+  return JSON.stringify(value ?? null);
+}
+
+/** Which account, day and cached-view version the open form was filled from. */
+export type CycleDayFill = { key: string; stamp: number };
+
+/**
+ * What an open day form does with the cached cycle view (CYC-09): `fill` the first time for this
+ * account + day (opening a sheet, a day swipe — no network), `rebase` when the cached view changed
+ * since (a background refresh or a save), `keep` otherwise.
+ */
+export function cycleDayFormStep(filled: CycleDayFill | null, key: string, stamp: number): 'fill' | 'rebase' | 'keep' {
+  if (!filled || filled.key !== key) return 'fill';
+  return filled.stamp === stamp ? 'keep' : 'rebase';
+}
+
+/**
+ * The open form after the stored day changed underneath it (the cached view was refreshed in the
+ * background, or another screen saved the day): what she edited since the last fill keeps her value,
+ * every other field takes the newly stored one — so a save never writes an older copy back (CYC-09).
+ */
+export function rebaseCycleForm(form: CycleLogForm, oldBase: CycleLogForm, newBase: CycleLogForm): CycleLogForm {
+  const out: Record<string, unknown> = { ...newBase };
+  const edited = form as unknown as Record<string, unknown>;
+  const before = oldBase as unknown as Record<string, unknown>;
+  for (const key of Object.keys(edited)) {
+    if (stableJson(edited[key]) !== stableJson(before[key])) out[key] = edited[key];
+  }
+  return out as CycleLogForm;
+}
