@@ -99,9 +99,8 @@ export default function LabHubScreen() {
             ) : (
               <MedilabHero
                 panels={shownPanels}
-                onOpenLab={() => shownDates[0] && router.push(`/lab/${shownDates[0]}` as never)}
+                onOpenTest={(date) => router.push(`/lab/${date}` as never)}
                 onUpload={canUpload ? upload : undefined}
-                openLabel={tx('ნახვა', 'Open')}
               />
             )}
           </View>

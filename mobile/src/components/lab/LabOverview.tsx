@@ -16,7 +16,23 @@ const AMBER = '#FCD34D';
  * many values need a look — and one quiet bar split by share: amber outside, white inside, a faint
  * part for values without a printed range; the counts sit under it.
  */
-export function LabSummaryCard({ dateLabel, total, inRange, off }: { dateLabel: string; total: number; inRange: number; off: number }) {
+export function LabSummaryCard({
+  dateLabel,
+  total,
+  inRange,
+  off,
+  kicker,
+  children,
+}: {
+  dateLabel: string;
+  total: number;
+  inRange: number;
+  off: number;
+  /** Replaces the „date · N values“ line (MEDILAB's hub says „ბოლო ანალიზი“). */
+  kicker?: string;
+  /** Extra content under the legend (the hub adds what needs a look and the open button). */
+  children?: React.ReactNode;
+}) {
   const unknown = Math.max(0, total - inRange - off);
   return (
     <View style={s.heroWrap}>
@@ -24,7 +40,7 @@ export function LabSummaryCard({ dateLabel, total, inRange, off }: { dateLabel: 
         <View pointerEvents="none" style={[s.glow, { backgroundColor: BRAND.glow }]} />
         <View pointerEvents="none" style={[s.ring, s.ringOuter]} />
         <View pointerEvents="none" style={[s.ring, s.ringInner]} />
-        <Text style={[s.kicker, { color: BRAND.onHero }]}>{tx(`${dateLabel} · ${total} მაჩვენებელი`, `${dateLabel} · ${total} values`)}</Text>
+        <Text style={[s.kicker, { color: BRAND.onHero }]}>{kicker ?? tx(`${dateLabel} · ${total} მაჩვენებელი`, `${dateLabel} · ${total} values`)}</Text>
         <Text style={s.headline} accessibilityRole="header">
           {off
             ? tx(`${off} მაჩვენებელს ყურადღება სჭირდება`, off === 1 ? '1 value needs a look' : `${off} values need a look`)
@@ -40,6 +56,7 @@ export function LabSummaryCard({ dateLabel, total, inRange, off }: { dateLabel: 
           <Legend color="rgba(255,255,255,0.88)" label={tx(`${inRange} ნორმაში`, `${inRange} in range`)} />
           {unknown ? <Legend color="rgba(255,255,255,0.28)" label={tx(`${unknown} ნორმის გარეშე`, `${unknown} no range`)} /> : null}
         </View>
+        {children}
       </LinearGradient>
     </View>
   );

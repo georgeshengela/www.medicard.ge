@@ -3,14 +3,14 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, { FadeOut, LinearTransition } from 'react-native-reanimated';
-import { ChevronDown, ChevronRight, MessageCircle } from 'lucide-react-native';
+import { ChevronDown, ChevronRight, FileText, MessageCircle } from 'lucide-react-native';
 import { ModuleHeader, ModuleHeaderButton } from '@/components/brand/ModuleHeader';
 import { HomeSectionHeading } from '@/components/home/HomeSectionHeading';
 import { LabChangesCard } from '@/components/lab/LabChangesCard';
 import { LabMediCard } from '@/components/lab/LabMediCard';
 import { LabSummaryCard, OrganTile } from '@/components/lab/LabOverview';
 import { LabValueRow } from '@/components/lab/LabValueRow';
-import { MedilabSearch, useMedilab } from '@/components/lab/MedilabUI';
+import { MedilabActionRow, MedilabSearch, useMedilab } from '@/components/lab/MedilabUI';
 import { SwipeDeleteRow, SwipeGroup } from '@/components/records/SwipeDeleteRow';
 import { UndoToast } from '@/components/records/UndoToast';
 import { useUndoDelete } from '@/components/records/useUndoDelete';
@@ -87,6 +87,8 @@ export default function LabDateScreen() {
     return compareLabTests(allRows, previous, prevDate);
   }, [byDate, dateKey, allRows]);
   const needsExplain = Boolean(panel?.parameters.length) && !analysis.trim();
+  // The uploaded sheet this test was read from (MEDILAB's list shows it here, not twice).
+  const sheetId = panels.flatMap((p) => p.recordIds ?? [])[0] ?? null;
 
   const title = dateKey && isTodayYmd(dateKey) ? ka.common.today : dateKey ? formatLabDateKa(dateKey) : ka.lab.title;
   const prompt = labMediPrompt(panels);
@@ -238,6 +240,17 @@ export default function LabDateScreen() {
                     error={explainError}
                     onExplain={() => void explain()}
                     onAsk={askMedi}
+                  />
+                </View>
+              ) : null}
+
+              {sheetId ? (
+                <View style={{ marginTop: HUB.sectionGap }}>
+                  <MedilabActionRow
+                    icon={FileText}
+                    title={tx('ანალიზის ფურცელი', 'The lab sheet')}
+                    body={tx('ატვირთული ფოტო ან PDF, როგორც ლაბორატორიამ გასცა', 'The photo or PDF you uploaded, as the lab issued it')}
+                    onPress={() => router.push(`/record/${sheetId}` as never)}
                   />
                 </View>
               ) : null}

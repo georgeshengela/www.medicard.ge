@@ -23,7 +23,7 @@ import { featureForHref, featureMessage, isFeatureOn, useFeature } from '@/lib/f
 import { refreshFeatureFlags } from '@/lib/featureFlagSync';
 import { localAccountId, onLocalAccountChange } from '@/lib/localAccount';
 import { clearMediDraft, holdMediDraft, takeMediCycleContext, takeMediDraft, takeMediPrefill } from '@/lib/mediHandoff';
-import { legacyChatRouteToMedi } from '@/lib/mediModes';
+import { legacyChatRouteToMedi, mediRoute } from '@/lib/mediModes';
 import {
   clinicalSessions, consultFromReview, HIDDEN_ACTION_FIELDS, humanCardValue, plannerHistory, spokenAnswer, storedTurns, turnId, turnsFromSession,
   type ClinicalMode, type MediTurn, type StoredTurn,
@@ -34,6 +34,7 @@ import { useThemeColors } from '@/theme/colors';
 import { ka } from '@/i18n/ka';
 import { tx } from '@/i18n/locale';
 import { MediComposer } from './MediComposer';
+import { MediHistorySheet } from './MediHistorySheet';
 import { MediMenuSheet } from './MediMenuSheet';
 import { MediTopBar } from './MediTopBar';
 import { ActionCard, AnswerTurn, MediLine, ThinkingTurn, UserTurn } from './MediTurns';
@@ -79,7 +80,7 @@ export function MediChat({ owner, sessionId, startConsilium, directDoctor, prefi
   const [historyFailed, setHistoryFailed] = useState(false);
   const [consilium, setConsilium] = useState(!!startConsilium);
   const [draft, setDraft] = useState<AssistantAction | null>(null);
-  const [manual, setManual] = useState(false), [picker, setPicker] = useState(false), [menu, setMenu] = useState(false);
+  const [manual, setManual] = useState(false), [picker, setPicker] = useState(false), [menu, setMenu] = useState(false), [history, setHistory] = useState(false);
   const [focusFields, setFocusFields] = useState<string[] | undefined>();
   const [suggestions, setSuggestions] = useState<{ label: string; text: string; petId?: string }[]>([]);
   const [notice, setNotice] = useState<string | null>(pausedMessage ?? null);
@@ -560,7 +561,7 @@ export function MediChat({ owner, sessionId, startConsilium, directDoctor, prefi
   return (
     <>
       <ChatScreenShell style={{ backgroundColor: C.bg100 }}
-        header={<MediTopBar subtitle={subtitle} onBack={goBack} onNew={turns.length ? resetConversation : undefined} onMenu={() => { Keyboard.dismiss(); setMenu(true); }} disabled={capture.phase !== 'idle'} />}
+        header={<MediTopBar subtitle={subtitle} onBack={goBack} onHistory={() => { Keyboard.dismiss(); setHistory(true); }} onNew={turns.length ? resetConversation : undefined} onMenu={() => { Keyboard.dismiss(); setMenu(true); }} disabled={capture.phase !== 'idle'} />}
         footer={picker || (manual && draft && activeTool) ? undefined : (
           <View>
             {scrolledUp && turns.length ? (
@@ -579,8 +580,11 @@ export function MediChat({ owner, sessionId, startConsilium, directDoctor, prefi
         {body}
       </ChatScreenShell>
       <MediMenuSheet visible={menu} onClose={() => setMenu(false)} onNew={turns.length ? resetConversation : null}
-        onDirectory={() => setPicker(true)} onPrivacy={() => router.push('/profile/ai-data' as never)}
+        onHistory={() => setHistory(true)} onDirectory={() => setPicker(true)} onPrivacy={() => router.push('/profile/ai-data' as never)}
         speech={voiceOut ? { muted: speech.muted, toggle: speech.toggle } : null} />
+      <MediHistorySheet visible={history} currentId={sessionId ?? conversation.current} onClose={() => setHistory(false)}
+        onNew={turns.length ? resetConversation : null}
+        onOpen={(mode, id) => { if (working.current || capture.isBusy()) return; router.replace(mediRoute({ mode, sessionId: id }) as never); }} />
       <QuotaSheet visible={quotaBlock !== undefined} resetsInMs={quotaBlock} onClose={() => setQuotaBlock(undefined)} />
     </>
   );
