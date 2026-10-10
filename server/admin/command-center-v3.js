@@ -704,6 +704,22 @@
     }
   }
 
+  /** „▲ 5“ / „▼ 3“ beside today's sign-ups: today against yesterday up to the same clock time (ops:live). */
+  function paintSignupDelta(snap) {
+    const el = document.querySelector('[data-ops-signup-delta]');
+    if (!el) return;
+    const today = Number(snap?.newUsersToday);
+    const before = snap?.newUsersYesterdaySoFar;
+    if (before == null || !Number.isFinite(today) || !Number.isFinite(Number(before))) { el.hidden = true; return; }
+    const diff = today - Number(before);
+    el.hidden = false;
+    el.className = `v3-cc-online-delta ${diff > 0 ? 'is-up' : diff < 0 ? 'is-down' : 'is-same'}`;
+    el.textContent = diff > 0 ? `▲ ${fmt(diff)}-ით მეტი, ვიდრე გუშინ` : diff < 0 ? `▼ ${fmt(-diff)}-ით ნაკლები, ვიდრე გუშინ` : '= იმდენივე, რამდენიც გუშინ';
+    el.title = `გუშინ ამ დროისთვის: ${fmt(Number(before))}`;
+    el.setAttribute('aria-label', diff === 0 ? 'გუშინდელის ტოლია' : `${diff > 0 ? 'გუშინდელზე მეტია' : 'გუშინდელზე ნაკლებია'} ${fmt(Math.abs(diff))}-ით (გუშინ ამ დროისთვის ${fmt(Number(before))})`);
+  }
+  global.paintSignupDelta = paintSignupDelta;
+
   function paintLiveHero(root, overview, system) {
     if (overview.error) {
       $('ops-live-hero').innerHTML = section({
@@ -731,6 +747,7 @@
           <em>რეალურ დროში · ბოლო 90 წამი</em>
           <div class="v3-cc-online-today" data-ops-kpi="newUsersToday" title="ახალი ანგარიშები დღეს, თბილისის დროით. ცოცხლად ახლდება (ops:live).">
             <span>${ico('user')} დღეს დარეგისტრირდა</span>
+            <span class="v3-cc-online-delta" data-ops-signup-delta hidden></span>
             <strong>${todayNew == null ? '—' : fmt(todayNew)}</strong>
           </div>
         </article>

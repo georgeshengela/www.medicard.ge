@@ -1735,6 +1735,7 @@ function patchOpsLive(snap) {
   setKpi('onlineNow', snap.onlineNow);
   setKpi('activeToday', snap.activeToday);
   setKpi('newUsersToday', snap.newUsersToday);
+  if (typeof window.paintSignupDelta === 'function') window.paintSignupDelta(snap);
   if (opsState.range === 'today') setKpi('newUsers', snap.newUsersToday);
   const at = $('ops-live-at');
   if (at && snap.refreshedAt) {

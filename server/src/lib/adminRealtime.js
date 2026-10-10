@@ -186,16 +186,24 @@ export async function getOpsLiveSnapshot() {
     else online.add(userId);
   }
   let newUsersToday = 0;
+  // Yesterday up to this same clock time (Tbilisi is UTC+4 all year): a fair „vs yesterday“ for the admin card.
+  let newUsersYesterdaySoFar = null;
   try {
     const start = new Date(`${today}T00:00:00+04:00`);
-    newUsersToday = await prisma.user.count({ where: { createdAt: { gte: start } } });
+    const dayMs = 24 * 60 * 60 * 1000;
+    [newUsersToday, newUsersYesterdaySoFar] = await Promise.all([
+      prisma.user.count({ where: { createdAt: { gte: start } } }),
+      prisma.user.count({ where: { createdAt: { gte: new Date(start.getTime() - dayMs), lt: new Date(now - dayMs) } } }),
+    ]);
   } catch {
     newUsersToday = 0;
+    newUsersYesterdaySoFar = null;
   }
   return {
     refreshedAt: new Date().toISOString(),
     activeToday: active.size,
     onlineNow: online.size,
     newUsersToday,
+    newUsersYesterdaySoFar,
   };
 }

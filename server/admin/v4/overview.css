@@ -170,10 +170,17 @@ html body .v3-cc-online .v3-info-btn { color: rgba(255, 255, 255, 0.7) !importan
 html body .v3-cc-online strong { font-size: 52px !important; font-weight: 650 !important; line-height: 1 !important; color: #fff !important; letter-spacing: -0.03em; }
 html body .v3-cc-online em { font-style: normal; font-size: 12px; color: rgba(232, 255, 251, 0.75) !important; }
 /* „დღეს დარეგისტრირდა“ — today's sign-ups on the live card's foot (owner 2026-10-10); ops:live keeps it fresh */
-html body .v3-cc-online .v3-cc-online-today { position: relative; z-index: 1; display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 4px; padding-top: 10px; border-top: 1px solid rgba(232, 255, 251, 0.22); color: rgba(232, 255, 251, 0.88) !important; font-size: 13px; font-weight: 600; }
-html body .v3-cc-online .v3-cc-online-today span { display: inline-flex; align-items: center; gap: 6px; }
-html body .v3-cc-online .v3-cc-online-today .icon { width: 15px; height: 15px; stroke: currentColor; fill: none; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
-html body .v3-cc-online .v3-cc-online-today strong { font-size: 22px !important; font-weight: 650 !important; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+html body .v3-cc-online { grid-template-columns: minmax(0, 1fr); } /* one full-width column (the legacy flex justify-content would shrink it) */
+html body .v3-cc-online .v3-cc-online-today { position: relative; z-index: 1; width: 100%; box-sizing: border-box; display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; column-gap: 10px; row-gap: 6px; margin-top: 4px; padding-top: 10px; border-top: 1px solid rgba(232, 255, 251, 0.22); color: rgba(232, 255, 251, 0.88) !important; font-size: 13px; font-weight: 600; }
+html body .v3-cc-online .v3-cc-online-today > span:first-child { grid-column: 1; grid-row: 1; display: inline-flex; align-items: center; gap: 6px; min-width: 0; }
+html body .v3-cc-online .v3-cc-online-today .icon { width: 15px; height: 15px; flex: none; stroke: currentColor; fill: none; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
+html body .v3-cc-online .v3-cc-online-today strong { grid-column: 2; grid-row: 1; font-size: 22px !important; font-weight: 650 !important; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+/* vs yesterday up to the same clock time: ▲ more / ▼ fewer / = same (title has yesterday's number) */
+html body .v3-cc-online .v3-cc-online-delta { grid-column: 1 / -1; grid-row: 2; justify-self: start; display: inline-flex; align-items: center; padding: 2px 9px; border-radius: 99px; font-size: 12px; font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
+html body .v3-cc-online .v3-cc-online-delta[hidden] { display: none; }
+html body .v3-cc-online .v3-cc-online-delta.is-up { color: #d1fae5 !important; background: rgba(167, 243, 208, 0.22); }
+html body .v3-cc-online .v3-cc-online-delta.is-down { color: #ffe4e6 !important; background: rgba(251, 113, 133, 0.30); }
+html body .v3-cc-online .v3-cc-online-delta.is-same { color: rgba(232, 255, 251, 0.88) !important; background: rgba(255, 255, 255, 0.12); font-weight: 600; }
 html body .v3-cc-online .v3-cc-pulse { width: 8px; height: 8px; border-radius: 99px; background: #a7f3d0 !important; box-shadow: 0 0 0 0 rgba(167, 243, 208, .7); animation: s-live 1.8s ease-out infinite; }
 html body .v3-cc-online.is-empty .v3-cc-pulse { background: rgba(255,255,255,.45) !important; animation: none; }
 @keyframes s-live { 0% { box-shadow: 0 0 0 0 rgba(167, 243, 208, .7); } 100% { box-shadow: 0 0 0 10px rgba(167, 243, 208, 0); } }
