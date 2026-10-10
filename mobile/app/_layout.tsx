@@ -3,7 +3,7 @@ import '@/lib/bootGuard';
 
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { vars } from 'nativewind';
-import { roseCssVars, setBrandTone, useBrandTone } from '@/theme/brandTone';
+import { roseCssVars, setBrandTone, tealCssVars, useBrandTone } from '@/theme/brandTone';
 import { useHomeLayout } from '@/hooks/useHomeLayout';
 import { LogBox, Platform, Settings, Text, View } from 'react-native';
 import { tx } from '@/i18n/locale';
@@ -32,6 +32,7 @@ import { Notifications } from '@/lib/expoNotifications';
 import { enableFreeze, enableScreens } from 'react-native-screens';
 import { AppChromeOverlay } from '@/components/navigation/AppChromeOverlay';
 import { FloatingTabBar } from '@/components/navigation/FloatingTabBar';
+import { UpdateReadyCard } from '@/components/ui/UpdateReadyCard';
 import { useTabChromeHidden } from '@/components/navigation/tabChrome';
 import { ActiveRunBadge, useActiveRunChrome } from '@/components/run/ActiveRunBadge';
 import { OfflineBanner } from '@/components/OfflineBanner';
@@ -70,7 +71,7 @@ import { ModuleGate } from '@/components/ModuleGate';
 import { attachNavigationGuard } from '@/lib/navigationGuard';
 import { applyFeatureStatus, useFeature } from '@/lib/featureFlags';
 import { noteFeatureStatusFetched, startFeatureFlagSync } from '@/lib/featureFlagSync';
-import { holdOtaReloadWhile, startOtaUpdates } from '@/lib/otaUpdates';
+import { holdOtaReloadWhile, setOtaPromptPolicy, startOtaUpdates } from '@/lib/otaUpdates';
 import { startRunLiveActivity } from '@/lib/run/liveActivity';
 import { getRunState, isActiveRunPhase } from '@/lib/run/store';
 
@@ -117,6 +118,7 @@ function AuthGate({ children }: { children: React.ReactNode }) {
         rememberMapboxToken(status.mapboxToken);
         applyFeatureStatus(status.features, status.featureMessages);
         noteFeatureStatusFetched();
+        setOtaPromptPolicy(status.client.updatePrompt);
         if (status.settings.maintenanceMode) {
           setGate({ kind: 'maintenance', message: status.settings.maintenanceMessage });
           return;
@@ -246,7 +248,8 @@ function AppShell() {
   // Women's Home chosen → the whole app in its rose (owner 2026-10-04): NativeWind's brand variables
   // are re-pointed here for every className; useThemeColors() follows the same tone.
   const tone = useBrandTone();
-  const toneVars = useMemo(() => (tone === 'rose' ? vars(roseCssVars(scheme === 'dark')) : null), [tone, scheme]);
+  // Always set (teal too): NativeWind needs the variables on the first render, see tealCssVars.
+  const toneVars = useMemo(() => vars(tone === 'rose' ? roseCssVars(scheme === 'dark') : tealCssVars(scheme === 'dark')), [tone, scheme]);
   const { user, ready: authReady, healthProfile, setHealthProfile } = useAuth();
   const segments = useSegments();
   const router = useRouter();
@@ -417,7 +420,10 @@ function AppShell() {
       <StatusBar style={scheme === 'dark' ? 'light' : 'dark'} />
       {user ? <BrandToneSync /> : null}
       <AuthGate>
-        <View style={[{ flex: 1, backgroundColor: colors.bg100 }, toneVars]}>
+        {/* The key keeps React from reusing AuthGate's placeholder View (same type, same slot) for this one:
+            NativeWind would then see CSS variables appear after the first render and, in development, its
+            upgrade warning stringifies the navigation tree and throws „Couldn't find a navigation context“. */}
+        <View key="app-shell" style={[{ flex: 1, backgroundColor: colors.bg100 }, toneVars]}>
           <View style={{ flex: 1 }}>
             <Stack
               screenOptions={{
@@ -480,6 +486,8 @@ function AppShell() {
           <AppChromeOverlay interactive={chromeInteractive}>
             {user && !['(auth)', 'run', 'medi-quest', 'medi-companion', 'pets', 'assistant', 'community', 'nutrition', 'trainer', 'coach', 'c', 'u', 'news'].includes(segments[0]) && !((segments as string[]).join('/') === 'profile/complete') ? <FloatingTabBar visible={showTabBar} /> : null}
             {user ? <ActiveRunBadge /> : null}
+            {/* „ახალი ვერსია მზადაა“ above the tab bar when an update is downloaded (tab screens only). */}
+            {showTabBar ? <UpdateReadyCard /> : null}
           </AppChromeOverlay>
           <DailyCheckInHost />
           <QuotaReadyHost />

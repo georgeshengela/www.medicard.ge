@@ -36,6 +36,18 @@ export function roseCssVars(dark: boolean): Record<string, string> {
   };
 }
 
+/**
+ * The teal values from global.css, set on the root view from the first render. NativeWind must see the
+ * root view carry CSS variables on its initial render: adding them later (switching to rose) remounts
+ * the whole app and, in development, its upgrade warning stringifies the navigation tree and throws
+ * „Couldn't find a navigation context“ (Expo Go crash, 2026-10-09). Keep in sync with global.css.
+ */
+export function tealCssVars(dark: boolean): Record<string, string> {
+  return dark
+    ? { '--color-primary-100': '153 246 228', '--color-primary-200': '20 184 166', '--color-primary-300': '94 234 212', '--color-accent-100': '4 47 46', '--color-accent-200': '17 94 89' }
+    : { '--color-primary-100': '15 118 110', '--color-primary-200': '20 184 166', '--color-primary-300': '45 212 191', '--color-accent-100': '204 251 241', '--color-accent-200': '94 234 212' };
+}
+
 let tone: BrandTone = 'teal';
 const listeners = new Set<() => void>();
 

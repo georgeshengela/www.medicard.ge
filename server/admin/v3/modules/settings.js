@@ -228,6 +228,68 @@
     await doSave();
   }
 
+  /**
+   * „განახლების ბარათი“ (owner 2026-10-11): when a phone has downloaded an OTA the app offers „განახლება“
+   * by itself (switch, on by default); „სთხოვე ახლავე“ makes every older version look for it now. Acts at
+   * once (own PUT /update-prompt), outside the page form and its save button. Never blocks anyone.
+   */
+  async function paintUpdatePrompt(data) {
+    const host = $('set-update-card');
+    if (!host) return;
+    let d = data;
+    if (!d) {
+      try {
+        d = await api('/update-prompt');
+      } catch (err) {
+        host.innerHTML = panel({ title: 'განახლების ბარათი', content: `<div class="s-empty">${ico('alert')}<strong>ვერ ჩაიტვირთა</strong><span>${esc(err.message || '')}</span></div>` });
+        return;
+      }
+    }
+    const pct = (n) => (d.activeUsers ? `${Math.round((n / d.activeUsers) * 100)}%` : '—');
+    const asking = d.prompt.belowVersion;
+    const rows = d.versions.slice(0, 8).map((v) => `<tr>
+        <td><b>${esc(v.version)}</b>${v.version === d.latestVersion ? ' <span class="s-badge is-ok">უახლესი</span>' : v.behind ? ' <span class="s-badge is-warn">ძველი</span>' : ''}</td>
+        <td class="num">${esc(v.users)}</td><td class="num">${esc(pct(v.users))}</td></tr>`).join('');
+    host.innerHTML = panel({
+      title: 'განახლების ბარათი',
+      description: 'როცა ტელეფონი ახალ ვერსიას ჩამოტვირთავს, აპი თავად სთავაზობს „განახლებას“ — ერთი შეხება, App Store-ის გარეშე. არავის ბლოკავს.',
+      content: `
+        <div class="s-switch-row">
+          <div><b>ბარათი ავტომატურად</b><small>${d.prompt.enabled ? 'ჩართულია — ახალი ვერსია თავად შეეთავაზება ყველას.' : 'გამორთულია — განახლება ჩაირთვება მხოლოდ მაშინ, როცა აპს 10+ წუთით დატოვებენ.'}</small></div>
+          <input id="up-auto" class="s-switch" type="checkbox" role="switch" aria-label="ბარათი ავტომატურად" ${d.prompt.enabled ? 'checked' : ''} />
+        </div>
+        <div class="s-metrics" role="group" aria-label="ვერსიები ბოლო 7 დღეში">
+          ${metric('უახლესი ვერსია', d.latestVersion || '—', 'ბოლო გამოშვება')}
+          ${metric('აქტიური, 7 დღე', String(d.activeUsers), 'ბოლოს გამოყენებული ვერსიით')}
+          ${metric('ძველ ვერსიაზე', String(d.behindUsers), `${pct(d.behindUsers)} ჯერ არ განახლებულა`, d.behindUsers ? 'warn' : '')}
+        </div>
+        ${rows ? `<table class="s-table"><thead><tr><th>ვერსია</th><th class="num">მომხმარებელი</th><th class="num">წილი</th></tr></thead><tbody>${rows}</tbody></table>` : ''}
+        <div class="s-switch-row">
+          <div><b>${asking ? `მოთხოვნა აქტიურია: ${esc(asking)}-ზე ძველები` : 'სთხოვე ძველ ვერსიებს ახლავე'}</b>
+            <small>${asking ? `ჩაირთო ${esc(when(d.prompt.updatedAt))}. ეს ტელეფონები განახლებას მაშინვე მოძებნიან და ბარათს აჩვენებენ.` : 'ყველა ძველი ვერსია განახლებას ახლავე მოძებნის და ბარათს აჩვენებს — საათობრივი შემოწმების ლოდინის გარეშე.'}</small></div>
+          ${asking
+            ? '<button type="button" class="btn ghost compact" id="up-stop">შეწყვეტა</button>'
+            : `<button type="button" class="btn primary compact" id="up-ask" ${d.latestVersion && d.prompt.enabled ? '' : 'disabled'}>${ico('refresh')} სთხოვე ახლავე</button>`}
+        </div>`,
+    });
+    const save = async (body, okText) => {
+      try {
+        const next = await api('/update-prompt', { method: 'PUT', body });
+        toastMsg(okText, 'ok');
+        void paintUpdatePrompt(next);
+      } catch (err) {
+        toastMsg(err?.message || 'შენახვა ვერ მოხერხდა', 'bad');
+        void paintUpdatePrompt();
+      }
+    };
+    $('up-auto')?.addEventListener('change', (e) => {
+      const on = e.currentTarget.checked;
+      void save({ enabled: on }, on ? 'განახლების ბარათი ჩაირთო' : 'განახლების ბარათი გამოირთო');
+    });
+    $('up-ask')?.addEventListener('click', () => void save({ belowVersion: d.latestVersion }, `ვთხოვეთ ${d.latestVersion}-ზე ძველ ვერსიებს`));
+    $('up-stop')?.addEventListener('click', () => void save({ belowVersion: '' }, 'მოთხოვნა შეწყდა'));
+  }
+
   async function renderSettingsV3() {
     const root = $('tab-settings');
     if (!root) return;
@@ -288,6 +350,8 @@
           ${metric('რეგისტრაცია', settings.allowRegistrations ? 'ღიაა' : 'დახურულია', 'ახალი ანგარიშების გახსნა', settings.allowRegistrations ? '' : 'warn')}
           ${metric('სატესტო OTP კოდები', onOff(settings.qaOtpEnabled), 'ტესტ-ანგარიშებისთვის', settings.qaOtpEnabled ? 'warn' : '')}
         </div>
+
+        <div id="set-update-card"></div>
 
         <div class="p2-settings-grid p2-form" id="settings-form">
           ${panel({
@@ -387,6 +451,7 @@
     applyBaseline(baseline);
     Av.setDirty?.(false);
     Av.watchDirty?.($('settings-form'));
+    void paintUpdatePrompt();
 
     bindDangerToggle(
       'set-maint',

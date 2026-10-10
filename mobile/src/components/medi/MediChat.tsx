@@ -37,7 +37,7 @@ import { MediComposer } from './MediComposer';
 import { MediHistorySheet } from './MediHistorySheet';
 import { MediMenuSheet } from './MediMenuSheet';
 import { MediTopBar } from './MediTopBar';
-import { ActionCard, AnswerTurn, MediLine, ThinkingTurn, UserTurn } from './MediTurns';
+import { ActionCard, AnswerTurn, MediLine, SavedNod, ThinkingTurn, UserTurn } from './MediTurns';
 import { MediWelcome } from './MediWelcome';
 
 type Busy = null | 'plan' | 'answer' | 'deep' | 'save' | 'open' | 'check' | 'history';
@@ -93,6 +93,9 @@ export function MediChat({ owner, sessionId, startConsilium, directDoctor, prefi
   const [choices, setChoices] = useState<AssistantChoices>({});
   const [voiceAvail, setVoiceAvail] = useState(false), [voiceOutAvail, setVoiceOutAvail] = useState(false);
   const [scrolledUp, setScrolledUp] = useState(false);
+  /** A saved action: Medi nods under the card for a moment (key replays it on the next save). */
+  const [nod, setNod] = useState(0);
+  const endNod = useCallback(() => setNod(0), []);
 
   const turnsRef = useRef<MediTurn[]>([]); turnsRef.current = turns;
   const working = useRef(false), alive = useRef(true), focused = useRef(true), generation = useRef(0);
@@ -365,6 +368,7 @@ export function MediChat({ owner, sessionId, startConsilium, directDoctor, prefi
         return;
       }
       patchTurn(cardId, { state: 'saved' });
+      setNod(k => k + 1);
       const petName = choices.petId?.find(p => p.value === review.args.petId)?.label;
       const line = review.tool === 'medication_add' ? tx(`${String(review.args.medName)} დამატებულია.`, `${String(review.args.medName)} added.`)
         : review.tool === 'pet_care_plan' && petName ? tx(`${petName}-ის გეგმა შენახულია.`, `${petName}'s plan is saved.`) : tx('შენახულია.', 'Saved.');
@@ -444,7 +448,7 @@ export function MediChat({ owner, sessionId, startConsilium, directDoctor, prefi
     if (sessionId) { router.replace('/assistant' as never); return; }
     conversation.current = undefined; copyOnFirstSave.current = null; sessions.current = {}; directNext.current = null;
     cycleContextExcluded.current = false;
-    setTurns([]); setDraft(null); setManual(false); setPicker(false); setText(''); setError(null); setNotice(null); setRetry(null); setSuggestions([]); setCycleContext(null);
+    setTurns([]); setDraft(null); setManual(false); setPicker(false); setText(''); setError(null); setNotice(null); setRetry(null); setSuggestions([]); setCycleContext(null); setNod(0);
   }
 
   const goBack = () => {
@@ -488,6 +492,7 @@ export function MediChat({ owner, sessionId, startConsilium, directDoctor, prefi
   const footer = (
     <View style={{ gap: 14, paddingTop: turns.length ? 18 : 0 }}>
       {thinking ? <ThinkingTurn label={thinking} deep={false} /> : null}
+      {nod ? <View style={{ paddingLeft: 30 }}><SavedNod key={nod} onDone={endNod} /></View> : null}
       {suggestions.length && !busy ? <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, paddingLeft: 34 }}>{suggestions.map((s, i) => pill(s.label, () => void send(s.text, false, s.petId), `${i}`))}</View> : null}
       {draft && !manual && activeTool && !busy ? (
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, paddingLeft: 34 }}>

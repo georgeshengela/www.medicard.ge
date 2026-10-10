@@ -5,6 +5,7 @@ import { useIsDark, useThemeColors } from '@/theme/colors';
 import { hubInk, hubTint, type HubInk } from '@/theme/hub';
 import { tx } from '@/i18n/locale';
 import { MediOrb } from './MediOrb';
+import { MediMascot } from './mascot/MediMascot';
 import { consiliumInk } from './mediTheme';
 
 type Starter = { icon: LucideIcon; ink: HubInk; text: string };
@@ -22,7 +23,7 @@ const DEEP_STARTERS = (): Starter[] => [
   { icon: Stethoscope, ink: 'violet', text: tx('ფერიტინი დაბალი მაქვს — რა ვქნა?', 'My ferritin is low — what now?') },
 ];
 
-/** The empty conversation: Medi's sphere is the one bold element, then plain starters to tap. */
+/** The empty conversation: Medi waving hello is the one bold element (consilium: its three spheres), then plain starters to tap. */
 export function MediWelcome({ name, consilium, onStarter, notice }: { name?: string; consilium: boolean; onStarter: (text: string) => void; notice?: string | null }) {
   const c = useThemeColors();
   const dark = useIsDark();
@@ -30,7 +31,7 @@ export function MediWelcome({ name, consilium, onStarter, notice }: { name?: str
   return (
     <View style={{ flexGrow: 1, justifyContent: 'center', paddingVertical: 24, gap: 28 }}>
       <View style={{ alignItems: 'center', gap: 18 }}>
-        <MediOrb size={84} deep={consilium} breathing />
+        {consilium ? <MediOrb size={84} deep breathing /> : <MediMascot mood="hello" size={132} crop="snug" giggle />}
         <View style={{ alignItems: 'center', gap: 6, paddingHorizontal: 12 }}>
           <Text style={{ color: c.text100, fontSize: 24, lineHeight: 34, textAlign: 'center', fontFamily: 'NotoSansGeorgian_600SemiBold' }}>
             {consilium ? tx('კონსილიუმი ჩართულია', 'Consilium is on') : name ? tx(`გამარჯობა, ${name}`, `Hi, ${name}`) : tx('გამარჯობა', 'Hi')}

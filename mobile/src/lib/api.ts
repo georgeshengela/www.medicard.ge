@@ -2504,7 +2504,13 @@ export const api = {
           supportEmail: string;
           consumerPurchasesEnabled?: boolean;
         };
-        client: { version: string; needsUpdate: boolean; blockedByForceUpdate: boolean };
+        client: {
+          version: string;
+          needsUpdate: boolean;
+          blockedByForceUpdate: boolean;
+          /** Soft update card (servers since 2026-10-11): auto-offer a downloaded update; `ask` = look now. */
+          updatePrompt?: { auto: boolean; ask: { id: string; version: string } | null };
+        };
         packages?: UserPackage[];
         mapboxToken?: string;
         /** Effective module switches (admin „მოდულები“); a missing key means on. */

@@ -1,4 +1,4 @@
-import React, { memo } from 'react';
+import React, { memo, useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, Text, View } from 'react-native';
 import {
   ArrowUpRight, CalendarClock, Check, Droplet, Flower2, Footprints, PawPrint, Pill, Scale, Sparkles, ThumbsDown, ThumbsUp, Utensils, X, type LucideIcon,
@@ -9,6 +9,7 @@ import { useIsDark, useThemeColors } from '@/theme/colors';
 import { hubInk, hubTint, type HubInk } from '@/theme/hub';
 import { tx } from '@/i18n/locale';
 import { MediOrb } from './MediOrb';
+import { MediMascot } from './mascot/MediMascot';
 import { consiliumInk } from './mediTheme';
 
 const body = { fontSize: 15, lineHeight: 24, fontFamily: 'NotoSansGeorgian_400Regular' } as const;
@@ -43,6 +44,15 @@ export const AnswerTurn = memo(function AnswerTurn({ text, deep, streaming, inte
   const c = useThemeColors();
   const dark = useIsDark();
   const ink = deep ? consiliumInk(dark) : c.text200;
+  // Before the first words Medi thinks in the answer's place; the header and text take over once it writes.
+  if (streaming && !text && !deep) {
+    return (
+      <View accessibilityLiveRegion="polite" style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+        <MediMascot mood="think" size={52} crop="snug" />
+        <Text style={{ ...body, color: c.text300 }}>{tx('პასუხს ვწერ…', 'Writing the answer…')}</Text>
+      </View>
+    );
+  }
   return (
     <View style={{ gap: 8 }}>
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
@@ -55,7 +65,10 @@ export const AnswerTurn = memo(function AnswerTurn({ text, deep, streaming, inte
         {text ? <Markdown content={text} /> : (
           <Text style={{ ...body, color: c.text300 }}>{deep ? tx('სპეციალისტები განიხილავენ…', 'The specialists are reviewing…') : tx('პასუხს ვწერ…', 'Writing the answer…')}</Text>
         )}
-        {streaming && text ? <View style={{ width: 8, height: 16, borderRadius: 2, marginTop: 2, backgroundColor: deep ? consiliumInk(dark) : '#0D9488', opacity: 0.6 }} /> : null}
+        {/* While the answer streams Medi talks at its end (consilium keeps the cursor); it leaves when the answer is done. */}
+        {streaming && text ? deep
+          ? <View style={{ width: 8, height: 16, borderRadius: 2, marginTop: 2, backgroundColor: consiliumInk(dark), opacity: 0.6 }} />
+          : <MediMascot mood="talk" size={52} crop="snug" style={{ marginTop: 4 }} /> : null}
       </View>
       {interactionId && !streaming ? (
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, paddingLeft: 2 }}>
@@ -83,10 +96,21 @@ export function ThinkingTurn({ label, deep }: { label: string; deep: boolean }) 
   const c = useThemeColors();
   return (
     <View accessibilityLiveRegion="polite" style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-      <MediOrb size={24} deep={deep} breathing />
+      {deep ? <MediOrb size={24} deep breathing /> : <MediMascot mood="think" size={52} crop="snug" />}
       <Text style={{ color: c.text200, fontSize: 14, fontFamily: 'NotoSansGeorgian_400Regular' }}>{label}</Text>
     </View>
   );
+}
+
+/** After a saved action: Medi nods „yes“, winks, then steps away (`onDone`). Decoration only — the card says „შენახულია“. */
+export function SavedNod({ onDone }: { onDone: () => void }) {
+  const [mood, setMood] = useState<'yes' | 'wink'>('yes');
+  useEffect(() => {
+    const wink = setTimeout(() => setMood('wink'), 1300);
+    const done = setTimeout(onDone, 3300);
+    return () => { clearTimeout(wink); clearTimeout(done); };
+  }, [onDone]);
+  return <MediMascot mood={mood} size={56} crop="snug" />;
 }
 
 function actionLook(tool: string): { icon: LucideIcon; ink: HubInk } {

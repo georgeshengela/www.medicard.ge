@@ -58,6 +58,7 @@ import { listNotificationOutcomes } from '../lib/notificationOutcomes.js';
 import { loadActiveUserIds, loadAppActivityRows, loadLatestActivityMap } from '../lib/appActivity.js';
 import { getAppVersionPolicy } from '../lib/appVersionPolicy.js';
 import { isAppVersionBelow } from '../lib/appVersion.js';
+import { getUpdatePrompt, setUpdatePrompt } from '../lib/updatePrompt.js';
 import { loadPermissionRows } from '../lib/notificationPermission.js';
 import { parseAnalyticsRange, addDaysYmd, tbilisiMidnight } from '../lib/adminAnalyticsRange.js';
 import { listAdminAudit, writeAdminAudit } from '../lib/adminAudit.js';
@@ -811,6 +812,68 @@ adminRouter.patch(
       newValue: body,
     });
     res.json({ settings: adminAppSettings(settings) });
+  }),
+);
+
+/**
+ * Soft update card (#/settings „განახლების ბარათი“): the automatic card switch, the version asked now,
+ * and the last 7 days' active users by their latest app version (how many a request would reach).
+ */
+async function updatePromptPayload() {
+  const [prompt, rows] = await Promise.all([
+    getUpdatePrompt(),
+    prisma.$queryRaw`SELECT v, count(*)::int AS users FROM (
+        SELECT DISTINCT ON ("userId") "userId", "appVersion" AS v FROM "AppActivity"
+        WHERE "lastAt" > now() - interval '7 days' AND "userId" IS NOT NULL AND "appVersion" IS NOT NULL
+        ORDER BY "userId", "lastAt" DESC
+      ) latest GROUP BY v`,
+  ]);
+  const latest = getMobileAppVersion();
+  const versions = rows
+    .map((r) => ({ version: r.v, users: r.users, behind: latest ? isAppVersionBelow(r.v, latest) === true : null }))
+    .sort((a, b) => b.users - a.users);
+  return {
+    prompt: { enabled: prompt.enabled !== false, belowVersion: prompt.belowVersion, updatedAt: prompt.updatedAt },
+    latestVersion: latest,
+    versions,
+    activeUsers: versions.reduce((n, v) => n + v.users, 0),
+    behindUsers: versions.reduce((n, v) => n + (v.behind ? v.users : 0), 0),
+  };
+}
+
+adminRouter.get(
+  '/update-prompt',
+  requireAdmin,
+  asyncHandler(async (_req, res) => {
+    res.json(await updatePromptPayload());
+  }),
+);
+
+adminRouter.put(
+  '/update-prompt',
+  requireAdmin,
+  asyncHandler(async (req, res) => {
+    const body = z
+      .object({
+        enabled: z.boolean().optional(),
+        belowVersion: z.union([z.string().regex(/^\d+\.\d+\.\d+(?:\.\d+){0,2}$/), z.literal(''), z.null()]).optional(),
+      })
+      .parse(req.body);
+    const latest = getMobileAppVersion();
+    if (body.belowVersion && latest && isAppVersionBelow(latest, body.belowVersion)) {
+      return res.status(400).json({ error: `ასეთი ვერსია ჯერ არ გამოსულა — უახლესია ${latest}.` });
+    }
+    const before = await getUpdatePrompt();
+    await setUpdatePrompt(body, req.admin?.id);
+    await writeAdminAudit({
+      admin: req.admin,
+      action: 'update_prompt.update',
+      targetType: 'settings',
+      targetId: 'update-prompt',
+      previousValue: { enabled: before.enabled, belowVersion: before.belowVersion },
+      newValue: body,
+    });
+    res.json(await updatePromptPayload());
   }),
 );
 

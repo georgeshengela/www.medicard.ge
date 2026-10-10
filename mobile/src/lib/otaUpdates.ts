@@ -32,6 +32,53 @@ let ready = false;
 let backgroundedAt = 0;
 const busyChecks = new Set<() => boolean>();
 
+/**
+ * Soft update card (owner 2026-10-11): when an update is downloaded the app offers „განახლება“ right
+ * away instead of waiting for ≥10 minutes away. `auto` comes from /api/app/status (admin switch, on by
+ * default); `ask` = the admin asked this version to look for the update now (once per request id).
+ */
+let promptAuto = true;
+let askedId: string | null = null;
+const listeners = new Set<() => void>();
+const emit = () => listeners.forEach((fn) => fn());
+
+/** True while a downloaded update waits and the card may be shown. */
+export function otaCardVisible(): boolean {
+  return ready && promptAuto;
+}
+
+export function subscribeOta(fn: () => void): () => void {
+  listeners.add(fn);
+  return () => listeners.delete(fn);
+}
+
+/** From /api/app/status `client.updatePrompt` (older servers send nothing: the card stays automatic). */
+export function setOtaPromptPolicy(policy: { auto?: boolean; ask?: { id: string } | null } | null | undefined): void {
+  promptAuto = policy?.auto !== false;
+  emit();
+  const id = policy?.ask?.id ?? null;
+  if (id && id !== askedId) {
+    askedId = id;
+    lastCheck = 0; // the admin asked: look now, not on the hourly schedule
+    void checkAndFetch();
+  }
+}
+
+/**
+ * The card's button: restart into the downloaded update now. `busy` while a MEDIRUN session runs (a
+ * reload would drop it); `none` when there is nothing to apply (or no update module, e.g. Expo Go).
+ */
+export async function applyOtaNow(): Promise<'reloading' | 'busy' | 'none'> {
+  if (!Updates || !ready) return 'none';
+  if (busy()) return 'busy';
+  try {
+    await Updates.reloadAsync();
+    return 'reloading';
+  } catch {
+    return 'none';
+  }
+}
+
 /** While `isBusy()` is true a downloaded update waits: a reload would drop live work (a MEDIRUN session). */
 export function holdOtaReloadWhile(isBusy: () => boolean): void {
   busyChecks.add(isBusy);
@@ -55,8 +102,10 @@ async function checkAndFetch() {
   try {
     const found = await Updates.checkForUpdateAsync();
     if (!found.isAvailable) return;
-    const fetched = await Updates.fetchUpdateAsync();
-    if (fetched.isNew) ready = true;
+    // isNew is false when expo-updates already downloaded it at launch (ON_LOAD): it still waits to run.
+    await Updates.fetchUpdateAsync();
+    ready = true;
+    emit();
   } catch {
     /* offline or no update server — the next foreground retries */
   }
@@ -67,6 +116,8 @@ export function startOtaUpdates() {
   Updates = loadUpdates();
   if (!Updates?.isEnabled) return;
   started = true;
+  // A first look shortly after launch, so an update can be offered in this very session.
+  setTimeout(() => void checkAndFetch(), 4000);
   AppState.addEventListener('change', (next: AppStateStatus) => {
     if (next === 'background') {
       backgroundedAt = Date.now();

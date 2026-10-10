@@ -5,6 +5,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CalendarDays, ChevronRight, FlaskConical, Plus, Search, Tag, type LucideIcon } from 'lucide-react-native';
 import { ModuleHeader, ModuleHeaderButton } from '@/components/brand/ModuleHeader';
 import { MediHeaderButton } from '@/components/medi/MediHeaderButton';
+import { useMediCheer } from '@/components/medi/mascot/MediCheerToast';
 import { HomeSectionHeading } from '@/components/home/HomeSectionHeading';
 import { MedicationPillIcon } from '@/components/medications/MedicationPillIcon';
 import { MedipillHero } from '@/components/medications/MedipillHero';
@@ -12,7 +13,7 @@ import { MedicationRemindersNote } from '@/components/medications/MedicationRemi
 import { MedsButton, MedsCard, MedsChip, MedsHairline, MedsIconTile, medsInk } from '@/components/medications/MedsHubUI';
 import { CatalogProductRow } from '@/components/pharmacy/CatalogProductRow';
 import { UpcomingDoseCard } from '@/components/medications/UpcomingDoseCard';
-import { useTabBarInset } from '@/components/navigation/FloatingTabBar';
+import { TAB_BAR_SCROLL_EXTRA, useTabBarInset } from '@/components/navigation/FloatingTabBar';
 import { Switch } from '@/components/ui/AppSwitch';
 import { MedsHubSkeleton } from '@/components/ui/Skeleton';
 import { useMedicationImages } from '@/hooks/useMedicationImages';
@@ -68,10 +69,17 @@ export function MedicationHubScreen() {
     return schedule.filter((dose) => scheduledToday.has(dose.medicationId)).sort((a, b) => a.time.localeCompare(b.time));
   }, [medications, schedule, doseLogs, today]);
 
+  // Medi cheers a taken dose and jumps for the last one of the day; a skip shows nothing (no guilt).
+  const { cheer, node: cheerNode } = useMediCheer({ bottom: tabInset - TAB_BAR_SCROLL_EXTRA + 12 });
   const markDose = async (medicationId: string, time: string, status: 'taken' | 'skipped') => {
     const entry = { medicationId, date: today, time, status, updatedAt: new Date().toISOString() };
     await saveDoseLog(entry);
-    setDoseLogs((prev) => [...prev.filter((l) => !(l.medicationId === medicationId && l.date === today && l.time === time)), entry]);
+    const same = (l: { medicationId: string; date: string; time: string }) => l.medicationId === medicationId && l.date === today && l.time === time;
+    const wasTaken = doseLogs.some((l) => same(l) && l.status === 'taken');
+    setDoseLogs((prev) => [...prev.filter((l) => !same(l)), entry]);
+    if (status !== 'taken' || wasTaken) return;
+    const day = computeTodayDoses(medications, schedule, [...doseLogs.filter((l) => !same(l)), entry], today);
+    cheer(day.total > 0 && day.taken >= day.total);
   };
 
   const openAdd = () => router.push('/medications/add');
@@ -242,6 +250,7 @@ export function MedicationHubScreen() {
           </>
         )}
       </ScrollView>
+      {cheerNode}
     </View>
   );
 }

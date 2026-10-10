@@ -12,6 +12,7 @@ import { FREE_CONSUMER_RELEASE, freeConsumerPackage } from '../lib/consumerAcces
 import { prisma } from '../lib/prisma.js';
 import { asyncHandler } from '../middleware/error.js';
 import { publicFeatureFlags, publicFeatureMessages } from '../lib/featureFlags.js';
+import { getUpdatePrompt, updatePromptForClient } from '../lib/updatePrompt.js';
 
 export const appRouter = Router();
 
@@ -39,6 +40,8 @@ appRouter.get(
         version: clientVersion,
         needsUpdate,
         blockedByForceUpdate: settings.forceUpdate && needsUpdate,
+        // Soft update card (no blocking): `auto` = show it when an OTA is ready, `ask` = look for it now.
+        updatePrompt: updatePromptForClient(await getUpdatePrompt(), clientVersion),
       },
     });
   }),

@@ -1,6 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { brandHex, roseHex, setBrandTone, toned } from './brandTone.ts';
+import { readFileSync } from 'node:fs';
+import { brandHex, roseCssVars, roseHex, setBrandTone, tealCssVars, toned } from './brandTone.ts';
 
 test('teal maps to rose only while the rose tone is on', () => {
   setBrandTone('teal');
@@ -22,4 +23,16 @@ test('a frozen toned object never throws (React Native freezes style props in de
   assert.equal(t.brand, '#14B8A6');
   assert.deepEqual({ ...t }, { brand: '#14B8A6', size: 4 });
   setBrandTone('teal');
+});
+
+test('the root view always carries the brand variables, and teal matches global.css', () => {
+  const css = readFileSync(new URL('../../global.css', import.meta.url), 'utf8');
+  const [light, dark] = css.split(/\.dark,/);
+  for (const [block, isDark] of [[light, false], [dark, true]] as const) {
+    const teal = tealCssVars(isDark);
+    assert.deepEqual(Object.keys(teal), Object.keys(roseCssVars(isDark)));
+    for (const [name, value] of Object.entries(teal)) {
+      assert.match(block, new RegExp(`${name}: ${value};`), `${name} (${isDark ? 'dark' : 'light'})`);
+    }
+  }
 });
