@@ -465,6 +465,8 @@ const kaStrings = {
     welcomeBody: 'ყველა სამედიცინო ინფორმაცია ერთ აპში — ხელოვნური ინტელექტის დახმარებით.',
     alreadyHaveAccount: 'უკვე გაქვს ანგარიში?',
     getStarted: 'დავიწყოთ',
+    language: 'ენა',
+    darkTheme: 'მუქი თემა',
     skip: 'გამოტოვება',
     next: 'შემდეგი',
     slides: {

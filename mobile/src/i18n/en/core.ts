@@ -456,6 +456,8 @@ export const enCore: Pick<Strings, 'app' | 'common' | 'auth' | 'assessment' | 'o
     welcomeBody: 'All your medical information in one app — with the help of AI.',
     alreadyHaveAccount: 'Already have an account?',
     getStarted: 'Get started',
+    language: 'Language',
+    darkTheme: 'Dark theme',
     skip: 'Skip',
     next: 'Next',
     slides: {
