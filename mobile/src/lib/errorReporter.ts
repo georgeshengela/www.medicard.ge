@@ -9,7 +9,7 @@
  */
 import { Platform } from 'react-native';
 import Constants from 'expo-constants';
-import { API_BASE_URL, guardRequest } from '@/lib/api';
+import { API_BASE_URL, ApiError, guardRequest } from '@/lib/api';
 import { getPreference, getToken, setPreference } from '@/lib/storage';
 import { createErrorQueue, toErrorEvent, type ErrorEvent, type ErrorKind } from './errorReportCore';
 
@@ -117,7 +117,11 @@ export function installErrorReporting() {
   try {
     hermes?.enablePromiseRejectionTracker?.({
       allRejections: true,
-      onUnhandled: (_id: number, rejection: unknown) => reportError('unhandled_rejection', rejection),
+      onUnhandled: (_id: number, rejection: unknown) => {
+        // A request that never reached the server (status 0: offline, weak signal) is not an app bug.
+        if (rejection instanceof ApiError && rejection.status === 0) return;
+        reportError('unhandled_rejection', rejection);
+      },
       onHandled: () => undefined,
     });
   } catch {

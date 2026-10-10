@@ -11,6 +11,9 @@ function hapticBeat(alive:{current:boolean}){
  return setTimeout(()=>{if(alive.current&&AppState.currentState==='active')void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(()=>{});},150);
 }
 
+/** useAudioPlayer releases the native player in its own unmount cleanup, which runs before ours; pausing a released player throws and crashed run/active on leave (2026-10-10). */
+function safePause(player:{pause():void}){try{player.pause();}catch{/* already released */}}
+
 export function useHeartbeat(signal:GiftSignal,settings:PulseSettings,running:boolean){
  const player=useAudioPlayer(require('../../../assets/run/pulse.wav'));
  const [foreground,setForeground]=useState(AppState.currentState==='active');
@@ -26,6 +29,6 @@ export function useHeartbeat(signal:GiftSignal,settings:PulseSettings,running:bo
    if(!alive.current||AppState.currentState!=='active')return;player.volume=settings.volume??.7;await player.seekTo(0);player.play();
   }catch{/* Haptic and visual signals remain available without an audio output. */}}
  },[foreground,settings.sound,settings.haptic,settings.volume,player]);
- useEffect(()=>{if(!running||!foreground||!signal.signal||!signal.quality){player.pause();if(second.current)clearTimeout(second.current);return;}void beat();const timer=setInterval(()=>void beat(),Math.max(700,signal.period));return()=>{clearInterval(timer);if(second.current)clearTimeout(second.current);if(Platform.OS==='android')Vibration.cancel();player.pause();};},[running,foreground,signal.signal,signal.quality,signal.period,beat,player]);
+ useEffect(()=>{if(!running||!foreground||!signal.signal||!signal.quality){safePause(player);if(second.current)clearTimeout(second.current);return;}void beat();const timer=setInterval(()=>void beat(),Math.max(700,signal.period));return()=>{clearInterval(timer);if(second.current)clearTimeout(second.current);if(Platform.OS==='android')Vibration.cancel();safePause(player);};},[running,foreground,signal.signal,signal.quality,signal.period,beat,player]);
  return beat;
 }
