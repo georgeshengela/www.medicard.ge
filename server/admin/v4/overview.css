@@ -169,6 +169,11 @@ html body .v3-cc-online .v3-cc-online-label .icon { width: 15px; height: 15px; }
 html body .v3-cc-online .v3-info-btn { color: rgba(255, 255, 255, 0.7) !important; }
 html body .v3-cc-online strong { font-size: 52px !important; font-weight: 650 !important; line-height: 1 !important; color: #fff !important; letter-spacing: -0.03em; }
 html body .v3-cc-online em { font-style: normal; font-size: 12px; color: rgba(232, 255, 251, 0.75) !important; }
+/* „დღეს დარეგისტრირდა“ — today's sign-ups on the live card's foot (owner 2026-10-10); ops:live keeps it fresh */
+html body .v3-cc-online .v3-cc-online-today { position: relative; z-index: 1; display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 4px; padding-top: 10px; border-top: 1px solid rgba(232, 255, 251, 0.22); color: rgba(232, 255, 251, 0.88) !important; font-size: 13px; font-weight: 600; }
+html body .v3-cc-online .v3-cc-online-today span { display: inline-flex; align-items: center; gap: 6px; }
+html body .v3-cc-online .v3-cc-online-today .icon { width: 15px; height: 15px; stroke: currentColor; fill: none; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
+html body .v3-cc-online .v3-cc-online-today strong { font-size: 22px !important; font-weight: 650 !important; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
 html body .v3-cc-online .v3-cc-pulse { width: 8px; height: 8px; border-radius: 99px; background: #a7f3d0 !important; box-shadow: 0 0 0 0 rgba(167, 243, 208, .7); animation: s-live 1.8s ease-out infinite; }
 html body .v3-cc-online.is-empty .v3-cc-pulse { background: rgba(255,255,255,.45) !important; animation: none; }
 @keyframes s-live { 0% { box-shadow: 0 0 0 0 rgba(167, 243, 208, .7); } 100% { box-shadow: 0 0 0 10px rgba(167, 243, 208, 0); } }

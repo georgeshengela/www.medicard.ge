@@ -729,6 +729,10 @@
           </div>
           <strong>${seedOnline()}</strong>
           <em>რეალურ დროში · ბოლო 90 წამი</em>
+          <div class="v3-cc-online-today" data-ops-kpi="newUsersToday" title="ახალი ანგარიშები დღეს, თბილისის დროით. ცოცხლად ახლდება (ops:live).">
+            <span>${ico('user')} დღეს დარეგისტრირდა</span>
+            <strong>${todayNew == null ? '—' : fmt(todayNew)}</strong>
+          </div>
         </article>
         <div class="v3-cc-hero-grid">
           ${metric({ kpi: 'activeToday', icon: 'users', label: 'აქტიური დღეს', value: fmt(k.activeToday?.value), period: 'დღეს · თბილისი', tip: k.activeToday?.definition || 'უნიკალური აქტიური მომხმარებლები თბილისის დღეს.', go: 'users', hint: sp(overview.charts?.dau?.series, 'teal') })}
