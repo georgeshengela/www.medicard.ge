@@ -1,0 +1,574 @@
+<!doctype html>
+<html lang="ka">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MEDILAB ანალიზის ვარიანტები</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Exo+2:wght@800&family=Noto+Sans+Georgian:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg100:#f5f7f7; --bg200:#eaeeef; --bg300:#dde3e4; --surface:#fff;
+  --t1:#0f1a1c; --t2:#46565a; --t3:#7b8b8f;
+  --ink:#4F46E5; --inkSoft:#EEF0FF;
+  --warn:#B45309; --warnSoft:#FDF3E3; --warnZone:#F8E6CC;
+  --ok:#15803D; --okSoft:#E7F5EC; --okZone:#CDEBD8;
+  --g1:#1E1B4B; --g2:#4338CA; --g3:#6366F1;
+  --okL:#86EFAC; --warnL:#FCD34D;
+  --board:#e9ecef;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--board);font-family:'Noto Sans Georgian',sans-serif;color:var(--t1);-webkit-font-smoothing:antialiased}
+.board{padding:40px 32px 80px;max-width:2200px;margin:0 auto}
+.board>h1{font-size:30px;font-weight:600;letter-spacing:-.01em}
+.board>p.lead{color:var(--t2);font-size:15px;line-height:1.6;max-width:760px;margin-top:8px}
+.cols{display:flex;flex-wrap:wrap;gap:36px;margin-top:36px;align-items:flex-start}
+.col{width:410px}
+.col h2{font-size:20px;font-weight:600;display:flex;gap:10px;align-items:baseline}
+.col h2 .l{display:inline-grid;place-items:center;width:30px;height:30px;border-radius:10px;background:var(--t1);color:#fff;font-size:15px;font-family:'Exo 2';font-weight:800}
+.col .idea{color:var(--t2);font-size:13.5px;line-height:1.6;margin:8px 0 16px;min-height:66px}
+.notes{margin-top:16px;font-size:13px;line-height:1.6;color:var(--t2);display:grid;gap:6px}
+.notes b{color:var(--t1);font-weight:600}
+
+/* phone */
+.phone{width:410px;height:864px;border-radius:56px;background:#0b0d10;padding:10px;box-shadow:0 30px 60px -30px rgba(15,26,28,.45)}
+.screen{width:390px;height:844px;border-radius:46px;overflow:hidden;background:var(--bg100);position:relative}
+.scroll{height:100%;overflow-y:auto;scrollbar-width:none;padding:0 20px 60px}
+.scroll::-webkit-scrollbar{display:none}
+.sb{height:54px;display:flex;justify-content:space-between;align-items:center;padding:6px 14px 0;font-weight:600;font-size:15px}
+.sb i{font-style:normal;letter-spacing:2px;font-size:12px}
+
+/* module header */
+.mh{display:flex;align-items:center;gap:12px;padding:6px 0 0}
+.btn44{width:44px;height:44px;border-radius:16px;background:var(--surface);display:grid;place-items:center;flex:none}
+.btn44 svg{width:20px;height:20px;stroke:var(--t1)}
+.wm{flex:1;min-width:0}
+.wm .w{font-family:'Exo 2';font-weight:800;font-size:25px;line-height:1;letter-spacing:.01em}
+.wm .w span{display:inline-block;color:var(--ink);transform:skewX(-16deg)}
+.wm .s{font-size:11px;color:var(--t2);margin-top:4px}
+
+.sec{font-size:17px;font-weight:600;margin:26px 4px 10px}
+.card{background:var(--surface);border-radius:22px;overflow:hidden}
+.muted{color:var(--t3)}
+svg.i{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+
+/* hero */
+.hero{margin-top:20px;border-radius:22px;padding:20px;color:#fff;position:relative;overflow:hidden;
+  background:radial-gradient(120% 90% at 100% 0%,rgba(165,180,252,.38),transparent 55%),linear-gradient(140deg,var(--g1),var(--g2) 62%,var(--g3))}
+.hero .rings{position:absolute;right:-70px;top:-70px;width:220px;height:220px;border-radius:50%;border:1px solid rgba(199,210,254,.18);box-shadow:0 0 0 28px rgba(199,210,254,.05),0 0 0 29px rgba(199,210,254,.14),0 0 0 62px rgba(199,210,254,.03),0 0 0 63px rgba(199,210,254,.10)}
+.hero .k{font-size:12.5px;color:#C7D2FE}
+.hero .big{font-size:30px;font-weight:300;line-height:1.2;margin-top:6px;letter-spacing:-.01em}
+.hero .big b{font-weight:700}
+.hero .sub{font-size:14px;line-height:1.55;color:#E0E7FF;margin-top:8px;max-width:300px}
+
+/* pills strip */
+.strip{display:flex;gap:4px;margin-top:18px}
+.strip span{flex:1;height:26px;border-radius:8px;background:rgba(134,239,172,.85)}
+.strip span.w{background:var(--warnL)}
+.legend{display:flex;gap:14px;margin-top:10px;font-size:12px;color:#C7D2FE}
+.legend i{display:inline-block;width:8px;height:8px;border-radius:3px;margin-right:6px;vertical-align:1px}
+
+/* plain summary */
+.plain{padding:16px 16px 14px;display:grid;gap:12px}
+.plain .li{display:flex;gap:12px;font-size:14px;line-height:1.55}
+.plain .li .d{flex:none;width:28px;height:28px;border-radius:10px;display:grid;place-items:center}
+.medi-src{font-size:11.5px;color:var(--t3);padding:0 16px 14px;display:flex;align-items:center;gap:6px}
+.orb{width:14px;height:14px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#99F6E4,#0D9488 70%)}
+
+/* value rows (A) */
+.grp{display:flex;align-items:center;gap:10px;margin:26px 4px 10px}
+.grp .gi{width:30px;height:30px;border-radius:10px;display:grid;place-items:center;background:var(--inkSoft);color:var(--ink)}
+.grp .gt{font-size:16px;font-weight:600;flex:1;white-space:nowrap}
+.grp .gs{font-size:12px;font-weight:500;white-space:nowrap}
+.row{padding:14px 16px 16px}
+.row+.row{border-top:1px solid var(--bg200)}
+.rh{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}
+.rn{font-size:15px;font-weight:600;line-height:1.3}
+.rp{font-size:12.5px;color:var(--t3);margin-top:2px}
+.word{flex:none;font-size:12px;font-weight:600;padding:3px 9px;border-radius:9px;margin-top:1px}
+.word.ok{color:var(--ok);background:var(--okSoft)}
+.word.warn{color:var(--warn);background:var(--warnSoft)}
+
+/* ruler */
+.ruler{position:relative;margin-top:30px}
+.track{display:flex;height:10px;border-radius:6px;overflow:hidden;gap:2px}
+.track .z{height:100%}
+.track .lo,.track .hi{background:var(--warnZone);opacity:.75}
+.track .okz{background:var(--okZone)}
+.mark{position:absolute;top:-25px;transform:translateX(-50%);display:flex;flex-direction:column;align-items:center}
+.mark b{font-size:12.5px;font-weight:700;padding:1px 7px;border-radius:7px;color:#fff;white-space:nowrap}
+.mark i{width:16px;height:16px;border-radius:50%;border:3px solid #fff;margin-top:4px;box-shadow:0 1px 4px rgba(15,26,28,.25)}
+.zl{display:flex;margin-top:6px;font-size:11px;color:var(--t3)}
+.zl span{text-align:center}
+.zl .nums{position:absolute}
+.bounds{position:relative;height:14px;font-size:10.5px;color:var(--t3)}
+.bounds span{position:absolute;transform:translateX(-50%);top:0}
+
+/* B body */
+.body-hero{margin-top:20px;border-radius:22px;position:relative;overflow:hidden;height:440px;
+  background:radial-gradient(70% 50% at 50% 42%,rgba(99,102,241,.45),transparent 70%),linear-gradient(170deg,#1E1B4B,#25226a 55%,#1b1846)}
+.body-hero svg{position:absolute;inset:0;width:100%;height:100%}
+.body-hero .cap{position:absolute;left:18px;top:16px;right:18px;color:#fff}
+.body-hero .cap .k{font-size:12.5px;color:#C7D2FE}
+.body-hero .cap .t{font-size:19px;font-weight:600;margin-top:3px}
+.hot{cursor:pointer}
+.hot text{font-family:'Noto Sans Georgian';font-size:10.5px;font-weight:500;fill:#E0E7FF}
+@keyframes pulse{0%{r:10;opacity:.55}100%{r:24;opacity:0}}
+.pulse{animation:pulse 2.2s ease-out infinite}
+@media (prefers-reduced-motion:reduce){.pulse{animation:none;opacity:0}}
+.chips{display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;margin:14px -20px 0;padding:0 20px}
+.chips::-webkit-scrollbar{display:none}
+.chip{flex:none;border:0;font:inherit;font-size:13px;font-weight:500;padding:8px 12px;border-radius:12px;background:var(--surface);color:var(--t1);display:flex;gap:7px;align-items:center;cursor:pointer}
+.chip .dot{width:8px;height:8px;border-radius:50%}
+.chip.on{background:var(--ink);color:#fff}
+.panel-h{display:flex;justify-content:space-between;align-items:baseline;margin:22px 4px 10px}
+.panel-h .t{font-size:17px;font-weight:600}
+.panel-h .s{font-size:12.5px;font-weight:500}
+.panel-say{padding:14px 16px;font-size:14px;line-height:1.55;border-bottom:1px solid var(--bg200)}
+
+/* C stories */
+.story{position:absolute;inset:0;color:#fff;display:flex;flex-direction:column;cursor:pointer;user-select:none;
+  background:radial-gradient(90% 60% at 80% 0%,rgba(165,180,252,.30),transparent 60%),linear-gradient(170deg,#1E1B4B,#312E81 60%,#3730A3)}
+.story.warm{background:radial-gradient(90% 60% at 80% 0%,rgba(252,211,77,.20),transparent 60%),linear-gradient(170deg,#1E1B4B,#2a2566 60%,#3b2f6b)}
+.prog{display:flex;gap:4px;padding:58px 16px 0}
+.prog span{flex:1;height:3px;border-radius:2px;background:rgba(255,255,255,.25);overflow:hidden}
+.prog span.done{background:#fff}
+.st-top{display:flex;justify-content:space-between;align-items:center;padding:14px 18px 0;font-size:12.5px;color:#C7D2FE}
+.st-top .x{width:32px;height:32px;border-radius:12px;background:rgba(255,255,255,.1);display:grid;place-items:center}
+.st-body{flex:1;padding:22px 24px 0;display:flex;flex-direction:column}
+.st-k{font-size:13px;color:#C7D2FE}
+.st-h{font-size:30px;line-height:1.22;font-weight:300;margin-top:8px;letter-spacing:-.01em}
+.st-h b{font-weight:700}
+.st-p{font-size:15px;line-height:1.6;color:#E0E7FF;margin-top:14px}
+.st-vis{flex:1;display:grid;place-items:center;min-height:0}
+.st-foot{padding:0 24px 34px;display:grid;gap:10px}
+.st-btn{height:52px;border-radius:16px;background:#fff;color:var(--g1);font-weight:600;font-size:15px;display:flex;align-items:center;justify-content:center;gap:8px}
+.st-btn.ghost{background:rgba(255,255,255,.10);color:#fff}
+.st-hint{text-align:center;font-size:11.5px;color:rgba(224,231,255,.6)}
+.todo{display:grid;gap:8px;margin-top:16px}
+.todo div{display:flex;gap:10px;font-size:14px;line-height:1.5;color:#E0E7FF}
+.todo div:before{content:"";flex:none;width:6px;height:6px;border-radius:50%;background:var(--warnL);margin-top:8px}
+.okchips{display:flex;flex-wrap:wrap;gap:8px;margin-top:18px}
+.okchips span{font-size:13px;padding:7px 11px;border-radius:11px;background:rgba(134,239,172,.14);color:#BBF7D0}
+
+/* D tiles */
+.tiles{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.tile{background:var(--surface);border-radius:22px;padding:14px 14px 12px;display:flex;flex-direction:column;gap:8px;min-height:150px}
+.tile .tt{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:600;color:var(--t2)}
+.tile .tt .gi{width:26px;height:26px;border-radius:9px;display:grid;place-items:center}
+.tile .tw{font-size:17px;font-weight:600;line-height:1.25}
+.tile .tn{font-size:12px;color:var(--t3);margin-top:-4px}
+.tile svg.sp{width:100%;height:38px;margin-top:auto}
+.delta{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:16px}
+.delta div{border-radius:14px;padding:10px 10px 9px;background:rgba(255,255,255,.10)}
+.delta b{display:block;font-size:24px;font-weight:600;line-height:1.1}
+.delta span{font-size:12px;color:#C7D2FE}
+.mv{display:flex;align-items:center;gap:12px;padding:13px 16px}
+.mv+.mv{border-top:1px solid var(--bg200)}
+.mv .nm{flex:1;min-width:0}
+.mv .nm b{display:block;font-size:14.5px;font-weight:600}
+.mv .nm span{font-size:12.5px;color:var(--t3)}
+.mv .fromto{font-size:14px;font-weight:600;white-space:nowrap}
+.mv .fromto em{font-style:normal;color:var(--t3);font-weight:400}
+
+/* E detail */
+.dval{display:flex;align-items:baseline;gap:8px;margin-top:10px}
+.dval b{font-size:52px;font-weight:300;line-height:1;letter-spacing:-.02em}
+.dval span{font-size:15px;color:#C7D2FE}
+.hero .ruler .track .lo,.hero .ruler .track .hi{background:rgba(252,211,77,.35);opacity:1}
+.hero .ruler .track .okz{background:rgba(134,239,172,.45)}
+.hero .ruler .mark i{border-color:#312E81}
+.hero .zl,.hero .bounds{color:#C7D2FE}
+.para{padding:16px;font-size:14.5px;line-height:1.65}
+.para+.para{border-top:1px solid var(--bg200)}
+.para h4{font-size:13px;font-weight:600;color:var(--t3);margin-bottom:4px}
+.ask{margin:14px 16px 16px;height:50px;border-radius:16px;background:var(--ink);color:#fff;font-weight:600;font-size:14.5px;display:flex;align-items:center;justify-content:center;gap:8px}
+.chart{padding:14px 12px 10px}
+.chart text{font-family:'Noto Sans Georgian';font-size:11px;fill:var(--t3)}
+.chart .vl{font-size:12.5px;font-weight:700}
+.reco{margin-top:44px;background:var(--surface);border-radius:22px;padding:22px 24px;max-width:880px;font-size:14.5px;line-height:1.7}
+.reco h3{font-size:18px;font-weight:600;margin-bottom:8px}
+</style>
+</head>
+<body>
+<div class="board">
+  <h1>MEDILAB: ანალიზი, რომელიც ყველასთვის გასაგებია</h1>
+  <p class="lead">ოთხი ვარიანტი ერთსა და იმავე სანიმუშო ანალიზზე (15 მაჩვენებელი, 8 ოქტომბერი, წინა ორი ანალიზის ისტორიით) და ერთი მაჩვენებლის გვერდი, რომელიც ნებისმიერ ვარიანტს მიჰყვება. ფერები, ჰედერი და ბარათები აპის დღევანდელი MEDILAB-ის ენაზეა. ტელეფონები იფურცლება; B-ზე ორგანოებს დააჭირე, C-ზე ეკრანს.</p>
+
+  <div class="cols">
+    <!-- A -->
+    <div class="col">
+      <h2><span class="l">A</span>ნათელი სია</h2>
+      <p class="idea">დღევანდელი ეკრანის გაძლიერება. თითო მაჩვენებელს აქვს ადამიანური სახელი („რკინის მარაგი“), ერთი სიტყვა („ოდნავ დაბალი“) და ზოლი სამი წარწერიანი ზონით. ყველაფერი დაჯგუფებულია სხეულის მიხედვით.</p>
+      <div class="phone"><div class="screen"><div class="scroll" id="A"></div></div></div>
+      <div class="notes">
+        <div><b>რატომ:</b> სწრაფად იკითხება, კოდში ყველაზე მცირე ცვლილებაა. ზოლზე წერია „დაბალი / ნორმა / მაღალი“ და ციფრის ცოდნა საჭირო აღარაა.</div>
+        <div><b>რისკი:</b> ყველაზე ნაკლებად „ვაუ“ ეფექტი აქვს.</div>
+      </div>
+    </div>
+
+    <!-- B -->
+    <div class="col">
+      <h2><span class="l">B</span>სხეულის რუკა</h2>
+      <p class="idea">ზემოთ ადამიანის სილუეტია, რომელზეც ორგანოები ანთია: მწვანე ნიშნავს რომ რიგზეა, ქარვისფერი რომ ყურადღება უნდა. ორგანოს დაჭერით ქვემოთ მისი მაჩვენებლები ჩნდება.</p>
+      <div class="phone"><div class="screen"><div class="scroll" id="B"></div></div></div>
+      <div class="notes">
+        <div><b>რატომ:</b> ერთი შეხედვით ჩანს, „სად“ არის საქმე. ყველაზე ინტუიციურია და ყველაზე ლამაზად ჩანს რეკლამაში.</div>
+        <div><b>რისკი:</b> ვიტამინებსა და ზოგ მაჩვენებელს ორგანო არ აქვს (ფეხი და ძვლები პირობითია). „ქარვისფერი გული“ შეიძლება შეაშინოს, ამიტომ ფრთხილი ტექსტი სჭირდება.</div>
+      </div>
+    </div>
+
+    <!-- C -->
+    <div class="col">
+      <h2><span class="l">C</span>ისტორიები</h2>
+      <p class="idea">სკანირების შემდეგ პირველი გახსნისას ანალიზს ერთ წუთში გიყვება, Instagram-ის story-ების მსგავსად. თითო ბარათზე ერთი მთავარი რამაა, ანალოგიით („რკინის საწყობი თითქმის ცარიელია“) და „რა ვქნა“ ნაბიჯებით.</p>
+      <div class="phone"><div class="screen" id="C"></div></div>
+      <div class="notes">
+        <div><b>რატომ:</b> არასამედიცინო ადამიანისთვის ყველაზე გასაგებია: ჯერ ამბავი, ციფრები მერე.</div>
+        <div><b>რისკი:</b> ყოველ ჯერზე გადაფურცვლა არ გინდა, ამიტომ მხოლოდ ახალ ანალიზზე ჩნდება, მერე კი A ან D. თითო ბარათს Medi-ს ტექსტი სჭირდება.</div>
+      </div>
+    </div>
+
+    <!-- D -->
+    <div class="col">
+      <h2><span class="l">D</span>რა შეიცვალა</h2>
+      <p class="idea">აქცენტი დროზეა: წინა ანალიზთან შედარებით რა გაუმჯობესდა და რა გაუარესდა. სხეულის თემები ფილებადაა, თითოში მინი-ტრენდი ნორმის ზოლზე.</p>
+      <div class="phone"><div class="screen"><div class="scroll" id="D"></div></div></div>
+      <div class="notes">
+        <div><b>რატომ:</b> მეორე ანალიზიდან ყველაზე საინტერესო კითხვაა „უკეთ ვარ?“. ტრენდი გიჩვენებს, რომ შედეგს აქვს აზრი.</div>
+        <div><b>რისკი:</b> პირველ ანალიზზე ზედა ნაწილი ცარიელია (იქ A-ს ზოლი ჩაჯდება). ფილები მცირე ეკრანზე ვიწროა.</div>
+      </div>
+    </div>
+
+    <!-- E -->
+    <div class="col">
+      <h2><span class="l">E</span>ერთი მაჩვენებელი</h2>
+      <p class="idea">რომელიმე მაჩვენებლის დაჭერით იხსნება. დიდად წერია ციფრი და სიტყვა, ქვემოთ ზოლი, „რას ნიშნავს“ ორ წინადადებაში, ტრენდი ნორმის ფონზე და „რა შეგიძლია გააკეთო“.</p>
+      <div class="phone"><div class="screen"><div class="scroll" id="E"></div></div></div>
+      <div class="notes">
+        <div><b>რატომ:</b> დღევანდელი /lab/param და განმარტების ფურცელი ერთ გვერდზე ერთიანდება. ტექსტი უკვე გვაქვს კატალოგში (labExplain).</div>
+        <div><b>რისკი:</b> კატალოგს გარეთ მყოფ მაჩვენებლებს ტექსტი Medi-მ უნდა დაწეროს.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="reco">
+    <h3>ჩემი რეკომენდაცია</h3>
+    ძირითად ეკრანად <b>A</b> აიღე, ზემოთ <b>D</b>-ს „რა შეიცვალა“ ზოლით (როცა წინა ანალიზი არსებობს). ახალი ანალიზის დასკანერებისას ერთხელ <b>C</b>-ს ისტორიები ჩაირთოს. დეტალური გვერდი <b>E</b> ყველგან ერთი იყოს. <b>B</b> სარეკლამოდ ძლიერია, მაგრამ ყოველდღიურ ეკრანად რისკიანი. თუ მოგეწონება, ქვედა ბლოკად შეიძლება („შენი სხეული ერთი შეხედვით“).
+  </div>
+</div>
+
+<script>
+const IC = {
+  back:'<path d="M19 12H5"/><path d="m12 19-7-7 7-7"/>',
+  chat:'<path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"/>',
+  drop:'<path d="M12 22a7 7 0 0 0 7-7c0-2-1-3.9-3-5.5s-3.5-4-4-6.5c-.5 2.5-2 4.9-4 6.5C6 11.1 5 13 5 15a7 7 0 0 0 7 7z"/>',
+  heart:'<path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/>',
+  sugar:'<rect x="4" y="7" width="12" height="12" rx="2"/><path d="M8 7l4-4h8v8l-4 4"/><path d="M16 7l4-4"/>',
+  bean:'<path d="M10.165 6.598C9.954 7.478 9.64 8.36 9 9c-.64.64-1.521.954-2.402 1.165A6 6 0 0 0 8 22c7.732 0 14-6.268 14-14a6 6 0 0 0-11.835-1.402Z"/>',
+  fly:'<path d="M12 6v14"/><path d="M12 9c-2-4-8-4-8 1s5 6 8 3"/><path d="M12 9c2-4 8-4 8 1s-5 6-8 3"/>',
+  sun:'<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>',
+  spark:'<path d="M12 3l1.9 5.8L20 11l-6.1 2.2L12 19l-1.9-5.8L4 11l6.1-2.2Z"/>',
+  x:'<path d="M18 6 6 18M6 6l12 12"/>',
+  up:'<path d="M7 17 17 7M8 7h9v9"/>',
+  down:'<path d="M7 7l10 10M17 8v9H8"/>',
+  doc:'<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><path d="M14 2v6h6M9 13h6M9 17h4"/>',
+};
+const ic = (n, cls='i') => `<svg class="${cls}" viewBox="0 0 24 24">${IC[n]}</svg>`;
+
+const GROUPS = {
+  blood:{name:'სისხლი და რკინა', icon:'drop', organ:'სისხლი'},
+  heart:{name:'გული და ქოლესტერინი', icon:'heart', organ:'გული'},
+  vit:{name:'ვიტამინები', icon:'sun', organ:'ძვლები'},
+  sugar:{name:'შაქარი', icon:'sugar', organ:'შაქარი'},
+  liver:{name:'ღვიძლი', icon:'bean', organ:'ღვიძლი'},
+  kidney:{name:'თირკმელი', icon:'bean', organ:'თირკმელი'},
+  thyroid:{name:'ფარისებრი ჯირკვალი', icon:'fly', organ:'ფარისებრი'},
+};
+// value, range, history (15 იან, 12 აპრ, 8 ოქტ)
+const P = [
+  {k:'hgb', g:'blood', n:'ჰემოგლობინი', p:'ჟანგბადს ატარებს', v:11.6, u:'გ/დლ', lo:12, hi:15.5, h:[12.8,12.1,11.6]},
+  {k:'fer', g:'blood', n:'ფერიტინი', p:'რკინის მარაგი', v:9, u:'ნგ/მლ', lo:15, hi:150, h:[22,14,9]},
+  {k:'wbc', g:'blood', n:'ლეიკოციტები', p:'იმუნიტეტის უჯრედები', v:6.8, u:'×10⁹/ლ', lo:4, hi:10, h:[7.1,6.4,6.8]},
+  {k:'plt', g:'blood', n:'თრომბოციტები', p:'სისხლის შედედება', v:245, u:'×10⁹/ლ', lo:150, hi:400, h:[260,251,245]},
+  {k:'ldl', g:'heart', n:'LDL ქოლესტერინი', p:'„ცუდი“ ქოლესტერინი', v:3.8, u:'მმოლ/ლ', lo:0, hi:3.0, one:true, h:[4.3,4.1,3.8]},
+  {k:'chol', g:'heart', n:'საერთო ქოლესტერინი', p:'ცხიმი სისხლში, ჯამში', v:5.9, u:'მმოლ/ლ', lo:0, hi:5.2, one:true, h:[6.4,6.2,5.9]},
+  {k:'hdl', g:'heart', n:'HDL ქოლესტერინი', p:'„კარგი“ ქოლესტერინი', v:1.4, u:'მმოლ/ლ', lo:1.2, hi:2.5, h:[1.3,1.3,1.4]},
+  {k:'tg', g:'heart', n:'ტრიგლიცერიდები', p:'საკვების ცხიმი სისხლში', v:1.3, u:'მმოლ/ლ', lo:0.4, hi:1.7, h:[1.6,1.4,1.3]},
+  {k:'vitd', g:'vit', n:'ვიტამინი D', p:'ძვლები და იმუნიტეტი', v:18, u:'ნგ/მლ', lo:30, hi:100, h:[15,24,18]},
+  {k:'glu', g:'sugar', n:'გლუკოზა', p:'შაქარი სისხლში ახლა', v:5.4, u:'მმოლ/ლ', lo:3.9, hi:5.6, h:[5.2,5.3,5.4]},
+  {k:'a1c', g:'sugar', n:'HbA1c', p:'შაქარი ბოლო 3 თვეში', v:5.5, u:'%', lo:4, hi:5.7, h:[5.4,5.5,5.5]},
+  {k:'alt', g:'liver', n:'ALT', p:'ღვიძლის ფერმენტი', v:22, u:'ე/ლ', lo:7, hi:40, h:[25,21,22]},
+  {k:'ast', g:'liver', n:'AST', p:'ღვიძლის ფერმენტი', v:19, u:'ე/ლ', lo:8, hi:40, h:[20,18,19]},
+  {k:'cre', g:'kidney', n:'კრეატინინი', p:'რამდენად კარგად ფილტრავს თირკმელი', v:74, u:'მკმოლ/ლ', lo:53, hi:97, h:[71,76,74]},
+  {k:'tsh', g:'thyroid', n:'TSH', p:'ფარისებრის მართვის სიგნალი', v:2.1, u:'მსე/ლ', lo:0.4, hi:4.0, h:[1.9,2.3,2.1]},
+];
+const DATES = ['იან', 'აპრ', 'ოქტ'];
+const fmt = v => String(v).replace('.', ',');
+function state(p){
+  if (p.v < p.lo && !p.one){ const r=(p.lo-p.v)/p.lo; return {w:r<0.1?'ოდნავ დაბალი':'დაბალი', t:'warn', s:'L'}; }
+  if (p.v > p.hi){ const r=(p.v-p.hi)/p.hi; return {w:r<0.15?'ოდნავ მაღალი':'მაღალი', t:'warn', s:'H'}; }
+  return {w:'ნორმაში', t:'ok', s:'N'};
+}
+const off = p => state(p).t === 'warn';
+// trend vs previous: is it moving toward the range?
+function move(p){
+  const prev = p.h[1], now = p.v, mid = p.one ? p.hi/2 : (p.lo+p.hi)/2;
+  const d = Math.abs(now-mid) - Math.abs(prev-mid);
+  const rel = Math.abs(now-prev)/Math.max(Math.abs(prev),1e-6);
+  if (rel < 0.04 && !off(p)) return 'same';
+  if (!off(p) && state({...p, v:prev}).t==='ok') return 'same';
+  return d < 0 ? 'better' : 'worse';
+}
+
+function header(line, right='chat'){
+  return `<div class="sb"><span>9:41</span><i>●●● ▮</i></div>
+  <div class="mh"><div class="btn44">${ic('back')}</div>
+  <div class="wm"><div class="w">MEDI<span>LAB</span></div><div class="s">${line}</div></div>
+  ${right ? `<div class="btn44">${ic(right)}</div>` : ''}</div>`;
+}
+
+function ruler(p, {words=true, bounds=true}={}){
+  const st = state(p);
+  const one = p.one;
+  const lo = one ? 0 : .22, hi = .78;
+  let at = one ? (p.v/p.hi)*hi : lo + ((p.v-p.lo)/(p.hi-p.lo))*(hi-lo);
+  at = Math.min(.97, Math.max(.03, at));
+  const col = st.t==='ok' ? 'var(--ok)' : 'var(--warn)';
+  return `<div class="ruler">
+    <div class="track">${one?'':`<span class="z lo" style="width:${lo*100}%"></span>`}<span class="z okz" style="width:${(hi-lo)*100}%"></span><span class="z hi" style="width:${(1-hi)*100}%"></span></div>
+    <div class="mark" style="left:${at*100}%"><b style="background:${col}">${fmt(p.v)}</b><i style="background:${col}"></i></div>
+    ${bounds?`<div class="bounds">${one?'':`<span style="left:${lo*100}%">${fmt(p.lo)}</span>`}<span style="left:${hi*100}%">${fmt(p.hi)}</span></div>`:''}
+    ${words?`<div class="zl" style="margin-top:${bounds?0:6}px">${one?'':`<span style="width:${lo*100}%">დაბალი</span>`}<span style="width:${(hi-lo)*100}%">ნორმა</span><span style="width:${(1-hi)*100}%">მაღალი</span></div>`:''}
+  </div>`;
+}
+function row(p){
+  const st = state(p);
+  return `<div class="row"><div class="rh"><div><div class="rn">${p.p}</div><div class="rp">${p.n} · ${p.u}</div></div><span class="word ${st.t}">${st.w}</span></div>${ruler(p)}</div>`;
+}
+const groupsOrdered = () => Object.keys(GROUPS).map(g => ({g, ps:P.filter(p=>p.g===g)})).sort((a,b)=>b.ps.filter(off).length-a.ps.filter(off).length);
+const nOff = P.filter(off).length, nOk = P.length - nOff;
+
+/* ---------- A ---------- */
+document.getElementById('A').innerHTML = header('ანალიზი · 8 ოქტომბერი') + `
+  <div class="hero"><div class="rings"></div>
+    <div class="k">8 ოქტომბრის ანალიზი · 15 მაჩვენებელი</div>
+    <div class="big"><b>${nOk}</b> ნორმაშია,<br><b>${nOff}</b>-ს ყურადღება უნდა</div>
+    <div class="strip">${groupsOrdered().flatMap(x=>x.ps).map(p=>`<span class="${off(p)?'w':''}"></span>`).join('')}</div>
+    <div class="legend"><span><i style="background:var(--okL)"></i>ნორმაში</span><span><i style="background:var(--warnL)"></i>ნორმის გარეთ</span></div>
+  </div>
+  <div class="sec">მოკლედ, უბრალო ენით</div>
+  <div class="card"><div class="plain">
+    <div class="li"><span class="d" style="background:var(--warnSoft);color:var(--warn)">${ic('drop')}</span><span>რკინის მარაგი დაბალია და ჰემოგლობინიც ოდნავ ნაკლებია. ეს ხშირად ერთად ხდება.</span></div>
+    <div class="li"><span class="d" style="background:var(--warnSoft);color:var(--warn)">${ic('heart')}</span><span>„ცუდი“ ქოლესტერინი ჯერ მაღალია, მაგრამ აპრილის შემდეგ კლებულობს.</span></div>
+    <div class="li"><span class="d" style="background:var(--okSoft);color:var(--ok)">${ic('bean')}</span><span>შაქარი, ღვიძლი, თირკმელი და ფარისებრი რიგზეა.</span></div>
+  </div><div class="medi-src"><span class="orb"></span>Medi · ეს არ არის დიაგნოზი, აჩვენე ექიმს</div></div>
+  ${groupsOrdered().map(({g,ps})=>{
+    const o = ps.filter(off).length;
+    return `<div class="grp"><span class="gi" style="${o?'background:var(--warnSoft);color:var(--warn)':''}">${ic(GROUPS[g].icon)}</span><span class="gt">${GROUPS[g].name}</span><span class="gs" style="color:${o?'var(--warn)':'var(--ok)'}">${o?`${o} ყურადღება`:'რიგზეა'}</span></div>
+    <div class="card">${ps.sort((a,b)=>off(b)-off(a)).map(row).join('')}</div>`;
+  }).join('')}`;
+
+/* ---------- B ---------- */
+const HOT = [
+  {g:'thyroid', x:200, y:126, lx:300, side:'r'},
+  {g:'heart', x:214, y:176, lx:300, side:'r'},
+  {g:'liver', x:180, y:212, lx:96, side:'l'},
+  {g:'sugar', x:212, y:226, lx:300, side:'r'},
+  {g:'kidney', x:200, y:258, lx:300, side:'r', pair:true},
+  {g:'blood', x:122, y:248, lx:96, side:'l'},
+  {g:'vit', x:178, y:352, lx:96, side:'l'},
+];
+let selB = 'blood';
+function renderB(){
+  const tone = g => P.filter(p=>p.g===g).some(off) ? 'warn' : 'ok';
+  const col = t => t==='warn' ? '#FCD34D' : '#86EFAC';
+  const fig = `
+    <defs>
+      <radialGradient id="glw"><stop offset="0" stop-color="#fff" stop-opacity=".9"/><stop offset=".35" stop-color="#fff" stop-opacity=".25"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></radialGradient>
+      <linearGradient id="skin" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#4A45B8"/><stop offset="1" stop-color="#312C86"/></linearGradient>
+      <filter id="soft"><feGaussianBlur stdDeviation="10"/></filter>
+    </defs>
+    <g fill="url(#skin)">
+      <ellipse cx="200" cy="200" rx="70" ry="120" fill="#6366F1" opacity=".18" filter="url(#soft)"/>
+      <circle cx="200" cy="88" r="24"/>
+      <rect x="190" y="104" width="20" height="22" rx="6"/>
+      <path d="M152 136c0-12 10-20 22-20h52c12 0 22 8 22 20l-4 84c-1 14-6 24-10 32H166c-4-8-9-18-10-32Z"/>
+      <path d="M156 130c-14 6-20 18-22 32l-10 92c-1 8 10 10 12 2l18-86Z"/>
+      <path d="M244 130c14 6 20 18 22 32l10 92c1 8-10 10-12 2l-18-86Z"/>
+      <path d="M168 248h30l-2 150c0 8-14 8-15 0Z"/>
+      <path d="M202 248h30l-13 150c-1 8-15 8-15 0Z"/>
+    </g>
+    ${HOT.map(h=>{
+      const t = tone(h.g), c = col(t), on = h.g===selB;
+      const lab = GROUPS[h.g].organ;
+      const tx = h.side==='r' ? h.lx : h.lx;
+      const anchor = h.side==='r' ? 'start' : 'end';
+      const ex = h.side==='r' ? h.lx-6 : h.lx+6;
+      const pts = h.pair ? [[h.x-18,h.y],[h.x+18,h.y]] : [[h.x,h.y]];
+      return `<g class="hot" data-g="${h.g}">
+        <line x1="${h.pair?h.x+18:h.x}" y1="${h.y}" x2="${ex}" y2="${h.y}" stroke="${c}" stroke-opacity="${on?.8:.35}" stroke-width="1" stroke-dasharray="${on?'':'2 3'}"/>
+        ${pts.map(([x,y])=>`${t==='warn'?`<circle class="pulse" cx="${x}" cy="${y}" r="10" fill="${c}"/>`:''}<circle cx="${x}" cy="${y}" r="${on?20:15}" fill="url(#glw)" opacity=".5"/><circle cx="${x}" cy="${y}" r="${on?8:6.5}" fill="${c}" stroke="${on?'#fff':'none'}" stroke-width="2"/>`).join('')}
+        <text x="${tx}" y="${h.y+4}" text-anchor="${anchor}" style="${on?'font-weight:700;fill:#fff':''}">${lab}</text>
+        <rect x="${Math.min(h.x,h.lx)-30}" y="${h.y-16}" width="${Math.abs(h.x-h.lx)+60}" height="32" fill="transparent"/>
+      </g>`;
+    }).join('')}`;
+  const ps = P.filter(p=>p.g===selB).sort((a,b)=>off(b)-off(a));
+  const o = ps.filter(off).length;
+  const SAY = {
+    blood:'რკინის მარაგი დაბალია და ამიტომ ჰემოგლობინიც ოდნავ ნაკლებია. იმუნიტეტისა და შედედების უჯრედები რიგზეა.',
+    heart:'„ცუდი“ ქოლესტერინი ჯერ ნორმაზე მაღალია, მაგრამ იანვრიდან კლებულობს. „კარგი“ რიგზეა.',
+    vit:'D ვიტამინი დაბალია. შემოდგომა-ზამთარში ეს ძალიან ხშირია.',
+    sugar:'შაქარი რიგზეა, როგორც ახლა, ისე ბოლო სამი თვის საშუალოთი.',
+    liver:'ღვიძლის ორივე ფერმენტი ნორმაშია.',
+    kidney:'თირკმელი კარგად ფილტრავს.',
+    thyroid:'ფარისებრი ჯირკვალი რიგზეა.',
+  };
+  document.getElementById('B').innerHTML = header('ანალიზი · 8 ოქტომბერი') + `
+    <div class="body-hero"><svg viewBox="0 0 400 440">${fig}</svg>
+      <div class="cap"><div class="k">შენი სხეული ამ ანალიზით</div><div class="t">${nOff} ადგილს ყურადღება უნდა</div></div>
+    </div>
+    <div class="chips">${HOT.map(h=>{const t=tone(h.g);return `<button class="chip ${h.g===selB?'on':''}" data-g="${h.g}"><span class="dot" style="background:${t==='warn'?'#F59E0B':'#22C55E'}"></span>${GROUPS[h.g].organ}</button>`}).join('')}</div>
+    <div class="panel-h"><span class="t">${GROUPS[selB].name}</span><span class="s" style="color:${o?'var(--warn)':'var(--ok)'}">${o?`${o} ყურადღება`:'რიგზეა'}</span></div>
+    <div class="card"><div class="panel-say">${SAY[selB]}</div>${ps.map(row).join('')}</div>`;
+  document.querySelectorAll('#B [data-g]').forEach(el=>el.addEventListener('click',()=>{selB=el.dataset.g;const s=document.getElementById('B').scrollTop;renderB();document.getElementById('B').scrollTop=s;}));
+}
+renderB();
+
+/* ---------- C ---------- */
+const byK = k => P.find(p=>p.k===k);
+function dotsRing(){
+  const all = groupsOrdered().flatMap(x=>x.ps);
+  const R=96, cx=130, cy=130;
+  return `<svg width="260" height="260" viewBox="0 0 260 260">
+    <circle cx="${cx}" cy="${cy}" r="${R}" fill="none" stroke="rgba(255,255,255,.08)" stroke-width="22"/>
+    ${all.map((p,i)=>{const a=-Math.PI/2+i*2*Math.PI/all.length;const x=cx+R*Math.cos(a),y=cy+R*Math.sin(a);return `<circle cx="${x}" cy="${y}" r="9" fill="${off(p)?'#FCD34D':'#86EFAC'}"/>`}).join('')}
+    <text x="${cx}" y="${cy+4}" text-anchor="middle" font-family="Noto Sans Georgian" font-size="54" font-weight="300" fill="#fff">${nOk}<tspan font-size="24" fill="#C7D2FE">/${P.length}</tspan></text>
+    <text x="${cx}" y="${cy+34}" text-anchor="middle" font-family="Noto Sans Georgian" font-size="13" fill="#C7D2FE">ნორმაში</text>
+  </svg>`;
+}
+function tank(p){
+  // ferritin as a storeroom: fill = value vs top of range
+  const pct = p.v/p.hi, lowLine = p.lo/p.hi;
+  const H=190, W=120, fill=H*pct, ly=H-H*lowLine;
+  return `<svg width="300" height="230" viewBox="-40 0 300 230">
+    <rect x="50" y="20" width="${W}" height="${H}" rx="26" fill="rgba(255,255,255,.06)" stroke="rgba(255,255,255,.25)" stroke-width="1.5"/>
+    <clipPath id="tk"><rect x="50" y="20" width="${W}" height="${H}" rx="26"/></clipPath>
+    <rect x="50" y="${20+H-fill}" width="${W}" height="${fill}" fill="#FCD34D" clip-path="url(#tk)"/>
+    <line x1="40" y1="${20+ly}" x2="180" y2="${20+ly}" stroke="#86EFAC" stroke-dasharray="4 4"/>
+    <text x="186" y="${24+ly}" font-family="Noto Sans Georgian" font-size="11" fill="#BBF7D0">ნორმა</text>
+    <text x="186" y="${38+ly}" font-family="Noto Sans Georgian" font-size="11" fill="#BBF7D0">იწყება</text>
+    <text x="110" y="${H/2+10}" text-anchor="middle" font-family="Noto Sans Georgian" font-size="40" font-weight="300" fill="#fff">${p.v}</text>
+    <text x="110" y="${H/2+32}" text-anchor="middle" font-family="Noto Sans Georgian" font-size="12" fill="#C7D2FE">${p.u} · ნორმა ${p.lo}–${p.hi}</text>
+  </svg>`;
+}
+function trendDark(p){
+  const W=330,H=170,pad=30; const near = p.v>p.hi ? p.hi : (p.one?p.hi:p.lo); const vals=[...p.h, near]; let mn=Math.min(...vals), mx=Math.max(...vals); const sp=(mx-mn)||1; mn-=sp*.6; mx+=sp*.6;
+  const y=v=>Math.max(4,Math.min(H-22,H-pad-(v-mn)/(mx-mn)*(H-2*pad))), x=i=>34+i*((W-68)/2);
+  const top=y(p.hi), bot=p.one?H-22:y(p.lo);
+  return `<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">
+    <rect x="0" y="${top}" width="${W}" height="${bot-top}" rx="10" fill="rgba(134,239,172,.16)"/>
+    <text x="${W-8}" y="${p.v>p.hi?bot-8:top+16}" text-anchor="end" font-family="Noto Sans Georgian" font-size="11" fill="#BBF7D0">ნორმა</text>
+    <polyline points="${p.h.map((v,i)=>`${x(i)},${y(v)}`).join(' ')}" fill="none" stroke="#fff" stroke-width="2.5" stroke-linejoin="round"/>
+    ${p.h.map((v,i)=>`<circle cx="${x(i)}" cy="${y(v)}" r="${i==2?6:4.5}" fill="${i==2?'#FCD34D':'#fff'}"/><text x="${x(i)}" y="${y(v)-12}" text-anchor="middle" font-family="Noto Sans Georgian" font-size="13" font-weight="700" fill="#fff">${fmt(v)}</text><text x="${x(i)}" y="${H-4}" text-anchor="middle" font-family="Noto Sans Georgian" font-size="11" fill="#C7D2FE">${DATES[i]}</text>`).join('')}
+  </svg>`;
+}
+function sunMeter(p){
+  const n=16, lit=Math.round(n*p.v/p.lo), cx=150, cy=110;
+  return `<svg width="300" height="230" viewBox="0 0 300 230">
+    <circle cx="${cx}" cy="${cy}" r="44" fill="#FCD34D" opacity=".18"/>
+    <circle cx="${cx}" cy="${cy}" r="34" fill="#FCD34D" opacity=".9"/>
+    ${Array.from({length:n},(_,i)=>{const a=-Math.PI/2+i*2*Math.PI/n;return `<line x1="${cx+56*Math.cos(a)}" y1="${cy+56*Math.sin(a)}" x2="${cx+80*Math.cos(a)}" y2="${cy+80*Math.sin(a)}" stroke="${i<lit?'#FCD34D':'rgba(255,255,255,.18)'}" stroke-width="6" stroke-linecap="round"/>`}).join('')}
+    <text x="${cx}" y="${cy+9}" text-anchor="middle" font-family="Noto Sans Georgian" font-size="26" font-weight="700" fill="#1E1B4B">${p.v}</text>
+    <text x="${cx}" y="216" text-anchor="middle" font-family="Noto Sans Georgian" font-size="13" fill="#E0E7FF">ნორმამდე (${p.lo}) ${p.lo-p.v} ${p.u} აკლია</text>
+  </svg>`;
+}
+const SLIDES = [
+  {cls:'', html:`<div class="st-k">8 ოქტომბრის ანალიზი</div><div class="st-h">შენი ანალიზი <b>ერთ წუთში</b></div><div class="st-p">15 მაჩვენებელი წავიკითხე. უმეტესობა რიგზეა, 4 რამ კი უნდა იცოდე.</div><div class="st-vis">${dotsRing()}</div>`, foot:`<div class="st-hint">შეეხე, რომ გააგრძელო</div>`},
+  {cls:'warm', html:`<div class="st-k">1 / 4 · რკინა</div><div class="st-h">რკინის საწყობი <b>თითქმის ცარიელია</b></div><div class="st-p">ფერიტინი გიჩვენებს, რამდენი რკინა გაქვს მარაგში. ის ნორმის ქვედა ზღვარზე დაბლაა და იანვრიდან კლებულობს.</div><div class="st-vis">${tank(byK('fer'))}</div>`, foot:`<div class="st-btn">${ic('chat')}ჰკითხე Medi-ს</div><div class="st-hint">ექიმს ჰკითხე, რკინა გჭირდება თუ არა</div>`},
+  {cls:'warm', html:`<div class="st-k">2 / 4 · ჰემოგლობინი</div><div class="st-h">ჟანგბადის გადამტანი <b>ოდნავ დაბალია</b></div><div class="st-p">როცა რკინა აკლია, ორგანიზმი ჰემოგლობინს ნაკლებს ამზადებს. შეიძლება იგრძნო დაღლა ან ქოშინი კიბეზე.</div><div class="st-vis">${trendDark(byK('hgb'))}</div>`, foot:`<div class="st-hint">ზოლი ნორმაა: 12–15,5 გ/დლ</div>`},
+  {cls:'', html:`<div class="st-k">3 / 4 · ქოლესტერინი</div><div class="st-h">„ცუდი“ ქოლესტერინი მაღალია, <b>მაგრამ კლებულობს</b></div><div class="st-p">LDL სისხლძარღვებში ცხიმს ტოვებს. იანვრიდან 4,3-დან 3,8-მდე ჩამოვიდა. ნორმამდე (3,0) ცოტა დარჩა.</div><div class="st-vis">${trendDark(byK('ldl'))}</div>`, foot:`<div class="st-hint">რაც გააკეთე, ეტყობა 👏</div>`},
+  {cls:'warm', html:`<div class="st-k">4 / 4 · ვიტამინი D</div><div class="st-h">D ვიტამინი <b>დაბალია</b></div><div class="st-p">მზის ვიტამინია, ძვლებსა და იმუნიტეტს ეხმარება. შემოდგომით და ზამთრით ბევრს აკლია.</div><div class="st-vis">${sunMeter(byK('vitd'))}</div><div class="todo" style="margin-bottom:18px"><div>ჰკითხე ექიმს, დანამატი გჭირდება თუ არა</div><div>დღისით 15–20 წუთი გარეთ</div></div>`, foot:`<div class="st-btn">${ic('chat')}ჰკითხე Medi-ს</div>`},
+  {cls:'', html:`<div class="st-k">დანარჩენი</div><div class="st-h"><b>10 მაჩვენებელი</b> რიგზეა</div><div class="okchips">${P.filter(p=>!off(p)).map(p=>`<span>${p.p}</span>`).join('')}</div><div class="st-vis"></div>`, foot:`<div class="st-btn">${ic('doc')}ყველა მაჩვენებლის ნახვა</div><div class="st-btn ghost">ექიმისთვის PDF</div>`},
+];
+let cur = 1;
+function renderC(){
+  const s = SLIDES[cur];
+  document.getElementById('C').innerHTML = `<div class="story ${s.cls}"><div class="prog">${SLIDES.map((_,i)=>`<span class="${i<=cur?'done':''}"></span>`).join('')}</div>
+    <div class="st-top"><span>MEDILAB · Medi გიყვება</span><span class="x">${ic('x')}</span></div>
+    <div class="st-body">${s.html}</div><div class="st-foot">${s.foot}</div></div>`;
+  document.querySelector('#C .story').addEventListener('click', e => {
+    const r = e.currentTarget.getBoundingClientRect();
+    cur = (e.clientX - r.left < r.width/3) ? Math.max(0, cur-1) : (cur+1) % SLIDES.length; renderC();
+  });
+}
+renderC();
+
+/* ---------- D ---------- */
+function spark(p, w=160, h=38){
+  const near = p.v>p.hi ? p.hi : (off(p) ? p.lo : null);
+  const vals=[...p.h, ...(near!=null?[near]:[])]; let mn=Math.min(...vals), mx=Math.max(...vals); const sp=(mx-mn)||Math.abs(mx)*.1||1; mn-=sp*.5; mx+=sp*.5;
+  const y=v=>Math.max(0,Math.min(h,h-3-(v-mn)/(mx-mn)*(h-6))), x=i=>8+i*((w-16)/2);
+  const c = off(p)?'var(--warn)':'var(--ok)';
+  const top=y(p.hi), bot=p.one?h:y(p.lo);
+  return `<svg class="sp" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none">
+    <rect x="0" y="${top}" width="${w}" height="${Math.max(0,bot-top)}" rx="4" fill="var(--okSoft)"/>
+    <polyline points="${p.h.map((v,i)=>`${x(i)},${y(v)}`).join(' ')}" fill="none" stroke="${c}" stroke-width="2.2" stroke-linejoin="round" vector-effect="non-scaling-stroke"/>
+    <circle cx="${x(2)}" cy="${y(p.v)}" r="3.5" fill="${c}"/>
+  </svg>`;
+}
+const moves = P.map(p=>({p, m:move(p)}));
+const better = moves.filter(x=>x.m==='better'), worse = moves.filter(x=>x.m==='worse');
+const KEYP = {blood:'fer', heart:'ldl', vit:'vitd', sugar:'a1c', liver:'alt', kidney:'cre', thyroid:'tsh'};
+document.getElementById('D').innerHTML = header('ანალიზი · 8 ოქტომბერი') + `
+  <div class="hero"><div class="rings"></div>
+    <div class="k">წინა ანალიზთან შედარებით (12 აპრილი)</div>
+    <div class="big">ყველაზე მეტად <b>რკინა</b> შეიცვალა</div>
+    <div class="delta"><div><b>${better.length}</b><span>გაუმჯობესდა</span></div><div><b>${worse.length}</b><span>გაუარესდა</span></div><div><b>${P.length-better.length-worse.length}</b><span>უცვლელია</span></div></div>
+  </div>
+  <div class="sec">რა შეიცვალა</div>
+  <div class="card">${[...worse,...better].map(({p,m})=>`<div class="mv"><span class="gi" style="width:32px;height:32px;border-radius:11px;display:grid;place-items:center;background:${m==='better'?'var(--okSoft)':'var(--warnSoft)'};color:${m==='better'?'var(--ok)':'var(--warn)'}">${ic(p.v>p.h[1]?'up':'down')}</span><div class="nm"><b>${p.p}</b><span>${m==='better'?'ნორმას უახლოვდება':'ნორმას შორდება'}</span></div><div class="fromto"><em>${fmt(p.h[1])} →</em> ${fmt(p.v)}</div></div>`).join('')}</div>
+  <div class="sec">სხეულის მიხედვით</div>
+  <div class="tiles">${groupsOrdered().map(({g,ps})=>{const o=ps.filter(off);const kp=byK(KEYP[g]);return `<div class="tile">
+    <div class="tt"><span class="gi" style="background:${o.length?'var(--warnSoft)':'var(--okSoft)'};color:${o.length?'var(--warn)':'var(--ok)'}">${ic(GROUPS[g].icon)}</span>${GROUPS[g].organ}</div>
+    <div class="tw" style="color:${o.length?'var(--warn)':'var(--t1)'}">${o.length? (o.length===1? state(o[0]).w : o.length+' ნორმის გარეთ') : 'რიგზეა'}</div>
+    <div class="tn">${o.length===1? o[0].p : kp.p}</div>${spark(kp)}</div>`}).join('')}</div>`;
+
+/* ---------- E ---------- */
+function bigChart(p){
+  const W=326,H=180,pt=34,pb=28; const vals=[...p.h, p.lo, p.hi>p.h[0]*3?p.h[0]*2.2:p.hi]; let mn=0, mx=Math.max(...vals)*1.15;
+  const cap = Math.min(p.hi, mx);
+  const y=v=>pt+(1-(Math.min(v,mx)-mn)/(mx-mn))*(H-pt-pb), x=i=>36+i*((W-72)/2);
+  return `<svg width="100%" viewBox="0 0 ${W} ${H}">
+    <rect x="0" y="${y(cap)}" width="${W}" height="${y(p.lo)-y(cap)}" fill="var(--okSoft)"/>
+    <line x1="0" x2="${W}" y1="${y(p.lo)}" y2="${y(p.lo)}" stroke="var(--ok)" stroke-dasharray="3 4" stroke-opacity=".6"/>
+    <text x="6" y="${y(p.lo)+16}">ნორმის ქვედა ზღვარი · ${p.lo}</text>
+    <text x="${W-6}" y="${y(cap)+16}" text-anchor="end">ნორმა ზემოთ ${p.hi}-მდე</text>
+    <polyline points="${p.h.map((v,i)=>`${x(i)},${y(v)}`).join(' ')}" fill="none" stroke="var(--warn)" stroke-width="2.5" stroke-linejoin="round"/>
+    ${p.h.map((v,i)=>`<circle cx="${x(i)}" cy="${y(v)}" r="${i==2?6:4.5}" fill="${i==2?'var(--warn)':'#fff'}" stroke="var(--warn)" stroke-width="2"/><text class="vl" x="${x(i)}" y="${y(v)+22}" text-anchor="middle" style="fill:var(--t1)">${v}</text><text x="${x(i)}" y="${H-6}" text-anchor="middle">${['15 იან','12 აპრ','8 ოქტ'][i]}</text>`).join('')}
+  </svg>`;
+}
+const fer = byK('fer');
+document.getElementById('E').innerHTML = header('ფერიტინი · 8 ოქტომბერი') + `
+  <div class="hero"><div class="rings"></div>
+    <div class="k">ფერიტინი · რკინის მარაგი</div>
+    <div class="dval"><b>9</b><span>ნგ/მლ</span></div>
+    <div class="sub" style="margin-top:6px;font-size:15px;color:#fff"><b style="color:var(--warnL)">დაბალი.</b> ნორმის ქვედა ზღვარზე 6-ით ნაკლები.</div>
+    ${ruler(fer).replace('class="ruler"','class="ruler" style="margin-top:40px"')}
+  </div>
+  <div class="sec">რას ნიშნავს</div>
+  <div class="card">
+    <div class="para">ფერიტინი რკინის „საწყობია“. როცა საწყობი ცარიელდება, ორგანიზმი ჯერ მარაგს ხარჯავს და მხოლოდ მერე ეცემა ჰემოგლობინი. შენთან ორივე ერთად დაიწია.</div>
+    <div class="para"><h4>ხშირი მიზეზები</h4>რკინით ღარიბი კვება, უხვი მენსტრუაცია, სისხლის დონაცია. მიზეზს ექიმი გაარკვევს.</div>
+  </div>
+  <div class="sec">როგორ იცვლება</div>
+  <div class="card"><div class="chart">${bigChart(fer)}</div></div>
+  <div class="sec">რა შეგიძლია გააკეთო</div>
+  <div class="card">
+    <div class="para">აჩვენე ეს ანალიზი ექიმს და ჰკითხე, გჭირდება თუ არა რკინა. მუქი მწვანე ფოთლოვანი, პარკოსნები და ხორცი რკინით მდიდარია.</div>
+    <div class="ask">${ic('chat')}ჰკითხე Medi-ს ამის შესახებ</div>
+  </div>
+  <div style="font-size:11.5px;color:var(--t3);margin:12px 4px 0;line-height:1.5">ფურცელზე დაბეჭდილი ნორმა: 15–150 ნგ/მლ. ლაბორატორიებს შორის ნორმა ცოტათი განსხვავდება.</div>`;
+</script>
+</body>
+</html>

@@ -1,27 +1,29 @@
 import React, { useMemo, useState } from 'react';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, { FadeOut, LinearTransition } from 'react-native-reanimated';
-import { MessageCircle, Sparkles } from 'lucide-react-native';
+import { ChevronDown, ChevronRight, MessageCircle } from 'lucide-react-native';
 import { ModuleHeader, ModuleHeaderButton } from '@/components/brand/ModuleHeader';
 import { HomeSectionHeading } from '@/components/home/HomeSectionHeading';
-import { LabParamRow } from '@/components/lab/LabParamRow';
-import { MedilabButton, MedilabChips, MedilabSearch, useMedilab } from '@/components/lab/MedilabUI';
+import { LabChangesCard } from '@/components/lab/LabChangesCard';
+import { LabMediCard } from '@/components/lab/LabMediCard';
+import { LabSummaryCard, OrganTile } from '@/components/lab/LabOverview';
+import { LabValueRow } from '@/components/lab/LabValueRow';
+import { MedilabSearch, useMedilab } from '@/components/lab/MedilabUI';
 import { SwipeDeleteRow, SwipeGroup } from '@/components/records/SwipeDeleteRow';
 import { UndoToast } from '@/components/records/UndoToast';
 import { useUndoDelete } from '@/components/records/useUndoDelete';
 import { QuotaSheet } from '@/components/QuotaSheet';
-import { AiConsentDeclinedNote } from '@/components/ui/AiConsentDeclinedNote';
-import { Markdown } from '@/components/ui/Markdown';
 import { useLab } from '@/hooks/useLab';
 import { usePrefersReducedMotion } from '@/hooks/usePrefersReducedMotion';
 import { ka } from '@/i18n/ka';
 import { tx } from '@/i18n/locale';
 import { ApiError, api } from '@/lib/api';
 import { isAiConsentDeclined } from '@/lib/aiConsentDecline';
+import { compareLabTests, groupLabBySystem, labPlainName, labSystemName, type LabSystemId } from '@/lib/labBody';
 import { formatLabDateKa, isTodayYmd } from '@/lib/labExtract';
-import { labFlagCounts, labParamMatches, type LabFlagFilter } from '@/lib/labFilter';
+import { labFlagCounts, labParamMatches } from '@/lib/labFilter';
 import { labMediPrompt } from '@/lib/labMediPrompt';
 import { labRowName } from '@/lib/labNames';
 import { localAccountId } from '@/lib/localAccount';
@@ -33,8 +35,11 @@ import { HUB, hubText } from '@/theme/hub';
 type Held = { panelId: string; key: string };
 
 /**
- * One lab test (a date): how many values sit outside their range, Medi's explanation, and every value
- * with its range bar — outside-the-range first. A value deletes with the iPhone swipe (undo for 5 s).
+ * One lab test (a date) for someone with no medical background (owner 2026-10-10: one page, no tabs).
+ * A quiet summary, then every value by body system with our organ drawings — systems with something
+ * outside open first, the rest folded, one compact line per value (risk first, detail on tap, like
+ * InsideTracker / Function Health) — then „რა შეიცვალა“ against the test before and Medi's
+ * explanation. A value deletes with the iPhone swipe (undo for 5 s).
  */
 export default function LabDateScreen() {
   const M = useMedilab();
@@ -45,9 +50,11 @@ export default function LabDateScreen() {
   const dateKey = (Array.isArray(date) ? date[0] : date) ?? '';
   const { byDate, loading, removeParam, setAnalysis } = useLab();
   const plan = usePlanUsage();
-  const { applyUsage } = useAuth();
+  const { applyUsage, user } = useAuth();
+  const gender = user?.gender === 'FEMALE' ? 'FEMALE' : 'MALE';
   const [query, setQuery] = useState('');
-  const [flag, setFlag] = useState<LabFlagFilter>('all');
+  // Folded state per system the person touched; by default a system is open when something is outside.
+  const [toggled, setToggled] = useState<Partial<Record<LabSystemId, boolean>>>({});
   const [explaining, setExplaining] = useState(false);
   const [declined, setDeclined] = useState(false);
   const [quotaBlock, setQuotaBlock] = useState<number | undefined>(undefined);
@@ -66,17 +73,29 @@ export default function LabDateScreen() {
     [panels, held],
   );
   const counts = useMemo(() => labFlagCounts(allRows), [allRows]);
-  const rows = useMemo(() => {
-    const matching = allRows.filter((row) => labParamMatches(row, query, flag));
-    const off = (r: { flag: string }) => (r.flag === 'H' || r.flag === 'L' ? 0 : 1);
-    return matching.map((row, i) => ({ row, i })).sort((a, b) => off(a.row) - off(b.row) || a.i - b.i).map(({ row }) => row);
-  }, [allRows, flag, query]);
+  const systems = useMemo(() => groupLabBySystem(allRows), [allRows]);
+  const needle = query.trim().toLowerCase();
+  const groups = useMemo(() => {
+    const matching = allRows.filter((row) => labParamMatches(row, query, 'all') || (needle && (labPlainName(row.key) ?? '').toLowerCase().includes(needle)));
+    return groupLabBySystem(matching);
+  }, [allRows, query, needle]);
+  // „რა შეიცვალა“: this test against the newest one before it.
+  const comparison = useMemo(() => {
+    const prevDate = [...byDate.keys()].filter((d) => d < dateKey).sort().pop();
+    if (!prevDate) return null;
+    const previous = (byDate.get(prevDate) ?? []).flatMap((p) => p.parameters);
+    return compareLabTests(allRows, previous, prevDate);
+  }, [byDate, dateKey, allRows]);
   const needsExplain = Boolean(panel?.parameters.length) && !analysis.trim();
 
   const title = dateKey && isTodayYmd(dateKey) ? ka.common.today : dateKey ? formatLabDateKa(dateKey) : ka.lab.title;
   const prompt = labMediPrompt(panels);
   const layout = reduceMotion ? undefined : LinearTransition.duration(220);
   const exiting = reduceMotion ? undefined : FadeOut.duration(140);
+
+  const isOpen = (id: LabSystemId, off: number) => Boolean(needle) || (toggled[id] ?? off > 0);
+  const openParam = (key: string) => router.push(`/lab/param/${encodeURIComponent(key)}` as never);
+  const askMedi = prompt ? () => router.push(mediPrefillRoute(localAccountId(), prompt) as never) : undefined;
 
   const explain = async () => {
     if (!panel || !dateKey) return;
@@ -116,13 +135,9 @@ export default function LabDateScreen() {
           <ModuleHeader
             module="lab"
             subtitle={tx(`ანალიზი · ${title}`, `Lab test · ${title}`)}
-            right={prompt ? (
-              <ModuleHeaderButton
-                label={ka.lab.askMediChat}
-                icon={MessageCircle}
-                // Lab values wait in memory (mediHandoff); the route carries only `handoff=1`.
-                onPress={() => router.push(mediPrefillRoute(localAccountId(), prompt) as never)}
-              />
+            right={askMedi ? (
+              // Lab values wait in memory (mediHandoff); the route carries only `handoff=1`.
+              <ModuleHeaderButton label={ka.lab.askMediChat} icon={MessageCircle} onPress={askMedi} />
             ) : undefined}
           />
 
@@ -130,35 +145,9 @@ export default function LabDateScreen() {
             <Text style={[hubText.body, { color: M.c.text200, marginTop: 24 }]}>{loading ? ka.common.loading : ka.lab.emptyDate}</Text>
           ) : (
             <>
-              {/* What this test holds, at a glance. */}
-              <View style={[s.stats, { backgroundColor: M.c.surface }]}>
-                <Stat value={counts.all} label={tx('მაჩვენებელი', 'values')} color={M.c.text100} />
-                <View style={[s.statRule, { backgroundColor: M.c.bg300 }]} />
-                <Stat value={counts.watch} label={tx('ნორმის გარეთ', 'out of range')} color={counts.watch ? M.attention : M.c.text100} />
-                <View style={[s.statRule, { backgroundColor: M.c.bg300 }]} />
-                <Stat value={counts.N} label={tx('ნორმაში', 'in range')} color={counts.N ? M.normal : M.c.text100} />
+              <View style={{ marginTop: 20 }}>
+                <LabSummaryCard dateLabel={title} total={counts.all} inRange={counts.N} off={counts.watch} />
               </View>
-
-              {analysis || needsExplain ? (
-                <View style={{ marginTop: HUB.sectionGap }}>
-                  <HomeSectionHeading title={tx('Medi-ს განმარტება', "Medi's explanation")} />
-                  <View style={[s.card, { backgroundColor: M.c.surface, padding: HUB.cardPad, gap: 12 }]}>
-                    {analysis ? (
-                      <Markdown content={analysis} />
-                    ) : declined ? (
-                      <AiConsentDeclinedNote background={M.c.bg100} onRetry={() => void explain()} />
-                    ) : (
-                      <>
-                        <Text style={[hubText.body, { color: M.c.text200 }]}>
-                          {tx('Medi ერთად ახსნის ამ ანალიზის ყველა მაჩვენებელს — რას ნიშნავს და რას ჰკითხო ექიმს.', 'Medi explains every value of this test together — what it means and what to ask your doctor.')}
-                        </Text>
-                        <MedilabButton label={explaining ? ka.lab.askMediBusy : ka.lab.askMedi} icon={explaining ? undefined : Sparkles} busy={explaining} onPress={() => void explain()} />
-                      </>
-                    )}
-                    {explainError ? <Text style={[hubText.caption, { color: M.attention }]}>{explainError}</Text> : null}
-                  </View>
-                </View>
-              ) : null}
 
               <View style={{ marginTop: HUB.sectionGap }}>
                 <HomeSectionHeading title={tx('მაჩვენებლები', 'Values')} />
@@ -167,50 +156,95 @@ export default function LabDateScreen() {
                     <MedilabSearch value={query} onChange={setQuery} />
                   </View>
                 ) : null}
-                {counts.watch > 0 && counts.N > 0 ? (
-                  <View style={{ marginBottom: 12 }}>
-                    <MedilabChips
-                      value={flag}
-                      onChange={setFlag}
-                      options={[
-                        { value: 'all', label: ka.lab.filterAll, count: counts.all },
-                        { value: 'watch', label: tx('ნორმის გარეთ', 'Out of range'), count: counts.watch },
-                        { value: 'N', label: tx('ნორმაში', 'In range'), count: counts.N },
-                      ]}
-                    />
-                  </View>
-                ) : null}
-                {rows.length ? (
-                  <View style={s.card}>
-                    {rows.map((row, index) => (
-                      <Animated.View key={`${row.panelId}-${row.key}`} layout={layout} exiting={exiting}>
-                        <SwipeDeleteRow onDelete={() => hold({ panelId: row.panelId, key: row.key })}>
-                          {(open, a11y) => (
-                            <LabParamRow
-                              first={index === 0}
-                              name={labRowName(row)}
-                              value={row.value}
-                              display={row.display}
-                              unit={row.unit}
-                              flag={row.flag}
-                              refLow={row.refLow}
-                              refHigh={row.refHigh}
-                              onPress={() => router.push(`/lab/param/${encodeURIComponent(row.key)}` as never)}
-                              onLongPress={open}
-                              a11y={a11y}
-                            />
-                          )}
-                        </SwipeDeleteRow>
-                      </Animated.View>
-                    ))}
-                  </View>
+                {groups.length ? (
+                  groups.map((group, gi) => {
+                    const open = isOpen(group.id, group.off);
+                    const tone = group.off ? M.attention : group.tone === 'ok' ? M.normal : M.c.text300;
+                    return (
+                      <View key={group.id} style={{ marginTop: gi ? 10 : 0 }}>
+                        <View style={[s.card, { backgroundColor: M.c.surface }]}>
+                          <Pressable
+                            accessibilityRole="button"
+                            accessibilityState={{ expanded: open }}
+                            accessibilityLabel={labSystemName(group.id)}
+                            onPress={() => setToggled((prev) => ({ ...prev, [group.id]: !open }))}
+                            style={s.groupHead}
+                          >
+                            <OrganTile system={group.id} gender={gender} tone={group.off ? 'warn' : group.tone} size={40} />
+                            <View style={{ flex: 1, minWidth: 0 }}>
+                              <Text style={[hubText.cardTitle, { color: M.c.text100 }]}>{labSystemName(group.id)}</Text>
+                              <Text style={[hubText.caption, { fontFamily: 'NotoSansGeorgian_600SemiBold', color: tone }]}>
+                                {group.off
+                                  ? tx(`${group.off} ნორმის გარეთ · ${group.rows.length}-დან`, `${group.off} of ${group.rows.length} outside`)
+                                  : group.tone === 'ok'
+                                    ? tx(`ყველა ნორმაშია · ${group.rows.length}`, `All ${group.rows.length} in range`)
+                                    : tx('ნორმა ფურცელზე არ წერია', 'No range on the sheet')}
+                              </Text>
+                            </View>
+                            {open ? <ChevronDown size={18} color={M.c.text300} /> : <ChevronRight size={18} color={M.c.text300} />}
+                          </Pressable>
+                          {open
+                            ? group.rows.map((row) => (
+                                <Animated.View key={`${row.panelId}-${row.key}`} layout={layout} exiting={exiting}>
+                                  <SwipeDeleteRow onDelete={() => hold({ panelId: row.panelId, key: row.key })}>
+                                    {(openSwipe, a11y) => (
+                                      <LabValueRow
+                                        first={false}
+                                        plain={labPlainName(row.key)}
+                                        name={labRowName(row)}
+                                        param={row}
+                                        onPress={() => openParam(row.key)}
+                                        onLongPress={openSwipe}
+                                        a11y={a11y}
+                                      />
+                                    )}
+                                  </SwipeDeleteRow>
+                                </Animated.View>
+                              ))
+                            : null}
+                        </View>
+                      </View>
+                    );
+                  })
                 ) : (
                   <Text style={[hubText.body, { color: M.c.text200 }]}>{ka.lab.filterEmpty}</Text>
                 )}
                 <Text style={[hubText.caption, { color: M.c.text300, marginTop: 12, marginHorizontal: 4 }]}>
-                  {tx('ზოლზე ფერადი ზონა ფურცელზე დაბეჭდილი ნორმაა. წასაშლელად გადაწიე მარცხნივ.', 'The tinted zone on each bar is the range printed on the sheet. Swipe left to delete.')}
+                  {tx(
+                    'მწვანე ზოლი ფურცელზე დაბეჭდილი ნორმაა. დეტალებისთვის და ისტორიისთვის შეეხე მაჩვენებელს; წასაშლელად გადაწიე მარცხნივ.',
+                    'The green part is the range printed on the sheet. Tap a value for details and history; swipe left to delete.',
+                  )}
                 </Text>
-              </View>
+                </View>
+
+              {comparison ? (
+                <View style={{ marginTop: HUB.sectionGap }}>
+                  <HomeSectionHeading title={tx('რა შეიცვალა', 'What changed')} />
+                  <Text style={[hubText.caption, { color: M.c.text300, marginTop: -6, marginBottom: 10, marginHorizontal: 4 }]}>
+                    {tx(`წინა ანალიზთან შედარებით (${formatLabDateKa(comparison.prevDate)})`, `Compared with the test before (${formatLabDateKa(comparison.prevDate)})`)}
+                  </Text>
+                  <LabChangesCard comparison={comparison} onOpen={openParam} />
+                </View>
+              ) : null}
+
+              {analysis || needsExplain ? (
+                <View style={{ marginTop: HUB.sectionGap }}>
+                  <HomeSectionHeading title={tx('Medi-ს განმარტება', "Medi's explanation")} />
+                  <LabMediCard
+                    analysis={analysis}
+                    dateLabel={title}
+                    busy={explaining}
+                    declined={declined}
+                    error={explainError}
+                    onExplain={() => void explain()}
+                    onAsk={askMedi}
+                  />
+                </View>
+              ) : null}
+
+              <Text style={[hubText.caption, { color: M.c.text300, marginTop: 14, marginHorizontal: 4 }]}>
+                {tx('ეს დიაგნოზი არ არის — შედეგი ექიმს აჩვენე, ის წაიკითხავს სხვა ანალიზებთან და შენს მდგომარეობასთან ერთად.', 'This is not a diagnosis — show the result to your doctor, who reads it with your other results and how you feel.')}
+              </Text>
             </>
           )}
         </ScrollView>
@@ -222,18 +256,7 @@ export default function LabDateScreen() {
   );
 }
 
-function Stat({ value, label, color }: { value: number; label: string; color: string }) {
-  const M = useMedilab();
-  return (
-    <View style={{ flex: 1, alignItems: 'center', gap: 1 }}>
-      <Text style={{ fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 22, lineHeight: 28, color }}>{value}</Text>
-      <Text numberOfLines={1} style={[hubText.caption, { color: M.c.text200 }]}>{label}</Text>
-    </View>
-  );
-}
-
 const s = StyleSheet.create({
   card: { borderRadius: HUB.cardRadius, overflow: 'hidden' },
-  stats: { marginTop: 20, borderRadius: HUB.cardRadius, flexDirection: 'row', alignItems: 'center', paddingVertical: 14 },
-  statRule: { width: StyleSheet.hairlineWidth, alignSelf: 'stretch', marginVertical: 4 },
+  groupHead: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 14, paddingVertical: 12 },
 });
