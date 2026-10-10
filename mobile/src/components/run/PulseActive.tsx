@@ -107,7 +107,8 @@ export default function PulseActive(){
  useEffect(()=>{if(!starterId||opened.current.has(starterId)||!focused)return;opened.current.add(starterId);if(hapticRef.current)void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(()=>{});setGift(true);},[starterId,focused]);
  // Back during a session leaves the map only (owner 2026-10-08): the walk keeps recording, the top „რბოლა მიმდინარეობს“
  // badge brings the map back, pause/finish stay on the dock. Back lands on the MEDIRUN hub (also when the map was opened from the badge).
- const leave=()=>{if(active){router.dismissTo('/run' as never);}else{cancelRun();clearHunt();router.replace('/run' as never);}};
+ // Back lands on the hub underneath (or replaces the map with it) — a replace stacked a second hub (owner 2026-10-10).
+ const leave=()=>{if(!active){cancelRun();clearHunt();}router.dismissTo('/run' as never);};
  useEffect(()=>{const sub=BackHandler.addEventListener('hardwareBackPress',()=>{leave();return true;});return()=>sub.remove();},[active]);
  useEffect(()=>{if(!live||!run.origin)return;map.current?.send({type:'init',origin:run.current||run.origin,pin:run.pin,route:run.route?.coords||null,fit:false,hero:user?.gender==='FEMALE'?'f':'m'});},[live,mapEpoch,run.origin,run.pin,run.route,user?.gender]);
  useEffect(()=>{if(live)map.current?.send({type:'activity',value:running?'auto':'idle'});},[live,mapEpoch,running]);

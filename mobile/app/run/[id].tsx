@@ -21,7 +21,7 @@ export default function RunHistoryDetailScreen() {
       let alive = true;
       void getRunById(String(id || '')).then((found) => {
         if (!alive) return;
-        if (!found) router.replace('/run' as never);
+        if (!found) router.dismissTo('/run' as never);
         else setRun(found);
       });
       return () => {

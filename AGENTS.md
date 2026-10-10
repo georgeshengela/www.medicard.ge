@@ -42,6 +42,7 @@ Other docs: `docs/I18N.md`, `docs/MEDI-ASSISTANT.md`, `docs/NUTRITION.md`, `docs
 - `Modal` only from `@/components/ui/appModal` with `APP_MODAL_PROPS` (fade, never slide).
 - OS permissions are requested only from a button press, never from effects/background; a pre-permission screen has exactly one button „გაგრძელება“ / Continue that opens the system sheet.
 - No `router.push` / navigation from AppShell-level code before `canOpenNotificationRoute`.
+- Every router call passes `navigationGuard` (one page, one place in the history; tabs are roots — see mobile-ui.md). Back to a parent = `router.dismissTo(parent)`, never `replace(parent)`; never push a page twice from two places (effect + badge).
 - Forms use `KeyboardFormShell` / `useKeyboardPad` (the sign-in pattern); never two keyboard-inset mechanisms.
 - Server reads through `useAccountQuery` (TanStack, keys `['acct', id, …]`); new write prefixes go in `queryInvalidation.ts`; never invalidate `/api/health-metrics`. Socket events must never trigger writes without the loop guards; foreground work uses `onReturnToForeground`.
 - Home blocks: section title above the card (`HomeSectionTitle`), never inside. Hub look: flat `surface` cards, radius 22, one spotlight per page. Use theme tokens / `hubInk`, not hard-coded teal.

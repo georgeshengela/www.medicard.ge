@@ -19,7 +19,7 @@ LogBox.ignoreLogs([
   /PushNotificationIOS has been extracted from react-native core/,
 ]);
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
-import { Stack, useGlobalSearchParams, useRouter, useSegments, type ErrorBoundaryProps } from 'expo-router';
+import { Stack, useGlobalSearchParams, useNavigationContainerRef, useRouter, useSegments, type ErrorBoundaryProps } from 'expo-router';
 import { MaintenanceScreen } from '@/components/ui/MaintenanceScreen';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -67,6 +67,7 @@ import { rememberMapboxToken } from '@/lib/run/mapbox';
 import { consumePendingCycleShare, isCycleShareCode, savePendingCycleShare } from '@/lib/cycleSharePending';
 import { useStackMotion } from '@/hooks/useStackMotion';
 import { ModuleGate } from '@/components/ModuleGate';
+import { attachNavigationGuard } from '@/lib/navigationGuard';
 import { applyFeatureStatus, useFeature } from '@/lib/featureFlags';
 import { noteFeatureStatusFetched, startFeatureFlagSync } from '@/lib/featureFlagSync';
 import { holdOtaReloadWhile, startOtaUpdates } from '@/lib/otaUpdates';
@@ -256,6 +257,11 @@ function AppShell() {
   const questOn = useFeature('quest');
   const tabChromeHidden = useTabChromeHidden();
   const activeRunChrome = useActiveRunChrome();
+  // One page, one place in the history: every router call passes the rules in navigationPolicy.ts.
+  const navigationRef = useNavigationContainerRef();
+  useEffect(() => {
+    attachNavigationGuard(navigationRef);
+  }, [navigationRef]);
   const showTabBar =
     Boolean(user) &&
     !tabChromeHidden &&

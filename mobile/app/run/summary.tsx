@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { View } from 'react-native';
 import { ArrowUpRight, CloudUpload, Home } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
@@ -6,7 +6,7 @@ import { useRouter } from 'expo-router';
 import { RunFinishedView } from '@/components/run/RunFinishedView';
 import { Action, Copy } from '@/components/run/PulseUi';
 import { StepsGoalConfetti } from '@/components/health/steps-goal/StepsGoalConfetti';
-import { cancelRun, useRunSession } from '@/lib/run/store';
+import { cancelRun, getRunState, useRunSession } from '@/lib/run/store';
 import { useThemeColors } from '@/theme/colors';
 import { usePulse } from '@/lib/medipulsi/client';
 import { tx } from '@/i18n/locale';
@@ -16,10 +16,12 @@ export default function RunSummaryScreen() {
   const colors = useThemeColors();
   const pulse = usePulse();
   const s = useRunSession();
-  const summary = s.summary;
+  // The walk this screen opened with. Leaving clears the session; a summary still in the stack
+  // must keep showing its walk, never turn into an empty page (owner 2026-10-10).
+  const [summary] = useState(() => s.summary);
 
   useEffect(() => {
-    if (!summary) router.replace('/run' as never);
+    if (!summary) router.dismissTo('/run' as never);
     else if (summary.reachedPin || summary.completedTarget) void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -28,9 +30,12 @@ export default function RunSummaryScreen() {
 
   const celebrate = summary.reachedPin || summary.completedTarget;
 
+  // Back to the hub underneath (never a second hub); Home is the one tab root (navigationGuard).
   const leave = (to: '/run' | '/(tabs)/home') => {
-    cancelRun();
-    router.replace(to as never);
+    if (to === '/run') router.dismissTo('/run' as never);
+    else router.replace(to as never);
+    // Only this finished walk: a session started since then keeps running.
+    if (getRunState().phase === 'finished') cancelRun();
   };
 
   return (

@@ -100,14 +100,15 @@ export function ActiveRunBadge() {
   const chromeHidden = useTabChromeHidden();
   const show = live && !onActiveMap && !chromeHidden;
 
-  // If the run finishes while the map is closed, open the summary.
+  // If the run finishes while the map is closed, open the summary. On the map, the map opens it
+  // itself (replacing the map) — a second push here stacked two summaries (owner 2026-10-10).
   useEffect(() => {
     const wasLive = isActiveRunPhase(prevPhase.current);
     prevPhase.current = s.phase;
-    if (!wasLive || s.phase !== 'finished' || !s.summary) return;
+    if (!wasLive || s.phase !== 'finished' || !s.summary || onActiveMap) return;
     if (pathname === '/run/summary' || pathname?.endsWith('/run/summary')) return;
     router.push('/run/summary' as never);
-  }, [s.phase, s.summary, pathname, router]);
+  }, [s.phase, s.summary, pathname, onActiveMap, router]);
 
   if (!show) return null;
 
