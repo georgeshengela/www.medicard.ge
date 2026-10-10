@@ -1,4 +1,4 @@
-import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { Appearance } from 'react-native';
 import { useColorScheme } from 'nativewind';
 import { getPreference, setPreference } from '@/lib/storage';
@@ -33,6 +33,8 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const { colorScheme, setColorScheme } = useColorScheme();
   const [preference, setPreferenceState] = useState<ThemePreference>('system');
   const [ready, setReady] = useState(false);
+  // The latest choice, readable from native event callbacks before React re-renders.
+  const preferenceRef = useRef<ThemePreference | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -41,6 +43,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
       .then((stored) => {
         if (cancelled) return;
         const next = isPreference(stored) ? stored : 'system';
+        preferenceRef.current = next;
         setPreferenceState(next);
         setColorScheme(next);
       })
@@ -53,13 +56,17 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     };
   }, [setColorScheme]);
 
+  // Follow the system only once the stored choice is known, and only while it is „system“. On iOS
+  // setColorScheme('light') answers with an async appearance event; a listener left over from the
+  // initial 'system' state caught it and reset the app to the system theme — a phone in dark mode
+  // opened dark while Profile still showed „light“ (owner 2026-10-11, after an update reload).
   useEffect(() => {
-    if (preference !== 'system') return;
+    if (!ready || preference !== 'system') return;
     const subscription = Appearance.addChangeListener(() => {
-      setColorScheme('system');
+      if (preferenceRef.current === 'system') setColorScheme('system');
     });
     return () => subscription.remove();
-  }, [preference, setColorScheme]);
+  }, [ready, preference, setColorScheme]);
 
   useEffect(() => {
     if (typeof document === 'undefined') return;
@@ -91,6 +98,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 
   const choose = useCallback(
     (next: ThemePreference) => {
+      preferenceRef.current = next;
       setPreferenceState(next);
       setColorScheme(next);
       void setPreference(STORAGE_KEY, next);
