@@ -27,7 +27,8 @@ export function answeredQuestions(profile: ProfileLike, user: UserLike, opts: { 
   const confirmed = new Set(Array.isArray(extra.confirmedSteps) ? (extra.confirmedSteps as unknown[]).filter((v) => typeof v === 'string') as string[] : []);
   const habits = habitsFromProfile(profile);
   return {
-    name: hasFirstAndLastName(user, extra),
+    // Asked once on Home (namePromptAt): a „later“ is an answer — no card or walk asks it again.
+    name: hasFirstAndLastName(user, extra) || typeof extra.namePromptAt === 'string',
     gender: !!user?.gender,
     birthdate: !!user?.birthDate,
     height: profile?.heightCm != null,
@@ -54,6 +55,21 @@ export function profileCompletion(profile: ProfileLike, user: UserLike, opts: { 
     percent: Math.round((answered / checks.length) * 100),
     missing: checks.filter(([, ok]) => !ok).map(([key]) => key),
   };
+}
+
+const WAY_OF_LIFE = new Set(['activity', 'sleep', 'smoking', 'alcohol', 'diet', 'eating']);
+
+/**
+ * Someone who filled in the old questionnaire (fitness 1–5, sleep level, checkups…) and now misses only
+ * the reworked way-of-life questions: the card says „updated, N new questions“ instead of a lower percent,
+ * so nobody thinks their answers were lost (owner 2026-10-11). 0 = show the usual card.
+ */
+export function newQuestionsAfterUpdate(profile: ProfileLike, completion: ProfileCompletion): number {
+  const extra = (profile?.extraAnswers ?? {}) as Record<string, unknown>;
+  const answeredOld =
+    typeof extra.fitnessLevel === 'number' || typeof extra.sleepLevel === 'number' || typeof extra.checkupFrequency === 'string' || typeof extra.mood === 'string';
+  if (!answeredOld || completion.missing.length === 0) return 0;
+  return completion.missing.every((key) => WAY_OF_LIFE.has(key)) ? completion.missing.length : 0;
 }
 
 /** Starting point for a weight goal: a small, safe step from today's weight. */

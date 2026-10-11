@@ -116,12 +116,17 @@ export function MedicalProfileSection() {
     {
       key: 'allergies',
       label: ka.profile.allergies,
-      value: allergies.length ? allergies.map((item) => allergyDisplayLabel(item)).join(', ') : null,
+      // „არა, არ მაქვს“ in „დაასრულე პროფილი“ is an answer, not an empty field.
+      value: allergies.length
+        ? allergies.map((item) => allergyDisplayLabel(item)).join(', ')
+        : Array.isArray(extra.confirmedSteps) && extra.confirmedSteps.includes('allergies')
+          ? tx('არ მაქვს', 'None')
+          : null,
     },
     {
       key: 'conditions',
       label: ka.profile.conditions,
-      value: conditions.length ? conditions.map((item) => resolveConditionLabel(item)).join(', ') : null,
+      value: conditions.length ? conditions.map((item) => resolveConditionLabel(item)).join(', ') : extra.hasConditions === false ? tx('არ მაქვს', 'None') : null,
     },
   ];
 

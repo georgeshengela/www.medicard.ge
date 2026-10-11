@@ -1,15 +1,12 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Keyboard, Pressable, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Keyboard, View } from 'react-native';
 import { Redirect, useRouter } from 'expo-router';
-import { User } from 'lucide-react-native';
-import { AuthShell } from '@/components/AuthShell';
 import { ExistingAccountCheck } from '@/components/auth/ExistingAccountCheck';
 import { OnboardingExitLinks } from '@/components/auth/OnboardingExit';
-import { VelvetAuthHeader } from '@/components/auth/VelvetAuthHeader';
 import { QuestionContent, questionCopy, questionReady } from '@/components/assessment/QuestionContent';
+import { NameForm } from '@/components/onboarding/NameForm';
 import { QuestionPage, StepHeader } from '@/components/onboarding/OnboardingKit';
 import { VelvetButton } from '@/components/velvet/VelvetButton';
-import { VelvetInput } from '@/components/velvet/VelvetInput';
 import { VelvetNotice } from '@/components/velvet/VelvetNotice';
 import { ONBOARDING_STEP_KEYS, ONBOARDING_TAIL_STEPS, onboardingResumeQuestion } from '@/constants/assessmentSteps';
 import { tx } from '@/i18n/locale';
@@ -20,8 +17,6 @@ import { hasFirstAndLastName } from '@/lib/displayName';
 import { nextProfileSetupHref } from '@/lib/onboarding';
 import { onboardingDevHref, useOnboardingDevPreview } from '@/lib/onboardingDevPreview';
 import { getPreference, setPreference } from '@/lib/storage';
-import { useKeyboardMetrics } from '@/lib/useKeyboardHeight';
-import { AUTH_KEYBOARD_OPEN_PX } from '@/lib/authChrome';
 import { needsProfileSetup, useAuth } from '@/store/AuthContext';
 import { useVelvet } from '@/theme/velvet';
 
@@ -235,7 +230,21 @@ export default function OnboardingScreen() {
   if (loading || !form || !question || !steps || existingCheck === 'unknown') return <Waiting background={p.surface} />;
 
   if (question === 'name') {
-    return <NameStep form={form} onChange={patch} onContinue={() => void goNext()} busy={busy} error={error} palette={p} dark={dark} />;
+    return (
+      <NameForm
+        palette={p}
+        dark={dark}
+        firstName={form.firstName}
+        lastName={form.lastName}
+        onChange={patch}
+        onSubmit={() => void goNext()}
+        busy={busy}
+        error={error}
+        subtitle={questionCopy('name', form).body ?? ''}
+        submitLabel={tx('გაგრძელება', 'Continue')}
+        below={<OnboardingExitLinks disabled={busy} color={p.ink2} />}
+      />
+    );
   }
 
   // Progress counts the questions after the name page plus the three setup pages that follow.
@@ -276,95 +285,5 @@ function Waiting({ background }: { background: string }) {
     <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: background }}>
       <ActivityIndicator size="large" />
     </View>
-  );
-}
-
-/**
- * The standard sign-up page for a number that just got its account: the heartbeat disc of sign-in,
- * „როგორ გქვია?“, first and last name. Both are needed (2+ letters each).
- */
-function NameStep({
-  form,
-  onChange,
-  onContinue,
-  busy,
-  error,
-  palette: p,
-  dark,
-}: {
-  form: AssessmentFormState;
-  onChange: (next: Partial<AssessmentFormState>) => void;
-  onContinue: () => void;
-  busy: boolean;
-  error: string | null;
-  palette: ReturnType<typeof useVelvet>['palette'];
-  dark: boolean;
-}) {
-  const lastRef = useRef<TextInput>(null);
-  const [touched, setTouched] = useState<{ first?: boolean; last?: boolean }>({});
-  const { height: keyboardHeight } = useKeyboardMetrics();
-  const keyboardOpen = keyboardHeight > AUTH_KEYBOARD_OPEN_PX;
-  const copy = questionCopy('name', form);
-  const firstOk = form.firstName.trim().length >= 2;
-  const lastOk = form.lastName.trim().length >= 2;
-
-  return (
-    <AuthShell
-      backgroundColor={p.surface}
-      renderHeader={(compact, durationMs) => (
-        <VelvetAuthHeader palette={p} dark={dark} title={copy.title} titleKind="heading" subtitle={copy.body} compact={compact} durationMs={durationMs} />
-      )}
-      footer={
-        <View style={{ gap: 4 }}>
-          <VelvetButton palette={p} label={tx('გაგრძელება', 'Continue')} busy={busy} disabled={!firstOk || !lastOk} onPress={onContinue} />
-          {keyboardOpen ? null : <OnboardingExitLinks disabled={busy} color={p.ink2} />}
-        </View>
-      }
-    >
-      <View style={{ gap: 18 }}>
-        <VelvetInput
-          palette={p}
-          label={tx('სახელი', 'First name')}
-          placeholder={tx('მაგ. ნინო', 'e.g. Nino')}
-          icon={User}
-          value={form.firstName}
-          onChangeText={(firstName) => onChange({ firstName })}
-          onBlur={() => setTouched((t) => ({ ...t, first: true }))}
-          error={touched.first && !firstOk ? tx('შეიყვანე სახელი', 'Enter your first name') : null}
-          autoCapitalize="words"
-          autoComplete="given-name"
-          textContentType="givenName"
-          returnKeyType="next"
-          blurOnSubmit={false}
-          onSubmitEditing={() => lastRef.current?.focus()}
-          maxLength={60}
-        />
-        <VelvetInput
-          ref={lastRef}
-          palette={p}
-          label={tx('გვარი', 'Last name')}
-          placeholder={tx('მაგ. ბერიძე', 'e.g. Beridze')}
-          icon={User}
-          value={form.lastName}
-          onChangeText={(lastName) => onChange({ lastName })}
-          onBlur={() => setTouched((t) => ({ ...t, last: true }))}
-          error={touched.last && !lastOk ? tx('შეიყვანე გვარი', 'Enter your last name') : null}
-          autoCapitalize="words"
-          autoComplete="family-name"
-          textContentType="familyName"
-          returnKeyType="done"
-          onSubmitEditing={() => {
-            if (firstOk && lastOk) onContinue();
-          }}
-          maxLength={60}
-        />
-        {error ? <VelvetNotice palette={p} text={error} /> : null}
-        <Pressable accessible={false} onPress={Keyboard.dismiss}>
-          <Text style={{ marginTop: 2, marginHorizontal: 4, fontFamily: 'NotoSansGeorgian_400Regular', fontSize: 13, lineHeight: 19, color: p.inkOff }}>
-            {tx('სახელი და გვარი ჩანს შენს პროფილში და ჯანმრთელობის პასპორტში.', 'Your name shows on your profile and in your health passport.')}
-          </Text>
-        </Pressable>
-      </View>
-    </AuthShell>
   );
 }

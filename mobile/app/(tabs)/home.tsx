@@ -47,7 +47,8 @@ import { primaryGoalFromProfile } from '@/lib/assessmentForm';
 import { displayFirstName, nameInitials } from '@/lib/displayName';
 import { medicationToSetUp } from '@/lib/home/medicationSetup';
 import { useMedicationSetupDismissals } from '@/hooks/useMedicationSetupDismissals';
-import { profileCompletion } from '@/lib/profileCompletion';
+import { newQuestionsAfterUpdate, profileCompletion } from '@/lib/profileCompletion';
+import { HomeNamePrompt } from '@/components/home/HomeNamePrompt';
 import { mediRoute } from '@/lib/mediModes';
 import { computeTodayDoses } from '@/lib/home/todayDoses';
 import { todayYmd } from '@/lib/medications.shared';
@@ -162,6 +163,9 @@ export default function Home() {
   const [modulesOpen, setModulesOpen] = useState(false);
   const [offerConfirm, setOfferConfirm] = useState(false);
   const completion = profileCompletion(healthProfile, user);
+  // Old questionnaire, only the reworked way-of-life questions missing: „updated“, never a lower percent.
+  const newQuestions = newQuestionsAfterUpdate(healthProfile, completion);
+  const [namePromptOpen, setNamePromptOpen] = useState(false);
   const communityEntry = useCommunityEntry(user?.id, female) && isFeatureOn('community', features);
   const news = useAnnouncements();
   // AI check-ups: each tile has its own switch (symptoms, labs, imaging, skin); deep analysis is a Medi mode.
@@ -445,8 +449,12 @@ export default function Home() {
         <HubFeatureCard
           icon={ClipboardCheck}
           ink={layout === 'women' ? 'rose' : 'teal'}
-          title={ka.home.completeProfileTitle(completion.percent)}
-          body={ka.home.completeProfileBody}
+          title={newQuestions ? tx(`კითხვარი განვაახლეთ · ${newQuestions} ახალი კითხვა`, `Questionnaire updated · ${newQuestions} new question${newQuestions === 1 ? '' : 's'}`) : ka.home.completeProfileTitle(completion.percent)}
+          body={
+            newQuestions
+              ? tx('ცხოვრების წესის კითხვები უფრო ზუსტი გახდა. შენი სხვა პასუხები შენახულია.', 'The way-of-life questions are clearer now. Your other answers are saved.')
+              : ka.home.completeProfileBody
+          }
           cta={ka.home.completeProfileCta}
           onPress={() => open('/profile/complete')}
         />
@@ -570,7 +578,8 @@ export default function Home() {
         // iOS cannot present a modal while another one is still fading out.
         onCustomize={layoutsOn ? () => setTimeout(() => setPicker('home_header'), 350) : undefined}
       />
-      <HomeRatingPrompt blocked={picker !== null || modulesOpen} />
+      <HomeNamePrompt blocked={picker !== null || modulesOpen} onOpenChange={setNamePromptOpen} />
+      <HomeRatingPrompt blocked={picker !== null || modulesOpen || namePromptOpen} />
     </HomeAccentContext.Provider>
   );
 }

@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import { profileCompletion } from './profileCompletion.ts';
+import { newQuestionsAfterUpdate, profileCompletion } from './profileCompletion.ts';
 
 describe('profileCompletion', () => {
   it('registration leaves the profile questions for later', () => {
@@ -18,9 +18,11 @@ describe('profileCompletion', () => {
     assert.ok(!c.missing.includes('medications-gate'));
   });
 
-  it('the placeholder name counts as missing', () => {
+  it('the placeholder name counts as missing, until it was asked once on Home', () => {
     const c = profileCompletion({ extraAnswers: {} }, { fullName: 'Medicard მომხმარებელი' });
     assert.ok(c.missing.includes('name'));
+    const asked = profileCompletion({ extraAnswers: { namePromptAt: '2026-10-11T19:00:00Z' } }, { fullName: 'Medicard მომხმარებელი' });
+    assert.ok(!asked.missing.includes('name'));
   });
 
   it('a complete profile is 100%', () => {
@@ -31,6 +33,17 @@ describe('profileCompletion', () => {
     );
     assert.equal(c.percent, 100);
     assert.deepEqual(c.missing, []);
+  });
+
+  it('an old questionnaire missing only the new way-of-life questions reads as an update, not a loss', () => {
+    const profile = { heightCm: 180, weightKg: 80, bloodType: 'A+', smokingStatus: 'NEVER', allergies: ['penicillin'],
+      extraAnswers: { hasConditions: false, takesMedications: false, fitnessLevel: 3, sleepLevel: 4, checkupFrequency: 'YEARLY' } };
+    const user = { gender: 'MALE', birthDate: '1985-05-05', fullName: 'გიორგი ბერიძე' };
+    assert.equal(newQuestionsAfterUpdate(profile, profileCompletion(profile, user)), 5);
+    // A new account (no old answers) gets the usual card; so does someone still missing a medical question.
+    assert.equal(newQuestionsAfterUpdate({ extraAnswers: {} }, profileCompletion({ extraAnswers: {} }, user)), 0);
+    const noBlood = { ...profile, bloodType: null };
+    assert.equal(newQuestionsAfterUpdate(noBlood, profileCompletion(noBlood, user)), 0);
   });
 
   it('tolerates a missing profile', () => {

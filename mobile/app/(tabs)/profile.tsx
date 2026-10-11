@@ -44,7 +44,7 @@ import { ApiError } from '@/lib/api';
 import { formatDate } from '@/lib/format';
 import { displayEmail } from '@/lib/accountEmail';
 import { nameInitials, realFullName } from '@/lib/displayName';
-import { profileCompletion } from '@/lib/profileCompletion';
+import { newQuestionsAfterUpdate, profileCompletion } from '@/lib/profileCompletion';
 import { openAppSystemSettings } from '@/lib/appPermissions';
 import {
   isNotificationsEnabled,
@@ -158,6 +158,7 @@ export default function Profile() {
   // Synthetic logins (phone / Apple without an address) are not mailboxes — never shown as the email.
   const email = displayEmail(user?.email);
   const completion = profileCompletion(healthProfile, user);
+  const newQuestions = newQuestionsAfterUpdate(healthProfile, completion);
   const passportOn = isFeatureOn('healthPassport', features);
 
   return (
@@ -298,8 +299,8 @@ export default function Profile() {
               <ProfileMenuRow
                 icon={ClipboardCheck}
                 ink="amber"
-                label={ka.home.completeProfileTitle(completion.percent)}
-                value={tx('დარჩენილი კითხვები', 'Remaining questions')}
+                label={newQuestions ? tx(`კითხვარი განვაახლეთ · ${newQuestions} ახალი კითხვა`, `Questionnaire updated · ${newQuestions} new question${newQuestions === 1 ? '' : 's'}`) : ka.home.completeProfileTitle(completion.percent)}
+                value={newQuestions ? undefined : tx('დარჩენილი კითხვები', 'Remaining questions')}
                 onPress={() => router.push('/profile/complete' as never)}
                 isLast={!passportOn}
               />
