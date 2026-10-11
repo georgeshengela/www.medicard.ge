@@ -14,7 +14,7 @@ test('the new way-of-life answers reach Medi as words, never raw enums', () => {
     dietType: 'OMNIVORE',
     extraAnswers: {
       activeDays: '3-4', exerciseFreq: '2-3', sleepBand: '7', sleepFeel: 'fairly-good', smokingProducts: ['cigarettes', 'heated'],
-      alcoholFreq: '2-4-month', alcoholBinge: 'monthly', dietPatterns: ['none', 'fasting'], produce: '1-2', eatingHabits: ['salty', 'late-eating'],
+      alcoholFreq: '2-4-month', dietPatterns: ['none', 'fasting'], produce: '1-2', eatingHabits: ['salty', 'late-eating'],
     },
   };
   const text = lifestyleLines(hp).join('\n');
@@ -22,7 +22,7 @@ test('the new way-of-life answers reach Medi as words, never raw enums', () => {
   assert.match(text, /კვირაში 2–3-ჯერ/);
   assert.match(text, /~7 სთ/);
   assert.match(text, /ზოგჯერ ეწევა.*სიგარეტი, გაცხელებული თამბაქო/);
-  assert.match(text, /თვეში 2–4-ჯერ; 6\+ სასმისი ერთ ჯერზე: თვეში ერთხელ/);
+  assert.match(text, /ალკოჰოლი: თვეში 2–4-ჯერ$/m);
   assert.match(text, /ყველაფერს ჭამს, იცავს საეკლესიო მარხვას/);
   assert.match(text, /1–2 პორცია დღეში; ხშირად ჭამს მარილიან საკვებს; ხშირად ჭამს გვიან ღამით/);
   assert.doesNotMatch(text, /MODERATE|WEEKLY|OCCASIONAL|OMNIVORE|GOOD/);

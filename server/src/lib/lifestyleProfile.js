@@ -1,8 +1,7 @@
 /**
  * Way-of-life answers from „დაასრულე პროფილი“ (app 2026-10-11) as plain Georgian lines for Medi's
  * account-holder block. The exact answers live in HealthProfile.extraAnswers (activeDays, exerciseFreq,
- * sleepBand, sleepFeel, smokingProducts, alcoholFreq, alcoholBinge, dietPatterns, produce,
- * eatingHabits); the coarse columns (activityLevel, smokingStatus, alcoholUse, dietType…) are the
+ * sleepBand, sleepFeel, smokingProducts, alcoholFreq, dietPatterns, produce, eatingHabits); the coarse columns (activityLevel, smokingStatus, alcoholUse, dietType…) are the
  * fallback for older answers and Medi's own writes. Never a raw enum in the prompt.
  */
 
@@ -17,7 +16,7 @@ const SMOKING = {
   FORMER: 'ადრე ეწეოდა, შეწყვიტა',
   NEVER: 'არ ეწევა',
 };
-const SMOKING_PRODUCTS = { cigarettes: 'სიგარეტი', heated: 'გაცხელებული თამბაქო (IQOS / glo)', ecig: 'ელექტრონული სიგარეტი', hookah: 'კალიანი' };
+const SMOKING_PRODUCTS = { cigarettes: 'სიგარეტი', heated: 'გაცხელებული თამბაქო (IQOS / glo)', ecig: 'ელექტრონული სიგარეტი', hookah: 'ჩილიმი' };
 const ALCOHOL_FREQ = {
   never: 'არ სვამს',
   monthly: 'თვეში ერთხელ ან უფრო იშვიათად',
@@ -26,13 +25,6 @@ const ALCOHOL_FREQ = {
   '4-week': 'კვირაში 4-ჯერ ან უფრო ხშირად',
 };
 const ALCOHOL_USE = { NEVER: 'არ სვამს', OCCASIONAL: 'იშვიათად', REGULAR: 'რეგულარულად' };
-const ALCOHOL_BINGE = {
-  never: 'არასოდეს',
-  'less-monthly': 'თვეში ერთხელზე იშვიათად',
-  monthly: 'თვეში ერთხელ',
-  weekly: 'კვირაში ერთხელ',
-  daily: 'თითქმის ყოველდღე',
-};
 const DIET_PATTERNS = {
   none: 'ყველაფერს ჭამს',
   fasting: 'იცავს საეკლესიო მარხვას',
@@ -88,10 +80,7 @@ export function lifestyleLines(hp) {
   }
 
   const alcohol = ALCOHOL_FREQ[extra.alcoholFreq] ?? ALCOHOL_USE[hp.alcoholUse];
-  if (alcohol) {
-    const binge = extra.alcoholFreq !== 'never' ? ALCOHOL_BINGE[extra.alcoholBinge] : null;
-    lines.push(`- ალკოჰოლი: ${alcohol}${binge ? `; 6+ სასმისი ერთ ჯერზე: ${binge}` : ''}`);
-  }
+  if (alcohol) lines.push(`- ალკოჰოლი: ${alcohol}`);
 
   const diet = list(DIET_PATTERNS, extra.dietPatterns);
   if (diet.length) lines.push(`- კვების რეჟიმი: ${diet.join(', ')}`);
