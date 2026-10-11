@@ -149,6 +149,10 @@ export const PRIVACY_POLICY_EN: { title: string; effectiveDate: string; intro: s
     {
       "title": "Meal plan and diet",
       "intro": "The meal plan stores the age, height, weight and activity details you confirm, your food choices, allergens and your answers to the eligibility questions, so it can set a starting target or suggest talking to a specialist. The history of daily targets and planned meals is stored; a meal is marked as eaten only through your action. This data is not published. When you talk about nutrition with Medi, and only with valid consent to AI sharing, the relevant AI recipients receive your daily totals, progress over the last 7 days, weight goal, diet and food choices; protected cycle details are not shared. Creating a plan does not use AI by itself. You can change or pause the plan on the nutrition page; when you delete your account, this personal data is deleted too."
+    },
+    {
+      "title": "16. Measuring app installs (Meta SDK)",
+      "intro": "The iPhone app includes the Facebook SDK of Meta Platforms, Inc. only so we can count how many people installed and opened the app after seeing our ads on Facebook and Instagram. The SDK starts only after you accept this policy and sends Meta only its automatic events — app install and app open — with technical data (app version, device model and iOS version, language, time zone, IP address). The advertising identifier (IDFA) is not collected and the app does not ask for tracking permission (App Tracking Transparency); installs are attributed through Apple's SKAdNetwork and Meta's Aggregated Event Measurement. Health data, cycle records, account data, your name, email and phone number are never sent to Meta, and the app logs no events of its own for Meta. Meta processes this data under its own policy (facebook.com/privacy/policy), possibly outside Georgia."
     }
   ]
 };

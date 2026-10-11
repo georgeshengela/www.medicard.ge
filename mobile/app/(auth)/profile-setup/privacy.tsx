@@ -13,6 +13,7 @@ import { ka } from '@/i18n/ka';
 import { isEn, tx } from '@/i18n/locale';
 import { authErrorMessage } from '@/lib/authErrorMessage';
 import { patchProfileExtra } from '@/lib/profileSetupFlow';
+import { startAdMeasurement } from '@/lib/adMeasurement';
 import { useOnboardingDevPreview, onboardingScreenBlocked, onboardingStepHref } from '@/lib/onboardingDevPreview';
 import { useAuth } from '@/store/AuthContext';
 import { ONBOARDING_COUNTED_QUESTIONS, ONBOARDING_TAIL_STEPS } from '@/constants/assessmentSteps';
@@ -142,6 +143,7 @@ export default function ProfileSetupPrivacyScreen() {
         privacyAcceptedAt: new Date().toISOString(),
       });
       setHealthProfile(updated);
+      if (!preview) startAdMeasurement(updated.extraAnswers);
       router.replace(onboardingStepHref('/(auth)/profile-setup/ai-privacy', preview) as never);
     } catch (e) {
       // The acceptance is a legal record: it moves on only once the server stored it.
