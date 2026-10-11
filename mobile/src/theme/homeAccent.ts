@@ -1,6 +1,7 @@
 import { createContext, useContext } from 'react';
 import { useIsDark, useThemeColors } from '@/theme/colors';
 import type { HomeLayoutId } from '@/lib/home/homeLayout';
+import { useBrandTone } from '@/theme/brandTone';
 
 /**
  * One page-wide accent per Home layout (owner-approved 2026-10-02: „ქალის“ is rose,
@@ -75,4 +76,18 @@ export function useHomeAccent(): HomeAccent {
   const colors = useThemeColors();
   const dark = useIsDark();
   return fromHome ?? standardAccent(colors, dark);
+}
+
+/**
+ * For pages outside Home that should wear the app's tone (owner 2026-10-12, the symptom search): Home's
+ * accent when inside Home, otherwise the brand tone's — rose with the women's Home, today's teal else.
+ * `useHomeAccent` stays teal outside Home on purpose (module pages it already styles stay pixel-identical).
+ */
+export function useToneAccent(): HomeAccent {
+  const fromHome = useContext(HomeAccentContext);
+  const colors = useThemeColors();
+  const dark = useIsDark();
+  const tone = useBrandTone();
+  if (fromHome) return fromHome;
+  return tone === 'rose' ? homeAccentFor('women', dark, colors) : standardAccent(colors, dark);
 }
