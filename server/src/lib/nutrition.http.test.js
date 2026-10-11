@@ -47,8 +47,11 @@ test("HTTP authentication, consent, validation and upload gates (no outbound AI 
   let accepted = false,
     queried = 0, consentReads = 0, revokeAfterPreflight = false;
   prisma.$queryRaw = async (strings) => {
-    queried++;
     const sql = strings.join("");
+    // requireAuth's password-reset check (sessionRevocation, since 16e4a475): this account never reset.
+    // It is the auth layer's read, so it does not count against the route's own queries below.
+    if (sql.includes('"passwordChangedAt"')) return [{ passwordChangedAt: null }];
+    queried++;
     if (sql.includes("UserAiConsent")) {
       consentReads++;
       if (revokeAfterPreflight && consentReads > 1) accepted = false;

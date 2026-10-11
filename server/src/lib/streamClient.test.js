@@ -330,7 +330,8 @@ test('a save that fails while she waits stores and charges nothing, and the phon
 });
 
 test('/api/ai/query takes back the row of any answer it did not save, streamed or not', () => {
-  const src = readFileSync(new URL('../routes/ai.routes.js', import.meta.url), 'utf8');
+  // A Windows checkout is CRLF (core.autocrlf); the slices and guards below are written against LF source.
+  const src = readFileSync(new URL('../routes/ai.routes.js', import.meta.url), 'utf8').replace(/\r\n/g, '\n');
   const start = src.indexOf('if (stream) {');
   const end = src.indexOf('\n      return;\n    }\n', start);
   const branch = src.slice(start, end);

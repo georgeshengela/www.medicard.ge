@@ -1,0 +1,185 @@
+{
+  "phase": 40,
+  "title": "POSTPARTUM journal + empty-state copy isolation",
+  "appVersion": "63.0.0",
+  "auditedAt": "2026-09-11",
+  "note": "Disposition is for POSTPARTUM-reachable Cycle presentation. TRACK/TTC keep menstrual terminology. Doctor-summary JSON/PDF headings are Phase 39 frozen.",
+  "strings": [
+    {
+      "string": "ჯერ არ არის აღრიცხული მენსტრუაცია.",
+      "key": "ka.cycle.periodHistoryEmpty",
+      "component": "CyclePeriodHistory",
+      "modeVisibility": "TRACK_PERIOD, TRY_TO_CONCEIVE, PREGNANCY, PERIMENOPAUSE (when period-history is mounted). Hidden in POSTPARTUM.",
+      "why": "Assumes missing bleed is menstruation. Verified P2 on /cycle/summary.",
+      "action": "Hide via cycleHistoryPresentation.showPeriodHistory. String kept for TRACK/TTC."
+    },
+    {
+      "string": "დაიწყეთ მენსტრუაცია დღეს ან დაამატეთ წარსული დღე.",
+      "key": "ka.cycle.periodHistoryEmptyHint",
+      "component": "CyclePeriodHistory",
+      "modeVisibility": "Same as periodHistoryEmpty",
+      "why": "CTA to log menstruation.",
+      "action": "Hidden with the empty card in POSTPARTUM."
+    },
+    {
+      "string": "გამოტოვებული მენსტრუაცია",
+      "key": "ka.cycle.addMissedPeriod",
+      "component": "CyclePeriodHistory",
+      "modeVisibility": "Classic cycle modes only",
+      "why": "Menstrual fill CTA.",
+      "action": "Not mounted in POSTPARTUM."
+    },
+    {
+      "string": "მენსტრუაციის ისტორია",
+      "key": "ka.cycle.periodHistory",
+      "component": "CycleJournalPane section heading",
+      "modeVisibility": "Hidden in POSTPARTUM. Remains for TRACK/TTC/Pregnancy/Peri journal when period-history is shown.",
+      "why": "Heading claims menstrual history.",
+      "action": "Gated by showPeriodHistory."
+    },
+    {
+      "string": "აღრიცხეთ მენსტრუაცია და სიმპტომები — აქ გამოჩნდება თქვენი ციკლების ისტორია…",
+      "key": "ka.cycle.journalEmptyBody",
+      "component": "CycleJournalPane empty card",
+      "modeVisibility": "TRACK/TTC/Pregnancy/Peri empty journal. Not POSTPARTUM.",
+      "why": "Tells the user to log menstruation.",
+      "action": "showClassicJournalEmpty is false in POSTPARTUM. TRACK copy unchanged."
+    },
+    {
+      "string": "ჟურნალი ჯერ ცარიელია",
+      "key": "ka.cycle.journalEmptyTitle",
+      "component": "CycleJournalPane empty card",
+      "modeVisibility": "Classic empty path only",
+      "why": "Neutral title, but sat on the menstrual empty card.",
+      "action": "Hidden with the menstrual empty card in POSTPARTUM."
+    },
+    {
+      "string": "ამ თვალთვალის ინტერვალში ჩანაწერი ჯერ არ არის.",
+      "key": "ka.cycle.postpartumJournalEmpty",
+      "component": "CyclePostpartumJournalSection",
+      "modeVisibility": "POSTPARTUM after query ready",
+      "why": "Episode-window empty. No menstruation assumption.",
+      "action": "Keep. Empty copy waits for postpartumEmptyCopyAllowed."
+    },
+    {
+      "string": "ჩანაწერის დამატება",
+      "key": "ka.cycle.postpartumAddLog",
+      "component": "CyclePostpartumJournalSection empty CTA",
+      "modeVisibility": "POSTPARTUM empty, query ready",
+      "why": "Neutral Quick Log entry.",
+      "action": "Added. Not მენსტრუაციის დამატება."
+    },
+    {
+      "string": "სისხლდენა",
+      "key": "ka.cycle.postpartumBleeding",
+      "component": "Calendar legend, Day Details group, Quick Log, Journal row",
+      "modeVisibility": "POSTPARTUM",
+      "why": "Frozen Phase 38 factual bleed label.",
+      "action": "Reuse via cycleLoggedBleedLabel. No lochia/hemorrhage."
+    },
+    {
+      "string": "მენსტრუაცია",
+      "key": "ka.cycle.legendPeriod",
+      "component": "CycleCalendarLegend / CycleCalendar / CycleDayStrip a11y",
+      "modeVisibility": "Classic cycle. POSTPARTUM uses postpartumBleeding.",
+      "why": "Valid TRACK/TTC legend.",
+      "action": "Presenter supplies logged bleed label. Calendar a11y uses the same string."
+    },
+    {
+      "string": "სავარაუდო მენსტრუაცია",
+      "key": "ka.cycle.legendPeriodPredicted",
+      "component": "Calendar legend / Day Details estimates",
+      "modeVisibility": "showFertileEstimates. POSTPARTUM capability is false.",
+      "why": "Predicted menstruation.",
+      "action": "Already hidden in POSTPARTUM. Verified."
+    },
+    {
+      "string": "აირჩიეთ გამონადენი ან დაიწყეთ მენსტრუაცია",
+      "key": "ka.cycle.quickLogHint",
+      "component": "CycleQuickLogSheet",
+      "modeVisibility": "TRACK/TTC. POSTPARTUM uses postpartumQuickLogHint.",
+      "why": "Menstruation start CTA.",
+      "action": "Sheet waits for hydrated mode. No TRACK hint flash."
+    },
+    {
+      "string": "აღრიცხე სისხლდენა, ტკივილი, ძილი ან განწყობა",
+      "key": "ka.cycle.postpartumQuickLogHint",
+      "component": "CycleQuickLogSheet",
+      "modeVisibility": "POSTPARTUM after mode known",
+      "why": "Neutral. Phase 38.",
+      "action": "Verify only."
+    },
+    {
+      "string": "დღეს ჯერ არაფერია აღრიცხული.",
+      "key": "ka.cycle.postpartumTodayEmpty",
+      "component": "CyclePostpartumCard",
+      "modeVisibility": "POSTPARTUM Overview",
+      "why": "Neutral today empty.",
+      "action": "None. Already gated by postpartumEmptyCopyAllowed."
+    },
+    {
+      "string": "ვსწავლობთ თქვენს რიტმს — აღრიცხეთ შემდეგი მენსტრუაცია",
+      "key": "ka.cycle.statusLearning",
+      "component": "CycleHomeHeader subtitle fallback",
+      "modeVisibility": "Classic overview without cycle day. POSTPARTUM header uses postpartumModeTitle / elapsed.",
+      "why": "Menstrual learning copy.",
+      "action": "Not used on postpartum Overview."
+    },
+    {
+      "string": "მონიშნეთ ბოლო მენსტრუაცია ან დაიწყეთ დღის აღრიცხვა",
+      "key": "ka.cycle.emptyHint",
+      "component": "CycleHero",
+      "modeVisibility": "Classic CycleHero. POSTPARTUM Overview uses CyclePostpartumCard.",
+      "why": "Onboarding menstruation.",
+      "action": "Not reachable in POSTPARTUM Overview."
+    },
+    {
+      "string": "ამ დღეს აღრიცხული მენსტრუაციაა.",
+      "key": "ka.cycle.insightLoggedPeriod",
+      "component": "cyclePhase insight (classic)",
+      "modeVisibility": "Classic insights. Insights panel hidden when showClassicCycleOverview is false.",
+      "why": "Logged period insight.",
+      "action": "Not shown in POSTPARTUM Overview."
+    },
+    {
+      "string": "ჯერ არც ერთი ჩანაწერი არ არის.",
+      "key": "ka.cycle.journalEmpty",
+      "component": "app/cycle/journal.tsx notes list",
+      "modeVisibility": "Standalone notes journal",
+      "why": "Neutral notes empty. Does not assume menstruation.",
+      "action": "None."
+    },
+    {
+      "string": "მენსტრუაციის ისტორია",
+      "key": "doctorSummary.ka.menstrualOn",
+      "component": "/cycle/summary doctor preview + PDF",
+      "modeVisibility": "Doctor document when menstrualHistory.episodes exist",
+      "why": "Clinician heading for engine-eligible historical episodes. Not the P2 empty card.",
+      "action": "Phase 39 frozen. No JSON/PDF change. Interactive CyclePeriodHistory hidden separately."
+    },
+    {
+      "string": "Menstrual history / Historique menstruel / Менструальный анамнез",
+      "key": "doctorSummary.en/fr/ru.menstrualOn",
+      "component": "Document-scoped clinician locales on /cycle/summary",
+      "modeVisibility": "Doctor preview language chips only",
+      "why": "Phase 15/39 clinician document, not in-app Journal empty states.",
+      "action": "Unchanged. App Cycle UI is Georgian-first; Journal empty strings are not in EN/FR/RU catalogs."
+    },
+    {
+      "string": "ტენდენციები გამოჩნდება, როცა რამდენიმე დღის ჩანაწერი დაგროვდება.",
+      "key": "ka.cycle.observationTrendsEmpty",
+      "component": "CycleObservationTrends",
+      "modeVisibility": "Journal trends, all modes",
+      "why": "Neutral. Period-association summaries excluded via excludePeriodAssociation in postpartum.",
+      "action": "None. Do not rename period-length charts; CycleTrendsCharts stay hidden."
+    },
+    {
+      "string": "სავარაუდო მენსტრუაცია დღეს / ხვალ / N დღეში",
+      "key": "ka.home.cycleNext*",
+      "component": "HomeCyclePreviewCard classic branch",
+      "modeVisibility": "TRACK/TTC Home card. POSTPARTUM Home uses homePostpartumLabel.",
+      "why": "Next-period Home copy.",
+      "action": "No Home change. Postpartum Home already isolated."
+    }
+  ]
+}

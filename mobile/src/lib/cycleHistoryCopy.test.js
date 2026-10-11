@@ -232,8 +232,9 @@ describe('Phase 40 postpartum copy isolation', () => {
   });
 
   it('copy-audit artifact lists postpartum-reachable strings', () => {
+    // Tracked with the tests: /qa/* is ignored since 324f121b, so the old qa/ copy is missing in a fresh checkout.
     const audit = JSON.parse(
-      readFileSync(join(mobileRoot, '..', 'qa', 'cycle-phase40-postpartum-copy', 'copy-audit.json'), 'utf8'),
+      readFileSync(join(mobileRoot, 'tests', 'fixtures', 'cycle-phase40-postpartum-copy-audit.json'), 'utf8'),
     );
     assert.equal(audit.phase, 40);
     assert.ok(Array.isArray(audit.strings));
