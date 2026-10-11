@@ -12,7 +12,7 @@
  * header `ModuleHeader` (components/brand/ModuleHeader.tsx) — the MEDIRUN hub header.
  * The site (`server/public/js/module-brand.js`) mirrors these values — keep them in sync.
  */
-export type ModuleBrandId = 'run' | 'cycle' | 'food' | 'pill' | 'quest' | 'vet' | 'coach' | 'scan' | 'lab' | 'profile' | 'medi';
+export type ModuleBrandId = 'run' | 'cycle' | 'food' | 'pill' | 'quest' | 'vet' | 'coach' | 'scan' | 'lab' | 'sleep' | 'profile' | 'medi';
 
 export type ModuleBrand = {
   id: ModuleBrandId;
@@ -79,6 +79,14 @@ export const MODULE_BRANDS: Record<ModuleBrandId, ModuleBrand> = {
     id: 'lab', suffix: 'LAB', name: 'MEDILAB',
     ink: { light: '#4F46E5', dark: '#A5B4FC' },
     gradient: ['#1E1B4B', '#4338CA', '#6366F1'], glow: 'rgba(165,180,252,0.38)', onHero: '#C7D2FE',
+  },
+  // MEDISLEEP (owner 2026-10-12): night plum → orchid, after the owner's two sleep-app references (#291965,
+  // #533EA8, #943EC3 and the aubergine dusk). Distinct from MEDIQUEST violet (more magenta, deeper) and MEDILAB
+  // indigo. The whole module is a night space (NightProvider + the `sleep` tone in colors.ts).
+  sleep: {
+    id: 'sleep', suffix: 'SLEEP', name: 'MEDISLEEP',
+    ink: { light: '#8A35C2', dark: '#D9A8FF' },
+    gradient: ['#1B1145', '#4B2A9E', '#9A4FD6'], glow: 'rgba(217,168,255,0.35)', onHero: '#F1DEFF',
   },
   // MEDIPROFILE (owner 2026-10-04): the Profile tab's title. It is the person's own page, not a module,
   // so it keeps the brand teal instead of a signature colour.

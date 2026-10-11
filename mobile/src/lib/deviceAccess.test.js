@@ -52,9 +52,9 @@ describe('device access bootstrap', () => {
   // "Continue" button that always opens the sheet. No Allow wording, no Not now/Later/Skip.
   it('permission primers only continue to the OS sheet', () => {
     const primer = readFileSync(join(here, 'permissionPrimer.ts'), 'utf8');
-    // notifications, health, location, temperature (cycle settings, train 1.0.0.20)
-    assert.equal((primer.match(/cta: 'Continue'/g) || []).length, 4);
-    assert.equal((primer.match(/cta: 'გაგრძელება'/g) || []).length, 4);
+    // notifications, health, location, temperature (cycle settings, train 1.0.0.20), alarm (MEDISLEEP, train 1.0.0.23)
+    assert.equal((primer.match(/cta: 'Continue'/g) || []).length, 5);
+    assert.equal((primer.match(/cta: 'გაგრძელება'/g) || []).length, 5);
     assert.doesNotMatch(primer, /cta: '(Allow|ნებართვის მიცემა)/);
     const screens = [
       '../components/cycle/settings/CycleTemperatureRow.tsx',
@@ -63,6 +63,8 @@ describe('device access bootstrap', () => {
       '../../app/(auth)/profile-setup/location.tsx',
       // MEDIPILL's notifications-off note (primer state: one „გაგრძელება“ that opens the sheet).
       '../components/medications/MedicationRemindersNote.tsx',
+      // MEDISLEEP: AlarmKit's one-button primer before the system sheet.
+      '../../app/sleep/night.tsx',
     ];
     for (const file of screens) {
       const text = readFileSync(join(here, file), 'utf8');

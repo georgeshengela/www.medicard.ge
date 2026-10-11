@@ -3,7 +3,7 @@
     "name": "MEDICARD AI",
     "slug": "medicard-ge",
     "scheme": "medicard",
-    "version": "1.0.0.22.1",
+    "version": "1.0.0.23.0",
     "assetBundlePatterns": [
       "assets/**"
     ],
@@ -28,9 +28,11 @@
         "NSCalendarsFullAccessUsageDescription": "კალენდარში შენ მიერ არჩეული ჩანაწერის დასამატებლად საჭიროა კალენდარზე წვდომა.",
         "UIBackgroundModes": [
           "remote-notification",
-          "location"
+          "location",
+          "audio"
         ],
-        "ITSAppUsesNonExemptEncryption": false
+        "ITSAppUsesNonExemptEncryption": false,
+        "NSAlarmKitUsageDescription": "MEDISLEEP-ს მაღვიძარა სჭირდება, რომ ძილის რეჟიმში შენ მიერ არჩეულ დროს გაგაღვიძოს — ჩუმ რეჟიმშიც და მაშინაც, როცა აპი დახურულია."
       }
     },
     "android": {
@@ -124,7 +126,10 @@
         {
           "color": "#14B8A6",
           "defaultChannel": "medication-reminders",
-          "enableBackgroundRemoteNotifications": true
+          "enableBackgroundRemoteNotifications": true,
+          "sounds": [
+            "./assets/sleep/medisleep_dawn.wav"
+          ]
         }
       ],
       [
@@ -184,7 +189,7 @@
           "microphonePermission": "მიკროფონი გამოიყენება შენი სურვილით ხმოვანი ასისტენტისთვის და ხმის ანალიზისთვის.",
           "recordAudioAndroid": true,
           "enableBackgroundRecording": false,
-          "enableBackgroundPlayback": false
+          "enableBackgroundPlayback": true
         }
       ],
       [
@@ -208,6 +213,26 @@
                 "supportedFamilies": [
                   "systemSmall",
                   "systemMedium"
+                ]
+              }
+            },
+            {
+              "name": "MedicardSleep",
+              "displayName": "MEDISLEEP",
+              "description": "დაწოლის დრო, ბოლო ღამე და ძილის რეჟიმი · Bedtime, last night and sleep mode",
+              "supportedFamilies": [
+                "systemSmall",
+                "accessoryCircular",
+                "accessoryRectangular",
+                "accessoryInline"
+              ],
+              "contentMarginsDisabled": false,
+              "ios": {
+                "supportedFamilies": [
+                  "systemSmall",
+                  "accessoryCircular",
+                  "accessoryRectangular",
+                  "accessoryInline"
                 ]
               }
             }

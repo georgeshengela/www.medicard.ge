@@ -34,6 +34,7 @@ describe('module switches in the app', () => {
   it('maps every gated route to its switch', () => {
     const cases: Array<[string[], FeatureKey | null]> = [
       [['cycle', 'pregnancy', 'timeline'], 'cycle'],
+      [['sleep', 'night'], 'sleep'],
       [['nutrition', 'diary'], 'nutrition'],
       [['pets', '[id]', 'chat'], 'mediVet'],
       [['pets', '[id]', 'care'], 'pets'],

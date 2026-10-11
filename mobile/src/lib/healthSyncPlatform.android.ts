@@ -8,7 +8,7 @@ import {
   ymdToLocalNoon,
 } from '@/lib/healthSync.shared';
 import { weekStart } from '@/lib/healthMetrics.shared';
-import { nightlySleepHours, sleepQueryStart } from '@/lib/sleepNights';
+import { nightlySleepHours, sleepQueryStart, type StagedSleepPiece } from '@/lib/sleepNights';
 import type { HealthMetricKey, HealthMetricPoint } from '@/types/healthMetrics';
 import type { StepSample } from '@/types/stepsMetrics';
 
@@ -258,6 +258,32 @@ export async function syncPeriodStartNative(ymd: string): Promise<void> {
     { recordType: 'MenstruationFlow', time, flow: HC.MenstruationFlow.MEDIUM },
   ]);
   await HC.insertRecords([{ recordType: 'MenstruationPeriod', time }]);
+}
+
+/** MEDISLEEP: every sleep session since `since` with its stages (read only; access was granted with Health Connect). */
+export async function fetchSleepPiecesNative(since: Date): Promise<StagedSleepPiece[]> {
+  try {
+    const ready = await ensureReady();
+    if (!ready.ok) return [];
+    const HC = await loadHealthConnect();
+    const result = await HC.readRecords('SleepSession', {
+      timeRangeFilter: { operator: 'after' as const, startTime: since.toISOString() },
+      ascendingOrder: true,
+      pageSize: 400,
+    });
+    // SleepStageType: 1 awake, 2 sleeping, 3 out of bed, 4 light, 5 deep, 6 REM, 7 awake in bed (0 unknown).
+    const STAGE: Record<number, StagedSleepPiece['stage']> = { 1: 'awake', 2: 'asleep', 3: 'awake', 4: 'core', 5: 'deep', 6: 'rem', 7: 'awake' };
+    return (result.records ?? []).flatMap((r) => {
+      if (!('startTime' in r) || !('endTime' in r)) return [];
+      const session: StagedSleepPiece = { start: new Date(r.startTime).getTime(), end: new Date(r.endTime).getTime(), stage: 'inBed' };
+      const stages = ('stages' in r && Array.isArray(r.stages) ? r.stages : [])
+        .map((stage) => ({ start: new Date(stage.startTime).getTime(), end: new Date(stage.endTime).getTime(), stage: STAGE[stage.stage] }))
+        .filter((p): p is StagedSleepPiece => Boolean(p.stage));
+      return [session, ...stages];
+    });
+  } catch {
+    return [];
+  }
 }
 
 /** SleepStageType: 2 sleeping, 4 light, 5 deep, 6 REM (1 awake, 3 out of bed, 0 unknown). */

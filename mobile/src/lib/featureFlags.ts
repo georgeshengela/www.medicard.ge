@@ -10,6 +10,7 @@ import {
   type FeatureState,
 } from '@/lib/featureRoutes';
 import { isEn, tx } from '../i18n/locale.js';
+import { sleepNativeReady } from '@/lib/sleep/sleepNative';
 
 export { featureForHref, featureForPath, type FeatureKey, type FeatureState } from '@/lib/featureRoutes';
 
@@ -24,12 +25,13 @@ export { featureForHref, featureForPath, type FeatureKey, type FeatureState } fr
  */
 const CACHE_KEY = 'medicard.featureFlags.v1';
 const listeners = new Set<() => void>();
-let state: FeatureState = EMPTY_FEATURE_STATE;
+let state: FeatureState = withNativeLimits(EMPTY_FEATURE_STATE);
 let hydrated = false;
 
 /** Title on the paused-module screen: „<label> დროებით შეჩერებულია“ / "<label> is paused for now". */
 export const FEATURE_LABELS: Record<FeatureKey, string> = {
   cycle: tx('ციკლი', 'Cycle'),
+  sleep: 'MEDISLEEP',
   nutrition: tx('კვება', 'Nutrition'),
   nutritionAi: tx('კვების AI', 'Nutrition AI'),
   medi: 'Medi',
@@ -63,6 +65,18 @@ export const FEATURE_LABELS: Record<FeatureKey, string> = {
   homeLayouts: tx('მთავარი გვერდის ვარიანტები', 'Home layouts'),
   ratingPrompt: tx('შეფასების თხოვნა', 'Rating request'),
 };
+
+/**
+ * Modules this binary cannot run count as off, with a note to update instead of „paused“: MEDISLEEP needs
+ * train 1.0.0.23 (background audio, its widget, AlarmKit) — see sleep/sleepNative.ts.
+ */
+function withNativeLimits(next: FeatureState): FeatureState {
+  if (sleepNativeReady()) return next;
+  return {
+    flags: { ...next.flags, sleep: false },
+    messages: { ...next.messages, sleep: tx('MEDISLEEP აპის ახალ ვერსიაშია. განაახლე აპი App Store-დან ან Google Play-დან.', 'MEDISLEEP is in the new version of the app. Update it from the App Store or Google Play.') },
+  };
+}
 
 const DEFAULT_MESSAGE = tx('ეს ფუნქცია დროებით შეჩერებულია. შენი მონაცემები შენახულია.', 'This feature is paused for now. Your data is safe.');
 const hasGeorgian = (text: string) => /[\u10A0-\u10FF]/.test(text);
@@ -98,7 +112,7 @@ export function isEngageFamilyOn(family: string, from: FeatureState = state): bo
 /** Apply the `/api/app/status` answer. */
 export function applyFeatureStatus(features: unknown, messages: unknown) {
   if (!features || typeof features !== 'object') return;
-  const next = sanitizeFeatureState({ flags: features, messages });
+  const next = withNativeLimits(sanitizeFeatureState({ flags: features, messages }));
   const same = JSON.stringify(next) === JSON.stringify(state);
   state = next;
   hydrated = true;
@@ -123,7 +137,7 @@ export async function hydrateFeatureFlags() {
   try {
     const raw = await getPreference(CACHE_KEY);
     if (!raw || hydrated) return;
-    state = sanitizeFeatureState(JSON.parse(raw));
+    state = withNativeLimits(sanitizeFeatureState(JSON.parse(raw)));
     emit();
   } catch {
     /* keep defaults: everything on */

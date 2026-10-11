@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AppState, Platform } from 'react-native';
 import { useFocusEffect } from 'expo-router';
-import { AudioModule, RecordingPresets, setAudioModeAsync, useAudioRecorder, useAudioRecorderState } from 'expo-audio';
+import { AudioModule, RecordingPresets, useAudioRecorder, useAudioRecorderState } from 'expo-audio';
+import { setAppAudioMode } from '@/lib/audioSession';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as Haptics from 'expo-haptics';
 import { assistantRequest, ensureAiSharingConsentForRequest } from '@/lib/api';
@@ -67,14 +68,14 @@ export function useAssistantVoice(options: {
       const permission = await AudioModule.requestRecordingPermissionsAsync();
       if (!permission.granted) throw new Error(tx('მიკროფონის ნებართვა არ არის ჩართული. შეგიძლია ტექსტით გააგრძელო.', "Microphone access isn't on. You can continue by text."));
       if (!current()) return;
-      await setAudioModeAsync({ allowsRecording: true, playsInSilentMode: true, shouldPlayInBackground: false });
+      await setAppAudioMode({ allowsRecording: true, playsInSilentMode: true, shouldPlayInBackground: false });
       if (!current()) return;
       await recorder.prepareToRecordAsync(); peakDb.current = null;
     },
     record: () => recorder.record(),
     stop: async () => {
       try { await recorder.stop(); } catch { /* Permission may have been dismissed before preparation. */ }
-      await setAudioModeAsync({ allowsRecording: false, playsInSilentMode: true, shouldPlayInBackground: false });
+      await setAppAudioMode({ allowsRecording: false, playsInSilentMode: true, shouldPlayInBackground: false });
       return recorder.uri;
     },
     discard: discardAssistantAudio,

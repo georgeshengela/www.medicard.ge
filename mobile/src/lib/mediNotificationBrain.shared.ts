@@ -119,6 +119,10 @@ export type EngageSnapshot = {
   lastChatAt: number | null;
   lastChatId: string | null;
   lastChatMode: 'DOCTOR' | 'CONSILIUM' | null;
+  /** MEDISLEEP is available on this phone (its evening nudge then opens the module, not Medi). */
+  sleepModuleOn?: boolean;
+  /** MEDISLEEP's own bedtime reminder is scheduled — Medi's 21:10 sleep nudge would only repeat it. */
+  sleepBedtimeReminders?: boolean;
   cycleRegular: boolean;
   cyclePrivacyEnabled?: boolean;
   /** This week's report (since Monday) was already opened. */
@@ -588,13 +592,13 @@ export function evaluateEngageBrain(snap: EngageSnapshot): { accepted: EngageCan
   }
 
   const sleepDay = hour >= 21 ? addDays(now, 1) : now;
-  if ([0, 2, 5].includes(weekdayMon(sleepDay)) || prefs.frequency === 'often') {
+  if (!snap.sleepBedtimeReminders && ([0, 2, 5].includes(weekdayMon(sleepDay)) || prefs.frequency === 'often')) {
     attempts.push({
       key: 'engage-sleep',
       family: 'sleep',
       fireAt: slotAt(sleepDay, 21, 10),
       vars: {},
-      route: engageDestination('sleep'),
+      route: engageDestination('sleep', { sleepModule: snap.sleepModuleOn }),
       reasons: ['evening wind-down window'],
     });
   }

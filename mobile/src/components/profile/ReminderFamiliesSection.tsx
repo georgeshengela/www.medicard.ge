@@ -1,7 +1,7 @@
 import React, { useCallback, useState } from 'react';
 import { Text, View } from 'react-native';
 import { useFocusEffect } from 'expo-router';
-import { Baby, CalendarHeart, Footprints, PawPrint, Pill, Scale, Stethoscope, UtensilsCrossed, type LucideIcon } from 'lucide-react-native';
+import { Baby, CalendarHeart, Footprints, MoonStar, PawPrint, Pill, Scale, Stethoscope, UtensilsCrossed, type LucideIcon } from 'lucide-react-native';
 import { PermissionGroup, PermissionSectionLabel, PermissionToggleRow } from '@/components/profile/PermissionToggleRow';
 import { tx } from '@/i18n/locale';
 import { isFeatureOn, useFeatureState } from '@/lib/featureFlags';
@@ -60,6 +60,13 @@ async function applyFamily(key: RowKey, on: boolean, userId: string | undefined)
       await notifications.syncNutritionReminders(preferences.reminders);
       return;
     }
+    case 'sleep': {
+      await setReminderFamily('sleep', on);
+      const { reconcileSleepReminders } = await import('@/lib/sleep/sleepReminders');
+      const { isFeatureOn } = await import('@/lib/featureFlags');
+      await reconcileSleepReminders(isFeatureOn('sleep'));
+      return;
+    }
     case 'pregnancy':
     case 'cycle': {
       if (key === 'pregnancy') await setReminderFamily('pregnancy', on);
@@ -113,6 +120,7 @@ export function ReminderFamiliesSection() {
     { key: 'cycle', icon: CalendarHeart, label: tx('ციკლი', 'Cycle'), hint: tx('მენსტრუაცია, ოვულაცია, PMS', 'Period, ovulation, PMS'), show: female && isFeatureOn('cycle', features) },
     { key: 'pregnancy', icon: Baby, label: tx('ორსულობის მოვლა', 'Pregnancy care'), hint: tx('ვიზიტები და კვლევები გეგმიდან', 'Visits and tests from your plan'), show: female && isFeatureOn('cycle', features) },
     { key: 'nutrition', icon: UtensilsCrossed, label: tx('კვება', 'Meals'), hint: tx('საუზმე, სადილი, ვახშამი', 'Breakfast, lunch, dinner'), show: isFeatureOn('nutrition', features) },
+    { key: 'sleep', icon: MoonStar, label: tx('ძილი', 'Sleep'), hint: tx('დამშვიდების დრო და დილის შეფასება', 'Wind-down time and the morning check-in'), show: isFeatureOn('sleep', features) },
     {
       key: 'steps',
       icon: Footprints,

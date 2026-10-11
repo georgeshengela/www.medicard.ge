@@ -11,7 +11,7 @@ import { Platform } from 'react-native';
 import { appLang, type AppLang } from '../i18n/locale.js';
 import { getPreference, setPreference } from '@/lib/storage';
 
-export type PrimerKind = 'notifications' | 'health' | 'location' | 'temperature';
+export type PrimerKind = 'notifications' | 'health' | 'location' | 'temperature' | 'alarm';
 
 type PrimerCopy = { title: string; body: string; cta: string };
 
@@ -37,6 +37,12 @@ const KA: Record<PrimerKind, PrimerCopy> = {
     body: 'MEDICARD-ს შეუძლია Apple Health-იდან წაიკითხოს საბაზისო ტემპერატურა (BBT) და ძილის დროს მაჯის ტემპერატურა ბოლო 40 დღიდან, რომ ციკლის გვერდზე ოვულაცია სავარაუდოდ, რეტროსპექტულად გაჩვენოს. ისინი მხოლოდ შენს ციკლის ჩანაწერებში ინახება და Medi-ს, პარტნიორს ან ანალიტიკას არ გადაეცემა. შემდეგ Apple Health გაჩვენებს ფანჯარას, სადაც თავად აირჩევ, რა გააზიარო, ან არაფერი.',
     cta: 'გაგრძელება',
   },
+  // MEDISLEEP (train 1.0.0.23): the wake-up as a real iOS alarm (AlarmKit).
+  alarm: {
+    title: 'მაღვიძარა',
+    body: 'MEDISLEEP-ს შეუძლია გაღვიძების დრო iPhone-ის ნამდვილ მაღვიძარად დააყენოს: ის დარეკავს ჩუმ რეჟიმშიც და მაშინაც, როცა აპი დახურულია, ჩაკეტილ ეკრანზე კი გამორთვის ღილაკი გამოჩნდება. შემდეგ ტელეფონი გკითხავს, ნებას რთავ თუ არა. არჩევანის შეცვლა ნებისმიერ დროს შეგიძლია პარამეტრებში.',
+    cta: 'გაგრძელება',
+  },
 };
 
 const EN: Record<PrimerKind, PrimerCopy> = {
@@ -58,6 +64,11 @@ const EN: Record<PrimerKind, PrimerCopy> = {
   temperature: {
     title: 'Temperature from Apple Health',
     body: 'MEDICARD can read your basal body temperature (BBT) and sleeping wrist temperature from the last 40 days in Apple Health to show a likely, in-hindsight ovulation estimate on the cycle page. They are kept only in your cycle log and never shared with Medi, a partner or analytics. Next, Apple Health will show a screen where you choose what to share, or nothing.',
+    cta: 'Continue',
+  },
+  alarm: {
+    title: 'Alarm',
+    body: 'MEDISLEEP can set your wake-up time as a real iPhone alarm: it rings even in silent mode and when the app is closed, with a stop button on the lock screen. Next, your iPhone will ask whether MEDICARD may set alarms. You can change this at any time in Settings.',
     cta: 'Continue',
   },
 };

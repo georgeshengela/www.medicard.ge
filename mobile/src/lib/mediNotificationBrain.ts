@@ -29,7 +29,8 @@ import {
 } from '@/lib/mediEngagePrefs';
 import type { EngageDecision, EngageDecisionIndex, EngageFamily, EngageSnapshot, UnfinishedDraft } from './mediNotificationBrain.shared';
 import { ENGAGE_FAMILIES, evaluateEngageBrain, stabilizeEngageDecisions } from './mediNotificationBrain.shared';
-import { hydrateFeatureFlags, isEngageFamilyOn } from '@/lib/featureFlags';
+import { hydrateFeatureFlags, isEngageFamilyOn, isFeatureOn } from '@/lib/featureFlags';
+import { sleepBedtimeRemindersScheduled } from '@/lib/sleep/sleepReminders';
 import { brainConfig, brainFamilyBlock, hydrateBrainConfig } from '@/lib/brainRemoteConfig';
 import { visitDateTimeMs } from '@/lib/visitReminders';
 import { cancelNotificationsByPrefix, ENGAGE_CHANNEL_ID, NOTIF_PREFIX, getNotificationPermissionGranted } from '@/lib/notifications';
@@ -281,6 +282,8 @@ export async function buildEngageSnapshot(user?: User | null, health?: HealthPro
     lastChatAt,
     lastChatId,
     lastChatMode,
+    sleepModuleOn: isFeatureOn('sleep'),
+    sleepBedtimeReminders: isFeatureOn('sleep') && (await sleepBedtimeRemindersScheduled()),
     cycleRegular: false,
     cyclePrivacyEnabled,
     seenWeekly: weeklySeenState(seen, now).thisWeek,

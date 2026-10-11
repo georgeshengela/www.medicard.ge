@@ -75,12 +75,16 @@ import { applyBrainConfig } from '@/lib/brainRemoteConfig';
 import { noteFeatureStatusFetched, startFeatureFlagSync } from '@/lib/featureFlagSync';
 import { holdOtaReloadWhile, setOtaPromptPolicy, startOtaUpdates } from '@/lib/otaUpdates';
 import { startRunLiveActivity } from '@/lib/run/liveActivity';
+import { isSleepAudioBusy } from '@/lib/sleep/sleepAudio';
+import { restoreSleepSession, sleepSession } from '@/lib/sleep/sleepSession';
 import { getRunState, isActiveRunPhase } from '@/lib/run/store';
 
 // Self-hosted error monitoring: fatals, render errors and unhandled rejections → our server.
 installErrorReporting();
 // Never swap the JS bundle under a live MEDIRUN session (a reload would drop the session from memory).
 holdOtaReloadWhile(() => isActiveRunPhase(getRunState().phase));
+// MEDISLEEP: never reload under sleep sounds or a running sleep mode (the night would lose its sounds).
+holdOtaReloadWhile(() => isSleepAudioBusy() || sleepSession() !== null);
 
 // Native screens = GPU stack transitions. Do not set this to false — that is
 // what made page changes feel like a late pop. Tab chrome stays above via AppChromeOverlay.
@@ -281,8 +285,15 @@ function AppShell() {
     // „MEDICARD ციკლი“ Home-screen widget + the optional expected-day Live Activity (iOS, train 1.0.0.20).
     if (Platform.OS === 'ios') {
       void import('@/lib/cycleWidget').then(({ startCycleWidget }) => startCycleWidget()).catch(() => undefined);
+      // MEDISLEEP lock-screen / Home widget (train 1.0.0.23).
+      void import('@/lib/sleep/sleepWidget').then(({ startSleepWidget }) => startSleepWidget()).catch(() => undefined);
     }
   }, []);
+
+  // MEDISLEEP: a sleep mode that was running when the app was killed comes back (alarm, Live Activity).
+  useEffect(() => {
+    if (user?.id) void restoreSleepSession().catch(() => undefined);
+  }, [user?.id]);
 
   useEffect(() => {
     if (!user) {
@@ -474,6 +485,7 @@ function AppShell() {
               <Stack.Screen name="symptoms" options={{ headerShown: false }} />
               <Stack.Screen name="pharmacy" options={{ headerShown: false }} />
               <Stack.Screen name="run" options={{ headerShown: false }} />
+              <Stack.Screen name="sleep" options={{ headerShown: false }} />
               <Stack.Screen name="record/[id]" options={{ headerShown: false }} />
               <Stack.Screen name="news/[id]" options={{ headerShown: false }} />
             </Stack>

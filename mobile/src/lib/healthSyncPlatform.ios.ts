@@ -7,7 +7,7 @@ import {
   ymdToLocalNoon,
 } from '@/lib/healthSync.shared';
 import { weekStart } from '@/lib/healthMetrics.shared';
-import { nightlySleepHours, sleepQueryStart } from '@/lib/sleepNights';
+import { nightlySleepHours, sleepQueryStart, type StagedSleepPiece } from '@/lib/sleepNights';
 import type { HealthMetricKey, HealthMetricPoint } from '@/types/healthMetrics';
 import type { StepSample } from '@/types/stepsMetrics';
 
@@ -351,6 +351,25 @@ function aggregateRawSamplesByDay(
       count,
       daily: true as const,
     }));
+}
+
+/** MEDISLEEP: every sleep sample since `since` with its stage (read only; access was granted with Health). */
+export async function fetchSleepPiecesNative(since: Date): Promise<StagedSleepPiece[]> {
+  try {
+    const HealthKit = await loadHealthKit();
+    const samples = await HealthKit.queryCategorySamples('HKCategoryTypeIdentifierSleepAnalysis', {
+      limit: -1,
+      ascending: true,
+      filter: { date: { startDate: since } },
+    });
+    // HKCategoryValueSleepAnalysis: 0 in bed, 1 asleep (unspecified), 2 awake, 3 core, 4 deep, 5 REM.
+    const STAGE: Record<number, StagedSleepPiece['stage']> = { 0: 'inBed', 1: 'asleep', 2: 'awake', 3: 'core', 4: 'deep', 5: 'rem' };
+    return samples
+      .map((sample) => ({ start: sample.startDate.getTime(), end: sample.endDate.getTime(), stage: STAGE[Number(sample.value)] }))
+      .filter((p): p is StagedSleepPiece => Boolean(p.stage));
+  } catch {
+    return [];
+  }
 }
 
 export async function fetchStepsNative(since: Date): Promise<StepSample[]> {

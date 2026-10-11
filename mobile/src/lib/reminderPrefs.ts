@@ -7,9 +7,9 @@ import { getScopedPreference, setScopedPreference } from '@/lib/localAccount';
  * Steps and weight keep their switch on the goal itself (it also holds days and time); cycle keeps its
  * own prefs (cycleReminderPrefs) because cycle settings expose more than on/off.
  */
-export type ReminderFamily = 'meds' | 'visits' | 'pets' | 'pregnancy' | 'nutrition';
+export type ReminderFamily = 'meds' | 'visits' | 'pets' | 'pregnancy' | 'nutrition' | 'sleep';
 
-export const REMINDER_FAMILIES: ReminderFamily[] = ['meds', 'visits', 'pets', 'pregnancy', 'nutrition'];
+export const REMINDER_FAMILIES: ReminderFamily[] = ['meds', 'visits', 'pets', 'pregnancy', 'nutrition', 'sleep'];
 
 const KEY = 'medicard.reminders.families.v1';
 

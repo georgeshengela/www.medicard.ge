@@ -26,6 +26,7 @@ import {
   Trophy,
   Users,
   type LucideIcon,
+  MoonStar,
 } from 'lucide-react-native';
 import { useThemeColors } from '@/theme/colors';
 import { isHrefAvailable, useFeatureState } from '@/lib/featureFlags';
@@ -72,6 +73,12 @@ export const HOME_FEATURE_GROUPS: { title: string; items: Feature[] }[] = [
         detail: tx('ჩანაწერები და ცვლილებები', 'Entries and changes'),
         href: '/health-metrics/weight',
         icon: Scale,
+      },
+      {
+        title: tx('ძილი · MEDISLEEP', 'Sleep · MEDISLEEP'),
+        detail: tx('ძილის რეჟიმი, ხმები, მაღვიძარა და ანალიტიკა', 'Sleep mode, sounds, an alarm and analytics'),
+        href: '/sleep',
+        icon: MoonStar,
       },
     ],
   },

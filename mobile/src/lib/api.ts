@@ -13,6 +13,7 @@ import { markReachable, markUnreachable } from './reachability';
 import { noteFeatureDisabled } from './featureFlags';
 import { createRequestBreaker, type BreakerTrip } from './requestBreaker';
 import { invalidateAfterWrite } from './queryInvalidation';
+import type { SleepCatalog, SleepHub, SleepInsights, SleepNight, SleepNightWrite, SleepPlan, SleepPlayWrite } from '@/lib/sleep/sleepTypes';
 /**
  * Resolves the API base URL.
  *
@@ -2411,6 +2412,20 @@ export type Announcement = {
 };
 
 export const api = {
+  /** MEDISLEEP (server/src/routes/sleep.routes.js). Files are public by random id: `${API_BASE_URL}${file.url}`. */
+  sleep: {
+    hub: () => request<SleepHub>('/api/sleep'),
+    insights: (days: 7 | 30 | 90 | 365) => request<SleepInsights>(`/api/sleep/insights?days=${days}`),
+    sounds: () => request<SleepCatalog>('/api/sleep/sounds'),
+    savePlan: (plan: SleepPlan) => request<{ plan: SleepPlan }>('/api/sleep/plan', { method: 'PUT', body: plan }),
+    saveNight: (night: string, body: SleepNightWrite) =>
+      request<{ night: SleepNight; changed: boolean }>(`/api/sleep/nights/${night}`, { method: 'PUT', body, timeoutMs: 20_000 }),
+    deleteNight: (night: string) => request<{ removed: boolean }>(`/api/sleep/nights/${night}`, { method: 'DELETE' }),
+    importNights: (nights: (SleepNightWrite & { night: string; kind: 'health' })[]) =>
+      request<{ changed: number; skipped: number }>('/api/sleep/nights/import', { method: 'POST', body: { nights }, timeoutMs: 30_000 }),
+    recordPlays: (plays: SleepPlayWrite[]) =>
+      request<{ saved: number }>('/api/sleep/plays', { method: 'POST', body: { plays }, timeoutMs: 15_000 }),
+  },
   nutrition: {
     settings: () => request<{photoEnabled:boolean}>('/api/nutrition/settings'),
     list: (date:string) => request<{meals:import('./nutrition').Meal[];truncated:boolean}>('/api/nutrition/meals?from='+encodeURIComponent(date)),

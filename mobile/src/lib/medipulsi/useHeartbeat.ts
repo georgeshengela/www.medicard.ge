@@ -1,6 +1,7 @@
 import {useCallback,useEffect,useRef,useState} from 'react';
 import {AppState,Platform,Vibration} from 'react-native';
-import {setAudioModeAsync,useAudioPlayer} from 'expo-audio';
+import {useAudioPlayer} from 'expo-audio';
+import {setAppAudioMode} from '@/lib/audioSession';
 import * as Haptics from 'expo-haptics';
 import type {GiftSignal,PulseSettings} from './types';
 
@@ -25,7 +26,7 @@ export function useHeartbeat(signal:GiftSignal,settings:PulseSettings,running:bo
   if(settings.haptic!==false){if(second.current)clearTimeout(second.current);second.current=hapticBeat(alive);}
   if(settings.sound!==false){try{
    // Configure the audio session once per heartbeat run; re-activating it on every beat can swallow the iOS haptic.
-   if(!audioReady.current){await setAudioModeAsync({playsInSilentMode:true,shouldPlayInBackground:false,interruptionMode:'mixWithOthers'});audioReady.current=true;}
+   if(!audioReady.current){await setAppAudioMode({playsInSilentMode:true,shouldPlayInBackground:false,interruptionMode:'mixWithOthers'});audioReady.current=true;}
    if(!alive.current||AppState.currentState!=='active')return;player.volume=settings.volume??.7;await player.seekTo(0);player.play();
   }catch{/* Haptic and visual signals remain available without an audio output. */}}
  },[foreground,settings.sound,settings.haptic,settings.volume,player]);

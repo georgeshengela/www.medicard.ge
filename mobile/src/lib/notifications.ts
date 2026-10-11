@@ -44,6 +44,11 @@ export const VISIT_CHANNEL_ID = 'doctor-visit-reminders';
 export const ENGAGE_CHANNEL_ID = 'medi-engage';
 export const PET_CARE_CHANNEL_ID = 'pet-care-reminders';
 export const NUTRITION_CHANNEL_ID = 'nutrition-reminders-v2';
+// MEDISLEEP: bedtime / morning check-in reminders, and the wake-up where AlarmKit is not available.
+export const SLEEP_CHANNEL_ID = 'sleep-reminders-v1';
+export const SLEEP_ALARM_CHANNEL_ID = 'sleep-alarm-v1';
+/** The wake-up notification is not a reminder family: the sleep switch never cancels a set alarm. */
+export const SLEEP_ALARM_PREFIX = 'sleepalarm:';
 export const QA_PREFIX = 'qa:';
 
 export const NOTIF_PREFIX = {
@@ -58,6 +63,7 @@ export const NOTIF_PREFIX = {
   pets: 'pets:',
   nutrition: 'nutrition:',
   fasting: 'fasting:',
+  sleep: 'sleep:',
 } as const;
 
 function flagOn(value: unknown) {
@@ -261,6 +267,21 @@ async function ensureAndroidChannels(): Promise<void> {
     vibrationPattern: [0, 220, 120, 220],
     lightColor: '#14B8A6',
     sound: 'default',
+  });
+  await Notifications.setNotificationChannelAsync(SLEEP_CHANNEL_ID, {
+    name: tx('ძილის შეხსენებები', 'Sleep reminders'),
+    importance: Notifications.AndroidImportance.HIGH,
+    vibrationPattern: [0, 160, 100, 160],
+    lightColor: '#9A4FD6',
+    sound: 'default',
+  });
+  await Notifications.setNotificationChannelAsync(SLEEP_ALARM_CHANNEL_ID, {
+    name: tx('MEDISLEEP მაღვიძარა', 'MEDISLEEP wake-up'),
+    importance: Notifications.AndroidImportance.MAX,
+    vibrationPattern: [0, 400, 300, 400, 300, 400],
+    lightColor: '#9A4FD6',
+    sound: 'medisleep_dawn.wav',
+    bypassDnd: true,
   });
 }
 
@@ -715,6 +736,7 @@ export type ScheduledReminderCounts = {
   qa: number;
   pets: number;
   nutrition: number;
+  sleep: number;
   other: number;
   total: number;
 };
@@ -818,6 +840,7 @@ export async function getScheduledReminderCounts(): Promise<ScheduledReminderCou
     qa: 0,
     pets: 0,
     nutrition: 0,
+    sleep: 0,
     other: 0,
     total: 0,
   };

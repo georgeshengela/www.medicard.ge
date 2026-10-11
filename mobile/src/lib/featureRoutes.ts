@@ -5,6 +5,7 @@
 /** Every switch the app acts on (server: `server/src/lib/featureFlags.js` FEATURES — a test keeps them in sync). */
 export const FEATURE_KEYS = [
   'cycle',
+  'sleep',
   'nutrition',
   'nutritionAi',
   'medi',
@@ -76,6 +77,8 @@ export function featureForPath(segments: readonly string[]): FeatureKey | null {
   switch (first) {
     case 'cycle':
       return 'cycle';
+    case 'sleep':
+      return 'sleep';
     case 'nutrition':
       return 'nutrition';
     case 'pets':

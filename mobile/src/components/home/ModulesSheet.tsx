@@ -24,6 +24,7 @@ import {
   Utensils,
   X,
   type LucideIcon,
+  MoonStar,
 } from 'lucide-react-native';
 import { APP_MODAL_OVERLAY, APP_MODAL_PROPS, Modal } from '@/components/ui/appModal';
 import { ModuleWordmark } from '@/components/brand/ModuleWordmark';
@@ -48,6 +49,7 @@ const MODULES: ModuleTile[] = [
   { id: 'scan', href: '/scan', line: tx('სკანირება', 'Scan'), icon: ScanLine },
   { id: 'food', href: '/nutrition', line: tx('კვება', 'Food'), icon: Utensils },
   { id: 'cycle', href: '/cycle', line: tx('ციკლი', 'Cycle'), icon: Droplet, female: true },
+  { id: 'sleep', href: '/sleep', line: tx('ძილი', 'Sleep'), icon: MoonStar },
   { id: 'run', href: '/run', line: tx('გაანათე ქალაქი', 'Light up the city'), icon: Footprints },
   { id: 'quest', href: '/medi-quest', line: tx('მისიები', 'Missions'), icon: Trophy },
   { id: 'vet', href: '/pets', line: tx('ცხოველები', 'Pets'), icon: PawPrint },

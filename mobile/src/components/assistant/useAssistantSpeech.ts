@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { AppState, Platform } from 'react-native';
 import { useFocusEffect } from 'expo-router';
-import { setAudioModeAsync, useAudioPlayer } from 'expo-audio';
+import { useAudioPlayer } from 'expo-audio';
+import { setAppAudioMode } from '@/lib/audioSession';
 import * as FileSystem from 'expo-file-system/legacy';
 import { assistantRequest } from '@/lib/api';
 import { localAccountId } from '@/lib/localAccount';
@@ -60,7 +61,7 @@ export function useAssistantSpeech(owner: string, available: boolean, onNotice: 
       }
       if (!active() || id !== epoch.current) { await discardAssistantAudio(next); return false; }
       uri.current = next;
-      await setAudioModeAsync({ allowsRecording: false, playsInSilentMode: true, shouldPlayInBackground: false, interruptionMode: 'doNotMix' });
+      await setAppAudioMode({ allowsRecording: false, playsInSilentMode: true, shouldPlayInBackground: false, interruptionMode: 'doNotMix' });
       if (!active() || id !== epoch.current) return false;
       return await new Promise<boolean>((resolve, reject) => {
         completion.current = resolve;

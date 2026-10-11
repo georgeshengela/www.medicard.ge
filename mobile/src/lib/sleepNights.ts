@@ -64,3 +64,66 @@ export function nightlySleepHours(pieces: SleepPiece[], fromDay: string): { date
     .map((date) => ({ date, value: Math.min(24, Math.round((asleep.get(date) ?? inBed.get(date) ?? 0) * 10) / 10) }))
     .filter((point) => point.value > 0);
 }
+
+/** One Health sample with its stage (MEDISLEEP keeps the stages; the daily total above does not need them). */
+export type StagedSleepPiece = { start: number; end: number; stage: 'inBed' | 'awake' | 'asleep' | 'core' | 'deep' | 'rem' };
+
+export type SleepNightDetail = {
+  night: string;
+  bedAt: string;
+  wakeAt: string;
+  asleepMinutes: number | null;
+  awakeMinutes: number | null;
+  deepMinutes: number | null;
+  remMinutes: number | null;
+  coreMinutes: number | null;
+};
+
+const MIN_MS = 60_000;
+const minutesOf = (spans: { start: number; end: number }[]) => Math.round(spans.reduce((a, s) => a + (s.end - s.start), 0) / MIN_MS);
+
+/**
+ * MEDISLEEP's view of a Health night: the main sleep of each wake-up day (18:00 → 18:00) with its bed and wake
+ * times and minutes per stage. Pieces more than two hours apart are separate sleeps; the one with the most
+ * sleep is the night, so an afternoon nap never stretches the night to 14:00. Overlapping pieces from two
+ * sources count once (per stage). Nights without any asleep sample keep only their in-bed times.
+ */
+export function sleepNightDetails(pieces: StagedSleepPiece[], fromDay: string): SleepNightDetail[] {
+  const valid = pieces.filter((p) => p.end > p.start && p.end - p.start < 20 * HOUR_MS).sort((a, b) => a.start - b.start);
+  const clusters: StagedSleepPiece[][] = [];
+  let reach = -Infinity;
+  for (const piece of valid) {
+    if (!clusters.length || piece.start > reach + 2 * HOUR_MS) {
+      clusters.push([piece]);
+      reach = piece.end;
+    } else {
+      clusters[clusters.length - 1].push(piece);
+      reach = Math.max(reach, piece.end);
+    }
+  }
+  const best = new Map<string, { detail: SleepNightDetail; weight: number }>();
+  for (const cluster of clusters) {
+    const start = Math.min(...cluster.map((p) => p.start));
+    const end = Math.max(...cluster.map((p) => p.end));
+    const night = ymd(end + DAY_SHIFT_MS);
+    if (night < fromDay) continue;
+    const of = (stages: StagedSleepPiece['stage'][]) => union(cluster.filter((p) => stages.includes(p.stage)).map((p) => ({ ...p, asleep: true })));
+    const asleep = of(['asleep', 'core', 'deep', 'rem']);
+    const asleepMinutes = asleep.length ? minutesOf(asleep) : null;
+    const staged = cluster.some((p) => p.stage === 'core' || p.stage === 'deep' || p.stage === 'rem');
+    const detail: SleepNightDetail = {
+      night,
+      bedAt: new Date(start).toISOString(),
+      wakeAt: new Date(end).toISOString(),
+      asleepMinutes,
+      awakeMinutes: staged ? minutesOf(of(['awake'])) : null,
+      deepMinutes: staged ? minutesOf(of(['deep'])) : null,
+      remMinutes: staged ? minutesOf(of(['rem'])) : null,
+      coreMinutes: staged ? minutesOf(of(['core'])) : null,
+    };
+    const weight = asleepMinutes ?? (end - start) / MIN_MS / 10;
+    const current = best.get(night);
+    if (!current || weight > current.weight) best.set(night, { detail, weight });
+  }
+  return [...best.values()].map((b) => b.detail).sort((a, b) => a.night.localeCompare(b.night));
+}

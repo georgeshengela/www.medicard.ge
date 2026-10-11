@@ -1,11 +1,13 @@
 const { withInfoPlist } = require('@expo/config-plugins');
 
 /**
- * MEDIRUN records in the background only through location updates of a session the person started.
+ * MEDIRUN records in the background only through location updates of a session the person started; MEDISLEEP
+ * plays the sounds she chose (with their timer) through the audio mode.
  * expo-task-manager's auto plugin also declares background fetch, which the app never uses — App Review asks
  * apps to declare only the background modes they use (Guideline 2.5.4), so the list is pinned here.
  */
-const MODES = ['remote-notification', 'location'];
+// audio (train 1.0.0.23): MEDISLEEP sounds keep playing with the screen locked, only while audible and started by the person.
+const MODES = ['remote-notification', 'location', 'audio'];
 
 function withMedirunBackground(config) {
   return withInfoPlist(config, (mod) => {

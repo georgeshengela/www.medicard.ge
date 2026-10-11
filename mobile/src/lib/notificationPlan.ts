@@ -129,6 +129,8 @@ export function engageDestination(
     chatMode?: string;
     chatId?: string;
     insight?: 'steps' | 'cycle' | 'meds';
+    /** MEDISLEEP is on: the evening sleep nudge opens it. */
+    sleepModule?: boolean;
   },
 ): string {
   switch (family) {
@@ -148,9 +150,11 @@ export function engageDestination(
       return extra?.visitId ? `/visits/editor?id=${encodeURIComponent(extra.visitId)}` : '/visits';
     case 'question':
       return '/(tabs)/profile?action=question';
+    case 'sleep':
+      if (extra?.sleepModule) return '/sleep';
+    // falls through: without MEDISLEEP the evening nudge opens Medi
     case 'chat':
     case 'checkin':
-    case 'sleep':
     case 'reengage':
     case 'morning': {
       const mode = extra?.chatMode === 'CONSILIUM' ? 'deep' : 'doctor';
@@ -178,7 +182,7 @@ export function engageDestination(
 export const NOTIFICATION_ROUTE_ROOTS = [
   '(tabs)', 'assistant', 'chat', 'community', 'cycle', 'explore', 'health-metrics', 'invite', 'lab',
   'medi-companion', 'medi-quest', 'medications', 'medipulsi', 'module', 'news', 'nutrition', 'package', 'pets',
-  'pharmacy', 'profile', 'record', 'run', 'scan', 'share', 'symptoms', 'visits', 'weather', 'week', 'trainer', 'coach', 'c', 'u',
+  'pharmacy', 'profile', 'record', 'run', 'scan', 'share', 'sleep', 'symptoms', 'visits', 'weather', 'week', 'trainer', 'coach', 'c', 'u',
 ] as const;
 
 export function isNotificationRoute(route: unknown): route is string {
@@ -262,7 +266,7 @@ export function canOpenNotificationRoute(state: {
   );
 }
 
-export function prefixForNotificationId(id: string): 'med' | 'cycle' | 'visit' | 'steps' | 'weight' | 'engage' | 'quota' | 'qa' | 'pets' | 'nutrition' | 'other' {
+export function prefixForNotificationId(id: string): 'med' | 'cycle' | 'visit' | 'steps' | 'weight' | 'engage' | 'quota' | 'qa' | 'pets' | 'nutrition' | 'sleep' | 'other' {
   if (id.startsWith('med:')) return 'med';
   if (id.startsWith('cycle:')) return 'cycle';
   if (id.startsWith('visit:')) return 'visit';
@@ -273,6 +277,7 @@ export function prefixForNotificationId(id: string): 'med' | 'cycle' | 'visit' |
   if (id.startsWith('qa:')) return 'qa';
   if (id.startsWith('pets:')) return 'pets';
   if (id.startsWith('nutrition:') || id.startsWith('fasting:')) return 'nutrition';
+  if (id.startsWith('sleep:') || id.startsWith('sleepalarm:')) return 'sleep';
   return 'other';
 }
 

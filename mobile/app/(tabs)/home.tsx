@@ -98,6 +98,8 @@ import { chooseHomeLayout } from '@/lib/home/homeLayoutStore';
 import { HomeAccentContext, homeAccentFor } from '@/theme/homeAccent';
 import { useIsDark } from '@/theme/colors';
 import { tx } from '@/i18n/locale';
+import { HomeSleep } from '@/components/home/sections/HomeSleep';
+import { useSleepHub } from '@/lib/sleep/useSleepData';
 
 
 
@@ -112,6 +114,9 @@ export default function Home() {
 
   const features = useFeatureState();
   const invitesOn = isFeatureOn('invites', features);
+  // MEDISLEEP: one subscriber for its card (Home rule), only while the module is on.
+  const sleepOn = isFeatureOn('sleep', features);
+  const sleepHub = useSleepHub(sleepOn).data;
   // An invite link opened before sign-up: offer the code once, while the account is new.
   // While invites are paused the code stays saved, so it is offered once they are back.
   const userId = user?.id;
@@ -198,6 +203,7 @@ export default function Home() {
   const hiddenSections = useMemo(() => {
     const hidden = new Set<HomeSectionId>();
     if (!isFeatureOn('cycle', features)) hidden.add('cycle');
+    if (!isFeatureOn('sleep', features)) hidden.add('sleep');
     if (!isFeatureOn('nutrition', features)) hidden.add('nutrition');
     if (!isFeatureOn('coach', features)) hidden.add('coach');
     if (!isFeatureOn('medi', features)) {
@@ -420,6 +426,7 @@ export default function Home() {
     attention: <HomeAttention />,
     week: <HomeWeekSteps todayTotal={stepsTotal} goal={stepsGoal} fetchedAt={stepsBundle?.fetchedAt ?? null} />,
     challenges: <HomeChallenges />,
+    sleep: <HomeSleep hub={sleepHub} />,
     cycle: (
       <View style={s.section}>
         {heading(tx('ქალის ჯანმრთელობა', "Women's health"), '/cycle', tx('ციკლის ნახვა', 'View cycle'))}

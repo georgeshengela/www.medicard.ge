@@ -27,6 +27,8 @@ export const WRITE_INVALIDATES: ReadonlyArray<readonly [prefix: string, keys: re
   ['/api/visits', ['visits', 'home']],
   ['/api/records', ['records']],
   ['/api/pets', ['pets']],
+  // MEDISLEEP: plan, nights (sleep mode, check-in, hand entry, Health import). Home shows last night.
+  ['/api/sleep', ['sleep', 'home']],
   // Posting, reacting or renaming in the women's space refreshes the Home preview.
   ['/api/community', ['community']],
   // Medi answers, lab/image analyses and saved assistant chats create records and chat sessions.
@@ -48,6 +50,8 @@ export const READ_ONLY_WRITES: readonly string[] = [
   '/api/quests/timezone',
   '/api/trainer/workouts/sync',
   '/api/ai/feedback',
+  // MEDISLEEP listening sessions are usage counts; nothing on screen changes.
+  '/api/sleep/plays',
 ];
 
 /**

@@ -75,6 +75,12 @@ export function reconcileAllLocalReminders(opts: { force?: boolean } = {}): Prom
       const goal = await loadWeightGoal();
       if (goal && localAccountId() === owner) await syncWeightGoalReminders(goal);
     });
+    await step(async () => {
+      // MEDISLEEP: wind-down + the next two morning check-ins from the plan this phone remembers.
+      const { isFeatureOn } = await import('@/lib/featureFlags');
+      const { reconcileSleepReminders } = await import('@/lib/sleep/sleepReminders');
+      if (localAccountId() === owner) await reconcileSleepReminders(isFeatureOn('sleep'));
+    });
   })().finally(() => {
     running = null;
   });
