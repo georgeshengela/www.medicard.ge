@@ -321,6 +321,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           void flushPendingPetCareConfirms();
           void reconcilePetCareReminders({ reason: 'foreground' });
         });
+        // Dose answers the server has not taken yet (a reminder's „მივიღე ✓“ on a locked or suspended phone).
+        void import('@/lib/productObservability').then(({ flushDoseEvents }) => flushDoseEvents());
       }
     });
   }, [user, healthProfile]);

@@ -55,6 +55,10 @@ export function runPostLoginSideEffects(user, healthProfile, { force = false } =
       flushCycleQueue(user.id).catch(() => undefined),
     ),
   );
+  // Dose answers the server has not taken yet (a reminder's „მივიღე ✓“ on a locked or suspended phone).
+  schedulePostLoginWork('dose-events', () =>
+    import('@/lib/productObservability').then(({ flushDoseEvents }) => flushDoseEvents()),
+  );
   schedulePostLoginWork('push', () =>
     import('@/lib/notifications').then(({ syncPushRegistration }) => syncPushRegistration()),
   );

@@ -8,9 +8,9 @@ const SOURCES = new Set(['app', 'notification']);
 let tableReady = false;
 
 /** Domain dose completion — no medication names. */
-export async function ensureMedicationDoseEventTable() {
+export async function ensureMedicationDoseEventTable(db = prisma) {
   if (tableReady) return;
-  await prisma.$executeRawUnsafe(`
+  await db.$executeRawUnsafe(`
     CREATE TABLE IF NOT EXISTS "MedicationDoseEvent" (
       "id" TEXT NOT NULL,
       "userId" TEXT NOT NULL,
@@ -23,11 +23,11 @@ export async function ensureMedicationDoseEventTable() {
       CONSTRAINT "MedicationDoseEvent_pkey" PRIMARY KEY ("id")
     )
   `);
-  await prisma.$executeRawUnsafe(`
+  await db.$executeRawUnsafe(`
     CREATE UNIQUE INDEX IF NOT EXISTS "MedicationDoseEvent_user_med_date_time_key"
     ON "MedicationDoseEvent"("userId", "medicationId", "date", "time")
   `);
-  await prisma.$executeRawUnsafe(`
+  await db.$executeRawUnsafe(`
     CREATE INDEX IF NOT EXISTS "MedicationDoseEvent_date_idx" ON "MedicationDoseEvent"("date")
   `);
   tableReady = true;
@@ -59,14 +59,20 @@ export function sanitizeDoseEventInput(row, userId) {
   };
 }
 
-export async function upsertMedicationDoseEvents(userId, rows) {
-  await ensureMedicationDoseEventTable();
+/**
+ * One row per dose: its latest answer, where it was given (`app` / `notification`) and when. The app keeps
+ * answers in a device outbox and sends them again after a lost request (a reminder's „მივიღე ✓“ from a
+ * locked or suspended phone), so one can arrive after a newer answer of the same dose: an older answer
+ * never overwrites a newer one — the same rule as the dose-log merge (newer `updatedAt` wins).
+ */
+export async function upsertMedicationDoseEvents(userId, rows, db = prisma) {
+  await ensureMedicationDoseEventTable(db);
   const sanitized = (rows || []).map((row) => sanitizeDoseEventInput(row, userId)).filter(Boolean);
   let upserted = 0;
   for (const row of sanitized.slice(0, 40)) {
     const id = crypto.randomUUID();
     try {
-      await prisma.$executeRaw`
+      await db.$executeRaw`
         INSERT INTO "MedicationDoseEvent" (
           "id", "userId", "medicationId", "date", "time", "status", "source", "occurredAt"
         ) VALUES (
@@ -76,6 +82,7 @@ export async function upsertMedicationDoseEvents(userId, rows) {
           "status" = EXCLUDED."status",
           "source" = EXCLUDED."source",
           "occurredAt" = EXCLUDED."occurredAt"
+        WHERE "MedicationDoseEvent"."occurredAt" <= EXCLUDED."occurredAt"
       `;
       upserted += 1;
     } catch (error) {

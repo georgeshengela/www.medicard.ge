@@ -1,7 +1,16 @@
 import { Platform } from 'react-native';
 import Constants from 'expo-constants';
-import { api } from '@/lib/api';
-import { getScopedPreference, setScopedPreference } from '@/lib/localAccount';
+import { api, ApiError } from '@/lib/api';
+import {
+  dueDoseEvents,
+  keepAfterFailure,
+  parseDoseEvents,
+  queueDoseEvent,
+  settleDoseEvents,
+  type DoseEvent,
+  type DoseEventSource,
+} from '@/lib/doseEventQueue';
+import { deleteScopedPreference, getScopedPreference, localAccountId, setScopedPreference } from '@/lib/localAccount';
 
 const PERM_SYNC_KEY = 'medicard.obs.permission.v1';
 
@@ -77,24 +86,110 @@ export async function syncInsightOutcome(
   }).catch(() => undefined);
 }
 
+/** This account's dose answers not yet taken by the server (doseEventQueue.ts). */
+const DOSE_EVENTS_KEY = 'medicard.meds.pendingDoseEvents';
+
+/** Outbox reads and writes run one at a time, so an answer queued while a flush settles is kept. */
+let doseOutbox: Promise<unknown> = Promise.resolve();
+function withDoseOutbox<T>(work: () => Promise<T>): Promise<T> {
+  const next = doseOutbox.then(work, work);
+  doseOutbox = next.then(
+    () => undefined,
+    () => undefined,
+  );
+  return next;
+}
+
+/**
+ * A dose answer for the server. It goes into this account's outbox before the request, so an answer from
+ * a reminder's „მივიღე ✓“ (a background wake iOS ends at once, often on a locked phone without a readable
+ * token) is sent on the next foreground or sign-in instead of being lost with its `notification` source.
+ */
 export async function syncDoseEvent(entry: {
   medicationId: string;
   date: string;
   time: string;
   status: 'taken' | 'skipped';
-  source?: 'app' | 'notification';
+  source?: DoseEventSource;
   occurredAt?: string;
 }): Promise<void> {
-  await api.push.syncDoseEvents({
-    events: [{
-      medicationId: entry.medicationId,
-      date: entry.date,
-      time: entry.time,
-      status: entry.status,
-      source: entry.source || 'app',
-      occurredAt: entry.occurredAt || new Date().toISOString(),
-    }],
+  const owner = localAccountId();
+  if (!owner) return;
+  const event: DoseEvent = {
+    medicationId: entry.medicationId,
+    date: entry.date,
+    time: entry.time,
+    status: entry.status,
+    source: entry.source || 'app',
+    occurredAt: entry.occurredAt || new Date().toISOString(),
+  };
+  await withDoseOutbox(async () => {
+    const queue = parseDoseEvents(await getScopedPreference(DOSE_EVENTS_KEY));
+    // The scoped key follows the account at call time: never put her answer into the next account's outbox.
+    if (localAccountId() !== owner) return;
+    await setScopedPreference(DOSE_EVENTS_KEY, JSON.stringify(queueDoseEvent(queue, event)));
   }).catch(() => undefined);
+  await flushDoseEvents();
+}
+
+type DoseFlushResult = 'idle' | 'sent' | 'kept';
+
+async function flushDoseEventsOnce(): Promise<DoseFlushResult> {
+  const owner = localAccountId();
+  if (!owner) return 'idle';
+  const due = dueDoseEvents(parseDoseEvents(await getScopedPreference(DOSE_EVENTS_KEY)), Date.now());
+  let settled: DoseEvent[] = due;
+  let result: DoseFlushResult = due.length ? 'sent' : 'idle';
+  if (due.length) {
+    // Her rows go with her session only (the request reads the current token).
+    if (localAccountId() !== owner) return 'idle';
+    try {
+      await api.push.syncDoseEvents({ events: due });
+    } catch (error) {
+      if (keepAfterFailure(error instanceof ApiError ? error.status : 0)) {
+        settled = [];
+        result = 'kept';
+      }
+    }
+  }
+  // Re-read: an answer queued while the request was out must stay.
+  await withDoseOutbox(async () => {
+    const raw = await getScopedPreference(DOSE_EVENTS_KEY);
+    if (raw === null || localAccountId() !== owner) return;
+    const next = settleDoseEvents(parseDoseEvents(raw), settled, Date.now());
+    const value = JSON.stringify(next);
+    if (value === raw) return;
+    if (next.length) await setScopedPreference(DOSE_EVENTS_KEY, value);
+    else await deleteScopedPreference(DOSE_EVENTS_KEY);
+  });
+  return result;
+}
+
+let doseFlush: Promise<void> | null = null;
+let doseFlushAgain = false;
+
+/**
+ * Sends this account's queued dose answers: after each new answer, on return to the foreground and after
+ * sign-in. One flush at a time; an answer queued during a flush is sent right after it (unless the
+ * server could not be reached — then the next foreground tries again, never a loop).
+ */
+export function flushDoseEvents(): Promise<void> {
+  if (doseFlush) {
+    doseFlushAgain = true;
+    return doseFlush;
+  }
+  doseFlush = (async () => {
+    let result: DoseFlushResult;
+    do {
+      doseFlushAgain = false;
+      result = await flushDoseEventsOnce();
+    } while (doseFlushAgain && result !== 'kept');
+  })()
+    .catch(() => undefined)
+    .finally(() => {
+      doseFlush = null;
+    });
+  return doseFlush;
 }
 
 export async function syncNotificationPermission(status: 'enabled' | 'disabled' | 'provisional' | 'unknown'): Promise<void> {
