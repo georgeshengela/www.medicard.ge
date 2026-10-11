@@ -1,15 +1,18 @@
-import { readFileSync } from 'node:fs';
-import { dirname, join } from 'node:path';
+import { readFileSync, readdirSync } from 'node:fs';
+import { dirname, join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 
-const src = readFileSync(join(dirname(fileURLToPath(import.meta.url)), 'deleteUser.js'), 'utf8');
+const here = dirname(fileURLToPath(import.meta.url));
+const src = readFileSync(join(here, 'deleteUser.js'), 'utf8');
 
 // IR-12: deleteUserAccount runs against this in-memory database (src/lib/prisma.js reuses
-// globalThis.__medicardPrisma; node --test runs each file in its own process). Only SmsLog keeps rows.
+// globalThis.__medicardPrisma; node --test runs each file in its own process). SmsLog keeps rows;
+// `rawTables` are the raw-SQL tables that exist (table name → rows), deleted through $executeRawUnsafe.
 const smsRows = [];
 const operations = [];
+const rawTables = new Map();
 function rowMatches(row, where) {
   if (where.OR) return where.OR.some((part) => rowMatches(row, part));
   if (where.AND) return where.AND.every((part) => rowMatches(row, part));
@@ -52,8 +55,18 @@ globalThis.__medicardPrisma = {
     },
     count: async ({ where }) => smsRows.filter((row) => rowMatches(row, where)).length,
   },
-  $queryRaw: async () => [],
+  // Only the table-existence query answers: of the names asked for, those in rawTables.
+  $queryRaw: async (strings, ...values) => (/unnest/.test(strings.join('?')) ? values[0].filter((name) => rawTables.has(name)).map((name) => ({ name })) : []),
   $executeRaw: async () => 0,
+  $executeRawUnsafe: async (sql, userId) => {
+    const [, table] = /^DELETE FROM "(\w+)" WHERE "userId" = \$1$/.exec(sql) || [];
+    assert.ok(rawTables.has(table), `unexpected raw statement: ${sql}`);
+    const rows = rawTables.get(table);
+    const kept = rows.filter((row) => row.userId !== userId);
+    rawTables.set(table, kept);
+    operations.push(`${table}.delete`);
+    return rows.length - kept.length;
+  },
   $transaction: async (work) => (typeof work === 'function' ? work(globalThis.__medicardPrisma) : Promise.all(work)),
 };
 
@@ -102,11 +115,76 @@ describe('account deletion reaches the sign-in SMS rows of the number (auth-05)'
     assert.deepEqual(where.phoneVerification, { OR: [{ userId: 'u1' }] });
   });
 
-  it('deleteUserAccount uses those rows and removes add-email codes (EmailVerification has no foreign key)', () => {
+  it('deleteUserAccount uses those rows and removes add-email codes (EmailVerification has no foreign key)', async () => {
+    const { UNLINKED_USER_TABLES } = await import('./deleteUser.js');
     assert.match(src, /prisma\.phoneVerification\.deleteMany\(\{ where: phoneRows\.phoneVerification \}\)/);
     assert.match(src, /prisma\.smsLog\.updateMany\(\{ where: \{ AND: \[phoneRows\.smsLog, \{ destination \}\] \}, data: smsLogAccountDeletePatch\(destination\) \}\)/);
-    assert.match(src, /to_regclass\('"EmailVerification"'\)/);
-    assert.match(src, /DELETE FROM "EmailVerification" WHERE "userId" = \$\{userId\}/);
+    assert.ok(UNLINKED_USER_TABLES.includes('EmailVerification'));
+  });
+});
+
+/** Every `CREATE TABLE "X" (…)` in raw SQL (server/src, scripts, prisma/*.sql and migrations) whose "userId" has no foreign key to "User". */
+function rawUserTablesWithoutForeignKey() {
+  const serverDir = join(here, '..', '..');
+  const files = [];
+  const walk = (dir) => {
+    for (const entry of readdirSync(dir, { withFileTypes: true })) {
+      const path = join(dir, entry.name);
+      if (entry.isDirectory()) { if (entry.name !== 'node_modules') walk(path); }
+      else if (/\.(js|mjs|sql)$/.test(entry.name) && !/\.test\./.test(entry.name)) files.push(path);
+    }
+  };
+  for (const dir of ['src', 'scripts', 'prisma']) walk(join(serverDir, dir));
+  const found = new Map();
+  for (const file of files) {
+    const text = readFileSync(file, 'utf8');
+    const create = /CREATE TABLE(?: IF NOT EXISTS)? "(\w+)"\s*\(/g;
+    for (let match = create.exec(text); match; match = create.exec(text)) {
+      let depth = 1;
+      let end = create.lastIndex;
+      for (; end < text.length && depth; end += 1) depth += text[end] === '(' ? 1 : text[end] === ')' ? -1 : 0;
+      const body = text.slice(create.lastIndex, end);
+      if (!/"userId"/.test(body)) continue;
+      const linked = /"userId"[^,]*REFERENCES "User"|FOREIGN KEY \("userId"\) REFERENCES "User"/.test(body)
+        || new RegExp(`ALTER TABLE "${match[1]}"[^;]*FOREIGN KEY \\("userId"\\) REFERENCES "User"`).test(text);
+      if (!linked) found.set(match[1], relative(serverDir, file));
+    }
+  }
+  return found;
+}
+
+describe('account deletion removes rows of raw-SQL tables without a foreign key to "User"', () => {
+  it('her dose marks (MedicationDoseEvent) go in the delete transaction, before the account; other people’s stay', async () => {
+    const { deleteUserAccount } = await import('./deleteUser.js');
+    rawTables.clear();
+    rawTables.set('MedicationDoseEvent', [
+      { userId: 'u1', medicationId: 'm1', date: '2026-10-10', time: '08:00', status: 'taken' },
+      { userId: 'u1', medicationId: 'm1', date: '2026-10-11', time: '08:00', status: 'skipped' },
+      { userId: 'u2', medicationId: 'm9', date: '2026-10-11', time: '09:00', status: 'taken' },
+    ]);
+    rawTables.set('NotificationPermission', [{ userId: 'u1', status: 'granted' }]);
+    operations.length = 0;
+
+    const result = await deleteUserAccount('u1');
+    assert.equal(result.ok, true);
+    assert.deepEqual(rawTables.get('MedicationDoseEvent').map((row) => row.userId), ['u2']);
+    assert.deepEqual(rawTables.get('NotificationPermission'), []);
+    assert.ok(operations.indexOf('MedicationDoseEvent.delete') >= 0);
+    assert.ok(operations.indexOf('MedicationDoseEvent.delete') < operations.indexOf('user.delete'));
+    // Tables that do not exist yet (created lazily) are not touched — the mock throws on any other statement.
+    rawTables.clear();
+  });
+
+  it('every raw-SQL table with a "userId" and no foreign key is deleted with the account', async () => {
+    const { UNLINKED_USER_TABLES } = await import('./deleteUser.js');
+    // Handled by their own rules in deleteUserAccount (SmsLog is redacted, not deleted), or linked on the
+    // main database by a foreign key added outside these files (PasswordReset, PeriodUsage).
+    const handledElsewhere = new Set(['PhoneVerification', 'SmsLog', 'PushEvent', 'PasswordReset', 'PeriodUsage']);
+    const missing = [...rawUserTablesWithoutForeignKey()]
+      .filter(([table]) => !UNLINKED_USER_TABLES.includes(table) && !handledElsewhere.has(table))
+      .map(([table, file]) => `${table} (${file})`);
+    assert.deepEqual(missing, [], 'add these tables to UNLINKED_USER_TABLES in deleteUser.js, or give "userId" a foreign key');
+    assert.ok(UNLINKED_USER_TABLES.includes('MedicationDoseEvent'));
   });
 });
 

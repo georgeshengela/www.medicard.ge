@@ -32,6 +32,19 @@ export function accountPhoneRowsWhere(userId, phone) {
 }
 
 /**
+ * Raw-SQL tables keyed by the person's "userId" with no foreign key to "User" on the main database,
+ * so nothing cascades (schema.prisma may still say onDelete: Cascade — the table was created lazily
+ * without it). Every row is the person's own; they go in the account's delete transaction. Hunt* are
+ * the retired Medi Hunt tables: no code writes them any more, but the main database still has them.
+ * deleteUser.test.js fails when a new raw table with "userId" and no foreign key is missing here.
+ */
+export const UNLINKED_USER_TABLES = Object.freeze([
+  'MedicationDoseEvent', 'NotificationPermission', 'NotificationDecision', 'NotificationOutcome',
+  'ProductEvent', 'AppActivity', 'AnnouncementReceipt', 'MedirunWaveAlert', 'UserLocation', 'EmailVerification',
+  'HuntCapture', 'HuntSuspicious', 'HuntSession', 'HuntProgress', 'HuntQaGrant',
+]);
+
+/**
  * Permanently remove a user and orphaned rows that are not FK-cascaded.
  * Keeps SmsLog rows but clears userId and redacts content for audit trail.
  */
@@ -80,18 +93,19 @@ export async function deleteUserAccount(userId, lang = 'ka') {
   // Best-effort: a failed revoke never keeps an account the person asked to delete.
   await revokeAppleGrantsForUser(userId);
 
-  const locationTable = await prisma.$queryRaw`SELECT to_regclass('"UserLocation"')::text AS name`;
+  // Lazily created tables may not exist yet; a table that is not there holds nobody's rows.
+  const presentRows = await prisma.$queryRaw`SELECT name FROM unnest(${[...UNLINKED_USER_TABLES]}::text[]) AS name WHERE to_regclass(format('%I', name)) IS NOT NULL`;
+  const present = new Set(presentRows.map((row) => row.name));
   // A trainer keeps session rows about a deleted client (clientId → NULL); their notes about that person go.
   const sessionTable = await prisma.$queryRaw`SELECT to_regclass('"TrainerSession"')::text AS name`;
-  // Add-email codes (accountLogins.js): raw SQL, created lazily, no foreign key to "User".
-  const emailVerifyTable = await prisma.$queryRaw`SELECT to_regclass('"EmailVerification"')::text AS name`;
   const phoneRows = accountPhoneRowsWhere(userId, user.phone);
   // Each row's number gets its own hash: a link code may have gone to another number than User.phone.
   const smsNumbers = await prisma.smsLog.findMany({ where: phoneRows.smsLog, select: { destination: true }, distinct: ['destination'] });
   await prisma.$transaction([
-    ...(locationTable[0]?.name ? [prisma.$executeRaw`DELETE FROM "UserLocation" WHERE "userId" = ${userId}`] : []),
+    // Table names come from the constant list above, never from input.
+    ...UNLINKED_USER_TABLES.filter((name) => present.has(name))
+      .map((name) => prisma.$executeRawUnsafe(`DELETE FROM "${name}" WHERE "userId" = $1`, userId)),
     ...(sessionTable[0]?.name ? [prisma.$executeRaw`UPDATE "TrainerSession" SET note = NULL WHERE "clientId" = ${userId}`] : []),
-    ...(emailVerifyTable[0]?.name ? [prisma.$executeRaw`DELETE FROM "EmailVerification" WHERE "userId" = ${userId}`] : []),
     prisma.dailyUsage.deleteMany({ where: { userId } }),
     prisma.phoneVerification.deleteMany({ where: phoneRows.phoneVerification }),
     ...smsNumbers.map(({ destination }) =>
