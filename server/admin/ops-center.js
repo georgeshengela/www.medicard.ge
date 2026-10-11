@@ -377,7 +377,7 @@ function suppressText(code) {
     QUEST_PAIN_SUPPRESSED: 'დღეს ტკივილი ჩაიწერა',
     QUEST_WINDOW_PASSED: 'დრო უკვე გავიდა',
     QUEST_EVENING_PRESSURE_BLOCK: 'საღამოს ზეწოლას არ ვქმნით',
-    QUEST_WEATHER_UNSAFE: 'ამინდი არ ვარგა',
+    QUEST_WEATHER_UNSAFE: 'ამინდი შესაფერისი არ არის',
     weekly_already_sent: 'კვირის ანგარიში უკვე გაიგზავნა',
     hydration_target_reached_after_scheduling: 'დაგეგმვის შემდეგ წყლის მიზანი შესრულდა',
     pain_logged_after_scheduling: 'დაგეგმვის შემდეგ ტკივილი ჩაიწერა',
@@ -1086,7 +1086,7 @@ const BRAIN_FAMILY_WHEN = {
   visitFollowup: 'ექიმთან ვიზიტიდან 3–36 საათში: „როგორ ჩაიარა?“',
   question: 'პროფილს აკლია სისხლის ჯგუფი, სიმაღლე ან ტელეფონი — 19:20-ზე.',
   chat: 'Medi-სთან საექიმო საუბრიდან 18–40 საათში; საუბრის ტექსტი ეკრანზე არ ჩანს.',
-  reengage: 'აპის ბოლო გახსნიდან მე-2, მე-5, მე-14 და 30-ე დღეს 11:00-ზე. ყოველი გახსნა ათვლას თავიდან იწყებს.',
+  reengage: 'აპის ბოლო გახსნიდან მე-2, მე-5, მე-14 და მე-30 დღეს 11:00-ზე. ყოველი გახსნა ათვლას თავიდან იწყებს.',
   birthday: 'დაბადების დღეს 09:15-ზე, წელიწადში ერთხელ.',
 };
 
@@ -1169,8 +1169,8 @@ async function renderPushBrainPanel(host) {
     const hero = '<section class="brain-hero" data-v3-brain="summary">'
       + `<div class="brain-hero-state">${stateChip}</div>`
       + `<p class="brain-hero-line">${opsEscape(brainRangeWords())} Medi-მ <b>${opsFmt(f.scheduled)}</b> შეტყობინება დაგეგმა <b>${opsFmt(f.people)}</b> ადამიანისთვის. `
-      + `ტელეფონებმა <b>${opsFmt(f.delivered)}</b>-ის ჩვენება დაადასტურეს, <b>${opsFmt(f.opened)}</b> გახსნეს${everyNth ? ` — დაახლოებით ყოველი ${everyNth}-ე, რომლის დროც დადგა` : ''}.</p>`
-      + `<p class="brain-hero-sub">მომდევნო 24 საათში დაგეგმილია ${opsFmt(f.next24h)}. ${opsFmt(f.suppressed)} შეტყობინება Medi-მ საერთოდ არ დაგეგმა${topReason ? `; ყველაზე ხშირი მიზეზი — „${opsEscape(suppressText(topReason))}“` : ''}.</p>`
+      + `ტელეფონებმა <b>${opsFmt(f.delivered)}</b>-ის ჩვენება დაადასტურეს, <b>${opsFmt(f.opened)}</b> გახსნეს${everyNth ? ` — დაახლოებით ყოველი მე-${everyNth} შეტყობინება` : ''}.</p>`
+      + `<p class="brain-hero-sub">მომდევნო 24 საათში დაგეგმილია ${opsFmt(f.next24h)} შეტყობინება. Medi-მ თავი ${opsFmt(f.suppressed)}-ჯერ შეიკავა${topReason ? `; ყველაზე ხშირი მიზეზი — „${opsEscape(suppressText(topReason))}“` : ''}.</p>`
       + '</section>';
 
     const strip = '<div class="v3-brain-kpis v25-dec-strip" role="group" aria-label="Medi-ს შეტყობინებების მაჩვენებლები">'
@@ -1307,7 +1307,7 @@ async function renderPushBrainPanel(host) {
 
     const heat = '<section class="v3-brain-panel v25-panel v25-heat" data-v3-brain="heat">'
       + '<div class="v3-brain-head"><div class="v3-brain-head-copy">'
-      + '<div class="v3-title-row"><h3>როდის იწყებენ დღეს აპში</h3></div>'
+      + '<div class="v3-title-row"><h3>როდის ხსნიან აპს დღეში პირველად</h3></div>'
       + '<p class="muted">დღის პირველი გახსნა — კვირის დღე × საათი, თბილისის დროით.'
       + (data.engagement?.bestHour != null ? ' ყველაზე ხშირად: ' + String(data.engagement.bestHour).padStart(2, '0') + ':00.' : '')
       + '</p></div></div>'
@@ -1458,7 +1458,7 @@ function brainControlCard(config, typeByFamily) {
     <div class="s-card-body">
       <div class="brain-ctl-top">
         <div class="s-switch-row brain-ctl-master">
-          <div><b>Medi-ს შეტყობინებები</b><small>${config.paused ? 'შეჩერებულია: ტელეფონები დაგეგმილს აუქმებენ და ახალს აღარ გეგმავენ.' : 'ჩართულია: Medi თავად არჩევს დროს და ტიპს ქვემოთ მოცემული წესებით.'}</small></div>
+          <div><b>Medi-ს შეტყობინებები</b><small>${config.paused ? 'შეჩერებულია: ტელეფონები დაგეგმილს აუქმებენ და ახალს აღარ გეგმავენ.' : 'ჩართულია: Medi თავად ირჩევს დროს და ტიპს ქვემოთ მოცემული წესებით.'}</small></div>
           <input class="s-switch" type="checkbox" role="switch" aria-label="Medi-ს შეტყობინებები ჩართულია" ${config.paused ? '' : 'checked'} data-brain-master>
         </div>
         <div class="brain-ctl-cap">
