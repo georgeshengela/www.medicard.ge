@@ -38,6 +38,7 @@ export function assistantContextSelection({ scope, text, draft }) {
     [/ალერგი|ქრონიკ|პროფილ/u, ['profile']],
     [/სიმპტომ|შეგრძნებ|ჩანიშნულ|ჩანაწერ|ტკივ|ვგრძნობ|შეუძლოდ|ცუდად ვარ/u, ['cycle', 'profile', 'metrics', 'medications', 'records']],
     [/მედირან|medirun|medi run|აღმოჩენ/u, ['activity']],
+    [/ძილ|ძინავ|მეძინ|ჩამეძინ|ჩაძინ|უძილ|გამეღვიძ|ვიღვიძებ|დაწოლ|medisleep/iu, ['sleep', 'metrics']],
     // English requests (the app in English).
     [/\b(?:medic\w*|pills?|dose|doses|ibuprofen|tablets?)\b/i, ['medications']],
     [/\b(?:food|meals?|calori\w*|diet|protein|breakfast|lunch|dinner|snack|ate|eat|nutrition)\b|\blose\b.*\b(?:kg|kilos?|weight)\b/i, ['nutrition']],
@@ -45,6 +46,7 @@ export function assistantContextSelection({ scope, text, draft }) {
     [/\b(?:steps?|walk\w*|run|running)\b/i, ['metrics', 'goals', 'activity']],
     [/\b(?:visits?|appointments?|doctor)\b/i, ['visits']], [/\b(?:cycle|period|menstrua\w*|pregnan\w*)\b/i, ['cycle']],
     [/\b(?:allerg\w*|chronic|profile)\b/i, ['profile']],
+    [/\b(?:sleep\w*|slept|insomnia|bedtime|naps?|wake up|waking up)\b/i, ['sleep', 'metrics']],
     [/\b(?:symptoms?|how I feel|logged|recorded|pain|hurts?|feel(?:ing)? (?:sick|unwell|bad))\b/i, ['cycle', 'profile', 'metrics', 'medications', 'records']],
   ];
   for (const [pattern, values] of rules) if (pattern.test(text)) values.forEach(value => domains.add(value));

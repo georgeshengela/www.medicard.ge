@@ -15,6 +15,9 @@ model User {
   nutritionFoods NutritionFood[]
   nutritionActivities NutritionActivity[]
   nutritionFasts NutritionFast[]
+  sleepPlan      SleepPlan?
+  sleepNights    SleepNight[]
+  sleepPlays     SleepPlay[]
   nutritionPreference NutritionPreference?
   bodyMeasurements BodyMeasurement[]
   communityCommentLikes CommunityCommentLike[]
@@ -2895,4 +2898,115 @@ model UserQr {
   token     String    @unique(map: "UserQr_token")
   createdAt DateTime  @default(now()) @db.Timestamptz(3)
   rotatedAt DateTime? @db.Timestamptz(3)
+}
+
+// MEDISLEEP (2026-10-12) — raw SQL tables from prisma/20261012-sleep.sql (install-sleep.mjs); read and written
+// with $queryRaw only. Declared here so nothing ever drops them.
+model SleepPlan {
+  userId          String   @id
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  goalMinutes     Int      @default(480)
+  wakeTime        String   @default("07:00")
+  weekendWakeTime String?
+  windDownMinutes Int      @default(30)
+  bedtimeReminder Boolean  @default(true)
+  checkinReminder Boolean  @default(true)
+  alarm           Boolean  @default(false)
+  hideScore       Boolean  @default(false)
+  createdAt       DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt       DateTime @default(now()) @db.Timestamptz(6)
+}
+
+model SleepNight {
+  id             String    @id
+  userId         String
+  user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  night          DateTime  @db.Date
+  bedAt          DateTime? @db.Timestamptz(6)
+  wakeAt         DateTime? @db.Timestamptz(6)
+  inBedMinutes   Int?
+  asleepMinutes  Int?
+  awakeMinutes   Int?
+  deepMinutes    Int?
+  remMinutes     Int?
+  coreMinutes    Int?
+  latencyMinutes Int?
+  wakeups        Int?
+  quality        Int?      @db.SmallInt
+  factors        String[]  @default([])
+  sounds         String[]  @default([])
+  timesSource    String    @default("manual")
+  checkedInAt    DateTime? @db.Timestamptz(6)
+  createdAt      DateTime  @default(now()) @db.Timestamptz(6)
+  updatedAt      DateTime  @default(now()) @db.Timestamptz(6)
+
+  @@unique([userId, night], map: "SleepNight_userId_night_key")
+  @@index([createdAt(sort: Desc)], map: "SleepNight_createdAt_feed_idx")
+}
+
+model SleepPlay {
+  id           String   @id
+  userId       String
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  soundIds     String[] @default([])
+  startedAt    DateTime @db.Timestamptz(6)
+  minutes      Int      @default(0)
+  timerMinutes Int?
+  sleepMode    Boolean  @default(false)
+  createdAt    DateTime @default(now()) @db.Timestamptz(6)
+
+  @@index([userId, startedAt(sort: Desc)], map: "SleepPlay_userId_startedAt_idx")
+  @@index([startedAt(sort: Desc)], map: "SleepPlay_startedAt_idx")
+}
+
+model SleepSound {
+  id          String   @id
+  category    String
+  titleKa     String
+  titleEn     String
+  subtitleKa  String   @default("")
+  subtitleEn  String   @default("")
+  tint        String   @default("#2B2452")
+  loop        Boolean  @default(true)
+  featured    Boolean  @default(false)
+  status      String   @default("DRAFT")
+  sortOrder   Int      @default(0)
+  audioFileId String?
+  tailFileId  String?
+  artFileId   String?
+  durationMs  Int?
+  createdAt   DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt   DateTime @default(now()) @db.Timestamptz(6)
+}
+
+model SleepFile {
+  id         String   @id
+  kind       String
+  mime       String
+  bytes      Bytes?
+  storageKey String?
+  size       Int
+  sha256     String
+  durationMs Int?
+  createdBy  String?
+  createdAt  DateTime @default(now()) @db.Timestamptz(6)
+}
+
+model SleepTip {
+  id        String   @id
+  trigger   String   @default("always")
+  titleKa   String
+  titleEn   String
+  bodyKa    String
+  bodyEn    String
+  status    String   @default("LIVE")
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt DateTime @default(now()) @db.Timestamptz(6)
+}
+
+model SleepConfig {
+  id        String   @id
+  data      Json     @default("{}")
+  updatedAt DateTime @default(now()) @db.Timestamptz(6)
 }

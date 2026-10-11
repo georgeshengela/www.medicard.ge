@@ -24,7 +24,7 @@
   // a key missing here falls back by its server group, so a new switch never disappears.
   const FEATURE_SECTIONS = [
     ['health', 'ჯანმრთელობის ბარათი', 'წამლები, ვიზიტები, ჩანაწერები და ანალიზები. შეჩერებისას ტელეფონზე უკვე დაყენებული შეხსენებები გრძელდება.', ['medications', 'visits', 'records', 'labs']],
-    ['daily', 'ყოველდღიური აღრიცხვა', 'წყალი, ნაბიჯები, წონა, კვება და ციკლი.', ['hydration', 'steps', 'weight', 'nutrition', 'cycle']],
+    ['daily', 'ყოველდღიური აღრიცხვა', 'წყალი, ნაბიჯები, წონა, კვება, ციკლი და ძილი.', ['hydration', 'steps', 'weight', 'nutrition', 'cycle', 'sleep']],
     ['medi', 'Medi და AI', 'Medi-ს შეჩერება მის ყველა ხელსაწყოს აჩერებს; თითოეული ცალკეც ითიშება.', ['medi']],
     ['play', 'მოძრაობა და ჯილდოები', 'MEDIRUN, მისიები, ჯილდოები და მეგობრის მოწვევა.', ['medirun', 'medirunDecor', 'medirunPartners', 'quest', 'invites']],
     ['more', 'სხვა სივრცეები', 'ცალკე მიმართულებები და დამატებითი გვერდები.', ['pets', 'coach', 'community', 'pharmacy', 'news', 'homeLayouts', 'weather', 'weeklyReport', 'healthPassport', 'ratingPrompt']],
@@ -35,6 +35,7 @@
   const RELATED = {
     nutritionAi: 'იგივე შეფასებას აჩერებს <a href="#/nutrition">კვების დღიური</a> → „AI კალორიის შეფასება“ — შეფასება მუშაობს, როცა ორივე ჩართულია.',
     email: 'იგივე გადამრთველი ჩანს <a href="#/email">ელფოსტის</a> გვერდზეც.',
+    sleep: 'ვინ იყენებს, ხმების ბიბლიოთეკა, რჩევები და პარამეტრები — <a href="#/sleep">MEDISLEEP</a>-ის გვერდზე.',
     ratingPrompt: 'რამდენმა ნახა და რამდენმა დააჭირა „შეაფასე“ — <a href="#/funnel">ფანელის</a> „სხვა მოვლენებში“.',
   };
   // Kept across re-renders (a toggle re-renders the page).

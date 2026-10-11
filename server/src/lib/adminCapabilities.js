@@ -79,3 +79,6 @@ export const PETS_CAPABILITIES = Object.freeze(['PETS_VIEW']);
 
 /** Module usage pages (MEDICYCLE, MEDIPILL, MEDILAB, MEDIFOOD, MEDIQUEST, MEDICOACH, Medi): counts, people with a name and contact, no health values. */
 export const PRODUCT_USAGE_CAPABILITIES = Object.freeze(['PRODUCT_USAGE_VIEW']);
+
+/** MEDISLEEP (#/sleep): VIEW reads usage counts and the catalogue; MANAGE edits sounds (uploads), advice and module settings. */
+export const SLEEP_CAPABILITIES = Object.freeze(['SLEEP_VIEW', 'SLEEP_MANAGE']);

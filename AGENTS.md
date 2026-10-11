@@ -7,6 +7,7 @@ This file is loaded into every session, so it holds only rules that apply everyw
 | App Review, permissions, 18+, versions, OTA, store builds, App Store rating request, product freeze, dark theme tokens | [docs/agents/release-and-review.md](docs/agents/release-and-review.md) |
 | Mobile UI: module names/brands/wordmark, `ModuleHeader`, Home + layouts, modals, Pressable, keyboard, app icons, navigation, languages | [docs/agents/mobile-ui.md](docs/agents/mobile-ui.md) |
 | Cycle (MEDICYCLE): look, forecasts, reminders, widget, temperature, logging, privacy | [docs/agents/cycle.md](docs/agents/cycle.md) |
+| MEDISLEEP: sleep mode, sounds, alarm (AlarmKit), Live Activity, widget, nights, analytics, admin #/sleep | [docs/agents/sleep.md](docs/agents/sleep.md) |
 | Medi chat, MEDISCAN, Medi Vet / Pets | [docs/agents/medi-ai.md](docs/agents/medi-ai.md) |
 | MEDIRUN: campaign, boxes, economy, coins store, background GPS, Glow map, decor, weather, viral layer | [docs/agents/medirun.md](docs/agents/medirun.md) |
 | Admin panel | [docs/agents/admin.md](docs/agents/admin.md) |
@@ -31,7 +32,7 @@ Other docs: `docs/I18N.md`, `docs/MEDI-ASSISTANT.md`, `docs/NUTRITION.md`, `docs
 - Accounts are 18+. Health data never goes into URLs, emails, push analytics, funnel events, error reports or admin "online" lists.
 - AI: every AI call goes through the consent path (`consentedAiFetch` app, `withAiConsent` web); never pre-accept consent; a declined consent is a calm note (`AiConsentDeclinedNote`), never an error.
 - Languages: every new user-facing string in Georgian and English (`tx('ქართული','English')` / `ka` dictionary + `src/i18n/en`; server `t(req, ka, en)`); admin stays Georgian; consent versions derive from Georgian text.
-- Names: the AI is **Medi** (never Nightingale). Modules are one word — MEDIRUN, MEDICYCLE, MEDIFOOD, MEDIPILL, MEDIQUEST, MEDIVET, MEDICOACH, MEDISCAN, MEDILAB (never with a space, never MEDIDOCTOR); the tab-bar centre button alone reads RUN. Imaging = „გამოსახულება“, never „სნიმარი“.
+- Names: the AI is **Medi** (never Nightingale). Modules are one word — MEDIRUN, MEDICYCLE, MEDIFOOD, MEDIPILL, MEDIQUEST, MEDIVET, MEDICOACH, MEDISCAN, MEDILAB, MEDISLEEP (never with a space, never MEDIDOCTOR); the tab-bar centre button alone reads RUN. Imaging = „გამოსახულება“, never „სნიმარი“.
 - Freezes: Pets/Medi Vet bug fixes only; MEDIRUN no new zones/prizes (≤1 event/month); cycle no new phases until iOS QA; the women's community opens/closes only via the admin launch flag (`CommunityConfig.open`; it is OPEN since 2026-10-02 — check the flag, don't assume it is closed). District competition is retired — never recreate it. No fifth bottom tab.
 - New module = key in `featureFlags.js` `FEATURES` + `requireFeature` + `featureRoutes.ts` + admin `FEATURE_SECTIONS`. Never block `/api/health-metrics/sync`; never cancel medication/visit reminders on a pause. Every reminder family has a switch in Profile → შეტყობინებები and a call in the reconcile.
 

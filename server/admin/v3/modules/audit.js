@@ -100,6 +100,17 @@
       ['NUTRITION_SETTINGS', 'კვების პარამეტრები · შეცვლა'],
       ['NUTRITION_RECIPE', 'რეცეპტი · შენახვა'],
     ]],
+    ['MEDISLEEP', [
+      ['sleep.sound.create', 'MEDISLEEP ხმა · შექმნა'],
+      ['sleep.sound.update', 'MEDISLEEP ხმა · შეცვლა'],
+      ['sleep.sound.order', 'MEDISLEEP ხმები · რიგის შეცვლა'],
+      ['sleep.sound.audio', 'MEDISLEEP ხმა · ხმის ფაილის ატვირთვა'],
+      ['sleep.sound.tail', 'MEDISLEEP ხმა · დასასრულის ატვირთვა'],
+      ['sleep.sound.art', 'MEDISLEEP ხმა · სურათის ატვირთვა'],
+      ['sleep.tip.create', 'MEDISLEEP რჩევა · დამატება'],
+      ['sleep.tip.update', 'MEDISLEEP რჩევა · შეცვლა'],
+      ['sleep.config', 'MEDISLEEP პარამეტრები · შეცვლა'],
+    ]],
   ];
   // Names that only older rows carry; they get a label but are not offered in the filter.
   const LEGACY_ACTIONS = {
@@ -135,6 +146,7 @@
     NutritionRecipe: 'რეცეპტი',
     aiInteraction: 'Medi-ს შეცდომა',
     errorGroup: 'შეცდომების ჯგუფი',
+    sleep: 'MEDISLEEP',
   };
   // The admin page where each kind of object lives (the link in the details dialog).
   const PAGES = {
@@ -142,7 +154,7 @@
     capacity: ['#/capacity', 'სერვერის დატვირთვა'], push: ['#/push', 'Push & Brain'], news: ['#/news', 'სიახლეები'],
     email: ['#/email', 'ელფოსტა'], support: ['#/support', 'მხარდაჭერა'], director: ['#/director', 'დირექტორი'],
     rewards: ['#/rewards', 'ჯილდოები'], trainers: ['#/trainers', 'ტრენერები'], nutrition: ['#/nutrition', 'კვების დღიური'],
-    ai: ['#/ai', 'Medi'], errors: ['#/errors', 'შეცდომები'],
+    ai: ['#/ai', 'Medi'], errors: ['#/errors', 'შეცდომები'], sleep: ['#/sleep', 'MEDISLEEP'],
   };
   const TARGET_PAGE = {
     settings: 'settings', featureFlag: 'features', questTemplate: 'quests', system: 'capacity', pushTemplate: 'push',
@@ -150,12 +162,13 @@
     supportThread: 'support', supportSnippet: 'support', director: 'director', director_proposal: 'director',
     rewardPartner: 'rewards', rewardDefinition: 'rewards', rewardCampaign: 'rewards', rewardCode: 'rewards', rewardRedemption: 'rewards',
     TrainerProfile: 'trainers', CoachReport: 'trainers', Gym: 'trainers', NutritionSettings: 'nutrition', NutritionRecipe: 'nutrition',
-    aiInteraction: 'ai', errorGroup: 'errors',
+    aiInteraction: 'ai', errorGroup: 'errors', sleep: 'sleep',
   };
   const FEATURE_KA = {
     cycle: 'ციკლი და ორსულობა', nutrition: 'კვების დღიური', nutritionAi: 'კვების AI შეფასება', medi: 'Medi', pets: 'ჩემი ცხოველები',
     mediVet: 'MEDIVET', medirun: 'MEDIRUN', medirunAutopilot: 'MEDIRUN ავტოპილოტი', quest: 'MEDIQUEST', rewardsStore: 'ჯილდოების გაცვლა',
     coach: 'MEDICOACH', community: 'ქალების სივრცე', pharmacy: 'აფთიაქი', news: 'სიახლეები', referralRewards: 'მოწვევის ჯილდოები', email: 'ელფოსტა',
+    sleep: 'MEDISLEEP',
   };
   const EMAIL_TEMPLATE_KA = { welcome: 'მისალმება', password_reset: 'პაროლის აღდგენა', account_deleted: 'ანგარიშის წაშლა' };
   // Objects with one fixed id: the id says nothing, a name does.
@@ -180,6 +193,13 @@
     codeMasked: 'კოდი', segment: 'სეგმენტი', targetCount: 'მიმღები', sentCount: 'გაგზავნილი', toHash: 'მიმღები (დაშიფრული)',
     url: 'მისამართი', messageId: 'წერილი', attachmentId: 'დანართი', assignedAdminId: 'პასუხისმგებელი ადმინი',
     unread: 'წაუკითხავი', data: 'მონაცემები', result: 'შედეგი', delivered: 'მიწოდებულია',
+    // MEDISLEEP (sounds, advice, settings)
+    titleKa: 'სახელი ქართულად', titleEn: 'სახელი ინგლისურად', subtitleKa: 'აღწერა ქართულად', subtitleEn: 'აღწერა ინგლისურად',
+    bodyKa: 'ტექსტი ქართულად', bodyEn: 'ტექსტი ინგლისურად', tint: 'ფერი', loop: 'უკრავს განმეორებით', featured: 'რჩეული',
+    sortOrder: 'რიგი', audioFileId: 'ხმის ფაილი', tailFileId: 'დასასრული', artFileId: 'სურათი', size: 'ზომა (ბაიტი)',
+    ids: 'რიგი', trigger: 'როდის ჩანს', defaultTimerMinutes: 'ტაიმერი იწყება (წთ)', timerOptions: 'ტაიმერის ვარიანტები (წთ)',
+    fadeSeconds: 'ჩაქრობა (წმ)', maxLayers: 'ერთად ჩართული ხმები', checkinFactors: 'დილის შეფასების ფაქტორები',
+    breathing: 'სუნთქვის ვარჯიში', defaultVolume: 'საწყისი ხმამაღლობა',
   };
   const VALUE_KA = {
     ACTIVE: 'აქტიური', BLOCKED: 'დაბლოკილი', PENDING: 'მოლოდინში', DRAFT: 'მონახაზი', PUBLISHED: 'გამოქვეყნებული',
@@ -193,6 +213,11 @@
     new: 'ახალი', open: 'ღია', waiting: 'პასუხს ელოდება', closed: 'დახურული',
     route: 'აპის გვერდი', url: 'ბმული', none: 'ღილაკის გარეშე', telegram: 'Telegram',
     '[redacted]': 'დაფარულია',
+    // MEDISLEEP: sound status and category, check-in factors
+    LIVE: 'აპში ჩანს', rain: 'წვიმა', nature: 'ბუნება', music: 'მელოდიები', noise: 'ხმაური',
+    caffeine: 'ყავა ან ჩაი გვიან', alcohol: 'ალკოჰოლი', late_meal: 'გვიანი ვახშამი', screens: 'ეკრანი საწოლში', stress: 'სტრესი',
+    exercise: 'ვარჯიში', nap: 'დღის ძილი', pain: 'ტკივილი', illness: 'ავად ვიყავი', kids: 'ბავშვმა გამაღვიძა',
+    heat: 'სიცხე ოთახში', travel: 'მოგზაურობა',
   };
   // Fallback words for keys nobody mapped yet ("gift.save" → "საჩუქარი · შენახვა").
   const WORDS = {

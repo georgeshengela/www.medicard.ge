@@ -235,7 +235,9 @@ export function capacityMiddleware(req, res, next) {
     const w = bucket;
     w.requests += 1;
     if (res.statusCode >= 500) w.errors5xx += 1;
-    if (req.method === 'GET' && !String(res.getHeader('content-type') || '').includes('event-stream')) {
+    // Streams and MEDISLEEP audio downloads (megabytes by design) would skew the API latency p95.
+    const contentType = String(res.getHeader('content-type') || '');
+    if (req.method === 'GET' && !contentType.includes('event-stream') && !contentType.startsWith('audio/')) {
       const ms = Number(process.hrtime.bigint() - started) / 1e6;
       // Reservoir sampling keeps memory flat under heavy traffic.
       w.seen += 1;

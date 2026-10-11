@@ -1,0 +1,6 @@
+# Rendered / generated media: uploaded to SleepFile (R2 or Postgres) by server/scripts/sleep-library-sync.mjs.
+# Regenerate with sounds/synth.py (procedural) and studio.py (Lyria melodies, cover art — not reproducible, keep a copy).
+sounds/out/
+art/out/
+art/contact.png
+__pycache__/

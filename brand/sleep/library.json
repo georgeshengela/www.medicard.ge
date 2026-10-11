@@ -1,0 +1,158 @@
+{
+  "artStyle": "Painterly cinematic digital illustration for a sleep app sound card, portrait 3:4. Night palette of deep indigo, plum and violet with one warm amber or moonlight accent, soft volumetric light, gentle mist, subtle film grain, calm and quiet, generous empty dark space in the lower third. No people, no text, no letters, no logos, no watermark, no frame.",
+  "categories": [
+    { "id": "rain", "title": { "ka": "წვიმა", "en": "Rain" } },
+    { "id": "nature", "title": { "ka": "ბუნება", "en": "Nature" } },
+    { "id": "noise", "title": { "ka": "ხმაური", "en": "Noise" } },
+    { "id": "music", "title": { "ka": "მელოდიები", "en": "Melodies" } }
+  ],
+  "sounds": [
+    {
+      "id": "rain", "category": "rain", "source": "synth", "loop": true, "featured": true,
+      "title": { "ka": "წვიმა", "en": "Rain" },
+      "subtitle": { "ka": "თანაბარი, რბილი წვიმა", "en": "Steady, soft rain" },
+      "tint": "#2B3A6B",
+      "art": "Gentle rain falling at night over the carved wooden balconies of old Tbilisi, wet cobblestones reflecting a single warm street lamp."
+    },
+    {
+      "id": "rain-window", "category": "rain", "source": "synth", "loop": true,
+      "title": { "ka": "წვიმა ფანჯარაზე", "en": "Rain on the window" },
+      "subtitle": { "ka": "წვეთები მინაზე, თბილ ოთახში", "en": "Drops on glass, from a warm room" },
+      "tint": "#33345E",
+      "art": "Close view of raindrops running down a window pane at night, a blurred warm bedside lamp glow inside, soft city light bokeh beyond the glass."
+    },
+    {
+      "id": "thunder", "category": "rain", "source": "synth", "loop": true,
+      "title": { "ka": "ჭექა-ქუხილი", "en": "Thunderstorm" },
+      "subtitle": { "ka": "შორეული ქუხილი და თავსხმა", "en": "Distant thunder and a downpour" },
+      "tint": "#252B4F",
+      "art": "A distant thunderstorm over the Caucasus foothills at night, a soft far-away glow of lightning inside heavy clouds, curtains of rain, calm rather than dramatic."
+    },
+    {
+      "id": "ocean", "category": "nature", "source": "synth", "loop": true, "featured": true,
+      "title": { "ka": "ზღვის ტალღები", "en": "Ocean waves" },
+      "subtitle": { "ka": "ნელი ტალღები ღამის სანაპიროზე", "en": "Slow waves on a night shore" },
+      "tint": "#1F3B5C",
+      "art": "Slow waves rolling onto a pebble beach of the Black Sea at night under a full moon, a silver moon path on calm water."
+    },
+    {
+      "id": "stream", "category": "nature", "source": "synth", "loop": true,
+      "title": { "ka": "მთის ნაკადული", "en": "Mountain stream" },
+      "subtitle": { "ka": "ქვებზე მორაკრაკე წყალი", "en": "Water babbling over stones" },
+      "tint": "#1E3F45",
+      "art": "A clear mountain stream flowing over mossy stones in a Borjomi fir forest at night, moonlight filtering through the trees."
+    },
+    {
+      "id": "forest-night", "category": "nature", "source": "synth", "loop": true,
+      "title": { "ka": "ღამის ტყე", "en": "Forest at night" },
+      "subtitle": { "ka": "ჭრიჭინები და ფოთლების შრიალი", "en": "Crickets and rustling leaves" },
+      "tint": "#1D3530",
+      "art": "A quiet forest clearing at night with a few fireflies, tall dark trees, glimpses of a starry sky, low mist on the ground."
+    },
+    {
+      "id": "wind", "category": "nature", "source": "synth", "loop": true,
+      "title": { "ka": "ქარი მთაში", "en": "Mountain wind" },
+      "subtitle": { "ka": "რბილი ქარი მაღალ საძოვარზე", "en": "Soft wind over a high meadow" },
+      "tint": "#2C3352",
+      "art": "Wind moving through tall grass on a high alpine meadow in Kazbegi at night, the snowy silhouette of Mount Kazbek far away under stars."
+    },
+    {
+      "id": "fire", "category": "nature", "source": "synth", "loop": true, "featured": true,
+      "title": { "ka": "კოცონი", "en": "Campfire" },
+      "subtitle": { "ka": "ტკაცუნა ცეცხლი", "en": "A crackling fire" },
+      "tint": "#4A2A2A",
+      "art": "A small campfire on a Tusheti mountain meadow at night, warm embers and sparks rising toward a starry sky, old stone towers silhouetted far away."
+    },
+    {
+      "id": "white-noise", "category": "noise", "source": "synth", "loop": true,
+      "title": { "ka": "თეთრი ხმაური", "en": "White noise" },
+      "subtitle": { "ka": "ფარავს გარე ხმებს", "en": "Masks outside sounds" },
+      "tint": "#3A3F5C",
+      "art": "Abstract: soft luminous grain drifting like fine snow through a deep indigo space, minimal and calm."
+    },
+    {
+      "id": "pink-noise", "category": "noise", "source": "synth", "loop": true,
+      "title": { "ka": "ვარდისფერი ხმაური", "en": "Pink noise" },
+      "subtitle": { "ka": "თეთრზე რბილი", "en": "Softer than white" },
+      "tint": "#4B2F4F",
+      "art": "Abstract: rose and lavender mist gently swirling in a dark plum space, soft grain, minimal and calm."
+    },
+    {
+      "id": "brown-noise", "category": "noise", "source": "synth", "loop": true,
+      "title": { "ka": "ყავისფერი ხმაური", "en": "Brown noise" },
+      "subtitle": { "ka": "ღრმა, დაბალი გუგუნი", "en": "A deep, low rumble" },
+      "tint": "#45322A",
+      "art": "Abstract: warm amber and umber dunes of soft light in a dark space, slow waves, minimal and calm."
+    },
+    {
+      "id": "fan", "category": "noise", "source": "synth", "loop": true,
+      "title": { "ka": "ვენტილატორი", "en": "Fan" },
+      "subtitle": { "ka": "თანაბარი ზუზუნი", "en": "An even hum" },
+      "tint": "#2F3550",
+      "art": "A quiet bedroom at night with a softly spinning floor fan in shadow, moonlight through sheer curtains, cozy and still."
+    },
+    {
+      "id": "iavnana", "category": "music", "source": "lyria", "loop": false, "featured": true,
+      "title": { "ka": "იავნანა", "en": "Iavnana" },
+      "subtitle": { "ka": "ქართული იავნანას მოტივი ფორტეპიანოზე", "en": "A Georgian lullaby motif on piano" },
+      "tint": "#3B2A55",
+      "prompt": "Instrumental only, no vocals, no drums, no percussion. A slow, tender lullaby in the spirit of the traditional Georgian lullaby 'Iavnana': solo felt piano with a warm, close, intimate sound, a simple modal melody in D minor (Dorian colour), about 60 BPM with gentle rubato and long sustain. A soft cello drone enters halfway. Very quiet, even dynamics with nothing sudden or loud. It ends by slowly fading into silence. Music for falling asleep.",
+      "art": "A carved Georgian wooden cradle in a dim room, moonlight through a small window, a soft wool blanket, a warm candle glow."
+    },
+    {
+      "id": "night-piano", "category": "music", "source": "lyria", "loop": false,
+      "title": { "ka": "ღამის ფორტეპიანო", "en": "Night piano" },
+      "subtitle": { "ka": "იშვიათი ნოტები, გრძელი ექო", "en": "Sparse notes, long echoes" },
+      "tint": "#2A2F55",
+      "prompt": "Instrumental only, no vocals, no drums. Minimal ambient night piano for sleep: sparse, slow notes with long reverb and sustain, about 55 BPM, warm and calm, modern neoclassical style, a soft pad underneath. Even, very quiet dynamics, no build-ups or climaxes. Ends softly fading out.",
+      "art": "A grand piano in a dark room beside a tall window overlooking a sleeping city under a starry sky, moonlight resting on the keys."
+    },
+    {
+      "id": "music-box", "category": "music", "source": "lyria", "loop": false,
+      "title": { "ka": "მუსიკალური ყუთი", "en": "Music box" },
+      "subtitle": { "ka": "ნაზი მელოდია სიმებთან ერთად", "en": "A gentle tune over soft strings" },
+      "tint": "#4A2E4E",
+      "prompt": "Instrumental only, no vocals, no drums. A soft music box (celesta) playing a gentle, original lullaby melody at about 60 BPM over a warm, quiet string pad. Dreamy, innocent, very calm, even dynamics. Ends slowly fading out.",
+      "art": "An open antique wooden music box on a windowsill at night, moonlight and soft stars outside the glass."
+    },
+    {
+      "id": "salamuri", "category": "music", "source": "lyria", "loop": false, "featured": true,
+      "title": { "ka": "სალამური მთაში", "en": "Salamuri in the mountains" },
+      "subtitle": { "ka": "მწყემსის სალამური ღამის მთაში", "en": "A shepherd's flute in the night mountains" },
+      "tint": "#24344F",
+      "prompt": "Instrumental only, no vocals, no drums. A slow, breathy Georgian salamuri (wooden shepherd's flute) playing a calm pastoral melody with long held notes over a soft, warm drone and a faint mountain wind. The Caucasus mountains at night. Very slow, meditative and spacious, even dynamics. Ends fading out.",
+      "art": "A wooden Georgian salamuri flute resting on a rock high in the Caucasus at night, the Milky Way above snowy peaks."
+    },
+    {
+      "id": "guitar-night", "category": "music", "source": "lyria", "loop": false,
+      "title": { "ka": "ღამის გიტარა", "en": "Night guitar" },
+      "subtitle": { "ka": "რბილი არპეჯიოები", "en": "Soft fingerpicked arpeggios" },
+      "tint": "#3D2E3A",
+      "prompt": "Instrumental only, no vocals, no drums. A soft fingerpicked nylon-string guitar lullaby, warm and intimate, about 58 BPM, gentle arpeggios with light ambient reverb. Calm, consistent, quiet dynamics. Ends softly.",
+      "art": "A nylon-string guitar leaning on a chair in a cozy room at night, warm lamp light, rain on the window behind."
+    },
+    {
+      "id": "strings", "category": "music", "source": "lyria", "loop": false,
+      "title": { "ka": "ჩელო და სიმები", "en": "Cello and strings" },
+      "subtitle": { "ka": "ნელი, თბილი აკორდები", "en": "Slow, warm chords" },
+      "tint": "#352A45",
+      "prompt": "Instrumental only, no vocals, no percussion. A slow, warm string ensemble led by cello and viola holding long legato chords for deep relaxation, adagio, very soft and even, no swells or climaxes. Ends fading out.",
+      "art": "A cello resting in an empty dark concert hall lit by one soft spotlight, dust drifting in the light."
+    },
+    {
+      "id": "dream-pad", "category": "music", "source": "lyria", "loop": false,
+      "title": { "ka": "ღამის ცა", "en": "Night sky" },
+      "subtitle": { "ka": "მცურავი ჰანგი რიტმის გარეშე", "en": "A floating drone with no rhythm" },
+      "tint": "#2B2452",
+      "prompt": "Instrumental only, no vocals, no drums, no rhythm. A slowly evolving ambient drone for sleep: warm analog synth pads, a deep soft sub bass and gentle shimmering high harmonics, no melody hooks, extremely calm and continuous, like floating under a night sky. Fades in and fades out.",
+      "art": "A dreamy night sky full of stars above a calm sea of clouds, faint aurora-like violet light, a sense of floating."
+    },
+    {
+      "id": "singing-bowls", "category": "music", "source": "synth", "loop": true,
+      "title": { "ka": "მომღერალი თასები", "en": "Singing bowls" },
+      "subtitle": { "ka": "ნელა მოგუგუნე ზარები", "en": "Slowly ringing bowls" },
+      "tint": "#3E3226",
+      "art": "Three bronze singing bowls on a dark wooden surface, soft rings of light rippling in the air, a warm candle glow."
+    }
+  ]
+}

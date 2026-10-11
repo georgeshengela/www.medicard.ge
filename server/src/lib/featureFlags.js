@@ -84,6 +84,14 @@ export const FEATURES = Object.freeze([
     defaultMessageEn: 'Cycle tracking is paused for a moment. Your entries are saved.',
   },
   {
+    key: 'sleep',
+    group: 'module',
+    label: 'MEDISLEEP (ძილი)',
+    description: 'ძილის გეგმა, ძილის რეჟიმი, ღამეების აღრიცხვა, ხმები და ანალიტიკა. ახალი ღამე ვერ ჩაიწერება და გეგმა ვერ შეიცვლება; ახალ ვერსიაში მოდული იმალება. უკვე ჩართული ხმა და მაღვიძარა ტელეფონზე გრძელდება.',
+    defaultMessage: 'MEDISLEEP დროებით შეჩერებულია. შენი ღამეები შენახულია.',
+    defaultMessageEn: 'MEDISLEEP is paused for a moment. Your nights are saved.',
+  },
+  {
     key: 'nutrition',
     group: 'module',
     label: 'კვების დღიური',

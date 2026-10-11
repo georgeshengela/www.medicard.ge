@@ -9,6 +9,7 @@ import { cycleModeForPatientAiContext } from './cycleModes.js';
 import { wrapUntrustedAiBlock } from './clinicalMessages.js';
 import { t } from './i18n.js';
 import { loadCycleAccountContext, cycleAccountContextText } from './cycleAccountContext.js';
+import { buildSleepBlock, loadSleepAiContext } from './sleepAiContext.js';
 import { buildAdherenceBlock, buildConsultationsBlock, buildLabValuesBlock, buildNutritionBlock, buildRecentRecordsBlock, buildThreadBlock, buildVisitsBlock, consultationsAllowedNow, conversationMentionsNutrition, loadPatientHistory } from './patientHistoryContext.js';
 
 function packageIsExpired(user) {
@@ -274,7 +275,7 @@ export function withPatientProfile(user, extra) {
  * small bundle (profile, metrics, meds, cycle mode).
  */
 export async function loadPatientAiBundle(userId, { full = false, cycleAllowed = false, today, user, excludeSessionId } = {}, db = prisma) {
-  const [healthProfile, metrics, schedules, cycle, history, labIds] = await Promise.all([
+  const [healthProfile, metrics, schedules, cycle, history, labIds, sleep] = await Promise.all([
     db.healthProfile.findUnique({ where: { userId } }),
     db.healthMetricDaily.findMany({
       where: { userId },
@@ -290,6 +291,7 @@ export async function loadPatientAiBundle(userId, { full = false, cycleAllowed =
       : db.cycleProfile.findUnique({ where: { userId }, select: { mode: true, privacyEnabled: true } }),
     full ? loadPatientHistory(userId, db, { today, user, excludeSessionId }) : null,
     full ? db.medicalRecord.findMany({ where: { userId, type: 'LAB' }, select: { id: true } }).catch(() => null) : null,
+    full ? loadSleepAiContext(userId, db, { today }) : null,
   ]);
   const extra = healthProfile?.extraAnswers && typeof healthProfile.extraAnswers === 'object' ? healthProfile.extraAnswers : {};
   const storedPanels = Array.isArray(extra.labPanels) && extra.labPanels.length ? extra.labPanels : extra.appState?.labPanels;
@@ -307,6 +309,7 @@ export async function loadPatientAiBundle(userId, { full = false, cycleAllowed =
     nutrition: history?.nutrition ?? null,
     // A panel from a deleted upload goes with it (same rule as MEDILAB).
     labPanels: full && labIds ? withoutDeletedRecords(storedPanels, new Set(labIds.map(r => r.id))) : null,
+    sleep: sleep ?? null,
   };
 }
 
@@ -368,6 +371,7 @@ export async function withPatientAiContext(user, extra, options = {}) {
     options.full ? buildLabValuesBlock(bundle.labPanels) : null,
     options.full ? buildVisitsBlock(bundle.visits, options.today) : null,
     buildTrackedMetricsBlock(bundle.metrics),
+    options.full ? buildSleepBlock(bundle.sleep) : null,
     options.full ? buildNutritionBlock(bundle.nutrition, { topic: nutritionTopic }) : null,
     options.full ? buildConsultationsBlock(bundle.consultations) : null,
     options.full ? buildThreadBlock(options.thread, options.priorTurns) : null,
