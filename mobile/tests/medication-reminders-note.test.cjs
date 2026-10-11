@@ -4,7 +4,8 @@ const { readFileSync } = require('node:fs');
 const { join } = require('node:path');
 
 const mobile = join(__dirname, '..');
-const read = (file) => readFileSync(join(mobile, file), 'utf8');
+// A Windows checkout is CRLF (core.autocrlf); the guards below are written against LF source.
+const read = (file) => readFileSync(join(mobile, file), 'utf8').replace(/\r\n/g, '\n');
 
 // F5: with notifications denied, reminders silently did nothing and MEDIPILL never said so.
 test('MEDIPILL says when notifications are off, asking only from its one button', () => {

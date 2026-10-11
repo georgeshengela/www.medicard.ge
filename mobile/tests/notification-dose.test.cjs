@@ -10,6 +10,8 @@ const ts = require('typescript');
 // stayed „late“ on every screen. Runs the real medications.shared.ts + mediNotificationActions.ts with
 // storage/session boundaries replaced by an in-memory device.
 const SRC = path.resolve(__dirname, '../src/lib');
+// A Windows checkout is CRLF (core.autocrlf); the source guards below are written against LF source.
+const readSource = (file) => fs.readFileSync(file, 'utf8').replace(/\r\n/g, '\n');
 
 function load(file, modules) {
   const source = ts.transpileModule(fs.readFileSync(file, 'utf8'), {
@@ -370,7 +372,7 @@ test('an account switch while her dose log is read never writes her log into the
 });
 
 test('every medication reminder names the account it was scheduled for', () => {
-  const source = fs.readFileSync(path.join(SRC, 'notifications.ts'), 'utf8');
+  const source = readSource(path.join(SRC, 'notifications.ts'));
   const content = source.slice(source.indexOf('function medicationReminderContent('));
   const data = content.slice(content.indexOf('data: {'), content.indexOf('route:'));
   assert.match(data, /\n\s*owner,\n/);
@@ -382,7 +384,7 @@ test('every medication reminder names the account it was scheduled for', () => {
 });
 
 test('a fresh sign-in prunes the queue to its own account before the account is set; a restored session does not', () => {
-  const auth = fs.readFileSync(path.resolve(SRC, '../store/AuthContext.tsx'), 'utf8');
+  const auth = readSource(path.resolve(SRC, '../store/AuthContext.tsx'));
   const adopt = auth.slice(auth.indexOf('const adopt = useCallback('));
   const pruneAt = adopt.indexOf('prunePendingDoseLogs(result.user.id)');
   assert.ok(pruneAt > 0 && pruneAt < adopt.indexOf('setLocalAccountId(result.user.id)'));
@@ -432,7 +434,7 @@ test('a payload without a slot keeps the old fallback route', async () => {
 });
 
 test('the scheduled reminder names its slot and the fallback route keeps it', () => {
-  const source = fs.readFileSync(path.join(SRC, 'notifications.ts'), 'utf8');
+  const source = readSource(path.join(SRC, 'notifications.ts'));
   assert.match(source, /route: `\/medications\/\$\{dose\.medicationId\}\?time=\$\{dose\.time\}/);
   const plan = load(path.join(SRC, 'notificationPlan.ts'), {});
   assert.ok(plan.isNotificationRoute('/medications/med-1?time=20:00&date=2026-10-08'));

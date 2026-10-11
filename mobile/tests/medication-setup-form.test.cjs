@@ -6,7 +6,8 @@ const loader = require('./helpers/loadTs.cjs');
 
 // MEDIPILL setup fixes from the launch bug hunt (habits F4, F10, F11).
 const mobile = join(__dirname, '..');
-const read = (file) => readFileSync(join(mobile, file), 'utf8');
+// A Windows checkout is CRLF (core.autocrlf); the guards below are written against LF source.
+const read = (file) => readFileSync(join(mobile, file), 'utf8').replace(/\r\n/g, '\n');
 const form = read('src/components/medications/MedicationSetupForm.tsx');
 
 function saveBody() {

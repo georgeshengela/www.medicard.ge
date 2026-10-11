@@ -4,7 +4,8 @@ const { readFileSync } = require('node:fs');
 const { join } = require('node:path');
 
 const root = join(__dirname, '..');
-const read = (rel) => readFileSync(join(root, ...rel.split('/')), 'utf8');
+// A Windows checkout is CRLF (core.autocrlf); the guards below are written against LF source.
+const read = (rel) => readFileSync(join(root, ...rel.split('/')), 'utf8').replace(/\r\n/g, '\n');
 
 /** The body of `const name = async (…) => { … };` / `const name = useCallback(…)` up to the next handler. */
 function handler(src, name) {

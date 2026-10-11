@@ -762,7 +762,7 @@ test('IR3-3: every direct last period write in the app drops a queued start rest
   walk(join(mobile, 'app'));
   const writers = files
     .filter((file) => /api\.cycle\.setLastPeriod\(/.test(fs.readFileSync(file, 'utf8')))
-    .map((file) => file.slice(mobile.length + 1))
+    .map((file) => file.slice(mobile.length + 1).replace(/\\/g, '/'))
     .sort();
   // The queue itself (the restore and the undo's follow-up) and the three places where she answers the date.
   assert.deepEqual(writers, [
@@ -772,7 +772,8 @@ test('IR3-3: every direct last period write in the app drops a queued start rest
     'src/lib/onboardingGoals.ts',
   ]);
   for (const file of writers.filter((name) => name !== 'src/lib/cycleOffline.ts')) {
-    const source = fs.readFileSync(join(mobile, file), 'utf8');
+    // LF like the source in git, so a CRLF checkout does not stretch the 600-character window.
+    const source = fs.readFileSync(join(mobile, file), 'utf8').replace(/\r\n/g, '\n');
     const write = source.indexOf('api.cycle.setLastPeriod(');
     const drop = source.lastIndexOf('discardQueuedStartRestores(', write);
     assert.ok(drop > 0, `${file}: no discardQueuedStartRestores before the write`);
