@@ -256,7 +256,7 @@ export default function OnboardingScreen() {
       title={copy.title}
       body={copy.body}
       error={error}
-      center={question === 'birthdate' || question === 'height' || question === 'weight'}
+      center={question === 'gender' || question === 'birthdate' || question === 'height' || question === 'weight'}
       primary={{ label: tx('გაგრძელება', 'Continue'), onPress: () => void goNext(), disabled: !canContinue, busy }}
       footerBelow={
         preview ? null : (

@@ -1,6 +1,7 @@
 import React from 'react';
-import { Dimensions, Pressable, Text, View } from 'react-native';
+import { Dimensions, Image, Pressable, Text, View } from 'react-native';
 import * as Haptics from 'expo-haptics';
+import { Check } from 'lucide-react-native';
 import { AllergyPicker } from '@/components/assessment/AllergyPicker';
 import { ConditionPicker } from '@/components/assessment/ConditionPicker';
 import { DateWheelPicker } from '@/components/assessment/DateWheelPicker';
@@ -9,6 +10,7 @@ import { WeightRulerPicker } from '@/components/assessment/WeightRulerPicker';
 import { ChipGroup, ChoiceList, GroupLabel, TileGrid } from '@/components/onboarding/OnboardingKit';
 import { VelvetInput } from '@/components/velvet/VelvetInput';
 import { AssessmentTokensContext, velvetAssessmentTokens } from '@/constants/assessmentLayout';
+import { AVATAR_SOURCES } from '@/constants/avatarAssets';
 import type { QuestionKey } from '@/constants/assessmentSteps';
 import { ka } from '@/i18n/ka';
 import { tx } from '@/i18n/locale';
@@ -158,43 +160,124 @@ function BigRuler({ palette: p, label, value, unit, values, labelOrigin, onSelec
   );
 }
 
-const GENDERS: { key: Gender; glyph: string; label: string }[] = [
-  { key: 'MALE', glyph: '♂', label: ka.auth.genderMale },
-  { key: 'FEMALE', glyph: '♀', label: ka.auth.genderFemale },
-  { key: 'OTHER', glyph: '⚧', label: ka.auth.genderOther },
+/** The two portraits are the app's own 3D profile avatars (the same art the profile offers later). */
+const PORTRAITS: { key: Gender; label: string; image: number }[] = [
+  { key: 'FEMALE', label: ka.auth.genderFemale, image: AVATAR_SOURCES['avatar-1'] },
+  { key: 'MALE', label: ka.auth.genderMale, image: AVATAR_SOURCES['avatar-2'] },
 ];
+const PORTRAIT = 128;
 
+function tick() {
+  void Haptics.selectionAsync().catch(() => undefined);
+}
+
+/**
+ * Sex (owner 2026-10-11: the three small symbol tiles looked poor): two tall cards with a portrait in a
+ * pressed well — the page's one bold element — and „სხვა“ as a quiet row under them. The card not chosen
+ * steps back a little once the other one is picked.
+ */
 function GenderTiles({ palette: p, value, onPick }: { palette: VelvetPalette; value: Gender | null; onPick: (g: Gender) => void }) {
+  const otherOn = value === 'OTHER';
   return (
-    <View accessibilityRole="radiogroup" style={{ flexDirection: 'row', gap: 12 }}>
-      {GENDERS.map((g) => {
-        const on = value === g.key;
-        return (
-          <Pressable
-            key={g.key}
-            accessibilityRole="radio"
-            accessibilityState={{ selected: on }}
-            accessibilityLabel={g.label}
-            onPress={() => {
-              void Haptics.selectionAsync().catch(() => undefined);
-              onPick(g.key);
-            }}
-            style={{
-              flex: 1,
-              height: 118,
-              borderRadius: 24,
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: 6,
-              backgroundColor: on ? p.field : p.surface,
-              boxShadow: on ? `${velvetField(p)}, 0px 0px 0px 1.5px ${p.pulse}` : velvetLift(p),
-            }}
-          >
-            <Text style={{ fontSize: 34, lineHeight: 42, color: on ? p.pulse : p.inkOff }}>{g.glyph}</Text>
-            <Text style={{ fontFamily: on ? 'NotoSansGeorgian_700Bold' : 'NotoSansGeorgian_600SemiBold', fontSize: 16, lineHeight: 22, color: on ? p.ink : p.text }}>{g.label}</Text>
-          </Pressable>
-        );
-      })}
+    <View accessibilityRole="radiogroup" style={{ gap: 14 }}>
+      <View style={{ flexDirection: 'row', gap: 14 }}>
+        {PORTRAITS.map((g) => {
+          const on = value === g.key;
+          const faded = value !== null && !on;
+          return (
+            <Pressable
+              key={g.key}
+              accessibilityRole="radio"
+              accessibilityState={{ selected: on }}
+              accessibilityLabel={g.label}
+              onPress={() => {
+                tick();
+                onPick(g.key);
+              }}
+              style={{
+                flex: 1,
+                paddingTop: 20,
+                paddingBottom: 18,
+                borderRadius: 28,
+                alignItems: 'center',
+                gap: 14,
+                backgroundColor: on ? p.field : p.surface,
+                boxShadow: on ? `${velvetField(p)}, 0px 0px 0px 2px ${p.pulse}` : velvetLift(p),
+              }}
+            >
+              <View
+                style={{
+                  width: PORTRAIT + 12,
+                  height: PORTRAIT + 12,
+                  borderRadius: (PORTRAIT + 12) / 2,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  backgroundColor: p.surface,
+                  boxShadow: velvetField(p),
+                }}
+              >
+                <Image
+                  source={g.image}
+                  accessibilityIgnoresInvertColors
+                  style={{ width: PORTRAIT, height: PORTRAIT, borderRadius: PORTRAIT / 2, opacity: faded ? 0.45 : 1 }}
+                />
+                {on ? (
+                  <View
+                    style={{
+                      position: 'absolute',
+                      right: 2,
+                      bottom: 2,
+                      width: 30,
+                      height: 30,
+                      borderRadius: 15,
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      backgroundColor: p.pulse,
+                      borderWidth: 3,
+                      borderColor: p.field,
+                    }}
+                  >
+                    <Check size={15} color="#FFFFFF" strokeWidth={3} />
+                  </View>
+                ) : null}
+              </View>
+              <Text style={{ fontFamily: on ? 'NotoSansGeorgian_700Bold' : 'NotoSansGeorgian_600SemiBold', fontSize: 18, lineHeight: 24, color: on ? p.ink : faded ? p.inkOff : p.text }}>
+                {g.label}
+              </Text>
+            </Pressable>
+          );
+        })}
+      </View>
+      <Pressable
+        accessibilityRole="radio"
+        accessibilityState={{ selected: otherOn }}
+        accessibilityLabel={ka.auth.genderOther}
+        onPress={() => {
+          tick();
+          onPick('OTHER');
+        }}
+        style={{
+          minHeight: 56,
+          flexDirection: 'row',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          paddingHorizontal: 18,
+          borderRadius: 20,
+          backgroundColor: otherOn ? p.field : p.surface,
+          boxShadow: otherOn ? `${velvetField(p)}, 0px 0px 0px 1.5px ${p.pulse}` : velvetLift(p),
+        }}
+      >
+        <Text style={{ fontFamily: otherOn ? 'NotoSansGeorgian_700Bold' : 'NotoSansGeorgian_600SemiBold', fontSize: 16, lineHeight: 22, color: otherOn ? p.ink : p.text }}>
+          {ka.auth.genderOther}
+        </Text>
+        {otherOn ? (
+          <View style={{ width: 24, height: 24, borderRadius: 12, backgroundColor: p.pulse, alignItems: 'center', justifyContent: 'center' }}>
+            <Check size={15} color="#FFFFFF" strokeWidth={3} />
+          </View>
+        ) : (
+          <View style={{ width: 24, height: 24, borderRadius: 12, backgroundColor: p.field, boxShadow: velvetField(p) }} />
+        )}
+      </Pressable>
     </View>
   );
 }
