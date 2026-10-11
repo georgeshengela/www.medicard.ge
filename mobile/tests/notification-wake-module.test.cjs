@@ -42,12 +42,15 @@ test('the wake never takes the response from expo and ends by itself before iOS 
   assert.match(subscriber, /didFinishLaunchingWithOptions[\s\S]*NotificationCenterManager\.shared\.addDelegate\(NotificationButtonWake\.shared\)/);
 });
 
-test('the pod builds against ExpoNotifications and its sources are tracked by git (EAS uploads only those)', () => {
+test('the pod builds against ExpoNotifications and its sources reach git and the EAS archive', () => {
   const podspec = read(path.join(MODULE, 'ios/NotificationWake.podspec'));
   assert.match(podspec, /s\.dependency 'ExpoNotifications'/);
   const expoPodspec = read(path.join(ROOT, 'node_modules/expo-notifications/ios/ExpoNotifications.podspec'));
   const min = (spec) => /:ios => '([\d.]+)'/.exec(spec)?.[1];
   assert.equal(min(podspec), min(expoPodspec));
-  const ignore = read(path.resolve(ROOT, '../.gitignore'));
-  assert.ok(ignore.indexOf('!mobile/modules/*/ios/') > ignore.indexOf('\nios/'));
+  // Both ignore `ios/` for the generated native projects; EAS uploads by .easignore (it replaces .gitignore).
+  for (const file of ['.gitignore', '.easignore']) {
+    const ignore = read(path.resolve(ROOT, '..', file));
+    assert.ok(ignore.indexOf('!mobile/modules/*/ios/') > ignore.indexOf('\nios/'), file);
+  }
 });

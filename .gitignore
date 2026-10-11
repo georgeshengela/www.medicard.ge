@@ -17,7 +17,7 @@ web-build/
 # Native
 android/
 ios/
-# Local Expo modules keep their native sources (EAS Build uploads only what git tracks).
+# Local Expo modules keep their native sources (git; EAS reads .easignore, which has the same exception).
 !mobile/modules/*/ios/
 !mobile/modules/*/android/
 
