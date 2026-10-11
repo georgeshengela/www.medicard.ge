@@ -27,7 +27,7 @@ export function rateVisible(numerator, denominator, { min = RATE_MIN_DENOMINATOR
 }
 
 export const RATE_DEFINITIONS = {
-  delivery: 'მიწოდების წილი = მიწოდებული / დაგეგმილი.',
+  delivery: 'მიწოდების წილი = ტელეფონმა დაადასტურა, რომ აჩვენა / დაგეგმილი, რომლის დროც დადგა.',
   open: 'გახსნის წილი = გახსნილი / მიწოდებული.',
   action: 'ქმედების წილი = ქმედება / მიწოდებული.',
   directAction: 'პირდაპირი ქმედება / მიწოდებული. აპის გახსნა არ არის საჭირო.',
@@ -58,63 +58,176 @@ function outcomeSet(rows, kind) {
   return new Set(rows.filter((row) => row.outcome === kind).map((row) => row.decisionId));
 }
 
-export function buildNotificationFunnel(decisions, outcomes) {
-  const evaluated = decisions.length;
-  const eligible = decisions.filter((d) => d.result !== 'BLOCKED').length;
-  const scheduled = decisions.filter((d) => d.scheduledAt && d.result !== 'BLOCKED').length;
-  const suppressed = decisions.filter((d) => d.result === 'BLOCKED').length;
-  const cancelled = new Set([
-    ...decisions.filter((d) => d.result === 'CANCELLED').map((d) => d.decisionId),
-    ...outcomeSet(outcomes, 'cancelled_by_revalidation'),
-  ]).size;
-  const delivered = new Set(
-    outcomes
-      .filter((row) => ['delivered', 'opened', 'actioned', 'snoozed'].includes(row.outcome))
-      .map((row) => row.decisionId),
-  ).size;
-  const opened = outcomeSet(outcomes, 'opened').size;
-  const actioned = outcomeSet(outcomes, 'actioned').size;
-  const directActioned = new Set(
-    outcomes
-      .filter((row) => row.outcome === 'actioned' && DIRECT_ACTION_KEYS.has(row.actionKey))
-      .map((row) => row.decisionId),
-  ).size;
+const DELIVERED_OUTCOMES = new Set(['delivered', 'opened', 'actioned', 'snoozed']);
+const TBILISI_OFFSET_MS = 4 * 3_600_000;
+/** Families that run several plans at once (mobile MULTI_PLAN_FAMILIES); every other family has one slot. */
+const MULTI_PLAN_FAMILIES = new Set(['reengage', 'insight', 'achievement']);
 
+function planSlotOf(row) {
+  return MULTI_PLAN_FAMILIES.has(row.family) ? `${row.family}|${row.templateKey || ''}` : String(row.family || 'unknown');
+}
+
+function msOf(value) {
+  if (value == null) return null;
+  const ms = new Date(value).getTime();
+  return Number.isFinite(ms) ? ms : null;
+}
+
+/**
+ * Brain decisions → plans. Phones before 1.0.0.21.39 sent every Brain run (up to one a minute) as fresh
+ * rows with new ids: one water plan arrived dozens of times. A plan = person + template + result + reason
+ * + planned time (or day, for a skip). A planned notification that a later run replaced before its time
+ * is `superseded` — it never fired. `aliasOf` maps every row id to its plan's id so outcomes find it.
+ */
+export function collapseDecisionPlans(rows, now = Date.now()) {
+  const plans = new Map();
+  const aliasOf = new Map();
+  for (const row of rows || []) {
+    const scheduled = msOf(row.scheduledAt);
+    const created = msOf(row.createdAt) ?? 0;
+    // Tbilisi is UTC+4 all year (no DST since 2005): a cheap calendar day for 50 000 rows.
+    const slotTime = scheduled ?? `d:${new Date(created + TBILISI_OFFSET_MS).toISOString().slice(0, 10)}`;
+    const key = `${row.userId}|${row.family}|${row.templateKey || ''}|${row.result}|${row.reason || ''}|${slotTime}`;
+    let plan = plans.get(key);
+    if (!plan) {
+      plan = { ...row, planKey: key, slot: `${row.userId}|${planSlotOf(row)}`, firstAt: created, lastAt: created, ids: [], superseded: false };
+      plans.set(key, plan);
+    }
+    plan.ids.push(row.decisionId);
+    if (created >= plan.lastAt) {
+      plan.lastAt = created;
+      plan.decisionId = row.decisionId;
+    }
+    plan.firstAt = Math.min(plan.firstAt, created);
+  }
+  // Old phones: a later run that touched the same slot before the planned time replaced the plan.
+  const bySlot = new Map();
+  for (const plan of plans.values()) {
+    if (!bySlot.has(plan.slot)) bySlot.set(plan.slot, []);
+    bySlot.get(plan.slot).push(plan);
+  }
+  for (const list of bySlot.values()) {
+    if (list.length < 2) continue;
+    const starts = list.map((plan) => plan.firstAt).sort((a, b) => a - b);
+    for (const plan of list) {
+      if (plan.result !== 'SEND') continue;
+      const at = msOf(plan.scheduledAt);
+      if (at == null) continue;
+      // First plan in this slot that began after this one was last seen: did it come before the planned time?
+      let lo = 0;
+      let hi = starts.length;
+      while (lo < hi) {
+        const mid = (lo + hi) >> 1;
+        if (starts[mid] > plan.lastAt) hi = mid;
+        else lo = mid + 1;
+      }
+      plan.superseded = lo < starts.length && starts[lo] < at;
+    }
+  }
+  for (const plan of plans.values()) {
+    for (const id of plan.ids) aliasOf.set(id, plan.decisionId);
+    plan.pending = plan.result === 'SEND' && !plan.superseded && (msOf(plan.scheduledAt) ?? 0) > now;
+  }
+  return { plans: [...plans.values()], aliasOf };
+}
+
+function planOutcomeIndex(outcomes, aliasOf) {
+  const byPlan = new Map();
+  for (const row of outcomes || []) {
+    const id = aliasOf.get(row.decisionId) || row.decisionId;
+    if (!byPlan.has(id)) byPlan.set(id, new Set());
+    byPlan.get(id).add(row.outcome === 'actioned' && DIRECT_ACTION_KEYS.has(row.actionKey) ? 'actioned_direct' : row.outcome);
+    if (row.outcome === 'actioned') byPlan.get(id).add('actioned');
+  }
+  return byPlan;
+}
+
+/**
+ * The Brain funnel on plans: planned (scheduled on the phone, not replaced) → delivered (the phone
+ * confirmed it was shown — since 1.0.0.21.39 also when it arrived while the app was closed) → opened →
+ * acted on. Held back before planning (`blocked`) and cancelled after planning sit beside it.
+ */
+export function buildNotificationFunnel(decisions, outcomes, { now = Date.now() } = {}) {
+  const { plans, aliasOf } = collapseDecisionPlans(decisions, now);
+  const byPlan = planOutcomeIndex(outcomes, aliasOf);
+  const has = (id, kind) => byPlan.get(id)?.has(kind) || false;
+  const deliveredIds = new Set();
+  const openedIds = new Set();
+  const actionedIds = new Set();
+  const directIds = new Set();
+  const cancelledIds = new Set();
+  for (const [id, kinds] of byPlan) {
+    if ([...kinds].some((kind) => DELIVERED_OUTCOMES.has(kind))) deliveredIds.add(id);
+    if (kinds.has('opened')) openedIds.add(id);
+    if (kinds.has('actioned')) actionedIds.add(id);
+    if (kinds.has('actioned_direct')) directIds.add(id);
+    if (kinds.has('cancelled_by_revalidation')) cancelledIds.add(id);
+  }
+  let scheduled = 0;
+  let due = 0;
+  let pending = 0;
+  let next24h = 0;
+  let suppressed = 0;
+  let superseded = 0;
+  const people = new Set();
+  for (const plan of plans) {
+    if (plan.result === 'BLOCKED') suppressed += 1;
+    if (plan.result === 'CANCELLED') cancelledIds.add(plan.decisionId);
+    if (plan.superseded) superseded += 1;
+    if ((plan.result === 'SEND' || plan.result === 'CANCELLED') && !plan.superseded) {
+      scheduled += 1;
+      people.add(plan.userId);
+    }
+    if (plan.pending) {
+      pending += 1;
+      if ((msOf(plan.scheduledAt) ?? Infinity) <= now + 86_400_000) next24h += 1;
+    }
+    if (plan.result === 'SEND' && !plan.superseded && !plan.pending && !has(plan.decisionId, 'cancelled_by_revalidation')) due += 1;
+  }
+  const evaluated = plans.length;
   return {
     evaluated,
-    eligible,
+    eligible: evaluated - suppressed,
     scheduled,
-    delivered,
-    opened,
-    actioned,
-    directActioned,
+    pending,
+    next24h,
+    people: people.size,
+    due,
+    superseded,
+    delivered: deliveredIds.size,
+    opened: openedIds.size,
+    actioned: actionedIds.size,
+    directActioned: directIds.size,
     suppressed,
-    cancelled,
+    cancelled: cancelledIds.size,
+    rawRows: (decisions || []).length,
     rates: {
-      delivery: rateVisible(delivered, scheduled),
-      open: rateVisible(opened, delivered),
-      action: rateVisible(actioned, delivered),
-      directAction: rateVisible(directActioned, delivered),
+      delivery: rateVisible(deliveredIds.size, Math.max(due, deliveredIds.size)),
+      open: rateVisible(openedIds.size, deliveredIds.size),
+      action: rateVisible(actionedIds.size, deliveredIds.size),
+      directAction: rateVisible(directIds.size, deliveredIds.size),
       suppression: rateVisible(suppressed, evaluated),
-      revalidationCancel: rateVisible(cancelled, scheduled),
+      revalidationCancel: rateVisible(cancelledIds.size, scheduled),
     },
     definitions: RATE_DEFINITIONS,
-    note: 'პირდაპირი ქმედება შეიძლება დათვალოს გახსნის გარეშე.',
+    note: 'პირდაპირი ქმედება (მაგ. „დავლიე“ შეტყობინებიდანვე) შეიძლება მოხდეს აპის გახსნის გარეშე.',
   };
 }
 
-export function buildTypePerformance(decisions, outcomes, prevDecisions, prevOutcomes) {
+export function buildTypePerformance(decisions, outcomes, prevDecisions, prevOutcomes, { now = Date.now(), familyById = null } = {}) {
   const families = new Map();
-  const familyOf = new Map(decisions.map((d) => [d.decisionId, d.family || 'unknown']));
+  const { plans, aliasOf } = collapseDecisionPlans(decisions, now);
+  const familyOf = new Map(plans.map((plan) => [plan.decisionId, plan.family || 'unknown']));
+  const byPlan = planOutcomeIndex(outcomes, aliasOf);
 
   function bucket(family) {
     if (!families.has(family)) {
       families.set(family, {
         family,
         evaluated: 0,
-        eligible: 0,
+        scheduled: 0,
         suppressed: 0,
-        cancelled: 0,
+        cancelledIds: new Set(),
         deliveredIds: new Set(),
         openedIds: new Set(),
         actionedIds: new Set(),
@@ -124,26 +237,24 @@ export function buildTypePerformance(decisions, outcomes, prevDecisions, prevOut
     return families.get(family);
   }
 
-  for (const row of decisions) {
-    const b = bucket(row.family || 'unknown');
+  for (const plan of plans) {
+    const b = bucket(plan.family || 'unknown');
     b.evaluated += 1;
-    if (row.result !== 'BLOCKED') b.eligible += 1;
-    if (row.result === 'BLOCKED') b.suppressed += 1;
-    if (row.result === 'CANCELLED') b.cancelled += 1;
+    if (plan.result === 'BLOCKED') b.suppressed += 1;
+    if ((plan.result === 'SEND' || plan.result === 'CANCELLED') && !plan.superseded) b.scheduled += 1;
+    if (plan.result === 'CANCELLED') b.cancelledIds.add(plan.decisionId);
   }
-  for (const row of outcomes) {
-    const b = bucket(familyOf.get(row.decisionId) || 'unknown');
-    if (['delivered', 'opened', 'actioned', 'snoozed'].includes(row.outcome)) b.deliveredIds.add(row.decisionId);
-    if (row.outcome === 'opened') b.openedIds.add(row.decisionId);
-    if (row.outcome === 'actioned') {
-      b.actionedIds.add(row.decisionId);
-      if (DIRECT_ACTION_KEYS.has(row.actionKey)) b.directIds.add(row.decisionId);
-    }
-    if (row.outcome === 'cancelled_by_revalidation') b.cancelled += 1;
+  for (const [id, kinds] of byPlan) {
+    const b = bucket(familyOf.get(id) || familyById?.get(id) || 'unknown');
+    if ([...kinds].some((kind) => DELIVERED_OUTCOMES.has(kind))) b.deliveredIds.add(id);
+    if (kinds.has('opened')) b.openedIds.add(id);
+    if (kinds.has('actioned')) b.actionedIds.add(id);
+    if (kinds.has('actioned_direct')) b.directIds.add(id);
+    if (kinds.has('cancelled_by_revalidation')) b.cancelledIds.add(id);
   }
 
   const prev = prevDecisions
-    ? buildTypePerformance(prevDecisions, prevOutcomes || [], null, null)
+    ? buildTypePerformance(prevDecisions, prevOutcomes || [], null, null, { now })
     : { types: [] };
   const prevMap = new Map(prev.types.map((row) => [row.family, row]));
 
@@ -157,13 +268,14 @@ export function buildTypePerformance(decisions, outcomes, prevDecisions, prevOut
       return {
         family: row.family,
         evaluated: row.evaluated,
-        eligible: row.eligible,
+        eligible: row.evaluated - row.suppressed,
+        scheduled: row.scheduled,
         delivered,
         opened,
         actioned,
         directActioned,
         suppressed: row.suppressed,
-        cancelled: row.cancelled,
+        cancelled: row.cancelledIds.size,
         openRate: rateVisible(opened, delivered),
         actionRate: rateVisible(actioned, delivered),
         directActionRate: rateVisible(directActioned, delivered),
@@ -175,7 +287,7 @@ export function buildTypePerformance(decisions, outcomes, prevDecisions, prevOut
             }
           : null,
       };
-    }).sort((a, b) => b.evaluated - a.evaluated),
+    }).sort((a, b) => b.scheduled - a.scheduled || b.evaluated - a.evaluated),
   };
 }
 

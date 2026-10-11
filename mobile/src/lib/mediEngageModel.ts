@@ -105,6 +105,8 @@ export type EngageOutcome = {
   sentAt: number;
   openedAt?: number;
   action?: string;
+  /** The Brain decision the notification carried; one outcome row per decision. */
+  decisionId?: string;
 };
 
 /** Hours before the same companion family can fire again. */
@@ -128,9 +130,12 @@ export const FAMILY_COOLDOWN_HOURS: Record<string, number> = {
   reengage: 0,
 };
 
+/**
+ * Families that may move to the hour the person usually opens the app. Never the morning greeting
+ * („დილა მშვიდობისა“ at a 21:00 habit read as a bug) and never into quiet hours.
+ */
 export const PREFERRED_WINDOW_FAMILIES = new Set([
   'checkin',
-  'morning',
   'question',
   'unfinished',
   'chat',

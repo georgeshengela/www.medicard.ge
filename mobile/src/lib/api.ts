@@ -2517,6 +2517,8 @@ export const api = {
         features?: Record<string, boolean>;
         /** User-facing text for each paused key. */
         featureMessages?: Record<string, string>;
+        /** Admin control over Medi's companion notifications (Push → Brain „მართვა“). */
+        brain?: { paused: boolean; off: string[]; maxPerDay: number | null };
       }>(`/api/app/status?version=${encodeURIComponent(version)}`, { token: null, timeoutMs: 15_000 }),
   },
 

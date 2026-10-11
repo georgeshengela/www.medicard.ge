@@ -1463,9 +1463,11 @@ function renderUserInvestigationTabs(user, extra, pkgOptions, isPaid, activeTab,
     </div>`;
   const decisionRows = decisionList.map((d) => `
     <tr class="is-click" data-decision="${escapeAttr(d.decisionId)}" tabindex="0" title="გადაწყვეტილების დეტალები">
-      <td class="s-user-nowrap">${esc(userWhen(d.createdAt))}</td>
+      <td class="s-user-nowrap">${esc(userWhen(d.scheduledAt && d.result !== 'BLOCKED' ? d.scheduledAt : d.createdAt))}</td>
       <td>${esc(typeof brainFamilyLabel === 'function' ? brainFamilyLabel(d.family || d.candidate) : (d.family || d.candidate || '—'))}</td>
-      <td>${typeof brainResultBadge === 'function' ? brainResultBadge(d.result) : esc(d.result || '—')}</td>
+      <td>${typeof brainPlanStatus === 'function'
+        ? (([label, tone, hint]) => `<span class="s-badge ${tone}" title="${escapeAttr(hint)}">${esc(label)}</span>`)(brainPlanStatus(d))
+        : typeof brainResultBadge === 'function' ? brainResultBadge(d.result) : esc(d.result || '—')}</td>
       <td>${d.reason ? esc(userReasonText(d.reason)) : '<span class="s-muted">—</span>'}</td>
       <td class="s-user-go">${icon('arrow')}</td>
     </tr>`).join('');
@@ -1711,45 +1713,44 @@ const PUSH_SEGMENT_LABELS = {
 };
 const PUSH_CAMPAIGN_LIVE = new Set(['QUEUED', 'SENDING']);
 
-/** Engagement templates carry English machine labels (server pushEngageTemplates.js); name them for the owner. */
+/** Medi companion template names (same as server pushEngageTemplates.js labels) — the Brain log names a plan by its template key. */
 const PUSH_ENGAGE_LABELS = {
-  'engage-checkin-morning': 'დღის შემოწმება · დილა',
-  'engage-checkin-mid': 'დღის შემოწმება · შუადღე',
-  'engage-checkin-evening': 'დღის შემოწმება · საღამო',
-  'engage-streak-week': 'სერია · 7 დღე',
-  'engage-streak-continue': 'სერიის გაგრძელება',
-  'engage-weekly': 'კვირის ანგარიში „ჩემი კვირა Medi-სთან“',
-  'engage-insight': 'ინსაითი',
-  'engage-insight-steps': 'ინსაითი · ნაბიჯები',
-  'engage-insight-cycle': 'ინსაითი · ციკლი',
-  'engage-insight-meds': 'ინსაითი · მედიკამენტის შეხსენებები',
-  'engage-achieve-steps': 'მიღწევა · ნაბიჯები',
-  'engage-achieve-month': 'მიღწევა · ერთი თვე ერთად',
-  'engage-achieve-meds': 'მიღწევა · მედიკამენტები',
-  'engage-hydration': 'წყალი',
-  'engage-hydration-low': 'წყალი · ცოტა დალია',
-  'engage-steps-quiet': 'მშვიდი დღე · ნაბიჯები',
-  'engage-sleep': 'ძილის დრო',
-  'engage-sleep-log': 'ძილის ჩაწერა',
-  'engage-reengage-2': 'დაბრუნება · 2 დღე',
-  'engage-reengage-5': 'დაბრუნება · 5 დღე',
-  'engage-reengage-14': 'დაბრუნება · 14 დღე',
-  'engage-reengage-30': 'დაბრუნება · 30 დღე',
-  'engage-feature': 'ახალი ფუნქცია',
-  'engage-morning': 'დილის მისალმება სახელით',
-  'engage-morning-wish': 'დილის მისალმება',
-  'engage-birthday': 'დაბადების დღე',
-  'engage-question': 'Medi-ს კითხვა',
-  'engage-chat': 'გუშინდელი საუბრის გაგრძელება',
-  'engage-masked': 'დაფარული შეხსენება',
-  'engage-unfinished': 'დაუსრულებელი საქმე',
-  'engage-unfinished-med': 'დაუსრულებელი საქმე · მედიკამენტი',
-  'engage-visit-followup': 'ვიზიტის შემდეგ',
-  'engage-quest-near-complete': 'MEDIQUEST · თითქმის დასრულებული',
-  'engage-quest-weather-window': 'MEDIQUEST · კარგი ამინდი სასეირნოდ',
-  'engage-quest-comeback': 'MEDIQUEST · დაბრუნება',
-  'engage-quest-morning-plan': 'MEDIQUEST · დილის გეგმა',
-  'engage-quest-weekly-progress': 'MEDIQUEST · კვირის პროგრესი',
+  'engage-checkin-morning': "დღის შემოწმება · დილა",
+  'engage-checkin-mid': "დღის შემოწმება · შუადღე",
+  'engage-checkin-evening': "დღის შემოწმება · საღამო",
+  'engage-weekly': "კვირის ანგარიში „ჩემი კვირა Medi-სთან“",
+  'engage-insight-steps': "ინსაითი · ნაბიჯები",
+  'engage-insight-cycle': "ინსაითი · ციკლი",
+  'engage-insight-meds': "ინსაითი · მედიკამენტის შეხსენებები",
+  'engage-achieve-steps': "მიღწევა · ნაბიჯები",
+  'engage-achieve-meds': "მიღწევა · მედიკამენტები",
+  'engage-hydration': "წყალი",
+  'engage-hydration-low': "წყალი · დღეს ცოტა დალია",
+  'engage-steps-quiet': "მშვიდი დღე · ნაბიჯები",
+  'engage-sleep': "ძილის დრო",
+  'engage-reengage-2': "დაბრუნება · 2 დღე",
+  'engage-reengage-5': "დაბრუნება · 5 დღე",
+  'engage-reengage-14': "დაბრუნება · 14 დღე",
+  'engage-reengage-30': "დაბრუნება · 30 დღე",
+  'engage-feature': "ახალი ფუნქცია · კვირის შეჯამება",
+  'engage-morning': "დილის მისალმება სახელით",
+  'engage-morning-wish': "დილის მისალმება",
+  'engage-birthday': "დაბადების დღე",
+  'engage-question': "Medi-ს კითხვა · პროფილი",
+  'engage-chat': "საუბრის გაგრძელება",
+  'engage-masked': "დაფარული შეხსენება",
+  'engage-unfinished': "დაუსრულებელი საქმე",
+  'engage-unfinished-med': "დაუსრულებელი საქმე · მედიკამენტი",
+  'engage-visit-followup': "ვიზიტის შემდეგ",
+  'engage-weather-walk': "ამინდი · კარგი დრო გასასეირნებლად",
+  'engage-weather-rain-soon': "ამინდი · მალე იწვიმებს",
+  'engage-weather-hot': "ამინდი · ცხელა",
+  'engage-weather-uv': "ამინდი · ძლიერი მზე",
+  'engage-quest-near-complete': "MEDIQUEST · თითქმის დასრულებული",
+  'engage-quest-weather-window': "MEDIQUEST · კარგი ამინდი სასეირნოდ",
+  'engage-quest-comeback': "MEDIQUEST · დაბრუნება",
+  'engage-quest-morning-plan': "MEDIQUEST · დილის გეგმა",
+  'engage-quest-weekly-progress': "MEDIQUEST · კვირის პროგრესი",
 };
 function pushEngageLabel(t) {
   return PUSH_ENGAGE_LABELS[t?.key] || t?.label || t?.key || '';
@@ -1879,7 +1880,7 @@ async function renderPush() {
     admin: 'ადმინი · დისტანციური',
     pets: 'ცხოველები · MEDIVET',
     quota: 'ლიმიტები',
-    engage: 'ჩართულობა · Medi',
+    engage: 'Medi-ს ავტომატური შეტყობინებები',
   };
   // Every non-engagement group the server has templates for (engagement has its own tab).
   const COPY_GROUPS = ['med', 'cycle', 'visit', 'activity', 'pets', 'quota', 'admin'];
@@ -1969,8 +1970,8 @@ async function renderPush() {
       <section class="card push-board">
         <nav class="push-tabs" role="tablist" aria-label="Push სტუდია">
           <button type="button" class="push-tab${pushStudioTab === 'compose' ? ' active' : ''}" data-push-tab="compose" role="tab" aria-selected="${pushStudioTab === 'compose'}">${icon('send')} გაგზავნა</button>
-          <button type="button" class="push-tab${pushStudioTab === 'copy' ? ' active' : ''}" data-push-tab="copy" role="tab" aria-selected="${pushStudioTab === 'copy'}">${icon('message')} Medi ტექსტები <b>${templates.filter((t) => t.group !== 'engage').length}</b></button>
-          <button type="button" class="push-tab${pushStudioTab === 'engage' ? ' active' : ''}" data-push-tab="engage" role="tab" aria-selected="${pushStudioTab === 'engage'}">${icon('bell')} ჩართულობა <b>${templates.filter((t) => t.group === 'engage').length}</b></button>
+          <button type="button" class="push-tab${pushStudioTab === 'copy' ? ' active' : ''}" data-push-tab="copy" role="tab" aria-selected="${pushStudioTab === 'copy'}">${icon('message')} შეხსენებების ტექსტები <b>${templates.filter((t) => t.group !== 'engage').length}</b></button>
+          <button type="button" class="push-tab${pushStudioTab === 'engage' ? ' active' : ''}" data-push-tab="engage" role="tab" aria-selected="${pushStudioTab === 'engage'}">${icon('bell')} Medi-ს ტექსტები <b>${templates.filter((t) => t.group === 'engage').length}</b></button>
           <button type="button" class="push-tab${pushStudioTab === 'history' ? ' active' : ''}" data-push-tab="history" role="tab" aria-selected="${pushStudioTab === 'history'}">${icon('activity')} ისტორია <b>${campaigns.length + events.length}</b></button>
           <button type="button" class="push-tab${pushStudioTab === 'devices' ? ' active' : ''}" data-push-tab="devices" role="tab" aria-selected="${pushStudioTab === 'devices'}">${icon('phone')} მოწყობილობები <b>${activeDevices}</b></button>
           <button type="button" class="push-tab${pushStudioTab === 'brain' ? ' active' : ''}" data-push-tab="brain" role="tab" aria-selected="${pushStudioTab === 'brain'}">${icon('activity')} გადაწყვეტილებები</button>
@@ -2124,9 +2125,9 @@ async function renderPush() {
         <div class="push-panel${pushStudioTab === 'engage' ? '' : ' hidden'}" data-push-panel="engage">
           <div class="push-copy-toolbar">
             <div>
-              <p class="kicker">Brain</p>
-              <h3>ჩართულობის შეტყობინებები</h3>
-              <p class="muted">კვირის ანგარიში, დღის შემოწმებები, დაუსრულებელი საქმეები და დაბრუნების მოწვევები. როდის გაიგზავნოს, ტელეფონზე Brain წყვეტს — აქ მხოლოდ ტექსტს ცვლი.</p>
+              <p class="kicker">Medi-ს შეტყობინებები</p>
+              <h3>Medi-ს ავტომატური შეტყობინებების ტექსტები</h3>
+              <p class="muted">კვირის შეჯამება, „როგორ ხარ?“, წყალი და მოძრაობა, დაუსრულებელი საქმე, დაბრუნების მოწვევა. როდის გაიგზავნოს, ტელეფონზე Medi წყვეტს („Medi-ს შეტყობინებები“ → „მართვა“) — აქ ტექსტს ცვლი. ინგლისურენოვანი ადამიანები ინგლისურ ტექსტს იღებენ.</p>
             </div>
           </div>
           <div class="push-templates">

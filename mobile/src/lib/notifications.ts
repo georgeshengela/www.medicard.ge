@@ -95,7 +95,7 @@ Notifications.setNotificationHandler({
         };
       }
       const { shouldDeliverNotification } = await import('@/lib/mediNotificationBrain');
-      const { patchEngageDecision } = await import('@/lib/mediEngagePrefs');
+      const { markEngageHandled, patchEngageDecision } = await import('@/lib/mediEngagePrefs');
       const check = await shouldDeliverNotification(data);
       if (check.rewriteMasked && (data.type === 'cycle_reminder' || data.type === 'pregnancy_care_plan' || data.type === 'pet_care') && data.rewrite !== true) {
         const discreet =
@@ -129,8 +129,9 @@ Notifications.setNotificationHandler({
       if (!check.ok) {
         const id = typeof data.decisionId === 'string' ? data.decisionId : '';
         if (id && check.reason !== 'DELIVER_WITH_DISCREET_COPY') {
+          if (data.type === 'medi_engage') void markEngageHandled(id, 'dropped');
           void patchEngageDecision(id, {
-            decision: 'BLOCKED',
+            decision: data.type === 'medi_engage' ? 'CANCELLED' : 'BLOCKED',
             blocked: check.reason,
             reason: check.reason,
             revalidatedAt: new Date().toISOString(),
@@ -141,12 +142,30 @@ Notifications.setNotificationHandler({
         }
         return { shouldShowBanner: false, shouldShowList: false, shouldPlaySound: false, shouldSetBadge: false };
       }
+      // A Medi notification shown while the app is open: counted here (the system counts it when closed).
+      if (data.type === 'medi_engage') void noteEngageShown(data);
     } catch {
       /* deliver if revalidation cannot run */
     }
     return { shouldShowBanner: true, shouldShowList: true, shouldPlaySound: true, shouldSetBadge: false };
   },
 });
+
+/** Daily budget, cooldowns, fatigue and the server's „delivered“ for a Medi notification shown in the app. */
+async function noteEngageShown(data: Record<string, unknown>): Promise<void> {
+  const decisionId = typeof data.decisionId === 'string' ? data.decisionId : '';
+  const key = String(data.templateKey || 'engage');
+  const family = String(data.family || 'checkin');
+  const now = new Date();
+  const ymd = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+  const { markEngageHandled, recordEngageOutcome, recordEngageSent } = await import('@/lib/mediEngagePrefs');
+  await recordEngageSent({ key, family, at: now.getTime(), ymd });
+  await recordEngageOutcome({ key, family, sentAt: now.getTime(), ...(decisionId ? { decisionId } : {}) });
+  if (!decisionId.startsWith('notif_dec_')) return;
+  await markEngageHandled(decisionId, 'shown');
+  const { syncNotificationOutcome } = await import('@/lib/productObservability');
+  await syncNotificationOutcome({ decisionId, outcome: 'delivered' });
+}
 
 export async function getNotificationPermissionGranted(): Promise<boolean> {
   try {

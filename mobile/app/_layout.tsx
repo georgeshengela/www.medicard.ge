@@ -70,6 +70,7 @@ import { useStackMotion } from '@/hooks/useStackMotion';
 import { ModuleGate } from '@/components/ModuleGate';
 import { attachNavigationGuard } from '@/lib/navigationGuard';
 import { applyFeatureStatus, useFeature } from '@/lib/featureFlags';
+import { applyBrainConfig } from '@/lib/brainRemoteConfig';
 import { noteFeatureStatusFetched, startFeatureFlagSync } from '@/lib/featureFlagSync';
 import { holdOtaReloadWhile, setOtaPromptPolicy, startOtaUpdates } from '@/lib/otaUpdates';
 import { startRunLiveActivity } from '@/lib/run/liveActivity';
@@ -117,6 +118,7 @@ function AuthGate({ children }: { children: React.ReactNode }) {
       .then((status) => {
         rememberMapboxToken(status.mapboxToken);
         applyFeatureStatus(status.features, status.featureMessages);
+        applyBrainConfig(status.brain);
         noteFeatureStatusFetched();
         setOtaPromptPolicy(status.client.updatePrompt);
         if (status.settings.maintenanceMode) {
@@ -369,22 +371,8 @@ function AppShell() {
           recordPetCareReceivedCallback(data),
         );
       }
-      if (data.type === 'medi_engage') {
-        const now = new Date();
-        const ymd = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
-        const key = String(data.templateKey || 'engage');
-        const family = String(data.family || 'checkin');
-        void import('@/lib/mediEngagePrefs').then(({ recordEngageSent, recordEngageOutcome }) => {
-          void recordEngageSent({ key, family, at: Date.now(), ymd });
-          void recordEngageOutcome({ key, family, sentAt: Date.now() });
-        });
-        const decisionId = typeof data.decisionId === 'string' ? data.decisionId : '';
-        if (decisionId.startsWith('notif_dec_')) {
-          void import('@/lib/productObservability').then(({ syncNotificationOutcome }) =>
-            syncNotificationOutcome({ decisionId, outcome: 'delivered' }),
-          );
-        }
-      }
+      // Medi notifications are counted by the notification handler (lib/notifications.ts), which knows
+      // whether it was shown or held back — this listener fires for both.
     });
 
     const sub = Notifications.addNotificationResponseReceivedListener(handleTap);

@@ -10,10 +10,10 @@
 
   const ALLOWED = ['brain', 'compose', 'copy', 'engage', 'history', 'devices'];
   const TAB_LABELS = [
-    ['brain', 'გადაწყვეტილებები'],
+    ['brain', 'Medi-ს შეტყობინებები'],
     ['compose', 'გაგზავნა'],
-    ['copy', 'Medi ტექსტები'],
-    ['engage', 'ჩართულობა'],
+    ['engage', 'Medi-ს ტექსტები'],
+    ['copy', 'შეხსენებების ტექსტები'],
     ['history', 'ისტორია'],
     ['devices', 'მოწყობილობები'],
   ];
@@ -255,7 +255,7 @@
       tab: 'push',
       kicker: 'Engagement',
       title: 'Push & Brain',
-      purpose: 'Brain-ის გადაწყვეტილებები, ხელით გაგზავნა, ტექსტები და მოწყობილობები.',
+      purpose: 'Medi-ს ავტომატური შეტყობინებები და მათი მართვა, ხელით გაგზავნა, ტექსტები და მოწყობილობები.',
       helpKey: 'push.page',
     });
 

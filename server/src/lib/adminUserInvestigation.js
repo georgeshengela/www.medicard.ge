@@ -4,7 +4,7 @@ import { APP_VERSION_POLICY } from './appVersionPolicy.js';
 import { ensureAppActivityTable } from './appActivity.js';
 import { ensureProductEventTable } from './productEvents.js';
 import { ensureMedicationDoseEventTable } from './medicationDoseEvents.js';
-import { listNotificationDecisions } from './notificationDecisions.js';
+import { listNotificationPlans } from './notificationDecisions.js';
 import { listNotificationOutcomes } from './notificationOutcomes.js';
 import { listAdminAudit } from './adminAudit.js';
 import { loadPermissionForUser } from './notificationPermission.js';
@@ -297,7 +297,7 @@ export async function getUserInvestigation(userId, range = {}, policy = APP_VERS
       select: { platform: true, lastSeenAt: true, createdAt: true },
       orderBy: { lastSeenAt: 'desc' },
     }).catch(() => []),
-    listNotificationDecisions({
+    listNotificationPlans({
       fromDt,
       toExclusiveDt,
       userId,

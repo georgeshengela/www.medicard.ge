@@ -120,9 +120,10 @@ export function classifyDecisionReason(reason) {
   const text = String(reason || '').toLowerCase();
   if (!text) return [];
   const tags = [];
-  if (/quiet|22:00|night/.test(text)) tags.push('quiet_hours');
-  if (/cooldown|already_sent|already_opened/.test(text)) tags.push('cooldown');
-  if (/cap|fatigue|adaptive/.test(text)) tags.push('daily_cap');
+  if (/quiet|22:00|night|window_passed/.test(text)) tags.push('quiet_hours');
+  if (/cooldown|already_sent|already_opened|already sent/.test(text)) tags.push('cooldown');
+  if (/cap|fatigue|adaptive|same_kind|too_close/.test(text)) tags.push('daily_cap');
+  if (/admin_|module_paused/.test(text)) tags.push('admin');
   if (/opened|recent|just_opened|session/.test(text)) tags.push('recent_activity');
   if (/privacy|mask|discreet|cycle-masked/.test(text)) tags.push('privacy');
   return tags;
@@ -139,7 +140,7 @@ export function decisionLifecycle(decision, outcomes = []) {
   if (decision.scheduledAt) steps.push({ key: 'scheduled', at: decision.scheduledAt });
   if (decision.revalidatedAt) steps.push({ key: 'revalidated', at: decision.revalidatedAt });
   if (decision.result === 'CANCELLED') {
-    steps.push({ key: 'cancelled', at: decision.revalidatedAt || decision.createdAt, reason: decision.reason || null });
+    steps.push({ key: 'cancelled', at: decision.revalidatedAt || decision.updatedAt || decision.createdAt, reason: decision.reason || null });
     return steps;
   }
   const kinds = ['delivered', 'opened', 'actioned', 'snoozed', 'cancelled_by_revalidation'];

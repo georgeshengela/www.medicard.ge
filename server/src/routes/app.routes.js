@@ -13,6 +13,7 @@ import { prisma } from '../lib/prisma.js';
 import { asyncHandler } from '../middleware/error.js';
 import { publicFeatureFlags, publicFeatureMessages } from '../lib/featureFlags.js';
 import { getUpdatePrompt, updatePromptForClient } from '../lib/updatePrompt.js';
+import { getNotificationBrainConfig, publicBrainConfig } from '../lib/notificationBrainConfig.js';
 
 export const appRouter = Router();
 
@@ -33,6 +34,7 @@ appRouter.get(
       settings: publicAppSettings(settings, req.lang),
       features: await publicFeatureFlags(),
       featureMessages: await publicFeatureMessages(undefined, req.lang),
+      brain: publicBrainConfig(await getNotificationBrainConfig()),
       packages: FREE_CONSUMER_RELEASE ? [freeConsumerPackage()] : packages.map(publicPackage),
       accessMode: FREE_CONSUMER_RELEASE ? 'free' : 'paid',
       mapboxToken: mapboxPublicToken(),

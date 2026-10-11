@@ -9,6 +9,8 @@ import { loadDoseLogs, parseFrequencyTimes } from '@/lib/medications.shared';
 import { categoryForNotification, registerNotificationCategories } from '@/lib/mediNotificationActions';
 import {
   appendEngageDecisions,
+  loadEngageDecisionIndex,
+  loadEngageHandled,
   loadEngageLastOpenAt,
   loadEngageOpenAt,
   loadEngageOutcomes,
@@ -18,12 +20,17 @@ import {
   loadEngageSignals,
   loadUnfinishedDrafts,
   markEngageAppOpen,
+  recordEngageOutcome,
+  recordEngageSent,
+  saveEngageDecisionIndex,
   saveEngageSignals,
   saveEngageTrace,
+  weeklySeenState,
 } from '@/lib/mediEngagePrefs';
-import type { EngageFamily, EngageSnapshot, UnfinishedDraft } from './mediNotificationBrain.shared';
-import { ENGAGE_FAMILIES, evaluateEngageBrain } from './mediNotificationBrain.shared';
+import type { EngageDecision, EngageDecisionIndex, EngageFamily, EngageSnapshot, UnfinishedDraft } from './mediNotificationBrain.shared';
+import { ENGAGE_FAMILIES, evaluateEngageBrain, stabilizeEngageDecisions } from './mediNotificationBrain.shared';
 import { hydrateFeatureFlags, isEngageFamilyOn } from '@/lib/featureFlags';
+import { brainConfig, brainFamilyBlock, hydrateBrainConfig } from '@/lib/brainRemoteConfig';
 import { visitDateTimeMs } from '@/lib/visitReminders';
 import { cancelNotificationsByPrefix, ENGAGE_CHANNEL_ID, NOTIF_PREFIX, getNotificationPermissionGranted } from '@/lib/notifications';
 import { applyPushCopy } from '@/lib/pushCopy';
@@ -60,20 +67,19 @@ function weekRange(end: Date): { thisWeek: string[]; prevWeek: string[] } {
 }
 
 /**
- * Admin module switches (admin „მოდულები“): a family that only exists for a paused module (weather tips,
- * the weekly report, the after-visit question, water and quiet-steps nudges) is treated like a topic the
- * person turned off, so the brain picks something else for the day. Never saved: the person's own
- * choices come back untouched when the module does. Medication and visit reminders are not engage
- * families and keep firing.
+ * Families the admin keeps quiet: switched off in Push → Brain „მართვა“ (`admin_off`), or the module
+ * behind them is paused in „მოდულები“ (weather tips, the weekly report, the after-visit question, water
+ * and quiet-steps nudges → `module_paused`). The brain picks something else for the day; the person's
+ * own choices stay untouched. Medication and visit reminders are not engage families and keep firing.
  */
-function withPausedModuleTopics(prefs: EngageSnapshot['prefs']): EngageSnapshot['prefs'] {
-  let topics: EngageSnapshot['prefs']['topics'] | null = null;
+function adminBlockedFamilies(): Partial<Record<string, string>> {
+  const blocked: Partial<Record<string, string>> = {};
   for (const family of Object.keys(ENGAGE_FAMILIES) as EngageFamily[]) {
-    if (isEngageFamilyOn(family)) continue;
-    if (!topics) topics = { ...prefs.topics };
-    topics[ENGAGE_FAMILIES[family].topic] = false;
+    const admin = brainFamilyBlock(family);
+    if (admin) blocked[family] = admin;
+    else if (!isEngageFamilyOn(family)) blocked[family] = 'module_paused';
   }
-  return topics ? { ...prefs, topics } : prefs;
+  return blocked;
 }
 
 function pickUnfinished(drafts: UnfinishedDraft[], scheduleGap: UnfinishedDraft | null): UnfinishedDraft | null {
@@ -86,7 +92,7 @@ export async function buildEngageSnapshot(user?: User | null, health?: HealthPro
   const now = new Date();
   const today = hydrationToday(now);
   // A cold start can run the brain before the switches load; the last known answer is enough.
-  await hydrateFeatureFlags();
+  await Promise.all([hydrateFeatureFlags(), hydrateBrainConfig()]);
   const [prefs, lastOpenAt, sent, seen, logs, goalMl, bundle, doses, outcomes, openAt, drafts] = await Promise.all([
     loadEngagePrefs(),
     loadEngageLastOpenAt(),
@@ -277,13 +283,16 @@ export async function buildEngageSnapshot(user?: User | null, health?: HealthPro
     lastChatMode,
     cycleRegular: false,
     cyclePrivacyEnabled,
-    seenWeekly: Boolean(seen.weekly),
+    seenWeekly: weeklySeenState(seen, now).thisWeek,
+    weeklyEverSeen: weeklySeenState(seen, now).ever,
     unfinished: pickUnfinished(drafts, scheduleGap),
     recentVisit,
     openAt,
     outcomes,
     sent,
-    prefs: withPausedModuleTopics(prefs),
+    prefs,
+    blockedFamilies: adminBlockedFamilies(),
+    maxPerDay: brainConfig().maxPerDay,
     weather,
     quest,
   };
@@ -317,10 +326,16 @@ export async function runMediNotificationBrain(
   opts: { markOpen?: boolean; force?: boolean } = {},
 ): Promise<number> {
   if (user) rememberEngageActor(user, health);
-  if (brainInFlight) return brainInFlight;
+  // An open counts even when this run is skipped (the trailing run below does not mark one).
+  const noteOpen = () => (opts.markOpen !== false ? markEngageAppOpen().catch(() => undefined) : undefined);
+  if (brainInFlight) {
+    void noteOpen();
+    return brainInFlight;
+  }
   const uid = (user ?? lastActor.user)?.id ?? null;
   const since = Date.now() - brainLastAt;
   if (!opts.force && uid === brainLastUser && since < BRAIN_MIN_GAP_MS) {
+    void noteOpen();
     // Too soon: one trailing run at the end of the gap picks up whatever changed.
     if (!brainTrailing) {
       brainTrailing = setTimeout(() => {
@@ -345,6 +360,29 @@ export async function runMediNotificationBrain(
   }
 }
 
+/**
+ * The previous run's plans that reached their time since: the system showed them while the app was
+ * closed (the app only hears about a notification itself when it is open or tapped). They count for
+ * the daily budget, cooldowns and the fatigue model, and the server learns they were delivered.
+ */
+async function reconcileDeliveredPlans(index: EngageDecisionIndex, nowMs: number, permitted: boolean): Promise<void> {
+  const handled = await loadEngageHandled();
+  const delivered: Array<{ decisionId: string; outcome: string; occurredAt: string }> = [];
+  for (const entry of Object.values(index)) {
+    if (entry.decision !== 'SEND' || !entry.scheduled || entry.fireAt == null || entry.fireAt > nowMs) continue;
+    entry.scheduled = false; // counted once
+    // No permission: it was not shown. Handled: the app saw it itself (shown in the foreground, tapped or dropped).
+    if (!permitted || handled[entry.id]) continue;
+    const at = new Date(entry.fireAt);
+    await recordEngageSent({ key: entry.template, family: entry.family, at: entry.fireAt, ymd: ymd(at) });
+    await recordEngageOutcome({ key: entry.template, family: entry.family, sentAt: entry.fireAt, decisionId: entry.id });
+    delivered.push({ decisionId: entry.id, outcome: 'delivered', occurredAt: at.toISOString() });
+  }
+  if (delivered.length) {
+    void api.push.syncOutcomes({ outcomes: delivered.slice(-80) }).catch(() => undefined);
+  }
+}
+
 async function runMediNotificationBrainNow(
   user?: User | null,
   health?: HealthProfile | null,
@@ -353,18 +391,51 @@ async function runMediNotificationBrainNow(
   try {
   if (Platform.OS === 'web') return 0;
   rememberEngageActor(user, health);
+  // The open that started this run counts: „დღეს ჯერ არ შემოგივლია“ must not be planned while the person is here.
+  if (opts.markOpen !== false) await markEngageAppOpen();
+  const nowMs = Date.now();
   const granted = await getNotificationPermissionGranted();
+  const priorIndex = await loadEngageDecisionIndex();
+  await reconcileDeliveredPlans(priorIndex, nowMs, granted);
   if (!granted) {
-    if (opts.markOpen !== false) await markEngageAppOpen();
+    // Without permission nothing scheduled is shown: never count those plans as delivered later.
+    for (const entry of Object.values(priorIndex)) entry.scheduled = false;
+    await saveEngageDecisionIndex(priorIndex);
     return 0;
   }
   await registerNotificationCategories();
+  await hydrateBrainConfig();
+  if (brainConfig().paused) {
+    // Admin paused Medi's notifications: nothing stays scheduled, pending plans are reported as cancelled.
+    await cancelNotificationsByPrefix(NOTIF_PREFIX.engage);
+    const cancelled: EngageDecision[] = [];
+    for (const entry of Object.values(priorIndex)) {
+      if (entry.decision !== 'SEND' || entry.fireAt == null || entry.fireAt <= nowMs) continue;
+      cancelled.push({
+        id: entry.id,
+        candidate: entry.candidate,
+        family: entry.family as EngageFamily,
+        score: entry.score,
+        reasons: [],
+        suppressions: [],
+        blocked: 'admin_paused',
+        decision: 'CANCELLED',
+        template: entry.template,
+        route: entry.route,
+        fireAt: null,
+        createdAt: entry.createdAt,
+        scheduledAt: new Date(entry.fireAt).toISOString(),
+        reason: 'admin_paused',
+      });
+    }
+    await saveEngageDecisionIndex({});
+    if (cancelled.length) void syncEngageDecisionsToServer({ decisions: cancelled, fatigue: null });
+    return 0;
+  }
   const snap = await buildEngageSnapshot(user ?? lastActor.user, health ?? lastActor.health);
-  if (opts.markOpen !== false) await markEngageAppOpen();
-  const { accepted, trace } = evaluateEngageBrain(snap);
+  const { accepted, trace, index, changed } = stabilizeEngageDecisions(evaluateEngageBrain(snap), priorIndex, snap.now);
   await saveEngageTrace(trace);
   await appendEngageDecisions(trace.decisions);
-  void syncEngageDecisionsToServer(trace);
   await saveEngageSignals({
     hydrationMl: snap.hydrationMl,
     hydrationGoal: snap.hydrationGoal,
@@ -388,7 +459,7 @@ async function runMediNotificationBrainNow(
       sound: 'default',
     });
   }
-  let scheduled = 0;
+  const scheduledIds = new Set<string>();
   for (const row of accepted) {
     if (row.fireAt.getTime() <= Date.now() + 45_000) continue;
     const cycleInsight = row.key === 'engage-insight-cycle';
@@ -398,35 +469,60 @@ async function runMediNotificationBrainNow(
       : applyPushCopy(row.key, row.vars);
     const id = `${NOTIF_PREFIX.engage}${row.key}:${ymd(row.fireAt)}`;
     const categoryIdentifier = snap.prefs.discreet ? undefined : categoryForNotification('medi_engage', row.family);
-    await Notifications.scheduleNotificationAsync({
-      identifier: id,
-      content: {
-        title: copy.title,
-        body: copy.body,
-        sound: 'default',
-        ...(categoryIdentifier ? { categoryIdentifier } : {}),
-        data: {
-          type: 'medi_engage',
-          templateKey: row.key,
-          family: row.family,
-          route: row.route,
-          decisionId: row.decisionId,
-          signalHash: row.signalHash,
-          entityId: row.entityId ?? '',
-          validUntil: row.validUntil ?? 0,
-          candidateType: row.candidateType ?? '',
-          windowStartIso: typeof row.vars.windowStartIso === 'string' ? row.vars.windowStartIso : '',
+    try {
+      await Notifications.scheduleNotificationAsync({
+        identifier: id,
+        content: {
+          title: copy.title,
+          body: copy.body,
+          sound: 'default',
+          ...(categoryIdentifier ? { categoryIdentifier } : {}),
+          data: {
+            type: 'medi_engage',
+            templateKey: row.key,
+            family: row.family,
+            route: row.route,
+            decisionId: row.decisionId,
+            signalHash: row.signalHash,
+            entityId: row.entityId ?? '',
+            validUntil: row.validUntil ?? 0,
+            candidateType: row.candidateType ?? '',
+            windowStartIso: typeof row.vars.windowStartIso === 'string' ? row.vars.windowStartIso : '',
+          },
         },
-      },
-      trigger: {
-        type: Notifications.SchedulableTriggerInputTypes.DATE,
-        date: row.fireAt,
-        ...(Platform.OS === 'android' ? { channelId: ENGAGE_CHANNEL_ID } : {}),
-      },
-    });
-    scheduled += 1;
+        trigger: {
+          type: Notifications.SchedulableTriggerInputTypes.DATE,
+          date: row.fireAt,
+          ...(Platform.OS === 'android' ? { channelId: ENGAGE_CHANNEL_ID } : {}),
+        },
+      });
+      scheduledIds.add(row.decisionId);
+    } catch {
+      /* one failed slot must not stop the rest */
+    }
   }
-  return scheduled;
+  for (const entry of Object.values(index)) {
+    if (entry.decision === 'SEND' && scheduledIds.has(entry.id)) entry.scheduled = true;
+  }
+  await saveEngageDecisionIndex(index);
+  if (changed.length) {
+    void syncEngageDecisionsToServer({ decisions: changed, fatigue: trace.fatigue }).then((ok) => {
+      if (!ok) return;
+      // Mark what the server now has, on the latest index (a newer run may have saved one meanwhile).
+      const syncedState = new Map(changed.map((row) => [row.id, `${row.decision}|${row.reason ?? ''}|${row.fireAt ?? row.scheduledAt ?? ''}`]));
+      void loadEngageDecisionIndex().then((latest) => {
+        let touched = false;
+        for (const entry of Object.values(latest)) {
+          if (!entry.synced && syncedState.get(entry.id) === entry.state) {
+            entry.synced = true;
+            touched = true;
+          }
+        }
+        if (touched) void saveEngageDecisionIndex(latest);
+      });
+    });
+  }
+  return scheduledIds.size;
   } catch {
     return 0;
   }
@@ -660,9 +756,12 @@ export async function shouldDeliverNotification(data: Record<string, unknown> | 
   if (data.type === 'cycle_reminder' || data.family === 'cycleReminder' || data.type === 'cycle_tip') {
     return deliverCycleReminder(data);
   }
-  // Scheduled before an admin paused its module: drop it instead of opening a paused screen.
-  if (data.type === 'medi_engage' && !isEngageFamilyOn(String(data.family || ''))) {
-    return { ok: false, reason: 'module_paused' };
+  // Scheduled before an admin paused its module or switched Medi's notifications off: drop it.
+  if (data.type === 'medi_engage') {
+    await hydrateBrainConfig();
+    const admin = brainFamilyBlock(String(data.family || ''));
+    if (admin) return { ok: false, reason: admin };
+    if (!isEngageFamilyOn(String(data.family || ''))) return { ok: false, reason: 'module_paused' };
   }
   const { revalidateEngageCandidate } = await import('./mediNotificationRevalidate');
   const { findDoseLog, loadDoseLogs } = await import('@/lib/medications.shared');
@@ -779,7 +878,7 @@ export async function shouldDeliverNotification(data: Record<string, unknown> | 
     hydrationMl: dayTotalMl(hydro, today),
     hydrationGoal: goal,
     loggedPain: cached?.loggedPain ?? false,
-    seenWeekly: Boolean(seen.weekly),
+    seenWeekly: weeklySeenState(seen).thisWeek,
     unfinished: drafts[0] ?? cached?.unfinished ?? null,
     lastOpenAt,
     missingProfileField: cached?.missingProfileField ?? null,
@@ -816,53 +915,47 @@ export async function shouldDeliverNotification(data: Record<string, unknown> | 
 }
 
 async function syncEngageDecisionsToServer(trace: {
-  decisions: Array<{
-    id: string;
-    candidate: string;
-    family: string;
-    score: number;
-    decision: string;
-    reason: string | null;
-    blocked: string | null;
-    template: string;
-    route: string;
-    createdAt: string;
-    scheduledAt: string | null;
-    fireAt: string | null;
-    revalidatedAt?: string;
-  }>;
+  decisions: EngageDecision[];
   fatigue: {
     selectedFrequency: string;
     baseDailyCap: number;
     adaptiveDailyCap: number;
     ewma: number;
-  };
-}): Promise<void> {
+  } | null;
+}): Promise<boolean> {
   try {
-    await api.push.syncDecisions({
-      decisions: trace.decisions.map((row) => ({
-        id: row.id,
-        candidate: row.candidate,
-        family: row.family,
-        score: row.score,
-        decision: row.decision,
-        reason: row.reason,
-        blocked: row.blocked,
-        template: row.template,
-        route: row.route,
-        createdAt: row.createdAt,
-        scheduledAt: row.scheduledAt,
-        fireAt: row.fireAt,
-        revalidatedAt: row.revalidatedAt,
-      })),
-      fatigue: {
-        selectedFrequency: trace.fatigue.selectedFrequency,
-        baseDailyCap: trace.fatigue.baseDailyCap,
-        adaptiveDailyCap: trace.fatigue.adaptiveDailyCap,
-        ewma: trace.fatigue.ewma,
-      },
-    });
+    for (let i = 0; i < trace.decisions.length; i += 80) {
+      await api.push.syncDecisions({
+        decisions: trace.decisions.slice(i, i + 80).map((row) => ({
+          id: row.id,
+          candidate: row.candidate,
+          family: row.family,
+          score: row.score,
+          decision: row.decision,
+          reason: row.reason,
+          blocked: row.blocked,
+          template: row.template,
+          route: row.route,
+          createdAt: row.createdAt,
+          scheduledAt: row.scheduledAt,
+          fireAt: row.fireAt,
+          revalidatedAt: row.revalidatedAt,
+        })),
+        ...(trace.fatigue
+          ? {
+              fatigue: {
+                selectedFrequency: trace.fatigue.selectedFrequency,
+                baseDailyCap: trace.fatigue.baseDailyCap,
+                adaptiveDailyCap: trace.fatigue.adaptiveDailyCap,
+                ewma: trace.fatigue.ewma,
+              },
+            }
+          : {}),
+      });
+    }
+    return true;
   } catch {
-    /* admin sync is best-effort */
+    /* admin sync is best-effort; unsynced rows go again with the next run */
+    return false;
   }
 }

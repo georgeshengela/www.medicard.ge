@@ -123,8 +123,9 @@ export async function handleNotificationAction(
     );
   }
 
+  const tapped = { decisionId: decisionId || undefined, deliveredAt: Number(response.notification.date) || undefined };
   if (isDefaultAction(action)) {
-    if (data.type === 'medi_engage') void markEngageOpened(family, key, 'open');
+    if (data.type === 'medi_engage') void markEngageOpened(family, key, 'open', tapped);
     // A medication reminder opens the reminded dose (its slot and day), also for reminders scheduled
     // by older versions whose route named only the medication.
     if (data.type === 'medication') {
@@ -134,7 +135,7 @@ export async function handleNotificationAction(
     return { navigate: true };
   }
 
-  if (data.type === 'medi_engage') void markEngageOpened(family, key, action);
+  if (data.type === 'medi_engage') void markEngageOpened(family, key, action, tapped);
 
   // „მივიღე ✓“ marks the dose the reminder was for: dated by when it was delivered (a 23:30 dose
   // answered after midnight is still that evening's), saved even when the tap launched the app before

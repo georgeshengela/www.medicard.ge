@@ -76,10 +76,10 @@
     social: '1', campaigns: '2', 'medirun-boxes': '3', pets: '4', cycle: '5', pills: '6', lab: '7',
   };
   const SUBPAGES = [
-    ['push', 'brain', 'გადაწყვეტილებები', 'Brain decisions'],
+    ['push', 'brain', 'Medi-ს შეტყობინებები', 'Brain decisions smart push brain control'],
     ['push', 'compose', 'ახალი Push გაგზავნა', 'compose send campaign'],
-    ['push', 'copy', 'Medi ტექსტები', 'templates copy'],
-    ['push', 'engage', 'ჩართულობა', 'engagement'],
+    ['push', 'copy', 'შეხსენებების ტექსტები', 'templates copy reminders'],
+    ['push', 'engage', 'Medi-ს ტექსტები', 'engagement medi texts'],
     ['push', 'history', 'Push ისტორია', 'history campaigns'],
     ['push', 'devices', 'მოწყობილობები', 'devices tokens'],
     ['rewards', 'campaigns', 'კამპანიები', 'campaigns'],

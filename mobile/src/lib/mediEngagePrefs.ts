@@ -13,7 +13,7 @@ export {
   preferredHourFromOpens,
 } from './mediEngageModel';
 import { DEFAULT_ENGAGE_PREFS, type EngageOutcome, type EngageTopic, type MediEngagePrefs } from './mediEngageModel';
-import type { EngageTrace, UnfinishedDraft } from './mediNotificationBrain.shared';
+import type { EngageDecisionIndex, EngageTrace, UnfinishedDraft } from './mediNotificationBrain.shared';
 
 export const ENGAGE_TOPICS: EngageTopic[] = [
   'hydration',
@@ -48,6 +48,8 @@ const TRACE_KEY = 'medicard.engage.trace.v1';
 const DRAFTS_KEY = 'medicard.engage.drafts.v1';
 const SIGNALS_KEY = 'medicard.engage.signals.v1';
 const DECISIONS_KEY = 'medicard.engage.decisions.v1';
+const DECISION_INDEX_KEY = 'medicard.engage.decisionIndex.v1';
+const HANDLED_KEY = 'medicard.engage.handled.v1';
 
 function mergePrefs(raw: unknown): MediEngagePrefs {
   const parsed = raw && typeof raw === 'object' ? (raw as Partial<MediEngagePrefs>) : {};
@@ -112,20 +114,48 @@ export async function recordEngageSent(row: EngageSentRow): Promise<void> {
   await setScopedPreference(SENT_KEY, JSON.stringify(next.slice(-80)));
 }
 
-export async function loadEngageSeen(): Promise<Record<string, boolean>> {
+export type EngageSeen = Record<string, boolean | string>;
+
+export async function loadEngageSeen(): Promise<EngageSeen> {
   const raw = await getScopedPreference(SEEN_KEY);
   if (!raw) return {};
   try {
-    const parsed = JSON.parse(raw) as Record<string, boolean>;
+    const parsed = JSON.parse(raw) as EngageSeen;
     return parsed && typeof parsed === 'object' ? parsed : {};
   } catch {
     return {};
   }
 }
 
+function localYmd(date: Date): string {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+}
+
+/** Monday of the local week, as YYYY-MM-DD. */
+export function engageWeekKey(now = new Date()): string {
+  const monday = new Date(now);
+  monday.setHours(12, 0, 0, 0);
+  monday.setDate(monday.getDate() - ((monday.getDay() + 6) % 7));
+  return localYmd(monday);
+}
+
+/**
+ * The weekly report counts as seen for the week it was opened in (it used to stay „seen“ forever after
+ * the first open, so the foreground check dropped every later Sunday report). `ever` ends the
+ * „Medi can sum up your week“ intro for good.
+ */
+export function weeklySeenState(seen: EngageSeen, now = new Date()): { thisWeek: boolean; ever: boolean } {
+  const week = seen.weeklyWeek;
+  return {
+    thisWeek: typeof week === 'string' && week === engageWeekKey(now),
+    ever: Boolean(seen.weekly || seen.weeklyWeek),
+  };
+}
+
 export async function markEngageSeen(flag: string): Promise<void> {
   const seen = await loadEngageSeen();
   seen[flag] = true;
+  if (flag === 'weekly') seen.weeklyWeek = engageWeekKey();
   await setScopedPreference(SEEN_KEY, JSON.stringify(seen));
   if (flag === 'weekly') {
     void import('@/lib/mediNotificationBrain').then(({ requestEngageRefresh }) => requestEngageRefresh());
@@ -144,19 +174,44 @@ export async function loadEngageOutcomes(): Promise<EngageOutcome[]> {
   }
 }
 
+/** One row per delivered notification (by decision id when it has one); an existing open is kept. */
 export async function recordEngageOutcome(row: EngageOutcome): Promise<void> {
-  const next = [...(await loadEngageOutcomes()).filter((item) => item.key !== row.key || item.sentAt !== row.sentAt), row];
+  const rows = await loadEngageOutcomes();
+  const same = (item: EngageOutcome) =>
+    row.decisionId ? item.decisionId === row.decisionId : item.key === row.key && item.sentAt === row.sentAt;
+  const prev = rows.find(same);
+  const merged: EngageOutcome = prev
+    ? { ...prev, ...row, openedAt: row.openedAt ?? prev.openedAt, action: row.action ?? prev.action }
+    : row;
+  const next = [...rows.filter((item) => !same(item)), merged].sort((a, b) => a.sentAt - b.sentAt);
   await setScopedPreference(OUTCOMES_KEY, JSON.stringify(next.slice(-40)));
 }
 
-export async function markEngageOpened(family: string, key: string, action?: string): Promise<void> {
-  const rows = await loadEngageOutcomes();
-  const hit = [...rows].reverse().find((row) => row.key === key || row.family === family);
-  if (!hit) {
-    await recordEngageOutcome({ key, family, sentAt: Date.now(), openedAt: Date.now(), action });
+/**
+ * A tap on a Medi notification: it was delivered and opened. Counted for the daily budget, the
+ * family's cooldown and the fatigue model even when it arrived while the app was closed.
+ */
+export async function markEngageOpened(
+  family: string,
+  key: string,
+  action?: string,
+  opts: { decisionId?: string; deliveredAt?: number } = {},
+): Promise<void> {
+  const now = Date.now();
+  const deliveredAt = opts.deliveredAt && opts.deliveredAt > 0 && opts.deliveredAt <= now ? opts.deliveredAt : now;
+  await recordEngageSent({ key, family, at: deliveredAt, ymd: localYmd(new Date(deliveredAt)) });
+  if (opts.decisionId) {
+    await recordEngageOutcome({ key, family, sentAt: deliveredAt, openedAt: now, action, decisionId: opts.decisionId });
+    await markEngageHandled(opts.decisionId, 'shown');
     return;
   }
-  hit.openedAt = Date.now();
+  const rows = await loadEngageOutcomes();
+  const hit = [...rows].reverse().find((row) => row.key === key && !row.openedAt);
+  if (!hit) {
+    await recordEngageOutcome({ key, family, sentAt: deliveredAt, openedAt: now, action });
+    return;
+  }
+  hit.openedAt = now;
   if (action) hit.action = action;
   await setScopedPreference(OUTCOMES_KEY, JSON.stringify(rows.slice(-40)));
 }
@@ -286,4 +341,49 @@ export async function patchEngageDecision(id: string, patch: Partial<EngageTrace
   } catch {
     /* keep */
   }
+}
+
+/** Pending and recent plans by signature (see `stabilizeEngageDecisions`). */
+export async function loadEngageDecisionIndex(): Promise<EngageDecisionIndex> {
+  const raw = await getScopedPreference(DECISION_INDEX_KEY);
+  if (!raw) return {};
+  try {
+    const parsed = JSON.parse(raw) as EngageDecisionIndex;
+    return parsed && typeof parsed === 'object' ? parsed : {};
+  } catch {
+    return {};
+  }
+}
+
+export async function saveEngageDecisionIndex(index: EngageDecisionIndex): Promise<void> {
+  await setScopedPreference(DECISION_INDEX_KEY, JSON.stringify(index));
+}
+
+export type EngageHandled = Record<string, { state: 'shown' | 'dropped'; at: number }>;
+
+export async function loadEngageHandled(): Promise<EngageHandled> {
+  const raw = await getScopedPreference(HANDLED_KEY);
+  if (!raw) return {};
+  try {
+    const parsed = JSON.parse(raw) as EngageHandled;
+    return parsed && typeof parsed === 'object' ? parsed : {};
+  } catch {
+    return {};
+  }
+}
+
+/**
+ * The app saw this notification itself: shown in the foreground or tapped (`shown`), or held back by the
+ * delivery check (`dropped`). Everything else that reached its time while the app was closed was shown
+ * by the system — the next Brain run counts it as delivered.
+ */
+export async function markEngageHandled(decisionId: string, state: 'shown' | 'dropped'): Promise<void> {
+  if (!decisionId) return;
+  const cutoff = Date.now() - 3 * 86_400_000;
+  const rows = await loadEngageHandled();
+  const next: EngageHandled = {};
+  for (const [id, row] of Object.entries(rows)) if (row?.at > cutoff) next[id] = row;
+  if (next[decisionId]?.state === 'shown' && state === 'dropped') return;
+  next[decisionId] = { state, at: Date.now() };
+  await setScopedPreference(HANDLED_KEY, JSON.stringify(next));
 }

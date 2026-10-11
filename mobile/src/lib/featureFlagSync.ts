@@ -2,6 +2,7 @@ import { AppState, type AppStateStatus } from 'react-native';
 import { api } from '@/lib/api';
 import { APP_VERSION } from '@/lib/appVersion';
 import { applyFeatureStatus, hydrateFeatureFlags } from '@/lib/featureFlags';
+import { applyBrainConfig } from '@/lib/brainRemoteConfig';
 
 /** A module the admin pauses disappears the next time the app comes to the foreground (≤1 poll a minute). */
 const MIN_INTERVAL_MS = 60_000;
@@ -15,7 +16,10 @@ export function refreshFeatureFlags({ force = false } = {}): Promise<void> {
   lastFetch = Date.now();
   inflight = api.app
     .status(APP_VERSION)
-    .then((status) => applyFeatureStatus(status.features, status.featureMessages))
+    .then((status) => {
+      applyFeatureStatus(status.features, status.featureMessages);
+      applyBrainConfig(status.brain);
+    })
     .catch(() => undefined)
     .finally(() => {
       inflight = null;

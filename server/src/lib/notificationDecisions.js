@@ -127,13 +127,18 @@ export async function upsertNotificationDecisions(userId, rows, fatigue = null) 
         ON CONFLICT ("decisionId") DO UPDATE SET
           "result" = EXCLUDED."result",
           "reason" = EXCLUDED."reason",
-          "scheduledAt" = EXCLUDED."scheduledAt",
-          "revalidatedAt" = EXCLUDED."revalidatedAt",
+          "candidate" = EXCLUDED."candidate",
+          "templateKey" = COALESCE(EXCLUDED."templateKey", "NotificationDecision"."templateKey"),
+          "route" = COALESCE(EXCLUDED."route", "NotificationDecision"."route"),
+          "score" = EXCLUDED."score",
+          "scheduledAt" = COALESCE(EXCLUDED."scheduledAt", "NotificationDecision"."scheduledAt"),
+          "revalidatedAt" = COALESCE(EXCLUDED."revalidatedAt", "NotificationDecision"."revalidatedAt"),
           "selectedFrequency" = COALESCE(EXCLUDED."selectedFrequency", "NotificationDecision"."selectedFrequency"),
           "baseDailyCap" = COALESCE(EXCLUDED."baseDailyCap", "NotificationDecision"."baseDailyCap"),
           "adaptiveDailyCap" = COALESCE(EXCLUDED."adaptiveDailyCap", "NotificationDecision"."adaptiveDailyCap"),
           "ewma" = COALESCE(EXCLUDED."ewma", "NotificationDecision"."ewma"),
           "syncedAt" = CURRENT_TIMESTAMP
+        WHERE "NotificationDecision"."userId" = EXCLUDED."userId"
       `;
       upserted += 1;
     } catch (error) {
@@ -241,7 +246,7 @@ export async function loadDecisionRows(fromDt, toExclusiveDt) {
     return await prisma.$queryRaw`
       SELECT "decisionId", "userId", "candidate", "family", "score", "result", "reason",
              "templateKey", "route", "selectedFrequency", "baseDailyCap", "adaptiveDailyCap",
-             "ewma", "createdAt", "scheduledAt", "revalidatedAt"
+             "ewma", "createdAt", "scheduledAt", "revalidatedAt", "syncedAt"
       FROM "NotificationDecision"
       WHERE "createdAt" >= ${fromDt} AND "createdAt" < ${toExclusiveDt}
     `;
@@ -249,6 +254,107 @@ export async function loadDecisionRows(fromDt, toExclusiveDt) {
     if (isMissingTable(error)) return [];
     throw error;
   }
+}
+
+/** Decisions outside the period that its outcomes belong to (a re-engagement planned two weeks ago firing today). */
+export async function loadDecisionRowsByIds(decisionIds) {
+  const ids = [...new Set((decisionIds || []).filter(Boolean))].slice(0, 5000);
+  if (!ids.length) return [];
+  await ensureNotificationDecisionTable();
+  try {
+    return await prisma.$queryRaw`
+      SELECT "decisionId", "userId", "candidate", "family", "score", "result", "reason",
+             "templateKey", "route", "createdAt", "scheduledAt", "revalidatedAt", "syncedAt"
+      FROM "NotificationDecision"
+      WHERE "decisionId" = ANY(${ids})
+    `;
+  } catch (error) {
+    if (isMissingTable(error)) return [];
+    throw error;
+  }
+}
+
+const PLAN_STATUSES = new Set(['delivered', 'opened', 'pending', 'blocked', 'cancelled', 'unconfirmed', 'replaced']);
+
+/**
+ * The decision log as plans: one row per person, template, result, reason and planned time (or day
+ * for a skip). Phones before 1.0.0.21.39 sent a fresh row on every Brain run — the same plan up to
+ * 60 times a day — and these collapse here; newer phones already send one row per plan. Each row
+ * carries what happened to any of its ids (delivered, opened, acted on, cancelled at delivery).
+ */
+export async function listNotificationPlans(opts = {}) {
+  await ensureNotificationDecisionTable();
+  const take = Math.min(Number(opts.limit) || 50, Number(opts.maxLimit) || 200);
+  const skip = Math.max(Number(opts.offset) || 0, 0);
+  const filtered = decisionWhereSql(opts);
+  const status = PLAN_STATUSES.has(opts.status) ? opts.status : '';
+  const having = {
+    delivered: `'delivered' = ANY(outcomes) OR 'opened' = ANY(outcomes) OR 'actioned' = ANY(outcomes) OR 'snoozed' = ANY(outcomes)`,
+    opened: `'opened' = ANY(outcomes) OR 'actioned' = ANY(outcomes)`,
+    pending: `result = 'SEND' AND NOT superseded AND "scheduledAt" > now() AND NOT ('cancelled_by_revalidation' = ANY(outcomes))`,
+    blocked: `result = 'BLOCKED'`,
+    cancelled: `result = 'CANCELLED' OR 'cancelled_by_revalidation' = ANY(outcomes)`,
+    unconfirmed: `result = 'SEND' AND NOT superseded AND "scheduledAt" <= now() AND cardinality(outcomes) = 0`,
+    replaced: `superseded`,
+  }[status];
+  const grouped = `
+    WITH d AS (
+      SELECT *, COALESCE(to_char("scheduledAt", 'YYYY-MM-DD"T"HH24:MI'), 'day:' || to_char("createdAt" AT TIME ZONE 'Asia/Tbilisi', 'YYYY-MM-DD')) AS "planSlot"
+      FROM "NotificationDecision"
+      WHERE ${filtered.where}
+    ), g AS (
+      SELECT "userId", "family", "templateKey", "result", "reason", "planSlot",
+             (array_agg("decisionId" ORDER BY "createdAt" DESC))[1] AS "decisionId",
+             array_agg("decisionId") AS ids,
+             max("candidate") AS "candidate", max("score") AS "score", max("route") AS "route",
+             min("createdAt") AS "createdAt", max("createdAt") AS "lastAt", max("syncedAt") AS "updatedAt", max("scheduledAt") AS "scheduledAt",
+             max("revalidatedAt") AS "revalidatedAt", count(*)::int AS "runs",
+             (array_agg("selectedFrequency" ORDER BY "createdAt" DESC))[1] AS "selectedFrequency",
+             (array_agg("baseDailyCap" ORDER BY "createdAt" DESC))[1] AS "baseDailyCap",
+             (array_agg("adaptiveDailyCap" ORDER BY "createdAt" DESC))[1] AS "adaptiveDailyCap",
+             (array_agg("ewma" ORDER BY "createdAt" DESC))[1] AS "ewma"
+      FROM d
+      GROUP BY "userId", "family", "templateKey", "result", "reason", "planSlot"
+    ), s AS (
+      SELECT g.*, CASE WHEN g."family" IN ('reengage', 'insight', 'achievement') THEN g."family" || '|' || COALESCE(g."templateKey", '') ELSE g."family" END AS "slot"
+      FROM g
+    ), p AS (
+      SELECT s.*,
+             COALESCE((SELECT array_agg(DISTINCT o."outcome") FROM "NotificationOutcome" o WHERE o."decisionId" = ANY(s.ids)), ARRAY[]::text[]) AS outcomes,
+             -- Old phones re-planned every run: a later plan in the same slot before the planned time replaced this one.
+             (s."result" = 'SEND' AND s."scheduledAt" IS NOT NULL AND EXISTS (
+               SELECT 1 FROM s s2
+               WHERE s2."userId" = s."userId" AND s2."slot" = s."slot"
+                 AND s2."createdAt" > s."lastAt" AND s2."createdAt" < s."scheduledAt"
+             )) AS superseded
+      FROM s
+    )`;
+  try {
+    await ensureOutcomeTableForPlans();
+    const where = having ? `WHERE ${having}` : '';
+    const totalRows = await prisma.$queryRawUnsafe(`${grouped} SELECT COUNT(*)::int AS count FROM p ${where}`, ...filtered.params);
+    const rows = await prisma.$queryRawUnsafe(
+      `${grouped}
+       SELECT p.*, u."fullName" AS "userName", u.email AS "userEmail"
+       FROM p LEFT JOIN "User" u ON u.id = p."userId"
+       ${where}
+       ORDER BY p."updatedAt" DESC
+       LIMIT ${take} OFFSET ${skip}`,
+      ...filtered.params,
+    );
+    return {
+      total: totalRows[0]?.count ?? 0,
+      decisions: (rows || []).map((row) => ({ ...serializeDecision(row), runs: row.runs, superseded: Boolean(row.superseded), outcomeKinds: row.outcomes || [] })),
+    };
+  } catch (error) {
+    if (isMissingTable(error)) return { total: 0, decisions: [] };
+    throw error;
+  }
+}
+
+async function ensureOutcomeTableForPlans() {
+  const { ensureNotificationOutcomeTable } = await import('./notificationOutcomes.js');
+  await ensureNotificationOutcomeTable();
 }
 
 function serializeDecision(row) {
@@ -272,6 +378,7 @@ function serializeDecision(row) {
     createdAt: row.createdAt,
     scheduledAt: row.scheduledAt,
     revalidatedAt: row.revalidatedAt,
+    updatedAt: row.updatedAt || row.syncedAt || null,
   };
 }
 

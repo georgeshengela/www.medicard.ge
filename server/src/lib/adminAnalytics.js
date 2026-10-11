@@ -15,7 +15,7 @@ import {
   tbilisiYmd,
   METRIC_DEFINITIONS,
 } from './adminAnalyticsRange.js';
-import { loadDecisionRows } from './notificationDecisions.js';
+import { loadDecisionRows, loadDecisionRowsByIds } from './notificationDecisions.js';
 import { clearAppActivityRowMemo, loadAppActivityRows } from './appActivity.js';
 import { clearUserGeoCache, getUserGeoAnalytics } from './adminUserGeo.js';
 import { loadProductEvents } from './productEvents.js';
@@ -23,6 +23,7 @@ import { loadOutcomeRows } from './notificationOutcomes.js';
 import {
   buildNotificationFunnel,
   buildTypePerformance,
+  collapseDecisionPlans,
   getDataQuality,
   getFeatureRetentionAnalytics,
   getPermissionAnalytics,
@@ -1013,25 +1014,39 @@ export async function getNotificationAnalytics(query) {
 
   const deliveredEvents = events.length + campaigns.reduce((sum, c) => sum + (c.sentCount || 0), 0);
   const funnel = buildNotificationFunnel(decisions, outcomes);
+  const { plans } = collapseDecisionPlans(decisions);
+  const prevPlans = collapseDecisionPlans(prevDecisions).plans;
+
+  // Outcomes of plans made before the period (a re-engagement planned two weeks ago firing today).
+  const knownIds = new Set(decisions.map((row) => row.decisionId));
+  const outsideIds = [...new Set(outcomes.map((row) => row.decisionId).filter((id) => id && !knownIds.has(id)))];
+  const outside = outsideIds.length ? await loadDecisionRowsByIds(outsideIds).catch(() => []) : [];
+  const familyById = new Map(outside.map((row) => [row.decisionId, row.family]));
 
   const reasons = new Map();
   const latestFatigue = new Map();
-  for (const row of decisions) {
-    if (row.result === 'BLOCKED') {
+  for (const row of plans) {
+    if ((row.result === 'BLOCKED' || row.result === 'CANCELLED') && !row.superseded) {
       const reason = row.reason || 'unspecified';
       reasons.set(reason, (reasons.get(reason) || 0) + 1);
     }
+  }
+  for (const row of decisions) {
     if (row.selectedFrequency || row.baseDailyCap != null) {
-      latestFatigue.set(row.userId, {
-        selectedFrequency: row.selectedFrequency,
-        baseDailyCap: row.baseDailyCap,
-        adaptiveDailyCap: row.adaptiveDailyCap,
-        ewma: row.ewma,
-      });
+      const prev = latestFatigue.get(row.userId);
+      if (!prev || new Date(row.createdAt) >= prev.at) {
+        latestFatigue.set(row.userId, {
+          at: new Date(row.createdAt),
+          selectedFrequency: row.selectedFrequency,
+          baseDailyCap: row.baseDailyCap,
+          adaptiveDailyCap: row.adaptiveDailyCap,
+          ewma: row.ewma,
+        });
+      }
     }
   }
 
-  const types = buildTypePerformance(decisions, outcomes, prevDecisions, prevOutcomes).types;
+  const types = buildTypePerformance(decisions, outcomes, prevDecisions, prevOutcomes, { familyById }).types;
 
   const fatigueDist = { normal: 0, reduced: 0, highlyReduced: 0, unknown: 0 };
   for (const row of latestFatigue.values()) {
@@ -1051,8 +1066,10 @@ export async function getNotificationAnalytics(query) {
   const hours = Array.from({ length: 24 }, () => ({ hour: 0, appOpens: 0, notifications: 0 }));
   hours.forEach((row, i) => { row.hour = i; });
   const heatmap = Array.from({ length: 7 }, () => Array(24).fill(0));
+  // First open of the day per person (AppActivity keeps the day's first and last moment; the last one
+  // leaned every chart towards midnight).
   for (const row of checkins) {
-    const stamp = hourInTbilisi(row.lastAt || row.firstAt);
+    const stamp = hourInTbilisi(row.firstAt || row.lastAt);
     if (!stamp) continue;
     hours[stamp.hour].appOpens += 1;
     heatmap[stamp.weekday][stamp.hour] += 1;
@@ -1069,7 +1086,7 @@ export async function getNotificationAnalytics(query) {
     ...(await meta(range)),
     kpis: {
       delivered: { value: deliveredEvents, delta: deltaSafe(deliveredEvents, prevEvents) },
-      evaluated: { value: funnel.evaluated, delta: deltaSafe(funnel.evaluated, prevDecisions.length) },
+      evaluated: { value: funnel.evaluated, delta: deltaSafe(funnel.evaluated, prevPlans.length) },
       suppressed: { value: funnel.suppressed },
       cancelled: { value: funnel.cancelled },
       openRate: funnel.rates.open,
@@ -1100,12 +1117,20 @@ export async function getNotificationAnalytics(query) {
       ),
       suppressed: fillDaySeries(
         range.days,
-        decisions.filter((d) => d.result === 'BLOCKED'),
+        plans.filter((d) => d.result === 'BLOCKED'),
         (row) => createdAtToTbilisiYmd(row.createdAt),
       ),
       cancelled: fillDaySeries(
         range.days,
-        decisions.filter((d) => d.result === 'CANCELLED'),
+        [
+          ...plans.filter((d) => d.result === 'CANCELLED').map((d) => ({ at: d.syncedAt || d.createdAt })),
+          ...outcomes.filter((row) => row.outcome === 'cancelled_by_revalidation').map((row) => ({ at: row.occurredAt })),
+        ],
+        (row) => createdAtToTbilisiYmd(row.at),
+      ),
+      planned: fillDaySeries(
+        range.days,
+        plans.filter((d) => (d.result === 'SEND' || d.result === 'CANCELLED') && !d.superseded),
         (row) => createdAtToTbilisiYmd(row.createdAt),
       ),
     },
@@ -1129,10 +1154,11 @@ export async function getNotificationAnalytics(query) {
       hours,
       heatmap,
       bestHour: peakHour.appOpens ? peakHour.hour : null,
-      source: 'აპის გახსნა AppActivity.lastAt-ით, თბილისის კალენდრით. ეს არ არის შეტყობინების სასურველი საათი.',
+      source: 'დღის პირველი გახსნა (AppActivity.firstAt), თბილისის დროით.',
       preferredWindow: null,
     },
     syncedDecisions: decisions.length,
+    plansCount: plans.length,
     syncedOutcomes: outcomes.length,
   });
   });

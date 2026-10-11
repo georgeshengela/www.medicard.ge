@@ -7,12 +7,17 @@ import {
   isQuietAt,
   preferredHourFromOpens,
 } from './mediEngageModel.ts';
-import { ENGAGE_FALLBACKS } from './mediEngageCopy.ts';
+import { ENGAGE_FALLBACKS, ENGAGE_FALLBACKS_BY_LANG } from './mediEngageCopy.ts';
+import { PUSH_ENGAGE_TEMPLATE_DEFAULTS, PUSH_ENGAGE_TEMPLATE_EN } from '../../../server/src/lib/pushEngageTemplates.js';
 import {
+  engageKindOf,
+  ENGAGE_MIN_GAP_MS,
   evaluateEngageBrain,
   evaluateEngageCandidates,
   pickCheckinKey,
   pickReengageKey,
+  stabilizeEngageDecisions,
+  type EngageDecisionIndex,
   type EngageSnapshot,
 } from './mediNotificationBrain.shared.ts';
 import {
@@ -650,5 +655,181 @@ describe('mediNotificationBrain', () => {
     ]);
     assert.equal(fatigue.selectedFrequency, 'often');
     assert.ok(fatigue.adaptiveDailyCap <= dailyEngageCap('often'));
+  });
+});
+
+describe('Notification Brain audit 2026-10-11', () => {
+  const ymdOf = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  const indexOf = (index: EngageDecisionIndex, family: string) => Object.values(index).find((row) => row.family === family);
+
+  it('keeps every day — tomorrow too — within the cap, one of each kind, 90 minutes apart', () => {
+    // Opened Sunday 20:00: Monday has the morning greeting, a check-in, sleep and a profile question.
+    const now = new Date('2026-09-06T20:00:00');
+    const { accepted, trace } = evaluateEngageBrain(
+      snap({ now, lastOpenAt: now.getTime(), missingProfileField: 'bloodType', seenWeekly: false, weeklyEverSeen: false }),
+    );
+    const byDay = new Map<string, typeof accepted>();
+    for (const row of accepted) byDay.set(ymdOf(row.fireAt), [...(byDay.get(ymdOf(row.fireAt)) ?? []), row]);
+    for (const [, rows] of byDay) {
+      const optional = rows.filter((row) => row.priority < 90);
+      assert.ok(optional.length <= trace.fatigue.cap, `${optional.map((r) => r.key)}`);
+      const kinds = optional.map((row) => engageKindOf(row.family, row.key));
+      assert.equal(new Set(kinds).size, kinds.length);
+      const times = optional.map((row) => row.fireAt.getTime()).sort((a, b) => a - b);
+      for (let i = 1; i < times.length; i += 1) assert.ok(times[i] - times[i - 1] >= ENGAGE_MIN_GAP_MS);
+    }
+    const monday = accepted.filter((row) => ymdOf(row.fireAt) === '2026-09-07');
+    assert.equal(monday.filter((row) => row.family === 'morning' || row.family === 'checkin').length, 1);
+  });
+
+  it('never says good morning at the evening hour the person usually opens the app', () => {
+    const now = new Date('2026-09-06T10:00:00');
+    const openAt = Array.from({ length: 12 }, (_, i) => new Date(2026, 8, 1 + i, 21, 5).getTime());
+    const rows = evaluateEngageCandidates(snap({ now, openAt, lastOpenAt: now.getTime() }));
+    const morning = rows.find((row) => row.family === 'morning');
+    assert.ok(morning);
+    assert.equal(morning?.fireAt.getHours(), 8);
+  });
+
+  it('picks the check-in copy by the hour it is delivered at', () => {
+    assert.equal(pickCheckinKey(new Date('2026-09-06T19:20:00')), 'engage-checkin-evening');
+    const now = new Date('2026-09-06T10:00:00');
+    const openAt = Array.from({ length: 12 }, (_, i) => new Date(2026, 8, 1 + i, 19, 10).getTime());
+    const { accepted } = evaluateEngageBrain(snap({ now, lastOpenAt: now.getTime() - 5 * 86_400_000, openAt }));
+    const checkin = accepted.find((row) => row.family === 'checkin');
+    assert.equal(checkin?.fireAt.getHours(), 19);
+    assert.equal(checkin?.key, 'engage-checkin-evening');
+  });
+
+  it('plans the next check-in for tomorrow afternoon when the app was opened today, never for today', () => {
+    const now = new Date('2026-09-06T10:00:00');
+    const { trace } = evaluateEngageBrain(snap({ now, lastOpenAt: now.getTime() }));
+    const checkin = trace.decisions.find((row) => row.family === 'checkin');
+    assert.ok(checkin);
+    if (checkin?.scheduledAt) {
+      assert.equal(ymdOf(new Date(checkin.scheduledAt)), '2026-09-07');
+      assert.equal(checkin.template, 'engage-checkin-mid');
+    }
+  });
+
+  it('does not push a time-of-day message into the next morning when quiet hours start early', () => {
+    const now = new Date('2026-09-07T18:00:00'); // Monday: a sleep day
+    const { accepted, trace } = evaluateEngageBrain(
+      snap({ now, lastOpenAt: now.getTime(), prefs: { ...DEFAULT_ENGAGE_PREFS, quietStart: '21:00', quietEnd: '08:00' } }),
+    );
+    assert.equal(accepted.some((row) => row.family === 'sleep'), false);
+    assert.equal(trace.decisions.find((row) => row.family === 'sleep')?.reason, 'quiet_hours');
+  });
+
+  it('never moves the quiet-steps nudge to tomorrow', () => {
+    const rows = evaluateEngageCandidates(snap({ now: new Date('2026-09-06T18:30:00'), todaySteps: 300 }));
+    assert.equal(rows.some((row) => row.family === 'stepsQuiet'), false);
+    const early = evaluateEngageCandidates(snap({ now: new Date('2026-09-06T13:00:00'), todaySteps: 300 }));
+    const steps = early.find((row) => row.family === 'stepsQuiet');
+    assert.equal(steps ? ymdOf(steps.fireAt) : '2026-09-06', '2026-09-06');
+  });
+
+  it('sends the weekly report and the weekly intro on different days', () => {
+    const now = new Date('2026-09-05T15:00:00'); // Saturday
+    const rows = evaluateEngageCandidates(snap({ now, lastOpenAt: now.getTime(), seenWeekly: false, weeklyEverSeen: false }));
+    const sunday = rows.filter((row) => ymdOf(row.fireAt) === '2026-09-06' && (row.family === 'weekly' || row.family === 'feature'));
+    assert.equal(sunday.length, 1);
+  });
+
+  it('honours admin switches and the admin daily ceiling', () => {
+    const now = new Date('2026-09-06T10:00:00');
+    const { accepted, trace } = evaluateEngageBrain(
+      snap({
+        now,
+        lastOpenAt: now.getTime() - 5 * 86_400_000,
+        blockedFamilies: { checkin: 'admin_off', hydration: 'module_paused' },
+        hydrationMl: 100,
+        maxPerDay: 1,
+        prefs: { ...DEFAULT_ENGAGE_PREFS, frequency: 'often' },
+      }),
+    );
+    assert.equal(trace.decisions.find((row) => row.family === 'checkin')?.reason, 'admin_off');
+    assert.equal(trace.decisions.find((row) => row.family === 'hydration')?.reason, 'module_paused');
+    assert.equal(trace.fatigue.cap, 1);
+    for (const day of new Set(accepted.map((row) => ymdOf(row.fireAt)))) {
+      assert.ok(accepted.filter((row) => ymdOf(row.fireAt) === day && row.priority < 90).length <= 1);
+    }
+  });
+
+  it('keeps one id per plan across runs and reports only what changed', () => {
+    const t1 = new Date('2026-09-06T10:00:00');
+    const first = stabilizeEngageDecisions(evaluateEngageBrain(snap({ now: t1, lastOpenAt: t1.getTime() })), {}, t1);
+    assert.ok(first.changed.length > 0);
+    const t2 = new Date('2026-09-06T10:05:00');
+    const second = stabilizeEngageDecisions(evaluateEngageBrain(snap({ now: t2, lastOpenAt: t1.getTime() })), synced(first.index), t2);
+    assert.equal(second.changed.length, 0, second.changed.map((row) => `${row.family}:${row.decision}:${row.reason}`).join(','));
+    assert.equal(indexOf(first.index, 'reengage')?.id, indexOf(second.index, 'reengage')?.id);
+    for (const row of second.accepted) assert.ok(Object.values(second.index).some((entry) => entry.id === row.decisionId));
+  });
+
+  it('turns a held-back pending plan into its cancellation, and a vanished one into „no longer needed“', () => {
+    const t1 = new Date('2026-09-06T13:00:00');
+    const base = { lastOpenAt: t1.getTime(), hydrationMl: 200, hydrationGoal: 2000 };
+    const first = stabilizeEngageDecisions(evaluateEngageBrain(snap({ now: t1, ...base })), {}, t1);
+    const water = indexOf(first.index, 'hydration');
+    assert.equal(water?.decision, 'SEND');
+    const t2 = new Date('2026-09-06T13:30:00');
+    const second = stabilizeEngageDecisions(evaluateEngageBrain(snap({ now: t2, ...base, hydrationMl: 1900 })), synced(first.index), t2);
+    const cancelled = second.changed.find((row) => row.id === water?.id);
+    assert.equal(cancelled?.decision, 'CANCELLED');
+    assert.equal(cancelled?.reason, 'hydration_goal_near');
+    // The same skip later that day stays that cancellation, with no new row.
+    const t3 = new Date('2026-09-06T13:40:00');
+    const third = stabilizeEngageDecisions(evaluateEngageBrain(snap({ now: t3, ...base, hydrationMl: 1900 })), synced(second.index), t3);
+    assert.equal(third.changed.some((row) => row.family === 'hydration'), false);
+    // A pending plan whose signal disappears is cancelled as no longer needed.
+    const chatAt = t1.getTime() - 20 * 3_600_000;
+    const quiet = { ...base, hydrationMl: 1900 };
+    const withChat = stabilizeEngageDecisions(
+      evaluateEngageBrain(snap({ now: t1, ...quiet, lastChatAt: chatAt, lastChatId: 'c1', lastChatMode: 'DOCTOR' })),
+      {},
+      t1,
+    );
+    const chat = indexOf(withChat.index, 'chat');
+    assert.equal(chat?.decision, 'SEND');
+    const later = stabilizeEngageDecisions(evaluateEngageBrain(snap({ now: t2, ...quiet })), synced(withChat.index), t2);
+    assert.equal(later.changed.find((row) => row.id === chat?.id)?.reason, 'no_longer_needed');
+  });
+});
+
+function synced(index: EngageDecisionIndex): EngageDecisionIndex {
+  return Object.fromEntries(Object.entries(index).map(([sig, entry]) => [sig, { ...entry, synced: true }]));
+}
+
+describe('Medi companion copy', () => {
+  it('says the same thing on the server (admin-editable) and in the app fallback, in both languages', () => {
+    const server = Object.fromEntries(PUSH_ENGAGE_TEMPLATE_DEFAULTS.map((row: { key: string; title: string; body: string }) => [row.key, { title: row.title, body: row.body }]));
+    assert.deepEqual(server, ENGAGE_FALLBACKS_BY_LANG.ka);
+    assert.deepEqual(PUSH_ENGAGE_TEMPLATE_EN, ENGAGE_FALLBACKS_BY_LANG.en);
+  });
+
+  it('has copy for every template the Brain can schedule', () => {
+    const keys = [
+      'engage-checkin-morning', 'engage-checkin-mid', 'engage-checkin-evening', 'engage-weekly', 'engage-feature',
+      'engage-insight-steps', 'engage-insight-cycle', 'engage-insight-meds', 'engage-achieve-steps', 'engage-achieve-meds',
+      'engage-hydration', 'engage-hydration-low', 'engage-steps-quiet', 'engage-sleep', 'engage-reengage-2',
+      'engage-reengage-5', 'engage-reengage-14', 'engage-reengage-30', 'engage-morning', 'engage-morning-wish',
+      'engage-birthday', 'engage-question', 'engage-chat', 'engage-masked', 'engage-unfinished', 'engage-unfinished-med',
+      'engage-visit-followup', 'engage-weather-walk', 'engage-weather-rain-soon', 'engage-weather-hot', 'engage-weather-uv',
+    ];
+    for (const key of keys) {
+      assert.ok(ENGAGE_FALLBACKS_BY_LANG.ka[key], key);
+      assert.ok(ENGAGE_FALLBACKS_BY_LANG.en[key], key);
+    }
+  });
+
+  it('keeps placeholders identical across languages and the Georgian free of known slips', () => {
+    const slips = [/დღეს[^.?!]*დღეს/, /მინახიხარ/, /🚨/, /\.\s*💚$/, /სტატისტიკებ/];
+    for (const [key, ka] of Object.entries(ENGAGE_FALLBACKS_BY_LANG.ka)) {
+      const en = ENGAGE_FALLBACKS_BY_LANG.en[key];
+      const vars = (text: string) => (text.match(/\{[a-zA-Z]+\}/g) ?? []).sort().join(',');
+      assert.equal(vars(`${ka.title} ${ka.body}`), vars(`${en.title} ${en.body}`), key);
+      for (const slip of slips) assert.equal(slip.test(ka.body) || slip.test(ka.title), false, `${key}: ${slip}`);
+    }
   });
 });

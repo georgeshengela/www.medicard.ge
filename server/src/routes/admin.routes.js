@@ -53,7 +53,8 @@ import {
   invalidateDashboardCaches,
 } from '../lib/adminAnalytics.js';
 import { getUserGeoAnalytics } from '../lib/adminUserGeo.js';
-import { getNotificationDecision, listNotificationDecisions } from '../lib/notificationDecisions.js';
+import { getNotificationDecision, listNotificationPlans } from '../lib/notificationDecisions.js';
+import { BRAIN_FAMILIES, getNotificationBrainConfig, setNotificationBrainConfig } from '../lib/notificationBrainConfig.js';
 import { listNotificationOutcomes } from '../lib/notificationOutcomes.js';
 import { loadActiveUserIds, loadAppActivityRows, loadLatestActivityMap } from '../lib/appActivity.js';
 import { getAppVersionPolicy } from '../lib/appVersionPolicy.js';
@@ -1593,10 +1594,11 @@ adminRouter.get(
     const { parseAnalyticsRange } = await import('../lib/adminAnalyticsRange.js');
     const bounds = parseAnalyticsRange(range);
     const result = req.query.result ? String(req.query.result).toUpperCase() : '';
-    const listed = await listNotificationDecisions({
+    const listed = await listNotificationPlans({
       fromDt: bounds.fromDt,
       toExclusiveDt: bounds.toExclusiveDt,
       result: result || undefined,
+      status: req.query.status ? String(req.query.status) : undefined,
       family: req.query.family ? String(req.query.family) : undefined,
       reason: req.query.reason ? String(req.query.reason) : undefined,
       q: req.query.q ? String(req.query.q) : undefined,
@@ -1606,6 +1608,43 @@ adminRouter.get(
     });
     listed.decisions = await enrichDecisions(listed.decisions);
     res.json(listed);
+  }),
+);
+
+/**
+ * Push → Brain „მართვა“: pause Medi's companion notifications, switch families off for everyone, cap a
+ * day. Phones apply it on their next app status check (each return to the app, ≤1/min).
+ */
+adminRouter.get(
+  '/notifications/brain-config',
+  requireAdmin,
+  asyncHandler(async (_req, res) => {
+    res.json({ config: await getNotificationBrainConfig(), families: BRAIN_FAMILIES });
+  }),
+);
+
+adminRouter.put(
+  '/notifications/brain-config',
+  requireAdmin,
+  asyncHandler(async (req, res) => {
+    const body = z
+      .object({
+        paused: z.boolean().optional(),
+        off: z.array(z.enum(BRAIN_FAMILIES)).max(BRAIN_FAMILIES.length).optional(),
+        maxPerDay: z.union([z.number().int().min(1).max(4), z.null()]).optional(),
+      })
+      .parse(req.body ?? {});
+    const before = await getNotificationBrainConfig();
+    const config = await setNotificationBrainConfig(body, req.admin?.id);
+    await writeAdminAudit({
+      admin: req.admin,
+      action: 'notification_brain.update',
+      targetType: 'settings',
+      targetId: 'notification-brain',
+      previousValue: { paused: before.paused, off: before.off, maxPerDay: before.maxPerDay },
+      newValue: { paused: config.paused, off: config.off, maxPerDay: config.maxPerDay },
+    });
+    res.json({ config, families: BRAIN_FAMILIES });
   }),
 );
 
@@ -1762,20 +1801,22 @@ adminRouter.get(
       from: req.query.from,
       to: req.query.to,
     });
-    const { decisions } = await listNotificationDecisions({
+    const { decisions } = await listNotificationPlans({
       fromDt: bounds.fromDt,
       toExclusiveDt: bounds.toExclusiveDt,
       family: req.query.family ? String(req.query.family) : undefined,
       result: req.query.result ? String(req.query.result).toUpperCase() : undefined,
+      status: req.query.status ? String(req.query.status) : undefined,
       q: req.query.q ? String(req.query.q) : undefined,
-      limit: 2000,
+      limit: 5000,
+      maxLimit: 5000,
       offset: 0,
     });
     sendCsv(
       res,
       'decisions.csv',
-      ['decisionId', 'userId', 'family', 'result', 'reason', 'score', 'createdAt'],
-      decisions.map((d) => [d.decisionId, d.userId, d.family, d.result, d.reason, d.score, d.createdAt]),
+      ['decisionId', 'userId', 'family', 'templateKey', 'result', 'reason', 'outcomes', 'scheduledAt', 'createdAt'],
+      decisions.map((d) => [d.decisionId, d.userId, d.family, d.templateKey, d.result, d.reason, (d.outcomeKinds || []).join(' '), d.scheduledAt, d.createdAt]),
     );
   }),
 );
