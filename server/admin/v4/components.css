@@ -2604,3 +2604,13 @@ html[data-theme="dark"] .s-live.is-m-cycle { --fm: #FF8FA8; } html[data-theme="d
 html[data-theme="dark"] .s-live.is-m-lab { --fm: #A5B4FC; } html[data-theme="dark"] .s-live.is-m-quest { --fm: #C4B5FD; }
 html[data-theme="dark"] .s-live.is-m-coach { --fm: #CBD5E1; } html[data-theme="dark"] .s-live.is-m-community { --fm: #F9A8D4; }
 html[data-theme="dark"] .s-live.is-m-support { --fm: #FCD34D; }
+
+/* Exact links (v4/focus.js): the card or row the bell pointed at lights up for a few seconds. */
+[data-focus].is-focus { animation: s-focus 4.2s var(--s-ease) both; }
+tr[data-focus].is-focus > td { animation: s-focus-cell 4.2s var(--s-ease) both; }
+@keyframes s-focus {
+  0%, 65% { box-shadow: 0 0 0 2px var(--mod, var(--s-accent)), 0 0 0 8px color-mix(in srgb, var(--mod, var(--s-accent)) 18%, transparent); }
+  100% { box-shadow: 0 0 0 0 transparent; }
+}
+@keyframes s-focus-cell { 0%, 65% { background: color-mix(in srgb, var(--mod, var(--s-accent)) 13%, transparent); } 100% { background: transparent; } }
+@media (prefers-reduced-motion: reduce) { [data-focus].is-focus, tr[data-focus].is-focus > td { animation: none; } [data-focus].is-focus { outline: 2px solid var(--s-accent); } }

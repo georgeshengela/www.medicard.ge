@@ -17,7 +17,7 @@
   const copyId = (id, label) => (id ? (V().copyIdButton ? V().copyIdButton(id, label) : `<code>${esc(id)}</code>`) : '');
   const request = (path, options) => api('/medipulsi' + path, options);
   const PAGE = 50;
-  let selected = 'overview', offset = 0, filter = '', rows = [], ticket = 0;
+  let selected = 'overview', offset = 0, filter = '', rows = [], ticket = 0, focusId = null;
 
   // Asia/Tbilisi is UTC+4 all year: editors show local time and save the same UTC instant as before.
   const TBILISI_MS = 4 * 3600000;
@@ -200,7 +200,7 @@
       const action = review && actionable
         ? `<button type="button" class="btn compact" data-run-action="claim" data-id="${esc(c.id)}">დამუშავება</button>`
         : c.status === 'APPROVED' && digital && coins ? '<span class="s-muted s-run-auto">ავტომატურად ჩაირიცხა</span>' : '';
-      return `<tr>
+      return `<tr data-focus="${esc(c.id)}">
         <td><b>${esc(c.reward?.title || '—')}</b>${sub(`${digital ? 'ციფრული' : 'ფიზიკური'}${coins ? ` · ${fmt(coins)} Medi Coins` : ''}`)}${sub(`კოდი <code class="s-run-code">${esc(c.code)}</code>`)}</td>
         <td>${c.userId ? `<a href="#/users/${encodeURIComponent(c.userId)}"><b>${esc(c.user?.fullName || 'მოთამაშე')}</b></a>` : '<b>—</b>'}</td>
         <td class="s-run-when">${esc(when(c.createdAt))}</td>
@@ -235,7 +235,7 @@
 
   function sessionsHtml(data) {
     const review = can('MEDIPULSI_REVIEW');
-    const body = rows.map((s) => `<tr>
+    const body = rows.map((s) => `<tr data-focus="${esc(s.id)}">
         <td>${s.userId ? `<a href="#/users/${encodeURIComponent(s.userId)}"><b>${esc(s.user?.fullName || 'მოთამაშე')}</b></a>` : '<b>—</b>'}${sub(`სესია ${copyId(s.id, 'სესიის ID')}`)}</td>
         <td class="s-run-when">${esc(when(s.startedAt))}${sub(`${duration(s.seconds)} · მოძრაობა ${duration(s.movingSeconds)}`)}</td>
         <td class="num">${num((Number(s.meters) || 0) / 1000, 2)} კმ${sub(`მაქს. ${num(s.maxSpeed)} კმ/სთ`)}${s.rejected ? sub(`${fmt(s.rejected)} GPS წერტილი გამოტოვდა`) : ''}</td>
@@ -287,6 +287,14 @@
   async function render() {
     const root = document.getElementById('tab-medipulsi');
     if (!root) return;
+    // Exact link from the bell (v4/focus.js): that tab, that claim / walk.
+    const exact = global.AdminFocus?.take('medipulsi');
+    if (exact) {
+      if (TABS.some(([id]) => id === exact.get('tab'))) selected = exact.get('tab');
+      offset = 0;
+      filter = exact.get('status') || '';
+      focusId = exact.get('focus');
+    }
     const version = ++ticket;
     root.innerHTML = `<div class="s-stack v3-tab-shell s-run">
       <div class="s-tabbar">
@@ -323,6 +331,10 @@
       body.querySelectorAll('[data-run-go]').forEach((b) => (b.onclick = () => { selected = b.dataset.runGo; offset = 0; filter = ''; void render(); }));
       body.querySelector('[data-run-pending]')?.addEventListener('click', () => { selected = 'claims'; offset = 0; filter = 'PENDING'; void render(); });
       global.AdminCharts?.hydrate?.();
+      if (focusId) {
+        if (global.AdminFocus && !global.AdminFocus.flash(body, focusId)) global.toast?.('ეს ჩანაწერი ამ სიაში ვეღარ მოიძებნა — შესაძლოა ძველია ან წაიშალა.', 'bad');
+        focusId = null;
+      }
       body.querySelectorAll('[data-run-action]').forEach((b) => (b.onclick = () => editor(rows.find((r) => r.id === b.dataset.id), b.dataset.runAction)));
       const cfg = body.querySelector('[data-config]');
       if (cfg) bindConfig(cfg, data);

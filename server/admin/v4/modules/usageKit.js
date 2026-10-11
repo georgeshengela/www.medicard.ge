@@ -101,6 +101,9 @@
    * One wall card. `glyph` (icon name) or `mark` (short text, e.g. initials) fills the tile; `person` links to the
    * user page (omit it for anonymous cards); `foot` = [line1, line2] on the right.
    */
+  /** Set by createWall while it renders one item: the card carries `data-focus` so exact links can find it. */
+  let renderingKey = null;
+
   function itemCard({ glyph = '', mark = '', title, meta = '', badges = '', track: trackHtml = '', line = '', idle = false, person = null, personText = '', foot = [], dim = false }) {
     const who = person
       ? `<a class="s-uw-person" href="${esc(userHref(person.id))}" title="პროფილის გახსნა">
@@ -108,7 +111,7 @@
           <span><b>${esc(person.name || 'უსახელო')}</b><small>${esc(person.contact || '')}</small></span>
         </a>`
       : `<span class="s-uw-person is-plain">${personText}</span>`;
-    return `<article class="s-uw-card${dim ? ' is-dim' : ''}">
+    return `<article class="s-uw-card${dim ? ' is-dim' : ''}"${renderingKey != null ? ` data-focus="${esc(renderingKey)}"` : ''}>
       <header class="s-uw-head">
         <span class="s-uw-glyph" aria-hidden="true">${glyph ? ico(glyph) : `<b>${esc(mark)}</b>`}</span>
         <div class="s-uw-id"><b title="${esc(title)}">${esc(title)}</b>${meta ? `<small title="${esc(meta)}">${esc(meta)}</small>` : ''}</div>
@@ -124,7 +127,7 @@
    * The wall: a card with filters, search, paging. `filters` = [[key, label, match(item)]]. Paint with `wall.html()`
    * inside the page, then `wall.bind(root)` after the page is in the DOM. State survives re-paints of the page.
    */
-  function createWall({ title, sub = '', legendLabels = [], filters, search = () => '', render, emptyText = {}, placeholder = 'ძებნა', page = 24 }) {
+  function createWall({ title, sub = '', legendLabels = [], filters, search = () => '', render, emptyText = {}, placeholder = 'ძებნა', page = 24, key = (it) => it.id }) {
     const state = { filter: filters[0][0], query: '', shown: page, items: [], capped: '' };
     const match = Object.fromEntries(filters.map(([k, , fn]) => [k, fn]));
     const list = () => {
@@ -137,7 +140,11 @@
       const more = rows.length > state.shown
         ? `<div class="s-uw-more"><button type="button" class="btn compact" data-uw-more>კიდევ ${fmt(Math.min(page, rows.length - state.shown))} · ნაჩვენებია ${fmt(state.shown)} / ${fmt(rows.length)}</button></div>`
         : '';
-      return `<div class="s-uw-wall">${rows.slice(0, state.shown).map(render).join('')}</div>${more}`;
+      const cards = rows.slice(0, state.shown).map((it) => {
+        renderingKey = key(it) ?? null;
+        try { return render(it); } finally { renderingKey = null; }
+      });
+      return `<div class="s-uw-wall">${cards.join('')}</div>${more}`;
     };
     const paintBody = (root) => {
       const host = root.querySelector('[data-uw-wall]');
@@ -164,7 +171,23 @@
           <div data-uw-wall>${body()}</div>
         </section>`;
       },
+      /** Exact link: show the card with this key (right filter, no search, paged far enough) and light it up. */
+      focus(root, id) {
+        const item = state.items.find((it) => String(key(it)) === String(id));
+        if (!item) return false;
+        if (!match[state.filter](item)) state.filter = (filters.find(([, , fn]) => fn(item)) || filters[0])[0];
+        state.query = '';
+        const pos = list().indexOf(item);
+        if (pos >= state.shown) state.shown = Math.ceil((pos + 1) / page) * page;
+        root.querySelectorAll('[data-uw-filter]').forEach((b) => b.setAttribute('aria-selected', String(b.dataset.uwFilter === state.filter)));
+        const input = root.querySelector('[data-uw-search]');
+        if (input) input.value = '';
+        paintBody(root);
+        return Boolean(global.AdminFocus?.flash(root, String(id)));
+      },
       bind(root) {
+        // K.page calls this for an exact link (one handler per host, replaced on every paint).
+        root.__uwFocus = (id) => this.focus(root, id);
         root.querySelectorAll('[data-uw-filter]').forEach((btn) => btn.addEventListener('click', () => {
           state.filter = btn.dataset.uwFilter;
           state.shown = page;
@@ -252,8 +275,22 @@
         void render({ keepScroll: true });
       }));
       host.querySelector('[data-uw-refresh]')?.addEventListener('click', () => void render());
+      host.__uwFocus = null;
       after?.(host, data, ctx);
       if (keepScroll) global.scrollTo({ top: y });
+      // Exact link (AdminFocus.go): show that card. Not found with real users only → it may be a team account.
+      const exact = ctx.focus || global.AdminFocus?.take(tab)?.get('focus') || null;
+      ctx.focus = null;
+      if (exact && host.__uwFocus) {
+        if (host.__uwFocus(exact)) return;
+        if (!ctx.team) {
+          ctx.team = true;
+          ctx.focus = exact;
+          void render();
+          return;
+        }
+        global.toast?.('ეს ჩანაწერი ამ გვერდზე ვეღარ მოიძებნა — შესაძლოა წაიშალა.', 'bad');
+      }
     }
     return render;
   }
@@ -275,6 +312,9 @@
           ${panes.map(([k, , , kind]) => `<div data-uw-pane="${k}" ${kind === 'legacy' ? 'data-uw-legacy' : 'data-uw-page'} hidden></div>`).join('')}
         </div>`;
         st.painted.clear();
+        // A pasted exact link (#/trainers?pane=manage…) opens its pane.
+        const linked = global.AdminFocus?.parse(location.hash);
+        if (linked?.tab === tab && panes.some((p) => p[0] === linked.params.get('pane'))) st.active = linked.params.get('pane');
         root.querySelectorAll('[data-uw-pane-btn]').forEach((b) => b.addEventListener('click', () => {
           if (b.dataset.uwPaneBtn === st.active) return;
           st.active = b.dataset.uwPaneBtn;
@@ -297,6 +337,10 @@
         await panes.find((p) => p[0] === st.active)?.[2]?.();
       }
     }
+    /** The pane the next render opens (exact links) — without rendering now. */
+    show.prefer = (key) => {
+      if (panes.some((p) => p[0] === key)) st.active = key;
+    };
     show.select = (key, opts = {}) => {
       st.active = key;
       if (opts.fresh) st.painted.delete(key);

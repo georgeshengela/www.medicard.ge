@@ -188,7 +188,7 @@
     if (section === 'reports') {
       const kind = row.postId ? 'posts' : 'comments';
       const exists = row.body != null;
-      return `<article class="s-feed-item"><span class="s-avatar is-warn">${ico('alert')}</span><div>
+      return `<article class="s-feed-item" data-focus="${esc(row.id)}"><span class="s-avatar is-warn">${ico('alert')}</span><div>
         <header><b>${esc(REPORT_REASONS[row.reason] || REPORT_REASONS.other)}</b><span class="s-badge is-plain">${kind === 'posts' ? 'პოსტი' : 'კომენტარი'}</span><span>${esc(when(row.createdAt))}</span></header>
         <p class="s-feed-body${exists ? '' : ' s-muted'}">${exists ? esc(row.body) : 'ჩანაწერი უკვე წაშლილია.'}</p>
         ${can ? `<div class="s-feed-actions"><button type="button" class="btn compact" data-resolve="${esc(row.id)}">განხილულია</button>
@@ -200,7 +200,7 @@
       ...(STATUS_ACTIONS[status] || ['hide', 'delete']).map((a) => actionButton(a, row, a === 'approve' && status === 'HIDDEN' ? 'ხელახლა გამოქვეყნება' : '')),
       actionButton(row.banned ? 'unban' : 'ban', row),
     ].join('');
-    return `<article class="s-feed-item"><span class="s-avatar">${esc(initials(row.author))}</span><div>
+    return `<article class="s-feed-item" data-focus="${esc(row.id)}"><span class="s-avatar">${esc(initials(row.author))}</span><div>
       <header><b>${esc(row.author)}</b><span class="s-badge is-plain">${row.kind === 'posts' ? 'პოსტი' : 'კომენტარი'}</span><span>${esc(when(row.createdAt))}</span>${row.banned ? '<span class="s-badge is-bad">წევრი შეჩერებულია</span>' : ''}</header>
       <p class="s-feed-body">${esc(row.body)}</p>
       ${row.hasImage ? `<img data-image="${esc(row.id)}" alt="პოსტის ფოტო">` : ''}
@@ -217,6 +217,13 @@
   async function render() {
     const root = document.getElementById('tab-community');
     if (!root) return;
+    // Exact link from the bell (v4/focus.js).
+    const exact = global.AdminFocus?.take('community');
+    if (exact) {
+      if (exact.get('section')) section = exact.get('section');
+      offset = 0;
+      render.focus = exact.get('focus');
+    }
     const gen = ++generation;
     urls.forEach(URL.revokeObjectURL);
     urls = [];
@@ -259,6 +266,10 @@
         </section>
         ${launchCard(launch, can)}
       </div>`;
+      if (render.focus) {
+        if (global.AdminFocus && !global.AdminFocus.flash(root, render.focus)) global.toast?.('ეს ჩანაწერი ამ სიაში ვეღარ მოიძებნა — შესაძლოა ძველია ან წაიშალა.', 'bad');
+        render.focus = null;
+      }
       root.querySelectorAll('[data-section]').forEach((b) => (b.onclick = () => { section = b.dataset.section; offset = 0; void render(); }));
       root.querySelector('[data-refresh]').onclick = () => void render();
       root.querySelectorAll('[data-page]').forEach((b) => (b.onclick = () => { offset += Number(b.dataset.page); void render(); }));

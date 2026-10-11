@@ -185,7 +185,13 @@
       ${st.loaded && st.more && st.filter === 'all' && st.events.length ? '<div class="s-live-more"><button type="button" class="btn compact" data-live-more>ადრინდელის ჩვენება</button></div>' : ''}`;
     st.arriving.clear();
     host.querySelectorAll('[data-live-filter]').forEach((b) => b.addEventListener('click', () => { st.filter = b.dataset.liveFilter; paint(); }));
-    host.querySelectorAll('[data-live-go]').forEach((a) => a.addEventListener('click', () => st.onNavigate?.()));
+    // The exact place (v4/focus.js): that pet, claim, letter, conversation… — rendered fresh even if the page is open.
+    host.querySelectorAll('[data-live-go]').forEach((a) => a.addEventListener('click', (ev) => {
+      if (ev.metaKey || ev.ctrlKey || ev.shiftKey || ev.button === 1 || !global.AdminFocus) return;
+      ev.preventDefault();
+      st.onNavigate?.();
+      global.AdminFocus.go(a.getAttribute('href'));
+    }));
     host.querySelector('[data-live-more]')?.addEventListener('click', loadOlder);
     host.querySelector('[data-live-notify]')?.addEventListener('change', async (ev) => {
       const box = ev.currentTarget;

@@ -19,7 +19,8 @@ test('events: person, words, link; newest first', () => {
   assert.equal(out[0].meta, '');
   assert.equal(out[1].meta, 'ძაღლი · ლუნა');
   assert.deepEqual(out[1].user, { id: 'u1', name: 'Nino', contact: '+995 599 12 34 56', team: false });
-  assert.equal(out[1].href, '#/users/u1');
+  assert.equal(out[1].href, '#/pets?focus=p1', 'opens that pet card on MEDIVET');
+  assert.equal(out[0].href, '#/pills?focus=u1');
   assert.equal(out[2].user.team, true);
   assert.equal(out[2].meta, 'ფოტოთი');
 });
@@ -56,7 +57,7 @@ test('saved through Medi and in its module: one event marked „Medi-თ“', ()
 test('attention events: a letter from someone without an account, a prize, a report', () => {
   const out = shapeFeed([
     { source: 'support', row: { id: 's1', userId: null, at: '2026-10-11T08:00:00Z', counterpartName: 'Tasso' } },
-    { source: 'claim', row: { id: 'k1', userId: 'u1', at: '2026-10-11T08:01:00Z' } },
+    { source: 'claim', row: { id: 'k1', userId: 'u1', at: '2026-10-11T08:01:00Z', kind: 'PHYSICAL', title: 'iPhone' } },
     { source: 'communityReport', row: { id: 'r1', userId: 'u1', at: '2026-10-11T08:02:00Z' } },
     { source: 'medi', row: { id: 'i1', userId: 'u1', at: '2026-10-11T08:03:00Z', mode: 'DOCTOR', status: 'ERROR' } },
   ], people);
@@ -64,7 +65,18 @@ test('attention events: a letter from someone without an account, a prize, a rep
   const letter = out.find((e) => e.module === 'support');
   assert.equal(letter.user, null);
   assert.equal(letter.who, 'Tasso');
-  assert.equal(letter.href, '#/support');
+  assert.equal(letter.href, '#/support?tab=inbox&thread=s1');
+  assert.equal(out.find((e) => e.module === 'run').href, '#/medipulsi?tab=claims&focus=k1');
+  assert.equal(out.find((e) => e.module === 'medi').href, '#/ai?pane=quality&focus=i1');
+});
+
+test('a coin box opening is paid on the spot: no attention, says what it was', () => {
+  const [e] = shapeFeed([
+    { source: 'claim', row: { id: 'k2', userId: 'u1', at: '2026-10-11T04:10:59Z', status: 'APPROVED', kind: 'DIGITAL', coins: '50', starter: 'true' } },
+  ], people);
+  assert.equal(e.attention, false);
+  assert.equal(e.text, 'გახსნა MEDIRUN-ის ყუთი');
+  assert.equal(e.meta, 'სასტარტო ყუთი · 50 Medi Coins');
 });
 
 test('no health values or free text leave the feed', () => {

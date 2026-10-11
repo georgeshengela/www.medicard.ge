@@ -34,6 +34,11 @@ const ACTIONS = [
   [/^visit_/, 'health', 'Medi-თ დაამატა ვიზიტი'],
   [/^pet_/, 'pets', 'Medi-თ ჩაწერა ცხოველზე'],
 ];
+/** Where a row opens in the admin: the exact card, row or conversation (v4/focus.js reads `focus`, `pane`, `tab`…). */
+const link = (tab, params = {}) => {
+  const q = new URLSearchParams(Object.entries(params).filter(([, v]) => v != null && v !== '')).toString();
+  return `#/${tab}${q ? `?${q}` : ''}`;
+};
 const km = (meters) => `${(Number(meters || 0) / 1000).toLocaleString('ka-GE', { maximumFractionDigits: 1 })} კმ`;
 const shortHash = (value) => createHash('sha1').update(String(value)).digest('hex').slice(0, 12);
 
@@ -45,61 +50,73 @@ const SOURCES = [
   { key: 'signup', col: '"createdAt"', sql: (c) => `SELECT id, id AS "userId", "createdAt" AS at, email FROM "User" WHERE ${c}`,
     event: (r) => ({ module: 'account', text: 'დარეგისტრირდა', meta: /@phone\.medicard\.ge$/i.test(r.email) ? 'ტელეფონით' : /@apple\.medicard\.ge$|privaterelay\.appleid\.com$/i.test(r.email) ? 'Apple-ით' : 'ელფოსტით' }) },
   { key: 'pet', col: '"createdAt"', sql: (c) => `SELECT id, "userId", "createdAt" AS at, name, "speciesId" FROM "Pet" WHERE ${c}`,
-    event: (r) => ({ module: 'pets', text: 'დაამატა ცხოველი', meta: [SPECIES[r.speciesId] || 'სხვა', r.name].filter(Boolean).join(' · ') }) },
-  { key: 'petWeight', col: '"createdAt"', sql: (c) => `SELECT id, "userId", "createdAt" AS at FROM "PetWeightLog" WHERE ${c}`,
-    event: () => ({ module: 'pets', text: 'აწონა ცხოველი' }) },
-  { key: 'petPlan', col: '"createdAt"', sql: (c) => `SELECT id, "userId", "createdAt" AS at, "reminderEnabled" FROM "PetCareSchedule" WHERE ${c}`,
-    event: (r) => ({ module: 'pets', text: 'შექმნა ცხოველის მოვლის გეგმა', meta: r.reminderEnabled ? 'შეხსენებით' : '' }) },
-  { key: 'petCare', col: '"createdAt"', sql: (c) => `SELECT id, "userId", "createdAt" AS at FROM "PetCareEvent" WHERE status = 'RECORDED' AND ${c}`,
-    event: () => ({ module: 'pets', text: 'მონიშნა ცხოველის მოვლა' }) },
-  { key: 'vet', col: '"createdAt"', sql: (c) => `SELECT id, "userId", "createdAt" AS at FROM "PetChatMessage" WHERE role = 'user' AND ${c}`,
-    event: () => ({ module: 'pets', text: 'ჰკითხა MEDIVET-ს' }) },
+    event: (r) => ({ module: 'pets', text: 'დაამატა ცხოველი', meta: [SPECIES[r.speciesId] || 'სხვა', r.name].filter(Boolean).join(' · '), href: link('pets', { focus: r.id }) }) },
+  { key: 'petWeight', col: '"createdAt"', sql: (c) => `SELECT id, "userId", "petId", "createdAt" AS at FROM "PetWeightLog" WHERE ${c}`,
+    event: (r) => ({ module: 'pets', text: 'აწონა ცხოველი', href: link('pets', { focus: r.petId }) }) },
+  { key: 'petPlan', col: '"createdAt"', sql: (c) => `SELECT id, "userId", "petId", "createdAt" AS at, "reminderEnabled" FROM "PetCareSchedule" WHERE ${c}`,
+    event: (r) => ({ module: 'pets', text: 'შექმნა ცხოველის მოვლის გეგმა', meta: r.reminderEnabled ? 'შეხსენებით' : '', href: link('pets', { focus: r.petId }) }) },
+  { key: 'petCare', col: '"createdAt"', sql: (c) => `SELECT id, "userId", "petId", "createdAt" AS at FROM "PetCareEvent" WHERE status = 'RECORDED' AND ${c}`,
+    event: (r) => ({ module: 'pets', text: 'მონიშნა ცხოველის მოვლა', href: link('pets', { focus: r.petId }) }) },
+  { key: 'vet', col: '"createdAt"', sql: (c) => `SELECT id, "userId", "petId", "createdAt" AS at FROM "PetChatMessage" WHERE role = 'user' AND ${c}`,
+    event: (r) => ({ module: 'pets', text: 'ჰკითხა MEDIVET-ს', href: link('pets', { focus: r.petId }) }) },
   { key: 'medication', col: '"createdAt"', sql: (c) => `SELECT id, "userId", "createdAt" AS at FROM "MedicationSchedule" WHERE ${c}`,
-    event: () => ({ module: 'pills', text: 'დაამატა წამალი' }) },
+    event: (r) => ({ module: 'pills', text: 'დაამატა წამალი', href: link('pills', { focus: r.userId }) }) },
   { key: 'dose', col: '"occurredAt"', sql: (c) => `SELECT id, "userId", "occurredAt" AS at, source FROM "MedicationDoseEvent" WHERE ${c}`,
-    event: (r) => ({ module: 'pills', text: 'მონიშნა დოზა', meta: r.source === 'notification' ? 'შეხსენებიდან' : '' }) },
+    event: (r) => ({ module: 'pills', text: 'მონიშნა დოზა', meta: r.source === 'notification' ? 'შეხსენებიდან' : '', href: link('pills', { focus: r.userId }) }) },
   { key: 'cycle', col: '"createdAt"', anonymous: true,
     sql: (c) => `SELECT id, "createdAt" AS at, flow, symptoms, moods, notes IS NOT NULL AND notes <> '' AS "hasNote", "sexualActivity", libido, bbt,
       "cervicalMucus", "ovulationTest", "pregnancyTest", "painEntries", "sleepQuality", "stressLevel", observations FROM "CycleLog" WHERE ${c}`,
     keep: (r) => !onlyImportedTemperature({ ...r, notes: r.hasNote ? '·' : null }),
     event: () => ({ module: 'cycle', text: 'ვიღაცამ ჩაწერა ციკლის დღე' }) },
   { key: 'meal', col: '"createdAt"', sql: (c) => `SELECT id, "userId", "createdAt" AS at, source FROM "NutritionMeal" WHERE ${c}`,
-    event: (r) => ({ module: 'food', text: 'ჩაწერა კვება', meta: MEAL_SOURCES[r.source] || '' }) },
+    event: (r) => ({ module: 'food', text: 'ჩაწერა კვება', meta: MEAL_SOURCES[r.source] || '', href: link('nutrition', { pane: 'usage', focus: r.userId }) }) },
   { key: 'record', col: '"createdAt"', sql: (c) => `SELECT id, "userId", "createdAt" AS at, type FROM "MedicalRecord" WHERE type IN ('LAB','XRAY','CT_MRI','SKIN','SKINCARE','SYMPTOM') AND ${c}`,
-    event: (r) => ({ module: RECORDS[r.type][0], text: RECORDS[r.type][1] }) },
+    event: (r) => ({
+      module: RECORDS[r.type][0],
+      text: RECORDS[r.type][1],
+      href: RECORDS[r.type][0] === 'lab' ? link('lab', { focus: r.userId }) : link('ai', { pane: 'usage', focus: r.userId }),
+    }) },
   { key: 'medi', col: '"createdAt"', sql: (c) => `SELECT id, "userId", "createdAt" AS at, mode, status FROM "AiInteraction" WHERE mode IN ('DOCTOR','CONSILIUM') AND ${c}`,
+    // Opens that very question and answer (Medi's log drawer).
     event: (r) => (r.status === 'ERROR'
-      ? { module: 'medi', text: 'Medi-მ ვერ უპასუხა', attention: true }
-      : { module: 'medi', text: r.mode === 'CONSILIUM' ? 'ჰკითხა Medi-ს კონსილიუმით' : 'ჰკითხა Medi-ს' }) },
+      ? { module: 'medi', text: 'Medi-მ ვერ უპასუხა', attention: true, href: link('ai', { pane: 'quality', focus: r.id }) }
+      : { module: 'medi', text: r.mode === 'CONSILIUM' ? 'ჰკითხა Medi-ს კონსილიუმით' : 'ჰკითხა Medi-ს', href: link('ai', { pane: 'quality', focus: r.id }) }) },
   { key: 'mediAction', col: '"createdAt"', sql: (c) => `SELECT id, "userId", "createdAt" AS at, tool FROM "AssistantOperation" WHERE status = 'DONE' AND ${c}`,
     event: (r) => {
       const hit = ACTIONS.find(([re]) => re.test(String(r.tool || '')));
       // A cycle entry saved through Medi is already the anonymous cycle row: no second event.
       if (hit?.[1] === 'cycle') return null;
-      return hit ? { module: hit[1], text: hit[2], viaMedi: true } : { module: 'medi', text: 'Medi-თ შეინახა ჩანაწერი' };
+      const where = { pills: link('pills', { focus: r.userId }), food: link('nutrition', { pane: 'usage', focus: r.userId }), pets: link('pets') }[hit?.[1]];
+      return hit
+        ? { module: hit[1], text: hit[2], viaMedi: true, href: where || link('ai', { pane: 'usage', focus: r.userId }) }
+        : { module: 'medi', text: 'Medi-თ შეინახა ჩანაწერი', href: link('ai', { pane: 'usage', focus: r.userId }) };
     } },
   { key: 'quest', col: '"completedAt"', sql: (c) => `SELECT id, "userId", "completedAt" AS at FROM "QuestCompletion" WHERE ${c}`,
-    event: () => ({ module: 'quest', text: 'შეასრულა მისია' }) },
+    event: (r) => ({ module: 'quest', text: 'შეასრულა მისია', href: link('quests', { pane: 'usage', focus: r.userId }) }) },
   { key: 'redeem', col: '"redeemedAt"', sql: (c) => `SELECT id, "userId", "redeemedAt" AS at, "coinCost" FROM "RewardRedemption" WHERE ${c}`,
-    event: (r) => ({ module: 'quest', text: 'გაცვალა ჯილდო', meta: `${Number(r.coinCost || 0).toLocaleString('ka-GE')} Coins`, attention: true, href: '#/rewards' }) },
+    event: (r) => ({ module: 'quest', text: 'გაცვალა ჯილდო მაღაზიაში', meta: `${Number(r.coinCost || 0).toLocaleString('ka-GE')} Coins · გადასაცემია`, attention: true, href: link('rewards', { tab: 'redemptions', focus: r.id }) }) },
   { key: 'walk', col: '"endedAt"', sql: (c) => `SELECT id, "userId", "endedAt" AS at, meters FROM "MedipulsiSession" WHERE phase = 'FINISHED' AND excluded = false AND ${c}`,
-    event: (r) => ({ module: 'run', text: 'დაასრულა გასეირნება', meta: km(r.meters) }) },
-  { key: 'claim', col: '"createdAt"', sql: (c) => `SELECT id, "userId", "createdAt" AS at FROM "MedipulsiClaim" WHERE ${c}`,
-    event: () => ({ module: 'run', text: 'მოითხოვა MEDIRUN-ის პრიზი', attention: true, href: '#/medipulsi' }) },
+    event: (r) => ({ module: 'run', text: 'დაასრულა გასეირნება', meta: km(r.meters), href: link('medipulsi', { tab: 'sessions', focus: r.id }) }) },
+  // A box opening. Coin boxes are paid on the spot (APPROVED) — nothing to do; a physical prize waits for the team.
+  { key: 'claim', col: '"createdAt"', sql: (c) => `SELECT id, "userId", "createdAt" AS at, status, reward->>'kind' AS kind, reward->>'coins' AS coins,
+      reward->>'starter' AS starter, reward->>'place' AS place, reward->>'title' AS title FROM "MedipulsiClaim" WHERE ${c}`,
+    event: (r) => (r.kind === 'PHYSICAL'
+      ? { module: 'run', text: 'მოიგო MEDIRUN-ის პრიზი', meta: [r.title, 'შესამოწმებელი და გადასაცემია'].filter(Boolean).join(' · '), attention: true, href: link('medipulsi', { tab: 'claims', focus: r.id }) }
+      : { module: 'run', text: 'გახსნა MEDIRUN-ის ყუთი', meta: [r.starter === 'true' ? 'სასტარტო ყუთი' : r.place, Number(r.coins) ? `${Number(r.coins).toLocaleString('ka-GE')} Medi Coins` : ''].filter(Boolean).join(' · '), href: link('medipulsi', { tab: 'claims', focus: r.id }) }) },
   { key: 'communityJoin', col: '"createdAt"', sql: (c) => `SELECT "userId" AS id, "userId", "createdAt" AS at FROM "CommunityMember" WHERE ${c}`,
-    event: () => ({ module: 'community', text: 'შეუერთდა ქალების სივრცეს' }) },
+    event: () => ({ module: 'community', text: 'შეუერთდა ქალების სივრცეს', href: link('community', { section: 'members' }) }) },
   { key: 'communityPost', col: '"createdAt"', sql: (c) => `SELECT id, "authorId" AS "userId", "createdAt" AS at FROM "CommunityPost" WHERE ${c}`,
-    event: () => ({ module: 'community', text: 'დაწერა პოსტი ქალების სივრცეში', href: '#/community' }) },
+    event: (r) => ({ module: 'community', text: 'დაწერა პოსტი ქალების სივრცეში', href: link('community', { section: 'PUBLISHED', focus: r.id }) }) },
   { key: 'communityReport', col: '"createdAt"', sql: (c) => `SELECT id, "userId", "createdAt" AS at FROM "CommunityReport" WHERE ${c}`,
-    event: () => ({ module: 'community', text: 'გაასაჩივრა ჩანაწერი', attention: true, href: '#/community' }) },
+    event: (r) => ({ module: 'community', text: 'გაასაჩივრა ჩანაწერი', attention: true, href: link('community', { section: 'reports', focus: r.id }) }) },
   { key: 'trainer', col: '"submittedAt"', sql: (c) => `SELECT "userId" AS id, "userId", "submittedAt" AS at FROM "TrainerProfile" WHERE ${c}`,
-    event: () => ({ module: 'coach', text: 'გაგზავნა ტრენერის განაცხადი', attention: true, href: '#/trainers' }) },
-  { key: 'trainerLink', col: '"createdAt"', sql: (c) => `SELECT id, "clientId" AS "userId", "createdAt" AS at FROM "TrainerLink" WHERE ${c}`,
-    event: () => ({ module: 'coach', text: 'დაუკავშირდა ტრენერს' }) },
+    event: (r) => ({ module: 'coach', text: 'გაგზავნა ტრენერის განაცხადი', attention: true, href: link('trainers', { pane: 'manage', status: 'PENDING', focus: r.userId }) }) },
+  { key: 'trainerLink', col: '"createdAt"', sql: (c) => `SELECT id, "clientId" AS "userId", "trainerId", "createdAt" AS at FROM "TrainerLink" WHERE ${c}`,
+    event: (r) => ({ module: 'coach', text: 'დაუკავშირდა ტრენერს', href: link('trainers', { pane: 'usage', focus: r.trainerId }) }) },
   { key: 'support', col: '"createdAt"', sql: (c) => `SELECT id, "userId", "createdAt" AS at, "counterpartName" FROM "SupportThread" WHERE ${c}`,
-    event: (r) => ({ module: 'support', text: 'მოწერა მხარდაჭერას', attention: true, href: '#/support', who: r.userId ? null : r.counterpartName || 'უცნობი გამომგზავნი' }) },
+    event: (r) => ({ module: 'support', text: 'მოწერა მხარდაჭერას', attention: true, href: link('support', { tab: 'inbox', thread: r.id }), who: r.userId ? null : r.counterpartName || 'უცნობი გამომგზავნი' }) },
   { key: 'referral', col: '"createdAt"', sql: (c) => `SELECT id, "inviterId" AS "userId", "createdAt" AS at FROM "Referral" WHERE ${c}`,
-    event: () => ({ module: 'account', text: 'მოიწვია მეგობარი' }) },
+    event: () => ({ module: 'account', text: 'მოიწვია მეგობარი', href: link('rewards', { tab: 'referrals' }) }) },
 ];
 export const FEED_SOURCES = Object.freeze(SOURCES.map((s) => s.key));
 

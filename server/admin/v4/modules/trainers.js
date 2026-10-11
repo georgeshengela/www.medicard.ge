@@ -122,7 +122,7 @@
       <button type="button" class="s-coach-cert" data-cert="${esc(c.file)}" data-title="${esc(c.title)}">${ico('eye')} ${esc(c.title)}</button>
       ${c.issuer || c.year ? `<span class="s-muted">${esc([c.issuer, c.year].filter(Boolean).join(' · '))}</span>` : ''}
     </li>`).join('');
-    return `<article class="s-card s-coach-card" data-trainer="${esc(t.userId)}">
+    return `<article class="s-card s-coach-card" data-trainer="${esc(t.userId)}" data-focus="${esc(t.userId)}">
       <header class="s-card-head">
         <div>
           <h3 class="s-coach-title">${esc(t.displayName)} ${badge(STATUS, t.status)}</h3>
@@ -333,6 +333,13 @@
     // Inside the page tabs (usageHosts.js) this is the „მართვა“ pane.
     const root = global.AdminUsage?.host('trainers') || $('tab-trainers');
     if (!root) return;
+    // Exact link from the bell (v4/focus.js): the applications list with that trainer lit up.
+    const exact = global.AdminFocus?.take('trainers');
+    if (exact) {
+      view = 'trainers';
+      if (STATUS[exact.get('status')]) status = exact.get('status');
+      renderTrainers.focus = exact.get('focus');
+    }
     if (!root.querySelector('[data-body]')) {
       root.innerHTML = `<div class="s-stack v3-tab-shell s-coach">
         <div class="v3-tabs s-coach-tabs" role="tablist" aria-label="განყოფილება">${VIEWS.map(([key, label]) => `<button type="button" class="v3-tab" role="tab" data-view="${key}">${label}</button>`).join('')}</div>
@@ -354,7 +361,11 @@
     if (loading === 'list' && list) list.innerHTML = skel();
     body.setAttribute('aria-busy', 'true');
     try {
-      if (view === 'trainers') paintTrainers(body, await api(`?status=${status}`));
+      if (view === 'trainers') {
+        paintTrainers(body, await api(`?status=${status}`));
+        if (renderTrainers.focus && global.AdminFocus && !global.AdminFocus.flash(body, renderTrainers.focus)) global.toast?.('ეს ჩანაწერი ამ სიაში ვეღარ მოიძებნა — შესაძლოა ძველია ან წაიშალა.', 'bad');
+        renderTrainers.focus = null;
+      }
       else if (view === 'reports') paintReports(body, await api(`/reports?status=${reportStatus}`));
       else paintGyms(body, (await api(`/gyms?status=${gymStatus}`)).gyms || []);
       bindToolbar(body);

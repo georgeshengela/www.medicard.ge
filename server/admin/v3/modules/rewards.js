@@ -1381,6 +1381,9 @@
   /* ── Redemptions ──────────────────────────────────────── */
 
   async function renderRedemptions(root, seq) {
+    // Exact link from the bell (v4/focus.js): open that redemption once the list is on screen.
+    const exact = global.AdminFocus?.take('rewards')?.get('focus');
+    if (exact) setTimeout(() => openRedemption(exact), 400);
     const data = await apiRewards('/redemptions?limit=50');
     if (seq !== renderSeq) return;
     const items = data.items || [];
