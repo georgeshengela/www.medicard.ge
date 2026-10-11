@@ -214,8 +214,12 @@ function listOf<T extends string>(values: readonly T[], raw: unknown): T[] {
 
 type StoredProfile = {
   smokingStatus?: string | null;
+  dietType?: string | null;
   extraAnswers?: Record<string, unknown> | null;
 } | null | undefined;
+
+/** Clear older diet answers carry over; the vague ones („balanced“, protein, gluten-free → OTHER) do not. */
+const DIET_FROM_COLUMN: Record<string, DietPattern> = { VEGETARIAN: 'vegetarian', VEGAN: 'vegan', KETO: 'low-carb' };
 
 /** Answers as stored. Old builds' answers (fitnessLevel 1–5, sleepLevel, BALANCED diet…) are not reused: those questions were ambiguous. */
 export function habitsFromProfile(profile: StoredProfile): HabitAnswers {
@@ -229,7 +233,11 @@ export function habitsFromProfile(profile: StoredProfile): HabitAnswers {
     smoking: oneOf(SMOKING, profile?.smokingStatus),
     smokingProducts: listOf(SMOKING_PRODUCTS, extra.smokingProducts),
     alcoholFreq: oneOf(ALCOHOL_FREQ, extra.alcoholFreq),
-    dietPatterns: listOf(DIET_PATTERNS, extra.dietPatterns),
+    dietPatterns: Array.isArray(extra.dietPatterns)
+      ? listOf(DIET_PATTERNS, extra.dietPatterns)
+      : profile?.dietType && DIET_FROM_COLUMN[profile.dietType]
+        ? [DIET_FROM_COLUMN[profile.dietType]]
+        : [],
     produce: oneOf(PRODUCE, extra.produce),
     eatingHabits: listOf(EATING_HABITS, extra.eatingHabits),
   };

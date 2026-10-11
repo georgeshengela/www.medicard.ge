@@ -16,7 +16,7 @@ import { tx } from '@/i18n/locale';
 import { ApiError, api } from '@/lib/api';
 import { authErrorMessage } from '@/lib/authErrorMessage';
 import { birthDateFromForm, formFromProfile, fullNameFromForm, type AssessmentFormState } from '@/lib/assessmentForm';
-import { realFullName } from '@/lib/displayName';
+import { hasFirstAndLastName } from '@/lib/displayName';
 import { nextProfileSetupHref } from '@/lib/onboarding';
 import { onboardingDevHref, useOnboardingDevPreview } from '@/lib/onboardingDevPreview';
 import { getPreference, setPreference } from '@/lib/storage';
@@ -108,11 +108,12 @@ export default function OnboardingScreen() {
     };
   }, [preview, refreshHealthProfile]);
 
-  // The pages are decided once: the name page only when the sign-in brought no real name.
+  // The pages are decided once: the name page only when the sign-in brought no first + last name
+  // (phone, Apple without a name or with a given name only); a known first name is filled in.
   useEffect(() => {
     if (!user || loading || steps || sessionDead.current) return;
     const extra = (healthProfile?.extraAnswers ?? {}) as Record<string, unknown>;
-    const list: OnboardingQuestion[] = [...(realFullName(user, extra) ? [] : ['name' as const]), 'gender', 'birthdate', 'height', 'weight'];
+    const list: OnboardingQuestion[] = [...(hasFirstAndLastName(user, extra) ? [] : ['name' as const]), 'gender', 'birthdate', 'height', 'weight'];
     const resume = onboardingResumeQuestion(extra.onboardingStepKey);
     setSteps(list);
     setIndex(resume && list.includes(resume) ? list.indexOf(resume) : 0);

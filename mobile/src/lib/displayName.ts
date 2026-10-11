@@ -29,6 +29,14 @@ export function realFullName(user: NamedUser, extra?: ExtraAnswers): string {
   return '';
 }
 
+/**
+ * A first AND a last name (owner 2026-10-11: „სახელი და გვარი“ is the main registration question). Apple
+ * sometimes shares only a given name and email sign-up has one free field, so one word is not enough.
+ */
+export function hasFirstAndLastName(user: NamedUser, extra?: ExtraAnswers): boolean {
+  return realFullName(user, extra).split(' ').filter((part) => part.length >= 2).length >= 2;
+}
+
 /** First name for „დილა მშვიდობისა, ნინო“; '' when there is none, so the greeting stands alone. */
 export function displayFirstName(user: NamedUser, extra?: ExtraAnswers): string {
   return realFullName(user, extra).split(' ')[0] ?? '';

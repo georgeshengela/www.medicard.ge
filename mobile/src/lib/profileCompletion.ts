@@ -3,7 +3,7 @@
  * essentials (name, sex, birth date, height, weight); the medical basics and the way-of-life questions
  * are completed later from this card. Keys match the questions in PROFILE_QUESTIONS. Pure: no I/O.
  */
-import { realFullName } from './displayName.ts';
+import { hasFirstAndLastName } from './displayName.ts';
 import { habitsFromProfile } from './healthHabits.ts';
 
 type ProfileLike = {
@@ -27,7 +27,7 @@ export function answeredQuestions(profile: ProfileLike, user: UserLike, opts: { 
   const confirmed = new Set(Array.isArray(extra.confirmedSteps) ? (extra.confirmedSteps as unknown[]).filter((v) => typeof v === 'string') as string[] : []);
   const habits = habitsFromProfile(profile);
   return {
-    name: realFullName(user, extra) !== '',
+    name: hasFirstAndLastName(user, extra),
     gender: !!user?.gender,
     birthdate: !!user?.birthDate,
     height: profile?.heightCm != null,

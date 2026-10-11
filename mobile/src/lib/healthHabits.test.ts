@@ -59,6 +59,12 @@ describe('healthHabits', () => {
     assert.deepEqual(toggleExclusive(['none'], 'salty', 'none'), ['salty']);
   });
 
+  it('a clear older diet answer carries over; „balanced“ is asked again', () => {
+    assert.deepEqual(habitsFromProfile({ dietType: 'VEGAN', extraAnswers: {} }).dietPatterns, ['vegan']);
+    assert.deepEqual(habitsFromProfile({ dietType: 'OMNIVORE', extraAnswers: {} }).dietPatterns, []);
+    assert.deepEqual(habitsFromProfile({ dietType: 'VEGAN', extraAnswers: { dietPatterns: ['none'] } }).dietPatterns, ['none']);
+  });
+
   it('reads stored answers and ignores unknown values', () => {
     const h = habitsFromProfile({ smokingStatus: 'CURRENT', extraAnswers: { activeDays: '9', dietPatterns: ['vegan', 'paleo'] } });
     assert.equal(h.smoking, 'CURRENT');

@@ -29,6 +29,14 @@ test('the placeholder name is no name: the name page starts empty; a real name s
   assert.equal(named.lastName, 'მაისურაძე');
 });
 
+test('a given name alone is not enough: Apple with only a first name still gets the page', () => {
+  const { hasFirstAndLastName } = require('./helpers/loadTs.cjs')()('src/lib/displayName.ts');
+  assert.equal(hasFirstAndLastName({ fullName: 'Medicard მომხმარებელი' }), false);
+  assert.equal(hasFirstAndLastName({ fullName: 'გიორგი' }), false);
+  assert.equal(hasFirstAndLastName({ fullName: 'გიორგი მაისურაძე' }), true);
+  assert.equal(hasFirstAndLastName({ fullName: 'Medicard მომხმარებელი' }, { legalName: 'ნინო ბერიძე' }), true);
+});
+
 test('first and last name are both needed (2+ letters each)', () => {
   const form = loadForm();
   assert.equal(form.fullNameFromForm({ firstName: 'ნინო', lastName: '' }), null);
@@ -45,8 +53,8 @@ test('registration: no goal question, height and weight on two pages, old resume
   assert.equal(steps.onboardingResumeQuestion('o4-weight'), 'weight');
   assert.equal(steps.onboardingResumeQuestion(undefined), null);
   const screen = read('app/(auth)/assessment/index.tsx');
-  // The name page only when the sign-in brought no real name (phone, Apple without a name).
-  assert.match(screen, /realFullName\(user, extra\) \? \[\] : \['name' as const\]/);
+  // The name page only when the sign-in brought no first + last name (phone, Apple without one).
+  assert.match(screen, /hasFirstAndLastName\(user, extra\) \? \[\] : \['name' as const\]/);
   assert.match(screen, /api\.auth\.updateProfile\(\{ fullName \}\)/);
   assert.doesNotMatch(screen, /primaryGoal|primary-goal/);
 });
