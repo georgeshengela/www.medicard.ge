@@ -8,6 +8,7 @@ import { useMediCheer } from '@/components/medi/mascot/MediCheerToast';
 import { AnswerTurn, SavedNod, ThinkingTurn } from '@/components/medi/MediTurns';
 import { MediWelcome } from '@/components/medi/MediWelcome';
 import { HomeAskMedi } from '@/components/home/HomeAskMedi';
+import { RatingPromptCard } from '@/components/home/HomeRatingPrompt';
 import { tx } from '@/i18n/locale';
 import { useThemeColors } from '@/theme/colors';
 
@@ -41,6 +42,7 @@ export default function MediMascotPreview() {
   const [mood, setMood] = useState<MascotMood>('hello');
   const [key, setKey] = useState(0);
   const [nod, setNod] = useState(1);
+  const [rating, setRating] = useState(false);
   const { cheer, node: cheerNode } = useMediCheer({ bottom: insets.bottom + 16 });
   if (!__DEV__) return <Redirect href="/" />;
   return (
@@ -93,8 +95,12 @@ export default function MediMascotPreview() {
             <Text style={{ color: c.text100, fontSize: 13, fontFamily: 'NotoSansGeorgian_600SemiBold' }}>{tx('ყველა დოზა', 'All doses')}</Text>
           </Pressable>
         </View>
+        <Pressable accessibilityRole="button" onPress={() => setRating(true)} style={{ minHeight: 44, borderRadius: 16, justifyContent: 'center', alignItems: 'center', backgroundColor: c.surface }}>
+          <Text style={{ color: c.text100, fontSize: 13, fontFamily: 'NotoSansGeorgian_600SemiBold' }}>{tx('შეფასების ბარათი', 'Rating card')}</Text>
+        </Pressable>
       </ScrollView>
       {cheerNode}
+      <RatingPromptCard visible={rating} onClose={() => setRating(false)} preview />
     </View>
   );
 }

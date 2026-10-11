@@ -36,6 +36,8 @@ describe('funnel allow-list', () => {
       { name: 'cycle_period_started', props: { source: 'hero' } },
       { name: 'cycle_explain_opened', props: { topic: 'ring' } },
       { name: 'medirun_shared', props: { kind: 'walk', format: 'video' } },
+      { name: 'rating_prompt_shown' },
+      { name: 'rating_prompt_answered', props: { choice: 'rate' } },
     ];
     assert.deepEqual(ok.map((e) => e.name).sort(), [...FUNNEL_EVENT_NAMES].sort());
     for (const e of ok) assert.ok(sanitizeFunnelEvent(e, { now, signedIn: true }), e.name);
@@ -50,6 +52,8 @@ describe('funnel allow-list', () => {
       { name: 'onboarding_completed', props: { primaryGoal: 'lose 10kg fast' } },
       { name: 'app_first_open', props: { source: 'utm', utmSource: 'has spaces and text' } },
       { name: 'price_alert_opened', props: { productId: 'p1' } },
+      { name: 'rating_prompt_answered', props: { choice: 'five_stars' } },
+      { name: 'rating_prompt_shown', props: { moment: 'medirun' } },
       { name: 'signup_completed', props: { method: 'email' }, email: 'a@b.ge' },
       { name: 'app_first_open', props: { source: 'organic', utmCampaign: 'x'.repeat(300) } },
       null,
@@ -70,6 +74,7 @@ describe('funnel allow-list', () => {
       cycle_period_started: { source: 'home' },
       cycle_explain_opened: { topic: 'fertile' },
       medirun_shared: { kind: 'box', format: 'image' },
+      rating_prompt_answered: { choice: 'later' },
     };
     for (const name of ACCOUNT_EVENTS) {
       const props = valid[name] ?? {};

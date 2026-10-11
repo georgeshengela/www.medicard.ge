@@ -10,6 +10,7 @@ import { useStepsMetrics } from '@/hooks/useStepsMetrics';
 import { ka } from '@/i18n/ka';
 import { archiveAndClearStepsGoal, loadStepsGoal, todayYmd } from '@/lib/stepsGoal';
 import { fetchStepsTotalBetween } from '@/lib/stepsMetrics';
+import { noteRatingMoment } from '@/lib/ratingPrompt';
 
 export default function StepsGoalCompletedScreen() {
   const FIGMA_STEPS = useFigmaSteps();
@@ -27,6 +28,7 @@ export default function StepsGoalCompletedScreen() {
     if (goal) {
       const current = await fetchStepsTotalBetween(goal.startedYmd, todayYmd());
       await archiveAndClearStepsGoal(goal, current);
+      noteRatingMoment();
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined);
     }
   }, []);

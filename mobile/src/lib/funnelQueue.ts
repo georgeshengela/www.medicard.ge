@@ -20,7 +20,9 @@ export type FunnelEventName =
   | 'home_layout_offer_answered'
   | 'cycle_log_saved'
   | 'cycle_period_started'
-  | 'cycle_explain_opened';
+  | 'cycle_explain_opened'
+  | 'rating_prompt_shown'
+  | 'rating_prompt_answered';
 
 export type HealthActionType = 'medication' | 'meal' | 'cycle' | 'weight' | 'visit' | 'record' | 'checkin_manual';
 export type InstallSource = 'organic' | 'invite' | 'utm' | 'deeplink';

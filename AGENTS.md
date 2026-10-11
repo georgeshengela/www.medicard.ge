@@ -4,7 +4,7 @@ This file is loaded into every session, so it holds only rules that apply everyw
 
 | Working on | Read first |
 | --- | --- |
-| App Review, permissions, 18+, versions, OTA, store builds, product freeze, dark theme tokens | [docs/agents/release-and-review.md](docs/agents/release-and-review.md) |
+| App Review, permissions, 18+, versions, OTA, store builds, App Store rating request, product freeze, dark theme tokens | [docs/agents/release-and-review.md](docs/agents/release-and-review.md) |
 | Mobile UI: module names/brands/wordmark, `ModuleHeader`, Home + layouts, modals, Pressable, keyboard, app icons, navigation, languages | [docs/agents/mobile-ui.md](docs/agents/mobile-ui.md) |
 | Cycle (MEDICYCLE): look, forecasts, reminders, widget, temperature, logging, privacy | [docs/agents/cycle.md](docs/agents/cycle.md) |
 | Medi chat, MEDISCAN, Medi Vet / Pets | [docs/agents/medi-ai.md](docs/agents/medi-ai.md) |

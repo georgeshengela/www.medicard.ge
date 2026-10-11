@@ -36,6 +36,7 @@ export const CYCLE_LOG_SOURCES = Object.freeze(['quick', 'full', 'home', 'day_sh
 /** `widget` = „დაიწყო“ on the iOS Home-screen widget / expected-day Live Activity (train 1.0.0.20). */
 export const CYCLE_PERIOD_START_SOURCES = Object.freeze(['hero', 'home', 'strip', 'day_sheet', 'widget']);
 export const CYCLE_EXPLAIN_TOPICS = Object.freeze(['ring', 'fertile', 'stats', 'deviation', 'learn_more', 'ttc_signal', 'tracking']);
+export const RATING_PROMPT_CHOICES = Object.freeze(['rate', 'later']);
 /**
  * Anonymous events (owner decision 2026-10-03): a signed-in request is still required to accept
  * them (spam), but the row keeps only the name, the enum and the Tbilisi DAY — no user id, no
@@ -93,6 +94,9 @@ const PROPS = {
   cycle_explain_opened: z.object({ topic: z.enum(CYCLE_EXPLAIN_TOPICS) }).strict(),
   // MEDIRUN share clip / picture sent to the share sheet (owner 2026-10-05): what and in which format, nothing else.
   medirun_shared: z.object({ kind: z.enum(['walk', 'city', 'box', 'wrapped']), format: z.enum(['video', 'image']) }).strict(),
+  // App Store rating card (owner 2026-10-11): seen, and „შეაფასე“ or „მოგვიანებით“. Never what preceded it.
+  rating_prompt_shown: none,
+  rating_prompt_answered: z.object({ choice: z.enum(RATING_PROMPT_CHOICES) }).strict(),
 };
 
 export const FUNNEL_EVENT_NAMES = Object.freeze(Object.keys(PROPS));
@@ -102,6 +106,7 @@ export const ACCOUNT_EVENTS = new Set([
   'price_alert_opened', 'health_passport_created', 'referral_shared',
   'home_layout_picker_opened', 'home_layout_changed', 'home_layout_offer_answered',
   'cycle_log_saved', 'cycle_period_started', 'cycle_explain_opened', 'medirun_shared',
+  'rating_prompt_shown', 'rating_prompt_answered',
 ]);
 
 export const batchSchema = z.object({
@@ -207,6 +212,7 @@ export const FEATURE_EVENTS = Object.freeze([
   'price_alert_opened', 'health_passport_created', 'referral_shared',
   'home_layout_picker_opened', 'home_layout_changed', 'home_layout_offer_answered',
   'cycle_log_saved', 'cycle_period_started', 'cycle_explain_opened', 'medirun_shared',
+  'rating_prompt_shown', 'rating_prompt_answered',
 ]);
 /** Events counted per value of one enum prop (event counts, not people). */
 const FEATURE_BREAKDOWN = Object.freeze({
@@ -216,6 +222,7 @@ const FEATURE_BREAKDOWN = Object.freeze({
   cycle_period_started: 'source',
   cycle_explain_opened: 'topic',
   medirun_shared: 'kind',
+  rating_prompt_answered: 'choice',
 });
 
 /**

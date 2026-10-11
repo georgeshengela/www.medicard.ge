@@ -283,6 +283,15 @@ export const FEATURES = Object.freeze([
     defaultMessageEn: 'Home layouts are paused for a moment.',
   },
   {
+    // UI only (mobile ratingPrompt.ts): nothing on the server is gated by it.
+    key: 'ratingPrompt',
+    group: 'system',
+    label: 'შეფასების თხოვნა (App Store)',
+    description: 'Medi-ს პატარა ბარათი „MEDICARD შენთვის უფასოა“ და თხოვნა App Store-ში შეფასებაზე. ჩნდება მთავარ გვერდზე მხოლოდ კარგი მომენტის შემდეგ (დასრულებული MEDIRUN, დღის ყველა დოზა, ნაბიჯების ან წონის მიზანი), როცა ანგარიში მინიმუმ 7 დღისაა; „მოგვიანებით“ — ისევ 30 დღეში, ერთ ტელეფონზე სულ 3-ჯერ, „შეაფასე“-ს შემდეგ აღარასდროს. მხოლოდ iPhone-ზე, 1.0.0.22 ბილდიდან. გამორთვისას ბარათი აღარ ჩნდება; პროფილის „შეაფასე MEDICARD“ რჩება.',
+    defaultMessage: 'შეფასების თხოვნა დროებით გამორთულია.',
+    defaultMessageEn: 'Rating requests are off for now.',
+  },
+  {
     key: 'weather',
     group: 'module',
     label: 'ამინდი და თავის შეგრძნება',

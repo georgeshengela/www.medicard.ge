@@ -9,6 +9,7 @@ import { StepsGoalConfetti } from '@/components/health/steps-goal/StepsGoalConfe
 import { cancelRun, getRunState, useRunSession } from '@/lib/run/store';
 import { useThemeColors } from '@/theme/colors';
 import { usePulse } from '@/lib/medipulsi/client';
+import { noteRatingMoment } from '@/lib/ratingPrompt';
 import { tx } from '@/i18n/locale';
 
 export default function RunSummaryScreen() {
@@ -23,6 +24,8 @@ export default function RunSummaryScreen() {
   useEffect(() => {
     if (!summary) router.dismissTo('/run' as never);
     else if (summary.reachedPin || summary.completedTarget) void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+    // A real walk (a kilometre, or the goal reached): the rating card may follow on Home (ratingPrompt.ts).
+    if (summary && (summary.distanceM >= 1000 || summary.reachedPin || summary.completedTarget)) noteRatingMoment();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 

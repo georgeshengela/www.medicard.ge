@@ -6,6 +6,7 @@ import { CalendarDays, ChevronRight, FlaskConical, Plus, Search, Tag, type Lucid
 import { ModuleHeader, ModuleHeaderButton } from '@/components/brand/ModuleHeader';
 import { MediHeaderButton } from '@/components/medi/MediHeaderButton';
 import { useMediCheer } from '@/components/medi/mascot/MediCheerToast';
+import { noteRatingMoment } from '@/lib/ratingPrompt';
 import { HomeSectionHeading } from '@/components/home/HomeSectionHeading';
 import { MedicationPillIcon } from '@/components/medications/MedicationPillIcon';
 import { MedipillHero } from '@/components/medications/MedipillHero';
@@ -79,7 +80,10 @@ export function MedicationHubScreen() {
     setDoseLogs((prev) => [...prev.filter((l) => !same(l)), entry]);
     if (status !== 'taken' || wasTaken) return;
     const day = computeTodayDoses(medications, schedule, [...doseLogs.filter((l) => !same(l)), entry], today);
-    cheer(day.total > 0 && day.taken >= day.total);
+    const allDone = day.total > 0 && day.taken >= day.total;
+    cheer(allDone);
+    // Every dose of the day taken: the rating card may follow on Home (ratingPrompt.ts).
+    if (allDone) noteRatingMoment();
   };
 
   const openAdd = () => router.push('/medications/add');

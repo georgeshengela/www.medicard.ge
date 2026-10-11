@@ -35,6 +35,7 @@ export const FEATURE_KEYS = [
   'healthPassport',
   'invites',
   'homeLayouts',
+  'ratingPrompt',
 ] as const;
 
 export type FeatureKey = (typeof FEATURE_KEYS)[number];

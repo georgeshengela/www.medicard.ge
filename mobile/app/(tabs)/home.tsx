@@ -83,6 +83,7 @@ import { HomeMoveHero } from '@/components/home/sections/HomeMoveHero';
 import { HomeWaterOutdoor } from '@/components/home/sections/HomeWaterOutdoor';
 import { HomeMedirunCard } from '@/components/home/sections/HomeMedirunCard';
 import { HomeQuestCard } from '@/components/home/sections/HomeQuestCard';
+import { HomeRatingPrompt } from '@/components/home/HomeRatingPrompt';
 import { refreshActiveHomeData } from '@/hooks/useHomeActive';
 import { HomeQuickLog } from '@/components/home/sections/HomeQuickLog';
 import { HomeWeightProgress } from '@/components/home/sections/HomeWeightProgress';
@@ -569,6 +570,7 @@ export default function Home() {
         // iOS cannot present a modal while another one is still fading out.
         onCustomize={layoutsOn ? () => setTimeout(() => setPicker('home_header'), 350) : undefined}
       />
+      <HomeRatingPrompt blocked={picker !== null || modulesOpen} />
     </HomeAccentContext.Provider>
   );
 }

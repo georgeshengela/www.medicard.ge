@@ -20,6 +20,7 @@ import {
   reminderDaysLabel,
 } from '@/lib/weightGoal';
 import { goToWeightHub, startWeightGoalWizard } from '@/lib/weightNav';
+import { noteRatingMoment } from '@/lib/ratingPrompt';
 import type { WeightGoalProgress } from '@/types/weightGoal';
 
 export default function WeightGoalCompletedScreen() {
@@ -40,6 +41,10 @@ export default function WeightGoalCompletedScreen() {
   useEffect(() => {
     void load();
   }, [load]);
+  // A goal reached: the rating card may follow on Home (ratingPrompt.ts).
+  useEffect(() => {
+    noteRatingMoment();
+  }, []);
 
   const restart = async () => {
     await clearWeightGoal();

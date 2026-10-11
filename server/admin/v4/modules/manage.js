@@ -27,7 +27,7 @@
     ['daily', 'ყოველდღიური აღრიცხვა', 'წყალი, ნაბიჯები, წონა, კვება და ციკლი.', ['hydration', 'steps', 'weight', 'nutrition', 'cycle']],
     ['medi', 'Medi და AI', 'Medi-ს შეჩერება მის ყველა ხელსაწყოს აჩერებს; თითოეული ცალკეც ითიშება.', ['medi']],
     ['play', 'მოძრაობა და ჯილდოები', 'MEDIRUN, მისიები, ჯილდოები და მეგობრის მოწვევა.', ['medirun', 'medirunDecor', 'medirunPartners', 'quest', 'invites']],
-    ['more', 'სხვა სივრცეები', 'ცალკე მიმართულებები და დამატებითი გვერდები.', ['pets', 'coach', 'community', 'pharmacy', 'news', 'homeLayouts', 'weather', 'weeklyReport', 'healthPassport']],
+    ['more', 'სხვა სივრცეები', 'ცალკე მიმართულებები და დამატებითი გვერდები.', ['pets', 'coach', 'community', 'pharmacy', 'news', 'homeLayouts', 'weather', 'weeklyReport', 'healthPassport', 'ratingPrompt']],
     ['system', 'ფონური სისტემები', 'ეკრანის გარეშე მომუშავე პროცესები.', ['email']],
   ];
   const FALLBACK_SECTION = { module: 'more', ai: 'medi', system: 'system' };
@@ -35,6 +35,7 @@
   const RELATED = {
     nutritionAi: 'იგივე შეფასებას აჩერებს <a href="#/nutrition">კვების დღიური</a> → „AI კალორიის შეფასება“ — შეფასება მუშაობს, როცა ორივე ჩართულია.',
     email: 'იგივე გადამრთველი ჩანს <a href="#/email">ელფოსტის</a> გვერდზეც.',
+    ratingPrompt: 'რამდენმა ნახა და რამდენმა დააჭირა „შეაფასე“ — <a href="#/funnel">ფანელის</a> „სხვა მოვლენებში“.',
   };
   // Kept across re-renders (a toggle re-renders the page).
   const featureView = { q: '', onlyOff: false };

@@ -19,6 +19,7 @@ import {
   Mail,
   ShieldCheck,
   Smartphone,
+  Star,
   Trash2,
 } from 'lucide-react-native';
 import { HomeSectionHeading } from '@/components/home/HomeSectionHeading';
@@ -60,6 +61,7 @@ import { isFeatureOn, useFeatureState } from '@/lib/featureFlags';
 import { rewardsApi } from '@/lib/quest/rewardsApi';
 import { rewardsCopy } from '@/i18n/quest/rewards.js';
 import { openEmail } from '@/lib/openEmail';
+import { openStoreReviewPage, ratingPromptSupported } from '@/lib/ratingPrompt';
 import { appLang, tx } from '@/i18n/locale';
 
 export default function Profile() {
@@ -337,6 +339,9 @@ export default function Profile() {
           <ProfileMenuRow icon={Lock} ink="neutral" label={ka.profile.privacyPolicy} onPress={() => router.push('/profile/privacy')} />
           <ProfileMenuRow icon={FileText} ink="neutral" label={ka.profile.terms} onPress={() => router.push('/profile/terms')} />
           <ProfileMenuRow icon={Mail} ink="neutral" label={ka.profile.support} value={ka.profile.supportEmail} onPress={() => void openEmail(SUPPORT_EMAIL)} />
+          {ratingPromptSupported() ? (
+            <ProfileMenuRow icon={Star} ink="amber" label={tx('შეაფასე MEDICARD', 'Rate MEDICARD')} value="App Store" onPress={() => void openStoreReviewPage()} />
+          ) : null}
           <ProfileVersionCard />
         </View>
       </View>
