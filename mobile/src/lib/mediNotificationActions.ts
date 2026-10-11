@@ -69,6 +69,10 @@ export async function registerNotificationCategories(): Promise<void> {
   } catch {
     /* categories are best-effort on Expo Go */
   }
+  // Android: the buttons above that do not open the app reach a killed app only through this task.
+  void import('@/lib/notificationActionTask')
+    .then(({ registerNotificationActionTask }) => registerNotificationActionTask())
+    .catch(() => undefined);
 }
 
 export type NotificationActionResult = {
@@ -164,10 +168,12 @@ export async function handleNotificationAction(
 
   if (action === NOTIF_ACTION.snooze) {
     if (data.type === 'pet_care' || data.family === 'petCareReminder') {
-      void import('@/lib/petCareReminders').then(({ snoozePetCareCandidate, recordPetCareUserResponse }) => {
-        void recordPetCareUserResponse(data);
-        void snoozePetCareCandidate(data);
-      });
+      // Awaited: on a killed Android app this runs in a headless task that ends when the handler returns.
+      await import('@/lib/petCareReminders')
+        .then(({ snoozePetCareCandidate, recordPetCareUserResponse }) =>
+          Promise.all([recordPetCareUserResponse(data), snoozePetCareCandidate(data)]),
+        )
+        .catch(() => undefined);
       return { navigate: false };
     }
     await snooze(content);

@@ -52,6 +52,7 @@ import { canOpenNotificationRoute, notificationResponseKey, routeFromNotificatio
 import {
   claimNotificationTap,
   clearNotificationRoutePending,
+  isBackgroundAction,
   noteNotificationRouteOpened,
   noteNotificationRoutePending,
 } from '@/lib/notificationTaps';
@@ -331,7 +332,10 @@ function AppShell() {
     queueWidgetRoute();
     const offWidgetRoute = onCycleWidgetRoute(queueWidgetRoute);
     const handleTap = (response: NotificationResponse) => {
-      if (!claimNotificationTap(notificationResponseKey(response))) return;
+      // A button answered without opening the app („მივიღე ✓“) is claimed by its runner: once per tap
+      // also across runtimes, because Android's headless task may have answered it already.
+      const background = isBackgroundAction(response.actionIdentifier);
+      if (!background && !claimNotificationTap(notificationResponseKey(response))) return;
       try {
         Notifications.clearLastNotificationResponse();
       } catch {
@@ -340,10 +344,14 @@ function AppShell() {
       const raw = response.notification.request.content.data;
       if (raw && typeof raw === 'object' && (raw as Record<string, unknown>).type === 'price_drop') trackFunnel('price_alert_opened');
       const fallback = () => routeFromNotificationData(raw && typeof raw === 'object' ? (raw as Record<string, unknown>) : null);
-      void import('@/lib/mediNotificationActions')
-        .then(({ handleNotificationAction }) => handleNotificationAction(response))
+      const handled = background
+        ? import('@/lib/notificationActionRunner').then(({ runBackgroundNotificationAction }) =>
+            runBackgroundNotificationAction(response),
+          )
+        : import('@/lib/mediNotificationActions').then(({ handleNotificationAction }) => handleNotificationAction(response));
+      void handled
         .then((result) => {
-          if (result.navigate) queueRoute(result.route ?? fallback());
+          if (result?.navigate) queueRoute(result.route ?? fallback());
         })
         .catch(() => queueRoute(fallback()));
     };

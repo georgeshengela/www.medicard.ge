@@ -79,6 +79,7 @@ function device({ snapshotUser = null, token = null } = {}) {
   const notificationDoseModule = () =>
     (notificationDose ??= load(path.join(SRC, 'notificationDose.ts'), {}));
   const shared = load(path.join(SRC, 'medications.shared.ts'), {
+    '@/lib/backgroundWork': () => load(path.join(SRC, 'backgroundWork.ts'), {}),
     '../i18n/locale.js': tx,
     '@/lib/localAccount': localAccount,
     '@/lib/sessionSnapshot': {

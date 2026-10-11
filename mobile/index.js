@@ -13,5 +13,7 @@ LogBox.ignoreLogs([
 import './src/lib/bootGuard.js';
 // MEDIRUN background GPS task: must be defined before any screen mounts (the OS can deliver locations first).
 import './src/lib/run/locationTask';
+// Android: a reminder's „მივიღე ✓“ tapped while the app is killed runs this task in a headless runtime.
+import './src/lib/notificationActionTask';
 import 'expo-router/entry';
 

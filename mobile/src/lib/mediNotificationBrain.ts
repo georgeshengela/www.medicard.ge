@@ -529,6 +529,9 @@ async function runMediNotificationBrainNow(
 }
 
 export function requestEngageRefresh(): void {
+  // No run has known the person in this runtime yet (Android's headless notification task, an iOS
+  // background launch before sign-in restored): nothing to re-plan for — the first run with her plans.
+  if (!lastActor.user) return;
   if (refreshTimer) clearTimeout(refreshTimer);
   refreshTimer = setTimeout(() => {
     refreshTimer = null;

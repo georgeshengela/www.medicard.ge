@@ -1,4 +1,5 @@
 import type { MedicationConfig, MedicationDoseLog, PillShape } from '@/types/medications';
+import { keepBackgroundWork } from '@/lib/backgroundWork';
 import { tx } from '../i18n/locale.js';
 
 export function parseMedicationConfig(raw: unknown): MedicationConfig {
@@ -159,15 +160,18 @@ function parseDoseLogs(raw: string | null): MedicationDoseLog[] {
 function syncDoseMark(entry: MedicationDoseLog, source: 'app' | 'notification') {
   if (entry.status !== 'taken' && entry.status !== 'skipped') return;
   const status = entry.status;
-  void import('@/lib/productObservability').then(({ syncDoseEvent }) =>
-    syncDoseEvent({
-      medicationId: entry.medicationId,
-      date: entry.date,
-      time: entry.time,
-      status,
-      source,
-      occurredAt: entry.updatedAt,
-    }),
+  // Kept: a reminder's „მივიღე ✓“ answered in the background waits for its outbox write and send.
+  keepBackgroundWork(
+    import('@/lib/productObservability').then(({ syncDoseEvent }) =>
+      syncDoseEvent({
+        medicationId: entry.medicationId,
+        date: entry.date,
+        time: entry.time,
+        status,
+        source,
+        occurredAt: entry.updatedAt,
+      }),
+    ),
   );
 }
 

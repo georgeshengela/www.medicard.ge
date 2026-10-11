@@ -95,6 +95,7 @@ function phone({ snapshotUser = 'u1' } = {}) {
     }),
   );
   const shared = load(path.join(SRC, 'medications.shared.ts'), {
+    '@/lib/backgroundWork': once(() => load(path.join(SRC, 'backgroundWork.ts'), {})),
     '../i18n/locale.js': tx,
     '@/lib/localAccount': localAccount,
     '@/lib/sessionSnapshot': {
