@@ -45,3 +45,31 @@ export function ecgTrace(width: number, disc: number): EcgTrace {
   const d = `M${points.map(([x, y]) => `${r(x)},${r(y)}`).join(' L')}`;
   return { d, length, hit: Math.max(0, hit) };
 }
+
+/**
+ * A plain heartbeat line across a strip (MEDISCAN waiting, the heart-rate card): one complex every
+ * `spacing` points, scaled to the strip height. `beatLength` is the distance along the line from one
+ * complex to the next, so a pulse moving at `beatLength * bpm / 60` per second crosses one beat each
+ * heartbeat.
+ */
+export function ecgStrip(width: number, height: number, spacing = 120): { d: string; length: number; beatLength: number } {
+  const base = height / 2;
+  const k = Math.min(1, (height / 2 - 2) / 38);
+  const step = Math.max(COMPLEX_W + 16, spacing);
+  const points: Array<readonly [number, number]> = [[0, base]];
+  for (let start = (step - COMPLEX_W) / 2; start + COMPLEX_W <= width; start += step) {
+    for (const [x, y] of COMPLEX) points.push([start + x, base + y * k]);
+  }
+  points.push([width, base]);
+  let length = 0;
+  for (let i = 1; i < points.length; i += 1) {
+    length += Math.hypot(points[i][0] - points[i - 1][0], points[i][1] - points[i - 1][1]);
+  }
+  let one = 0;
+  for (let i = 1; i < COMPLEX.length; i += 1) {
+    one += Math.hypot(COMPLEX[i][0] - COMPLEX[i - 1][0], (COMPLEX[i][1] - COMPLEX[i - 1][1]) * k);
+  }
+  const r = (n: number) => Math.round(n * 10) / 10;
+  const d = `M${points.map(([x, y]) => `${r(x)},${r(y)}`).join(' L')}`;
+  return { d, length, beatLength: one + (step - COMPLEX_W) };
+}

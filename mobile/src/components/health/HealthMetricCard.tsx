@@ -15,6 +15,7 @@ import { METRIC_COLORS, useFigmaHealthMetrics } from '@/constants/figmaHealthMet
 import { ka } from '@/i18n/ka';
 import { formatMetricValue } from '@/lib/healthMetrics.shared';
 import { HealthMetricSparkline, metricChartKind } from '@/components/health/HealthMetricSparkline';
+import { PulseLine } from '@/components/ui/PulseLine';
 import type { HealthMetricSnapshot } from '@/types/healthMetrics';
 
 const ICONS = {
@@ -45,6 +46,8 @@ export type NightingaleMetricCardProps = {
   kind?: 'line' | 'bar' | 'step' | 'dots';
   compact?: boolean;
   onPress?: () => void;
+  /** Heart rate: instead of the week chart, a heartbeat line beating at this many beats per minute. */
+  pulseBpm?: number;
 };
 
 /** Nightingale Health Metric Card — Figma 8848:112910 */
@@ -60,6 +63,7 @@ export function NightingaleMetricCard({
   kind = 'line',
   compact = false,
   onPress,
+  pulseBpm,
 }: NightingaleMetricCardProps) {
   const FIGMA_HEALTH_METRICS = useFigmaHealthMetrics();
   const [chartWidth, setChartWidth] = useState(0);
@@ -149,21 +153,27 @@ export function NightingaleMetricCard({
             {status}
           </Text>
         </View>
-        <View
-          pointerEvents="none"
-          style={{ flex: 1, height: chartHeight, minWidth: 72, alignSelf: 'stretch' }}
-          onLayout={(event) => setChartWidth(event.nativeEvent.layout.width)}
-        >
-          {chartWidth > 0 ? (
-            <HealthMetricSparkline
-              values={weekValues}
-              color={color}
-              kind={kind}
-              width={chartWidth}
-              height={chartHeight}
-            />
-          ) : null}
-        </View>
+        {pulseBpm ? (
+          <View pointerEvents="none" style={{ flex: 1, minWidth: 72, justifyContent: 'center' }}>
+            <PulseLine color={color} trackColor={`${color}33`} height={chartHeight} spacing={compact ? 96 : 110} bpm={pulseBpm} />
+          </View>
+        ) : (
+          <View
+            pointerEvents="none"
+            style={{ flex: 1, height: chartHeight, minWidth: 72, alignSelf: 'stretch' }}
+            onLayout={(event) => setChartWidth(event.nativeEvent.layout.width)}
+          >
+            {chartWidth > 0 ? (
+              <HealthMetricSparkline
+                values={weekValues}
+                color={color}
+                kind={kind}
+                width={chartWidth}
+                height={chartHeight}
+              />
+            ) : null}
+          </View>
+        )}
       </View>
     </View>
   );
@@ -240,6 +250,8 @@ export function HealthMetricCard({ metric, compact = false, mini = false, onPres
       kind={metricChartKind(metric.key)}
       compact={compact}
       onPress={onPress}
+      // owner 2026-10-11: the heart-rate card beats at the person's own pulse
+      pulseBpm={metric.key === 'heartRate' && metric.value != null ? Math.min(180, Math.max(35, metric.value)) : undefined}
     />
   );
 }

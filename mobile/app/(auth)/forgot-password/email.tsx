@@ -4,15 +4,16 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Mail } from 'lucide-react-native';
 import { AuthShell } from '@/components/AuthShell';
 import { AuthBackHeader } from '@/components/auth/AuthBackHeader';
-import { AuthPrimaryButton } from '@/components/auth/AuthPrimaryButton';
-import { Input } from '@/components/ui/Input';
 import { EmailTypoHint } from '@/components/auth/EmailTypoHint';
+import { VelvetButton } from '@/components/velvet/VelvetButton';
+import { VelvetInput } from '@/components/velvet/VelvetInput';
 import { ka } from '@/i18n/ka';
 import { ApiError, api } from '@/lib/api';
 import { authErrorMessage } from '@/lib/authErrorMessage';
-import { useThemeColors } from '@/theme/colors';
+import { suggestEmailFix } from '@/lib/emailTypo';
 import { openEmail } from '@/lib/openEmail';
 import { tx } from '@/i18n/locale';
+import { useVelvet } from '@/theme/velvet';
 
 export default function ForgotPasswordEmail() {
   const router = useRouter();
@@ -21,7 +22,7 @@ export default function ForgotPasswordEmail() {
   const [error, setError] = useState<string | null>(null);
   const [notFound, setNotFound] = useState(false);
   const [busy, setBusy] = useState(false);
-  const colors = useThemeColors();
+  const { palette: p } = useVelvet();
 
   const submit = async () => {
     if (!/^\S+@\S+\.\S+$/.test(email.trim())) {
@@ -49,11 +50,13 @@ export default function ForgotPasswordEmail() {
 
   return (
     <AuthShell
-      footer={<AuthPrimaryButton label={ka.auth.forgotPasswordSend} loading={busy} onPress={submit} />}
+      backgroundColor={p.surface}
+      footer={<VelvetButton palette={p} label={ka.auth.forgotPasswordSend} busy={busy} onPress={() => void submit()} />}
     >
-      <AuthBackHeader title={ka.auth.forgotPasswordTitle} subtitle={ka.auth.forgotPasswordEmailHint} />
+      <AuthBackHeader palette={p} title={ka.auth.forgotPasswordTitle} subtitle={ka.auth.forgotPasswordEmailHint} />
 
-      <Input
+      <VelvetInput
+        palette={p}
         label={ka.auth.email}
         placeholder={ka.auth.emailPlaceholderSignIn}
         icon={Mail}
@@ -65,23 +68,26 @@ export default function ForgotPasswordEmail() {
         keyboardType="email-address"
         returnKeyType="send"
         onSubmitEditing={() => void submit()}
-        figma
       />
-      <EmailTypoHint
-        email={email}
-        onApply={(fixed) => {
-          setEmail(fixed);
-          setError(null);
-          setNotFound(false);
-        }}
-      />
+      {suggestEmailFix(email) ? (
+        <View style={{ marginTop: 14, marginHorizontal: 4 }}>
+          <EmailTypoHint
+            email={email}
+            onApply={(fixed) => {
+              setEmail(fixed);
+              setError(null);
+              setNotFound(false);
+            }}
+          />
+        </View>
+      ) : null}
       {notFound ? (
         <Pressable
           accessibilityRole="button"
           onPress={() => router.replace('/(auth)/sign-up')}
-          style={{ marginTop: 4, paddingVertical: 8, alignItems: 'center' }}
+          style={{ marginTop: 8, paddingVertical: 8, alignItems: 'center' }}
         >
-          <Text style={{ fontFamily: 'NotoSansGeorgian_600SemiBold', fontSize: 14, color: colors.primary200 }}>
+          <Text style={{ fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 14, color: p.ink }}>
             {tx('ახალი ანგარიშის შექმნა', 'Create a new account')}
           </Text>
         </Pressable>
@@ -92,10 +98,10 @@ export default function ForgotPasswordEmail() {
         onPress={() => void openEmail('support@medicard.ge')}
         style={{ marginTop: 28, alignItems: 'center' }}
       >
-        <Text style={{ fontFamily: 'NotoSansGeorgian_400Regular', fontSize: 13, color: colors.text300, textAlign: 'center' }}>
+        <Text style={{ fontFamily: 'NotoSansGeorgian_400Regular', fontSize: 13, color: p.inkOff, textAlign: 'center' }}>
           {ka.auth.forgotPasswordHelp}
         </Text>
-        <Text style={{ fontFamily: 'NotoSansGeorgian_600SemiBold', fontSize: 13, color: colors.primary200, marginTop: 4 }}>
+        <Text style={{ fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 13, color: p.ink, marginTop: 4 }}>
           {ka.auth.forgotPasswordHelpContact}
         </Text>
       </Pressable>

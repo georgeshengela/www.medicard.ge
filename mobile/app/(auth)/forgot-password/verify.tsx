@@ -3,11 +3,12 @@ import { Pressable, Text, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { AuthShell } from '@/components/AuthShell';
 import { AuthBackHeader } from '@/components/auth/AuthBackHeader';
-import { AuthPrimaryButton } from '@/components/auth/AuthPrimaryButton';
 import { OtpCodeInput } from '@/components/auth/OtpCodeInput';
+import { VelvetButton } from '@/components/velvet/VelvetButton';
 import { ka } from '@/i18n/ka';
-import { ApiError, api } from '@/lib/api';
+import { api } from '@/lib/api';
 import { authErrorMessage } from '@/lib/authErrorMessage';
+import { useVelvet } from '@/theme/velvet';
 
 export default function ForgotPasswordVerify() {
   const router = useRouter();
@@ -15,6 +16,7 @@ export default function ForgotPasswordVerify() {
   const [code, setCode] = useState(devCode ?? '');
   const [error, setError] = useState<string | null>(null);
   const [resending, setResending] = useState(false);
+  const { palette: p } = useVelvet();
 
   const submit = () => {
     if (!/^\d{6}$/.test(code)) {
@@ -44,19 +46,21 @@ export default function ForgotPasswordVerify() {
 
   return (
     <AuthShell
-      footer={<AuthPrimaryButton label={ka.auth.forgotPasswordContinue} disabled={code.length !== 6} onPress={submit} />}
+      backgroundColor={p.surface}
+      footer={<VelvetButton palette={p} label={ka.auth.forgotPasswordContinue} disabled={code.length !== 6} onPress={submit} />}
     >
       <AuthBackHeader
+        palette={p}
         title={ka.auth.forgotPasswordEnterCode}
         subtitle={email ? ka.auth.forgotPasswordCodeHint(email) : undefined}
       />
 
-      <View style={{ marginTop: 8, marginBottom: 28 }}>
-        <OtpCodeInput value={code} onChange={(next) => { setCode(next); setError(null); }} error={error} length={6} />
+      <View style={{ marginTop: 8, marginBottom: 28, alignItems: 'center' }}>
+        <OtpCodeInput value={code} onChange={(next) => { setCode(next); setError(null); }} error={error} length={6} palette={p} />
       </View>
 
       <Pressable accessibilityRole="button" onPress={() => void resend()} disabled={resending} style={{ marginTop: 20, alignItems: 'center' }}>
-        <Text style={{ fontFamily: 'NotoSansGeorgian_600SemiBold', fontSize: 14, color: '#14B8A6' }}>
+        <Text style={{ fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 14, color: resending ? p.inkOff : p.ink }}>
           {ka.auth.forgotPasswordResend}
         </Text>
       </Pressable>

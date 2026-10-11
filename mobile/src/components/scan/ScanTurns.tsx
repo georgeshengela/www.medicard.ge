@@ -2,6 +2,7 @@ import React, { memo } from 'react';
 import { ActivityIndicator, Image, Pressable, Text, View } from 'react-native';
 import { CalendarDays, ChevronRight, FileText, ScanLine, Sparkles } from 'lucide-react-native';
 import { Markdown } from '@/components/ui/Markdown';
+import { PulseLine } from '@/components/ui/PulseLine';
 import { labRowName } from '@/lib/labNames';
 import { formatLabDateKa, stripLabJson } from '@/lib/labExtract';
 import type { ScanFile, ScanKind } from '@/lib/scanThread';
@@ -163,14 +164,20 @@ export const LabTurn = memo(function LabTurn({ parameters, savedDate, analysis, 
   );
 });
 
-/** While a file is being read: the stage in words, beside the scan avatar. */
+/**
+ * While a file is being read: the stage in words beside the scan avatar, and under it the welcome
+ * screen's heartbeat as a thin line in MEDISCAN's cyan (owner 2026-10-11) instead of a spinner.
+ */
 export function ScanProgress({ label }: { label: string }) {
   const c = useThemeColors();
+  const ink = useScanInk();
   return (
-    <View accessibilityLiveRegion="polite" style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-      <ScanAvatar />
-      <Text style={{ color: c.text200, fontSize: 14, fontFamily: 'NotoSansGeorgian_400Regular' }}>{label}</Text>
-      <ActivityIndicator size="small" color={MODULE_BRANDS.scan.gradient[1]} />
+    <View accessibilityLiveRegion="polite" style={{ gap: 6 }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+        <ScanAvatar />
+        <Text style={{ flex: 1, color: c.text200, fontSize: 14, fontFamily: 'NotoSansGeorgian_400Regular' }}>{label}</Text>
+      </View>
+      <PulseLine color={ink} trackColor={`${ink}38`} height={30} spacing={110} speed={170} style={{ marginLeft: 36 }} />
     </View>
   );
 }

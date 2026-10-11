@@ -3,16 +3,19 @@ import { Pressable, Text, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Mail } from 'lucide-react-native';
 import { AuthShell } from '@/components/AuthShell';
-import { AuthPrimaryButton } from '@/components/auth/AuthPrimaryButton';
+import { VelvetButton } from '@/components/velvet/VelvetButton';
 import { ka } from '@/i18n/ka';
 import { showDevUi } from '@/lib/devUi';
-import { useThemeColors } from '@/theme/colors';
 import { openEmail } from '@/lib/openEmail';
+import { useVelvet, velvetRaised, velvetWell } from '@/theme/velvet';
+
+const DISC = 132;
+const WELL = 92;
 
 export default function ForgotPasswordSent() {
   const router = useRouter();
   const { email, devCode } = useLocalSearchParams<{ email: string; devCode?: string }>();
-  const colors = useThemeColors();
+  const { palette: p } = useVelvet();
 
   const continueToVerify = () => {
     router.push({
@@ -22,32 +25,42 @@ export default function ForgotPasswordSent() {
   };
 
   return (
-    <AuthShell>
+    <AuthShell backgroundColor={p.surface}>
       <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: 24 }}>
+        {/* the letter rests in a well of a raised velvet disc, like the logo on the welcome screen */}
         <View
           style={{
-            width: 120,
-            height: 120,
-            borderRadius: 32,
-            backgroundColor: colors.warningBg,
+            width: DISC,
+            height: DISC,
+            borderRadius: DISC / 2,
+            backgroundColor: p.surface,
+            boxShadow: velvetRaised(p),
             alignItems: 'center',
             justifyContent: 'center',
-            shadowColor: '#000',
-            shadowOpacity: 0.06,
-            shadowRadius: 12,
-            shadowOffset: { width: 0, height: 4 },
           }}
         >
-          <Mail size={56} color="#F59E0B" strokeWidth={1.8} />
+          <View
+            style={{
+              width: WELL,
+              height: WELL,
+              borderRadius: WELL / 2,
+              backgroundColor: p.surface,
+              boxShadow: velvetWell(p),
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
+            <Mail size={40} color="#F59E0B" strokeWidth={1.8} />
+          </View>
         </View>
 
         <Text
           style={{
-            marginTop: 28,
+            marginTop: 34,
             fontFamily: 'NotoSansGeorgian_700Bold',
             fontSize: 24,
             lineHeight: 32,
-            color: colors.text100,
+            color: p.text,
             textAlign: 'center',
           }}
         >
@@ -60,7 +73,7 @@ export default function ForgotPasswordSent() {
             fontFamily: 'NotoSansGeorgian_400Regular',
             fontSize: 15,
             lineHeight: 24,
-            color: colors.text200,
+            color: p.ink2,
             textAlign: 'center',
             paddingHorizontal: 8,
           }}
@@ -74,7 +87,7 @@ export default function ForgotPasswordSent() {
               marginTop: 16,
               fontFamily: 'NotoSansGeorgian_600SemiBold',
               fontSize: 14,
-              color: '#0D9488',
+              color: p.ink,
               textAlign: 'center',
             }}
           >
@@ -83,14 +96,14 @@ export default function ForgotPasswordSent() {
         ) : null}
       </View>
 
-      <AuthPrimaryButton label={ka.auth.forgotPasswordEnterCode} onPress={continueToVerify} />
+      <VelvetButton palette={p} label={ka.auth.forgotPasswordEnterCode} onPress={continueToVerify} />
 
       <Pressable
         accessibilityRole="button"
         onPress={() => void openEmail()}
         style={{ marginTop: 14, alignItems: 'center', paddingVertical: 8 }}
       >
-        <Text style={{ fontFamily: 'NotoSansGeorgian_600SemiBold', fontSize: 14, color: colors.primary200 }}>
+        <Text style={{ fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 14, color: p.ink }}>
           {ka.auth.forgotPasswordOpenEmail}
         </Text>
       </Pressable>

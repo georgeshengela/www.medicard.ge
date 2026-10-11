@@ -4,17 +4,16 @@ import { useRouter } from 'expo-router';
 import { Lock } from 'lucide-react-native';
 import { AuthShell } from '@/components/AuthShell';
 import { AuthBackHeader } from '@/components/auth/AuthBackHeader';
-import { AuthPrimaryButton } from '@/components/auth/AuthPrimaryButton';
 import { AppleLogo, GoogleLogo } from '@/components/auth/BrandLogos';
-import { Input } from '@/components/ui/Input';
-import { useFigmaAuth } from '@/constants/figmaAuthLayout';
+import { VelvetButton } from '@/components/velvet/VelvetButton';
+import { VelvetInput } from '@/components/velvet/VelvetInput';
 import { ka } from '@/i18n/ka';
 import { tx } from '@/i18n/locale';
 import { ApiError } from '@/lib/api';
 import { authErrorMessage } from '@/lib/authErrorMessage';
 import { pendingSocialLink, setPendingSocialLink } from '@/lib/socialLinkState';
 import { useAuth } from '@/store/AuthContext';
-import { useIsDark, useThemeColors } from '@/theme/colors';
+import { useVelvet, velvetField } from '@/theme/velvet';
 
 /**
  * Apple / Google returned an email that an existing email+password account already uses.
@@ -23,9 +22,7 @@ import { useIsDark, useThemeColors } from '@/theme/colors';
  */
 export default function LinkAccount() {
   const router = useRouter();
-  const auth = useFigmaAuth();
-  const colors = useThemeColors();
-  const dark = useIsDark();
+  const { palette: p, dark } = useVelvet();
   const { linkSocialAccount } = useAuth();
   const [link] = useState(pendingSocialLink);
   const [password, setPassword] = useState('');
@@ -68,15 +65,11 @@ export default function LinkAccount() {
 
   return (
     <AuthShell
-      footer={
-        <AuthPrimaryButton
-          label={tx('დაკავშირება და შესვლა', 'Link and sign in')}
-          loading={busy}
-          onPress={() => void submit()}
-        />
-      }
+      backgroundColor={p.surface}
+      footer={<VelvetButton palette={p} label={tx('დაკავშირება და შესვლა', 'Link and sign in')} busy={busy} onPress={() => void submit()} />}
     >
       <AuthBackHeader
+        palette={p}
         title={tx('ანგარიში უკვე გაქვს', 'You already have an account')}
         subtitle={tx(
           `${providerName}-ის ელ-ფოსტით Medicard-ის ანგარიში უკვე არსებობს. შეიყვანე მისი პაროლი ერთხელ — შემდეგ ${providerName}-ით ერთი შეხებით შეხვალ.`,
@@ -89,11 +82,12 @@ export default function LinkAccount() {
           flexDirection: 'row',
           alignItems: 'center',
           gap: 12,
-          borderRadius: 16,
+          borderRadius: 18,
           paddingHorizontal: 14,
           paddingVertical: 12,
-          marginBottom: 20,
-          backgroundColor: dark ? 'rgba(20,184,166,0.12)' : '#F0FDFA',
+          marginBottom: 22,
+          backgroundColor: p.field,
+          boxShadow: velvetField(p),
         }}
       >
         <View
@@ -110,13 +104,14 @@ export default function LinkAccount() {
         </View>
         <Text
           numberOfLines={1}
-          style={{ flex: 1, fontFamily: 'NotoSansGeorgian_600SemiBold', fontSize: 15, lineHeight: 21, color: colors.text100 }}
+          style={{ flex: 1, fontFamily: 'NotoSansGeorgian_600SemiBold', fontSize: 15, lineHeight: 21, color: p.text }}
         >
           {link.email}
         </Text>
       </View>
 
-      <Input
+      <VelvetInput
+        palette={p}
         label={ka.auth.password}
         placeholder={ka.auth.passwordPlaceholderSignIn}
         icon={Lock}
@@ -132,7 +127,6 @@ export default function LinkAccount() {
         autoComplete="current-password"
         returnKeyType="go"
         onSubmitEditing={() => void submit()}
-        figma
       />
 
       <Pressable
@@ -141,7 +135,7 @@ export default function LinkAccount() {
         onPress={() => router.push({ pathname: '/(auth)/forgot-password/email', params: { email: link.email } })}
         style={{ alignSelf: 'flex-start', marginTop: 14, paddingVertical: 4 }}
       >
-        <Text style={{ fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 14, lineHeight: 20, color: auth.linkColor }}>
+        <Text style={{ fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 14, lineHeight: 20, color: p.ink }}>
           {ka.auth.forgotPassword}
         </Text>
       </Pressable>

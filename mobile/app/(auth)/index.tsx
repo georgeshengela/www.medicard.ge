@@ -1,23 +1,34 @@
-import React, { useEffect, useRef, useState } from 'react';
-import { Animated, Text, View, useWindowDimensions } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
+import React, { useEffect } from 'react';
+import { View, useWindowDimensions } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { MedicardLogoMark } from '@/components/ui/MedicardLogoMark';
+import { HeartbeatDisc } from '@/components/welcome/HeartbeatHero';
+import { usePrefersReducedMotion } from '@/hooks/usePrefersReducedMotion';
 import { takePendingRoute } from '@/i18n/locale';
+import { useVelvet } from '@/theme/velvet';
 
-const FILL_MS = 1600;
-const PERCENT_SIZE = 56;
-const PERCENT_LINE = 76;
-const LOGO = 52;
+/** Long enough for the first pulse to reach the disc and the beat to land. */
+const HOLD_MS = 1500;
+/** Height of the welcome screen's controls under its hero (segment row, body, button, sign-in). */
+const WELCOME_CONTROLS = 258;
+const WELCOME_HERO_TOP = 48;
+const WELCOME_WORDMARK = 84;
 
-/** Water-fill progress, then welcome (where the language is picked). */
+/**
+ * Launch screen (owner 2026-10-11): the welcome screen's heartbeat disc on velvet, at exactly the spot
+ * where it sits on welcome. The first pulse runs in and the disc beats; then welcome takes over around
+ * it, so opening the app reads as one movement.
+ */
 export default function AuthSplash() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { height: screenH } = useWindowDimensions();
-  const fillHeight = useRef(new Animated.Value(0)).current;
-  const [progress, setProgress] = useState(0);
+  const { width, height } = useWindowDimensions();
+  const { palette, dark } = useVelvet();
+  const reduceMotion = usePrefersReducedMotion();
+
+  const disc = Math.round(Math.min(200, width * 0.52));
+  const heroArea = height - insets.top - insets.bottom - WELCOME_CONTROLS;
+  const discTop = insets.top + WELCOME_HERO_TOP + Math.max(0, (heroArea - WELCOME_HERO_TOP - (disc + WELCOME_WORDMARK)) / 2);
 
   useEffect(() => {
     // Just restarted in the language picked on welcome: continue where the person was going.
@@ -26,112 +37,14 @@ export default function AuthSplash() {
       router.replace(pending as never);
       return undefined;
     }
-    let cancelled = false;
-    const started = Date.now();
-
-    const tick = setInterval(() => {
-      const next = Math.min(100, Math.round(((Date.now() - started) / FILL_MS) * 100));
-      setProgress(next);
-      Animated.timing(fillHeight, {
-        toValue: next,
-        duration: 120,
-        useNativeDriver: false,
-      }).start();
-    }, 80);
-
-    const done = setTimeout(() => {
-      clearInterval(tick);
-      if (!cancelled) router.replace('/(auth)/welcome');
-    }, FILL_MS);
-
-    return () => {
-      cancelled = true;
-      clearInterval(tick);
-      clearTimeout(done);
-    };
-  }, [router, fillHeight]);
-
-  const fillPx = fillHeight.interpolate({
-    inputRange: [0, 100],
-    outputRange: [0, screenH],
-  });
-  const onWater = progress >= 42;
+    const done = setTimeout(() => router.replace('/(auth)/welcome'), HOLD_MS);
+    return () => clearTimeout(done);
+  }, [router]);
 
   return (
-    <View className="flex-1 bg-bg-100">
-      <Animated.View
-        pointerEvents="none"
-        style={{
-          position: 'absolute',
-          bottom: 0,
-          left: 0,
-          right: 0,
-          height: fillPx,
-          overflow: 'hidden',
-        }}
-      >
-        <LinearGradient
-          colors={['#5eead4', '#14b8a6', '#0f766e']}
-          locations={[0, 0.45, 1]}
-          start={{ x: 0.5, y: 0 }}
-          end={{ x: 0.5, y: 1 }}
-          style={{ flex: 1 }}
-        />
-        <View
-          style={{
-            position: 'absolute',
-            top: -5,
-            left: '-15%',
-            width: '130%',
-            height: 10,
-            borderRadius: 999,
-            backgroundColor: 'rgba(255,255,255,0.22)',
-          }}
-        />
-      </Animated.View>
-
-      <View
-        pointerEvents="none"
-        style={{
-          flex: 1,
-          alignItems: 'center',
-          justifyContent: 'center',
-          paddingTop: insets.top + 12,
-          paddingBottom: insets.bottom + LOGO + 48,
-          paddingHorizontal: 24,
-          zIndex: 2,
-        }}
-      >
-        <Text
-          style={{
-            fontFamily: 'NotoSansGeorgian_700Bold',
-            fontSize: PERCENT_SIZE,
-            lineHeight: PERCENT_LINE,
-            color: onWater ? '#FFFFFF' : '#0f1a1c',
-            textAlign: 'center',
-            includeFontPadding: false,
-            paddingTop: 8,
-          }}
-        >
-          {progress}
-          <Text
-            style={{
-              fontFamily: 'NotoSansGeorgian_400Regular',
-              fontSize: 40,
-              lineHeight: PERCENT_LINE,
-              color: onWater ? 'rgba(255,255,255,0.75)' : '#7b8b8f',
-            }}
-          >
-            %
-          </Text>
-        </Text>
-      </View>
-
-      <View
-        className="absolute left-0 right-0 items-center"
-        style={{ bottom: insets.bottom + 32, zIndex: 2 }}
-      >
-        <MedicardLogoMark size={LOGO} tone={progress >= 78 ? 'inverse' : 'brand'} />
+    <View style={{ flex: 1, backgroundColor: palette.surface }}>
+      <View pointerEvents="none" style={{ position: 'absolute', left: 0, top: discTop }}>
+        <HeartbeatDisc palette={palette} dark={dark} disc={disc} width={width} reduceMotion={reduceMotion} />
       </View>
     </View>
   );

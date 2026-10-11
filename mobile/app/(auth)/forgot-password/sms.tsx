@@ -2,13 +2,14 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import Animated, { FadeInDown } from 'react-native-reanimated';
-import { ChevronLeft, CircleAlert, Lock, Mail, MessageSquareText, Smartphone } from 'lucide-react-native';
+import { CircleAlert, Lock, Mail, MessageSquareText, Smartphone } from 'lucide-react-native';
 import { AuthShell } from '@/components/AuthShell';
+import { AuthBackHeader } from '@/components/auth/AuthBackHeader';
 import { AuthPhoneField } from '@/components/auth/AuthPhoneField';
-import { AuthPrimaryButton } from '@/components/auth/AuthPrimaryButton';
 import { OtpCodeInput } from '@/components/auth/OtpCodeInput';
-import { PasswordStrengthHint } from '@/components/auth/PasswordStrengthHint';
-import { Input } from '@/components/ui/Input';
+import { VelvetButton } from '@/components/velvet/VelvetButton';
+import { VelvetInput } from '@/components/velvet/VelvetInput';
+import { VelvetStrength } from '@/components/velvet/VelvetStrength';
 import { usePrefersReducedMotion } from '@/hooks/usePrefersReducedMotion';
 import { ka } from '@/i18n/ka';
 import { ApiError, api } from '@/lib/api';
@@ -16,7 +17,7 @@ import { authErrorMessage } from '@/lib/authErrorMessage';
 import { isPasswordStrongEnough, scorePassword } from '@/lib/passwordStrength';
 import { displayGeorgianMobile, isGeorgianMobile, toE164Georgian } from '@/lib/phoneFormat';
 import { useAuth } from '@/store/AuthContext';
-import { useThemeColors } from '@/theme/colors';
+import { useVelvet, velvetField, velvetLift, type VelvetPalette } from '@/theme/velvet';
 import { tx } from '@/i18n/locale';
 
 type Step = 'phone' | 'code' | 'password';
@@ -32,7 +33,7 @@ const STEPS: Step[] = ['phone', 'code', 'password'];
  */
 export default function ForgotPasswordSms() {
   const router = useRouter();
-  const colors = useThemeColors();
+  const { palette: p } = useVelvet();
   const reduceMotion = usePrefersReducedMotion();
   const { resetPasswordWithSms } = useAuth();
 
@@ -138,16 +139,17 @@ export default function ForgotPasswordSms() {
 
   const footer =
     step === 'phone' ? (
-      <AuthPrimaryButton label={tx('კოდის გაგზავნა', 'Send code')} loading={busy} disabled={!phoneValid} onPress={() => void sendCode()} />
+      <VelvetButton palette={p} label={tx('კოდის გაგზავნა', 'Send code')} busy={busy} disabled={!phoneValid} onPress={() => void sendCode()} />
     ) : step === 'code' ? (
-      <AuthPrimaryButton label={tx('გაგრძელება', 'Continue')} disabled={code.length !== 4} onPress={() => setStep('password')} />
+      <VelvetButton palette={p} label={tx('გაგრძელება', 'Continue')} disabled={code.length !== 4} onPress={() => setStep('password')} />
     ) : (
-      <AuthPrimaryButton label={tx('პაროლის შეცვლა და შესვლა', 'Change password and sign in')} loading={busy} disabled={!canReset} onPress={() => void reset()} />
+      <VelvetButton palette={p} label={tx('პაროლის შეცვლა და შესვლა', 'Change password and sign in')} busy={busy} disabled={!canReset} onPress={() => void reset()} />
     );
 
   return (
-    <AuthShell footer={footer}>
+    <AuthShell backgroundColor={p.surface} footer={footer}>
       <StepHeader
+        palette={p}
         step={stepIndex}
         onBack={back}
         title={step === 'phone' ? tx('აღდგენა SMS-ით', 'Reset by SMS') : step === 'code' ? tx('შეიყვანე კოდი', 'Enter the code') : tx('ახალი პაროლი', 'New password')}
@@ -163,6 +165,7 @@ export default function ForgotPasswordSms() {
       {step === 'phone' ? (
         <Animated.View key="phone" entering={enter}>
           <AuthPhoneField
+            palette={p}
             label={ka.auth.phone}
             value={local}
             onChange={(next) => {
@@ -174,31 +177,31 @@ export default function ForgotPasswordSms() {
             returnKeyType="send"
             onSubmitEditing={() => phoneValid && void sendCode()}
           />
-          {problem ? <ProblemCard problem={problem} onEmail={() => router.replace('/(auth)/forgot-password/email')} onPhoneLogin={() => router.replace('/(auth)/phone')} /> : null}
+          {problem ? <ProblemCard palette={p} problem={problem} onEmail={() => router.replace('/(auth)/forgot-password/email')} onPhoneLogin={() => router.replace('/(auth)/phone')} /> : null}
         </Animated.View>
       ) : null}
 
       {step === 'code' ? (
         <Animated.View key="code" entering={enter}>
-          <SentToCard pretty={pretty} onChange={() => setStep('phone')} />
+          <SentToCard palette={p} pretty={pretty} onChange={() => setStep('phone')} />
           <View style={{ marginTop: 28, alignItems: 'center' }}>
-            <OtpCodeInput key={codeKey} value={code} onChange={onCode} error={codeError} length={4} variant="hero" resetKey={codeKey} />
+            <OtpCodeInput key={codeKey} value={code} onChange={onCode} error={codeError} length={4} resetKey={codeKey} palette={p} />
           </View>
           {devCode ? (
-            <Text style={{ marginTop: 12, textAlign: 'center', fontFamily: 'NotoSansGeorgian_400Regular', fontSize: 13, color: colors.text300 }}>
+            <Text style={{ marginTop: 12, textAlign: 'center', fontFamily: 'NotoSansGeorgian_400Regular', fontSize: 13, color: p.inkOff }}>
               {tx('სატესტო კოდი: ', 'Test code: ')}{devCode}
             </Text>
           ) : null}
           <View style={{ marginTop: 28, alignItems: 'center' }}>
             {resendIn > 0 ? (
-              <Text style={{ fontFamily: 'NotoSansGeorgian_400Regular', fontSize: 14, color: colors.text300 }}>
+              <Text style={{ fontFamily: 'NotoSansGeorgian_400Regular', fontSize: 14, color: p.inkOff }}>
                 {tx('ხელახლა გაგზავნა შეგიძლია ', 'You can resend in ')}{Math.floor(resendIn / 60)}:{String(resendIn % 60).padStart(2, '0')}{tx('-ში', '')}
               </Text>
             ) : (
               <Pressable accessibilityRole="button" onPress={() => void sendCode(true)} disabled={busy} hitSlop={8} style={{ paddingVertical: 6 }}>
-                <Text style={{ fontFamily: 'NotoSansGeorgian_400Regular', fontSize: 14, color: colors.text200 }}>
+                <Text style={{ fontFamily: 'NotoSansGeorgian_400Regular', fontSize: 14, color: p.ink2 }}>
                   {tx('კოდი არ მოვიდა?', "Didn't get a code?")}{' '}
-                  <Text style={{ fontFamily: 'NotoSansGeorgian_600SemiBold', color: colors.primary200 }}>{tx('ხელახლა გაგზავნა', 'Resend')}</Text>
+                  <Text style={{ fontFamily: 'NotoSansGeorgian_700Bold', color: p.ink }}>{tx('ხელახლა გაგზავნა', 'Resend')}</Text>
                 </Text>
               </Pressable>
             )}
@@ -207,9 +210,10 @@ export default function ForgotPasswordSms() {
       ) : null}
 
       {step === 'password' ? (
-        <Animated.View key="password" entering={enter} style={{ gap: 16 }}>
+        <Animated.View key="password" entering={enter} style={{ gap: 18 }}>
           <View>
-            <Input
+            <VelvetInput
+              palette={p}
               label={ka.auth.forgotPasswordNewPassword}
               placeholder={ka.auth.passwordPlaceholder}
               icon={Lock}
@@ -223,11 +227,11 @@ export default function ForgotPasswordSms() {
               autoCapitalize="none"
               autoComplete="new-password"
               textContentType="newPassword"
-              figma
             />
-            {password ? <PasswordStrengthHint level={strength.level} /> : null}
+            {password ? <VelvetStrength level={strength.level} palette={p} /> : null}
           </View>
-          <Input
+          <VelvetInput
+            palette={p}
             label={ka.auth.confirmPassword}
             placeholder={ka.auth.confirmPasswordPlaceholder}
             icon={Lock}
@@ -243,56 +247,41 @@ export default function ForgotPasswordSms() {
             textContentType="newPassword"
             returnKeyType="done"
             onSubmitEditing={() => canReset && void reset()}
-            figma
           />
-          {passwordError ? <ProblemCard problem={{ kind: 'other', message: passwordError }} /> : null}
+          {passwordError ? <ProblemCard palette={p} problem={{ kind: 'other', message: passwordError }} /> : null}
         </Animated.View>
       ) : null}
     </AuthShell>
   );
 }
 
-/** Back chevron with three quiet progress segments beside it, then the title. */
-function StepHeader({ step, title, subtitle, onBack }: { step: number; title: string; subtitle?: string; onBack: () => void }) {
-  const colors = useThemeColors();
+/** Back chevron with three progress grooves beside it (the done ones lit), then the title. */
+function StepHeader({ step, title, subtitle, onBack, palette: p }: { step: number; title: string; subtitle?: string; onBack: () => void; palette: VelvetPalette }) {
   return (
-    <View style={{ marginBottom: 24 }}>
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 16, marginBottom: 20 }}>
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={tx('უკან', 'Back')}
-          onPress={onBack}
-          hitSlop={12}
-          style={{ width: 40, height: 40, borderRadius: 12, alignItems: 'center', justifyContent: 'center', marginLeft: -4 }}
-        >
-          <ChevronLeft size={24} color={colors.text100} strokeWidth={2.2} />
-        </Pressable>
+    <AuthBackHeader
+      palette={p}
+      title={title}
+      subtitle={subtitle}
+      onBack={onBack}
+      aside={
         <View
           accessibilityRole="progressbar"
           accessibilityLabel={tx(`ნაბიჯი ${step + 1} / ${STEPS.length}`, `Step ${step + 1} / ${STEPS.length}`)}
-          style={{ flex: 1, flexDirection: 'row', gap: 6 }}
+          style={{ flexDirection: 'row', gap: 8 }}
         >
           {STEPS.map((_, index) => (
-            <View
-              key={index}
-              style={{ flex: 1, height: 4, borderRadius: 2, backgroundColor: index <= step ? colors.primary200 : colors.bg300 }}
-            />
+            <View key={index} style={{ flex: 1, height: 6, borderRadius: 3, backgroundColor: p.surface, boxShadow: velvetField(p), overflow: 'hidden' }}>
+              {index <= step ? <View style={{ flex: 1, borderRadius: 3, backgroundColor: p.pulse }} /> : null}
+            </View>
           ))}
         </View>
-      </View>
-      <Text style={{ fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 24, lineHeight: 32, color: colors.text100 }}>{title}</Text>
-      {subtitle ? (
-        <Text style={{ marginTop: 8, fontFamily: 'NotoSansGeorgian_400Regular', fontSize: 15, lineHeight: 22, color: colors.text200 }}>
-          {subtitle}
-        </Text>
-      ) : null}
-    </View>
+      }
+    />
   );
 }
 
 /** "We sent it to +995 555 12 34 56 · change" */
-function SentToCard({ pretty, onChange }: { pretty: string; onChange: () => void }) {
-  const colors = useThemeColors();
+function SentToCard({ pretty, onChange, palette: p }: { pretty: string; onChange: () => void; palette: VelvetPalette }) {
   return (
     <View
       style={{
@@ -300,19 +289,20 @@ function SentToCard({ pretty, onChange }: { pretty: string; onChange: () => void
         alignItems: 'center',
         gap: 12,
         padding: 14,
-        borderRadius: 18,
-        backgroundColor: colors.bg200,
+        borderRadius: 20,
+        backgroundColor: p.surface,
+        boxShadow: velvetLift(p),
       }}
     >
-      <View style={{ width: 40, height: 40, borderRadius: 12, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.accent100 }}>
-        <MessageSquareText size={20} color={colors.primary200} strokeWidth={2.1} />
+      <View style={{ width: 42, height: 42, borderRadius: 14, alignItems: 'center', justifyContent: 'center', backgroundColor: p.field, boxShadow: velvetField(p) }}>
+        <MessageSquareText size={20} color={p.pulse} strokeWidth={2.1} />
       </View>
       <View style={{ flex: 1 }}>
-        <Text style={{ fontFamily: 'NotoSansGeorgian_400Regular', fontSize: 13, lineHeight: 18, color: colors.text200 }}>{tx('კოდი გამოვაგზავნეთ ნომერზე', 'We sent a code to')}</Text>
-        <Text style={{ fontFamily: 'NotoSansGeorgian_600SemiBold', fontSize: 16, lineHeight: 22, color: colors.text100, letterSpacing: 0.3 }}>{pretty}</Text>
+        <Text style={{ fontFamily: 'NotoSansGeorgian_400Regular', fontSize: 13, lineHeight: 18, color: p.ink2 }}>{tx('კოდი გამოვაგზავნეთ ნომერზე', 'We sent a code to')}</Text>
+        <Text style={{ fontFamily: 'NotoSansGeorgian_600SemiBold', fontSize: 16, lineHeight: 22, color: p.text, letterSpacing: 0.3 }}>{pretty}</Text>
       </View>
       <Pressable accessibilityRole="button" onPress={onChange} hitSlop={8} style={{ paddingVertical: 6, paddingHorizontal: 4 }}>
-        <Text style={{ fontFamily: 'NotoSansGeorgian_600SemiBold', fontSize: 14, color: colors.primary200 }}>{tx('შეცვლა', 'Change')}</Text>
+        <Text style={{ fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 14, color: p.ink }}>{tx('შეცვლა', 'Change')}</Text>
       </Pressable>
     </View>
   );
@@ -323,12 +313,13 @@ function ProblemCard({
   problem,
   onEmail,
   onPhoneLogin,
+  palette: p,
 }: {
   problem: NonNullable<Problem>;
   onEmail?: () => void;
   onPhoneLogin?: () => void;
+  palette: VelvetPalette;
 }) {
-  const colors = useThemeColors();
   const action =
     problem.kind === 'not-found' && onEmail
       ? { label: tx('აღდგენა ელ-ფოსტით', 'Reset by email'), icon: Mail, onPress: onEmail }
@@ -338,18 +329,17 @@ function ProblemCard({
   return (
     <View
       style={{
-        marginTop: 16,
+        marginTop: 18,
         padding: 16,
         borderRadius: 18,
-        borderWidth: 1,
-        borderColor: `${colors.danger}33`,
-        backgroundColor: `${colors.danger}0F`,
+        backgroundColor: p.surface,
+        boxShadow: velvetField(p),
         gap: 12,
       }}
     >
       <View style={{ flexDirection: 'row', gap: 10 }}>
-        <CircleAlert size={20} color={colors.danger} strokeWidth={2.1} style={{ marginTop: 1 }} />
-        <Text style={{ flex: 1, fontFamily: 'NotoSansGeorgian_400Regular', fontSize: 14, lineHeight: 20, color: colors.text100 }}>
+        <CircleAlert size={20} color={p.danger} strokeWidth={2.1} style={{ marginTop: 1 }} />
+        <Text style={{ flex: 1, fontFamily: 'NotoSansGeorgian_400Regular', fontSize: 14, lineHeight: 20, color: p.text }}>
           {problem.message}
         </Text>
       </View>
@@ -362,13 +352,14 @@ function ProblemCard({
             alignItems: 'center',
             justifyContent: 'center',
             gap: 8,
-            minHeight: 44,
-            borderRadius: 14,
-            backgroundColor: colors.surface,
+            minHeight: 46,
+            borderRadius: 23,
+            backgroundColor: p.surface,
+            boxShadow: velvetLift(p),
           }}
         >
-          <action.icon size={18} color={colors.primary200} strokeWidth={2.1} />
-          <Text style={{ fontFamily: 'NotoSansGeorgian_600SemiBold', fontSize: 15, color: colors.primary200 }}>{action.label}</Text>
+          <action.icon size={18} color={p.ink} strokeWidth={2.1} />
+          <Text style={{ fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 15, color: p.ink }}>{action.label}</Text>
         </Pressable>
       ) : null}
     </View>

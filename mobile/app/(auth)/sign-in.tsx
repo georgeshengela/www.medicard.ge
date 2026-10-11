@@ -3,13 +3,13 @@ import { Keyboard, Pressable, Text, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Lock, Mail, UserPlus } from 'lucide-react-native';
 import { AuthShell } from '@/components/AuthShell';
+import { AuthPhoneField } from '@/components/auth/AuthPhoneField';
 import { OtpCodeInput } from '@/components/auth/OtpCodeInput';
 import { SocialAuthButtons } from '@/components/auth/SocialAuthButtons';
 import { VelvetAuthHeader } from '@/components/auth/VelvetAuthHeader';
 import { VelvetButton } from '@/components/velvet/VelvetButton';
 import { VelvetInput } from '@/components/velvet/VelvetInput';
 import { VelvetNotice } from '@/components/velvet/VelvetNotice';
-import { VelvetPhoneField } from '@/components/velvet/VelvetPhoneField';
 import { VelvetSegment } from '@/components/velvet/VelvetSegment';
 import { ka } from '@/i18n/ka';
 import { appLang, tx } from '@/i18n/locale';
@@ -243,7 +243,7 @@ export default function SignIn() {
               </View>
             ) : (
               <View style={{ gap: 10 }}>
-                <VelvetPhoneField
+                <AuthPhoneField
                   palette={p}
                   value={local}
                   onChange={(next) => {

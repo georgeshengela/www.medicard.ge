@@ -1,16 +1,18 @@
 import React, { useMemo, useState } from 'react';
-import { Alert, Text, View } from 'react-native';
+import { Alert, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Lock } from 'lucide-react-native';
 import { AuthShell } from '@/components/AuthShell';
 import { AuthBackHeader } from '@/components/auth/AuthBackHeader';
-import { AuthPrimaryButton } from '@/components/auth/AuthPrimaryButton';
-import { PasswordStrengthHint } from '@/components/auth/PasswordStrengthHint';
-import { Input } from '@/components/ui/Input';
+import { VelvetButton } from '@/components/velvet/VelvetButton';
+import { VelvetInput } from '@/components/velvet/VelvetInput';
+import { VelvetNotice } from '@/components/velvet/VelvetNotice';
+import { VelvetStrength } from '@/components/velvet/VelvetStrength';
 import { ka } from '@/i18n/ka';
-import { ApiError, api } from '@/lib/api';
+import { api } from '@/lib/api';
 import { authErrorMessage } from '@/lib/authErrorMessage';
 import { isPasswordStrongEnough, scorePassword } from '@/lib/passwordStrength';
+import { useVelvet } from '@/theme/velvet';
 
 export default function ForgotPasswordReset() {
   const router = useRouter();
@@ -19,6 +21,7 @@ export default function ForgotPasswordReset() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [errors, setErrors] = useState<{ password?: string; confirmPassword?: string; form?: string }>({});
   const [busy, setBusy] = useState(false);
+  const { palette: p } = useVelvet();
 
   const strength = useMemo(() => scorePassword(password), [password]);
   const canSubmit =
@@ -46,13 +49,15 @@ export default function ForgotPasswordReset() {
 
   return (
     <AuthShell
-      footer={<AuthPrimaryButton label={ka.auth.forgotPasswordReset} loading={busy} disabled={!canSubmit} onPress={submit} />}
+      backgroundColor={p.surface}
+      footer={<VelvetButton palette={p} label={ka.auth.forgotPasswordReset} busy={busy} disabled={!canSubmit} onPress={() => void submit()} />}
     >
-      <AuthBackHeader title={ka.auth.forgotPasswordNewPassword} subtitle={ka.auth.forgotPasswordReset} />
+      <AuthBackHeader palette={p} title={ka.auth.forgotPasswordNewPassword} subtitle={ka.auth.forgotPasswordReset} />
 
-      <View style={{ gap: 16 }}>
+      <View style={{ gap: 18 }}>
         <View>
-          <Input
+          <VelvetInput
+            palette={p}
             label={ka.auth.forgotPasswordNewPassword}
             placeholder={ka.auth.passwordPlaceholder}
             icon={Lock}
@@ -62,12 +67,12 @@ export default function ForgotPasswordReset() {
             secure
             autoCapitalize="none"
             autoComplete="new-password"
-            figma
           />
-          <PasswordStrengthHint level={strength.level} />
+          <VelvetStrength level={strength.level} palette={p} />
         </View>
 
-        <Input
+        <VelvetInput
+          palette={p}
           label={ka.auth.confirmPassword}
           placeholder={ka.auth.confirmPasswordPlaceholder}
           icon={Lock}
@@ -77,16 +82,14 @@ export default function ForgotPasswordReset() {
           secure
           autoCapitalize="none"
           autoComplete="new-password"
-          figma
         />
       </View>
 
       {errors.form ? (
-        <View style={{ marginTop: 16, borderRadius: 16, borderWidth: 1, borderColor: '#FECACA', backgroundColor: '#FEE2E2', padding: 14 }}>
-          <Text style={{ fontFamily: 'NotoSansGeorgian_400Regular', fontSize: 14, color: '#B91C1C' }}>{errors.form}</Text>
+        <View style={{ marginTop: 18 }}>
+          <VelvetNotice palette={p} text={errors.form} />
         </View>
       ) : null}
-
     </AuthShell>
   );
 }

@@ -6,6 +6,7 @@ import { FIGMA_AUTH_SHADOW, useFigmaAuth } from '@/constants/figmaAuthLayout';
 import { formatGeorgianMobile, georgianLocalDigits, isGeorgianMobile } from '@/lib/phoneFormat';
 import { useThemeColors } from '@/theme/colors';
 import { tx } from '@/i18n/locale';
+import { velvetField, velvetLift, type VelvetPalette } from '@/theme/velvet';
 
 type Props = {
   label?: string;
@@ -14,6 +15,8 @@ type Props = {
   onChange: (localDigits: string) => void;
   error?: string | null;
   hint?: string;
+  /** Velvet screens (sign-in, password reset): a light trough, the +995 prefix on a raised chip. */
+  palette?: VelvetPalette;
 } & Pick<TextInputProps, 'autoFocus' | 'onSubmitEditing' | 'returnKeyType' | 'editable'>;
 
 /**
@@ -21,7 +24,7 @@ type Props = {
  * person types (`555 12 34 56`), pasted `+995…` numbers cleaned up, and a check once it is valid.
  */
 export const AuthPhoneField = forwardRef<TextInput, Props>(function AuthPhoneField(
-  { label, value, onChange, error, hint, ...rest },
+  { label, value, onChange, error, hint, palette: p, ...rest },
   ref,
 ) {
   const colors = useThemeColors();
@@ -29,6 +32,8 @@ export const AuthPhoneField = forwardRef<TextInput, Props>(function AuthPhoneFie
   const [focused, setFocused] = useState(false);
   const valid = isGeorgianMobile(value);
   const borderColor = error ? colors.danger : focused ? auth.primaryBg : auth.inputBorder;
+  const ring = p ? (error ? p.danger : focused ? p.pulse : null) : null;
+  const ink = p ? p.text : auth.fieldText;
 
   return (
     <View style={{ width: '100%' }}>
@@ -37,9 +42,10 @@ export const AuthPhoneField = forwardRef<TextInput, Props>(function AuthPhoneFie
           style={{
             marginBottom: 8,
             fontFamily: 'NotoSansGeorgian_600SemiBold',
-            fontSize: auth.labelSize,
+            fontSize: p ? 14 : auth.labelSize,
             lineHeight: 20,
-            color: auth.labelColor,
+            color: p ? p.ink2 : auth.labelColor,
+            marginLeft: p ? 4 : 0,
           }}
         >
           {label}
@@ -47,37 +53,53 @@ export const AuthPhoneField = forwardRef<TextInput, Props>(function AuthPhoneFie
       ) : null}
 
       <View
-        style={{
-          flexDirection: 'row',
-          alignItems: 'center',
-          minHeight: auth.inputMinHeight + 4,
-          borderRadius: auth.inputRadius,
-          borderWidth: focused ? 1.5 : 1,
-          borderColor,
-          backgroundColor: auth.inputBg,
-          overflow: 'hidden',
-          ...FIGMA_AUTH_SHADOW,
-        }}
+        style={
+          p
+            ? {
+                flexDirection: 'row',
+                alignItems: 'center',
+                minHeight: 56,
+                paddingLeft: 7,
+                borderRadius: 18,
+                backgroundColor: p.field,
+                boxShadow: ring ? `${velvetField(p)}, 0px 0px 0px 1.5px ${ring}` : velvetField(p),
+              }
+            : {
+                flexDirection: 'row',
+                alignItems: 'center',
+                minHeight: auth.inputMinHeight + 4,
+                borderRadius: auth.inputRadius,
+                borderWidth: focused ? 1.5 : 1,
+                borderColor,
+                backgroundColor: auth.inputBg,
+                overflow: 'hidden',
+                ...FIGMA_AUTH_SHADOW,
+              }
+        }
       >
         <View
           accessibilityElementsHidden
           importantForAccessibility="no-hide-descendants"
-          style={{
-            flexDirection: 'row',
-            alignItems: 'center',
-            gap: 8,
-            alignSelf: 'stretch',
-            flexShrink: 0,
-            paddingLeft: 16,
-            paddingRight: 14,
-            borderRightWidth: 1,
-            borderRightColor: auth.inputBorder,
-          }}
+          style={
+            p
+              ? { height: 42, flexDirection: 'row', alignItems: 'center', gap: 8, flexShrink: 0, paddingHorizontal: 12, borderRadius: 14, backgroundColor: p.surface, boxShadow: velvetLift(p) }
+              : {
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  gap: 8,
+                  alignSelf: 'stretch',
+                  flexShrink: 0,
+                  paddingLeft: 16,
+                  paddingRight: 14,
+                  borderRightWidth: 1,
+                  borderRightColor: auth.inputBorder,
+                }
+          }
         >
           <View style={{ width: 24, height: 16, flexShrink: 0 }}>
             <GeorgiaFlag />
           </View>
-          <Text style={{ fontFamily: 'NotoSansGeorgian_600SemiBold', fontSize: 17, lineHeight: 24, color: auth.fieldText }}>
+          <Text style={{ fontFamily: 'NotoSansGeorgian_600SemiBold', fontSize: p ? 15 : 17, lineHeight: p ? 20 : 24, color: p ? p.ink : auth.fieldText }}>
             +995
           </Text>
         </View>
@@ -87,7 +109,8 @@ export const AuthPhoneField = forwardRef<TextInput, Props>(function AuthPhoneFie
           value={formatGeorgianMobile(value)}
           onChangeText={(text) => onChange(georgianLocalDigits(text))}
           placeholder="5XX XX XX XX"
-          placeholderTextColor={auth.placeholder}
+          placeholderTextColor={p ? p.inkOff : auth.placeholder}
+          selectionColor={p?.pulse}
           keyboardType="phone-pad"
           textContentType="telephoneNumber"
           autoComplete="tel"
@@ -104,7 +127,8 @@ export const AuthPhoneField = forwardRef<TextInput, Props>(function AuthPhoneFie
             fontSize: 18,
             lineHeight: 24,
             letterSpacing: 0.5,
-            color: auth.fieldText,
+            minHeight: p ? 56 : undefined,
+            color: ink,
             ...(Platform.OS === 'web' ? ({ outlineWidth: 0, outlineStyle: 'none', backgroundColor: 'transparent' } as object) : null),
           }}
           {...rest}
@@ -112,17 +136,17 @@ export const AuthPhoneField = forwardRef<TextInput, Props>(function AuthPhoneFie
 
         {valid ? (
           <View style={{ paddingRight: 14, flexShrink: 0 }}>
-            <CircleCheck size={22} color={auth.primaryBg} strokeWidth={2.2} />
+            <CircleCheck size={22} color={p ? p.pulse : auth.primaryBg} strokeWidth={2.2} />
           </View>
         ) : null}
       </View>
 
       {error ? (
-        <Text style={{ marginTop: 8, fontFamily: 'NotoSansGeorgian_400Regular', fontSize: 13, lineHeight: 18, color: colors.danger }}>
+        <Text style={{ marginTop: 8, marginLeft: p ? 4 : 0, fontFamily: 'NotoSansGeorgian_400Regular', fontSize: 13, lineHeight: 18, color: p ? p.danger : colors.danger }}>
           {error}
         </Text>
       ) : hint ? (
-        <Text style={{ marginTop: 8, fontFamily: 'NotoSansGeorgian_400Regular', fontSize: 13, lineHeight: 18, color: colors.text300 }}>
+        <Text style={{ marginTop: 8, marginLeft: p ? 4 : 0, fontFamily: 'NotoSansGeorgian_400Regular', fontSize: 13, lineHeight: 18, color: p ? p.inkOff : colors.text300 }}>
           {hint}
         </Text>
       ) : null}

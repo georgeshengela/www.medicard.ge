@@ -37,10 +37,10 @@ export function OtpCodeInput({
   const inputRef = useRef<TextInput>(null);
   const [focused, setFocused] = useState(autoFocus);
   const velvet = palette != null;
-  const box = velvet ? 66 : variant === 'hero' ? FIGMA_PROFILE_SETUP.otpBoxSize : 48;
-  const gap = velvet ? 14 : variant === 'hero' ? FIGMA_PROFILE_SETUP.otpGap : 8;
-  const fontSize = velvet ? 30 : variant === 'hero' ? 32 : 22;
-  const borderRadius = velvet ? 20 : variant === 'hero' ? FIGMA_PROFILE_SETUP.otpBoxRadius : 14;
+  const box = velvet ? (length === 6 ? 46 : 66) : variant === 'hero' ? FIGMA_PROFILE_SETUP.otpBoxSize : 48;
+  const gap = velvet ? (length === 6 ? 9 : 14) : variant === 'hero' ? FIGMA_PROFILE_SETUP.otpGap : 8;
+  const fontSize = velvet ? (length === 6 ? 24 : 30) : variant === 'hero' ? 32 : 22;
+  const borderRadius = velvet ? (length === 6 ? 15 : 20) : variant === 'hero' ? FIGMA_PROFILE_SETUP.otpBoxRadius : 14;
   const digits = value.padEnd(length, ' ').slice(0, length).split('');
 
   return (

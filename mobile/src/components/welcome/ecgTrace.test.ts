@@ -1,6 +1,6 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { ECG_BOX_H, ecgTrace } from './ecgTrace.ts';
+import { ECG_BOX_H, ecgStrip, ecgTrace } from './ecgTrace.ts';
 
 const points = (d: string) =>
   d.slice(1).split(' L').map((pair) => pair.split(',').map(Number) as [number, number]);
@@ -28,5 +28,23 @@ describe('welcome heartbeat line', () => {
     assert.ok(t.hit > 0 && t.hit < t.length);
     // the left complex is longer than its 80 pt width, so the hit lies past the straight-line distance
     assert.ok(t.hit > 20 + 95);
+  });
+});
+
+describe('heartbeat strip', () => {
+  it('fills the strip with whole beats inside its height', () => {
+    const t = ecgStrip(300, 32, 110);
+    const pts = points(t.d);
+    assert.equal(pts[0][0], 0);
+    assert.equal(pts.at(-1)![0], 300);
+    for (const [x, y] of pts) assert.ok(x >= 0 && x <= 300 && y >= 0 && y <= 32, `${x},${y} in strip`);
+    const peaks = pts.filter(([, y]) => y < 4).length;
+    assert.equal(peaks, 2, 'two R peaks fit in 300 pt at 110 spacing');
+  });
+
+  it('measures one beat along the line, longer than its straight spacing', () => {
+    const t = ecgStrip(300, 32, 110);
+    assert.ok(t.beatLength > 110 && t.beatLength < 220);
+    assert.ok(t.length > 300);
   });
 });
