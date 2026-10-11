@@ -1151,8 +1151,9 @@ describe('partial bundle after a failed reload (CYC-06)', () => {
   it('the cache writers and the shared view refuse a partial bundle', () => {
     const { readFileSync } = require('node:fs');
     const { join } = require('node:path');
-    const offline = readFileSync(join(__dirname, 'cycleOffline.ts'), 'utf8');
-    const view = readFileSync(join(__dirname, 'cycleViewCache.ts'), 'utf8');
+    // A Windows checkout is CRLF (core.autocrlf); the guards below are written against LF source.
+    const offline = readFileSync(join(__dirname, 'cycleOffline.ts'), 'utf8').replace(/\r\n/g, '\n');
+    const view = readFileSync(join(__dirname, 'cycleViewCache.ts'), 'utf8').replace(/\r\n/g, '\n');
     assert.match(offline, /export async function cacheCycleBundle[^{]*\{\n[^\n]*\n\s*if \(!isCompleteCycleBundle\(bundle\)\) return;/);
     assert.match(offline, /if \(isCompleteCycleBundle\(result\.bundle\)\) \{\n\s*latest\.cache = createCacheRecord/);
     assert.match(view, /if \(!isCompleteCycleBundle\(bundle\)\) \{\n\s*void invalidate\('cycle'\);\n\s*return;/);
