@@ -233,7 +233,8 @@
   const UNIT = { STEPS: 'ნაბიჯი', HYDRATION_GOAL_PERCENT: '% წყლის მიზნიდან', MEDI_DAILY_USE: 'საუბარი', COUNT: 'ჯერ' };
 
   async function renderQuests() {
-    const root = $('tab-quests');
+    // Inside the page tabs (usageHosts.js) this is the „მისიები“ pane.
+    const root = global.AdminUsage?.host('quests') || $('tab-quests');
     if (!root) return;
     root.innerHTML = skel();
     let data;

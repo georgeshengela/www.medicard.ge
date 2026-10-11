@@ -252,7 +252,8 @@
   }
 
   global.renderNutrition = async function () {
-    const root = document.getElementById("tab-nutrition");
+    // Inside the page tabs (usageHosts.js) this is the „კერძები და პარამეტრები“ pane.
+    const root = global.AdminUsage?.host("nutrition") || document.getElementById("tab-nutrition");
     if (!root) return;
     const gen = ++generation;
     root.innerHTML = `<div class="s-stack"><div class="v3-skel" aria-hidden="true">${"<i></i>".repeat(6)}</div></div>`;

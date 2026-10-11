@@ -12,21 +12,18 @@
  */
 import { prisma } from './prisma.js';
 import { addDaysYmd, createdAtToTbilisiYmd, enumerateYmds, rateSafe, tbilisiMidnight, tbilisiYmd } from './adminAnalyticsRange.js';
+import { bump, flagState, iso, isTeamEmail, loadPeople, loadTeamUserIds, median, missingTable, ms, ownerContact, percentile, USAGE_PERIODS, zeroes } from './adminUsageKit.js';
 import { getSpecies, isSentinelBreedId } from './petsCatalog.js';
 import { displayAgeParts } from './petsAge.js';
 import { classifyVetTurn } from './petsVetPolicy.js';
 import { listFeatureFlags } from './featureFlags.js';
 
-export const PETS_ADMIN_PERIODS = Object.freeze([7, 30, 90]);
+export const PETS_ADMIN_PERIODS = USAGE_PERIODS;
+export { isTeamEmail, ownerContact };
 /** The page lists at most this many pets (newest activity first); every count still covers all of them. */
 export const PETS_ADMIN_LIST_MAX = 400;
 /** Topics are read from at most this many recent questions. */
 const TOPIC_SAMPLE = 2000;
-
-/** Exact company logins (demo / review / staff). Synthetic `…@phone.medicard.ge` / `…@apple.medicard.ge` are real people. */
-export function isTeamEmail(email) {
-  return /^[^@\s]+@medicard\.ge$/i.test(String(email || '').trim());
-}
 
 /** Medi Vet question topics — keyword buckets (Georgian + English). One question may hit several; none = „other“. */
 const TOPICS = [
@@ -53,38 +50,6 @@ const RECURRENCE_KINDS = ['ONCE', 'EVERY_N_DAYS', 'EVERY_N_WEEKS', 'EVERY_N_MONT
 const SCHEDULE_SOURCES = ['VETERINARIAN', 'PRODUCT_INSTRUCTIONS', 'USER_ENTERED'];
 const ALLERGY_CATEGORIES = ['medication', 'food', 'environmental', 'other', 'unknown'];
 const DELIVERY_STATUSES = ['SCHEDULED_LOCAL', 'SCHEDULE_FAILED', 'CANCELLED', 'RECEIVED_CALLBACK', 'USER_RESPONSE', 'COMPLETION_CONFIRMED'];
-
-const zeroes = (keys) => Object.fromEntries(keys.map((k) => [k, 0]));
-const bump = (obj, key, by = 1) => {
-  obj[key] = (obj[key] || 0) + by;
-};
-const ms = (value) => (value ? new Date(value).getTime() : 0);
-const iso = (value) => (value ? new Date(value).toISOString() : null);
-
-function percentile(sorted, p) {
-  if (!sorted.length) return null;
-  const idx = Math.min(sorted.length - 1, Math.max(0, Math.ceil((p / 100) * sorted.length) - 1));
-  return sorted[idx];
-}
-
-function median(values) {
-  if (!values.length) return null;
-  const s = [...values].sort((a, b) => a - b);
-  const mid = Math.floor(s.length / 2);
-  return s.length % 2 ? s[mid] : (s[mid - 1] + s[mid]) / 2;
-}
-
-/** „+995 5xx xx xx xx“ / „Apple-ით შესული“ / the e-mail, the same way the rest of the admin shows a login. */
-export function ownerContact(user) {
-  const email = String(user?.email || '');
-  const phone = String(user?.phone || '') || (/^\+?(\d{9,15})@phone\.medicard\.ge$/i.exec(email)?.[1] ?? '');
-  if (phone) {
-    const d = phone.replace(/\D/g, '');
-    return d.length === 12 && d.startsWith('995') ? `+995 ${d.slice(3, 6)} ${d.slice(6, 8)} ${d.slice(8, 10)} ${d.slice(10)}` : `+${d}`;
-  }
-  if (/@apple\.medicard\.ge$/i.test(email)) return 'Apple-ით შესული';
-  return email;
-}
 
 function breedLabel(pet) {
   if (pet.breedId === 'custom') return String(pet.customBreed || '').trim() || null;
@@ -394,17 +359,13 @@ export function buildPetsOverview(raw, { days = 30, includeTeam = false, now = n
     })
     .sort((a, b) => ms(b.lastAt) - ms(a.lastAt));
 
-  const flag = (key) => {
-    const f = (raw.flags || []).find((row) => row.key === key);
-    return f ? { enabled: f.enabled !== false, effective: f.effective !== false, blockedBy: f.blockedBy || null } : { enabled: true, effective: true, blockedBy: null };
-  };
 
   return {
     installed: true,
     generatedAt: now.toISOString(),
     includeTeam,
     team: { accounts: teamIds.size, pets: teamPets.length, owners: new Set(teamPets.map((p) => p.userId)).size },
-    flags: { pets: flag('pets'), mediVet: flag('mediVet') },
+    flags: { pets: flagState(raw.flags, 'pets'), mediVet: flagState(raw.flags, 'mediVet') },
     totals: {
       accounts,
       owners: ownersCount,
@@ -484,13 +445,11 @@ export function buildPetsOverview(raw, { days = 30, includeTeam = false, now = n
   };
 }
 
-const missingTable = (error) => error?.code === 'P2021' || /does not exist|42P01/.test(String(error?.message || ''));
-
 /** Every row the page needs, for all accounts (the builder drops team accounts). Read-only. */
 export async function loadPetsAdminRaw(db = prisma, { now = new Date() } = {}) {
   const since = tbilisiMidnight(addDaysYmd(tbilisiYmd(now), -(Math.max(...PETS_ADMIN_PERIODS) - 1)));
-  const [teamUsers, accountsTotal, pets, weights, allergies, conditions, products, schedules, events, skips, vetSessions, questions, questionTexts, answers, drafts, deliveries, aiVet, vetFeedback, signups, flags] = await Promise.all([
-    db.user.findMany({ where: { email: { endsWith: '@medicard.ge', mode: 'insensitive' } }, select: { id: true, email: true } }),
+  const [teamUserIds, accountsTotal, pets, weights, allergies, conditions, products, schedules, events, skips, vetSessions, questions, questionTexts, answers, drafts, deliveries, aiVet, vetFeedback, signups, flags] = await Promise.all([
+    loadTeamUserIds(db),
     db.user.count(),
     db.pet.findMany({
       select: {
@@ -517,17 +476,9 @@ export async function loadPetsAdminRaw(db = prisma, { now = new Date() } = {}) {
     db.user.findMany({ where: { createdAt: { gte: since } }, select: { id: true, createdAt: true } }),
     listFeatureFlags(db).catch(() => []),
   ]);
-  const ownerIds = [...new Set(pets.map((p) => p.userId))];
-  const [owners, lastSeen, appActivity] = ownerIds.length
-    ? await Promise.all([
-      db.user.findMany({ where: { id: { in: ownerIds } }, select: { id: true, fullName: true, email: true, phone: true, createdAt: true } }),
-      db.appActivity.groupBy({ by: ['userId'], where: { userId: { in: ownerIds } }, _max: { lastAt: true } }),
-      db.appActivity.findMany({ where: { userId: { in: ownerIds } }, select: { userId: true, date: true } }),
-    ])
-    : [[], [], []];
-  const seen = new Map(lastSeen.map((r) => [r.userId, r._max?.lastAt || null]));
+  const { people, appDays } = await loadPeople(pets.map((p) => p.userId), db);
   return {
-    teamUserIds: teamUsers.filter((u) => isTeamEmail(u.email)).map((u) => u.id),
+    teamUserIds,
     accountsTotal,
     // Never ship the private photo key or the vet's details: only whether they are there.
     pets: pets.map(({ photoUrl, vetClinicName, vetName, vetPhone, vetAddress, ...p }) => ({
@@ -551,9 +502,8 @@ export async function loadPetsAdminRaw(db = prisma, { now = new Date() } = {}) {
     aiVet,
     vetFeedback,
     signups,
-    owners: owners.map((u) => ({ ...u, lastSeenAt: seen.get(u.id) || null })),
-    // AppActivity.date is a calendar date (Tbilisi day) stored as UTC midnight.
-    appActivity: appActivity.map((a) => ({ userId: a.userId, date: new Date(a.date).toISOString().slice(0, 10) })),
+    owners: people,
+    appActivity: appDays,
     flags,
   };
 }

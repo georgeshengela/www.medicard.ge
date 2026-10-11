@@ -330,7 +330,8 @@
 
   /** `loading`: 'view' replaces the whole body with a skeleton; 'list' only the list under the toolbar. */
   async function renderTrainers({ loading } = {}) {
-    const root = $('tab-trainers');
+    // Inside the page tabs (usageHosts.js) this is the „მართვა“ pane.
+    const root = global.AdminUsage?.host('trainers') || $('tab-trainers');
     if (!root) return;
     if (!root.querySelector('[data-body]')) {
       root.innerHTML = `<div class="s-stack v3-tab-shell s-coach">

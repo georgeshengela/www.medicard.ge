@@ -5,7 +5,7 @@ const EMAIL_KEY = 'medicard.admin.email';
 const TAB_KEY = 'medicard.admin.tab';
 const USERS_PAGE_SIZE = 15;
 const PAGE_SIZE = 25;
-const ADMIN_TABS = ['overview', 'orders', 'users', 'push', 'sms', 'pharmacy', 'rewards', 'ai', 'health', 'audit', 'quality', 'testing', 'nutrition', 'community', 'medipulsi', 'poster-studio', 'settings', 'features', 'quests', 'funnel', 'director', 'email', 'support', 'trainers', 'capacity', 'news', 'errors', 'social', 'campaigns', 'medirun-boxes', 'pets'];
+const ADMIN_TABS = ['overview', 'orders', 'users', 'push', 'sms', 'pharmacy', 'rewards', 'ai', 'health', 'audit', 'quality', 'testing', 'nutrition', 'community', 'medipulsi', 'poster-studio', 'settings', 'features', 'quests', 'funnel', 'director', 'email', 'support', 'trainers', 'capacity', 'news', 'errors', 'social', 'campaigns', 'medirun-boxes', 'pets', 'cycle', 'pills', 'lab'];
 
 const state = {
   token: localStorage.getItem(TOKEN_KEY) || '',
@@ -657,7 +657,10 @@ async function switchTab(tab, opts = {}) {
     health: ['Health & Medi', 'ჯანმრთელობა', 'რომელ ჯანმრთელობის ფუნქციას იყენებენ და რამდენი ბრუნდება.', 'health.page'],
     audit: ['Production', 'აუდიტი', 'ვინ რა შეცვალა ადმინში და როდის.', 'audit.page'],
     quality: ['Production', 'ხარისხი', 'აპის ვერსიები, ტელემეტრია და მონაცემების მთლიანობა.', 'quality.page'],
-    nutrition: ['Health', 'კვების დღიური', 'დღიურის გამოყენება, AI კალორიის შეფასება და კერძების კატალოგი.', ''],
+    nutrition: ['Health', 'MEDIFOOD', 'ვინ იყენებს კვების დღიურს და როგორ; კერძების კატალოგი და პარამეტრები.', ''],
+    cycle: ['Health', 'MEDICYCLE', 'როგორ იყენებენ ციკლს — ანონიმურად, სახელების გარეშე.', ''],
+    pills: ['Health', 'MEDIPILL', 'ვინ იწერს წამლებს, ნიშნავს დოზებს და ამოწმებს ფასებს.', ''],
+    lab: ['Health', 'MEDILAB', 'ანალიზები, გამოსახულება და კანი: ვინ კითხულობს MEDISCAN-ით და როგორ.', ''],
     pets: ['Health', 'MEDIVET', 'ვინ იყენებს ცხოველების მოდულს და როგორ.', ''],
     community: ['Engagement', 'ქალების სივრცე', 'მოდერაცია, საჩივრები და წევრების უსაფრთხოება.', ''],
     testing: ['Production', 'ტესტირება', 'ტესტირების სესიები, ეტაპები, შედეგები და ხარვეზები.', 'quality.page'],
@@ -670,10 +673,10 @@ async function switchTab(tab, opts = {}) {
     sms: ['Operations', 'SMS', 'SMS-ის ბალანსი, გაგზავნა და ჟურნალი.', 'sms.page'],
     pharmacy: ['Operations', 'ფარმაცია', 'აფთიაქების ფასების სინქრონიზაცია, დაფარვა და შეცდომები.', 'pharmacy.page'],
     rewards: ['Commerce', 'ჯილდოები', 'მაღაზიის საჩუქრები და მარაგი, ვინ რა გაცვალა, პარტნიორები, კამპანიები და მოწვევები.', 'rewards.page'],
-    ai: ['Health & Medi', 'Medi', 'Medi-ს ხარისხი, შეცდომები, სიჩქარე და ხარჯი.', 'medi.page'],
+    ai: ['Health & Medi', 'Medi', 'ვინ ესაუბრება Medi-ს და როგორ; ხარისხი, შეცდომები და ხარჯი.', 'medi.page'],
     settings: ['Production', 'აპის რეჟიმი', 'ტექნიკური სამუშაოები, იძულებითი განახლება და რეგისტრაცია.', 'settings.page'],
     features: ['Production', 'მოდულები', 'ჩართე ან შეაჩერე ნებისმიერი მოდული ახალი ბილდის გარეშე.', ''],
-    quests: ['Engagement', 'MEDIQUEST', 'მისიები, სამიზნეები და Medi Coins ჯილდოები.', ''],
+    quests: ['Engagement', 'MEDIQUEST', 'ვინ ასრულებს მისიებს და როგორ; შაბლონები, სამიზნეები და ჯილდოები.', ''],
     news: ['Engagement', 'სიახლეები', 'ბარათები აპის მთავარ გვერდზე: ღონისძიებები, საჩუქრები და სიახლეები.', ''],
     campaigns: ['Engagement', 'კამპანიები', 'კამპანიის გეგმა, ყველა პოსტი ტექსტით და ბეჭდვის ფაილები. ჩანს მხოლოდ ადმინში.', ''],
     social: ['Engagement', 'სოციალური ქსელები', 'კამპანიის პოსტები და სთორები: როდის, სად და რა ტექსტით გავიდა.', ''],
@@ -683,7 +686,7 @@ async function switchTab(tab, opts = {}) {
     director: ['Overview', 'დირექტორი', 'დირექტორი მართავს ცვლას, შენ ტელეგრამში ადასტურებ.', ''],
     email: ['Engagement', 'ელფოსტა', 'სისტემური წერილები, კამპანიები და მიწოდება.', ''],
     support: ['Engagement', 'მხარდაჭერა', 'support@medicard.ge-ზე შემოსული წერილები: წაიკითხე და უპასუხე.', ''],
-    trainers: ['ადამიანები', 'ტრენერები', 'MEDICOACH: განაცხადები, დარბაზები და შეტყობინებები.', ''],
+    trainers: ['ადამიანები', 'ტრენერები', 'MEDICOACH: ვინ იყენებს და როგორ; განაცხადები, დარბაზები და შეტყობინებები.', ''],
   };
   setPageHeader(tab, copy);
 
@@ -700,18 +703,18 @@ async function switchTab(tab, opts = {}) {
     if (tab === 'sms') await renderSms();
     if (tab === 'pharmacy') await renderPharmacy();
     if (tab === 'rewards' && typeof renderRewards === 'function') await renderRewards();
-    if (tab === 'ai') await renderAi();
+    if (tab === 'ai') await (window.renderAiHost || renderAi)();
     if (tab === 'health' && typeof renderHealthOps === 'function') await renderHealthOps();
     if (tab === 'audit' && typeof renderAuditLog === 'function') await renderAuditLog();
     if (tab === 'quality' && typeof renderQualityOps === 'function') await renderQualityOps();
-    if (tab === 'nutrition' && typeof renderNutrition === 'function') await renderNutrition();
+    if (tab === 'nutrition') await (window.renderNutritionHost || window.renderNutrition)?.();
     if (tab === 'community' && typeof renderCommunity === 'function') await renderCommunity();
     if (tab === 'testing' && typeof renderTesting === 'function') await renderTesting();
     if (tab === 'medipulsi' && typeof renderMedipulsi === 'function') await renderMedipulsi();
     if (tab === 'poster-studio') await window.renderPosterStudio();
     if (tab === 'settings') await renderSettings();
     if (tab === 'features' && typeof renderFeatures === 'function') await renderFeatures();
-    if (tab === 'quests' && typeof renderQuests === 'function') await renderQuests();
+    if (tab === 'quests') await (window.renderQuestsHost || window.renderQuests)?.();
     if (tab === 'funnel' && typeof renderFunnel === 'function') await renderFunnel();
     if (tab === 'capacity' && typeof renderCapacity === 'function') await renderCapacity();
     if (tab === 'errors' && typeof renderErrorsAdmin === 'function') await renderErrorsAdmin();
@@ -722,8 +725,11 @@ async function switchTab(tab, opts = {}) {
     if (tab === 'director' && typeof renderDirector === 'function') await renderDirector();
     if (tab === 'email' && typeof renderEmailAdmin === 'function') await renderEmailAdmin();
     if (tab === 'support' && typeof renderSupportAdmin === 'function') await renderSupportAdmin();
-    if (tab === 'trainers' && typeof renderTrainersAdmin === 'function') await renderTrainersAdmin();
+    if (tab === 'trainers') await (window.renderTrainersHost || window.renderTrainersAdmin)?.();
     if (tab === 'pets' && typeof renderPetsAdmin === 'function') await renderPetsAdmin();
+    if (tab === 'cycle') await window.renderCycleUsage?.();
+    if (tab === 'pills') await window.renderPillsUsage?.();
+    if (tab === 'lab') await window.renderLabUsage?.();
   }
   startAdminLive();
 }
@@ -3015,7 +3021,8 @@ async function loadAiLog() {
 }
 
 async function renderAi() {
-  const root = $('tab-ai');
+  // Inside the page tabs (usageHosts.js) this is the „ხარისხი და ჟურნალი“ pane.
+  const root = window.AdminUsage?.host('ai') || $('tab-ai');
   const seq = ++aiRenderSeq;
   const helpBtn = (key) => (typeof window.AdminV3?.infoButton === 'function' ? window.AdminV3.infoButton(key) : '');
   const fmt = (n) => (typeof opsFmt === 'function' ? opsFmt(n) : String(n ?? '—'));

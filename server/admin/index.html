@@ -29,7 +29,7 @@
   <link rel="stylesheet" href="./medipulsi.css?v=20261002">
   <link rel="stylesheet" href="./qa-workspace.css?v=20261002">
   <link rel="stylesheet" href="./v4/stripe.css?v=20261009">
-  <link rel="stylesheet" href="./v4/components.css?v=20261011p">
+  <link rel="stylesheet" href="./v4/components.css?v=20261011w">
   <link rel="stylesheet" href="./v4/charts.css?v=20261002">
   <link rel="stylesheet" href="./v4/overview.css?v=20261010b">
   <link rel="stylesheet" href="./v4/director.css?v=20261002">
@@ -115,7 +115,10 @@
           <div class="v3-nav-group-items">
             <button data-tab="ai" class="nav" data-icon="spark" title="Medi"><span class="nav-label">Medi</span></button>
             <button data-tab="health" class="nav" data-icon="pulse" title="ჯანმრთელობა"><span class="nav-label">ჯანმრთელობა</span></button>
-            <button data-tab="nutrition" class="nav" data-icon="apple" title="კვების დღიური"><span class="nav-label">კვების დღიური</span></button>
+            <button data-tab="cycle" class="nav" data-icon="cycle" title="MEDICYCLE"><span class="nav-label">MEDICYCLE</span></button>
+            <button data-tab="pills" class="nav" data-icon="capsule" title="MEDIPILL"><span class="nav-label">MEDIPILL</span></button>
+            <button data-tab="lab" class="nav" data-icon="microscope" title="MEDILAB"><span class="nav-label">MEDILAB</span></button>
+            <button data-tab="nutrition" class="nav" data-icon="apple" title="MEDIFOOD"><span class="nav-label">MEDIFOOD</span></button>
             <button data-tab="pets" class="nav" data-icon="paw" title="MEDIVET"><span class="nav-label">MEDIVET</span></button>
             <button data-tab="medipulsi" class="nav" data-icon="route" title="MEDIRUN"><span class="nav-label">MEDIRUN</span></button>
             <button data-tab="medirun-boxes" class="nav" data-icon="box" title="MEDIRUN ყუთები"><span class="nav-label">MEDIRUN ყუთები</span></button>
@@ -180,6 +183,9 @@
       <section id="tab-quality" class="panel hidden"></section>
       <section id="tab-nutrition" class="panel hidden"></section>
       <section id="tab-pets" class="panel hidden"></section>
+      <section id="tab-cycle" class="panel hidden"></section>
+      <section id="tab-pills" class="panel hidden"></section>
+      <section id="tab-lab" class="panel hidden"></section>
       <section id="tab-community" class="panel hidden"></section>
       <section id="tab-testing" class="panel hidden"></section>
       <section id="tab-poster-studio" class="panel hidden"></section>
@@ -219,7 +225,7 @@
   <div id="v3-confirm-root"></div>
   <script src="/socket.io/socket.io.js"></script>
   <script src="./ops-center.js?v=20261010"></script>
-  <script src="./admin.js?v=20261011p"></script>
+  <script src="./admin.js?v=20261011w"></script>
   <script src="./rewards-admin.js?v=20261004"></script>
   <script src="./admin-help-content.js?v=20261008"></script>
   <script src="./admin-v3.js?v=20261002"></script>
@@ -239,11 +245,11 @@
   <script src="./v3/modules/settings.js?v=20261011"></script>
   <script src="./v3/modules/medipulsi.js?v=20261004"></script>
   <script src="./v3/modules/poster-studio.js?v=20261002"></script>
-<script src="./v3/modules/nutrition.js?v=20261002"></script>
+<script src="./v3/modules/nutrition.js?v=20261011w"></script>
 <script src="./v3/modules/community.js?v=20261002"></script>
 <script src="./v4/charts.js?v=20261002"></script>
-<script src="./v4/guides.js?v=20261011p"></script>
-<script src="./v4/modules/manage.js?v=20261011r"></script>
+<script src="./v4/guides.js?v=20261011w"></script>
+<script src="./v4/modules/manage.js?v=20261011x"></script>
 <script src="./v4/modules/funnel.js?v=20261011r"></script>
 <script src="./v4/modules/capacity.js?v=20261002"></script>
 <script src="./v4/modules/errors.js?v=20261009"></script>
@@ -254,8 +260,17 @@
 <script src="./v4/modules/director.js?v=20261002"></script>
 <script src="./v4/modules/email.js?v=20261002"></script>
 <script src="./v4/modules/support.js?v=20261009"></script>
-<script src="./v4/modules/trainers.js?v=20261002"></script>
-<script src="./v4/modules/pets.js?v=20261011"></script>
-<script src="./v4/experience.js?v=20261011p"></script>
+<script src="./v4/modules/trainers.js?v=20261011w"></script>
+<script src="./v4/modules/usageKit.js?v=20261011b"></script>
+<script src="./v4/modules/pets.js?v=20261011w"></script>
+<script src="./v4/modules/usageCycle.js?v=20261011"></script>
+<script src="./v4/modules/usagePills.js?v=20261011"></script>
+<script src="./v4/modules/usageLab.js?v=20261011"></script>
+<script src="./v4/modules/usageFood.js?v=20261011"></script>
+<script src="./v4/modules/usageQuest.js?v=20261011"></script>
+<script src="./v4/modules/usageCoach.js?v=20261011"></script>
+<script src="./v4/modules/usageMedi.js?v=20261011"></script>
+<script src="./v4/modules/usageHosts.js?v=20261011"></script>
+<script src="./v4/experience.js?v=20261011w"></script>
 </body>
 </html>
