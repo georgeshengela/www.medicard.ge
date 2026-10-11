@@ -143,7 +143,7 @@ export const PUSH_ENGAGE_TEMPLATE_DEFAULTS = [
     key: "engage-reengage-14",
     group: "engage",
     label: "დაბრუნება · 14 დღე",
-    title: "დიდი ხანია არ მინახავხარ 👋",
+    title: "დიდი ხანია არ მინახიხარ 👋",
     body: "არანაირი საყვედური 😄 უბრალოდ გახსენებ: Medi ისევ აქ არის, როცა დაგჭირდება 💚",
     placeholders: [],
     sample: {},

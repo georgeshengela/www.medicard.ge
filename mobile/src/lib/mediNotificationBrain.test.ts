@@ -824,7 +824,7 @@ describe('Medi companion copy', () => {
   });
 
   it('keeps placeholders identical across languages and the Georgian free of known slips', () => {
-    const slips = [/დღეს[^.?!]*დღეს/, /მინახიხარ/, /🚨/, /\.\s*💚$/, /სტატისტიკებ/];
+    const slips = [/დღეს[^.?!]*დღეს/, /მინახავხარ/, /🚨/, /\.\s*💚$/, /სტატისტიკებ/];
     for (const [key, ka] of Object.entries(ENGAGE_FALLBACKS_BY_LANG.ka)) {
       const en = ENGAGE_FALLBACKS_BY_LANG.en[key];
       const vars = (text: string) => (text.match(/\{[a-zA-Z]+\}/g) ?? []).sort().join(',');
