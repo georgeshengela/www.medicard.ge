@@ -3,14 +3,14 @@ import { Keyboard, Pressable, Text, TextInput, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Lock, Mail, User } from 'lucide-react-native';
 import { AuthShell } from '@/components/AuthShell';
-import { AuthScreenTitle } from '@/components/auth/AuthScreenTitle';
 import { SignUpSwitchLink } from '@/components/auth/AuthSwitchLink';
 import { SocialAuthButtons } from '@/components/auth/SocialAuthButtons';
-import { AuthPrimaryButton } from '@/components/auth/AuthPrimaryButton';
-import { PasswordStrengthHint } from '@/components/auth/PasswordStrengthHint';
-import { Input } from '@/components/ui/Input';
+import { VelvetAuthHeader } from '@/components/auth/VelvetAuthHeader';
 import { EmailTypoHint } from '@/components/auth/EmailTypoHint';
-import { useFigmaAuth } from '@/constants/figmaAuthLayout';
+import { VelvetButton } from '@/components/velvet/VelvetButton';
+import { VelvetInput } from '@/components/velvet/VelvetInput';
+import { VelvetNotice } from '@/components/velvet/VelvetNotice';
+import { VelvetStrength } from '@/components/velvet/VelvetStrength';
 import { ka } from '@/i18n/ka';
 import { tx } from '@/i18n/locale';
 import { ApiError } from '@/lib/api';
@@ -19,6 +19,8 @@ import { AUTH_KEYBOARD_OPEN_PX } from '@/lib/authChrome';
 import { isPasswordStrongEnough, scorePassword } from '@/lib/passwordStrength';
 import { useKeyboardMetrics } from '@/lib/useKeyboardHeight';
 import { useAuth } from '@/store/AuthContext';
+import { suggestEmailFix } from '@/lib/emailTypo';
+import { useVelvet } from '@/theme/velvet';
 
 type Errors = {
   fullName?: string;
@@ -28,10 +30,11 @@ type Errors = {
   form?: string;
 };
 
+/** Sign up in the velvet material (owner 2026-10-11), the same heartbeat disc as welcome and sign-in. */
 export default function SignUp() {
   const { signUp } = useAuth();
   const router = useRouter();
-  const auth = useFigmaAuth();
+  const { palette: p, dark } = useVelvet();
   const { height: keyboardHeight } = useKeyboardMetrics();
   const keyboardOpen = keyboardHeight > AUTH_KEYBOARD_OPEN_PX;
 
@@ -121,17 +124,19 @@ export default function SignUp() {
 
   return (
     <AuthShell
+      backgroundColor={p.surface}
+      renderHeader={(compact, durationMs) => (
+        <VelvetAuthHeader palette={p} dark={dark} title={ka.auth.signUpTitle} titleKind="heading" compact={compact} durationMs={durationMs} />
+      )}
       footer={
-        <View style={{ gap: 4 }}>
-          <AuthPrimaryButton label={ka.auth.signUp} loading={busy} onPress={submit} />
-          {keyboardOpen ? null : <SignUpSwitchLink />}
+        <View style={{ gap: 6 }}>
+          <VelvetButton palette={p} label={ka.auth.signUp} busy={busy} onPress={() => void submit()} />
+          {keyboardOpen ? null : <SignUpSwitchLink palette={p} />}
         </View>
       }
     >
-      <AuthScreenTitle>{ka.auth.signUp}</AuthScreenTitle>
-
-      <View style={{ marginBottom: 24, gap: 14 }}>
-        <SocialAuthButtons />
+      <View style={{ marginBottom: 26, gap: 18 }}>
+        <SocialAuthButtons palette={p} />
         {/* Same choices as the web: a phone number signs up on the sign-in screen (SMS code). */}
         <Pressable
           accessibilityRole="button"
@@ -139,14 +144,15 @@ export default function SignUp() {
           onPress={() => router.replace('/(auth)/sign-in?method=phone' as never)}
           style={{ alignSelf: 'center' }}
         >
-          <Text style={{ fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 14, lineHeight: 20, color: auth.linkColor }}>
+          <Text style={{ fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 14, lineHeight: 20, color: p.ink }}>
             {tx('ტელეფონის ნომრით რეგისტრაცია', 'Sign up with a phone number')}
           </Text>
         </Pressable>
       </View>
 
-      <View style={{ gap: 16 }}>
-        <Input
+      <View style={{ gap: 18 }}>
+        <VelvetInput
+          palette={p}
           label={ka.auth.fullName}
           placeholder={ka.auth.fullNamePlaceholder}
           icon={User}
@@ -164,43 +170,49 @@ export default function SignUp() {
           returnKeyType="next"
           blurOnSubmit={false}
           onSubmitEditing={() => emailRef.current?.focus()}
-          figma
-        />
-
-        <Input
-          ref={emailRef}
-          label={ka.auth.email}
-          placeholder={ka.auth.emailPlaceholder}
-          icon={Mail}
-          value={email}
-          onChangeText={(text) => {
-            setEmail(text);
-            if (errors.email) setErrors((current) => ({ ...current, email: undefined }));
-          }}
-          onBlur={() => {
-            const message = validateField('email');
-            setErrors((current) => ({ ...current, email: message }));
-          }}
-          error={errors.email}
-          autoCapitalize="none"
-          autoComplete="email"
-          keyboardType="email-address"
-          returnKeyType="next"
-          blurOnSubmit={false}
-          onSubmitEditing={() => passwordRef.current?.focus()}
-          figma
-        />
-        <EmailTypoHint
-          email={email}
-          onApply={(fixed) => {
-            setEmail(fixed);
-            setErrors((current) => ({ ...current, email: undefined }));
-          }}
         />
 
         <View>
-          <Input
+          <VelvetInput
+            ref={emailRef}
+            palette={p}
+            label={ka.auth.email}
+            placeholder={ka.auth.emailPlaceholder}
+            icon={Mail}
+            value={email}
+            onChangeText={(text) => {
+              setEmail(text);
+              if (errors.email) setErrors((current) => ({ ...current, email: undefined }));
+            }}
+            onBlur={() => {
+              const message = validateField('email');
+              setErrors((current) => ({ ...current, email: message }));
+            }}
+            error={errors.email}
+            autoCapitalize="none"
+            autoComplete="email"
+            keyboardType="email-address"
+            returnKeyType="next"
+            blurOnSubmit={false}
+            onSubmitEditing={() => passwordRef.current?.focus()}
+          />
+          {suggestEmailFix(email) ? (
+            <View style={{ marginTop: 14, marginHorizontal: 4 }}>
+              <EmailTypoHint
+                email={email}
+                onApply={(fixed) => {
+                  setEmail(fixed);
+                  setErrors((current) => ({ ...current, email: undefined }));
+                }}
+              />
+            </View>
+          ) : null}
+        </View>
+
+        <View>
+          <VelvetInput
             ref={passwordRef}
+            palette={p}
             label={ka.auth.password}
             placeholder={ka.auth.passwordPlaceholder}
             icon={Lock}
@@ -220,13 +232,13 @@ export default function SignUp() {
             returnKeyType="next"
             blurOnSubmit={false}
             onSubmitEditing={() => confirmRef.current?.focus()}
-            figma
           />
-          <PasswordStrengthHint level={strength.level} />
+          <VelvetStrength level={strength.level} palette={p} />
         </View>
 
-        <Input
+        <VelvetInput
           ref={confirmRef}
+          palette={p}
           label={ka.auth.confirmPassword}
           placeholder={ka.auth.confirmPasswordPlaceholder}
           icon={Lock}
@@ -245,17 +257,18 @@ export default function SignUp() {
           autoComplete="new-password"
           returnKeyType="done"
           onSubmitEditing={() => void submit()}
-          figma
         />
       </View>
 
       {errors.form ? (
-        <View className="mt-4 rounded-2xl border border-state-danger/20 bg-state-dangerBg p-3.5">
-          <Text className="font-sans text-sm text-state-danger">{errors.form}</Text>
+        <View style={{ marginTop: 18 }}>
+          <VelvetNotice palette={p} text={errors.form} />
         </View>
       ) : null}
 
-      <Text className="mt-4 text-center font-sans text-xs leading-5 text-text-300">{ka.auth.terms}</Text>
+      <Text style={{ marginTop: 18, marginHorizontal: 8, textAlign: 'center', fontFamily: 'NotoSansGeorgian_400Regular', fontSize: 12, lineHeight: 19, color: p.inkOff }}>
+        {ka.auth.terms}
+      </Text>
     </AuthShell>
   );
 }

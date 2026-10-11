@@ -6,6 +6,8 @@ import { useTheme } from '@/store/ThemeContext';
  * the bottom-right (neumorphism). The theme toggle is the CodePen „Neumorphic dark mode toggle“ (Cameron
  * Knight) in these colours. Shadows are RN `boxShadow` strings (new architecture; inset needs it too).
  * Text on velvet keeps full-contrast ink: the material is the decoration, never the copy.
+ * Owner 2026-10-11: „ზომიერად“ — beyond the welcome screen velvet stays light (fields and buttons only a
+ * touch of depth), so the app that follows does not feel foreign.
  */
 export type VelvetPalette = {
   /** The page and every raised or pressed surface on it. */
@@ -18,8 +20,13 @@ export type VelvetPalette = {
   ink: string;
   /** Body copy. */
   ink2: string;
-  /** Options that are not selected. */
+  /** Options that are not selected, placeholders, resting icons. */
   inkOff: string;
+  /** What a person types into a field. */
+  text: string;
+  /** Inside a text field: a touch lighter than the page, like the app's own fields. */
+  field: string;
+  danger: string;
   sun: string;
   moon: string;
   /** The heartbeat signal and its ripple. */
@@ -39,6 +46,9 @@ export const VELVET: Record<'light' | 'dark', VelvetPalette> = {
     ink: '#0B4F49',
     ink2: '#4F6866',
     inkOff: '#7D9491',
+    text: '#0F2A28',
+    field: '#F3F8F7',
+    danger: '#C62B3F',
     sun: '#F29B48',
     moon: '#A3B8B4',
     pulse: '#14B8A6',
@@ -53,6 +63,9 @@ export const VELVET: Record<'light' | 'dark', VelvetPalette> = {
     ink: '#99F6E4',
     ink2: '#A6BBC2',
     inkOff: '#7895A0',
+    text: '#EAF6F4',
+    field: '#18343F',
+    danger: '#FB7185',
     sun: '#5F7F8B',
     moon: '#FFFFFF',
     pulse: '#5EEAD4',
@@ -71,6 +84,12 @@ export const velvetKnob = (p: VelvetPalette) => `inset 2px 2px 2px ${p.light}, 5
 
 /** A big raised disc. */
 export const velvetRaised = (p: VelvetPalette) => `18px 18px 36px ${p.shade}, -14px -14px 30px ${p.light}`;
+
+/** A text field: barely pressed into the page (light on purpose — see the note above). */
+export const velvetField = (p: VelvetPalette) => `inset 1px 1px 3px ${p.shade}, inset -1px -1px 2px ${p.light}`;
+
+/** A button-sized object resting lightly on the page. */
+export const velvetLift = (p: VelvetPalette) => `-2px -2px 6px ${p.light}, 3px 4px 10px ${p.shade}`;
 
 /** A shallow well pressed into a raised surface. */
 export const velvetWell = (p: VelvetPalette) => `inset 8px 8px 16px ${p.shade}, inset -8px -8px 16px ${p.light}`;

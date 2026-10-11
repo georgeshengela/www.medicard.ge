@@ -9,6 +9,7 @@ import { setPendingSocialLink } from '@/lib/socialLinkState';
 import { SocialSignInError, appleSignInAvailable, googleSignInAvailable } from '@/lib/socialSignIn';
 import { useAuth, type SocialProvider, type SocialSignInResult } from '@/store/AuthContext';
 import { useIsDark, useThemeColors } from '@/theme/colors';
+import { velvetField, velvetLift, type VelvetPalette } from '@/theme/velvet';
 
 // Dev web preview shows both buttons so the layout can be reviewed; tapping explains they need the app.
 const PREVIEW_ON_WEB = __DEV__ && Platform.OS === 'web';
@@ -18,6 +19,7 @@ type ButtonProps = {
   busy: boolean;
   disabled: boolean;
   onPress: () => void;
+  palette?: VelvetPalette;
 };
 
 /**
@@ -26,7 +28,7 @@ type ButtonProps = {
  * The two sit side by side at the same size, radius and weight, so neither is more prominent
  * (App Review 4.8); screen readers still hear the full "Continue with …" label.
  */
-function ProviderButton({ provider, busy, disabled, onPress }: ButtonProps) {
+function ProviderButton({ provider, busy, disabled, onPress, palette }: ButtonProps) {
   const auth = useFigmaAuth();
   const dark = useIsDark();
   const apple = provider === 'apple';
@@ -48,11 +50,13 @@ function ProviderButton({ provider, busy, disabled, onPress }: ButtonProps) {
       <View
         pointerEvents="none"
         style={{
-          minHeight: auth.primaryMinHeight,
-          borderRadius: auth.primaryRadius,
+          minHeight: palette ? 52 : auth.primaryMinHeight,
+          borderRadius: palette ? 26 : auth.primaryRadius,
           backgroundColor: background,
           borderWidth: apple ? 0 : 1,
-          borderColor: dark ? '#FFFFFF' : '#D1D5DB',
+          // On velvet the colours stay Apple's and Google's own; the button rests on the material.
+          borderColor: palette ? 'rgba(15, 42, 40, 0.08)' : dark ? '#FFFFFF' : '#D1D5DB',
+          ...(palette ? { boxShadow: velvetLift(palette) } : null),
           flexDirection: 'row',
           alignItems: 'center',
           justifyContent: 'center',
@@ -82,7 +86,7 @@ function ProviderButton({ provider, busy, disabled, onPress }: ButtonProps) {
 }
 
 /** "Continue with Apple / Google" block for sign-in and sign-up, with an "or with email" divider under it. */
-export function SocialAuthButtons({ dividerLabel }: { dividerLabel?: string } = {}) {
+export function SocialAuthButtons({ dividerLabel, palette }: { dividerLabel?: string; palette?: VelvetPalette } = {}) {
   const router = useRouter();
   const auth = useFigmaAuth();
   const colors = useThemeColors();
@@ -136,34 +140,49 @@ export function SocialAuthButtons({ dividerLabel }: { dividerLabel?: string } = 
     <View style={{ gap: 20 }}>
       <View style={{ gap: 12 }}>
         <View style={{ flexDirection: 'row', gap: 12 }}>
-          {apple ? <ProviderButton provider="apple" busy={busy === 'apple'} disabled={busy !== null} onPress={() => void start('apple')} /> : null}
-          {google ? <ProviderButton provider="google" busy={busy === 'google'} disabled={busy !== null} onPress={() => void start('google')} /> : null}
+          {apple ? <ProviderButton provider="apple" busy={busy === 'apple'} disabled={busy !== null} onPress={() => void start('apple')} palette={palette} /> : null}
+          {google ? <ProviderButton provider="google" busy={busy === 'google'} disabled={busy !== null} onPress={() => void start('google')} palette={palette} /> : null}
         </View>
 
         {error ? (
           <View
             accessibilityLiveRegion="polite"
-            style={{
-              borderRadius: 16,
-              borderWidth: 1,
-              borderColor: colors.danger,
-              backgroundColor: colors.dangerBg,
-              paddingHorizontal: 16,
-              paddingVertical: 12,
-            }}
+            style={
+              palette
+                ? { borderRadius: 16, backgroundColor: palette.surface, boxShadow: velvetField(palette), paddingHorizontal: 16, paddingVertical: 12 }
+                : {
+                    borderRadius: 16,
+                    borderWidth: 1,
+                    borderColor: colors.danger,
+                    backgroundColor: colors.dangerBg,
+                    paddingHorizontal: 16,
+                    paddingVertical: 12,
+                  }
+            }
           >
-            <Text style={{ fontFamily: 'NotoSansGeorgian_600SemiBold', fontSize: 14, lineHeight: 20, color: colors.danger }}>{error}</Text>
+            <Text style={{ fontFamily: 'NotoSansGeorgian_600SemiBold', fontSize: 14, lineHeight: 20, color: palette ? palette.danger : colors.danger }}>{error}</Text>
           </View>
         ) : null}
       </View>
 
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-        <View style={{ flex: 1, height: 1, backgroundColor: auth.dividerColor }} />
-        <Text style={{ fontFamily: 'NotoSansGeorgian_400Regular', fontSize: 13, lineHeight: 18, color: auth.textMuted }}>
+        <DividerLine color={auth.dividerColor} palette={palette} />
+        <Text style={{ fontFamily: 'NotoSansGeorgian_400Regular', fontSize: 13, lineHeight: 18, color: palette ? palette.inkOff : auth.textMuted }}>
           {dividerLabel ?? tx('ან ელ-ფოსტით', 'or with email')}
         </Text>
-        <View style={{ flex: 1, height: 1, backgroundColor: auth.dividerColor }} />
+        <DividerLine color={auth.dividerColor} palette={palette} />
       </View>
+    </View>
+  );
+}
+
+/** A hairline, or on velvet a groove carved into the material (shade above, light below). */
+function DividerLine({ color, palette }: { color: string; palette?: VelvetPalette }) {
+  if (!palette) return <View style={{ flex: 1, height: 1, backgroundColor: color }} />;
+  return (
+    <View style={{ flex: 1 }}>
+      <View style={{ height: 1, backgroundColor: palette.shade }} />
+      <View style={{ height: 1, backgroundColor: palette.light }} />
     </View>
   );
 }

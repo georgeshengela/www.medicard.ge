@@ -23,6 +23,10 @@ type Props = {
   subtitle?: string;
   children: React.ReactNode;
   footer?: React.ReactNode;
+  /** Page colour (velvet screens pass their surface); default the theme surface. */
+  backgroundColor?: string;
+  /** Replaces the brand hero; `compact` is true while the keyboard is up. */
+  renderHeader?: (compact: boolean, durationMs: number) => React.ReactNode;
 };
 
 const KEYBOARD_EASE = Easing.bezier(0.17, 0.59, 0.4, 0.77);
@@ -40,9 +44,12 @@ export function AuthShell({
   subtitle,
   children,
   footer,
+  backgroundColor,
+  renderHeader,
 }: Props) {
   const insets = useSafeAreaInsets();
   const colors = useThemeColors();
+  const page = backgroundColor ?? colors.surface;
   const { height: keyboardHeight, durationMs } = useKeyboardMetrics();
   const keyboardOpen = keyboardHeight > AUTH_KEYBOARD_OPEN_PX;
   const footerBottom = useSharedValue(authFooterBottomPad(0, insets.bottom));
@@ -84,7 +91,7 @@ export function AuthShell({
   }));
 
   return (
-    <View className="flex-1 font-sans" style={{ flex: 1, backgroundColor: colors.surface }}>
+    <View className="flex-1 font-sans" style={{ flex: 1, backgroundColor: page }}>
       <View className="flex-1">
         <ScrollView
           ref={scrollRef}
@@ -108,7 +115,9 @@ export function AuthShell({
           showsVerticalScrollIndicator={false}
         >
           <Pressable onPress={dismissKeyboard} accessible={false}>
-            {hero ? (
+            {renderHeader ? (
+              renderHeader(keyboardOpen, durationMs)
+            ) : hero ? (
               <AuthBrandHeader
                 subtitle={heroSubtitle ?? ka.app.tagline}
                 compact={keyboardOpen}
@@ -141,7 +150,7 @@ export function AuthShell({
               {
                 paddingHorizontal: FIGMA_AUTH.screenPaddingX,
                 paddingTop: AUTH_SCREEN_GUTTER,
-                backgroundColor: colors.surface,
+                backgroundColor: page,
               },
               footerPadStyle,
             ]}

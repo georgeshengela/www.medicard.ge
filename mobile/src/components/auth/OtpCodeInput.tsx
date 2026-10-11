@@ -1,9 +1,10 @@
-import React, { useRef } from 'react';
+import React, { useRef, useState } from 'react';
 import { Keyboard, Platform, Text, TextInput, View } from 'react-native';
 import { KEYBOARD_DONE_ACCESSORY_ID } from '@/components/ui/KeyboardDoneAccessory';
 import { useFigmaProfileSetup, FIGMA_PROFILE_SETUP_SHADOW } from '@/constants/figmaProfileSetupLayout';
 import { useThemeColors } from '@/theme/colors';
 import { tx } from '@/i18n/locale';
+import { velvetField, type VelvetPalette } from '@/theme/velvet';
 
 type Props = {
   value: string;
@@ -16,6 +17,8 @@ type Props = {
   variant?: 'compact' | 'hero';
   /** Remount the hidden field after a failed attempt so Android does not keep the old digits. */
   resetKey?: number;
+  /** Velvet look (sign-in): each digit sits in a pressed well; the next one to fill glows. */
+  palette?: VelvetPalette;
 };
 
 /** Single-digit OTP boxes — compact (48px) or hero (80px) per Figma. */
@@ -27,14 +30,17 @@ export function OtpCodeInput({
   length = 4,
   variant = 'compact',
   resetKey = 0,
+  palette,
 }: Props) {
   const FIGMA_PROFILE_SETUP = useFigmaProfileSetup();
   const theme = useThemeColors();
   const inputRef = useRef<TextInput>(null);
-  const box = variant === 'hero' ? FIGMA_PROFILE_SETUP.otpBoxSize : 48;
-  const gap = variant === 'hero' ? FIGMA_PROFILE_SETUP.otpGap : 8;
-  const fontSize = variant === 'hero' ? 32 : 22;
-  const borderRadius = variant === 'hero' ? FIGMA_PROFILE_SETUP.otpBoxRadius : 14;
+  const [focused, setFocused] = useState(autoFocus);
+  const velvet = palette != null;
+  const box = velvet ? 66 : variant === 'hero' ? FIGMA_PROFILE_SETUP.otpBoxSize : 48;
+  const gap = velvet ? 14 : variant === 'hero' ? FIGMA_PROFILE_SETUP.otpGap : 8;
+  const fontSize = velvet ? 30 : variant === 'hero' ? 32 : 22;
+  const borderRadius = velvet ? 20 : variant === 'hero' ? FIGMA_PROFILE_SETUP.otpBoxRadius : 14;
   const digits = value.padEnd(length, ' ').slice(0, length).split('');
 
   return (
@@ -43,6 +49,26 @@ export function OtpCodeInput({
         <View style={{ flexDirection: 'row', justifyContent: 'center', gap }} pointerEvents="none">
           {digits.map((digit, index) => {
             const filled = digit.trim().length > 0;
+            if (palette) {
+              const next = focused && index === Math.min(value.length, length - 1);
+              const ring = error ? palette.danger : next ? palette.pulse : null;
+              return (
+                <View
+                  key={index}
+                  style={{
+                    width: box,
+                    height: box,
+                    borderRadius,
+                    backgroundColor: palette.field,
+                    boxShadow: ring ? `${velvetField(palette)}, 0px 0px 0px 1.5px ${ring}` : velvetField(palette),
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
+                  <Text style={{ fontFamily: 'NotoSansGeorgian_700Bold', fontSize, color: palette.text }}>{filled ? digit : ''}</Text>
+                </View>
+              );
+            }
             return (
               <View
                 key={index}
@@ -91,6 +117,8 @@ export function OtpCodeInput({
           autoComplete="sms-otp"
           maxLength={length}
           autoFocus={autoFocus}
+          onFocus={() => setFocused(true)}
+          onBlur={() => setFocused(false)}
           caretHidden
           importantForAccessibility="yes"
           accessibilityLabel={tx('SMS კოდი', 'SMS code')}
@@ -100,7 +128,7 @@ export function OtpCodeInput({
             left: 0,
             right: 0,
             top: 0,
-            height: box + (variant === 'hero' ? 0 : 4),
+            height: box + (velvet || variant === 'hero' ? 0 : 4),
             opacity: 0.02,
             color: theme.text100,
             fontSize,
@@ -115,7 +143,7 @@ export function OtpCodeInput({
             textAlign: 'center',
             fontFamily: 'NotoSansGeorgian_400Regular',
             fontSize: 14,
-            color: '#EF4444',
+            color: palette ? palette.danger : '#EF4444',
           }}
         >
           {error}

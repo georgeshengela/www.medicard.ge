@@ -1,15 +1,16 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Keyboard, Pressable, Text, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { Mail, Lock } from 'lucide-react-native';
+import { Lock, Mail, UserPlus } from 'lucide-react-native';
 import { AuthShell } from '@/components/AuthShell';
-import { SignInSwitchLink } from '@/components/auth/AuthSwitchLink';
-import { AuthPrimaryButton } from '@/components/auth/AuthPrimaryButton';
 import { OtpCodeInput } from '@/components/auth/OtpCodeInput';
 import { SocialAuthButtons } from '@/components/auth/SocialAuthButtons';
-import { ProfilePhoneField } from '@/components/profile/ProfilePhoneField';
-import { Input } from '@/components/ui/Input';
-import { FIGMA_AUTH, useFigmaAuth } from '@/constants/figmaAuthLayout';
+import { VelvetAuthHeader } from '@/components/auth/VelvetAuthHeader';
+import { VelvetButton } from '@/components/velvet/VelvetButton';
+import { VelvetInput } from '@/components/velvet/VelvetInput';
+import { VelvetNotice } from '@/components/velvet/VelvetNotice';
+import { VelvetPhoneField } from '@/components/velvet/VelvetPhoneField';
+import { VelvetSegment } from '@/components/velvet/VelvetSegment';
 import { ka } from '@/i18n/ka';
 import { appLang, tx } from '@/i18n/locale';
 import { api } from '@/lib/api';
@@ -18,7 +19,7 @@ import { authErrorMessage } from '@/lib/authErrorMessage';
 import { defaultSignInMethod, readLastSignInMethod, rememberSignInMethod, type SignInMethod } from '@/lib/signInMethod';
 import { useKeyboardMetrics } from '@/lib/useKeyboardHeight';
 import { useAuth } from '@/store/AuthContext';
-import { useIsDark, useThemeColors } from '@/theme/colors';
+import { useVelvet, type VelvetPalette } from '@/theme/velvet';
 
 function cleanEmail(value: string) {
   return value.replace(/ /g, ' ').trim().toLowerCase();
@@ -34,13 +35,13 @@ function phoneFromDigits(local: string): string | null {
  * password. Phone sign-in creates an account for a new number, exactly like the web. The method last
  * used on this device opens first (owner 2026-10-05: a person who started on the web with a phone
  * signed up again in the app with an email, because the app offered only email).
+ * Velvet look (owner 2026-10-11): the welcome screen's material and heartbeat disc carry on here.
  */
 export default function SignIn() {
   const { signIn, signInWithPhone } = useAuth();
   const router = useRouter();
   const params = useLocalSearchParams<{ method?: string }>();
-  const auth = useFigmaAuth();
-  const colors = useThemeColors();
+  const { palette: p, dark } = useVelvet();
   const { height: keyboardHeight } = useKeyboardMetrics();
   const keyboardOpen = keyboardHeight > AUTH_KEYBOARD_OPEN_PX;
 
@@ -154,25 +155,51 @@ export default function SignIn() {
         : { label: tx('კოდის მიღება', 'Get code'), onPress: () => void sendCode(), disabled: !phoneFromDigits(local) };
 
   return (
-    <View style={{ flex: 1, backgroundColor: colors.surface }}>
+    <View style={{ flex: 1, backgroundColor: p.surface }}>
       <AuthShell
-        hero
-        heroSubtitle={ka.auth.signInHero}
+        backgroundColor={p.surface}
+        renderHeader={(compact, durationMs) => (
+          <VelvetAuthHeader
+            palette={p}
+            dark={dark}
+            title={ka.app.brandWordmark}
+            subtitle={ka.auth.signInHero}
+            compact={compact}
+            durationMs={durationMs}
+          />
+        )}
         footer={
-          <View style={{ gap: 12 }}>
-            <AuthPrimaryButton label={primary.label} loading={busy} disabled={primary.disabled} onPress={primary.onPress} />
-            {keyboardOpen ? null : <SignInSwitchLink />}
+          <View style={{ gap: 16 }}>
+            <VelvetButton palette={p} label={primary.label} busy={busy} disabled={primary.disabled} onPress={primary.onPress} />
+            {keyboardOpen ? null : (
+              <VelvetButton
+                palette={p}
+                tone="quiet"
+                icon={UserPlus}
+                label={ka.auth.signUpTitle}
+                accessibilityHint={ka.auth.noAccount}
+                onPress={() => router.replace('/(auth)/sign-up')}
+              />
+            )}
           </View>
         }
       >
-        <View style={{ gap: keyboardOpen ? 16 : 24, paddingTop: keyboardOpen ? 8 : 0 }}>
-          {keyboardOpen || sentTo ? null : <SocialAuthButtons dividerLabel={tx('ან', 'or')} />}
-          {sentTo ? null : <MethodSwitch value={method} onChange={pick} />}
+        <View style={{ gap: keyboardOpen ? 18 : 26, paddingTop: keyboardOpen ? 4 : 0 }}>
+          {keyboardOpen || sentTo ? null : <SocialAuthButtons dividerLabel={tx('ან', 'or')} palette={p} />}
+          {sentTo ? null : (
+            <VelvetSegment
+              value={method}
+              options={methodOptions()}
+              onChange={pick}
+              palette={p}
+              accessibilityLabel={tx('შესვლის გზა', 'Sign-in method')}
+            />
+          )}
 
           {method === 'phone' ? (
             sentTo ? (
-              <View style={{ gap: 14 }}>
-                <Text style={{ fontFamily: 'NotoSansGeorgian_400Regular', fontSize: 14, lineHeight: 21, color: colors.text200 }}>
+              <View style={{ gap: 18 }}>
+                <Text style={{ textAlign: 'center', fontFamily: 'NotoSansGeorgian_400Regular', fontSize: 14, lineHeight: 21, color: p.ink2 }}>
                   {tx(
                     `4-ნიშნა კოდი გავაგზავნეთ ნომერზე ${sentTo.replace(/(\+995)(\d{3})(\d{3})(\d{3})/, '$1 $2 $3 $4')}.`,
                     `We sent a 4-digit code to ${sentTo.replace(/(\+995)(\d{3})(\d{3})(\d{3})/, '$1 $2 $3 $4')}.`,
@@ -187,17 +214,18 @@ export default function SignIn() {
                       if (next.trim().length === 4) void verifyCode(next);
                     }}
                     length={4}
-                    variant="hero"
                     resetKey={codeKey}
+                    palette={p}
                   />
                 </View>
                 {devCode ? (
-                  <Text style={{ textAlign: 'center', fontFamily: 'NotoSansGeorgian_600SemiBold', fontSize: 13, color: colors.text300 }}>
+                  <Text style={{ textAlign: 'center', fontFamily: 'NotoSansGeorgian_600SemiBold', fontSize: 13, color: p.inkOff }}>
                     {tx(`სატესტო კოდი: ${devCode}`, `Test code: ${devCode}`)}
                   </Text>
                 ) : null}
-                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 4 }}>
                   <TextLink
+                    palette={p}
                     label={ka.auth.changeNumber}
                     onPress={() => {
                       setSentTo(null);
@@ -206,6 +234,7 @@ export default function SignIn() {
                     }}
                   />
                   <TextLink
+                    palette={p}
                     label={cooldown > 0 ? tx(`ხელახლა ${cooldown} წმ-ში`, `Resend in ${cooldown} s`) : tx('ხელახლა გაგზავნა', 'Resend code')}
                     disabled={cooldown > 0 || busy}
                     onPress={() => void sendCode(sentTo)}
@@ -214,8 +243,15 @@ export default function SignIn() {
               </View>
             ) : (
               <View style={{ gap: 10 }}>
-                <ProfilePhoneField value={local} onChange={(next) => { setLocal(next); setErrors({}); }} />
-                <Text style={{ fontFamily: 'NotoSansGeorgian_400Regular', fontSize: 12.5, lineHeight: 19, color: colors.text300 }}>
+                <VelvetPhoneField
+                  palette={p}
+                  value={local}
+                  onChange={(next) => {
+                    setLocal(next);
+                    setErrors({});
+                  }}
+                />
+                <Text style={{ marginHorizontal: 4, fontFamily: 'NotoSansGeorgian_400Regular', fontSize: 12.5, lineHeight: 19, color: p.inkOff }}>
                   {tx(
                     'SMS-ით მიიღებ 4-ნიშნა კოდს. ახალ ნომერზე ანგარიში ავტომატურად შეიქმნება.',
                     'You will get a 4-digit code by SMS. A new number gets an account automatically.',
@@ -224,9 +260,10 @@ export default function SignIn() {
               </View>
             )
           ) : (
-            <View style={{ gap: 16 }}>
-              <View style={{ gap: FIGMA_AUTH.formFieldGap }}>
-                <Input
+            <View style={{ gap: 14 }}>
+              <View style={{ gap: 18 }}>
+                <VelvetInput
+                  palette={p}
                   label={ka.auth.email}
                   placeholder={ka.auth.emailPlaceholderSignIn}
                   icon={Mail}
@@ -240,10 +277,10 @@ export default function SignIn() {
                   autoComplete="email"
                   keyboardType="email-address"
                   returnKeyType="next"
-                  figma
                 />
 
-                <Input
+                <VelvetInput
+                  palette={p}
                   label={ka.auth.password}
                   placeholder={ka.auth.passwordPlaceholderSignIn}
                   icon={Lock}
@@ -258,101 +295,35 @@ export default function SignIn() {
                   autoComplete="current-password"
                   returnKeyType="go"
                   onSubmitEditing={() => void submitEmail()}
-                  figma
                 />
               </View>
 
               {/* No „Remember me“: it never changed anything (the session is always kept and slides). */}
-              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end' }}>
-                <Pressable
-                  accessibilityRole="button"
-                  hitSlop={8}
-                  onPress={() => router.push('/(auth)/forgot-password')}
-                >
-                  <Text
-                    style={{
-                      fontFamily: 'NotoSansGeorgian_700Bold',
-                      fontSize: 14,
-                      lineHeight: 20,
-                      color: auth.linkColor,
-                    }}
-                  >
-                    {ka.auth.forgotPassword}
-                  </Text>
-                </Pressable>
+              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', paddingHorizontal: 4 }}>
+                <TextLink palette={p} label={ka.auth.forgotPassword} onPress={() => router.push('/(auth)/forgot-password')} />
               </View>
             </View>
           )}
 
-          {errors.form ? (
-            <View
-              accessibilityLiveRegion="polite"
-              style={{
-                borderRadius: 16,
-                borderWidth: 1,
-                borderColor: colors.danger,
-                backgroundColor: colors.dangerBg,
-                paddingHorizontal: 16,
-                paddingVertical: 12,
-              }}
-            >
-              <Text style={{ fontFamily: 'NotoSansGeorgian_600SemiBold', fontSize: 14, color: colors.danger }}>
-                {errors.form}
-              </Text>
-            </View>
-          ) : null}
+          {errors.form ? <VelvetNotice palette={p} text={errors.form} /> : null}
         </View>
       </AuthShell>
     </View>
   );
 }
 
-/** Phone | Email — two equal pills, the same switch as the web sign-in. */
-function MethodSwitch({ value, onChange }: { value: SignInMethod; onChange: (next: SignInMethod) => void }) {
-  const colors = useThemeColors();
-  const dark = useIsDark();
-  const options: { id: SignInMethod; label: string }[] = [
-    { id: 'phone', label: tx('ტელეფონი', 'Phone') },
-    { id: 'email', label: tx('ელ-ფოსტა', 'Email') },
+/** Phone | Email — two equal options, the same switch as the web sign-in. */
+function methodOptions(): readonly [{ value: SignInMethod; label: string }, { value: SignInMethod; label: string }] {
+  return [
+    { value: 'phone', label: tx('ტელეფონი', 'Phone') },
+    { value: 'email', label: tx('ელ-ფოსტა', 'Email') },
   ];
-  return (
-    <View
-      accessibilityRole="radiogroup"
-      style={{ flexDirection: 'row', padding: 4, borderRadius: 16, backgroundColor: dark ? colors.bg200 : '#EEF2F2' }}
-    >
-      {options.map((option) => {
-        const active = option.id === value;
-        return (
-          <Pressable
-            key={option.id}
-            accessibilityRole="radio"
-            accessibilityState={{ selected: active }}
-            onPress={() => onChange(option.id)}
-            style={{
-              flex: 1,
-              minHeight: 40,
-              borderRadius: 12,
-              alignItems: 'center',
-              justifyContent: 'center',
-              backgroundColor: active ? colors.surface : 'transparent',
-            }}
-          >
-            <Text style={{ fontFamily: active ? 'NotoSansGeorgian_700Bold' : 'NotoSansGeorgian_600SemiBold', fontSize: 14, color: active ? colors.text100 : colors.text200 }}>
-              {option.label}
-            </Text>
-          </Pressable>
-        );
-      })}
-    </View>
-  );
 }
 
-function TextLink({ label, onPress, disabled = false }: { label: string; onPress: () => void; disabled?: boolean }) {
-  const auth = useFigmaAuth();
-  const colors = useThemeColors();
+function TextLink({ label, onPress, palette: p, disabled = false }: { label: string; onPress: () => void; palette: VelvetPalette; disabled?: boolean }) {
   return (
     <Pressable accessibilityRole="button" hitSlop={8} disabled={disabled} onPress={onPress}>
-      <Text style={{ fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 14, lineHeight: 20, color: disabled ? colors.text300 : auth.linkColor }}>
+      <Text style={{ fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 14, lineHeight: 20, color: disabled ? p.inkOff : p.ink }}>
         {label}
       </Text>
     </Pressable>

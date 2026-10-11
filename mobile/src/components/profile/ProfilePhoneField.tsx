@@ -12,7 +12,7 @@ type Props = {
   error?: string | null;
 };
 
-function formatDisplayPhone(digits: string) {
+export function formatDisplayPhone(digits: string) {
   const d = digits.replace(/\D/g, '').replace(/^995/, '').slice(0, 9);
   if (d.length <= 3) return d;
   if (d.length <= 5) return `${d.slice(0, 3)} ${d.slice(3)}`;
