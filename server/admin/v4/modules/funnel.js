@@ -18,7 +18,8 @@
   const PERIODS = [7, 30, 90];
   const GOALS = { medications: 'წამლები', nutrition: 'კვება და წონა', cycle: 'ციკლი', general: 'ზოგადი', unknown: 'არ აირჩია' };
   const STEPS = {
-    'o1-gender': 'სქესი', 'o2-goal': 'მთავარი მიზანი', 'o3-birthdate': 'დაბადების თარიღი', 'o4-body': 'სიმაღლე და წონა',
+    'o0-name': 'სახელი და გვარი', 'o1-gender': 'სქესი', 'o2-goal': 'მთავარი მიზანი (ძველი)', 'o3-birthdate': 'დაბადების თარიღი',
+    'o4-height': 'სიმაღლე', 'o4-weight': 'წონა', 'o4-body': 'სიმაღლე და წონა (ძველი)',
     'o5-medication': 'პირველი წამალი', 'o5-weight': 'სამიზნე წონა', 'o5-cycle': 'ბოლო მენსტრუაცია',
     privacy: 'კონფიდენციალობა', 'ai-privacy': 'AI თანხმობა', notifications: 'შეტყობინებები', 'home-layout': 'მთავარი გვერდის არჩევა',
   };

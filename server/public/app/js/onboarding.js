@@ -1,5 +1,6 @@
 // MEDICARD web — first-run profile (same data the app's onboarding writes).
-// Steps: sex → main goal → birth date (18+) → height/weight → privacy acceptance (required legal record).
+// Steps: name + sex → birth date (18+) → height/weight → privacy acceptance (required legal record).
+// No „main goal“ question (owner 2026-10-11, same as the app); first and last name are both asked.
 // The voluntary AI consent is asked the first time the person uses Medi, never pre-accepted here.
 import { h, mount, icon, button, busy, field, input } from './ui.js';
 import { post, put } from './api.js';
@@ -15,14 +16,14 @@ export function renderOnboarding(root, { onDone }) {
   const state = {
     step: 0,
     gender: u.gender || null,
-    goal: p.extraAnswers?.primaryGoal || null,
     birthDate: u.birthDate || '',
     heightCm: p.heightCm || '',
     weightKg: p.weightKg || '',
-    fullName: displayName(),
+    firstName: displayName().split(' ')[0] || '',
+    lastName: displayName().split(' ').slice(1).join(' '),
     accepted: false,
   };
-  const STEPS = 5;
+  const STEPS = 4;
   // „MEDICARD უკვე გამოგიყენებია?“ — first, once, on an account created within the last day that has
   // not started onboarding anywhere (same rule as the app and the server's discard-new): a „yes“
   // removes this new empty account so the person signs in the old way. Someone who already answered
@@ -50,13 +51,11 @@ export function renderOnboarding(root, { onDone }) {
   const err = h('div', { class: 'form-error', hidden: true });
   const fail = (e) => { err.textContent = e?.message || t('ვერ შეინახა.', 'Couldn’t save.'); err.hidden = false; };
 
-  // The cycle goal is for women only: switching to male drops it, so it is never saved hidden.
-  const goalKeys = (gender) => ['medications', 'nutrition', ...(gender === 'FEMALE' ? ['cycle'] : []), 'general'];
   const setGender = (gender) => {
     state.gender = gender;
-    if (!goalKeys(gender).includes(state.goal)) state.goal = null;
     render();
   };
+  const nameOk = () => state.firstName.trim().length >= 2 && state.lastName.trim().length >= 2;
 
   function choice(label, ic, ink, on, onClick) {
     return h('button', { type: 'button', class: `choice ${on ? 'on' : ''}`, onClick },
@@ -94,31 +93,23 @@ export function renderOnboarding(root, { onDone }) {
       return;
     }
     if (s === 0) {
-      const nameIn = input({ value: state.fullName, placeholder: t('სახელი გვარი', 'First and last name'), autocomplete: 'name', onInput: (e) => { state.fullName = e.target.value; } });
+      const firstIn = input({ value: state.firstName, placeholder: t('მაგ. ნინო', 'e.g. Nino'), autocomplete: 'given-name', onInput: (e) => { state.firstName = e.target.value; } });
+      const lastIn = input({ value: state.lastName, placeholder: t('მაგ. ბერიძე', 'e.g. Beridze'), autocomplete: 'family-name', onInput: (e) => { state.lastName = e.target.value; } });
       body = [
         h('h1', { class: 'page-head', style: { display: 'block', margin: '0 0 8px', fontSize: '28px', fontWeight: 800 } }, t('მოგესალმები MEDICARD-ში', 'Welcome to MEDICARD')),
         h('p', { class: 'muted', style: { marginBottom: '22px' } }, t('რამდენიმე კითხვა — და შენი სივრცე მზადაა. პასუხები ანგარიშში ინახება და აპშიც იგივე იქნება.', 'A few questions and your space is ready. Your answers are saved to your account and show up in the app too.')),
-        field(t('როგორ მოგმართოთ?', 'What should we call you?'), nameIn),
+        h('div', { class: 'form-row' }, field(t('სახელი', 'First name'), firstIn), field(t('გვარი', 'Last name'), lastIn)),
         h('div', { class: 'field-label', style: { margin: '18px 0 10px' } }, t('სქესი', 'Sex')),
         h('div', { class: 'choice-grid' },
           choice(t('ქალი', 'Female'), 'user', 'rose', state.gender === 'FEMALE', () => setGender('FEMALE')),
           choice(t('კაცი', 'Male'), 'user', 'blue', state.gender === 'MALE', () => setGender('MALE'))),
-        nav(Boolean(state.gender), async () => { state.step = 1; render(); }),
+        err,
+        nav(Boolean(state.gender), async () => {
+          if (!nameOk()) { fail({ message: t('შეიყვანე სახელი და გვარი.', 'Enter your first and last name.') }); return; }
+          state.step = 1; render();
+        }),
       ];
     } else if (s === 1) {
-      const goals = [
-        ['medications', t('მედიკამენტების დროულად მიღება', 'Taking medications on time'), 'pill', 'teal'],
-        ['nutrition', t('კვება და წონა', 'Nutrition and weight'), 'apple', 'green'],
-        ...(state.gender === 'FEMALE' ? [['cycle', t('ციკლის მიყოლა', 'Tracking my cycle'), 'flower', 'rose']] : []),
-        ['general', t('ზოგადად ჯანმრთელობა', 'General health'), 'heart', 'violet'],
-      ];
-      body = [
-        h('h2', { style: { fontSize: '26px', fontWeight: 800, marginBottom: '8px' } }, t('რა არის შენთვის მთავარი?', 'What matters most to you?')),
-        h('p', { class: 'muted', style: { marginBottom: '22px' } }, t('მთავარ გვერდზე ამ სექციას პირველად დაგახვედრებთ.', 'We’ll put this section first on your Home page.')),
-        h('div', { class: 'choice-grid' }, goals.map(([v, l, ic, ink]) => choice(l, ic, ink, state.goal === v, () => { state.goal = v; render(); }))),
-        nav(goals.some(([v]) => v === state.goal), async () => { state.step = 2; render(); }),
-      ];
-    } else if (s === 2) {
       const max = new Date(); max.setFullYear(max.getFullYear() - 18);
       const bd = input({ type: 'date', value: state.birthDate || '', max: max.toISOString().slice(0, 10), min: '1900-01-01', onInput: (e) => { state.birthDate = e.target.value; } });
       body = [
@@ -129,22 +120,22 @@ export function renderOnboarding(root, { onDone }) {
         nav(true, async () => {
           if (!/^\d{4}-\d{2}-\d{2}$/.test(state.birthDate)) { fail({ message: t('მიუთითე დაბადების თარიღი.', 'Enter your date of birth.') }); return; }
           if (new Date(state.birthDate) > max) { fail({ message: t('MEDICARD-ით სარგებლობა 18 წლიდანაა შესაძლებელი.', 'You must be 18 or older to use MEDICARD.') }); return; }
-          state.step = 3; render();
+          state.step = 2; render();
         }),
       ];
-    } else if (s === 3) {
+    } else if (s === 2) {
       const hIn = input({ type: 'number', inputmode: 'decimal', min: 80, max: 250, placeholder: '170', value: state.heightCm, onInput: (e) => { state.heightCm = e.target.value; } });
       const wIn = input({ type: 'number', inputmode: 'decimal', min: 20, max: 300, step: '0.1', placeholder: '70', value: state.weightKg, onInput: (e) => { state.weightKg = e.target.value; } });
       body = [
         h('h2', { style: { fontSize: '26px', fontWeight: 800, marginBottom: '8px' } }, t('სიმაღლე და წონა', 'Height and weight')),
-        h('p', { class: 'muted', style: { marginBottom: '22px' } }, t('BMI-სა და კალორიების გეგმისთვის. შეგიძლია მოგვიანებით შეცვალო.', 'For your BMI and calorie plan. You can change this later.')),
+        h('p', { class: 'muted', style: { marginBottom: '22px' } }, t('საჭიროა BMI-სთვის და კალორიების გეგმისთვის. შეგიძლია მოგვიანებით შეცვალო.', 'For your BMI and calorie plan. You can change this later.')),
         h('div', { class: 'form-row' }, field(t('სიმაღლე (სმ)', 'Height (cm)'), hIn), field(t('წონა (კგ)', 'Weight (kg)'), wIn)),
         err,
         nav(true, async () => {
           const hc = Number(state.heightCm); const wk = Number(state.weightKg);
           if (state.heightCm && (hc < 80 || hc > 250)) { fail({ message: t('სიმაღლე 80–250 სმ ფარგლებში უნდა იყოს.', 'Height must be between 80 and 250 cm.') }); return; }
           if (state.weightKg && (wk < 20 || wk > 300)) { fail({ message: t('წონა 20–300 კგ ფარგლებში უნდა იყოს.', 'Weight must be between 20 and 300 kg.') }); return; }
-          state.step = 4; render();
+          state.step = 3; render();
         }),
       ];
     } else {
@@ -171,14 +162,14 @@ export function renderOnboarding(root, { onDone }) {
 
   async function finish() {
     try {
-      if (state.fullName.trim().length >= 2 && state.fullName.trim() !== session.user?.fullName) {
-        const r = await (await import('./api.js')).patch('/api/auth/me', { fullName: state.fullName.trim() });
+      const fullName = `${state.firstName.trim()} ${state.lastName.trim()}`.replace(/\s+/g, ' ');
+      if (nameOk() && fullName !== session.user?.fullName) {
+        const r = await (await import('./api.js')).patch('/api/auth/me', { fullName });
         if (r?.user) setUser(r.user);
       }
       await put('/api/health-profile', {
         extraAnswers: {
           assessmentPhaseComplete: true,
-          primaryGoal: state.goal,
           privacyAccepted: true,
           privacyAcceptedAt: new Date().toISOString(),
           onboardingSource: 'web',

@@ -31,7 +31,7 @@ const profile = {
   chronicConditions: list.optional(), allergies: list.optional(), medications: list.optional(), familyHistory: list.optional(), healthGoals: list.optional(),
   activityLevel: z.enum(['SEDENTARY', 'LIGHT', 'MODERATE', 'ACTIVE', 'VERY_ACTIVE']).optional(),
   sleepHours: z.number().min(3).max(14).optional(), dietType: z.enum(['OMNIVORE', 'VEGETARIAN', 'VEGAN', 'KETO', 'OTHER']).optional(),
-  smokingStatus: z.enum(['NEVER', 'FORMER', 'CURRENT']).optional(), alcoholUse: z.enum(['NEVER', 'OCCASIONAL', 'REGULAR']).optional(),
+  smokingStatus: z.enum(['NEVER', 'FORMER', 'OCCASIONAL', 'CURRENT']).optional(), alcoholUse: z.enum(['NEVER', 'OCCASIONAL', 'REGULAR']).optional(),
 };
 const catalog = {};
 function add(name, label, domain, schema, endpoint, description = '', method = 'POST') {

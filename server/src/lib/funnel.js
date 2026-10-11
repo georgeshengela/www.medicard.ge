@@ -16,9 +16,11 @@ export const MAX_EVENT_AGE_DAYS = 30;
 export const FUNNEL_PERIODS = Object.freeze([7, 30, 90]);
 
 export const ONBOARDING_STEP_KEYS = Object.freeze([
-  'o1-gender', 'o2-goal', 'o3-birthdate', 'o4-body', 'o5-medication', 'o5-weight', 'o5-cycle',
+  'o0-name', 'o1-gender', 'o2-goal', 'o3-birthdate', 'o4-height', 'o4-weight', 'o4-body', 'o5-medication', 'o5-weight', 'o5-cycle',
   'privacy', 'ai-privacy', 'notifications', 'home-layout',
 ]);
+/** Steps older app builds still send (goal step and the one-page height + weight, retired 2026-10-11). */
+const RETIRED_ONBOARDING_STEPS = new Set(['o2-goal', 'o4-body', 'o5-medication', 'o5-weight', 'o5-cycle']);
 export const PRIMARY_GOALS = Object.freeze(['medications', 'nutrition', 'cycle', 'general', 'unknown']);
 export const HEALTH_ACTION_TYPES = Object.freeze(['medication', 'meal', 'cycle', 'weight', 'visit', 'record', 'checkin_manual']);
 export const INSTALL_SOURCES = Object.freeze(['organic', 'invite', 'utm', 'deeplink']);
@@ -322,7 +324,7 @@ export function buildFunnelReport({ periodEvents = [], cohortEvents = [], activi
       if (e.name === 'onboarding_step_completed') completed.add(who(e));
     }
     return { stepKey, viewed: viewed.size, completed: completed.size, completionRate: rateSafe(completed.size, viewed.size) };
-  }).filter((s) => s.viewed > 0 || !s.stepKey.startsWith('o5-'));
+  }).filter((s) => s.viewed > 0 || !RETIRED_ONBOARDING_STEPS.has(s.stepKey));
 
   const features = FEATURE_EVENTS.map((name) => {
     const rows = period.filter((e) => e.name === name);

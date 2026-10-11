@@ -23,7 +23,7 @@ const patchHealthProfileSchema = z
     sleepQuality: z.enum(['POOR', 'FAIR', 'GOOD', 'EXCELLENT']).optional(),
     sleepHours: z.number().min(3).max(14).optional(),
     stressLevel: z.enum(['LOW', 'MODERATE', 'HIGH', 'VERY_HIGH']).optional(),
-    smokingStatus: z.enum(['NEVER', 'FORMER', 'CURRENT']).optional(),
+    smokingStatus: z.enum(['NEVER', 'FORMER', 'OCCASIONAL', 'CURRENT']).optional(),
     alcoholUse: z.enum(['NEVER', 'OCCASIONAL', 'REGULAR']).optional(),
     dietType: z.enum(['OMNIVORE', 'VEGETARIAN', 'VEGAN', 'KETO', 'OTHER']).optional(),
     waterIntakeL: z.number().min(0.5).max(6).optional(),

@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { lifestyleLines } from './lifestyleProfile.js';
 import { prisma } from './prisma.js';
 import { publicExtraAnswers, withoutDeletedRecords } from './appState.js';
 import { resolvePackageAiLimit } from './packages.js';
@@ -193,10 +194,8 @@ export function buildPatientProfile(user) {
   if (hp?.heightCm) lines.push(`- სიმაღლე: ${hp.heightCm} სმ`);
   if (hp?.weightKg) lines.push(`- წონა: ${hp.weightKg} კგ`);
   if (hp?.bloodType && hp.bloodType !== 'UNKNOWN') lines.push(`- სისხლის ჯგუფი: ${hp.bloodType}`);
-  if (hp?.activityLevel) lines.push(`- აქტივობა: ${hp.activityLevel}`);
-  if (hp?.exerciseFrequency) lines.push(`- ვარჯიში: ${hp.exerciseFrequency}`);
-  if (hp?.sleepHours != null) lines.push(`- ძილი: ${hp.sleepHours} სთ`);
-  if (hp?.sleepQuality) lines.push(`- ძილის ხარისხი: ${hp.sleepQuality}`);
+  // Way of life (activity, exercise, sleep, tobacco, alcohol, diet) in words, never raw enums.
+  lines.push(...lifestyleLines(hp));
   if (hp?.waterIntakeL != null) lines.push(`- წყლის მიზანი: ${hp.waterIntakeL} ლ`);
   if (hp?.restingHeartRate != null) lines.push(`- მოსვენების პულსი: ${hp.restingHeartRate}`);
   if (hp?.bloodPressureSystolic) {
