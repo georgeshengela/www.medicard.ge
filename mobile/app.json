@@ -3,7 +3,7 @@
     "name": "MEDICARD AI",
     "slug": "medicard-ge",
     "scheme": "medicard",
-    "version": "1.0.0.21.37",
+    "version": "1.0.0.21.38",
     "assetBundlePatterns": [
       "assets/**"
     ],

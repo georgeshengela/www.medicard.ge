@@ -10,6 +10,7 @@ import Animated, {
   useAnimatedProps,
   useAnimatedStyle,
   useSharedValue,
+  withDelay,
   withRepeat,
   withTiming,
   type SharedValue,
@@ -39,6 +40,8 @@ type DiscProps = {
   lineOpacity?: SharedValue<number>;
   /** The ring that spreads on each beat (welcome only; the sign-in header stays quieter). */
   ripple?: boolean;
+  /** Milliseconds before the first pulse sets off (the welcome intro waits for the disc to rise). */
+  startDelay?: number;
 };
 
 /**
@@ -46,7 +49,7 @@ type DiscProps = {
  * pulse of light running along it. When the pulse reaches the disc it beats twice (lub-dub), the logo
  * lights up and a ring spreads out. Everything runs on the UI thread from one clock.
  */
-export function HeartbeatDisc({ palette: p, dark, disc, width, reduceMotion, lineOpacity, ripple = true }: DiscProps) {
+export function HeartbeatDisc({ palette: p, dark, disc, width, reduceMotion, lineOpacity, ripple = true, startDelay = 0 }: DiscProps) {
   const well = Math.round(disc * 0.69);
   const logo = Math.round(disc * 0.38);
   const halo = Math.round(logo * 1.9);
@@ -63,9 +66,9 @@ export function HeartbeatDisc({ palette: p, dark, disc, width, reduceMotion, lin
       return undefined;
     }
     s.value = 0;
-    s.value = withRepeat(withTiming(period, { duration: (period / SPEED) * 1000, easing: Easing.linear }), -1, false);
+    s.value = withDelay(startDelay, withRepeat(withTiming(period, { duration: (period / SPEED) * 1000, easing: Easing.linear }), -1, false));
     return () => cancelAnimation(s);
-  }, [reduceMotion, period, hit, s]);
+  }, [reduceMotion, period, hit, s, startDelay]);
 
   const dash = useAnimatedProps(() => ({ strokeDashoffset: SEG - s.value }));
   const lineStyle = useAnimatedStyle(() => ({ opacity: lineOpacity ? lineOpacity.value : 1 }));
@@ -207,25 +210,6 @@ export function VelvetWordmark({ text, size, palette: p, style }: { text: string
       >
         {text}
       </Text>
-    </View>
-  );
-}
-
-type HeroProps = {
-  palette: VelvetPalette;
-  dark: boolean;
-  wordmark: string;
-  reduceMotion: boolean;
-};
-
-/** Welcome hero (owner's pick „C · გულისცემა“, 2026-10-11): the heartbeat disc with the wordmark under it. */
-export function HeartbeatHero({ palette, dark, wordmark, reduceMotion }: HeroProps) {
-  const { width } = useWindowDimensions();
-  const disc = Math.round(Math.min(200, width * 0.52));
-  return (
-    <View style={{ width, alignItems: 'center' }}>
-      <HeartbeatDisc palette={palette} dark={dark} disc={disc} width={width} reduceMotion={reduceMotion} />
-      <VelvetWordmark text={wordmark} size={38} palette={palette} style={{ marginTop: 40 }} />
     </View>
   );
 }
